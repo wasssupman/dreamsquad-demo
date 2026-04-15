@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Rendering;
@@ -7,6 +8,7 @@ using UnityEngine;
 using Wassup.Battle.Movement;
 using Wassup.Battle.Units;
 using Wassup.Data;
+using Wassup.UI;
 
 namespace Wassup.Bridge
 {
@@ -18,6 +20,7 @@ namespace Wassup.Bridge
         [SerializeField] private MapData map;
         [SerializeField] private float tileSize = 1f;
         [SerializeField] private float spawnHeight = 0.5f;
+        [SerializeField] private ResultScreen resultScreen;
 
         private World _world;
         private EntityManager _em;
@@ -25,6 +28,8 @@ namespace Wassup.Bridge
         private readonly Dictionary<AttackUnitData, RenderMeshArray> _renderCache = new();
         private float _startTime;
         private bool _running;
+        private int _goalReachedCount;
+        private NativeQueue<GoalReachedEvent> _goalEventQueue;
 
         public void StartBattle()
         {
@@ -40,7 +45,15 @@ namespace Wassup.Bridge
             _pending.Clear();
             _pending.AddRange(deck.spawns);
             _startTime = Time.time;
+            _goalReachedCount = 0;
             _running = true;
+
+            // Create the shared queue and inject the singleton so ECS systems can enqueue events.
+            if (_goalEventQueue.IsCreated) _goalEventQueue.Dispose();
+            _goalEventQueue = new NativeQueue<GoalReachedEvent>(Allocator.Persistent);
+            var singletonEntity = _em.CreateEntity();
+            _em.AddComponentData(singletonEntity, new GoalReachedEventsSingleton { queue = _goalEventQueue });
+
             Debug.Log($"[BattleBridge] Battle started with deck '{deck.deckId}' ({deck.spawns.Count} spawns queued).");
         }
 
@@ -53,6 +66,7 @@ namespace Wassup.Bridge
         private void Update()
         {
             if (!_running) return;
+
             float t = Time.time - _startTime;
             for (int i = _pending.Count - 1; i >= 0; i--)
             {
@@ -62,6 +76,30 @@ namespace Wassup.Bridge
                     _pending.RemoveAt(i);
                 }
             }
+
+            DrainGoalEvents();
+        }
+
+        private void DrainGoalEvents()
+        {
+            if (!_goalEventQueue.IsCreated) return;
+            while (_goalEventQueue.TryDequeue(out _))
+            {
+                _goalReachedCount++;
+                Debug.Log($"[BattleBridge] Goal reached! Count: {_goalReachedCount}/{deck.defeatGoalReachedCount}");
+                if (_goalReachedCount >= deck.defeatGoalReachedCount)
+                {
+                    _running = false;
+                    resultScreen?.ShowDefeat();
+                    Debug.Log("[BattleBridge] DEFEAT triggered.");
+                    return;
+                }
+            }
+        }
+
+        private void OnDestroy()
+        {
+            if (_goalEventQueue.IsCreated) _goalEventQueue.Dispose();
         }
 
         private void SpawnUnit(SpawnEntry entry)

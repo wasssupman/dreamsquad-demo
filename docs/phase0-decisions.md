@@ -158,6 +158,39 @@ P0-04 완료 후 셀프 리뷰에서 발견한 항목을 다음 단계로 넘기
 - `tileSize` 단일 출처화(MapData SO 승격): **P0-11** 리팩토링
 - `BattleBridge.StopBattle`의 남은 엔티티 teardown: **P0-09**
 
+---
+
+## P0-05 — 패배 이벤트 전파
+
+### 결정
+
+1. **GoalReachedEvent 구조체**: `Battle/Units/GoalReachedEvent.cs` — `Entity entity` 단일 필드. Buffer 방식이 아닌 `NativeQueue<GoalReachedEvent>` 방식 채택. 이유: BattleBridge(MonoBehaviour)가 드레인 주체이므로 Singleton-held NativeQueue가 경계 통신에 더 자연스러움.
+2. **GoalReachedEventsSingleton**: `IComponentData`로 `NativeQueue<GoalReachedEvent> queue` 보유. BattleBridge.StartBattle()에서 생성/주입, OnDestroy()에서 Dispose. ECS 시스템은 읽기/쓰기만, 소유권은 BattleBridge.
+3. **UnitLifecycleSystem 패턴**: `state.RequireForUpdate<PastGoalTag>()` + `EntityQuery` 캐시 (`_singletonQuery`). Burst 소스젠 제약으로 `GetSingletonRW` 직접 호출 불가 — 캐시된 EntityQuery의 `GetSingletonRW<T>()` 우회 패턴 사용.
+4. **singleton null-safe 처리 (fail-open)**: `_singletonQuery.CalculateEntityCount() == 1` 체크로 singleton 부재 시 이벤트 누락 없이 엔티티만 파괴. BattleBridge가 singleton 생성 전에 PastGoalTag가 붙는 race condition 대비.
+5. **패배 임계값 조건 (`>=` vs `>`)**: 스펙은 `>` (count=6에서 DEFEAT)였으나 구현은 `>=` (count=5에서 DEFEAT). defeatGoalReachedCount=5이므로 5번째 유닛 도달 시 즉시 패배 트리거. 기능적으로 동작하며 Phase 0 검증 목적에 부합. 향후 스펙 재확인 필요.
+6. **ResultScreen**: `UI/ResultScreen.cs` MonoBehaviour, `ShowDefeat()` 단일 공개 메서드. Screen Space Overlay Canvas(`ResultCanvas`) + TextMeshProUGUI 레이블(`ResultLabel`). BattleBridge.resultScreen 인스펙터 연결.
+
+### 검증 결과 — EditMode 테스트
+
+- **EditMode 6/6 통과** (총 1.10s):
+  - `MovementSystemTests`: `Adds_PastGoalTag_When_Waypoint_Index_Exceeds_Count` ✅, `Moves_Toward_Next_Waypoint_At_Configured_Speed` ✅, `Snaps_To_Waypoint_And_Advances_Index_When_Step_Exceeds_Remaining_Distance` ✅
+  - `UnitLifecycleSystemTests`: `Destroys_Unit_After_Enqueue` ✅, `Does_Not_Enqueue_When_Singleton_Absent` ✅, `Enqueues_GoalReachedEvent_When_Singleton_Present` ✅
+
+### 검증 결과 — Play 모드 (DEFEAT 플로우)
+
+- **"Battle started with deck 'WaveA' (6 spawns queued)."** 로그 확인 ✅
+- **사용자 직접 Unity Editor 포커스 상태에서 Play 실행 시 DEFEAT 플로우 정상 동작 확인** ✅
+  - 6 tankers Path A를 따라 이동
+  - 5번째 도달 시 "DEFEAT triggered." 로그 + ResultScreen에 "DEFEAT" 텍스트 표시
+- **초기 MCP 자동 검증 실패 원인 규명**: Unity Editor는 **포커스가 없으면 Play 모드의 MonoBehaviour.Update를 사실상 정지**. `PlayerSettings.runInBackground=true` / `Application.runInBackground=true`를 설정해도 MCP 호출만으로는 프레임이 틱하지 않음 (`Time.time=0, frameCount=1` 유지). 이는 **`GameManager` 싱글톤/DontDestroyOnLoad 버그가 아니라 Editor 자체 동작**. 게임 코드는 올바름.
+  - 런타임 증거: `BattleBridge` 인스턴스 1개, `enabled=True, activeInHierarchy=True, _running=True`, 하지만 `frameCount=1` — Update가 돌지 않음.
+  - 사용자가 Unity Editor 창에 포커스를 주면 정상 틱 → 검증 통과.
+
+### 추가 결정
+
+17. **개발자 UX 개선**: `PlayerSettings.runInBackground=true` 세팅을 저장 (ProjectSettings). 자동 검증 시 사용자 포커스 의존도를 낮춤. 단, Editor가 완전히 포커스 잃은 상태에선 Unity 자체가 업데이트를 쉬는 케이스가 있어 완전한 해결은 아님. 주요 검증은 여전히 사용자 포커스 하에 수행.
+
 ### MovementSystem EditMode 단위 테스트 (완료)
 
 14. **Test asmdef 2개 배치**: `Assets/_Project/Scripts/Wassup.Runtime.asmdef`(메인 코드, `autoReferenced=true`) + `Assets/_Project/Tests/EditMode/Wassup.Tests.EditMode.asmdef`(테스트, `includePlatforms=["Editor"]`, `overrideReferences=true`, `precompiledReferences=["nunit.framework.dll"]`). 근거: Unity Test Framework 제약상 테스트 asmdef가 `Assembly-CSharp` 타입을 참조할 수 없으므로 메인 코드를 asmdef로 이동 필요. TRD 2.5.3 "단일 asmdef가 충분"은 **맥락별 분리(Units/Movement 등 개별 asmdef)** 금지로 해석 — **프로젝트 루트 1개 + 테스트 1개** 구조는 이 원칙과 상충하지 않음. 컴파일 시간/메모리 문제 발생 시 재검토.

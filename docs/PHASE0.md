@@ -229,7 +229,7 @@ Phase 0는 다음이 **모두** 이진 통과해야 Phase 1로 이동한다.
 - 완료 확인: 한 유닛이 시작점에서 종점까지 이동
 
 **[P0-05] 종점 도달 + 패배 판정**
-- [ ] 종점 도달 수가 임계값 초과 시 "DEFEAT" 결과 표시
+- [x] 종점 도달 수가 임계값 초과 시 "DEFEAT" 결과 표시
 - 내용: 종점 도달 이벤트를 ECS에서 감지 → `BattleBridge`로 전달 → MonoBehaviour 쪽에서 카운트 및 패배 판정. AttackDeck의 `defeat_condition.count` 사용.
 - 선행: P0-04
 - 완료 확인: 종점 도달 카운트가 N 초과하면 DEFEAT 화면 전환

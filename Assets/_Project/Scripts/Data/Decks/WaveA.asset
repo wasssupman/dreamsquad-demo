@@ -17,4 +17,19 @@ MonoBehaviour:
   - triggerTimeSec: 1
     unitType: {fileID: 11400000, guid: a50475686b6034b219173681f81f3dcd, type: 2}
     pathId: A
+  - triggerTimeSec: 2
+    unitType: {fileID: 11400000, guid: a50475686b6034b219173681f81f3dcd, type: 2}
+    pathId: A
+  - triggerTimeSec: 3
+    unitType: {fileID: 11400000, guid: a50475686b6034b219173681f81f3dcd, type: 2}
+    pathId: A
+  - triggerTimeSec: 4
+    unitType: {fileID: 11400000, guid: a50475686b6034b219173681f81f3dcd, type: 2}
+    pathId: A
+  - triggerTimeSec: 5
+    unitType: {fileID: 11400000, guid: a50475686b6034b219173681f81f3dcd, type: 2}
+    pathId: A
+  - triggerTimeSec: 6
+    unitType: {fileID: 11400000, guid: a50475686b6034b219173681f81f3dcd, type: 2}
+    pathId: A
   defeatGoalReachedCount: 5
