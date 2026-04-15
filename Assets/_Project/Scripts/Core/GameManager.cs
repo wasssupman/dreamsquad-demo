@@ -39,7 +39,7 @@ namespace Wassup.Core
         private void OnDisable()
         {
             if (battleBridge != null) battleBridge.StopBattle();
-            if (logger != null) logger.EndSession(outcome: "unknown");
+            if (logger != null) logger.EndSession();
         }
 
         private void OnDestroy()

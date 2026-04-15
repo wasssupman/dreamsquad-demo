@@ -4,6 +4,9 @@ using UnityEngine;
 
 namespace Wassup.Logging
 {
+    // Session-scoped logger for a single battle. Lifecycle:
+    //   StartSession() → gameplay code calls SetAttackDeckId / RecordPlacement / SetResult → EndSession() writes JSON.
+    // Outcome defaults to "unknown" so a session that never saw a definitive end still produces a readable file.
     public class BattleLogger : MonoBehaviour
     {
         private BattleLogEntry currentEntry;
@@ -18,14 +21,51 @@ namespace Wassup.Logging
                 session_id = Guid.NewGuid().ToString("N"),
                 timestamp_start = startedAt.ToString("o"),
             };
-            var dir = Path.Combine(Application.persistentDataPath, "phase0");
+            currentEntry.result.outcome = "unknown";
+            var dir = ResolveLogDirectory();
             Directory.CreateDirectory(dir);
             var fileName = $"session-{startedAt:yyyyMMdd-HHmmss}-{currentEntry.session_id[..8]}.json";
             filePath = Path.Combine(dir, fileName);
             Debug.Log($"[BattleLogger] Session started. Log will be written to: {filePath}");
         }
 
-        public void EndSession(string outcome = "unknown", int enemiesReachedGoal = 0)
+        public void SetAttackDeckId(string deckId)
+        {
+            if (currentEntry == null) return;
+            currentEntry.attack_deck_id = deckId ?? string.Empty;
+        }
+
+        public void RecordPlacement(string unitType, Vector2Int tile, float time)
+        {
+            if (currentEntry == null) return;
+            currentEntry.placements.Add(new PlacementLog { unit_type = unitType, tile = tile, time = time });
+        }
+
+        // Set the final battle outcome. Caller should invoke this before EndSession
+        // (typically on VICTORY / DEFEAT trigger inside BattleBridge).
+        public void SetResult(string outcome, int enemiesReachedGoal)
+        {
+            if (currentEntry == null) return;
+            currentEntry.result.outcome = outcome;
+            currentEntry.result.enemies_reached_goal = enemiesReachedGoal;
+        }
+
+        // Resolves the log directory. In the Unity Editor we write to the project root (<projectRoot>/GameLogs)
+        // so JSON files are easy to find and inspect alongside source. At runtime outside the Editor
+        // (standalone / Android builds), we fall back to Application.persistentDataPath which is the
+        // only path guaranteed to be writable on every platform.
+        private static string ResolveLogDirectory()
+        {
+#if UNITY_EDITOR
+            // Application.dataPath is "<projectRoot>/Assets"; go one level up.
+            var projectRoot = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
+            return Path.Combine(projectRoot, "GameLogs");
+#else
+            return Path.Combine(Application.persistentDataPath, "GameLogs");
+#endif
+        }
+
+        public void EndSession()
         {
             if (currentEntry == null)
             {
@@ -34,19 +74,11 @@ namespace Wassup.Logging
             }
             var endedAt = DateTime.UtcNow;
             currentEntry.timestamp_end = endedAt.ToString("o");
-            currentEntry.result.outcome = outcome;
             currentEntry.result.duration_sec = (float)(endedAt - startedAt).TotalSeconds;
-            currentEntry.result.enemies_reached_goal = enemiesReachedGoal;
             var json = JsonUtility.ToJson(currentEntry, prettyPrint: true);
             File.WriteAllText(filePath, json);
             Debug.Log($"[BattleLogger] Session ended. Log written: {filePath}");
             currentEntry = null;
-        }
-
-        public void RecordPlacement(string unitType, Vector2Int tile, float time)
-        {
-            if (currentEntry == null) return;
-            currentEntry.placements.Add(new PlacementLog { unit_type = unitType, tile = tile, time = time });
         }
     }
 }

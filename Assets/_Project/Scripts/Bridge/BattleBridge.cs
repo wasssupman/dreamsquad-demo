@@ -8,6 +8,7 @@ using UnityEngine;
 using Wassup.Battle.Combat;
 using Wassup.Battle.Movement;
 using Wassup.Battle.Units;
+using Wassup.Core;
 using Wassup.Data;
 using Wassup.UI;
 
@@ -60,6 +61,13 @@ namespace Wassup.Bridge
                 StartBattle();
                 return;
             }
+            // Roll the log over: close current session, start a fresh one so each battle has its own JSON file.
+            var logger = GameManager.Instance?.Logger;
+            if (logger != null)
+            {
+                logger.EndSession();
+                logger.StartSession();
+            }
             TeardownCurrentBattle();
             if (resultScreen != null) resultScreen.Hide();
             StartBattle();
@@ -94,6 +102,12 @@ namespace Wassup.Bridge
             // Re-acquire the world reference on every StartBattle so that Play-Stop-Play
             // cycles (which recreate World.DefaultGameObjectInjectionWorld) are safe.
             _world = World.DefaultGameObjectInjectionWorld;
+            if (_world == null)
+            {
+                // ECS world not yet bootstrapped — GameManager.OnEnable can race ahead of Entities init.
+                Debug.LogWarning("[BattleBridge] Default World not ready at StartBattle; will retry next frame.");
+                return;
+            }
             _em = _world.EntityManager;
             _pending.Clear();
             _pending.AddRange(deck.spawns);
@@ -115,6 +129,7 @@ namespace Wassup.Bridge
             var singletonEntity = _em.CreateEntity();
             _em.AddComponentData(singletonEntity, new GoalReachedEventsSingleton { queue = _goalEventQueue });
 
+            GameManager.Instance?.Logger?.SetAttackDeckId(deck.deckId);
             Debug.Log($"[BattleBridge] Battle started with deck '{deck.deckId}' ({deck.spawns.Count} spawns queued).");
         }
 
@@ -153,6 +168,7 @@ namespace Wassup.Bridge
                 {
                     _resultShown = true;
                     _running = false;
+                    GameManager.Instance?.Logger?.SetResult("defeat", _goalReachedCount);
                     resultScreen?.ShowDefeat();
                     Debug.Log("[BattleBridge] DEFEAT triggered.");
                     return;
@@ -170,6 +186,7 @@ namespace Wassup.Bridge
 
             _resultShown = true;
             _running = false;
+            GameManager.Instance?.Logger?.SetResult("victory", _goalReachedCount);
             resultScreen?.ShowVictory();
             Debug.Log("[BattleBridge] VICTORY — all attack units defeated.");
         }
@@ -197,6 +214,7 @@ namespace Wassup.Bridge
             }
 
             _occupiedTiles.Add(cell);
+            GameManager.Instance?.Logger?.RecordPlacement(unitData.displayName, cell, Time.time - _startTime);
 
             var entity = _em.CreateEntity();
 #if UNITY_EDITOR
