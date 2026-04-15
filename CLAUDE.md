@@ -1,201 +1,139 @@
-# wassup — Defense Tournament Prototype
+# Project Context — Defense Tournament
 
-## 프로젝트 정체성
-**드래프트 기반 비동기 경쟁 타워 디펜스**의 프로토타입. 풀 게임이 아니라 **3개 가설 검증용 실험 장치**. 재미있는 게임을 만드는 것이 목표가 아니라, 검증이 실패하면 폐기·재검토하는 것이 목표다.
-
-### 검증 가설 (모든 구현 판단의 최상위 기준)
-- **H1** — 반복 플레이로 드래프트 픽 선택이 개선되는가 (*실패 시 프로젝트 전면 재검토*)
-- **H2** — 코스트 제약 하 배치/스킬 결정이 3분 루프의 실시간 긴장감을 주는가
-- **H3** — 플레이어가 패배 원인을 구체적으로 언어화할 수 있는가
-
-구현 중 판단이 모호하면 **"H1/H2/H3 중 무엇에 가장 도움 되는가"**로 결정한다 (TRD §9).
-
-### 상위 문서
-- `docs/PROTOTYPE_PRD.md` — 검증 가설, 스코프, 실패 대응, 비목표 목록 (**무엇/왜**)
-- `docs/TRD.md` — 기술 제약, 아키텍처 경계, 금지 패턴, Phase 순서 (**어떤 제약 위에서**)
-- `docs/PHASE0.md` — 현재 Phase 상세 (추후 `PHASE1.md`, `PHASE2.md`, ... 순차 추가)
-
-모든 구현 호출은 **TRD + 현재 Phase 문서**를 컨텍스트로 동반해야 한다.
+> 이 문서는 Claude Code 세션 시작 시 자동으로 컨텍스트에 주입된다. 프로젝트의 정체성, 현재 작업 단계, 필수 제약만 담는다. 상세는 참조 문서를 읽는다.
 
 ---
 
-## 현재 상태
-- **Phase**: Phase 0 (실시간 디펜스 루프) — 진입 준비 중
-- **커스텀 스크립트**: 없음 (새로 작성 시작)
-- **Git**: 초기 커밋 완료
+## 프로젝트 한 줄
 
----
+비동기 토너먼트 디펜스 게임을 만든다. 현재 단계는 **"기획의 프로토타입"** — 기획 핵심을 Phase 순서로 구현하며 검증한다. 단, **코드는 일회용이 아니다**. 검증을 통과한 구현은 그대로 본 게임의 기반으로 이어진다.
 
-## 기술 스택 (TRD §1)
-| 항목 | 값 |
+## 운영 원칙
+
+- **기능 스코프는 프로토타입 수준**: 현재 Phase 범위를 넘는 기능은 만들지 않는다.
+- **코드 품질은 본 게임 수준**: 만든 코드는 버려질 것으로 취급하지 않는다. 단, "본 게임에서 쓸 수 있게 예쁘게"를 이유로 과도한 추상화를 쌓지 않는다.
+- **확장 여지만 열고 실 구현은 현재 Phase만**: 다음 Phase에서 추가될 자리는 맥락 폴더로 열어두되, 해당 Phase 진입 전까지 구현하지 않는다.
+
+## 현재 단계
+
+**Phase 0 — 실시간 디펜스 루프**. 드래프트·스킬·시너지 없이 "실시간 디펜스가 작동하고 재미있는가"를 검증하는 가장 헐벗은 단계다.
+
+Phase 0 완료 전까지 Phase 1~4 관련 시스템(드래프트, 스킬, 인접 효과, 타이머 등)은 **절대 건드리지 않는다**.
+
+## 기술 스택
+
+- **엔진**: Unity 6
+- **언어**: C#
+- **아키텍처**: 하이브리드 ECS — 전투 시뮬레이션만 ECS, 나머지 MonoBehaviour
+- **필수 패키지**: Entities 6.x, Entities Graphics, Burst, Collections, Mathematics, Jobs, TextMeshPro
+- **타겟**: Android 실기기 + Unity Editor 플레이
+
+## ECS 맥락 분리
+
+전투 시뮬레이션은 **맥락(Context)별로 분리**된다:
+
+- **Units** — 유닛 정의, 배치 상태, Health, 생성/소멸
+- **Movement** — 경로 따라가기, 위치 갱신
+- **Combat** — 타겟팅, 공격 쿨다운, 데미지 적용, 사거리 판정
+- **Effects** — 상태이상, 스킬 효과, 인접 시너지 (Phase 0에서는 자리만)
+
+**맥락 간 통신 규칙**:
+- Component는 소유 맥락이 있다. 다른 맥락은 **읽기만** 가능, 쓰기는 소유 맥락만.
+- 맥락 간 이벤트는 Buffer 또는 NativeQueue를 통한다. 직접 Component 수정 금지.
+
+폴더 구조: `Assets/_Project/Scripts/Battle/{Units,Movement,Combat,Effects}/`. 상세는 TRD 섹션 2.5 참조.
+
+## 절대 제약 (위반 시 정지하고 질문)
+
+1. **ECS 경계 엄수**: `BattleBridge` 클래스가 MonoBehaviour ↔ ECS 통신의 유일한 창구다. 그 외 MonoBehaviour에서 `EntityManager` / `World.DefaultGameObjectInjectionWorld` / `SystemAPI` 직접 호출 금지.
+2. **맥락 경계 엄수**: Component 쓰기는 소유 맥락만. 맥락 간 직접 호출 금지.
+3. **SubScene 금지**, **SystemBase 남발 금지**(ISystem 우선), **네트워크 코드 완전 금지**.
+4. **Manager 싱글톤은 GameManager 1개만**. 그 외 `XxxManager` 싱글톤 금지.
+5. **하드코딩된 수치 금지**. 모든 유닛 스탯/공격 패턴/스킬 값은 ScriptableObject에서 나온다.
+6. **상속 2단계 최대** (MonoBehaviour, ScriptableObject에 적용).
+7. **인터페이스는 구현체 2개 이상일 때만 생성**. "나중을 위한" 추상 레이어 금지.
+8. **드래프트·스킬·인접 시너지·코스트·3분 타이머는 Phase 0에서 구현 금지**. 이들은 이후 Phase의 영역이다.
+
+**전체 제약 목록은 `docs/TRD.md` 섹션 3(추상화 규칙), 섹션 5(금지 패턴)를 반드시 참조**하라.
+
+## 참조 문서 (필요 시 읽는 순서)
+
+| 상황 | 읽을 문서 |
 |---|---|
-| 엔진 | Unity `6000.3.5f2` (Unity 6) |
-| 언어 | C# |
-| 아키텍처 | **하이브리드 ECS** (전투만 ECS, 나머지 MonoBehaviour) |
-| 렌더 파이프라인 | URP `17.3.0` (Mobile/PC 프리셋 분리) |
-| 입력 | New Input System `1.17.0` — `Assets/InputSystem_Actions.inputactions` |
-| 주 타겟 | **Android 단일 플랫폼** (최소 API 26) |
-| 보조 타겟 | Unity Editor Play Mode |
+| "이 기능을 왜 만드나?" | `docs/PRD.md` — 검증 가설, 운영 원칙 |
+| "어떤 기술 제약이 있나?" | `docs/TRD.md` — ECS 경계, 맥락 분리, 추상화 규칙, 금지 패턴 |
+| "지금 뭘 만드나?" | `docs/PHASE0.md` — Phase 0 상세 스펙과 작업 리스트 |
+| "작업 순서는?" | `docs/PHASE0.md` 섹션 3.1 — P0-01부터 P0-13까지 순서대로 |
 
-### 금지 패키지 (TRD §1.2, §4.4)
-NGO, Mirror, Photon, DOTween, Zenject, UniRx, MessagePipe, SubScene. 필요하다고 느껴지면 **설계를 의심할 것**.
+## 작업 지침
 
----
+### 기본 워크플로우
 
-## 아키텍처 경계 (TRD §2)
+1. 사용자가 "작업 P0-NN 시작" 또는 "다음 작업"이라고 말하면, `docs/PHASE0.md` 섹션 3.1에서 **가장 위의 미체크 작업**을 찾아 해당 항목부터 시작한다.
+2. 작업 시작 전에 해당 작업의 "선행" 항목이 모두 체크되어 있는지 확인한다.
+3. 작업 내용을 구현한다. **한 번에 한 작업만**. 여러 작업을 동시에 건드리지 않는다.
+4. 구현 완료 후 사용자에게 "완료 확인"을 요청한다. 에디터 또는 실기기에서 확인 가능한 방식을 구체적으로 알려준다.
+5. 사용자가 통과를 확인하면 해당 작업의 체크박스를 true로 바꾸고, 이번 작업에서 내린 기술적 결정을 `docs/phase0-decisions.md`에 한 줄 추가한다.
 
-### ECS 월드 = 전투 시뮬레이션만
-- 방어/공격 유닛 엔티티, 투사체, 이동 시스템, 데미지/사거리/시너지 계산, 스킬 전투 효과
-- 작성 우선순위: **ISystem + Burst** → `SystemBase`는 C# 참조가 불가피할 때만
+### 작업 시작 전 자가 점검
 
-### MonoBehaviour = 그 외 전부
-- 게임 상태 기계 (`Draft / Placement / Combat / Result`)
-- 모든 UI (UGUI / TextMeshPro), 입력, 씬, 로깅, ScriptableObject 데이터 정의
+코드를 작성하기 전에 스스로 점검한다:
 
-### `BattleBridge` = 경계의 유일한 창구
-ECS ↔ MonoBehaviour 사이 통신은 **반드시 `BattleBridge`를 경유**한다. 외부에서 `EntityManager`, `World.DefaultGameObjectInjectionWorld`, `SystemAPI` 직접 접근은 **금지 (위반 시 리팩토링 대상)**.
+- [ ] 이 기능이 현재 Phase 범위 안인가?
+- [ ] 인터페이스를 만들려 한다면, 구현체가 2개 이상 있는가?
+- [ ] 이 코드에 테스트를 작성하는 것이 자연스러운가?
+- [ ] "확장 가능"을 이유로 만드는 구조가 지금 실제로 쓰이는가?
+- [ ] Component 쓰기가 소유 맥락 내에서만 일어나는가?
+- [ ] 상속 계층이 2단계를 넘지 않는가?
 
-`BattleBridge`의 4책임:
-1. 전투 시작 (MonoBehaviour 데이터 → ECS 엔티티 생성)
-2. 커맨드 전달 (플레이어 입력 → ECS 커맨드 구조체)
-3. 결과 수집 (전투 종료 시 결과 반환 + 월드 정리)
-4. 이벤트 pull (ECS `NativeQueue` → 매 프레임 poll → 로거 전달)
+### ECS 설계의 불확실성 대응
 
-그 외의 책임을 `BattleBridge`에 넣지 않는다. 비대해지면 경계가 샜다는 신호.
+팀은 ECS에 깊이 있는 경험이 없을 수 있다. 다음 두 가지 접근을 섞어 쓴다:
 
-### 데이터 경로
-- 유닛/공격 패턴/스킬 = **ScriptableObject**
-- 런타임에 **Baker 패턴**으로 ECS Component 변환 (SubScene 금지)
-- 렌더링은 Entities Graphics의 `RenderMeshArray` 기본 (최대 50~100 유닛 기준 충분)
+1. **작은 결정은 에이전트가 내리고 짧게 설명한다** — 사용자가 실시간으로 ECS를 학습하는 효과
+2. **아키텍처 수준의 결정은 사용자에게 질문한다** — 여러 정답이 있는 경우에만. 작업 단위마다 질문하지 않고 묶어서 한 번에.
 
----
+**질문 가치가 있는 결정의 예**:
+- Component 소속 맥락이 애매할 때 (예: `Cooldown`이 Units인가 Combat인가)
+- 맥락 간 이벤트를 Buffer로 할지 NativeQueue로 할지
+- SystemGroup 구성과 업데이트 순서
+- Burst 호환 불가한 API가 필요해 보일 때
 
-## 폴더 구조
-```
-Assets/
-  Scripts/
-    Core/      # GameManager, GameStateMachine, 공통 타입
-    Bridge/    # BattleBridge 및 경계 통신 구조체
-    Battle/    # ECS Components / Systems / Jobs (전투 로직)
-    UI/        # MonoBehaviour UI 컴포넌트
-    Data/      # ScriptableObject 정의 클래스 (유닛/패턴/스킬)
-    Logging/   # Logger, JSON 스키마
-  Data/        # ScriptableObject 애셋 파일 (.asset)
-  Scenes/      # Prototype.unity (주 작업 씬)
-  Prefabs/
-  Settings/    # URP 에셋 (기존 유지)
-  Tests/
-    EditMode/
-    PlayMode/
-  InputSystem_Actions.inputactions
-Packages/
-ProjectSettings/
-docs/          # PRD / TRD / PHASE{N}.md
-```
+**질문하지 않아도 되는 결정의 예**:
+- 폴더 내 파일 네이밍
+- private 메서드 분할
+- 로컬 변수 이름
+- using 순서, 코드 포맷
 
-**Assembly Definitions**: Phase 0~1에서는 과도한 분리 금지. Phase 3 이후 필요성이 드러나면 분리.
+### 기술적 결정이 필요할 때 (우선순위)
 
-**씬 전략**: 단일/멀티 씬은 구현 재량. `Assets/Scenes/Prototype.unity`를 주 작업 씬으로 사용.
+1. `docs/PHASE0.md` 섹션 4 "에이전트 자율 결정 영역"에 있으면 단순한 쪽으로 결정하고 `phase0-decisions.md`에 기록
+2. 없으면 `docs/TRD.md` 참조
+3. 없으면 `docs/PRD.md` 참조
+4. 없으면 **작업 시작 전에 사용자에게 한 번에 묶어서 질문**. 작업 중간에 질문하지 않는다.
 
----
+### 테스트
 
-## 코딩 규약
-- **네임스페이스**: `Wassup.<Feature>` — 예: `Wassup.Core`, `Wassup.Bridge`, `Wassup.Battle`, `Wassup.UI`, `Wassup.Data`, `Wassup.Logging`
-- MonoBehaviour 파일명 = 클래스명 = `.cs` 파일명
-- 필드: `private` → `_camelCase` / `[SerializeField]` → `camelCase` / `public` → `PascalCase`
-- **ECS Component struct의 public 필드는 정상** (예외)
-- 입력: `InputSystem_Actions` 액션 맵 사용 — 레거시 `Input.GetKey` 금지
-- 셰이더: URP만 (Built-in 셰이더 사용 시 핑크 깨짐)
+- ECS 시스템 내부의 순수 계산 함수는 **EditMode 단위 테스트**를 작성한다.
+- 판 흐름 수준의 통합은 **PlayMode 테스트** 1개 이상.
+- 커버리지는 목표가 아니다. **회귀 방지 수준**이면 충분하다.
+- 테스트 작성이 작업 진행의 병목이 되면 우선순위를 낮춘다. 다만 ECS 시스템의 핵심 계산(데미지, 이동, 타겟팅)은 반드시 단위 테스트를 유지한다.
+
+### 금지 행동
+
+- **Phase를 건너뛰지 않는다.** Phase 0 작업 중 "이왕 만드는 김에 드래프트도..." 같은 판단 금지.
+- **추상화 먼저 만들지 않는다.** 인터페이스부터 정의한 뒤 구현하는 방식 금지. 구체 구현부터 시작해서 반복이 생기면 그때 추출한다.
+- **사용자 확인 없이 다음 작업으로 넘어가지 않는다.**
+- **경계를 유혹적으로 넓히지 않는다.** "이 한 줄만 예외로 하면..." 금지. 경계 위반이 필요해 보이면 정지하고 질문.
+- **맥락 폴더를 임의로 만들지 않는다.** 현재 허용된 맥락은 Units / Movement / Combat / Effects 4개. 새 맥락이 필요해 보이면 질문.
+
+## 기억할 것
+
+- **"프로토타입"은 기능 스코프에만 적용되지 코드 품질에는 적용되지 않는다.** 만든 코드는 본 게임에서도 살아남는다.
+- **Phase 0은 "실시간 디펜스 루프 자체가 재미있는가"에만 답하면 된다.** 이 질문에 답하는 데 필요하지 않은 모든 것은 제외된다.
+- **"가벼운 설계"와 "재사용 가능"은 양립 가능하다.** 방법은 맥락 분리 + 추상화 규칙 준수 + 현재 Phase 범위 유지.
 
 ---
 
-## 금지 패턴 (TRD §4)
-
-### 경계 위반
-- `BattleBridge` 외부에서 `EntityManager` / `World` / `SystemAPI` 직접 호출
-- ECS 영역을 UI / 드래프트 / 결과 화면 등 경계 밖으로 확장
-- UI 로직이 ECS Component를 직접 읽거나 쓰는 것
-
-### 아키텍처 악취
-- `XxxManager` 싱글톤 남발 (`GameManager` 1개만 허용)
-- MonoBehaviour에 전투 로직 직접 작성
-- `SystemBase` 남발 (ISystem 우선)
-- ECS Component 10개 넘기 전에 재검토
-- **"나중을 위한" 인터페이스 / 추상화 / 확장 포인트**
-- enum + switch 떡칠 (ECS는 Tag Component로 대체)
-
-### 데이터 관리
-- 하드코딩된 수치 (매직 넘버) — 모든 수치는 ScriptableObject
-- `public` 필드 남발 (ECS struct 외에는 `[SerializeField] private`)
-
-### 스코프 침범
-- PRD §0의 **명시적 비목표** (세션/에고/컬렉션덱/가챠/BM/튜토리얼/네트워킹/카메라 회전 등)를 건드리는 것
-- 현재 Phase 범위를 넘는 시스템을 "미리 만들어두는" 것
-- 다음 Phase를 위한 훅/인터페이스를 **미리** 까는 것
-
----
-
-## Phase 순서 (TRD §6)
-
-| Phase | 핵심 | 상태 |
-|---|---|---|
-| **0** | 실시간 디펜스 루프 (타임라인 공격 + 랜덤 D&D 배치 + 자동 전투) | 진입 준비 |
-| 1 | 드래프트 (10→7픽) | 미착수 |
-| 2 | 스킬 2종 + 코스트 | 미착수 |
-| 3 | 배치 시 효과 / 인접 시너지 | 미착수 |
-| 4 | 3분 타이머, 봇 스코어, 측정 프로토콜 | 미착수 |
-
-**Phase 이동 규칙**: 각 Phase의 **종료 조건 이진 통과**만으로 이동. 시간 기반 판단 금지 ("몇 주 지났으니 다음"). 주관 평가 게이트가 있으면 실패 시 **현재 Phase 재조정**, 다음으로 가지 않는다.
-
-### Phase별 공통 산출물 (TRD §7)
-1. 동작하는 Unity 프로젝트 (Editor + Android 빌드 양쪽)
-2. EditMode 테스트 ≥1개 + PlayMode 테스트 ≥1개
-3. `docs/phase{N}-decisions.md` — 해당 Phase에서 내린 기술 결정과 근거
-4. 로그 스키마가 실제 파일로 출력되는지 확인
-
----
-
-## 로깅 (TRD §3.4, PRD §2.11)
-- **Phase 0부터 로깅 존재**. 구현의 마지막이 아니라 첫 축.
-- ECS 시스템 → `NativeQueue` 이벤트 쌓기 → MonoBehaviour Logger 매 프레임 poll → JSON 파일
-- 스키마는 PRD §2.11 기준, Phase별로 확장
-- 네트워크 전송 없음. 로컬 파일만. **이 로그가 H1 검증의 유일한 정량 소스**
-
----
-
-## 의사결정 순서 (TRD §9)
-구현 중 모호하면 다음 순서로 해결:
-1. 현재 **Phase 문서**에 답이 있는가
-2. **TRD**에 답이 있는가
-3. **PRD**에 답이 있는가
-4. 없으면 **H1/H2/H3에 가장 도움 되는 선택**
-5. 그래도 모호하면 **단순한 쪽**
-6. 여전히 모호하면 `phase{N}-decisions.md`에 "결정 필요 항목"으로 남기고 진행
-
-사용자 질문이 필요하면 **여러 결정을 묶어서 한 번에** 질문. 작업 단위마다 묻지 않는다.
-
----
-
-## 자주 쓰는 작업
-- **씬 실행**: `Assets/Scenes/Prototype.unity` 열고 Play
-- **빌드 타깃**: Mobile/PC 각각 별도 URP Renderer 에셋 — Quality Settings와 일치시킬 것
-- **패키지 추가**: `Packages/manifest.json` 편집 후 Unity 재열기
-
----
-
-## 버전 민감 키워드 — 기억 대신 검색
-학습 데이터의 버전은 낡았을 확률이 높음. 아래 키워드 등장 시 **context7 MCP → WebSearch → `Packages/manifest.json`** 순으로 확인.
-
-- DOTS: `ECS`/`Entities`, `Burst`, `Jobs`, `Collections`, `Mathematics`
-- 렌더: `URP` 17, `Entities Graphics`, `Shader Graph`
-- 입력/UI: `Input System` 1.17, `UGUI`, `TextMeshPro`
-
-예외: 사용자가 버전 지정한 경우 또는 이미 설치된 버전 유지 작업.
-
----
-
-## 주의 사항
-- `Library/`, `Temp/`, `Logs/`, `UserSettings/`, `ProfilerCaptures/`는 생성물 — **편집/커밋 금지**
-- `.meta` 파일은 항상 짝 에셋과 함께 다룬다 (삭제/이동 시 둘 다)
-- Unity Editor가 실행 중일 때 `Library/` 내부 건드리지 말 것 (도메인 리로드 충돌)
-- 검증 가설(H1/H2/H3)에 기여하지 않는 작업은 **기각 대상**
+**현재 활성 Phase**: Phase 0
+**다음 Phase 작성 시점**: Phase 0 종료 조건 통과 후

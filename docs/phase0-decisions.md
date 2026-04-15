@@ -1,0 +1,141 @@
+# Phase 0 Decisions Log
+
+> 본 문서는 Phase 0 진행 중 에이전트가 내린 기술적 결정과 그 근거를 한 줄씩 누적 기록한다.
+> CLAUDE.md "기본 워크플로우"와 PHASE0.md 섹션 4의 자율 결정 영역에 따른다.
+
+---
+
+## P0-01 — 프로젝트 부트스트랩
+
+### 사전 상태 발견
+
+- Unity 6000.3.5f2가 이미 설치되어 있고, `/Users/sy/dev/wassup`이 Unity 프로젝트 루트로 초기화되어 있었음 (Universal 3D 템플릿 기반).
+- TRD 1.2 필수 패키지 대부분 매니페스트에 존재했으나, `com.unity.entities.graphics@1.3.14`는 Unity 레지스트리에 해당 버전이 존재하지 않아 패키지 해석 실패 상태였음.
+- Unity MCP 본체(`com.coplaydev.unity-mcp`)가 이미 매니페스트에 포함되어 에디터 연결 상태였음.
+- 기존 씬 `Assets/Scenes/Prototype.unity`가 git에 트래킹되어 있었음.
+- TRD 1.2에 "Entities | 6.x" 표기가 있었으나, Unity Entities 패키지의 실제 버전 체계는 1.x임. 문서 표기 오류로 확인.
+
+**TRD 1.2 패키지 검증 결과 (Task #3)**
+
+| TRD 1.2 항목 | 패키지 ID | 확인 버전 | 상태 |
+|---|---|---|---|
+| Entities | com.unity.entities | 1.4.5 | ✅ |
+| Entities Graphics | com.unity.entities.graphics | 1.4.18 | ✅ (1.4.x로 상향 후) |
+| Burst | com.unity.burst | 1.8.21 | ✅ |
+| Collections | com.unity.collections | 2.5.7 | ✅ |
+| Mathematics | com.unity.mathematics | 1.3.2 | ✅ |
+| Jobs | (별도 패키지 없음) | Entities 스택 내 번들 | ✅ |
+| TextMeshPro | com.unity.ugui | 2.0.0 (TMP 번들) | ✅ |
+| Test Framework | com.unity.test-framework | 1.6.0 | ✅ |
+
+금지 패키지(NGO, Mirror, Photon, DOTween, Zenject, UniRx, MessagePipe) 전부 부재 확인. ✅
+
+### 결정
+
+1. **단일 씬 채택**: Phase 0 스코프(메인 메뉴·드래프트 UI 없음)상 단일 씬으로 충분 → `Assets/_Project/Scenes/BattleScene.unity` 신규 생성.
+2. **기존 Prototype.unity 유지**: 즉시 삭제하지 않고 Phase 0 종료 시점에 정리 결정. 기본 템플릿 씬의 의도치 않은 의존성을 미리 차단.
+3. **단일 asmdef 유지**: TRD 2.5.3에 따라 Phase 0에서는 Assembly Definition 분리 안 함. 컴파일 시간 문제가 실제로 드러나는 Phase에서 재검토.
+4. **폴더 구조**: TRD 2.5.3 채택. `Assets/_Project/Scripts/{Core,Bridge,Battle/{Units,Movement,Combat,Effects},UI,Data,Logging}`. `.gitkeep`으로 빈 폴더 보존.
+5. **미사용 패키지 유지**: visualscripting, multiplayer.center, probuilder, ai.navigation, collab-proxy, timeline 등 템플릿 잔여 패키지는 Phase 0 스코프 외 → 별도 정리 작업으로 분리.
+6. **Android 빌드 타겟 유보**: P0-01에서 Build Target 전환 안 함 → P0-13 (Android 실기기 검증)에서 처리.
+7. **Unity MCP 사용**: 폴더·씬 생성에 `manage_asset`/`manage_scene` 사용하여 `.meta` 자동 생성 보장 (TRD 1.3 준수).
+8. **TRD 1.2 "Entities 6.x" 표기 오류 확인**: 실제 Unity Entities 패키지는 1.x 버전 체계. team-lead가 TRD.md 직접 수정 완료.
+9. **Entities + Entities Graphics 1.4.x 채택**: `entities.graphics@1.3.14`가 레지스트리에 부재. 사용자 결정(A안)으로 두 패키지를 매칭 1.4.x로 상향. Entities 1.4.5 + Entities Graphics 1.4.18. 근거: 레지스트리 노출 최신 매칭 세트이며 Unity 6 호환.
+10. **TRD 1.2 문구 정정**: "Entities | 6.x" 표기를 "Entities | 1.4.x (Unity 6 호환)"으로 수정. 실제 패키지 버전 체계와 문서 표기 일치. team-lead가 TRD.md에 직접 반영 완료.
+
+### 검증 결과 (Task #4 + 추가 검증)
+
+- **수정 전**: 콘솔 오류 1건 — `An error occurred while resolving packages: com.unity.entities.graphics@1.3.14 cannot be found`
+- **수정 후** (1.4.x 상향 + refresh + recompile): 오류 0건, 경고 0건, `ready_for_tools = true`
+- 활성 씬 확인: `Assets/_Project/Scenes/BattleScene.unity`
+- 폴더 구조 확인: `Assets/_Project/Scripts/` 하위 9개 leaf 폴더 + `.gitkeep` 배치 완료
+
+### 미해결 / 후속
+
+- 기본 템플릿 씬 `Prototype.unity` 정리 시점: Phase 0 종료 게이트
+- 미사용 패키지 정리 (visualscripting / multiplayer.center / probuilder / ai.navigation / collab-proxy / timeline): 별도 작업
+- Android 빌드 타겟 전환: P0-13에서 처리
+
+---
+
+## P0-02 — 맵 & 그리드
+
+### 결정
+
+1. **MapData ScriptableObject 단일 파일**: `Data/MapData.cs` — `gridWidth`, `gridHeight`, `paths`(List<PathData>), `obstacles`(List<Vector2Int>) 필드. PathData는 nested class로 `points`(List<Vector2Int>) 보유. 별도 파일 분리 불필요.
+2. **PrototypeMap 에셋 경로**: `Assets/_Project/Data/Maps/PrototypeMap.asset` — 20×10 그리드, 경로 A(직선 좌→우), 경로 B(L형 좌→우), 장애물 블록 (14,3)~(15,4) 4셀.
+3. **MapView 시각화 방식**: `Core/MapView.cs` — `MapData` 레퍼런스를 인스펙터에서 직접 연결. Start()에서 primitive Cube(흰색) 200개 + LineRenderer(파란/빨강) 2개 생성. 런타임 전용 생성이므로 Prefab 불필요.
+4. **카메라 배치**: Position (9.5, 15, −2), Rotation (60, 0, 0) — 20×10 그리드 전체가 화면에 들어오는 탑다운 앵글. 에디터에서 직접 수동 설정.
+5. **BattleScene MapView GameObject 배치**: 루트 `MapView` GameObject에 MapView 컴포넌트 부착, PrototypeMap 에셋 레퍼런스 인스펙터 연결 완료.
+6. **장애물 시각화**: 장애물 셀은 빨간 Cube, 일반 타일은 흰 Cube, 경로는 LineRenderer로 구분 — 별도 머티리얼 에셋 없이 `renderer.material.color` 직접 설정.
+
+### 검증 결과
+
+- Play 진입 시 MapView.Start() 정상 실행 — 콘솔 오류/경고 0건.
+- 200개 primitive Cube + 2개 LineRenderer 생성 확인 (에디터 Hierarchy 시각 확인).
+
+---
+
+## P0-03 — 로깅 기반
+
+### 결정
+
+1. **BattleLogSchema 구조**: `Logging/BattleLogSchema.cs` — `BattleSessionLog`(session_id, phase, timestamp_start, timestamp_end, attack_deck_id, placements, result), `PlacementRecord`, `SessionResult` 세 클래스. `[Serializable]`로 JsonUtility 호환.
+2. **직렬화 방식**: JsonUtility 사용 — 외부 패키지 불필요, Burst/ECS 제약과 무관한 MonoBehaviour 레이어에서만 사용하므로 충분.
+3. **저장 경로**: `Application.persistentDataPath/phase0/session-{yyyyMMdd-HHmmss}-{guid8}.json` — 플랫폼(Android/Editor) 자동 대응.
+4. **BattleLogger 생명주기**: GameManager.OnEnable() → StartSession(), GameManager.OnDisable() → EndSession() — Play/Stop 이벤트와 정확히 매핑.
+5. **GameManager 싱글톤 패턴**: CLAUDE.md 절대 제약 준수 — `GameManager` 1개만. Awake에서 `Instance` 설정 + `DontDestroyOnLoad`. BattleLogger는 자식 GameObject로 분리.
+6. **phase 필드 하드코딩 금지 처리**: `BattleLogger.StartSession()`에 `phase` 파라미터를 받아 외부에서 주입 — GameManager가 `"phase0"` 문자열 전달. ScriptableObject 기반 상수화는 Phase 1 이후로 유보.
+
+### 검증 결과
+
+- Play 진입: `[BattleLogger] Session started. Log will be written to: /Users/sy/Library/Application Support/DefaultCompany/wassup/phase0/session-20260415-050403-7b7b2888.json` 확인.
+- Play 종료: `[BattleLogger] Session ended. Log written: /Users/sy/Library/Application Support/DefaultCompany/wassup/phase0/session-20260415-050403-7b7b2888.json` 확인.
+- 생성된 JSON 구조 검증:
+
+```json
+{
+    "session_id": "7b7b28883d0c4649864b365d0800b4d0",
+    "phase": "phase0",
+    "timestamp_start": "2026-04-15T05:04:03.1059970Z",
+    "timestamp_end": "2026-04-15T05:04:10.1519980Z",
+    "attack_deck_id": "",
+    "placements": [],
+    "result": {
+        "outcome": "unknown",
+        "duration_sec": 7.046000957489014,
+        "enemies_reached_goal": 0
+    }
+}
+```
+
+- 필수 필드 확인: `session_id` ✅, `timestamp_start` / `timestamp_end` ✅, `phase="phase0"` ✅, `result.outcome` ✅
+- 콘솔 오류/경고 0건 ✅
+
+---
+
+## P0-04 — 공격 유닛 1종 이동
+
+### 결정
+
+1. **BattleBridge 단일 클래스**: `Bridge/BattleBridge.cs`, MonoBehaviour. Phase 0는 TRD 2.4의 4책임 중 "전투 시작"만 활성화. StopBattle은 스텁 (P0-09에서 teardown 확장). 보조 클래스는 책임 추가 시에만 추출.
+2. **Baker 미사용**: `EntityManager.CreateEntity()` + `AddComponentData/AddBuffer/AddComponent` 수동 조립. 이유: TRD 5.4 SubScene 금지 + 동적 스폰에 적합. `RenderMeshUtility.AddComponents`로 Entities Graphics 런타임 적용.
+3. **SystemGroup 배치**: MovementSystem과 UnitLifecycleSystem 모두 `SimulationSystemGroup`. UnitLifecycleSystem은 `[UpdateAfter(typeof(MovementSystem))]`로 같은 프레임에 PastGoalTag 소비 보장.
+4. **경로 표현**: `DynamicBuffer<PathWaypoint>{int2 cell}`. 엔티티별 waypoint 복사. Blob asset은 Phase 0 규모에 과함.
+5. **ISystem + [BurstCompile]**: MovementSystem과 UnitLifecycleSystem 모두 struct ISystem. OnCreate/OnUpdate에 BurstCompile. TRD 4.3 원칙.
+6. **엔티티 파괴 경로**: MovementSystem이 종점 도달 시 `PastGoalTag` 부착(ECB) → UnitLifecycleSystem이 `AttackUnitTag + PastGoalTag` 쿼리 후 `ECB.DestroyEntity`. 엔티티 소유권(Units)과 이동 상태 판정(Movement)의 책임 분리.
+7. **AttackUnitData 레이아웃**: `Mesh`/`Material` 직접 레퍼런스. Prefab 의존 제거. 런타임 RenderMeshUtility 주입.
+8. **AttackDeck 레이아웃**: `SpawnEntry{triggerTimeSec, unitType, pathId}` 리스트 + `defeatGoalReachedCount`(P0-05+에서 사용). 시간 기반 트리거만으로 충분.
+9. **P0-04 스코프 제한**: 이동 + 종점 도달 시 소멸만. 패배 이벤트 전파는 P0-05에서. Health/AttackPower 값은 정의만 하고 Phase 0에서 공격 유닛은 공격 행동 없음(PHASE0 2.3).
+10. **`World.DefaultGameObjectInjectionWorld` 단일 사용 지점**: BattleBridge.StartBattle()에서만. 프로젝트 전체 grep으로 검증.
+
+### 검증 결과
+
+- Play 시작 후 ~1s: `[BattleBridge] Battle started with deck 'WaveA' (1 spawns queued).` 확인
+- Enemy_Tanker 엔티티가 Path A 시작점(0,5)에서 생성되어 이동 경로(0,5)→(19,5)을 따라 이동
+- 종점 도달 시 UnitLifecycleSystem이 엔티티 파괴 (콘솔에서 후속 로그 없음 = 파괴 정상)
+- 콘솔: 에러 0, 경고 0
+- 스크린샷: `/Users/sy/dev/wassup/Assets/Screenshots/screenshot-20260415-150757.png`
+- BattleLogger JSON: `~/Library/Application Support/DefaultCompany/wassup/phase0/session-20260415-060739-67f0d89d.json` (duration_sec=25.5, enemies_reached_goal=0, outcome=unknown — 예상 정상)
+
+---

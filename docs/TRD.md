@@ -2,7 +2,7 @@
 
 > **Technical Requirements Document.** 프로토타입의 기술 스택, 아키텍처 경계, 제약, 금지 패턴, Phase 순서를 단일 참조 문서로 모은다. 이 문서는 에이전트 호출 시 **매번 컨텍스트로 함께 전달되는 문서**이며, 개별 Phase 문서(`PHASE0.md` 등)와 함께 읽힌다.
 >
-> PRD(`PROTOTYPE_PRD.md`)가 "왜 만드는가 / 무엇을 검증하는가"를 다룬다면, 이 문서는 **"어떤 제약 위에서 만드는가"**를 다룬다. 기술 세부 설계(클래스 다이어그램, 시퀀스 등)는 포함하지 않으며, 그 영역은 구현 에이전트의 재량이다.
+> PRD(`PRD.md`)가 "왜 만드는가 / 무엇을 검증하는가"를 다룬다면, 이 문서는 **"어떤 제약 위에서 만드는가"**를 다룬다. 기술 세부 설계(클래스 다이어그램, 시퀀스 등)는 포함하지 않으며, 그 영역은 구현 에이전트의 재량이다.
 
 ---
 
@@ -16,7 +16,7 @@
 **관련 문서 구조**:
 
 ```
-PROTOTYPE_PRD.md   — 검증 가설, 스코프, 실패 대응, 검증 프로토콜
+PRD.md   — 검증 가설, 스코프, 실패 대응, 검증 프로토콜
 TRD.md (이 문서)    — 기술 제약, 아키텍처 경계, 금지 패턴, Phase 순서
 PHASE0.md          — Phase 0 상세 스펙과 종료 조건
 PHASE1.md          — (Phase 0 완료 후 작성)
@@ -47,27 +47,51 @@ PHASE2.md          — (Phase 1 완료 후 작성)
 
 | 패키지 | 버전 | 용도 |
 |---|---|---|
-| Entities | 6.x | ECS 프레임워크 |
-| Entities Graphics | 6.x | ECS 엔티티 렌더링 |
+| Entities | 1.4.x (Unity 6 호환) | ECS 프레임워크 |
+| Entities Graphics | 1.4.x (Unity 6 호환) | ECS 엔티티 렌더링 |
 | Burst | 최신 호환 | ECS 시스템 Burst 컴파일 |
 | Collections | 최신 호환 | NativeArray, NativeQueue 등 |
 | Mathematics | 최신 호환 | int2, float3 등 수학 타입 |
-| Jobs | 최신 호환 | IJob, IJobParallelFor |
-| TextMeshPro | 번들 | UI 텍스트 |
+| Jobs | (Entities/Collections 번들) | IJob, IJobParallelFor — 별도 `com.unity.jobs` 패키지 없음, Unity.Jobs 네임스페이스는 Collections/Entities 스택으로 제공 |
+| TextMeshPro | UGUI 2.x 번들 | UI 텍스트 (Unity 6에서 별도 패키지 없이 UGUI에 포함) |
+| Test Framework | 최신 호환 | EditMode/PlayMode 테스트 |
 
 **금지 패키지**: NGO (Netcode for GameObjects), Mirror, Photon, DOTween, Zenject, UniRx, MessagePipe. 프로토타입 단계에 이들의 기능이 필요하다고 느껴지면 설계를 의심할 것.
+
+### 1.3 개발 도구 (Unity MCP)
+
+본 프로젝트는 **Unity MCP**를 개발 도구로 사용한다. 에이전트는 Unity Editor와의 상호작용을 Unity MCP 툴을 통해 수행한다.
+
+**주요 용도**:
+- 스크립트 생성·수정·삭제 (`manage_script`, `create_script`, `apply_text_edits`, `script_apply_edits`)
+- 씬 / GameObject / 컴포넌트 관리 (`manage_scene`, `manage_gameobject`, `manage_components`, `find_gameobjects`)
+- 프리팹·에셋·ScriptableObject 관리 (`manage_prefabs`, `manage_asset`, `manage_scriptable_object`)
+- 에디터 상태 제어 (`manage_editor`: 플레이 모드, 태그/레이어 관리 등)
+- 빌드 (`manage_build`: Android 빌드 포함)
+- 콘솔·컴파일 확인 (`read_console`, `editor_state` 리소스의 `isCompiling`)
+- 테스트 실행 (`run_tests`, `get_test_job`)
+- 패키지 관리 (`manage_packages`)
+- Unity 공식 문서 조회 (`unity_docs`)
+
+**작업 원칙**:
+- 스크립트 생성/수정 후 `read_console`로 컴파일 오류를 **반드시 확인**한 뒤 다음 단계로 진행한다. 도메인 리로드는 `editor_state.isCompiling`으로 폴링한다.
+- 에디터 상태를 **읽을 때는 리소스**(`editor_state`, `project_info` 등), **바꿀 때는 툴**을 사용한다.
+- 경로는 `Assets/` 하위 기준 상대 경로, 슬래시는 `/`로 통일한다.
+- Unity MCP는 **에이전트의 작업 수행 도구**이며, 런타임 코드(`Assets/_Project/Scripts/`)와는 무관하다. 빌드 산출물에는 MCP 의존성이 들어가지 않는다.
+
+Unity MCP가 사용 불가능한 환경에서도 프로젝트는 수동 조작으로 동일하게 작업 가능해야 한다 — MCP는 **편의 도구이지 의존성이 아니다**.
 
 ---
 
 ## 2. 아키텍처 경계
 
-### 2.1 원칙 — 하이브리드 ECS "최소한" 전략
+### 2.1 원칙 — 하이브리드 ECS 전략
 
-본 프로토타입은 **ECS를 유닛 이동·전투 시뮬레이션에만 사용**한다. 그 외 모든 레이어(UI, 입력, 게임 상태, 로깅, 씬)는 전통적 MonoBehaviour + ScriptableObject 방식이다. 이 경계는 프로토타입 내내 고정되며, 개발 중 "이것도 ECS로 옮기면 좋겠다"는 판단은 기본적으로 기각한다.
+본 프로젝트는 **ECS를 유닛 이동·전투 시뮬레이션에만 사용**한다. 그 외 모든 레이어(UI, 입력, 게임 상태, 로깅, 씬)는 전통적 MonoBehaviour + ScriptableObject 방식이다. 이 경계는 프로젝트 내내 고정되며, 개발 중 "이것도 ECS로 옮기면 좋겠다"는 판단은 기본적으로 기각한다.
 
 **ECS 선택의 이유**: 본 게임은 20×10 그리드에서 수십~수백 유닛이 동시에 움직이는 구조이고, 헤드리스 시뮬레이션으로 밸런스를 튜닝할 계획이 있다. Burst 호환 순수 함수 + Job으로 작성된 전투 코드는 이 두 요구를 자연스럽게 만족시킨다.
 
-**"최소한"인 이유**: ECS는 검증 가설(H1/H2/H3) 자체에 기여하지 않는다. ECS는 구현 품질과 본 게임 이식성을 위한 선택이다. 개발 중 ECS 관련 문제로 검증이 지연되면 **ECS 영역을 축소해서라도 검증을 우선**한다.
+**ECS 범위를 제한하는 이유**: ECS는 강력하지만 전 계층에 적용하면 UI·입력·씬 관리에서 불필요한 복잡도가 생긴다. 전투 시뮬레이션만 ECS에 두면 각 계층이 자기에게 맞는 패러다임을 쓸 수 있다.
 
 ### 2.2 ECS 월드에 속하는 것
 
@@ -110,72 +134,177 @@ PHASE2.md          — (Phase 1 완료 후 작성)
 
 **입력**: 터치/마우스 입력은 전적으로 MonoBehaviour 쪽에서 처리. 입력이 전투에 영향을 주는 경우 커맨드 구조체로 ECS 월드에 전달한다.
 
+### 2.5 맥락 분리 (Context Boundaries)
+
+ECS 월드 내부는 **맥락(Context)별로 명확히 분리**된다. 맥락이란 "무엇에 책임지는 코드인가"의 경계이며, 폴더 구조와 Component/System의 소속으로 드러난다. 이 분리는 ECS 초기 학습 곡선을 낮추고, "어느 코드가 어디에 속하는가"의 판단을 기계적으로 만든다.
+
+#### 2.5.1 맥락 목록
+
+| 맥락 | 책임 | Phase 0 포함? |
+|---|---|---|
+| **Units** | 유닛 정의, 배치 상태, 생성/소멸, Health | ✅ |
+| **Movement** | 경로 따라가기, 위치 갱신, waypoint 진행 | ✅ |
+| **Combat** | 타겟팅, 공격 쿨다운, 데미지 적용, 사거리 판정 | ✅ |
+| **Effects** | 상태이상, 스킬 효과, 인접 시너지 | ✅ (자리만) |
+
+**주의**: Effects 맥락은 Phase 0에서는 **폴더와 최소 구조만 준비**하고 실제 효과는 Phase 2(스킬) / Phase 3(인접 시너지)에서 구현된다. Phase 0에 Effects 맥락을 미리 여는 이유는, 나중에 Component 소속을 바꿀 때 ECS Archetype이 깨지는 비용을 줄이기 위해서다.
+
+향후 추가될 가능성이 있는 맥락:
+- **Collision** (Unity Physics 도입 시점. 프로토타입 범위 밖일 가능성 높음)
+- **AI** (공격 유닛의 지능형 행동이 필요해질 때)
+
+#### 2.5.2 맥락 간 통신 규약
+
+맥락 분리가 실제로 작동하려면 다음 두 규칙이 엄수되어야 한다:
+
+**규칙 1 — Component 소유권**
+
+각 Component는 **소유 맥락이 있다**. 다른 맥락은 해당 Component를 **읽을 수만** 있고, 쓰기는 소유 맥락의 System만 할 수 있다.
+
+예시:
+- `Health` Component의 소유 맥락은 **Units**. Combat System은 Health를 **읽어서** "사망 판정"을 하지만, Health 값을 직접 수정하지 않는다. 데미지 적용은 `DamageEvent`를 쏘고, Units 맥락이 이를 받아 Health를 갱신한다.
+- `Position`(또는 `LocalTransform`) Component의 소유 맥락은 **Movement**. Combat이 사거리를 판정할 때 위치를 읽지만, Combat System이 위치를 바꾸지 않는다.
+
+**규칙 2 — 맥락 간 이벤트는 buffer 또는 NativeQueue**
+
+맥락 간 통신은 Component를 직접 수정하는 대신 **이벤트 구조**로 한다:
+
+- **Buffer Component** (엔티티에 붙는 `DynamicBuffer<T>`) — 해당 엔티티에 쌓이는 이벤트. 예: 엔티티별 `DynamicBuffer<IncomingDamage>`
+- **NativeQueue / NativeList** (월드 단위) — 전역 이벤트 큐. 예: 판 단위 `NativeQueue<GoalReachedEvent>`
+
+이 두 방식 중 어느 것을 쓸지는 상황에 따라 다르지만, **직접 Component 수정은 소유 맥락만**이라는 원칙이 깨지면 안 된다.
+
+#### 2.5.3 폴더 구조
+
+맥락별 폴더 분리는 Phase 0부터 적용한다. **Assembly Definition(`.asmdef`) 분리는 하지 않는다** — 프로토타입 단계에서는 단일 asmdef가 충분하며, 컴파일 시간 문제가 실제로 드러나는 Phase에서 재검토한다.
+
+```
+Assets/_Project/Scripts/
+  Core/              — GameManager, GameStateMachine, 공통 타입
+  Bridge/            — BattleBridge 및 경계 구조체
+  Battle/
+    Units/           — Units 맥락: Component, System, Job
+    Movement/        — Movement 맥락
+    Combat/          — Combat 맥락
+    Effects/         — Effects 맥락 (Phase 0은 자리만)
+  UI/                — MonoBehaviour UI
+  Data/              — ScriptableObject 정의
+  Logging/           — Logger, JSON 스키마
+```
+
 ---
 
-## 3. 아키텍처 원칙
+## 3. 추상화 규칙
 
-### 3.1 데이터 주도
+ECS와 MonoBehaviour 양쪽에 공통 적용되는 추상화 상한선이다. 이 규칙은 "가벼운 설계 + 확장 가능 구조"의 구체적 정의다.
+
+### 3.1 상속 제한
+
+- **MonoBehaviour / 일반 C# 클래스**: 상속 최대 **2단계**. 즉 베이스 1개 + 구현 1개까지. `UIPanel → ResultScreen` ✓, `UIPanel → Modal → AlertModal` ✗.
+- **ScriptableObject**: 상속 최대 **2단계**. `UnitData → DefenderUnitData` ✓.
+- **ECS Component (struct)**: 상속 불가 (struct이므로). 대신 **Tag Component 패턴** 사용.
+- **ECS ISystem**: 일반적으로 최상위. SystemBase 상속도 1단계까지만.
+
+### 3.2 인터페이스 생성 규칙
+
+- **구현체가 현재 2개 이상 있을 때만** 인터페이스를 만든다.
+- "확장성을 위해" 인터페이스를 미리 만들지 않는다. 필요해지면 그때 추출한다.
+- Phase 0 기준 유닛 타입은 Tag Component로 구분한다. `IUnit` 인터페이스 금지.
+
+### 3.3 생성 패턴 규칙
+
+- 팩토리/빌더 패턴은 **객체 생성이 3줄 이상**이 될 때만 도입.
+- Phase 0~1에서는 대부분 직접 생성으로 충분하다.
+- ECS 엔티티 생성은 Baker 또는 직접 EntityManager 호출로 충분. 별도 팩토리 레이어 금지.
+
+### 3.4 이벤트 시스템 규칙
+
+- 전역 이벤트 시스템(C# event/Action 체인)은 **Phase 2 이후**에만 도입 검토.
+- Phase 0은 직접 호출 또는 ECS Buffer/NativeQueue로 충분.
+- UnityEvent 금지 (Inspector 노출의 매력이 있지만 디버깅이 어려워짐).
+
+### 3.5 제네릭 규칙
+
+- 제네릭 타입 파라미터는 **1개까지**.
+- 2개 이상 필요한 경우 설계를 의심하고 구체 타입으로 분할.
+
+### 3.6 "확장 가능"의 정의
+
+"확장 가능하게 만든다"는 **다음 Phase에서 즉시 쓸 확장 포인트만** 의미한다. 구체적으로:
+
+- Phase 0에서 "드래프트용 인터페이스" 미리 만들기 — ✗ (Phase 1에서 만듦)
+- Phase 0에서 "Effects 맥락 폴더 열어두기" — ✓ (Phase 0 구조에 이미 포함)
+- Phase 0에서 "스킬 베이스 클래스" 미리 만들기 — ✗ (Phase 2에서 만듦)
+- Phase 0에서 "여러 공격 패턴을 데이터로 정의" — ✓ (현재 Phase에서도 필요)
+
+---
+
+## 4. 아키텍처 원칙
+
+### 4.1 데이터 주도
 
 - 유닛/적/공격 패턴/스킬은 ScriptableObject로 정의
 - 런타임에 Baker 또는 변환 헬퍼로 ECS Component로 옮긴다
 - **하드코딩 금지**. 수치는 모두 데이터에서 나온다.
-- 이유: 튜닝 빈도가 높고, Phase 2에서 헤드리스 시뮬레이션으로 자동 튜닝 예정
+- 이유: 튜닝 빈도가 높고, 향후 헤드리스 시뮬레이션으로 자동 튜닝 예정
 
-### 3.2 상태 명확
+### 4.2 상태 명확
 
 - 판의 상태는 enum 기반 StateMachine (`Draft / Placement / Combat / Result`)으로 명확히 분리
 - StateMachine은 MonoBehaviour 쪽에 위치
 - Phase 전환 이벤트는 관찰 가능해야 함 (event 또는 유사 패턴)
 
-### 3.3 순수 로직 분리
+### 4.3 순수 로직 분리
 
 - ECS 시스템은 가능한 한 **Burst 호환 가능한 ISystem**으로 작성
 - `SystemBase`는 C# 오브젝트 참조가 필요한 경우에만 사용
 - 전투 계산의 핵심 함수는 `static` 메서드 또는 `IJob` 구조로 분리 가능한 범위에서 분리
 - 이유: 헤드리스 시뮬레이션에서 Unity 의존 없이 실행 가능해야 함
 
-### 3.4 로깅 우선
+### 4.4 로깅 우선
 
 - **로깅은 구현의 마지막이 아니라 첫 축**이다
 - Phase 0부터 로깅 시스템이 존재해야 한다
 - ECS 시스템이 `NativeQueue`에 이벤트를 쌓고, MonoBehaviour Logger가 매 프레임 poll하여 JSON 파일에 기록
-- 로그 스키마는 `PROTOTYPE_PRD.md` 섹션 2.11을 기준으로 하되, Phase 단계에 맞게 확장
+- 로그 스키마는 `PRD.md` 섹션 2.11을 기준으로 하되, Phase 단계에 맞게 확장
 
-### 3.5 테스트 가능성
+### 4.5 테스트 가능성
 
 - ECS 시스템은 `EntityManager` 없이도 단위 테스트 가능하게 핵심 계산 함수를 분리
-- 다만 과도한 추상화는 금지. 프로토타입 단계에서 테스트 커버리지는 목표가 아니며, **핵심 로직의 회귀 방지 수준**이면 충분
+- 과도한 추상화는 금지. 커버리지는 목표가 아니며, **핵심 로직의 회귀 방지 수준**이면 충분
 - 각 Phase는 최소 1개의 EditMode 테스트와 1개의 PlayMode 테스트를 요구 (Phase 문서에서 구체화)
 
 ---
 
-## 4. 금지 패턴
+## 5. 금지 패턴
 
-다음은 프로토타입 전반에 걸쳐 금지된다. 구현 에이전트는 이 패턴 발견 시 스스로 거부해야 한다.
+다음은 프로젝트 전반에 걸쳐 금지된다. 구현 에이전트는 이 패턴 발견 시 스스로 거부해야 한다.
 
-### 4.1 경계 위반
+### 5.1 경계 위반
 
 - `BattleBridge` 외부에서 `EntityManager`, `World.DefaultGameObjectInjectionWorld`, `SystemAPI` 직접 호출
 - ECS 영역을 UI / 드래프트 / 결과 화면 등 경계 밖으로 확장
 - UI 로직이 ECS Component를 직접 읽거나 쓰는 것
+- 맥락 간 Component 쓰기 (섹션 2.5.2 규칙 1 위반)
+- 맥락 간 직접 메서드 호출 (이벤트/버퍼 거치지 않음)
 
-### 4.2 아키텍처 악취
+### 5.2 아키텍처 악취
 
 - `XxxManager` 싱글톤 남발. `GameManager` 1개만 허용
 - MonoBehaviour에 전투 로직 직접 작성 (전투는 ECS 시스템에서만)
 - SystemBase 남발 (ISystem 우선)
 - ECS Component 과다 (10개 이상 만들기 전에 재검토)
-- "나중을 위한" 인터페이스, 추상화, 확장 포인트
+- "나중을 위한" 인터페이스, 추상화, 확장 포인트 (섹션 3 추상화 규칙 위반)
 - enum + switch 떡칠 (단, ECS Component는 Tag Component 패턴으로 다형성을 대체)
 
-### 4.3 데이터 관리
+### 5.3 데이터 관리
 
 - 하드코딩된 수치 (매직 넘버)
 - public 필드 남발 (`[SerializeField] private` 사용. 단, ECS Component struct는 public 필드가 정상)
 - ScriptableObject 대신 코드 상수로 유닛 스탯 정의
 - JSON 하드코딩된 경로 (공격 패턴 데이터는 SO 권장)
 
-### 4.4 패키지 / API
+### 5.4 패키지 / API
 
 - 네트워크 관련 패키지/코드 (NGO, Mirror, Photon 등)
 - SubScene 사용
@@ -183,40 +312,11 @@ PHASE2.md          — (Phase 1 완료 후 작성)
 - Burst 컴파일이 실패하는 API를 ECS 시스템에 사용
 - DOTween, Zenject 등 범용 라이브러리 (근거 없으면 금지)
 
-### 4.5 스코프 침범
+### 5.5 스코프 침범
 
 - PRD 섹션 0의 "명시적 비목표" 목록을 건드리는 것
 - 현재 Phase의 범위를 넘어서는 시스템을 "미리 만들어두는" 것
-- 다음 Phase를 위한 훅/인터페이스를 미리 까는 것
-
----
-
-## 5. 폴더 구조 (권장)
-
-아래는 **권장 구조**이며, 에이전트가 프로젝트 초기 셋업 시 준수한다. 세부 네이밍은 재량.
-
-```
-Assets/
-  _Project/
-    Scripts/
-      Core/          — GameManager, GameStateMachine, 공통 타입
-      Bridge/        — BattleBridge 및 경계 통신 구조체
-      Battle/        — ECS Components, Systems, Jobs (전투 로직)
-      UI/            — MonoBehaviour UI 컴포넌트
-      Data/          — ScriptableObject 정의 (유닛, 공격 패턴, 스킬)
-      Logging/       — Logger, JSON 스키마
-    Data/            — ScriptableObject 애셋 파일
-    Scenes/
-    Prefabs/
-    Tests/
-      EditMode/
-      PlayMode/
-  Plugins/           — (필요 시) 외부 의존성
-ProjectSettings/
-Packages/
-```
-
-**Assembly Definitions**: Scripts 하위 각 폴더에 `.asmdef`를 두되 Phase 0~1에서는 과도한 분리 금지. Phase 3 이후 필요성이 드러나면 분리.
+- 다음 Phase를 위한 훅/인터페이스를 미리 까는 것 (단, 맥락 폴더 자체는 Phase 0에 미리 열어두는 것 허용 — 섹션 2.5.1 참조)
 
 ---
 
@@ -252,6 +352,7 @@ Packages/
 
 - 스킬 2종 (토네이도, 포탈 또는 등가물)
 - 코스트 시스템 도입 여부를 이 시점에 결정. 스킬이 코스트 없이 자유 사용이면 긴장감이 안 생김. 코스트 도입이 필연일 가능성 높음
+- **맥락 변화**: Effects 맥락에 실제 스킬 효과 Component/System 추가 (Phase 0에 열어둔 자리에 들어감)
 - 상세: Phase 1 완료 후 작성
 
 ### 6.4 Phase 3 — 배치 시 효과 / 인접 시너지
@@ -259,6 +360,7 @@ Packages/
 - 유닛별 배치 시 효과 1종
 - 인접 시너지 효과 (옆 유닛 종류에 따른 스탯 증가)
 - 배치 판단이 "어디에 놓을까"의 깊이를 갖게 됨
+- **맥락 변화**: Effects 맥락 확장 (배치 시 효과 + 인접 시너지). Units의 Component에 시너지 필드 추가 가능
 - 상세: Phase 2 완료 후 작성
 
 ### 6.5 Phase 4 — 마무리
@@ -269,13 +371,30 @@ Packages/
 - 헤드리스 시뮬레이션 하네스
 - 상세: Phase 3 완료 후 작성
 
-### 6.6 Phase 이동 규칙
+### 6.6 Phase별 맥락 도입 로드맵
+
+Phase가 진행되면서 ECS 맥락이 어떻게 채워지는지 요약:
+
+| Phase | Units | Movement | Combat | Effects |
+|---|---|---|---|---|
+| 0 | 배치/Health/생성/소멸 | 경로 따라가기 | 타겟팅/공격/데미지/사거리 | (자리만, 빈 폴더) |
+| 1 | + 드래프트 연동 | (변화 없음) | (변화 없음) | (자리만 유지) |
+| 2 | (변화 없음) | + 스킬이 영향 주는 경우 확장 | + 코스트 연동 | **스킬 효과 구현 시작** |
+| 3 | + 시너지 필드 | (변화 없음) | + 시너지 적용 | + 배치/시너지 효과 |
+| 4 | (변화 없음) | (변화 없음) | (변화 없음) | (변화 없음) |
+
+향후 추가 가능성 (프로토타입 범위 밖):
+- **Collision 맥락**: Unity Physics 도입 시
+- **AI 맥락**: 공격 유닛의 지능형 행동 필요 시
+
+### 6.7 Phase 이동 규칙
 
 - 각 Phase는 해당 Phase 문서의 **종료 조건 이진 체크를 모두 통과**해야 다음 Phase로 이동
 - 시간 기반 판단 금지 ("n주 지났으니 다음으로")
 - 종료 조건 외에 **주관 평가 게이트**가 있을 수 있음 (`PHASE0.md` 섹션 3.3 참조)
 - 주관 평가에서 "재미없고 개선 욕구도 없음" 신호가 다수면 다음 Phase로 가지 않고 현재 Phase를 재조정
 - Phase를 건너뛰지 않는다
+- **Phase 경계 리팩토링은 자동화되지 않는다**. 필요 시 사용자가 별도로 요청한다.
 
 ---
 
@@ -294,11 +413,11 @@ Packages/
 
 ## 8. 에이전트 자율 결정 영역
 
-다음은 **구현 에이전트의 재량**이며, 본 문서가 지시하지 않는다. 단, 섹션 4(금지 패턴)의 경계 내에서.
+다음은 **구현 에이전트의 재량**이며, 본 문서가 지시하지 않는다. 단, 섹션 3(추상화 규칙)과 섹션 5(금지 패턴)의 경계 내에서.
 
-- 프로젝트 폴더 구조의 세부 네이밍
+- 프로젝트 폴더 구조의 세부 네이밍 (단, 섹션 2.5.3의 맥락별 폴더 분리는 준수)
 - 씬 구성 (단일 씬 / 멀티 씬)
-- ECS Component 세부 설계 (이름, 필드, 분리 단위)
+- ECS Component 세부 설계 (이름, 필드, 분리 단위) — 단 소속 맥락은 명확히
 - ECS System 세부 설계 (개수, 의존 순서, SystemGroup)
 - `BattleBridge`의 구체 클래스 분할 (단일 / 보조 클래스 동반)
 - Baker 방식 vs 수동 변환
@@ -311,6 +430,17 @@ Packages/
 - 로그 파일 경로, 이름, 회전 정책
 
 **결정 원칙**: 애매하면 **단순한 쪽**. 에이전트가 결정을 내릴 때마다 `phase{N}-decisions.md`에 한 줄로 기록한다.
+
+**ECS 설계의 불확실성 대응**: 팀이 ECS에 깊이 있는 경험이 없을 수 있다. 다음 두 가지 접근을 섞어 쓴다:
+
+1. **작은 결정은 에이전트가 내리고 짧게 설명한다** — 사용자가 실시간으로 ECS를 학습하는 효과
+2. **아키텍처 수준의 결정은 사용자에게 질문한다** — 여러 정답이 있는 경우에만. 작업 단위마다 질문하지 않고 묶어서 한 번에.
+
+질문 가치가 있는 결정의 예:
+- Component 소속 맥락이 애매할 때 (예: `Cooldown`이 Units인가 Combat인가)
+- 맥락 간 이벤트를 Buffer로 할지 NativeQueue로 할지
+- SystemGroup 구성과 업데이트 순서
+- Burst 호환 불가한 API가 필요해 보일 때
 
 ---
 
