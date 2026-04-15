@@ -38,6 +38,52 @@ namespace Wassup.Bridge
         private int _goalReachedCount;
         private NativeQueue<GoalReachedEvent> _goalEventQueue;
 
+        private void Start()
+        {
+            if (resultScreen != null)
+            {
+                resultScreen.RestartRequested += OnRestartRequested;
+            }
+        }
+
+        private void OnRestartRequested()
+        {
+            RestartBattle();
+        }
+
+        // External MB entry point — tears down current ECS state and starts a fresh session on the same deck/map.
+        public void RestartBattle()
+        {
+            if (_world == null)
+            {
+                // No battle started yet — delegate to StartBattle.
+                StartBattle();
+                return;
+            }
+            TeardownCurrentBattle();
+            if (resultScreen != null) resultScreen.Hide();
+            StartBattle();
+        }
+
+        private void TeardownCurrentBattle()
+        {
+            // Destroy all battle-related entities so the next StartBattle has a clean slate.
+            var attackers = _em.CreateEntityQuery(ComponentType.ReadOnly<AttackUnitTag>());
+            _em.DestroyEntity(attackers);
+            attackers.Dispose();
+
+            var defenders = _em.CreateEntityQuery(ComponentType.ReadOnly<DefenderUnitTag>());
+            _em.DestroyEntity(defenders);
+            defenders.Dispose();
+
+            var singletons = _em.CreateEntityQuery(ComponentType.ReadOnly<GoalReachedEventsSingleton>());
+            _em.DestroyEntity(singletons);
+            singletons.Dispose();
+
+            // Dispose the queue; StartBattle will create a fresh one.
+            if (_goalEventQueue.IsCreated) _goalEventQueue.Dispose();
+        }
+
         public void StartBattle()
         {
             if (deck == null || map == null)
@@ -192,6 +238,10 @@ namespace Wassup.Bridge
 
         private void OnDestroy()
         {
+            if (resultScreen != null)
+            {
+                resultScreen.RestartRequested -= OnRestartRequested;
+            }
             if (_goalEventQueue.IsCreated) _goalEventQueue.Dispose();
         }
 
