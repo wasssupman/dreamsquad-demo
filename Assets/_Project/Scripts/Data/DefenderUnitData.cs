@@ -6,6 +6,7 @@ namespace Wassup.Data
     public class DefenderUnitData : ScriptableObject
     {
         public string displayName;
+        public float health = 50f;
         public float attackRange = 3f;
         public float attackDamage = 20f;
         public float attackCooldown = 1f; // seconds between attacks

@@ -5,6 +5,7 @@ using Unity.Mathematics;
 using Unity.Rendering;
 using Unity.Transforms;
 using UnityEngine;
+using Wassup.Battle.Combat;
 using Wassup.Battle.Movement;
 using Wassup.Battle.Units;
 using Wassup.Data;
@@ -132,6 +133,14 @@ namespace Wassup.Bridge
             var pos = new float3(tileX * tileSize, spawnHeight, tileY * tileSize);
             _em.AddComponentData(entity, LocalTransform.FromPosition(pos));
             _em.AddComponent<DefenderUnitTag>(entity);
+            _em.AddComponentData(entity, new Health { value = unitData.health, max = unitData.health });
+            _em.AddComponentData(entity, new AttackState
+            {
+                damage = unitData.attackDamage,
+                range = unitData.attackRange,
+                cooldownDuration = unitData.attackCooldown,
+                cooldownRemaining = 0f,
+            });
 
             var renderArray = GetOrCreateDefenderRenderMeshArray(unitData);
             var desc = new RenderMeshDescription(
@@ -196,6 +205,9 @@ namespace Wassup.Bridge
 
             _em.AddComponent<AttackUnitTag>(entity);
             _em.AddComponentData(entity, new Health { value = entry.unitType.health, max = entry.unitType.health });
+            // Pre-attach an empty IncomingDamage buffer so the Combat system can append without needing
+            // to create the buffer on first hit (simplifies ECB usage and keeps archetype stable).
+            _em.AddBuffer<IncomingDamage>(entity);
 
             _em.AddComponentData(entity, new PathFollowState
             {
