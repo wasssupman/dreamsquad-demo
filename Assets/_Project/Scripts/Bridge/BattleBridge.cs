@@ -21,11 +21,14 @@ namespace Wassup.Bridge
         [SerializeField] private float tileSize = 1f;
         [SerializeField] private float spawnHeight = 0.5f;
         [SerializeField] private ResultScreen resultScreen;
+        [SerializeField] private DefenderUnitData[] defenderPool;
 
         private World _world;
         private EntityManager _em;
         private readonly List<SpawnEntry> _pending = new();
         private readonly Dictionary<AttackUnitData, RenderMeshArray> _renderCache = new();
+        private readonly Dictionary<DefenderUnitData, RenderMeshArray> _defenderRenderCache = new();
+        private readonly HashSet<Vector2Int> _occupiedTiles = new();
         private float _startTime;
         private bool _running;
         private int _goalReachedCount;
@@ -44,6 +47,7 @@ namespace Wassup.Bridge
             _em = _world.EntityManager;
             _pending.Clear();
             _pending.AddRange(deck.spawns);
+            _occupiedTiles.Clear();
             _startTime = Time.time;
             _goalReachedCount = 0;
             _running = true;
@@ -95,6 +99,60 @@ namespace Wassup.Bridge
                     return;
                 }
             }
+        }
+
+        // Returns true if a defender was placed, false if tile is occupied or invalid.
+        public bool PlaceDefender(int tileX, int tileY)
+        {
+            if (!_running) return false;
+            if (map == null || map.GetTile(tileX, tileY) != TileType.Buildable) return false;
+
+            var cell = new Vector2Int(tileX, tileY);
+            if (_occupiedTiles.Contains(cell)) return false;
+
+            if (defenderPool == null || defenderPool.Length == 0)
+            {
+                Debug.LogWarning("[BattleBridge] defenderPool is empty — cannot place defender.");
+                return false;
+            }
+
+            var unitData = defenderPool[UnityEngine.Random.Range(0, defenderPool.Length)];
+            if (unitData == null || unitData.visualMaterial == null)
+            {
+                Debug.LogWarning("[BattleBridge] Selected defender has no visualMaterial.");
+                return false;
+            }
+
+            _occupiedTiles.Add(cell);
+
+            var entity = _em.CreateEntity();
+#if UNITY_EDITOR
+            _em.SetName(entity, $"Defender_{unitData.displayName}_{tileX}_{tileY}");
+#endif
+            var pos = new float3(tileX * tileSize, spawnHeight, tileY * tileSize);
+            _em.AddComponentData(entity, LocalTransform.FromPosition(pos));
+            _em.AddComponent<DefenderUnitTag>(entity);
+
+            var renderArray = GetOrCreateDefenderRenderMeshArray(unitData);
+            var desc = new RenderMeshDescription(
+                shadowCastingMode: UnityEngine.Rendering.ShadowCastingMode.Off,
+                receiveShadows: false);
+            RenderMeshUtility.AddComponents(entity, _em, desc, renderArray,
+                MaterialMeshInfo.FromRenderMeshArrayIndices(0, 0));
+
+            Debug.Log($"[BattleBridge] Placed {unitData.displayName} at ({tileX},{tileY}).");
+            return true;
+        }
+
+        private RenderMeshArray GetOrCreateDefenderRenderMeshArray(DefenderUnitData unit)
+        {
+            if (_defenderRenderCache.TryGetValue(unit, out var cached)) return cached;
+            var mesh = unit.visualMesh != null
+                ? unit.visualMesh
+                : Resources.GetBuiltinResource<Mesh>("Cube.fbx");
+            var arr = new RenderMeshArray(new[] { unit.visualMaterial }, new[] { mesh });
+            _defenderRenderCache[unit] = arr;
+            return arr;
         }
 
         private void OnDestroy()

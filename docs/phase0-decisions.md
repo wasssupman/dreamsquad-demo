@@ -200,3 +200,44 @@ P0-04 완료 후 셀프 리뷰에서 발견한 항목을 다음 단계로 넘기
 16. **MovementSystem 테스트 3건**: (a) 속도에 비례한 이동량, (b) 남은 거리보다 큰 step 시 waypoint 스냅 + 인덱스 진행, (c) 인덱스가 waypoint 개수를 넘으면 `PastGoalTag` 부착. 전부 통과 (1.19s).
 
 ---
+
+## P0-06 — 배치 입력
+
+### 결정
+
+1. **DefenderUnitData SO 레이아웃**: `Data/DefenderUnitData.cs` — `displayName`, `attackRange`, `attackDamage`, `attackCooldown`, `visualMesh`, `visualMaterial`. AttackUnitData와 동일 구조 패턴. Combat 시스템(P0-07)이 소비할 필드를 미리 정의해 두되 Phase 0에서 공격 동작은 없음.
+2. **DefenderUnitTag**: `Battle/Units/DefenderUnitTag.cs` — `IComponentData` 빈 struct. 방어 유닛 쿼리의 유일한 식별자.
+3. **에셋 경로**: Material → `Assets/_Project/Data/Materials/Defender_Archer_Mat.mat` (파란색 0.2/0.6/1.0), SO → `Assets/_Project/Data/Defenders/Defender_Archer.asset`. `Assets/_Project/Data/` 폴더를 이번 작업에서 신규 생성.
+4. **PlacementInput 위치**: `Core/PlacementInput.cs` — GameManager GameObject에 부착. `BattleBridge` 레퍼런스를 인스펙터로 연결.
+5. **타일 히트 테스트 방식**: Collider 없이 `Plane(Vector3.up, 0)` Raycast. 타일 좌표는 `RoundToInt(worldPos / tileSize)` 계산. TRD "NO Collider added to tiles" 준수.
+6. **입력 분기**: `#if UNITY_EDITOR || UNITY_STANDALONE`에서 `Input.GetMouseButtonDown(0)`, Android에서 `Input.touchCount > 0 && TouchPhase.Began`. 단일 클래스에서 양쪽 처리.
+7. **점유 추적**: `BattleBridge._occupiedTiles HashSet<Vector2Int>`. 타일당 1종 제약(PHASE0 2.5) 적용. `StartBattle()`에서 초기화.
+8. **랜덤 선택**: `defenderPool` 배열에서 `UnityEngine.Random.Range`. Phase 0는 플레이어 선택 없음(PHASE0 2.5). `Unity.Mathematics.Random`과 충돌 → 정규화 명칭 사용.
+
+### 검증 결과
+
+- 컴파일 오류 0건 확인.
+- 씬 wiring: GameManager에 PlacementInput 컴포넌트 추가, bridge 레퍼런스 연결, BattleBridge.defenderPool에 Defender_Archer 에셋 할당. BattleScene 저장 완료.
+- 플레이 모드 실측 확인은 사용자 포커스 하에 수행 필요 (P0-05 결정 17 참조).
+
+### 검증 결과 — 직접 API 호출 (worker-verify, 2026-04-15)
+
+- **EditMode 테스트: 6/6 pass** (regression 없음, 0.79s)
+  - MovementSystemTests 3건: Adds_PastGoalTag ✅, Moves_Toward_Waypoint ✅, Snaps_To_Waypoint ✅
+  - UnitLifecycleSystemTests 3건: Destroys_Unit_After_Enqueue ✅, Does_Not_Enqueue_When_Singleton_Absent ✅, Enqueues_GoalReachedEvent_When_Singleton_Present ✅
+
+- **PlaceDefender 직접 호출 검증** (play mode + execute_code, ECS 수동 초기화 후):
+  - CaseA `PlaceDefender(0, 0)` buildable cell → **true** ✅ (`_occupiedTiles`에 (0,0) 추가 확인)
+  - CaseB `PlaceDefender(0, 0)` 중복 → **false** ✅ (점유 셀 거부)
+  - CaseC `PlaceDefender(5, 5)` path 셀(y=5, Path A) → **false** ✅ (buildable 아님)
+  - CaseD `PlaceDefender(-1, 0)` 범위 외 → **false** ✅ (예외 경로로 반환)
+
+- **이상 항목**: `PlacementInput.cs`가 legacy `Input` 클래스 사용 중이나 Player Settings에서 New Input System이 활성화되어 있음 → `InvalidOperationException` 반복 발생. 배치 입력이 실제 클릭으로는 동작하지 않을 수 있음. P0-06 스코프 내 수정 필요 여부 사용자 판단 필요.
+
+- **이상 항목**: `PlaceDefender` 범위 외 좌표(-1, 0) 처리 시 `MapData.GetTile`에서 배열 인덱스 예외 발생. 현재는 예외로 인해 false 반환이지만, 명시적 범위 체크 추가가 방어적 구현상 권장됨.
+
+- **ECS 자동 초기화 미동작**: 에디터 Play 진입 후 `World.DefaultGameObjectInjectionWorld`가 null인 상태 관찰. `DefaultWorldInitialization.Initialize` 수동 호출 후 정상화. GameManager.StartBattle() 호출 순서와 ECS bootstrap 타이밍을 확인 필요.
+
+- 콘솔 에러: Input System 관련 반복 오류 외 게임 로직 에러 0건.
+
+---
