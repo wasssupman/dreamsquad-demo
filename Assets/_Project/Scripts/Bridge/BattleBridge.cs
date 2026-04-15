@@ -26,12 +26,15 @@ namespace Wassup.Bridge
 
         private World _world;
         private EntityManager _em;
+        private EntityQuery _aliveAttackersQuery;
+        private bool _aliveAttackersQueryCreated;
         private readonly List<SpawnEntry> _pending = new();
         private readonly Dictionary<AttackUnitData, RenderMeshArray> _renderCache = new();
         private readonly Dictionary<DefenderUnitData, RenderMeshArray> _defenderRenderCache = new();
         private readonly HashSet<Vector2Int> _occupiedTiles = new();
         private float _startTime;
         private bool _running;
+        private bool _resultShown;
         private int _goalReachedCount;
         private NativeQueue<GoalReachedEvent> _goalEventQueue;
 
@@ -52,6 +55,13 @@ namespace Wassup.Bridge
             _startTime = Time.time;
             _goalReachedCount = 0;
             _running = true;
+            _resultShown = false;
+
+            if (!_aliveAttackersQueryCreated)
+            {
+                _aliveAttackersQuery = _em.CreateEntityQuery(ComponentType.ReadOnly<AttackUnitTag>());
+                _aliveAttackersQueryCreated = true;
+            }
 
             // Create the shared queue and inject the singleton so ECS systems can enqueue events.
             if (_goalEventQueue.IsCreated) _goalEventQueue.Dispose();
@@ -83,6 +93,7 @@ namespace Wassup.Bridge
             }
 
             DrainGoalEvents();
+            CheckVictory();
         }
 
         private void DrainGoalEvents()
@@ -92,14 +103,29 @@ namespace Wassup.Bridge
             {
                 _goalReachedCount++;
                 Debug.Log($"[BattleBridge] Goal reached! Count: {_goalReachedCount}/{deck.defeatGoalReachedCount}");
-                if (_goalReachedCount >= deck.defeatGoalReachedCount)
+                if (!_resultShown && _goalReachedCount >= deck.defeatGoalReachedCount)
                 {
+                    _resultShown = true;
                     _running = false;
                     resultScreen?.ShowDefeat();
                     Debug.Log("[BattleBridge] DEFEAT triggered.");
                     return;
                 }
             }
+        }
+
+        // Victory = every spawn in the deck has been processed AND no attack unit entities remain alive.
+        private void CheckVictory()
+        {
+            if (_resultShown) return;
+            if (_pending.Count > 0) return;
+            if (!_aliveAttackersQueryCreated) return;
+            if (_aliveAttackersQuery.CalculateEntityCount() > 0) return;
+
+            _resultShown = true;
+            _running = false;
+            resultScreen?.ShowVictory();
+            Debug.Log("[BattleBridge] VICTORY — all attack units defeated.");
         }
 
         // Returns true if a defender was placed, false if tile is occupied or invalid.
