@@ -11,6 +11,7 @@ using Wassup.Battle.Units;
 using Wassup.Core;
 using Wassup.Data;
 using Wassup.UI;
+// DraftController lives in Wassup.Core above.
 
 namespace Wassup.Bridge
 {
@@ -24,6 +25,7 @@ namespace Wassup.Bridge
         [SerializeField] private float spawnHeight = 0.5f;
         [SerializeField] private ResultScreen resultScreen;
         [SerializeField] private DefenderUnitData[] defenderPool;
+        [SerializeField] private DraftController draftController;
 
         private World _world;
         private EntityManager _em;
@@ -44,12 +46,37 @@ namespace Wassup.Bridge
             if (resultScreen != null)
             {
                 resultScreen.RestartRequested += OnRestartRequested;
+                resultScreen.RedraftRequested += OnRedraftRequested;
             }
         }
 
         private void OnRestartRequested()
         {
             RestartBattle();
+        }
+
+        private void OnRedraftRequested()
+        {
+            if (draftController == null)
+            {
+                Debug.LogWarning("[BattleBridge] RedraftRequested but draftController unset; falling back to RestartBattle.");
+                RestartBattle();
+                return;
+            }
+            // Re-opening the draft invalidates the previous session — roll the log,
+            // tear down ECS state, hide the result panel, then let DraftController
+            // show the pick UI. StartBattle will fire again inside TryConfirm.
+            var logger = GameManager.Instance?.Logger;
+            if (logger != null)
+            {
+                logger.EndSession();
+                logger.StartSession();
+            }
+            if (_world != null) TeardownCurrentBattle();
+            if (resultScreen != null) resultScreen.Hide();
+            _running = false;
+            _resultShown = false;
+            draftController.BeginDraft();
         }
 
         // External MB entry point — tears down current ECS state and starts a fresh session on the same deck/map.
@@ -138,6 +165,17 @@ namespace Wassup.Bridge
             _running = false;
             // Phase 0: entities persist until play mode exit. P0-09 will add full teardown.
         }
+
+        // Replaces the defender pool used by random placement selection. Called by
+        // DraftController once picks are confirmed. A null or empty array resets
+        // the pool to the inspector-assigned fallback (if any) so the caller can
+        // "un-confirm" a draft during tests.
+        public void SetDefenderPool(DefenderUnitData[] pool)
+        {
+            defenderPool = pool;
+        }
+
+        public DefenderUnitData[] DefenderPool => defenderPool;
 
         private void Update()
         {
@@ -259,6 +297,7 @@ namespace Wassup.Bridge
             if (resultScreen != null)
             {
                 resultScreen.RestartRequested -= OnRestartRequested;
+                resultScreen.RedraftRequested -= OnRedraftRequested;
             }
             if (_goalEventQueue.IsCreated) _goalEventQueue.Dispose();
         }

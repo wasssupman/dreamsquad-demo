@@ -150,61 +150,61 @@ Phase 1은 다음이 **모두** 이진 통과해야 Phase 2로 이동한다.
 ---
 
 **[P1-01] 방어 유닛 풀 10종 확장**
-- [ ] `Assets/_Project/Data/Defenders/` 에 `DefenderUnitData` SO 10개 존재 (기존 3 + 신규 7)
+- [x] `Assets/_Project/Data/Defenders/` 에 `DefenderUnitData` SO 10개 존재 (기존 3 + 신규 7)
 - 내용: 섹션 2.1 지침에 따라 7종 추가. 각 SO에 고유한 머티리얼(색) + 스탯. `Wassup/DefenderUnit` 메뉴를 통해 생성. 기존 3종 스탯은 유지 권장.
 - 선행: Phase 0 완료
 - 완료 확인: 에디터에서 10개 SO 전부 Inspector로 열람 시 스탯 읽힘, 머티리얼 색상 10종 구분 가능
 
 **[P1-02] DraftSession + DraftController 골격**
-- [ ] `Core/DraftSession` 클래스 (MonoBehaviour 또는 POCO)에 `pool`, `picked`, `seed` 상태 보관
-- [ ] `Core/DraftController` MonoBehaviour가 DraftSession 생성·확정 이벤트 처리
+- [x] `Core/DraftSession` 클래스 (MonoBehaviour 또는 POCO)에 `pool`, `picked`, `seed` 상태 보관
+- [x] `Core/DraftController` MonoBehaviour가 DraftSession 생성·확정 이벤트 처리
 - 내용: 10종 풀 랜덤 추출, 픽/언픽 로직, 확정 이벤트 노출. 이 시점은 UI 없이 로직만.
 - 선행: P1-01
 - 완료 확인: 테스트 코드 또는 execute_code로 DraftSession이 10 pool + 7 pick 상태 전이 가능 확인
 
 **[P1-03] 드래프트 UI**
-- [ ] 10개 카드(UGUI)가 한 화면에 표시되고 displayName + 핵심 스탯 읽을 수 있음
-- [ ] 카드 클릭으로 픽/언픽 토글
-- [ ] 현재 카운트 "n/7" 표시 + 7 도달 시 "확정" 버튼 활성화
+- [x] 10개 카드(UGUI)가 한 화면에 표시되고 displayName + 핵심 스탯 읽을 수 있음
+- [x] 카드 클릭으로 픽/언픽 토글
+- [x] 현재 카운트 "n/7" 표시 + 7 도달 시 "확정" 버튼 활성화
 - 내용: 섹션 2.2 요구사항. 카드 프리팹 또는 런타임 생성. EventSystem(P0-09에서 추가됨) 재사용.
 - 선행: P1-02
 - 완료 확인: 에디터 Play에서 카드 클릭·확정 흐름이 DraftController 이벤트까지 연결
 
 **[P1-04] DraftSession → BattleBridge 주입**
-- [ ] `BattleBridge.SetDefenderPool(DefenderUnitData[])` 메서드 추가
-- [ ] DraftController가 확정 시 BattleBridge에 pool 주입 후 StartBattle 호출
-- [ ] 드래프트 확정 전에는 배치 불가 (BattleBridge._running=false 유지)
+- [x] `BattleBridge.SetDefenderPool(DefenderUnitData[])` 메서드 추가
+- [x] DraftController가 확정 시 BattleBridge에 pool 주입 후 StartBattle 호출
+- [x] 드래프트 확정 전에는 배치 불가 (BattleBridge._running=false 유지)
 - 내용: Phase 0의 defenderPool 인스펙터 고정 값을 런타임 주입으로 교체. 인스펙터 고정 값은 drag-in 폴백으로 남겨 둘 수 있음(SetDefenderPool 미호출 시 인스펙터 값 사용).
 - 선행: P1-03
 - 완료 확인: 드래프트 확정 후 배치 시 picked 7종 중에서만 랜덤 선택 — 색깔 관찰로 확인
 
 **[P1-05] 재시작 플로우 (같은 픽 유지)**
-- [ ] 결과 화면 "다시 시작" 버튼으로 같은 pick 유지한 채 재진행
+- [x] 결과 화면 "다시 시작" 버튼으로 같은 pick 유지한 채 재진행
 - 내용: Phase 0 `RestartBattle`은 그대로 유지 + DraftController가 pool 캐시를 건드리지 않도록 연결. teardown 후 StartBattle 시 주입된 pool 재사용.
 - 선행: P1-04
 - 완료 확인: 1판 → 결과 → 다시 시작 → 같은 7종으로 재진행 가능
 
 **[P1-06] 재시작 플로우 (다른 픽으로 재도전)**
-- [ ] "다른 픽으로" 버튼이 드래프트 UI 재오픈, 확정 후 새 pool로 재진행
+- [x] "다른 픽으로" 버튼이 드래프트 UI 재오픈, 확정 후 새 pool로 재진행
 - 내용: ResultScreen에 두 번째 버튼 추가 (`RedraftRequested` 이벤트). DraftController가 이벤트 받아 DraftSession 리셋 + UI 재표시.
 - 선행: P1-05
 - 완료 확인: 2판 이상에서 각 판의 pick이 달라질 수 있고 로그에 반영됨
 
 **[P1-07] 로깅 확장**
-- [ ] `BattleLogSchema.BattleLogEntry.draft` 필드가 pool·picked·seed 값으로 채워짐
+- [x] `BattleLogSchema.BattleLogEntry.draft` 필드가 pool·picked·seed 값으로 채워짐
 - 내용: 섹션 2.5 `DraftRecord` 추가. `BattleLogger.SetDraft` + `BattleBridge.StartBattle` 또는 DraftController 확정 시점에 호출. 기존 session JSON에 `draft` 블록이 추가된다.
 - 선행: P1-04
 - 완료 확인: `/Users/sy/dev/wassup/GameLogs/` 세션 JSON에 `draft.pool` 10개, `draft.picked` 7개 들어감
 
 **[P1-08] EditMode 테스트 확장**
-- [ ] DraftSession 단위 테스트 (pool 10종 추출, 7픽 제약, 언픽 토글, 확정 플래그)
-- [ ] 기존 6개 테스트 회귀 없음
+- [x] DraftSession 단위 테스트 (pool 10종 추출, 7픽 제약, 언픽 토글, 확정 플래그)
+- [x] 기존 6개 테스트 회귀 없음
 - 내용: `Assets/_Project/Tests/EditMode/DraftSessionTests.cs` 신규. run_tests MCP로 통합 테스트 승인.
 - 선행: P1-02
 - 완료 확인: run_tests에서 기존 6 + 신규 n건 전부 pass
 
 **[P1-09] Phase 0 회귀 체크**
-- [ ] Phase 0 13개 기능 체크(P0-01 ~ P0-13) 중 Editor에서 검증 가능한 것 전부 정상 동작
+- [x] Phase 0 13개 기능 체크(P0-01 ~ P0-13) 중 Editor에서 검증 가능한 것 전부 정상 동작
 - 내용: 드래프트 도입이 Phase 0 기능을 깨뜨리지 않았는지 수동 플레이로 확인. 맵 표시 / 배치 / 자동 공격 / VICTORY · DEFEAT / 재시작 / 로그 파일 생성 각각 재현.
 - 선행: P1-06, P1-07
 - 완료 확인: 수동 플레이 완주 + 로그 파일 적재 확인
@@ -224,19 +224,19 @@ Phase 1은 다음이 **모두** 이진 통과해야 Phase 2로 이동한다.
 Phase 0 섹션 3.2 항목을 전부 재확인 + Phase 1 전용 항목 추가.
 
 **Phase 0 재확인 (회귀 방지)**
-- [ ] ECS 시스템이 전투 로직을 계속 소유
-- [ ] UI / 터치 / 결과 화면은 MonoBehaviour
-- [ ] `BattleBridge`가 유일한 MonoBehaviour ↔ ECS 창구
-- [ ] `EntityManager` / `World.DefaultGameObjectInjectionWorld` 사용은 `BattleBridge` 한 파일에만 존재
-- [ ] SubScene 미사용 / 네트워크 코드 전무
-- [ ] 맥락 분리 유지 (Units / Movement / Combat / Effects)
-- [ ] Effects 맥락은 여전히 자리만 (Phase 2 이후)
+- [x] ECS 시스템이 전투 로직을 계속 소유
+- [x] UI / 터치 / 결과 화면은 MonoBehaviour
+- [x] `BattleBridge`가 유일한 MonoBehaviour ↔ ECS 창구
+- [x] `EntityManager` / `World.DefaultGameObjectInjectionWorld` 사용은 `BattleBridge` 한 파일에만 존재
+- [x] SubScene 미사용 / 네트워크 코드 전무
+- [x] 맥락 분리 유지 (Units / Movement / Combat / Effects)
+- [x] Effects 맥락은 여전히 자리만 (Phase 2 이후)
 
 **Phase 1 전용**
-- [ ] 드래프트 로직이 MonoBehaviour 레이어에 있음 (ECS 오염 금지)
-- [ ] DraftSession / DraftController가 BattleBridge 경계를 침범하지 않음 (EntityManager 직접 접근 없음)
-- [ ] 신규 방어 유닛 7종은 전부 SO — 스탯 하드코딩 없음
-- [ ] 드래프트 UI 카드 수/픽 수 같은 수치가 상수 또는 SO 기반 (매직 넘버 최소화)
+- [x] 드래프트 로직이 MonoBehaviour 레이어에 있음 (ECS 오염 금지)
+- [x] DraftSession / DraftController가 BattleBridge 경계를 침범하지 않음 (EntityManager 직접 접근 없음)
+- [x] 신규 방어 유닛 7종은 전부 SO — 스탯 하드코딩 없음
+- [x] 드래프트 UI 카드 수/픽 수 같은 수치가 상수 또는 SO 기반 (매직 넘버 최소화)
 
 ### 3.3 주관 평가 게이트
 

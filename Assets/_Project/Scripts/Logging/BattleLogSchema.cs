@@ -8,10 +8,11 @@ namespace Wassup.Logging
     public class BattleLogEntry
     {
         public string session_id;
-        public string phase = "phase0";
+        public string phase = "phase1";
         public string timestamp_start;
         public string timestamp_end;
         public string attack_deck_id;
+        public DraftRecord draft = new();
         public List<PlacementLog> placements = new();
         public BattleResult result = new();
     }
@@ -30,5 +31,16 @@ namespace Wassup.Logging
         public string outcome = "unknown";
         public float duration_sec;
         public int enemies_reached_goal;
+    }
+
+    // Phase 1 draft audit trail: the full 10-unit pool the player saw, the 7 they
+    // locked in (in pick order), and the seed used to sample the pool so identical
+    // play sessions can be reconstructed.
+    [Serializable]
+    public class DraftRecord
+    {
+        public List<string> pool = new();
+        public List<string> picked = new();
+        public int seed;
     }
 }

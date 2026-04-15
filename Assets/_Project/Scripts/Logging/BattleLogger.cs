@@ -35,6 +35,17 @@ namespace Wassup.Logging
             currentEntry.attack_deck_id = deckId ?? string.Empty;
         }
 
+        // Caller passes a fully-populated DraftRecord (pool names, picked names in
+        // order, and the RNG seed). Copying the lists protects us from later
+        // mutation by the caller.
+        public void SetDraft(DraftRecord draft)
+        {
+            if (currentEntry == null || draft == null) return;
+            currentEntry.draft.pool = new System.Collections.Generic.List<string>(draft.pool);
+            currentEntry.draft.picked = new System.Collections.Generic.List<string>(draft.picked);
+            currentEntry.draft.seed = draft.seed;
+        }
+
         public void RecordPlacement(string unitType, Vector2Int tile, float time)
         {
             if (currentEntry == null) return;

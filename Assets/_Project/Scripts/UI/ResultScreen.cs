@@ -12,24 +12,22 @@ namespace Wassup.UI
     {
         [SerializeField] private TextMeshProUGUI resultLabel;
         [SerializeField] private Button restartButton;
+        [SerializeField] private Button redraftButton;
 
         public event Action RestartRequested;
+        public event Action RedraftRequested;
 
         private void Awake()
         {
             gameObject.SetActive(false);
-            if (restartButton != null)
-            {
-                restartButton.onClick.AddListener(OnRestartClicked);
-            }
+            if (restartButton != null) restartButton.onClick.AddListener(OnRestartClicked);
+            if (redraftButton != null) redraftButton.onClick.AddListener(OnRedraftClicked);
         }
 
         private void OnDestroy()
         {
-            if (restartButton != null)
-            {
-                restartButton.onClick.RemoveListener(OnRestartClicked);
-            }
+            if (restartButton != null) restartButton.onClick.RemoveListener(OnRestartClicked);
+            if (redraftButton != null) redraftButton.onClick.RemoveListener(OnRedraftClicked);
         }
 
         public void ShowDefeat()
@@ -49,9 +47,7 @@ namespace Wassup.UI
             gameObject.SetActive(false);
         }
 
-        private void OnRestartClicked()
-        {
-            RestartRequested?.Invoke();
-        }
+        private void OnRestartClicked() => RestartRequested?.Invoke();
+        private void OnRedraftClicked() => RedraftRequested?.Invoke();
     }
 }
