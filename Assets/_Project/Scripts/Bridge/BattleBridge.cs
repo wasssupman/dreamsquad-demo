@@ -22,6 +22,7 @@ namespace Wassup.Bridge
         private World _world;
         private EntityManager _em;
         private readonly List<SpawnEntry> _pending = new();
+        private readonly Dictionary<AttackUnitData, RenderMeshArray> _renderCache = new();
         private float _startTime;
         private bool _running;
 
@@ -32,6 +33,8 @@ namespace Wassup.Bridge
                 Debug.LogError("[BattleBridge] deck or map reference missing.", this);
                 return;
             }
+            // Re-acquire the world reference on every StartBattle so that Play-Stop-Play
+            // cycles (which recreate World.DefaultGameObjectInjectionWorld) are safe.
             _world = World.DefaultGameObjectInjectionWorld;
             _em = _world.EntityManager;
             _pending.Clear();
@@ -80,6 +83,12 @@ namespace Wassup.Bridge
                 return;
             }
 
+            if (entry.unitType.visualMaterial == null)
+            {
+                Debug.LogWarning("[BattleBridge] visualMaterial null — entity will not render.");
+                return;
+            }
+
             var entity = _em.CreateEntity();
 #if UNITY_EDITOR
             _em.SetName(entity, $"Enemy_{entry.unitType.displayName}");
@@ -104,22 +113,29 @@ namespace Wassup.Bridge
                 buffer.Add(new PathWaypoint { cell = new int2(wp.x, wp.y) });
             }
 
-            var mesh = entry.unitType.visualMesh != null
-                ? entry.unitType.visualMesh
-                : Resources.GetBuiltinResource<Mesh>("Cube.fbx");
-            var material = entry.unitType.visualMaterial;
-            if (material == null)
-            {
-                Debug.LogWarning("[BattleBridge] visualMaterial null — entity will not render.");
-                return;
-            }
+            var renderArray = GetOrCreateRenderMeshArray(entry.unitType);
             var desc = new RenderMeshDescription(
                 shadowCastingMode: UnityEngine.Rendering.ShadowCastingMode.Off,
                 receiveShadows: false);
-            var matMeshInfo = new RenderMeshArray(new[] { material }, new[] { mesh });
             RenderMeshUtility.AddComponents(
-                entity, _em, desc, matMeshInfo,
+                entity, _em, desc, renderArray,
                 MaterialMeshInfo.FromRenderMeshArrayIndices(0, 0));
+        }
+
+        // Caches one RenderMeshArray per AttackUnitData asset so repeated spawns of the
+        // same unit type do not allocate a fresh mesh/material array each time.
+        private RenderMeshArray GetOrCreateRenderMeshArray(AttackUnitData unit)
+        {
+            if (_renderCache.TryGetValue(unit, out var cached))
+            {
+                return cached;
+            }
+            var mesh = unit.visualMesh != null
+                ? unit.visualMesh
+                : Resources.GetBuiltinResource<Mesh>("Cube.fbx");
+            var arr = new RenderMeshArray(new[] { unit.visualMaterial }, new[] { mesh });
+            _renderCache[unit] = arr;
+            return arr;
         }
     }
 }

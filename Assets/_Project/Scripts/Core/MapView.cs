@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using Wassup.Data;
 
@@ -12,6 +13,9 @@ namespace Wassup.Core
         [SerializeField] private Color obstacleColor = new Color(0.25f, 0.25f, 0.3f);
         [SerializeField] private Color pathLineColor = Color.red;
 
+        private readonly Dictionary<TileType, Material> _tileMaterials = new();
+        private Material _lineMaterial;
+
         private void Start()
         {
             if (map == null)
@@ -19,8 +23,29 @@ namespace Wassup.Core
                 Debug.LogError("[MapView] MapData reference is missing.", this);
                 return;
             }
+            BuildSharedMaterials();
             BuildTiles();
             BuildPathLines();
+        }
+
+        private void OnDestroy()
+        {
+            foreach (var mat in _tileMaterials.Values) SafeDestroy(mat);
+            _tileMaterials.Clear();
+            SafeDestroy(_lineMaterial);
+        }
+
+        private void BuildSharedMaterials()
+        {
+            // One Material per tile type — every cube renderer references the same asset,
+            // avoiding per-cube Material instantiation (TRD quality / perf discipline).
+            var tileShader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+            _tileMaterials[TileType.Buildable] = new Material(tileShader) { color = buildableColor };
+            _tileMaterials[TileType.Path] = new Material(tileShader) { color = pathColor };
+            _tileMaterials[TileType.Obstacle] = new Material(tileShader) { color = obstacleColor };
+
+            var lineShader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color");
+            _lineMaterial = new Material(lineShader) { color = pathLineColor };
         }
 
         private void BuildTiles()
@@ -38,7 +63,7 @@ namespace Wassup.Core
                 cube.transform.localPosition = new Vector3(x * tileSize, 0f, y * tileSize);
                 cube.transform.localScale = new Vector3(tileSize * 0.95f, 0.1f, tileSize * 0.95f);
                 var r = cube.GetComponent<Renderer>();
-                r.sharedMaterial = new Material(r.sharedMaterial) { color = ColorFor(type) };
+                r.sharedMaterial = _tileMaterials[type];
                 var col = cube.GetComponent<Collider>();
                 if (col != null) Destroy(col);
             }
@@ -54,8 +79,7 @@ namespace Wassup.Core
                 lr.positionCount = path.waypoints.Count;
                 lr.startWidth = 0.15f;
                 lr.endWidth = 0.15f;
-                var urpShader = Shader.Find("Universal Render Pipeline/Unlit");
-                lr.material = new Material(urpShader != null ? urpShader : Shader.Find("Unlit/Color")) { color = pathLineColor };
+                lr.sharedMaterial = _lineMaterial;
                 lr.useWorldSpace = false;
                 for (int w = 0; w < path.waypoints.Count; w++)
                 {
@@ -65,12 +89,11 @@ namespace Wassup.Core
             }
         }
 
-        private Color ColorFor(TileType type) => type switch
+        private static void SafeDestroy(Object obj)
         {
-            TileType.Buildable => buildableColor,
-            TileType.Path => pathColor,
-            TileType.Obstacle => obstacleColor,
-            _ => Color.magenta,
-        };
+            if (obj == null) return;
+            if (Application.isPlaying) Destroy(obj);
+            else DestroyImmediate(obj);
+        }
     }
 }

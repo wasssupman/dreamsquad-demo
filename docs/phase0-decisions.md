@@ -139,3 +139,31 @@
 - BattleLogger JSON: `~/Library/Application Support/DefaultCompany/wassup/phase0/session-20260415-060739-67f0d89d.json` (duration_sec=25.5, enemies_reached_goal=0, outcome=unknown — 예상 정상)
 
 ---
+
+## P0-04 이후 기술 부채 정리 (2026-04-15)
+
+P0-04 완료 후 셀프 리뷰에서 발견한 항목을 다음 단계로 넘기기 전에 처리.
+
+### 결정
+
+11. **Material 공유 전환**: `MapView.BuildTiles`가 타일마다 `new Material(...)` 생성하던 방식을 TileType별 **공유 Material 3개** + 경로 LineRenderer 공용 Material 1개로 변경. `BattleBridge.SpawnUnit`의 `RenderMeshArray`도 AttackUnitData 단위로 **`Dictionary` 캐시** 적용. 근거: P0-11 이후 유닛 수량 증가 시 누수/GC 부담 사전 차단. `MapView.OnDestroy`에서 생성 Material 정리 추가.
+
+12. **BattleBridge World 레퍼런스 방어**: `StartBattle()` 진입 시 매번 `World.DefaultGameObjectInjectionWorld`를 재취득하도록 주석 명시. 에디터 Play-Stop-Play 사이클에서 Default World가 재생성되는 케이스 대비. 현재 코드는 이미 매 StartBattle마다 재취득하는 패턴이나, 의도가 주석으로 고정됨.
+
+13. **엔티티 파괴 권한 해석** (TRD 2.5.2 명확화): `UnitLifecycleSystem(Units)`가 `ECB.DestroyEntity`로 엔티티를 파괴할 때 Movement 소유 Component(`LocalTransform`, `PathFollowState`)도 함께 제거됨. 이는 TRD 2.5.2 규칙 1("쓰기는 소유 맥락만")의 엄격 해석으로는 위반 여지가 있으나, TRD 2.5.1이 **Units 맥락의 책임**을 "유닛 생성/소멸"로 명시하므로 **엔티티 수준의 lifecycle 조작은 Units의 고유 권한**으로 해석한다. 개별 Component 필드 쓰기(`LocalTransform.Position = ...`)는 여전히 소유 맥락(Movement)만 가능. Lifecycle op(entity 전체 생성/파괴)은 예외 규정.
+
+### 미해결 / 후속
+
+- `Enemy_Tanker.asset.visualMesh` 실제 할당(built-in Cube 런타임 조회 제거): **P0-13 Android 검증 전**까지 처리
+- `tileSize` 단일 출처화(MapData SO 승격): **P0-11** 리팩토링
+- `BattleBridge.StopBattle`의 남은 엔티티 teardown: **P0-09**
+
+### MovementSystem EditMode 단위 테스트 (완료)
+
+14. **Test asmdef 2개 배치**: `Assets/_Project/Scripts/Wassup.Runtime.asmdef`(메인 코드, `autoReferenced=true`) + `Assets/_Project/Tests/EditMode/Wassup.Tests.EditMode.asmdef`(테스트, `includePlatforms=["Editor"]`, `overrideReferences=true`, `precompiledReferences=["nunit.framework.dll"]`). 근거: Unity Test Framework 제약상 테스트 asmdef가 `Assembly-CSharp` 타입을 참조할 수 없으므로 메인 코드를 asmdef로 이동 필요. TRD 2.5.3 "단일 asmdef가 충분"은 **맥락별 분리(Units/Movement 등 개별 asmdef)** 금지로 해석 — **프로젝트 루트 1개 + 테스트 1개** 구조는 이 원칙과 상충하지 않음. 컴파일 시간/메모리 문제 발생 시 재검토.
+
+15. **테스트 작성 패턴**: ISystem은 수동으로 `World`를 생성하고 `SimulationSystemGroup`을 `CreateSystemManaged`로 만든 뒤 시스템을 `AddSystemToUpdateList`로 삽입, `World.SetTime`으로 시간 진행, `SimulationSystemGroup.Update()`로 틱. 이 패턴을 향후 ECS 시스템 테스트의 기본 레시피로 삼는다. `_world.Time.ElapsedTime + deltaTime` 누적으로 연속 tick 가능.
+
+16. **MovementSystem 테스트 3건**: (a) 속도에 비례한 이동량, (b) 남은 거리보다 큰 step 시 waypoint 스냅 + 인덱스 진행, (c) 인덱스가 waypoint 개수를 넘으면 `PastGoalTag` 부착. 전부 통과 (1.19s).
+
+---
