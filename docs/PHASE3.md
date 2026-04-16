@@ -18,38 +18,42 @@ Phase 3은 **전투 가독성**을 확보하는 기반 작업이다. 이후 Phas
 
 **하는 것:**
 - **투사체(Projectile) 시스템**: 방어 유닛이 공격할 때 즉시 데미지 대신 투사체 엔티티를 생성. 투사체가 타깃에 도달하면 데미지 적용.
-- **ProjectileData SO**: 속도, 비주얼(mesh/material), 향후 onHit 효과 타입 필드(Phase 3에서는 단일 타깃 직격만 구현).
-- **투사체 비주얼/기능 분리**: ECS Component로 이동·충돌·데미지 로직, Entities Graphics로 시각화. 비주얼 교체가 기능에 영향 없음.
-- **유닛 체력바**: 공격 유닛과 방어 유닛 모두에게 체력 비율을 보여주는 시각 표시.
-- **DefenderUnitData에 ProjectileData 참조 추가**: 각 방어 유닛이 어떤 투사체를 발사하는지 SO 수준에서 결정.
-- **피격 피드백 최소 구현**: 투사체 도달 시 타깃 색상 깜빡임(flash) 또는 스케일 펀치 — 방식은 자율 결정.
+- **ProjectileData SO**: 속도, 비주얼(mesh/material), 피격 허용 반경(hitThreshold), Phase 4용 onHit 필드.
+- **투사체 비주얼/기능 분리**: ECS Component로 이동·충돌·데미지 로직, Entities Graphics로 시각화.
+- **유닛 체력바**: 공격/방어 유닛 모두 체력 비율을 보여주는 ECS 기반 쿼드.
+- **DefenderUnitData에 ProjectileData 참조 추가**: 방어 유닛이 어떤 투사체를 발사하는지 SO 수준에서 결정. null이면 즉시 데미지 폴백.
+- **피격 피드백 최소 구현**: 스케일 펀치 또는 색상 flash(방식 자율, 단순).
 
 **안 하는 것:**
-- **멀티샷 / 연사 패턴** — 기반 구조만 열어두고 실 구현은 Phase 4(시너지).
-- **DoT(독, 화염) / 스플래시 대미지** — ProjectileData에 `onHitEffect` enum 필드만 추가, 실 처리 로직은 Phase 4.
+- **멀티샷 / 연사 / DoT / 스플래시** — 기반(onHitEffect enum, splashRadius 필드)만 열어두고 실 구현은 Phase 4.
 - **배치 시 효과 / 인접 시너지** — Phase 4.
 - **코스트 / 타이머 / 봇** — Phase 5.
-- **파티클 이펙트** — Phase 3은 mesh/material 기반 최소 비주얼. VFX Graph는 프로토타입 범위 외.
+- **파티클 이펙트** — VFX Graph/Particle System은 프로토타입 범위 외.
+- **로그 스키마 변경** — 투사체 발사/피격 이벤트는 Phase 3에서 로그에 기록하지 않는다. 기존 `placements`/`skill.usages`/`result`만 유지.
 
 ---
 
 ## 1. Phase 3의 게임 흐름 변화
 
-Phase 2까지의 흐름에서 **전투 중 시각적 변화**가 추가된다:
-
 ```
 [전투 진행 중]
-  방어 유닛 쿨다운 완료 → 투사체 엔티티 생성 (작은 구체/큐브, 색상 = 방어 유닛 색)
+  방어 유닛 쿨다운 완료
+    → AttackSystem이 ECB로 ProjectileSpawnRequest 컴포넌트를 방어 엔티티에 부여 (또는 싱글톤 큐에 enqueue)
+    → AttackSystem이 AttackState.cooldownRemaining을 기존과 동일하게 리셋
     ↓
-  투사체가 타깃을 향해 이동 (ProjectileData.speed)
+  BattleBridge.Update가 ProjectileSpawnRequest를 드레인하여 MonoBehaviour 측에서
+  투사체 엔티티 생성 (_em.CreateEntity + RenderMeshUtility.AddComponents)
     ↓
-  타깃 도달 → IncomingDamage 적용 + 투사체 엔티티 파괴 + 피격 피드백
+  ProjectileMoveSystem이 target의 LocalTransform을 읽어 추적 이동
     ↓
-  [적/방어 유닛 체력바가 실시간 반영]
+  ProjectileHitSystem이 도달 판정 → IncomingDamage append + 투사체 파괴 + 피격 피드백
+    ↓
+  [적/방어 체력바 실시간 반영]
 ```
 
-기존: `AttackSystem → IncomingDamage buffer 직접 append`
-변경: `AttackSystem → ProjectileSpawnRequest 생성 → ProjectileSystem이 이동 → 도달 시 IncomingDamage 적용`
+**중요 경로 이원화 (Phase 3 확정):**
+- **ECS 내부(AttackSystem, ProjectileMoveSystem, ProjectileHitSystem)** 는 Burst 호환 로직만 수행 → Entity/struct Component만 다룸.
+- **투사체 엔티티 생성 (RenderMeshUtility.AddComponents 포함)** 은 반드시 BattleBridge 측 MonoBehaviour 경로를 경유한다 — 기존 `SpawnUnit`/`PlaceDefender` 패턴과 동일. 이 결정은 RenderMeshArray가 managed 객체이므로 ISystem 내부에서 추가 불가하다는 제약에 따른다.
 
 ---
 
@@ -65,102 +69,122 @@ public class ProjectileData : ScriptableObject
 {
     public string id;
     public float speed = 10f;
-    public Mesh visualMesh;           // null이면 built-in Sphere
-    public Material visualMaterial;   // null이면 방어 유닛 머티리얼 상속
+    public float hitThreshold = 0.3f;      // 도달 판정 반경(월드 단위). SO로 승격 — 하드코딩 금지.
+    public Mesh visualMesh;                // null이면 built-in Sphere
+    public Material visualMaterial;        // null이면 방어 유닛 visualMaterial 상속
     public float visualScale = 0.3f;
-    // Phase 3에서는 None만 사용. Phase 4에서 DoT/Splash 구현.
+
+    // Phase 3에서는 로드만 되고 사용하지 않는다. Phase 4에서 DoT/Splash/Slow 소비.
     public OnHitEffectType onHitEffect = OnHitEffectType.None;
-    public float onHitMagnitude;      // Phase 4에서 사용할 효과 세기
-    public float onHitDuration;       // Phase 4에서 사용할 효과 지속
-    public float splashRadius;        // Splash일 때 범위 (Phase 4)
+    public float onHitMagnitude;
+    public float onHitDuration;
+    public float splashRadius;
 }
 ```
 
 **DefenderUnitData에 필드 추가**: `public ProjectileData projectile;`
 - null이면 기존 즉시 데미지 폴백 (Phase 0~2 호환).
-- SO가 할당되면 투사체 발사 경로로 전환.
+- SO가 할당되면 투사체 경로로 전환.
 
 ### 2.2 투사체 ECS Component / System
 
-**새 맥락 판단**: 투사체는 어느 맥락에 속하는가?
-- 투사체의 이동 → Movement? 아니다 — Movement는 공격 유닛 경로 이동 전용.
-- 투사체의 데미지 적용 → Combat.
-- **결정: 투사체는 Combat 맥락에 배치한다.** 이유: 투사체는 공격의 연장선이며 AttackSystem에서 발원한다. Movement 맥락의 PathFollowState와 무관한 독자적 이동 로직(타깃 추적)을 사용한다.
+**맥락 소속**: 투사체는 **Combat 맥락** 하위. 폴더: `Assets/_Project/Scripts/Battle/Combat/Projectile/`.
 
-**폴더**: `Assets/_Project/Scripts/Battle/Combat/Projectile/`
+**맥락 경계 해석 (Phase 3 결정, phase3-decisions.md에 기록)**:
+- `IncomingDamage`(DynamicBuffer<IComponentData>, Units 소유)에 **쓰기**는 **TRD 2.5.2 규칙 2의 "맥락 간 이벤트는 Buffer/NativeQueue" 채널** 이다. AttackSystem(Combat → Units append)이 이미 이 패턴을 사용 중이며 Phase 0에서 암묵적으로 수용됐다. Phase 3의 ProjectileHitSystem(Combat → Units append)은 **동일 이벤트 채널의 재사용**이며, Phase 0 decision #13(Units lifecycle 예외)과 별도의 "허용 예외"다.
+- 위 해석을 phase3-decisions.md 결정번호로 명시하라.
 
-**Component**:
+**Component (전부 unmanaged IComponentData/struct)**:
 
-```
-ProjectileTag : IComponentData { }              // 투사체 식별
-ProjectileState : IComponentData {
-    Entity target;          // 추적 대상
-    float speed;
-    float damage;           // 도달 시 적용할 데미지 (DamageBoost 이미 반영된 값)
-    OnHitEffectType onHit;  // Phase 3에서는 None만
-    float onHitMagnitude;
-    float onHitDuration;
-    float splashRadius;
+```csharp
+public struct ProjectileTag : IComponentData { }
+
+public struct ProjectileState : IComponentData {
+    public Entity target;
+    public float speed;
+    public float damage;       // 발사 시점 스냅샷 (DamageBoost 반영 완료). 비행 중 불변.
+    public float hitThreshold;
+    // NOTE: onHitEffect 관련 필드는 Phase 3에서 의도적으로 제외 — Phase 4에서 필요 시 재추가(데드 필드 금지, TRD 3.6).
+}
+
+// 방어 엔티티에 부착. ProjectileData의 struct 필드만 담는다. managed(Mesh/Material) 정보는 BattleBridge 측 캐시가 SO 레퍼런스 → RenderMeshArray 매핑으로 해결한다.
+public struct ProjectileRef : IComponentData {
+    public float speed;
+    public float hitThreshold;
+    public float visualScale;
+    public int projectileAssetIndex;   // BattleBridge가 ProjectileData → int 인덱스 발급. MonoBehaviour가 투사체 생성 시 mesh/material 조회에 사용.
+}
+
+// AttackSystem이 ECB로 방어 엔티티에 부여. BattleBridge.Update가 드레인/제거.
+public struct ProjectileSpawnRequest : IComponentData {
+    public Entity shooter;     // self entity (중복이지만 드레인 편의상)
+    public Entity target;
+    public float damage;       // boost 반영된 스냅샷
+    public float speed;
+    public float hitThreshold;
+    public float visualScale;
+    public int projectileAssetIndex;
 }
 ```
 
 **System**:
 
-- `ProjectileMoveSystem` (ISystem, BurstCompile): 매 프레임 target의 LocalTransform.Position 방향으로 speed * dt 이동. target이 사라졌으면(Exists == false) 투사체 파괴.
-- `ProjectileHitSystem` (ISystem, BurstCompile, UpdateAfter ProjectileMoveSystem): 투사체가 타깃에 충분히 가까우면(거리 < hitThreshold) IncomingDamage append + 투사체 파괴. hitThreshold는 0.3f 정도(자율 결정).
+- `ProjectileMoveSystem` (ISystem, BurstCompile, UpdateInGroup SimulationSystemGroup):
+  - `SystemAPI.GetComponentLookup<LocalTransform>(isReadOnly: true)`로 target 위치 읽기.
+  - target 유효성 판정: `Entity.Null` 비교 + `lookup.HasComponent(target)`. **`EntityManager.Exists`는 Burst 비호환이므로 사용 금지**.
+  - target 소실 시 투사체 파괴(ECB.DestroyEntity).
+  - 매 프레임 `pos += normalize(targetPos - pos) * speed * dt` + LocalTransform 갱신.
 
-**AttackSystem 변경**:
-- 기존: `ecb.AppendToBuffer(bestTarget, new IncomingDamage { amount = ... })`
-- 변경: `DefenderUnitData.projectile != null`이면 ProjectileSpawnRequest Component 부여 대신 **BattleBridge에 spawn 요청 queue** 또는 **AttackSystem 내에서 직접 ECB로 투사체 엔티티 생성**.
-- **선택**: AttackSystem은 ECB로 투사체 엔티티를 직접 생성한다(BattleBridge 경유 불필요 — 투사체는 전투 내부의 일시 엔티티이므로 Bridge 경계 밖이 아님). projectile SO 정보는 방어 유닛 엔티티에 부착된 `ProjectileRef` Component가 보관.
+- `ProjectileHitSystem` (ISystem, BurstCompile, UpdateAfter(ProjectileMoveSystem)):
+  - 투사체-타깃 거리 < hitThreshold면 `ecb.AppendToBuffer<IncomingDamage>(target, { amount = damage })` + `ecb.DestroyEntity(projectile)`.
+  - AttackState를 **절대 쓰지 않는다** — 쿨다운 리셋은 발사 시점의 AttackSystem 책임.
 
-**새 Component on Defender**:
-```
-ProjectileRef : IComponentData {
-    float speed;
-    float visualScale;
-    OnHitEffectType onHit;
-    float onHitMagnitude;
-    float onHitDuration;
-    float splashRadius;
-    // Material/Mesh 정보는 BattleBridge에서 spawn 시 RenderMesh로 설정
-}
-```
+**AttackSystem 변경 (기존 로직 유지 + 분기):**
+- 투사체 경로 (방어 엔티티가 `ProjectileRef` 보유):
+  - 기존 damage = `attack.damage * damageMul` 계산 유지.
+  - 기존 `attack.cooldownRemaining = cooldownDuration * cooldownMul` 리셋 유지.
+  - 기존처럼 `ecb.AppendToBuffer(bestTarget, ...)` 대신 `ecb.AddComponent(defenderEntity, new ProjectileSpawnRequest { ... })` 부여.
+- 폴백 경로 (ProjectileRef 미부여):
+  - 기존 즉시 `IncomingDamage` append 경로 그대로. Phase 2 회귀 테스트가 이 경로로 계속 검증.
 
-실제로는 BattleBridge.PlaceDefender에서 ProjectileData가 있으면 ProjectileRef Component를 붙이고, AttackSystem이 이를 읽어 투사체 엔티티를 ECB로 생성하는 흐름.
+### 2.3 체력바 (Units 맥락)
 
-**투사체 비주얼**: `RenderMeshUtility.AddComponents`로 mesh+material 부여 (기존 유닛 패턴 동일). Material이 null이면 방어 유닛의 visualMaterial을 상속.
+**맥락 소속**: **Units 맥락**. 소유권 = 표시 대상의 Health. 폴더: `Assets/_Project/Scripts/Battle/Units/HealthBar/`. "Visual 유틸 별도 폴더" 옵션은 삭제(TRD 2.5.1 맥락 4종 고정 + CLAUDE.md 새 맥락 금지).
 
-### 2.3 체력바
+**구현 방식 (확정, World-space Canvas 옵션 폐기):**
+- **ECS 기반 쿼드** — HealthBarTag + `HealthBarState { Entity owner; float yOffset; }` 신규 엔티티가 각 유닛당 1개.
+- 쿼드 mesh(플레인) + unlit material(녹색 단색 권장; 그라데이션은 자율).
+- `HealthBarSystem` (ISystem, Units 맥락): owner의 Health.value/max로 LocalTransform.Scale.x 조정 + owner 위 yOffset 위치.
+- `SystemAPI.GetComponentLookup<Health>(true)`, `GetComponentLookup<LocalTransform>(true)` 사용.
+- owner 유효성 판정: `Entity.Null` + `lookup.HasComponent`. owner가 소실되면 bar도 ECB로 파괴.
 
-**구현 방식 (자율 결정, 추천: ECS 쿼드 방식)**:
-
-**(A) ECS 기반 쿼드** (추천):
-- 각 유닛 엔티티 생성 시 `HealthBarTag` + `HealthBarState { Entity owner }` Component를 가진 별도 엔티티를 생성.
-- 쿼드 mesh(plane) + unlit material(녹→적 색상 or 고정 녹색).
-- `HealthBarSystem` (ISystem): owner의 Health.value/max 비율로 LocalTransform.Scale.x 조정 + owner의 Position 위 0.8f 오프셋에 위치.
-- owner가 파괴되면 bar도 파괴.
-
-**(B) World-space Canvas**:
-- 유닛당 Canvas + Slider. 성능 부담이 큼(100+ 유닛 시 문제).
-
-**선택 권장**: (A) ECS 기반. 프로토타입 비주얼 수준이면 충분하고, 유닛 수 증가에 안전.
+**생성/파괴 경로 (확정):**
+- 체력바 엔티티 **생성**은 BattleBridge.SpawnUnit(공격 유닛) / PlaceDefender(방어 유닛) **마지막 부분**에서 `_em.CreateEntity` + HealthBarTag + HealthBarState + RenderMeshUtility.AddComponents(공유 쿼드 mesh + 공유 녹색 material).
+- **파괴**는 HealthBarSystem이 owner 유효성 판정에서 자동 파괴. Restart/Teardown 경로는 HealthBarTag 엔티티를 추가로 destroy query에 포함.
 
 ### 2.4 피격 피드백
 
-투사체 도달 시 타깃에 최소한의 시각 반응:
-- **방식 A**: `HitFlashTag` Component → `HitFlashSystem`이 0.1초간 스케일을 1.2배로 키운 뒤 복원.
-- **방식 B**: Material 색상 깜빡임 (Entities Graphics에서 MaterialColor override).
+**확정: 스케일 펀치 방식**
+- `HitFlashTag { float remaining; float originalScale; }` Component를 ProjectileHitSystem이 타깃에 부여.
+- `HitFlashSystem` (Units 맥락, ISystem): remaining을 틱하며 `LocalTransform.Scale = originalScale * (1 + 0.2f * remaining/duration)` 형태로 줄어들다 만료 시 Component 제거 + 원래 스케일 복원.
+- duration 0.15f 기본 — hitThreshold와 달리 Phase 3 한정 const 허용. 사용자 튜닝 시점에 SO 승격.
 
-**자율 결정**: 단순한 쪽. 방식 A(스케일 펀치) 권장.
+### 2.5 기존 코드 영향 요약
 
-### 2.5 기존 코드 영향
+| 파일 | 변경 |
+|---|---|
+| `DefenderUnitData.cs` | `projectile` SO 필드 추가 |
+| `BattleBridge.cs` | ProjectileSpawnRequest 드레인 Update 로직 추가, projectile RenderMeshArray 캐시, PlaceDefender에서 ProjectileRef + 투사체 asset index 부여, TeardownCurrentBattle에 ProjectileTag/HealthBarTag 파괴 추가, SpawnUnit/PlaceDefender 끝에서 체력바 엔티티 생성 |
+| `AttackSystem.cs` | ProjectileRef 유무로 투사체/즉시 분기. 쿨다운 리셋·DamageBoost 읽기는 기존 유지 |
+| `ProjectileMoveSystem.cs` (신규) | Combat 하위 |
+| `ProjectileHitSystem.cs` (신규) | Combat 하위 |
+| `HealthBarSystem.cs` (신규) | Units 하위 |
+| `HitFlashSystem.cs` (신규) | Units 하위 |
+| `DamageApplicationSystem.cs` | 변경 없음 — IncomingDamage buffer 소비 로직 동일 |
 
-- **AttackSystem**: 투사체 경로와 즉시 데미지 경로를 분기. `HasComponent<ProjectileRef>` 여부로 판단.
-- **BattleBridge.PlaceDefender**: ProjectileData가 있으면 ProjectileRef Component + 투사체 RenderMesh 캐시 추가.
-- **BattleBridge.TeardownCurrentBattle**: ProjectileTag 엔티티도 파괴 대상에 추가.
-- **DamageApplicationSystem**: 변경 없음 — IncomingDamage buffer 소비 로직 동일.
-- **HealthBarSystem**: 신규 — Units 맥락? **아니다. 체력바는 순수 비주얼이므로 별도 `Visual` 유틸 또는 Combat에 배치 (자율 결정)**.
+**기존 테스트 영향 (중요)**:
+- `EffectIntegrationTests.Combat_Applies_DamageBoost_To_Emitted_Damage_And_CooldownReduction_To_Reset` — 현재는 즉시 IncomingDamage 경로를 가정. Phase 3에서 ProjectileRef가 없는 경로(폴백)를 그대로 검증하므로 **테스트는 수정 없이 계속 동작**해야 한다. AttackSystem 분기 조건 `HasComponent<ProjectileRef>(entity)`가 false면 기존 경로로 떨어지므로 회귀 없음.
+- 폴백 경로를 실수로 제거하지 말 것 — P3-03 구현 체크포인트로 명시.
 
 ---
 
@@ -172,56 +196,62 @@ ProjectileRef : IComponentData {
 - [ ] `Data/ProjectileData.cs` SO + `OnHitEffectType` enum
 - [ ] `DefenderUnitData.projectile` 필드 추가
 - [ ] 기본 투사체 SO 1~3개 생성 (`Assets/_Project/Data/Projectiles/`)
-- [ ] 기존 10종 방어 유닛 SO에 projectile 레퍼런스 할당
+- [ ] 기존 10종 방어 유닛 SO에 projectile 레퍼런스 할당(또는 의도적 null 유지로 폴백 검증용 1~2종)
 - 선행: Phase 2 완료
 - 완료 확인: Inspector에서 DefenderUnitData → projectile 필드에 SO 연결됨
 
-**[P3-02] 투사체 ECS Component + System**
-- [ ] `Battle/Combat/Projectile/ProjectileTag.cs`, `ProjectileState.cs`
-- [ ] `Battle/Combat/Projectile/ProjectileMoveSystem.cs` (ISystem, BurstCompile)
-- [ ] `Battle/Combat/Projectile/ProjectileHitSystem.cs` (ISystem, BurstCompile, UpdateAfter ProjectileMove)
-- [ ] `ProjectileRef` Component on defender entities
+**[P3-02] 투사체 ECS Component + Move/Hit System**
+- [ ] `Battle/Combat/Projectile/ProjectileTag.cs`, `ProjectileState.cs`, `ProjectileRef.cs`, `ProjectileSpawnRequest.cs`
+- [ ] `Battle/Combat/Projectile/ProjectileMoveSystem.cs` (ISystem, BurstCompile, ComponentLookup으로 target 유효성)
+- [ ] `Battle/Combat/Projectile/ProjectileHitSystem.cs` (ISystem, BurstCompile, UpdateAfter ProjectileMove, IncomingDamage append + ECB.DestroyEntity)
 - 선행: P3-01
-- 완료 확인: EditMode 테스트 — 투사체 생성 → 이동 → 타깃 도달 시 IncomingDamage 적용 + 투사체 파괴
+- 완료 확인: EditMode 테스트 — 투사체 엔티티 수동 생성 → tick → 이동 및 도달 시 IncomingDamage 적용 + 투사체 파괴 확인
 
-**[P3-03] AttackSystem 투사체 분기**
-- [ ] `HasComponent<ProjectileRef>` 있으면 투사체 엔티티 ECB 생성, 없으면 기존 즉시 데미지
-- [ ] 투사체 엔티티에 ProjectileState + ProjectileTag + LocalTransform + RenderMesh 부여
-- [ ] DamageBoost/CooldownReduction 효과는 기존대로 발사 시점에 반영 (투사체 damage에 포함)
+**[P3-03] AttackSystem 투사체 분기 (폴백 유지)**
+- [ ] `HasComponent<ProjectileRef>(defenderEntity)` 체크로 분기
+- [ ] 투사체 경로: `ecb.AddComponent(defenderEntity, new ProjectileSpawnRequest { ... })` + 기존 쿨다운 리셋
+- [ ] 폴백 경로: 기존 IncomingDamage append 그대로 (Phase 2 회귀 테스트 대상)
+- [ ] DamageBoost/CooldownReduction 읽기는 기존 경로 유지
 - 선행: P3-02
-- 완료 확인: Play에서 방어 유닛이 작은 구체를 발사하고, 구체가 적에게 날아가는 것 확인
+- 완료 확인: 기존 EffectIntegrationTests.Combat_Applies_... 통과 + 투사체 SO 부여된 방어 유닛에서 ProjectileSpawnRequest 컴포넌트 부여됨(MCP execute_code로 검증)
 
-**[P3-04] BattleBridge 투사체 연동**
-- [ ] PlaceDefender에서 ProjectileData → ProjectileRef Component 부여
-- [ ] 투사체 RenderMeshArray 캐시 (기존 defenderRenderCache 패턴)
+**[P3-04] BattleBridge 투사체 생성/렌더 연동**
+- [ ] `_projectileRenderCache` (Dictionary<ProjectileData, RenderMeshArray>) + `_projectileAssetByIndex` (ProjectileData[]) 캐시
+- [ ] PlaceDefender에서 defenderUnit.projectile이 있으면 ProjectileRef 컴포넌트 부여 (projectileAssetIndex 발급)
+- [ ] `DrainProjectileSpawnRequests()`: Update에서 ProjectileSpawnRequest 쿼리로 드레인 → ECS CreateEntity(ProjectileTag + ProjectileState + LocalTransform + RenderMeshUtility.AddComponents) → ProjectileSpawnRequest 제거
 - [ ] TeardownCurrentBattle에 ProjectileTag 엔티티 파괴 추가
 - 선행: P3-03
-- 완료 확인: 한 판 풀 플레이에서 투사체가 정상 생성/이동/소멸, Restart 후 잔여 투사체 0
+- 완료 확인: Play에서 방어 유닛이 작은 구체/큐브를 발사, 타깃 향해 이동, 도달 시 소멸, Restart 후 잔여 0
 
 **[P3-05] 체력바**
-- [ ] 유닛 생성 시 체력바 엔티티 동시 생성 (ECS 쿼드 또는 자율 결정 방식)
-- [ ] `HealthBarSystem` — owner의 Health 비율로 스케일/위치 매 프레임 갱신
-- [ ] owner 파괴 시 체력바도 파괴
+- [ ] `Battle/Units/HealthBar/HealthBarTag.cs`, `HealthBarState.cs`, `HealthBarSystem.cs`
+- [ ] 공유 쿼드 mesh + 공유 녹색 material (BattleBridge 캐시)
+- [ ] BattleBridge.SpawnUnit / PlaceDefender 끝에서 체력바 엔티티 생성 (owner 필드에 방금 만든 유닛 entity 저장)
+- [ ] HealthBarSystem이 owner의 Health/LocalTransform 읽기 → scale/position 갱신. owner 소실 시 ECB 파괴.
+- [ ] TeardownCurrentBattle에 HealthBarTag 파괴 추가
 - 선행: P3-01
-- 완료 확인: Play에서 적 + 방어 유닛 머리 위에 녹색 바가 보이고, 피격 시 줄어듦
+- 완료 확인: Play에서 모든 유닛 머리 위에 녹색 바, 피격 시 줄어듦, 유닛 사망 시 사라짐
 
-**[P3-06] 피격 피드백**
-- [ ] 투사체 도달 시 타깃에 시각 반응 (스케일 펀치 or 색상 flash)
-- [ ] 0.1~0.2초 후 원래 상태 복원
+**[P3-06] 피격 피드백 (스케일 펀치)**
+- [ ] `Battle/Units/HitFlashTag.cs` + `HitFlashSystem.cs`
+- [ ] ProjectileHitSystem이 타깃에 HitFlashTag 부여(remaining=0.15f, originalScale=현재 scale)
+- [ ] HitFlashSystem이 감쇄하며 scale 복원
 - 선행: P3-03
-- 완료 확인: 적이 맞을 때 순간 커지거나 색 변화
+- 완료 확인: 적이 맞을 때 순간 1.2배 크기로 확대 후 복원
 
-**[P3-07] EditMode 테스트 확장**
-- [ ] ProjectileMoveSystem 테스트 (이동, 타깃 추적, 타깃 소실 시 파괴)
-- [ ] ProjectileHitSystem 테스트 (도달 시 IncomingDamage 적용 + 투사체 파괴)
-- [ ] 기존 19개 테스트 회귀 없음
+**[P3-07] EditMode 테스트 확장 + 마이그레이션**
+- [ ] `ProjectileMoveSystemTests` (최소 2건): 이동 진행·target 소실 시 투사체 파괴
+- [ ] `ProjectileHitSystemTests` (최소 2건): 도달 시 IncomingDamage append + 투사체 파괴, 거리 밖에서는 무시
+- [ ] 기존 `EffectIntegrationTests`의 Combat 테스트가 **폴백 경로**(ProjectileRef 없음)를 명시적으로 사용하도록 코멘트/assert 강화 (변경 최소)
+- [ ] HealthBarSystem은 선택 — 테스트가 자연스럽지 않으면 스킵 허용
+- [ ] 기존 19개 회귀 없음, **목표: 19 + 신규 4+ = 23/23 (또는 그 이상)**
 - 선행: P3-02
-- 완료 확인: run_tests 전부 pass (목표: 기존 19 + 신규 3+ = **22/22**)
+- 완료 확인: run_tests 전부 pass
 
 **[P3-08] Phase 0~2 회귀 체크**
 - [ ] 드래프트 → 전투(투사체 비주얼) → 스킬 사용 → 결과 → Restart/Redraft 정상
-- [ ] 로그 파일 정상 적재 (기존 필드 + 변경 없음)
-- [ ] ProjectileData null인 방어 유닛은 기존 즉시 데미지 폴백 동작
+- [ ] 로그 파일 기존 필드 그대로 적재 (Phase 3은 로그 스키마 변경 없음)
+- [ ] ProjectileData null인 방어 유닛은 즉시 데미지 폴백 동작
 - 선행: P3-07
 - 완료 확인: 한 판 수동 플레이 완주
 
@@ -230,17 +260,20 @@ ProjectileRef : IComponentData {
 ### 3.2 아키텍처 이진 체크
 
 **Phase 0~2 재확인:**
-- [ ] BattleBridge가 유일한 MonoBehaviour ↔ ECS 창구
+- [ ] BattleBridge가 유일한 MonoBehaviour ↔ ECS 창구 (투사체 RenderMesh 생성도 여기 경유)
 - [ ] Effects Component 읽기/쓰기 경계 유지
 - [ ] 드래프트/스킬 로직 MonoBehaviour 유지
 - [ ] GameManager 유일 싱글톤
 
 **Phase 3 전용:**
-- [ ] 투사체 Component/System이 Combat 맥락 하위에 위치 (Battle/Combat/Projectile/)
-- [ ] 투사체 System이 Movement의 PathFollowState를 사용하지 않음 (독자 이동 로직)
-- [ ] ProjectileData 전부 SO — 속도/스케일/onHit 하드코딩 없음
-- [ ] 체력바가 ECS 기반이면 별도 System으로 분리, Health Component를 읽기만
+- [ ] 투사체 Component/System이 Combat 맥락 하위 (`Battle/Combat/Projectile/`)
+- [ ] 체력바 Component/System이 Units 맥락 하위 (`Battle/Units/HealthBar/`)
+- [ ] 새 맥락 폴더 0개 (Units/Movement/Combat/Effects 4종 유지)
+- [ ] 투사체 System이 Movement의 PathFollowState를 사용하지 않음
+- [ ] ProjectileData 전부 SO — speed/hitThreshold/visualScale 전부 SO 필드
 - [ ] AttackSystem의 투사체/즉시 분기가 ProjectileRef 유무로만 결정 (if/else 1개, 전략 패턴 아님)
+- [ ] ProjectileState에 Phase 3 미사용 데드 필드 없음
+- [ ] 투사체 엔티티 생성의 managed 부분(RenderMeshUtility)은 BattleBridge.Update 경로에서만 수행 — ISystem 내에서 X
 - [ ] Assembly Definition 2개 체제 유지
 
 ---
@@ -260,25 +293,22 @@ Phase 3의 핵심 질문: **전투 상황이 "읽히는가".**
 ## 4. 에이전트 자율 결정 영역
 
 - 투사체 기본 mesh (Sphere/Cube/Capsule)
-- 투사체 hitThreshold 수치 (0.2~0.5 범위)
-- 체력바 구현 방식 (ECS 쿼드 vs World-space Canvas)
 - 체력바 색상 (단색 녹색 / 녹→적 그라데이션)
-- 체력바 크기·오프셋
-- 피격 피드백 방식 (스케일 펀치 vs 색상 flash)
-- 피격 피드백 지속 시간 (0.1~0.3s)
-- ProjectileRef에 material 인덱스를 담을지, BattleBridge가 spawn 시 RenderMesh를 세팅할지
-- 기본 투사체 SO 개수 (1~3종: 예를 들어 "Arrow"/"Bolt"/"Cannon Ball")
+- 체력바 크기·yOffset 기본값
+- 피격 피드백 세기(0.2배 스케일 증가 등 세부 수치)
+- 기본 투사체 SO 개수 (1~3종: 예 "Arrow"/"Bolt"/"CannonBall")
+- ProjectileData의 방어 유닛별 매핑 테이블(어떤 defender가 어떤 projectile을 쓰나)
 
-**결정 원칙**: 애매하면 단순한 쪽. 이후 Phase에서 확장할 자리만 열어두되 지금 구현하지 않음.
+**결정 원칙**: 애매하면 단순한 쪽. 확장 자리만 열어두되 Phase 3에서 구현하지 않음. **hitThreshold는 자율 결정이 아님** — SO 필드다.
 
 ---
 
 ## 5. Phase 3 종료 시 산출물
 
-- 동작하는 Unity 6 프로젝트 (투사체 발사 + 체력바 시각화)
-- EditMode 테스트 22건+ pass
-- `phase3-decisions.md` 누적 기록
-- Phase 4(배치 시 효과 / 인접 시너지)에서 재활용될 핵심 타입: ProjectileData, ProjectileState, OnHitEffectType, HealthBarSystem
+- 동작하는 Unity 6 프로젝트 (투사체 발사 + 체력바 + 피격 반응)
+- EditMode 테스트 23건+ pass
+- `phase3-decisions.md` 누적 기록 (특히 IncomingDamage 쓰기 권한 해석)
+- Phase 4(배치 시 효과 / 인접 시너지)에서 재활용될 핵심 타입: ProjectileData, ProjectileState, OnHitEffectType(필드 재도입 대상), HealthBarSystem
 
 ---
 
@@ -299,14 +329,18 @@ Phase 3 종료 후 `PHASE4.md`를 작성한다.
 
 ## 7. TRD 금지 패턴의 Phase 3 재적용
 
-- **투사체 System은 Combat 맥락 안에서만 Component를 쓴다** — Movement의 PathFollowState 접근 금지.
-- **새 싱글톤 금지** — ProjectileManager 같은 것 도입 금지.
-- **"나중을 위한" 인터페이스 금지** — `IProjectileStrategy` 추상화 금지. OnHitEffectType enum + switch.
-- **수치 하드코딩 금지** — 모든 투사체 수치는 ProjectileData SO.
+- **투사체 System은 Combat 맥락 안에서만 struct Component를 쓴다** — Movement의 PathFollowState 접근 금지. `IncomingDamage` append는 TRD 2.5.2 규칙 2의 이벤트 채널(phase3-decisions에 기록).
+- **체력바 System은 Units 맥락 — Health 읽기만**.
+- **새 싱글톤 금지** — ProjectileManager/HealthBarManager 같은 것 도입 금지.
+- **"나중을 위한" 인터페이스 금지** — `IProjectile`, `IHitEffect` 추상화 금지. Enum + switch로 시작.
+- **수치 하드코딩 금지** — speed/hitThreshold/visualScale은 ProjectileData SO. HitFlash duration 0.15f는 Phase 3 한정 const 허용 (사용자 튜닝 시 SO 승격).
 - **Assembly Definition 2개 체제 유지**.
+- **데드 필드 금지** — ProjectileState는 Phase 3 실제 사용 필드만. onHit 관련 필드는 ProjectileData에만.
 - **투사체 시각 리소스는 SO 레퍼런스** — Resources.Load 패턴 금지.
+- **ISystem 안에서 managed 타입 생성 금지** — RenderMeshArray/Material/Mesh 조작은 BattleBridge MonoBehaviour 경로만.
 
 ---
 
-**문서 버전**: v1.0
-**상태**: 확정, 에이전트 전달 준비됨
+**문서 버전**: v1.1
+**상태**: 확정, 에이전트(Codex) 전달 준비됨
+**v1.0 → v1.1 변경**: critic 리뷰 10건 반영 — IncomingDamage 쓰기 권한 해석 명시, managed 레퍼런스 경로 이원화 (ProjectileSpawnRequest + BattleBridge drain), hitThreshold SO 승격, 체력바 맥락 Units로 확정, World-space Canvas 옵션 삭제, damage 스냅샷 정책 명시, target 소실 Burst 호환 체크 규정, ProjectileState 데드 필드 제거, HitFlash duration const 허용 명시, 테스트 목표 숫자 23/23으로 정정, 로그 스키마 불변 명시.
