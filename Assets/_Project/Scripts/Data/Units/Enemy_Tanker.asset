@@ -15,6 +15,8 @@ MonoBehaviour:
   displayName: Tanker
   health: 100
   moveSpeed: 1.5
-  attackPower: 10
+  attackDamage: 20
+  attackRange: 1.5
+  attackCooldown: 0.6
   visualMesh: {fileID: 0}
   visualMaterial: {fileID: 2100000, guid: 3040a5917ceba49b48a1616e771e9e80, type: 2}

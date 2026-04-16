@@ -58,6 +58,19 @@ namespace Wassup.Logging
             currentEntry.skill.usages.Add(usage);
         }
 
+        public void RecordOnPlace(OnPlaceUsageLog usage)
+        {
+            if (currentEntry == null || usage == null) return;
+            currentEntry.on_place_usages.Add(usage);
+        }
+
+        public void SetSynergyStats(int activations, int peakCount)
+        {
+            if (currentEntry == null) return;
+            currentEntry.synergy.activations = activations;
+            currentEntry.synergy.peakCount = peakCount;
+        }
+
         public void RecordPlacement(string unitType, Vector2Int tile, float time)
         {
             if (currentEntry == null) return;

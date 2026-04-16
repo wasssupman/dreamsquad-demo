@@ -5,6 +5,7 @@ using Unity.Mathematics;
 using Unity.Transforms;
 using Wassup.Battle.Combat.Projectile;
 using Wassup.Battle.Units;
+using Wassup.Data;
 
 namespace Wassup.Tests.EditMode
 {
@@ -99,6 +100,49 @@ namespace Wassup.Tests.EditMode
             var buffer = _em.GetBuffer<IncomingDamage>(target);
             Assert.AreEqual(1, buffer.Length);
             Assert.AreEqual(42f, buffer[0].amount, 1e-3f);
+        }
+
+        [Test]
+        public void Hit_Splash_Damages_Neighbors_Excluding_Direct_Target_And_Non_AttackUnit()
+        {
+            var direct = MakeTarget(new float3(0f, 0f, 0f));
+            var nearbyAttacker = MakeTarget(new float3(0.4f, 0f, 0f));      // within splash
+            var farAttacker = MakeTarget(new float3(3f, 0f, 0f));           // outside splash
+            // Non-attack-unit entity inside splash radius — must not receive damage.
+            var decoy = _em.CreateEntity();
+            _em.AddComponentData(decoy, LocalTransform.FromPosition(new float3(0.3f, 0f, 0f)));
+            _em.AddBuffer<IncomingDamage>(decoy);
+
+            var proj = _em.CreateEntity();
+            _em.AddComponent<ProjectileTag>(proj);
+            _em.AddComponentData(proj, LocalTransform.FromPosition(new float3(0f, 0f, 0f)));
+            _em.AddComponentData(proj, new ProjectileState
+            {
+                target = direct,
+                speed = 0f,
+                damage = 100f,
+                hitThreshold = 0.1f,
+                onHitEffect = OnHitEffectType.Splash,
+                splashRadius = 1.0f,
+                splashDamageMul = 0.5f,
+            });
+
+            Tick(0.016f);
+
+            Assert.IsFalse(_em.Exists(proj), "projectile should consume itself on hit");
+            // Direct target: full 100 damage (splash loop excludes it).
+            // Rather than read Health (which DamageApplicationSystem would drain),
+            // we skip that system in SetUp — so IncomingDamage buffer is the source of truth.
+            var directBuf = _em.GetBuffer<IncomingDamage>(direct);
+            var nearbyBuf = _em.GetBuffer<IncomingDamage>(nearbyAttacker);
+            var farBuf = _em.GetBuffer<IncomingDamage>(farAttacker);
+            var decoyBuf = _em.GetBuffer<IncomingDamage>(decoy);
+            Assert.AreEqual(1, directBuf.Length, "direct target gets one damage event");
+            Assert.AreEqual(100f, directBuf[0].amount, 1e-4f);
+            Assert.AreEqual(1, nearbyBuf.Length, "neighbor within radius gets splash");
+            Assert.AreEqual(50f, nearbyBuf[0].amount, 1e-4f, "splash damage = damage * splashDamageMul");
+            Assert.AreEqual(0, farBuf.Length, "attacker outside splashRadius is untouched");
+            Assert.AreEqual(0, decoyBuf.Length, "non-AttackUnit entity must be filtered from splash pool");
         }
 
         [Test]

@@ -14,14 +14,21 @@ namespace Wassup.Battle.Units
     public partial struct UnitLifecycleSystem : ISystem
     {
         private EntityQuery _singletonQuery;
+        private EntityQuery _defenderDeathSingletonQuery;
         private EntityQuery _pastGoalQuery;
         private EntityQuery _deadQuery;
+        private EntityQuery _defenderDeadQuery;
 
         public void OnCreate(ref SystemState state)
         {
             _singletonQuery = state.GetEntityQuery(ComponentType.ReadWrite<GoalReachedEventsSingleton>());
+            _defenderDeathSingletonQuery = state.GetEntityQuery(ComponentType.ReadWrite<DefenderDeathEventsSingleton>());
             _pastGoalQuery = state.GetEntityQuery(ComponentType.ReadOnly<PastGoalTag>(), ComponentType.ReadOnly<AttackUnitTag>());
             _deadQuery = state.GetEntityQuery(ComponentType.ReadOnly<DeadTag>());
+            _defenderDeadQuery = state.GetEntityQuery(
+                ComponentType.ReadOnly<DeadTag>(),
+                ComponentType.ReadOnly<DefenderUnitTag>(),
+                ComponentType.ReadOnly<DefenderTile>());
             // RequireAnyForUpdate takes a params array and isn't Burst-friendly in OnCreate;
             // keep this method non-Burst. OnUpdate remains [BurstCompile].
             state.RequireAnyForUpdate(_pastGoalQuery, _deadQuery);
@@ -48,9 +55,31 @@ namespace Wassup.Battle.Units
                 ecb.DestroyEntity(entity);
             }
 
-            // Dead: any unit (attack or defender) whose health reached zero.
+            // Defender deaths: emit DefenderDeathEvent (carrying tile) then destroy.
+            // Enqueue happens before DestroyEntity so BattleBridge sees the tile
+            // coordinate before the entity is gone.
+            bool hasDefenderSink = _defenderDeathSingletonQuery.CalculateEntityCount() == 1;
+            foreach (var (tile, entity) in
+                     SystemAPI.Query<RefRO<DefenderTile>>()
+                              .WithAll<DeadTag, DefenderUnitTag>()
+                              .WithEntityAccess())
+            {
+                if (hasDefenderSink)
+                {
+                    var singleton = _defenderDeathSingletonQuery.GetSingletonRW<DefenderDeathEventsSingleton>();
+                    singleton.ValueRW.queue.Enqueue(new DefenderDeathEvent { cell = tile.ValueRO.cell });
+                }
+                ecb.DestroyEntity(entity);
+            }
+
+            // General dead loop: attackers + any defender that somehow lacks
+            // DefenderTile (should not happen in Phase 4, but keeps the system
+            // safe). WithNone<DefenderTile> prevents double-destroy of the
+            // defender-dead loop above.
             foreach (var (_, entity) in
-                     SystemAPI.Query<RefRO<DeadTag>>().WithEntityAccess())
+                     SystemAPI.Query<RefRO<DeadTag>>()
+                              .WithNone<DefenderTile>()
+                              .WithEntityAccess())
             {
                 ecb.DestroyEntity(entity);
             }

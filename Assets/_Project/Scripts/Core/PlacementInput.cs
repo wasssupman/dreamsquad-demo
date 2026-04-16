@@ -37,7 +37,13 @@ namespace Wassup.Core
             var worldPos = ray.GetPoint(enter);
             int tileX = Mathf.RoundToInt(worldPos.x / tileSize);
             int tileY = Mathf.RoundToInt(worldPos.z / tileSize);
-            bridge.PlaceDefender(tileX, tileY);
+
+            // Phase 4: when GameManager exposes an explicit SelectedDefender,
+            // place that specific type. Falls back to the Phase 0 random path
+            // when no selection is set (headless / test scenarios).
+            var selected = GameManager.Instance != null ? GameManager.Instance.SelectedDefender : null;
+            if (selected != null) bridge.PlaceDefenderAs(tileX, tileY, selected);
+            else bridge.PlaceDefender(tileX, tileY);
         }
     }
 }

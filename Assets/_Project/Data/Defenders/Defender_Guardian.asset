@@ -19,3 +19,8 @@ MonoBehaviour:
   attackCooldown: 0.3
   visualMesh: {fileID: 0}
   visualMaterial: {fileID: 2100000, guid: 6fa13ca4169ea45da96dbc3495b7b178, type: 2}
+  projectile: {fileID: 0}
+  onPlaceEffect: 2
+  onPlaceRange: 1.5
+  onPlaceMagnitude: 1.3
+  onPlaceDuration: 6

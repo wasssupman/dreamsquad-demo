@@ -39,7 +39,7 @@ namespace Wassup.Bridge
         private readonly Dictionary<AttackUnitData, RenderMeshArray> _renderCache = new();
         private readonly Dictionary<DefenderUnitData, RenderMeshArray> _defenderRenderCache = new();
         private readonly HashSet<Vector2Int> _occupiedTiles = new();
-        private readonly Dictionary<Vector2Int, Entity> _defenderByTile = new();
+        private readonly Dictionary<Vector2Int, (Entity entity, DefenderUnitData data)> _defenderByTile = new();
         private readonly List<RenderMeshArray> _projectileRenderByIndex = new();
         private readonly Dictionary<(ProjectileData data, Material mat), int> _projectileRenderIndex = new();
         private EntityQuery _projectileSpawnRequestQuery;
@@ -48,11 +48,16 @@ namespace Wassup.Bridge
         private bool _projectileQueryCreated;
         private RenderMeshArray _healthBarRenderArray;
         private Material _healthBarMaterial;
+        private const float SynergyPerNeighbor = 0.1f;
+        private readonly HashSet<Entity> _synergyActivatedEntities = new();
+        private int _synergyActivations;
+        private int _synergyPeakCount;
         private float _startTime;
         private bool _running;
         private bool _resultShown;
         private int _goalReachedCount;
         private NativeQueue<GoalReachedEvent> _goalEventQueue;
+        private NativeQueue<DefenderDeathEvent> _defenderDeathQueue;
 
         private void Start()
         {
@@ -136,8 +141,13 @@ namespace Wassup.Bridge
             _em.DestroyEntity(singletons);
             singletons.Dispose();
 
-            // Dispose the queue; StartBattle will create a fresh one.
+            var defenderDeathSingletons = _em.CreateEntityQuery(ComponentType.ReadOnly<DefenderDeathEventsSingleton>());
+            _em.DestroyEntity(defenderDeathSingletons);
+            defenderDeathSingletons.Dispose();
+
+            // Dispose the queues; StartBattle will create fresh ones.
             if (_goalEventQueue.IsCreated) _goalEventQueue.Dispose();
+            if (_defenderDeathQueue.IsCreated) _defenderDeathQueue.Dispose();
         }
 
         public void StartBattle()
@@ -161,6 +171,9 @@ namespace Wassup.Bridge
             _pending.AddRange(deck.spawns);
             _occupiedTiles.Clear();
             _defenderByTile.Clear();
+            _synergyActivatedEntities.Clear();
+            _synergyActivations = 0;
+            _synergyPeakCount = 0;
             _startTime = Time.time;
             _goalReachedCount = 0;
             _running = true;
@@ -190,6 +203,12 @@ namespace Wassup.Bridge
             _goalEventQueue = new NativeQueue<GoalReachedEvent>(Allocator.Persistent);
             var singletonEntity = _em.CreateEntity();
             _em.AddComponentData(singletonEntity, new GoalReachedEventsSingleton { queue = _goalEventQueue });
+
+            // Phase 4 defender-death event channel.
+            if (_defenderDeathQueue.IsCreated) _defenderDeathQueue.Dispose();
+            _defenderDeathQueue = new NativeQueue<DefenderDeathEvent>(Allocator.Persistent);
+            var deathSingleton = _em.CreateEntity();
+            _em.AddComponentData(deathSingleton, new DefenderDeathEventsSingleton { queue = _defenderDeathQueue });
 
             GameManager.Instance?.Logger?.SetAttackDeckId(deck.deckId);
             Debug.Log($"[BattleBridge] Battle started with deck '{deck.deckId}' ({deck.spawns.Count} spawns queued).");
@@ -262,7 +281,8 @@ namespace Wassup.Bridge
             affectedCount = 0;
             if (!_running || skill == null) return false;
             if (skill.target != SkillTargetType.DefenderUnit) return false;
-            if (!_defenderByTile.TryGetValue(tile, out var entity) || !_em.Exists(entity)) return false;
+            if (!_defenderByTile.TryGetValue(tile, out var defender) || !_em.Exists(defender.entity)) return false;
+            var entity = defender.entity;
             if (skillRuntime != null && !skillRuntime.IsReady(skill)) return false;
 
             switch (skill.effect)
@@ -336,8 +356,22 @@ namespace Wassup.Bridge
             }
 
             DrainProjectileSpawnRequests();
+            DrainDefenderDeathEvents();
             DrainGoalEvents();
             CheckVictory();
+        }
+
+        private void DrainDefenderDeathEvents()
+        {
+            if (!_defenderDeathQueue.IsCreated) return;
+            while (_defenderDeathQueue.TryDequeue(out var evt))
+            {
+                var cell = new Vector2Int(evt.cell.x, evt.cell.y);
+                _defenderByTile.Remove(cell);
+                _occupiedTiles.Remove(cell);
+                RecomputeSynergyFor(cell);
+                Debug.Log($"[BattleBridge] Defender died @ {cell}; tile freed, synergy recomputed.");
+            }
         }
 
         // Converts every staged ProjectileSpawnRequest into a live projectile entity.
@@ -382,6 +416,9 @@ namespace Wassup.Bridge
                 speed = req.speed,
                 damage = req.damage,
                 hitThreshold = req.hitThreshold,
+                onHitEffect = req.onHitEffect,
+                splashRadius = req.splashRadius,
+                splashDamageMul = req.splashDamageMul,
             });
 
             var desc = new RenderMeshDescription(
@@ -389,6 +426,103 @@ namespace Wassup.Bridge
                 receiveShadows: false);
             RenderMeshUtility.AddComponents(entity, _em, desc, _projectileRenderByIndex[req.assetIndex],
                 MaterialMeshInfo.FromRenderMeshArrayIndices(0, 0));
+        }
+
+        // Fires the defender's on-place effect on surrounding entities. Returns
+        // the count of entities affected so the logger can record magnitude.
+        // Writes to Effects components go through EffectSpawner so the Effects-
+        // context write gateway (Phase 2 decision) stays the sole path.
+        private int ApplyOnPlaceEffect(DefenderUnitData unitData, Vector2Int placedCell, Entity placedEntity)
+        {
+            if (unitData.onPlaceEffect == OnPlaceEffectType.None) return 0;
+            if (unitData.onPlaceRange <= 0f) return 0;
+
+            float3 center = new float3(placedCell.x * tileSize, 0f, placedCell.y * tileSize);
+            float rangeWorld = unitData.onPlaceRange * tileSize;
+            float rangeSq = rangeWorld * rangeWorld;
+            int affected = 0;
+
+            if (unitData.onPlaceEffect == OnPlaceEffectType.SlowPulse)
+            {
+                if (!_aliveAttackersQueryCreated) return 0;
+                var entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
+                for (int i = 0; i < entities.Length; i++)
+                {
+                    var e = entities[i];
+                    if (!_em.HasComponent<LocalTransform>(e)) continue;
+                    var pos = _em.GetComponentData<LocalTransform>(e).Position;
+                    float dx = pos.x - center.x;
+                    float dz = pos.z - center.z;
+                    if (dx * dx + dz * dz > rangeSq) continue;
+                    EffectSpawner.ApplySlow(_em, e, unitData.onPlaceDuration, unitData.onPlaceMagnitude);
+                    affected++;
+                }
+                entities.Dispose();
+            }
+            else if (unitData.onPlaceEffect == OnPlaceEffectType.BoostNearbyDefenders)
+            {
+                // Reuse the tuple-based tile map — no ECS query needed since placement
+                // grid already gives us every defender. Self-inclusion is allowed
+                // (PHASE4.md §4 autonomy, chosen for simplicity + stronger feedback).
+                foreach (var kv in _defenderByTile)
+                {
+                    var d = kv.Value;
+                    if (!_em.Exists(d.entity)) continue;
+                    var tileCell = kv.Key;
+                    float dx = tileCell.x - placedCell.x;
+                    float dz = tileCell.y - placedCell.y;
+                    if (dx * dx + dz * dz > unitData.onPlaceRange * unitData.onPlaceRange) continue;
+                    EffectSpawner.ApplyDamageBoost(_em, d.entity, unitData.onPlaceDuration, unitData.onPlaceMagnitude);
+                    affected++;
+                }
+            }
+
+            return affected;
+        }
+
+        // Recomputes adjacency synergy for `cell` and its four neighbors. Same-type
+        // defender adjacency grants a damage multiplier of (1 + 0.1 × neighborCount).
+        // Writes to SynergyBuff go through EffectSpawner so the Effects-context
+        // write gateway stays a single code path (Phase 2 decision #9).
+        private void RecomputeSynergyFor(Vector2Int cell)
+        {
+            var cells = new Vector2Int[]
+            {
+                cell,
+                cell + new Vector2Int(1, 0),
+                cell + new Vector2Int(-1, 0),
+                cell + new Vector2Int(0, 1),
+                cell + new Vector2Int(0, -1),
+            };
+
+            for (int i = 0; i < cells.Length; i++)
+            {
+                var c = cells[i];
+                if (!_defenderByTile.TryGetValue(c, out var here)) continue;
+                int neighbors = 0;
+                if (_defenderByTile.TryGetValue(c + new Vector2Int(1, 0), out var n1) && n1.data == here.data) neighbors++;
+                if (_defenderByTile.TryGetValue(c + new Vector2Int(-1, 0), out var n2) && n2.data == here.data) neighbors++;
+                if (_defenderByTile.TryGetValue(c + new Vector2Int(0, 1), out var n3) && n3.data == here.data) neighbors++;
+                if (_defenderByTile.TryGetValue(c + new Vector2Int(0, -1), out var n4) && n4.data == here.data) neighbors++;
+
+                if (neighbors == 0)
+                {
+                    EffectSpawner.RemoveSynergy(_em, here.entity);
+                }
+                else
+                {
+                    bool wasPresent = _em.HasComponent<SynergyBuff>(here.entity);
+                    EffectSpawner.SetSynergy(_em, here.entity, 1f + SynergyPerNeighbor * neighbors);
+                    if (!wasPresent && _synergyActivatedEntities.Add(here.entity))
+                    {
+                        _synergyActivations++;
+                    }
+                }
+            }
+
+            using var q = _em.CreateEntityQuery(ComponentType.ReadOnly<SynergyBuff>());
+            int currentCount = q.CalculateEntityCount();
+            if (currentCount > _synergyPeakCount) _synergyPeakCount = currentCount;
         }
 
         // Shared mesh/material for every health bar so adding more units does not
@@ -480,8 +614,23 @@ namespace Wassup.Bridge
             Debug.Log("[BattleBridge] VICTORY — all attack units defeated.");
         }
 
-        // Returns true if a defender was placed, false if tile is occupied or invalid.
+        // Random-pick legacy entry (Phase 0-3 behavior). Phase 4 prefers
+        // PlaceDefenderAs with an explicit type, but this path stays for tests
+        // and the no-selector fallback.
         public bool PlaceDefender(int tileX, int tileY)
+        {
+            if (defenderPool == null || defenderPool.Length == 0)
+            {
+                Debug.LogWarning("[BattleBridge] defenderPool is empty — cannot place defender.");
+                return false;
+            }
+            var unitData = defenderPool[UnityEngine.Random.Range(0, defenderPool.Length)];
+            return PlaceDefenderAs(tileX, tileY, unitData);
+        }
+
+        // Explicit-type placement (Phase 4). Used by DefenderSelector after the
+        // player chooses which picked defender they want on the tile.
+        public bool PlaceDefenderAs(int tileX, int tileY, DefenderUnitData unitData)
         {
             if (!_running) return false;
             if (map == null) return false;
@@ -491,16 +640,15 @@ namespace Wassup.Bridge
             var cell = new Vector2Int(tileX, tileY);
             if (_occupiedTiles.Contains(cell)) return false;
 
-            if (defenderPool == null || defenderPool.Length == 0)
-            {
-                Debug.LogWarning("[BattleBridge] defenderPool is empty — cannot place defender.");
-                return false;
-            }
-
-            var unitData = defenderPool[UnityEngine.Random.Range(0, defenderPool.Length)];
             if (unitData == null || unitData.visualMaterial == null)
             {
-                Debug.LogWarning("[BattleBridge] Selected defender has no visualMaterial.");
+                Debug.LogWarning("[BattleBridge] PlaceDefenderAs: invalid unitData or missing material.");
+                return false;
+            }
+            // Reject types that are not in the picked pool — keeps Phase 1 draft semantics.
+            if (defenderPool != null && defenderPool.Length > 0 && System.Array.IndexOf(defenderPool, unitData) < 0)
+            {
+                Debug.LogWarning($"[BattleBridge] PlaceDefenderAs rejected {unitData.displayName}: not in picked pool.");
                 return false;
             }
 
@@ -508,7 +656,11 @@ namespace Wassup.Bridge
             GameManager.Instance?.Logger?.RecordPlacement(unitData.displayName, cell, Time.time - _startTime);
 
             var entity = _em.CreateEntity();
-            _defenderByTile[cell] = entity;
+            // Phase 4: defenders can now take damage from enemy attackers, so
+            // they need an IncomingDamage buffer just like attack units have.
+            _em.AddBuffer<IncomingDamage>(entity);
+            _defenderByTile[cell] = (entity, unitData);
+            _em.AddComponentData(entity, new DefenderTile { cell = new int2(tileX, tileY) });
 #if UNITY_EDITOR
             _em.SetName(entity, $"Defender_{unitData.displayName}_{tileX}_{tileY}");
 #endif
@@ -544,6 +696,30 @@ namespace Wassup.Bridge
             }
 
             CreateHealthBar(entity, yOffset: 0.9f, baseScale: 0.35f);
+
+            // Fixed order: onPlace → synergy recompute → log (PHASE4 §2.5 P4-05).
+            // onPlace is a standalone snapshot effect and must fire before the
+            // new defender's SynergyBuff is computed, so it never affects itself.
+            int onPlaceAffected = ApplyOnPlaceEffect(unitData, cell, entity);
+            RecomputeSynergyFor(cell);
+
+            var logger = GameManager.Instance?.Logger;
+            if (logger != null)
+            {
+                if (unitData.onPlaceEffect != OnPlaceEffectType.None)
+                {
+                    logger.RecordOnPlace(new Logging.OnPlaceUsageLog
+                    {
+                        unit_type = unitData.displayName,
+                        effect = unitData.onPlaceEffect.ToString(),
+                        tile = cell,
+                        time = Time.time - _startTime,
+                        affected_count = onPlaceAffected,
+                    });
+                }
+                logger.SetSynergyStats(_synergyActivations, _synergyPeakCount);
+            }
+
             Debug.Log($"[BattleBridge] Placed {unitData.displayName} at ({tileX},{tileY}).");
             return true;
         }
@@ -567,6 +743,7 @@ namespace Wassup.Bridge
                 resultScreen.RedraftRequested -= OnRedraftRequested;
             }
             if (_goalEventQueue.IsCreated) _goalEventQueue.Dispose();
+            if (_defenderDeathQueue.IsCreated) _defenderDeathQueue.Dispose();
             if (_healthBarMaterial != null) Destroy(_healthBarMaterial);
         }
 
@@ -609,6 +786,19 @@ namespace Wassup.Bridge
             // Pre-attach an empty IncomingDamage buffer so the Combat system can append without needing
             // to create the buffer on first hit (simplifies ECB usage and keeps archetype stable).
             _em.AddBuffer<IncomingDamage>(entity);
+
+            // Phase 4: when the attack unit has a positive damage, give it an
+            // AttackState so AttackSystem's new attacker loop picks it up.
+            if (entry.unitType.attackDamage > 0f)
+            {
+                _em.AddComponentData(entity, new AttackState
+                {
+                    damage = entry.unitType.attackDamage,
+                    range = entry.unitType.attackRange,
+                    cooldownDuration = entry.unitType.attackCooldown,
+                    cooldownRemaining = 0f,
+                });
+            }
 
             _em.AddComponentData(entity, new PathFollowState
             {

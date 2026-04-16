@@ -40,6 +40,22 @@ namespace Wassup.Battle.Effects
                     multiplier = multiplier,
                 });
 
+        // Phase 4 adjacency synergy — no duration, no merge logic. RecomputeSynergyFor
+        // is the only writer and calls Set/Remove with an authoritative value each time.
+        public static void SetSynergy(EntityManager em, Entity entity, float damageMul)
+        {
+            if (em.HasComponent<SynergyBuff>(entity))
+                em.SetComponentData(entity, new SynergyBuff { damageMul = damageMul });
+            else
+                em.AddComponentData(entity, new SynergyBuff { damageMul = damageMul });
+        }
+
+        public static void RemoveSynergy(EntityManager em, Entity entity)
+        {
+            if (em.HasComponent<SynergyBuff>(entity))
+                em.RemoveComponent<SynergyBuff>(entity);
+        }
+
         private static void Apply<T>(EntityManager em, Entity entity,
             System.Func<T> create, System.Func<T, T> merge) where T : unmanaged, IComponentData
         {

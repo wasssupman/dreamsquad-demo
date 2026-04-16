@@ -1,5 +1,6 @@
 using Unity.Entities;
 using Unity.Mathematics;
+using Wassup.Data;
 
 namespace Wassup.Battle.Combat.Projectile
 {
@@ -15,5 +16,8 @@ namespace Wassup.Battle.Combat.Projectile
         public float hitThreshold;
         public float visualScale;
         public int assetIndex;
+        public OnHitEffectType onHitEffect;
+        public float splashRadius;
+        public float splashDamageMul;
     }
 }

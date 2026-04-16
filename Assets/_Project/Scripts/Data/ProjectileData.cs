@@ -22,10 +22,12 @@ namespace Wassup.Data
         public Material visualMaterial;
         public float visualScale = 0.3f;
 
-        // 아래 4개는 Phase 3에서 로드만 되고 사용하지 않는다. Phase 4에서 소비.
+        // Phase 3에서 enum 필드만 존재. Phase 4부터 Splash가 실 사용 (Poison/Fire/Slow는
+        // 여전히 미구현 자리표시).
         public OnHitEffectType onHitEffect = OnHitEffectType.None;
         public float onHitMagnitude;
         public float onHitDuration;
         public float splashRadius;
+        public float splashDamageMul = 0.5f;
     }
 }

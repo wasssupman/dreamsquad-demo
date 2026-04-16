@@ -15,6 +15,8 @@ MonoBehaviour:
   displayName: Basic
   health: 60
   moveSpeed: 2.5
-  attackPower: 10
+  attackDamage: 10
+  attackRange: 1.5
+  attackCooldown: 0.5
   visualMesh: {fileID: 0}
   visualMaterial: {fileID: 2100000, guid: fda8488d60e7f4b25a9846eb038050d9, type: 2}

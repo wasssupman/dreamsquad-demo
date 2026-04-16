@@ -18,7 +18,8 @@ MonoBehaviour:
   visualMesh: {fileID: 0}
   visualMaterial: {fileID: 0}
   visualScale: 0.5
-  onHitEffect: 0
+  onHitEffect: 3
   onHitMagnitude: 0
   onHitDuration: 0
-  splashRadius: 0
+  splashRadius: 1.2
+  splashDamageMul: 0.5

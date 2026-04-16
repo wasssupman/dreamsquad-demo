@@ -37,9 +37,16 @@ namespace Wassup.Battle.Combat
             var attackers = attackerQuery.ToEntityArray(Allocator.Temp);
             var attackerTransforms = attackerQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
 
+            // Phase 4: symmetric defender snapshot so the enemy→defender loop below
+            // can pick nearest defender in range without nested queries.
+            var defenderQuery = SystemAPI.QueryBuilder().WithAll<DefenderUnitTag, LocalTransform>().Build();
+            var defenders = defenderQuery.ToEntityArray(Allocator.Temp);
+            var defenderTransforms = defenderQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
+
             var ecb = new EntityCommandBuffer(Allocator.Temp);
             var damageBoostLookup = SystemAPI.GetComponentLookup<DamageBoost>(isReadOnly: true);
             var cooldownReductionLookup = SystemAPI.GetComponentLookup<CooldownReduction>(isReadOnly: true);
+            var synergyLookup = SystemAPI.GetComponentLookup<SynergyBuff>(isReadOnly: true);
             var projectileRefLookup = SystemAPI.GetComponentLookup<ProjectileRef>(isReadOnly: true);
 
             foreach (var (attack, transform, defenderEntity) in
@@ -74,15 +81,18 @@ namespace Wassup.Battle.Combat
                 if (bestTarget != Entity.Null && attack.ValueRO.cooldownRemaining <= 0f)
                 {
                     // Effects read-only: DamageBoost scales emitted damage, CooldownReduction
-                    // shortens the reset interval. The base AttackState fields stay unmodified
-                    // so Combat remains the sole owner of those values.
+                    // shortens the reset interval, SynergyBuff adds adjacency bonus. The base
+                    // AttackState fields stay unmodified so Combat remains the sole owner.
                     float damageMul = damageBoostLookup.HasComponent(defenderEntity)
                         ? damageBoostLookup[defenderEntity].multiplier
                         : 1f;
                     float cooldownMul = cooldownReductionLookup.HasComponent(defenderEntity)
                         ? cooldownReductionLookup[defenderEntity].multiplier
                         : 1f;
-                    float emittedDamage = attack.ValueRO.damage * damageMul;
+                    float synergyMul = synergyLookup.HasComponent(defenderEntity)
+                        ? synergyLookup[defenderEntity].damageMul
+                        : 1f;
+                    float emittedDamage = attack.ValueRO.damage * damageMul * synergyMul;
 
                     // ProjectileRef-bearing defenders stage a spawn request for the
                     // MonoBehaviour drain loop in BattleBridge. Melee / defaults without a
@@ -99,6 +109,9 @@ namespace Wassup.Battle.Combat
                             hitThreshold = projRef.hitThreshold,
                             visualScale = projRef.visualScale,
                             assetIndex = projRef.assetIndex,
+                            onHitEffect = projRef.onHitEffect,
+                            splashRadius = projRef.splashRadius,
+                            splashDamageMul = projRef.splashDamageMul,
                         });
                     }
                     else
@@ -111,10 +124,48 @@ namespace Wassup.Battle.Combat
                 }
             }
 
+            // Phase 4 — enemy→defender loop. Attack units with an AttackState
+            // fire directly (no projectile path, no boost/synergy scaling).
+            foreach (var (attack, transform, attackerEntity) in
+                     SystemAPI.Query<RefRW<AttackState>, RefRO<LocalTransform>>()
+                              .WithAll<AttackUnitTag>()
+                              .WithEntityAccess())
+            {
+                if (attack.ValueRO.cooldownRemaining > 0f)
+                {
+                    attack.ValueRW.cooldownRemaining = math.max(0f, attack.ValueRO.cooldownRemaining - dt);
+                }
+
+                float3 atkPos = transform.ValueRO.Position;
+                float range = attack.ValueRO.range;
+                float rangeSq = range * range;
+                float bestSq = float.MaxValue;
+                Entity bestTarget = Entity.Null;
+                for (int i = 0; i < defenders.Length; i++)
+                {
+                    float3 diff = defenderTransforms[i].Position - atkPos;
+                    float d2 = diff.x * diff.x + diff.z * diff.z;
+                    if (d2 <= rangeSq && d2 < bestSq)
+                    {
+                        bestSq = d2;
+                        bestTarget = defenders[i];
+                    }
+                }
+
+                if (bestTarget != Entity.Null && attack.ValueRO.cooldownRemaining <= 0f)
+                {
+                    ecb.AppendToBuffer(bestTarget,
+                        new IncomingDamage { amount = attack.ValueRO.damage });
+                    attack.ValueRW.cooldownRemaining = attack.ValueRO.cooldownDuration;
+                }
+            }
+
             ecb.Playback(state.EntityManager);
             ecb.Dispose();
             attackers.Dispose();
             attackerTransforms.Dispose();
+            defenders.Dispose();
+            defenderTransforms.Dispose();
         }
     }
 }

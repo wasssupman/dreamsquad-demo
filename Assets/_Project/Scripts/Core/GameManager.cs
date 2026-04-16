@@ -15,6 +15,7 @@ namespace Wassup.Core
         public BattleLogger Logger => logger;
         public DraftController DraftController => draftController;
         public bool IsAiming { get; set; }
+        public Wassup.Data.DefenderUnitData SelectedDefender { get; set; }
 
         private void Awake()
         {

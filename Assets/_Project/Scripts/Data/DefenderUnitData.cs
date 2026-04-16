@@ -17,5 +17,13 @@ namespace Wassup.Data
         // than appending IncomingDamage immediately. Leaving this null keeps the
         // Phase 0-2 direct-damage path for regression coverage.
         public ProjectileData projectile;
+
+        // Phase 4: fires once at placement moment. None means no on-place effect.
+        public OnPlaceEffectType onPlaceEffect;
+        public float onPlaceRange;
+        public float onPlaceMagnitude;
+        public float onPlaceDuration;
     }
+
+    public enum OnPlaceEffectType { None, SlowPulse, BoostNearbyDefenders }
 }

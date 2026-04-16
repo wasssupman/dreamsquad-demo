@@ -90,5 +90,81 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(10f, attackState.damage, 1e-5f, "AttackState.damage must remain unchanged (Combat-owned).");
             Assert.AreEqual(4f, attackState.cooldownDuration, 1e-5f, "AttackState.cooldownDuration must remain unchanged.");
         }
+
+        [Test]
+        public void Combat_Applies_SynergyBuff_Stacked_With_DamageBoost()
+        {
+            using var world = new World("EffectIntegrationTests_Synergy");
+            var em = world.EntityManager;
+            var simGroup = world.CreateSystemManaged<SimulationSystemGroup>();
+            simGroup.AddSystemToUpdateList(world.CreateSystem<AttackSystem>());
+
+            var defender = em.CreateEntity();
+            em.AddComponentData(defender, LocalTransform.FromPosition(new float3(0f, 0f, 0f)));
+            em.AddComponent<DefenderUnitTag>(defender);
+            em.AddComponentData(defender, new AttackState
+            {
+                damage = 10f,
+                range = 5f,
+                cooldownDuration = 4f,
+                cooldownRemaining = 0f,
+            });
+            em.AddComponentData(defender, new DamageBoost { remaining = 10f, multiplier = 2f });
+            em.AddComponentData(defender, new SynergyBuff { damageMul = 1.3f });
+
+            var attacker = em.CreateEntity();
+            em.AddComponentData(attacker, LocalTransform.FromPosition(new float3(1f, 0f, 0f)));
+            em.AddComponent<AttackUnitTag>(attacker);
+            em.AddBuffer<IncomingDamage>(attacker);
+
+            world.SetTime(new TimeData(world.Time.ElapsedTime + 0.016f, 0.016f));
+            simGroup.Update();
+
+            // Expected: 10 base × 2.0 boost × 1.3 synergy = 26.
+            var incoming = em.GetBuffer<IncomingDamage>(attacker);
+            Assert.AreEqual(1, incoming.Length);
+            Assert.AreEqual(26f, incoming[0].amount, 1e-4f,
+                "emittedDamage must multiply base × DamageBoost × SynergyBuff in that order");
+        }
+
+        [Test]
+        public void Combat_Attacker_With_AttackState_Damages_Defender_In_Range()
+        {
+            using var world = new World("EffectIntegrationTests_EnemyAttack");
+            var em = world.EntityManager;
+            var simGroup = world.CreateSystemManaged<SimulationSystemGroup>();
+            simGroup.AddSystemToUpdateList(world.CreateSystem<AttackSystem>());
+
+            // Attacker at origin, cooldown ready, 7 damage base, range 2.
+            var attacker = em.CreateEntity();
+            em.AddComponentData(attacker, LocalTransform.FromPosition(new float3(0f, 0f, 0f)));
+            em.AddComponent<AttackUnitTag>(attacker);
+            em.AddComponentData(attacker, new AttackState
+            {
+                damage = 7f,
+                range = 2f,
+                cooldownDuration = 1f,
+                cooldownRemaining = 0f,
+            });
+            em.AddBuffer<IncomingDamage>(attacker);
+
+            // Defender in range at (1, 0, 0). No AttackState → defender side of the
+            // loop is inactive; this test only verifies the attacker→defender path.
+            var defender = em.CreateEntity();
+            em.AddComponentData(defender, LocalTransform.FromPosition(new float3(1f, 0f, 0f)));
+            em.AddComponent<DefenderUnitTag>(defender);
+            em.AddBuffer<IncomingDamage>(defender);
+
+            world.SetTime(new TimeData(world.Time.ElapsedTime + 0.016f, 0.016f));
+            simGroup.Update();
+
+            var incoming = em.GetBuffer<IncomingDamage>(defender);
+            Assert.AreEqual(1, incoming.Length, "defender should take one attack from the enemy");
+            Assert.AreEqual(7f, incoming[0].amount, 1e-4f,
+                "enemy→defender damage is the raw attack.damage (no boost/synergy scaling)");
+            // Attacker cooldown should be reset to its base duration (no CDR on enemies).
+            var attackerState = em.GetComponentData<AttackState>(attacker);
+            Assert.AreEqual(1f, attackerState.cooldownRemaining, 1e-4f);
+        }
     }
 }
