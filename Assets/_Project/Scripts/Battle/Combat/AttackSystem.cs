@@ -3,6 +3,7 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
+using Wassup.Battle.Combat.Projectile;
 using Wassup.Battle.Effects;
 using Wassup.Battle.Movement;
 using Wassup.Battle.Units;
@@ -39,6 +40,7 @@ namespace Wassup.Battle.Combat
             var ecb = new EntityCommandBuffer(Allocator.Temp);
             var damageBoostLookup = SystemAPI.GetComponentLookup<DamageBoost>(isReadOnly: true);
             var cooldownReductionLookup = SystemAPI.GetComponentLookup<CooldownReduction>(isReadOnly: true);
+            var projectileRefLookup = SystemAPI.GetComponentLookup<ProjectileRef>(isReadOnly: true);
 
             foreach (var (attack, transform, defenderEntity) in
                      SystemAPI.Query<RefRW<AttackState>, RefRO<LocalTransform>>()
@@ -80,9 +82,31 @@ namespace Wassup.Battle.Combat
                     float cooldownMul = cooldownReductionLookup.HasComponent(defenderEntity)
                         ? cooldownReductionLookup[defenderEntity].multiplier
                         : 1f;
+                    float emittedDamage = attack.ValueRO.damage * damageMul;
 
-                    ecb.AppendToBuffer(bestTarget,
-                        new IncomingDamage { amount = attack.ValueRO.damage * damageMul });
+                    // ProjectileRef-bearing defenders stage a spawn request for the
+                    // MonoBehaviour drain loop in BattleBridge. Melee / defaults without a
+                    // projectile SO keep the Phase 0-2 direct-damage path for regression.
+                    if (projectileRefLookup.HasComponent(defenderEntity))
+                    {
+                        var projRef = projectileRefLookup[defenderEntity];
+                        ecb.AddComponent(defenderEntity, new ProjectileSpawnRequest
+                        {
+                            target = bestTarget,
+                            origin = defPos,
+                            damage = emittedDamage,
+                            speed = projRef.speed,
+                            hitThreshold = projRef.hitThreshold,
+                            visualScale = projRef.visualScale,
+                            assetIndex = projRef.assetIndex,
+                        });
+                    }
+                    else
+                    {
+                        ecb.AppendToBuffer(bestTarget,
+                            new IncomingDamage { amount = emittedDamage });
+                    }
+
                     attack.ValueRW.cooldownRemaining = attack.ValueRO.cooldownDuration * cooldownMul;
                 }
             }

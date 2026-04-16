@@ -12,5 +12,10 @@ namespace Wassup.Data
         public float attackCooldown = 1f; // seconds between attacks
         public Mesh visualMesh;
         public Material visualMaterial;
+
+        // Phase 3: when set, the AttackSystem queues a ProjectileSpawnRequest rather
+        // than appending IncomingDamage immediately. Leaving this null keeps the
+        // Phase 0-2 direct-damage path for regression coverage.
+        public ProjectileData projectile;
     }
 }

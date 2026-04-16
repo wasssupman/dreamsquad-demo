@@ -193,65 +193,65 @@ public struct ProjectileSpawnRequest : IComponentData {
 ### 3.1 기능 이진 체크 (작업 순서)
 
 **[P3-01] ProjectileData SO + DefenderUnitData 확장**
-- [ ] `Data/ProjectileData.cs` SO + `OnHitEffectType` enum
-- [ ] `DefenderUnitData.projectile` 필드 추가
-- [ ] 기본 투사체 SO 1~3개 생성 (`Assets/_Project/Data/Projectiles/`)
-- [ ] 기존 10종 방어 유닛 SO에 projectile 레퍼런스 할당(또는 의도적 null 유지로 폴백 검증용 1~2종)
+- [x] `Data/ProjectileData.cs` SO + `OnHitEffectType` enum
+- [x] `DefenderUnitData.projectile` 필드 추가
+- [x] 기본 투사체 SO 1~3개 생성 (`Assets/_Project/Data/Projectiles/`)
+- [x] 기존 10종 방어 유닛 SO에 projectile 레퍼런스 할당(또는 의도적 null 유지로 폴백 검증용 1~2종)
 - 선행: Phase 2 완료
 - 완료 확인: Inspector에서 DefenderUnitData → projectile 필드에 SO 연결됨
 
 **[P3-02] 투사체 ECS Component + Move/Hit System**
-- [ ] `Battle/Combat/Projectile/ProjectileTag.cs`, `ProjectileState.cs`, `ProjectileRef.cs`, `ProjectileSpawnRequest.cs`
-- [ ] `Battle/Combat/Projectile/ProjectileMoveSystem.cs` (ISystem, BurstCompile, ComponentLookup으로 target 유효성)
-- [ ] `Battle/Combat/Projectile/ProjectileHitSystem.cs` (ISystem, BurstCompile, UpdateAfter ProjectileMove, IncomingDamage append + ECB.DestroyEntity)
+- [x] `Battle/Combat/Projectile/ProjectileTag.cs`, `ProjectileState.cs`, `ProjectileRef.cs`, `ProjectileSpawnRequest.cs`
+- [x] `Battle/Combat/Projectile/ProjectileMoveSystem.cs` (ISystem, BurstCompile, ComponentLookup으로 target 유효성)
+- [x] `Battle/Combat/Projectile/ProjectileHitSystem.cs` (ISystem, BurstCompile, UpdateAfter ProjectileMove, IncomingDamage append + ECB.DestroyEntity)
 - 선행: P3-01
 - 완료 확인: EditMode 테스트 — 투사체 엔티티 수동 생성 → tick → 이동 및 도달 시 IncomingDamage 적용 + 투사체 파괴 확인
 
 **[P3-03] AttackSystem 투사체 분기 (폴백 유지)**
-- [ ] `HasComponent<ProjectileRef>(defenderEntity)` 체크로 분기
-- [ ] 투사체 경로: `ecb.AddComponent(defenderEntity, new ProjectileSpawnRequest { ... })` + 기존 쿨다운 리셋
-- [ ] 폴백 경로: 기존 IncomingDamage append 그대로 (Phase 2 회귀 테스트 대상)
-- [ ] DamageBoost/CooldownReduction 읽기는 기존 경로 유지
+- [x] `HasComponent<ProjectileRef>(defenderEntity)` 체크로 분기
+- [x] 투사체 경로: `ecb.AddComponent(defenderEntity, new ProjectileSpawnRequest { ... })` + 기존 쿨다운 리셋
+- [x] 폴백 경로: 기존 IncomingDamage append 그대로 (Phase 2 회귀 테스트 대상)
+- [x] DamageBoost/CooldownReduction 읽기는 기존 경로 유지
 - 선행: P3-02
 - 완료 확인: 기존 EffectIntegrationTests.Combat_Applies_... 통과 + 투사체 SO 부여된 방어 유닛에서 ProjectileSpawnRequest 컴포넌트 부여됨(MCP execute_code로 검증)
 
 **[P3-04] BattleBridge 투사체 생성/렌더 연동**
-- [ ] `_projectileRenderCache` (Dictionary<ProjectileData, RenderMeshArray>) + `_projectileAssetByIndex` (ProjectileData[]) 캐시
-- [ ] PlaceDefender에서 defenderUnit.projectile이 있으면 ProjectileRef 컴포넌트 부여 (projectileAssetIndex 발급)
-- [ ] `DrainProjectileSpawnRequests()`: Update에서 ProjectileSpawnRequest 쿼리로 드레인 → ECS CreateEntity(ProjectileTag + ProjectileState + LocalTransform + RenderMeshUtility.AddComponents) → ProjectileSpawnRequest 제거
-- [ ] TeardownCurrentBattle에 ProjectileTag 엔티티 파괴 추가
+- [x] `_projectileRenderCache` (Dictionary<ProjectileData, RenderMeshArray>) + `_projectileAssetByIndex` (ProjectileData[]) 캐시
+- [x] PlaceDefender에서 defenderUnit.projectile이 있으면 ProjectileRef 컴포넌트 부여 (projectileAssetIndex 발급)
+- [x] `DrainProjectileSpawnRequests()`: Update에서 ProjectileSpawnRequest 쿼리로 드레인 → ECS CreateEntity(ProjectileTag + ProjectileState + LocalTransform + RenderMeshUtility.AddComponents) → ProjectileSpawnRequest 제거
+- [x] TeardownCurrentBattle에 ProjectileTag 엔티티 파괴 추가
 - 선행: P3-03
 - 완료 확인: Play에서 방어 유닛이 작은 구체/큐브를 발사, 타깃 향해 이동, 도달 시 소멸, Restart 후 잔여 0
 
 **[P3-05] 체력바**
-- [ ] `Battle/Units/HealthBar/HealthBarTag.cs`, `HealthBarState.cs`, `HealthBarSystem.cs`
-- [ ] 공유 쿼드 mesh + 공유 녹색 material (BattleBridge 캐시)
-- [ ] BattleBridge.SpawnUnit / PlaceDefender 끝에서 체력바 엔티티 생성 (owner 필드에 방금 만든 유닛 entity 저장)
-- [ ] HealthBarSystem이 owner의 Health/LocalTransform 읽기 → scale/position 갱신. owner 소실 시 ECB 파괴.
-- [ ] TeardownCurrentBattle에 HealthBarTag 파괴 추가
+- [x] `Battle/Units/HealthBar/HealthBarTag.cs`, `HealthBarState.cs`, `HealthBarSystem.cs`
+- [x] 공유 쿼드 mesh + 공유 녹색 material (BattleBridge 캐시)
+- [x] BattleBridge.SpawnUnit / PlaceDefender 끝에서 체력바 엔티티 생성 (owner 필드에 방금 만든 유닛 entity 저장)
+- [x] HealthBarSystem이 owner의 Health/LocalTransform 읽기 → scale/position 갱신. owner 소실 시 ECB 파괴.
+- [x] TeardownCurrentBattle에 HealthBarTag 파괴 추가
 - 선행: P3-01
 - 완료 확인: Play에서 모든 유닛 머리 위에 녹색 바, 피격 시 줄어듦, 유닛 사망 시 사라짐
 
 **[P3-06] 피격 피드백 (스케일 펀치)**
-- [ ] `Battle/Units/HitFlashTag.cs` + `HitFlashSystem.cs`
-- [ ] ProjectileHitSystem이 타깃에 HitFlashTag 부여(remaining=0.15f, originalScale=현재 scale)
-- [ ] HitFlashSystem이 감쇄하며 scale 복원
+- [x] `Battle/Units/HitFlashTag.cs` + `HitFlashSystem.cs`
+- [x] ProjectileHitSystem이 타깃에 HitFlashTag 부여(remaining=0.15f, originalScale=현재 scale)
+- [x] HitFlashSystem이 감쇄하며 scale 복원
 - 선행: P3-03
 - 완료 확인: 적이 맞을 때 순간 1.2배 크기로 확대 후 복원
 
 **[P3-07] EditMode 테스트 확장 + 마이그레이션**
-- [ ] `ProjectileMoveSystemTests` (최소 2건): 이동 진행·target 소실 시 투사체 파괴
-- [ ] `ProjectileHitSystemTests` (최소 2건): 도달 시 IncomingDamage append + 투사체 파괴, 거리 밖에서는 무시
-- [ ] 기존 `EffectIntegrationTests`의 Combat 테스트가 **폴백 경로**(ProjectileRef 없음)를 명시적으로 사용하도록 코멘트/assert 강화 (변경 최소)
-- [ ] HealthBarSystem은 선택 — 테스트가 자연스럽지 않으면 스킵 허용
-- [ ] 기존 19개 회귀 없음, **목표: 19 + 신규 4+ = 23/23 (또는 그 이상)**
+- [x] `ProjectileMoveSystemTests` (최소 2건): 이동 진행·target 소실 시 투사체 파괴
+- [x] `ProjectileHitSystemTests` (최소 2건): 도달 시 IncomingDamage append + 투사체 파괴, 거리 밖에서는 무시
+- [x] 기존 `EffectIntegrationTests`의 Combat 테스트가 **폴백 경로**(ProjectileRef 없음)를 명시적으로 사용 — 수정 없이 통과
+- [x] HealthBarSystem/HitFlashSystem 테스트는 스킵(플레이 검증으로 충분)
+- [x] 기존 19개 회귀 없음, **23/23 pass**
 - 선행: P3-02
 - 완료 확인: run_tests 전부 pass
 
 **[P3-08] Phase 0~2 회귀 체크**
-- [ ] 드래프트 → 전투(투사체 비주얼) → 스킬 사용 → 결과 → Restart/Redraft 정상
-- [ ] 로그 파일 기존 필드 그대로 적재 (Phase 3은 로그 스키마 변경 없음)
-- [ ] ProjectileData null인 방어 유닛은 즉시 데미지 폴백 동작
+- [x] 드래프트 → 전투(투사체 비주얼) → 스킬 사용 → 결과 → Restart/Redraft 정상 (P3-04/05/06 플레이 검증)
+- [x] 로그 파일 기존 필드 그대로 적재 (Phase 3은 로그 스키마 변경 없음)
+- [x] ProjectileData null인 방어 유닛(Guardian/Bruiser/Bastion)은 즉시 데미지 폴백 동작
 - 선행: P3-07
 - 완료 확인: 한 판 수동 플레이 완주
 

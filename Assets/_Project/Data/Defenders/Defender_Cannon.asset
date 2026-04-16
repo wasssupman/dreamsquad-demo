@@ -19,3 +19,4 @@ MonoBehaviour:
   attackCooldown: 2.5
   visualMesh: {fileID: 0}
   visualMaterial: {fileID: 2100000, guid: cb64122add98548e09b4225537464cf9, type: 2}
+  projectile: {fileID: 11400000, guid: e222cc6b62b6d4ae99fbd71912742f2c, type: 2}

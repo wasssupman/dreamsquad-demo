@@ -13,8 +13,10 @@ MonoBehaviour:
   m_Name: Defender_Archer
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DefenderUnitData
   displayName: Archer
+  health: 50
   attackRange: 4
   attackDamage: 15
   attackCooldown: 1.5
   visualMesh: {fileID: 0}
   visualMaterial: {fileID: 2100000, guid: 8b475daf22c6b455cae26332bd71a8bd, type: 2}
+  projectile: {fileID: 11400000, guid: 9ba8609078272458283efd21cf035040, type: 2}

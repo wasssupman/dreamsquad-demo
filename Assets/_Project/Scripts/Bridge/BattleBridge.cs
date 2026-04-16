@@ -6,9 +6,11 @@ using Unity.Rendering;
 using Unity.Transforms;
 using UnityEngine;
 using Wassup.Battle.Combat;
+using Wassup.Battle.Combat.Projectile;
 using Wassup.Battle.Effects;
 using Wassup.Battle.Movement;
 using Wassup.Battle.Units;
+using Wassup.Battle.Units.HealthBar;
 using Wassup.Core;
 using Wassup.Data;
 using Wassup.UI;
@@ -38,6 +40,14 @@ namespace Wassup.Bridge
         private readonly Dictionary<DefenderUnitData, RenderMeshArray> _defenderRenderCache = new();
         private readonly HashSet<Vector2Int> _occupiedTiles = new();
         private readonly Dictionary<Vector2Int, Entity> _defenderByTile = new();
+        private readonly List<RenderMeshArray> _projectileRenderByIndex = new();
+        private readonly Dictionary<(ProjectileData data, Material mat), int> _projectileRenderIndex = new();
+        private EntityQuery _projectileSpawnRequestQuery;
+        private bool _projectileSpawnRequestQueryCreated;
+        private EntityQuery _projectileQuery;
+        private bool _projectileQueryCreated;
+        private RenderMeshArray _healthBarRenderArray;
+        private Material _healthBarMaterial;
         private float _startTime;
         private bool _running;
         private bool _resultShown;
@@ -114,6 +124,14 @@ namespace Wassup.Bridge
             _em.DestroyEntity(defenders);
             defenders.Dispose();
 
+            var projectiles = _em.CreateEntityQuery(ComponentType.ReadOnly<ProjectileTag>());
+            _em.DestroyEntity(projectiles);
+            projectiles.Dispose();
+
+            var healthBars = _em.CreateEntityQuery(ComponentType.ReadOnly<HealthBarTag>());
+            _em.DestroyEntity(healthBars);
+            healthBars.Dispose();
+
             var singletons = _em.CreateEntityQuery(ComponentType.ReadOnly<GoalReachedEventsSingleton>());
             _em.DestroyEntity(singletons);
             singletons.Dispose();
@@ -153,6 +171,18 @@ namespace Wassup.Bridge
             {
                 _aliveAttackersQuery = _em.CreateEntityQuery(ComponentType.ReadOnly<AttackUnitTag>());
                 _aliveAttackersQueryCreated = true;
+            }
+
+            if (!_projectileSpawnRequestQueryCreated)
+            {
+                _projectileSpawnRequestQuery = _em.CreateEntityQuery(ComponentType.ReadOnly<ProjectileSpawnRequest>());
+                _projectileSpawnRequestQueryCreated = true;
+            }
+
+            if (!_projectileQueryCreated)
+            {
+                _projectileQuery = _em.CreateEntityQuery(ComponentType.ReadOnly<ProjectileTag>());
+                _projectileQueryCreated = true;
             }
 
             // Create the shared queue and inject the singleton so ECS systems can enqueue events.
@@ -305,8 +335,115 @@ namespace Wassup.Bridge
                 }
             }
 
+            DrainProjectileSpawnRequests();
             DrainGoalEvents();
             CheckVictory();
+        }
+
+        // Converts every staged ProjectileSpawnRequest into a live projectile entity.
+        // Done here (MonoBehaviour) rather than inside AttackSystem because creating
+        // RenderMesh components requires managed RenderMeshArray references that are
+        // not accessible from a Burst-compiled ISystem.
+        private void DrainProjectileSpawnRequests()
+        {
+            if (!_projectileSpawnRequestQueryCreated) return;
+            if (_projectileSpawnRequestQuery.IsEmpty) return;
+
+            var requestEntities = _projectileSpawnRequestQuery.ToEntityArray(Allocator.Temp);
+            var requestData = _projectileSpawnRequestQuery.ToComponentDataArray<ProjectileSpawnRequest>(Allocator.Temp);
+            for (int i = 0; i < requestEntities.Length; i++)
+            {
+                var req = requestData[i];
+                SpawnProjectile(req);
+                _em.RemoveComponent<ProjectileSpawnRequest>(requestEntities[i]);
+            }
+            requestEntities.Dispose();
+            requestData.Dispose();
+        }
+
+        private void SpawnProjectile(ProjectileSpawnRequest req)
+        {
+            if (req.assetIndex < 0 || req.assetIndex >= _projectileRenderByIndex.Count)
+            {
+                Debug.LogWarning($"[BattleBridge] ProjectileSpawnRequest assetIndex {req.assetIndex} out of range; dropping.");
+                return;
+            }
+
+            var entity = _em.CreateEntity();
+#if UNITY_EDITOR
+            _em.SetName(entity, $"Projectile_{req.assetIndex}");
+#endif
+            var spawnPos = new float3(req.origin.x, spawnHeight, req.origin.z);
+            _em.AddComponentData(entity, LocalTransform.FromPositionRotationScale(spawnPos, quaternion.identity, req.visualScale));
+            _em.AddComponent<ProjectileTag>(entity);
+            _em.AddComponentData(entity, new ProjectileState
+            {
+                target = req.target,
+                speed = req.speed,
+                damage = req.damage,
+                hitThreshold = req.hitThreshold,
+            });
+
+            var desc = new RenderMeshDescription(
+                shadowCastingMode: UnityEngine.Rendering.ShadowCastingMode.Off,
+                receiveShadows: false);
+            RenderMeshUtility.AddComponents(entity, _em, desc, _projectileRenderByIndex[req.assetIndex],
+                MaterialMeshInfo.FromRenderMeshArrayIndices(0, 0));
+        }
+
+        // Shared mesh/material for every health bar so adding more units does not
+        // allocate per-entity assets. Lazily created and disposed on scene teardown.
+        private RenderMeshArray GetOrCreateHealthBarRenderArray()
+        {
+            if (_healthBarRenderArray.MaterialReferences != null &&
+                _healthBarRenderArray.MaterialReferences.Length > 0)
+                return _healthBarRenderArray;
+
+            var shader = Shader.Find("Universal Render Pipeline/Unlit");
+            _healthBarMaterial = new Material(shader) { color = new Color(0.2f, 0.95f, 0.2f, 1f) };
+            _healthBarMaterial.SetColor("_BaseColor", new Color(0.2f, 0.95f, 0.2f, 1f));
+            var mesh = Resources.GetBuiltinResource<Mesh>("Cube.fbx");
+            _healthBarRenderArray = new RenderMeshArray(new[] { _healthBarMaterial }, new[] { mesh });
+            return _healthBarRenderArray;
+        }
+
+        private void CreateHealthBar(Entity owner, float yOffset, float baseScale)
+        {
+            var arr = GetOrCreateHealthBarRenderArray();
+            var entity = _em.CreateEntity();
+#if UNITY_EDITOR
+            _em.SetName(entity, "HealthBar");
+#endif
+            _em.AddComponent<HealthBarTag>(entity);
+            _em.AddComponentData(entity, new HealthBarState
+            {
+                owner = owner,
+                yOffset = yOffset,
+                baseScale = baseScale,
+            });
+            _em.AddComponentData(entity, LocalTransform.FromPositionRotationScale(
+                new float3(0f, 0f, 0f), quaternion.identity, baseScale));
+            var desc = new RenderMeshDescription(
+                shadowCastingMode: UnityEngine.Rendering.ShadowCastingMode.Off,
+                receiveShadows: false);
+            RenderMeshUtility.AddComponents(entity, _em, desc, arr,
+                MaterialMeshInfo.FromRenderMeshArrayIndices(0, 0));
+        }
+
+        private int GetOrCreateProjectileAssetIndex(ProjectileData projectile, Material fallbackMaterial)
+        {
+            var material = projectile.visualMaterial != null ? projectile.visualMaterial : fallbackMaterial;
+            var key = (projectile, material);
+            if (_projectileRenderIndex.TryGetValue(key, out var idx)) return idx;
+
+            var mesh = projectile.visualMesh != null
+                ? projectile.visualMesh
+                : Resources.GetBuiltinResource<Mesh>("Sphere.fbx");
+            var arr = new RenderMeshArray(new[] { material }, new[] { mesh });
+            idx = _projectileRenderByIndex.Count;
+            _projectileRenderByIndex.Add(arr);
+            _projectileRenderIndex[key] = idx;
+            return idx;
         }
 
         private void DrainGoalEvents()
@@ -394,6 +531,19 @@ namespace Wassup.Bridge
             RenderMeshUtility.AddComponents(entity, _em, desc, renderArray,
                 MaterialMeshInfo.FromRenderMeshArrayIndices(0, 0));
 
+            if (unitData.projectile != null)
+            {
+                var assetIndex = GetOrCreateProjectileAssetIndex(unitData.projectile, unitData.visualMaterial);
+                _em.AddComponentData(entity, new ProjectileRef
+                {
+                    assetIndex = assetIndex,
+                    speed = unitData.projectile.speed,
+                    hitThreshold = unitData.projectile.hitThreshold,
+                    visualScale = unitData.projectile.visualScale,
+                });
+            }
+
+            CreateHealthBar(entity, yOffset: 0.9f, baseScale: 0.35f);
             Debug.Log($"[BattleBridge] Placed {unitData.displayName} at ({tileX},{tileY}).");
             return true;
         }
@@ -417,6 +567,7 @@ namespace Wassup.Bridge
                 resultScreen.RedraftRequested -= OnRedraftRequested;
             }
             if (_goalEventQueue.IsCreated) _goalEventQueue.Dispose();
+            if (_healthBarMaterial != null) Destroy(_healthBarMaterial);
         }
 
         private void SpawnUnit(SpawnEntry entry)
@@ -478,6 +629,8 @@ namespace Wassup.Bridge
             RenderMeshUtility.AddComponents(
                 entity, _em, desc, renderArray,
                 MaterialMeshInfo.FromRenderMeshArrayIndices(0, 0));
+
+            CreateHealthBar(entity, yOffset: 0.9f, baseScale: 0.35f);
         }
 
         // Caches one RenderMeshArray per AttackUnitData asset so repeated spawns of the
