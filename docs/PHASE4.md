@@ -24,6 +24,7 @@ Phase 3까지 배치는 "buildable 타일이면 아무 데나"였다. 배치 위
 - `DefenderUnitData.onPlaceEffect` 배치 시 1회 발동.
 - 기존 10종 중 3~4종에 onPlace + 시너지 기반 부여(신규 유닛 추가 없음).
 - 투사체 Splash: `OnHitEffectType.Splash` 실 구현.
+- **적→방어 유닛 공격 메커니즘** (Phase 4 확정 — 방어 유닛 사망 경로 실작동화). 적은 이동하면서 사거리 내 방어 유닛에 근접 즉시 데미지.
 - 로깅: synergy/onPlace/splash 기록.
 
 **안 하는 것:**
@@ -31,6 +32,7 @@ Phase 3까지 배치는 "buildable 타일이면 아무 데나"였다. 배치 위
 - 대각선 시너지 / 범위 기반 시너지 (4방향만).
 - 3분 타이머 / 코스트 / 봇 / H1~H3 전면 측정 (Phase 5).
 - 새 맥락 폴더 추가.
+- **적 공격에 투사체 적용** — 적 공격은 직격(즉시 IncomingDamage)만. 적 투사체는 Phase 5 이후 검토.
 
 ---
 
@@ -43,9 +45,17 @@ Phase 3까지 배치는 "buildable 타일이면 아무 데나"였다. 배치 위
     → RecomputeSynergyFor(cell): 자신 + 4인접 SynergyBuff 갱신/제거
     → Logger.RecordOnPlace / Logger.SetSynergyStats
     ↓
-[공격 시점]
+[공격 시점 — 방어→적]
   AttackSystem: emittedDamage = attack.damage * damageMul * synergyMul
     (damageMul = DamageBoost, synergyMul = SynergyBuff, 둘 다 HasComponent ? lookup.mul : 1f)
+    ↓ (투사체 경로 or 즉시 데미지)
+[공격 시점 — 적→방어]
+  AttackSystem의 공격자 루프: AttackUnitTag 중 AttackState 보유 엔티티가
+  사거리 내 DefenderUnitTag 엔티티를 찾아 IncomingDamage 즉시 append.
+  (방어 유닛 측 DamageBoost는 적용 없음 — Phase 4 단순화. 투사체 없음.)
+    ↓
+[피격 시점]
+  DamageApplicationSystem이 IncomingDamage 소비 → Health 감소 → 0 이하면 DeadTag
     ↓
 [사망 시점]
   UnitLifecycleSystem이 DeadTag 보유 defender를 DestroyEntity 직전에
@@ -172,7 +182,36 @@ public struct ProjectileSpawnRequest : IComponentData {
   - HealthBar 등 다른 엔티티는 AttackUnitTag 필터로 자동 제외.
 - CannonBall에 Splash 할당 (radius=1.2, damageMul=0.5 — Phase 4 기본).
 
-### 2.4 DefenderTile + DefenderDeathEvent
+### 2.4 적→방어 공격 (enemy→defender attack)
+
+**AttackUnitData 확장:**
+```csharp
+public float attackDamage;     // 0 이하면 이 적은 공격 안 함(통과 적)
+public float attackRange;      // 1.0 권장 (근접만)
+public float attackCooldown;   // 공격 간격 초
+```
+
+- attackDamage=0이면 기존 "순수 통과" 적 동작 유지(Phase 0~3 호환). Swift 같은 빠른 적은 attackDamage=0 유지 가능.
+- Tanker/Basic 등 체력 높은 적에 attackDamage>0 부여 권장(자율 결정).
+
+**Defender 엔티티 피격 준비:**
+- BattleBridge.PlaceDefender에서 defender 엔티티 생성 시 `_em.AddBuffer<IncomingDamage>(entity)` 추가.
+- Health Component는 이미 Phase 0부터 부여 중.
+- DamageApplicationSystem은 기존대로 IncomingDamage 소비 → Health 감소 → DeadTag 부여. 방어 엔티티도 이 경로로 진입.
+
+**AttackUnitTag용 AttackState 생성:**
+- BattleBridge.SpawnUnit에서 `entry.unitType.attackDamage > 0` 이면 `AttackState { damage, range, cooldownDuration, cooldownRemaining=0 }` 부여. 0이면 부여 안 함(기존 행동 유지).
+
+**AttackSystem 공격자 루프 추가:**
+- 기존 루프: `WithAll<DefenderUnitTag, AttackState, LocalTransform>()` → 사거리 내 AttackUnitTag 타깃.
+- 신규 루프: `WithAll<AttackUnitTag, AttackState, LocalTransform>()` → 사거리 내 DefenderUnitTag 타깃.
+- 두 루프의 **데미지 스케일링 규칙은 다름**:
+  - 방어→적: `emittedDamage = attack.damage * damageBoost * synergy` (기존).
+  - 적→방어: `emittedDamage = attack.damage` (boost/synergy 모두 미적용 — 적 측 효과 없음).
+- 신규 루프는 투사체 분기 **없음** — 무조건 IncomingDamage 즉시 append.
+- attacker 쪽도 DefenderUnit snapshot이 필요하므로 AttackSystem 시작부에서 `defenderQuery.ToEntityArray + ToComponentDataArray<LocalTransform>` 사전 수집. 방어→적 루프가 이미 하는 attacker snapshot 패턴을 대칭으로.
+
+### 2.5 DefenderTile + DefenderDeathEvent
 
 **DefenderTile Component** (Units 맥락):
 ```csharp
@@ -203,7 +242,7 @@ public struct DefenderDeathEventsSingleton : IComponentData {
 - 추가: `DeadTag + DefenderUnitTag + DefenderTile` 쿼리 → `DefenderDeathEvent { cell = DefenderTile.cell }` enqueue **후** DestroyEntity. enqueue는 반드시 DestroyEntity 직전.
 - BattleBridge.Update: `DrainDefenderDeathEvents()`가 큐에서 이벤트 dequeue → `_defenderByTile.Remove(cell)` → **`_occupiedTiles.Remove(cell)`** (타일 재배치 가능하게 해제) → `RecomputeSynergyFor(cell)`.
 
-### 2.5 로깅 확장 (BattleLogSchema v4)
+### 2.6 로깅 확장 (BattleLogSchema v4)
 
 ```csharp
 [Serializable]
@@ -233,12 +272,14 @@ public List<OnPlaceUsageLog> on_place_usages = new();
 - `peakCount` 집계: RecomputeSynergyFor **직후 한 번**만 `_em.CreateEntityQuery(ComponentType.ReadOnly<SynergyBuff>()).CalculateEntityCount()`로 현재 보유 수 측정 → `peakCount = Math.Max(peakCount, count)` 갱신. 매 틱 측정 아님.
 - Splash 로깅은 Phase 4에서 별도 필드 추가하지 않음(최소 스키마 원칙).
 
-### 2.6 기존 코드 영향 요약
+### 2.7 기존 코드 영향 요약
 
 | 파일 | 변경 |
 |---|---|
 | `DefenderUnitData.cs` | onPlaceEffect/onPlaceRange/onPlaceMagnitude/onPlaceDuration 추가 |
+| `AttackUnitData.cs` | attackDamage/attackRange/attackCooldown 추가 (기본 0 = 비공격) |
 | `ProjectileData.cs` | `splashDamageMul` 필드 신규 추가(기존 onHitEffect/splashRadius는 Phase 3부터 있음) |
+| `Battle/Effects/EffectSpawner.cs` | `SetSynergy(em, entity, mul)` + `RemoveSynergy(em, entity)` 신규 — Effects Component 쓰기 창구 일관성 유지 |
 | `Battle/Effects/SynergyBuff.cs` (신규) | Effects 맥락 |
 | `Battle/Units/DefenderTile.cs` (신규) | Units 맥락 |
 | `Battle/Units/DefenderDeathEvent.cs` (신규) | Units 맥락 |
@@ -247,9 +288,9 @@ public List<OnPlaceUsageLog> on_place_usages = new();
 | `Battle/Combat/Projectile/ProjectileRef.cs` | onHit 필드 3개 추가 |
 | `Battle/Combat/Projectile/ProjectileSpawnRequest.cs` | onHit 필드 3개 추가 |
 | `Battle/Combat/Projectile/ProjectileHitSystem.cs` | Splash AOE 분기(`WithAll<AttackUnitTag>` 필터, 직격 제외) |
-| `Battle/Combat/AttackSystem.cs` | SynergyBuff 읽기 → `emittedDamage *= synergyMul` + onHit 필드를 SpawnRequest에 전달 |
-| `Battle/Units/UnitLifecycleSystem.cs` | DeadTag+DefenderUnitTag 처리 경로 추가, DestroyEntity 직전 enqueue |
-| `Bridge/BattleBridge.cs` | `_defenderByTile` 튜플화, PlaceDefender에 DefenderTile 부여·onPlace 발동·시너지 재계산, Update에 DrainDefenderDeathEvents, Start/Teardown/OnDestroy에 singleton 라이프사이클, SpawnProjectile이 req의 onHit을 ProjectileState에 복사 |
+| `Battle/Combat/AttackSystem.cs` | (방어→적) SynergyBuff 읽기 + onHit 전달. (적→방어) 신규 루프: AttackUnitTag+AttackState로 DefenderUnitTag 사거리 내 타깃에 IncomingDamage 즉시 append (투사체/효과 스케일 없음) |
+| `Battle/Units/UnitLifecycleSystem.cs` | DeadTag+DefenderUnitTag+DefenderTile 경로 추가, DestroyEntity 직전 enqueue. 기존 일반 DeadTag 루프는 `.WithNone<DefenderTile>()` 필터로 중복 파괴 방지 |
+| `Bridge/BattleBridge.cs` | `_defenderByTile` 튜플화(기존 호출처: PlaceDefender set/CastSkillOnDefender/TeardownCurrentBattle/CheckVictory 등 5개소), PlaceDefender에 IncomingDamage buffer + DefenderTile 부여·onPlace 발동·시너지 재계산(순서: onPlace → RecomputeSynergyFor → Log), SpawnUnit에서 attackDamage>0이면 AttackState 부여, Update에 DrainDefenderDeathEvents(순서: SpawnRequest → DefenderDeath → GoalReached), Start/Teardown/OnDestroy에 singleton 라이프사이클, SpawnProjectile이 req의 onHit을 ProjectileState에 복사 |
 | `Logging/BattleLogSchema.cs` | SynergyRecord/OnPlaceUsageLog + BattleLogEntry 필드 |
 | `Logging/BattleLogger.cs` | RecordOnPlace, SetSynergyStats |
 | `Core/DraftController.cs` 등 | 변경 없음 |
@@ -262,8 +303,9 @@ public List<OnPlaceUsageLog> on_place_usages = new();
 
 ### 3.1 기능 이진 체크 (작업 순서)
 
-**[P4-01] 데이터 스키마 확장 (DefenderUnitData + ProjectileData + ProjectileState/Ref/SpawnRequest + enums)**
+**[P4-01] 데이터 스키마 확장 (DefenderUnitData + AttackUnitData + ProjectileData + ProjectileState/Ref/SpawnRequest + enums)**
 - [ ] `DefenderUnitData`에 onPlace 4필드 + `OnPlaceEffectType` enum
+- [ ] `AttackUnitData`에 attackDamage/attackRange/attackCooldown 필드 추가(기본 0)
 - [ ] `ProjectileData`에 `splashDamageMul` 필드 추가 (기본 0.5f)
 - [ ] `ProjectileState`에 onHitEffect/splashRadius/splashDamageMul 필드 복귀
 - [ ] `ProjectileRef`에 onHitEffect/splashRadius/splashDamageMul 필드 추가
@@ -272,9 +314,10 @@ public List<OnPlaceUsageLog> on_place_usages = new();
 - [ ] `Battle/Units/DefenderTile.cs` (IComponentData { int2 cell })
 - [ ] `Battle/Units/DefenderDeathEvent.cs` + `DefenderDeathEventsSingleton.cs`
 - [ ] 기존 10종 중 3~4종에 onPlace 부여 (SO Inspector 설정, 자율 기록)
+- [ ] 기존 공격 유닛 3종 중 2종(Tanker/Basic 권장, Swift는 비공격 유지)에 attackDamage/Range/Cooldown 설정
 - [ ] CannonBall에 onHitEffect=Splash, splashRadius=1.2, splashDamageMul=0.5 설정
 - 선행: Phase 3 완료
-- 완료 확인: 컴파일 정상, Inspector에서 onPlace/onHit 필드 읽힘
+- 완료 확인: 컴파일 정상, Inspector에서 onPlace/onHit/적 공격 필드 읽힘
 
 **[P4-02] AttackSystem: SynergyBuff 반영 + onHit 전달**
 - [ ] SynergyBuff ComponentLookup 추가
@@ -292,18 +335,19 @@ public List<OnPlaceUsageLog> on_place_usages = new();
 - 선행: P4-01
 - 완료 확인: 컴파일 정상, 기존 스킬 캐스팅 플로우(PowerSurge/RapidFire on 방어 유닛) 여전히 동작
 
-**[P4-04] RecomputeSynergyFor + PlaceDefender 말미 호출**
-- [ ] `RecomputeSynergyFor(Vector2Int cell)` 메서드 구현 (§2.1 의사코드 그대로)
-- [ ] 이웃 0이면 SynergyBuff 제거, 이웃 >=1이면 Add 또는 Set
+**[P4-04] RecomputeSynergyFor + EffectSpawner 쓰기 창구 경유**
+- [ ] `EffectSpawner.SetSynergy(em, entity, mul)` + `EffectSpawner.RemoveSynergy(em, entity)` 메서드 신규 (Add/Update/Remove 래핑, Phase 2 EffectSpawner 패턴 일관)
+- [ ] `RecomputeSynergyFor(Vector2Int cell)` 메서드 구현 (§2.1 의사코드) — **SynergyBuff Add/Set/Remove 는 반드시 `EffectSpawner` 경유**. BattleBridge가 `em.AddComponent<SynergyBuff>` 직접 호출 금지.
+- [ ] 이웃 0이면 `EffectSpawner.RemoveSynergy`, 이웃 ≥1이면 `EffectSpawner.SetSynergy`
 - [ ] PlaceDefender 말미에서 `RecomputeSynergyFor(cell)` 호출
-- [ ] synergy.activations / peakCount 집계 (§2.5)
+- [ ] synergy.activations / peakCount 집계 (§2.6, HashSet<Entity> 기반)
 - 선행: P4-03
 - 완료 확인: execute_code — 같은 타입 2개 인접 배치 시 둘 다 SynergyBuff{damageMul=1.1} 보유. 3개 일자 배치 시 중간 엔티티 damageMul=1.2, 양 끝 damageMul=1.1.
 
-**[P4-05] onPlace 효과 발동 + 로깅**
-- [ ] PlaceDefender 말미(시너지 재계산 전/후 순서 자율)에서 unitData.onPlaceEffect switch
+**[P4-05] onPlace 효과 발동 + 로깅 (순서 확정: onPlace → 시너지 재계산 → Log)**
+- [ ] PlaceDefender 말미 순서: **(1) onPlace switch → (2) RecomputeSynergyFor → (3) logger.RecordOnPlace**. 순서 이유: onPlace는 주변 스냅샷 효과이므로 자신의 SynergyBuff 상태와 무관, 재계산이 반드시 후행.
 - [ ] `SlowPulse`: 반경 내 AttackUnit 쿼리 → `EffectSpawner.ApplySlow`
-- [ ] `BoostNearbyDefenders`: 반경 내 DefenderUnit 쿼리 → `EffectSpawner.ApplyDamageBoost`
+- [ ] `BoostNearbyDefenders`: 반경 내 DefenderUnit 쿼리 → `EffectSpawner.ApplyDamageBoost` (자신 포함 여부는 자율)
 - [ ] `BattleLogger.RecordOnPlace` 호출
 - 선행: P4-04
 - 완료 확인: onPlace 보유 방어 유닛 배치 시 주변 엔티티에 Effect Component 부여 확인(execute_code) + 로그 파일 on_place_usages 채워짐
@@ -312,13 +356,21 @@ public List<OnPlaceUsageLog> on_place_usages = new();
 - [ ] StartBattle: DefenderDeathEventsSingleton 생성 + NativeQueue 할당
 - [ ] TeardownCurrentBattle: singleton entity DestroyEntity + queue Dispose
 - [ ] OnDestroy: queue Dispose
-- [ ] UnitLifecycleSystem: `DeadTag + DefenderUnitTag + DefenderTile` 쿼리 → enqueue → DestroyEntity (이 순서 엄수)
+- [ ] UnitLifecycleSystem: 신규 쿼리 `DeadTag + DefenderUnitTag + DefenderTile` → enqueue → DestroyEntity (이 순서 엄수). **기존 일반 DeadTag 루프에는 `.WithNone<DefenderTile>()` 필터 추가**하여 중복 파괴 방지.
 - [ ] BattleBridge.Update에 `DrainDefenderDeathEvents()` 추가: dequeue → `_defenderByTile.Remove(cell)` → **`_occupiedTiles.Remove(cell)`** → `RecomputeSynergyFor(cell)`
 - [ ] `DrainDefenderDeathEvents()`는 Update 내에서 **DrainProjectileSpawnRequests 이후, DrainGoalEvents 이전** 호출 — 같은 프레임에 배치와 사망이 겹칠 때 사망이 먼저 반영되어 재계산 기반이 일관됨
 - 선행: P4-04
 - 완료 확인: 인접 시너지 활성 상태에서 defender 사망 시 남은 유닛의 SynergyBuff 갱신/제거, 죽은 타일에 재배치 가능
 
-**[P4-07] ProjectileHitSystem Splash AOE**
+**[P4-07] 적→방어 공격 경로 연결**
+- [ ] BattleBridge.SpawnUnit에서 `entry.unitType.attackDamage > 0` 시 `AttackState { damage, range, cooldownDuration, cooldownRemaining=0 }` 부여
+- [ ] BattleBridge.PlaceDefender에서 defender 엔티티에 `_em.AddBuffer<IncomingDamage>(entity)` 추가
+- [ ] AttackSystem에 공격자 루프 신규: `WithAll<AttackUnitTag, AttackState, LocalTransform>()` → 사거리 내 DefenderUnitTag 스냅샷 타깃 → 즉시 IncomingDamage append + 자체 쿨다운 리셋. DamageBoost/Synergy/Projectile 분기 **없음**.
+- [ ] 두 루프용 snapshot: attacker snapshot(기존, 방어→적용), defender snapshot(신규, 적→방어용) 둘 다 OnUpdate 시작부에서 수집하고 말미에 Dispose.
+- 선행: P4-03
+- 완료 확인: Tanker에 attackDamage=5 설정 후 Play — 배치한 defender가 Tanker 근접 통과 시 체력바가 줄어듦. Swift(attackDamage=0)는 영향 없음.
+
+**[P4-08] ProjectileHitSystem Splash AOE**
 - [ ] `onHitEffect == Splash`일 때 AOE 쿼리 (`WithAll<AttackUnitTag, LocalTransform>`)
 - [ ] 직격 target은 AOE append에서 제외
 - [ ] AOE 대상에 `IncomingDamage { amount = damage * splashDamageMul }` append
@@ -326,26 +378,28 @@ public List<OnPlaceUsageLog> on_place_usages = new();
 - 선행: P4-01, P4-02
 - 완료 확인: Cannon 발사 시 직격 + 주변 적에 splash 데미지. HealthBar는 영향 없음.
 
-**[P4-08] 로깅 스키마 v4 + 연결**
+**[P4-09] 로깅 스키마 v4 + 연결**
 - [ ] `BattleLogSchema.cs`에 SynergyRecord + OnPlaceUsageLog + `BattleLogEntry.synergy`/`on_place_usages`
 - [ ] `BattleLogger.RecordOnPlace(OnPlaceUsageLog)`, `SetSynergyStats(int activations, int peakCount)`
 - [ ] RecomputeSynergyFor 결과로 activations/peakCount 갱신
 - 선행: P4-05
 - 완료 확인: 세션 JSON에 synergy·on_place_usages 필드 적재
 
-**[P4-09] EditMode 테스트 확장**
+**[P4-10] EditMode 테스트 확장**
 - [ ] SynergyBuff × AttackSystem: damage 곱셈 반영 테스트 1건 (EffectIntegrationTests에 추가 가능)
 - [ ] ProjectileHitSystem × Splash: AOE append + 직격 중복 배제 + 비-AttackUnit 제외 1~2건
-- [ ] 기존 테스트 회귀 없음 (SynergyBuff 없는 defender의 기본 공격, ProjectileRef의 onHit=None 경로 유지)
-- 선행: P4-02, P4-07
-- 완료 확인: run_tests 전부 pass (**기존 통과 수 + 신규 2~3건**)
+- [ ] 적→방어 공격: AttackUnitTag+AttackState가 DefenderUnitTag 타깃에 IncomingDamage append 1건
+- [ ] 기존 테스트 회귀 없음 (SynergyBuff 없는 defender의 기본 공격, ProjectileRef의 onHit=None 경로 유지, AttackUnit에 AttackState 없을 때 공격 루프가 스킵)
+- 선행: P4-02, P4-07, P4-08
+- 완료 확인: run_tests 전부 pass (**기존 통과 수 + 신규 3~4건**)
 
-**[P4-10] Phase 0~3 회귀 체크**
-- [ ] 드래프트 → 전투(투사체/시너지/Splash/onPlace 비주얼) → 스킬 → 결과 → Restart/Redraft 정상
+**[P4-11] Phase 0~3 회귀 체크**
+- [ ] 드래프트 → 전투(투사체/시너지/Splash/onPlace/적공격 비주얼) → 스킬 → 결과 → Restart/Redraft 정상
 - [ ] 로그 파일에 synergy, on_place_usages 적재 + 기존 필드 무파손
-- [ ] onPlace 없는 방어 유닛, ProjectileRef 없는 방어 유닛 정상 동작
-- 선행: P4-08, P4-09
-- 완료 확인: 한 판 수동 플레이 완주
+- [ ] onPlace 없는 방어 유닛, ProjectileRef 없는 방어 유닛, attackDamage=0 적 유닛 정상 동작
+- [ ] defender 사망 시 체력바도 사라지고 타일 재배치 가능
+- 선행: P4-09, P4-10
+- 완료 확인: 한 판 수동 플레이 완주, defender 사망 1회 이상 관찰
 
 ---
 
@@ -387,13 +441,18 @@ Phase 4 핵심 질문: **배치 결정이 의미 있게 달라지는가.**
 - onPlace 부여 대상 방어 유닛 선택 (3~4종)
 - onPlace 수치 구체값 (onPlaceRange/onPlaceMagnitude/onPlaceDuration)
 - Splash 반경/비율 (기본 radius=1.2, damageMul=0.5 제공 — 튜닝 자율)
-- 없음 — 시너지 재계산은 PlaceDefender/DrainDefenderDeathEvents 내부에서 **즉시 동기** 호출로 확정(§1 흐름). 같은 프레임 동시 이벤트는 사망 드레인이 배치 이후에 처리됨
 - `BoostNearbyDefenders`에서 자기 자신 포함 여부
-- SynergyRecord.peakCount 측정을 RecomputeSynergyFor 직후만 하는지, 전체 세션 틱마다 하는지 (권장: 재계산 직후만)
+- 적 공격 대상 공격 유닛 선택 (Tanker/Basic 권장, Swift는 0 유지)
+- 적 공격 수치 구체값 (attackDamage/attackRange/attackCooldown)
 
 **고정(자율 결정 아님)**:
 - 시너지 % `SynergyPerNeighbor = 0.1f` const
 - 4방향 인접만 (대각선 제외)
+- 시너지 재계산 타이밍: PlaceDefender/DrainDefenderDeathEvents 내부에서 **즉시 동기** 호출 (§1 흐름). 같은 프레임 동시 이벤트는 사망 드레인이 배치 이후에 처리.
+- PlaceDefender 순서: onPlace → RecomputeSynergyFor → Log (P4-05)
+- Update Drain 순서: SpawnRequest → DefenderDeath → GoalReached (P4-06)
+- peakCount 측정: RecomputeSynergyFor 직후 한 번만 (매 틱 측정 아님)
+- 적 공격은 투사체/효과 스케일 없이 직격 즉시 데미지 (§2.4)
 
 **결정 원칙**: 단순한 쪽. Phase 4는 H2 배치 축 조기 검증.
 
@@ -437,13 +496,21 @@ Phase 4 종료 후 `PHASE5.md`를 작성한다.
 
 ---
 
-**문서 버전**: v1.1
-**상태**: 확정, critic 14건 + Codex 독립 리뷰 5건 반영 완료, 구현 착수 가능
+**문서 버전**: v1.2
+**상태**: 확정, 3차 리뷰 반영 완료 (prior critic 14건 + Codex 5건 + lead 6건), 구현 착수 가능
+
+**v1.1 → v1.2 변경** (lead 리뷰 + 사용자 결정 option A):
+- HIGH: **적→방어 공격 메커니즘을 Phase 4 스코프에 포함** — 사망 경로 dead code 해소. AttackUnitData 확장, AttackSystem 신규 공격자 루프, defender에 IncomingDamage buffer 부여. 신규 작업 P4-07 추가, 전체 P4-01~P4-11로 재번호.
+- HIGH: **SynergyBuff 쓰기 창구 EffectSpawner 경유 확정** — Phase 2 decision #9 일관성. `EffectSpawner.SetSynergy/RemoveSynergy` 신설 요구.
+- MEDIUM: **PlaceDefender 순서 확정**: onPlace → RecomputeSynergyFor → Log (P4-05 명시).
+- MEDIUM: **UnitLifecycleSystem 쿼리 중복 방지**: 기존 일반 DeadTag 루프에 `.WithNone<DefenderTile>()` 필터 (P4-06).
+- LOW: §4 자율 결정 영역 orphan bullet 제거, 적 공격 관련 자율 항목 추가, 고정 항목에 순서/타이밍 이관.
+- LOW: `_defenderByTile` 튜플화 기존 호출처 5개소 명시 (코드 영향 표).
+
 **v1.0 → v1.1 변경** (Codex 지적):
-- HIGH: 죽은 defender의 `_occupiedTiles` 해제 누락 수정 (재배치 가능하게)
-- HIGH: `ProjectileData.splashDamageMul` 필드 누락 수정 (CannonBall 0.5f)
-- HIGH: 같은 프레임 배치+사망 순서 확정 (Update 내 Drain 순서: SpawnRequest → DefenderDeath → GoalReached)
-- MEDIUM: Splash AOE의 중첩 쿼리 금지 명시 — `ToEntityArray(Allocator.Temp)` 스냅샷 패턴 강제
-- MEDIUM: SynergyRecord.activations 중복 집계 방지 — BattleBridge에 HashSet<Entity> 보유해 per-entity 1회 집계
-- LOW: peakCount API `CreateEntityQuery.CalculateEntityCount()` 명시
-- §4 자율 결정 영역에서 "재계산 타이밍" 삭제(동기 즉시 호출로 확정)
+- HIGH: 죽은 defender의 `_occupiedTiles` 해제 누락 수정.
+- HIGH: `ProjectileData.splashDamageMul` 필드 누락 수정.
+- HIGH: 같은 프레임 Drain 순서 확정.
+- MEDIUM: Splash AOE 스냅샷 패턴 강제.
+- MEDIUM: activations HashSet dedup.
+- LOW: peakCount API 명시.
