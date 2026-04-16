@@ -536,7 +536,7 @@ namespace Wassup.Bridge
             var shader = Shader.Find("Universal Render Pipeline/Unlit");
             _healthBarMaterial = new Material(shader) { color = new Color(0.2f, 0.95f, 0.2f, 1f) };
             _healthBarMaterial.SetColor("_BaseColor", new Color(0.2f, 0.95f, 0.2f, 1f));
-            var mesh = Resources.GetBuiltinResource<Mesh>("Cube.fbx");
+            var mesh = Resources.GetBuiltinResource<Mesh>("Quad.fbx");
             _healthBarRenderArray = new RenderMeshArray(new[] { _healthBarMaterial }, new[] { mesh });
             return _healthBarRenderArray;
         }
@@ -572,7 +572,7 @@ namespace Wassup.Bridge
 
             var mesh = projectile.visualMesh != null
                 ? projectile.visualMesh
-                : Resources.GetBuiltinResource<Mesh>("Sphere.fbx");
+                : Resources.GetBuiltinResource<Mesh>("Quad.fbx");
             var arr = new RenderMeshArray(new[] { material }, new[] { mesh });
             idx = _projectileRenderByIndex.Count;
             _projectileRenderByIndex.Add(arr);
@@ -729,7 +729,7 @@ namespace Wassup.Bridge
             if (_defenderRenderCache.TryGetValue(unit, out var cached)) return cached;
             var mesh = unit.visualMesh != null
                 ? unit.visualMesh
-                : Resources.GetBuiltinResource<Mesh>("Cube.fbx");
+                : Resources.GetBuiltinResource<Mesh>("Quad.fbx");
             var arr = new RenderMeshArray(new[] { unit.visualMaterial }, new[] { mesh });
             _defenderRenderCache[unit] = arr;
             return arr;
@@ -833,7 +833,7 @@ namespace Wassup.Bridge
             }
             var mesh = unit.visualMesh != null
                 ? unit.visualMesh
-                : Resources.GetBuiltinResource<Mesh>("Cube.fbx");
+                : Resources.GetBuiltinResource<Mesh>("Quad.fbx");
             var arr = new RenderMeshArray(new[] { unit.visualMaterial }, new[] { mesh });
             _renderCache[unit] = arr;
             return arr;

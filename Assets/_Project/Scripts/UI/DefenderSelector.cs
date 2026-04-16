@@ -76,9 +76,8 @@ namespace Wassup.UI
             {
                 ref var s = ref _slots[i];
                 bool isSelected = s.data == _selected;
-                s.background.color = isSelected
-                    ? Color.Lerp(s.data.visualMaterial != null ? s.data.visualMaterial.color : Color.gray, Color.white, 0.45f)
-                    : (s.data.visualMaterial != null ? s.data.visualMaterial.color : Color.gray);
+                var matColor = s.data.visualMaterial != null ? s.data.visualMaterial.GetColor("_BaseColor") : Color.gray;
+                s.background.color = isSelected ? Color.Lerp(matColor, Color.white, 0.45f) : matColor;
             }
         }
 
@@ -143,7 +142,7 @@ namespace Wassup.UI
                     typeof(RectTransform), typeof(Image), typeof(Button));
                 go.transform.SetParent(_slotContainer, false);
                 var bg = go.GetComponent<Image>();
-                bg.color = data.visualMaterial != null ? data.visualMaterial.color : Color.gray;
+                bg.color = data.visualMaterial != null ? data.visualMaterial.GetColor("_BaseColor") : Color.gray;
                 var btn = go.GetComponent<Button>();
                 int idx = i;
                 btn.onClick.AddListener(() => OnSlotClicked(idx));

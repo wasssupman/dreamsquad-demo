@@ -168,7 +168,7 @@ namespace Wassup.UI
             swatchRt.anchoredPosition = new Vector2(0f, -8f);
             swatchRt.sizeDelta = new Vector2(-16f, 40f);
             var swatch = swatchGO.GetComponent<Image>();
-            swatch.color = unit.visualMaterial != null ? unit.visualMaterial.color : Color.white;
+            swatch.color = unit.visualMaterial != null ? unit.visualMaterial.GetColor("_BaseColor") : Color.white;
 
             var stats = $"{unit.displayName}\n\nHP  {unit.health:0}\nRNG {unit.attackRange:0.##}\nDMG {unit.attackDamage:0}\nCD  {unit.attackCooldown:0.##}s";
             var label = CreateLabel(go.transform, "Label", stats, fontSize: 22,
