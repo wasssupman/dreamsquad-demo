@@ -2,6 +2,7 @@ using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
+using Wassup.Battle.Effects;
 
 namespace Wassup.Battle.Movement
 {
@@ -20,6 +21,7 @@ namespace Wassup.Battle.Movement
         {
             var ecb = new EntityCommandBuffer(Unity.Collections.Allocator.Temp);
             var dt = SystemAPI.Time.DeltaTime;
+            var slowLookup = SystemAPI.GetComponentLookup<SlowEffect>(isReadOnly: true);
 
             foreach (var (transform, follow, waypoints, entity) in
                      SystemAPI.Query<RefRW<LocalTransform>, RefRW<PathFollowState>, DynamicBuffer<PathWaypoint>>()
@@ -41,7 +43,11 @@ namespace Wassup.Battle.Movement
                 float3 current = transform.ValueRO.Position;
                 float3 delta = targetWorld - current;
                 float dist = math.length(delta);
-                float step = follow.ValueRO.speed * dt;
+
+                // Effects read-only: SlowEffect multiplies the per-frame step without
+                // touching PathFollowState.speed (Movement still owns the base value).
+                float slowMul = slowLookup.HasComponent(entity) ? slowLookup[entity].multiplier : 1f;
+                float step = follow.ValueRO.speed * slowMul * dt;
 
                 if (dist <= step)
                 {

@@ -17,6 +17,7 @@ namespace Wassup.Core
         [SerializeField] private int poolSize = 10;
         [SerializeField] private int pickCount = 7;
         [SerializeField] private BattleBridge battleBridge;
+        [SerializeField] private SkillData[] defaultSkillLoadout;
 
         private readonly DraftSession _session = new();
 
@@ -70,6 +71,16 @@ namespace Wassup.Core
             if (battleBridge != null)
             {
                 battleBridge.SetDefenderPool(_session.PickedArray());
+                if (defaultSkillLoadout != null && defaultSkillLoadout.Length > 0)
+                {
+                    battleBridge.SetSkillLoadout(defaultSkillLoadout);
+                    if (logger != null)
+                    {
+                        var ids = new System.Collections.Generic.List<string>();
+                        foreach (var s in defaultSkillLoadout) if (s != null) ids.Add(s.id);
+                        logger.SetSkillLoadout(ids);
+                    }
+                }
                 battleBridge.StartBattle();
             }
             DraftConfirmed?.Invoke();

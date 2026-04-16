@@ -162,6 +162,10 @@ MonoBehaviour:
   poolSize: 10
   pickCount: 7
   battleBridge: {fileID: 1939688408}
+  defaultSkillLoadout:
+  - {fileID: 11400000, guid: 35bce914a516247cc9adee30e2bc5b4d, type: 2}
+  - {fileID: 11400000, guid: 617c2b597eefc4309bb176c2df4826ed, type: 2}
+  - {fileID: 11400000, guid: f8d27dec75a4449c9984a1fd2b1f5e03, type: 2}
 --- !u!4 &20521826
 Transform:
   m_ObjectHideFlags: 0
@@ -398,6 +402,50 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &229215105
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 229215107}
+  - component: {fileID: 229215106}
+  m_Layer: 0
+  m_Name: SkillRuntime
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &229215106
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 229215105}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e169373cfd4344f849383385a446be3e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Core.SkillRuntime
+--- !u!4 &229215107
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 229215105}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1495062451}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &263267666
 GameObject:
@@ -705,6 +753,55 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 697504172}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &836730383
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 836730385}
+  - component: {fileID: 836730384}
+  m_Layer: 0
+  m_Name: SkillBar
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &836730384
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 836730383}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1d5b4451c3e37446790fcd2cc546cf17, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.SkillBar
+  bridge: {fileID: 1939688408}
+  skillRuntime: {fileID: 229215106}
+  mainCamera: {fileID: 0}
+  tileSize: 1
+  draftController: {fileID: 20521825}
+--- !u!4 &836730385
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 836730383}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -1229,6 +1326,7 @@ Transform:
   m_Children:
   - {fileID: 517227042}
   - {fileID: 1939688409}
+  - {fileID: 229215107}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1495062452
@@ -1406,6 +1504,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: f60cd7372f634487c90afc428f71e237, type: 2}
   - {fileID: 11400000, guid: 3e2a6f274a4954751931565017cca44f, type: 2}
   draftController: {fileID: 20521825}
+  skillRuntime: {fileID: 229215106}
 --- !u!4 &1939688409
 Transform:
   m_ObjectHideFlags: 0
@@ -1554,3 +1653,4 @@ SceneRoots:
   - {fileID: 697504175}
   - {fileID: 20521826}
   - {fileID: 220057793}
+  - {fileID: 836730385}

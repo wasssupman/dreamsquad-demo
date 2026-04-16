@@ -46,6 +46,18 @@ namespace Wassup.Logging
             currentEntry.draft.seed = draft.seed;
         }
 
+        public void SetSkillLoadout(System.Collections.Generic.IEnumerable<string> ids)
+        {
+            if (currentEntry == null || ids == null) return;
+            currentEntry.skill.loadout = new System.Collections.Generic.List<string>(ids);
+        }
+
+        public void RecordSkillUsage(SkillUsageLog usage)
+        {
+            if (currentEntry == null || usage == null) return;
+            currentEntry.skill.usages.Add(usage);
+        }
+
         public void RecordPlacement(string unitType, Vector2Int tile, float time)
         {
             if (currentEntry == null) return;

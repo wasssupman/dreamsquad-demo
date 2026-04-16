@@ -6,6 +6,7 @@ using Unity.Rendering;
 using Unity.Transforms;
 using UnityEngine;
 using Wassup.Battle.Combat;
+using Wassup.Battle.Effects;
 using Wassup.Battle.Movement;
 using Wassup.Battle.Units;
 using Wassup.Core;
@@ -26,6 +27,7 @@ namespace Wassup.Bridge
         [SerializeField] private ResultScreen resultScreen;
         [SerializeField] private DefenderUnitData[] defenderPool;
         [SerializeField] private DraftController draftController;
+        [SerializeField] private SkillRuntime skillRuntime;
 
         private World _world;
         private EntityManager _em;
@@ -35,6 +37,7 @@ namespace Wassup.Bridge
         private readonly Dictionary<AttackUnitData, RenderMeshArray> _renderCache = new();
         private readonly Dictionary<DefenderUnitData, RenderMeshArray> _defenderRenderCache = new();
         private readonly HashSet<Vector2Int> _occupiedTiles = new();
+        private readonly Dictionary<Vector2Int, Entity> _defenderByTile = new();
         private float _startTime;
         private bool _running;
         private bool _resultShown;
@@ -139,10 +142,12 @@ namespace Wassup.Bridge
             _pending.Clear();
             _pending.AddRange(deck.spawns);
             _occupiedTiles.Clear();
+            _defenderByTile.Clear();
             _startTime = Time.time;
             _goalReachedCount = 0;
             _running = true;
             _resultShown = false;
+            if (skillRuntime != null) skillRuntime.ResetAll();
 
             if (!_aliveAttackersQueryCreated)
             {
@@ -176,6 +181,115 @@ namespace Wassup.Bridge
         }
 
         public DefenderUnitData[] DefenderPool => defenderPool;
+
+        private SkillData[] _skillLoadout;
+        public SkillData[] SkillLoadout => _skillLoadout;
+
+        public void SetSkillLoadout(SkillData[] loadout)
+        {
+            _skillLoadout = loadout;
+        }
+
+        // ============== Skill casting (Phase 2) ==============
+
+        // Cast a TilePoint-targeted skill (e.g. Slow Field). Returns true on success.
+        // `affectedCount` reports how many ECS entities received the effect — used
+        // by the logger and the UI for feedback. Returns false if the battle is
+        // not running, the skill type does not match, or the cooldown gate rejects.
+        public bool CastSkillAtTile(SkillData skill, Vector2Int tile, out int affectedCount)
+        {
+            affectedCount = 0;
+            if (!_running || skill == null) return false;
+            if (skill.target != SkillTargetType.TilePoint) return false;
+            if (skillRuntime != null && !skillRuntime.IsReady(skill)) return false;
+
+            switch (skill.effect)
+            {
+                case SkillEffectType.SlowField:
+                    affectedCount = ApplySlowField(tile, skill);
+                    break;
+                default:
+                    Debug.LogWarning($"[BattleBridge] TilePoint skill '{skill.id}' has unsupported effect {skill.effect}.");
+                    return false;
+            }
+
+            skillRuntime?.Consume(skill);
+            GameManager.Instance?.Logger?.RecordSkillUsage(new Logging.SkillUsageLog
+            {
+                skill_id = skill.id,
+                time = Time.time - _startTime,
+                target_tile = tile,
+                affected_count = affectedCount,
+            });
+            Debug.Log($"[BattleBridge] CastSkillAtTile {skill.id} @ {tile} → {affectedCount} affected, cd={skill.cooldownSec}s");
+            return true;
+        }
+
+        // Cast a DefenderUnit-targeted skill (Power Surge, Rapid Fire). `tile` is
+        // the defender's cell coordinate as recorded during PlaceDefender.
+        public bool CastSkillOnDefender(SkillData skill, Vector2Int tile, out int affectedCount)
+        {
+            affectedCount = 0;
+            if (!_running || skill == null) return false;
+            if (skill.target != SkillTargetType.DefenderUnit) return false;
+            if (!_defenderByTile.TryGetValue(tile, out var entity) || !_em.Exists(entity)) return false;
+            if (skillRuntime != null && !skillRuntime.IsReady(skill)) return false;
+
+            switch (skill.effect)
+            {
+                case SkillEffectType.PowerSurge:
+                    EffectSpawner.ApplyDamageBoost(_em, entity, skill.durationSec, skill.magnitude);
+                    affectedCount = 1;
+                    break;
+                case SkillEffectType.RapidFire:
+                    EffectSpawner.ApplyCooldownReduction(_em, entity, skill.durationSec, skill.magnitude);
+                    affectedCount = 1;
+                    break;
+                default:
+                    Debug.LogWarning($"[BattleBridge] DefenderUnit skill '{skill.id}' has unsupported effect {skill.effect}.");
+                    return false;
+            }
+
+            skillRuntime?.Consume(skill);
+            GameManager.Instance?.Logger?.RecordSkillUsage(new Logging.SkillUsageLog
+            {
+                skill_id = skill.id,
+                time = Time.time - _startTime,
+                target_tile = tile,
+                affected_count = affectedCount,
+            });
+            Debug.Log($"[BattleBridge] CastSkillOnDefender {skill.id} on defender@{tile} (entity {entity.Index}) cd={skill.cooldownSec}s");
+            return true;
+        }
+
+        private int ApplySlowField(Vector2Int tile, SkillData skill)
+        {
+            // Collect all currently-alive attack unit entities; filter by XZ distance
+            // to the target world point; apply SlowEffect through EffectSpawner so
+            // the Effects context remains the sole writer.
+            if (!_aliveAttackersQueryCreated) return 0;
+            var entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
+
+            float3 targetWorld = new float3(tile.x * tileSize, 0f, tile.y * tileSize);
+            float rangeWorld = skill.range * tileSize;
+            float rangeSq = rangeWorld * rangeWorld;
+            int affected = 0;
+
+            for (int i = 0; i < entities.Length; i++)
+            {
+                var e = entities[i];
+                if (!_em.HasComponent<LocalTransform>(e)) continue;
+                var pos = _em.GetComponentData<LocalTransform>(e).Position;
+                float dx = pos.x - targetWorld.x;
+                float dz = pos.z - targetWorld.z;
+                if (dx * dx + dz * dz > rangeSq) continue;
+                EffectSpawner.ApplySlow(_em, e, skill.durationSec, skill.magnitude);
+                affected++;
+            }
+
+            entities.Dispose();
+            return affected;
+        }
 
         private void Update()
         {
@@ -233,7 +347,9 @@ namespace Wassup.Bridge
         public bool PlaceDefender(int tileX, int tileY)
         {
             if (!_running) return false;
-            if (map == null || map.GetTile(tileX, tileY) != TileType.Buildable) return false;
+            if (map == null) return false;
+            if (tileX < 0 || tileX >= MapData.Width || tileY < 0 || tileY >= MapData.Height) return false;
+            if (map.GetTile(tileX, tileY) != TileType.Buildable) return false;
 
             var cell = new Vector2Int(tileX, tileY);
             if (_occupiedTiles.Contains(cell)) return false;
@@ -255,6 +371,7 @@ namespace Wassup.Bridge
             GameManager.Instance?.Logger?.RecordPlacement(unitData.displayName, cell, Time.time - _startTime);
 
             var entity = _em.CreateEntity();
+            _defenderByTile[cell] = entity;
 #if UNITY_EDITOR
             _em.SetName(entity, $"Defender_{unitData.displayName}_{tileX}_{tileY}");
 #endif

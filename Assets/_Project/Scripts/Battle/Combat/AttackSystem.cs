@@ -3,6 +3,7 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
+using Wassup.Battle.Effects;
 using Wassup.Battle.Movement;
 using Wassup.Battle.Units;
 
@@ -36,6 +37,8 @@ namespace Wassup.Battle.Combat
             var attackerTransforms = attackerQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
 
             var ecb = new EntityCommandBuffer(Allocator.Temp);
+            var damageBoostLookup = SystemAPI.GetComponentLookup<DamageBoost>(isReadOnly: true);
+            var cooldownReductionLookup = SystemAPI.GetComponentLookup<CooldownReduction>(isReadOnly: true);
 
             foreach (var (attack, transform, defenderEntity) in
                      SystemAPI.Query<RefRW<AttackState>, RefRO<LocalTransform>>()
@@ -68,8 +71,19 @@ namespace Wassup.Battle.Combat
                 // Fire if cooldown ready and target exists.
                 if (bestTarget != Entity.Null && attack.ValueRO.cooldownRemaining <= 0f)
                 {
-                    ecb.AppendToBuffer(bestTarget, new IncomingDamage { amount = attack.ValueRO.damage });
-                    attack.ValueRW.cooldownRemaining = attack.ValueRO.cooldownDuration;
+                    // Effects read-only: DamageBoost scales emitted damage, CooldownReduction
+                    // shortens the reset interval. The base AttackState fields stay unmodified
+                    // so Combat remains the sole owner of those values.
+                    float damageMul = damageBoostLookup.HasComponent(defenderEntity)
+                        ? damageBoostLookup[defenderEntity].multiplier
+                        : 1f;
+                    float cooldownMul = cooldownReductionLookup.HasComponent(defenderEntity)
+                        ? cooldownReductionLookup[defenderEntity].multiplier
+                        : 1f;
+
+                    ecb.AppendToBuffer(bestTarget,
+                        new IncomingDamage { amount = attack.ValueRO.damage * damageMul });
+                    attack.ValueRW.cooldownRemaining = attack.ValueRO.cooldownDuration * cooldownMul;
                 }
             }
 

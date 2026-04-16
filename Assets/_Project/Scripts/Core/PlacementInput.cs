@@ -22,6 +22,8 @@ namespace Wassup.Core
         {
             if (bridge == null || mainCamera == null) return;
 
+            if (GameManager.Instance != null && GameManager.Instance.IsAiming) return;
+
             var pointer = Pointer.current;
             if (pointer == null) return;
             if (!pointer.press.wasPressedThisFrame) return;

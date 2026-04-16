@@ -202,69 +202,69 @@ public class SkillUsageLog
 Phase 0·1과 동일 원칙: 한 번에 한 작업만, 사용자 통과 확인, `phase2-decisions.md` 기록.
 
 **[P2-01] SkillData SO + 고정 3종 콘텐츠**
-- [ ] `Data/SkillData.cs` + enums (`SkillEffectType`, `SkillTargetType`)
-- [ ] `Assets/_Project/Data/Skills/` 아래 `Skill_SlowField.asset`, `Skill_PowerSurge.asset`, `Skill_RapidFire.asset` 3개 생성 (수치는 §2.1 표 그대로)
+- [x] `Data/SkillData.cs` + enums (`SkillEffectType`, `SkillTargetType`)
+- [x] `Assets/_Project/Data/Skills/` 아래 `Skill_SlowField.asset`, `Skill_PowerSurge.asset`, `Skill_RapidFire.asset` 3개 생성 (수치는 §2.1 표 그대로)
 - 선행: Phase 1 완료
 - 완료 확인: Inspector로 SO 3개 열람, 모든 필드 읽힘, `Wassup/Skill` 메뉴로 생성 가능
 
 **[P2-02] Effects 맥락 Component + EffectTickSystem**
-- [ ] `Battle/Effects/SlowEffect.cs`, `DamageBoost.cs`, `CooldownReduction.cs`
-- [ ] `Battle/Effects/EffectTickSystem.cs` (ISystem, BurstCompile) — 세 Component 각각에 대해 remaining 감쇄 + 만료 시 ECB로 Remove
-- [ ] `Battle/Effects/EffectSpawner.cs` static 유틸 — 외부에서 부여 시 이 함수만 경유
+- [x] `Battle/Effects/SlowEffect.cs`, `DamageBoost.cs`, `CooldownReduction.cs`
+- [x] `Battle/Effects/EffectTickSystem.cs` (ISystem, BurstCompile) — 세 Component 각각에 대해 remaining 감쇄 + 만료 시 ECB로 Remove
+- [x] `Battle/Effects/EffectSpawner.cs` static 유틸 — 외부에서 부여 시 이 함수만 경유
 - 선행: P2-01
 - 완료 확인: EditMode 테스트에서 EffectTickSystem을 수동 tick했을 때 remaining 감쇄·만료 시 Component 제거 확인
 
 **[P2-03] Movement × SlowEffect, Combat × DamageBoost/CooldownReduction 읽기 연동**
-- [ ] `MovementSystem`이 SlowEffect를 읽어 이동 속도에 반영 (PathFollowState.speed 비수정)
-- [ ] `AttackSystem`이 DamageBoost를 읽어 방출 데미지에 반영 (AttackState.damage 비수정)
-- [ ] `AttackSystem`이 CooldownReduction을 읽어 cooldownRemaining 리셋 시 반영
+- [x] `MovementSystem`이 SlowEffect를 읽어 이동 속도에 반영 (PathFollowState.speed 비수정)
+- [x] `AttackSystem`이 DamageBoost를 읽어 방출 데미지에 반영 (AttackState.damage 비수정)
+- [x] `AttackSystem`이 CooldownReduction을 읽어 cooldownRemaining 리셋 시 반영
 - 선행: P2-02
 - 완료 확인: EditMode 테스트 2건 — (a) SlowEffect 있는 적의 이동량이 multiplier 배수로 감소, (b) DamageBoost 있는 방어 유닛이 방출하는 IncomingDamage가 multiplier 배수
 
 **[P2-04] BattleBridge.CastSkill + SkillRuntime 쿨다운**
-- [ ] `Core/SkillRuntime.cs` MonoBehaviour (Dictionary 쿨다운, Update tick, 싱글톤 금지)
-- [ ] `BattleBridge.CastSkillAtTile(SkillData, Vector2Int)` + `CastSkillOnDefender(SkillData, Vector2Int)` (affected_count out 포함)
-- [ ] SkillEffectType switch로 EffectSpawner 경유해 Component 부여
-- [ ] SkillRuntime.IsReady/Consume/GetRemainingNormalized
-- [ ] BattleBridge가 StartBattle/Restart/Redraft/Teardown 시 SkillRuntime 초기화
+- [x] `Core/SkillRuntime.cs` MonoBehaviour (Dictionary 쿨다운, Update tick, 싱글톤 금지)
+- [x] `BattleBridge.CastSkillAtTile(SkillData, Vector2Int)` + `CastSkillOnDefender(SkillData, Vector2Int)` (affected_count out 포함)
+- [x] SkillEffectType switch로 EffectSpawner 경유해 Component 부여
+- [x] SkillRuntime.IsReady/Consume/GetRemainingNormalized
+- [x] BattleBridge가 StartBattle/Restart/Redraft/Teardown 시 SkillRuntime 초기화
 - 선행: P2-02, P2-03
 - 완료 확인: `execute_code`로 `CastSkillAtTile(slowField, tile)` 호출 → Player가 배치한 경로 근방 적 엔티티에 SlowEffect 부여 확인, 이후 `IsReady` false, duration 경과 후 Component 제거·IsReady true
 
 **[P2-05] SkillLoadout 주입**
-- [ ] `BattleBridge.SetSkillLoadout(SkillData[])` 메서드
-- [ ] `DraftController.TryConfirm`이 `SetDefenderPool` 직후 호출
-- [ ] `DraftController.defaultSkillLoadout` 인스펙터 필드(크기 3, Phase 2 고정)
+- [x] `BattleBridge.SetSkillLoadout(SkillData[])` 메서드
+- [x] `DraftController.TryConfirm`이 `SetDefenderPool` 직후 호출
+- [x] `DraftController.defaultSkillLoadout` 인스펙터 필드(크기 3, Phase 2 고정)
 - 선행: P2-04
 - 완료 확인: Confirm 이후 `bb.SkillLoadout.Length == 3` 확인
 
 **[P2-06] SkillBar UI (런타임 빌드)**
-- [ ] `UI/SkillBar.cs` — 자체 Canvas, 3슬롯 런타임 생성
-- [ ] 슬롯에 displayName, uiTint 배경, 쿨다운 숫자
-- [ ] 타일 타깃 스킬은 조준 모드 진입 → 다음 유효 클릭으로 `CastSkillAtTile` 실행
-- [ ] 방어 유닛 타깃 스킬은 조준 모드 진입 → 방어 유닛 셀 클릭으로 `CastSkillOnDefender` 실행
-- [ ] `GameManager.IsAiming` 상태 플래그로 `PlacementInput`과 협조(직접 참조 금지)
+- [x] `UI/SkillBar.cs` — 자체 Canvas, 3슬롯 런타임 생성
+- [x] 슬롯에 displayName, uiTint 배경, 쿨다운 숫자
+- [x] 타일 타깃 스킬은 조준 모드 진입 → 다음 유효 클릭으로 `CastSkillAtTile` 실행
+- [x] 방어 유닛 타깃 스킬은 조준 모드 진입 → 방어 유닛 셀 클릭으로 `CastSkillOnDefender` 실행
+- [x] `GameManager.IsAiming` 상태 플래그로 `PlacementInput`과 협조(직접 참조 금지)
 - 선행: P2-05
 - 완료 확인: Editor Play에서 SkillBar 표시, 슬롯 클릭→조준→맵 클릭→효과 발동→쿨다운 숫자 감소 → 0초 도달 시 재사용 가능
 
 **[P2-07] 로깅 확장 (v3)**
-- [ ] `BattleLogSchema`에 `SkillRecord`, `SkillUsageLog` 추가 + `BattleLogEntry.skill` 필드
-- [ ] `BattleLogEntry.phase` 기본값 `"phase2"`로 변경
-- [ ] `BattleLogger.SetSkillLoadout`, `RecordSkillUsage`
-- [ ] `DraftController.TryConfirm` → SetSkillLoadout 호출
-- [ ] `BattleBridge.CastSkill*` → RecordSkillUsage 호출
+- [x] `BattleLogSchema`에 `SkillRecord`, `SkillUsageLog` 추가 + `BattleLogEntry.skill` 필드
+- [x] `BattleLogEntry.phase` 기본값 `"phase2"`로 변경
+- [x] `BattleLogger.SetSkillLoadout`, `RecordSkillUsage`
+- [x] `DraftController.TryConfirm` → SetSkillLoadout 호출
+- [x] `BattleBridge.CastSkill*` → RecordSkillUsage 호출
 - 선행: P2-04, P2-05
 - 완료 확인: `GameLogs/` 최신 세션 JSON에 `phase="phase2"`, `skill.loadout=[3개 id]`, `skill.usages=[적어도 1건]`
 
 **[P2-08] EditMode 테스트 확장 (목표 16/16)**
-- [ ] `EffectTickSystemTests` (최소 2건): remaining 감쇄 tick, 만료 시 Component 제거
-- [ ] `MovementSystem × SlowEffect` 조합 테스트 1건 — 기존 MovementSystemTests에 추가 가능
-- [ ] 기존 13개(Movement 3 + UnitLifecycle 3 + DraftSession 7) 회귀 없음
+- [x] `EffectTickSystemTests` (최소 2건): remaining 감쇄 tick, 만료 시 Component 제거
+- [x] `MovementSystem × SlowEffect` 조합 테스트 1건 — 기존 MovementSystemTests에 추가 가능
+- [x] 기존 13개(Movement 3 + UnitLifecycle 3 + DraftSession 7) 회귀 없음
 - 선행: P2-02, P2-03
 - 완료 확인: `run_tests` EditMode → **16/16 pass** (기존 13 + 신규 3 이상)
 
 **[P2-09] Phase 0·1 회귀 체크**
-- [ ] 드래프트 UI → Confirm → 배치 → VICTORY/DEFEAT → Restart/Redraft 모두 정상
-- [ ] 로그 파일에 draft · skill.loadout · skill.usages · placements · result 모두 적재
+- [x] 드래프트 UI → Confirm → 배치 → VICTORY/DEFEAT → Restart/Redraft 모두 정상
+- [x] 로그 파일에 draft · skill.loadout · skill.usages · placements · result 모두 적재
 - 선행: P2-07, P2-08
 - 완료 확인: 한 판 수동 플레이 완주 + 로그 검증
 

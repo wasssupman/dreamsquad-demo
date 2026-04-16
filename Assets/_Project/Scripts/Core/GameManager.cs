@@ -14,6 +14,7 @@ namespace Wassup.Core
         [SerializeField] private DraftController draftController;
         public BattleLogger Logger => logger;
         public DraftController DraftController => draftController;
+        public bool IsAiming { get; set; }
 
         private void Awake()
         {
