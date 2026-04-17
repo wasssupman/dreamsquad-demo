@@ -24,3 +24,4 @@ MonoBehaviour:
   onPlaceRange: 1.5
   onPlaceMagnitude: 1.2
   onPlaceDuration: 10
+  cost: 3

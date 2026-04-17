@@ -1,10 +1,13 @@
 using UnityEngine;
 using Wassup.Bridge;
+using Wassup.Data;
 using Wassup.Logging;
 using Wassup.UI;
 
 namespace Wassup.Core
 {
+    public enum GamePhase { None, Briefing, Draft, Placement, Battle, Result }
+
     [DefaultExecutionOrder(-100)]
     public class GameManager : MonoBehaviour
     {
@@ -14,10 +17,24 @@ namespace Wassup.Core
         [SerializeField] private BattleBridge battleBridge;
         [SerializeField] private DraftController draftController;
         [SerializeField] private TimelineBriefingView timelineBriefing;
+        [SerializeField] private CostRuntime costRuntime;
+        [SerializeField] private CostConfig costConfig;
         public BattleLogger Logger => logger;
         public DraftController DraftController => draftController;
+        public CostRuntime CostRuntime => costRuntime;
+        public CostConfig CostConfig => costConfig;
         public bool IsAiming { get; set; }
-        public Wassup.Data.DefenderUnitData SelectedDefender { get; set; }
+        public DefenderUnitData SelectedDefender { get; set; }
+
+        public GamePhase CurrentPhase { get; private set; } = GamePhase.None;
+        public event System.Action<GamePhase> PhaseChanged;
+
+        public void SetPhase(GamePhase phase)
+        {
+            if (CurrentPhase == phase) return;
+            CurrentPhase = phase;
+            PhaseChanged?.Invoke(phase);
+        }
 
         private void Awake()
         {
@@ -34,6 +51,11 @@ namespace Wassup.Core
                 Debug.LogWarning("[GameManager] BattleLogger reference missing. Attempting GetComponentInChildren.");
                 logger = GetComponentInChildren<BattleLogger>();
             }
+            if (costRuntime == null) costRuntime = GetComponentInChildren<CostRuntime>();
+            if (costRuntime != null && costConfig != null)
+            {
+                costRuntime.Configure(costConfig.startingCost, costConfig.maxCost, costConfig.regenPerSec);
+            }
         }
 
         private void OnEnable()
@@ -47,18 +69,27 @@ namespace Wassup.Core
         {
             if (timelineBriefing != null && draftController != null)
             {
-                timelineBriefing.BriefingConfirmed = () => draftController.BeginDraft();
+                SetPhase(GamePhase.Briefing);
+                timelineBriefing.BriefingConfirmed = OnBriefingConfirmed;
                 timelineBriefing.Show();
             }
             else if (draftController != null)
             {
+                SetPhase(GamePhase.Draft);
                 draftController.BeginDraft();
             }
             else if (battleBridge != null)
             {
                 Debug.LogWarning("[GameManager] draftController unset; starting battle with inspector defenderPool fallback.");
+                SetPhase(GamePhase.Battle);
                 battleBridge.StartBattle();
             }
+        }
+
+        private void OnBriefingConfirmed()
+        {
+            SetPhase(GamePhase.Draft);
+            draftController.BeginDraft();
         }
 
         private void OnDisable()

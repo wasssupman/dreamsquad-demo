@@ -37,6 +37,9 @@ namespace Wassup.Data
 
         public float cooldownSec = 10f;
 
+        // Phase 6: cost subtracted from CostRuntime on cast.
+        public int cost = 2;
+
         // Slot background tint — identifies the skill in the SkillBar without an
         // icon texture.
         public Color uiTint = Color.white;

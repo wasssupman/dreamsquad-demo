@@ -15,6 +15,10 @@ namespace Wassup.Core
 
         private readonly Dictionary<TileType, Material> _tileMaterials = new();
         private Material _lineMaterial;
+        // Per-tile renderer lookup for Phase 6 rejection flash. Only Buildable
+        // tiles get entries (Path / Obstacle tiles are never placement targets).
+        private readonly Dictionary<Vector2Int, Renderer> _buildableRenderers = new();
+        private readonly Dictionary<Vector2Int, Coroutine> _activeFlashes = new();
 
         private void Start()
         {
@@ -64,9 +68,31 @@ namespace Wassup.Core
                 cube.transform.localScale = new Vector3(tileSize * 0.95f, 0.1f, tileSize * 0.95f);
                 var r = cube.GetComponent<Renderer>();
                 r.sharedMaterial = _tileMaterials[type];
+                if (type == TileType.Buildable)
+                    _buildableRenderers[new Vector2Int(x, y)] = r;
                 var col = cube.GetComponent<Collider>();
                 if (col != null) Destroy(col);
             }
+        }
+
+        // Phase 6: brief red flash on a tile when placement is rejected (e.g.
+        // insufficient cost). Runtime-instanced Material so we do not pollute
+        // the shared buildable Material.
+        public void FlashTileReject(Vector2Int cell)
+        {
+            if (!_buildableRenderers.TryGetValue(cell, out var r) || r == null) return;
+            if (_activeFlashes.TryGetValue(cell, out var existing) && existing != null)
+                StopCoroutine(existing);
+            _activeFlashes[cell] = StartCoroutine(FlashCoroutine(r));
+        }
+
+        private System.Collections.IEnumerator FlashCoroutine(Renderer r)
+        {
+            // Instance the Material so this renderer's color change does not
+            // propagate to the shared Buildable material asset.
+            r.material.color = new Color(1f, 0.3f, 0.3f, 1f);
+            yield return new WaitForSeconds(0.2f);
+            if (r != null) r.sharedMaterial = _tileMaterials[TileType.Buildable];
         }
 
         private void BuildPathLines()

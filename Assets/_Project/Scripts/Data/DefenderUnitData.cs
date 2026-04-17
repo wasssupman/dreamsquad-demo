@@ -23,6 +23,9 @@ namespace Wassup.Data
         public float onPlaceRange;
         public float onPlaceMagnitude;
         public float onPlaceDuration;
+
+        // Phase 6: placement cost subtracted from CostRuntime on PlaceDefenderAs.
+        public int cost = 1;
     }
 
     public enum OnPlaceEffectType { None, SlowPulse, BoostNearbyDefenders }

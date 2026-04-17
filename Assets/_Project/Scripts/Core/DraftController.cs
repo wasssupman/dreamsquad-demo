@@ -81,7 +81,9 @@ namespace Wassup.Core
                         logger.SetSkillLoadout(ids);
                     }
                 }
-                battleBridge.StartBattle();
+                // Phase 6: do NOT start battle immediately. PlacementPhaseView
+                // subscribes to DraftConfirmed and runs the placement countdown,
+                // then calls StartBattle itself.
             }
             DraftConfirmed?.Invoke();
             return true;

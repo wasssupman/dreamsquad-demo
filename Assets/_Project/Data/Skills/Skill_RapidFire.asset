@@ -22,4 +22,5 @@ MonoBehaviour:
   magnitude: 0.5
   durationSec: 6
   cooldownSec: 25
+  cost: 2
   uiTint: {r: 1, g: 0.85, b: 0.1, a: 1}

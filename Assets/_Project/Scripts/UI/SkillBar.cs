@@ -90,16 +90,29 @@ namespace Wassup.UI
         {
             if (_slots == null) return;
 
+            var gm = GameManager.Instance;
+            bool battlePhase = gm != null && gm.CurrentPhase == GamePhase.Battle;
+            var cost = gm != null ? gm.CostRuntime : null;
+
             for (int i = 0; i < _slots.Length; i++)
             {
                 ref var slot = ref _slots[i];
                 if (slot.skill == null || skillRuntime == null) continue;
                 float rem = skillRuntime.GetRemainingSeconds(slot.skill);
-                slot.cooldownLabel.text = rem > 0f ? rem.ToString("0.0") : "";
-                slot.button.interactable = skillRuntime.IsReady(slot.skill) || slot.skill == _aimingSkill;
-                slot.background.color = slot.skill == _aimingSkill
-                    ? Color.Lerp(slot.skill.uiTint, Color.white, 0.5f)
-                    : (skillRuntime.IsReady(slot.skill) ? slot.skill.uiTint : slot.skill.uiTint * 0.4f);
+                bool ready = skillRuntime.IsReady(slot.skill);
+                bool affordable = cost == null || cost.CanAfford(slot.skill.cost);
+
+                slot.cooldownLabel.text = rem > 0f
+                    ? rem.ToString("0.0")
+                    : (cost != null ? $"-{slot.skill.cost}" : "");
+                slot.button.interactable = battlePhase && (ready && affordable || slot.skill == _aimingSkill);
+
+                if (slot.skill == _aimingSkill)
+                    slot.background.color = Color.Lerp(slot.skill.uiTint, Color.white, 0.5f);
+                else if (!battlePhase || !ready || !affordable)
+                    slot.background.color = slot.skill.uiTint * 0.4f;     // gray / dimmed
+                else
+                    slot.background.color = slot.skill.uiTint;
             }
 
             if (_aimingSkill != null) HandleAimInput();
@@ -131,6 +144,15 @@ namespace Wassup.UI
             int ty = Mathf.RoundToInt(worldPos.z / tileSize);
             var tile = new Vector2Int(tx, ty);
 
+            // Phase 6 — verify cost one more time at cast-resolution time in case
+            // regen/phase changed while the player was aiming.
+            var cost = GameManager.Instance != null ? GameManager.Instance.CostRuntime : null;
+            if (cost != null && !cost.CanAfford(_aimingSkill.cost))
+            {
+                ExitAimMode();
+                return;
+            }
+
             bool cast;
             int affected;
             if (_aimingSkill.target == SkillTargetType.TilePoint)
@@ -138,7 +160,11 @@ namespace Wassup.UI
             else
                 cast = bridge.CastSkillOnDefender(_aimingSkill, tile, out affected);
 
-            if (cast) ExitAimMode();
+            if (cast)
+            {
+                if (cost != null) cost.TrySpend(_aimingSkill.cost);
+                ExitAimMode();
+            }
         }
 
         private void OnSlotClicked(int index)

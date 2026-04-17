@@ -11,6 +11,7 @@ namespace Wassup.Core
     {
         [SerializeField] private BattleBridge bridge;
         [SerializeField] private Camera mainCamera;
+        [SerializeField] private MapView mapView;
         [SerializeField] private float tileSize = 1f;
 
         private void Start()
@@ -37,13 +38,31 @@ namespace Wassup.Core
             var worldPos = ray.GetPoint(enter);
             int tileX = Mathf.RoundToInt(worldPos.x / tileSize);
             int tileY = Mathf.RoundToInt(worldPos.z / tileSize);
+            var cell = new Vector2Int(tileX, tileY);
 
-            // Phase 4: when GameManager exposes an explicit SelectedDefender,
-            // place that specific type. Falls back to the Phase 0 random path
-            // when no selection is set (headless / test scenarios).
-            var selected = GameManager.Instance != null ? GameManager.Instance.SelectedDefender : null;
-            if (selected != null) bridge.PlaceDefenderAs(tileX, tileY, selected);
-            else bridge.PlaceDefender(tileX, tileY);
+            var gm = GameManager.Instance;
+            var selected = gm != null ? gm.SelectedDefender : null;
+            var costRuntime = gm != null ? gm.CostRuntime : null;
+
+            // Phase 6: cost gate. Reject with red flash when selected defender
+            // costs more than the current cost pool. No selection falls through
+            // to the legacy random path (tests / headless).
+            if (selected != null && costRuntime != null && !costRuntime.CanAfford(selected.cost))
+            {
+                if (mapView != null) mapView.FlashTileReject(cell);
+                return;
+            }
+
+            if (selected != null)
+            {
+                bool placed = bridge.PlaceDefenderAs(tileX, tileY, selected);
+                if (placed && costRuntime != null) costRuntime.TrySpend(selected.cost);
+                else if (!placed && mapView != null) mapView.FlashTileReject(cell);
+            }
+            else
+            {
+                bridge.PlaceDefender(tileX, tileY);
+            }
         }
     }
 }

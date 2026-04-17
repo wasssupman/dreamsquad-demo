@@ -57,6 +57,7 @@ namespace Wassup.Bridge
         private float _startTime;
         private float _timerDuration;
         private bool _running;
+        private bool _placementAllowed;
         private bool _resultShown;
         private int _goalReachedCount;
         private NativeQueue<GoalReachedEvent> _goalEventQueue;
@@ -153,6 +154,40 @@ namespace Wassup.Bridge
             if (_defenderDeathQueue.IsCreated) _defenderDeathQueue.Dispose();
         }
 
+        // Phase 6: placement phase enters this path — ECS state is initialized so
+        // PlaceDefenderAs works immediately, but spawns / timer stay dormant.
+        public void BeginPlacement()
+        {
+            if (deck == null || map == null)
+            {
+                Debug.LogError("[BattleBridge] deck or map reference missing.", this);
+                return;
+            }
+            _world = World.DefaultGameObjectInjectionWorld;
+            if (_world == null)
+            {
+                Debug.LogWarning("[BattleBridge] Default World not ready at BeginPlacement; will retry.");
+                return;
+            }
+            _em = _world.EntityManager;
+            _pending.Clear();
+            _occupiedTiles.Clear();
+            _defenderByTile.Clear();
+            _synergyActivatedEntities.Clear();
+            _synergyActivations = 0;
+            _synergyPeakCount = 0;
+            _goalReachedCount = 0;
+            _running = false;
+            _placementAllowed = true;
+            _resultShown = false;
+            if (skillRuntime != null) skillRuntime.ResetAll();
+
+            EnsureQueriesAndQueues();
+
+            GameManager.Instance?.Logger?.SetAttackDeckId(deck.deckId);
+            Debug.Log("[BattleBridge] Placement phase ready.");
+        }
+
         public void StartBattle()
         {
             if (deck == null || map == null)
@@ -160,30 +195,17 @@ namespace Wassup.Bridge
                 Debug.LogError("[BattleBridge] deck or map reference missing.", this);
                 return;
             }
-            // Re-acquire the world reference on every StartBattle so that Play-Stop-Play
-            // cycles (which recreate World.DefaultGameObjectInjectionWorld) are safe.
-            _world = World.DefaultGameObjectInjectionWorld;
-            if (_world == null)
-            {
-                // ECS world not yet bootstrapped — GameManager.OnEnable can race ahead of Entities init.
-                Debug.LogWarning("[BattleBridge] Default World not ready at StartBattle; will retry next frame.");
-                return;
-            }
-            _em = _world.EntityManager;
-            _pending.Clear();
+            if (!_placementAllowed) BeginPlacement();
+            if (_world == null) return;
             _pending.AddRange(deck.spawns);
-            _occupiedTiles.Clear();
-            _defenderByTile.Clear();
-            _synergyActivatedEntities.Clear();
-            _synergyActivations = 0;
-            _synergyPeakCount = 0;
             _startTime = Time.time;
             _timerDuration = deck.timerDurationSec;
-            _goalReachedCount = 0;
             _running = true;
-            _resultShown = false;
-            if (skillRuntime != null) skillRuntime.ResetAll();
+            Debug.Log($"[BattleBridge] Battle started with deck '{deck.deckId}' ({deck.spawns.Count} spawns queued).");
+        }
 
+        private void EnsureQueriesAndQueues()
+        {
             if (!_aliveAttackersQueryCreated)
             {
                 _aliveAttackersQuery = _em.CreateEntityQuery(ComponentType.ReadOnly<AttackUnitTag>());
@@ -213,14 +235,12 @@ namespace Wassup.Bridge
             _defenderDeathQueue = new NativeQueue<DefenderDeathEvent>(Allocator.Persistent);
             var deathSingleton = _em.CreateEntity();
             _em.AddComponentData(deathSingleton, new DefenderDeathEventsSingleton { queue = _defenderDeathQueue });
-
-            GameManager.Instance?.Logger?.SetAttackDeckId(deck.deckId);
-            Debug.Log($"[BattleBridge] Battle started with deck '{deck.deckId}' ({deck.spawns.Count} spawns queued).");
         }
 
         public void StopBattle()
         {
             _running = false;
+            _placementAllowed = false;
             // Phase 0: entities persist until play mode exit. P0-09 will add full teardown.
         }
 
@@ -684,7 +704,8 @@ namespace Wassup.Bridge
         // player chooses which picked defender they want on the tile.
         public bool PlaceDefenderAs(int tileX, int tileY, DefenderUnitData unitData)
         {
-            if (!_running) return false;
+            // Phase 6: placement is permitted during the pre-battle phase or during battle.
+            if (!_running && !_placementAllowed) return false;
             if (map == null) return false;
             if (tileX < 0 || tileX >= MapData.Width || tileY < 0 || tileY >= MapData.Height) return false;
             if (map.GetTile(tileX, tileY) != TileType.Buildable) return false;
