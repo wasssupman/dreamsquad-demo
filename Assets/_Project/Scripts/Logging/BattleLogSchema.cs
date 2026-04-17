@@ -34,6 +34,7 @@ namespace Wassup.Logging
         public string outcome = "unknown";
         public float duration_sec;
         public int enemies_reached_goal;
+        public int score;
     }
 
     // Phase 1 draft audit trail: the full 10-unit pool the player saw, the 7 they

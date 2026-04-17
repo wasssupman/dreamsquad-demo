@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Reflection;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -594,8 +596,10 @@ namespace Wassup.Bridge
                 {
                     _resultShown = true;
                     _running = false;
+                    int playerScore = CalculatePlayerScore();
                     GameManager.Instance?.Logger?.SetResult("defeat", _goalReachedCount);
-                    resultScreen?.ShowDefeat();
+                    WriteLoggedScore(playerScore);
+                    resultScreen?.ShowDefeat(playerScore);
                     Debug.Log("[BattleBridge] DEFEAT triggered.");
                     return;
                 }
@@ -612,8 +616,10 @@ namespace Wassup.Bridge
 
             _resultShown = true;
             _running = false;
+            int playerScore = CalculatePlayerScore();
             GameManager.Instance?.Logger?.SetResult("victory_timeout", _goalReachedCount);
-            resultScreen?.ShowVictory();
+            WriteLoggedScore(playerScore);
+            resultScreen?.ShowVictory(playerScore);
             Debug.Log("[BattleBridge] VICTORY — timer expired, player survived.");
         }
 
@@ -627,9 +633,37 @@ namespace Wassup.Bridge
 
             _resultShown = true;
             _running = false;
+            int playerScore = CalculatePlayerScore();
             GameManager.Instance?.Logger?.SetResult("victory", _goalReachedCount);
-            resultScreen?.ShowVictory();
+            WriteLoggedScore(playerScore);
+            resultScreen?.ShowVictory(playerScore);
             Debug.Log("[BattleBridge] VICTORY — all attack units defeated.");
+        }
+
+        private int CalculatePlayerScore()
+        {
+            float durationSec = Mathf.Max(0f, Time.time - _startTime);
+            return Math.Max(0, (int)(durationSec * 10f - _goalReachedCount * 50));
+        }
+
+        private void WriteLoggedScore(int playerScore)
+        {
+            var logger = GameManager.Instance?.Logger;
+            if (logger == null) return;
+
+            var currentEntryField = logger.GetType().GetField("currentEntry",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            var currentEntry = currentEntryField?.GetValue(logger);
+            if (currentEntry == null) return;
+
+            var resultField = currentEntry.GetType().GetField("result",
+                BindingFlags.Instance | BindingFlags.Public);
+            var battleResult = resultField?.GetValue(currentEntry);
+            if (battleResult == null) return;
+
+            var scoreField = battleResult.GetType().GetField("score",
+                BindingFlags.Instance | BindingFlags.Public);
+            scoreField?.SetValue(battleResult, playerScore);
         }
 
         // Random-pick legacy entry (Phase 0-3 behavior). Phase 4 prefers
