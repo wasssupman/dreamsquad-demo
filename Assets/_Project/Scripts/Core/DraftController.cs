@@ -44,6 +44,20 @@ namespace Wassup.Core
                 return;
             }
             _session.Reset(catalog, poolSize, pickCount, seed);
+
+            // Phase 7: BeginDraft is the "new draft" entry point (initial start
+            // and Redraft). Roll a fresh skill loadout here so the DraftView can
+            // display the 2 skills alongside the unit pool. Restart skips this
+            // path and therefore keeps its prior loadout.
+            var loadout = GameManager.Instance?.SkillLoadout;
+            if (loadout != null)
+            {
+                if (loadout.Pool.Count == 0 && defaultSkillLoadout != null && defaultSkillLoadout.Length > 0)
+                    loadout.Configure(defaultSkillLoadout);
+                loadout.Roll();
+                Debug.Log($"[DraftController] Roll 완료: Picked={loadout.Picked.Count}", this);
+            }
+
             DraftStarted?.Invoke();
         }
 
@@ -71,14 +85,37 @@ namespace Wassup.Core
             if (battleBridge != null)
             {
                 battleBridge.SetDefenderPool(_session.PickedArray());
-                if (defaultSkillLoadout != null && defaultSkillLoadout.Length > 0)
+
+                // Phase 7: prefer the SkillLoadoutController roll; fall back to
+                // the legacy Inspector array only when no loadout controller is
+                // wired up (keeps tooling/editor scenes working without setup).
+                var loadoutCtl = GameManager.Instance?.SkillLoadout;
+                SkillData[] loadout;
+                if (loadoutCtl != null && loadoutCtl.Picked.Count > 0)
                 {
-                    battleBridge.SetSkillLoadout(defaultSkillLoadout);
+                    loadout = new SkillData[loadoutCtl.Picked.Count];
+                    for (int i = 0; i < loadout.Length; i++) loadout[i] = loadoutCtl.Picked[i];
+                }
+                else
+                {
+                    loadout = defaultSkillLoadout;
+                }
+
+                if (loadout != null && loadout.Length > 0)
+                {
+                    battleBridge.SetSkillLoadout(loadout);
                     if (logger != null)
                     {
                         var ids = new System.Collections.Generic.List<string>();
-                        foreach (var s in defaultSkillLoadout) if (s != null) ids.Add(s.id);
+                        foreach (var s in loadout) if (s != null) ids.Add(s.id);
                         logger.SetSkillLoadout(ids);
+
+                        if (loadoutCtl != null)
+                        {
+                            var poolIds = new System.Collections.Generic.List<string>();
+                            foreach (var s in loadoutCtl.Pool) if (s != null) poolIds.Add(s.id);
+                            logger.SetSkillPool(poolIds, loadoutCtl.Seed);
+                        }
                     }
                 }
                 // Phase 6: do NOT start battle immediately. PlacementPhaseView

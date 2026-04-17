@@ -52,6 +52,16 @@ namespace Wassup.Logging
             currentEntry.skill.loadout = new System.Collections.Generic.List<string>(ids);
         }
 
+        // Phase 7: record the full skill pool the session rolled from, plus the
+        // seed used by SkillLoadoutController, so analyzers can replay the roll.
+        public void SetSkillPool(System.Collections.Generic.IEnumerable<string> poolIds, int seed)
+        {
+            if (currentEntry == null) return;
+            if (poolIds != null)
+                currentEntry.skill.pool = new System.Collections.Generic.List<string>(poolIds);
+            currentEntry.skill.seed = seed;
+        }
+
         public void RecordSkillUsage(SkillUsageLog usage)
         {
             if (currentEntry == null || usage == null) return;

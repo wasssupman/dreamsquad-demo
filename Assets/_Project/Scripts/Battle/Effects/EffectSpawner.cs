@@ -1,4 +1,5 @@
 using Unity.Entities;
+using Unity.Mathematics;
 
 namespace Wassup.Battle.Effects
 {
@@ -39,6 +40,49 @@ namespace Wassup.Battle.Effects
                     remaining = existing.remaining > duration ? existing.remaining : duration,
                     multiplier = multiplier,
                 });
+
+        // Phase 7 — Tornado: re-applying refreshes the center (latest caster wins)
+        // and extends remaining if new duration is longer. Non-stackable by design.
+        public static void ApplyTornadoPull(EntityManager em, Entity entity, float duration, float3 centerWorld, float pullSpeed)
+            => Apply<TornadoPull>(em, entity,
+                () => new TornadoPull { centerWorld = centerWorld, pullSpeed = pullSpeed, remaining = duration },
+                existing => new TornadoPull
+                {
+                    centerWorld = centerWorld,
+                    pullSpeed = pullSpeed,
+                    remaining = existing.remaining > duration ? existing.remaining : duration,
+                });
+
+        // Phase 7 — Meteor: unlike Slow/Tornado, this spawns a dedicated carrier
+        // entity. MeteorResolutionSystem consumes + destroys it when warningRemaining <= 0.
+        public static Entity SpawnMeteor(EntityManager em, float3 centerWorld, float radius, float damage, float warningSec)
+        {
+            var e = em.CreateEntity();
+            em.AddComponentData(e, new MeteorPending
+            {
+                centerWorld = centerWorld,
+                radius = radius,
+                damage = damage,
+                warningRemaining = warningSec,
+            });
+            return e;
+        }
+
+        // Phase 7 — Portal: carrier entity with the two endpoints. Re-cast spawns a
+        // separate link (player-decided overlap) rather than merging.
+        public static Entity SpawnPortal(EntityManager em, float3 entryWorld, float3 exitWorld, float entryRadius, float duration, int exitWaypointIndex)
+        {
+            var e = em.CreateEntity();
+            em.AddComponentData(e, new PortalLink
+            {
+                entryWorld = entryWorld,
+                exitWorld = exitWorld,
+                entryRadius = entryRadius,
+                remaining = duration,
+                exitWaypointIndex = exitWaypointIndex,
+            });
+            return e;
+        }
 
         // Phase 4 adjacency synergy — no duration, no merge logic. RecomputeSynergyFor
         // is the only writer and calls Set/Remove with an authoritative value each time.

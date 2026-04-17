@@ -7,6 +7,9 @@ namespace Wassup.Data
         SlowField,
         PowerSurge,
         RapidFire,
+        Tornado,
+        Meteor,
+        Portal,
     }
 
     public enum SkillTargetType
@@ -39,6 +42,10 @@ namespace Wassup.Data
 
         // Phase 6: cost subtracted from CostRuntime on cast.
         public int cost = 2;
+
+        // Phase 7 (Meteor): seconds a telegraph/warning visual is displayed before
+        // the effect resolves. 0 = immediate effect on cast (legacy behavior).
+        public float warningSec;
 
         // Slot background tint — identifies the skill in the SkillBar without an
         // icon texture.

@@ -25,6 +25,11 @@ namespace Wassup.UI
         private TextMeshProUGUI _aimLabel;
         private bool _built;
 
+        // Phase 7 — Portal is a two-tap skill: first tap captures the entry tile
+        // and waits; second tap completes the cast. When `_portalEntryTile.x >= 0`
+        // the bar is in the "second tap" state for the currently-aimed Portal skill.
+        private Vector2Int _portalEntryTile = new(-1, -1);
+
         private struct SlotView
         {
             public SkillData skill;
@@ -153,6 +158,27 @@ namespace Wassup.UI
                 return;
             }
 
+            // Phase 7 — Portal two-tap state machine lives inline on the aim loop.
+            // First tap just records the entry tile and swaps the label prompt;
+            // cost is spent (and cooldown consumed) only on the completing cast.
+            if (_aimingSkill.effect == SkillEffectType.Portal)
+            {
+                if (_portalEntryTile.x < 0)
+                {
+                    _portalEntryTile = tile;
+                    if (_aimLabel != null)
+                        _aimLabel.text = $"[{_aimingSkill.displayName}] Tap exit tile";
+                    return;
+                }
+                bool portalCast = bridge.CastPortal(_aimingSkill, _portalEntryTile, tile, out _);
+                if (portalCast)
+                {
+                    if (cost != null) cost.TrySpend(_aimingSkill.cost);
+                    ExitAimMode();
+                }
+                return;
+            }
+
             bool cast;
             int affected;
             if (_aimingSkill.target == SkillTargetType.TilePoint)
@@ -182,10 +208,13 @@ namespace Wassup.UI
             if (skillRuntime != null && !skillRuntime.IsReady(skill)) return;
 
             _aimingSkill = skill;
+            _portalEntryTile = new Vector2Int(-1, -1);
             if (GameManager.Instance != null) GameManager.Instance.IsAiming = true;
             if (_aimLabel != null)
             {
-                _aimLabel.text = $"[{skill.displayName}] Tap target";
+                _aimLabel.text = skill.effect == SkillEffectType.Portal
+                    ? $"[{skill.displayName}] Tap entry tile"
+                    : $"[{skill.displayName}] Tap target";
                 _aimLabel.gameObject.SetActive(true);
             }
         }
@@ -193,6 +222,7 @@ namespace Wassup.UI
         private void ExitAimMode()
         {
             _aimingSkill = null;
+            _portalEntryTile = new Vector2Int(-1, -1);
             if (GameManager.Instance != null) GameManager.Instance.IsAiming = false;
             if (_aimLabel != null) _aimLabel.gameObject.SetActive(false);
         }
@@ -218,26 +248,26 @@ namespace Wassup.UI
             _panel = new GameObject("SkillPanel", typeof(RectTransform));
             _panel.transform.SetParent(transform, false);
             var prt = (RectTransform)_panel.transform;
-            prt.anchorMin = new Vector2(0.5f, 0f);
-            prt.anchorMax = new Vector2(0.5f, 0f);
-            prt.pivot = new Vector2(0.5f, 0f);
-            prt.anchoredPosition = new Vector2(0f, 20f);
-            prt.sizeDelta = new Vector2(600f, 120f);
+            prt.anchorMin = new Vector2(1f, 0.5f);
+            prt.anchorMax = new Vector2(1f, 0.5f);
+            prt.pivot = new Vector2(1f, 0.5f);
+            prt.anchoredPosition = new Vector2(-40f, 0f);
+            prt.sizeDelta = new Vector2(140f, 400f);
 
-            var hlg = _panel.AddComponent<HorizontalLayoutGroup>();
-            hlg.spacing = 16f;
-            hlg.childAlignment = TextAnchor.MiddleCenter;
-            hlg.childForceExpandWidth = true;
-            hlg.childForceExpandHeight = true;
+            var vlg = _panel.AddComponent<VerticalLayoutGroup>();
+            vlg.spacing = 16f;
+            vlg.childAlignment = TextAnchor.MiddleCenter;
+            vlg.childForceExpandWidth = true;
+            vlg.childForceExpandHeight = true;
             _slotContainer = _panel.transform;
 
             var aimGO = new GameObject("AimLabel", typeof(RectTransform));
             aimGO.transform.SetParent(transform, false);
             var art = (RectTransform)aimGO.transform;
-            art.anchorMin = new Vector2(0.5f, 0f);
-            art.anchorMax = new Vector2(0.5f, 0f);
-            art.pivot = new Vector2(0.5f, 0f);
-            art.anchoredPosition = new Vector2(0f, 150f);
+            art.anchorMin = new Vector2(1f, 0f);
+            art.anchorMax = new Vector2(1f, 0f);
+            art.pivot = new Vector2(1f, 0f);
+            art.anchoredPosition = new Vector2(-40f, 40f);
             art.sizeDelta = new Vector2(500f, 50f);
             _aimLabel = aimGO.AddComponent<TextMeshProUGUI>();
             _aimLabel.fontSize = 28;

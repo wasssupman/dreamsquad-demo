@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 890a67de3581940a590a09e2b2d535f8, type: 3}
+  m_Name: Skill_Portal
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.SkillData
+  id: portal
+  displayName: Portal
+  description: "\uB450 \uD0C0\uC77C \uC5F0\uACB0: \uC785\uAD6C\uB85C \uB4E4\uC5B4\uAC04 \uC801\uC774 \uCD9C\uAD6C\uB85C \uC21C\uAC04\uC774\uB3D9 8\uCD08"
+  effect: 5
+  target: 0
+  range: 0
+  magnitude: 0
+  durationSec: 8
+  cooldownSec: 14
+  cost: 3
+  warningSec: 0
+  uiTint: {r: 0.75, g: 0.3, b: 1, a: 1}

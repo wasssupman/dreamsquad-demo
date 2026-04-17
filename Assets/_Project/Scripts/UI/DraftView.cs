@@ -22,6 +22,12 @@ namespace Wassup.UI
         private readonly List<DraftCardView> _cards = new();
         private bool _built;
 
+        // Phase 7 — "This round's skills" panel (right side). Rebuilt on each
+        // DraftStarted event so Redraft rolls show fresh picks. Skills are pulled
+        // from GameManager.Instance.SkillLoadout.Picked.
+        private RectTransform _skillPanel;
+        private readonly List<GameObject> _skillSlots = new();
+
         private void Awake()
         {
             BuildCanvas();
@@ -114,6 +120,94 @@ namespace Wassup.UI
             btnRt.anchoredPosition = new Vector2(0f, 80f);
             btnRt.sizeDelta = new Vector2(320f, 80f);
             _confirmButton.onClick.AddListener(OnConfirmClicked);
+
+            BuildSkillPanel();
+        }
+
+        private void BuildSkillPanel()
+        {
+            var panelGO = new GameObject("SkillLoadoutPanel", typeof(RectTransform), typeof(Image));
+            panelGO.transform.SetParent(_panel.transform, false);
+            _skillPanel = (RectTransform)panelGO.transform;
+            _skillPanel.anchorMin = new Vector2(1f, 0.5f);
+            _skillPanel.anchorMax = new Vector2(1f, 0.5f);
+            _skillPanel.pivot = new Vector2(1f, 0.5f);
+            _skillPanel.anchoredPosition = new Vector2(-40f, 40f);
+            _skillPanel.sizeDelta = new Vector2(240f, 360f);
+            panelGO.GetComponent<Image>().color = new Color(0.1f, 0.1f, 0.15f, 0.9f);
+
+            var titleTmp = CreateLabel(_skillPanel, "Title", "THIS ROUND\nSKILLS",
+                fontSize: 20, alignment: TextAlignmentOptions.Center);
+            var titleRt = (RectTransform)titleTmp.transform;
+            titleRt.anchorMin = new Vector2(0f, 1f);
+            titleRt.anchorMax = new Vector2(1f, 1f);
+            titleRt.pivot = new Vector2(0.5f, 1f);
+            titleRt.anchoredPosition = new Vector2(0f, -10f);
+            titleRt.sizeDelta = new Vector2(0f, 60f);
+
+            var row = new GameObject("SlotColumn", typeof(RectTransform), typeof(VerticalLayoutGroup));
+            row.transform.SetParent(_skillPanel, false);
+            var rrt = (RectTransform)row.transform;
+            rrt.anchorMin = new Vector2(0f, 0f);
+            rrt.anchorMax = new Vector2(1f, 1f);
+            rrt.offsetMin = new Vector2(12f, 20f);
+            rrt.offsetMax = new Vector2(-12f, -76f);
+            var vlg = row.GetComponent<VerticalLayoutGroup>();
+            vlg.spacing = 10f;
+            vlg.childForceExpandWidth = true;
+            vlg.childForceExpandHeight = true;
+            vlg.childAlignment = TextAnchor.UpperCenter;
+        }
+
+        private void RebuildSkillSlots()
+        {
+            if (_skillPanel == null) return;
+            var column = _skillPanel.Find("SlotColumn");
+            if (column == null) return;
+
+            for (int i = column.childCount - 1; i >= 0; i--)
+                Destroy(column.GetChild(i).gameObject);
+            _skillSlots.Clear();
+
+            var loadout = GameManager.Instance != null ? GameManager.Instance.SkillLoadout : null;
+            if (loadout == null)
+            {
+                Debug.LogWarning("[DraftView] RebuildSkillSlots skipped: GameManager.SkillLoadout is null.", this);
+                return;
+            }
+
+            var picked = loadout.Picked;
+            if (picked.Count == 0)
+            {
+                Debug.LogWarning("[DraftView] THIS ROUND SKILLS panel is empty: Picked.Count == 0.", this);
+            }
+            for (int i = 0; i < picked.Count; i++)
+            {
+                var skill = picked[i];
+                if (skill == null) continue;
+                var slot = new GameObject($"Slot_{skill.id}", typeof(RectTransform), typeof(Image));
+                slot.transform.SetParent(column, false);
+                var img = slot.GetComponent<Image>();
+                img.color = skill.uiTint;
+
+                var nameTmp = CreateLabel(slot.transform, "Name", skill.displayName,
+                    fontSize: 22, alignment: TextAlignmentOptions.Center);
+                var nrt = (RectTransform)nameTmp.transform;
+                nrt.anchorMin = new Vector2(0f, 0.4f);
+                nrt.anchorMax = new Vector2(1f, 1f);
+                nrt.offsetMin = new Vector2(4f, 0f);
+                nrt.offsetMax = new Vector2(-4f, -4f);
+
+                var costTmp = CreateLabel(slot.transform, "Cost", $"cost {skill.cost}",
+                    fontSize: 18, alignment: TextAlignmentOptions.Center);
+                var crt = (RectTransform)costTmp.transform;
+                crt.anchorMin = new Vector2(0f, 0f);
+                crt.anchorMax = new Vector2(1f, 0.4f);
+                crt.offsetMin = new Vector2(4f, 4f);
+                crt.offsetMax = new Vector2(-4f, 0f);
+
+                _skillSlots.Add(slot);
+            }
         }
 
         private void OnDraftStarted()
@@ -121,6 +215,7 @@ namespace Wassup.UI
             if (!_built) BuildCanvas();
             _panel.SetActive(true);
             RebuildCards();
+            RebuildSkillSlots();
             RefreshStateIndicators();
         }
 

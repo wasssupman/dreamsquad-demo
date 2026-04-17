@@ -1,3 +1,4 @@
+using Spine.Unity;
 using UnityEngine;
 
 namespace Wassup.Data
@@ -26,6 +27,21 @@ namespace Wassup.Data
 
         // Phase 6: placement cost subtracted from CostRuntime on PlaceDefenderAs.
         public int cost = 1;
+
+        // Phase 8: Spine skeleton skin + animation names. When spineSkinName is
+        // empty or skeletonDataAsset is null, BattleBridge falls back to the
+        // Phase 5 billboard path, so skeletons can be rolled out incrementally
+        // one unit type at a time without breaking the rest of the roster.
+        [Header("Phase 8 — Spine")]
+        public SkeletonDataAsset skeletonDataAsset;
+        public string spineSkinName;
+        public string idleAnimation = "idle";
+        public string attackAnimation = "attack";
+        public string deathAnimation = "die";
+        // Visual scale applied to the spawned SkeletonAnimation GameObject.
+        // Spine rigs ship in their own unit space (often pixels); map into our
+        // tile-based world so a single SO knob is enough to normalise rig size.
+        public float spineVisualScale = 1f;
     }
 
     public enum OnPlaceEffectType { None, SlowPulse, BoostNearbyDefenders }

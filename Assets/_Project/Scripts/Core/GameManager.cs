@@ -19,10 +19,12 @@ namespace Wassup.Core
         [SerializeField] private TimelineBriefingView timelineBriefing;
         [SerializeField] private CostRuntime costRuntime;
         [SerializeField] private CostConfig costConfig;
+        [SerializeField] private SkillLoadoutController skillLoadout;
         public BattleLogger Logger => logger;
         public DraftController DraftController => draftController;
         public CostRuntime CostRuntime => costRuntime;
         public CostConfig CostConfig => costConfig;
+        public SkillLoadoutController SkillLoadout => skillLoadout;
         public bool IsAiming { get; set; }
         public DefenderUnitData SelectedDefender { get; set; }
 
@@ -55,6 +57,12 @@ namespace Wassup.Core
             if (costRuntime != null && costConfig != null)
             {
                 costRuntime.Configure(costConfig.startingCost, costConfig.maxCost, costConfig.regenPerSec);
+            }
+            if (skillLoadout == null) skillLoadout = GetComponentInChildren<SkillLoadoutController>();
+            if (skillLoadout == null)
+            {
+                skillLoadout = gameObject.AddComponent<SkillLoadoutController>();
+                Debug.LogWarning("[GameManager] SkillLoadoutController missing; added fallback component on GameManager.", this);
             }
         }
 

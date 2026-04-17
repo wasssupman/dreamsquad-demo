@@ -33,6 +33,8 @@ namespace Wassup.Bridge
         [SerializeField] private DraftController draftController;
         [SerializeField] private SkillRuntime skillRuntime;
         [SerializeField] private PlacementPhaseView _placementPhaseView;
+        [SerializeField] private Wassup.Presentation.SpineDefenderPool spineDefenderPool;
+        [SerializeField] private float spineDefenderYOffset = 0f;
 
         private World _world;
         private EntityManager _em;
@@ -86,6 +88,11 @@ namespace Wassup.Bridge
             {
                 logger.EndSession();
                 logger.StartSession();
+                // Phase 7 (Q6=a): Restart keeps the same picked skill loadout,
+                // but logger.StartSession() created an empty SkillRecord — so
+                // re-populate skill.loadout/pool/seed so the new log file carries
+                // the same audit trail the player actually plays with.
+                ReLogSkillLoadoutForNewSession(logger);
             }
 
             TeardownCurrentBattle();
@@ -93,6 +100,19 @@ namespace Wassup.Bridge
             _running = false;
             _resultShown = false;
             _placementPhaseView?.BeginPlacementPhase();
+        }
+
+        private void ReLogSkillLoadoutForNewSession(Logging.BattleLogger logger)
+        {
+            if (logger == null) return;
+            var ctl = GameManager.Instance?.SkillLoadout;
+            if (ctl == null || ctl.Picked.Count == 0) return;
+            var pickedIds = new System.Collections.Generic.List<string>();
+            foreach (var s in ctl.Picked) if (s != null) pickedIds.Add(s.id);
+            logger.SetSkillLoadout(pickedIds);
+            var poolIds = new System.Collections.Generic.List<string>();
+            foreach (var s in ctl.Pool) if (s != null) poolIds.Add(s.id);
+            logger.SetSkillPool(poolIds, ctl.Seed);
         }
 
         private void OnRedraftRequested()
@@ -147,6 +167,7 @@ namespace Wassup.Bridge
             if (skillRuntime != null) skillRuntime.ResetAll();
             if (GameManager.Instance != null && GameManager.Instance.CostRuntime != null)
                 GameManager.Instance.CostRuntime.StopRegen();
+            if (spineDefenderPool != null) spineDefenderPool.DisposeAll();
 
             // Destroy all battle-related entities so the next StartBattle has a clean slate.
             var attackers = _em.CreateEntityQuery(ComponentType.ReadOnly<AttackUnitTag>());
@@ -300,10 +321,17 @@ namespace Wassup.Bridge
             if (skill.target != SkillTargetType.TilePoint) return false;
             if (skillRuntime != null && !skillRuntime.IsReady(skill)) return false;
 
+            Vector2Int secondaryTile = new(-1, -1);
             switch (skill.effect)
             {
                 case SkillEffectType.SlowField:
                     affectedCount = ApplySlowField(tile, skill);
+                    break;
+                case SkillEffectType.Tornado:
+                    affectedCount = ApplyTornado(tile, skill);
+                    break;
+                case SkillEffectType.Meteor:
+                    affectedCount = ApplyMeteor(tile, skill);
                     break;
                 default:
                     Debug.LogWarning($"[BattleBridge] TilePoint skill '{skill.id}' has unsupported effect {skill.effect}.");
@@ -316,10 +344,37 @@ namespace Wassup.Bridge
                 skill_id = skill.id,
                 time = Time.time - _startTime,
                 target_tile = tile,
+                target_tile_b = secondaryTile,
                 affected_count = affectedCount,
                 cost_spent = skill.cost,
             });
             Debug.Log($"[BattleBridge] CastSkillAtTile {skill.id} @ {tile} → {affectedCount} affected, cd={skill.cooldownSec}s");
+            return true;
+        }
+
+        // Phase 7 — Portal two-tap cast. Unlike CastSkillAtTile, this takes two
+        // tiles (entry/exit) in one call. SkillBar captures both taps before
+        // invoking. Returns false if the skill is not a Portal or the cooldown
+        // gate rejects.
+        public bool CastPortal(SkillData skill, Vector2Int entryTile, Vector2Int exitTile, out int affectedCount)
+        {
+            affectedCount = 0;
+            if (!_running || skill == null) return false;
+            if (skill.effect != SkillEffectType.Portal) return false;
+            if (skillRuntime != null && !skillRuntime.IsReady(skill)) return false;
+
+            affectedCount = ApplyPortal(entryTile, exitTile, skill);
+            skillRuntime?.Consume(skill);
+            GameManager.Instance?.Logger?.RecordSkillUsage(new Logging.SkillUsageLog
+            {
+                skill_id = skill.id,
+                time = Time.time - _startTime,
+                target_tile = entryTile,
+                target_tile_b = exitTile,
+                affected_count = affectedCount,
+                cost_spent = skill.cost,
+            });
+            Debug.Log($"[BattleBridge] CastPortal {skill.id} {entryTile}→{exitTile} for {skill.durationSec}s");
             return true;
         }
 
@@ -391,6 +446,130 @@ namespace Wassup.Bridge
             return affected;
         }
 
+        // Phase 7 — Tornado. Pulls in-range attackers toward the target tile for
+        // `durationSec`. `skill.magnitude` is the pull speed (world units/sec).
+        private int ApplyTornado(Vector2Int tile, SkillData skill)
+        {
+            if (!_aliveAttackersQueryCreated) return 0;
+            var entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
+            float3 targetWorld = new float3(tile.x * tileSize, 0f, tile.y * tileSize);
+            float rangeWorld = skill.range * tileSize;
+            float rangeSq = rangeWorld * rangeWorld;
+            int affected = 0;
+
+            for (int i = 0; i < entities.Length; i++)
+            {
+                var e = entities[i];
+                if (!_em.HasComponent<LocalTransform>(e)) continue;
+                var pos = _em.GetComponentData<LocalTransform>(e).Position;
+                float dx = pos.x - targetWorld.x;
+                float dz = pos.z - targetWorld.z;
+                if (dx * dx + dz * dz > rangeSq) continue;
+                EffectSpawner.ApplyTornadoPull(_em, e, skill.durationSec, targetWorld, skill.magnitude);
+                affected++;
+            }
+
+            entities.Dispose();
+            return affected;
+        }
+
+        // Phase 7 — Meteor. Spawns a carrier entity + a MonoBehaviour-side warning
+        // ring for `skill.warningSec`; MeteorResolutionSystem applies the AoE damage
+        // when the warning expires.
+        private int ApplyMeteor(Vector2Int tile, SkillData skill)
+        {
+            float3 centerWorld = new float3(tile.x * tileSize, 0f, tile.y * tileSize);
+            float radiusWorld = skill.range * tileSize;
+            float warn = skill.warningSec > 0f ? skill.warningSec : 0f;
+            EffectSpawner.SpawnMeteor(_em, centerWorld, radiusWorld, skill.magnitude, warn);
+            SpawnMeteorWarningVisual(centerWorld, radiusWorld, warn);
+            // Actual damage count is reported async by MeteorResolutionSystem; at
+            // cast time we conservatively pre-count current overlaps so the log is
+            // informative without waiting for the burst.
+            if (!_aliveAttackersQueryCreated) return 0;
+            var entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
+            float rSq = radiusWorld * radiusWorld;
+            int preview = 0;
+            for (int i = 0; i < entities.Length; i++)
+            {
+                if (!_em.HasComponent<LocalTransform>(entities[i])) continue;
+                var p = _em.GetComponentData<LocalTransform>(entities[i]).Position;
+                float dx = p.x - centerWorld.x;
+                float dz = p.z - centerWorld.z;
+                if (dx * dx + dz * dz <= rSq) preview++;
+            }
+            entities.Dispose();
+            return preview;
+        }
+
+        // Phase 7 — Portal. Spawns a PortalLink carrier with two endpoints. On
+        // teleport, MovementSystem advances the attacker's waypoint index to the
+        // first waypoint whose cell matches (or follows) the exit tile so they
+        // keep heading toward the goal from the exit.
+        private int ApplyPortal(Vector2Int entryTile, Vector2Int exitTile, SkillData skill)
+        {
+            float3 entryWorld = new float3(entryTile.x * tileSize, 0f, entryTile.y * tileSize);
+            float3 exitWorld = new float3(exitTile.x * tileSize, 0f, exitTile.y * tileSize);
+            float entryRadius = tileSize * 0.5f; // half-tile catch radius
+            int exitWaypointIdx = ResolveExitWaypointIndex(exitTile);
+            EffectSpawner.SpawnPortal(_em, entryWorld, exitWorld, entryRadius, skill.durationSec, exitWaypointIdx);
+            return 1;
+        }
+
+        // Picks the first path waypoint whose cell equals exitTile; if none,
+        // picks the closest waypoint so the attacker resumes forward progress.
+        // Falls back to index 0 when no path data is available. We scan only the
+        // first path on the map — this is fine for the Phase 5/6 maps that ship
+        // with a single attacker route. If the map later exposes multiple paths,
+        // the per-attacker waypoint buffer still keeps its own cell data, so the
+        // index remapping here is conservative for single-path maps only.
+        private int ResolveExitWaypointIndex(Vector2Int exitTile)
+        {
+            if (map == null || map.Paths == null || map.Paths.Count == 0) return 0;
+            var waypoints = map.Paths[0].waypoints;
+            if (waypoints == null || waypoints.Count == 0) return 0;
+            int bestIdx = 0;
+            float bestSq = float.MaxValue;
+            for (int i = 0; i < waypoints.Count; i++)
+            {
+                var w = waypoints[i];
+                if (w.x == exitTile.x && w.y == exitTile.y) return i + 1;
+                float dx = w.x - exitTile.x;
+                float dz = w.y - exitTile.y;
+                float d2 = dx * dx + dz * dz;
+                if (d2 < bestSq)
+                {
+                    bestSq = d2;
+                    bestIdx = i + 1;
+                }
+            }
+            return bestIdx;
+        }
+
+        // Meteor telegraph: a flat translucent red quad on the ground that
+        // auto-destroys after warningSec. Deliberately MonoBehaviour-only — ECS
+        // holds the resolution timer, but the *visual* is a gameplay-layer object.
+        private void SpawnMeteorWarningVisual(float3 centerWorld, float radiusWorld, float warningSec)
+        {
+            if (warningSec <= 0f) return;
+            var go = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            go.name = "MeteorWarning";
+            var col = go.GetComponent<Collider>();
+            if (col != null) Destroy(col);
+            go.transform.position = new Vector3(centerWorld.x, 0.02f, centerWorld.z);
+            go.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
+            float d = radiusWorld * 2f;
+            go.transform.localScale = new Vector3(d, d, 1f);
+            var rend = go.GetComponent<MeshRenderer>();
+            if (rend != null)
+            {
+                var mat = new Material(Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color"));
+                mat.color = new Color(1f, 0.15f, 0.15f, 0.55f);
+                rend.sharedMaterial = mat;
+            }
+            Destroy(go, warningSec);
+        }
+
         private void Update()
         {
             if (!_running) return;
@@ -418,6 +597,10 @@ namespace Wassup.Bridge
             while (_defenderDeathQueue.TryDequeue(out var evt))
             {
                 var cell = new Vector2Int(evt.cell.x, evt.cell.y);
+                if (spineDefenderPool != null && _defenderByTile.TryGetValue(cell, out var binding))
+                {
+                    spineDefenderPool.NotifyDeath(binding.entity);
+                }
                 _defenderByTile.Remove(cell);
                 _occupiedTiles.Remove(cell);
                 RecomputeSynergyFor(cell);
@@ -439,6 +622,9 @@ namespace Wassup.Bridge
             for (int i = 0; i < requestEntities.Length; i++)
             {
                 var req = requestData[i];
+                // Phase 8: defender that fired is the request's carrier entity.
+                // Trigger its Spine attack animation (no-op if no Spine view).
+                if (spineDefenderPool != null) spineDefenderPool.NotifyAttack(requestEntities[i]);
                 SpawnProjectile(req);
                 _em.RemoveComponent<ProjectileSpawnRequest>(requestEntities[i]);
             }
@@ -775,12 +961,25 @@ namespace Wassup.Bridge
                 cooldownRemaining = 0f,
             });
 
-            var renderArray = GetOrCreateDefenderRenderMeshArray(unitData);
-            var desc = new RenderMeshDescription(
-                shadowCastingMode: UnityEngine.Rendering.ShadowCastingMode.Off,
-                receiveShadows: false);
-            RenderMeshUtility.AddComponents(entity, _em, desc, renderArray,
-                MaterialMeshInfo.FromRenderMeshArrayIndices(0, 0));
+            // Phase 8: if the unit has a Spine skeleton configured, spawn a
+            // SkeletonAnimation GameObject instead of the billboard RenderMesh.
+            // When no skin/skel is set we fall through to the Phase 5 billboard,
+            // so Spine rollout is per-unit and doesn't block unconfigured types.
+            bool spineSpawned = false;
+            if (spineDefenderPool != null)
+            {
+                var spineWorld = new Vector3(pos.x, pos.y + spineDefenderYOffset, pos.z);
+                spineSpawned = spineDefenderPool.TrySpawn(unitData, entity, spineWorld, out _);
+            }
+            if (!spineSpawned)
+            {
+                var renderArray = GetOrCreateDefenderRenderMeshArray(unitData);
+                var desc = new RenderMeshDescription(
+                    shadowCastingMode: UnityEngine.Rendering.ShadowCastingMode.Off,
+                    receiveShadows: false);
+                RenderMeshUtility.AddComponents(entity, _em, desc, renderArray,
+                    MaterialMeshInfo.FromRenderMeshArrayIndices(0, 0));
+            }
 
             if (unitData.projectile != null)
             {

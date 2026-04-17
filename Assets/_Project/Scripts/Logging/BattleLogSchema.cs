@@ -8,7 +8,7 @@ namespace Wassup.Logging
     public class BattleLogEntry
     {
         public string session_id;
-        public string phase = "phase6";
+        public string phase = "phase7";
         public string timestamp_start;
         public string timestamp_end;
         public string attack_deck_id;
@@ -54,6 +54,12 @@ namespace Wassup.Logging
     {
         public List<string> loadout = new();
         public List<SkillUsageLog> usages = new();
+
+        // Phase 7: full 6-skill pool the loadout was rolled from, and the seed
+        // the roll used. `loadout` above holds the 2 picked ids, so `picked` is
+        // intentionally not duplicated — loadout IS the picked set.
+        public List<string> pool = new();
+        public int seed;
     }
 
     [Serializable]
@@ -64,6 +70,11 @@ namespace Wassup.Logging
         public Vector2Int target_tile;
         public int affected_count;
         public int cost_spent;
+
+        // Phase 7: Portal is the only 2-tile skill (entry + exit). All other
+        // skills leave this at (-1, -1). Analyzers can treat non-(-1,-1) as
+        // "this was a dual-tile cast."
+        public Vector2Int target_tile_b = new(-1, -1);
     }
 
     // Phase 4: tracks adjacency synergy activity over the session. `activations`

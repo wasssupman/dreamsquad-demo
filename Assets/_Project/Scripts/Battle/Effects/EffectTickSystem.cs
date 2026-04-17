@@ -21,7 +21,9 @@ namespace Wassup.Battle.Effects
             state.RequireAnyForUpdate(
                 state.GetEntityQuery(ComponentType.ReadOnly<SlowEffect>()),
                 state.GetEntityQuery(ComponentType.ReadOnly<DamageBoost>()),
-                state.GetEntityQuery(ComponentType.ReadOnly<CooldownReduction>()));
+                state.GetEntityQuery(ComponentType.ReadOnly<CooldownReduction>()),
+                state.GetEntityQuery(ComponentType.ReadOnly<TornadoPull>()),
+                state.GetEntityQuery(ComponentType.ReadOnly<PortalLink>()));
         }
 
         [BurstCompile]
@@ -57,6 +59,30 @@ namespace Wassup.Battle.Effects
                 if (effect.ValueRO.remaining <= 0f)
                 {
                     ecb.RemoveComponent<CooldownReduction>(entity);
+                }
+            }
+
+            // Phase 7 — TornadoPull: attacker-attached. Tick + remove when expired
+            // so MovementSystem falls back to normal waypoint traversal.
+            foreach (var (effect, entity) in
+                     SystemAPI.Query<RefRW<TornadoPull>>().WithEntityAccess())
+            {
+                effect.ValueRW.remaining -= dt;
+                if (effect.ValueRO.remaining <= 0f)
+                {
+                    ecb.RemoveComponent<TornadoPull>(entity);
+                }
+            }
+
+            // Phase 7 — PortalLink: carrier entity. Destroy the whole entity on
+            // expiry since the component IS the portal.
+            foreach (var (effect, entity) in
+                     SystemAPI.Query<RefRW<PortalLink>>().WithEntityAccess())
+            {
+                effect.ValueRW.remaining -= dt;
+                if (effect.ValueRO.remaining <= 0f)
+                {
+                    ecb.DestroyEntity(entity);
                 }
             }
 
