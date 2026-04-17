@@ -53,6 +53,7 @@ namespace Wassup.Bridge
         private int _synergyActivations;
         private int _synergyPeakCount;
         private float _startTime;
+        private float _timerDuration;
         private bool _running;
         private bool _resultShown;
         private int _goalReachedCount;
@@ -175,6 +176,7 @@ namespace Wassup.Bridge
             _synergyActivations = 0;
             _synergyPeakCount = 0;
             _startTime = Time.time;
+            _timerDuration = deck.timerDurationSec;
             _goalReachedCount = 0;
             _running = true;
             _resultShown = false;
@@ -358,6 +360,7 @@ namespace Wassup.Bridge
             DrainProjectileSpawnRequests();
             DrainDefenderDeathEvents();
             DrainGoalEvents();
+            CheckTimer();
             CheckVictory();
         }
 
@@ -597,6 +600,21 @@ namespace Wassup.Bridge
                     return;
                 }
             }
+        }
+
+        public float TimerRemaining => _running ? Mathf.Max(0f, _timerDuration - (Time.time - _startTime)) : 0f;
+
+        private void CheckTimer()
+        {
+            if (_resultShown) return;
+            if (_timerDuration <= 0f) return;
+            if (Time.time - _startTime < _timerDuration) return;
+
+            _resultShown = true;
+            _running = false;
+            GameManager.Instance?.Logger?.SetResult("victory_timeout", _goalReachedCount);
+            resultScreen?.ShowVictory();
+            Debug.Log("[BattleBridge] VICTORY — timer expired, player survived.");
         }
 
         // Victory = every spawn in the deck has been processed AND no attack unit entities remain alive.

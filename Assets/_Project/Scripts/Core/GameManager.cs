@@ -1,6 +1,7 @@
 using UnityEngine;
 using Wassup.Bridge;
 using Wassup.Logging;
+using Wassup.UI;
 
 namespace Wassup.Core
 {
@@ -12,6 +13,7 @@ namespace Wassup.Core
         [SerializeField] private BattleLogger logger;
         [SerializeField] private BattleBridge battleBridge;
         [SerializeField] private DraftController draftController;
+        [SerializeField] private TimelineBriefingView timelineBriefing;
         public BattleLogger Logger => logger;
         public DraftController DraftController => draftController;
         public bool IsAiming { get; set; }
@@ -43,7 +45,12 @@ namespace Wassup.Core
         // to DraftController events before we emit DraftStarted.
         private void Start()
         {
-            if (draftController != null)
+            if (timelineBriefing != null && draftController != null)
+            {
+                timelineBriefing.BriefingConfirmed = () => draftController.BeginDraft();
+                timelineBriefing.Show();
+            }
+            else if (draftController != null)
             {
                 draftController.BeginDraft();
             }

@@ -10,6 +10,7 @@ namespace Wassup.Data
         public string deckId = "WaveA";
         public List<SpawnEntry> spawns = new();
         public int defeatGoalReachedCount = 5;
+        public float timerDurationSec = 180f;
     }
 
     [Serializable]

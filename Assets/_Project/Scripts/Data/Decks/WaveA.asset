@@ -14,22 +14,209 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Wassup.Data.AttackDeck
   deckId: WaveA
   spawns:
-  - triggerTimeSec: 1
-    unitType: {fileID: 11400000, guid: a50475686b6034b219173681f81f3dcd, type: 2}
-    pathId: A
-  - triggerTimeSec: 2
+  - triggerTimeSec: 0
     unitType: {fileID: 11400000, guid: ed2bfe7dff71d415b84563f3ebc293b9, type: 2}
     pathId: A
-  - triggerTimeSec: 3
-    unitType: {fileID: 11400000, guid: d8f78ad31ef4e4cd3ba3b2405d899e54, type: 2}
-    pathId: A
-  - triggerTimeSec: 4.5
+  - triggerTimeSec: 0
     unitType: {fileID: 11400000, guid: ed2bfe7dff71d415b84563f3ebc293b9, type: 2}
     pathId: B
   - triggerTimeSec: 5
     unitType: {fileID: 11400000, guid: d8f78ad31ef4e4cd3ba3b2405d899e54, type: 2}
+    pathId: A
+  - triggerTimeSec: 10
+    unitType: {fileID: 11400000, guid: ed2bfe7dff71d415b84563f3ebc293b9, type: 2}
+    pathId: A
+  - triggerTimeSec: 10
+    unitType: {fileID: 11400000, guid: d8f78ad31ef4e4cd3ba3b2405d899e54, type: 2}
     pathId: B
-  - triggerTimeSec: 6.5
+  - triggerTimeSec: 15
+    unitType: {fileID: 11400000, guid: d8f78ad31ef4e4cd3ba3b2405d899e54, type: 2}
+    pathId: A
+  - triggerTimeSec: 15
+    unitType: {fileID: 11400000, guid: d8f78ad31ef4e4cd3ba3b2405d899e54, type: 2}
+    pathId: B
+  - triggerTimeSec: 25
+    unitType: {fileID: 11400000, guid: a50475686b6034b219173681f81f3dcd, type: 2}
+    pathId: A
+  - triggerTimeSec: 30
+    unitType: {fileID: 11400000, guid: d8f78ad31ef4e4cd3ba3b2405d899e54, type: 2}
+    pathId: A
+  - triggerTimeSec: 30
+    unitType: {fileID: 11400000, guid: d8f78ad31ef4e4cd3ba3b2405d899e54, type: 2}
+    pathId: B
+  - triggerTimeSec: 35
+    unitType: {fileID: 11400000, guid: ed2bfe7dff71d415b84563f3ebc293b9, type: 2}
+    pathId: A
+  - triggerTimeSec: 35
+    unitType: {fileID: 11400000, guid: ed2bfe7dff71d415b84563f3ebc293b9, type: 2}
+    pathId: B
+  - triggerTimeSec: 35
+    unitType: {fileID: 11400000, guid: ed2bfe7dff71d415b84563f3ebc293b9, type: 2}
+    pathId: A
+  - triggerTimeSec: 40
     unitType: {fileID: 11400000, guid: a50475686b6034b219173681f81f3dcd, type: 2}
     pathId: B
-  defeatGoalReachedCount: 5
+  - triggerTimeSec: 45
+    unitType: {fileID: 11400000, guid: d8f78ad31ef4e4cd3ba3b2405d899e54, type: 2}
+    pathId: A
+  - triggerTimeSec: 45
+    unitType: {fileID: 11400000, guid: d8f78ad31ef4e4cd3ba3b2405d899e54, type: 2}
+    pathId: B
+  - triggerTimeSec: 55
+    unitType: {fileID: 11400000, guid: a50475686b6034b219173681f81f3dcd, type: 2}
+    pathId: A
+  - triggerTimeSec: 55
+    unitType: {fileID: 11400000, guid: d8f78ad31ef4e4cd3ba3b2405d899e54, type: 2}
+    pathId: A
+  - triggerTimeSec: 60
+    unitType: {fileID: 11400000, guid: ed2bfe7dff71d415b84563f3ebc293b9, type: 2}
+    pathId: B
+  - triggerTimeSec: 60
+    unitType: {fileID: 11400000, guid: ed2bfe7dff71d415b84563f3ebc293b9, type: 2}
+    pathId: B
+  - triggerTimeSec: 65
+    unitType: {fileID: 11400000, guid: a50475686b6034b219173681f81f3dcd, type: 2}
+    pathId: B
+  - triggerTimeSec: 65
+    unitType: {fileID: 11400000, guid: d8f78ad31ef4e4cd3ba3b2405d899e54, type: 2}
+    pathId: B
+  - triggerTimeSec: 70
+    unitType: {fileID: 11400000, guid: d8f78ad31ef4e4cd3ba3b2405d899e54, type: 2}
+    pathId: A
+  - triggerTimeSec: 70
+    unitType: {fileID: 11400000, guid: d8f78ad31ef4e4cd3ba3b2405d899e54, type: 2}
+    pathId: A
+  - triggerTimeSec: 70
+    unitType: {fileID: 11400000, guid: ed2bfe7dff71d415b84563f3ebc293b9, type: 2}
+    pathId: A
+  - triggerTimeSec: 75
+    unitType: {fileID: 11400000, guid: a50475686b6034b219173681f81f3dcd, type: 2}
+    pathId: A
+  - triggerTimeSec: 85
+    unitType: {fileID: 11400000, guid: a50475686b6034b219173681f81f3dcd, type: 2}
+    pathId: A
+  - triggerTimeSec: 85
+    unitType: {fileID: 11400000, guid: a50475686b6034b219173681f81f3dcd, type: 2}
+    pathId: B
+  - triggerTimeSec: 90
+    unitType: {fileID: 11400000, guid: d8f78ad31ef4e4cd3ba3b2405d899e54, type: 2}
+    pathId: A
+  - triggerTimeSec: 90
+    unitType: {fileID: 11400000, guid: d8f78ad31ef4e4cd3ba3b2405d899e54, type: 2}
+    pathId: B
+  - triggerTimeSec: 90
+    unitType: {fileID: 11400000, guid: ed2bfe7dff71d415b84563f3ebc293b9, type: 2}
+    pathId: A
+  - triggerTimeSec: 95
+    unitType: {fileID: 11400000, guid: ed2bfe7dff71d415b84563f3ebc293b9, type: 2}
+    pathId: B
+  - triggerTimeSec: 95
+    unitType: {fileID: 11400000, guid: ed2bfe7dff71d415b84563f3ebc293b9, type: 2}
+    pathId: B
+  - triggerTimeSec: 100
+    unitType: {fileID: 11400000, guid: a50475686b6034b219173681f81f3dcd, type: 2}
+    pathId: A
+  - triggerTimeSec: 100
+    unitType: {fileID: 11400000, guid: d8f78ad31ef4e4cd3ba3b2405d899e54, type: 2}
+    pathId: A
+  - triggerTimeSec: 105
+    unitType: {fileID: 11400000, guid: d8f78ad31ef4e4cd3ba3b2405d899e54, type: 2}
+    pathId: B
+  - triggerTimeSec: 105
+    unitType: {fileID: 11400000, guid: d8f78ad31ef4e4cd3ba3b2405d899e54, type: 2}
+    pathId: B
+  - triggerTimeSec: 110
+    unitType: {fileID: 11400000, guid: a50475686b6034b219173681f81f3dcd, type: 2}
+    pathId: B
+  - triggerTimeSec: 110
+    unitType: {fileID: 11400000, guid: ed2bfe7dff71d415b84563f3ebc293b9, type: 2}
+    pathId: A
+  - triggerTimeSec: 110
+    unitType: {fileID: 11400000, guid: ed2bfe7dff71d415b84563f3ebc293b9, type: 2}
+    pathId: B
+  - triggerTimeSec: 125
+    unitType: {fileID: 11400000, guid: a50475686b6034b219173681f81f3dcd, type: 2}
+    pathId: A
+  - triggerTimeSec: 125
+    unitType: {fileID: 11400000, guid: a50475686b6034b219173681f81f3dcd, type: 2}
+    pathId: A
+  - triggerTimeSec: 130
+    unitType: {fileID: 11400000, guid: d8f78ad31ef4e4cd3ba3b2405d899e54, type: 2}
+    pathId: B
+  - triggerTimeSec: 130
+    unitType: {fileID: 11400000, guid: ed2bfe7dff71d415b84563f3ebc293b9, type: 2}
+    pathId: B
+  - triggerTimeSec: 130
+    unitType: {fileID: 11400000, guid: ed2bfe7dff71d415b84563f3ebc293b9, type: 2}
+    pathId: B
+  - triggerTimeSec: 135
+    unitType: {fileID: 11400000, guid: a50475686b6034b219173681f81f3dcd, type: 2}
+    pathId: B
+  - triggerTimeSec: 135
+    unitType: {fileID: 11400000, guid: a50475686b6034b219173681f81f3dcd, type: 2}
+    pathId: B
+  - triggerTimeSec: 140
+    unitType: {fileID: 11400000, guid: d8f78ad31ef4e4cd3ba3b2405d899e54, type: 2}
+    pathId: A
+  - triggerTimeSec: 140
+    unitType: {fileID: 11400000, guid: d8f78ad31ef4e4cd3ba3b2405d899e54, type: 2}
+    pathId: A
+  - triggerTimeSec: 140
+    unitType: {fileID: 11400000, guid: ed2bfe7dff71d415b84563f3ebc293b9, type: 2}
+    pathId: A
+  - triggerTimeSec: 145
+    unitType: {fileID: 11400000, guid: a50475686b6034b219173681f81f3dcd, type: 2}
+    pathId: A
+  - triggerTimeSec: 145
+    unitType: {fileID: 11400000, guid: d8f78ad31ef4e4cd3ba3b2405d899e54, type: 2}
+    pathId: B
+  - triggerTimeSec: 150
+    unitType: {fileID: 11400000, guid: ed2bfe7dff71d415b84563f3ebc293b9, type: 2}
+    pathId: A
+  - triggerTimeSec: 150
+    unitType: {fileID: 11400000, guid: ed2bfe7dff71d415b84563f3ebc293b9, type: 2}
+    pathId: B
+  - triggerTimeSec: 150
+    unitType: {fileID: 11400000, guid: d8f78ad31ef4e4cd3ba3b2405d899e54, type: 2}
+    pathId: A
+  - triggerTimeSec: 160
+    unitType: {fileID: 11400000, guid: a50475686b6034b219173681f81f3dcd, type: 2}
+    pathId: A
+  - triggerTimeSec: 160
+    unitType: {fileID: 11400000, guid: a50475686b6034b219173681f81f3dcd, type: 2}
+    pathId: B
+  - triggerTimeSec: 160
+    unitType: {fileID: 11400000, guid: d8f78ad31ef4e4cd3ba3b2405d899e54, type: 2}
+    pathId: A
+  - triggerTimeSec: 165
+    unitType: {fileID: 11400000, guid: ed2bfe7dff71d415b84563f3ebc293b9, type: 2}
+    pathId: A
+  - triggerTimeSec: 165
+    unitType: {fileID: 11400000, guid: ed2bfe7dff71d415b84563f3ebc293b9, type: 2}
+    pathId: B
+  - triggerTimeSec: 165
+    unitType: {fileID: 11400000, guid: ed2bfe7dff71d415b84563f3ebc293b9, type: 2}
+    pathId: A
+  - triggerTimeSec: 165
+    unitType: {fileID: 11400000, guid: ed2bfe7dff71d415b84563f3ebc293b9, type: 2}
+    pathId: B
+  - triggerTimeSec: 170
+    unitType: {fileID: 11400000, guid: a50475686b6034b219173681f81f3dcd, type: 2}
+    pathId: A
+  - triggerTimeSec: 170
+    unitType: {fileID: 11400000, guid: d8f78ad31ef4e4cd3ba3b2405d899e54, type: 2}
+    pathId: B
+  - triggerTimeSec: 170
+    unitType: {fileID: 11400000, guid: d8f78ad31ef4e4cd3ba3b2405d899e54, type: 2}
+    pathId: B
+  - triggerTimeSec: 175
+    unitType: {fileID: 11400000, guid: a50475686b6034b219173681f81f3dcd, type: 2}
+    pathId: B
+  - triggerTimeSec: 175
+    unitType: {fileID: 11400000, guid: a50475686b6034b219173681f81f3dcd, type: 2}
+    pathId: A
+  - triggerTimeSec: 175
+    unitType: {fileID: 11400000, guid: ed2bfe7dff71d415b84563f3ebc293b9, type: 2}
+    pathId: B
+  defeatGoalReachedCount: 10
+  timerDurationSec: 180
