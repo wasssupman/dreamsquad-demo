@@ -71,14 +71,12 @@ namespace Wassup.UI
                 var frt = (RectTransform)fillGO.transform;
                 frt.anchorMin = new Vector2(0f, 0f);
                 frt.anchorMax = new Vector2(1f, 1f);
+                frt.pivot = new Vector2(0.5f, 0f);
                 frt.offsetMin = new Vector2(2f, 2f);
                 frt.offsetMax = new Vector2(-2f, -2f);
+                frt.localScale = new Vector3(1f, 0f, 1f);
                 var fillImg = fillGO.GetComponent<Image>();
                 fillImg.color = FilledColor;
-                fillImg.type = Image.Type.Filled;
-                fillImg.fillMethod = Image.FillMethod.Vertical;
-                fillImg.fillOrigin = 0;
-                fillImg.fillAmount = 0f;
 
                 seg.GetComponent<Image>().color = EmptyColor;
                 _segments[i] = fillImg;
@@ -97,7 +95,7 @@ namespace Wassup.UI
             for (int i = 0; i < _segments.Length; i++)
             {
                 float fill = Mathf.Clamp01(current - i);
-                _segments[i].fillAmount = fill;
+                _segments[i].rectTransform.localScale = new Vector3(1f, fill, 1f);
             }
 
             _label.text = $"{rt.CurrentInt} / {Mathf.RoundToInt(rt.Max)}";
