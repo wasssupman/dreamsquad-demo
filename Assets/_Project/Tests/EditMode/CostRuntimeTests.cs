@@ -78,5 +78,42 @@ namespace Wassup.Tests.EditMode
             _rt.StopRegen();
             Assert.IsFalse(_rt.RegenActive);
         }
+
+        [Test]
+        public void Configure_Then_ResetToStart_Uses_Latest_StartingValue()
+        {
+            _rt.TrySpend(9);
+            _rt.Configure(startingCost: 6f, max: 12f, regenPerSec: 2f);
+
+            _rt.ResetToStart();
+
+            Assert.AreEqual(6, _rt.CurrentInt);
+            Assert.AreEqual(12f, _rt.Max);
+            Assert.IsFalse(_rt.RegenActive);
+        }
+
+        [Test]
+        public void RefundSpend_Restores_Budget_And_Allows_Spending_Again()
+        {
+            Assert.IsTrue(_rt.TrySpend(8));
+            Assert.AreEqual(2, _rt.CurrentInt);
+
+            _rt.RefundSpend(5);
+            Assert.AreEqual(7, _rt.CurrentInt);
+
+            Assert.IsTrue(_rt.TrySpend(7));
+            Assert.AreEqual(0, _rt.CurrentInt);
+        }
+
+        [Test]
+        public void Configure_Clamps_ResetToStart_To_Max()
+        {
+            _rt.Configure(startingCost: 20f, max: 12f, regenPerSec: 1f);
+
+            _rt.ResetToStart();
+
+            Assert.AreEqual(12, _rt.CurrentInt);
+            Assert.AreEqual(12f, _rt.Max);
+        }
     }
 }

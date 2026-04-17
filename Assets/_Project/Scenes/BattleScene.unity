@@ -1781,6 +1781,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 3e2a6f274a4954751931565017cca44f, type: 2}
   draftController: {fileID: 20521825}
   skillRuntime: {fileID: 229215106}
+  _placementPhaseView: {fileID: 1628485822}
 --- !u!4 &1939688409
 Transform:
   m_ObjectHideFlags: 0

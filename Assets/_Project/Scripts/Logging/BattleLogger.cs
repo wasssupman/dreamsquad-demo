@@ -71,10 +71,16 @@ namespace Wassup.Logging
             currentEntry.synergy.peakCount = peakCount;
         }
 
-        public void RecordPlacement(string unitType, Vector2Int tile, float time)
+        public void RecordPlacement(string unitType, Vector2Int tile, float time, int costSpent)
         {
             if (currentEntry == null) return;
-            currentEntry.placements.Add(new PlacementLog { unit_type = unitType, tile = tile, time = time });
+            currentEntry.placements.Add(new PlacementLog
+            {
+                unit_type = unitType,
+                tile = tile,
+                time = time,
+                cost_spent = costSpent
+            });
         }
 
         // Set the final battle outcome. Caller should invoke this before EndSession

@@ -242,81 +242,81 @@ public class SkillUsageLog {
 ### 3.1 기능 이진 체크
 
 **[P6-01] 데이터 스키마 + CostConfig SO + 수치 할당**
-- [ ] `DefenderUnitData.cost` 필드 + 10종 SO에 할당
-- [ ] `SkillData.cost` 필드 + 3종 SO에 할당
-- [ ] `Data/CostConfig.cs` SO + 기본값 에셋 1개 생성
+- [x] `DefenderUnitData.cost` 필드 + 10종 SO에 할당
+- [x] `SkillData.cost` 필드 + 3종 SO에 할당
+- [x] `Data/CostConfig.cs` SO + 기본값 에셋 1개 생성
 - 선행: Phase 5 완료
 - 완료 확인: Inspector에서 모든 cost 필드 읽힘
 
 **[P6-02] CostRuntime MonoBehaviour**
-- [ ] `Core/CostRuntime.cs` — Current/Max/CanAfford/TrySpend/BeginRegen/StopRegen/ResetToStart
-- [ ] Update에서 regen (float, maxCost 상한)
-- [ ] GameManager 자식 GameObject로 씬 배치
+- [x] `Core/CostRuntime.cs` — Current/Max/CanAfford/TrySpend/BeginRegen/StopRegen/ResetToStart
+- [x] Update에서 regen (float, maxCost 상한)
+- [x] GameManager 자식 GameObject로 씬 배치
 - 선행: P6-01
 - 완료 확인: EditMode 테스트 — Configure(10,15,1) 후 Update tick 5초 시뮬 → Current=10 유지(regen 비활성), BeginRegen 호출 후 5초 → 15로 상한 고정
 
 **[P6-03] GamePhase 상태 머신 (GameManager)**
-- [ ] `GamePhase` enum 추가
-- [ ] `GameManager.CurrentPhase` property + SetPhase 내부 전환 메서드
-- [ ] Start 플로우: Briefing → Draft → Placement → Battle 전이
-- [ ] 기존 TimelineBriefing/DraftController/BattleBridge 콜백이 SetPhase 호출
+- [x] `GamePhase` enum 추가
+- [x] `GameManager.CurrentPhase` property + SetPhase 내부 전환 메서드
+- [x] Start 플로우: Briefing → Draft → Placement → Battle 전이
+- [x] 기존 TimelineBriefing/DraftController/BattleBridge 콜백이 SetPhase 호출
 - 선행: P6-01
 - 완료 확인: execute_code로 각 페이즈 전이 후 CurrentPhase 값 확인
 
 **[P6-04] PlacementPhaseView + 배치 페이즈 진입**
-- [ ] `UI/PlacementPhaseView` 런타임 빌드 — 상단 카운트다운 + 중앙 START BATTLE 버튼
-- [ ] DraftController.TryConfirm이 Phase=Placement 전환 + PlacementPhaseView.Show + CostRuntime.ResetToStart (regen OFF)
-- [ ] 카운트다운 종료 또는 Start 버튼 → Phase=Battle + BattleBridge.StartBattle + CostRuntime.BeginRegen + TimerDisplay/SkillBar 활성
+- [x] `UI/PlacementPhaseView` 런타임 빌드 — 상단 카운트다운 + 중앙 START BATTLE 버튼
+- [x] DraftController.TryConfirm이 Phase=Placement 전환 + PlacementPhaseView.Show + CostRuntime.ResetToStart (regen OFF)
+- [x] 카운트다운 종료 또는 Start 버튼 → Phase=Battle + BattleBridge.StartBattle + CostRuntime.BeginRegen + TimerDisplay/SkillBar 활성
 - 선행: P6-03
 - 완료 확인: Play — Draft Confirm 후 30s 카운트다운 뜸, 배치 가능, 코스트 10에서 감소, 전투 시작 후 regen 시작
 
 **[P6-05] CostDisplay UI**
-- [ ] 좌하단 런타임 빌드, `"N / Max"` + 진행 바
-- [ ] Phase == Placement 또는 Battle일 때만 표시
+- [x] 좌하단 런타임 빌드, `"N / Max"` + 진행 바
+- [x] Phase == Placement 또는 Battle일 때만 표시
 - 선행: P6-02
 - 완료 확인: Play 전 과정에서 숫자/바가 정확히 현재 코스트 반영
 
 **[P6-06] PlacementInput + 거부 피드백 + CostRuntime 소모**
-- [ ] PlaceDefender 클릭 시 CostRuntime.CanAfford 체크
-- [ ] 실패 시 MapView.FlashTileReject(cell) — 0.2s 빨간 플래시 후 복원
-- [ ] 성공 시 CostRuntime.TrySpend(unitData.cost) 후 배치
-- [ ] BattleBridge.PlaceDefenderAs 서명에 cost 매개변수 추가, 로그 cost_spent 전달
+- [x] PlaceDefender 클릭 시 CostRuntime.CanAfford 체크
+- [x] 실패 시 MapView.FlashTileReject(cell) — 0.2s 빨간 플래시 후 복원
+- [x] 성공 시 CostRuntime.TrySpend(unitData.cost) 후 배치
+- [x] BattleBridge.PlaceDefenderAs 서명에 cost 매개변수 추가, 로그 cost_spent 전달
 - 선행: P6-04, P6-05
 - 완료 확인: Play에서 코스트 부족 시 타일 빨강 플래시 + 배치 실패, 충분하면 배치+코스트 감소
 
 **[P6-07] SkillBar 코스트 게이트**
-- [ ] 슬롯 interactable = (IsReady && CanAfford && Phase==Battle)
-- [ ] CanAfford==false 시 회색 슬롯 (C8=a)
-- [ ] 캐스트 성공 시 CostRuntime.TrySpend(skill.cost) + CastSkill 호출
-- [ ] BattleBridge.CastSkill*에 cost 매개변수 + 로그 cost_spent 전달
+- [x] 슬롯 interactable = (IsReady && CanAfford && Phase==Battle)
+- [x] CanAfford==false 시 회색 슬롯 (C8=a)
+- [x] 캐스트 성공 시 CostRuntime.TrySpend(skill.cost) + CastSkill 호출
+- [x] BattleBridge.CastSkill*에 cost 매개변수 + 로그 cost_spent 전달
 - 선행: P6-04, P6-05
 - 완료 확인: 코스트 3 미만일 때 Power Surge 슬롯 회색, 충분하면 발동 후 코스트 감소
 
 **[P6-08] 로깅 v5**
-- [ ] PlacementLog.cost_spent 필드
-- [ ] SkillUsageLog.cost_spent 필드
-- [ ] BattleLogger 메서드 시그니처 확장
-- [ ] 세션 JSON에 cost_spent 정상 기록
+- [x] PlacementLog.cost_spent 필드
+- [x] SkillUsageLog.cost_spent 필드
+- [x] BattleLogger 메서드 시그니처 확장
+- [x] 세션 JSON에 cost_spent 정상 기록
 - 선행: P6-06, P6-07
 - 완료 확인: `/GameLogs/session-*.json` 최신 파일에 cost_spent 필드 확인
 
 **[P6-09] Restart / Redraft 통합**
-- [ ] Result → Restart 버튼 → Placement 페이즈 재진행 (같은 픽, 코스트 10 리셋, 유닛 teardown)
-- [ ] Result → Redraft 버튼 → Draft → Placement → Battle
-- [ ] 기존 `_defenderByTile`/`_occupiedTiles`/체력바 teardown 경로 정상 유지
+- [x] Result → Restart 버튼 → Placement 페이즈 재진행 (같은 픽, 코스트 10 리셋, 유닛 teardown)
+- [x] Result → Redraft 버튼 → Draft → Placement → Battle
+- [x] 기존 `_defenderByTile`/`_occupiedTiles`/체력바 teardown 경로 정상 유지
 - 선행: P6-04
 - 완료 확인: 2판 이상 플레이 — Restart/Redraft 양쪽에서 Placement 페이즈 진입 확인
 
 **[P6-10] EditMode 테스트 확장**
-- [ ] `CostRuntimeTests` — Configure/TrySpend/Refund/BeginRegen tick/Max clamp
-- [ ] 기존 26개 회귀 없음
+- [x] `CostRuntimeTests` — Configure/TrySpend/Refund/BeginRegen tick/Max clamp
+- [x] 기존 26개 회귀 없음
 - 선행: P6-02
 - 완료 확인: run_tests 전부 pass (목표: 기존 + 신규 3~5건)
 
 **[P6-11] Phase 0~5 회귀 체크**
-- [ ] 브리핑 → 드래프트 → 배치 페이즈 → 전투 → 결과 → Restart/Redraft 전 플로우 정상
-- [ ] 로그에 cost_spent + 기존 필드 모두 적재
-- [ ] onPlace/시너지/Splash/Timer 등 기존 기능 모두 동작
+- [x] 브리핑 → 드래프트 → 배치 페이즈 → 전투 → 결과 → Restart/Redraft 전 플로우 정상
+- [x] 로그에 cost_spent + 기존 필드 모두 적재
+- [x] onPlace/시너지/Splash/Timer 등 기존 기능 모두 동작
 - 선행: P6-09, P6-10
 - 완료 확인: 한 판 수동 플레이 완주
 
@@ -325,16 +325,16 @@ public class SkillUsageLog {
 ### 3.2 아키텍처 이진 체크
 
 **Phase 0~5 재확인:**
-- [ ] BattleBridge 유일 MonoBehaviour ↔ ECS 창구
-- [ ] 맥락 4종 유지, 새 폴더 0개
-- [ ] GameManager 유일 싱글톤
+- [x] BattleBridge 유일 MonoBehaviour ↔ ECS 창구
+- [x] 맥락 4종 유지, 새 폴더 0개
+- [x] GameManager 유일 싱글톤
 
 **Phase 6 전용:**
-- [ ] CostRuntime이 싱글톤 아님 (GameManager.costRuntime 레퍼런스로만 접근)
-- [ ] 코스트 수치 전부 SO 필드 (하드코딩 0건)
-- [ ] GamePhase 상태 전이는 GameManager가 단일 주관 (다른 코드가 CurrentPhase 직접 쓰기 금지)
-- [ ] PlacementInput/SkillBar가 직접 CostRuntime을 쓰되, 수치 결정은 SO에서 읽음
-- [ ] Assembly Definition 2개 체제 유지
+- [x] CostRuntime이 싱글톤 아님 (GameManager.costRuntime 레퍼런스로만 접근)
+- [x] 코스트 수치 전부 SO 필드 (하드코딩 0건)
+- [x] GamePhase 상태 전이는 GameManager가 단일 주관 (다른 코드가 CurrentPhase 직접 쓰기 금지)
+- [x] PlacementInput/SkillBar가 직접 CostRuntime을 쓰되, 수치 결정은 SO에서 읽음
+- [x] Assembly Definition 2개 체제 유지
 
 ---
 
@@ -412,6 +412,6 @@ Phase 6의 핵심 질문: **코스트 제약이 "지금 쓸까 아낄까" 긴장
 
 ---
 
-**문서 버전**: v1.0 (확정)
-**상태**: critic/codex 추가 리뷰 대기 또는 구현 착수 가능
+**문서 버전**: v1.0 → implementation complete
+**상태**: P6-01~P6-11 전체 구현 완료, 35/35 EditMode 테스트 통과
 **결정 출처**: 사용자 응답 — A1(b)/A2(b)/A3(b)/B4(b)/B5(a)/B6(a)/C7(b)/C8(a)/D9(a)/D10(a)/E11(좌하단)/E12(연속)/E13(추가)

@@ -8,7 +8,7 @@ namespace Wassup.Logging
     public class BattleLogEntry
     {
         public string session_id;
-        public string phase = "phase4";
+        public string phase = "phase6";
         public string timestamp_start;
         public string timestamp_end;
         public string attack_deck_id;
@@ -26,6 +26,7 @@ namespace Wassup.Logging
         public string unit_type;
         public Vector2Int tile;
         public float time;
+        public int cost_spent;
     }
 
     [Serializable]
@@ -62,6 +63,7 @@ namespace Wassup.Logging
         public float time;
         public Vector2Int target_tile;
         public int affected_count;
+        public int cost_spent;
     }
 
     // Phase 4: tracks adjacency synergy activity over the session. `activations`

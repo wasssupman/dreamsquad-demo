@@ -32,6 +32,7 @@ namespace Wassup.Bridge
         [SerializeField] private DefenderUnitData[] defenderPool;
         [SerializeField] private DraftController draftController;
         [SerializeField] private SkillRuntime skillRuntime;
+        [SerializeField] private PlacementPhaseView _placementPhaseView;
 
         private World _world;
         private EntityManager _em;
@@ -74,7 +75,24 @@ namespace Wassup.Bridge
 
         private void OnRestartRequested()
         {
-            RestartBattle();
+            if (_world == null)
+            {
+                _placementPhaseView?.BeginPlacementPhase();
+                return;
+            }
+
+            var logger = GameManager.Instance?.Logger;
+            if (logger != null)
+            {
+                logger.EndSession();
+                logger.StartSession();
+            }
+
+            TeardownCurrentBattle();
+            if (resultScreen != null) resultScreen.Hide();
+            _running = false;
+            _resultShown = false;
+            _placementPhaseView?.BeginPlacementPhase();
         }
 
         private void OnRedraftRequested()
@@ -124,6 +142,12 @@ namespace Wassup.Bridge
 
         private void TeardownCurrentBattle()
         {
+            _running = false;
+            _placementAllowed = false;
+            if (skillRuntime != null) skillRuntime.ResetAll();
+            if (GameManager.Instance != null && GameManager.Instance.CostRuntime != null)
+                GameManager.Instance.CostRuntime.StopRegen();
+
             // Destroy all battle-related entities so the next StartBattle has a clean slate.
             var attackers = _em.CreateEntityQuery(ComponentType.ReadOnly<AttackUnitTag>());
             _em.DestroyEntity(attackers);
@@ -293,6 +317,7 @@ namespace Wassup.Bridge
                 time = Time.time - _startTime,
                 target_tile = tile,
                 affected_count = affectedCount,
+                cost_spent = skill.cost,
             });
             Debug.Log($"[BattleBridge] CastSkillAtTile {skill.id} @ {tile} → {affectedCount} affected, cd={skill.cooldownSec}s");
             return true;
@@ -331,6 +356,7 @@ namespace Wassup.Bridge
                 time = Time.time - _startTime,
                 target_tile = tile,
                 affected_count = affectedCount,
+                cost_spent = skill.cost,
             });
             Debug.Log($"[BattleBridge] CastSkillOnDefender {skill.id} on defender@{tile} (entity {entity.Index}) cd={skill.cooldownSec}s");
             return true;
@@ -726,7 +752,7 @@ namespace Wassup.Bridge
             }
 
             _occupiedTiles.Add(cell);
-            GameManager.Instance?.Logger?.RecordPlacement(unitData.displayName, cell, Time.time - _startTime);
+            GameManager.Instance?.Logger?.RecordPlacement(unitData.displayName, cell, Time.time - _startTime, unitData.cost);
 
             var entity = _em.CreateEntity();
             // Phase 4: defenders can now take damage from enemy attackers, so
