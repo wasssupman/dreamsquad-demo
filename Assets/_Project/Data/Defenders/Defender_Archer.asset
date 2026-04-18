@@ -25,3 +25,9 @@ MonoBehaviour:
   onPlaceMagnitude: 0
   onPlaceDuration: 0
   cost: 2
+  skeletonDataAsset: {fileID: 11400000, guid: 2f899e95232e6144786de8fb99678a8d, type: 2}
+  spineSkinName: Lamb
+  idleAnimation: idle
+  attackAnimation: attack
+  deathAnimation: die
+  spineVisualScale: 1

@@ -1,0 +1,132 @@
+
+BellKnight.png
+size: 1024,1024
+format: RGBA8888
+filter: Linear,Linear
+repeat: none
+AttackSlash1
+  rotate: false
+  xy: 299, 408
+  size: 450, 221
+  orig: 515, 273
+  offset: 15, 32
+  index: -1
+BellKnight_BackCape
+  rotate: true
+  xy: 2, 134
+  size: 403, 290
+  orig: 403, 290
+  offset: 0, 0
+  index: -1
+BellKnight_Bell1
+  rotate: false
+  xy: 935, 684
+  size: 51, 51
+  orig: 51, 51
+  offset: 0, 0
+  index: -1
+BellKnight_Bell2
+  rotate: false
+  xy: 935, 628
+  size: 45, 54
+  orig: 45, 54
+  offset: 0, 0
+  index: -1
+BellKnight_Body
+  rotate: false
+  xy: 664, 122
+  size: 225, 166
+  orig: 225, 166
+  offset: 0, 0
+  index: -1
+BellKnight_Face
+  rotate: false
+  xy: 299, 631
+  size: 316, 388
+  orig: 316, 388
+  offset: 0, 0
+  index: -1
+BellKnight_Face_OpenMouth
+  rotate: false
+  xy: 617, 631
+  size: 316, 388
+  orig: 316, 388
+  offset: 0, 0
+  index: -1
+BellKnight_LeftArm_Hand
+  rotate: false
+  xy: 664, 329
+  size: 85, 77
+  orig: 85, 77
+  offset: 0, 0
+  index: -1
+BellKnight_LeftArm_Middle
+  rotate: false
+  xy: 935, 737
+  size: 66, 84
+  orig: 66, 84
+  offset: 0, 0
+  index: -1
+BellKnight_LeftArm_Top
+  rotate: false
+  xy: 197, 55
+  size: 82, 77
+  orig: 86, 81
+  offset: 2, 2
+  index: -1
+BellKnight_Mace
+  rotate: false
+  xy: 2, 539
+  size: 295, 480
+  orig: 295, 480
+  offset: 0, 0
+  index: -1
+BellKnight_Mace_Skull
+  rotate: true
+  xy: 751, 290
+  size: 339, 172
+  orig: 343, 176
+  offset: 2, 2
+  index: -1
+BellKnight_RightArm_Hand
+  rotate: false
+  xy: 2, 41
+  size: 98, 91
+  orig: 98, 91
+  offset: 0, 0
+  index: -1
+BellKnight_RightArm_Hand_Front
+  rotate: true
+  xy: 935, 823
+  size: 90, 80
+  orig: 90, 80
+  offset: 0, 0
+  index: -1
+BellKnight_RightArm_Middle
+  rotate: true
+  xy: 102, 54
+  size: 78, 93
+  orig: 78, 93
+  offset: 0, 0
+  index: -1
+BellKnight_RightArm_Top
+  rotate: true
+  xy: 935, 915
+  size: 104, 81
+  orig: 108, 85
+  offset: 2, 2
+  index: -1
+BellKnight_Skirt
+  rotate: false
+  xy: 294, 2
+  size: 360, 181
+  orig: 361, 183
+  offset: 1, 1
+  index: -1
+BellKnight_TopCape
+  rotate: false
+  xy: 294, 185
+  size: 368, 221
+  orig: 368, 221
+  offset: 0, 0
+  index: -1

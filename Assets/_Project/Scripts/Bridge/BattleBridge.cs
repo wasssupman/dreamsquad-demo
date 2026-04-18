@@ -233,6 +233,7 @@ namespace Wassup.Bridge
             Debug.Log("[BattleBridge] Placement phase ready.");
         }
 
+
         public void StartBattle()
         {
             if (deck == null || map == null)
@@ -623,8 +624,19 @@ namespace Wassup.Bridge
             {
                 var req = requestData[i];
                 // Phase 8: defender that fired is the request's carrier entity.
-                // Trigger its Spine attack animation (no-op if no Spine view).
-                if (spineDefenderPool != null) spineDefenderPool.NotifyAttack(requestEntities[i]);
+                // Look up the target's live world position so the view can snap
+                // its flipX to the actual victim at the exact frame of firing
+                // rather than chasing "nearest attacker" every frame.
+                if (spineDefenderPool != null)
+                {
+                    Vector3? targetWorld = null;
+                    if (_em.Exists(req.target) && _em.HasComponent<LocalTransform>(req.target))
+                    {
+                        var tp = _em.GetComponentData<LocalTransform>(req.target).Position;
+                        targetWorld = new Vector3(tp.x, tp.y, tp.z);
+                    }
+                    spineDefenderPool.NotifyAttack(requestEntities[i], targetWorld);
+                }
                 SpawnProjectile(req);
                 _em.RemoveComponent<ProjectileSpawnRequest>(requestEntities[i]);
             }

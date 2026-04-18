@@ -1,0 +1,272 @@
+
+DoubleWolf Short.png
+size: 4096,1024
+format: RGBA8888
+filter: Linear,Linear
+repeat: none
+AttackSlash1
+  rotate: false
+  xy: 2, 2
+  size: 467, 224
+  orig: 515, 273
+  offset: 9, 31
+  index: -1
+Long/DoubleLong_Hand_Meditate1
+  rotate: true
+  xy: 2838, 580
+  size: 106, 237
+  orig: 106, 237
+  offset: 0, 0
+  index: -1
+Long/DoubleLong_Hand_Meditate2
+  rotate: false
+  xy: 3189, 378
+  size: 166, 171
+  orig: 170, 196
+  offset: 0, 25
+  index: -1
+Short/DoubleShort_Arm_Rage
+  rotate: true
+  xy: 2958, 3
+  size: 192, 195
+  orig: 205, 210
+  offset: 5, 3
+  index: -1
+Short/DoubleShort_Body
+  rotate: true
+  xy: 1854, 512
+  size: 510, 448
+  orig: 513, 454
+  offset: 2, 3
+  index: -1
+Short/DoubleShort_Body_Rage
+  rotate: false
+  xy: 2263, 62
+  size: 510, 448
+  orig: 513, 454
+  offset: 2, 3
+  index: -1
+Short/DoubleShort_Body_Rage2
+  rotate: false
+  xy: 1287, 425
+  size: 565, 597
+  orig: 570, 599
+  offset: 1, 1
+  index: -1
+Short/DoubleShort_Dagger
+  rotate: false
+  xy: 2304, 650
+  size: 229, 372
+  orig: 237, 380
+  offset: 4, 4
+  index: -1
+Short/DoubleShort_Dagger2
+  rotate: false
+  xy: 2535, 663
+  size: 246, 359
+  orig: 252, 365
+  offset: 3, 3
+  index: -1
+Short/DoubleShort_Earring
+  rotate: false
+  xy: 914, 308
+  size: 54, 55
+  orig: 66, 66
+  offset: 6, 5
+  index: -1
+Short/DoubleShort_Earring2
+  rotate: false
+  xy: 914, 365
+  size: 59, 57
+  orig: 66, 66
+  offset: 3, 5
+  index: -1
+Short/DoubleShort_Eyecover2
+  rotate: false
+  xy: 2033, 436
+  size: 228, 74
+  orig: 236, 82
+  offset: 4, 4
+  index: -1
+Short/DoubleShort_Eyes
+  rotate: true
+  xy: 2610, 523
+  size: 138, 112
+  orig: 144, 118
+  offset: 3, 3
+  index: -1
+Short/DoubleShort_Eyes_Closed
+  rotate: true
+  xy: 2724, 523
+  size: 138, 112
+  orig: 144, 118
+  offset: 3, 3
+  index: -1
+Short/DoubleShort_Eyes_Rage
+  rotate: false
+  xy: 2289, 10
+  size: 146, 50
+  orig: 152, 56
+  offset: 3, 3
+  index: -1
+Short/DoubleShort_Eyes_Rage2
+  rotate: false
+  xy: 2586, 20
+  size: 154, 40
+  orig: 159, 56
+  offset: 0, 8
+  index: -1
+Short/DoubleShort_Eyes_Rage_Closed
+  rotate: false
+  xy: 2437, 17
+  size: 147, 43
+  orig: 152, 56
+  offset: 3, 7
+  index: -1
+Short/DoubleShort_Eyes_Rage_Open
+  rotate: false
+  xy: 2150, 6
+  size: 137, 54
+  orig: 154, 54
+  offset: 8, 0
+  index: -1
+Short/DoubleShort_HandGrab
+  rotate: false
+  xy: 2775, 2
+  size: 181, 193
+  orig: 181, 194
+  offset: 0, 0
+  index: -1
+Short/DoubleShort_HandOpen
+  rotate: true
+  xy: 3155, 120
+  size: 226, 188
+  orig: 229, 225
+  offset: 3, 17
+  index: -1
+Short/DoubleShort_Hand_Arm
+  rotate: false
+  xy: 3189, 551
+  size: 181, 194
+  orig: 181, 194
+  offset: 0, 0
+  index: -1
+Short/DoubleShort_Hand_Arm_Longer
+  rotate: true
+  xy: 3021, 348
+  size: 230, 166
+  orig: 232, 170
+  offset: 0, 2
+  index: -1
+Short/DoubleShort_Head
+  rotate: true
+  xy: 471, 2
+  size: 294, 256
+  orig: 298, 257
+  offset: 2, 0
+  index: -1
+Short/DoubleShort_Head2
+  rotate: true
+  xy: 1008, 10
+  size: 412, 305
+  orig: 413, 307
+  offset: 1, 1
+  index: -1
+Short/DoubleShort_Head_Helmet
+  rotate: true
+  xy: 1885, 36
+  size: 390, 263
+  orig: 396, 269
+  offset: 3, 3
+  index: -1
+Short/DoubleShort_Head_Helmet_Mouth
+  rotate: true
+  xy: 2304, 534
+  size: 114, 151
+  orig: 122, 159
+  offset: 4, 4
+  index: -1
+Short/DoubleShort_Head_Helmet_Mouth_Open
+  rotate: true
+  xy: 2457, 534
+  size: 114, 151
+  orig: 122, 159
+  offset: 4, 4
+  index: -1
+Short/DoubleShort_Leg
+  rotate: true
+  xy: 2150, 275
+  size: 159, 109
+  orig: 159, 109
+  offset: 0, 0
+  index: -1
+Short/DoubleShort_Mouth
+  rotate: false
+  xy: 1854, 428
+  size: 177, 82
+  orig: 181, 122
+  offset: 2, 27
+  index: -1
+Short/DoubleShort_Mouth2
+  rotate: true
+  xy: 2775, 197
+  size: 324, 244
+  orig: 326, 245
+  offset: 1, 1
+  index: -1
+Short/DoubleShort_MouthBack
+  rotate: true
+  xy: 2150, 120
+  size: 153, 106
+  orig: 153, 106
+  offset: 0, 0
+  index: -1
+Short/DoubleShort_Shawl
+  rotate: false
+  xy: 1315, 28
+  size: 568, 395
+  orig: 570, 397
+  offset: 1, 1
+  index: -1
+Short/DoubleShort_Shawl2
+  rotate: true
+  xy: 914, 424
+  size: 598, 371
+  orig: 599, 371
+  offset: 0, 0
+  index: -1
+Short/DoubleShort_Shawl_Back
+  rotate: true
+  xy: 464, 298
+  size: 724, 448
+  orig: 730, 451
+  offset: 3, 3
+  index: -1
+Short/DoubleShort_Shawl_Back2
+  rotate: true
+  xy: 2, 228
+  size: 794, 460
+  orig: 794, 460
+  offset: 0, 0
+  index: -1
+Short/DoubleShort_Shoulderpad
+  rotate: false
+  xy: 729, 19
+  size: 277, 277
+  orig: 295, 294
+  offset: 10, 10
+  index: -1
+Short/DoubleShort_Shoulderpad_Rage
+  rotate: true
+  xy: 2983, 747
+  size: 275, 254
+  orig: 295, 294
+  offset: 10, 25
+  index: -1
+Short/DoubleShort_Wing
+  rotate: true
+  xy: 2783, 688
+  size: 334, 198
+  orig: 334, 198
+  offset: 0, 0
+  index: -1

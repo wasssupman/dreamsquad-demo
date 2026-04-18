@@ -8,7 +8,7 @@ namespace Wassup.Logging
     public class BattleLogEntry
     {
         public string session_id;
-        public string phase = "phase7";
+        public string phase = "phase8";
         public string timestamp_start;
         public string timestamp_end;
         public string attack_deck_id;
