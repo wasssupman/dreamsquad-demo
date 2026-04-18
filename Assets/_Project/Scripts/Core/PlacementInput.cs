@@ -29,6 +29,15 @@ namespace Wassup.Core
             if (pointer == null) return;
             if (!pointer.press.wasPressedThisFrame) return;
 
+            // UI guard (Phase 8 review): EventSystem raycast usually consumes UI
+            // button presses, but if a tile happens to sit behind a button the
+            // click still reaches this handler and places a defender while the
+            // player was aiming at the button. Defer to EventSystem when it
+            // reports the pointer is over any UI element.
+            if (UnityEngine.EventSystems.EventSystem.current != null &&
+                UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
+                return;
+
             var screenPos = pointer.position.ReadValue();
             var ray = mainCamera.ScreenPointToRay(screenPos);
             // Intersect with the y=0 plane (tile surface). Tiles have no colliders — math-based hit.

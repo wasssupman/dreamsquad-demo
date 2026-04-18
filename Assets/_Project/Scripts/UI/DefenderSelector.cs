@@ -20,7 +20,6 @@ namespace Wassup.UI
         private GameObject _panel;
         private Transform _slotContainer;
         private SlotView[] _slots;
-        private DefenderUnitData _selected;
         private bool _built;
 
         private struct SlotView
@@ -72,10 +71,14 @@ namespace Wassup.UI
         private void Update()
         {
             if (_slots == null) return;
+            // Single source of truth: GameManager.SelectedDefender. External
+            // clears (e.g. SkillBar entering aim mode) immediately remove the
+            // highlight without any local shadow copy to keep in sync.
+            var current = GameManager.Instance != null ? GameManager.Instance.SelectedDefender : null;
             for (int i = 0; i < _slots.Length; i++)
             {
                 ref var s = ref _slots[i];
-                bool isSelected = s.data == _selected;
+                bool isSelected = s.data == current;
                 var matColor = s.data.visualMaterial != null ? s.data.visualMaterial.GetColor("_BaseColor") : Color.gray;
                 s.background.color = isSelected ? Color.Lerp(matColor, Color.white, 0.45f) : matColor;
             }
@@ -83,8 +86,12 @@ namespace Wassup.UI
 
         private void Select(DefenderUnitData data)
         {
-            _selected = data;
-            if (GameManager.Instance != null) GameManager.Instance.SelectedDefender = data;
+            var gm = GameManager.Instance;
+            if (gm == null) return;
+            gm.SelectedDefender = data;
+            // Last-pressed-wins mutual exclusion: any pending skill aim cancels
+            // as soon as the player decisively picks a placement target.
+            if (data != null) gm.RaiseAimCanceled();
         }
 
         private void OnSlotClicked(int index)

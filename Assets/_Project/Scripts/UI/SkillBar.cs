@@ -59,6 +59,11 @@ namespace Wassup.UI
                 draftController.DraftConfirmed += OnDraftConfirmed;
                 draftController.DraftStarted += OnDraftStarted;
             }
+            // Last-pressed-wins mutual exclusion (Phase 8 §12 follow-up):
+            // DefenderSelector fires AimCanceled when the player picks a
+            // placement target, so any pending skill aim must drop.
+            if (GameManager.Instance != null)
+                GameManager.Instance.AimCanceled += ExitAimMode;
         }
 
         private void OnDisable()
@@ -68,6 +73,18 @@ namespace Wassup.UI
                 draftController.DraftConfirmed -= OnDraftConfirmed;
                 draftController.DraftStarted -= OnDraftStarted;
             }
+            if (GameManager.Instance != null)
+                GameManager.Instance.AimCanceled -= ExitAimMode;
+        }
+
+        // Editor Exit Play destroys MonoBehaviours in an unspecified order, so
+        // GameManager may already be gone when SkillBar.OnDisable runs. Mirror
+        // the unsubscribe on OnDestroy so dead delegates never accumulate on
+        // the GameManager instance across play sessions.
+        private void OnDestroy()
+        {
+            if (GameManager.Instance != null)
+                GameManager.Instance.AimCanceled -= ExitAimMode;
         }
 
         private void OnDraftConfirmed()
@@ -209,7 +226,13 @@ namespace Wassup.UI
 
             _aimingSkill = skill;
             _portalEntryTile = new Vector2Int(-1, -1);
-            if (GameManager.Instance != null) GameManager.Instance.IsAiming = true;
+            if (GameManager.Instance != null)
+            {
+                GameManager.Instance.IsAiming = true;
+                // Last-pressed-wins: entering skill aim cancels any pending
+                // placement so the next tap doesn't stack both actions.
+                GameManager.Instance.SelectedDefender = null;
+            }
             if (_aimLabel != null)
             {
                 _aimLabel.text = skill.effect == SkillEffectType.Portal

@@ -31,6 +31,14 @@ namespace Wassup.Core
         public GamePhase CurrentPhase { get; private set; } = GamePhase.None;
         public event System.Action<GamePhase> PhaseChanged;
 
+        // Fired whenever a UI layer wants all *other* aim-style selections to
+        // cancel (e.g. picking a defender should cancel any active skill aim,
+        // picking a skill slot should clear the pending defender selection).
+        // Subscribers clear their own local aim state; publisher does not know
+        // who listens. Keeps input modes mutually exclusive — last click wins.
+        public event System.Action AimCanceled;
+        public void RaiseAimCanceled() => AimCanceled?.Invoke();
+
         public void SetPhase(GamePhase phase)
         {
             if (CurrentPhase == phase) return;
