@@ -177,3 +177,63 @@ Phase 8 구현 후 사용자가 Unity에서 해야 하는 설정:
 
 **문서 버전**: v0.1 (스펙 확정, 구현 미시작)
 **결정 출처**: 사용자 "ㄱㄱ" 위임 → 에이전트 자율 결정 D1~D10
+
+---
+
+## 12. VFX 확장 (v0.2)
+
+Spine 도입 이후 자연스러운 후속. **Particle System (Shuriken)** 을 주력 도구로 하고 ECS 이벤트 시점에 MonoBehaviour 레이어에서 GameObject를 스폰/제거한다. VFX Graph는 모바일 호환성 + 스코프 관리 차원에서 제외.
+
+### 12.1 적용 범위
+
+| # | 이펙트 | 언제 | 비고 |
+|---|---|---|---|
+| V1 | Placement ring pulse | defender 배치 순간 | 타일 위로 파란 확산 링 |
+| V2 | Meteor 파티클 | warning → 폭발 | 기존 빨간 Quad 링은 경고, 폭발 시 파티클 burst |
+| V3 | Tornado swirl | 캐스트 ~ duration | 중심에서 회전하는 파티클 |
+| V4 | Portal swirl + link | entry/exit 양쪽 | 보라색 swirl + 두 지점 잇는 빔 |
+
+현시점 제외: 2(onPlace slow/boost), 6(Slow/Rapid/PowerSurge aura), 7(Projectile hit), 8(Synergy glow), 9(Enemy dissolve). 후속 Phase에서 필요 시.
+
+### 12.2 아키텍처
+
+- 새 파일: `Scripts/Presentation/VfxSpawner.cs` — MonoBehaviour, 비싱글톤. BattleBridge가 `SerializeField` 로 참조 보유.
+- API:
+  - `SpawnPlacementRing(Vector3 worldPos)` — 0.8s 확산, 배치 색상
+  - `SpawnMeteorBurst(Vector3 worldPos, float radius)` — burst + smoke
+  - `SpawnTornado(Vector3 centerWorld, float radius, float durationSec)` — 루프 swirl, duration 후 stop+destroy
+  - `SpawnPortal(Vector3 entryWorld, Vector3 exitWorld, float durationSec)` — 양쪽 swirl + LineRenderer 빔
+- 구현 방식: 코드 기반 ParticleSystem 프리셋. Inspector에서 재질만 사용자 조정 가능. 필요 시 프리팹 연결 훅 제공.
+
+### 12.3 ECS 이벤트 연결
+
+- **V1 Placement**: `BattleBridge.PlaceDefenderAs` 성공 경로에서 `vfxSpawner.SpawnPlacementRing(pos)`.
+- **V2 Meteor**: 기존 `SpawnMeteorWarningVisual` 은 경고 링 유지, `MeteorResolutionSystem` 해결 시점에 MonoBehaviour drain 루프에서 burst 스폰. (resolution system 자체는 ECS → MonoBehaviour 통지 NativeQueue 필요 or BattleBridge drain에서 `MeteorPending.warningRemaining <= 0` 감지)
+  - 간단 경로: `BattleBridge.Update()` 에서 `MeteorPending` 쿼리 관찰 → 새로 사라진 엔티티에 대해 burst 스폰. 대안: MeteorResolutionSystem 옆에 `MeteorBurstEvent` NativeQueue singleton 만들고 drain.
+  - Phase 8 범위: **NativeQueue 추가**. (`Battle/Combat/MeteorBurstEventsSingleton.cs`)
+- **V3 Tornado**: `BattleBridge.ApplyTornado` 직후 `vfxSpawner.SpawnTornado`.
+- **V4 Portal**: `BattleBridge.ApplyPortal` 직후 `vfxSpawner.SpawnPortal`.
+
+### 12.4 재질
+
+- 공통 머티리얼 1개: URP/Particles/Unlit (built-in Default-ParticlesUnlit 재활용) — 색은 ParticleSystem.main.startColor 로.
+- 텍스처 없이 기본 흰 원 파티클로 시작. 사용자가 원하면 후속에 텍스처 SO로 교체.
+
+### 12.5 작업 분해 — P8-12 ~ P8-15
+
+- [ ] P8-12 — `VfxSpawner.cs` 뼈대 + `SpawnPlacementRing` + BattleBridge 호출
+- [ ] P8-13 — Meteor: `MeteorBurstEventsSingleton` NativeQueue + MeteorResolutionSystem enqueue + BattleBridge drain → `SpawnMeteorBurst`
+- [ ] P8-14 — `SpawnTornado` + BattleBridge 연동
+- [ ] P8-15 — `SpawnPortal` (두 swirl + LineRenderer) + BattleBridge 연동
+
+### 12.6 TRD 재적용
+
+- 싱글톤 금지 — VfxSpawner 비싱글톤.
+- 새 맥락 금지 — Presentation/ 재사용 (Phase 8 §10).
+- ECS 맥락 경계 — VfxSpawner 는 EntityManager 직접 호출 X. BattleBridge 가 drain.
+- 수치 하드코딩 최소 — duration/color 는 VfxSpawner 필드 공개, Inspector 튜닝 가능.
+
+---
+
+**문서 버전**: v0.2 (VFX 확장 스펙 추가, 구현 진행 중)
+**결정 출처**: Q1=(c)/Q2=(c)/Q3=(a) 에이전트 자율 결정

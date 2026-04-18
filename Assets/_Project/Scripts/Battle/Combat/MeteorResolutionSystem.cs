@@ -21,9 +21,12 @@ namespace Wassup.Battle.Combat
     [UpdateAfter(typeof(AttackSystem))]
     public partial struct MeteorResolutionSystem : ISystem
     {
+        private EntityQuery _burstEventsQuery;
+
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<MeteorPending>();
+            _burstEventsQuery = state.GetEntityQuery(ComponentType.ReadWrite<MeteorBurstEventsSingleton>());
         }
 
         [BurstCompile]
@@ -35,6 +38,17 @@ namespace Wassup.Battle.Combat
             var attackerQuery = SystemAPI.QueryBuilder().WithAll<AttackUnitTag, LocalTransform>().Build();
             var attackers = attackerQuery.ToEntityArray(Allocator.Temp);
             var attackerTransforms = attackerQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
+
+            // Phase 8 §12: hoist the singleton lookup out of the per-meteor loop
+            // so GetSingletonRW fires at most once per frame instead of once per
+            // resolved meteor. Stays valid because Teardown disposes the queue
+            // after all systems have stopped running.
+            NativeQueue<MeteorBurstEvent>.ParallelWriter? burstWriter = null;
+            if (!_burstEventsQuery.IsEmpty)
+            {
+                var singleton = _burstEventsQuery.GetSingletonRW<MeteorBurstEventsSingleton>();
+                burstWriter = singleton.ValueRW.queue.AsParallelWriter();
+            }
 
             foreach (var (pending, entity) in
                      SystemAPI.Query<RefRW<MeteorPending>>().WithEntityAccess())
@@ -53,6 +67,15 @@ namespace Wassup.Battle.Combat
                     float dz = p.z - center.z;
                     if (dx * dx + dz * dz > rSq) continue;
                     ecb.AppendToBuffer(attackers[i], new IncomingDamage { amount = dmg });
+                }
+
+                if (burstWriter.HasValue)
+                {
+                    burstWriter.Value.Enqueue(new MeteorBurstEvent
+                    {
+                        center = center,
+                        radius = pending.ValueRO.radius,
+                    });
                 }
 
                 ecb.DestroyEntity(entity);

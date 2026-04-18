@@ -35,6 +35,7 @@ namespace Wassup.Bridge
         [SerializeField] private PlacementPhaseView _placementPhaseView;
         [SerializeField] private Wassup.Presentation.SpineDefenderPool spineDefenderPool;
         [SerializeField] private float spineDefenderYOffset = 0f;
+        [SerializeField] private Wassup.Presentation.VfxSpawner vfxSpawner;
 
         private World _world;
         private EntityManager _em;
@@ -65,6 +66,7 @@ namespace Wassup.Bridge
         private int _goalReachedCount;
         private NativeQueue<GoalReachedEvent> _goalEventQueue;
         private NativeQueue<DefenderDeathEvent> _defenderDeathQueue;
+        private NativeQueue<Wassup.Battle.Combat.MeteorBurstEvent> _meteorBurstQueue;
 
         private void Start()
         {
@@ -194,9 +196,14 @@ namespace Wassup.Bridge
             _em.DestroyEntity(defenderDeathSingletons);
             defenderDeathSingletons.Dispose();
 
+            var meteorBurstSingletons = _em.CreateEntityQuery(ComponentType.ReadOnly<Wassup.Battle.Combat.MeteorBurstEventsSingleton>());
+            _em.DestroyEntity(meteorBurstSingletons);
+            meteorBurstSingletons.Dispose();
+
             // Dispose the queues; StartBattle will create fresh ones.
             if (_goalEventQueue.IsCreated) _goalEventQueue.Dispose();
             if (_defenderDeathQueue.IsCreated) _defenderDeathQueue.Dispose();
+            if (_meteorBurstQueue.IsCreated) _meteorBurstQueue.Dispose();
         }
 
         // Phase 6: placement phase enters this path — ECS state is initialized so
@@ -281,6 +288,12 @@ namespace Wassup.Bridge
             _defenderDeathQueue = new NativeQueue<DefenderDeathEvent>(Allocator.Persistent);
             var deathSingleton = _em.CreateEntity();
             _em.AddComponentData(deathSingleton, new DefenderDeathEventsSingleton { queue = _defenderDeathQueue });
+
+            // Phase 8 §12 Meteor burst event channel for VFX timing.
+            if (_meteorBurstQueue.IsCreated) _meteorBurstQueue.Dispose();
+            _meteorBurstQueue = new NativeQueue<Wassup.Battle.Combat.MeteorBurstEvent>(Allocator.Persistent);
+            var meteorBurstSingleton = _em.CreateEntity();
+            _em.AddComponentData(meteorBurstSingleton, new Wassup.Battle.Combat.MeteorBurstEventsSingleton { queue = _meteorBurstQueue });
         }
 
         public void StopBattle()
@@ -471,6 +484,11 @@ namespace Wassup.Bridge
             }
 
             entities.Dispose();
+
+            // Phase 8 §12: swirling particle ring over the Tornado center.
+            if (vfxSpawner != null)
+                vfxSpawner.SpawnTornado(new Vector3(targetWorld.x, 0f, targetWorld.z), rangeWorld, skill.durationSec);
+
             return affected;
         }
 
@@ -514,6 +532,16 @@ namespace Wassup.Bridge
             float entryRadius = tileSize * 0.5f; // half-tile catch radius
             int exitWaypointIdx = ResolveExitWaypointIndex(exitTile);
             EffectSpawner.SpawnPortal(_em, entryWorld, exitWorld, entryRadius, skill.durationSec, exitWaypointIdx);
+
+            // Phase 8 §12: two swirls + connecting beam for the portal's lifetime.
+            if (vfxSpawner != null)
+            {
+                vfxSpawner.SpawnPortal(
+                    new Vector3(entryWorld.x, 0f, entryWorld.z),
+                    new Vector3(exitWorld.x, 0f, exitWorld.z),
+                    skill.durationSec);
+            }
+
             return 1;
         }
 
@@ -587,6 +615,7 @@ namespace Wassup.Bridge
 
             DrainProjectileSpawnRequests();
             DrainDefenderDeathEvents();
+            DrainMeteorBurstEvents();
             DrainGoalEvents();
             CheckTimer();
             CheckVictory();
@@ -606,6 +635,19 @@ namespace Wassup.Bridge
                 _occupiedTiles.Remove(cell);
                 RecomputeSynergyFor(cell);
                 Debug.Log($"[BattleBridge] Defender died @ {cell}; tile freed, synergy recomputed.");
+            }
+        }
+
+        // Phase 8 §12 — when MeteorResolutionSystem burns its AoE, it enqueues a
+        // burst event so the VFX layer can fire a particle burst on the same
+        // frame without any ECS references on the MonoBehaviour side.
+        private void DrainMeteorBurstEvents()
+        {
+            if (!_meteorBurstQueue.IsCreated) return;
+            while (_meteorBurstQueue.TryDequeue(out var evt))
+            {
+                if (vfxSpawner == null) continue;
+                vfxSpawner.SpawnMeteorBurst(new Vector3(evt.center.x, 0f, evt.center.z), evt.radius);
             }
         }
 
@@ -973,6 +1015,10 @@ namespace Wassup.Bridge
                 cooldownRemaining = 0f,
             });
 
+            // Phase 8 §12: placement pulse VFX (procedural particle ring).
+            if (vfxSpawner != null)
+                vfxSpawner.SpawnPlacementRing(new Vector3(pos.x, pos.y, pos.z));
+
             // Phase 8: if the unit has a Spine skeleton configured, spawn a
             // SkeletonAnimation GameObject instead of the billboard RenderMesh.
             // When no skin/skel is set we fall through to the Phase 5 billboard,
@@ -1054,6 +1100,7 @@ namespace Wassup.Bridge
             }
             if (_goalEventQueue.IsCreated) _goalEventQueue.Dispose();
             if (_defenderDeathQueue.IsCreated) _defenderDeathQueue.Dispose();
+            if (_meteorBurstQueue.IsCreated) _meteorBurstQueue.Dispose();
             if (_healthBarMaterial != null) Destroy(_healthBarMaterial);
         }
 

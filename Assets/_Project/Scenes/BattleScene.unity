@@ -805,6 +805,50 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &810041857
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 810041859}
+  - component: {fileID: 810041858}
+  m_Layer: 0
+  m_Name: SpineDefenderPool
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &810041858
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 810041857}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3dc8053efd5234e70a0bb88dead61a16, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Presentation.SpineDefenderPool
+--- !u!4 &810041859
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 810041857}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -0, y: -0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &836730383
 GameObject:
   m_ObjectHideFlags: 0
@@ -1541,6 +1585,7 @@ MonoBehaviour:
   timelineBriefing: {fileID: 1208602155}
   costRuntime: {fileID: 308428868}
   costConfig: {fileID: 11400000, guid: 3ed67d5379b02406db1329b181fbee88, type: 2}
+  skillLoadout: {fileID: 0}
 --- !u!4 &1495062451
 Transform:
   m_ObjectHideFlags: 0
@@ -1785,6 +1830,8 @@ MonoBehaviour:
   draftController: {fileID: 20521825}
   skillRuntime: {fileID: 229215106}
   _placementPhaseView: {fileID: 1628485822}
+  spineDefenderPool: {fileID: 810041858}
+  spineDefenderYOffset: 0
 --- !u!4 &1939688409
 Transform:
   m_ObjectHideFlags: 0
@@ -1939,3 +1986,4 @@ SceneRoots:
   - {fileID: 1208602156}
   - {fileID: 1628485823}
   - {fileID: 1075095675}
+  - {fileID: 810041859}
