@@ -1,0 +1,10 @@
+// TODO: 사용자가 Unity 에디터에서 직접 제작 후 이 위치에 복사해주세요.
+// 제작 가이드:
+// 1. Unity 에디터 → Create → Shader Graph → URP → Unlit Shader Graph
+// 2. 노드 구성: SampleTexture2D → Step(edge=Noise값) → AlphaClip
+// 3. Noise Texture 슬롯, Dissolve Amount(0~1) 프로퍼티 노출
+// 4. Alpha Clipping 활성화
+// 5. 이 파일 위치에 저장: Assets/_Project/Materials/VFX/dissolve_template.shadergraph
+// 
+// 주의: 이 파일을 Unity 에디터에서 열어 정상 로드 확인 후 실제 effect에 복사해 사용
+// 직접 JSON 편집 시 GUID 불일치로 에셋 손상 위험

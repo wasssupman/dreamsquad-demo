@@ -84,5 +84,9 @@ $RECYCLE.BIN/
 # OMC (oh-my-claudecode)
 .omc/
 
-# Claude Code local state
-.claude/
+# Claude Code local state (settings, session cache)
+.claude/*
+# ...but keep project-scoped skills versioned so the repo carries the
+# Unity-specific authoring/integration/wiring skills for any collaborator.
+!.claude/skills/
+!.claude/skills/**
