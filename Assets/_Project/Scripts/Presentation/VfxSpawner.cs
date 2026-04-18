@@ -118,6 +118,13 @@ namespace Wassup.Presentation
             renderer.sharedMaterial = ParticleMaterial;
             renderer.renderMode = ParticleSystemRenderMode.Billboard;
 
+            // Runtime-added ParticleSystems honour playOnAwake before we finish
+            // configuring modules, so the initial emission uses default settings
+            // and subsequent SetBursts / rate changes don't always retrigger.
+            // Explicit Play() after full configuration guarantees the intended
+            // burst/loop fires once.
+            ps.Play();
+
             Destroy(go, main.duration + main.startLifetime.constant + 0.1f);
         }
 
@@ -167,6 +174,13 @@ namespace Wassup.Presentation
             var renderer = go.GetComponent<ParticleSystemRenderer>();
             renderer.sharedMaterial = ParticleMaterial;
             renderer.renderMode = ParticleSystemRenderMode.Billboard;
+
+            // Runtime-added ParticleSystems honour playOnAwake before we finish
+            // configuring modules, so the initial emission uses default settings
+            // and subsequent SetBursts / rate changes don't always retrigger.
+            // Explicit Play() after full configuration guarantees the intended
+            // burst/loop fires once.
+            ps.Play();
 
             Destroy(go, main.duration + main.startLifetime.constantMax + 0.1f);
         }
@@ -218,6 +232,13 @@ namespace Wassup.Presentation
             var renderer = go.GetComponent<ParticleSystemRenderer>();
             renderer.sharedMaterial = ParticleMaterial;
             renderer.renderMode = ParticleSystemRenderMode.Billboard;
+
+            // Runtime-added ParticleSystems honour playOnAwake before we finish
+            // configuring modules, so the initial emission uses default settings
+            // and subsequent SetBursts / rate changes don't always retrigger.
+            // Explicit Play() after full configuration guarantees the intended
+            // burst/loop fires once.
+            ps.Play();
 
             Destroy(go, main.duration + main.startLifetime.constantMax + 0.2f);
         }
@@ -293,6 +314,13 @@ namespace Wassup.Presentation
             var renderer = go.GetComponent<ParticleSystemRenderer>();
             renderer.sharedMaterial = ParticleMaterial;
             renderer.renderMode = ParticleSystemRenderMode.Billboard;
+
+            // Runtime-added ParticleSystems honour playOnAwake before we finish
+            // configuring modules, so the initial emission uses default settings
+            // and subsequent SetBursts / rate changes don't always retrigger.
+            // Explicit Play() after full configuration guarantees the intended
+            // burst/loop fires once.
+            ps.Play();
         }
     }
 }
