@@ -1703,7 +1703,7 @@ MonoBehaviour:
   portalColor: {r: 0.8, g: 0.4, b: 1, a: 1}
   particleMaterialOverride: {fileID: 0}
   lineMaterialOverride: {fileID: 0}
-  placementRingPrefab: {fileID: 0}
+  placementRingPrefab: {fileID: 8053883155973515113, guid: cf6e23343ef194cdd972a28ca709b0dc, type: 3}
   meteorBurstPrefab: {fileID: 8217825365897153352, guid: 47d7505ab854d4b3c9cb7bbfcde057cc, type: 3}
   meteorFallPrefab: {fileID: 6307914016584682601, guid: 22d24687be7f9462e9dd7f63b94dce1d, type: 3}
   tornadoPrefab: {fileID: 889267158399032795, guid: 32d572044989a4f0fbb7b5e12a117035, type: 3}
