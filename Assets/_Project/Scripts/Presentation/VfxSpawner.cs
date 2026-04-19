@@ -323,6 +323,26 @@ namespace Wassup.Presentation
         // particles finish their lifetime before the whole thing disappears.
         public void SpawnPortal(Vector3 entryWorld, Vector3 exitWorld, float durationSec)
         {
+            if (TrySpawnPrefab(portalPrefab, Vector3.zero, out var prefabRoot))
+            {
+                // Portal prefab ships with Entry/Exit/LinkBeam children. Position
+                // the two endpoint groups and rewrite the LineRenderer positions
+                // so the BeamPulse MB inside the prefab pulses between the two.
+                var entryT = prefabRoot.transform.Find("Entry");
+                var exitT = prefabRoot.transform.Find("Exit");
+                if (entryT != null) entryT.position = new Vector3(entryWorld.x, entryWorld.y + 0.05f, entryWorld.z);
+                if (exitT != null) exitT.position = new Vector3(exitWorld.x, exitWorld.y + 0.05f, exitWorld.z);
+                var beamLine = prefabRoot.transform.Find("LinkBeam")?.GetComponent<LineRenderer>();
+                if (beamLine != null)
+                {
+                    beamLine.SetPosition(0, new Vector3(entryWorld.x, entryWorld.y + 0.15f, entryWorld.z));
+                    beamLine.SetPosition(1, new Vector3(exitWorld.x, exitWorld.y + 0.15f, exitWorld.z));
+                }
+                Destroy(prefabRoot, durationSec + 0.1f);
+                return;
+            }
+            Debug.LogWarning("[VfxSpawner] portalPrefab 미할당 — 코드 폴백 사용");
+
             var root = new GameObject("VFX_Portal");
             root.transform.position = Vector3.zero;
 

@@ -1707,7 +1707,7 @@ MonoBehaviour:
   meteorBurstPrefab: {fileID: 8217825365897153352, guid: 47d7505ab854d4b3c9cb7bbfcde057cc, type: 3}
   meteorFallPrefab: {fileID: 6307914016584682601, guid: 22d24687be7f9462e9dd7f63b94dce1d, type: 3}
   tornadoPrefab: {fileID: 889267158399032795, guid: 32d572044989a4f0fbb7b5e12a117035, type: 3}
-  portalPrefab: {fileID: 0}
+  portalPrefab: {fileID: 6817788139784616374, guid: 8a018bf2f3cb64a26b5a382a6bfc6d73, type: 3}
 --- !u!4 &1795146347
 Transform:
   m_ObjectHideFlags: 0
