@@ -74,7 +74,14 @@ namespace Wassup.Presentation
             go.transform.position = new Vector3(worldPos.x, worldPos.y + 0.02f, worldPos.z);
 
             var ps = go.AddComponent<ParticleSystem>();
+            // AddComponent activates the system with playOnAwake=true, so the
+            // following module edits ("Setting the duration while system is
+            // still playing is not supported") would warn. Stop+clear first,
+            // disable auto-play, then re-Play() explicitly at the end of the
+            // spawn method once all modules are configured.
+            ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
             var main = ps.main;
+            main.playOnAwake = false;
             main.duration = 0.4f;
             main.loop = false;
             main.startLifetime = 0.8f;
@@ -135,7 +142,14 @@ namespace Wassup.Presentation
             go.transform.position = new Vector3(worldPos.x, worldPos.y + 0.05f, worldPos.z);
 
             var ps = go.AddComponent<ParticleSystem>();
+            // AddComponent activates the system with playOnAwake=true, so the
+            // following module edits ("Setting the duration while system is
+            // still playing is not supported") would warn. Stop+clear first,
+            // disable auto-play, then re-Play() explicitly at the end of the
+            // spawn method once all modules are configured.
+            ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
             var main = ps.main;
+            main.playOnAwake = false;
             main.duration = 0.3f;
             main.loop = false;
             main.startLifetime = 0.9f;
@@ -194,7 +208,14 @@ namespace Wassup.Presentation
             go.transform.position = new Vector3(centerWorld.x, centerWorld.y + 0.05f, centerWorld.z);
 
             var ps = go.AddComponent<ParticleSystem>();
+            // AddComponent activates the system with playOnAwake=true, so the
+            // following module edits ("Setting the duration while system is
+            // still playing is not supported") would warn. Stop+clear first,
+            // disable auto-play, then re-Play() explicitly at the end of the
+            // spawn method once all modules are configured.
+            ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
             var main = ps.main;
+            main.playOnAwake = false;
             main.duration = Mathf.Max(0.1f, durationSec);
             main.loop = false;
             main.startLifetime = 0.8f;
@@ -279,7 +300,14 @@ namespace Wassup.Presentation
             go.transform.position = new Vector3(worldPos.x, worldPos.y + 0.05f, worldPos.z);
 
             var ps = go.AddComponent<ParticleSystem>();
+            // AddComponent activates the system with playOnAwake=true, so the
+            // following module edits ("Setting the duration while system is
+            // still playing is not supported") would warn. Stop+clear first,
+            // disable auto-play, then re-Play() explicitly at the end of the
+            // spawn method once all modules are configured.
+            ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
             var main = ps.main;
+            main.playOnAwake = false;
             main.duration = Mathf.Max(0.1f, durationSec);
             main.loop = false;
             main.startLifetime = 0.7f;

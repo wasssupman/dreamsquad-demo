@@ -7,6 +7,13 @@ namespace Wassup.Core
     // Translates pointer taps/clicks into grid cells and asks BattleBridge to place a defender.
     // Uses Input System's Pointer.current (unified mouse + touch). The project's activeInputHandler
     // is "Input System only" — legacy UnityEngine.Input APIs are disabled.
+    //
+    // DefaultExecutionOrder = -50 so this runs BEFORE SkillBar (default 0) in the
+    // same frame. Without this, a skill cast handler may flip GameManager.IsAiming
+    // from true to false mid-frame via ExitAimMode, after which PlacementInput
+    // sees the stale cleared value and places a defender on the same click that
+    // triggered the skill. See docs/phase8-decisions (aim-mode race, 2026-04-19).
+    [DefaultExecutionOrder(-50)]
     public class PlacementInput : MonoBehaviour
     {
         [SerializeField] private BattleBridge bridge;
