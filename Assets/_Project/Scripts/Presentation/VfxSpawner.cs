@@ -34,6 +34,7 @@ namespace Wassup.Presentation
         [Header("Phase 8 §13 — Prefab slots (null → code fallback)")]
         [SerializeField] private GameObject placementRingPrefab;
         [SerializeField] private GameObject meteorBurstPrefab;
+        [SerializeField] private GameObject meteorFallPrefab;
         [SerializeField] private GameObject tornadoPrefab;
         [SerializeField] private GameObject portalPrefab;
 
@@ -153,8 +154,31 @@ namespace Wassup.Presentation
         }
 
         // V2 — Meteor explosion burst. Big omnidirectional puff + upward smoke.
+        // Phase 8 §13 — falling streak visual during the 1.5s warning window.
+        // Called alongside the warning ring at cast time; the burst (above) fires
+        // at the moment the meteor lands. No code fallback (new feature, prefab
+        // is the only path). Silent no-op when prefab slot is empty so Meteor
+        // is still playable without the falling visual.
+        public void SpawnMeteorFall(Vector3 targetWorld, float warningSec)
+        {
+            if (meteorFallPrefab == null) return;
+            var go = Instantiate(meteorFallPrefab, targetWorld, Quaternion.identity, transform);
+            var fall = go.GetComponent<MeteorFall>();
+            if (fall != null) fall.Launch(targetWorld, warningSec);
+            else Destroy(go, warningSec + 0.1f);
+        }
+
         public void SpawnMeteorBurst(Vector3 worldPos, float radiusWorld)
         {
+            var pos = new Vector3(worldPos.x, worldPos.y + 0.05f, worldPos.z);
+            if (TrySpawnPrefab(meteorBurstPrefab, pos, out var prefabGo))
+            {
+                prefabGo.transform.localScale = Vector3.one * Mathf.Max(0.1f, radiusWorld);
+                Destroy(prefabGo, 1.2f); // duration 0.3 + max lifetime 0.9 + 0.1 margin
+                return;
+            }
+            Debug.LogWarning("[VfxSpawner] meteorBurstPrefab 미할당 — 코드 폴백 사용");
+
             var go = new GameObject("VFX_MeteorBurst");
             go.transform.position = new Vector3(worldPos.x, worldPos.y + 0.05f, worldPos.z);
 

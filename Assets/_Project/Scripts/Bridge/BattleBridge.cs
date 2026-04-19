@@ -502,6 +502,11 @@ namespace Wassup.Bridge
             float warn = skill.warningSec > 0f ? skill.warningSec : 0f;
             EffectSpawner.SpawnMeteor(_em, centerWorld, radiusWorld, skill.magnitude, warn);
             SpawnMeteorWarningVisual(centerWorld, radiusWorld, warn);
+            // Phase 8 §13: falling streak during the warning window. Silent
+            // no-op when meteorFallPrefab slot empty — Meteor still plays
+            // without the falling visual.
+            if (vfxSpawner != null && warn > 0f)
+                vfxSpawner.SpawnMeteorFall(new Vector3(centerWorld.x, 0f, centerWorld.z), warn);
             // Actual damage count is reported async by MeteorResolutionSystem; at
             // cast time we conservatively pre-count current overlaps so the log is
             // informative without waiting for the burst.
