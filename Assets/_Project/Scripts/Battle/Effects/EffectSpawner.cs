@@ -41,17 +41,22 @@ namespace Wassup.Battle.Effects
                     multiplier = multiplier,
                 });
 
-        // Phase 7 — Tornado: re-applying refreshes the center (latest caster wins)
-        // and extends remaining if new duration is longer. Non-stackable by design.
-        public static void ApplyTornadoPull(EntityManager em, Entity entity, float duration, float3 centerWorld, float pullSpeed)
-            => Apply<TornadoPull>(em, entity,
-                () => new TornadoPull { centerWorld = centerWorld, pullSpeed = pullSpeed, remaining = duration },
-                existing => new TornadoPull
-                {
-                    centerWorld = centerWorld,
-                    pullSpeed = pullSpeed,
-                    remaining = existing.remaining > duration ? existing.remaining : duration,
-                });
+        // Phase 8 §17 — Tornado: carrier entity with area data. MovementSystem
+        // queries live TornadoField entities each frame and applies pull to any
+        // attacker inside the radius (continuous, not snapshot). Re-cast spawns
+        // an independent field; multiple fields can coexist.
+        public static Entity SpawnTornadoField(EntityManager em, float3 centerWorld, float radius, float pullSpeed, float duration)
+        {
+            var e = em.CreateEntity();
+            em.AddComponentData(e, new TornadoField
+            {
+                centerWorld = centerWorld,
+                radius = radius,
+                pullSpeed = pullSpeed,
+                remaining = duration,
+            });
+            return e;
+        }
 
         // Phase 7 — Meteor: unlike Slow/Tornado, this spawns a dedicated carrier
         // entity. MeteorResolutionSystem consumes + destroys it when warningRemaining <= 0.

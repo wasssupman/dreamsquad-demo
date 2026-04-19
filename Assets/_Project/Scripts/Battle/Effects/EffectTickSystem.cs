@@ -22,7 +22,7 @@ namespace Wassup.Battle.Effects
                 state.GetEntityQuery(ComponentType.ReadOnly<SlowEffect>()),
                 state.GetEntityQuery(ComponentType.ReadOnly<DamageBoost>()),
                 state.GetEntityQuery(ComponentType.ReadOnly<CooldownReduction>()),
-                state.GetEntityQuery(ComponentType.ReadOnly<TornadoPull>()),
+                state.GetEntityQuery(ComponentType.ReadOnly<TornadoField>()),
                 state.GetEntityQuery(ComponentType.ReadOnly<PortalLink>()));
         }
 
@@ -62,15 +62,15 @@ namespace Wassup.Battle.Effects
                 }
             }
 
-            // Phase 7 — TornadoPull: attacker-attached. Tick + remove when expired
-            // so MovementSystem falls back to normal waypoint traversal.
+            // Phase 8 §17 — TornadoField: carrier entity (PortalLink pattern).
+            // Tick remaining + destroy the whole entity on expiry.
             foreach (var (effect, entity) in
-                     SystemAPI.Query<RefRW<TornadoPull>>().WithEntityAccess())
+                     SystemAPI.Query<RefRW<TornadoField>>().WithEntityAccess())
             {
                 effect.ValueRW.remaining -= dt;
                 if (effect.ValueRO.remaining <= 0f)
                 {
-                    ecb.RemoveComponent<TornadoPull>(entity);
+                    ecb.DestroyEntity(entity);
                 }
             }
 

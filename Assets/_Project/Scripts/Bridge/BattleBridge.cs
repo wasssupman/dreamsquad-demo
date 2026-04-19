@@ -478,32 +478,39 @@ namespace Wassup.Bridge
         // `durationSec`. `skill.magnitude` is the pull speed (world units/sec).
         private int ApplyTornado(Vector2Int tile, SkillData skill)
         {
-            if (!_aliveAttackersQueryCreated) return 0;
-            var entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
             float3 targetWorld = new float3(tile.x * tileSize, 0f, tile.y * tileSize);
             float rangeWorld = skill.range * tileSize;
-            float rangeSq = rangeWorld * rangeWorld;
-            int affected = 0;
 
-            for (int i = 0; i < entities.Length; i++)
-            {
-                var e = entities[i];
-                if (!_em.HasComponent<LocalTransform>(e)) continue;
-                var pos = _em.GetComponentData<LocalTransform>(e).Position;
-                float dx = pos.x - targetWorld.x;
-                float dz = pos.z - targetWorld.z;
-                if (dx * dx + dz * dz > rangeSq) continue;
-                EffectSpawner.ApplyTornadoPull(_em, e, skill.durationSec, targetWorld, skill.magnitude);
-                affected++;
-            }
-
-            entities.Dispose();
+            // Phase 8 §17 — continuous field (replaces Phase 7 per-attacker
+            // snapshot). MovementSystem queries live TornadoField entities each
+            // frame, so enemies that enter the radius mid-duration are also
+            // pulled. Re-cast creates an independent field; multiple fields can
+            // coexist and the attacker is pulled by the first one that contains
+            // it.
+            EffectSpawner.SpawnTornadoField(_em, targetWorld, rangeWorld, skill.magnitude, skill.durationSec);
 
             // Phase 8 §12: swirling particle ring over the Tornado center.
             if (vfxSpawner != null)
                 vfxSpawner.SpawnTornado(new Vector3(targetWorld.x, 0f, targetWorld.z), rangeWorld, skill.durationSec);
 
-            return affected;
+            // Affected count is reported async as attackers enter / get pulled;
+            // at cast time we conservatively pre-count overlaps so the log has
+            // a baseline without waiting for the field to expire.
+            if (!_aliveAttackersQueryCreated) return 0;
+            var entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
+            float rSq = rangeWorld * rangeWorld;
+            int preview = 0;
+            for (int i = 0; i < entities.Length; i++)
+            {
+                var e = entities[i];
+                if (!_em.HasComponent<LocalTransform>(e)) continue;
+                var p = _em.GetComponentData<LocalTransform>(e).Position;
+                float dx = p.x - targetWorld.x;
+                float dz = p.z - targetWorld.z;
+                if (dx * dx + dz * dz <= rSq) preview++;
+            }
+            entities.Dispose();
+            return preview;
         }
 
         // Phase 7 — Meteor. Spawns a carrier entity + a MonoBehaviour-side warning

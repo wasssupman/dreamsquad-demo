@@ -22,13 +22,19 @@ namespace Wassup.Battle.Movement
             var ecb = new EntityCommandBuffer(Unity.Collections.Allocator.Temp);
             var dt = SystemAPI.Time.DeltaTime;
             var slowLookup = SystemAPI.GetComponentLookup<SlowEffect>(isReadOnly: true);
-            var tornadoLookup = SystemAPI.GetComponentLookup<TornadoPull>(isReadOnly: true);
 
             // Phase 7 — snapshot active portals into a NativeArray so the per-attacker
             // loop below does a flat O(n·p) intersection test without nested queries.
             // `p` is 1-2 in normal play (two portal skill slots at most).
             var portalQuery = SystemAPI.QueryBuilder().WithAll<PortalLink>().Build();
             var portals = portalQuery.ToComponentDataArray<PortalLink>(Unity.Collections.Allocator.Temp);
+
+            // Phase 8 §17 — continuous tornado fields (replaces per-attacker
+            // TornadoPull). Each frame, any attacker inside a field's radius gets
+            // pulled toward its center, so enemies that enter mid-duration are
+            // also affected (previously the Phase 7 snapshot missed them).
+            var tornadoQuery = SystemAPI.QueryBuilder().WithAll<TornadoField>().Build();
+            var tornadoFields = tornadoQuery.ToComponentDataArray<TornadoField>(Unity.Collections.Allocator.Temp);
 
             foreach (var (transform, follow, waypoints, entity) in
                      SystemAPI.Query<RefRW<LocalTransform>, RefRW<PathFollowState>, DynamicBuffer<PathWaypoint>>()
@@ -62,27 +68,35 @@ namespace Wassup.Battle.Movement
                     continue;
                 }
 
-                // Phase 7 — TornadoPull overrides the waypoint step while active.
-                // Attacker is yanked toward centerWorld at pullSpeed. Path state
-                // stays untouched so after expiry they resume from current Position
-                // to the same waypoint.
-                if (tornadoLookup.HasComponent(entity))
+                // Phase 8 §17 — continuous TornadoField check. If the attacker
+                // is currently inside any active field, override waypoint step
+                // with a pull toward the nearest field's center. Path state
+                // stays untouched so after the field expires or the attacker
+                // exits the radius, they resume from current Position to the
+                // same waypoint.
+                bool pulled = false;
+                for (int t = 0; t < tornadoFields.Length; t++)
                 {
-                    var pull = tornadoLookup[entity];
-                    float3 toCenter = pull.centerWorld - current;
+                    var field = tornadoFields[t];
+                    float fdx = current.x - field.centerWorld.x;
+                    float fdz = current.z - field.centerWorld.z;
+                    if (fdx * fdx + fdz * fdz > field.radius * field.radius) continue;
+                    float3 toCenter = field.centerWorld - current;
                     toCenter.y = 0f;
                     float centerDist = math.length(toCenter);
-                    float pullStep = pull.pullSpeed * dt;
+                    float pullStep = field.pullSpeed * dt;
                     if (centerDist <= pullStep || centerDist < 1e-4f)
                     {
-                        transform.ValueRW.Position = new float3(pull.centerWorld.x, current.y, pull.centerWorld.z);
+                        transform.ValueRW.Position = new float3(field.centerWorld.x, current.y, field.centerWorld.z);
                     }
                     else
                     {
                         transform.ValueRW.Position = current + math.normalize(toCenter) * pullStep;
                     }
-                    continue;
+                    pulled = true;
+                    break;
                 }
+                if (pulled) continue;
 
                 var target = waypoints[idx].cell;
                 float3 targetWorld = new float3(
@@ -109,6 +123,7 @@ namespace Wassup.Battle.Movement
             }
 
             portals.Dispose();
+            tornadoFields.Dispose();
             ecb.Playback(state.EntityManager);
             ecb.Dispose();
         }
