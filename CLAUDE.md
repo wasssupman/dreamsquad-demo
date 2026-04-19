@@ -16,30 +16,35 @@
 
 ## 현재 단계
 
-**Phase 0 — 실시간 디펜스 루프**. 드래프트·스킬·시너지 없이 "실시간 디펜스가 작동하고 재미있는가"를 검증하는 가장 헐벗은 단계다.
+**Phase 8 종료 — Phase 9 착수 대기**.
 
-Phase 0 완료 전까지 Phase 1~4 관련 시스템(드래프트, 스킬, 인접 효과, 타이머 등)은 **절대 건드리지 않는다**.
+- **Phase 0~8 완료**: 실시간 디펜스 루프 → 드래프트 → 스킬 → 투사체/체력바 → 배치/시너지/적 반격 → 타이머/브리핑/봇/측정/Billboard → 코스트 시스템 → 랜덤 2종 스킬 로드아웃 + Tornado/Meteor/Portal → Spine 하이브리드 + 프리팹 VFX 파이프라인 + melee AoE + Tornado 지속 field + DefenderAttackEvent 통합 채널.
+- **Phase 9 주 테마**: Flow Field 기반 길찾기 재설계 (맵 고도화 + 변위 복귀 + 다중 레인). 상세는 `docs/phase9-prep.md`.
+- **Phase 9 착수 전 blocker**: P7-15 / P8-10 Play 회귀 검증 (사용자 작업). 컴파일 blocker 없음.
+
+현재 Phase 범위를 넘어선 기능(예: 다중 goal 경로, NavMesh, 공격 범위 표시 UI)은 **절대 건드리지 않는다**. 해당 항목은 `docs/residual-issues.md` / `docs/phase9-prep.md` 에 이관된 상태다.
 
 ## 기술 스택
 
-- **엔진**: Unity 6
+- **엔진**: Unity 6 · URP 17.3
 - **언어**: C#
 - **아키텍처**: 하이브리드 ECS — 전투 시뮬레이션만 ECS, 나머지 MonoBehaviour
-- **필수 패키지**: Entities 6.x, Entities Graphics, Burst, Collections, Mathematics, Jobs, TextMeshPro
+- **필수 패키지**: Entities 6.x, Entities Graphics, Burst, Collections, Mathematics, Jobs, TextMeshPro, Input System, spine-unity, spine-csharp
 - **타겟**: Android 실기기 + Unity Editor 플레이
 
 ## ECS 맥락 분리
 
 전투 시뮬레이션은 **맥락(Context)별로 분리**된다:
 
-- **Units** — 유닛 정의, 배치 상태, Health, 생성/소멸
-- **Movement** — 경로 따라가기, 위치 갱신
-- **Combat** — 타겟팅, 공격 쿨다운, 데미지 적용, 사거리 판정
-- **Effects** — 상태이상, 스킬 효과, 인접 시너지 (Phase 0에서는 자리만)
+- **Units** — 유닛 정의, 배치 상태, Health, 생성/소멸, IncomingDamage 버퍼, 사망 이벤트 큐
+- **Movement** — 경로 따라가기, 위치 갱신, Portal 텔레포트, Tornado field pull step
+- **Combat** — 타겟팅, 공격 쿨다운, 데미지 적용, 사거리 판정, 투사체, Meteor 해결, defender attack event
+- **Effects** — 상태이상(Slow/DamageBoost/CooldownReduction), 시너지(SynergyBuff), 스킬 캐리어(TornadoField/PortalLink/MeteorPending)
 
 **맥락 간 통신 규칙**:
 - Component는 소유 맥락이 있다. 다른 맥락은 **읽기만** 가능, 쓰기는 소유 맥락만.
-- 맥락 간 이벤트는 Buffer 또는 NativeQueue를 통한다. 직접 Component 수정 금지.
+- 맥락 간 이벤트는 Buffer 또는 NativeQueue 싱글턴을 통한다. 직접 Component 수정 금지.
+- 현재 운영 중인 NativeQueue 채널: `GoalReachedEventsSingleton`, `DefenderDeathEventsSingleton`, `MeteorBurstEventsSingleton`, `DefenderAttackEventsSingleton`.
 
 폴더 구조: `Assets/_Project/Scripts/Battle/{Units,Movement,Combat,Effects}/`. 상세는 TRD 섹션 2.5 참조.
 
@@ -49,10 +54,10 @@ Phase 0 완료 전까지 Phase 1~4 관련 시스템(드래프트, 스킬, 인접
 2. **맥락 경계 엄수**: Component 쓰기는 소유 맥락만. 맥락 간 직접 호출 금지.
 3. **SubScene 금지**, **SystemBase 남발 금지**(ISystem 우선), **네트워크 코드 완전 금지**.
 4. **Manager 싱글톤은 GameManager 1개만**. 그 외 `XxxManager` 싱글톤 금지.
-5. **하드코딩된 수치 금지**. 모든 유닛 스탯/공격 패턴/스킬 값은 ScriptableObject에서 나온다.
+5. **하드코딩된 수치 금지**. 모든 유닛 스탯/공격 패턴/스킬 값/VFX 파라미터는 ScriptableObject 또는 프리팹에서 나온다.
 6. **상속 2단계 최대** (MonoBehaviour, ScriptableObject에 적용).
 7. **인터페이스는 구현체 2개 이상일 때만 생성**. "나중을 위한" 추상 레이어 금지.
-8. **드래프트·스킬·인접 시너지·코스트·3분 타이머는 Phase 0에서 구현 금지**. 이들은 이후 Phase의 영역이다.
+8. **현재 Phase 범위를 넘어서는 기능 구현 금지**. 다음 Phase 영역 항목은 `phase9-prep.md` / `residual-issues.md` 로 이관 후 대기. 현재는 Phase 9 가 맵/길찾기에 한정되므로 그 외 범위 확장 금지.
 
 **전체 제약 목록은 `docs/TRD.md` 섹션 3(추상화 규칙), 섹션 5(금지 패턴)를 반드시 참조**하라.
 
@@ -62,18 +67,22 @@ Phase 0 완료 전까지 Phase 1~4 관련 시스템(드래프트, 스킬, 인접
 |---|---|
 | "이 기능을 왜 만드나?" | `docs/PRD.md` — 검증 가설, 운영 원칙 |
 | "어떤 기술 제약이 있나?" | `docs/TRD.md` — ECS 경계, 맥락 분리, 추상화 규칙, 금지 패턴 |
-| "지금 뭘 만드나?" | `docs/PHASE0.md` — Phase 0 상세 스펙과 작업 리스트 |
-| "작업 순서는?" | `docs/PHASE0.md` 섹션 3.1 — P0-01부터 P0-13까지 순서대로 |
+| "현재까지 무엇이 구현돼 있나?" | `docs/PHASE8.md` (최신 구현 스펙). 이전 Phase 는 `docs/PHASE{0..7}.md`. |
+| "지금 남은 작업은?" | `docs/residual-issues.md` — 페이즈 종료 프로토콜이 붙어있다 |
+| "Phase 9 는?" | `docs/phase9-prep.md` — Flow Field 길찾기 재설계 |
+| "VFX 를 만드려면?" | `.claude/skills/unity-vfx-authoring/` + `unity-vfx-integration/` 스킬 |
+| "Unity 씬 와이어링?" | `.claude/skills/unity-feature-wiring/` 스킬 |
 
 ## 작업 지침
 
 ### 기본 워크플로우
 
-1. 사용자가 "작업 P0-NN 시작" 또는 "다음 작업"이라고 말하면, `docs/PHASE0.md` 섹션 3.1에서 **가장 위의 미체크 작업**을 찾아 해당 항목부터 시작한다.
+1. 사용자가 "작업 Pn-NN 시작" 또는 "다음 작업"이라고 말하면, 해당 Phase 문서의 작업 리스트에서 **가장 위의 미체크 작업**을 찾아 시작한다. Phase 번호가 불명확하면 `docs/residual-issues.md` / `docs/phase9-prep.md` 부터 확인.
 2. 작업 시작 전에 해당 작업의 "선행" 항목이 모두 체크되어 있는지 확인한다.
 3. 작업 내용을 구현한다. **한 번에 한 작업만**. 여러 작업을 동시에 건드리지 않는다.
 4. 구현 완료 후 사용자에게 "완료 확인"을 요청한다. 에디터 또는 실기기에서 확인 가능한 방식을 구체적으로 알려준다.
-5. 사용자가 통과를 확인하면 해당 작업의 체크박스를 true로 바꾸고, 이번 작업에서 내린 기술적 결정을 `docs/phase0-decisions.md`에 한 줄 추가한다.
+5. 사용자가 통과를 확인하면 해당 작업의 체크박스를 true 로 바꾸고, 이번 작업에서 내린 기술적 결정을 현재 Phase 의 decisions 문서(없으면 `PHASE{n}.md` 본문) 에 한 줄 추가한다.
+6. **Phase 종료 선언 전에는 반드시 `docs/residual-issues.md` 프로토콜 실행** — 미체크 항목 요약 → 사용자에게 처리 결정 질의 → 문서 반영.
 
 ### 작업 시작 전 자가 점검
 
@@ -85,16 +94,15 @@ Phase 0 완료 전까지 Phase 1~4 관련 시스템(드래프트, 스킬, 인접
 - [ ] "확장 가능"을 이유로 만드는 구조가 지금 실제로 쓰이는가?
 - [ ] Component 쓰기가 소유 맥락 내에서만 일어나는가?
 - [ ] 상속 계층이 2단계를 넘지 않는가?
+- [ ] Unity 씬 와이어링이 필요한가? 그렇다면 `unity-feature-wiring` 스킬을 따랐는가?
 
 ### ECS 설계의 불확실성 대응
-
-팀은 ECS에 깊이 있는 경험이 없을 수 있다. 다음 두 가지 접근을 섞어 쓴다:
 
 1. **작은 결정은 에이전트가 내리고 짧게 설명한다** — 사용자가 실시간으로 ECS를 학습하는 효과
 2. **아키텍처 수준의 결정은 사용자에게 질문한다** — 여러 정답이 있는 경우에만. 작업 단위마다 질문하지 않고 묶어서 한 번에.
 
 **질문 가치가 있는 결정의 예**:
-- Component 소속 맥락이 애매할 때 (예: `Cooldown`이 Units인가 Combat인가)
+- Component 소속 맥락이 애매할 때
 - 맥락 간 이벤트를 Buffer로 할지 NativeQueue로 할지
 - SystemGroup 구성과 업데이트 순서
 - Burst 호환 불가한 API가 필요해 보일 때
@@ -107,7 +115,7 @@ Phase 0 완료 전까지 Phase 1~4 관련 시스템(드래프트, 스킬, 인접
 
 ### 기술적 결정이 필요할 때 (우선순위)
 
-1. `docs/PHASE0.md` 섹션 4 "에이전트 자율 결정 영역"에 있으면 단순한 쪽으로 결정하고 `phase0-decisions.md`에 기록
+1. 현재 Phase 문서의 "에이전트 자율 결정 영역" 섹션에 있으면 단순한 쪽으로 결정하고 decisions 문서에 기록
 2. 없으면 `docs/TRD.md` 참조
 3. 없으면 `docs/PRD.md` 참조
 4. 없으면 **작업 시작 전에 사용자에게 한 번에 묶어서 질문**. 작업 중간에 질문하지 않는다.
@@ -121,19 +129,21 @@ Phase 0 완료 전까지 Phase 1~4 관련 시스템(드래프트, 스킬, 인접
 
 ### 금지 행동
 
-- **Phase를 건너뛰지 않는다.** Phase 0 작업 중 "이왕 만드는 김에 드래프트도..." 같은 판단 금지.
+- **Phase를 건너뛰지 않는다.** 현재 Phase 작업 중 "이왕 만드는 김에 다음 Phase 것도..." 같은 판단 금지.
 - **추상화 먼저 만들지 않는다.** 인터페이스부터 정의한 뒤 구현하는 방식 금지. 구체 구현부터 시작해서 반복이 생기면 그때 추출한다.
 - **사용자 확인 없이 다음 작업으로 넘어가지 않는다.**
 - **경계를 유혹적으로 넓히지 않는다.** "이 한 줄만 예외로 하면..." 금지. 경계 위반이 필요해 보이면 정지하고 질문.
-- **맥락 폴더를 임의로 만들지 않는다.** 현재 허용된 맥락은 Units / Movement / Combat / Effects 4개. 새 맥락이 필요해 보이면 질문.
+- **맥락 폴더를 임의로 만들지 않는다.** 현재 허용된 맥락은 Units / Movement / Combat / Effects 4개. 새 맥락이 필요해 보이면 질문. (Presentation 폴더는 ECS 맥락이 아닌 MonoBehaviour View 계층임을 명심.)
+- **Unity 씬 wiring 을 "사용자 수작업" 으로 미루지 않는다.** UnityMCP로 자동화 가능한 것은 전부 자동화한 뒤 Play 검증까지가 완료.
 
 ## 기억할 것
 
 - **"프로토타입"은 기능 스코프에만 적용되지 코드 품질에는 적용되지 않는다.** 만든 코드는 본 게임에서도 살아남는다.
-- **Phase 0은 "실시간 디펜스 루프 자체가 재미있는가"에만 답하면 된다.** 이 질문에 답하는 데 필요하지 않은 모든 것은 제외된다.
+- **각 Phase 는 고유의 검증 질문이 있다.** 그 질문에 답하는 데 필요하지 않은 모든 것은 제외된다. 현재 Phase 9 는 "맵/길찾기가 변위(포탈/토네이도/넉백) 후에도 자율 복귀하는가" 에 답해야 한다.
 - **"가벼운 설계"와 "재사용 가능"은 양립 가능하다.** 방법은 맥락 분리 + 추상화 규칙 준수 + 현재 Phase 범위 유지.
 
 ---
 
-**현재 활성 Phase**: Phase 0
-**다음 Phase 작성 시점**: Phase 0 종료 조건 통과 후
+**현재 활성 Phase**: Phase 9 prep (Flow Field 길찾기 재설계 대기)
+**최근 종료 Phase**: Phase 8 (Spine 하이브리드 + 프리팹 VFX + melee AoE + Tornado 지속 field)
+**Phase 9 착수 조건**: P7-15 / P8-10 Play 회귀 검증 통과 (사용자 작업 대기)

@@ -279,21 +279,21 @@ Phase 0·1과 동일 원칙: 한 번에 한 작업만, 사용자 통과 확인, 
 ### 3.2 아키텍처 이진 체크
 
 **Phase 0·1 재확인 (회귀 방지)**
-- [ ] ECS 시스템이 전투 로직을 계속 소유
-- [ ] `BattleBridge`가 유일한 MonoBehaviour ↔ ECS 창구 (`CastSkill*`도 여기만)
-- [ ] `EntityManager` / `World.DefaultGameObjectInjectionWorld` 사용은 `BattleBridge` 한 파일에만 존재 (Effects 맥락 내부 ISystem은 SystemAPI 사용 — 규칙 외)
-- [ ] SubScene 미사용 / 네트워크 코드 전무
-- [ ] 맥락 분리 유지 (Units / Movement / Combat / Effects)
-- [ ] 드래프트 로직 MonoBehaviour 유지
+- [x] ECS 시스템이 전투 로직을 계속 소유
+- [x] `BattleBridge`가 유일한 MonoBehaviour ↔ ECS 창구 (`CastSkill*`도 여기만)
+- [x] `EntityManager` / `World.DefaultGameObjectInjectionWorld` 사용은 `BattleBridge` 한 파일에만 존재 (Effects 맥락 내부 ISystem은 SystemAPI 사용 — 규칙 외)
+- [x] SubScene 미사용 / 네트워크 코드 전무
+- [x] 맥락 분리 유지 (Units / Movement / Combat / Effects)
+- [x] 드래프트 로직 MonoBehaviour 유지
 
 **Phase 2 전용**
-- [ ] Effects Component 쓰기(Add/Update/Remove)는 Effects 시스템 + EffectSpawner 유틸만 수행
-- [ ] Movement/Combat은 Effects Component를 **읽기만** (PathFollowState.speed / AttackState.damage 원본 불변)
-- [ ] SkillData 전부 SO — 효과 수치 하드코딩 없음
-- [ ] SkillBar UI는 프리팹 무도입, 런타임 빌드 (DraftView 패턴 재사용)
-- [ ] 새 싱글톤 도입 없음 — GameManager 여전히 유일 싱글톤. SkillRuntime은 MonoBehaviour 자식, 정적 Instance 없음
-- [ ] `GameManager.IsAiming` 상태 플래그로 SkillBar ↔ PlacementInput 간접 조정 (직접 참조 없음)
-- [ ] Assembly Definition 2개 체제 유지 (`Wassup.Runtime` + `Wassup.Tests.EditMode`)
+- [x] Effects Component 쓰기(Add/Update/Remove)는 Effects 시스템 + EffectSpawner 유틸만 수행
+- [x] Movement/Combat은 Effects Component를 **읽기만** (PathFollowState.speed / AttackState.damage 원본 불변)
+- [x] SkillData 전부 SO — 효과 수치 하드코딩 없음
+- [x] SkillBar UI는 프리팹 무도입, 런타임 빌드 (DraftView 패턴 재사용)
+- [x] 새 싱글톤 도입 없음 — GameManager 여전히 유일 싱글톤. SkillRuntime은 MonoBehaviour 자식, 정적 Instance 없음
+- [x] `GameManager.IsAiming` 상태 플래그로 SkillBar ↔ PlacementInput 간접 조정 (직접 참조 없음)
+- [x] Assembly Definition 2개 체제 유지 (`Wassup.Runtime` + `Wassup.Tests.EditMode`)
 
 ---
 
@@ -371,7 +371,15 @@ TRD 섹션 5의 금지 패턴은 전부 Phase 2에도 유효하다. 특히 주�
 
 ---
 
-**문서 버전**: v1.0
-**상태**: 확정, 에이전트 전달 준비됨
-**Phase 0·1 완료 기반으로 작성**: 코드 실상(`AttackSystem`, `BattleLogEntry`, `DraftController.TryConfirm`, `DraftView` 런타임 빌드 패턴)과 정합.
-**다음 업데이트**: Phase 2 구현 완료 후 `PHASE3.md` 작성 시 본 문서의 결정이 Phase 3 전제로 승계됨. Phase 2 진행 중 발견된 조정은 `phase2-decisions.md`에 누적.
+## 8. 구현 결과 스냅샷 (2026-04-19)
+
+Phase 2는 현재 구현 완료 상태다. 확정/구현된 세부 결정은 과거 `phase2-decisions.md` 에 기록되었고, 본 문서가 Phase 2 스펙의 단일 출처다.
+
+- `SkillData` 는 `SlowField`, `PowerSurge`, `RapidFire` 를 enum switch 기반으로 표현한다.
+- `SkillRuntime` 이 cooldown 상태를 MonoBehaviour 레이어에서 보관하고, `SkillBar` 가 런타임 UI를 구성한다.
+- 타일 타깃과 방어 유닛 타깃은 `GameManager.IsAiming` 플래그를 통해 Placement 입력과 경합하지 않게 조정됐다.
+- Effects component(`SlowEffect`, `DamageBoost`, `CooldownReduction`)는 `EffectSpawner` 를 통해 부여되고 `EffectTickSystem` 이 lifetime을 관리한다.
+- skill usage 로그는 이후 Phase 7에서 skill pool/picked/seed 및 `target_tile_b` 로 확장됐다.
+
+**문서 버전**: v1.1 (구현 스펙 통합)
+**상태**: 구현 완료. Android 실기 검증은 후속 residual 검증으로 관리.

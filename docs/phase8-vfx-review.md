@@ -1,5 +1,7 @@
 # Phase 8 VFX 리뷰
 
+> Superseded: 확정/구현 완료 내용은 `PHASE8.md`에 통합됨. 본 문서는 히스토리/리뷰 기록으로만 유지.
+
 ## 요약
 
 1. 4종 VFX(Placement/Meteor/Tornado/Portal) 구현이 PHASE8.md §12 스펙과 정확히 대응하며, ECS 이벤트 채널(MeteorBurstEventsSingleton)도 기존 GoalReached/DefenderDeath 패턴을 따른다.

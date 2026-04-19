@@ -36,7 +36,7 @@ Phase 3은 **전투 가독성**을 확보하는 기반 작업이다. 이후 Phas
 ## 1. Phase 3의 게임 흐름 변화
 
 ```
-[전투 진행 중]
+[전투 진행]
   방어 유닛 쿨다운 완료
     → AttackSystem이 ECB로 ProjectileSpawnRequest 컴포넌트를 방어 엔티티에 부여 (또는 싱글톤 큐에 enqueue)
     → AttackSystem이 AttackState.cooldownRemaining을 기존과 동일하게 리셋
@@ -260,21 +260,21 @@ public struct ProjectileSpawnRequest : IComponentData {
 ### 3.2 아키텍처 이진 체크
 
 **Phase 0~2 재확인:**
-- [ ] BattleBridge가 유일한 MonoBehaviour ↔ ECS 창구 (투사체 RenderMesh 생성도 여기 경유)
-- [ ] Effects Component 읽기/쓰기 경계 유지
-- [ ] 드래프트/스킬 로직 MonoBehaviour 유지
-- [ ] GameManager 유일 싱글톤
+- [x] BattleBridge가 유일한 MonoBehaviour ↔ ECS 창구 (투사체 RenderMesh 생성도 여기 경유)
+- [x] Effects Component 읽기/쓰기 경계 유지
+- [x] 드래프트/스킬 로직 MonoBehaviour 유지
+- [x] GameManager 유일 싱글톤
 
 **Phase 3 전용:**
-- [ ] 투사체 Component/System이 Combat 맥락 하위 (`Battle/Combat/Projectile/`)
-- [ ] 체력바 Component/System이 Units 맥락 하위 (`Battle/Units/HealthBar/`)
-- [ ] 새 맥락 폴더 0개 (Units/Movement/Combat/Effects 4종 유지)
-- [ ] 투사체 System이 Movement의 PathFollowState를 사용하지 않음
-- [ ] ProjectileData 전부 SO — speed/hitThreshold/visualScale 전부 SO 필드
-- [ ] AttackSystem의 투사체/즉시 분기가 ProjectileRef 유무로만 결정 (if/else 1개, 전략 패턴 아님)
-- [ ] ProjectileState에 Phase 3 미사용 데드 필드 없음
-- [ ] 투사체 엔티티 생성의 managed 부분(RenderMeshUtility)은 BattleBridge.Update 경로에서만 수행 — ISystem 내에서 X
-- [ ] Assembly Definition 2개 체제 유지
+- [x] 투사체 Component/System이 Combat 맥락 하위 (`Battle/Combat/Projectile/`)
+- [x] 체력바 Component/System이 Units 맥락 하위 (`Battle/Units/HealthBar/`)
+- [x] 새 맥락 폴더 0개 (Units/Movement/Combat/Effects 4종 유지)
+- [x] 투사체 System이 Movement의 PathFollowState를 사용하지 않음
+- [x] ProjectileData 전부 SO — speed/hitThreshold/visualScale 전부 SO 필드
+- [x] AttackSystem의 투사체/즉시 분기가 ProjectileRef 유무로만 결정 (if/else 1개, 전략 패턴 아님)
+- [x] ProjectileState에 Phase 3 미사용 데드 필드 없음
+- [x] 투사체 엔티티 생성의 managed 부분(RenderMeshUtility)은 BattleBridge.Update 경로에서만 수행 — ISystem 내에서 X
+- [x] Assembly Definition 2개 체제 유지
 
 ---
 
@@ -341,6 +341,16 @@ Phase 3 종료 후 `PHASE4.md`를 작성한다.
 
 ---
 
-**문서 버전**: v1.1
-**상태**: 확정, 에이전트(Codex) 전달 준비됨
-**v1.0 → v1.1 변경**: critic 리뷰 10건 반영 — IncomingDamage 쓰기 권한 해석 명시, managed 레퍼런스 경로 이원화 (ProjectileSpawnRequest + BattleBridge drain), hitThreshold SO 승격, 체력바 맥락 Units로 확정, World-space Canvas 옵션 삭제, damage 스냅샷 정책 명시, target 소실 Burst 호환 체크 규정, ProjectileState 데드 필드 제거, HitFlash duration const 허용 명시, 테스트 목표 숫자 23/23으로 정정, 로그 스키마 불변 명시.
+## 8. 구현 결과 스냅샷 (2026-04-19)
+
+Phase 3은 현재 구현 완료 상태다. 확정/구현된 세부 결정은 과거 `phase3-decisions.md` 에 기록되었고, 본 문서가 Phase 3 스펙의 단일 출처다.
+
+- `ProjectileData` / `ProjectileRef` / `ProjectileSpawnRequest` / `ProjectileState` 단방향 전달 흐름이 구축됐다.
+- `AttackSystem` 은 ProjectileRef 보유 defender에서 spawn request를 만들고, `BattleBridge` 가 managed RenderMesh 생성 경로를 담당한다.
+- `ProjectileMoveSystem` / `ProjectileHitSystem` 이 이동, target 소실, hit threshold, `IncomingDamage` append 를 처리한다.
+- Guardian/Bruiser/Bastion 등 projectile이 없는 defender는 즉시 데미지 fallback 경로를 유지한다.
+- `HealthBarSystem` 과 `HitFlashSystem` 으로 전투 피드백이 추가됐다.
+- Phase 3 당시 Particle/VFX는 제외였으나, Phase 8에서 prefab VFX 파이프라인으로 확장됐다.
+
+**문서 버전**: v1.2 (구현 스펙 통합)
+**상태**: 구현 완료.

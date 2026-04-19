@@ -17,7 +17,7 @@ Phase 1은 Phase 0의 "랜덤 배치"를 "플레이어가 드래프트한 7종 �
 ### Phase 1이 하는 것 / 안 하는 것
 
 **Phase 1이 하는 것:**
-- 방어 유닛 풀을 10~12종으로 확장 (현재 Archer/Guardian/Cannon 3종)
+- 방어 유닛 풀을 10~12종으로 확장 (Phase 1 착수 당시 Archer/Guardian/Cannon 3종)
 - 판 시작 전 드래프트 UI 노출: 10종 중 7종 픽
 - 드래프트 확정 후 Phase 0 루프 진행: 플레이어가 Buildable 타일 클릭 시 **picked 7종 중 랜덤** 선택되어 배치
 - 드래프트 결과를 `BattleLogSchema`의 `draft.pool`(10종) + `draft.picked`(7종) 필드에 기록
@@ -306,6 +306,16 @@ TRD 섹션 5의 금지 패턴은 전부 Phase 1에도 유효하다. 특히 주�
 
 ---
 
-**문서 버전**: v0.1
-**상태**: 초안, 에이전트 전달 준비됨
-**다음 업데이트**: Phase 1 구현 완료 후 (phase1-decisions.md 참고하여 Phase 2 문서 작성)
+## 8. 구현 결과 스냅샷 (2026-04-19)
+
+Phase 1은 현재 구현 완료 상태다. 확정/구현된 세부 결정은 과거 `phase1-decisions.md` 에 기록되었고, 본 문서가 Phase 1 스펙의 단일 출처다.
+
+- `DraftSession` 이 10종 pool, 7종 picked, seed 기반 상태 전이를 보관한다.
+- `DraftController` / `DraftView` 런타임 UI로 카드 선택, 확정, Restart, Redraft 흐름을 처리한다.
+- 전투 진입 후 배치는 picked 7종 pool에서만 선택된다.
+- Restart 는 같은 picked pool을 유지하고, Redraft 는 드래프트 UI를 다시 열어 새 pool을 확정한다.
+- JSON 로그에는 draft pool/picked 정보가 포함된다.
+- Android 실기기 검증은 이후 residual 검증으로 유지한다.
+
+**문서 버전**: v1.0 (구현 스펙 통합)
+**상태**: 구현 완료. Android 실기 검증은 후속 residual 검증으로 관리.

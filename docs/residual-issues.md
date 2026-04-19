@@ -32,8 +32,7 @@
 ## B. 사용자 Play 검증 대기
 
 - [ ] **P7-15** Phase 7 회귀 — 드래프트 2종 스킬 패널 / Tornado·Meteor·Portal 동작 / Restart·Redraft
-- [ ] **P8-10** Phase 8 Spine/VFX 회귀 — defender Spine 상태 전환 + 4종 VFX prefab 시각
-- [ ] **P8-11** defender 10종 skin 할당 (현재 Archer=Lamb 만)
+- [ ] **P8-10** Phase 8 Spine/VFX 회귀 — defender Spine 상태 전환 + 5종 VFX prefab 시각
 - [ ] **VFX 카탈로그 10개 검토/승인** — `.claude/skills/unity-vfx-authoring/common-skill-vfx-reference.md`
 
 ---
@@ -81,7 +80,7 @@
 | 카테고리 | 미체크 수 | 비고 |
 |---|---|---|
 | A. 버그 | 0 | A1 Phase 8 §17 에서 해결, A2 Phase 9 이관 |
-| B. 사용자 Play | 2 | P7-15 / P8-10 (본인 작업) |
+| B. 사용자 Play | 2 | P7-15 / P8-10 (사용자 Play 확인) |
 | C. 에디터 수작업 | 2 | Shader Graph 템플릿 / Phase 9 기준선 녹화 |
 | D. Phase 9 | — | phase9-prep.md 포인터만 유지 |
 | E. 후속 제안 | 7 | 1~6 keep (Phase 9 이후 판단), 7 (공격 범위 UI) Phase 9 확정 이관 |

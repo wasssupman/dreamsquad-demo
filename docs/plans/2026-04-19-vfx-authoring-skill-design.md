@@ -1,5 +1,7 @@
 # 2026-04-19 VFX Authoring Skill Design
 
+> Superseded: 실제 운영 소스는 `.claude/skills/unity-vfx-authoring/` 스킬이며, 확정/구현 완료 내용은 `docs/PHASE8.md`에 통합됨. 본 문서는 brainstorming 기록으로만 유지.
+
 ## 배경
 - Unity 6 모바일 프로토타입 기준으로 VFX Graph는 배제한다. 타깃은 OpenGL ES 3.0+이고, 초기 범위는 Shuriken ParticleSystem 기반 authoring이다.
 - 현재 저장된 VFX 프리팹은 0건이다. 따라서 첫 산출물은 정식 프리팹이 아니라 `_SKELETON` 접미사의 임시 프리팹을 우선 생성한다.

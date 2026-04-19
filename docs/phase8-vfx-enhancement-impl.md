@@ -1,5 +1,7 @@
 # Phase 8 §13 — VFX Enhancement 구현 문서
 
+> Superseded: 확정/구현 완료 내용은 `PHASE8.md`에 통합됨. 본 문서는 히스토리/리뷰 기록으로만 유지.
+
 > Plan v0.1 (`phase8-vfx-enhancement-plan.md`) + Codex round 1/2 리뷰 전부 반영. 본 문서는 **실제 작업 지시** 수준의 구체 명세. Step 1~4 각각 커밋 단위. 판정: **Yellow** 항목 2건(BeamPulse 데드코드 / Tornado lifetime 명시)은 아래에서 해결됨.
 
 ## 0. 범위

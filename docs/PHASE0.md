@@ -293,25 +293,25 @@ Phase 0는 다음이 **모두** 이진 통과해야 Phase 1로 이동한다.
 TRD 섹션 2(아키텍처 경계)와 섹션 3(추상화 규칙)을 준수했는가.
 
 **경계 준수**
-- [ ] 공격 유닛 이동·체력·소멸 로직이 ECS 시스템에 있다
-- [ ] 방어 유닛의 타겟팅·공격·데미지 적용 로직이 ECS 시스템에 있다
-- [ ] UI / 터치 입력 / 결과 화면은 MonoBehaviour에 있다
-- [ ] `BattleBridge`(또는 동등한 단일 클래스)가 MonoBehaviour ↔ ECS 통신의 유일한 창구이다
-- [ ] `BattleBridge` 외부의 MonoBehaviour 코드에 `EntityManager` / `World.DefaultGameObjectInjectionWorld` 직접 호출이 없다
-- [ ] SubScene이 사용되지 않았다
-- [ ] 네트워크 코드가 전혀 없다
+- [x] 공격 유닛 이동·체력·소멸 로직이 ECS 시스템에 있다
+- [x] 방어 유닛의 타겟팅·공격·데미지 적용 로직이 ECS 시스템에 있다
+- [x] UI / 터치 입력 / 결과 화면은 MonoBehaviour에 있다
+- [x] `BattleBridge`(또는 동등한 단일 클래스)가 MonoBehaviour ↔ ECS 통신의 유일한 창구이다
+- [x] `BattleBridge` 외부의 MonoBehaviour 코드에 `EntityManager` / `World.DefaultGameObjectInjectionWorld` 직접 호출이 없다
+- [x] SubScene이 사용되지 않았다
+- [x] 네트워크 코드가 전혀 없다
 
 **맥락 분리 (TRD 섹션 2.5)**
-- [ ] `Battle/` 하위에 `Units/`, `Movement/`, `Combat/`, `Effects/` 폴더가 존재한다 (Effects는 Phase 0에서 자리만)
-- [ ] Component는 소유 맥락이 명확하다 — 다른 맥락이 해당 Component를 **직접 수정**하지 않는다
-- [ ] 맥락 간 통신은 Component 직접 수정이 아니라 **Buffer 또는 NativeQueue** 기반이다
-- [ ] Effects 맥락은 Phase 0에서 구현이 없거나 최소 구조(폴더 + placeholder)만 있다
+- [x] `Battle/` 하위에 `Units/`, `Movement/`, `Combat/`, `Effects/` 폴더가 존재한다 (Effects는 Phase 0에서 자리만)
+- [x] Component는 소유 맥락이 명확하다 — 다른 맥락이 해당 Component를 **직접 수정**하지 않는다
+- [x] 맥락 간 통신은 Component 직접 수정이 아니라 **Buffer 또는 NativeQueue** 기반이다
+- [x] Effects 맥락은 Phase 0에서 구현이 없거나 최소 구조(폴더 + placeholder)만 있다
 
 **추상화 규칙 (TRD 섹션 3)**
-- [ ] 상속 계층이 2단계를 넘지 않는다
-- [ ] 구현체가 1개뿐인 인터페이스가 없다
-- [ ] "나중을 위한" 미사용 확장 포인트가 없다
-- [ ] 유닛·공격 패턴 수치가 ScriptableObject에 있으며 하드코딩되지 않았다
+- [x] 상속 계층이 2단계를 넘지 않는다
+- [x] 구현체가 1개뿐인 인터페이스가 없다
+- [x] "나중을 위한" 미사용 확장 포인트가 없다
+- [x] 유닛·공격 패턴 수치가 ScriptableObject에 있으며 하드코딩되지 않았다
 
 ### 3.3 주관 평가 (게이트)
 
@@ -371,6 +371,15 @@ TRD 섹션 2(아키텍처 경계)와 섹션 3(추상화 규칙)을 준수했는�
 
 ---
 
-**문서 버전**: v0.1
-**상태**: 작성 완료, 에이전트 전달 준비됨
-**다음 업데이트**: Phase 0 구현 완료 후 (phase0-decisions.md 참고하여 Phase 1 문서 작성)
+## 7. 구현 결과 스냅샷 (2026-04-19)
+
+Phase 0는 현재 구현 완료 상태다. 확정/구현된 세부 결정은 과거 `phase0-decisions.md` 에 기록되었고, 본 문서가 Phase 0 스펙의 단일 출처다.
+
+- Unity 프로젝트는 Universal 3D 기반으로 초기화되었고, 전투 시뮬레이션은 `BattleBridge` 를 유일한 MonoBehaviour ↔ ECS 창구로 사용한다.
+- 좌표계는 타일 정수 좌표(`Vector2Int`)와 world XZ 평면을 매핑하는 단순 구조다.
+- `AttackDeck`, `MapData`, `AttackUnitData`, `DefenderUnitData` ScriptableObject 기반 데이터 흐름이 구축됐다.
+- 공격 유닛 이동, 방어 유닛 배치, 자동 공격, 데미지 적용, 승패 판정, Restart, JSON 로그가 구현됐다.
+- Android 실기기 검증은 이후 Phase 검증으로 이월되었고, Editor 기준 루프는 후속 Phase의 기반으로 사용 중이다.
+
+**문서 버전**: v1.0 (구현 스펙 통합)
+**상태**: 구현 완료. Android 실기 검증은 후속 residual 검증으로 관리.

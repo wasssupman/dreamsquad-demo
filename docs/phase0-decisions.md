@@ -1,5 +1,7 @@
 # Phase 0 Decisions Log
 
+> Superseded: 확정/구현 완료 내용은 `PHASE0.md`에 통합됨. 본 문서는 히스토리/리뷰 기록으로만 유지.
+
 > 본 문서는 Phase 0 진행 중 에이전트가 내린 기술적 결정과 그 근거를 한 줄씩 누적 기록한다.
 > CLAUDE.md "기본 워크플로우"와 PHASE0.md 섹션 4의 자율 결정 영역에 따른다.
 

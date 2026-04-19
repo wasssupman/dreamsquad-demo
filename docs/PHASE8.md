@@ -1,239 +1,261 @@
-# Phase 8 — 방어 유닛 Spine 적용 (ECS + MonoBehaviour 하이브리드)
+# Phase 8 — Defender Spine 하이브리드 + Prefab VFX 파이프라인
 
-> Phase 5에서 들어온 Billboard 렌더는 "위치와 종류만 식별되는" 최소 비주얼이다. Phase 8은 방어 유닛을 **Spine 2D 스켈레톤**으로 교체하여 유닛별 외형 차별화 + 공격/사망 애니메이션 추가 + 타겟 방향 플립을 구현한다. ECS 시뮬레이션은 그대로, 렌더만 하이브리드로 전환한다.
+> Phase 8은 Phase 5의 Billboard 기반 유닛 표시를 defender Spine 하이브리드로 확장하고, Phase 7 스킬/배치 피드백을 prefab 기반 VFX로 전환한 단계다. ECS 전투 시뮬레이션은 유지하고, 시각 표현만 MonoBehaviour/Presentation 계층에서 담당한다.
 
 ---
 
 ## 1. 목표
 
-- 방어 유닛 10종이 `player-main.skel`의 **스킨(skin)** 으로 시각적으로 구분된다.
-- ECS 엔티티(위치/전투 로직)와 Spine `SkeletonAnimation` GameObject(렌더)를 **1:1 하이브리드**로 묶는다.
-- 방어 유닛의 **idle / attack / die** 상태 전환이 ECS 이벤트에 반응해 자동 재생된다.
-- 방어 유닛의 **facing(flipX)** 이 가장 가까운 타겟 방향으로 자동 전환된다.
+- 방어 유닛 10종을 `player-main` Spine skeleton skin으로 시각 구분한다.
+- defender entity와 `SkeletonAnimation` GameObject를 1:1로 연결한다.
+- idle / attack / die 애니메이션을 ECS 이벤트에 반응시킨다.
+- attack frame 기준으로 target 방향을 바라보게 한다.
+- Placement / Meteor Fall / Meteor Burst / Tornado / Portal VFX를 `_SKELETON.prefab` 기반으로 통합한다.
+- Phase 7 Tornado의 cast-time snapshot 한계를 지속 field로 해결한다.
 
 ### 비목표
 
-- 공격 유닛(적) Spine 전환 — 현행 Billboard 유지. 이후 Phase로 미룬다.
-- 커스텀 스킨 합성(슬롯별 파트 스왑) — player-main의 **기존 skin만** 사용.
-- 스킬/VFX 애니메이션 — 기존 ECS 경고 링/프로시저럴 유지.
-- 사운드 — 미포함.
-- Spine Timeline 연동, IK 조작, 새 애니메이션 제작 — 전부 제외.
+- 공격 유닛 Spine 전환.
+- Spine skin 합성/IK/Timeline.
+- VFX Graph 도입.
+- HDR bloom 최종 연출.
+- Flow Field 길찾기. Portal/Tornado 변위 후 자율 복귀는 Phase 9 대상이다.
 
 ---
 
-## 2. 확정된 결정 (자율 판단)
+## 2. 확정 결정
 
-| # | 항목 | 결정 | 근거 |
-|---|---|---|---|
-| D1 | 스킨 매핑 | `DefenderUnitData.spineSkinName` 필드 추가, Inspector에서 사용자 지정 | 실제 skin 이름은 Unity 에디터로만 확인 가능 |
-| D2 | 애니메이션 상태 | idle / attack / die 3-state | 정적 방어 유닛이므로 walk/aim 불필요 |
-| D3 | 하이브리드 구조 | Spine GameObject 풀 + LateUpdate 동기화 | Hybrid Renderer 경로보다 단순, 프로토타입 스코프 |
-| D4 | 공격 유닛 | Phase 8에서 제외 | 스코프 폭주 방지 |
-| D5 | Facing | flipX로 타겟 방향 자동 전환 | 시각적으로 즉시 읽힘 |
-| D6 | 사망 처리 | die 애니메이션 종료 후 destroy | 몰입도 ↑ |
-| D7 | 체력바 / 기존 VFX | 그대로 유지 | 스코프 외 |
-| D8 | 렌더 위치 | 기존 defender spawn 위치 그대로 (타일 중앙) | 호환성 |
-| D9 | Skel 파싱 | spine-unity SkeletonDataAsset 사용 | 표준 파이프라인 |
-| D10 | 애니메이션 이벤트 | Spine의 `AnimationState.Complete` 리스너로 die 종료 감지 | API 일관성 |
-
----
-
-## 3. 아키텍처 — 하이브리드 브리지
-
-### 3.1 ECS → GameObject 1:1 링크
-
-- **소유 위치**: MonoBehaviour 레이어. `BattleBridge`가 GameObject 인스턴스를 추적한다.
-- **매핑 테이블**: 기존 `Dictionary<Vector2Int, DefenderBinding>` 옆에 `Dictionary<Entity, SpineDefenderView>` 추가.
-- **스폰**: `PlaceDefenderAs` 성공 경로에서 ECS 엔티티 생성 + `SpineDefenderView.Spawn(unitData, entity, worldPos)` 호출.
-- **제거**: `DefenderDeathEventsSingleton`의 NativeQueue 드레인 시 `SpineDefenderView.Kill()` 호출 → die 애니 재생 → 콜백으로 `Destroy(go)`.
-
-### 3.2 Transform 동기화
-
-- **위치**: 정적 유닛이라 LateUpdate 없이 Spawn 시 1회 Position copy면 충분. 단 Knockback/이동 스킬이 추후 추가되면 LateUpdate가 필요. Phase 8은 **Spawn 시 1회** + **사망 시 즉시 제거** 로 단순화.
-- **회전**: Spine 스켈레톤은 flipX만 전환. Transform rotation 건드리지 않음.
-
-### 3.3 ECS 이벤트 → Spine 애니메이션 트리거
-
-- **idle**: Spawn 후 기본 재생.
-- **attack**: `ProjectileSpawnRequest` 또는 기존 `IncomingDamage append` 직전에 `SpineDefenderView.PlayAttackOnce()` 호출. BattleBridge의 `DrainProjectileSpawnRequests()` 드레인 루프에서 defender entity ID로 lookup → view에 트리거.
-- **die**: `DefenderDeathEventsSingleton` 드레인 시 `view.Kill()`.
-- **facing**: AttackSystem이 가장 가까운 attacker를 찾을 때 그 방향을 `TargetFacing` 컴포넌트에 기록하거나, 매 프레임 `SpineDefenderView.Update()` 가 자기 전방에 있는 가장 가까운 적을 읽어 flipX 결정. 간단한 쪽은 **view가 매 프레임 가까운 AttackUnit의 월드 X 좌표를 읽어 flipX 판정**.
+| 항목 | 구현 결과 |
+|---|---|
+| Defender 시각화 | Spine `SkeletonAnimation` GameObject + ECS entity 1:1 |
+| fallback | `skeletonDataAsset` 또는 `spineSkinName` 없으면 기존 Billboard RenderMesh |
+| Pool | `SpineDefenderPool` 비싱글톤 MonoBehaviour |
+| View | `SpineDefenderView` 가 Spine 초기화/애니메이션/방향 snap 담당 |
+| 공격 트리거 | `DefenderAttackEventsSingleton` NativeQueue |
+| 사망 트리거 | `DefenderDeathEventsSingleton` drain → `SpineDefenderPool.NotifyDeath` |
+| 방향 전환 | 매 프레임 polling이 아니라 attack event targetWorld 기준 snap |
+| VFX | prefab slot 필수. null이면 error log 후 return |
+| Tornado | `TornadoField` carrier entity 기반 지속 field |
+| Melee AoE | `attackTargetCount` 로 melee defender 다중 타깃 허용 |
 
 ---
 
-## 4. 파일 구조
+## 3. Spine 데이터
 
-```
-Assets/_Project/Scripts/Presentation/
-  SpineDefenderView.cs        (신규) — MonoBehaviour, 1 per defender
-  SpineDefenderPool.cs        (신규) — 생성/반환 관리, GameManager가 hold
-```
-
-- 새 폴더 `Presentation/` 은 비-ECS 뷰 계층을 모은다. 기존 MonoBehaviour들이 여러 곳에 흩어진 상태라 Phase 8 시점에 새 맥락으로 **시각 렌더 전용**을 분리한다.
-- ECS Component는 **추가하지 않는다** — 모든 상태는 기존 `DefenderUnitTag`, `LocalTransform`, `Health`, `AttackState` 에서 읽는다.
-
----
-
-## 5. `DefenderUnitData` 확장
+`DefenderUnitData` 확장:
 
 ```csharp
-// 추가되는 필드
-[Header("Phase 8 — Spine")]
-public string spineSkinName;              // 예: "Skin/Scout" — player-main.skel에 존재하는 스킨 이름
-public SkeletonDataAsset skeletonDataAsset; // 선택. 비우면 GameManager.defaultSkeletonData fallback
+public SkeletonDataAsset skeletonDataAsset;
+public string spineSkinName;
 public string idleAnimation = "idle";
 public string attackAnimation = "attack";
 public string deathAnimation = "die";
+public float spineVisualScale = 1f;
+public int attackTargetCount = 1;
 ```
 
-- SO 마이그레이션은 **필드 추가만** — 기본값이 비어 있어도 `spineSkinName == null` 조건으로 Spine 렌더를 skip하고 기존 billboard fallback.
+구현 상태:
+
+- 10종 defender asset에 `skeletonDataAsset` 할당 완료.
+- 10종 defender asset에 `spineSkinName` 입력 완료.
+- 현재 skin은 Lamb / Owl / Goat 계열로 매핑되어 있다.
+- animation 이름은 SO 필드로 유지해 skeleton 교체 시 Inspector에서 조정 가능하다.
 
 ---
 
-## 6. 기존 Billboard와 공존
+## 4. Spine 런타임 구조
 
-- `PlaceDefenderAs` 는 여전히 billboard 렌더 설정을 수행한다. `SpineDefenderView`가 뜨면 billboard MeshRenderer를 `enabled = false` 로 끄거나, 아예 Spine 생성 시 billboard 생성 분기를 건너뛴다.
-- fallback: `spineSkinName` 또는 `skeletonDataAsset` 이 없는 유닛은 **billboard 그대로**. 점진 전환 가능.
+### 4.1 `SpineDefenderPool`
 
----
+- `Dictionary<Entity, SpineDefenderView>` 로 live defender view를 추적한다.
+- `TrySpawn(unitData, entity, worldPos, out view)` 는 skeleton/skin이 없으면 false를 반환해 Billboard fallback을 허용한다.
+- `NotifyAttack(entity, targetWorld)` 는 view를 target 방향으로 snap하고 attack animation을 재생한다.
+- `NotifyDeath(entity)` 는 die animation을 재생하고 mapping을 제거한다.
+- `DisposeAll()` 은 Restart/Redraft/teardown에서 즉시 정리한다.
 
-## 7. Spine 설정 (사용자 에디터 작업)
+### 4.2 `SpineDefenderView`
 
-Phase 8 구현 후 사용자가 Unity에서 해야 하는 설정:
+- GameObject에 `SkeletonAnimation` 을 추가하고 SO의 `SkeletonDataAsset` / skin / animation 이름으로 초기화한다.
+- spawn 시 world position과 `spineVisualScale` 을 적용한다.
+- `PlayAttack()` 은 attack 1회 후 idle loop를 queue한다.
+- `Kill()` 은 death animation Complete 콜백에서 GameObject를 destroy한다.
+- `FaceToward(worldPoint)` 는 rig 기본 방향을 고려해 `Skeleton.ScaleX` 를 snap한다.
 
-1. **SkeletonDataAsset 생성**: `Assets/_Project/Characters/player-main.skel` 선택 → Right-click → Create → Spine → SkeletonDataAsset (또는 spine-unity 자동 생성).
-2. **Atlas Asset 생성**: `player-main.atlas` → Create → Spine → SpineAtlasAsset.
-3. **GameManager에 defaultSkeletonData 할당** (모든 defender가 같은 skel을 공유).
-4. **각 DefenderUnitData SO에 `spineSkinName` 입력** — 실제 skin 이름 10개 (사용자가 player-main.skel에서 확인).
+### 4.3 BattleBridge 연결
 
----
-
-## 8. 작업 분해 — P8-NN
-
-### 8.1 데이터
-
-- [ ] P8-01 — `DefenderUnitData` 에 Spine 필드 추가 (skinName + skeletonDataAsset + anim 이름 3개)
-
-### 8.2 하이브리드 런타임
-
-- [ ] P8-02 — `Scripts/Presentation/SpineDefenderView.cs` — SkeletonAnimation wrapping. API: `Spawn(unitData, entity, worldPos)` / `PlayAttack()` / `Kill()` / `Dispose()`.
-- [ ] P8-03 — `Scripts/Presentation/SpineDefenderPool.cs` — View 생성/추적. 씬에 하나만 존재.
-- [ ] P8-04 — BattleBridge: `PlaceDefenderAs` 성공 시 SpineDefenderPool 통해 View 생성, `spineSkinName` 없으면 기존 billboard 유지.
-- [ ] P8-05 — BattleBridge: `DrainProjectileSpawnRequests` / `DrainDefenderDeathEvents` 에서 해당 entity의 View 찾아 공격/사망 트리거.
-
-### 8.3 Facing
-
-- [ ] P8-06 — `SpineDefenderView.Update` 에서 가장 가까운 AttackUnit 월드 X 좌표 기반 flipX 전환. EntityManager 직접 접근 금지 — BattleBridge에 `TryGetNearestAttackerX(worldPos, out float x)` 퍼블릭 헬퍼 추가.
-
-### 8.4 사망 후처리
-
-- [ ] P8-07 — Die 애니메이션 `Complete` 리스너에서 `Destroy(gameObject)`. 체력바도 해당 시점 제거.
-
-### 8.5 Fallback & 공존
-
-- [ ] P8-08 — `spineSkinName == null || empty` 또는 `skeletonDataAsset == null` 일 때 billboard 경로. 사용자가 점진 전환 가능.
-
-### 8.6 로그
-
-- [ ] P8-09 — `BattleLogEntry.phase = "phase8"`. 로그 스키마 변경 없음 (비주얼 전용).
-
-### 8.7 검증
-
-- [ ] P8-10 — PlayMode: Spine 설치된 상태에서 1종 skin 적용한 defender 1기 배치 → idle 재생, 공격 시 attack 한 번, 죽으면 die 재생 후 제거. 사용자가 직접 확인.
-- [ ] P8-11 — 10종 defender SO에 실제 skin 이름 할당 (사용자 Unity 에디터 작업).
+- defender 배치 성공 시 `SpineDefenderPool.TrySpawn` 을 먼저 시도한다.
+- Spine spawn 실패 시 기존 RenderMesh billboard 경로를 사용한다.
+- defender death queue drain 시 tile 점유 해제와 함께 pool에 death를 알린다.
+- `DrainDefenderAttackEvents()` 에서 attack animation/facing을 일괄 처리한다.
 
 ---
 
-## 9. 종료 조건
+## 5. Defender Attack Event
 
-- defender 10종이 Spine 스킨으로 시각 구분된다.
-- idle 재생, 공격 시 attack, 사망 시 die → destroy.
-- 가장 가까운 적 방향으로 flipX 자동.
-- 기존 billboard 경로가 fallback으로 살아 있어 skin 없는 defender도 배치 가능.
-- 컴파일 에러 0, EditMode 테스트 기존 전부 pass.
-- JSON 로그 phase="phase8".
+Phase 8에서 projectile defender와 melee defender의 attack animation trigger를 통합했다.
 
----
+- `DefenderAttackEvent`: defender entity + targetWorld.
+- `DefenderAttackEventsSingleton`: `NativeQueue<DefenderAttackEvent>` 보관.
+- `AttackSystem`: projectile / melee 분기 모두 공격 성공 시 event enqueue.
+- `BattleBridge`: queue drain 후 `SpineDefenderPool.NotifyAttack`.
 
-## 10. TRD 금지 패턴 재적용
-
-- **싱글톤 금지** — `SpineDefenderPool`은 비싱글톤, GameManager가 ref 보유.
-- **수치 하드코딩 금지** — skin/anim 이름 전부 SO.
-- **새 맥락 폴더 제한** — `Presentation/` 은 기존 `Scripts/` 최상위 MonoBehaviour 분산을 정리하는 용도지, ECS 맥락 아님. **ECS 맥락은 여전히 Units/Movement/Combat/Effects 4개**.
-- **맥락 경계** — SpineDefenderView는 ECS 상태를 **읽기만** 한다. 쓰기 X.
-- **ECS 창구 유지** — SpineDefenderView가 EntityManager 직접 호출 금지. BattleBridge 퍼블릭 헬퍼 경유 (Facing용 `TryGetNearestAttackerX` 등).
-- **Manager 싱글톤은 GameManager만** — SpineDefenderPool은 MonoBehaviour, Instance 없음.
+이 구조로 melee defender도 projectile defender와 동일하게 attack animation을 재생한다.
 
 ---
 
-## 11. 리스크 & 미해결
+## 6. Melee AoE
 
-- **skin 이름 불확실성**: 사용자가 `player-main.skel` 의 실제 스킨 이름을 알려주기 전까지는 D1 결정에 따라 빈 필드로 둔다. Phase 8 구현은 필드/플로우 완성, 실제 스킨 할당은 사용자 작업.
-- **Editor-only 의존**: SkeletonDataAsset은 빌드 가능하지만 초기 파싱은 에디터에서 발생. 빌드 테스트는 Phase 8 범위 밖.
-- **Facing vs 체력바 겹침**: 체력바는 현재 defender 위로 렌더. flipX 영향 없음 확인.
-- **다중 스킨 합성(예: 옷 + 얼굴)**: Phase 8 범위 밖. skin 1종만 설정.
-
----
-
-**문서 버전**: v0.1 (스펙 확정, 구현 미시작)
-**결정 출처**: 사용자 "ㄱㄱ" 위임 → 에이전트 자율 결정 D1~D10
+- `DefenderUnitData.attackTargetCount` 는 melee-only 다중 타깃 cap이다.
+- `AttackState.attackTargetCount` 로 runtime에 복사된다.
+- projectile defender는 기존 projectile/splash 경로를 사용한다.
+- melee defender는 nearest N targets에 직접 `IncomingDamage` 를 append한다.
+- 기본값 1은 기존 단일 타깃 동작을 보존한다.
 
 ---
 
-## 12. VFX 확장 (v0.2)
+## 7. VFX 정책
 
-Spine 도입 이후 자연스러운 후속. **Particle System (Shuriken)** 을 주력 도구로 하고 ECS 이벤트 시점에 MonoBehaviour 레이어에서 GameObject를 스폰/제거한다. VFX Graph는 모바일 호환성 + 스코프 관리 차원에서 제외.
+Phase 8 후반에 코드 기반 ParticleSystem fallback을 제거하고 prefab-only 정책으로 단일화했다.
 
-### 12.1 적용 범위
+- VFX Graph는 모바일 호환성과 스코프 관리를 위해 제외.
+- Shuriken ParticleSystem 기반 `_SKELETON.prefab` 을 사용.
+- `VfxSpawner` 는 비싱글톤 MonoBehaviour이며 `BattleBridge` 가 SerializeField로 참조한다.
+- 모든 prefab slot은 필수다. null이면 `Debug.LogError` 후 return한다.
+- 실제 authoring 운영 소스는 `.claude/skills/unity-vfx-authoring/` 스킬이다.
 
-| # | 이펙트 | 언제 | 비고 |
-|---|---|---|---|
-| V1 | Placement ring pulse | defender 배치 순간 | 타일 위로 파란 확산 링 |
-| V2 | Meteor 파티클 | warning → 폭발 | 기존 빨간 Quad 링은 경고, 폭발 시 파티클 burst |
-| V3 | Tornado swirl | 캐스트 ~ duration | 중심에서 회전하는 파티클 |
-| V4 | Portal swirl + link | entry/exit 양쪽 | 보라색 swirl + 두 지점 잇는 빔 |
+`VfxSpawner` slot:
 
-현시점 제외: 2(onPlace slow/boost), 6(Slow/Rapid/PowerSurge aura), 7(Projectile hit), 8(Synergy glow), 9(Enemy dissolve). 후속 Phase에서 필요 시.
-
-### 12.2 아키텍처
-
-- 새 파일: `Scripts/Presentation/VfxSpawner.cs` — MonoBehaviour, 비싱글톤. BattleBridge가 `SerializeField` 로 참조 보유.
-- API:
-  - `SpawnPlacementRing(Vector3 worldPos)` — 0.8s 확산, 배치 색상
-  - `SpawnMeteorBurst(Vector3 worldPos, float radius)` — burst + smoke
-  - `SpawnTornado(Vector3 centerWorld, float radius, float durationSec)` — 루프 swirl, duration 후 stop+destroy
-  - `SpawnPortal(Vector3 entryWorld, Vector3 exitWorld, float durationSec)` — 양쪽 swirl + LineRenderer 빔
-- 구현 방식: 코드 기반 ParticleSystem 프리셋. Inspector에서 재질만 사용자 조정 가능. 필요 시 프리팹 연결 훅 제공.
-
-### 12.3 ECS 이벤트 연결
-
-- **V1 Placement**: `BattleBridge.PlaceDefenderAs` 성공 경로에서 `vfxSpawner.SpawnPlacementRing(pos)`.
-- **V2 Meteor**: 기존 `SpawnMeteorWarningVisual` 은 경고 링 유지, `MeteorResolutionSystem` 해결 시점에 MonoBehaviour drain 루프에서 burst 스폰. (resolution system 자체는 ECS → MonoBehaviour 통지 NativeQueue 필요 or BattleBridge drain에서 `MeteorPending.warningRemaining <= 0` 감지)
-  - 간단 경로: `BattleBridge.Update()` 에서 `MeteorPending` 쿼리 관찰 → 새로 사라진 엔티티에 대해 burst 스폰. 대안: MeteorResolutionSystem 옆에 `MeteorBurstEvent` NativeQueue singleton 만들고 drain.
-  - Phase 8 범위: **NativeQueue 추가**. (`Battle/Combat/MeteorBurstEventsSingleton.cs`)
-- **V3 Tornado**: `BattleBridge.ApplyTornado` 직후 `vfxSpawner.SpawnTornado`.
-- **V4 Portal**: `BattleBridge.ApplyPortal` 직후 `vfxSpawner.SpawnPortal`.
-
-### 12.4 재질
-
-- 공통 머티리얼 1개: URP/Particles/Unlit (built-in Default-ParticlesUnlit 재활용) — 색은 ParticleSystem.main.startColor 로.
-- 텍스처 없이 기본 흰 원 파티클로 시작. 사용자가 원하면 후속에 텍스처 SO로 교체.
-
-### 12.5 작업 분해 — P8-12 ~ P8-15
-
-- [ ] P8-12 — `VfxSpawner.cs` 뼈대 + `SpawnPlacementRing` + BattleBridge 호출
-- [ ] P8-13 — Meteor: `MeteorBurstEventsSingleton` NativeQueue + MeteorResolutionSystem enqueue + BattleBridge drain → `SpawnMeteorBurst`
-- [ ] P8-14 — `SpawnTornado` + BattleBridge 연동
-- [ ] P8-15 — `SpawnPortal` (두 swirl + LineRenderer) + BattleBridge 연동
-
-### 12.6 TRD 재적용
-
-- 싱글톤 금지 — VfxSpawner 비싱글톤.
-- 새 맥락 금지 — Presentation/ 재사용 (Phase 8 §10).
-- ECS 맥락 경계 — VfxSpawner 는 EntityManager 직접 호출 X. BattleBridge 가 drain.
-- 수치 하드코딩 최소 — duration/color 는 VfxSpawner 필드 공개, Inspector 튜닝 가능.
+```csharp
+placementRingPrefab
+meteorBurstPrefab
+meteorFallPrefab
+tornadoPrefab
+portalPrefab
+```
 
 ---
 
-**문서 버전**: v0.2 (VFX 확장 스펙 추가, 구현 진행 중)
-**결정 출처**: Q1=(c)/Q2=(c)/Q3=(a) 에이전트 자율 결정
+## 8. VFX Prefab 목록
+
+| Prefab | 트리거 | 구성 |
+|---|---|---|
+| `Placement_SKELETON.prefab` | defender 배치 성공 | Ring / CenterFlash / RisingMotes |
+| `Meteor_Falling_SKELETON.prefab` | Meteor warning 시작 | falling streak + `MeteorFall` MB |
+| `Meteor_Burst_SKELETON.prefab` | Meteor damage resolve | CoreFlash / MainBurst / Debris |
+| `Tornado_SKELETON.prefab` | Tornado cast | OuterDonut / InnerSpiral / GroundDust |
+| `Portal_SKELETON.prefab` | Portal cast | Entry / Exit / LinkBeam |
+
+Scene wiring:
+
+- `BattleScene.unity` 의 `VfxSpawner` 에 5개 slot 연결 완료.
+- `SpineDefenderPool` GameObject도 scene에 배치되어 `BattleBridge` 에 연결 완료.
+
+---
+
+## 9. Beam / Meteor 보조 MonoBehaviour
+
+### `BeamPulse`
+
+- `Portal_SKELETON` 의 `LinkBeam` 에 부착된다.
+- `LineRenderer.startColor/endColor` alpha를 sin wave로 직접 갱신한다.
+- MaterialPropertyBlock은 LineRenderer vertex color 전달 불확실성 때문에 사용하지 않는다.
+
+### `MeteorFall`
+
+- `Meteor_Falling_SKELETON` root에 부착된다.
+- warning duration 동안 target 위 높이에서 impact point까지 quadratic ease-in으로 이동한다.
+- 착지 시 self destroy, 실제 damage/VFX burst는 `MeteorResolutionSystem` + `MeteorBurstEventsSingleton` 경로가 담당한다.
+
+---
+
+## 10. Meteor Burst Event
+
+- `MeteorResolutionSystem` 은 warning 시간이 끝난 `MeteorPending` 을 resolve한다.
+- 범위 내 attacker에게 damage를 append한다.
+- 같은 frame에 `MeteorBurstEventsSingleton` queue로 center/radius를 enqueue한다.
+- `BattleBridge.DrainMeteorBurstEvents()` 가 `VfxSpawner.SpawnMeteorBurst` 를 호출한다.
+
+이 경로는 ECS 시뮬레이션 완료 시점과 VFX 타이밍을 맞추기 위한 NativeQueue 패턴이다.
+
+---
+
+## 11. Tornado 지속 Field (§17)
+
+Phase 7의 Tornado는 cast 순간 범위 내 적만 pull 대상으로 삼는 snapshot 구조였다. Phase 8 §17에서 이를 `TornadoField` carrier entity로 교체했다.
+
+구현 결과:
+
+- `TornadoField`: centerWorld / radius / pullSpeed / remaining.
+- `EffectSpawner.SpawnTornadoField`: cast 시 field entity 1개 생성.
+- `MovementSystem`: 매 프레임 live `TornadoField` 배열을 snapshot하고, 현재 field radius 안에 있는 attacker를 중심으로 pull한다.
+- `EffectTickSystem`: remaining 감소 후 만료 시 field entity destroy.
+- `BattleBridge.ApplyTornado`: per-attacker 반복 제거, field spawn + VFX spawn으로 단순화.
+
+해결된 문제:
+
+- duration 중 새로 범위에 들어온 적도 pull 영향을 받는다.
+
+남은 문제:
+
+- Tornado 종료 후 waypoint 기반 복귀가 직선적이다. 이 문제는 Phase 9 Flow Field 전환 대상이다.
+
+---
+
+## 12. 작업 결과
+
+- [x] P8-01 — `DefenderUnitData` Spine 필드 추가.
+- [x] P8-02 — `SpineDefenderView`.
+- [x] P8-03 — `SpineDefenderPool`.
+- [x] P8-04 — 배치 성공 시 Spine spawn + Billboard fallback.
+- [x] P8-05 — defender attack/death event 연결.
+- [x] P8-06 — attack-time facing snap.
+- [x] P8-07 — death animation Complete 후 destroy.
+- [x] P8-08 — skeleton/skin 누락 시 fallback.
+- [x] P8-09 — `BattleLogEntry.phase = "phase8"`.
+- [x] P8-11 — defender 10종 skin/skeleton 할당.
+- [x] P8-12 — Placement prefab VFX.
+- [x] P8-13 — Meteor fall/burst prefab VFX + burst queue.
+- [x] P8-14 — Tornado prefab VFX + 지속 field.
+- [x] P8-15 — Portal prefab VFX + BeamPulse.
+- [x] P8-16 — DefenderAttackEvent 통합 채널.
+- [x] P8-17 — Tornado 지속 field 전환.
+- [ ] P8-10 — 사용자 Play 회귀: defender Spine 상태 전환 + 5종 VFX prefab 시각 확인.
+
+---
+
+## 13. 종료 조건
+
+- defender 10종이 Spine skin으로 시각 구분된다.
+- idle / attack / die 상태 전환이 이벤트에 반응한다.
+- attack 시 target 방향으로 facing snap된다.
+- skeleton/skin 누락 defender는 Billboard fallback으로 배치 가능하다.
+- Placement / Meteor Fall / Meteor Burst / Tornado / Portal prefab VFX가 scene slot에서 스폰된다.
+- Tornado는 duration 중 신규 진입 적도 pull한다.
+- Unity 컴파일 에러 0.
+- P8-10 사용자 Play 회귀가 남은 최종 검증이다.
+
+---
+
+## 14. TRD 금지 패턴 재적용
+
+- `SpineDefenderPool` 과 `VfxSpawner` 는 비싱글톤이다.
+- GameManager 외 static Instance를 만들지 않는다.
+- Spine/VFX는 Presentation 계층이며 ECS 맥락 폴더가 아니다.
+- `SpineDefenderView` 는 EntityManager를 직접 호출하지 않는다.
+- Combat event는 NativeQueue로 MonoBehaviour layer에 전달한다.
+- VFX prefab slot과 SO 필드가 수치/자산의 출처다.
+- VFX Graph, Shader Graph JSON 생성, 미사용 추상화는 도입하지 않는다.
+
+---
+
+## 15. 잔여 / Phase 9 연결
+
+- P8-10 Play 회귀는 사용자 검증 대기.
+- VFX 카탈로그 10개 검토/승인은 후속 시각 정책 항목이다.
+- Portal exit waypoint 이상, Tornado 종료 후 waypoint 복귀, 다중 레인은 Phase 9 Flow Field 대상이다.
+- 공격 범위 표시 UI는 Phase 9 이후 UI 작업 후보로 residual에 유지한다.
+
+---
+
+**문서 버전**: v1.0 (구현 스펙 통합)
+**상태**: 구현 완료. Unity 컴파일 0 에러 확인. P8-10 사용자 Play 회귀 대기.

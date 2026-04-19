@@ -1,5 +1,7 @@
 # Phase 4 Decisions Log
 
+> Superseded: 확정/구현 완료 내용은 `PHASE4.md`에 통합됨. 본 문서는 히스토리/리뷰 기록으로만 유지.
+
 > Phase 4 (배치 시 효과 / 인접 시너지 / enemy→defender 공격 / Splash onHit) 결정 누적.
 
 ---

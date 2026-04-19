@@ -393,7 +393,7 @@ Phase 6의 핵심 질문: **코스트 제약이 "지금 쓸까 아낄까" 긴장
 | 2 | 스킬 | ✅ |
 | 3 | 전투 비주얼 | ✅ |
 | 4 | 배치/시너지/적 공격/Splash | ✅ |
-| 5 | 비주얼 업그레이드 + 타이머 + 브리핑 + 봇 + 측정 스크립트 | 진행 중 (§5 헤드리스 미완) |
+| 5 | 비주얼 업그레이드 + 타이머 + 브리핑 + 봇 + 측정 스크립트 | ✅ |
 | **6** | **코스트 시스템** | **현재** |
 | 7+ | 미정 — 난이도 튜닝, 추가 유닛, 스프라이트 애니메이션, Spine 등 | 대기 |
 
@@ -412,6 +412,16 @@ Phase 6의 핵심 질문: **코스트 제약이 "지금 쓸까 아낄까" 긴장
 
 ---
 
-**문서 버전**: v1.0 → implementation complete
-**상태**: P6-01~P6-11 전체 구현 완료, 35/35 EditMode 테스트 통과
-**결정 출처**: 사용자 응답 — A1(b)/A2(b)/A3(b)/B4(b)/B5(a)/B6(a)/C7(b)/C8(a)/D9(a)/D10(a)/E11(좌하단)/E12(연속)/E13(추가)
+## 8. 구현 결과 스냅샷 (2026-04-19)
+
+Phase 6은 현재 구현 완료 상태다. 확정/구현된 세부 결정은 과거 `phase6-decisions.md` 에 기록되었고, 본 문서가 Phase 6 스펙의 단일 출처다.
+
+- `CostConfig` 와 `CostRuntime` 이 starting/max/regen/placement duration을 관리한다.
+- `GameManager.GamePhase` 가 Draft / Placement / Battle / Result 전이를 명시한다.
+- Draft 확정 후 30초 Placement 페이즈에 진입하고, 전투 시작 후 cost regen이 시작된다.
+- defender 배치와 skill cast는 cost를 지불하며, 부족 시 UI 비활성 또는 tile reject flash로 피드백한다.
+- Restart 는 같은 pick/loadout으로 Placement를 재진행하고, Redraft 는 Draft부터 다시 시작한다.
+- JSON 로그에는 `cost_spent` 가 포함된다.
+
+**문서 버전**: v1.1 (구현 스펙 통합)
+**상태**: 구현 완료. 기존 EditMode 테스트 35/35 통과 기록.
