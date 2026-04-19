@@ -11,6 +11,13 @@ namespace Wassup.Data
         public float attackRange = 3f;
         public float attackDamage = 20f;
         public float attackCooldown = 1f; // seconds between attacks
+
+        // Phase 8 §13 follow-up — melee-only AoE cap. Projectile defenders
+        // still hit a single target (splash is handled by ProjectileData).
+        // Melee (projectile == null) defenders hit up to `attackTargetCount`
+        // nearest in-range attackers per cooldown tick. Default 1 preserves
+        // single-target behavior; Bastion/Bruiser type tanks benefit from 3+.
+        public int attackTargetCount = 1;
         public Mesh visualMesh;
         public Material visualMaterial;
 

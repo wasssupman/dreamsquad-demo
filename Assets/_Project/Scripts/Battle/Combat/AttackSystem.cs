@@ -21,10 +21,13 @@ namespace Wassup.Battle.Combat
     [UpdateAfter(typeof(MovementSystem))]
     public partial struct AttackSystem : ISystem
     {
+        private EntityQuery _attackEventsQuery;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<AttackState>();
+            _attackEventsQuery = state.GetEntityQuery(ComponentType.ReadWrite<DefenderAttackEventsSingleton>());
         }
 
         [BurstCompile]
@@ -49,6 +52,18 @@ namespace Wassup.Battle.Combat
             var synergyLookup = SystemAPI.GetComponentLookup<SynergyBuff>(isReadOnly: true);
             var projectileRefLookup = SystemAPI.GetComponentLookup<ProjectileRef>(isReadOnly: true);
 
+            // Phase 8 §13 follow-up — hoist the attack-event singleton writer so
+            // both projectile and melee defender branches below enqueue a single
+            // "defender fired" event per attack. Pool drains it to trigger Spine
+            // attack animation consistently (melee was previously missed because
+            // only ProjectileSpawnRequest carried the hook).
+            NativeQueue<DefenderAttackEvent>.ParallelWriter? attackWriter = null;
+            if (!_attackEventsQuery.IsEmpty)
+            {
+                var singleton = _attackEventsQuery.GetSingletonRW<DefenderAttackEventsSingleton>();
+                attackWriter = singleton.ValueRW.queue.AsParallelWriter();
+            }
+
             foreach (var (attack, transform, defenderEntity) in
                      SystemAPI.Query<RefRW<AttackState>, RefRO<LocalTransform>>()
                               .WithAll<DefenderUnitTag>()
@@ -66,6 +81,7 @@ namespace Wassup.Battle.Combat
                 float rangeSq = range * range;
                 float bestSq = float.MaxValue;
                 Entity bestTarget = Entity.Null;
+                float3 bestTargetPos = default;
                 for (int i = 0; i < attackers.Length; i++)
                 {
                     float3 diff = attackerTransforms[i].Position - defPos;
@@ -74,12 +90,23 @@ namespace Wassup.Battle.Combat
                     {
                         bestSq = d2;
                         bestTarget = attackers[i];
+                        bestTargetPos = attackerTransforms[i].Position;
                     }
                 }
 
                 // Fire if cooldown ready and target exists.
                 if (bestTarget != Entity.Null && attack.ValueRO.cooldownRemaining <= 0f)
                 {
+                    // Enqueue "defender fired" event so Spine/Pool can trigger
+                    // attack animation for both projectile and melee paths.
+                    if (attackWriter.HasValue)
+                    {
+                        attackWriter.Value.Enqueue(new DefenderAttackEvent
+                        {
+                            defender = defenderEntity,
+                            targetWorld = bestTargetPos,
+                        });
+                    }
                     // Effects read-only: DamageBoost scales emitted damage, CooldownReduction
                     // shortens the reset interval, SynergyBuff adds adjacency bonus. The base
                     // AttackState fields stay unmodified so Combat remains the sole owner.
@@ -116,8 +143,59 @@ namespace Wassup.Battle.Combat
                     }
                     else
                     {
-                        ecb.AppendToBuffer(bestTarget,
-                            new IncomingDamage { amount = emittedDamage });
+                        // Phase 8 §13 follow-up — melee AoE capped by
+                        // attackTargetCount. N=1 (default) hits only bestTarget
+                        // via a fast path that avoids any NativeArray alloc; N>1
+                        // opens the hitMask loop to pick additional nearest
+                        // in-range targets. Runtime value on AttackState is
+                        // mutable so future level-up/buff can change AoE width
+                        // without touching the source SO.
+                        int desiredCount = math.max(1, attack.ValueRO.attackTargetCount);
+                        if (desiredCount == 1)
+                        {
+                            // Fast path: single target — no allocation.
+                            ecb.AppendToBuffer(bestTarget,
+                                new IncomingDamage { amount = emittedDamage });
+                        }
+                        else
+                        {
+                            // AoE branch: seed pass 0 with the already-known
+                            // nearest (bestTarget) to avoid recomputing, then
+                            // iterate the remaining passes over the hitMask.
+                            var hitMask = new NativeArray<bool>(attackers.Length, Allocator.Temp);
+                            int bestIdx = -1;
+                            for (int i = 0; i < attackers.Length; i++)
+                            {
+                                if (attackers[i] == bestTarget) { bestIdx = i; break; }
+                            }
+                            if (bestIdx >= 0)
+                            {
+                                hitMask[bestIdx] = true;
+                                ecb.AppendToBuffer(attackers[bestIdx],
+                                    new IncomingDamage { amount = emittedDamage });
+                            }
+                            for (int pass = 1; pass < desiredCount; pass++)
+                            {
+                                float passSq = float.MaxValue;
+                                int passIdx = -1;
+                                for (int i = 0; i < attackers.Length; i++)
+                                {
+                                    if (hitMask[i]) continue;
+                                    float3 diff = attackerTransforms[i].Position - defPos;
+                                    float d2 = diff.x * diff.x + diff.z * diff.z;
+                                    if (d2 <= rangeSq && d2 < passSq)
+                                    {
+                                        passSq = d2;
+                                        passIdx = i;
+                                    }
+                                }
+                                if (passIdx < 0) break;
+                                hitMask[passIdx] = true;
+                                ecb.AppendToBuffer(attackers[passIdx],
+                                    new IncomingDamage { amount = emittedDamage });
+                            }
+                            hitMask.Dispose();
+                        }
                     }
 
                     attack.ValueRW.cooldownRemaining = attack.ValueRO.cooldownDuration * cooldownMul;

@@ -67,6 +67,7 @@ namespace Wassup.Bridge
         private NativeQueue<GoalReachedEvent> _goalEventQueue;
         private NativeQueue<DefenderDeathEvent> _defenderDeathQueue;
         private NativeQueue<Wassup.Battle.Combat.MeteorBurstEvent> _meteorBurstQueue;
+        private NativeQueue<Wassup.Battle.Combat.DefenderAttackEvent> _defenderAttackQueue;
 
         private void Start()
         {
@@ -200,10 +201,15 @@ namespace Wassup.Bridge
             _em.DestroyEntity(meteorBurstSingletons);
             meteorBurstSingletons.Dispose();
 
+            var defenderAttackSingletons = _em.CreateEntityQuery(ComponentType.ReadOnly<Wassup.Battle.Combat.DefenderAttackEventsSingleton>());
+            _em.DestroyEntity(defenderAttackSingletons);
+            defenderAttackSingletons.Dispose();
+
             // Dispose the queues; StartBattle will create fresh ones.
             if (_goalEventQueue.IsCreated) _goalEventQueue.Dispose();
             if (_defenderDeathQueue.IsCreated) _defenderDeathQueue.Dispose();
             if (_meteorBurstQueue.IsCreated) _meteorBurstQueue.Dispose();
+            if (_defenderAttackQueue.IsCreated) _defenderAttackQueue.Dispose();
         }
 
         // Phase 6: placement phase enters this path — ECS state is initialized so
@@ -294,6 +300,14 @@ namespace Wassup.Bridge
             _meteorBurstQueue = new NativeQueue<Wassup.Battle.Combat.MeteorBurstEvent>(Allocator.Persistent);
             var meteorBurstSingleton = _em.CreateEntity();
             _em.AddComponentData(meteorBurstSingleton, new Wassup.Battle.Combat.MeteorBurstEventsSingleton { queue = _meteorBurstQueue });
+
+            // Phase 8 §13 follow-up — defender attack trigger event channel.
+            // AttackSystem enqueues for both projectile and melee branches so
+            // Spine attack anim fires consistently.
+            if (_defenderAttackQueue.IsCreated) _defenderAttackQueue.Dispose();
+            _defenderAttackQueue = new NativeQueue<Wassup.Battle.Combat.DefenderAttackEvent>(Allocator.Persistent);
+            var attackSingleton = _em.CreateEntity();
+            _em.AddComponentData(attackSingleton, new Wassup.Battle.Combat.DefenderAttackEventsSingleton { queue = _defenderAttackQueue });
         }
 
         public void StopBattle()
@@ -621,6 +635,7 @@ namespace Wassup.Bridge
             DrainProjectileSpawnRequests();
             DrainDefenderDeathEvents();
             DrainMeteorBurstEvents();
+            DrainDefenderAttackEvents();
             DrainGoalEvents();
             CheckTimer();
             CheckVictory();
@@ -656,6 +671,23 @@ namespace Wassup.Bridge
             }
         }
 
+        // Phase 8 §13 follow-up — unified attack trigger drain. AttackSystem
+        // enqueues for both projectile and melee defender branches so Spine
+        // attack animation + facing flip fires the same way regardless of
+        // whether the defender has a ProjectileRef. Previously melee defenders
+        // (Bastion/Bruiser) missed the trigger because it was only wired inside
+        // DrainProjectileSpawnRequests.
+        private void DrainDefenderAttackEvents()
+        {
+            if (!_defenderAttackQueue.IsCreated) return;
+            while (_defenderAttackQueue.TryDequeue(out var evt))
+            {
+                if (spineDefenderPool == null) continue;
+                var targetWorld = new Vector3(evt.targetWorld.x, evt.targetWorld.y, evt.targetWorld.z);
+                spineDefenderPool.NotifyAttack(evt.defender, targetWorld);
+            }
+        }
+
         // Converts every staged ProjectileSpawnRequest into a live projectile entity.
         // Done here (MonoBehaviour) rather than inside AttackSystem because creating
         // RenderMesh components requires managed RenderMeshArray references that are
@@ -670,20 +702,8 @@ namespace Wassup.Bridge
             for (int i = 0; i < requestEntities.Length; i++)
             {
                 var req = requestData[i];
-                // Phase 8: defender that fired is the request's carrier entity.
-                // Look up the target's live world position so the view can snap
-                // its flipX to the actual victim at the exact frame of firing
-                // rather than chasing "nearest attacker" every frame.
-                if (spineDefenderPool != null)
-                {
-                    Vector3? targetWorld = null;
-                    if (_em.Exists(req.target) && _em.HasComponent<LocalTransform>(req.target))
-                    {
-                        var tp = _em.GetComponentData<LocalTransform>(req.target).Position;
-                        targetWorld = new Vector3(tp.x, tp.y, tp.z);
-                    }
-                    spineDefenderPool.NotifyAttack(requestEntities[i], targetWorld);
-                }
+                // Spine attack trigger moved to DrainDefenderAttackEvents
+                // so both projectile and melee defenders share the same hook.
                 SpawnProjectile(req);
                 _em.RemoveComponent<ProjectileSpawnRequest>(requestEntities[i]);
             }
@@ -1018,6 +1038,7 @@ namespace Wassup.Bridge
                 range = unitData.attackRange,
                 cooldownDuration = unitData.attackCooldown,
                 cooldownRemaining = 0f,
+                attackTargetCount = unitData.attackTargetCount,
             });
 
             // Phase 8 §12: placement pulse VFX (procedural particle ring).
@@ -1106,6 +1127,7 @@ namespace Wassup.Bridge
             if (_goalEventQueue.IsCreated) _goalEventQueue.Dispose();
             if (_defenderDeathQueue.IsCreated) _defenderDeathQueue.Dispose();
             if (_meteorBurstQueue.IsCreated) _meteorBurstQueue.Dispose();
+            if (_defenderAttackQueue.IsCreated) _defenderAttackQueue.Dispose();
             if (_healthBarMaterial != null) Destroy(_healthBarMaterial);
         }
 

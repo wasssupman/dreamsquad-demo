@@ -9,5 +9,11 @@ namespace Wassup.Battle.Combat
         public float range;
         public float cooldownDuration;
         public float cooldownRemaining; // seconds until next shot is ready
+
+        // Phase 8 §13 follow-up — how many nearest in-range targets a melee
+        // attack (projectile=null) hits per tick. Default 1 keeps prior
+        // single-target behavior. Level-up / buff systems can mutate this at
+        // runtime without touching the source SO.
+        public int attackTargetCount;
     }
 }
