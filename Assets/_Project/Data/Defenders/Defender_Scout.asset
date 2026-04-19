@@ -16,7 +16,7 @@ MonoBehaviour:
   health: 30
   attackRange: 2
   attackDamage: 8
-  attackCooldown: 0.25
+  attackCooldown: 2
   visualMesh: {fileID: 0}
   visualMaterial: {fileID: 2100000, guid: a1b2c3d4e5f601234567890abcdef103, type: 2}
   projectile: {fileID: 11400000, guid: 9ba8609078272458283efd21cf035040, type: 2}
@@ -25,3 +25,9 @@ MonoBehaviour:
   onPlaceMagnitude: 0.7
   onPlaceDuration: 3
   cost: 1
+  skeletonDataAsset: {fileID: 11400000, guid: b0640b88ee78d49f38774a3a4b09bf4d, type: 2}
+  spineSkinName: Goat
+  idleAnimation: idle
+  attackAnimation: attack-combo3-axe
+  deathAnimation: die
+  spineVisualScale: 1

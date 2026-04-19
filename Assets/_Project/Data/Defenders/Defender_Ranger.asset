@@ -25,3 +25,9 @@ MonoBehaviour:
   onPlaceMagnitude: 0
   onPlaceDuration: 0
   cost: 2
+  skeletonDataAsset: {fileID: 11400000, guid: b0640b88ee78d49f38774a3a4b09bf4d, type: 2}
+  spineSkinName: Goat
+  idleAnimation: idle
+  attackAnimation: weapons/blunderbuss/heavy-horizontal-shoot
+  deathAnimation: die
+  spineVisualScale: 1
