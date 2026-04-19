@@ -27,6 +27,23 @@ namespace Wassup.Presentation
         [SerializeField] private Material particleMaterialOverride;
         [SerializeField] private Material lineMaterialOverride;
 
+        // Phase 8 §13 — prefab slots. When null, the legacy code preset path
+        // below runs and emits a single Debug.LogWarning so accumulated tech
+        // debt is visible. When populated, Instantiate + auto-destroy is used
+        // for better polish via Inspector tuning without code changes.
+        [Header("Phase 8 §13 — Prefab slots (null → code fallback)")]
+        [SerializeField] private GameObject placementRingPrefab;
+        [SerializeField] private GameObject meteorBurstPrefab;
+        [SerializeField] private GameObject tornadoPrefab;
+        [SerializeField] private GameObject portalPrefab;
+
+        private bool TrySpawnPrefab(GameObject prefab, Vector3 pos, out GameObject go)
+        {
+            if (prefab == null) { go = null; return false; }
+            go = Instantiate(prefab, pos, Quaternion.identity, transform);
+            return true;
+        }
+
         private Material _particleMaterial;
         private Material _lineMaterial;
 
@@ -204,6 +221,18 @@ namespace Wassup.Presentation
         // surviving particle runs out its lifetime.
         public void SpawnTornado(Vector3 centerWorld, float radiusWorld, float durationSec)
         {
+            var pos = new Vector3(centerWorld.x, centerWorld.y + 0.05f, centerWorld.z);
+            if (TrySpawnPrefab(tornadoPrefab, pos, out var prefabGo))
+            {
+                // Scale so prefab radius matches the skill's requested radius
+                // (prefab is authored for radius≈1). Duration drives the destroy
+                // timer — prefab's ParticleSystem loop handles re-emission.
+                prefabGo.transform.localScale = Vector3.one * Mathf.Max(0.1f, radiusWorld);
+                Destroy(prefabGo, durationSec + 0.1f);
+                return;
+            }
+            Debug.LogWarning("[VfxSpawner] tornadoPrefab 미할당 — 코드 폴백 사용");
+
             var go = new GameObject("VFX_Tornado");
             go.transform.position = new Vector3(centerWorld.x, centerWorld.y + 0.05f, centerWorld.z);
 

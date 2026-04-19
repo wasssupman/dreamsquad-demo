@@ -1703,6 +1703,10 @@ MonoBehaviour:
   portalColor: {r: 0.8, g: 0.4, b: 1, a: 1}
   particleMaterialOverride: {fileID: 0}
   lineMaterialOverride: {fileID: 0}
+  placementRingPrefab: {fileID: 0}
+  meteorBurstPrefab: {fileID: 0}
+  tornadoPrefab: {fileID: 889267158399032795, guid: 32d572044989a4f0fbb7b5e12a117035, type: 3}
+  portalPrefab: {fileID: 0}
 --- !u!4 &1795146347
 Transform:
   m_ObjectHideFlags: 0
