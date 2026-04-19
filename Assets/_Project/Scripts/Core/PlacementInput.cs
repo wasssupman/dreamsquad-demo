@@ -69,16 +69,14 @@ namespace Wassup.Core
                 return;
             }
 
-            if (selected != null)
-            {
-                bool placed = bridge.PlaceDefenderAs(tileX, tileY, selected);
-                if (placed && costRuntime != null) costRuntime.TrySpend(selected.cost);
-                else if (!placed && mapView != null) mapView.FlashTileReject(cell);
-            }
-            else
-            {
-                bridge.PlaceDefender(tileX, tileY);
-            }
+            // Phase 0 테스트 하네스의 랜덤 배치 fallback 은 2026-04-19 에
+            // 제거됨. 정상 플로우에선 DefenderSelector 가 auto-select 로
+            // SelectedDefender 를 항상 채우고, UI 가드가 null 진입을 막는다.
+            if (selected == null) return;
+
+            bool placed = bridge.PlaceDefenderAs(tileX, tileY, selected);
+            if (placed && costRuntime != null) costRuntime.TrySpend(selected.cost);
+            else if (!placed && mapView != null) mapView.FlashTileReject(cell);
         }
     }
 }
