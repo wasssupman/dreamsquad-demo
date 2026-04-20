@@ -69,7 +69,6 @@ Flow Field (이전 phase9-prep 에서 이미 확정). 대안 비교 (NavMesh, Ti
 
 상세 — `docs/plans/2026-04-19-phase9-flow-field-design.md` §6. 요약:
 
-- **P9-00 — 선행**: Unity Editor 6000.4+ 업그레이드 + Entities 6.x 전환 (§5.1)
 - P9-01 ~ P9-04 — 인프라 (MapData 필드, GridMath, FlowFieldSingleton, FlowFieldBuilder)
 - P9-05 ~ P9-06 — MovementSystem 재작성 + PortalLink migration
 - P9-07 ~ P9-10 — 주변 정리 (MapView/tileSize/GridToWorldCenter/Goal 판정)
@@ -91,24 +90,16 @@ Phase 9 완료 후 동일 시나리오 재녹화하여 비교.
 
 ## 5. 착수 전 결정 (확정)
 
-### 5.1 Unity Editor / Entities 패키지 버전 — **A-1 확정**
+### 5.1 Unity Editor / Entities 패키지 버전 — **Phase 9→10 사이 재논의 (연기)**
 
-결정: **Unity Editor 를 6000.4 이상으로 업그레이드 후 Entities 6.x (Core Package) 사용**.
+결정: **현재 환경 (Unity `6000.3.5f2` + `com.unity.entities 1.4.5`) 에서 Phase 9 를 진행**. Unity Editor 6000.4+ 업그레이드 + Entities 6.x 전환은 **Phase 9 완료 후 Phase 10 착수 전 재논의** 한다.
 
-- 현재 상태: Unity `6000.3.5f2` + `com.unity.entities 1.4.5`
-- 목표 상태: Unity `6000.4.x` 또는 `6000.5.x` + `com.unity.entities 6.4.x` 또는 `6.5.x` (Core Package, Editor 내장)
-- 근거: Entities 6.x 는 Unity 6000.4 Core Package 로 Editor 에 내장됨. 독립 패키지 업그레이드 불가. (https://docs.unity3d.com/6000.5/Documentation/Manual/WhatsNewUnity64.html)
+- 현 상태: Unity `6000.3.5f2` + `com.unity.entities 1.4.5`
+- CLAUDE.md / TRD.md 의 "Entities 6.x" 표기는 **향후 목표** 를 기재한 것이며, 현 구현은 1.4.5 위에서 수행됨을 본 문서로 확인
+- 설계 (`docs/plans/2026-04-19-phase9-flow-field-design.md`) 는 1.4 / 6.x 공통 API (`ISystem / SystemAPI / EntityCommandBuffer / DynamicBuffer / NativeQueue`) 만 사용 → 업그레이드 여부와 독립적으로 적용 가능
+- Phase 9 → 10 사이 재논의 시점 근거: Phase 10 의 procedural 맵 생성이 Entities 6.x 신규 API 를 실질적으로 활용할 여지가 있고, Phase 10 scope 가 더 커서 업그레이드 리스크 상각이 쉬움
 
-**선행 작업 (P9-00)** — Phase 9 구현 시작 전 수행:
-1. Unity Hub 에서 6000.4 LTS 또는 6000.5 설치
-2. 프로젝트 Editor 버전 전환 + 패키지 재해결
-3. URP 17.3 / spine-unity / probuilder / timeline 호환성 재검증 (컴파일 에러 + 에디터 로그 warning 수집)
-4. ECS 핵심 API (`ISystem / SystemAPI / EntityCommandBuffer / DynamicBuffer / NativeQueue`) 전수 compile 통과 확인
-5. PlayMode smoke test (Phase 8 까지 기능 회귀)
-6. CLAUDE.md / TRD.md 의 Entities 버전 표기를 **설치 완료된 실제 버전** 으로 갱신
-7. `Packages/manifest.json` + `Packages/packages-lock.json` 변경 커밋
-
-설계 자체 (`docs/plans/2026-04-19-phase9-flow-field-design.md`) 는 1.4 ↔ 6.5 공통 API 만 사용하므로 업그레이드 이후/이전 동일 적용 가능.
+**Phase 9 착수 시점에는 P9-00 선행 작업 없음**. 바로 P9-01 부터 시작.
 
 ### 5.2 `MapData.paths` 필드 처리 — **(a) 확정**
 

@@ -278,43 +278,29 @@ public float3 GridToWorldCenter(int2 cell, float y = 0f) =>
 - `ApplySlow / ApplyTornado / ApplyMeteor / ApplyPortal` / `SpawnMeteorWarningVisual` / VFX 위치 계산 전부 이 helper 통과
 - 현재 각자 `tile.x * tileSize` 반복하는 4~5 사이트 통일
 
-## 5. 패키지 버전 — **A-1 확정 (Unity Editor 6000.4+ 로 업그레이드 후 Entities 6.x)**
+## 5. 패키지 버전 — **Phase 9→10 사이 재논의 (연기)**
 
-결정: Unity Editor 6000.3.5f2 → **6000.4 LTS 또는 6000.5** 로 업그레이드 후 Entities 6.x (Core Package) 사용.
+결정: **Phase 9 는 현재 환경 (Unity `6000.3.5f2` + `com.unity.entities 1.4.5`) 에서 진행**. Unity Editor 6000.4+ 업그레이드 + Entities 6.x 전환은 **Phase 9 완료 후 Phase 10 착수 전 재논의**.
 
-- 현재: Unity `6000.3.5f2` + `com.unity.entities 1.4.5` (독립 패키지)
-- 목표: Unity `6000.4.x` 또는 `6000.5.x` + `com.unity.entities 6.4.x` 또는 `6.5.x` (Core Package, Editor 내장)
-- 근거: Entities 6.x 는 Unity 6000.4 Core Package 로 Editor 에 내장, 독립 업그레이드 불가. 공식 문서 https://docs.unity3d.com/6000.5/Documentation/Manual/WhatsNewUnity64.html 명시.
+- 본 설계는 1.4 / 6.x 공통 API 만 사용하므로 업그레이드 여부와 독립적으로 적용 가능
+- CLAUDE.md / TRD.md 의 "Entities 6.x" 표기는 향후 목표이며, 현재 구현은 1.4.5 위에서 수행됨을 본 문서로 확인
+- 재논의 시점 근거: Phase 10 의 procedural 맵 생성이 Entities 6.x 신규 API 를 실질적으로 활용할 여지가 있고, Phase 10 scope 에서 업그레이드 리스크 상각이 더 쉬움
 
-### 선행 작업 P9-00 (Phase 9 코드 변경 시작 전 수행)
+### Entities 6.x 로 전환 시점 참고
 
+전환 결정 시 수행할 작업:
 1. Unity Hub 에서 6000.4 LTS 또는 6000.5 설치
-2. 프로젝트 Editor 버전 전환 + 패키지 재해결 (manifest.json 자동 갱신)
-3. 타 패키지 (URP 17.3 / spine-unity / probuilder 6.0.9 / timeline 1.8.10) 호환성 재검증
-   - 컴파일 에러 수집, 에디터 로그 warning 수집
-   - 비호환 발견 시 해당 패키지 최신/호환 버전 조사 후 별도 결정
-4. ECS 핵심 API 컴파일 통과 확인:
-   - `ISystem` (ref SystemState), `SystemAPI.Query<T>()`, `SystemAPI.QueryBuilder()`
-   - `SystemAPI.GetComponentLookup<T>()`, `SystemAPI.GetSingleton<T>()`
-   - `EntityCommandBuffer(Allocator.Temp) + Playback`
-   - `DynamicBuffer<T> : IBufferElementData`
-   - `NativeQueue` singleton 패턴
-   - `[BurstCompile]`, `[UpdateInGroup]`
-5. PlayMode smoke test — Phase 8 기능 전반 회귀 확인 (드래프트 → 배치 → 전투 → 스킬 → 종료)
-6. `CLAUDE.md` / `docs/TRD.md` 의 Entities 버전 표기를 **설치 완료된 실제 버전** 으로 갱신
-7. `Packages/manifest.json` + `Packages/packages-lock.json` 변경 단독 커밋
+2. 프로젝트 Editor 버전 전환 + 패키지 재해결
+3. URP / spine-unity / probuilder / timeline 호환성 재검증
+4. ECS 핵심 API 컴파일 통과 확인 (ISystem / SystemAPI / ECB / DynamicBuffer / NativeQueue / BurstCompile)
+5. PlayMode smoke test
+6. CLAUDE.md / TRD.md Entities 버전 실제 설치 버전으로 갱신
+7. manifest/packages-lock 단독 커밋
 
-### 설계의 버전 독립성
-
-본 설계는 1.4 ↔ 6.5 공통 API 만 사용하므로 업그레이드 완료 전/후 동일하게 적용 가능. 업그레이드 중 API breaking change 발견 시 (예: `ComponentLookup.GetRefROOptional` Obsolete) 해당 메서드 호출부만 신규 API 로 교체.
-
-### 작업 순서
-
-Phase 9 작업 번호 조정: **P9-00 = 패키지 업그레이드** 를 P9-01 이전 선행으로 배치. 업그레이드 완료 후 P9-01~P9-12 순차.
+Phase 9 는 위 작업 없이 P9-01 부터 시작.
 
 ## 6. 작업 분해 (P9-XX)
 
-- [ ] **P9-00** — **선행**: Unity Editor 6000.4+ 업그레이드 + Entities 6.x 전환 + Phase 8 기능 회귀 smoke test + CLAUDE.md/TRD.md 버전 표기 갱신 + manifest/packages-lock 단독 커밋 (§5 선행 작업 참조)
 - [ ] **P9-01** — MapData.goalCell / spawnCells 필드 추가. PrototypeMap.asset 값 편집. `MapData.paths` 에 `[Obsolete]` 표기
 - [ ] **P9-02** — GridMath.WorldToCell / CellToWorldCenter + EditMode 테스트 (경계/clamp)
 - [ ] **P9-03** — FlowFieldSingleton struct + NativeArray 수명 관리 (BattleBridge)
