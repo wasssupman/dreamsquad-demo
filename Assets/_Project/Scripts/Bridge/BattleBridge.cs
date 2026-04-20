@@ -246,23 +246,32 @@ namespace Wassup.Bridge
 
                 var flow = new NativeArray<float2>(n, Allocator.Persistent);
                 var dist = new NativeArray<int>(n, Allocator.Persistent);
-                var gridSize = new int2(w, h);
-                var goal = new int2(map.GoalCell.x, map.GoalCell.y);
-
-                FlowFieldBuilder.Build(walk, gridSize, goal, flow, dist);
-
-                var data = new FlowFieldSingleton
+                try
                 {
-                    flow = flow,
-                    dist = dist,
-                    gridSize = gridSize,
-                    goalCell = goal,
-                    tileSize = tileSize,
-                    version = 1,
-                };
+                    var gridSize = new int2(w, h);
+                    var goal = new int2(map.GoalCell.x, map.GoalCell.y);
 
-                _flowFieldSingleton = _em.CreateEntity();
-                _em.AddComponentData(_flowFieldSingleton, data);
+                    FlowFieldBuilder.Build(walk, gridSize, goal, flow, dist);
+
+                    var data = new FlowFieldSingleton
+                    {
+                        flow = flow,
+                        dist = dist,
+                        gridSize = gridSize,
+                        goalCell = goal,
+                        tileSize = tileSize,
+                        version = 1,
+                    };
+
+                    _flowFieldSingleton = _em.CreateEntity();
+                    _em.AddComponentData(_flowFieldSingleton, data);
+                }
+                catch
+                {
+                    if (flow.IsCreated) flow.Dispose();
+                    if (dist.IsCreated) dist.Dispose();
+                    throw;
+                }
             }
             finally
             {
