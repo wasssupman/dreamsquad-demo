@@ -21,11 +21,11 @@
 - **해결**: `TornadoPull` per-entity 컴포넌트를 `TornadoField` 캐리어 엔티티로 교체 (PortalLink 패턴). `MovementSystem` 이 매 프레임 live `TornadoField` 엔티티를 쿼리해 범위 내 적에게 pull step 적용. `EffectTickSystem` 이 remaining 만료 시 엔티티 destroy. `BattleBridge.ApplyTornado` 는 per-attacker 반복 제거, 단일 `EffectSpawner.SpawnTornadoField` 호출로 단순화.
 - **커밋**: Phase 8 §17 최종 마무리 커밋에 포함.
 
-### A2. 포탈 동선 이상 [High → Phase 9 이관 확정]
+### A2. 포탈 동선 이상 [High → ✅ 2026-04-20 해결 (Phase 9)]
 
-- **요약**: Portal exit 타일이 경로 외부이거나 closest waypoint 가 뒤쪽일 때 텔레포트된 적이 역주행.
-- **세부**: `docs/phase9-prep.md` §2 이슈 A 참조.
-- **상태**: Phase 9 flow field 도입 시 자연 해결 → 본 문서에선 **완료 처리**, Phase 9 추적.
+- **요약 (과거)**: Portal exit 타일이 경로 외부이거나 closest waypoint 가 뒤쪽일 때 텔레포트된 적이 역주행.
+- **해결**: Phase 9 flow field 도입으로 `ResolveExitWaypointIndex` / `PortalLink.exitWaypointIndex` 삭제. 텔레포트 직후 현재 cell 의 flow lookup 으로 자율 복귀. P9-12 사용자 Play 회귀로 최종 확인 예정.
+- **커밋**: Phase 9 P9-06 migration 커밋 (PortalLink.exitWaypointIndex 제거).
 
 ---
 
@@ -33,6 +33,7 @@
 
 - [ ] **P7-15** Phase 7 회귀 — 드래프트 2종 스킬 패널 / Tornado·Meteor·Portal 동작 / Restart·Redraft
 - [ ] **P8-10** Phase 8 Spine/VFX 회귀 — defender Spine 상태 전환 + 5종 VFX prefab 시각
+- [ ] **P9-12** Phase 9 Flow Field 회귀 — Portal 텔레포트 후 자율 복귀 / Tornado field 해제 후 자율 복귀 / Goal cell 도달 시 `PastGoalTag` 부여. P9-11 기준선 녹화는 사용자 결정으로 skip (2026-04-20)
 - [ ] **VFX 카탈로그 10개 검토/승인** — `.claude/skills/unity-vfx-authoring/common-skill-vfx-reference.md`
 
 ---
@@ -70,21 +71,23 @@
 
 - [x] `PlacementInput` random fallback 제거 (커밋 `37213c2`)
 - [ ] `BattleBridge.SpawnMeteorWarningVisual` procedural Quad 제거 검토 (prefab 화 여부와 연계)
-- [ ] Phase 9 이후 `PathFollowState.currentWaypointIndex` / `DynamicBuffer<PathWaypoint>` 제거 (P9-03)
-- [ ] `ResolveExitWaypointIndex` / `PortalLink.exitWaypointIndex` 제거 (Phase 9 P9-04)
+- [x] `PathFollowState.currentWaypointIndex` / `DynamicBuffer<PathWaypoint>` 제거 (Phase 9 P9-05B / P9-09)
+- [x] `ResolveExitWaypointIndex` / `PortalLink.exitWaypointIndex` 제거 (Phase 9 P9-06)
+- [ ] `MapData.paths` `[Obsolete]` 필드 완전 삭제 — Phase 10 asset migration (PrototypeMap.asset → GeneratedMap) 시점
+- [ ] Task 2 MEDIUM: `GridMath` `CellIndex` 및 half-boundary 반올림 EditMode 테스트 보강 (Phase 10 맵 파이프라인 정착 후 재검토)
 
 ---
 
-## 상태 요약 (2026-04-19 Phase 8 종료 기준)
+## 상태 요약 (2026-04-20 Phase 9 종료 기준)
 
 | 카테고리 | 미체크 수 | 비고 |
 |---|---|---|
-| A. 버그 | 0 | A1 Phase 8 §17 에서 해결, A2 Phase 9 이관 |
-| B. 사용자 Play | 2 | P7-15 / P8-10 (사용자 Play 확인) |
-| C. 에디터 수작업 | 2 | Shader Graph 템플릿 / Phase 9 기준선 녹화 |
-| D. Phase 9 | — | phase9-prep.md 포인터만 유지 |
-| E. 후속 제안 | 7 | 1~6 keep (Phase 9 이후 판단), 7 (공격 범위 UI) Phase 9 확정 이관 |
-| F. 코드 정리 | 2 | PlacementInput fallback 제거 완료, 나머지 Phase 9 |
+| A. 버그 | 0 | A1 Phase 8 §17, A2 Phase 9 P9-06 에서 해결 |
+| B. 사용자 Play | 3 | P7-15 / P8-10 / P9-12 (사용자 Play 확인) |
+| C. 에디터 수작업 | 1 | Shader Graph 템플릿. Phase 9 기준선 녹화는 skip 결정 (2026-04-20) |
+| D. Phase 9 | — | Phase 9 완료. 이후 이관은 `docs/phase10-prep.md` |
+| E. 후속 제안 | 7 | 1~6 keep (Phase 10 이후 판단), 7 (공격 범위 UI) Phase 10+ 이관 |
+| F. 코드 정리 | 2 | PathWaypoint / Portal exit index 삭제 완료. 남은 항목 Phase 10 asset migration 및 테스트 보강 |
 
 ---
 
