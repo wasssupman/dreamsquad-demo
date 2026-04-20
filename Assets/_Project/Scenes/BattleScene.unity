@@ -340,12 +340,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b0af4001c2b594a1389217a9c7ae1708, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Wassup.Core.MapView
-  map: {fileID: 11400000, guid: 0787ec9271df64707a2f470418f78692, type: 2}
-  tileSize: 1
   buildableColor: {r: 0.85, g: 0.85, b: 0.85, a: 1}
   pathColor: {r: 0.95, g: 0.75, b: 0.4, a: 1}
   obstacleColor: {r: 0.25, g: 0.25, b: 0.3, a: 1}
-  pathLineColor: {r: 1, g: 0, b: 0, a: 1}
 --- !u!4 &211636737
 Transform:
   m_ObjectHideFlags: 0
@@ -1665,7 +1662,6 @@ MonoBehaviour:
   bridge: {fileID: 1939688408}
   mainCamera: {fileID: 0}
   mapView: {fileID: 211636736}
-  tileSize: 1
 --- !u!1 &1628485821
 GameObject:
   m_ObjectHideFlags: 0
@@ -1927,6 +1923,8 @@ MonoBehaviour:
   spineDefenderPool: {fileID: 810041858}
   spineDefenderYOffset: 0
   vfxSpawner: {fileID: 1795146346}
+  mapView: {fileID: 211636736}
+  placementInput: {fileID: 1495062452}
 --- !u!4 &1939688409
 Transform:
   m_ObjectHideFlags: 0

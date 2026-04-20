@@ -79,8 +79,15 @@ namespace Wassup.Bridge
         // map 을 주입한다. Unity 가 Start 순서를 보장하지 않으므로 Awake 단계에서 수행.
         private void Awake()
         {
-            if (mapView != null) mapView.Initialize(map, tileSize);
-            if (placementInput != null) placementInput.Initialize(tileSize);
+            if (mapView != null)
+                mapView.Initialize(map, tileSize);
+            else
+                Debug.LogError("[BattleBridge] mapView reference missing — assign in Inspector.", this);
+
+            if (placementInput != null)
+                placementInput.Initialize(tileSize);
+            else
+                Debug.LogError("[BattleBridge] placementInput reference missing — assign in Inspector.", this);
         }
 
         private void Start()
