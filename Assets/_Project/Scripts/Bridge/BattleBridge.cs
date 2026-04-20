@@ -257,9 +257,12 @@ namespace Wassup.Bridge
                 for (int x = 0; x < w; x++)
                 {
                     var t = map.GetTile(x, y);
-                    walk[y * w + x] = (byte)(t == TileType.Obstacle ? 0 : 1);
-                    // Phase 9: Buildable / Path 둘 다 walkable.
-                    // Phase 10 enum 재분류 후 Walkable 단일 플래그로 명료화.
+                    walk[y * w + x] = (byte)(t == TileType.Path ? 1 : 0);
+                    // Phase 9 (P9-12 회귀 fix): Path 타일만 walkable — enemies must stay on designated path.
+                    // Buildable 타일은 defender 배치 영역이므로 적이 지나가면 안 됨.
+                    // Phase 10 enum 재분류 후 Walkable 단일 플래그로 명료화 (UX 일관성).
+                    // 제약: Portal exit 이 Path 타일이 아니면 적이 해당 cell 에서 freeze (flow=zero).
+                    // phase9-prep.md §2 이슈 A "exit 타일을 경로 상 정확한 waypoint cell 로만 지정" 확정.
                 }
 
                 var flow = new NativeArray<float2>(n, Allocator.Persistent);
