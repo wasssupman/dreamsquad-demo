@@ -1,5 +1,8 @@
 # PixPlays VFX 파이프라인 개선 Implementation Plan
 
+> **⚠️ 이 v1 은 폐기됨. `2026-04-20-pixplays-vfx-pipeline-v2.md` 사용.**
+> Codex 리뷰에서 invalid UnityMCP 명령어 / 불완전한 PixPlays 스크립트 감사 / 미검증 Portal 전략 등의 결함이 드러나 v2 로 전면 재작성.
+>
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** 기존 `_SKELETON.prefab` 4종(Placement / Tornado / Meteor Burst+Falling / Portal) 의 내부 비주얼을 PixPlays 원소 VFX 자원으로 리스킨하고, `PixPlays/Components/Shaders/Ubershader.shadergraph` 를 우리 VFX Material 의 기반으로 흡수한다. VfxSpawner 계약 · prefab guid 불변.
