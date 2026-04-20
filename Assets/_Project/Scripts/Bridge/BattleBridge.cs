@@ -69,6 +69,9 @@ namespace Wassup.Bridge
         private NativeQueue<Wassup.Battle.Combat.MeteorBurstEvent> _meteorBurstQueue;
         private NativeQueue<Wassup.Battle.Combat.DefenderAttackEvent> _defenderAttackQueue;
 
+        // Phase 9 flow field 싱글톤 entity reference
+        private Entity _flowFieldSingleton = Entity.Null;
+
         private void Start()
         {
             if (resultScreen != null)
@@ -210,6 +213,75 @@ namespace Wassup.Bridge
             if (_defenderDeathQueue.IsCreated) _defenderDeathQueue.Dispose();
             if (_meteorBurstQueue.IsCreated) _meteorBurstQueue.Dispose();
             if (_defenderAttackQueue.IsCreated) _defenderAttackQueue.Dispose();
+
+            // Phase 9: dispose the flow field singleton arrays + destroy the entity.
+            TeardownFlowField();
+        }
+
+        // Idempotent: 재호출(판 재시작/redraft) 시 기존 Persistent arrays dispose 후 재생성.
+        // CRITICAL #1 (Codex 2차 리뷰): AddComponentData 는 component 존재 시 throw,
+        // 그리고 기존 arrays 가 dispose 없이 덮어써지면 누수. TeardownFlowField 선행으로 해결.
+        private void BuildFlowField()
+        {
+            if (map == null || _em == null) return;
+
+            // 기존 싱글톤 있으면 arrays dispose + entity destroy (멱등성 보장)
+            TeardownFlowField();
+
+            int w = MapData.Width;
+            int h = MapData.Height;
+            int n = w * h;
+
+            var walk = new NativeArray<byte>(n, Allocator.Temp);
+            try
+            {
+                for (int y = 0; y < h; y++)
+                for (int x = 0; x < w; x++)
+                {
+                    var t = map.GetTile(x, y);
+                    walk[y * w + x] = (byte)(t == TileType.Obstacle ? 0 : 1);
+                    // Phase 9: Buildable / Path 둘 다 walkable.
+                    // Phase 10 enum 재분류 후 Walkable 단일 플래그로 명료화.
+                }
+
+                var flow = new NativeArray<float2>(n, Allocator.Persistent);
+                var dist = new NativeArray<int>(n, Allocator.Persistent);
+                var gridSize = new int2(w, h);
+                var goal = new int2(map.GoalCell.x, map.GoalCell.y);
+
+                FlowFieldBuilder.Build(walk, gridSize, goal, flow, dist);
+
+                var data = new FlowFieldSingleton
+                {
+                    flow = flow,
+                    dist = dist,
+                    gridSize = gridSize,
+                    goalCell = goal,
+                    tileSize = tileSize,
+                    version = 1,
+                };
+
+                _flowFieldSingleton = _em.CreateEntity();
+                _em.AddComponentData(_flowFieldSingleton, data);
+            }
+            finally
+            {
+                if (walk.IsCreated) walk.Dispose();
+            }
+        }
+
+        private void TeardownFlowField()
+        {
+            if (_flowFieldSingleton != Entity.Null && _em != null && _em.Exists(_flowFieldSingleton))
+            {
+                if (_em.HasComponent<FlowFieldSingleton>(_flowFieldSingleton))
+                {
+                    var data = _em.GetComponentData<FlowFieldSingleton>(_flowFieldSingleton);
+                    data.Dispose();
+                }
+                _em.DestroyEntity(_flowFieldSingleton);
+            }
+            _flowFieldSingleton = Entity.Null;
         }
 
         // Phase 6: placement phase enters this path — ECS state is initialized so
@@ -308,6 +380,11 @@ namespace Wassup.Bridge
             _defenderAttackQueue = new NativeQueue<Wassup.Battle.Combat.DefenderAttackEvent>(Allocator.Persistent);
             var attackSingleton = _em.CreateEntity();
             _em.AddComponentData(attackSingleton, new Wassup.Battle.Combat.DefenderAttackEventsSingleton { queue = _defenderAttackQueue });
+
+            // Phase 9 P9-03 wiring — build the flow field singleton once the map
+            // and EntityManager are confirmed ready. Idempotent: re-entry from
+            // RestartBattle / Redraft first calls TeardownFlowField().
+            BuildFlowField();
         }
 
         public void StopBattle()
@@ -1140,6 +1217,8 @@ namespace Wassup.Bridge
             if (_defenderDeathQueue.IsCreated) _defenderDeathQueue.Dispose();
             if (_meteorBurstQueue.IsCreated) _meteorBurstQueue.Dispose();
             if (_defenderAttackQueue.IsCreated) _defenderAttackQueue.Dispose();
+            // Phase 9 — guard against editor shutdown / play stop leaking Persistent arrays.
+            TeardownFlowField();
             if (_healthBarMaterial != null) Destroy(_healthBarMaterial);
         }
 
