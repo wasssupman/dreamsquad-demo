@@ -1208,14 +1208,11 @@ namespace Wassup.Bridge
                 return;
             }
 
-            PathDefinition path = null;
-            foreach (var p in map.Paths)
+            // Phase 9: AttackDeck.SpawnEntry.pathId 는 남아있지만 무시. MapData.SpawnCells[0] 사용.
+            // Phase 10 에서 pathId → spawnTileIndex migration + multi-spawn 지원.
+            if (map.SpawnCells == null || map.SpawnCells.Count == 0)
             {
-                if (p.id == entry.pathId) { path = p; break; }
-            }
-            if (path == null || path.waypoints.Count == 0)
-            {
-                Debug.LogWarning($"[BattleBridge] Path '{entry.pathId}' not found or empty in MapData.");
+                Debug.LogWarning("[BattleBridge] MapData.SpawnCells empty — cannot spawn attacker");
                 return;
             }
 
@@ -1230,9 +1227,9 @@ namespace Wassup.Bridge
             _em.SetName(entity, $"Enemy_{entry.unitType.displayName}");
 #endif
 
-            var startCell = path.waypoints[0];
-            var pos = new float3(startCell.x * tileSize, spawnHeight, startCell.y * tileSize);
-            _em.AddComponentData(entity, LocalTransform.FromPosition(pos));
+            var spawnCell = map.SpawnCells[0];
+            var spawnWorldPos = GridToWorldCenter(spawnCell, spawnHeight);
+            _em.AddComponentData(entity, LocalTransform.FromPosition(spawnWorldPos));
 
             _em.AddComponent<AttackUnitTag>(entity);
             _em.AddComponentData(entity, new Health { value = entry.unitType.health, max = entry.unitType.health });
@@ -1255,15 +1252,8 @@ namespace Wassup.Bridge
 
             _em.AddComponentData(entity, new PathFollowState
             {
-                currentWaypointIndex = 1,
                 speed = entry.unitType.moveSpeed,
-                tileSize = tileSize,
             });
-            var buffer = _em.AddBuffer<PathWaypoint>(entity);
-            foreach (var wp in path.waypoints)
-            {
-                buffer.Add(new PathWaypoint { cell = new int2(wp.x, wp.y) });
-            }
 
             var renderArray = GetOrCreateRenderMeshArray(entry.unitType);
             var desc = new RenderMeshDescription(
