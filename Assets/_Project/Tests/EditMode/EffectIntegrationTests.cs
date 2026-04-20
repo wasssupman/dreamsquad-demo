@@ -1,4 +1,5 @@
 using NUnit.Framework;
+using Unity.Collections;
 using Unity.Core;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -23,28 +24,35 @@ namespace Wassup.Tests.EditMode
             var simGroup = world.CreateSystemManaged<SimulationSystemGroup>();
             simGroup.AddSystemToUpdateList(world.CreateSystem<MovementSystem>());
 
-            var waypoints = new[] { new int2(0, 0), new int2(10, 0) };
+            // 2-cell +x flow field. goal = (1,0).
+            var flow = new NativeArray<float2>(2, Allocator.Persistent);
+            var dist = new NativeArray<int>(2, Allocator.Persistent);
+            flow[0] = new float2(1, 0); dist[0] = 1;
+            flow[1] = float2.zero;      dist[1] = 0;
+            var fieldEntity = em.CreateEntity();
+            em.AddComponentData(fieldEntity, new FlowFieldSingleton
+            {
+                flow = flow, dist = dist,
+                gridSize = new int2(2, 1),
+                goalCell = new int2(1, 0),
+                tileSize = 1f, version = 1,
+            });
+
             var e = em.CreateEntity();
             em.AddComponentData(e, LocalTransform.FromPosition(new float3(0f, 0f, 0f)));
-            em.AddComponentData(e, new PathFollowState
-            {
-                currentWaypointIndex = 1,
-                speed = 2f,
-                tileSize = 1f,
-            });
-            var buf = em.AddBuffer<PathWaypoint>(e);
-            foreach (var wp in waypoints) buf.Add(new PathWaypoint { cell = wp });
-
-            // 50% slow → expect half the distance covered in 1s at speed=2 (1.0 unit instead of 2.0).
+            em.AddComponentData(e, new PathFollowState { speed = 2f });
             em.AddComponentData(e, new SlowEffect { remaining = 5f, multiplier = 0.5f });
 
             world.SetTime(new TimeData(world.Time.ElapsedTime + 1f, 1f));
             simGroup.Update();
 
             var pos = em.GetComponentData<LocalTransform>(e).Position;
-            Assert.AreEqual(1f, pos.x, 1e-4f, "SlowEffect multiplier 0.5 should halve this frame's step.");
-            // Base speed field stays unchanged — Movement still owns it.
-            Assert.AreEqual(2f, em.GetComponentData<PathFollowState>(e).speed, 1e-5f);
+            Assert.AreEqual(1f, pos.x, 1e-4f, "SlowEffect 0.5 should halve this frame's step.");
+            Assert.AreEqual(2f, em.GetComponentData<PathFollowState>(e).speed, 1e-5f,
+                "Base speed field stays unchanged — Movement still owns it.");
+
+            // Persistent NativeArray dispose (world.Dispose 가 entity 는 파괴하지만 NativeArray 는 leak).
+            em.GetComponentData<FlowFieldSingleton>(fieldEntity).Dispose();
         }
 
         [Test]

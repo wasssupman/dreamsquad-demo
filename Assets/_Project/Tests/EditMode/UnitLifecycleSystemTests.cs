@@ -48,9 +48,9 @@ namespace Wassup.Tests.EditMode
             _em.AddComponentData(e, LocalTransform.FromPosition(new float3(0f, 0f, 0f)));
             _em.AddComponent<AttackUnitTag>(e);
             _em.AddComponent<PastGoalTag>(e);
-            // Minimal PathFollowState so MovementSystem doesn't break.
-            _em.AddComponentData(e, new PathFollowState { currentWaypointIndex = 0, speed = 1f, tileSize = 1f });
-            _em.AddBuffer<PathWaypoint>(e);
+            // Phase 9: PathFollowState 축소. PathWaypoint DynamicBuffer 제거.
+            // PastGoalTag 이미 있으므로 MovementSystem 의 .WithNone<PastGoalTag>() 에 의해 필터됨.
+            _em.AddComponentData(e, new PathFollowState { speed = 1f });
             return e;
         }
 
