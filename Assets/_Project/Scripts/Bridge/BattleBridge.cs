@@ -765,7 +765,7 @@ namespace Wassup.Bridge
             if (unitData.onPlaceEffect == OnPlaceEffectType.None) return 0;
             if (unitData.onPlaceRange <= 0f) return 0;
 
-            float3 center = new float3(placedCell.x * tileSize, 0f, placedCell.y * tileSize);
+            float3 center = GridToWorldCenter(placedCell);
             float rangeWorld = unitData.onPlaceRange * tileSize;
             float rangeSq = rangeWorld * rangeWorld;
             int affected = 0;
