@@ -57,7 +57,7 @@
 5. **하드코딩된 수치 금지**. 모든 유닛 스탯/공격 패턴/스킬 값/VFX 파라미터는 ScriptableObject 또는 프리팹에서 나온다.
 6. **상속 2단계 최대** (MonoBehaviour, ScriptableObject에 적용).
 7. **인터페이스는 구현체 2개 이상일 때만 생성**. "나중을 위한" 추상 레이어 금지.
-8. **현재 Phase 범위를 넘어서는 기능 구현 금지**. 다음 Phase 영역 항목은 `phase9-prep.md` / `residual-issues.md` 로 이관 후 대기. 현재는 Phase 9 가 맵/길찾기에 한정되므로 그 외 범위 확장 금지.
+8. **현재 Phase 범위를 넘어서는 기능 구현 금지**. 다음 Phase 영역 항목은 `phase{n}-prep.md` / `residual-issues.md` 로 이관 후 대기.
 
 **전체 제약 목록은 `docs/TRD.md` 섹션 3(추상화 규칙), 섹션 5(금지 패턴)를 반드시 참조**하라.
 
@@ -67,11 +67,46 @@
 |---|---|
 | "이 기능을 왜 만드나?" | `docs/PRD.md` — 검증 가설, 운영 원칙 |
 | "어떤 기술 제약이 있나?" | `docs/TRD.md` — ECS 경계, 맥락 분리, 추상화 규칙, 금지 패턴 |
-| "현재까지 무엇이 구현돼 있나?" | `docs/PHASE8.md` (최신 구현 스펙). 이전 Phase 는 `docs/PHASE{0..7}.md`. |
+| "현재까지 무엇이 구현돼 있나?" | `docs/PHASE9.md` (최신 종료 스펙). 이전 Phase 는 `docs/PHASE{0..8}.md`. |
 | "지금 남은 작업은?" | `docs/residual-issues.md` — 페이즈 종료 프로토콜이 붙어있다 |
-| "Phase 9 는?" | `docs/phase9-prep.md` — Flow Field 길찾기 재설계 |
+| "다음 Phase 는?" | `docs/phase{n}-prep.md` — 이관된 결정/미결 Q 요약 |
+| "feature 구현 상세는?" | `docs/spec/{feature-slug}/` — 분산 스펙 (README + 0~N 작업 단위). 하단 "문서화 구조" 참조 |
 | "VFX 를 만드려면?" | `.claude/skills/unity-vfx-authoring/` + `unity-vfx-integration/` 스킬 |
 | "Unity 씬 와이어링?" | `.claude/skills/unity-feature-wiring/` 스킬 |
+
+## 문서화 구조 (spec 분산 형식)
+
+**단일 대형 plan 문서 금지**. Phase 착수 시 만드는 feature-level 구현 스펙은 `docs/spec/{feature-slug}/` 폴더로 분산한다.
+
+### 폴더 레이아웃
+
+```
+docs/spec/{feature-slug}/
+├── README.md                ← 개요 + 공통 원칙 + 파일 목록 표
+├── 0_{topic}.md             ← 첫 작업 단위 (enum/contract 같은 토대)
+├── 1_{topic}.md
+├── ...
+└── N_{topic}.md
+```
+
+각 파일 **1~3KB 범위**, 작업 단위당 "목적 / 변경 대상 / 구현 / 완료 기준" 4섹션 구조.
+
+### 구성 원칙
+
+- **1 파일 = 1 커밋 단위 작업**. subagent-driven-development 의 implementer 가 해당 파일 하나만 읽고 작업 완료 가능해야 함
+- **README.md**: 상위 목표 + 작업 단위 목록 표 (파일번호 / 작업 구분 / 문서 / 목적) + 공통 원칙 4~6 bullet
+- **Phase 개념과 파일번호 독립**: Phase 10A = `spec/map-system/0_~10_`, Phase 10B = `spec/map-system/11_~17_` 처럼 같은 feature 폴더에 누적
+- **완료 기준**: 각 파일 하단에 "완료 기준" 섹션 필수. compile / 테스트 / 시각 검증 기준을 명시
+- **변경 대상**: 파일 경로 명시 (예: `Assets/_Project/Scripts/Bridge/BattleBridge.cs`)
+
+### 참고 예시
+
+- `docs/spec/defender-on-place-skills/` — Phase 10 이전 도입된 스킬 pipeline spec
+- `docs/spec/defender-drag-drop-deployment/` — D&D 배치 전환 spec
+
+### design.md 와의 관계
+
+`docs/plans/YYYY-MM-DD-{topic}-design.md` 는 **얇은 브레인스토밍 결과물** (목표, 아키텍처 요약, `spec/` 폴더 포인터). 실제 구현 상세는 모두 `docs/spec/{feature-slug}/` 안에 둔다. writing-plans 스킬은 생략 가능 — spec 파일이 곧 각 task 의 plan 역할.
 
 ## 작업 지침
 
@@ -144,6 +179,6 @@
 
 ---
 
-**현재 활성 Phase**: Phase 9 prep (Flow Field 길찾기 재설계 대기)
-**최근 종료 Phase**: Phase 8 (Spine 하이브리드 + 프리팹 VFX + melee AoE + Tornado 지속 field)
-**Phase 9 착수 조건**: P7-15 / P8-10 Play 회귀 검증 통과 (사용자 작업 대기)
+**현재 활성 Phase**: Phase 10A prep (맵 시스템 재설계 — data 모델 + infra)
+**최근 종료 Phase**: Phase 9 (Flow field 길찾기 교체 — waypoint 제거)
+**Phase 10 착수 조건**: 없음 (Phase 9 완료 후 즉시 진행 가능). P7-15 / P8-10 은 Phase 10 종료 시 함께 검증
