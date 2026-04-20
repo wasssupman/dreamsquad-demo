@@ -1,93 +1,137 @@
-# Phase 9 이관 체크리스트 — 맵 / 길찾기
+# Phase 9 착수 체크리스트 — Flow Field 길찾기 교체 (축 A 한정)
 
-> Phase 9 본격 착수 대상만 담은 좁은 스코프 문서. **맵과 맵 길찾기 관련 이슈만** 이 문서에 남긴다. Phase 7/8 Play 회귀 확인은 `residual-issues.md` 에서 추적한다.
+> 2026-04-19 브레인스토밍 + Codex 2차 리뷰 결과 원 Phase 9 scope 를 축소. Procedural 맵 생성 / 테마 / multi-cell obstacle / TileType enum 재분류는 **Phase 10 으로 전량 이관** — `docs/phase10-prep.md` 참조. 본 Phase 9 는 flow field 길찾기 교체 **only**.
+>
+> 설계 상세: `docs/plans/2026-04-19-phase9-flow-field-design.md`
 
 ---
 
-## 1. Phase 9 주 테마 — Flow Field 기반 길찾기 재설계
+## 1. Phase 9 주제 — Flow Field on Fixed PrototypeMap
 
 ### 왜
 
 - 현재 Waypoint 기반 (`DynamicBuffer<PathWaypoint>` + `currentWaypointIndex`) 구조는 **변위 발생 시 자율 복귀 불가**
-- 맵 고도화 (2-row 이상, 다중 레인, 분기) 시 수작업 waypoint 유지 비용 급증
-- 포탈/Tornado/향후 넉백 등 위치가 임의로 바뀌는 스킬이 구조적으로 불편
+- Portal / Tornado / 향후 넉백 등 위치 임의 변경 스킬이 구조적으로 불편
+- 증상 3종:
+  1. 포탈 동선 이상 (`ResolveExitWaypointIndex` 의 closest+1 fallback, `map.Paths[0]` 만 스캔)
+  2. Tornado 해제 후 기계적 직선 복귀 (waypoint index 고정, 위치만 변동)
+  3. 다중 레인 확장 시 waypoint 수작업 복제 부담
 
-### 기술 방향 (Phase 8 결정)
+Flow field 채택으로 **적 현재 cell → field lookup** 구조에서 위 3종을 일괄 해결.
 
-Flow Field 채택. 대안과의 비교:
+### 기술 방향
 
-| 옵션 | 결론 |
-|---|---|
-| NavMesh + NavMeshAgent | **배제** — MonoBehaviour 전용, ECS/Burst 비친화, agent 당 쿼리 비용, 타일 좌표계 불일치 |
-| Tile A* per-agent | 가능 but 변위 때마다 recompute 부담 |
-| **Flow Field** | **최선** — ECS/Burst 친화, O(1) lookup, 변위 자연 복귀, 맵 1회 재계산 |
-| Hybrid (waypoint corridor + flow field fallback) | 기존 authoring 보존 원할 시 옵션 |
+Flow Field (이전 phase9-prep 에서 이미 확정). 대안 비교 (NavMesh, Tile A*, Hybrid) 는 phase9-flow-field-design.md §1 에 이관.
+
+### 범위
+
+- 고정된 `PrototypeMap.asset` 위에서 동작 (procedural 생성 없음)
+- `TileType` enum 그대로 유지 (`Buildable` / `Path` / `Obstacle`) — 재분류 없음
+- `MapData` 에 `goalCell` + `spawnCells[]` 필드 추가
+- PrototypeMap 을 **single-goal + single-spawn** 으로 단순화 (Path B 는 Phase 10 multi-spawn 에서 부활)
+- 현재 `com.unity.entities 1.4.5` 유지 (§5 패키지 버전 미결)
+
+### 비범위 (Phase 10 이관)
+
+- Procedural 맵 생성 파이프라인
+- 테마 + multi-cell obstacle 자산 시스템
+- TileType enum 재분류 (Empty/Walkable/Placeable/Blocked)
+- 다중 레인 / multi-goal / multi-spawn
+- 환경효과 (화산, 바람) — Phase 11+
+
+전부 `docs/phase10-prep.md` 에 스펙 이관 완료.
 
 ---
 
-## 2. 핵심 알려진 이슈 (Phase 9 에서 해결)
+## 2. 핵심 해결 이슈
 
-### 이슈 A — 포탈 동선 이상 (사용자 보고)
+### 이슈 A — 포탈 동선 이상
 
-- **증상**: Portal 로 텔레포트된 적이 역주행하거나 엉뚱한 방향으로 이동
-- **원인**: `BattleBridge.ResolveExitWaypointIndex` 의 closest+1 fallback 이 "이미 지나친 waypoint" 를 다음 목표로 지정 가능. exit 타일이 경로 외부일 때 특히.
-- **임시 회피**: exit 타일을 경로 상 정확한 waypoint cell 로만 지정 (UX 제약)
-- **Phase 9 해결**: flow field 도입 → teleport 직후 현재 타일의 flow 읽기로 자동 복귀. `ResolveExitWaypointIndex` / `PortalLink.exitWaypointIndex` 함수/필드 삭제 대상
+- **원인**: `BattleBridge.ResolveExitWaypointIndex` (cs:581~602) 의 closest+1 fallback, 그리고 `map.Paths[0]` 만 스캔 → Path B 적에게 Path A index 주입
+- **Phase 9 해결**: flow field 도입 → teleport 직후 현재 cell 의 flow 조회로 자동 복귀. `ResolveExitWaypointIndex` 메서드 + `PortalLink.exitWaypointIndex` 필드 삭제
 
 ### 이슈 B — 변위 후 자율 복귀 부재
 
-- **증상**: Tornado 해제 후 적이 끌림 중심에서 다음 waypoint 까지 직선 이동 (기계적 느낌)
-- **원인**: `PathFollowState.currentWaypointIndex` 는 Tornado 동안 고정, 위치만 바뀜
-- **Phase 9 해결**: flow field 로 현재 위치 기준 다음 방향 계산, waypoint index 개념 자체 제거
+- **원인**: `PathFollowState.currentWaypointIndex` 가 Tornado 동안 고정, 위치만 변동
+- **Phase 9 해결**: flow field 로 현재 cell 기준 다음 방향 계산. `currentWaypointIndex` 개념 자체 제거
 
-### 이슈 C — 다중 레인 / 경로 확장 부담
+### 이슈 C — PortalLink 제거가 파급되는 소스 4개 (Codex M-10)
 
-- **증상**: 현재 `map.Paths` 중 `AttackDeck.spawnEntry.pathId` 지정 하나만 사용. 2-row 이상 맵에서 waypoint 수작업 복제 필요
-- **Phase 9 해결**: flow field 는 "모든 타일에서 goal 까지의 방향" 이므로 spawn 위치만 달라지면 자동 분기
-
----
-
-## 3. 작업 분해 초안 (P9-NN)
-
-- [ ] **P9-01** — `PathfindingGrid` SO + BFS/Dijkstra goal field 계산. EditMode 단위 테스트 (직선 / 다중 레인 / 장애물 우회)
-- [ ] **P9-02** — `FlowFieldSingleton` (NativeArray 보관) + BattleBridge 에서 맵 로드 시 계산 + 싱글톤 생성
-- [ ] **P9-03** — `MovementSystem` flow field 기반으로 교체. 기존 `PathFollowState`/`PathWaypoint` 버퍼 제거. `currentWaypointIndex` 개념 삭제
-- [ ] **P9-04** — `BattleBridge.ResolveExitWaypointIndex` 삭제, `PortalLink.exitWaypointIndex` 필드 제거, Movement 에서 포탈 직후 즉시 flow field 재조회
-- [ ] **P9-05** — Tornado 풀림 직후 flow field 복귀 확인, 임의 변위 테스트 (넉백 프로토타입 가능)
-- [ ] **P9-06** — (선택) Waypoint corridor + field fallback 하이브리드 — 레벨디자인 의도 보존 원할 시
-- [ ] **P9-07** — PlayMode 회귀 + EditMode 테스트 통과 확인
+- `Assets/_Project/Scripts/Battle/Effects/PortalLink.cs` — 필드 제거
+- `Assets/_Project/Scripts/Battle/Effects/EffectSpawner.cs` — `SpawnPortal` 시그니처 수정
+- `Assets/_Project/Scripts/Battle/Movement/MovementSystem.cs` — index 덮어쓰기 코드 제거
+- `Assets/_Project/Scripts/Battle/Effects/EffectTickSystem.cs` — portal lifetime 영향 없음 검증
+- `Assets/_Project/Scripts/Bridge/BattleBridge.cs` — `ResolveExitWaypointIndex` 호출/메서드 삭제
 
 ---
 
-## 4. 착수 전 결정 필요
+## 3. 작업 분해
 
-- 다중 goal 지원 여부 (현재 단일 goal)
-- 기존 수작업 waypoint 자산 유지 vs 전량 대체
-- 동적 장애물 (실시간 막힘) 지원 범위
+상세 — `docs/plans/2026-04-19-phase9-flow-field-design.md` §6. 요약:
 
----
-
-## 5. 착수 전 기준선 Play 녹화 (회귀 판정용)
-
-Phase 9 재설계 전 현재 상태에서 **의도적 동선 이상** 3케이스 기록:
-
-1. Portal: exit 타일을 경로 위 / 경로 옆 / 경로에서 먼 곳 → 각 동선 촬영
-2. Tornado: 해제 후 적 이동 방향 기록
-3. 단일 유닛 start→goal 평상시 진행 (기준선)
-
-이 자료가 Phase 9 flow field 전환 후 회귀 판정 근거.
+- **P9-00 — 선행**: Unity Editor 6000.4+ 업그레이드 + Entities 6.x 전환 (§5.1)
+- P9-01 ~ P9-04 — 인프라 (MapData 필드, GridMath, FlowFieldSingleton, FlowFieldBuilder)
+- P9-05 ~ P9-06 — MovementSystem 재작성 + PortalLink migration
+- P9-07 ~ P9-10 — 주변 정리 (MapView/tileSize/GridToWorldCenter/Goal 판정)
+- P9-11 ~ P9-12 — 회귀 녹화 + PlayMode 검증
 
 ---
 
-## 6. 착수 흐름 제안
+## 4. 기준선 Play 녹화 (Phase 9 코드 변경 전)
 
-1. 본 문서 재검토 + scope 확정
-2. `docs/PHASE9.md` 작성 (Flow Field 설계 상세)
-3. Codex 2-round 리뷰 (Phase 8 VFX 패턴)
-4. 구현 + waypoint 기반 코드 제거
-5. Play 회귀 + 5장 기준선 비교
+회귀 판정용 **기준선 3 케이스** 녹화:
+
+1. Portal: exit 타일이 경로 위 / 경로 옆 / 경로 밖 — 각 동선
+2. Tornado: 해제 후 적 이동 방향
+3. 단일 유닛 start → goal 평상시 진행
+
+Phase 9 완료 후 동일 시나리오 재녹화하여 비교.
 
 ---
 
-**작성**: 2026-04-19  
-**스코프**: 맵 + 맵 길찾기 한정. 그 외 Phase 7/8 잔여 검증은 `residual-issues.md` 에서 추적한다.
+## 5. 착수 전 결정 (확정)
+
+### 5.1 Unity Editor / Entities 패키지 버전 — **A-1 확정**
+
+결정: **Unity Editor 를 6000.4 이상으로 업그레이드 후 Entities 6.x (Core Package) 사용**.
+
+- 현재 상태: Unity `6000.3.5f2` + `com.unity.entities 1.4.5`
+- 목표 상태: Unity `6000.4.x` 또는 `6000.5.x` + `com.unity.entities 6.4.x` 또는 `6.5.x` (Core Package, Editor 내장)
+- 근거: Entities 6.x 는 Unity 6000.4 Core Package 로 Editor 에 내장됨. 독립 패키지 업그레이드 불가. (https://docs.unity3d.com/6000.5/Documentation/Manual/WhatsNewUnity64.html)
+
+**선행 작업 (P9-00)** — Phase 9 구현 시작 전 수행:
+1. Unity Hub 에서 6000.4 LTS 또는 6000.5 설치
+2. 프로젝트 Editor 버전 전환 + 패키지 재해결
+3. URP 17.3 / spine-unity / probuilder / timeline 호환성 재검증 (컴파일 에러 + 에디터 로그 warning 수집)
+4. ECS 핵심 API (`ISystem / SystemAPI / EntityCommandBuffer / DynamicBuffer / NativeQueue`) 전수 compile 통과 확인
+5. PlayMode smoke test (Phase 8 까지 기능 회귀)
+6. CLAUDE.md / TRD.md 의 Entities 버전 표기를 **설치 완료된 실제 버전** 으로 갱신
+7. `Packages/manifest.json` + `Packages/packages-lock.json` 변경 커밋
+
+설계 자체 (`docs/plans/2026-04-19-phase9-flow-field-design.md`) 는 1.4 ↔ 6.5 공통 API 만 사용하므로 업그레이드 이후/이전 동일 적용 가능.
+
+### 5.2 `MapData.paths` 필드 처리 — **(a) 확정**
+
+결정: `[Obsolete]` 표기 + 필드 유지, **Phase 10 asset migration 때 MapData → GeneratedMap 전환과 함께 삭제**.
+
+- Phase 9 에서 `MapData.paths` 는 MapView / BattleBridge 어디서도 읽지 않음 (P9-06 / P9-07 작업으로 참조 전량 제거)
+- 필드 자체는 asset schema 보존을 위해 유지 (즉시 제거 시 PrototypeMap.asset YAML 에 잔여 `paths: ` 블록이 남아 경고 발생)
+- `[System.Obsolete("Unused since Phase 9. Removed in Phase 10 asset migration.", error: false)]` 표기로 실수 방지
+
+---
+
+## 6. 착수 흐름
+
+1. ✅ 본 문서 + `docs/plans/2026-04-19-phase9-flow-field-design.md` 확정 (2026-04-19)
+2. §5.1 Unity Editor 버전 / §5.2 paths 필드 처리 결정 (사용자)
+3. 기준선 Play 녹화
+4. writing-plans 스킬로 구현 계획 세분화 → P9-01 ~ P9-12 순차 구현
+5. P7-15 / P8-10 / P9-11~P9-12 Play 회귀 통과
+6. `docs/PHASE9.md` 구현 종료 스펙 작성 + 커밋
+7. Phase 10 브레인스토밍 착수 — `docs/phase10-prep.md` 기반
+
+---
+
+**작성**: 2026-04-19 (Codex 2차 리뷰 반영 rewrite)  
+**스코프**: Flow field 길찾기 교체 한정. 맵 시스템 재설계 전체 → `docs/phase10-prep.md`.  
+**설계**: `docs/plans/2026-04-19-phase9-flow-field-design.md`.
