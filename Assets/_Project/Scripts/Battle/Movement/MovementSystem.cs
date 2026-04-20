@@ -90,7 +90,10 @@ namespace Wassup.Battle.Movement
 
                 float slowMul = slowLookup.HasComponent(entity) ? slowLookup[entity].multiplier : 1f;
                 float step = follow.ValueRO.speed * slowMul * dt;
-                transform.ValueRW.Position = current + new float3(dir.x, 0, dir.y) * step;
+                float2 stepDir = math.normalizesafe(dir); // Phase 9: FlowFieldBuilder writes unit vectors;
+                                                           // normalizesafe defensively handles future diagonal/non-unit flow
+                                                           // and returns zero for <1e-6 magnitude (already guarded above).
+                transform.ValueRW.Position = current + new float3(stepDir.x, 0, stepDir.y) * step;
             }
 
             portals.Dispose();
