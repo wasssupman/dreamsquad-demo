@@ -191,3 +191,73 @@ Android 실기 + Unity Profiler, Tornado 3회 동시 발화 시나리오.
 ## 12. 다음 단계
 
 본 설계 승인 직후 `superpowers:writing-plans` 스킬로 전이해 실행 가능한 단계별 구현 플랜을 작성한다. 이번 design doc 은 "무엇을 · 왜", writing-plans 산출물은 "어떻게 · 무슨 순서로".
+
+---
+
+## 부록 A — Ubershader property introspection (실행 편 Task 1.1 결과)
+
+**셰이더**: `PixPlays/Ubershader` — `Assets/PixPlays/Components/Shaders/Ubershader.shadergraph`
+**Property count**: 81
+**추출 일시**: 2026-04-20
+**Unity**: 6000.3.5f2
+
+### 주요 property 그룹
+
+**색상 제어** (원소 프리셋의 주 파라미터)
+- `_Color_1`, `_Color_2` (Color): 메인 2 컬러
+- `_Color_Smooth` (Float): 두 컬러 블렌드 부드러움
+- `_Initial_Color_Offset` (Float): 시작 컬러 오프셋
+- `_SwitchColors` (Float): 컬러 1/2 스왑
+- `_UseParticleSystemColor` (Float): Shuriken 의 color module 을 곱할지
+
+**컬러 텍스처**
+- `_Color_Texture` (Texture), `_Use_Texture` (Float)
+- `_Color_Tex_Remap` (Vector): tiling/offset
+- `_Color_Scroll` (Vector), `_Color_Rotate` (Float): UV 애니메이션
+
+**Dissolve** (⚠️ 파일 내 오타 `_Disolve_*`)
+- `_Disolve` (Range), `_Disolve_Mask` (Float), `_DisolveSmooth` (Float)
+- `_Disolve_Texture` (Texture), `_Disolve_Scroll` (Vector), `_Disolve_Rotate` (Float)
+- `_Disolve_Distortion` (Float), `_Disolve_Remap` (Vector)
+- `_Disolve_With_UV_r`, `_Disolve_Offset_with_UV_g` (Float): 파티클 UV r/g 로 per-particle 제어
+
+**Mask 레이어 2종** (`_Mask_1`, `_Mask_2`)
+각각 Scroll/Remap/Distortion/Rotate/PositionUVs 보유. `_Mask_AddOrMultiply` 로 결합 방식 선택.
+
+**Fresnel**
+- `_UseFresnel`, `_Fresnel_AddOrMultiply`, `_Power`, `_Fresnel_Remap`
+
+**Distortion** (화면 왜곡)
+- `_Distort_Texture`, `_Distort_Scroll`, `_Distort_Strength`, `_Distort_Rotate`
+
+**Vertex offset** (버텍스 변위)
+- `_Vertex_Offset_Tex`, `_Offset_Strength`, `_Offset_Scroll`, `_Offset_Rotate`, `_Offset_Offset_With_UV_g`
+- `_Vertex_Offset_Mask`, `_Offset_Mask_Smoothstep`
+
+**Soft particles & blend state**
+- `_Use_Soft_Particles`, `_Depth_Distance`
+- `_Surface` (0=opaque, 1=transparent), `_Blend`, `_AlphaClip`, `_AlphaBoost`
+- `_SrcBlend`, `_DstBlend`, `_ZWrite`, `_ZTest`, `_Cull`, `_QueueOffset`
+
+**Built-In RP 중복 (사용 안 함)**
+`_BUILTIN_*` 7개 + `unity_Lightmaps*` 3개 — URP 에서 무시.
+
+### 원소 Material 작성 시 핵심 파라미터 (가이드)
+
+각 원소 Material 은 **원본 PixPlays Material 복제 방식**으로 생성(실행 편 Task 1.3). 추가 튜닝이 필요할 때만 아래 파라미터를 수동 조정:
+
+| 파라미터 | 역할 | 원소별 활용 |
+|---|---|---|
+| `_Color_1`, `_Color_2` | 메인 2 컬러 | Wind=청록/화이트, Fire=오렌지/레드, Earth=브라운/탠, Water=시안/블루 |
+| `_Disolve` | 페이드 진행도 (0~1) | Meteor Burst 종료 프레임에서 1 로 보내 자연 소멸 |
+| `_Color_Scroll` | 컬러 텍스처 UV 흐름 | Tornado: 수직 상승 (y>0), Water Portal: 수평 흐름 |
+| `_Distort_Strength` | 화면 왜곡 강도 | Tornado/Portal: 소량 활성, Placement: 0 |
+| `_Offset_Strength` | 버텍스 offset 강도 | 굴곡·파동 효과가 필요한 경우만 |
+| `_Use_Soft_Particles` | 지면/근접 오브젝트 페이드 | Placement/Portal 에서 지면 가까울 때 유용 |
+| `_UseParticleSystemColor` | Shuriken color module 결합 | 런타임에서 Shuriken color over lifetime 연동 시 1 로 |
+
+### 후속 영향
+
+- **실행 편 Task 1.3 (Material 생성)** 은 원본 Material 복제 기반이므로 위 파라미터를 "원본에서 override 해야 할 것만 설정" 하는 최소 개입 방식으로 작업.
+- **모바일 최적화 관점**: `_UseFresnel`, `_Vertex_Offset_*`, `_Distort_*` 세 가지 블록이 켜질수록 셰이더 variant + fragment 비용 증가. Phase 5 측정 시 원본 대비 **어떤 블록이 활성 상태인지 Material 별로 기록**.
+- **텍스처 의존성 manifest (실행 편 Task 7.3)**: 위 그룹 중 `_Disolve_Texture`, `_Mask_1`, `_Mask_2`, `_Distort_Texture`, `_Color_Texture`, `_Vertex_Offset_Tex`, `_Vertex_Offset_Mask` 7종은 모두 texture slot 이므로 각 Material 의 override 여부를 체크리스트로 관리.
