@@ -75,7 +75,9 @@ namespace Wassup.Battle.Effects
 
         // Phase 7 — Portal: carrier entity with the two endpoints. Re-cast spawns a
         // separate link (player-decided overlap) rather than merging.
-        public static Entity SpawnPortal(EntityManager em, float3 entryWorld, float3 exitWorld, float entryRadius, float duration, int exitWaypointIndex)
+        // Phase 9: exitWaypointIndex parameter dropped. After teleport, next-frame
+        // flow field lookup supplies the exit direction.
+        public static Entity SpawnPortal(EntityManager em, float3 entryWorld, float3 exitWorld, float entryRadius, float duration)
         {
             var e = em.CreateEntity();
             em.AddComponentData(e, new PortalLink
@@ -84,7 +86,6 @@ namespace Wassup.Battle.Effects
                 exitWorld = exitWorld,
                 entryRadius = entryRadius,
                 remaining = duration,
-                exitWaypointIndex = exitWaypointIndex,
             });
             return e;
         }

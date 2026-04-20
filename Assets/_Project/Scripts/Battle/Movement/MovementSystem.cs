@@ -55,8 +55,7 @@ namespace Wassup.Battle.Movement
                     {
                         transform.ValueRW.Position = new float3(portal.exitWorld.x, current.y, portal.exitWorld.z);
                         current = transform.ValueRW.Position;
-                        if (portal.exitWaypointIndex >= 0 && portal.exitWaypointIndex <= waypoints.Length)
-                            follow.ValueRW.currentWaypointIndex = portal.exitWaypointIndex;
+                        // Phase 9: exitWaypointIndex 제거됨. 다음 프레임 flow field 가 새 방향을 공급.
                         break;
                     }
                 }

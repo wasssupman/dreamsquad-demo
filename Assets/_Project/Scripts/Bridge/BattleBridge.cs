@@ -647,8 +647,7 @@ namespace Wassup.Bridge
             float3 entryWorld = GridToWorldCenter(entryTile);
             float3 exitWorld = GridToWorldCenter(exitTile);
             float entryRadius = tileSize * 0.5f; // half-tile catch radius
-            int exitWaypointIdx = ResolveExitWaypointIndex(exitTile);
-            EffectSpawner.SpawnPortal(_em, entryWorld, exitWorld, entryRadius, skill.durationSec, exitWaypointIdx);
+            EffectSpawner.SpawnPortal(_em, entryWorld, exitWorld, entryRadius, skill.durationSec);
 
             // Phase 8 §12: two swirls + connecting beam for the portal's lifetime.
             if (vfxSpawner != null)
@@ -660,36 +659,6 @@ namespace Wassup.Bridge
             }
 
             return 1;
-        }
-
-        // Picks the first path waypoint whose cell equals exitTile; if none,
-        // picks the closest waypoint so the attacker resumes forward progress.
-        // Falls back to index 0 when no path data is available. We scan only the
-        // first path on the map — this is fine for the Phase 5/6 maps that ship
-        // with a single attacker route. If the map later exposes multiple paths,
-        // the per-attacker waypoint buffer still keeps its own cell data, so the
-        // index remapping here is conservative for single-path maps only.
-        private int ResolveExitWaypointIndex(Vector2Int exitTile)
-        {
-            if (map == null || map.Paths == null || map.Paths.Count == 0) return 0;
-            var waypoints = map.Paths[0].waypoints;
-            if (waypoints == null || waypoints.Count == 0) return 0;
-            int bestIdx = 0;
-            float bestSq = float.MaxValue;
-            for (int i = 0; i < waypoints.Count; i++)
-            {
-                var w = waypoints[i];
-                if (w.x == exitTile.x && w.y == exitTile.y) return i + 1;
-                float dx = w.x - exitTile.x;
-                float dz = w.y - exitTile.y;
-                float d2 = dx * dx + dz * dz;
-                if (d2 < bestSq)
-                {
-                    bestSq = d2;
-                    bestIdx = i + 1;
-                }
-            }
-            return bestIdx;
         }
 
         // Meteor telegraph: a flat translucent red quad on the ground that
