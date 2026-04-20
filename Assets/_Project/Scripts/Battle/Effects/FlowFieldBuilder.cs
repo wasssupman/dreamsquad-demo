@@ -20,6 +20,9 @@ namespace Wassup.Battle.Effects
         {
             int w = gridSize.x, h = gridSize.y, n = w * h;
 
+            UnityEngine.Debug.Assert(walkMask.Length == n && outDist.Length == n && outFlow.Length == n,
+                $"FlowFieldBuilder: array length mismatch (expected {n}, got walkMask={walkMask.Length}, outFlow={outFlow.Length}, outDist={outDist.Length})");
+
             for (int i = 0; i < n; i++) outDist[i] = int.MaxValue;
             for (int i = 0; i < n; i++) outFlow[i] = float2.zero;
 
@@ -30,24 +33,27 @@ namespace Wassup.Battle.Effects
             outDist[goalIdx] = 0;
 
             var queue = new NativeQueue<int2>(Allocator.Temp);
-            queue.Enqueue(goal);
-
-            while (queue.TryDequeue(out var c))
+            try
             {
-                int cIdx = c.y * w + c.x;
-                int cDist = outDist[cIdx];
-                for (int d = 0; d < 4; d++)
+                queue.Enqueue(goal);
+
+                while (queue.TryDequeue(out var c))
                 {
-                    int2 n2 = c + Dirs[d];
-                    if (n2.x < 0 || n2.x >= w || n2.y < 0 || n2.y >= h) continue;
-                    int nIdx = n2.y * w + n2.x;
-                    if (walkMask[nIdx] == 0) continue;
-                    if (outDist[nIdx] <= cDist + 1) continue;
-                    outDist[nIdx] = cDist + 1;
-                    queue.Enqueue(n2);
+                    int cIdx = c.y * w + c.x;
+                    int cDist = outDist[cIdx];
+                    for (int d = 0; d < 4; d++)
+                    {
+                        int2 n2 = c + Dirs[d];
+                        if (n2.x < 0 || n2.x >= w || n2.y < 0 || n2.y >= h) continue;
+                        int nIdx = n2.y * w + n2.x;
+                        if (walkMask[nIdx] == 0) continue;
+                        if (outDist[nIdx] <= cDist + 1) continue;
+                        outDist[nIdx] = cDist + 1;
+                        queue.Enqueue(n2);
+                    }
                 }
             }
-            queue.Dispose();
+            finally { queue.Dispose(); }
 
             // Fill flow: 각 cell 에서 4-neighbor 중 dist 최소 방향 unit vector.
             for (int y = 0; y < h; y++)
