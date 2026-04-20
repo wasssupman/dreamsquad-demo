@@ -445,6 +445,11 @@ namespace Wassup.Bridge
             return true;
         }
 
+        // Phase 9 — 모든 스킬 대상 타일 → world center 계산의 단일 소스.
+        // Phase 10 에서 tileSize 가 theme 파라미터로 승격될 때 이 helper 만 바꾸면 됨.
+        private float3 GridToWorldCenter(Vector2Int cell, float y = 0f)
+            => new float3(cell.x * tileSize, y, cell.y * tileSize);
+
         private int ApplySlowField(Vector2Int tile, SkillData skill)
         {
             // Collect all currently-alive attack unit entities; filter by XZ distance
@@ -453,7 +458,7 @@ namespace Wassup.Bridge
             if (!_aliveAttackersQueryCreated) return 0;
             var entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
 
-            float3 targetWorld = new float3(tile.x * tileSize, 0f, tile.y * tileSize);
+            float3 targetWorld = GridToWorldCenter(tile);
             float rangeWorld = skill.range * tileSize;
             float rangeSq = rangeWorld * rangeWorld;
             int affected = 0;
@@ -478,7 +483,7 @@ namespace Wassup.Bridge
         // `durationSec`. `skill.magnitude` is the pull speed (world units/sec).
         private int ApplyTornado(Vector2Int tile, SkillData skill)
         {
-            float3 targetWorld = new float3(tile.x * tileSize, 0f, tile.y * tileSize);
+            float3 targetWorld = GridToWorldCenter(tile);
             float rangeWorld = skill.range * tileSize;
 
             // Phase 8 §17 — continuous field (replaces Phase 7 per-attacker
@@ -518,7 +523,7 @@ namespace Wassup.Bridge
         // when the warning expires.
         private int ApplyMeteor(Vector2Int tile, SkillData skill)
         {
-            float3 centerWorld = new float3(tile.x * tileSize, 0f, tile.y * tileSize);
+            float3 centerWorld = GridToWorldCenter(tile);
             float radiusWorld = skill.range * tileSize;
             float warn = skill.warningSec > 0f ? skill.warningSec : 0f;
             EffectSpawner.SpawnMeteor(_em, centerWorld, radiusWorld, skill.magnitude, warn);
@@ -553,8 +558,8 @@ namespace Wassup.Bridge
         // keep heading toward the goal from the exit.
         private int ApplyPortal(Vector2Int entryTile, Vector2Int exitTile, SkillData skill)
         {
-            float3 entryWorld = new float3(entryTile.x * tileSize, 0f, entryTile.y * tileSize);
-            float3 exitWorld = new float3(exitTile.x * tileSize, 0f, exitTile.y * tileSize);
+            float3 entryWorld = GridToWorldCenter(entryTile);
+            float3 exitWorld = GridToWorldCenter(exitTile);
             float entryRadius = tileSize * 0.5f; // half-tile catch radius
             int exitWaypointIdx = ResolveExitWaypointIndex(exitTile);
             EffectSpawner.SpawnPortal(_em, entryWorld, exitWorld, entryRadius, skill.durationSec, exitWaypointIdx);
