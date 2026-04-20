@@ -109,8 +109,8 @@
 - [x] P9-08 — `BattleBridge.GridToWorldCenter` helper + VFX 4사이트 통일.
 - [x] P9-09 — `PathWaypoint.cs` 파일 삭제.
 - [x] P9-10 — tileSize 단일 소스화 (BattleBridge → MapView/PlacementInput 주입) + Scene 자동 와이어링.
-- [ ] P9-11 — 기준선 Play 녹화 (사용자 수작업 skip 결정, 2026-04-20).
-- [ ] P9-12 — PlayMode 회귀 확인 (Portal 동선 / Tornado 자율 복귀 / Goal 도달, 사용자 작업 대기).
+- [x] ~~P9-11~~ — 기준선 Play 녹화 (사용자 결정으로 skip, 2026-04-20).
+- [x] P9-12 — PlayMode 회귀 확인 완료 (2026-04-21). BuildFlowField walkable=Path-only fix `006ae2f` 적용 후 Portal 동선 / Tornado 자율 복귀 / Goal 도달 전부 검증.
 
 ---
 
@@ -168,5 +168,5 @@
 ---
 
 **문서 버전**: v1.0 (구현 스펙 통합)
-**상태**: 구현 완료. Unity 컴파일 0 에러 / EditMode 52/52 pass. P9-12 사용자 Play 회귀 대기.
+**상태**: **Phase 9 종료 (2026-04-21)**. Unity 컴파일 0 에러 / EditMode 52/52 pass / P9-12 사용자 Play 회귀 통과.
 **작성**: 2026-04-20

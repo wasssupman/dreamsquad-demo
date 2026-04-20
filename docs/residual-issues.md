@@ -33,7 +33,7 @@
 
 - [ ] **P7-15** Phase 7 회귀 — 드래프트 2종 스킬 패널 / Tornado·Meteor·Portal 동작 / Restart·Redraft
 - [ ] **P8-10** Phase 8 Spine/VFX 회귀 — defender Spine 상태 전환 + 5종 VFX prefab 시각
-- [ ] **P9-12** Phase 9 Flow Field 회귀 — Portal 텔레포트 후 자율 복귀 / Tornado field 해제 후 자율 복귀 / Goal cell 도달 시 `PastGoalTag` 부여. P9-11 기준선 녹화는 사용자 결정으로 skip (2026-04-20)
+- [x] **P9-12** Phase 9 Flow Field 회귀 — Portal 텔레포트 후 자율 복귀 / Tornado field 해제 후 자율 복귀 / Goal cell 도달 시 `PastGoalTag` 부여. 2026-04-21 사용자 Play 통과 (BuildFlowField walkable=Path-only fix `006ae2f` 후 검증 완료). P9-11 기준선 녹화는 skip.
 - [ ] **VFX 카탈로그 10개 검토/승인** — `.claude/skills/unity-vfx-authoring/common-skill-vfx-reference.md`
 
 ---
@@ -41,7 +41,7 @@
 ## C. 사용자 에디터 수작업 대기
 
 - [ ] **Shader Graph 템플릿 제작** — dissolve/glow 2종. `.claude/skills/unity-vfx-authoring/templates/` 에 `.shadergraph` 덮어쓰기. `material-settings-reference.md` 가이드 참고.
-- [ ] **Phase 9 기준선 녹화** — Portal / Tornado / 평상시 동선 3 케이스. Phase 9 착수 전 준비.
+- [x] ~~Phase 9 기준선 녹화~~ — 사용자 결정으로 skip. Phase 9 검증은 P9-12 이진 판정으로 대체.
 
 ---
 
