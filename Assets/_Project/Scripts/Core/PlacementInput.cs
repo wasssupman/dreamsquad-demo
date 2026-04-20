@@ -19,7 +19,15 @@ namespace Wassup.Core
         [SerializeField] private BattleBridge bridge;
         [SerializeField] private Camera mainCamera;
         [SerializeField] private MapView mapView;
-        [SerializeField] private float tileSize = 1f;
+
+        // Phase 9 P9-07 — tileSize 단일 소스화. BattleBridge.Awake 가 주입한다.
+        private float _tileSize = 1f;
+
+        // Phase 9 P9-07 — BattleBridge 가 Awake 에서 호출. rounding 로직은 이 값을 사용한다.
+        public void Initialize(float tileSize)
+        {
+            _tileSize = tileSize;
+        }
 
         private void Start()
         {
@@ -52,8 +60,8 @@ namespace Wassup.Core
             if (!plane.Raycast(ray, out float enter)) return;
 
             var worldPos = ray.GetPoint(enter);
-            int tileX = Mathf.RoundToInt(worldPos.x / tileSize);
-            int tileY = Mathf.RoundToInt(worldPos.z / tileSize);
+            int tileX = Mathf.RoundToInt(worldPos.x / _tileSize);
+            int tileY = Mathf.RoundToInt(worldPos.z / _tileSize);
             var cell = new Vector2Int(tileX, tileY);
 
             var gm = GameManager.Instance;

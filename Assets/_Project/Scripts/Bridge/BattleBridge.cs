@@ -36,6 +36,9 @@ namespace Wassup.Bridge
         [SerializeField] private Wassup.Presentation.SpineDefenderPool spineDefenderPool;
         [SerializeField] private float spineDefenderYOffset = 0f;
         [SerializeField] private Wassup.Presentation.VfxSpawner vfxSpawner;
+        // Phase 9 P9-07 — tileSize 단일 소스화. Awake 에서 MapView/PlacementInput 으로 주입.
+        [SerializeField] private Wassup.Core.MapView mapView;
+        [SerializeField] private Wassup.Core.PlacementInput placementInput;
 
         private World _world;
         private EntityManager _em;
@@ -71,6 +74,14 @@ namespace Wassup.Bridge
 
         // Phase 9 flow field 싱글톤 entity reference
         private Entity _flowFieldSingleton = Entity.Null;
+
+        // Phase 9 P9-07 — MapView / PlacementInput 의 Start() 가 돌기 전에 tileSize 와
+        // map 을 주입한다. Unity 가 Start 순서를 보장하지 않으므로 Awake 단계에서 수행.
+        private void Awake()
+        {
+            if (mapView != null) mapView.Initialize(map, tileSize);
+            if (placementInput != null) placementInput.Initialize(tileSize);
+        }
 
         private void Start()
         {
