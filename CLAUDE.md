@@ -16,13 +16,13 @@
 
 ## 현재 단계
 
-**Phase 8 종료 — Phase 9 착수 대기**.
+**Phase 10 종료 — Phase 11 주제 선정 대기**.
 
-- **Phase 0~8 완료**: 실시간 디펜스 루프 → 드래프트 → 스킬 → 투사체/체력바 → 배치/시너지/적 반격 → 타이머/브리핑/봇/측정/Billboard → 코스트 시스템 → 랜덤 2종 스킬 로드아웃 + Tornado/Meteor/Portal → Spine 하이브리드 + 프리팹 VFX 파이프라인 + melee AoE + Tornado 지속 field + DefenderAttackEvent 통합 채널.
-- **Phase 9 주 테마**: Flow Field 기반 길찾기 재설계 (맵 고도화 + 변위 복귀 + 다중 레인). 상세는 `docs/phase9-prep.md`.
-- **Phase 9 착수 전 blocker**: P7-15 / P8-10 Play 회귀 검증 (사용자 작업). 컴파일 blocker 없음.
+- **Phase 0~10 완료**: 실시간 디펜스 루프 → 드래프트 → 스킬 → 투사체/체력바 → 배치/시너지/적 반격 → 타이머/브리핑/봇/측정/Billboard → 코스트 시스템 → 랜덤 2종 스킬 로드아웃 + Tornado/Meteor/Portal → Spine 하이브리드 + 프리팹 VFX 파이프라인 + melee AoE + Tornado 지속 field + DefenderAttackEvent 통합 채널 → Flow field 길찾기 + 변위 복귀 → 맵 4-tile enum + seed procedural + branch/trunk/root 다중 spawn + forest 테마 + 브리핑 map settings UI.
+- **Phase 11 주 테마**: 미정. 후보는 `docs/phase11-prep.md` §2 (Env 타일 효과 / 맵툴 authoring UI / theme obstacle footprint 확장 / multi-goal / seed QA 재현) 중 택 1 또는 신규 주제.
+- **Residual 상태**: Phase 10 종료 시점(2026-04-21) 에 전부 drop. 기술 부채 체크리스트 clean slate.
 
-현재 Phase 범위를 넘어선 기능(예: 다중 goal 경로, NavMesh, 공격 범위 표시 UI)은 **절대 건드리지 않는다**. 해당 항목은 `docs/residual-issues.md` / `docs/phase9-prep.md` 에 이관된 상태다.
+현재 Phase 범위를 넘어선 기능은 **절대 건드리지 않는다**. Phase 11 주제가 확정되기 전까지는 기존 피처(map-system, on-place skill, defender drag/drop, VFX 파이프라인)의 유지보수 성 수정만 허용.
 
 ## 기술 스택
 
@@ -67,7 +67,7 @@
 |---|---|
 | "이 기능을 왜 만드나?" | `docs/PRD.md` — 검증 가설, 운영 원칙 |
 | "어떤 기술 제약이 있나?" | `docs/TRD.md` — ECS 경계, 맥락 분리, 추상화 규칙, 금지 패턴 |
-| "현재까지 무엇이 구현돼 있나?" | `docs/PHASE9.md` (최신 종료 스펙). 이전 Phase 는 `docs/PHASE{0..8}.md`. |
+| "현재까지 무엇이 구현돼 있나?" | `docs/PHASE10.md` (최신 종료 스펙). 이전 Phase 는 `docs/PHASE{0..9}.md`. |
 | "지금 남은 작업은?" | `docs/residual-issues.md` — 페이즈 종료 프로토콜이 붙어있다 |
 | "다음 Phase 는?" | `docs/phase{n}-prep.md` — 이관된 결정/미결 Q 요약 |
 | "feature 구현 상세는?" | `docs/spec/{feature-slug}/` — 분산 스펙 (README + 0~N 작업 단위). 하단 "문서화 구조" 참조 |
@@ -174,11 +174,11 @@ docs/spec/{feature-slug}/
 ## 기억할 것
 
 - **"프로토타입"은 기능 스코프에만 적용되지 코드 품질에는 적용되지 않는다.** 만든 코드는 본 게임에서도 살아남는다.
-- **각 Phase 는 고유의 검증 질문이 있다.** 그 질문에 답하는 데 필요하지 않은 모든 것은 제외된다. 현재 Phase 9 는 "맵/길찾기가 변위(포탈/토네이도/넉백) 후에도 자율 복귀하는가" 에 답해야 한다.
+- **각 Phase 는 고유의 검증 질문이 있다.** 그 질문에 답하는 데 필요하지 않은 모든 것은 제외된다. 직전 Phase 10 은 "seed 기반 procedural 맵이 branch/trunk/root 다중 spawn 구조로 goal 도달성을 보장하며, 테마 오브젝트가 Walk/Place 를 침범하지 않는가" 에 답했다. Phase 11 의 검증 질문은 주제 확정 시점에 정의한다.
 - **"가벼운 설계"와 "재사용 가능"은 양립 가능하다.** 방법은 맥락 분리 + 추상화 규칙 준수 + 현재 Phase 범위 유지.
 
 ---
 
-**현재 활성 Phase**: Phase 10A prep (맵 시스템 재설계 — data 모델 + infra)
-**최근 종료 Phase**: Phase 9 (Flow field 길찾기 교체 — waypoint 제거)
-**Phase 10 착수 조건**: 없음 (Phase 9 완료 후 즉시 진행 가능). P7-15 / P8-10 은 Phase 10 종료 시 함께 검증
+**현재 활성 Phase**: Phase 11 prep (Phase 10 map-system 완료 후 후속 범위 결정)
+**최근 종료 Phase**: Phase 10 (맵 시스템 재설계 — seed procedural, branch/trunk/root lanes, map settings UI)
+**Phase 10 종료 근거**: `docs/spec/map-system/README.md`, `docs/spec/map-system/20_claude_handoff_summary.md`

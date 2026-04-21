@@ -13,7 +13,7 @@
 
 ---
 
-## A. 버그 / 이상 동작
+## A. 버그 / 이상 동작 (해결 이력)
 
 ### A1. Tornado 스냅샷 한계 [High → ✅ 2026-04-19 해결]
 
@@ -24,70 +24,70 @@
 ### A2. 포탈 동선 이상 [High → ✅ 2026-04-20 해결 (Phase 9)]
 
 - **요약 (과거)**: Portal exit 타일이 경로 외부이거나 closest waypoint 가 뒤쪽일 때 텔레포트된 적이 역주행.
-- **해결**: Phase 9 flow field 도입으로 `ResolveExitWaypointIndex` / `PortalLink.exitWaypointIndex` 삭제. 텔레포트 직후 현재 cell 의 flow lookup 으로 자율 복귀. P9-12 사용자 Play 회귀로 최종 확인 예정.
-- **커밋**: Phase 9 P9-06 migration 커밋 (PortalLink.exitWaypointIndex 제거).
+- **해결**: Phase 9 flow field 도입으로 `ResolveExitWaypointIndex` / `PortalLink.exitWaypointIndex` 삭제. 텔레포트 직후 현재 cell 의 flow lookup 으로 자율 복귀. P9-12 사용자 Play 회귀 2026-04-21 통과.
+- **커밋**: Phase 9 P9-06 migration 커밋.
 
 ---
 
-## B. 사용자 Play 검증 대기
+## B. 사용자 Play 검증 (이력)
 
-- [ ] **P7-15** Phase 7 회귀 — 드래프트 2종 스킬 패널 / Tornado·Meteor·Portal 동작 / Restart·Redraft
-- [ ] **P8-10** Phase 8 Spine/VFX 회귀 — defender Spine 상태 전환 + 5종 VFX prefab 시각
-- [x] **P9-12** Phase 9 Flow Field 회귀 — Portal 텔레포트 후 자율 복귀 / Tornado field 해제 후 자율 복귀 / Goal cell 도달 시 `PastGoalTag` 부여. 2026-04-21 사용자 Play 통과 (BuildFlowField walkable=Path-only fix `006ae2f` 후 검증 완료). P9-11 기준선 녹화는 skip.
-- [ ] **VFX 카탈로그 10개 검토/승인** — `.claude/skills/unity-vfx-authoring/common-skill-vfx-reference.md`
+- [x] **P9-12** Phase 9 Flow Field 회귀 — 2026-04-21 사용자 Play 통과 (BuildFlowField walkable=Path-only fix `006ae2f` 후 검증).
+- ~~P7-15 / P8-10 / VFX 카탈로그 검토~~ — Phase 10 종료(2026-04-21) 시 drop 결정.
 
 ---
 
-## C. 사용자 에디터 수작업 대기
+## C. 사용자 에디터 수작업 (이력)
 
-- [ ] **Shader Graph 템플릿 제작** — dissolve/glow 2종. `.claude/skills/unity-vfx-authoring/templates/` 에 `.shadergraph` 덮어쓰기. `material-settings-reference.md` 가이드 참고.
-- [x] ~~Phase 9 기준선 녹화~~ — 사용자 결정으로 skip. Phase 9 검증은 P9-12 이진 판정으로 대체.
+- [x] ~~Phase 9 기준선 녹화~~ — 2026-04-20 skip 결정. P9-12 이진 판정으로 대체.
+- ~~Shader Graph 템플릿 (dissolve/glow)~~ — Phase 10 종료(2026-04-21) 시 drop 결정.
 
 ---
 
 ## D. Phase 9 이관 (맵/길찾기)
 
-모든 항목 `docs/phase9-prep.md` 로 이관 완료. 본 문서에선 포인터만 유지.
-
-- Flow Field 기반 길찾기 재설계 (Phase 9 주 테마)
-- 이슈 A (포탈 동선) / B (Tornado 자율 복귀) / C (다중 레인 확장) — Phase 9 해결 경로 명시됨
-- P9-01 ~ P9-07 작업 분해 초안
+모든 항목 Phase 9 에서 해결 완료. 본 카테고리는 이력용으로만 유지.
 
 ---
 
-## E. 후속 제안 / 미확정 (drop 여지 있음)
+## E. 후속 제안 (Phase 10 종료 시 drop)
 
-- **Meteor HDR + bloom 2단계 업그레이드** — 현 씬 URP bloom Volume 없음. 필요 시 post-processing 도입 후 HDR 로 전환
-- **onPlace 이펙트 VFX** (SlowPulse / BoostNearbyDefenders 의 시각 피드백)
-- **Projectile hit sparks**
-- **Synergy glow** — Shader Graph glow 템플릿 활용 후보
-- **Enemy death dissolve** — Shader Graph dissolve 템플릿 활용 후보
-- **BattleBridge.SpawnMeteorWarningVisual → prefab 화** — 현재 procedural Quad. VFX 파이프라인 일관성 위해 후속
-- **방어 유닛 공격 범위 표시 UI** — 우측 중앙(SkillBar 아래) 홀드 버튼, 홀드 중 모든 placed defender 의 attackRange ring 일괄 노출. 홀드 시작에 aim race 초기화(`RaiseAimCanceled` + `InspectHold=true`). `RangeOverlayController` MB + LineRenderer pool 설계 완료, Phase 9 이관 확정 (2026-04-19)
+2026-04-21 Phase 10 종료 시점에 다음 후속 제안 항목 전부 drop:
+
+- ~~Meteor HDR + bloom 2단계 업그레이드~~
+- ~~onPlace 이펙트 VFX (SlowPulse / BoostNearbyDefenders)~~
+- ~~Projectile hit sparks~~
+- ~~Synergy glow~~
+- ~~Enemy death dissolve~~
+- ~~BattleBridge.SpawnMeteorWarningVisual → prefab 화~~
+- ~~방어 유닛 공격 범위 표시 UI~~ (Phase 9 이관 예정이었으나 Phase 10 에서도 미구현 → drop)
+
+새 후속 제안은 추후 필요 시 재등재.
 
 ---
 
-## F. 코드 정리 (후속 저비용)
+## F. 코드 정리 (이력)
 
 - [x] `PlacementInput` random fallback 제거 (커밋 `37213c2`)
-- [ ] `BattleBridge.SpawnMeteorWarningVisual` procedural Quad 제거 검토 (prefab 화 여부와 연계)
 - [x] `PathFollowState.currentWaypointIndex` / `DynamicBuffer<PathWaypoint>` 제거 (Phase 9 P9-05B / P9-09)
 - [x] `ResolveExitWaypointIndex` / `PortalLink.exitWaypointIndex` 제거 (Phase 9 P9-06)
 - [x] `MapData.paths` `[Obsolete]` 필드 완전 삭제 — Phase 10 종료 시 `paths` 필드/`Paths` property/`PathDefinition` 클래스 + `PrototypeMap.asset` paths 블록 제거
-- [ ] Task 2 MEDIUM: `GridMath` `CellIndex` 및 half-boundary 반올림 EditMode 테스트 보강 (Phase 10 맵 파이프라인 정착 후 재검토)
+- ~~BattleBridge.SpawnMeteorWarningVisual procedural Quad 제거~~ — Phase 10 종료 drop.
+- ~~GridMath CellIndex half-boundary 반올림 테스트 보강~~ — Phase 10 종료 drop.
 
 ---
 
-## 상태 요약 (2026-04-20 Phase 9 종료 기준)
+## 상태 요약 (2026-04-21 Phase 10 종료 기준)
 
 | 카테고리 | 미체크 수 | 비고 |
 |---|---|---|
-| A. 버그 | 0 | A1 Phase 8 §17, A2 Phase 9 P9-06 에서 해결 |
-| B. 사용자 Play | 3 | P7-15 / P8-10 / P9-12 (사용자 Play 확인) |
-| C. 에디터 수작업 | 1 | Shader Graph 템플릿. Phase 9 기준선 녹화는 skip 결정 (2026-04-20) |
-| D. Phase 9 | — | Phase 9 완료. 이후 이관은 `docs/phase10-prep.md` |
-| E. 후속 제안 | 7 | 1~6 keep (Phase 10 이후 판단), 7 (공격 범위 UI) Phase 10+ 이관 |
-| F. 코드 정리 | 2 | PathWaypoint / Portal exit index 삭제 완료. 남은 항목 Phase 10 asset migration 및 테스트 보강 |
+| A. 버그 | 0 | A1/A2 모두 해결 |
+| B. Play 검증 | 0 | P9-12 통과. P7-15/P8-10/VFX 카탈로그 drop |
+| C. 에디터 수작업 | 0 | 전부 drop |
+| D. Phase 9 이관 | — | 완료 |
+| E. 후속 제안 | 0 | 전부 drop |
+| F. 코드 정리 | 0 | 미해결 항목 drop |
+
+**미체크 항목 없음. Phase 11 은 clean slate 로 출발.**
 
 ---
 
