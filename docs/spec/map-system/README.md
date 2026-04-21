@@ -1,7 +1,7 @@
 # Map System Spec (Phase 10)
 
 **작성일**: 2026-04-21
-**연결 문서**: `docs/plans/2026-04-21-map-system-design.md`, `docs/phase10-prep.md`
+**연결 문서**: `docs/plans/2026-04-21-map-system-design.md`, `docs/prototype/phase10-prep.md` (프로토타이핑 단계 이관 문서)
 **목표**: Phase 9 flow field 엔진 위에 타일 4종 데이터 모델 + seed 기반 procedural 생성 + 테마 오브젝트 배치 시스템을 구축한다.
 **상태**: 구현 완료. 인계 요약은 `20_claude_handoff_summary.md` 를 기준으로 한다.
 

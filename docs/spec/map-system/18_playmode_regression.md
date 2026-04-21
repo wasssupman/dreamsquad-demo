@@ -75,9 +75,8 @@ Play 확인:
 
 - 4개 시나리오 모두 통과.
 - 녹화 증거는 프로젝트 policy 없으면 commit 생략 (L-3). 현재는 Play smoke 서술을 `20_claude_handoff_summary.md` 에 기록.
-- `docs/residual-issues.md` 에 P10 관련 잔존 항목이 필요하면 Phase 11 prep 에서 별도 갱신.
+- Phase 10 종료 시점(2026-04-21)에 `docs/residual-issues.md` 는 `docs/prototype/` 로 이관되고 잔존 항목은 전부 drop. 추후 이슈는 관련 spec 폴더에 "후속 후보" 로 기록.
 - Phase 10A + 10B 통합 종료 스펙은 `README.md` + `20_claude_handoff_summary.md` 로 대체.
-- `CLAUDE.md` 하단 상태: Phase 10 → Phase 11 prep 으로 갱신.
 - H-6: `ForceFailForTests` hook 으로 production code 수정 없이 fallback 시나리오 재현.
 
 ## Subtask 분할 (OVERRUN 대응, 30분 예상)
