@@ -3,6 +3,7 @@
 **작성일**: 2026-04-21
 **연결 문서**: `docs/plans/2026-04-21-map-system-design.md`, `docs/phase10-prep.md`
 **목표**: Phase 9 flow field 엔진 위에 타일 4종 데이터 모델 + seed 기반 procedural 생성 + 테마 오브젝트 배치 시스템을 구축한다.
+**상태**: 구현 완료. 인계 요약은 `20_claude_handoff_summary.md` 를 기준으로 한다.
 
 ## 구현 문서 목록
 
@@ -27,7 +28,7 @@
 | 번호 | 작업 구분 | 문서 | 목적 |
 |---|---|---|---|
 | 11 | Generator | `11_procedural_generator.md` | `Generate(seed, gridSize, theme, generatorVersion)` API |
-| 12 | Algorithm | `12_path_carve_algorithm.md` | 각 spawn 독립 Manhattan walk + BFS |
+| 12 | Algorithm | `12_path_carve_algorithm.md` | branch/trunk/root path + BFS |
 | 13 | Theme | `13_map_theme_data.md` | MapThemeData SO (2필드) |
 | 14 | Placer | `14_obstacle_placer.md` | 단일 셀 배치, Walk/Place 비침범 |
 | 15 | Deck | `15_attackdeck_spawnindex.md` | SpawnEntry.spawnIndex migration |
@@ -35,6 +36,7 @@
 | 17 | Manual | `17_manual_map_input.md` | 맵툴 예약 data shape |
 | 18 | Regression | `18_playmode_regression.md` | PlayMode 3회 비교 + fallback |
 | 19 | Integration | `19_battlebridge_10b_integration.md` | BattleBridge Phase 10B 필드 + 최종 orchestration (Codex C-8 대응) |
+| 20 | Handoff | `20_claude_handoff_summary.md` | Claude 인계용 구현 요약 |
 
 ## 공통 원칙
 
@@ -45,3 +47,16 @@
 - RNG: `Unity.Mathematics.Random(seed)` (Burst-safe). `UnityEngine.Random` 금지.
 - Procedural 실패 시 fallback 하드코딩 직선 맵 (freeze 방지).
 - Phase 10 맵 크기는 X×Y 가변 (기본 20×20). 모든 로직이 gridSize 파라미터 사용 (하드코딩 제거).
+- Spawn lane 은 최소 2개, 높이에 따라 가능한 최대치로 clamp. 각 lane 은 분리된 branch node 로 시작해 shared trunk 를 통해 goal root 로 merge.
+
+## 완료 확인
+
+- [x] Phase 10A data 모델 + fixture integration 완료
+- [x] Phase 10B procedural generator + theme obstacle 완료
+- [x] Map settings UI: path shape, map size, density, spawn lane count
+- [x] Goal marker 표시
+- [x] Spawn lane count UI 값이 preview/spawn/runtime map 에 반영
+- [x] Branch/trunk/root lane 알고리즘 적용
+- [x] Unity compile 0 errors
+- [x] EditMode tests 69/69 passed
+- [x] Play smoke: Straight, 20x10, spawnLaneCount=5, console error/warning 0

@@ -57,32 +57,32 @@ public enum MapTileType : byte
 
 ### Phase 10A — Data 모델 + Infra
 
-- [ ] **P10A-01** — `MapTileType` enum 신설 (Walk/Place/Env/Deco). 기존 `TileType` 과 분리
-- [ ] **P10A-02** — `MapGenerationSettings` SO 신설 (gridWidth, gridHeight, defaultSeed — 기본 20×20)
-- [ ] **P10A-03** — `GeneratedMap` runtime struct: `NativeArray<MapTileType> tiles, int2[] spawns, int2 goal, int2 gridSize, int seed, int generatorVersion`
-- [ ] **P10A-04** — `BattleBridge` 가 GeneratedMap 단일 owner. `MapView.Initialize(GeneratedMap)`, `PlacementInput.Initialize(GeneratedMap)` 주입
-- [ ] **P10A-05** — `FlowFieldBuilder` walkMask = `MapTileType == Walk` 로 변경 (Phase 9 Path-only 규칙 이어감). 20×20 크기 회귀 검증
-- [ ] **P10A-06** — `PlacementInput` 배치 판정을 `MapTileType == Place` 로 교체
-- [ ] **P10A-07** — `MapView` 가 4 타일 타입별 cube Material 4종 (임시 색상). 시각 구분만
-- [ ] **P10A-08** — `MapData` legacy asset: fixture 용으로 유지 + `MapTileType` 매핑 규칙 문서화 (코드 주석 1단락)
-- [ ] **P10A-09** — Tests: 20×20 gridSize / multi-spawn 전부 goal 연결성 BFS / 4-enum migration EditMode
+- [x] **P10A-01** — `MapTileType` enum 신설 (Walk/Place/Env/Deco). 기존 `TileType` 과 분리
+- [x] **P10A-02** — `MapGenerationSettings` SO 신설 (gridWidth, gridHeight, defaultSeed — 기본 20×20)
+- [x] **P10A-03** — `GeneratedMap` runtime struct: `NativeArray<MapTileType> tiles, int2[] spawns, int2 goal, int2 gridSize, int seed, int generatorVersion`
+- [x] **P10A-04** — `BattleBridge` 가 GeneratedMap 단일 owner. `MapView.Initialize(GeneratedMap)`, `PlacementInput.Initialize(GeneratedMap)` 주입
+- [x] **P10A-05** — `FlowFieldBuilder` walkMask = `MapTileType == Walk` 로 변경 (Phase 9 Path-only 규칙 이어감). 20×20 크기 회귀 검증
+- [x] **P10A-06** — `PlacementInput` 배치 판정을 `MapTileType == Place` 로 교체
+- [x] **P10A-07** — `MapView` 가 4 타일 타입별 cube Material 4종 (임시 색상). 시각 구분만
+- [x] **P10A-08** — `MapData` legacy asset: fixture 용으로 유지 + `MapTileType` 매핑 규칙 문서화 (코드 주석 1단락)
+- [x] **P10A-09** — Tests: 20×20 gridSize / multi-spawn 전부 goal 연결성 BFS / 4-enum migration EditMode
 
 ### Phase 10B — Procedural 생성 + 테마
 
-- [ ] **P10B-01** — `ProceduralMapGenerator.Generate(seed, gridSize, theme) → GeneratedMap`: path carve v1 (Q6 결정 후 확정)
-- [ ] **P10B-02** — 수동 입력 경로: `GeneratedMap` 을 직접 받는 API (맵툴 예약용 data shape 고정)
-- [ ] **P10B-03** — Fallback 맵: 생성 3회 실패 시 하드코딩 **직선 path 단일 spawn-goal** 맵 사용. freeze 방지
-- [ ] **P10B-04** — `MapThemeData` SO (최소 필드): `obstaclePrefabs[]`, `minPlaceableRatio` (2필드)
-- [ ] **P10B-05** — `ObstaclePlacer`: Walk + Place 비침범 셀에 **단일 셀** obstacle prefab 배치 (multi-cell 은 Phase 11 이관)
-- [ ] **P10B-06** — Forest 테마 v1: obstacle prefab 3~4종 (1×1), `forest.asset` MapThemeData
-- [ ] **P10B-07** — `AttackDeck.SpawnEntry.pathId` → `spawnIndex` (int) migration + `WaveA.asset` 수정
-- [ ] **P10B-08** — Seed 로그: BattleLogger 에 `seed` + `generatorVersion` 필드
-- [ ] **P10B-09** — Tests: seed 결정성 (same seed → same map) / Path carve 연결성 / PlayMode 다른 seed 3회 비교
+- [x] **P10B-01** — `ProceduralMapGenerator.Generate(seed, gridSize, theme) → GeneratedMap`: branch/trunk/root path carve v1
+- [x] **P10B-02** — 수동 입력 경로: `GeneratedMap` 을 직접 받는 API (맵툴 예약용 data shape 고정)
+- [x] **P10B-03** — Fallback 맵: 생성 실패 시 하드코딩 **직선 multi-spawn-goal** 맵 사용. freeze 방지
+- [x] **P10B-04** — `MapThemeData` SO (최소 필드): `obstaclePrefabs[]`, `minPlaceableRatio` (2필드)
+- [x] **P10B-05** — `ObstaclePlacer`: Walk + Place 비침범 셀에 **단일 셀** obstacle prefab 배치 (multi-cell 은 Phase 11 이관)
+- [x] **P10B-06** — Forest 테마 v1: obstacle prefab 3~4종 (1×1), `forest.asset` MapThemeData
+- [x] **P10B-07** — `AttackDeck.SpawnEntry.pathId` → `spawnIndex` (int) migration + `WaveA.asset` 수정
+- [x] **P10B-08** — Seed 로그: BattleLogger 에 `seed` + `generatorVersion` 필드
+- [x] **P10B-09** — Tests: seed 결정성 (same seed → same map) / Path carve 연결성 / Play smoke 다른 spawn lane 비교
 
 ### 문서
 
-- [ ] **P10-DOC-01** — PHASE10A.md / PHASE10B.md 종료 스펙 (또는 PHASE10.md 통합)
-- [ ] **P10-DOC-02** — CLAUDE.md Phase 갱신
+- [x] **P10-DOC-01** — `docs/spec/map-system/` 완료 처리 + `20_claude_handoff_summary.md` 작성
+- [x] **P10-DOC-02** — CLAUDE.md Phase 갱신
 
 ---
 
@@ -157,4 +157,4 @@ Phase 10B 착수 전 결정:
 
 **작성**: 2026-04-19 (초안) / 2026-04-21 (rev2 — 사용자 요구 재정의 + Codex 축소 반영)  
 **근거**: Phase 9 브레인스토밍 이관 + 사용자 6 bullet + Codex 과잉 검토  
-**상태**: Phase 10 브레인스토밍 Q-B/I 해결 후 10A 착수 → Q-6/C/F/K 해결 후 10B 착수.
+**상태**: Phase 10 map-system 구현 완료. 세부 종료 상태는 `docs/spec/map-system/20_claude_handoff_summary.md` 를 기준으로 인계.

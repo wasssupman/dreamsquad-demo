@@ -2,7 +2,7 @@
 
 **작성일**: 2026-04-21
 **스코프**: Phase 10 맵 시스템 재설계 전체. Phase 9 flow field 엔진 위에 얹는 데이터 모델 교체 + procedural 생성 + 테마 레이어.
-**구현 스펙**: `docs/spec/map-system/` (분산 구조, 19개 파일).
+**구현 스펙**: `docs/spec/map-system/` (분산 구조, 20개 파일 + handoff).
 
 ## 목표
 
@@ -25,8 +25,8 @@ BattleBridge (MonoBehaviour owner)
   │     - int seed, int generatorVersion
   │
   ├── ProceduralMapGenerator.Generate(seed, gridSize, theme, generatorVersion) → GeneratedMap
-  │     - path carve: 각 spawn 별 독립 randomized Manhattan walk + BFS validation
-  │     - fallback: 3회 실패 시 하드코딩 직선 맵
+  │     - path carve: spawn branch node → shared trunk → root(goal) + BFS validation
+  │     - fallback: 생성 실패 시 하드코딩 직선 multi-spawn 맵
   │
   ├── ManualMapInput struct (맵툴 예약 data shape)
   │     - BattleBridge.BuildFromManual(input) → GeneratedMap
@@ -42,7 +42,7 @@ BattleBridge (MonoBehaviour owner)
 |---|---|
 | Q-B | ECS 주입 없음. FlowFieldSingleton 만 유지, GeneratedMap 은 MonoBehaviour 보유 |
 | Q-I | Unity.Mathematics.Random (Burst-safe, Xorshift128) |
-| Q-6 | Path carve = 각 spawn 독립 randomized Manhattan walk + BFS post-validation |
+| Q-6 | Path carve = spawn branch node + shared trunk + root(goal), Free shape 만 branch 구간 randomized Manhattan |
 | Q-C | AttackDeck.SpawnEntry.spawnIndex (int) 으로 migration |
 | Q-F | Q-C 에 종속 — deck 에 명시된 spawnIndex 로 분배 |
 | Q-K | ManualMapInput struct (gridSize/walkCells/placeCells/spawns/goal) |
@@ -50,7 +50,7 @@ BattleBridge (MonoBehaviour owner)
 ## Phase 분할
 
 - **Phase 10A** (spec 파일 0~10): data 모델 + infra. PrototypeMap fixture 위에서 새 4-enum + GeneratedMap + multi-spawn 검증
-- **Phase 10B** (spec 파일 11~18): procedural 생성 + 테마 오브젝트 배치 + AttackDeck migration
+- **Phase 10B** (spec 파일 11~20): procedural 생성 + 테마 오브젝트 배치 + AttackDeck migration + handoff
 
 ## 구현 상세
 
@@ -79,6 +79,7 @@ BattleBridge (MonoBehaviour owner)
 | 17 | ManualMapInput struct | 10B |
 | 18 | PlayMode regression | 10B |
 | 19 | BattleBridge Phase 10B Integration | 10B |
+| 20 | Claude handoff summary | 10B |
 
 ## Phase 11+ 이관 확정
 
