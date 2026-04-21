@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8bf4e43b5104a4537a201022bb0f9ea2, type: 3}
+  m_Name: forest
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.MapThemeData
+  obstaclePrefabs:
+  - {fileID: 8074820532000868882, guid: fff782a4ccd5c462783fe947c4a1c02f, type: 3}
+  - {fileID: 8513532867696311611, guid: 3ad8bbe03050c46e08b97ef65bf990ac, type: 3}
+  - {fileID: 2955207690451317735, guid: 86f7ff63b329c4d589de508ff2c36327, type: 3}
+  - {fileID: 5073162552732502671, guid: 711cd5aea3d224a4488537bd76a4c0ab, type: 3}
+  minPlaceableRatio: 0.4
