@@ -49,7 +49,24 @@ namespace Wassup.Data
         // Spine rigs ship in their own unit space (often pixels); map into our
         // tile-based world so a single SO knob is enough to normalise rig size.
         public float spineVisualScale = 1f;
+
+        [Header("Deployment Presentation")]
+        public string dragAnimation = "idle";
+        public string deployAnimation = "deploy";
+        public GameObject placementVfxPrefab;
+        public float deploymentDuration = 0.45f;
+        public float placementSkillDelay = 0f;
     }
 
-    public enum OnPlaceEffectType { None, SlowPulse, BoostNearbyDefenders }
+    public enum OnPlaceEffectType
+    {
+        None,
+        SlowPulse,
+        BoostNearbyDefenders,
+        BindNearby,
+        MeleeBurst,
+        ForwardProjectile,
+        GainCost,
+        ReduceSkillCooldown,
+    }
 }

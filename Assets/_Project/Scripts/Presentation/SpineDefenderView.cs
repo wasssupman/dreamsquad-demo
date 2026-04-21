@@ -69,6 +69,15 @@ namespace Wassup.Presentation
             state.AddAnimation(0, _unitData.idleAnimation, true, 0f);
         }
 
+        public void PlayDeploy()
+        {
+            if (_dying || _skeleton == null || string.IsNullOrEmpty(_unitData.deployAnimation)) return;
+            var state = _skeleton.AnimationState;
+            state.SetAnimation(0, _unitData.deployAnimation, false);
+            if (!string.IsNullOrEmpty(_unitData.idleAnimation))
+                state.AddAnimation(0, _unitData.idleAnimation, true, 0f);
+        }
+
         // Triggers the death animation. When it completes the GameObject
         // destroys itself — callers should *not* Destroy() the object directly,
         // or the ECS bridge keeps dead entries in its view dictionary.

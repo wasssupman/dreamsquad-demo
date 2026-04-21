@@ -42,7 +42,10 @@ namespace Wassup.Battle.Combat
 
             // Phase 4: symmetric defender snapshot so the enemy→defender loop below
             // can pick nearest defender in range without nested queries.
-            var defenderQuery = SystemAPI.QueryBuilder().WithAll<DefenderUnitTag, LocalTransform>().Build();
+            var defenderQuery = SystemAPI.QueryBuilder()
+                .WithAll<DefenderUnitTag, LocalTransform>()
+                .WithNone<PendingDeployment>()
+                .Build();
             var defenders = defenderQuery.ToEntityArray(Allocator.Temp);
             var defenderTransforms = defenderQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
 
@@ -67,6 +70,7 @@ namespace Wassup.Battle.Combat
             foreach (var (attack, transform, defenderEntity) in
                      SystemAPI.Query<RefRW<AttackState>, RefRO<LocalTransform>>()
                               .WithAll<DefenderUnitTag>()
+                              .WithNone<PendingDeployment>()
                               .WithEntityAccess())
             {
                 // Tick cooldown first.

@@ -20,9 +20,9 @@ MonoBehaviour:
   visualMesh: {fileID: 0}
   visualMaterial: {fileID: 2100000, guid: cb64122add98548e09b4225537464cf9, type: 2}
   projectile: {fileID: 11400000, guid: e222cc6b62b6d4ae99fbd71912742f2c, type: 2}
-  onPlaceEffect: 0
-  onPlaceRange: 0
-  onPlaceMagnitude: 0
+  onPlaceEffect: 4
+  onPlaceRange: 2
+  onPlaceMagnitude: 80
   onPlaceDuration: 0
   cost: 4
   skeletonDataAsset: {fileID: 11400000, guid: b0640b88ee78d49f38774a3a4b09bf4d, type: 2}

@@ -20,10 +20,10 @@ MonoBehaviour:
   visualMesh: {fileID: 0}
   visualMaterial: {fileID: 2100000, guid: a1b2c3d4e5f601234567890abcdef103, type: 2}
   projectile: {fileID: 11400000, guid: 9ba8609078272458283efd21cf035040, type: 2}
-  onPlaceEffect: 1
-  onPlaceRange: 2.5
-  onPlaceMagnitude: 0.7
-  onPlaceDuration: 3
+  onPlaceEffect: 6
+  onPlaceRange: 0
+  onPlaceMagnitude: 1
+  onPlaceDuration: 0
   cost: 1
   skeletonDataAsset: {fileID: 11400000, guid: b0640b88ee78d49f38774a3a4b09bf4d, type: 2}
   spineSkinName: Goat

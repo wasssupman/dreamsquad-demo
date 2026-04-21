@@ -17,13 +17,14 @@ MonoBehaviour:
   attackRange: 4
   attackDamage: 15
   attackCooldown: 1.5
+  attackTargetCount: 1
   visualMesh: {fileID: 0}
   visualMaterial: {fileID: 2100000, guid: 8b475daf22c6b455cae26332bd71a8bd, type: 2}
   projectile: {fileID: 11400000, guid: 9ba8609078272458283efd21cf035040, type: 2}
-  onPlaceEffect: 0
-  onPlaceRange: 0
-  onPlaceMagnitude: 0
-  onPlaceDuration: 0
+  onPlaceEffect: 3
+  onPlaceRange: 2.5
+  onPlaceMagnitude: 0.1
+  onPlaceDuration: 1.5
   cost: 2
   skeletonDataAsset: {fileID: 11400000, guid: b0640b88ee78d49f38774a3a4b09bf4d, type: 2}
   spineSkinName: Lamb
@@ -31,3 +32,8 @@ MonoBehaviour:
   attackAnimation: weapons/blunderbuss/heavy-horizontal-shoot
   deathAnimation: die
   spineVisualScale: 1
+  dragAnimation: find-item/find-item-loop
+  deployAnimation: cast-spell2
+  placementVfxPrefab: {fileID: 0}
+  deploymentDuration: 0.45
+  placementSkillDelay: 0

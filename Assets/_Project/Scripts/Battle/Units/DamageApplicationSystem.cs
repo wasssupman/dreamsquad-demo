@@ -25,6 +25,7 @@ namespace Wassup.Battle.Units
             foreach (var (health, damageBuffer, entity) in
                      SystemAPI.Query<RefRW<Health>, DynamicBuffer<IncomingDamage>>()
                               .WithNone<DeadTag>()
+                              .WithNone<PendingDeployment>()
                               .WithEntityAccess())
             {
                 if (damageBuffer.Length == 0) continue;

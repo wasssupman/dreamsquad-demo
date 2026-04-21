@@ -43,6 +43,14 @@ namespace Wassup.Core
 
         public bool CanAfford(int amount) => _current >= amount;
 
+        public int AddCost(int amount)
+        {
+            if (amount <= 0) return 0;
+            float before = _current;
+            _current = Mathf.Min(_max, _current + amount);
+            return Mathf.FloorToInt(_current - before);
+        }
+
         public bool TrySpend(int amount)
         {
             if (amount <= 0) return true;

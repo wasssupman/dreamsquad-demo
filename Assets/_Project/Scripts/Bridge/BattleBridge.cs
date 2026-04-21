@@ -46,7 +46,6 @@ namespace Wassup.Bridge
         // Phase 9 P9-07 — tileSize 단일 소스화. Awake 에서 MapView/PlacementInput 으로 주입.
         [SerializeField] private Wassup.Core.MapView mapView;
         [SerializeField] private Wassup.Core.PlacementInput placementInput;
-        [SerializeField] private DefenderDragPlacementController dragPlacementController;
 
         private ManualMapInput? _manualMapInput;
         private GeneratedMap _generatedMap;
@@ -100,9 +99,6 @@ namespace Wassup.Bridge
 
             if (placementInput == null)
                 Debug.LogError("[BattleBridge] placementInput reference missing — assign in Inspector.", this);
-
-            if (dragPlacementController != null)
-                dragPlacementController.Configure(this, mapView, Camera.main, placementInput);
         }
 
         private void Start()

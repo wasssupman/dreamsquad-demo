@@ -41,6 +41,23 @@ namespace Wassup.Core
             return Mathf.Clamp01(rem / skill.cooldownSec);
         }
 
+        public int ReduceAllCooldowns(float seconds)
+        {
+            if (seconds <= 0f || _cooldownRemaining.Count == 0) return 0;
+
+            int affected = 0;
+            var keysSnapshot = new List<SkillData>(_cooldownRemaining.Keys);
+            foreach (var key in keysSnapshot)
+            {
+                if (!_cooldownRemaining.TryGetValue(key, out var rem) || rem <= 0f) continue;
+                float next = Mathf.Max(0f, rem - seconds);
+                if (next <= 0f) _cooldownRemaining.Remove(key);
+                else _cooldownRemaining[key] = next;
+                affected++;
+            }
+            return affected;
+        }
+
         // Called by BattleBridge at StartBattle / Restart / Redraft so stale
         // cooldown values never bleed across sessions.
         public void ResetAll()
