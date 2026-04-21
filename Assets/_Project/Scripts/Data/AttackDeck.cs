@@ -18,6 +18,7 @@ namespace Wassup.Data
     {
         public float triggerTimeSec;
         public AttackUnitData unitType;
-        public string pathId; // "A" or "B" — must match MapData.PathDefinition.id
+        [Tooltip("GeneratedMap.spawns array index. Out-of-range values fall back to index 0.")]
+        public int spawnIndex;
     }
 }
