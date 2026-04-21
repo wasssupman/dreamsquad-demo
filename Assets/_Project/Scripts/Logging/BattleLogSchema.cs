@@ -12,12 +12,24 @@ namespace Wassup.Logging
         public string timestamp_start;
         public string timestamp_end;
         public string attack_deck_id;
+        public MapRecord map = new();
         public DraftRecord draft = new();
         public SkillRecord skill = new();
         public SynergyRecord synergy = new();
         public List<OnPlaceUsageLog> on_place_usages = new();
         public List<PlacementLog> placements = new();
         public BattleResult result = new();
+    }
+
+    [Serializable]
+    public class MapRecord
+    {
+        public int seed;
+        public int generatorVersion;
+        public int gridWidth;
+        public int gridHeight;
+        public int spawnCount;
+        public string pathShape;
     }
 
     [Serializable]

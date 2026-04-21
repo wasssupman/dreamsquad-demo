@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using Unity.Mathematics;
 using UnityEngine;
 
 namespace Wassup.Logging
@@ -33,6 +34,17 @@ namespace Wassup.Logging
         {
             if (currentEntry == null) return;
             currentEntry.attack_deck_id = deckId ?? string.Empty;
+        }
+
+        public void LogMap(int seed, int generatorVersion, int2 gridSize, int spawnCount, string pathShape = "")
+        {
+            if (currentEntry == null) return;
+            currentEntry.map.seed = seed;
+            currentEntry.map.generatorVersion = generatorVersion;
+            currentEntry.map.gridWidth = gridSize.x;
+            currentEntry.map.gridHeight = gridSize.y;
+            currentEntry.map.spawnCount = spawnCount;
+            currentEntry.map.pathShape = pathShape ?? string.Empty;
         }
 
         // Caller passes a fully-populated DraftRecord (pool names, picked names in
