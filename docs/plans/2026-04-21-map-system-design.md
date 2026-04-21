@@ -24,14 +24,14 @@ BattleBridge (MonoBehaviour owner)
   │     - int2[] spawns, int2 goal
   │     - int seed, int generatorVersion
   │
-  ├── ProceduralMapGenerator.Generate(seed, gridSize, theme) → GeneratedMap
+  ├── ProceduralMapGenerator.Generate(seed, gridSize, theme, generatorVersion) → GeneratedMap
   │     - path carve: 각 spawn 별 독립 randomized Manhattan walk + BFS validation
   │     - fallback: 3회 실패 시 하드코딩 직선 맵
   │
   ├── ManualMapInput struct (맵툴 예약 data shape)
   │     - BattleBridge.BuildFromManual(input) → GeneratedMap
   │
-  ├── MapView.Initialize(GeneratedMap, theme) — 4 타일 cube + obstacle prefab
+  ├── MapView.Initialize(GeneratedMap, tileSize) + InstantiateObstacles(GeneratedMap, theme) — 4 타일 cube + obstacle prefab
   ├── PlacementInput.Initialize(GeneratedMap) — MapTileType.Place 판정
   └── FlowFieldBuilder walkmask = MapTileType == Walk
 ```

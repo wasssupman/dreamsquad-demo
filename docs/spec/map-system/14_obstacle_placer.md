@@ -76,9 +76,9 @@ public void InstantiateObstacles(GeneratedMap map, MapThemeData theme)
 {
     if (theme == null || theme.obstaclePrefabs == null || theme.obstaclePrefabs.Length == 0) return;
 
-    if (obstaclesRoot != null) Destroy(obstaclesRoot);
-    obstaclesRoot = new GameObject("Obstacles");
-    obstaclesRoot.transform.SetParent(transform, false);
+    if (_obstaclesRoot != null) Destroy(_obstaclesRoot);
+    _obstaclesRoot = new GameObject("Obstacles");
+    _obstaclesRoot.transform.SetParent(transform, false);
 
     // 같은 seed 로 같은 prefab 배정을 위해 rng 재사용 또는 별도 해시 권장
     // v1: map.seed + cellIndex 해시로 prefab 선택
@@ -95,7 +95,7 @@ public void InstantiateObstacles(GeneratedMap map, MapThemeData theme)
         var prefab = theme.obstaclePrefabs[prefabIdx];
 
         var pos = new Vector3(x * _tileSize, 0f, y * _tileSize);
-        Instantiate(prefab, pos, Quaternion.identity, obstaclesRoot.transform);
+        Instantiate(prefab, pos, Quaternion.identity, _obstaclesRoot.transform);
     }
 }
 ```

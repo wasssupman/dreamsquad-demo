@@ -58,11 +58,19 @@ public static GeneratedMap BuildFromManual(ManualMapInput input, int seed = 0, i
         Debug.LogError("[BuildFromManual] spawns required.");
         return default;
     }
-    // H-4: goal 및 spawn bounds 체크
+    // H-4 / N-2: goal 및 **모든 spawn** bounds 체크
     if (!InBounds(input.goal, input.gridSize))
     {
         Debug.LogError($"[BuildFromManual] goal {input.goal} out of gridSize {input.gridSize}.");
         return default;
+    }
+    for (int i = 0; i < input.spawns.Length; i++)
+    {
+        if (!InBounds(input.spawns[i], input.gridSize))
+        {
+            Debug.LogError($"[BuildFromManual] spawns[{i}] {input.spawns[i]} out of gridSize {input.gridSize}.");
+            return default;
+        }
     }
 
     int n = input.gridSize.x * input.gridSize.y;

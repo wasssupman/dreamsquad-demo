@@ -156,7 +156,7 @@ namespace Wassup.Data
 
 ## 결정성
 
-- 동일 `seed + gridSize + theme.obstaclePrefabs.Length + CurrentGeneratorVersion` → 동일 `GeneratedMap`
+- 동일 `seed + gridSize + theme.obstaclePrefabs.Length + generatorVersion` 파라미터 → 동일 `GeneratedMap`
 - `Unity.Mathematics.Random(uint)` 은 Xorshift128 결정적
 - `HashSeed` 는 attempt 간 독립 RNG 분기
 

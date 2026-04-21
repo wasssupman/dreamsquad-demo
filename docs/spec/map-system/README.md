@@ -26,7 +26,7 @@
 
 | 번호 | 작업 구분 | 문서 | 목적 |
 |---|---|---|---|
-| 11 | Generator | `11_procedural_generator.md` | Generate(seed, gridSize, theme) API |
+| 11 | Generator | `11_procedural_generator.md` | `Generate(seed, gridSize, theme, generatorVersion)` API |
 | 12 | Algorithm | `12_path_carve_algorithm.md` | 각 spawn 독립 Manhattan walk + BFS |
 | 13 | Theme | `13_map_theme_data.md` | MapThemeData SO (2필드) |
 | 14 | Placer | `14_obstacle_placer.md` | 단일 셀 배치, Walk/Place 비침범 |
