@@ -91,11 +91,22 @@ namespace Wassup.Presentation
             var exitT = root.transform.Find("Exit");
             if (entryT != null) entryT.position = new Vector3(entryWorld.x, entryWorld.y + 0.05f, entryWorld.z);
             if (exitT != null) exitT.position = new Vector3(exitWorld.x, exitWorld.y + 0.05f, exitWorld.z);
-            var beamLine = root.transform.Find("LinkBeam")?.GetComponent<LineRenderer>();
-            if (beamLine != null)
+            var linkBeam = root.transform.Find("LinkBeam");
+            var beamLines = linkBeam != null
+                ? linkBeam.GetComponentsInChildren<LineRenderer>(true)
+                : null;
+            if (beamLines != null)
             {
-                beamLine.SetPosition(0, new Vector3(entryWorld.x, entryWorld.y + 0.15f, entryWorld.z));
-                beamLine.SetPosition(1, new Vector3(exitWorld.x, exitWorld.y + 0.15f, exitWorld.z));
+                var start = new Vector3(entryWorld.x, entryWorld.y + 0.15f, entryWorld.z);
+                var end = new Vector3(exitWorld.x, exitWorld.y + 0.15f, exitWorld.z);
+                for (int i = 0; i < beamLines.Length; i++)
+                {
+                    var beamLine = beamLines[i];
+                    if (beamLine == null) continue;
+                    beamLine.positionCount = 2;
+                    beamLine.SetPosition(0, start);
+                    beamLine.SetPosition(1, end);
+                }
             }
             Destroy(root, durationSec + 0.1f);
         }

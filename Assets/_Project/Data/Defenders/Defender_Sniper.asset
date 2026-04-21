@@ -31,3 +31,8 @@ MonoBehaviour:
   attackAnimation: Curses/attack-slash-curse-necromancy
   deathAnimation: die
   spineVisualScale: 1
+  dragAnimation: find-item/find-item-loop
+  deployAnimation: Curses/attack-slash-curse-necromancy
+  placementVfxPrefab: {fileID: 0}
+  deploymentDuration: 0.45
+  placementSkillDelay: 0

@@ -1442,12 +1442,12 @@ namespace Wassup.Bridge
             {
                 vfxSpawner.SpawnPlacementRing(world);
             }
+            StartCoroutine(PlayDeploymentRingPulse(world, Mathf.Max(duration, 0.35f)));
 
             bool spineDeployment = false;
             if (spineDefenderPool != null && spineDefenderPool.TryGet(entity, out var view))
             {
-                view.PlayDeploy();
-                spineDeployment = true;
+                spineDeployment = view.PlayDeploy();
             }
             if (!spineDeployment && unitData != null && duration > 0f)
             {
@@ -1479,6 +1479,40 @@ namespace Wassup.Bridge
             }
 
             Destroy(go);
+        }
+
+        private IEnumerator PlayDeploymentRingPulse(Vector3 world, float duration)
+        {
+            var ring = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            ring.name = "DeploymentRingPulse";
+            ring.transform.position = world + Vector3.up * 0.08f;
+            var collider = ring.GetComponent<Collider>();
+            if (collider != null) Destroy(collider);
+
+            var renderer = ring.GetComponent<Renderer>();
+            var shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color") ?? Shader.Find("Standard");
+            var material = new Material(shader) { color = new Color(0.2f, 0.95f, 1f, 0.7f) };
+            if (renderer != null) renderer.sharedMaterial = material;
+
+            float elapsed = 0f;
+            float d = Mathf.Max(0.1f, duration);
+            while (elapsed < d)
+            {
+                elapsed += Time.deltaTime;
+                float t = Mathf.Clamp01(elapsed / d);
+                float scale = Mathf.Lerp(0.2f, 1.35f, t);
+                ring.transform.localScale = new Vector3(scale, 0.025f, scale);
+                if (renderer != null)
+                {
+                    var color = material.color;
+                    color.a = Mathf.Lerp(0.7f, 0f, t);
+                    material.color = color;
+                }
+                yield return null;
+            }
+
+            Destroy(ring);
+            Destroy(material);
         }
 
         private Entity CreateDefenderEntity(
@@ -1555,7 +1589,8 @@ namespace Wassup.Bridge
         {
             // Fixed order: onPlace → synergy recompute → log (PHASE4 §2.5 P4-05).
             // onPlace is a standalone snapshot effect and must fire before the
-            // new defender's SynergyBuff is computed, so it never affects itself.
+            // new defender's SynergyBuff is computed. Individual on-place effect
+            // rules decide whether the placed defender is included.
             int onPlaceAffected = ApplyOnPlaceEffect(unitData, cell, entity);
             _onPlaceTriggeredEntities.Add(entity);
             RecomputeSynergyFor(cell);
@@ -1565,9 +1600,10 @@ namespace Wassup.Bridge
         private void LogOnPlaceAndSynergy(DefenderUnitData unitData, Vector2Int cell, int onPlaceAffected)
         {
             var logger = GameManager.Instance?.Logger;
-            if (logger != null)
+            if (unitData.onPlaceEffect != OnPlaceEffectType.None)
             {
-                if (unitData.onPlaceEffect != OnPlaceEffectType.None)
+                Debug.Log($"[BattleBridge] On-place {unitData.displayName}: {unitData.onPlaceEffect} affected={onPlaceAffected} at {cell}.");
+                if (logger != null)
                 {
                     logger.RecordOnPlace(new Logging.OnPlaceUsageLog
                     {
@@ -1578,8 +1614,9 @@ namespace Wassup.Bridge
                         affected_count = onPlaceAffected,
                     });
                 }
-                logger.SetSynergyStats(_synergyActivations, _synergyPeakCount);
             }
+            if (logger != null)
+                logger.SetSynergyStats(_synergyActivations, _synergyPeakCount);
         }
 
         private static void LogPlacementReject(string source, DefenderUnitData unitData, PlacementRejectReason reason)

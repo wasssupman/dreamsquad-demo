@@ -69,13 +69,16 @@ namespace Wassup.Presentation
             state.AddAnimation(0, _unitData.idleAnimation, true, 0f);
         }
 
-        public void PlayDeploy()
+        public bool PlayDeploy()
         {
-            if (_dying || _skeleton == null || string.IsNullOrEmpty(_unitData.deployAnimation)) return;
+            if (_dying || _skeleton == null) return false;
+            string animation = ResolveAnimation(_unitData.deployAnimation, _unitData.dragAnimation, _unitData.attackAnimation, _unitData.idleAnimation);
+            if (string.IsNullOrEmpty(animation)) return false;
             var state = _skeleton.AnimationState;
-            state.SetAnimation(0, _unitData.deployAnimation, false);
+            state.SetAnimation(0, animation, false);
             if (!string.IsNullOrEmpty(_unitData.idleAnimation))
                 state.AddAnimation(0, _unitData.idleAnimation, true, 0f);
+            return true;
         }
 
         // Triggers the death animation. When it completes the GameObject
@@ -131,6 +134,18 @@ namespace Wassup.Presentation
         {
             if (_skeleton == null || string.IsNullOrEmpty(_unitData.idleAnimation)) return;
             _skeleton.AnimationState.SetAnimation(0, _unitData.idleAnimation, true);
+        }
+
+        private string ResolveAnimation(params string[] candidates)
+        {
+            if (_skeleton == null || _skeleton.Skeleton == null || _skeleton.Skeleton.Data == null) return null;
+            foreach (var candidate in candidates)
+            {
+                if (string.IsNullOrEmpty(candidate)) continue;
+                if (_skeleton.Skeleton.Data.FindAnimation(candidate) != null)
+                    return candidate;
+            }
+            return null;
         }
     }
 }

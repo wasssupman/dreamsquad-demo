@@ -31,3 +31,8 @@ MonoBehaviour:
   attackAnimation: attack-combo3
   deathAnimation: die
   spineVisualScale: 1
+  dragAnimation: find-item/find-item-loop
+  deployAnimation: attack-combo3
+  placementVfxPrefab: {fileID: 0}
+  deploymentDuration: 0.45
+  placementSkillDelay: 0

@@ -32,3 +32,8 @@ MonoBehaviour:
   attackAnimation: attack-combo1-dagger
   deathAnimation: die
   spineVisualScale: 1
+  dragAnimation: find-item/find-item-loop
+  deployAnimation: attack-combo1-dagger
+  placementVfxPrefab: {fileID: 0}
+  deploymentDuration: 0.45
+  placementSkillDelay: 0

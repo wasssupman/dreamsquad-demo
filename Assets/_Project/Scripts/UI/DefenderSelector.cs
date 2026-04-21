@@ -16,6 +16,7 @@ namespace Wassup.UI
     {
         [SerializeField] private BattleBridge bridge;
         [SerializeField] private DraftController draftController;
+        [SerializeField] private DefenderDragPlacementController dragPlacementController;
 
         private GameObject _panel;
         private Transform _slotContainer;
@@ -32,6 +33,7 @@ namespace Wassup.UI
 
         private void Awake()
         {
+            EnsureDragController();
             BuildCanvas();
             if (_panel != null) _panel.SetActive(false);
         }
@@ -56,6 +58,7 @@ namespace Wassup.UI
 
         private void OnDraftConfirmed()
         {
+            EnsureDragController();
             if (bridge == null || bridge.DefenderPool == null) return;
             RebuildSlots(bridge.DefenderPool);
             _panel.SetActive(true);
@@ -153,6 +156,8 @@ namespace Wassup.UI
                 var btn = go.GetComponent<Button>();
                 int idx = i;
                 btn.onClick.AddListener(() => OnSlotClicked(idx));
+                var dragSlot = go.AddComponent<DefenderDragSlot>();
+                dragSlot.Bind(data, dragPlacementController);
 
                 var nameGO = new GameObject("Name", typeof(RectTransform));
                 nameGO.transform.SetParent(go.transform, false);
@@ -169,6 +174,16 @@ namespace Wassup.UI
 
                 _slots[i] = new SlotView { data = data, background = bg, nameLabel = tmp, button = btn };
             }
+        }
+
+        private void EnsureDragController()
+        {
+            if (dragPlacementController == null)
+                dragPlacementController = GetComponent<DefenderDragPlacementController>();
+            if (dragPlacementController == null)
+                dragPlacementController = gameObject.AddComponent<DefenderDragPlacementController>();
+            if (bridge != null)
+                dragPlacementController.Configure(bridge, bridge.MapView, Camera.main, bridge.PlacementInput);
         }
     }
 }

@@ -31,3 +31,8 @@ MonoBehaviour:
   attackAnimation: cast-spell
   deathAnimation: die
   spineVisualScale: 1
+  dragAnimation: find-item/find-item-loop
+  deployAnimation: cast-spell
+  placementVfxPrefab: {fileID: 0}
+  deploymentDuration: 0.45
+  placementSkillDelay: 0
