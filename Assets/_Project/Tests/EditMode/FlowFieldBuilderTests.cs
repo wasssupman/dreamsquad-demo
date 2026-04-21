@@ -82,5 +82,31 @@ namespace Wassup.Tests.EditMode
             }
             finally { walk.Dispose(); flow.Dispose(); dist.Dispose(); }
         }
+
+        [Test]
+        public void Build_TwentyByTwentyStraightPath_ProducesExpectedArrayLengthAndDistances()
+        {
+            var gridSize = new int2(20, 20);
+            int n = gridSize.x * gridSize.y;
+            var walk = new NativeArray<byte>(n, Allocator.Temp);
+            var flow = new NativeArray<float2>(n, Allocator.Temp);
+            var dist = new NativeArray<int>(n, Allocator.Temp);
+            try
+            {
+                int midY = gridSize.y / 2;
+                for (int x = 0; x < gridSize.x; x++)
+                    walk[midY * gridSize.x + x] = 1;
+
+                FlowFieldBuilder.Build(walk, gridSize, new int2(gridSize.x - 1, midY), flow, dist);
+
+                Assert.AreEqual(400, flow.Length);
+                Assert.AreEqual(400, dist.Length);
+                Assert.AreEqual(0, dist[midY * gridSize.x + gridSize.x - 1]);
+                Assert.AreEqual(19, dist[midY * gridSize.x]);
+                Assert.AreEqual(float2.zero, flow[midY * gridSize.x + gridSize.x - 1]);
+                Assert.AreEqual(new float2(1, 0), flow[midY * gridSize.x]);
+            }
+            finally { walk.Dispose(); flow.Dispose(); dist.Dispose(); }
+        }
     }
 }

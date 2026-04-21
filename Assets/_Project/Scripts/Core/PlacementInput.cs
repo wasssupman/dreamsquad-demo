@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 using Wassup.Bridge;
+using Wassup.Data;
 
 namespace Wassup.Core
 {
@@ -19,14 +20,20 @@ namespace Wassup.Core
         [SerializeField] private BattleBridge bridge;
         [SerializeField] private Camera mainCamera;
         [SerializeField] private MapView mapView;
+        [SerializeField] private bool clickPlacementEnabled = true;
 
-        // Phase 9 P9-07 — tileSize 단일 소스화. BattleBridge.Awake 가 주입한다.
+        private GeneratedMap _map;
         private float _tileSize = 1f;
 
-        // Phase 9 P9-07 — BattleBridge 가 Awake 에서 호출. rounding 로직은 이 값을 사용한다.
-        public void Initialize(float tileSize)
+        public void Initialize(GeneratedMap map, float tileSize)
         {
+            _map = map;
             _tileSize = tileSize;
+        }
+
+        public void SetClickPlacementEnabled(bool enabled)
+        {
+            clickPlacementEnabled = enabled;
         }
 
         private void Start()
@@ -36,6 +43,7 @@ namespace Wassup.Core
 
         private void Update()
         {
+            if (!clickPlacementEnabled) return;
             if (bridge == null || mainCamera == null) return;
 
             if (GameManager.Instance != null && GameManager.Instance.IsAiming) return;
@@ -60,8 +68,8 @@ namespace Wassup.Core
             if (!plane.Raycast(ray, out float enter)) return;
 
             var worldPos = ray.GetPoint(enter);
-            int tileX = Mathf.RoundToInt(worldPos.x / _tileSize);
-            int tileY = Mathf.RoundToInt(worldPos.z / _tileSize);
+            int tileX = Mathf.FloorToInt(worldPos.x / _tileSize + 0.5f);
+            int tileY = Mathf.FloorToInt(worldPos.z / _tileSize + 0.5f);
             var cell = new Vector2Int(tileX, tileY);
 
             var gm = GameManager.Instance;
