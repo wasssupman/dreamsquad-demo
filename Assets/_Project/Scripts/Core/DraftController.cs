@@ -25,6 +25,8 @@ namespace Wassup.Core
         public int PoolSize => poolSize;
         public int PickCount => pickCount;
         public IReadOnlyList<DefenderUnitData> Catalog => catalog;
+        public MapGenerationOptions SelectedMapGenerationOptions { get; private set; } = MapGenerationOptions.Default;
+        public MapPathShape SelectedMapPathShape => SelectedMapGenerationOptions.pathShape;
 
         public event Action DraftStarted;
         public event Action DraftConfirmed;
@@ -85,6 +87,7 @@ namespace Wassup.Core
             if (battleBridge != null)
             {
                 battleBridge.SetDefenderPool(_session.PickedArray());
+                battleBridge.SetMapGenerationOptions(SelectedMapGenerationOptions);
 
                 // Phase 7: prefer the SkillLoadoutController roll; fall back to
                 // the legacy Inspector array only when no loadout controller is
@@ -124,6 +127,18 @@ namespace Wassup.Core
             }
             DraftConfirmed?.Invoke();
             return true;
+        }
+
+        public void SetMapPathShape(MapPathShape shape)
+        {
+            var options = SelectedMapGenerationOptions.Normalized();
+            options.pathShape = shape;
+            SelectedMapGenerationOptions = options;
+        }
+
+        public void SetMapGenerationOptions(MapGenerationOptions options)
+        {
+            SelectedMapGenerationOptions = options.Normalized();
         }
 
         private static int GenerateSeed()

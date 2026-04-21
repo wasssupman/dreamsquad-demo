@@ -16,8 +16,20 @@ namespace Wassup.UI
         [SerializeField] private DraftController draftController;
 
         private GameObject _panel;
+        private GameObject _mapSettingsPanel;
         private Transform _listContainer;
         private Button _confirmButton;
+        private Button _settingsToggleButton;
+        private Button _straightButton;
+        private Button _freeButton;
+        private Button _densityLowButton;
+        private Button _densityMediumButton;
+        private Button _densityHighButton;
+        private TMP_InputField _widthInput;
+        private TMP_InputField _heightInput;
+        private TMP_InputField _spawnLaneInput;
+        private MapPathShape _selectedPathShape = MapPathShape.Straight;
+        private MapObstacleDensity _selectedDensity = MapObstacleDensity.Low;
         private bool _built;
 
         public System.Action BriefingConfirmed;
@@ -42,8 +54,31 @@ namespace Wassup.UI
 
         private void OnConfirmClicked()
         {
+            if (draftController != null)
+                draftController.SetMapGenerationOptions(ReadMapGenerationOptions());
             Hide();
             BriefingConfirmed?.Invoke();
+        }
+
+        private MapGenerationOptions ReadMapGenerationOptions()
+        {
+            int width = ParsePositiveInt(_widthInput, 20);
+            int height = ParsePositiveInt(_heightInput, 10);
+            int spawnLanes = ParsePositiveInt(_spawnLaneInput, 2);
+
+            return new MapGenerationOptions
+            {
+                pathShape = _selectedPathShape,
+                gridSize = new Unity.Mathematics.int2(width, height),
+                obstacleDensity = _selectedDensity,
+                spawnLaneCount = spawnLanes,
+            }.Normalized();
+        }
+
+        private static int ParsePositiveInt(TMP_InputField input, int fallback)
+        {
+            if (input == null) return fallback;
+            return int.TryParse(input.text, out int value) ? Mathf.Max(1, value) : fallback;
         }
 
         private static readonly Color TankerColor = new Color(1f, 0.3f, 0.3f, 1f);
@@ -59,6 +94,7 @@ namespace Wassup.UI
 
             float totalTime = deck.timerDurationSec > 0 ? deck.timerDurationSec : 180f;
             float graphWidth = 1400f;
+            int previewLaneCount = ReadMapGenerationOptions().spawnLaneCount;
 
             // Time axis labels
             var axisGO = new GameObject("TimeAxis", typeof(RectTransform));
@@ -83,19 +119,11 @@ namespace Wassup.UI
                 tmp.alignment = TextAlignmentOptions.Center;
             }
 
-            // Collect unique paths
-            var pathIds = new List<string>();
-            foreach (var sp in deck.spawns)
-            {
-                if (!pathIds.Contains(sp.pathId)) pathIds.Add(sp.pathId);
-            }
-            pathIds.Sort();
-
-            // One lane per path
-            foreach (var pathId in pathIds)
+            // One lane per selected spawn lane count.
+            for (int spawnIndex = 0; spawnIndex < previewLaneCount; spawnIndex++)
             {
                 // Lane container
-                var laneGO = new GameObject("Lane_" + pathId, typeof(RectTransform), typeof(Image));
+                var laneGO = new GameObject("Lane_" + spawnIndex, typeof(RectTransform), typeof(Image));
                 laneGO.transform.SetParent(_listContainer, false);
                 var laneRT = (RectTransform)laneGO.transform;
                 laneRT.sizeDelta = new Vector2(graphWidth, 50f);
@@ -111,15 +139,16 @@ namespace Wassup.UI
                 llrt.anchoredPosition = new Vector2(-8f, 0f);
                 llrt.sizeDelta = new Vector2(80f, 50f);
                 var llTmp = laneLabel.AddComponent<TextMeshProUGUI>();
-                llTmp.text = $"Path {pathId}";
+                llTmp.text = $"Spawn {spawnIndex}";
                 llTmp.fontSize = 20;
                 llTmp.color = Color.white;
                 llTmp.alignment = TextAlignmentOptions.MidlineRight;
 
                 // Plot markers
-                foreach (var sp in deck.spawns)
+                for (int i = 0; i < deck.spawns.Count; i++)
                 {
-                    if (sp.pathId != pathId) continue;
+                    var sp = deck.spawns[i];
+                    if (EffectiveSpawnIndex(sp.spawnIndex, i, previewLaneCount) != spawnIndex) continue;
                     float x = (sp.triggerTimeSec / totalTime) * graphWidth;
                     Color col = SwiftColor;
                     float markerH = 16f;
@@ -159,7 +188,7 @@ namespace Wassup.UI
                 else if (sp.unitType.displayName.Contains("Basic")) nb++;
                 else ns++;
             }
-            legTmp.text = $"<color=#FF4D4D>■ Tanker ×{nt}</color>   <color=#8840CC>■ Basic ×{nb}</color>   <color=#F2D933>■ Swift ×{ns}</color>   |   총 {deck.spawns.Count}   |   {totalTime:0}초   |   DEFEAT: {deck.defeatGoalReachedCount}마리 도달";
+            legTmp.text = $"<color=#FF4D4D>■ Tanker ×{nt}</color>   <color=#8840CC>■ Basic ×{nb}</color>   <color=#F2D933>■ Swift ×{ns}</color>   |   총 {deck.spawns.Count}   |   lanes {previewLaneCount}   |   {totalTime:0}초   |   DEFEAT: {deck.defeatGoalReachedCount}마리 도달";
             legTmp.fontSize = 22;
             legTmp.color = Color.white;
             legTmp.alignment = TextAlignmentOptions.Center;
@@ -248,6 +277,165 @@ namespace Wassup.UI
             bl.fontSize = 32;
             bl.color = Color.white;
             bl.alignment = TextAlignmentOptions.Center;
+
+            BuildMapSettingsPanel();
+            RefreshMapSettingsButtons();
+        }
+
+        private void BuildMapSettingsPanel()
+        {
+            _settingsToggleButton = CreateBriefingButton(_panel.transform, "MapSettingsToggle", "MAP SETTINGS", new Color(0.18f, 0.42f, 0.75f, 1f));
+            var toggleRt = (RectTransform)_settingsToggleButton.transform;
+            toggleRt.anchorMin = new Vector2(0f, 1f);
+            toggleRt.anchorMax = new Vector2(0f, 1f);
+            toggleRt.pivot = new Vector2(0f, 1f);
+            toggleRt.anchoredPosition = new Vector2(40f, -40f);
+            toggleRt.sizeDelta = new Vector2(260f, 58f);
+            _settingsToggleButton.onClick.AddListener(() =>
+            {
+                if (_mapSettingsPanel != null) _mapSettingsPanel.SetActive(!_mapSettingsPanel.activeSelf);
+            });
+
+            _mapSettingsPanel = new GameObject("MapSettingsPanel", typeof(RectTransform), typeof(Image), typeof(VerticalLayoutGroup));
+            _mapSettingsPanel.transform.SetParent(_panel.transform, false);
+            var panelRt = (RectTransform)_mapSettingsPanel.transform;
+            panelRt.anchorMin = new Vector2(0f, 1f);
+            panelRt.anchorMax = new Vector2(0f, 1f);
+            panelRt.pivot = new Vector2(0f, 1f);
+            panelRt.anchoredPosition = new Vector2(40f, -110f);
+            panelRt.sizeDelta = new Vector2(360f, 360f);
+            _mapSettingsPanel.GetComponent<Image>().color = new Color(0.08f, 0.1f, 0.14f, 0.94f);
+            var layout = _mapSettingsPanel.GetComponent<VerticalLayoutGroup>();
+            layout.padding = new RectOffset(12, 12, 12, 12);
+            layout.spacing = 10f;
+            layout.childForceExpandWidth = true;
+            layout.childForceExpandHeight = false;
+
+            AddPanelLabel(_mapSettingsPanel.transform, "Path Type", 22);
+            var pathRow = AddRow(_mapSettingsPanel.transform, "PathRow", 52f);
+            _straightButton = CreateBriefingButton(pathRow, "Straight", "STRAIGHT", Color.gray);
+            _freeButton = CreateBriefingButton(pathRow, "Free", "FREE", Color.gray);
+            _straightButton.onClick.AddListener(() => { _selectedPathShape = MapPathShape.Straight; RefreshMapSettingsButtons(); });
+            _freeButton.onClick.AddListener(() => { _selectedPathShape = MapPathShape.Free; RefreshMapSettingsButtons(); });
+
+            AddPanelLabel(_mapSettingsPanel.transform, "Map Size", 22);
+            var sizeRow = AddRow(_mapSettingsPanel.transform, "SizeRow", 52f);
+            _widthInput = CreateInput(sizeRow, "Width", "20");
+            _heightInput = CreateInput(sizeRow, "Height", "10");
+            _widthInput.onEndEdit.AddListener(_ => RebuildList());
+            _heightInput.onEndEdit.AddListener(_ => RebuildList());
+
+            AddPanelLabel(_mapSettingsPanel.transform, "Object Density", 22);
+            var densityRow = AddRow(_mapSettingsPanel.transform, "DensityRow", 52f);
+            _densityLowButton = CreateBriefingButton(densityRow, "Low", "LOW", Color.gray);
+            _densityMediumButton = CreateBriefingButton(densityRow, "Medium", "MID", Color.gray);
+            _densityHighButton = CreateBriefingButton(densityRow, "High", "HIGH", Color.gray);
+            _densityLowButton.onClick.AddListener(() => { _selectedDensity = MapObstacleDensity.Low; RefreshMapSettingsButtons(); });
+            _densityMediumButton.onClick.AddListener(() => { _selectedDensity = MapObstacleDensity.Medium; RefreshMapSettingsButtons(); });
+            _densityHighButton.onClick.AddListener(() => { _selectedDensity = MapObstacleDensity.High; RefreshMapSettingsButtons(); });
+
+            AddPanelLabel(_mapSettingsPanel.transform, "Spawn Lanes", 22);
+            var spawnRow = AddRow(_mapSettingsPanel.transform, "SpawnRow", 52f);
+            _spawnLaneInput = CreateInput(spawnRow, "SpawnLaneCount", "2");
+            _spawnLaneInput.onEndEdit.AddListener(_ => RebuildList());
+        }
+
+        private static int EffectiveSpawnIndex(int authoredIndex, int deckIndex, int laneCount)
+        {
+            if (laneCount <= 0) return 0;
+            if (laneCount <= 2)
+                return Mathf.Clamp(authoredIndex, 0, laneCount - 1);
+            return Mathf.Abs(deckIndex) % laneCount;
+        }
+
+        private void RefreshMapSettingsButtons()
+        {
+            SetSelectedButton(_straightButton, _selectedPathShape == MapPathShape.Straight);
+            SetSelectedButton(_freeButton, _selectedPathShape == MapPathShape.Free);
+            SetSelectedButton(_densityLowButton, _selectedDensity == MapObstacleDensity.Low);
+            SetSelectedButton(_densityMediumButton, _selectedDensity == MapObstacleDensity.Medium);
+            SetSelectedButton(_densityHighButton, _selectedDensity == MapObstacleDensity.High);
+        }
+
+        private static void SetSelectedButton(Button button, bool selected)
+        {
+            if (button == null) return;
+            var image = button.GetComponent<Image>();
+            if (image != null)
+                image.color = selected ? new Color(0.25f, 0.68f, 0.95f, 1f) : new Color(0.16f, 0.18f, 0.22f, 1f);
+        }
+
+        private static Transform AddRow(Transform parent, string name, float height)
+        {
+            var go = new GameObject(name, typeof(RectTransform), typeof(HorizontalLayoutGroup));
+            go.transform.SetParent(parent, false);
+            var rt = (RectTransform)go.transform;
+            rt.sizeDelta = new Vector2(0f, height);
+            var layout = go.GetComponent<HorizontalLayoutGroup>();
+            layout.spacing = 8f;
+            layout.childForceExpandWidth = true;
+            layout.childForceExpandHeight = true;
+            return go.transform;
+        }
+
+        private static void AddPanelLabel(Transform parent, string text, int fontSize)
+        {
+            var go = new GameObject(text, typeof(RectTransform));
+            go.transform.SetParent(parent, false);
+            var rt = (RectTransform)go.transform;
+            rt.sizeDelta = new Vector2(0f, 28f);
+            var tmp = go.AddComponent<TextMeshProUGUI>();
+            tmp.text = text;
+            tmp.fontSize = fontSize;
+            tmp.color = Color.white;
+            tmp.alignment = TextAlignmentOptions.MidlineLeft;
+        }
+
+        private static TMP_InputField CreateInput(Transform parent, string name, string value)
+        {
+            var go = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(TMP_InputField));
+            go.transform.SetParent(parent, false);
+            go.GetComponent<Image>().color = new Color(0.05f, 0.06f, 0.08f, 1f);
+            var input = go.GetComponent<TMP_InputField>();
+
+            var textGo = new GameObject("Text", typeof(RectTransform));
+            textGo.transform.SetParent(go.transform, false);
+            var textRt = (RectTransform)textGo.transform;
+            textRt.anchorMin = Vector2.zero;
+            textRt.anchorMax = Vector2.one;
+            textRt.offsetMin = new Vector2(8f, 0f);
+            textRt.offsetMax = new Vector2(-8f, 0f);
+            var tmp = textGo.AddComponent<TextMeshProUGUI>();
+            tmp.fontSize = 28;
+            tmp.color = Color.white;
+            tmp.alignment = TextAlignmentOptions.Center;
+            tmp.text = value;
+
+            input.textComponent = tmp;
+            input.text = value;
+            input.contentType = TMP_InputField.ContentType.IntegerNumber;
+            return input;
+        }
+
+        private static Button CreateBriefingButton(Transform parent, string name, string text, Color color)
+        {
+            var go = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(Button));
+            go.transform.SetParent(parent, false);
+            go.GetComponent<Image>().color = color;
+            var button = go.GetComponent<Button>();
+            var labelGo = new GameObject("Label", typeof(RectTransform));
+            labelGo.transform.SetParent(go.transform, false);
+            var rt = (RectTransform)labelGo.transform;
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = Vector2.one;
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = Vector2.zero;
+            var tmp = labelGo.AddComponent<TextMeshProUGUI>();
+            tmp.text = text;
+            tmp.fontSize = 24;
+            tmp.color = Color.white;
+            tmp.alignment = TextAlignmentOptions.Center;
+            return button;
         }
     }
 }

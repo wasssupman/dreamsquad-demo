@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using Unity.Collections;
@@ -26,6 +27,12 @@ namespace Wassup.Bridge
     {
         [SerializeField] private AttackDeck deck;
         [SerializeField] private MapData map;
+        [SerializeField] private MapGenerationSettings mapSettings;
+        [Header("Phase 10B - Procedural")]
+        [SerializeField] private bool useProcedural = true;
+        [SerializeField] private MapThemeData mapTheme;
+        [SerializeField] private MapPathShape mapPathShape = MapPathShape.Free;
+        [SerializeField] private MapGenerationOptions mapGenerationOptions = MapGenerationOptions.Default;
         [SerializeField] private float tileSize = 1f;
         [SerializeField] private float spawnHeight = 0.5f;
         [SerializeField] private ResultScreen resultScreen;
@@ -39,16 +46,21 @@ namespace Wassup.Bridge
         // Phase 9 P9-07 — tileSize 단일 소스화. Awake 에서 MapView/PlacementInput 으로 주입.
         [SerializeField] private Wassup.Core.MapView mapView;
         [SerializeField] private Wassup.Core.PlacementInput placementInput;
+        [SerializeField] private DefenderDragPlacementController dragPlacementController;
+
+        private ManualMapInput? _manualMapInput;
+        private GeneratedMap _generatedMap;
 
         private World _world;
         private EntityManager _em;
         private EntityQuery _aliveAttackersQuery;
         private bool _aliveAttackersQueryCreated;
-        private readonly List<SpawnEntry> _pending = new();
+        private readonly List<PendingSpawnEntry> _pending = new();
         private readonly Dictionary<AttackUnitData, RenderMeshArray> _renderCache = new();
         private readonly Dictionary<DefenderUnitData, RenderMeshArray> _defenderRenderCache = new();
         private readonly HashSet<Vector2Int> _occupiedTiles = new();
         private readonly Dictionary<Vector2Int, (Entity entity, DefenderUnitData data)> _defenderByTile = new();
+        private readonly HashSet<Entity> _onPlaceTriggeredEntities = new();
         private readonly List<RenderMeshArray> _projectileRenderByIndex = new();
         private readonly Dictionary<(ProjectileData data, Material mat), int> _projectileRenderIndex = new();
         private EntityQuery _projectileSpawnRequestQuery;
@@ -75,19 +87,22 @@ namespace Wassup.Bridge
         // Phase 9 flow field 싱글톤 entity reference
         private Entity _flowFieldSingleton = Entity.Null;
 
-        // Phase 9 P9-07 — MapView / PlacementInput 의 Start() 가 돌기 전에 tileSize 와
-        // map 을 주입한다. Unity 가 Start 순서를 보장하지 않으므로 Awake 단계에서 수행.
+        private struct PendingSpawnEntry
+        {
+            public SpawnEntry entry;
+            public int deckIndex;
+        }
+
         private void Awake()
         {
-            if (mapView != null)
-                mapView.Initialize(map, tileSize);
-            else
+            if (mapView == null)
                 Debug.LogError("[BattleBridge] mapView reference missing — assign in Inspector.", this);
 
-            if (placementInput != null)
-                placementInput.Initialize(tileSize);
-            else
+            if (placementInput == null)
                 Debug.LogError("[BattleBridge] placementInput reference missing — assign in Inspector.", this);
+
+            if (dragPlacementController != null)
+                dragPlacementController.Configure(this, mapView, Camera.main, placementInput);
         }
 
         private void Start()
@@ -234,6 +249,8 @@ namespace Wassup.Bridge
 
             // Phase 9: dispose the flow field singleton arrays + destroy the entity.
             TeardownFlowField();
+            // Phase 10A (P10A-04A): dispose GeneratedMap (idempotent) alongside FlowField.
+            TeardownGeneratedMap();
         }
 
         // Idempotent: 재호출(판 재시작/redraft) 시 기존 Persistent arrays dispose 후 재생성.
@@ -241,36 +258,27 @@ namespace Wassup.Bridge
         // 그리고 기존 arrays 가 dispose 없이 덮어써지면 누수. TeardownFlowField 선행으로 해결.
         private void BuildFlowField()
         {
-            if (map == null || _em == null) return;
+            if (!_generatedMap.IsCreated || _em == null) return;
 
             // 기존 싱글톤 있으면 arrays dispose + entity destroy (멱등성 보장)
             TeardownFlowField();
 
-            int w = MapData.Width;
-            int h = MapData.Height;
+            int w = _generatedMap.gridSize.x;
+            int h = _generatedMap.gridSize.y;
             int n = w * h;
 
             var walk = new NativeArray<byte>(n, Allocator.Temp);
             try
             {
-                for (int y = 0; y < h; y++)
-                for (int x = 0; x < w; x++)
-                {
-                    var t = map.GetTile(x, y);
-                    walk[y * w + x] = (byte)(t == TileType.Path ? 1 : 0);
-                    // Phase 9 (P9-12 회귀 fix): Path 타일만 walkable — enemies must stay on designated path.
-                    // Buildable 타일은 defender 배치 영역이므로 적이 지나가면 안 됨.
-                    // Phase 10 enum 재분류 후 Walkable 단일 플래그로 명료화 (UX 일관성).
-                    // 제약: Portal exit 이 Path 타일이 아니면 적이 해당 cell 에서 freeze (flow=zero).
-                    // phase9-prep.md §2 이슈 A "exit 타일을 경로 상 정확한 waypoint cell 로만 지정" 확정.
-                }
+                for (int i = 0; i < n; i++)
+                    walk[i] = (byte)(_generatedMap.tiles[i] == MapTileType.Walk ? 1 : 0);
 
                 var flow = new NativeArray<float2>(n, Allocator.Persistent);
                 var dist = new NativeArray<int>(n, Allocator.Persistent);
                 try
                 {
-                    var gridSize = new int2(w, h);
-                    var goal = new int2(map.GoalCell.x, map.GoalCell.y);
+                    var gridSize = _generatedMap.gridSize;
+                    var goal = _generatedMap.goal;
 
                     FlowFieldBuilder.Build(walk, gridSize, goal, flow, dist);
 
@@ -281,7 +289,7 @@ namespace Wassup.Bridge
                         gridSize = gridSize,
                         goalCell = goal,
                         tileSize = tileSize,
-                        version = 1,
+                        version = _generatedMap.generatorVersion,
                     };
 
                     _flowFieldSingleton = _em.CreateEntity();
@@ -300,8 +308,98 @@ namespace Wassup.Bridge
             }
         }
 
+        // Phase 10A (P10A-04A): GeneratedMap dispose 멱등. 재시작/redraft 시 TearDown 후 재생성.
+        private void TeardownGeneratedMap()
+        {
+            if (_generatedMap.IsCreated) _generatedMap.Dispose();
+            _generatedMap = default;
+        }
+
+        private int2 GridSize
+        {
+            get
+            {
+                var normalized = mapGenerationOptions.Normalized();
+                if (normalized.gridSize.x > 0 && normalized.gridSize.y > 0)
+                    return normalized.gridSize;
+                return mapSettings != null
+                    ? new int2(mapSettings.gridWidth, mapSettings.gridHeight)
+                    : new int2(20, 10);
+            }
+        }
+
+        private int GeneratorVersion => mapSettings != null ? mapSettings.generatorVersion : 1;
+
+        private void BuildMapForBattle()
+        {
+            TeardownGeneratedMap();
+            TeardownFlowField();
+
+            int seed = mapSettings != null ? mapSettings.EffectiveSeed : 0;
+            int version = GeneratorVersion;
+            var options = mapGenerationOptions.Normalized();
+            mapPathShape = options.pathShape;
+            int2 gridSize = options.gridSize;
+
+            if (_manualMapInput.HasValue)
+            {
+                _generatedMap = BattleMapBuilder.BuildFromManual(_manualMapInput.Value, seed, version);
+            }
+            else if (useProcedural)
+            {
+                _generatedMap = ProceduralMapGenerator.Generate(
+                    seed,
+                    gridSize,
+                    mapTheme,
+                    version,
+                    options.pathShape,
+                    options.spawnLaneCount,
+                    options.MinPlaceableRatio);
+            }
+            else
+            {
+                if (map == null)
+                {
+                    Debug.LogError("[BattleBridge] map reference missing — cannot build fixture GeneratedMap.", this);
+                    _generatedMap = BattleMapBuilder.BuildFallbackLinear(gridSize, seed, version, options.spawnLaneCount);
+                }
+                else
+                {
+                    _generatedMap = BattleMapBuilder.BuildFromFixture(map, seed, version);
+                }
+            }
+
+            if (!MapConnectivity.AllSpawnsReachGoal(_generatedMap))
+            {
+                Debug.LogWarning("[BattleBridge] GeneratedMap connectivity failed; using fallback linear map.", this);
+                TeardownGeneratedMap();
+                _generatedMap = BattleMapBuilder.BuildFallbackLinear(gridSize, seed, version, options.spawnLaneCount);
+            }
+
+            if (mapView != null) mapView.Initialize(_generatedMap, tileSize);
+            if (placementInput != null) placementInput.Initialize(_generatedMap, tileSize);
+
+            BuildFlowField();
+
+            if (mapView != null && mapTheme != null)
+                mapView.InstantiateObstacles(_generatedMap, mapTheme);
+
+            GameManager.Instance?.Logger?.LogMap(
+                _generatedMap.seed,
+                _generatedMap.generatorVersion,
+                _generatedMap.gridSize,
+                _generatedMap.spawns.Length,
+                options.pathShape.ToString());
+            Debug.Log($"[BattleBridge] Map: seed={_generatedMap.seed} ver={_generatedMap.generatorVersion} shape={options.pathShape} density={options.obstacleDensity} size={_generatedMap.gridSize} spawns={_generatedMap.spawns.Length}");
+        }
+
         private void TeardownFlowField()
         {
+            if (_world == null || !_world.IsCreated || _em == default)
+            {
+                _flowFieldSingleton = Entity.Null;
+                return;
+            }
             if (_flowFieldSingleton != Entity.Null && _em != null && _em.Exists(_flowFieldSingleton))
             {
                 if (_em.HasComponent<FlowFieldSingleton>(_flowFieldSingleton))
@@ -333,6 +431,7 @@ namespace Wassup.Bridge
             _pending.Clear();
             _occupiedTiles.Clear();
             _defenderByTile.Clear();
+            _onPlaceTriggeredEntities.Clear();
             _synergyActivatedEntities.Clear();
             _synergyActivations = 0;
             _synergyPeakCount = 0;
@@ -358,7 +457,9 @@ namespace Wassup.Bridge
             }
             if (!_placementAllowed) BeginPlacement();
             if (_world == null) return;
-            _pending.AddRange(deck.spawns);
+            _pending.Clear();
+            for (int i = 0; i < deck.spawns.Count; i++)
+                _pending.Add(new PendingSpawnEntry { entry = deck.spawns[i], deckIndex = i });
             _startTime = Time.time;
             _timerDuration = deck.timerDurationSec;
             _running = true;
@@ -411,10 +512,7 @@ namespace Wassup.Bridge
             var attackSingleton = _em.CreateEntity();
             _em.AddComponentData(attackSingleton, new Wassup.Battle.Combat.DefenderAttackEventsSingleton { queue = _defenderAttackQueue });
 
-            // Phase 9 P9-03 wiring — build the flow field singleton once the map
-            // and EntityManager are confirmed ready. Idempotent: re-entry from
-            // RestartBattle / Redraft first calls TeardownFlowField().
-            BuildFlowField();
+            BuildMapForBattle();
         }
 
         public void StopBattle()
@@ -433,7 +531,24 @@ namespace Wassup.Bridge
             defenderPool = pool;
         }
 
+        public void SetMapPathShape(MapPathShape shape)
+        {
+            mapPathShape = shape;
+            var options = mapGenerationOptions.Normalized();
+            options.pathShape = shape;
+            mapGenerationOptions = options;
+        }
+
+        public void SetMapGenerationOptions(MapGenerationOptions options)
+        {
+            mapGenerationOptions = options.Normalized();
+            mapPathShape = mapGenerationOptions.pathShape;
+        }
+
         public DefenderUnitData[] DefenderPool => defenderPool;
+        public float TileSize => tileSize;
+        public MapView MapView => mapView;
+        public PlacementInput PlacementInput => placementInput;
 
         private SkillData[] _skillLoadout;
         public SkillData[] SkillLoadout => _skillLoadout;
@@ -522,6 +637,7 @@ namespace Wassup.Bridge
             if (skill.target != SkillTargetType.DefenderUnit) return false;
             if (!_defenderByTile.TryGetValue(tile, out var defender) || !_em.Exists(defender.entity)) return false;
             var entity = defender.entity;
+            if (_em.HasComponent<PendingDeployment>(entity)) return false;
             if (skillRuntime != null && !skillRuntime.IsReady(skill)) return false;
 
             switch (skill.effect)
@@ -556,6 +672,12 @@ namespace Wassup.Bridge
         // Phase 10 에서 tileSize 가 theme 파라미터로 승격될 때 이 helper 만 바꾸면 됨.
         private float3 GridToWorldCenter(Vector2Int cell, float y = 0f)
             => new float3(cell.x * tileSize, y, cell.y * tileSize);
+
+        public Vector3 GridToWorldCenterVector(Vector2Int cell, float y = 0f)
+        {
+            var p = GridToWorldCenter(cell, y);
+            return new Vector3(p.x, p.y, p.z);
+        }
 
         private int ApplySlowField(Vector2Int tile, SkillData skill)
         {
@@ -713,7 +835,7 @@ namespace Wassup.Bridge
             float t = Time.time - _startTime;
             for (int i = _pending.Count - 1; i >= 0; i--)
             {
-                if (t >= _pending[i].triggerTimeSec)
+                if (t >= _pending[i].entry.triggerTimeSec)
                 {
                     SpawnUnit(_pending[i]);
                     _pending.RemoveAt(i);
@@ -839,15 +961,15 @@ namespace Wassup.Bridge
         private int ApplyOnPlaceEffect(DefenderUnitData unitData, Vector2Int placedCell, Entity placedEntity)
         {
             if (unitData.onPlaceEffect == OnPlaceEffectType.None) return 0;
-            if (unitData.onPlaceRange <= 0f) return 0;
 
             float3 center = GridToWorldCenter(placedCell);
-            float rangeWorld = unitData.onPlaceRange * tileSize;
+            float rangeWorld = Mathf.Max(0f, unitData.onPlaceRange) * tileSize;
             float rangeSq = rangeWorld * rangeWorld;
             int affected = 0;
 
             if (unitData.onPlaceEffect == OnPlaceEffectType.SlowPulse)
             {
+                if (unitData.onPlaceRange <= 0f) return 0;
                 if (!_aliveAttackersQueryCreated) return 0;
                 var entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
                 for (int i = 0; i < entities.Length; i++)
@@ -863,8 +985,60 @@ namespace Wassup.Bridge
                 }
                 entities.Dispose();
             }
+            else if (unitData.onPlaceEffect == OnPlaceEffectType.BindNearby)
+            {
+                if (unitData.onPlaceRange <= 0f) return 0;
+                if (!_aliveAttackersQueryCreated) return 0;
+                var entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
+                for (int i = 0; i < entities.Length; i++)
+                {
+                    var e = entities[i];
+                    if (!_em.HasComponent<LocalTransform>(e)) continue;
+                    var pos = _em.GetComponentData<LocalTransform>(e).Position;
+                    float dx = pos.x - center.x;
+                    float dz = pos.z - center.z;
+                    if (dx * dx + dz * dz > rangeSq) continue;
+                    EffectSpawner.ApplySlow(_em, e, unitData.onPlaceDuration, unitData.onPlaceMagnitude);
+                    affected++;
+                }
+                entities.Dispose();
+            }
+            else if (unitData.onPlaceEffect == OnPlaceEffectType.MeleeBurst)
+            {
+                if (unitData.onPlaceRange <= 0f || unitData.onPlaceMagnitude <= 0f) return 0;
+                if (!_aliveAttackersQueryCreated) return 0;
+                var entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
+                for (int i = 0; i < entities.Length; i++)
+                {
+                    var e = entities[i];
+                    if (!_em.HasComponent<LocalTransform>(e) || !_em.HasBuffer<IncomingDamage>(e)) continue;
+                    var pos = _em.GetComponentData<LocalTransform>(e).Position;
+                    float dx = pos.x - center.x;
+                    float dz = pos.z - center.z;
+                    if (dx * dx + dz * dz > rangeSq) continue;
+                    _em.GetBuffer<IncomingDamage>(e).Add(new IncomingDamage { amount = unitData.onPlaceMagnitude });
+                    affected++;
+                }
+                entities.Dispose();
+            }
+            else if (unitData.onPlaceEffect == OnPlaceEffectType.ForwardProjectile)
+            {
+                affected = ApplyForwardOnPlaceProjectile(unitData, placedCell, center);
+            }
+            else if (unitData.onPlaceEffect == OnPlaceEffectType.GainCost)
+            {
+                var costRuntime = GameManager.Instance != null ? GameManager.Instance.CostRuntime : null;
+                affected = costRuntime != null
+                    ? costRuntime.AddCost(Mathf.RoundToInt(unitData.onPlaceMagnitude))
+                    : 0;
+            }
+            else if (unitData.onPlaceEffect == OnPlaceEffectType.ReduceSkillCooldown)
+            {
+                affected = skillRuntime != null ? skillRuntime.ReduceAllCooldowns(unitData.onPlaceMagnitude) : 0;
+            }
             else if (unitData.onPlaceEffect == OnPlaceEffectType.BoostNearbyDefenders)
             {
+                if (unitData.onPlaceRange <= 0f) return 0;
                 // Reuse the tuple-based tile map — no ECS query needed since placement
                 // grid already gives us every defender. Self-inclusion is allowed
                 // (PHASE4.md §4 autonomy, chosen for simplicity + stronger feedback).
@@ -872,6 +1046,7 @@ namespace Wassup.Bridge
                 {
                     var d = kv.Value;
                     if (!_em.Exists(d.entity)) continue;
+                    if (d.entity != placedEntity && _em.HasComponent<PendingDeployment>(d.entity)) continue;
                     var tileCell = kv.Key;
                     float dx = tileCell.x - placedCell.x;
                     float dz = tileCell.y - placedCell.y;
@@ -882,6 +1057,59 @@ namespace Wassup.Bridge
             }
 
             return affected;
+        }
+
+        private int ApplyForwardOnPlaceProjectile(DefenderUnitData unitData, Vector2Int placedCell, float3 center)
+        {
+            if (unitData.onPlaceRange <= 0f || unitData.onPlaceMagnitude <= 0f) return 0;
+            if (!_aliveAttackersQueryCreated) return 0;
+
+            float2 forward = FindNearestPathDirection(placedCell);
+            float length = unitData.onPlaceRange * tileSize;
+            float width = tileSize * 0.45f;
+            float widthSq = width * width;
+            int affected = 0;
+
+            var entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
+            for (int i = 0; i < entities.Length; i++)
+            {
+                var e = entities[i];
+                if (!_em.HasComponent<LocalTransform>(e) || !_em.HasBuffer<IncomingDamage>(e)) continue;
+                var pos = _em.GetComponentData<LocalTransform>(e).Position;
+                float2 toTarget = new float2(pos.x - center.x, pos.z - center.z);
+                float along = math.dot(toTarget, forward);
+                if (along < 0f || along > length) continue;
+                float2 closest = forward * along;
+                float2 lateral = toTarget - closest;
+                if (math.lengthsq(lateral) > widthSq) continue;
+                _em.GetBuffer<IncomingDamage>(e).Add(new IncomingDamage { amount = unitData.onPlaceMagnitude });
+                affected++;
+            }
+            entities.Dispose();
+            return affected;
+        }
+
+        private float2 FindNearestPathDirection(Vector2Int placedCell)
+        {
+            if (!_generatedMap.IsCreated) return new float2(1f, 0f);
+
+            int bestDistSq = int.MaxValue;
+            Vector2Int best = placedCell + Vector2Int.right;
+            for (int y = 0; y < _generatedMap.gridSize.y; y++)
+            for (int x = 0; x < _generatedMap.gridSize.x; x++)
+            {
+                if (_generatedMap.TileAt(new int2(x, y)) != MapTileType.Walk) continue;
+                int dx = x - placedCell.x;
+                int dy = y - placedCell.y;
+                int d2 = dx * dx + dy * dy;
+                if (d2 >= bestDistSq) continue;
+                bestDistSq = d2;
+                best = new Vector2Int(x, y);
+            }
+
+            var dir = new float2(best.x - placedCell.x, best.y - placedCell.y);
+            if (math.lengthsq(dir) < 0.001f) return new float2(1f, 0f);
+            return math.normalize(dir);
         }
 
         // Recomputes adjacency synergy for `cell` and its four neighbors. Same-type
@@ -903,11 +1131,12 @@ namespace Wassup.Bridge
             {
                 var c = cells[i];
                 if (!_defenderByTile.TryGetValue(c, out var here)) continue;
+                if (!_em.Exists(here.entity) || _em.HasComponent<PendingDeployment>(here.entity)) continue;
                 int neighbors = 0;
-                if (_defenderByTile.TryGetValue(c + new Vector2Int(1, 0), out var n1) && n1.data == here.data) neighbors++;
-                if (_defenderByTile.TryGetValue(c + new Vector2Int(-1, 0), out var n2) && n2.data == here.data) neighbors++;
-                if (_defenderByTile.TryGetValue(c + new Vector2Int(0, 1), out var n3) && n3.data == here.data) neighbors++;
-                if (_defenderByTile.TryGetValue(c + new Vector2Int(0, -1), out var n4) && n4.data == here.data) neighbors++;
+                if (_defenderByTile.TryGetValue(c + new Vector2Int(1, 0), out var n1) && n1.data == here.data && _em.Exists(n1.entity) && !_em.HasComponent<PendingDeployment>(n1.entity)) neighbors++;
+                if (_defenderByTile.TryGetValue(c + new Vector2Int(-1, 0), out var n2) && n2.data == here.data && _em.Exists(n2.entity) && !_em.HasComponent<PendingDeployment>(n2.entity)) neighbors++;
+                if (_defenderByTile.TryGetValue(c + new Vector2Int(0, 1), out var n3) && n3.data == here.data && _em.Exists(n3.entity) && !_em.HasComponent<PendingDeployment>(n3.entity)) neighbors++;
+                if (_defenderByTile.TryGetValue(c + new Vector2Int(0, -1), out var n4) && n4.data == here.data && _em.Exists(n4.entity) && !_em.HasComponent<PendingDeployment>(n4.entity)) neighbors++;
 
                 if (neighbors == 0)
                 {
@@ -1079,44 +1308,199 @@ namespace Wassup.Bridge
             return PlaceDefenderAs(tileX, tileY, unitData);
         }
 
+        public bool CanPlaceDefenderAt(int tileX, int tileY, DefenderUnitData unitData, out PlacementRejectReason reason)
+        {
+            if (!_running && !_placementAllowed)
+            {
+                reason = PlacementRejectReason.NotRunningOrPlacementClosed;
+                return false;
+            }
+            if (!_generatedMap.IsCreated)
+            {
+                reason = PlacementRejectReason.MissingMap;
+                return false;
+            }
+            if (tileX < 0 || tileX >= _generatedMap.gridSize.x || tileY < 0 || tileY >= _generatedMap.gridSize.y)
+            {
+                reason = PlacementRejectReason.OutOfBounds;
+                return false;
+            }
+            if (_generatedMap.TileAt(new int2(tileX, tileY)) != MapTileType.Place)
+            {
+                reason = PlacementRejectReason.NotBuildable;
+                return false;
+            }
+
+            var cell = new Vector2Int(tileX, tileY);
+            if (_occupiedTiles.Contains(cell))
+            {
+                reason = PlacementRejectReason.Occupied;
+                return false;
+            }
+
+            if (unitData == null || unitData.visualMaterial == null)
+            {
+                reason = PlacementRejectReason.InvalidUnit;
+                return false;
+            }
+
+            if (defenderPool != null && defenderPool.Length > 0 && System.Array.IndexOf(defenderPool, unitData) < 0)
+            {
+                reason = PlacementRejectReason.NotInPickedPool;
+                return false;
+            }
+
+            var costRuntime = GameManager.Instance != null ? GameManager.Instance.CostRuntime : null;
+            if (costRuntime != null && !costRuntime.CanAfford(unitData.cost))
+            {
+                reason = PlacementRejectReason.InsufficientCost;
+                return false;
+            }
+
+            reason = PlacementRejectReason.None;
+            return true;
+        }
+
         // Explicit-type placement (Phase 4). Used by DefenderSelector after the
         // player chooses which picked defender they want on the tile.
         public bool PlaceDefenderAs(int tileX, int tileY, DefenderUnitData unitData)
         {
-            // Phase 6: placement is permitted during the pre-battle phase or during battle.
-            if (!_running && !_placementAllowed) return false;
-            if (map == null) return false;
-            if (tileX < 0 || tileX >= MapData.Width || tileY < 0 || tileY >= MapData.Height) return false;
-            if (map.GetTile(tileX, tileY) != TileType.Buildable) return false;
-
             var cell = new Vector2Int(tileX, tileY);
-            if (_occupiedTiles.Contains(cell)) return false;
-
-            if (unitData == null || unitData.visualMaterial == null)
+            if (!CanPlaceDefenderAt(tileX, tileY, unitData, out var reason))
             {
-                Debug.LogWarning("[BattleBridge] PlaceDefenderAs: invalid unitData or missing material.");
-                return false;
-            }
-            // Reject types that are not in the picked pool — keeps Phase 1 draft semantics.
-            if (defenderPool != null && defenderPool.Length > 0 && System.Array.IndexOf(defenderPool, unitData) < 0)
-            {
-                Debug.LogWarning($"[BattleBridge] PlaceDefenderAs rejected {unitData.displayName}: not in picked pool.");
+                LogPlacementReject("PlaceDefenderAs", unitData, reason);
                 return false;
             }
 
             _occupiedTiles.Add(cell);
             GameManager.Instance?.Logger?.RecordPlacement(unitData.displayName, cell, Time.time - _startTime, unitData.cost);
 
+            var entity = CreateDefenderEntity(cell, unitData, pendingDeployment: false, spawnPlacementVfx: true);
+            TriggerOnPlaceAndSynergy(unitData, cell, entity);
+
+            Debug.Log($"[BattleBridge] Placed {unitData.displayName} at ({tileX},{tileY}).");
+            return true;
+        }
+
+        public bool TryBeginDefenderDeployment(int tileX, int tileY, DefenderUnitData unitData, out Entity entity)
+        {
+            entity = Entity.Null;
+            var cell = new Vector2Int(tileX, tileY);
+            if (!CanPlaceDefenderAt(tileX, tileY, unitData, out var reason))
+            {
+                LogPlacementReject("TryBeginDefenderDeployment", unitData, reason);
+                return false;
+            }
+
+            var costRuntime = GameManager.Instance != null ? GameManager.Instance.CostRuntime : null;
+            if (costRuntime != null && !costRuntime.TrySpend(unitData.cost))
+            {
+                LogPlacementReject("TryBeginDefenderDeployment", unitData, PlacementRejectReason.InsufficientCost);
+                return false;
+            }
+
+            _occupiedTiles.Add(cell);
+            GameManager.Instance?.Logger?.RecordPlacement(unitData.displayName, cell, Time.time - _startTime, unitData.cost);
+            entity = CreateDefenderEntity(cell, unitData, pendingDeployment: true, spawnPlacementVfx: false);
+            Debug.Log($"[BattleBridge] Began pending deployment for {unitData.displayName} at ({tileX},{tileY}).");
+            return true;
+        }
+
+        public void ActivateDeployedDefender(Vector2Int cell, Entity entity)
+        {
+            if (_em == null || entity == Entity.Null || !_em.Exists(entity)) return;
+            if (!_defenderByTile.TryGetValue(cell, out var binding) || binding.entity != entity) return;
+
+            if (!_onPlaceTriggeredEntities.Contains(entity))
+                TriggerDeploymentOnPlaceSkill(cell, entity);
+
+            if (_em.HasComponent<PendingDeployment>(entity))
+                _em.RemoveComponent<PendingDeployment>(entity);
+            RecomputeSynergyFor(cell);
+            Debug.Log($"[BattleBridge] Activated deployed defender {binding.data.displayName} at {cell}.");
+        }
+
+        public bool TriggerDeploymentOnPlaceSkill(Vector2Int cell, Entity entity)
+        {
+            if (_em == null || entity == Entity.Null || !_em.Exists(entity)) return false;
+            if (_onPlaceTriggeredEntities.Contains(entity)) return false;
+            if (!_defenderByTile.TryGetValue(cell, out var binding) || binding.entity != entity) return false;
+
+            int onPlaceAffected = ApplyOnPlaceEffect(binding.data, cell, entity);
+            _onPlaceTriggeredEntities.Add(entity);
+            LogOnPlaceAndSynergy(binding.data, cell, onPlaceAffected);
+            return true;
+        }
+
+        public float PlayDeploymentPresentation(DefenderUnitData unitData, Vector2Int cell, Entity entity)
+        {
+            float duration = unitData != null ? Mathf.Max(0f, unitData.deploymentDuration) : 0f;
+            var world = GridToWorldCenterVector(cell, spawnHeight);
+
+            if (unitData != null && unitData.placementVfxPrefab != null)
+            {
+                var go = Instantiate(unitData.placementVfxPrefab, world, Quaternion.identity);
+                Destroy(go, Mathf.Max(duration, 1f) + 0.25f);
+            }
+            else if (vfxSpawner != null)
+            {
+                vfxSpawner.SpawnPlacementRing(world);
+            }
+
+            bool spineDeployment = false;
+            if (spineDefenderPool != null && spineDefenderPool.TryGet(entity, out var view))
+            {
+                view.PlayDeploy();
+                spineDeployment = true;
+            }
+            if (!spineDeployment && unitData != null && duration > 0f)
+            {
+                StartCoroutine(PlayFallbackDeploymentPulse(unitData, world, duration));
+            }
+
+            return duration;
+        }
+
+        private IEnumerator PlayFallbackDeploymentPulse(DefenderUnitData unitData, Vector3 world, float duration)
+        {
+            var go = new GameObject($"DeployPulse_{unitData.displayName}");
+            go.transform.position = world + Vector3.up * 0.05f;
+            var meshFilter = go.AddComponent<MeshFilter>();
+            meshFilter.sharedMesh = unitData.visualMesh != null
+                ? unitData.visualMesh
+                : Resources.GetBuiltinResource<Mesh>("Quad.fbx");
+            var renderer = go.AddComponent<MeshRenderer>();
+            renderer.sharedMaterial = unitData.visualMaterial;
+
+            float elapsed = 0f;
+            while (elapsed < duration)
+            {
+                elapsed += Time.deltaTime;
+                float t = duration > 0f ? Mathf.Clamp01(elapsed / duration) : 1f;
+                float scale = Mathf.Lerp(0.45f, 1.15f, Mathf.Sin(t * Mathf.PI * 0.5f));
+                go.transform.localScale = Vector3.one * scale;
+                yield return null;
+            }
+
+            Destroy(go);
+        }
+
+        private Entity CreateDefenderEntity(
+            Vector2Int cell,
+            DefenderUnitData unitData,
+            bool pendingDeployment,
+            bool spawnPlacementVfx)
+        {
             var entity = _em.CreateEntity();
             // Phase 4: defenders can now take damage from enemy attackers, so
             // they need an IncomingDamage buffer just like attack units have.
             _em.AddBuffer<IncomingDamage>(entity);
             _defenderByTile[cell] = (entity, unitData);
-            _em.AddComponentData(entity, new DefenderTile { cell = new int2(tileX, tileY) });
+            _em.AddComponentData(entity, new DefenderTile { cell = new int2(cell.x, cell.y) });
 #if UNITY_EDITOR
-            _em.SetName(entity, $"Defender_{unitData.displayName}_{tileX}_{tileY}");
+            _em.SetName(entity, $"Defender_{unitData.displayName}_{cell.x}_{cell.y}");
 #endif
-            var pos = new float3(tileX * tileSize, spawnHeight, tileY * tileSize);
+            var pos = GridToWorldCenter(cell, spawnHeight);
             _em.AddComponentData(entity, LocalTransform.FromPosition(pos));
             _em.AddComponent<DefenderUnitTag>(entity);
             _em.AddComponentData(entity, new Health { value = unitData.health, max = unitData.health });
@@ -1128,9 +1512,11 @@ namespace Wassup.Bridge
                 cooldownRemaining = 0f,
                 attackTargetCount = unitData.attackTargetCount,
             });
+            if (pendingDeployment)
+                _em.AddComponent<PendingDeployment>(entity);
 
             // Phase 8 §12: placement pulse VFX (procedural particle ring).
-            if (vfxSpawner != null)
+            if (spawnPlacementVfx && vfxSpawner != null)
                 vfxSpawner.SpawnPlacementRing(new Vector3(pos.x, pos.y, pos.z));
 
             // Phase 8: if the unit has a Spine skeleton configured, spawn a
@@ -1166,13 +1552,22 @@ namespace Wassup.Bridge
             }
 
             CreateHealthBar(entity, yOffset: 0.9f, baseScale: 0.35f);
+            return entity;
+        }
 
+        private void TriggerOnPlaceAndSynergy(DefenderUnitData unitData, Vector2Int cell, Entity entity)
+        {
             // Fixed order: onPlace → synergy recompute → log (PHASE4 §2.5 P4-05).
             // onPlace is a standalone snapshot effect and must fire before the
             // new defender's SynergyBuff is computed, so it never affects itself.
             int onPlaceAffected = ApplyOnPlaceEffect(unitData, cell, entity);
+            _onPlaceTriggeredEntities.Add(entity);
             RecomputeSynergyFor(cell);
+            LogOnPlaceAndSynergy(unitData, cell, onPlaceAffected);
+        }
 
+        private void LogOnPlaceAndSynergy(DefenderUnitData unitData, Vector2Int cell, int onPlaceAffected)
+        {
             var logger = GameManager.Instance?.Logger;
             if (logger != null)
             {
@@ -1189,9 +1584,13 @@ namespace Wassup.Bridge
                 }
                 logger.SetSynergyStats(_synergyActivations, _synergyPeakCount);
             }
+        }
 
-            Debug.Log($"[BattleBridge] Placed {unitData.displayName} at ({tileX},{tileY}).");
-            return true;
+        private static void LogPlacementReject(string source, DefenderUnitData unitData, PlacementRejectReason reason)
+        {
+            if (reason == PlacementRejectReason.None) return;
+            string name = unitData != null ? unitData.displayName : "<null>";
+            Debug.LogWarning($"[BattleBridge] {source} rejected {name}: {reason}.");
         }
 
         private RenderMeshArray GetOrCreateDefenderRenderMeshArray(DefenderUnitData unit)
@@ -1218,22 +1617,31 @@ namespace Wassup.Bridge
             if (_defenderAttackQueue.IsCreated) _defenderAttackQueue.Dispose();
             // Phase 9 — guard against editor shutdown / play stop leaking Persistent arrays.
             TeardownFlowField();
+            // Phase 10A (P10A-04A): dispose GeneratedMap on destroy.
+            TeardownGeneratedMap();
             if (_healthBarMaterial != null) Destroy(_healthBarMaterial);
         }
 
-        private void SpawnUnit(SpawnEntry entry)
+        private static int EffectiveSpawnIndex(int authoredIndex, int deckIndex, int laneCount)
         {
+            if (laneCount <= 0) return 0;
+            if (laneCount <= 2)
+                return math.clamp(authoredIndex, 0, laneCount - 1);
+            return math.abs(deckIndex) % laneCount;
+        }
+
+        private void SpawnUnit(PendingSpawnEntry pending)
+        {
+            var entry = pending.entry;
             if (entry.unitType == null)
             {
                 Debug.LogWarning("[BattleBridge] SpawnEntry missing unitType, skipping.");
                 return;
             }
 
-            // Phase 9: AttackDeck.SpawnEntry.pathId 는 남아있지만 무시. MapData.SpawnCells[0] 사용.
-            // Phase 10 에서 pathId → spawnTileIndex migration + multi-spawn 지원.
-            if (map.SpawnCells == null || map.SpawnCells.Count == 0)
+            if (!_generatedMap.IsCreated || _generatedMap.spawns.Length == 0)
             {
-                Debug.LogWarning("[BattleBridge] MapData.SpawnCells empty — cannot spawn attacker");
+                Debug.LogWarning("[BattleBridge] GeneratedMap.spawns empty — cannot spawn attacker");
                 return;
             }
 
@@ -1248,8 +1656,15 @@ namespace Wassup.Bridge
             _em.SetName(entity, $"Enemy_{entry.unitType.displayName}");
 #endif
 
-            var spawnCell = map.SpawnCells[0];
-            var spawnWorldPos = GridToWorldCenter(spawnCell, spawnHeight);
+            int spawnIndex = EffectiveSpawnIndex(entry.spawnIndex, pending.deckIndex, _generatedMap.spawns.Length);
+            if (spawnIndex < 0 || spawnIndex >= _generatedMap.spawns.Length)
+            {
+                Debug.LogWarning($"[BattleBridge] SpawnEntry.spawnIndex={spawnIndex} out of range (spawns={_generatedMap.spawns.Length}). Fallback to 0.");
+                spawnIndex = 0;
+            }
+
+            var spawn = _generatedMap.spawns[spawnIndex];
+            var spawnWorldPos = GridToWorldCenter(new Vector2Int(spawn.x, spawn.y), spawnHeight);
             _em.AddComponentData(entity, LocalTransform.FromPosition(spawnWorldPos));
 
             _em.AddComponent<AttackUnitTag>(entity);

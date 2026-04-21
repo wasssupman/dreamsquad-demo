@@ -342,6 +342,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Wassup.Core.MapView
   buildableColor: {r: 0.85, g: 0.85, b: 0.85, a: 1}
   pathColor: {r: 0.95, g: 0.75, b: 0.4, a: 1}
+  envColor: {r: 0.55, g: 0.7, b: 0.35, a: 1}
   obstacleColor: {r: 0.25, g: 0.25, b: 0.3, a: 1}
 --- !u!4 &211636737
 Transform:
@@ -926,6 +927,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.DefenderSelector
   bridge: {fileID: 1939688408}
   draftController: {fileID: 20521825}
+  dragPlacementController: {fileID: 0}
 --- !u!4 &915292525
 Transform:
   m_ObjectHideFlags: 0
@@ -1662,6 +1664,7 @@ MonoBehaviour:
   bridge: {fileID: 1939688408}
   mainCamera: {fileID: 0}
   mapView: {fileID: 211636736}
+  clickPlacementEnabled: 1
 --- !u!1 &1628485821
 GameObject:
   m_ObjectHideFlags: 0
@@ -1910,6 +1913,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Wassup.Bridge.BattleBridge
   deck: {fileID: 11400000, guid: c971fe4b10aae4515a723d33e6e1731e, type: 2}
   map: {fileID: 11400000, guid: 0787ec9271df64707a2f470418f78692, type: 2}
+  mapSettings: {fileID: 11400000, guid: 9ed4dfa17ef6648e8bc91cef74b876cf, type: 2}
+  useProcedural: 1
+  mapTheme: {fileID: 11400000, guid: cee6d79be1d0942669279b9cbfac6717, type: 2}
+  mapPathShape: 1
   tileSize: 1
   spawnHeight: 0.5
   resultScreen: {fileID: 441089446}
@@ -1925,6 +1932,7 @@ MonoBehaviour:
   vfxSpawner: {fileID: 1795146346}
   mapView: {fileID: 211636736}
   placementInput: {fileID: 1495062452}
+  dragPlacementController: {fileID: 0}
 --- !u!4 &1939688409
 Transform:
   m_ObjectHideFlags: 0
