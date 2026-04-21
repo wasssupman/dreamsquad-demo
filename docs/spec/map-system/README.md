@@ -34,6 +34,7 @@
 | 16 | Logging | `16_seed_logging.md` | seed + generatorVersion 로그 |
 | 17 | Manual | `17_manual_map_input.md` | 맵툴 예약 data shape |
 | 18 | Regression | `18_playmode_regression.md` | PlayMode 3회 비교 + fallback |
+| 19 | Integration | `19_battlebridge_10b_integration.md` | BattleBridge Phase 10B 필드 + 최종 orchestration (Codex C-8 대응) |
 
 ## 공통 원칙
 

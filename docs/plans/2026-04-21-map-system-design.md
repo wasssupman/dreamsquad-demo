@@ -78,6 +78,7 @@ BattleBridge (MonoBehaviour owner)
 | 16 | Seed/version logging | 10B |
 | 17 | ManualMapInput struct | 10B |
 | 18 | PlayMode regression | 10B |
+| 19 | BattleBridge Phase 10B Integration | 10B |
 
 ## Phase 11+ 이관 확정
 

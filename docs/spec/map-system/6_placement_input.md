@@ -76,3 +76,9 @@ PlacementInput 이 hover cell 의 valid 여부에 따라 MapView.FlashTile* 호�
 - PlayMode smoke: Place 타일 위에 defender 배치 성공 / Walk/Env/Deco 타일 위 배치 실패 + flash reject 표시.
 - EditMode 테스트: `CanPlaceDefenderAt` 가 Place 만 true, 나머지 3 타입 false 반환 (PrototypeMap fixture 기반).
 - 기존 배치 중복 방지 (`_placedCells.Contains`) 회귀 없음.
+
+## Subtask 분할 (OVERRUN 대응, 30분 예상)
+
+- **6A** — `PlacementInput.Initialize(GeneratedMap, tileSize)` 시그니처 변경 + `_map` 필드
+- **6B** — `BattleBridge.CanPlaceDefenderAt` → `MapTileType.Place` 기반 검증 (gridSize 는 `_generatedMap.gridSize`)
+- **6C** — EditMode 테스트 (4 타입 중 Place 만 true) + FlashTileReject 회귀

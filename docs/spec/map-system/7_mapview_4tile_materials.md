@@ -25,17 +25,44 @@ public void Initialize(MapData map, float tileSize)
 }
 ```
 
-신규:
+신규 (C-2 fix: 멱등성 보장):
 ```csharp
 private GeneratedMap _map;
 private float _tileSize;
+private GameObject _tilesRoot;
+private GameObject _obstaclesRoot;
 
 public void Initialize(GeneratedMap map, float tileSize)
 {
+    // 재시작/redraft 시 기존 runtime state 완전 정리 후 재생성
+    ClearTilesAndRuntimeState();
+
     _map = map;
     _tileSize = tileSize;
     BuildSharedMaterials();
     BuildTiles();
+}
+
+// C-2 멱등성: active flash coroutine 중단 → dict clear → runtime GameObject 파괴 → material dict dispose
+private void ClearTilesAndRuntimeState()
+{
+    // 1. active flash coroutine 중단
+    foreach (var co in _activeFlashes.Values)
+        if (co != null) StopCoroutine(co);
+    _activeFlashes.Clear();
+
+    // 2. renderer 참조 dict clear
+    _buildableRenderers.Clear();
+
+    // 3. runtime GameObject 파괴
+    if (_tilesRoot != null) Destroy(_tilesRoot);
+    if (_obstaclesRoot != null) Destroy(_obstaclesRoot);
+    _tilesRoot = null;
+    _obstaclesRoot = null;
+
+    // 4. 이전 material dispose (runtime-instanced shared materials)
+    foreach (var m in _tileMaterials.Values) SafeDestroy(m);
+    _tileMaterials.Clear();
 }
 ```
 
@@ -59,8 +86,9 @@ private void BuildSharedMaterials()
 ```csharp
 private void BuildTiles()
 {
-    var tilesRoot = new GameObject("Tiles");
-    tilesRoot.transform.SetParent(transform, false);
+    _tilesRoot = new GameObject("Tiles");
+    _tilesRoot.transform.SetParent(transform, false);
+    var tilesRoot = _tilesRoot;  // alias
     int w = _map.gridSize.x, h = _map.gridSize.y;
     for (int y = 0; y < h; y++)
     for (int x = 0; x < w; x++)
@@ -106,3 +134,11 @@ private void OnDestroy()
 - 컴파일 0 errors.
 - PlayMode smoke: PrototypeMap 진입 → 4 종 색상이 구분되어 보임 (Walk 주황, Place 회색, Env 초록, Deco 짙은회색).
 - `FlashTileReject` 가 Place 타일에서 정상 동작 (Phase 9 기능 회귀 없음).
+- **멱등성 (C-2)**: Initialize 2회 호출 시 중복 tile GameObject 없음, material leak 없음, flash coroutine 누수 없음.
+- `_tilesRoot` / `_obstaclesRoot` 필드 선언됨 (task 14 의 `InstantiateObstacles` 와 공유).
+
+## Subtask 분할 (OVERRUN 대응, 40분 예상)
+
+- **7A** — `_tilesRoot / _obstaclesRoot` 필드 선언 + `ClearTilesAndRuntimeState()` idempotent teardown
+- **7B** — `BuildSharedMaterials` 4 타입 Material + `BuildTiles` GeneratedMap 기반 cube 렌더링
+- **7C** — Flash API 회귀 검증 + OnDestroy cleanup 확인

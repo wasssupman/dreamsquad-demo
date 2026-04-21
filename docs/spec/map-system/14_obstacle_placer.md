@@ -4,7 +4,9 @@
 
 ## 목적
 
-Walk 타일과 Place 타일을 침범하지 않는 셀에 theme obstacle prefab 을 단일 셀 단위로 배치. multi-cell footprint 는 Phase 11+ 이관. 사용자 bullet 5 "이동타일 기반 맵 테마 디자인 오브젝트 배치" 구현.
+**Walk 타일을 침범하지 않는** 상태에서, Place 타일 중 일부를 theme obstacle 배치 영역(Deco) 으로 전환. 단일 셀 단위. multi-cell footprint 는 Phase 11+ 이관. 사용자 bullet 5 "이동타일 기반 맵 테마 디자인 오브젝트 배치" 구현.
+
+**H-1 fix — 의미 정정**: 원 초안의 "Walk + Place 비침범" 표현은 모순이었다. 실제 동작은 **Walk 는 절대 건드리지 않음, Place 는 최소 비율(minPlaceableRatio) 이상 보존 후 나머지 Place → Deco 전환**. Place 셀이 obstacle 로 소모되는 것은 의도된 동작 (defender 배치 공간 축소 대신 시각 디테일 획득).
 
 ## 변경 대상
 
@@ -17,12 +19,15 @@ Walk 타일과 Place 타일을 침범하지 않는 셀에 theme obstacle prefab 
 ```csharp
 using Unity.Collections;
 using Unity.Mathematics;
+// C-5 fix: Random 모호성 제거
+using Random = Unity.Mathematics.Random;
 
 namespace Wassup.Data
 {
     public static class ObstaclePlacer
     {
         // tiles 에서 Place 로 표시된 셀 중 일부를 Deco(배경 오브젝트) 로 전환.
+        // Walk 타일은 절대 건드리지 않음 (H-1).
         // minPlaceableRatio 이하로는 떨어지지 않음 (defender 배치 공간 확보).
         public static void Place(ref Random rng, NativeArray<MapTileType> tiles, int2 gridSize, MapThemeData theme)
         {
@@ -35,8 +40,8 @@ namespace Wassup.Data
             for (int i = 0; i < n; i++)
                 if (tiles[i] == MapTileType.Place) placeCount++;
 
-            // 최소 유지 수
-            int minPlace = Mathf.CeilToInt(placeCount * theme.minPlaceableRatio);
+            // 최소 유지 수 (C-6 fix: Mathf 사용 → math.ceil 로 교체하여 UnityEngine using 불필요)
+            int minPlace = (int)math.ceil(placeCount * theme.minPlaceableRatio);
 
             // Deco 로 전환할 대상 수
             int convertCount = placeCount - minPlace;
@@ -85,7 +90,8 @@ public void InstantiateObstacles(GeneratedMap map, MapThemeData theme)
         if (type != MapTileType.Deco) continue;
 
         int hash = unchecked(map.seed * 73856093) ^ (x * 19349663) ^ (y * 83492791);
-        int prefabIdx = math.abs(hash) % theme.obstaclePrefabs.Length;
+        // M-3 fix: math.abs(int.MinValue) 가 음수로 남는 엣지 케이스 방지
+        int prefabIdx = (hash & int.MaxValue) % theme.obstaclePrefabs.Length;
         var prefab = theme.obstaclePrefabs[prefabIdx];
 
         var pos = new Vector3(x * _tileSize, 0f, y * _tileSize);
@@ -121,6 +127,12 @@ if (mapView != null) mapView.InstantiateObstacles(_generatedMap, mapTheme);
 ## 완료 기준
 
 - 컴파일 0 errors.
-- EditMode 테스트: ObstaclePlacer 호출 후 Place 셀 수 >= `Mathf.CeilToInt(originalPlace * minPlaceableRatio)`.
+- EditMode 테스트: ObstaclePlacer 호출 후 **Walk 셀 수 불변**, Place 셀 수 >= `(int)math.ceil(originalPlace * minPlaceableRatio)`.
 - PlayMode smoke: procedural 맵 생성 → Deco 타일 위치에 prefab 실제로 Instantiate 됨.
-- Walk/Place 셀 위 prefab 배치 0 확인 (Walk 경로 자유 이동, Place 에 defender 배치 가능).
+- Walk 셀 위 prefab 배치 0 확인 (H-1 불변조건).
+
+## Subtask 분할 (OVERRUN 대응, 45분 예상)
+
+- **14A** — `ObstaclePlacer.Place` 데이터 레이어 (Walk 불가침, Place→Deco 셔플)
+- **14B** — `MapView.InstantiateObstacles` 시각 레이어 + hash 기반 prefab 선택
+- **14C** — Forest theme prefab 3~4종 + `forest.asset` + BattleBridge task 19 와 wiring 확인

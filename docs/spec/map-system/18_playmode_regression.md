@@ -28,15 +28,21 @@ Phase 10 전체 결과 (10A data 모델 + 10B procedural + 테마 오브젝트) 
   - defender 배치 가능한 Place 타일 여러 개 존재
   - 배경 오브젝트 (Deco) prefab 시각 확인
 
-### 3. Fallback 맵 진입 (강제)
+### 3. Fallback 맵 진입 (test-only hook 사용)
 
-- `MapGenerationSettings.defaultSeed` 를 여러 값으로 바꿔가며 시도
-- **의도적 실패 유도**: `ProceduralMapGenerator.MaxAttempts = 1` + path carve 의 MaxSteps 를 극단적으로 작게 조정 (코드 수정 필요)
+**H-6 fix**: production 코드 (`MaxAttempts`, `MaxSteps`) 를 일시 변경하지 말고 **test-only hook** 으로 대체.
+
+구현:
+- `ProceduralMapGenerator` 에 `internal static bool ForceFailForTests` static flag 추가 (editor/test build 전용)
+- EditMode 테스트 또는 `#if UNITY_EDITOR` 블록에서 `true` 설정 → `TryGenerate` 가 즉시 `default` 반환 → 3회 재시도 후 fallback 진입
+- `[ContextMenu("Force Fallback Map")]` 을 `BattleBridge` 에 추가해 Play 중 수동 트리거 가능
+
+Play 확인:
 - Fallback 하드코딩 직선 맵 진입 확인:
   - 가운데 행이 Walk, 나머지 Place
   - spawn = 좌측, goal = 우측
-  - 콘솔에 "Falling back to linear" 경고
-- 원 코드 복구
+  - 콘솔에 "3 attempts failed ... Falling back to linear" 경고
+- 테스트 종료 후 `ForceFailForTests = false` (자동)
 
 ### 4. Phase 9 기능 회귀
 
@@ -68,7 +74,14 @@ Phase 10 전체 결과 (10A data 모델 + 10B procedural + 테마 오브젝트) 
 ## 완료 기준
 
 - 4개 시나리오 모두 통과.
-- 녹화 파일 저장 + commit.
+- 녹화 증거 (스크린샷 또는 PHASE10.md 내 짧은 서술) — media 은 프로젝트 policy 없으면 commit 생략 (L-3).
 - `docs/residual-issues.md` 에 P10 관련 잔존 항목 정리.
 - `docs/PHASE10.md` 작성 (Phase 10A + 10B 통합 종료 스펙).
 - `CLAUDE.md` 하단 상태: Phase 10 → Phase 11 prep 으로 갱신.
+- H-6: `ForceFailForTests` hook 으로 production code 수정 없이 fallback 시나리오 재현.
+
+## Subtask 분할 (OVERRUN 대응, 30분 예상)
+
+- **18A** — 결정적 seed 재현성 시나리오 + 랜덤 variation 시나리오
+- **18B** — `ForceFailForTests` hook 추가 + fallback 시나리오 검증
+- **18C** — Phase 9 기능 회귀 (Portal/Tornado/Meteor/Defender 배치) + PHASE10.md 작성

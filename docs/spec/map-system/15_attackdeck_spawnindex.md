@@ -16,14 +16,14 @@ Q-C 결정 반영: `AttackDeck.SpawnEntry` 의 `string pathId` 필드를 `int sp
 
 ### AttackDeck.SpawnEntry 필드
 
-기존:
+기존 (실제 `AttackDeck.cs:17-22` 확인됨 — C-7 fix):
 ```csharp
 [Serializable]
 public class SpawnEntry
 {
     public float triggerTimeSec;
-    public DefenderUnitData unitType;  // attacker unit
-    public string pathId;               // ex: "A" / "B" — MapData.Paths.id 와 매칭
+    public AttackUnitData unitType;   // attacker unit — 실제 타입 AttackUnitData (DefenderUnitData 아님)
+    public string pathId;              // ex: "A" / "B" — MapData.Paths.id 와 매칭
 }
 ```
 
@@ -33,7 +33,7 @@ public class SpawnEntry
 public class SpawnEntry
 {
     public float triggerTimeSec;
-    public DefenderUnitData unitType;
+    public AttackUnitData unitType;   // ← 타입 유지 (원 초안의 DefenderUnitData 는 오류)
     [Tooltip("GeneratedMap.spawns 배열의 인덱스. 범위 벗어나면 index 0 fallback + 경고.")]
     public int spawnIndex;
 }
@@ -97,8 +97,14 @@ Phase 10 개시와 함께 `pathId` 필드 완전 제거. Unity YAML deserialize 
 
 ## 완료 기준
 
-- `AttackDeck.cs` 컴파일.
+- `AttackDeck.cs` 컴파일 (unitType 타입은 `AttackUnitData` 유지).
 - `WaveA.asset` YAML 수정 완료. Inspector 에서 entry 별 `spawnIndex` 정수 필드 노출.
 - EditMode 테스트: `SpawnEntry.spawnIndex=0` 로 설정된 deck 으로 spawn → `GeneratedMap.spawns[0]` 위치에서 적 entity 생성.
 - 범위 초과 index → LogWarning + idx 0 fallback.
 - PlayMode smoke: procedural 맵 2-spawn 환경에서 WaveA.asset 의 2 entry 가 각각 spawn 0/1 에서 스폰.
+
+## Subtask 분할 (OVERRUN 대응, 35분 예상)
+
+- **15A** — `AttackDeck.SpawnEntry.pathId` → `spawnIndex` 필드 교체 (타입 `AttackUnitData` 유지)
+- **15B** — `WaveA.asset` YAML 수정 (entries[].pathId → entries[].spawnIndex)
+- **15C** — `BattleBridge` 적 스폰 경로 `entry.spawnIndex` 기반으로 교체 + 범위 체크

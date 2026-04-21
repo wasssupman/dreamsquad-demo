@@ -42,6 +42,29 @@ namespace Wassup.Data
 ```csharp
 public static GeneratedMap BuildFromManual(ManualMapInput input, int seed = 0, int generatorVersion = 0)
 {
+    // H-7 fix: 필수 필드 null/empty 체크
+    if (input.gridSize.x <= 0 || input.gridSize.y <= 0)
+    {
+        Debug.LogError("[BuildFromManual] gridSize must be positive.");
+        return default;
+    }
+    if (input.walkCells == null || input.walkCells.Length == 0)
+    {
+        Debug.LogError("[BuildFromManual] walkCells required.");
+        return default;
+    }
+    if (input.spawns == null || input.spawns.Length == 0)
+    {
+        Debug.LogError("[BuildFromManual] spawns required.");
+        return default;
+    }
+    // H-4: goal 및 spawn bounds 체크
+    if (!InBounds(input.goal, input.gridSize))
+    {
+        Debug.LogError($"[BuildFromManual] goal {input.goal} out of gridSize {input.gridSize}.");
+        return default;
+    }
+
     int n = input.gridSize.x * input.gridSize.y;
     var tiles = new NativeArray<MapTileType>(n, Allocator.Persistent);
 
@@ -83,44 +106,21 @@ public static GeneratedMap BuildFromManual(ManualMapInput input, int seed = 0, i
 
 private static void MarkCells(NativeArray<MapTileType> tiles, int2 gridSize, int2[] cells, MapTileType type)
 {
+    if (cells == null) return;  // H-7: null 허용
     foreach (var c in cells)
     {
         if (c.x < 0 || c.x >= gridSize.x || c.y < 0 || c.y >= gridSize.y) continue;
         tiles[c.y * gridSize.x + c.x] = type;
     }
 }
+
+private static bool InBounds(int2 cell, int2 gridSize)
+    => cell.x >= 0 && cell.x < gridSize.x && cell.y >= 0 && cell.y < gridSize.y;
 ```
 
 ### BattleBridge 분기 (Phase 10B 흐름)
 
-```csharp
-private void BuildMapForBattle()
-{
-    TeardownGeneratedMap();
-
-    int seed = mapSettings.EffectiveSeed;
-    int ver  = mapSettings.generatorVersion;
-
-    if (manualMapInput.HasValue)  // 맵툴 입력 있음
-        _generatedMap = BattleMapBuilder.BuildFromManual(manualMapInput.Value, seed, ver);
-    else if (useProcedural)       // 기본: procedural 생성
-        _generatedMap = ProceduralMapGenerator.Generate(seed, gridSize, mapTheme);
-    else                           // fixture 경로 (Phase 10A 잔재, 테스트용)
-        _generatedMap = BattleMapBuilder.BuildFromFixture(map, seed, ver);
-
-    // 공통: 연결성 검증 + fallback
-    if (!MapConnectivity.AllSpawnsReachGoal(_generatedMap))
-    {
-        _generatedMap.Dispose();
-        _generatedMap = BattleMapBuilder.BuildFallbackLinear(gridSize, seed, ver);
-    }
-
-    // 주입 + FlowField build
-    ...
-}
-```
-
-`manualMapInput` 은 개발 중엔 null 기본값. 맵툴 Phase 에서 연동.
+C-8 fix: 모든 필드 (`useProcedural`, `mapTheme`, `_manualMapInput`, gridSize source, generatorVersion source) 는 **task 19 에서 owner 로 정의**. 이 task 는 `BuildFromManual` API 와 `ManualMapInput` struct 만 담당. 실제 BattleBridge 분기 코드는 task 19 참조.
 
 ## Phase 11+ 이관
 
@@ -135,3 +135,11 @@ private void BuildMapForBattle()
 - EditMode 테스트: 간단한 ManualMapInput (5×5 grid, walk 셀 3개, spawn 1개, goal 1개) → GeneratedMap 의 tiles 에 해당 셀 Walk 마킹 확인.
 - 경계 밖 셀은 무시 (warning 아닌 silent skip).
 - Phase 10B 현재는 BattleBridge 가 procedural 경로만 사용 (manual 경로는 맵툴 Phase 에서 활성화).
+- H-4: goal / spawn 이 gridSize 밖 → LogError + default(GeneratedMap) 반환 (exception 없음).
+- H-7: gridSize/walkCells/spawns null/empty → LogError + default 반환.
+
+## Subtask 분할 (OVERRUN 대응, 35분 예상)
+
+- **17A** — `ManualMapInput` struct 정의 + `BuildFromManual` body 구현
+- **17B** — null/bounds 검증 (H-4, H-7) + MarkCells / InBounds helper
+- **17C** — EditMode 테스트 (정상 케이스 + null/out-of-bounds edge case)

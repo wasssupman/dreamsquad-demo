@@ -98,3 +98,9 @@ private void BuildFlowField()
 - EditMode `FlowFieldBuilderTests` 3종 전부 PASS.
 - PlayMode smoke: PrototypeMap fixture → 기존 flow field 와 동일 결과 (Walk 셀만 통과).
 - 20×20 크기로 변경 시 FlowFieldSingleton.flow.Length == 400 확인 (9_multispawn_connectivity 테스트에서).
+
+## Subtask 분할 (OVERRUN 대응, 30분 예상)
+
+- **5A** — `BuildFlowField` 시그니처 변경 (map → _generatedMap) + walkmask = Walk only
+- **5B** — try/catch leak 보호 재확인 (Phase 9 패턴 유지)
+- **5C** — 20×20 gridSize 회귀 테스트 추가 (FlowFieldBuilderTests 확장)

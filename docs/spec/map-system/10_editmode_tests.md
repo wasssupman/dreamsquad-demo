@@ -137,3 +137,9 @@ Phase 10A task 0~9 결과의 결정성 + 회귀를 EditMode 로 검증. Phase 9 
 - 총 신규 EditMode 테스트 7~10개 모두 PASS.
 - 기존 Phase 9 EditMode 52/52 여전히 PASS.
 - 모든 NativeArray 사용처 try/finally dispose 적용.
+
+## Subtask 분할 (OVERRUN 대응, 45분 예상)
+
+- **10A** — MapTileTypeTests + GeneratedMapTests (enum / Dispose / CellIndex)
+- **10B** — BattleMapBuilderTests (BuildFromFixture / BuildFallbackLinear)
+- **10C** — MapConnectivityTests + 20×20 flow field 회귀 테스트

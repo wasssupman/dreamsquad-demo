@@ -27,18 +27,31 @@ namespace Wassup.Data
     public static class MapConnectivity
     {
         // goal 기준 BFS 로 dist 계산 후 모든 spawn 이 도달 가능한지 검증.
+        // H-4 fix: spawn / goal 이 gridSize 내부인지 먼저 검증 (out-of-bounds 시 false).
+        // M-1 fix: NativeArray 3개 default 선언 후 try 안에서 할당 → 중간 실패 시 leak 없음.
         public static bool AllSpawnsReachGoal(GeneratedMap map)
         {
-            int n = map.gridSize.x * map.gridSize.y;
-            var walk = new NativeArray<byte>(n, Allocator.Temp);
-            var flow = new NativeArray<float2>(n, Allocator.Temp);
-            var dist = new NativeArray<int>(n, Allocator.Temp);
+            // Bounds pre-check (H-4)
+            var gs = map.gridSize;
+            if (gs.x <= 0 || gs.y <= 0) return false;
+            if (!InBounds(map.goal, gs)) return false;
+            for (int s = 0; s < map.spawns.Length; s++)
+                if (!InBounds(map.spawns[s], gs)) return false;
+
+            int n = gs.x * gs.y;
+            NativeArray<byte>   walk = default;
+            NativeArray<float2> flow = default;
+            NativeArray<int>    dist = default;
             try
             {
+                walk = new NativeArray<byte>(n, Allocator.Temp);
+                flow = new NativeArray<float2>(n, Allocator.Temp);
+                dist = new NativeArray<int>(n, Allocator.Temp);
+
                 for (int i = 0; i < n; i++)
                     walk[i] = (byte)(map.tiles[i] == MapTileType.Walk ? 1 : 0);
 
-                FlowFieldBuilder.Build(walk, map.gridSize, map.goal, flow, dist);
+                FlowFieldBuilder.Build(walk, gs, map.goal, flow, dist);
 
                 for (int s = 0; s < map.spawns.Length; s++)
                 {
@@ -49,9 +62,14 @@ namespace Wassup.Data
             }
             finally
             {
-                walk.Dispose(); flow.Dispose(); dist.Dispose();
+                if (walk.IsCreated) walk.Dispose();
+                if (flow.IsCreated) flow.Dispose();
+                if (dist.IsCreated) dist.Dispose();
             }
         }
+
+        private static bool InBounds(int2 cell, int2 gridSize)
+            => cell.x >= 0 && cell.x < gridSize.x && cell.y >= 0 && cell.y < gridSize.y;
     }
 }
 ```
@@ -100,8 +118,11 @@ private void BuildMapForBattle()
     {
         Debug.LogError("[BattleBridge] Map fails spawn→goal connectivity. Falling back to linear map.");
         _generatedMap.Dispose();
-        _generatedMap = BattleMapBuilder.BuildFallbackLinear(
-            new int2(mapSettings.gridWidth, mapSettings.gridHeight), seed, ver);
+        // H-5 fix: mapSettings null-safe fallback gridSize
+        var fallbackSize = mapSettings != null
+            ? new int2(mapSettings.gridWidth, mapSettings.gridHeight)
+            : new int2(20, 20);
+        _generatedMap = BattleMapBuilder.BuildFallbackLinear(fallbackSize, seed, ver);
     }
 
     // 주입 + FlowField build (task 4)
@@ -122,3 +143,12 @@ Procedural 생성 시 Generate 실패 (max 3회 재시도 → 전부 실패) 시
   - `BuildFallbackLinear(20, 20)` 의 tiles[y*20+x] 가 y==10 일 때 Walk, 아니면 Place
   - Fallback map 은 `AllSpawnsReachGoal` == true
 - PlayMode smoke: PrototypeMap 정상 진행 (fallback 경로 미진입).
+- H-4: out-of-bounds spawn/goal 입력 → exception 없이 false 반환.
+- H-5: mapSettings null → fallback gridSize=(20,20) 로 진행 (null deref 없음).
+- M-1: `new NativeArray(...)` 중간 throw 시 이미 할당된 array 만 dispose (leak 없음).
+
+## Subtask 분할 (OVERRUN 대응, 35분 예상)
+
+- **9A** — `MapConnectivity.AllSpawnsReachGoal` + InBounds helper + NativeArray leak-safe
+- **9B** — `BattleMapBuilder.BuildFallbackLinear` 직선 맵 생성
+- **9C** — `BattleBridge.BuildMapForBattle` 내 연결성 검증 + null-safe fallback + EditMode 테스트

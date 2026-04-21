@@ -82,3 +82,9 @@ Phase 7 에서 추가된 `BattleLogSchema.SkillRecord.seed`, `draft.seed` 와 �
 - 판 진입 시 JSON 로그에 `map: { seed, generatorVersion, gridWidth, gridHeight, spawnCount }` 블록 포함.
 - 동일 seed 2회 판 진입 시 두 로그의 map.seed 동일 값 확인.
 - `Debug.Log` 콘솔 출력 1줄 확인.
+
+## Subtask 분할 (OVERRUN 대응, 25분 예상)
+
+- **16A** — `BattleLogSchema.MapRecord` 필드 + `BattleLogger.LogMap` API
+- **16B** — `BattleBridge.BuildMapForBattle` 에서 `_logger.LogMap` + `Debug.Log` 호출
+- **16C** — JSON 로그 확인 테스트 + 동일 seed 2회 재현 검증

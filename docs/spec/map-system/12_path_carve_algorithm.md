@@ -14,7 +14,7 @@ Q-6 결정 반영: **각 spawn 별 독립 randomized Manhattan walk + BFS post-v
 
 1. 각 spawn 에서 goal 까지 **Manhattan walk** 수행
 2. 매 스텝 dx/dy 중 남은 거리가 큰 쪽을 우선, bias 완화용 random tie-break
-3. 일정 확률 (p = 0.15) 로 **detour** (현재 방향과 수직으로 1~2 step) — 경로 곡선화
+3. 일정 확률 (p = 0.15) 로 **detour** (현재 방향과 수직으로 1 step) — 경로 곡선화
 4. 방문 셀을 `MapTileType.Walk` 로 마킹 (중복 허용, 여러 spawn path 교차 가능)
 5. 모든 spawn 완료 후 BFS 로 goal 에서 역방향 도달성 재검증 (9_multispawn_connectivity 재사용)
 
@@ -127,3 +127,10 @@ namespace Wassup.Data
   - 간단한 20×20 맵에서 2 spawn + 1 goal carve 후 `AllSpawnsReachGoal` == true
   - MaxSteps 초과 시 false 반환 (edge case: spawn 이 가장자리, goal 도 반대편, detour 과도)
 - 확률 0.15 detour 가 매 run 다른 형태 생성 (결정성은 seed 당, variation 은 seed 간)
+- M-4 note: detour 설명 ("1-2 step") 과 구현 ("1 step") 일치 — 현재 구현은 1 step detour 만. 문서 수정 완료.
+
+## Subtask 분할 (OVERRUN 대응, 35분 예상)
+
+- **12A** — `PathCarver.CarveAllSpawnsToGoal` + `CarveSingleSpawn` core loop
+- **12B** — `DecideStepDir` (detour + Manhattan bias + random tie-break)
+- **12C** — EditMode 테스트 (직선/장애물/연결성 유지/maxSteps 경계)

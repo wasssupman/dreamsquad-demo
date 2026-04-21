@@ -72,3 +72,11 @@ namespace Wassup.Data
 - `BattleMapBuilder.cs` 컴파일.
 - EditMode 테스트: PrototypeMap 에 대해 `BuildFromFixture` 호출 → tiles 개수 200 (20×10) / spawns 개수 일치 / goal 일치.
 - Dispose 후 NativeArray leak 없음 (테스트 `try/finally`).
+
+> **L-2 note**: `BuildFromFixture` 는 legacy adapter only. procedural 경로는 `ProceduralMapGenerator.Generate` 사용. 이 패턴을 procedural 코드에 복사하지 말 것.
+
+## Subtask 분할 (OVERRUN 대응, 25분 예상)
+
+- **3A** — `BattleMapBuilder.BuildFromFixture` + `MapTile(TileType)` 매핑
+- **3B** — EditMode 테스트 (tiles 개수, spawn/goal 일치, dispose)
+- **3C** — legacy 매핑 주석 + L-2 복사 금지 문구
