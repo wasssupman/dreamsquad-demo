@@ -73,7 +73,7 @@
 - [ ] `BattleBridge.SpawnMeteorWarningVisual` procedural Quad 제거 검토 (prefab 화 여부와 연계)
 - [x] `PathFollowState.currentWaypointIndex` / `DynamicBuffer<PathWaypoint>` 제거 (Phase 9 P9-05B / P9-09)
 - [x] `ResolveExitWaypointIndex` / `PortalLink.exitWaypointIndex` 제거 (Phase 9 P9-06)
-- [ ] `MapData.paths` `[Obsolete]` 필드 완전 삭제 — Phase 10 asset migration (PrototypeMap.asset → GeneratedMap) 시점
+- [x] `MapData.paths` `[Obsolete]` 필드 완전 삭제 — Phase 10 종료 시 `paths` 필드/`Paths` property/`PathDefinition` 클래스 + `PrototypeMap.asset` paths 블록 제거
 - [ ] Task 2 MEDIUM: `GridMath` `CellIndex` 및 half-boundary 반올림 EditMode 테스트 보강 (Phase 10 맵 파이프라인 정착 후 재검토)
 
 ---
