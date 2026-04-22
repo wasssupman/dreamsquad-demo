@@ -74,7 +74,10 @@ namespace Wassup.Presentation
             }
             var pos = new Vector3(centerWorld.x, centerWorld.y + 0.05f, centerWorld.z);
             var go = Instantiate(tornadoPrefab, pos, Quaternion.identity, transform);
-            go.transform.localScale = Vector3.one * Mathf.Max(0.1f, radiusWorld);
+            if (HasPixPlaysVfx(go))
+                PlayPixPlaysVfx(go, pos, pos + Vector3.forward, durationSec, radiusWorld);
+            else
+                go.transform.localScale = Vector3.one * Mathf.Max(0.1f, radiusWorld);
             Destroy(go, durationSec + 0.1f);
         }
 
@@ -108,7 +111,91 @@ namespace Wassup.Presentation
                     beamLine.SetPosition(1, end);
                 }
             }
+            PlayPixPlaysPortalVfx(root, entryWorld, exitWorld, durationSec);
             Destroy(root, durationSec + 0.1f);
+        }
+
+        private static void PlayPixPlaysVfx(GameObject root, Vector3 source, Vector3 target, float durationSec, float radiusWorld)
+        {
+            if (root == null) return;
+            var effects = FindPixPlaysVfx(root);
+            for (int i = 0; i < effects.Length; i++)
+            {
+                var effect = effects[i];
+                if (effect == null) continue;
+                PlayPixPlaysEffect(effect, source, target, source, durationSec, Mathf.Max(0.1f, radiusWorld));
+            }
+        }
+
+        private static bool HasPixPlaysVfx(GameObject root)
+        {
+            return root != null && FindPixPlaysVfx(root).Length > 0;
+        }
+
+        private static void PlayPixPlaysPortalVfx(GameObject root, Vector3 entryWorld, Vector3 exitWorld, float durationSec)
+        {
+            if (root == null) return;
+            var effects = FindPixPlaysVfx(root);
+            var source = new Vector3(entryWorld.x, entryWorld.y + 0.15f, entryWorld.z);
+            var target = new Vector3(exitWorld.x, exitWorld.y + 0.15f, exitWorld.z);
+            var entry = root.transform.Find("Entry");
+            var exit = root.transform.Find("Exit");
+            for (int i = 0; i < effects.Length; i++)
+            {
+                var effect = effects[i];
+                if (effect == null) continue;
+                Vector3 effectSource = source;
+                Vector3 effectTarget = target;
+                float radius = 1f;
+
+                if (exit != null && effect.transform.IsChildOf(exit))
+                {
+                    effectSource = target;
+                    effectTarget = source;
+                }
+                else if (entry != null && effect.transform.IsChildOf(entry))
+                {
+                    effectSource = source;
+                    effectTarget = target;
+                }
+
+                PlayPixPlaysEffect(effect, effectSource, effectTarget, effectSource, durationSec, radius);
+            }
+        }
+
+        private static MonoBehaviour[] FindPixPlaysVfx(GameObject root)
+        {
+            if (root == null) return System.Array.Empty<MonoBehaviour>();
+            var behaviours = root.GetComponentsInChildren<MonoBehaviour>(true);
+            var result = new System.Collections.Generic.List<MonoBehaviour>();
+            for (int i = 0; i < behaviours.Length; i++)
+            {
+                var behaviour = behaviours[i];
+                if (behaviour == null) continue;
+                var type = behaviour.GetType();
+                while (type != null)
+                {
+                    if (type.FullName == "PixPlays.ElementalVFX.BaseVfx")
+                    {
+                        result.Add(behaviour);
+                        break;
+                    }
+                    type = type.BaseType;
+                }
+            }
+            return result.ToArray();
+        }
+
+        private static void PlayPixPlaysEffect(MonoBehaviour effect, Vector3 source, Vector3 target, Vector3 ground, float durationSec, float radiusWorld)
+        {
+            if (effect == null) return;
+            var vfxDataType = effect.GetType().Assembly.GetType("PixPlays.ElementalVFX.VfxData");
+            if (vfxDataType == null) return;
+            var data = System.Activator.CreateInstance(vfxDataType, source, target, durationSec, radiusWorld);
+            var setGround = vfxDataType.GetMethod("SetGround", new[] { typeof(Vector3) });
+            setGround?.Invoke(data, new object[] { ground });
+            var play = effect.GetType().GetMethod("Play", new[] { vfxDataType });
+            play?.Invoke(effect, new[] { data });
         }
     }
 }
