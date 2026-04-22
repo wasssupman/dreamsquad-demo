@@ -311,6 +311,7 @@ ECS와 MonoBehaviour 양쪽에 공통 적용되는 추상화 상한선이다. �
 - 에디터 전용 API를 런타임 코드에 사용
 - Burst 컴파일이 실패하는 API를 ECS 시스템에 사용
 - DOTween, Zenject 등 범용 라이브러리 (근거 없으면 금지)
+- `Shader.Find(...) + new Material(shader)` 패턴 금지. 모바일 빌드 shader stripping 으로 null 반환되어 렌더가 깨진다. 런타임 Material 생성은 `Wassup.Rendering.RuntimeMaterialFactory.CreateOpaque / CreateTransparent` 경유 (`Assets/Resources/RuntimeMaterials/*.mat` 로 always-included 보장). 신규 런타임 shader 가 필요하면 `Assets/_Project/Shaders/` 에 명시 shader 추가 + Resources 머티리얼 등록.
 
 ### 5.5 스코프 침범
 

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using Wassup.Data;
+using Wassup.Rendering;
 
 namespace Wassup.Core
 {
@@ -63,14 +64,13 @@ namespace Wassup.Core
 
             // One Material per tile type — every cube renderer references the same asset,
             // avoiding per-cube Material instantiation (TRD quality / perf discipline).
-            var tileShader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
-            _tileMaterials[MapTileType.Place] = new Material(tileShader) { color = buildableColor };
-            _tileMaterials[MapTileType.Walk] = new Material(tileShader) { color = pathColor };
-            _tileMaterials[MapTileType.Env] = new Material(tileShader) { color = envColor };
-            _tileMaterials[MapTileType.Deco] = new Material(tileShader) { color = obstacleColor };
-            _placementHoverValidMaterial = new Material(tileShader) { color = new Color(0.25f, 0.95f, 0.75f, 1f) };
-            _placementHoverInvalidMaterial = new Material(tileShader) { color = new Color(1f, 0.35f, 0.2f, 1f) };
-            _goalMarkerMaterial = new Material(tileShader) { color = goalColor };
+            _tileMaterials[MapTileType.Place] = RuntimeMaterialFactory.CreateOpaque(buildableColor);
+            _tileMaterials[MapTileType.Walk] = RuntimeMaterialFactory.CreateOpaque(pathColor);
+            _tileMaterials[MapTileType.Env] = RuntimeMaterialFactory.CreateOpaque(envColor);
+            _tileMaterials[MapTileType.Deco] = RuntimeMaterialFactory.CreateOpaque(obstacleColor);
+            _placementHoverValidMaterial = RuntimeMaterialFactory.CreateOpaque(new Color(0.25f, 0.95f, 0.75f, 1f));
+            _placementHoverInvalidMaterial = RuntimeMaterialFactory.CreateOpaque(new Color(1f, 0.35f, 0.2f, 1f));
+            _goalMarkerMaterial = RuntimeMaterialFactory.CreateOpaque(goalColor);
         }
 
         private void BuildTiles()
@@ -179,7 +179,7 @@ namespace Wassup.Core
         {
             // Instance the Material so this renderer's color change does not
             // propagate to the shared Buildable material asset.
-            r.material.color = new Color(1f, 0.3f, 0.3f, 1f);
+            RuntimeMaterialFactory.ApplyColor(r.material, new Color(1f, 0.3f, 0.3f, 1f));
             yield return new WaitForSeconds(0.2f);
             if (r != null) r.sharedMaterial = _tileMaterials[MapTileType.Place];
         }

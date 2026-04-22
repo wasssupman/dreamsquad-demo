@@ -17,6 +17,7 @@ using Wassup.Battle.Units;
 using Wassup.Battle.Units.HealthBar;
 using Wassup.Core;
 using Wassup.Data;
+using Wassup.Rendering;
 using Wassup.UI;
 using TMPro;
 // DraftController lives in Wassup.Core above.
@@ -59,6 +60,7 @@ namespace Wassup.Bridge
         private readonly List<PendingSpawnEntry> _pending = new();
         private readonly Dictionary<AttackUnitData, RenderMeshArray> _renderCache = new();
         private readonly Dictionary<DefenderUnitData, RenderMeshArray> _defenderRenderCache = new();
+        private readonly List<Material> _ownedRuntimeMaterials = new();
         private readonly HashSet<Vector2Int> _occupiedTiles = new();
         private readonly Dictionary<Vector2Int, (Entity entity, DefenderUnitData data)> _defenderByTile = new();
         private readonly HashSet<Entity> _onPlaceTriggeredEntities = new();
@@ -963,8 +965,7 @@ namespace Wassup.Bridge
             var rend = go.GetComponent<MeshRenderer>();
             if (rend != null)
             {
-                var mat = new Material(Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color"));
-                mat.color = new Color(1f, 0.15f, 0.15f, 0.55f);
+                var mat = RuntimeMaterialFactory.CreateTransparent(new Color(1f, 0.15f, 0.15f, 0.55f));
                 rend.sharedMaterial = mat;
             }
             Destroy(go, warningSec);
@@ -1309,9 +1310,7 @@ namespace Wassup.Bridge
                 _healthBarRenderArray.MaterialReferences.Length > 0)
                 return _healthBarRenderArray;
 
-            var shader = Shader.Find("Universal Render Pipeline/Unlit");
-            _healthBarMaterial = new Material(shader) { color = new Color(0.2f, 0.95f, 0.2f, 1f) };
-            _healthBarMaterial.SetColor("_BaseColor", new Color(0.2f, 0.95f, 0.2f, 1f));
+            _healthBarMaterial = RuntimeMaterialFactory.CreateOpaque(new Color(0.2f, 0.95f, 0.2f, 1f));
             var mesh = Resources.GetBuiltinResource<Mesh>("Quad.fbx");
             _healthBarRenderArray = new RenderMeshArray(new[] { _healthBarMaterial }, new[] { mesh });
             return _healthBarRenderArray;
@@ -1641,8 +1640,7 @@ namespace Wassup.Bridge
             if (collider != null) Destroy(collider);
 
             var renderer = ring.GetComponent<Renderer>();
-            var shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color") ?? Shader.Find("Standard");
-            var material = new Material(shader) { color = new Color(0.2f, 0.95f, 1f, 0.7f) };
+            var material = RuntimeMaterialFactory.CreateTransparent(new Color(0.2f, 0.95f, 1f, 0.7f));
             if (renderer != null) renderer.sharedMaterial = material;
 
             float elapsed = 0f;
@@ -1653,11 +1651,11 @@ namespace Wassup.Bridge
                 float t = Mathf.Clamp01(elapsed / d);
                 float scale = Mathf.Lerp(0.2f, 1.35f, t);
                 ring.transform.localScale = new Vector3(scale, 0.025f, scale);
-                if (renderer != null)
+                if (renderer != null && material != null)
                 {
                     var color = material.color;
                     color.a = Mathf.Lerp(0.7f, 0f, t);
-                    material.color = color;
+                    RuntimeMaterialFactory.ApplyColor(material, color);
                 }
                 yield return null;
             }
@@ -1804,6 +1802,12 @@ namespace Wassup.Bridge
             // Phase 10A (P10A-04A): dispose GeneratedMap on destroy.
             TeardownGeneratedMap();
             if (_healthBarMaterial != null) Destroy(_healthBarMaterial);
+            for (int i = 0; i < _ownedRuntimeMaterials.Count; i++)
+            {
+                if (_ownedRuntimeMaterials[i] != null)
+                    Destroy(_ownedRuntimeMaterials[i]);
+            }
+            _ownedRuntimeMaterials.Clear();
         }
 
         private static int EffectiveSpawnIndex(int authoredIndex, int deckIndex, int laneCount)
@@ -1897,9 +1901,27 @@ namespace Wassup.Bridge
             var mesh = unit.visualMesh != null
                 ? unit.visualMesh
                 : Resources.GetBuiltinResource<Mesh>("Quad.fbx");
-            var arr = new RenderMeshArray(new[] { unit.visualMaterial }, new[] { mesh });
+            var material = CreateAttackUnitRuntimeMaterial(unit.visualMaterial);
+            var arr = new RenderMeshArray(new[] { material }, new[] { mesh });
             _renderCache[unit] = arr;
             return arr;
+        }
+
+        private Material CreateAttackUnitRuntimeMaterial(Material source)
+        {
+            if (source == null) return null;
+            var material = new Material(source);
+            _ownedRuntimeMaterials.Add(material);
+
+            if (material.HasProperty("_AlphaClip"))
+                material.SetFloat("_AlphaClip", 1f);
+            if (material.HasProperty("_Cutoff"))
+                material.SetFloat("_Cutoff", Mathf.Max(material.GetFloat("_Cutoff"), 0.5f));
+
+            material.EnableKeyword("_ALPHATEST_ON");
+            material.SetOverrideTag("RenderType", "TransparentCutout");
+            material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.AlphaTest;
+            return material;
         }
     }
 }

@@ -5,6 +5,7 @@ using UnityEngine;
 using Wassup.Bridge;
 using Wassup.Core;
 using Wassup.Data;
+using Wassup.Rendering;
 
 namespace Wassup.UI
 {
@@ -207,14 +208,13 @@ namespace Wassup.UI
             {
                 if (_previewMaterial == null)
                 {
-                    var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
-                    _previewMaterial = new Material(shader);
+                    _previewMaterial = RuntimeMaterialFactory.CreateTransparent(Color.white);
                 }
                 Color color = Color.white;
                 if (unitData.visualMaterial != null && unitData.visualMaterial.HasProperty("_BaseColor"))
                     color = unitData.visualMaterial.GetColor("_BaseColor");
                 color.a = 0.55f;
-                _previewMaterial.color = color;
+                RuntimeMaterialFactory.ApplyColor(_previewMaterial, color);
                 renderer.sharedMaterial = _previewMaterial;
             }
             return go;
