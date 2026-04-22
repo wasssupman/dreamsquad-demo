@@ -13,6 +13,7 @@ namespace Wassup.Logging
         public string timestamp_end;
         public string attack_deck_id;
         public MapRecord map = new();
+        public WavePatternRecord wavePattern = new();
         public DraftRecord draft = new();
         public SkillRecord skill = new();
         public SynergyRecord synergy = new();
@@ -30,6 +31,38 @@ namespace Wassup.Logging
         public int gridHeight;
         public int spawnCount;
         public string pathShape;
+    }
+
+    [Serializable]
+    public class WavePatternRecord
+    {
+        public int seed;
+        public int generatorVersion;
+        public float waveIntervalSec;
+        public int waveCount;
+        public List<WaveRecord> waves = new();
+        public List<WaveEventRecord> events = new();
+    }
+
+    [Serializable]
+    public class WaveRecord
+    {
+        public int waveIndex;
+        public float triggerTimeSec;
+        public string unitA;
+        public int countA;
+        public string unitB;
+        public int countB;
+        public int totalCount;
+    }
+
+    [Serializable]
+    public class WaveEventRecord
+    {
+        public string eventType;
+        public int waveIndex;
+        public float elapsedSec;
+        public bool forced;
     }
 
     [Serializable]

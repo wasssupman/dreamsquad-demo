@@ -8,9 +8,44 @@ namespace Wassup.Data
     public class AttackDeck : ScriptableObject
     {
         public string deckId = "WaveA";
+        [Header("Generated Waves")]
+        public bool useGeneratedWaves = true;
+        public int waveSeed = 0;
+        public int waveGeneratorVersion = 1;
+        public AttackUnitData[] attackUnitPool;
+        public int minWaveCount = 10;
+        public int maxWaveCount = 15;
+        public int minUnitsPerWave = 10;
+        public int maxUnitsPerWave = 15;
+        public float intraWaveSpacingSec = 0.35f;
+
+        [Header("Legacy Spawns")]
         public List<SpawnEntry> spawns = new();
         public int defeatGoalReachedCount = 5;
         public float timerDurationSec = 180f;
+
+        public int ResolveWaveSeed()
+        {
+            return waveSeed != 0 ? waveSeed : 1;
+        }
+
+        public AttackUnitData[] ResolveAttackUnitPool()
+        {
+            if (attackUnitPool != null && attackUnitPool.Length >= 2)
+                return attackUnitPool;
+
+            if (spawns == null || spawns.Count == 0)
+                return Array.Empty<AttackUnitData>();
+
+            var units = new List<AttackUnitData>();
+            for (int i = 0; i < spawns.Count; i++)
+            {
+                var unit = spawns[i].unitType;
+                if (unit == null || units.Contains(unit)) continue;
+                units.Add(unit);
+            }
+            return units.ToArray();
+        }
     }
 
     [Serializable]

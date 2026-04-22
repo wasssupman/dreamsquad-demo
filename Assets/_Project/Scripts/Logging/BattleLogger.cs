@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using Unity.Mathematics;
 using UnityEngine;
+using Wassup.Data;
 
 namespace Wassup.Logging
 {
@@ -45,6 +47,44 @@ namespace Wassup.Logging
             currentEntry.map.gridHeight = gridSize.y;
             currentEntry.map.spawnCount = spawnCount;
             currentEntry.map.pathShape = pathShape ?? string.Empty;
+        }
+
+        public void SetWavePattern(GeneratedWavePlan plan)
+        {
+            if (currentEntry == null || plan.waves == null) return;
+
+            currentEntry.wavePattern.seed = plan.seed;
+            currentEntry.wavePattern.generatorVersion = plan.generatorVersion;
+            currentEntry.wavePattern.waveIntervalSec = plan.waveIntervalSec;
+            currentEntry.wavePattern.waveCount = plan.waves.Count;
+            currentEntry.wavePattern.waves = new List<WaveRecord>(plan.waves.Count);
+
+            for (int i = 0; i < plan.waves.Count; i++)
+            {
+                var wave = plan.waves[i];
+                currentEntry.wavePattern.waves.Add(new WaveRecord
+                {
+                    waveIndex = wave.waveIndex,
+                    triggerTimeSec = wave.triggerTimeSec,
+                    unitA = wave.unitA != null ? wave.unitA.displayName : string.Empty,
+                    countA = wave.countA,
+                    unitB = wave.unitB != null ? wave.unitB.displayName : string.Empty,
+                    countB = wave.countB,
+                    totalCount = wave.totalCount,
+                });
+            }
+        }
+
+        public void RecordWaveEvent(string eventType, int waveIndex, float elapsedSec, bool forced)
+        {
+            if (currentEntry == null) return;
+            currentEntry.wavePattern.events.Add(new WaveEventRecord
+            {
+                eventType = eventType ?? string.Empty,
+                waveIndex = waveIndex,
+                elapsedSec = elapsedSec,
+                forced = forced,
+            });
         }
 
         // Caller passes a fully-populated DraftRecord (pool names, picked names in

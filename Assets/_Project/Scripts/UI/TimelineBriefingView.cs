@@ -90,109 +90,97 @@ namespace Wassup.UI
             for (int i = _listContainer.childCount - 1; i >= 0; i--)
                 Destroy(_listContainer.GetChild(i).gameObject);
 
-            if (deck == null || deck.spawns == null) return;
+            if (deck == null) return;
 
-            float totalTime = deck.timerDurationSec > 0 ? deck.timerDurationSec : 180f;
-            float graphWidth = 1400f;
-            int previewLaneCount = ReadMapGenerationOptions().spawnLaneCount;
-
-            // Time axis labels
-            var axisGO = new GameObject("TimeAxis", typeof(RectTransform));
-            axisGO.transform.SetParent(_listContainer, false);
-            var axisRT = (RectTransform)axisGO.transform;
-            axisRT.sizeDelta = new Vector2(graphWidth, 30f);
-            for (int s = 0; s <= (int)totalTime; s += 30)
+            GeneratedWavePlan plan;
+            try
             {
-                float x = (s / totalTime) * graphWidth;
-                var label = new GameObject("T" + s, typeof(RectTransform));
-                label.transform.SetParent(axisGO.transform, false);
-                var lrt = (RectTransform)label.transform;
-                lrt.anchorMin = new Vector2(0f, 0f);
-                lrt.anchorMax = new Vector2(0f, 1f);
-                lrt.pivot = new Vector2(0.5f, 0.5f);
-                lrt.anchoredPosition = new Vector2(x, 0f);
-                lrt.sizeDelta = new Vector2(50f, 30f);
-                var tmp = label.AddComponent<TextMeshProUGUI>();
-                tmp.text = $"{s}s";
-                tmp.fontSize = 18;
-                tmp.color = new Color(0.7f, 0.7f, 0.7f, 1f);
-                tmp.alignment = TextAlignmentOptions.Center;
+                plan = WavePatternGenerator.Generate(deck);
+            }
+            catch (System.Exception ex)
+            {
+                AddMessageRow("WAVE PREVIEW UNAVAILABLE", ex.Message);
+                return;
             }
 
-            // One lane per selected spawn lane count.
-            for (int spawnIndex = 0; spawnIndex < previewLaneCount; spawnIndex++)
-            {
-                // Lane container
-                var laneGO = new GameObject("Lane_" + spawnIndex, typeof(RectTransform), typeof(Image));
-                laneGO.transform.SetParent(_listContainer, false);
-                var laneRT = (RectTransform)laneGO.transform;
-                laneRT.sizeDelta = new Vector2(graphWidth, 50f);
-                laneGO.GetComponent<Image>().color = new Color(0.15f, 0.15f, 0.2f, 0.8f);
+            AddSummaryHeader(plan);
+            for (int i = 0; i < plan.waves.Count; i++)
+                AddWaveRow(plan.waves[i]);
+        }
 
-                // Lane label
-                var laneLabel = new GameObject("Label", typeof(RectTransform));
-                laneLabel.transform.SetParent(laneGO.transform, false);
-                var llrt = (RectTransform)laneLabel.transform;
-                llrt.anchorMin = new Vector2(0f, 0f);
-                llrt.anchorMax = new Vector2(0f, 1f);
-                llrt.pivot = new Vector2(1f, 0.5f);
-                llrt.anchoredPosition = new Vector2(-8f, 0f);
-                llrt.sizeDelta = new Vector2(80f, 50f);
-                var llTmp = laneLabel.AddComponent<TextMeshProUGUI>();
-                llTmp.text = $"Spawn {spawnIndex}";
-                llTmp.fontSize = 20;
-                llTmp.color = Color.white;
-                llTmp.alignment = TextAlignmentOptions.MidlineRight;
+        private void AddSummaryHeader(GeneratedWavePlan plan)
+        {
+            var go = new GameObject("WaveSummaryHeader", typeof(RectTransform));
+            go.transform.SetParent(_listContainer, false);
+            var rt = (RectTransform)go.transform;
+            rt.sizeDelta = new Vector2(0f, 58f);
+            var tmp = go.AddComponent<TextMeshProUGUI>();
+            tmp.text = $"Seed {plan.seed}   |   {plan.waves.Count} Waves   |   Every {plan.waveIntervalSec:0.##}s   |   {plan.timerDurationSec:0}s";
+            tmp.fontSize = 24;
+            tmp.color = new Color(0.72f, 0.78f, 0.88f, 1f);
+            tmp.alignment = TextAlignmentOptions.Center;
+        }
 
-                // Plot markers
-                for (int i = 0; i < deck.spawns.Count; i++)
-                {
-                    var sp = deck.spawns[i];
-                    if (EffectiveSpawnIndex(sp.spawnIndex, i, previewLaneCount) != spawnIndex) continue;
-                    float x = (sp.triggerTimeSec / totalTime) * graphWidth;
-                    Color col = SwiftColor;
-                    float markerH = 16f;
-                    string unitName = "?";
-                    if (sp.unitType != null)
-                    {
-                        unitName = sp.unitType.displayName;
-                        if (unitName.Contains("Tanker")) { col = TankerColor; markerH = 36f; }
-                        else if (unitName.Contains("Basic")) { col = BasicColor; markerH = 26f; }
-                        else { col = SwiftColor; markerH = 18f; }
-                    }
+        private void AddWaveRow(GeneratedWave wave)
+        {
+            var row = new GameObject($"Wave_{wave.waveIndex + 1:00}", typeof(RectTransform), typeof(Image), typeof(HorizontalLayoutGroup));
+            row.transform.SetParent(_listContainer, false);
+            var rt = (RectTransform)row.transform;
+            rt.sizeDelta = new Vector2(0f, 104f);
+            row.GetComponent<Image>().color = new Color(0.09f, 0.11f, 0.16f, 0.96f);
 
-                    var marker = new GameObject("M", typeof(RectTransform), typeof(Image));
-                    marker.transform.SetParent(laneGO.transform, false);
-                    var mrt = (RectTransform)marker.transform;
-                    mrt.anchorMin = new Vector2(0f, 0.5f);
-                    mrt.anchorMax = new Vector2(0f, 0.5f);
-                    mrt.pivot = new Vector2(0.5f, 0.5f);
-                    mrt.anchoredPosition = new Vector2(x, 0f);
-                    mrt.sizeDelta = new Vector2(8f, markerH);
-                    marker.GetComponent<Image>().color = col;
-                }
-            }
+            var layout = row.GetComponent<HorizontalLayoutGroup>();
+            layout.padding = new RectOffset(24, 24, 12, 12);
+            layout.spacing = 18f;
+            layout.childForceExpandWidth = false;
+            layout.childForceExpandHeight = true;
 
-            // Legend + summary
-            var legendGO = new GameObject("Legend", typeof(RectTransform));
-            legendGO.transform.SetParent(_listContainer, false);
-            var legRT = (RectTransform)legendGO.transform;
-            legRT.sizeDelta = new Vector2(graphWidth, 40f);
-            var legTmp = legendGO.AddComponent<TextMeshProUGUI>();
+            AddRowText(row.transform, $"WAVE {wave.waveIndex + 1:00}\n{wave.triggerTimeSec:0.#}s", 170f, 26, new Color(1f, 0.86f, 0.24f, 1f), TextAlignmentOptions.MidlineLeft);
+            AddRowText(row.transform, $"{UnitName(wave.unitA)}  x{wave.countA}", 360f, 32, UnitColor(wave.unitA), TextAlignmentOptions.MidlineLeft);
+            AddRowText(row.transform, $"{UnitName(wave.unitB)}  x{wave.countB}", 360f, 32, UnitColor(wave.unitB), TextAlignmentOptions.MidlineLeft);
+            AddRowText(row.transform, $"TOTAL\n{wave.totalCount}", 140f, 26, Color.white, TextAlignmentOptions.MidlineRight);
+        }
 
-            int nt = 0, nb = 0, ns = 0;
-            foreach (var sp in deck.spawns)
-            {
-                if (sp.unitType == null) continue;
-                if (sp.unitType.displayName.Contains("Tanker")) nt++;
-                else if (sp.unitType.displayName.Contains("Basic")) nb++;
-                else ns++;
-            }
-            legTmp.text = $"<color=#FF4D4D>■ Tanker ×{nt}</color>   <color=#8840CC>■ Basic ×{nb}</color>   <color=#F2D933>■ Swift ×{ns}</color>   |   총 {deck.spawns.Count}   |   lanes {previewLaneCount}   |   {totalTime:0}초   |   DEFEAT: {deck.defeatGoalReachedCount}마리 도달";
-            legTmp.fontSize = 22;
-            legTmp.color = Color.white;
-            legTmp.alignment = TextAlignmentOptions.Center;
-            legTmp.richText = true;
+        private void AddMessageRow(string title, string message)
+        {
+            var go = new GameObject("WaveMessage", typeof(RectTransform));
+            go.transform.SetParent(_listContainer, false);
+            var rt = (RectTransform)go.transform;
+            rt.sizeDelta = new Vector2(0f, 140f);
+            var tmp = go.AddComponent<TextMeshProUGUI>();
+            tmp.text = $"{title}\n{message}";
+            tmp.fontSize = 28;
+            tmp.color = Color.white;
+            tmp.alignment = TextAlignmentOptions.Center;
+        }
+
+        private static void AddRowText(Transform parent, string text, float width, int fontSize, Color color, TextAlignmentOptions alignment)
+        {
+            var go = new GameObject("Text", typeof(RectTransform), typeof(LayoutElement));
+            go.transform.SetParent(parent, false);
+            var layout = go.GetComponent<LayoutElement>();
+            layout.preferredWidth = width;
+            layout.minWidth = width;
+            var tmp = go.AddComponent<TextMeshProUGUI>();
+            tmp.text = text;
+            tmp.fontSize = fontSize;
+            tmp.color = color;
+            tmp.alignment = alignment;
+            tmp.enableWordWrapping = false;
+        }
+
+        private static string UnitName(AttackUnitData unit)
+        {
+            return unit != null && !string.IsNullOrWhiteSpace(unit.displayName) ? unit.displayName : "?";
+        }
+
+        private static Color UnitColor(AttackUnitData unit)
+        {
+            string name = UnitName(unit);
+            if (name.Contains("Tanker")) return TankerColor;
+            if (name.Contains("Basic")) return BasicColor;
+            if (name.Contains("Swift")) return SwiftColor;
+            return new Color(0.55f, 0.85f, 1f, 1f);
         }
 
         private void BuildCanvas()
@@ -232,25 +220,55 @@ namespace Wassup.UI
             trt.anchoredPosition = new Vector2(0f, -40f);
             trt.sizeDelta = new Vector2(0f, 60f);
             var title = titleGO.AddComponent<TextMeshProUGUI>();
-            title.text = "ATTACK TIMELINE";
+            title.text = "ATTACK WAVES";
             title.fontSize = 48;
             title.color = Color.yellow;
             title.alignment = TextAlignmentOptions.Center;
 
             // List container
-            var listGO = new GameObject("List", typeof(RectTransform), typeof(VerticalLayoutGroup));
-            listGO.transform.SetParent(_panel.transform, false);
+            var scrollGO = new GameObject("WaveScroll", typeof(RectTransform), typeof(Image), typeof(ScrollRect));
+            scrollGO.transform.SetParent(_panel.transform, false);
+            var srt = (RectTransform)scrollGO.transform;
+            srt.anchorMin = new Vector2(0.5f, 0.5f);
+            srt.anchorMax = new Vector2(0.5f, 0.5f);
+            srt.pivot = new Vector2(0.5f, 0.5f);
+            srt.sizeDelta = new Vector2(1180f, 620f);
+            srt.anchoredPosition = new Vector2(0f, -5f);
+            scrollGO.GetComponent<Image>().color = new Color(0.02f, 0.025f, 0.035f, 0.84f);
+
+            var viewportGO = new GameObject("Viewport", typeof(RectTransform), typeof(Image), typeof(Mask));
+            viewportGO.transform.SetParent(scrollGO.transform, false);
+            var vrt = (RectTransform)viewportGO.transform;
+            vrt.anchorMin = Vector2.zero;
+            vrt.anchorMax = Vector2.one;
+            vrt.offsetMin = new Vector2(16f, 16f);
+            vrt.offsetMax = new Vector2(-16f, -16f);
+            viewportGO.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.01f);
+            viewportGO.GetComponent<Mask>().showMaskGraphic = false;
+
+            var listGO = new GameObject("List", typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
+            listGO.transform.SetParent(viewportGO.transform, false);
             _listContainer = listGO.transform;
             var lrt = (RectTransform)listGO.transform;
-            lrt.anchorMin = new Vector2(0.5f, 0.5f);
-            lrt.anchorMax = new Vector2(0.5f, 0.5f);
-            lrt.pivot = new Vector2(0.5f, 0.5f);
-            lrt.sizeDelta = new Vector2(800f, 500f);
-            lrt.anchoredPosition = new Vector2(0f, 20f);
+            lrt.anchorMin = new Vector2(0f, 1f);
+            lrt.anchorMax = new Vector2(1f, 1f);
+            lrt.pivot = new Vector2(0.5f, 1f);
+            lrt.offsetMin = Vector2.zero;
+            lrt.offsetMax = Vector2.zero;
             var vlg = listGO.GetComponent<VerticalLayoutGroup>();
+            vlg.padding = new RectOffset(0, 0, 0, 0);
             vlg.spacing = 4f;
             vlg.childForceExpandWidth = true;
             vlg.childForceExpandHeight = false;
+            var fitter = listGO.GetComponent<ContentSizeFitter>();
+            fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+            var scroll = scrollGO.GetComponent<ScrollRect>();
+            scroll.viewport = vrt;
+            scroll.content = lrt;
+            scroll.horizontal = false;
+            scroll.vertical = true;
+            scroll.movementType = ScrollRect.MovementType.Clamped;
 
             // Confirm button
             var btnGO = new GameObject("Confirm", typeof(RectTransform), typeof(Image), typeof(Button));
