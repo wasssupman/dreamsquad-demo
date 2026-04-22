@@ -35,7 +35,7 @@ namespace Wassup.Presentation
         {
             if (billboardMode == PropBillboardMode.None) return;
 
-            if (_camera == null)
+            if (_camera == null || !_camera.isActiveAndEnabled)
                 _camera = Camera.main;
             if (_camera == null) return;
 
@@ -72,11 +72,13 @@ namespace Wassup.Presentation
             {
                 skeletonAnimation.skeletonDataAsset = data.skeletonDataAsset;
                 skeletonAnimation.initialSkinName = string.IsNullOrEmpty(data.spineSkinName) ? "default" : data.spineSkinName;
-                skeletonAnimation.Initialize(false);
+                if (!skeletonAnimation.valid)
+                    skeletonAnimation.Initialize(false);
 
                 if (!string.IsNullOrEmpty(data.idleAnimation) &&
                     skeletonAnimation.Skeleton != null &&
-                    skeletonAnimation.Skeleton.Data.FindAnimation(data.idleAnimation) != null)
+                    skeletonAnimation.Skeleton.Data.FindAnimation(data.idleAnimation) != null &&
+                    skeletonAnimation.AnimationState.GetCurrent(0)?.Animation?.Name != data.idleAnimation)
                 {
                     skeletonAnimation.AnimationState.SetAnimation(0, data.idleAnimation, true);
                 }
