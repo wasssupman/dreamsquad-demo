@@ -52,6 +52,7 @@ ForceNextWave()
 
 - 이미 자동 호출된 wave 는 `_nextWaveIndex` 증가로 다시 호출되지 않는다.
 - 버튼 연타는 다음 wave 들을 순서대로 앞당긴다.
+- 버튼 연타 rate limit 은 없다. 이 버튼은 다음 예정 wave 를 강제로 당기는 조작이며, 추가 wave 를 만들지 않는다.
 - 남은 wave 가 없으면 버튼은 disabled.
 
 ## 스폰 분산
@@ -62,11 +63,18 @@ ForceNextWave()
 PendingSpawnEntry.triggerTimeSec = baseTime + localIndex * intraWaveSpacingSec
 ```
 
+동일 wave 내부 순서:
+
+```text
+A,B,A,B... 이후 한쪽 수량이 끝나면 남은 타입을 이어서 스폰
+```
+
 ## lane 배정
 
-- wave 내 local spawn index 를 `deckIndex` 대체값으로 사용해 lane round-robin 분산.
+- generated wave 는 wave 내 local spawn index 를 사용해 lane round-robin 분산.
 - `GeneratedMap.spawns.Length` 가 1이면 0번 lane.
 - `GeneratedMap.spawns.Length >= 2` 이면 `localIndex % laneCount`.
+- legacy `AttackDeck.spawns` 는 기존 `SpawnEntry.spawnIndex` fallback 정책을 유지한다.
 
 ## 완료 기준
 

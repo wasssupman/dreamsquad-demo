@@ -87,10 +87,19 @@ docs/spec/{feature-slug}/
 
 각 파일 **1~3KB 범위**, 작업 단위당 "목적 / 변경 대상 / 구현 / 완료 기준" 4섹션 구조.
 
+문서의 source-of-truth 계층:
+
+- **README.md**: 최신 상태와 feature-wide 계약의 source of truth. 세션 진입 시 먼저 읽는다.
+- **`{N}_{topic}.md`**: 해당 작업 단위 계약과 완료 기준의 source of truth. 구현 상세를 사후 복제하지 않는다.
+- **`{N+1}_handoff_summary.md`**: 커밋 이후 인계 지도. 최신 계약은 README/번호 문서가 우선한다.
+- **코드 + 커밋 히스토리**: 구현 상세의 source of truth.
+
+계약이 바뀌면 문서를 갱신한다. 단, diff 설명이나 구현 내부 흐름을 문서에 장황하게 복제하지 않는다.
+
 ### 구성 원칙
 
 - **1 파일 = 1 커밋 단위 작업**. subagent-driven-development 의 implementer 가 해당 파일 하나만 읽고 작업 완료 가능해야 함
-- **README.md**: 상위 목표 + 작업 단위 목록 표 (파일번호 / 작업 구분 / 문서 / 목적) + 공통 원칙 4~6 bullet + "후속 후보" 섹션(현 spec 범위 밖 항목)
+- **README.md**: 상태 라인 + 상위 목표 + 작업 단위 목록 표 (파일번호 / 작업 구분 / 문서 / 목적) + feature-wide 계약 4~10 bullet + "후속 후보" 섹션(현 spec 범위 밖 항목)
 - **파일번호는 작업 순서**: 같은 feature 에 추가 작업이 생기면 기존 파일번호 뒤에 누적 (rev 표기 가능)
 - **완료 기준**: 각 파일 하단에 "완료 기준" 섹션 필수. compile / 테스트 / 시각 검증 기준을 명시
 - **변경 대상**: 파일 경로 명시 (예: `Assets/_Project/Scripts/Bridge/BattleBridge.cs`)
@@ -136,6 +145,15 @@ handoff summary 는 세션 간 맥락 차이를 줄이기 위한 짧은 인계 �
 - 오래 유지될 보장 없는 추측을 사실처럼 쓰지 않는다.
 - 실패 로그를 숨기지 않는다. 해결했으면 원인과 최종 상태를 적는다.
 - unrelated dirty worktree 를 정리했다고 쓰지 않는다. 실제로 정리한 것만 적는다.
+
+### 리뷰 반영 규칙
+
+critic/review 지적은 문서 계층을 깨지 않게 반영한다.
+
+- 코드 버그를 유발하는 계약 공백: 코드 + 테스트 + 관련 spec 계약 갱신
+- 구현과 문서의 표현 불일치: 문서 갱신
+- 단순 구현 설명 요구: handoff 에 짧게 쓰거나 생략
+- 미래 확장/취향 제안: README 의 후속 후보 또는 handoff Follow-up 으로 이동
 
 ### 작업 시작 전 자가 점검
 

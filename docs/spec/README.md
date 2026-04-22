@@ -18,14 +18,14 @@ docs/spec/{feature-slug}/
 
 feature 의 입구 문서다.
 
+- 현재 상태
 - 목표
 - 연결 문서
 - 구현 문서 목록
-- 공통 원칙
+- feature-wide 계약과 공통 원칙
 - 비목표 또는 후속 후보
-- 완료 상태
 
-README 는 상세 구현서를 대신하지 않는다. 다음 작업자가 어떤 번호 문서부터 읽어야 하는지 안내하는 인덱스 역할을 한다.
+README 는 상세 구현서를 대신하지 않는다. 다음 작업자가 어디까지 완료됐고 어떤 번호 문서부터 읽어야 하는지 안내하는 인덱스다. 단, feature 전체에 영향을 주는 load-bearing 계약은 README 에 남긴다.
 
 ## 번호 문서
 
@@ -45,6 +45,8 @@ README 는 상세 구현서를 대신하지 않는다. 다음 작업자가 어�
 - 파일 경로를 명시
 - 완료 기준은 compile/test/Play 확인 기준까지 포함
 - 기존 번호를 재사용하지 않고 뒤에 추가
+- 구현 완료 후에도 바뀌면 안 되는 계약만 갱신한다
+- diff 설명이나 코드 흐름을 사후 문서화하지 않는다
 
 ## Handoff Summary
 
@@ -72,7 +74,25 @@ docs/spec/wave-pattern/5_handoff_summary.md
 - 핵심 파일 5~15개
 - 완료 동작 5~10개
 
-handoff 는 source of truth 가 아니다. source of truth 는 커밋, 코드, 각 spec 문서다. handoff 는 다음 에이전트가 무엇을 읽고 무엇을 건드리지 말아야 하는지 빠르게 파악하기 위한 지도다.
+handoff 는 source of truth 가 아니다. 최신 상태와 계약은 README/번호 문서가 우선하고, 구현 상세는 코드와 커밋 히스토리가 우선한다. handoff 는 다음 에이전트가 무엇을 읽고 무엇을 건드리지 말아야 하는지 빠르게 파악하기 위한 지도다.
+
+## Source Of Truth
+
+```text
+README.md                 최신 상태 + feature-wide 계약
+{N}_{topic}.md            작업 단위 계약 + 완료 기준
+{N+1}_handoff_summary.md  커밋 이후 인계 지도
+code + git history        구현 상세
+```
+
+문서는 구현 상세를 전부 따라가지 않는다. 하지만 계약이 바뀌면 문서도 같이 바꾼다.
+
+## Review 반영 기준
+
+- 코드 버그를 유발하는 계약 공백: 코드 + 테스트 + 관련 spec 갱신
+- 구현과 문서의 표현 불일치: 문서 갱신
+- 단순 구현 설명 요구: handoff 에 짧게 쓰거나 생략
+- 미래 확장/취향 제안: 후속 후보 또는 Follow-up 으로 이동
 
 ## 기존 예시
 

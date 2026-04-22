@@ -57,14 +57,14 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
-        public void WaveIntervalUsesDurationDividedByWaveGaps()
+        public void WaveIntervalUsesDurationDividedByWaveCount()
         {
             var plan = Generate(9876);
-            float expected = plan.timerDurationSec / (plan.waves.Count - 1);
+            float expected = plan.timerDurationSec / plan.waves.Count;
 
             Assert.AreEqual(expected, plan.waveIntervalSec, 0.0001f);
             Assert.AreEqual(0f, plan.waves[0].triggerTimeSec, 0.0001f);
-            Assert.AreEqual(180f, plan.waves[plan.waves.Count - 1].triggerTimeSec, 0.0001f);
+            Assert.Less(plan.waves[plan.waves.Count - 1].triggerTimeSec, plan.timerDurationSec);
         }
 
         [Test]
@@ -81,6 +81,30 @@ namespace Wassup.Tests.EditMode
                 Assert.AreEqual(12f + i * plan.intraWaveSpacingSec, entries[i].triggerTimeSec, 0.0001f);
                 Assert.AreEqual(i % 3, entries[i].spawnIndex);
                 Assert.NotNull(entries[i].unitType);
+            }
+        }
+
+        [Test]
+        public void ExpandedWaveInterleavesUnitTypesUntilOneSideExhausts()
+        {
+            var a = CreateUnit("A");
+            var b = CreateUnit("B");
+            try
+            {
+                var wave = new GeneratedWave(0, 0f, a, 2, b, 4);
+                var entries = WavePatternGenerator.ExpandWave(wave, 0f, 2, 0.35f);
+
+                Assert.AreEqual(a, entries[0].unitType);
+                Assert.AreEqual(b, entries[1].unitType);
+                Assert.AreEqual(a, entries[2].unitType);
+                Assert.AreEqual(b, entries[3].unitType);
+                Assert.AreEqual(b, entries[4].unitType);
+                Assert.AreEqual(b, entries[5].unitType);
+            }
+            finally
+            {
+                Object.DestroyImmediate(a);
+                Object.DestroyImmediate(b);
             }
         }
 

@@ -358,14 +358,6 @@ namespace Wassup.UI
             _spawnLaneInput.onEndEdit.AddListener(_ => RebuildList());
         }
 
-        private static int EffectiveSpawnIndex(int authoredIndex, int deckIndex, int laneCount)
-        {
-            if (laneCount <= 0) return 0;
-            if (laneCount <= 2)
-                return Mathf.Clamp(authoredIndex, 0, laneCount - 1);
-            return Mathf.Abs(deckIndex) % laneCount;
-        }
-
         private void RefreshMapSettingsButtons()
         {
             SetSelectedButton(_straightButton, _selectedPathShape == MapPathShape.Straight);

@@ -52,7 +52,7 @@ namespace Wassup.Data
             int maxUnits = math.max(minUnits, math.max(minUnitsPerWave, maxUnitsPerWave));
 
             float duration = timerDurationSec > 0f ? timerDurationSec : 180f;
-            float interval = waveCount > 1 ? duration / (waveCount - 1) : 0f;
+            float interval = waveCount > 0 ? duration / waveCount : 0f;
             float spacing = intraWaveSpacingSec > 0f ? intraWaveSpacingSec : 0.35f;
 
             var waves = new List<GeneratedWave>(waveCount);
@@ -82,8 +82,14 @@ namespace Wassup.Data
         {
             var entries = new List<SpawnEntry>(wave.totalCount);
             int localIndex = 0;
-            AddEntries(entries, wave.unitA, wave.countA, baseTriggerTimeSec, laneCount, intraWaveSpacingSec, ref localIndex);
-            AddEntries(entries, wave.unitB, wave.countB, baseTriggerTimeSec, laneCount, intraWaveSpacingSec, ref localIndex);
+            int maxCount = math.max(wave.countA, wave.countB);
+            for (int i = 0; i < maxCount; i++)
+            {
+                if (i < wave.countA)
+                    AddEntry(entries, wave.unitA, baseTriggerTimeSec, laneCount, intraWaveSpacingSec, ref localIndex);
+                if (i < wave.countB)
+                    AddEntry(entries, wave.unitB, baseTriggerTimeSec, laneCount, intraWaveSpacingSec, ref localIndex);
+            }
             return entries;
         }
 
@@ -94,26 +100,22 @@ namespace Wassup.Data
             return $"Wave {wave.waveIndex + 1} - {nameA} {wave.countA}, {nameB} {wave.countB}";
         }
 
-        private static void AddEntries(
+        private static void AddEntry(
             List<SpawnEntry> entries,
             AttackUnitData unit,
-            int count,
             float baseTriggerTimeSec,
             int laneCount,
             float intraWaveSpacingSec,
             ref int localIndex)
         {
             int lanes = math.max(1, laneCount);
-            for (int i = 0; i < count; i++)
+            entries.Add(new SpawnEntry
             {
-                entries.Add(new SpawnEntry
-                {
-                    triggerTimeSec = baseTriggerTimeSec + localIndex * intraWaveSpacingSec,
-                    unitType = unit,
-                    spawnIndex = localIndex % lanes,
-                });
-                localIndex++;
-            }
+                triggerTimeSec = baseTriggerTimeSec + localIndex * intraWaveSpacingSec,
+                unitType = unit,
+                spawnIndex = localIndex % lanes,
+            });
+            localIndex++;
         }
 
         private static List<AttackUnitData> BuildDistinctPool(IReadOnlyList<AttackUnitData> source)

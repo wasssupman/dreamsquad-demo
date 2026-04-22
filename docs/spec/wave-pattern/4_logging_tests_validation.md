@@ -26,9 +26,11 @@ public class WavePatternRecord
 권장 event:
 
 ```text
-wave_forced { waveIndex, elapsedSec }
+wave_forced { waveIndex, elapsedSec, forced=true }
 wave_started { waveIndex, elapsedSec, forced }
 ```
+
+강제 호출 시 `wave_forced` 를 먼저 기록하고, 같은 wave 에 대해 `wave_started.forced=true` 를 이어서 기록한다. 자동 호출은 `wave_started.forced=false` 만 기록한다.
 
 ## EditMode 테스트
 
@@ -37,8 +39,9 @@ wave_started { waveIndex, elapsedSec, forced }
 - waveCount 는 10~15
 - 각 wave totalCount 는 10~15
 - 각 wave 는 서로 다른 2종 unit
-- `waveIntervalSec = timerDurationSec / (waveCount - 1)` 규칙을 따른다
-- 모든 `triggerTimeSec` 는 0~180초 범위에 들어온다
+- `waveIntervalSec = timerDurationSec / waveCount` 규칙을 따른다
+- 모든 `triggerTimeSec` 는 0 이상, timerDurationSec 미만 범위에 들어온다
+- wave expansion 은 A/B deterministic interleave 를 따른다
 
 ## Play 검증
 
