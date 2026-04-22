@@ -168,7 +168,7 @@ namespace Wassup.UI
             if (!string.IsNullOrEmpty(animation))
                 skeleton.AnimationState.SetAnimation(0, animation, true);
 
-            float scale = Mathf.Max(0.01f, unitData.spineVisualScale);
+            float scale = Mathf.Max(0.01f, unitData.spineVisualScale * BattleBridge.CharacterVisualScale);
             go.transform.localScale = Vector3.one * scale;
             SetPreviewAlpha(skeleton, 0.62f);
             preview = go;
@@ -199,7 +199,7 @@ namespace Wassup.UI
         {
             var go = GameObject.CreatePrimitive(PrimitiveType.Capsule);
             go.name = $"DragPreview_{unitData.displayName}";
-            go.transform.localScale = Vector3.one * previewScale;
+            go.transform.localScale = Vector3.one * (previewScale * BattleBridge.CharacterVisualScale);
             var collider = go.GetComponent<Collider>();
             if (collider != null) Destroy(collider);
 

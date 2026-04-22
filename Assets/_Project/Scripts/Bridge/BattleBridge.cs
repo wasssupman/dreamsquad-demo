@@ -72,6 +72,7 @@ namespace Wassup.Bridge
         private bool _projectileQueryCreated;
         private RenderMeshArray _healthBarRenderArray;
         private Material _healthBarMaterial;
+        public const float CharacterVisualScale = 0.7f;
         private const float SynergyPerNeighbor = 0.1f;
         private readonly HashSet<Entity> _synergyActivatedEntities = new();
         private int _synergyActivations;
@@ -382,13 +383,23 @@ namespace Wassup.Bridge
                 _generatedMap = BattleMapBuilder.BuildFallbackLinear(gridSize, seed, version, options.spawnLaneCount);
             }
 
-            if (mapView != null) mapView.Initialize(_generatedMap, tileSize);
+            if (mapView != null) mapView.Initialize(_generatedMap, tileSize, mapTheme);
             if (placementInput != null) placementInput.Initialize(_generatedMap, tileSize);
 
             BuildFlowField();
 
             if (mapView != null && mapTheme != null)
-                mapView.InstantiateObstacles(_generatedMap, mapTheme);
+            {
+                if (mapTheme.tileProps != null && mapTheme.tileProps.Length > 0)
+                {
+                    var placements = BackgroundPropPlacer.Generate(_generatedMap, mapTheme, _generatedMap.seed);
+                    mapView.InstantiateBackgroundProps(_generatedMap, mapTheme, placements);
+                }
+                else
+                {
+                    mapView.InstantiateObstacles(_generatedMap, mapTheme);
+                }
+            }
 
             GameManager.Instance?.Logger?.LogMap(
                 _generatedMap.seed,
@@ -1623,7 +1634,7 @@ namespace Wassup.Bridge
             {
                 elapsed += Time.deltaTime;
                 float t = duration > 0f ? Mathf.Clamp01(elapsed / duration) : 1f;
-                float scale = Mathf.Lerp(0.45f, 1.15f, Mathf.Sin(t * Mathf.PI * 0.5f));
+                float scale = Mathf.Lerp(0.45f, 1.15f, Mathf.Sin(t * Mathf.PI * 0.5f)) * CharacterVisualScale;
                 go.transform.localScale = Vector3.one * scale;
                 yield return null;
             }
@@ -1680,7 +1691,7 @@ namespace Wassup.Bridge
             _em.SetName(entity, $"Defender_{unitData.displayName}_{cell.x}_{cell.y}");
 #endif
             var pos = GridToWorldCenter(cell, spawnHeight);
-            _em.AddComponentData(entity, LocalTransform.FromPosition(pos));
+            _em.AddComponentData(entity, LocalTransform.FromPositionRotationScale(pos, quaternion.identity, CharacterVisualScale));
             _em.AddComponent<DefenderUnitTag>(entity);
             _em.AddComponentData(entity, new Health { value = unitData.health, max = unitData.health });
             _em.AddComponentData(entity, new AttackState
@@ -1730,7 +1741,7 @@ namespace Wassup.Bridge
                 });
             }
 
-            CreateHealthBar(entity, yOffset: 0.9f, baseScale: 0.35f);
+            CreateHealthBar(entity, yOffset: 0.9f * CharacterVisualScale, baseScale: 0.35f * CharacterVisualScale);
             return entity;
         }
 
@@ -1853,7 +1864,7 @@ namespace Wassup.Bridge
 
             var spawn = _generatedMap.spawns[spawnIndex];
             var spawnWorldPos = GridToWorldCenter(new Vector2Int(spawn.x, spawn.y), spawnHeight);
-            _em.AddComponentData(entity, LocalTransform.FromPosition(spawnWorldPos));
+            _em.AddComponentData(entity, LocalTransform.FromPositionRotationScale(spawnWorldPos, quaternion.identity, CharacterVisualScale));
 
             _em.AddComponent<AttackUnitTag>(entity);
             _em.AddComponentData(entity, new Health { value = entry.unitType.health, max = entry.unitType.health });
@@ -1887,7 +1898,7 @@ namespace Wassup.Bridge
                 entity, _em, desc, renderArray,
                 MaterialMeshInfo.FromRenderMeshArrayIndices(0, 0));
 
-            CreateHealthBar(entity, yOffset: 0.9f, baseScale: 0.35f);
+            CreateHealthBar(entity, yOffset: 0.9f * CharacterVisualScale, baseScale: 0.35f * CharacterVisualScale);
         }
 
         // Caches one RenderMeshArray per AttackUnitData asset so repeated spawns of the

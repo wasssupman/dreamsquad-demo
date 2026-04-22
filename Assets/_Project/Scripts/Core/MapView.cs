@@ -14,12 +14,15 @@ namespace Wassup.Core
         [SerializeField] private Color goalColor = new Color(0.2f, 0.9f, 1f, 1f);
 
         private GeneratedMap _map;
+        private MapThemeData _theme;
         private float _tileSize = 1f;
         private Transform _tilesRoot;
         private Transform _obstaclesRoot;
+        private Transform _backgroundPropsRoot;
         private Transform _goalMarkerRoot;
 
         private readonly Dictionary<MapTileType, Material> _tileMaterials = new();
+        private Material _tileSideMaterial;
         private Material _placementHoverValidMaterial;
         private Material _placementHoverInvalidMaterial;
         private Material _goalMarkerMaterial;
@@ -31,10 +34,14 @@ namespace Wassup.Core
         private readonly HashSet<Vector2Int> _placementHoverCells = new();
 
         public void Initialize(GeneratedMap map, float tileSize)
+            => Initialize(map, tileSize, null);
+
+        public void Initialize(GeneratedMap map, float tileSize, MapThemeData theme)
         {
             _map = map;
+            _theme = theme;
             _tileSize = tileSize;
-            BuildSharedMaterials();
+            BuildSharedMaterials(theme);
             BuildTiles();
             BuildGoalMarker();
         }
@@ -47,30 +54,42 @@ namespace Wassup.Core
         {
             foreach (var mat in _tileMaterials.Values) SafeDestroy(mat);
             _tileMaterials.Clear();
+            SafeDestroy(_tileSideMaterial);
             SafeDestroy(_placementHoverValidMaterial);
             SafeDestroy(_placementHoverInvalidMaterial);
             SafeDestroy(_goalMarkerMaterial);
             if (_obstaclesRoot != null) SafeDestroy(_obstaclesRoot.gameObject);
+            if (_backgroundPropsRoot != null) SafeDestroy(_backgroundPropsRoot.gameObject);
             if (_goalMarkerRoot != null) SafeDestroy(_goalMarkerRoot.gameObject);
         }
 
-        private void BuildSharedMaterials()
+        private void BuildSharedMaterials(MapThemeData theme)
         {
             foreach (var mat in _tileMaterials.Values) SafeDestroy(mat);
             _tileMaterials.Clear();
+            SafeDestroy(_tileSideMaterial);
             SafeDestroy(_placementHoverValidMaterial);
             SafeDestroy(_placementHoverInvalidMaterial);
             SafeDestroy(_goalMarkerMaterial);
 
-            // One Material per tile type — every cube renderer references the same asset,
-            // avoiding per-cube Material instantiation (TRD quality / perf discipline).
-            _tileMaterials[MapTileType.Place] = RuntimeMaterialFactory.CreateOpaque(buildableColor);
-            _tileMaterials[MapTileType.Walk] = RuntimeMaterialFactory.CreateOpaque(pathColor);
-            _tileMaterials[MapTileType.Env] = RuntimeMaterialFactory.CreateOpaque(envColor);
-            _tileMaterials[MapTileType.Deco] = RuntimeMaterialFactory.CreateOpaque(obstacleColor);
+            // One top Material per tile type and one shared side Material. Tile GameObjects
+            // reuse these assets to keep the stylized block presentation cheap.
+            _tileMaterials[MapTileType.Place] = CreateTileTopMaterial(theme, MapTileType.Place, buildableColor);
+            _tileMaterials[MapTileType.Walk] = CreateTileTopMaterial(theme, MapTileType.Walk, pathColor);
+            _tileMaterials[MapTileType.Env] = CreateTileTopMaterial(theme, MapTileType.Env, envColor);
+            _tileMaterials[MapTileType.Deco] = CreateTileTopMaterial(theme, MapTileType.Deco, obstacleColor);
+            _tileSideMaterial = RuntimeMaterialFactory.CreateOpaque(theme != null ? theme.tileSideColor : new Color(0.2f, 0.18f, 0.22f, 1f));
             _placementHoverValidMaterial = RuntimeMaterialFactory.CreateOpaque(new Color(0.25f, 0.95f, 0.75f, 1f));
             _placementHoverInvalidMaterial = RuntimeMaterialFactory.CreateOpaque(new Color(1f, 0.35f, 0.2f, 1f));
             _goalMarkerMaterial = RuntimeMaterialFactory.CreateOpaque(goalColor);
+        }
+
+        private Material CreateTileTopMaterial(MapThemeData theme, MapTileType type, Color fallbackColor)
+        {
+            var texture = GetTileTexture(theme, type);
+            return texture != null
+                ? RuntimeMaterialFactory.CreateOpaqueTexture(texture, Color.white)
+                : RuntimeMaterialFactory.CreateOpaque(fallbackColor);
         }
 
         private void BuildTiles()
@@ -90,20 +109,52 @@ namespace Wassup.Core
             {
                 var cell = new Vector2Int(x, y);
                 var type = _map.TileAt(new Unity.Mathematics.int2(x, y));
-                var cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                cube.name = $"Tile_{x}_{y}_{type}";
-                cube.transform.SetParent(_tilesRoot, false);
-                cube.transform.localPosition = new Vector3(x * _tileSize, 0f, y * _tileSize);
-                cube.transform.localScale = new Vector3(_tileSize * 0.95f, 0.1f, _tileSize * 0.95f);
-                var r = cube.GetComponent<Renderer>();
+                var root = new GameObject($"Tile_{x}_{y}_{type}");
+                root.transform.SetParent(_tilesRoot, false);
+                root.transform.localPosition = new Vector3(x * _tileSize, 0f, y * _tileSize);
+
+                var baseCube = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                baseCube.name = "SideBlock";
+                baseCube.transform.SetParent(root.transform, false);
+                float thickness = GetTileThickness();
+                baseCube.transform.localPosition = new Vector3(0f, -thickness * 0.5f, 0f);
+                baseCube.transform.localScale = new Vector3(_tileSize * GetTileBaseScale(), thickness, _tileSize * GetTileBaseScale());
+                baseCube.GetComponent<Renderer>().sharedMaterial = _tileSideMaterial;
+                var baseCollider = baseCube.GetComponent<Collider>();
+                SafeDestroy(baseCollider);
+
+                var top = GameObject.CreatePrimitive(PrimitiveType.Quad);
+                top.name = "Top";
+                top.transform.SetParent(root.transform, false);
+                top.transform.localPosition = new Vector3(0f, 0.006f, 0f);
+                top.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+                top.transform.localScale = Vector3.one * (_tileSize * GetTileTopScale());
+                var r = top.GetComponent<Renderer>();
                 r.sharedMaterial = _tileMaterials[type];
                 _tileRenderers[cell] = r;
                 if (type == MapTileType.Place)
                     _buildableRenderers[cell] = r;
-                var col = cube.GetComponent<Collider>();
-                if (col != null) Destroy(col);
+                var topCollider = top.GetComponent<Collider>();
+                SafeDestroy(topCollider);
             }
         }
+
+        private Texture2D GetTileTexture(MapThemeData theme, MapTileType type)
+        {
+            if (theme == null) return null;
+            return type switch
+            {
+                MapTileType.Place => theme.placeTileTexture,
+                MapTileType.Walk => theme.walkTileTexture,
+                MapTileType.Env => theme.envTileTexture,
+                MapTileType.Deco => theme.decoTileTexture,
+                _ => null
+            };
+        }
+
+        private float GetTileThickness() => Mathf.Max(0.01f, _theme != null ? _theme.tileThickness : 0.16f);
+        private float GetTileTopScale() => Mathf.Clamp(_theme != null ? _theme.tileTopScale : 0.9f, 0.75f, 1f);
+        private float GetTileBaseScale() => Mathf.Clamp(_theme != null ? _theme.tileBaseScale : 0.98f, 0.8f, 1.05f);
 
         private void BuildGoalMarker()
         {
@@ -124,7 +175,7 @@ namespace Wassup.Core
             ring.transform.localScale = new Vector3(_tileSize * 0.75f, 0.035f, _tileSize * 0.75f);
             ring.GetComponent<Renderer>().sharedMaterial = _goalMarkerMaterial;
             var ringCollider = ring.GetComponent<Collider>();
-            if (ringCollider != null) Destroy(ringCollider);
+            SafeDestroy(ringCollider);
 
             var beacon = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             beacon.name = "GoalBeacon";
@@ -133,7 +184,7 @@ namespace Wassup.Core
             beacon.transform.localScale = Vector3.one * (_tileSize * 0.34f);
             beacon.GetComponent<Renderer>().sharedMaterial = _goalMarkerMaterial;
             var beaconCollider = beacon.GetComponent<Collider>();
-            if (beaconCollider != null) Destroy(beaconCollider);
+            SafeDestroy(beaconCollider);
         }
 
         // Phase 6: brief red flash on a tile when placement is rejected (e.g.
@@ -214,6 +265,41 @@ namespace Wassup.Core
 
                 var pos = new Vector3(x * _tileSize, 0f, y * _tileSize);
                 Instantiate(prefab, pos, Quaternion.identity, _obstaclesRoot);
+            }
+        }
+
+        public void InstantiateBackgroundProps(
+            GeneratedMap map,
+            MapThemeData theme,
+            IReadOnlyList<Wassup.Data.PropPlacement> placements)
+        {
+            if (_backgroundPropsRoot == null)
+                _backgroundPropsRoot = transform.Find("BackgroundProps");
+            if (_backgroundPropsRoot != null) SafeDestroy(_backgroundPropsRoot.gameObject);
+            if (!map.IsCreated || theme == null || theme.tileProps == null || placements == null || placements.Count == 0)
+                return;
+
+            var propsRoot = new GameObject("BackgroundProps");
+            _backgroundPropsRoot = propsRoot.transform;
+            _backgroundPropsRoot.SetParent(transform, false);
+
+            for (int i = 0; i < placements.Count; i++)
+            {
+                var placement = placements[i];
+                if (placement.propIndex < 0 || placement.propIndex >= theme.tileProps.Length)
+                    continue;
+
+                var prop = theme.tileProps[placement.propIndex];
+                if (prop == null || prop.prefab == null)
+                    continue;
+
+                float centerX = placement.x + (placement.width - 1) * 0.5f;
+                float centerY = placement.y + (placement.height - 1) * 0.5f;
+                var pos = new Vector3(centerX * _tileSize, 0f, centerY * _tileSize);
+                var instance = Instantiate(prop.prefab, _backgroundPropsRoot);
+                instance.name = $"{prop.name}_{placement.x}_{placement.y}";
+                instance.transform.localPosition = pos;
+                instance.transform.localRotation = Quaternion.identity;
             }
         }
 

@@ -1,5 +1,6 @@
 using Spine;
 using Spine.Unity;
+using Wassup.Bridge;
 using Unity.Entities;
 using UnityEngine;
 using Wassup.Data;
@@ -33,7 +34,7 @@ namespace Wassup.Presentation
             _unitData = unitData;
             _entity = entity;
             transform.position = worldPos;
-            float s = Mathf.Max(0.01f, unitData.spineVisualScale);
+            float s = Mathf.Max(0.01f, unitData.spineVisualScale * BattleBridge.CharacterVisualScale);
             transform.localScale = new Vector3(s, s, s);
 
             _skeleton = gameObject.AddComponent<SkeletonAnimation>();

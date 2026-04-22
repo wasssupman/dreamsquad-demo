@@ -11,6 +11,7 @@ namespace Wassup.Editor
     public class PropDataEditor : UnityEditor.Editor
     {
         private const string DefaultPrefabFolder = "Assets/_Project/Prefabs/Props";
+        private const float PropSpritePixelsPerUnit = 256f;
 
         public override void OnInspectorGUI()
         {
@@ -35,7 +36,8 @@ namespace Wassup.Editor
                 return;
             }
 
-            Directory.CreateDirectory(DefaultPrefabFolder);
+            var prefabFolder = GetPrefabFolder(data);
+            Directory.CreateDirectory(prefabFolder);
 
             var root = new GameObject(string.IsNullOrEmpty(data.id) ? data.name : data.id);
             var visual = new GameObject("Visual").transform;
@@ -63,7 +65,7 @@ namespace Wassup.Editor
             var billboard = root.AddComponent<PropBillboard>();
             billboard.Configure(data, visual, spriteRenderer, skeletonAnimation);
 
-            var path = $"{DefaultPrefabFolder}/{data.name}.prefab";
+            var path = $"{prefabFolder}/{data.name}.prefab";
             var prefab = PrefabUtility.SaveAsPrefabAsset(root, path);
             Object.DestroyImmediate(root);
 
@@ -83,9 +85,14 @@ namespace Wassup.Editor
         private static Sprite ResolveSprite(PropData data)
         {
             if (data.sprite != null)
+            {
+                ConfigureTextureImporter(AssetDatabase.GetAssetPath(data.sprite));
                 return data.sprite;
+            }
 
-            var texture = data.sourceTexture != null ? data.sourceTexture : LoadSiblingTexture(data);
+            var texture = data.sourceTexture != null ? data.sourceTexture : LoadThemeTexture(data);
+            if (texture == null)
+                texture = LoadSiblingTexture(data);
             if (texture == null)
                 return null;
 
@@ -93,14 +100,7 @@ namespace Wassup.Editor
             if (string.IsNullOrEmpty(texturePath))
                 return null;
 
-            if (AssetImporter.GetAtPath(texturePath) is TextureImporter textureImporter &&
-                textureImporter.textureType != TextureImporterType.Sprite)
-            {
-                textureImporter.textureType = TextureImporterType.Sprite;
-                textureImporter.spriteImportMode = SpriteImportMode.Single;
-                textureImporter.alphaIsTransparency = true;
-                textureImporter.SaveAndReimport();
-            }
+            ConfigureTextureImporter(texturePath);
 
             var sprite = AssetDatabase.LoadAssetAtPath<Sprite>(texturePath);
             if (sprite != null)
@@ -110,6 +110,42 @@ namespace Wassup.Editor
             }
 
             return sprite;
+        }
+
+        private static void ConfigureTextureImporter(string texturePath)
+        {
+            if (string.IsNullOrEmpty(texturePath) ||
+                AssetImporter.GetAtPath(texturePath) is not TextureImporter textureImporter)
+                return;
+
+            textureImporter.textureType = TextureImporterType.Sprite;
+            textureImporter.spriteImportMode = SpriteImportMode.Single;
+            textureImporter.alphaIsTransparency = true;
+            textureImporter.mipmapEnabled = false;
+            textureImporter.filterMode = FilterMode.Bilinear;
+            textureImporter.wrapMode = TextureWrapMode.Clamp;
+            textureImporter.textureCompression = TextureImporterCompression.Uncompressed;
+            textureImporter.crunchedCompression = false;
+            textureImporter.spritePixelsPerUnit = PropSpritePixelsPerUnit;
+
+            ConfigurePlatformTexture(textureImporter, "Standalone");
+            ConfigurePlatformTexture(textureImporter, "Android");
+            ConfigurePlatformTexture(textureImporter, "iPhone");
+            ConfigurePlatformTexture(textureImporter, "WebGL");
+
+            textureImporter.SaveAndReimport();
+        }
+
+        private static void ConfigurePlatformTexture(TextureImporter textureImporter, string platformName)
+        {
+            var settings = textureImporter.GetPlatformTextureSettings(platformName);
+            settings.name = platformName;
+            settings.overridden = true;
+            settings.maxTextureSize = 2048;
+            settings.format = TextureImporterFormat.RGBA32;
+            settings.textureCompression = TextureImporterCompression.Uncompressed;
+            settings.compressionQuality = 100;
+            textureImporter.SetPlatformTextureSettings(settings);
         }
 
         private static Texture2D LoadSiblingTexture(PropData data)
@@ -123,6 +159,36 @@ namespace Wassup.Editor
                 return null;
 
             return AssetDatabase.LoadAssetAtPath<Texture2D>($"{folder}/{data.name}.png");
+        }
+
+        private static Texture2D LoadThemeTexture(PropData data)
+        {
+            var themeName = GetThemeName(data);
+            if (string.IsNullOrEmpty(themeName))
+                return null;
+
+            return AssetDatabase.LoadAssetAtPath<Texture2D>(
+                $"Assets/_Project/Art/Theme/{themeName}/{data.name}.png");
+        }
+
+        private static string GetPrefabFolder(PropData data)
+        {
+            var themeName = GetThemeName(data);
+            return string.IsNullOrEmpty(themeName)
+                ? DefaultPrefabFolder
+                : $"{DefaultPrefabFolder}/{themeName}";
+        }
+
+        private static string GetThemeName(PropData data)
+        {
+            var dataPath = AssetDatabase.GetAssetPath(data);
+            const string themeRoot = "Assets/_Project/Data/Theme/";
+            if (string.IsNullOrEmpty(dataPath) || !dataPath.StartsWith(themeRoot))
+                return null;
+
+            var relative = dataPath.Substring(themeRoot.Length);
+            var separator = relative.IndexOf('/');
+            return separator <= 0 ? null : relative.Substring(0, separator);
         }
     }
 }

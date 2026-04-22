@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 934f1261c7a44f2389308d8e101207cd, type: 3}
+  m_Name: prop_style_mushroom_1_1
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.PropData
+  id: prop_style_mushroom_1_1
+  displayName: mushroom 1 1
+  footprintX: 1
+  footprintY: 1
+  visualOffset: {x: 0, y: 0.46, z: 0}
+  visualScale: 1.2662365
+  prefab: {fileID: 6559852452888380334, guid: 4f8341f1dbd8d410c88cf44fddd19287, type: 3}
+  sprite: {fileID: 21300000, guid: 4908f529a8b8a47108b1753ecf10c4b6, type: 3}
+  sourceTexture: {fileID: 2800000, guid: 4908f529a8b8a47108b1753ecf10c4b6, type: 3}
+  spriteColor: {r: 1, g: 1, b: 1, a: 1}
+  sortingOrder: 0
+  skeletonDataAsset: {fileID: 0}
+  spineSkinName: 
+  idleAnimation: idle
+  billboardMode: 0

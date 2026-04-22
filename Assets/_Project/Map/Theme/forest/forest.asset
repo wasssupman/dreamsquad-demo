@@ -12,6 +12,33 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8bf4e43b5104a4537a201022bb0f9ea2, type: 3}
   m_Name: forest
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.MapThemeData
+  placeTileTexture: {fileID: 2800000, guid: 7cc2b52150377496fa418a65519c40c1, type: 3}
+  walkTileTexture: {fileID: 2800000, guid: b4b07da2a527b4532aa6b5abff6e91dd, type: 3}
+  envTileTexture: {fileID: 2800000, guid: a504b37ac5bbe43d080aca0b3d7071fa, type: 3}
+  decoTileTexture: {fileID: 2800000, guid: 9a31178683f164f09a7b3e2b499d3879, type: 3}
+  tileThickness: 0.18
+  tileTopScale: 0.94
+  tileBaseScale: 0.99
+  tileSideColor: {r: 0.3, g: 0.27, b: 0.32, a: 1}
+  tileProps:
+  - {fileID: 11400000, guid: d96ae11260f2f44469633c20cbaeed68, type: 2}
+  - {fileID: 11400000, guid: cd63225f659e84743818c5fdf6ccad67, type: 2}
+  - {fileID: 11400000, guid: 54e944f023917415cab0389f80349663, type: 2}
+  - {fileID: 11400000, guid: b17460e83e9cb49ee91f554050ffa4e1, type: 2}
+  - {fileID: 11400000, guid: dcc35f7813b48496ca0fc267fae3d1ce, type: 2}
+  - {fileID: 11400000, guid: 492ffda08a9e548fd897056903ab7c32, type: 2}
+  - {fileID: 11400000, guid: 3c0a5a4786d664d04bba38154d59441e, type: 2}
+  - {fileID: 11400000, guid: ef358b20e3ca243e28937b7d57168222, type: 2}
+  - {fileID: 11400000, guid: 168262e7554874660a8693164675c146, type: 2}
+  - {fileID: 11400000, guid: 7a7479130b53e488b988e5e1d8bf4825, type: 2}
+  - {fileID: 11400000, guid: ef379c980cdf84846aa8c51235c30c00, type: 2}
+  - {fileID: 11400000, guid: d574056151d9e4ce3bbb6904faee2d63, type: 2}
+  - {fileID: 11400000, guid: 183c76015ce8e4ce5b80ae074df285d5, type: 2}
+  - {fileID: 11400000, guid: 3144164ae30ab4587b2be5869287cff6, type: 2}
+  - {fileID: 11400000, guid: 4f279861fccd94572b1610b8c654b7da, type: 2}
+  decorProps: []
+  tilePropDensity: 0.7
+  maxTilePropCount: 18
   obstaclePrefabs:
   - {fileID: 8074820532000868882, guid: fff782a4ccd5c462783fe947c4a1c02f, type: 3}
   - {fileID: 8513532867696311611, guid: 3ad8bbe03050c46e08b97ef65bf990ac, type: 3}
