@@ -49,6 +49,10 @@
 - Phase 10 맵 크기는 X×Y 가변 (기본 20×20). 모든 로직이 gridSize 파라미터 사용 (하드코딩 제거).
 - Spawn lane 은 최소 2개, 높이에 따라 가능한 최대치로 clamp. 각 lane 은 분리된 branch node 로 시작해 shared trunk 를 통해 goal root 로 merge.
 
+## 관련 확장 스펙
+
+- `docs/spec/background-props/README.md` — PropData SO + billboard prefab generator + footprint 기반 배경/장식 프랍 배치 초안
+
 ## 완료 확인
 
 - [x] Phase 10A data 모델 + fixture integration 완료
