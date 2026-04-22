@@ -81,7 +81,8 @@ docs/spec/{feature-slug}/
 ├── 0_{topic}.md             ← 첫 작업 단위 (enum/contract 같은 토대)
 ├── 1_{topic}.md
 ├── ...
-└── N_{topic}.md
+├── N_{topic}.md
+└── {N+1}_handoff_summary.md ← 구현 종료/세션 인계 요약 (필요 시)
 ```
 
 각 파일 **1~3KB 범위**, 작업 단위당 "목적 / 변경 대상 / 구현 / 완료 기준" 4섹션 구조.
@@ -93,6 +94,7 @@ docs/spec/{feature-slug}/
 - **파일번호는 작업 순서**: 같은 feature 에 추가 작업이 생기면 기존 파일번호 뒤에 누적 (rev 표기 가능)
 - **완료 기준**: 각 파일 하단에 "완료 기준" 섹션 필수. compile / 테스트 / 시각 검증 기준을 명시
 - **변경 대상**: 파일 경로 명시 (예: `Assets/_Project/Scripts/Bridge/BattleBridge.cs`)
+- **handoff summary**: feature 구현이 커밋되었거나 세션이 넘어갈 때 `{N+1}_handoff_summary.md` 를 작성한다. 길이는 30~80줄, "구현됨 / 핵심 파일 / 검증 / 주의점 / 다음 후보" 만 담는다. handoff 는 source of truth 가 아니라 다음 에이전트가 커밋과 spec 을 빠르게 찾기 위한 지도다.
 
 ### 참고 예시
 
@@ -112,7 +114,28 @@ docs/spec/{feature-slug}/
 2. 사용자 승인 후, 작업 단위 파일 `0_{topic}.md` 부터 순서대로 구현한다. **한 번에 한 파일**. 선행 의존이 있으면 같이 언급.
 3. 구현 완료 후 사용자에게 "완료 확인"을 요청한다. 에디터 또는 실기기에서 확인 가능한 방식을 구체적으로 알려준다.
 4. 사용자가 통과를 확인하면 해당 작업 단위 파일의 "완료 기준" 섹션 하단에 확인 일자 + 커밋 해시를 한 줄 추가하고 커밋한다.
-5. feature 전체 종료 시 `docs/spec/{feature-slug}/README.md` 상단에 "상태: 완료 YYYY-MM-DD" 를 기재. 필요 시 handoff 요약 파일 생성.
+5. feature 전체 종료 시 `docs/spec/{feature-slug}/README.md` 상단에 "상태: 완료 YYYY-MM-DD" 를 기재하고 `{N+1}_handoff_summary.md` 를 작성한다.
+6. 커밋 이후 다른 에이전트가 이어받을 가능성이 있으면, 커밋 해시와 검증 결과를 handoff summary 에 먼저 반영한 뒤 필요하면 별도 docs 커밋으로 묶는다.
+
+### Handoff 작성 규칙
+
+handoff summary 는 세션 간 맥락 차이를 줄이기 위한 짧은 인계 문서다. 구현 상세를 반복하지 말고, 다음 작업자가 읽을 순서와 위험 지점을 압축해서 남긴다.
+
+필수 섹션:
+
+- **Commit**: 관련 커밋 해시와 제목
+- **Implemented**: 완료된 동작 5~10개 bullet
+- **Key Files**: 실제로 이어서 볼 파일 경로
+- **Verified**: compile / test / Play smoke / console 상태
+- **Notes**: 되돌리면 안 되는 의도, fallback, 경계 조건
+- **Follow-up**: 아직 하지 않은 확인 또는 다음 후보
+
+금지:
+
+- diff 전체를 prose 로 재작성하지 않는다.
+- 오래 유지될 보장 없는 추측을 사실처럼 쓰지 않는다.
+- 실패 로그를 숨기지 않는다. 해결했으면 원인과 최종 상태를 적는다.
+- unrelated dirty worktree 를 정리했다고 쓰지 않는다. 실제로 정리한 것만 적는다.
 
 ### 작업 시작 전 자가 점검
 
