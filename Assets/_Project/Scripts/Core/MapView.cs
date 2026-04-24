@@ -207,33 +207,42 @@ namespace Wassup.Core
         private void BuildEnvironmentRegionSurface(BoardVisualRegion region)
         {
             var anchorCell = _visualPlan.CellAt(region.anchorCell);
-            var baseTexture = TerrainSurfaceSelector.SelectTexture(_map, _theme, anchorCell.sourceTileType, region.anchorCell.x, region.anchorCell.y);
-            var material = GetTileMaterial(BoardZoneType.Env, baseTexture);
+            var baseTexture = TerrainSurfaceSelector.SelectTexture(_visualPlan, _theme, anchorCell, region.anchorCell.x, region.anchorCell.y);
 
             for (int y = region.min.y; y <= region.max.y; y++)
             {
                 int runStart = -1;
+                Texture2D runTexture = null;
                 for (int x = region.min.x; x <= region.max.x + 1; x++)
                 {
+                    var currentCell = x <= region.max.x ? _visualPlan.CellAt(new Unity.Mathematics.int2(x, y)) : BoardVisualCell.Empty;
                     bool inRegion = x <= region.max.x &&
-                                    _visualPlan.CellAt(new Unity.Mathematics.int2(x, y)).zoneType == BoardZoneType.Env &&
-                                    _visualPlan.CellAt(new Unity.Mathematics.int2(x, y)).regionId == region.id;
+                                    currentCell.zoneType == BoardZoneType.Env &&
+                                    currentCell.regionId == region.id;
+                    Texture2D texture = inRegion ? TerrainSurfaceSelector.SelectTexture(_visualPlan, _theme, currentCell, x, y) : null;
 
-                    if (inRegion)
+                    if (inRegion && (runStart < 0 || texture == runTexture))
                     {
                         if (runStart < 0)
+                        {
                             runStart = x;
+                            runTexture = texture;
+                        }
                         continue;
                     }
 
-                    if (runStart < 0)
-                        continue;
+                    if (runStart >= 0)
+                    {
+                        int runLength = x - runStart;
+                        BuildEnvironmentRunSurface(region.id, runStart, y, runLength, GetTileMaterial(BoardZoneType.Env, runTexture));
+                    }
 
-                    int runLength = x - runStart;
-                    BuildEnvironmentRunSurface(region.id, runStart, y, runLength, material);
-                    runStart = -1;
+                    runStart = inRegion ? x : -1;
+                    runTexture = inRegion ? texture : null;
                 }
             }
+
+            BuildEnvironmentRegionBlend(region, baseTexture);
         }
 
         private void BuildEnvironmentRunSurface(int regionId, int startX, int y, int runLength, Material material)
@@ -250,6 +259,50 @@ namespace Wassup.Core
             var renderer = run.AddComponent<MeshRenderer>();
             filter.sharedMesh = CreateTiledSurfaceMesh(runLength * _tileSize + 0.02f, _tileSize + 0.02f, runLength, 1);
             renderer.sharedMaterial = material;
+        }
+
+        private void BuildEnvironmentRegionBlend(BoardVisualRegion region, Texture2D baseTexture)
+        {
+            if (baseTexture == null)
+                return;
+
+            var material = RuntimeMaterialFactory.CreateTransparentTexture(baseTexture, new Color(1f, 1f, 1f, 0.5f));
+            for (int y = region.min.y; y <= region.max.y; y++)
+            for (int x = region.min.x; x <= region.max.x; x++)
+            {
+                var cell = _visualPlan.CellAt(new Unity.Mathematics.int2(x, y));
+                if (cell.regionId != region.id)
+                    continue;
+
+                TryBuildEnvBlendFringe(region, baseTexture, material, x, y, new Unity.Mathematics.int2(1, 0), 90f);
+                TryBuildEnvBlendFringe(region, baseTexture, material, x, y, new Unity.Mathematics.int2(0, 1), 0f);
+            }
+        }
+
+        private void TryBuildEnvBlendFringe(BoardVisualRegion region, Texture2D baseTexture, Material material, int x, int y, Unity.Mathematics.int2 offset, float yaw)
+        {
+            var neighborPos = new Unity.Mathematics.int2(x + offset.x, y + offset.y);
+            if (!_visualPlan.ContainsCell(neighborPos))
+                return;
+
+            var neighbor = _visualPlan.CellAt(neighborPos);
+            if (neighbor.zoneType != BoardZoneType.Env || neighbor.regionId == region.id || neighbor.regionId < 0)
+                return;
+
+            var neighborRegion = _visualPlan.Regions[neighbor.regionId];
+            var neighborAnchor = _visualPlan.CellAt(neighborRegion.anchorCell);
+            var neighborBaseTexture = TerrainSurfaceSelector.SelectTexture(_visualPlan, _theme, neighborAnchor, neighborRegion.anchorCell.x, neighborRegion.anchorCell.y);
+            if (neighborBaseTexture == baseTexture)
+                return;
+
+            var fringe = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            fringe.name = $"EnvBlend_{region.id}_{neighbor.regionId}_{x}_{y}";
+            fringe.transform.SetParent(_tilesRoot, false);
+            fringe.transform.localPosition = new Vector3((x + offset.x * 0.5f) * _tileSize, 0.008f, (y + offset.y * 0.5f) * _tileSize);
+            fringe.transform.localRotation = Quaternion.Euler(90f, yaw, 0f);
+            fringe.transform.localScale = new Vector3(_tileSize, _tileSize * 0.5f, 1f);
+            fringe.GetComponent<Renderer>().sharedMaterial = material;
+            SafeDestroy(fringe.GetComponent<Collider>());
         }
 
         private static Mesh CreateTiledSurfaceMesh(float width, float height, int xSegments, int ySegments)
