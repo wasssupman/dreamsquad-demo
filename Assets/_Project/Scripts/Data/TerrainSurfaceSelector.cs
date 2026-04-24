@@ -31,6 +31,29 @@ namespace Wassup.Data
             return GetSingleTexture(theme, type);
         }
 
+        public static Texture2D SelectTexture(BoardVisualPlan plan, MapThemeData theme, BoardVisualCell cell, int x, int y)
+        {
+            if (theme == null)
+                return null;
+
+            if (cell.zoneType == BoardZoneType.Walk)
+            {
+                var shapeTexture = GetWalkShapeTexture(theme, cell.shapeClass);
+                if (shapeTexture != null)
+                    return shapeTexture;
+            }
+
+            var rules = GetRules(theme, cell.zoneType);
+            if (rules != null && HasUsableRule(rules))
+                return SelectRuleTexture(plan, theme, rules, x, y);
+
+            var variants = GetLegacyVariants(theme, cell.zoneType);
+            if (variants != null && variants.Length > 0)
+                return SelectLegacyVariant(plan, theme, variants, cell.zoneType, x, y);
+
+            return GetSingleTexture(theme, cell.zoneType);
+        }
+
         public static Texture2D[] CollectTextures(MapThemeData theme, MapTileType type)
         {
             var textures = new List<Texture2D>();
@@ -63,6 +86,43 @@ namespace Wassup.Data
                 textures.Add(single);
 
             if (type == MapTileType.Walk)
+                AddWalkShapeTextures(theme, textures);
+
+            return textures.ToArray();
+        }
+
+        public static Texture2D[] CollectTextures(MapThemeData theme, BoardZoneType type)
+        {
+            var textures = new List<Texture2D>();
+            if (theme == null)
+                return textures.ToArray();
+
+            var rules = GetRules(theme, type);
+            if (rules != null)
+            {
+                for (int i = 0; i < rules.Length; i++)
+                {
+                    var texture = rules[i] != null ? rules[i].texture : null;
+                    if (texture != null && !textures.Contains(texture))
+                        textures.Add(texture);
+                }
+            }
+
+            var variants = GetLegacyVariants(theme, type);
+            if (variants != null)
+            {
+                for (int i = 0; i < variants.Length; i++)
+                {
+                    if (variants[i] != null && !textures.Contains(variants[i]))
+                        textures.Add(variants[i]);
+                }
+            }
+
+            var single = GetSingleTexture(theme, type);
+            if (single != null && !textures.Contains(single))
+                textures.Add(single);
+
+            if (type == BoardZoneType.Walk)
                 AddWalkShapeTextures(theme, textures);
 
             return textures.ToArray();
@@ -271,6 +331,17 @@ namespace Wassup.Data
             };
         }
 
+        private static TerrainSurfaceVariant[] GetRules(MapThemeData theme, BoardZoneType type)
+        {
+            return type switch
+            {
+                BoardZoneType.Place => theme.placeSurfaceRules,
+                BoardZoneType.Walk => theme.walkSurfaceRules,
+                BoardZoneType.Env => theme.envSurfaceRules,
+                _ => null
+            };
+        }
+
         private static Texture2D[] GetLegacyVariants(MapThemeData theme, MapTileType type)
         {
             return type switch
@@ -279,6 +350,17 @@ namespace Wassup.Data
                 MapTileType.Walk => theme.walkTileVariants,
                 MapTileType.Env => theme.envTileVariants,
                 MapTileType.Deco => theme.decoTileVariants,
+                _ => null
+            };
+        }
+
+        private static Texture2D[] GetLegacyVariants(MapThemeData theme, BoardZoneType type)
+        {
+            return type switch
+            {
+                BoardZoneType.Place => theme.placeTileVariants,
+                BoardZoneType.Walk => theme.walkTileVariants,
+                BoardZoneType.Env => theme.envTileVariants,
                 _ => null
             };
         }
@@ -293,6 +375,50 @@ namespace Wassup.Data
                 MapTileType.Deco => theme.decoTileTexture,
                 _ => null
             };
+        }
+
+        private static Texture2D GetSingleTexture(MapThemeData theme, BoardZoneType type)
+        {
+            return type switch
+            {
+                BoardZoneType.Place => theme.placeTileTexture,
+                BoardZoneType.Walk => theme.walkTileTexture,
+                BoardZoneType.Env => theme.envTileTexture,
+                _ => null
+            };
+        }
+
+        private static Texture2D SelectLegacyVariant(
+            BoardVisualPlan plan,
+            MapThemeData theme,
+            Texture2D[] variants,
+            BoardZoneType type,
+            int x,
+            int y)
+        {
+            int usableCount = 0;
+            for (int i = 0; i < variants.Length; i++)
+            {
+                if (variants[i] != null)
+                    usableCount++;
+            }
+
+            if (usableCount == 0)
+                return GetSingleTexture(theme, type);
+
+            var cell = plan.CellAt(new int2(x, y));
+            float value = math.frac(HashTo01(cell.surfaceNoiseHash) * 1.618f);
+            int target = math.clamp((int)math.floor(value * usableCount), 0, usableCount - 1);
+            for (int i = 0; i < variants.Length; i++)
+            {
+                if (variants[i] == null)
+                    continue;
+                if (target == 0)
+                    return variants[i];
+                target--;
+            }
+
+            return GetSingleTexture(theme, type);
         }
 
         private static byte GetWalkMask(GeneratedMap map, int x, int y)

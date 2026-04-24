@@ -22,7 +22,7 @@ namespace Wassup.Core
         private Transform _backgroundPropsRoot;
         private Transform _goalMarkerRoot;
 
-        private readonly Dictionary<MapTileType, Material> _tileFallbackMaterials = new();
+        private readonly Dictionary<BoardZoneType, Material> _tileFallbackMaterials = new();
         private readonly Dictionary<Texture2D, Material> _tileTextureMaterials = new();
         private readonly Dictionary<Vector2Int, Material> _tileRestMaterials = new();
         private Material _tileSideMaterial;
@@ -90,15 +90,15 @@ namespace Wassup.Core
 
             // One top Material per tile type and one shared side Material. Tile GameObjects
             // reuse these assets to keep the stylized block presentation cheap.
-            CreateTileTopMaterials(theme, MapTileType.Place, buildableColor);
-            CreateTileTopMaterials(theme, MapTileType.Walk, pathColor);
-            CreateTileTopMaterials(theme, MapTileType.Env, envColor);
-            CreateTileTopMaterials(theme, MapTileType.Deco, obstacleColor);
-            _placeEdgeOverlayMaterial = theme != null && theme.placeBackgroundEdgeTexture != null
-                ? RuntimeMaterialFactory.CreateTransparentTexture(theme.placeBackgroundEdgeTexture, new Color(1f, 1f, 1f, 0.48f))
+            CreateTileTopMaterials(theme, BoardZoneType.Place, buildableColor);
+            CreateTileTopMaterials(theme, BoardZoneType.Walk, pathColor);
+            CreateTileTopMaterials(theme, BoardZoneType.Env, envColor);
+            var edgeTexture = theme != null && theme.placeEdgeTexture != null ? theme.placeEdgeTexture : theme != null ? theme.placeBackgroundEdgeTexture : null;
+            _placeEdgeOverlayMaterial = edgeTexture != null
+                ? RuntimeMaterialFactory.CreateTransparentTexture(edgeTexture, new Color(1f, 1f, 1f, 0.48f))
                 : null;
-            _placeEdgeInnerOverlayMaterial = theme != null && theme.placeBackgroundEdgeTexture != null
-                ? RuntimeMaterialFactory.CreateTransparentTexture(theme.placeBackgroundEdgeTexture, new Color(0.92f, 1f, 0.92f, 0.22f))
+            _placeEdgeInnerOverlayMaterial = theme != null && theme.placeInnerCornerTexture != null
+                ? RuntimeMaterialFactory.CreateTransparentTexture(theme.placeInnerCornerTexture, new Color(0.92f, 1f, 0.92f, 0.45f))
                 : null;
             _tileSideMaterial = RuntimeMaterialFactory.CreateOpaque(theme != null ? theme.tileSideColor : new Color(0.2f, 0.18f, 0.22f, 1f));
             _placementHoverValidMaterial = RuntimeMaterialFactory.CreateOpaque(new Color(0.25f, 0.95f, 0.75f, 1f));
@@ -106,7 +106,7 @@ namespace Wassup.Core
             _goalMarkerMaterial = RuntimeMaterialFactory.CreateOpaque(goalColor);
         }
 
-        private void CreateTileTopMaterials(MapThemeData theme, MapTileType type, Color fallbackColor)
+        private void CreateTileTopMaterials(MapThemeData theme, BoardZoneType type, Color fallbackColor)
         {
             _tileFallbackMaterials[type] = RuntimeMaterialFactory.CreateOpaque(fallbackColor);
 
@@ -141,37 +141,36 @@ namespace Wassup.Core
             for (int x = 0; x < _map.gridSize.x; x++)
             {
                 var cell = new Vector2Int(x, y);
-                var type = _map.TileAt(new Unity.Mathematics.int2(x, y));
                 var visualCell = _visualPlan != null ? _visualPlan.CellAt(new Unity.Mathematics.int2(x, y)) : default;
-                var renderInfo = TerrainTileRuleResolver.Resolve(_map, _theme, type, x, y, GetTileTopScale());
+                var renderInfo = TerrainTileRuleResolver.Resolve(_visualPlan, _theme, visualCell, x, y, GetTileTopScale());
                 if (!renderInfo.drawBase)
                     continue;
 
-                float baseYaw = type == MapTileType.Walk ? GetBoardShapeYaw(visualCell.shapeClass) : renderInfo.baseYaw;
-                int edgeMask = type == MapTileType.Place ? visualCell.envNeighborMask : renderInfo.edgeOverlayMask;
-                bool drawPlaceEdge = type == MapTileType.Place && edgeMask != 0 && _placeEdgeOverlayMaterial != null;
+                float baseYaw = renderInfo.baseYaw;
+                int edgeMask = visualCell.envNeighborMask;
+                bool drawPlaceEdge = visualCell.zoneType == BoardZoneType.Place && edgeMask != 0 && _placeEdgeOverlayMaterial != null;
 
-                var root = new GameObject($"Tile_{x}_{y}_{type}");
+                var root = new GameObject($"Tile_{x}_{y}_{visualCell.zoneType}");
                 root.transform.SetParent(_tilesRoot, false);
                 root.transform.localPosition = new Vector3(x * _tileSize, 0f, y * _tileSize);
 
                 var top = GameObject.CreatePrimitive(PrimitiveType.Quad);
-                top.name = type == MapTileType.Walk ? "PathOverlay" : "BuildableTop";
+                top.name = visualCell.zoneType == BoardZoneType.Walk ? "PathOverlay" : "BuildableTop";
                 top.transform.SetParent(root.transform, false);
                 top.transform.localPosition = new Vector3(0f, renderInfo.baseHeightOffset, 0f);
                 top.transform.localRotation = Quaternion.Euler(90f, baseYaw, 0f);
                 top.transform.localScale = Vector3.one * (_tileSize * renderInfo.baseScale);
                 var r = top.GetComponent<Renderer>();
-                r.sharedMaterial = GetTileMaterial(type, renderInfo.baseTexture);
+                r.sharedMaterial = GetTileMaterial(visualCell.zoneType, renderInfo.baseTexture);
                 _tileRenderers[cell] = r;
                 _tileRestMaterials[cell] = r.sharedMaterial;
-                if (type == MapTileType.Place)
+                if (visualCell.zoneType == BoardZoneType.Place)
                     _buildableRenderers[cell] = r;
                 var topCollider = top.GetComponent<Collider>();
                 SafeDestroy(topCollider);
 
                 if (drawPlaceEdge)
-                    BuildPlaceEdgeOverlays(root.transform, edgeMask);
+                    BuildPlaceEdgeOverlays(root.transform, edgeMask, visualCell.innerCornerMask);
             }
         }
 
@@ -209,7 +208,7 @@ namespace Wassup.Core
         {
             var anchorCell = _visualPlan.CellAt(region.anchorCell);
             var baseTexture = TerrainSurfaceSelector.SelectTexture(_map, _theme, anchorCell.sourceTileType, region.anchorCell.x, region.anchorCell.y);
-            var material = GetTileMaterial(MapTileType.Env, baseTexture);
+            var material = GetTileMaterial(BoardZoneType.Env, baseTexture);
 
             for (int y = region.min.y; y <= region.max.y; y++)
             {
@@ -397,15 +396,23 @@ namespace Wassup.Core
             return null;
         }
 
-        private void BuildPlaceEdgeOverlays(Transform parent, int mask)
+        private void BuildPlaceEdgeOverlays(Transform parent, int mask, int innerCornerMask)
         {
-            if (_placeEdgeOverlayMaterial == null || mask == 0)
+            if (_placeEdgeOverlayMaterial != null && mask != 0)
+            {
+                if ((mask & 1) != 0) BuildPlaceEdgeOverlay(parent, "EdgeN", new Vector3(0f, 0.022f, 0.385f * _tileSize), 0f, new Vector3(_tileSize * 0.66f, _tileSize * 0.14f, 1f), _placeEdgeOverlayMaterial);
+                if ((mask & 2) != 0) BuildPlaceEdgeOverlay(parent, "EdgeE", new Vector3(0.385f * _tileSize, 0.022f, 0f), 90f, new Vector3(_tileSize * 0.66f, _tileSize * 0.14f, 1f), _placeEdgeOverlayMaterial);
+                if ((mask & 4) != 0) BuildPlaceEdgeOverlay(parent, "EdgeS", new Vector3(0f, 0.022f, -0.385f * _tileSize), 180f, new Vector3(_tileSize * 0.66f, _tileSize * 0.14f, 1f), _placeEdgeOverlayMaterial);
+                if ((mask & 8) != 0) BuildPlaceEdgeOverlay(parent, "EdgeW", new Vector3(-0.385f * _tileSize, 0.022f, 0f), 270f, new Vector3(_tileSize * 0.66f, _tileSize * 0.14f, 1f), _placeEdgeOverlayMaterial);
+            }
+
+            if (_placeEdgeInnerOverlayMaterial == null || innerCornerMask == 0)
                 return;
 
-            if ((mask & 1) != 0) BuildPlaceEdgeOverlayPair(parent, "EdgeN", new Vector3(0f, 0.022f, 0.385f * _tileSize), 0f);
-            if ((mask & 2) != 0) BuildPlaceEdgeOverlayPair(parent, "EdgeE", new Vector3(0.385f * _tileSize, 0.022f, 0f), 90f);
-            if ((mask & 4) != 0) BuildPlaceEdgeOverlayPair(parent, "EdgeS", new Vector3(0f, 0.022f, -0.385f * _tileSize), 180f);
-            if ((mask & 8) != 0) BuildPlaceEdgeOverlayPair(parent, "EdgeW", new Vector3(-0.385f * _tileSize, 0.022f, 0f), 270f);
+            if ((innerCornerMask & 1) != 0) BuildPlaceEdgeOverlay(parent, "InnerCornerNE", new Vector3(0.28f * _tileSize, 0.025f, 0.28f * _tileSize), 45f, Vector3.one * (_tileSize * 0.22f), _placeEdgeInnerOverlayMaterial);
+            if ((innerCornerMask & 2) != 0) BuildPlaceEdgeOverlay(parent, "InnerCornerSE", new Vector3(0.28f * _tileSize, 0.028f, -0.28f * _tileSize), 135f, Vector3.one * (_tileSize * 0.22f), _placeEdgeInnerOverlayMaterial);
+            if ((innerCornerMask & 4) != 0) BuildPlaceEdgeOverlay(parent, "InnerCornerSW", new Vector3(-0.28f * _tileSize, 0.031f, -0.28f * _tileSize), 225f, Vector3.one * (_tileSize * 0.22f), _placeEdgeInnerOverlayMaterial);
+            if ((innerCornerMask & 8) != 0) BuildPlaceEdgeOverlay(parent, "InnerCornerNW", new Vector3(-0.28f * _tileSize, 0.034f, 0.28f * _tileSize), 315f, Vector3.one * (_tileSize * 0.22f), _placeEdgeInnerOverlayMaterial);
         }
 
         private void BuildPlaceEdgeOverlayPair(Transform parent, string name, Vector3 localPosition, float yaw)
@@ -440,27 +447,7 @@ namespace Wassup.Core
             SafeDestroy(collider);
         }
 
-        private static float GetBoardShapeYaw(BoardShapeType shape)
-        {
-            return shape switch
-            {
-                BoardShapeType.EndN => 90f,
-                BoardShapeType.EndE => 180f,
-                BoardShapeType.EndS => 270f,
-                BoardShapeType.EndW => 0f,
-                BoardShapeType.OuterCornerNE => 0f,
-                BoardShapeType.OuterCornerNW => 270f,
-                BoardShapeType.OuterCornerSE => 90f,
-                BoardShapeType.OuterCornerSW => 180f,
-                BoardShapeType.TJunctionN => 0f,
-                BoardShapeType.TJunctionE => 90f,
-                BoardShapeType.TJunctionS => 180f,
-                BoardShapeType.TJunctionW => 270f,
-                _ => 0f,
-            };
-        }
-
-        private Material GetTileMaterial(MapTileType type, Texture2D texture)
+        private Material GetTileMaterial(BoardZoneType type, Texture2D texture)
         {
             if (texture != null && _tileTextureMaterials.TryGetValue(texture, out var material))
                 return material;
@@ -567,11 +554,9 @@ namespace Wassup.Core
             if (!_map.IsCreated) return;
             if (!_tileRenderers.TryGetValue(cell, out var r) || r == null) return;
             if (cell.x < 0 || cell.x >= _map.gridSize.x || cell.y < 0 || cell.y >= _map.gridSize.y) return;
-            var type = _map.TileAt(new Unity.Mathematics.int2(cell.x, cell.y));
-            var renderInfo = TerrainTileRuleResolver.Resolve(_map, _theme, type, cell.x, cell.y, GetTileTopScale());
             r.sharedMaterial = _tileRestMaterials.TryGetValue(cell, out var material)
                 ? material
-                : GetTileMaterial(type, renderInfo.baseTexture);
+                : null;
         }
 
         public void InstantiateObstacles(GeneratedMap map, MapThemeData theme)
@@ -587,7 +572,7 @@ namespace Wassup.Core
             for (int x = 0; x < map.gridSize.x; x++)
             {
                 var cell = new Unity.Mathematics.int2(x, y);
-                if (map.TileAt(cell) != MapTileType.Deco) continue;
+                if (!IsDecoSourceTile(_visualPlan.CellAt(cell))) continue;
 
                 int hash = unchecked((map.seed * 73856093) ^ (x * 19349663) ^ (y * 83492791));
                 int prefabIndex = (hash & int.MaxValue) % theme.obstaclePrefabs.Length;
@@ -598,6 +583,9 @@ namespace Wassup.Core
                 Instantiate(prefab, pos, Quaternion.identity, _obstaclesRoot);
             }
         }
+
+        private static bool IsDecoSourceTile(BoardVisualCell cell)
+            => cell.sourceTileType.ToString() == "Deco";
 
         public void InstantiateBackgroundProps(
             BoardVisualPlan plan,
