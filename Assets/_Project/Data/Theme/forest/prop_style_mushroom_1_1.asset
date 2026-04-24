@@ -16,6 +16,8 @@ MonoBehaviour:
   displayName: mushroom 1 1
   footprintX: 1
   footprintY: 1
+  placementWeight: 18
+  minDistanceCells: 1
   visualOffset: {x: 0, y: 0.46, z: 0}
   visualScale: 1.2662365
   prefab: {fileID: 6559852452888380334, guid: 4f8341f1dbd8d410c88cf44fddd19287, type: 3}

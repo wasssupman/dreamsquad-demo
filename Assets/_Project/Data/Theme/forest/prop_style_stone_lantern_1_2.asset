@@ -16,6 +16,8 @@ MonoBehaviour:
   displayName: stone lantern 1 2
   footprintX: 1
   footprintY: 2
+  placementWeight: 13
+  minDistanceCells: 1
   visualOffset: {x: 0, y: 0.67982304, z: 0}
   visualScale: 1.0421239
   prefab: {fileID: 2979268095201625304, guid: dbc316710d6de43c7b53f90238108599, type: 3}

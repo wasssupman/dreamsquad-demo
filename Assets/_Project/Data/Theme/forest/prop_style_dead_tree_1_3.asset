@@ -16,6 +16,8 @@ MonoBehaviour:
   displayName: dead tree 1 3
   footprintX: 1
   footprintY: 3
+  placementWeight: 8
+  minDistanceCells: 2
   visualOffset: {x: 0, y: 0.9345045, z: 0}
   visualScale: 1.0609009
   prefab: {fileID: 5306084646255470108, guid: 0f5497313302c409bba09a0e72d5b184, type: 3}

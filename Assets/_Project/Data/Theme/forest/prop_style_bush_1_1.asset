@@ -16,6 +16,8 @@ MonoBehaviour:
   displayName: bush 1 1
   footprintX: 1
   footprintY: 1
+  placementWeight: 18
+  minDistanceCells: 1
   visualOffset: {x: 0, y: 0.2765559, z: 0}
   visualScale: 0.7115408
   prefab: {fileID: 5505179711847965210, guid: 54b70711c10d14baebf990ed5854e017, type: 3}

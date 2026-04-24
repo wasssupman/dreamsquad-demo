@@ -16,6 +16,8 @@ MonoBehaviour:
   displayName: ruin wall 3 1
   footprintX: 3
   footprintY: 1
+  placementWeight: 8
+  minDistanceCells: 2
   visualOffset: {x: 0, y: 0.46, z: 0}
   visualScale: 0.69680476
   prefab: {fileID: 8012585365789377178, guid: b638fe1c9fc744551bf071ff0d61161c, type: 3}

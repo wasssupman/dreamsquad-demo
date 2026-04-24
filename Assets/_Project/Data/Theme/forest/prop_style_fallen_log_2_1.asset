@@ -16,6 +16,8 @@ MonoBehaviour:
   displayName: fallen log 2 1
   footprintX: 2
   footprintY: 1
+  placementWeight: 13
+  minDistanceCells: 1
   visualOffset: {x: 0, y: 0.46, z: 0}
   visualScale: 0.96130615
   prefab: {fileID: 3901127091003368502, guid: 600533078329b4f27a9740a221399c32, type: 3}

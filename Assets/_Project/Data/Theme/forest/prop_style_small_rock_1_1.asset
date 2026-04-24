@@ -16,6 +16,8 @@ MonoBehaviour:
   displayName: small rock 1 1
   footprintX: 1
   footprintY: 1
+  placementWeight: 18
+  minDistanceCells: 1
   visualOffset: {x: 0, y: 0.46, z: 0}
   visualScale: 0.8441577
   prefab: {fileID: 131566404894435924, guid: e582d2e7d83804ad1a857196b51752b9, type: 3}

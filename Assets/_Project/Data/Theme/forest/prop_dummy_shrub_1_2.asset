@@ -16,6 +16,8 @@ MonoBehaviour:
   displayName: prop_dummy_shrub_1_2
   footprintX: 1
   footprintY: 2
+  placementWeight: 13
+  minDistanceCells: 1
   visualOffset: {x: 0, y: 0.55, z: 0}
   visualScale: 1
   prefab: {fileID: 6428800646076514341, guid: 617fff2eb0fbc4ae58fbdf9a00cc177d, type: 3}

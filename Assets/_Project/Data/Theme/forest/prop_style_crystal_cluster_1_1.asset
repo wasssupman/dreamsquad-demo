@@ -16,6 +16,8 @@ MonoBehaviour:
   displayName: crystal cluster 1 1
   footprintX: 1
   footprintY: 1
+  placementWeight: 18
+  minDistanceCells: 1
   visualOffset: {x: 0, y: 0.35740197, z: 0}
   visualScale: 0.5772549
   prefab: {fileID: 1928652242065467442, guid: e4403f7c587494ef29b8f2d4e437f2b2, type: 3}

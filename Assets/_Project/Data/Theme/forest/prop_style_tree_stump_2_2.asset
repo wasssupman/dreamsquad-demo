@@ -16,6 +16,8 @@ MonoBehaviour:
   displayName: tree stump 2 2
   footprintX: 2
   footprintY: 2
+  placementWeight: 8
+  minDistanceCells: 2
   visualOffset: {x: 0, y: 0.8945035, z: 0}
   visualScale: 1.0878522
   prefab: {fileID: 1443484276844848475, guid: 0a03ecd8f93314a68816bd1026d1cff4, type: 3}

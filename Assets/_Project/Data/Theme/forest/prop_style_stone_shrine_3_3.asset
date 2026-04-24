@@ -16,6 +16,8 @@ MonoBehaviour:
   displayName: stone shrine 3 3
   footprintX: 3
   footprintY: 3
+  placementWeight: 5
+  minDistanceCells: 3
   visualOffset: {x: 0, y: 1.2818409, z: 0}
   visualScale: 1.478159
   prefab: {fileID: 2120966075561186316, guid: 6dfa3c894b67642f6953e22dd675cd2d, type: 3}

@@ -16,6 +16,8 @@ MonoBehaviour:
   displayName: boulder cluster 2 2
   footprintX: 2
   footprintY: 2
+  placementWeight: 8
+  minDistanceCells: 2
   visualOffset: {x: 0, y: 0.83906156, z: 0}
   visualScale: 1.381349
   prefab: {fileID: 7300266097913936527, guid: 2dfb3f5a4f79a4aa68a6ae167196b967, type: 3}

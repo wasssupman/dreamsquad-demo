@@ -16,6 +16,8 @@ MonoBehaviour:
   displayName: skull sign 2 1
   footprintX: 2
   footprintY: 1
+  placementWeight: 13
+  minDistanceCells: 1
   visualOffset: {x: 0, y: 0.46, z: 0}
   visualScale: 0.563445
   prefab: {fileID: 4274483767714877794, guid: 5dbe7bc4dca89436dbacd7d3e3e67ab4, type: 3}

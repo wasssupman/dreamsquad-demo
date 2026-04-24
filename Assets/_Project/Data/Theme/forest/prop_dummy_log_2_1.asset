@@ -16,6 +16,8 @@ MonoBehaviour:
   displayName: prop_dummy_log_2_1
   footprintX: 2
   footprintY: 1
+  placementWeight: 13
+  minDistanceCells: 1
   visualOffset: {x: 0, y: 0.55, z: 0}
   visualScale: 1
   prefab: {fileID: 8228662367994071756, guid: 962bb045ce3804636a96758fb6ee41e1, type: 3}

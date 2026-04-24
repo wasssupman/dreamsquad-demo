@@ -22,6 +22,7 @@ namespace Wassup.Data
                 var rng = new Random((uint)math.max(1, seed));
                 int maxCount = theme.maxTilePropCount;
                 int clusterId = 0;
+                var recentPropIndices = new Queue<int>();
 
                 for (int i = 0; i < plan.DecorAnchors.Count; i++)
                 {
@@ -29,12 +30,13 @@ namespace Wassup.Data
                         break;
 
                     var anchor = plan.DecorAnchors[i];
-                    if (!TrySelectProp(plan, theme, anchor, density, ref rng, out int propIndex))
+                    if (!TrySelectProp(plan, theme, anchor, density, recentPropIndices, ref rng, out int propIndex))
                         continue;
 
                     var prop = theme.tileProps[propIndex];
                     if (!TryPlace(plan, prop, propIndex, anchor.cell, occupied, placements, ref rng, clusterId))
                         continue;
+                    TrackRecentProp(recentPropIndices, propIndex, theme.propRepeatAvoidanceWindow);
 
                     if (prop.clusterProbability > 0f && rng.NextFloat() <= prop.clusterProbability)
                     {
@@ -96,6 +98,7 @@ namespace Wassup.Data
             MapThemeData theme,
             BoardDecorAnchor anchor,
             float density,
+            Queue<int> recentPropIndices,
             ref Random rng,
             out int propIndex)
         {
@@ -113,6 +116,11 @@ namespace Wassup.Data
                     ? math.saturate(theme.spawnGoalPropDensityMultiplier)
                     : 1f;
                 float weight = math.max(0, prop.placementWeight) * cell.decorBudgetBias * density * spawnGoalMultiplier;
+                int area = math.max(1, prop.footprintX) * math.max(1, prop.footprintY);
+                if (area > math.max(1, theme.pathAdjacentSmallPropMaxArea) && cell.pathProximity <= 1)
+                    weight *= math.saturate(theme.pathAdjacentLargePropWeightMultiplier);
+                if (theme.propRepeatAvoidanceWindow > 0 && theme.tileProps.Length > 1 && recentPropIndices.Contains(i))
+                    weight = 0f;
                 weights[i] = weight;
                 total += weight;
             }
@@ -144,13 +152,13 @@ namespace Wassup.Data
             ref Random rng,
             int clusterId)
         {
-            int x = cell.x;
-            int y = cell.y;
+            int width = math.max(1, prop.footprintX);
+            int height = math.max(1, prop.footprintY);
+            int x = cell.x - width / 2;
+            int y = cell.y - height / 2;
             if (!CanFit(plan, prop, occupied, x, y) || ViolatesMinDistance(prop, x, y, placements))
                 return false;
 
-            int width = math.max(1, prop.footprintX);
-            int height = math.max(1, prop.footprintY);
             for (int dy = 0; dy < height; dy++)
             for (int dx = 0; dx < width; dx++)
                 occupied[(y + dy) * plan.gridSize.x + x + dx] = true;
@@ -220,6 +228,16 @@ namespace Wassup.Data
             }
 
             return false;
+        }
+
+        private static void TrackRecentProp(Queue<int> recentPropIndices, int propIndex, int window)
+        {
+            if (window <= 0)
+                return;
+
+            recentPropIndices.Enqueue(propIndex);
+            while (recentPropIndices.Count > window)
+                recentPropIndices.Dequeue();
         }
     }
 }

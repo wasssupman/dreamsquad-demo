@@ -16,6 +16,8 @@ MonoBehaviour:
   displayName: prop_dummy_leaf_1_1
   footprintX: 1
   footprintY: 1
+  placementWeight: 18
+  minDistanceCells: 1
   visualOffset: {x: 0, y: 0.55, z: 0}
   visualScale: 1
   prefab: {fileID: 6831398119178144440, guid: 2b0cc1ae655234880b93904f5d221a21, type: 3}

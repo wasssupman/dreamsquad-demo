@@ -43,6 +43,48 @@ namespace Wassup.Rendering
             return material;
         }
 
+        public static Material CreateTransparentTexture(Texture texture, Color color)
+        {
+            var shader = Shader.Find("Universal Render Pipeline/Unlit") ??
+                         Shader.Find("Unlit/Transparent") ??
+                         Shader.Find("Sprites/Default") ??
+                         Shader.Find("Standard");
+            if (shader == null)
+            {
+                if (!_loggedMissingRuntimeMaterial)
+                {
+                    Debug.LogError("[RuntimeMaterialFactory] Transparent textured material fallback shaders are missing.");
+                    _loggedMissingRuntimeMaterial = true;
+                }
+                return null;
+            }
+
+            var material = new Material(shader);
+            ApplyColor(material, color);
+            if (texture != null)
+            {
+                if (material.HasProperty("_BaseMap"))
+                    material.SetTexture("_BaseMap", texture);
+                if (material.HasProperty("_MainTex"))
+                    material.SetTexture("_MainTex", texture);
+            }
+
+            material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+            if (material.HasProperty("_Surface"))
+                material.SetFloat("_Surface", 1f);
+            if (material.HasProperty("_AlphaClip"))
+                material.SetFloat("_AlphaClip", 0f);
+            if (material.HasProperty("_SrcBlend"))
+                material.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            if (material.HasProperty("_DstBlend"))
+                material.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            if (material.HasProperty("_ZWrite"))
+                material.SetFloat("_ZWrite", 0f);
+            material.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+
+            return material;
+        }
+
         public static Material CreateTransparent(Color color)
         {
             return Create(TransparentMaterialPath, color);

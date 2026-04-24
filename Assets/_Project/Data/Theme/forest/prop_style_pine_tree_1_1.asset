@@ -16,6 +16,8 @@ MonoBehaviour:
   displayName: pine tree 1 1
   footprintX: 1
   footprintY: 1
+  placementWeight: 18
+  minDistanceCells: 1
   visualOffset: {x: 0, y: 0.46, z: 0}
   visualScale: 0.6947493
   prefab: {fileID: 4775245906002921811, guid: 3e0ef5313123c42f2baa3e26edaba107, type: 3}

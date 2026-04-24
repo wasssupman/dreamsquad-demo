@@ -16,6 +16,8 @@ MonoBehaviour:
   displayName: round tree 1 1
   footprintX: 1
   footprintY: 1
+  placementWeight: 18
+  minDistanceCells: 1
   visualOffset: {x: 0, y: 0.45999998, z: 0}
   visualScale: 0.71369696
   prefab: {fileID: 8984328466938695214, guid: 2781f6df915cd4c42b7a450d656b6b35, type: 3}
