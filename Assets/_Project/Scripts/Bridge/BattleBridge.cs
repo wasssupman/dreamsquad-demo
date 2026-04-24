@@ -1056,6 +1056,8 @@ namespace Wassup.Bridge
         private void SyncMonoUnitViews()
         {
             if (_em == null) return;
+            bool canSort = _generatedMap.IsCreated;
+            int2 gridSize = canSort ? _generatedMap.gridSize : default;
             if (enemyViewPool != null)
             {
                 enemyViewPool.DespawnMissing(_em);
@@ -1072,6 +1074,7 @@ namespace Wassup.Bridge
 
                             var p = _em.GetComponentData<LocalTransform>(entity).Position;
                             view.UpdatePosition(new Vector3(p.x, p.y, p.z));
+                            if (canSort) view.UpdateSortingOrder(gridSize, tileSize);
                         }
                     }
                     finally
@@ -1093,11 +1096,13 @@ namespace Wassup.Bridge
                 if (spineDefenderPool != null && spineDefenderPool.TryGet(entity, out var spineView))
                 {
                     spineView.UpdatePosition(world);
+                    if (canSort) spineView.UpdateSortingOrder(gridSize, tileSize);
                 }
                 else if (defenderFallbackViewPool != null &&
                          defenderFallbackViewPool.TryGet(entity, out var fallbackView))
                 {
                     fallbackView.UpdatePosition(world);
+                    if (canSort) fallbackView.UpdateSortingOrder(gridSize, tileSize);
                 }
             }
         }

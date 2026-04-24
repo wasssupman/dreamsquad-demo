@@ -65,7 +65,6 @@ namespace Wassup.Presentation
             {
                 spriteRenderer.sprite = data.sprite;
                 spriteRenderer.color = data.spriteColor;
-                spriteRenderer.sortingOrder = data.sortingOrder;
             }
 
             if (skeletonAnimation != null && data.skeletonDataAsset != null)

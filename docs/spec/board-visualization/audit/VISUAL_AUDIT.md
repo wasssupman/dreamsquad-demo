@@ -103,6 +103,16 @@
 - 후속 spec 후보: 17b
 - 해소: `MapView.InstantiateBackgroundProps` root scale 을 `placement.scale` 만 사용하도록 수정했다. 확인 커밋: 6dfa019
 
+### V-010: 캐릭터가 프랍에 의해 무조건 가려짐
+- 축: A
+- 위치: `Assets/Screenshots/audit/20260424_26/seed12345_game_full.png`, `Assets/Screenshots/audit/20260424_26/seed12345_game_close.png`
+- 증상: 17b 재검수에서 캐릭터 view 가 프랍보다 낮은 고정 렌더 순서를 사용해 인접 프랍 아래로 깔렸다.
+- 재현: forest / 17 이후 캐릭터와 prop 이 겹치는 동일 seed 캡처
+- 심각도: 해소
+- 가설: Enemy/fallback Defender 는 ECS RenderMesh 경로라 `Renderer.sortingOrder` 체계에 없었고, Spine Defender 도 y 기반 sortingOrder 갱신이 없었다.
+- 후속 spec 후보: 24, 25, 26
+- 해소: Enemy/fallback Defender 를 Mono quad view 로 이관하고 `BoardSortOrder` 공식을 프랍/캐릭터에 공통 적용했다. 캐릭터는 같은 셀 프랍보다 `CharacterOffset` 만큼 앞선다. 확인 커밋: PENDING
+
 ## Dispatch Summary
 
 | 후속 spec | 생성 필요성 | 근거 finding |

@@ -66,6 +66,18 @@ namespace Wassup.Presentation
             transform.position = world;
         }
 
+        public void UpdateSortingOrder(Unity.Mathematics.int2 gridSize, float tileSize)
+        {
+            int order = BoardSortOrder.ComputeFromWorld(
+                gridSize,
+                transform.position,
+                tileSize,
+                BoardSortOrder.CharacterOffset);
+            var renderers = GetComponentsInChildren<Renderer>(true);
+            for (int i = 0; i < renderers.Length; i++)
+                renderers[i].sortingOrder = order;
+        }
+
         public void PlayAttack()
         {
             if (_dying || _skeleton == null || string.IsNullOrEmpty(_unitData.attackAnimation)) return;

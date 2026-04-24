@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using Wassup.Data;
+using Wassup.Presentation;
 using Wassup.Rendering;
 
 namespace Wassup.Core
@@ -744,7 +745,7 @@ namespace Wassup.Core
             if (instance == null || prop == null)
                 return;
 
-            int order = prop.sortingOrder + (plan.gridSize.y - placement.y) * 10 + placement.x;
+            int order = prop.sortingOrder + BoardSortOrder.Compute(plan.gridSize, placement.x, placement.y);
             var renderers = instance.GetComponentsInChildren<SpriteRenderer>(true);
             for (int i = 0; i < renderers.Length; i++)
                 renderers[i].sortingOrder = order;

@@ -38,5 +38,13 @@ namespace Wassup.Presentation
                 renderers[i].sortingOrder = order;
         }
 
+        public void UpdateSortingOrder(Unity.Mathematics.int2 gridSize, float tileSize)
+        {
+            SetSortingOrder(BoardSortOrder.ComputeFromWorld(
+                gridSize,
+                transform.position,
+                tileSize,
+                BoardSortOrder.CharacterOffset));
+        }
     }
 }
