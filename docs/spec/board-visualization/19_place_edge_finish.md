@@ -97,4 +97,4 @@ inner edge: scale (tileSize * 0.54, tileSize * 0.10, 1)
 - Walk 와 맞닿는 변에 shoulder sprite 를 도입하는 건 optional. 본 spec 스코프에서는 straight edge 재제작이 우선, shoulder 는 22 (theme palette pass) 에서 재검토.
 - Place 내부 seam 문제 (slab variant 경계) 는 본 spec 범위 아님. 20 또는 별도 spec.
 
-확인 일자: 2026-04-24 / 커밋 해시: 818712b
+확인 일자: 2026-04-24 / 커밋 해시: a1c7c98

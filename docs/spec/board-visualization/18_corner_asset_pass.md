@@ -94,4 +94,4 @@ MapView 는 `_placeEdgeInnerOverlayMaterial` 생성 시 opacity 를 적용한다
 - overlay quad 4 방향 동시 배치 케이스 (X 모양 1×1 Place) 에서 sprite scale 이 커지면 중앙 겹침이 발생할 수 있음. 겹침 심하면 scale 또는 opacity 를 축소.
 - `19` (place edge finish) 와 같은 시점에 작업하는 걸 권장. inner corner 와 outer edge 는 시각적으로 한 묶음이라 분리 튜닝 시 서로 상쇄될 수 있음.
 
-확인 일자: 2026-04-24 / 커밋 해시: 818712b
+확인 일자: 2026-04-24 / 커밋 해시: a1c7c98

@@ -86,4 +86,4 @@ rev3 13 구현에서 `BackgroundPropPlacer` 가 Poisson-disk 를 생략하고 an
 - cluster 수 상한을 `region.cellCount / 8` 또는 theme param 으로 캡. 한 region 이 같은 prop 으로 도배되는 것 방지.
 - `System.Random` 금지, `Unity.Mathematics.Random` 사용.
 
-확인 일자: 2026-04-24 / 커밋 해시: 818712b
+확인 일자: 2026-04-24 / 커밋 해시: a1c7c98
