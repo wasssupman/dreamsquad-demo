@@ -61,6 +61,11 @@ namespace Wassup.Presentation
             PlayIdleLooping();
         }
 
+        public void UpdatePosition(Vector3 world)
+        {
+            transform.position = world;
+        }
+
         public void PlayAttack()
         {
             if (_dying || _skeleton == null || string.IsNullOrEmpty(_unitData.attackAnimation)) return;

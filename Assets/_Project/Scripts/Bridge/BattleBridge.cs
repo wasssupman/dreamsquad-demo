@@ -49,6 +49,8 @@ namespace Wassup.Bridge
         [SerializeField] private SkillRuntime skillRuntime;
         [SerializeField] private PlacementPhaseView _placementPhaseView;
         [SerializeField] private Wassup.Presentation.SpineDefenderPool spineDefenderPool;
+        [SerializeField] private Wassup.Presentation.QuadUnitViewPool enemyViewPool;
+        [SerializeField] private Wassup.Presentation.QuadUnitViewPool defenderFallbackViewPool;
         [SerializeField] private float spineDefenderYOffset = 0f;
         [SerializeField] private Wassup.Presentation.VfxSpawner vfxSpawner;
         // Phase 9 P9-07 — tileSize 단일 소스화. Awake 에서 MapView/PlacementInput 으로 주입.
@@ -63,8 +65,6 @@ namespace Wassup.Bridge
         private EntityQuery _aliveAttackersQuery;
         private bool _aliveAttackersQueryCreated;
         private readonly List<PendingSpawnEntry> _pending = new();
-        private readonly Dictionary<AttackUnitData, RenderMeshArray> _renderCache = new();
-        private readonly Dictionary<DefenderUnitData, RenderMeshArray> _defenderRenderCache = new();
         private readonly List<Material> _ownedRuntimeMaterials = new();
         private readonly HashSet<Vector2Int> _occupiedTiles = new();
         private readonly Dictionary<Vector2Int, (Entity entity, DefenderUnitData data)> _defenderByTile = new();
@@ -114,6 +114,8 @@ namespace Wassup.Bridge
 
             if (placementInput == null)
                 Debug.LogError("[BattleBridge] placementInput reference missing — assign in Inspector.", this);
+
+            EnsureMonoViewPools();
         }
 
         private void Start()
@@ -218,6 +220,8 @@ namespace Wassup.Bridge
             if (GameManager.Instance != null && GameManager.Instance.CostRuntime != null)
                 GameManager.Instance.CostRuntime.StopRegen();
             if (spineDefenderPool != null) spineDefenderPool.DisposeAll();
+            if (enemyViewPool != null) enemyViewPool.DisposeAll();
+            if (defenderFallbackViewPool != null) defenderFallbackViewPool.DisposeAll();
             SetNextWaveButtonVisible(false);
 
             // Destroy all battle-related entities so the next StartBattle has a clean slate.
@@ -1044,6 +1048,60 @@ namespace Wassup.Bridge
             CheckVictory();
         }
 
+        private void LateUpdate()
+        {
+            SyncMonoUnitViews();
+        }
+
+        private void SyncMonoUnitViews()
+        {
+            if (_em == null) return;
+            if (enemyViewPool != null)
+            {
+                enemyViewPool.DespawnMissing(_em);
+                if (_aliveAttackersQueryCreated)
+                {
+                    var entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
+                    try
+                    {
+                        for (int i = 0; i < entities.Length; i++)
+                        {
+                            var entity = entities[i];
+                            if (!_em.HasComponent<LocalTransform>(entity)) continue;
+                            if (!enemyViewPool.TryGet(entity, out var view)) continue;
+
+                            var p = _em.GetComponentData<LocalTransform>(entity).Position;
+                            view.UpdatePosition(new Vector3(p.x, p.y, p.z));
+                        }
+                    }
+                    finally
+                    {
+                        entities.Dispose();
+                    }
+                }
+            }
+
+            defenderFallbackViewPool?.DespawnMissing(_em);
+            foreach (var kv in _defenderByTile)
+            {
+                var entity = kv.Value.entity;
+                if (entity == Entity.Null || !_em.Exists(entity) || !_em.HasComponent<LocalTransform>(entity))
+                    continue;
+
+                var p = _em.GetComponentData<LocalTransform>(entity).Position;
+                var world = new Vector3(p.x, p.y + spineDefenderYOffset, p.z);
+                if (spineDefenderPool != null && spineDefenderPool.TryGet(entity, out var spineView))
+                {
+                    spineView.UpdatePosition(world);
+                }
+                else if (defenderFallbackViewPool != null &&
+                         defenderFallbackViewPool.TryGet(entity, out var fallbackView))
+                {
+                    fallbackView.UpdatePosition(world);
+                }
+            }
+        }
+
         private void DrainDefenderDeathEvents()
         {
             if (!_defenderDeathQueue.IsCreated) return;
@@ -1053,6 +1111,7 @@ namespace Wassup.Bridge
                 if (spineDefenderPool != null && _defenderByTile.TryGetValue(cell, out var binding))
                 {
                     spineDefenderPool.NotifyDeath(binding.entity);
+                    defenderFallbackViewPool?.Despawn(binding.entity);
                 }
                 _defenderByTile.Remove(cell);
                 _occupiedTiles.Remove(cell);
@@ -1407,8 +1466,9 @@ namespace Wassup.Bridge
         private void DrainGoalEvents()
         {
             if (!_goalEventQueue.IsCreated) return;
-            while (_goalEventQueue.TryDequeue(out _))
+            while (_goalEventQueue.TryDequeue(out var evt))
             {
+                enemyViewPool?.Despawn(evt.entity);
                 _goalReachedCount++;
                 Debug.Log($"[BattleBridge] Goal reached! Count: {_goalReachedCount}/{deck.defeatGoalReachedCount}");
                 if (!_resultShown && _goalReachedCount >= deck.defeatGoalReachedCount)
@@ -1759,12 +1819,20 @@ namespace Wassup.Bridge
             }
             if (!spineSpawned)
             {
-                var renderArray = GetOrCreateDefenderRenderMeshArray(unitData);
-                var desc = new RenderMeshDescription(
-                    shadowCastingMode: UnityEngine.Rendering.ShadowCastingMode.Off,
-                    receiveShadows: false);
-                RenderMeshUtility.AddComponents(entity, _em, desc, renderArray,
-                    MaterialMeshInfo.FromRenderMeshArrayIndices(0, 0));
+                EnsureMonoViewPools();
+                var fallbackWorld = new Vector3(pos.x, pos.y + spineDefenderYOffset, pos.z);
+                var mesh = unitData.visualMesh != null
+                    ? unitData.visualMesh
+                    : Resources.GetBuiltinResource<Mesh>("Quad.fbx");
+                var material = ResolveUnitMaterial(unitData.visualMaterial, Color.white);
+                defenderFallbackViewPool.TrySpawn(
+                    unitData.displayName,
+                    entity,
+                    fallbackWorld,
+                    mesh,
+                    material,
+                    CharacterVisualScale,
+                    out _);
             }
 
             if (unitData.projectile != null)
@@ -1824,17 +1892,6 @@ namespace Wassup.Bridge
             Debug.LogWarning($"[BattleBridge] {source} rejected {name}: {reason}.");
         }
 
-        private RenderMeshArray GetOrCreateDefenderRenderMeshArray(DefenderUnitData unit)
-        {
-            if (_defenderRenderCache.TryGetValue(unit, out var cached)) return cached;
-            var mesh = unit.visualMesh != null
-                ? unit.visualMesh
-                : Resources.GetBuiltinResource<Mesh>("Quad.fbx");
-            var arr = new RenderMeshArray(new[] { unit.visualMaterial }, new[] { mesh });
-            _defenderRenderCache[unit] = arr;
-            return arr;
-        }
-
         private void OnDestroy()
         {
             if (resultScreen != null)
@@ -1857,6 +1914,29 @@ namespace Wassup.Bridge
                     Destroy(_ownedRuntimeMaterials[i]);
             }
             _ownedRuntimeMaterials.Clear();
+        }
+
+        private void EnsureMonoViewPools()
+        {
+            if (enemyViewPool == null)
+                enemyViewPool = CreateViewPool("EnemyViewPool");
+            if (defenderFallbackViewPool == null)
+                defenderFallbackViewPool = CreateViewPool("DefenderFallbackViewPool");
+        }
+
+        private Wassup.Presentation.QuadUnitViewPool CreateViewPool(string poolName)
+        {
+            var go = new GameObject(poolName);
+            go.transform.SetParent(transform, worldPositionStays: false);
+            return go.AddComponent<Wassup.Presentation.QuadUnitViewPool>();
+        }
+
+        private Material ResolveUnitMaterial(Material source, Color fallbackColor)
+        {
+            if (source != null) return source;
+            var material = RuntimeMaterialFactory.CreateOpaque(fallbackColor);
+            if (material != null) _ownedRuntimeMaterials.Add(material);
+            return material;
         }
 
         private static int EffectiveSpawnIndex(int authoredIndex, int deckIndex, int laneCount)
@@ -1928,32 +2008,20 @@ namespace Wassup.Bridge
                 speed = entry.unitType.moveSpeed,
             });
 
-            var renderArray = GetOrCreateRenderMeshArray(entry.unitType);
-            var desc = new RenderMeshDescription(
-                shadowCastingMode: UnityEngine.Rendering.ShadowCastingMode.Off,
-                receiveShadows: false);
-            RenderMeshUtility.AddComponents(
-                entity, _em, desc, renderArray,
-                MaterialMeshInfo.FromRenderMeshArrayIndices(0, 0));
+            EnsureMonoViewPools();
+            var mesh = entry.unitType.visualMesh != null
+                ? entry.unitType.visualMesh
+                : Resources.GetBuiltinResource<Mesh>("Quad.fbx");
+            enemyViewPool.TrySpawn(
+                entry.unitType.displayName,
+                entity,
+                spawnWorldPos,
+                mesh,
+                CreateAttackUnitRuntimeMaterial(entry.unitType.visualMaterial),
+                CharacterVisualScale,
+                out _);
 
             CreateHealthBar(entity, yOffset: 0.9f * CharacterVisualScale, baseScale: 0.35f * CharacterVisualScale);
-        }
-
-        // Caches one RenderMeshArray per AttackUnitData asset so repeated spawns of the
-        // same unit type do not allocate a fresh mesh/material array each time.
-        private RenderMeshArray GetOrCreateRenderMeshArray(AttackUnitData unit)
-        {
-            if (_renderCache.TryGetValue(unit, out var cached))
-            {
-                return cached;
-            }
-            var mesh = unit.visualMesh != null
-                ? unit.visualMesh
-                : Resources.GetBuiltinResource<Mesh>("Quad.fbx");
-            var material = CreateAttackUnitRuntimeMaterial(unit.visualMaterial);
-            var arr = new RenderMeshArray(new[] { material }, new[] { mesh });
-            _renderCache[unit] = arr;
-            return arr;
         }
 
         private Material CreateAttackUnitRuntimeMaterial(Material source)
