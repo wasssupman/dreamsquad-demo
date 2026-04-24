@@ -105,4 +105,4 @@ Enemy 사망 이벤트 처리 시점에 `enemyViewPool.Despawn(entity)` 호출 �
 - ECS 의 enemy entity 는 그대로 유지 (LocalTransform, Health, Targeting 등). 렌더만 Mono.
 - 초기 spawn 폭주 시 GameObject Instantiate 비용 발생 가능. 필요 시 pool 의 pre-warm 추가 (후속).
 
-확인 일자: 2026-04-24 / 커밋 해시: PENDING
+확인 일자: 2026-04-24 / 커밋 해시: 4f8684f

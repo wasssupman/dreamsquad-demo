@@ -87,4 +87,4 @@ if (unitViewRegistry.TryGet(e, out var view)) view.UpdatePosition(...);
 - DefenderUnitData 의 `visualMesh` / `visualMaterial` 이 없는 유닛이 있는지 확인 필요. 없으면 사전 fallback (Quad + 기본 material).
 - Spine asset 이 준비되는 유닛은 점진적으로 Spine 경로로 흡수. fallback 은 점진적으로 비어간다.
 
-확인 일자: 2026-04-24 / 커밋 해시: PENDING
+확인 일자: 2026-04-24 / 커밋 해시: 4f8684f
