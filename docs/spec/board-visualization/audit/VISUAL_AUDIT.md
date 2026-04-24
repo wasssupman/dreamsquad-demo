@@ -101,7 +101,7 @@
 - 심각도: 해소
 - 가설: `MapView.InstantiateBackgroundProps` 에서 `prop.visualScale * placement.scale` 을 root scale 로 적용한 것이 원인이다. root 는 placement jitter 만 담당하고 visual scale 은 `PropBillboard.ApplyData` 가 담당해야 한다.
 - 후속 spec 후보: 17b
-- 해소: `MapView.InstantiateBackgroundProps` root scale 을 `placement.scale` 만 사용하도록 수정했다. 확인 커밋: PENDING
+- 해소: `MapView.InstantiateBackgroundProps` root scale 을 `placement.scale` 만 사용하도록 수정했다. 확인 커밋: 6dfa019
 
 ## Dispatch Summary
 

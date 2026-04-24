@@ -79,4 +79,4 @@ instance.transform.localScale = Vector3.one * placement.scale;
 - scale source of truth 를 반대로 (root 에 일원화) 바꾸는 선택도 가능하지만, 기존 PropBillboard 가 이미 visualRoot 에 적용하고 있으므로 **기존 경로 유지 + 중복 제거** 가 최소 diff 이자 안전.
 - fix 이후 **audit 재캡처가 선행** 되어야 다음 spec 우선순위를 사실 기반으로 다시 정할 수 있다. 캡처 없이 17/18/19 재튜닝 금지.
 
-확인 일자: 2026-04-24 / 커밋 해시: PENDING
+확인 일자: 2026-04-24 / 커밋 해시: 6dfa019
