@@ -6,7 +6,7 @@ namespace Wassup.Data
     [CreateAssetMenu(fileName = "MapThemeData", menuName = "Wassup/MapThemeData")]
     public class MapThemeData : ScriptableObject
     {
-        [Header("Tile Surface")]
+        [Header("Deprecated Tile Surface")]
         [Tooltip("Texture used for Place/buildable tile top surfaces.")]
         public Texture2D placeTileTexture;
 
@@ -31,7 +31,7 @@ namespace Wassup.Data
         [Tooltip("Optional variants for Deco background tile top surfaces. When set, these override the single texture field.")]
         public Texture2D[] decoTileVariants;
 
-        [Header("Tile Surface Variation")]
+        [Header("Surface Variation Settings")]
         [Min(0.01f)]
         [Tooltip("Low frequency terrain variation scale. Larger values change tile variants more often.")]
         public float tileVariantNoiseScale = 0.18f;
@@ -43,7 +43,7 @@ namespace Wassup.Data
         [Tooltip("Theme-specific offset for deterministic tile variant selection.")]
         public int tileVariantSeedOffset;
 
-        [Header("Terrain Surface Rules")]
+        [Header("Env Base")]
         [Tooltip("Weighted terrain rules for Place/buildable tile top surfaces. When set, these override placeTileVariants.")]
         public TerrainSurfaceVariant[] placeSurfaceRules;
 
@@ -53,6 +53,7 @@ namespace Wassup.Data
         [Tooltip("Weighted terrain rules for Env background tile top surfaces. When set, these override envTileVariants.")]
         public TerrainSurfaceVariant[] envSurfaceRules;
 
+        [Header("Deprecated Deco Surface Rules")]
         [Tooltip("Weighted terrain rules for Deco background tile top surfaces. When set, these override decoTileVariants.")]
         public TerrainSurfaceVariant[] decoSurfaceRules;
 
@@ -64,7 +65,7 @@ namespace Wassup.Data
         [Tooltip("How much map border distance influences terrain surface choice.")]
         public float edgeSurfaceInfluence = 0.25f;
 
-        [Header("Walk Shape Surface")]
+        [Header("Walk Shape Set")]
         [Tooltip("Optional path texture for isolated walk cells.")]
         public Texture2D walkSingleTexture;
 
@@ -86,7 +87,7 @@ namespace Wassup.Data
         [Tooltip("Optional path texture for four-way cross walk cells.")]
         public Texture2D walkCrossTexture;
 
-        [Header("Terrain Detail Overlay")]
+        [Header("Env Detail")]
         [Tooltip("Small terrain detail textures scattered on continuous background cells.")]
         public Texture2D[] terrainDetailTextures;
 
@@ -98,6 +99,7 @@ namespace Wassup.Data
         [Tooltip("Base visual scale for terrain detail overlays relative to tile size.")]
         public float terrainDetailScale = 0.45f;
 
+        [Header("Place Transition")]
         [Tooltip("Optional soft overlay used on Place tile edges touching background terrain.")]
         public Texture2D placeBackgroundEdgeTexture;
 
