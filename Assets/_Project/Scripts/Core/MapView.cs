@@ -32,6 +32,7 @@ namespace Wassup.Core
         private Material _placeEdgeInnerOverlayMaterial;
         private Material _placementHoverValidMaterial;
         private Material _placementHoverInvalidMaterial;
+        private Material _placementHoverTransparentMaterial;
         private Material _goalMarkerMaterial;
         // Per-tile renderer lookup for Phase 6 rejection flash. Only Buildable
         // tiles get entries (Path / Obstacle tiles are never placement targets).
@@ -72,6 +73,7 @@ namespace Wassup.Core
             SafeDestroy(_placeEdgeInnerOverlayMaterial);
             SafeDestroy(_placementHoverValidMaterial);
             SafeDestroy(_placementHoverInvalidMaterial);
+            SafeDestroy(_placementHoverTransparentMaterial);
             SafeDestroy(_goalMarkerMaterial);
             if (_obstaclesRoot != null) SafeDestroy(_obstaclesRoot.gameObject);
             if (_backgroundPropsRoot != null) SafeDestroy(_backgroundPropsRoot.gameObject);
@@ -90,6 +92,7 @@ namespace Wassup.Core
             SafeDestroy(_placeEdgeInnerOverlayMaterial);
             SafeDestroy(_placementHoverValidMaterial);
             SafeDestroy(_placementHoverInvalidMaterial);
+            SafeDestroy(_placementHoverTransparentMaterial);
             SafeDestroy(_goalMarkerMaterial);
 
             // One top Material per tile type and one shared side Material. Tile GameObjects
@@ -111,6 +114,7 @@ namespace Wassup.Core
             _tileSideMaterial = RuntimeMaterialFactory.CreateOpaque(theme != null ? theme.tileSideColor : new Color(0.2f, 0.18f, 0.22f, 1f));
             _placementHoverValidMaterial = RuntimeMaterialFactory.CreateOpaque(new Color(0.25f, 0.95f, 0.75f, 1f));
             _placementHoverInvalidMaterial = RuntimeMaterialFactory.CreateOpaque(new Color(1f, 0.35f, 0.2f, 1f));
+            _placementHoverTransparentMaterial = RuntimeMaterialFactory.CreateTransparentTexture(null, new Color(0f, 0f, 0f, 0f));
             _goalMarkerMaterial = RuntimeMaterialFactory.CreateOpaque(goalColor);
         }
 
@@ -143,6 +147,7 @@ namespace Wassup.Core
 
             BuildBoardBase();
             BuildEnvironmentSurfaces();
+            BuildPlaceSurfaces();
             BuildTerrainDetails();
 
             for (int y = 0; y < _map.gridSize.y; y++)
@@ -154,16 +159,19 @@ namespace Wassup.Core
                 if (!renderInfo.drawBase)
                     continue;
 
+                // Place cells are now rendered as region meshes + hover overlays.
+                // Skip the per-cell quad for Place; only Walk tiles go through here.
+                if (visualCell.zoneType == BoardZoneType.Place)
+                    continue;
+
                 float baseYaw = renderInfo.baseYaw;
-                int edgeMask = visualCell.envNeighborMask;
-                bool drawPlaceEdge = visualCell.zoneType == BoardZoneType.Place && edgeMask != 0 && _placeEdgeOverlayMaterial != null;
 
                 var root = new GameObject($"Tile_{x}_{y}_{visualCell.zoneType}");
                 root.transform.SetParent(_tilesRoot, false);
                 root.transform.localPosition = new Vector3(x * _tileSize, 0f, y * _tileSize);
 
                 var top = GameObject.CreatePrimitive(PrimitiveType.Quad);
-                top.name = visualCell.zoneType == BoardZoneType.Walk ? "PathOverlay" : "BuildableTop";
+                top.name = "PathOverlay";
                 top.transform.SetParent(root.transform, false);
                 top.transform.localPosition = new Vector3(0f, renderInfo.baseHeightOffset, 0f);
                 top.transform.localRotation = Quaternion.Euler(90f, baseYaw, 0f);
@@ -172,13 +180,120 @@ namespace Wassup.Core
                 r.sharedMaterial = GetTileMaterial(visualCell.zoneType, renderInfo.baseTexture);
                 _tileRenderers[cell] = r;
                 _tileRestMaterials[cell] = r.sharedMaterial;
-                if (visualCell.zoneType == BoardZoneType.Place)
-                    _buildableRenderers[cell] = r;
                 var topCollider = top.GetComponent<Collider>();
                 SafeDestroy(topCollider);
+            }
+        }
 
-                if (drawPlaceEdge)
-                    BuildPlaceEdgeOverlays(root.transform, edgeMask, visualCell.innerCornerMask, visualCell.shapeClass);
+        private void BuildPlaceSurfaces()
+        {
+            if (_visualPlan == null) return;
+            for (int i = 0; i < _visualPlan.Regions.Count; i++)
+            {
+                var region = _visualPlan.Regions[i];
+                if (region.zoneType != BoardZoneType.Place) continue;
+                BuildPlaceRegionSurface(region);
+            }
+            BuildPlaceHoverOverlays();
+        }
+
+        private void BuildPlaceRegionSurface(BoardVisualRegion region)
+        {
+            var anchorCell = _visualPlan.CellAt(region.anchorCell);
+            var baseTexture = TerrainSurfaceSelector.SelectTexture(_visualPlan, _theme, anchorCell, region.anchorCell.x, region.anchorCell.y);
+            var material = GetTileMaterial(BoardZoneType.Place, baseTexture);
+
+            for (int y = region.min.y; y <= region.max.y; y++)
+            {
+                int runStart = -1;
+                for (int x = region.min.x; x <= region.max.x + 1; x++)
+                {
+                    bool inRegion = x <= region.max.x &&
+                                    _visualPlan.CellAt(new Unity.Mathematics.int2(x, y)).zoneType == BoardZoneType.Place &&
+                                    _visualPlan.CellAt(new Unity.Mathematics.int2(x, y)).regionId == region.id;
+
+                    if (inRegion && runStart < 0)
+                    {
+                        runStart = x;
+                        continue;
+                    }
+
+                    if (!inRegion && runStart >= 0)
+                    {
+                        int runLength = x - runStart;
+                        BuildPlaceRunSurface(region.id, runStart, y, runLength, material);
+                        runStart = -1;
+                    }
+                }
+            }
+
+            // Edge overlays: visit every cell in the region bounding box that
+            // belongs to this region and has edge/corner decoration.
+            for (int y = region.min.y; y <= region.max.y; y++)
+            for (int x = region.min.x; x <= region.max.x; x++)
+            {
+                var visualCell = _visualPlan.CellAt(new Unity.Mathematics.int2(x, y));
+                if (visualCell.zoneType != BoardZoneType.Place || visualCell.regionId != region.id)
+                    continue;
+
+                int edgeMask = visualCell.envNeighborMask;
+                bool drawPlaceEdge = edgeMask != 0 && _placeEdgeOverlayMaterial != null;
+                bool hasInnerCorner = visualCell.innerCornerMask != 0 && _placeEdgeInnerOverlayMaterial != null;
+                bool hasOuterCorner = IsOuterCorner(visualCell.shapeClass) && _placeOuterCornerOverlayMaterial != null;
+
+                if (!drawPlaceEdge && !hasInnerCorner && !hasOuterCorner)
+                    continue;
+
+                var edgeRoot = new GameObject($"PlaceEdge_{x}_{y}");
+                edgeRoot.transform.SetParent(_tilesRoot, false);
+                edgeRoot.transform.localPosition = new Vector3(x * _tileSize, 0f, y * _tileSize);
+                BuildPlaceEdgeOverlays(edgeRoot.transform, edgeMask, visualCell.innerCornerMask, visualCell.shapeClass);
+            }
+        }
+
+        private void BuildPlaceRunSurface(int regionId, int startX, int y, int runLength, Material material)
+        {
+            if (runLength <= 0 || material == null) return;
+
+            var run = new GameObject($"PlaceRegion_{regionId}_{startX}_{y}_{runLength}");
+            run.transform.SetParent(_tilesRoot, false);
+            run.transform.localPosition = new Vector3((startX + (runLength - 1) * 0.5f) * _tileSize, 0.002f, y * _tileSize);
+            run.transform.localRotation = Quaternion.identity;
+
+            var filter = run.AddComponent<MeshFilter>();
+            var renderer = run.AddComponent<MeshRenderer>();
+            filter.sharedMesh = CreateTiledSurfaceMesh(runLength * _tileSize + 0.02f, _tileSize + 0.02f, runLength, 1);
+            renderer.sharedMaterial = material;
+        }
+
+        private void BuildPlaceHoverOverlays()
+        {
+            if (_visualPlan == null) return;
+            // One hover-target quad per Place cell, placed just above the region mesh.
+            // Invisible at rest (transparent material, alpha=0). SetPlacementHover /
+            // FlashTileReject swap sharedMaterial to show colour feedback.
+            for (int y = 0; y < _visualPlan.gridSize.y; y++)
+            for (int x = 0; x < _visualPlan.gridSize.x; x++)
+            {
+                var vc = _visualPlan.CellAt(new Unity.Mathematics.int2(x, y));
+                if (vc.zoneType != BoardZoneType.Place) continue;
+
+                var cell = new Vector2Int(x, y);
+                var overlay = new GameObject($"PlaceHover_{x}_{y}");
+                overlay.transform.SetParent(_tilesRoot, false);
+                overlay.transform.localPosition = new Vector3(x * _tileSize, 0.006f, y * _tileSize);
+                overlay.transform.localRotation = Quaternion.identity;
+                overlay.transform.localScale = Vector3.one;
+
+                var filter = overlay.AddComponent<MeshFilter>();
+                var r = overlay.AddComponent<MeshRenderer>();
+                filter.sharedMesh = CreateTiledSurfaceMesh(_tileSize, _tileSize, 1, 1);
+                // Start fully transparent so the hover quad is invisible at rest.
+                r.sharedMaterial = _placementHoverTransparentMaterial;
+
+                _tileRenderers[cell] = r;
+                _tileRestMaterials[cell] = _placementHoverTransparentMaterial;
+                _buildableRenderers[cell] = r;
             }
         }
 

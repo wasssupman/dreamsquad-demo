@@ -82,10 +82,11 @@
 - 위치: `seed12345_game_full.png`, 전체 보드
 - 증상: Place 흰 slab, Walk 노란 도로, Env 녹색 texture, white prop markers가 서로 다른 시각 언어로 충돌한다. Enter the Gungeon식 연속된 바닥보다 프로토타입 tile atlas 조합처럼 보인다.
 - 재현: forest / audit set 전반
-- 심각도: Mid (27 경량 조정 후 — 신규 Play 캡처 없어 육안 확인 불가)
+- 심각도: Low (28 region mesh 전환 후 — 신규 Play 캡처 없어 육안 확인 불가. 코드 레벨로 seam 이 구조적으로 제거됨)
 - 가설: zone별 palette/value 대비와 edge/prop marker가 함께 문제를 만든다. 테마 palette pass에서 zone 톤과 debug-looking 요소를 정리해야 한다.
 - 후속 spec 후보: 22
-- **27 경량 조정**: `tileTopScale` 0.86→0.95 (Place slab 사이 seam 폭 축소), `placeEdgeOpacity` 0.36→0.25 (edge fringe 가 seam 강조 완화), `placeTileVariants` 4→3종 (가장 튀는 variant 제거로 tone harmony). Unity MCP unavailable 로 재캡처 없음. 코드 레벨 판단: seam 폭은 줄어들었을 것이나 Place slab grid 읽힘 자체 해소는 미확인. 실제 육안 확인 후 Low 강등 또는 28 전환 결정 필요.
+- **27 경량 조정**: `tileTopScale` 0.86→0.95 (Place slab 사이 seam 폭 축소), `placeEdgeOpacity` 0.36→0.25 (edge fringe 가 seam 강조 완화), `placeTileVariants` 4→3종 (가장 튀는 variant 제거로 tone harmony). Unity MCP unavailable 로 재캡처 없음. 코드 레벨 판단: seam 폭은 줄어들었을 것이나 Place slab grid 읽힘 자체 해소는 미확인.
+- **28 region mesh 전환** (2026-04-25): `BuildTiles` 의 Place 셀별 primitive Quad 생성 루프 제거. 대신 `BuildPlaceRegionSurface` 가 region 단위 row-run tiled mesh 를 생성해 내부 seam 을 구조적으로 제거. hover/flash 인터랙션은 셀 단위 투명 hover overlay quad(`BuildPlaceHoverOverlays`)로 분리해 기존 `SetPlacementHover`/`FlashTileReject` 경로 유지. Unity MCP unavailable 로 재캡처 없음. 코드 레벨에서 Place 셀 경계가 mesh 내부로 숨어 seam 이 구조적으로 사라짐. 육안 확인은 사용자에게 위임.
 
 ### V-008: Scene view audit 캡처 품질이 기준에 미달
 - 축: F
