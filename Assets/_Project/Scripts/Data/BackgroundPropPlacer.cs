@@ -23,6 +23,7 @@ namespace Wassup.Data
                 int maxCount = theme.maxTilePropCount;
                 int clusterId = 0;
                 var recentPropIndices = new Queue<int>();
+                var candidatesByRegion = BuildCandidatesByRegion(plan, theme, density, ref rng);
 
                 for (int i = 0; i < plan.DecorAnchors.Count; i++)
                 {
@@ -34,24 +35,25 @@ namespace Wassup.Data
                         continue;
 
                     var prop = theme.tileProps[propIndex];
-                    if (!TryPlace(plan, prop, propIndex, anchor.cell, occupied, placements, ref rng, clusterId))
-                        continue;
+                    var candidates = GetRegionCandidates(candidatesByRegion, anchor.regionId);
+                    if (!TryPlaceNearestCandidate(plan, prop, propIndex, anchor.cell, candidates, occupied, placements, ref rng, clusterId))
+                    {
+                        if (!TryPlace(plan, prop, propIndex, anchor.cell, occupied, placements, ref rng, clusterId))
+                            continue;
+                    }
+
                     TrackRecentProp(recentPropIndices, propIndex, theme.propRepeatAvoidanceWindow);
 
                     if (prop.clusterProbability > 0f && rng.NextFloat() <= prop.clusterProbability)
                     {
-                        int count = math.max(1, prop.clusterCount);
-                        int radius = math.max(1, prop.clusterRadius);
+                        int count = math.min(math.max(1, prop.clusterCount), math.max(1, plan.Regions[anchor.regionId].cellCount / 8));
                         for (int c = 1; c < count; c++)
                         {
                             if (maxCount > 0 && placements.Count >= maxCount)
                                 break;
 
-                            var offset = new int2(rng.NextInt(-radius, radius + 1), rng.NextInt(-radius, radius + 1));
-                            if (math.abs(offset.x) + math.abs(offset.y) > radius)
-                                continue;
-
-                            TryPlace(plan, prop, propIndex, anchor.cell + offset, occupied, placements, ref rng, clusterId);
+                            if (!TryPlaceNearestCandidate(plan, prop, propIndex, anchor.cell, candidates, occupied, placements, ref rng, clusterId, math.max(1, prop.clusterRadius)))
+                                break;
                         }
                     }
 
@@ -64,6 +66,40 @@ namespace Wassup.Data
             }
 
             return placements;
+        }
+
+        public static List<int2> GenerateRegionCandidates(BoardVisualPlan plan, BoardVisualRegion region, int minDistance, int maxCount, int maxAttempts, ref Random rng)
+        {
+            var regionCells = CollectRegionCells(plan, region);
+            Shuffle(regionCells, ref rng);
+
+            var candidates = new List<int2>(math.max(1, maxCount));
+            if (regionCells.Count == 0 || maxCount <= 0)
+                return candidates;
+
+            candidates.Add(region.anchorCell);
+            int attempts = math.min(math.max(1, maxAttempts), regionCells.Count);
+            int minDistanceSq = math.max(1, minDistance) * math.max(1, minDistance);
+            for (int i = 0; i < attempts && candidates.Count < maxCount; i++)
+            {
+                var cell = regionCells[i];
+                bool valid = true;
+                for (int c = 0; c < candidates.Count; c++)
+                {
+                    int2 delta = cell - candidates[c];
+                    if (math.dot(delta, delta) >= minDistanceSq)
+                        continue;
+
+                    valid = false;
+                    break;
+                }
+
+                if (valid)
+                    candidates.Add(cell);
+            }
+
+            candidates.Sort((a, b) => a.x != b.x ? a.x.CompareTo(b.x) : a.y.CompareTo(b.y));
+            return candidates;
         }
 
         public static bool CanFit(BoardVisualPlan plan, PropData prop, NativeArray<bool> occupied, int x, int y)
@@ -92,6 +128,31 @@ namespace Wassup.Data
 
         public static bool IsBackgroundCell(BoardVisualCell cell)
             => cell.zoneType == BoardZoneType.Env;
+
+        private static List<int2>[] BuildCandidatesByRegion(BoardVisualPlan plan, MapThemeData theme, float density, ref Random rng)
+        {
+            var result = new List<int2>[plan.Regions.Count];
+            for (int i = 0; i < plan.Regions.Count; i++)
+            {
+                var region = plan.Regions[i];
+                if (region.zoneType != BoardZoneType.Env)
+                {
+                    result[i] = new List<int2>();
+                    continue;
+                }
+
+                int minDistance = math.max(1, theme.propPoissonMinDistance);
+                int areaCap = math.max(1, (int)math.ceil(region.cellCount * density));
+                int densityCap = math.max(1, region.cellCount / math.max(1, theme.propPoissonDensityPerRegionArea));
+                int maxCount = math.min(areaCap, densityCap);
+                result[i] = GenerateRegionCandidates(plan, region, minDistance, maxCount, theme.propPoissonMaxAttemptsPerRegion, ref rng);
+            }
+
+            return result;
+        }
+
+        private static List<int2> GetRegionCandidates(List<int2>[] candidatesByRegion, int regionId)
+            => regionId >= 0 && regionId < candidatesByRegion.Length ? candidatesByRegion[regionId] : null;
 
         private static bool TrySelectProp(
             BoardVisualPlan plan,
@@ -140,6 +201,58 @@ namespace Wassup.Data
             }
 
             return false;
+        }
+
+        private static bool TryPlaceNearestCandidate(
+            BoardVisualPlan plan,
+            PropData prop,
+            int propIndex,
+            int2 anchorCell,
+            List<int2> candidates,
+            NativeArray<bool> occupied,
+            List<PropPlacement> placements,
+            ref Random rng,
+            int clusterId,
+            int maxDistance = int.MaxValue)
+        {
+            if (candidates == null || candidates.Count == 0)
+                return false;
+
+            int bestIndex = -1;
+            int bestScore = int.MaxValue;
+            for (int i = 0; i < candidates.Count; i++)
+            {
+                int2 delta = candidates[i] - anchorCell;
+                int distance = math.cmax(math.abs(delta));
+                if (distance > maxDistance)
+                    continue;
+
+                int score = math.dot(delta, delta);
+                if (score >= bestScore)
+                    continue;
+
+                if (!CanPlaceAtCandidate(plan, prop, candidates[i], occupied, placements))
+                    continue;
+
+                bestIndex = i;
+                bestScore = score;
+            }
+
+            if (bestIndex < 0)
+                return false;
+
+            var cell = candidates[bestIndex];
+            candidates.RemoveAt(bestIndex);
+            return TryPlace(plan, prop, propIndex, cell, occupied, placements, ref rng, clusterId);
+        }
+
+        private static bool CanPlaceAtCandidate(BoardVisualPlan plan, PropData prop, int2 cell, NativeArray<bool> occupied, IReadOnlyList<PropPlacement> placements)
+        {
+            int width = math.max(1, prop.footprintX);
+            int height = math.max(1, prop.footprintY);
+            int x = cell.x - width / 2;
+            int y = cell.y - height / 2;
+            return CanFit(plan, prop, occupied, x, y) && !ViolatesMinDistance(prop, x, y, placements);
         }
 
         private static bool TryPlace(
@@ -228,6 +341,31 @@ namespace Wassup.Data
             }
 
             return false;
+        }
+
+        private static List<int2> CollectRegionCells(BoardVisualPlan plan, BoardVisualRegion region)
+        {
+            var cells = new List<int2>(region.cellCount);
+            for (int y = region.min.y; y <= region.max.y; y++)
+            for (int x = region.min.x; x <= region.max.x; x++)
+            {
+                var cell = new int2(x, y);
+                if (plan.CellAt(cell).regionId == region.id)
+                    cells.Add(cell);
+            }
+
+            return cells;
+        }
+
+        private static void Shuffle(List<int2> cells, ref Random rng)
+        {
+            for (int i = cells.Count - 1; i > 0; i--)
+            {
+                int j = rng.NextInt(0, i + 1);
+                var tmp = cells[i];
+                cells[i] = cells[j];
+                cells[j] = tmp;
+            }
         }
 
         private static void TrackRecentProp(Queue<int> recentPropIndices, int propIndex, int window)

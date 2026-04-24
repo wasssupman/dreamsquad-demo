@@ -98,9 +98,19 @@ MonoBehaviour:
   walkCrossTexture: {fileID: 2800000, guid: d9944b035e5f640678c297bb10fb67ba, type: 3}
   terrainDetailTextures:
   - {fileID: 2800000, guid: a8f907e12171343e68e53ad721c07b47, type: 3}
-  terrainDetailDensity: 0.5
+  terrainDetailDensity: 0
   terrainDetailScale: 0.32
   placeBackgroundEdgeTexture: {fileID: 2800000, guid: 26dba28f0769f4debb62669b1d5409d0, type: 3}
+  placeEdgeTexture: {fileID: 2800000, guid: 5ebd872665b074c91a57d0eb7bdd9711, type: 3}
+  placeOuterCornerTexture: {fileID: 2800000, guid: 1f9db434b58ae478ea7766dc95bcdb91, type: 3}
+  placeInnerCornerTexture: {fileID: 2800000, guid: ea97a87691d564c0d81b80824031fa22, type: 3}
+  placeInnerCornerScale: 0.38
+  placeInnerCornerOpacity: 0.62
+  placeOuterCornerScale: 0.52
+  placeOuterCornerOpacity: 0.42
+  placeEdgeOpacity: 0.36
+  placeEdgeThickness: 0.085
+  placeEdgeFalloff: 0.55
   tileThickness: 0.42
   tileTopScale: 0.86
   tileBaseScale: 1
@@ -124,6 +134,9 @@ MonoBehaviour:
   decorProps: []
   tilePropDensity: 1
   maxTilePropCount: 28
+  propPoissonMinDistance: 2
+  propPoissonDensityPerRegionArea: 3
+  propPoissonMaxAttemptsPerRegion: 512
   propRepeatAvoidanceWindow: 2
   spawnGoalPropAvoidRadius: 1
   spawnGoalPropDensityMultiplier: 0.55

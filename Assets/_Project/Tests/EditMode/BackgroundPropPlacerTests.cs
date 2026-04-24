@@ -344,6 +344,62 @@ namespace Wassup.Tests.EditMode
             }
         }
 
+        [Test]
+        public void GenerateRegionCandidates_IsCappedByRegionDensity()
+        {
+            var map = CreateMap(new int2(8, 8), MapTileType.Env);
+            try
+            {
+                var plan = BoardVisualPlanBuilder.Build(map, 101);
+                var rng = new Unity.Mathematics.Random(101);
+                var region = plan.Regions[0];
+
+                var candidates = BackgroundPropPlacer.GenerateRegionCandidates(plan, region, 2, 8, 128, ref rng);
+
+                Assert.Greater(candidates.Count, 0);
+                Assert.LessOrEqual(candidates.Count, 8);
+            }
+            finally
+            {
+                map.Dispose();
+            }
+        }
+
+        [Test]
+        public void Generate_ClustersSamePropWithinRadius()
+        {
+            var prefab = new GameObject("ClusterPropPrefab");
+            var prop = CreateProp(1, 1, prefab);
+            prop.clusterProbability = 1f;
+            prop.clusterCount = 3;
+            prop.clusterRadius = 3;
+            var theme = ScriptableObject.CreateInstance<MapThemeData>();
+            theme.tileProps = new[] { prop };
+            theme.tilePropDensity = 1f;
+            theme.maxTilePropCount = 3;
+            theme.spawnGoalPropAvoidRadius = 0;
+            theme.propPoissonMinDistance = 1;
+            theme.propPoissonDensityPerRegionArea = 1;
+            var map = CreateMap(new int2(8, 8), MapTileType.Env);
+            try
+            {
+                var placements = BackgroundPropPlacer.Generate(BoardVisualPlanBuilder.Build(map, 202), theme, 202);
+
+                Assert.GreaterOrEqual(placements.Count, 2);
+                Assert.AreEqual(placements[0].clusterId, placements[1].clusterId);
+                int dx = Mathf.Abs(placements[0].x - placements[1].x);
+                int dy = Mathf.Abs(placements[0].y - placements[1].y);
+                Assert.LessOrEqual(Mathf.Max(dx, dy), prop.clusterRadius);
+            }
+            finally
+            {
+                map.Dispose();
+                Object.DestroyImmediate(theme);
+                Object.DestroyImmediate(prop);
+                Object.DestroyImmediate(prefab);
+            }
+        }
+
         private static PropData CreateProp(int width, int height, GameObject prefab)
         {
             var prop = ScriptableObject.CreateInstance<PropData>();

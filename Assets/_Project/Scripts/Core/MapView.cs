@@ -27,6 +27,7 @@ namespace Wassup.Core
         private readonly Dictionary<Vector2Int, Material> _tileRestMaterials = new();
         private Material _tileSideMaterial;
         private Material _placeEdgeOverlayMaterial;
+        private Material _placeOuterCornerOverlayMaterial;
         private Material _placeEdgeInnerOverlayMaterial;
         private Material _placementHoverValidMaterial;
         private Material _placementHoverInvalidMaterial;
@@ -66,6 +67,7 @@ namespace Wassup.Core
             _tileTextureMaterials.Clear();
             SafeDestroy(_tileSideMaterial);
             SafeDestroy(_placeEdgeOverlayMaterial);
+            SafeDestroy(_placeOuterCornerOverlayMaterial);
             SafeDestroy(_placeEdgeInnerOverlayMaterial);
             SafeDestroy(_placementHoverValidMaterial);
             SafeDestroy(_placementHoverInvalidMaterial);
@@ -83,6 +85,7 @@ namespace Wassup.Core
             _tileTextureMaterials.Clear();
             SafeDestroy(_tileSideMaterial);
             SafeDestroy(_placeEdgeOverlayMaterial);
+            SafeDestroy(_placeOuterCornerOverlayMaterial);
             SafeDestroy(_placeEdgeInnerOverlayMaterial);
             SafeDestroy(_placementHoverValidMaterial);
             SafeDestroy(_placementHoverInvalidMaterial);
@@ -95,10 +98,14 @@ namespace Wassup.Core
             CreateTileTopMaterials(theme, BoardZoneType.Env, envColor);
             var edgeTexture = theme != null && theme.placeEdgeTexture != null ? theme.placeEdgeTexture : theme != null ? theme.placeBackgroundEdgeTexture : null;
             _placeEdgeOverlayMaterial = edgeTexture != null
-                ? RuntimeMaterialFactory.CreateTransparentTexture(edgeTexture, new Color(1f, 1f, 1f, 0.48f))
+                ? RuntimeMaterialFactory.CreateTransparentTexture(edgeTexture, new Color(1f, 1f, 1f, Mathf.Clamp01(theme != null ? theme.placeEdgeOpacity : 0.38f)))
+                : null;
+            var outerCornerTexture = theme != null && theme.placeOuterCornerTexture != null ? theme.placeOuterCornerTexture : edgeTexture;
+            _placeOuterCornerOverlayMaterial = outerCornerTexture != null
+                ? RuntimeMaterialFactory.CreateTransparentTexture(outerCornerTexture, new Color(1f, 1f, 1f, Mathf.Clamp01(theme != null ? theme.placeOuterCornerOpacity : 0.42f)))
                 : null;
             _placeEdgeInnerOverlayMaterial = theme != null && theme.placeInnerCornerTexture != null
-                ? RuntimeMaterialFactory.CreateTransparentTexture(theme.placeInnerCornerTexture, new Color(0.92f, 1f, 0.92f, 0.45f))
+                ? RuntimeMaterialFactory.CreateTransparentTexture(theme.placeInnerCornerTexture, new Color(1f, 1f, 1f, Mathf.Clamp01(theme.placeInnerCornerOpacity)))
                 : null;
             _tileSideMaterial = RuntimeMaterialFactory.CreateOpaque(theme != null ? theme.tileSideColor : new Color(0.2f, 0.18f, 0.22f, 1f));
             _placementHoverValidMaterial = RuntimeMaterialFactory.CreateOpaque(new Color(0.25f, 0.95f, 0.75f, 1f));
@@ -170,7 +177,7 @@ namespace Wassup.Core
                 SafeDestroy(topCollider);
 
                 if (drawPlaceEdge)
-                    BuildPlaceEdgeOverlays(root.transform, edgeMask, visualCell.innerCornerMask);
+                    BuildPlaceEdgeOverlays(root.transform, edgeMask, visualCell.innerCornerMask, visualCell.shapeClass);
             }
         }
 
@@ -449,24 +456,63 @@ namespace Wassup.Core
             return null;
         }
 
-        private void BuildPlaceEdgeOverlays(Transform parent, int mask, int innerCornerMask)
+        private void BuildPlaceEdgeOverlays(Transform parent, int mask, int innerCornerMask, BoardShapeType shapeClass)
         {
-            if (_placeEdgeOverlayMaterial != null && mask != 0)
+            bool outerCorner = IsOuterCorner(shapeClass);
+            if (_placeEdgeOverlayMaterial != null && mask != 0 && !outerCorner)
             {
-                if ((mask & 1) != 0) BuildPlaceEdgeOverlay(parent, "EdgeN", new Vector3(0f, 0.022f, 0.385f * _tileSize), 0f, new Vector3(_tileSize * 0.66f, _tileSize * 0.14f, 1f), _placeEdgeOverlayMaterial);
-                if ((mask & 2) != 0) BuildPlaceEdgeOverlay(parent, "EdgeE", new Vector3(0.385f * _tileSize, 0.022f, 0f), 90f, new Vector3(_tileSize * 0.66f, _tileSize * 0.14f, 1f), _placeEdgeOverlayMaterial);
-                if ((mask & 4) != 0) BuildPlaceEdgeOverlay(parent, "EdgeS", new Vector3(0f, 0.022f, -0.385f * _tileSize), 180f, new Vector3(_tileSize * 0.66f, _tileSize * 0.14f, 1f), _placeEdgeOverlayMaterial);
-                if ((mask & 8) != 0) BuildPlaceEdgeOverlay(parent, "EdgeW", new Vector3(-0.385f * _tileSize, 0.022f, 0f), 270f, new Vector3(_tileSize * 0.66f, _tileSize * 0.14f, 1f), _placeEdgeOverlayMaterial);
+                float thickness = _tileSize * Mathf.Clamp(_theme != null ? _theme.placeEdgeThickness : 0.1f, 0.04f, 0.18f);
+                float inset = (0.5f - thickness * 0.5f / _tileSize) * _tileSize;
+                var edgeScale = new Vector3(_tileSize * 0.72f, thickness, 1f);
+                if ((mask & 1) != 0) BuildPlaceEdgeOverlay(parent, "EdgeN", new Vector3(0f, 0.022f, inset), 0f, edgeScale, _placeEdgeOverlayMaterial);
+                if ((mask & 2) != 0) BuildPlaceEdgeOverlay(parent, "EdgeE", new Vector3(inset, 0.022f, 0f), 90f, edgeScale, _placeEdgeOverlayMaterial);
+                if ((mask & 4) != 0) BuildPlaceEdgeOverlay(parent, "EdgeS", new Vector3(0f, 0.022f, -inset), 180f, edgeScale, _placeEdgeOverlayMaterial);
+                if ((mask & 8) != 0) BuildPlaceEdgeOverlay(parent, "EdgeW", new Vector3(-inset, 0.022f, 0f), 270f, edgeScale, _placeEdgeOverlayMaterial);
             }
+
+            if (_placeOuterCornerOverlayMaterial != null && outerCorner)
+                BuildOuterCornerOverlay(parent, shapeClass);
 
             if (_placeEdgeInnerOverlayMaterial == null || innerCornerMask == 0)
                 return;
 
-            if ((innerCornerMask & 1) != 0) BuildPlaceEdgeOverlay(parent, "InnerCornerNE", new Vector3(0.28f * _tileSize, 0.025f, 0.28f * _tileSize), 45f, Vector3.one * (_tileSize * 0.22f), _placeEdgeInnerOverlayMaterial);
-            if ((innerCornerMask & 2) != 0) BuildPlaceEdgeOverlay(parent, "InnerCornerSE", new Vector3(0.28f * _tileSize, 0.028f, -0.28f * _tileSize), 135f, Vector3.one * (_tileSize * 0.22f), _placeEdgeInnerOverlayMaterial);
-            if ((innerCornerMask & 4) != 0) BuildPlaceEdgeOverlay(parent, "InnerCornerSW", new Vector3(-0.28f * _tileSize, 0.031f, -0.28f * _tileSize), 225f, Vector3.one * (_tileSize * 0.22f), _placeEdgeInnerOverlayMaterial);
-            if ((innerCornerMask & 8) != 0) BuildPlaceEdgeOverlay(parent, "InnerCornerNW", new Vector3(-0.28f * _tileSize, 0.034f, 0.28f * _tileSize), 315f, Vector3.one * (_tileSize * 0.22f), _placeEdgeInnerOverlayMaterial);
+            float scale = _tileSize * Mathf.Clamp(_theme != null ? _theme.placeInnerCornerScale : 0.36f, 0.2f, 0.5f);
+            float offset = (_tileSize - scale) * 0.5f;
+            var localScale = Vector3.one * scale;
+            if ((innerCornerMask & 1) != 0) BuildPlaceEdgeOverlay(parent, "InnerCornerNE", new Vector3(offset, 0.025f, offset), 45f, localScale, _placeEdgeInnerOverlayMaterial);
+            if ((innerCornerMask & 2) != 0) BuildPlaceEdgeOverlay(parent, "InnerCornerSE", new Vector3(offset, 0.028f, -offset), 135f, localScale, _placeEdgeInnerOverlayMaterial);
+            if ((innerCornerMask & 4) != 0) BuildPlaceEdgeOverlay(parent, "InnerCornerSW", new Vector3(-offset, 0.031f, -offset), 225f, localScale, _placeEdgeInnerOverlayMaterial);
+            if ((innerCornerMask & 8) != 0) BuildPlaceEdgeOverlay(parent, "InnerCornerNW", new Vector3(-offset, 0.034f, offset), 315f, localScale, _placeEdgeInnerOverlayMaterial);
         }
+
+        private void BuildOuterCornerOverlay(Transform parent, BoardShapeType shapeClass)
+        {
+            float scale = _tileSize * Mathf.Clamp(_theme != null ? _theme.placeOuterCornerScale : 0.48f, 0.2f, 0.8f);
+            float offset = (_tileSize - scale) * 0.5f;
+            float yaw = shapeClass switch
+            {
+                BoardShapeType.OuterCornerNE => 45f,
+                BoardShapeType.OuterCornerSE => 135f,
+                BoardShapeType.OuterCornerSW => 225f,
+                BoardShapeType.OuterCornerNW => 315f,
+                _ => 0f,
+            };
+            var position = shapeClass switch
+            {
+                BoardShapeType.OuterCornerNE => new Vector3(offset, 0.024f, offset),
+                BoardShapeType.OuterCornerSE => new Vector3(offset, 0.024f, -offset),
+                BoardShapeType.OuterCornerSW => new Vector3(-offset, 0.024f, -offset),
+                BoardShapeType.OuterCornerNW => new Vector3(-offset, 0.024f, offset),
+                _ => Vector3.zero,
+            };
+            BuildPlaceEdgeOverlay(parent, $"Outer{shapeClass}", position, yaw, Vector3.one * scale, _placeOuterCornerOverlayMaterial);
+        }
+
+        private static bool IsOuterCorner(BoardShapeType shapeClass)
+            => shapeClass == BoardShapeType.OuterCornerNE ||
+               shapeClass == BoardShapeType.OuterCornerSE ||
+               shapeClass == BoardShapeType.OuterCornerSW ||
+               shapeClass == BoardShapeType.OuterCornerNW;
 
         private void BuildPlaceEdgeOverlayPair(Transform parent, string name, Vector3 localPosition, float yaw)
         {
@@ -674,6 +720,18 @@ namespace Wassup.Core
                 instance.transform.localRotation = Quaternion.Euler(0f, placement.rotationYaw, 0f);
                 instance.transform.localScale = Vector3.one * (prop.visualScale * placement.scale);
                 ApplyPropSorting(instance, prop, placement, plan);
+                DisablePropDebugMarkers(instance);
+            }
+        }
+
+        private static void DisablePropDebugMarkers(GameObject instance)
+        {
+            var renderers = instance.GetComponentsInChildren<Renderer>(true);
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                string n = renderers[i].gameObject.name.ToLowerInvariant();
+                if (n.Contains("marker") || n.Contains("footprint") || n.Contains("debug") || n.Contains("bounds"))
+                    renderers[i].gameObject.SetActive(false);
             }
         }
 

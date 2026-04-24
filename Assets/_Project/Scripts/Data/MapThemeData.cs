@@ -112,6 +112,27 @@ namespace Wassup.Data
         [Tooltip("Overlay used for missing diagonal inner corners. Null skips inner overlays.")]
         public Texture2D placeInnerCornerTexture;
 
+        [Range(0.2f, 0.5f)]
+        public float placeInnerCornerScale = 0.36f;
+
+        [Range(0f, 1f)]
+        public float placeInnerCornerOpacity = 0.6f;
+
+        [Range(0.2f, 0.8f)]
+        public float placeOuterCornerScale = 0.48f;
+
+        [Range(0f, 1f)]
+        public float placeOuterCornerOpacity = 0.42f;
+
+        [Range(0f, 1f)]
+        public float placeEdgeOpacity = 0.38f;
+
+        [Range(0.04f, 0.18f)]
+        public float placeEdgeThickness = 0.1f;
+
+        [Range(0f, 1f)]
+        public float placeEdgeFalloff = 0.5f;
+
         [Min(0.01f)]
         [Tooltip("Visual tile block thickness below the y=0 gameplay plane.")]
         public float tileThickness = 0.16f;
@@ -143,6 +164,18 @@ namespace Wassup.Data
         public int maxTilePropCount;
 
         [Header("Background Prop Rules")]
+        [Min(1)]
+        [Tooltip("Minimum cell distance between generated Poisson seed candidates.")]
+        public int propPoissonMinDistance = 2;
+
+        [Min(1)]
+        [Tooltip("Region area divisor used to cap Poisson seed candidate count.")]
+        public int propPoissonDensityPerRegionArea = 4;
+
+        [Min(16)]
+        [Tooltip("Maximum shuffled cells tested per region while building Poisson candidates.")]
+        public int propPoissonMaxAttemptsPerRegion = 256;
+
         [Min(0)]
         [Tooltip("Placed prop indices inside this recent window are heavily down-weighted when alternatives exist.")]
         public int propRepeatAvoidanceWindow = 2;
