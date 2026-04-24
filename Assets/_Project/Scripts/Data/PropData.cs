@@ -13,8 +13,19 @@ namespace Wassup.Data
         [Header("Placement")]
         [Min(1)] public int footprintX = 1;
         [Min(1)] public int footprintY = 1;
+        [Min(0)] public int placementWeight = 10;
+        [Min(0)] public int minDistanceCells;
         public Vector3 visualOffset;
         [Min(0.01f)] public float visualScale = 1f;
+        public BoardDecorAnchorType[] preferredAnchorTypes;
+        [Min(0)] public int preferredRegionSizeMin;
+        [Min(0)] public int clusterRadius = 1;
+        [Min(1)] public int clusterCount = 1;
+        [Range(0f, 1f)] public float clusterProbability;
+        [Min(0f)] public float rotationJitterDegrees;
+        [Range(0f, 0.8f)] public float scaleJitter;
+        public Vector2Int pathProximityRange = new Vector2Int(0, 255);
+        public Vector2Int borderProximityRange = new Vector2Int(0, 255);
 
         [Header("Generated Prefab")]
         public GameObject prefab;

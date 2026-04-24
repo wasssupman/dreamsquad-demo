@@ -9,59 +9,55 @@ namespace Wassup.Data
         public static List<PropPlacement> Generate(BoardVisualPlan plan, MapThemeData theme, int seed)
         {
             var placements = new List<PropPlacement>();
-            if (plan == null || plan.gridSize.x <= 0 || plan.gridSize.y <= 0 || theme == null || theme.tileProps == null || theme.tileProps.Length == 0)
+            if (plan == null || theme == null || theme.tileProps == null || theme.tileProps.Length == 0)
                 return placements;
 
-            float density = math.clamp(theme.tilePropDensity, 0f, 1f);
+            float density = math.saturate(theme.tilePropDensity);
             if (density <= 0f)
                 return placements;
 
-            int cellCount = plan.gridSize.x * plan.gridSize.y;
-            var occupied = new NativeArray<bool>(cellCount, Allocator.Temp);
+            var occupied = new NativeArray<bool>(plan.gridSize.x * plan.gridSize.y, Allocator.Temp);
             try
             {
-                uint rngSeed = (uint)math.max(1, seed);
-                var rng = new Random(rngSeed);
+                var rng = new Random((uint)math.max(1, seed));
                 int maxCount = theme.maxTilePropCount;
-                var recentPropIndices = new Queue<int>();
+                int clusterId = 0;
 
-                while (maxCount <= 0 || placements.Count < maxCount)
+                for (int i = 0; i < plan.DecorAnchors.Count; i++)
                 {
-                    bool placedThisPass = false;
-                    for (int i = 0; i < plan.Regions.Count; i++)
+                    if (maxCount > 0 && placements.Count >= maxCount)
+                        break;
+
+                    var anchor = plan.DecorAnchors[i];
+                    if (!TrySelectProp(plan, theme, anchor, density, ref rng, out int propIndex))
+                        continue;
+
+                    var prop = theme.tileProps[propIndex];
+                    if (!TryPlace(plan, prop, propIndex, anchor.cell, occupied, placements, ref rng, clusterId))
+                        continue;
+
+                    if (prop.clusterProbability > 0f && rng.NextFloat() <= prop.clusterProbability)
                     {
-                        if (maxCount > 0 && placements.Count >= maxCount)
-                            return placements;
+                        int count = math.max(1, prop.clusterCount);
+                        int radius = math.max(1, prop.clusterRadius);
+                        for (int c = 1; c < count; c++)
+                        {
+                            if (maxCount > 0 && placements.Count >= maxCount)
+                                break;
 
-                        var region = plan.Regions[i];
-                        if (region.zoneType != BoardZoneType.Env || region.cellCount <= 0)
-                            continue;
+                            var offset = new int2(rng.NextInt(-radius, radius + 1), rng.NextInt(-radius, radius + 1));
+                            if (math.abs(offset.x) + math.abs(offset.y) > radius)
+                                continue;
 
-                        var candidates = CollectCenteredCandidates(plan, theme, occupied, region, placements, recentPropIndices, density, ref rng);
-                        if (candidates.Count == 0)
-                            continue;
-
-                        RemoveRecentlyUsedCandidatesWhenAlternativesExist(candidates, recentPropIndices);
-                        var candidate = SelectWeightedCandidate(candidates, ref rng);
-                        MarkOccupied(occupied, plan.gridSize, candidate.x, candidate.y, candidate.width, candidate.height);
-                        placements.Add(new PropPlacement(
-                            candidate.propIndex,
-                            candidate.x,
-                            candidate.y,
-                            candidate.width,
-                            candidate.height,
-                            rng.NextUInt()));
-                        TrackRecentProp(recentPropIndices, candidate.propIndex, theme.propRepeatAvoidanceWindow);
-                        placedThisPass = true;
+                            TryPlace(plan, prop, propIndex, anchor.cell + offset, occupied, placements, ref rng, clusterId);
+                        }
                     }
 
-                    if (!placedThisPass)
-                        break;
+                    clusterId++;
                 }
             }
             finally
             {
-                // Temp occupancy is owned by this generation call and must always be released.
                 if (occupied.IsCreated) occupied.Dispose();
             }
 
@@ -75,22 +71,17 @@ namespace Wassup.Data
 
             int width = math.max(1, prop.footprintX);
             int height = math.max(1, prop.footprintY);
-
-            if (x < 0 || y < 0)
-                return false;
-            if (x + width > plan.gridSize.x || y + height > plan.gridSize.y)
+            if (x < 0 || y < 0 || x + width > plan.gridSize.x || y + height > plan.gridSize.y)
                 return false;
 
             for (int dy = 0; dy < height; dy++)
             for (int dx = 0; dx < width; dx++)
             {
-                int cx = x + dx;
-                int cy = y + dy;
-                int index = cy * plan.gridSize.x + cx;
+                int2 cell = new int2(x + dx, y + dy);
+                int index = cell.y * plan.gridSize.x + cell.x;
                 if (occupied.IsCreated && occupied[index])
                     return false;
-
-                if (!IsBackgroundCell(plan.CellAt(new int2(cx, cy))))
+                if (!IsBackgroundCell(plan.CellAt(cell)))
                     return false;
             }
 
@@ -100,146 +91,104 @@ namespace Wassup.Data
         public static bool IsBackgroundCell(BoardVisualCell cell)
             => cell.zoneType == BoardZoneType.Env;
 
-        private static List<PlacementCandidate> CollectCenteredCandidates(
+        private static bool TrySelectProp(
             BoardVisualPlan plan,
             MapThemeData theme,
-            NativeArray<bool> occupied,
-            BoardVisualRegion region,
-            IReadOnlyList<PropPlacement> placements,
-            Queue<int> recentPropIndices,
-            float baseDensity,
-            ref Random rng)
+            BoardDecorAnchor anchor,
+            float density,
+            ref Random rng,
+            out int propIndex)
         {
-            var candidates = new List<PlacementCandidate>();
-            var props = theme.tileProps;
-            for (int i = 0; i < props.Length; i++)
+            propIndex = -1;
+            var cell = plan.CellAt(anchor.cell);
+            float total = 0f;
+            var weights = new float[theme.tileProps.Length];
+            for (int i = 0; i < theme.tileProps.Length; i++)
             {
-                if (TryFindBestFit(plan, theme, props[i], occupied, region, out var candidate))
-                {
-                    candidate.propIndex = i;
-                    candidate.weight = CalculateCandidateWeight(plan, theme, props[i], candidate, region, placements, recentPropIndices, baseDensity, ref rng);
-                    if (candidate.weight <= 0f)
-                        continue;
+                var prop = theme.tileProps[i];
+                if (!IsEligible(plan, prop, anchor, cell))
+                    continue;
 
-                    candidates.Add(candidate);
-                }
+                float spawnGoalMultiplier = IsNearSpawnOrGoal(plan, anchor.cell, math.max(0, theme.spawnGoalPropAvoidRadius))
+                    ? math.saturate(theme.spawnGoalPropDensityMultiplier)
+                    : 1f;
+                float weight = math.max(0, prop.placementWeight) * cell.decorBudgetBias * density * spawnGoalMultiplier;
+                weights[i] = weight;
+                total += weight;
             }
 
-            return candidates;
+            if (total <= 0f || rng.NextFloat() > math.saturate(total))
+                return false;
+
+            float roll = rng.NextFloat(0f, total);
+            for (int i = 0; i < weights.Length; i++)
+            {
+                roll -= weights[i];
+                if (roll > 0f)
+                    continue;
+
+                propIndex = i;
+                return true;
+            }
+
+            return false;
         }
 
-        private static bool TryFindBestFit(
+        private static bool TryPlace(
             BoardVisualPlan plan,
-            MapThemeData theme,
             PropData prop,
+            int propIndex,
+            int2 cell,
             NativeArray<bool> occupied,
-            BoardVisualRegion region,
-            out PlacementCandidate candidate)
+            List<PropPlacement> placements,
+            ref Random rng,
+            int clusterId)
         {
-            candidate = default;
-            if (prop == null || prop.prefab == null)
+            int x = cell.x;
+            int y = cell.y;
+            if (!CanFit(plan, prop, occupied, x, y) || ViolatesMinDistance(prop, x, y, placements))
                 return false;
 
             int width = math.max(1, prop.footprintX);
             int height = math.max(1, prop.footprintY);
-            int maxX = region.max.x - width + 1;
-            int maxY = region.max.y - height + 1;
-            if (maxX < region.min.x || maxY < region.min.y)
+            for (int dy = 0; dy < height; dy++)
+            for (int dx = 0; dx < width; dx++)
+                occupied[(y + dy) * plan.gridSize.x + x + dx] = true;
+
+            float yaw = prop.billboardMode == PropBillboardMode.FullCamera ? 0f : rng.NextFloat(-prop.rotationJitterDegrees, prop.rotationJitterDegrees);
+            float scale = 1f + rng.NextFloat(-prop.scaleJitter, prop.scaleJitter);
+            placements.Add(new PropPlacement(propIndex, x, y, width, height, rng.NextUInt(), yaw, scale, clusterId));
+            return true;
+        }
+
+        private static bool IsEligible(BoardVisualPlan plan, PropData prop, BoardDecorAnchor anchor, BoardVisualCell cell)
+        {
+            if (prop == null || prop.prefab == null || prop.placementWeight <= 0)
                 return false;
 
-            float regionCenterX = (region.min.x + region.max.x) * 0.5f;
-            float regionCenterY = (region.min.y + region.max.y) * 0.5f;
-            bool preferOuter = width * height > math.max(1, theme.pathAdjacentSmallPropMaxArea) &&
-                               theme.largePropInnerWeightMultiplier < 1f;
-            float bestScore = float.MaxValue;
-            bool found = false;
+            if (anchor.regionId < 0 || anchor.regionId >= plan.Regions.Count)
+                return false;
 
-            for (int y = region.min.y; y <= maxY; y++)
-            for (int x = region.min.x; x <= maxX; x++)
+            if (plan.Regions[anchor.regionId].cellCount < prop.preferredRegionSizeMin)
+                return false;
+
+            if (prop.preferredAnchorTypes != null && prop.preferredAnchorTypes.Length > 0)
             {
-                if (!CanFit(plan, prop, occupied, x, y))
-                    continue;
-
-                float propCenterX = x + (width - 1) * 0.5f;
-                float propCenterY = y + (height - 1) * 0.5f;
-                float dx = propCenterX - regionCenterX;
-                float dy = propCenterY - regionCenterY;
-                float score = dx * dx + dy * dy;
-                if (preferOuter)
-                {
-                    int edgeDistance = math.min(
-                        math.min(x, y),
-                        math.min(plan.gridSize.x - (x + width), plan.gridSize.y - (y + height)));
-                    score = edgeDistance * 100f + score * 0.01f;
-                }
-                if (found && score >= bestScore)
-                    continue;
-
-                bestScore = score;
-                candidate = new PlacementCandidate
-                {
-                    x = x,
-                    y = y,
-                    width = width,
-                    height = height,
-                    centerX = propCenterX,
-                    centerY = propCenterY,
-                };
-                found = true;
+                bool matches = false;
+                for (int i = 0; i < prop.preferredAnchorTypes.Length; i++)
+                    matches |= prop.preferredAnchorTypes[i] == anchor.anchorType;
+                if (!matches)
+                    return false;
             }
 
-            return found;
+            int path = cell.pathProximity == BoardVisualCell.NoPathProximity ? 255 : cell.pathProximity;
+            return path >= prop.pathProximityRange.x &&
+                   path <= prop.pathProximityRange.y &&
+                   cell.borderProximity >= prop.borderProximityRange.x &&
+                   cell.borderProximity <= prop.borderProximityRange.y;
         }
 
-        private static float CalculateCandidateWeight(
-            BoardVisualPlan plan,
-            MapThemeData theme,
-            PropData prop,
-            PlacementCandidate candidate,
-            BoardVisualRegion region,
-            IReadOnlyList<PropPlacement> placements,
-            Queue<int> recentPropIndices,
-            float baseDensity,
-            ref Random rng)
-        {
-            float density = baseDensity;
-            if (IsNearSpawnOrGoal(plan, candidate, math.max(0, theme.spawnGoalPropAvoidRadius)))
-                density *= math.clamp(theme.spawnGoalPropDensityMultiplier, 0f, 1f);
-            if (rng.NextFloat() > density)
-                return 0f;
-
-            if (ViolatesMinDistance(prop, candidate, placements))
-                return 0f;
-
-            float weight = math.max(0, prop.placementWeight);
-            if (weight <= 0f)
-                return 0f;
-
-            int area = candidate.width * candidate.height;
-            bool largeProp = area > math.max(1, theme.pathAdjacentSmallPropMaxArea);
-            if (largeProp && IsAdjacentToWalk(plan, candidate))
-                weight *= math.clamp(theme.pathAdjacentLargePropWeightMultiplier, 0f, 1f);
-
-            if (largeProp)
-            {
-                bool nearOuterEdge = candidate.x <= 0 ||
-                                     candidate.y <= 0 ||
-                                     candidate.x + candidate.width >= plan.gridSize.x ||
-                                     candidate.y + candidate.height >= plan.gridSize.y;
-                if (!nearOuterEdge)
-                    weight *= math.clamp(theme.largePropInnerWeightMultiplier, 0f, 1f);
-
-                if (region.cellCount < area * 4)
-                    weight *= 0.25f;
-            }
-
-            if (theme.propRepeatAvoidanceWindow > 0 && recentPropIndices.Contains(candidate.propIndex))
-                weight *= 0.05f;
-
-            return weight;
-        }
-
-        private static bool ViolatesMinDistance(PropData prop, PlacementCandidate candidate, IReadOnlyList<PropPlacement> placements)
+        private static bool ViolatesMinDistance(PropData prop, int x, int y, IReadOnlyList<PropPlacement> placements)
         {
             int minDistance = math.max(0, prop.minDistanceCells);
             if (minDistance <= 0)
@@ -247,11 +196,8 @@ namespace Wassup.Data
 
             for (int i = 0; i < placements.Count; i++)
             {
-                var placement = placements[i];
-                float centerX = placement.x + (placement.width - 1) * 0.5f;
-                float centerY = placement.y + (placement.height - 1) * 0.5f;
-                float dx = math.abs(candidate.centerX - centerX);
-                float dy = math.abs(candidate.centerY - centerY);
+                float dx = math.abs(x - placements[i].x);
+                float dy = math.abs(y - placements[i].y);
                 if (math.max(dx, dy) < minDistance)
                     return true;
             }
@@ -259,129 +205,21 @@ namespace Wassup.Data
             return false;
         }
 
-        private static bool IsNearSpawnOrGoal(BoardVisualPlan plan, PlacementCandidate candidate, int radius)
+        private static bool IsNearSpawnOrGoal(BoardVisualPlan plan, int2 cell, int radius)
         {
             if (radius <= 0)
                 return false;
 
-            if (DistanceToCell(candidate, plan.goal) <= radius)
+            if (math.cmax(math.abs(cell - plan.goal)) <= radius)
                 return true;
 
             for (int i = 0; i < plan.spawns.Length; i++)
             {
-                if (DistanceToCell(candidate, plan.spawns[i]) <= radius)
+                if (math.cmax(math.abs(cell - plan.spawns[i])) <= radius)
                     return true;
             }
 
             return false;
-        }
-
-        private static float DistanceToCell(PlacementCandidate candidate, int2 cell)
-        {
-            float dx = math.abs(candidate.centerX - cell.x);
-            float dy = math.abs(candidate.centerY - cell.y);
-            return math.max(dx, dy);
-        }
-
-        private static bool IsAdjacentToWalk(BoardVisualPlan plan, PlacementCandidate candidate)
-        {
-            int minX = math.max(0, candidate.x - 1);
-            int maxX = math.min(plan.gridSize.x - 1, candidate.x + candidate.width);
-            int minY = math.max(0, candidate.y - 1);
-            int maxY = math.min(plan.gridSize.y - 1, candidate.y + candidate.height);
-
-            for (int y = minY; y <= maxY; y++)
-            for (int x = minX; x <= maxX; x++)
-            {
-                bool insideFootprint = x >= candidate.x &&
-                                       x < candidate.x + candidate.width &&
-                                       y >= candidate.y &&
-                                       y < candidate.y + candidate.height;
-                if (insideFootprint)
-                    continue;
-
-                if (plan.CellAt(new int2(x, y)).zoneType == BoardZoneType.Walk)
-                    return true;
-            }
-
-            return false;
-        }
-
-        private static void RemoveRecentlyUsedCandidatesWhenAlternativesExist(List<PlacementCandidate> candidates, Queue<int> recentPropIndices)
-        {
-            if (candidates.Count <= 1 || recentPropIndices.Count == 0)
-                return;
-
-            bool hasFreshCandidate = false;
-            for (int i = 0; i < candidates.Count; i++)
-            {
-                if (recentPropIndices.Contains(candidates[i].propIndex))
-                    continue;
-
-                hasFreshCandidate = true;
-                break;
-            }
-
-            if (!hasFreshCandidate)
-                return;
-
-            for (int i = candidates.Count - 1; i >= 0; i--)
-            {
-                if (recentPropIndices.Contains(candidates[i].propIndex))
-                    candidates.RemoveAt(i);
-            }
-        }
-
-        private static PlacementCandidate SelectWeightedCandidate(List<PlacementCandidate> candidates, ref Random rng)
-        {
-            float totalWeight = 0f;
-            for (int i = 0; i < candidates.Count; i++)
-                totalWeight += candidates[i].weight;
-
-            if (totalWeight <= 0f)
-                return candidates[rng.NextInt(0, candidates.Count)];
-
-            float roll = rng.NextFloat(0f, totalWeight);
-            for (int i = 0; i < candidates.Count; i++)
-            {
-                roll -= candidates[i].weight;
-                if (roll <= 0f)
-                    return candidates[i];
-            }
-
-            return candidates[candidates.Count - 1];
-        }
-
-        private static void TrackRecentProp(Queue<int> recentPropIndices, int propIndex, int window)
-        {
-            if (window <= 0)
-                return;
-
-            recentPropIndices.Enqueue(propIndex);
-            while (recentPropIndices.Count > window)
-                recentPropIndices.Dequeue();
-        }
-
-        private static void MarkOccupied(NativeArray<bool> occupied, int2 gridSize, int x, int y, int width, int height)
-        {
-            for (int dy = 0; dy < height; dy++)
-            for (int dx = 0; dx < width; dx++)
-            {
-                int index = (y + dy) * gridSize.x + (x + dx);
-                occupied[index] = true;
-            }
-        }
-
-        private struct PlacementCandidate
-        {
-            public int propIndex;
-            public int x;
-            public int y;
-            public int width;
-            public int height;
-            public float centerX;
-            public float centerY;
-            public float weight;
         }
     }
 }
