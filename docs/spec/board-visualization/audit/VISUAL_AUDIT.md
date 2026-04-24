@@ -93,6 +93,16 @@
 - 가설: Unity MCP session unavailable 상태에서 기존 캡처를 재사용했기 때문이다. 다음 audit 반복 때 SceneView top-down/gizmo off를 새로 확보해야 한다.
 - 후속 spec 후보: 미분기
 
+### V-009: prop visualScale 이중 적용으로 프랍 크기가 축소됨
+- 축: A
+- 위치: `Assets/Screenshots/audit/20260424_17b/seed12345_game_full.png`, `Assets/Screenshots/audit/20260424_17b/seed12345_game_close.png`
+- 증상: 17 이후 `prop.visualScale` 이 root transform 과 `PropBillboard.visualRoot` 에 중복 적용되어 visualScale 1.0 미만 프랍이 설계 크기보다 작게 보였다.
+- 재현: forest / 17, 18, 19 적용 후 동일 seed 재캡처 비교
+- 심각도: 해소
+- 가설: `MapView.InstantiateBackgroundProps` 에서 `prop.visualScale * placement.scale` 을 root scale 로 적용한 것이 원인이다. root 는 placement jitter 만 담당하고 visual scale 은 `PropBillboard.ApplyData` 가 담당해야 한다.
+- 후속 spec 후보: 17b
+- 해소: `MapView.InstantiateBackgroundProps` root scale 을 `placement.scale` 만 사용하도록 수정했다. 확인 커밋: PENDING
+
 ## Dispatch Summary
 
 | 후속 spec | 생성 필요성 | 근거 finding |

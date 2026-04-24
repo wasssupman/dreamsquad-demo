@@ -718,7 +718,7 @@ namespace Wassup.Core
                 instance.name = $"{prop.name}_{placement.x}_{placement.y}";
                 instance.transform.localPosition = pos;
                 instance.transform.localRotation = Quaternion.Euler(0f, placement.rotationYaw, 0f);
-                instance.transform.localScale = Vector3.one * (prop.visualScale * placement.scale);
+                instance.transform.localScale = Vector3.one * placement.scale;
                 ApplyPropSorting(instance, prop, placement, plan);
                 DisablePropDebugMarkers(instance);
             }
