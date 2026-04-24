@@ -99,4 +99,4 @@ PropData 의 `spriteColor` 가 선명한 원색이면 `(r*0.85, g*0.85, b*0.85, 
 - V-001 (프랍 cluster 약함) 이 여전히 거슬리면 `17r` 드래프트 → Poisson 제대로 재구현
 - 테마 확장 요구가 있으면 `23_volcano_theme_fill.md` 로
 
-확인 일자: 2026-04-25 — Unity MCP unavailable로 Play 재캡처 없음. 코드 레벨 material factory trace 완료. 커밋: (아래 참조)
+확인 일자: 2026-04-25 — Unity MCP unavailable로 Play 재캡처 없음. 코드 레벨 material factory trace 완료. 커밋: 6c88007
