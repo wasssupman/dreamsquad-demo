@@ -5,5 +5,8 @@ namespace Wassup.Data
         None = 0,
         RegionCenter,
         RegionEdge,
+        OuterBorder,
+        NearWalkButSafe,
+        Filler,
     }
 }

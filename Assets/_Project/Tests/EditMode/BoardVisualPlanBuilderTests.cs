@@ -226,6 +226,28 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
+        public void Build_CreatesFiveDecorAnchorTypesForEnvRegions()
+        {
+            var map = CreateMap(5, 5, MapTileType.Env);
+            try
+            {
+                map.tiles[2 * map.gridSize.x + 2] = MapTileType.Walk;
+
+                var plan = BoardVisualPlanBuilder.Build(map, 44);
+
+                AssertHasAnchor(plan, BoardDecorAnchorType.RegionCenter);
+                AssertHasAnchor(plan, BoardDecorAnchorType.RegionEdge);
+                AssertHasAnchor(plan, BoardDecorAnchorType.OuterBorder);
+                AssertHasAnchor(plan, BoardDecorAnchorType.NearWalkButSafe);
+                AssertHasAnchor(plan, BoardDecorAnchorType.Filler);
+            }
+            finally
+            {
+                map.Dispose();
+            }
+        }
+
+        [Test]
         public void Build_DoesNotTreatBoardEdgeAsZoneTransition()
         {
             var map = CreateMap(3, 3, MapTileType.Env);
@@ -289,6 +311,17 @@ namespace Wassup.Tests.EditMode
                 seed = 1,
                 generatorVersion = 1,
             };
+        }
+
+        private static void AssertHasAnchor(BoardVisualPlan plan, BoardDecorAnchorType anchorType)
+        {
+            for (int i = 0; i < plan.DecorAnchors.Count; i++)
+            {
+                if (plan.DecorAnchors[i].anchorType == anchorType)
+                    return;
+            }
+
+            Assert.Fail($"Missing anchor type {anchorType}");
         }
     }
 }

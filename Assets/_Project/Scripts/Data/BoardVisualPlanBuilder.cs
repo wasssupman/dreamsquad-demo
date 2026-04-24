@@ -47,7 +47,7 @@ namespace Wassup.Data
 
             ComputePathProximity(map.gridSize, zones, pathDistances);
             ComputeBorderProximity(map.gridSize, borderDistances);
-            BuildRegions(map.gridSize, zones, regionIds, regions, decorAnchors);
+            BuildRegions(map.gridSize, zones, pathDistances, borderDistances, regionIds, regions, decorAnchors);
 
             for (int y = 0; y < height; y++)
             for (int x = 0; x < width; x++)
@@ -56,10 +56,13 @@ namespace Wassup.Data
                 BoardZoneType zone = zones[index];
                 byte sameZoneMask = GetNeighborMask(map.gridSize, zones, x, y, zone);
                 byte transitionMask = GetTransitionMask(map.gridSize, zones, x, y, zone);
-                byte envNeighborMask = GetNeighborMask(map.gridSize, zones, x, y, BoardZoneType.Env);
+                byte envNeighborMask = (byte)(GetNeighborMask(map.gridSize, zones, x, y, BoardZoneType.Env) & 15);
                 var shapeClass = BoardShapeUtility.GetShapeForMask(sameZoneMask);
+                byte innerCornerMask = BoardShapeUtility.GetInnerCornerMask(sameZoneMask);
                 byte pathProximity = pathDistances[index];
                 byte borderProximity = borderDistances[index];
+                uint surfaceNoiseHash = ComputeSurfaceNoiseHash(visualSeed, x, y);
+                float decorBudgetBias = ComputeDecorBudgetBias(pathProximity, borderProximity);
 
                 cells[index] = new BoardVisualCell(
                     map.tiles[index],
@@ -68,7 +71,10 @@ namespace Wassup.Data
                     sameZoneMask,
                     transitionMask,
                     envNeighborMask,
+                    innerCornerMask,
                     shapeClass,
+                    surfaceNoiseHash,
+                    decorBudgetBias,
                     pathProximity,
                     borderProximity);
             }
@@ -135,6 +141,8 @@ namespace Wassup.Data
         private static void BuildRegions(
             int2 gridSize,
             BoardZoneType[] zones,
+            byte[] pathDistances,
+            byte[] borderDistances,
             int[] regionIds,
             List<BoardVisualRegion> regions,
             List<BoardDecorAnchor> decorAnchors)
@@ -184,7 +192,7 @@ namespace Wassup.Data
 
                 int2 anchorCell = ChooseAnchorCell(members);
                 regions.Add(new BoardVisualRegion(regionId, zone, members.Count, min, max, anchorCell));
-                AddDecorAnchors(gridSize, regionIds, zone, regionId, members, anchorCell, decorAnchors);
+                AddDecorAnchors(gridSize, regionIds, pathDistances, borderDistances, zone, regionId, members, anchorCell, decorAnchors);
             }
         }
 
@@ -220,6 +228,8 @@ namespace Wassup.Data
         private static void AddDecorAnchors(
             int2 gridSize,
             int[] regionIds,
+            byte[] pathDistances,
+            byte[] borderDistances,
             BoardZoneType zone,
             int regionId,
             List<int2> members,
@@ -229,7 +239,9 @@ namespace Wassup.Data
             if (zone != BoardZoneType.Env)
                 return;
 
+            members.Sort((a, b) => a.x != b.x ? a.x.CompareTo(b.x) : a.y.CompareTo(b.y));
             decorAnchors.Add(new BoardDecorAnchor(BoardDecorAnchorType.RegionCenter, anchorCell, regionId));
+            var categorized = new bool[members.Count];
 
             for (int i = 0; i < members.Count; i++)
             {
@@ -244,7 +256,35 @@ namespace Wassup.Data
                     continue;
 
                 decorAnchors.Add(new BoardDecorAnchor(BoardDecorAnchorType.RegionEdge, cell, regionId));
-                break;
+                categorized[i] = true;
+
+                int index = cell.y * gridSize.x + cell.x;
+                if (borderDistances[index] <= 1)
+                    decorAnchors.Add(new BoardDecorAnchor(BoardDecorAnchorType.OuterBorder, cell, regionId));
+            }
+
+            for (int i = 0; i < members.Count; i++)
+            {
+                int2 cell = members[i];
+                int index = cell.y * gridSize.x + cell.x;
+                if (pathDistances[index] != 1)
+                    continue;
+
+                decorAnchors.Add(new BoardDecorAnchor(BoardDecorAnchorType.NearWalkButSafe, cell, regionId));
+                categorized[i] = true;
+            }
+
+            int fillerStride = 4;
+            int fillerPhase = 0;
+            for (int i = 0; i < members.Count; i++)
+            {
+                if (categorized[i] || members[i].Equals(anchorCell))
+                    continue;
+
+                if (fillerPhase++ % fillerStride != 0)
+                    continue;
+
+                decorAnchors.Add(new BoardDecorAnchor(BoardDecorAnchorType.Filler, members[i], regionId));
             }
         }
 
@@ -258,8 +298,31 @@ namespace Wassup.Data
             if (x + 1 < width && zones[y * width + (x + 1)] == targetZone) mask |= 2;
             if (y - 1 >= 0 && zones[(y - 1) * width + x] == targetZone) mask |= 4;
             if (x - 1 >= 0 && zones[y * width + (x - 1)] == targetZone) mask |= 8;
+            if (x + 1 < width && y + 1 < height && zones[(y + 1) * width + (x + 1)] == targetZone) mask |= 16;
+            if (x + 1 < width && y - 1 >= 0 && zones[(y - 1) * width + (x + 1)] == targetZone) mask |= 32;
+            if (x - 1 >= 0 && y - 1 >= 0 && zones[(y - 1) * width + (x - 1)] == targetZone) mask |= 64;
+            if (x - 1 >= 0 && y + 1 < height && zones[(y + 1) * width + (x - 1)] == targetZone) mask |= 128;
 
             return mask;
+        }
+
+        private static uint ComputeSurfaceNoiseHash(int visualSeed, int x, int y)
+        {
+            unchecked
+            {
+                uint h = (uint)visualSeed;
+                h ^= (uint)(x * 374761393);
+                h ^= (uint)(y * 668265263);
+                h = (h ^ (h >> 13)) * 1274126177u;
+                return h;
+            }
+        }
+
+        private static float ComputeDecorBudgetBias(byte pathProximity, byte borderProximity)
+        {
+            float pathPenalty = pathProximity == BoardVisualCell.NoPathProximity ? 0f : pathProximity / 8f;
+            float borderPenalty = borderProximity == 0 ? 0.3f : 0f;
+            return math.saturate(1f - pathPenalty - borderPenalty);
         }
 
         private static byte GetTransitionMask(int2 gridSize, BoardZoneType[] zones, int x, int y, BoardZoneType zone)
