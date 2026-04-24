@@ -50,7 +50,54 @@ namespace Wassup.Tests.EditMode
                 Assert.AreEqual(5, center.sameZoneMask);
                 Assert.AreEqual(10, center.transitionMask);
                 Assert.AreEqual(10, center.envNeighborMask);
+                Assert.AreEqual(0, center.innerCornerMask);
                 Assert.AreEqual(BoardShapeType.StraightNS, center.shapeClass);
+            }
+            finally
+            {
+                map.Dispose();
+            }
+        }
+
+        [Test]
+        public void Build_ComputesEightNeighborMaskAndInnerCornerMask()
+        {
+            var map = CreateMap(3, 3, MapTileType.Env);
+            try
+            {
+                map.tiles[1 * map.gridSize.x + 1] = MapTileType.Place;
+                map.tiles[2 * map.gridSize.x + 1] = MapTileType.Place;
+                map.tiles[1 * map.gridSize.x + 2] = MapTileType.Place;
+
+                var plan = BoardVisualPlanBuilder.Build(map, 55);
+                var center = plan.CellAt(new int2(1, 1));
+
+                Assert.AreEqual(3, center.sameZoneMask & 15);
+                Assert.AreEqual(0, center.sameZoneMask & 16);
+                Assert.AreEqual(1, center.innerCornerMask);
+                Assert.AreEqual(BoardShapeType.OuterCornerNE, center.shapeClass);
+            }
+            finally
+            {
+                map.Dispose();
+            }
+        }
+
+        [Test]
+        public void Build_FillsSurfaceHashAndDecorBudgetBiasDeterministically()
+        {
+            var map = CreateMap(3, 3, MapTileType.Env);
+            try
+            {
+                var planA = BoardVisualPlanBuilder.Build(map, 123);
+                var planB = BoardVisualPlanBuilder.Build(map, 123);
+                var cellA = planA.CellAt(new int2(1, 1));
+                var cellB = planB.CellAt(new int2(1, 1));
+
+                Assert.AreEqual(cellA.surfaceNoiseHash, cellB.surfaceNoiseHash);
+                Assert.AreEqual(cellA.decorBudgetBias, cellB.decorBudgetBias);
+                Assert.GreaterOrEqual(cellA.decorBudgetBias, 0f);
+                Assert.LessOrEqual(cellA.decorBudgetBias, 1f);
             }
             finally
             {
@@ -188,7 +235,7 @@ namespace Wassup.Tests.EditMode
                 var corner = plan.CellAt(new int2(0, 0));
 
                 Assert.AreEqual(BoardZoneType.Env, corner.zoneType);
-                Assert.AreEqual(3, corner.sameZoneMask);
+                Assert.AreEqual(19, corner.sameZoneMask);
                 Assert.AreEqual(0, corner.transitionMask);
             }
             finally
