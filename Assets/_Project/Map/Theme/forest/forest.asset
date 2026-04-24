@@ -20,7 +20,6 @@ MonoBehaviour:
   - {fileID: 2800000, guid: ffa18fa8bf43145789cd902d88253d08, type: 3}
   - {fileID: 2800000, guid: d2e448649c1e049a1b21a216fe93295f, type: 3}
   - {fileID: 2800000, guid: e97e52e18aa72430e91f3e4616c494bc, type: 3}
-  - {fileID: 2800000, guid: 7e3ce9ca8b06946bcb7418ec734eef7a, type: 3}
   walkTileVariants: []
   envTileVariants:
   - {fileID: 2800000, guid: 5490c3617ed0a497787d1510a36221a7, type: 3}
@@ -108,11 +107,11 @@ MonoBehaviour:
   placeInnerCornerOpacity: 0.62
   placeOuterCornerScale: 0.52
   placeOuterCornerOpacity: 0.42
-  placeEdgeOpacity: 0.36
+  placeEdgeOpacity: 0.25
   placeEdgeThickness: 0.085
   placeEdgeFalloff: 0.55
   tileThickness: 0.42
-  tileTopScale: 0.86
+  tileTopScale: 0.95
   tileBaseScale: 1
   tileSideColor: {r: 0.22, g: 0.19, b: 0.18, a: 1}
   tileProps:
