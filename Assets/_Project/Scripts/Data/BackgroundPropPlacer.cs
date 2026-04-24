@@ -6,54 +6,44 @@ namespace Wassup.Data
 {
     public static class BackgroundPropPlacer
     {
-        public static List<PropPlacement> Generate(GeneratedMap map, MapThemeData theme, int seed)
+        public static List<PropPlacement> Generate(BoardVisualPlan plan, MapThemeData theme, int seed)
         {
             var placements = new List<PropPlacement>();
-            if (!map.IsCreated || theme == null || theme.tileProps == null || theme.tileProps.Length == 0)
+            if (plan == null || plan.gridSize.x <= 0 || plan.gridSize.y <= 0 || theme == null || theme.tileProps == null || theme.tileProps.Length == 0)
                 return placements;
 
             float density = math.clamp(theme.tilePropDensity, 0f, 1f);
             if (density <= 0f)
                 return placements;
 
-            int cellCount = map.gridSize.x * map.gridSize.y;
+            int cellCount = plan.gridSize.x * plan.gridSize.y;
             var occupied = new NativeArray<bool>(cellCount, Allocator.Temp);
-            var visited = new NativeArray<bool>(cellCount, Allocator.Temp);
             try
             {
                 uint rngSeed = (uint)math.max(1, seed);
                 var rng = new Random(rngSeed);
                 int maxCount = theme.maxTilePropCount;
+                var recentPropIndices = new Queue<int>();
 
                 while (maxCount <= 0 || placements.Count < maxCount)
                 {
-                    for (int i = 0; i < visited.Length; i++)
-                        visited[i] = false;
-
                     bool placedThisPass = false;
-                    for (int y = 0; y < map.gridSize.y; y++)
-                    for (int x = 0; x < map.gridSize.x; x++)
+                    for (int i = 0; i < plan.Regions.Count; i++)
                     {
                         if (maxCount > 0 && placements.Count >= maxCount)
                             return placements;
 
-                        int index = y * map.gridSize.x + x;
-                        if (visited[index] || occupied[index] || !IsBackgroundTile(map.TileAt(new int2(x, y))))
+                        var region = plan.Regions[i];
+                        if (region.zoneType != BoardZoneType.Env || region.cellCount <= 0)
                             continue;
 
-                        var region = FloodFillRegion(map, occupied, visited, x, y);
-                        if (region.cellCount <= 0)
-                            continue;
-
-                        if (rng.NextFloat() > density)
-                            continue;
-
-                        var candidates = CollectCenteredCandidates(map, theme.tileProps, occupied, region);
+                        var candidates = CollectCenteredCandidates(plan, theme, occupied, region, placements, recentPropIndices, density, ref rng);
                         if (candidates.Count == 0)
                             continue;
 
-                        var candidate = candidates[rng.NextInt(0, candidates.Count)];
-                        MarkOccupied(occupied, map.gridSize, candidate.x, candidate.y, candidate.width, candidate.height);
+                        RemoveRecentlyUsedCandidatesWhenAlternativesExist(candidates, recentPropIndices);
+                        var candidate = SelectWeightedCandidate(candidates, ref rng);
+                        MarkOccupied(occupied, plan.gridSize, candidate.x, candidate.y, candidate.width, candidate.height);
                         placements.Add(new PropPlacement(
                             candidate.propIndex,
                             candidate.x,
@@ -61,6 +51,7 @@ namespace Wassup.Data
                             candidate.width,
                             candidate.height,
                             rng.NextUInt()));
+                        TrackRecentProp(recentPropIndices, candidate.propIndex, theme.propRepeatAvoidanceWindow);
                         placedThisPass = true;
                     }
 
@@ -70,16 +61,16 @@ namespace Wassup.Data
             }
             finally
             {
+                // Temp occupancy is owned by this generation call and must always be released.
                 if (occupied.IsCreated) occupied.Dispose();
-                if (visited.IsCreated) visited.Dispose();
             }
 
             return placements;
         }
 
-        public static bool CanFit(GeneratedMap map, PropData prop, NativeArray<bool> occupied, int x, int y)
+        public static bool CanFit(BoardVisualPlan plan, PropData prop, NativeArray<bool> occupied, int x, int y)
         {
-            if (!map.IsCreated || prop == null || prop.prefab == null)
+            if (plan == null || prop == null || prop.prefab == null)
                 return false;
 
             int width = math.max(1, prop.footprintX);
@@ -87,7 +78,7 @@ namespace Wassup.Data
 
             if (x < 0 || y < 0)
                 return false;
-            if (x + width > map.gridSize.x || y + height > map.gridSize.y)
+            if (x + width > plan.gridSize.x || y + height > plan.gridSize.y)
                 return false;
 
             for (int dy = 0; dy < height; dy++)
@@ -95,34 +86,41 @@ namespace Wassup.Data
             {
                 int cx = x + dx;
                 int cy = y + dy;
-                int index = cy * map.gridSize.x + cx;
+                int index = cy * plan.gridSize.x + cx;
                 if (occupied.IsCreated && occupied[index])
                     return false;
 
-                if (!IsBackgroundTile(map.TileAt(new int2(cx, cy))))
+                if (!IsBackgroundCell(plan.CellAt(new int2(cx, cy))))
                     return false;
             }
 
             return true;
         }
 
-        public static bool IsBackgroundTile(MapTileType tile)
-        {
-            return tile == MapTileType.Deco || tile == MapTileType.Env;
-        }
+        public static bool IsBackgroundCell(BoardVisualCell cell)
+            => cell.zoneType == BoardZoneType.Env;
 
         private static List<PlacementCandidate> CollectCenteredCandidates(
-            GeneratedMap map,
-            PropData[] props,
+            BoardVisualPlan plan,
+            MapThemeData theme,
             NativeArray<bool> occupied,
-            AvailableRegion region)
+            BoardVisualRegion region,
+            IReadOnlyList<PropPlacement> placements,
+            Queue<int> recentPropIndices,
+            float baseDensity,
+            ref Random rng)
         {
             var candidates = new List<PlacementCandidate>();
+            var props = theme.tileProps;
             for (int i = 0; i < props.Length; i++)
             {
-                if (TryFindCenteredFit(map, props[i], occupied, region, out var candidate))
+                if (TryFindBestFit(plan, theme, props[i], occupied, region, out var candidate))
                 {
                     candidate.propIndex = i;
+                    candidate.weight = CalculateCandidateWeight(plan, theme, props[i], candidate, region, placements, recentPropIndices, baseDensity, ref rng);
+                    if (candidate.weight <= 0f)
+                        continue;
+
                     candidates.Add(candidate);
                 }
             }
@@ -130,11 +128,12 @@ namespace Wassup.Data
             return candidates;
         }
 
-        private static bool TryFindCenteredFit(
-            GeneratedMap map,
+        private static bool TryFindBestFit(
+            BoardVisualPlan plan,
+            MapThemeData theme,
             PropData prop,
             NativeArray<bool> occupied,
-            AvailableRegion region,
+            BoardVisualRegion region,
             out PlacementCandidate candidate)
         {
             candidate = default;
@@ -143,20 +142,22 @@ namespace Wassup.Data
 
             int width = math.max(1, prop.footprintX);
             int height = math.max(1, prop.footprintY);
-            int maxX = region.maxX - width + 1;
-            int maxY = region.maxY - height + 1;
-            if (maxX < region.minX || maxY < region.minY)
+            int maxX = region.max.x - width + 1;
+            int maxY = region.max.y - height + 1;
+            if (maxX < region.min.x || maxY < region.min.y)
                 return false;
 
-            float regionCenterX = (region.minX + region.maxX) * 0.5f;
-            float regionCenterY = (region.minY + region.maxY) * 0.5f;
+            float regionCenterX = (region.min.x + region.max.x) * 0.5f;
+            float regionCenterY = (region.min.y + region.max.y) * 0.5f;
+            bool preferOuter = width * height > math.max(1, theme.pathAdjacentSmallPropMaxArea) &&
+                               theme.largePropInnerWeightMultiplier < 1f;
             float bestScore = float.MaxValue;
             bool found = false;
 
-            for (int y = region.minY; y <= maxY; y++)
-            for (int x = region.minX; x <= maxX; x++)
+            for (int y = region.min.y; y <= maxY; y++)
+            for (int x = region.min.x; x <= maxX; x++)
             {
-                if (!CanFit(map, prop, occupied, x, y))
+                if (!CanFit(plan, prop, occupied, x, y))
                     continue;
 
                 float propCenterX = x + (width - 1) * 0.5f;
@@ -164,6 +165,13 @@ namespace Wassup.Data
                 float dx = propCenterX - regionCenterX;
                 float dy = propCenterY - regionCenterY;
                 float score = dx * dx + dy * dy;
+                if (preferOuter)
+                {
+                    int edgeDistance = math.min(
+                        math.min(x, y),
+                        math.min(plan.gridSize.x - (x + width), plan.gridSize.y - (y + height)));
+                    score = edgeDistance * 100f + score * 0.01f;
+                }
                 if (found && score >= bestScore)
                     continue;
 
@@ -174,6 +182,8 @@ namespace Wassup.Data
                     y = y,
                     width = width,
                     height = height,
+                    centerX = propCenterX,
+                    centerY = propCenterY,
                 };
                 found = true;
             }
@@ -181,60 +191,175 @@ namespace Wassup.Data
             return found;
         }
 
-        private static AvailableRegion FloodFillRegion(
-            GeneratedMap map,
-            NativeArray<bool> occupied,
-            NativeArray<bool> visited,
-            int startX,
-            int startY)
+        private static float CalculateCandidateWeight(
+            BoardVisualPlan plan,
+            MapThemeData theme,
+            PropData prop,
+            PlacementCandidate candidate,
+            BoardVisualRegion region,
+            IReadOnlyList<PropPlacement> placements,
+            Queue<int> recentPropIndices,
+            float baseDensity,
+            ref Random rng)
         {
-            var region = new AvailableRegion
+            float density = baseDensity;
+            if (IsNearSpawnOrGoal(plan, candidate, math.max(0, theme.spawnGoalPropAvoidRadius)))
+                density *= math.clamp(theme.spawnGoalPropDensityMultiplier, 0f, 1f);
+            if (rng.NextFloat() > density)
+                return 0f;
+
+            if (ViolatesMinDistance(prop, candidate, placements))
+                return 0f;
+
+            float weight = math.max(0, prop.placementWeight);
+            if (weight <= 0f)
+                return 0f;
+
+            int area = candidate.width * candidate.height;
+            bool largeProp = area > math.max(1, theme.pathAdjacentSmallPropMaxArea);
+            if (largeProp && IsAdjacentToWalk(plan, candidate))
+                weight *= math.clamp(theme.pathAdjacentLargePropWeightMultiplier, 0f, 1f);
+
+            if (largeProp)
             {
-                minX = startX,
-                maxX = startX,
-                minY = startY,
-                maxY = startY,
-            };
+                bool nearOuterEdge = candidate.x <= 0 ||
+                                     candidate.y <= 0 ||
+                                     candidate.x + candidate.width >= plan.gridSize.x ||
+                                     candidate.y + candidate.height >= plan.gridSize.y;
+                if (!nearOuterEdge)
+                    weight *= math.clamp(theme.largePropInnerWeightMultiplier, 0f, 1f);
 
-            var queue = new Queue<int2>();
-            queue.Enqueue(new int2(startX, startY));
-            visited[startY * map.gridSize.x + startX] = true;
-
-            while (queue.Count > 0)
-            {
-                var cell = queue.Dequeue();
-                region.cellCount++;
-                region.minX = math.min(region.minX, cell.x);
-                region.maxX = math.max(region.maxX, cell.x);
-                region.minY = math.min(region.minY, cell.y);
-                region.maxY = math.max(region.maxY, cell.y);
-
-                TryEnqueue(map, occupied, visited, queue, cell.x + 1, cell.y);
-                TryEnqueue(map, occupied, visited, queue, cell.x - 1, cell.y);
-                TryEnqueue(map, occupied, visited, queue, cell.x, cell.y + 1);
-                TryEnqueue(map, occupied, visited, queue, cell.x, cell.y - 1);
+                if (region.cellCount < area * 4)
+                    weight *= 0.25f;
             }
 
-            return region;
+            if (theme.propRepeatAvoidanceWindow > 0 && recentPropIndices.Contains(candidate.propIndex))
+                weight *= 0.05f;
+
+            return weight;
         }
 
-        private static void TryEnqueue(
-            GeneratedMap map,
-            NativeArray<bool> occupied,
-            NativeArray<bool> visited,
-            Queue<int2> queue,
-            int x,
-            int y)
+        private static bool ViolatesMinDistance(PropData prop, PlacementCandidate candidate, IReadOnlyList<PropPlacement> placements)
         {
-            if (x < 0 || y < 0 || x >= map.gridSize.x || y >= map.gridSize.y)
+            int minDistance = math.max(0, prop.minDistanceCells);
+            if (minDistance <= 0)
+                return false;
+
+            for (int i = 0; i < placements.Count; i++)
+            {
+                var placement = placements[i];
+                float centerX = placement.x + (placement.width - 1) * 0.5f;
+                float centerY = placement.y + (placement.height - 1) * 0.5f;
+                float dx = math.abs(candidate.centerX - centerX);
+                float dy = math.abs(candidate.centerY - centerY);
+                if (math.max(dx, dy) < minDistance)
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static bool IsNearSpawnOrGoal(BoardVisualPlan plan, PlacementCandidate candidate, int radius)
+        {
+            if (radius <= 0)
+                return false;
+
+            if (DistanceToCell(candidate, plan.goal) <= radius)
+                return true;
+
+            for (int i = 0; i < plan.spawns.Length; i++)
+            {
+                if (DistanceToCell(candidate, plan.spawns[i]) <= radius)
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static float DistanceToCell(PlacementCandidate candidate, int2 cell)
+        {
+            float dx = math.abs(candidate.centerX - cell.x);
+            float dy = math.abs(candidate.centerY - cell.y);
+            return math.max(dx, dy);
+        }
+
+        private static bool IsAdjacentToWalk(BoardVisualPlan plan, PlacementCandidate candidate)
+        {
+            int minX = math.max(0, candidate.x - 1);
+            int maxX = math.min(plan.gridSize.x - 1, candidate.x + candidate.width);
+            int minY = math.max(0, candidate.y - 1);
+            int maxY = math.min(plan.gridSize.y - 1, candidate.y + candidate.height);
+
+            for (int y = minY; y <= maxY; y++)
+            for (int x = minX; x <= maxX; x++)
+            {
+                bool insideFootprint = x >= candidate.x &&
+                                       x < candidate.x + candidate.width &&
+                                       y >= candidate.y &&
+                                       y < candidate.y + candidate.height;
+                if (insideFootprint)
+                    continue;
+
+                if (plan.CellAt(new int2(x, y)).zoneType == BoardZoneType.Walk)
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static void RemoveRecentlyUsedCandidatesWhenAlternativesExist(List<PlacementCandidate> candidates, Queue<int> recentPropIndices)
+        {
+            if (candidates.Count <= 1 || recentPropIndices.Count == 0)
                 return;
 
-            int index = y * map.gridSize.x + x;
-            if (visited[index] || occupied[index] || !IsBackgroundTile(map.TileAt(new int2(x, y))))
+            bool hasFreshCandidate = false;
+            for (int i = 0; i < candidates.Count; i++)
+            {
+                if (recentPropIndices.Contains(candidates[i].propIndex))
+                    continue;
+
+                hasFreshCandidate = true;
+                break;
+            }
+
+            if (!hasFreshCandidate)
                 return;
 
-            visited[index] = true;
-            queue.Enqueue(new int2(x, y));
+            for (int i = candidates.Count - 1; i >= 0; i--)
+            {
+                if (recentPropIndices.Contains(candidates[i].propIndex))
+                    candidates.RemoveAt(i);
+            }
+        }
+
+        private static PlacementCandidate SelectWeightedCandidate(List<PlacementCandidate> candidates, ref Random rng)
+        {
+            float totalWeight = 0f;
+            for (int i = 0; i < candidates.Count; i++)
+                totalWeight += candidates[i].weight;
+
+            if (totalWeight <= 0f)
+                return candidates[rng.NextInt(0, candidates.Count)];
+
+            float roll = rng.NextFloat(0f, totalWeight);
+            for (int i = 0; i < candidates.Count; i++)
+            {
+                roll -= candidates[i].weight;
+                if (roll <= 0f)
+                    return candidates[i];
+            }
+
+            return candidates[candidates.Count - 1];
+        }
+
+        private static void TrackRecentProp(Queue<int> recentPropIndices, int propIndex, int window)
+        {
+            if (window <= 0)
+                return;
+
+            recentPropIndices.Enqueue(propIndex);
+            while (recentPropIndices.Count > window)
+                recentPropIndices.Dequeue();
         }
 
         private static void MarkOccupied(NativeArray<bool> occupied, int2 gridSize, int x, int y, int width, int height)
@@ -247,15 +372,6 @@ namespace Wassup.Data
             }
         }
 
-        private struct AvailableRegion
-        {
-            public int minX;
-            public int maxX;
-            public int minY;
-            public int maxY;
-            public int cellCount;
-        }
-
         private struct PlacementCandidate
         {
             public int propIndex;
@@ -263,6 +379,9 @@ namespace Wassup.Data
             public int y;
             public int width;
             public int height;
+            public float centerX;
+            public float centerY;
+            public float weight;
         }
     }
 }

@@ -19,10 +19,12 @@ namespace Wassup.Tests.EditMode
             {
                 map.tiles[0 * map.gridSize.x + 1] = MapTileType.Walk;
 
-                Assert.IsFalse(BackgroundPropPlacer.CanFit(map, prop, occupied, 0, 0));
+                var plan = BoardVisualPlanBuilder.Build(map, 1);
+                Assert.IsFalse(BackgroundPropPlacer.CanFit(plan, prop, occupied, 0, 0));
 
                 map.tiles[1] = MapTileType.Deco;
-                Assert.IsTrue(BackgroundPropPlacer.CanFit(map, prop, occupied, 0, 0));
+                plan = BoardVisualPlanBuilder.Build(map, 1);
+                Assert.IsTrue(BackgroundPropPlacer.CanFit(plan, prop, occupied, 0, 0));
             }
             finally
             {
@@ -42,14 +44,15 @@ namespace Wassup.Tests.EditMode
             var occupied = new NativeArray<bool>(9, Allocator.Temp);
             try
             {
-                Assert.IsFalse(BackgroundPropPlacer.CanFit(map, prop, occupied, 2, 0));
-                Assert.IsFalse(BackgroundPropPlacer.CanFit(map, prop, occupied, 0, 2));
+                var plan = BoardVisualPlanBuilder.Build(map, 1);
+                Assert.IsFalse(BackgroundPropPlacer.CanFit(plan, prop, occupied, 2, 0));
+                Assert.IsFalse(BackgroundPropPlacer.CanFit(plan, prop, occupied, 0, 2));
 
                 occupied[1 * map.gridSize.x + 1] = true;
-                Assert.IsFalse(BackgroundPropPlacer.CanFit(map, prop, occupied, 0, 0));
+                Assert.IsFalse(BackgroundPropPlacer.CanFit(plan, prop, occupied, 0, 0));
 
                 occupied[4] = false;
-                Assert.IsTrue(BackgroundPropPlacer.CanFit(map, prop, occupied, 0, 0));
+                Assert.IsTrue(BackgroundPropPlacer.CanFit(plan, prop, occupied, 0, 0));
             }
             finally
             {
@@ -72,8 +75,8 @@ namespace Wassup.Tests.EditMode
             var b = CreateMap(new int2(5, 3), MapTileType.Deco);
             try
             {
-                var placementsA = BackgroundPropPlacer.Generate(a, theme, 1234);
-                var placementsB = BackgroundPropPlacer.Generate(b, theme, 1234);
+                var placementsA = BackgroundPropPlacer.Generate(BoardVisualPlanBuilder.Build(a, 1234), theme, 1234);
+                var placementsB = BackgroundPropPlacer.Generate(BoardVisualPlanBuilder.Build(b, 1234), theme, 1234);
 
                 Assert.AreEqual(placementsA.Count, placementsB.Count);
                 for (int i = 0; i < placementsA.Count; i++)
@@ -111,7 +114,8 @@ namespace Wassup.Tests.EditMode
                 map.tiles[1 * map.gridSize.x + 2] = MapTileType.Walk;
                 map.tiles[2 * map.gridSize.x + 2] = MapTileType.Place;
 
-                var placements = BackgroundPropPlacer.Generate(map, theme, 77);
+                var plan = BoardVisualPlanBuilder.Build(map, 77);
+                var placements = BackgroundPropPlacer.Generate(plan, theme, 77);
                 var occupied = new bool[map.gridSize.x * map.gridSize.y];
 
                 foreach (var placement in placements)
@@ -128,7 +132,7 @@ namespace Wassup.Tests.EditMode
 
                         int index = y * map.gridSize.x + x;
                         Assert.IsFalse(occupied[index], $"overlap at {x},{y}");
-                        Assert.IsTrue(BackgroundPropPlacer.IsBackgroundTile(map.tiles[index]), $"non-background tile at {x},{y}");
+                        Assert.IsTrue(BackgroundPropPlacer.IsBackgroundCell(plan.CellAt(new int2(x, y))), $"non-background tile at {x},{y}");
                         occupied[index] = true;
                     }
                 }
@@ -153,16 +157,155 @@ namespace Wassup.Tests.EditMode
             theme.tileProps = new[] { prop };
             theme.tilePropDensity = 1f;
             theme.maxTilePropCount = 1;
+            theme.largePropInnerWeightMultiplier = 1f;
             var map = CreateMap(new int2(5, 5), MapTileType.Deco);
             try
             {
-                var placements = BackgroundPropPlacer.Generate(map, theme, 100);
+                var placements = BackgroundPropPlacer.Generate(BoardVisualPlanBuilder.Build(map, 100), theme, 100);
 
                 Assert.AreEqual(1, placements.Count);
                 Assert.AreEqual(1, placements[0].x);
                 Assert.AreEqual(1, placements[0].y);
                 Assert.AreEqual(2, placements[0].width);
                 Assert.AreEqual(2, placements[0].height);
+            }
+            finally
+            {
+                map.Dispose();
+                Object.DestroyImmediate(theme);
+                Object.DestroyImmediate(prop);
+                Object.DestroyImmediate(prefab);
+            }
+        }
+
+        [Test]
+        public void Generate_AvoidsRecentlyUsedPropWhenAlternativeFits()
+        {
+            var prefabA = new GameObject("PropPrefabA");
+            var prefabB = new GameObject("PropPrefabB");
+            var propA = CreateProp(1, 1, prefabA);
+            var propB = CreateProp(1, 1, prefabB);
+            propA.placementWeight = 1000;
+            propB.placementWeight = 1;
+            var theme = ScriptableObject.CreateInstance<MapThemeData>();
+            theme.tileProps = new[] { propA, propB };
+            theme.tilePropDensity = 1f;
+            theme.maxTilePropCount = 2;
+            theme.propRepeatAvoidanceWindow = 1;
+            theme.spawnGoalPropAvoidRadius = 0;
+            var map = CreateMap(new int2(4, 2), MapTileType.Deco);
+            try
+            {
+                var placements = BackgroundPropPlacer.Generate(BoardVisualPlanBuilder.Build(map, 8), theme, 8);
+
+                Assert.AreEqual(2, placements.Count);
+                Assert.AreNotEqual(placements[0].propIndex, placements[1].propIndex);
+            }
+            finally
+            {
+                map.Dispose();
+                Object.DestroyImmediate(theme);
+                Object.DestroyImmediate(propA);
+                Object.DestroyImmediate(propB);
+                Object.DestroyImmediate(prefabA);
+                Object.DestroyImmediate(prefabB);
+            }
+        }
+
+        [Test]
+        public void Generate_RespectsPropMinDistance()
+        {
+            var prefab = new GameObject("PropPrefab");
+            var prop = CreateProp(1, 1, prefab);
+            prop.minDistanceCells = 2;
+            var theme = ScriptableObject.CreateInstance<MapThemeData>();
+            theme.tileProps = new[] { prop };
+            theme.tilePropDensity = 1f;
+            theme.maxTilePropCount = 8;
+            theme.spawnGoalPropAvoidRadius = 0;
+            var map = CreateMap(new int2(6, 2), MapTileType.Deco);
+            try
+            {
+                var placements = BackgroundPropPlacer.Generate(BoardVisualPlanBuilder.Build(map, 10), theme, 10);
+
+                for (int i = 0; i < placements.Count; i++)
+                for (int j = i + 1; j < placements.Count; j++)
+                {
+                    float ax = placements[i].x + (placements[i].width - 1) * 0.5f;
+                    float ay = placements[i].y + (placements[i].height - 1) * 0.5f;
+                    float bx = placements[j].x + (placements[j].width - 1) * 0.5f;
+                    float by = placements[j].y + (placements[j].height - 1) * 0.5f;
+                    Assert.GreaterOrEqual(Mathf.Max(Mathf.Abs(ax - bx), Mathf.Abs(ay - by)), 2f);
+                }
+            }
+            finally
+            {
+                map.Dispose();
+                Object.DestroyImmediate(theme);
+                Object.DestroyImmediate(prop);
+                Object.DestroyImmediate(prefab);
+            }
+        }
+
+        [Test]
+        public void Generate_PrefersSmallPropsNextToWalkCells()
+        {
+            var prefabSmall = new GameObject("PropPrefabSmall");
+            var prefabLarge = new GameObject("PropPrefabLarge");
+            var small = CreateProp(1, 1, prefabSmall);
+            var large = CreateProp(2, 2, prefabLarge);
+            small.placementWeight = 1;
+            large.placementWeight = 1000;
+            var theme = ScriptableObject.CreateInstance<MapThemeData>();
+            theme.tileProps = new[] { small, large };
+            theme.tilePropDensity = 1f;
+            theme.maxTilePropCount = 1;
+            theme.spawnGoalPropAvoidRadius = 0;
+            theme.pathAdjacentSmallPropMaxArea = 1;
+            theme.pathAdjacentLargePropWeightMultiplier = 0f;
+            var map = CreateMap(new int2(4, 3), MapTileType.Deco);
+            try
+            {
+                for (int x = 0; x < map.gridSize.x; x++)
+                    map.tiles[x] = MapTileType.Walk;
+
+                var placements = BackgroundPropPlacer.Generate(BoardVisualPlanBuilder.Build(map, 12), theme, 12);
+
+                Assert.AreEqual(1, placements.Count);
+                Assert.AreEqual(0, placements[0].propIndex);
+                Assert.AreEqual(1, placements[0].width * placements[0].height);
+            }
+            finally
+            {
+                map.Dispose();
+                Object.DestroyImmediate(theme);
+                Object.DestroyImmediate(small);
+                Object.DestroyImmediate(large);
+                Object.DestroyImmediate(prefabSmall);
+                Object.DestroyImmediate(prefabLarge);
+            }
+        }
+
+        [Test]
+        public void Generate_ReducesPlacementNearSpawnAndGoal()
+        {
+            var prefab = new GameObject("PropPrefab");
+            var prop = CreateProp(1, 1, prefab);
+            var theme = ScriptableObject.CreateInstance<MapThemeData>();
+            theme.tileProps = new[] { prop };
+            theme.tilePropDensity = 1f;
+            theme.maxTilePropCount = 1;
+            theme.spawnGoalPropAvoidRadius = 10;
+            theme.spawnGoalPropDensityMultiplier = 0f;
+            var map = CreateMap(new int2(4, 4), MapTileType.Deco);
+            try
+            {
+                map.goal = new int2(3, 3);
+                map.spawns[0] = new int2(0, 0);
+
+                var placements = BackgroundPropPlacer.Generate(BoardVisualPlanBuilder.Build(map, 14), theme, 14);
+
+                Assert.AreEqual(0, placements.Count);
             }
             finally
             {
@@ -184,11 +327,11 @@ namespace Wassup.Tests.EditMode
             try
             {
                 theme.tilePropDensity = 0f;
-                Assert.AreEqual(0, BackgroundPropPlacer.Generate(map, theme, 1).Count);
+                Assert.AreEqual(0, BackgroundPropPlacer.Generate(BoardVisualPlanBuilder.Build(map, 1), theme, 1).Count);
 
                 theme.tilePropDensity = 1f;
                 theme.maxTilePropCount = 3;
-                var placements = BackgroundPropPlacer.Generate(map, theme, 1);
+                var placements = BackgroundPropPlacer.Generate(BoardVisualPlanBuilder.Build(map, 1), theme, 1);
                 Assert.AreEqual(3, placements.Count);
                 Assert.LessOrEqual(placements.Count, 3);
             }

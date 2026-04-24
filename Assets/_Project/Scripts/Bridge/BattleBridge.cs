@@ -38,6 +38,11 @@ namespace Wassup.Bridge
         [SerializeField] private MapGenerationOptions mapGenerationOptions = MapGenerationOptions.Default;
         [SerializeField] private float tileSize = 1f;
         [SerializeField] private float spawnHeight = 0.5f;
+        [Header("Camera Framing")]
+        [SerializeField] private bool autoFrameMainCamera = true;
+        [SerializeField] private float cameraPitch = 50f;
+        [SerializeField] private float cameraFieldOfView = 47f;
+        [SerializeField] private float cameraFramePadding = 1.3f;
         [SerializeField] private ResultScreen resultScreen;
         [SerializeField] private DefenderUnitData[] defenderPool;
         [SerializeField] private DraftController draftController;
@@ -385,6 +390,7 @@ namespace Wassup.Bridge
 
             if (mapView != null) mapView.Initialize(_generatedMap, tileSize, mapTheme);
             if (placementInput != null) placementInput.Initialize(_generatedMap, tileSize);
+            FrameMainCameraForMap();
 
             BuildFlowField();
 
@@ -392,8 +398,9 @@ namespace Wassup.Bridge
             {
                 if (mapTheme.tileProps != null && mapTheme.tileProps.Length > 0)
                 {
-                    var placements = BackgroundPropPlacer.Generate(_generatedMap, mapTheme, _generatedMap.seed);
-                    mapView.InstantiateBackgroundProps(_generatedMap, mapTheme, placements);
+                    var visualPlan = mapView.VisualPlan;
+                    var placements = BackgroundPropPlacer.Generate(visualPlan, mapTheme, _generatedMap.seed);
+                    mapView.InstantiateBackgroundProps(visualPlan, mapTheme, placements);
                 }
                 else
                 {
@@ -408,6 +415,37 @@ namespace Wassup.Bridge
                 _generatedMap.spawns.Length,
                 options.pathShape.ToString());
             Debug.Log($"[BattleBridge] Map: seed={_generatedMap.seed} ver={_generatedMap.generatorVersion} shape={options.pathShape} density={options.obstacleDensity} size={_generatedMap.gridSize} spawns={_generatedMap.spawns.Length}");
+        }
+
+        private void FrameMainCameraForMap()
+        {
+            if (!autoFrameMainCamera || !_generatedMap.IsCreated) return;
+
+            var camera = Camera.main;
+            if (camera == null) return;
+
+            float width = Mathf.Max(1, _generatedMap.gridSize.x - 1) * tileSize;
+            float height = Mathf.Max(1, _generatedMap.gridSize.y - 1) * tileSize;
+            var center = new Vector3(width * 0.5f, 0f, height * 0.5f);
+
+            camera.fieldOfView = Mathf.Clamp(cameraFieldOfView, 25f, 70f);
+            camera.nearClipPlane = 0.1f;
+            camera.farClipPlane = 160f;
+
+            float pitch = Mathf.Clamp(cameraPitch, 35f, 70f);
+            var rotation = Quaternion.Euler(pitch, 0f, 0f);
+            Vector3 forward = rotation * Vector3.forward;
+
+            float aspect = camera.aspect > 0f ? camera.aspect : 16f / 9f;
+            float halfHorizontal = width * 0.5f + tileSize * 0.8f;
+            float halfDepth = height * 0.5f + tileSize * 1.6f;
+            float halfVerticalInView = Mathf.Abs(Mathf.Sin(pitch * Mathf.Deg2Rad)) * halfDepth + tileSize * 1.5f;
+            float halfFovTan = Mathf.Tan(camera.fieldOfView * 0.5f * Mathf.Deg2Rad);
+            float distanceByHeight = halfVerticalInView / Mathf.Max(0.01f, halfFovTan);
+            float distanceByWidth = halfHorizontal / Mathf.Max(0.01f, halfFovTan * aspect);
+            float distance = Mathf.Max(distanceByHeight, distanceByWidth) * Mathf.Max(1.3f, cameraFramePadding);
+
+            camera.transform.SetPositionAndRotation(center - forward * distance, rotation);
         }
 
         private void TeardownFlowField()
