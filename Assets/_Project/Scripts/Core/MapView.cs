@@ -97,9 +97,12 @@ namespace Wassup.Core
 
             // One top Material per tile type and one shared side Material. Tile GameObjects
             // reuse these assets to keep the stylized block presentation cheap.
-            CreateTileTopMaterials(theme, BoardZoneType.Place, buildableColor);
-            CreateTileTopMaterials(theme, BoardZoneType.Walk, pathColor);
-            CreateTileTopMaterials(theme, BoardZoneType.Env, envColor);
+            var placeTint = theme != null ? theme.placeBaseTint : buildableColor;
+            var walkTint  = theme != null ? theme.walkBaseTint  : pathColor;
+            var envTint   = theme != null ? theme.envBaseTint   : envColor;
+            CreateTileTopMaterials(theme, BoardZoneType.Place, placeTint);
+            CreateTileTopMaterials(theme, BoardZoneType.Walk,  walkTint);
+            CreateTileTopMaterials(theme, BoardZoneType.Env,   envTint);
             var edgeTexture = theme != null && theme.placeEdgeTexture != null ? theme.placeEdgeTexture : theme != null ? theme.placeBackgroundEdgeTexture : null;
             _placeEdgeOverlayMaterial = edgeTexture != null
                 ? RuntimeMaterialFactory.CreateTransparentTexture(edgeTexture, new Color(1f, 1f, 1f, Mathf.Clamp01(theme != null ? theme.placeEdgeOpacity : 0.38f)))
@@ -118,9 +121,9 @@ namespace Wassup.Core
             _goalMarkerMaterial = RuntimeMaterialFactory.CreateOpaque(goalColor);
         }
 
-        private void CreateTileTopMaterials(MapThemeData theme, BoardZoneType type, Color fallbackColor)
+        private void CreateTileTopMaterials(MapThemeData theme, BoardZoneType type, Color tint)
         {
-            _tileFallbackMaterials[type] = RuntimeMaterialFactory.CreateOpaque(fallbackColor);
+            _tileFallbackMaterials[type] = RuntimeMaterialFactory.CreateOpaque(tint);
 
             var textures = TerrainSurfaceSelector.CollectTextures(theme, type);
             for (int i = 0; i < textures.Length; i++)
@@ -128,7 +131,7 @@ namespace Wassup.Core
                 if (textures[i] == null || _tileTextureMaterials.ContainsKey(textures[i]))
                     continue;
 
-                _tileTextureMaterials[textures[i]] = RuntimeMaterialFactory.CreateOpaqueTexture(textures[i], Color.white);
+                _tileTextureMaterials[textures[i]] = RuntimeMaterialFactory.CreateOpaqueTexture(textures[i], tint);
             }
         }
 
@@ -837,6 +840,8 @@ namespace Wassup.Core
                 instance.transform.localScale = Vector3.one * placement.scale;
                 ApplyPropSorting(instance, prop, placement, plan);
                 DisablePropDebugMarkers(instance);
+                if (theme.propGlobalTint != Color.white)
+                    ApplyPropGlobalTint(instance, theme.propGlobalTint);
             }
         }
 
@@ -864,6 +869,13 @@ namespace Wassup.Core
             var renderers = instance.GetComponentsInChildren<SpriteRenderer>(true);
             for (int i = 0; i < renderers.Length; i++)
                 renderers[i].sortingOrder = order;
+        }
+
+        private static void ApplyPropGlobalTint(GameObject instance, Color tint)
+        {
+            var renderers = instance.GetComponentsInChildren<SpriteRenderer>(true);
+            for (int i = 0; i < renderers.Length; i++)
+                renderers[i].color = renderers[i].color * tint;
         }
 
         private static void SafeDestroy(Object obj)

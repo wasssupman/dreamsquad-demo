@@ -148,6 +148,19 @@ namespace Wassup.Data
         [Tooltip("Shared dark side color for the low cube body under each tile.")]
         public Color tileSideColor = new Color(0.2f, 0.18f, 0.22f, 1f);
 
+        [Header("Zone Tints")]
+        [Tooltip("Multiplicative tint applied to all Place tile top textures. Warm cream/beige for board-tile look.")]
+        public Color placeBaseTint = new Color(0.9f, 0.85f, 0.72f, 1f);
+
+        [Tooltip("Multiplicative tint applied to all Walk tile top textures. Kept warm; default white preserves original texture.")]
+        public Color walkBaseTint = new Color(1f, 0.95f, 0.88f, 1f);
+
+        [Tooltip("Multiplicative tint applied to all Env tile top textures. Desaturated mossy green.")]
+        public Color envBaseTint = new Color(0.78f, 0.84f, 0.65f, 1f);
+
+        [Tooltip("Global multiplicative tint applied to all background prop SpriteRenderers on top of their spriteColor. Use to pull vivid crystal/accent props into the board palette.")]
+        public Color propGlobalTint = new Color(0.88f, 0.88f, 0.88f, 1f);
+
         [Header("Background Props")]
         [Tooltip("Generated map background tiles (Deco/Env) can receive these footprint-based props.")]
         public PropData[] tileProps;

@@ -114,6 +114,10 @@ MonoBehaviour:
   tileTopScale: 0.95
   tileBaseScale: 1
   tileSideColor: {r: 0.22, g: 0.19, b: 0.18, a: 1}
+  placeBaseTint: {r: 0.9, g: 0.85, b: 0.72, a: 1}
+  walkBaseTint: {r: 1.0, g: 0.95, b: 0.88, a: 1}
+  envBaseTint: {r: 0.78, g: 0.84, b: 0.65, a: 1}
+  propGlobalTint: {r: 0.88, g: 0.88, b: 0.88, a: 1}
   tileProps:
   - {fileID: 11400000, guid: d96ae11260f2f44469633c20cbaeed68, type: 2}
   - {fileID: 11400000, guid: cd63225f659e84743818c5fdf6ccad67, type: 2}

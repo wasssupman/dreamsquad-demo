@@ -87,6 +87,8 @@
 - 후속 spec 후보: 22
 - **27 경량 조정**: `tileTopScale` 0.86→0.95 (Place slab 사이 seam 폭 축소), `placeEdgeOpacity` 0.36→0.25 (edge fringe 가 seam 강조 완화), `placeTileVariants` 4→3종 (가장 튀는 variant 제거로 tone harmony). Unity MCP unavailable 로 재캡처 없음. 코드 레벨 판단: seam 폭은 줄어들었을 것이나 Place slab grid 읽힘 자체 해소는 미확인.
 - **28 region mesh 전환** (2026-04-25): `BuildTiles` 의 Place 셀별 primitive Quad 생성 루프 제거. 대신 `BuildPlaceRegionSurface` 가 region 단위 row-run tiled mesh 를 생성해 내부 seam 을 구조적으로 제거. hover/flash 인터랙션은 셀 단위 투명 hover overlay quad(`BuildPlaceHoverOverlays`)로 분리해 기존 `SetPlacementHover`/`FlashTileReject` 경로 유지. Unity MCP unavailable 로 재캡처 없음. 코드 레벨에서 Place 셀 경계가 mesh 내부로 숨어 seam 이 구조적으로 사라짐. 육안 확인은 사용자에게 위임.
+- **28 Play 재검수** (2026-04-25): `Assets/Screenshots/audit/스크린샷 2026-04-25 오전 12.23.23.png` 로 확인한 결과, cardinal 연결된 Place region 은 묶인 plate 로 보이나 **파편화된 작은 Place 조각은 여전히 seam 노출**. 원인은 맵 생성기가 Place 를 큰 덩어리로 내놓지 않는 grid cell-by-cell 구조. 시각 레이어 추가 튜닝으로는 구조적 한계.
+- **rev4 재정의** (2026-04-25): 시각 참조를 Enter the Gungeon → **보드게임 타일** (Warhammer Underworlds / Gloomhaven 계열) 로 전환. 격자감 / 셀 경계 / slab 파편화를 **디자인 의도**로 수용. V-007 은 rev4 scope 에서 **N/A (무력화)**. 남은 시각 과제는 22 palette pass 로 톤 / 명도 / 채도 통일.
 
 ### V-008: Scene view audit 캡처 품질이 기준에 미달
 - 축: F
@@ -126,5 +128,13 @@
 | 19 `19_place_edge_finish.md` | 열기 | V-004 |
 | 20 `20_env_variation_tuning.md` | 열기 | V-006 |
 | 21 `21_walk_shape_polish.md` | 열기 | V-005 |
-| 22 `22_theme_palette_pass.md` | 열기 | V-007 |
+| 22 `22_theme_palette_pass.md` | 닫힘 | V-007 — rev4 palette pass 완료 |
 | 23 `23_volcano_theme_fill.md` | 보류 | 이번 audit는 forest만 관찰. volcano 별도 캡처 없음. |
+
+---
+
+## rev4 final visual evaluation
+
+**작성일**: 2026-04-25 | **Unity MCP**: unavailable — Play 재캡처 없음. 코드 레벨 trace 기반 자기 평가.
+
+rev4 컨셉(보드게임 타일) 기준으로 팔레트 통일 작업(spec 22)을 완료했다. 핵심 변경은 세 가지다. 첫째, `MapThemeData`에 `placeBaseTint` / `walkBaseTint` / `envBaseTint` / `propGlobalTint` 네 필드를 추가하고 forest.asset에 warm-board 팔레트 값을 세팅했다(Place: warm cream `#E6D9B8`, Walk: light warm white `#FFF2E0`, Env: desaturated mossy green `#C7D6A6`, propGlobalTint: `#E0E0E0`). 둘째, `MapView.CreateTileTopMaterials`가 기존에 `Color.white`를 하드코딩해 모든 zone 텍스처 material을 동일한 흰색으로 생성하던 경로를 zone별 tint로 교체했다 — 이것이 Place 흰색 / Env 선명 녹색 충돌의 직접 원인이었으며 이제 theme tint가 `RuntimeMaterialFactory.CreateOpaqueTexture(tex, tint)`로 전달된다. 셋째, `InstantiateBackgroundProps`에서 `propGlobalTint != Color.white`일 때 각 prop의 SpriteRenderer color에 tint를 곱해 수정 계열 프랍의 채도를 일괄 낮춘다. 격자 타일감은 rev4 컨셉 안에서 허용되며, 팔레트 계열 통일 이후 보드 전체가 warm earth + desaturated accent 톤 안에서 읽힐 것으로 판단한다. sorting / inner corner / 프랍 분포 경로는 본 spec에서 건드리지 않았으므로 회귀 없음. Play 재캡처는 Unity MCP가 가용해질 때 `Assets/Screenshots/audit/20260425_22/`에 확보 권장.
