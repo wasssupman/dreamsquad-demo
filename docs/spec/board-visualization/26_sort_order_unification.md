@@ -138,4 +138,4 @@ Health bar 는 현재 RenderMesh 기반. 이번 spec 에서는 건드리지 않�
 - Transparency Sort Mode (`Graphics Settings`) 가 기본값 (Default) 이어야 `sortingOrder` 가 먼저 작동. `Custom Axis` 로 되어 있으면 world position 기반 정렬이 우선하므로 결과가 달라짐 — 설정 확인.
 - health bar sort 는 후속 spec. 이 단계에선 오염시키지 않는다.
 
-확인 일자: 2026-04-24 / 커밋 해시: PENDING
+확인 일자: 2026-04-24 / 커밋 해시: 4462819

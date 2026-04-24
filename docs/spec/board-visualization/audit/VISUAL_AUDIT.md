@@ -111,7 +111,7 @@
 - 심각도: 해소
 - 가설: Enemy/fallback Defender 는 ECS RenderMesh 경로라 `Renderer.sortingOrder` 체계에 없었고, Spine Defender 도 y 기반 sortingOrder 갱신이 없었다.
 - 후속 spec 후보: 24, 25, 26
-- 해소: Enemy/fallback Defender 를 Mono quad view 로 이관하고 `BoardSortOrder` 공식을 프랍/캐릭터에 공통 적용했다. 캐릭터는 같은 셀 프랍보다 `CharacterOffset` 만큼 앞선다. 확인 커밋: PENDING
+- 해소: Enemy/fallback Defender 를 Mono quad view 로 이관하고 `BoardSortOrder` 공식을 프랍/캐릭터에 공통 적용했다. 캐릭터는 같은 셀 프랍보다 `CharacterOffset` 만큼 앞선다. 확인 커밋: 4462819
 
 ## Dispatch Summary
 
