@@ -106,8 +106,8 @@ MonoBehaviour:
   placeInnerCornerScale: 0.38
   placeInnerCornerOpacity: 0.62
   placeOuterCornerScale: 0.52
-  placeOuterCornerOpacity: 0.42
-  placeEdgeOpacity: 0.25
+  placeOuterCornerOpacity: 0.7
+  placeEdgeOpacity: 0.55
   placeEdgeThickness: 0.085
   placeEdgeFalloff: 0.55
   tileThickness: 0.42

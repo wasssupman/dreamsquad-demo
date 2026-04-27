@@ -206,29 +206,7 @@ namespace Wassup.Core
             var baseTexture = TerrainSurfaceSelector.SelectTexture(_visualPlan, _theme, anchorCell, region.anchorCell.x, region.anchorCell.y);
             var material = GetTileMaterial(BoardZoneType.Place, baseTexture);
 
-            for (int y = region.min.y; y <= region.max.y; y++)
-            {
-                int runStart = -1;
-                for (int x = region.min.x; x <= region.max.x + 1; x++)
-                {
-                    bool inRegion = x <= region.max.x &&
-                                    _visualPlan.CellAt(new Unity.Mathematics.int2(x, y)).zoneType == BoardZoneType.Place &&
-                                    _visualPlan.CellAt(new Unity.Mathematics.int2(x, y)).regionId == region.id;
-
-                    if (inRegion && runStart < 0)
-                    {
-                        runStart = x;
-                        continue;
-                    }
-
-                    if (!inRegion && runStart >= 0)
-                    {
-                        int runLength = x - runStart;
-                        BuildPlaceRunSurface(region.id, runStart, y, runLength, material);
-                        runStart = -1;
-                    }
-                }
-            }
+            BuildRegionSurfaceMesh(region, BoardZoneType.Place, material, 0.002f);
 
             // Edge overlays: visit every cell in the region bounding box that
             // belongs to this region and has edge/corner decoration.
@@ -239,7 +217,7 @@ namespace Wassup.Core
                 if (visualCell.zoneType != BoardZoneType.Place || visualCell.regionId != region.id)
                     continue;
 
-                int edgeMask = visualCell.envNeighborMask;
+                int edgeMask = visualCell.transitionMask;
                 bool drawPlaceEdge = edgeMask != 0 && _placeEdgeOverlayMaterial != null;
                 bool hasInnerCorner = visualCell.innerCornerMask != 0 && _placeEdgeInnerOverlayMaterial != null;
                 bool hasOuterCorner = IsOuterCorner(visualCell.shapeClass) && _placeOuterCornerOverlayMaterial != null;
@@ -252,21 +230,6 @@ namespace Wassup.Core
                 edgeRoot.transform.localPosition = new Vector3(x * _tileSize, 0f, y * _tileSize);
                 BuildPlaceEdgeOverlays(edgeRoot.transform, edgeMask, visualCell.innerCornerMask, visualCell.shapeClass);
             }
-        }
-
-        private void BuildPlaceRunSurface(int regionId, int startX, int y, int runLength, Material material)
-        {
-            if (runLength <= 0 || material == null) return;
-
-            var run = new GameObject($"PlaceRegion_{regionId}_{startX}_{y}_{runLength}");
-            run.transform.SetParent(_tilesRoot, false);
-            run.transform.localPosition = new Vector3((startX + (runLength - 1) * 0.5f) * _tileSize, 0.002f, y * _tileSize);
-            run.transform.localRotation = Quaternion.identity;
-
-            var filter = run.AddComponent<MeshFilter>();
-            var renderer = run.AddComponent<MeshRenderer>();
-            filter.sharedMesh = CreateTiledSurfaceMesh(runLength * _tileSize + 0.02f, _tileSize + 0.02f, runLength, 1);
-            renderer.sharedMaterial = material;
         }
 
         private void BuildPlaceHoverOverlays()
@@ -334,57 +297,11 @@ namespace Wassup.Core
         {
             var anchorCell = _visualPlan.CellAt(region.anchorCell);
             var baseTexture = TerrainSurfaceSelector.SelectTexture(_visualPlan, _theme, anchorCell, region.anchorCell.x, region.anchorCell.y);
+            var material = GetTileMaterial(BoardZoneType.Env, baseTexture);
 
-            for (int y = region.min.y; y <= region.max.y; y++)
-            {
-                int runStart = -1;
-                Texture2D runTexture = null;
-                for (int x = region.min.x; x <= region.max.x + 1; x++)
-                {
-                    var currentCell = x <= region.max.x ? _visualPlan.CellAt(new Unity.Mathematics.int2(x, y)) : BoardVisualCell.Empty;
-                    bool inRegion = x <= region.max.x &&
-                                    currentCell.zoneType == BoardZoneType.Env &&
-                                    currentCell.regionId == region.id;
-                    Texture2D texture = inRegion ? TerrainSurfaceSelector.SelectTexture(_visualPlan, _theme, currentCell, x, y) : null;
-
-                    if (inRegion && (runStart < 0 || texture == runTexture))
-                    {
-                        if (runStart < 0)
-                        {
-                            runStart = x;
-                            runTexture = texture;
-                        }
-                        continue;
-                    }
-
-                    if (runStart >= 0)
-                    {
-                        int runLength = x - runStart;
-                        BuildEnvironmentRunSurface(region.id, runStart, y, runLength, GetTileMaterial(BoardZoneType.Env, runTexture));
-                    }
-
-                    runStart = inRegion ? x : -1;
-                    runTexture = inRegion ? texture : null;
-                }
-            }
+            BuildRegionSurfaceMesh(region, BoardZoneType.Env, material, 0.004f);
 
             BuildEnvironmentRegionBlend(region, baseTexture);
-        }
-
-        private void BuildEnvironmentRunSurface(int regionId, int startX, int y, int runLength, Material material)
-        {
-            if (runLength <= 0 || material == null)
-                return;
-
-            var run = new GameObject($"EnvRegion_{regionId}_{startX}_{y}_{runLength}");
-            run.transform.SetParent(_tilesRoot, false);
-            run.transform.localPosition = new Vector3((startX + (runLength - 1) * 0.5f) * _tileSize, 0.004f, y * _tileSize);
-            run.transform.localRotation = Quaternion.identity;
-
-            var filter = run.AddComponent<MeshFilter>();
-            var renderer = run.AddComponent<MeshRenderer>();
-            filter.sharedMesh = CreateTiledSurfaceMesh(runLength * _tileSize + 0.02f, _tileSize + 0.02f, runLength, 1);
-            renderer.sharedMaterial = material;
         }
 
         private void BuildEnvironmentRegionBlend(BoardVisualRegion region, Texture2D baseTexture)
@@ -431,72 +348,101 @@ namespace Wassup.Core
             SafeDestroy(fringe.GetComponent<Collider>());
         }
 
-        private static Mesh CreateTiledSurfaceMesh(float width, float height, int xSegments, int ySegments)
+        private static Mesh CreateTiledSurfaceMesh(float width, float height, float xTiles, float yTiles)
         {
-            xSegments = Mathf.Max(1, xSegments);
-            ySegments = Mathf.Max(1, ySegments);
+            xTiles = Mathf.Max(0.0001f, xTiles);
+            yTiles = Mathf.Max(0.0001f, yTiles);
 
-            var mesh = new Mesh
+            float halfW = width * 0.5f;
+            float halfH = height * 0.5f;
+
+            var mesh = new Mesh { name = "BoardSurfaceQuad" };
+            mesh.vertices = new Vector3[]
             {
-                name = "BoardSurfaceQuad"
+                new Vector3(-halfW, 0f, -halfH),
+                new Vector3(-halfW, 0f,  halfH),
+                new Vector3( halfW, 0f,  halfH),
+                new Vector3( halfW, 0f, -halfH),
             };
+            mesh.uv = new Vector2[]
+            {
+                new Vector2(0f, 0f),
+                new Vector2(0f, yTiles),
+                new Vector2(xTiles, yTiles),
+                new Vector2(xTiles, 0f),
+            };
+            mesh.normals = new Vector3[] { Vector3.up, Vector3.up, Vector3.up, Vector3.up };
+            mesh.triangles = new int[] { 0, 1, 2, 0, 2, 3 };
+            mesh.RecalculateBounds();
+            return mesh;
+        }
 
-            int quadCount = xSegments * ySegments;
-            int vertexCount = quadCount * 4;
-            int indexCount = quadCount * 6;
+        private void BuildRegionSurfaceMesh(BoardVisualRegion region, BoardZoneType zoneType, Material material, float yOffset)
+        {
+            if (_visualPlan == null || material == null) return;
+
+            int xCount = region.max.x - region.min.x + 1;
+            int yCount = region.max.y - region.min.y + 1;
+            if (xCount <= 0 || yCount <= 0) return;
+
+            int vCols = xCount + 1;
+            int vRows = yCount + 1;
+            int vertexCount = vCols * vRows;
             var vertices = new Vector3[vertexCount];
             var uvs = new Vector2[vertexCount];
             var normals = new Vector3[vertexCount];
-            var triangles = new int[indexCount];
 
-            float startX = -width * 0.5f;
-            float startY = -height * 0.5f;
-            float cellWidth = width / xSegments;
-            float cellHeight = height / ySegments;
+            float halfW = xCount * _tileSize * 0.5f;
+            float halfH = yCount * _tileSize * 0.5f;
 
-            int v = 0;
-            int t = 0;
-            for (int y = 0; y < ySegments; y++)
+            for (int gy = 0; gy < vRows; gy++)
+            for (int gx = 0; gx < vCols; gx++)
             {
-                for (int x = 0; x < xSegments; x++)
-                {
-                    float x0 = startX + cellWidth * x;
-                    float x1 = x0 + cellWidth;
-                    float y0 = startY + cellHeight * y;
-                    float y1 = y0 + cellHeight;
-
-                    vertices[v + 0] = new Vector3(x0, 0f, y0);
-                    vertices[v + 1] = new Vector3(x0, 0f, y1);
-                    vertices[v + 2] = new Vector3(x1, 0f, y1);
-                    vertices[v + 3] = new Vector3(x1, 0f, y0);
-
-                    uvs[v + 0] = new Vector2(0f, 0f);
-                    uvs[v + 1] = new Vector2(0f, 1f);
-                    uvs[v + 2] = new Vector2(1f, 1f);
-                    uvs[v + 3] = new Vector2(1f, 0f);
-
-                    normals[v + 0] = Vector3.up;
-                    normals[v + 1] = Vector3.up;
-                    normals[v + 2] = Vector3.up;
-                    normals[v + 3] = Vector3.up;
-
-                    triangles[t + 0] = v + 0;
-                    triangles[t + 1] = v + 1;
-                    triangles[t + 2] = v + 2;
-                    triangles[t + 3] = v + 0;
-                    triangles[t + 4] = v + 2;
-                    triangles[t + 5] = v + 3;
-
-                    v += 4;
-                    t += 6;
-                }
+                int idx = gy * vCols + gx;
+                vertices[idx] = new Vector3(-halfW + gx * _tileSize, 0f, -halfH + gy * _tileSize);
+                uvs[idx] = new Vector2(gx / (float)xCount, gy / (float)yCount);
+                normals[idx] = Vector3.up;
             }
 
+            var triangles = new List<int>(xCount * yCount * 6);
+            for (int cy = 0; cy < yCount; cy++)
+            for (int cx = 0; cx < xCount; cx++)
+            {
+                int worldX = cx + region.min.x;
+                int worldY = cy + region.min.y;
+                var cell = _visualPlan.CellAt(new Unity.Mathematics.int2(worldX, worldY));
+                if (cell.zoneType != zoneType || cell.regionId != region.id)
+                    continue;
+
+                int v00 = cy * vCols + cx;
+                int v10 = cy * vCols + (cx + 1);
+                int v01 = (cy + 1) * vCols + cx;
+                int v11 = (cy + 1) * vCols + (cx + 1);
+
+                triangles.Add(v00); triangles.Add(v01); triangles.Add(v11);
+                triangles.Add(v00); triangles.Add(v11); triangles.Add(v10);
+            }
+
+            if (triangles.Count == 0) return;
+
+            var mesh = new Mesh { name = $"Region_{zoneType}_{region.id}" };
             mesh.vertices = vertices;
             mesh.uv = uvs;
             mesh.normals = normals;
-            mesh.triangles = triangles;
-            return mesh;
+            mesh.triangles = triangles.ToArray();
+            mesh.RecalculateBounds();
+
+            var go = new GameObject($"Region_{zoneType}_{region.id}");
+            go.transform.SetParent(_tilesRoot, false);
+            float centerX = (region.min.x + xCount * 0.5f - 0.5f) * _tileSize;
+            float centerZ = (region.min.y + yCount * 0.5f - 0.5f) * _tileSize;
+            go.transform.localPosition = new Vector3(centerX, yOffset, centerZ);
+            go.transform.localRotation = Quaternion.identity;
+
+            var filter = go.AddComponent<MeshFilter>();
+            var renderer = go.AddComponent<MeshRenderer>();
+            filter.sharedMesh = mesh;
+            renderer.sharedMaterial = material;
         }
 
         private void BuildTerrainDetails()
