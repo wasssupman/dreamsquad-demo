@@ -49,6 +49,7 @@
 - 26까지 캐릭터-프랍 sorting Play 회귀 확인 완료.
 - 28 region mesh 전환 후 cardinal 연결 Place region 의 내부 seam 제거 육안 확인.
 - **22 palette pass 의 Play 검증은 실패**. 사용자 보고 기준 틴트 / 엣지 / 코너 overlay 가 화면에 반영되지 않음. Unity MCP unavailable 로 자동 캡처 보강 불가.
+- **2026-04-27 사후 코드 트레이스 결과 root cause 가 다른 곳에 있음을 확인** (Follow-up 섹션 갱신본 참조). 처음 추측한 "URP transparent surface mode 누락" / "DOTS_INSTANCING 우회" 는 코드 레벨로는 무관 (이미 정상). 실 의심 대상은 (A) `MapView._tileTextureMaterials` 캐시 키 설계 결함, (B) Place edge mask 가 `envNeighborMask` 한정이라 Place ↔ Walk 경계 fringe 누락, (C) `placeEdgeOpacity` / `placeOuterCornerOpacity` 가 0.25~0.42 로 시각적 인지 한계. red-tint 결정 실험으로 A 발화 여부 확정 필요.
 
 ## Notes (되돌리면 안 되는 의도)
 
@@ -62,22 +63,26 @@
 
 본 spec 안에서는 더 진행하지 않는다. 시작하려면 새 feature-slug 폴더로 옮긴다.
 
-1. **rendering-pipeline-fix** (가장 가능성 높은 후속)
-   - `RuntimeMaterialFactory.CreateTransparentTexture` 가 URP Unlit transparent surface mode 를 명시적으로 설정 (`_Surface=1`, `_SrcBlend=SrcAlpha`, `_DstBlend=OneMinusSrcAlpha`, `_ZWrite=0`, `_SURFACE_TYPE_TRANSPARENT` 키워드 enable, render queue 3000).
-   - `Tile_Unlit` 의 DOTS_INSTANCING 경로가 runtime material `SetColor("_BaseColor", tint)` 와 호환되는지 검증. 호환 안 되면 runtime material 에서 키워드 disable 또는 별도 non-instancing variant 사용.
-   - edge / inner corner / outer corner overlay quad 에도 `BoardSortOrder` 기반 `sortingOrder` 부여.
-   - 진단 우선: Play 진입 후 Console 셰이더 경고 / red-tint 실험 (`placeBaseTint` 를 (1,0,0,1) 로 두고 화면 빨개지는지) 으로 어느 경로가 막혀 있는지 좁힌다.
+1. **palette-and-overlay-fix** (가장 가능성 높은 후속, 진단 갱신본)
+   - **사전 결정 실험 (필수)**: `forest.asset → placeBaseTint = (1, 0, 0, 1)` 빨강으로 두고 Play. Place 면이 빨개지면 tint path 정상 → Bug A 가시 영향 없음 → 시각 문제는 Bug B + Bug C. 빨개지지 않으면 Bug A 가 실제로 발화 중. 이 한 실험이 후속 작업 분기를 결정.
+   - **Bug A — 타일 머티리얼 캐시 키 결함**: `MapView._tileTextureMaterials: Dictionary<Texture2D, Material>` (line 27). `CreateTileTopMaterials` 가 Place → Walk → Env 순서로 호출되며 `ContainsKey(textures[i])` 로 skip → 같은 텍스처가 여러 zone 에 있으면 첫 zone tint 만 반영. forest.asset 에서는 zone primary texture 가 분리돼 silent 하지만 다음 테마에서 터짐. 캐시 키를 `(BoardZoneType, Texture2D)` 로 교체 + line 527 / 670 의 lookup 도 zone 인자 받도록.
+   - **Bug B — Place edge mask 가 Env 이웃 한정**: `MapView.cs` line 242 `int edgeMask = visualCell.envNeighborMask;`. Place ↔ Walk 경계 cells 의 edge fringe 가 절대 안 그려짐. `transitionMask` (4-bit, 모든 이웃 zone 차이) 로 교체하거나 mask 를 `envNeighborMask | walkNeighborMask` 로 합쳐야 결정. 디자인 결정 + 코드 1줄.
+   - **Bug C — overlay alpha 가 너무 낮음**: `placeEdgeOpacity = 0.25` (27 단계에서 0.36 → 0.25 로 낮춤), `placeOuterCornerOpacity = 0.42`, `placeInnerCornerOpacity ≈ 동급`. 베이지/녹색 텍스처 위 알파 0.25 흰 fringe 는 거의 안 보임. **Inspector 튜닝**으로 0.5~0.7 범위 시도. 단 너무 올리면 다시 V-004 (edge fringe 너무 강조) 회귀.
+   - **(원래 의심선이었으나 검증 결과 무관)**: `RuntimeMaterialFactory.CreateTransparentTexture` 의 URP transparent surface mode 는 line 72-83 에 이미 다 설정됨. `Tile_Unlit.shader` 의 `DOTS_INSTANCING_ON` 은 ECS RenderMesh entity 렌더 시에만 활성, Mono `MeshRenderer.sharedMaterial` 경로의 타일에서는 안 탐. 두 항목 다시 파지 말 것.
+   - **(선택) overlay sortingOrder**: 본 코드 트레이스로는 occlusion 위험 없음 확인 (region mesh y=0.002 / hover y=0.006 / edge y=0.022 / 모두 transparent + ZWrite off). 그러나 future regression 보험으로 BoardSortOrder 부여 자체는 무해. 우선순위 낮음.
 2. **17r prop-distribution-retry** (선택) — V-001 잔존. Poisson 정공법 재구현 원하면.
 3. **23 volcano-theme-fill** (선택) — 두 번째 테마 자산 채움.
 4. **leak: BattleBridge.StartBattle 반복 시 Persistent allocates 경고** — board-visualization 과 분리 추적. ECS 컨텍스트 정리 경로 점검.
 
 ## 다음 spec 시작 가이드
 
-- 새 폴더 이름 후보: `docs/spec/rendering-pipeline-fix/`.
-- 그 spec 에서 다룰 첫 작업 단위 후보 (`0_runtime_material_transparent_surface.md`):
-  - 변경 대상: `RuntimeMaterialFactory.cs`
-  - 검증: forest.asset 의 placeBaseTint 를 임시 빨강으로 두면 Play 에서 Place 면이 빨개진다 / inner corner overlay 가 visible.
+- 새 폴더 이름 후보: `docs/spec/palette-and-overlay-fix/`.
+- 첫 작업 단위 (`0_red_tint_decision_test.md`): forest.asset 의 `placeBaseTint = (1,0,0,1)` 로 두고 Play. 결과로 후속 분기 확정.
+  - Place 빨개짐 → Bug A 영향 없음, Bug B (edge mask) + Bug C (alpha) 만 다룸.
+  - Place 빨개지지 않음 → Bug A 가 실제로 발화. `MapView._tileTextureMaterials` 캐시 키 (zone, texture) 로 교체.
+- 후속 작업 단위 (Bug A/B/C 각각 최대 1 파일).
 - 본 spec 의 28 region mesh 구조 / 22 tint 필드는 그대로 활용. 추가 컨셉 변경 없음.
+- `RuntimeMaterialFactory.CreateTransparentTexture` 와 `Tile_Unlit.shader` 의 DOTS_INSTANCING 은 **건드리지 말 것** — 검증 결과 정상 동작.
 
 ## 주의
 
@@ -117,28 +122,32 @@
 
 ### 잘못된 가정들 (렌더 파이프라인 차원)
 
-1. **"`new Material(Shader.Find(...))` 으로 만든 머티리얼은 셰이더가 정의한 기본 surface mode 로 동작한다"** — 거짓. URP Unlit 은 **머티리얼 인스턴스 단위로 `_Surface`, `_SrcBlend`, `_DstBlend`, `_ZWrite`, `_SURFACE_TYPE_TRANSPARENT` 키워드 + render queue 를 명시적으로 설정** 해야 transparent 로 동작. 안 하면 opaque 로 그려진다 → overlay 가 안 보이는 원인 의심선 1.
-2. **"`material.SetColor("_BaseColor", tint)` 은 항상 화면에 반영된다"** — 거짓. 셰이더가 `DOTS_INSTANCING_ON` 키워드 경로로 들어가면 `UNITY_DOTS_INSTANCED_PROP(...)` 로 색상을 우회 받기 때문에 머티리얼 프로퍼티가 무시될 수 있다 → 틴트 안 보이는 원인 의심선 2.
-3. **"sortingOrder 는 prop 만 신경 쓰면 된다"** — 거짓. edge / inner corner / outer corner overlay quad 들도 sorting 체계 안에 있어야 다른 region mesh / prop 에 안 가려진다. `MapView` 에 sortingOrder 부여가 prop 에만 있고 overlay 에 없는 것이 V-007 잔존 의심선 3.
+> **2026-04-27 추기**: rev4 종료 직후 처음 적은 의심선 3개 중 2개 (URP transparent surface mode 누락, DOTS_INSTANCING 우회) 는 **사후 코드 트레이스에서 거짓으로 확인**. `RuntimeMaterialFactory.CreateTransparentTexture` 는 이미 surface mode 를 다 설정하고, `DOTS_INSTANCING_ON` 은 ECS RenderMesh 경로에서만 활성이라 Mono 타일에는 무관. 본 사례에서 진짜 교훈은 아래로 갱신.
+
+1. **"`new Material(Shader.Find(...))` 으로 만든 머티리얼은 transparent 로 동작한다"** — 일반론은 거짓이지만, **본 프로젝트의 `RuntimeMaterialFactory.CreateTransparentTexture` 는 이미 `_Surface=1`, `_SrcBlend`, `_DstBlend`, `_ZWrite=0`, `_SURFACE_TYPE_TRANSPARENT` 키워드, render queue Transparent 를 모두 설정**. 새 spec 에서 이 함수를 또 의심하지 말 것. 다른 곳 (직접 `new Material(...)` 호출하는 코드) 이 있다면 그건 따로 점검.
+2. **"DOTS_INSTANCING 키워드가 Mono 타일에서도 SetColor 를 무력화한다"** — 거짓. `DOTS_INSTANCING_ON` 은 Entities Graphics 가 ECS RenderMesh entity 를 그릴 때만 셰이더 variant 로 활성. Mono `MeshRenderer.sharedMaterial` 경로 (현재 모든 타일/프랍/캐릭터) 에서는 비활성 → `_BaseColor` 가 CBUFFER 에서 정상 읽힘. ECS 측 (projectile / healthBar) 에서 색을 동적으로 바꿀 때는 다르게 다뤄야 하지만 그건 본 spec 무관.
+3. **"코드 트레이스만으로 root cause 를 단정할 수 있다"** — **이번에 가장 비싸게 배운 것**. handoff 작성 직후 코드 트레이스로 의심선 2개를 적었는데 사후 정밀 트레이스에서 둘 다 무관 판명. 진짜 root cause 는 (A) `_tileTextureMaterials` 캐시 키 설계, (B) Place edge mask 가 Env 한정, (C) overlay alpha 가 너무 낮음. **추측 의심선을 spec 에 박아두면 다음 작업자가 그것부터 따라가 시간 낭비**. 의심선은 "확정 전 가설" 로 명시하고, 결정 실험 (예: red-tint) 으로 좁힌 뒤에 작업 단위로 확정할 것.
+4. **"sortingOrder 가 overlay 가시성 문제일 수 있다"** — 가능성은 있지만 본 사례에서는 거짓. region mesh y=0.002, hover y=0.006, edge overlay y=0.022, 모두 transparent + ZWrite off → URP 의 back-to-front 정렬로 자연스럽게 edge 가 위에 그려짐. occlusion 위험 없음. 새 spec 에서 sortingOrder 부여는 보험으로만 다루고 우선순위 낮춤.
 
 ### 다시 만들 때 우선순위 (제안)
 
-1. **렌더 파이프라인 sanity check 부터** (board-visualization 보다 먼저 또는 첫 작업 단위로):
-   - 빈 씬에 URP Unlit transparent material 1개 + URP Unlit opaque material 1개를 runtime 으로 생성해 quad 에 입혀 화면에 보이는지 검증.
-   - `RuntimeMaterialFactory` 의 `CreateOpaqueTexture`/`CreateTransparentTexture` 가 `_BaseColor` 를 받아서 화면에 반영되는지 빨강/파랑 두 색으로 토글 검증.
-   - DOTS_INSTANCING 경로가 활성화돼있을 때 색상이 반영되는지 별도 확인. 안 되면 runtime material 에서 키워드 disable.
+1. **결정 실험으로 root cause 좁히기 (코드 트레이스 + 추측 금지)**:
+   - 한 줄 변경 + Play 캡처로 가설을 좁힌다. 본 사례에서는 `forest.asset → placeBaseTint = (1,0,0,1)` 로 Place 가 빨개지는지가 결정 실험. 빨개지면 tint path 정상이니 이후 작업은 alpha/edge 마스크 쪽, 안 빨개지면 캐시/캐릭터 lookup 경로 쪽으로 분기.
+   - **추측한 의심선을 spec 에 박지 말 것**. 의심선은 "결정 실험으로 확정 전 가설" 로만 표기하고, 실험 후에 작업 단위 spec 으로 승격.
+   - 빈 씬 sanity check 도 옵션이지만 본 프로젝트의 `RuntimeMaterialFactory` 는 이미 URP transparent surface mode 를 다 설정하므로 우선순위 낮음.
 2. **맵 생성 구조 결정 먼저**: 룸 기반인가 셀 기반인가. 시각 컨셉은 그 결정에 종속. **셀 기반이면 Enter the Gungeon 시각 포기, 보드게임 타일 으로 시작**.
 3. **sortingOrder 공식을 첫 작업 단위 (`BoardSortOrder` 등) 로 못박기**. 모든 렌더 객체 (캐릭터/프랍/타일/오버레이) 가 같은 공식 위에서 정렬되도록.
 4. **모든 캐릭터 렌더를 Mono 로 통일하고 시작**. ECS RenderMesh 와 Mono 섞으면 sorting 디버깅 비용 폭발.
 5. **시각 작업의 완료 기준 = Play 캡처**. 코드 레벨 판단 금지. Unity MCP unavailable 이면 사용자에게 캡처 의뢰하고 그게 올 때까지 spec 종료 보류.
-6. **palette/tint pass 는 가장 마지막**. 그 전에 surface mode + DOTS_INSTANCING + sortingOrder 가 실제 화면에서 작동하는 게 검증돼야 의미 있음.
+6. **palette/tint pass 는 마지막**. 그 전에 (a) tint 가 화면에 반영되는 path 가 한 가지 색 (예: red) 으로 가시 확인되고, (b) overlay alpha / mask 조건이 실제로 그릴 픽셀을 만들고 있는지 검증돼야 의미 있음. 본 사례는 (a) 와 (b) 둘 다 미확인 상태에서 palette 를 입혔다가 결과가 안 보였다.
 
 ### 다시 만들 때 절대 안 할 것
 
 - "Enter the Gungeon 같은 자연스러운 바닥" 을 셀 단위 맵 생성기 위에서 시도하지 말 것.
 - variant 갯수, tileTopScale, edgeOpacity 같은 경량 파라미터 튜닝으로 컨셉 미스를 덮으려 하지 말 것.
 - ECS RenderMesh 경로의 캐릭터 sortingOrder 를 `Renderer.sortingOrder` 로 통일하려 하지 말 것 (애초에 다른 체계).
-- runtime material 을 `new Material(Shader.Find(...))` 만으로 끝내지 말 것. URP 의 surface mode 설정을 명시.
+- 직접 `new Material(Shader.Find(...))` 호출하는 새 코드를 짜지 말 것 — `RuntimeMaterialFactory` 의 `CreateOpaque*` / `CreateTransparent*` 만 사용. (factory 가 이미 URP surface mode 를 명시 설정함. 이를 우회하면 transparent 가 opaque 로 그려지는 문제 재발 가능.)
+- 의심선/가설을 검증 없이 spec / handoff 에 root cause 로 박지 말 것. 본 사례에서 "URP transparent surface mode 누락" / "DOTS_INSTANCING 우회" 두 의심선이 정밀 트레이스에서 둘 다 거짓으로 판명. 결정 실험 (예: 한 색 빨강으로 토글) 후에만 spec 화.
 - Unity MCP unavailable 상태에서 시각 spec 을 코드 레벨 판단으로 완료 선언하지 말 것.
 - 17c 처럼 전제 점검 안 한 채 spec 드래프트 시작하지 말 것 (렌더 경로/소속 맥락 먼저 확인).
 
