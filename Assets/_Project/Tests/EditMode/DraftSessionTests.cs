@@ -37,12 +37,13 @@ namespace Wassup.Tests.EditMode
         public void Reset_Produces_Distinct_Pool_Of_Requested_Size()
         {
             var s = new DraftSession();
-            s.Reset(_catalog, poolSize: 10, maxPicks: 7, seed: 42);
+            s.Reset(_catalog, poolSize: 10, maxDiscards: 3, seed: 42);
             Assert.AreEqual(10, s.PoolSize);
             var unique = new HashSet<DefenderUnitData>(s.Pool);
             Assert.AreEqual(10, unique.Count);
-            Assert.AreEqual(0, s.PickedCount);
-            Assert.AreEqual(7, s.MaxPicks);
+            Assert.AreEqual(0, s.DiscardedCount);
+            Assert.AreEqual(10, s.PickedCount);
+            Assert.AreEqual(3, s.MaxDiscards);
             Assert.AreEqual(42, s.Seed);
             Assert.IsFalse(s.IsFull);
         }
@@ -52,49 +53,51 @@ namespace Wassup.Tests.EditMode
         {
             var a = new DraftSession();
             var b = new DraftSession();
-            a.Reset(_catalog, poolSize: 10, maxPicks: 7, seed: 12345);
-            b.Reset(_catalog, poolSize: 10, maxPicks: 7, seed: 12345);
+            a.Reset(_catalog, poolSize: 10, maxDiscards: 3, seed: 12345);
+            b.Reset(_catalog, poolSize: 10, maxDiscards: 3, seed: 12345);
             CollectionAssert.AreEqual(a.Pool, b.Pool);
         }
 
         [Test]
-        public void TogglePick_Adds_Then_Removes_On_Second_Call()
+        public void ToggleDiscard_Adds_Then_Removes_On_Second_Call()
         {
             var s = new DraftSession();
-            s.Reset(_catalog, poolSize: 10, maxPicks: 7, seed: 1);
+            s.Reset(_catalog, poolSize: 10, maxDiscards: 3, seed: 1);
             var unit = s.Pool[0];
 
-            Assert.IsTrue(s.TogglePick(unit));
-            Assert.IsTrue(s.IsPicked(unit));
-            Assert.AreEqual(1, s.PickedCount);
-
-            Assert.IsTrue(s.TogglePick(unit));
+            Assert.IsTrue(s.ToggleDiscard(unit));
+            Assert.IsTrue(s.IsDiscarded(unit));
             Assert.IsFalse(s.IsPicked(unit));
-            Assert.AreEqual(0, s.PickedCount);
+            Assert.AreEqual(1, s.DiscardedCount);
+
+            Assert.IsTrue(s.ToggleDiscard(unit));
+            Assert.IsFalse(s.IsDiscarded(unit));
+            Assert.IsTrue(s.IsPicked(unit));
+            Assert.AreEqual(0, s.DiscardedCount);
         }
 
         [Test]
-        public void TogglePick_Rejects_Extra_Pick_After_MaxReached()
+        public void ToggleDiscard_Rejects_Extra_Discard_After_MaxReached()
         {
             var s = new DraftSession();
-            s.Reset(_catalog, poolSize: 10, maxPicks: 7, seed: 1);
-            for (int i = 0; i < 7; i++) Assert.IsTrue(s.TogglePick(s.Pool[i]));
+            s.Reset(_catalog, poolSize: 10, maxDiscards: 3, seed: 1);
+            for (int i = 0; i < 3; i++) Assert.IsTrue(s.ToggleDiscard(s.Pool[i]));
             Assert.IsTrue(s.IsFull);
-            Assert.IsFalse(s.TogglePick(s.Pool[7]));
-            Assert.AreEqual(7, s.PickedCount);
+            Assert.IsFalse(s.ToggleDiscard(s.Pool[3]));
+            Assert.AreEqual(3, s.DiscardedCount);
         }
 
         [Test]
-        public void TogglePick_Ignores_Unit_Not_In_Pool()
+        public void ToggleDiscard_Ignores_Unit_Not_In_Pool()
         {
             var s = new DraftSession();
-            s.Reset(_catalog, poolSize: 5, maxPicks: 3, seed: 99);
+            s.Reset(_catalog, poolSize: 5, maxDiscards: 2, seed: 99);
             var outside = ScriptableObject.CreateInstance<DefenderUnitData>();
             outside.displayName = "Stranger";
             try
             {
-                Assert.IsFalse(s.TogglePick(outside));
-                Assert.AreEqual(0, s.PickedCount);
+                Assert.IsFalse(s.ToggleDiscard(outside));
+                Assert.AreEqual(0, s.DiscardedCount);
             }
             finally
             {
@@ -103,26 +106,49 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
-        public void Reset_Clears_Previous_Picks()
+        public void Reset_Clears_Previous_Discards()
         {
             var s = new DraftSession();
-            s.Reset(_catalog, poolSize: 10, maxPicks: 7, seed: 1);
-            s.TogglePick(s.Pool[0]);
-            s.TogglePick(s.Pool[1]);
-            Assert.AreEqual(2, s.PickedCount);
-            s.Reset(_catalog, poolSize: 10, maxPicks: 7, seed: 2);
-            Assert.AreEqual(0, s.PickedCount);
+            s.Reset(_catalog, poolSize: 10, maxDiscards: 3, seed: 1);
+            s.ToggleDiscard(s.Pool[0]);
+            s.ToggleDiscard(s.Pool[1]);
+            Assert.AreEqual(2, s.DiscardedCount);
+            s.Reset(_catalog, poolSize: 10, maxDiscards: 3, seed: 2);
+            Assert.AreEqual(0, s.DiscardedCount);
         }
 
         [Test]
-        public void PickedArray_Preserves_Order()
+        public void PickedArray_Returns_Pool_Minus_Discarded_In_Pool_Order()
         {
             var s = new DraftSession();
-            s.Reset(_catalog, poolSize: 10, maxPicks: 7, seed: 1);
-            var expected = new[] { s.Pool[3], s.Pool[1], s.Pool[9], s.Pool[0] };
-            foreach (var u in expected) s.TogglePick(u);
+            s.Reset(_catalog, poolSize: 10, maxDiscards: 3, seed: 1);
+            // Discard pool indices 1, 4, 9 — kept order should be 0,2,3,5,6,7,8.
+            s.ToggleDiscard(s.Pool[1]);
+            s.ToggleDiscard(s.Pool[4]);
+            s.ToggleDiscard(s.Pool[9]);
             var picked = s.PickedArray();
+            Assert.AreEqual(7, picked.Length);
+            var expected = new[] {
+                s.Pool[0], s.Pool[2], s.Pool[3], s.Pool[5], s.Pool[6], s.Pool[7], s.Pool[8]
+            };
             CollectionAssert.AreEqual(expected, picked);
+        }
+
+        [Test]
+        public void IsFull_Only_True_When_DiscardCount_Reaches_Max()
+        {
+            var s = new DraftSession();
+            s.Reset(_catalog, poolSize: 10, maxDiscards: 3, seed: 1);
+            Assert.IsFalse(s.IsFull);
+            s.ToggleDiscard(s.Pool[0]);
+            Assert.IsFalse(s.IsFull);
+            s.ToggleDiscard(s.Pool[1]);
+            Assert.IsFalse(s.IsFull);
+            s.ToggleDiscard(s.Pool[2]);
+            Assert.IsTrue(s.IsFull);
+            // Toggling one off drops back to non-full.
+            s.ToggleDiscard(s.Pool[0]);
+            Assert.IsFalse(s.IsFull);
         }
     }
 }

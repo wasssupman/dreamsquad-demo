@@ -11,7 +11,8 @@
         "Unity.TextMeshPro",
         "Unity.InputSystem",
         "spine-unity",
-        "spine-csharp"
+        "spine-csharp",
+        "PrimeTween.Runtime"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

@@ -2,11 +2,10 @@ using UnityEngine;
 using Wassup.Bridge;
 using Wassup.Data;
 using Wassup.Logging;
-using Wassup.UI;
 
 namespace Wassup.Core
 {
-    public enum GamePhase { None, Briefing, Draft, Placement, Battle, Result }
+    public enum GamePhase { None, Draft, Placement, Battle, Result }
 
     [DefaultExecutionOrder(-100)]
     public class GameManager : MonoBehaviour
@@ -16,7 +15,6 @@ namespace Wassup.Core
         [SerializeField] private BattleLogger logger;
         [SerializeField] private BattleBridge battleBridge;
         [SerializeField] private DraftController draftController;
-        [SerializeField] private TimelineBriefingView timelineBriefing;
         [SerializeField] private CostRuntime costRuntime;
         [SerializeField] private CostConfig costConfig;
         [SerializeField] private SkillLoadoutController skillLoadout;
@@ -83,13 +81,7 @@ namespace Wassup.Core
         // to DraftController events before we emit DraftStarted.
         private void Start()
         {
-            if (timelineBriefing != null && draftController != null)
-            {
-                SetPhase(GamePhase.Briefing);
-                timelineBriefing.BriefingConfirmed = OnBriefingConfirmed;
-                timelineBriefing.Show();
-            }
-            else if (draftController != null)
+            if (draftController != null)
             {
                 SetPhase(GamePhase.Draft);
                 draftController.BeginDraft();
@@ -100,12 +92,6 @@ namespace Wassup.Core
                 SetPhase(GamePhase.Battle);
                 battleBridge.StartBattle();
             }
-        }
-
-        private void OnBriefingConfirmed()
-        {
-            SetPhase(GamePhase.Draft);
-            draftController.BeginDraft();
         }
 
         private void OnDisable()

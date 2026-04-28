@@ -5,37 +5,49 @@ using Wassup.Data;
 namespace Wassup.Core
 {
     // Plain-old state bag that tracks one draft attempt: a sampled pool drawn from
-    // the defender catalog and the player's running pick list (capped at MaxPicks).
-    // DraftController owns the lifecycle; tests drive it directly without Unity.
+    // the defender catalog and the player's running discard list (capped at MaxDiscards).
+    // Picked = pool minus discarded (pool order preserved). DraftController owns the
+    // lifecycle; tests drive it directly without Unity.
     public class DraftSession
     {
         private readonly List<DefenderUnitData> _pool = new();
+        private readonly HashSet<DefenderUnitData> _discarded = new();
         private readonly List<DefenderUnitData> _picked = new();
 
         public IReadOnlyList<DefenderUnitData> Pool => _pool;
-        public IReadOnlyList<DefenderUnitData> Picked => _picked;
+        public IReadOnlyList<DefenderUnitData> Picked
+        {
+            get
+            {
+                _picked.Clear();
+                foreach (var u in _pool) if (!_discarded.Contains(u)) _picked.Add(u);
+                return _picked;
+            }
+        }
+        public IReadOnlyCollection<DefenderUnitData> Discarded => _discarded;
         public int Seed { get; private set; }
-        public int MaxPicks { get; private set; }
+        public int MaxDiscards { get; private set; }
         public int PoolSize => _pool.Count;
-        public int PickedCount => _picked.Count;
-        public bool IsFull => _picked.Count >= MaxPicks && MaxPicks > 0;
+        public int DiscardedCount => _discarded.Count;
+        public int PickedCount => _pool.Count - _discarded.Count;
+        public bool IsFull => _discarded.Count >= MaxDiscards && MaxDiscards > 0;
 
-        // Sample `poolSize` distinct units from `catalog` into the pool, clear picks,
+        // Sample `poolSize` distinct units from `catalog` into the pool, clear discards,
         // and seed the RNG for reproducibility. Callers must provide a non-empty
         // catalog that contains at least `poolSize` entries.
-        public void Reset(IReadOnlyList<DefenderUnitData> catalog, int poolSize, int maxPicks, int seed)
+        public void Reset(IReadOnlyList<DefenderUnitData> catalog, int poolSize, int maxDiscards, int seed)
         {
             if (catalog == null) throw new ArgumentNullException(nameof(catalog));
             if (poolSize <= 0) throw new ArgumentOutOfRangeException(nameof(poolSize));
-            if (maxPicks <= 0 || maxPicks > poolSize)
-                throw new ArgumentOutOfRangeException(nameof(maxPicks));
+            if (maxDiscards <= 0 || maxDiscards >= poolSize)
+                throw new ArgumentOutOfRangeException(nameof(maxDiscards));
             if (catalog.Count < poolSize)
                 throw new ArgumentException(
                     $"catalog has {catalog.Count} entries, need at least {poolSize}", nameof(catalog));
 
             Seed = seed;
-            MaxPicks = maxPicks;
-            _picked.Clear();
+            MaxDiscards = maxDiscards;
+            _discarded.Clear();
             _pool.Clear();
 
             var indices = new int[catalog.Count];
@@ -51,24 +63,30 @@ namespace Wassup.Core
             }
         }
 
-        // Returns true if the pool/picks state changed.
-        public bool TogglePick(DefenderUnitData unit)
+        // Returns true if the discard set changed.
+        public bool ToggleDiscard(DefenderUnitData unit)
         {
             if (unit == null) return false;
             if (!_pool.Contains(unit)) return false;
-            int idx = _picked.IndexOf(unit);
-            if (idx >= 0)
+            if (_discarded.Contains(unit))
             {
-                _picked.RemoveAt(idx);
+                _discarded.Remove(unit);
                 return true;
             }
-            if (_picked.Count >= MaxPicks) return false;
-            _picked.Add(unit);
+            if (_discarded.Count >= MaxDiscards) return false;
+            _discarded.Add(unit);
             return true;
         }
 
-        public bool IsPicked(DefenderUnitData unit) => unit != null && _picked.Contains(unit);
+        public bool IsDiscarded(DefenderUnitData unit) => unit != null && _discarded.Contains(unit);
+        public bool IsPicked(DefenderUnitData unit) => unit != null && _pool.Contains(unit) && !_discarded.Contains(unit);
 
-        public DefenderUnitData[] PickedArray() => _picked.ToArray();
+        public DefenderUnitData[] PickedArray()
+        {
+            var arr = new DefenderUnitData[PickedCount];
+            int k = 0;
+            foreach (var u in _pool) if (!_discarded.Contains(u)) arr[k++] = u;
+            return arr;
+        }
     }
 }

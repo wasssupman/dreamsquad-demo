@@ -83,9 +83,10 @@ namespace Wassup.Logging
         public int score;
     }
 
-    // Phase 1 draft audit trail: the full 10-unit pool the player saw, the 7 they
-    // locked in (in pick order), and the seed used to sample the pool so identical
-    // play sessions can be reconstructed.
+    // Phase 1 draft audit trail: the full 10-unit pool the player saw, the 7 units
+    // the player kept (pool order, non-discarded — model inverted in spec
+    // draft-ux-upgrade), and the seed used to sample the pool so identical play
+    // sessions can be reconstructed.
     [Serializable]
     public class DraftRecord
     {

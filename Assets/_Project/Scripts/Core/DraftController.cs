@@ -9,13 +9,13 @@ namespace Wassup.Core
 {
     // Owns one DraftSession at a time and bridges it to BattleBridge. It is a plain
     // MonoBehaviour placed in the scene — no static Instance, since GameManager is
-    // the only allowed singleton (CLAUDE.md). UI layers call TogglePick/TryConfirm;
+    // the only allowed singleton (CLAUDE.md). UI layers call ToggleDiscard/TryConfirm;
     // BeginDraft is invoked by GameManager or ResultScreen-triggered code paths.
     public class DraftController : MonoBehaviour
     {
         [SerializeField] private DefenderUnitData[] catalog;
         [SerializeField] private int poolSize = 10;
-        [SerializeField] private int pickCount = 7;
+        [SerializeField] private int discardCount = 3;
         [SerializeField] private BattleBridge battleBridge;
         [SerializeField] private SkillData[] defaultSkillLoadout;
 
@@ -23,7 +23,8 @@ namespace Wassup.Core
 
         public DraftSession Session => _session;
         public int PoolSize => poolSize;
-        public int PickCount => pickCount;
+        public int DiscardCount => discardCount;
+        public int PickCount => poolSize - discardCount;
         public IReadOnlyList<DefenderUnitData> Catalog => catalog;
         public MapGenerationOptions SelectedMapGenerationOptions { get; private set; } = MapGenerationOptions.Default;
         public MapPathShape SelectedMapPathShape => SelectedMapGenerationOptions.pathShape;
@@ -45,7 +46,7 @@ namespace Wassup.Core
                     this);
                 return;
             }
-            _session.Reset(catalog, poolSize, pickCount, seed);
+            _session.Reset(catalog, poolSize, discardCount, seed);
 
             // Phase 7: BeginDraft is the "new draft" entry point (initial start
             // and Redraft). Roll a fresh skill loadout here so the DraftView can
@@ -63,7 +64,7 @@ namespace Wassup.Core
             DraftStarted?.Invoke();
         }
 
-        public bool TogglePick(DefenderUnitData unit) => _session.TogglePick(unit);
+        public bool ToggleDiscard(DefenderUnitData unit) => _session.ToggleDiscard(unit);
 
         // Finalises the current session. If picks are incomplete this is a no-op.
         // On success pushes the 7-pick array into BattleBridge, triggers StartBattle,

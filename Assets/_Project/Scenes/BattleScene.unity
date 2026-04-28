@@ -160,7 +160,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: b1c2d3e4f5a601234567890abcdef203, type: 2}
   - {fileID: 11400000, guid: b1c2d3e4f5a601234567890abcdef201, type: 2}
   poolSize: 10
-  pickCount: 7
+  discardCount: 3
   battleBridge: {fileID: 1939688408}
   defaultSkillLoadout:
   - {fileID: 11400000, guid: 35bce914a516247cc9adee30e2bc5b4d, type: 2}
@@ -239,7 +239,7 @@ Light:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 120544393}
   m_Enabled: 1
-  serializedVersion: 12
+  serializedVersion: 13
   m_Type: 1
   m_Color: {r: 1, g: 0.95686275, b: 0.8392157, a: 1}
   m_Intensity: 1
@@ -291,7 +291,7 @@ Light:
   m_UseBoundingSphereOverride: 0
   m_UseViewFrustumForShadowCasterCull: 1
   m_ForceVisible: 0
-  m_ShadowRadius: 0
+  m_ShapeRadius: 0
   m_ShadowAngle: 0
   m_LightUnit: 1
   m_LuxAtDistance: 1
@@ -344,6 +344,7 @@ MonoBehaviour:
   pathColor: {r: 0.95, g: 0.75, b: 0.4, a: 1}
   envColor: {r: 0.55, g: 0.7, b: 0.35, a: 1}
   obstacleColor: {r: 0.25, g: 0.25, b: 0.3, a: 1}
+  goalColor: {r: 0.2, g: 0.9, b: 1, a: 1}
 --- !u!4 &211636737
 Transform:
   m_ObjectHideFlags: 0
@@ -369,6 +370,7 @@ GameObject:
   m_Component:
   - component: {fileID: 220057793}
   - component: {fileID: 220057792}
+  - component: {fileID: 220057794}
   m_Layer: 0
   m_Name: DraftView
   m_TagString: Untagged
@@ -388,7 +390,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ef68c460fec27434ba896a189ce7c8c3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.DraftView
-  controller: {fileID: 20521825}
 --- !u!4 &220057793
 Transform:
   m_ObjectHideFlags: 0
@@ -401,9 +402,29 @@ Transform:
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 1634174273}
+  - {fileID: 780954128}
+  - {fileID: 1939162980}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &220057794
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 220057791}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e3fdfba211a8347b5bf92eec505171a4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.Draft.DraftView
+  controller: {fileID: 20521825}
+  strip: {fileID: 1634174272}
+  fan: {fileID: 780954127}
+  mapSettings: {fileID: 1939162979}
+  dwellSeconds: 5
 --- !u!1 &229215105
 GameObject:
   m_ObjectHideFlags: 0
@@ -803,6 +824,54 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &780954126
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 780954128}
+  - component: {fileID: 780954127}
+  m_Layer: 0
+  m_Name: DraftCardFan
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &780954127
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 780954126}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 16f7e49468c4842b0bb295afc716fb77, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.Draft.DraftCardFanView
+--- !u!224 &780954128
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 780954126}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 220057793}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 100, y: 100}
+  m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &810041857
 GameObject:
   m_ObjectHideFlags: 0
@@ -1065,6 +1134,7 @@ Canvas:
   m_OverridePixelPerfect: 0
   m_SortingBucketNormalizedSize: 0
   m_VertexColorAlwaysGammaSpace: 0
+  m_UseReflectionProbes: 0
   m_AdditionalShaderChannelsFlag: 25
   m_UpdateRectTransformForStandalone: 0
   m_SortingLayerID: 0
@@ -1090,52 +1160,6 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 0}
---- !u!1 &1208602154
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1208602156}
-  - component: {fileID: 1208602155}
-  m_Layer: 0
-  m_Name: TimelineBriefing
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1208602155
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1208602154}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 91413b44c53d7400abfc434cca0fb810, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.TimelineBriefingView
-  deck: {fileID: 11400000, guid: c971fe4b10aae4515a723d33e6e1731e, type: 2}
-  draftController: {fileID: 20521825}
---- !u!4 &1208602156
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1208602154}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1210151368
 GameObject:
   m_ObjectHideFlags: 0
@@ -1626,7 +1650,6 @@ MonoBehaviour:
   logger: {fileID: 517227041}
   battleBridge: {fileID: 1939688408}
   draftController: {fileID: 20521825}
-  timelineBriefing: {fileID: 1208602155}
   costRuntime: {fileID: 308428868}
   costConfig: {fileID: 11400000, guid: 3ed67d5379b02406db1329b181fbee88, type: 2}
   skillLoadout: {fileID: 0}
@@ -1712,6 +1735,55 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1634174271
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1634174273}
+  - component: {fileID: 1634174272}
+  m_Layer: 0
+  m_Name: WavePatternStrip
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1634174272
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1634174271}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ab5a3b280d83f4eb49438807e908d96e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.Draft.WavePatternStripView
+  deck: {fileID: 11400000, guid: c971fe4b10aae4515a723d33e6e1731e, type: 2}
+--- !u!224 &1634174273
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1634174271}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 220057793}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 100, y: 100}
+  m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &1795146345
 GameObject:
   m_ObjectHideFlags: 0
@@ -1761,6 +1833,55 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1939162978
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1939162980}
+  - component: {fileID: 1939162979}
+  m_Layer: 0
+  m_Name: MapSettingsPanel
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1939162979
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1939162978}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 44fde27d6fe6442fbb5dc3a5e8c208de, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.Draft.MapSettingsPanelView
+  controller: {fileID: 20521825}
+--- !u!224 &1939162980
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1939162978}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 220057793}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 100, y: 100}
+  m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &1939350641
 GameObject:
   m_ObjectHideFlags: 0
@@ -1917,8 +2038,19 @@ MonoBehaviour:
   useProcedural: 1
   mapTheme: {fileID: 11400000, guid: cee6d79be1d0942669279b9cbfac6717, type: 2}
   mapPathShape: 1
+  mapGenerationOptions:
+    pathShape: 0
+    gridSize:
+      x: 20
+      y: 10
+    obstacleDensity: 0
+    spawnLaneCount: 2
   tileSize: 1
   spawnHeight: 0.5
+  autoFrameMainCamera: 1
+  cameraPitch: 50
+  cameraFieldOfView: 47
+  cameraFramePadding: 1.3
   resultScreen: {fileID: 441089446}
   defenderPool:
   - {fileID: 11400000, guid: 1b476721523af4fd68b6d3d6e1dd265a, type: 2}
@@ -1928,11 +2060,12 @@ MonoBehaviour:
   skillRuntime: {fileID: 229215106}
   _placementPhaseView: {fileID: 1628485822}
   spineDefenderPool: {fileID: 810041858}
+  enemyViewPool: {fileID: 0}
+  defenderFallbackViewPool: {fileID: 0}
   spineDefenderYOffset: 0
   vfxSpawner: {fileID: 1795146346}
   mapView: {fileID: 211636736}
   placementInput: {fileID: 1495062452}
-  dragPlacementController: {fileID: 0}
 --- !u!4 &1939688409
 Transform:
   m_ObjectHideFlags: 0
@@ -2084,7 +2217,6 @@ SceneRoots:
   - {fileID: 836730385}
   - {fileID: 915292525}
   - {fileID: 1236522319}
-  - {fileID: 1208602156}
   - {fileID: 1628485823}
   - {fileID: 1075095675}
   - {fileID: 810041859}
