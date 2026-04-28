@@ -241,12 +241,14 @@ namespace Wassup.Presentation
 
         private void ReturnToPool(GameObject view, GameObject prefab)
         {
-            // Fix 4: use cached renderers.
-            var renderers = view.TryGetComponent<ViewRendererCache>(out var cache)
+            // Fix 4: use cached renderers. Guard null — renderer may be destroyed
+            // if coroutine fires after scene teardown (DespawnAfter timing).
+            var renderers = view != null && view.TryGetComponent<ViewRendererCache>(out var cache)
                 ? cache.renderers
-                : view.GetComponentsInChildren<Renderer>(includeInactive: false);
+                : (view != null ? view.GetComponentsInChildren<Renderer>(includeInactive: false) : System.Array.Empty<Renderer>());
             foreach (var r in renderers)
-                r.SetPropertyBlock(null);
+                if (r != null) r.SetPropertyBlock(null);
+            if (view == null) return;
             view.SetActive(false);
             if (!_pool.ContainsKey(prefab)) _pool[prefab] = new Stack<GameObject>();
             _pool[prefab].Push(view);

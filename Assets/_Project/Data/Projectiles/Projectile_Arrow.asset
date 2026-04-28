@@ -15,11 +15,19 @@ MonoBehaviour:
   id: arrow
   speed: 12
   hitThreshold: 0.35
-  visualScale: 0.25
+  visualScale: 0.75
   projectilePrefab: {fileID: 6354686006975832417, guid: 8ba61049d6d48464d81e1c7030773377, type: 3}
   hitPrefab: {fileID: 0}
   facing: 0
   spinSpeed: 0
+  tintColor: {r: 1, g: 1, b: 1, a: 1}
+  emissionMultiplier: 1
+  scaleJitter: 0
+  hueJitter: 0
+  rotationJitter: 0
+  textureVariants: []
+  selectMode: 0
+  hitVfxLifetime: 0
   onHitEffect: 0
   onHitMagnitude: 0
   onHitDuration: 0

@@ -15,11 +15,19 @@ MonoBehaviour:
   id: bolt
   speed: 16
   hitThreshold: 0.35
-  visualScale: 0.3
+  visualScale: 0.90000004
   projectilePrefab: {fileID: 4338604048821043398, guid: 3b31db33aca1f9b46b99168587271302, type: 3}
   hitPrefab: {fileID: 0}
   facing: 0
   spinSpeed: 0
+  tintColor: {r: 1, g: 1, b: 1, a: 1}
+  emissionMultiplier: 1
+  scaleJitter: 0
+  hueJitter: 0
+  rotationJitter: 0
+  textureVariants: []
+  selectMode: 0
+  hitVfxLifetime: 0
   onHitEffect: 0
   onHitMagnitude: 0
   onHitDuration: 0
