@@ -22,12 +22,14 @@ namespace Wassup.Battle.Combat
     public partial struct AttackSystem : ISystem
     {
         private EntityQuery _attackEventsQuery;
+        private EntityQuery _ccEventsQuery;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<AttackState>();
             _attackEventsQuery = state.GetEntityQuery(ComponentType.ReadWrite<DefenderAttackEventsSingleton>());
+            _ccEventsQuery = state.GetEntityQuery(ComponentType.ReadWrite<Wassup.Battle.Effects.EnemyCcEventsSingleton>());
         }
 
         [BurstCompile]
@@ -54,6 +56,7 @@ namespace Wassup.Battle.Combat
             var cooldownReductionLookup = SystemAPI.GetComponentLookup<CooldownReduction>(isReadOnly: true);
             var synergyLookup = SystemAPI.GetComponentLookup<SynergyBuff>(isReadOnly: true);
             var projectileRefLookup = SystemAPI.GetComponentLookup<ProjectileRef>(isReadOnly: true);
+            var defenderCcLookup = SystemAPI.GetComponentLookup<DefenderCcData>(isReadOnly: true);
 
             // Phase 8 §13 follow-up — hoist the attack-event singleton writer so
             // both projectile and melee defender branches below enqueue a single
@@ -65,6 +68,13 @@ namespace Wassup.Battle.Combat
             {
                 var singleton = _attackEventsQuery.GetSingletonRW<DefenderAttackEventsSingleton>();
                 attackWriter = singleton.ValueRW.queue.AsParallelWriter();
+            }
+
+            NativeQueue<Wassup.Battle.Effects.EnemyCcEvent>.ParallelWriter? ccWriter = null;
+            if (!_ccEventsQuery.IsEmpty)
+            {
+                var ccSingleton = _ccEventsQuery.GetSingletonRW<Wassup.Battle.Effects.EnemyCcEventsSingleton>();
+                ccWriter = ccSingleton.ValueRW.queue.AsParallelWriter();
             }
 
             foreach (var (attack, transform, defenderEntity) in
@@ -203,6 +213,27 @@ namespace Wassup.Battle.Combat
                     }
 
                     attack.ValueRW.cooldownRemaining = attack.ValueRO.cooldownDuration * cooldownMul;
+
+                    if (ccWriter.HasValue && defenderCcLookup.HasComponent(defenderEntity))
+                    {
+                        var ccData = defenderCcLookup[defenderEntity];
+                        if (ccData.knockbackDistance > 0f && ccData.knockbackDuration > 0f)
+                        {
+                            float3 dir = math.normalizesafe(bestTargetPos - defPos);
+                            dir.y = 0f;
+                            float speed = ccData.knockbackDistance / ccData.knockbackDuration;
+                            ccWriter.Value.Enqueue(new Wassup.Battle.Effects.EnemyCcEvent
+                            {
+                                target = bestTarget,
+                                effect = new Wassup.Battle.Effects.CcEffect
+                                {
+                                    kind = Wassup.Battle.Effects.CcKind.Impulse,
+                                    vector = dir * speed,
+                                    remainingTime = ccData.knockbackDuration,
+                                },
+                            });
+                        }
+                    }
                 }
             }
 
