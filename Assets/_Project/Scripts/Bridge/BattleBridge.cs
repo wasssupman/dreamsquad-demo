@@ -1956,6 +1956,13 @@ namespace Wassup.Bridge
             LogOnPlaceAndSynergy(unitData, cell, onPlaceAffected);
         }
 
+        public Unity.Entities.Entity DebugSpawnObstacleAt(Unity.Mathematics.int2 cell, float lifetime = 5f)
+        {
+            if (_em == null) return Unity.Entities.Entity.Null;
+            float3 worldPos = GridToWorldCenter(new Vector2Int(cell.x, cell.y));
+            return Wassup.Battle.Effects.EffectSpawner.SpawnObstacle(_em, cell, worldPos, lifetime);
+        }
+
         private void ApplyOnPlacePush(DefenderUnitData unitData, Vector2Int cell)
         {
             if (unitData.onPlacePushDistance <= 0f || unitData.onPlacePushDuration <= 0f

@@ -135,6 +135,13 @@ namespace Wassup.Battle.Effects
                 em.RemoveComponent<SynergyBuff>(entity);
         }
 
+        public static Entity SpawnObstacle(EntityManager em, Unity.Mathematics.int2 cell, float3 worldPos, float lifetime)
+        {
+            var e = em.CreateEntity();
+            em.AddComponentData(e, new Obstacle { cell = cell, worldPosition = worldPos, remainingLife = lifetime });
+            return e;
+        }
+
         private static void Apply<T>(EntityManager em, Entity entity,
             System.Func<T> create, System.Func<T, T> merge) where T : unmanaged, IComponentData
         {
