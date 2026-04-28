@@ -59,3 +59,5 @@ private struct BakeJob {
 - 두 번째 실행 시 결과가 결정적 (동일 픽셀).
 - 도구 실행 후 read_console Error/Warning 0.
 - 런타임 코드 변경 없음 (이 task 는 에디터 자산만).
+
+확인 2026-04-28 / 커밋: (pending)

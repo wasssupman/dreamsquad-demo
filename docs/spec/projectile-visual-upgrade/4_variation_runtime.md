@@ -62,4 +62,4 @@ private static Color ApplyHueShift(Color c, float hueShift01)
 - 풀 반환 후 같은 view 가 다른 spawn 에 재사용될 때 이전 MPB 잔재 없음.
 - read_console Error/Warning 0.
 
-확인 2026-04-28 / 커밋: (pending)
+확인 2026-04-28 / 커밋: d04c7ee
