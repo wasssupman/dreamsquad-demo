@@ -18,9 +18,10 @@ namespace Wassup.Data
         public string id;
         public float speed = 10f;
         public float hitThreshold = 0.3f;
-        public Mesh visualMesh;
-        public Material visualMaterial;
         public float visualScale = 0.3f;
+
+        public GameObject projectilePrefab;
+        public GameObject hitPrefab;
 
         // Phase 3에서 enum 필드만 존재. Phase 4부터 Splash가 실 사용 (Poison/Fire/Slow는
         // 여전히 미구현 자리표시).

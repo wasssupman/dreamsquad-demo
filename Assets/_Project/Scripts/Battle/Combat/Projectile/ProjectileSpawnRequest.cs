@@ -15,7 +15,7 @@ namespace Wassup.Battle.Combat.Projectile
         public float speed;
         public float hitThreshold;
         public float visualScale;
-        public int assetIndex;
+        public int dataIndex;
         public OnHitEffectType onHitEffect;
         public float splashRadius;
         public float splashDamageMul;

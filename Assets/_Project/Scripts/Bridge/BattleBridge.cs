@@ -70,8 +70,8 @@ namespace Wassup.Bridge
         private readonly HashSet<Vector2Int> _occupiedTiles = new();
         private readonly Dictionary<Vector2Int, (Entity entity, DefenderUnitData data)> _defenderByTile = new();
         private readonly HashSet<Entity> _onPlaceTriggeredEntities = new();
-        private readonly List<RenderMeshArray> _projectileRenderByIndex = new();
-        private readonly Dictionary<(ProjectileData data, Material mat), int> _projectileRenderIndex = new();
+        private readonly List<ProjectileData> _projectileDataByIndex = new();
+        private readonly Dictionary<ProjectileData, int> _projectileDataIndex = new();
         private EntityQuery _projectileSpawnRequestQuery;
         private bool _projectileSpawnRequestQueryCreated;
         private EntityQuery _projectileQuery;
@@ -1182,10 +1182,8 @@ namespace Wassup.Bridge
             while (_projectileHitEventQueue.TryDequeue(out _)) { }
         }
 
-        // Converts every staged ProjectileSpawnRequest into a live projectile entity.
-        // Done here (MonoBehaviour) rather than inside AttackSystem because creating
-        // RenderMesh components requires managed RenderMeshArray references that are
-        // not accessible from a Burst-compiled ISystem.
+        // Converts every staged ProjectileSpawnRequest into a live projectile entity
+        // and spawns the prefab view via ProjectileViewPool.
         private void DrainProjectileSpawnRequests()
         {
             if (!_projectileSpawnRequestQueryCreated) return;
@@ -1207,15 +1205,15 @@ namespace Wassup.Bridge
 
         private void SpawnProjectile(ProjectileSpawnRequest req)
         {
-            if (req.assetIndex < 0 || req.assetIndex >= _projectileRenderByIndex.Count)
+            if (req.dataIndex < 0 || req.dataIndex >= _projectileDataByIndex.Count)
             {
-                Debug.LogWarning($"[BattleBridge] ProjectileSpawnRequest assetIndex {req.assetIndex} out of range; dropping.");
+                Debug.LogWarning($"[BattleBridge] ProjectileSpawnRequest dataIndex {req.dataIndex} out of range; dropping.");
                 return;
             }
 
             var entity = _em.CreateEntity();
 #if UNITY_EDITOR
-            _em.SetName(entity, $"Projectile_{req.assetIndex}");
+            _em.SetName(entity, $"Projectile_{req.dataIndex}");
 #endif
             var spawnPos = new float3(req.origin.x, spawnHeight, req.origin.z);
             _em.AddComponentData(entity, LocalTransform.FromPositionRotationScale(spawnPos, quaternion.identity, req.visualScale));
@@ -1229,14 +1227,11 @@ namespace Wassup.Bridge
                 onHitEffect = req.onHitEffect,
                 splashRadius = req.splashRadius,
                 splashDamageMul = req.splashDamageMul,
-                dataIndex = req.assetIndex,
+                dataIndex = req.dataIndex,
             });
 
-            var desc = new RenderMeshDescription(
-                shadowCastingMode: UnityEngine.Rendering.ShadowCastingMode.Off,
-                receiveShadows: false);
-            RenderMeshUtility.AddComponents(entity, _em, desc, _projectileRenderByIndex[req.assetIndex],
-                MaterialMeshInfo.FromRenderMeshArrayIndices(0, 0));
+            var data = _projectileDataByIndex[req.dataIndex];
+            _projectileViewPool?.Spawn(entity, data.projectilePrefab, req.visualScale);
         }
 
         // Fires the defender's on-place effect on surrounding entities. Returns
@@ -1480,19 +1475,12 @@ namespace Wassup.Bridge
                 MaterialMeshInfo.FromRenderMeshArrayIndices(0, 0));
         }
 
-        private int GetOrCreateProjectileAssetIndex(ProjectileData projectile, Material fallbackMaterial)
+        private int GetOrCreateProjectileDataIndex(ProjectileData projectile)
         {
-            var material = projectile.visualMaterial != null ? projectile.visualMaterial : fallbackMaterial;
-            var key = (projectile, material);
-            if (_projectileRenderIndex.TryGetValue(key, out var idx)) return idx;
-
-            var mesh = projectile.visualMesh != null
-                ? projectile.visualMesh
-                : Resources.GetBuiltinResource<Mesh>("Quad.fbx");
-            var arr = new RenderMeshArray(new[] { material }, new[] { mesh });
-            idx = _projectileRenderByIndex.Count;
-            _projectileRenderByIndex.Add(arr);
-            _projectileRenderIndex[key] = idx;
+            if (_projectileDataIndex.TryGetValue(projectile, out var idx)) return idx;
+            idx = _projectileDataByIndex.Count;
+            _projectileDataByIndex.Add(projectile);
+            _projectileDataIndex[projectile] = idx;
             return idx;
         }
 
@@ -1870,13 +1858,16 @@ namespace Wassup.Bridge
 
             if (unitData.projectile != null)
             {
-                var assetIndex = GetOrCreateProjectileAssetIndex(unitData.projectile, unitData.visualMaterial);
+                var dataIndex = GetOrCreateProjectileDataIndex(unitData.projectile);
                 _em.AddComponentData(entity, new ProjectileRef
                 {
-                    assetIndex = assetIndex,
+                    dataIndex = dataIndex,
                     speed = unitData.projectile.speed,
                     hitThreshold = unitData.projectile.hitThreshold,
                     visualScale = unitData.projectile.visualScale,
+                    onHitEffect = unitData.projectile.onHitEffect,
+                    splashRadius = unitData.projectile.splashRadius,
+                    splashDamageMul = unitData.projectile.splashDamageMul,
                 });
             }
 

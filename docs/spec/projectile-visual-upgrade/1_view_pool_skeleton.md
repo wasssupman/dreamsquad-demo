@@ -45,4 +45,4 @@ public class ProjectileViewPool : MonoBehaviour
 - BattleScene 안에서 `ProjectileViewPool` 컴포넌트가 BattleBridge 의 SerializeField 에 연결되어 있고, 누락 시 BattleBridge 가 null-safe (warning 1회 후 동작은 기존대로).
 - read_console Error/Warning 0.
 
-확인 2026-04-28 / 커밋: (pending)
+확인 2026-04-28 / 커밋: f9a67bc

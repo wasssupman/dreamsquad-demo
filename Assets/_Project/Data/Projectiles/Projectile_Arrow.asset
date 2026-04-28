@@ -15,10 +15,11 @@ MonoBehaviour:
   id: arrow
   speed: 12
   hitThreshold: 0.35
-  visualMesh: {fileID: 0}
-  visualMaterial: {fileID: 0}
   visualScale: 0.25
+  projectilePrefab: {fileID: 6354686006975832417, guid: 8ba61049d6d48464d81e1c7030773377, type: 3}
+  hitPrefab: {fileID: 0}
   onHitEffect: 0
   onHitMagnitude: 0
   onHitDuration: 0
   splashRadius: 0
+  splashDamageMul: 0.5

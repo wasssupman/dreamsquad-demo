@@ -139,7 +139,7 @@ namespace Wassup.Battle.Combat
                             speed = projRef.speed,
                             hitThreshold = projRef.hitThreshold,
                             visualScale = projRef.visualScale,
-                            assetIndex = projRef.assetIndex,
+                            dataIndex = projRef.dataIndex,
                             onHitEffect = projRef.onHitEffect,
                             splashRadius = projRef.splashRadius,
                             splashDamageMul = projRef.splashDamageMul,
