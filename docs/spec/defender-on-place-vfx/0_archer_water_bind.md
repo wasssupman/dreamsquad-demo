@@ -42,4 +42,4 @@ UnityMCP `manage_asset` 또는 직접 YAML edit 으로 ScriptableObject 필드 �
 - Console Error/Warning 0.
 - VFX self-destroy 가 prefab 자체에서 보장되지 않으면 메모 남기고 후속 spec 으로 이관 (이 task 는 자산 와이어링만).
 
-확인 일자: 2026-04-28 — Editor Play smoke: Archer 배치 시 WaterAOE 재생, BindNearby 회귀 없음, 다른 디펜더 fallback ring 정상, console clean. 커밋: (아래 참조)
+확인 일자: 2026-04-28 — Editor Play smoke: Archer 배치 시 WaterAOE 재생, BindNearby 회귀 없음, 다른 디펜더 fallback ring 정상, console clean. 커밋: de56b17
