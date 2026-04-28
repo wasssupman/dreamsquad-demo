@@ -45,4 +45,4 @@ public struct ProjectileHitEventsSingleton : IComponentData
 - BattleScene Play smoke: 기존과 동일하게 동작 (큐는 enqueue/dequeue 만 하고 prefab 재생 없음).
 - read_console Error/Warning 0.
 
-확인 일자: 2026-04-28 — Unity 컴파일 에러/경고 0, BattleScene Play smoke 회귀 없음 (큐 enqueue/dequeue 만 동작, 게임 흐름 변화 없음). 커밋: (아래 참조)
+확인 일자: 2026-04-28 — Unity 컴파일 에러/경고 0, BattleScene Play smoke 회귀 없음 (큐 enqueue/dequeue 만 동작, 게임 흐름 변화 없음). 커밋: 191fbbb
