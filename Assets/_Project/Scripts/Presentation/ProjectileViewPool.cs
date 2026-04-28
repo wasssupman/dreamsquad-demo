@@ -29,6 +29,7 @@ namespace Wassup.Presentation
         private readonly Dictionary<GameObject, Stack<GameObject>> _pool = new();
         private readonly List<Entity> _toReturn = new(8);
         private readonly List<(Entity entity, float3 pos)> _posUpdates = new(8);
+        private readonly Dictionary<ProjectileData, int> _spawnCounters = new();
         private MaterialPropertyBlock _mpb;
         private System.Random _visualRng;
 
@@ -52,7 +53,7 @@ namespace Wassup.Presentation
             float rollDeg = (float)(_visualRng.NextDouble() * 2 - 1) * data.rotationJitter;
             Color finalTint = ApplyHueShift(data.tintColor, hueShift);
 
-            ApplyMpb(view, finalTint, data.emissionMultiplier);
+            ApplyMpb(view, finalTint, data.emissionMultiplier, SelectTexture(data));
 
             if (rollDeg != 0f)
                 view.transform.localRotation *= Quaternion.Euler(0f, 0f, rollDeg);
@@ -133,7 +134,26 @@ namespace Wassup.Presentation
             _active.Clear();
         }
 
-        private void ApplyMpb(GameObject view, Color tint, float emissionMul)
+        private Texture2D SelectTexture(ProjectileData data)
+        {
+            if (data.textureVariants == null || data.textureVariants.Length == 0) return null;
+            int idx = data.selectMode switch
+            {
+                TextureSelectMode.Sequential => GetAndIncrementCounter(data) % data.textureVariants.Length,
+                TextureSelectMode.First => 0,
+                _ => _visualRng.Next(data.textureVariants.Length),
+            };
+            return data.textureVariants[idx];
+        }
+
+        private int GetAndIncrementCounter(ProjectileData data)
+        {
+            _spawnCounters.TryGetValue(data, out int count);
+            _spawnCounters[data] = count + 1;
+            return count;
+        }
+
+        private void ApplyMpb(GameObject view, Color tint, float emissionMul, Texture2D texOverride = null)
         {
             Color emission = tint * emissionMul;
             foreach (var r in view.GetComponentsInChildren<Renderer>(includeInactive: false))
@@ -142,6 +162,11 @@ namespace Wassup.Presentation
                 _mpb.SetColor(PropBaseColor, tint);
                 _mpb.SetColor(PropColor, tint);
                 _mpb.SetColor(PropEmissionColor, emission);
+                if (texOverride != null)
+                {
+                    _mpb.SetTexture(PropBaseMap, texOverride);
+                    _mpb.SetTexture(PropMainTex, texOverride);
+                }
                 r.SetPropertyBlock(_mpb);
             }
         }

@@ -55,3 +55,5 @@ public TextureSelectMode selectMode = TextureSelectMode.Random;
 - textureVariants 에 임시로 1~3장 넣어 시연 시 spawn 마다 다른 텍스처 보임 (Random) / 순차 (Sequential).
 - 풀 반환 후 다른 ProjectileData 의 view 로 재사용될 때 텍스처 잔재 없음.
 - read_console Error/Warning 0.
+
+확인 2026-04-28 / 커밋: (pending)
