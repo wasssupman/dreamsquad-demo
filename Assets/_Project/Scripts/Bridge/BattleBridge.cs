@@ -2053,6 +2053,8 @@ namespace Wassup.Bridge
             if (_meteorBurstQueue.IsCreated) _meteorBurstQueue.Dispose();
             if (_defenderAttackQueue.IsCreated) _defenderAttackQueue.Dispose();
             if (_projectileHitEventQueue.IsCreated) _projectileHitEventQueue.Dispose();
+            if (_enemyCcQueue.IsCreated) _enemyCcQueue.Dispose();
+            if (_blockedCells.IsCreated) _blockedCells.Dispose();
             // Phase 9 — guard against editor shutdown / play stop leaking Persistent arrays.
             TeardownFlowField();
             // Phase 10A (P10A-04A): dispose GeneratedMap on destroy.
