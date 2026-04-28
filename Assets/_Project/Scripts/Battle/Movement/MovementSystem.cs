@@ -88,21 +88,26 @@ namespace Wassup.Battle.Movement
                 float2 dir = field.flow[idx];
                 if (math.lengthsq(dir) < 1e-6f) continue; // unreachable: 제자리 유지
 
-                float slowMul = 1f;
+                float speedMul = 1f;
+                float3 impulseDisplacement = float3.zero;
                 if (ccLookup.HasBuffer(entity))
                 {
                     var ccBuf = ccLookup[entity];
                     for (int i = 0; i < ccBuf.Length; i++)
                     {
-                        if (ccBuf[i].kind == CcKind.Slow)
-                            slowMul *= ccBuf[i].scalar;
+                        var cc = ccBuf[i];
+                        switch (cc.kind)
+                        {
+                            case CcKind.Slow:    speedMul *= cc.scalar; break;
+                            case CcKind.Impulse: impulseDisplacement += cc.vector * dt; break;
+                        }
                     }
                 }
-                float step = follow.ValueRO.speed * slowMul * dt;
                 float2 stepDir = math.normalizesafe(dir); // Phase 9: FlowFieldBuilder writes unit vectors;
                                                            // normalizesafe defensively handles future diagonal/non-unit flow
                                                            // and returns zero for <1e-6 magnitude (already guarded above).
-                transform.ValueRW.Position = current + new float3(stepDir.x, 0, stepDir.y) * step;
+                float3 flowStep = new float3(stepDir.x, 0, stepDir.y) * follow.ValueRO.speed * speedMul * dt;
+                transform.ValueRW.Position = current + flowStep + impulseDisplacement;
             }
 
             portals.Dispose();

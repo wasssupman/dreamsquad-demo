@@ -61,3 +61,5 @@ transform.ValueRW.Position = desired;
 - 단위테스트 통과.
 - 런타임 동작 변화 0 (Producer 미존재; CcEffect.Impulse 가 buffer 에 들어갈 일이 없음).
 - 콘솔 에러/경고 0.
+
+완료: 2026-04-28 — 커밋 TBD
