@@ -18,6 +18,8 @@ MonoBehaviour:
   visualScale: 0.25
   projectilePrefab: {fileID: 6354686006975832417, guid: 8ba61049d6d48464d81e1c7030773377, type: 3}
   hitPrefab: {fileID: 0}
+  facing: 0
+  spinSpeed: 0
   onHitEffect: 0
   onHitMagnitude: 0
   onHitDuration: 0

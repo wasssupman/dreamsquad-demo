@@ -12,6 +12,13 @@ namespace Wassup.Data
         Slow,
     }
 
+    public enum ProjectileFacing
+    {
+        AlongVelocity,
+        FixedUp,
+        SpinAroundUp,
+    }
+
     [CreateAssetMenu(fileName = "Projectile", menuName = "Wassup/Projectile", order = 13)]
     public class ProjectileData : ScriptableObject
     {
@@ -22,6 +29,9 @@ namespace Wassup.Data
 
         public GameObject projectilePrefab;
         public GameObject hitPrefab;
+
+        public ProjectileFacing facing = ProjectileFacing.AlongVelocity;
+        public float spinSpeed = 0f;
 
         // Phase 3에서 enum 필드만 존재. Phase 4부터 Splash가 실 사용 (Poison/Fire/Slow는
         // 여전히 미구현 자리표시).

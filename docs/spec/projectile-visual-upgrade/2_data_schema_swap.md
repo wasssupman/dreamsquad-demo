@@ -73,4 +73,4 @@ UnityMCP 의 `manage_asset` 으로 ScriptableObject 직접 수정.
 - hit prefab 은 이번 task 에서 아직 재생 안 함 (task 3 에서 연결). 큐는 enqueue 만 됨.
 - read_console Error/Warning 0.
 
-확인 2026-04-28 / 커밋: (pending)
+확인 2026-04-28 / 커밋: 55c7be5

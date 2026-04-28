@@ -1175,11 +1175,16 @@ namespace Wassup.Bridge
         // Combat→Presentation hit-VFX channel drain. ProjectileHitSystem enqueues
         // one event per direct-target impact. Task 0 keeps this as a no-op
         // dequeue so the queue does not back up; task 3 connects it to the
-        // ProjectileViewPool.PlayHit path with the dataIndex→hitPrefab lookup.
         private void DrainProjectileHitEvents()
         {
             if (!_projectileHitEventQueue.IsCreated) return;
-            while (_projectileHitEventQueue.TryDequeue(out _)) { }
+            while (_projectileHitEventQueue.TryDequeue(out var evt))
+            {
+                if (evt.dataIndex < 0 || evt.dataIndex >= _projectileDataByIndex.Count) continue;
+                var data = _projectileDataByIndex[evt.dataIndex];
+                if (data.hitPrefab != null)
+                    _projectileViewPool?.PlayHit(data.hitPrefab, evt.position);
+            }
         }
 
         // Converts every staged ProjectileSpawnRequest into a live projectile entity
@@ -1231,7 +1236,7 @@ namespace Wassup.Bridge
             });
 
             var data = _projectileDataByIndex[req.dataIndex];
-            _projectileViewPool?.Spawn(entity, data.projectilePrefab, req.visualScale);
+            _projectileViewPool?.Spawn(entity, data.projectilePrefab, req.visualScale, data.facing, data.spinSpeed);
         }
 
         // Fires the defender's on-place effect on surrounding entities. Returns

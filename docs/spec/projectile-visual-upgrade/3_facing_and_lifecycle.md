@@ -74,3 +74,5 @@ private struct ProjectileViewState
 - CannonBall 적중 시 FireballHit prefab 이 1회 재생되고 자체 lifetime 후 사라짐. 동일 prefab 으로 N회 발사해도 GameObject 누수 없음 (`_active`/`_pool` 카운트로 검증).
 - Splash 보조 타겟에는 hit VFX 가 안 뜸 (직접 타겟 1점만).
 - read_console Error/Warning 0.
+
+확인 2026-04-28 / 커밋: (pending)
