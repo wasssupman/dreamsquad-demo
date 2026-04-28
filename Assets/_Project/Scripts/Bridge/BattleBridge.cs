@@ -99,6 +99,7 @@ namespace Wassup.Bridge
         private NativeQueue<Wassup.Battle.Combat.MeteorBurstEvent> _meteorBurstQueue;
         private NativeQueue<Wassup.Battle.Combat.DefenderAttackEvent> _defenderAttackQueue;
         private NativeQueue<Wassup.Battle.Combat.Projectile.ProjectileHitEvent> _projectileHitEventQueue;
+        private NativeQueue<Wassup.Battle.Effects.EnemyCcEvent> _enemyCcQueue;
 
         // Phase 9 flow field 싱글톤 entity reference
         private Entity _flowFieldSingleton = Entity.Null;
@@ -263,12 +264,17 @@ namespace Wassup.Bridge
             _em.DestroyEntity(projectileHitSingletons);
             projectileHitSingletons.Dispose();
 
+            var enemyCcSingletons = _em.CreateEntityQuery(ComponentType.ReadOnly<Wassup.Battle.Effects.EnemyCcEventsSingleton>());
+            _em.DestroyEntity(enemyCcSingletons);
+            enemyCcSingletons.Dispose();
+
             // Dispose the queues; StartBattle will create fresh ones.
             if (_goalEventQueue.IsCreated) _goalEventQueue.Dispose();
             if (_defenderDeathQueue.IsCreated) _defenderDeathQueue.Dispose();
             if (_meteorBurstQueue.IsCreated) _meteorBurstQueue.Dispose();
             if (_defenderAttackQueue.IsCreated) _defenderAttackQueue.Dispose();
             if (_projectileHitEventQueue.IsCreated) _projectileHitEventQueue.Dispose();
+            if (_enemyCcQueue.IsCreated) _enemyCcQueue.Dispose();
 
             // Phase 9: dispose the flow field singleton arrays + destroy the entity.
             TeardownFlowField();
@@ -598,6 +604,13 @@ namespace Wassup.Bridge
             _projectileHitEventQueue = new NativeQueue<Wassup.Battle.Combat.Projectile.ProjectileHitEvent>(Allocator.Persistent);
             var projectileHitSingleton = _em.CreateEntity();
             _em.AddComponentData(projectileHitSingleton, new Wassup.Battle.Combat.Projectile.ProjectileHitEventsSingleton { queue = _projectileHitEventQueue });
+
+            // CC event channel. CcApplySystem drains this queue each frame to apply
+            // impulse / slow buffers to enemy entities.
+            if (_enemyCcQueue.IsCreated) _enemyCcQueue.Dispose();
+            _enemyCcQueue = new NativeQueue<Wassup.Battle.Effects.EnemyCcEvent>(Allocator.Persistent);
+            var enemyCcSingleton = _em.CreateEntity();
+            _em.AddComponentData(enemyCcSingleton, new Wassup.Battle.Effects.EnemyCcEventsSingleton { queue = _enemyCcQueue });
 
             // Fix 3 (task 10): seed visual RNG from map seed so jitter is reproducible per session.
             int visualSeed = (mapSettings != null ? mapSettings.EffectiveSeed : 42) ^ 0x5A5A5A5A;
