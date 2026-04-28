@@ -133,3 +133,5 @@ PlayMode smoke 는 그대로 유지.
 - Profiler GC.Alloc 표본: 100 projectile burst frame 의 Renderer/ParticleSystem 배열 할당 0.
 - 모든 EditMode 테스트 그린 (3 → 의식 3건 제거, 신규 2건 추가, ApplyHueShift 2건 유지 = 4건).
 - read_console Error/Warning 0.
+
+확인 2026-04-28 / 커밋: 58b722d
