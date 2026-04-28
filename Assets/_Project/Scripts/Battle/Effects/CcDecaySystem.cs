@@ -12,13 +12,23 @@ namespace Wassup.Battle.Effects
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            float dt = SystemAPI.Time.DeltaTime;
-            foreach (var buffer in SystemAPI.Query<DynamicBuffer<CcEffect>>())
+            state.Dependency = new CcDecayJob
+            {
+                DeltaTime = SystemAPI.Time.DeltaTime,
+            }.Schedule(state.Dependency);
+        }
+
+        [BurstCompile]
+        partial struct CcDecayJob : IJobEntity
+        {
+            public float DeltaTime;
+
+            void Execute(ref DynamicBuffer<CcEffect> buffer)
             {
                 for (int i = buffer.Length - 1; i >= 0; i--)
                 {
                     var entry = buffer[i];
-                    entry.remainingTime -= dt;
+                    entry.remainingTime -= DeltaTime;
                     if (entry.remainingTime <= 0f)
                         buffer.RemoveAtSwapBack(i);
                     else
