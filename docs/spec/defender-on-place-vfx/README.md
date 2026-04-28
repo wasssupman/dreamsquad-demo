@@ -1,8 +1,8 @@
 # Defender On-Place VFX Spec
 
 **작성일**: 2026-04-28
-**상태**: 진행 중 (task 0 완료 / task 1 추가)
-**목표**: 디펜더 배치 시점의 on-place 효과(`placementVfxPrefab`)에 실제 VFX 자산을 와이어링한다. 이번 spec 은 Archer (`BindNearby`) 1대만. 다른 9 디펜더는 후속 후보.
+**상태**: 완료 2026-04-28 (10 디펜더 placement 모두 와이어)
+**목표**: 디펜더 배치 시점의 on-place 효과(`placementVfxPrefab`)에 실제 VFX 자산을 와이어링한다. task 0 에서 Archer (`BindNearby` → Water) 검증, task 1 에서 다른 9 디펜더에 effect→AOE 매핑 적용.
 
 ## 배경
 
@@ -26,7 +26,7 @@
 
 ## 후속 후보 (이번 spec 밖)
 
-- **다른 9 디펜더 placementVfxPrefab 와이어링**: effect 별 자산 매핑 (`SlowPulse / BoostNearbyDefenders / MeleeBurst / ForwardProjectile / GainCost / ReduceSkillCooldown`). archer 와 같은 패턴으로 1대씩 검증 후 확장.
 - **자체 톤 일관 VFX**: PixPlays 자산 대신 자체 제작 톤으로 통일 (`Placement_SKELETON.prefab` 완성).
-- **VFX self-destroy 컴포넌트 표준화**: 모든 placement VFX prefab 이 자체 종료를 보장하는 ScriptableObject 또는 component 표준 마련.
-- **무기 anchor 추출 (`projectile-cast-and-anchor` spec)**: 이번 spec 의 이후 작업 항목.
+- **VFX self-destroy 컴포넌트 표준화**: PixPlays prefab 들의 `stopAction = 0` (None) 을 보완하는 표준 컴포넌트. 현재는 `BattleBridge.PlayDeploymentPresentation:1738` 의 `Destroy(go, max(deploymentDuration,1f)+0.25f)` 강제 destroy 로 우회 중.
+- **VFX 시각 길이/스케일 fine-tune**: 1.25s 초과 시 잘림 + 디펜더 크기 대비 VFX 스케일 조정.
+- **effect 별 VFX 톤 다양화**: 현재 같은 effect 디펜더가 같은 VFX 사용 (Bastion/Bruiser/Cannon 모두 Fire). 디펜더별 시각 차별화 후속.
