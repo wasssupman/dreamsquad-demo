@@ -86,7 +86,21 @@ namespace Wassup.Battle.Movement
                 // 4. Flow field step
                 int idx = GridMath.CellIndex(cell, field.gridSize);
                 float2 dir = field.flow[idx];
-                if (math.lengthsq(dir) < 1e-6f) continue; // unreachable: 제자리 유지
+                if (math.lengthsq(dir) < 1e-6f)
+                {
+                    // Zero-flow cell: impulse may have pushed entity into an unreachable cell.
+                    // Try 4 cardinal neighbors; move toward the one with the smallest finite dist.
+                    float2 recovDir = float2.zero;
+                    int bestD = field.dist[idx];
+                    int2 nb;
+                    int d;
+                    nb = cell + new int2( 1, 0); if (nb.x < field.gridSize.x) { d = field.dist[GridMath.CellIndex(nb, field.gridSize)]; if (d < bestD) { bestD = d; recovDir = new float2( 1, 0); } }
+                    nb = cell + new int2(-1, 0); if (nb.x >= 0)              { d = field.dist[GridMath.CellIndex(nb, field.gridSize)]; if (d < bestD) { bestD = d; recovDir = new float2(-1, 0); } }
+                    nb = cell + new int2( 0, 1); if (nb.y < field.gridSize.y) { d = field.dist[GridMath.CellIndex(nb, field.gridSize)]; if (d < bestD) { bestD = d; recovDir = new float2( 0, 1); } }
+                    nb = cell + new int2( 0,-1); if (nb.y >= 0)              { d = field.dist[GridMath.CellIndex(nb, field.gridSize)]; if (d < bestD) { bestD = d; recovDir = new float2( 0,-1); } }
+                    if (math.lengthsq(recovDir) < 1e-6f) continue; // truly isolated cell
+                    dir = recovDir;
+                }
 
                 float speedMul = 1f;
                 float3 impulseDisplacement = float3.zero;
