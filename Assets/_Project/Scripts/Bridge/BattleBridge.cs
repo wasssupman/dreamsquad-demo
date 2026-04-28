@@ -911,7 +911,7 @@ namespace Wassup.Bridge
         private int ApplySlowField(Vector2Int tile, SkillData skill)
         {
             // Collect all currently-alive attack unit entities; filter by XZ distance
-            // to the target world point; apply SlowEffect through EffectSpawner so
+            // to the target world point; apply slow CC effect through EffectSpawner so
             // the Effects context remains the sole writer.
             if (!_aliveAttackersQueryCreated) return 0;
             var entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);

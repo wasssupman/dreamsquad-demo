@@ -122,16 +122,17 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
-        public void SlowEffect_Halves_Flow_Step()
+        public void Slow_CcEffect_Halves_Flow_Step()
         {
             CreateLinearFlowField();
             var e = CreateUnit(new float3(0f, 0f, 0f), speed: 2f);
-            _em.AddComponentData(e, new SlowEffect { remaining = 5f, multiplier = 0.5f });
+            var buf = _em.AddBuffer<CcEffect>(e);
+            buf.Add(new CcEffect { kind = CcKind.Slow, scalar = 0.5f, remainingTime = 5f });
 
             Tick(1f);
 
             var pos = _em.GetComponentData<LocalTransform>(e).Position;
-            Assert.AreEqual(1f, pos.x, 1e-4f, "SlowEffect 0.5 × speed 2 × 1s = 1.0");
+            Assert.AreEqual(1f, pos.x, 1e-4f, "Slow CcEffect 0.5 × speed 2 × 1s = 1.0");
         }
     }
 }

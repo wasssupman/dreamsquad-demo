@@ -17,7 +17,7 @@ namespace Wassup.Tests.EditMode
     public class EffectIntegrationTests
     {
         [Test]
-        public void Movement_Applies_SlowEffect_Multiplier_To_Step()
+        public void Movement_Applies_Slow_CcEffect_Multiplier_To_Step()
         {
             using var world = new World("EffectIntegrationTests_Movement");
             var em = world.EntityManager;
@@ -41,13 +41,14 @@ namespace Wassup.Tests.EditMode
             var e = em.CreateEntity();
             em.AddComponentData(e, LocalTransform.FromPosition(new float3(0f, 0f, 0f)));
             em.AddComponentData(e, new PathFollowState { speed = 2f });
-            em.AddComponentData(e, new SlowEffect { remaining = 5f, multiplier = 0.5f });
+            var buf = em.AddBuffer<CcEffect>(e);
+            buf.Add(new CcEffect { kind = CcKind.Slow, scalar = 0.5f, remainingTime = 5f });
 
             world.SetTime(new TimeData(world.Time.ElapsedTime + 1f, 1f));
             simGroup.Update();
 
             var pos = em.GetComponentData<LocalTransform>(e).Position;
-            Assert.AreEqual(1f, pos.x, 1e-4f, "SlowEffect 0.5 should halve this frame's step.");
+            Assert.AreEqual(1f, pos.x, 1e-4f, "Slow CcEffect 0.5 should halve this frame's step.");
             Assert.AreEqual(2f, em.GetComponentData<PathFollowState>(e).speed, 1e-5f,
                 "Base speed field stays unchanged — Movement still owns it.");
 

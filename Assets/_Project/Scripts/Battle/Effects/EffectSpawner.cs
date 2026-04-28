@@ -6,7 +6,7 @@ namespace Wassup.Battle.Effects
     // Central choke point for adding/updating Effects-context components from
     // outside the Effects systems (typically BattleBridge.CastSkill*). Keeping
     // all writes behind this helper makes it straightforward to audit that only
-    // Effects code mutates SlowEffect / DamageBoost / CooldownReduction.
+    // Effects code mutates CcEffect / DamageBoost / CooldownReduction.
     //
     // Apply semantics: if the entity already carries the effect, the longer
     // remaining time wins and the newly supplied multiplier replaces the old
@@ -14,14 +14,43 @@ namespace Wassup.Battle.Effects
     // refreshes/extends the effect.
     public static class EffectSpawner
     {
-        public static void ApplySlow(EntityManager em, Entity entity, float duration, float multiplier)
-            => Apply<SlowEffect>(em, entity,
-                () => new SlowEffect { remaining = duration, multiplier = multiplier },
-                existing => new SlowEffect
+        // Adds or merges a CcEffect into the target's DynamicBuffer<CcEffect>.
+        // Same merge policy as CcApplySystem: max(remainingTime) + new vector/scalar.
+        public static void ApplyCc(EntityManager em, Entity target, CcEffect effect)
+        {
+            if (em.HasBuffer<CcEffect>(target))
+            {
+                var buffer = em.GetBuffer<CcEffect>(target);
+                for (int i = 0; i < buffer.Length; i++)
                 {
-                    remaining = existing.remaining > duration ? existing.remaining : duration,
-                    multiplier = multiplier,
-                });
+                    if (buffer[i].kind == effect.kind)
+                    {
+                        buffer[i] = new CcEffect
+                        {
+                            kind = effect.kind,
+                            vector = effect.vector,
+                            scalar = effect.scalar,
+                            remainingTime = math.max(buffer[i].remainingTime, effect.remainingTime),
+                        };
+                        return;
+                    }
+                }
+                buffer.Add(effect);
+            }
+            else
+            {
+                var buffer = em.AddBuffer<CcEffect>(target);
+                buffer.Add(effect);
+            }
+        }
+
+        public static void ApplySlow(EntityManager em, Entity entity, float duration, float multiplier)
+            => ApplyCc(em, entity, new CcEffect
+            {
+                kind = CcKind.Slow,
+                scalar = multiplier,
+                remainingTime = duration,
+            });
 
         public static void ApplyDamageBoost(EntityManager em, Entity entity, float duration, float multiplier)
             => Apply<DamageBoost>(em, entity,

@@ -19,7 +19,6 @@ namespace Wassup.Battle.Effects
         public void OnCreate(ref SystemState state)
         {
             state.RequireAnyForUpdate(
-                state.GetEntityQuery(ComponentType.ReadOnly<SlowEffect>()),
                 state.GetEntityQuery(ComponentType.ReadOnly<DamageBoost>()),
                 state.GetEntityQuery(ComponentType.ReadOnly<CooldownReduction>()),
                 state.GetEntityQuery(ComponentType.ReadOnly<TornadoField>()),
@@ -31,16 +30,6 @@ namespace Wassup.Battle.Effects
         {
             float dt = SystemAPI.Time.DeltaTime;
             var ecb = new EntityCommandBuffer(Allocator.Temp);
-
-            foreach (var (effect, entity) in
-                     SystemAPI.Query<RefRW<SlowEffect>>().WithEntityAccess())
-            {
-                effect.ValueRW.remaining -= dt;
-                if (effect.ValueRO.remaining <= 0f)
-                {
-                    ecb.RemoveComponent<SlowEffect>(entity);
-                }
-            }
 
             foreach (var (effect, entity) in
                      SystemAPI.Query<RefRW<DamageBoost>>().WithEntityAccess())

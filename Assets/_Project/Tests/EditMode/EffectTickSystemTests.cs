@@ -34,30 +34,6 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
-        public void Decrements_SlowEffect_Remaining_By_DeltaTime()
-        {
-            var e = _em.CreateEntity();
-            _em.AddComponentData(e, new SlowEffect { remaining = 2f, multiplier = 0.5f });
-
-            Tick(0.5f);
-
-            Assert.IsTrue(_em.HasComponent<SlowEffect>(e));
-            var remaining = _em.GetComponentData<SlowEffect>(e).remaining;
-            Assert.AreEqual(1.5f, remaining, 1e-5f);
-        }
-
-        [Test]
-        public void Removes_Expired_SlowEffect()
-        {
-            var e = _em.CreateEntity();
-            _em.AddComponentData(e, new SlowEffect { remaining = 0.25f, multiplier = 0.5f });
-
-            Tick(1f);
-
-            Assert.IsFalse(_em.HasComponent<SlowEffect>(e));
-        }
-
-        [Test]
         public void Removes_Expired_DamageBoost_And_CooldownReduction_Independently()
         {
             var e = _em.CreateEntity();
@@ -73,15 +49,30 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
-        public void EffectSpawner_Apply_Slow_Refreshes_Longer_Remaining()
+        public void EffectSpawner_ApplySlow_Writes_CcEffect_Buffer()
         {
             var e = _em.CreateEntity();
             EffectSpawner.ApplySlow(_em, e, duration: 4f, multiplier: 0.5f);
-            EffectSpawner.ApplySlow(_em, e, duration: 2f, multiplier: 0.25f); // shorter duration, new multiplier
 
-            var slow = _em.GetComponentData<SlowEffect>(e);
-            Assert.AreEqual(4f, slow.remaining, 1e-5f, "Longer existing remaining should be retained.");
-            Assert.AreEqual(0.25f, slow.multiplier, 1e-5f, "Latest multiplier should win.");
+            Assert.IsTrue(_em.HasBuffer<CcEffect>(e));
+            var buf = _em.GetBuffer<CcEffect>(e);
+            Assert.AreEqual(1, buf.Length);
+            Assert.AreEqual(CcKind.Slow, buf[0].kind);
+            Assert.AreEqual(0.5f, buf[0].scalar, 1e-5f);
+            Assert.AreEqual(4f, buf[0].remainingTime, 1e-5f);
+        }
+
+        [Test]
+        public void EffectSpawner_ApplySlow_Refreshes_Longer_Remaining()
+        {
+            var e = _em.CreateEntity();
+            EffectSpawner.ApplySlow(_em, e, duration: 4f, multiplier: 0.5f);
+            EffectSpawner.ApplySlow(_em, e, duration: 2f, multiplier: 0.25f);
+
+            var buf = _em.GetBuffer<CcEffect>(e);
+            Assert.AreEqual(1, buf.Length);
+            Assert.AreEqual(4f, buf[0].remainingTime, 1e-5f, "Longer existing remaining should be retained.");
+            Assert.AreEqual(0.25f, buf[0].scalar, 1e-5f, "Latest multiplier should win.");
         }
     }
 }

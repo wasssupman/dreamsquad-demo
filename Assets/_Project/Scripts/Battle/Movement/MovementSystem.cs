@@ -25,7 +25,7 @@ namespace Wassup.Battle.Movement
             float dt = SystemAPI.Time.DeltaTime;
 
             var field = SystemAPI.GetSingleton<FlowFieldSingleton>();
-            var slowLookup = SystemAPI.GetComponentLookup<SlowEffect>(isReadOnly: true);
+            var ccLookup = SystemAPI.GetBufferLookup<CcEffect>(isReadOnly: true);
 
             var portalQuery = SystemAPI.QueryBuilder().WithAll<PortalLink>().Build();
             var portals = portalQuery.ToComponentDataArray<PortalLink>(Allocator.Temp);
@@ -88,7 +88,16 @@ namespace Wassup.Battle.Movement
                 float2 dir = field.flow[idx];
                 if (math.lengthsq(dir) < 1e-6f) continue; // unreachable: 제자리 유지
 
-                float slowMul = slowLookup.HasComponent(entity) ? slowLookup[entity].multiplier : 1f;
+                float slowMul = 1f;
+                if (ccLookup.HasBuffer(entity))
+                {
+                    var ccBuf = ccLookup[entity];
+                    for (int i = 0; i < ccBuf.Length; i++)
+                    {
+                        if (ccBuf[i].kind == CcKind.Slow)
+                            slowMul *= ccBuf[i].scalar;
+                    }
+                }
                 float step = follow.ValueRO.speed * slowMul * dt;
                 float2 stepDir = math.normalizesafe(dir); // Phase 9: FlowFieldBuilder writes unit vectors;
                                                            // normalizesafe defensively handles future diagonal/non-unit flow
