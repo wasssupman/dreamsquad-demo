@@ -1750,6 +1750,7 @@ namespace Wassup.Bridge
             if (!_defenderByTile.TryGetValue(cell, out var binding) || binding.entity != entity) return false;
 
             int onPlaceAffected = ApplyOnPlaceEffect(binding.data, cell, entity);
+            ApplyOnPlacePush(binding.data, cell);
             _onPlaceTriggeredEntities.Add(entity);
             LogOnPlaceAndSynergy(binding.data, cell, onPlaceAffected);
             return true;
@@ -1937,9 +1938,40 @@ namespace Wassup.Bridge
             // new defender's SynergyBuff is computed. Individual on-place effect
             // rules decide whether the placed defender is included.
             int onPlaceAffected = ApplyOnPlaceEffect(unitData, cell, entity);
+            ApplyOnPlacePush(unitData, cell);
             _onPlaceTriggeredEntities.Add(entity);
             RecomputeSynergyFor(cell);
             LogOnPlaceAndSynergy(unitData, cell, onPlaceAffected);
+        }
+
+        private void ApplyOnPlacePush(DefenderUnitData unitData, Vector2Int cell)
+        {
+            if (unitData.onPlacePushDistance <= 0f || unitData.onPlacePushDuration <= 0f
+                || unitData.onPlacePushRadius <= 0f) return;
+            if (!_aliveAttackersQueryCreated) return;
+
+            float3 defCenter = GridToWorldCenter(cell);
+            float radiusSq = unitData.onPlacePushRadius * unitData.onPlacePushRadius;
+            float speed = unitData.onPlacePushDistance / unitData.onPlacePushDuration;
+
+            var entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
+            for (int i = 0; i < entities.Length; i++)
+            {
+                var e = entities[i];
+                if (!_em.HasComponent<LocalTransform>(e)) continue;
+                var pos = _em.GetComponentData<LocalTransform>(e).Position;
+                float3 toEnemy = pos - defCenter;
+                toEnemy.y = 0f;
+                if (toEnemy.x * toEnemy.x + toEnemy.z * toEnemy.z > radiusSq) continue;
+                float3 dir = math.normalizesafe(toEnemy);
+                EffectSpawner.ApplyCc(_em, e, new CcEffect
+                {
+                    kind = CcKind.Impulse,
+                    vector = dir * speed,
+                    remainingTime = unitData.onPlacePushDuration,
+                });
+            }
+            entities.Dispose();
         }
 
         private void LogOnPlaceAndSynergy(DefenderUnitData unitData, Vector2Int cell, int onPlaceAffected)

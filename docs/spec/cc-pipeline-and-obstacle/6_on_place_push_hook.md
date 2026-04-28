@@ -72,3 +72,5 @@ EntityManager 직접 접근이 가능한 MonoBehaviour 측 호출자 (BattleBrid
 - 기존 on-place skill (SlowPulse, BoostNearbyDefenders 등) 회귀 없음.
 - knockback (Unit 5) 와 동시 적용 시 merge 정책 정상.
 - 콘솔 에러/경고 0.
+
+완료: 2026-04-28 — 커밋 TBD (PlayMode 대기)
