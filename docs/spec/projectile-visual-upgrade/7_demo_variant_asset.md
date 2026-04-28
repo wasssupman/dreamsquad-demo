@@ -50,5 +50,5 @@ BattleScene Play 에서 Sniper 가 Draft 에 등장하도록 deck 설정 후:
 - Archer 의 발사는 회귀 없음 (기본 `Projectile_Arrow` 그대로).
 - read_console Error/Warning 0.
 
-확인 2026-04-28 / 커밋: (pending)
+확인 2026-04-28 / 커밋: 39903fd
 - 검증 통과 시 `Assets/Screenshots/audit/{date}/sniper_crimson_*.png` 1~2장 첨부 (이전 spec 들의 audit 폴더 패턴).

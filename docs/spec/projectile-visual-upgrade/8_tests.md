@@ -71,3 +71,5 @@ public IEnumerator HitPlayback_ReturnsToPool() {
 - PlayMode 1개 그린 (또는 축소 버전 그린).
 - 기존 `DraftSessionTests` 등 EditMode 슈트 회귀 없음.
 - read_console Error/Warning 0.
+
+확인 2026-04-28 / 커밋: (pending)

@@ -4,6 +4,7 @@
     "references": [
         "Wassup.Runtime",
         "PrimeTween.Runtime",
+        "Unity.Mathematics",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],

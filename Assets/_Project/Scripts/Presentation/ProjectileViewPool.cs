@@ -171,7 +171,7 @@ namespace Wassup.Presentation
             }
         }
 
-        private static Color ApplyHueShift(Color c, float hueShift)
+        public static Color ApplyHueShift(Color c, float hueShift)
         {
             Color.RGBToHSV(c, out float h, out float s, out float v);
             h = Mathf.Repeat(h + hueShift, 1f);
