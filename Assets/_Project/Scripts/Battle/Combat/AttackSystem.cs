@@ -219,24 +219,28 @@ namespace Wassup.Battle.Combat
                         var ccData = defenderCcLookup[defenderEntity];
                         if (ccData.knockbackDistance > 0f && ccData.knockbackDuration > 0f)
                         {
-                            // Push backward along path (negative flow at enemy cell) so
-                            // the enemy stays on the flow field. Fallback to defender→enemy
-                            // direction when the flow field is unavailable (e.g., tests).
+                            // Physical collision direction:
+                            //   D = projectile travel (defender→enemy)
+                            //   E = enemy travel (flow at enemy cell)
+                            //   dir = normalize(D - E)  ← relative-velocity impulse direction
+                            // Falls back to D when flow field unavailable (tests).
+                            float3 D = math.normalizesafe(bestTargetPos - defPos);
+                            D.y = 0f;
                             float3 dir;
                             if (SystemAPI.TryGetSingleton<Wassup.Battle.Effects.FlowFieldSingleton>(out var ff))
                             {
                                 var targetCell = GridMath.WorldToCell(bestTargetPos, ff.tileSize, ff.gridSize);
                                 int fIdx = GridMath.CellIndex(targetCell, ff.gridSize);
                                 float2 flowDir = ff.flow[fIdx];
-                                dir = math.normalizesafe(-new float3(flowDir.x, 0, flowDir.y));
+                                float3 E = math.normalizesafe(new float3(flowDir.x, 0, flowDir.y));
+                                dir = math.normalizesafe(D - E);
                                 if (math.lengthsq(dir) < 1e-6f)
-                                    dir = math.normalizesafe(bestTargetPos - defPos);
+                                    dir = D; // fallback when D == E (hit from behind)
                             }
                             else
                             {
-                                dir = math.normalizesafe(bestTargetPos - defPos);
+                                dir = D;
                             }
-                            dir.y = 0f;
                             float speed = ccData.knockbackDistance / ccData.knockbackDuration;
                             ccWriter.Value.Enqueue(new Wassup.Battle.Effects.EnemyCcEvent
                             {
