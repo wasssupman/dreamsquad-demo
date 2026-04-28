@@ -67,3 +67,5 @@ BattleScene Play 에서 각 디펜더 1대씩 배치 후 발사 확인:
 - 회귀 없음 (Archer cast 동작 유지, 풀 누수 0).
 - read_console Error/Warning 0.
 - 매핑 미스매치 (Scout/Ranger Arrow + Goat 등) 발견 시 메모 남기고 후속 후보로 이관.
+
+확인 2026-04-28 / 커밋: 51f285f

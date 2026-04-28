@@ -79,3 +79,5 @@ BattleScene Play 에서 9 디펜더 1대씩 차례로 배치 (Draft 에서 등�
 - BindNearby/MeleeBurst 등 게임 효과 회귀 없음.
 - read_console Error/Warning 0.
 - 시각 길이/스케일 부적합 발견 시 메모 — 후속 fine-tune 후보 (자산 자체 조정은 본 task 밖).
+
+확인 2026-04-28 / 커밋: 2625753
