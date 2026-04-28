@@ -61,3 +61,5 @@ private static Color ApplyHueShift(Color c, float hueShift01)
 - 시뮬 결정성 회귀 없음: 동일 시드로 wave 재생 시 데미지/이벤트 시퀀스 동일 (시각 RNG 가 시뮬 결정에 영향 없음을 코드 리뷰로 확인).
 - 풀 반환 후 같은 view 가 다른 spawn 에 재사용될 때 이전 MPB 잔재 없음.
 - read_console Error/Warning 0.
+
+확인 2026-04-28 / 커밋: (pending)

@@ -1236,7 +1236,7 @@ namespace Wassup.Bridge
             });
 
             var data = _projectileDataByIndex[req.dataIndex];
-            _projectileViewPool?.Spawn(entity, data.projectilePrefab, req.visualScale, data.facing, data.spinSpeed);
+            _projectileViewPool?.Spawn(entity, data);
         }
 
         // Fires the defender's on-place effect on surrounding entities. Returns

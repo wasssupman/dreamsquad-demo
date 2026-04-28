@@ -75,4 +75,4 @@ private struct ProjectileViewState
 - Splash 보조 타겟에는 hit VFX 가 안 뜸 (직접 타겟 1점만).
 - read_console Error/Warning 0.
 
-확인 2026-04-28 / 커밋: (pending)
+확인 2026-04-28 / 커밋: 9a6b8d2

@@ -19,25 +19,50 @@ namespace Wassup.Presentation
             public float3 lastPosition;
         }
 
+        private static readonly int PropBaseColor = Shader.PropertyToID("_BaseColor");
+        private static readonly int PropColor = Shader.PropertyToID("_Color");
+        private static readonly int PropEmissionColor = Shader.PropertyToID("_EmissionColor");
+        private static readonly int PropBaseMap = Shader.PropertyToID("_BaseMap");
+        private static readonly int PropMainTex = Shader.PropertyToID("_MainTex");
+
         private readonly Dictionary<Entity, ProjectileViewState> _active = new();
         private readonly Dictionary<GameObject, Stack<GameObject>> _pool = new();
         private readonly List<Entity> _toReturn = new(8);
         private readonly List<(Entity entity, float3 pos)> _posUpdates = new(8);
+        private MaterialPropertyBlock _mpb;
+        private System.Random _visualRng;
+
+        private void Awake()
+        {
+            _mpb = new MaterialPropertyBlock();
+            _visualRng = new System.Random();
+        }
 
         public int ActiveCount => _active.Count;
 
-        public void Spawn(Entity entity, GameObject prefab, float scale,
-            ProjectileFacing facing = ProjectileFacing.AlongVelocity, float spinSpeed = 0f)
+        public void Spawn(Entity entity, ProjectileData data)
         {
-            var view = GetOrCreate(prefab);
+            var view = GetOrCreate(data.projectilePrefab);
             view.SetActive(true);
-            view.transform.localScale = Vector3.one * scale;
+
+            float scaleMul = 1f + (float)(_visualRng.NextDouble() * 2 - 1) * data.scaleJitter;
+            view.transform.localScale = Vector3.one * (data.visualScale * scaleMul);
+
+            float hueShift = (float)(_visualRng.NextDouble() * 2 - 1) * data.hueJitter;
+            float rollDeg = (float)(_visualRng.NextDouble() * 2 - 1) * data.rotationJitter;
+            Color finalTint = ApplyHueShift(data.tintColor, hueShift);
+
+            ApplyMpb(view, finalTint, data.emissionMultiplier);
+
+            if (rollDeg != 0f)
+                view.transform.localRotation *= Quaternion.Euler(0f, 0f, rollDeg);
+
             _active[entity] = new ProjectileViewState
             {
                 view = view,
-                prefab = prefab,
-                facing = facing,
-                spinSpeed = spinSpeed,
+                prefab = data.projectilePrefab,
+                facing = data.facing,
+                spinSpeed = data.spinSpeed,
                 lastPosition = float3.zero,
             };
         }
@@ -79,7 +104,6 @@ namespace Wassup.Presentation
                 _posUpdates.Add((entity, pos));
             }
 
-            // Apply lastPosition updates outside the foreach to avoid modifying during iteration
             foreach (var (entity, pos) in _posUpdates)
             {
                 if (_active.TryGetValue(entity, out var s))
@@ -107,6 +131,28 @@ namespace Wassup.Presentation
             foreach (var (_, state) in _active)
                 ReturnToPool(state.view, state.prefab);
             _active.Clear();
+        }
+
+        private void ApplyMpb(GameObject view, Color tint, float emissionMul)
+        {
+            Color emission = tint * emissionMul;
+            foreach (var r in view.GetComponentsInChildren<Renderer>(includeInactive: false))
+            {
+                _mpb.Clear();
+                _mpb.SetColor(PropBaseColor, tint);
+                _mpb.SetColor(PropColor, tint);
+                _mpb.SetColor(PropEmissionColor, emission);
+                r.SetPropertyBlock(_mpb);
+            }
+        }
+
+        private static Color ApplyHueShift(Color c, float hueShift)
+        {
+            Color.RGBToHSV(c, out float h, out float s, out float v);
+            h = Mathf.Repeat(h + hueShift, 1f);
+            var result = Color.HSVToRGB(h, s, v);
+            result.a = c.a;
+            return result;
         }
 
         private float GetParticleLifetime(GameObject view)
@@ -143,6 +189,8 @@ namespace Wassup.Presentation
 
         private void ReturnToPool(GameObject view, GameObject prefab)
         {
+            foreach (var r in view.GetComponentsInChildren<Renderer>(includeInactive: false))
+                r.SetPropertyBlock(null);
             view.SetActive(false);
             if (!_pool.ContainsKey(prefab)) _pool[prefab] = new Stack<GameObject>();
             _pool[prefab].Push(view);

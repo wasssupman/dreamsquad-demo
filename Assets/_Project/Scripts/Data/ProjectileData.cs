@@ -33,6 +33,15 @@ namespace Wassup.Data
         public ProjectileFacing facing = ProjectileFacing.AlongVelocity;
         public float spinSpeed = 0f;
 
+        [Header("Variation - deterministic")]
+        public Color tintColor = Color.white;
+        public float emissionMultiplier = 1f;
+
+        [Header("Variation - per-shot random")]
+        [Range(0f, 1f)] public float scaleJitter = 0f;
+        [Range(0f, 0.5f)] public float hueJitter = 0f;
+        [Range(0f, 360f)] public float rotationJitter = 0f;
+
         // Phase 3에서 enum 필드만 존재. Phase 4부터 Splash가 실 사용 (Poison/Fire/Slow는
         // 여전히 미구현 자리표시).
         public OnHitEffectType onHitEffect = OnHitEffectType.None;
