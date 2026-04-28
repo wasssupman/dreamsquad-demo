@@ -1758,6 +1758,9 @@ namespace Wassup.Bridge
 
         public bool TriggerDeploymentOnPlaceSkill(Vector2Int cell, Entity entity)
         {
+            // NOTE: on-place push impulse is enqueued earlier — at TryBeginDefenderDeployment
+            // (drag-drop path) or PlaceDefenderAs (instant path). Do NOT re-call ApplyOnPlacePush
+            // here; that would double-fire the radius push impulse.
             if (_em == null || entity == Entity.Null || !_em.Exists(entity)) return false;
             if (_onPlaceTriggeredEntities.Contains(entity)) return false;
             if (!_defenderByTile.TryGetValue(cell, out var binding) || binding.entity != entity) return false;

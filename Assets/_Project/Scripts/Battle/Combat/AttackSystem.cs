@@ -226,32 +226,38 @@ namespace Wassup.Battle.Combat
                             // Falls back to D when flow field unavailable (tests).
                             float3 D = math.normalizesafe(bestTargetPos - defPos);
                             D.y = 0f;
-                            float3 dir;
-                            if (SystemAPI.TryGetSingleton<Wassup.Battle.Effects.FlowFieldSingleton>(out var ff))
+                            // Guard: defender colocated with target → D≈0 → no meaningful direction.
+                            // Skip impulse (otherwise dir would degenerate to -E and push the enemy
+                            // backward along its flow path, an unintended side effect).
+                            if (math.lengthsq(D) > 1e-6f)
                             {
-                                var targetCell = GridMath.WorldToCell(bestTargetPos, ff.tileSize, ff.gridSize);
-                                int fIdx = GridMath.CellIndex(targetCell, ff.gridSize);
-                                float2 flowDir = ff.flow[fIdx];
-                                float3 E = math.normalizesafe(new float3(flowDir.x, 0, flowDir.y));
-                                dir = math.normalizesafe(D - E);
-                                if (math.lengthsq(dir) < 1e-6f)
-                                    dir = D; // fallback when D == E (hit from behind)
-                            }
-                            else
-                            {
-                                dir = D;
-                            }
-                            float speed = ccData.knockbackDistance / ccData.knockbackDuration;
-                            ccWriter.Value.Enqueue(new Wassup.Battle.Effects.EnemyCcEvent
-                            {
-                                target = bestTarget,
-                                effect = new Wassup.Battle.Effects.CcEffect
+                                float3 dir;
+                                if (SystemAPI.TryGetSingleton<Wassup.Battle.Effects.FlowFieldSingleton>(out var ff))
                                 {
-                                    kind = Wassup.Battle.Effects.CcKind.Impulse,
-                                    vector = dir * speed,
-                                    remainingTime = ccData.knockbackDuration,
-                                },
-                            });
+                                    var targetCell = GridMath.WorldToCell(bestTargetPos, ff.tileSize, ff.gridSize);
+                                    int fIdx = GridMath.CellIndex(targetCell, ff.gridSize);
+                                    float2 flowDir = ff.flow[fIdx];
+                                    float3 E = math.normalizesafe(new float3(flowDir.x, 0, flowDir.y));
+                                    dir = math.normalizesafe(D - E);
+                                    if (math.lengthsq(dir) < 1e-6f)
+                                        dir = D; // fallback when D == E (hit from behind)
+                                }
+                                else
+                                {
+                                    dir = D;
+                                }
+                                float speed = ccData.knockbackDistance / ccData.knockbackDuration;
+                                ccWriter.Value.Enqueue(new Wassup.Battle.Effects.EnemyCcEvent
+                                {
+                                    target = bestTarget,
+                                    effect = new Wassup.Battle.Effects.CcEffect
+                                    {
+                                        kind = Wassup.Battle.Effects.CcKind.Impulse,
+                                        vector = dir * speed,
+                                        remainingTime = ccData.knockbackDuration,
+                                    },
+                                });
+                            }
                         }
                     }
                 }

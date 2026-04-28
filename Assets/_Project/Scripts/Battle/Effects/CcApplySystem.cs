@@ -17,6 +17,9 @@ namespace Wassup.Battle.Effects
             state.RequireForUpdate<EnemyCcEventsSingleton>();
         }
 
+        // OnUpdate is not Burst-compiled because the loop performs structural changes
+        // (EntityManager.HasBuffer/GetBuffer + ECB.AddBuffer<T>) — these are not
+        // Burst-eligible. Mirrors EffectTickSystem.cs's deliberate non-Burst pattern.
         public void OnUpdate(ref SystemState state)
         {
             var queue = SystemAPI.GetSingleton<EnemyCcEventsSingleton>().queue;
