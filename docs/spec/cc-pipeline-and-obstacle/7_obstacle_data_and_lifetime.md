@@ -71,4 +71,4 @@ public struct ObstacleSingleton : IComponentData
 - `blockedCells` 정상 생성/해제 (Editor 종료 시 NativeHashSet 누수 경고 없음).
 - 콘솔 에러/경고 0.
 
-완료: 2026-04-28 — 커밋 TBD
+완료: 2026-04-28 — f733898
