@@ -1,7 +1,7 @@
 # Projectile Visual Upgrade Spec
 
 **작성일**: 2026-04-28
-**상태**: 완료 2026-04-28
+**상태**: rev1 진행 중 (본체 0..8 완료 / rev1 task 10 추가)
 **연결 문서**: `docs/plans/2026-04-28-projectile-visual-upgrade-design.md`
 **목표**: ECS RenderMesh 기반의 단순 mesh+material 투사체를 PixPlays prefab 기반 시각으로 교체하고, 데이터-드리븐 + per-shot 랜덤 두 층의 배리에이션 인프라를 도입한다.
 
@@ -18,7 +18,8 @@
 | 6 | `6_texture_variants_runtime.md` | `Texture2D[] textureVariants` + selectMode 를 view pool 이 MPB 로 swap |
 | 7 | `7_demo_variant_asset.md` | 시연용 변종 ProjectileData 1개 + 디펜더 1종 와이어링 + Play smoke |
 | 8 | `8_tests.md` | EditMode (variation 결정성) + PlayMode smoke |
-| 9 | `9_handoff_summary.md` | spec 종료 시 인계 (커밋 hash, verified, follow-up) |
+| 9 | `9_handoff_summary.md` | 본체 종료 시 인계 (커밋 hash, verified, follow-up) |
+| 10 | `10_critical_fixes.md` | rev1: 첫 프레임 회전 / roll 누적 / RNG 시드 / 핫패스 GC / hit lifetime |
 
 ## 공통 원칙
 
