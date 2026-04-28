@@ -1,7 +1,7 @@
 # Projectile Visual Upgrade Spec
 
 **작성일**: 2026-04-28
-**상태**: 완료 2026-04-28 (본체 0..8 + rev1 task 10 모두 완료)
+**상태**: rev2 진행 중 (본체 0..8 + rev1 task 10 완료 / rev2 task 11 추가)
 **연결 문서**: `docs/plans/2026-04-28-projectile-visual-upgrade-design.md`
 **목표**: ECS RenderMesh 기반의 단순 mesh+material 투사체를 PixPlays prefab 기반 시각으로 교체하고, 데이터-드리븐 + per-shot 랜덤 두 층의 배리에이션 인프라를 도입한다.
 
@@ -20,6 +20,7 @@
 | 8 | `8_tests.md` | EditMode (variation 결정성) + PlayMode smoke |
 | 9 | `9_handoff_summary.md` | 본체 종료 시 인계 (커밋 hash, verified, follow-up) |
 | 10 | `10_critical_fixes.md` | rev1: 첫 프레임 회전 / roll 누적 / RNG 시드 / 핫패스 GC / hit lifetime |
+| 11 | `11_cast_and_anchor.md` | rev2: cast 머즐 플래시 + Spine bone anchor (Archer 1대 검증, 인프라는 8대 generic) |
 
 ## 공통 원칙
 
