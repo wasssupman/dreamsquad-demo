@@ -18,5 +18,10 @@ namespace Wassup.Battle.Combat.Projectile
         public OnHitEffectType onHitEffect;
         public float splashRadius;
         public float splashDamageMul;
+        // Hit-event channel: ProjectileHitSystem enqueues this index into the
+        // ProjectileHitEventsSingleton so the Presentation layer can resolve a
+        // hit-VFX prefab without ECS lookups. Populated from
+        // ProjectileSpawnRequest.assetIndex at launch.
+        public int dataIndex;
     }
 }

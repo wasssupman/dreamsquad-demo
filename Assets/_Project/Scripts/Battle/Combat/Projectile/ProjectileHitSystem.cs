@@ -34,6 +34,16 @@ namespace Wassup.Battle.Combat.Projectile
             var damageBufferLookup = SystemAPI.GetBufferLookup<IncomingDamage>(isReadOnly: false);
             var hitFlashLookup = SystemAPI.GetComponentLookup<HitFlashTag>(isReadOnly: true);
 
+            // Combat→Presentation: hit-VFX channel. May not exist before
+            // BattleBridge.EnsureQueriesAndQueues runs (very first frames in
+            // tests / dev hot-reload), so guarded by HasSingleton.
+            bool hasHitChannel = SystemAPI.HasSingleton<ProjectileHitEventsSingleton>();
+            NativeQueue<ProjectileHitEvent> hitQueue = default;
+            if (hasHitChannel)
+            {
+                hitQueue = SystemAPI.GetSingleton<ProjectileHitEventsSingleton>().queue;
+            }
+
             // Phase 4: snapshot all living attack units up-front so a Splash hit
             // can iterate them without doing a nested SystemAPI.Query inside the
             // projectile-iteration loop (Entities 1.4.x does not guarantee that
@@ -65,6 +75,19 @@ namespace Wassup.Battle.Combat.Projectile
                 if (damageBufferLookup.HasBuffer(target))
                 {
                     ecb.AppendToBuffer(target, new IncomingDamage { amount = projectile.ValueRO.damage });
+                }
+
+                // Combat→Presentation: enqueue a hit event so the MonoBehaviour
+                // view pool can play the configured hit prefab. One enqueue per
+                // direct target — splash secondary damage gets no extra VFX
+                // (intentional: visual is one impact per shot).
+                if (hasHitChannel)
+                {
+                    hitQueue.Enqueue(new ProjectileHitEvent
+                    {
+                        position = targetPos,
+                        dataIndex = projectile.ValueRO.dataIndex,
+                    });
                 }
 
                 // Phase 4 Splash AOE: distribute reduced damage to every other

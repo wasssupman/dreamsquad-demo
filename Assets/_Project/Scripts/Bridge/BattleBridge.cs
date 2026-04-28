@@ -97,6 +97,7 @@ namespace Wassup.Bridge
         private NativeQueue<DefenderDeathEvent> _defenderDeathQueue;
         private NativeQueue<Wassup.Battle.Combat.MeteorBurstEvent> _meteorBurstQueue;
         private NativeQueue<Wassup.Battle.Combat.DefenderAttackEvent> _defenderAttackQueue;
+        private NativeQueue<Wassup.Battle.Combat.Projectile.ProjectileHitEvent> _projectileHitEventQueue;
 
         // Phase 9 flow field 싱글톤 entity reference
         private Entity _flowFieldSingleton = Entity.Null;
@@ -257,11 +258,16 @@ namespace Wassup.Bridge
             _em.DestroyEntity(defenderAttackSingletons);
             defenderAttackSingletons.Dispose();
 
+            var projectileHitSingletons = _em.CreateEntityQuery(ComponentType.ReadOnly<Wassup.Battle.Combat.Projectile.ProjectileHitEventsSingleton>());
+            _em.DestroyEntity(projectileHitSingletons);
+            projectileHitSingletons.Dispose();
+
             // Dispose the queues; StartBattle will create fresh ones.
             if (_goalEventQueue.IsCreated) _goalEventQueue.Dispose();
             if (_defenderDeathQueue.IsCreated) _defenderDeathQueue.Dispose();
             if (_meteorBurstQueue.IsCreated) _meteorBurstQueue.Dispose();
             if (_defenderAttackQueue.IsCreated) _defenderAttackQueue.Dispose();
+            if (_projectileHitEventQueue.IsCreated) _projectileHitEventQueue.Dispose();
 
             // Phase 9: dispose the flow field singleton arrays + destroy the entity.
             TeardownFlowField();
@@ -583,6 +589,14 @@ namespace Wassup.Bridge
             _defenderAttackQueue = new NativeQueue<Wassup.Battle.Combat.DefenderAttackEvent>(Allocator.Persistent);
             var attackSingleton = _em.CreateEntity();
             _em.AddComponentData(attackSingleton, new Wassup.Battle.Combat.DefenderAttackEventsSingleton { queue = _defenderAttackQueue });
+
+            // Combat→Presentation hit-VFX channel. ProjectileHitSystem enqueues
+            // one event per direct-target impact; DrainProjectileHitEvents
+            // (currently a stub) will consume them in task 3 to play hit prefabs.
+            if (_projectileHitEventQueue.IsCreated) _projectileHitEventQueue.Dispose();
+            _projectileHitEventQueue = new NativeQueue<Wassup.Battle.Combat.Projectile.ProjectileHitEvent>(Allocator.Persistent);
+            var projectileHitSingleton = _em.CreateEntity();
+            _em.AddComponentData(projectileHitSingleton, new Wassup.Battle.Combat.Projectile.ProjectileHitEventsSingleton { queue = _projectileHitEventQueue });
 
             BuildMapForBattle();
         }
@@ -1043,6 +1057,7 @@ namespace Wassup.Bridge
             DrainDefenderDeathEvents();
             DrainMeteorBurstEvents();
             DrainDefenderAttackEvents();
+            DrainProjectileHitEvents();
             DrainGoalEvents();
             CheckTimer();
             CheckVictory();
@@ -1155,6 +1170,16 @@ namespace Wassup.Bridge
             }
         }
 
+        // Combat→Presentation hit-VFX channel drain. ProjectileHitSystem enqueues
+        // one event per direct-target impact. Task 0 keeps this as a no-op
+        // dequeue so the queue does not back up; task 3 connects it to the
+        // ProjectileViewPool.PlayHit path with the dataIndex→hitPrefab lookup.
+        private void DrainProjectileHitEvents()
+        {
+            if (!_projectileHitEventQueue.IsCreated) return;
+            while (_projectileHitEventQueue.TryDequeue(out _)) { }
+        }
+
         // Converts every staged ProjectileSpawnRequest into a live projectile entity.
         // Done here (MonoBehaviour) rather than inside AttackSystem because creating
         // RenderMesh components requires managed RenderMeshArray references that are
@@ -1202,6 +1227,7 @@ namespace Wassup.Bridge
                 onHitEffect = req.onHitEffect,
                 splashRadius = req.splashRadius,
                 splashDamageMul = req.splashDamageMul,
+                dataIndex = req.assetIndex,
             });
 
             var desc = new RenderMeshDescription(
@@ -1908,6 +1934,7 @@ namespace Wassup.Bridge
             if (_defenderDeathQueue.IsCreated) _defenderDeathQueue.Dispose();
             if (_meteorBurstQueue.IsCreated) _meteorBurstQueue.Dispose();
             if (_defenderAttackQueue.IsCreated) _defenderAttackQueue.Dispose();
+            if (_projectileHitEventQueue.IsCreated) _projectileHitEventQueue.Dispose();
             // Phase 9 — guard against editor shutdown / play stop leaking Persistent arrays.
             TeardownFlowField();
             // Phase 10A (P10A-04A): dispose GeneratedMap on destroy.
