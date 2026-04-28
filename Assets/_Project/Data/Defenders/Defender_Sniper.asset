@@ -34,6 +34,9 @@ MonoBehaviour:
   spineVisualScale: 1
   dragAnimation: find-item/find-item-loop
   deployAnimation: Curses/attack-slash-curse-necromancy
-  placementVfxPrefab: {fileID: 0}
+  placementVfxPrefab: {fileID: 4060967071236614201, guid: c91958420bcc8d647ae19c0e7caeafa6, type: 3}
+  attackVfxPrefab: {fileID: 0}
+  castAnchorBone: WEAPON
+  castAnchorLocalOffset: {x: 0.5, y: 1, z: 0}
   deploymentDuration: 0.45
   placementSkillDelay: 0

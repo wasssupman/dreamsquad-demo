@@ -17,6 +17,7 @@ MonoBehaviour:
   attackRange: 6
   attackDamage: 40
   attackCooldown: 1
+  attackTargetCount: 1
   visualMesh: {fileID: 0}
   visualMaterial: {fileID: 2100000, guid: a1b2c3d4e5f601234567890abcdef105, type: 2}
   projectile: {fileID: 11400000, guid: 2c9c91d62002f4c1aa822551525c8ca4, type: 2}
@@ -33,6 +34,9 @@ MonoBehaviour:
   spineVisualScale: 1
   dragAnimation: find-item/find-item-loop
   deployAnimation: cast-spell
-  placementVfxPrefab: {fileID: 0}
+  placementVfxPrefab: {fileID: 4060967071236614201, guid: c91958420bcc8d647ae19c0e7caeafa6, type: 3}
+  attackVfxPrefab: {fileID: 0}
+  castAnchorBone: WEAPON
+  castAnchorLocalOffset: {x: 0.5, y: 1, z: 0}
   deploymentDuration: 0.45
   placementSkillDelay: 0
