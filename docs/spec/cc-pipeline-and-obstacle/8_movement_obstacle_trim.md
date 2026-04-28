@@ -4,79 +4,77 @@
 
 ## 목적
 
-MovementSystem 에 cell trim 을 도입한다. desired 셀이 `blockedCells` 에 속하면 currentCell 경계 epsilon 안쪽으로 변위를 잘라낸다. flow 변위와 impulse 변위 모두 적용 (Q6=B 결정 — 큐브가 진짜 벽).
+Unit 5b 에서 만든 cell trim 시스템 (`MovementCellTrim.cs` 의 `IsWallCell` + `ClampToBoundary`, MovementSystem trim 분기) 을 확장하여, 큐브 (`ObstacleSingleton.blockedCells`) 도 wall 로 취급하게 만든다. trim 알고리즘 자체는 변경 없음.
 
 ## 변경 대상
 
+- Modify: `Assets/_Project/Scripts/Battle/Movement/MovementCellTrim.cs` (Unit 5b 에서 생성됨)
 - Modify: `Assets/_Project/Scripts/Battle/Movement/MovementSystem.cs`
-- Add: `Assets/_Project/Scripts/Battle/Movement/ObstacleTrim.cs` — `ClampToBoundary` 순수 함수
 
-## ClampToBoundary
+## IsWallCell 확장 — 옵션 택 1
+
+### 옵션 A: `IsWallCell` 시그니처에 obstacle 추가
 
 ```csharp
-// epsilon = 1e-3f cells. 셀 경계에 정확히 박지 않고 안쪽으로 끌어옴 (부동소수 오차 방지).
-public static float3 ClampToBoundary(
-    float3 current,
-    float3 desired,
-    int2 currentCell,
-    float tileSize,
-    int2 gridSize)
+public static bool IsWallCell(
+    int2 cell,
+    in FlowFieldSingleton field,
+    in NativeHashSet<int2> blockedCells)
 {
-    // currentCell 의 XZ AABB 계산:
-    //   minX = currentCell.x * tileSize, maxX = minX + tileSize
-    //   minZ = currentCell.y * tileSize, maxZ = minZ + tileSize
-    // y 는 무시.
-    //
-    // desired - current 직선이 currentCell AABB 의 X 또는 Z 경계와 만나는 t 를 구해
-    // 그 t 직전 (epsilon 만큼 안쪽) 위치까지만 이동.
-    //
-    // current 가 이미 셀 안에 있다고 가정 (호출자 보장).
-    // current 와 desired 가 같은 셀이면 desired 그대로 반환.
+    if (OOB(cell, field)) return true;
+    if (cell.Equals(field.goalCell)) return false;
+    if (blockedCells.Contains(cell)) return true;     // ← 본 unit 추가
+    return math.lengthsq(field.flow[idx]) < 1e-6f;
 }
 ```
 
-- Burst 호환 순수 수학 (Mathematics 만 사용).
-- y 좌표 보존.
-- `desired` 가 `currentCell` 안이면 변경 없이 반환.
+- 장점: trim 진입점 1곳 (호출자는 함수 하나만 보면 됨).
+- 단점: FlowField 와 ObstacleSingleton 양쪽 의존이 함수에 들어감.
+
+### 옵션 B: trim 분기 조건에 OR 추가
+
+```csharp
+bool wall = IsWallCell(targetCell, field) || obstacleSingleton.blockedCells.Contains(targetCell);
+if (!currentCell.Equals(targetCell) && wall)
+{
+    desired = ClampToBoundary(current, desired, currentCell, field.tileSize);
+}
+```
+
+- 장점: `IsWallCell` 시그니처 보존. obstacle 의존성 호출자에 격리.
+- 단점: 다른 호출자가 생기면 같은 OR 를 또 추가해야 함.
+
+본 unit 구현 시점에 선택. **추천: 옵션 B** (관심사 분리, 5b 시그니처 보존).
 
 ## MovementSystem 통합
 
-기존 변위 적용 직전에:
+옵션 B 채택 시: 5b 의 trim 분기 위에 한 줄 (`bool wall = ...`) 추가.
 
-```csharp
-float3 desired = current + flowStep + impulseDisplacement;
+옵션 A 채택 시: `IsWallCell` 호출에 `obstacleSingleton.blockedCells` 인자 추가.
 
-int2 currentCell = GridMath.WorldToCell(current, field.tileSize, field.gridSize);
-int2 targetCell  = GridMath.WorldToCell(desired, field.tileSize, field.gridSize);
+`obstacleSingleton` 은 `SystemAPI.GetSingleton<ObstacleSingleton>()` 으로 read-only 획득.
 
-if (!currentCell.Equals(targetCell) && obstacleSingleton.blockedCells.Contains(targetCell))
-{
-    desired = ClampToBoundary(current, desired, currentCell, field.tileSize, field.gridSize);
-}
+## 의도 + 엣지 케이스
 
-transform.ValueRW.Position = desired;
-```
-
-`obstacleSingleton` 은 `SystemAPI.GetSingleton<ObstacleSingleton>()`. `blockedCells` read-only.
-
-## 의도
-
-- flow 와 impulse 합성 *후* 한 번만 trim → 두 변위가 모두 영향 받음.
-- 같은 셀 내 미세 이동은 통과 (분기 첫 조건).
-- 큐브 셀 안에 적이 이미 들어있는 상태 (디버그 spawn 으로 가능) 는 통과 허용 → 셀 경계 도달 시 정지.
+- 5b 의 trim 의도 그대로 + 큐브 wall 추가.
+- **goal 셀 == obstacle 셀 디버그 spawn**: goal 우선. `IsWallCell` 의 goal 분기가 먼저 false 반환 (옵션 A) 또는 trim 분기가 통과 허용 (옵션 B 에서도 동일하게 처리) — 구현 시 goal 분기를 obstacle 체크보다 먼저 두어 명시적 우선순위 확보.
+- **큐브 셀 안에 적이 이미 들어있는 상태**: `currentCell == targetCell` 분기에서 통과 허용 → 셀 경계 도달 시 정지 (5b 와 동일 동작).
+- **큐브 사라지는 프레임**: ObstacleLifetimeSystem (Unit 7) 이 MovementSystem 이전에 `blockedCells.Clear()` + 재구축 → 같은 프레임에 큐브 제거 반영. trim 분기 자동 해제.
 
 ## 단위 테스트 (EditMode)
 
-- `ObstacleTrimTests`:
-  - 직선이 X 경계 통과 → epsilon 안쪽 점 반환 (X 좌표만 잘림).
-  - 직선이 Z 경계 통과 → epsilon 안쪽 점 반환 (Z 좌표만 잘림).
-  - 직선이 코너 통과 (X, Z 둘 다 경계 침범) → 먼저 닿는 축 기준 잘림.
-  - 같은 셀 내 이동 (current cell == target cell) → desired 그대로.
-  - y 좌표 보존.
+- 5b 의 `MovementCellTrimTests` 에 케이스 추가:
+  - `blockedCells` 에 cell 포함 → wall (trim 발동).
+  - `blockedCells` 미포함 + 경로 셀 → 통과.
+  - obstacle cell == goal cell → 통과 허용 (goal 우선).
+  - obstacle cell == 영벡터 cell → wall (의도, 어쨌든 둘 다 wall).
 
 ## 완료 기준
 
 - 컴파일 + Burst 활성.
 - 단위테스트 통과.
-- 큐브 spawn 진입점 미존재 (다음 unit) 이므로 런타임 동작 변화 0.
+- 큐브 spawn 진입점 미존재 (Unit 9) 이므로 런타임 동작 변화 0.
+- 5b 의 path-wall 동작 회귀 없음.
 - 콘솔 에러/경고 0.
+
+완료: 2026-04-28 — 커밋 TBD

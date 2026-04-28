@@ -26,6 +26,7 @@ namespace Wassup.Battle.Movement
 
             var field = SystemAPI.GetSingleton<FlowFieldSingleton>();
             var ccLookup = SystemAPI.GetBufferLookup<CcEffect>(isReadOnly: true);
+            var hasObstacles = SystemAPI.TryGetSingleton<ObstacleSingleton>(out var obstacleSingleton);
 
             var portalQuery = SystemAPI.QueryBuilder().WithAll<PortalLink>().Build();
             var portals = portalQuery.ToComponentDataArray<PortalLink>(Allocator.Temp);
@@ -121,7 +122,20 @@ namespace Wassup.Battle.Movement
                                                            // normalizesafe defensively handles future diagonal/non-unit flow
                                                            // and returns zero for <1e-6 magnitude (already guarded above).
                 float3 flowStep = new float3(stepDir.x, 0, stepDir.y) * follow.ValueRO.speed * speedMul * dt;
-                transform.ValueRW.Position = current + flowStep + impulseDisplacement;
+                float3 desired = current + flowStep + impulseDisplacement;
+
+                // Cell-trim (option B): prevent impulse from pushing into wall or obstacle cells.
+                int2 targetCell = GridMath.WorldToCell(desired, field.tileSize, field.gridSize);
+                if (!cell.Equals(targetCell))
+                {
+                    bool isWall = MovementCellTrim.IsWallCell(targetCell, in field);
+                    if (!isWall && hasObstacles)
+                        isWall = obstacleSingleton.blockedCells.Contains(targetCell);
+                    if (isWall)
+                        desired = MovementCellTrim.ClampToBoundary(desired, cell, field.tileSize);
+                }
+
+                transform.ValueRW.Position = desired;
             }
 
             portals.Dispose();
