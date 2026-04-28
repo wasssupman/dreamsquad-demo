@@ -12,10 +12,7 @@ namespace Wassup.Battle.Effects
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            state.Dependency = new CcDecayJob
-            {
-                DeltaTime = SystemAPI.Time.DeltaTime,
-            }.Schedule(state.Dependency);
+            new CcDecayJob { DeltaTime = SystemAPI.Time.DeltaTime }.Run();
         }
 
         [BurstCompile]
