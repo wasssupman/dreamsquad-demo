@@ -15,7 +15,7 @@ MonoBehaviour:
   id: sniper_crimson
   speed: 22
   hitThreshold: 0.3
-  visualScale: 0.84000003
+  visualScale: 1.6800001
   projectilePrefab: {fileID: 6354686006975832417, guid: 8ba61049d6d48464d81e1c7030773377, type: 3}
   hitPrefab: {fileID: 0}
   facing: 0
