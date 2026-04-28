@@ -71,7 +71,8 @@ namespace Wassup.Tests.EditMode
         {
             var result = MovementCellTrim.ClampToBoundary(
                 new float3(3f, 0, 0), new int2(1, 0), tileSize: 1f);
-            Assert.AreEqual(1.5f, result.x, 1e-5f, "clamped to right boundary of cell (1,0)");
+            // Epsilon-inset boundary: 1.0 + (0.5 - 0.001) = 1.499
+            Assert.AreEqual(1.499f, result.x, 1e-3f, "clamped strictly inside right boundary of cell (1,0)");
         }
 
         [Test]
@@ -79,7 +80,8 @@ namespace Wassup.Tests.EditMode
         {
             var result = MovementCellTrim.ClampToBoundary(
                 new float3(0, 0, 5f), new int2(0, 0), tileSize: 1f);
-            Assert.AreEqual(0.5f, result.z, 1e-5f, "clamped to top boundary of cell (0,0)");
+            // Epsilon-inset boundary: 0.0 + (0.5 - 0.001) = 0.499
+            Assert.AreEqual(0.499f, result.z, 1e-3f, "clamped strictly inside top boundary of cell (0,0)");
         }
 
         [Test]

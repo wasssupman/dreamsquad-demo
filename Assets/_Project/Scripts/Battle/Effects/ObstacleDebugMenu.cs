@@ -11,7 +11,7 @@ namespace Wassup.Battle.Effects
     // Default cell (3,2) — edit _cell below to match the test map.
     public static class ObstacleDebugMenu
     {
-        private static int2 _cell = new int2(3, 2);
+        private static int2 _cell = new int2(3, 1);
         private static float _lifetime = 5f;
 
         [MenuItem("Wassup/Battle/Debug/Spawn Obstacle (5s)")]

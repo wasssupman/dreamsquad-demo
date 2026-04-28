@@ -1958,10 +1958,29 @@ namespace Wassup.Bridge
 
         public Unity.Entities.Entity DebugSpawnObstacleAt(Unity.Mathematics.int2 cell, float lifetime = 5f)
         {
-            if (_em == null) return Unity.Entities.Entity.Null;
+            if (_em == null)
+            {
+                Debug.LogWarning("[ObstacleDebug] _em is null — call StartBattle first.");
+                return Unity.Entities.Entity.Null;
+            }
             float3 worldPos = GridToWorldCenter(new Vector2Int(cell.x, cell.y));
-            return Wassup.Battle.Effects.EffectSpawner.SpawnObstacle(_em, cell, worldPos, lifetime);
+            var e = Wassup.Battle.Effects.EffectSpawner.SpawnObstacle(_em, cell, worldPos, lifetime);
+            Debug.Log($"[ObstacleDebug] Spawned entity {e} at cell {cell} world {worldPos} lifetime={lifetime}s");
+
+            // Debug visual: semi-transparent cube that despawns with the obstacle.
+            var cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            cube.name = $"DebugObstacle_{cell.x}_{cell.y}";
+            cube.transform.position = new Vector3(worldPos.x, worldPos.y + tileSize * 0.5f, worldPos.z);
+            cube.transform.localScale = Vector3.one * tileSize;
+            var mat = cube.GetComponent<Renderer>().material;
+            mat.color = new Color(1f, 0.4f, 0.1f, 0.7f);
+            Destroy(cube, lifetime);
+
+            return e;
         }
+
+        [UnityEngine.ContextMenu("Debug Spawn Obstacle At (3,1)")]
+        private void DebugSpawnObstacleContext() => DebugSpawnObstacleAt(new Unity.Mathematics.int2(3, 1), 5f);
 
         private void ApplyOnPlacePush(DefenderUnitData unitData, Vector2Int cell)
         {

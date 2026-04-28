@@ -18,7 +18,11 @@ namespace Wassup.Battle.Movement
 
         public static float3 ClampToBoundary(float3 desired, int2 currentCell, float tileSize)
         {
-            float half = tileSize * 0.5f;
+            // Subtract epsilon so the clamped position stays strictly inside currentCell.
+            // WorldToCell rounds 0.5 up to the next cell, so without epsilon an entity
+            // clamped to exactly ±0.5*tileSize would be mapped to the adjacent blocked cell,
+            // causing the trim condition (currentCell != targetCell) to be false next frame.
+            float half = tileSize * 0.5f - 1e-3f;
             return new float3(
                 math.clamp(desired.x, currentCell.x * tileSize - half, currentCell.x * tileSize + half),
                 desired.y,
