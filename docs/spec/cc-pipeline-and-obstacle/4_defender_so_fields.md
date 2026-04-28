@@ -49,3 +49,5 @@ public float onPlacePushRadius;   // world units. 디펜더 중심 반경 안 �
 - ECS 미러 (사용 시) 의 5필드도 0 으로 초기화됨.
 - 런타임 동작 변화 0.
 - 콘솔 에러/경고 0.
+
+완료: 2026-04-28 — 커밋 TBD

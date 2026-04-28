@@ -1868,6 +1868,14 @@ namespace Wassup.Bridge
                 cooldownRemaining = 0f,
                 attackTargetCount = unitData.attackTargetCount,
             });
+            _em.AddComponentData(entity, new Wassup.Battle.Combat.DefenderCcData
+            {
+                knockbackDistance   = unitData.knockbackDistance,
+                knockbackDuration   = unitData.knockbackDuration,
+                onPlacePushDistance = unitData.onPlacePushDistance,
+                onPlacePushDuration = unitData.onPlacePushDuration,
+                onPlacePushRadius   = unitData.onPlacePushRadius,
+            });
             if (pendingDeployment)
                 _em.AddComponent<PendingDeployment>(entity);
 

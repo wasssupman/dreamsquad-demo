@@ -56,6 +56,15 @@ namespace Wassup.Data
         public GameObject placementVfxPrefab;
         public GameObject attackVfxPrefab;
 
+        [Header("Knockback (per attack)")]
+        public float knockbackDistance;   // world units. 0 = disabled
+        public float knockbackDuration;   // seconds. velocity = direction * distance / duration
+
+        [Header("On-place Push")]
+        public float onPlacePushDistance; // world units. 0 = disabled
+        public float onPlacePushDuration; // seconds
+        public float onPlacePushRadius;   // world units, radial from defender center
+
         [Header("Cast Anchor")]
         public string castAnchorBone = "";
         public Vector3 castAnchorLocalOffset = new Vector3(0.5f, 1f, 0f);
