@@ -68,4 +68,4 @@ public struct EnemyCcEventsSingleton : IComponentData
 - 콘솔 에러/경고 0.
 - `CcKind` 와 `CcEffect.kind / vector / scalar / remainingTime` 식별자가 grep 으로 발견됨.
 
-완료: 2026-04-28 — 커밋 해시 TBD
+완료: 2026-04-28 — c788a6c
