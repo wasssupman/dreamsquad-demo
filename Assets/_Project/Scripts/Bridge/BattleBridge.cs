@@ -1170,10 +1170,20 @@ namespace Wassup.Bridge
             if (!_defenderAttackQueue.IsCreated) return;
             while (_defenderAttackQueue.TryDequeue(out var evt))
             {
-                if (spineDefenderPool == null) continue;
                 var targetWorld = new Vector3(evt.targetWorld.x, evt.targetWorld.y, evt.targetWorld.z);
-                spineDefenderPool.NotifyAttack(evt.defender, targetWorld);
+                spineDefenderPool?.NotifyAttack(evt.defender, targetWorld);
+
+                var defData = FindDefenderData(evt.defender);
+                if (defData?.attackVfxPrefab != null)
+                    _projectileViewPool?.PlayHit(defData.attackVfxPrefab, evt.targetWorld);
             }
+        }
+
+        private DefenderUnitData FindDefenderData(Entity entity)
+        {
+            foreach (var kv in _defenderByTile)
+                if (kv.Value.entity == entity) return kv.Value.data;
+            return null;
         }
 
         // Combat→Presentation hit-VFX channel drain. ProjectileHitSystem enqueues

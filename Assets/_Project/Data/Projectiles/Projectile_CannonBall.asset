@@ -16,8 +16,8 @@ MonoBehaviour:
   speed: 7
   hitThreshold: 0.4
   visualScale: 3
-  projectilePrefab: {fileID: 7866002994442904433, guid: ce5e6c05cc9837b4e8e08e6507db9d07, type: 3}
-  hitPrefab: {fileID: 4830294202082529915, guid: 04e8b0b6ae02ffb419cc12f41626e4e5, type: 3}
+  projectilePrefab: {fileID: 6487987637173855206, guid: 29a9704bef55c3240bfe88bfc33c71cc, type: 3}
+  hitPrefab: {fileID: 3911334593277181048, guid: 252e45bbff96e814b8cc8641fe650525, type: 3}
   facing: 2
   spinSpeed: 360
   tintColor: {r: 1, g: 1, b: 1, a: 1}

@@ -35,5 +35,6 @@ MonoBehaviour:
   dragAnimation: find-item/find-item-loop
   deployAnimation: attack-combo1-hammer
   placementVfxPrefab: {fileID: 0}
+  attackVfxPrefab: {fileID: 5971203435228136222, guid: f0b2a41c3f8adb84f8753145e83bafe7, type: 3}
   deploymentDuration: 0.45
   placementSkillDelay: 0

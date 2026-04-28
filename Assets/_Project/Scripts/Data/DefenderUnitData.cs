@@ -54,6 +54,7 @@ namespace Wassup.Data
         public string dragAnimation = "idle";
         public string deployAnimation = "deploy";
         public GameObject placementVfxPrefab;
+        public GameObject attackVfxPrefab;
         public float deploymentDuration = 0.45f;
         public float placementSkillDelay = 0f;
     }
