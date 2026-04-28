@@ -1725,6 +1725,7 @@ namespace Wassup.Bridge
             _occupiedTiles.Add(cell);
             GameManager.Instance?.Logger?.RecordPlacement(unitData.displayName, cell, Time.time - _startTime, unitData.cost);
             entity = CreateDefenderEntity(cell, unitData, pendingDeployment: true, spawnPlacementVfx: false);
+            ApplyOnPlacePush(unitData, cell);
             Debug.Log($"[BattleBridge] Began pending deployment for {unitData.displayName} at ({tileX},{tileY}).");
             return true;
         }
@@ -1750,7 +1751,6 @@ namespace Wassup.Bridge
             if (!_defenderByTile.TryGetValue(cell, out var binding) || binding.entity != entity) return false;
 
             int onPlaceAffected = ApplyOnPlaceEffect(binding.data, cell, entity);
-            ApplyOnPlacePush(binding.data, cell);
             _onPlaceTriggeredEntities.Add(entity);
             LogOnPlaceAndSynergy(binding.data, cell, onPlaceAffected);
             return true;
