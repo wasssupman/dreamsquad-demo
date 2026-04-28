@@ -28,6 +28,8 @@ MonoBehaviour:
   textureVariants: []
   selectMode: 0
   hitVfxLifetime: 0
+  castPrefab: {fileID: 4516154863890805629, guid: 20500c467e5bd38409ade86cab21b4de, type: 3}
+  castVfxLifetime: 0
   onHitEffect: 0
   onHitMagnitude: 0
   onHitDuration: 0

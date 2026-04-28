@@ -148,6 +148,20 @@ namespace Wassup.Presentation
             }
         }
 
+        public Vector3 ResolveCastAnchor()
+        {
+            if (_skeleton != null && _skeleton.Skeleton != null && !string.IsNullOrEmpty(_unitData.castAnchorBone))
+            {
+                var bone = _skeleton.Skeleton.FindBone(_unitData.castAnchorBone);
+                if (bone != null)
+                    return transform.TransformPoint(new Vector3(bone.WorldX, bone.WorldY, 0f));
+            }
+            var off = _unitData.castAnchorLocalOffset;
+            if (_skeleton != null && _skeleton.Skeleton != null && _skeleton.Skeleton.ScaleX < 0f)
+                off.x = -off.x;
+            return transform.TransformPoint(off);
+        }
+
         private void PlayIdleLooping()
         {
             if (_skeleton == null || string.IsNullOrEmpty(_unitData.idleAnimation)) return;

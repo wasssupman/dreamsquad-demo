@@ -55,6 +55,10 @@ namespace Wassup.Data
         public string deployAnimation = "deploy";
         public GameObject placementVfxPrefab;
         public GameObject attackVfxPrefab;
+
+        [Header("Cast Anchor")]
+        public string castAnchorBone = "";
+        public Vector3 castAnchorLocalOffset = new Vector3(0.5f, 1f, 0f);
         public float deploymentDuration = 0.45f;
         public float placementSkillDelay = 0f;
     }

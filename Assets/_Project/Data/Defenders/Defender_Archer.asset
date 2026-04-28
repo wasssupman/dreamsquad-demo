@@ -35,5 +35,8 @@ MonoBehaviour:
   dragAnimation: find-item/find-item-loop
   deployAnimation: cast-spell2
   placementVfxPrefab: {fileID: 96566848741554304, guid: 12bfc3638c321cb498765554bb7194eb, type: 3}
+  attackVfxPrefab: {fileID: 0}
+  castAnchorBone: WEAPON
+  castAnchorLocalOffset: {x: 0.5, y: 1, z: 0}
   deploymentDuration: 0.45
   placementSkillDelay: 0

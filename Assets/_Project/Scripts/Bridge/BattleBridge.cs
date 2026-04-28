@@ -1176,6 +1176,8 @@ namespace Wassup.Bridge
                 var defData = FindDefenderData(evt.defender);
                 if (defData?.attackVfxPrefab != null)
                     _projectileViewPool?.PlayHit(defData.attackVfxPrefab, evt.targetWorld);
+
+                TrySpawnCastVfx(evt.defender, targetWorld);
             }
         }
 
@@ -1184,6 +1186,19 @@ namespace Wassup.Bridge
             foreach (var kv in _defenderByTile)
                 if (kv.Value.entity == entity) return kv.Value.data;
             return null;
+        }
+
+        private void TrySpawnCastVfx(Entity defender, Vector3 targetWorld)
+        {
+            if (_projectileViewPool == null) return;
+            if (!_em.HasComponent<ProjectileRef>(defender)) return;
+            var pRef = _em.GetComponentData<ProjectileRef>(defender);
+            if (pRef.dataIndex < 0 || pRef.dataIndex >= _projectileDataByIndex.Count) return;
+            var data = _projectileDataByIndex[pRef.dataIndex];
+            if (data.castPrefab == null) return;
+            if (spineDefenderPool == null || !spineDefenderPool.TryResolveAnchor(defender, out var anchor)) return;
+            var dir = targetWorld - anchor; dir.y = 0f;
+            _projectileViewPool.PlayCast(data.castPrefab, anchor, dir, data.castVfxLifetime);
         }
 
         // Combat→Presentation hit-VFX channel drain. ProjectileHitSystem enqueues

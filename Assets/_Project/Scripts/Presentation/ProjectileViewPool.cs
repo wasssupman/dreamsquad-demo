@@ -146,6 +146,17 @@ namespace Wassup.Presentation
             StartCoroutine(DespawnAfter(view, hitPrefab, lifetime));
         }
 
+        public void PlayCast(GameObject castPrefab, Vector3 position, Vector3 facingDir, float lifetime = 0f)
+        {
+            var view = GetOrCreate(castPrefab);
+            view.SetActive(true);
+            view.transform.position = position;
+            if (facingDir.sqrMagnitude > 0.0001f)
+                view.transform.rotation = Quaternion.LookRotation(facingDir, Vector3.up);
+            float life = lifetime > 0f ? lifetime : GetParticleLifetime(view);
+            StartCoroutine(DespawnAfter(view, castPrefab, life));
+        }
+
         public void DespawnAll()
         {
             foreach (var (_, state) in _active)

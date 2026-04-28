@@ -38,6 +38,13 @@ namespace Wassup.Presentation
             }
         }
 
+        public bool TryResolveAnchor(Entity entity, out Vector3 worldPos)
+        {
+            if (TryGet(entity, out var view)) { worldPos = view.ResolveCastAnchor(); return true; }
+            worldPos = default;
+            return false;
+        }
+
         public void NotifyDeath(Entity entity)
         {
             if (_byEntity.TryGetValue(entity, out var view) && view != null) view.Kill();

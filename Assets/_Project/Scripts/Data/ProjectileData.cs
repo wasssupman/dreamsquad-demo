@@ -56,6 +56,10 @@ namespace Wassup.Data
         [Header("Hit VFX")]
         public float hitVfxLifetime = 0f;
 
+        [Header("Cast VFX")]
+        public GameObject castPrefab;
+        public float castVfxLifetime = 0f;
+
         // Phase 3에서 enum 필드만 존재. Phase 4부터 Splash가 실 사용 (Poison/Fire/Slow는
         // 여전히 미구현 자리표시).
         public OnHitEffectType onHitEffect = OnHitEffectType.None;
