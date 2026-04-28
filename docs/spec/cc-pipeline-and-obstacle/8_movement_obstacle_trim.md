@@ -77,4 +77,4 @@ if (!currentCell.Equals(targetCell) && wall)
 - 5b 의 path-wall 동작 회귀 없음.
 - 콘솔 에러/경고 0.
 
-완료: 2026-04-28 — 커밋 TBD
+완료: 2026-04-28 — fd99f92
