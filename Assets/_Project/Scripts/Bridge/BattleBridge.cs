@@ -53,6 +53,7 @@ namespace Wassup.Bridge
         [SerializeField] private Wassup.Presentation.QuadUnitViewPool defenderFallbackViewPool;
         [SerializeField] private float spineDefenderYOffset = 0f;
         [SerializeField] private Wassup.Presentation.VfxSpawner vfxSpawner;
+        [SerializeField] private Wassup.Presentation.ProjectileViewPool _projectileViewPool;
         // Phase 9 P9-07 — tileSize 단일 소스화. Awake 에서 MapView/PlacementInput 으로 주입.
         [SerializeField] private Wassup.Core.MapView mapView;
         [SerializeField] private Wassup.Core.PlacementInput placementInput;
@@ -1066,6 +1067,7 @@ namespace Wassup.Bridge
         private void LateUpdate()
         {
             SyncMonoUnitViews();
+            if (_em != null) _projectileViewPool?.SyncTransforms(_em);
         }
 
         private void SyncMonoUnitViews()
