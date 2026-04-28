@@ -15,9 +15,9 @@ MonoBehaviour:
   id: arrow
   speed: 12
   hitThreshold: 0.35
-  visualScale: 1.5
-  projectilePrefab: {fileID: 315027223739610927, guid: afd9423e0344bc34ebfac6de045f83b4, type: 3}
-  hitPrefab: {fileID: 2327102579080002057, guid: 67fe4ff493f9cd54fb27509991fb7b65, type: 3}
+  visualScale: 3
+  projectilePrefab: {fileID: 2548779769269718283, guid: 4c0502167a8ff8b4fa96aca7213cf59b, type: 3}
+  hitPrefab: {fileID: 5130995591288852204, guid: ca77b6beeba2e1a49a780af9cca16a6a, type: 3}
   facing: 0
   spinSpeed: 0
   tintColor: {r: 1, g: 1, b: 1, a: 1}

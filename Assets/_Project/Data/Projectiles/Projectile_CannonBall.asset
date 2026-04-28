@@ -15,7 +15,7 @@ MonoBehaviour:
   id: cannon_ball
   speed: 7
   hitThreshold: 0.4
-  visualScale: 3
+  visualScale: 6
   projectilePrefab: {fileID: 6487987637173855206, guid: 29a9704bef55c3240bfe88bfc33c71cc, type: 3}
   hitPrefab: {fileID: 3911334593277181048, guid: 252e45bbff96e814b8cc8641fe650525, type: 3}
   facing: 2

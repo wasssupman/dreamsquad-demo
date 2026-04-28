@@ -15,7 +15,7 @@ MonoBehaviour:
   id: bolt
   speed: 16
   hitThreshold: 0.35
-  visualScale: 1.8000001
+  visualScale: 3.6000001
   projectilePrefab: {fileID: 2748903383225329118, guid: 1b20ddc6768dbba409e3f2a891c43ef2, type: 3}
   hitPrefab: {fileID: 4205106322830315077, guid: c3e084fe7f2622843a30f9871b1c01ca, type: 3}
   facing: 0

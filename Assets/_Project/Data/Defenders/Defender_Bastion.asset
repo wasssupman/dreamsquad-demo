@@ -35,6 +35,6 @@ MonoBehaviour:
   dragAnimation: find-item/find-item-loop
   deployAnimation: attack-combo1-dagger
   placementVfxPrefab: {fileID: 0}
-  attackVfxPrefab: {fileID: 7907260701345176331, guid: e959b337f1fcf5b4d91ddcfc34a23dd9, type: 3}
+  attackVfxPrefab: {fileID: 6426699771996326788, guid: d2bf7f11edac4e8459d42fb4ce84890b, type: 3}
   deploymentDuration: 0.45
   placementSkillDelay: 0
