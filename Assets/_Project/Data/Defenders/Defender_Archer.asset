@@ -34,6 +34,6 @@ MonoBehaviour:
   spineVisualScale: 1
   dragAnimation: find-item/find-item-loop
   deployAnimation: cast-spell2
-  placementVfxPrefab: {fileID: 0}
+  placementVfxPrefab: {fileID: 96566848741554304, guid: 12bfc3638c321cb498765554bb7194eb, type: 3}
   deploymentDuration: 0.45
   placementSkillDelay: 0
