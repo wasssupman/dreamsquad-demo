@@ -100,6 +100,7 @@ namespace Wassup.Bridge
         private NativeQueue<Wassup.Battle.Combat.DefenderAttackEvent> _defenderAttackQueue;
         private NativeQueue<Wassup.Battle.Combat.Projectile.ProjectileHitEvent> _projectileHitEventQueue;
         private NativeQueue<Wassup.Battle.Effects.EnemyCcEvent> _enemyCcQueue;
+        private Unity.Collections.NativeHashSet<Unity.Mathematics.int2> _blockedCells;
 
         // Phase 9 flow field 싱글톤 entity reference
         private Entity _flowFieldSingleton = Entity.Null;
@@ -268,6 +269,10 @@ namespace Wassup.Bridge
             _em.DestroyEntity(enemyCcSingletons);
             enemyCcSingletons.Dispose();
 
+            var obstacleSingletons = _em.CreateEntityQuery(ComponentType.ReadOnly<Wassup.Battle.Effects.ObstacleSingleton>());
+            _em.DestroyEntity(obstacleSingletons);
+            obstacleSingletons.Dispose();
+
             // Dispose the queues; StartBattle will create fresh ones.
             if (_goalEventQueue.IsCreated) _goalEventQueue.Dispose();
             if (_defenderDeathQueue.IsCreated) _defenderDeathQueue.Dispose();
@@ -275,6 +280,7 @@ namespace Wassup.Bridge
             if (_defenderAttackQueue.IsCreated) _defenderAttackQueue.Dispose();
             if (_projectileHitEventQueue.IsCreated) _projectileHitEventQueue.Dispose();
             if (_enemyCcQueue.IsCreated) _enemyCcQueue.Dispose();
+            if (_blockedCells.IsCreated) _blockedCells.Dispose();
 
             // Phase 9: dispose the flow field singleton arrays + destroy the entity.
             TeardownFlowField();
@@ -611,6 +617,12 @@ namespace Wassup.Bridge
             _enemyCcQueue = new NativeQueue<Wassup.Battle.Effects.EnemyCcEvent>(Allocator.Persistent);
             var enemyCcSingleton = _em.CreateEntity();
             _em.AddComponentData(enemyCcSingleton, new Wassup.Battle.Effects.EnemyCcEventsSingleton { queue = _enemyCcQueue });
+
+            // Obstacle blocked-cells set. ObstacleLifetimeSystem rebuilds it each frame.
+            if (_blockedCells.IsCreated) _blockedCells.Dispose();
+            _blockedCells = new Unity.Collections.NativeHashSet<Unity.Mathematics.int2>(64, Allocator.Persistent);
+            var obstacleSingleton = _em.CreateEntity();
+            _em.AddComponentData(obstacleSingleton, new Wassup.Battle.Effects.ObstacleSingleton { blockedCells = _blockedCells });
 
             // Fix 3 (task 10): seed visual RNG from map seed so jitter is reproducible per session.
             int visualSeed = (mapSettings != null ? mapSettings.EffectiveSeed : 42) ^ 0x5A5A5A5A;
