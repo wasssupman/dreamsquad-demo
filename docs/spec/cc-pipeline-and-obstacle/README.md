@@ -6,7 +6,7 @@
 
 ## 상태
 
-진행 중 (작성: 2026-04-28).
+**완료 2026-04-29** — Unit 0~9 전체 구현, PlayMode 시나리오 1~4 사용자 확인, 133/133 EditMode 테스트 통과.
 
 ## 구현 문서 목록
 
@@ -18,9 +18,10 @@
 | 3 | `3_impulse_movement_compose.md` | MovementSystem switch 에 `CcKind.Impulse` 케이스 추가 |
 | 4 | `4_defender_so_fields.md` | DefenderSO 에 knockback / on-place push 5필드 추가 (default 0) |
 | 5 | `5_combat_knockback_hook.md` | CombatSystem 데미지 적용 후 SO `knockbackDistance > 0` 면 CcEvent enqueue |
+| 5b | `5b_path_wall_trim.md` | path-wall trim patch — 경로 외 셀 차단 (`MovementCellTrim.cs` 신설). FlowField walkability source of truth. Unit 8 가 확장 사용 |
 | 6 | `6_on_place_push_hook.md` | 배치 파이프라인에서 SO `onPlacePushDistance > 0` 면 radius 안 적들에 enqueue |
 | 7 | `7_obstacle_data_and_lifetime.md` | `Obstacle` 컴포넌트, `ObstacleSingleton`, `ObstacleLifetimeSystem` |
-| 8 | `8_movement_obstacle_trim.md` | `ClampToBoundary` 순수 함수 + MovementSystem trim. flow + impulse 양쪽 적용 |
+| 8 | `8_movement_obstacle_trim.md` | 5b 의 `MovementCellTrim` 을 확장하여 큐브 셀도 wall 로 취급. trim 알고리즘은 5b 그대로 재사용 |
 | 9 | `9_debug_spawn_entry.md` | `EffectSpawner.SpawnObstacle` + BattleBridge 디버그 메서드 + Editor 메뉴 (**feature 게이트**) |
 
 ## 공통 원칙 (feature-wide 계약)
@@ -31,7 +32,7 @@
 - `CcEffect` buffer 와 `ObstacleSingleton.blockedCells` 는 Effects 맥락 소유. Movement 는 read-only.
 - CC 의 외부 진입점은 `EffectSpawner.ApplyCc` / `EnqueueCcEvent` 로 통일. 기존 `EffectSpawner.ApplySlow` 시그니처는 thin wrapper 로 보존하여 BattleBridge 등 호출자 무수정.
 - Obstacle 은 단일 셀 (1×1) 점유, 시간 기반 소멸. HP/Taunt 없음.
-- MovementSystem 의 cell trim 은 flow 변위와 impulse 변위 모두에 적용된다 (큐브가 진짜 벽).
+- MovementSystem 의 cell trim 은 flow 변위와 impulse 변위 모두에 적용된다. 차단 대상 = (경로 외 셀 ∪ 큐브 셀). **경로 walkability 의 source of truth 는 FlowField — 영벡터 셀 = 벽, goal 셀은 예외, OOB 도 wall** (Unit 5b 에서 확정).
 - FlowFieldBuilder 는 `ObstacleSingleton` 을 참조하지 않는다 (큐브 때문에 재경로 안 함).
 - 적은 본 spec 범위에서 공격 능력을 가지지 않는다 (HP/Taunt/적 공격 시스템은 후속 후보).
 
@@ -40,7 +41,7 @@
 1. 넉백 / 배치 push / 큐브 차단의 게임감이 의도대로 나오는가? (feature 가치)
 2. Slow 회귀 없이 `CcEffect` buffer 통일이 안정적으로 동작하는가? (refactor 안정성)
 
-→ Unit 2 (Slow 회귀) 와 Unit 9 (큐브 + knockback × cube) 의 PlayMode 사용자 확인이 두 질문에 답한다.
+→ Unit 2 (Slow 회귀), Unit 5b (경로 안에 갇힘), Unit 9 (큐브 + knockback × cube) 의 PlayMode 사용자 확인이 두 질문에 답한다.
 
 ## 후속 후보 (현 spec 범위 밖)
 

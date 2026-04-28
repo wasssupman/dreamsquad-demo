@@ -92,4 +92,4 @@ static void SpawnUnderMouse()
   - (2) Slow 회귀 없음 → Unit 2 의 사후 재확인
 - 종료 후 `10_handoff_summary.md` 작성 + commit. README 상단에 "상태: 완료 YYYY-MM-DD" 기재.
 
-완료: 2026-04-28 — 커밋 TBD (PlayMode 시나리오 1~4 대기)
+완료: 2026-04-29 — 2ee808d (fix: 431726c) PlayMode 시나리오 1~4 통과
