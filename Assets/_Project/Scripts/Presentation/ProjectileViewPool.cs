@@ -8,6 +8,13 @@ using Wassup.Data;
 
 namespace Wassup.Presentation
 {
+    // Attached once to each instantiated view — caches Renderer[] so ApplyMpb
+    // and ReturnToPool never call GetComponentsInChildren on hot paths.
+    public class ViewRendererCache : MonoBehaviour
+    {
+        public Renderer[] renderers;
+    }
+
     public class ProjectileViewPool : MonoBehaviour
     {
         private struct ProjectileViewState
@@ -19,11 +26,11 @@ namespace Wassup.Presentation
             public float3 lastPosition;
         }
 
-        private static readonly int PropBaseColor = Shader.PropertyToID("_BaseColor");
-        private static readonly int PropColor = Shader.PropertyToID("_Color");
+        private static readonly int PropBaseColor    = Shader.PropertyToID("_BaseColor");
+        private static readonly int PropColor        = Shader.PropertyToID("_Color");
         private static readonly int PropEmissionColor = Shader.PropertyToID("_EmissionColor");
-        private static readonly int PropBaseMap = Shader.PropertyToID("_BaseMap");
-        private static readonly int PropMainTex = Shader.PropertyToID("_MainTex");
+        private static readonly int PropBaseMap      = Shader.PropertyToID("_BaseMap");
+        private static readonly int PropMainTex      = Shader.PropertyToID("_MainTex");
 
         private readonly Dictionary<Entity, ProjectileViewState> _active = new();
         private readonly Dictionary<GameObject, Stack<GameObject>> _pool = new();
@@ -39,9 +46,18 @@ namespace Wassup.Presentation
             _visualRng = new System.Random();
         }
 
+        // Call at battle-start with the session seed so visual jitter is reproducible.
+        // Falls back to Awake's time-based seed when not called.
+        public void Initialize(int seed)
+        {
+            _visualRng = new System.Random(seed);
+            _spawnCounters.Clear();
+        }
+
         public int ActiveCount => _active.Count;
 
-        public void Spawn(Entity entity, ProjectileData data)
+        // Fix 1: initialPosition prevents first-frame wrong-direction rotation for AlongVelocity.
+        public void Spawn(Entity entity, ProjectileData data, float3 initialPosition)
         {
             var view = GetOrCreate(data.projectilePrefab);
             view.SetActive(true);
@@ -50,13 +66,14 @@ namespace Wassup.Presentation
             view.transform.localScale = Vector3.one * (data.visualScale * scaleMul);
 
             float hueShift = (float)(_visualRng.NextDouble() * 2 - 1) * data.hueJitter;
-            float rollDeg = (float)(_visualRng.NextDouble() * 2 - 1) * data.rotationJitter;
+            float rollDeg  = (float)(_visualRng.NextDouble() * 2 - 1) * data.rotationJitter;
             Color finalTint = ApplyHueShift(data.tintColor, hueShift);
 
             ApplyMpb(view, finalTint, data.emissionMultiplier, SelectTexture(data));
 
-            if (rollDeg != 0f)
-                view.transform.localRotation *= Quaternion.Euler(0f, 0f, rollDeg);
+            // Fix 2: reset to prefab rotation before applying roll — no accumulation across pool reuse.
+            view.transform.localRotation = data.projectilePrefab.transform.localRotation
+                * Quaternion.Euler(0f, 0f, rollDeg);
 
             _active[entity] = new ProjectileViewState
             {
@@ -64,7 +81,7 @@ namespace Wassup.Presentation
                 prefab = data.projectilePrefab,
                 facing = data.facing,
                 spinSpeed = data.spinSpeed,
-                lastPosition = float3.zero,
+                lastPosition = initialPosition,   // Fix 1
             };
         }
 
@@ -119,12 +136,14 @@ namespace Wassup.Presentation
             foreach (var e in _toReturn) Return(e);
         }
 
-        public void PlayHit(GameObject hitPrefab, float3 position)
+        // Fix 5: hitVfxLifetime > 0 overrides auto-detect.
+        public void PlayHit(GameObject hitPrefab, float3 position, float hitVfxLifetime = 0f)
         {
             var view = GetOrCreate(hitPrefab);
             view.SetActive(true);
             view.transform.position = new Vector3(position.x, position.y, position.z);
-            StartCoroutine(DespawnAfter(view, hitPrefab, GetParticleLifetime(view)));
+            float lifetime = hitVfxLifetime > 0f ? hitVfxLifetime : GetParticleLifetime(view);
+            StartCoroutine(DespawnAfter(view, hitPrefab, lifetime));
         }
 
         public void DespawnAll()
@@ -156,7 +175,11 @@ namespace Wassup.Presentation
         private void ApplyMpb(GameObject view, Color tint, float emissionMul, Texture2D texOverride = null)
         {
             Color emission = tint * emissionMul;
-            foreach (var r in view.GetComponentsInChildren<Renderer>(includeInactive: false))
+            // Fix 4: use cached renderers to avoid GC alloc on hot path.
+            var renderers = view.TryGetComponent<ViewRendererCache>(out var cache)
+                ? cache.renderers
+                : view.GetComponentsInChildren<Renderer>(includeInactive: false);
+            foreach (var r in renderers)
             {
                 _mpb.Clear();
                 _mpb.SetColor(PropBaseColor, tint);
@@ -180,7 +203,7 @@ namespace Wassup.Presentation
             return result;
         }
 
-        private float GetParticleLifetime(GameObject view)
+        private static float GetParticleLifetime(GameObject view)
         {
             float max = 0f;
             foreach (var ps in view.GetComponentsInChildren<ParticleSystem>())
@@ -198,11 +221,15 @@ namespace Wassup.Presentation
             ReturnToPool(view, prefab);
         }
 
+        // Fix 4: attach ViewRendererCache on first Instantiate; pool reuse skips this.
         private GameObject GetOrCreate(GameObject prefab)
         {
             if (_pool.TryGetValue(prefab, out var stack) && stack.Count > 0)
                 return stack.Pop();
-            return Instantiate(prefab, transform);
+            var view = Instantiate(prefab, transform);
+            var rc = view.AddComponent<ViewRendererCache>();
+            rc.renderers = view.GetComponentsInChildren<Renderer>(includeInactive: true);
+            return view;
         }
 
         private void Return(Entity entity)
@@ -214,7 +241,11 @@ namespace Wassup.Presentation
 
         private void ReturnToPool(GameObject view, GameObject prefab)
         {
-            foreach (var r in view.GetComponentsInChildren<Renderer>(includeInactive: false))
+            // Fix 4: use cached renderers.
+            var renderers = view.TryGetComponent<ViewRendererCache>(out var cache)
+                ? cache.renderers
+                : view.GetComponentsInChildren<Renderer>(includeInactive: false);
+            foreach (var r in renderers)
                 r.SetPropertyBlock(null);
             view.SetActive(false);
             if (!_pool.ContainsKey(prefab)) _pool[prefab] = new Stack<GameObject>();

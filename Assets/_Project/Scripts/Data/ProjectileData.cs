@@ -53,6 +53,9 @@ namespace Wassup.Data
         public Texture2D[] textureVariants;
         public TextureSelectMode selectMode = TextureSelectMode.Random;
 
+        [Header("Hit VFX")]
+        public float hitVfxLifetime = 0f;
+
         // Phase 3에서 enum 필드만 존재. Phase 4부터 Splash가 실 사용 (Poison/Fire/Slow는
         // 여전히 미구현 자리표시).
         public OnHitEffectType onHitEffect = OnHitEffectType.None;

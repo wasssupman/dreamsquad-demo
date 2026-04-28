@@ -599,6 +599,10 @@ namespace Wassup.Bridge
             var projectileHitSingleton = _em.CreateEntity();
             _em.AddComponentData(projectileHitSingleton, new Wassup.Battle.Combat.Projectile.ProjectileHitEventsSingleton { queue = _projectileHitEventQueue });
 
+            // Fix 3 (task 10): seed visual RNG from map seed so jitter is reproducible per session.
+            int visualSeed = (mapSettings != null ? mapSettings.EffectiveSeed : 42) ^ 0x5A5A5A5A;
+            _projectileViewPool?.Initialize(visualSeed);
+
             BuildMapForBattle();
         }
 
@@ -1183,7 +1187,7 @@ namespace Wassup.Bridge
                 if (evt.dataIndex < 0 || evt.dataIndex >= _projectileDataByIndex.Count) continue;
                 var data = _projectileDataByIndex[evt.dataIndex];
                 if (data.hitPrefab != null)
-                    _projectileViewPool?.PlayHit(data.hitPrefab, evt.position);
+                    _projectileViewPool?.PlayHit(data.hitPrefab, evt.position, data.hitVfxLifetime);
             }
         }
 
@@ -1236,7 +1240,7 @@ namespace Wassup.Bridge
             });
 
             var data = _projectileDataByIndex[req.dataIndex];
-            _projectileViewPool?.Spawn(entity, data);
+            _projectileViewPool?.Spawn(entity, data, spawnPos);
         }
 
         // Fires the defender's on-place effect on surrounding entities. Returns

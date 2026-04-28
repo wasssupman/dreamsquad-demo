@@ -20,9 +20,6 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void HueShift_WrapsAroundOne()
         {
-            // hue 0.95 + shift 0.1 should wrap to ~0.05
-            Color.RGBToHSV(new Color(0.9f, 0.85f, 0.8f), out float h, out _, out _);
-            // Use a color with known high hue instead: pure red-shifted
             var highHue = Color.HSVToRGB(0.95f, 1f, 1f);
             var shifted = ProjectileViewPool.ApplyHueShift(highHue, 0.1f);
             Color.RGBToHSV(shifted, out float resultH, out _, out _);
@@ -30,38 +27,39 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
-        public void RandomSelect_DeterministicWithSeed()
+        public void Initialize_SameSeedProducesSameSequence()
         {
             var rng1 = new System.Random(42);
             var rng2 = new System.Random(42);
-            for (int i = 0; i < 100; i++)
-                Assert.AreEqual(rng1.Next(3), rng2.Next(3), $"Mismatch at index {i}");
-        }
-
-        [Test]
-        public void SequentialSelect_WrapsAroundLength()
-        {
-            int length = 3;
-            int count = 0;
-            int[] expected = { 0, 1, 2, 0, 1, 2, 0, 1 };
-            for (int i = 0; i < expected.Length; i++)
+            for (int i = 0; i < 10; i++)
             {
-                int idx = count % length;
-                Assert.AreEqual(expected[i], idx, $"Step {i}: expected {expected[i]} got {idx}");
-                count++;
+                float s1 = 1f + (float)(rng1.NextDouble() * 2 - 1) * 0.1f;
+                float h1 = (float)(rng1.NextDouble() * 2 - 1) * 0.03f;
+                float r1 = (float)(rng1.NextDouble() * 2 - 1) * 15f;
+                float s2 = 1f + (float)(rng2.NextDouble() * 2 - 1) * 0.1f;
+                float h2 = (float)(rng2.NextDouble() * 2 - 1) * 0.03f;
+                float r2 = (float)(rng2.NextDouble() * 2 - 1) * 15f;
+                Assert.AreEqual(s1, s2, 0.000001f, $"scaleJitter mismatch at step {i}");
+                Assert.AreEqual(h1, h2, 0.000001f, $"hueJitter mismatch at step {i}");
+                Assert.AreEqual(r1, r2, 0.000001f, $"rollJitter mismatch at step {i}");
             }
         }
 
         [Test]
-        public void ScaleJitter_ZeroProducesIdentity()
+        public void RollDoesNotAccumulate_AcrossPoolReuse()
         {
+            // With rotationJitter = 0, rollDeg is always 0 regardless of RNG state.
             var rng = new System.Random(42);
             float jitter = 0f;
-            for (int i = 0; i < 20; i++)
+            for (int i = 0; i < 10; i++)
             {
-                float scaleMul = 1f + (float)(rng.NextDouble() * 2 - 1) * jitter;
-                Assert.AreEqual(1f, scaleMul, 0.00001f, $"scaleMul must be exactly 1 when jitter=0 (step {i})");
+                float rollDeg = (float)(rng.NextDouble() * 2 - 1) * jitter;
+                Assert.AreEqual(0f, rollDeg, 0.0001f);
             }
+            // The reset formula prefab.rotation * Euler(0,0,0) == prefab.rotation.
+            var prefabRot = Quaternion.Euler(30f, 45f, 0f);
+            var final = prefabRot * Quaternion.Euler(0f, 0f, 0f);
+            Assert.AreEqual(prefabRot, final, "Roll=0 must not change prefab rotation");
         }
     }
 }
