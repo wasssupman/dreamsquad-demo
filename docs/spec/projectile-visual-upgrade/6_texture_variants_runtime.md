@@ -56,4 +56,4 @@ public TextureSelectMode selectMode = TextureSelectMode.Random;
 - 풀 반환 후 다른 ProjectileData 의 view 로 재사용될 때 텍스처 잔재 없음.
 - read_console Error/Warning 0.
 
-확인 2026-04-28 / 커밋: (pending)
+확인 2026-04-28 / 커밋: d2e658a

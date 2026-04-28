@@ -17,9 +17,10 @@ MonoBehaviour:
   attackRange: 7
   attackDamage: 80
   attackCooldown: 3
+  attackTargetCount: 1
   visualMesh: {fileID: 0}
   visualMaterial: {fileID: 2100000, guid: a1b2c3d4e5f601234567890abcdef101, type: 2}
-  projectile: {fileID: 11400000, guid: 2c9c91d62002f4c1aa822551525c8ca4, type: 2}
+  projectile: {fileID: 11400000, guid: a9befe796063d4d638e6c900719f71db, type: 2}
   onPlaceEffect: 5
   onPlaceRange: 8
   onPlaceMagnitude: 120
