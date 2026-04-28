@@ -64,4 +64,4 @@ if (defenderData.knockbackDistance > 0f && defenderData.knockbackDuration > 0f)
 - Slow / Tornado / Portal 동시 적용 시에도 정상 (수학 합성).
 - 콘솔 에러/경고 0.
 
-완료: 2026-04-28 — 커밋 TBD (PlayMode 확인 대기)
+완료: 2026-04-28 — 1de57c9 (fix: 1263fdc, 6150552) PlayMode 통과
