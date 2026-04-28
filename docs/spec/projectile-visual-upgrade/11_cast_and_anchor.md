@@ -172,3 +172,5 @@ private void TrySpawnCastVfx(Entity defender, Vector3 targetWorld)
 - 풀 누수 없음: 100발 연속 발사 후 pool `_active` 카운트 = projectile 수 (cast 는 자체 lifetime 후 0 으로 복귀).
 - 다른 7 디펜더의 castPrefab 미설정 → cast 발생 안 함, 회귀 없음.
 - read_console Error/Warning 0.
+
+확인 2026-04-28 / 커밋: 4f18376
