@@ -1,7 +1,7 @@
 # Projectile Visual Upgrade Spec
 
 **작성일**: 2026-04-28
-**상태**: 진행 중
+**상태**: 완료 2026-04-28
 **연결 문서**: `docs/plans/2026-04-28-projectile-visual-upgrade-design.md`
 **목표**: ECS RenderMesh 기반의 단순 mesh+material 투사체를 PixPlays prefab 기반 시각으로 교체하고, 데이터-드리븐 + per-shot 랜덤 두 층의 배리에이션 인프라를 도입한다.
 

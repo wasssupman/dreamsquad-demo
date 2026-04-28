@@ -72,4 +72,4 @@ public IEnumerator HitPlayback_ReturnsToPool() {
 - 기존 `DraftSessionTests` 등 EditMode 슈트 회귀 없음.
 - read_console Error/Warning 0.
 
-확인 2026-04-28 / 커밋: (pending)
+확인 2026-04-28 / 커밋: ead618e
