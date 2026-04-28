@@ -1,7 +1,7 @@
 # Defender On-Place VFX Spec
 
 **작성일**: 2026-04-28
-**상태**: 완료 2026-04-28 (Archer 만; 다른 9 디펜더는 후속 후보)
+**상태**: 진행 중 (task 0 완료 / task 1 추가)
 **목표**: 디펜더 배치 시점의 on-place 효과(`placementVfxPrefab`)에 실제 VFX 자산을 와이어링한다. 이번 spec 은 Archer (`BindNearby`) 1대만. 다른 9 디펜더는 후속 후보.
 
 ## 배경
@@ -15,6 +15,7 @@
 | 작업 구분 | 문서 | 목적 |
 |---|---|---|
 | 0 | `0_archer_water_bind.md` | Archer 의 BindNearby 효과에 WaterAOE prefab 와이어링 + Play 검증 |
+| 1 | `1_other_defenders_placement.md` | 다른 9 디펜더 placement VFX 와이어링 (effect→AOE 매핑) |
 
 ## 공통 원칙
 
