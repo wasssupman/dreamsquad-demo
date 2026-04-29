@@ -101,3 +101,5 @@ Unit 4 에서 통합:
 - `BattleBridge.CleanupDraftMapBeforeRebuild()` 메서드 존재 + RebuildDraftMap 에서 호출.
 - destructible-blocking-hazards / cc-pipeline-and-obstacle 컴포넌트 타입 이름 검증 완료 (코드 grep 으로 정확한 이름 사용).
 - 콘솔 에러/경고 0.
+
+검증: 2026-04-30 — 컴파일 + EditMode 회귀 0 (RebuildDraftMap 미연결 상태로 contract 만 채움). PlayMode 검증은 Unit 5 V1~V10 에서 통합. 커밋 `3833c8a`.

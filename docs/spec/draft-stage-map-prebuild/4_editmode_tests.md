@@ -53,3 +53,5 @@ mock bridge: 본 테스트만을 위한 가벼운 wrapper (인터페이스 추�
 - `DraftControllerMapRebuildTests` 4 케이스 모두 통과.
 - 기존 EditMode 테스트 회귀 0 (전체 통과 카운트가 신규 추가분만큼만 증가).
 - 콘솔 에러 0.
+
+검증: 2026-04-30 — EditMode 170/170 (이전 163 + 신규 7). 신규 7 = BattleBridgeDraftMapTests 4 + DraftControllerMapRebuildTests 3. 누락 3건 (`RebuildDraftMap_50Iterations_NoEntityLeak`, `_NoMapViewChildLeak`, `OnRedraftRequested_RebuildsMap`) 은 fixture 제약으로 PlayMode V7/V10 으로 위임 — handoff 의 Follow-up 참조. `RebuildDraftMapCallCount` 는 `#if UNITY_INCLUDE_TESTS` 가드. 커밋 `19bc188`.

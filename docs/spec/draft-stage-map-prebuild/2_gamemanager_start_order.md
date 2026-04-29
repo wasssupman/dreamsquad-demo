@@ -76,3 +76,5 @@ Unit 4 에서 통합 — `GameManager.Start` 시뮬레이션 후 `bridge._genera
 - `GameManager.Start` 가 `BeginDraft` 직전 `PrepareDraftMap` 호출.
 - `draftController == null` 폴백 분기 (직접 battle 시작) 는 변경 없음 — `StartBattle` 내부의 `BeginPlacement` 폴백이 맵 빌드.
 - 콘솔 에러/경고 0.
+
+검증: 2026-04-30 — 컴파일 통과. PlayMode V1 (맵 시각 표시) 검증은 Unit 5. 커밋 `3d3cb28`.

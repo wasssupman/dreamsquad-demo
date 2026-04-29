@@ -1,8 +1,8 @@
 # Draft Stage Map Prebuild Spec
 
 **작성일**: 2026-04-30
-**상태**: 작성 완료, 구현 미착수.
-**연결 문서**: `docs/plans/2026-04-30-draft-stage-map-prebuild-design.md`
+**상태**: 완료 2026-04-30 (코드 + EditMode 통과; PlayMode V1~V10 사용자 manual 검증 대기).
+**연결 문서**: `docs/plans/2026-04-30-draft-stage-map-prebuild-design.md`, `6_handoff_summary.md`
 
 ## 목표
 

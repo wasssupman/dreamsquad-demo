@@ -102,3 +102,5 @@ Unit 4 에서 통합:
 - `BattleBridge.HasGeneratedMap` public getter 존재.
 - `DraftController.BeginDraft` 변경 없음 (Redraft 처리는 OnRedraftRequested 가 책임).
 - 콘솔 에러/경고 0.
+
+검증: 2026-04-30 — 컴파일 통과 + EditMode `SetMapGenerationOptions_TriggersBridgeRebuild` / `SetMapPathShape_TriggersBridgeRebuild` 통과. PlayMode V2~V4 (옵션 토글 즉시 갱신) + V7 (Redraft 새 맵) 검증은 Unit 5. 커밋 `af12211`.

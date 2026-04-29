@@ -131,3 +131,5 @@ Unit 4 에서 통합 작성 (PrepareDraftMap → IsCreated, BeginPlacement → B
 - `BeginPlacement` 가 `_generatedMap.IsCreated` 면 BuildMapForBattle 호출 안 함.
 - 본 unit 만으로는 GameManager 호출 변경 없으므로 기존 동작 회귀 0 (BeginPlacement 가 폴백으로 빌드).
 - 콘솔 에러/경고 0.
+
+검증: 2026-04-30 — 사용자 PlayMode 회귀 확인 (BeginPlacement 폴백 동작 정상). 커밋 `1c6fa1e`.
