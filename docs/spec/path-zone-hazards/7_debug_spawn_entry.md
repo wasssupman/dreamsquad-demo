@@ -74,10 +74,14 @@ public static class HazardDebugMenu
 - Visual 이 hazard lifetime (6초) 내 표시, 만료 시 사라짐
 - ECS 동작과 Visual 동작이 같은 시점에 스폰/소멸 (sync 일관성)
 
-### 시나리오 6: API encapsulation 검증
-- `BattleBridge.DebugSpawnHazardAt(so, cell)` 가 3 SO 모두 동일 호출로 동작
-- 본 spec 외에 새 producer (예: 디펜더 on-place 가 같은 API 호출하는 가상 wiring) 가 어떤 SO 든 동일 결과 보장
-- (코드 리뷰만, 실 producer 통합은 후속 spec)
+### 시나리오 6: API encapsulation 검증 (weak proof — 솔직)
+- `BattleBridge.DebugSpawnHazardAt(so, cell)` 가 3 SO 모두 동일 호출로 동작.
+- **한계**: 본 spec 의 producer 는 디버그 메뉴 1개뿐 → "다양한 producer plug-in" 이 *진짜로* 검증되지 않음.
+- 검증 방식 제안 (코드 리뷰):
+  1. `EffectSpawner.SpawnHazard` 의 시그니처가 `(em, HazardSO, originCell)` 만 받는지 — 외부 의존 0.
+  2. `BattleBridge.SpawnHazardWithVisual` 의 시그니처가 `(HazardSO, int2)` 만 받는지 — producer 컨텍스트 의존 0.
+  3. spec 4 의 미래 producer 의사코드 예시 (디펜더 on-place / 스킬 카드 / 장비 효과) 가 같은 API 만 호출하는지.
+- 진짜 검증: 후속 spec (디펜더 on-place hazard 등) 통합 시 재확인 필요. 본 spec 은 *인프라가 막히지 않는다* 만 보장.
 
 ## 완료 기준
 

@@ -41,6 +41,12 @@ public enum CcKind : byte
 [UpdateBefore(typeof(CcDecaySystem))]
 public partial struct DotApplySystem : ISystem
 {
+    public void OnCreate(ref SystemState state)
+    {
+        // CC buffer 가 적 entity 에 붙은 적 있어야 의미 있음.
+        // 다만 buffer 가 없는 frame 도 정상 (그냥 적용 0) — RequireForUpdate 미부착.
+    }
+
     public void OnUpdate(ref SystemState state)
     {
         float dt = SystemAPI.Time.DeltaTime;
@@ -68,6 +74,8 @@ public partial struct DotApplySystem : ISystem
 ## 시스템 순서
 
 `CcApplySystem (큐→buffer)` → `DotApplySystem (DoT → IncomingDamage)` → `MovementSystem (Slow/Impulse 합성)` → `CcDecaySystem (tick + remove)` → `HealthSystem (IncomingDamage 처리, 기존)`.
+
+**DotApply 와 Movement 의 관계**: 둘 다 CC buffer read-only. write 대상이 다름 (DotApply → IncomingDamage, Movement → LocalTransform). 따라서 *상호 순서 무관*. 본 spec 에서는 DotApply 를 CcDecay 전이라면 어디든 OK 로 명시. 위 순서는 한 가지 가능한 순서일 뿐, MovementSystem 이 DotApply 보다 앞서 와도 동일 결과.
 
 ## 단위 테스트 (EditMode)
 

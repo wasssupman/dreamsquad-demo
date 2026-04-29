@@ -30,14 +30,12 @@
 - 효과 적용 = 매 프레임 re-enqueue + CC merge refresh. enter/exit 상태 추적 없음. 적이 zone 빠져나가면 짧은 잔존시간 후 자연 감쇠.
 - DoT 는 `CcKind.DoT` 로 CC 채널 합류 → `DotApplySystem` 이 매 프레임 `IncomingDamage` 누적 → 기존 HealthSystem 재사용.
 - Zone 은 **차단 안 함** — `MovementCellTrim.IsWallCell` 미수정. 차단형은 후속 spec.
-- Stacking (화염중첩 등) 은 본 spec 범위 밖. `CcEffect` 데이터 구조가 backward-compatible 하게 `stackCount` 추가 가능 형태로 남김.
+- Stacking (화염중첩 등) 은 본 spec 범위 밖. `CcEffect` *데이터 구조* 는 backward-compatible 하게 `stackCount` 추가 가능 형태로 남김. **단 *동작 정책* (현재 merge = 같은 kind 1 entry 강제) 는 stacking 도입 시 동시 변경 필요** — merge 정책 갱신 + buffer 다중 entry 허용 + CcDecaySystem tick 정책. 즉 stacking 은 데이터 변경만으로 끝나지 않음.
 
 ## 검증 질문 (= 종료 조건)
 
-1. 3 zone 효과 (독 DoT / 얼음 Slow / 화염 강한 DoT) 가 의도대로? (game feel)
-2. `SpawnHazard` API 가 producer 종류와 무관하게 일관된 진입점인가? (encapsulation)
-
-→ Unit 7 (Debug spawn) 의 PlayMode 사용자 확인이 두 질문 모두에 답.
+1. 3 zone 효과 (독 DoT / 얼음 Slow / 화염 강한 DoT) 가 의도대로? (game feel) → Unit 7 PlayMode 사용자 확인.
+2. `SpawnHazard` API 가 producer 종류와 무관하게 일관된 진입점인가? (encapsulation) → **weak proof**: 본 spec 의 producer 는 디버그 메뉴 1개뿐. 코드 리뷰 (시그니처가 producer 컨텍스트 의존 0) + spec 4 의 미래 producer 의사코드 예시로 *간접* 검증. 진짜 검증은 후속 spec (디펜더 on-place hazard / 스킬 카드 / 장비 효과) 통합 시 재확인 필요.
 
 ## 후속 후보 (현 spec 범위 밖)
 

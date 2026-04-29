@@ -20,7 +20,7 @@
 | Visual ⊥ Effects | Visual = `HazardPresenter` MonoBehaviour, Effects = ECS CC pipeline | 화염중첩 같은 미래 stacking 도 effect 만 추가하면 됨 |
 | DoT 처리 | `CcKind.DoT` 신규 + `DotApplySystem` (CC buffer → IncomingDamage) | 기존 HealthSystem 그대로 재사용 |
 | 효과 적용 | 매 프레임 re-enqueue + CC merge refresh | enter/exit 추적 불필요, fast-moving 적도 안전 |
-| Stacking | 본 spec 범위 밖 | `CcEffect` 가 backward-compatible 하게 stackCount 추가 가능 형태로 남김 |
+| Stacking | 본 spec 범위 밖 | `CcEffect` *데이터 구조* 는 backward-compat (stackCount 추가 가능). 단 *동작 정책* (merge / decay) 도 함께 변경해야 stacking 동작 — 본 spec 은 데이터 layout 만 보존하고 동작은 미래 변경에 위임 |
 | Cell trim | Zone 은 차단 안 함 | `MovementCellTrim.IsWallCell` 미수정 |
 
 ## 구현 순서 (1 파일 = 1 commit)
@@ -53,7 +53,7 @@
   - `ZoneApplySystem` UpdateAfter `HazardLifetimeSystem`, UpdateBefore `CcApplySystem`
   - `DotApplySystem` UpdateAfter `CcApplySystem`, UpdateBefore `CcDecaySystem`
 - **placeholder 시각**으로 시작 — 정식 VFX 는 후속 (unity-vfx-authoring 스킬).
-- **HazardPresenter 의 entity 추적 패턴**: `TornadoFieldPresenter` / `MeteorWarningPresenter` 의 BattleBridge sync 코드 참고 + 동일 hook point 에 추가.
+- **Hazard visual 패턴**: `TornadoFieldPresenter` / `MeteorWarningPresenter` 같은 frame-sync presenter 는 코드베이스에 *존재하지 않음*. 실제 패턴은 `VfxSpawner.SpawnTornado` / `BattleBridge.SpawnMeteorWarningVisual` 의 *fire-and-self-manage*. spec 6 는 이 결을 따라 `HazardVisualLifetime` MonoBehaviour 가 자가 destroy timer.
 - **NativeMultiHashMap lifecycle**: BattleBridge 의 StartBattle / Cleanup / OnDestroy 세 곳 모두 처리 (C1 fix 패턴).
 
 ## 사용자 확인 protocol

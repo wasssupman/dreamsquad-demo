@@ -22,7 +22,6 @@ public static Entity SpawnHazard(EntityManager em, HazardSO so, int2 originCell)
     em.AddComponentData(e, new Hazard
     {
         remainingLife = so.lifetime,
-        effectCount = so.effects?.Length ?? 0,
     });
 
     var cellsBuffer = em.AddBuffer<HazardCellsBuffer>(e);
@@ -54,7 +53,7 @@ public static class HazardShapeSampler
                 return new System.Collections.Generic.List<int2>(1) { origin };
             case HazardShape.Square3x3:
                 return Enumerate(origin, 1);
-            case HazardShape.RadiusCircle:
+            case HazardShape.RadiusSquare:
                 return Enumerate(origin, math.max(1, radius));
             default:
                 return new System.Collections.Generic.List<int2>(0);
@@ -75,6 +74,32 @@ public static class HazardShapeSampler
 
 = MVP 는 정사각 (Chebyshev) sampling. radius=1 → 3×3 (9), radius=2 → 5×5 (25). 4-neighbor circle / 임의 cell list 는 후속 후보.
 
+## 미래 producer wiring 예시 (의사코드)
+
+본 spec 의 *encapsulation 검증* 의도 명시:
+
+```csharp
+// 후속 spec 또는 통합 시점 — 미래 producer 들의 호출 패턴
+// 1) 디펜더 on-place hazard 능력
+public void OnDefenderPlaced(...) {
+    if (defenderData.onPlaceHazardSO != null)
+        battleBridge.SpawnHazardWithVisual(defenderData.onPlaceHazardSO, placedCell);
+}
+
+// 2) 스킬 카드
+public void CastHazardSkill(HazardSO so, Vector2Int targetCell) {
+    battleBridge.SpawnHazardWithVisual(so, targetCell.ToInt2());
+}
+
+// 3) 장비 효과 (적 사망 시 trigger)
+public void OnEnemyDeath(...) {
+    if (equippedItem.deathTriggerHazard != null)
+        battleBridge.SpawnHazardWithVisual(equippedItem.deathTriggerHazard, deathCell);
+}
+```
+
+= **모두 동일 `SpawnHazardWithVisual` API 호출**. 본 spec 의 디버그 메뉴 (Unit 7) 도 같은 진입점.
+
 ## Burst 호환
 
 - `SpawnHazard` 는 main-thread 호출 (EntityManager 직접 접근 → Burst 비대상).
@@ -85,7 +110,7 @@ public static class HazardShapeSampler
 `SpawnHazardApiTests`:
 - shape=SingleCell → cellsBuffer.Length == 1
 - shape=Square3x3 → cellsBuffer.Length == 9
-- shape=RadiusCircle, radius=2 → cellsBuffer.Length == 25
+- shape=RadiusSquare, radius=2 → cellsBuffer.Length == 25
 - effects.Length == SO 의 effects 길이
 - so == null → Entity.Null 반환, entity 미생성
 - effects 미할당 (null SO 필드) → empty buffer

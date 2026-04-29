@@ -1,104 +1,101 @@
-# HazardPresenter (Visual Layer)
+# Hazard Visual (Self-Managed)
 
 **작업 구분**: 6
 
 ## 목적
 
-Hazard ECS entity 의 visual prefab 을 world 에 인스턴스화 + entity 라이프사이클 동기. 기존 `TornadoFieldPresenter` / `MeteorWarningPresenter` 패턴 미러. ECS 는 visual 을 모름 — Presentation 계층의 일방향 listening.
+Hazard ECS entity 의 visual prefab 을 world 에 인스턴스화 + visual 자가 lifetime 으로 자동 destroy. 기존 `VfxSpawner.SpawnTornado(...)` / `BattleBridge.SpawnMeteorWarningVisual(...)` 의 *fire-and-self-manage* 패턴을 미러 — visual 이 ECS 와 *별도 lifecycle* 이지만 동일 lifetime 값으로 시작 → 동시 종료.
+
+**중요**: 본 spec 의 코드베이스에 `TornadoFieldPresenter` / `MeteorWarningPresenter` 같은 sync-by-frame Presenter 패턴은 **존재하지 않는다**. spawn 측 (`VfxSpawner` 메서드 + 자가 destroy timer) 가 모든 lifecycle 을 들고 있는 패턴이 기존 관행. 이 spec 도 같은 결을 따른다.
 
 ## 변경 대상
 
-- Add: `Assets/_Project/Scripts/Presentation/HazardPresenter.cs` — MonoBehaviour
-- Modify: `Assets/_Project/Scripts/Bridge/BattleBridge.cs` — hazard entity 추적 (spawn/destroy 이벤트) + HazardPresenter 호출 + visual prefab dictionary
+- Add: `Assets/_Project/Scripts/Presentation/HazardVisualLifetime.cs` — MonoBehaviour 자가 destroy timer
+- Modify: `Assets/_Project/Scripts/Bridge/BattleBridge.cs` — `SpawnHazardWithVisual(HazardSO, int2)` wrapper 메서드 추가
 
-## HazardPresenter
+## HazardVisualLifetime
 
 ```csharp
-public class HazardPresenter : MonoBehaviour
+namespace Wassup.Presentation
 {
-    private readonly System.Collections.Generic.Dictionary<Entity, GameObject> _instances = new();
-
-    public void OnHazardSpawned(Entity hazardEntity, GameObject visualPrefab, Vector3 worldOrigin, int radius, HazardShape shape)
+    public class HazardVisualLifetime : MonoBehaviour
     {
-        if (visualPrefab == null) return;
-        var go = Instantiate(visualPrefab, worldOrigin, Quaternion.identity, transform);
-        // shape 따라 scale (SingleCell=1, Square3x3=3, RadiusCircle=2*radius+1)
-        float side = shape switch
+        [SerializeField] private float remainingLife = 5f;
+
+        public void Init(float lifetime) => remainingLife = lifetime;
+
+        private void Update()
         {
-            HazardShape.SingleCell => 1f,
-            HazardShape.Square3x3 => 3f,
-            HazardShape.RadiusCircle => 2f * radius + 1f,
-            _ => 1f,
-        };
-        go.transform.localScale = new Vector3(side, go.transform.localScale.y, side);
-        _instances[hazardEntity] = go;
-    }
-
-    public void OnHazardDespawned(Entity hazardEntity)
-    {
-        if (_instances.TryGetValue(hazardEntity, out var go) && go != null)
-            Destroy(go);
-        _instances.Remove(hazardEntity);
-    }
-
-    private void OnDestroy()
-    {
-        foreach (var kv in _instances)
-            if (kv.Value != null) Destroy(kv.Value);
-        _instances.Clear();
+            remainingLife -= Time.deltaTime;
+            if (remainingLife <= 0f) Destroy(gameObject);
+        }
     }
 }
 ```
 
-## BattleBridge 통합
+= 가장 단순한 self-destroy timer. visual prefab 에 부착하면 lifetime 후 자동 정리. 기존 `MeteorFall.cs` / `BeamPulse.cs` 등 self-managed visual 패턴과 동일 결.
+
+## BattleBridge.SpawnHazardWithVisual
 
 ```csharp
-// 신규 필드
-[SerializeField] private HazardPresenter _hazardPresenter;
-private readonly Dictionary<Entity, (GameObject prefab, int radius, HazardShape shape, Vector3 worldOrigin)> _hazardVisualMeta = new();
-private readonly HashSet<Entity> _liveHazards = new();
-
-// 매 프레임 frame loop 에서 (예: 기존 TornadoPresenter sync 위치):
-//   - Query<Hazard> → 현재 살아있는 entity set (currentSet)
-//   - currentSet \ _liveHazards = new entries → meta lookup → presenter.OnHazardSpawned
-//   - _liveHazards \ currentSet = removed entries → presenter.OnHazardDespawned + meta dictionary 정리
-//   - _liveHazards = currentSet
-```
-
-기존 ECS-MB sync 패턴을 그대로 따름. 정확한 위치는 `TornadoFieldPresenter` 통합 코드 참고하여 동일 hook point 에 추가.
-
-## visualPrefab ref 흐름
-
-`Hazard` ECS 컴포넌트는 prefab ref 보유 안 함 (Burst/blittable 제약). 대안:
-
-- BattleBridge 가 `SpawnHazard` 를 wrap 하는 `SpawnHazardWithVisual(HazardSO so, int2 cell)` 메서드 노출. 이 wrapper 가 `EffectSpawner.SpawnHazard` 호출 + `_hazardVisualMeta[entity]` 등록 + `OnHazardSpawned` 즉시 호출.
-- Unit 7 의 디버그 진입점은 이 wrapper 를 호출.
-- 미래 producer (스킬/배치/장비) 도 `SpawnHazardWithVisual` 호출 또는 직접 `EffectSpawner.SpawnHazard` + 자체 visual 등록.
-
-```csharp
-// BattleBridge:
 public Entity SpawnHazardWithVisual(HazardSO so, int2 cell)
 {
     if (so == null || _em == null) return Entity.Null;
+
+    // 1. ECS hazard entity (lifetime = so.lifetime, HazardLifetimeSystem 가 tick + destroy)
     var e = EffectSpawner.SpawnHazard(_em, so, cell);
     if (e == Entity.Null) return e;
 
-    Vector3 worldOrigin = GridToWorldXZ(cell);  // 기존 grid math
-    _hazardVisualMeta[e] = (so.visualPrefab, so.radius, so.shape, worldOrigin);
-    _liveHazards.Add(e);
-    _hazardPresenter?.OnHazardSpawned(e, so.visualPrefab, worldOrigin, so.radius, so.shape);
+    // 2. Visual prefab 인스턴스화 — 자가 lifecycle (so.lifetime 만큼)
+    if (so.visualPrefab == null)
+    {
+        Debug.LogWarning($"[BattleBridge] HazardSO '{so.name}' has no visualPrefab. Spawned hazard will be invisible.");
+        return e;
+    }
+
+    Vector3 worldOrigin = GridToWorldXZ(cell);   // 기존 grid math 재사용 (정확 함수명은 BattleBridge 내 검색)
+    var vis = Instantiate(so.visualPrefab, worldOrigin, Quaternion.identity);
+    vis.transform.localScale = ShapeToScaleVec(so.shape, so.radius, vis.transform.localScale.y);
+
+    // 자가 destroy timer 부착 (이미 prefab 에 있으면 reuse)
+    var lifetime = vis.GetComponent<HazardVisualLifetime>() ?? vis.AddComponent<HazardVisualLifetime>();
+    lifetime.Init(so.lifetime);
+
     return e;
+}
+
+private static Vector3 ShapeToScaleVec(HazardShape shape, int radius, float yScale)
+{
+    float side = shape switch
+    {
+        HazardShape.SingleCell => 1f,
+        HazardShape.Square3x3 => 3f,
+        HazardShape.RadiusSquare => 2f * radius + 1f,
+        _ => 1f,
+    };
+    return new Vector3(side, yScale, side);
 }
 ```
 
-## 단위 테스트
+## 의도와 한계
 
-Presenter 자체는 MonoBehaviour 이라 EditMode 단위테스트 어려움. PlayMode smoke 검증은 Unit 7 에서.
+- **ECS 와 visual 이 별도 lifecycle**. 둘 다 같은 시점 (SpawnHazardWithVisual 호출 순간) 에 시작 + 같은 `lifetime` 값을 받음 → 자연스럽게 비슷한 시점에 종료.
+- 일반 case (timer 만료) 에서 둘이 거의 동시 종료 (1프레임 차이 가능, 시각상 무영향).
+- **한계**: ECS 가 *조기* destroy 되면 (디버그 강제 제거 등) visual 은 자기 timer 까지 남음. MVP 에서 허용. 정확 sync 가 필요한 미래 use case (예: 적이 hazard 부숨, 외부 cancel) 는 후속 후보 — spec 차단형 hazard 또는 별도 sync system.
+
+## visualPrefab null 처리
+
+- visualPrefab 이 null 이면 ECS hazard 만 생성, visual 없음. `Debug.LogWarning` 출력.
+- 이렇게 두는 이유: 효과만 있는 invisible hazard (트랩 같은 미래 use case) 를 막지 않기 위해. 단 본 spec 의 3 sample SO 는 모두 visualPrefab 필수.
+
+## 단위 테스트 (선택)
+
+- `HazardVisualLifetime` 은 PlayMode 에서 timer 동작만 시각 확인 (Unit 7 시나리오에서 자연 검증).
+- EditMode 단위 테스트 작성 부담 vs 가치 낮음 — Update + Time.deltaTime 의존하므로 PlayMode smoke 만으로 충분.
 
 ## 완료 기준
 
 - 컴파일.
 - Presentation 계층만 추가. ECS 동작 변화 0.
-- BattleBridge frame sync 코드가 Hazard entity 라이프사이클을 정확히 추적 (코드 리뷰).
-- 콘솔 에러/경고 0.
-- 디버그 spawn 시 (Unit 7) visual prefab 가 world 에 등장 + 만료 시 사라짐 — Unit 7 의 PlayMode 에서 검증.
+- `BattleBridge.SpawnHazardWithVisual` 컴파일 + 호출 가능 (Unit 7 의 진입점이 이걸 호출).
+- 콘솔 에러/경고 0 (단, visualPrefab=null 호출 시 의도된 LogWarning 1건 OK).

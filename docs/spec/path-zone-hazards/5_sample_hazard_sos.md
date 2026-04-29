@@ -63,8 +63,14 @@ effects = [
 | HazardVisual_Fire | #FF6633 (적색, alpha 0.6) | 화염 |
 
 - Y 위치 0.05 (지면에서 살짝 띄움).
-- Scale 1×1×1 (HazardPresenter 가 radius 따라 scale 조정).
+- Scale 1×1×1 (BattleBridge.SpawnHazardWithVisual 가 shape 따라 scale 조정).
 - 정식 particle/decal 은 후속 (unity-vfx-authoring 스킬).
+
+## visualPrefab null 정책
+
+- HazardSO.visualPrefab 가 **null 인 경우**: ECS 효과는 정상 동작 (DoT/Slow 적용 ✓), 단 시각 부재 → 디버그/QA 시 hazard 위치 식별 불가.
+- 본 spec 의 3 sample SO 는 모두 visualPrefab **필수 할당**. 작가/작업자가 SO 작성 시 visualPrefab 비우면 SpawnHazardWithVisual 가 `Debug.LogWarning` 출력하도록 (Unit 6 에서 정의).
+- "효과만 있는 invisible hazard" 가 필요한 미래 use case (예: 트랩) 가 생기면 그때 별도 결정.
 
 ## 완료 기준
 

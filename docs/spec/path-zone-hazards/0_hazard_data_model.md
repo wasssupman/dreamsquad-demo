@@ -18,11 +18,13 @@ Hazard 의 통일 데이터 타입 정의. 시스템과 Producer 는 다음 작�
 ```csharp
 public enum HazardShape : byte
 {
-    SingleCell = 0,    // 1×1
-    Square3x3 = 1,     // 3×3 정사각
-    RadiusCircle = 2,  // origin 중심 Chebyshev radius (정사각 sampling, MVP)
+    SingleCell = 0,   // 1×1
+    Square3x3 = 1,    // 3×3 정사각 (radius 무시)
+    RadiusSquare = 2, // origin 중심 Chebyshev radius 정사각. radius=2 → 5×5
 }
 ```
+
+**naming note**: `RadiusSquare` 는 Chebyshev distance ≤ radius 인 셀 집합 (정사각). 진짜 원형 (Manhattan/Euclidean) 은 후속 후보.
 
 ## HazardEffect struct
 
@@ -31,8 +33,8 @@ public enum HazardShape : byte
 public struct HazardEffect
 {
     public CcKind kind;        // 본 spec CC 채널 재사용 (Slow / DoT / 향후 확장)
-    public float param1;       // kind 별 컨벤션
-    public float param2;       // 예약
+    public float param1;       // kind 별 컨벤션 (아래 표)
+    public float param2;       // **현재 미사용**. 미래 Impulse 방향/축 정책 또는 다파라미터 CC 도입 시 활용 예약
     public float restDuration; // 매 프레임 enqueue 시 잔존시간 (예: 0.2s)
 }
 ```
@@ -55,7 +57,6 @@ ZoneApplySystem 이 매 프레임 `HazardEffect` → `CcEffect` 변환:
 public struct Hazard : IComponentData
 {
     public float remainingLife;   // 초
-    public int effectCount;       // HazardEffectsBuffer 길이 mirror (편의용)
 }
 
 [InternalBufferCapacity(2)]
@@ -71,7 +72,7 @@ public struct HazardCellsBuffer : IBufferElementData
 }
 ```
 
-= 한 hazard spawn = entity 1개 + 두 buffer (effects, cells). lifetime 1번 관리.
+= 한 hazard spawn = entity 1개 + 두 buffer (effects, cells). lifetime 1번 관리. effect 개수는 `EffectsBuffer.Length` 직접 사용 (별도 mirror 필드 없음).
 
 ## HazardSO ScriptableObject
 

@@ -19,6 +19,13 @@
 [UpdateBefore(typeof(CcApplySystem))]
 public partial struct ZoneApplySystem : ISystem
 {
+    public void OnCreate(ref SystemState state)
+    {
+        state.RequireForUpdate<HazardSingleton>();
+        state.RequireForUpdate<EnemyCcEventsSingleton>();
+        state.RequireForUpdate<FlowFieldSingleton>();
+    }
+
     public void OnUpdate(ref SystemState state)
     {
         var hazardSingleton = SystemAPI.GetSingleton<HazardSingleton>();

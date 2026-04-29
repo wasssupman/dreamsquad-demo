@@ -31,6 +31,11 @@ public struct HazardSingleton : IComponentData
 [UpdateBefore(typeof(CcApplySystem))]   // ZoneApplySystem 가 직후 read 위해 먼저 갱신
 public partial struct HazardLifetimeSystem : ISystem
 {
+    public void OnCreate(ref SystemState state)
+    {
+        state.RequireForUpdate<HazardSingleton>();
+    }
+
     public void OnUpdate(ref SystemState state)
     {
         float dt = SystemAPI.Time.DeltaTime;
