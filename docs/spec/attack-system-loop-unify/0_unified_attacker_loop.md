@@ -242,3 +242,5 @@ public void OnUpdate(ref SystemState state)
   - 콘솔 에러/경고 0.
 - AttackSystem.cs 의 코드 줄 수 감소 확인 (300 → ~170 줄 추정).
 - LocalTransform writer 단독 = MovementSystem (불변).
+
+검증: 2026-04-29 — 컴파일 성공, EditMode 155/155 통과 (unified loop 테스트 11/11), 콘솔 에러/경고 0. PlayMode 회귀 게이트 (U1~U8) 사용자 확인 통과. 커밋 `ccc2873`.
