@@ -772,10 +772,18 @@ namespace Wassup.Bridge
             if (_world == null) { PrepareDraftMap(); return; }
             CleanupDraftMapBeforeRebuild();
             BuildMapForBattle();
+#if UNITY_INCLUDE_TESTS
+            RebuildDraftMapCallCount++;
+#endif
         }
 
         // draft-stage-map-prebuild Unit 0 — true once BuildMapForBattle has succeeded at least once.
         public bool HasGeneratedMap => _generatedMap.IsCreated;
+
+#if UNITY_INCLUDE_TESTS
+        // Unit 4 EditMode test counter — stripped from non-test builds.
+        public int RebuildDraftMapCallCount { get; private set; }
+#endif
 
         private bool TryInitializeGeneratedWaves()
         {
