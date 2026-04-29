@@ -6,7 +6,7 @@
 
 ## 상태
 
-진행 중 (작성: 2026-04-29).
+완료 (2026-04-29).
 
 ## 구현 문서 목록
 
@@ -20,6 +20,7 @@
 | 5 | `5_sample_hazard_sos.md` | 3 sample SO asset (Poison/Ice/Fire 3×3) + placeholder visual prefab |
 | 6 | `6_hazard_presenter.md` | `HazardPresenter` MonoBehaviour + BattleBridge spawn/destroy sync |
 | 7 | `7_debug_spawn_entry.md` | `BattleBridge.DebugSpawnHazardAt` + Editor 메뉴 (**feature 게이트**) |
+| 8 | `8_handoff_summary.md` | 구현 결과 + 검증 로그 + 후속 주의점 |
 
 ## 공통 원칙 (feature-wide 계약)
 
