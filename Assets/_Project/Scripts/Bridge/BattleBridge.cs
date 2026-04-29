@@ -92,6 +92,8 @@ namespace Wassup.Bridge
         private bool _running;
         private bool _placementAllowed;
         private bool _resultShown;
+        // draft-stage-map-prebuild Unit 0 — ECS infrastructure idempotent guard.
+        private bool _ecsInfrastructureReady;
         private bool _usingGeneratedWaves;
         private GeneratedWavePlan _wavePlan;
         private int _nextWaveIndex;
@@ -319,6 +321,8 @@ namespace Wassup.Bridge
             TeardownFlowField();
             // Phase 10A (P10A-04A): dispose GeneratedMap (idempotent) alongside FlowField.
             TeardownGeneratedMap();
+            // draft-stage-map-prebuild Unit 0 — allow EnsureQueriesAndQueues to reinitialise on next entry.
+            _ecsInfrastructureReady = false;
         }
 
         // Idempotent: 재호출(판 재시작/redraft) 시 기존 Persistent arrays dispose 후 재생성.
@@ -558,6 +562,14 @@ namespace Wassup.Bridge
 
             EnsureQueriesAndQueues();
 
+            // draft-stage-map-prebuild Unit 0 — map normally built by PrepareDraftMap.
+            // Fallback for paths that bypass draft (tests, direct StartBattle).
+            if (!_generatedMap.IsCreated)
+            {
+                Debug.LogWarning("[BattleBridge] BeginPlacement: map not prepared, building now.");
+                BuildMapForBattle();
+            }
+
             GameManager.Instance?.Logger?.SetAttackDeckId(deck.deckId);
             Debug.Log("[BattleBridge] Placement phase ready.");
         }
@@ -592,6 +604,9 @@ namespace Wassup.Bridge
 
         private void EnsureQueriesAndQueues()
         {
+            // draft-stage-map-prebuild Unit 0 — idempotent guard; skip if already initialised.
+            if (_ecsInfrastructureReady) return;
+
             if (!_aliveAttackersQueryCreated)
             {
                 _aliveAttackersQuery = _em.CreateEntityQuery(ComponentType.ReadOnly<AttackUnitTag>());
@@ -680,7 +695,9 @@ namespace Wassup.Bridge
             int visualSeed = (mapSettings != null ? mapSettings.EffectiveSeed : 42) ^ 0x5A5A5A5A;
             _projectileViewPool?.Initialize(visualSeed);
 
-            BuildMapForBattle();
+            // draft-stage-map-prebuild Unit 0 — BuildMapForBattle removed from here; called explicitly
+            // by PrepareDraftMap / RebuildDraftMap / BeginPlacement fallback.
+            _ecsInfrastructureReady = true;
         }
 
         public void StopBattle()
@@ -690,6 +707,51 @@ namespace Wassup.Bridge
             SetNextWaveButtonVisible(false);
             // Phase 0: entities persist until play mode exit. P0-09 will add full teardown.
         }
+
+        // draft-stage-map-prebuild Unit 0 — called by GameManager.Start before BeginDraft.
+        // Initialises ECS infrastructure and builds the map so it is visible during the draft stage.
+        public void PrepareDraftMap()
+        {
+            if (deck == null || map == null)
+            {
+                Debug.LogError("[BattleBridge] deck or map reference missing.", this);
+                return;
+            }
+            _world = World.DefaultGameObjectInjectionWorld;
+            if (_world == null)
+            {
+                Debug.LogWarning("[BattleBridge] Default World not ready at PrepareDraftMap; deferring 1 frame.");
+                StartCoroutine(DeferredPrepareDraftMap());
+                return;
+            }
+            _em = _world.EntityManager;
+
+            EnsureQueriesAndQueues();
+            BuildMapForBattle();
+        }
+
+        private System.Collections.IEnumerator DeferredPrepareDraftMap()
+        {
+            yield return null;
+            PrepareDraftMap();
+        }
+
+        // draft-stage-map-prebuild Unit 0 — called by DraftController on option change / Redraft.
+        // TODO Unit 1: replace minimal delegation with CleanupDraftMapBeforeRebuild()
+        // covering ECS entities + visual roots + SO registries.
+        public void RebuildDraftMap()
+        {
+            if (_world == null) { PrepareDraftMap(); return; }
+            // Unit 1 will replace this minimal teardown with CleanupDraftMapBeforeRebuild()
+            // covering ECS entities + visual roots + SO registries. For now, the existing
+            // TeardownGeneratedMap/TeardownFlowField pair in BuildMapForBattle (lines 403-404)
+            // already handles map+flow cleanup, so RebuildDraftMap delegates to BuildMapForBattle
+            // directly. Visual root accumulation is Unit 1's scope.
+            BuildMapForBattle();
+        }
+
+        // draft-stage-map-prebuild Unit 0 — true once BuildMapForBattle has succeeded at least once.
+        public bool HasGeneratedMap => _generatedMap.IsCreated;
 
         private bool TryInitializeGeneratedWaves()
         {
@@ -2436,6 +2498,8 @@ namespace Wassup.Bridge
             TeardownFlowField();
             // Phase 10A (P10A-04A): dispose GeneratedMap on destroy.
             TeardownGeneratedMap();
+            // draft-stage-map-prebuild Unit 0 — reset on lifecycle end.
+            _ecsInfrastructureReady = false;
             if (_healthBarMaterial != null) Destroy(_healthBarMaterial);
             for (int i = 0; i < _ownedRuntimeMaterials.Count; i++)
             {
