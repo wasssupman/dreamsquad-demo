@@ -83,6 +83,11 @@ namespace Wassup.Core
         {
             if (draftController != null)
             {
+                // draft-stage-map-prebuild Unit 2 — build the map before entering Draft
+                // so the playfield renders behind the card fan. Option toggles trigger
+                // RebuildDraftMap via DraftController (Unit 3).
+                if (battleBridge != null) battleBridge.PrepareDraftMap();
+
                 SetPhase(GamePhase.Draft);
                 draftController.BeginDraft();
             }
