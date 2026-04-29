@@ -73,4 +73,4 @@ placeholder visual:
 - 기존 테스트 회귀 0.
 - 콘솔 에러/경고 0.
 
-검증: 2026-04-29 — `BlockingHazardSO`, `Hazard_Rock_3x3.asset`, `BlockingHazard_Placeholder.prefab`, placeholder material 생성. 컴파일 성공. 커밋 미작성.
+검증: 2026-04-29 — `BlockingHazardSO`, `Hazard_Rock_3x3.asset`, `BlockingHazard_Placeholder.prefab`, placeholder material 생성. 컴파일 성공. 커밋 `3f5ab31`.

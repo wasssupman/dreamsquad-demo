@@ -130,4 +130,4 @@ _hazardDestroyedSingletonQuery = state.GetEntityQuery(
 - 동작 변화: 본 unit 단독으론 hazard entity 가 없어 효과 0. Unit 7 spawn 후 검증 가능.
 - 콘솔 에러/경고 0.
 
-검증: 2026-04-29 — `HazardDestroyedEventTests` 추가, 관련 3/3 통과, 전체 EditMode 149/149 통과, 콘솔 에러/경고 0. BattleBridge drain 은 Unit 8 visual 매핑 전까지 queue drain stub. 커밋 미작성.
+검증: 2026-04-29 — `HazardDestroyedEventTests` 추가, 관련 3/3 통과, 전체 EditMode 149/149 통과, 콘솔 에러/경고 0. BattleBridge drain 은 Unit 8 visual 매핑 전까지 queue drain stub. 커밋 `3f5ab31`.

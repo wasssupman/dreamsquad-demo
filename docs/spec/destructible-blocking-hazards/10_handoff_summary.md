@@ -5,9 +5,10 @@
 
 ## Commit
 
-| Unit | 해시 | 설명 |
+| 범위 | 해시 | 설명 |
 |---|---|---|
-| 0~9 | 커밋 미작성 | Faction 인프라 + BlockingHazard entity + spawn/destroy 채널 + visual presenter + 검증 |
+| spec docs | `9ff09c1` | docs: add spec + handoff summary (design.md, README, 0~10, _session_handoff, CLAUDE.md NativeQueue 갱신) |
+| 0~9 (impl) | `3f5ab31` | feat: full implementation — Faction 인프라 + BlockingHazard entity + spawn/destroy 채널 + visual presenter + 디버그 spawn + 테스트 (149/149) |
 
 ## Implemented
 

@@ -68,4 +68,4 @@ public int targetMask; // (int)Faction bitmask of attackable factions
 - **plays-test 금지** — Unit 1+2 까지 합쳐야 attack 동작 정상. 단독 play 시 회귀 가능.
 - 콘솔 에러/경고 0.
 
-검증: 2026-04-29 — Unit 0~2 묶음으로 컴파일 성공, EditMode 142/142 통과, 콘솔 에러/경고 0. 커밋 미작성.
+검증: 2026-04-29 — Unit 0~2 묶음으로 컴파일 성공, EditMode 142/142 통과, 콘솔 에러/경고 0. 커밋 `3f5ab31`.

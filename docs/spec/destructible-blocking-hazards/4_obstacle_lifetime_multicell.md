@@ -93,4 +93,4 @@ foreach (var (cellsBuffer, entity) in
 - LocalTransform writer 단독 = MovementSystem (불변).
 - 콘솔 에러/경고 0.
 
-검증: 2026-04-29 — `ObstacleLifetimeTests` 멀티셀 케이스 추가, 관련 9/9 통과, 전체 EditMode 149/149 통과, 콘솔 에러/경고 0. 커밋 미작성.
+검증: 2026-04-29 — `ObstacleLifetimeTests` 멀티셀 케이스 추가, 관련 9/9 통과, 전체 EditMode 149/149 통과, 콘솔 에러/경고 0. 커밋 `3f5ab31`.

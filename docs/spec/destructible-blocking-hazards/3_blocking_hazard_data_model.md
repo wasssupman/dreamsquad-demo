@@ -78,4 +78,4 @@ namespace Wassup.Battle.Effects
 - 동작 변화 0 (entity factory 미존재).
 - 콘솔 에러/경고 0.
 
-검증: 2026-04-29 — 컴파일 성공, EditMode 149/149 통과, 콘솔 에러/경고 0. 커밋 미작성.
+검증: 2026-04-29 — 컴파일 성공, EditMode 149/149 통과, 콘솔 에러/경고 0. 커밋 `3f5ab31`.

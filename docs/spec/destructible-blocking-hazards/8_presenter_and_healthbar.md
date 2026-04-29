@@ -99,4 +99,4 @@ private void DrainHazardDestroyedEvents()
 - 기존 회귀 0.
 - 콘솔 에러/경고 0.
 
-검증: 2026-04-29 — `BlockingHazardPresenter`, BattleBridge destruction drain, 기존 `CreateHealthBar(owner, ...)` 기반 hazard HP bar 부착 구현. PlayMode 사용자 확인 통과 — handoff_summary.md Verified 섹션 참조 (spawn / 유효 cell 스냅 / 콘솔 에러 0). 적 부수기 + destruction VFX 의 정밀 시각 검증은 후속 PlayMode 세션에서 재확인 가능. 커밋 미작성.
+검증: 2026-04-29 — `BlockingHazardPresenter`, BattleBridge destruction drain, 기존 `CreateHealthBar(owner, ...)` 기반 hazard HP bar 부착 구현. PlayMode 사용자 확인 통과 — handoff_summary.md Verified 섹션 참조 (spawn / 유효 cell 스냅 / 콘솔 에러 0). 적 부수기 + destruction VFX 의 정밀 시각 검증은 후속 PlayMode 세션에서 재확인 가능. 커밋 `3f5ab31`.

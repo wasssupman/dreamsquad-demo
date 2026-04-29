@@ -62,4 +62,4 @@ cap: 세션당 200건.
 - 콘솔 에러/경고 0.
 - 본 spec 의 검증 질문 1 (게임감) + 2 (회귀 안정성) 모두 답변됨.
 
-검증: 2026-04-29 — `BlockingHazardDebugMenu` 및 `BattleBridge.DebugSpawnBlockingHazardAt` 구현. 골 cell 인접 클릭은 유효한 3x3 walk cell 로 스냅하도록 보강. 사용자 PlayMode 확인 완료, 콘솔 에러 없음. 커밋 미작성.
+검증: 2026-04-29 — `BlockingHazardDebugMenu` 및 `BattleBridge.DebugSpawnBlockingHazardAt` 구현. 골 cell 인접 클릭은 유효한 3x3 walk cell 로 스냅하도록 보강. 사용자 PlayMode 확인 완료, 콘솔 에러 없음. 커밋 `3f5ab31`.

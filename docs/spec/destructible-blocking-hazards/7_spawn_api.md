@@ -134,4 +134,4 @@ var hazardSinkEntity = em.CreateSingleton(new HazardDestroyedEventsSingleton
 - 본 unit 단독 검증: BattleBridge 의 디버그 헬퍼 (Unit 9) 또는 코드에서 직접 호출 후 Editor entity inspector 로 확인.
 - 콘솔 에러/경고 0 (의도된 거부 경고 제외).
 
-검증: 2026-04-29 — `EffectSpawner.SpawnBlockingHazard`, `BattleBridge.SpawnBlockingHazardWithVisual`, SO registry, visual map 구현. `SpawnBlockingHazardTests` 5/5 통과(TestResults.xml 기준). 커밋 미작성.
+검증: 2026-04-29 — `EffectSpawner.SpawnBlockingHazard`, `BattleBridge.SpawnBlockingHazardWithVisual`, SO registry, visual map 구현. `SpawnBlockingHazardTests` 5/5 통과(TestResults.xml 기준). 커밋 `3f5ab31`.

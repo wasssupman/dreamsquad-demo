@@ -105,4 +105,4 @@ foreach (var (attack, transform, attackerEntity) in
 - 콘솔 에러/경고 0.
 - LocalTransform writer 단독 = MovementSystem (불변 검증).
 
-검증: 2026-04-29 — 컴파일 성공, `AttackSystemMaskTests` 추가, EditMode 142/142 통과, 콘솔 에러/경고 0. PlayMode 회귀 검증은 사용자 확인 대기. 커밋 미작성.
+검증: 2026-04-29 — 컴파일 성공, `AttackSystemMaskTests` 추가, EditMode 142/142 통과, 콘솔 에러/경고 0. PlayMode 회귀 검증은 사용자 확인 대기. 커밋 `3f5ab31`.
