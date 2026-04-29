@@ -120,6 +120,13 @@ namespace Wassup.Logging
             currentEntry.skill.usages.Add(usage);
         }
 
+        public void RecordHazard(HazardLog hazard)
+        {
+            if (currentEntry == null || hazard == null) return;
+            if (currentEntry.hazards.Count >= 2000) return;
+            currentEntry.hazards.Add(hazard);
+        }
+
         public void RecordOnPlace(OnPlaceUsageLog usage)
         {
             if (currentEntry == null || usage == null) return;

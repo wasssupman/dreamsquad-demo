@@ -1,5 +1,6 @@
 using Unity.Entities;
 using Unity.Mathematics;
+using Wassup.Data;
 
 namespace Wassup.Battle.Effects
 {
@@ -139,6 +140,31 @@ namespace Wassup.Battle.Effects
         {
             var e = em.CreateEntity();
             em.AddComponentData(e, new Obstacle { cell = cell, worldPosition = worldPos, remainingLife = lifetime });
+            return e;
+        }
+
+        public static Entity SpawnHazard(EntityManager em, HazardSO so, int2 originCell)
+        {
+            if (so == null) return Entity.Null;
+
+            var e = em.CreateEntity();
+            em.AddComponentData(e, new Hazard
+            {
+                remainingLife = so.lifetime,
+            });
+
+            var cellsBuffer = em.AddBuffer<HazardCellsBuffer>(e);
+            var cells = HazardShapeSampler.Sample(so.shape, originCell, so.radius);
+            for (int i = 0; i < cells.Count; i++)
+                cellsBuffer.Add(new HazardCellsBuffer { cell = cells[i] });
+
+            var effectsBuffer = em.AddBuffer<HazardEffectsBuffer>(e);
+            if (so.effects != null)
+            {
+                for (int i = 0; i < so.effects.Length; i++)
+                    effectsBuffer.Add(new HazardEffectsBuffer { effect = so.effects[i] });
+            }
+
             return e;
         }
 

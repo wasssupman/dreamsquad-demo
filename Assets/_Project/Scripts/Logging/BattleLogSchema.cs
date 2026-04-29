@@ -16,6 +16,7 @@ namespace Wassup.Logging
         public WavePatternRecord wavePattern = new();
         public DraftRecord draft = new();
         public SkillRecord skill = new();
+        public List<HazardLog> hazards = new();
         public SynergyRecord synergy = new();
         public List<OnPlaceUsageLog> on_place_usages = new();
         public List<PlacementLog> placements = new();
@@ -121,6 +122,19 @@ namespace Wassup.Logging
         // skills leave this at (-1, -1). Analyzers can treat non-(-1,-1) as
         // "this was a dual-tile cast."
         public Vector2Int target_tile_b = new(-1, -1);
+    }
+
+    [Serializable]
+    public class HazardLog
+    {
+        public string event_type;
+        public string hazard_id;
+        public string kind;
+        public Vector2Int tile;
+        public float time;
+        public float scalar;
+        public float amount;
+        public int target_index;
     }
 
     // Phase 4: tracks adjacency synergy activity over the session. `activations`

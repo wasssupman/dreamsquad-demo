@@ -100,7 +100,9 @@ namespace Wassup.Bridge
         private NativeQueue<Wassup.Battle.Combat.DefenderAttackEvent> _defenderAttackQueue;
         private NativeQueue<Wassup.Battle.Combat.Projectile.ProjectileHitEvent> _projectileHitEventQueue;
         private NativeQueue<Wassup.Battle.Effects.EnemyCcEvent> _enemyCcQueue;
+        private NativeQueue<Wassup.Battle.Effects.HazardRuntimeEvent> _hazardRuntimeEventQueue;
         private Unity.Collections.NativeHashSet<Unity.Mathematics.int2> _blockedCells;
+        private Unity.Collections.NativeParallelMultiHashMap<Unity.Mathematics.int2, Wassup.Battle.Effects.HazardEffect> _hazardCellToEffects;
 
         // Phase 9 flow field 싱글톤 entity reference
         private Entity _flowFieldSingleton = Entity.Null;
@@ -269,9 +271,21 @@ namespace Wassup.Bridge
             _em.DestroyEntity(enemyCcSingletons);
             enemyCcSingletons.Dispose();
 
+            var hazardRuntimeSingletons = _em.CreateEntityQuery(ComponentType.ReadOnly<Wassup.Battle.Effects.HazardRuntimeEventsSingleton>());
+            _em.DestroyEntity(hazardRuntimeSingletons);
+            hazardRuntimeSingletons.Dispose();
+
             var obstacleSingletons = _em.CreateEntityQuery(ComponentType.ReadOnly<Wassup.Battle.Effects.ObstacleSingleton>());
             _em.DestroyEntity(obstacleSingletons);
             obstacleSingletons.Dispose();
+
+            var hazardSingletons = _em.CreateEntityQuery(ComponentType.ReadOnly<Wassup.Battle.Effects.HazardSingleton>());
+            _em.DestroyEntity(hazardSingletons);
+            hazardSingletons.Dispose();
+
+            var hazards = _em.CreateEntityQuery(ComponentType.ReadOnly<Wassup.Battle.Effects.Hazard>());
+            _em.DestroyEntity(hazards);
+            hazards.Dispose();
 
             // Dispose the queues; StartBattle will create fresh ones.
             if (_goalEventQueue.IsCreated) _goalEventQueue.Dispose();
@@ -280,7 +294,9 @@ namespace Wassup.Bridge
             if (_defenderAttackQueue.IsCreated) _defenderAttackQueue.Dispose();
             if (_projectileHitEventQueue.IsCreated) _projectileHitEventQueue.Dispose();
             if (_enemyCcQueue.IsCreated) _enemyCcQueue.Dispose();
+            if (_hazardRuntimeEventQueue.IsCreated) _hazardRuntimeEventQueue.Dispose();
             if (_blockedCells.IsCreated) _blockedCells.Dispose();
+            if (_hazardCellToEffects.IsCreated) _hazardCellToEffects.Dispose();
 
             // Phase 9: dispose the flow field singleton arrays + destroy the entity.
             TeardownFlowField();
@@ -618,11 +634,23 @@ namespace Wassup.Bridge
             var enemyCcSingleton = _em.CreateEntity();
             _em.AddComponentData(enemyCcSingleton, new Wassup.Battle.Effects.EnemyCcEventsSingleton { queue = _enemyCcQueue });
 
+            // Hazard debug telemetry channel. Zone/DoT systems enqueue here; BattleBridge drains to JSON logs.
+            if (_hazardRuntimeEventQueue.IsCreated) _hazardRuntimeEventQueue.Dispose();
+            _hazardRuntimeEventQueue = new NativeQueue<Wassup.Battle.Effects.HazardRuntimeEvent>(Allocator.Persistent);
+            var hazardRuntimeSingleton = _em.CreateEntity();
+            _em.AddComponentData(hazardRuntimeSingleton, new Wassup.Battle.Effects.HazardRuntimeEventsSingleton { queue = _hazardRuntimeEventQueue });
+
             // Obstacle blocked-cells set. ObstacleLifetimeSystem rebuilds it each frame.
             if (_blockedCells.IsCreated) _blockedCells.Dispose();
             _blockedCells = new Unity.Collections.NativeHashSet<Unity.Mathematics.int2>(64, Allocator.Persistent);
             var obstacleSingleton = _em.CreateEntity();
             _em.AddComponentData(obstacleSingleton, new Wassup.Battle.Effects.ObstacleSingleton { blockedCells = _blockedCells });
+
+            // Hazard cell→effects map. HazardLifetimeSystem rebuilds it each frame.
+            if (_hazardCellToEffects.IsCreated) _hazardCellToEffects.Dispose();
+            _hazardCellToEffects = new Unity.Collections.NativeParallelMultiHashMap<Unity.Mathematics.int2, Wassup.Battle.Effects.HazardEffect>(64, Allocator.Persistent);
+            var hazardSingleton = _em.CreateEntity();
+            _em.AddComponentData(hazardSingleton, new Wassup.Battle.Effects.HazardSingleton { cellToEffects = _hazardCellToEffects });
 
             // Fix 3 (task 10): seed visual RNG from map seed so jitter is reproducible per session.
             int visualSeed = (mapSettings != null ? mapSettings.EffectiveSeed : 42) ^ 0x5A5A5A5A;
@@ -920,6 +948,48 @@ namespace Wassup.Bridge
             return new Vector3(p.x, p.y, p.z);
         }
 
+        public Unity.Mathematics.int2 DebugWorldToCell(Vector3 worldPosition)
+        {
+            int2 gridSize = _generatedMap.IsCreated ? _generatedMap.gridSize : GridSize;
+            return GridMath.WorldToCell(new float3(worldPosition.x, worldPosition.y, worldPosition.z), tileSize, gridSize);
+        }
+
+        public bool TryGetNearestWalkCell(Unity.Mathematics.int2 requestedCell, out Unity.Mathematics.int2 walkCell)
+        {
+            walkCell = requestedCell;
+            if (!_generatedMap.IsCreated)
+                return false;
+
+            if (IsInGeneratedMapBounds(requestedCell) && _generatedMap.TileAt(requestedCell) == MapTileType.Walk)
+                return true;
+
+            int bestDistSq = int.MaxValue;
+            bool found = false;
+            for (int y = 0; y < _generatedMap.gridSize.y; y++)
+            for (int x = 0; x < _generatedMap.gridSize.x; x++)
+            {
+                var candidate = new int2(x, y);
+                if (_generatedMap.TileAt(candidate) != MapTileType.Walk) continue;
+
+                int dx = x - requestedCell.x;
+                int dy = y - requestedCell.y;
+                int distSq = dx * dx + dy * dy;
+                if (distSq >= bestDistSq) continue;
+
+                bestDistSq = distSq;
+                walkCell = candidate;
+                found = true;
+            }
+
+            return found;
+        }
+
+        private bool IsInGeneratedMapBounds(Unity.Mathematics.int2 cell)
+        {
+            return cell.x >= 0 && cell.x < _generatedMap.gridSize.x
+                && cell.y >= 0 && cell.y < _generatedMap.gridSize.y;
+        }
+
         private int ApplySlowField(Vector2Int tile, SkillData skill)
         {
             // Collect all currently-alive attack unit entities; filter by XZ distance
@@ -1088,6 +1158,7 @@ namespace Wassup.Bridge
             DrainMeteorBurstEvents();
             DrainDefenderAttackEvents();
             DrainProjectileHitEvents();
+            DrainHazardRuntimeEvents();
             DrainGoalEvents();
             CheckTimer();
             CheckVictory();
@@ -1982,6 +2053,111 @@ namespace Wassup.Bridge
             return e;
         }
 
+        public Unity.Entities.Entity SpawnHazardWithVisual(HazardSO so, Unity.Mathematics.int2 cell)
+        {
+            if (so == null || _em == null)
+                return Unity.Entities.Entity.Null;
+            if (!TryGetNearestWalkCell(cell, out cell))
+            {
+                Debug.LogWarning("[BattleBridge] Cannot spawn hazard: generated map has no walk cells.");
+                return Unity.Entities.Entity.Null;
+            }
+
+            var e = Wassup.Battle.Effects.EffectSpawner.SpawnHazard(_em, so, cell);
+            if (e == Unity.Entities.Entity.Null)
+                return e;
+
+            RecordHazardSpawn(so, cell);
+
+            if (so.visualPrefab == null)
+            {
+                Debug.LogWarning($"[BattleBridge] HazardSO '{so.name}' has no visualPrefab. Spawned hazard will be invisible.");
+                return e;
+            }
+
+            float3 worldOrigin = GridToWorldCenter(new Vector2Int(cell.x, cell.y), 0.05f);
+            var visual = Instantiate(so.visualPrefab, new Vector3(worldOrigin.x, worldOrigin.y, worldOrigin.z), Quaternion.identity);
+            var scale = ShapeToHazardVisualScale(so.shape, so.radius, visual.transform.localScale.y);
+            visual.transform.localScale = scale * tileSize;
+
+            var lifetime = visual.GetComponent<Wassup.Presentation.HazardVisualLifetime>();
+            if (lifetime == null)
+                lifetime = visual.AddComponent<Wassup.Presentation.HazardVisualLifetime>();
+            lifetime.Init(so.lifetime);
+
+            return e;
+        }
+
+        public Unity.Entities.Entity DebugSpawnHazardAt(HazardSO so, Unity.Mathematics.int2 cell)
+        {
+            return SpawnHazardWithVisual(so, cell);
+        }
+
+        private void RecordHazardSpawn(HazardSO so, Unity.Mathematics.int2 cell)
+        {
+            if (so == null) return;
+            if (so.effects == null || so.effects.Length == 0)
+            {
+                GameManager.Instance?.Logger?.RecordHazard(new Logging.HazardLog
+                {
+                    event_type = "spawn",
+                    hazard_id = so.name,
+                    kind = string.Empty,
+                    tile = new Vector2Int(cell.x, cell.y),
+                    time = Time.time - _startTime,
+                    target_index = -1,
+                });
+                return;
+            }
+
+            for (int i = 0; i < so.effects.Length; i++)
+            {
+                var effect = so.effects[i];
+                GameManager.Instance?.Logger?.RecordHazard(new Logging.HazardLog
+                {
+                    event_type = "spawn",
+                    hazard_id = so.name,
+                    kind = effect.kind.ToString(),
+                    tile = new Vector2Int(cell.x, cell.y),
+                    time = Time.time - _startTime,
+                    scalar = effect.param1,
+                    target_index = -1,
+                });
+            }
+        }
+
+        private void DrainHazardRuntimeEvents()
+        {
+            if (!_hazardRuntimeEventQueue.IsCreated) return;
+            while (_hazardRuntimeEventQueue.TryDequeue(out var evt))
+            {
+                string eventType = evt.eventType == HazardRuntimeEventType.ZoneApply ? "zone_apply" : "dot_damage";
+                GameManager.Instance?.Logger?.RecordHazard(new Logging.HazardLog
+                {
+                    event_type = eventType,
+                    hazard_id = string.Empty,
+                    kind = evt.kind.ToString(),
+                    tile = new Vector2Int(evt.cell.x, evt.cell.y),
+                    time = Time.time - _startTime,
+                    scalar = evt.scalar,
+                    amount = evt.amount,
+                    target_index = evt.target.Index,
+                });
+            }
+        }
+
+        private static Vector3 ShapeToHazardVisualScale(HazardShape shape, int radius, float yScale)
+        {
+            float side = shape switch
+            {
+                HazardShape.SingleCell => 1f,
+                HazardShape.Square3x3 => 3f,
+                HazardShape.RadiusSquare => 2f * Mathf.Max(1, radius) + 1f,
+                _ => 1f,
+            };
+            return new Vector3(side, yScale, side);
+        }
+
         [UnityEngine.ContextMenu("Debug Spawn Obstacle At (3,1)")]
         private void DebugSpawnObstacleContext() => DebugSpawnObstacleAt(new Unity.Mathematics.int2(3, 1), 5f);
 
@@ -2057,7 +2233,9 @@ namespace Wassup.Bridge
             if (_defenderAttackQueue.IsCreated) _defenderAttackQueue.Dispose();
             if (_projectileHitEventQueue.IsCreated) _projectileHitEventQueue.Dispose();
             if (_enemyCcQueue.IsCreated) _enemyCcQueue.Dispose();
+            if (_hazardRuntimeEventQueue.IsCreated) _hazardRuntimeEventQueue.Dispose();
             if (_blockedCells.IsCreated) _blockedCells.Dispose();
+            if (_hazardCellToEffects.IsCreated) _hazardCellToEffects.Dispose();
             // Phase 9 — guard against editor shutdown / play stop leaking Persistent arrays.
             TeardownFlowField();
             // Phase 10A (P10A-04A): dispose GeneratedMap on destroy.

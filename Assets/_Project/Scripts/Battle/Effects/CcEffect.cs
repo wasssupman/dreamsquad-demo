@@ -7,6 +7,7 @@ namespace Wassup.Battle.Effects
     {
         Slow = 0,
         Impulse = 1,
+        DoT = 2,
     }
 
     public struct CcEffect : IBufferElementData

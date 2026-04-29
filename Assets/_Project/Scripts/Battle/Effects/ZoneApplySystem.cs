@@ -1,0 +1,75 @@
+using Unity.Burst;
+using Unity.Entities;
+using Unity.Mathematics;
+using Unity.Transforms;
+using Wassup.Battle.Movement;
+
+namespace Wassup.Battle.Effects
+{
+    [BurstCompile]
+    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateAfter(typeof(HazardLifetimeSystem))]
+    [UpdateBefore(typeof(CcApplySystem))]
+    public partial struct ZoneApplySystem : ISystem
+    {
+        [BurstCompile]
+        public void OnCreate(ref SystemState state)
+        {
+            state.RequireForUpdate<HazardSingleton>();
+            state.RequireForUpdate<EnemyCcEventsSingleton>();
+            state.RequireForUpdate<FlowFieldSingleton>();
+        }
+
+        [BurstCompile]
+        public void OnUpdate(ref SystemState state)
+        {
+            var hazardSingleton = SystemAPI.GetSingleton<HazardSingleton>();
+            if (hazardSingleton.cellToEffects.Count() == 0) return;
+
+            var ccQueue = SystemAPI.GetSingleton<EnemyCcEventsSingleton>().queue;
+            bool hasRuntimeEvents = SystemAPI.TryGetSingleton<HazardRuntimeEventsSingleton>(out var runtimeEvents);
+            var flowField = SystemAPI.GetSingleton<FlowFieldSingleton>();
+
+            foreach (var (transform, entity) in
+                     SystemAPI.Query<RefRO<LocalTransform>>()
+                              .WithAll<PathFollowState>()
+                              .WithEntityAccess())
+            {
+                int2 cell = GridMath.WorldToCell(transform.ValueRO.Position, flowField.tileSize, flowField.gridSize);
+                if (!hazardSingleton.cellToEffects.TryGetFirstValue(cell, out var effect, out var iterator)) continue;
+
+                do
+                {
+                    ccQueue.Enqueue(new EnemyCcEvent
+                    {
+                        target = entity,
+                        effect = HazardEffectToCcEffect(effect),
+                    });
+
+                    if (hasRuntimeEvents)
+                    {
+                        runtimeEvents.queue.Enqueue(new HazardRuntimeEvent
+                        {
+                            eventType = HazardRuntimeEventType.ZoneApply,
+                            kind = effect.kind,
+                            cell = cell,
+                            target = entity,
+                            scalar = effect.param1,
+                        });
+                    }
+                } while (hazardSingleton.cellToEffects.TryGetNextValue(out effect, ref iterator));
+            }
+        }
+
+        private static CcEffect HazardEffectToCcEffect(in HazardEffect hazardEffect)
+        {
+            return new CcEffect
+            {
+                kind = hazardEffect.kind,
+                scalar = hazardEffect.param1,
+                vector = float3.zero,
+                remainingTime = hazardEffect.restDuration,
+            };
+        }
+    }
+}
