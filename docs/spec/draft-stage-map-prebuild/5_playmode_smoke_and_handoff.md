@@ -91,4 +91,4 @@ Tests: `BattleBridgeDraftMapTests.cs`, `DraftControllerMapRebuildTests.cs`
 - README.md 상단 상태 라인을 "완료 YYYY-MM-DD" 로 갱신.
 - 콘솔 에러 0.
 
-검증: 2026-04-30 — `6_handoff_summary.md` 작성 + README 상태 갱신 완료. PlayMode V1~V10 사용자 manual 검증은 본 docs commit 후 별도로 진행 → 통과 시 handoff 의 "Verified" 섹션 갱신.
+검증: 2026-04-30 — `6_handoff_summary.md` 작성 + README 상태 갱신 완료. PlayMode V1~V10 사용자 manual 통과 (카드 fan 뒤 맵 시각, MAP SETTINGS 즉시 갱신, Confirm/Placement/Battle/Redraft/Restart 회귀 0).

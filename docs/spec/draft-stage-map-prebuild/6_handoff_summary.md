@@ -1,7 +1,7 @@
 # Draft Stage Map Prebuild — Handoff Summary
 
-**완료일**: 2026-04-30 (코드 + EditMode 통과; PlayMode V1~V10 사용자 manual 검증 대기)
-**상태**: 구현 완료 + EditMode 170/170 + critic 1회 ACCEPT WITH MINOR FIXES.
+**완료일**: 2026-04-30
+**상태**: 구현 완료 + EditMode 170/170 + critic 1회 ACCEPT WITH MINOR FIXES + PlayMode V1~V10 사용자 확인 통과.
 
 ## Commit
 
@@ -38,7 +38,7 @@ Tests: `Assets/_Project/Tests/EditMode/BattleBridgeDraftMapTests.cs` (4), `Draft
 - 컴파일 + Burst 활성
 - EditMode 170/170 통과 (회귀 0; 신규 7 + 기존 163)
 - Critic 1회 (Opus) — ACCEPT WITH MINOR FIXES. 자세한 사항은 본 문서 "Notes" 참조
-- PlayMode V1~V10 사용자 manual — **대기**. 통과 후 본 라인 갱신.
+- PlayMode V1~V10 사용자 manual 통과 — 카드 fan 뒤 맵 시각, MAP SETTINGS 즉시 갱신, Confirm/Placement/Battle/Redraft/Restart 회귀 0.
 
 ## Notes
 
