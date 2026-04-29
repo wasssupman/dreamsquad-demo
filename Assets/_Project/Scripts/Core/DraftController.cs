@@ -135,11 +135,24 @@ namespace Wassup.Core
             var options = SelectedMapGenerationOptions.Normalized();
             options.pathShape = shape;
             SelectedMapGenerationOptions = options;
+            // draft-stage-map-prebuild Unit 3 — propagate to bridge so the playfield
+            // behind the card fan reflects the change immediately.
+            if (battleBridge != null)
+            {
+                battleBridge.SetMapGenerationOptions(SelectedMapGenerationOptions);
+                battleBridge.RebuildDraftMap();
+            }
         }
 
         public void SetMapGenerationOptions(MapGenerationOptions options)
         {
             SelectedMapGenerationOptions = options.Normalized();
+            // draft-stage-map-prebuild Unit 3 — propagate to bridge.
+            if (battleBridge != null)
+            {
+                battleBridge.SetMapGenerationOptions(SelectedMapGenerationOptions);
+                battleBridge.RebuildDraftMap();
+            }
         }
 
         private static int GenerateSeed()

@@ -201,6 +201,9 @@ namespace Wassup.Bridge
             if (resultScreen != null) resultScreen.Hide();
             _running = false;
             _resultShown = false;
+            // draft-stage-map-prebuild Unit 3 — TeardownCurrentBattle disposed the map;
+            // rebuild it before re-entering draft so the playfield is ready.
+            PrepareDraftMap();
             draftController.BeginDraft();
         }
 
