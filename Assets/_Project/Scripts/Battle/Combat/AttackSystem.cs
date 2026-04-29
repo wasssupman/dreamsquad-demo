@@ -10,12 +10,10 @@ using Wassup.Battle.Units;
 
 namespace Wassup.Battle.Combat
 {
-    // For each defender with an AttackState:
-    //   - ticks down cooldown
-    //   - finds the nearest attack unit within range
-    //   - when cooldown is ready and a target is found, appends IncomingDamage to the target's buffer and resets cooldown.
-    //
-    // Targeting rule: nearest (Euclidean distance on the XZ plane). Fixed for Phase 0.
+    // Unified attacker loop — any entity with AttackState + LocalTransform (and no
+    // PendingDeployment) participates as an attacker. Defender-specific behaviours
+    // (attack-event enqueue, buff scaling, projectile, knockback CC) branch on
+    // ComponentLookup.HasComponent so no attacker-tag filtering is needed in the query.
     [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateAfter(typeof(MovementSystem))]
@@ -37,8 +35,8 @@ namespace Wassup.Battle.Combat
         {
             float dt = SystemAPI.Time.DeltaTime;
 
-            // Snapshot attackable targets into native arrays so both attacker
-            // loops use the same candidate pool and filter by AttackState.targetMask.
+            // Snapshot attackable targets into native arrays so the unified attacker
+            // loop uses the same candidate pool and filters by AttackState.targetMask.
             var targetCandidatesQuery = SystemAPI.QueryBuilder()
                 .WithAll<FactionTag, Health, LocalTransform>()
                 .WithNone<PendingDeployment>()
@@ -54,14 +52,13 @@ namespace Wassup.Battle.Combat
             var synergyLookup = SystemAPI.GetComponentLookup<SynergyBuff>(isReadOnly: true);
             var projectileRefLookup = SystemAPI.GetComponentLookup<ProjectileRef>(isReadOnly: true);
             var defenderCcLookup = SystemAPI.GetComponentLookup<DefenderCcData>(isReadOnly: true);
+            var defenderTagLookup = SystemAPI.GetComponentLookup<DefenderUnitTag>(isReadOnly: true);
             var blockingHazardCellsLookup = SystemAPI.GetBufferLookup<BlockingHazardCellsBuffer>(isReadOnly: true);
             bool hasFlowField = SystemAPI.TryGetSingleton<Wassup.Battle.Effects.FlowFieldSingleton>(out var flowField);
 
-            // Phase 8 §13 follow-up — hoist the attack-event singleton writer so
-            // both projectile and melee defender branches below enqueue a single
-            // "defender fired" event per attack. Pool drains it to trigger Spine
-            // attack animation consistently (melee was previously missed because
-            // only ProjectileSpawnRequest carried the hook).
+            // Hoist attack-event singleton writer — defender branch below enqueues a
+            // single "defender fired" event per attack to trigger Spine animation for
+            // both projectile and melee paths. Enemies never enqueue this event.
             NativeQueue<DefenderAttackEvent>.ParallelWriter? attackWriter = null;
             if (!_attackEventsQuery.IsEmpty)
             {
@@ -76,9 +73,12 @@ namespace Wassup.Battle.Combat
                 ccWriter = ccSingleton.ValueRW.queue.AsParallelWriter();
             }
 
-            foreach (var (attack, transform, defenderEntity) in
+            // ─────────────────────────────────────────────────────────────────────
+            // Unified attacker loop — defenders and enemies share this single query.
+            // Defender-specific branches guard on defenderTagLookup / HasComponent.
+            // ─────────────────────────────────────────────────────────────────────
+            foreach (var (attack, transform, attackerEntity) in
                      SystemAPI.Query<RefRW<AttackState>, RefRO<LocalTransform>>()
-                              .WithAll<DefenderUnitTag>()
                               .WithNone<PendingDeployment>()
                               .WithEntityAccess())
             {
@@ -89,7 +89,7 @@ namespace Wassup.Battle.Combat
                 }
 
                 // Find nearest in-range target allowed by this attacker's mask.
-                float3 defPos = transform.ValueRO.Position;
+                float3 atkPos = transform.ValueRO.Position;
                 float range = attack.ValueRO.range;
                 float rangeSq = range * range;
                 float bestSq = float.MaxValue;
@@ -99,9 +99,9 @@ namespace Wassup.Battle.Combat
                 for (int i = 0; i < targetEntities.Length; i++)
                 {
                     if (((int)targetFactions[i].value & mask) == 0) continue;
-                    if (targetEntities[i] == defenderEntity) continue;
+                    if (targetEntities[i] == attackerEntity) continue;
                     float3 targetPos = targetTransforms[i].Position;
-                    float d2 = DistanceSqToTarget(defPos, targetEntities[i], targetPos, blockingHazardCellsLookup, hasFlowField, flowField, out var nearestPos);
+                    float d2 = DistanceSqToTarget(atkPos, targetEntities[i], targetPos, blockingHazardCellsLookup, hasFlowField, flowField, out var nearestPos);
                     if (d2 <= rangeSq && d2 < bestSq)
                     {
                         bestSq = d2;
@@ -113,40 +113,42 @@ namespace Wassup.Battle.Combat
                 // Fire if cooldown ready and target exists.
                 if (bestTarget != Entity.Null && attack.ValueRO.cooldownRemaining <= 0f)
                 {
-                    // Enqueue "defender fired" event so Spine/Pool can trigger
-                    // attack animation for both projectile and melee paths.
-                    if (attackWriter.HasValue)
+                    bool isDefender = defenderTagLookup.HasComponent(attackerEntity);
+
+                    // [Defender only] Enqueue "defender fired" event so Spine/Pool can
+                    // trigger attack animation for both projectile and melee paths.
+                    if (attackWriter.HasValue && isDefender)
                     {
                         attackWriter.Value.Enqueue(new DefenderAttackEvent
                         {
-                            defender = defenderEntity,
+                            defender = attackerEntity,
                             targetWorld = bestTargetPos,
                         });
                     }
-                    // Effects read-only: DamageBoost scales emitted damage, CooldownReduction
-                    // shortens the reset interval, SynergyBuff adds adjacency bonus. The base
-                    // AttackState fields stay unmodified so Combat remains the sole owner.
-                    float damageMul = damageBoostLookup.HasComponent(defenderEntity)
-                        ? damageBoostLookup[defenderEntity].multiplier
+
+                    // Buff scaling — lookup returns 1.0 implicitly when not present.
+                    // Enemies lack these components so they always use raw damage.
+                    float damageMul = damageBoostLookup.HasComponent(attackerEntity)
+                        ? damageBoostLookup[attackerEntity].multiplier
                         : 1f;
-                    float cooldownMul = cooldownReductionLookup.HasComponent(defenderEntity)
-                        ? cooldownReductionLookup[defenderEntity].multiplier
+                    float cooldownMul = cooldownReductionLookup.HasComponent(attackerEntity)
+                        ? cooldownReductionLookup[attackerEntity].multiplier
                         : 1f;
-                    float synergyMul = synergyLookup.HasComponent(defenderEntity)
-                        ? synergyLookup[defenderEntity].damageMul
+                    float synergyMul = synergyLookup.HasComponent(attackerEntity)
+                        ? synergyLookup[attackerEntity].damageMul
                         : 1f;
                     float emittedDamage = attack.ValueRO.damage * damageMul * synergyMul;
 
-                    // ProjectileRef-bearing defenders stage a spawn request for the
-                    // MonoBehaviour drain loop in BattleBridge. Melee / defaults without a
-                    // projectile SO keep the Phase 0-2 direct-damage path for regression.
-                    if (projectileRefLookup.HasComponent(defenderEntity))
+                    // ProjectileRef-bearing attackers stage a spawn request for the
+                    // MonoBehaviour drain loop in BattleBridge. Attackers without a
+                    // ProjectileRef (enemies and melee defenders) use direct-damage.
+                    if (projectileRefLookup.HasComponent(attackerEntity))
                     {
-                        var projRef = projectileRefLookup[defenderEntity];
-                        ecb.AddComponent(defenderEntity, new ProjectileSpawnRequest
+                        var projRef = projectileRefLookup[attackerEntity];
+                        ecb.AddComponent(attackerEntity, new ProjectileSpawnRequest
                         {
                             target = bestTarget,
-                            origin = defPos,
+                            origin = atkPos,
                             damage = emittedDamage,
                             speed = projRef.speed,
                             hitThreshold = projRef.hitThreshold,
@@ -159,13 +161,9 @@ namespace Wassup.Battle.Combat
                     }
                     else
                     {
-                        // Phase 8 §13 follow-up — melee AoE capped by
-                        // attackTargetCount. N=1 (default) hits only bestTarget
-                        // via a fast path that avoids any NativeArray alloc; N>1
-                        // opens the hitMask loop to pick additional nearest
-                        // in-range targets. Runtime value on AttackState is
-                        // mutable so future level-up/buff can change AoE width
-                        // without touching the source SO.
+                        // Melee AoE: N=1 fast path avoids allocation; N>1 hitMask loop
+                        // picks additional nearest in-range targets. Enemies default to
+                        // attackTargetCount=1 so they always take the fast path.
                         int desiredCount = math.max(1, attack.ValueRO.attackTargetCount);
                         if (desiredCount == 1)
                         {
@@ -198,8 +196,8 @@ namespace Wassup.Battle.Combat
                                 {
                                     if (hitMask[i]) continue;
                                     if (((int)targetFactions[i].value & mask) == 0) continue;
-                                    if (targetEntities[i] == defenderEntity) continue;
-                                    float d2 = DistanceSqToTarget(defPos, targetEntities[i], targetTransforms[i].Position, blockingHazardCellsLookup, hasFlowField, flowField, out _);
+                                    if (targetEntities[i] == attackerEntity) continue;
+                                    float d2 = DistanceSqToTarget(atkPos, targetEntities[i], targetTransforms[i].Position, blockingHazardCellsLookup, hasFlowField, flowField, out _);
                                     if (d2 <= rangeSq && d2 < passSq)
                                     {
                                         passSq = d2;
@@ -217,9 +215,10 @@ namespace Wassup.Battle.Combat
 
                     attack.ValueRW.cooldownRemaining = attack.ValueRO.cooldownDuration * cooldownMul;
 
-                    if (ccWriter.HasValue && defenderCcLookup.HasComponent(defenderEntity))
+                    // [Defender only] Knockback CC — enemies do not carry DefenderCcData.
+                    if (ccWriter.HasValue && defenderCcLookup.HasComponent(attackerEntity))
                     {
-                        var ccData = defenderCcLookup[defenderEntity];
+                        var ccData = defenderCcLookup[attackerEntity];
                         if (ccData.knockbackDistance > 0f && ccData.knockbackDuration > 0f)
                         {
                             // Physical collision direction:
@@ -227,9 +226,9 @@ namespace Wassup.Battle.Combat
                             //   E = enemy travel (flow at enemy cell)
                             //   dir = normalize(D - E)  ← relative-velocity impulse direction
                             // Falls back to D when flow field unavailable (tests).
-                            float3 D = math.normalizesafe(bestTargetPos - defPos);
+                            float3 D = math.normalizesafe(bestTargetPos - atkPos);
                             D.y = 0f;
-                            // Guard: defender colocated with target → D≈0 → no meaningful direction.
+                            // Guard: attacker colocated with target → D≈0 → no meaningful direction.
                             // Skip impulse (otherwise dir would degenerate to -E and push the enemy
                             // backward along its flow path, an unintended side effect).
                             if (math.lengthsq(D) > 1e-6f)
@@ -263,44 +262,6 @@ namespace Wassup.Battle.Combat
                             }
                         }
                     }
-                }
-            }
-
-            // Phase 4 — enemy→defender loop. Attack units with an AttackState
-            // fire directly (no projectile path, no boost/synergy scaling).
-            foreach (var (attack, transform, attackerEntity) in
-                     SystemAPI.Query<RefRW<AttackState>, RefRO<LocalTransform>>()
-                              .WithAll<AttackUnitTag>()
-                              .WithEntityAccess())
-            {
-                if (attack.ValueRO.cooldownRemaining > 0f)
-                {
-                    attack.ValueRW.cooldownRemaining = math.max(0f, attack.ValueRO.cooldownRemaining - dt);
-                }
-
-                float3 atkPos = transform.ValueRO.Position;
-                float range = attack.ValueRO.range;
-                float rangeSq = range * range;
-                float bestSq = float.MaxValue;
-                Entity bestTarget = Entity.Null;
-                int mask = attack.ValueRO.targetMask;
-                for (int i = 0; i < targetEntities.Length; i++)
-                {
-                    if (((int)targetFactions[i].value & mask) == 0) continue;
-                    if (targetEntities[i] == attackerEntity) continue;
-                    float d2 = DistanceSqToTarget(atkPos, targetEntities[i], targetTransforms[i].Position, blockingHazardCellsLookup, hasFlowField, flowField, out _);
-                    if (d2 <= rangeSq && d2 < bestSq)
-                    {
-                        bestSq = d2;
-                        bestTarget = targetEntities[i];
-                    }
-                }
-
-                if (bestTarget != Entity.Null && attack.ValueRO.cooldownRemaining <= 0f)
-                {
-                    ecb.AppendToBuffer(bestTarget,
-                        new IncomingDamage { amount = attack.ValueRO.damage });
-                    attack.ValueRW.cooldownRemaining = attack.ValueRO.cooldownDuration;
                 }
             }
 
