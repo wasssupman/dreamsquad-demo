@@ -736,17 +736,38 @@ namespace Wassup.Bridge
             PrepareDraftMap();
         }
 
+        // draft-stage-map-prebuild Unit 1 — entity + visual + SO registry cleanup
+        // for option toggle / Redraft. Mirrors the relevant subset of TeardownCurrentBattle.
+        private void CleanupDraftMapBeforeRebuild()
+        {
+            if (_em != null)
+            {
+                DestroyEntitiesByType<Wassup.Battle.Effects.Hazard>();
+                DestroyEntitiesByType<Wassup.Battle.Effects.BlockingHazard>();
+                DestroyEntitiesByType<Wassup.Battle.Effects.Obstacle>();
+            }
+
+            if (mapView != null) mapView.ResetVisualRoots();
+
+            ClearBlockingHazardVisuals();
+            _blockingHazardSoRegistry.Clear();
+            _blockingHazardSoIndex.Clear();
+
+            TeardownGeneratedMap();
+            TeardownFlowField();
+        }
+
+        private void DestroyEntitiesByType<T>() where T : unmanaged, Unity.Entities.IComponentData
+        {
+            using var q = _em.CreateEntityQuery(Unity.Entities.ComponentType.ReadOnly<T>());
+            if (!q.IsEmpty) _em.DestroyEntity(q);
+        }
+
         // draft-stage-map-prebuild Unit 0 — called by DraftController on option change / Redraft.
-        // TODO Unit 1: replace minimal delegation with CleanupDraftMapBeforeRebuild()
-        // covering ECS entities + visual roots + SO registries.
         public void RebuildDraftMap()
         {
             if (_world == null) { PrepareDraftMap(); return; }
-            // Unit 1 will replace this minimal teardown with CleanupDraftMapBeforeRebuild()
-            // covering ECS entities + visual roots + SO registries. For now, the existing
-            // TeardownGeneratedMap/TeardownFlowField pair in BuildMapForBattle (lines 403-404)
-            // already handles map+flow cleanup, so RebuildDraftMap delegates to BuildMapForBattle
-            // directly. Visual root accumulation is Unit 1's scope.
+            CleanupDraftMapBeforeRebuild();
             BuildMapForBattle();
         }
 

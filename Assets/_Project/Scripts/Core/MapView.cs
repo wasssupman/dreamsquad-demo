@@ -80,6 +80,17 @@ namespace Wassup.Core
             if (_goalMarkerRoot != null) SafeDestroy(_goalMarkerRoot.gameObject);
         }
 
+        // draft-stage-map-prebuild Unit 1 — defensive root teardown for the
+        // cleanup-before-rebuild gap. Initialize / InstantiateObstacles /
+        // InstantiateBackgroundProps / BuildGoalMarker already self-clean,
+        // but rebuilds may run between visual fields not owned by Initialize.
+        public void ResetVisualRoots()
+        {
+            if (_obstaclesRoot != null) { SafeDestroy(_obstaclesRoot.gameObject); _obstaclesRoot = null; }
+            if (_backgroundPropsRoot != null) { SafeDestroy(_backgroundPropsRoot.gameObject); _backgroundPropsRoot = null; }
+            if (_goalMarkerRoot != null) { SafeDestroy(_goalMarkerRoot.gameObject); _goalMarkerRoot = null; }
+        }
+
         private void BuildSharedMaterials(MapThemeData theme)
         {
             foreach (var material in _tileFallbackMaterials.Values) SafeDestroy(material);
