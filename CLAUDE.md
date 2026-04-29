@@ -41,7 +41,7 @@
 **맥락 간 통신 규칙**:
 - Component는 소유 맥락이 있다. 다른 맥락은 **읽기만** 가능, 쓰기는 소유 맥락만.
 - 맥락 간 이벤트는 Buffer 또는 NativeQueue 싱글턴을 통한다. 직접 Component 수정 금지.
-- 현재 운영 중인 NativeQueue 채널: `GoalReachedEventsSingleton`, `DefenderDeathEventsSingleton`, `MeteorBurstEventsSingleton`, `DefenderAttackEventsSingleton`.
+- 현재 운영 중인 NativeQueue 채널 (7개): `GoalReachedEventsSingleton`, `DefenderDeathEventsSingleton`, `MeteorBurstEventsSingleton`, `DefenderAttackEventsSingleton`, `ProjectileHitEventsSingleton`, `EnemyCcEventsSingleton`, `HazardRuntimeEventsSingleton`.
 
 폴더 구조: `Assets/_Project/Scripts/Battle/{Units,Movement,Combat,Effects}/`. 상세는 TRD 섹션 2.5 참조.
 
@@ -160,12 +160,10 @@ critic/review 지적은 문서 계층을 깨지 않게 반영한다.
 코드를 작성하기 전에 스스로 점검한다:
 
 - [ ] 이 기능이 현재 spec 범위 안인가?
-- [ ] 인터페이스를 만들려 한다면, 구현체가 2개 이상 있는가?
 - [ ] 이 코드에 테스트를 작성하는 것이 자연스러운가?
 - [ ] "확장 가능"을 이유로 만드는 구조가 지금 실제로 쓰이는가?
 - [ ] Component 쓰기가 소유 맥락 내에서만 일어나는가?
-- [ ] 상속 계층이 2단계를 넘지 않는가?
-- [ ] Unity 씬 와이어링이 필요한가? 그렇다면 `unity-feature-wiring` 스킬을 따랐는가?
+- [ ] 상속 계층이 3단계를 넘지 않는가?
 
 ### ECS 설계의 불확실성 대응
 
