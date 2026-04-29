@@ -2,6 +2,7 @@ using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Wassup.Battle.Movement;
+using Wassup.Battle.Units;
 
 namespace Wassup.Battle.Effects
 {
@@ -24,13 +25,24 @@ namespace Wassup.Battle.Effects
 
             var ecb = new EntityCommandBuffer(Allocator.Temp);
             foreach (var (obstacle, entity) in
-                     SystemAPI.Query<RefRW<Obstacle>>().WithEntityAccess())
+                     SystemAPI.Query<RefRW<Obstacle>>()
+                              .WithNone<BlockingHazardCellsBuffer>()
+                              .WithEntityAccess())
             {
                 obstacle.ValueRW.remainingLife -= dt;
                 if (obstacle.ValueRO.remainingLife <= 0f)
                     ecb.DestroyEntity(entity);
                 else
                     blockedCells.Add(obstacle.ValueRO.cell);
+            }
+
+            foreach (var cellsBuffer in
+                     SystemAPI.Query<DynamicBuffer<BlockingHazardCellsBuffer>>()
+                              .WithAll<BlockingHazard>()
+                              .WithNone<DeadTag>())
+            {
+                for (int i = 0; i < cellsBuffer.Length; i++)
+                    blockedCells.Add(cellsBuffer[i].cell);
             }
 
             ecb.Playback(state.EntityManager);

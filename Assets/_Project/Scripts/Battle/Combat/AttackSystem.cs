@@ -37,19 +37,16 @@ namespace Wassup.Battle.Combat
         {
             float dt = SystemAPI.Time.DeltaTime;
 
-            // Snapshot attacker entities + positions into native arrays so the inner loop stays Burst-friendly.
-            var attackerQuery = SystemAPI.QueryBuilder().WithAll<AttackUnitTag, LocalTransform>().Build();
-            var attackers = attackerQuery.ToEntityArray(Allocator.Temp);
-            var attackerTransforms = attackerQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
-
-            // Phase 4: symmetric defender snapshot so the enemy→defender loop below
-            // can pick nearest defender in range without nested queries.
-            var defenderQuery = SystemAPI.QueryBuilder()
-                .WithAll<DefenderUnitTag, LocalTransform>()
+            // Snapshot attackable targets into native arrays so both attacker
+            // loops use the same candidate pool and filter by AttackState.targetMask.
+            var targetCandidatesQuery = SystemAPI.QueryBuilder()
+                .WithAll<FactionTag, Health, LocalTransform>()
                 .WithNone<PendingDeployment>()
+                .WithNone<DeadTag>()
                 .Build();
-            var defenders = defenderQuery.ToEntityArray(Allocator.Temp);
-            var defenderTransforms = defenderQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
+            var targetEntities = targetCandidatesQuery.ToEntityArray(Allocator.Temp);
+            var targetTransforms = targetCandidatesQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
+            var targetFactions = targetCandidatesQuery.ToComponentDataArray<FactionTag>(Allocator.Temp);
 
             var ecb = new EntityCommandBuffer(Allocator.Temp);
             var damageBoostLookup = SystemAPI.GetComponentLookup<DamageBoost>(isReadOnly: true);
@@ -57,6 +54,8 @@ namespace Wassup.Battle.Combat
             var synergyLookup = SystemAPI.GetComponentLookup<SynergyBuff>(isReadOnly: true);
             var projectileRefLookup = SystemAPI.GetComponentLookup<ProjectileRef>(isReadOnly: true);
             var defenderCcLookup = SystemAPI.GetComponentLookup<DefenderCcData>(isReadOnly: true);
+            var blockingHazardCellsLookup = SystemAPI.GetBufferLookup<BlockingHazardCellsBuffer>(isReadOnly: true);
+            bool hasFlowField = SystemAPI.TryGetSingleton<Wassup.Battle.Effects.FlowFieldSingleton>(out var flowField);
 
             // Phase 8 §13 follow-up — hoist the attack-event singleton writer so
             // both projectile and melee defender branches below enqueue a single
@@ -89,22 +88,25 @@ namespace Wassup.Battle.Combat
                     attack.ValueRW.cooldownRemaining = math.max(0f, attack.ValueRO.cooldownRemaining - dt);
                 }
 
-                // Find nearest in-range attacker.
+                // Find nearest in-range target allowed by this attacker's mask.
                 float3 defPos = transform.ValueRO.Position;
                 float range = attack.ValueRO.range;
                 float rangeSq = range * range;
                 float bestSq = float.MaxValue;
                 Entity bestTarget = Entity.Null;
                 float3 bestTargetPos = default;
-                for (int i = 0; i < attackers.Length; i++)
+                int mask = attack.ValueRO.targetMask;
+                for (int i = 0; i < targetEntities.Length; i++)
                 {
-                    float3 diff = attackerTransforms[i].Position - defPos;
-                    float d2 = diff.x * diff.x + diff.z * diff.z;
+                    if (((int)targetFactions[i].value & mask) == 0) continue;
+                    if (targetEntities[i] == defenderEntity) continue;
+                    float3 targetPos = targetTransforms[i].Position;
+                    float d2 = DistanceSqToTarget(defPos, targetEntities[i], targetPos, blockingHazardCellsLookup, hasFlowField, flowField, out var nearestPos);
                     if (d2 <= rangeSq && d2 < bestSq)
                     {
                         bestSq = d2;
-                        bestTarget = attackers[i];
-                        bestTargetPos = attackerTransforms[i].Position;
+                        bestTarget = targetEntities[i];
+                        bestTargetPos = nearestPos;
                     }
                 }
 
@@ -176,27 +178,28 @@ namespace Wassup.Battle.Combat
                             // AoE branch: seed pass 0 with the already-known
                             // nearest (bestTarget) to avoid recomputing, then
                             // iterate the remaining passes over the hitMask.
-                            var hitMask = new NativeArray<bool>(attackers.Length, Allocator.Temp);
+                            var hitMask = new NativeArray<bool>(targetEntities.Length, Allocator.Temp);
                             int bestIdx = -1;
-                            for (int i = 0; i < attackers.Length; i++)
+                            for (int i = 0; i < targetEntities.Length; i++)
                             {
-                                if (attackers[i] == bestTarget) { bestIdx = i; break; }
+                                if (targetEntities[i] == bestTarget) { bestIdx = i; break; }
                             }
                             if (bestIdx >= 0)
                             {
                                 hitMask[bestIdx] = true;
-                                ecb.AppendToBuffer(attackers[bestIdx],
+                                ecb.AppendToBuffer(targetEntities[bestIdx],
                                     new IncomingDamage { amount = emittedDamage });
                             }
                             for (int pass = 1; pass < desiredCount; pass++)
                             {
                                 float passSq = float.MaxValue;
                                 int passIdx = -1;
-                                for (int i = 0; i < attackers.Length; i++)
+                                for (int i = 0; i < targetEntities.Length; i++)
                                 {
                                     if (hitMask[i]) continue;
-                                    float3 diff = attackerTransforms[i].Position - defPos;
-                                    float d2 = diff.x * diff.x + diff.z * diff.z;
+                                    if (((int)targetFactions[i].value & mask) == 0) continue;
+                                    if (targetEntities[i] == defenderEntity) continue;
+                                    float d2 = DistanceSqToTarget(defPos, targetEntities[i], targetTransforms[i].Position, blockingHazardCellsLookup, hasFlowField, flowField, out _);
                                     if (d2 <= rangeSq && d2 < passSq)
                                     {
                                         passSq = d2;
@@ -205,7 +208,7 @@ namespace Wassup.Battle.Combat
                                 }
                                 if (passIdx < 0) break;
                                 hitMask[passIdx] = true;
-                                ecb.AppendToBuffer(attackers[passIdx],
+                                ecb.AppendToBuffer(targetEntities[passIdx],
                                     new IncomingDamage { amount = emittedDamage });
                             }
                             hitMask.Dispose();
@@ -280,14 +283,16 @@ namespace Wassup.Battle.Combat
                 float rangeSq = range * range;
                 float bestSq = float.MaxValue;
                 Entity bestTarget = Entity.Null;
-                for (int i = 0; i < defenders.Length; i++)
+                int mask = attack.ValueRO.targetMask;
+                for (int i = 0; i < targetEntities.Length; i++)
                 {
-                    float3 diff = defenderTransforms[i].Position - atkPos;
-                    float d2 = diff.x * diff.x + diff.z * diff.z;
+                    if (((int)targetFactions[i].value & mask) == 0) continue;
+                    if (targetEntities[i] == attackerEntity) continue;
+                    float d2 = DistanceSqToTarget(atkPos, targetEntities[i], targetTransforms[i].Position, blockingHazardCellsLookup, hasFlowField, flowField, out _);
                     if (d2 <= rangeSq && d2 < bestSq)
                     {
                         bestSq = d2;
-                        bestTarget = defenders[i];
+                        bestTarget = targetEntities[i];
                     }
                 }
 
@@ -301,10 +306,39 @@ namespace Wassup.Battle.Combat
 
             ecb.Playback(state.EntityManager);
             ecb.Dispose();
-            attackers.Dispose();
-            attackerTransforms.Dispose();
-            defenders.Dispose();
-            defenderTransforms.Dispose();
+            targetEntities.Dispose();
+            targetTransforms.Dispose();
+            targetFactions.Dispose();
+        }
+
+        private static float DistanceSqToTarget(
+            float3 attackerPos,
+            Entity target,
+            float3 fallbackTargetPos,
+            BufferLookup<BlockingHazardCellsBuffer> hazardCellsLookup,
+            bool hasFlowField,
+            Wassup.Battle.Effects.FlowFieldSingleton flowField,
+            out float3 nearestTargetPos)
+        {
+            nearestTargetPos = fallbackTargetPos;
+            float3 diff = fallbackTargetPos - attackerPos;
+            float bestSq = diff.x * diff.x + diff.z * diff.z;
+
+            if (!hasFlowField || !hazardCellsLookup.HasBuffer(target))
+                return bestSq;
+
+            var cells = hazardCellsLookup[target];
+            for (int i = 0; i < cells.Length; i++)
+            {
+                float3 cellWorld = GridMath.CellToWorldCenter(cells[i].cell, flowField.tileSize, fallbackTargetPos.y);
+                diff = cellWorld - attackerPos;
+                float d2 = diff.x * diff.x + diff.z * diff.z;
+                if (d2 >= bestSq) continue;
+                bestSq = d2;
+                nearestTargetPos = cellWorld;
+            }
+
+            return bestSq;
         }
     }
 }

@@ -1,7 +1,9 @@
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Transforms;
 using Wassup.Battle.Combat;
+using Wassup.Battle.Effects;
 using Wassup.Battle.Movement;
 
 namespace Wassup.Battle.Units
@@ -15,6 +17,7 @@ namespace Wassup.Battle.Units
     {
         private EntityQuery _singletonQuery;
         private EntityQuery _defenderDeathSingletonQuery;
+        private EntityQuery _hazardDestroyedSingletonQuery;
         private EntityQuery _pastGoalQuery;
         private EntityQuery _deadQuery;
         private EntityQuery _defenderDeadQuery;
@@ -23,6 +26,7 @@ namespace Wassup.Battle.Units
         {
             _singletonQuery = state.GetEntityQuery(ComponentType.ReadWrite<GoalReachedEventsSingleton>());
             _defenderDeathSingletonQuery = state.GetEntityQuery(ComponentType.ReadWrite<DefenderDeathEventsSingleton>());
+            _hazardDestroyedSingletonQuery = state.GetEntityQuery(ComponentType.ReadWrite<HazardDestroyedEventsSingleton>());
             _pastGoalQuery = state.GetEntityQuery(ComponentType.ReadOnly<PastGoalTag>(), ComponentType.ReadOnly<AttackUnitTag>());
             _deadQuery = state.GetEntityQuery(ComponentType.ReadOnly<DeadTag>());
             _defenderDeadQuery = state.GetEntityQuery(
@@ -72,13 +76,35 @@ namespace Wassup.Battle.Units
                 ecb.DestroyEntity(entity);
             }
 
+            bool hasHazardSink = _hazardDestroyedSingletonQuery.CalculateEntityCount() == 1;
+            foreach (var (hazard, obstacle, transform, entity) in
+                     SystemAPI.Query<RefRO<BlockingHazard>, RefRO<Obstacle>, RefRO<LocalTransform>>()
+                              .WithAll<DeadTag>()
+                              .WithEntityAccess())
+            {
+                if (hasHazardSink)
+                {
+                    var singleton = _hazardDestroyedSingletonQuery.GetSingletonRW<HazardDestroyedEventsSingleton>();
+                    singleton.ValueRW.queue.Enqueue(new HazardDestroyedEvent
+                    {
+                        hazardEntity = entity,
+                        hazardSoIndex = hazard.ValueRO.hazardSoIndex,
+                        worldPosition = transform.ValueRO.Position,
+                        centerCell = obstacle.ValueRO.cell,
+                    });
+                }
+                ecb.DestroyEntity(entity);
+            }
+
             // General dead loop: attackers + any defender that somehow lacks
             // DefenderTile (should not happen in Phase 4, but keeps the system
             // safe). WithNone<DefenderTile> prevents double-destroy of the
-            // defender-dead loop above.
+            // defender-dead loop above, and WithNone<BlockingHazard> prevents
+            // double-destroy after hazard event enqueue.
             foreach (var (_, entity) in
                      SystemAPI.Query<RefRO<DeadTag>>()
                               .WithNone<DefenderTile>()
+                              .WithNone<BlockingHazard>()
                               .WithEntityAccess())
             {
                 ecb.DestroyEntity(entity);

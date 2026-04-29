@@ -72,6 +72,10 @@ namespace Wassup.Bridge
         private readonly HashSet<Entity> _onPlaceTriggeredEntities = new();
         private readonly List<ProjectileData> _projectileDataByIndex = new();
         private readonly Dictionary<ProjectileData, int> _projectileDataIndex = new();
+        private readonly List<BlockingHazardSO> _blockingHazardSoRegistry = new();
+        private readonly Dictionary<BlockingHazardSO, int> _blockingHazardSoIndex = new();
+        private readonly Dictionary<Entity, GameObject> _blockingHazardVisualMap = new();
+        private Transform _blockingHazardVisualRoot;
         private EntityQuery _projectileSpawnRequestQuery;
         private bool _projectileSpawnRequestQueryCreated;
         private EntityQuery _projectileQuery;
@@ -101,6 +105,7 @@ namespace Wassup.Bridge
         private NativeQueue<Wassup.Battle.Combat.Projectile.ProjectileHitEvent> _projectileHitEventQueue;
         private NativeQueue<Wassup.Battle.Effects.EnemyCcEvent> _enemyCcQueue;
         private NativeQueue<Wassup.Battle.Effects.HazardRuntimeEvent> _hazardRuntimeEventQueue;
+        private NativeQueue<Wassup.Battle.Effects.HazardDestroyedEvent> _hazardDestroyedQueue;
         private Unity.Collections.NativeHashSet<Unity.Mathematics.int2> _blockedCells;
         private Unity.Collections.NativeParallelMultiHashMap<Unity.Mathematics.int2, Wassup.Battle.Effects.HazardEffect> _hazardCellToEffects;
 
@@ -228,6 +233,7 @@ namespace Wassup.Bridge
             if (spineDefenderPool != null) spineDefenderPool.DisposeAll();
             if (enemyViewPool != null) enemyViewPool.DisposeAll();
             if (defenderFallbackViewPool != null) defenderFallbackViewPool.DisposeAll();
+            ClearBlockingHazardVisuals();
             SetNextWaveButtonVisible(false);
 
             // Destroy all battle-related entities so the next StartBattle has a clean slate.
@@ -275,6 +281,10 @@ namespace Wassup.Bridge
             _em.DestroyEntity(hazardRuntimeSingletons);
             hazardRuntimeSingletons.Dispose();
 
+            var hazardDestroyedSingletons = _em.CreateEntityQuery(ComponentType.ReadOnly<Wassup.Battle.Effects.HazardDestroyedEventsSingleton>());
+            _em.DestroyEntity(hazardDestroyedSingletons);
+            hazardDestroyedSingletons.Dispose();
+
             var obstacleSingletons = _em.CreateEntityQuery(ComponentType.ReadOnly<Wassup.Battle.Effects.ObstacleSingleton>());
             _em.DestroyEntity(obstacleSingletons);
             obstacleSingletons.Dispose();
@@ -287,6 +297,10 @@ namespace Wassup.Bridge
             _em.DestroyEntity(hazards);
             hazards.Dispose();
 
+            var blockingHazards = _em.CreateEntityQuery(ComponentType.ReadOnly<Wassup.Battle.Effects.BlockingHazard>());
+            _em.DestroyEntity(blockingHazards);
+            blockingHazards.Dispose();
+
             // Dispose the queues; StartBattle will create fresh ones.
             if (_goalEventQueue.IsCreated) _goalEventQueue.Dispose();
             if (_defenderDeathQueue.IsCreated) _defenderDeathQueue.Dispose();
@@ -295,8 +309,11 @@ namespace Wassup.Bridge
             if (_projectileHitEventQueue.IsCreated) _projectileHitEventQueue.Dispose();
             if (_enemyCcQueue.IsCreated) _enemyCcQueue.Dispose();
             if (_hazardRuntimeEventQueue.IsCreated) _hazardRuntimeEventQueue.Dispose();
+            if (_hazardDestroyedQueue.IsCreated) _hazardDestroyedQueue.Dispose();
             if (_blockedCells.IsCreated) _blockedCells.Dispose();
             if (_hazardCellToEffects.IsCreated) _hazardCellToEffects.Dispose();
+            _blockingHazardSoRegistry.Clear();
+            _blockingHazardSoIndex.Clear();
 
             // Phase 9: dispose the flow field singleton arrays + destroy the entity.
             TeardownFlowField();
@@ -639,6 +656,13 @@ namespace Wassup.Bridge
             _hazardRuntimeEventQueue = new NativeQueue<Wassup.Battle.Effects.HazardRuntimeEvent>(Allocator.Persistent);
             var hazardRuntimeSingleton = _em.CreateEntity();
             _em.AddComponentData(hazardRuntimeSingleton, new Wassup.Battle.Effects.HazardRuntimeEventsSingleton { queue = _hazardRuntimeEventQueue });
+
+            // Blocking hazard destruction channel. BattleBridge drains this for
+            // MonoBehaviour visual cleanup and VFX once blocking visuals exist.
+            if (_hazardDestroyedQueue.IsCreated) _hazardDestroyedQueue.Dispose();
+            _hazardDestroyedQueue = new NativeQueue<Wassup.Battle.Effects.HazardDestroyedEvent>(Allocator.Persistent);
+            var hazardDestroyedSingleton = _em.CreateEntity();
+            _em.AddComponentData(hazardDestroyedSingleton, new Wassup.Battle.Effects.HazardDestroyedEventsSingleton { queue = _hazardDestroyedQueue });
 
             // Obstacle blocked-cells set. ObstacleLifetimeSystem rebuilds it each frame.
             if (_blockedCells.IsCreated) _blockedCells.Dispose();
@@ -984,6 +1008,59 @@ namespace Wassup.Bridge
             return found;
         }
 
+        public bool TryFindValidBlockingHazardCell(BlockingHazardSO so, Unity.Mathematics.int2 requestedCell, out Unity.Mathematics.int2 spawnCell, out string reason)
+        {
+            spawnCell = requestedCell;
+            reason = string.Empty;
+            if (so == null)
+            {
+                reason = "BlockingHazardSO is null.";
+                return false;
+            }
+            if (_em == null)
+            {
+                reason = "EntityManager is not ready. Start battle first.";
+                return false;
+            }
+            if (!_generatedMap.IsCreated)
+            {
+                reason = "GeneratedMap is not ready. Start battle first.";
+                return false;
+            }
+
+            if (IsInGeneratedMapBounds(requestedCell)
+                && _generatedMap.TileAt(requestedCell) == MapTileType.Walk
+                && EffectSpawner.CanSpawnBlockingHazard(_em, so, requestedCell, out reason))
+            {
+                spawnCell = requestedCell;
+                return true;
+            }
+
+            int bestDistSq = int.MaxValue;
+            bool found = false;
+            string lastReason = reason;
+            for (int y = 0; y < _generatedMap.gridSize.y; y++)
+            for (int x = 0; x < _generatedMap.gridSize.x; x++)
+            {
+                var candidate = new int2(x, y);
+                if (_generatedMap.TileAt(candidate) != MapTileType.Walk) continue;
+                if (!EffectSpawner.CanSpawnBlockingHazard(_em, so, candidate, out lastReason)) continue;
+
+                int dx = x - requestedCell.x;
+                int dy = y - requestedCell.y;
+                int distSq = dx * dx + dy * dy;
+                if (distSq >= bestDistSq) continue;
+
+                bestDistSq = distSq;
+                spawnCell = candidate;
+                found = true;
+            }
+
+            if (!found)
+                reason = $"No valid blocking hazard cell found. Last rejection: {lastReason}";
+            return found;
+        }
+
         private bool IsInGeneratedMapBounds(Unity.Mathematics.int2 cell)
         {
             return cell.x >= 0 && cell.x < _generatedMap.gridSize.x
@@ -1159,6 +1236,7 @@ namespace Wassup.Bridge
             DrainDefenderAttackEvents();
             DrainProjectileHitEvents();
             DrainHazardRuntimeEvents();
+            DrainHazardDestroyedEvents();
             DrainGoalEvents();
             CheckTimer();
             CheckVictory();
@@ -1180,7 +1258,16 @@ namespace Wassup.Bridge
                 enemyViewPool.DespawnMissing(_em);
                 if (_aliveAttackersQueryCreated)
                 {
-                    var entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
+                    NativeArray<Entity> entities;
+                    try
+                    {
+                        entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
+                    }
+                    catch (NullReferenceException)
+                    {
+                        _aliveAttackersQuery = _em.CreateEntityQuery(ComponentType.ReadOnly<AttackUnitTag>());
+                        entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
+                    }
                     try
                     {
                         for (int i = 0; i < entities.Length; i++)
@@ -1947,6 +2034,7 @@ namespace Wassup.Bridge
             _em.AddComponentData(entity, LocalTransform.FromPositionRotationScale(pos, quaternion.identity, CharacterVisualScale));
             _em.AddComponent<DefenderUnitTag>(entity);
             _em.AddComponentData(entity, new Health { value = unitData.health, max = unitData.health });
+            _em.AddComponentData(entity, new FactionTag { value = Faction.Defender });
             _em.AddComponentData(entity, new AttackState
             {
                 damage = unitData.attackDamage,
@@ -1954,6 +2042,7 @@ namespace Wassup.Bridge
                 cooldownDuration = unitData.attackCooldown,
                 cooldownRemaining = 0f,
                 attackTargetCount = unitData.attackTargetCount,
+                targetMask = (int)Faction.Enemy,
             });
             _em.AddComponentData(entity, new Wassup.Battle.Combat.DefenderCcData
             {
@@ -2093,6 +2182,85 @@ namespace Wassup.Bridge
             return SpawnHazardWithVisual(so, cell);
         }
 
+        public Unity.Entities.Entity SpawnBlockingHazardWithVisual(BlockingHazardSO so, Unity.Mathematics.int2 cell)
+        {
+            if (so == null || _em == null)
+                return Unity.Entities.Entity.Null;
+
+            int dataIndex = RegisterBlockingHazardSO(so);
+            var entity = Wassup.Battle.Effects.EffectSpawner.SpawnBlockingHazard(_em, so, cell, dataIndex);
+            if (entity == Unity.Entities.Entity.Null)
+                return entity;
+
+#if UNITY_EDITOR
+            _em.SetName(entity, $"BlockingHazard_{so.name}_{cell.x}_{cell.y}");
+#endif
+
+            CreateHealthBar(entity, yOffset: 1.35f * CharacterVisualScale, baseScale: 0.55f * CharacterVisualScale);
+
+            if (so.visualPrefab == null)
+            {
+                Debug.LogWarning($"[BattleBridge] BlockingHazardSO '{so.name}' has no visualPrefab. Spawned hazard will be invisible.");
+                return entity;
+            }
+
+            EnsureBlockingHazardVisualRoot();
+            var p = _em.GetComponentData<LocalTransform>(entity).Position;
+            var visual = Instantiate(so.visualPrefab, new Vector3(p.x, p.y, p.z), Quaternion.identity, _blockingHazardVisualRoot);
+            var presenter = visual.GetComponent<BlockingHazardPresenter>();
+            if (presenter == null)
+                presenter = visual.AddComponent<BlockingHazardPresenter>();
+            presenter.Bind(entity);
+            _blockingHazardVisualMap[entity] = visual;
+            return entity;
+        }
+
+        public Unity.Entities.Entity DebugSpawnBlockingHazardAt(BlockingHazardSO so, Unity.Mathematics.int2 cell)
+        {
+            if (!Application.isPlaying)
+            {
+                Debug.LogWarning("[BlockingHazardDebug] Enter Play Mode first.");
+                return Unity.Entities.Entity.Null;
+            }
+            if (_em == null)
+            {
+                Debug.LogWarning("[BlockingHazardDebug] EntityManager is not ready. Start battle first.");
+                return Unity.Entities.Entity.Null;
+            }
+            return SpawnBlockingHazardWithVisual(so, cell);
+        }
+
+        private int RegisterBlockingHazardSO(BlockingHazardSO so)
+        {
+            if (so == null) return -1;
+            if (_blockingHazardSoIndex.TryGetValue(so, out int idx)) return idx;
+            idx = _blockingHazardSoRegistry.Count;
+            _blockingHazardSoRegistry.Add(so);
+            _blockingHazardSoIndex[so] = idx;
+            return idx;
+        }
+
+        private void EnsureBlockingHazardVisualRoot()
+        {
+            if (_blockingHazardVisualRoot != null) return;
+            var root = new GameObject("BlockingHazardVisuals");
+            root.transform.SetParent(transform, worldPositionStays: false);
+            _blockingHazardVisualRoot = root.transform;
+        }
+
+        private void ClearBlockingHazardVisuals()
+        {
+            foreach (var kv in _blockingHazardVisualMap)
+            {
+                if (kv.Value != null)
+                    Destroy(kv.Value);
+            }
+            _blockingHazardVisualMap.Clear();
+            if (_blockingHazardVisualRoot != null)
+                Destroy(_blockingHazardVisualRoot.gameObject);
+            _blockingHazardVisualRoot = null;
+        }
+
         private void RecordHazardSpawn(HazardSO so, Unity.Mathematics.int2 cell)
         {
             if (so == null) return;
@@ -2143,6 +2311,32 @@ namespace Wassup.Bridge
                     amount = evt.amount,
                     target_index = evt.target.Index,
                 });
+            }
+        }
+
+        private void DrainHazardDestroyedEvents()
+        {
+            if (!_hazardDestroyedQueue.IsCreated) return;
+            while (_hazardDestroyedQueue.TryDequeue(out var evt))
+            {
+                BlockingHazardSO so = null;
+                if (evt.hazardSoIndex >= 0 && evt.hazardSoIndex < _blockingHazardSoRegistry.Count)
+                    so = _blockingHazardSoRegistry[evt.hazardSoIndex];
+
+                if (_blockingHazardVisualMap.TryGetValue(evt.hazardEntity, out var visual) && visual != null)
+                {
+                    var presenter = visual.GetComponent<BlockingHazardPresenter>();
+                    if (presenter != null)
+                        presenter.OnDestroyed(so != null ? so.destructionVfxPrefab : null);
+                    else
+                        Destroy(visual);
+                }
+                else if (so != null && so.destructionVfxPrefab != null)
+                {
+                    Instantiate(so.destructionVfxPrefab, new Vector3(evt.worldPosition.x, evt.worldPosition.y, evt.worldPosition.z), Quaternion.identity);
+                }
+
+                _blockingHazardVisualMap.Remove(evt.hazardEntity);
             }
         }
 
@@ -2234,8 +2428,10 @@ namespace Wassup.Bridge
             if (_projectileHitEventQueue.IsCreated) _projectileHitEventQueue.Dispose();
             if (_enemyCcQueue.IsCreated) _enemyCcQueue.Dispose();
             if (_hazardRuntimeEventQueue.IsCreated) _hazardRuntimeEventQueue.Dispose();
+            if (_hazardDestroyedQueue.IsCreated) _hazardDestroyedQueue.Dispose();
             if (_blockedCells.IsCreated) _blockedCells.Dispose();
             if (_hazardCellToEffects.IsCreated) _hazardCellToEffects.Dispose();
+            ClearBlockingHazardVisuals();
             // Phase 9 — guard against editor shutdown / play stop leaking Persistent arrays.
             TeardownFlowField();
             // Phase 10A (P10A-04A): dispose GeneratedMap on destroy.
@@ -2319,6 +2515,7 @@ namespace Wassup.Bridge
 
             _em.AddComponent<AttackUnitTag>(entity);
             _em.AddComponentData(entity, new Health { value = entry.unitType.health, max = entry.unitType.health });
+            _em.AddComponentData(entity, new FactionTag { value = Faction.Enemy });
             // Pre-attach an empty IncomingDamage buffer so the Combat system can append without needing
             // to create the buffer on first hit (simplifies ECB usage and keeps archetype stable).
             _em.AddBuffer<IncomingDamage>(entity);
@@ -2333,6 +2530,8 @@ namespace Wassup.Bridge
                     range = entry.unitType.attackRange,
                     cooldownDuration = entry.unitType.attackCooldown,
                     cooldownRemaining = 0f,
+                    attackTargetCount = 1,
+                    targetMask = (int)(Faction.Defender | Faction.BlockingHazard),
                 });
             }
 

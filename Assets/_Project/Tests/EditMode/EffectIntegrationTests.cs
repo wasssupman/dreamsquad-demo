@@ -68,12 +68,16 @@ namespace Wassup.Tests.EditMode
             var defender = em.CreateEntity();
             em.AddComponentData(defender, LocalTransform.FromPosition(new float3(0f, 0f, 0f)));
             em.AddComponent<DefenderUnitTag>(defender);
+            em.AddComponentData(defender, new Health { value = 10f, max = 10f });
+            em.AddComponentData(defender, new FactionTag { value = Faction.Defender });
+            em.AddBuffer<IncomingDamage>(defender);
             em.AddComponentData(defender, new AttackState
             {
                 damage = 10f,
                 range = 5f,
                 cooldownDuration = 4f,
                 cooldownRemaining = 0f,
+                targetMask = (int)Faction.Enemy,
             });
             em.AddComponentData(defender, new DamageBoost { remaining = 10f, multiplier = 2f });
             em.AddComponentData(defender, new CooldownReduction { remaining = 10f, multiplier = 0.5f });
@@ -82,6 +86,8 @@ namespace Wassup.Tests.EditMode
             var attacker = em.CreateEntity();
             em.AddComponentData(attacker, LocalTransform.FromPosition(new float3(1f, 0f, 0f)));
             em.AddComponent<AttackUnitTag>(attacker);
+            em.AddComponentData(attacker, new Health { value = 10f, max = 10f });
+            em.AddComponentData(attacker, new FactionTag { value = Faction.Enemy });
             em.AddBuffer<IncomingDamage>(attacker);
 
             world.SetTime(new TimeData(world.Time.ElapsedTime + 0.016f, 0.016f));
@@ -111,12 +117,16 @@ namespace Wassup.Tests.EditMode
             var defender = em.CreateEntity();
             em.AddComponentData(defender, LocalTransform.FromPosition(new float3(0f, 0f, 0f)));
             em.AddComponent<DefenderUnitTag>(defender);
+            em.AddComponentData(defender, new Health { value = 10f, max = 10f });
+            em.AddComponentData(defender, new FactionTag { value = Faction.Defender });
+            em.AddBuffer<IncomingDamage>(defender);
             em.AddComponentData(defender, new AttackState
             {
                 damage = 10f,
                 range = 5f,
                 cooldownDuration = 4f,
                 cooldownRemaining = 0f,
+                targetMask = (int)Faction.Enemy,
             });
             em.AddComponentData(defender, new DamageBoost { remaining = 10f, multiplier = 2f });
             em.AddComponentData(defender, new SynergyBuff { damageMul = 1.3f });
@@ -124,6 +134,8 @@ namespace Wassup.Tests.EditMode
             var attacker = em.CreateEntity();
             em.AddComponentData(attacker, LocalTransform.FromPosition(new float3(1f, 0f, 0f)));
             em.AddComponent<AttackUnitTag>(attacker);
+            em.AddComponentData(attacker, new Health { value = 10f, max = 10f });
+            em.AddComponentData(attacker, new FactionTag { value = Faction.Enemy });
             em.AddBuffer<IncomingDamage>(attacker);
 
             world.SetTime(new TimeData(world.Time.ElapsedTime + 0.016f, 0.016f));
@@ -148,12 +160,16 @@ namespace Wassup.Tests.EditMode
             var attacker = em.CreateEntity();
             em.AddComponentData(attacker, LocalTransform.FromPosition(new float3(0f, 0f, 0f)));
             em.AddComponent<AttackUnitTag>(attacker);
+            em.AddComponentData(attacker, new Health { value = 10f, max = 10f });
+            em.AddComponentData(attacker, new FactionTag { value = Faction.Enemy });
             em.AddComponentData(attacker, new AttackState
             {
                 damage = 7f,
                 range = 2f,
                 cooldownDuration = 1f,
                 cooldownRemaining = 0f,
+                attackTargetCount = 1,
+                targetMask = (int)(Faction.Defender | Faction.BlockingHazard),
             });
             em.AddBuffer<IncomingDamage>(attacker);
 
@@ -162,6 +178,8 @@ namespace Wassup.Tests.EditMode
             var defender = em.CreateEntity();
             em.AddComponentData(defender, LocalTransform.FromPosition(new float3(1f, 0f, 0f)));
             em.AddComponent<DefenderUnitTag>(defender);
+            em.AddComponentData(defender, new Health { value = 10f, max = 10f });
+            em.AddComponentData(defender, new FactionTag { value = Faction.Defender });
             em.AddBuffer<IncomingDamage>(defender);
 
             world.SetTime(new TimeData(world.Time.ElapsedTime + 0.016f, 0.016f));

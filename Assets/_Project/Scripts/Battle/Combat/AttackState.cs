@@ -15,5 +15,7 @@ namespace Wassup.Battle.Combat
         // single-target behavior. Level-up / buff systems can mutate this at
         // runtime without touching the source SO.
         public int attackTargetCount;
+
+        public int targetMask; // (int)Faction bitmask of attackable factions.
     }
 }

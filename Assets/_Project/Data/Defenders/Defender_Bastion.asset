@@ -36,6 +36,11 @@ MonoBehaviour:
   deployAnimation: attack-combo1-dagger
   placementVfxPrefab: {fileID: 2427901435903505602, guid: 971aa18e6a15c0d48bf889c9d9df4fce, type: 3}
   attackVfxPrefab: {fileID: 6426699771996326788, guid: d2bf7f11edac4e8459d42fb4ce84890b, type: 3}
+  knockbackDistance: 0
+  knockbackDuration: 0
+  onPlacePushDistance: 2
+  onPlacePushDuration: 0.2
+  onPlacePushRadius: 3
   castAnchorBone: 
   castAnchorLocalOffset: {x: 0.5, y: 1, z: 0}
   deploymentDuration: 0.45
