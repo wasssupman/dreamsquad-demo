@@ -104,4 +104,4 @@ public struct BuffStatsDirty : IComponentData, IEnableableComponent { }
 
 ---
 
-확인 일자 + 커밋 해시: _(작업 완료 시 기재)_
+확인 일자 + 커밋 해시: 2026-04-30, `45608f2` (Unity Editor 컴파일 통과, Console error 0)
