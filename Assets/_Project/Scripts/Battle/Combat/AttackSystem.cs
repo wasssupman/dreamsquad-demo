@@ -134,9 +134,9 @@ namespace Wassup.Battle.Combat
                         });
                     }
 
-                    // modifier-framework unit 7: AttackSystem reads BuffStats only.
-                    // Legacy DamageBoost/CooldownReduction/SynergyBuff are now folded
-                    // into BuffStats by BuffStatsAggregateSystem (adapter period, unit 7–8).
+                    // modifier-framework unit 9: AttackSystem reads BuffStats only.
+                    // DamageMul/AttackSpeedMul/SynergyMul are all folded into BuffStats
+                    // by BuffStatsAggregateSystem via StatModifierSlot buffer.
                     float buffStatsDamageMul = buffStatsLookup.HasComponent(attackerEntity)
                         ? buffStatsLookup[attackerEntity].damageMul
                         : 1f;
@@ -319,9 +319,9 @@ namespace Wassup.Battle.Combat
                         }
                     }
 
-                    // modifier-framework unit 7: cooldown = base / attackSpeedMul.
-                    // Legacy CooldownReduction is folded into BuffStats.attackSpeedMul by
-                    // BuffStatsAggregateSystem — no separate cooldownMul needed here.
+                    // modifier-framework unit 9: cooldown = base / attackSpeedMul.
+                    // AttackSpeedMul is folded into BuffStats by BuffStatsAggregateSystem
+                    // via StatModifierSlot buffer — no separate cooldownMul needed here.
                     float effectiveCooldownMul = buffStatsAttackSpeedMul > 0f ? 1f / buffStatsAttackSpeedMul : 1f;
                     attack.ValueRW.cooldownRemaining = attack.ValueRO.cooldownDuration * effectiveCooldownMul;
                     if (!isDefender && enemyPauseLookup.HasComponent(attackerEntity))

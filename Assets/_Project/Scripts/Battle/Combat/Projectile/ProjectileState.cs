@@ -4,8 +4,8 @@ using Wassup.Data;
 namespace Wassup.Battle.Combat.Projectile
 {
     // Per-projectile flight data. `damage` is a snapshot taken at launch (already
-    // multiplied by any active DamageBoost / Synergy on the shooter); it does not
-    // change in flight even if the boost expires before the projectile lands.
+    // multiplied by BuffStats.damageMul on the shooter at fire time); it does not
+    // change in flight even if the buff expires before the projectile lands.
     //
     // Phase 4: onHit fields repopulate now that Splash is actually consumed by
     // ProjectileHitSystem. Other OnHitEffectType values remain unimplemented.

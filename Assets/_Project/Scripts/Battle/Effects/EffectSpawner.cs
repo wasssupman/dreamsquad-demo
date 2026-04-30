@@ -12,7 +12,7 @@ namespace Wassup.Battle.Effects
     // Central choke point for adding/updating Effects-context components from
     // outside the Effects systems (typically BattleBridge.CastSkill*). Keeping
     // all writes behind this helper makes it straightforward to audit that only
-    // Effects code mutates CcEffect / DamageBoost / CooldownReduction.
+    // Effects code mutates CcEffect and other Effects-context components.
     //
     // Apply semantics: if the entity already carries the effect, the longer
     // remaining time wins and the newly supplied multiplier replaces the old
@@ -57,15 +57,6 @@ namespace Wassup.Battle.Effects
                 scalar = multiplier,
                 remainingTime = duration,
             });
-
-        // Unit 8 migration: DamageBoost/CooldownReduction are now routed through StatModifier channel.
-        // Use BattleBridge.EnqueueDamageMul / EnqueueAttackSpeedMul instead.
-        // Stubs retained until Unit 9 removes legacy component definitions.
-        [System.Obsolete("Use BattleBridge.EnqueueDamageMul instead. Removed in Unit 9.")]
-        public static void ApplyDamageBoost(EntityManager em, Entity entity, float duration, float multiplier) { }
-
-        [System.Obsolete("Use BattleBridge.EnqueueAttackSpeedMul instead. Removed in Unit 9.")]
-        public static void ApplyCooldownReduction(EntityManager em, Entity entity, float duration, float multiplier) { }
 
         // Phase 8 §17 — Tornado: carrier entity with area data. MovementSystem
         // queries live TornadoField entities each frame and applies pull to any
@@ -115,14 +106,6 @@ namespace Wassup.Battle.Effects
             });
             return e;
         }
-
-        // Unit 8 migration: synergy is now routed through StatModifier channel (BattleBridge.EnqueueSynergyMul).
-        // These methods are dead code — kept as stubs until Unit 9 removes legacy component definitions.
-        [System.Obsolete("Use BattleBridge.EnqueueSynergyMul instead. Removed in Unit 9.")]
-        public static void SetSynergy(EntityManager em, Entity entity, float damageMul) { }
-
-        [System.Obsolete("Use BattleBridge.EnqueueSynergyMul with magnitude=1f instead. Removed in Unit 9.")]
-        public static void RemoveSynergy(EntityManager em, Entity entity) { }
 
         public static Entity SpawnObstacle(EntityManager em, Unity.Mathematics.int2 cell, float3 worldPos, float lifetime)
         {

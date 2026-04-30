@@ -3,12 +3,11 @@ using Unity.Entities;
 
 namespace Wassup.Battle.Combat
 {
-    // Phase 8 §13 follow-up — singleton entity holding the queue AttackSystem
-    // enqueues each time a defender fires. BattleBridge drains and notifies the
-    // SpineDefenderPool so both projectile-based and melee defenders get their
-    // attack animation triggered consistently.
-    public struct DefenderAttackEventsSingleton : IComponentData
+    // Singleton holding the queue AttackSystem enqueues each time any attacker
+    // fires. BattleBridge drains and notifies SpineUnitPool so defenders and
+    // enemies alike get attack animation + facing-flip from a single channel.
+    public struct UnitAttackVisualEventsSingleton : IComponentData
     {
-        public NativeQueue<DefenderAttackEvent> queue;
+        public NativeQueue<UnitAttackVisualEvent> queue;
     }
 }

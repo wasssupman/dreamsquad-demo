@@ -19,7 +19,7 @@ namespace Wassup.Tests.EditMode
         private World _world;
         private EntityManager _em;
         private SimulationSystemGroup _simGroup;
-        private NativeQueue<DefenderAttackEvent> _attackEventQueue;
+        private NativeQueue<UnitAttackVisualEvent> _attackEventQueue;
         private NativeQueue<EnemyCcEvent> _ccQueue;
 
         [SetUp]
@@ -28,12 +28,14 @@ namespace Wassup.Tests.EditMode
             _world = new World("AttackSystemUnifiedLoopTests");
             _em = _world.EntityManager;
             _simGroup = _world.CreateSystemManaged<SimulationSystemGroup>();
+            _simGroup.AddSystemToUpdateList(_world.CreateSystem<StatModifierTickSystem>());
+            _simGroup.AddSystemToUpdateList(_world.CreateSystem<BuffStatsAggregateSystem>());
             _simGroup.AddSystemToUpdateList(_world.CreateSystem<AttackSystem>());
 
-            // Singleton: defender attack events (Spine animation trigger)
-            _attackEventQueue = new NativeQueue<DefenderAttackEvent>(Allocator.Persistent);
+            // Singleton: unified attack visual events (Spine animation trigger for any attacker)
+            _attackEventQueue = new NativeQueue<UnitAttackVisualEvent>(Allocator.Persistent);
             var attackSingleton = _em.CreateEntity();
-            _em.AddComponentData(attackSingleton, new DefenderAttackEventsSingleton { queue = _attackEventQueue });
+            _em.AddComponentData(attackSingleton, new UnitAttackVisualEventsSingleton { queue = _attackEventQueue });
 
             // Singleton: enemy CC events (knockback)
             _ccQueue = new NativeQueue<EnemyCcEvent>(Allocator.Persistent);
@@ -188,7 +190,7 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(CcKind.Impulse, ev.effect.kind);
         }
 
-        // ─── U4: Defender with DamageBoost + SynergyBuff + CooldownReduction applies multipliers ───
+        // ─── U4: Defender with damageMul (×1.5 boost + ×2.0 synergy) and attackSpeedMul (×2) via BuffStats ───
 
         [Test]
         public void U4_Defender_Buff_Multipliers_Applied_To_Damage_And_Cooldown()
@@ -199,22 +201,27 @@ namespace Wassup.Tests.EditMode
                 targetMask: (int)Faction.Enemy,
                 defenderTag: true);
 
-            _em.AddComponentData(defender, new DamageBoost { multiplier = 1.5f, remaining = 5f });
-            _em.AddComponentData(defender, new SynergyBuff { damageMul = 2f });
-            _em.AddComponentData(defender, new CooldownReduction { multiplier = 0.5f, remaining = 5f });
+            // Wire BuffStats: damageMul = 1.5 × 2.0 = 3.0, attackSpeedMul = 2.0 (cooldown ÷ 2).
+            _em.AddComponentData(defender, new BuffStats { damageMul = 1f, attackSpeedMul = 1f, dmgTakenMul = 1f });
+            _em.AddComponent<BuffStatsDirty>(defender);
+            _em.SetComponentEnabled<BuffStatsDirty>(defender, true);
+            var slots = _em.AddBuffer<StatModifierSlot>(defender);
+            slots.Add(new StatModifierSlot { stat = StatKind.DamageMul,      op = CombineOp.Multiplicative, magnitude = 1.5f });
+            slots.Add(new StatModifierSlot { stat = StatKind.DamageMul,      op = CombineOp.Multiplicative, magnitude = 2f });
+            slots.Add(new StatModifierSlot { stat = StatKind.AttackSpeedMul, op = CombineOp.Multiplicative, magnitude = 2f });
 
             var enemy = CreateTarget(Faction.Enemy, new float3(1f, 0f, 0f), attackerTag: true);
 
             Tick();
 
-            // damage = 10 * 1.5 (DamageBoost) * 2.0 (Synergy) = 30
+            // damage = 10 * 1.5 (boost) * 2.0 (synergy) = 30
             var dmgBuf = _em.GetBuffer<IncomingDamage>(enemy);
             Assert.AreEqual(1, dmgBuf.Length);
-            Assert.AreEqual(30f, dmgBuf[0].amount, 1e-4f, "DamageBoost * SynergyBuff should multiply base damage");
+            Assert.AreEqual(30f, dmgBuf[0].amount, 1e-4f, "damageMul(boost) * damageMul(synergy) should multiply base damage");
 
-            // cooldown reset = cooldownDuration * cooldownMul = 2.0 * 0.5 = 1.0
+            // cooldown reset = cooldownDuration / attackSpeedMul = 2.0 / 2.0 = 1.0
             var atkState = _em.GetComponentData<AttackState>(defender);
-            Assert.AreEqual(1f, atkState.cooldownRemaining, 1e-4f, "CooldownReduction should halve reset interval");
+            Assert.AreEqual(1f, atkState.cooldownRemaining, 1e-4f, "attackSpeedMul 2.0 should halve reset interval");
         }
 
         // ─── U5: Enemy (AttackUnitTag) attacks defender → direct IncomingDamage, no projectile/CC ───
@@ -264,10 +271,10 @@ namespace Wassup.Tests.EditMode
                 "Farther defender should not be targeted");
         }
 
-        // ─── U7: Defender fire enqueues exactly one DefenderAttackEvent ───
+        // ─── U7: Defender fire enqueues exactly one UnitAttackVisualEvent ───
 
         [Test]
-        public void U7_Defender_Fire_Enqueues_DefenderAttackEvent()
+        public void U7_Defender_Fire_Enqueues_UnitAttackVisualEvent()
         {
             var defender = CreateAttacker(
                 Faction.Defender, new float3(0f, 0f, 0f),
@@ -280,15 +287,15 @@ namespace Wassup.Tests.EditMode
             Tick();
 
             Assert.AreEqual(1, _attackEventQueue.Count,
-                "Exactly one DefenderAttackEvent should be enqueued when defender fires");
+                "Exactly one UnitAttackVisualEvent should be enqueued when defender fires");
             var ev = _attackEventQueue.Dequeue();
-            Assert.AreEqual(defender, ev.defender);
+            Assert.AreEqual(defender, ev.attacker);
         }
 
-        // ─── U8: Enemy fire does NOT enqueue DefenderAttackEvent ───
+        // ─── U8: Enemy fire also enqueues UnitAttackVisualEvent (unified channel) ───
 
         [Test]
-        public void U8_Enemy_Fire_Does_Not_Enqueue_DefenderAttackEvent()
+        public void U8_Enemy_Fire_Enqueues_UnitAttackVisualEvent()
         {
             var enemy = CreateAttacker(
                 Faction.Enemy, new float3(0f, 0f, 0f),
@@ -300,8 +307,10 @@ namespace Wassup.Tests.EditMode
 
             Tick();
 
-            Assert.AreEqual(0, _attackEventQueue.Count,
-                "Enemies must not enqueue DefenderAttackEvent (Spine animation is defender-only)");
+            Assert.AreEqual(1, _attackEventQueue.Count,
+                "Enemy fire must enqueue a UnitAttackVisualEvent so SpineUnitPool can play the attack animation");
+            var ev = _attackEventQueue.Dequeue();
+            Assert.AreEqual(enemy, ev.attacker);
         }
 
         // ─── Additional: Self-exclusion guard — attacker does not target itself ───

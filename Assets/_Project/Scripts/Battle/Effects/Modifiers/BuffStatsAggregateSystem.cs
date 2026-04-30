@@ -1,14 +1,10 @@
 // Spec unit 3 (modifier-framework-and-healer): recompute BuffStats cache for every
-// entity with a BuffStats component.
+// entity with a dirty BuffStats component.
 // Write authority: this system is the ONLY writer of BuffStats.
 // Combine formula: final = (base + Σadd) * Πmul  OR  override_max (when any Override slot present).
 //
-// Unit 7 adapter note: during the legacy-migration period (units 7–8) this system
-// unconditionally recomputes ALL BuffStats entities every frame (dirty flag ignored).
-// It also reads legacy DamageBoost / CooldownReduction / SynergyBuff components via
-// ComponentLookup and folds them into the aggregate result so AttackSystem can drop
-// its own legacy lookups without any buff regression.
-// Unit 9 will restore dirty-only iteration and remove this legacy read path.
+// Unit 9: legacy adapter (DamageBoost / CooldownReduction / SynergyBuff fold-in) removed.
+// dirty-only iteration restored: only entities with BuffStatsDirty enabled are processed.
 using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -20,31 +16,11 @@ namespace Wassup.Battle.Effects
     [UpdateAfter(typeof(StatModifierTickSystem))]
     public partial struct BuffStatsAggregateSystem : ISystem
     {
-        // Legacy component lookups — adapter period only (units 7–8).
-        // Removed in unit 9 together with the legacy component definitions.
-        private ComponentLookup<DamageBoost>       _damageBoostLookup;
-        private ComponentLookup<CooldownReduction> _cooldownReductionLookup;
-        private ComponentLookup<SynergyBuff>       _synergyBuffLookup;
-
-        public void OnCreate(ref SystemState state)
-        {
-            _damageBoostLookup       = state.GetComponentLookup<DamageBoost>(isReadOnly: true);
-            _cooldownReductionLookup = state.GetComponentLookup<CooldownReduction>(isReadOnly: true);
-            _synergyBuffLookup       = state.GetComponentLookup<SynergyBuff>(isReadOnly: true);
-        }
-
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            _damageBoostLookup.Update(ref state);
-            _cooldownReductionLookup.Update(ref state);
-            _synergyBuffLookup.Update(ref state);
-
-            // Unit 7 adapter: iterate ALL BuffStats entities unconditionally (no dirty filter).
-            // StatModifierSlot buffer may be absent on entities that only carry legacy components,
-            // so we use WithEntityAccess + TryGetBuffer to handle both cases.
-            foreach (var (stats, entity) in
-                     SystemAPI.Query<RefRW<BuffStats>>()
+            foreach (var (stats, dirty, entity) in
+                     SystemAPI.Query<RefRW<BuffStats>, EnabledRefRW<BuffStatsDirty>>()
                               .WithEntityAccess())
             {
                 // Per-stat accumulators.
@@ -91,30 +67,13 @@ namespace Wassup.Battle.Effects
                     }
                 }
 
-                // ── Legacy adapter (unit 7–8): fold legacy components into accumulators ──
-                // DamageBoost.multiplier → damageMul multiplicative layer.
-                if (_damageBoostLookup.HasComponent(entity))
-                    dMul *= _damageBoostLookup[entity].multiplier;
-
-                // CooldownReduction.multiplier is a cooldown scale (0.5 = half cooldown).
-                // BuffStats.attackSpeedMul is the *inverse* (cooldown = base / attackSpeedMul),
-                // so: attackSpeedMul *= 1 / cooldownReduction.multiplier.
-                if (_cooldownReductionLookup.HasComponent(entity))
-                {
-                    float crMul = _cooldownReductionLookup[entity].multiplier;
-                    if (crMul > 0f)
-                        aMul *= 1f / crMul;
-                }
-
-                // SynergyBuff.damageMul → damageMul multiplicative layer.
-                if (_synergyBuffLookup.HasComponent(entity))
-                    dMul *= _synergyBuffLookup[entity].damageMul;
-
                 // Combine: override wins; otherwise (base + Σadd) * Πmul.
                 stats.ValueRW.damageMul      = dHasOver ? dOver : (1f + dAdd) * dMul;
                 stats.ValueRW.attackSpeedMul = aHasOver ? aOver : (1f + aAdd) * aMul;
                 stats.ValueRW.dmgTakenMul    = tHasOver ? tOver : (1f + tAdd) * tMul;
                 stats.ValueRW.regenPerSec    = rHasOver ? rOver : (0f + rAdd) * rMul;
+
+                dirty.ValueRW = false;
             }
         }
     }

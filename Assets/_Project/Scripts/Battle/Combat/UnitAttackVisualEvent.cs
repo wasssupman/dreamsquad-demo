@@ -3,14 +3,13 @@ using Unity.Mathematics;
 
 namespace Wassup.Battle.Combat
 {
-    // Phase 8 §13 follow-up — ECS→MonoBehaviour crossing payload for any time a
-    // defender fires (ranged projectile OR melee direct-damage). Pool layer uses
-    // this to trigger Spine attack animation + flipX toward `targetWorld`, so
-    // melee defenders (Bastion/Bruiser with projectile=null) no longer miss the
-    // trigger that previously only flowed through ProjectileSpawnRequest.
-    public struct DefenderAttackEvent
+    // ECS→MonoBehaviour visual trigger for any attacker (defender or enemy) firing
+    // an attack. SpineUnitPool consumes this to play attack animation + face the
+    // target. Defender-specific side effects (cast VFX, attack VFX prefab) are
+    // applied in BattleBridge by checking whether the attacker has DefenderUnitData.
+    public struct UnitAttackVisualEvent
     {
-        public Entity defender;
+        public Entity attacker;
         public float3 targetWorld;
     }
 }

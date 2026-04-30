@@ -9,6 +9,9 @@ namespace Wassup.Battle.Effects
         [Tooltip("Spawned by BattleBridge as the visual representation.")]
         public GameObject visualPrefab;
 
+        [Tooltip("Optional particle prefab spawned when the hazard visual is bound.")]
+        public GameObject spawnVfxPrefab;
+
         [Header("Shape")]
         [Tooltip("Cell shape sampled at spawn. Reuses HazardShapeSampler.")]
         public HazardShape shape = HazardShape.Square3x3;

@@ -1,6 +1,8 @@
 using NUnit.Framework;
 using Unity.Core;
 using Unity.Entities;
+using Unity.Mathematics;
+using Unity.Transforms;
 using Wassup.Battle.Effects;
 
 namespace Wassup.Tests.EditMode
@@ -34,18 +36,39 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
-        public void Removes_Expired_DamageBoost_And_CooldownReduction_Independently()
+        public void Destroys_Expired_TornadoField_Entity()
         {
             var e = _em.CreateEntity();
-            _em.AddComponentData(e, new DamageBoost { remaining = 0.1f, multiplier = 2f });
-            _em.AddComponentData(e, new CooldownReduction { remaining = 1f, multiplier = 0.5f });
+            _em.AddComponentData(e, new TornadoField
+            {
+                centerWorld = float3.zero,
+                radius = 2f,
+                pullSpeed = 1f,
+                remaining = 0.1f,
+            });
 
             Tick(0.5f);
 
-            Assert.IsFalse(_em.HasComponent<DamageBoost>(e));
-            Assert.IsTrue(_em.HasComponent<CooldownReduction>(e));
-            var cr = _em.GetComponentData<CooldownReduction>(e).remaining;
-            Assert.AreEqual(0.5f, cr, 1e-5f);
+            Assert.IsFalse(_em.Exists(e), "Expired TornadoField carrier entity should be destroyed.");
+        }
+
+        [Test]
+        public void Keeps_Alive_TornadoField_With_Remaining_Time()
+        {
+            var e = _em.CreateEntity();
+            _em.AddComponentData(e, new TornadoField
+            {
+                centerWorld = float3.zero,
+                radius = 2f,
+                pullSpeed = 1f,
+                remaining = 2f,
+            });
+
+            Tick(0.5f);
+
+            Assert.IsTrue(_em.Exists(e), "Non-expired TornadoField should still exist.");
+            Assert.AreEqual(1.5f, _em.GetComponentData<TornadoField>(e).remaining, 1e-5f,
+                "TornadoField.remaining should decrease by DeltaTime.");
         }
 
         [Test]

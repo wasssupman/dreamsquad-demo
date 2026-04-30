@@ -22,6 +22,8 @@ namespace Wassup.Tests.EditMode
             _world = new World("HazardDestroyedEventTestWorld");
             _em = _world.EntityManager;
             _simGroup = _world.CreateSystemManaged<SimulationSystemGroup>();
+            _simGroup.AddSystemToUpdateList(_world.CreateSystem<DamageApplicationSystem>());
+            _simGroup.AddSystemToUpdateList(_world.CreateSystem<HealthDeathSystem>());
             _simGroup.AddSystemToUpdateList(_world.CreateSystem<UnitLifecycleSystem>());
         }
 
@@ -57,6 +59,21 @@ namespace Wassup.Tests.EditMode
             });
             _em.AddComponentData(e, LocalTransform.FromPosition(worldPosition));
             _em.AddComponent<DeadTag>(e);
+            return e;
+        }
+
+        private Entity CreateHazardWithHealth(int soIndex, int2 centerCell, float3 worldPosition, float hp)
+        {
+            var e = _em.CreateEntity();
+            _em.AddComponentData(e, new BlockingHazard { hazardSoIndex = soIndex, maxHp = 25f });
+            _em.AddComponentData(e, new Obstacle
+            {
+                cell = centerCell,
+                worldPosition = worldPosition,
+                remainingLife = float.PositiveInfinity,
+            });
+            _em.AddComponentData(e, LocalTransform.FromPosition(worldPosition));
+            _em.AddComponentData(e, new Health { value = hp, max = 25f });
             return e;
         }
 
@@ -97,6 +114,22 @@ namespace Wassup.Tests.EditMode
             Tick();
 
             Assert.AreEqual(1, _queue.Count);
+        }
+
+        [Test]
+        public void ZeroHp_BlockingHazard_Enqueues_Event_And_Destroy()
+        {
+            CreateSink();
+            var hazard = CreateHazardWithHealth(5, new int2(6, 7), new float3(6.5f, 0f, 7.5f), 0f);
+
+            Tick();
+
+            Assert.IsFalse(_em.Exists(hazard));
+            Assert.AreEqual(1, _queue.Count);
+            var evt = _queue.Dequeue();
+            Assert.AreEqual(hazard, evt.hazardEntity);
+            Assert.AreEqual(5, evt.hazardSoIndex);
+            Assert.AreEqual(new int2(6, 7), evt.centerCell);
         }
     }
 }
