@@ -9,6 +9,7 @@ namespace Wassup.Battle.Effects
         public Entity target;
         public StackKind kind;
         public byte countDelta;       // 부착당 누적량 (cap 은 Apply 시점 적용)
+        public byte maxStack;         // producer 가 SO 에서 복사해서 전달
         public float perAppDuration;  // refresh 정책 (S1) — remaining = perAppDuration
         public Entity source;
     }

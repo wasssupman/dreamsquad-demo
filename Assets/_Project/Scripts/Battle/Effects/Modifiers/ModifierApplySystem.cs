@@ -137,7 +137,6 @@ namespace Wassup.Battle.Effects
                     }
                 }
                 // no match — new slot
-                const byte maxStack_default = 10; // TODO(unit-4): replace with payload.maxStack once StackModifierApplyEvent carries it
                 buf.Add(new StackModifierSlot
                 {
                     header = new ModifierHeader
@@ -147,14 +146,13 @@ namespace Wassup.Battle.Effects
                         stackId   = 0,
                     },
                     kind               = ev.kind,
-                    stackCount         = (byte)math.min((int)maxStack_default, (int)ev.countDelta),
-                    maxStack           = maxStack_default,
+                    stackCount         = (byte)math.min((int)ev.maxStack, (int)ev.countDelta),
+                    maxStack           = ev.maxStack,
                     lastTriggeredStack = 0,
                 });
             }
             else
             {
-                const byte maxStack_default = 10; // TODO(unit-4): replace with payload.maxStack
                 var buf = ecb.AddBuffer<StackModifierSlot>(target);
                 buf.Add(new StackModifierSlot
                 {
@@ -165,8 +163,8 @@ namespace Wassup.Battle.Effects
                         stackId   = 0,
                     },
                     kind               = ev.kind,
-                    stackCount         = (byte)math.min((int)maxStack_default, (int)ev.countDelta),
-                    maxStack           = maxStack_default,
+                    stackCount         = (byte)math.min((int)ev.maxStack, (int)ev.countDelta),
+                    maxStack           = ev.maxStack,
                     lastTriggeredStack = 0,
                 });
             }

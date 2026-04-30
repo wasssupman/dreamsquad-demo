@@ -57,6 +57,8 @@ namespace Wassup.Bridge
         // Phase 9 P9-07 — tileSize 단일 소스화. Awake 에서 MapView/PlacementInput 으로 주입.
         [SerializeField] private Wassup.Core.MapView mapView;
         [SerializeField] private Wassup.Core.PlacementInput placementInput;
+        [Header("Stack Modifier Registry")]
+        [SerializeField] private Wassup.Data.StackModifierSO[] stackModifierAuthoring;
 
         private ManualMapInput? _manualMapInput;
         private GeneratedMap _generatedMap;
@@ -74,6 +76,7 @@ namespace Wassup.Bridge
         private readonly Dictionary<ProjectileData, int> _projectileDataIndex = new();
         private readonly List<BlockingHazardSO> _blockingHazardSoRegistry = new();
         private readonly Dictionary<BlockingHazardSO, int> _blockingHazardSoIndex = new();
+        private static readonly Dictionary<Wassup.Battle.Effects.StackKind, Wassup.Data.ThresholdRule[]> _stackThresholds = new();
         private readonly Dictionary<Entity, GameObject> _blockingHazardVisualMap = new();
         private Transform _blockingHazardVisualRoot;
         private EntityQuery _projectileSpawnRequestQuery;
@@ -713,6 +716,9 @@ namespace Wassup.Bridge
             // Fix 3 (task 10): seed visual RNG from map seed so jitter is reproducible per session.
             int visualSeed = (mapSettings != null ? mapSettings.EffectiveSeed : 42) ^ 0x5A5A5A5A;
             _projectileViewPool?.Initialize(visualSeed);
+
+            // Build StackModifier threshold registry for StackModifierTickSystem lookups.
+            BuildStackThresholdRegistry();
 
             // draft-stage-map-prebuild Unit 0 — BuildMapForBattle removed from here; called explicitly
             // by PrepareDraftMap / RebuildDraftMap / BeginPlacement fallback.
@@ -2460,6 +2466,30 @@ namespace Wassup.Bridge
 
                 _blockingHazardVisualMap.Remove(evt.hazardEntity);
             }
+        }
+
+        // --- Stack Modifier SO Registry ---
+
+        private void BuildStackThresholdRegistry()
+        {
+            _stackThresholds.Clear();
+            if (stackModifierAuthoring == null) return;
+            foreach (var so in stackModifierAuthoring)
+            {
+                if (so == null) continue;
+                _stackThresholds[so.kind] = so.thresholds ?? System.Array.Empty<Wassup.Data.ThresholdRule>();
+            }
+        }
+
+        /// <summary>
+        /// Called by StackModifierTickSystem (managed context — not Burst).
+        /// Returns the ThresholdRule array for the given StackKind, or empty if none registered.
+        /// </summary>
+        public static Wassup.Data.ThresholdRule[] GetStackThresholds(Wassup.Battle.Effects.StackKind kind)
+        {
+            if (_stackThresholds.TryGetValue(kind, out var rules))
+                return rules;
+            return System.Array.Empty<Wassup.Data.ThresholdRule>();
         }
 
         private static Vector3 ShapeToHazardVisualScale(HazardShape shape, int radius, float yScale)

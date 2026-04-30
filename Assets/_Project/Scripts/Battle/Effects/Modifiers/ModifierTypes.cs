@@ -4,8 +4,7 @@ namespace Wassup.Battle.Effects
 {
     public enum StatKind : byte { DamageMul, AttackSpeedMul, DmgTakenMul, RegenPerSec }
 
-    // 멤버는 4번 단위에서 추가 (Fire, Ice, Bleed, ...)
-    public enum StackKind : byte { None }
+    public enum StackKind : byte { None, Fire, Ice, Bleed, Poison }
 
     public enum CombineOp : byte { Multiplicative, Additive, Override }
 
