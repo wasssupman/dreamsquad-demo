@@ -47,9 +47,6 @@ namespace Wassup.Battle.Combat
             var targetFactions = targetCandidatesQuery.ToComponentDataArray<FactionTag>(Allocator.Temp);
 
             var ecb = new EntityCommandBuffer(Allocator.Temp);
-            var damageBoostLookup = SystemAPI.GetComponentLookup<DamageBoost>(isReadOnly: true);
-            var cooldownReductionLookup = SystemAPI.GetComponentLookup<CooldownReduction>(isReadOnly: true);
-            var synergyLookup = SystemAPI.GetComponentLookup<SynergyBuff>(isReadOnly: true);
             var projectileRefLookup = SystemAPI.GetComponentLookup<ProjectileRef>(isReadOnly: true);
             var enemyPauseLookup = SystemAPI.GetComponentLookup<EnemyAttackMovePause>(isReadOnly: false);
             var defenderCcLookup = SystemAPI.GetComponentLookup<DefenderCcData>(isReadOnly: true);
@@ -137,25 +134,16 @@ namespace Wassup.Battle.Combat
                         });
                     }
 
-                    // Buff scaling — lookup returns 1.0 implicitly when not present.
-                    // Enemies lack these components so they always use raw damage.
-                    float damageMul = damageBoostLookup.HasComponent(attackerEntity)
-                        ? damageBoostLookup[attackerEntity].multiplier
-                        : 1f;
-                    float cooldownMul = cooldownReductionLookup.HasComponent(attackerEntity)
-                        ? cooldownReductionLookup[attackerEntity].multiplier
-                        : 1f;
-                    float synergyMul = synergyLookup.HasComponent(attackerEntity)
-                        ? synergyLookup[attackerEntity].damageMul
-                        : 1f;
-                    // modifier-framework unit 5: BuffStats multipliers (additional layer on top of legacy).
+                    // modifier-framework unit 7: AttackSystem reads BuffStats only.
+                    // Legacy DamageBoost/CooldownReduction/SynergyBuff are now folded
+                    // into BuffStats by BuffStatsAggregateSystem (adapter period, unit 7–8).
                     float buffStatsDamageMul = buffStatsLookup.HasComponent(attackerEntity)
                         ? buffStatsLookup[attackerEntity].damageMul
                         : 1f;
                     float buffStatsAttackSpeedMul = buffStatsLookup.HasComponent(attackerEntity)
                         ? buffStatsLookup[attackerEntity].attackSpeedMul
                         : 1f;
-                    float emittedDamage = attack.ValueRO.damage * damageMul * synergyMul * buffStatsDamageMul;
+                    float emittedDamage = attack.ValueRO.damage * buffStatsDamageMul;
 
                     // modifier-framework unit 5: outputs path vs legacy path.
                     // When AttackOutputElement buffer is present the SO defines hit effects explicitly.
@@ -215,7 +203,7 @@ namespace Wassup.Battle.Combat
                                 {
                                     case Wassup.Data.AttackOutputKind.Damage:
                                         ecb.AppendToBuffer(hitTarget,
-                                            new IncomingDamage { amount = o.magnitude * damageMul * synergyMul * buffStatsDamageMul });
+                                            new IncomingDamage { amount = o.magnitude * buffStatsDamageMul });
                                         break;
 
                                     case Wassup.Data.AttackOutputKind.Heal:
@@ -331,8 +319,10 @@ namespace Wassup.Battle.Combat
                         }
                     }
 
-                    // modifier-framework unit 5: attackSpeedMul divides cooldown (higher = faster).
-                    float effectiveCooldownMul = buffStatsAttackSpeedMul > 0f ? cooldownMul / buffStatsAttackSpeedMul : cooldownMul;
+                    // modifier-framework unit 7: cooldown = base / attackSpeedMul.
+                    // Legacy CooldownReduction is folded into BuffStats.attackSpeedMul by
+                    // BuffStatsAggregateSystem — no separate cooldownMul needed here.
+                    float effectiveCooldownMul = buffStatsAttackSpeedMul > 0f ? 1f / buffStatsAttackSpeedMul : 1f;
                     attack.ValueRW.cooldownRemaining = attack.ValueRO.cooldownDuration * effectiveCooldownMul;
                     if (!isDefender && enemyPauseLookup.HasComponent(attackerEntity))
                     {
