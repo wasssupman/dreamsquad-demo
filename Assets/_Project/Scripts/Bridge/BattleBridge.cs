@@ -48,7 +48,7 @@ namespace Wassup.Bridge
         [SerializeField] private DraftController draftController;
         [SerializeField] private SkillRuntime skillRuntime;
         [SerializeField] private PlacementPhaseView _placementPhaseView;
-        [SerializeField] private Wassup.Presentation.SpineDefenderPool spineDefenderPool;
+        [SerializeField] private Wassup.Presentation.SpineUnitPool spineUnitPool;
         [SerializeField] private Wassup.Presentation.QuadUnitViewPool enemyViewPool;
         [SerializeField] private Wassup.Presentation.QuadUnitViewPool defenderFallbackViewPool;
         [SerializeField] private float spineDefenderYOffset = 0f;
@@ -103,9 +103,11 @@ namespace Wassup.Bridge
         private NativeQueue<GoalReachedEvent> _goalEventQueue;
         private NativeQueue<DefenderDeathEvent> _defenderDeathQueue;
         private NativeQueue<Wassup.Battle.Combat.MeteorBurstEvent> _meteorBurstQueue;
-        private NativeQueue<Wassup.Battle.Combat.DefenderAttackEvent> _defenderAttackQueue;
+        private NativeQueue<Wassup.Battle.Combat.UnitAttackVisualEvent> _unitAttackVisualQueue;
         private NativeQueue<Wassup.Battle.Combat.Projectile.ProjectileHitEvent> _projectileHitEventQueue;
         private NativeQueue<Wassup.Battle.Effects.EnemyCcEvent> _enemyCcQueue;
+        private NativeQueue<Wassup.Battle.Effects.StatModifierApplyEvent> _statModifierQueue;
+        private NativeQueue<Wassup.Battle.Effects.StackModifierApplyEvent> _stackModifierQueue;
         private NativeQueue<Wassup.Battle.Effects.HazardRuntimeEvent> _hazardRuntimeEventQueue;
         private NativeQueue<Wassup.Battle.Effects.HazardDestroyedEvent> _hazardDestroyedQueue;
         private Unity.Collections.NativeHashSet<Unity.Mathematics.int2> _blockedCells;
@@ -235,7 +237,7 @@ namespace Wassup.Bridge
             if (skillRuntime != null) skillRuntime.ResetAll();
             if (GameManager.Instance != null && GameManager.Instance.CostRuntime != null)
                 GameManager.Instance.CostRuntime.StopRegen();
-            if (spineDefenderPool != null) spineDefenderPool.DisposeAll();
+            if (spineUnitPool != null) spineUnitPool.DisposeAll();
             if (enemyViewPool != null) enemyViewPool.DisposeAll();
             if (defenderFallbackViewPool != null) defenderFallbackViewPool.DisposeAll();
             ClearBlockingHazardVisuals();
@@ -270,9 +272,9 @@ namespace Wassup.Bridge
             _em.DestroyEntity(meteorBurstSingletons);
             meteorBurstSingletons.Dispose();
 
-            var defenderAttackSingletons = _em.CreateEntityQuery(ComponentType.ReadOnly<Wassup.Battle.Combat.DefenderAttackEventsSingleton>());
-            _em.DestroyEntity(defenderAttackSingletons);
-            defenderAttackSingletons.Dispose();
+            var unitAttackVisualSingletons = _em.CreateEntityQuery(ComponentType.ReadOnly<Wassup.Battle.Combat.UnitAttackVisualEventsSingleton>());
+            _em.DestroyEntity(unitAttackVisualSingletons);
+            unitAttackVisualSingletons.Dispose();
 
             var projectileHitSingletons = _em.CreateEntityQuery(ComponentType.ReadOnly<Wassup.Battle.Combat.Projectile.ProjectileHitEventsSingleton>());
             _em.DestroyEntity(projectileHitSingletons);
@@ -310,9 +312,11 @@ namespace Wassup.Bridge
             if (_goalEventQueue.IsCreated) _goalEventQueue.Dispose();
             if (_defenderDeathQueue.IsCreated) _defenderDeathQueue.Dispose();
             if (_meteorBurstQueue.IsCreated) _meteorBurstQueue.Dispose();
-            if (_defenderAttackQueue.IsCreated) _defenderAttackQueue.Dispose();
+            if (_unitAttackVisualQueue.IsCreated) _unitAttackVisualQueue.Dispose();
             if (_projectileHitEventQueue.IsCreated) _projectileHitEventQueue.Dispose();
             if (_enemyCcQueue.IsCreated) _enemyCcQueue.Dispose();
+            if (_statModifierQueue.IsCreated) _statModifierQueue.Dispose();
+            if (_stackModifierQueue.IsCreated) _stackModifierQueue.Dispose();
             if (_hazardRuntimeEventQueue.IsCreated) _hazardRuntimeEventQueue.Dispose();
             if (_hazardDestroyedQueue.IsCreated) _hazardDestroyedQueue.Dispose();
             if (_blockedCells.IsCreated) _blockedCells.Dispose();
@@ -646,13 +650,13 @@ namespace Wassup.Bridge
             var meteorBurstSingleton = _em.CreateEntity();
             _em.AddComponentData(meteorBurstSingleton, new Wassup.Battle.Combat.MeteorBurstEventsSingleton { queue = _meteorBurstQueue });
 
-            // Phase 8 §13 follow-up — defender attack trigger event channel.
-            // AttackSystem enqueues for both projectile and melee branches so
-            // Spine attack anim fires consistently.
-            if (_defenderAttackQueue.IsCreated) _defenderAttackQueue.Dispose();
-            _defenderAttackQueue = new NativeQueue<Wassup.Battle.Combat.DefenderAttackEvent>(Allocator.Persistent);
+            // Unified attack visual trigger channel — every attacker (defender
+            // or enemy) enqueues one event per fire so SpineUnitPool can play
+            // the attack animation and facing flip uniformly.
+            if (_unitAttackVisualQueue.IsCreated) _unitAttackVisualQueue.Dispose();
+            _unitAttackVisualQueue = new NativeQueue<Wassup.Battle.Combat.UnitAttackVisualEvent>(Allocator.Persistent);
             var attackSingleton = _em.CreateEntity();
-            _em.AddComponentData(attackSingleton, new Wassup.Battle.Combat.DefenderAttackEventsSingleton { queue = _defenderAttackQueue });
+            _em.AddComponentData(attackSingleton, new Wassup.Battle.Combat.UnitAttackVisualEventsSingleton { queue = _unitAttackVisualQueue });
 
             // Combat→Presentation hit-VFX channel. ProjectileHitSystem enqueues
             // one event per direct-target impact; DrainProjectileHitEvents
@@ -668,6 +672,18 @@ namespace Wassup.Bridge
             _enemyCcQueue = new NativeQueue<Wassup.Battle.Effects.EnemyCcEvent>(Allocator.Persistent);
             var enemyCcSingleton = _em.CreateEntity();
             _em.AddComponentData(enemyCcSingleton, new Wassup.Battle.Effects.EnemyCcEventsSingleton { queue = _enemyCcQueue });
+
+            // StatModifier apply channel. ModifierApplySystem drains this each frame to attach stat modifiers.
+            if (_statModifierQueue.IsCreated) _statModifierQueue.Dispose();
+            _statModifierQueue = new NativeQueue<Wassup.Battle.Effects.StatModifierApplyEvent>(Allocator.Persistent);
+            var statModifierSingleton = _em.CreateEntity();
+            _em.AddComponentData(statModifierSingleton, new Wassup.Battle.Effects.StatModifierApplyEventsSingleton { queue = _statModifierQueue });
+
+            // StackModifier apply channel. ModifierApplySystem drains this each frame to attach stack modifiers.
+            if (_stackModifierQueue.IsCreated) _stackModifierQueue.Dispose();
+            _stackModifierQueue = new NativeQueue<Wassup.Battle.Effects.StackModifierApplyEvent>(Allocator.Persistent);
+            var stackModifierSingleton = _em.CreateEntity();
+            _em.AddComponentData(stackModifierSingleton, new Wassup.Battle.Effects.StackModifierApplyEventsSingleton { queue = _stackModifierQueue });
 
             // Hazard debug telemetry channel. Zone/DoT systems enqueue here; BattleBridge drains to JSON logs.
             if (_hazardRuntimeEventQueue.IsCreated) _hazardRuntimeEventQueue.Dispose();
@@ -1327,7 +1343,7 @@ namespace Wassup.Bridge
             DrainProjectileSpawnRequests();
             DrainDefenderDeathEvents();
             DrainMeteorBurstEvents();
-            DrainDefenderAttackEvents();
+            DrainUnitAttackVisualEvents();
             DrainProjectileHitEvents();
             DrainHazardRuntimeEvents();
             DrainHazardDestroyedEvents();
@@ -1350,6 +1366,7 @@ namespace Wassup.Bridge
             if (enemyViewPool != null)
             {
                 enemyViewPool.DespawnMissing(_em);
+                spineUnitPool?.DespawnMissing(_em);
                 if (_aliveAttackersQueryCreated)
                 {
                     NativeArray<Entity> entities;
@@ -1368,11 +1385,19 @@ namespace Wassup.Bridge
                         {
                             var entity = entities[i];
                             if (!_em.HasComponent<LocalTransform>(entity)) continue;
-                            if (!enemyViewPool.TryGet(entity, out var view)) continue;
 
                             var p = _em.GetComponentData<LocalTransform>(entity).Position;
-                            view.UpdatePosition(new Vector3(p.x, p.y, p.z));
-                            if (canSort) view.UpdateSortingOrder(gridSize, tileSize);
+                            var world = new Vector3(p.x, p.y, p.z);
+                            if (spineUnitPool != null && spineUnitPool.TryGet(entity, out var spineView))
+                            {
+                                spineView.UpdatePosition(world);
+                                if (canSort) spineView.UpdateSortingOrder(gridSize, tileSize);
+                            }
+                            else if (enemyViewPool.TryGet(entity, out var view))
+                            {
+                                view.UpdatePosition(world);
+                                if (canSort) view.UpdateSortingOrder(gridSize, tileSize);
+                            }
                         }
                     }
                     finally
@@ -1391,7 +1416,7 @@ namespace Wassup.Bridge
 
                 var p = _em.GetComponentData<LocalTransform>(entity).Position;
                 var world = new Vector3(p.x, p.y + spineDefenderYOffset, p.z);
-                if (spineDefenderPool != null && spineDefenderPool.TryGet(entity, out var spineView))
+                if (spineUnitPool != null && spineUnitPool.TryGet(entity, out var spineView))
                 {
                     spineView.UpdatePosition(world);
                     if (canSort) spineView.UpdateSortingOrder(gridSize, tileSize);
@@ -1411,9 +1436,9 @@ namespace Wassup.Bridge
             while (_defenderDeathQueue.TryDequeue(out var evt))
             {
                 var cell = new Vector2Int(evt.cell.x, evt.cell.y);
-                if (spineDefenderPool != null && _defenderByTile.TryGetValue(cell, out var binding))
+                if (spineUnitPool != null && _defenderByTile.TryGetValue(cell, out var binding))
                 {
-                    spineDefenderPool.NotifyDeath(binding.entity);
+                    spineUnitPool.NotifyDeath(binding.entity);
                     defenderFallbackViewPool?.Despawn(binding.entity);
                 }
                 _defenderByTile.Remove(cell);
@@ -1436,25 +1461,27 @@ namespace Wassup.Bridge
             }
         }
 
-        // Phase 8 §13 follow-up — unified attack trigger drain. AttackSystem
-        // enqueues for both projectile and melee defender branches so Spine
-        // attack animation + facing flip fires the same way regardless of
-        // whether the defender has a ProjectileRef. Previously melee defenders
-        // (Bastion/Bruiser) missed the trigger because it was only wired inside
-        // DrainProjectileSpawnRequests.
-        private void DrainDefenderAttackEvents()
+        // Unified attack visual drain. AttackSystem enqueues one event per
+        // fire for both defenders and enemies so the Spine attack animation
+        // and facing flip fire uniformly. Defender-specific side effects
+        // (attack VFX prefab, cast VFX) are gated by FindDefenderData — when
+        // the attacker is an enemy, FindDefenderData returns null and only
+        // the Spine notify runs.
+        private void DrainUnitAttackVisualEvents()
         {
-            if (!_defenderAttackQueue.IsCreated) return;
-            while (_defenderAttackQueue.TryDequeue(out var evt))
+            if (!_unitAttackVisualQueue.IsCreated) return;
+            while (_unitAttackVisualQueue.TryDequeue(out var evt))
             {
                 var targetWorld = new Vector3(evt.targetWorld.x, evt.targetWorld.y, evt.targetWorld.z);
-                spineDefenderPool?.NotifyAttack(evt.defender, targetWorld);
+                spineUnitPool?.NotifyAttack(evt.attacker, targetWorld);
 
-                var defData = FindDefenderData(evt.defender);
-                if (defData?.attackVfxPrefab != null)
+                var defData = FindDefenderData(evt.attacker);
+                if (defData == null) continue;
+
+                if (defData.attackVfxPrefab != null)
                     _projectileViewPool?.PlayHit(defData.attackVfxPrefab, evt.targetWorld);
 
-                TrySpawnCastVfx(evt.defender, targetWorld);
+                TrySpawnCastVfx(evt.attacker, targetWorld);
             }
         }
 
@@ -1473,7 +1500,7 @@ namespace Wassup.Bridge
             if (pRef.dataIndex < 0 || pRef.dataIndex >= _projectileDataByIndex.Count) return;
             var data = _projectileDataByIndex[pRef.dataIndex];
             if (data.castPrefab == null) return;
-            if (spineDefenderPool == null || !spineDefenderPool.TryResolveAnchor(defender, out var anchor)) return;
+            if (spineUnitPool == null || !spineUnitPool.TryResolveAnchor(defender, out var anchor)) return;
             var dir = targetWorld - anchor; dir.y = 0f;
             _projectileViewPool.PlayCast(data.castPrefab, anchor, dir, data.castVfxLifetime);
         }
@@ -1505,7 +1532,7 @@ namespace Wassup.Bridge
             for (int i = 0; i < requestEntities.Length; i++)
             {
                 var req = requestData[i];
-                // Spine attack trigger moved to DrainDefenderAttackEvents
+                // Spine attack trigger moved to DrainUnitAttackVisualEvents
                 // so both projectile and melee defenders share the same hook.
                 SpawnProjectile(req);
                 _em.RemoveComponent<ProjectileSpawnRequest>(requestEntities[i]);
@@ -1801,6 +1828,7 @@ namespace Wassup.Bridge
             while (_goalEventQueue.TryDequeue(out var evt))
             {
                 enemyViewPool?.Despawn(evt.entity);
+                spineUnitPool?.Despawn(evt.entity);
                 _goalReachedCount++;
                 Debug.Log($"[BattleBridge] Goal reached! Count: {_goalReachedCount}/{deck.defeatGoalReachedCount}");
                 if (!_resultShown && _goalReachedCount >= deck.defeatGoalReachedCount)
@@ -2040,7 +2068,7 @@ namespace Wassup.Bridge
             StartCoroutine(PlayDeploymentRingPulse(world, Mathf.Max(duration, 0.35f)));
 
             bool spineDeployment = false;
-            if (spineDefenderPool != null && spineDefenderPool.TryGet(entity, out var view))
+            if (spineUnitPool != null && spineUnitPool.TryGet(entity, out var view))
             {
                 spineDeployment = view.PlayDeploy();
             }
@@ -2158,10 +2186,10 @@ namespace Wassup.Bridge
             // When no skin/skel is set we fall through to the Phase 5 billboard,
             // so Spine rollout is per-unit and doesn't block unconfigured types.
             bool spineSpawned = false;
-            if (spineDefenderPool != null)
+            if (spineUnitPool != null)
             {
                 var spineWorld = new Vector3(pos.x, pos.y + spineDefenderYOffset, pos.z);
-                spineSpawned = spineDefenderPool.TrySpawn(unitData, entity, spineWorld, out _);
+                spineSpawned = spineUnitPool.TrySpawn(unitData, unitData, entity, spineWorld, "SpineDef", out _);
             }
             if (!spineSpawned)
             {
@@ -2518,9 +2546,11 @@ namespace Wassup.Bridge
             if (_goalEventQueue.IsCreated) _goalEventQueue.Dispose();
             if (_defenderDeathQueue.IsCreated) _defenderDeathQueue.Dispose();
             if (_meteorBurstQueue.IsCreated) _meteorBurstQueue.Dispose();
-            if (_defenderAttackQueue.IsCreated) _defenderAttackQueue.Dispose();
+            if (_unitAttackVisualQueue.IsCreated) _unitAttackVisualQueue.Dispose();
             if (_projectileHitEventQueue.IsCreated) _projectileHitEventQueue.Dispose();
             if (_enemyCcQueue.IsCreated) _enemyCcQueue.Dispose();
+            if (_statModifierQueue.IsCreated) _statModifierQueue.Dispose();
+            if (_stackModifierQueue.IsCreated) _stackModifierQueue.Dispose();
             if (_hazardRuntimeEventQueue.IsCreated) _hazardRuntimeEventQueue.Dispose();
             if (_hazardDestroyedQueue.IsCreated) _hazardDestroyedQueue.Dispose();
             if (_blockedCells.IsCreated) _blockedCells.Dispose();
@@ -2532,6 +2562,7 @@ namespace Wassup.Bridge
             TeardownGeneratedMap();
             // draft-stage-map-prebuild Unit 0 — reset on lifecycle end.
             _ecsInfrastructureReady = false;
+            if (spineUnitPool != null) spineUnitPool.DisposeAll();
             if (_healthBarMaterial != null) Destroy(_healthBarMaterial);
             for (int i = 0; i < _ownedRuntimeMaterials.Count; i++)
             {
@@ -2543,6 +2574,12 @@ namespace Wassup.Bridge
 
         private void EnsureMonoViewPools()
         {
+            if (spineUnitPool == null)
+            {
+                var go = new GameObject("SpineUnitViewPool");
+                go.transform.SetParent(transform, worldPositionStays: false);
+                spineUnitPool = go.AddComponent<Wassup.Presentation.SpineUnitPool>();
+            }
             if (enemyViewPool == null)
                 enemyViewPool = CreateViewPool("EnemyViewPool");
             if (defenderFallbackViewPool == null)
@@ -2629,6 +2666,28 @@ namespace Wassup.Bridge
                     attackTargetCount = 1,
                     targetMask = (int)(Faction.Defender | Faction.BlockingHazard),
                 });
+                if (entry.unitType.projectile != null)
+                {
+                    var dataIndex = GetOrCreateProjectileDataIndex(entry.unitType.projectile);
+                    _em.AddComponentData(entity, new ProjectileRef
+                    {
+                        dataIndex = dataIndex,
+                        speed = entry.unitType.projectile.speed,
+                        hitThreshold = entry.unitType.projectile.hitThreshold,
+                        visualScale = entry.unitType.projectile.visualScale,
+                        onHitEffect = entry.unitType.projectile.onHitEffect,
+                        splashRadius = entry.unitType.projectile.splashRadius,
+                        splashDamageMul = entry.unitType.projectile.splashDamageMul,
+                    });
+                }
+                if (entry.unitType.movePauseOnAttackSec > 0f)
+                {
+                    _em.AddComponentData(entity, new EnemyAttackMovePause
+                    {
+                        duration = entry.unitType.movePauseOnAttackSec,
+                        remaining = 0f,
+                    });
+                }
             }
 
             _em.AddComponentData(entity, new PathFollowState
@@ -2637,17 +2696,22 @@ namespace Wassup.Bridge
             });
 
             EnsureMonoViewPools();
-            var mesh = entry.unitType.visualMesh != null
-                ? entry.unitType.visualMesh
-                : Resources.GetBuiltinResource<Mesh>("Quad.fbx");
-            enemyViewPool.TrySpawn(
-                entry.unitType.displayName,
-                entity,
-                spawnWorldPos,
-                mesh,
-                CreateAttackUnitRuntimeMaterial(entry.unitType.visualMaterial),
-                CharacterVisualScale,
-                out _);
+            bool spineSpawned = spineUnitPool != null &&
+                                spineUnitPool.TrySpawn(entry.unitType, null, entity, spawnWorldPos, "SpineEnemy", out _);
+            if (!spineSpawned)
+            {
+                var mesh = entry.unitType.visualMesh != null
+                    ? entry.unitType.visualMesh
+                    : Resources.GetBuiltinResource<Mesh>("Quad.fbx");
+                enemyViewPool.TrySpawn(
+                    entry.unitType.displayName,
+                    entity,
+                    spawnWorldPos,
+                    mesh,
+                    CreateAttackUnitRuntimeMaterial(entry.unitType.visualMaterial),
+                    CharacterVisualScale,
+                    out _);
+            }
 
             CreateHealthBar(entity, yOffset: 0.9f * CharacterVisualScale, baseScale: 0.35f * CharacterVisualScale);
         }
