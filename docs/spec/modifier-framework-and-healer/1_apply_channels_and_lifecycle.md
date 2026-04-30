@@ -93,3 +93,5 @@ namespace Wassup.Battle.Effects {
 ---
 
 확인 일자 + 커밋 해시: 2026-04-30, `3c10cb7` (Unity Editor 컴파일 통과 + console clean + 도메인 reload leak 0). commit 에 prior uncommitted refactor (SpineDefenderPool→SpineUnitPool, DefenderAttackEvent→UnitAttackVisualEvent rename) 가 함께 흡수됨 — 별도 회귀 없음.
+
+후속 hotfix `1a3695a` (2026-04-30): EndBattle 의 entity destroy 단계에 두 modifier singleton entity destroy 블록 누락 — Restart 시 GetSingleton fail. 8 채널 패턴 그대로 답습으로 수정.

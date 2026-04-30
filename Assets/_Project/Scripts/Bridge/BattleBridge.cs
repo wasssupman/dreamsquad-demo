@@ -1060,11 +1060,11 @@ namespace Wassup.Bridge
             switch (skill.effect)
             {
                 case SkillEffectType.PowerSurge:
-                    EffectSpawner.ApplyDamageBoost(_em, entity, skill.durationSec, skill.magnitude);
+                    EnqueueDamageMul(entity, skill.magnitude, skill.durationSec);
                     affectedCount = 1;
                     break;
                 case SkillEffectType.RapidFire:
-                    EffectSpawner.ApplyCooldownReduction(_em, entity, skill.durationSec, skill.magnitude);
+                    EnqueueAttackSpeedMul(entity, skill.magnitude, skill.durationSec);
                     affectedCount = 1;
                     break;
                 default:
@@ -1683,7 +1683,7 @@ namespace Wassup.Bridge
                     float dx = tileCell.x - placedCell.x;
                     float dz = tileCell.y - placedCell.y;
                     if (dx * dx + dz * dz > unitData.onPlaceRange * unitData.onPlaceRange) continue;
-                    EffectSpawner.ApplyDamageBoost(_em, d.entity, unitData.onPlaceDuration, unitData.onPlaceMagnitude);
+                    EnqueueDamageMul(d.entity, unitData.onPlaceMagnitude, unitData.onPlaceDuration);
                     affected++;
                 }
             }
@@ -1772,12 +1772,13 @@ namespace Wassup.Bridge
 
                 if (neighbors == 0)
                 {
-                    EffectSpawner.RemoveSynergy(_em, here.entity);
+                    // magnitude=1.0 (multiplicative identity) — effectively disables synergy contribution
+                    EnqueueSynergyMul(here.entity, 1f);
                 }
                 else
                 {
-                    bool wasPresent = _em.HasComponent<SynergyBuff>(here.entity);
-                    EffectSpawner.SetSynergy(_em, here.entity, 1f + SynergyPerNeighbor * neighbors);
+                    bool wasPresent = _synergyActivatedEntities.Contains(here.entity);
+                    EnqueueSynergyMul(here.entity, 1f + SynergyPerNeighbor * neighbors);
                     if (!wasPresent && _synergyActivatedEntities.Add(here.entity))
                     {
                         _synergyActivations++;
@@ -1785,9 +1786,61 @@ namespace Wassup.Bridge
                 }
             }
 
-            using var q = _em.CreateEntityQuery(ComponentType.ReadOnly<SynergyBuff>());
-            int currentCount = q.CalculateEntityCount();
+            // Peak tracking: count entities that have received a non-trivial synergy enqueue this session
+            int currentCount = _synergyActivatedEntities.Count;
             if (currentCount > _synergyPeakCount) _synergyPeakCount = currentCount;
+        }
+
+        // Unit 8: channel enqueue helpers — route legacy effect produces through StatModifier channel.
+        // source=target ensures the ApplySystem merge-key matches per-entity, preventing slot accumulation.
+        public void EnqueueDamageMul(Entity target, float multiplier, float duration)
+        {
+            if (!_statModifierQueue.IsCreated) return;
+            _statModifierQueue.Enqueue(new Wassup.Battle.Effects.StatModifierApplyEvent
+            {
+                target    = target,
+                stat      = Wassup.Battle.Effects.StatKind.DamageMul,
+                op        = Wassup.Battle.Effects.CombineOp.Multiplicative,
+                magnitude = multiplier,
+                duration  = duration,
+                source    = target,
+                stackId   = 0,
+            });
+        }
+
+        // RapidFire / CooldownReduction: multiplier here means "attack speed factor" (how much faster to fire).
+        // AttackSpeedMul > 1 = faster attacks. Legacy ApplyCooldownReduction stored 1/multiplier as a cooldown divisor;
+        // the new channel stores the speed multiplier directly (BuffStatsAggregateSystem applies it to attackSpeedMul).
+        public void EnqueueAttackSpeedMul(Entity target, float multiplier, float duration)
+        {
+            if (!_statModifierQueue.IsCreated) return;
+            _statModifierQueue.Enqueue(new Wassup.Battle.Effects.StatModifierApplyEvent
+            {
+                target    = target,
+                stat      = Wassup.Battle.Effects.StatKind.AttackSpeedMul,
+                op        = Wassup.Battle.Effects.CombineOp.Multiplicative,
+                magnitude = multiplier,
+                duration  = duration,
+                source    = target,
+                stackId   = 0,
+            });
+        }
+
+        // Synergy: infinite duration, magnitude refreshed each recompute.
+        // magnitude=1.0 is the multiplicative identity (neighbors==0 case).
+        private void EnqueueSynergyMul(Entity target, float multiplier)
+        {
+            if (!_statModifierQueue.IsCreated) return;
+            _statModifierQueue.Enqueue(new Wassup.Battle.Effects.StatModifierApplyEvent
+            {
+                target    = target,
+                stat      = Wassup.Battle.Effects.StatKind.DamageMul,
+                op        = Wassup.Battle.Effects.CombineOp.Multiplicative,
+                magnitude = multiplier,
+                duration  = float.PositiveInfinity,
+                source    = target,
+                stackId   = 1,   // stackId=1 distinguishes synergy slot from onplace/skill DamageMul (stackId=0)
+            });
         }
 
         // Shared mesh/material for every health bar so adding more units does not

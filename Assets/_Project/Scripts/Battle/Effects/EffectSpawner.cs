@@ -58,23 +58,14 @@ namespace Wassup.Battle.Effects
                 remainingTime = duration,
             });
 
-        public static void ApplyDamageBoost(EntityManager em, Entity entity, float duration, float multiplier)
-            => Apply<DamageBoost>(em, entity,
-                () => new DamageBoost { remaining = duration, multiplier = multiplier },
-                existing => new DamageBoost
-                {
-                    remaining = existing.remaining > duration ? existing.remaining : duration,
-                    multiplier = multiplier,
-                });
+        // Unit 8 migration: DamageBoost/CooldownReduction are now routed through StatModifier channel.
+        // Use BattleBridge.EnqueueDamageMul / EnqueueAttackSpeedMul instead.
+        // Stubs retained until Unit 9 removes legacy component definitions.
+        [System.Obsolete("Use BattleBridge.EnqueueDamageMul instead. Removed in Unit 9.")]
+        public static void ApplyDamageBoost(EntityManager em, Entity entity, float duration, float multiplier) { }
 
-        public static void ApplyCooldownReduction(EntityManager em, Entity entity, float duration, float multiplier)
-            => Apply<CooldownReduction>(em, entity,
-                () => new CooldownReduction { remaining = duration, multiplier = multiplier },
-                existing => new CooldownReduction
-                {
-                    remaining = existing.remaining > duration ? existing.remaining : duration,
-                    multiplier = multiplier,
-                });
+        [System.Obsolete("Use BattleBridge.EnqueueAttackSpeedMul instead. Removed in Unit 9.")]
+        public static void ApplyCooldownReduction(EntityManager em, Entity entity, float duration, float multiplier) { }
 
         // Phase 8 §17 — Tornado: carrier entity with area data. MovementSystem
         // queries live TornadoField entities each frame and applies pull to any
@@ -125,21 +116,13 @@ namespace Wassup.Battle.Effects
             return e;
         }
 
-        // Phase 4 adjacency synergy — no duration, no merge logic. RecomputeSynergyFor
-        // is the only writer and calls Set/Remove with an authoritative value each time.
-        public static void SetSynergy(EntityManager em, Entity entity, float damageMul)
-        {
-            if (em.HasComponent<SynergyBuff>(entity))
-                em.SetComponentData(entity, new SynergyBuff { damageMul = damageMul });
-            else
-                em.AddComponentData(entity, new SynergyBuff { damageMul = damageMul });
-        }
+        // Unit 8 migration: synergy is now routed through StatModifier channel (BattleBridge.EnqueueSynergyMul).
+        // These methods are dead code — kept as stubs until Unit 9 removes legacy component definitions.
+        [System.Obsolete("Use BattleBridge.EnqueueSynergyMul instead. Removed in Unit 9.")]
+        public static void SetSynergy(EntityManager em, Entity entity, float damageMul) { }
 
-        public static void RemoveSynergy(EntityManager em, Entity entity)
-        {
-            if (em.HasComponent<SynergyBuff>(entity))
-                em.RemoveComponent<SynergyBuff>(entity);
-        }
+        [System.Obsolete("Use BattleBridge.EnqueueSynergyMul with magnitude=1f instead. Removed in Unit 9.")]
+        public static void RemoveSynergy(EntityManager em, Entity entity) { }
 
         public static Entity SpawnObstacle(EntityManager em, Unity.Mathematics.int2 cell, float3 worldPos, float lifetime)
         {
