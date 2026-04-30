@@ -20,6 +20,7 @@ namespace Wassup.Logging
         public SynergyRecord synergy = new();
         public List<OnPlaceUsageLog> on_place_usages = new();
         public List<PlacementLog> placements = new();
+        public List<AttackOutputUsageLog> attack_outputs = new();
         public BattleResult result = new();
     }
 
@@ -156,5 +157,18 @@ namespace Wassup.Logging
         public Vector2Int tile;
         public float time;
         public int affected_count;
+    }
+
+    [Serializable]
+    public class AttackOutputUsageLog
+    {
+        public string source_unit;    // attacker unit_type (or "<unknown>")
+        public string kind;           // "Damage" / "Heal" / "ApplyStat" / "ApplyStack"
+        public float magnitude;
+        public string detail;         // ApplyStat: stat name, ApplyStack: kind name — else ""
+        public float duration;        // ApplyStat / ApplyStack only, else 0
+        public Vector2Int source_tile;
+        public Vector2Int target_tile;
+        public float time;
     }
 }

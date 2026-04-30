@@ -61,6 +61,11 @@ namespace Wassup.Battle.Combat
             bool hasStackQ = SystemAPI.TryGetSingletonRW<Wassup.Battle.Effects.StackModifierApplyEventsSingleton>(out var stackModSingleton);
             bool hasFlowField = SystemAPI.TryGetSingleton<Wassup.Battle.Effects.FlowFieldSingleton>(out var flowField);
 
+            // Attack-output log channel — enqueue one event per output-per-target fired.
+            NativeQueue<AttackOutputLogEvent>.ParallelWriter? attackOutputLogWriter = null;
+            if (SystemAPI.TryGetSingletonRW<AttackOutputLogEventsSingleton>(out var attackOutputLogSingleton))
+                attackOutputLogWriter = attackOutputLogSingleton.ValueRW.queue.AsParallelWriter();
+
             // Hoist attack-event singleton writer — every attacker (defender or
             // enemy) enqueues one event per fire so SpineUnitPool can trigger the
             // attack animation and facing flip uniformly. Defender-specific
@@ -204,10 +209,30 @@ namespace Wassup.Battle.Combat
                                     case Wassup.Data.AttackOutputKind.Damage:
                                         ecb.AppendToBuffer(hitTarget,
                                             new IncomingDamage { amount = o.magnitude * buffStatsDamageMul });
+                                        if (attackOutputLogWriter.HasValue)
+                                            attackOutputLogWriter.Value.Enqueue(new AttackOutputLogEvent
+                                            {
+                                                attacker  = attackerEntity,
+                                                kind      = Wassup.Data.AttackOutputKind.Damage,
+                                                magnitude = o.magnitude * buffStatsDamageMul,
+                                                duration  = 0f,
+                                                sourcePos = atkPos,
+                                                targetPos = bestTargetPos,
+                                            });
                                         break;
 
                                     case Wassup.Data.AttackOutputKind.Heal:
                                         ecb.AppendToBuffer(hitTarget, new Wassup.Battle.Units.IncomingHeal { amount = o.magnitude });
+                                        if (attackOutputLogWriter.HasValue)
+                                            attackOutputLogWriter.Value.Enqueue(new AttackOutputLogEvent
+                                            {
+                                                attacker  = attackerEntity,
+                                                kind      = Wassup.Data.AttackOutputKind.Heal,
+                                                magnitude = o.magnitude,
+                                                duration  = 0f,
+                                                sourcePos = atkPos,
+                                                targetPos = bestTargetPos,
+                                            });
                                         break;
 
                                     case Wassup.Data.AttackOutputKind.ApplyStat:
@@ -222,6 +247,17 @@ namespace Wassup.Battle.Combat
                                                 source    = attackerEntity,
                                                 stackId   = 0,
                                             });
+                                        if (attackOutputLogWriter.HasValue)
+                                            attackOutputLogWriter.Value.Enqueue(new AttackOutputLogEvent
+                                            {
+                                                attacker  = attackerEntity,
+                                                kind      = Wassup.Data.AttackOutputKind.ApplyStat,
+                                                magnitude = o.magnitude,
+                                                stat      = o.stat,
+                                                duration  = o.duration,
+                                                sourcePos = atkPos,
+                                                targetPos = bestTargetPos,
+                                            });
                                         break;
 
                                     case Wassup.Data.AttackOutputKind.ApplyStack:
@@ -234,6 +270,17 @@ namespace Wassup.Battle.Combat
                                                 maxStack       = o.stackMaxStack > 0 ? o.stackMaxStack : (byte)5,
                                                 perAppDuration = o.duration,
                                                 source         = attackerEntity,
+                                            });
+                                        if (attackOutputLogWriter.HasValue)
+                                            attackOutputLogWriter.Value.Enqueue(new AttackOutputLogEvent
+                                            {
+                                                attacker   = attackerEntity,
+                                                kind       = Wassup.Data.AttackOutputKind.ApplyStack,
+                                                magnitude  = o.magnitude,
+                                                stackKind  = o.stackKind,
+                                                duration   = o.duration,
+                                                sourcePos  = atkPos,
+                                                targetPos  = bestTargetPos,
                                             });
                                         break;
                                 }

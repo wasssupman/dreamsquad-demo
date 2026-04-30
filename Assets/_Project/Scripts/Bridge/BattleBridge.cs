@@ -113,6 +113,7 @@ namespace Wassup.Bridge
         private NativeQueue<Wassup.Battle.Effects.StackModifierApplyEvent> _stackModifierQueue;
         private NativeQueue<Wassup.Battle.Effects.HazardRuntimeEvent> _hazardRuntimeEventQueue;
         private NativeQueue<Wassup.Battle.Effects.HazardDestroyedEvent> _hazardDestroyedQueue;
+        private NativeQueue<Wassup.Battle.Combat.AttackOutputLogEvent> _attackOutputLogQueue;
         private Unity.Collections.NativeHashSet<Unity.Mathematics.int2> _blockedCells;
         private Unity.Collections.NativeParallelMultiHashMap<Unity.Mathematics.int2, Wassup.Battle.Effects.HazardEffect> _hazardCellToEffects;
 
@@ -303,6 +304,10 @@ namespace Wassup.Bridge
             _em.DestroyEntity(hazardDestroyedSingletons);
             hazardDestroyedSingletons.Dispose();
 
+            var attackOutputLogSingletons = _em.CreateEntityQuery(ComponentType.ReadOnly<Wassup.Battle.Combat.AttackOutputLogEventsSingleton>());
+            _em.DestroyEntity(attackOutputLogSingletons);
+            attackOutputLogSingletons.Dispose();
+
             var obstacleSingletons = _em.CreateEntityQuery(ComponentType.ReadOnly<Wassup.Battle.Effects.ObstacleSingleton>());
             _em.DestroyEntity(obstacleSingletons);
             obstacleSingletons.Dispose();
@@ -328,6 +333,7 @@ namespace Wassup.Bridge
             if (_enemyCcQueue.IsCreated) _enemyCcQueue.Dispose();
             if (_statModifierQueue.IsCreated) _statModifierQueue.Dispose();
             if (_stackModifierQueue.IsCreated) _stackModifierQueue.Dispose();
+            if (_attackOutputLogQueue.IsCreated) _attackOutputLogQueue.Dispose();
             if (_hazardRuntimeEventQueue.IsCreated) _hazardRuntimeEventQueue.Dispose();
             if (_hazardDestroyedQueue.IsCreated) _hazardDestroyedQueue.Dispose();
             if (_blockedCells.IsCreated) _blockedCells.Dispose();
@@ -708,6 +714,13 @@ namespace Wassup.Bridge
             _hazardDestroyedQueue = new NativeQueue<Wassup.Battle.Effects.HazardDestroyedEvent>(Allocator.Persistent);
             var hazardDestroyedSingleton = _em.CreateEntity();
             _em.AddComponentData(hazardDestroyedSingleton, new Wassup.Battle.Effects.HazardDestroyedEventsSingleton { queue = _hazardDestroyedQueue });
+
+            // Attack-output log channel. AttackSystem enqueues one event per output fired;
+            // BattleBridge drains each frame and forwards to BattleLogger.RecordAttackOutput.
+            if (_attackOutputLogQueue.IsCreated) _attackOutputLogQueue.Dispose();
+            _attackOutputLogQueue = new NativeQueue<Wassup.Battle.Combat.AttackOutputLogEvent>(Allocator.Persistent);
+            var attackOutputLogSingleton = _em.CreateEntity();
+            _em.AddComponentData(attackOutputLogSingleton, new Wassup.Battle.Combat.AttackOutputLogEventsSingleton { queue = _attackOutputLogQueue });
 
             // Obstacle blocked-cells set. ObstacleLifetimeSystem rebuilds it each frame.
             if (_blockedCells.IsCreated) _blockedCells.Dispose();
@@ -1359,6 +1372,7 @@ namespace Wassup.Bridge
             DrainMeteorBurstEvents();
             DrainUnitAttackVisualEvents();
             DrainProjectileHitEvents();
+            DrainAttackOutputLogEvents();
             DrainHazardRuntimeEvents();
             DrainHazardDestroyedEvents();
             DrainGoalEvents();
@@ -1504,6 +1518,26 @@ namespace Wassup.Bridge
             foreach (var kv in _defenderByTile)
                 if (kv.Value.entity == entity) return kv.Value.data;
             return null;
+        }
+
+        private void DrainAttackOutputLogEvents()
+        {
+            if (!_attackOutputLogQueue.IsCreated) return;
+            var logger = GameManager.Instance?.Logger;
+            while (_attackOutputLogQueue.TryDequeue(out var evt))
+            {
+                if (logger == null) continue;
+                var defData = FindDefenderData(evt.attacker);
+                var sourceUnit = defData != null ? defData.displayName : "<unknown>";
+                int2 grid = _generatedMap.IsCreated ? _generatedMap.gridSize : GridSize;
+                var srcCell = GridMath.WorldToCell(evt.sourcePos, tileSize, grid);
+                var tgtCell = GridMath.WorldToCell(evt.targetPos, tileSize, grid);
+                string detail = "";
+                if (evt.kind == Wassup.Data.AttackOutputKind.ApplyStat) detail = evt.stat.ToString();
+                else if (evt.kind == Wassup.Data.AttackOutputKind.ApplyStack) detail = evt.stackKind.ToString();
+                logger.RecordAttackOutput(sourceUnit, evt.kind.ToString(), evt.magnitude, detail, evt.duration,
+                    new Vector2Int(srcCell.x, srcCell.y), new Vector2Int(tgtCell.x, tgtCell.y));
+            }
         }
 
         private void TrySpawnCastVfx(Entity defender, Vector3 targetWorld)
@@ -2666,6 +2700,7 @@ namespace Wassup.Bridge
             if (_enemyCcQueue.IsCreated) _enemyCcQueue.Dispose();
             if (_statModifierQueue.IsCreated) _statModifierQueue.Dispose();
             if (_stackModifierQueue.IsCreated) _stackModifierQueue.Dispose();
+            if (_attackOutputLogQueue.IsCreated) _attackOutputLogQueue.Dispose();
             if (_hazardRuntimeEventQueue.IsCreated) _hazardRuntimeEventQueue.Dispose();
             if (_hazardDestroyedQueue.IsCreated) _hazardDestroyedQueue.Dispose();
             if (_blockedCells.IsCreated) _blockedCells.Dispose();

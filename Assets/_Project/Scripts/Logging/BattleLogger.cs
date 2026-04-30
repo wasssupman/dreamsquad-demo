@@ -133,6 +133,22 @@ namespace Wassup.Logging
             currentEntry.on_place_usages.Add(usage);
         }
 
+        public void RecordAttackOutput(string sourceUnit, string kind, float magnitude, string detail, float duration, Vector2Int sourceTile, Vector2Int targetTile)
+        {
+            if (currentEntry == null) return;
+            currentEntry.attack_outputs.Add(new AttackOutputUsageLog
+            {
+                source_unit = sourceUnit ?? "<unknown>",
+                kind = kind,
+                magnitude = magnitude,
+                detail = detail ?? "",
+                duration = duration,
+                source_tile = sourceTile,
+                target_tile = targetTile,
+                time = (float)(DateTime.UtcNow - startedAt).TotalSeconds,
+            });
+        }
+
         public void SetSynergyStats(int activations, int peakCount)
         {
             if (currentEntry == null) return;
