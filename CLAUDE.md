@@ -23,10 +23,11 @@
 
 ## 기술 스택
 
-- **엔진**: Unity 6 · URP 17.3
+- **엔진**: Unity 6.4 (`6000.4.3f1`) · URP 17.4
 - **언어**: C#
 - **아키텍처**: 하이브리드 ECS — 전투 시뮬레이션만 ECS, 나머지 MonoBehaviour
-- **필수 패키지**: Entities 6.x, Entities Graphics, Burst, Collections, Mathematics, Jobs, TextMeshPro, Input System, spine-unity, spine-csharp
+- **필수 패키지**: Entities 6.4.0, Entities Graphics 6.4.0, Burst, Collections, Mathematics, Jobs, TextMeshPro, Input System, spine-unity, spine-csharp
+- **ECS 버전 기준**: 이 프로젝트의 타겟은 Entities 6.4.0 이다. Entities 1.x 기준 문서/패턴을 source of truth 로 삼지 않는다.
 - **타겟**: Android 실기기 + Unity Editor 플레이
 
 ## ECS 맥락 분리
@@ -41,7 +42,7 @@
 **맥락 간 통신 규칙**:
 - Component는 소유 맥락이 있다. 다른 맥락은 **읽기만** 가능, 쓰기는 소유 맥락만.
 - 맥락 간 이벤트는 Buffer 또는 NativeQueue 싱글턴을 통한다. 직접 Component 수정 금지.
-- 현재 운영 중인 NativeQueue 채널 (7개): `GoalReachedEventsSingleton`, `DefenderDeathEventsSingleton`, `MeteorBurstEventsSingleton`, `DefenderAttackEventsSingleton`, `ProjectileHitEventsSingleton`, `EnemyCcEventsSingleton`, `HazardRuntimeEventsSingleton`.
+- 현재 운영 중인 NativeQueue 채널 (8개): `GoalReachedEventsSingleton`, `DefenderDeathEventsSingleton`, `MeteorBurstEventsSingleton`, `UnitAttackVisualEventsSingleton`, `ProjectileHitEventsSingleton`, `EnemyCcEventsSingleton`, `HazardRuntimeEventsSingleton`, `HazardDestroyedEventsSingleton`.
 
 폴더 구조: `Assets/_Project/Scripts/Battle/{Units,Movement,Combat,Effects}/`. 상세는 TRD 섹션 2.5 참조.
 
@@ -50,11 +51,12 @@
 1. **ECS 경계 엄수**: `BattleBridge` 클래스가 MonoBehaviour ↔ ECS 통신의 유일한 창구다. 그 외 MonoBehaviour에서 `EntityManager` / `World.DefaultGameObjectInjectionWorld` / `SystemAPI` 직접 호출 금지.
 2. **맥락 경계 엄수**: Component 쓰기는 소유 맥락만. 맥락 간 직접 호출 금지.
 3. **SubScene 금지**, **SystemBase 남발 금지**(ISystem 우선), **네트워크 코드 완전 금지**.
-4. **Manager 싱글톤은 GameManager 1개만**. 그 외 `XxxManager` 싱글톤 금지.
-5. **하드코딩된 수치 금지**. 모든 유닛 스탯/공격 패턴/스킬 값/VFX 파라미터는 ScriptableObject 또는 프리팹에서 나온다.
-6. **상속 2단계 최대** (MonoBehaviour, ScriptableObject에 적용).
-7. **인터페이스는 구현체 2개 이상일 때만 생성**. "나중을 위한" 추상 레이어 금지.
-8. **현재 작업 중인 spec 범위를 넘어서는 기능 구현 금지**. 범위 밖 항목은 별도 spec 초안 또는 해당 spec 폴더의 "후속 후보" 섹션으로 이관 후 대기.
+4. **Authoring/Runtime 분리**: ScriptableObject/프리팹/Spine/Particle/UI 는 MonoBehaviour 계층에 두고, ECS 런타임 상태는 unmanaged Component/Buffer 중심으로 유지한다.
+5. **Manager 싱글톤은 GameManager 1개만**. 그 외 `XxxManager` 싱글톤 금지.
+6. **하드코딩된 수치 금지**. 모든 유닛 스탯/공격 패턴/스킬 값/VFX 파라미터는 ScriptableObject 또는 프리팹에서 나온다.
+7. **상속 2단계 최대** (MonoBehaviour, ScriptableObject에 적용).
+8. **인터페이스는 구현체 2개 이상일 때만 생성**. "나중을 위한" 추상 레이어 금지.
+9. **현재 작업 중인 spec 범위를 넘어서는 기능 구현 금지**. 범위 밖 항목은 별도 spec 초안 또는 해당 spec 폴더의 "후속 후보" 섹션으로 이관 후 대기.
 
 **전체 제약 목록은 `docs/TRD.md` 섹션 3(추상화 규칙), 섹션 5(금지 패턴)를 반드시 참조**하라.
 

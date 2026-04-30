@@ -47,8 +47,8 @@ PHASE2.md          — (Phase 1 완료 후 작성)
 
 | 패키지 | 버전 | 용도 |
 |---|---|---|
-| Entities | 1.4.x (Unity 6 호환) | ECS 프레임워크 |
-| Entities Graphics | 1.4.x (Unity 6 호환) | ECS 엔티티 렌더링 |
+| Entities | 6.4.0 (Unity 6000.4.x 내장 패키지) | ECS 프레임워크 |
+| Entities Graphics | 6.4.0 (Unity 6000.4.x 내장 패키지) | ECS 엔티티 렌더링 |
 | Burst | 최신 호환 | ECS 시스템 Burst 컴파일 |
 | Collections | 최신 호환 | NativeArray, NativeQueue 등 |
 | Mathematics | 최신 호환 | int2, float3 등 수학 타입 |
@@ -121,16 +121,16 @@ Unity MCP가 사용 불가능한 환경에서도 프로젝트는 수동 조작�
 
 **`BattleBridge`의 4가지 책임**:
 
-1. **전투 시작**: MonoBehaviour 쪽 데이터(배치된 유닛, 공격 패턴 등)를 받아 ECS 엔티티로 생성
+1. **전투 시작 / 런타임 변환**: MonoBehaviour 쪽 데이터(배치된 유닛, 공격 패턴, ScriptableObject 정의 등)를 받아 ECS 엔티티와 unmanaged Component/Buffer 로 생성
 2. **커맨드 전달**: 전투 중 플레이어 입력(추가 배치, 스킬 사용 등)을 ECS 커맨드 구조체로 전달
 3. **결과 수집**: 전투 종료 시 결과를 MonoBehaviour 쪽으로 반환. ECS 월드 정리
-4. **이벤트 pull**: ECS 시스템이 `NativeQueue` 또는 유사 구조에 쌓은 이벤트를 매 프레임 poll하여 로거에 전달
+4. **이벤트 pull / Presentation 반영**: ECS 시스템이 `NativeQueue` 또는 유사 구조에 쌓은 이벤트를 매 프레임 poll하여 로거, Spine/Quad view, Projectile/VFX pool 에 전달
 
 이 4가지 외의 책임을 `BattleBridge`에 두지 않는다. `BattleBridge`가 비대해지는 것은 경계 설계가 샜다는 신호다.
 
-**데이터 입력 방식**: Baker 패턴으로 ScriptableObject → ECS Component 변환. **SubScene은 사용하지 않는다** — 동적 배치 구조라 이점이 적고 복잡도만 올라감.
+**데이터 입력 방식**: 현재 런타임 전투 데이터는 `BattleBridge`가 ScriptableObject/프리팹 참조를 읽어 ECS 엔티티와 unmanaged Component/Buffer 로 수동 변환한다. Unity Entities 6.4.0 의 Baker/SubScene 흐름은 패키지 기능으로 존재하지만, 본 프로젝트는 동적 배치 구조와 단일 bridge 경계를 우선하므로 **SubScene을 사용하지 않는다**. Baker 도입은 별도 spec 에서 장단점을 검토하기 전까지 기본 경로가 아니다.
 
-**렌더링**: Entities Graphics 기본 사용. 프로토타입 기준 유닛 수가 적으므로(최대 50~100) `RenderMeshArray`로 충분. 커스텀 렌더링 금지.
+**렌더링 / Presentation**: 시뮬레이션 상태는 ECS에 두되, 유닛/적/스킬/Hazard 표현은 MonoBehaviour presentation 계층(SpineUnitPool, QuadUnitViewPool, ProjectileViewPool, VfxSpawner 등)이 담당한다. ECS는 visual event 를 `NativeQueue` 로 발행하고 `BattleBridge`가 이를 drain 해 view 를 갱신한다. Entities Graphics 6.4.0 은 health bar, 단순 mesh, 대량 인스턴싱 같은 제한된 렌더링 용도로만 사용하며, Spine/ParticleSystem/프리팹 참조를 ECS Component에 넣지 않는다.
 
 **입력**: 터치/마우스 입력은 전적으로 MonoBehaviour 쪽에서 처리. 입력이 전투에 영향을 주는 경우 커맨드 구조체로 ECS 월드에 전달한다.
 
@@ -215,7 +215,7 @@ ECS와 MonoBehaviour 양쪽에 공통 적용되는 추상화 상한선이다. �
 
 - 팩토리/빌더 패턴은 **객체 생성이 3줄 이상**이 될 때만 도입.
 - Phase 0~1에서는 대부분 직접 생성으로 충분하다.
-- ECS 엔티티 생성은 Baker 또는 직접 EntityManager 호출로 충분. 별도 팩토리 레이어 금지.
+- ECS 엔티티 생성은 현재 `BattleBridge` 내부의 직접 `EntityManager` 호출과 작은 변환 헬퍼로 충분하다. Baker/SubScene 도입은 별도 spec 없이 하지 않으며, 별도 팩토리 레이어도 금지한다.
 
 ### 3.4 이벤트 시스템 규칙
 
@@ -243,8 +243,8 @@ ECS와 MonoBehaviour 양쪽에 공통 적용되는 추상화 상한선이다. �
 
 ### 4.1 데이터 주도
 
-- 유닛/적/공격 패턴/스킬은 ScriptableObject로 정의
-- 런타임에 Baker 또는 변환 헬퍼로 ECS Component로 옮긴다
+- 유닛/적/공격 패턴/스킬은 ScriptableObject 또는 프리팹으로 정의
+- 런타임에 `BattleBridge` 변환 헬퍼로 ECS Component/Buffer 로 옮긴다. Baker/SubScene 기반 변환은 현재 기본 경로가 아니다.
 - **하드코딩 금지**. 수치는 모두 데이터에서 나온다.
 - 이유: 튜닝 빈도가 높고, 향후 헤드리스 시뮬레이션으로 자동 튜닝 예정
 

@@ -1,0 +1,4 @@
+interface:
+  display_name: "ECS Reviewer"
+  short_description: "Review Unity Hybrid ECS architecture"
+  default_prompt: "Use $ecs-reviewer to review this Unity Hybrid ECS change for architecture, lifecycle, and performance risks."
