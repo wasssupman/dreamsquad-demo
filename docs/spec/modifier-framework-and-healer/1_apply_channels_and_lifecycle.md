@@ -92,4 +92,4 @@ namespace Wassup.Battle.Effects {
 
 ---
 
-확인 일자 + 커밋 해시: _(작업 완료 시 기재)_
+확인 일자 + 커밋 해시: 2026-04-30, `3c10cb7` (Unity Editor 컴파일 통과 + console clean + 도메인 reload leak 0). commit 에 prior uncommitted refactor (SpineDefenderPool→SpineUnitPool, DefenderAttackEvent→UnitAttackVisualEvent rename) 가 함께 흡수됨 — 별도 회귀 없음.
