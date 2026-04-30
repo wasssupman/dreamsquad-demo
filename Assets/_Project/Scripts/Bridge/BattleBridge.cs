@@ -2863,6 +2863,20 @@ namespace Wassup.Bridge
                     out _);
             }
 
+            // modifier-framework: BuffStats cache + dirty flag for enemy entities.
+            // Enemies can receive ApplyStat effects (e.g. Stack-threshold debuffs) so they
+            // need the same BuffStats/BuffStatsDirty as defenders. IncomingHeal is NOT added
+            // — enemies do not receive heals.
+            _em.AddComponentData(entity, new Wassup.Battle.Effects.BuffStats
+            {
+                damageMul      = 1f,
+                attackSpeedMul = 1f,
+                dmgTakenMul    = 1f,
+                regenPerSec    = 0f,
+            });
+            _em.AddComponent<Wassup.Battle.Effects.BuffStatsDirty>(entity);
+            _em.SetComponentEnabled<Wassup.Battle.Effects.BuffStatsDirty>(entity, false);
+
             CreateHealthBar(entity, yOffset: 0.9f * CharacterVisualScale, baseScale: 0.35f * CharacterVisualScale);
         }
 

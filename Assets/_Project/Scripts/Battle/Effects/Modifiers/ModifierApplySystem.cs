@@ -31,6 +31,8 @@ namespace Wassup.Battle.Effects
             while (stackQ.TryDequeue(out var ev))
                 ApplyStack(em, ecb, ev);
 
+            // ECB is still used for AddBuffer<StatModifierSlot> / AddBuffer<StackModifierSlot>
+            // when the buffer does not yet exist on a freshly spawned entity.
             ecb.Playback(em);
             ecb.Dispose();
         }
@@ -65,7 +67,7 @@ namespace Wassup.Battle.Effects
                             op        = ev.op,
                             magnitude = ev.magnitude,
                         };
-                        MarkDirty(em, ecb, target);
+                        MarkDirty(em, target);
                         return;
                     }
                 }
@@ -101,7 +103,7 @@ namespace Wassup.Battle.Effects
                 });
             }
 
-            MarkDirty(em, ecb, target);
+            MarkDirty(em, target);
         }
 
         // merge key: (source, kind)
@@ -171,11 +173,15 @@ namespace Wassup.Battle.Effects
             // Stack buffer does not directly affect BuffStats — no MarkDirty.
         }
 
-        private static void MarkDirty(EntityManager em, EntityCommandBuffer ecb, Entity target)
+        // Using EntityManager directly (not ECB) so that two ApplyStat calls in the same
+        // frame to the same target are both correctly handled: em.HasComponent reflects the
+        // actual state after the first add, whereas ECB would double-record AddComponent.
+        // Safe here because ApplyStat is called from TryDequeue loops, not inside a query iteration.
+        private static void MarkDirty(EntityManager em, Entity target)
         {
             if (!em.HasComponent<BuffStatsDirty>(target))
-                ecb.AddComponent<BuffStatsDirty>(target); // added disabled by default (IEnableableComponent)
-            ecb.SetComponentEnabled<BuffStatsDirty>(target, true);
+                em.AddComponent<BuffStatsDirty>(target); // added disabled by default (IEnableableComponent)
+            em.SetComponentEnabled<BuffStatsDirty>(target, true);
         }
     }
 }
