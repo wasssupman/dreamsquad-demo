@@ -1,6 +1,6 @@
 # modifier-framework-and-healer
 
-상태: 착수 전 (2026-04-30)
+상태: 완료 2026-05-01 (handoff `12_handoff_summary.md` 참조)
 설계 문서: `docs/plans/2026-04-30-modifier-framework-and-healer-design.md`
 
 ## 목표
