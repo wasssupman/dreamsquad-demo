@@ -35,14 +35,14 @@ MonoBehaviour:
   onPlaceDuration: 0
   cost: 2
   targetAllies: 1
-  skeletonDataAsset: {fileID: 0}
-  spineSkinName: 
+  skeletonDataAsset: {fileID: 11400000, guid: b0640b88ee78d49f38774a3a4b09bf4d, type: 2}
+  spineSkinName: Lamb
   idleAnimation: idle
-  attackAnimation: attack
+  attackAnimation: weapons/blunderbuss/heavy-horizontal-shoot
   deathAnimation: die
   spineVisualScale: 1
-  dragAnimation: idle
-  deployAnimation: deploy
+  dragAnimation: find-item/find-item-loop
+  deployAnimation: cast-spell2
   placementVfxPrefab: {fileID: 0}
   attackVfxPrefab: {fileID: 0}
   knockbackDistance: 0
@@ -50,7 +50,7 @@ MonoBehaviour:
   onPlacePushDistance: 0
   onPlacePushDuration: 0
   onPlacePushRadius: 0
-  castAnchorBone: 
+  castAnchorBone: WEAPON
   castAnchorLocalOffset: {x: 0.5, y: 1, z: 0}
   deploymentDuration: 0.45
   placementSkillDelay: 0
