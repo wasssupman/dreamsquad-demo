@@ -2239,6 +2239,21 @@ namespace Wassup.Bridge
                     outputBuf.Add(new Wassup.Battle.Combat.AttackOutputElement { value = output });
             }
 
+            // modifier-framework unit 6: BuffStats cache + dirty flag + IncomingHeal buffer.
+            // BuffStats defaults: dmgTakenMul=1 (no reduction), regenPerSec=0 (no regen).
+            // BuffStatsDirty is IEnableableComponent — added disabled; ApplySystem enables when modifiers arrive.
+            // IncomingHeal buffer is pre-attached so AttackSystem ECB can AppendToBuffer without structural change.
+            _em.AddComponentData(entity, new Wassup.Battle.Effects.BuffStats
+            {
+                damageMul      = 1f,
+                attackSpeedMul = 1f,
+                dmgTakenMul    = 1f,
+                regenPerSec    = 0f,
+            });
+            _em.AddComponent<Wassup.Battle.Effects.BuffStatsDirty>(entity);
+            _em.SetComponentEnabled<Wassup.Battle.Effects.BuffStatsDirty>(entity, false);
+            _em.AddBuffer<Wassup.Battle.Units.IncomingHeal>(entity);
+
             CreateHealthBar(entity, yOffset: 0.9f * CharacterVisualScale, baseScale: 0.35f * CharacterVisualScale);
             return entity;
         }

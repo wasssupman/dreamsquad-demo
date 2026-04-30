@@ -1,26 +1,38 @@
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 using Wassup.Battle.Combat;
+using Wassup.Battle.Effects;
 
 namespace Wassup.Battle.Units
 {
-    // Drains IncomingDamage buffers into Health on each owning entity. When health crosses zero,
-    // the entity gets a DeadTag so UnitLifecycleSystem can destroy it.
+    // Drains IncomingDamage and IncomingHeal buffers into Health each frame.
+    // Also applies RegenPerSec from BuffStats directly (not via IncomingHeal).
+    // When health crosses zero the entity gets a DeadTag so UnitLifecycleSystem can destroy it.
     [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateAfter(typeof(AttackSystem))]
     public partial struct DamageApplicationSystem : ISystem
     {
+        private ComponentLookup<BuffStats> _buffStatsLookup;
+        private BufferLookup<IncomingHeal> _healBufferLookup;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<IncomingDamage>();
+            _buffStatsLookup  = state.GetComponentLookup<BuffStats>(isReadOnly: true);
+            _healBufferLookup = state.GetBufferLookup<IncomingHeal>(isReadOnly: false);
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
+            float dt = SystemAPI.Time.DeltaTime;
+            _buffStatsLookup.Update(ref state);
+            _healBufferLookup.Update(ref state);
+
             var ecb = new EntityCommandBuffer(Allocator.Temp);
             foreach (var (health, damageBuffer, entity) in
                      SystemAPI.Query<RefRW<Health>, DynamicBuffer<IncomingDamage>>()
@@ -28,16 +40,33 @@ namespace Wassup.Battle.Units
                               .WithNone<PendingDeployment>()
                               .WithEntityAccess())
             {
-                if (damageBuffer.Length == 0) continue;
+                // ── BuffStats lookup (read-only, defaults safe when absent) ────────
+                bool hasBuffStats = _buffStatsLookup.HasComponent(entity);
+                float dmgTakenMul = hasBuffStats ? _buffStatsLookup[entity].dmgTakenMul : 1f;
+                float regenPerSec = hasBuffStats ? _buffStatsLookup[entity].regenPerSec  : 0f;
 
-                float total = 0f;
+                // ── IncomingDamage drain ─────────────────────────────────────────
+                float totalDamage = 0f;
                 for (int i = 0; i < damageBuffer.Length; i++)
-                {
-                    total += damageBuffer[i].amount;
-                }
+                    totalDamage += damageBuffer[i].amount;
                 damageBuffer.Clear();
+                totalDamage *= dmgTakenMul;
 
-                float newHp = health.ValueRO.value - total;
+                // ── IncomingHeal drain (pulse channel — must Clear each frame) ───
+                float totalHeal = 0f;
+                if (_healBufferLookup.HasBuffer(entity))
+                {
+                    var hBuf = _healBufferLookup[entity];
+                    for (int i = 0; i < hBuf.Length; i++)
+                        totalHeal += hBuf[i].amount;
+                    hBuf.Clear();
+                }
+
+                // ── RegenPerSec — direct per-frame addition, bypasses IncomingHeal
+                totalHeal += regenPerSec * dt;
+
+                // ── Health update with clamp ─────────────────────────────────────
+                float newHp = math.min(health.ValueRO.max, health.ValueRO.value - totalDamage + totalHeal);
                 health.ValueRW.value = newHp;
                 if (newHp <= 0f)
                 {

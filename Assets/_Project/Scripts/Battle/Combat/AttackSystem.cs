@@ -219,9 +219,7 @@ namespace Wassup.Battle.Combat
                                         break;
 
                                     case Wassup.Data.AttackOutputKind.Heal:
-                                        // TODO(unit-6): IncomingHeal buffer not yet defined.
-                                        // When unit 6 adds IncomingHeal, replace this NoOp with:
-                                        // ecb.AppendToBuffer(hitTarget, new IncomingHeal { amount = o.magnitude });
+                                        ecb.AppendToBuffer(hitTarget, new Wassup.Battle.Units.IncomingHeal { amount = o.magnitude });
                                         break;
 
                                     case Wassup.Data.AttackOutputKind.ApplyStat:
