@@ -184,6 +184,95 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &84752764
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 990507570402980555, guid: e320937c462ac42068ecbbe410fcc27d, type: 3}
+      propertyPath: InitialModule.startSizeY.minMaxState
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 990507570402980555, guid: e320937c462ac42068ecbbe410fcc27d, type: 3}
+      propertyPath: InitialModule.startSizeZ.minMaxState
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 1870127187979669126, guid: e320937c462ac42068ecbbe410fcc27d, type: 3}
+      propertyPath: InitialModule.startSizeY.minMaxState
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 1870127187979669126, guid: e320937c462ac42068ecbbe410fcc27d, type: 3}
+      propertyPath: InitialModule.startSizeZ.minMaxState
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 4438498675025544988, guid: e320937c462ac42068ecbbe410fcc27d, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 13.81663
+      objectReference: {fileID: 0}
+    - target: {fileID: 4438498675025544988, guid: e320937c462ac42068ecbbe410fcc27d, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4438498675025544988, guid: e320937c462ac42068ecbbe410fcc27d, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 5.50999
+      objectReference: {fileID: 0}
+    - target: {fileID: 4438498675025544988, guid: e320937c462ac42068ecbbe410fcc27d, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4438498675025544988, guid: e320937c462ac42068ecbbe410fcc27d, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4438498675025544988, guid: e320937c462ac42068ecbbe410fcc27d, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4438498675025544988, guid: e320937c462ac42068ecbbe410fcc27d, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4438498675025544988, guid: e320937c462ac42068ecbbe410fcc27d, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4438498675025544988, guid: e320937c462ac42068ecbbe410fcc27d, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4438498675025544988, guid: e320937c462ac42068ecbbe410fcc27d, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6720066261550534880, guid: e320937c462ac42068ecbbe410fcc27d, type: 3}
+      propertyPath: InitialModule.startSizeY.minMaxState
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 6720066261550534880, guid: e320937c462ac42068ecbbe410fcc27d, type: 3}
+      propertyPath: InitialModule.startSizeZ.minMaxState
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 6720066261550534880, guid: e320937c462ac42068ecbbe410fcc27d, type: 3}
+      propertyPath: InitialModule.startRotationX.minMaxState
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 6720066261550534880, guid: e320937c462ac42068ecbbe410fcc27d, type: 3}
+      propertyPath: InitialModule.startRotationY.minMaxState
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 9171550270838806250, guid: e320937c462ac42068ecbbe410fcc27d, type: 3}
+      propertyPath: m_Name
+      value: HazardVisual_Fire
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: e320937c462ac42068ecbbe410fcc27d, type: 3}
 --- !u!1 &120544393
 GameObject:
   m_ObjectHideFlags: 0
@@ -925,26 +1014,14 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 810041859}
-  - component: {fileID: 810041858}
+  - component: {fileID: 810041860}
   m_Layer: 0
-  m_Name: SpineDefenderPool
+  m_Name: SpineUnitPool
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &810041858
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 810041857}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3dc8053efd5234e70a0bb88dead61a16, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Presentation.SpineDefenderPool
 --- !u!4 &810041859
 Transform:
   m_ObjectHideFlags: 0
@@ -960,6 +1037,18 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &810041860
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 810041857}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7984efadf266e4377a15cbd2544e9fa0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Presentation.SpineUnitPool
 --- !u!1 &836730383
 GameObject:
   m_ObjectHideFlags: 0
@@ -2100,10 +2189,11 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 1b476721523af4fd68b6d3d6e1dd265a, type: 2}
   - {fileID: 11400000, guid: f60cd7372f634487c90afc428f71e237, type: 2}
   - {fileID: 11400000, guid: 3e2a6f274a4954751931565017cca44f, type: 2}
+  - {fileID: 11400000, guid: b85c355d149cb422c857405f5474decc, type: 2}
   draftController: {fileID: 20521825}
   skillRuntime: {fileID: 229215106}
   _placementPhaseView: {fileID: 1628485822}
-  spineDefenderPool: {fileID: 810041858}
+  spineUnitPool: {fileID: 810041860}
   enemyViewPool: {fileID: 0}
   defenderFallbackViewPool: {fileID: 0}
   spineDefenderYOffset: 0
@@ -2111,6 +2201,7 @@ MonoBehaviour:
   _projectileViewPool: {fileID: 808760338}
   mapView: {fileID: 211636736}
   placementInput: {fileID: 1495062452}
+  stackModifierAuthoring: []
 --- !u!4 &1939688409
 Transform:
   m_ObjectHideFlags: 0
@@ -2267,3 +2358,4 @@ SceneRoots:
   - {fileID: 1075095675}
   - {fileID: 810041859}
   - {fileID: 1795146347}
+  - {fileID: 84752764}
