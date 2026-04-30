@@ -1,0 +1,289 @@
+// Unit 11 — modifier-framework-and-healer EditMode tests.
+// Tests 1, 2, 5 are fully implemented.
+// Tests 3 and 4 are skipped (see [Ignore] attributes for rationale).
+using NUnit.Framework;
+using Unity.Collections;
+using Unity.Core;
+using Unity.Entities;
+using Wassup.Battle.Effects;
+
+namespace Wassup.Tests.EditMode
+{
+    public class ModifierFrameworkTests
+    {
+        private World _world;
+        private EntityManager _em;
+        private SimulationSystemGroup _simGroup;
+        private NativeQueue<StatModifierApplyEvent> _statQueue;
+        private NativeQueue<StackModifierApplyEvent> _stackQueue;
+
+        [SetUp]
+        public void SetUp()
+        {
+            _world    = new World("ModifierFrameworkTests");
+            _em       = _world.EntityManager;
+            _simGroup = _world.CreateSystemManaged<SimulationSystemGroup>();
+
+            _simGroup.AddSystemToUpdateList(_world.CreateSystem<ModifierApplySystem>());
+            _simGroup.AddSystemToUpdateList(_world.CreateSystem<StatModifierTickSystem>());
+            _simGroup.AddSystemToUpdateList(_world.CreateSystem<BuffStatsAggregateSystem>());
+            _simGroup.AddSystemToUpdateList(_world.CreateSystem<StackModifierTickSystem>());
+
+            // Singleton queues required by ModifierApplySystem and StackModifierTickSystem.
+            _statQueue  = new NativeQueue<StatModifierApplyEvent>(Allocator.Persistent);
+            _stackQueue = new NativeQueue<StackModifierApplyEvent>(Allocator.Persistent);
+
+            var singletonStat = _em.CreateEntity();
+            _em.AddComponentData(singletonStat,
+                new StatModifierApplyEventsSingleton { queue = _statQueue });
+
+            var singletonStack = _em.CreateEntity();
+            _em.AddComponentData(singletonStack,
+                new StackModifierApplyEventsSingleton { queue = _stackQueue });
+
+            // StackModifierTickSystem also requires EnemyCcEventsSingleton.
+            var ccQueue = new NativeQueue<EnemyCcEvent>(Allocator.Persistent);
+            var singletonCc = _em.CreateEntity();
+            _em.AddComponentData(singletonCc,
+                new EnemyCcEventsSingleton { queue = ccQueue });
+            // ccQueue is owned by the singleton entity; disposed when world is disposed
+            // via EnemyCcEventsSingleton.queue — no separate tracking needed here because
+            // the World.Dispose path does not auto-dispose NativeCollections. We capture
+            // it only to ensure disposal in TearDown.
+            _ccQueue = ccQueue;
+        }
+
+        private NativeQueue<EnemyCcEvent> _ccQueue;
+
+        [TearDown]
+        public void TearDown()
+        {
+            if (_statQueue.IsCreated)  _statQueue.Dispose();
+            if (_stackQueue.IsCreated) _stackQueue.Dispose();
+            if (_ccQueue.IsCreated)    _ccQueue.Dispose();
+            _world?.Dispose();
+        }
+
+        private void Tick(float deltaTime = 0.016f)
+        {
+            _world.SetTime(new TimeData(_world.Time.ElapsedTime + deltaTime, deltaTime));
+            _simGroup.Update();
+        }
+
+        // ── Helpers ───────────────────────────────────────────────────────────────
+
+        /// Create an entity pre-wired with BuffStats (defaults 1/1/1/0) and
+        /// a disabled BuffStatsDirty (the canonical starting state).
+        private Entity CreateEntityWithBuffStats()
+        {
+            var e = _em.CreateEntity();
+            _em.AddComponentData(e, new BuffStats
+            {
+                damageMul      = 1f,
+                attackSpeedMul = 1f,
+                dmgTakenMul    = 1f,
+                regenPerSec    = 0f,
+            });
+            _em.AddComponent<BuffStatsDirty>(e);
+            _em.SetComponentEnabled<BuffStatsDirty>(e, false);
+            return e;
+        }
+
+        // ── Test 1 ────────────────────────────────────────────────────────────────
+        // StatModifier merge key: same (source/stat/op/stackId) refreshes the slot
+        // rather than adding a second one.  remaining = max(old, new); magnitude = new.
+
+        [Test]
+        public void StatModifier_SameKey_Refreshes_Slot_Instead_Of_Adding_Duplicate()
+        {
+            var e = CreateEntityWithBuffStats();
+
+            // First application: magnitude=1.5, duration=10.
+            _statQueue.Enqueue(new StatModifierApplyEvent
+            {
+                target    = e,
+                stat      = StatKind.DamageMul,
+                op        = CombineOp.Multiplicative,
+                magnitude = 1.5f,
+                duration  = 10f,
+                source    = e,
+                stackId   = 0,
+            });
+            Tick();
+
+            var slots = _em.GetBuffer<StatModifierSlot>(e);
+            Assert.AreEqual(1, slots.Length,
+                "First application should create exactly one slot.");
+            Assert.AreEqual(1.5f, slots[0].magnitude, 1e-5f);
+
+            // Second application with same key: magnitude=2.0, duration=5 (shorter).
+            _statQueue.Enqueue(new StatModifierApplyEvent
+            {
+                target    = e,
+                stat      = StatKind.DamageMul,
+                op        = CombineOp.Multiplicative,
+                magnitude = 2.0f,
+                duration  = 5f,
+                source    = e,
+                stackId   = 0,
+            });
+            Tick();
+
+            slots = _em.GetBuffer<StatModifierSlot>(e);
+            Assert.AreEqual(1, slots.Length,
+                "Second application with same key must refresh, not add a second slot.");
+            Assert.AreEqual(2.0f, slots[0].magnitude, 1e-5f,
+                "Refreshed slot magnitude must be the new value (2.0).");
+            // remaining after first Tick was ~9.98 (10 - 0.016); new duration=5 is shorter,
+            // so remaining should stay >= 5 (max behaviour).
+            Assert.GreaterOrEqual(slots[0].header.remaining, 5f,
+                "remaining = max(old, new) — must not be reduced to the shorter new duration.");
+        }
+
+        // ── Test 2 ────────────────────────────────────────────────────────────────
+        // BuffStats combine formula: (1 + Σadd) * Πmul, and Override wins.
+
+        [Test]
+        public void BuffStats_Combines_Multiplicative_And_Additive_Then_Override_Wins()
+        {
+            var e = CreateEntityWithBuffStats();
+
+            // Pre-populate two slots directly (no Apply events needed for formula test).
+            var buf = _em.AddBuffer<StatModifierSlot>(e);
+            // Slot A: Multiplicative × 1.5
+            buf.Add(new StatModifierSlot
+            {
+                header    = new ModifierHeader { remaining = 100f, source = e, stackId = 0 },
+                stat      = StatKind.DamageMul,
+                op        = CombineOp.Multiplicative,
+                magnitude = 1.5f,
+            });
+            // Slot B: Additive + 0.2  (different stackId to distinguish from slot A)
+            buf.Add(new StatModifierSlot
+            {
+                header    = new ModifierHeader { remaining = 100f, source = e, stackId = 1 },
+                stat      = StatKind.DamageMul,
+                op        = CombineOp.Additive,
+                magnitude = 0.2f,
+            });
+
+            // Mark dirty so Aggregate runs.
+            _em.SetComponentEnabled<BuffStatsDirty>(e, true);
+            Tick();
+
+            // Formula: (1 + 0.2) * 1.5 = 1.8
+            float damageMul = _em.GetComponentData<BuffStats>(e).damageMul;
+            Assert.AreEqual(1.8f, damageMul, 1e-4f,
+                "damageMul must equal (1 + additive_sum) * multiplicative_product = (1+0.2)*1.5 = 1.8");
+
+            // Now add an Override slot: 3.0 — must win over mul+add result.
+            buf = _em.GetBuffer<StatModifierSlot>(e);
+            buf.Add(new StatModifierSlot
+            {
+                header    = new ModifierHeader { remaining = 100f, source = e, stackId = 2 },
+                stat      = StatKind.DamageMul,
+                op        = CombineOp.Override,
+                magnitude = 3.0f,
+            });
+
+            _em.SetComponentEnabled<BuffStatsDirty>(e, true);
+            Tick();
+
+            damageMul = _em.GetComponentData<BuffStats>(e).damageMul;
+            Assert.AreEqual(3.0f, damageMul, 1e-4f,
+                "Override slot must win: damageMul = max(override values) = 3.0, ignoring mul/add slots.");
+        }
+
+        // ── Test 3 ────────────────────────────────────────────────────────────────
+        // Stack edge multi-threshold (4→7 jump fires all crossed thresholds).
+        // BattleBridge._stackThresholds is private static with no public injection hook.
+        // Cannot mock without modifying production code. Skipped; tracked as future spec item.
+
+        [Test]
+        [Ignore("BattleBridge._stackThresholds is private static with no public setter. " +
+                "Multi-threshold crossing test requires a test-injection hook or a " +
+                "StackThresholdRegistry abstraction. Track as follow-up spec.")]
+        public void StackModifier_MultiThreshold_FourToSeven_Fires_All_Crossed_Thresholds()
+        {
+            // TODO: Once BattleBridge exposes SetStackThresholdsForTest(kind, rules[]) or
+            // StackModifierTickSystem is decoupled from the static registry via an injected
+            // IStackThresholdRegistry, implement this test:
+            //   1. Inject rules at atStack=5 and atStack=6 for StackKind.Fire.
+            //   2. Enqueue StackModifierApplyEvent(kind=Fire, countDelta=4, maxStack=10).
+            //   3. Tick -> verify stackCount=4, lastTriggeredStack=0.
+            //   4. Enqueue another event(countDelta=3) -> Tick.
+            //   5. Assert ccQueue.Count == 2 (rules at 5 and 6 both fired).
+        }
+
+        // ── Test 4 ────────────────────────────────────────────────────────────────
+        // AttackOutput branching — verifying all 4 output kinds (Damage/Heal/ApplyStat/ApplyStack)
+        // each reach their respective channel.
+        // AttackSystem's output dispatch is deeply integrated: it requires a full combat setup
+        // (AttackState, FactionTag, in-range targets, valid AttackOutputElement buffer) and
+        // the branching is not extracted into a unit-testable pure function.
+        // Skipped; covered by PlayMode smoke tests per existing pattern.
+
+        [Test]
+        [Ignore("AttackOutput branching is inside AttackSystem's update loop with no " +
+                "extracted unit-testable dispatch function. Requires full combat world setup " +
+                "equivalent to a PlayMode integration test. Track as follow-up spec for " +
+                "refactoring dispatch into a testable static helper.")]
+        public void AttackOutput_AllFourKinds_EnqueueToCorrectChannels()
+        {
+            // TODO: Refactor AttackSystem to extract ProcessAttackOutput(outputs, ccQ, statQ, stackQ)
+            // as a static method, then test it with a controlled AttackOutputElement buffer and
+            // mock NativeQueue writers.
+        }
+
+        // ── Test 5 (CRITICAL — hotfix regression guard) ───────────────────────────
+        // After StatModifierTickSystem hotfix: entities with BuffStatsDirty=false must still
+        // have their slot remaining values decremented, and expired slots must be removed.
+        // Previously the system only iterated entities with dirty=true, causing permanent
+        // modifiers (never expired even after duration elapsed).
+
+        [Test]
+        public void StatModifier_ExpiresAfterDuration_Even_When_BuffStatsDirty_Is_False()
+        {
+            var e = CreateEntityWithBuffStats();
+
+            // Apply a modifier with duration=2 via the Apply channel.
+            _statQueue.Enqueue(new StatModifierApplyEvent
+            {
+                target    = e,
+                stat      = StatKind.DamageMul,
+                op        = CombineOp.Multiplicative,
+                magnitude = 1.5f,
+                duration  = 2f,
+                source    = e,
+                stackId   = 0,
+            });
+
+            // Frame 1: Apply -> Tick (remaining: 2.0 - 1.0 = 1.0) -> Aggregate (damageMul=1.5, dirty=false).
+            Tick(1.0f);
+            Assert.AreEqual(1.5f, _em.GetComponentData<BuffStats>(e).damageMul, 1e-4f,
+                "damageMul should be 1.5 after first tick (modifier active).");
+            Assert.IsFalse(_em.IsComponentEnabled<BuffStatsDirty>(e),
+                "BuffStatsDirty must be false after Aggregate resets it.");
+
+            // Frame 2: dirty=false — the hotfix ensures TickSystem still decrements remaining.
+            // remaining: 1.0 - 1.0 = 0.0 -> slot expires -> dirty set to true -> Aggregate runs.
+            Tick(1.0f);
+
+            // Frame 3: slot is gone; Aggregate should have reset damageMul to 1.0 (identity).
+            // Aggregate only runs when dirty=true, which was set by TickSystem on expiry.
+            // After Aggregate: damageMul=1.0, dirty=false again.
+            Tick(1.0f);
+
+            float finalDamageMul = _em.GetComponentData<BuffStats>(e).damageMul;
+            Assert.AreEqual(1.0f, finalDamageMul, 1e-4f,
+                "damageMul must revert to 1.0 after modifier expires — hotfix regression guard: " +
+                "TickSystem must decrement remaining regardless of BuffStatsDirty state.");
+
+            // Slot buffer should be empty after expiry.
+            Assert.IsTrue(_em.HasBuffer<StatModifierSlot>(e),
+                "StatModifierSlot buffer should still exist on entity (just empty).");
+            Assert.AreEqual(0, _em.GetBuffer<StatModifierSlot>(e).Length,
+                "Expired slot must be removed from the buffer.");
+        }
+    }
+}
