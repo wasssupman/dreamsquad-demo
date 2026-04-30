@@ -82,4 +82,4 @@ public partial struct ModifierApplySystem : ISystem {
 
 ---
 
-확인 일자 + 커밋 해시: _(작업 완료 시 기재)_
+확인 일자 + 커밋 해시: 2026-04-30, `02bdc56` (compile + console clean) + hotfix `31239f0` (MarkDirty 의 ECB AddComponent race 수정 — EntityManager 직접 호출로 전환).

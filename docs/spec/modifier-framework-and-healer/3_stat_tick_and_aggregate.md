@@ -112,4 +112,4 @@ public partial struct BuffStatsAggregateSystem : ISystem {
 
 ---
 
-확인 일자 + 커밋 해시: _(작업 완료 시 기재)_
+확인 일자 + 커밋 해시: 2026-04-30, `9bdab13` (compile + console clean) + hotfix `31239f0` (StatModifierTickSystem 의 dirty 만 query 패턴 결함 수정 — dirty 의존 제거, 매 프레임 모든 modifier 보유 entity 순회). EditMode 회귀 방지 테스트는 `715c92a` (`StatModifier_ExpiresAfterDuration_Even_When_BuffStatsDirty_Is_False`).

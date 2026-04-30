@@ -136,4 +136,4 @@ public partial struct StackModifierTickSystem : ISystem {
 
 ---
 
-확인 일자 + 커밋 해시: _(작업 완료 시 기재)_
+확인 일자 + 커밋 해시: 2026-04-30, `658dac6` (compile + console clean). EditMode 멀티 threshold 테스트는 `BattleBridge._stackThresholds` private static 접근 경로 부재로 [Ignore] 스킵 (`715c92a`) — 후속 spec 에서 internal test 주입 API 또는 `IStackThresholdRegistry` 인터페이스 도입 필요.
