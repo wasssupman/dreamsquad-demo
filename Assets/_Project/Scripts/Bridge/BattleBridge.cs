@@ -287,6 +287,14 @@ namespace Wassup.Bridge
             _em.DestroyEntity(enemyCcSingletons);
             enemyCcSingletons.Dispose();
 
+            var statModifierSingletons = _em.CreateEntityQuery(ComponentType.ReadOnly<Wassup.Battle.Effects.StatModifierApplyEventsSingleton>());
+            _em.DestroyEntity(statModifierSingletons);
+            statModifierSingletons.Dispose();
+
+            var stackModifierSingletons = _em.CreateEntityQuery(ComponentType.ReadOnly<Wassup.Battle.Effects.StackModifierApplyEventsSingleton>());
+            _em.DestroyEntity(stackModifierSingletons);
+            stackModifierSingletons.Dispose();
+
             var hazardRuntimeSingletons = _em.CreateEntityQuery(ComponentType.ReadOnly<Wassup.Battle.Effects.HazardRuntimeEventsSingleton>());
             _em.DestroyEntity(hazardRuntimeSingletons);
             hazardRuntimeSingletons.Dispose();
