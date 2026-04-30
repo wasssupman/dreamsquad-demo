@@ -4,7 +4,7 @@ using UnityEngine;
 namespace Wassup.Data
 {
     [CreateAssetMenu(fileName = "DefenderUnit", menuName = "Wassup/DefenderUnit", order = 11)]
-    public class DefenderUnitData : ScriptableObject
+    public class DefenderUnitData : ScriptableObject, ISpineUnitVisualData, IDefenderSpineExtras
     {
         public string displayName;
         public float health = 50f;
@@ -25,6 +25,11 @@ namespace Wassup.Data
         // than appending IncomingDamage immediately. Leaving this null keeps the
         // Phase 0-2 direct-damage path for regression coverage.
         public ProjectileData projectile;
+
+        // modifier-framework unit 5: hit outputs. When non-empty, replaces the legacy
+        // single IncomingDamage(attackDamage) path. Empty = legacy compat path active.
+        [Header("Attack Outputs")]
+        public AttackOutput[] outputs;
 
         // Phase 4: fires once at placement moment. None means no on-place effect.
         public OnPlaceEffectType onPlaceEffect;
@@ -70,6 +75,18 @@ namespace Wassup.Data
         public Vector3 castAnchorLocalOffset = new Vector3(0.5f, 1f, 0f);
         public float deploymentDuration = 0.45f;
         public float placementSkillDelay = 0f;
+
+        public string SpineDisplayName => displayName;
+        public SkeletonDataAsset SpineSkeletonDataAsset => skeletonDataAsset;
+        public string SpineSkinName => spineSkinName;
+        public string SpineIdleAnimation => idleAnimation;
+        public string SpineAttackAnimation => attackAnimation;
+        public string SpineDeathAnimation => deathAnimation;
+        public float SpineVisualScale => spineVisualScale;
+        public string SpineDragAnimation => dragAnimation;
+        public string SpineDeployAnimation => deployAnimation;
+        public string SpineCastAnchorBone => castAnchorBone;
+        public Vector3 SpineCastAnchorLocalOffset => castAnchorLocalOffset;
     }
 
     public enum OnPlaceEffectType

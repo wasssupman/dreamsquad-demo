@@ -2230,6 +2230,15 @@ namespace Wassup.Bridge
                 });
             }
 
+            // modifier-framework unit 5: attach AttackOutputElement buffer when SO defines outputs.
+            // AttackSystem branches on HasBuffer to decide legacy vs outputs path.
+            if (unitData.outputs != null && unitData.outputs.Length > 0)
+            {
+                var outputBuf = _em.AddBuffer<Wassup.Battle.Combat.AttackOutputElement>(entity);
+                foreach (var output in unitData.outputs)
+                    outputBuf.Add(new Wassup.Battle.Combat.AttackOutputElement { value = output });
+            }
+
             CreateHealthBar(entity, yOffset: 0.9f * CharacterVisualScale, baseScale: 0.35f * CharacterVisualScale);
             return entity;
         }

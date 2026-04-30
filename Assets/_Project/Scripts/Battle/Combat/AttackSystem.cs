@@ -26,7 +26,7 @@ namespace Wassup.Battle.Combat
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<AttackState>();
-            _attackEventsQuery = state.GetEntityQuery(ComponentType.ReadWrite<DefenderAttackEventsSingleton>());
+            _attackEventsQuery = state.GetEntityQuery(ComponentType.ReadWrite<UnitAttackVisualEventsSingleton>());
             _ccEventsQuery = state.GetEntityQuery(ComponentType.ReadWrite<Wassup.Battle.Effects.EnemyCcEventsSingleton>());
         }
 
@@ -51,18 +51,28 @@ namespace Wassup.Battle.Combat
             var cooldownReductionLookup = SystemAPI.GetComponentLookup<CooldownReduction>(isReadOnly: true);
             var synergyLookup = SystemAPI.GetComponentLookup<SynergyBuff>(isReadOnly: true);
             var projectileRefLookup = SystemAPI.GetComponentLookup<ProjectileRef>(isReadOnly: true);
+            var enemyPauseLookup = SystemAPI.GetComponentLookup<EnemyAttackMovePause>(isReadOnly: false);
             var defenderCcLookup = SystemAPI.GetComponentLookup<DefenderCcData>(isReadOnly: true);
             var defenderTagLookup = SystemAPI.GetComponentLookup<DefenderUnitTag>(isReadOnly: true);
             var blockingHazardCellsLookup = SystemAPI.GetBufferLookup<BlockingHazardCellsBuffer>(isReadOnly: true);
+            var buffStatsLookup = SystemAPI.GetComponentLookup<Wassup.Battle.Effects.BuffStats>(isReadOnly: true);
+            var outputBufferLookup = SystemAPI.GetBufferLookup<AttackOutputElement>(isReadOnly: true);
+
+            // Modifier-framework unit 5: StatModifier / StackModifier enqueue channels.
+            // Accessed only when outputs path is active (defender with AttackOutputElement buffer).
+            bool hasStatQ = SystemAPI.TryGetSingletonRW<Wassup.Battle.Effects.StatModifierApplyEventsSingleton>(out var statModSingleton);
+            bool hasStackQ = SystemAPI.TryGetSingletonRW<Wassup.Battle.Effects.StackModifierApplyEventsSingleton>(out var stackModSingleton);
             bool hasFlowField = SystemAPI.TryGetSingleton<Wassup.Battle.Effects.FlowFieldSingleton>(out var flowField);
 
-            // Hoist attack-event singleton writer — defender branch below enqueues a
-            // single "defender fired" event per attack to trigger Spine animation for
-            // both projectile and melee paths. Enemies never enqueue this event.
-            NativeQueue<DefenderAttackEvent>.ParallelWriter? attackWriter = null;
+            // Hoist attack-event singleton writer — every attacker (defender or
+            // enemy) enqueues one event per fire so SpineUnitPool can trigger the
+            // attack animation and facing flip uniformly. Defender-specific
+            // side effects (cast/attack VFX prefabs) are filtered downstream in
+            // BattleBridge by looking up DefenderUnitData for the attacker.
+            NativeQueue<UnitAttackVisualEvent>.ParallelWriter? attackWriter = null;
             if (!_attackEventsQuery.IsEmpty)
             {
-                var singleton = _attackEventsQuery.GetSingletonRW<DefenderAttackEventsSingleton>();
+                var singleton = _attackEventsQuery.GetSingletonRW<UnitAttackVisualEventsSingleton>();
                 attackWriter = singleton.ValueRW.queue.AsParallelWriter();
             }
 
@@ -115,13 +125,14 @@ namespace Wassup.Battle.Combat
                 {
                     bool isDefender = defenderTagLookup.HasComponent(attackerEntity);
 
-                    // [Defender only] Enqueue "defender fired" event so Spine/Pool can
-                    // trigger attack animation for both projectile and melee paths.
-                    if (attackWriter.HasValue && isDefender)
+                    // Unified visual trigger — defenders and enemies enqueue the same
+                    // event so SpineUnitPool plays the attack animation regardless
+                    // of attacker faction.
+                    if (attackWriter.HasValue)
                     {
-                        attackWriter.Value.Enqueue(new DefenderAttackEvent
+                        attackWriter.Value.Enqueue(new UnitAttackVisualEvent
                         {
-                            defender = attackerEntity,
+                            attacker = attackerEntity,
                             targetWorld = bestTargetPos,
                         });
                     }
@@ -137,64 +148,46 @@ namespace Wassup.Battle.Combat
                     float synergyMul = synergyLookup.HasComponent(attackerEntity)
                         ? synergyLookup[attackerEntity].damageMul
                         : 1f;
-                    float emittedDamage = attack.ValueRO.damage * damageMul * synergyMul;
+                    // modifier-framework unit 5: BuffStats multipliers (additional layer on top of legacy).
+                    float buffStatsDamageMul = buffStatsLookup.HasComponent(attackerEntity)
+                        ? buffStatsLookup[attackerEntity].damageMul
+                        : 1f;
+                    float buffStatsAttackSpeedMul = buffStatsLookup.HasComponent(attackerEntity)
+                        ? buffStatsLookup[attackerEntity].attackSpeedMul
+                        : 1f;
+                    float emittedDamage = attack.ValueRO.damage * damageMul * synergyMul * buffStatsDamageMul;
 
-                    // ProjectileRef-bearing attackers stage a spawn request for the
-                    // MonoBehaviour drain loop in BattleBridge. Attackers without a
-                    // ProjectileRef (enemies and melee defenders) use direct-damage.
-                    if (projectileRefLookup.HasComponent(attackerEntity))
+                    // modifier-framework unit 5: outputs path vs legacy path.
+                    // When AttackOutputElement buffer is present the SO defines hit effects explicitly.
+                    // Legacy path (no buffer): single IncomingDamage(attack.damage * muls) as before.
+                    bool hasOutputs = outputBufferLookup.HasBuffer(attackerEntity);
+
+                    if (hasOutputs)
                     {
-                        var projRef = projectileRefLookup[attackerEntity];
-                        ecb.AddComponent(attackerEntity, new ProjectileSpawnRequest
-                        {
-                            target = bestTarget,
-                            origin = atkPos,
-                            damage = emittedDamage,
-                            speed = projRef.speed,
-                            hitThreshold = projRef.hitThreshold,
-                            visualScale = projRef.visualScale,
-                            dataIndex = projRef.dataIndex,
-                            onHitEffect = projRef.onHitEffect,
-                            splashRadius = projRef.splashRadius,
-                            splashDamageMul = projRef.splashDamageMul,
-                        });
-                    }
-                    else
-                    {
-                        // Melee AoE: N=1 fast path avoids allocation; N>1 hitMask loop
-                        // picks additional nearest in-range targets. Enemies default to
-                        // attackTargetCount=1 so they always take the fast path.
+                        // ── Outputs path ────────────────────────────────────────────────
+                        // Collect hit targets (same AoE logic as legacy melee path).
                         int desiredCount = math.max(1, attack.ValueRO.attackTargetCount);
-                        if (desiredCount == 1)
+                        var hitTargets = new NativeArray<Entity>(desiredCount, Allocator.Temp);
+                        int hitCount = 0;
+
+                        hitTargets[hitCount++] = bestTarget;
+                        if (desiredCount > 1)
                         {
-                            // Fast path: single target — no allocation.
-                            ecb.AppendToBuffer(bestTarget,
-                                new IncomingDamage { amount = emittedDamage });
-                        }
-                        else
-                        {
-                            // AoE branch: seed pass 0 with the already-known
-                            // nearest (bestTarget) to avoid recomputing, then
-                            // iterate the remaining passes over the hitMask.
-                            var hitMask = new NativeArray<bool>(targetEntities.Length, Allocator.Temp);
-                            int bestIdx = -1;
+                            var hitMaskO = new NativeArray<bool>(targetEntities.Length, Allocator.Temp);
+                            int seedIdx = -1;
                             for (int i = 0; i < targetEntities.Length; i++)
                             {
-                                if (targetEntities[i] == bestTarget) { bestIdx = i; break; }
+                                if (targetEntities[i] == bestTarget) { seedIdx = i; break; }
                             }
-                            if (bestIdx >= 0)
-                            {
-                                hitMask[bestIdx] = true;
-                                ecb.AppendToBuffer(targetEntities[bestIdx],
-                                    new IncomingDamage { amount = emittedDamage });
-                            }
-                            for (int pass = 1; pass < desiredCount; pass++)
+                            if (seedIdx >= 0) hitMaskO[seedIdx] = true;
+
+                            for (int pass = 1; pass < desiredCount && hitCount < desiredCount; pass++)
                             {
                                 float passSq = float.MaxValue;
                                 int passIdx = -1;
                                 for (int i = 0; i < targetEntities.Length; i++)
                                 {
-                                    if (hitMask[i]) continue;
+                                    if (hitMaskO[i]) continue;
                                     if (((int)targetFactions[i].value & mask) == 0) continue;
                                     if (targetEntities[i] == attackerEntity) continue;
                                     float d2 = DistanceSqToTarget(atkPos, targetEntities[i], targetTransforms[i].Position, blockingHazardCellsLookup, hasFlowField, flowField, out _);
@@ -205,15 +198,150 @@ namespace Wassup.Battle.Combat
                                     }
                                 }
                                 if (passIdx < 0) break;
-                                hitMask[passIdx] = true;
-                                ecb.AppendToBuffer(targetEntities[passIdx],
+                                hitMaskO[passIdx] = true;
+                                hitTargets[hitCount++] = targetEntities[passIdx];
+                            }
+                            hitMaskO.Dispose();
+                        }
+
+                        var outputs = outputBufferLookup[attackerEntity];
+                        for (int ti = 0; ti < hitCount; ti++)
+                        {
+                            Entity hitTarget = hitTargets[ti];
+                            for (int oi = 0; oi < outputs.Length; oi++)
+                            {
+                                var o = outputs[oi].value;
+                                switch (o.kind)
+                                {
+                                    case Wassup.Data.AttackOutputKind.Damage:
+                                        ecb.AppendToBuffer(hitTarget,
+                                            new IncomingDamage { amount = o.magnitude * damageMul * synergyMul * buffStatsDamageMul });
+                                        break;
+
+                                    case Wassup.Data.AttackOutputKind.Heal:
+                                        // TODO(unit-6): IncomingHeal buffer not yet defined.
+                                        // When unit 6 adds IncomingHeal, replace this NoOp with:
+                                        // ecb.AppendToBuffer(hitTarget, new IncomingHeal { amount = o.magnitude });
+                                        break;
+
+                                    case Wassup.Data.AttackOutputKind.ApplyStat:
+                                        if (hasStatQ)
+                                            statModSingleton.ValueRW.queue.Enqueue(new Wassup.Battle.Effects.StatModifierApplyEvent
+                                            {
+                                                target    = hitTarget,
+                                                stat      = o.stat,
+                                                op        = o.op,
+                                                magnitude = o.magnitude,
+                                                duration  = o.duration,
+                                                source    = attackerEntity,
+                                                stackId   = 0,
+                                            });
+                                        break;
+
+                                    case Wassup.Data.AttackOutputKind.ApplyStack:
+                                        if (hasStackQ)
+                                            stackModSingleton.ValueRW.queue.Enqueue(new Wassup.Battle.Effects.StackModifierApplyEvent
+                                            {
+                                                target         = hitTarget,
+                                                kind           = o.stackKind,
+                                                countDelta     = (byte)math.max(1f, o.magnitude),
+                                                maxStack       = o.stackMaxStack > 0 ? o.stackMaxStack : (byte)5,
+                                                perAppDuration = o.duration,
+                                                source         = attackerEntity,
+                                            });
+                                        break;
+                                }
+                            }
+                        }
+                        hitTargets.Dispose();
+                    }
+                    else
+                    {
+                        // ── Legacy path ──────────────────────────────────────────────────
+                        // ProjectileRef-bearing attackers stage a spawn request for the
+                        // MonoBehaviour drain loop in BattleBridge. Attackers without a
+                        // ProjectileRef (enemies and melee defenders) use direct-damage.
+                        if (projectileRefLookup.HasComponent(attackerEntity))
+                        {
+                            var projRef = projectileRefLookup[attackerEntity];
+                            ecb.AddComponent(attackerEntity, new ProjectileSpawnRequest
+                            {
+                                target = bestTarget,
+                                origin = atkPos,
+                                damage = emittedDamage,
+                                speed = projRef.speed,
+                                hitThreshold = projRef.hitThreshold,
+                                visualScale = projRef.visualScale,
+                                dataIndex = projRef.dataIndex,
+                                onHitEffect = projRef.onHitEffect,
+                                splashRadius = projRef.splashRadius,
+                                splashDamageMul = projRef.splashDamageMul,
+                            });
+                        }
+                        else
+                        {
+                            // Melee AoE: N=1 fast path avoids allocation; N>1 hitMask loop
+                            // picks additional nearest in-range targets. Enemies default to
+                            // attackTargetCount=1 so they always take the fast path.
+                            int desiredCount = math.max(1, attack.ValueRO.attackTargetCount);
+                            if (desiredCount == 1)
+                            {
+                                // Fast path: single target — no allocation.
+                                ecb.AppendToBuffer(bestTarget,
                                     new IncomingDamage { amount = emittedDamage });
                             }
-                            hitMask.Dispose();
+                            else
+                            {
+                                // AoE branch: seed pass 0 with the already-known
+                                // nearest (bestTarget) to avoid recomputing, then
+                                // iterate the remaining passes over the hitMask.
+                                var hitMask = new NativeArray<bool>(targetEntities.Length, Allocator.Temp);
+                                int bestIdx = -1;
+                                for (int i = 0; i < targetEntities.Length; i++)
+                                {
+                                    if (targetEntities[i] == bestTarget) { bestIdx = i; break; }
+                                }
+                                if (bestIdx >= 0)
+                                {
+                                    hitMask[bestIdx] = true;
+                                    ecb.AppendToBuffer(targetEntities[bestIdx],
+                                        new IncomingDamage { amount = emittedDamage });
+                                }
+                                for (int pass = 1; pass < desiredCount; pass++)
+                                {
+                                    float passSq = float.MaxValue;
+                                    int passIdx = -1;
+                                    for (int i = 0; i < targetEntities.Length; i++)
+                                    {
+                                        if (hitMask[i]) continue;
+                                        if (((int)targetFactions[i].value & mask) == 0) continue;
+                                        if (targetEntities[i] == attackerEntity) continue;
+                                        float d2 = DistanceSqToTarget(atkPos, targetEntities[i], targetTransforms[i].Position, blockingHazardCellsLookup, hasFlowField, flowField, out _);
+                                        if (d2 <= rangeSq && d2 < passSq)
+                                        {
+                                            passSq = d2;
+                                            passIdx = i;
+                                        }
+                                    }
+                                    if (passIdx < 0) break;
+                                    hitMask[passIdx] = true;
+                                    ecb.AppendToBuffer(targetEntities[passIdx],
+                                        new IncomingDamage { amount = emittedDamage });
+                                }
+                                hitMask.Dispose();
+                            }
                         }
                     }
 
-                    attack.ValueRW.cooldownRemaining = attack.ValueRO.cooldownDuration * cooldownMul;
+                    // modifier-framework unit 5: attackSpeedMul divides cooldown (higher = faster).
+                    float effectiveCooldownMul = buffStatsAttackSpeedMul > 0f ? cooldownMul / buffStatsAttackSpeedMul : cooldownMul;
+                    attack.ValueRW.cooldownRemaining = attack.ValueRO.cooldownDuration * effectiveCooldownMul;
+                    if (!isDefender && enemyPauseLookup.HasComponent(attackerEntity))
+                    {
+                        var pause = enemyPauseLookup[attackerEntity];
+                        pause.remaining = math.max(pause.remaining, pause.duration);
+                        enemyPauseLookup[attackerEntity] = pause;
+                    }
 
                     // [Defender only] Knockback CC — enemies do not carry DefenderCcData.
                     if (ccWriter.HasValue && defenderCcLookup.HasComponent(attackerEntity))

@@ -15,5 +15,6 @@ namespace Wassup.Data
         public StatKind stat;           // ApplyStat 만 — 적용할 스탯 종류
         public CombineOp op;            // ApplyStat 만 — 합성 방식
         public StackKind stackKind;     // ApplyStack 만 — 적용할 스택 종류
+        public byte stackMaxStack;      // ApplyStack 만 — SO 에 명시하는 cap (0 = 미지정 시 디폴트 5)
     }
 }
