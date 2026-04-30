@@ -2231,7 +2231,7 @@ namespace Wassup.Bridge
                 cooldownDuration = unitData.attackCooldown,
                 cooldownRemaining = 0f,
                 attackTargetCount = unitData.attackTargetCount,
-                targetMask = (int)Faction.Enemy,
+                targetMask = unitData.targetAllies ? (int)Faction.Defender : (int)Faction.Enemy,
             });
             _em.AddComponentData(entity, new Wassup.Battle.Combat.DefenderCcData
             {

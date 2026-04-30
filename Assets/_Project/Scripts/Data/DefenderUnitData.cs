@@ -40,6 +40,11 @@ namespace Wassup.Data
         // Phase 6: placement cost subtracted from CostRuntime on PlaceDefenderAs.
         public int cost = 1;
 
+        [Header("Targeting")]
+        // When true, AttackState.targetMask is set to Faction.Defender (ally targeting).
+        // Use for healers and buff-appliers that target friendly units instead of enemies.
+        public bool targetAllies;
+
         // Phase 8: Spine skeleton skin + animation names. When spineSkinName is
         // empty or skeletonDataAsset is null, BattleBridge falls back to the
         // Phase 5 billboard path, so skeletons can be rolled out incrementally
