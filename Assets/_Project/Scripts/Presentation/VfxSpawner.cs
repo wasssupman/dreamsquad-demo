@@ -20,6 +20,7 @@ namespace Wassup.Presentation
         [SerializeField] private GameObject meteorFallPrefab;
         [SerializeField] private GameObject tornadoPrefab;
         [SerializeField] private GameObject portalPrefab;
+        [SerializeField] private GameObject healAppliedPrefab;
 
         // V1 — Placement pulse. One-shot outward radial burst that fades in 0.35s.
         public void SpawnPlacementRing(Vector3 worldPos)
@@ -113,6 +114,20 @@ namespace Wassup.Presentation
             }
             PlayPixPlaysPortalVfx(root, entryWorld, exitWorld, durationSec);
             Destroy(root, durationSec + 0.1f);
+        }
+
+        // amount is reserved for future VFX scaling (e.g. large heal → larger burst).
+        // Follow-up candidate: map amount → ParticleSystem.main.startSize.
+        public void SpawnHealApplied(Vector3 worldPos, float amount = 1f)
+        {
+            if (healAppliedPrefab == null)
+            {
+                Debug.LogError("[VfxSpawner] healAppliedPrefab 미할당 — Inspector에서 prefab을 연결해주세요.");
+                return;
+            }
+            var pos = new Vector3(worldPos.x, worldPos.y + 0.08f, worldPos.z);
+            var go = Instantiate(healAppliedPrefab, pos, Quaternion.identity, transform);
+            Destroy(go, 1.1f);
         }
 
         private static void PlayPixPlaysVfx(GameObject root, Vector3 source, Vector3 target, float durationSec, float radiusWorld)

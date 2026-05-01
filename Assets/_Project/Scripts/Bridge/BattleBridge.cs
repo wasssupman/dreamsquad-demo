@@ -108,6 +108,7 @@ namespace Wassup.Bridge
         private NativeQueue<Wassup.Battle.Combat.MeteorBurstEvent> _meteorBurstQueue;
         private NativeQueue<Wassup.Battle.Combat.UnitAttackVisualEvent> _unitAttackVisualQueue;
         private NativeQueue<Wassup.Battle.Combat.Projectile.ProjectileHitEvent> _projectileHitEventQueue;
+        private NativeQueue<Wassup.Battle.Units.HealAppliedEvent> _healAppliedEventQueue;
         private NativeQueue<Wassup.Battle.Effects.EnemyCcEvent> _enemyCcQueue;
         private NativeQueue<Wassup.Battle.Effects.StatModifierApplyEvent> _statModifierQueue;
         private NativeQueue<Wassup.Battle.Effects.StackModifierApplyEvent> _stackModifierQueue;
@@ -285,6 +286,10 @@ namespace Wassup.Bridge
             _em.DestroyEntity(projectileHitSingletons);
             projectileHitSingletons.Dispose();
 
+            var healAppliedSingletons = _em.CreateEntityQuery(ComponentType.ReadOnly<Wassup.Battle.Units.HealAppliedEventsSingleton>());
+            _em.DestroyEntity(healAppliedSingletons);
+            healAppliedSingletons.Dispose();
+
             var enemyCcSingletons = _em.CreateEntityQuery(ComponentType.ReadOnly<Wassup.Battle.Effects.EnemyCcEventsSingleton>());
             _em.DestroyEntity(enemyCcSingletons);
             enemyCcSingletons.Dispose();
@@ -335,6 +340,7 @@ namespace Wassup.Bridge
             if (_meteorBurstQueue.IsCreated) _meteorBurstQueue.Dispose();
             if (_unitAttackVisualQueue.IsCreated) _unitAttackVisualQueue.Dispose();
             if (_projectileHitEventQueue.IsCreated) _projectileHitEventQueue.Dispose();
+            if (_healAppliedEventQueue.IsCreated) _healAppliedEventQueue.Dispose();
             if (_enemyCcQueue.IsCreated) _enemyCcQueue.Dispose();
             if (_statModifierQueue.IsCreated) _statModifierQueue.Dispose();
             if (_stackModifierQueue.IsCreated) _stackModifierQueue.Dispose();
@@ -688,6 +694,13 @@ namespace Wassup.Bridge
             _projectileHitEventQueue = new NativeQueue<Wassup.Battle.Combat.Projectile.ProjectileHitEvent>(Allocator.Persistent);
             var projectileHitSingleton = _em.CreateEntity();
             _em.AddComponentData(projectileHitSingleton, new Wassup.Battle.Combat.Projectile.ProjectileHitEventsSingleton { queue = _projectileHitEventQueue });
+
+            // Units→Presentation heal pulse channel. DamageApplicationSystem
+            // enqueues one event per entity whose IncomingHeal buffer was drained.
+            if (_healAppliedEventQueue.IsCreated) _healAppliedEventQueue.Dispose();
+            _healAppliedEventQueue = new NativeQueue<Wassup.Battle.Units.HealAppliedEvent>(Allocator.Persistent);
+            var healAppliedSingleton = _em.CreateEntity();
+            _em.AddComponentData(healAppliedSingleton, new Wassup.Battle.Units.HealAppliedEventsSingleton { queue = _healAppliedEventQueue });
 
             // CC event channel. CcApplySystem drains this queue each frame to apply
             // impulse / slow buffers to enemy entities.
@@ -1385,6 +1398,7 @@ namespace Wassup.Bridge
             DrainMeteorBurstEvents();
             DrainUnitAttackVisualEvents();
             DrainProjectileHitEvents();
+            DrainHealAppliedEvents();
             DrainAttackOutputLogEvents();
             DrainHazardRuntimeEvents();
             DrainHazardDestroyedEvents();
@@ -1578,6 +1592,17 @@ namespace Wassup.Bridge
                 var data = _projectileDataByIndex[evt.dataIndex];
                 if (data.hitPrefab != null)
                     _projectileViewPool?.PlayHit(data.hitPrefab, evt.position, data.hitVfxLifetime);
+            }
+        }
+
+        private void DrainHealAppliedEvents()
+        {
+            if (!_healAppliedEventQueue.IsCreated) return;
+            if (vfxSpawner == null) { _healAppliedEventQueue.Clear(); return; }
+            while (_healAppliedEventQueue.TryDequeue(out var evt))
+            {
+                if (evt.amount <= 0f) continue;
+                vfxSpawner.SpawnHealApplied(new Vector3(evt.position.x, evt.position.y, evt.position.z), evt.amount);
             }
         }
 
@@ -2739,6 +2764,7 @@ namespace Wassup.Bridge
             if (_meteorBurstQueue.IsCreated) _meteorBurstQueue.Dispose();
             if (_unitAttackVisualQueue.IsCreated) _unitAttackVisualQueue.Dispose();
             if (_projectileHitEventQueue.IsCreated) _projectileHitEventQueue.Dispose();
+            if (_healAppliedEventQueue.IsCreated) _healAppliedEventQueue.Dispose();
             if (_enemyCcQueue.IsCreated) _enemyCcQueue.Dispose();
             if (_statModifierQueue.IsCreated) _statModifierQueue.Dispose();
             if (_stackModifierQueue.IsCreated) _stackModifierQueue.Dispose();

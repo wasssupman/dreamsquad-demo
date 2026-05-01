@@ -2,6 +2,7 @@ using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.Transforms;
 using Wassup.Battle.Combat;
 using Wassup.Battle.Effects;
 
@@ -16,6 +17,7 @@ namespace Wassup.Battle.Units
     public partial struct DamageApplicationSystem : ISystem
     {
         private ComponentLookup<ModifierStats> _buffStatsLookup;
+        private ComponentLookup<LocalTransform> _transformLookup;
         private BufferLookup<IncomingHeal> _healBufferLookup;
 
         [BurstCompile]
@@ -23,6 +25,7 @@ namespace Wassup.Battle.Units
         {
             state.RequireForUpdate<IncomingDamage>();
             _buffStatsLookup  = state.GetComponentLookup<ModifierStats>(isReadOnly: true);
+            _transformLookup  = state.GetComponentLookup<LocalTransform>(isReadOnly: true);
             _healBufferLookup = state.GetBufferLookup<IncomingHeal>(isReadOnly: false);
         }
 
@@ -31,7 +34,9 @@ namespace Wassup.Battle.Units
         {
             float dt = SystemAPI.Time.DeltaTime;
             _buffStatsLookup.Update(ref state);
+            _transformLookup.Update(ref state);
             _healBufferLookup.Update(ref state);
+            bool hasHealAppliedQueue = SystemAPI.TryGetSingletonRW<HealAppliedEventsSingleton>(out var healAppliedSingleton);
 
             var ecb = new EntityCommandBuffer(Allocator.Temp);
             foreach (var (health, damageBuffer, entity) in
@@ -53,21 +58,33 @@ namespace Wassup.Battle.Units
                 totalDamage *= dmgTakenMul;
 
                 // ── IncomingHeal drain (pulse channel — must Clear each frame) ───
-                float totalHeal = 0f;
+                float pulseHeal = 0f;
+                bool hasPulse = false;
                 if (_healBufferLookup.HasBuffer(entity))
                 {
                     var hBuf = _healBufferLookup[entity];
+                    hasPulse = hBuf.Length > 0;
                     for (int i = 0; i < hBuf.Length; i++)
-                        totalHeal += hBuf[i].amount;
+                        pulseHeal += hBuf[i].amount;
                     hBuf.Clear();
                 }
 
                 // ── RegenPerSec — direct per-frame addition, bypasses IncomingHeal
-                totalHeal += regenPerSec * dt;
+                float totalHeal = pulseHeal + regenPerSec * dt;
 
                 // ── Health update with clamp ─────────────────────────────────────
                 float newHp = math.min(health.ValueRO.max, health.ValueRO.value - totalDamage + totalHeal);
                 health.ValueRW.value = newHp;
+                // Only enqueue VFX for IncomingHeal pulses (hasPulse + positive amount).
+                // RegenPerSec is excluded to avoid spamming VFX every frame.
+                if (hasHealAppliedQueue && hasPulse && pulseHeal > 0f && _transformLookup.HasComponent(entity))
+                {
+                    healAppliedSingleton.ValueRW.queue.Enqueue(new HealAppliedEvent
+                    {
+                        position = _transformLookup[entity].Position,
+                        amount = pulseHeal,
+                    });
+                }
                 if (newHp <= 0f)
                 {
                     ecb.AddComponent<DeadTag>(entity);
