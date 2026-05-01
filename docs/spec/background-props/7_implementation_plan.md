@@ -4,7 +4,7 @@
 
 ## 현재 상태
 
-구현된 것은 기본 프리팹 prototype 이다.
+초기 prototype 은 완료됐고, 현재는 background prop 배치와 terrain surface rule prototype 까지 구현됐다.
 
 - `PropData`
 - `PropBillboard`
@@ -14,11 +14,10 @@
 
 미구현:
 
-- Theme 경로 매칭.
-- `MapThemeData.tileProps / decorProps`.
-- footprint placement.
-- runtime instantiate.
-- test coverage.
+- Walk shape/corner/edge transition texture.
+- Place/background edge mask.
+- 디자이너용 batch validation/generator.
+- Play mode 장시간 smoke.
 
 ## 1단계 — 문서/계약 정리
 
@@ -82,6 +81,39 @@
 
 - 우선 prefab 수동 배치 workflow 문서화.
 - 자동 외곽 배치는 tile prop 안정화 후 진행.
+
+## 7단계 — Terrain Surface Rules
+
+- `MapThemeData` 에 tile type 별 surface rule 배열 추가.
+- `TerrainSurfaceSelector` 로 surface rule 평가를 분리.
+- `MapView` 는 selector 결과 texture 를 material cache 로 렌더링.
+- Forest/Volcano prototype texture 와 rule 값 구성.
+- 3D 카메라용 타일 텍스처 import 설정 정규화.
+
+완료 기준:
+
+- [x] `Env/Deco` background tile 이 테마별 surface rule 로 texture 를 선택한다.
+- [x] Forest 는 grass/smallgrass/biggrass 군집을 표현한다.
+- [x] Volcano 는 burn grass/burn land 분포를 표현한다.
+- [x] rule/fallback 동작에 대한 EditMode test 가 있다.
+
+## 8단계 — Terrain Transitions
+
+- RuleTile-like resolver 추가.
+- `Walk` 셀의 4방향 이웃 기반 shape 판별.
+- straight/corner/end/T/cross 전용 path texture 선택.
+- shape 방향에 맞춘 tile top 회전.
+- `Place` 와 background tile 사이 edge mask 계산.
+- Forest/Volcano transition texture 추가.
+- 경로 주변 1칸의 눌린 풀/탄 자국 같은 surface rule 보정.
+
+완료 기준:
+
+- [x] `TerrainTileRuleResolver` 가 cell 별 render info 를 반환한다.
+- [x] 경로 straight/corner/end 가 서로 다른 texture 로 렌더링된다.
+- [ ] `Place` 와 `Env/Deco` 경계가 갑작스럽게 끊기지 않는다.
+- [ ] transition texture 가 seed 재현성을 유지한다.
+- [ ] Play mode screenshot 으로 전체 맵 지형 연속성을 확인한다.
 
 ## 완료 기준
 

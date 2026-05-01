@@ -67,6 +67,7 @@
 | "이 기능을 왜 만드나?" | `docs/PRD.md` — 검증 가설, 운영 원칙 |
 | "어떤 기술 제약이 있나?" | `docs/TRD.md` — ECS 경계, 맥락 분리, 추상화 규칙, 금지 패턴 |
 | "feature 구현 상세는?" | `docs/spec/{feature-slug}/` — 분산 스펙 (README + 0~N 작업 단위). 하단 "문서화 구조" 참조 |
+| "다음에 뭐 할까 / 후속 후보는?" | `docs/spec/README.md` 하단 **Follow-up Backlog** 섹션 — 종료된 spec 에서 이관된 후보. 새 spec 시작 전에 먼저 확인 |
 | "과거 어떻게 만들어졌나?" | `docs/prototype/PHASE{0..10}.md` — 프로토타이핑 단계 종료 스펙 (읽기 전용 아카이브) |
 | "VFX 를 만드려면?" | `.claude/skills/unity-vfx-authoring/` + `unity-vfx-integration/` 스킬 |
 | "Unity 씬 와이어링?" | `.claude/skills/unity-feature-wiring/` 스킬 |

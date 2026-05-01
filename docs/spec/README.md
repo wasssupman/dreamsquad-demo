@@ -125,7 +125,6 @@ code + git history        구현 상세
 framework 코어 변경 0. 새 producer 레이어 추가로 다양한 효과 적용 경로 확보. producer-agnostic 설계 검증 시점.
 
 - **Aura defender** [M] · 지속 영역 효과 producer (`AuraOutput[]` + `AuraApplySystem`). 일정 반경 ally 에 매 프레임/N초마다 StatModifier 발화.
-- **Projectile on-hit modifier** [S] · `ProjectileResolveSystem` hit 시 ModifierApply 채널 enqueue. 화염/빙결/둔화 투사체. MoveSpeedMul 도입 시 적용 확장.
 
 #### Modifier framework — 내부 보강
 
@@ -144,4 +143,4 @@ framework 코어/UX/테스트 보강. 콘텐츠 확장 전후 모두 가치 있�
 
 ### Promoted
 
-- **Modifier framework — Legacy migration** → `docs/spec/modifier-legacy-migration/`
+- **Modifier framework — Legacy migration** → `docs/spec/modifier-legacy-migration/` (completed 2026-05-01)
