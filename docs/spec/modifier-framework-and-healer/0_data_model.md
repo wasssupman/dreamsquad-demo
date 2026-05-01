@@ -15,7 +15,7 @@ scope: enum 4종, struct 5종 (header + 두 slot + cache + dirty). System stub /
 | `Assets/_Project/Scripts/Battle/Effects/Modifiers/ModifierTypes.cs` | `Wassup.Battle.Effects` | enum `StatKind`, `StackKind`, `CombineOp` + struct `ModifierHeader` |
 | `Assets/_Project/Scripts/Battle/Effects/Modifiers/StatModifierSlot.cs` | `Wassup.Battle.Effects` | `IBufferElementData` |
 | `Assets/_Project/Scripts/Battle/Effects/Modifiers/StackModifierSlot.cs` | `Wassup.Battle.Effects` | `IBufferElementData` |
-| `Assets/_Project/Scripts/Battle/Effects/Modifiers/BuffStats.cs` | `Wassup.Battle.Effects` | `IComponentData` (`BuffStats`) + `IComponentData, IEnableableComponent` (`BuffStatsDirty`) |
+| `Assets/_Project/Scripts/Battle/Effects/Modifiers/ModifierStats.cs` | `Wassup.Battle.Effects` | `IComponentData` (`ModifierStats`) + `IComponentData, IEnableableComponent` (`ModifierStatsDirty`) |
 | `Assets/_Project/Scripts/Data/AttackOutput.cs` | `Wassup.Data` | `Serializable` struct `AttackOutput` + enum `AttackOutputKind` |
 
 폴더 신설: `Assets/_Project/Scripts/Battle/Effects/Modifiers/`. 기존 `Effects/` 평탄 구조에서 modifier framework 파일이 8+개 늘어날 예정이라 서브폴더 분리. 프로젝트 단일 asmdef (`Wassup.Runtime.asmdef`) 가 하위 폴더 자동 포함 — asmdef 변경 불필요.
@@ -56,9 +56,9 @@ public struct StackModifierSlot : IBufferElementData {
 }
 ```
 
-**`BuffStats.cs`**
+**`ModifierStats.cs`**
 ```csharp
-public struct BuffStats : IComponentData {
+public struct ModifierStats : IComponentData {
     public float damageMul;       // 디폴트 1.0
     public float attackSpeedMul;  // 디폴트 1.0
     public float dmgTakenMul;     // 디폴트 1.0
@@ -67,7 +67,7 @@ public struct BuffStats : IComponentData {
 
 // IEnableableComponent — Add 시 기본 disabled.
 // ApplySystem/TickSystem 이 SetComponentEnabled(true), Aggregate 가 처리 후 SetComponentEnabled(false).
-public struct BuffStatsDirty : IComponentData, IEnableableComponent { }
+public struct ModifierStatsDirty : IComponentData, IEnableableComponent { }
 ```
 
 **`AttackOutput.cs`** (MonoBehaviour-side data, `Wassup.Data` namespace)
@@ -90,16 +90,16 @@ public struct BuffStatsDirty : IComponentData, IEnableableComponent { }
 
 - [ ] 5개 파일 신규 작성 (위 변경 대상 표).
 - [ ] Unity Editor 컴파일 성공 (`Console` 에 에러 0). 기존 코드(`AttackSystem`/`DamageApplicationSystem` 등) 는 신규 타입 미사용 상태로 무변경 → 회귀 0.
-- [ ] `BuffStatsDirty` 가 `IEnableableComponent` 인지 확인 (`SystemAPI.IsComponentEnabled<BuffStatsDirty>` 가 컴파일).
+- [ ] `ModifierStatsDirty` 가 `IEnableableComponent` 인지 확인 (`SystemAPI.IsComponentEnabled<ModifierStatsDirty>` 가 컴파일).
 - [ ] (asmdef 검증은 0번 작성 전 완료 — 단일 `Wassup.Runtime.asmdef` 확인. 추가 검증 불요.)
-- [ ] EditMode 테스트 추가 불요 (struct 정의만이므로 동작 검증 대상 없음). 11번 단위에서 `BuffStats` 합성식 테스트가 본 타입을 사용하는 형태로 검증.
+- [ ] EditMode 테스트 추가 불요 (struct 정의만이므로 동작 검증 대상 없음). 11번 단위에서 `ModifierStats` 합성식 테스트가 본 타입을 사용하는 형태로 검증.
 - [ ] 본 문서 하단에 "확인 일자 + 커밋 해시" 한 줄 추가 후 commit.
 
 ## 후속 단위 의존
 
 - 1번: 두 NativeQueue singleton 정의 + BattleBridge lifecycle (이 단위가 본 단위의 타입을 import 안 함 — payload struct 는 1번이 자체 정의)
-- 2번: `ModifierApplySystem` 이 `StatModifierSlot` / `StackModifierSlot` / `BuffStatsDirty` 사용
-- 3번: `BuffStatsAggregateSystem` 이 `BuffStats` write
+- 2번: `ModifierApplySystem` 이 `StatModifierSlot` / `StackModifierSlot` / `ModifierStatsDirty` 사용
+- 3번: `ModifierStatsAggregateSystem` 이 `ModifierStats` write
 - 5번: `AttackOutput[]` 가 `DefenderUnitData` 에 추가됨
 
 ---

@@ -26,7 +26,7 @@ namespace Wassup.Tests.EditMode
 
             _simGroup.AddSystemToUpdateList(_world.CreateSystem<ModifierApplySystem>());
             _simGroup.AddSystemToUpdateList(_world.CreateSystem<StatModifierTickSystem>());
-            _simGroup.AddSystemToUpdateList(_world.CreateSystem<BuffStatsAggregateSystem>());
+            _simGroup.AddSystemToUpdateList(_world.CreateSystem<ModifierStatsAggregateSystem>());
             _simGroup.AddSystemToUpdateList(_world.CreateSystem<StackModifierTickSystem>());
 
             // Singleton queues required by ModifierApplySystem and StackModifierTickSystem.
@@ -72,20 +72,20 @@ namespace Wassup.Tests.EditMode
 
         // ── Helpers ───────────────────────────────────────────────────────────────
 
-        /// Create an entity pre-wired with BuffStats (defaults 1/1/1/0) and
-        /// a disabled BuffStatsDirty (the canonical starting state).
-        private Entity CreateEntityWithBuffStats()
+        /// Create an entity pre-wired with ModifierStats (defaults 1/1/1/0) and
+        /// a disabled ModifierStatsDirty (the canonical starting state).
+        private Entity CreateEntityWithModifierStats()
         {
             var e = _em.CreateEntity();
-            _em.AddComponentData(e, new BuffStats
+            _em.AddComponentData(e, new ModifierStats
             {
                 damageMul      = 1f,
                 attackSpeedMul = 1f,
                 dmgTakenMul    = 1f,
                 regenPerSec    = 0f,
             });
-            _em.AddComponent<BuffStatsDirty>(e);
-            _em.SetComponentEnabled<BuffStatsDirty>(e, false);
+            _em.AddComponent<ModifierStatsDirty>(e);
+            _em.SetComponentEnabled<ModifierStatsDirty>(e, false);
             return e;
         }
 
@@ -96,7 +96,7 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void StatModifier_SameKey_Refreshes_Slot_Instead_Of_Adding_Duplicate()
         {
-            var e = CreateEntityWithBuffStats();
+            var e = CreateEntityWithModifierStats();
 
             // First application: magnitude=1.5, duration=10.
             _statQueue.Enqueue(new StatModifierApplyEvent
@@ -141,12 +141,12 @@ namespace Wassup.Tests.EditMode
         }
 
         // ── Test 2 ────────────────────────────────────────────────────────────────
-        // BuffStats combine formula: (1 + Σadd) * Πmul, and Override wins.
+        // ModifierStats combine formula: (1 + Σadd) * Πmul, and Override wins.
 
         [Test]
-        public void BuffStats_Combines_Multiplicative_And_Additive_Then_Override_Wins()
+        public void ModifierStats_Combines_Multiplicative_And_Additive_Then_Override_Wins()
         {
-            var e = CreateEntityWithBuffStats();
+            var e = CreateEntityWithModifierStats();
 
             // Pre-populate two slots directly (no Apply events needed for formula test).
             var buf = _em.AddBuffer<StatModifierSlot>(e);
@@ -168,11 +168,11 @@ namespace Wassup.Tests.EditMode
             });
 
             // Mark dirty so Aggregate runs.
-            _em.SetComponentEnabled<BuffStatsDirty>(e, true);
+            _em.SetComponentEnabled<ModifierStatsDirty>(e, true);
             Tick();
 
             // Formula: (1 + 0.2) * 1.5 = 1.8
-            float damageMul = _em.GetComponentData<BuffStats>(e).damageMul;
+            float damageMul = _em.GetComponentData<ModifierStats>(e).damageMul;
             Assert.AreEqual(1.8f, damageMul, 1e-4f,
                 "damageMul must equal (1 + additive_sum) * multiplicative_product = (1+0.2)*1.5 = 1.8");
 
@@ -186,10 +186,10 @@ namespace Wassup.Tests.EditMode
                 magnitude = 3.0f,
             });
 
-            _em.SetComponentEnabled<BuffStatsDirty>(e, true);
+            _em.SetComponentEnabled<ModifierStatsDirty>(e, true);
             Tick();
 
-            damageMul = _em.GetComponentData<BuffStats>(e).damageMul;
+            damageMul = _em.GetComponentData<ModifierStats>(e).damageMul;
             Assert.AreEqual(3.0f, damageMul, 1e-4f,
                 "Override slot must win: damageMul = max(override values) = 3.0, ignoring mul/add slots.");
         }
@@ -236,15 +236,15 @@ namespace Wassup.Tests.EditMode
         }
 
         // ── Test 5 (CRITICAL — hotfix regression guard) ───────────────────────────
-        // After StatModifierTickSystem hotfix: entities with BuffStatsDirty=false must still
+        // After StatModifierTickSystem hotfix: entities with ModifierStatsDirty=false must still
         // have their slot remaining values decremented, and expired slots must be removed.
         // Previously the system only iterated entities with dirty=true, causing permanent
         // modifiers (never expired even after duration elapsed).
 
         [Test]
-        public void StatModifier_ExpiresAfterDuration_Even_When_BuffStatsDirty_Is_False()
+        public void StatModifier_ExpiresAfterDuration_Even_When_ModifierStatsDirty_Is_False()
         {
-            var e = CreateEntityWithBuffStats();
+            var e = CreateEntityWithModifierStats();
 
             // Apply a modifier with duration=2 via the Apply channel.
             _statQueue.Enqueue(new StatModifierApplyEvent
@@ -260,10 +260,10 @@ namespace Wassup.Tests.EditMode
 
             // Frame 1: Apply -> Tick (remaining: 2.0 - 1.0 = 1.0) -> Aggregate (damageMul=1.5, dirty=false).
             Tick(1.0f);
-            Assert.AreEqual(1.5f, _em.GetComponentData<BuffStats>(e).damageMul, 1e-4f,
+            Assert.AreEqual(1.5f, _em.GetComponentData<ModifierStats>(e).damageMul, 1e-4f,
                 "damageMul should be 1.5 after first tick (modifier active).");
-            Assert.IsFalse(_em.IsComponentEnabled<BuffStatsDirty>(e),
-                "BuffStatsDirty must be false after Aggregate resets it.");
+            Assert.IsFalse(_em.IsComponentEnabled<ModifierStatsDirty>(e),
+                "ModifierStatsDirty must be false after Aggregate resets it.");
 
             // Frame 2: dirty=false — the hotfix ensures TickSystem still decrements remaining.
             // remaining: 1.0 - 1.0 = 0.0 -> slot expires -> dirty set to true -> Aggregate runs.
@@ -274,10 +274,10 @@ namespace Wassup.Tests.EditMode
             // After Aggregate: damageMul=1.0, dirty=false again.
             Tick(1.0f);
 
-            float finalDamageMul = _em.GetComponentData<BuffStats>(e).damageMul;
+            float finalDamageMul = _em.GetComponentData<ModifierStats>(e).damageMul;
             Assert.AreEqual(1.0f, finalDamageMul, 1e-4f,
                 "damageMul must revert to 1.0 after modifier expires — hotfix regression guard: " +
-                "TickSystem must decrement remaining regardless of BuffStatsDirty state.");
+                "TickSystem must decrement remaining regardless of ModifierStatsDirty state.");
 
             // Slot buffer should be empty after expiry.
             Assert.IsTrue(_em.HasBuffer<StatModifierSlot>(e),

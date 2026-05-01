@@ -2,7 +2,7 @@ using Unity.Entities;
 
 namespace Wassup.Battle.Effects
 {
-    public struct BuffStats : IComponentData
+    public struct ModifierStats : IComponentData
     {
         public float damageMul;       // 디폴트 1.0
         public float attackSpeedMul;  // 디폴트 1.0
@@ -11,6 +11,6 @@ namespace Wassup.Battle.Effects
     }
 
     // IEnableableComponent — Add 시 기본 disabled.
-    // ApplySystem/TickSystem 이 SetComponentEnabled(true) 로 mark, BuffStatsAggregateSystem 이 처리 후 SetComponentEnabled(false).
-    public struct BuffStatsDirty : IComponentData, IEnableableComponent { }
+    // ApplySystem/TickSystem 이 SetComponentEnabled(true) 로 mark, ModifierStatsAggregateSystem 이 처리 후 SetComponentEnabled(false).
+    public struct ModifierStatsDirty : IComponentData, IEnableableComponent { }
 }

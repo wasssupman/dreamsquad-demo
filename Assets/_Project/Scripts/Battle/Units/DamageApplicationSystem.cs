@@ -8,21 +8,21 @@ using Wassup.Battle.Effects;
 namespace Wassup.Battle.Units
 {
     // Drains IncomingDamage and IncomingHeal buffers into Health each frame.
-    // Also applies RegenPerSec from BuffStats directly (not via IncomingHeal).
+    // Also applies RegenPerSec from ModifierStats directly (not via IncomingHeal).
     // When health crosses zero the entity gets a DeadTag so UnitLifecycleSystem can destroy it.
     [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateAfter(typeof(AttackSystem))]
     public partial struct DamageApplicationSystem : ISystem
     {
-        private ComponentLookup<BuffStats> _buffStatsLookup;
+        private ComponentLookup<ModifierStats> _buffStatsLookup;
         private BufferLookup<IncomingHeal> _healBufferLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<IncomingDamage>();
-            _buffStatsLookup  = state.GetComponentLookup<BuffStats>(isReadOnly: true);
+            _buffStatsLookup  = state.GetComponentLookup<ModifierStats>(isReadOnly: true);
             _healBufferLookup = state.GetBufferLookup<IncomingHeal>(isReadOnly: false);
         }
 
@@ -40,10 +40,10 @@ namespace Wassup.Battle.Units
                               .WithNone<PendingDeployment>()
                               .WithEntityAccess())
             {
-                // ── BuffStats lookup (read-only, defaults safe when absent) ────────
-                bool hasBuffStats = _buffStatsLookup.HasComponent(entity);
-                float dmgTakenMul = hasBuffStats ? _buffStatsLookup[entity].dmgTakenMul : 1f;
-                float regenPerSec = hasBuffStats ? _buffStatsLookup[entity].regenPerSec  : 0f;
+                // ── ModifierStats lookup (read-only, defaults safe when absent) ────────
+                bool hasModifierStats = _buffStatsLookup.HasComponent(entity);
+                float dmgTakenMul = hasModifierStats ? _buffStatsLookup[entity].dmgTakenMul : 1f;
+                float regenPerSec = hasModifierStats ? _buffStatsLookup[entity].regenPerSec  : 0f;
 
                 // ── IncomingDamage drain ─────────────────────────────────────────
                 float totalDamage = 0f;

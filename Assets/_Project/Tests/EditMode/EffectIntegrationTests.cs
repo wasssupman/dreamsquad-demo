@@ -57,13 +57,13 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
-        public void Combat_Applies_DamageMul_And_AttackSpeedMul_Via_BuffStats()
+        public void Combat_Applies_DamageMul_And_AttackSpeedMul_Via_ModifierStats()
         {
             using var world = new World("EffectIntegrationTests_Combat");
             var em = world.EntityManager;
             var simGroup = world.CreateSystemManaged<SimulationSystemGroup>();
             simGroup.AddSystemToUpdateList(world.CreateSystem<StatModifierTickSystem>());
-            simGroup.AddSystemToUpdateList(world.CreateSystem<BuffStatsAggregateSystem>());
+            simGroup.AddSystemToUpdateList(world.CreateSystem<ModifierStatsAggregateSystem>());
             simGroup.AddSystemToUpdateList(world.CreateSystem<AttackSystem>());
 
             // Defender: cooldown ready, 10 damage base, range 5.
@@ -81,10 +81,10 @@ namespace Wassup.Tests.EditMode
                 cooldownRemaining = 0f,
                 targetMask = (int)Faction.Enemy,
             });
-            // Wire BuffStats via StatModifierSlot: damageMul×2, attackSpeedMul×2 (halves cooldown).
-            em.AddComponentData(defender, new BuffStats { damageMul = 1f, attackSpeedMul = 1f, dmgTakenMul = 1f });
-            em.AddComponent<BuffStatsDirty>(defender);
-            em.SetComponentEnabled<BuffStatsDirty>(defender, true);
+            // Wire ModifierStats via StatModifierSlot: damageMul×2, attackSpeedMul×2 (halves cooldown).
+            em.AddComponentData(defender, new ModifierStats { damageMul = 1f, attackSpeedMul = 1f, dmgTakenMul = 1f });
+            em.AddComponent<ModifierStatsDirty>(defender);
+            em.SetComponentEnabled<ModifierStatsDirty>(defender, true);
             var slots = em.AddBuffer<StatModifierSlot>(defender);
             slots.Add(new StatModifierSlot { stat = StatKind.DamageMul,      op = CombineOp.Multiplicative, magnitude = 2f });
             slots.Add(new StatModifierSlot { stat = StatKind.AttackSpeedMul, op = CombineOp.Multiplicative, magnitude = 2f });
@@ -103,7 +103,7 @@ namespace Wassup.Tests.EditMode
             // Emitted damage: 10 base × 2.0 damageMul = 20.
             var incoming = em.GetBuffer<IncomingDamage>(attacker);
             Assert.AreEqual(1, incoming.Length, "attacker should have received exactly one damage event");
-            Assert.AreEqual(20f, incoming[0].amount, 1e-4f, "damageMul 2.0 from BuffStats should double the emitted damage");
+            Assert.AreEqual(20f, incoming[0].amount, 1e-4f, "damageMul 2.0 from ModifierStats should double the emitted damage");
 
             // Reset cooldown: cooldown = base / attackSpeedMul = 4 / 2 = 2.
             var attackState = em.GetComponentData<AttackState>(defender);
@@ -114,13 +114,13 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
-        public void Combat_Applies_SynergyMul_Stacked_With_DamageMul_Via_BuffStats()
+        public void Combat_Applies_SynergyMul_Stacked_With_DamageMul_Via_ModifierStats()
         {
             using var world = new World("EffectIntegrationTests_Synergy");
             var em = world.EntityManager;
             var simGroup = world.CreateSystemManaged<SimulationSystemGroup>();
             simGroup.AddSystemToUpdateList(world.CreateSystem<StatModifierTickSystem>());
-            simGroup.AddSystemToUpdateList(world.CreateSystem<BuffStatsAggregateSystem>());
+            simGroup.AddSystemToUpdateList(world.CreateSystem<ModifierStatsAggregateSystem>());
             simGroup.AddSystemToUpdateList(world.CreateSystem<AttackSystem>());
 
             var defender = em.CreateEntity();
@@ -138,9 +138,9 @@ namespace Wassup.Tests.EditMode
                 targetMask = (int)Faction.Enemy,
             });
             // damageMul×2 (boost) + damageMul×1.3 (synergy) = combined ×2.6.
-            em.AddComponentData(defender, new BuffStats { damageMul = 1f, attackSpeedMul = 1f, dmgTakenMul = 1f });
-            em.AddComponent<BuffStatsDirty>(defender);
-            em.SetComponentEnabled<BuffStatsDirty>(defender, true);
+            em.AddComponentData(defender, new ModifierStats { damageMul = 1f, attackSpeedMul = 1f, dmgTakenMul = 1f });
+            em.AddComponent<ModifierStatsDirty>(defender);
+            em.SetComponentEnabled<ModifierStatsDirty>(defender, true);
             var slots = em.AddBuffer<StatModifierSlot>(defender);
             slots.Add(new StatModifierSlot { stat = StatKind.DamageMul, op = CombineOp.Multiplicative, magnitude = 2f });
             slots.Add(new StatModifierSlot { stat = StatKind.DamageMul, op = CombineOp.Multiplicative, magnitude = 1.3f });
@@ -159,7 +159,7 @@ namespace Wassup.Tests.EditMode
             var incoming = em.GetBuffer<IncomingDamage>(attacker);
             Assert.AreEqual(1, incoming.Length);
             Assert.AreEqual(26f, incoming[0].amount, 1e-4f,
-                "emittedDamage must multiply base × damageMul(boost) × damageMul(synergy) via BuffStats");
+                "emittedDamage must multiply base × damageMul(boost) × damageMul(synergy) via ModifierStats");
         }
 
         [Test]

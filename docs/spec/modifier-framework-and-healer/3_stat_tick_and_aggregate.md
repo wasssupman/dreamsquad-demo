@@ -2,7 +2,7 @@
 
 ## 목적
 
-`StatModifierSlot` 의 시간 만료 처리 + `BuffStats` 캐시의 dirty-driven 재계산. 두 system 으로 분리.
+`StatModifierSlot` 의 시간 만료 처리 + `ModifierStats` 캐시의 dirty-driven 재계산. 두 system 으로 분리.
 
 scope: Stat 사이드 lifetime + cache 만. Stack 사이드 tick 은 4번. ApplySystem 은 2번에서 완료.
 
@@ -11,7 +11,7 @@ scope: Stat 사이드 lifetime + cache 만. Stack 사이드 tick 은 4번. Apply
 | 파일 | 변경 |
 |---|---|
 | `Assets/_Project/Scripts/Battle/Effects/Modifiers/StatModifierTickSystem.cs` | 신규 — Burst-compatible ISystem. tick remaining + 만료 슬롯 제거 + dirty enable. |
-| `Assets/_Project/Scripts/Battle/Effects/Modifiers/BuffStatsAggregateSystem.cs` | 신규 — Burst-compatible ISystem. dirty enabled entity 만 합성 → BuffStats write → dirty disable. |
+| `Assets/_Project/Scripts/Battle/Effects/Modifiers/ModifierStatsAggregateSystem.cs` | 신규 — Burst-compatible ISystem. dirty enabled entity 만 합성 → ModifierStats write → dirty disable. |
 
 ## 구현
 
@@ -20,12 +20,12 @@ scope: Stat 사이드 lifetime + cache 만. Stack 사이드 tick 은 4번. Apply
 [BurstCompile]
 [UpdateInGroup(typeof(SimulationSystemGroup))]
 [UpdateAfter(typeof(ModifierApplySystem))]
-[UpdateBefore(typeof(BuffStatsAggregateSystem))]
+[UpdateBefore(typeof(ModifierStatsAggregateSystem))]
 public partial struct StatModifierTickSystem : ISystem {
     [BurstCompile] public void OnUpdate(ref SystemState state) {
         float dt = SystemAPI.Time.DeltaTime;
         foreach (var (slots, dirty, entity) in
-                 SystemAPI.Query<DynamicBuffer<StatModifierSlot>, EnabledRefRW<BuffStatsDirty>>()
+                 SystemAPI.Query<DynamicBuffer<StatModifierSlot>, EnabledRefRW<ModifierStatsDirty>>()
                           .WithEntityAccess()) {
             bool changed = false;
             for (int i = slots.Length - 1; i >= 0; i--) {
@@ -44,15 +44,15 @@ public partial struct StatModifierTickSystem : ISystem {
 }
 ```
 
-**`BuffStatsAggregateSystem.cs`** — 합성식 `final = (base + Σadd) * Πmul * (override_max if any else 1)`:
+**`ModifierStatsAggregateSystem.cs`** — 합성식 `final = (base + Σadd) * Πmul * (override_max if any else 1)`:
 ```csharp
 [BurstCompile]
 [UpdateInGroup(typeof(SimulationSystemGroup))]
 [UpdateAfter(typeof(StatModifierTickSystem))]
-public partial struct BuffStatsAggregateSystem : ISystem {
+public partial struct ModifierStatsAggregateSystem : ISystem {
     [BurstCompile] public void OnUpdate(ref SystemState state) {
         foreach (var (slots, stats, dirty) in
-                 SystemAPI.Query<DynamicBuffer<StatModifierSlot>, RefRW<BuffStats>, EnabledRefRW<BuffStatsDirty>>()) {
+                 SystemAPI.Query<DynamicBuffer<StatModifierSlot>, RefRW<ModifierStats>, EnabledRefRW<ModifierStatsDirty>>()) {
             // base: damageMul=1, attackSpeedMul=1, dmgTakenMul=1, regenPerSec=0.
             // 4개 stat × 3개 op = 12개 합성 슬롯. inline 계산 (배열 X — Burst 친화).
             float dMul=1f, dAdd=0f, dOver=0f; bool dHasOver=false;
@@ -92,24 +92,24 @@ public partial struct BuffStatsAggregateSystem : ISystem {
 
 **주의**:
 - ref 변수 switch 패턴이 Burst 호환 안 될 수 있음. 안 되면 stat 별로 4개 분기에서 직접 mul/add/over 변수 갱신 (코드 약간 더 길지만 Burst 친화). 작성 시 Burst inspector 로 확인.
-- `BuffStats` 가 entity 에 없으면 어떻게? Aggregate 가 작동하려면 BuffStats 컴포넌트가 미리 add 되어야 함. **결정**: BattleBridge 가 defender / enemy spawn 시 `BuffStats` (디폴트값) + `BuffStatsDirty` (disabled) 함께 add. 또는 ApplySystem 에서 첫 부착 시 ecb.AddComponent — 이 단위 시점 spec 미결. **권장**: 5번 단위 (AttackSystem outputs 진입) 시점에 `DefenderUnitTag` 가진 entity 에 일괄 add. 1번/2번 단위 동안은 BuffStats 가 없어도 무관 (소비자 없음).
+- `ModifierStats` 가 entity 에 없으면 어떻게? Aggregate 가 작동하려면 ModifierStats 컴포넌트가 미리 add 되어야 함. **결정**: BattleBridge 가 defender / enemy spawn 시 `ModifierStats` (디폴트값) + `ModifierStatsDirty` (disabled) 함께 add. 또는 ApplySystem 에서 첫 부착 시 ecb.AddComponent — 이 단위 시점 spec 미결. **권장**: 5번 단위 (AttackSystem outputs 진입) 시점에 `DefenderUnitTag` 가진 entity 에 일괄 add. 1번/2번 단위 동안은 ModifierStats 가 없어도 무관 (소비자 없음).
 
 ## 완료 기준
 
 - [ ] 2개 system 신규 작성. 컴파일 통과.
 - [ ] EditMode 테스트:
-  - [ ] 단일 Mul 슬롯 부착 후 만료 → BuffStats 가 디폴트(1.0) 로 복귀.
+  - [ ] 단일 Mul 슬롯 부착 후 만료 → ModifierStats 가 디폴트(1.0) 로 복귀.
   - [ ] Mul + Mul 합성: damageMul = m1 * m2.
   - [ ] Mul + Add 합성: damageMul = (1 + add) * mul.
   - [ ] Override 단독: 다른 슬롯 무시하고 over_max.
-  - [ ] dirty 가 unset 후 다음 프레임 변경 없으면 Aggregate 가 BuffStats 안 건드림 (값 직접 비교).
+  - [ ] dirty 가 unset 후 다음 프레임 변경 없으면 Aggregate 가 ModifierStats 안 건드림 (값 직접 비교).
 - [ ] 본 문서 하단에 확인 일자 + 커밋 해시 기재 후 commit.
 
 ## 후속 단위 의존
 
-- 5번이 BuffStats add 시점 결정 + AttackSystem 이 BuffStats read.
+- 5번이 ModifierStats add 시점 결정 + AttackSystem 이 ModifierStats read.
 - 7번이 legacy 컴포넌트 read 도 추가.
 
 ---
 
-확인 일자 + 커밋 해시: 2026-04-30, `9bdab13` (compile + console clean) + hotfix `31239f0` (StatModifierTickSystem 의 dirty 만 query 패턴 결함 수정 — dirty 의존 제거, 매 프레임 모든 modifier 보유 entity 순회). EditMode 회귀 방지 테스트는 `715c92a` (`StatModifier_ExpiresAfterDuration_Even_When_BuffStatsDirty_Is_False`).
+확인 일자 + 커밋 해시: 2026-04-30, `9bdab13` (compile + console clean) + hotfix `31239f0` (StatModifierTickSystem 의 dirty 만 query 패턴 결함 수정 — dirty 의존 제거, 매 프레임 모든 modifier 보유 entity 순회). EditMode 회귀 방지 테스트는 `715c92a` (`StatModifier_ExpiresAfterDuration_Even_When_ModifierStatsDirty_Is_False`).

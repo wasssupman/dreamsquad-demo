@@ -2,7 +2,7 @@
 
 ## 목적
 
-두 채널을 드레인하여 대상 entity 의 `StatModifierSlot` / `StackModifierSlot` buffer 를 갱신하는 단일 시스템. **merge 정책 (refresh / cap / 새 슬롯)** 의 단독 책임자. 갱신 발생 시 `BuffStatsDirty` enable.
+두 채널을 드레인하여 대상 entity 의 `StatModifierSlot` / `StackModifierSlot` buffer 를 갱신하는 단일 시스템. **merge 정책 (refresh / cap / 새 슬롯)** 의 단독 책임자. 갱신 발생 시 `ModifierStatsDirty` enable.
 
 scope: ApplySystem 만. tick / aggregate / threshold dispatch 는 후속.
 
@@ -45,8 +45,8 @@ public partial struct ModifierApplySystem : ISystem {
 2. 같은 (source, stat, op, stackId) 슬롯 검색.
    - 있으면: header.remaining = max(old.remaining, ev.duration); magnitude = ev.magnitude. (기존 stackId 유지)
    - 없으면: 새 슬롯 추가 { header={remaining=ev.duration, source=ev.source, stackId=ev.stackId}, stat, op, magnitude }.
-3. BuffStatsDirty 가 없으면 ecb.AddComponent<BuffStatsDirty>(target). (Add 시 기본 disabled)
-4. ecb.SetComponentEnabled<BuffStatsDirty>(target, true).
+3. ModifierStatsDirty 가 없으면 ecb.AddComponent<ModifierStatsDirty>(target). (Add 시 기본 disabled)
+4. ecb.SetComponentEnabled<ModifierStatsDirty>(target, true).
 ```
 
 **`ApplyStack`** — merge key `(source, kind)`:
@@ -57,7 +57,7 @@ public partial struct ModifierApplySystem : ISystem {
      ※ maxStack 은 buffer 슬롯 자체의 maxStack 필드 사용. 새 슬롯 생성 시점에만 SO 의 maxStack 에서 복사.
    - 없으면: 새 슬롯 { header={remaining=ev.perAppDuration, source=ev.source, stackId=0}, kind, stackCount=min(maxStack_default, ev.countDelta), maxStack=maxStack_default, lastTriggeredStack=0 }.
      ※ `maxStack_default` 결정 — 4번 단위에서 SO 가 producer 측에 maxStack 을 알려주는 메커니즘 (payload 에 maxStack 포함 또는 producer 가 SO 에서 lookup) 도입. 1번 시점에는 payload 에 maxStack 없음 → 4번 단위 작성 시 `StackModifierApplyEvent` 에 byte maxStack 추가하거나, ApplySystem 이 SO registry 를 lookup. **구현 시 결정**.
-3. BuffStatsDirty 갱신은 Stack 은 BuffStats 직접 영향 없으므로 불요. (Stack 의 임계값 파생만이 BuffStats 영향) — 따라서 SetComponentEnabled 호출 안 함.
+3. ModifierStatsDirty 갱신은 Stack 은 ModifierStats 직접 영향 없으므로 불요. (Stack 의 임계값 파생만이 ModifierStats 영향) — 따라서 SetComponentEnabled 호출 안 함.
 ```
 
 **구현 결정 (4번 단위 작성 시 확정)**: `StackModifierApplyEvent` 에 `byte maxStack` 필드 추가가 가장 단순. payload 가 1바이트 늘어남. 또는 ApplySystem 이 `StackModifierSO` registry 를 read — 추가 인프라 필요. 권장: payload 확장.
@@ -70,7 +70,7 @@ public partial struct ModifierApplySystem : ISystem {
   - [ ] 다른 source 같은 stat: 슬롯 2개 공존.
   - [ ] 다른 stackId 같은 source/stat: 슬롯 2개 공존.
   - [ ] Stack countDelta 누적 + maxStack cap 동작.
-  - [ ] BuffStatsDirty 가 Stat 부착 후 enabled, Stack 부착 후 변동 없음 (또는 disabled 유지).
+  - [ ] ModifierStatsDirty 가 Stat 부착 후 enabled, Stack 부착 후 변동 없음 (또는 disabled 유지).
 - [ ] PlayMode smoke: BattleScene 에서 enqueue 1회 수동 트리거 (debug 코드 OR 5번 단위 진입까지 지연) — 회귀 0.
 - [ ] 본 문서 하단에 확인 일자 + 커밋 해시 기재 후 commit.
 

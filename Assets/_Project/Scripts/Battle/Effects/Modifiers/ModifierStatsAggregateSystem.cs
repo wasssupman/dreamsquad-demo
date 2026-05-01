@@ -1,10 +1,10 @@
-// Spec unit 3 (modifier-framework-and-healer): recompute BuffStats cache for every
-// entity with a dirty BuffStats component.
-// Write authority: this system is the ONLY writer of BuffStats.
+// Spec unit 3 (modifier-framework-and-healer): recompute ModifierStats cache for every
+// entity with a dirty ModifierStats component.
+// Write authority: this system is the ONLY writer of ModifierStats.
 // Combine formula: final = (base + Σadd) * Πmul  OR  override_max (when any Override slot present).
 //
 // Unit 9: legacy adapter (DamageBoost / CooldownReduction / SynergyBuff fold-in) removed.
-// dirty-only iteration restored: only entities with BuffStatsDirty enabled are processed.
+// dirty-only iteration restored: only entities with ModifierStatsDirty enabled are processed.
 using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -14,13 +14,13 @@ namespace Wassup.Battle.Effects
     [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateAfter(typeof(StatModifierTickSystem))]
-    public partial struct BuffStatsAggregateSystem : ISystem
+    public partial struct ModifierStatsAggregateSystem : ISystem
     {
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             foreach (var (stats, dirty, entity) in
-                     SystemAPI.Query<RefRW<BuffStats>, EnabledRefRW<BuffStatsDirty>>()
+                     SystemAPI.Query<RefRW<ModifierStats>, EnabledRefRW<ModifierStatsDirty>>()
                               .WithEntityAccess())
             {
                 // Per-stat accumulators.

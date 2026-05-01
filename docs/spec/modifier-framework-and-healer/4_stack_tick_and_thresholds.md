@@ -4,7 +4,7 @@
 
 `StackModifierSlot` 의 시간 만료 + 임계값 도달 시 파생 효과를 *기존 채널* 로 dispatch (1프레임 지연). `StackModifierSO` + `ThresholdRule` 데이터 모델 도입. `StackKind` enum 멤버 채움.
 
-scope: Stack 사이드 lifetime + threshold dispatch. ApplySystem(2번) 와 BuffStats(3번) 는 무관.
+scope: Stack 사이드 lifetime + threshold dispatch. ApplySystem(2번) 와 ModifierStats(3번) 는 무관.
 
 ## 변경 대상
 
@@ -66,7 +66,7 @@ namespace Wassup.Data {
 **`StackModifierTickSystem.cs`** (not Burst — ECB structural change + queue enqueue):
 ```csharp
 [UpdateInGroup(typeof(SimulationSystemGroup))]
-[UpdateAfter(typeof(BuffStatsAggregateSystem))]
+[UpdateAfter(typeof(ModifierStatsAggregateSystem))]
 public partial struct StackModifierTickSystem : ISystem {
     public void OnUpdate(ref SystemState state) {
         float dt = SystemAPI.Time.DeltaTime;

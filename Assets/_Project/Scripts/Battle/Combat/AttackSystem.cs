@@ -52,7 +52,7 @@ namespace Wassup.Battle.Combat
             var defenderCcLookup = SystemAPI.GetComponentLookup<DefenderCcData>(isReadOnly: true);
             var defenderTagLookup = SystemAPI.GetComponentLookup<DefenderUnitTag>(isReadOnly: true);
             var blockingHazardCellsLookup = SystemAPI.GetBufferLookup<BlockingHazardCellsBuffer>(isReadOnly: true);
-            var buffStatsLookup = SystemAPI.GetComponentLookup<Wassup.Battle.Effects.BuffStats>(isReadOnly: true);
+            var buffStatsLookup = SystemAPI.GetComponentLookup<Wassup.Battle.Effects.ModifierStats>(isReadOnly: true);
             var outputBufferLookup = SystemAPI.GetBufferLookup<AttackOutputElement>(isReadOnly: true);
 
             // Modifier-framework unit 5: StatModifier / StackModifier enqueue channels.
@@ -139,9 +139,9 @@ namespace Wassup.Battle.Combat
                         });
                     }
 
-                    // modifier-framework unit 9: AttackSystem reads BuffStats only.
-                    // DamageMul/AttackSpeedMul/SynergyMul are all folded into BuffStats
-                    // by BuffStatsAggregateSystem via StatModifierSlot buffer.
+                    // modifier-framework unit 9: AttackSystem reads ModifierStats only.
+                    // DamageMul/AttackSpeedMul/SynergyMul are all folded into ModifierStats
+                    // by ModifierStatsAggregateSystem via StatModifierSlot buffer.
                     float buffStatsDamageMul = buffStatsLookup.HasComponent(attackerEntity)
                         ? buffStatsLookup[attackerEntity].damageMul
                         : 1f;
@@ -367,7 +367,7 @@ namespace Wassup.Battle.Combat
                     }
 
                     // modifier-framework unit 9: cooldown = base / attackSpeedMul.
-                    // AttackSpeedMul is folded into BuffStats by BuffStatsAggregateSystem
+                    // AttackSpeedMul is folded into ModifierStats by ModifierStatsAggregateSystem
                     // via StatModifierSlot buffer — no separate cooldownMul needed here.
                     float effectiveCooldownMul = buffStatsAttackSpeedMul > 0f ? 1f / buffStatsAttackSpeedMul : 1f;
                     attack.ValueRW.cooldownRemaining = attack.ValueRO.cooldownDuration * effectiveCooldownMul;

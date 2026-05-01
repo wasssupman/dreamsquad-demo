@@ -20,8 +20,8 @@
 
 ## Implemented
 
-- Producer-agnostic modifier framework: 두 분리 buffer (`StatModifierSlot` / `StackModifierSlot`) + 공통 `ModifierHeader` 임베딩 + `BuffStats` 캐시 (`IEnableableComponent` dirty mark)
-- 4 system: `ModifierApplySystem` / `StatModifierTickSystem` / `StackModifierTickSystem` / `BuffStatsAggregateSystem`
+- Producer-agnostic modifier framework: 두 분리 buffer (`StatModifierSlot` / `StackModifierSlot`) + 공통 `ModifierHeader` 임베딩 + `ModifierStats` 캐시 (`IEnableableComponent` dirty mark)
+- 4 system: `ModifierApplySystem` / `StatModifierTickSystem` / `StackModifierTickSystem` / `ModifierStatsAggregateSystem`
 - 3 채널: `StatModifierApplyEventsSingleton` / `StackModifierApplyEventsSingleton` (신규) + `EnemyCcEventsSingleton` (재사용 — Stack 임계 DOT/Stun 파생)
 - StatKind 4 (`DamageMul`/`AttackSpeedMul`/`DmgTakenMul`/`RegenPerSec`), StackKind 5 (`None`/`Fire`/`Ice`/`Bleed`/`Poison`)
 - `StackModifierSO` + `ThresholdRule[]` (Edge/Consume + multi-threshold 모두 발화 + 1프레임 지연)
@@ -35,7 +35,7 @@
 
 - `Assets/_Project/Scripts/Battle/Effects/Modifiers/`: framework 핵심 6 파일 (data model + 4 system + 2 channel)
 - `Assets/_Project/Scripts/Data/AttackOutput.cs` + `StackModifierSO.cs`: producer 어댑터 + Stack 메타데이터
-- `Assets/_Project/Scripts/Battle/Combat/AttackSystem.cs`: outputs 분기 + BuffStats 곱
+- `Assets/_Project/Scripts/Battle/Combat/AttackSystem.cs`: outputs 분기 + ModifierStats 곱
 - `Assets/_Project/Scripts/Battle/Units/DamageApplicationSystem.cs`: DmgTakenMul + Heal pulse + RegenPerSec 통합 처리
 - `Assets/_Project/Scripts/Bridge/BattleBridge.cs`: 채널 lifecycle + RecomputeSynergyFor / OnPlace 마이그레이션 + Enqueue* 헬퍼 + DrainAttackOutputLogEvents
 - `Assets/_Project/Data/Defenders/Defender_Healer.asset`
@@ -43,7 +43,7 @@
 ## Verified
 
 - Compile: 모든 단위 commit 후 Unity Console error 0, warning 0
-- BuffStats 합성식 (execute_code, Adapter 기간): DamageBoost x1.5 → damageMul=1.5, CR x0.5 → attackSpeedMul=2.0 (역수 변환), SY x1.2 → damageMul=1.2 — 기대값 일치
+- ModifierStats 합성식 (execute_code, Adapter 기간): DamageBoost x1.5 → damageMul=1.5, CR x0.5 → attackSpeedMul=2.0 (역수 변환), SY x1.2 → damageMul=1.2 — 기대값 일치
 - Healer Heal 펄스 (PlayMode 로그): magnitude=15, target_tile 정확
 - Synergy 마이그레이션 (PlayMode 로그): activations=15, peakCount=15 — 다수 Archer 인접 시나리오에서 정상 발화
 - Persistent allocator leak 0 (모든 채널 dispose 확인)
@@ -60,8 +60,8 @@
 ## Post-close hotfix + tests
 
 종료 후 3-reviewer 리뷰에서 발견된 결함 수정 + EditMode 테스트 보강:
-- `31239f0` hotfix: ① StatModifierTickSystem 의 dirty-only query 결함 (유한 duration modifier 만료 안 됨), ② enemy entity 에 BuffStats / BuffStatsDirty 부착 추가, ③ ModifierApplySystem.MarkDirty 의 ECB AddComponent race
-- `715c92a` Unit 11 보강: ModifierFrameworkTests.cs (3 PASSED + 2 [Ignore]) — merge key refresh, BuffStats 합성식, multi-frame 만료 회귀 방지
+- `31239f0` hotfix: ① StatModifierTickSystem 의 dirty-only query 결함 (유한 duration modifier 만료 안 됨), ② enemy entity 에 ModifierStats / ModifierStatsDirty 부착 추가, ③ ModifierApplySystem.MarkDirty 의 ECB AddComponent race
+- `715c92a` Unit 11 보강: ModifierFrameworkTests.cs (3 PASSED + 2 [Ignore]) — merge key refresh, ModifierStats 합성식, multi-frame 만료 회귀 방지
 
 스킵된 2 테스트는 testability 결함 (private static dictionary, 인라인 dispatch) 때문이며 Follow-up 의 후보 항목에 포함.
 
@@ -75,8 +75,8 @@
   - 의존: 없음. 본 spec 종료 후 즉시 진입 가능.
 
 - **MoveSpeedMul + CcEffect.Slow 정리** [M]
-  - What: `BuffStats` 에 `moveSpeedMul` 필드 추가, MovementSystem 이 read-only 소비. 기존 `CcEffect.Slow` 와 의미 중복 정리.
-  - Why: 적 둔화 / defender 이동 둘 다 동일 메커니즘으로 표현 가능. 현재는 이동 둔화는 CcEffect, attack 둔화는 BuffStats 분리.
+  - What: `ModifierStats` 에 `moveSpeedMul` 필드 추가, MovementSystem 이 read-only 소비. 기존 `CcEffect.Slow` 와 의미 중복 정리.
+  - Why: 적 둔화 / defender 이동 둘 다 동일 메커니즘으로 표현 가능. 현재는 이동 둔화는 CcEffect, attack 둔화는 ModifierStats 분리.
   - 의존: cc-effect-consolidation 과 같이 진행하는 게 자연스러움 (둘 다 CcEffect 정리).
 
 - **기존 defender outputs[] 마이그레이션** [S]
@@ -100,7 +100,7 @@
   - 의존: `MoveSpeedMul` 도입 시 적용 대상 확대. 기본 Fire/Ice 만이면 즉시 가능.
 
 - **Modifier UI 시각화** [M]
-  - What: defender HUD 에 활성 modifier 아이콘 표시. 적 머리 위에도 디버프 표시. `BuffStats` / Slot buffer 를 read-only view layer 가 구독.
+  - What: defender HUD 에 활성 modifier 아이콘 표시. 적 머리 위에도 디버프 표시. `ModifierStats` / Slot buffer 를 read-only view layer 가 구독.
   - Why: 디버그 + UX. 현재 player 는 어떤 buff 가 적용 중인지 시각 확인 불가.
   - 의존: UI/디자인 리소스 (아이콘 set). 시간 부담 큼.
 
@@ -130,6 +130,6 @@
   - 의존: 없음.
 
 - **추가 EditMode 회귀 테스트** [S]
-  - What: Stack threshold edge 검출 (5→6→5 빠른 변화 시 재발화) / Consume 모드 (stack 차감 + lastTriggeredStack 갱신) / IncomingHeal drain Clear 보장 (2 프레임 연속 1 회만 적용) / RegenPerSec 누적 (BuffStats.regenPerSec * dt 매 프레임 가산).
+  - What: Stack threshold edge 검출 (5→6→5 빠른 변화 시 재발화) / Consume 모드 (stack 차감 + lastTriggeredStack 갱신) / IncomingHeal drain Clear 보장 (2 프레임 연속 1 회만 적용) / RegenPerSec 누적 (ModifierStats.regenPerSec * dt 매 프레임 가산).
   - Why: 현재 EditMode 커버리지 3 PASSED + 2 [Ignore] — Stack 사이드와 IncomingHeal/RegenPerSec 회귀 방지 미흡.
   - 의존: Testability 보강 (Test 3 활성화) 후 합쳐서 진행이 효율적.

@@ -18,8 +18,8 @@ ad-hoc 효과 컴포넌트(`DamageBoost`/`CooldownReduction`/`SynergyBuff`)를 p
 | StatKind 1차 | `DamageMul`, `AttackSpeedMul`, `DmgTakenMul`, `RegenPerSec` | `CooldownReduction` → `AttackSpeedMul` 통일. `DmgTakenMul` 은 target side 적용 |
 | CombineOp | SO 별 명시 강제 | Mul/Add/Override 슬롯을 별도 합성 |
 | StatModifier merge | key=`(source, stat, op)`, `remaining=max`, `magnitude=new` | 다른 stackId 는 새 슬롯 |
-| dirty mark | `BuffStatsDirty: IEnableableComponent` | Add/Remove 비용 없음, archetype 안정 |
-| 힐 메커니즘 | `IncomingHeal` pulse + `RegenPerSec` StatModifier | 별도 경로. RegenPerSec 는 BuffStats 직접 read (IncomingHeal 미경유) |
+| dirty mark | `ModifierStatsDirty: IEnableableComponent` | Add/Remove 비용 없음, archetype 안정 |
+| 힐 메커니즘 | `IncomingHeal` pulse + `RegenPerSec` StatModifier | 별도 경로. RegenPerSec 는 ModifierStats 직접 read (IncomingHeal 미경유) |
 | AttackOutput | 다중 output 배열 (Damage/Heal/ApplyStat/ApplyStack) | producer 어댑터, framework 외부. 이번 spec 은 `DefenderUnitData` 만 |
 | 힐러 targetMask | `Faction.Defender` 재사용 | `AllyDefender` 는 존재하지 않음. `AttackSystem` 의 self-skip 분기로 자가 힐 자동 방지 |
 | 마이그레이션 | Adapter — Aggregate 가 legacy read → producer 이전 → legacy 제거 | 작업 단위 7/9 는 단일 커밋 원자성 |
@@ -34,15 +34,15 @@ Channel (NativeQueue singletons — Allocator.Persistent, BattleBridge lifecycle
    ├─ StackModifierApplyEvents (신규)
    └─ EnemyCcEvents            (기존 재사용 — DOT/Stun 파생)
    ↓
-ModifierApplySystem (드레인 → buffer 갱신, BuffStatsDirty enable)
+ModifierApplySystem (드레인 → buffer 갱신, ModifierStatsDirty enable)
    ├─ StatModifierSlot Buffer  ─→ StatModifierTickSystem ──┐
    └─ StackModifierSlot Buffer ─→ StackModifierTickSystem  │ (임계 도달 → 채널 enqueue)
                                           ↑                │  ※ 효과는 다음 프레임에 적용
                                           └────── 1프레임 지연 ───┘
                                                             ↓
-                                  BuffStatsAggregateSystem (Dirty enabled 만 재계산)
+                                  ModifierStatsAggregateSystem (Dirty enabled 만 재계산)
                                                             ↓
-                                  BuffStats 캐시 (write: Aggregate 만 / read: 모든 consumer)
+                                  ModifierStats 캐시 (write: Aggregate 만 / read: 모든 consumer)
                                                             ↓
                                   Consumer
                                   ├─ AttackSystem            (damageMul, attackSpeedMul)
@@ -51,9 +51,9 @@ ModifierApplySystem (드레인 → buffer 갱신, BuffStatsDirty enable)
 
 ## 핵심 책임 경계
 
-- **Modifier Framework**: 부착·수명·합성·만료·캐시. Producer 가 누구인지 모른다. `BuffStats` 는 `BuffStatsAggregateSystem` 만 write, 다른 system 은 read-only.
+- **Modifier Framework**: 부착·수명·합성·만료·캐시. Producer 가 누구인지 모른다. `ModifierStats` 는 `ModifierStatsAggregateSystem` 만 write, 다른 system 은 read-only.
 - **AttackOutput**: 공격 hit 시점에 어떤 효과를 발화할지 데이터 명세. framework 외부의 producer 어댑터.
-- **Consumer**: BuffStats 캐시만 read. raw buffer 보지 않는다 — 맥락 경계 유지.
+- **Consumer**: ModifierStats 캐시만 read. raw buffer 보지 않는다 — 맥락 경계 유지.
 
 ## Spec 폴더
 

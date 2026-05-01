@@ -1,5 +1,5 @@
 // Spec unit 3 (modifier-framework-and-healer): tick StatModifierSlot remaining,
-// remove expired slots, and mark BuffStatsDirty when any slot expires.
+// remove expired slots, and mark ModifierStatsDirty when any slot expires.
 using Unity.Burst;
 using Unity.Entities;
 
@@ -8,7 +8,7 @@ namespace Wassup.Battle.Effects
     [BurstCompile]
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateAfter(typeof(ModifierApplySystem))]
-    [UpdateBefore(typeof(BuffStatsAggregateSystem))]
+    [UpdateBefore(typeof(ModifierStatsAggregateSystem))]
     public partial struct StatModifierTickSystem : ISystem
     {
         [BurstCompile]
@@ -17,11 +17,11 @@ namespace Wassup.Battle.Effects
             float dt = SystemAPI.Time.DeltaTime;
 
             // Query ALL entities that have a StatModifierSlot buffer, regardless of
-            // whether BuffStatsDirty is enabled. Previously querying EnabledRefRW<BuffStatsDirty>
+            // whether ModifierStatsDirty is enabled. Previously querying EnabledRefRW<ModifierStatsDirty>
             // caused entities with dirty=false (after Aggregate reset it) to be skipped,
             // so remaining was never decremented and modifiers lasted forever.
             foreach (var (_, entity) in
-                     SystemAPI.Query<RefRO<BuffStats>>()
+                     SystemAPI.Query<RefRO<ModifierStats>>()
                               .WithAll<StatModifierSlot>()
                               .WithEntityAccess())
             {
@@ -42,8 +42,8 @@ namespace Wassup.Battle.Effects
                     }
                 }
                 // When a slot expires, wake Aggregate so it recomputes the stat cache.
-                if (anyExpired && SystemAPI.HasComponent<BuffStatsDirty>(entity))
-                    SystemAPI.SetComponentEnabled<BuffStatsDirty>(entity, true);
+                if (anyExpired && SystemAPI.HasComponent<ModifierStatsDirty>(entity))
+                    SystemAPI.SetComponentEnabled<ModifierStatsDirty>(entity, true);
             }
         }
     }

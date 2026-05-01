@@ -1,5 +1,5 @@
 // Spec unit 2 (modifier-framework-and-healer): drain StatModifierApplyEvents + StackModifierApplyEvents,
-// update DynamicBuffers, and mark BuffStatsDirty.
+// update DynamicBuffers, and mark ModifierStatsDirty.
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -134,7 +134,7 @@ namespace Wassup.Battle.Effects
                             maxStack            = slot.maxStack,
                             lastTriggeredStack  = slot.lastTriggeredStack,
                         };
-                        // Stack buffer does not directly affect BuffStats — no MarkDirty.
+                        // Stack buffer does not directly affect ModifierStats — no MarkDirty.
                         return;
                     }
                 }
@@ -170,7 +170,7 @@ namespace Wassup.Battle.Effects
                     lastTriggeredStack = 0,
                 });
             }
-            // Stack buffer does not directly affect BuffStats — no MarkDirty.
+            // Stack buffer does not directly affect ModifierStats — no MarkDirty.
         }
 
         // Using EntityManager directly (not ECB) so that two ApplyStat calls in the same
@@ -179,9 +179,9 @@ namespace Wassup.Battle.Effects
         // Safe here because ApplyStat is called from TryDequeue loops, not inside a query iteration.
         private static void MarkDirty(EntityManager em, Entity target)
         {
-            if (!em.HasComponent<BuffStatsDirty>(target))
-                em.AddComponent<BuffStatsDirty>(target); // added disabled by default (IEnableableComponent)
-            em.SetComponentEnabled<BuffStatsDirty>(target, true);
+            if (!em.HasComponent<ModifierStatsDirty>(target))
+                em.AddComponent<ModifierStatsDirty>(target); // added disabled by default (IEnableableComponent)
+            em.SetComponentEnabled<ModifierStatsDirty>(target, true);
         }
     }
 }

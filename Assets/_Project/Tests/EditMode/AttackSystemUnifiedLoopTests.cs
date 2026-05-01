@@ -29,7 +29,7 @@ namespace Wassup.Tests.EditMode
             _em = _world.EntityManager;
             _simGroup = _world.CreateSystemManaged<SimulationSystemGroup>();
             _simGroup.AddSystemToUpdateList(_world.CreateSystem<StatModifierTickSystem>());
-            _simGroup.AddSystemToUpdateList(_world.CreateSystem<BuffStatsAggregateSystem>());
+            _simGroup.AddSystemToUpdateList(_world.CreateSystem<ModifierStatsAggregateSystem>());
             _simGroup.AddSystemToUpdateList(_world.CreateSystem<AttackSystem>());
 
             // Singleton: unified attack visual events (Spine animation trigger for any attacker)
@@ -190,7 +190,7 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(CcKind.Impulse, ev.effect.kind);
         }
 
-        // ─── U4: Defender with damageMul (×1.5 boost + ×2.0 synergy) and attackSpeedMul (×2) via BuffStats ───
+        // ─── U4: Defender with damageMul (×1.5 boost + ×2.0 synergy) and attackSpeedMul (×2) via ModifierStats ───
 
         [Test]
         public void U4_Defender_Buff_Multipliers_Applied_To_Damage_And_Cooldown()
@@ -201,10 +201,10 @@ namespace Wassup.Tests.EditMode
                 targetMask: (int)Faction.Enemy,
                 defenderTag: true);
 
-            // Wire BuffStats: damageMul = 1.5 × 2.0 = 3.0, attackSpeedMul = 2.0 (cooldown ÷ 2).
-            _em.AddComponentData(defender, new BuffStats { damageMul = 1f, attackSpeedMul = 1f, dmgTakenMul = 1f });
-            _em.AddComponent<BuffStatsDirty>(defender);
-            _em.SetComponentEnabled<BuffStatsDirty>(defender, true);
+            // Wire ModifierStats: damageMul = 1.5 × 2.0 = 3.0, attackSpeedMul = 2.0 (cooldown ÷ 2).
+            _em.AddComponentData(defender, new ModifierStats { damageMul = 1f, attackSpeedMul = 1f, dmgTakenMul = 1f });
+            _em.AddComponent<ModifierStatsDirty>(defender);
+            _em.SetComponentEnabled<ModifierStatsDirty>(defender, true);
             var slots = _em.AddBuffer<StatModifierSlot>(defender);
             slots.Add(new StatModifierSlot { stat = StatKind.DamageMul,      op = CombineOp.Multiplicative, magnitude = 1.5f });
             slots.Add(new StatModifierSlot { stat = StatKind.DamageMul,      op = CombineOp.Multiplicative, magnitude = 2f });

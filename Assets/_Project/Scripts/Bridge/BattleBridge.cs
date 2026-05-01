@@ -1844,7 +1844,7 @@ namespace Wassup.Bridge
 
         // RapidFire / CooldownReduction: multiplier here means "attack speed factor" (how much faster to fire).
         // AttackSpeedMul > 1 = faster attacks. Legacy ApplyCooldownReduction stored 1/multiplier as a cooldown divisor;
-        // the new channel stores the speed multiplier directly (BuffStatsAggregateSystem applies it to attackSpeedMul).
+        // the new channel stores the speed multiplier directly (ModifierStatsAggregateSystem applies it to attackSpeedMul).
         public void EnqueueAttackSpeedMul(Entity target, float multiplier, float duration)
         {
             if (!_statModifierQueue.IsCreated) return;
@@ -2334,19 +2334,19 @@ namespace Wassup.Bridge
                     outputBuf.Add(new Wassup.Battle.Combat.AttackOutputElement { value = output });
             }
 
-            // modifier-framework unit 6: BuffStats cache + dirty flag + IncomingHeal buffer.
-            // BuffStats defaults: dmgTakenMul=1 (no reduction), regenPerSec=0 (no regen).
-            // BuffStatsDirty is IEnableableComponent — added disabled; ApplySystem enables when modifiers arrive.
+            // modifier-framework unit 6: ModifierStats cache + dirty flag + IncomingHeal buffer.
+            // ModifierStats defaults: dmgTakenMul=1 (no reduction), regenPerSec=0 (no regen).
+            // ModifierStatsDirty is IEnableableComponent — added disabled; ApplySystem enables when modifiers arrive.
             // IncomingHeal buffer is pre-attached so AttackSystem ECB can AppendToBuffer without structural change.
-            _em.AddComponentData(entity, new Wassup.Battle.Effects.BuffStats
+            _em.AddComponentData(entity, new Wassup.Battle.Effects.ModifierStats
             {
                 damageMul      = 1f,
                 attackSpeedMul = 1f,
                 dmgTakenMul    = 1f,
                 regenPerSec    = 0f,
             });
-            _em.AddComponent<Wassup.Battle.Effects.BuffStatsDirty>(entity);
-            _em.SetComponentEnabled<Wassup.Battle.Effects.BuffStatsDirty>(entity, false);
+            _em.AddComponent<Wassup.Battle.Effects.ModifierStatsDirty>(entity);
+            _em.SetComponentEnabled<Wassup.Battle.Effects.ModifierStatsDirty>(entity, false);
             _em.AddBuffer<Wassup.Battle.Units.IncomingHeal>(entity);
 
             CreateHealthBar(entity, yOffset: 0.9f * CharacterVisualScale, baseScale: 0.35f * CharacterVisualScale);
@@ -2863,19 +2863,19 @@ namespace Wassup.Bridge
                     out _);
             }
 
-            // modifier-framework: BuffStats cache + dirty flag for enemy entities.
+            // modifier-framework: ModifierStats cache + dirty flag for enemy entities.
             // Enemies can receive ApplyStat effects (e.g. Stack-threshold debuffs) so they
-            // need the same BuffStats/BuffStatsDirty as defenders. IncomingHeal is NOT added
+            // need the same ModifierStats/ModifierStatsDirty as defenders. IncomingHeal is NOT added
             // — enemies do not receive heals.
-            _em.AddComponentData(entity, new Wassup.Battle.Effects.BuffStats
+            _em.AddComponentData(entity, new Wassup.Battle.Effects.ModifierStats
             {
                 damageMul      = 1f,
                 attackSpeedMul = 1f,
                 dmgTakenMul    = 1f,
                 regenPerSec    = 0f,
             });
-            _em.AddComponent<Wassup.Battle.Effects.BuffStatsDirty>(entity);
-            _em.SetComponentEnabled<Wassup.Battle.Effects.BuffStatsDirty>(entity, false);
+            _em.AddComponent<Wassup.Battle.Effects.ModifierStatsDirty>(entity);
+            _em.SetComponentEnabled<Wassup.Battle.Effects.ModifierStatsDirty>(entity, false);
 
             CreateHealthBar(entity, yOffset: 0.9f * CharacterVisualScale, baseScale: 0.35f * CharacterVisualScale);
         }
