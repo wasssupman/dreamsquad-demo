@@ -1,7 +1,7 @@
 // modifier-framework unit 5 — ECS DynamicBuffer carrier for DefenderUnitData.outputs[].
 // BattleBridge attaches this buffer at defender spawn when outputs.Length > 0.
-// AttackSystem reads it at hit time to resolve per-output effects instead of the
-// legacy single IncomingDamage(attack.damage) path.
+// AttackSystem reads it to resolve per-output effects instead of defender
+// legacy single IncomingDamage(attack.damage) fallback.
 using Unity.Entities;
 using Wassup.Data;
 

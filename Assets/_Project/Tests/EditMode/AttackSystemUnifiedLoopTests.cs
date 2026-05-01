@@ -8,6 +8,7 @@ using Wassup.Battle.Combat;
 using Wassup.Battle.Combat.Projectile;
 using Wassup.Battle.Effects;
 using Wassup.Battle.Units;
+using Wassup.Data;
 
 namespace Wassup.Tests.EditMode
 {
@@ -85,6 +86,18 @@ namespace Wassup.Tests.EditMode
             });
             if (defenderTag) _em.AddComponent<DefenderUnitTag>(e);
             if (attackerTag) _em.AddComponent<AttackUnitTag>(e);
+            if (defenderTag && damage > 0f)
+            {
+                var outputs = _em.AddBuffer<AttackOutputElement>(e);
+                outputs.Add(new AttackOutputElement
+                {
+                    value = new AttackOutput
+                    {
+                        kind = AttackOutputKind.Damage,
+                        magnitude = damage,
+                    }
+                });
+            }
             return e;
         }
 
@@ -136,6 +149,8 @@ namespace Wassup.Tests.EditMode
 
             Assert.IsTrue(_em.HasComponent<ProjectileSpawnRequest>(defender),
                 "Defender with ProjectileRef should have ProjectileSpawnRequest added");
+            Assert.AreEqual(5f, _em.GetComponentData<ProjectileSpawnRequest>(defender).damage, 1e-4f,
+                "Projectile defender should snapshot Damage output as projectile damage");
             Assert.AreEqual(0, _em.GetBuffer<IncomingDamage>(enemy).Length,
                 "No direct IncomingDamage when projectile path is taken");
         }
@@ -206,9 +221,9 @@ namespace Wassup.Tests.EditMode
             _em.AddComponent<ModifierStatsDirty>(defender);
             _em.SetComponentEnabled<ModifierStatsDirty>(defender, true);
             var slots = _em.AddBuffer<StatModifierSlot>(defender);
-            slots.Add(new StatModifierSlot { stat = StatKind.DamageMul,      op = CombineOp.Multiplicative, magnitude = 1.5f });
-            slots.Add(new StatModifierSlot { stat = StatKind.DamageMul,      op = CombineOp.Multiplicative, magnitude = 2f });
-            slots.Add(new StatModifierSlot { stat = StatKind.AttackSpeedMul, op = CombineOp.Multiplicative, magnitude = 2f });
+            slots.Add(new StatModifierSlot { header = new ModifierHeader { remaining = 10f }, stat = StatKind.DamageMul,      op = CombineOp.Multiplicative, magnitude = 1.5f });
+            slots.Add(new StatModifierSlot { header = new ModifierHeader { remaining = 10f }, stat = StatKind.DamageMul,      op = CombineOp.Multiplicative, magnitude = 2f });
+            slots.Add(new StatModifierSlot { header = new ModifierHeader { remaining = 10f }, stat = StatKind.AttackSpeedMul, op = CombineOp.Multiplicative, magnitude = 2f });
 
             var enemy = CreateTarget(Faction.Enemy, new float3(1f, 0f, 0f), attackerTag: true);
 

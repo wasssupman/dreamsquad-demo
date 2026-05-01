@@ -21,6 +21,14 @@ MonoBehaviour:
   visualMesh: {fileID: 0}
   visualMaterial: {fileID: 2100000, guid: 8b475daf22c6b455cae26332bd71a8bd, type: 2}
   projectile: {fileID: 11400000, guid: 9ba8609078272458283efd21cf035040, type: 2}
+  outputs:
+  - kind: 0
+    magnitude: 15
+    duration: 0
+    stat: 0
+    op: 0
+    stackKind: 0
+    stackMaxStack: 0
   onPlaceEffect: 3
   onPlaceRange: 2.5
   onPlaceMagnitude: 0.1

@@ -21,8 +21,11 @@
 
 ## 완료 기준
 
-- Unity compile error 0.
-- 모든 기존 defender 가 `AttackOutputKind.Damage` output 을 가진다.
-- Play smoke: 기존 defender 1~2종이 적에게 주는 데미지가 이전과 동등.
-- Healer 의 `Heal` output 동작이 유지된다.
-- Attack output log 에 migrated defender 의 `Damage` output 이 기록된다.
+- [x] Unity compile error 0.
+- [x] 모든 기존 damage defender 가 `AttackOutputKind.Damage` output 을 가진다.
+- [x] EditMode: `AttackSystemUnifiedLoopTests` 11/11 passed.
+- [ ] Play smoke: 기존 defender 1~2종이 적에게 주는 데미지가 이전과 동등.
+- [ ] Healer 의 `Heal` output 동작이 유지된다.
+- [ ] Attack output log 에 migrated defender 의 `Damage` output 이 기록된다.
+
+검증: 2026-05-01 — Unity compile error 0, `Wassup.Tests.EditMode.AttackSystemUnifiedLoopTests` 11/11 passed. Play smoke 는 미실행.

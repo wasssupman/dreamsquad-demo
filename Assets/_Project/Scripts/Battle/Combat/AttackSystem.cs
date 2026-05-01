@@ -150,150 +150,192 @@ namespace Wassup.Battle.Combat
                         : 1f;
                     float emittedDamage = attack.ValueRO.damage * buffStatsDamageMul;
 
-                    // modifier-framework unit 5: outputs path vs legacy path.
-                    // When AttackOutputElement buffer is present the SO defines hit effects explicitly.
-                    // Legacy path (no buffer): single IncomingDamage(attack.damage * muls) as before.
+                    // modifier-legacy-migration unit 0: defenders must define hit
+                    // effects through AttackOutputElement. The legacy attack.damage
+                    // fallback remains only for enemies until AttackUnitData.outputs[]
+                    // lands in the next unit.
                     bool hasOutputs = outputBufferLookup.HasBuffer(attackerEntity);
 
                     if (hasOutputs)
                     {
-                        // ── Outputs path ────────────────────────────────────────────────
-                        // Collect hit targets (same AoE logic as legacy melee path).
-                        int desiredCount = math.max(1, attack.ValueRO.attackTargetCount);
-                        var hitTargets = new NativeArray<Entity>(desiredCount, Allocator.Temp);
-                        int hitCount = 0;
-
-                        hitTargets[hitCount++] = bestTarget;
-                        if (desiredCount > 1)
-                        {
-                            var hitMaskO = new NativeArray<bool>(targetEntities.Length, Allocator.Temp);
-                            int seedIdx = -1;
-                            for (int i = 0; i < targetEntities.Length; i++)
-                            {
-                                if (targetEntities[i] == bestTarget) { seedIdx = i; break; }
-                            }
-                            if (seedIdx >= 0) hitMaskO[seedIdx] = true;
-
-                            for (int pass = 1; pass < desiredCount && hitCount < desiredCount; pass++)
-                            {
-                                float passSq = float.MaxValue;
-                                int passIdx = -1;
-                                for (int i = 0; i < targetEntities.Length; i++)
-                                {
-                                    if (hitMaskO[i]) continue;
-                                    if (((int)targetFactions[i].value & mask) == 0) continue;
-                                    if (targetEntities[i] == attackerEntity) continue;
-                                    float d2 = DistanceSqToTarget(atkPos, targetEntities[i], targetTransforms[i].Position, blockingHazardCellsLookup, hasFlowField, flowField, out _);
-                                    if (d2 <= rangeSq && d2 < passSq)
-                                    {
-                                        passSq = d2;
-                                        passIdx = i;
-                                    }
-                                }
-                                if (passIdx < 0) break;
-                                hitMaskO[passIdx] = true;
-                                hitTargets[hitCount++] = targetEntities[passIdx];
-                            }
-                            hitMaskO.Dispose();
-                        }
-
                         var outputs = outputBufferLookup[attackerEntity];
-                        for (int ti = 0; ti < hitCount; ti++)
+
+                        if (projectileRefLookup.HasComponent(attackerEntity))
                         {
-                            Entity hitTarget = hitTargets[ti];
+                            var projRef = projectileRefLookup[attackerEntity];
+                            float projectileDamage = 0f;
                             for (int oi = 0; oi < outputs.Length; oi++)
                             {
                                 var o = outputs[oi].value;
-                                switch (o.kind)
+                                if (o.kind != Wassup.Data.AttackOutputKind.Damage) continue;
+                                float amount = o.magnitude * buffStatsDamageMul;
+                                projectileDamage += amount;
+                                if (attackOutputLogWriter.HasValue)
+                                    attackOutputLogWriter.Value.Enqueue(new AttackOutputLogEvent
+                                    {
+                                        attacker  = attackerEntity,
+                                        kind      = Wassup.Data.AttackOutputKind.Damage,
+                                        magnitude = amount,
+                                        duration  = 0f,
+                                        sourcePos = atkPos,
+                                        targetPos = bestTargetPos,
+                                    });
+                            }
+
+                            ecb.AddComponent(attackerEntity, new ProjectileSpawnRequest
+                            {
+                                target = bestTarget,
+                                origin = atkPos,
+                                damage = projectileDamage,
+                                speed = projRef.speed,
+                                hitThreshold = projRef.hitThreshold,
+                                visualScale = projRef.visualScale,
+                                dataIndex = projRef.dataIndex,
+                                onHitEffect = projRef.onHitEffect,
+                                splashRadius = projRef.splashRadius,
+                                splashDamageMul = projRef.splashDamageMul,
+                            });
+                        }
+                        else
+                        {
+                            // ── Outputs path ────────────────────────────────────────────────
+                            // Collect hit targets (same AoE logic as legacy melee path).
+                            int desiredCount = math.max(1, attack.ValueRO.attackTargetCount);
+                            var hitTargets = new NativeArray<Entity>(desiredCount, Allocator.Temp);
+                            int hitCount = 0;
+
+                            hitTargets[hitCount++] = bestTarget;
+                            if (desiredCount > 1)
+                            {
+                                var hitMaskO = new NativeArray<bool>(targetEntities.Length, Allocator.Temp);
+                                int seedIdx = -1;
+                                for (int i = 0; i < targetEntities.Length; i++)
                                 {
-                                    case Wassup.Data.AttackOutputKind.Damage:
-                                        ecb.AppendToBuffer(hitTarget,
-                                            new IncomingDamage { amount = o.magnitude * buffStatsDamageMul });
-                                        if (attackOutputLogWriter.HasValue)
-                                            attackOutputLogWriter.Value.Enqueue(new AttackOutputLogEvent
-                                            {
-                                                attacker  = attackerEntity,
-                                                kind      = Wassup.Data.AttackOutputKind.Damage,
-                                                magnitude = o.magnitude * buffStatsDamageMul,
-                                                duration  = 0f,
-                                                sourcePos = atkPos,
-                                                targetPos = bestTargetPos,
-                                            });
-                                        break;
+                                    if (targetEntities[i] == bestTarget) { seedIdx = i; break; }
+                                }
+                                if (seedIdx >= 0) hitMaskO[seedIdx] = true;
 
-                                    case Wassup.Data.AttackOutputKind.Heal:
-                                        ecb.AppendToBuffer(hitTarget, new Wassup.Battle.Units.IncomingHeal { amount = o.magnitude });
-                                        if (attackOutputLogWriter.HasValue)
-                                            attackOutputLogWriter.Value.Enqueue(new AttackOutputLogEvent
-                                            {
-                                                attacker  = attackerEntity,
-                                                kind      = Wassup.Data.AttackOutputKind.Heal,
-                                                magnitude = o.magnitude,
-                                                duration  = 0f,
-                                                sourcePos = atkPos,
-                                                targetPos = bestTargetPos,
-                                            });
-                                        break;
+                                for (int pass = 1; pass < desiredCount && hitCount < desiredCount; pass++)
+                                {
+                                    float passSq = float.MaxValue;
+                                    int passIdx = -1;
+                                    for (int i = 0; i < targetEntities.Length; i++)
+                                    {
+                                        if (hitMaskO[i]) continue;
+                                        if (((int)targetFactions[i].value & mask) == 0) continue;
+                                        if (targetEntities[i] == attackerEntity) continue;
+                                        float d2 = DistanceSqToTarget(atkPos, targetEntities[i], targetTransforms[i].Position, blockingHazardCellsLookup, hasFlowField, flowField, out _);
+                                        if (d2 <= rangeSq && d2 < passSq)
+                                        {
+                                            passSq = d2;
+                                            passIdx = i;
+                                        }
+                                    }
+                                    if (passIdx < 0) break;
+                                    hitMaskO[passIdx] = true;
+                                    hitTargets[hitCount++] = targetEntities[passIdx];
+                                }
+                                hitMaskO.Dispose();
+                            }
 
-                                    case Wassup.Data.AttackOutputKind.ApplyStat:
-                                        if (hasStatQ)
-                                            statModSingleton.ValueRW.queue.Enqueue(new Wassup.Battle.Effects.StatModifierApplyEvent
-                                            {
-                                                target    = hitTarget,
-                                                stat      = o.stat,
-                                                op        = o.op,
-                                                magnitude = o.magnitude,
-                                                duration  = o.duration,
-                                                source    = attackerEntity,
-                                                stackId   = 0,
-                                            });
-                                        if (attackOutputLogWriter.HasValue)
-                                            attackOutputLogWriter.Value.Enqueue(new AttackOutputLogEvent
-                                            {
-                                                attacker  = attackerEntity,
-                                                kind      = Wassup.Data.AttackOutputKind.ApplyStat,
-                                                magnitude = o.magnitude,
-                                                stat      = o.stat,
-                                                duration  = o.duration,
-                                                sourcePos = atkPos,
-                                                targetPos = bestTargetPos,
-                                            });
-                                        break;
+                            for (int ti = 0; ti < hitCount; ti++)
+                            {
+                                Entity hitTarget = hitTargets[ti];
+                                for (int oi = 0; oi < outputs.Length; oi++)
+                                {
+                                    var o = outputs[oi].value;
+                                    switch (o.kind)
+                                    {
+                                        case Wassup.Data.AttackOutputKind.Damage:
+                                            ecb.AppendToBuffer(hitTarget,
+                                                new IncomingDamage { amount = o.magnitude * buffStatsDamageMul });
+                                            if (attackOutputLogWriter.HasValue)
+                                                attackOutputLogWriter.Value.Enqueue(new AttackOutputLogEvent
+                                                {
+                                                    attacker  = attackerEntity,
+                                                    kind      = Wassup.Data.AttackOutputKind.Damage,
+                                                    magnitude = o.magnitude * buffStatsDamageMul,
+                                                    duration  = 0f,
+                                                    sourcePos = atkPos,
+                                                    targetPos = bestTargetPos,
+                                                });
+                                            break;
 
-                                    case Wassup.Data.AttackOutputKind.ApplyStack:
-                                        if (hasStackQ)
-                                            stackModSingleton.ValueRW.queue.Enqueue(new Wassup.Battle.Effects.StackModifierApplyEvent
-                                            {
-                                                target         = hitTarget,
-                                                kind           = o.stackKind,
-                                                countDelta     = (byte)math.max(1f, o.magnitude),
-                                                maxStack       = o.stackMaxStack > 0 ? o.stackMaxStack : (byte)5,
-                                                perAppDuration = o.duration,
-                                                source         = attackerEntity,
-                                            });
-                                        if (attackOutputLogWriter.HasValue)
-                                            attackOutputLogWriter.Value.Enqueue(new AttackOutputLogEvent
-                                            {
-                                                attacker   = attackerEntity,
-                                                kind       = Wassup.Data.AttackOutputKind.ApplyStack,
-                                                magnitude  = o.magnitude,
-                                                stackKind  = o.stackKind,
-                                                duration   = o.duration,
-                                                sourcePos  = atkPos,
-                                                targetPos  = bestTargetPos,
-                                            });
-                                        break;
+                                        case Wassup.Data.AttackOutputKind.Heal:
+                                            ecb.AppendToBuffer(hitTarget, new Wassup.Battle.Units.IncomingHeal { amount = o.magnitude });
+                                            if (attackOutputLogWriter.HasValue)
+                                                attackOutputLogWriter.Value.Enqueue(new AttackOutputLogEvent
+                                                {
+                                                    attacker  = attackerEntity,
+                                                    kind      = Wassup.Data.AttackOutputKind.Heal,
+                                                    magnitude = o.magnitude,
+                                                    duration  = 0f,
+                                                    sourcePos = atkPos,
+                                                    targetPos = bestTargetPos,
+                                                });
+                                            break;
+
+                                        case Wassup.Data.AttackOutputKind.ApplyStat:
+                                            if (hasStatQ)
+                                                statModSingleton.ValueRW.queue.Enqueue(new Wassup.Battle.Effects.StatModifierApplyEvent
+                                                {
+                                                    target    = hitTarget,
+                                                    stat      = o.stat,
+                                                    op        = o.op,
+                                                    magnitude = o.magnitude,
+                                                    duration  = o.duration,
+                                                    source    = attackerEntity,
+                                                    stackId   = 0,
+                                                });
+                                            if (attackOutputLogWriter.HasValue)
+                                                attackOutputLogWriter.Value.Enqueue(new AttackOutputLogEvent
+                                                {
+                                                    attacker  = attackerEntity,
+                                                    kind      = Wassup.Data.AttackOutputKind.ApplyStat,
+                                                    magnitude = o.magnitude,
+                                                    stat      = o.stat,
+                                                    duration  = o.duration,
+                                                    sourcePos = atkPos,
+                                                    targetPos = bestTargetPos,
+                                                });
+                                            break;
+
+                                        case Wassup.Data.AttackOutputKind.ApplyStack:
+                                            if (hasStackQ)
+                                                stackModSingleton.ValueRW.queue.Enqueue(new Wassup.Battle.Effects.StackModifierApplyEvent
+                                                {
+                                                    target         = hitTarget,
+                                                    kind           = o.stackKind,
+                                                    countDelta     = (byte)math.max(1f, o.magnitude),
+                                                    maxStack       = o.stackMaxStack > 0 ? o.stackMaxStack : (byte)5,
+                                                    perAppDuration = o.duration,
+                                                    source         = attackerEntity,
+                                                });
+                                            if (attackOutputLogWriter.HasValue)
+                                                attackOutputLogWriter.Value.Enqueue(new AttackOutputLogEvent
+                                                {
+                                                    attacker   = attackerEntity,
+                                                    kind       = Wassup.Data.AttackOutputKind.ApplyStack,
+                                                    magnitude  = o.magnitude,
+                                                    stackKind  = o.stackKind,
+                                                    duration   = o.duration,
+                                                    sourcePos  = atkPos,
+                                                    targetPos  = bestTargetPos,
+                                                });
+                                            break;
+                                    }
                                 }
                             }
+                            hitTargets.Dispose();
                         }
-                        hitTargets.Dispose();
                     }
-                    else
+                    else if (!isDefender)
                     {
                         // ── Legacy path ──────────────────────────────────────────────────
                         // ProjectileRef-bearing attackers stage a spawn request for the
                         // MonoBehaviour drain loop in BattleBridge. Attackers without a
-                        // ProjectileRef (enemies and melee defenders) use direct-damage.
+                        // ProjectileRef use direct-damage. This path is enemy-only until
+                        // AttackUnitData.outputs[] is introduced.
                         if (projectileRefLookup.HasComponent(attackerEntity))
                         {
                             var projRef = projectileRefLookup[attackerEntity];

@@ -26,8 +26,9 @@ namespace Wassup.Data
         // Phase 0-2 direct-damage path for regression coverage.
         public ProjectileData projectile;
 
-        // modifier-framework unit 5: hit outputs. When non-empty, replaces the legacy
-        // single IncomingDamage(attackDamage) path. Empty = legacy compat path active.
+        // modifier-legacy-migration unit 0: hit outputs are the runtime source of
+        // truth for defender attacks. `attackDamage` remains serialized for authoring
+        // compatibility only; defenders with no outputs deal no runtime damage.
         [Header("Attack Outputs")]
         public AttackOutput[] outputs;
 
