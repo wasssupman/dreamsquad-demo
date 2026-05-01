@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 76be7b1982d44400ea2bbe396d3eea24, type: 3}
+  m_Name: Enemy_Needler
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.AttackUnitData
+  displayName: Needler
+  health: 35
+  moveSpeed: 2.8
+  attackDamage: 3
+  attackRange: 4.2
+  attackCooldown: 0.35
+  projectile: {fileID: 11400000, guid: 2a1e70d9b5c234e97a1f56e419433f2a, type: 2}
+  movePauseOnAttackSec: 0
+  outputs:
+  - kind: 0
+    magnitude: 3
+    duration: 0
+    stat: 0
+    op: 0
+    stackKind: 0
+    stackMaxStack: 0
+  visualMesh: {fileID: 0}
+  visualMaterial: {fileID: 2100000, guid: 07906d96f84be4033b643c2dfa06b95b, type: 2}

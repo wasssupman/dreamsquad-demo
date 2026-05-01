@@ -13,6 +13,21 @@ MonoBehaviour:
   m_Name: WaveA
   m_EditorClassIdentifier: Assembly-CSharp::Wassup.Data.AttackDeck
   deckId: WaveA
+  useGeneratedWaves: 1
+  waveSeed: 0
+  waveGeneratorVersion: 1
+  attackUnitPool:
+  - {fileID: 11400000, guid: d8f78ad31ef4e4cd3ba3b2405d899e54, type: 2}
+  - {fileID: 11400000, guid: ed2bfe7dff71d415b84563f3ebc293b9, type: 2}
+  - {fileID: 11400000, guid: a50475686b6034b219173681f81f3dcd, type: 2}
+  - {fileID: 11400000, guid: cd1692d6a9af9419b9871a40c9e670cc, type: 2}
+  - {fileID: 11400000, guid: c8c97e20c19b64742b73262253966903, type: 2}
+  - {fileID: 11400000, guid: b2784981455b648589a8bd5d8c225424, type: 2}
+  minWaveCount: 10
+  maxWaveCount: 15
+  minUnitsPerWave: 10
+  maxUnitsPerWave: 15
+  intraWaveSpacingSec: 0.35
   spawns:
   - triggerTimeSec: 0
     unitType: {fileID: 11400000, guid: ed2bfe7dff71d415b84563f3ebc293b9, type: 2}
