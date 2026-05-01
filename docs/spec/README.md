@@ -66,7 +66,7 @@ docs/spec/wave-pattern/5_handoff_summary.md
 - Key Files
 - Verified
 - Notes
-- Follow-up
+- Follow-up — 본 문서에 상세 항목을 적지 말고 본 README 하단 **Follow-up Backlog** 섹션으로 옮기고 한 줄 포인터만 남긴다
 
 권장 길이:
 
@@ -100,3 +100,48 @@ code + git history        구현 상세
 - `docs/spec/defender-drag-drop-deployment/`
 - `docs/spec/defender-on-place-skills/`
 - `docs/spec/wave-pattern/`
+
+---
+
+## Follow-up Backlog
+
+종료된 spec 의 follow-up 후보를 한 곳에 모은다. 개별 spec 의 handoff 에는 한 줄 포인터만 남기고 항목은 여기로 이관한다.
+
+### 사용 규칙
+
+- 각 항목 **1~3줄 요약** (What · Why · Scope). 상세 설계는 새 spec 에서 다룬다.
+- Scope: **S** = 단일 unit, **M** = 2~5 unit spec, **L** = 5+ unit spec.
+- **같은 결의 작업은 테마 서브그룹** (`#### {테마명}`) 으로 묶는다. 예: "Modifier framework — Legacy migration".
+- 출처 spec 이 여럿 섞이기 시작하면 항목 끝에 `(spec-slug)` 라벨로 표기.
+- 새 spec 으로 승격되면 줄을 `→ docs/spec/{slug}/` 링크로 대체한다.
+- 더 이상 유효하지 않으면 줄을 삭제하거나 한 줄 사유와 함께 `Promoted` 로 옮긴다.
+
+### Active
+
+> 현재 항목 전부 `modifier-framework-and-healer` (closed 2026-05) 출처. 이후 다른 spec 출처가 섞이기 시작하면 항목 끝 라벨로 표기.
+
+#### Modifier framework — Producer 확장
+
+framework 코어 변경 0. 새 producer 레이어 추가로 다양한 효과 적용 경로 확보. producer-agnostic 설계 검증 시점.
+
+- **Aura defender** [M] · 지속 영역 효과 producer (`AuraOutput[]` + `AuraApplySystem`). 일정 반경 ally 에 매 프레임/N초마다 StatModifier 발화.
+- **Projectile on-hit modifier** [S] · `ProjectileResolveSystem` hit 시 ModifierApply 채널 enqueue. 화염/빙결/둔화 투사체. MoveSpeedMul 도입 시 적용 확장.
+
+#### Modifier framework — 내부 보강
+
+framework 코어/UX/테스트 보강. 콘텐츠 확장 전후 모두 가치 있음.
+
+- **Modifier UI 시각화** [M] · defender HUD + 적 머리 위 활성 modifier 아이콘 표시. ModifierStats / Slot buffer read-only 구독. UI 리소스 의존.
+- **Dispel/Cleanse 채널** [S] · ModifierBuffer 슬롯 제거 채널 (kind/source 기반). CombineOp 별 면역 정책. 콘텐츠 디자인 선행.
+- **Testability — Stack threshold dispatch** [S] · `BattleBridge._stackThresholds` 에 test 주입 API 또는 `IStackThresholdRegistry` 인터페이스 도입. skipped Test 3 활성화 목적.
+- **Testability — AttackSystem outputs dispatch helper 추출** [S] · `OnUpdate` 의 4-way 분기를 `static ProcessAttackOutputs(...)` 로 추출. skipped Test 4 활성화 목적.
+- **추가 EditMode 회귀 테스트** [S] · Stack threshold edge (5→6→5 재발화) / Consume 모드 stack 차감 / IncomingHeal drain Clear / RegenPerSec 누적. Testability 보강과 합쳐 진행.
+
+#### 기타
+
+- **Healer 전용 Spine asset** [S] · 현재 Archer Spine reuse. 전용 rig + idle/heal-cast/death 애니메이션. 시각 식별성, 기능 영향 없음.
+- **Spec 5~10 backfill** [S] · hybrid 진행 시 누락된 단위 spec 파일 작성. commit/handoff 가 임시 대체 중. 필수는 아님.
+
+### Promoted
+
+- **Modifier framework — Legacy migration** → `docs/spec/modifier-legacy-migration/`
