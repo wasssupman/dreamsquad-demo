@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: Defender_Bastion
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DefenderUnitData
   displayName: Bastion
-  health: 150
-  attackRange: 1
+  health: 1500
+  attackRange: 2
   attackDamage: 25
   attackCooldown: 0.5
   attackTargetCount: 3

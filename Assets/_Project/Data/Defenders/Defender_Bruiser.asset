@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Defender_Bruiser
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DefenderUnitData
   displayName: Bruiser
-  health: 100
+  health: 1000
   attackRange: 1.5
   attackDamage: 30
   attackCooldown: 1.2
@@ -44,6 +44,11 @@ MonoBehaviour:
   deployAnimation: attack-combo1-hammer
   placementVfxPrefab: {fileID: 2427901435903505602, guid: 971aa18e6a15c0d48bf889c9d9df4fce, type: 3}
   attackVfxPrefab: {fileID: 5971203435228136222, guid: f0b2a41c3f8adb84f8753145e83bafe7, type: 3}
+  knockbackDistance: 0
+  knockbackDuration: 0
+  onPlacePushDistance: 0
+  onPlacePushDuration: 0
+  onPlacePushRadius: 0
   castAnchorBone: 
   castAnchorLocalOffset: {x: 0.5, y: 1, z: 0}
   deploymentDuration: 0.45
