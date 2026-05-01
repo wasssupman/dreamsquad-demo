@@ -1637,6 +1637,21 @@ namespace Wassup.Bridge
                 return;
             }
 
+            // Snapshot shooter's outputs BEFORE any structural change. Subsequent
+            // CreateEntity/AddComponent calls invalidate cached BufferTypeHandles,
+            // so reading the buffer after them throws ObjectDisposedException when
+            // multiple projectiles spawn in the same frame.
+            NativeArray<Wassup.Battle.Combat.AttackOutputElement> outputSnapshot = default;
+            bool hasSnapshot = false;
+            if (_em.HasBuffer<ProjectileSpawnOutputElement>(shooter))
+            {
+                var sourceOutputs = _em.GetBuffer<ProjectileSpawnOutputElement>(shooter);
+                outputSnapshot = new NativeArray<Wassup.Battle.Combat.AttackOutputElement>(sourceOutputs.Length, Allocator.Temp);
+                for (int i = 0; i < sourceOutputs.Length; i++)
+                    outputSnapshot[i] = new Wassup.Battle.Combat.AttackOutputElement { value = sourceOutputs[i].value };
+                hasSnapshot = true;
+            }
+
             var entity = _em.CreateEntity();
 #if UNITY_EDITOR
             _em.SetName(entity, $"Projectile_{req.dataIndex}");
@@ -1656,15 +1671,12 @@ namespace Wassup.Bridge
                 dataIndex = req.dataIndex,
             });
 
-            if (_em.HasBuffer<ProjectileSpawnOutputElement>(shooter))
+            if (hasSnapshot)
             {
-                var sourceOutputs = _em.GetBuffer<ProjectileSpawnOutputElement>(shooter);
                 var projectileOutputs = _em.AddBuffer<Wassup.Battle.Combat.AttackOutputElement>(entity);
-                for (int i = 0; i < sourceOutputs.Length; i++)
-                {
-                    var output = sourceOutputs[i].value;
-                    projectileOutputs.Add(new Wassup.Battle.Combat.AttackOutputElement { value = output });
-                }
+                for (int i = 0; i < outputSnapshot.Length; i++)
+                    projectileOutputs.Add(outputSnapshot[i]);
+                outputSnapshot.Dispose();
             }
 
             var data = _projectileDataByIndex[req.dataIndex];

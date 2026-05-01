@@ -14,12 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.SkillData
   id: rapid_fire
   displayName: Rapid Fire
-  description: "\uC9C0\uC815 \uBC29\uC5B4 \uC720\uB2DB \uACF5\uACA9 \uCFE8\uB2E4\uC6B4
-    \xD70.5, 6\uCD08 \uC9C0\uC18D."
+  description: "\uC9C0\uC815 \uBC29\uC5B4 \uC720\uB2DB \uACF5\uACA9\uC18D\uB3C4
+    \xD72, 6\uCD08 \uC9C0\uC18D."
   effect: 2
   target: 1
   range: 0
-  magnitude: 0.5
+  magnitude: 2
   durationSec: 6
   cooldownSec: 25
   cost: 2
