@@ -9,7 +9,7 @@ using Wassup.Battle.Movement;
 
 namespace Wassup.Tests.EditMode
 {
-    // Verifies the CC composition math in MovementSystem:
+    // Verifies the movement composition math in MovementSystem:
     //   final_pos = current + flowStep * speedMul + impulseDisplacement
     // Uses speed=2, dt=1s, +x unit flow so expected deltas are easy to assert.
     public class MovementCompositionTests
@@ -75,16 +75,15 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
-        public void Slow_Only_Scales_FlowStep()
+        public void MoveSpeedMul_Only_Scales_FlowStep()
         {
             var e = CreateUnit();
-            var buf = _em.AddBuffer<CcEffect>(e);
-            buf.Add(new CcEffect { kind = CcKind.Slow, scalar = 0.5f, remainingTime = 5f });
+            _em.AddComponentData(e, new ModifierStats { moveSpeedMul = 0.5f });
 
             Tick();
 
             var pos = _em.GetComponentData<LocalTransform>(e).Position;
-            Assert.AreEqual(1f, pos.x, 1e-4f, "speed 2 × 0.5 slow × dt 1 = 1");
+            Assert.AreEqual(1f, pos.x, 1e-4f, "speed 2 × 0.5 moveSpeedMul × dt 1 = 1");
             Assert.AreEqual(0f, pos.z, 1e-4f);
         }
 
@@ -103,17 +102,17 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
-        public void Slow_And_Impulse_Compose_Independently()
+        public void MoveSpeedMul_And_Impulse_Compose_Independently()
         {
             var e = CreateUnit();
+            _em.AddComponentData(e, new ModifierStats { moveSpeedMul = 0.5f });
             var buf = _em.AddBuffer<CcEffect>(e);
-            buf.Add(new CcEffect { kind = CcKind.Slow, scalar = 0.5f, remainingTime = 5f });
             buf.Add(new CcEffect { kind = CcKind.Impulse, vector = new float3(0, 0, 3f), remainingTime = 5f });
 
             Tick();
 
             var pos = _em.GetComponentData<LocalTransform>(e).Position;
-            Assert.AreEqual(1f, pos.x, 1e-4f, "flow step halved by slow");
+            Assert.AreEqual(1f, pos.x, 1e-4f, "flow step halved by moveSpeedMul");
             Assert.AreEqual(3f, pos.z, 1e-4f, "impulse adds z displacement");
         }
     }

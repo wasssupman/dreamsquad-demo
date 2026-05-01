@@ -1,7 +1,7 @@
 # Modifier Legacy Migration Spec
 
 **작성일**: 2026-05-01
-**상태**: planned
+**상태**: completed
 **출처**: `docs/spec/modifier-framework-and-healer/` follow-up
 **목표**: modifier framework 도입 이후 남은 legacy 호환 경로를 channel/outputs[]/context-boundary 모델로 단계적으로 이전한다. 본 spec 은 신규 콘텐츠 추가가 아니라 데이터/경계 정합성 회복이 목적이다.
 
@@ -14,6 +14,7 @@
 | 2 | `2_movespeedmul_slow_migration.md` | `CcEffect.Slow` 를 `StatKind.MoveSpeedMul` / `ModifierStats.moveSpeedMul` 로 이전 |
 | 3 | `3_movement_pause_boundary.md` | `EnemyAttackMovePause` write ownership 을 Movement 맥락으로 이동 |
 | 4 | `4_tests_and_handoff.md` | 통합 회귀 검증 + handoff |
+| 5 | `5_handoff_summary.md` | 완료 결과와 남은 리스크 인계 |
 
 ## 공통 원칙
 
@@ -47,5 +48,5 @@
 ## 후속 후보
 
 - `AttackSystem` outputs 분기 helper 추출 및 skipped test 활성화.
-- Projectile on-hit modifier producer.
+- Stack threshold registry test hook 추가 및 skipped test 활성화.
 - Aura defender producer.

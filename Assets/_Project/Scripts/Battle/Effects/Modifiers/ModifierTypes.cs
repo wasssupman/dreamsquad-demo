@@ -2,7 +2,7 @@ using Unity.Entities;
 
 namespace Wassup.Battle.Effects
 {
-    public enum StatKind : byte { DamageMul, AttackSpeedMul, DmgTakenMul, RegenPerSec }
+    public enum StatKind : byte { DamageMul, AttackSpeedMul, DmgTakenMul, RegenPerSec, MoveSpeedMul }
 
     public enum StackKind : byte { None, Fire, Ice, Bleed, Poison }
 

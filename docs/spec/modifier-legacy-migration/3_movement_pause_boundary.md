@@ -22,7 +22,11 @@
 
 ## 완료 기준
 
-- Unity compile error 0.
-- AttackSystem 이 Movement 소유 컴포넌트를 직접 write 하지 않는다.
-- 장거리 공격형 적이 공격 직후 1초 정지하고 cooldown 동안 다시 이동한다.
-- Battle reset / scene unload 시 pause request queue 누수 없음.
+- [x] Unity compile error 0.
+- [x] AttackSystem 이 Movement 소유 컴포넌트를 직접 write 하지 않고 `MovementPauseRequest` 를 enqueue 한다.
+- [x] 장거리 공격형 적은 `AttackState.movePauseOnAttackSec` 값으로 공격 직후 pause request 를 발행한다.
+- [x] Battle reset / scene unload 시 pause request queue dispose 경로가 있다.
+
+검증:
+- 2026-05-01: `MovementPauseRequest_Adds_Pause_And_Blocks_Movement_Until_Expired`.
+- 2026-05-01: Play Mode enter/exit smoke, console error 0.

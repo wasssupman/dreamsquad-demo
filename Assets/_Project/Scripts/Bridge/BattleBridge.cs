@@ -114,6 +114,7 @@ namespace Wassup.Bridge
         private NativeQueue<Wassup.Battle.Effects.HazardRuntimeEvent> _hazardRuntimeEventQueue;
         private NativeQueue<Wassup.Battle.Effects.HazardDestroyedEvent> _hazardDestroyedQueue;
         private NativeQueue<Wassup.Battle.Combat.AttackOutputLogEvent> _attackOutputLogQueue;
+        private NativeQueue<Wassup.Battle.Movement.MovementPauseRequest> _movementPauseRequestQueue;
         private Unity.Collections.NativeHashSet<Unity.Mathematics.int2> _blockedCells;
         private Unity.Collections.NativeParallelMultiHashMap<Unity.Mathematics.int2, Wassup.Battle.Effects.HazardEffect> _hazardCellToEffects;
 
@@ -308,6 +309,10 @@ namespace Wassup.Bridge
             _em.DestroyEntity(attackOutputLogSingletons);
             attackOutputLogSingletons.Dispose();
 
+            var movementPauseRequestSingletons = _em.CreateEntityQuery(ComponentType.ReadOnly<Wassup.Battle.Movement.MovementPauseRequestEventsSingleton>());
+            _em.DestroyEntity(movementPauseRequestSingletons);
+            movementPauseRequestSingletons.Dispose();
+
             var obstacleSingletons = _em.CreateEntityQuery(ComponentType.ReadOnly<Wassup.Battle.Effects.ObstacleSingleton>());
             _em.DestroyEntity(obstacleSingletons);
             obstacleSingletons.Dispose();
@@ -334,6 +339,7 @@ namespace Wassup.Bridge
             if (_statModifierQueue.IsCreated) _statModifierQueue.Dispose();
             if (_stackModifierQueue.IsCreated) _stackModifierQueue.Dispose();
             if (_attackOutputLogQueue.IsCreated) _attackOutputLogQueue.Dispose();
+            if (_movementPauseRequestQueue.IsCreated) _movementPauseRequestQueue.Dispose();
             if (_hazardRuntimeEventQueue.IsCreated) _hazardRuntimeEventQueue.Dispose();
             if (_hazardDestroyedQueue.IsCreated) _hazardDestroyedQueue.Dispose();
             if (_blockedCells.IsCreated) _blockedCells.Dispose();
@@ -721,6 +727,13 @@ namespace Wassup.Bridge
             _attackOutputLogQueue = new NativeQueue<Wassup.Battle.Combat.AttackOutputLogEvent>(Allocator.Persistent);
             var attackOutputLogSingleton = _em.CreateEntity();
             _em.AddComponentData(attackOutputLogSingleton, new Wassup.Battle.Combat.AttackOutputLogEventsSingleton { queue = _attackOutputLogQueue });
+
+            // Combat→Movement pause request channel. MovementSystem owns the actual
+            // EnemyAttackMovePause component add/update.
+            if (_movementPauseRequestQueue.IsCreated) _movementPauseRequestQueue.Dispose();
+            _movementPauseRequestQueue = new NativeQueue<Wassup.Battle.Movement.MovementPauseRequest>(Allocator.Persistent);
+            var movementPauseSingleton = _em.CreateEntity();
+            _em.AddComponentData(movementPauseSingleton, new Wassup.Battle.Movement.MovementPauseRequestEventsSingleton { queue = _movementPauseRequestQueue });
 
             // Obstacle blocked-cells set. ObstacleLifetimeSystem rebuilds it each frame.
             if (_blockedCells.IsCreated) _blockedCells.Dispose();
@@ -1225,7 +1238,7 @@ namespace Wassup.Bridge
                 float dx = pos.x - targetWorld.x;
                 float dz = pos.z - targetWorld.z;
                 if (dx * dx + dz * dz > rangeSq) continue;
-                EffectSpawner.ApplySlow(_em, e, skill.durationSec, skill.magnitude);
+                EnqueueMoveSpeedMul(e, skill.magnitude, skill.durationSec);
                 affected++;
             }
 
@@ -1582,14 +1595,16 @@ namespace Wassup.Bridge
                 var req = requestData[i];
                 // Spine attack trigger moved to DrainUnitAttackVisualEvents
                 // so both projectile and melee defenders share the same hook.
-                SpawnProjectile(req);
+                SpawnProjectile(req, requestEntities[i]);
                 _em.RemoveComponent<ProjectileSpawnRequest>(requestEntities[i]);
+                if (_em.HasBuffer<ProjectileSpawnOutputElement>(requestEntities[i]))
+                    _em.RemoveComponent<ProjectileSpawnOutputElement>(requestEntities[i]);
             }
             requestEntities.Dispose();
             requestData.Dispose();
         }
 
-        private void SpawnProjectile(ProjectileSpawnRequest req)
+        private void SpawnProjectile(ProjectileSpawnRequest req, Entity shooter)
         {
             if (req.dataIndex < 0 || req.dataIndex >= _projectileDataByIndex.Count)
             {
@@ -1615,6 +1630,17 @@ namespace Wassup.Bridge
                 splashDamageMul = req.splashDamageMul,
                 dataIndex = req.dataIndex,
             });
+
+            if (_em.HasBuffer<ProjectileSpawnOutputElement>(shooter))
+            {
+                var sourceOutputs = _em.GetBuffer<ProjectileSpawnOutputElement>(shooter);
+                var projectileOutputs = _em.AddBuffer<Wassup.Battle.Combat.AttackOutputElement>(entity);
+                for (int i = 0; i < sourceOutputs.Length; i++)
+                {
+                    var output = sourceOutputs[i].value;
+                    projectileOutputs.Add(new Wassup.Battle.Combat.AttackOutputElement { value = output });
+                }
+            }
 
             var data = _projectileDataByIndex[req.dataIndex];
             _projectileViewPool?.Spawn(entity, data, spawnPos);
@@ -1646,7 +1672,7 @@ namespace Wassup.Bridge
                     float dx = pos.x - center.x;
                     float dz = pos.z - center.z;
                     if (dx * dx + dz * dz > rangeSq) continue;
-                    EffectSpawner.ApplySlow(_em, e, unitData.onPlaceDuration, unitData.onPlaceMagnitude);
+                    EnqueueMoveSpeedMul(e, unitData.onPlaceMagnitude, unitData.onPlaceDuration);
                     affected++;
                 }
                 entities.Dispose();
@@ -1664,7 +1690,7 @@ namespace Wassup.Bridge
                     float dx = pos.x - center.x;
                     float dz = pos.z - center.z;
                     if (dx * dx + dz * dz > rangeSq) continue;
-                    EffectSpawner.ApplySlow(_em, e, unitData.onPlaceDuration, unitData.onPlaceMagnitude);
+                    EnqueueMoveSpeedMul(e, unitData.onPlaceMagnitude, unitData.onPlaceDuration);
                     affected++;
                 }
                 entities.Dispose();
@@ -1852,6 +1878,21 @@ namespace Wassup.Bridge
             {
                 target    = target,
                 stat      = Wassup.Battle.Effects.StatKind.AttackSpeedMul,
+                op        = Wassup.Battle.Effects.CombineOp.Multiplicative,
+                magnitude = multiplier,
+                duration  = duration,
+                source    = target,
+                stackId   = 0,
+            });
+        }
+
+        public void EnqueueMoveSpeedMul(Entity target, float multiplier, float duration)
+        {
+            if (!_statModifierQueue.IsCreated) return;
+            _statModifierQueue.Enqueue(new Wassup.Battle.Effects.StatModifierApplyEvent
+            {
+                target    = target,
+                stat      = Wassup.Battle.Effects.StatKind.MoveSpeedMul,
                 op        = Wassup.Battle.Effects.CombineOp.Multiplicative,
                 magnitude = multiplier,
                 duration  = duration,
@@ -2344,6 +2385,7 @@ namespace Wassup.Bridge
                 attackSpeedMul = 1f,
                 dmgTakenMul    = 1f,
                 regenPerSec    = 0f,
+                moveSpeedMul   = 1f,
             });
             _em.AddComponent<Wassup.Battle.Effects.ModifierStatsDirty>(entity);
             _em.SetComponentEnabled<Wassup.Battle.Effects.ModifierStatsDirty>(entity, false);
@@ -2701,6 +2743,7 @@ namespace Wassup.Bridge
             if (_statModifierQueue.IsCreated) _statModifierQueue.Dispose();
             if (_stackModifierQueue.IsCreated) _stackModifierQueue.Dispose();
             if (_attackOutputLogQueue.IsCreated) _attackOutputLogQueue.Dispose();
+            if (_movementPauseRequestQueue.IsCreated) _movementPauseRequestQueue.Dispose();
             if (_hazardRuntimeEventQueue.IsCreated) _hazardRuntimeEventQueue.Dispose();
             if (_hazardDestroyedQueue.IsCreated) _hazardDestroyedQueue.Dispose();
             if (_blockedCells.IsCreated) _blockedCells.Dispose();
@@ -2803,9 +2846,10 @@ namespace Wassup.Bridge
             // to create the buffer on first hit (simplifies ECB usage and keeps archetype stable).
             _em.AddBuffer<IncomingDamage>(entity);
 
-            // Phase 4: when the attack unit has a positive damage, give it an
-            // AttackState so AttackSystem's new attacker loop picks it up.
-            if (entry.unitType.attackDamage > 0f)
+            // modifier-legacy-migration unit 1: enemies attack only through
+            // outputs[]. attackDamage remains serialized compatibility data.
+            bool hasAttackOutputs = entry.unitType.outputs != null && entry.unitType.outputs.Length > 0;
+            if (hasAttackOutputs)
             {
                 _em.AddComponentData(entity, new AttackState
                 {
@@ -2815,7 +2859,12 @@ namespace Wassup.Bridge
                     cooldownRemaining = 0f,
                     attackTargetCount = 1,
                     targetMask = (int)(Faction.Defender | Faction.BlockingHazard),
+                    movePauseOnAttackSec = entry.unitType.movePauseOnAttackSec,
                 });
+                var outputBuf = _em.AddBuffer<Wassup.Battle.Combat.AttackOutputElement>(entity);
+                foreach (var output in entry.unitType.outputs)
+                    outputBuf.Add(new Wassup.Battle.Combat.AttackOutputElement { value = output });
+
                 if (entry.unitType.projectile != null)
                 {
                     var dataIndex = GetOrCreateProjectileDataIndex(entry.unitType.projectile);
@@ -2828,14 +2877,6 @@ namespace Wassup.Bridge
                         onHitEffect = entry.unitType.projectile.onHitEffect,
                         splashRadius = entry.unitType.projectile.splashRadius,
                         splashDamageMul = entry.unitType.projectile.splashDamageMul,
-                    });
-                }
-                if (entry.unitType.movePauseOnAttackSec > 0f)
-                {
-                    _em.AddComponentData(entity, new EnemyAttackMovePause
-                    {
-                        duration = entry.unitType.movePauseOnAttackSec,
-                        remaining = 0f,
                     });
                 }
             }
@@ -2873,6 +2914,7 @@ namespace Wassup.Bridge
                 attackSpeedMul = 1f,
                 dmgTakenMul    = 1f,
                 regenPerSec    = 0f,
+                moveSpeedMul   = 1f,
             });
             _em.AddComponent<Wassup.Battle.Effects.ModifierStatsDirty>(entity);
             _em.SetComponentEnabled<Wassup.Battle.Effects.ModifierStatsDirty>(entity, false);

@@ -25,11 +25,12 @@ namespace Wassup.Battle.Effects
             {
                 // Per-stat accumulators.
                 // Defaults: mul=1 (identity for product), add=0, over=0, hasOver=false.
-                // base values: damageMul=1, attackSpeedMul=1, dmgTakenMul=1, regenPerSec=0.
+                // base values: damageMul=1, attackSpeedMul=1, dmgTakenMul=1, regenPerSec=0, moveSpeedMul=1.
                 float dMul = 1f, dAdd = 0f, dOver = 0f; bool dHasOver = false;
                 float aMul = 1f, aAdd = 0f, aOver = 0f; bool aHasOver = false;
                 float tMul = 1f, tAdd = 0f, tOver = 0f; bool tHasOver = false;
                 float rMul = 1f, rAdd = 0f, rOver = 0f; bool rHasOver = false;
+                float mMul = 1f, mAdd = 0f, mOver = 0f; bool mHasOver = false;
 
                 // ── New-framework modifier slots (may be absent) ──────────────────
                 if (SystemAPI.HasBuffer<StatModifierSlot>(entity))
@@ -58,11 +59,17 @@ namespace Wassup.Battle.Effects
                             else if (s.op == CombineOp.Additive)       tAdd += s.magnitude;
                             else { tOver = math.max(tOver, s.magnitude); tHasOver = true; }
                         }
-                        else // StatKind.RegenPerSec
+                        else if (s.stat == StatKind.RegenPerSec)
                         {
                             if      (s.op == CombineOp.Multiplicative) rMul *= s.magnitude;
                             else if (s.op == CombineOp.Additive)       rAdd += s.magnitude;
                             else { rOver = math.max(rOver, s.magnitude); rHasOver = true; }
+                        }
+                        else if (s.stat == StatKind.MoveSpeedMul)
+                        {
+                            if      (s.op == CombineOp.Multiplicative) mMul *= s.magnitude;
+                            else if (s.op == CombineOp.Additive)       mAdd += s.magnitude;
+                            else { mOver = math.max(mOver, s.magnitude); mHasOver = true; }
                         }
                     }
                 }
@@ -72,6 +79,7 @@ namespace Wassup.Battle.Effects
                 stats.ValueRW.attackSpeedMul = aHasOver ? aOver : (1f + aAdd) * aMul;
                 stats.ValueRW.dmgTakenMul    = tHasOver ? tOver : (1f + tAdd) * tMul;
                 stats.ValueRW.regenPerSec    = rHasOver ? rOver : (0f + rAdd) * rMul;
+                stats.ValueRW.moveSpeedMul   = mHasOver ? mOver : (1f + mAdd) * mMul;
 
                 dirty.ValueRW = false;
             }

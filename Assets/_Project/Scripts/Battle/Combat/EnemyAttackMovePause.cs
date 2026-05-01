@@ -1,6 +1,6 @@
 using Unity.Entities;
 
-namespace Wassup.Battle.Combat
+namespace Wassup.Battle.Movement
 {
     public struct EnemyAttackMovePause : IComponentData
     {

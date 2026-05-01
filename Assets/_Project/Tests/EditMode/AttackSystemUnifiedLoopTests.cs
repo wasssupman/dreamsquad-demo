@@ -86,7 +86,7 @@ namespace Wassup.Tests.EditMode
             });
             if (defenderTag) _em.AddComponent<DefenderUnitTag>(e);
             if (attackerTag) _em.AddComponent<AttackUnitTag>(e);
-            if (defenderTag && damage > 0f)
+            if ((defenderTag || attackerTag) && damage > 0f)
             {
                 var outputs = _em.AddBuffer<AttackOutputElement>(e);
                 outputs.Add(new AttackOutputElement
@@ -217,7 +217,7 @@ namespace Wassup.Tests.EditMode
                 defenderTag: true);
 
             // Wire ModifierStats: damageMul = 1.5 × 2.0 = 3.0, attackSpeedMul = 2.0 (cooldown ÷ 2).
-            _em.AddComponentData(defender, new ModifierStats { damageMul = 1f, attackSpeedMul = 1f, dmgTakenMul = 1f });
+            _em.AddComponentData(defender, new ModifierStats { damageMul = 1f, attackSpeedMul = 1f, dmgTakenMul = 1f, moveSpeedMul = 1f });
             _em.AddComponent<ModifierStatsDirty>(defender);
             _em.SetComponentEnabled<ModifierStatsDirty>(defender, true);
             var slots = _em.AddBuffer<StatModifierSlot>(defender);

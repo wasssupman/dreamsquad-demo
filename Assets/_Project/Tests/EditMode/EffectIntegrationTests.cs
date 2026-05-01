@@ -8,6 +8,7 @@ using Wassup.Battle.Combat;
 using Wassup.Battle.Effects;
 using Wassup.Battle.Movement;
 using Wassup.Battle.Units;
+using Wassup.Data;
 
 namespace Wassup.Tests.EditMode
 {
@@ -17,7 +18,7 @@ namespace Wassup.Tests.EditMode
     public class EffectIntegrationTests
     {
         [Test]
-        public void Movement_Applies_Slow_CcEffect_Multiplier_To_Step()
+        public void Movement_Applies_MoveSpeedMul_From_ModifierStats_To_Step()
         {
             using var world = new World("EffectIntegrationTests_Movement");
             var em = world.EntityManager;
@@ -41,14 +42,13 @@ namespace Wassup.Tests.EditMode
             var e = em.CreateEntity();
             em.AddComponentData(e, LocalTransform.FromPosition(new float3(0f, 0f, 0f)));
             em.AddComponentData(e, new PathFollowState { speed = 2f });
-            var buf = em.AddBuffer<CcEffect>(e);
-            buf.Add(new CcEffect { kind = CcKind.Slow, scalar = 0.5f, remainingTime = 5f });
+            em.AddComponentData(e, new ModifierStats { moveSpeedMul = 0.5f });
 
             world.SetTime(new TimeData(world.Time.ElapsedTime + 1f, 1f));
             simGroup.Update();
 
             var pos = em.GetComponentData<LocalTransform>(e).Position;
-            Assert.AreEqual(1f, pos.x, 1e-4f, "Slow CcEffect 0.5 should halve this frame's step.");
+            Assert.AreEqual(1f, pos.x, 1e-4f, "MoveSpeedMul 0.5 should halve this frame's step.");
             Assert.AreEqual(2f, em.GetComponentData<PathFollowState>(e).speed, 1e-5f,
                 "Base speed field stays unchanged — Movement still owns it.");
 
@@ -82,12 +82,21 @@ namespace Wassup.Tests.EditMode
                 targetMask = (int)Faction.Enemy,
             });
             // Wire ModifierStats via StatModifierSlot: damageMul×2, attackSpeedMul×2 (halves cooldown).
-            em.AddComponentData(defender, new ModifierStats { damageMul = 1f, attackSpeedMul = 1f, dmgTakenMul = 1f });
+            var outputs = em.AddBuffer<AttackOutputElement>(defender);
+            outputs.Add(new AttackOutputElement
+            {
+                value = new AttackOutput
+                {
+                    kind = AttackOutputKind.Damage,
+                    magnitude = 10f,
+                }
+            });
+            em.AddComponentData(defender, new ModifierStats { damageMul = 1f, attackSpeedMul = 1f, dmgTakenMul = 1f, moveSpeedMul = 1f });
             em.AddComponent<ModifierStatsDirty>(defender);
             em.SetComponentEnabled<ModifierStatsDirty>(defender, true);
             var slots = em.AddBuffer<StatModifierSlot>(defender);
-            slots.Add(new StatModifierSlot { stat = StatKind.DamageMul,      op = CombineOp.Multiplicative, magnitude = 2f });
-            slots.Add(new StatModifierSlot { stat = StatKind.AttackSpeedMul, op = CombineOp.Multiplicative, magnitude = 2f });
+            slots.Add(new StatModifierSlot { header = new ModifierHeader { remaining = 10f }, stat = StatKind.DamageMul,      op = CombineOp.Multiplicative, magnitude = 2f });
+            slots.Add(new StatModifierSlot { header = new ModifierHeader { remaining = 10f }, stat = StatKind.AttackSpeedMul, op = CombineOp.Multiplicative, magnitude = 2f });
 
             // Attacker in range at (1,0,0).
             var attacker = em.CreateEntity();
@@ -138,12 +147,21 @@ namespace Wassup.Tests.EditMode
                 targetMask = (int)Faction.Enemy,
             });
             // damageMul×2 (boost) + damageMul×1.3 (synergy) = combined ×2.6.
-            em.AddComponentData(defender, new ModifierStats { damageMul = 1f, attackSpeedMul = 1f, dmgTakenMul = 1f });
+            var outputs = em.AddBuffer<AttackOutputElement>(defender);
+            outputs.Add(new AttackOutputElement
+            {
+                value = new AttackOutput
+                {
+                    kind = AttackOutputKind.Damage,
+                    magnitude = 10f,
+                }
+            });
+            em.AddComponentData(defender, new ModifierStats { damageMul = 1f, attackSpeedMul = 1f, dmgTakenMul = 1f, moveSpeedMul = 1f });
             em.AddComponent<ModifierStatsDirty>(defender);
             em.SetComponentEnabled<ModifierStatsDirty>(defender, true);
             var slots = em.AddBuffer<StatModifierSlot>(defender);
-            slots.Add(new StatModifierSlot { stat = StatKind.DamageMul, op = CombineOp.Multiplicative, magnitude = 2f });
-            slots.Add(new StatModifierSlot { stat = StatKind.DamageMul, op = CombineOp.Multiplicative, magnitude = 1.3f });
+            slots.Add(new StatModifierSlot { header = new ModifierHeader { remaining = 10f }, stat = StatKind.DamageMul, op = CombineOp.Multiplicative, magnitude = 2f });
+            slots.Add(new StatModifierSlot { header = new ModifierHeader { remaining = 10f }, stat = StatKind.DamageMul, op = CombineOp.Multiplicative, magnitude = 1.3f });
 
             var attacker = em.CreateEntity();
             em.AddComponentData(attacker, LocalTransform.FromPosition(new float3(1f, 0f, 0f)));
@@ -185,6 +203,15 @@ namespace Wassup.Tests.EditMode
                 attackTargetCount = 1,
                 targetMask = (int)(Faction.Defender | Faction.BlockingHazard),
             });
+            var outputs = em.AddBuffer<AttackOutputElement>(attacker);
+            outputs.Add(new AttackOutputElement
+            {
+                value = new AttackOutput
+                {
+                    kind = AttackOutputKind.Damage,
+                    magnitude = 7f,
+                }
+            });
             em.AddBuffer<IncomingDamage>(attacker);
 
             // Defender in range at (1, 0, 0). No AttackState → defender side of the
@@ -202,7 +229,7 @@ namespace Wassup.Tests.EditMode
             var incoming = em.GetBuffer<IncomingDamage>(defender);
             Assert.AreEqual(1, incoming.Length, "defender should take one attack from the enemy");
             Assert.AreEqual(7f, incoming[0].amount, 1e-4f,
-                "enemy→defender damage is the raw attack.damage (no boost/synergy scaling)");
+                "enemy→defender damage is the raw Damage output magnitude (no boost/synergy scaling)");
             // Attacker cooldown should be reset to its base duration (no CDR on enemies).
             var attackerState = em.GetComponentData<AttackState>(attacker);
             Assert.AreEqual(1f, attackerState.cooldownRemaining, 1e-4f);

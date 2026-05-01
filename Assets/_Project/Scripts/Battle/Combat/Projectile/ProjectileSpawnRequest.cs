@@ -20,4 +20,9 @@ namespace Wassup.Battle.Combat.Projectile
         public float splashRadius;
         public float splashDamageMul;
     }
+
+    public struct ProjectileSpawnOutputElement : IBufferElementData
+    {
+        public AttackOutput value;
+    }
 }

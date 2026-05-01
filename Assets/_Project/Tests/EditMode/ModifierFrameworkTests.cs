@@ -83,6 +83,7 @@ namespace Wassup.Tests.EditMode
                 attackSpeedMul = 1f,
                 dmgTakenMul    = 1f,
                 regenPerSec    = 0f,
+                moveSpeedMul   = 1f,
             });
             _em.AddComponent<ModifierStatsDirty>(e);
             _em.SetComponentEnabled<ModifierStatsDirty>(e, false);
@@ -192,6 +193,33 @@ namespace Wassup.Tests.EditMode
             damageMul = _em.GetComponentData<ModifierStats>(e).damageMul;
             Assert.AreEqual(3.0f, damageMul, 1e-4f,
                 "Override slot must win: damageMul = max(override values) = 3.0, ignoring mul/add slots.");
+        }
+
+        [Test]
+        public void ModifierStats_Combines_MoveSpeedMul_As_Multiplicative_Stat()
+        {
+            var e = CreateEntityWithModifierStats();
+            var buf = _em.AddBuffer<StatModifierSlot>(e);
+            buf.Add(new StatModifierSlot
+            {
+                header = new ModifierHeader { remaining = 100f, source = e, stackId = 0 },
+                stat = StatKind.MoveSpeedMul,
+                op = CombineOp.Multiplicative,
+                magnitude = 0.5f,
+            });
+            buf.Add(new StatModifierSlot
+            {
+                header = new ModifierHeader { remaining = 100f, source = e, stackId = 1 },
+                stat = StatKind.MoveSpeedMul,
+                op = CombineOp.Multiplicative,
+                magnitude = 0.8f,
+            });
+
+            _em.SetComponentEnabled<ModifierStatsDirty>(e, true);
+            Tick();
+
+            Assert.AreEqual(0.4f, _em.GetComponentData<ModifierStats>(e).moveSpeedMul, 1e-4f,
+                "MoveSpeedMul should multiply like the other multiplier stats.");
         }
 
         // ── Test 3 ────────────────────────────────────────────────────────────────

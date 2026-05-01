@@ -1,9 +1,10 @@
+using Spine.Unity;
 using UnityEngine;
 
 namespace Wassup.Data
 {
     [CreateAssetMenu(fileName = "AttackUnit", menuName = "Wassup/AttackUnit", order = 10)]
-    public class AttackUnitData : ScriptableObject
+    public class AttackUnitData : ScriptableObject, ISpineUnitVisualData
     {
         public string displayName;
         public float health = 100f;
@@ -14,8 +15,33 @@ namespace Wassup.Data
         public float attackDamage;
         public float attackRange = 1f;
         public float attackCooldown = 1f;
+        public ProjectileData projectile;
+        public float movePauseOnAttackSec;
+
+        // modifier-legacy-migration unit 1: hit outputs are the runtime source
+        // of truth for enemy attacks. `attackDamage` remains serialized for
+        // authoring compatibility only; enemies with no outputs deal no runtime
+        // damage.
+        [Header("Attack Outputs")]
+        public AttackOutput[] outputs;
 
         public Mesh visualMesh;
         public Material visualMaterial;
+
+        [Header("Spine")]
+        public SkeletonDataAsset skeletonDataAsset;
+        public string spineSkinName;
+        public string idleAnimation = "idle";
+        public string attackAnimation = "attack";
+        public string deathAnimation = "die";
+        public float spineVisualScale = 1f;
+
+        public string SpineDisplayName => displayName;
+        public SkeletonDataAsset SpineSkeletonDataAsset => skeletonDataAsset;
+        public string SpineSkinName => spineSkinName;
+        public string SpineIdleAnimation => idleAnimation;
+        public string SpineAttackAnimation => attackAnimation;
+        public string SpineDeathAnimation => deathAnimation;
+        public float SpineVisualScale => spineVisualScale;
     }
 }

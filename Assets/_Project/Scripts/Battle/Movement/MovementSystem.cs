@@ -26,6 +26,8 @@ namespace Wassup.Battle.Movement
 
             var field = SystemAPI.GetSingleton<FlowFieldSingleton>();
             var ccLookup = SystemAPI.GetBufferLookup<CcEffect>(isReadOnly: true);
+            var modifierStatsLookup = SystemAPI.GetComponentLookup<ModifierStats>(isReadOnly: true);
+            var attackPauseLookup = SystemAPI.GetComponentLookup<EnemyAttackMovePause>(isReadOnly: false);
             var hasObstacles = SystemAPI.TryGetSingleton<ObstacleSingleton>(out var obstacleSingleton);
 
             var portalQuery = SystemAPI.QueryBuilder().WithAll<PortalLink>().Build();
@@ -40,6 +42,16 @@ namespace Wassup.Battle.Movement
                               .WithEntityAccess())
             {
                 float3 current = transform.ValueRO.Position;
+                if (attackPauseLookup.HasComponent(entity))
+                {
+                    var pause = attackPauseLookup[entity];
+                    if (pause.remaining > 0f)
+                    {
+                        pause.remaining = math.max(0f, pause.remaining - dt);
+                        attackPauseLookup[entity] = pause;
+                        continue;
+                    }
+                }
 
                 // 1. Portal entry: 내부에 있으면 exit 으로 텔레포트. exitWaypointIndex 제거됨 —
                 //    다음 프레임 flow field 가 알아서 방향 공급.
@@ -103,7 +115,9 @@ namespace Wassup.Battle.Movement
                     dir = recovDir;
                 }
 
-                float speedMul = 1f;
+                float speedMul = modifierStatsLookup.HasComponent(entity)
+                    ? modifierStatsLookup[entity].moveSpeedMul
+                    : 1f;
                 float3 impulseDisplacement = float3.zero;
                 if (ccLookup.HasBuffer(entity))
                 {
@@ -113,7 +127,6 @@ namespace Wassup.Battle.Movement
                         var cc = ccBuf[i];
                         switch (cc.kind)
                         {
-                            case CcKind.Slow:    speedMul *= cc.scalar; break;
                             case CcKind.Impulse: impulseDisplacement += cc.vector * dt; break;
                         }
                     }

@@ -50,14 +50,6 @@ namespace Wassup.Battle.Effects
             }
         }
 
-        public static void ApplySlow(EntityManager em, Entity entity, float duration, float multiplier)
-            => ApplyCc(em, entity, new CcEffect
-            {
-                kind = CcKind.Slow,
-                scalar = multiplier,
-                remainingTime = duration,
-            });
-
         // Phase 8 §17 — Tornado: carrier entity with area data. MovementSystem
         // queries live TornadoField entities each frame and applies pull to any
         // attacker inside the radius (continuous, not snapshot). Re-cast spawns
@@ -277,17 +269,5 @@ namespace Wassup.Battle.Effects
             return new int2(sx / cells.Count, sy / cells.Count);
         }
 
-        private static void Apply<T>(EntityManager em, Entity entity,
-            System.Func<T> create, System.Func<T, T> merge) where T : unmanaged, IComponentData
-        {
-            if (em.HasComponent<T>(entity))
-            {
-                em.SetComponentData(entity, merge(em.GetComponentData<T>(entity)));
-            }
-            else
-            {
-                em.AddComponentData(entity, create());
-            }
-        }
     }
 }

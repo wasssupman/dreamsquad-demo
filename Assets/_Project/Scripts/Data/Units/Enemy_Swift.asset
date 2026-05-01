@@ -18,5 +18,8 @@ MonoBehaviour:
   attackDamage: 0
   attackRange: 1
   attackCooldown: 1
+  projectile: {fileID: 0}
+  movePauseOnAttackSec: 0
+  outputs: []
   visualMesh: {fileID: 0}
   visualMaterial: {fileID: 2100000, guid: 0abe7b1a1835a4db2a903ad952609783, type: 2}

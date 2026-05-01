@@ -5,6 +5,7 @@ using Unity.Mathematics;
 using Unity.Transforms;
 using Wassup.Battle.Combat;
 using Wassup.Battle.Units;
+using Wassup.Data;
 
 namespace Wassup.Tests.EditMode
 {
@@ -31,6 +32,19 @@ namespace Wassup.Tests.EditMode
             if (defenderTag) em.AddComponent<DefenderUnitTag>(e);
             if (attackerTag) em.AddComponent<AttackUnitTag>(e);
             return e;
+        }
+
+        private static void AddDamageOutput(EntityManager em, Entity entity, float damage)
+        {
+            var outputs = em.AddBuffer<AttackOutputElement>(entity);
+            outputs.Add(new AttackOutputElement
+            {
+                value = new AttackOutput
+                {
+                    kind = AttackOutputKind.Damage,
+                    magnitude = damage,
+                }
+            });
         }
 
         [Test]
@@ -60,6 +74,7 @@ namespace Wassup.Tests.EditMode
                 attackTargetCount = 1,
                 targetMask = (int)Faction.Enemy,
             });
+            AddDamageOutput(em, defender, 3f);
 
             var hazard = CreateTarget(em, Faction.BlockingHazard, new float3(0.5f, 0f, 0f));
             var enemy = CreateTarget(em, Faction.Enemy, new float3(1f, 0f, 0f), attackerTag: true);
@@ -90,6 +105,7 @@ namespace Wassup.Tests.EditMode
                 attackTargetCount = 1,
                 targetMask = (int)(Faction.Defender | Faction.BlockingHazard),
             });
+            AddDamageOutput(em, enemy, 4f);
 
             var hazard = CreateTarget(em, Faction.BlockingHazard, new float3(0.5f, 0f, 0f));
             var defender = CreateTarget(em, Faction.Defender, new float3(2f, 0f, 0f), defenderTag: true);

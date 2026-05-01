@@ -22,7 +22,11 @@
 
 ## 완료 기준
 
-- Unity compile error 0.
-- Basic/Swift/Tanker 및 신규 적 3종의 공격 데미지가 migration 전과 동등.
-- 장거리/빠른 투사체 적이 outputs path 를 사용해도 projectile visual/hit 동작이 유지된다.
-- 적이 향후 `ApplyStat`/`ApplyStack` output 을 가질 수 있는 데이터 경로가 열린다.
+- [x] Unity compile error 0.
+- [x] Basic/Tanker 및 신규 Needler/Rootcaster 의 damage 값이 `outputs[{Damage}]` 로 migration 됐다. Swift/Runner 는 `outputs: []` 로 no-attack 정책을 유지한다.
+- [x] 장거리/빠른 투사체 적은 projectile 참조를 유지하고, projectile entity 가 shooter outputs snapshot 을 들고 hit 시 dispatch 한다.
+- [x] 적이 향후 `ApplyStat`/`ApplyStack` output 을 가질 수 있는 데이터 경로가 열렸다.
+
+검증:
+- 2026-05-01: full EditMode 181 total / 179 passed / 2 ignored, failed 0.
+- 2026-05-01: Play Mode enter/exit smoke, console error 0.

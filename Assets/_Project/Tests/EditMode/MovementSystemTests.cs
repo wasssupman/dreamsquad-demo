@@ -15,6 +15,7 @@ namespace Wassup.Tests.EditMode
         private EntityManager _em;
         private SimulationSystemGroup _simGroup;
         private Entity _fieldEntity;
+        private NativeQueue<MovementPauseRequest> _pauseQueue;
 
         [SetUp]
         public void SetUp()
@@ -22,7 +23,11 @@ namespace Wassup.Tests.EditMode
             _world = new World("MovementSystemTestWorld");
             _em = _world.EntityManager;
             _simGroup = _world.CreateSystemManaged<SimulationSystemGroup>();
+            _simGroup.AddSystemToUpdateList(_world.CreateSystem<MovementPauseRequestDrainSystem>());
             _simGroup.AddSystemToUpdateList(_world.CreateSystem<MovementSystem>());
+            _pauseQueue = new NativeQueue<MovementPauseRequest>(Allocator.Persistent);
+            var pauseSingleton = _em.CreateEntity();
+            _em.AddComponentData(pauseSingleton, new MovementPauseRequestEventsSingleton { queue = _pauseQueue });
         }
 
         [TearDown]
@@ -35,6 +40,7 @@ namespace Wassup.Tests.EditMode
                 var f = _em.GetComponentData<FlowFieldSingleton>(_fieldEntity);
                 f.Dispose();
             }
+            if (_pauseQueue.IsCreated) _pauseQueue.Dispose();
             _world?.Dispose();
         }
 
@@ -122,17 +128,38 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
-        public void Slow_CcEffect_Halves_Flow_Step()
+        public void MoveSpeedMul_Halves_Flow_Step()
         {
             CreateLinearFlowField();
             var e = CreateUnit(new float3(0f, 0f, 0f), speed: 2f);
-            var buf = _em.AddBuffer<CcEffect>(e);
-            buf.Add(new CcEffect { kind = CcKind.Slow, scalar = 0.5f, remainingTime = 5f });
+            _em.AddComponentData(e, new ModifierStats { moveSpeedMul = 0.5f });
 
             Tick(1f);
 
             var pos = _em.GetComponentData<LocalTransform>(e).Position;
-            Assert.AreEqual(1f, pos.x, 1e-4f, "Slow CcEffect 0.5 × speed 2 × 1s = 1.0");
+            Assert.AreEqual(1f, pos.x, 1e-4f, "MoveSpeedMul 0.5 × speed 2 × 1s = 1.0");
+        }
+
+        [Test]
+        public void MovementPauseRequest_Adds_Pause_And_Blocks_Movement_Until_Expired()
+        {
+            CreateLinearFlowField();
+            var e = CreateUnit(new float3(0f, 0f, 0f), speed: 2f);
+
+            _pauseQueue.Enqueue(new MovementPauseRequest { target = e, duration = 1f });
+            Tick(0.5f);
+
+            var pos = _em.GetComponentData<LocalTransform>(e).Position;
+            Assert.AreEqual(0f, pos.x, 1e-4f, "pause request should stop movement while remaining > 0");
+            Assert.IsTrue(_em.HasComponent<EnemyAttackMovePause>(e));
+
+            Tick(0.5f);
+            pos = _em.GetComponentData<LocalTransform>(e).Position;
+            Assert.AreEqual(0f, pos.x, 1e-4f, "the frame that expires pause is still consumed by pause countdown");
+
+            Tick(0.5f);
+            pos = _em.GetComponentData<LocalTransform>(e).Position;
+            Assert.AreEqual(1f, pos.x, 1e-4f, "movement resumes after pause expires");
         }
     }
 }

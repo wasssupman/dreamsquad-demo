@@ -3,6 +3,7 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
+using Wassup.Battle.Effects;
 using Wassup.Battle.Units;
 using Wassup.Data;
 
@@ -32,7 +33,11 @@ namespace Wassup.Battle.Combat.Projectile
             var ecb = new EntityCommandBuffer(Allocator.Temp);
             var transformLookup = SystemAPI.GetComponentLookup<LocalTransform>(isReadOnly: true);
             var damageBufferLookup = SystemAPI.GetBufferLookup<IncomingDamage>(isReadOnly: false);
+            var healBufferLookup = SystemAPI.GetBufferLookup<Wassup.Battle.Units.IncomingHeal>(isReadOnly: false);
+            var outputLookup = SystemAPI.GetBufferLookup<AttackOutputElement>(isReadOnly: true);
             var hitFlashLookup = SystemAPI.GetComponentLookup<HitFlashTag>(isReadOnly: true);
+            bool hasStatQ = SystemAPI.TryGetSingleton<StatModifierApplyEventsSingleton>(out var statEvents);
+            bool hasStackQ = SystemAPI.TryGetSingleton<StackModifierApplyEventsSingleton>(out var stackEvents);
 
             // Combat→Presentation: hit-VFX channel. May not exist before
             // BattleBridge.EnsureQueriesAndQueues runs (very first frames in
@@ -72,7 +77,57 @@ namespace Wassup.Battle.Combat.Projectile
                 float threshold = projectile.ValueRO.hitThreshold;
                 if (distSq > threshold * threshold) continue;
 
-                if (damageBufferLookup.HasBuffer(target))
+                bool handledOutputs = false;
+                if (outputLookup.HasBuffer(entity))
+                {
+                    handledOutputs = true;
+                    var outputs = outputLookup[entity];
+                    for (int i = 0; i < outputs.Length; i++)
+                    {
+                        var output = outputs[i].value;
+                        switch (output.kind)
+                        {
+                            case AttackOutputKind.Damage:
+                                if (damageBufferLookup.HasBuffer(target))
+                                    ecb.AppendToBuffer(target, new IncomingDamage { amount = output.magnitude });
+                                break;
+
+                            case AttackOutputKind.Heal:
+                                if (healBufferLookup.HasBuffer(target))
+                                    ecb.AppendToBuffer(target, new Wassup.Battle.Units.IncomingHeal { amount = output.magnitude });
+                                break;
+
+                            case AttackOutputKind.ApplyStat:
+                                if (hasStatQ)
+                                    statEvents.queue.Enqueue(new StatModifierApplyEvent
+                                    {
+                                        target = target,
+                                        stat = output.stat,
+                                        op = output.op,
+                                        magnitude = output.magnitude,
+                                        duration = output.duration,
+                                        source = entity,
+                                        stackId = 0,
+                                    });
+                                break;
+
+                            case AttackOutputKind.ApplyStack:
+                                if (hasStackQ)
+                                    stackEvents.queue.Enqueue(new StackModifierApplyEvent
+                                    {
+                                        target = target,
+                                        kind = output.stackKind,
+                                        countDelta = (byte)math.max(1f, output.magnitude),
+                                        maxStack = output.stackMaxStack > 0 ? output.stackMaxStack : (byte)5,
+                                        perAppDuration = output.duration,
+                                        source = entity,
+                                    });
+                                break;
+                        }
+                    }
+                }
+
+                if (!handledOutputs && damageBufferLookup.HasBuffer(target))
                 {
                     ecb.AppendToBuffer(target, new IncomingDamage { amount = projectile.ValueRO.damage });
                 }

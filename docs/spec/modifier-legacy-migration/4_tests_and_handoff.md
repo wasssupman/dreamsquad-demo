@@ -29,7 +29,11 @@
 
 ## 완료 기준
 
-- Unity compile error 0.
-- 관련 EditMode 테스트 통과.
-- PlayMode smoke 결과와 남은 리스크가 handoff 에 기록됨.
-- Follow-up Backlog 가 중복 항목 없이 정리됨.
+- [x] Unity compile error 0.
+- [x] 관련 EditMode 테스트 통과.
+- [x] PlayMode smoke 결과와 남은 리스크가 handoff 에 기록됨.
+- [x] Follow-up Backlog 가 중복 항목 없이 정리됨.
+
+검증:
+- 2026-05-01: full EditMode 181 total / 179 passed / 2 ignored, failed 0.
+- 2026-05-01: Play Mode enter/exit smoke, console error 0.

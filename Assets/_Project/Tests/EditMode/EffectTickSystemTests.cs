@@ -71,31 +71,5 @@ namespace Wassup.Tests.EditMode
                 "TornadoField.remaining should decrease by DeltaTime.");
         }
 
-        [Test]
-        public void EffectSpawner_ApplySlow_Writes_CcEffect_Buffer()
-        {
-            var e = _em.CreateEntity();
-            EffectSpawner.ApplySlow(_em, e, duration: 4f, multiplier: 0.5f);
-
-            Assert.IsTrue(_em.HasBuffer<CcEffect>(e));
-            var buf = _em.GetBuffer<CcEffect>(e);
-            Assert.AreEqual(1, buf.Length);
-            Assert.AreEqual(CcKind.Slow, buf[0].kind);
-            Assert.AreEqual(0.5f, buf[0].scalar, 1e-5f);
-            Assert.AreEqual(4f, buf[0].remainingTime, 1e-5f);
-        }
-
-        [Test]
-        public void EffectSpawner_ApplySlow_Refreshes_Longer_Remaining()
-        {
-            var e = _em.CreateEntity();
-            EffectSpawner.ApplySlow(_em, e, duration: 4f, multiplier: 0.5f);
-            EffectSpawner.ApplySlow(_em, e, duration: 2f, multiplier: 0.25f);
-
-            var buf = _em.GetBuffer<CcEffect>(e);
-            Assert.AreEqual(1, buf.Length);
-            Assert.AreEqual(4f, buf[0].remainingTime, 1e-5f, "Longer existing remaining should be retained.");
-            Assert.AreEqual(0.25f, buf[0].scalar, 1e-5f, "Latest multiplier should win.");
-        }
     }
 }

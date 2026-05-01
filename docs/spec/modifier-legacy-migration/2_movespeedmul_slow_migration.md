@@ -24,7 +24,11 @@
 
 ## 완료 기준
 
-- Unity compile error 0.
-- 기존 ice/slow hazard 또는 slow projectile 의 이동 속도 감소 체감이 유지된다.
-- MovementSystem 이 raw modifier buffer 를 보지 않고 `ModifierStats` 캐시만 read 한다.
-- `CcEffect` 에 stat multiplier 성격의 Slow 가 남지 않는다.
+- [x] Unity compile error 0.
+- [x] 기존 slow producer 는 `StatKind.MoveSpeedMul` / `ModifierStats.moveSpeedMul` 경로를 사용한다.
+- [x] MovementSystem 이 raw modifier buffer 를 보지 않고 `ModifierStats` 캐시만 read 한다.
+- [x] `CcEffect.Slow` 는 serialized hazard kind 호환을 위해 enum 값만 남고, MovementSystem 의 speed multiplier 로 소비되지 않는다.
+
+검증:
+- 2026-05-01: `ModifierStats_Combines_MoveSpeedMul_As_Multiplicative_Stat`.
+- 2026-05-01: `MoveSpeedMul_Halves_Flow_Step`, `Movement_Applies_MoveSpeedMul_From_ModifierStats_To_Step`.

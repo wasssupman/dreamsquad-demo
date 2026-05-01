@@ -17,5 +17,9 @@ namespace Wassup.Battle.Combat
         public int attackTargetCount;
 
         public int targetMask; // (int)Faction bitmask of attackable factions.
+
+        // Movement-context pause request duration emitted after this attacker fires.
+        // MovementSystem owns the EnemyAttackMovePause component write.
+        public float movePauseOnAttackSec;
     }
 }

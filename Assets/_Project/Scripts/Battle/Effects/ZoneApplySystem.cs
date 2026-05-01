@@ -27,6 +27,7 @@ namespace Wassup.Battle.Effects
             if (hazardSingleton.cellToEffects.Count() == 0) return;
 
             var ccQueue = SystemAPI.GetSingleton<EnemyCcEventsSingleton>().queue;
+            bool hasStatQueue = SystemAPI.TryGetSingleton<StatModifierApplyEventsSingleton>(out var statEvents);
             bool hasRuntimeEvents = SystemAPI.TryGetSingleton<HazardRuntimeEventsSingleton>(out var runtimeEvents);
             var flowField = SystemAPI.GetSingleton<FlowFieldSingleton>();
 
@@ -40,11 +41,29 @@ namespace Wassup.Battle.Effects
 
                 do
                 {
-                    ccQueue.Enqueue(new EnemyCcEvent
+                    // CcKind.Slow remains in serialized HazardEffect data for SO compatibility.
+                    if (effect.kind == CcKind.Slow)
                     {
-                        target = entity,
-                        effect = HazardEffectToCcEffect(effect),
-                    });
+                        if (hasStatQueue)
+                            statEvents.queue.Enqueue(new StatModifierApplyEvent
+                            {
+                                target = entity,
+                                stat = StatKind.MoveSpeedMul,
+                                op = CombineOp.Multiplicative,
+                                magnitude = effect.param1,
+                                duration = effect.restDuration,
+                                source = Entity.Null,
+                                stackId = 0,
+                            });
+                    }
+                    else
+                    {
+                        ccQueue.Enqueue(new EnemyCcEvent
+                        {
+                            target = entity,
+                            effect = HazardEffectToCcEffect(effect),
+                        });
+                    }
 
                     if (hasRuntimeEvents)
                     {

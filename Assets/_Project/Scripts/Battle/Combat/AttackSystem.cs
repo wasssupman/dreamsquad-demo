@@ -48,18 +48,16 @@ namespace Wassup.Battle.Combat
 
             var ecb = new EntityCommandBuffer(Allocator.Temp);
             var projectileRefLookup = SystemAPI.GetComponentLookup<ProjectileRef>(isReadOnly: true);
-            var enemyPauseLookup = SystemAPI.GetComponentLookup<EnemyAttackMovePause>(isReadOnly: false);
             var defenderCcLookup = SystemAPI.GetComponentLookup<DefenderCcData>(isReadOnly: true);
             var defenderTagLookup = SystemAPI.GetComponentLookup<DefenderUnitTag>(isReadOnly: true);
             var blockingHazardCellsLookup = SystemAPI.GetBufferLookup<BlockingHazardCellsBuffer>(isReadOnly: true);
-            var buffStatsLookup = SystemAPI.GetComponentLookup<Wassup.Battle.Effects.ModifierStats>(isReadOnly: true);
+            var modifierStatsLookup = SystemAPI.GetComponentLookup<Wassup.Battle.Effects.ModifierStats>(isReadOnly: true);
             var outputBufferLookup = SystemAPI.GetBufferLookup<AttackOutputElement>(isReadOnly: true);
 
-            // Modifier-framework unit 5: StatModifier / StackModifier enqueue channels.
-            // Accessed only when outputs path is active (defender with AttackOutputElement buffer).
             bool hasStatQ = SystemAPI.TryGetSingletonRW<Wassup.Battle.Effects.StatModifierApplyEventsSingleton>(out var statModSingleton);
             bool hasStackQ = SystemAPI.TryGetSingletonRW<Wassup.Battle.Effects.StackModifierApplyEventsSingleton>(out var stackModSingleton);
             bool hasFlowField = SystemAPI.TryGetSingleton<Wassup.Battle.Effects.FlowFieldSingleton>(out var flowField);
+            bool hasMovementPauseQ = SystemAPI.TryGetSingletonRW<MovementPauseRequestEventsSingleton>(out var movementPauseSingleton);
 
             // Attack-output log channel — enqueue one event per output-per-target fired.
             NativeQueue<AttackOutputLogEvent>.ParallelWriter? attackOutputLogWriter = null;
@@ -139,21 +137,14 @@ namespace Wassup.Battle.Combat
                         });
                     }
 
-                    // modifier-framework unit 9: AttackSystem reads ModifierStats only.
-                    // DamageMul/AttackSpeedMul/SynergyMul are all folded into ModifierStats
-                    // by ModifierStatsAggregateSystem via StatModifierSlot buffer.
-                    float buffStatsDamageMul = buffStatsLookup.HasComponent(attackerEntity)
-                        ? buffStatsLookup[attackerEntity].damageMul
+                    float damageMul = modifierStatsLookup.HasComponent(attackerEntity)
+                        ? modifierStatsLookup[attackerEntity].damageMul
                         : 1f;
-                    float buffStatsAttackSpeedMul = buffStatsLookup.HasComponent(attackerEntity)
-                        ? buffStatsLookup[attackerEntity].attackSpeedMul
+                    float attackSpeedMul = modifierStatsLookup.HasComponent(attackerEntity)
+                        ? modifierStatsLookup[attackerEntity].attackSpeedMul
                         : 1f;
-                    float emittedDamage = attack.ValueRO.damage * buffStatsDamageMul;
-
-                    // modifier-legacy-migration unit 0: defenders must define hit
-                    // effects through AttackOutputElement. The legacy attack.damage
-                    // fallback remains only for enemies until AttackUnitData.outputs[]
-                    // lands in the next unit.
+                    // All defender/enemy hit effects come through AttackOutputElement.
+                    // AttackState.damage remains only as serialized authoring compatibility.
                     bool hasOutputs = outputBufferLookup.HasBuffer(attackerEntity);
 
                     if (hasOutputs)
@@ -164,22 +155,27 @@ namespace Wassup.Battle.Combat
                         {
                             var projRef = projectileRefLookup[attackerEntity];
                             float projectileDamage = 0f;
+                            var projectileOutputs = ecb.AddBuffer<ProjectileSpawnOutputElement>(attackerEntity);
                             for (int oi = 0; oi < outputs.Length; oi++)
                             {
                                 var o = outputs[oi].value;
-                                if (o.kind != Wassup.Data.AttackOutputKind.Damage) continue;
-                                float amount = o.magnitude * buffStatsDamageMul;
-                                projectileDamage += amount;
-                                if (attackOutputLogWriter.HasValue)
-                                    attackOutputLogWriter.Value.Enqueue(new AttackOutputLogEvent
-                                    {
-                                        attacker  = attackerEntity,
-                                        kind      = Wassup.Data.AttackOutputKind.Damage,
-                                        magnitude = amount,
-                                        duration  = 0f,
-                                        sourcePos = atkPos,
-                                        targetPos = bestTargetPos,
-                                    });
+                                if (o.kind == Wassup.Data.AttackOutputKind.Damage)
+                                {
+                                    float amount = o.magnitude * damageMul;
+                                    o.magnitude = amount;
+                                    projectileDamage += amount;
+                                    if (attackOutputLogWriter.HasValue)
+                                        attackOutputLogWriter.Value.Enqueue(new AttackOutputLogEvent
+                                        {
+                                            attacker  = attackerEntity,
+                                            kind      = Wassup.Data.AttackOutputKind.Damage,
+                                            magnitude = amount,
+                                            duration  = 0f,
+                                            sourcePos = atkPos,
+                                            targetPos = bestTargetPos,
+                                        });
+                                }
+                                projectileOutputs.Add(new ProjectileSpawnOutputElement { value = o });
                             }
 
                             ecb.AddComponent(attackerEntity, new ProjectileSpawnRequest
@@ -248,13 +244,13 @@ namespace Wassup.Battle.Combat
                                     {
                                         case Wassup.Data.AttackOutputKind.Damage:
                                             ecb.AppendToBuffer(hitTarget,
-                                                new IncomingDamage { amount = o.magnitude * buffStatsDamageMul });
+                                                new IncomingDamage { amount = o.magnitude * damageMul });
                                             if (attackOutputLogWriter.HasValue)
                                                 attackOutputLogWriter.Value.Enqueue(new AttackOutputLogEvent
                                                 {
                                                     attacker  = attackerEntity,
                                                     kind      = Wassup.Data.AttackOutputKind.Damage,
-                                                    magnitude = o.magnitude * buffStatsDamageMul,
+                                                    magnitude = o.magnitude * damageMul,
                                                     duration  = 0f,
                                                     sourcePos = atkPos,
                                                     targetPos = bestTargetPos,
@@ -329,95 +325,19 @@ namespace Wassup.Battle.Combat
                             hitTargets.Dispose();
                         }
                     }
-                    else if (!isDefender)
-                    {
-                        // ── Legacy path ──────────────────────────────────────────────────
-                        // ProjectileRef-bearing attackers stage a spawn request for the
-                        // MonoBehaviour drain loop in BattleBridge. Attackers without a
-                        // ProjectileRef use direct-damage. This path is enemy-only until
-                        // AttackUnitData.outputs[] is introduced.
-                        if (projectileRefLookup.HasComponent(attackerEntity))
-                        {
-                            var projRef = projectileRefLookup[attackerEntity];
-                            ecb.AddComponent(attackerEntity, new ProjectileSpawnRequest
-                            {
-                                target = bestTarget,
-                                origin = atkPos,
-                                damage = emittedDamage,
-                                speed = projRef.speed,
-                                hitThreshold = projRef.hitThreshold,
-                                visualScale = projRef.visualScale,
-                                dataIndex = projRef.dataIndex,
-                                onHitEffect = projRef.onHitEffect,
-                                splashRadius = projRef.splashRadius,
-                                splashDamageMul = projRef.splashDamageMul,
-                            });
-                        }
-                        else
-                        {
-                            // Melee AoE: N=1 fast path avoids allocation; N>1 hitMask loop
-                            // picks additional nearest in-range targets. Enemies default to
-                            // attackTargetCount=1 so they always take the fast path.
-                            int desiredCount = math.max(1, attack.ValueRO.attackTargetCount);
-                            if (desiredCount == 1)
-                            {
-                                // Fast path: single target — no allocation.
-                                ecb.AppendToBuffer(bestTarget,
-                                    new IncomingDamage { amount = emittedDamage });
-                            }
-                            else
-                            {
-                                // AoE branch: seed pass 0 with the already-known
-                                // nearest (bestTarget) to avoid recomputing, then
-                                // iterate the remaining passes over the hitMask.
-                                var hitMask = new NativeArray<bool>(targetEntities.Length, Allocator.Temp);
-                                int bestIdx = -1;
-                                for (int i = 0; i < targetEntities.Length; i++)
-                                {
-                                    if (targetEntities[i] == bestTarget) { bestIdx = i; break; }
-                                }
-                                if (bestIdx >= 0)
-                                {
-                                    hitMask[bestIdx] = true;
-                                    ecb.AppendToBuffer(targetEntities[bestIdx],
-                                        new IncomingDamage { amount = emittedDamage });
-                                }
-                                for (int pass = 1; pass < desiredCount; pass++)
-                                {
-                                    float passSq = float.MaxValue;
-                                    int passIdx = -1;
-                                    for (int i = 0; i < targetEntities.Length; i++)
-                                    {
-                                        if (hitMask[i]) continue;
-                                        if (((int)targetFactions[i].value & mask) == 0) continue;
-                                        if (targetEntities[i] == attackerEntity) continue;
-                                        float d2 = DistanceSqToTarget(atkPos, targetEntities[i], targetTransforms[i].Position, blockingHazardCellsLookup, hasFlowField, flowField, out _);
-                                        if (d2 <= rangeSq && d2 < passSq)
-                                        {
-                                            passSq = d2;
-                                            passIdx = i;
-                                        }
-                                    }
-                                    if (passIdx < 0) break;
-                                    hitMask[passIdx] = true;
-                                    ecb.AppendToBuffer(targetEntities[passIdx],
-                                        new IncomingDamage { amount = emittedDamage });
-                                }
-                                hitMask.Dispose();
-                            }
-                        }
-                    }
 
-                    // modifier-framework unit 9: cooldown = base / attackSpeedMul.
-                    // AttackSpeedMul is folded into ModifierStats by ModifierStatsAggregateSystem
-                    // via StatModifierSlot buffer — no separate cooldownMul needed here.
-                    float effectiveCooldownMul = buffStatsAttackSpeedMul > 0f ? 1f / buffStatsAttackSpeedMul : 1f;
+                    float effectiveCooldownMul = attackSpeedMul > 0f ? 1f / attackSpeedMul : 1f;
                     attack.ValueRW.cooldownRemaining = attack.ValueRO.cooldownDuration * effectiveCooldownMul;
-                    if (!isDefender && enemyPauseLookup.HasComponent(attackerEntity))
+                    bool isEnemy = !isDefender;
+                    if (isEnemy && hasMovementPauseQ)
                     {
-                        var pause = enemyPauseLookup[attackerEntity];
-                        pause.remaining = math.max(pause.remaining, pause.duration);
-                        enemyPauseLookup[attackerEntity] = pause;
+                        var pauseDuration = attack.ValueRO.movePauseOnAttackSec;
+                        if (pauseDuration > 0f)
+                            movementPauseSingleton.ValueRW.queue.Enqueue(new MovementPauseRequest
+                            {
+                                target = attackerEntity,
+                                duration = pauseDuration,
+                            });
                     }
 
                     // [Defender only] Knockback CC — enemies do not carry DefenderCcData.

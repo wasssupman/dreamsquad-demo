@@ -8,6 +8,7 @@ namespace Wassup.Battle.Effects
         public float attackSpeedMul;  // 디폴트 1.0
         public float dmgTakenMul;     // 디폴트 1.0
         public float regenPerSec;     // 디폴트 0.0
+        public float moveSpeedMul;    // 디폴트 1.0
     }
 
     // IEnableableComponent — Add 시 기본 disabled.
