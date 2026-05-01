@@ -118,15 +118,15 @@ code + git history        구현 상세
 
 ### Active
 
-> 현재 항목 전부 `modifier-framework-and-healer` (closed 2026-05) 출처. 이후 다른 spec 출처가 섞이기 시작하면 항목 끝 라벨로 표기.
+> 출처 spec 이 섞여 있다. 그룹 헤더 또는 항목 끝의 `(spec-slug)` 라벨로 출처 표기.
 
-#### Modifier framework — Producer 확장
+#### Modifier framework — Producer 확장 (modifier-framework-and-healer)
 
 framework 코어 변경 0. 새 producer 레이어 추가로 다양한 효과 적용 경로 확보. producer-agnostic 설계 검증 시점.
 
 - **Aura defender** [M] · 지속 영역 효과 producer (`AuraOutput[]` + `AuraApplySystem`). 일정 반경 ally 에 매 프레임/N초마다 StatModifier 발화.
 
-#### Modifier framework — 내부 보강
+#### Modifier framework — 내부 보강 (modifier-framework-and-healer)
 
 framework 코어/UX/테스트 보강. 콘텐츠 확장 전후 모두 가치 있음.
 
@@ -136,11 +136,42 @@ framework 코어/UX/테스트 보강. 콘텐츠 확장 전후 모두 가치 있�
 - **Testability — AttackSystem outputs dispatch helper 추출** [S] · `OnUpdate` 의 4-way 분기를 `static ProcessAttackOutputs(...)` 로 추출. skipped Test 4 활성화 목적.
 - **추가 EditMode 회귀 테스트** [S] · Stack threshold edge (5→6→5 재발화) / Consume 모드 stack 차감 / IncomingHeal drain Clear / RegenPerSec 누적. Testability 보강과 합쳐 진행.
 
+#### Enemy 콘텐츠 / 비주얼 (enemy-unit-development)
+
+신규 적 3종 + Tanker Spine 전환 후 남은 검증/콘텐츠 작업.
+
+- **PlayMode 밸런스/시각 검증** [S] · Rootcaster 공격 후 1초 pause, Needler 빠른 투사체 연사, Runner 과속 체감, Tanker BellKnight Spine 크기/정렬 — 실기 확인 후 SO 값 튜닝.
+- **적 projectile VFX 분리** [S] · 현재 defender projectile prefab + tint/scale 재활용. enemy variant prefab 또는 material variant 분리. 적/방어 투사체 식별성 개선.
+- **WavePatternGenerator unit weight 지원** [S] · 현재 균등 확률. `AttackDeck.attackUnitPool` 반복 참조 또는 weight 필드 도입. Runner/Needler 과다 출현 회피.
+- **Enemy attack animation event 일반화** [S] · `DefenderAttackEvent` → `UnitAttackVisualEvent` 로 일반화. `SpineUnitPool.NotifyAttack(entity, target)` 으로 적 공격 애니메이션 트리거 연결.
+
+#### CC / Obstacle 확장 (cc-pipeline-and-obstacle)
+
+- **큐브 spawn 게임 통합** [S] · 디펜더 능력 / 스킬 카드에서 `BattleBridge.SpawnObstacle` 호출. 현재는 디버그 메뉴만 진입점.
+- **Obstacle 시각 Presenter** [S] · `ObstaclePresenter` MonoBehaviour, mesh/particle. 현재 큐브는 시뮬만 있고 렌더 없음.
+- **추가 CcKind** [S] · Stun/Root/Reverse/Pull/Push 등 enum + `MovementSystem` switch case 추가. 콘텐츠 디자인 선행.
+- **멀티셀 큐브 / 적-적 분산** [S] · 현재 단일 셀, 단일 큐브.
+- **CC merge helper 추출** [S] · 3번째 CC caller 등장 시 `EffectSpawner.ApplyCc` 와 `CcApplySystem.MergeOrAdd` 듀얼 구현 통합 (I1).
+- **ObstacleLifetimeSystem Burst 분리** [S] · 큐브 16+ 시점 `OnUpdate` Burst 분리 + `blockedCells` incremental (I4).
+
+#### 렌더 파이프라인 / 시각 (board-visualization, wrapped)
+
+board-visualization spec 자체는 ROI 부족으로 wrap 종료. 진단/실험은 `docs/spec/board-visualization/29_final_handoff.md` 참조.
+
+- **palette-and-overlay-fix** [M] · `forest.asset` red-tint 결정 실험 + Bug A (`_tileTextureMaterials` 캐시 키) / Bug B (Place edge mask 가 Env 이웃 한정) / Bug C (overlay alpha 0.25 너무 낮음). board-visualization wrap 의 root cause 후보. 새 spec 으로 시작 권장.
+- **17r prop-distribution-retry** [S] · V-001 잔존. Poisson 정공법 재구현.
+- **23 volcano-theme-fill** [M] · 두 번째 테마 자산 채움.
+- **BattleBridge.StartBattle Persistent allocates 경고** [S] · 반복 시작 시 leak 추적. ECS 컨텍스트 정리 경로 점검.
+
 #### 기타
 
-- **Healer 전용 Spine asset** [S] · 현재 Archer Spine reuse. 전용 rig + idle/heal-cast/death 애니메이션. 시각 식별성, 기능 영향 없음.
-- **Spec 5~10 backfill** [S] · hybrid 진행 시 누락된 단위 spec 파일 작성. commit/handoff 가 임시 대체 중. 필수는 아님.
+- **Healer 전용 Spine asset** [S] · 현재 Archer Spine reuse. 전용 rig + idle/heal-cast/death 애니메이션. 시각 식별성, 기능 영향 없음. (modifier-framework-and-healer)
+- **Spec 5~10 backfill** [S] · hybrid 진행 시 누락된 단위 spec 파일 작성. commit/handoff 가 임시 대체 중. 필수는 아님. (modifier-framework-and-healer)
 
-### Promoted
+### Promoted / Closed
 
 - **Modifier framework — Legacy migration** → `docs/spec/modifier-legacy-migration/` (completed 2026-05-01)
+- **Modifier framework & Healer** → `docs/spec/modifier-framework-and-healer/` (completed 2026-05)
+- **CC pipeline & Obstacle** → `docs/spec/cc-pipeline-and-obstacle/` (completed 2026-04-29)
+- **Enemy unit development** → `docs/spec/enemy-unit-development/` (completed 2026-04-30, PlayMode 검증 후속)
+- **Board visualization** → `docs/spec/board-visualization/` (wrap 2026-04-27 — ROI 부족 중단, palette-and-overlay-fix 로 후속)
