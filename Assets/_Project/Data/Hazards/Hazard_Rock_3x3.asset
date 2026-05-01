@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Hazard_Rock_3x3
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Battle.Effects.BlockingHazardSO
   visualPrefab: {fileID: 9038635551483064803, guid: a5a44ae9f83494b39a8032b6dc51f44d, type: 3}
+  spawnVfxPrefab: {fileID: 2166874625917827316, guid: c666c19f830b84752a4a6427be633190, type: 3}
   shape: 1
   maxHp: 100
-  destructionVfxPrefab: {fileID: 0}
+  destructionVfxPrefab: {fileID: 6140286580942836002, guid: cf3240cbc85764f9b95608b9ba00e436, type: 3}
