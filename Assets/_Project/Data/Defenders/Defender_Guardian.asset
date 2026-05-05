@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DefenderUnitData
   displayName: Guardian
   health: 80
-  attackRange: 1.5
+  attackRange: 2
   attackDamage: 15
   attackCooldown: 2
   attackTargetCount: 1
@@ -30,7 +30,7 @@ MonoBehaviour:
     stackKind: 0
     stackMaxStack: 0
   onPlaceEffect: 2
-  onPlaceRange: 1.5
+  onPlaceRange: 2
   onPlaceMagnitude: 1.3
   onPlaceDuration: 6
   cost: 2

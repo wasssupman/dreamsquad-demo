@@ -100,8 +100,10 @@ namespace Wassup.Battle.Combat
 
                 // Find nearest in-range target allowed by this attacker's mask.
                 float3 atkPos = transform.ValueRO.Position;
-                float range = attack.ValueRO.range;
-                float rangeSq = range * range;
+                float tileSize = hasFlowField ? flowField.tileSize : 1f;
+                int2 gridSize = hasFlowField ? flowField.gridSize : new int2(128, 128);
+                int tileRange = GridMath.RangeToTiles(attack.ValueRO.range);
+                int2 atkCell = GridMath.WorldToCell(atkPos, tileSize, gridSize);
                 float bestSq = float.MaxValue;
                 Entity bestTarget = Entity.Null;
                 float3 bestTargetPos = default;
@@ -111,8 +113,10 @@ namespace Wassup.Battle.Combat
                     if (((int)targetFactions[i].value & mask) == 0) continue;
                     if (targetEntities[i] == attackerEntity) continue;
                     float3 targetPos = targetTransforms[i].Position;
+                    int2 tgtCell = GridMath.WorldToCell(targetPos, tileSize, gridSize);
+                    if (GridMath.ChebyshevDistance(atkCell, tgtCell) > tileRange) continue;
                     float d2 = DistanceSqToTarget(atkPos, targetEntities[i], targetPos, blockingHazardCellsLookup, hasFlowField, flowField, out var nearestPos);
-                    if (d2 <= rangeSq && d2 < bestSq)
+                    if (d2 < bestSq)
                     {
                         bestSq = d2;
                         bestTarget = targetEntities[i];
@@ -220,8 +224,10 @@ namespace Wassup.Battle.Combat
                                         if (hitMaskO[i]) continue;
                                         if (((int)targetFactions[i].value & mask) == 0) continue;
                                         if (targetEntities[i] == attackerEntity) continue;
+                                        int2 tgtCellAoE = GridMath.WorldToCell(targetTransforms[i].Position, tileSize, gridSize);
+                                        if (GridMath.ChebyshevDistance(atkCell, tgtCellAoE) > tileRange) continue;
                                         float d2 = DistanceSqToTarget(atkPos, targetEntities[i], targetTransforms[i].Position, blockingHazardCellsLookup, hasFlowField, flowField, out _);
-                                        if (d2 <= rangeSq && d2 < passSq)
+                                        if (d2 < passSq)
                                         {
                                             passSq = d2;
                                             passIdx = i;

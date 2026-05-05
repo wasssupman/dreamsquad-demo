@@ -23,5 +23,13 @@ namespace Wassup.Battle.Movement
             => new float3(cell.x * tileSize, y, cell.y * tileSize);
 
         public static int CellIndex(int2 cell, int2 gridSize) => cell.y * gridSize.x + cell.x;
+
+        [BurstCompile]
+        public static int ChebyshevDistance(int2 a, int2 b)
+            => math.cmax(math.abs(a - b));
+
+        // half-away-from-zero rounding — avoids banker's rounding from math.round.
+        public static int RangeToTiles(float r)
+            => (int)(r + 0.5f);
     }
 }

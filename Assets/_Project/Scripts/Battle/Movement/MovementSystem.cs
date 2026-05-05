@@ -81,9 +81,9 @@ namespace Wassup.Battle.Movement
                 for (int t = 0; t < tornadoFields.Length; t++)
                 {
                     var fieldT = tornadoFields[t];
-                    float fdx = current.x - fieldT.centerWorld.x;
-                    float fdz = current.z - fieldT.centerWorld.z;
-                    if (fdx * fdx + fdz * fdz > fieldT.radius * fieldT.radius) continue;
+                    int2 entityCell = GridMath.WorldToCell(current, field.tileSize, field.gridSize);
+                    int2 centerCell = GridMath.WorldToCell(fieldT.centerWorld, field.tileSize, field.gridSize);
+                    if (GridMath.ChebyshevDistance(entityCell, centerCell) > fieldT.tileRange) continue;
                     float3 toCenter = fieldT.centerWorld - current;
                     toCenter.y = 0f;
                     float centerDist = math.length(toCenter);

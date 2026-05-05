@@ -42,7 +42,7 @@ namespace Wassup.Tests.EditMode
             _em.AddComponentData(e, new TornadoField
             {
                 centerWorld = float3.zero,
-                radius = 2f,
+                tileRange = 2,
                 pullSpeed = 1f,
                 remaining = 0.1f,
             });
@@ -59,7 +59,7 @@ namespace Wassup.Tests.EditMode
             _em.AddComponentData(e, new TornadoField
             {
                 centerWorld = float3.zero,
-                radius = 2f,
+                tileRange = 2,
                 pullSpeed = 1f,
                 remaining = 2f,
             });

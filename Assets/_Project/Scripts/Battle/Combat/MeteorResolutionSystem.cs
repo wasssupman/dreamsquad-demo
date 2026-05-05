@@ -4,6 +4,7 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 using Wassup.Battle.Effects;
+using Wassup.Battle.Movement;
 using Wassup.Battle.Units;
 
 namespace Wassup.Battle.Combat
@@ -39,6 +40,8 @@ namespace Wassup.Battle.Combat
             var attackers = attackerQuery.ToEntityArray(Allocator.Temp);
             var attackerTransforms = attackerQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
 
+            bool hasFlowField = SystemAPI.TryGetSingleton<FlowFieldSingleton>(out var flowField);
+
             // Phase 8 §12: hoist the singleton lookup out of the per-meteor loop
             // so GetSingletonRW fires at most once per frame instead of once per
             // resolved meteor. Stays valid because Teardown disposes the queue
@@ -57,15 +60,17 @@ namespace Wassup.Battle.Combat
                 if (pending.ValueRO.warningRemaining > 0f) continue;
 
                 float3 center = pending.ValueRO.centerWorld;
-                float rSq = pending.ValueRO.radius * pending.ValueRO.radius;
+                int tileRng = pending.ValueRO.tileRange;
                 float dmg = pending.ValueRO.damage;
+                float tileSize = hasFlowField ? flowField.tileSize : 1f;
+                int2 gridSize = hasFlowField ? flowField.gridSize : new int2(128, 128);
+                int2 centerCell = GridMath.WorldToCell(center, tileSize, gridSize);
 
                 for (int i = 0; i < attackers.Length; i++)
                 {
                     float3 p = attackerTransforms[i].Position;
-                    float dx = p.x - center.x;
-                    float dz = p.z - center.z;
-                    if (dx * dx + dz * dz > rSq) continue;
+                    int2 entityCell = GridMath.WorldToCell(p, tileSize, gridSize);
+                    if (GridMath.ChebyshevDistance(entityCell, centerCell) > tileRng) continue;
                     ecb.AppendToBuffer(attackers[i], new IncomingDamage { amount = dmg });
                 }
 
@@ -74,7 +79,7 @@ namespace Wassup.Battle.Combat
                     burstWriter.Value.Enqueue(new MeteorBurstEvent
                     {
                         center = center,
-                        radius = pending.ValueRO.radius,
+                        radius = tileRng * tileSize, // world units for VFX
                     });
                 }
 

@@ -30,7 +30,7 @@ MonoBehaviour:
     stackKind: 0
     stackMaxStack: 0
   onPlaceEffect: 4
-  onPlaceRange: 1.25
+  onPlaceRange: 1
   onPlaceMagnitude: 50
   onPlaceDuration: 0
   cost: 3

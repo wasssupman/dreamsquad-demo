@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DefenderUnitData
   displayName: Bruiser
   health: 1000
-  attackRange: 1.5
+  attackRange: 2
   attackDamage: 30
   attackCooldown: 1.2
   attackTargetCount: 3
@@ -30,7 +30,7 @@ MonoBehaviour:
     stackKind: 0
     stackMaxStack: 0
   onPlaceEffect: 4
-  onPlaceRange: 1.5
+  onPlaceRange: 2
   onPlaceMagnitude: 70
   onPlaceDuration: 0
   cost: 3

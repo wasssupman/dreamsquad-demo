@@ -12,7 +12,7 @@ namespace Wassup.Battle.Effects
     public struct MeteorPending : IComponentData
     {
         public float3 centerWorld;
-        public float radius;
+        public int   tileRange;
         public float damage;
         public float warningRemaining;
     }

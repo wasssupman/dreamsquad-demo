@@ -14,7 +14,7 @@ namespace Wassup.Battle.Effects
     public struct TornadoField : IComponentData
     {
         public float3 centerWorld;
-        public float radius;
+        public int   tileRange;
         public float pullSpeed;
         public float remaining;
     }

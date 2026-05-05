@@ -16,7 +16,7 @@ MonoBehaviour:
   health: 45
   moveSpeed: 1.8
   attackDamage: 14
-  attackRange: 5.5
+  attackRange: 6
   attackCooldown: 2.2
   projectile: {fileID: 11400000, guid: b1ed58b2a1f364ac3ab6471136bd461f, type: 2}
   movePauseOnAttackSec: 1
