@@ -42,9 +42,10 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
-        public void Creates_Buffer_And_Adds_Entry_When_None_Exists()
+        public void Adds_Entry_To_Empty_Buffer()
         {
             var e = _em.CreateEntity();
+            _em.AddBuffer<CcEffect>(e); // mirrors attacker spawn contract: buffer pre-attached
             _queue.Enqueue(new EnemyCcEvent
             {
                 target = e,
@@ -53,7 +54,6 @@ namespace Wassup.Tests.EditMode
 
             Tick();
 
-            Assert.IsTrue(_em.HasBuffer<CcEffect>(e));
             var buf = _em.GetBuffer<CcEffect>(e);
             Assert.AreEqual(1, buf.Length);
             Assert.AreEqual(CcKind.Slow, buf[0].kind);
@@ -101,6 +101,21 @@ namespace Wassup.Tests.EditMode
 
             var result = _em.GetBuffer<CcEffect>(e);
             Assert.AreEqual(2, result.Length);
+        }
+
+        [Test]
+        public void Ignores_Event_When_Target_Was_Destroyed_Before_Apply()
+        {
+            var e = _em.CreateEntity();
+            _queue.Enqueue(new EnemyCcEvent
+            {
+                target = e,
+                effect = new CcEffect { kind = CcKind.Slow, scalar = 0.5f, remainingTime = 2f }
+            });
+            _em.DestroyEntity(e);
+
+            Assert.DoesNotThrow(() => Tick());
+            Assert.IsTrue(_queue.IsEmpty());
         }
     }
 }

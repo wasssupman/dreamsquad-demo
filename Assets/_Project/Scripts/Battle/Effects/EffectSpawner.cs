@@ -24,43 +24,38 @@ namespace Wassup.Battle.Effects
         // Same merge policy as CcApplySystem: max(remainingTime) + new vector/scalar.
         public static void ApplyCc(EntityManager em, Entity target, CcEffect effect)
         {
-            if (em.HasBuffer<CcEffect>(target))
+            if (!em.Exists(target))
+                return;
+
+            var buffer = em.GetBuffer<CcEffect>(target);
+            for (int i = 0; i < buffer.Length; i++)
             {
-                var buffer = em.GetBuffer<CcEffect>(target);
-                for (int i = 0; i < buffer.Length; i++)
+                if (buffer[i].kind == effect.kind)
                 {
-                    if (buffer[i].kind == effect.kind)
+                    buffer[i] = new CcEffect
                     {
-                        buffer[i] = new CcEffect
-                        {
-                            kind = effect.kind,
-                            vector = effect.vector,
-                            scalar = effect.scalar,
-                            remainingTime = math.max(buffer[i].remainingTime, effect.remainingTime),
-                        };
-                        return;
-                    }
+                        kind = effect.kind,
+                        vector = effect.vector,
+                        scalar = effect.scalar,
+                        remainingTime = math.max(buffer[i].remainingTime, effect.remainingTime),
+                    };
+                    return;
                 }
-                buffer.Add(effect);
             }
-            else
-            {
-                var buffer = em.AddBuffer<CcEffect>(target);
-                buffer.Add(effect);
-            }
+            buffer.Add(effect);
         }
 
         // Phase 8 §17 — Tornado: carrier entity with area data. MovementSystem
         // queries live TornadoField entities each frame and applies pull to any
         // attacker inside the radius (continuous, not snapshot). Re-cast spawns
         // an independent field; multiple fields can coexist.
-        public static Entity SpawnTornadoField(EntityManager em, float3 centerWorld, float radius, float pullSpeed, float duration)
+        public static Entity SpawnTornadoField(EntityManager em, float3 centerWorld, int tileRange, float pullSpeed, float duration)
         {
             var e = em.CreateEntity();
             em.AddComponentData(e, new TornadoField
             {
                 centerWorld = centerWorld,
-                radius = radius,
+                tileRange = tileRange,
                 pullSpeed = pullSpeed,
                 remaining = duration,
             });
@@ -69,13 +64,13 @@ namespace Wassup.Battle.Effects
 
         // Phase 7 — Meteor: unlike Slow/Tornado, this spawns a dedicated carrier
         // entity. MeteorResolutionSystem consumes + destroys it when warningRemaining <= 0.
-        public static Entity SpawnMeteor(EntityManager em, float3 centerWorld, float radius, float damage, float warningSec)
+        public static Entity SpawnMeteor(EntityManager em, float3 centerWorld, int tileRange, float damage, float warningSec)
         {
             var e = em.CreateEntity();
             em.AddComponentData(e, new MeteorPending
             {
                 centerWorld = centerWorld,
-                radius = radius,
+                tileRange = tileRange,
                 damage = damage,
                 warningRemaining = warningSec,
             });

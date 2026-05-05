@@ -1135,6 +1135,14 @@ namespace Wassup.Bridge
             return new Vector3(p.x, p.y, p.z);
         }
 
+        private bool InTileRange(float3 worldPos, Vector2Int originTile, int range)
+        {
+            var cell = GridMath.WorldToCell(worldPos, tileSize,
+                           new int2(_generatedMap.gridSize.x, _generatedMap.gridSize.y));
+            var origin = new int2(originTile.x, originTile.y);
+            return GridMath.ChebyshevDistance(cell, origin) <= range;
+        }
+
         public Unity.Mathematics.int2 DebugWorldToCell(Vector3 worldPosition)
         {
             int2 gridSize = _generatedMap.IsCreated ? _generatedMap.gridSize : GridSize;
@@ -1232,15 +1240,13 @@ namespace Wassup.Bridge
 
         private int ApplySlowField(Vector2Int tile, SkillData skill)
         {
-            // Collect all currently-alive attack unit entities; filter by XZ distance
-            // to the target world point; apply slow CC effect through EffectSpawner so
+            // Collect all currently-alive attack unit entities; filter by Chebyshev tile
+            // distance to the target tile; apply slow CC effect through EffectSpawner so
             // the Effects context remains the sole writer.
             if (!_aliveAttackersQueryCreated) return 0;
             var entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
 
-            float3 targetWorld = GridToWorldCenter(tile);
-            float rangeWorld = skill.range * tileSize;
-            float rangeSq = rangeWorld * rangeWorld;
+            int tileRange = GridMath.RangeToTiles(skill.range);
             int affected = 0;
 
             for (int i = 0; i < entities.Length; i++)
@@ -1248,9 +1254,7 @@ namespace Wassup.Bridge
                 var e = entities[i];
                 if (!_em.HasComponent<LocalTransform>(e)) continue;
                 var pos = _em.GetComponentData<LocalTransform>(e).Position;
-                float dx = pos.x - targetWorld.x;
-                float dz = pos.z - targetWorld.z;
-                if (dx * dx + dz * dz > rangeSq) continue;
+                if (!InTileRange(pos, tile, tileRange)) continue;
                 EnqueueMoveSpeedMul(e, skill.magnitude, skill.durationSec);
                 affected++;
             }
@@ -1264,7 +1268,8 @@ namespace Wassup.Bridge
         private int ApplyTornado(Vector2Int tile, SkillData skill)
         {
             float3 targetWorld = GridToWorldCenter(tile);
-            float rangeWorld = skill.range * tileSize;
+            int tileRange = GridMath.RangeToTiles(skill.range);
+            float rangeWorld = tileRange * tileSize; // VFX only
 
             // Phase 8 §17 — continuous field (replaces Phase 7 per-attacker
             // snapshot). MovementSystem queries live TornadoField entities each
@@ -1272,7 +1277,7 @@ namespace Wassup.Bridge
             // pulled. Re-cast creates an independent field; multiple fields can
             // coexist and the attacker is pulled by the first one that contains
             // it.
-            EffectSpawner.SpawnTornadoField(_em, targetWorld, rangeWorld, skill.magnitude, skill.durationSec);
+            EffectSpawner.SpawnTornadoField(_em, targetWorld, tileRange, skill.magnitude, skill.durationSec);
 
             // Phase 8 §12: swirling particle ring over the Tornado center.
             if (vfxSpawner != null)
@@ -1283,16 +1288,14 @@ namespace Wassup.Bridge
             // a baseline without waiting for the field to expire.
             if (!_aliveAttackersQueryCreated) return 0;
             var entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
-            float rSq = rangeWorld * rangeWorld;
             int preview = 0;
             for (int i = 0; i < entities.Length; i++)
             {
                 var e = entities[i];
                 if (!_em.HasComponent<LocalTransform>(e)) continue;
                 var p = _em.GetComponentData<LocalTransform>(e).Position;
-                float dx = p.x - targetWorld.x;
-                float dz = p.z - targetWorld.z;
-                if (dx * dx + dz * dz <= rSq) preview++;
+                if (!InTileRange(p, tile, tileRange)) continue;
+                preview++;
             }
             entities.Dispose();
             return preview;
@@ -1304,9 +1307,10 @@ namespace Wassup.Bridge
         private int ApplyMeteor(Vector2Int tile, SkillData skill)
         {
             float3 centerWorld = GridToWorldCenter(tile);
-            float radiusWorld = skill.range * tileSize;
+            int tileRange = GridMath.RangeToTiles(skill.range);
+            float radiusWorld = tileRange * tileSize; // VFX only
             float warn = skill.warningSec > 0f ? skill.warningSec : 0f;
-            EffectSpawner.SpawnMeteor(_em, centerWorld, radiusWorld, skill.magnitude, warn);
+            EffectSpawner.SpawnMeteor(_em, centerWorld, tileRange, skill.magnitude, warn);
             SpawnMeteorWarningVisual(centerWorld, radiusWorld, warn);
             // Phase 8 §13: falling streak during the warning window. Silent
             // no-op when meteorFallPrefab slot empty — Meteor still plays
@@ -1318,15 +1322,13 @@ namespace Wassup.Bridge
             // informative without waiting for the burst.
             if (!_aliveAttackersQueryCreated) return 0;
             var entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
-            float rSq = radiusWorld * radiusWorld;
             int preview = 0;
             for (int i = 0; i < entities.Length; i++)
             {
                 if (!_em.HasComponent<LocalTransform>(entities[i])) continue;
                 var p = _em.GetComponentData<LocalTransform>(entities[i]).Position;
-                float dx = p.x - centerWorld.x;
-                float dz = p.z - centerWorld.z;
-                if (dx * dx + dz * dz <= rSq) preview++;
+                if (!InTileRange(p, tile, tileRange)) continue;
+                preview++;
             }
             entities.Dispose();
             return preview;
@@ -1692,23 +1694,20 @@ namespace Wassup.Bridge
             if (unitData.onPlaceEffect == OnPlaceEffectType.None) return 0;
 
             float3 center = GridToWorldCenter(placedCell);
-            float rangeWorld = Mathf.Max(0f, unitData.onPlaceRange) * tileSize;
-            float rangeSq = rangeWorld * rangeWorld;
             int affected = 0;
 
             if (unitData.onPlaceEffect == OnPlaceEffectType.SlowPulse)
             {
                 if (unitData.onPlaceRange <= 0f) return 0;
                 if (!_aliveAttackersQueryCreated) return 0;
+                int tileRange = GridMath.RangeToTiles(unitData.onPlaceRange);
                 var entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
                 for (int i = 0; i < entities.Length; i++)
                 {
                     var e = entities[i];
                     if (!_em.HasComponent<LocalTransform>(e)) continue;
                     var pos = _em.GetComponentData<LocalTransform>(e).Position;
-                    float dx = pos.x - center.x;
-                    float dz = pos.z - center.z;
-                    if (dx * dx + dz * dz > rangeSq) continue;
+                    if (!InTileRange(pos, placedCell, tileRange)) continue;
                     EnqueueMoveSpeedMul(e, unitData.onPlaceMagnitude, unitData.onPlaceDuration);
                     affected++;
                 }
@@ -1718,15 +1717,14 @@ namespace Wassup.Bridge
             {
                 if (unitData.onPlaceRange <= 0f) return 0;
                 if (!_aliveAttackersQueryCreated) return 0;
+                int tileRange = GridMath.RangeToTiles(unitData.onPlaceRange);
                 var entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
                 for (int i = 0; i < entities.Length; i++)
                 {
                     var e = entities[i];
                     if (!_em.HasComponent<LocalTransform>(e)) continue;
                     var pos = _em.GetComponentData<LocalTransform>(e).Position;
-                    float dx = pos.x - center.x;
-                    float dz = pos.z - center.z;
-                    if (dx * dx + dz * dz > rangeSq) continue;
+                    if (!InTileRange(pos, placedCell, tileRange)) continue;
                     EnqueueMoveSpeedMul(e, unitData.onPlaceMagnitude, unitData.onPlaceDuration);
                     affected++;
                 }
@@ -1736,15 +1734,14 @@ namespace Wassup.Bridge
             {
                 if (unitData.onPlaceRange <= 0f || unitData.onPlaceMagnitude <= 0f) return 0;
                 if (!_aliveAttackersQueryCreated) return 0;
+                int tileRange = GridMath.RangeToTiles(unitData.onPlaceRange);
                 var entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
                 for (int i = 0; i < entities.Length; i++)
                 {
                     var e = entities[i];
                     if (!_em.HasComponent<LocalTransform>(e) || !_em.HasBuffer<IncomingDamage>(e)) continue;
                     var pos = _em.GetComponentData<LocalTransform>(e).Position;
-                    float dx = pos.x - center.x;
-                    float dz = pos.z - center.z;
-                    if (dx * dx + dz * dz > rangeSq) continue;
+                    if (!InTileRange(pos, placedCell, tileRange)) continue;
                     _em.GetBuffer<IncomingDamage>(e).Add(new IncomingDamage { amount = unitData.onPlaceMagnitude });
                     affected++;
                 }
@@ -1752,7 +1749,7 @@ namespace Wassup.Bridge
             }
             else if (unitData.onPlaceEffect == OnPlaceEffectType.ForwardProjectile)
             {
-                affected = ApplyForwardOnPlaceProjectile(unitData, placedCell, center);
+                affected = ApplyForwardOnPlaceProjectile(unitData, placedCell, GridToWorldCenter(placedCell));
             }
             else if (unitData.onPlaceEffect == OnPlaceEffectType.GainCost)
             {
@@ -1771,15 +1768,16 @@ namespace Wassup.Bridge
                 // Reuse the tuple-based tile map — no ECS query needed since placement
                 // grid already gives us every defender. Self-inclusion is allowed
                 // (PHASE4.md §4 autonomy, chosen for simplicity + stronger feedback).
+                int tileRange = GridMath.RangeToTiles(unitData.onPlaceRange);
                 foreach (var kv in _defenderByTile)
                 {
                     var d = kv.Value;
                     if (!_em.Exists(d.entity)) continue;
                     if (d.entity != placedEntity && _em.HasComponent<PendingDeployment>(d.entity)) continue;
                     var tileCell = kv.Key;
-                    float dx = tileCell.x - placedCell.x;
-                    float dz = tileCell.y - placedCell.y;
-                    if (dx * dx + dz * dz > unitData.onPlaceRange * unitData.onPlaceRange) continue;
+                    var tileInt = new int2(tileCell.x, tileCell.y);
+                    var originInt = new int2(placedCell.x, placedCell.y);
+                    if (GridMath.ChebyshevDistance(tileInt, originInt) > tileRange) continue;
                     EnqueueDamageMul(d.entity, unitData.onPlaceMagnitude, unitData.onPlaceDuration);
                     affected++;
                 }
@@ -1841,7 +1839,7 @@ namespace Wassup.Bridge
             return math.normalize(dir);
         }
 
-        // Recomputes adjacency synergy for `cell` and its four neighbors. Same-type
+        // Recomputes adjacency synergy for `cell` and its eight neighbors. Same-type
         // defender adjacency grants a damage multiplier of (1 + 0.1 × neighborCount).
         // Writes to SynergyBuff go through EffectSpawner so the Effects-context
         // write gateway stays a single code path (Phase 2 decision #9).
@@ -1854,6 +1852,10 @@ namespace Wassup.Bridge
                 cell + new Vector2Int(-1, 0),
                 cell + new Vector2Int(0, 1),
                 cell + new Vector2Int(0, -1),
+                cell + new Vector2Int(1, 1),
+                cell + new Vector2Int(-1, 1),
+                cell + new Vector2Int(1, -1),
+                cell + new Vector2Int(-1, -1),
             };
 
             for (int i = 0; i < cells.Length; i++)
@@ -1862,10 +1864,16 @@ namespace Wassup.Bridge
                 if (!_defenderByTile.TryGetValue(c, out var here)) continue;
                 if (!_em.Exists(here.entity) || _em.HasComponent<PendingDeployment>(here.entity)) continue;
                 int neighbors = 0;
-                if (_defenderByTile.TryGetValue(c + new Vector2Int(1, 0), out var n1) && n1.data == here.data && _em.Exists(n1.entity) && !_em.HasComponent<PendingDeployment>(n1.entity)) neighbors++;
-                if (_defenderByTile.TryGetValue(c + new Vector2Int(-1, 0), out var n2) && n2.data == here.data && _em.Exists(n2.entity) && !_em.HasComponent<PendingDeployment>(n2.entity)) neighbors++;
-                if (_defenderByTile.TryGetValue(c + new Vector2Int(0, 1), out var n3) && n3.data == here.data && _em.Exists(n3.entity) && !_em.HasComponent<PendingDeployment>(n3.entity)) neighbors++;
-                if (_defenderByTile.TryGetValue(c + new Vector2Int(0, -1), out var n4) && n4.data == here.data && _em.Exists(n4.entity) && !_em.HasComponent<PendingDeployment>(n4.entity)) neighbors++;
+                for (int dx = -1; dx <= 1; dx++)
+                for (int dz = -1; dz <= 1; dz++)
+                {
+                    if (dx == 0 && dz == 0) continue;
+                    if (_defenderByTile.TryGetValue(c + new Vector2Int(dx, dz), out var n)
+                        && n.data == here.data
+                        && _em.Exists(n.entity)
+                        && !_em.HasComponent<PendingDeployment>(n.entity))
+                        neighbors++;
+                }
 
                 if (neighbors == 0)
                 {
@@ -2712,7 +2720,7 @@ namespace Wassup.Bridge
             if (!_aliveAttackersQueryCreated) return;
 
             float3 defCenter = GridToWorldCenter(cell);
-            float radiusSq = unitData.onPlacePushRadius * unitData.onPlacePushRadius;
+            int tileRange = GridMath.RangeToTiles(unitData.onPlacePushRadius);
             float speed = unitData.onPlacePushDistance / unitData.onPlacePushDuration;
 
             var entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
@@ -2721,9 +2729,9 @@ namespace Wassup.Bridge
                 var e = entities[i];
                 if (!_em.HasComponent<LocalTransform>(e)) continue;
                 var pos = _em.GetComponentData<LocalTransform>(e).Position;
+                if (!InTileRange(pos, cell, tileRange)) continue;
                 float3 toEnemy = pos - defCenter;
                 toEnemy.y = 0f;
-                if (toEnemy.x * toEnemy.x + toEnemy.z * toEnemy.z > radiusSq) continue;
                 float3 dir = math.normalizesafe(toEnemy);
                 EffectSpawner.ApplyCc(_em, e, new CcEffect
                 {
@@ -2880,9 +2888,9 @@ namespace Wassup.Bridge
             _em.AddComponent<AttackUnitTag>(entity);
             _em.AddComponentData(entity, new Health { value = entry.unitType.health, max = entry.unitType.health });
             _em.AddComponentData(entity, new FactionTag { value = Faction.Enemy });
-            // Pre-attach an empty IncomingDamage buffer so the Combat system can append without needing
-            // to create the buffer on first hit (simplifies ECB usage and keeps archetype stable).
+            // Pre-attach empty buffers so downstream systems never need structural AddBuffer on hot paths.
             _em.AddBuffer<IncomingDamage>(entity);
+            _em.AddBuffer<CcEffect>(entity);
 
             // modifier-legacy-migration unit 1: enemies attack only through
             // outputs[]. attackDamage remains serialized compatibility data.
