@@ -2,7 +2,7 @@
 
 ## Commit
 
-- Pending commit.
+- `606b306` feat(defenders): add hazard caster defenders
 
 ## Implemented
 
