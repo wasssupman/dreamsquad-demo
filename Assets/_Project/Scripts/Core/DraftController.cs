@@ -13,8 +13,20 @@ namespace Wassup.Core
     // BeginDraft is invoked by GameManager or ResultScreen-triggered code paths.
     public class DraftController : MonoBehaviour
     {
-        [SerializeField] private DefenderUnitData[] catalog;
-        [SerializeField] private int poolSize = 10;
+        private const int BasicSlotCount = 3;
+        private const int MetaSlotCount = 2;
+        private const int EgoSlotCount = 1;
+        private const int CollectionSlotCount = 4;
+        private const int DraftPoolSize = BasicSlotCount + MetaSlotCount + EgoSlotCount + CollectionSlotCount;
+
+        [SerializeField] private DefenderUnitData[] basicDeck;
+        [SerializeField] private DefenderUnitData[] metaDeck;
+        [SerializeField] private DefenderUnitData egoUnit;
+        [SerializeField] private DefenderUnitData[] collectionPool;
+
+        // Legacy scene/test fallback. New content should use the slot fields above.
+        [SerializeField, HideInInspector] private DefenderUnitData[] catalog;
+        [SerializeField, HideInInspector] private int poolSize = DraftPoolSize;
         [SerializeField] private int discardCount = 3;
         [SerializeField] private BattleBridge battleBridge;
         [SerializeField] private SkillData[] defaultSkillLoadout;
@@ -22,10 +34,11 @@ namespace Wassup.Core
         private readonly DraftSession _session = new();
 
         public DraftSession Session => _session;
-        public int PoolSize => poolSize;
+        public int PoolSize => DraftPoolSize;
         public int DiscardCount => discardCount;
-        public int PickCount => poolSize - discardCount;
-        public IReadOnlyList<DefenderUnitData> Catalog => catalog;
+        public int PickCount => DraftPoolSize - discardCount;
+        public IReadOnlyList<DefenderUnitData> CollectionPool => collectionPool;
+        public IReadOnlyList<DefenderUnitData> Catalog => collectionPool;
         public MapGenerationOptions SelectedMapGenerationOptions { get; private set; } = MapGenerationOptions.Default;
         public MapPathShape SelectedMapPathShape => SelectedMapGenerationOptions.pathShape;
 
@@ -39,14 +52,29 @@ namespace Wassup.Core
 
         public void BeginDraft(int seed)
         {
-            if (catalog == null || catalog.Length < poolSize)
+            if (HasSlotConfiguration())
+            {
+                if (!ValidateSlots()) return;
+                _session.Reset(
+                    basicDeck,
+                    metaDeck,
+                    egoUnit,
+                    collectionPool,
+                    CollectionSlotCount,
+                    discardCount,
+                    seed);
+            }
+            else if (catalog != null && catalog.Length >= poolSize)
+            {
+                _session.Reset(catalog, poolSize, discardCount, seed);
+            }
+            else
             {
                 Debug.LogError(
-                    $"[DraftController] catalog needs at least {poolSize} entries (has {(catalog?.Length ?? 0)}).",
+                    $"[DraftController] slot fields are not assigned and legacy catalog needs at least {poolSize} entries (has {(catalog?.Length ?? 0)}).",
                     this);
                 return;
             }
-            _session.Reset(catalog, poolSize, discardCount, seed);
 
             // Phase 7: BeginDraft is the "new draft" entry point (initial start
             // and Redraft). Roll a fresh skill loadout here so the DraftView can
@@ -161,6 +189,84 @@ namespace Wassup.Core
             // even when invoked on the same tick.
             return unchecked(Environment.TickCount
                 ^ UnityEngine.Random.Range(int.MinValue, int.MaxValue));
+        }
+
+        private bool HasSlotConfiguration() =>
+            basicDeck != null || metaDeck != null || egoUnit != null || collectionPool != null;
+
+        private bool ValidateSlots()
+        {
+            if (basicDeck == null || basicDeck.Length != BasicSlotCount)
+            {
+                Debug.LogError($"[DraftController] basicDeck must have {BasicSlotCount} entries.", this);
+                return false;
+            }
+
+            if (metaDeck == null || metaDeck.Length != MetaSlotCount)
+            {
+                Debug.LogError($"[DraftController] metaDeck must have {MetaSlotCount} entries.", this);
+                return false;
+            }
+
+            if (egoUnit == null)
+            {
+                Debug.LogError("[DraftController] egoUnit is not assigned.", this);
+                return false;
+            }
+
+            if (collectionPool == null)
+            {
+                Debug.LogError("[DraftController] collectionPool is not assigned.", this);
+                return false;
+            }
+
+            var fixedUnits = new HashSet<DefenderUnitData>();
+            if (!AddFixedUnits(fixedUnits, basicDeck, "basicDeck")) return false;
+            if (!AddFixedUnits(fixedUnits, metaDeck, "metaDeck")) return false;
+            if (!AddFixedUnit(fixedUnits, egoUnit, "egoUnit")) return false;
+
+            var collectionCandidates = new HashSet<DefenderUnitData>();
+            foreach (var unit in collectionPool)
+            {
+                if (unit == null) continue;
+                if (fixedUnits.Contains(unit)) continue;
+                collectionCandidates.Add(unit);
+            }
+
+            if (collectionCandidates.Count < CollectionSlotCount)
+            {
+                Debug.LogError(
+                    $"[DraftController] collectionPool needs at least {CollectionSlotCount} non-fixed unique candidates (has {collectionCandidates.Count}).",
+                    this);
+                return false;
+            }
+
+            return true;
+        }
+
+        private bool AddFixedUnits(HashSet<DefenderUnitData> fixedUnits, DefenderUnitData[] units, string fieldName)
+        {
+            for (int i = 0; i < units.Length; i++)
+                if (!AddFixedUnit(fixedUnits, units[i], $"{fieldName}[{i}]")) return false;
+            return true;
+        }
+
+        private bool AddFixedUnit(HashSet<DefenderUnitData> fixedUnits, DefenderUnitData unit, string fieldName)
+        {
+            if (unit == null)
+            {
+                Debug.LogError($"[DraftController] {fieldName} is null.", this);
+                return false;
+            }
+
+            if (!fixedUnits.Add(unit))
+            {
+                string name = string.IsNullOrEmpty(unit.displayName) ? unit.name : unit.displayName;
+                Debug.LogError($"[DraftController] duplicate fixed slot unit: {name}.", this);
+                return false;
+            }
+
+            return true;
         }
     }
 }

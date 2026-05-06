@@ -36,10 +36,12 @@
 
 | 등급 | 효과 |
 |---|---|
-| Common | 테두리 Tween.Color pulse (subtle, 3s cycle) |
-| Rare | 테두리 Tween.Color pulse (medium, 2s cycle) |
-| Epic | pulse + Particle System 자식 (ember 5–10/s) |
-| Ego | pulse + Particle System + 배너 shimmer |
+| Common | 테두리 Tween.Color pulse (subtle, 3s) + foil overlay (intensity 0.08) |
+| Rare | 테두리 Tween.Color pulse (medium, 2s) + foil overlay (intensity 0.22) |
+| Epic | pulse + foil (0.48) + UI ember 8개 + Particle System (선택) |
+| Ego | pulse + foil (0.72) + UI ember 15개 + Particle System + 배너 shimmer |
+
+foil overlay: `Assets/_Project/Shaders/DraftCardFoil_UI.shader` (Wassup/UI/DraftCardFoil). 홀로그래픽 필름 효과 — 레인보우 쉰, 마이크로 회절, 에지 림. 카드 틸트에 반응.
 
 ## 구현 문서 목록
 

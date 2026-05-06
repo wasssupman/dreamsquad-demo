@@ -8,6 +8,7 @@ Common/Rare = PrimeTween 테두리 pulse, Epic = pulse + 파티클, Ego = pulse 
 ## 변경 대상
 
 - 신규: `Assets/_Project/Scripts/UI/Draft/DraftCardVfxDriver.cs`
+- 신규: `Assets/_Project/Shaders/DraftCardFoil_UI.shader`
 - 수정: `Assets/_Project/Scripts/UI/Draft/DraftCardFanView.cs` (prefab 참조 + AddComponent)
 
 ## 구현
@@ -105,6 +106,17 @@ var driver = go.AddComponent<DraftCardVfxDriver>();
 driver.Configure(unit.rarity, go.GetComponent<Image>(), swatch,
                  epicCardParticlePrefab, egoCardParticlePrefab);
 ```
+
+### Foil Overlay (DraftCardVfxDriver.SpawnFoilOverlay)
+
+`DraftCardFoil_UI.shader` (셰이더명: `Wassup/UI/DraftCardFoil`) 를 사용한 홀로그래픽 필름 오버레이. 카드 inner bg 위에 full-card Image GO를 생성해 런타임 Material을 적용.
+
+- `_Intensity`: 등급별 강도 (Common 0.08 / Rare 0.22 / Epic 0.48 / Ego 0.72)
+- `_Speed`: 쉰 애니메이션 속도 (Ego 1.35, 나머지 0.9)
+- `_HueShift`: 색조 기반 프리즘 (Rare 0.58 / Epic 0.08 / Ego 0.78)
+- `_Tilt`: 카드 z 회전 → 쉰 반응 (UpdateFoil 에서 매 프레임 갱신)
+
+셰이더가 없으면 (`Shader.Find` null 반환) 오버레이 없이 동작. `HideFlags.HideAndDontSave`로 런타임 Material leak 방지.
 
 ### 파티클 프리팹 생성 (procedural, UnityMCP execute_code)
 

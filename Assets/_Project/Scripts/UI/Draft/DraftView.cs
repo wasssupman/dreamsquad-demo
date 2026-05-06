@@ -105,7 +105,7 @@ namespace Wassup.UI.Draft
             if (fan != null)
             {
                 fan.gameObject.SetActive(true);
-                fan.Build(controller.Session.Pool);
+                fan.Build(controller.Session.Pool, controller.Session);
                 yield return fan.PlayEnterSequence().ToYieldInstruction();
             }
             // Drafting state continues until 3 cards discarded.

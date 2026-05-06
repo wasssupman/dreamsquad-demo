@@ -148,6 +148,24 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 24e7b48920cee4097af3fd4b952650e8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Core.DraftController
+  basicDeck:
+  - {fileID: 11400000, guid: b1c2d3e4f5a601234567890abcdef203, type: 2}
+  - {fileID: 11400000, guid: f60cd7372f634487c90afc428f71e237, type: 2}
+  - {fileID: 11400000, guid: 3e2a6f274a4954751931565017cca44f, type: 2}
+  metaDeck:
+  - {fileID: 11400000, guid: b1c2d3e4f5a601234567890abcdef201, type: 2}
+  - {fileID: 11400000, guid: 1b476721523af4fd68b6d3d6e1dd265a, type: 2}
+  egoUnit: {fileID: 11400000, guid: b1c2d3e4f5a601234567890abcdef204, type: 2}
+  collectionPool:
+  - {fileID: 11400000, guid: b1c2d3e4f5a601234567890abcdef202, type: 2}
+  - {fileID: 11400000, guid: b1c2d3e4f5a601234567890abcdef206, type: 2}
+  - {fileID: 11400000, guid: b1c2d3e4f5a601234567890abcdef205, type: 2}
+  - {fileID: 11400000, guid: b1c2d3e4f5a601234567890abcdef207, type: 2}
+  - {fileID: 11400000, guid: b85c355d149cb422c857405f5474decc, type: 2}
+  - {fileID: 11400000, guid: 2299a006fce83496b97de8a84524787b, type: 2}
+  - {fileID: 11400000, guid: c11b47b970d9e4e1a8c177e518aee4d8, type: 2}
+  - {fileID: 11400000, guid: 5874294b56d2c4b11a9ba2ea9401f466, type: 2}
+  - {fileID: 11400000, guid: 070bca996c4ad4ee9bbd571d1b5de06f, type: 2}
   catalog:
   - {fileID: 11400000, guid: 1b476721523af4fd68b6d3d6e1dd265a, type: 2}
   - {fileID: 11400000, guid: b1c2d3e4f5a601234567890abcdef207, type: 2}
@@ -947,6 +965,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 16f7e49468c4842b0bb295afc716fb77, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.Draft.DraftCardFanView
+  epicCardParticlePrefab: {fileID: 0}
+  egoCardParticlePrefab: {fileID: 0}
 --- !u!224 &780954128
 RectTransform:
   m_ObjectHideFlags: 0

@@ -26,6 +26,9 @@ namespace Wassup.UI.Draft
 
         public event Action<DraftCardView> CardDiscardRequested;
 
+        [SerializeField] private ParticleSystem epicCardParticlePrefab;
+        [SerializeField] private ParticleSystem egoCardParticlePrefab;
+
         private RectTransform _fanRoot;
         private readonly List<DraftCardView> _cards = new();
         private bool _built;
@@ -63,7 +66,7 @@ namespace Wassup.UI.Draft
             _fanRoot.sizeDelta = Vector2.zero;
         }
 
-        public void Build(IReadOnlyList<DefenderUnitData> pool)
+        public void Build(IReadOnlyList<DefenderUnitData> pool, Wassup.Core.DraftSession session = null)
         {
             if (!_built) BuildRoot();
             foreach (var c in _cards) if (c != null) Destroy(c.gameObject);
@@ -74,7 +77,7 @@ namespace Wassup.UI.Draft
             {
                 var unit = pool[i];
                 if (unit == null) continue;
-                var card = CreateCard(unit, i);
+                var card = CreateCard(unit, i, session);
                 _cards.Add(card);
             }
             LayoutHomes();
@@ -196,7 +199,7 @@ namespace Wassup.UI.Draft
             }
         }
 
-        private DraftCardView CreateCard(DefenderUnitData unit, int index)
+        private DraftCardView CreateCard(DefenderUnitData unit, int index, Wassup.Core.DraftSession session)
         {
             var go = new GameObject($"Card_{unit.displayName}",
                 typeof(RectTransform), typeof(Image), typeof(CanvasGroup));
@@ -208,10 +211,23 @@ namespace Wassup.UI.Draft
             rt.anchorMax = new Vector2(0.5f, 0f);
             rt.pivot = new Vector2(0.5f, 0.5f);
 
-            go.GetComponent<Image>().color = new Color(0.18f, 0.18f, 0.22f, 1f);
+            var borderImage = go.GetComponent<Image>();
+            borderImage.color = RarityBorderColor(unit.rarity);
             var group = go.GetComponent<CanvasGroup>();
 
-            // Swatch (top strip — defender base color).
+            var innerBgGo = new GameObject("InnerBg", typeof(RectTransform), typeof(Image));
+            innerBgGo.transform.SetParent(go.transform, false);
+            var innerRt = (RectTransform)innerBgGo.transform;
+            innerRt.anchorMin = Vector2.zero;
+            innerRt.anchorMax = Vector2.one;
+            innerRt.offsetMin = new Vector2(4f, 4f);
+            innerRt.offsetMax = new Vector2(-4f, -4f);
+            var innerBg = innerBgGo.GetComponent<Image>();
+            innerBg.color = new Color(0.11f, 0.11f, 0.14f, 1f);
+            innerBg.raycastTarget = false;
+            innerBgGo.transform.SetSiblingIndex(0);
+
+            // Slot banner (top strip).
             var swatchGo = new GameObject("Swatch", typeof(RectTransform), typeof(Image));
             swatchGo.transform.SetParent(go.transform, false);
             var swatchRt = (RectTransform)swatchGo.transform;
@@ -221,8 +237,24 @@ namespace Wassup.UI.Draft
             swatchRt.anchoredPosition = new Vector2(0f, -10f);
             swatchRt.sizeDelta = new Vector2(-20f, 50f);
             var swatch = swatchGo.GetComponent<Image>();
-            swatch.color = unit.visualMaterial != null ? unit.visualMaterial.GetColor("_BaseColor") : Color.white;
+            var slotType = session != null ? session.GetSlotType(unit) : DraftSlotType.Collection;
+            swatch.color = SlotBannerColor(slotType);
             swatch.raycastTarget = false;
+
+            var bannerLabelGo = new GameObject("BannerLabel", typeof(RectTransform));
+            bannerLabelGo.transform.SetParent(swatchGo.transform, false);
+            var bannerLabelRt = (RectTransform)bannerLabelGo.transform;
+            bannerLabelRt.anchorMin = Vector2.zero;
+            bannerLabelRt.anchorMax = Vector2.one;
+            bannerLabelRt.offsetMin = Vector2.zero;
+            bannerLabelRt.offsetMax = Vector2.zero;
+            var bannerLabel = bannerLabelGo.AddComponent<TextMeshProUGUI>();
+            bannerLabel.text = SlotLabel(slotType);
+            bannerLabel.fontSize = 16;
+            bannerLabel.color = slotType == DraftSlotType.Meta ? Color.black : Color.white;
+            bannerLabel.alignment = TextAlignmentOptions.Center;
+            bannerLabel.fontStyle = FontStyles.Bold;
+            bannerLabel.raycastTarget = false;
 
             // Stats label.
             var stats = $"{unit.displayName}\n\nHP  {unit.health:0}\nRNG {unit.attackRange:0.##}\nDMG {unit.attackDamage:0}\nCD  {unit.attackCooldown:0.##}s";
@@ -244,7 +276,37 @@ namespace Wassup.UI.Draft
             var view = go.AddComponent<DraftCardView>();
             view.Bind(rt, group, unit);
             view.Discarded += card => CardDiscardRequested?.Invoke(card);
+
+            var driver = go.AddComponent<DraftCardVfxDriver>();
+            driver.Configure(unit.rarity, borderImage, swatch, epicCardParticlePrefab, egoCardParticlePrefab);
             return view;
         }
+
+        private static Color RarityBorderColor(DefenderRarity rarity) => rarity switch
+        {
+            DefenderRarity.Common => new Color(0.55f, 0.55f, 0.55f, 1f),
+            DefenderRarity.Rare => new Color(0.35f, 0.61f, 0.97f, 1f),
+            DefenderRarity.Epic => new Color(1.00f, 0.55f, 0.26f, 1f),
+            DefenderRarity.Ego => new Color(0.80f, 0.27f, 1.00f, 1f),
+            _ => Color.white,
+        };
+
+        private static Color SlotBannerColor(DraftSlotType slotType) => slotType switch
+        {
+            DraftSlotType.Basic => new Color(0.29f, 0.48f, 0.78f, 1f),
+            DraftSlotType.Meta => new Color(0.79f, 0.64f, 0.15f, 1f),
+            DraftSlotType.Collection => new Color(0.18f, 0.62f, 0.38f, 1f),
+            DraftSlotType.Ego => new Color(0.61f, 0.18f, 0.96f, 1f),
+            _ => Color.gray,
+        };
+
+        private static string SlotLabel(DraftSlotType slotType) => slotType switch
+        {
+            DraftSlotType.Basic => "BASIC",
+            DraftSlotType.Meta => "META",
+            DraftSlotType.Collection => "COLLECT",
+            DraftSlotType.Ego => "EGO",
+            _ => string.Empty,
+        };
     }
 }

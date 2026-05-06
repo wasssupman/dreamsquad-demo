@@ -43,6 +43,7 @@ MonoBehaviour:
   blockingHazard: {fileID: 0}
   hazardFootprintWidth: 1
   hazardFootprintHeight: 1
+  rarity: 0
   skeletonDataAsset: {fileID: 11400000, guid: b0640b88ee78d49f38774a3a4b09bf4d, type: 2}
   spineSkinName: Goat
   idleAnimation: idle

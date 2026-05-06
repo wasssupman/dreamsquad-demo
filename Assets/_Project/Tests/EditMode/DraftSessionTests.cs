@@ -1,6 +1,8 @@
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.TestTools;
 using Wassup.Core;
 using Wassup.Data;
 
@@ -115,6 +117,88 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(2, s.DiscardedCount);
             s.Reset(_catalog, poolSize: 10, maxDiscards: 3, seed: 2);
             Assert.AreEqual(0, s.DiscardedCount);
+        }
+
+        [Test]
+        public void SlotReset_Produces_Expected_Pool_And_Slot_Types()
+        {
+            var s = new DraftSession();
+            s.Reset(
+                new[] { _catalog[0], _catalog[1], _catalog[2] },
+                new[] { _catalog[3], _catalog[4] },
+                _catalog[5],
+                new[] { _catalog[6], _catalog[7], _catalog[8], _catalog[9] },
+                collectionCount: 4,
+                maxDiscards: 3,
+                seed: 42);
+
+            Assert.AreEqual(10, s.PoolSize);
+            Assert.AreEqual(DraftSlotType.Basic, s.GetSlotType(_catalog[0]));
+            Assert.AreEqual(DraftSlotType.Meta, s.GetSlotType(_catalog[3]));
+            Assert.AreEqual(DraftSlotType.Ego, s.GetSlotType(_catalog[5]));
+            Assert.AreEqual(DraftSlotType.Collection, s.GetSlotType(_catalog[6]));
+        }
+
+        [Test]
+        public void SlotReset_Duplicate_Fixed_Unit_Logs_Error_And_Adds_Once()
+        {
+            LogAssert.Expect(LogType.Error, new Regex("duplicate draft unit in fixed slots"));
+            LogAssert.Expect(LogType.Error, new Regex("pool has 9 entries, expected 10"));
+
+            var s = new DraftSession();
+            s.Reset(
+                new[] { _catalog[0], _catalog[1], _catalog[2] },
+                new[] { _catalog[2], _catalog[3] },
+                _catalog[4],
+                new[] { _catalog[5], _catalog[6], _catalog[7], _catalog[8] },
+                collectionCount: 4,
+                maxDiscards: 3,
+                seed: 42);
+
+            Assert.AreEqual(9, s.PoolSize);
+            int occurrences = 0;
+            foreach (var unit in s.Pool)
+                if (unit == _catalog[2]) occurrences++;
+            Assert.AreEqual(1, occurrences);
+        }
+
+        [Test]
+        public void SlotReset_Insufficient_Collection_Candidates_Logs_Error()
+        {
+            LogAssert.Expect(LogType.Error, new Regex("collectionPool candidates are insufficient"));
+            LogAssert.Expect(LogType.Error, new Regex("pool has 8 entries, expected 10"));
+
+            var s = new DraftSession();
+            s.Reset(
+                new[] { _catalog[0], _catalog[1], _catalog[2] },
+                new[] { _catalog[3], _catalog[4] },
+                _catalog[5],
+                new[] { _catalog[6], _catalog[7] },
+                collectionCount: 4,
+                maxDiscards: 3,
+                seed: 42);
+
+            Assert.AreEqual(8, s.PoolSize);
+        }
+
+        [Test]
+        public void LegacyReset_Clears_Previous_Slot_Map()
+        {
+            var s = new DraftSession();
+            s.Reset(
+                new[] { _catalog[0], _catalog[1], _catalog[2] },
+                new[] { _catalog[3], _catalog[4] },
+                _catalog[5],
+                new[] { _catalog[6], _catalog[7], _catalog[8], _catalog[9] },
+                collectionCount: 4,
+                maxDiscards: 3,
+                seed: 42);
+
+            Assert.AreEqual(DraftSlotType.Basic, s.GetSlotType(_catalog[0]));
+
+            s.Reset(_catalog, poolSize: 10, maxDiscards: 3, seed: 1);
+
+            Assert.AreEqual(DraftSlotType.Collection, s.GetSlotType(_catalog[0]));
         }
 
         [Test]

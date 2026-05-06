@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using UnityEngine;
 using Wassup.Data;
 
 namespace Wassup.Core
@@ -13,6 +14,7 @@ namespace Wassup.Core
         private readonly List<DefenderUnitData> _pool = new();
         private readonly HashSet<DefenderUnitData> _discarded = new();
         private readonly List<DefenderUnitData> _picked = new();
+        private readonly Dictionary<DefenderUnitData, DraftSlotType> _slotMap = new();
 
         public IReadOnlyList<DefenderUnitData> Pool => _pool;
         public IReadOnlyList<DefenderUnitData> Picked
@@ -32,6 +34,11 @@ namespace Wassup.Core
         public int PickedCount => _pool.Count - _discarded.Count;
         public bool IsFull => _discarded.Count >= MaxDiscards && MaxDiscards > 0;
 
+        public DraftSlotType GetSlotType(DefenderUnitData unit) =>
+            unit != null && _slotMap.TryGetValue(unit, out var slotType)
+                ? slotType
+                : DraftSlotType.Collection;
+
         // Sample `poolSize` distinct units from `catalog` into the pool, clear discards,
         // and seed the RNG for reproducibility. Callers must provide a non-empty
         // catalog that contains at least `poolSize` entries.
@@ -49,6 +56,7 @@ namespace Wassup.Core
             MaxDiscards = maxDiscards;
             _discarded.Clear();
             _pool.Clear();
+            _slotMap.Clear();
 
             var indices = new int[catalog.Count];
             for (int i = 0; i < indices.Length; i++) indices[i] = i;
@@ -61,6 +69,83 @@ namespace Wassup.Core
                 var unit = catalog[indices[i]];
                 if (unit != null) _pool.Add(unit);
             }
+        }
+
+        public void Reset(
+            IReadOnlyList<DefenderUnitData> basicUnits,
+            IReadOnlyList<DefenderUnitData> metaUnits,
+            DefenderUnitData egoUnit,
+            IReadOnlyList<DefenderUnitData> collectionPool,
+            int collectionCount,
+            int maxDiscards,
+            int seed)
+        {
+            if (basicUnits == null) throw new ArgumentNullException(nameof(basicUnits));
+            if (metaUnits == null) throw new ArgumentNullException(nameof(metaUnits));
+            if (egoUnit == null) throw new ArgumentNullException(nameof(egoUnit));
+            if (collectionPool == null) throw new ArgumentNullException(nameof(collectionPool));
+            if (collectionCount <= 0) throw new ArgumentOutOfRangeException(nameof(collectionCount));
+
+            int expectedPoolSize = basicUnits.Count + metaUnits.Count + 1 + collectionCount;
+            if (maxDiscards <= 0 || maxDiscards >= expectedPoolSize)
+                throw new ArgumentOutOfRangeException(nameof(maxDiscards));
+
+            Seed = seed;
+            MaxDiscards = maxDiscards;
+            _discarded.Clear();
+            _pool.Clear();
+            _slotMap.Clear();
+
+            foreach (var unit in basicUnits) AddToPool(unit, DraftSlotType.Basic);
+            foreach (var unit in metaUnits) AddToPool(unit, DraftSlotType.Meta);
+            AddToPool(egoUnit, DraftSlotType.Ego);
+
+            var candidates = new List<DefenderUnitData>();
+            var seenCollection = new HashSet<DefenderUnitData>();
+            foreach (var unit in collectionPool)
+            {
+                if (unit == null) continue;
+                if (_slotMap.ContainsKey(unit)) continue;
+                if (seenCollection.Add(unit)) candidates.Add(unit);
+            }
+
+            if (candidates.Count < collectionCount)
+                Debug.LogError(
+                    $"[DraftSession] collectionPool candidates are insufficient: {candidates.Count} < {collectionCount}.",
+                    null);
+
+            var rng = new System.Random(seed);
+            int selectableCount = Math.Min(collectionCount, candidates.Count);
+            for (int i = 0; i < selectableCount; i++)
+            {
+                int j = rng.Next(candidates.Count);
+                AddToPool(candidates[j], DraftSlotType.Collection);
+                candidates.RemoveAt(j);
+            }
+
+            if (_pool.Count != expectedPoolSize)
+                Debug.LogError(
+                    $"[DraftSession] pool has {_pool.Count} entries, expected {expectedPoolSize}. Check fixed slot duplicates and collectionPool.",
+                    null);
+        }
+
+        private void AddToPool(DefenderUnitData unit, DraftSlotType slotType)
+        {
+            if (unit == null)
+            {
+                Debug.LogError($"[DraftSession] {slotType} slot contains a null unit.", null);
+                return;
+            }
+
+            if (_slotMap.ContainsKey(unit))
+            {
+                string name = string.IsNullOrEmpty(unit.displayName) ? unit.name : unit.displayName;
+                Debug.LogError($"[DraftSession] duplicate draft unit in fixed slots: {name}.", null);
+                return;
+            }
+
+            _pool.Add(unit);
+            _slotMap[unit] = slotType;
         }
 
         // Returns true if the discard set changed.

@@ -36,6 +36,7 @@ MonoBehaviour:
   blockingHazard: {fileID: 11400000, guid: d6da141920ead491aa73b4011cd8b587, type: 2}
   hazardFootprintWidth: 1
   hazardFootprintHeight: 1
+  rarity: 2
   skeletonDataAsset: {fileID: 11400000, guid: b0640b88ee78d49f38774a3a4b09bf4d, type: 2}
   spineSkinName: Owl
   idleAnimation: idle

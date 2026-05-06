@@ -29,8 +29,8 @@ namespace Wassup.Tests.EditMode
             _deck = ScriptableObject.CreateInstance<AttackDeck>();
             _map  = ScriptableObject.CreateInstance<MapData>();
 
-            // Build a small catalog so BeginDraft does not error.
-            _catalog = new DefenderUnitData[5];
+            // Build a full slot-based draft pool so BeginDraft does not error.
+            _catalog = new DefenderUnitData[10];
             for (int i = 0; i < _catalog.Length; i++)
             {
                 _catalog[i] = ScriptableObject.CreateInstance<DefenderUnitData>();
@@ -53,9 +53,11 @@ namespace Wassup.Tests.EditMode
             // DraftController.
             _controllerGo = new GameObject("DraftController_Test");
             _controller   = _controllerGo.AddComponent<DraftController>();
-            SetPrivateField(_controller, "catalog",      _catalog);
-            SetPrivateField(_controller, "poolSize",     5);
-            SetPrivateField(_controller, "discardCount", 2);
+            SetPrivateField(_controller, "basicDeck",      new[] { _catalog[0], _catalog[1], _catalog[2] });
+            SetPrivateField(_controller, "metaDeck",       new[] { _catalog[3], _catalog[4] });
+            SetPrivateField(_controller, "egoUnit",        _catalog[5]);
+            SetPrivateField(_controller, "collectionPool", new[] { _catalog[6], _catalog[7], _catalog[8], _catalog[9] });
+            SetPrivateField(_controller, "discardCount",   3);
             SetPrivateField(_controller, "battleBridge", _bridge);
         }
 

@@ -57,6 +57,9 @@ namespace Wassup.Data
         public int hazardFootprintWidth = 1;
         public int hazardFootprintHeight = 1;
 
+        [Header("Rarity")]
+        public DefenderRarity rarity = DefenderRarity.Common;
+
         // Phase 8: Spine skeleton skin + animation names. When spineSkinName is
         // empty or skeletonDataAsset is null, BattleBridge falls back to the
         // Phase 5 billboard path, so skeletons can be rolled out incrementally

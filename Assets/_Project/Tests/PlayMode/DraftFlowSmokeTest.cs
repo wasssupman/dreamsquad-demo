@@ -35,9 +35,10 @@ namespace Wassup.Tests.PlayMode
             _root = new GameObject("DraftSmoke_Root");
             _controller = _root.AddComponent<DraftController>();
 
-            var catalogField = typeof(DraftController).GetField(
-                "catalog", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            catalogField?.SetValue(_controller, _catalog.ToArray());
+            SetField("basicDeck", new[] { _catalog[0], _catalog[1], _catalog[2] });
+            SetField("metaDeck", new[] { _catalog[3], _catalog[4] });
+            SetField("egoUnit", _catalog[5]);
+            SetField("collectionPool", new[] { _catalog[6], _catalog[7], _catalog[8], _catalog[9] });
 
             _confirmedCount = 0;
             _controller.DraftConfirmed += OnConfirmed;
@@ -53,6 +54,14 @@ namespace Wassup.Tests.PlayMode
         }
 
         private void OnConfirmed() => _confirmedCount++;
+
+        private void SetField(string name, object value)
+        {
+            var field = typeof(DraftController).GetField(
+                name,
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            field?.SetValue(_controller, value);
+        }
 
         [UnityTest]
         public IEnumerator BeginDraft_ThreeDiscards_AutoConfirms_With_Seven_Picks()

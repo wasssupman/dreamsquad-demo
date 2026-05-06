@@ -145,6 +145,16 @@ framework 코어/UX/테스트 보강. 콘텐츠 확장 전후 모두 가치 있�
 - **WavePatternGenerator unit weight 지원** [S] · 현재 균등 확률. `AttackDeck.attackUnitPool` 반복 참조 또는 weight 필드 도입. Runner/Needler 과다 출현 회피.
 - **Enemy attack animation event 일반화** [S] · `DefenderAttackEvent` → `UnitAttackVisualEvent` 로 일반화. `SpineUnitPool.NotifyAttack(entity, target)` 으로 적 공격 애니메이션 트리거 연결.
 
+#### Hazard caster — 확장 (hazard-caster-defenders)
+
+hazard caster defender 4종 MVP 이후 남은 확장 후보.
+
+- **footprint sampler** [S] · `SampleRect(center, width, height)` 구현. HazardCastSystem 의 width/height 고정을 제거하고 rect 범위 multi-cell spawn 지원. 콘텐츠 디자인 선행.
+- **target priority 정책** [S] · 현재 nearest(world distancesq). first-path-progress / random policy 추가. `HazardCastState.targetPriority` 필드 도입.
+- **cast warning VFX / tile preview** [S] · cooldown 직전 타겟 셀 하이라이트 또는 파티클. BattleBridge drain 에서 visual hint 생성.
+- **same-frame hazard 효과** [M] · 현재 next Simulation tick 적용. ECS 내부 drain 으로 이동 시 같은 frame 적용 가능. `HazardLifetimeSystem` 순서 재편 필요.
+- **DefenderCatalogSO** [S] · 씬 레벨 draft catalog 수동 배선 대신 공유 `DefenderCatalogSO`로 통합. roster 증가 시 씬 배선 brittle 해질 때.
+
 #### CC / Obstacle 확장 (cc-pipeline-and-obstacle)
 
 - **큐브 spawn 게임 통합** [S] · 디펜더 능력 / 스킬 카드에서 `BattleBridge.SpawnObstacle` 호출. 현재는 디버그 메뉴만 진입점.
