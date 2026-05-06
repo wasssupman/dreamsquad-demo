@@ -70,7 +70,8 @@ namespace Wassup.Battle.Combat
                 {
                     float3 p = attackerTransforms[i].Position;
                     int2 entityCell = GridMath.WorldToCell(p, tileSize, gridSize);
-                    if (GridMath.ChebyshevDistance(entityCell, centerCell) > tileRng) continue;
+                    int tileDist = math.max(math.abs(entityCell.x - centerCell.x), math.abs(entityCell.y - centerCell.y));
+                    if (tileDist > tileRng) continue;
                     ecb.AppendToBuffer(attackers[i], new IncomingDamage { amount = dmg });
                 }
 

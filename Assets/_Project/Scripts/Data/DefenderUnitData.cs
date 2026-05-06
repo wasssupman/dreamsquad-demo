@@ -1,5 +1,6 @@
 using Spine.Unity;
 using UnityEngine;
+using Wassup.Battle.Effects;
 
 namespace Wassup.Data
 {
@@ -45,6 +46,16 @@ namespace Wassup.Data
         // When true, AttackState.targetMask is set to Faction.Defender (ally targeting).
         // Use for healers and buff-appliers that target friendly units instead of enemies.
         public bool targetAllies;
+
+        [Header("Hazard Cast")]
+        public bool hazardCastEnabled;
+        public float hazardCastRange;
+        public float hazardCastCooldown;
+        public HazardCastKind hazardCastKind;
+        public HazardSO zoneHazard;
+        public BlockingHazardSO blockingHazard;
+        public int hazardFootprintWidth = 1;
+        public int hazardFootprintHeight = 1;
 
         // Phase 8: Spine skeleton skin + animation names. When spineSkinName is
         // empty or skeletonDataAsset is null, BattleBridge falls back to the

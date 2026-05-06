@@ -34,6 +34,15 @@ MonoBehaviour:
   onPlaceMagnitude: 80
   onPlaceDuration: 0
   cost: 4
+  targetAllies: 0
+  hazardCastEnabled: 0
+  hazardCastRange: 0
+  hazardCastCooldown: 0
+  hazardCastKind: 0
+  zoneHazard: {fileID: 0}
+  blockingHazard: {fileID: 0}
+  hazardFootprintWidth: 1
+  hazardFootprintHeight: 1
   skeletonDataAsset: {fileID: 11400000, guid: b0640b88ee78d49f38774a3a4b09bf4d, type: 2}
   spineSkinName: Goat
   idleAnimation: idle
@@ -44,6 +53,11 @@ MonoBehaviour:
   deployAnimation: attack-combo1-axe
   placementVfxPrefab: {fileID: 2427901435903505602, guid: 971aa18e6a15c0d48bf889c9d9df4fce, type: 3}
   attackVfxPrefab: {fileID: 0}
+  knockbackDistance: 0
+  knockbackDuration: 0
+  onPlacePushDistance: 0
+  onPlacePushDuration: 0
+  onPlacePushRadius: 0
   castAnchorBone: WEAPON
   castAnchorLocalOffset: {x: 0.5, y: 1, z: 0}
   deploymentDuration: 0.45

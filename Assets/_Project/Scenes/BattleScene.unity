@@ -160,6 +160,10 @@ MonoBehaviour:
   - {fileID: 11400000, guid: b1c2d3e4f5a601234567890abcdef203, type: 2}
   - {fileID: 11400000, guid: b1c2d3e4f5a601234567890abcdef201, type: 2}
   - {fileID: 11400000, guid: b85c355d149cb422c857405f5474decc, type: 2}
+  - {fileID: 11400000, guid: 2299a006fce83496b97de8a84524787b, type: 2}
+  - {fileID: 11400000, guid: c11b47b970d9e4e1a8c177e518aee4d8, type: 2}
+  - {fileID: 11400000, guid: 5874294b56d2c4b11a9ba2ea9401f466, type: 2}
+  - {fileID: 11400000, guid: 070bca996c4ad4ee9bbd571d1b5de06f, type: 2}
   poolSize: 10
   discardCount: 3
   battleBridge: {fileID: 1939688408}
@@ -2192,6 +2196,10 @@ MonoBehaviour:
   - {fileID: 11400000, guid: f60cd7372f634487c90afc428f71e237, type: 2}
   - {fileID: 11400000, guid: 3e2a6f274a4954751931565017cca44f, type: 2}
   - {fileID: 11400000, guid: b85c355d149cb422c857405f5474decc, type: 2}
+  - {fileID: 11400000, guid: 2299a006fce83496b97de8a84524787b, type: 2}
+  - {fileID: 11400000, guid: c11b47b970d9e4e1a8c177e518aee4d8, type: 2}
+  - {fileID: 11400000, guid: 5874294b56d2c4b11a9ba2ea9401f466, type: 2}
+  - {fileID: 11400000, guid: 070bca996c4ad4ee9bbd571d1b5de06f, type: 2}
   draftController: {fileID: 20521825}
   skillRuntime: {fileID: 229215106}
   _placementPhaseView: {fileID: 1628485822}

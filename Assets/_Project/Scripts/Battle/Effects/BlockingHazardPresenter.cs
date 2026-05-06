@@ -102,9 +102,9 @@ namespace Wassup.Battle.Effects
 
             var velocity = ps.velocityOverLifetime;
             velocity.enabled = true;
-            velocity.x = new ParticleSystem.MinMaxCurve(-0.45f, 0.45f);
-            velocity.y = new ParticleSystem.MinMaxCurve(-42f, -36f);
-            velocity.z = new ParticleSystem.MinMaxCurve(-0.45f, 0.45f);
+            velocity.x = new ParticleSystem.MinMaxCurve(0f);
+            velocity.y = new ParticleSystem.MinMaxCurve(-39f);
+            velocity.z = new ParticleSystem.MinMaxCurve(0f);
 
             var size = ps.sizeOverLifetime;
             size.enabled = true;
@@ -160,10 +160,7 @@ namespace Wassup.Battle.Effects
             shape.rotation = new Vector3(90f, 0f, 0f);
 
             var velocity = ps.velocityOverLifetime;
-            velocity.enabled = true;
-            velocity.x = new ParticleSystem.MinMaxCurve(0f, 0f);
-            velocity.y = new ParticleSystem.MinMaxCurve(0f, 0f);
-            velocity.z = new ParticleSystem.MinMaxCurve(0f, 0f);
+            velocity.enabled = false;
 
             var size = ps.sizeOverLifetime;
             size.enabled = true;

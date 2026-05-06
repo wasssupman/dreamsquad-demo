@@ -114,7 +114,8 @@ namespace Wassup.Battle.Combat
                     if (targetEntities[i] == attackerEntity) continue;
                     float3 targetPos = targetTransforms[i].Position;
                     int2 tgtCell = GridMath.WorldToCell(targetPos, tileSize, gridSize);
-                    if (GridMath.ChebyshevDistance(atkCell, tgtCell) > tileRange) continue;
+                    int tileDist = math.max(math.abs(tgtCell.x - atkCell.x), math.abs(tgtCell.y - atkCell.y));
+                    if (tileDist > tileRange) continue;
                     float d2 = DistanceSqToTarget(atkPos, targetEntities[i], targetPos, blockingHazardCellsLookup, hasFlowField, flowField, out var nearestPos);
                     if (d2 < bestSq)
                     {
@@ -225,7 +226,8 @@ namespace Wassup.Battle.Combat
                                         if (((int)targetFactions[i].value & mask) == 0) continue;
                                         if (targetEntities[i] == attackerEntity) continue;
                                         int2 tgtCellAoE = GridMath.WorldToCell(targetTransforms[i].Position, tileSize, gridSize);
-                                        if (GridMath.ChebyshevDistance(atkCell, tgtCellAoE) > tileRange) continue;
+                                        int tileDistAoE = math.max(math.abs(tgtCellAoE.x - atkCell.x), math.abs(tgtCellAoE.y - atkCell.y));
+                                        if (tileDistAoE > tileRange) continue;
                                         float d2 = DistanceSqToTarget(atkPos, targetEntities[i], targetTransforms[i].Position, blockingHazardCellsLookup, hasFlowField, flowField, out _);
                                         if (d2 < passSq)
                                         {

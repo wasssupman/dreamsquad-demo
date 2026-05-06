@@ -10,49 +10,42 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7d6648c9dfafd44cb8ce28bc0507242b, type: 3}
-  m_Name: Defender_Guardian
+  m_Name: Defender_BlockingCaster
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DefenderUnitData
-  displayName: Guardian
-  health: 80
-  attackRange: 2
-  attackDamage: 15
-  attackCooldown: 2
+  displayName: Blocking Caster
+  health: 45
+  attackRange: 0
+  attackDamage: 0
+  attackCooldown: 5
   attackTargetCount: 1
   visualMesh: {fileID: 0}
-  visualMaterial: {fileID: 2100000, guid: 6fa13ca4169ea45da96dbc3495b7b178, type: 2}
+  visualMaterial: {fileID: 2100000, guid: a1b2c3d4e5f601234567890abcdef107, type: 2}
   projectile: {fileID: 0}
-  outputs:
-  - kind: 0
-    magnitude: 15
-    duration: 0
-    stat: 0
-    op: 0
-    stackKind: 0
-    stackMaxStack: 0
-  onPlaceEffect: 2
-  onPlaceRange: 2
-  onPlaceMagnitude: 1.3
-  onPlaceDuration: 6
-  cost: 2
+  outputs: []
+  onPlaceEffect: 0
+  onPlaceRange: 0
+  onPlaceMagnitude: 0
+  onPlaceDuration: 0
+  cost: 4
   targetAllies: 0
-  hazardCastEnabled: 0
-  hazardCastRange: 0
-  hazardCastCooldown: 0
-  hazardCastKind: 0
+  hazardCastEnabled: 1
+  hazardCastRange: 4
+  hazardCastCooldown: 5
+  hazardCastKind: 2
   zoneHazard: {fileID: 0}
-  blockingHazard: {fileID: 0}
+  blockingHazard: {fileID: 11400000, guid: d6da141920ead491aa73b4011cd8b587, type: 2}
   hazardFootprintWidth: 1
   hazardFootprintHeight: 1
   skeletonDataAsset: {fileID: 11400000, guid: b0640b88ee78d49f38774a3a4b09bf4d, type: 2}
-  spineSkinName: Goat
+  spineSkinName: Owl
   idleAnimation: idle
-  attackAnimation: attack-heavy-gauntlet
+  attackAnimation: cast-spell
   deathAnimation: die
   spineVisualScale: 1
   dragAnimation: find-item/find-item-loop
   deployAnimation: cast-spell2
-  placementVfxPrefab: {fileID: 8719263370430895187, guid: c7ebe9341e13e2e448481a1a5b7a89bf, type: 3}
-  attackVfxPrefab: {fileID: 3398366222349601506, guid: 8a96702a3dfb5af449dca32388593992, type: 3}
+  placementVfxPrefab: {fileID: 0}
+  attackVfxPrefab: {fileID: 0}
   knockbackDistance: 0
   knockbackDuration: 0
   onPlacePushDistance: 0

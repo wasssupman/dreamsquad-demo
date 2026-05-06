@@ -24,7 +24,6 @@ namespace Wassup.Battle.Movement
 
         public static int CellIndex(int2 cell, int2 gridSize) => cell.y * gridSize.x + cell.x;
 
-        [BurstCompile]
         public static int ChebyshevDistance(int2 a, int2 b)
             => math.cmax(math.abs(a - b));
 

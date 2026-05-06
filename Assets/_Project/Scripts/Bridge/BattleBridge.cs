@@ -74,6 +74,8 @@ namespace Wassup.Bridge
         private readonly HashSet<Entity> _onPlaceTriggeredEntities = new();
         private readonly List<ProjectileData> _projectileDataByIndex = new();
         private readonly Dictionary<ProjectileData, int> _projectileDataIndex = new();
+        private readonly List<HazardSO> _zoneHazardRegistry = new();
+        private readonly Dictionary<HazardSO, int> _zoneHazardIndex = new();
         private readonly List<BlockingHazardSO> _blockingHazardSoRegistry = new();
         private readonly Dictionary<BlockingHazardSO, int> _blockingHazardSoIndex = new();
         private static readonly Dictionary<Wassup.Battle.Effects.StackKind, Wassup.Data.ThresholdRule[]> _stackThresholds = new();
@@ -114,6 +116,7 @@ namespace Wassup.Bridge
         private NativeQueue<Wassup.Battle.Effects.StackModifierApplyEvent> _stackModifierQueue;
         private NativeQueue<Wassup.Battle.Effects.HazardRuntimeEvent> _hazardRuntimeEventQueue;
         private NativeQueue<Wassup.Battle.Effects.HazardDestroyedEvent> _hazardDestroyedQueue;
+        private NativeQueue<Wassup.Battle.Effects.HazardSpawnRequest> _hazardSpawnRequestQueue;
         private NativeQueue<Wassup.Battle.Combat.AttackOutputLogEvent> _attackOutputLogQueue;
         private NativeQueue<Wassup.Battle.Movement.MovementPauseRequest> _movementPauseRequestQueue;
         private Unity.Collections.NativeHashSet<Unity.Mathematics.int2> _blockedCells;
@@ -310,6 +313,10 @@ namespace Wassup.Bridge
             _em.DestroyEntity(hazardDestroyedSingletons);
             hazardDestroyedSingletons.Dispose();
 
+            var hazardSpawnRequestSingletons = _em.CreateEntityQuery(ComponentType.ReadOnly<Wassup.Battle.Effects.HazardSpawnRequestsSingleton>());
+            _em.DestroyEntity(hazardSpawnRequestSingletons);
+            hazardSpawnRequestSingletons.Dispose();
+
             var attackOutputLogSingletons = _em.CreateEntityQuery(ComponentType.ReadOnly<Wassup.Battle.Combat.AttackOutputLogEventsSingleton>());
             _em.DestroyEntity(attackOutputLogSingletons);
             attackOutputLogSingletons.Dispose();
@@ -348,8 +355,11 @@ namespace Wassup.Bridge
             if (_movementPauseRequestQueue.IsCreated) _movementPauseRequestQueue.Dispose();
             if (_hazardRuntimeEventQueue.IsCreated) _hazardRuntimeEventQueue.Dispose();
             if (_hazardDestroyedQueue.IsCreated) _hazardDestroyedQueue.Dispose();
+            if (_hazardSpawnRequestQueue.IsCreated) _hazardSpawnRequestQueue.Dispose();
             if (_blockedCells.IsCreated) _blockedCells.Dispose();
             if (_hazardCellToEffects.IsCreated) _hazardCellToEffects.Dispose();
+            _zoneHazardRegistry.Clear();
+            _zoneHazardIndex.Clear();
             _blockingHazardSoRegistry.Clear();
             _blockingHazardSoIndex.Clear();
 
@@ -734,6 +744,13 @@ namespace Wassup.Bridge
             var hazardDestroyedSingleton = _em.CreateEntity();
             _em.AddComponentData(hazardDestroyedSingleton, new Wassup.Battle.Effects.HazardDestroyedEventsSingleton { queue = _hazardDestroyedQueue });
 
+            // Hazard caster spawn request channel. Effects systems enqueue
+            // unmanaged requests; BattleBridge owns SO lookup and visual spawning.
+            if (_hazardSpawnRequestQueue.IsCreated) _hazardSpawnRequestQueue.Dispose();
+            _hazardSpawnRequestQueue = new NativeQueue<Wassup.Battle.Effects.HazardSpawnRequest>(Allocator.Persistent);
+            var hazardSpawnRequestSingleton = _em.CreateEntity();
+            _em.AddComponentData(hazardSpawnRequestSingleton, new Wassup.Battle.Effects.HazardSpawnRequestsSingleton { queue = _hazardSpawnRequestQueue });
+
             // Attack-output log channel. AttackSystem enqueues one event per output fired;
             // BattleBridge drains each frame and forwards to BattleLogger.RecordAttackOutput.
             if (_attackOutputLogQueue.IsCreated) _attackOutputLogQueue.Dispose();
@@ -822,6 +839,8 @@ namespace Wassup.Bridge
             if (mapView != null) mapView.ResetVisualRoots();
 
             ClearBlockingHazardVisuals();
+            _zoneHazardRegistry.Clear();
+            _zoneHazardIndex.Clear();
             _blockingHazardSoRegistry.Clear();
             _blockingHazardSoIndex.Clear();
 
@@ -1402,6 +1421,7 @@ namespace Wassup.Bridge
             DrainProjectileHitEvents();
             DrainHealAppliedEvents();
             DrainAttackOutputLogEvents();
+            DrainHazardSpawnRequests();
             DrainHazardRuntimeEvents();
             DrainHazardDestroyedEvents();
             DrainGoalEvents();
@@ -2361,6 +2381,26 @@ namespace Wassup.Bridge
                 onPlacePushDuration = unitData.onPlacePushDuration,
                 onPlacePushRadius   = unitData.onPlacePushRadius,
             });
+            if (unitData.hazardCastEnabled)
+            {
+                int hazardDataIndex = -1;
+                if (unitData.hazardCastKind == HazardCastKind.Zone)
+                    hazardDataIndex = RegisterZoneHazardSO(unitData.zoneHazard);
+                else if (unitData.hazardCastKind == HazardCastKind.Blocking)
+                    hazardDataIndex = RegisterBlockingHazardSO(unitData.blockingHazard);
+
+                _em.AddComponentData(entity, new HazardCastState
+                {
+                    range = unitData.hazardCastRange,
+                    cooldownDuration = unitData.hazardCastCooldown,
+                    cooldownRemaining = 0f,
+                    targetMask = (int)Faction.Enemy,
+                    dataIndex = hazardDataIndex,
+                    kind = unitData.hazardCastKind,
+                    footprintWidth = math.max(1, unitData.hazardFootprintWidth),
+                    footprintHeight = math.max(1, unitData.hazardFootprintHeight),
+                });
+            }
             if (pendingDeployment)
                 _em.AddComponent<PendingDeployment>(entity);
 
@@ -2574,6 +2614,16 @@ namespace Wassup.Bridge
             return idx;
         }
 
+        private int RegisterZoneHazardSO(HazardSO so)
+        {
+            if (so == null) return -1;
+            if (_zoneHazardIndex.TryGetValue(so, out int idx)) return idx;
+            idx = _zoneHazardRegistry.Count;
+            _zoneHazardRegistry.Add(so);
+            _zoneHazardIndex[so] = idx;
+            return idx;
+        }
+
         private void EnsureBlockingHazardVisualRoot()
         {
             if (_blockingHazardVisualRoot != null) return;
@@ -2645,6 +2695,40 @@ namespace Wassup.Bridge
                     amount = evt.amount,
                     target_index = evt.target.Index,
                 });
+            }
+        }
+
+        private void DrainHazardSpawnRequests()
+        {
+            if (!_hazardSpawnRequestQueue.IsCreated) return;
+            while (_hazardSpawnRequestQueue.TryDequeue(out var req))
+            {
+                if (!_em.Exists(req.caster)) continue;
+
+                if (req.kind == HazardCastKind.Zone)
+                {
+                    if (req.dataIndex < 0 || req.dataIndex >= _zoneHazardRegistry.Count)
+                    {
+                        Debug.LogWarning($"[HazardCast] Invalid zone hazard index {req.dataIndex}; dropping.");
+                        continue;
+                    }
+
+                    var so = _zoneHazardRegistry[req.dataIndex];
+                    if (so == null) continue;
+                    SpawnHazardWithVisual(so, req.centerCell);
+                }
+                else if (req.kind == HazardCastKind.Blocking)
+                {
+                    if (req.dataIndex < 0 || req.dataIndex >= _blockingHazardSoRegistry.Count)
+                    {
+                        Debug.LogWarning($"[HazardCast] Invalid blocking hazard index {req.dataIndex}; dropping.");
+                        continue;
+                    }
+
+                    var so = _blockingHazardSoRegistry[req.dataIndex];
+                    if (so == null) continue;
+                    SpawnBlockingHazardWithVisual(so, req.centerCell);
+                }
             }
         }
 
@@ -2792,9 +2876,14 @@ namespace Wassup.Bridge
             if (_movementPauseRequestQueue.IsCreated) _movementPauseRequestQueue.Dispose();
             if (_hazardRuntimeEventQueue.IsCreated) _hazardRuntimeEventQueue.Dispose();
             if (_hazardDestroyedQueue.IsCreated) _hazardDestroyedQueue.Dispose();
+            if (_hazardSpawnRequestQueue.IsCreated) _hazardSpawnRequestQueue.Dispose();
             if (_blockedCells.IsCreated) _blockedCells.Dispose();
             if (_hazardCellToEffects.IsCreated) _hazardCellToEffects.Dispose();
             ClearBlockingHazardVisuals();
+            _zoneHazardRegistry.Clear();
+            _zoneHazardIndex.Clear();
+            _blockingHazardSoRegistry.Clear();
+            _blockingHazardSoIndex.Clear();
             // Phase 9 — guard against editor shutdown / play stop leaking Persistent arrays.
             TeardownFlowField();
             // Phase 10A (P10A-04A): dispose GeneratedMap on destroy.

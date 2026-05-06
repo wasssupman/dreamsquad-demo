@@ -34,6 +34,15 @@ MonoBehaviour:
   onPlaceMagnitude: 70
   onPlaceDuration: 0
   cost: 3
+  targetAllies: 0
+  hazardCastEnabled: 0
+  hazardCastRange: 0
+  hazardCastCooldown: 0
+  hazardCastKind: 0
+  zoneHazard: {fileID: 0}
+  blockingHazard: {fileID: 0}
+  hazardFootprintWidth: 1
+  hazardFootprintHeight: 1
   skeletonDataAsset: {fileID: 11400000, guid: b0640b88ee78d49f38774a3a4b09bf4d, type: 2}
   spineSkinName: Owl
   idleAnimation: idle

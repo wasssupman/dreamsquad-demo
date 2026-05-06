@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 41574a5e919f3409b8adb23fba27b205, type: 3}
+  m_Name: Hazard_Rock_1x1
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Battle.Effects.BlockingHazardSO
+  visualPrefab: {fileID: 9038635551483064803, guid: a5a44ae9f83494b39a8032b6dc51f44d, type: 3}
+  spawnVfxPrefab: {fileID: 2166874625917827316, guid: c666c19f830b84752a4a6427be633190, type: 3}
+  shape: 0
+  maxHp: 100
+  destructionVfxPrefab: {fileID: 6140286580942836002, guid: cf3240cbc85764f9b95608b9ba00e436, type: 3}
