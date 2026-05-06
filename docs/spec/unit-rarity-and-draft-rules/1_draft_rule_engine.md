@@ -8,6 +8,7 @@
 
 - `Assets/_Project/Scripts/Core/DraftController.cs`
 - `Assets/_Project/Scripts/Core/DraftSession.cs`
+- `Assets/_Project/Tests/PlayMode/DraftFlowSmokeTest.cs` (reflection 키 변경)
 
 ## 구현
 
@@ -58,16 +59,26 @@ public IReadOnlyList<DefenderUnitData> CollectionPool => collectionPool;
 
 ### DraftSession.cs
 
-기존 `Reset(catalog, poolSize, maxDiscards, seed)` 오버로드를 유지하고 새 오버로드 추가.  
-(기존 EditMode 테스트가 구 시그니처를 사용하므로 제거하지 않는다.)
+기존 `Reset(catalog, poolSize, maxDiscards, seed)` 오버로드를 유지하되, **`_slotMap.Clear()`를 반드시 추가**한다. 새 오버로드를 추가한다.
 
 ```csharp
-// 슬롯 추적
+// 슬롯 추적 (기존 _pool, _discarded, _picked 아래에 추가)
 private readonly Dictionary<DefenderUnitData, DraftSlotType> _slotMap = new();
 
 public DraftSlotType GetSlotType(DefenderUnitData unit) =>
     unit != null && _slotMap.TryGetValue(unit, out var t) ? t : DraftSlotType.Collection;
 
+// 기존 Reset — _slotMap.Clear() 한 줄 추가
+public void Reset(IReadOnlyList<DefenderUnitData> catalog, int poolSize, int maxDiscards, int seed)
+{
+    // ... 기존 코드 유지 ...
+    _discarded.Clear();
+    _pool.Clear();
+    _slotMap.Clear();   // ← 추가: 이전 슬롯 정보 정리
+    // ... shuffle + pool build 기존 로직 ...
+}
+
+// 신규 오버로드
 public void Reset(
     IReadOnlyList<DefenderUnitData> basicUnits,
     IReadOnlyList<DefenderUnitData> metaUnits,
@@ -83,17 +94,18 @@ public void Reset(
     _pool.Clear();
     _slotMap.Clear();
 
-    // Basic 3
     foreach (var u in basicUnits) AddToPool(u, DraftSlotType.Basic);
-    // Meta 2
-    foreach (var u in metaUnits) AddToPool(u, DraftSlotType.Meta);
-    // Ego 1
+    foreach (var u in metaUnits)  AddToPool(u, DraftSlotType.Meta);
     AddToPool(egoUnit, DraftSlotType.Ego);
 
-    // Collection — seed 기반 랜덤, 이미 풀에 있는 유닛 제외
+    // collection 후보 — 이미 슬롯에 배정된 유닛 제외
     var candidates = new List<DefenderUnitData>();
     foreach (var u in collectionPool)
         if (u != null && !_slotMap.ContainsKey(u)) candidates.Add(u);
+
+    // 후보 부족 시 오류 — 10장 계약 미달 방지
+    if (candidates.Count < collectionCount)
+        Debug.LogError($"[DraftSession] collectionPool 후보 부족: {candidates.Count} < {collectionCount}. 10장 계약 미달.");
 
     var rng = new System.Random(seed);
     for (int i = 0; i < collectionCount && candidates.Count > 0; i++)
@@ -102,19 +114,65 @@ public void Reset(
         AddToPool(candidates[j], DraftSlotType.Collection);
         candidates.RemoveAt(j);
     }
+
+    // 10장 총합 검증
+    int expected = basicUnits.Count + metaUnits.Count + 1 + collectionCount;
+    if (_pool.Count != expected)
+        Debug.LogError($"[DraftSession] 풀 {_pool.Count}장 ≠ 기대 {expected}장. fixed slot 중복 여부 확인.");
 }
 
 private void AddToPool(DefenderUnitData unit, DraftSlotType slot)
 {
     if (unit == null) return;
+    // fixed slot 중복 방지 — 동일 유닛이 basic/meta/ego에 두 번 들어오면 두 번째는 무시
+    if (_slotMap.ContainsKey(unit))
+    {
+        Debug.LogError($"[DraftSession] fixed slot 중복: {unit.displayName}. Inspector 배열을 확인하세요.");
+        return;
+    }
     _pool.Add(unit);
     _slotMap[unit] = slot;
 }
 ```
 
+### DraftFlowSmokeTest.cs 수정
+
+`catalog` reflection을 슬롯 필드로 교체한다. 유닛 수는 기존 10개 그대로 유지.
+
+```csharp
+// 제거
+// var catalogField = typeof(DraftController).GetField("catalog", ...);
+// catalogField?.SetValue(_controller, _catalog.ToArray());
+
+// 교체 — 10개 유닛을 슬롯별로 분배
+var bDeck = new DefenderUnitData[] { _catalog[0], _catalog[1], _catalog[2] };
+var mDeck = new DefenderUnitData[] { _catalog[3], _catalog[4] };
+var ego   = _catalog[5];
+var cPool = new DefenderUnitData[] { _catalog[6], _catalog[7], _catalog[8], _catalog[9] };
+
+SetField(_controller, "basicDeck",      bDeck);
+SetField(_controller, "metaDeck",       mDeck);
+SetField(_controller, "egoUnit",        ego);
+SetField(_controller, "collectionPool", cPool);
+
+static void SetField(object obj, string name, object val)
+{
+    var f = obj.GetType().GetField(name,
+        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+    f?.SetValue(obj, val);
+}
+```
+
+테스트 assertion은 변경 없음: pool 10장, discard 3, picked 7, TryConfirm 성공.
+
 ## 완료 기준
 
 - [ ] 컴파일 오류 없음
-- [ ] 기존 DraftSession EditMode 테스트 통과 (구 Reset 오버로드 유지이므로 변경 없이)
-- [ ] PlayMode: DraftController 슬롯 배열 배선 후 `BeginDraft()` 호출 → 풀 10장 구성 확인
-- [ ] 콘솔: `[DraftController]` 오류 없음
+- [ ] DraftSession 기존 EditMode 테스트 전체 통과 (구 Reset 오버로드 + _slotMap.Clear 추가 후)
+- [ ] 신규 EditMode 테스트 통과:
+  - fixed slot 중복 유닛 → pool에 1회만 추가되고 LogError 발생
+  - collectionPool 후보 부족 (후보 2개, collectionCount 4) → LogError 발생, pool < 10
+  - legacy Reset 호출 후 `GetSlotType(unit)` → `Collection` 반환 (슬롯 맵 초기화 확인)
+  - 정상 입력 → pool 정확히 10장, 각 유닛 GetSlotType 올바름
+- [ ] DraftFlowSmokeTest (PlayMode) 통과: 10장 pool, 3 discard, 7 picked, TryConfirm 성공
+- [ ] 콘솔: `[DraftController]` / `[DraftSession]` 오류 없음

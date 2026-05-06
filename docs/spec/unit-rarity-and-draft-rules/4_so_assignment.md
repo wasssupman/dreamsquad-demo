@@ -29,7 +29,56 @@
 | Defender_BlockingCaster.asset | Epic |
 | Defender_Bruiser.asset | Ego |
 
-UnityMCP `manage_scriptable_object` 또는 `execute_code` 로 일괄 배정한다.
+UnityMCP `execute_code` 로 일괄 배정한다. **method body 실행 환경이므로 top-level `using` 없이 완전한 형식명 사용.**
+
+```csharp
+// tuple deconstruction 없이 병렬 배열로 작성
+string[] paths = new string[]
+{
+    "Assets/_Project/Data/Defenders/Defender_Scout.asset",
+    "Assets/_Project/Data/Defenders/Defender_Guardian.asset",
+    "Assets/_Project/Data/Defenders/Defender_Cannon.asset",
+    "Assets/_Project/Data/Defenders/Defender_Ranger.asset",
+    "Assets/_Project/Data/Defenders/Defender_Piercer.asset",
+    "Assets/_Project/Data/Defenders/Defender_Marksman.asset",
+    "Assets/_Project/Data/Defenders/Defender_Archer.asset",
+    "Assets/_Project/Data/Defenders/Defender_Bastion.asset",
+    "Assets/_Project/Data/Defenders/Defender_Healer.asset",
+    "Assets/_Project/Data/Defenders/Defender_Sniper.asset",
+    "Assets/_Project/Data/Defenders/Defender_FireCaster.asset",
+    "Assets/_Project/Data/Defenders/Defender_IceCaster.asset",
+    "Assets/_Project/Data/Defenders/Defender_PoisonCaster.asset",
+    "Assets/_Project/Data/Defenders/Defender_BlockingCaster.asset",
+    "Assets/_Project/Data/Defenders/Defender_Bruiser.asset",
+};
+Wassup.Data.DefenderRarity[] rarities = new Wassup.Data.DefenderRarity[]
+{
+    Wassup.Data.DefenderRarity.Common,
+    Wassup.Data.DefenderRarity.Common,
+    Wassup.Data.DefenderRarity.Common,
+    Wassup.Data.DefenderRarity.Common,
+    Wassup.Data.DefenderRarity.Common,
+    Wassup.Data.DefenderRarity.Common,
+    Wassup.Data.DefenderRarity.Rare,
+    Wassup.Data.DefenderRarity.Rare,
+    Wassup.Data.DefenderRarity.Rare,
+    Wassup.Data.DefenderRarity.Rare,
+    Wassup.Data.DefenderRarity.Epic,
+    Wassup.Data.DefenderRarity.Epic,
+    Wassup.Data.DefenderRarity.Epic,
+    Wassup.Data.DefenderRarity.Epic,
+    Wassup.Data.DefenderRarity.Ego,
+};
+for (int i = 0; i < paths.Length; i++)
+{
+    var so = UnityEditor.AssetDatabase.LoadAssetAtPath<Wassup.Data.DefenderUnitData>(paths[i]);
+    if (so == null) { UnityEngine.Debug.LogError("Not found: " + paths[i]); continue; }
+    so.rarity = rarities[i];
+    UnityEditor.EditorUtility.SetDirty(so);
+}
+UnityEditor.AssetDatabase.SaveAssets();
+UnityEngine.Debug.Log("Rarity assignment complete.");
+```
 
 ## DraftController Inspector 배선
 
