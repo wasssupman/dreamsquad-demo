@@ -1,0 +1,28 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$(git rev-parse --show-toplevel)/.codex/hooks/ecs-review-detector.mjs\"",
+            "timeout": 5,
+            "statusMessage": "Checking ECS review context"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$(git rev-parse --show-toplevel)/.codex/hooks/two-track-review-stop-gate.mjs\"",
+            "timeout": 5,
+            "statusMessage": "Checking two-track review completion"
+          }
+        ]
+      }
+    ]
+  }
+}

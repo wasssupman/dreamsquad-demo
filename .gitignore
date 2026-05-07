@@ -90,3 +90,7 @@ $RECYCLE.BIN/
 # Unity-specific authoring/integration/wiring skills for any collaborator.
 !.claude/skills/
 !.claude/skills/**
+
+# Codex hook runtime state
+.codex/tmp/
+.codex/hooks/state/
