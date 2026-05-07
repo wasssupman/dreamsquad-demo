@@ -1,7 +1,7 @@
 # Unit Rarity & Draft Rules
 
 **작성일**: 2026-05-06  
-**상태**: 스펙 작성 완료 — 구현 대기  
+**상태**: 완료 2026-05-07  
 **연결 문서**: `docs/spec/hazard-caster-defenders/` (Epic 유닛 정의)
 
 ## 목표
