@@ -1,0 +1,6 @@
+interface:
+  display_name: "Catchup"
+  short_description: "Recover current and next project work"
+  default_prompt: "Use $catchup to inspect CLAUDE.md, git log, spec READMEs, and handoff docs, then summarize current status and next steps."
+policy:
+  allow_implicit_invocation: true
