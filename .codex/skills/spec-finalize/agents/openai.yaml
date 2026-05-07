@@ -1,6 +1,0 @@
-interface:
-  display_name: "Spec Finalize"
-  short_description: "Sync completed spec status"
-  default_prompt: "Use $spec-finalize when a spec is declared complete to update the thin Current Spec Status pointer in CLAUDE.md and AGENTS.md."
-policy:
-  allow_implicit_invocation: true
