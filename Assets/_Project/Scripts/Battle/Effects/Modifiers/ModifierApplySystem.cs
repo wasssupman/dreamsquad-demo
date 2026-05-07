@@ -43,6 +43,8 @@ namespace Wassup.Battle.Effects
         private static void ApplyStat(EntityManager em, EntityCommandBuffer ecb, StatModifierApplyEvent ev)
         {
             var target = ev.target;
+            if (!em.Exists(target))
+                return;
 
             if (em.HasBuffer<StatModifierSlot>(target))
             {
@@ -112,6 +114,8 @@ namespace Wassup.Battle.Effects
         private static void ApplyStack(EntityManager em, EntityCommandBuffer ecb, StackModifierApplyEvent ev)
         {
             var target = ev.target;
+            if (!em.Exists(target))
+                return;
 
             if (em.HasBuffer<StackModifierSlot>(target))
             {

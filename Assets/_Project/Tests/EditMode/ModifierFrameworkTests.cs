@@ -222,6 +222,45 @@ namespace Wassup.Tests.EditMode
                 "MoveSpeedMul should multiply like the other multiplier stats.");
         }
 
+        [Test]
+        public void StatModifierApply_Ignores_Event_When_Target_Was_Destroyed()
+        {
+            var e = CreateEntityWithModifierStats();
+            _statQueue.Enqueue(new StatModifierApplyEvent
+            {
+                target = e,
+                stat = StatKind.MoveSpeedMul,
+                op = CombineOp.Multiplicative,
+                magnitude = 0.5f,
+                duration = 1f,
+                source = Entity.Null,
+                stackId = 0,
+            });
+            _em.DestroyEntity(e);
+
+            Assert.DoesNotThrow(() => Tick());
+            Assert.IsTrue(_statQueue.IsEmpty());
+        }
+
+        [Test]
+        public void StackModifierApply_Ignores_Event_When_Target_Was_Destroyed()
+        {
+            var e = CreateEntityWithModifierStats();
+            _stackQueue.Enqueue(new StackModifierApplyEvent
+            {
+                target = e,
+                kind = StackKind.Fire,
+                countDelta = 1,
+                maxStack = 5,
+                perAppDuration = 1f,
+                source = Entity.Null,
+            });
+            _em.DestroyEntity(e);
+
+            Assert.DoesNotThrow(() => Tick());
+            Assert.IsTrue(_stackQueue.IsEmpty());
+        }
+
         // ── Test 3 ────────────────────────────────────────────────────────────────
         // Stack edge multi-threshold (4→7 jump fires all crossed thresholds).
         // BattleBridge._stackThresholds is private static with no public injection hook.
