@@ -38,7 +38,7 @@ Burst/job incompatibility, and migration risks over style.
 - Prefer `ISystem`. `SystemBase` only when managed references are truly required.
 - No SubScene workflows.
 - No speculative interfaces or manager singletons.
-- Active NativeQueue channels (8): `GoalReachedEventsSingleton`, `DefenderDeathEventsSingleton`, `MeteorBurstEventsSingleton`, `UnitAttackVisualEventsSingleton`, `ProjectileHitEventsSingleton`, `EnemyCcEventsSingleton`, `HazardRuntimeEventsSingleton`, `HazardDestroyedEventsSingleton`.
+- Active NativeQueue channels (14): `GoalReachedEventsSingleton`, `DefenderDeathEventsSingleton`, `MeteorBurstEventsSingleton`, `UnitAttackVisualEventsSingleton`, `ProjectileHitEventsSingleton`, `HealAppliedEventsSingleton`, `EnemyCcEventsSingleton`, `StatModifierApplyEventsSingleton`, `StackModifierApplyEventsSingleton`, `HazardRuntimeEventsSingleton`, `HazardDestroyedEventsSingleton`, `HazardSpawnRequestsSingleton`, `AttackOutputLogEventsSingleton`, `MovementPauseRequestEventsSingleton`.
 
 ## Output
 

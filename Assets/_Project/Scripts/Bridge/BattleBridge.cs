@@ -252,96 +252,68 @@ namespace Wassup.Bridge
             ClearBlockingHazardVisuals();
             SetNextWaveButtonVisible(false);
 
-            // Destroy all battle-related entities so the next StartBattle has a clean slate.
-            var attackers = _em.CreateEntityQuery(ComponentType.ReadOnly<AttackUnitTag>());
-            _em.DestroyEntity(attackers);
-            attackers.Dispose();
+            if (HasLiveEntityManager())
+            {
+                // FlowFieldSingleton owns Persistent NativeArrays in its component data.
+                // Dispose those before any broad singleton entity cleanup.
+                TeardownFlowField();
+                DestroyEcsInfrastructureEntities();
+                DestroyBattleEntities();
+            }
+            else
+            {
+                _flowFieldSingleton = Entity.Null;
+            }
 
-            var defenders = _em.CreateEntityQuery(ComponentType.ReadOnly<DefenderUnitTag>());
-            _em.DestroyEntity(defenders);
-            defenders.Dispose();
+            DisposeEcsInfrastructureNativeContainers();
+            DisposeCachedQueries();
+            _zoneHazardRegistry.Clear();
+            _zoneHazardIndex.Clear();
+            _blockingHazardSoRegistry.Clear();
+            _blockingHazardSoIndex.Clear();
 
-            var projectiles = _em.CreateEntityQuery(ComponentType.ReadOnly<ProjectileTag>());
-            _em.DestroyEntity(projectiles);
-            projectiles.Dispose();
+            // Phase 10A (P10A-04A): dispose GeneratedMap (idempotent) alongside FlowField.
+            TeardownGeneratedMap();
+            // draft-stage-map-prebuild Unit 0 — allow EnsureQueriesAndQueues to reinitialise on next entry.
+            _ecsInfrastructureReady = false;
+        }
 
-            var healthBars = _em.CreateEntityQuery(ComponentType.ReadOnly<HealthBarTag>());
-            _em.DestroyEntity(healthBars);
-            healthBars.Dispose();
+        private bool HasLiveEntityManager()
+            => _world != null && _world.IsCreated && _em != default;
 
-            var singletons = _em.CreateEntityQuery(ComponentType.ReadOnly<GoalReachedEventsSingleton>());
-            _em.DestroyEntity(singletons);
-            singletons.Dispose();
+        private void DestroyBattleEntities()
+        {
+            DestroyEntitiesByType<AttackUnitTag>();
+            DestroyEntitiesByType<DefenderUnitTag>();
+            DestroyEntitiesByType<ProjectileTag>();
+            DestroyEntitiesByType<HealthBarTag>();
+            DestroyEntitiesByType<Wassup.Battle.Effects.Hazard>();
+            DestroyEntitiesByType<Wassup.Battle.Effects.BlockingHazard>();
+            DestroyEntitiesByType<Wassup.Battle.Effects.Obstacle>();
+        }
 
-            var defenderDeathSingletons = _em.CreateEntityQuery(ComponentType.ReadOnly<DefenderDeathEventsSingleton>());
-            _em.DestroyEntity(defenderDeathSingletons);
-            defenderDeathSingletons.Dispose();
+        private void DestroyEcsInfrastructureEntities()
+        {
+            DestroyEntitiesByType<GoalReachedEventsSingleton>();
+            DestroyEntitiesByType<DefenderDeathEventsSingleton>();
+            DestroyEntitiesByType<Wassup.Battle.Combat.MeteorBurstEventsSingleton>();
+            DestroyEntitiesByType<Wassup.Battle.Combat.UnitAttackVisualEventsSingleton>();
+            DestroyEntitiesByType<Wassup.Battle.Combat.Projectile.ProjectileHitEventsSingleton>();
+            DestroyEntitiesByType<Wassup.Battle.Units.HealAppliedEventsSingleton>();
+            DestroyEntitiesByType<Wassup.Battle.Effects.EnemyCcEventsSingleton>();
+            DestroyEntitiesByType<Wassup.Battle.Effects.StatModifierApplyEventsSingleton>();
+            DestroyEntitiesByType<Wassup.Battle.Effects.StackModifierApplyEventsSingleton>();
+            DestroyEntitiesByType<Wassup.Battle.Effects.HazardRuntimeEventsSingleton>();
+            DestroyEntitiesByType<Wassup.Battle.Effects.HazardDestroyedEventsSingleton>();
+            DestroyEntitiesByType<Wassup.Battle.Effects.HazardSpawnRequestsSingleton>();
+            DestroyEntitiesByType<Wassup.Battle.Combat.AttackOutputLogEventsSingleton>();
+            DestroyEntitiesByType<Wassup.Battle.Movement.MovementPauseRequestEventsSingleton>();
+            DestroyEntitiesByType<Wassup.Battle.Effects.ObstacleSingleton>();
+            DestroyEntitiesByType<Wassup.Battle.Effects.HazardSingleton>();
+        }
 
-            var meteorBurstSingletons = _em.CreateEntityQuery(ComponentType.ReadOnly<Wassup.Battle.Combat.MeteorBurstEventsSingleton>());
-            _em.DestroyEntity(meteorBurstSingletons);
-            meteorBurstSingletons.Dispose();
-
-            var unitAttackVisualSingletons = _em.CreateEntityQuery(ComponentType.ReadOnly<Wassup.Battle.Combat.UnitAttackVisualEventsSingleton>());
-            _em.DestroyEntity(unitAttackVisualSingletons);
-            unitAttackVisualSingletons.Dispose();
-
-            var projectileHitSingletons = _em.CreateEntityQuery(ComponentType.ReadOnly<Wassup.Battle.Combat.Projectile.ProjectileHitEventsSingleton>());
-            _em.DestroyEntity(projectileHitSingletons);
-            projectileHitSingletons.Dispose();
-
-            var healAppliedSingletons = _em.CreateEntityQuery(ComponentType.ReadOnly<Wassup.Battle.Units.HealAppliedEventsSingleton>());
-            _em.DestroyEntity(healAppliedSingletons);
-            healAppliedSingletons.Dispose();
-
-            var enemyCcSingletons = _em.CreateEntityQuery(ComponentType.ReadOnly<Wassup.Battle.Effects.EnemyCcEventsSingleton>());
-            _em.DestroyEntity(enemyCcSingletons);
-            enemyCcSingletons.Dispose();
-
-            var statModifierSingletons = _em.CreateEntityQuery(ComponentType.ReadOnly<Wassup.Battle.Effects.StatModifierApplyEventsSingleton>());
-            _em.DestroyEntity(statModifierSingletons);
-            statModifierSingletons.Dispose();
-
-            var stackModifierSingletons = _em.CreateEntityQuery(ComponentType.ReadOnly<Wassup.Battle.Effects.StackModifierApplyEventsSingleton>());
-            _em.DestroyEntity(stackModifierSingletons);
-            stackModifierSingletons.Dispose();
-
-            var hazardRuntimeSingletons = _em.CreateEntityQuery(ComponentType.ReadOnly<Wassup.Battle.Effects.HazardRuntimeEventsSingleton>());
-            _em.DestroyEntity(hazardRuntimeSingletons);
-            hazardRuntimeSingletons.Dispose();
-
-            var hazardDestroyedSingletons = _em.CreateEntityQuery(ComponentType.ReadOnly<Wassup.Battle.Effects.HazardDestroyedEventsSingleton>());
-            _em.DestroyEntity(hazardDestroyedSingletons);
-            hazardDestroyedSingletons.Dispose();
-
-            var hazardSpawnRequestSingletons = _em.CreateEntityQuery(ComponentType.ReadOnly<Wassup.Battle.Effects.HazardSpawnRequestsSingleton>());
-            _em.DestroyEntity(hazardSpawnRequestSingletons);
-            hazardSpawnRequestSingletons.Dispose();
-
-            var attackOutputLogSingletons = _em.CreateEntityQuery(ComponentType.ReadOnly<Wassup.Battle.Combat.AttackOutputLogEventsSingleton>());
-            _em.DestroyEntity(attackOutputLogSingletons);
-            attackOutputLogSingletons.Dispose();
-
-            var movementPauseRequestSingletons = _em.CreateEntityQuery(ComponentType.ReadOnly<Wassup.Battle.Movement.MovementPauseRequestEventsSingleton>());
-            _em.DestroyEntity(movementPauseRequestSingletons);
-            movementPauseRequestSingletons.Dispose();
-
-            var obstacleSingletons = _em.CreateEntityQuery(ComponentType.ReadOnly<Wassup.Battle.Effects.ObstacleSingleton>());
-            _em.DestroyEntity(obstacleSingletons);
-            obstacleSingletons.Dispose();
-
-            var hazardSingletons = _em.CreateEntityQuery(ComponentType.ReadOnly<Wassup.Battle.Effects.HazardSingleton>());
-            _em.DestroyEntity(hazardSingletons);
-            hazardSingletons.Dispose();
-
-            var hazards = _em.CreateEntityQuery(ComponentType.ReadOnly<Wassup.Battle.Effects.Hazard>());
-            _em.DestroyEntity(hazards);
-            hazards.Dispose();
-
-            var blockingHazards = _em.CreateEntityQuery(ComponentType.ReadOnly<Wassup.Battle.Effects.BlockingHazard>());
-            _em.DestroyEntity(blockingHazards);
-            blockingHazards.Dispose();
-
-            // Dispose the queues; StartBattle will create fresh ones.
+        private void DisposeEcsInfrastructureNativeContainers()
+        {
             if (_goalEventQueue.IsCreated) _goalEventQueue.Dispose();
             if (_defenderDeathQueue.IsCreated) _defenderDeathQueue.Dispose();
             if (_meteorBurstQueue.IsCreated) _meteorBurstQueue.Dispose();
@@ -358,17 +330,33 @@ namespace Wassup.Bridge
             if (_hazardSpawnRequestQueue.IsCreated) _hazardSpawnRequestQueue.Dispose();
             if (_blockedCells.IsCreated) _blockedCells.Dispose();
             if (_hazardCellToEffects.IsCreated) _hazardCellToEffects.Dispose();
-            _zoneHazardRegistry.Clear();
-            _zoneHazardIndex.Clear();
-            _blockingHazardSoRegistry.Clear();
-            _blockingHazardSoIndex.Clear();
+        }
 
-            // Phase 9: dispose the flow field singleton arrays + destroy the entity.
-            TeardownFlowField();
-            // Phase 10A (P10A-04A): dispose GeneratedMap (idempotent) alongside FlowField.
-            TeardownGeneratedMap();
-            // draft-stage-map-prebuild Unit 0 — allow EnsureQueriesAndQueues to reinitialise on next entry.
-            _ecsInfrastructureReady = false;
+        private void DisposeCachedQueries()
+        {
+            if (!HasLiveEntityManager())
+            {
+                _aliveAttackersQueryCreated = false;
+                _projectileSpawnRequestQueryCreated = false;
+                _projectileQueryCreated = false;
+                return;
+            }
+
+            if (_aliveAttackersQueryCreated)
+            {
+                _aliveAttackersQuery.Dispose();
+                _aliveAttackersQueryCreated = false;
+            }
+            if (_projectileSpawnRequestQueryCreated)
+            {
+                _projectileSpawnRequestQuery.Dispose();
+                _projectileSpawnRequestQueryCreated = false;
+            }
+            if (_projectileQueryCreated)
+            {
+                _projectileQuery.Dispose();
+                _projectileQueryCreated = false;
+            }
         }
 
         // Idempotent: 재호출(판 재시작/redraft) 시 기존 Persistent arrays dispose 후 재생성.
@@ -791,10 +779,19 @@ namespace Wassup.Bridge
 
         public void StopBattle()
         {
+            if (HasLiveEntityManager())
+            {
+                TeardownCurrentBattle();
+                return;
+            }
+
             _running = false;
             _placementAllowed = false;
             SetNextWaveButtonVisible(false);
-            // Phase 0: entities persist until play mode exit. P0-09 will add full teardown.
+            DisposeEcsInfrastructureNativeContainers();
+            DisposeCachedQueries();
+            TeardownGeneratedMap();
+            _ecsInfrastructureReady = false;
         }
 
         // draft-stage-map-prebuild Unit 0 — called by GameManager.Start before BeginDraft.
@@ -850,6 +847,7 @@ namespace Wassup.Bridge
 
         private void DestroyEntitiesByType<T>() where T : unmanaged, Unity.Entities.IComponentData
         {
+            if (!HasLiveEntityManager()) return;
             using var q = _em.CreateEntityQuery(Unity.Entities.ComponentType.ReadOnly<T>());
             if (!q.IsEmpty) _em.DestroyEntity(q);
         }
@@ -2863,34 +2861,9 @@ namespace Wassup.Bridge
                 resultScreen.RestartRequested -= OnRestartRequested;
                 resultScreen.RedraftRequested -= OnRedraftRequested;
             }
-            if (_goalEventQueue.IsCreated) _goalEventQueue.Dispose();
-            if (_defenderDeathQueue.IsCreated) _defenderDeathQueue.Dispose();
-            if (_meteorBurstQueue.IsCreated) _meteorBurstQueue.Dispose();
-            if (_unitAttackVisualQueue.IsCreated) _unitAttackVisualQueue.Dispose();
-            if (_projectileHitEventQueue.IsCreated) _projectileHitEventQueue.Dispose();
-            if (_healAppliedEventQueue.IsCreated) _healAppliedEventQueue.Dispose();
-            if (_enemyCcQueue.IsCreated) _enemyCcQueue.Dispose();
-            if (_statModifierQueue.IsCreated) _statModifierQueue.Dispose();
-            if (_stackModifierQueue.IsCreated) _stackModifierQueue.Dispose();
-            if (_attackOutputLogQueue.IsCreated) _attackOutputLogQueue.Dispose();
-            if (_movementPauseRequestQueue.IsCreated) _movementPauseRequestQueue.Dispose();
-            if (_hazardRuntimeEventQueue.IsCreated) _hazardRuntimeEventQueue.Dispose();
-            if (_hazardDestroyedQueue.IsCreated) _hazardDestroyedQueue.Dispose();
-            if (_hazardSpawnRequestQueue.IsCreated) _hazardSpawnRequestQueue.Dispose();
-            if (_blockedCells.IsCreated) _blockedCells.Dispose();
-            if (_hazardCellToEffects.IsCreated) _hazardCellToEffects.Dispose();
-            ClearBlockingHazardVisuals();
-            _zoneHazardRegistry.Clear();
-            _zoneHazardIndex.Clear();
-            _blockingHazardSoRegistry.Clear();
-            _blockingHazardSoIndex.Clear();
-            // Phase 9 — guard against editor shutdown / play stop leaking Persistent arrays.
-            TeardownFlowField();
-            // Phase 10A (P10A-04A): dispose GeneratedMap on destroy.
-            TeardownGeneratedMap();
-            // draft-stage-map-prebuild Unit 0 — reset on lifecycle end.
-            _ecsInfrastructureReady = false;
-            if (spineUnitPool != null) spineUnitPool.DisposeAll();
+
+            TeardownCurrentBattle();
+
             if (_healthBarMaterial != null) Destroy(_healthBarMaterial);
             for (int i = 0; i < _ownedRuntimeMaterials.Count; i++)
             {
