@@ -1,0 +1,40 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 934f1261c7a44f2389308d8e101207cd, type: 3}
+  m_Name: prop_concept_coil_machine_1_1
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.PropData
+  id: prop_concept_coil_machine_1_1
+  displayName: Coil Machine
+  footprintX: 1
+  footprintY: 1
+  placementWeight: 24
+  minDistanceCells: 1
+  visualOffset: {x: 0, y: 0.5, z: 0}
+  visualScale: 1.02
+  preferredAnchorTypes: 
+  preferredRegionSizeMin: 0
+  clusterRadius: 1
+  clusterCount: 1
+  clusterProbability: 0
+  rotationJitterDegrees: 0
+  scaleJitter: 0.08
+  pathProximityRange: {x: 0, y: 255}
+  borderProximityRange: {x: 0, y: 255}
+  prefab: {fileID: 32613850537267842, guid: fc50576577515419cb1f2dccf53a91d0, type: 3}
+  sprite: {fileID: 21300000, guid: 257c19de1cdf84ba880eb39d2c0555a7, type: 3}
+  sourceTexture: {fileID: 2800000, guid: 257c19de1cdf84ba880eb39d2c0555a7, type: 3}
+  spriteColor: {r: 1, g: 1, b: 1, a: 1}
+  sortingOrder: 0
+  skeletonDataAsset: {fileID: 0}
+  spineSkinName: 
+  idleAnimation: idle
+  billboardMode: 0
