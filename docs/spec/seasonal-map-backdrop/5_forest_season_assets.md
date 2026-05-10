@@ -110,6 +110,8 @@ defaultSeason = season_S1_forest
 - BattleScene 의 BattleBridge.seasonRegistry 가 비어있지 않음.
 - Inspector 에서 `season_S1_forest.asset` 의 mapTheme/backdrop 참조 모두 채워짐.
 
+확인 일자: 2026-05-10 / 커밋: db3aa970eb5bebfe5c32dc0ca19df55e3d46becc
+
 ## 의존
 
 - 선행: 1번, 2번, 3번, 4번
