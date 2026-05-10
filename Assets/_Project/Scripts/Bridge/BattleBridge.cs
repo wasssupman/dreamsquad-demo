@@ -17,6 +17,8 @@ using Wassup.Battle.Units;
 using Wassup.Battle.Units.HealthBar;
 using Wassup.Core;
 using Wassup.Data;
+using Wassup.Data.Season;
+using Wassup.Presentation.Backdrop;
 using Wassup.Rendering;
 using Wassup.UI;
 using TMPro;
@@ -33,7 +35,9 @@ namespace Wassup.Bridge
         [SerializeField] private MapGenerationSettings mapSettings;
         [Header("Phase 10B - Procedural")]
         [SerializeField] private bool useProcedural = true;
-        [SerializeField] private MapThemeData mapTheme;
+        [Header("Season")]
+        [SerializeField] private SeasonRegistry seasonRegistry;
+        [SerializeField] private bool enableSeasonBackdrop = true;
         [SerializeField] private MapPathShape mapPathShape = MapPathShape.Free;
         [SerializeField] private MapGenerationOptions mapGenerationOptions = MapGenerationOptions.Default;
         [SerializeField] private float tileSize = 1f;
@@ -62,6 +66,7 @@ namespace Wassup.Bridge
 
         private ManualMapInput? _manualMapInput;
         private GeneratedMap _generatedMap;
+        private GameObject _backdropRoot;
 
         private World _world;
         private EntityManager _em;
@@ -138,6 +143,13 @@ namespace Wassup.Bridge
 
             if (placementInput == null)
                 Debug.LogError("[BattleBridge] placementInput reference missing — assign in Inspector.", this);
+
+            SeasonRuntime.Bind(seasonRegistry);
+            if (seasonRegistry == null || seasonRegistry.activeSeason == null
+                || seasonRegistry.activeSeason.mapTheme == null)
+            {
+                Debug.LogError("[BattleBridge] SeasonRegistry / activeSeason / mapTheme 가 wiring 되지 않았다. BattleScene 에 SeasonRegistry.asset 을 연결하라.", this);
+            }
 
             EnsureMonoViewPools();
         }
@@ -241,6 +253,7 @@ namespace Wassup.Bridge
 
         private void TeardownCurrentBattle()
         {
+            BackdropMounter.Unmount(ref _backdropRoot);
             _running = false;
             _placementAllowed = false;
             if (skillRuntime != null) skillRuntime.ResetAll();
@@ -441,6 +454,9 @@ namespace Wassup.Bridge
             TeardownGeneratedMap();
             TeardownFlowField();
 
+            var theme   = SeasonRuntime.Active?.mapTheme;
+            var backdrop = SeasonRuntime.Active?.backdrop;
+
             int seed = mapSettings != null ? mapSettings.EffectiveSeed : 0;
             int version = GeneratorVersion;
             var options = mapGenerationOptions.Normalized();
@@ -456,7 +472,7 @@ namespace Wassup.Bridge
                 _generatedMap = ProceduralMapGenerator.Generate(
                     seed,
                     gridSize,
-                    mapTheme,
+                    theme,
                     version,
                     options.pathShape,
                     options.spawnLaneCount,
@@ -482,23 +498,28 @@ namespace Wassup.Bridge
                 _generatedMap = BattleMapBuilder.BuildFallbackLinear(gridSize, seed, version, options.spawnLaneCount);
             }
 
-            if (mapView != null) mapView.Initialize(_generatedMap, tileSize, mapTheme);
+            if (mapView != null) mapView.Initialize(_generatedMap, tileSize, theme);
             if (placementInput != null) placementInput.Initialize(_generatedMap, tileSize);
             FrameMainCameraForMap();
 
+            // Backdrop mount — always Unmount first so RebuildDraftMap is safe
+            BackdropMounter.Unmount(ref _backdropRoot);
+            if (enableSeasonBackdrop && backdrop != null && Camera.main != null)
+                _backdropRoot = BackdropMounter.Mount(_generatedMap, Camera.main, backdrop, tileSize);
+
             BuildFlowField();
 
-            if (mapView != null && mapTheme != null)
+            if (mapView != null && theme != null)
             {
-                if (mapTheme.tileProps != null && mapTheme.tileProps.Length > 0)
+                if (theme.tileProps != null && theme.tileProps.Length > 0)
                 {
                     var visualPlan = mapView.VisualPlan;
-                    var placements = BackgroundPropPlacer.Generate(visualPlan, mapTheme, _generatedMap.seed);
-                    mapView.InstantiateBackgroundProps(visualPlan, mapTheme, placements);
+                    var placements = BackgroundPropPlacer.Generate(visualPlan, theme, _generatedMap.seed);
+                    mapView.InstantiateBackgroundProps(visualPlan, theme, placements);
                 }
                 else
                 {
-                    mapView.InstantiateObstacles(_generatedMap, mapTheme);
+                    mapView.InstantiateObstacles(_generatedMap, theme);
                 }
             }
 
@@ -785,6 +806,7 @@ namespace Wassup.Bridge
                 return;
             }
 
+            BackdropMounter.Unmount(ref _backdropRoot);
             _running = false;
             _placementAllowed = false;
             SetNextWaveButtonVisible(false);
@@ -826,6 +848,7 @@ namespace Wassup.Bridge
         // for option toggle / Redraft. Mirrors the relevant subset of TeardownCurrentBattle.
         private void CleanupDraftMapBeforeRebuild()
         {
+            BackdropMounter.Unmount(ref _backdropRoot);
             if (_em != null)
             {
                 DestroyEntitiesByType<Wassup.Battle.Effects.Hazard>();
@@ -2862,6 +2885,7 @@ namespace Wassup.Bridge
                 resultScreen.RedraftRequested -= OnRedraftRequested;
             }
 
+            BackdropMounter.Unmount(ref _backdropRoot);
             TeardownCurrentBattle();
 
             if (_healthBarMaterial != null) Destroy(_healthBarMaterial);
