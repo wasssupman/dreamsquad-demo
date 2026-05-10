@@ -2195,7 +2195,8 @@ MonoBehaviour:
   map: {fileID: 11400000, guid: 0787ec9271df64707a2f470418f78692, type: 2}
   mapSettings: {fileID: 11400000, guid: 9ed4dfa17ef6648e8bc91cef74b876cf, type: 2}
   useProcedural: 1
-  mapTheme: {fileID: 11400000, guid: cee6d79be1d0942669279b9cbfac6717, type: 2}
+  seasonRegistry: {fileID: 11400000, guid: d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8, type: 2}
+  enableSeasonBackdrop: 1
   mapPathShape: 1
   mapGenerationOptions:
     pathShape: 0

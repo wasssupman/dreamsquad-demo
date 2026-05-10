@@ -16,7 +16,7 @@ MonoBehaviour:
   displayName: Crystal Node
   footprintX: 1
   footprintY: 1
-  placementWeight: 30
+  placementWeight: 0
   minDistanceCells: 1
   visualOffset: {x: 0, y: 0.45, z: 0}
   visualScale: 1.08
@@ -37,4 +37,4 @@ MonoBehaviour:
   skeletonDataAsset: {fileID: 0}
   spineSkinName: 
   idleAnimation: idle
-  billboardMode: 0
+  billboardMode: 2

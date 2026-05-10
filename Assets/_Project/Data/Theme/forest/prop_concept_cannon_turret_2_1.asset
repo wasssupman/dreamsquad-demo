@@ -16,7 +16,7 @@ MonoBehaviour:
   displayName: Cannon Turret
   footprintX: 2
   footprintY: 1
-  placementWeight: 18
+  placementWeight: 0
   minDistanceCells: 1
   visualOffset: {x: 0, y: 0.42, z: 0}
   visualScale: 1.04
@@ -37,4 +37,4 @@ MonoBehaviour:
   skeletonDataAsset: {fileID: 0}
   spineSkinName: 
   idleAnimation: idle
-  billboardMode: 0
+  billboardMode: 2

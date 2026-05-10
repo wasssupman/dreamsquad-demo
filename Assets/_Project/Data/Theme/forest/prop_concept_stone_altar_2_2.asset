@@ -16,7 +16,7 @@ MonoBehaviour:
   displayName: Stone Altar
   footprintX: 2
   footprintY: 2
-  placementWeight: 16
+  placementWeight: 0
   minDistanceCells: 2
   visualOffset: {x: 0, y: 0.58, z: 0}
   visualScale: 1.15
@@ -37,4 +37,4 @@ MonoBehaviour:
   skeletonDataAsset: {fileID: 0}
   spineSkinName: 
   idleAnimation: idle
-  billboardMode: 0
+  billboardMode: 2
