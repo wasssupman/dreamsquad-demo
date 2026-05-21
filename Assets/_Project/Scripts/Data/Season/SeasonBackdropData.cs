@@ -31,6 +31,10 @@ namespace Wassup.Data.Season
         public float backdropHeightWorld = 30f;
         public Color backdropTint = Color.white;
 
+        [Header("Skybox")]
+        [Range(0f, 8f)] public float skyboxExposure = 1f;
+        [Range(0f, 360f)] public float skyboxRotationDegrees = 0f;
+
         [Header("Edge Props")]
         public EdgePropEntry[] edgeProps = Array.Empty<EdgePropEntry>();
 

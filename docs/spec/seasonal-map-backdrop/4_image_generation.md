@@ -84,3 +84,5 @@ PropData 가 아니므로 별도 import. Inspector 에서 직접 설정 또는 .
 
 - 선행: 0번 (working tree 정리)
 - 후행: 5번 (이 PNG 들이 5번 SO 와 묶임)
+
+확인 일자: 2026-05-10 / 커밋: 75e7d01

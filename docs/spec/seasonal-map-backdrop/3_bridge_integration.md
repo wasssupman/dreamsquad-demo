@@ -202,3 +202,5 @@ private void OnDestroy()
 - `BackdropMounter` 호출은 BattleBridge 외 다른 곳에서 절대 추가 금지.
 - `enableSeasonBackdrop = false` 는 디버그용 OFF 스위치. 정상 운영은 항상 ON 이고 SeasonRegistry 가 wiring 돼있어야 한다.
 - `Camera.main` 이 Awake 시점엔 null 일 수 있으나, `BuildMapForBattle` 은 PrepareDraftMap → DeferredPrepareDraftMap (yield return null) 경로를 거치므로 Camera 가 활성화된 후 호출된다. Mount 진입 시점엔 valid 하다고 가정.
+
+확인 일자: 2026-05-10 / 커밋: 84a6103 (씬 wiring은 unit 5에서 SeasonRegistry.asset 생성 후 진행)

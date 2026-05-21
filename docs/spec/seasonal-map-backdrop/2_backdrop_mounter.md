@@ -121,3 +121,14 @@ Unmount 절차: `if (root != null) Object.Destroy(root); root = null;`
 
 - 선행: 1번 (데이터 모델)
 - 후행: 3번 (Bridge 가 호출), 6번 (Play 검증)
+
+확인 일자: 2026-05-10 / 커밋: 729f1e9
+
+## Revision 2026-05-22 — Skybox/Panoramic 전환
+
+unit 7~9 (Lava/Lunar/Cosmic) 스코프 확장 시 backdrop 표현이 **카메라 정면 quad → URP Skybox/Panoramic** 으로 전환됐다.
+
+- `BackdropMounter.Mount` 가 `RenderSettings.skybox` 에 panoramic 머티리얼 주입 + `Camera.clearFlags = Skybox`. `Unmount` 가 이전 skybox/clearFlags 복원.
+- `SeasonBackdropData` 에 `skyboxExposure (0~8)` / `skyboxRotationDegrees (0~360)` 필드 추가.
+- backdrop 텍스처 사양: 4096×2048 equirectangular PNG, 좌우 seam 일치 (`_Mapping = 1`, `_ImageType = 0`).
+- 기존 `Backdrop_Unlit` 셰이더는 사용처가 없어지지만 자산 파일은 남겨둔다 (후속 활용 가능성).
