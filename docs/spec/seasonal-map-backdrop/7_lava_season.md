@@ -70,3 +70,5 @@ backdrop    = backdrop_S2_lava.asset
 
 - 선행: 1, 2, 3, 5
 - 후행: 10 (multi-season verify)
+
+확인 일자: 2026-05-22 / 커밋: 4883741

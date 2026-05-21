@@ -173,6 +173,15 @@ board-visualization spec 자체는 ROI 부족으로 wrap 종료. 진단/실험�
 - **23 volcano-theme-fill** [M] · 두 번째 테마 자산 채움.
 - **BattleBridge.StartBattle Persistent allocates 경고** [S] · 반복 시작 시 leak 추적. ECS 컨텍스트 정리 경로 점검.
 
+#### Seasonal map backdrop — 후속 (seasonal-map-backdrop)
+
+- **시즌별 차별화된 MapThemeData** [L] · 현재 4시즌 모두 forest 테마 공유. Lava/Lunar/Cosmic 전용 타일/장애물 정의. 별도 spec.
+- **시각 검증 스크린샷 + tint/exposure 튜닝** [S] · `Assets/Screenshots/seasonal_backdrop_{season}_verify_*.png` 4장 캡처. 시즌별 backdropTint/skyboxExposure 미세 튜닝.
+- **백드롭 미세 시차** [S] · camera 미세 이동에 skybox `_Rotation` 약간 따라가도록 BackdropMounter LateUpdate hook.
+- **Backdrop ↔ MapTheme 라이팅·포그 매칭** [S] · 시즌별 ambient/fog color 자동 매칭 룩 패스.
+- **토너먼트 메타 hook** [M] · 서버 응답 → `SeasonRuntime` active season swap API.
+- **시즌 배지 UI** [S] · 매치 시작 시 활성 시즌 배지 노출.
+
 #### 기타
 
 - **Healer 전용 Spine asset** [S] · 현재 Archer Spine reuse. 전용 rig + idle/heal-cast/death 애니메이션. 시각 식별성, 기능 영향 없음. (modifier-framework-and-healer)
@@ -182,6 +191,7 @@ board-visualization spec 자체는 ROI 부족으로 wrap 종료. 진단/실험�
 
 ### Promoted / Closed
 
+- **Seasonal map backdrop** → `docs/spec/seasonal-map-backdrop/` (completed 2026-05-22, 4시즌 + Skybox 전환)
 - **Modifier framework — Legacy migration** → `docs/spec/modifier-legacy-migration/` (completed 2026-05-01)
 - **Modifier framework & Healer** → `docs/spec/modifier-framework-and-healer/` (completed 2026-05)
 - **CC pipeline & Obstacle** → `docs/spec/cc-pipeline-and-obstacle/` (completed 2026-04-29)

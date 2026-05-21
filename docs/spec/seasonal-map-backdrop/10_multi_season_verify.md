@@ -52,3 +52,5 @@
 
 - 선행: 6, 7, 8, 9
 - 후행: 11 (handoff_summary)
+
+확인 일자: 2026-05-22 / verbal OK — 4시즌 swap Play 진입 OK, 콘솔 clean, defaultSeason → Forest 복원. 스크린샷 4장 캡처는 후속.

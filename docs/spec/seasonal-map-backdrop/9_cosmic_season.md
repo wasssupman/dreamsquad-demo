@@ -67,3 +67,5 @@ backdrop    = backdrop_S4_cosmic.asset
 
 - 선행: 1, 2, 3, 5
 - 후행: 10
+
+확인 일자: 2026-05-22 / 커밋: 4883741

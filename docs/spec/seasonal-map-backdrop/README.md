@@ -1,6 +1,6 @@
 # Seasonal Map Backdrop Spec
 
-**상태**: 진행 중 — Forest 완료(unit 0~5+백드롭 재생성), 2026-05-11 Lava/Lunar/Cosmic 추가(스코프 확장)
+**상태**: 완료 2026-05-22 — Forest + Lava/Lunar/Cosmic 4시즌 모두 SO/백드롭/EdgeProp 구현, Skybox/Panoramic 전환 완료. Play 시각 검증 verbal OK (스크린샷 캡처는 후속).
 **구현 주체**: Codex (이미지 생성 + 코드/SO 채움). Claude 는 spec 작성 + 코드 튜닝.
 
 ## 목표
@@ -28,7 +28,7 @@
 | 8 | [8_lunar_season.md](8_lunar_season.md) | Lunar 시즌 백드롭 + SO + EdgeProp 매핑 |
 | 9 | [9_cosmic_season.md](9_cosmic_season.md) | Cosmic 시즌 백드롭 + SO + EdgeProp 매핑 |
 | 10 | [10_multi_season_verify.md](10_multi_season_verify.md) | 4 시즌 swap 검증 (Inspector 에서 defaultSeason 교체 후 Play) |
-| 11 | 11_handoff_summary.md (구현 후 작성) | 인계 지도 |
+| 11 | [11_handoff_summary.md](11_handoff_summary.md) | 인계 지도 |
 
 ## Feature-Wide 계약
 

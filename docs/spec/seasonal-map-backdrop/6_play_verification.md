@@ -49,3 +49,5 @@ BattleScene Play 진입 시 백드롭 + 8 EdgeProp 이 의도대로 보이는지
 ## 커밋
 
 검증 통과 후 본 spec 산출 전체를 단일 커밋 또는 단위별 커밋으로 마무리. 0번 단위에서 분리한 미커밋 자산(forest.asset 등) 은 본 spec 커밋에 포함시키지 않는다.
+
+확인 일자: 2026-05-22 / verbal OK — Forest skybox + 8 EdgeProp + 콘솔 clean 확인. 스크린샷 캡처는 후속.
