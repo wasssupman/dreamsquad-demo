@@ -24,4 +24,4 @@
 - [ ] 컴파일 0 ERROR.
 - [ ] EditMode 회귀 0 (단, 새 테스트 1개 추가).
 - [ ] PlayMode: 패널 "Goal Edge Only" 토글 ON → 생성된 map 의 goal 이 항상 boundary 위. OFF → 기존 동작.
-- [ ] 확인 일자 + 커밋 해시 (구현 후 채움):
+- [x] 2026-05-23 · 1aff36f

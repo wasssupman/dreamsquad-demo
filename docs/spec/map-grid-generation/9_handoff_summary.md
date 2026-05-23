@@ -9,7 +9,8 @@
 - `b96fd8f feat(map-grid-generation): unit 6 + 10 — BattleBridge adapter + MapSettingsPanel toggle`
 - `42d0fce feat(map-grid-generation): unit 7~8 — Editor debug window + integration/sweep tests`
 - `7397198 docs(map-grid-generation): unit 11~13 spec — 6-section + custom size + adaptive turns`
-- (이 커밋) `docs(map-grid-generation): close spec — handoff + status 완료`
+- `ebe7283 docs(map-grid-generation): close spec — handoff + status 완료`
+- `1aff36f feat(map-grid-generation): unit 14 — goalEdgeOnly flag`
 
 ## Implemented
 
@@ -28,6 +29,7 @@
 - `MapSettingsPanelView`: Map Source 토글 (Legacy/MapGrid) + MapGrid 선택 시 Preset quick-fill (Auto/30x15/20x20/10x20) + W/H 입력 (default 20×10) + min clamp.
 - `MapGridDebugWindow`: Window/Wassup/Map Grid Debug — seed/preset 조작, SceneView gizmo, Sweep 통계, Bake to MapDocument.
 - BattleScene 의 BattleBridge 에 `mapSource = MapGrid` + `MapGridGenerationSettings_Default` asset wiring.
+- (unit 14) `goalEdgeOnly` SO flag + panel 토글 + placer 필터: goal 을 map boundary 셀로만 강제 가능.
 
 ## Key Files
 
