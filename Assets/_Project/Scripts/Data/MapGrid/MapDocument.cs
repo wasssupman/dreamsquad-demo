@@ -1,0 +1,80 @@
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace Wassup.Data.MapGrid
+{
+    [CreateAssetMenu(fileName = "MapDocument", menuName = "Wassup/Map/MapDocument", order = 1)]
+    public class MapDocument : ScriptableObject
+    {
+        [SerializeField] private int width = 20;
+        [SerializeField] private int height = 10;
+        [SerializeField] private MapTileType[] tiles;
+        [SerializeField] private byte[] mergeDegree;
+        [SerializeField] private bool[] chokepoint;
+        [SerializeField] private byte[] propLayerId;
+        [SerializeField] private Vector2Int goal;
+        [SerializeField] private Vector2Int[] spawns;
+
+        // -1 = 수동 입력, 그 외 값 = 절차적 결과 캐시.
+        [SerializeField] private int authoringSeed = -1;
+
+        // 절차적 생성기 버전. 수동 입력은 0.
+        [SerializeField] private int generatorVersion;
+
+        public int Width => width;
+        public int Height => height;
+        public IReadOnlyList<MapTileType> Tiles => tiles;
+        public IReadOnlyList<byte> MergeDegree => mergeDegree;
+        public IReadOnlyList<bool> Chokepoint => chokepoint;
+        public IReadOnlyList<byte> PropLayerId => propLayerId;
+        public Vector2Int Goal => goal;
+        public IReadOnlyList<Vector2Int> Spawns => spawns;
+        public int AuthoringSeed => authoringSeed;
+        public int GeneratorVersion => generatorVersion;
+
+        internal void SetFrom(
+            int w, int h,
+            MapTileType[] t, byte[] md, bool[] cp, byte[] pl,
+            Vector2Int g, Vector2Int[] s,
+            int seed, int version)
+        {
+            width = w;
+            height = h;
+            tiles = t;
+            mergeDegree = md;
+            chokepoint = cp;
+            propLayerId = pl;
+            goal = g;
+            spawns = s;
+            authoringSeed = seed;
+            generatorVersion = version;
+#if UNITY_EDITOR
+            UnityEditor.EditorUtility.SetDirty(this);
+#endif
+        }
+
+#if UNITY_EDITOR
+        private void OnValidate()
+        {
+            if (width < 1 || height < 1)
+            {
+                Debug.LogError($"[MapDocument] width/height 는 ≥1 이어야 한다 ({width}×{height})", this);
+                return;
+            }
+
+            int n = width * height;
+            if (tiles != null && tiles.Length != n)
+                Debug.LogError($"[MapDocument] tiles.Length={tiles.Length} 가 width*height={n} 와 불일치", this);
+            if (mergeDegree != null && mergeDegree.Length != n)
+                Debug.LogError($"[MapDocument] mergeDegree.Length={mergeDegree.Length} != {n}", this);
+            if (chokepoint != null && chokepoint.Length != n)
+                Debug.LogError($"[MapDocument] chokepoint.Length={chokepoint.Length} != {n}", this);
+            if (propLayerId != null && propLayerId.Length != n)
+                Debug.LogError($"[MapDocument] propLayerId.Length={propLayerId.Length} != {n}", this);
+
+            if (spawns == null || spawns.Length < 1 || spawns.Length > 4)
+                Debug.LogError($"[MapDocument] spawns.Length 는 1~4 (현재 {spawns?.Length ?? 0})", this);
+        }
+#endif
+    }
+}
