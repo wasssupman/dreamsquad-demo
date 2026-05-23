@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
+using Unity.Mathematics;
 using UnityEngine;
 using Wassup.Bridge;
 using Wassup.Data;
+using Wassup.Data.MapGrid;
 using Wassup.Logging;
 
 namespace Wassup.Core
@@ -41,6 +43,8 @@ namespace Wassup.Core
         public IReadOnlyList<DefenderUnitData> Catalog => collectionPool;
         public MapGenerationOptions SelectedMapGenerationOptions { get; private set; } = MapGenerationOptions.Default;
         public MapPathShape SelectedMapPathShape => SelectedMapGenerationOptions.pathShape;
+        public MapSource SelectedMapSource { get; private set; } = MapSource.Legacy;
+        public int2? SelectedMapGridGridSize { get; private set; }
 
         public event Action DraftStarted;
         public event Action DraftConfirmed;
@@ -179,6 +183,26 @@ namespace Wassup.Core
             if (battleBridge != null)
             {
                 battleBridge.SetMapGenerationOptions(SelectedMapGenerationOptions);
+                battleBridge.RebuildDraftMap();
+            }
+        }
+
+        public void SetMapSource(MapSource src)
+        {
+            SelectedMapSource = src;
+            if (battleBridge != null)
+            {
+                battleBridge.SetMapSource(src);
+                battleBridge.RebuildDraftMap();
+            }
+        }
+
+        public void SetMapGridGridSize(int2? gridSize)
+        {
+            SelectedMapGridGridSize = gridSize;
+            if (battleBridge != null)
+            {
+                battleBridge.SetMapGridGridSizeOverride(gridSize);
                 battleBridge.RebuildDraftMap();
             }
         }

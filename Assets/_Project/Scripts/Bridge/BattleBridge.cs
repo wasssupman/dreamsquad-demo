@@ -17,6 +17,7 @@ using Wassup.Battle.Units;
 using Wassup.Battle.Units.HealthBar;
 using Wassup.Core;
 using Wassup.Data;
+using Wassup.Data.MapGrid;
 using Wassup.Data.Season;
 using Wassup.Presentation.Backdrop;
 using Wassup.Rendering;
@@ -33,8 +34,12 @@ namespace Wassup.Bridge
         [SerializeField] private AttackDeck deck;
         [SerializeField] private MapData map;
         [SerializeField] private MapGenerationSettings mapSettings;
-        [Header("Phase 10B - Procedural")]
+        [Header("Phase 10B - Procedural (legacy)")]
         [SerializeField] private bool useProcedural = true;
+        [Header("Map Grid Generation (new)")]
+        [SerializeField] private MapSource mapSource = MapSource.Legacy;
+        [SerializeField] private MapGridGenerationSettings mapGridSettings;
+        [SerializeField] private MapDocument mapDocument;
         [Header("Season")]
         [SerializeField] private SeasonRegistry seasonRegistry;
         [SerializeField] private bool enableSeasonBackdrop = true;
@@ -67,6 +72,7 @@ namespace Wassup.Bridge
         private ManualMapInput? _manualMapInput;
         private GeneratedMap _generatedMap;
         private GameObject _backdropRoot;
+        private int2? _mapGridGridSizeOverride;
 
         private World _world;
         private EntityManager _em;
@@ -463,35 +469,72 @@ namespace Wassup.Bridge
             mapPathShape = options.pathShape;
             int2 gridSize = options.gridSize;
 
-            if (_manualMapInput.HasValue)
+            switch (mapSource)
             {
-                _generatedMap = BattleMapBuilder.BuildFromManual(_manualMapInput.Value, seed, version);
-            }
-            else if (useProcedural)
-            {
-                _generatedMap = ProceduralMapGenerator.Generate(
-                    seed,
-                    gridSize,
-                    theme,
-                    version,
-                    options.pathShape,
-                    options.spawnLaneCount,
-                    options.MinPlaceableRatio);
-            }
-            else
-            {
-                if (map == null)
-                {
-                    Debug.LogError("[BattleBridge] map reference missing — cannot build fixture GeneratedMap.", this);
-                    _generatedMap = BattleMapBuilder.BuildFallbackLinear(gridSize, seed, version, options.spawnLaneCount);
-                }
-                else
-                {
-                    _generatedMap = BattleMapBuilder.BuildFromFixture(map, seed, version);
-                }
+                case MapSource.Manual:
+                    if (_manualMapInput.HasValue)
+                        _generatedMap = BattleMapBuilder.BuildFromManual(_manualMapInput.Value, seed, version);
+                    else
+                        goto case MapSource.Fixture;
+                    break;
+
+                case MapSource.Procedural_Legacy:
+                    _generatedMap = ProceduralMapGenerator.Generate(
+                        seed, gridSize, theme, version,
+                        options.pathShape, options.spawnLaneCount, options.MinPlaceableRatio);
+                    break;
+
+                case MapSource.Fixture:
+                    if (map == null)
+                    {
+                        Debug.LogError("[BattleBridge] map reference missing — cannot build fixture GeneratedMap.", this);
+                        _generatedMap = BattleMapBuilder.BuildFallbackLinear(gridSize, seed, version, options.spawnLaneCount);
+                    }
+                    else
+                    {
+                        _generatedMap = BattleMapBuilder.BuildFromFixture(map, seed, version);
+                    }
+                    break;
+
+                case MapSource.MapGrid:
+                    try
+                    {
+                        _generatedMap = MapGridBattleAdapter.Build(seed, mapGridSettings, mapDocument, _mapGridGridSizeOverride);
+                    }
+                    catch (MapGenerationFailedException ex)
+                    {
+                        Debug.LogError($"[BattleBridge] {ex.Message}", this);
+                        _generatedMap = default;
+                        return;
+                    }
+                    break;
+
+                case MapSource.Legacy:
+                default:
+                    if (_manualMapInput.HasValue)
+                    {
+                        _generatedMap = BattleMapBuilder.BuildFromManual(_manualMapInput.Value, seed, version);
+                    }
+                    else if (useProcedural)
+                    {
+                        _generatedMap = ProceduralMapGenerator.Generate(
+                            seed, gridSize, theme, version,
+                            options.pathShape, options.spawnLaneCount, options.MinPlaceableRatio);
+                    }
+                    else if (map == null)
+                    {
+                        Debug.LogError("[BattleBridge] map reference missing — cannot build fixture GeneratedMap.", this);
+                        _generatedMap = BattleMapBuilder.BuildFallbackLinear(gridSize, seed, version, options.spawnLaneCount);
+                    }
+                    else
+                    {
+                        _generatedMap = BattleMapBuilder.BuildFromFixture(map, seed, version);
+                    }
+                    break;
             }
 
-            if (!MapConnectivity.AllSpawnsReachGoal(_generatedMap))
+            // MapGrid 케이스는 Validator 가 이미 connectivity 보장 — fallback skip.
+            if (mapSource != MapSource.MapGrid && !MapConnectivity.AllSpawnsReachGoal(_generatedMap))
             {
                 Debug.LogWarning("[BattleBridge] GeneratedMap connectivity failed; using fallback linear map.", this);
                 TeardownGeneratedMap();
@@ -509,7 +552,8 @@ namespace Wassup.Bridge
 
             BuildFlowField();
 
-            if (mapView != null && theme != null)
+            // MapGrid 는 Walk + Place 만 칠하고 Env/Deco 가 없음 — prop placer 가 빈손이 됨. 후속 theming spec 이 wire-up.
+            if (mapView != null && theme != null && mapSource != MapSource.MapGrid)
             {
                 if (theme.tileProps != null && theme.tileProps.Length > 0)
                 {
@@ -964,6 +1008,12 @@ namespace Wassup.Bridge
         {
             defenderPool = pool;
         }
+
+        public void SetMapSource(MapSource src) => mapSource = src;
+        public MapSource CurrentMapSource => mapSource;
+
+        public void SetMapGridGridSizeOverride(int2? gridSize) => _mapGridGridSizeOverride = gridSize;
+        public int2? CurrentMapGridGridSizeOverride => _mapGridGridSizeOverride;
 
         public void SetMapPathShape(MapPathShape shape)
         {
