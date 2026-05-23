@@ -24,9 +24,10 @@ namespace Wassup.Data.MapGrid
             int goalSection = rng.NextInt(0, sectionCount);
             int2 goalAnchor = GetSectionAnchor(goalSection, layout, gridSize);
             int radius = settings.CornerZoneRadius;
+            bool goalEdgeOnly = settings.GoalEdgeOnly;
 
             if (!TryPickInZone(ref rng, goalSection, layout, gridSize, goalAnchor, radius,
-                               default, 0, default, 0, out int2 goal))
+                               default, 0, default, 0, goalEdgeOnly, out int2 goal))
                 return default;
 
             int spawnCount = rng.NextInt(settings.MinSpawnCount, settings.MaxSpawnCount + 1);
@@ -46,7 +47,7 @@ namespace Wassup.Data.MapGrid
                     int sIdx = spawnSections[i];
                     int2 anchor = GetSectionAnchor(sIdx, layout, gridSize);
                     if (!TryPickInZone(ref rng, sIdx, layout, gridSize, anchor, radius,
-                                       goal, goalDist, picked, spawnDist, out int2 cell))
+                                       goal, goalDist, picked, spawnDist, false, out int2 cell))
                         return default;
                     picked.Add(cell);
                     activeMask |= (1 << sIdx);
@@ -72,10 +73,12 @@ namespace Wassup.Data.MapGrid
 
         // section 내부 anchor zone 의 셀들을 셔플 후 distance 룰 만족하는 첫 셀.
         // picked 가 default (NativeList.Length=0) 인 goal pick 시엔 distance check skip.
+        // requireMapEdge=true 면 후보 셀을 map boundary (x∈{0,W-1} 또는 y∈{0,H-1}) 로 제한.
         private static bool TryPickInZone(
             ref Random rng, int sectionIdx, int2 layout, int2 gridSize,
             int2 anchor, int radius,
             int2 goal, int goalDist, NativeList<int2> alreadyPicked, int spawnDist,
+            bool requireMapEdge,
             out int2 result)
         {
             GetSectionBounds(sectionIdx, layout, gridSize,
@@ -108,6 +111,7 @@ namespace Wassup.Data.MapGrid
                 for (int i = 0; i < cells.Length; i++)
                 {
                     var c = cells[i];
+                    if (requireMapEdge && !IsOnMapEdge(c, gridSize)) continue;
                     if (checkGoal)
                     {
                         if (math.all(c == goal)) continue;
@@ -153,6 +157,9 @@ namespace Wassup.Data.MapGrid
 
             return new int2(ax, ay);
         }
+
+        public static bool IsOnMapEdge(int2 cell, int2 gridSize) =>
+            cell.x == 0 || cell.x == gridSize.x - 1 || cell.y == 0 || cell.y == gridSize.y - 1;
 
         public static void GetSectionBounds(
             int sectionIdx, int2 layout, int2 gridSize,

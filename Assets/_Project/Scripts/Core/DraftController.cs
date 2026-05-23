@@ -207,6 +207,15 @@ namespace Wassup.Core
             }
         }
 
+        public void SetGoalEdgeOnly(bool value)
+        {
+            if (battleBridge != null)
+            {
+                battleBridge.SetGoalEdgeOnly(value);
+                battleBridge.RebuildDraftMap();
+            }
+        }
+
         private static int GenerateSeed()
         {
             // Mix wall-clock with Unity's shared RNG so sequential sessions diverge

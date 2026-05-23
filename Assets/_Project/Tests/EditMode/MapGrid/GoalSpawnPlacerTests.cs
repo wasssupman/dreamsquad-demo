@@ -144,6 +144,32 @@ namespace Wassup.Tests.EditMode.MapGrid
         }
 
         [Test]
+        public void Pick_GoalEdgeOnly_GoalLandsOnMapEdge()
+        {
+            var s = ScriptableObject.CreateInstance<MapGridGenerationSettings>();
+            s.SetForTest();
+            s.SetGoalEdgeOnly(true);
+
+            var gridSize = new int2(30, 15);
+            int success = 0;
+            for (uint seed = 1; seed < 100; seed++)
+            {
+                var rng = Random.CreateFromIndex(seed);
+                var r = GoalSpawnPlacer.Pick(ref rng, gridSize, s, Allocator.TempJob);
+                try
+                {
+                    if (!r.IsValid) continue;
+                    success++;
+                    Assert.IsTrue(GoalSpawnPlacer.IsOnMapEdge(r.goal, gridSize),
+                        $"seed {seed} goal=({r.goal.x},{r.goal.y}) not on map edge");
+                }
+                finally { r.Dispose(); }
+            }
+            Assert.Greater(success, 50, "edge-only mode should still succeed for majority of seeds");
+            ScriptableObject.DestroyImmediate(s);
+        }
+
+        [Test]
         public void GetLayout_AspectRatio()
         {
             Assert.AreEqual(new int2(3, 2), GoalSpawnPlacer.GetLayout(new int2(30, 15)));

@@ -1015,6 +1015,14 @@ namespace Wassup.Bridge
         public void SetMapGridGridSizeOverride(int2? gridSize) => _mapGridGridSizeOverride = gridSize;
         public int2? CurrentMapGridGridSizeOverride => _mapGridGridSizeOverride;
 
+        // PlayMode-only mutation of the shared SO. Reverts on Stop.
+        public void SetGoalEdgeOnly(bool value)
+        {
+            if (mapGridSettings != null) mapGridSettings.SetGoalEdgeOnly(value);
+        }
+
+        public bool CurrentGoalEdgeOnly => mapGridSettings != null && mapGridSettings.GoalEdgeOnly;
+
         public void SetMapPathShape(MapPathShape shape)
         {
             mapPathShape = shape;

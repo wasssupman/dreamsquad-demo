@@ -31,6 +31,7 @@ namespace Wassup.UI.Draft
         private Button _presetTall10x20Button;
         private TMP_InputField _mapGridWidthInput;
         private TMP_InputField _mapGridHeightInput;
+        private Button _goalEdgeOnlyButton;
 
         // Legacy rows (containers so we can hide them when MapGrid is active)
         private GameObject _legacyPathSection;
@@ -52,6 +53,7 @@ namespace Wassup.UI.Draft
         private MapSource _selectedMapSource = MapSource.Legacy;
         // null = Auto (seed-based). Non-null = explicit override.
         private int2? _selectedMapGridSize = new int2(DefaultMapGridWidth, DefaultMapGridHeight);
+        private bool _selectedGoalEdgeOnly;
         private MapPathShape _selectedPathShape = MapPathShape.Straight;
         private MapObstacleDensity _selectedDensity = MapObstacleDensity.Low;
         private bool _built;
@@ -135,6 +137,10 @@ namespace Wassup.UI.Draft
             _mapGridWidthInput.onEndEdit.AddListener(_ => OnMapGridSizeInputChanged());
             _mapGridHeightInput.onEndEdit.AddListener(_ => OnMapGridSizeInputChanged());
 
+            var goalEdgeRow = AddRow(_mapGridSection.transform, "GoalEdgeRow", 48f);
+            _goalEdgeOnlyButton = CreateButton(goalEdgeRow, "GoalEdgeOnly", "GOAL EDGE ONLY", Color.gray, fontSize: 18);
+            _goalEdgeOnlyButton.onClick.AddListener(() => ToggleGoalEdgeOnly());
+
             // --- Legacy sections ---
             _legacyPathSection = AddSection(_panel.transform, "LegacyPathSection");
             AddPanelLabel(_legacyPathSection.transform, "Path Type", 22);
@@ -196,6 +202,13 @@ namespace Wassup.UI.Draft
         }
 
         // Called by Auto / preset quick-fill buttons.
+        private void ToggleGoalEdgeOnly()
+        {
+            _selectedGoalEdgeOnly = !_selectedGoalEdgeOnly;
+            RefreshButtonHighlights();
+            if (controller != null) controller.SetGoalEdgeOnly(_selectedGoalEdgeOnly);
+        }
+
         private void SelectGridSize(int2? gridSize)
         {
             _selectedMapGridSize = gridSize;
@@ -256,7 +269,10 @@ namespace Wassup.UI.Draft
             if (controller == null) return;
             controller.SetMapSource(_selectedMapSource);
             if (_selectedMapSource == MapSource.MapGrid)
+            {
                 controller.SetMapGridGridSize(_selectedMapGridSize);
+                controller.SetGoalEdgeOnly(_selectedGoalEdgeOnly);
+            }
             else
                 PushLegacyOptions();
         }
@@ -301,6 +317,8 @@ namespace Wassup.UI.Draft
             SetSelected(_presetWide30x15Button, MatchesPreset(new int2(30, 15)));
             SetSelected(_presetSquare20x20Button, MatchesPreset(new int2(20, 20)));
             SetSelected(_presetTall10x20Button, MatchesPreset(new int2(10, 20)));
+
+            SetSelected(_goalEdgeOnlyButton, _selectedGoalEdgeOnly);
 
             SetSelected(_straightButton, _selectedPathShape == MapPathShape.Straight);
             SetSelected(_freeButton, _selectedPathShape == MapPathShape.Free);

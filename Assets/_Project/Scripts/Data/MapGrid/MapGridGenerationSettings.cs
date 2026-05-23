@@ -33,6 +33,9 @@ namespace Wassup.Data.MapGrid
         [SerializeField] private int maxRouteAttempts = 160;
         [SerializeField] private int routeCandidateMidpointSamples = 28;
 
+        [Header("Goal Placement")]
+        [SerializeField] private bool goalEdgeOnly = false;
+
         [Header("Versioning")]
         [SerializeField] private int generatorVersion = 1;
 
@@ -47,7 +50,10 @@ namespace Wassup.Data.MapGrid
         public int MaxMapAttempts => maxMapAttempts;
         public int MaxRouteAttempts => maxRouteAttempts;
         public int RouteCandidateMidpointSamples => routeCandidateMidpointSamples;
+        public bool GoalEdgeOnly => goalEdgeOnly;
         public int GeneratorVersion => generatorVersion;
+
+        internal void SetGoalEdgeOnly(bool value) => goalEdgeOnly = value;
 
         public static int2 PresetToGridSize(MapGridPreset preset)
         {
