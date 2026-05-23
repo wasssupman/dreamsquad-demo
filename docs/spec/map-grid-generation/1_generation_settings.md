@@ -105,4 +105,4 @@ namespace Wassup.Data.MapGrid
 - [ ] `MapGridGenerationSettings_Default.asset` 생성 후 Inspector 에서 모든 필드 노출.
 - [ ] EditMode 테스트 4 케이스 통과.
 - [ ] 하드코딩 수치는 `generatorVersion = 1` 의 default 외엔 SO 의 default 만 존재. 후속 단위(2~4)는 SO 참조만 사용.
-- [ ] 확인 일자 + 커밋 해시 (구현 후 채움):
+- [x] 2026-05-23 · d601e91

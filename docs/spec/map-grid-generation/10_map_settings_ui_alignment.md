@@ -59,4 +59,4 @@ public void SetMapGridPreset(MapGridPreset? p) { SelectedMapGridPreset = p; batt
 - [ ] PlayMode: Legacy 토글 → 기존 procedural 동작. MapGrid 토글 → 새 generator 동작.
 - [ ] MapGrid + Preset=Wide30x15 → 항상 30×15 맵 생성 (seed 와 무관).
 - [ ] MapGrid + Preset=Auto → seed 에 따라 3 preset 순환.
-- [ ] 확인 일자 + 커밋 해시 (구현 후 채움):
+- [x] 2026-05-23 · b96fd8f

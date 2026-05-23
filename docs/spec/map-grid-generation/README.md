@@ -1,7 +1,7 @@
 # Map Grid Generation Spec
 
 **작성일**: 2026-05-22
-**상태**: 초안 (작업 단위 미착수)
+**상태**: 완료 2026-05-23. 인계 요약은 `9_handoff_summary.md`.
 **대체 대상**: `docs/spec/map-system/` 의 11~14 (`ProceduralMapGenerator`/`PathCarver`/`ObstaclePlacer`) + 9 (`MapConnectivity` 의 generator-side 사용). 런타임 컨테이너(`GeneratedMap` struct, `MapTileType` enum)와 `BattleBridge` 의 소비 경로는 유지하고, **생성 알고리즘과 authoring SO 스키마만 새로 정의**한다.
 
 ## 목표

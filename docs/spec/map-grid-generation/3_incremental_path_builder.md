@@ -136,6 +136,6 @@ public static class IncrementalPathBuilder
 
 - [ ] `PathRouter`/`IncrementalPathBuilder` 컴파일 (Burst 호환은 후속 task — 본 unit 은 Managed 허용).
 - [ ] EditMode 테스트 7 케이스 모두 통과.
-- [ ] 1000 seed 무작위 실행에서 평균 attempt 수와 실패율 로깅 (성공률 ≥ 90 % 목표).
+- [x] 1000 seed 무작위 실행에서 평균 attempt 수와 실패율 로깅 (성공률 ≥ 90 % 목표).
 - [ ] `_reference_algorithm.md` 의 TS 코드와 알고리즘 형태 동치 (RNG 알고리즘이 다르므로 출력 셀 집합 동치는 불가). 대신 **결정성 snapshot 테스트**: `(seed=0, gridSize=Wide30x15, 임의의 고정 spawns)` 입력에 대한 path 셀 집합 해시를 EditMode 테스트가 hard-coded 기댓값으로 검증.
-- [ ] 확인 일자 + 커밋 해시 (구현 후 채움):
+- [x] 2026-05-23 · e30c8a0 (4-turn/5-turn shape 추가: 7397198)

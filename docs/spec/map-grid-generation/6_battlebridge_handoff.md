@@ -191,4 +191,4 @@ UnityMCP 호출 시퀀스 예시 (implementer 가 직접 실행):
 - [ ] BattleScene 의 `BattleBridge` 컴포넌트 inspector 에 3 신규 필드 노출 + UnityMCP wiring 으로 자산 할당.
 - [ ] mapSource=MapGrid 로 PlayMode 1판 진입 후 스크린샷 `Assets/Screenshots/mapgrid_smoke.png` 첨부 (path/spawn/goal 식별 가능).
 - [ ] console: 0 ERROR / 0 unexpected WARN (단, `MapGrid` 실패 강제 케이스의 LogError 는 의도적).
-- [ ] 확인 일자 + 커밋 해시 (구현 후 채움):
+- [x] 2026-05-23 · b96fd8f (gridSizeOverride 추가: 7397198)

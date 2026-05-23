@@ -60,4 +60,4 @@ seed 와 GenerationSettings 를 Inspector 에서 조작하고 결과를 즉시 �
 - [ ] OnDisable 에서 NativeArray 누수 없음 (`Allocator.Persistent` 사용 후 Dispose 확인).
 - [ ] Sweep 100 seeds 콘솔 통계가 단위 4의 회귀 기준 (실패율 ≤ 5%, 평균 attempt ≤ 50) 만족.
 - [ ] Bake to MapDocument 가 정상적인 .asset 을 만들고, 이후 `mapSource=MapGrid + mapDocument` 로 PlayMode 진입 가능.
-- [ ] 확인 일자 + 커밋 해시 (구현 후 채움):
+- [x] 2026-05-23 · 42d0fce

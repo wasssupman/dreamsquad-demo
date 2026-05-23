@@ -38,4 +38,4 @@
 - [ ] 기존 EditMode 회귀 0 (단, `Pick_GoalWithinChebyshev2OfCenter` 는 제거하고 `Pick_GoalInChosenSection` 으로 교체).
 - [ ] 3 preset × 50 seed sweep 통과 (성공률 ≥ 90%).
 - [ ] PlayMode: MapGrid + 임의 preset → goal 이 매번 다른 section 에서 나오는지 시각 확인 (스크린샷 2~3장).
-- [ ] 확인 일자 + 커밋 해시 (구현 후 채움):
+- [x] 2026-05-23 · 7397198 (코드 e30c8a0)

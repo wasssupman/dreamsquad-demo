@@ -31,4 +31,4 @@
 - [ ] 컴파일 0 ERROR.
 - [ ] EditMode 회귀 0 (단, validator turn-pass 테스트는 Z-path 로 갱신).
 - [ ] 3 preset × 50 seed sweep 통과 (성공률 ≥ 90%).
-- [ ] 확인 일자 + 커밋 해시 (구현 후 채움):
+- [x] 2026-05-23 · 7397198 (코드 e30c8a0)

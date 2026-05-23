@@ -23,4 +23,4 @@
 - [ ] 컴파일 0 ERROR.
 - [ ] EditMode 0 회귀 (단, `MapGridBattleAdapterTests` 의 preset 시나리오는 int2 override 로 갱신).
 - [ ] PlayMode: 패널에서 W=25 H=12 입력 → 25×12 맵 생성. preset 버튼 클릭 → 해당 크기로 변경 + 입력 칸 갱신.
-- [ ] 확인 일자 + 커밋 해시 (구현 후 채움):
+- [x] 2026-05-23 · 7397198 (코드 b96fd8f)

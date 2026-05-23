@@ -111,4 +111,4 @@ namespace Wassup.Data.MapGrid
 - [ ] `GoalSpawnPlacer.Pick` 컴파일 + Burst 호환 (`[BurstCompile]` 어트리뷰트는 후속 unit 에서 라우터/validator 통합 시 검토).
 - [ ] EditMode 테스트 7 케이스 모두 통과.
 - [ ] 1000 seed 무작위 샘플에서 결과 정상 (logging 으로 분포 확인 — corner zone 4개에 spawn 이 균등 분포해야 함).
-- [ ] 확인 일자 + 커밋 해시 (구현 후 채움):
+- [x] 2026-05-23 · e30c8a0 (unit 11 재정의: 7397198)

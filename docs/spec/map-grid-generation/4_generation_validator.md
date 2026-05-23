@@ -161,4 +161,4 @@ public sealed class MapGenerationFailedException : System.Exception
 - [ ] Validator 테스트 6 케이스, Generator 테스트 5 케이스 모두 통과.
 - [ ] 3 프리셋 × 50 seed 회귀: 실패율 ≤ 5 %, 평균 attempt ≤ 50.
 - [ ] outer 루프가 silent fallback 을 만들지 않는다 (기존 `BattleMapBuilder.BuildFallbackLinear` 호출 금지). 실패는 명시적 throw.
-- [ ] 확인 일자 + 커밋 해시 (구현 후 채움):
+- [x] 2026-05-23 · e30c8a0 (adaptive turn count: 7397198)

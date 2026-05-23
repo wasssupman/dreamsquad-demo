@@ -122,4 +122,4 @@ public static class MapDocumentBuilder
 - [ ] `MapDocumentRoundTripTests` 3 케이스 모두 통과.
 - [ ] 기존 `Wassup.Data.MapData` 와 네임스페이스 충돌 없음 (`Wassup.Data.MapGrid`).
 - [ ] `BattleBridge` 컴파일 그대로 통과 (이 unit 에선 BattleBridge 수정 없음).
-- [ ] 확인 일자 + 커밋 해시 (구현 후 채움):
+- [x] 2026-05-23 · d601e91

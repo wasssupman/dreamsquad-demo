@@ -102,4 +102,4 @@ public static class CellClassifier
 - [ ] `MapGridGenerator.Generate` 가 `CellClassifier.Bake` 사용으로 변경, 단위 4 테스트 모두 여전히 통과.
 - [ ] CellClassifier 테스트 8 케이스 통과.
 - [ ] 3 프리셋 × 50 seed 회귀에서 chokepoint 셀이 평균 ≥ 1 개 (single-spawn 케이스 제외) — 합류 emergence 검증.
-- [ ] 확인 일자 + 커밋 해시 (구현 후 채움):
+- [x] 2026-05-23 · e30c8a0

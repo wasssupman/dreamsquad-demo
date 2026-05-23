@@ -114,4 +114,4 @@ internal static class MapGridGenerationSettingsFactory
 - [ ] `MapGridSeedSweepTests` 3 프리셋 × 100 seed = 300 케이스에서 성공률 ≥ 95 %, 평균 attempt ≤ 50, chokepoint 보유율 ≥ 70 %.
 - [ ] EditMode 전체 (unit 0~5 + 본 unit) 실행 시간 ≤ 60 초.
 - [ ] CI 또는 로컬 EditMode runner 에서 0 실패.
-- [ ] 확인 일자 + 커밋 해시 (구현 후 채움):
+- [x] 2026-05-23 · 42d0fce
