@@ -1,7 +1,8 @@
 # ingame-dreamcatcher (C)
 
-> 상태: 초안 (작성 2026-06-02)
+> 상태: 완료 2026-06-02
 > 선행: A `outgame-scene-and-flow`, B `squad-loadout` (완료). 원래 요청의 마지막 핵심 조각.
+> 커밋: spec `1b07c06` · 0 `e6a4f8f` · 1 `7feae1a` · 2 `823b7ea` · 3 `7f60bc7` · 4 `abec3fb`. handoff → `5_handoff_summary.md`.
 
 ## 검증 질문
 
