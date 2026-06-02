@@ -47,3 +47,5 @@ public class PlayerProfile
 - `DefenderCatalog.asset` 에 15유닛 등록, 각 `id` 비어있지 않고 유일.
 - `DefenderCatalog.ById("scout")` 가 해당 에셋 반환 (Unit 1 테스트에서 간접 검증).
 - 기존 드래프트/전투 회귀 없음 (id 는 추가 필드일 뿐).
+
+> 완료 확인 2026-06-02 · 커밋 `9c99565` — 15유닛 백필(중복0), ById/AllIds 런타임 검증, 컴파일 클린.

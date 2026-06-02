@@ -23,9 +23,10 @@ public static class ProfileStore
 
     public static void Save(PlayerProfile profile);
 
-    // 테스트용: 경로 주입 오버로드 (persistentDataPath 비의존)
-    internal static PlayerProfile LoadOrCreateAt(string path, DefenderCatalog catalog);
-    internal static void SaveAt(string path, PlayerProfile profile);
+    // 경로 주입 오버로드 (persistentDataPath 비의존). EditMode 테스트가 별도
+    // 어셈블리라 internal 대신 public (InternalsVisibleTo 플러밍 회피).
+    public static PlayerProfile LoadOrCreateAt(string path, DefenderCatalog catalog);
+    public static void SaveAt(string path, PlayerProfile profile);
 }
 ```
 - 직렬화는 `JsonUtility.ToJson(profile, prettyPrint:true)`.
@@ -43,3 +44,5 @@ public static class ProfileStore
   - 손상 문자열 기록 후 `LoadOrCreateAt` → 예외 없이 기본 프로필 + `.bak` 생성.
 - 테스트는 `Path.GetTempPath()` 하위 임시 파일 사용, 끝나면 정리.
 - compile + read_console clean.
+
+> 완료 확인 2026-06-02 — EditMode `ProfileStoreTests` 3/3 통과(기본생성/round-trip/손상복구+백업), 컴파일 클린.
