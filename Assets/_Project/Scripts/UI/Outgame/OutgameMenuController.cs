@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using Wassup.Core;
 using Wassup.Data;
 
@@ -27,10 +28,13 @@ namespace Wassup.UI
             ClosePanels();
         }
 
-        // Unit 3 replaces the body with SceneManager.LoadScene("BattleScene").
+        // A-stage: load BattleScene as-is (draft fallback runs while
+        // PlayerProfileSO has no selected squad). C wires the squad/dreamcatcher
+        // carry-in. Scene names live in SceneNames to keep the two LoadScene
+        // call sites in sync.
         public void OnStartGame()
         {
-            Debug.Log("[OutgameMenuController] OnStartGame (scene load wired in Unit 3).");
+            SceneManager.LoadScene(SceneNames.Battle);
         }
 
         public void OnOpenSquad() => RaiseExclusive(squadPanel);

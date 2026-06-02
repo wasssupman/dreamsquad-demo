@@ -37,3 +37,8 @@ Outgame ↔ Battle 왕복을 완성한다. GameManager 를 전투 전용·비영
 ## 주의
 
 - `DontDestroyOnLoad` 제거가 다른 영속 가정(예: 세션 로거)을 깨지 않는지 확인. `BattleLogger.StartSession` 은 씬마다 새로 시작되어도 무방한지 점검.
+- GameManager 에는 이미 `OnDestroy { if (Instance == this) Instance = null; }` 가 있어 비영속 전환과 정합. 추가 정리 불필요.
+- 복귀 버튼은 ResultCanvas 가 아닌 **항상 보이는 `MenuReturnCanvas`**(sortingOrder 1000) 로 추가 — 배치/전투 중 언제든 복귀 가능.
+- 기존 결함(범위 밖): `BattleScene/DraftView` GameObject 에 누락 스크립트(slot 1) 1건 — 씬 로드 시 에러 로그. 이번 feature 와 무관, 손대지 않음. PlayMode smoke 는 해당 노이즈를 `LogAssert.ignoreFailingMessages` 로 허용.
+
+> 완료 확인 2026-06-02 — 빌드세팅 2씬, Play 왕복(Outgame→Battle phase=Draft 폴백→메인) 검증: 복귀 시 GameManager 0개/Instance=null, 재진입 1개(누수 없음). PlayMode 전체 3/3 통과.

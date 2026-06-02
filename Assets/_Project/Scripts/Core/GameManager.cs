@@ -52,7 +52,11 @@ namespace Wassup.Core
                 return;
             }
             Instance = this;
-            DontDestroyOnLoad(gameObject);
+            // outgame-scene-and-flow Unit 3 — GameManager is battle-scoped and
+            // non-persistent. Loading OutgameScene must tear it down so each
+            // battle re-entry starts fresh (no stale singleton / state leak).
+            // (Previously DontDestroyOnLoad — meaningless in the old single-scene
+            // setup, harmful in the two-scene flow.)
 
             if (logger == null)
             {
