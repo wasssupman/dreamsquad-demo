@@ -12,6 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7d6648c9dfafd44cb8ce28bc0507242b, type: 3}
   m_Name: Defender_BlockingCaster
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DefenderUnitData
+  id: blocking_caster
   displayName: Blocking Caster
   health: 45
   attackRange: 0

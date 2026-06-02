@@ -7,6 +7,9 @@ namespace Wassup.Data
     [CreateAssetMenu(fileName = "DefenderUnit", menuName = "Wassup/DefenderUnit", order = 11)]
     public class DefenderUnitData : ScriptableObject, ISpineUnitVisualData, IDefenderSpineExtras
     {
+        // outgame-scene-and-flow Unit 0 — stable id for save/load. Fixed once
+        // assigned (it is a persistence key); independent of asset/display name.
+        public string id;
         public string displayName;
         public float health = 50f;
         public float attackRange = 3f;
