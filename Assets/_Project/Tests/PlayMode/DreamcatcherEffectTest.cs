@@ -99,6 +99,66 @@ namespace Wassup.Tests.PlayMode
             Assert.AreEqual(1.21f, GetStat(bridge, em, "scout").attackSpeedMul, 0.01f, "future ranger inherits stacked AS");
         }
 
+        [UnityTest]
+        public IEnumerator FirstPlacement_TriggersController_AutoPicksAndApplies()
+        {
+            LogAssert.ignoreFailingMessages = true;
+            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            for (int i = 0; i < 6; i++) yield return null;
+
+            var bridge = Object.FindObjectOfType<BattleBridge>();
+            var cat = FindCatalog();
+            var ranger = cat.ById("ranger");
+
+            bridge.SetDefenderPool(new[] { ranger });
+            bridge.BeginPlacement();
+            var gm = Object.FindObjectOfType<GameManager>();
+            gm.CostRuntime.ResetToStart();
+            gm.CostRuntime.AddCost(1000);
+            yield return null;
+
+            // deck of 3 ranger-AS cards so any auto-pick buffs the ranger's attack speed.
+            var deck = ScriptableObject.CreateInstance<DreamcatcherDeck>();
+            deck.cards = new[]
+            {
+                MakeCard(CardTargetAxis.ClassRanger, CardBuffKind.AttackSpeed, 10f),
+                MakeCard(CardTargetAxis.ClassRanger, CardBuffKind.AttackSpeed, 10f),
+                MakeCard(CardTargetAxis.ClassRanger, CardBuffKind.AttackSpeed, 10f),
+            };
+
+            // build controller inactive so fields are set before OnEnable subscribes.
+            var go = new GameObject("DreamcatcherController_Test");
+            go.SetActive(false);
+            var ctrl = go.AddComponent<DreamcatcherController>();
+            SetField(ctrl, "bridge", bridge);
+            SetField(ctrl, "deck", deck);
+            go.SetActive(true);
+
+            int fired = 0;
+            bridge.FirstDefenderPlaced += () => fired++;
+
+            Assert.IsTrue(PlaceFirstValid(bridge, ranger), "place ranger");
+            yield return null;
+            yield return null;
+            yield return null;
+
+            Assert.AreEqual(1, fired, "FirstDefenderPlaced fired once");
+            Assert.AreEqual(1.1f, GetStat(bridge, Unity.Entities.World.DefaultGameObjectInjectionWorld.EntityManager, "ranger").attackSpeedMul, 0.01f,
+                "controller auto-picked a ranger card and applied it");
+
+            // second placement must not re-fire the once-only trigger.
+            Assert.IsTrue(PlaceFirstValid(bridge, ranger), "place second ranger");
+            yield return null;
+            Assert.AreEqual(1, fired, "first-placement trigger is once-only");
+
+            Object.Destroy(go);
+        }
+
+        private static void SetField(object obj, string name, object value)
+        {
+            obj.GetType().GetField(name, BindingFlags.NonPublic | BindingFlags.Instance).SetValue(obj, value);
+        }
+
         private static DreamcatcherCard MakeCard(CardTargetAxis axis, CardBuffKind kind, float pct)
         {
             var c = ScriptableObject.CreateInstance<DreamcatcherCard>();

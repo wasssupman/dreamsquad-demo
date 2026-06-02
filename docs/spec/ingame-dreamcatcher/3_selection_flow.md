@@ -36,3 +36,6 @@ public event System.Action<int> WaveMilestoneReached;  // 1-indexed wave
 - 런타임: 첫 배치 → FirstDefenderPlaced 발화 → Draw3 3장. 5웨이브 도달 → WaveMilestoneReached(5) 발화.
 - UI 미연결 폴백(자동 1장 선택) 경로로 ApplyDreamcatcherCard 호출 확인(Unit 2 효과 반영).
 - 구독자 없을 때(컨트롤러 미배치) 기존 흐름 무영향.
+
+> 완료 확인 2026-06-02 — PlayMode `FirstPlacement_TriggersController_AutoPicksAndApplies`: 첫 배치 시 FirstDefenderPlaced 1회 발화, DreamcatcherController Draw3→폴백 자동선택→ApplyDreamcatcherCard(ranger attackSpeed 1.1), 2번째 배치엔 재발화 없음. PlayMode 6/6.
+> 메모: 5웨이브 트리거는 `QueueWave` 의 `(waveIndex+1)%5==0` + 동일 이벤트 경로(첫 배치 테스트로 메커니즘 검증). 5웨이브 실주행 통합검증은 Unit 4 Play 또는 후속.

@@ -645,9 +645,10 @@ namespace Wassup.Bridge
             _pending.Clear();
             _occupiedTiles.Clear();
             _defenderByTile.Clear();
-            // ingame-dreamcatcher Unit 2 — reset card registry for a new match.
+            // ingame-dreamcatcher Unit 2/3 — reset card registry + triggers for a new match.
             _activeDcEffects.Clear();
             _dcStackCounter = 100;
+            _firstDefenderPlacedFired = false;
             _onPlaceTriggeredEntities.Clear();
             _synergyActivatedEntities.Clear();
             _synergyActivations = 0;
@@ -1000,6 +1001,9 @@ namespace Wassup.Bridge
                 _pending.Add(new PendingSpawnEntry { entry = entries[i], deckIndex = baseDeckIndex + i });
 
             GameManager.Instance?.Logger?.RecordWaveEvent("wave_started", wave.waveIndex, elapsedSec, forced);
+            // ingame-dreamcatcher Unit 3 — every 5th wave (5/10/15…) offers a card.
+            if ((wave.waveIndex + 1) % 5 == 0)
+                WaveMilestoneReached?.Invoke(wave.waveIndex + 1);
             Debug.Log($"[BattleBridge] Wave {wave.waveIndex + 1} queued ({entries.Count} spawns, forced={forced}). {WavePatternGenerator.FormatSummary(wave)}");
         }
 
@@ -2080,6 +2084,19 @@ namespace Wassup.Bridge
         private ushort _dcStackCounter = 100;
         private const float DcDuration = 1e9f;
 
+        // ingame-dreamcatcher Unit 3 — selection triggers. DreamcatcherController
+        // subscribes; absent subscribers simply no-op (non-destructive).
+        public event System.Action FirstDefenderPlaced;
+        public event System.Action<int> WaveMilestoneReached; // 1-indexed wave number
+        private bool _firstDefenderPlacedFired;
+
+        private void FireFirstDefenderPlacedOnce()
+        {
+            if (_firstDefenderPlacedFired) return;
+            _firstDefenderPlacedFired = true;
+            FirstDefenderPlaced?.Invoke();
+        }
+
         private void EnqueueStatMul(Entity target, Wassup.Battle.Effects.StatKind stat, float multiplier, float duration, ushort stackId)
         {
             if (!_statModifierQueue.IsCreated) return;
@@ -2371,6 +2388,7 @@ namespace Wassup.Bridge
 
             var entity = CreateDefenderEntity(cell, unitData, pendingDeployment: false, spawnPlacementVfx: true);
             TriggerOnPlaceAndSynergy(unitData, cell, entity);
+            FireFirstDefenderPlacedOnce();
 
             Debug.Log($"[BattleBridge] Placed {unitData.displayName} at ({tileX},{tileY}).");
             return true;
@@ -2412,6 +2430,7 @@ namespace Wassup.Bridge
             if (_em.HasComponent<PendingDeployment>(entity))
                 _em.RemoveComponent<PendingDeployment>(entity);
             RecomputeSynergyFor(cell);
+            FireFirstDefenderPlacedOnce();
             Debug.Log($"[BattleBridge] Activated deployed defender {binding.data.displayName} at {cell}.");
         }
 
