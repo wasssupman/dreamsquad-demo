@@ -38,3 +38,4 @@ OutgameScene에서 **게임 시작** → BattleScene 로드 → 전투 → 메�
 - 드림캐쳐 10장 세이브덱 빌더 UI — **D `dreamcatcher-deck-builder`**
 - 유닛 class 라벨(ranger/guardian/bruiser) — B 진입 시 추가
 - 스쿼드 특성/가챠/꿈런 파밍/등급/리롤, 드림캐쳐 무의식 편입 — 메타 진행, 후속 spec
+- 한글 TMP 폰트(현재 LiberationSans만 존재 → UI 라벨 영문) — 로컬라이즈 패스에서 한글 폰트 에셋 도입

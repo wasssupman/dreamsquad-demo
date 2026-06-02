@@ -42,3 +42,6 @@ public void OnClosePanels();    // 둘 다 비활성
 - Play 시 `ProfileStore.LoadOrCreate` 호출되어 `persistentDataPath/profile.json` 생성됨(콘솔/파일 확인).
 - `PlayerProfileSO.profile` 이 null 아님.
 - read_console clean.
+
+> 완료 확인 2026-06-02 — Play 검증: profile.json 생성(15 units, schemaVersion 1), 패널 상호배타 토글/닫기 정상, 에러 0.
+> 주의: 프로젝트에 한글 TMP 폰트 부재(LiberationSans만) → 라벨은 **영문**으로 통일. 한글화는 후속(로컬라이즈) 후보.
