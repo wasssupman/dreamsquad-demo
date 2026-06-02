@@ -45,3 +45,5 @@ public static class SquadDraw
   - 빈 스쿼드 → variable 만(≤3) 반환.
   - 무효 id 섞임 → 결과에서 제외.
 - compile + read_console clean.
+
+> 완료 확인 2026-06-02 — EditMode SquadDrawTests 5/5(결정성/full7/variable≤3·겹침없음/빈스쿼드/빈슬롯 제외).
