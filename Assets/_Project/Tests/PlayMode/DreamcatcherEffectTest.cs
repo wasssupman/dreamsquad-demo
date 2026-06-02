@@ -25,8 +25,17 @@ namespace Wassup.Tests.PlayMode
         [UnityTearDown]
         public IEnumerator UnityTearDown()
         {
+            Time.timeScale = 1f; // a scene DreamcatcherController may have paused.
             PrimeTween.Tween.StopAll();
             yield return null;
+        }
+
+        // The scene's DreamcatcherController would otherwise fire on our placements
+        // (pausing via timeScale / drawing cards) and pollute these focused tests.
+        private static void NeutralizeSceneController()
+        {
+            var dc = Object.FindObjectOfType<DreamcatcherController>();
+            if (dc != null) Object.Destroy(dc.gameObject);
         }
 
         [UnityTest]
@@ -40,6 +49,7 @@ namespace Wassup.Tests.PlayMode
 
             var bridge = Object.FindObjectOfType<BattleBridge>();
             Assert.IsNotNull(bridge, "BattleBridge present");
+            NeutralizeSceneController();
             var cat = FindCatalog();
             Assert.IsNotNull(cat, "DefenderCatalog loaded");
 
@@ -107,6 +117,7 @@ namespace Wassup.Tests.PlayMode
             for (int i = 0; i < 6; i++) yield return null;
 
             var bridge = Object.FindObjectOfType<BattleBridge>();
+            NeutralizeSceneController();
             var cat = FindCatalog();
             var ranger = cat.ById("ranger");
 

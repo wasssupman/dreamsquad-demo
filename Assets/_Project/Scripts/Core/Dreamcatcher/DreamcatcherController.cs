@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using Wassup.Bridge;
 using Wassup.Data;
+using Wassup.UI;
 
 namespace Wassup.Core
 {
@@ -14,7 +15,7 @@ namespace Wassup.Core
     {
         [SerializeField] private BattleBridge bridge;
         [SerializeField] private DreamcatcherDeck deck;
-        [SerializeField] private UnityEngine.Object selectionView; // Unit 4: DreamcatcherSelectionView
+        [SerializeField] private DreamcatcherSelectionView selectionView;
 
         private void OnEnable()
         {
@@ -37,8 +38,23 @@ namespace Wassup.Core
             var three = Draw3();
             if (three.Count == 0) return;
 
-            // Unit 4 replaces this with the selection modal. Fallback: auto-pick first.
-            Pick(three[0]);
+            if (selectionView != null)
+            {
+                // Pause so enemies/cooldowns freeze while the player chooses.
+                Time.timeScale = 0f;
+                selectionView.Show(three, OnPicked);
+            }
+            else
+            {
+                // No UI wired (tests / headless): auto-pick the first draw.
+                Pick(three[0]);
+            }
+        }
+
+        private void OnPicked(DreamcatcherCard card)
+        {
+            Time.timeScale = 1f;
+            Pick(card);
         }
 
         // Samples up to 3 cards from the deck. Duplicate deck entries stay as

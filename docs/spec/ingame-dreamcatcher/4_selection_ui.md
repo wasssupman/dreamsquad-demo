@@ -32,3 +32,6 @@
 - 선택 중 적군 진행 정지(timeScale 0) 확인.
 - read_console clean (기존 DraftView 누락 제외).
 - 컨트롤러/뷰 미배치 시 무영향(비파괴).
+
+> 완료 확인 2026-06-02 — Play(MCP): 첫 배치 → 모달 패널 활성 + 카드 3장 + timeScale=0(일시정지), 카드 탭 → registry 0→1(효과 적용) + 패널 숨김 + timeScale=1(재개). 에러 0(기존 DraftView 제외).
+> 메모: BattleScene 에 `Dreamcatcher`(DreamcatcherController) + 자식 `DreamcatcherSelectionView` 배치, deck=DreamcatcherDeck_Default. 유닛 배치하는 PlayMode 테스트는 씬 컨트롤러를 Destroy + TearDown 에서 timeScale=1 리셋(오염 방지). PlayMode 6/6.
