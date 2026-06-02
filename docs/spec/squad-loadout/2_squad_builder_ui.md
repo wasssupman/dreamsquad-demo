@@ -8,7 +8,7 @@ A의 SquadPanel placeholder 를 실제 편성 화면으로 채운다. 보유 유
 
 - 신규 `Assets/_Project/Scripts/UI/Outgame/SquadBuilderView.cs`
 - 수정 `Assets/_Project/Scenes/OutgameScene.unity` — SquadPanel 내용 구성 (UnityMCP)
-- 수정 `Assets/_Project/Scripts/UI/Outgame/OutgameMenuController.cs` — SquadPanel 열 때 `SquadBuilderView.Refresh()` 호출
+- (변경 없음) OutgameMenuController — `SquadBuilderView.OnEnable` 이 패널 활성 시 Refresh 하므로 별도 호출 불필요
 
 ## 구현
 
@@ -28,3 +28,6 @@ UnityMCP 로 SquadPanel 하위에 슬롯 7개 + 그리드 컨테이너 + 저장 
 - 유닛 탭 → 슬롯 배정, 슬롯 탭 → 해제 (Play 시각 확인).
 - 저장 후 Play 재시작 → 배정 유지(profile.json 반영 확인).
 - `profileSO.profile.SelectedSquad().unitIds` 가 UI 상태와 일치.
+
+> 완료 확인 2026-06-02 — Play 검증: 7슬롯+15보유버튼 빌드, 보유 탭→배정(filled 3), 슬롯 탭→해제(filled 2), 저장 후 디스크 재로드 filled=2 유지. 에러 0.
+> 구현 메모: SquadBuilderView 가 슬롯/그리드 버튼을 런타임 생성(컨테이너 2개 + statusText/save 만 씬 wiring). OnEnable 빌드는 동기.
