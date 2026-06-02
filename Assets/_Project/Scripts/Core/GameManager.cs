@@ -1,6 +1,8 @@
+using System.Collections.Generic;
 using UnityEngine;
 using Wassup.Bridge;
 using Wassup.Data;
+using Wassup.Data.MapGrid;
 using Wassup.Logging;
 
 namespace Wassup.Core
@@ -18,6 +20,10 @@ namespace Wassup.Core
         [SerializeField] private CostRuntime costRuntime;
         [SerializeField] private CostConfig costConfig;
         [SerializeField] private SkillLoadoutController skillLoadout;
+        // squad-loadout Unit 3 — squad carry-in source (drives the squad branch
+        // in Start; null/empty → existing draft path).
+        [SerializeField] private PlayerProfileSO profileSO;
+        [SerializeField] private DefenderCatalog catalog;
         public BattleLogger Logger => logger;
         public DraftController DraftController => draftController;
         public CostRuntime CostRuntime => costRuntime;
@@ -28,6 +34,10 @@ namespace Wassup.Core
 
         public GamePhase CurrentPhase { get; private set; } = GamePhase.None;
         public event System.Action<GamePhase> PhaseChanged;
+
+        // squad-loadout Unit 3 — raised when squad mode is ready for placement
+        // (no draft). PlacementPhaseView subscribes, mirroring DraftConfirmed.
+        public event System.Action PlacementRequested;
 
         // Fired whenever a UI layer wants all *other* aim-style selections to
         // cancel (e.g. picking a defender should cancel any active skill aim,
@@ -85,6 +95,15 @@ namespace Wassup.Core
         // to DraftController events before we emit DraftStarted.
         private void Start()
         {
+            // squad-loadout Unit 3 — squad mode takes priority. Empty/unset squad
+            // falls through to the existing draft path (A non-destructive).
+            var squad = (profileSO != null && profileSO.profile != null) ? profileSO.profile.SelectedSquad() : null;
+            if (squad != null && !squad.IsEmpty() && battleBridge != null && catalog != null)
+            {
+                StartSquadMatch(squad);
+                return;
+            }
+
             if (draftController != null)
             {
                 // draft-stage-map-prebuild Unit 2 — build the map before entering Draft
@@ -102,6 +121,51 @@ namespace Wassup.Core
                 battleBridge.StartBattle();
             }
         }
+
+        // squad-loadout Unit 3 — skip the draft and bring the selected squad
+        // (plus variable randoms) straight into placement.
+        private void StartSquadMatch(SquadSave squad)
+        {
+            battleBridge.SetMapGenerationOptions(MapGenerationOptions.Default);
+
+            var ids = SquadDraw.Resolve(squad.unitIds, profileSO.profile.ownedUnitIds, GenerateSeed());
+            var units = new List<DefenderUnitData>(ids.Count);
+            foreach (var id in ids)
+            {
+                var u = catalog.ById(id);
+                if (u != null) units.Add(u);
+            }
+            if (units.Count == 0)
+            {
+                Debug.LogWarning("[GameManager] squad resolved to no units; falling back to draft.");
+                if (draftController != null)
+                {
+                    battleBridge.PrepareDraftMap();
+                    SetPhase(GamePhase.Draft);
+                    draftController.BeginDraft();
+                }
+                return;
+            }
+            battleBridge.SetDefenderPool(units.ToArray());
+
+            // Skills stay independent of units — roll a fresh loadout like draft does.
+            if (skillLoadout != null)
+            {
+                skillLoadout.Roll();
+                if (skillLoadout.Picked.Count > 0)
+                {
+                    var arr = new SkillData[skillLoadout.Picked.Count];
+                    for (int i = 0; i < arr.Length; i++) arr[i] = skillLoadout.Picked[i];
+                    battleBridge.SetSkillLoadout(arr);
+                }
+            }
+
+            // PlacementPhaseView subscribes and runs the countdown → StartBattle.
+            PlacementRequested?.Invoke();
+        }
+
+        private static int GenerateSeed() =>
+            unchecked(System.Environment.TickCount ^ UnityEngine.Random.Range(int.MinValue, int.MaxValue));
 
         private void OnDisable()
         {

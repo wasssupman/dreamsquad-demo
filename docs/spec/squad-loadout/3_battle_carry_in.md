@@ -40,5 +40,8 @@ if (hasSquad) {
 - 스쿼드 채운 뒤 게임 시작 → **드래프트 UI 안 뜨고** 바로 배치 단계, 스쿼드 기반 유닛이 배치 가능, 전투 진행.
 - 빈 스쿼드(또는 선택 없음) → 기존 드래프트 정상 동작.
 - PlayMode `SquadCarryInSmokeTest`: 프로필에 스쿼드 채움 → BattleScene 로드 → phase==Placement(드래프트 스킵) + 배치 풀 count>0.
-- 기존 PlayMode(`OutgameFlowSmokeTest`, `DraftFlowSmokeTest` 등) 여전히 통과.
+- 기존 PlayMode(`OutgameFlowSmokeTest` 등) 여전히 통과.
 - read_console clean.
+
+> 완료 확인 2026-06-02 — Play(MCP): Outgame→게임시작→BattleScene phase=Placement(드래프트 스킵), defenderPool=5(스쿼드2+랜덤3), DraftView active 자식 0(비표시). PlayMode 4/4(SquadCarryInSmokeTest 포함), EditMode 294(292 통과·2 기존 skip). 새 에러 0(기존 DraftView 누락만).
+> 구현 메모: GameManager→UI 직접참조 회피 위해 `PlacementRequested` 이벤트로 PlacementPhaseView 트리거(DraftConfirmed 패턴). 스킬은 SkillLoadoutController.Roll() 재사용(자체 풀). BattleScene 직접 로드(Outgame 미경유) 시 PlayerProfileSO.profile 은 에셋 기본(빈 스쿼드)→드래프트 폴백, 그래서 기존 테스트 안전.

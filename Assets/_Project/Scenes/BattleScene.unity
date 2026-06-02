@@ -2108,6 +2108,8 @@ MonoBehaviour:
   costRuntime: {fileID: 308428868}
   costConfig: {fileID: 11400000, guid: 3ed67d5379b02406db1329b181fbee88, type: 2}
   skillLoadout: {fileID: 0}
+  profileSO: {fileID: 11400000, guid: e610b4c0bbbeb4becb09188e400e6a55, type: 2}
+  catalog: {fileID: 11400000, guid: 346c00d9daf72429d94ddd29337c7d23, type: 2}
 --- !u!4 &1495062451
 Transform:
   m_ObjectHideFlags: 0

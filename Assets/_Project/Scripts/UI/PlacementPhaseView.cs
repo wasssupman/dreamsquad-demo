@@ -31,11 +31,15 @@ namespace Wassup.UI
         private void OnEnable()
         {
             if (draftController != null) draftController.DraftConfirmed += OnDraftConfirmed;
+            // squad-loadout Unit 3 — squad mode has no draft; GameManager signals
+            // placement directly.
+            if (gameManager != null) gameManager.PlacementRequested += BeginPlacementPhase;
         }
 
         private void OnDisable()
         {
             if (draftController != null) draftController.DraftConfirmed -= OnDraftConfirmed;
+            if (gameManager != null) gameManager.PlacementRequested -= BeginPlacementPhase;
         }
 
         private void OnDraftConfirmed()
