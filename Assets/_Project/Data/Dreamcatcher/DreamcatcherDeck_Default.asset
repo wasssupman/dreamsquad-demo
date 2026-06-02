@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c12be0071aec44f71821892d0e186486, type: 3}
+  m_Name: DreamcatcherDeck_Default
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherDeck
+  cards:
+  - {fileID: 11400000, guid: 719b0ed6f50dd4c45b7bbb752faa1d0b, type: 2}
+  - {fileID: 11400000, guid: 719b0ed6f50dd4c45b7bbb752faa1d0b, type: 2}
+  - {fileID: 11400000, guid: 21a99abc27fcc488f9b8b35879b99542, type: 2}
+  - {fileID: 11400000, guid: 21a99abc27fcc488f9b8b35879b99542, type: 2}
+  - {fileID: 11400000, guid: 341bd7dab3dc547f88596404132317a3, type: 2}
+  - {fileID: 11400000, guid: 341bd7dab3dc547f88596404132317a3, type: 2}
+  - {fileID: 11400000, guid: 345db5c102e3144ab996c7128d631624, type: 2}
+  - {fileID: 11400000, guid: 11e8ffc787fea4c238b34a7f4aa68734, type: 2}
+  - {fileID: 11400000, guid: 11e8ffc787fea4c238b34a7f4aa68734, type: 2}
+  - {fileID: 11400000, guid: 29545a5ce21c14b6586fae9b14b71afc, type: 2}

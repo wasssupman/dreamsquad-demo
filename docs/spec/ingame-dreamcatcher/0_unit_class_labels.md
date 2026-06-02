@@ -38,3 +38,5 @@ execute_code: 각 DefenderUnitData 를 위 맵으로 role 설정 + SetDirty + Sa
 - compile + read_console clean.
 - 15유닛 모두 role 비-None, 위 배정과 일치 (런타임 점검: ById("ranger").role==Ranger 등).
 - 기존 드래프트/전투/스쿼드 회귀 없음(추가 필드).
+
+> 완료 확인 2026-06-02 · 커밋 `e6a4f8f` — 15유닛 백필(누락0), ById(...).role 런타임 검증, 디스크 직렬화 확인.

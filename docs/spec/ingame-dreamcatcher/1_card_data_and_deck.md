@@ -59,3 +59,5 @@ public class DreamcatcherDeck : ScriptableObject
 - compile + read_console clean.
 - 6 카드 + 덱 에셋 생성, 덱 cards.Length==10, 각 카드 effects 유효.
 - 런타임 점검: 덱 로드 + 카드 axis/effects 읽힘.
+
+> 완료 확인 2026-06-02 — 6 카드 + DreamcatcherDeck_Default(10, null 0, 중복 multiplicities 일치), fortress 2효과(EffHP+50/Move-50) 검증. 컴파일 클린.
