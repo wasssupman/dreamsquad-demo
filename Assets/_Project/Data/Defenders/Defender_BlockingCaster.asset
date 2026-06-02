@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Defender_BlockingCaster
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DefenderUnitData
   id: blocking_caster
+  role: 4
   displayName: Blocking Caster
   health: 45
   attackRange: 0

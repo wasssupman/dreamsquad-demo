@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Defender_Scout
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DefenderUnitData
   id: scout
+  role: 1
   displayName: Scout
   health: 30
   attackRange: 2

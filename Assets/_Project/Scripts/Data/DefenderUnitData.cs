@@ -10,6 +10,8 @@ namespace Wassup.Data
         // outgame-scene-and-flow Unit 0 — stable id for save/load. Fixed once
         // assigned (it is a persistence key); independent of asset/display name.
         public string id;
+        // ingame-dreamcatcher Unit 0 — class/role for buff targeting axes.
+        public DefenderClass role = DefenderClass.None;
         public string displayName;
         public float health = 50f;
         public float attackRange = 3f;

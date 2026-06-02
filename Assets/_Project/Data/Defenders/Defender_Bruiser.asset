@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Defender_Bruiser
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DefenderUnitData
   id: bruiser
+  role: 3
   displayName: Bruiser
   health: 1000
   attackRange: 2

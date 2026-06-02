@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Defender_IceCaster
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DefenderUnitData
   id: ice_caster
+  role: 4
   displayName: Ice Caster
   health: 45
   attackRange: 0

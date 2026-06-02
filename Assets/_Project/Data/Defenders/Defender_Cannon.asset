@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Defender_Cannon
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DefenderUnitData
   id: cannon
+  role: 1
   displayName: Cannon
   health: 40
   attackRange: 5

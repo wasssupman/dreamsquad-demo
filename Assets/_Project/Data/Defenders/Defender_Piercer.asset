@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Defender_Piercer
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DefenderUnitData
   id: piercer
+  role: 1
   displayName: Piercer
   health: 55
   attackRange: 3

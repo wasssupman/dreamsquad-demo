@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Defender_Healer
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DefenderUnitData
   id: healer
+  role: 5
   displayName: Healer
   health: 50
   attackRange: 3

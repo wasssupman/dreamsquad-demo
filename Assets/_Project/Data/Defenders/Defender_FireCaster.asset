@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Defender_FireCaster
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DefenderUnitData
   id: fire_caster
+  role: 4
   displayName: Fire Caster
   health: 45
   attackRange: 0
