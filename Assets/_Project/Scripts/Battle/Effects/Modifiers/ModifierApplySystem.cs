@@ -89,8 +89,13 @@ namespace Wassup.Battle.Effects
             }
             else
             {
-                // buffer does not exist yet — create via ECB and append the first slot
-                var buf = ecb.AddBuffer<StatModifierSlot>(target);
+                // Buffer does not exist yet — create it via EntityManager (immediate),
+                // not ECB. With ECB, a second event for the same bufferless target in
+                // the same drain loop would AddBuffer again and the playback would
+                // overwrite the first slot (only the last survives). Immediate creation
+                // means subsequent events take the HasBuffer path and append correctly.
+                // Same rationale as MarkDirty using em directly (see note below).
+                var buf = em.AddBuffer<StatModifierSlot>(target);
                 buf.Add(new StatModifierSlot
                 {
                     header = new ModifierHeader
@@ -159,7 +164,9 @@ namespace Wassup.Battle.Effects
             }
             else
             {
-                var buf = ecb.AddBuffer<StackModifierSlot>(target);
+                // Immediate creation (not ECB) — same overwrite-avoidance rationale as
+                // ApplyStat's bufferless path.
+                var buf = em.AddBuffer<StackModifierSlot>(target);
                 buf.Add(new StackModifierSlot
                 {
                     header = new ModifierHeader

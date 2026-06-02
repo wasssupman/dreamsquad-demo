@@ -43,3 +43,7 @@ private const float DcDuration = 1e9f;  // 매치 영구
 - guardian_hp_15 적용 → guardian dmgTakenMul ≈ 0.87.
 - 중복 적용(ranger_atk_10 ×2) → damageMul ≈ 1.21(스택).
 - 비매칭 유닛(예: caster)엔 미적용.
+
+> 완료 확인 2026-06-02 — PlayMode `DreamcatcherEffectTest` 통과: ranger AS 스택 1.21, guardian dmgTaken 0.87, caster 미적용, **미래 ranger 상속 1.21**. EditMode 294(292+2skip)·PlayMode 5/5 회귀 없음.
+> 발견·수정(framework): `ModifierApplySystem` 의 bufferless 경로가 `ecb.AddBuffer` 를 써서, 한 프레임에 여러 StatModifier 가 갓 배치된(버퍼 없는) 유닛에 오면 ECB playback 시 마지막 AddBuffer 가 이전 슬롯을 덮어써 1개만 남던 버그. `em.AddBuffer`(즉시) 로 변경(MarkDirty 가 em 직접 쓰는 것과 동일 근거). 미래 유닛이 활성 효과 전부를 상속하려면 필수. StackModifier 동일 경로도 함께 수정. (`Assets/_Project/Scripts/Battle/Effects/Modifiers/ModifierApplySystem.cs`)
+> 검증 메모: synergy 가 DamageMul 을 건드리므로 테스트는 AttackSpeed 축으로 스택을 검증(오염 회피). HP 카드는 max-HP 가 아니라 DmgTakenMul(받는 피해↓) 프록시.

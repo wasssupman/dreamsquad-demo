@@ -645,6 +645,9 @@ namespace Wassup.Bridge
             _pending.Clear();
             _occupiedTiles.Clear();
             _defenderByTile.Clear();
+            // ingame-dreamcatcher Unit 2 — reset card registry for a new match.
+            _activeDcEffects.Clear();
+            _dcStackCounter = 100;
             _onPlaceTriggeredEntities.Clear();
             _synergyActivatedEntities.Clear();
             _synergyActivations = 0;
@@ -2062,6 +2065,96 @@ namespace Wassup.Bridge
             });
         }
 
+        // ingame-dreamcatcher Unit 2 — dreamcatcher card effects are match-long and
+        // apply to current + future matching defenders. stackId starts at 100 to
+        // avoid colliding with onplace/skill (0) and synergy (1) on the same stat.
+        private struct ActiveDcEffect
+        {
+            public Wassup.Data.CardTargetAxis axis;
+            public Wassup.Battle.Effects.StatKind stat;
+            public float mult;
+            public ushort stackId;
+        }
+        private readonly System.Collections.Generic.List<ActiveDcEffect> _activeDcEffects =
+            new System.Collections.Generic.List<ActiveDcEffect>();
+        private ushort _dcStackCounter = 100;
+        private const float DcDuration = 1e9f;
+
+        private void EnqueueStatMul(Entity target, Wassup.Battle.Effects.StatKind stat, float multiplier, float duration, ushort stackId)
+        {
+            if (!_statModifierQueue.IsCreated) return;
+            _statModifierQueue.Enqueue(new Wassup.Battle.Effects.StatModifierApplyEvent
+            {
+                target    = target,
+                stat      = stat,
+                op        = Wassup.Battle.Effects.CombineOp.Multiplicative,
+                magnitude = multiplier,
+                duration  = duration,
+                source    = target,
+                stackId   = stackId,
+            });
+        }
+
+        // Applies one card to all currently-placed matching defenders and records
+        // it so future placements (ApplyActiveDcEffectsTo) inherit it.
+        public void ApplyDreamcatcherCard(Wassup.Data.DreamcatcherCard card)
+        {
+            if (card == null || card.effects == null) return;
+            foreach (var eff in card.effects)
+            {
+                if (!MapDcEffect(eff, out var stat, out var mult)) continue;
+                ushort sid = _dcStackCounter++;
+                _activeDcEffects.Add(new ActiveDcEffect { axis = card.axis, stat = stat, mult = mult, stackId = sid });
+                foreach (var kv in _defenderByTile)
+                {
+                    var data = kv.Value.data;
+                    var entity = kv.Value.entity;
+                    if (data != null && _em.Exists(entity) && MatchesDcAxis(data, card.axis))
+                        EnqueueStatMul(entity, stat, mult, DcDuration, sid);
+                }
+            }
+        }
+
+        private void ApplyActiveDcEffectsTo(Entity entity, DefenderUnitData data)
+        {
+            if (data == null || _activeDcEffects.Count == 0 || !_em.Exists(entity)) return;
+            for (int i = 0; i < _activeDcEffects.Count; i++)
+            {
+                var e = _activeDcEffects[i];
+                if (MatchesDcAxis(data, e.axis))
+                    EnqueueStatMul(entity, e.stat, e.mult, DcDuration, e.stackId);
+            }
+        }
+
+        private static bool MapDcEffect(Wassup.Data.CardEffect eff, out Wassup.Battle.Effects.StatKind stat, out float mult)
+        {
+            switch (eff.kind)
+            {
+                case Wassup.Data.CardBuffKind.AttackDamage:
+                    stat = Wassup.Battle.Effects.StatKind.DamageMul; mult = 1f + eff.percent / 100f; return true;
+                case Wassup.Data.CardBuffKind.AttackSpeed:
+                    stat = Wassup.Battle.Effects.StatKind.AttackSpeedMul; mult = 1f + eff.percent / 100f; return true;
+                case Wassup.Data.CardBuffKind.EffectiveHealth:
+                    // HP% proxy: less damage taken = higher effective health (max-HP unchanged).
+                    stat = Wassup.Battle.Effects.StatKind.DmgTakenMul; mult = 1f / (1f + eff.percent / 100f); return true;
+                case Wassup.Data.CardBuffKind.MoveSpeed:
+                    stat = Wassup.Battle.Effects.StatKind.MoveSpeedMul; mult = 1f + eff.percent / 100f; return true;
+                default:
+                    stat = Wassup.Battle.Effects.StatKind.DamageMul; mult = 1f; return false;
+            }
+        }
+
+        private static bool MatchesDcAxis(DefenderUnitData data, Wassup.Data.CardTargetAxis axis)
+        {
+            switch (axis)
+            {
+                case Wassup.Data.CardTargetAxis.ClassRanger: return data.role == Wassup.Data.DefenderClass.Ranger;
+                case Wassup.Data.CardTargetAxis.ClassGuardian: return data.role == Wassup.Data.DefenderClass.Guardian;
+                case Wassup.Data.CardTargetAxis.Cost1: return data.cost == 1;
+                default: return false;
+            }
+        }
+
         // Shared mesh/material for every health bar so adding more units does not
         // allocate per-entity assets. Lazily created and disposed on scene teardown.
         private RenderMeshArray GetOrCreateHealthBarRenderArray()
@@ -2554,6 +2647,9 @@ namespace Wassup.Bridge
             _em.AddComponent<Wassup.Battle.Effects.ModifierStatsDirty>(entity);
             _em.SetComponentEnabled<Wassup.Battle.Effects.ModifierStatsDirty>(entity, false);
             _em.AddBuffer<Wassup.Battle.Units.IncomingHeal>(entity);
+
+            // ingame-dreamcatcher Unit 2 — inherit active match-long card effects.
+            ApplyActiveDcEffectsTo(entity, unitData);
 
             CreateHealthBar(entity, yOffset: 0.9f * CharacterVisualScale, baseScale: 0.35f * CharacterVisualScale);
             return entity;
