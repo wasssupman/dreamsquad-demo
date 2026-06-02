@@ -20,13 +20,55 @@ namespace Wassup.Core
         // existing draft fallback. Draft removal is C's scope, not A.
         public string selectedSquadId;
         public string selectedDeckId;
+
+        // squad-loadout Unit 0 — resolve the active squad, or null when unset.
+        public SquadSave SelectedSquad()
+        {
+            if (string.IsNullOrEmpty(selectedSquadId) || squads == null) return null;
+            for (int i = 0; i < squads.Count; i++)
+                if (squads[i] != null && squads[i].id == selectedSquadId) return squads[i];
+            return null;
+        }
     }
 
-    // Stub. Field expansion belongs to B (squad-loadout). Do not over-design here.
+    // squad-loadout Unit 0 — a 7-slot squad. Slots hold DefenderUnitData.id;
+    // empty slot = "" (kept non-null for stable JSON). Trait/class/condition
+    // fields are out of scope (follow-up).
     [Serializable]
     public class SquadSave
     {
+        public const int SlotCount = 7;
+
         public string id;
+        public string name = "Squad 1";
+        public List<string> unitIds = new List<string>();
+
+        public bool IsEmpty()
+        {
+            if (unitIds == null) return true;
+            for (int i = 0; i < unitIds.Count; i++)
+                if (!string.IsNullOrEmpty(unitIds[i])) return false;
+            return true;
+        }
+
+        public int FilledCount()
+        {
+            if (unitIds == null) return 0;
+            int n = 0;
+            for (int i = 0; i < unitIds.Count; i++)
+                if (!string.IsNullOrEmpty(unitIds[i])) n++;
+            return n;
+        }
+
+        // Pad/trim to exactly SlotCount with "" for empty slots.
+        public void NormalizeSlots()
+        {
+            if (unitIds == null) unitIds = new List<string>();
+            for (int i = 0; i < unitIds.Count; i++)
+                if (unitIds[i] == null) unitIds[i] = "";
+            while (unitIds.Count < SlotCount) unitIds.Add("");
+            if (unitIds.Count > SlotCount) unitIds.RemoveRange(SlotCount, unitIds.Count - SlotCount);
+        }
     }
 
     // Stub. Field expansion belongs to C/D (dreamcatcher).

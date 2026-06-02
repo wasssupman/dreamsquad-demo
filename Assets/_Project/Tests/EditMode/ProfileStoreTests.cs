@@ -55,9 +55,10 @@ namespace Wassup.Tests.EditMode
             Assert.IsTrue(File.Exists(_path), "default profile should be persisted");
             Assert.AreEqual(ProfileStore.CurrentSchemaVersion, profile.schemaVersion);
             CollectionAssert.AreEquivalent(new[] { "scout", "ranger", "guardian" }, profile.ownedUnitIds);
-            Assert.IsEmpty(profile.squads);
+            // squad-loadout Unit 0 — default profile now ships a free starter squad.
+            Assert.AreEqual(1, profile.squads.Count);
+            Assert.AreEqual("squad_1", profile.selectedSquadId);
             Assert.IsEmpty(profile.dreamcatcherDecks);
-            Assert.IsNull(profile.selectedSquadId);
         }
 
         [Test]
@@ -77,8 +78,10 @@ namespace Wassup.Tests.EditMode
             CollectionAssert.AreEqual(original.ownedUnitIds, loaded.ownedUnitIds);
             Assert.AreEqual("alpha", loaded.selectedSquadId);
             Assert.AreEqual("deck1", loaded.selectedDeckId);
-            Assert.AreEqual(1, loaded.squads.Count);
-            Assert.AreEqual("alpha", loaded.squads[0].id);
+            // default "squad_1" + added "alpha"
+            Assert.AreEqual(2, loaded.squads.Count);
+            Assert.IsNotNull(loaded.SelectedSquad());
+            Assert.AreEqual("alpha", loaded.SelectedSquad().id);
             Assert.AreEqual(1, loaded.dreamcatcherDecks.Count);
             Assert.AreEqual("deck1", loaded.dreamcatcherDecks[0].id);
         }
@@ -95,6 +98,42 @@ namespace Wassup.Tests.EditMode
             Assert.IsNotNull(profile);
             Assert.IsTrue(File.Exists(_path + ".bak"), "corrupt file should be backed up");
             CollectionAssert.AreEquivalent(new[] { "scout" }, profile.ownedUnitIds);
+        }
+
+        [Test]
+        public void NewProfile_HasOneEmptySelectedSquad()
+        {
+            var cat = MakeCatalog("scout", "ranger");
+
+            var profile = ProfileStore.LoadOrCreateAt(_path, cat);
+
+            Assert.AreEqual(1, profile.squads.Count, "free starter squad");
+            var squad = profile.SelectedSquad();
+            Assert.IsNotNull(squad, "selected squad resolves");
+            Assert.AreEqual("squad_1", profile.selectedSquadId);
+            Assert.AreEqual(SquadSave.SlotCount, squad.unitIds.Count, "7 slots");
+            Assert.IsTrue(squad.IsEmpty());
+            Assert.AreEqual(0, squad.FilledCount());
+        }
+
+        [Test]
+        public void Squad_SlotAssignment_RoundTrips()
+        {
+            var cat = MakeCatalog("scout", "ranger");
+            var profile = ProfileStore.LoadOrCreateAt(_path, cat);
+            profile.SelectedSquad().unitIds[0] = "scout";
+            profile.SelectedSquad().unitIds[3] = "ranger";
+            ProfileStore.SaveAt(_path, profile);
+
+            var loaded = ProfileStore.LoadOrCreateAt(_path, cat);
+            var squad = loaded.SelectedSquad();
+
+            Assert.AreEqual(SquadSave.SlotCount, squad.unitIds.Count);
+            Assert.AreEqual("scout", squad.unitIds[0]);
+            Assert.AreEqual("ranger", squad.unitIds[3]);
+            Assert.AreEqual("", squad.unitIds[1]);
+            Assert.AreEqual(2, squad.FilledCount());
+            Assert.IsFalse(squad.IsEmpty());
         }
     }
 }

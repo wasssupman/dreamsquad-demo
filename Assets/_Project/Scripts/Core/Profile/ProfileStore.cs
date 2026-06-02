@@ -63,6 +63,7 @@ namespace Wassup.Core
             {
                 foreach (var id in catalog.AllIds()) p.ownedUnitIds.Add(id);
             }
+            EnsureDefaultSquad(p);
             return p;
         }
 
@@ -73,6 +74,21 @@ namespace Wassup.Core
             if (p.ownedUnitIds == null) p.ownedUnitIds = new System.Collections.Generic.List<string>();
             if (p.squads == null) p.squads = new System.Collections.Generic.List<SquadSave>();
             if (p.dreamcatcherDecks == null) p.dreamcatcherDecks = new System.Collections.Generic.List<DeckSave>();
+            EnsureDefaultSquad(p);
+        }
+
+        // squad-loadout Unit 0 — guarantee at least one squad (free starter, per
+        // design) with normalized 7-slot arrays, and a valid selection.
+        static void EnsureDefaultSquad(PlayerProfile p)
+        {
+            if (p.squads == null) p.squads = new System.Collections.Generic.List<SquadSave>();
+            if (p.squads.Count == 0)
+            {
+                p.squads.Add(new SquadSave { id = "squad_1", name = "Squad 1" });
+            }
+            foreach (var s in p.squads) if (s != null) s.NormalizeSlots();
+            if (string.IsNullOrEmpty(p.selectedSquadId) || p.SelectedSquad() == null)
+                p.selectedSquadId = p.squads[0].id;
         }
 
         static void TryBackup(string path)

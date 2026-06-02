@@ -39,4 +39,6 @@ unitIds 의 유효성(보유/카탈로그 존재)은 여기서 강제하지 않�
 - compile + read_console clean.
 - EditMode: 신규(빈 경로) 프로필 → `squads.Count==1`, `unitIds.Count==7` 전부 "", `selectedSquadId=="squad_1"`.
 - round-trip: 슬롯 일부 배정 후 save→load 동일.
-- 기존 ProfileStoreTests 3건 여전히 통과.
+- 기존 ProfileStoreTests 는 기본 스쿼드 계약에 맞춰 갱신(빈 squads 가정 제거).
+
+> 완료 확인 2026-06-02 — EditMode ProfileStoreTests 5/5(기존 3 갱신 + 신규 2: 기본 스쿼드 1개/7슬롯/선택, 슬롯 배정 round-trip).
