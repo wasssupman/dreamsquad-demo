@@ -1,7 +1,8 @@
 # outgame-scene-and-flow
 
-> 상태: 진행 중 (시작 2026-06-02)
+> 상태: 완료 2026-06-02
 > 상위 분해 A. 후속 B(squad-loadout) · C(ingame-dreamcatcher) · D(dreamcatcher-deck-builder) 의 기반.
+> 커밋: 0 `9c99565` · 1 `ca2ed2a` · 2 `7c63366` · 3 `122e986`. handoff → `4_handoff_summary.md`.
 
 ## 검증 질문
 
