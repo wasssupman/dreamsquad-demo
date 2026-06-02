@@ -189,16 +189,17 @@ board-visualization spec 자체는 ROI 부족으로 wrap 종료. 진단/실험�
 - **VFX magic number 정리** [S] · `VfxSpawner` 의 y-offset / lifetime 하드코딩 → SerializedField 또는 ParticleSystem main.duration + startLifetime 으로 동기화. heal/placement/meteor 일괄 대상. (heal-vfx)
 - **Heal VFX amount scaling** [S] · `HealAppliedEvent.amount` 를 `VfxSpawner.SpawnHealApplied` 에서 ParticleSystem main.startSize/startColor 에 매핑. 큰 힐 = 큰 펄스. 시그니처는 이미 amount 파라미터 확보됨. (heal-vfx)
 
-#### Outgame scene & flow — 후속 (outgame-scene-and-flow)
+#### Outgame scene & flow / squad — 후속 (outgame-scene-and-flow, squad-loadout)
 
-- **B squad-loadout** [L] · 유닛 class 라벨(ranger/guardian/bruiser) → 7슬롯 편성 UI(스쿼드 패널) → `PlayerProfile.squads` 저장 → `selectedSquadId` → BattleScene 반입(7+3 중 랜덤7). GameManager.Start 에 squad 분기. 새 spec.
-- **C ingame-dreamcatcher** [L] · 준비단계 드래프트 제거 → 드림캐쳐 선택(첫 배치 3중1 + 5웨이브 3중1) + `StatModifierApplyEvent` 적용. `docs/드림캐쳐_샘플덱_기획요약.md` 기반. 새 spec.
+- **C ingame-dreamcatcher** [L] · 준비단계 드래프트 제거 → 드림캐쳐 선택(첫 배치 3중1 + 5웨이브 3중1) + `StatModifierApplyEvent` 적용. `docs/드림캐쳐_샘플덱_기획요약.md` 기반. 스쿼드 모드 placement 진입 직후 끼워넣기. 새 spec.
 - **D dreamcatcher-deck-builder** [M] · 드림캐쳐 패널에 10장 세이브덱 빌더 → `PlayerProfile.dreamcatcherDecks`. C 이후.
+- **스쿼드 class/특성** [L] · 유닛 class 라벨(ranger/guardian/bruiser) → 슬롯 조건 + 타입별 특성(스탯 합산, 하드캡 15%). 다중 스쿼드 수집/전환, 가챠/꿈런 파밍/교환/리롤/등급.
 - **한글 TMP 폰트** [S] · 현재 LiberationSans only → UI 라벨 영문. 로컬라이즈 패스에서 한글 폰트 에셋 도입.
 - **반복 씬 로드 ECS leak 점검** [M] · 2-씬 전환으로 BattleScene 반복 로드 → 기존 **BattleBridge.StartBattle Persistent allocates 경고** 백로그가 더 중요. 재진입 시 ECS World/Persistent 정리 경로 검증.
 
 ### Promoted / Closed
 
+- **Squad loadout** → `docs/spec/squad-loadout/` (completed 2026-06-02, 편성+반입 MVP. 드래프트 유닛선택 대체)
 - **Outgame scene & flow** → `docs/spec/outgame-scene-and-flow/` (completed 2026-06-02, 2-씬 분리 + 프로필 영속 기반. B/C/D 의 토대)
 - **Seasonal map backdrop** → `docs/spec/seasonal-map-backdrop/` (completed 2026-05-22, 4시즌 + Skybox 전환)
 - **Modifier framework — Legacy migration** → `docs/spec/modifier-legacy-migration/` (completed 2026-05-01)

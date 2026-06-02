@@ -1,7 +1,8 @@
 # squad-loadout (B)
 
-> 상태: 초안 (작성 2026-06-02)
+> 상태: 완료 2026-06-02
 > 선행: A `outgame-scene-and-flow` (완료). 후속 C `ingame-dreamcatcher` 와 함께 인게임 드래프트 대체.
+> 커밋: 0 `5487ac7` · 1 `0e67b8d` · 2 `321bba3` · 3 `813ed7d`. handoff → `4_handoff_summary.md`.
 
 ## 검증 질문
 
