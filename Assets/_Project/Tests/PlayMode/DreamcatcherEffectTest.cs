@@ -110,7 +110,7 @@ namespace Wassup.Tests.PlayMode
         }
 
         [UnityTest]
-        public IEnumerator FirstPlacement_TriggersController_AutoPicksAndApplies()
+        public IEnumerator EnteringPlacement_TriggersController_AutoPicksAndApplies()
         {
             LogAssert.ignoreFailingMessages = true;
             yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
@@ -120,10 +120,10 @@ namespace Wassup.Tests.PlayMode
             NeutralizeSceneController();
             var cat = FindCatalog();
             var ranger = cat.ById("ranger");
+            var gm = Object.FindObjectOfType<GameManager>();
 
             bridge.SetDefenderPool(new[] { ranger });
             bridge.BeginPlacement();
-            var gm = Object.FindObjectOfType<GameManager>();
             gm.CostRuntime.ResetToStart();
             gm.CostRuntime.AddCost(1000);
             yield return null;
@@ -145,22 +145,19 @@ namespace Wassup.Tests.PlayMode
             SetField(ctrl, "deck", deck);
             go.SetActive(true);
 
-            int fired = 0;
-            bridge.FirstDefenderPlaced += () => fired++;
-
+            // Place a ranger BEFORE the pick (pick now happens on entering Placement).
             Assert.IsTrue(PlaceFirstValid(bridge, ranger), "place ranger");
             yield return null;
+
+            // Entering the Placement phase is the first-pick trigger.
+            gm.SetPhase(GamePhase.Placement);
+            yield return null;
             yield return null;
             yield return null;
 
-            Assert.AreEqual(1, fired, "FirstDefenderPlaced fired once");
-            Assert.AreEqual(1.1f, GetStat(bridge, Unity.Entities.World.DefaultGameObjectInjectionWorld.EntityManager, "ranger").attackSpeedMul, 0.01f,
-                "controller auto-picked a ranger card and applied it");
-
-            // second placement must not re-fire the once-only trigger.
-            Assert.IsTrue(PlaceFirstValid(bridge, ranger), "place second ranger");
-            yield return null;
-            Assert.AreEqual(1, fired, "first-placement trigger is once-only");
+            var em = Unity.Entities.World.DefaultGameObjectInjectionWorld.EntityManager;
+            Assert.AreEqual(1.1f, GetStat(bridge, em, "ranger").attackSpeedMul, 0.01f,
+                "entering placement auto-picked a ranger card and applied it");
 
             Object.Destroy(go);
         }

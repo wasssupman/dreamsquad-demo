@@ -19,16 +19,27 @@ namespace Wassup.Core
 
         private void OnEnable()
         {
-            if (bridge == null) return;
-            bridge.FirstDefenderPlaced += OnSelectionTrigger;
-            bridge.WaveMilestoneReached += OnWaveMilestone;
+            // First pick happens BEFORE placement (changed flow: 맵 설정 → 첫 드캐
+            // 선택 → 배치). Entering the Placement phase is the trigger; it fires
+            // once per match (SetPhase only fires on change) and works for both
+            // squad and draft entries. The 5-wave picks come from the bridge.
+            if (GameManager.Instance != null)
+                GameManager.Instance.PhaseChanged += OnPhaseChanged;
+            if (bridge != null)
+                bridge.WaveMilestoneReached += OnWaveMilestone;
         }
 
         private void OnDisable()
         {
-            if (bridge == null) return;
-            bridge.FirstDefenderPlaced -= OnSelectionTrigger;
-            bridge.WaveMilestoneReached -= OnWaveMilestone;
+            if (GameManager.Instance != null)
+                GameManager.Instance.PhaseChanged -= OnPhaseChanged;
+            if (bridge != null)
+                bridge.WaveMilestoneReached -= OnWaveMilestone;
+        }
+
+        private void OnPhaseChanged(GamePhase phase)
+        {
+            if (phase == GamePhase.Placement) OnSelectionTrigger();
         }
 
         private void OnWaveMilestone(int waveNumber) => OnSelectionTrigger();
