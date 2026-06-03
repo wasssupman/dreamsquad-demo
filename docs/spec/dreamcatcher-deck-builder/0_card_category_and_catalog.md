@@ -50,3 +50,5 @@ public class DreamcatcherCardCatalog : ScriptableObject {
 - `DreamcatcherCardCatalog.asset` cards=6, `ById("guardian_fortress").category==Unique`.
 - `SelectedDeck()` null-safe(덱 없을 때 null).
 - 기존 ProfileStore 테스트 유지(덱 기본생성 안 함).
+
+> 완료 확인 2026-06-03 · 커밋 `add08ca` — 6 카드 category 백필(fortress=Unique 직렬화 확인), 카탈로그 cards=6/ById/AllIds 검증.

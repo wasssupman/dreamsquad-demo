@@ -42,3 +42,5 @@ public static class DeckRules
   - 무효 id 포함 → invalid(unknown).
   - `UniqueCount` 정확.
 - compile + read_console clean.
+
+> 완료 확인 2026-06-03 — EditMode DeckRulesTests 6/6(10정상/9·11 count/고유2 ok·3 reject/무효 id/UniqueCount).
