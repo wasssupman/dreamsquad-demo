@@ -20,7 +20,8 @@ A가 깐 프로필 영속/씬 흐름 위에, 드래프트의 "유닛 선택" 역
 | 1 | 로직 | `1_squad_draw.md` | 순수 SquadDraw: 스쿼드7 + 랜덤3 → 랜덤7. seed 결정적 + EditMode 테스트 |
 | 2 | UI | `2_squad_builder_ui.md` | SquadPanel 내용: 보유 유닛 그리드 + 7슬롯 배정/해제/저장/선택 |
 | 3 | 통합 | `3_battle_carry_in.md` | GameManager.Start 스쿼드 분기: 드래프트 스킵 → SquadDraw → SetDefenderPool → Placement. PlayMode smoke |
-| 4 | 인계 | `4_handoff_summary.md` | (종료 시) |
+| 4 | 인계 | `4_handoff_summary.md` | handoff |
+| 5 | 회귀/UX | `5_map_setup_step.md` | 인게임 회귀 수정(맵 스타일·프랍·유닛선택 UI) + 배치 이전 맵 설정 스텝(MAP SETUP) |
 
 ## Feature-wide 계약
 

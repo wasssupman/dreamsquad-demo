@@ -39,6 +39,10 @@ B(`squad-loadout`) 편성+반입 MVP 종료. 최신 계약은 README + 번호 �
 - `PlayerProfileSO.asset` 의 직렬화 `profile` 은 빈 기본값 — BattleScene 직접 로드(테스트) 시 드래프트 폴백. 실게임은 Outgame 경유로 디스크 프로필(스쿼드) 로드.
 - UI 라벨 영문(한글 폰트 후속). class 라벨/특성/조건/가챠/등급은 전부 후속.
 
+## Post-completion (2026-06-03)
+
+인게임 회귀 수정 + 맵 설정 스텝 추가 — `5_map_setup_step.md` 참조. 커밋 `a277a50`(맵 스타일/프랍 + DefenderSelector 복원), `f68dff0`(MAP SETUP prep 스텝). 새 흐름: 시작→맵빌드→MAP SETUP(맵 자유조정)→START→배치→전투.
+
 ## Follow-up
 
 - **C `ingame-dreamcatcher`**: 준비단계 드래프트 단계 제거 + 드림캐쳐 선택(첫 배치 3중1 + 5웨이브 3중1) + StatModifier 적용. 스쿼드 모드 placement 진입 직후에 끼워넣기.
