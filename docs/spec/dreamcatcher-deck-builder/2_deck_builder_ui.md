@@ -29,3 +29,6 @@ UnityMCP 로 DreamcatcherPanel 하위에 덱 슬롯행 + 보유 그리드 + 카�
 - 카드 탭 → 덱 추가(10 상한·고유 2 상한 enforce), 슬롯 탭 → 제거. 카운트/규칙 라벨 갱신.
 - 10장 유효 구성 → SAVE 활성 → 저장 후 Play 재시작 시 유지(profile.json 반영, selectedDeckId=deck_1).
 - 9장/고유3 등 무효 시 SAVE 비활성 + 사유 표시.
+
+> 완료 확인 2026-06-03 — Play: 보유 6, 0/10 SAVE 비활성 → 10장 ok SAVE 활성 → 저장 시 disk deck_1/count10/selectedDeckId=deck_1. 고유 fortress 4탭→2개 상한. 에러 0.
+> 메모: 카드/슬롯 버튼 런타임 생성(컨테이너 2개+status/save 씬 wiring), 가로 anchor 기반. Normal=파랑/Unique=주황. _working 가 source of truth(슬롯뷰 Destroy 는 프레임 종료 정리).
