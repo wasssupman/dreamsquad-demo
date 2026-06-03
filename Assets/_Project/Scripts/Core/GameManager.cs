@@ -39,6 +39,14 @@ namespace Wassup.Core
         // (no draft). PlacementPhaseView subscribes, mirroring DraftConfirmed.
         public event System.Action PlacementRequested;
 
+        // squad map-setup — raised after the squad map is built so the player can
+        // freely adjust map settings before placement (replaces the draft stage's
+        // map panel). SquadPrepView subscribes and calls RequestPlacement() on
+        // confirm. If nothing subscribes (headless), squad mode goes straight to
+        // placement.
+        public event System.Action MapSetupRequested;
+        public void RequestPlacement() => PlacementRequested?.Invoke();
+
         // Fired whenever a UI layer wants all *other* aim-style selections to
         // cancel (e.g. picking a defender should cancel any active skill aim,
         // picking a skill slot should clear the pending defender selection).
@@ -166,8 +174,10 @@ namespace Wassup.Core
                 }
             }
 
-            // PlacementPhaseView subscribes and runs the countdown → StartBattle.
-            PlacementRequested?.Invoke();
+            // squad map-setup — let the player adjust the map first if a prep view
+            // is present; otherwise go straight to placement (headless/tests).
+            if (MapSetupRequested != null) MapSetupRequested.Invoke();
+            else PlacementRequested?.Invoke();
         }
 
         private static int GenerateSeed() =>

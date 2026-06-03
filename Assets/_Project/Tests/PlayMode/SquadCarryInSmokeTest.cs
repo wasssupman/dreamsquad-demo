@@ -56,8 +56,14 @@ namespace Wassup.Tests.PlayMode
 
             var gm = Object.FindObjectOfType<GameManager>();
             Assert.IsNotNull(gm, "battle GameManager present");
+            // squad map-setup — squad mode now opens a map-setup step first; the
+            // player presses START to advance. Simulate that here.
+            Assert.AreNotEqual(GamePhase.Draft, gm.CurrentPhase, "squad mode skips draft");
+            gm.RequestPlacement();
+            yield return null;
+            yield return null;
             Assert.AreEqual(GamePhase.Placement, gm.CurrentPhase,
-                "squad mode skips draft and enters Placement");
+                "after map-setup START, squad mode enters Placement");
         }
     }
 }
