@@ -1,7 +1,8 @@
 # dreamcatcher-deck-builder (D)
 
-> 상태: 초안 (작성 2026-06-03)
+> 상태: 완료 2026-06-03
 > 선행: A `outgame-scene-and-flow`, C `ingame-dreamcatcher` (완료).
+> 커밋: spec `6213e5d` · 0 `add08ca` · 1 `42cd9b5` · 2 `d933754` · 3 `1672591`. handoff → `4_handoff_summary.md`.
 
 ## 검증 질문
 

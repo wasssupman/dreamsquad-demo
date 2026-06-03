@@ -191,7 +191,7 @@ board-visualization spec 자체는 ROI 부족으로 wrap 종료. 진단/실험�
 
 #### Outgame / squad / dreamcatcher — 후속 (outgame-scene-and-flow, squad-loadout, ingame-dreamcatcher)
 
-- **D dreamcatcher-deck-builder** [M] · 드림캐쳐 패널에 10장 세이브덱 빌더 → `PlayerProfile.dreamcatcherDecks`. 현재 덱은 코드 고정(Default). C 의 직접 후속.
+- **드림캐쳐 카드 보유/콘텐츠 확장** [L] · ownedCardIds + 가챠/꿈런 파밍, 카드 콘텐츠 확장(기획 일반10+고유3+무의식2, 신규 메커닉 채널), 다중 덱 수집/전환·이름 편집·무의식 편입. (D 후속)
 - **드림캐쳐 복합 효과** [L] · row-only/crit/pierce/splash/lowcost-summon/guardian-taunt/match-start-cost + 무의식 2장. 신규 메커닉/채널 필요.
 - **진짜 MaxHealthMul 채널** [M] · 현재 HP 카드는 DmgTakenMul 프록시. 정확한 max-HP 증가 채널(Health/Units 맥락).
 - **스쿼드 class/특성** [L] · class 라벨(완료, C unit0)을 이용한 슬롯 조건 + 타입별 특성(스탯 합산, 하드캡 15%). 다중 스쿼드 수집/전환, 가챠/꿈런 파밍/교환/리롤/등급.
@@ -199,6 +199,8 @@ board-visualization spec 자체는 ROI 부족으로 wrap 종료. 진단/실험�
 - **반복 씬 로드 ECS leak 점검** [M] · 2-씬 전환으로 BattleScene 반복 로드 → 기존 **BattleBridge.StartBattle Persistent allocates 경고** 백로그가 더 중요. 재진입 시 ECS World/Persistent 정리 경로 검증.
 
 ### Promoted / Closed
+
+- **Dreamcatcher deck builder** → `docs/spec/dreamcatcher-deck-builder/` (completed 2026-06-03, 10장 빌더+저장+인게임 반입 MVP. 10·고유≤2)
 
 - **Ingame dreamcatcher** → `docs/spec/ingame-dreamcatcher/` (completed 2026-06-02, 인게임 카드 선택+효과 MVP. 드래프트 prep 단계 대체. modifier-framework 버그 수정 동반)
 - **Squad loadout** → `docs/spec/squad-loadout/` (completed 2026-06-02, 편성+반입 MVP. 드래프트 유닛선택 대체)
