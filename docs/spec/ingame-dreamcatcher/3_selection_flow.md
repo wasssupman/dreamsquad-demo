@@ -39,3 +39,11 @@ public event System.Action<int> WaveMilestoneReached;  // 1-indexed wave
 
 > 완료 확인 2026-06-02 — PlayMode `FirstPlacement_TriggersController_AutoPicksAndApplies`: 첫 배치 시 FirstDefenderPlaced 1회 발화, DreamcatcherController Draw3→폴백 자동선택→ApplyDreamcatcherCard(ranger attackSpeed 1.1), 2번째 배치엔 재발화 없음. PlayMode 6/6.
 > 메모: 5웨이브 트리거는 `QueueWave` 의 `(waveIndex+1)%5==0` + 동일 이벤트 경로(첫 배치 테스트로 메커니즘 검증). 5웨이브 실주행 통합검증은 Unit 4 Play 또는 후속.
+
+## 개정 2026-06-03 — 첫 선택을 배치 이전으로 이동
+
+변경 플로우(맵 설정 → **첫 드캐 선택** → 배치)에 맞춰 첫 3중1 트리거를 **배치 단계 진입 시점**으로 옮김:
+- `DreamcatcherController` 가 `bridge.FirstDefenderPlaced` 대신 `GameManager.PhaseChanged == Placement` 구독. `SetPhase` 는 변경 시 1회만 발화하므로 매치당 1회. 스쿼드/드래프트 진입 모두 커버.
+- 배치 진입 즉시 모달(timeScale=0) → 선택 → 적용 → 재개 → 유닛 배치. 5웨이브 픽은 `WaveMilestoneReached` 그대로.
+- `bridge.FirstDefenderPlaced` 이벤트 자체는 남겨둠(현재 구독자 없음).
+- 커밋 `4de90fc`. 테스트 `EnteringPlacement_TriggersController_AutoPicksAndApplies`. Play: MAP SETUP→START→드캐 모달(3장)→선택(registry 0→1)→Placement.
