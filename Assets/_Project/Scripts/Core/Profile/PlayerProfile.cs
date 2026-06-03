@@ -29,6 +29,15 @@ namespace Wassup.Core
                 if (squads[i] != null && squads[i].id == selectedSquadId) return squads[i];
             return null;
         }
+
+        // dreamcatcher-deck-builder Unit 0 — resolve the active deck, or null.
+        public DeckSave SelectedDeck()
+        {
+            if (string.IsNullOrEmpty(selectedDeckId) || dreamcatcherDecks == null) return null;
+            for (int i = 0; i < dreamcatcherDecks.Count; i++)
+                if (dreamcatcherDecks[i] != null && dreamcatcherDecks[i].id == selectedDeckId) return dreamcatcherDecks[i];
+            return null;
+        }
     }
 
     // squad-loadout Unit 0 — a 7-slot squad. Slots hold DefenderUnitData.id;
@@ -71,10 +80,16 @@ namespace Wassup.Core
         }
     }
 
-    // Stub. Field expansion belongs to C/D (dreamcatcher).
+    // dreamcatcher-deck-builder Unit 0 — a saved dreamcatcher deck. cardIds holds
+    // DreamcatcherCard.id; deck-rule validity (exactly 10, unique<=2) is checked
+    // by DeckRules on save, not enforced here.
     [Serializable]
     public class DeckSave
     {
         public string id;
+        public string name = "Deck 1";
+        public List<string> cardIds = new List<string>();
+
+        public int Count() => cardIds != null ? cardIds.Count : 0;
     }
 }

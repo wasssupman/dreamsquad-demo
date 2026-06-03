@@ -15,6 +15,7 @@ MonoBehaviour:
   id: guardian_fortress
   displayName: Guardian Fortress (HP +50% / Move -50%)
   axis: 1
+  category: 1
   effects:
   - kind: 2
     percent: 50

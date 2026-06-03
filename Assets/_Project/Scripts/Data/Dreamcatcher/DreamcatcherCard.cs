@@ -11,6 +11,10 @@ namespace Wassup.Data
     // EffectiveHealth→DmgTakenMul (damage-taken reduction proxy), MoveSpeed→MoveSpeedMul.
     public enum CardBuffKind { AttackDamage, AttackSpeed, EffectiveHealth, MoveSpeed }
 
+    // dreamcatcher-deck-builder Unit 0 — deck-rule category. Unique cards are
+    // capped per deck (<=2); Normal cards may repeat.
+    public enum CardCategory { Normal, Unique }
+
     [Serializable]
     public struct CardEffect
     {
@@ -24,6 +28,7 @@ namespace Wassup.Data
         public string id;
         public string displayName;
         public CardTargetAxis axis;
+        public CardCategory category = CardCategory.Normal;
         public CardEffect[] effects; // usually 1; fortress has 2
     }
 }
