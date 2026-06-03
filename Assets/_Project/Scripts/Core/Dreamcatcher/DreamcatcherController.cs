@@ -16,6 +16,13 @@ namespace Wassup.Core
         [SerializeField] private BattleBridge bridge;
         [SerializeField] private DreamcatcherDeck deck;
         [SerializeField] private DreamcatcherSelectionView selectionView;
+        // dreamcatcher-deck-builder Unit 3 — saved-deck carry-in. When the profile
+        // has a valid selected deck, draws come from it; otherwise from the
+        // serialized `deck` asset (C fallback).
+        [SerializeField] private PlayerProfileSO profileSO;
+        [SerializeField] private DreamcatcherCardCatalog cardCatalog;
+
+        private List<DreamcatcherCard> _resolvedDeck;
 
         private void OnEnable()
         {
@@ -39,7 +46,31 @@ namespace Wassup.Core
 
         private void OnPhaseChanged(GamePhase phase)
         {
-            if (phase == GamePhase.Placement) OnSelectionTrigger();
+            if (phase != GamePhase.Placement) return;
+            _resolvedDeck = ResolveDeck(); // fresh resolve per match entry
+            OnSelectionTrigger();
+        }
+
+        // Selected saved deck (validated) resolved via the card catalog; falls back
+        // to the serialized deck asset when no valid saved deck exists.
+        private List<DreamcatcherCard> ResolveDeck()
+        {
+            var save = (profileSO != null && profileSO.profile != null) ? profileSO.profile.SelectedDeck() : null;
+            if (save != null && cardCatalog != null && DeckRules.Validate(save.cardIds, cardCatalog, out _))
+            {
+                var list = new List<DreamcatcherCard>(save.cardIds.Count);
+                foreach (var id in save.cardIds)
+                {
+                    var card = cardCatalog.ById(id);
+                    if (card != null) list.Add(card);
+                }
+                if (list.Count > 0) return list;
+            }
+            // fallback: serialized default deck
+            var fallback = new List<DreamcatcherCard>();
+            if (deck != null && deck.cards != null)
+                foreach (var c in deck.cards) if (c != null) fallback.Add(c);
+            return fallback;
         }
 
         private void OnWaveMilestone(int waveNumber) => OnSelectionTrigger();
@@ -68,23 +99,25 @@ namespace Wassup.Core
             Pick(card);
         }
 
-        // Samples up to 3 cards from the deck. Duplicate deck entries stay as
-        // independent draws (they stack on pick).
+        // Samples up to 3 cards from the resolved deck. Duplicate deck entries stay
+        // as independent draws (they stack on pick).
         private List<DreamcatcherCard> Draw3()
         {
             var result = new List<DreamcatcherCard>();
-            if (deck == null || deck.cards == null) return result;
+            if (_resolvedDeck == null) _resolvedDeck = ResolveDeck();
+            var src = _resolvedDeck;
+            if (src == null || src.Count == 0) return result;
 
             var idx = new List<int>();
-            for (int i = 0; i < deck.cards.Length; i++)
-                if (deck.cards[i] != null) idx.Add(i);
+            for (int i = 0; i < src.Count; i++)
+                if (src[i] != null) idx.Add(i);
 
             int take = Mathf.Min(3, idx.Count);
             for (int i = 0; i < take; i++)
             {
                 int j = Random.Range(i, idx.Count);
                 (idx[i], idx[j]) = (idx[j], idx[i]);
-                result.Add(deck.cards[idx[i]]);
+                result.Add(src[idx[i]]);
             }
             return result;
         }

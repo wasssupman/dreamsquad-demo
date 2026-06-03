@@ -36,3 +36,5 @@ BattleScene: DreamcatcherController 에 `PlayerProfile.asset`(profileSO) + `Drea
 - PlayMode `DreamcatcherDeckCarryInTest`: 프로필에 유효 덱 주입 → 컨트롤러 ResolveDeck 이 그 카드 반환; 덱 없음 → serialized 폴백.
 - 기존 PlayMode(Dreamcatcher/Squad/Outgame) 통과.
 - read_console clean.
+
+> 완료 확인 2026-06-03 — PlayMode DreamcatcherDeckCarryInTest: 선택 저장덱(10×ranger_atk) → ResolveDeck 그 카드만; 선택 없음 → serialized 기본 덱(혼합) 폴백. BattleScene DreamcatcherController 에 profileSO/cardCatalog wiring. PlayMode 7/7.

@@ -1637,6 +1637,8 @@ MonoBehaviour:
   bridge: {fileID: 1939688408}
   deck: {fileID: 11400000, guid: d3a884355714e4262a953d61fa97e2af, type: 2}
   selectionView: {fileID: 569439753}
+  profileSO: {fileID: 11400000, guid: e610b4c0bbbeb4becb09188e400e6a55, type: 2}
+  cardCatalog: {fileID: 11400000, guid: 7e41a0cd1ffdc4b6c872ef0ac3d8df0e, type: 2}
 --- !u!4 &1132040372
 Transform:
   m_ObjectHideFlags: 0
