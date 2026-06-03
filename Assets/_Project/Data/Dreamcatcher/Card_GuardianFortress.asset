@@ -13,11 +13,11 @@ MonoBehaviour:
   m_Name: Card_GuardianFortress
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: guardian_fortress
-  displayName: Guardian Fortress (HP +50% / Move -50%)
+  displayName: Guardian Fortress (HP +50% / AS -50%)
   axis: 1
   category: 1
   effects:
   - kind: 2
     percent: 50
-  - kind: 3
+  - kind: 1
     percent: -50
