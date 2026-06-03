@@ -45,6 +45,12 @@ namespace Wassup.UI
                 draftController.DraftConfirmed += OnDraftConfirmed;
                 draftController.DraftStarted += OnDraftStarted;
             }
+            // squad-loadout regression fix — squad mode has no draft, so the
+            // placement entry comes via GameManager.PlacementRequested. Show the
+            // pick strip there too. GameManager (-100 exec order) has set Instance
+            // before this OnEnable.
+            if (GameManager.Instance != null)
+                GameManager.Instance.PlacementRequested += OnDraftConfirmed;
         }
 
         private void OnDisable()
@@ -54,6 +60,8 @@ namespace Wassup.UI
                 draftController.DraftConfirmed -= OnDraftConfirmed;
                 draftController.DraftStarted -= OnDraftStarted;
             }
+            if (GameManager.Instance != null)
+                GameManager.Instance.PlacementRequested -= OnDraftConfirmed;
         }
 
         private void OnDraftConfirmed()

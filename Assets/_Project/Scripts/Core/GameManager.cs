@@ -127,6 +127,12 @@ namespace Wassup.Core
         private void StartSquadMatch(SquadSave squad)
         {
             battleBridge.SetMapGenerationOptions(MapGenerationOptions.Default);
+            // squad-loadout regression fix — build the themed map (tile style +
+            // background props) before placement, exactly as the draft path does
+            // in Start(). Without this the BeginPlacement fallback left the map
+            // unstyled and prop-less. BeginPlacement then sees the map created and
+            // skips its rebuild.
+            battleBridge.PrepareDraftMap();
 
             var ids = SquadDraw.Resolve(squad.unitIds, profileSO.profile.ownedUnitIds, GenerateSeed());
             var units = new List<DefenderUnitData>(ids.Count);
