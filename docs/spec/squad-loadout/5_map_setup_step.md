@@ -25,10 +25,17 @@
 
 ```
 게임시작 → 맵 빌드(스타일+프랍)
-  → [MAP SETUP] MapSettingsPanel 자유 조정 → START
-  → [배치] DefenderSelector(7슬롯) + 유닛 배치(첫 배치 시 드림캐쳐 3중1)
-  → START BATTLE → 전투
+  → [MAP SETUP] 공격패턴(WavePatternStrip) + MapSettingsPanel 자유 조정 → START
+  → [드림캐쳐 첫 3중1] → [배치] DefenderSelector + 유닛 배치 → START BATTLE → 전투
 ```
+
+## 후속 보강 2026-06-04 — 공격패턴 미리보기 복원
+
+드래프트 단계에 있던 **공격패턴 미리보기**(`WavePatternStripView`)도 squad 흐름에서 누락 → MAP SETUP 스텝에 복원.
+- `SquadPrepView` 에 `wavePatternStrip` 참조 추가. MapSetupRequested 시 `RebuildFromDeck()` + `FadeIn()`, START 시 `SnapHidden()`+비활성.
+- strip 의 `AttackDeck` = BattleBridge.deck (동일 WaveA) → 미리보기가 실제 전투 웨이브와 일치(둘 다 WavePatternGenerator.Generate).
+- BattleScene `SquadPrep.wavePatternStrip` → 기존 `DraftView/WavePatternStrip` 와이어링.
+- Play 검증: MAP SETUP 에서 웨이브 카드 10장 표시, START 시 숨김+Placement. (스킬 미리보기 패널은 별도 후속.)
 
 ## 완료 기준
 

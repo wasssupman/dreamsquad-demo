@@ -1049,6 +1049,7 @@ MonoBehaviour:
   gameManager: {fileID: 1495062450}
   draftController: {fileID: 20521825}
   mapSettings: {fileID: 1939162979}
+  wavePatternStrip: {fileID: 1634174272}
   font: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
 --- !u!4 &563611223
 Transform:

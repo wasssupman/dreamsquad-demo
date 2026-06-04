@@ -15,6 +15,10 @@ namespace Wassup.UI
         [SerializeField] private GameManager gameManager;
         [SerializeField] private DraftController draftController;
         [SerializeField] private MapSettingsPanelView mapSettings;
+        // squad map-setup — attack-pattern preview (the draft stage's wave strip).
+        // Self-contained: previews WavePatternGenerator.Generate(deck) from its own
+        // AttackDeck, wired to the same deck BattleBridge spawns from.
+        [SerializeField] private WavePatternStripView wavePatternStrip;
         [SerializeField] private TMP_FontAsset font;
 
         private GameObject _panel;
@@ -38,12 +42,26 @@ namespace Wassup.UI
                 mapSettings.Initialize(draftController);
                 mapSettings.gameObject.SetActive(true);
             }
+            if (wavePatternStrip != null)
+            {
+                // Restore the draft stage's "공격패턴" preview into the prep step.
+                wavePatternStrip.gameObject.SetActive(true);
+                wavePatternStrip.RebuildFromDeck();
+                wavePatternStrip.SnapHidden(); // rest positions, then soft fade in
+                wavePatternStrip.FadeIn();
+                wavePatternStrip.SetToggleEnabled(true);
+            }
             _panel.SetActive(true);
         }
 
         private void OnStartClicked()
         {
             if (mapSettings != null) mapSettings.gameObject.SetActive(false);
+            if (wavePatternStrip != null)
+            {
+                wavePatternStrip.SnapHidden();
+                wavePatternStrip.gameObject.SetActive(false);
+            }
             _panel.SetActive(false);
             if (gameManager != null) gameManager.RequestPlacement();
         }
