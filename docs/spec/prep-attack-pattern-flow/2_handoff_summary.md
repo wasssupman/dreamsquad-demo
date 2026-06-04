@@ -2,7 +2,7 @@
 
 ## Commit
 
-- (이 커밋) `feat(prep-attack-pattern-flow): Squad 준비단계 공격패턴 자동 인트로 + 자동 진행`
+- `9a9fa09` `feat(prep-attack-pattern-flow): Squad 준비단계 공격패턴 자동 인트로 + 자동 진행`
 - 선행: `e60cc56` (START-게이트 초기 버전 — 본 커밋이 대체)
 
 ## Implemented
