@@ -1,4 +1,3 @@
-using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using Wassup.Core;
@@ -6,26 +5,27 @@ using Wassup.UI.Draft;
 
 namespace Wassup.UI
 {
-    // squad map-setup — pre-placement step for squad mode. Shows the existing
-    // MapSettingsPanel so the player can freely adjust the map (same panel the
-    // draft stage used), plus a START button that advances to placement. Mirrors
-    // how DraftView hosted the panel, minus the card draft.
+    // squad map-setup — pre-placement step for squad mode.
+    // prep-attack-pattern-flow: on entry the attack-pattern preview auto-unrolls,
+    // holds ~1s, rolls away, and then the flow auto-advances to placement (no START
+    // gate). Map settings and the wave preview each keep their own toggle button
+    // (top-left), staying reachable through placement and battle.
     public class SquadPrepView : MonoBehaviour
     {
         [SerializeField] private GameManager gameManager;
         [SerializeField] private DraftController draftController;
+        // Self-contained toggle (its own "MAP SETTINGS" button + collapsible panel).
+        // Kept active past entry so the player can adjust the map during placement.
         [SerializeField] private MapSettingsPanelView mapSettings;
-        // squad map-setup — attack-pattern preview (the draft stage's wave strip).
-        // Self-contained: previews WavePatternGenerator.Generate(deck) from its own
-        // AttackDeck, wired to the same deck BattleBridge spawns from.
+        // Attack-pattern preview (the draft stage's wave strip). Has its own "!"
+        // toggle button; kept active so it can be re-opened anytime.
         [SerializeField] private WavePatternStripView wavePatternStrip;
-        [SerializeField] private TMP_FontAsset font;
-        // prep-attack-pattern-flow Unit 0 — auto-intro dwell: the wave preview
-        // unrolls on map-setup entry, holds this long, then auto-rolls away.
+        // prep-attack-pattern-flow Unit 0 — how long the auto-intro holds the wave
+        // strip on screen before rolling it away.
         [SerializeField] private float introDwellSec = 1f;
 
-        private GameObject _panel;
         private bool _built;
+        private bool _advanced;
         private Coroutine _introRoutine;
 
         private void OnEnable()
@@ -40,17 +40,18 @@ namespace Wassup.UI
 
         private void OnMapSetupRequested()
         {
-            if (!_built) BuildCanvas();
+            if (!_built) EnsureCanvas();
+            _advanced = false;
+
             if (mapSettings != null)
             {
+                // Active with its own toggle; panel starts collapsed (Build hides it).
                 mapSettings.Initialize(draftController);
                 mapSettings.gameObject.SetActive(true);
             }
+
             if (wavePatternStrip != null)
             {
-                // prep-attack-pattern-flow Unit 0 — auto-intro: unroll, hold ~1s,
-                // then roll away. Replaces the old "FadeIn + stay" behaviour. The
-                // "!" toggle stays enabled so the player can re-open it anytime.
                 wavePatternStrip.gameObject.SetActive(true);
                 wavePatternStrip.RebuildFromDeck();
                 wavePatternStrip.SnapHidden();
@@ -58,32 +59,49 @@ namespace Wassup.UI
                 if (_introRoutine != null) StopCoroutine(_introRoutine);
                 _introRoutine = StartCoroutine(PlayIntro());
             }
-            _panel.SetActive(true);
+            else
+            {
+                // Headless / no strip wired: advance immediately.
+                AdvanceToPlacement();
+            }
         }
 
+        // Auto-intro: unroll (wait until fully shown) → hold ~1s → roll away (wait
+        // until fully hidden) → auto-advance to placement. timeScale stays 1 the
+        // whole time, so both animations play out before the dreamcatcher modal
+        // pauses time — the strip is gone before the picker appears.
         private System.Collections.IEnumerator PlayIntro()
         {
             wavePatternStrip.Unroll();
+            // Unroll's staggered card animation takes >1s; wait for it to finish
+            // before starting the hold, otherwise we'd advance mid-unroll.
+            while (wavePatternStrip.CurrentState == WavePatternStripView.State.Unrolling)
+                yield return null;
+
             yield return new WaitForSecondsRealtime(introDwellSec);
-            // Skip auto-roll if the player already closed/re-opened it via toggle.
+
+            // Skip auto-roll if the player already closed it via toggle.
             if (wavePatternStrip.CurrentState == WavePatternStripView.State.Shown)
+            {
                 wavePatternStrip.Roll();
+                while (wavePatternStrip.CurrentState == WavePatternStripView.State.Rolling)
+                    yield return null;
+            }
+
             _introRoutine = null;
+            AdvanceToPlacement();
         }
 
-        private void OnStartClicked()
+        private void AdvanceToPlacement()
         {
-            if (mapSettings != null) mapSettings.gameObject.SetActive(false);
-            if (wavePatternStrip != null)
-            {
-                wavePatternStrip.SnapHidden();
-                wavePatternStrip.gameObject.SetActive(false);
-            }
-            _panel.SetActive(false);
+            if (_advanced) return;
+            _advanced = true;
             if (gameManager != null) gameManager.RequestPlacement();
         }
 
-        private void BuildCanvas()
+        // Just the Canvas host for the map-settings + wave-strip children. No screen
+        // chrome of its own anymore (START gate removed — flow auto-advances).
+        private void EnsureCanvas()
         {
             if (_built) return;
             _built = true;
@@ -100,39 +118,6 @@ namespace Wassup.UI
             }
             if (gameObject.GetComponent<GraphicRaycaster>() == null)
                 gameObject.AddComponent<GraphicRaycaster>();
-
-            _panel = new GameObject("SquadPrepPanel", typeof(RectTransform));
-            _panel.transform.SetParent(transform, false);
-            var prt = (RectTransform)_panel.transform;
-            prt.anchorMin = Vector2.zero; prt.anchorMax = Vector2.one; prt.offsetMin = Vector2.zero; prt.offsetMax = Vector2.zero;
-
-            // Title banner (top-center)
-            var titleGo = new GameObject("Title", typeof(RectTransform), typeof(TextMeshProUGUI));
-            titleGo.transform.SetParent(_panel.transform, false);
-            var trt = (RectTransform)titleGo.transform;
-            trt.anchorMin = new Vector2(0.5f, 1f); trt.anchorMax = new Vector2(0.5f, 1f); trt.pivot = new Vector2(0.5f, 1f);
-            trt.anchoredPosition = new Vector2(0f, -40f); trt.sizeDelta = new Vector2(700f, 70f);
-            var ttmp = titleGo.GetComponent<TextMeshProUGUI>();
-            ttmp.text = "MAP SETUP"; ttmp.alignment = TextAlignmentOptions.Center; ttmp.fontSize = 40; ttmp.color = Color.white;
-            if (font != null) ttmp.font = font;
-
-            // START button (bottom-center)
-            var btnGo = new GameObject("StartButton", typeof(RectTransform), typeof(Image), typeof(Button));
-            btnGo.transform.SetParent(_panel.transform, false);
-            var brt = (RectTransform)btnGo.transform;
-            brt.anchorMin = new Vector2(0.5f, 0f); brt.anchorMax = new Vector2(0.5f, 0f); brt.pivot = new Vector2(0.5f, 0f);
-            brt.anchoredPosition = new Vector2(0f, 50f); brt.sizeDelta = new Vector2(340f, 84f);
-            btnGo.GetComponent<Image>().color = new Color(0.2f, 0.7f, 0.3f, 1f);
-            btnGo.GetComponent<Button>().onClick.AddListener(OnStartClicked);
-            var blGo = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
-            blGo.transform.SetParent(btnGo.transform, false);
-            var blrt = (RectTransform)blGo.transform;
-            blrt.anchorMin = Vector2.zero; blrt.anchorMax = Vector2.one; blrt.offsetMin = Vector2.zero; blrt.offsetMax = Vector2.zero;
-            var bl = blGo.GetComponent<TextMeshProUGUI>();
-            bl.text = "START"; bl.alignment = TextAlignmentOptions.Center; bl.fontSize = 34; bl.color = Color.white;
-            if (font != null) bl.font = font;
-
-            _panel.SetActive(false);
         }
     }
 }
