@@ -20,9 +20,13 @@ namespace Wassup.UI
         // AttackDeck, wired to the same deck BattleBridge spawns from.
         [SerializeField] private WavePatternStripView wavePatternStrip;
         [SerializeField] private TMP_FontAsset font;
+        // prep-attack-pattern-flow Unit 0 — auto-intro dwell: the wave preview
+        // unrolls on map-setup entry, holds this long, then auto-rolls away.
+        [SerializeField] private float introDwellSec = 1f;
 
         private GameObject _panel;
         private bool _built;
+        private Coroutine _introRoutine;
 
         private void OnEnable()
         {
@@ -44,14 +48,27 @@ namespace Wassup.UI
             }
             if (wavePatternStrip != null)
             {
-                // Restore the draft stage's "공격패턴" preview into the prep step.
+                // prep-attack-pattern-flow Unit 0 — auto-intro: unroll, hold ~1s,
+                // then roll away. Replaces the old "FadeIn + stay" behaviour. The
+                // "!" toggle stays enabled so the player can re-open it anytime.
                 wavePatternStrip.gameObject.SetActive(true);
                 wavePatternStrip.RebuildFromDeck();
-                wavePatternStrip.SnapHidden(); // rest positions, then soft fade in
-                wavePatternStrip.FadeIn();
+                wavePatternStrip.SnapHidden();
                 wavePatternStrip.SetToggleEnabled(true);
+                if (_introRoutine != null) StopCoroutine(_introRoutine);
+                _introRoutine = StartCoroutine(PlayIntro());
             }
             _panel.SetActive(true);
+        }
+
+        private System.Collections.IEnumerator PlayIntro()
+        {
+            wavePatternStrip.Unroll();
+            yield return new WaitForSecondsRealtime(introDwellSec);
+            // Skip auto-roll if the player already closed/re-opened it via toggle.
+            if (wavePatternStrip.CurrentState == WavePatternStripView.State.Shown)
+                wavePatternStrip.Roll();
+            _introRoutine = null;
         }
 
         private void OnStartClicked()
