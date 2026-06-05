@@ -26,7 +26,7 @@ RenderSettings:
   m_AmbientIntensity: 1
   m_AmbientMode: 0
   m_SubtractiveShadowColor: {r: 0.42, g: 0.478, b: 0.627, a: 1}
-  m_SkyboxMaterial: {fileID: 10304, guid: 0000000000000000f000000000000000, type: 0}
+  m_SkyboxMaterial: {fileID: 2100000, guid: a4ccc4c665692498283b98f30352a6b3, type: 2}
   m_HaloStrength: 0.5
   m_FlareStrength: 1
   m_FlareFadeSpeed: 3
@@ -2084,7 +2084,7 @@ Transform:
   m_GameObject: {fileID: 1420088183}
   serializedVersion: 2
   m_LocalRotation: {x: 0.53169423, y: 0, z: 0, w: 0.8469364}
-  m_LocalPosition: {x: 9.52, y: 12.8, z: -1.6}
+  m_LocalPosition: {x: 9.52, y: 12.8, z: -2.3}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2282,6 +2282,7 @@ GameObject:
   - component: {fileID: 1495062451}
   - component: {fileID: 1495062450}
   - component: {fileID: 1495062452}
+  - component: {fileID: 1495062453}
   m_Layer: 0
   m_Name: GameManager
   m_TagString: Untagged
@@ -2306,7 +2307,7 @@ MonoBehaviour:
   draftController: {fileID: 20521825}
   costRuntime: {fileID: 308428868}
   costConfig: {fileID: 11400000, guid: 3ed67d5379b02406db1329b181fbee88, type: 2}
-  skillLoadout: {fileID: 0}
+  skillLoadout: {fileID: 1495062453}
   profileSO: {fileID: 11400000, guid: e610b4c0bbbeb4becb09188e400e6a55, type: 2}
   catalog: {fileID: 11400000, guid: 346c00d9daf72429d94ddd29337c7d23, type: 2}
 --- !u!4 &1495062451
@@ -2344,6 +2345,26 @@ MonoBehaviour:
   mainCamera: {fileID: 0}
   mapView: {fileID: 211636736}
   clickPlacementEnabled: 1
+--- !u!114 &1495062453
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1495062449}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ced630d7eca6043e0b32036dd635e6c9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Core.SkillLoadoutController
+  defaultPool:
+  - {fileID: 11400000, guid: b2e8d5f3a96c5f708d4e9f1b3c7a8e21, type: 2}
+  - {fileID: 11400000, guid: c3f9e6a4b07d6a819e5f0c2d4e8b9f32, type: 2}
+  - {fileID: 11400000, guid: 35bce914a516247cc9adee30e2bc5b4d, type: 2}
+  - {fileID: 11400000, guid: 617c2b597eefc4309bb176c2df4826ed, type: 2}
+  - {fileID: 11400000, guid: f8d27dec75a4449c9984a1fd2b1f5e03, type: 2}
+  - {fileID: 11400000, guid: a1f7c4d2e85b4e6f9c3d7b8e2a1f5d60, type: 2}
+  defaultCount: 2
 --- !u!1 &1628485821
 GameObject:
   m_ObjectHideFlags: 0

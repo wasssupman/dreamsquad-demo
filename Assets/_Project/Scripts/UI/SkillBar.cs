@@ -59,6 +59,11 @@ namespace Wassup.UI
                 draftController.DraftConfirmed += OnDraftConfirmed;
                 draftController.DraftStarted += OnDraftStarted;
             }
+            // Squad mode has no draft — the bar reveal comes via
+            // GameManager.PlacementRequested instead of DraftConfirmed, else the
+            // skill buttons never appear in squad mode.
+            if (GameManager.Instance != null)
+                GameManager.Instance.PlacementRequested += OnDraftConfirmed;
             // Last-pressed-wins mutual exclusion (Phase 8 §12 follow-up):
             // DefenderSelector fires AimCanceled when the player picks a
             // placement target, so any pending skill aim must drop.
@@ -74,7 +79,10 @@ namespace Wassup.UI
                 draftController.DraftStarted -= OnDraftStarted;
             }
             if (GameManager.Instance != null)
+            {
+                GameManager.Instance.PlacementRequested -= OnDraftConfirmed;
                 GameManager.Instance.AimCanceled -= ExitAimMode;
+            }
         }
 
         // Editor Exit Play destroys MonoBehaviours in an unspecified order, so
@@ -84,7 +92,10 @@ namespace Wassup.UI
         private void OnDestroy()
         {
             if (GameManager.Instance != null)
+            {
+                GameManager.Instance.PlacementRequested -= OnDraftConfirmed;
                 GameManager.Instance.AimCanceled -= ExitAimMode;
+            }
         }
 
         private void OnDraftConfirmed()
