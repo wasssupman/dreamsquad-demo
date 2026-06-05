@@ -61,7 +61,16 @@ namespace Wassup.Bridge
         [SerializeField] private Wassup.Presentation.QuadUnitViewPool enemyViewPool;
         [SerializeField] private Wassup.Presentation.QuadUnitViewPool defenderFallbackViewPool;
         [SerializeField] private float spineDefenderYOffset = 0f;
+        [Header("Character Billboard")]
+        // Spine units have no shader billboard (unlike the Quad fallback that uses
+        // Billboard_Unlit), so they stand fully upright in the XY plane and read as
+        // stiff standees under the angled camera. Tilt them back around X toward the
+        // camera so they look planted. 0 = upright, ~cameraPitch = full camera-facing.
+        // Pivots at the unit origin (feet) → sorting/position unaffected.
+        [SerializeField] private float characterBillboardTilt = 35f;
         [SerializeField] private Wassup.Presentation.VfxSpawner vfxSpawner;
+        [SerializeField] private Wassup.Presentation.DamageNumberSpawner damageNumberSpawner;
+        [SerializeField] private Wassup.UI.ScoreHudView scoreHud;
         [SerializeField] private Wassup.Presentation.ProjectileViewPool _projectileViewPool;
         // Phase 9 P9-07 — tileSize 단일 소스화. Awake 에서 MapView/PlacementInput 으로 주입.
         [SerializeField] private Wassup.Core.MapView mapView;
@@ -99,6 +108,10 @@ namespace Wassup.Bridge
         private RenderMeshArray _healthBarRenderArray;
         private Material _healthBarMaterial;
         public const float CharacterVisualScale = 0.7f;
+        // Live-readable mirror of characterBillboardTilt, read by SpineUnitView each
+        // LateUpdate. Synced from the serialized field in Awake/OnValidate; can be
+        // poked at runtime (e.g. via tooling) to tune the lean without recompiling.
+        public static float CharacterBillboardTilt = 35f;
         private const float SynergyPerNeighbor = 0.1f;
         private readonly HashSet<Entity> _synergyActivatedEntities = new();
         private int _synergyActivations;
@@ -122,6 +135,8 @@ namespace Wassup.Bridge
         private NativeQueue<Wassup.Battle.Combat.UnitAttackVisualEvent> _unitAttackVisualQueue;
         private NativeQueue<Wassup.Battle.Combat.Projectile.ProjectileHitEvent> _projectileHitEventQueue;
         private NativeQueue<Wassup.Battle.Units.HealAppliedEvent> _healAppliedEventQueue;
+        private NativeQueue<Wassup.Battle.Units.DamageNumberEvent> _damageNumberEventQueue;
+        private NativeQueue<Wassup.Battle.Units.EnemyKilledEvent> _enemyKilledEventQueue;
         private NativeQueue<Wassup.Battle.Effects.EnemyCcEvent> _enemyCcQueue;
         private NativeQueue<Wassup.Battle.Effects.StatModifierApplyEvent> _statModifierQueue;
         private NativeQueue<Wassup.Battle.Effects.StackModifierApplyEvent> _stackModifierQueue;
@@ -157,7 +172,15 @@ namespace Wassup.Bridge
                 Debug.LogError("[BattleBridge] SeasonRegistry / activeSeason / mapTheme 가 wiring 되지 않았다. BattleScene 에 SeasonRegistry.asset 을 연결하라.", this);
             }
 
+            CharacterBillboardTilt = characterBillboardTilt;
+
             EnsureMonoViewPools();
+        }
+
+        private void OnValidate()
+        {
+            // Keep the static mirror in sync while tuning in the inspector (edit/play).
+            CharacterBillboardTilt = characterBillboardTilt;
         }
 
         private void Start()
@@ -319,6 +342,8 @@ namespace Wassup.Bridge
             DestroyEntitiesByType<Wassup.Battle.Combat.UnitAttackVisualEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Combat.Projectile.ProjectileHitEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Units.HealAppliedEventsSingleton>();
+            DestroyEntitiesByType<Wassup.Battle.Units.DamageNumberEventsSingleton>();
+            DestroyEntitiesByType<Wassup.Battle.Units.EnemyKilledEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.EnemyCcEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.StatModifierApplyEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.StackModifierApplyEventsSingleton>();
@@ -339,6 +364,8 @@ namespace Wassup.Bridge
             if (_unitAttackVisualQueue.IsCreated) _unitAttackVisualQueue.Dispose();
             if (_projectileHitEventQueue.IsCreated) _projectileHitEventQueue.Dispose();
             if (_healAppliedEventQueue.IsCreated) _healAppliedEventQueue.Dispose();
+            if (_damageNumberEventQueue.IsCreated) _damageNumberEventQueue.Dispose();
+            if (_enemyKilledEventQueue.IsCreated) _enemyKilledEventQueue.Dispose();
             if (_enemyCcQueue.IsCreated) _enemyCcQueue.Dispose();
             if (_statModifierQueue.IsCreated) _statModifierQueue.Dispose();
             if (_stackModifierQueue.IsCreated) _stackModifierQueue.Dispose();
@@ -768,6 +795,21 @@ namespace Wassup.Bridge
             _healAppliedEventQueue = new NativeQueue<Wassup.Battle.Units.HealAppliedEvent>(Allocator.Persistent);
             var healAppliedSingleton = _em.CreateEntity();
             _em.AddComponentData(healAppliedSingleton, new Wassup.Battle.Units.HealAppliedEventsSingleton { queue = _healAppliedEventQueue });
+
+            // Units->Presentation damage-number channel. DamageApplicationSystem enqueues
+            // one event per enemy (AttackUnitTag) whose IncomingDamage was applied.
+            if (_damageNumberEventQueue.IsCreated) _damageNumberEventQueue.Dispose();
+            _damageNumberEventQueue = new NativeQueue<Wassup.Battle.Units.DamageNumberEvent>(Allocator.Persistent);
+            var damageNumberSingleton = _em.CreateEntity();
+            _em.AddComponentData(damageNumberSingleton, new Wassup.Battle.Units.DamageNumberEventsSingleton { queue = _damageNumberEventQueue });
+
+            // Units->Presentation enemy-kill channel. DamageApplicationSystem enqueues
+            // one event per enemy (AttackUnitTag) killed by damage; BattleBridge bumps
+            // the live score HUD.
+            if (_enemyKilledEventQueue.IsCreated) _enemyKilledEventQueue.Dispose();
+            _enemyKilledEventQueue = new NativeQueue<Wassup.Battle.Units.EnemyKilledEvent>(Allocator.Persistent);
+            var enemyKilledSingleton = _em.CreateEntity();
+            _em.AddComponentData(enemyKilledSingleton, new Wassup.Battle.Units.EnemyKilledEventsSingleton { queue = _enemyKilledEventQueue });
 
             // CC event channel. CcApplySystem drains this queue each frame to apply
             // impulse / slow buffers to enemy entities.
@@ -1506,6 +1548,8 @@ namespace Wassup.Bridge
             DrainUnitAttackVisualEvents();
             DrainProjectileHitEvents();
             DrainHealAppliedEvents();
+            DrainDamageNumberEvents();
+            DrainEnemyKilledEvents();
             DrainAttackOutputLogEvents();
             DrainHazardSpawnRequests();
             DrainHazardRuntimeEvents();
@@ -1711,6 +1755,31 @@ namespace Wassup.Bridge
             {
                 if (evt.amount <= 0f) continue;
                 vfxSpawner.SpawnHealApplied(new Vector3(evt.position.x, evt.position.y, evt.position.z), evt.amount);
+            }
+        }
+
+        // Enemy-only floating damage numbers. DamageApplicationSystem enqueues one
+        // event per enemy whose IncomingDamage was applied; spawn a popup at each.
+        private void DrainDamageNumberEvents()
+        {
+            if (!_damageNumberEventQueue.IsCreated) return;
+            if (damageNumberSpawner == null) { _damageNumberEventQueue.Clear(); return; }
+            while (_damageNumberEventQueue.TryDequeue(out var evt))
+            {
+                if (evt.amount <= 0f) continue;
+                damageNumberSpawner.Spawn(
+                    new Vector3(evt.position.x, evt.position.y, evt.position.z), evt.amount);
+            }
+        }
+
+        // Enemy kills → live score HUD. One score bump per enemy killed by damage.
+        private void DrainEnemyKilledEvents()
+        {
+            if (!_enemyKilledEventQueue.IsCreated) return;
+            if (scoreHud == null) { _enemyKilledEventQueue.Clear(); return; }
+            while (_enemyKilledEventQueue.TryDequeue(out _))
+            {
+                scoreHud.OnEnemyKilled();
             }
         }
 

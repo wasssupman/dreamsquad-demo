@@ -18,6 +18,7 @@ namespace Wassup.Battle.Units
     {
         private ComponentLookup<ModifierStats> _buffStatsLookup;
         private ComponentLookup<LocalTransform> _transformLookup;
+        private ComponentLookup<AttackUnitTag> _attackTagLookup;
         private BufferLookup<IncomingHeal> _healBufferLookup;
 
         [BurstCompile]
@@ -26,6 +27,7 @@ namespace Wassup.Battle.Units
             state.RequireForUpdate<IncomingDamage>();
             _buffStatsLookup  = state.GetComponentLookup<ModifierStats>(isReadOnly: true);
             _transformLookup  = state.GetComponentLookup<LocalTransform>(isReadOnly: true);
+            _attackTagLookup  = state.GetComponentLookup<AttackUnitTag>(isReadOnly: true);
             _healBufferLookup = state.GetBufferLookup<IncomingHeal>(isReadOnly: false);
         }
 
@@ -35,8 +37,11 @@ namespace Wassup.Battle.Units
             float dt = SystemAPI.Time.DeltaTime;
             _buffStatsLookup.Update(ref state);
             _transformLookup.Update(ref state);
+            _attackTagLookup.Update(ref state);
             _healBufferLookup.Update(ref state);
             bool hasHealAppliedQueue = SystemAPI.TryGetSingletonRW<HealAppliedEventsSingleton>(out var healAppliedSingleton);
+            bool hasDamageNumberQueue = SystemAPI.TryGetSingletonRW<DamageNumberEventsSingleton>(out var damageNumberSingleton);
+            bool hasEnemyKilledQueue = SystemAPI.TryGetSingletonRW<EnemyKilledEventsSingleton>(out var enemyKilledSingleton);
 
             var ecb = new EntityCommandBuffer(Allocator.Temp);
             foreach (var (health, damageBuffer, entity) in
@@ -56,6 +61,19 @@ namespace Wassup.Battle.Units
                     totalDamage += damageBuffer[i].amount;
                 damageBuffer.Clear();
                 totalDamage *= dmgTakenMul;
+
+                // Enemy-only floating damage number. Filter to AttackUnitTag so defender
+                // hits produce no popup (per spec scope). amount is post-mitigation damage.
+                if (hasDamageNumberQueue && totalDamage > 0f
+                    && _attackTagLookup.HasComponent(entity)
+                    && _transformLookup.HasComponent(entity))
+                {
+                    damageNumberSingleton.ValueRW.queue.Enqueue(new DamageNumberEvent
+                    {
+                        position = _transformLookup[entity].Position,
+                        amount = totalDamage,
+                    });
+                }
 
                 // ── IncomingHeal drain (pulse channel — must Clear each frame) ───
                 float pulseHeal = 0f;
@@ -88,6 +106,19 @@ namespace Wassup.Battle.Units
                 if (newHp <= 0f)
                 {
                     ecb.AddComponent<DeadTag>(entity);
+
+                    // Enemy killed by damage → bump live score. Only AttackUnitTag
+                    // (enemies); goal-reach removal goes through UnitLifecycleSystem
+                    // and never reaches this HP<=0 branch.
+                    if (hasEnemyKilledQueue
+                        && _attackTagLookup.HasComponent(entity)
+                        && _transformLookup.HasComponent(entity))
+                    {
+                        enemyKilledSingleton.ValueRW.queue.Enqueue(new EnemyKilledEvent
+                        {
+                            position = _transformLookup[entity].Position,
+                        });
+                    }
                 }
             }
             ecb.Playback(state.EntityManager);

@@ -1050,7 +1050,7 @@ MonoBehaviour:
   draftController: {fileID: 20521825}
   mapSettings: {fileID: 1939162979}
   wavePatternStrip: {fileID: 1634174272}
-  font: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  introDwellSec: 1
 --- !u!4 &563611223
 Transform:
   m_ObjectHideFlags: 0
@@ -1942,6 +1942,61 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1279129161
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1279129163}
+  - component: {fileID: 1279129162}
+  m_Layer: 0
+  m_Name: ScoreHud
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1279129162
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1279129161}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 01d323433481b469e85530baf961e81a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.ScoreHudView
+  scoreFont: {fileID: 11400000, guid: 7f50de03946cd4d229e8920dd91dbd1a, type: 2}
+  scoreMaterial: {fileID: 2100000, guid: 34861eb7e483349f2b94c3d36a80b1b9, type: 2}
+  pointsPerKill: 10
+  rollLerp: 12
+  punchScale: 1.45
+  punchDuration: 0.2
+  flashColor: {r: 1, g: 0.85, b: 0.2, a: 1}
+  baseColor: {r: 1, g: 1, b: 1, a: 1}
+  topOffset: -8
+  valueFontSize: 83
+  captionFontSize: 29
+--- !u!4 &1279129163
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1279129161}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1420088183
 GameObject:
   m_ObjectHideFlags: 0
@@ -2395,6 +2450,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1795146347}
   - component: {fileID: 1795146346}
+  - component: {fileID: 1795146348}
   m_Layer: 0
   m_Name: VfxSpawner
   m_TagString: Untagged
@@ -2435,6 +2491,134 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1795146348
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1795146345}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0c3135382d34f4025b3498e489229564, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Presentation.DamageNumberSpawner
+  popupPrefab: {fileID: 8575853805804975632, guid: 42d63c3da04cf4e7d902a8e4909ce16c, type: 3}
+  style:
+    lifetime: 0.8
+    driftUp: 0.7
+    lowDamage: 1
+    highDamage: 50
+    minFontSize: 5.2
+    maxFontSize: 11.7
+    damageColor:
+      serializedVersion: 2
+      key0: {r: 1, g: 1, b: 1, a: 1}
+      key1: {r: 1, g: 1, b: 1, a: 1}
+      key2: {r: 0, g: 0, b: 0, a: 0}
+      key3: {r: 0, g: 0, b: 0, a: 0}
+      key4: {r: 0, g: 0, b: 0, a: 0}
+      key5: {r: 0, g: 0, b: 0, a: 0}
+      key6: {r: 0, g: 0, b: 0, a: 0}
+      key7: {r: 0, g: 0, b: 0, a: 0}
+      ctime0: 0
+      ctime1: 65535
+      ctime2: 0
+      ctime3: 0
+      ctime4: 0
+      ctime5: 0
+      ctime6: 0
+      ctime7: 0
+      atime0: 0
+      atime1: 65535
+      atime2: 0
+      atime3: 0
+      atime4: 0
+      atime5: 0
+      atime6: 0
+      atime7: 0
+      m_Mode: 0
+      m_ColorSpace: -1
+      m_NumColorKeys: 2
+      m_NumAlphaKeys: 2
+    bigHitPunchMul: 1.6
+    scaleCurve:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0
+        value: 0.4
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 0.15
+        value: 1.25
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 0.35
+        value: 1
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 1
+        value: 0.85
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+    alphaCurve:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0
+        value: 1
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 0.6
+        value: 1
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 1
+        value: 0
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+  headYOffset: 0.6
+  billboardCamera: {fileID: 1420088185}
 --- !u!1 &1939162978
 GameObject:
   m_ObjectHideFlags: 0
@@ -2674,7 +2858,10 @@ MonoBehaviour:
   enemyViewPool: {fileID: 0}
   defenderFallbackViewPool: {fileID: 0}
   spineDefenderYOffset: 0
+  characterBillboardTilt: 35
   vfxSpawner: {fileID: 1795146346}
+  damageNumberSpawner: {fileID: 1795146348}
+  scoreHud: {fileID: 1279129162}
   _projectileViewPool: {fileID: 808760338}
   mapView: {fileID: 211636736}
   placementInput: {fileID: 1495062452}
@@ -2838,3 +3025,4 @@ SceneRoots:
   - {fileID: 313970632}
   - {fileID: 1132040372}
   - {fileID: 563611223}
+  - {fileID: 1279129163}
