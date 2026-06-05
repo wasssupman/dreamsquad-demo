@@ -2,7 +2,7 @@
 
 ## Commit
 
-- `1434911` `feat(combat-feedback): 데미지 숫자 팝업 + 라이브 점수 HUD`
+- `9549e55` `feat(combat-feedback): 데미지 숫자 팝업 + 라이브 점수 HUD`
   (damage-number-popup spec 과 공유 파일을 함께 건드려 단일 커밋)
 
 ## Implemented

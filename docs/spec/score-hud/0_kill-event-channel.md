@@ -24,4 +24,4 @@
 - 채널 16개로 생성/파괴/해제(코드 검토) + `CLAUDE.md` 갱신.
 - 런타임 효과는 unit 1(enqueue) + unit 3(드레인+HUD) 후.
 
-✅ 2026-06-05 compile 클린(unit 1 과 함께 force refresh 검증). 커밋: 1434911
+✅ 2026-06-05 compile 클린(unit 1 과 함께 force refresh 검증). 커밋: 9549e55
