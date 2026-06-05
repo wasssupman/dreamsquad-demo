@@ -79,6 +79,11 @@ namespace Wassup.Core
 
         // squad-loadout Unit 0 — guarantee at least one squad (free starter, per
         // design) with normalized 7-slot arrays, and a valid selection.
+        // rev 2026-06-05: seed a PLAYABLE starter squad. A fresh install (or a device
+        // that ran an earlier build and saved an empty squad) would otherwise resolve
+        // to an empty squad, and GameManager.Start falls back to the legacy draft.
+        // Filling the selected squad from owned units when it is empty makes the build
+        // enter squad mode out of the box.
         static void EnsureDefaultSquad(PlayerProfile p)
         {
             if (p.squads == null) p.squads = new System.Collections.Generic.List<SquadSave>();
@@ -89,6 +94,15 @@ namespace Wassup.Core
             foreach (var s in p.squads) if (s != null) s.NormalizeSlots();
             if (string.IsNullOrEmpty(p.selectedSquadId) || p.SelectedSquad() == null)
                 p.selectedSquadId = p.squads[0].id;
+
+            // Seed only when the selected squad is empty — never overwrite a squad the
+            // player has filled. Fills slots in owned order, up to SlotCount.
+            var selected = p.SelectedSquad();
+            if (selected != null && selected.IsEmpty() && p.ownedUnitIds != null && p.ownedUnitIds.Count > 0)
+            {
+                int n = Mathf.Min(SquadSave.SlotCount, p.ownedUnitIds.Count);
+                for (int i = 0; i < n; i++) selected.unitIds[i] = p.ownedUnitIds[i];
+            }
         }
 
         static void TryBackup(string path)

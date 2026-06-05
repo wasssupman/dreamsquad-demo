@@ -101,8 +101,11 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
-        public void NewProfile_HasOneEmptySelectedSquad()
+        public void NewProfile_HasSeededStarterSquad()
         {
+            // rev 2026-06-05 — a fresh profile now ships a PLAYABLE starter squad
+            // (selected squad seeded from owned units) so builds enter squad mode
+            // instead of the legacy draft fallback.
             var cat = MakeCatalog("scout", "ranger");
 
             var profile = ProfileStore.LoadOrCreateAt(_path, cat);
@@ -112,8 +115,21 @@ namespace Wassup.Tests.EditMode
             Assert.IsNotNull(squad, "selected squad resolves");
             Assert.AreEqual("squad_1", profile.selectedSquadId);
             Assert.AreEqual(SquadSave.SlotCount, squad.unitIds.Count, "7 slots");
-            Assert.IsTrue(squad.IsEmpty());
-            Assert.AreEqual(0, squad.FilledCount());
+            Assert.IsFalse(squad.IsEmpty(), "starter squad is seeded, not empty");
+            // owned has 2 → 2 slots filled, in owned order.
+            Assert.AreEqual(2, squad.FilledCount());
+            Assert.AreEqual("scout", squad.unitIds[0]);
+            Assert.AreEqual("ranger", squad.unitIds[1]);
+        }
+
+        [Test]
+        public void StarterSquad_FillsUpToSlotCount()
+        {
+            // owned > SlotCount → exactly SlotCount filled.
+            var cat = MakeCatalog("a", "b", "c", "d", "e", "f", "g", "h", "i");
+            var profile = ProfileStore.LoadOrCreateAt(_path, cat);
+            var squad = profile.SelectedSquad();
+            Assert.AreEqual(SquadSave.SlotCount, squad.FilledCount());
         }
 
         [Test]
@@ -121,8 +137,12 @@ namespace Wassup.Tests.EditMode
         {
             var cat = MakeCatalog("scout", "ranger");
             var profile = ProfileStore.LoadOrCreateAt(_path, cat);
-            profile.SelectedSquad().unitIds[0] = "scout";
-            profile.SelectedSquad().unitIds[3] = "ranger";
+            // Clear the seeded starter so this test exercises explicit assignment
+            // + empty-slot round-trip deterministically.
+            var sel = profile.SelectedSquad();
+            for (int i = 0; i < sel.unitIds.Count; i++) sel.unitIds[i] = "";
+            sel.unitIds[0] = "scout";
+            sel.unitIds[3] = "ranger";
             ProfileStore.SaveAt(_path, profile);
 
             var loaded = ProfileStore.LoadOrCreateAt(_path, cat);
