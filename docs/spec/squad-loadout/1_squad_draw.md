@@ -47,3 +47,29 @@ public static class SquadDraw
 - compile + read_console clean.
 
 > 완료 확인 2026-06-02 — EditMode SquadDrawTests 5/5(결정성/full7/variable≤3·겹침없음/빈스쿼드/빈슬롯 제외).
+
+---
+
+## rev 2026-06-05 — 결정적 편성 (랜덤 제거)
+
+**이유**: 매 게임 시작마다 라인업이 달라져 "아웃게임에서 저장한 스쿼드가 안 지켜진다"는 사용자 혼란. 저장/로드는 정상이었고, 변동의 원인은 본 함수의 가변 랜덤(스쿼드 + 랜덤3 → 랜덤7, time-seed)이었음. 사용자 결정: **저장 스쿼드를 그대로 반입**.
+
+**변경 후 계약**:
+
+```csharp
+public static class SquadDraw
+{
+    public const int FieldCount = 7;
+    // 저장 스쿼드의 비어있지 않은 id 를 중복 제거 + 슬롯 순서 보존 + 최대 7 로 반환.
+    public static List<string> Resolve(IReadOnlyList<string> squadUnitIds);
+}
+```
+
+- `VariableCount`, `ownedUnitIds`, `seed`, `Shuffle` **제거**.
+- 호출측 `GameManager.StartSquadMatch`: `SquadDraw.Resolve(squad.unitIds)` 로 단순화, 미사용 `GenerateSeed()` 제거.
+- 규칙: 빈 슬롯("") 제외 · 중복 첫 등장만 · 순서 보존 · 7 초과면 앞 7. candidates 0 → 빈 리스트(호출측 드래프트 폴백).
+
+**완료 기준 (rev)**:
+- EditMode `SquadDrawTests` 갱신: 순서보존/결정성/빈슬롯제외/중복제거/7캡/빈·null→빈.
+- compile + EditMode 통과.
+- Play: 같은 저장 스쿼드로 두 번 시작 → 동일 유닛 반입.

@@ -131,7 +131,8 @@ namespace Wassup.Core
         }
 
         // squad-loadout Unit 3 — skip the draft and bring the selected squad
-        // (plus variable randoms) straight into placement.
+        // straight into placement. Deterministic: exactly the saved squad units
+        // (rev 2026-06-05 — no random fill).
         private void StartSquadMatch(SquadSave squad)
         {
             battleBridge.SetMapGenerationOptions(MapGenerationOptions.Default);
@@ -142,7 +143,7 @@ namespace Wassup.Core
             // skips its rebuild.
             battleBridge.PrepareDraftMap();
 
-            var ids = SquadDraw.Resolve(squad.unitIds, profileSO.profile.ownedUnitIds, GenerateSeed());
+            var ids = SquadDraw.Resolve(squad.unitIds);
             var units = new List<DefenderUnitData>(ids.Count);
             foreach (var id in ids)
             {
@@ -179,9 +180,6 @@ namespace Wassup.Core
             if (MapSetupRequested != null) MapSetupRequested.Invoke();
             else PlacementRequested?.Invoke();
         }
-
-        private static int GenerateSeed() =>
-            unchecked(System.Environment.TickCount ^ UnityEngine.Random.Range(int.MinValue, int.MaxValue));
 
         private void OnDisable()
         {
