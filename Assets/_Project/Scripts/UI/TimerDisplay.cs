@@ -30,6 +30,12 @@ namespace Wassup.UI
                 draftController.DraftConfirmed += OnBattleStart;
                 draftController.DraftStarted += OnDraftStarted;
             }
+            // Squad mode has no draft — placement entry comes via
+            // GameManager.PlacementRequested. Show the timer there too, else the
+            // countdown never appears in squad mode. (GameManager sets Instance in
+            // Awake, before this OnEnable.)
+            if (GameManager.Instance != null)
+                GameManager.Instance.PlacementRequested += OnBattleStart;
         }
 
         private void OnDisable()
@@ -39,6 +45,8 @@ namespace Wassup.UI
                 draftController.DraftConfirmed -= OnBattleStart;
                 draftController.DraftStarted -= OnDraftStarted;
             }
+            if (GameManager.Instance != null)
+                GameManager.Instance.PlacementRequested -= OnBattleStart;
         }
 
         private void OnBattleStart() { if (_panel != null) _panel.SetActive(true); }
@@ -79,7 +87,7 @@ namespace Wassup.UI
             prt.anchorMin = new Vector2(0.5f, 1f);
             prt.anchorMax = new Vector2(0.5f, 1f);
             prt.pivot = new Vector2(0.5f, 1f);
-            prt.anchoredPosition = new Vector2(0f, -20f);
+            prt.anchoredPosition = new Vector2(0f, -12f);
             prt.sizeDelta = new Vector2(200f, 60f);
 
             var labelGO = new GameObject("Label", typeof(RectTransform));

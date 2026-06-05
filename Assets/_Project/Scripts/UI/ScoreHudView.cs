@@ -31,7 +31,8 @@ namespace Wassup.UI
         [SerializeField] private Color baseColor = Color.white;
 
         [Header("Layout")]
-        [SerializeField] private float topOffset = -8f;
+        // Sits just below the timer (timer panel: y -12, height 60 → bottom ~-72).
+        [SerializeField] private float topOffset = -76f;
         [SerializeField] private float valueFontSize = 83f;
         [SerializeField] private float captionFontSize = 29f;
 

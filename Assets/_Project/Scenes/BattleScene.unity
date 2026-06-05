@@ -764,7 +764,7 @@ Canvas:
   m_SortingBucketNormalizedSize: 0
   m_VertexColorAlwaysGammaSpace: 0
   m_UseReflectionProbes: 0
-  m_AdditionalShaderChannelsFlag: 0
+  m_AdditionalShaderChannelsFlag: 25
   m_UpdateRectTransformForStandalone: 0
   m_SortingLayerID: 0
   m_SortingOrder: 1000
@@ -1503,7 +1503,7 @@ MonoBehaviour:
   m_spriteAsset: {fileID: 0}
   m_tintAllSprites: 0
   m_StyleSheet: {fileID: 0}
-  m_TextStyleHashCode: 0
+  m_TextStyleHashCode: -1183493901
   m_overrideHtmlColors: 0
   m_faceColor:
     serializedVersion: 2
@@ -1979,7 +1979,7 @@ MonoBehaviour:
   punchDuration: 0.2
   flashColor: {r: 1, g: 0.85, b: 0.2, a: 1}
   baseColor: {r: 1, g: 1, b: 1, a: 1}
-  topOffset: -8
+  topOffset: -76
   valueFontSize: 83
   captionFontSize: 29
 --- !u!4 &1279129163
@@ -2037,7 +2037,7 @@ Camera:
   m_BackGroundColor: {r: 0.19215687, g: 0.3019608, b: 0.4745098, a: 0}
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
-  m_FOVAxisMode: 0
+  m_FOVAxisMode: 1
   m_Iso: 200
   m_ShutterSpeed: 0.005
   m_Aperture: 16
@@ -2057,7 +2057,7 @@ Camera:
     height: 1
   near clip plane: 0.3
   far clip plane: 1000
-  field of view: 60
+  field of view: 47.448402
   orthographic: 0
   orthographic size: 5
   m_Depth: -1
@@ -2083,8 +2083,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1420088183}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.5, y: 0, z: 0, w: 0.8660254}
-  m_LocalPosition: {x: 9.5, y: 15, z: -2}
+  m_LocalRotation: {x: 0.53169423, y: 0, z: 0, w: 0.8469364}
+  m_LocalPosition: {x: 9.52, y: 12.8, z: -1.6}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2837,10 +2837,6 @@ MonoBehaviour:
     spawnLaneCount: 2
   tileSize: 1
   spawnHeight: 0.5
-  autoFrameMainCamera: 1
-  cameraPitch: 52
-  cameraFieldOfView: 42
-  cameraFramePadding: 1.12
   resultScreen: {fileID: 441089446}
   defenderPool:
   - {fileID: 11400000, guid: 1b476721523af4fd68b6d3d6e1dd265a, type: 2}
