@@ -1,6 +1,13 @@
 # Spec — match-seed-unification (단일 매치 시드)
 
-**상태: 초안 2026-06-10** — 승인 대기. 구현 전.
+**상태: 완료 2026-06-10** — 작업 0~3 전부 구현·검증. handoff: `4_handoff_summary.md`
+
+| 단위 | 커밋 |
+|---|---|
+| 0 match_seed_util | 31b9f08 |
+| 1 gamemanager_owns_seed | 5d4e2b4 |
+| 2 bridge_map_seed | 4bbd59f |
+| 3 bridge_wave_seed | 4bbd59f |
 
 ## 목표
 
