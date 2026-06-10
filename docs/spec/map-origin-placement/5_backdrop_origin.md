@@ -27,6 +27,13 @@ var boardHalfWorld = new Vector2(gs.x * tileSize * 0.5f, gs.y * tileSize * 0.5f)
 
 ## 완료 기준
 
+> ✅ 검증 2026-06-10 (Play, MapView (0.4,2.7,-1.2)) — backdrop `_Backdrop` root 는 MapView 자식이 아니라
+> world-root(Vector3.zero)였음 → 작업 필요했음. `BackdropMounter.Mount` 에 `Vector3 origin` 파라미터 추가,
+> `boardCenter = origin + ...` 로 수정. BattleBridge 가 origin 캡처를 mapView.Initialize 직후(Mount/BuildFlowField
+> 보다 먼저)로 이동하고 `Mount(..., BoardOrigin)` 전달. 라이브 확인: 엣지 프롭 12개가 y=2.70, x=0.4/10.4/20.4,
+> z=11.8(보드 둘레)로 정렬(수정 전이면 y=0 에 떠서 어긋남). skybox 는 카메라 360 이라 무관. 컴파일 green,
+> EditMode 307 passed. 커밋: (다음 줄)
+
 - [ ] (필요한 경우) compile green.
 - [ ] MapView 이동 상태 Play: 엣지 프롭/배경이 옮겨진 보드 둘레에 정렬.
 - [ ] 배경이 이미 MapView 자식이라 자동 정렬되면, 그 사실을 handoff 에 기록하고 작업 생략.

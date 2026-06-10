@@ -14,8 +14,10 @@ namespace Wassup.Presentation.Backdrop
         private static bool _skyboxOverridden;
         private static Material _activeSkyboxMat;
 
+        // origin = board 월드 원점(= MapView.transform.position). 엣지 프롭이 옮겨진
+        // 보드 둘레에 정렬되도록 boardCenter 에 가산. map-origin-placement.
         public static GameObject Mount(GeneratedMap map, Camera camera,
-                                       SeasonBackdropData data, float tileSize)
+                                       SeasonBackdropData data, float tileSize, Vector3 origin = default)
         {
             var root = new GameObject("_Backdrop");
             root.transform.position = Vector3.zero;
@@ -64,7 +66,7 @@ namespace Wassup.Presentation.Backdrop
 
             int2 gs = map.gridSize;
             var boardHalfWorld = new Vector2(gs.x * tileSize * 0.5f, gs.y * tileSize * 0.5f);
-            var boardCenter    = new Vector3(gs.x * tileSize * 0.5f, 0f, gs.y * tileSize * 0.5f);
+            var boardCenter    = origin + new Vector3(gs.x * tileSize * 0.5f, 0f, gs.y * tileSize * 0.5f);
 
             for (int i = 0; i < data.edgeProps.Length; i++)
             {

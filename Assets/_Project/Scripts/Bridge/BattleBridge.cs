@@ -414,9 +414,8 @@ namespace Wassup.Bridge
             // 기존 싱글톤 있으면 arrays dispose + entity destroy (멱등성 보장)
             TeardownFlowField();
 
-            // map-origin-placement: board 원점을 MapView.transform.position 에서 1회 캡처.
-            // 비주얼(MapView 자식 local)과 시뮬레이션(ECS world)을 같은 좌표계로 정렬.
-            _boardOrigin = mapView != null ? (float3)mapView.transform.position : float3.zero;
+            // map-origin-placement: _boardOrigin 은 BuildMapForBattle 이 mapView.Initialize 직후
+            // 캡처한다(backdrop Mount 가 BuildFlowField 보다 먼저 호출되므로 그쪽이 단일 캡처 지점).
 
             int w = _generatedMap.gridSize.x;
             int h = _generatedMap.gridSize.y;
@@ -576,10 +575,15 @@ namespace Wassup.Bridge
             if (mapView != null) mapView.Initialize(_generatedMap, tileSize, theme);
             if (placementInput != null) placementInput.Initialize(_generatedMap, tileSize);
 
+            // map-origin-placement: board 원점을 MapView.transform.position 에서 1회 캡처.
+            // 비주얼(MapView 자식 local)과 시뮬레이션(ECS world)을 같은 좌표계로 정렬.
+            // backdrop Mount / BuildFlowField 모두 이 값을 사용하므로 둘보다 먼저 캡처.
+            _boardOrigin = mapView != null ? (float3)mapView.transform.position : float3.zero;
+
             // Backdrop mount — always Unmount first so RebuildDraftMap is safe
             BackdropMounter.Unmount(ref _backdropRoot);
             if (enableSeasonBackdrop && backdrop != null && Camera.main != null)
-                _backdropRoot = BackdropMounter.Mount(_generatedMap, Camera.main, backdrop, tileSize);
+                _backdropRoot = BackdropMounter.Mount(_generatedMap, Camera.main, backdrop, tileSize, BoardOrigin);
 
             BuildFlowField();
 

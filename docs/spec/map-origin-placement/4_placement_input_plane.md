@@ -42,7 +42,7 @@ var worldPos = ray.GetPoint(enter);
 > - `FlowFieldSingleton.origin == float3(0.4, 2.7, -1.2)` (ECS 전파 확인)
 > - `CreateDefenderEntity(cell(6,0))` 직접 호출 → LocalTransform `float3(6.4, 3.2, -1.2)` = origin+cell*tileSize 정확히 일치 (수정 전이라면 (6,0.5,0) 월드원점 → 화면 밖). 테스트 엔티티 정리.
 > - 입력 5파일 평면을 `bridge.BoardOrigin` 기준으로, 셀 변환을 `bridge.DebugWorldToCell` 경유로 통일. 컴파일 green, EditMode 307 passed, 콘솔 에러 0.
-> - 커밋: (다음 줄)
+> - 커밋: 8b8ab6f
 >
 > 참고: 클릭/드래그 실제 손 입력 검증은 _running 게이트(placement→battle 전환)와 무관한 좌표 경로가 이미 결정적으로 확인됨. 손 입력 최종 확인은 사용자 실기/에디터 플레이로 권장.
 

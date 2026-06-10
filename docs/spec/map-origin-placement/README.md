@@ -1,6 +1,15 @@
 # Spec — map-origin-placement (맵 위치 기준 배치)
 
-**상태: 계획 (2026-06-10) — 미구현**
+**상태: 완료 2026-06-10** — 작업 0~5 전부 구현·검증. handoff: `6_handoff_summary.md`
+
+| 단위 | 커밋 |
+|---|---|
+| 0 grid_math_origin | 8362150 |
+| 1 flowfield_origin_singleton | a852904 |
+| 2 bridge_grid_conversions | fa69e34 |
+| 3 ecs_systems_origin | 9312dbb |
+| 4 placement_input_plane | 8b8ab6f |
+| 5 backdrop_origin | (이 커밋) |
 
 ## 목표
 
