@@ -22,13 +22,18 @@ namespace Wassup.Battle.Movement
             return math.lengthsq(field.flow[GridMath.CellIndex(cell, field.gridSize)]) < 1e-6f;
         }
 
-        public static float3 ClampToBoundary(float3 desired, int2 currentCell, float tileSize)
+        // origin = board world origin (= MapView.transform.position). Default zero keeps
+        // legacy callers identical. Cell boundaries are offset by origin so the trim
+        // invariant holds in board-local space. See docs/spec/map-origin-placement.
+        public static float3 ClampToBoundary(float3 desired, int2 currentCell, float tileSize, float3 origin = default)
         {
             float half = tileSize * 0.5f - kBoundaryEpsilon;
+            float centerX = origin.x + currentCell.x * tileSize;
+            float centerZ = origin.z + currentCell.y * tileSize;
             return new float3(
-                math.clamp(desired.x, currentCell.x * tileSize - half, currentCell.x * tileSize + half),
+                math.clamp(desired.x, centerX - half, centerX + half),
                 desired.y,
-                math.clamp(desired.z, currentCell.y * tileSize - half, currentCell.y * tileSize + half));
+                math.clamp(desired.z, centerZ - half, centerZ + half));
         }
     }
 }

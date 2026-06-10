@@ -53,5 +53,50 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(0f, world.y);
             Assert.AreEqual(4f, world.z);
         }
+
+        // --- map-origin-placement: board origin offset ---
+
+        [Test]
+        public void WorldToCell_DefaultOrigin_IdenticalToLegacy()
+        {
+            // origin defaults to zero -> behaviour matches the legacy 3-arg overload.
+            var legacy = GridMath.WorldToCell(new float3(5, 0, 3), tileSize: 1f, gridSize: new int2(20, 10));
+            var withOrigin = GridMath.WorldToCell(new float3(5, 0, 3), tileSize: 1f, gridSize: new int2(20, 10), origin: float3.zero);
+            Assert.AreEqual(legacy, withOrigin);
+        }
+
+        [Test]
+        public void WorldToCell_NonZeroOrigin_SubtractsBeforeCellifying()
+        {
+            // Board shifted to (10,0,5). A world point at origin + (5,3) tiles must map to cell (5,3).
+            var origin = new float3(10, 0, 5);
+            var cell = GridMath.WorldToCell(new float3(15, 0, 8), tileSize: 1f, gridSize: new int2(20, 10), origin: origin);
+            Assert.AreEqual(new int2(5, 3), cell);
+        }
+
+        [Test]
+        public void CellToWorldCenter_NonZeroOrigin_AddsOrigin()
+        {
+            var origin = new float3(10, 0, 5);
+            var world = GridMath.CellToWorldCenter(new int2(7, 4), tileSize: 1f, y: 0f, origin: origin);
+            Assert.AreEqual(17f, world.x);
+            Assert.AreEqual(0f, world.y);
+            Assert.AreEqual(9f, world.z);
+        }
+
+        [Test]
+        public void RoundTrip_NonZeroOrigin_PreservesCell()
+        {
+            var origin = new float3(12.5f, 0, -3.5f);
+            var grid = new int2(20, 10);
+            for (int x = 0; x < 8; x++)
+            for (int z = 0; z < 6; z++)
+            {
+                var cell = new int2(x, z);
+                var world = GridMath.CellToWorldCenter(cell, tileSize: 2f, y: 0f, origin: origin);
+                var back = GridMath.WorldToCell(world, tileSize: 2f, gridSize: grid, origin: origin);
+                Assert.AreEqual(cell, back, $"round-trip failed for cell ({x},{z})");
+            }
+        }
     }
 }

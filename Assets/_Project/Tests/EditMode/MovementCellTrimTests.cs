@@ -94,6 +94,29 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
+        public void ClampToBoundary_NonZeroOrigin_OffsetsBounds()
+        {
+            // map-origin-placement: board shifted to (10,0,5). Cell (1,0) center is at
+            // world (11,_,5); clamping an overflow must respect the origin-shifted boundary.
+            var origin = new float3(10, 0, 5);
+            var result = MovementCellTrim.ClampToBoundary(
+                new float3(100f, 0, 100f), new int2(1, 0), tileSize: 1f, origin: origin);
+            // right boundary = 10 + 1*1 + (0.5 - 0.001) = 11.499
+            Assert.AreEqual(11.499f, result.x, 1e-3f);
+            // top boundary = 5 + 0*1 + (0.5 - 0.001) = 5.499
+            Assert.AreEqual(5.499f, result.z, 1e-3f);
+        }
+
+        [Test]
+        public void ClampToBoundary_DefaultOrigin_IdenticalToLegacy()
+        {
+            var legacy = MovementCellTrim.ClampToBoundary(new float3(3f, 0, 0), new int2(1, 0), tileSize: 1f);
+            var withOrigin = MovementCellTrim.ClampToBoundary(new float3(3f, 0, 0), new int2(1, 0), tileSize: 1f, origin: float3.zero);
+            Assert.AreEqual(legacy.x, withOrigin.x, 1e-6f);
+            Assert.AreEqual(legacy.z, withOrigin.z, 1e-6f);
+        }
+
+        [Test]
         public void Obstacle_Cell_Blocks_Movement()
         {
             var field = CreateField();
