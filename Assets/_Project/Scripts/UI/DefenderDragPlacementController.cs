@@ -124,15 +124,24 @@ namespace Wassup.UI
             if (mainCamera == null) return false;
 
             var ray = mainCamera.ScreenPointToRay(screenPosition);
-            var plane = new Plane(Vector3.up, Vector3.zero);
+            // map-origin-placement: 평면을 board 원점 높이에 맞추고, 셀 변환은 bridge 헬퍼 경유.
+            var planeOrigin = bridge != null ? bridge.BoardOrigin : Vector3.zero;
+            var plane = new Plane(Vector3.up, planeOrigin);
             if (!plane.Raycast(ray, out float enter)) return false;
 
             world = ray.GetPoint(enter);
-            float tileSize = bridge != null ? Mathf.Max(0.0001f, bridge.TileSize) : 1f;
-            cell = new Vector2Int(
-                Mathf.FloorToInt(world.x / tileSize + 0.5f),
-                Mathf.FloorToInt(world.z / tileSize + 0.5f));
-            world = bridge != null ? bridge.GridToWorldCenterVector(cell, 0f) : world;
+            if (bridge != null)
+            {
+                var hitCell = bridge.DebugWorldToCell(world);
+                cell = new Vector2Int(hitCell.x, hitCell.y);
+                world = bridge.GridToWorldCenterVector(cell, 0f);
+            }
+            else
+            {
+                cell = new Vector2Int(
+                    Mathf.FloorToInt(world.x + 0.5f),
+                    Mathf.FloorToInt(world.z + 0.5f));
+            }
             return true;
         }
 

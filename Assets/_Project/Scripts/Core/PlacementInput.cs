@@ -63,13 +63,15 @@ namespace Wassup.Core
 
             var screenPos = pointer.position.ReadValue();
             var ray = mainCamera.ScreenPointToRay(screenPos);
-            // Intersect with the y=0 plane (tile surface). Tiles have no colliders — math-based hit.
-            var plane = new Plane(Vector3.up, Vector3.zero);
+            // Intersect with the board-surface plane at board origin height (map-origin-placement).
+            // Tiles have no colliders — math-based hit. Cell math goes through bridge so origin is applied once.
+            var plane = new Plane(Vector3.up, bridge.BoardOrigin);
             if (!plane.Raycast(ray, out float enter)) return;
 
             var worldPos = ray.GetPoint(enter);
-            int tileX = Mathf.FloorToInt(worldPos.x / _tileSize + 0.5f);
-            int tileY = Mathf.FloorToInt(worldPos.z / _tileSize + 0.5f);
+            var hitCell = bridge.DebugWorldToCell(worldPos);
+            int tileX = hitCell.x;
+            int tileY = hitCell.y;
             var cell = new Vector2Int(tileX, tileY);
 
             var gm = GameManager.Instance;

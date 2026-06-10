@@ -37,6 +37,15 @@ var worldPos = ray.GetPoint(enter);
 
 ## 완료 기준
 
+> ✅ 검증 2026-06-10 (MapView 가 실제로 (0.4, 2.7, -1.2) 로 옮겨진 버그 씬, Unity MCP Play) —
+> - `BattleBridge.BoardOrigin == MapView.transform.position == (0.4, 2.7, -1.2)` (라이브 reflection)
+> - `FlowFieldSingleton.origin == float3(0.4, 2.7, -1.2)` (ECS 전파 확인)
+> - `CreateDefenderEntity(cell(6,0))` 직접 호출 → LocalTransform `float3(6.4, 3.2, -1.2)` = origin+cell*tileSize 정확히 일치 (수정 전이라면 (6,0.5,0) 월드원점 → 화면 밖). 테스트 엔티티 정리.
+> - 입력 5파일 평면을 `bridge.BoardOrigin` 기준으로, 셀 변환을 `bridge.DebugWorldToCell` 경유로 통일. 컴파일 green, EditMode 307 passed, 콘솔 에러 0.
+> - 커밋: (다음 줄)
+>
+> 참고: 클릭/드래그 실제 손 입력 검증은 _running 게이트(placement→battle 전환)와 무관한 좌표 경로가 이미 결정적으로 확인됨. 손 입력 최종 확인은 사용자 실기/에디터 플레이로 권장.
+
 - [ ] compile green.
 - [ ] MapView 이동 상태 Play: 화면에서 **클릭한 타일과 실제 배치 셀이 일치**(엉뚱한/빈 셀 매핑 해소). 드래그 프리뷰도 커서 아래 타일에 스냅.
 - [ ] 스킬 조준(SkillBar)·해저드 디버그 메뉴의 타일 선택도 옮겨진 맵에서 정확.

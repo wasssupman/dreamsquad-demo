@@ -169,13 +169,21 @@ namespace Wassup.UI
 
             if (mainCamera == null) return;
             var ray = mainCamera.ScreenPointToRay(screenPos);
-            var plane = new Plane(Vector3.up, Vector3.zero);
+            // map-origin-placement: 평면을 board 원점 높이에, 셀 변환은 bridge 헬퍼 경유.
+            var plane = new Plane(Vector3.up, bridge != null ? bridge.BoardOrigin : Vector3.zero);
             if (!plane.Raycast(ray, out float enter)) return;
 
             var worldPos = ray.GetPoint(enter);
-            int tx = Mathf.RoundToInt(worldPos.x / tileSize);
-            int ty = Mathf.RoundToInt(worldPos.z / tileSize);
-            var tile = new Vector2Int(tx, ty);
+            Vector2Int tile;
+            if (bridge != null)
+            {
+                var hitCell = bridge.DebugWorldToCell(worldPos);
+                tile = new Vector2Int(hitCell.x, hitCell.y);
+            }
+            else
+            {
+                tile = new Vector2Int(Mathf.RoundToInt(worldPos.x / tileSize), Mathf.RoundToInt(worldPos.z / tileSize));
+            }
 
             // Phase 6 — verify cost one more time at cast-resolution time in case
             // regen/phase changed while the player was aiming.

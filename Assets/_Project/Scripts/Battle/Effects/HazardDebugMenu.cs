@@ -70,7 +70,7 @@ namespace Wassup.Battle.Effects
             if (Mouse.current == null) return _cell;
 
             Ray ray = camera.ScreenPointToRay(Mouse.current.position.ReadValue());
-            var ground = new Plane(Vector3.up, Vector3.zero);
+            var ground = new Plane(Vector3.up, bridge != null ? bridge.BoardOrigin : Vector3.zero);
             if (!ground.Raycast(ray, out float distance)) return _cell;
 
             Vector3 world = ray.GetPoint(distance);
