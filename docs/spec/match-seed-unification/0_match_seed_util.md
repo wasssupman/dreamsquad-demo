@@ -52,7 +52,7 @@ namespace Wassup.Core
 
 > ✅ 검증 2026-06-10 (Unity MCP, force refresh 후 EditMode) — `Core/MatchSeed.cs` + `MatchSeedTests.cs` 6개
 > 작성. 전체 EditMode **315 total / 313 passed / 0 failed / 2 skipped**(skip 2개는 기존 Ignored). 신규 6개
-> (결정론 3 + decorrelation + 충돌회피 + 0회피) 전부 통과. 컴파일 green, 콘솔 에러 0. 커밋: (다음 줄)
+> (결정론 3 + decorrelation + 충돌회피 + 0회피) 전부 통과. 컴파일 green, 콘솔 에러 0. 커밋: 31b9f08
 
 - [ ] compile green (EditMode 포함).
 - [ ] `MatchSeedTests`: 동일 matchSeed 반복 호출 시 `DeriveMapSeed`/`DeriveWaveSeed`/`DeriveVisualSeed` 각각 동일값.

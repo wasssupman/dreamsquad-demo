@@ -150,6 +150,11 @@ namespace Wassup.Bridge
         // BuildFlowField 에서 mapView.transform.position 으로 캡처. mapView 없으면 zero.
         private float3 _boardOrigin = float3.zero;
 
+        // match-seed-unification — GameManager 가 주입하는 단일 매치 시드.
+        // 맵/웨이브/비주얼 시드가 여기서 파생된다(작업 2/3). 0 = 미주입(즉석 폴백).
+        private int _matchSeed;
+        public void SetMatchSeed(int seed) => _matchSeed = seed;
+
         private struct PendingSpawnEntry
         {
             public SpawnEntry entry;

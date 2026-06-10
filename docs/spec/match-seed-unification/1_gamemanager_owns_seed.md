@@ -44,6 +44,13 @@ public void SetMatchSeed(int seed) => _matchSeed = seed;
 
 ## 완료 기준
 
+> ✅ 검증 2026-06-10 (Unity MCP, force compile) — GameManager 에 `debugFixedMatchSeed` 노브 + `MatchSeed`
+> 프로퍼티 + `EnsureMatchSeed()`(Start 최상단 1회, PrepareDraftMap 이전) 추가. `StartSquadMatch` 는 Start
+> 에서만 호출되어 단일 주입으로 양 경로 커버. BattleBridge 에 `_matchSeed` 필드 + `SetMatchSeed`. 컴파일
+> green, 콘솔 에러 0. 이 단위 단독으로는 맵/웨이브 결과 불변(주입값 미소비). 참고: GameManager.MatchSeed
+> 프로퍼티와 Wassup.Core.MatchSeed 타입 동명이나, 메서드 호출은 정규화 경로(`Wassup.Core.MatchSeed.*`)로
+> 모호성 없음. matchSeed Play 콘솔 로그 검증은 작업 2/3 소비 후 일괄. 커밋: (다음 줄)
+
 - [ ] compile green, 콘솔 에러 0.
 - [ ] Play 시 콘솔에 `[GameManager] matchSeed=...` 1회 출력(Draft·Squad 경로 모두).
 - [ ] `debugFixedMatchSeed` 고정값으로 두 번 Play → 로그의 matchSeed 동일.

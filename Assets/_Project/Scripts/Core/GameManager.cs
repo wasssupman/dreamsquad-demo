@@ -24,6 +24,13 @@ namespace Wassup.Core
         // in Start; null/empty → existing draft path).
         [SerializeField] private PlayerProfileSO profileSO;
         [SerializeField] private DefenderCatalog catalog;
+
+        // match-seed-unification — 단일 매치 시드 소유. 맵·웨이브가 여기서 파생된다.
+        [Header("Match Seed")]
+        [Tooltip("0 이면 매 판 새 시드. 0 이 아니면 재현용 고정 — 맵·웨이브가 매 판 동일.")]
+        [SerializeField] private int debugFixedMatchSeed = 0;
+        public int MatchSeed { get; private set; }
+
         public BattleLogger Logger => logger;
         public DraftController DraftController => draftController;
         public CostRuntime CostRuntime => costRuntime;
@@ -64,6 +71,7 @@ namespace Wassup.Core
 
         private void Awake()
         {
+            Screen.SetResolution(1920, 1080, true);
             if (Instance != null && Instance != this)
             {
                 Destroy(gameObject);
@@ -99,10 +107,23 @@ namespace Wassup.Core
             if (logger != null) logger.StartSession();
         }
 
+        // match-seed-unification — 매치당 1회: 고정 노브 우선, 아니면 새 랜덤 시드.
+        // BattleBridge 에 주입하면 맵·웨이브가 이 시드에서 파생된다(작업 2/3).
+        private void EnsureMatchSeed()
+        {
+            MatchSeed = debugFixedMatchSeed != 0 ? debugFixedMatchSeed : Wassup.Core.MatchSeed.GenerateRandom();
+            if (battleBridge != null) battleBridge.SetMatchSeed(MatchSeed);
+            Debug.Log($"[GameManager] matchSeed={MatchSeed} (fixed={debugFixedMatchSeed != 0})");
+        }
+
         // Start runs after all Awake/OnEnable of peers, so DraftView has subscribed
         // to DraftController events before we emit DraftStarted.
         private void Start()
         {
+            // match-seed-unification — 맵을 빌드하는 PrepareDraftMap 보다 먼저 매치 시드를
+            // 확정·주입한다. Draft·Squad 양 경로 공통으로 여기서 1회 보장.
+            EnsureMatchSeed();
+
             // squad-loadout Unit 3 — squad mode takes priority. Empty/unset squad
             // falls through to the existing draft path (A non-destructive).
             var squad = (profileSO != null && profileSO.profile != null) ? profileSO.profile.SelectedSquad() : null;
