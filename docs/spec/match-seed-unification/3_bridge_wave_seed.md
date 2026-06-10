@@ -49,6 +49,13 @@ public int ResolveWaveSeed() => ...; // 본문 유지, 라이브 호출처 제�
 
 ## 완료 기준
 
+> ✅ 검증 2026-06-10 (Unity MCP, execute_code 실덱 검증) — `WavePatternGenerator.Generate(deck, seedOverride)`
+> 오버로드 추가(기존 `Generate(deck)` 는 `ResolveWaveSeed()` 위임으로 유지). `TryInitializeGeneratedWaves` 가
+> `DeriveWaveSeed(_matchSeed)` 주입. AttackDeck `waveSeed`/`ResolveWaveSeed` 는 "라이브 미사용" deprecated 주석.
+> 실덱(WaveA) 검증: 같은 matchSeed(999) → 두 번 생성한 12웨이브 plan 이 구성까지 **완전 동일**(wave0 Swift x8 +
+> Runner x6), matchSeed=12345 → **다른 구성**. waveSeed(1590213766) ≠ mapSeed(251418039) ≠ visualSeed
+> (decorrelation). 기존 `Generate(deck)` 호출 테스트 영향 0(EditMode 315/313 통과). 컴파일 green. 커밋: (다음 줄)
+
 - [ ] compile green, 콘솔 에러 0.
 - [ ] `debugFixedMatchSeed` 고정 후 두 번 Play → `_wavePlan.seed` 및 웨이브 구성(유닛/카운트) 동일.
 - [ ] `debugFixedMatchSeed=0` 으로 두 번 Play → 웨이브 구성 서로 다름(고정 해소 — 이번 spec 핵심 관찰).

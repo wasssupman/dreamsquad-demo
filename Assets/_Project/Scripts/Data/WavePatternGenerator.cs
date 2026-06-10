@@ -10,8 +10,16 @@ namespace Wassup.Data
         public static GeneratedWavePlan Generate(AttackDeck deck)
         {
             if (deck == null) throw new ArgumentNullException(nameof(deck));
+            return Generate(deck, deck.ResolveWaveSeed());
+        }
+
+        // match-seed-unification — 라이브 경로용. 시드를 외부(GameManager.matchSeed 파생)에서 주입.
+        // 덱의 나머지 설정(풀/웨이브 수/spacing)은 그대로 사용.
+        public static GeneratedWavePlan Generate(AttackDeck deck, int seedOverride)
+        {
+            if (deck == null) throw new ArgumentNullException(nameof(deck));
             return Generate(
-                deck.ResolveWaveSeed(),
+                seedOverride,
                 deck.waveGeneratorVersion,
                 deck.timerDurationSec,
                 deck.minWaveCount,

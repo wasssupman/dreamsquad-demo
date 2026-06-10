@@ -40,6 +40,13 @@ public int EffectiveSeed => ...; // 본문 유지, 호출처 제거
 
 ## 완료 기준
 
+> ✅ 검증 2026-06-10 (Unity MCP) — `BuildMapForBattle` 맵 시드를 `MatchSeed.DeriveMapSeed(_matchSeed)`,
+> visualSeed 를 `DeriveVisualSeed(_matchSeed)` 로 교체. `mapSettings.EffectiveSeed`/`defaultSeed` deprecated
+> 주석, 호출처 0(grep 확인). Play(고정 matchSeed=999) reflection: `GameManager.MatchSeed=999` →
+> `BattleBridge._matchSeed=999` → `_generatedMap.seed=251418039 == DeriveMapSeed(999)` 정확 일치(통합 체인
+> 검증). 파생이 순수 결정론(작업 0 테스트)이므로 고정 시드 → 매 판 동일 맵. 컴파일 green, EditMode 315/313
+> 통과, 콘솔 에러 0. 커밋: (작업 3 과 동일 커밋 — BattleBridge 동일 파일)
+
 - [ ] compile green, 콘솔 에러 0.
 - [ ] `debugFixedMatchSeed` 고정 후 두 번 Play → `_generatedMap.seed` 동일(맵 결정론 재현).
 - [ ] `debugFixedMatchSeed=0` 으로 두 번 Play → 맵 서로 다름(매 판 변화 유지).

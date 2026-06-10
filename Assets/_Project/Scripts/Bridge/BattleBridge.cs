@@ -499,7 +499,10 @@ namespace Wassup.Bridge
             var theme   = SeasonRuntime.Active?.mapTheme;
             var backdrop = SeasonRuntime.Active?.backdrop;
 
-            int seed = mapSettings != null ? mapSettings.EffectiveSeed : 0;
+            // match-seed-unification — 맵 시드는 GameManager 주입 matchSeed 에서 파생.
+            // 미주입(0, 예: 테스트 직접 호출) 시 즉석 random matchSeed 로 폴백해 항상 유효.
+            int matchSeed = _matchSeed != 0 ? _matchSeed : Wassup.Core.MatchSeed.GenerateRandom();
+            int seed = Wassup.Core.MatchSeed.DeriveMapSeed(matchSeed);
             int version = GeneratorVersion;
             var options = mapGenerationOptions.Normalized();
             mapPathShape = options.pathShape;
@@ -858,8 +861,9 @@ namespace Wassup.Bridge
             var hazardSingleton = _em.CreateEntity();
             _em.AddComponentData(hazardSingleton, new Wassup.Battle.Effects.HazardSingleton { cellToEffects = _hazardCellToEffects });
 
-            // Fix 3 (task 10): seed visual RNG from map seed so jitter is reproducible per session.
-            int visualSeed = (mapSettings != null ? mapSettings.EffectiveSeed : 42) ^ 0x5A5A5A5A;
+            // Fix 3 (task 10): seed visual RNG so jitter is reproducible per session.
+            // match-seed-unification — 비주얼 시드도 matchSeed 계열에서 파생(맵과 decorrelated).
+            int visualSeed = Wassup.Core.MatchSeed.DeriveVisualSeed(_matchSeed != 0 ? _matchSeed : 42);
             _projectileViewPool?.Initialize(visualSeed);
 
             // Build StackModifier threshold registry for StackModifierTickSystem lookups.
@@ -976,7 +980,9 @@ namespace Wassup.Bridge
 
             try
             {
-                _wavePlan = WavePatternGenerator.Generate(deck);
+                // match-seed-unification — 웨이브 시드도 matchSeed 에서 파생(맵과 decorrelated).
+                int waveSeed = Wassup.Core.MatchSeed.DeriveWaveSeed(_matchSeed != 0 ? _matchSeed : 1);
+                _wavePlan = WavePatternGenerator.Generate(deck, waveSeed);
                 GameManager.Instance?.Logger?.SetWavePattern(_wavePlan);
                 return _wavePlan.waves != null && _wavePlan.waves.Count > 0;
             }
