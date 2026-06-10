@@ -37,6 +37,8 @@ WorldToCell 경로 (origin 을 named arg 로 전달):
 - [ ] 적 스폰 위치도 옮겨진 경로 시작점에 정렬.
 - [ ] origin=0(MapView 원점 유지) 시 기존과 100% 동일 동작.
 
+> ✅ 구현/컴파일 2026-06-10 — `GridToWorldCenter` 에 `_boardOrigin` 가산(12개 호출부 자동 정렬), WorldToCell 4곳(InTileRange/DebugWorldToCell/공격로그 src·tgt)에 `origin: _boardOrigin`. `req.origin`(투사체)·cube position 은 이미 월드 좌표라 무변경. 컴파일 green, EditMode 307 passed. 가시 스폰 검증은 입력(작업 4)·이동(작업 3) 완료 후 통합 Play 로 관측. 커밋: (다음 줄)
+
 ## 주의
 
 - 이 단계 이후에도 **이동/타겟팅 시스템(작업 3)** 이 아직 origin 미반영이면, 스폰은 맞지만 적 이동/공격 판정이 어긋날 수 있다. 3 까지 마쳐야 완결. 2→3 을 연속 검증 권장.

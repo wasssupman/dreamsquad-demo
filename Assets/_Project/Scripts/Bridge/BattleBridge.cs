@@ -1247,7 +1247,7 @@ namespace Wassup.Bridge
         // Phase 9 — 모든 스킬 대상 타일 → world center 계산의 단일 소스.
         // Phase 10 에서 tileSize 가 theme 파라미터로 승격될 때 이 helper 만 바꾸면 됨.
         private float3 GridToWorldCenter(Vector2Int cell, float y = 0f)
-            => new float3(cell.x * tileSize, y, cell.y * tileSize);
+            => _boardOrigin + new float3(cell.x * tileSize, y, cell.y * tileSize);
 
         public Vector3 GridToWorldCenterVector(Vector2Int cell, float y = 0f)
         {
@@ -1258,7 +1258,7 @@ namespace Wassup.Bridge
         private bool InTileRange(float3 worldPos, Vector2Int originTile, int range)
         {
             var cell = GridMath.WorldToCell(worldPos, tileSize,
-                           new int2(_generatedMap.gridSize.x, _generatedMap.gridSize.y));
+                           new int2(_generatedMap.gridSize.x, _generatedMap.gridSize.y), origin: _boardOrigin);
             var origin = new int2(originTile.x, originTile.y);
             return GridMath.ChebyshevDistance(cell, origin) <= range;
         }
@@ -1266,7 +1266,7 @@ namespace Wassup.Bridge
         public Unity.Mathematics.int2 DebugWorldToCell(Vector3 worldPosition)
         {
             int2 gridSize = _generatedMap.IsCreated ? _generatedMap.gridSize : GridSize;
-            return GridMath.WorldToCell(new float3(worldPosition.x, worldPosition.y, worldPosition.z), tileSize, gridSize);
+            return GridMath.WorldToCell(new float3(worldPosition.x, worldPosition.y, worldPosition.z), tileSize, gridSize, origin: _boardOrigin);
         }
 
         public bool TryGetNearestWalkCell(Unity.Mathematics.int2 requestedCell, out Unity.Mathematics.int2 walkCell)
@@ -1682,8 +1682,8 @@ namespace Wassup.Bridge
                 var defData = FindDefenderData(evt.attacker);
                 var sourceUnit = defData != null ? defData.displayName : "<unknown>";
                 int2 grid = _generatedMap.IsCreated ? _generatedMap.gridSize : GridSize;
-                var srcCell = GridMath.WorldToCell(evt.sourcePos, tileSize, grid);
-                var tgtCell = GridMath.WorldToCell(evt.targetPos, tileSize, grid);
+                var srcCell = GridMath.WorldToCell(evt.sourcePos, tileSize, grid, origin: _boardOrigin);
+                var tgtCell = GridMath.WorldToCell(evt.targetPos, tileSize, grid, origin: _boardOrigin);
                 string detail = "";
                 if (evt.kind == Wassup.Data.AttackOutputKind.ApplyStat) detail = evt.stat.ToString();
                 else if (evt.kind == Wassup.Data.AttackOutputKind.ApplyStack) detail = evt.stackKind.ToString();
