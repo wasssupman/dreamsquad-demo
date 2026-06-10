@@ -146,6 +146,10 @@ namespace Wassup.Bridge
         // Phase 9 flow field 싱글톤 entity reference
         private Entity _flowFieldSingleton = Entity.Null;
 
+        // map-origin-placement: board 월드 원점. 모든 grid↔world 변환의 단일 소스.
+        // BuildFlowField 에서 mapView.transform.position 으로 캡처. mapView 없으면 zero.
+        private float3 _boardOrigin = float3.zero;
+
         private struct PendingSpawnEntry
         {
             public SpawnEntry entry;
@@ -410,6 +414,10 @@ namespace Wassup.Bridge
             // 기존 싱글톤 있으면 arrays dispose + entity destroy (멱등성 보장)
             TeardownFlowField();
 
+            // map-origin-placement: board 원점을 MapView.transform.position 에서 1회 캡처.
+            // 비주얼(MapView 자식 local)과 시뮬레이션(ECS world)을 같은 좌표계로 정렬.
+            _boardOrigin = mapView != null ? (float3)mapView.transform.position : float3.zero;
+
             int w = _generatedMap.gridSize.x;
             int h = _generatedMap.gridSize.y;
             int n = w * h;
@@ -436,11 +444,13 @@ namespace Wassup.Bridge
                         gridSize = gridSize,
                         goalCell = goal,
                         tileSize = tileSize,
+                        origin = _boardOrigin,
                         version = _generatedMap.generatorVersion,
                     };
 
                     _flowFieldSingleton = _em.CreateEntity();
                     _em.AddComponentData(_flowFieldSingleton, data);
+                    Debug.Log($"[BattleBridge] FlowField built — boardOrigin={_boardOrigin} tileSize={tileSize} grid={gridSize}");
                 }
                 catch
                 {

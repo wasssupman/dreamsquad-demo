@@ -49,4 +49,4 @@ public static float3 ClampToBoundary(float3 desired, int2 currentCell, float til
 - [ ] EditMode 테스트: `WorldToCell` / `CellToWorldCenter` 가 origin=0 일 때 기존 값과 동일, origin=(10,0,5) 일 때 round-trip(`CellToWorldCenter(c) → WorldToCell` == c) 성립.
 - [ ] `ClampToBoundary` origin 적용 시 셀 경계가 origin 만큼 평행이동하는지 1 케이스 검증.
 
-> ✅ 확인 2026-06-10 — Unity MCP EditMode 21/21 passed (GridMathTests 10 + MovementCellTrimTests 11), 컴파일 green, 콘솔 에러 0. 커밋: 4b2e90b
+> ✅ 확인 2026-06-10 — Unity MCP EditMode 21/21 passed (GridMathTests 10 + MovementCellTrimTests 11), 컴파일 green, 콘솔 에러 0. 커밋: 8362150

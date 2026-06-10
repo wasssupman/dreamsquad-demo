@@ -41,6 +41,8 @@ public int    version;
 - [ ] FlowField 재빌드 후에도 `origin` 값이 유지됨.
 - [ ] 이 단계까지는 시스템이 아직 origin 을 **사용하지 않으므로** 동작 변화 없음(origin=0 과 동일). 회귀 없음 확인.
 
+> ✅ 확인 2026-06-10 — 컴파일 green, 콘솔 에러 0, 전체 EditMode 309개 중 307 passed / 0 failed / 2 skipped(기존 Ignored). `BuildFlowField` 에 `Debug.Log(boardOrigin=...)` 추가 — Play 로그 일치 검증은 작업 2 Play 테스트와 함께 관측. 커밋: (다음 줄)
+
 ## 주의
 
 - origin 캡처는 **반드시 BattleBridge 안에서만**. 다른 MonoBehaviour 가 mapView.transform 을 읽어 별도 origin 을 만들지 않는다(계약 위반).

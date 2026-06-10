@@ -14,6 +14,7 @@ namespace Wassup.Battle.Effects
         public int2                gridSize;    // (Width, Height)
         public int2                goalCell;
         public float               tileSize;
+        public float3              origin;      // board 월드 원점 = MapView.transform.position. 기본 zero. map-origin-placement.
         public int                 version;     // 디버그 / Phase 10 event-driven rebuild 마커
 
         public bool IsCreated => flow.IsCreated && dist.IsCreated;
