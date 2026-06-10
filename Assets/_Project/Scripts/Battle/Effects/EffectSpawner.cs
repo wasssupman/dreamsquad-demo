@@ -140,7 +140,7 @@ namespace Wassup.Battle.Effects
             ffQuery.TryGetSingleton<FlowFieldSingleton>(out var ff);
             var cells = HazardShapeSampler.Sample(so.shape, originCell, radius: 1);
             int2 centerCell = ComputeCenterCell(cells);
-            float3 worldPos = GridMath.CellToWorldCenter(centerCell, ff.tileSize);
+            float3 worldPos = GridMath.CellToWorldCenter(centerCell, ff.tileSize, origin: ff.origin);
 
             var entity = em.CreateEntity();
             em.AddComponentData(entity, new Obstacle

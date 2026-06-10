@@ -102,8 +102,9 @@ namespace Wassup.Battle.Combat
                 float3 atkPos = transform.ValueRO.Position;
                 float tileSize = hasFlowField ? flowField.tileSize : 1f;
                 int2 gridSize = hasFlowField ? flowField.gridSize : new int2(128, 128);
+                float3 ffOrigin = hasFlowField ? flowField.origin : float3.zero;
                 int tileRange = GridMath.RangeToTiles(attack.ValueRO.range);
-                int2 atkCell = GridMath.WorldToCell(atkPos, tileSize, gridSize);
+                int2 atkCell = GridMath.WorldToCell(atkPos, tileSize, gridSize, origin: ffOrigin);
                 float bestSq = float.MaxValue;
                 Entity bestTarget = Entity.Null;
                 float3 bestTargetPos = default;
@@ -113,7 +114,7 @@ namespace Wassup.Battle.Combat
                     if (((int)targetFactions[i].value & mask) == 0) continue;
                     if (targetEntities[i] == attackerEntity) continue;
                     float3 targetPos = targetTransforms[i].Position;
-                    int2 tgtCell = GridMath.WorldToCell(targetPos, tileSize, gridSize);
+                    int2 tgtCell = GridMath.WorldToCell(targetPos, tileSize, gridSize, origin: ffOrigin);
                     int tileDist = math.max(math.abs(tgtCell.x - atkCell.x), math.abs(tgtCell.y - atkCell.y));
                     if (tileDist > tileRange) continue;
                     float d2 = DistanceSqToTarget(atkPos, targetEntities[i], targetPos, blockingHazardCellsLookup, hasFlowField, flowField, out var nearestPos);
@@ -225,7 +226,7 @@ namespace Wassup.Battle.Combat
                                         if (hitMaskO[i]) continue;
                                         if (((int)targetFactions[i].value & mask) == 0) continue;
                                         if (targetEntities[i] == attackerEntity) continue;
-                                        int2 tgtCellAoE = GridMath.WorldToCell(targetTransforms[i].Position, tileSize, gridSize);
+                                        int2 tgtCellAoE = GridMath.WorldToCell(targetTransforms[i].Position, tileSize, gridSize, origin: ffOrigin);
                                         int tileDistAoE = math.max(math.abs(tgtCellAoE.x - atkCell.x), math.abs(tgtCellAoE.y - atkCell.y));
                                         if (tileDistAoE > tileRange) continue;
                                         float d2 = DistanceSqToTarget(atkPos, targetEntities[i], targetTransforms[i].Position, blockingHazardCellsLookup, hasFlowField, flowField, out _);
@@ -369,7 +370,7 @@ namespace Wassup.Battle.Combat
                                 float3 dir;
                                 if (SystemAPI.TryGetSingleton<Wassup.Battle.Effects.FlowFieldSingleton>(out var ff))
                                 {
-                                    var targetCell = GridMath.WorldToCell(bestTargetPos, ff.tileSize, ff.gridSize);
+                                    var targetCell = GridMath.WorldToCell(bestTargetPos, ff.tileSize, ff.gridSize, origin: ff.origin);
                                     int fIdx = GridMath.CellIndex(targetCell, ff.gridSize);
                                     float2 flowDir = ff.flow[fIdx];
                                     float3 E = math.normalizesafe(new float3(flowDir.x, 0, flowDir.y));
@@ -424,7 +425,7 @@ namespace Wassup.Battle.Combat
             var cells = hazardCellsLookup[target];
             for (int i = 0; i < cells.Length; i++)
             {
-                float3 cellWorld = GridMath.CellToWorldCenter(cells[i].cell, flowField.tileSize, fallbackTargetPos.y);
+                float3 cellWorld = GridMath.CellToWorldCenter(cells[i].cell, flowField.tileSize, fallbackTargetPos.y, origin: flowField.origin);
                 diff = cellWorld - attackerPos;
                 float d2 = diff.x * diff.x + diff.z * diff.z;
                 if (d2 >= bestSq) continue;

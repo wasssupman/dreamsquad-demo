@@ -36,7 +36,7 @@ namespace Wassup.Battle.Effects
                               .WithAll<PathFollowState>()
                               .WithEntityAccess())
             {
-                int2 cell = GridMath.WorldToCell(transform.ValueRO.Position, flowField.tileSize, flowField.gridSize);
+                int2 cell = GridMath.WorldToCell(transform.ValueRO.Position, flowField.tileSize, flowField.gridSize, origin: flowField.origin);
                 if (!hazardSingleton.cellToEffects.TryGetFirstValue(cell, out var effect, out var iterator)) continue;
 
                 do

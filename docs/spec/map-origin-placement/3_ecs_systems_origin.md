@@ -38,6 +38,8 @@ float3 cellWorld = GridMath.CellToWorldCenter(cells[i].cell, flowField.tileSize,
 
 ## 완료 기준
 
+> ✅ 구현/컴파일 2026-06-10 — 6개 시스템 전부 `origin: field.origin`(또는 ffOrigin 지역변수) 전달: MovementSystem 5곳, AttackSystem 5곳(ffOrigin 도입), MeteorResolutionSystem 2곳(ffOrigin), ZoneApplySystem 1곳, HazardCastSystem 3곳, EffectSpawner 1곳. 재grep 결과 누락 없음. 컴파일 green, 전체 EditMode 307 passed / 0 failed. 단일 커밋(분할 불필요 — origin 기본값 덕에 부분 적용도 컴파일 안전했음). 가시 이동/타겟팅 검증은 작업 4 후 통합 Play. 커밋: (다음 줄)
+
 - [ ] compile green (서브커밋 각각).
 - [ ] MapView 이동 상태에서 Play: 적이 옮겨진 경로를 정확히 따라가고, 디펜더 공격 사거리/타겟팅이 시각적으로 맞고, 해저드/AoE 가 올바른 셀에 적용.
 - [ ] 핵심 계산(이동/타겟팅/데미지)의 기존 EditMode 단위 테스트가 origin=0 에서 그대로 통과(회귀 없음).

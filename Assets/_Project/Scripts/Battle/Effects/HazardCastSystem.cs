@@ -54,7 +54,7 @@ namespace Wassup.Battle.Effects
                     continue;
 
                 float3 casterPos = transform.ValueRO.Position;
-                int2 casterCell = GridMath.WorldToCell(casterPos, flowField.tileSize, flowField.gridSize);
+                int2 casterCell = GridMath.WorldToCell(casterPos, flowField.tileSize, flowField.gridSize, origin: flowField.origin);
                 int tileRange = GridMath.RangeToTiles(cast.ValueRO.range);
                 int mask = cast.ValueRO.targetMask;
                 float bestSq = float.MaxValue;
@@ -67,7 +67,7 @@ namespace Wassup.Battle.Effects
                     if (((int)targetFactions[i].value & mask) == 0) continue;
 
                     float3 targetPos = targetTransforms[i].Position;
-                    int2 targetCell = GridMath.WorldToCell(targetPos, flowField.tileSize, flowField.gridSize);
+                    int2 targetCell = GridMath.WorldToCell(targetPos, flowField.tileSize, flowField.gridSize, origin: flowField.origin);
                     int tileDist = math.max(math.abs(targetCell.x - casterCell.x), math.abs(targetCell.y - casterCell.y));
                     if (tileDist > tileRange) continue;
 
@@ -85,7 +85,7 @@ namespace Wassup.Battle.Effects
 
                 if (hasAttackVisualQueue)
                 {
-                    float3 targetWorld = GridMath.CellToWorldCenter(bestTargetCell, flowField.tileSize, casterPos.y);
+                    float3 targetWorld = GridMath.CellToWorldCenter(bestTargetCell, flowField.tileSize, casterPos.y, origin: flowField.origin);
                     attackVisualSingleton.ValueRW.queue.Enqueue(new UnitAttackVisualEvent
                     {
                         attacker = casterEntity,

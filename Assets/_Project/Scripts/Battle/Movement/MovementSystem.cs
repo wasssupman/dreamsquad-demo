@@ -69,7 +69,7 @@ namespace Wassup.Battle.Movement
                 }
 
                 // 2. Current cell lookup + goal 판정
-                int2 cell = GridMath.WorldToCell(current, field.tileSize, field.gridSize);
+                int2 cell = GridMath.WorldToCell(current, field.tileSize, field.gridSize, origin: field.origin);
                 if (cell.x == field.goalCell.x && cell.y == field.goalCell.y)
                 {
                     ecb.AddComponent<PastGoalTag>(entity);
@@ -81,8 +81,8 @@ namespace Wassup.Battle.Movement
                 for (int t = 0; t < tornadoFields.Length; t++)
                 {
                     var fieldT = tornadoFields[t];
-                    int2 entityCell = GridMath.WorldToCell(current, field.tileSize, field.gridSize);
-                    int2 centerCell = GridMath.WorldToCell(fieldT.centerWorld, field.tileSize, field.gridSize);
+                    int2 entityCell = GridMath.WorldToCell(current, field.tileSize, field.gridSize, origin: field.origin);
+                    int2 centerCell = GridMath.WorldToCell(fieldT.centerWorld, field.tileSize, field.gridSize, origin: field.origin);
                     int tileDist = math.max(math.abs(entityCell.x - centerCell.x), math.abs(entityCell.y - centerCell.y));
                     if (tileDist > fieldT.tileRange) continue;
                     float3 toCenter = fieldT.centerWorld - current;
@@ -139,14 +139,14 @@ namespace Wassup.Battle.Movement
                 float3 desired = current + flowStep + impulseDisplacement;
 
                 // Cell-trim (option B): prevent impulse from pushing into wall or obstacle cells.
-                int2 targetCell = GridMath.WorldToCell(desired, field.tileSize, field.gridSize);
+                int2 targetCell = GridMath.WorldToCell(desired, field.tileSize, field.gridSize, origin: field.origin);
                 if (!cell.Equals(targetCell))
                 {
                     bool isWall = MovementCellTrim.IsWallCell(targetCell, in field);
                     if (!isWall && hasObstacles)
                         isWall = obstacleSingleton.blockedCells.Contains(targetCell);
                     if (isWall)
-                        desired = MovementCellTrim.ClampToBoundary(desired, cell, field.tileSize);
+                        desired = MovementCellTrim.ClampToBoundary(desired, cell, field.tileSize, origin: field.origin);
                 }
 
                 transform.ValueRW.Position = desired;

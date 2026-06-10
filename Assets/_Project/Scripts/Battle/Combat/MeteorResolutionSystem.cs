@@ -64,12 +64,13 @@ namespace Wassup.Battle.Combat
                 float dmg = pending.ValueRO.damage;
                 float tileSize = hasFlowField ? flowField.tileSize : 1f;
                 int2 gridSize = hasFlowField ? flowField.gridSize : new int2(128, 128);
-                int2 centerCell = GridMath.WorldToCell(center, tileSize, gridSize);
+                float3 ffOrigin = hasFlowField ? flowField.origin : float3.zero;
+                int2 centerCell = GridMath.WorldToCell(center, tileSize, gridSize, origin: ffOrigin);
 
                 for (int i = 0; i < attackers.Length; i++)
                 {
                     float3 p = attackerTransforms[i].Position;
-                    int2 entityCell = GridMath.WorldToCell(p, tileSize, gridSize);
+                    int2 entityCell = GridMath.WorldToCell(p, tileSize, gridSize, origin: ffOrigin);
                     int tileDist = math.max(math.abs(entityCell.x - centerCell.x), math.abs(entityCell.y - centerCell.y));
                     if (tileDist > tileRng) continue;
                     ecb.AppendToBuffer(attackers[i], new IncomingDamage { amount = dmg });
