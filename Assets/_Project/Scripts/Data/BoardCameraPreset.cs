@@ -17,5 +17,9 @@ namespace Wassup.Data
         public Vector3 sortAxis = new Vector3(0f, 1f, 0f);
         public float nearClip = 0.1f;
         public float farClip = 100f;
+        [Header("Background (tilemap-mode-adoption unit 1)")]
+        [Tooltip("Tilemap 모드에서 skybox 제거하고 단색 배경 사용.")]
+        public bool solidColorBackground = true;
+        public Color backgroundColor = new Color(0.09f, 0.10f, 0.13f, 1f);
     }
 }

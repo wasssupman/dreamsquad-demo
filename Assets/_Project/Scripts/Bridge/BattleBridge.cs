@@ -80,6 +80,8 @@ namespace Wassup.Bridge
         [SerializeField] private float legacyCharacterScale = 0.7f;
         [SerializeField] private float tilemapCharacterScale = 0.42f;
         [SerializeField] private float tilemapBillboardTilt = 0f;
+        [Tooltip("Tilemap 모드에서 비활성할 Legacy 환경 오브젝트 (씬 정리 후 배선). 빈 배열 = no-op.")]
+        [SerializeField] private GameObject[] tilemapHiddenEnvironment;
         [Header("Stack Modifier Registry")]
         [SerializeField] private Wassup.Data.StackModifierSO[] stackModifierAuthoring;
 
@@ -601,6 +603,7 @@ namespace Wassup.Bridge
             // tilemap-mode-adoption unit 0 — 모드별 유닛 스케일/틸트를 빌드 시 1회 확정 (유닛 스폰 전).
             CharacterVisualScale = UseTilemapView ? tilemapCharacterScale : legacyCharacterScale;
             CharacterBillboardTilt = UseTilemapView ? tilemapBillboardTilt : characterBillboardTilt;
+            ApplyEnvironmentGating(UseTilemapView); // tilemap=숨김 / Legacy3D=복원 (빈 목록이면 no-op)
 
             if (UseTilemapView)
             {
@@ -2582,22 +2585,46 @@ namespace Wassup.Bridge
             var cam = Camera.main;
             if (preset == null || cam == null) return;
 
-            int2 g = _generatedMap.gridSize;
-            // Tilemap 모드 sim origin = zero. 보드 중심(sim) → view.
-            float3 centerSim = new float3((g.x - 1) * 0.5f * tileSize, 0f, (g.y - 1) * 0.5f * tileSize);
-            Vector3 centerView = Wassup.Core.BoardSpace.ToView(centerSim);
-
             cam.orthographic = preset.orthographic;
-            float halfH = g.y * tileSize * 0.5f;
-            float halfW = g.x * tileSize * 0.5f;
             float aspect = cam.aspect > 0.01f ? cam.aspect : (16f / 9f);
-            cam.orthographicSize = Mathf.Max(halfH, halfW / aspect) + preset.orthoSizePadding;
-            cam.transform.position = centerView + preset.positionOffset;
+
+            // unit 1 — 페인트된 보드 실측 bounds 로 프레이밍 (iso 마름모도 정확). 없으면 gridSize 추정 폴백.
+            if (tilemapMapView != null && tilemapMapView.TryGetBoardWorldBounds(out var b))
+            {
+                cam.orthographicSize = Mathf.Max(b.extents.y, b.extents.x / aspect) + preset.orthoSizePadding;
+                cam.transform.position = new Vector3(b.center.x, b.center.y, 0f) + preset.positionOffset;
+            }
+            else
+            {
+                int2 g = _generatedMap.gridSize;
+                float3 centerSim = new float3((g.x - 1) * 0.5f * tileSize, 0f, (g.y - 1) * 0.5f * tileSize);
+                Vector3 centerView = Wassup.Core.BoardSpace.ToView(centerSim);
+                cam.orthographicSize = Mathf.Max(g.y * tileSize * 0.5f, g.x * tileSize * 0.5f / aspect) + preset.orthoSizePadding;
+                cam.transform.position = centerView + preset.positionOffset;
+            }
+
             cam.transform.rotation = Quaternion.Euler(preset.rotationEuler);
             cam.nearClipPlane = preset.nearClip;
             cam.farClipPlane = preset.farClip;
             cam.transparencySortMode = preset.transparencySortMode;
             cam.transparencySortAxis = preset.sortAxis;
+            if (preset.solidColorBackground)
+            {
+                cam.clearFlags = CameraClearFlags.SolidColor; // skybox 제거
+                cam.backgroundColor = preset.backgroundColor;
+            }
+        }
+
+        // unit 1 — Tilemap 모드에서 비활성할 Legacy 환경 오브젝트 (skybox 는 카메라 clearFlags 가 처리).
+        // 빈 배열 = no-op. 실제 대상 배선은 dirty BattleScene 정리(unit 2) 후. Legacy3D 진입 시 복원.
+        private void ApplyEnvironmentGating(bool tilemap)
+        {
+            if (tilemapHiddenEnvironment == null) return;
+            for (int i = 0; i < tilemapHiddenEnvironment.Length; i++)
+            {
+                var go = tilemapHiddenEnvironment[i];
+                if (go != null) go.SetActive(!tilemap);
+            }
         }
 
         // tilemap-view-backend unit 3 — 배치 hover/reject 피드백을 활성 뷰로 분기 (PlacementInput/DragController 공용 단일 경로).

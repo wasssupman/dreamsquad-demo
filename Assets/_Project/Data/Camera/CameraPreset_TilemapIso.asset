@@ -20,3 +20,5 @@ MonoBehaviour:
   sortAxis: {x: 0, y: 1, z: 0}
   nearClip: 0.1
   farClip: 100
+  solidColorBackground: 1
+  backgroundColor: {r: 0.09, g: 0.1, b: 0.13, a: 1}

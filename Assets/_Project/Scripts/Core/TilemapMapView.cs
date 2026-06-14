@@ -65,6 +65,17 @@ namespace Wassup.Core
             SetRendererSorting(overlayTilemap, -10);
         }
 
+        // unit 1 — 페인트된 ground 영역의 월드 bounds (카메라 프레이밍용; iso 마름모도 실측).
+        public bool TryGetBoardWorldBounds(out Bounds bounds)
+        {
+            bounds = default;
+            if (groundTilemap == null) return false;
+            var r = groundTilemap.GetComponent<TilemapRenderer>();
+            if (r == null || r.bounds.size == Vector3.zero) return false;
+            bounds = r.bounds;
+            return true;
+        }
+
         private static void SetRendererSorting(Tilemap tilemap, int order)
         {
             if (tilemap == null) return;
