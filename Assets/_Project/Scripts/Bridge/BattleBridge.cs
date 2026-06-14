@@ -74,6 +74,8 @@ namespace Wassup.Bridge
         [SerializeField] private Wassup.Core.BoardViewMode boardViewMode = Wassup.Core.BoardViewMode.Legacy3D;
         [SerializeField] private Wassup.Core.TilemapMapView tilemapMapView;
         [SerializeField] private Wassup.Data.TileSetData tileSet;
+        [SerializeField] private Wassup.Data.BoardCameraPreset tilemapCameraPresetRect;
+        [SerializeField] private Wassup.Data.BoardCameraPreset tilemapCameraPresetIso;
         [Header("Stack Modifier Registry")]
         [SerializeField] private Wassup.Data.StackModifierSO[] stackModifierAuthoring;
 
@@ -614,6 +616,8 @@ namespace Wassup.Bridge
             // sim↔view 변환의 단일 지점 — BuildFlowField 직전 1회 설정 (Legacy3D = identity).
             Wassup.Core.BoardSpace.Configure(boardViewMode, BoardOrigin, tileSize,
                 tilemapMapView != null ? tilemapMapView.Grid : null);
+
+            if (UseTilemapView) ApplyTilemapCameraPreset(); // 모드별 ortho 카메라 — 매 빌드 idempotent 재적용
 
             BuildFlowField();
 
@@ -2556,6 +2560,33 @@ namespace Wassup.Bridge
             _onPlaceTriggeredEntities.Add(entity);
             LogOnPlaceAndSynergy(binding.data, cell, onPlaceAffected);
             return true;
+        }
+
+        // tilemap-view-backend unit 4 — 모드별 ortho 카메라 프리셋 적용. gridSize+tileSize 로 orthographicSize 계산.
+        // 매 맵 빌드마다 호출 — 프리셋+gridSize 에서 결정론적이라 RebuildDraftMap 재진입에도 idempotent.
+        private void ApplyTilemapCameraPreset()
+        {
+            var preset = boardViewMode == Wassup.Core.BoardViewMode.TilemapIso
+                ? tilemapCameraPresetIso : tilemapCameraPresetRect;
+            var cam = Camera.main;
+            if (preset == null || cam == null) return;
+
+            int2 g = _generatedMap.gridSize;
+            // Tilemap 모드 sim origin = zero. 보드 중심(sim) → view.
+            float3 centerSim = new float3((g.x - 1) * 0.5f * tileSize, 0f, (g.y - 1) * 0.5f * tileSize);
+            Vector3 centerView = Wassup.Core.BoardSpace.ToView(centerSim);
+
+            cam.orthographic = preset.orthographic;
+            float halfH = g.y * tileSize * 0.5f;
+            float halfW = g.x * tileSize * 0.5f;
+            float aspect = cam.aspect > 0.01f ? cam.aspect : (16f / 9f);
+            cam.orthographicSize = Mathf.Max(halfH, halfW / aspect) + preset.orthoSizePadding;
+            cam.transform.position = centerView + preset.positionOffset;
+            cam.transform.rotation = Quaternion.Euler(preset.rotationEuler);
+            cam.nearClipPlane = preset.nearClip;
+            cam.farClipPlane = preset.farClip;
+            cam.transparencySortMode = preset.transparencySortMode;
+            cam.transparencySortAxis = preset.sortAxis;
         }
 
         // tilemap-view-backend unit 3 — 배치 hover/reject 피드백을 활성 뷰로 분기 (PlacementInput/DragController 공용 단일 경로).

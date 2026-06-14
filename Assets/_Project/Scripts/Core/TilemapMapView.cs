@@ -59,6 +59,17 @@ namespace Wassup.Core
             var anchor = new Vector3(0.5f, 0.5f, 0f);
             if (groundTilemap != null) groundTilemap.tileAnchor = anchor;
             if (overlayTilemap != null) overlayTilemap.tileAnchor = anchor;
+
+            // unit 4 — "보드 레이어 < 유닛 레이어" 1규칙. 유닛/VFX 는 BoardSortOrder(양수) 사용 → 보드는 음수.
+            SetRendererSorting(groundTilemap, -20);
+            SetRendererSorting(overlayTilemap, -10);
+        }
+
+        private static void SetRendererSorting(Tilemap tilemap, int order)
+        {
+            if (tilemap == null) return;
+            var r = tilemap.GetComponent<TilemapRenderer>();
+            if (r != null) r.sortingOrder = order;
         }
 
         private void PaintGround(in GeneratedMap map)
