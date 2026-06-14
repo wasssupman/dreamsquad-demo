@@ -1,7 +1,7 @@
 # Tilemap Mode Adoption Spec
 
 **작성일**: 2026-06-14
-**상태**: 진행 중 — unit 0 완료 (2026-06-14, `016a29a`). 다음: unit 1(환경 게이팅+카메라).
+**상태**: 진행 중 — unit 0~1 완료 (2026-06-14). 0: `016a29a` · 1: `4a3fc91`. iso 가 빌드 코드만으로 깔끔히 렌더(모드별 스케일/틸트 + bounds 카메라 + solid 배경 + 환경 게이팅 scaffold). **남은 것: unit 2(영속 저장) — dirty `BattleScene.unity`(무관 827줄) 정리 선행. `tilemapHiddenEnvironment` 실제 대상 배선도 그때.**
 **선행 spec**: `docs/spec/tilemap-view-backend/` (프레임워크·정렬·결정론 완료. 영속 씬 저장 미완 → 본 spec 이 흡수)
 
 ## 목표
