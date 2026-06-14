@@ -2,7 +2,7 @@
 
 **작성일**: 2026-06-12 (rev1 — critic 리뷰 반영)
 **연결 문서**: `docs/plans/2026-06-12-tilemap-view-backend-design.md`
-**상태**: 진행 중 — unit 0~2 검증 완료 (2026-06-14). 0: `4bd8cff` · 1a: `371130b` · 1b: `f4bfa8e` · 2: `cc62a71`. Legacy3D Play 회귀 0(사용자 확인) + TilemapRect Play(메모리 배선) 보드 페인트·헬스바 게이팅·RebuildDraftMap 잔상0 검증. **남은 것 = `_TilemapBoard`+`BattleBridge` 필드의 영속 씬 저장** — dirty `BattleScene.unity`(무관 827줄) 정리 후. 다음 코드 작업: unit 3(프레젠테이션 경계).
+**상태**: 진행 중 — unit 0~3 검증 완료 (2026-06-14). 0: `4bd8cff` · 1: `371130b`/`f4bfa8e` · 2: `cc62a71` · 3: `f8105ba`. TilemapRect Play(메모리 배선)로 보드 페인트·헬스바 게이팅·유닛 셀 정렬(d=0.000) 확정, Legacy3D=identity 회귀무변경. **남은 것: ① `_TilemapBoard`+`BattleBridge` 필드 영속 씬 저장(dirty `BattleScene.unity` 정리 후) ② unit 4(카메라/sorting) ③ unit 5(iso 시각+모드3종 sim 결정론)**. `BattleScene.unity` 미커밋.
 **목표**: Unity Tilemap 을 뷰 백엔드로 도입해 ① 타일 에셋 자유 교체 ② Rectangle / Isometric 레이아웃 토글 실험이 가능한 프레임웍을 만든다. 시뮬레이션 계층(`GeneratedMap`/`FlowFieldSingleton`/`GridMath`/생성기)은 변경하지 않는다.
 
 ## 검증 질문
@@ -51,3 +51,4 @@
 - Tilemap 모드용 2D 외곽 연출 (backdrop 대체)
 - 실험 종료 후 MapView(region mesh) 제거 여부 결정
 - 3D VFX(파티클/스핀 축/`Vector3.up` 관성)의 rect·iso 정합 튜닝 — 본 spec 은 위치 정렬까지만 보장
+- **해저드/장애물 비주얼 Tilemap 정렬** [S] — `BattleBridge.SpawnHazardWithVisual`/`SpawnBlockingHazardWithVisual`/destruction VFX/DebugObstacle 큐브. unit 3 스캔에서 발견했으나 hazard-caster 별도 feature 라 unit 3 완료기준 밖 → 이관. Tilemap 모드에서 셀 정렬하려면 동일 ToView 적용 필요. (tilemap-view-backend unit 3 scan)
