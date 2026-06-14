@@ -39,7 +39,8 @@ namespace Wassup.Presentation
             _camera = cam;
             _style = style;
             _onComplete = onComplete;
-            _startPos = worldPos;
+            // tilemap-view-backend unit 3 — worldPos 는 sim. view 로 변환해 보존 (이후 drift/billboard 는 view 공간).
+            _startPos = Wassup.Core.BoardSpace.ToView(worldPos);
             _lifetime = Mathf.Max(0.05f, style.lifetime);
 
             float t = style.Normalize(amount);
@@ -48,7 +49,7 @@ namespace Wassup.Presentation
             _tmp.text = amount.ToString();
             _faceColor = style.EvaluateColor(t);
 
-            transform.position = worldPos;
+            transform.position = _startPos; // view 좌표 (위에서 ToView)
             transform.localScale = Vector3.one;
             gameObject.SetActive(true);
             _elapsed = 0f;
@@ -67,6 +68,7 @@ namespace Wassup.Presentation
 
         private void ApplyFrame(float n)
         {
+            // driftUp 은 화면 위 방향(Y) 연출 — Legacy3D·Tilemap 모두 Y 가 화면 위라 무변환 (view 공간 _startPos 기준).
             transform.position = _startPos + Vector3.up * (_style.driftUp * n);
 
             float curve = _style.scaleCurve != null && _style.scaleCurve.length > 0

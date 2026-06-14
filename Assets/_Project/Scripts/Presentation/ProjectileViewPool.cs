@@ -81,7 +81,8 @@ namespace Wassup.Presentation
                 prefab = data.projectilePrefab,
                 facing = data.facing,
                 spinSpeed = data.spinSpeed,
-                lastPosition = initialPosition,   // Fix 1
+                // tilemap-view-backend unit 3 — lastPosition 은 view 좌표로 보존(velocity 를 view 공간에서 계산).
+                lastPosition = Wassup.Core.BoardSpace.ToView(initialPosition),   // Fix 1
             };
         }
 
@@ -99,7 +100,9 @@ namespace Wassup.Presentation
                     continue;
                 }
 
-                var pos = em.GetComponentData<LocalTransform>(entity).Position;
+                var simPos = em.GetComponentData<LocalTransform>(entity).Position;
+                // sim→view 1회. 위치·속도·LookRotation 전부 view 공간끼리 (lastPosition 도 view).
+                float3 pos = Wassup.Core.BoardSpace.ToView(simPos);
                 var view = state.view;
                 view.transform.position = new Vector3(pos.x, pos.y, pos.z);
 
@@ -141,7 +144,8 @@ namespace Wassup.Presentation
         {
             var view = GetOrCreate(hitPrefab);
             view.SetActive(true);
-            view.transform.position = new Vector3(position.x, position.y, position.z);
+            float3 hitView = Wassup.Core.BoardSpace.ToView(position); // sim→view
+            view.transform.position = new Vector3(hitView.x, hitView.y, hitView.z);
             float lifetime = hitVfxLifetime > 0f ? hitVfxLifetime : GetParticleLifetime(view);
             StartCoroutine(DespawnAfter(view, hitPrefab, lifetime));
         }

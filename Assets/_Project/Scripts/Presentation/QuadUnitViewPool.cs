@@ -25,7 +25,7 @@ namespace Wassup.Presentation
             var safeName = string.IsNullOrEmpty(displayName) ? "Unit" : displayName;
             var go = new GameObject($"QuadUnit_{safeName}_{entity.Index}");
             go.transform.SetParent(transform, worldPositionStays: false);
-            go.transform.position = worldPos;
+            go.transform.position = Wassup.Core.BoardSpace.ToView(worldPos); // sim→view (다음 UpdatePosition 이 sim 보존)
             view = go.AddComponent<QuadUnitView>();
             view.Configure(entity, mesh, material, visualScale);
             _byEntity[entity] = view;

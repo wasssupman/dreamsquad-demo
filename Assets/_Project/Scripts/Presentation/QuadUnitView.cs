@@ -9,6 +9,8 @@ namespace Wassup.Presentation
         private MeshFilter _filter;
         private MeshRenderer _renderer;
         private Entity _entity;
+        // tilemap-view-backend unit 3 — sim 좌표 보존 (sorting 셀 역산용; view 좌표는 z 소실).
+        private Vector3 _simWorld;
 
         public Entity Entity => _entity;
 
@@ -28,7 +30,8 @@ namespace Wassup.Presentation
 
         public void UpdatePosition(Vector3 world)
         {
-            transform.position = world;
+            _simWorld = world;
+            transform.position = Wassup.Core.BoardSpace.ToView(world);
         }
 
         public void SetSortingOrder(int order)
@@ -40,9 +43,10 @@ namespace Wassup.Presentation
 
         public void UpdateSortingOrder(Unity.Mathematics.int2 gridSize, float tileSize)
         {
+            // sim 좌표로 셀 역산 — view 좌표(transform.position)는 z 소실로 행 정렬 붕괴.
             SetSortingOrder(BoardSortOrder.ComputeFromWorld(
                 gridSize,
-                transform.position,
+                _simWorld,
                 tileSize,
                 BoardSortOrder.CharacterOffset));
         }

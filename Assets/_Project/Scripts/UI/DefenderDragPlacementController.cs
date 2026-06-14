@@ -61,7 +61,8 @@ namespace Wassup.UI
             if (TryScreenToPlacement(screenPosition, out var cell, out var world))
             {
                 if (_session.preview != null)
-                    _session.preview.transform.position = world + Vector3.up * previewHeight;
+                    // world 는 sim(셀 중심) — preview 는 view 오브젝트라 ToView 후 배치. previewHeight 는 화면 위(Y).
+                    _session.preview.transform.position = (Vector3)BoardSpace.ToView(world) + Vector3.up * previewHeight;
 
                 bool valid = bridge != null && bridge.CanPlaceDefenderAt(cell.x, cell.y, _session.unit, out _);
                 SetHover(cell, valid);
@@ -91,8 +92,8 @@ namespace Wassup.UI
                 }
             }
 
-            if (session.hoverTile.HasValue && mapView != null)
-                mapView.FlashTileReject(session.hoverTile.Value);
+            if (session.hoverTile.HasValue)
+                bridge?.FlashPlacementReject(session.hoverTile.Value); // 활성 뷰 분기
             CleanupSession();
         }
 
@@ -124,12 +125,11 @@ namespace Wassup.UI
             if (mainCamera == null) return false;
 
             var ray = mainCamera.ScreenPointToRay(screenPosition);
-            // map-origin-placement: 평면을 board 원점 높이에 맞추고, 셀 변환은 bridge 헬퍼 경유.
-            var planeOrigin = bridge != null ? bridge.BoardOrigin : Vector3.zero;
-            var plane = new Plane(Vector3.up, planeOrigin);
+            // tilemap-view-backend unit 3 — 입력 평면 모드별(BoardSpace), 히트 지점을 sim 으로 되돌려 기존 셀 변환 유지.
+            var plane = BoardSpace.RaycastPlane();
             if (!plane.Raycast(ray, out float enter)) return false;
 
-            world = ray.GetPoint(enter);
+            world = (Vector3)BoardSpace.ToSim(ray.GetPoint(enter));
             if (bridge != null)
             {
                 var hitCell = bridge.DebugWorldToCell(world);
@@ -232,19 +232,19 @@ namespace Wassup.UI
         private void SetHover(Vector2Int cell, bool valid)
         {
             if (_session.hoverTile.HasValue && _session.hoverTile.Value != cell)
-                mapView?.ClearPlacementHover(_session.hoverTile.Value);
+                bridge?.ClearPlacementHover(_session.hoverTile.Value);
 
             _session.hoverTile = cell;
             _session.isValidTile = valid;
             if (_session.preview != null && !_session.preview.activeSelf)
                 _session.preview.SetActive(true);
-            mapView?.SetPlacementHover(cell, valid);
+            bridge?.SetPlacementHover(cell, valid);
         }
 
         private void ClearHover()
         {
             if (_session.hoverTile.HasValue)
-                mapView?.ClearPlacementHover(_session.hoverTile.Value);
+                bridge?.ClearPlacementHover(_session.hoverTile.Value);
             _session.hoverTile = null;
             _session.isValidTile = false;
         }

@@ -1527,8 +1527,18 @@ namespace Wassup.Bridge
             go.name = "MeteorWarning";
             var col = go.GetComponent<Collider>();
             if (col != null) Destroy(col);
-            go.transform.position = new Vector3(centerWorld.x, 0.02f, centerWorld.z);
-            go.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
+            // tilemap-view-backend unit 3 — 모드별 평면. Legacy3D=XZ 바닥(법선 +Y), Tilemap=XY 보드(법선 −Z, 카메라 향함).
+            Vector3 viewCenter = Wassup.Core.BoardSpace.ToView(centerWorld);
+            if (Wassup.Core.BoardSpace.Mode == Wassup.Core.BoardViewMode.Legacy3D)
+            {
+                go.transform.position = new Vector3(viewCenter.x, 0.02f, viewCenter.z);
+                go.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
+            }
+            else
+            {
+                go.transform.position = new Vector3(viewCenter.x, viewCenter.y, viewCenter.z - 0.05f);
+                go.transform.rotation = Quaternion.identity; // Quad 기본 법선 −Z = 카메라 향함
+            }
             float d = radiusWorld * 2f;
             go.transform.localScale = new Vector3(d, d, 1f);
             var rend = go.GetComponent<MeshRenderer>();
@@ -1740,8 +1750,12 @@ namespace Wassup.Bridge
             if (pRef.dataIndex < 0 || pRef.dataIndex >= _projectileDataByIndex.Count) return;
             var data = _projectileDataByIndex[pRef.dataIndex];
             if (data.castPrefab == null) return;
+            // anchor 는 ResolveCastAnchor 결과 = view 공간. targetWorld 는 sim → view 로 맞춰서 빼야 방향이 정확.
             if (spineUnitPool == null || !spineUnitPool.TryResolveAnchor(defender, out var anchor)) return;
-            var dir = targetWorld - anchor; dir.y = 0f;
+            var dir = (Vector3)Wassup.Core.BoardSpace.ToView(targetWorld) - anchor;
+            // 캐스트 방향을 화면 평면에 평탄화: Legacy3D=XZ 바닥(Y 제거), Tilemap=XY 보드(깊이 Z 제거).
+            if (Wassup.Core.BoardSpace.Mode == Wassup.Core.BoardViewMode.Legacy3D) dir.y = 0f;
+            else dir.z = 0f;
             _projectileViewPool.PlayCast(data.castPrefab, anchor, dir, data.castVfxLifetime);
         }
 
@@ -2544,21 +2558,47 @@ namespace Wassup.Bridge
             return true;
         }
 
+        // tilemap-view-backend unit 3 — 배치 hover/reject 피드백을 활성 뷰로 분기 (PlacementInput/DragController 공용 단일 경로).
+        public void SetPlacementHover(Vector2Int cell, bool valid)
+        {
+            if (UseTilemapView) { if (tilemapMapView != null) tilemapMapView.SetPlacementHover(cell, valid); }
+            else if (mapView != null) mapView.SetPlacementHover(cell, valid);
+        }
+
+        public void ClearPlacementHover(Vector2Int cell)
+        {
+            if (UseTilemapView) { if (tilemapMapView != null) tilemapMapView.ClearPlacementHover(cell); }
+            else if (mapView != null) mapView.ClearPlacementHover(cell);
+        }
+
+        public void ClearPlacementHover()
+        {
+            if (UseTilemapView) { if (tilemapMapView != null) tilemapMapView.ClearPlacementHover(); }
+            else if (mapView != null) mapView.ClearPlacementHover();
+        }
+
+        public void FlashPlacementReject(Vector2Int cell)
+        {
+            if (UseTilemapView) { if (tilemapMapView != null) tilemapMapView.FlashTileReject(cell); }
+            else if (mapView != null) mapView.FlashTileReject(cell);
+        }
+
         public float PlayDeploymentPresentation(DefenderUnitData unitData, Vector2Int cell, Entity entity)
         {
             float duration = unitData != null ? Mathf.Max(0f, unitData.deploymentDuration) : 0f;
-            var world = GridToWorldCenterVector(cell, spawnHeight);
+            var world = GridToWorldCenterVector(cell, spawnHeight);                       // sim
+            var viewWorld = (Vector3)Wassup.Core.BoardSpace.ToView(world);                 // view (직접 배치용)
 
             if (unitData != null && unitData.placementVfxPrefab != null)
             {
-                var go = Instantiate(unitData.placementVfxPrefab, world, Quaternion.identity);
+                var go = Instantiate(unitData.placementVfxPrefab, viewWorld, Quaternion.identity);
                 Destroy(go, Mathf.Max(duration, 1f) + 0.25f);
             }
             else if (vfxSpawner != null)
             {
-                vfxSpawner.SpawnPlacementRing(world);
+                vfxSpawner.SpawnPlacementRing(world); // VfxSpawner 가 진입부에서 ToView — sim 전달(이중변환 금지)
             }
-            StartCoroutine(PlayDeploymentRingPulse(world, Mathf.Max(duration, 0.35f)));
+            StartCoroutine(PlayDeploymentRingPulse(viewWorld, Mathf.Max(duration, 0.35f)));
 
             bool spineDeployment = false;
             if (spineUnitPool != null && spineUnitPool.TryGet(entity, out var view))
@@ -2567,7 +2607,7 @@ namespace Wassup.Bridge
             }
             if (!spineDeployment && unitData != null && duration > 0f)
             {
-                StartCoroutine(PlayFallbackDeploymentPulse(unitData, world, duration));
+                StartCoroutine(PlayFallbackDeploymentPulse(unitData, viewWorld, duration));
             }
 
             return duration;

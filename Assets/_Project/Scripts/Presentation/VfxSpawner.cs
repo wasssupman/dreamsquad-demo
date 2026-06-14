@@ -30,6 +30,7 @@ namespace Wassup.Presentation
                 Debug.LogError("[VfxSpawner] placementRingPrefab 미할당 — Inspector에서 prefab을 연결해주세요.");
                 return;
             }
+            worldPos = Wassup.Core.BoardSpace.ToView(worldPos); // tilemap-view-backend: sim→view 1회 (진입부)
             var go = Instantiate(placementRingPrefab,
                 new Vector3(worldPos.x, worldPos.y + 0.02f, worldPos.z),
                 Quaternion.identity, transform);
@@ -45,6 +46,7 @@ namespace Wassup.Presentation
                 Debug.LogError("[VfxSpawner] meteorFallPrefab 미할당 — Inspector에서 prefab을 연결해주세요.");
                 return;
             }
+            targetWorld = Wassup.Core.BoardSpace.ToView(targetWorld); // sim→view; MeteorFall 은 view 좌표로 보간(추가 변환 없음)
             var go = Instantiate(meteorFallPrefab, targetWorld, Quaternion.identity, transform);
             var fall = go.GetComponent<MeteorFall>();
             if (fall != null) fall.Launch(targetWorld, warningSec);
@@ -59,6 +61,7 @@ namespace Wassup.Presentation
                 Debug.LogError("[VfxSpawner] meteorBurstPrefab 미할당 — Inspector에서 prefab을 연결해주세요.");
                 return;
             }
+            worldPos = Wassup.Core.BoardSpace.ToView(worldPos); // sim→view 1회
             var pos = new Vector3(worldPos.x, worldPos.y + 0.05f, worldPos.z);
             var go = Instantiate(meteorBurstPrefab, pos, Quaternion.identity, transform);
             go.transform.localScale = Vector3.one * Mathf.Max(0.1f, radiusWorld);
@@ -73,6 +76,7 @@ namespace Wassup.Presentation
                 Debug.LogError("[VfxSpawner] tornadoPrefab 미할당 — Inspector에서 prefab을 연결해주세요.");
                 return;
             }
+            centerWorld = Wassup.Core.BoardSpace.ToView(centerWorld); // sim→view 1회
             var pos = new Vector3(centerWorld.x, centerWorld.y + 0.05f, centerWorld.z);
             var go = Instantiate(tornadoPrefab, pos, Quaternion.identity, transform);
             if (HasPixPlaysVfx(go))
@@ -90,6 +94,8 @@ namespace Wassup.Presentation
                 Debug.LogError("[VfxSpawner] portalPrefab 미할당 — Inspector에서 prefab을 연결해주세요.");
                 return;
             }
+            entryWorld = Wassup.Core.BoardSpace.ToView(entryWorld); // sim→view 1회
+            exitWorld = Wassup.Core.BoardSpace.ToView(exitWorld);
             var root = Instantiate(portalPrefab, Vector3.zero, Quaternion.identity, transform);
             var entryT = root.transform.Find("Entry");
             var exitT = root.transform.Find("Exit");
@@ -125,6 +131,7 @@ namespace Wassup.Presentation
                 Debug.LogError("[VfxSpawner] healAppliedPrefab 미할당 — Inspector에서 prefab을 연결해주세요.");
                 return;
             }
+            worldPos = Wassup.Core.BoardSpace.ToView(worldPos); // sim→view 1회
             var pos = new Vector3(worldPos.x, worldPos.y + 0.08f, worldPos.z);
             var go = Instantiate(healAppliedPrefab, pos, Quaternion.identity, transform);
             Destroy(go, 1.1f);

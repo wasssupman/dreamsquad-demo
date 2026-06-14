@@ -15,6 +15,9 @@ namespace Wassup.Presentation
         private IDefenderSpineExtras _defenderExtras;
         private Entity _entity;
         private bool _dying;
+        // tilemap-view-backend unit 3 — sim 좌표 보존. transform.position 은 view 좌표(ToView)라
+        // sorting 셀 역산에 쓸 수 없다(z 소실). sorting 은 이 sim 좌표로 계산한다.
+        private Vector3 _simWorld;
 
         public Entity Entity => _entity;
 
@@ -23,7 +26,8 @@ namespace Wassup.Presentation
             _visualData = visualData;
             _defenderExtras = defenderExtras;
             _entity = entity;
-            transform.position = worldPos;
+            _simWorld = worldPos;
+            transform.position = Wassup.Core.BoardSpace.ToView(worldPos);
             float s = Mathf.Max(0.01f, visualData.SpineVisualScale * BattleBridge.CharacterVisualScale);
             transform.localScale = new Vector3(s, s, s);
 
@@ -53,14 +57,27 @@ namespace Wassup.Presentation
 
         public void UpdatePosition(Vector3 world)
         {
-            transform.position = world;
+            _simWorld = world;
+            transform.position = Wassup.Core.BoardSpace.ToView(world);
+        }
+
+        private void LateUpdate()
+        {
+            // Spine units don't use the Quad billboard shader, so they'd otherwise
+            // stand fully upright. Lean them back around X toward the angled camera.
+            // Battle camera yaw is fixed at 0 (BattleBridge frames at Euler(pitch,0,0)),
+            // so a world-X tilt is enough. Rotates around the transform origin (feet),
+            // leaving position and sorting untouched. ScaleX (left/right facing) lives
+            // on the skeleton, so it is independent of this transform rotation.
+            transform.rotation = Quaternion.Euler(BattleBridge.CharacterBillboardTilt, 0f, 0f);
         }
 
         public void UpdateSortingOrder(Unity.Mathematics.int2 gridSize, float tileSize)
         {
+            // sim 좌표로 셀 역산 — view 좌표(transform.position)는 z 가 소실돼 행 정렬이 붕괴한다.
             int order = BoardSortOrder.ComputeFromWorld(
                 gridSize,
-                transform.position,
+                _simWorld,
                 tileSize,
                 BoardSortOrder.CharacterOffset);
             var renderers = GetComponentsInChildren<Renderer>(true);
@@ -126,7 +143,8 @@ namespace Wassup.Presentation
         public void FaceToward(Vector3 worldPoint)
         {
             if (_dying || _skeleton == null || _skeleton.Skeleton == null) return;
-            float dx = worldPoint.x - transform.position.x;
+            // worldPoint 는 sim 좌표(NotifyAttack 경유) — view 좌표로 변환해 view transform 과 같은 공간에서 비교.
+            float dx = ((Vector3)Wassup.Core.BoardSpace.ToView(worldPoint)).x - transform.position.x;
             if (Mathf.Approximately(dx, 0f)) return;
             float currentAbs = Mathf.Abs(_skeleton.Skeleton.ScaleX);
             if (currentAbs < 0.001f) currentAbs = 1f;
@@ -136,6 +154,7 @@ namespace Wassup.Presentation
 
         public Vector3 ResolveCastAnchor()
         {
+            // 반환값은 view 공간(transform 기반, transform.position 은 이미 ToView). 호출측은 view 끼리 비교/빼기.
             // Cast anchor is only meaningful for defenders firing projectiles.
             // Without IDefenderSpineExtras (enemies), fall back to the unit's
             // transform origin so callers still get a sensible world position.

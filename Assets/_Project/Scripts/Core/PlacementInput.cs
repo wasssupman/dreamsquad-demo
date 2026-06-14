@@ -63,12 +63,12 @@ namespace Wassup.Core
 
             var screenPos = pointer.position.ReadValue();
             var ray = mainCamera.ScreenPointToRay(screenPos);
-            // Intersect with the board-surface plane at board origin height (map-origin-placement).
-            // Tiles have no colliders — math-based hit. Cell math goes through bridge so origin is applied once.
-            var plane = new Plane(Vector3.up, bridge.BoardOrigin);
+            // tilemap-view-backend unit 3 — 입력 평면은 모드별(BoardSpace). 히트 지점을 sim 으로 되돌린 뒤
+            // 기존 셀 변환(bridge.DebugWorldToCell) 흐름 유지 — 셀 판정 로직 무변경.
+            var plane = BoardSpace.RaycastPlane();
             if (!plane.Raycast(ray, out float enter)) return;
 
-            var worldPos = ray.GetPoint(enter);
+            var worldPos = (Vector3)BoardSpace.ToSim(ray.GetPoint(enter));
             var hitCell = bridge.DebugWorldToCell(worldPos);
             int tileX = hitCell.x;
             int tileY = hitCell.y;
@@ -83,7 +83,7 @@ namespace Wassup.Core
             // to the legacy random path (tests / headless).
             if (selected != null && costRuntime != null && !costRuntime.CanAfford(selected.cost))
             {
-                if (mapView != null) mapView.FlashTileReject(cell);
+                bridge.FlashPlacementReject(cell); // 활성 뷰 분기
                 return;
             }
 
@@ -94,7 +94,7 @@ namespace Wassup.Core
 
             bool placed = bridge.PlaceDefenderAs(tileX, tileY, selected);
             if (placed && costRuntime != null) costRuntime.TrySpend(selected.cost);
-            else if (!placed && mapView != null) mapView.FlashTileReject(cell);
+            else if (!placed) bridge.FlashPlacementReject(cell);
         }
     }
 }
