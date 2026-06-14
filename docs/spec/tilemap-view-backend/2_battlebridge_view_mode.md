@@ -25,14 +25,19 @@ BattleBridge 의 맵 오케스트레이션에 `BoardViewMode` 분기를 넣어, 
 
 ## 완료 기준
 
-> 🟡 부분 완료 2026-06-14 (코드) — `BattleBridge.cs` 5곳: `boardViewMode`/`tilemapMapView`/`tileSet`
-> SerializeField + `UseTilemapView` 분기, 맵빌드 분기(Tilemap=zero origin, `BoardSpace.Configure` BuildFlowField
-> 직전), backdrop/prop Legacy 전용, 헬스바 렌더 게이팅(`HealthBarSystem` 불변·1회 로그), teardown `Clear()`.
-> compile 0, 전체 EditMode **325/323 pass**(회귀 0). **Legacy3D Play 스모크 = 이전과 동일(사용자 확인)**. 커밋: cc62a71.
+> ✅ 검증 완료 2026-06-14 — `BattleBridge.cs` 5곳: `boardViewMode`/`tilemapMapView`/`tileSet` SerializeField +
+> `UseTilemapView` 분기, 맵빌드 분기(Tilemap=zero origin, `BoardSpace.Configure` BuildFlowField 직전),
+> backdrop/prop Legacy 전용, 헬스바 렌더 게이팅(`HealthBarSystem` 불변), teardown `Clear()`. 커밋: cc62a71.
+> - compile 0, 전체 EditMode **325/323 pass**(회귀 0).
+> - **Legacy3D Play = 이전과 동일** (사용자 확인).
+> - **TilemapRect Play** (메모리상 `_TilemapBoard` 배선, 씬 미저장): 실제 `PrepareDraftMap` 경로로 20×10 보드
+>   200셀 페인트 + goal/spawn overlay 마커 (스크린샷 확인). `StartBattle` 후 `HealthBarTag=1` 인데
+>   `MaterialMeshInfo=0` → **헬스바 렌더 게이팅 동작 확정**(ECS 상태로 직접 검증). `RebuildDraftMap` 2회 모두
+>   200셀 (잔상 0). 콘솔 에러 0 (사전 존재 missing-script 1건 제외).
 >
-> ⏸ **잔여 Play 게이트 (씬 배선 대기)**: TilemapRect Play(보드 페인트 + sim 동일 + 헬스바 미표시·게이팅 로그)
-> 와 RebuildDraftMap 2회 잔상 0 은 `_TilemapBoard` 씬 배선(unit 1 carve-out) + `BattleBridge.tilemapMapView/
-> tileSet/boardViewMode` 할당 후 확인. dirty `BattleScene.unity`(무관 827줄) 정리 선행. 그때 코드+씬 함께 검증.
+> ⏸ **남은 것 = 영속 씬 저장뿐**: 위 검증은 메모리상 배선이라 씬 리로드 시 사라진다. `_TilemapBoard` GameObject +
+> `BattleBridge` 필드를 `BattleScene.unity` 에 **영속 저장**하는 것은 dirty 씬(무관 827줄) 정리 후 진행 (런타임
+> 동작은 이미 검증됨 — 저장은 커밋 오염 방지를 위한 대기).
 
 - Unity compile 0 errors.
 - `boardViewMode = Legacy3D` Play smoke: 본 spec 이전과 시각/로그 동일 — 헬스바 정상 표시 포함. console error/warning 0. (회귀 기준)
