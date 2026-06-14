@@ -76,6 +76,10 @@ namespace Wassup.Bridge
         [SerializeField] private Wassup.Data.TileSetData tileSet;
         [SerializeField] private Wassup.Data.BoardCameraPreset tilemapCameraPresetRect;
         [SerializeField] private Wassup.Data.BoardCameraPreset tilemapCameraPresetIso;
+        [Header("Tilemap mode tuning (tilemap-mode-adoption)")]
+        [SerializeField] private float legacyCharacterScale = 0.7f;
+        [SerializeField] private float tilemapCharacterScale = 0.42f;
+        [SerializeField] private float tilemapBillboardTilt = 0f;
         [Header("Stack Modifier Registry")]
         [SerializeField] private Wassup.Data.StackModifierSO[] stackModifierAuthoring;
 
@@ -108,10 +112,13 @@ namespace Wassup.Bridge
         private bool _projectileQueryCreated;
         private RenderMeshArray _healthBarRenderArray;
         private Material _healthBarMaterial;
-        public const float CharacterVisualScale = 0.7f;
+        // tilemap-mode-adoption unit 0 — 모드별 유닛 스케일. const 제거. 맵 빌드 시 모드 기준으로 설정.
+        // 기본값 = Legacy 값(0.7) 이라 빌드 전/Legacy3D 에서 현행 동일.
+        public static float CharacterVisualScale { get; private set; } = 0.7f;
         // Live-readable mirror of characterBillboardTilt, read by SpineUnitView each
         // LateUpdate. Synced from the serialized field in Awake/OnValidate; can be
         // poked at runtime (e.g. via tooling) to tune the lean without recompiling.
+        // tilemap-mode-adoption unit 0 — 맵 빌드 시 Tilemap 모드면 tilemapBillboardTilt(기본 0) 로 덮어쓴다.
         public static float CharacterBillboardTilt = 35f;
         private const float SynergyPerNeighbor = 0.1f;
         private readonly HashSet<Entity> _synergyActivatedEntities = new();
@@ -590,6 +597,10 @@ namespace Wassup.Bridge
                 TeardownGeneratedMap();
                 _generatedMap = BattleMapBuilder.BuildFallbackLinear(gridSize, seed, version, options.spawnLaneCount);
             }
+
+            // tilemap-mode-adoption unit 0 — 모드별 유닛 스케일/틸트를 빌드 시 1회 확정 (유닛 스폰 전).
+            CharacterVisualScale = UseTilemapView ? tilemapCharacterScale : legacyCharacterScale;
+            CharacterBillboardTilt = UseTilemapView ? tilemapBillboardTilt : characterBillboardTilt;
 
             if (UseTilemapView)
             {
