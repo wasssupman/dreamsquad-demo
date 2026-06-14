@@ -2,7 +2,7 @@
 
 **작성일**: 2026-06-12 (rev1 — critic 리뷰 반영)
 **연결 문서**: `docs/plans/2026-06-12-tilemap-view-backend-design.md`
-**상태**: 진행 중 — unit 0~3 검증 완료 (2026-06-14). 0: `4bd8cff` · 1: `371130b`/`f4bfa8e` · 2: `cc62a71` · 3: `f8105ba`. TilemapRect Play(메모리 배선)로 보드 페인트·헬스바 게이팅·유닛 셀 정렬(d=0.000) 확정, Legacy3D=identity 회귀무변경. **남은 것: ① `_TilemapBoard`+`BattleBridge` 필드 영속 씬 저장(dirty `BattleScene.unity` 정리 후) ② unit 4(카메라/sorting) ③ unit 5(iso 시각+모드3종 sim 결정론)**. `BattleScene.unity` 미커밋.
+**상태**: 진행 중 — unit 0~4 검증 완료 (2026-06-14). 0: `4bd8cff` · 1: `371130b`/`f4bfa8e` · 2: `cc62a71` · 3: `f8105ba` · 4: `6b44972`. TilemapRect Play(메모리 배선)로 보드 페인트·헬스바 게이팅·유닛 셀 정렬(d=0.000)·카메라 프레이밍/sorting 확정, Legacy3D=identity 회귀무변경. **남은 것: ① unit 5(iso 시각 + 모드 3종 sim 결정론) ② `_TilemapBoard`+`BattleBridge` 필드/프리셋 영속 씬 저장(dirty `BattleScene.unity` 정리 후)**. `BattleScene.unity` 미커밋.
 **목표**: Unity Tilemap 을 뷰 백엔드로 도입해 ① 타일 에셋 자유 교체 ② Rectangle / Isometric 레이아웃 토글 실험이 가능한 프레임웍을 만든다. 시뮬레이션 계층(`GeneratedMap`/`FlowFieldSingleton`/`GridMath`/생성기)은 변경하지 않는다.
 
 ## 검증 질문
