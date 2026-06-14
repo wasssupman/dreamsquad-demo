@@ -1,7 +1,7 @@
 # Tilemap Mode Adoption Spec
 
 **작성일**: 2026-06-14
-**상태**: 진행 중 — unit 0~1 완료 (2026-06-14). 0: `016a29a` · 1: `4a3fc91`. iso 가 빌드 코드만으로 깔끔히 렌더(모드별 스케일/틸트 + bounds 카메라 + solid 배경 + 환경 게이팅 scaffold). **남은 것: unit 2(영속 저장) — dirty `BattleScene.unity`(무관 827줄) 정리 선행. `tilemapHiddenEnvironment` 실제 대상 배선도 그때.**
+**상태**: 구현·검증 완료 — unit 0~2 (2026-06-14). 0: `016a29a` · 1: `4a3fc91` · 2: `3531660`. dirty 실험물 되돌림 후 `_TilemapBoard`+BattleBridge 필드 영속 저장 — **인스펙터 `boardViewMode` 1값으로 Legacy3D/Rect/Iso 토글**, iso 깔끔히 렌더(모드별 스케일/틸트 + bounds 카메라 + solid 배경). 기본=Legacy3D(비파괴). **남은 것: ① iso/rect 기본 채택 여부 product 결정 ② 타일 아트/2D 배경(후속 theming).** handoff: `3_handoff_summary.md`.
 **선행 spec**: `docs/spec/tilemap-view-backend/` (프레임워크·정렬·결정론 완료. 영속 씬 저장 미완 → 본 spec 이 흡수)
 
 ## 목표
