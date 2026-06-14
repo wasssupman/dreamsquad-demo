@@ -2,7 +2,7 @@
 
 **작성일**: 2026-06-12 (rev1 — critic 리뷰 반영)
 **연결 문서**: `docs/plans/2026-06-12-tilemap-view-backend-design.md`
-**상태**: 진행 중 — unit 0 완료 (2026-06-14, `4bd8cff`)
+**상태**: 진행 중 — unit 0~1 완료 (2026-06-14). 0: `4bd8cff` · 1a 코드: `371130b` · 1b 에셋: `f4bfa8e`. **unit 2 는 dirty `BattleScene.unity`(무관 827줄) 정리 대기** — unit 1 의 `_TilemapBoard` 씬 영속화가 unit 2 로 이관됨 (1_ 문서 carve-out 참조).
 **목표**: Unity Tilemap 을 뷰 백엔드로 도입해 ① 타일 에셋 자유 교체 ② Rectangle / Isometric 레이아웃 토글 실험이 가능한 프레임웍을 만든다. 시뮬레이션 계층(`GeneratedMap`/`FlowFieldSingleton`/`GridMath`/생성기)은 변경하지 않는다.
 
 ## 검증 질문
