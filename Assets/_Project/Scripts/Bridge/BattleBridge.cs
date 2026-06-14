@@ -70,6 +70,10 @@ namespace Wassup.Bridge
         // Phase 9 P9-07 — tileSize 단일 소스화. Awake 에서 MapView/PlacementInput 으로 주입.
         [SerializeField] private Wassup.Core.MapView mapView;
         [SerializeField] private Wassup.Core.PlacementInput placementInput;
+        [Header("Tilemap View Backend (tilemap-view-backend)")]
+        [SerializeField] private Wassup.Core.BoardViewMode boardViewMode = Wassup.Core.BoardViewMode.Legacy3D;
+        [SerializeField] private Wassup.Core.TilemapMapView tilemapMapView;
+        [SerializeField] private Wassup.Data.TileSetData tileSet;
         [Header("Stack Modifier Registry")]
         [SerializeField] private Wassup.Data.StackModifierSO[] stackModifierAuthoring;
 
@@ -149,6 +153,9 @@ namespace Wassup.Bridge
         // map-origin-placement: board 월드 원점. 모든 grid↔world 변환의 단일 소스.
         // BuildFlowField 에서 mapView.transform.position 으로 캡처. mapView 없으면 zero.
         private float3 _boardOrigin = float3.zero;
+        // tilemap-view-backend — Tilemap 뷰 경로 여부 (Legacy3D = false). 맵 빌드/헬스바/backdrop 분기 기준.
+        private bool UseTilemapView => boardViewMode != Wassup.Core.BoardViewMode.Legacy3D;
+        private bool _healthBarRenderGateLogged;
 
         // match-seed-unification — GameManager 가 주입하는 단일 매치 시드.
         // 맵/웨이브/비주얼 시드가 여기서 파생된다(작업 2/3). 0 = 미주입(즉석 폴백).
@@ -472,6 +479,8 @@ namespace Wassup.Bridge
         // Phase 10A (P10A-04A): GeneratedMap dispose 멱등. 재시작/redraft 시 TearDown 후 재생성.
         private void TeardownGeneratedMap()
         {
+            // Tilemap 뷰 잔상 제거 (RebuildDraftMap 재진입 / 전투 종료 안전). Clear 는 idempotent.
+            if (tilemapMapView != null) tilemapMapView.Clear();
             if (_generatedMap.IsCreated) _generatedMap.Dispose();
             _generatedMap = default;
         }
@@ -580,23 +589,37 @@ namespace Wassup.Bridge
                 _generatedMap = BattleMapBuilder.BuildFallbackLinear(gridSize, seed, version, options.spawnLaneCount);
             }
 
-            if (mapView != null) mapView.Initialize(_generatedMap, tileSize, theme);
+            if (UseTilemapView)
+            {
+                if (tilemapMapView != null)
+                    tilemapMapView.Initialize(_generatedMap, tileSize, tileSet, boardViewMode);
+                else
+                    Debug.LogError("[BattleBridge] boardViewMode 이 Tilemap 이지만 tilemapMapView 가 비어있다.", this);
+                // Tilemap 모드 sim origin 은 무조건 zero — 비활성 mapView transform 을 읽지 않는다 (README 계약).
+                _boardOrigin = float3.zero;
+            }
+            else
+            {
+                // map-origin-placement: board 원점을 MapView.transform.position 에서 1회 캡처.
+                if (mapView != null) mapView.Initialize(_generatedMap, tileSize, theme);
+                _boardOrigin = mapView != null ? (float3)mapView.transform.position : float3.zero;
+            }
             if (placementInput != null) placementInput.Initialize(_generatedMap, tileSize);
 
-            // map-origin-placement: board 원점을 MapView.transform.position 에서 1회 캡처.
-            // 비주얼(MapView 자식 local)과 시뮬레이션(ECS world)을 같은 좌표계로 정렬.
-            // backdrop Mount / BuildFlowField 모두 이 값을 사용하므로 둘보다 먼저 캡처.
-            _boardOrigin = mapView != null ? (float3)mapView.transform.position : float3.zero;
-
-            // Backdrop mount — always Unmount first so RebuildDraftMap is safe
+            // Backdrop mount — Legacy3D 에서만. always Unmount first so RebuildDraftMap is safe.
             BackdropMounter.Unmount(ref _backdropRoot);
-            if (enableSeasonBackdrop && backdrop != null && Camera.main != null)
+            if (!UseTilemapView && enableSeasonBackdrop && backdrop != null && Camera.main != null)
                 _backdropRoot = BackdropMounter.Mount(_generatedMap, Camera.main, backdrop, tileSize, BoardOrigin);
+
+            // sim↔view 변환의 단일 지점 — BuildFlowField 직전 1회 설정 (Legacy3D = identity).
+            Wassup.Core.BoardSpace.Configure(boardViewMode, BoardOrigin, tileSize,
+                tilemapMapView != null ? tilemapMapView.Grid : null);
 
             BuildFlowField();
 
-            // MapGrid 는 Walk + Place 만 칠하고 Env/Deco 가 없음 — prop placer 가 빈손이 됨. 후속 theming spec 이 wire-up.
-            if (mapView != null && theme != null && mapSource != MapSource.MapGrid)
+            // props/obstacles — Legacy3D 에서만 (Tilemap 모드 외곽 연출은 후속 theming spec).
+            // MapGrid 는 Walk + Place 만 칠하고 Env/Deco 가 없음 — prop placer 가 빈손이 됨.
+            if (!UseTilemapView && mapView != null && theme != null && mapSource != MapSource.MapGrid)
             {
                 if (theme.tileProps != null && theme.tileProps.Length > 0)
                 {
@@ -2247,7 +2270,6 @@ namespace Wassup.Bridge
 
         private void CreateHealthBar(Entity owner, float yOffset, float baseScale)
         {
-            var arr = GetOrCreateHealthBarRenderArray();
             var entity = _em.CreateEntity();
 #if UNITY_EDITOR
             _em.SetName(entity, "HealthBar");
@@ -2261,6 +2283,20 @@ namespace Wassup.Bridge
             });
             _em.AddComponentData(entity, LocalTransform.FromPositionRotationScale(
                 new float3(0f, 0f, 0f), quaternion.identity, baseScale));
+
+            // tilemap-view-backend — Tilemap 모드에서는 Entities Graphics 렌더 컴포넌트 생성을 게이팅.
+            // HealthBarSystem 은 불변 (렌더 컴포넌트가 없으면 그릴 게 없을 뿐). Mono 오버레이 헬스바는 후속 후보.
+            if (UseTilemapView)
+            {
+                if (!_healthBarRenderGateLogged)
+                {
+                    Debug.Log("[BattleBridge] HealthBar render gated: tilemap view mode");
+                    _healthBarRenderGateLogged = true;
+                }
+                return;
+            }
+
+            var arr = GetOrCreateHealthBarRenderArray();
             var desc = new RenderMeshDescription(
                 shadowCastingMode: UnityEngine.Rendering.ShadowCastingMode.Off,
                 receiveShadows: false);
