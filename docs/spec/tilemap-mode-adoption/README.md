@@ -1,7 +1,7 @@
 # Tilemap Mode Adoption Spec
 
 **작성일**: 2026-06-14
-**상태**: 진행 중 — 승인됨 2026-06-14, unit 0 착수
+**상태**: 진행 중 — unit 0 완료 (2026-06-14, `016a29a`). 다음: unit 1(환경 게이팅+카메라).
 **선행 spec**: `docs/spec/tilemap-view-backend/` (프레임워크·정렬·결정론 완료. 영속 씬 저장 미완 → 본 spec 이 흡수)
 
 ## 목표

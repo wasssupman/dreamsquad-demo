@@ -24,6 +24,12 @@
 
 ## 완료 기준
 
+> ✅ 검증 2026-06-14 — `CharacterVisualScale` const→static 프로퍼티(기본 0.7) + SerializeField
+> legacyCharacterScale/tilemapCharacterScale(0.42)/tilemapBillboardTilt(0), 맵 빌드 시 모드 기준 설정. compile 0,
+> EditMode **325/323 pass**(회귀 0). Play(메모리 배선): TilemapIso `scale=0.42 tilt=0` / Legacy3D `scale=0.70 tilt=35`
+> / 재전환 정확. iso 유닛 정자세·축소 스크린샷 확보. 커밋: 016a29a.
+> 주의: 0.42 는 시작값 — 더 줄이려면 `tilemapCharacterScale` SerializeField 만 낮추면 됨(코드 무변경).
+
 - Unity compile 0 errors. 전체 EditMode green(회귀 0).
 - Legacy3D Play: 유닛 크기/틸트 본 spec 이전과 동일(`CharacterVisualScale=0.7`, tilt=35).
 - TilemapRect/Iso Play(메모리 배선): 유닛이 셀 대비 적정 크기(스케일 0.42 적용 확인), 틸트 0(정자세). 스크린샷 1장.
