@@ -2,7 +2,7 @@
 
 **작성일**: 2026-06-12 (rev1 — critic 리뷰 반영)
 **연결 문서**: `docs/plans/2026-06-12-tilemap-view-backend-design.md`
-**상태**: 진행 중 — unit 0~1 완료 (2026-06-14). 0: `4bd8cff` · 1a 코드: `371130b` · 1b 에셋: `f4bfa8e`. **unit 2 는 dirty `BattleScene.unity`(무관 827줄) 정리 대기** — unit 1 의 `_TilemapBoard` 씬 영속화가 unit 2 로 이관됨 (1_ 문서 carve-out 참조).
+**상태**: 진행 중 — unit 0~1 완료 + unit 2 코드 완료(Play 보류) (2026-06-14). 0: `4bd8cff` · 1a: `371130b` · 1b: `f4bfa8e` · 2 코드: `cc62a71`. **Play 게이트가 dirty `BattleScene.unity`(무관 827줄) 정리 대기** — `_TilemapBoard` 씬 배선(unit 1 carve-out → unit 2 합류) + `BattleBridge` 필드 할당 후 TilemapRect Play 검증. Legacy3D 회귀는 사용자 Play 확인 완료. `BattleScene.unity` 미커밋.
 **목표**: Unity Tilemap 을 뷰 백엔드로 도입해 ① 타일 에셋 자유 교체 ② Rectangle / Isometric 레이아웃 토글 실험이 가능한 프레임웍을 만든다. 시뮬레이션 계층(`GeneratedMap`/`FlowFieldSingleton`/`GridMath`/생성기)은 변경하지 않는다.
 
 ## 검증 질문
