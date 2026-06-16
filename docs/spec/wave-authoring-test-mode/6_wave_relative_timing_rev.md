@@ -35,4 +35,4 @@ AuthoredSpawnGroup { float triggerTimeSec; AttackUnitData unit; int count }   //
 
 ---
 
-*완료 확인*: 2026-06-16 — 컴파일 0, EditMode 329개 중 327 pass/0 fail(seed 결정론 유지 + 신규 FromPlanAsset 누적시작/PerGroupTimeline 테스트). 샘플 변환 실측: 웨이브 절대 시작=누적 durationSec(0,12,…,60,74,86), W0 Basic@0~2+Swift@4~6, W5(@60) interval 0.5 적용. Play: usingAuthored/timer=0(endless), wave0 pending 시각 [0..6]. 커밋 `__PENDING__`.
+*완료 확인*: 2026-06-16 — 컴파일 0, EditMode 329개 중 327 pass/0 fail(seed 결정론 유지 + 신규 FromPlanAsset 누적시작/PerGroupTimeline 테스트). 샘플 변환 실측: 웨이브 절대 시작=누적 durationSec(0,12,…,60,74,86), W0 Basic@0~2+Swift@4~6, W5(@60) interval 0.5 적용. Play: usingAuthored/timer=0(endless), wave0 pending 시각 [0..6]. 커밋 `8695cd2`.
