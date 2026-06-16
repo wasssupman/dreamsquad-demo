@@ -32,4 +32,4 @@
 
 ---
 
-*완료 확인*: 2026-06-16 — 컴파일 0, EditMode 326 pass/0 fail. FromPlanAsset 매핑·null/0 필터 테스트 통과, seed 회귀 0. Play 통합은 unit 4. 커밋 `__PENDING__`.
+*완료 확인*: 2026-06-16 — 컴파일 0, EditMode 326 pass/0 fail. FromPlanAsset 매핑·null/0 필터 테스트 통과, seed 회귀 0. Play 통합은 unit 4. 커밋 `123a7ee`.
