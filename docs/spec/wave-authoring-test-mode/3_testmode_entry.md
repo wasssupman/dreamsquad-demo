@@ -39,4 +39,4 @@ preset 있으면 `SetDefenderPool(preset)` → 스킬 `Roll()`+`SetSkillLoadout`
 
 ---
 
-*완료 확인*: 2026-06-16 — 컴파일 0, EditMode 326 pass/0 fail(회귀 0). TestModeConfig 에셋 참조 정상(디펜더 4 + 플랜 1, 8웨이브). 실 Play 진입은 unit 4. 커밋 `__PENDING__`.
+*완료 확인*: 2026-06-16 — 컴파일 0, EditMode 326 pass/0 fail(회귀 0). TestModeConfig 에셋 참조 정상(디펜더 4 + 플랜 1, 8웨이브). 실 Play 진입은 unit 4. 커밋 `aaf97ed`.
