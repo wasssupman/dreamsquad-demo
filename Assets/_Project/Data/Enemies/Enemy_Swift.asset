@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Enemy_Swift
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.AttackUnitData
   displayName: Swift
+  enemyClass: 2
   health: 30
   moveSpeed: 4.5
   attackDamage: 0

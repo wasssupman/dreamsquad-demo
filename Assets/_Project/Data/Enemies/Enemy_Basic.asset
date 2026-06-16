@@ -10,16 +10,24 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 76be7b1982d44400ea2bbe396d3eea24, type: 3}
-  m_Name: Enemy_Runner
+  m_Name: Enemy_Basic
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.AttackUnitData
-  displayName: Runner
-  health: 20
-  moveSpeed: 7.2
-  attackDamage: 0
-  attackRange: 1
-  attackCooldown: 1
+  displayName: Basic
+  enemyClass: 3
+  health: 60
+  moveSpeed: 2.5
+  attackDamage: 10
+  attackRange: 2
+  attackCooldown: 0.5
   projectile: {fileID: 0}
   movePauseOnAttackSec: 0
-  outputs: []
+  outputs:
+  - kind: 0
+    magnitude: 10
+    duration: 0
+    stat: 0
+    op: 0
+    stackKind: 0
+    stackMaxStack: 0
   visualMesh: {fileID: 0}
-  visualMaterial: {fileID: 2100000, guid: 6025e85721df142098763e852bdb9850, type: 2}
+  visualMaterial: {fileID: 2100000, guid: fda8488d60e7f4b25a9846eb038050d9, type: 2}

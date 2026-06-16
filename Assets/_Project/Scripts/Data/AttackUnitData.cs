@@ -7,6 +7,12 @@ namespace Wassup.Data
     public class AttackUnitData : ScriptableObject, ISpineUnitVisualData
     {
         public string displayName;
+
+        // enemy-class-system Unit 0 — enemy archetype for future behavior
+        // branches. Authoring data only for now; not yet consumed at runtime.
+        [Header("Class")]
+        public EnemyClass enemyClass = EnemyClass.None;
+
         public float health = 100f;
         public float moveSpeed = 2f;
 

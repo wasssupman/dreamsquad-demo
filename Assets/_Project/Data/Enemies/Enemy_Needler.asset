@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Enemy_Needler
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.AttackUnitData
   displayName: Needler
+  enemyClass: 4
   health: 35
   moveSpeed: 2.8
   attackDamage: 3

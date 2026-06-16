@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Enemy_Rootcaster
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.AttackUnitData
   displayName: Rootcaster
+  enemyClass: 4
   health: 45
   moveSpeed: 1.8
   attackDamage: 14

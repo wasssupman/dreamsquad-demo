@@ -8,7 +8,7 @@ namespace Wassup.Data
         None,
         Ranger,
         Guardian,
-        Bruiser,
+        Fighter,
         Caster,
         Support,
     }
