@@ -124,6 +124,14 @@ namespace Wassup.Core
             // 확정·주입한다. Draft·Squad 양 경로 공통으로 여기서 1회 보장.
             EnsureMatchSeed();
 
+            // wave-authoring-test-mode unit 3 — 테스트 모드 최상위 분기. 작성 플랜 +
+            // 디펜더 프리셋으로 드래프트/스쿼드를 모두 건너뛴다. 비활성이면 무변경.
+            if (TestModeContext.Active && battleBridge != null)
+            {
+                StartTestModeMatch();
+                return;
+            }
+
             // squad-loadout Unit 3 — squad mode takes priority. Empty/unset squad
             // falls through to the existing draft path (A non-destructive).
             var squad = (profileSO != null && profileSO.profile != null) ? profileSO.profile.SelectedSquad() : null;
@@ -198,6 +206,43 @@ namespace Wassup.Core
 
             // squad map-setup — let the player adjust the map first if a prep view
             // is present; otherwise go straight to placement (headless/tests).
+            if (MapSetupRequested != null) MapSetupRequested.Invoke();
+            else PlacementRequested?.Invoke();
+        }
+
+        // wave-authoring-test-mode unit 3 — 드래프트/스쿼드를 스킵하고 작성 플랜 +
+        // 디펜더 프리셋으로 바로 placement 진입. StartSquadMatch 미러.
+        private void StartTestModeMatch()
+        {
+            var plan = TestModeContext.Plan;
+            var preset = TestModeContext.DefenderPreset;
+            TestModeContext.Clear(); // 1회 소비
+
+            battleBridge.SetMapGenerationOptions(MapGenerationOptions.Default);
+            battleBridge.PrepareDraftMap();
+
+            battleBridge.SetAuthoredWavePlan(plan);
+
+            if (preset != null && preset.Length > 0)
+                battleBridge.SetDefenderPool(preset);
+            else
+                Debug.LogWarning("[GameManager] 테스트 모드 디펜더 프리셋이 비어 있음 — bridge fallback pool 사용.");
+
+            // Skills stay independent of units — roll a fresh loadout like draft does.
+            if (skillLoadout != null)
+            {
+                skillLoadout.Roll();
+                if (skillLoadout.Picked.Count > 0)
+                {
+                    var arr = new SkillData[skillLoadout.Picked.Count];
+                    for (int i = 0; i < arr.Length; i++) arr[i] = skillLoadout.Picked[i];
+                    battleBridge.SetSkillLoadout(arr);
+                }
+            }
+
+            Debug.Log($"[GameManager] 테스트 모드 진입 — plan='{(plan != null ? plan.displayName : "NULL")}' defenders={(preset != null ? preset.Length : 0)}.");
+
+            // squad 와 동일하게 MAP SETUP 스텝이 있으면 거치고, 없으면 바로 placement.
             if (MapSetupRequested != null) MapSetupRequested.Invoke();
             else PlacementRequested?.Invoke();
         }
