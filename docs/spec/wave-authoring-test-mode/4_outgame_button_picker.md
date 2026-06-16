@@ -36,4 +36,4 @@
 
 ---
 
-*완료 확인*: 2026-06-16 — 컴파일 0, OutgameScene 저장. Play 전체 체인 검증: TEST MODE 버튼 → 영어 피커("Sample Test Plan (8 waves)") → 선택 → BattleScene 진입(Context 소비, phase=Placement, 드래프트 스킵), 디펜더=**기존 저장 스쿼드 7유닛**(요청 반영), StartBattle 시 `_usingAuthoredPlan=True`/`_timerDuration=0`(endless)/waves=8, wave0 스폰 확인. UI 텍스트 전부 영어. 커밋 `__PENDING__`.
+*완료 확인*: 2026-06-16 — 컴파일 0, OutgameScene 저장. Play 전체 체인 검증: TEST MODE 버튼 → 영어 피커("Sample Test Plan (8 waves)") → 선택 → BattleScene 진입(Context 소비, phase=Placement, 드래프트 스킵), 디펜더=**기존 저장 스쿼드 7유닛**(요청 반영), StartBattle 시 `_usingAuthoredPlan=True`/`_timerDuration=0`(endless)/waves=8, wave0 스폰 확인. UI 텍스트 전부 영어. 커밋 `1e01eb2`.

@@ -1,7 +1,7 @@
 # Wave Authoring Test Mode Spec
 
 **작성일**: 2026-06-16
-**상태**: 초안 — 승인 대기. 구현 전.
+**상태**: 완료 2026-06-16 — unit 0~4 구현·검증. 0 `ea8cb35` · 1 `5a1e8fb` · 2 `123a7ee` · 3 `aaf97ed` · 4 `1e01eb2`. handoff: `5_handoff_summary.md`. 에디터에서 `WavePlanAsset` 작성 → 아웃게임 TEST MODE 피커 → 작성 웨이브로 진입(드래프트 스킵, **저장 스쿼드 반입**, endless=`timerDurationSec` 0). seed 경로 byte-identical 무변경.
 **선행 spec**: `docs/spec/wave-pattern/` (seed 기반 wave 생성. 본 spec 은 그 위에 "직접 작성한 wave" 경로를 추가하며, seed 경로/결정론은 무변경)
 
 ## 상위 목표
