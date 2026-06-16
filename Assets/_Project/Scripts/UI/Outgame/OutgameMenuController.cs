@@ -15,6 +15,8 @@ namespace Wassup.UI
         [SerializeField] private PlayerProfileSO profileSO;
         [SerializeField] private GameObject squadPanel;
         [SerializeField] private GameObject dreamcatcherPanel;
+        // wave-authoring-test-mode unit 4 — 테스트 모드 플랜 피커 패널.
+        [SerializeField] private GameObject testModePanel;
 
         private void Awake()
         {
@@ -41,6 +43,8 @@ namespace Wassup.UI
 
         public void OnOpenDreamcatcher() => RaiseExclusive(dreamcatcherPanel);
 
+        public void OnOpenTestMode() => RaiseExclusive(testModePanel);
+
         public void OnClosePanels() => ClosePanels();
 
         private void RaiseExclusive(GameObject panel)
@@ -53,6 +57,7 @@ namespace Wassup.UI
         {
             if (squadPanel != null) squadPanel.SetActive(false);
             if (dreamcatcherPanel != null) dreamcatcherPanel.SetActive(false);
+            if (testModePanel != null) testModePanel.SetActive(false);
         }
     }
 }

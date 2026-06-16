@@ -32,7 +32,7 @@
 - **작성 데이터는 SO source-of-truth**: `WavePlanAsset` 이 작성 웨이브의 source of truth. 적 타입은 기존 `AttackUnitData` SO 를 드래그해 참조. 하드코딩 수치 금지(수량/시각/스케일 모두 SO 필드).
 - **웨이브 규모 무제한**: 웨이브 개수에 상한 없음(작성자 자유). 3분 라이브 감각용 샘플은 약 15개로 제공하되 **강제하지 않는다**. 테스트 모드에서 100개도 유효.
 - **endless 종료 조건 (테스트 모드)**: 시간 제한 없음. `WavePlanAsset.timerDurationSec=0` → `BattleBridge._timerDuration=0` → `CheckTimer` 가 early-return(타임아웃 승리 비활성). 전투는 **`CheckVictory` 로만 종료** = 모든 작성 웨이브 dispatch 완료 + `_pending` 비고 + 생존 공격유닛 0(전멸). 패배(goal-reached 횟수 도달)는 기존대로 동작. 즉 100개 웨이브면 100번째 웨이브 몬스터까지 전부 죽어야 승리. (새 종료 로직 추가 없음 — 기존 `_timerDuration<=0` 시맨틱 재사용.)
-- **테스트 모드 = wave 소스 + 디펜더 + 종료조건만 오버라이드**: 테스트 모드는 (1) seed 대신 작성 플랜 사용, (2) 드래프트 스킵 후 `TestModeConfig.defenderPreset` 반입, (3) endless 종료(위). 맵은 `MapGenerationOptions.Default`, 스킬 로드아웃은 기존 roll/기본값 경로 재사용. 그 외 전투 규칙 무변경.
+- **테스트 모드 = wave 소스 + 종료조건만 오버라이드**: 테스트 모드는 (1) seed 대신 작성 플랜 사용, (2) endless 종료(위). 디펜더는 **기존 저장 스쿼드를 그대로 반입**(`StartSquadMatch` 와 동일 해석; 스쿼드가 비면 `TestModeConfig.defenderPreset` 폴백). 드래프트만 스킵. 맵은 `MapGenerationOptions.Default`, 스킬 로드아웃은 기존 roll/기본값 경로 재사용. 그 외 전투 규칙 무변경.
 - **carry-in 은 static 1회 소비**: `TestModeContext`(Active/Plan)는 아웃게임 버튼이 set, `GameManager.Start` 가 읽고 즉시 clear. GameManager 는 비영속(씬 전환 시 teardown)이므로 SO 가 아닌 static 으로 씬 경계를 넘긴다.
 - **비파괴 분기**: `TestModeContext.Active == false` 면 기존 squad → draft → fallback 분기 그대로. 테스트 모드는 최상위 우선 분기로만 추가.
 - **로그 포맷 변경 명시**: `WaveRecord` 가 `unitA/B/countA/B` → `entries[]` 로 바뀐다. 디버그 로그라 save 마이그레이션 부담은 없으나 과거 로그와 포맷 불일치는 의도된 변경.

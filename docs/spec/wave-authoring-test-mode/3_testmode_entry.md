@@ -25,10 +25,15 @@
 ```
 if (TestModeContext.Active && battleBridge != null) { StartTestModeMatch(); return; }
 ```
-`StartTestModeMatch`: plan/preset 읽고 `TestModeContext.Clear()` →
+`StartTestModeMatch`: plan 읽고 `TestModeContext.Clear()` →
 `SetMapGenerationOptions(Default)` → `PrepareDraftMap()` → `SetAuthoredWavePlan(plan)` →
-preset 있으면 `SetDefenderPool(preset)` → 스킬 `Roll()`+`SetSkillLoadout` →
+디펜더 `SetDefenderPool` → 스킬 `Roll()`+`SetSkillLoadout` →
 `MapSetupRequested?.Invoke()` else `PlacementRequested?.Invoke()`. (StartSquadMatch 미러)
+
+**rev (2026-06-16, unit 4 중 요청)**: 디펜더는 **기존 저장 스쿼드를 그대로 반입**한다.
+`ResolveSquadDefenders()`(profileSO.SelectedSquad → SquadDraw.Resolve → catalog, StartSquadMatch 미러)
+로 해석하고, 스쿼드가 비어 있을 때만 `TestModeContext.DefenderPreset`(TestModeConfig) 로 폴백.
+TestModeConfig.defenderPreset 은 이제 "스쿼드 없음" 폴백 용도.
 
 ## 완료 기준
 

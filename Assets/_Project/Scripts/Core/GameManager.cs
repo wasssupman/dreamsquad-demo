@@ -215,7 +215,7 @@ namespace Wassup.Core
         private void StartTestModeMatch()
         {
             var plan = TestModeContext.Plan;
-            var preset = TestModeContext.DefenderPreset;
+            var fallbackPreset = TestModeContext.DefenderPreset;
             TestModeContext.Clear(); // 1회 소비
 
             battleBridge.SetMapGenerationOptions(MapGenerationOptions.Default);
@@ -223,10 +223,16 @@ namespace Wassup.Core
 
             battleBridge.SetAuthoredWavePlan(plan);
 
-            if (preset != null && preset.Length > 0)
-                battleBridge.SetDefenderPool(preset);
+            // 디펜더는 기존에 저장된 스쿼드를 그대로 반입(StartSquadMatch 와 동일 해석).
+            // 스쿼드가 비어 있을 때만 TestModeConfig 프리셋으로 폴백.
+            var defenders = ResolveSquadDefenders();
+            if ((defenders == null || defenders.Length == 0) && fallbackPreset != null && fallbackPreset.Length > 0)
+                defenders = fallbackPreset;
+
+            if (defenders != null && defenders.Length > 0)
+                battleBridge.SetDefenderPool(defenders);
             else
-                Debug.LogWarning("[GameManager] 테스트 모드 디펜더 프리셋이 비어 있음 — bridge fallback pool 사용.");
+                Debug.LogWarning("[GameManager] 테스트 모드 디펜더 없음 — 저장 스쿼드/프리셋 모두 비어 있음.");
 
             // Skills stay independent of units — roll a fresh loadout like draft does.
             if (skillLoadout != null)
@@ -240,11 +246,28 @@ namespace Wassup.Core
                 }
             }
 
-            Debug.Log($"[GameManager] 테스트 모드 진입 — plan='{(plan != null ? plan.displayName : "NULL")}' defenders={(preset != null ? preset.Length : 0)}.");
+            Debug.Log($"[GameManager] 테스트 모드 진입 — plan='{(plan != null ? plan.displayName : "NULL")}' defenders={(defenders != null ? defenders.Length : 0)}.");
 
             // squad 와 동일하게 MAP SETUP 스텝이 있으면 거치고, 없으면 바로 placement.
             if (MapSetupRequested != null) MapSetupRequested.Invoke();
             else PlacementRequested?.Invoke();
+        }
+
+        // wave-authoring-test-mode — 저장 스쿼드를 디펜더 배열로 해석(StartSquadMatch 미러).
+        // 스쿼드 없음/빈 경우 null 반환(호출부가 프리셋 폴백 판단).
+        private DefenderUnitData[] ResolveSquadDefenders()
+        {
+            var squad = (profileSO != null && profileSO.profile != null) ? profileSO.profile.SelectedSquad() : null;
+            if (squad == null || squad.IsEmpty() || catalog == null) return null;
+
+            var ids = SquadDraw.Resolve(squad.unitIds);
+            var units = new List<DefenderUnitData>(ids.Count);
+            foreach (var id in ids)
+            {
+                var u = catalog.ById(id);
+                if (u != null) units.Add(u);
+            }
+            return units.ToArray();
         }
 
         private void OnDisable()
