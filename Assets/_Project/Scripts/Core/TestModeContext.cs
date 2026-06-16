@@ -24,5 +24,27 @@ namespace Wassup.Core
             Plan = null;
             DefenderPreset = null;
         }
+
+#if UNITY_EDITOR
+        // wave-plan-authoring-inspector unit 1 — 에디터 "Test this plan" 캐리 소비.
+        // WavePlanTestLauncher 가 SessionState 에 적은 플랜 GUID 를 scene Awake/Start
+        // 보다 먼저(BeforeSceneLoad) 읽어 TestModeContext 를 무장한다. 빌드에선 strip.
+        [UnityEngine.RuntimeInitializeOnLoadMethod(UnityEngine.RuntimeInitializeLoadType.BeforeSceneLoad)]
+        private static void ApplyEditorTestCarry()
+        {
+            const string key = "WavePlanTest.guid";
+            string guid = UnityEditor.SessionState.GetString(key, string.Empty);
+            if (string.IsNullOrEmpty(guid)) return;
+            UnityEditor.SessionState.EraseString(key); // 1회 소비
+
+            string path = UnityEditor.AssetDatabase.GUIDToAssetPath(guid);
+            var plan = UnityEditor.AssetDatabase.LoadAssetAtPath<WavePlanAsset>(path);
+            if (plan != null)
+            {
+                Set(plan, null); // 디펜더는 GameManager 가 저장 스쿼드 반입(없으면 프리셋 폴백)
+                UnityEngine.Debug.Log($"[TestModeContext] 에디터 테스트 캐리 적용 — plan='{plan.displayName}'.");
+            }
+        }
+#endif
     }
 }

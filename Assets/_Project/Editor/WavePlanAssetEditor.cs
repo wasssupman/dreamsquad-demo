@@ -16,6 +16,13 @@ namespace Wassup.Editor
         {
             serializedObject.Update();
 
+            using (new EditorGUI.DisabledScope(EditorApplication.isPlaying))
+            {
+                if (GUILayout.Button("▶ Test this plan (Play BattleScene)", GUILayout.Height(30f)))
+                    WavePlanTestLauncher.LaunchInPlayMode((WavePlanAsset)target);
+            }
+            EditorGUILayout.Space(4f);
+
             EditorGUILayout.PropertyField(serializedObject.FindProperty("displayName"));
             var timerProp = serializedObject.FindProperty("timerDurationSec");
             EditorGUILayout.PropertyField(timerProp, new GUIContent("Timer Duration Sec", "0 = endless (전 웨이브 전멸 시 승리)"));
