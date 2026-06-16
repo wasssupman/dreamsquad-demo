@@ -45,4 +45,4 @@ public readonly struct GeneratedWave
 
 ---
 
-*완료 확인*: 2026-06-16 — 컴파일 0, EditMode 325 pass/0 fail. 결정론 회귀(같은 seed → 펼친 SpawnEntry unit/시각/lane 완전 일치), seed=2그룹 불변, N>2 round-robin, 기존 인터리브·summary 테스트 green. 커밋 `__PENDING__`.
+*완료 확인*: 2026-06-16 — 컴파일 0, EditMode 325 pass/0 fail. 결정론 회귀(같은 seed → 펼친 SpawnEntry unit/시각/lane 완전 일치), seed=2그룹 불변, N>2 round-robin, 기존 인터리브·summary 테스트 green. 커밋 `5a1e8fb`.
