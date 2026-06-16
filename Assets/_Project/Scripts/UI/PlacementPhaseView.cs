@@ -67,7 +67,7 @@ namespace Wassup.UI
             if (!_active) return;
             _remaining -= Time.deltaTime;
             if (_remaining <= 0f) { _remaining = 0f; FinishPlacement(); return; }
-            _countdownLabel.text = $"배치 페이즈  ·  {Mathf.CeilToInt(_remaining)}s";
+            _countdownLabel.text = $"PLACEMENT PHASE  ·  {Mathf.CeilToInt(_remaining)}s";
         }
 
         private void OnStartClicked() => FinishPlacement();
@@ -124,7 +124,7 @@ namespace Wassup.UI
             lrt.anchorMin = Vector2.zero; lrt.anchorMax = Vector2.one;
             lrt.offsetMin = Vector2.zero; lrt.offsetMax = Vector2.zero;
             _countdownLabel = labelGO.AddComponent<TextMeshProUGUI>();
-            _countdownLabel.text = "배치 페이즈";
+            _countdownLabel.text = "PLACEMENT PHASE";
             _countdownLabel.fontSize = 36;
             _countdownLabel.color = Color.yellow;
             _countdownLabel.alignment = TextAlignmentOptions.Center;
