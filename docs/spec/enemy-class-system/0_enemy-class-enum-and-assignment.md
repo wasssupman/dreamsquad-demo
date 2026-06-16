@@ -50,4 +50,4 @@ Defender_Bruiser.asset: `displayName: Bruiser` → `Fighter` (role:3, id:bruiser
 - [x] Defender_Bruiser displayName/role 이 "Fighter".
 - [x] 적 SO 6종 + 머티리얼을 `Assets/_Project/Data/Enemies/` 로 이동 (GUID 보존, 참조 유지).
 
-완료: 2026-06-17 / 커밋 해시 `<feature-commit>` (아래 docs 커밋에서 기재)
+완료: 2026-06-17 / 커밋 해시 `3f739d1`
