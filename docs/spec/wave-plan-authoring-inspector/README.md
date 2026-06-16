@@ -1,7 +1,7 @@
 # Wave Plan Authoring Inspector Spec
 
 **작성일**: 2026-06-17
-**상태**: 초안 — 승인 대기. 구현 전.
+**상태**: 완료 2026-06-17 — unit 0~1. 0 `89b8064` · 1 `b165d5c`. handoff: `2_handoff_summary.md`. `WavePlanAsset` 인스펙터에서 웨이브/그룹 작성(추가·삭제·복제·이동·검증·타임라인·요약) + "▶ Test this plan" 으로 BattleScene Play 진입. 에디터 전용, 런타임/데이터 모델 무변경.
 **선행 spec**: `docs/spec/wave-authoring-test-mode/` (완료. `WavePlanAsset`/`TestModeContext`/`SceneNames`/저장 스쿼드 반입 경로 제공)
 
 ## 상위 목표

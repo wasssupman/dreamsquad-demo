@@ -26,4 +26,4 @@
 
 ---
 
-*완료 확인*: 2026-06-17 — 컴파일 0. **타이밍 수정**: `playModeStateChanged(EnteredPlayMode)` 는 GameManager.Start 보다 늦어 부적합 → `TestModeContext` 에 `[RuntimeInitializeOnLoadMethod(BeforeSceneLoad)]` 훅(#if UNITY_EDITOR) 으로 소비. Play 검증: SessionState arm → BeforeSceneLoad 가 Start 전 무장 → GameManager 소비(Active=False), `_authoredPlan=Sample Test Plan`, phase=Placement, StartBattle 시 usingAuthored/timer=0/waves=8. 새 에러 0. 커밋 `__PENDING__`.
+*완료 확인*: 2026-06-17 — 컴파일 0. **타이밍 수정**: `playModeStateChanged(EnteredPlayMode)` 는 GameManager.Start 보다 늦어 부적합 → `TestModeContext` 에 `[RuntimeInitializeOnLoadMethod(BeforeSceneLoad)]` 훅(#if UNITY_EDITOR) 으로 소비. Play 검증: SessionState arm → BeforeSceneLoad 가 Start 전 무장 → GameManager 소비(Active=False), `_authoredPlan=Sample Test Plan`, phase=Placement, StartBattle 시 usingAuthored/timer=0/waves=8. 새 에러 0. 커밋 `b165d5c`.
