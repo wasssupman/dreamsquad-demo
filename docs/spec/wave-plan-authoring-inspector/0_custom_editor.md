@@ -27,4 +27,4 @@
 
 ---
 
-*완료 확인*: 2026-06-17 — 컴파일 0, 콘솔 에러 0. `Editor.CreateEditor` 가 `Wassup.Editor.WavePlanAssetEditor` 반환(등록 확인). SerializedProperty add/group/duplicate/move/delete 전부 예외 없이 동작, 편집 데이터 FromPlanAsset 변환 정상. 에셋 선택+repaint 시 OnInspectorGUI 무에러. 커밋 `__PENDING__`.
+*완료 확인*: 2026-06-17 — 컴파일 0, 콘솔 에러 0. `Editor.CreateEditor` 가 `Wassup.Editor.WavePlanAssetEditor` 반환(등록 확인). SerializedProperty add/group/duplicate/move/delete 전부 예외 없이 동작, 편집 데이터 FromPlanAsset 변환 정상. 에셋 선택+repaint 시 OnInspectorGUI 무에러. 커밋 `89b8064`.
