@@ -135,6 +135,9 @@ namespace Wassup.Bridge
         private bool _ecsInfrastructureReady;
         private bool _usingGeneratedWaves;
         private GeneratedWavePlan _wavePlan;
+        // wave-authoring-test-mode unit 2 — 테스트 모드 작성 플랜. null 이면 seed 경로.
+        private WavePlanAsset _authoredPlan;
+        private bool _usingAuthoredPlan;
         private int _nextWaveIndex;
         private Button _nextWaveButton;
         private TextMeshProUGUI _nextWaveLabel;
@@ -712,6 +715,7 @@ namespace Wassup.Bridge
             _resultShown = false;
             if (skillRuntime != null) skillRuntime.ResetAll();
             _usingGeneratedWaves = false;
+            _usingAuthoredPlan = false;
             _wavePlan = default;
             _nextWaveIndex = 0;
             SetNextWaveButtonVisible(false);
@@ -748,14 +752,19 @@ namespace Wassup.Bridge
                     _pending.Add(new PendingSpawnEntry { entry = deck.spawns[i], deckIndex = i });
             }
             _startTime = Time.time;
-            _timerDuration = deck.timerDurationSec;
+            // wave-authoring-test-mode unit 2 — 작성 모드는 plan.timerDurationSec(0=endless).
+            // seed/legacy 경로는 deck.timerDurationSec 그대로(무변경).
+            _timerDuration = _usingAuthoredPlan ? _wavePlan.timerDurationSec : deck.timerDurationSec;
             _running = true;
             if (_usingGeneratedWaves)
                 QueueDueWaves(0f);
             RefreshNextWaveButton();
-            Debug.Log(_usingGeneratedWaves
-                ? $"[BattleBridge] Battle started with generated deck '{deck.deckId}' seed={_wavePlan.seed} waves={_wavePlan.waves.Count}."
-                : $"[BattleBridge] Battle started with legacy deck '{deck.deckId}' ({deck.spawns.Count} spawns queued).");
+            if (_usingAuthoredPlan)
+                Debug.Log($"[BattleBridge] Battle started with AUTHORED plan '{_authoredPlan.displayName}' waves={_wavePlan.waves.Count} endless={(_timerDuration <= 0f)}.");
+            else
+                Debug.Log(_usingGeneratedWaves
+                    ? $"[BattleBridge] Battle started with generated deck '{deck.deckId}' seed={_wavePlan.seed} waves={_wavePlan.waves.Count}."
+                    : $"[BattleBridge] Battle started with legacy deck '{deck.deckId}' ({deck.spawns.Count} spawns queued).");
         }
 
         private void EnsureQueriesAndQueues()
@@ -1011,10 +1020,40 @@ namespace Wassup.Bridge
         public int RebuildDraftMapCallCount { get; private set; }
 #endif
 
+        // wave-authoring-test-mode unit 2 — 테스트 모드: seed 생성 대신 작성 플랜 사용.
+        // null 을 주면 seed 경로로 복귀. StartBattle 의 TryInitializeGeneratedWaves 가 소비.
+        public void SetAuthoredWavePlan(WavePlanAsset plan)
+        {
+            _authoredPlan = plan;
+        }
+
         private bool TryInitializeGeneratedWaves()
         {
             _wavePlan = default;
             _nextWaveIndex = 0;
+            _usingAuthoredPlan = false;
+
+            // 작성 플랜 우선. 변환 실패 시 아래 seed 경로로 fall-through.
+            if (_authoredPlan != null)
+            {
+                try
+                {
+                    _wavePlan = WavePatternGenerator.FromPlanAsset(_authoredPlan);
+                    GameManager.Instance?.Logger?.SetWavePattern(_wavePlan);
+                    if (_wavePlan.waves != null && _wavePlan.waves.Count > 0)
+                    {
+                        _usingAuthoredPlan = true;
+                        return true;
+                    }
+                    Debug.LogWarning($"[BattleBridge] Authored plan '{_authoredPlan.name}' has no waves; falling back to seed/legacy.", this);
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogError($"[BattleBridge] Authored plan '{_authoredPlan.name}' failed; falling back. {ex.Message}", this);
+                }
+                _wavePlan = default;
+                _nextWaveIndex = 0;
+            }
 
             if (deck == null || !deck.useGeneratedWaves)
                 return false;

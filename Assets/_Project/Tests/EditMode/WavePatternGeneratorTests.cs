@@ -166,6 +166,63 @@ namespace Wassup.Tests.EditMode
             }
         }
 
+        // wave-authoring-test-mode unit 2 — 작성 플랜 변환: groups/총합/시각/timer 매핑
+        // + (unit==null || count<=0) 그룹 필터.
+        [Test]
+        public void FromPlanAssetMapsGroupsAndFiltersEmpty()
+        {
+            var a = CreateUnit("A");
+            var b = CreateUnit("B");
+            var plan = ScriptableObject.CreateInstance<WavePlanAsset>();
+            plan.timerDurationSec = 0f;
+            plan.intraWaveSpacingSec = 0.5f;
+            plan.waves = new List<AuthoredWave>
+            {
+                new AuthoredWave
+                {
+                    triggerTimeSec = 0f,
+                    groups = new List<AuthoredSpawnGroup>
+                    {
+                        new AuthoredSpawnGroup { unit = a, count = 3 },
+                        new AuthoredSpawnGroup { unit = b, count = 2 },
+                    },
+                },
+                new AuthoredWave
+                {
+                    triggerTimeSec = 10f,
+                    groups = new List<AuthoredSpawnGroup>
+                    {
+                        new AuthoredSpawnGroup { unit = a, count = 0 },     // count<=0 → 필터
+                        new AuthoredSpawnGroup { unit = null, count = 5 },  // null → 필터
+                        new AuthoredSpawnGroup { unit = b, count = 4 },
+                    },
+                },
+            };
+
+            try
+            {
+                var gen = WavePatternGenerator.FromPlanAsset(plan);
+
+                Assert.AreEqual(0f, gen.timerDurationSec, 0.0001f);
+                Assert.AreEqual(0.5f, gen.intraWaveSpacingSec, 0.0001f);
+                Assert.AreEqual(2, gen.waves.Count);
+
+                Assert.AreEqual(2, gen.waves[0].groups.Count);
+                Assert.AreEqual(5, gen.waves[0].totalCount);
+
+                Assert.AreEqual(10f, gen.waves[1].triggerTimeSec, 0.0001f);
+                Assert.AreEqual(1, gen.waves[1].groups.Count);
+                Assert.AreEqual(b, gen.waves[1].groups[0].unit);
+                Assert.AreEqual(4, gen.waves[1].totalCount);
+            }
+            finally
+            {
+                Object.DestroyImmediate(a);
+                Object.DestroyImmediate(b);
+                Object.DestroyImmediate(plan);
+            }
+        }
+
         private GeneratedWavePlan Generate(int seed)
         {
             return WavePatternGenerator.Generate(

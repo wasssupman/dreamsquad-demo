@@ -88,6 +88,34 @@ namespace Wassup.Data
 
         // round-robin: round 0,1,2... 마다 그룹 순서대로 1마리씩 emit, 해당 그룹 count
         // 를 넘으면 건너뛴다. 2그룹이면 기존 A,B,A,B... 인터리브와 동일(결정론 유지).
+        // wave-authoring-test-mode unit 2 — 에디터 작성 플랜을 런타임 GeneratedWavePlan(N-entry)으로.
+        // seed=0/version=0 은 비-seed(작성) 마커. waveIntervalSec 는 작성 모드 비적용(0).
+        public static GeneratedWavePlan FromPlanAsset(WavePlanAsset plan)
+        {
+            if (plan == null) throw new ArgumentNullException(nameof(plan));
+
+            var source = plan.waves;
+            int count = source != null ? source.Count : 0;
+            var waves = new List<GeneratedWave>(count);
+            for (int i = 0; i < count; i++)
+            {
+                var aw = source[i];
+                var groups = new List<WaveSpawnGroup>();
+                if (aw != null && aw.groups != null)
+                    for (int g = 0; g < aw.groups.Count; g++)
+                    {
+                        var grp = aw.groups[g];
+                        if (grp == null || grp.unit == null || grp.count <= 0) continue;
+                        groups.Add(new WaveSpawnGroup(grp.unit, grp.count));
+                    }
+                float trigger = aw != null ? aw.triggerTimeSec : 0f;
+                waves.Add(new GeneratedWave(i, trigger, groups));
+            }
+
+            float spacing = plan.intraWaveSpacingSec > 0f ? plan.intraWaveSpacingSec : 0.35f;
+            return new GeneratedWavePlan(0, 0, plan.timerDurationSec, 0f, spacing, waves);
+        }
+
         public static List<SpawnEntry> ExpandWave(GeneratedWave wave, float baseTriggerTimeSec, int laneCount, float intraWaveSpacingSec)
         {
             var entries = new List<SpawnEntry>(wave.totalCount);
