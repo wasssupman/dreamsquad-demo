@@ -63,4 +63,4 @@ namespace Wassup.Data
 
 ---
 
-*완료 확인*: 2026-06-16 — 에디터 인스펙터에서 8웨이브/그룹 표시·드래그·count 입력·`Create>Wassup/WavePlan` 생성 확인. 런타임 로드 검증(8웨이브, N>2 포함, 108 spawns, 적 SO 정상 해석). 커밋 `003f765`.
+*완료 확인*: 2026-06-16 — 에디터 인스펙터에서 8웨이브/그룹 표시·드래그·count 입력·`Create>Wassup/WavePlan` 생성 확인. 런타임 로드 검증(8웨이브, N>2 포함, 108 spawns, 적 SO 정상 해석). 커밋 `ea8cb35`.
