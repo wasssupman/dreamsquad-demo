@@ -86,10 +86,11 @@ namespace Wassup.Data
             return new GeneratedWavePlan(resolvedSeed, generatorVersion, duration, interval, spacing, waves);
         }
 
-        // round-robin: round 0,1,2... 마다 그룹 순서대로 1마리씩 emit, 해당 그룹 count
-        // 를 넘으면 건너뛴다. 2그룹이면 기존 A,B,A,B... 인터리브와 동일(결정론 유지).
-        // wave-authoring-test-mode unit 2 — 에디터 작성 플랜을 런타임 GeneratedWavePlan(N-entry)으로.
-        // seed=0/version=0 은 비-seed(작성) 마커. waveIntervalSec 는 작성 모드 비적용(0).
+        // wave-authoring-test-mode unit 2/6 — 에디터 작성 플랜을 런타임 GeneratedWavePlan 으로.
+        // 각 웨이브는 durationSec 만큼의 구간이고, 웨이브 i 절대 시작 = 앞 웨이브 durationSec 합.
+        // 그룹의 triggerTimeSec(웨이브 상대)은 WaveSpawnGroup.triggerOffsetSec 로, count 펼침
+        // 간격은 GeneratedWave.spawnIntervalSec(=wave.intervalSec)로. expandMode=PerGroupTimeline.
+        // seed=0/version=0 은 비-seed(작성) 마커.
         public static GeneratedWavePlan FromPlanAsset(WavePlanAsset plan)
         {
             if (plan == null) throw new ArgumentNullException(nameof(plan));
@@ -97,6 +98,7 @@ namespace Wassup.Data
             var source = plan.waves;
             int count = source != null ? source.Count : 0;
             var waves = new List<GeneratedWave>(count);
+            float cumulativeStart = 0f;
             for (int i = 0; i < count; i++)
             {
                 var aw = source[i];
@@ -106,16 +108,19 @@ namespace Wassup.Data
                     {
                         var grp = aw.groups[g];
                         if (grp == null || grp.unit == null || grp.count <= 0) continue;
-                        groups.Add(new WaveSpawnGroup(grp.unit, grp.count));
+                        groups.Add(new WaveSpawnGroup(grp.unit, grp.count, math.max(0f, grp.triggerTimeSec)));
                     }
-                float trigger = aw != null ? aw.triggerTimeSec : 0f;
-                waves.Add(new GeneratedWave(i, trigger, groups));
+                float interval = aw != null ? math.max(0f, aw.intervalSec) : 0f;
+                waves.Add(new GeneratedWave(i, cumulativeStart, groups, interval, WaveExpandMode.PerGroupTimeline));
+                cumulativeStart += aw != null ? math.max(0f, aw.durationSec) : 0f;
             }
 
-            float spacing = plan.intraWaveSpacingSec > 0f ? plan.intraWaveSpacingSec : 0.35f;
-            return new GeneratedWavePlan(0, 0, plan.timerDurationSec, 0f, spacing, waves);
+            return new GeneratedWavePlan(0, 0, plan.timerDurationSec, 0f, 0f, waves);
         }
 
+        // RoundRobin(seed): round 0,1,2... 마다 그룹 순서대로 1마리씩 emit, intraWaveSpacing 간격
+        //   (2그룹이면 기존 A,B,A,B... 인터리브와 byte-identical).
+        // PerGroupTimeline(작성): 그룹마다 triggerOffsetSec 부터 count 마리를 spawnIntervalSec 간격.
         public static List<SpawnEntry> ExpandWave(GeneratedWave wave, float baseTriggerTimeSec, int laneCount, float intraWaveSpacingSec)
         {
             var entries = new List<SpawnEntry>(wave.totalCount);
@@ -123,9 +128,24 @@ namespace Wassup.Data
             if (groups == null || groups.Count == 0) return entries;
 
             int localIndex = 0;
+
+            if (wave.expandMode == WaveExpandMode.PerGroupTimeline)
+            {
+                for (int g = 0; g < groups.Count; g++)
+                {
+                    var grp = groups[g];
+                    if (grp.unit == null) continue;
+                    for (int k = 0; k < grp.count; k++)
+                    {
+                        float t = baseTriggerTimeSec + grp.triggerOffsetSec + k * wave.spawnIntervalSec;
+                        AddEntryAt(entries, grp.unit, t, laneCount, ref localIndex);
+                    }
+                }
+                return entries;
+            }
+
             int maxCount = 0;
             for (int g = 0; g < groups.Count; g++) maxCount = math.max(maxCount, groups[g].count);
-
             for (int round = 0; round < maxCount; round++)
                 for (int g = 0; g < groups.Count; g++)
                 {
@@ -164,6 +184,24 @@ namespace Wassup.Data
             entries.Add(new SpawnEntry
             {
                 triggerTimeSec = baseTriggerTimeSec + localIndex * intraWaveSpacingSec,
+                unitType = unit,
+                spawnIndex = localIndex % lanes,
+            });
+            localIndex++;
+        }
+
+        // PerGroupTimeline 용 — 절대 시각을 직접 받아 엔트리 추가. lane 은 전역 localIndex 기준.
+        private static void AddEntryAt(
+            List<SpawnEntry> entries,
+            AttackUnitData unit,
+            float timeSec,
+            int laneCount,
+            ref int localIndex)
+        {
+            int lanes = math.max(1, laneCount);
+            entries.Add(new SpawnEntry
+            {
+                triggerTimeSec = timeSec,
                 unitType = unit,
                 spawnIndex = localIndex % lanes,
             });

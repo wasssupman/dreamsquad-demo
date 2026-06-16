@@ -7,11 +7,12 @@
 - `123a7ee` 2 작성 플랜 변환기 + BattleBridge 작성-플랜 경로 + endless
 - `aaf97ed` 3 테스트 모드 진입(TestModeConfig/Context + GameManager 분기)
 - `1e01eb2` 4 아웃게임 TEST MODE 버튼 + 플랜 피커 + 저장 스쿼드 반입
-- 문서 해시 기재: `c5dbb09`(0) · `ced8fa0`(1) · `2121125`(2) · `786d704`(3) · 본 커밋(4+handoff)
+- 문서 해시 기재: `c5dbb09`(0) · `ced8fa0`(1) · `2121125`(2) · `786d704`(3) · `5dd7be8`(4+handoff)
+- rev 6 (타이밍 모델 정정 — 웨이브=N초 구간 + 그룹별 상대 시각): 본 커밋
 
 ## Implemented
 
-- 에디터에서 `WavePlanAsset`(웨이브당 N개 (적,수량) 그룹 + triggerTimeSec, `timerDurationSec=0`=endless) 직접 작성. 샘플 `WavePlan_Sample.asset`(8웨이브, N>2 포함).
+- 에디터에서 `WavePlanAsset` 직접 작성. **타이밍 모델(rev 6)**: 각 웨이브=`durationSec`(N) 구간, 그룹별 `triggerTimeSec`(0~N, 웨이브 상대) + 웨이브 `intervalSec`(count 펼침, 0=동시). 웨이브 i 절대 시작 = 앞 durationSec 합. `timerDurationSec=0`=endless. 샘플 `WavePlan_Sample.asset`(8웨이브, N>2 포함).
 - `GeneratedWave` 2타입 고정 → `WaveSpawnGroup[]` 일반화. seed 경로는 2-entry 편의 생성자로 byte-identical(결정론 회귀 테스트 잠금). 소비처(생성기/스케줄러/브리핑 카드 N줄/로그 entries[]) 전부 전환.
 - `WavePatternGenerator.FromPlanAsset` 변환기 + `BattleBridge.SetAuthoredWavePlan` + `TryInitializeGeneratedWaves` 작성 분기(우선, 실패 시 seed fallback).
 - endless: 작성 모드 `_timerDuration=plan.timerDurationSec`(0이면 `CheckTimer` 비활성) → `CheckVictory`(전 웨이브 dispatch + 전멸)로만 종료. seed/legacy `deck.timerDurationSec` 무변경.

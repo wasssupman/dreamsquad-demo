@@ -166,35 +166,34 @@ namespace Wassup.Tests.EditMode
             }
         }
 
-        // wave-authoring-test-mode unit 2 — 작성 플랜 변환: groups/총합/시각/timer 매핑
-        // + (unit==null || count<=0) 그룹 필터.
+        // wave-authoring-test-mode unit 6 — 작성 플랜 변환: 웨이브 누적 시작 + 그룹 상대
+        // offset + spawnInterval + PerGroupTimeline 모드, (unit==null||count<=0) 필터.
         [Test]
-        public void FromPlanAssetMapsGroupsAndFiltersEmpty()
+        public void FromPlanAssetMapsCumulativeStartAndGroupOffsets()
         {
             var a = CreateUnit("A");
             var b = CreateUnit("B");
             var plan = ScriptableObject.CreateInstance<WavePlanAsset>();
             plan.timerDurationSec = 0f;
-            plan.intraWaveSpacingSec = 0.5f;
             plan.waves = new List<AuthoredWave>
             {
                 new AuthoredWave
                 {
-                    triggerTimeSec = 0f,
+                    durationSec = 10f, intervalSec = 0.5f,
                     groups = new List<AuthoredSpawnGroup>
                     {
-                        new AuthoredSpawnGroup { unit = a, count = 3 },
-                        new AuthoredSpawnGroup { unit = b, count = 2 },
+                        new AuthoredSpawnGroup { triggerTimeSec = 0f, unit = a, count = 3 },
+                        new AuthoredSpawnGroup { triggerTimeSec = 4f, unit = b, count = 2 },
                     },
                 },
                 new AuthoredWave
                 {
-                    triggerTimeSec = 10f,
+                    durationSec = 8f, intervalSec = 1f,
                     groups = new List<AuthoredSpawnGroup>
                     {
-                        new AuthoredSpawnGroup { unit = a, count = 0 },     // count<=0 → 필터
-                        new AuthoredSpawnGroup { unit = null, count = 5 },  // null → 필터
-                        new AuthoredSpawnGroup { unit = b, count = 4 },
+                        new AuthoredSpawnGroup { triggerTimeSec = 0f, unit = a, count = 0 },     // 필터
+                        new AuthoredSpawnGroup { triggerTimeSec = 2f, unit = null, count = 5 },  // 필터
+                        new AuthoredSpawnGroup { triggerTimeSec = 3f, unit = b, count = 4 },
                     },
                 },
             };
@@ -204,15 +203,21 @@ namespace Wassup.Tests.EditMode
                 var gen = WavePatternGenerator.FromPlanAsset(plan);
 
                 Assert.AreEqual(0f, gen.timerDurationSec, 0.0001f);
-                Assert.AreEqual(0.5f, gen.intraWaveSpacingSec, 0.0001f);
                 Assert.AreEqual(2, gen.waves.Count);
 
+                // wave 0: 절대 시작 0, interval 0.5, 그룹 2개(offset 0/4)
+                Assert.AreEqual(0f, gen.waves[0].triggerTimeSec, 0.0001f);
+                Assert.AreEqual(WaveExpandMode.PerGroupTimeline, gen.waves[0].expandMode);
+                Assert.AreEqual(0.5f, gen.waves[0].spawnIntervalSec, 0.0001f);
                 Assert.AreEqual(2, gen.waves[0].groups.Count);
+                Assert.AreEqual(4f, gen.waves[0].groups[1].triggerOffsetSec, 0.0001f);
                 Assert.AreEqual(5, gen.waves[0].totalCount);
 
+                // wave 1: 절대 시작 = 앞 웨이브 durationSec(10), 필터 후 그룹 1개(b @offset 3)
                 Assert.AreEqual(10f, gen.waves[1].triggerTimeSec, 0.0001f);
                 Assert.AreEqual(1, gen.waves[1].groups.Count);
                 Assert.AreEqual(b, gen.waves[1].groups[0].unit);
+                Assert.AreEqual(3f, gen.waves[1].groups[0].triggerOffsetSec, 0.0001f);
                 Assert.AreEqual(4, gen.waves[1].totalCount);
             }
             finally
@@ -220,6 +225,36 @@ namespace Wassup.Tests.EditMode
                 Object.DestroyImmediate(a);
                 Object.DestroyImmediate(b);
                 Object.DestroyImmediate(plan);
+            }
+        }
+
+        // PerGroupTimeline 펼침: 그룹 absolute 시각 = base + offset + k*interval.
+        [Test]
+        public void ExpandWavePerGroupTimelineUsesAbsoluteTimes()
+        {
+            var a = CreateUnit("A");
+            var b = CreateUnit("B");
+            try
+            {
+                var groups = new[]
+                {
+                    new WaveSpawnGroup(a, 3, 0f),
+                    new WaveSpawnGroup(b, 2, 4f),
+                };
+                var wave = new GeneratedWave(0, 100f, groups, 0.5f, WaveExpandMode.PerGroupTimeline);
+                var entries = WavePatternGenerator.ExpandWave(wave, 100f, 2, 0.35f); // intraWaveSpacing 무시됨
+
+                Assert.AreEqual(5, entries.Count);
+                Assert.AreEqual(a, entries[0].unitType); Assert.AreEqual(100f, entries[0].triggerTimeSec, 0.0001f);
+                Assert.AreEqual(a, entries[1].unitType); Assert.AreEqual(100.5f, entries[1].triggerTimeSec, 0.0001f);
+                Assert.AreEqual(a, entries[2].unitType); Assert.AreEqual(101f, entries[2].triggerTimeSec, 0.0001f);
+                Assert.AreEqual(b, entries[3].unitType); Assert.AreEqual(104f, entries[3].triggerTimeSec, 0.0001f);
+                Assert.AreEqual(b, entries[4].unitType); Assert.AreEqual(104.5f, entries[4].triggerTimeSec, 0.0001f);
+            }
+            finally
+            {
+                Object.DestroyImmediate(a);
+                Object.DestroyImmediate(b);
             }
         }
 

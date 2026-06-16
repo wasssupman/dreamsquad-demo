@@ -4,9 +4,9 @@ using UnityEngine;
 
 namespace Wassup.Data
 {
-    // wave-authoring-test-mode unit 0 — 에디터에서 직접 작성하는 웨이브 플랜.
-    // seed 생성(WavePatternGenerator) 을 대체하는 테스트 모드 입력. 런타임은
-    // 이 SO 를 GeneratedWavePlan(N-entry) 으로 변환해 소비한다(unit 2).
+    // wave-authoring-test-mode unit 0 (rev unit 6) — 에디터에서 직접 작성하는 웨이브 플랜.
+    // 각 웨이브 = durationSec(N) 구간이고, 스폰은 웨이브 상대 시각(0~N)으로 그룹마다 배치한다.
+    // 웨이브들은 순차로 이어붙는다(웨이브 i 절대 시작 = 앞 웨이브 durationSec 합).
     [CreateAssetMenu(fileName = "WavePlan", menuName = "Wassup/WavePlan", order = 12)]
     public class WavePlanAsset : ScriptableObject
     {
@@ -16,25 +16,30 @@ namespace Wassup.Data
                  ">0 이면 해당 초에 타임아웃 승리(라이브와 동일).")]
         public float timerDurationSec = 0f;
 
-        [Tooltip("웨이브 내 개별 스폰 사이 간격(초). 기존 intraWaveSpacing 과 동일 의미.")]
-        public float intraWaveSpacingSec = 0.35f;
-
         public List<AuthoredWave> waves = new();
     }
 
     [Serializable]
     public class AuthoredWave
     {
-        [Tooltip("이 웨이브가 호출되는 시각(초). 오름차순 권장.")]
-        public float triggerTimeSec;
+        [Tooltip("이 웨이브의 길이(초). 다음 웨이브는 이 시간만큼 뒤에서 시작한다.")]
+        public float durationSec = 12f;
+
+        [Tooltip("그룹의 count 마리를 펼치는 간격(초). 0 = 동시, >0 = 그 간격으로 순차.")]
+        public float intervalSec = 0.5f;
+
         public List<AuthoredSpawnGroup> groups = new();
     }
 
     [Serializable]
     public class AuthoredSpawnGroup
     {
+        [Tooltip("웨이브 시작 기준 상대 스폰 시각(0~durationSec).")]
+        public float triggerTimeSec;
+
         [Tooltip("적 SO 를 드래그.")]
         public AttackUnitData unit;
+
         [Min(1)] public int count = 1;
     }
 }

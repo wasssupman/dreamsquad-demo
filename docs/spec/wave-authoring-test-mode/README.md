@@ -1,7 +1,8 @@
 # Wave Authoring Test Mode Spec
 
 **작성일**: 2026-06-16
-**상태**: 완료 2026-06-16 — unit 0~4 구현·검증. 0 `ea8cb35` · 1 `5a1e8fb` · 2 `123a7ee` · 3 `aaf97ed` · 4 `1e01eb2`. handoff: `5_handoff_summary.md`. 에디터에서 `WavePlanAsset` 작성 → 아웃게임 TEST MODE 피커 → 작성 웨이브로 진입(드래프트 스킵, **저장 스쿼드 반입**, endless=`timerDurationSec` 0). seed 경로 byte-identical 무변경.
+**상태**: 완료 2026-06-16 — unit 0~4 + rev 6. 0 `ea8cb35` · 1 `5a1e8fb` · 2 `123a7ee` · 3 `aaf97ed` · 4 `1e01eb2` · 6(타이밍 모델 정정) 본 작업. handoff: `5_handoff_summary.md`. 에디터에서 `WavePlanAsset` 작성 → 아웃게임 TEST MODE 피커 → 작성 웨이브로 진입(드래프트 스킵, **저장 스쿼드 반입**, endless=`timerDurationSec` 0). seed 경로 byte-identical 무변경.
+**타이밍 모델 (rev 6, 2026-06-16)**: 각 웨이브 = `durationSec`(N) 구간. 스폰은 **웨이브 상대 시각**(그룹별 `triggerTimeSec` 0~N)으로 배치, 웨이브당 `intervalSec` 로 count 펼침(0=동시). 웨이브 i 절대 시작 = 앞 웨이브 durationSec 합. (기존: 웨이브당 전체-타임라인 절대 시각 1개 — 폐기.)
 **선행 spec**: `docs/spec/wave-pattern/` (seed 기반 wave 생성. 본 spec 은 그 위에 "직접 작성한 wave" 경로를 추가하며, seed 경로/결정론은 무변경)
 
 ## 상위 목표
@@ -22,6 +23,7 @@
 | 3 | 테스트 모드 진입 | `3_testmode_entry.md` | `TestModeConfig` SO(디펜더 프리셋 + 플랜 카탈로그) + `TestModeContext`(static carry-in) + `GameManager` 테스트모드 최상위 분기(드래프트 스킵, `StartSquadMatch` 미러). unit 2 의존. |
 | 4 | 아웃게임 UI + 배선 | `4_outgame_button_picker.md` | "테스트 모드" 버튼 + 플랜 피커 패널 + 씬 배선 + Play 검증(100-웨이브 endless 클리어/패배 포함). unit 3 의존. |
 | 5 | Handoff | `5_handoff_summary.md` | 종료 요약. |
+| 6 | 타이밍 모델 정정 | `6_wave_relative_timing_rev.md` | 웨이브=N초 구간, 그룹별 웨이브 상대 triggerTimeSec(0~N) + 웨이브 intervalSec. (rev) |
 
 의존 순서: `0 → 1 → 2 → 3 → 4`. (0 은 1 과 독립이라 먼저 또는 병행 가능하나 번호 순서대로 진행한다. 구 8유닛 → 6유닛 통합: 모델 일반화+소비처를 1로, 변환기+Bridge+endless 를 2로 묶음.)
 
