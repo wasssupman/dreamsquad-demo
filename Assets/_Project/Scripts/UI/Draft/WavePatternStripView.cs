@@ -406,15 +406,21 @@ namespace Wassup.UI.Draft
                 new Vector2(0.55f, 0.6f), new Vector2(1f, 1f),
                 new Vector2(0f, 0f), new Vector2(-14f, -6f), TextAlignmentOptions.TopRight);
 
-            AddText(go.transform, "UnitA", $"{UnitName(wave.unitA)} ×{wave.countA}", 24,
-                UnitColor(wave.unitA), bold: true,
-                new Vector2(0f, 0.28f), new Vector2(1f, 0.58f),
-                new Vector2(20f, 0f), new Vector2(-12f, 0f), TextAlignmentOptions.MidlineLeft);
-
-            AddText(go.transform, "UnitB", $"{UnitName(wave.unitB)} ×{wave.countB}", 24,
-                UnitColor(wave.unitB), bold: true,
-                new Vector2(0f, 0f), new Vector2(1f, 0.30f),
-                new Vector2(20f, 8f), new Vector2(-12f, 0f), TextAlignmentOptions.MidlineLeft);
+            // wave-authoring-test-mode unit 1 — 2줄 고정 → groups N줄 가변.
+            // 하단 영역(y 0~0.58)을 그룹 수로 세로 분할, 그룹 수에 따라 폰트 축소.
+            var groups = wave.groups;
+            int n = groups != null ? groups.Count : 0;
+            float regionTop = 0.58f;
+            int fontSize = n <= 2 ? 24 : (n <= 4 ? 18 : 14);
+            for (int g = 0; g < n; g++)
+            {
+                float hi = regionTop * (1f - (float)g / n);
+                float lo = regionTop * (1f - (float)(g + 1) / n);
+                AddText(go.transform, $"Unit{g}", $"{UnitName(groups[g].unit)} ×{groups[g].count}", fontSize,
+                    UnitColor(groups[g].unit), bold: true,
+                    new Vector2(0f, lo), new Vector2(1f, hi),
+                    new Vector2(20f, 2f), new Vector2(-12f, -2f), TextAlignmentOptions.MidlineLeft);
+            }
 
             _cardRects.Add(rt);
         }

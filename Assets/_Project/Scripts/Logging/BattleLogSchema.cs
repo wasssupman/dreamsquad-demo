@@ -51,11 +51,16 @@ namespace Wassup.Logging
     {
         public int waveIndex;
         public float triggerTimeSec;
-        public string unitA;
-        public int countA;
-        public string unitB;
-        public int countB;
+        // wave-authoring-test-mode unit 1 — 2타입 고정(unitA/B/countA/B) → N-entry.
+        public List<WaveEntryRecord> entries = new();
         public int totalCount;
+    }
+
+    [Serializable]
+    public class WaveEntryRecord
+    {
+        public string unit;
+        public int count;
     }
 
     [Serializable]

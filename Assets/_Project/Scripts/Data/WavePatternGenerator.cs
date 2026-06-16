@@ -86,26 +86,42 @@ namespace Wassup.Data
             return new GeneratedWavePlan(resolvedSeed, generatorVersion, duration, interval, spacing, waves);
         }
 
+        // round-robin: round 0,1,2... 마다 그룹 순서대로 1마리씩 emit, 해당 그룹 count
+        // 를 넘으면 건너뛴다. 2그룹이면 기존 A,B,A,B... 인터리브와 동일(결정론 유지).
         public static List<SpawnEntry> ExpandWave(GeneratedWave wave, float baseTriggerTimeSec, int laneCount, float intraWaveSpacingSec)
         {
             var entries = new List<SpawnEntry>(wave.totalCount);
+            var groups = wave.groups;
+            if (groups == null || groups.Count == 0) return entries;
+
             int localIndex = 0;
-            int maxCount = math.max(wave.countA, wave.countB);
-            for (int i = 0; i < maxCount; i++)
-            {
-                if (i < wave.countA)
-                    AddEntry(entries, wave.unitA, baseTriggerTimeSec, laneCount, intraWaveSpacingSec, ref localIndex);
-                if (i < wave.countB)
-                    AddEntry(entries, wave.unitB, baseTriggerTimeSec, laneCount, intraWaveSpacingSec, ref localIndex);
-            }
+            int maxCount = 0;
+            for (int g = 0; g < groups.Count; g++) maxCount = math.max(maxCount, groups[g].count);
+
+            for (int round = 0; round < maxCount; round++)
+                for (int g = 0; g < groups.Count; g++)
+                {
+                    if (round >= groups[g].count) continue;
+                    if (groups[g].unit == null) continue; // 빈 그룹은 스폰하지 않음(작성 데이터 방어)
+                    AddEntry(entries, groups[g].unit, baseTriggerTimeSec, laneCount, intraWaveSpacingSec, ref localIndex);
+                }
             return entries;
         }
 
         public static string FormatSummary(GeneratedWave wave)
         {
-            string nameA = wave.unitA != null ? wave.unitA.displayName : "?";
-            string nameB = wave.unitB != null ? wave.unitB.displayName : "?";
-            return $"Wave {wave.waveIndex + 1} - {nameA} {wave.countA}, {nameB} {wave.countB}";
+            var groups = wave.groups;
+            if (groups == null || groups.Count == 0) return $"Wave {wave.waveIndex + 1} - (empty)";
+
+            var sb = new System.Text.StringBuilder();
+            sb.Append("Wave ").Append(wave.waveIndex + 1).Append(" - ");
+            for (int g = 0; g < groups.Count; g++)
+            {
+                if (g > 0) sb.Append(", ");
+                var unit = groups[g].unit;
+                sb.Append(unit != null ? unit.displayName : "?").Append(' ').Append(groups[g].count);
+            }
+            return sb.ToString();
         }
 
         private static void AddEntry(

@@ -62,16 +62,20 @@ namespace Wassup.Logging
             for (int i = 0; i < plan.waves.Count; i++)
             {
                 var wave = plan.waves[i];
-                currentEntry.wavePattern.waves.Add(new WaveRecord
+                var record = new WaveRecord
                 {
                     waveIndex = wave.waveIndex,
                     triggerTimeSec = wave.triggerTimeSec,
-                    unitA = wave.unitA != null ? wave.unitA.displayName : string.Empty,
-                    countA = wave.countA,
-                    unitB = wave.unitB != null ? wave.unitB.displayName : string.Empty,
-                    countB = wave.countB,
                     totalCount = wave.totalCount,
-                });
+                };
+                if (wave.groups != null)
+                    for (int g = 0; g < wave.groups.Count; g++)
+                        record.entries.Add(new WaveEntryRecord
+                        {
+                            unit = wave.groups[g].unit != null ? wave.groups[g].unit.displayName : string.Empty,
+                            count = wave.groups[g].count,
+                        });
+                currentEntry.wavePattern.waves.Add(record);
             }
         }
 
