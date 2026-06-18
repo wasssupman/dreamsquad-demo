@@ -42,4 +42,4 @@ Codex ECS 리뷰(2026-06-18) 지적 반영. 기능 버그(마지막 가디언 �
 - [x] orphan 해제: `LastGuardianDestroyed_ReleasesOrphanedAggro` 통과(마지막 provider 파괴 후 해제).
 - [x] 맥락 경계: Effects(AggroAssignmentSystem)는 Combat 컴포넌트 미기록(grep — 주석만). grant/strip은 TauntAttackGrantSystem(Combat) 전담.
 
-완료: 2026-06-18 / 커밋 해시 `<unit8-commit>`
+완료: 2026-06-18 / 커밋 해시 `13269e6`
