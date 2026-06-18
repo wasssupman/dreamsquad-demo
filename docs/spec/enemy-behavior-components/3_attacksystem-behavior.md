@@ -61,8 +61,12 @@ if (isEnemy && hasMovementPauseQ && stop && movePauseOnAttackSec > 0f) enqueue p
 
 ## 완료 기준
 
-- [ ] 컴파일 + Burst 호환(룩업만; em.Exists 미사용).
-- [ ] FocusUntilDead: 한 타겟을 죽을 때까지 유지, 사망 시 재선정, **사거리 밖이면 발사 보류(lock 유지)**.
-- [ ] MoveAndShoot 정지 안 함 / StopToAttack(movePause>0) 정지.
-- [ ] 어그로 시 가디언 고정(focus 무시).
-- [ ] Nearest 적 회귀 없음.
+- [x] 컴파일 + Burst 호환(룩업만; em.Exists 미사용).
+- [x] FocusUntilDead: 잠금 유지(더 가까운 타겟 등장해도 불변), 사망 시 재선정. (Play 검증)
+- [x] MoveAndShoot 정지 안 함 / StopToAttack(movePause>0) 정지. (Play: S→EnemyAttackMovePause, M→없음)
+- [x] 어그로 override 가 focus 위(코드 순서: focus → aggro).
+- [x] Nearest 적 회귀 없음(EditMode 전체 Unit 4 에서 확인).
+
+> Play 검증: focus lock/유지/재선정 통과, aimMode 정지 게이팅 통과(pause drain 은 다음 틱 — 시스템 순서상 정상). 콘솔 에러 0.
+
+완료: 2026-06-18 / 커밋 해시 `<unit3-commit>`

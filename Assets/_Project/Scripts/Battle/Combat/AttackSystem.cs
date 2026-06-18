@@ -59,6 +59,11 @@ namespace Wassup.Battle.Combat
             // aggro-targeting Unit 5 — aggroed enemy sticky-targets its guardian.
             var aggroLookup = SystemAPI.GetComponentLookup<Aggroed>(isReadOnly: true);
             var aggroTransformLookup = SystemAPI.GetComponentLookup<LocalTransform>(isReadOnly: true);
+            // enemy-behavior-components Unit 3 — targetMode/aimMode + FocusUntilDead lock.
+            var behaviorLookup = SystemAPI.GetComponentLookup<EnemyBehavior>(isReadOnly: true);
+            var focusLookup = SystemAPI.GetComponentLookup<FocusTarget>(isReadOnly: false);
+            var healthLookup = SystemAPI.GetComponentLookup<Health>(isReadOnly: true);
+            var deadLookup = SystemAPI.GetComponentLookup<DeadTag>(isReadOnly: true);
 
             bool hasStatQ = SystemAPI.TryGetSingletonRW<Wassup.Battle.Effects.StatModifierApplyEventsSingleton>(out var statModSingleton);
             bool hasStackQ = SystemAPI.TryGetSingletonRW<Wassup.Battle.Effects.StackModifierApplyEventsSingleton>(out var stackModSingleton);
@@ -155,8 +160,36 @@ namespace Wassup.Battle.Combat
                     bestTargetPos = bestTargetPosPrio;
                 }
 
+                // enemy-behavior-components Unit 3 — FocusUntilDead lock (below aggro,
+                // above nearest/priority). Keeps the locked target until it dies/despawns;
+                // range only gates firing, not the lock (fire path has no range check).
+                if (behaviorLookup.HasComponent(attackerEntity)
+                    && behaviorLookup[attackerEntity].targetMode == Wassup.Data.EnemyTargetMode.FocusUntilDead
+                    && focusLookup.HasComponent(attackerEntity))
+                {
+                    Entity cur = focusLookup[attackerEntity].current;
+                    bool curValid = cur != Entity.Null
+                        && healthLookup.HasComponent(cur) && healthLookup[cur].value > 0f
+                        && !deadLookup.HasComponent(cur);
+                    if (curValid)
+                    {
+                        float3 cPos = aggroTransformLookup.HasComponent(cur)
+                            ? aggroTransformLookup[cur].Position : bestTargetPos;
+                        int2 cCell = GridMath.WorldToCell(cPos, tileSize, gridSize, origin: ffOrigin);
+                        int cDist = math.max(math.abs(cCell.x - atkCell.x), math.abs(cCell.y - atkCell.y));
+                        if (cDist <= tileRange) { bestTarget = cur; bestTargetPos = cPos; }
+                        else bestTarget = Entity.Null; // out of range → hold fire, keep lock
+                        focusLookup[attackerEntity] = new FocusTarget { current = cur };
+                    }
+                    else
+                    {
+                        // invalid lock → adopt the already-computed nearest+filter result (may be Null)
+                        focusLookup[attackerEntity] = new FocusTarget { current = bestTarget };
+                    }
+                }
+
                 // aggro-targeting Unit 5 — sticky override: an aggroed enemy ignores
-                // filter/priority/nearest and targets ONLY its guardian, and only when
+                // filter/priority/nearest/focus and targets ONLY its guardian, and only when
                 // in range (otherwise it holds fire while walking toward the anchor).
                 if (aggroLookup.HasComponent(attackerEntity))
                 {
@@ -391,7 +424,12 @@ namespace Wassup.Battle.Combat
                     float effectiveCooldownMul = attackSpeedMul > 0f ? 1f / attackSpeedMul : 1f;
                     attack.ValueRW.cooldownRemaining = attack.ValueRO.cooldownDuration * effectiveCooldownMul;
                     bool isEnemy = !isDefender;
-                    if (isEnemy && hasMovementPauseQ)
+                    // enemy-behavior-components Unit 3 — aimMode gates the move-pause.
+                    // StopToAttack pauses (default for legacy/no-behavior); MoveAndShoot keeps moving.
+                    bool stopToAttack = behaviorLookup.HasComponent(attackerEntity)
+                        ? behaviorLookup[attackerEntity].aimMode == Wassup.Data.EnemyAimMode.StopToAttack
+                        : true;
+                    if (isEnemy && hasMovementPauseQ && stopToAttack)
                     {
                         var pauseDuration = attack.ValueRO.movePauseOnAttackSec;
                         if (pauseDuration > 0f)
