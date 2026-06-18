@@ -55,4 +55,4 @@ public struct EnemyTargetFilter : IComponentData  // Combat
 
 > Play 단독 검증: priority=Ranger → 먼 Ranger 피격·가까운 Guardian 무피해 / priority=none → 가까운 Guardian 피격. 콘솔 에러 0.
 
-완료: 2026-06-18 / 커밋 해시 `<unit4-commit>`
+완료: 2026-06-18 / 커밋 해시 `59ddc7e`
