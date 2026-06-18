@@ -8,10 +8,20 @@ namespace Wassup.Data
     {
         public string displayName;
 
-        // enemy-class-system Unit 0 — enemy archetype for future behavior
-        // branches. Authoring data only for now; not yet consumed at runtime.
+        // enemy-class-system Unit 0 — enemy archetype LABEL only. Behavior is NOT
+        // derived from this; it comes from the Behavior fields below (enemy-behavior-components).
         [Header("Class")]
         public EnemyClass enemyClass = EnemyClass.None;
+
+        // enemy-behavior-components Unit 0 — behavior-as-data. Selected per-SO and
+        // baked to ECS (attackMethod → attack components; EnemyBehavior/EnemyTargetFilter).
+        // Decouples function from visuals; lets one class have sub-variants.
+        [Header("Behavior")]
+        public EnemyAttackMethod attackMethod = EnemyAttackMethod.Melee;
+        public EnemyTargetMode targetMode = EnemyTargetMode.Nearest;
+        public EnemyAimMode aimMode = EnemyAimMode.StopToAttack;
+        public DefenderClass targetPriorityClass = DefenderClass.None; // None = no priority
+        public DefenderClassFlags targetClassMask = DefenderClassFlags.Everything;
 
         public float health = 100f;
         public float moveSpeed = 2f;

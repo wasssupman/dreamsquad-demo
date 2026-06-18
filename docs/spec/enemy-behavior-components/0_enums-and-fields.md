@@ -68,6 +68,8 @@ public DefenderClassFlags targetClassMask    = DefenderClassFlags.Everything;
 
 ## 완료 기준
 
-- [ ] 컴파일 에러 없음.
-- [ ] enum 3종 + DefenderClassFlags, `EnemyBehavior`/`FocusTarget` 인식.
-- [ ] AttackUnitData 신규 필드 인스펙터 노출, 기존 SO 역직렬화 회귀 없음(기본값).
+- [x] 컴파일 에러 없음.
+- [x] enum 3종 + DefenderClassFlags(Everything==-1, Ranger=2), `EnemyBehavior`/`FocusTarget` 인식.
+- [x] AttackUnitData 신규 필드 5종 노출, 기본값 역직렬화 회귀 없음.
+
+완료: 2026-06-18 / 커밋 해시 `<unit0-commit>`
