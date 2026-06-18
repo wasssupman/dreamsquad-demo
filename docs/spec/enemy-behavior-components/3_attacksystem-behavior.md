@@ -69,4 +69,4 @@ if (isEnemy && hasMovementPauseQ && stop && movePauseOnAttackSec > 0f) enqueue p
 
 > Play 검증: focus lock/유지/재선정 통과, aimMode 정지 게이팅 통과(pause drain 은 다음 틱 — 시스템 순서상 정상). 콘솔 에러 0.
 
-완료: 2026-06-18 / 커밋 해시 `<unit3-commit>`
+완료: 2026-06-18 / 커밋 해시 `45b0390`
