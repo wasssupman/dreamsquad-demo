@@ -27,4 +27,4 @@ Vanguard / Sniper / Debuffer SO 를 거동 필드 조합으로 생성. 코드 �
 
 > 주의: 투사체 **명중→outputs 적용**은 기존 ProjectileHitSystem 경로(검증된 인프라). 수동 틱 하네스에서 투사체 명중이 안 잡혀(Needler/Rootcaster 동일) Debuffer 디버프의 in-match 적용은 실시간 Play 에서 최종 확인 권장.
 
-완료: 2026-06-18 / 커밋 해시 `<unit0-commit>`
+완료: 2026-06-18 / 커밋 해시 `0a05241`
