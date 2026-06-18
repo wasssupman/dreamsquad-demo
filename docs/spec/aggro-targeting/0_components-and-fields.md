@@ -64,4 +64,4 @@ public struct Aggroed : IComponentData
 - [x] `DefenderUnitData.aggroCapacity`, `AttackUnitData.aggroAttack*` 인스펙터 노출.
 - [x] 기존 SO 역직렬화 회귀 없음 (신규 필드 기본값 0).
 
-완료: 2026-06-18 / 커밋 해시 `<unit0-commit>`
+완료: 2026-06-18 / 커밋 해시 `d559e70`
