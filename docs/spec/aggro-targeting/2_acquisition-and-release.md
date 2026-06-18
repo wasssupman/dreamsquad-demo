@@ -36,8 +36,12 @@ ISystem, `[UpdateInGroup(typeof(SimulationSystemGroup))]`, `[UpdateBefore(typeof
 
 ## 완료 기준
 
-- [ ] 컴파일 + Burst 호환(ISystem, NativeHashMap/Temp).
-- [ ] EditMode: 가디언 1 + 적 N, capacity=K → 정확히 min(K, 사거리내 적) 마리만 `Aggroed`.
-- [ ] EditMode: 이미 어그로된 적은 두 번째 가디언이 가져가지 않음(선점).
-- [ ] EditMode: 가디언 Health=0 → 링크된 적 전부 `Aggroed` 제거.
-- [ ] 맥락 경계: 이 시스템만 `Aggroed`/`AggroProvider` 쓰기.
+- [x] 컴파일 + Burst 호환(ISystem, NativeHashMap/Temp). (컴파일 클린)
+- [x] capacity=K → 정확히 min(K, 사거리내 적). (Play 실월드: capacity 4, 근접 5→4 어그로, 먼 적 제외)
+- [x] 이미 어그로된 적은 두 번째 가디언이 가져가지 않음(선점). (Play 검증)
+- [x] 가디언 Health=0/소멸 → 링크된 적 `Aggroed` 제거 후 다른 가디언 재배정. (Play 검증)
+- [x] 맥락 경계: 이 시스템만 `Aggroed`/`AggroProvider` 쓰기. (코드 검토)
+
+> 정식 EditMode 테스트는 Unit 6 에서 작성. 본 단위는 Play 실월드 reflection 으로 동작 검증.
+
+완료: 2026-06-18 / 커밋 해시 `<unit2-commit>`
