@@ -50,4 +50,4 @@ outputs 없는 적(Runner/Swift)은 `AttackState`/outputs 가 없어 AttackSyste
 
 > Play 단독 검증: sticky(D2 무피해)·taunt grant·strip 모두 통과. 콘솔 에러 0.
 
-완료: 2026-06-18 / 커밋 해시 `<unit5-commit>`
+완료: 2026-06-18 / 커밋 해시 `030d484`
