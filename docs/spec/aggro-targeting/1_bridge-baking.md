@@ -63,4 +63,4 @@ if (entry.unitType.aggroAttackDamage > 0f)
 - [x] Runner 엔티티에 `AggroAttackProfile{5,1,1}` 부착, Ranger 엔티티엔 `AggroProvider` 없음.
 - [x] Play 진입 시 기존 전투 회귀 없음 (아그로 관련 에러 0).
 
-완료: 2026-06-18 / 커밋 해시 `<unit1-commit>`
+완료: 2026-06-18 / 커밋 해시 `7db763b`
