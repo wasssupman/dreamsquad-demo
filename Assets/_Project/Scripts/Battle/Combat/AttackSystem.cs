@@ -53,6 +53,9 @@ namespace Wassup.Battle.Combat
             var blockingHazardCellsLookup = SystemAPI.GetBufferLookup<BlockingHazardCellsBuffer>(isReadOnly: true);
             var modifierStatsLookup = SystemAPI.GetComponentLookup<Wassup.Battle.Effects.ModifierStats>(isReadOnly: true);
             var outputBufferLookup = SystemAPI.GetBufferLookup<AttackOutputElement>(isReadOnly: true);
+            // aggro-targeting Unit 4 — enemy class filter + priority targeting.
+            var defenderClassLookup = SystemAPI.GetComponentLookup<DefenderClassTag>(isReadOnly: true);
+            var enemyFilterLookup = SystemAPI.GetComponentLookup<EnemyTargetFilter>(isReadOnly: true);
 
             bool hasStatQ = SystemAPI.TryGetSingletonRW<Wassup.Battle.Effects.StatModifierApplyEventsSingleton>(out var statModSingleton);
             bool hasStackQ = SystemAPI.TryGetSingletonRW<Wassup.Battle.Effects.StackModifierApplyEventsSingleton>(out var stackModSingleton);
@@ -109,10 +112,21 @@ namespace Wassup.Battle.Combat
                 Entity bestTarget = Entity.Null;
                 float3 bestTargetPos = default;
                 int mask = attack.ValueRO.targetMask;
+                // aggro-targeting Unit 4 — enemy class filter + priority. Defenders have
+                // no EnemyTargetFilter → filterMask -1 / prioClass -1 = legacy nearest.
+                bool hasFilter = enemyFilterLookup.HasComponent(attackerEntity);
+                int filterMask = hasFilter ? enemyFilterLookup[attackerEntity].classMask : -1;
+                int prioClass = hasFilter ? enemyFilterLookup[attackerEntity].priorityClass : -1;
+                float bestSqPrio = float.MaxValue;
+                Entity bestTargetPrio = Entity.Null;
+                float3 bestTargetPosPrio = default;
                 for (int i = 0; i < targetEntities.Length; i++)
                 {
                     if (((int)targetFactions[i].value & mask) == 0) continue;
                     if (targetEntities[i] == attackerEntity) continue;
+                    int cclass = defenderClassLookup.HasComponent(targetEntities[i])
+                        ? (int)defenderClassLookup[targetEntities[i]].value : -1;
+                    if (hasFilter && cclass >= 0 && (filterMask & (1 << cclass)) == 0) continue; // class not allowed
                     float3 targetPos = targetTransforms[i].Position;
                     int2 tgtCell = GridMath.WorldToCell(targetPos, tileSize, gridSize, origin: ffOrigin);
                     int tileDist = math.max(math.abs(tgtCell.x - atkCell.x), math.abs(tgtCell.y - atkCell.y));
@@ -124,6 +138,18 @@ namespace Wassup.Battle.Combat
                         bestTarget = targetEntities[i];
                         bestTargetPos = nearestPos;
                     }
+                    if (prioClass >= 0 && cclass == prioClass && d2 < bestSqPrio)
+                    {
+                        bestSqPrio = d2;
+                        bestTargetPrio = targetEntities[i];
+                        bestTargetPosPrio = nearestPos;
+                    }
+                }
+                // priority override — prefer a priority-class target if any is in range.
+                if (prioClass >= 0 && bestTargetPrio != Entity.Null)
+                {
+                    bestTarget = bestTargetPrio;
+                    bestTargetPos = bestTargetPosPrio;
                 }
 
                 // Fire if cooldown ready and target exists.

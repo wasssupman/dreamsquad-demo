@@ -47,8 +47,12 @@ public struct EnemyTargetFilter : IComponentData  // Combat
 
 ## 완료 기준
 
-- [ ] 컴파일 + Burst 호환.
-- [ ] 디펜더 엔티티에 `DefenderClassTag{role}` baking 확인(reflection).
-- [ ] Shooter 적 엔티티 `priorityClass == Ranger`, 그 외 `-1`.
-- [ ] EditMode/Play: 가디언+레인저 동시 사거리일 때 Shooter 적이 **레인저**를 선정(더 가까운 가디언이 있어도).
-- [ ] 비-Shooter 적은 기존대로 최근접 선정(회귀 없음).
+- [x] 컴파일 + Burst 호환. (컴파일 클린)
+- [x] 디펜더 엔티티에 `DefenderClassTag{role}` baking. (Play: Ranger→Ranger, Guardian→Guardian)
+- [x] Shooter 적 엔티티 `priorityClass == Ranger(1)`, 그 외 `-1`. (Play: Needler=1, Basic=-1)
+- [x] Shooter가 더 가까운 가디언 대신 더 먼 **레인저**를 선정. (Play 단독: A 케이스 ranger만 피격)
+- [x] 비우선 적은 최근접 선정(회귀 없음). (Play 대조군 B: 가까운 가디언 피격)
+
+> Play 단독 검증: priority=Ranger → 먼 Ranger 피격·가까운 Guardian 무피해 / priority=none → 가까운 Guardian 피격. 콘솔 에러 0.
+
+완료: 2026-06-18 / 커밋 해시 `<unit4-commit>`

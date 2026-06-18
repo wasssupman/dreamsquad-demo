@@ -2807,6 +2807,8 @@ namespace Wassup.Bridge
                 attackTargetCount = unitData.attackTargetCount,
                 targetMask = unitData.targetAllies ? (int)Faction.Defender : (int)Faction.Enemy,
             });
+            // aggro-targeting Unit 4 — expose defender class so enemies can filter/prioritize.
+            _em.AddComponentData(entity, new Wassup.Battle.Units.DefenderClassTag { value = unitData.role });
             // aggro-targeting Unit 1 — guardians (aggroCapacity > 0) become aggro
             // anchors. Fighter/Ranger (aggroCapacity == 0) get no AggroProvider.
             if (unitData.aggroCapacity > 0)
@@ -3450,6 +3452,17 @@ namespace Wassup.Bridge
                     cooldown = entry.unitType.aggroAttackCooldown,
                     range = entry.unitType.aggroAttackRange,
                 });
+
+            // aggro-targeting Unit 4 — base targeting filter. Shooter prioritizes our
+            // Ranger; every other enemy targets any class (nearest). classMask -1 = all.
+            int aggroPrioClass = entry.unitType.enemyClass == Wassup.Data.EnemyClass.Shooter
+                ? (int)Wassup.Data.DefenderClass.Ranger
+                : -1;
+            _em.AddComponentData(entity, new Wassup.Battle.Combat.EnemyTargetFilter
+            {
+                classMask = -1,
+                priorityClass = aggroPrioClass,
+            });
 
             _em.AddComponentData(entity, new PathFollowState
             {
