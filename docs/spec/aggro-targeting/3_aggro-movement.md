@@ -58,4 +58,4 @@ if (aggroLookup.HasComponent(entity))
 
 > Play 검증: 가디언 4유닛 밖 어그로 적이 자기 speed 로 보행해 dist 0 수렴. 콘솔 에러 0.
 
-완료: 2026-06-18 / 커밋 해시 `<unit3-commit>`
+완료: 2026-06-18 / 커밋 해시 `70dc5b2`
