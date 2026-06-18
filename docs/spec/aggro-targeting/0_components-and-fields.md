@@ -59,7 +59,9 @@ public struct Aggroed : IComponentData
 
 ## 완료 기준
 
-- [ ] 컴파일 에러 없음.
-- [ ] `AggroProvider`, `Aggroed` 가 Effects 네임스페이스(`Wassup.Battle.Effects`)에 존재.
-- [ ] `DefenderUnitData.aggroCapacity`, `AttackUnitData.aggroAttack*` 인스펙터 노출.
-- [ ] 기존 SO 역직렬화 회귀 없음 (신규 필드 기본값 0).
+- [x] 컴파일 에러 없음.
+- [x] `AggroProvider`, `Aggroed` 가 Effects 네임스페이스(`Wassup.Battle.Effects`)에 존재.
+- [x] `DefenderUnitData.aggroCapacity`, `AttackUnitData.aggroAttack*` 인스펙터 노출.
+- [x] 기존 SO 역직렬화 회귀 없음 (신규 필드 기본값 0).
+
+완료: 2026-06-18 / 커밋 해시 `<unit0-commit>`

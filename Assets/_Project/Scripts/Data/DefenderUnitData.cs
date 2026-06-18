@@ -65,6 +65,14 @@ namespace Wassup.Data
         [Header("Rarity")]
         public DefenderRarity rarity = DefenderRarity.Common;
 
+        // aggro-targeting Unit 0 — magnet aggro. aggroCapacity = max enemies this
+        // unit can hold at once. 0 = no aggro (Fighter/Ranger); only Guardian-role
+        // units set > 0. aggroRange 0 falls back to attackRange. Concrete numbers
+        // are delegated to the balancing spec.
+        [Header("Aggro")]
+        public int aggroCapacity = 0;
+        public float aggroRange = 0f;
+
         // Phase 8: Spine skeleton skin + animation names. When spineSkinName is
         // empty or skeletonDataAsset is null, BattleBridge falls back to the
         // Phase 5 billboard path, so skeletons can be rolled out incrementally

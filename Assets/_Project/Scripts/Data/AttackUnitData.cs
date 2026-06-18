@@ -24,6 +24,15 @@ namespace Wassup.Data
         public ProjectileData projectile;
         public float movePauseOnAttackSec;
 
+        // aggro-targeting Unit 0 — taunt attack. Used ONLY while aggroed, by
+        // enemies that have no normal outputs (Runner/Swift) so they can still
+        // hit the guardian holding them. Ignored during normal (non-aggro)
+        // movement. Concrete numbers delegated to the balancing spec.
+        [Header("Aggro (Taunt) Attack")]
+        public float aggroAttackDamage = 0f;
+        public float aggroAttackCooldown = 1f;
+        public float aggroAttackRange = 1f;
+
         // modifier-legacy-migration unit 1: hit outputs are the runtime source
         // of truth for enemy attacks. `attackDamage` remains serialized for
         // authoring compatibility only; enemies with no outputs deal no runtime
