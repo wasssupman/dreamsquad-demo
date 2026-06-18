@@ -29,4 +29,4 @@ AttackSystem 을 World 에 띄우고 엔티티 수동 구성:
 
 > walk-only/방어적 bake(Melee+outputs빈→no AttackState)는 BattleBridge bake 경로라 Play reflection(Unit 2)으로 검증(EditMode 는 AttackSystem 단위).
 
-완료: 2026-06-18 / 커밋 해시 `<unit4-commit>`
+완료: 2026-06-18 / 커밋 해시 `3ff2fe7`

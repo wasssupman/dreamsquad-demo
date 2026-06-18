@@ -9,7 +9,7 @@
 - `ffca694` unit 1 — 6종 SO 거동 필드 기입
 - `e0191a8` unit 2 — BattleBridge bake(attackMethod 분기, SO 필터, 하드코딩 제거)
 - `45b0390` unit 3 — AttackSystem FocusUntilDead + aimMode 게이팅
-- (이 커밋) unit 4 — EditMode 테스트 + handoff
+- `3ff2fe7` unit 4 — EditMode 테스트 + handoff
 
 ## Implemented
 
