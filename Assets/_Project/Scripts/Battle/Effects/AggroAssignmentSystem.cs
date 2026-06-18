@@ -84,6 +84,10 @@ namespace Wassup.Battle.Effects
             foreach (var (provider, gTransform, guardianEntity) in
                      SystemAPI.Query<RefRO<AggroProvider>, RefRO<LocalTransform>>().WithEntityAccess())
             {
+                // A dead/dying guardian must not acquire new aggro (it releases instead).
+                if (deadLookup.HasComponent(guardianEntity)) continue;
+                if (healthLookup.HasComponent(guardianEntity) && healthLookup[guardianEntity].value <= 0f) continue;
+
                 countByGuardian.TryGetValue(guardianEntity, out int count);
                 int free = provider.ValueRO.capacity - count;
                 if (free <= 0) continue;

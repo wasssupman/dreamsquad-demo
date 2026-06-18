@@ -26,7 +26,12 @@
 
 ## 완료 기준
 
-- [ ] EditMode 테스트 1~7 통과.
-- [ ] PlayMode smoke 통과(콘솔 에러 0).
-- [ ] `7_handoff_summary.md` 작성(Commit/Implemented/Key Files/Verified/Notes/Follow-up).
-- [ ] README 상태 "완료 YYYY-MM-DD" + 후속 후보 갱신.
+- [x] EditMode 테스트 통과. (`AggroAssignmentTests` 5/5: capacity/선점/해제/재배정/도발 grant·strip)
+- [x] EditMode 전체 회귀 없음. (334 중 332 pass / 0 fail / 2 기존 ignore)
+- [x] Play smoke 통과(콘솔 에러 0). (Unit 1~5 각 Play reflection 검증)
+- [x] `7_handoff_summary.md` 작성.
+- [x] README 상태 "완료" + 후속 후보 갱신.
+
+> 단위 테스트 작성 중 죽은 가디언(Health 0, 미파괴)이 획득 패스에서 재어그로하는 엣지 발견 → AggroAssignmentSystem 획득 패스에 생존 가드 추가(보강).
+
+완료: 2026-06-18 / 커밋 해시 `<unit6-commit>`
