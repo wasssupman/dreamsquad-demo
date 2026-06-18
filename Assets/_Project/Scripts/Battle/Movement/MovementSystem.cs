@@ -36,12 +36,48 @@ namespace Wassup.Battle.Movement
             var tornadoQuery = SystemAPI.QueryBuilder().WithAll<TornadoField>().Build();
             var tornadoFields = tornadoQuery.ToComponentDataArray<TornadoField>(Allocator.Temp);
 
+            // aggro-targeting Unit 3 — snapshot guardian positions so aggroed enemies
+            // can self-walk toward their anchor. Separate RO query avoids aliasing the
+            // RW LocalTransform in the movement loop below.
+            var aggroLookup = SystemAPI.GetComponentLookup<Aggroed>(isReadOnly: true);
+            var guardianPos = new NativeHashMap<Entity, float3>(16, Allocator.Temp);
+            foreach (var (gTransform, gEntity) in
+                     SystemAPI.Query<RefRO<LocalTransform>>().WithAll<AggroProvider>().WithEntityAccess())
+                guardianPos[gEntity] = gTransform.ValueRO.Position;
+
             foreach (var (transform, follow, entity) in
                      SystemAPI.Query<RefRW<LocalTransform>, RefRO<PathFollowState>>()
                               .WithNone<PastGoalTag>()
                               .WithEntityAccess())
             {
                 float3 current = transform.ValueRO.Position;
+
+                // aggro-targeting Unit 3 — aggroed enemy abandons the flow path and
+                // self-walks (own speed) toward its guardian, then stacks (stops) on it.
+                // NOT a forced pull (tornado); destination override + own locomotion.
+                // Ignores EnemyAttackMovePause so it keeps closing on the anchor.
+                if (aggroLookup.HasComponent(entity))
+                {
+                    var guardian = aggroLookup[entity].guardian;
+                    if (guardianPos.TryGetValue(guardian, out var gpos))
+                    {
+                        float3 to = gpos - current; to.y = 0f;
+                        float dist = math.length(to);
+                        const float stackThreshold = 0.05f;
+                        if (dist > stackThreshold)
+                        {
+                            float aggroSpeedMul = modifierStatsLookup.HasComponent(entity)
+                                ? modifierStatsLookup[entity].moveSpeedMul : 1f;
+                            float step = follow.ValueRO.speed * aggroSpeedMul * dt;
+                            transform.ValueRW.Position = (step >= dist)
+                                ? new float3(gpos.x, current.y, gpos.z)
+                                : current + math.normalize(to) * step;
+                        }
+                        continue; // skip flow/portal/tornado/goal/pause while aggroed
+                    }
+                    // guardian missing (AggroAssignmentSystem should have released) → fall through
+                }
+
                 if (attackPauseLookup.HasComponent(entity))
                 {
                     var pause = attackPauseLookup[entity];
@@ -154,6 +190,7 @@ namespace Wassup.Battle.Movement
 
             portals.Dispose();
             tornadoFields.Dispose();
+            guardianPos.Dispose();
             ecb.Playback(state.EntityManager);
             ecb.Dispose();
         }
