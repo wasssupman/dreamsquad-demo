@@ -3407,10 +3407,19 @@ namespace Wassup.Bridge
             _em.AddBuffer<IncomingDamage>(entity);
             _em.AddBuffer<CcEffect>(entity);
 
-            // modifier-legacy-migration unit 1: enemies attack only through
-            // outputs[]. attackDamage remains serialized compatibility data.
+            // enemy-behavior-components Unit 2 — attackMethod decides attack components.
+            // Defensive (Critic C1): Melee/Projectile with empty outputs → walk-only
+            // (no AttackState), never a damage-0 attacker. Attack effects still come
+            // through outputs[]; attackDamage remains serialized compatibility data.
+            var attackMethod = entry.unitType.attackMethod;
             bool hasAttackOutputs = entry.unitType.outputs != null && entry.unitType.outputs.Length > 0;
-            if (hasAttackOutputs)
+            bool wantsAttack = attackMethod != Wassup.Data.EnemyAttackMethod.None;
+            if (wantsAttack && !hasAttackOutputs)
+            {
+                Debug.LogWarning($"[BattleBridge] {entry.unitType.displayName}: attackMethod={attackMethod} but outputs empty — baked as walk-only.");
+                wantsAttack = false;
+            }
+            if (wantsAttack)
             {
                 _em.AddComponentData(entity, new AttackState
                 {
@@ -3426,7 +3435,7 @@ namespace Wassup.Bridge
                 foreach (var output in entry.unitType.outputs)
                     outputBuf.Add(new Wassup.Battle.Combat.AttackOutputElement { value = output });
 
-                if (entry.unitType.projectile != null)
+                if (attackMethod == Wassup.Data.EnemyAttackMethod.Projectile && entry.unitType.projectile != null)
                 {
                     var dataIndex = GetOrCreateProjectileDataIndex(entry.unitType.projectile);
                     _em.AddComponentData(entity, new ProjectileRef
@@ -3453,15 +3462,24 @@ namespace Wassup.Bridge
                     range = entry.unitType.aggroAttackRange,
                 });
 
-            // aggro-targeting Unit 4 — base targeting filter. Shooter prioritizes our
-            // Ranger; every other enemy targets any class (nearest). classMask -1 = all.
-            int aggroPrioClass = entry.unitType.enemyClass == Wassup.Data.EnemyClass.Shooter
-                ? (int)Wassup.Data.DefenderClass.Ranger
-                : -1;
+            // enemy-behavior-components Unit 2 — behavior + filter from SO (enemyClass
+            // hardcode removed). EnemyBehavior drives targeting/aim; FocusTarget is
+            // pre-attached for FocusUntilDead (AttackSystem only writes its value).
+            _em.AddComponentData(entity, new Wassup.Battle.Combat.EnemyBehavior
+            {
+                targetMode = entry.unitType.targetMode,
+                aimMode = entry.unitType.aimMode,
+            });
+            if (entry.unitType.targetMode == Wassup.Data.EnemyTargetMode.FocusUntilDead)
+                _em.AddComponentData(entity, new Wassup.Battle.Combat.FocusTarget { current = Entity.Null });
+
+            int priorityClass = entry.unitType.targetPriorityClass == Wassup.Data.DefenderClass.None
+                ? -1
+                : (int)entry.unitType.targetPriorityClass;
             _em.AddComponentData(entity, new Wassup.Battle.Combat.EnemyTargetFilter
             {
-                classMask = -1,
-                priorityClass = aggroPrioClass,
+                classMask = (int)entry.unitType.targetClassMask,
+                priorityClass = priorityClass,
             });
 
             _em.AddComponentData(entity, new PathFollowState

@@ -41,7 +41,9 @@ _em.AddComponentData(entity, new Wassup.Battle.Combat.EnemyTargetFilter
 
 ## 완료 기준
 
-- [ ] Play reflection: Melee(outputs有) 적 AttackState 있음 / None 적 없음 / **Melee+outputs빈 적도 AttackState 없음** / Projectile 적 ProjectileRef 있음.
-- [ ] EnemyBehavior/EnemyTargetFilter SO 값대로, FocusUntilDead 적만 FocusTarget.
-- [ ] Runner/Swift `AggroAttackProfile` 유지(어그로 회귀 없음).
-- [ ] enemyClass 하드코딩 분기 grep 제거 확인.
+- [x] Play reflection: Tanker/Basic Melee→AttackState·Proj없음 / Runner None→AttackState없음 / Needler·Rootcaster Projectile→ProjectileRef 있음. (Melee+outputs빈 방어는 Unit 4 테스트)
+- [x] EnemyBehavior/EnemyTargetFilter SO 값대로, FocusUntilDead 적(Needler/Rootcaster/Basic)만 FocusTarget. Rootcaster prio=Ranger.
+- [x] Runner `AggroAttackProfile` 유지(어그로 회귀 없음).
+- [x] enemyClass→Ranger 하드코딩 grep 제거 확인.
+
+완료: 2026-06-18 / 커밋 해시 `<unit2-commit>`
