@@ -30,4 +30,4 @@
 - [x] 어그로된 근접 적 desiredCount=1(aggro-targeting unit 8 계약 — 가디언만).
 - [x] EditMode 전체 회귀 없음(342 중 340 pass; Play 잔류 6건은 RequestScriptReload 후 해소).
 
-완료: 2026-06-18 / 커밋 해시 `<unit6-commit>`
+완료: 2026-06-18 / 커밋 해시 `19f03c4`
