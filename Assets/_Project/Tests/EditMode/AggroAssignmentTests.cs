@@ -24,6 +24,8 @@ namespace Wassup.Tests.EditMode
             _em = _world.EntityManager;
             _simGroup = _world.CreateSystemManaged<SimulationSystemGroup>();
             _simGroup.AddSystemToUpdateList(_world.CreateSystem<AggroAssignmentSystem>());
+            // taunt grant/strip moved to a Combat-owned system (Unit 8).
+            _simGroup.AddSystemToUpdateList(_world.CreateSystem<TauntAttackGrantSystem>());
         }
 
         [TearDown]
@@ -116,6 +118,19 @@ namespace Wassup.Tests.EditMode
             _simGroup.Update(); // reassign
             Assert.IsTrue(_em.HasComponent<Aggroed>(enemy), "released enemy is reacquired");
             Assert.AreEqual(other, _em.GetComponentData<Aggroed>(enemy).guardian, "reassigned to the surviving guardian");
+        }
+
+        [Test]
+        public void LastGuardianDestroyed_ReleasesOrphanedAggro()
+        {
+            var g = MakeGuardian(2, 5f, float3.zero);
+            var enemy = MakeEnemy(new float3(0.2f, 0, 0));
+            _simGroup.Update();
+            Assert.IsTrue(_em.HasComponent<Aggroed>(enemy));
+
+            _em.DestroyEntity(g); // last provider gone — system must still release the orphan
+            _simGroup.Update();
+            Assert.IsFalse(_em.HasComponent<Aggroed>(enemy), "orphaned aggro released after last guardian destroyed");
         }
 
         [Test]

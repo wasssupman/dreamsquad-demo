@@ -1,6 +1,6 @@
 # Spec — Aggro Targeting (자석 디펜스 어그로)
 
-> 상태: 완료 2026-06-18 (Unit 0~6) · handoff: `7_handoff_summary.md`
+> 상태: 완료 2026-06-18 (Unit 0~6 + 8 Codex 리뷰 반영) · handoff: `7_handoff_summary.md`
 > 출처 기획: `꿈결타게팅어그로 상세 기획 v0.1.1` (approved). 본 spec 은 그 기획의 **어그로 부분만** 코드 구현 단위로 내린 것. 도발(에픽 가디언)·점수·드림캐쳐·인접 시너지는 범위 밖.
 
 ## 목표
@@ -22,7 +22,7 @@
 5. **선점 고정.** 한 적은 먼저 어그로 건 가디언이 해제까지 보유. 이미 어그로된 적은 다른 가디언이 가져가지 않는다.
 6. **해제 = 가디언 사망/소멸.** 링크 가디언이 없어지면 그 가디언의 어그로 적 전체 해제 → 기본 거동(출구행) 복귀.
 7. **어그로 적은 가디언을 공격한다.** 가디언이 적 사거리에 들면 공격. 공격 능력 없는 Runner/Swift 도 어그로 시 **도발 공격 프로필**로 가디언을 때린다. (A안)
-8. **맥락 소속**: 어그로 상태(`AggroProvider`, `Aggroed`)는 **Effects 맥락 소유**. `AggroAssignmentSystem`(Effects)이 획득·해제·count 를 전담. Movement·Combat 은 `Aggroed` 를 **읽기 전용**으로만 참조한다. (TornadoField→MovementSystem 선례와 동일한 cross-context read)
+8. **맥락 소속**: 어그로 상태(`AggroProvider`, `Aggroed`, `TauntAttackGranted`)는 **Effects 맥락 소유**. `AggroAssignmentSystem`(Effects)이 획득·해제·count 를 전담하고 **`Aggroed` 만 쓴다**. 도발공격 grant/strip(Combat 소유 `AttackState`/`AttackOutputElement` 구조변경)은 **`TauntAttackGrantSystem`(Combat)** 이 `Aggroed` 를 읽고 수행한다(맥락 경계 준수, Unit 8). Movement·Combat 은 `Aggroed` 를 **읽기 전용**으로만 참조. (Unit 8) **해제→재획득은 1틱 지연**(ECB playback 순서) — 가디언 교체 시 1프레임 flow blip 은 허용 동작.
 9. **수치는 전부 SO authored placeholder.** aggroCapacity 등 구체값은 밸런싱 spec 위임. 하드코딩 금지.
 10. **공격필터(targetFilter)는 어그로의 override 대상.** 적의 기본(비어그로) 타게팅 = 아군 클래스 비트마스크 필터 + 클래스 우선순위. 어그로가 걸리면 이 필터/우선순위를 **전부 무시**하고 타겟=가디언(계약 4)이 된다. 본 spec 범위: **Shooter 적만 Ranger 우선**, 나머지 적 전부 `all`(최근접). 디펜더 클래스는 `DefenderClassTag` 로 ECS 에 노출한다.
 
@@ -37,6 +37,7 @@
 | 4 | 적 공격필터 + 우선순위 | `4_enemy-target-filter.md` | 디펜더 클래스 ECS 노출 + 적 targetFilter(Shooter→Ranger, 그외 all) |
 | 5 | sticky 타게팅 + 도발 공격 | `5_sticky-and-taunt-attack.md` | AttackSystem: 어그로 시 필터 override·가디언 고정 + Runner/Swift 공격 활성 |
 | 6 | 테스트 + handoff | `6_tests_and_handoff.md` | EditMode 획득/상한/선점/해제/필터, PlayMode smoke |
+| 8 | Codex 리뷰 반영 | `8_review-fixes.md` | orphan 해제(HIGH1) + 도발 grant Combat 이관(HIGH2) + sticky AoE 차단 + 필터 테스트 |
 
 ## 비목표 / 후속 후보
 

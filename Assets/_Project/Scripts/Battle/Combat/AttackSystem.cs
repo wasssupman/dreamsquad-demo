@@ -251,7 +251,11 @@ namespace Wassup.Battle.Combat
                         {
                             // ── Outputs path ────────────────────────────────────────────────
                             // Collect hit targets (same AoE logic as legacy melee path).
-                            int desiredCount = math.max(1, attack.ValueRO.attackTargetCount);
+                            // aggro-targeting Unit 8 — sticky enemies hit only the guardian:
+                            // force single-target so the AoE follow-up can't pull in other defenders.
+                            int desiredCount = aggroLookup.HasComponent(attackerEntity)
+                                ? 1
+                                : math.max(1, attack.ValueRO.attackTargetCount);
                             var hitTargets = new NativeArray<Entity>(desiredCount, Allocator.Temp);
                             int hitCount = 0;
 

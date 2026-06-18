@@ -3,7 +3,6 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
-using Wassup.Battle.Combat;
 using Wassup.Battle.Movement;
 using Wassup.Battle.Units;
 
@@ -22,10 +21,15 @@ namespace Wassup.Battle.Effects
     [UpdateBefore(typeof(MovementSystem))]
     public partial struct AggroAssignmentSystem : ISystem
     {
-        [BurstCompile]
+        // Not Bursted: RequireAnyForUpdate(params EntityQuery[]) allocates a managed array.
         public void OnCreate(ref SystemState state)
         {
-            state.RequireForUpdate<AggroProvider>();
+            // Run whenever there is a provider OR an aggroed enemy. The latter keeps
+            // the release pass alive after the last guardian is destroyed, so orphaned
+            // Aggroed enemies are still released (HIGH 1).
+            var providerQuery = state.GetEntityQuery(ComponentType.ReadOnly<AggroProvider>());
+            var aggroedQuery = state.GetEntityQuery(ComponentType.ReadOnly<Aggroed>());
+            state.RequireAnyForUpdate(providerQuery, aggroedQuery);
         }
 
         [BurstCompile]
@@ -33,10 +37,6 @@ namespace Wassup.Battle.Effects
         {
             var healthLookup = SystemAPI.GetComponentLookup<Health>(isReadOnly: true);
             var deadLookup = SystemAPI.GetComponentLookup<DeadTag>(isReadOnly: true);
-            // aggro-targeting Unit 5 — taunt-attack grant/strip for outputs-less enemies.
-            var attackStateLookup = SystemAPI.GetComponentLookup<AttackState>(isReadOnly: true);
-            var profileLookup = SystemAPI.GetComponentLookup<AggroAttackProfile>(isReadOnly: true);
-            var tauntLookup = SystemAPI.GetComponentLookup<TauntAttackGranted>(isReadOnly: true);
             var ecb = new EntityCommandBuffer(Allocator.Temp);
 
             bool hasFlow = SystemAPI.TryGetSingleton<FlowFieldSingleton>(out var flow);
@@ -56,13 +56,9 @@ namespace Wassup.Battle.Effects
                     && healthLookup.HasComponent(g) && healthLookup[g].value > 0f;
                 if (!guardianAlive)
                 {
-                    ecb.RemoveComponent<Aggroed>(enemyEntity); // release → resume base behavior
-                    if (tauntLookup.HasComponent(enemyEntity)) // strip granted taunt attack
-                    {
-                        ecb.RemoveComponent<AttackState>(enemyEntity);
-                        ecb.RemoveComponent<AttackOutputElement>(enemyEntity);
-                        ecb.RemoveComponent<TauntAttackGranted>(enemyEntity);
-                    }
+                    // release → resume base behavior. TauntAttackGrantSystem (Combat)
+                    // strips any granted AttackState once Aggroed is gone.
+                    ecb.RemoveComponent<Aggroed>(enemyEntity);
                     continue;
                 }
                 if (deadLookup.HasComponent(enemyEntity)) continue; // dying enemy, ignore
@@ -114,34 +110,9 @@ namespace Wassup.Battle.Effects
                     }
                     if (bestIdx < 0) break; // no more in-range candidates
                     assigned[bestIdx] = true; // 선점: claimed for this tick, blocks other guardians
-                    var cand = candEntities[bestIdx];
-                    ecb.AddComponent(cand, new Aggroed { guardian = guardianEntity });
-
-                    // Grant a temporary attack to outputs-less enemies (Runner/Swift) so
-                    // they can hit the guardian while held. Stripped on release.
-                    if (!attackStateLookup.HasComponent(cand) && profileLookup.HasComponent(cand))
-                    {
-                        var p = profileLookup[cand];
-                        ecb.AddComponent(cand, new AttackState
-                        {
-                            damage = p.damage,
-                            range = p.range,
-                            cooldownDuration = p.cooldown,
-                            cooldownRemaining = 0f,
-                            attackTargetCount = 1,
-                            targetMask = (int)Faction.Defender,
-                        });
-                        var ob = ecb.AddBuffer<AttackOutputElement>(cand);
-                        ob.Add(new AttackOutputElement
-                        {
-                            value = new Wassup.Data.AttackOutput
-                            {
-                                kind = Wassup.Data.AttackOutputKind.Damage,
-                                magnitude = p.damage,
-                            },
-                        });
-                        ecb.AddComponent<TauntAttackGranted>(cand);
-                    }
+                    // Effects writes only the aggro link. TauntAttackGrantSystem (Combat)
+                    // grants the taunt AttackState for outputs-less enemies (HIGH 2).
+                    ecb.AddComponent(candEntities[bestIdx], new Aggroed { guardian = guardianEntity });
                 }
             }
 
