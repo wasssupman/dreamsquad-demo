@@ -56,6 +56,9 @@ namespace Wassup.Battle.Combat
             // aggro-targeting Unit 4 — enemy class filter + priority targeting.
             var defenderClassLookup = SystemAPI.GetComponentLookup<DefenderClassTag>(isReadOnly: true);
             var enemyFilterLookup = SystemAPI.GetComponentLookup<EnemyTargetFilter>(isReadOnly: true);
+            // aggro-targeting Unit 5 — aggroed enemy sticky-targets its guardian.
+            var aggroLookup = SystemAPI.GetComponentLookup<Aggroed>(isReadOnly: true);
+            var aggroTransformLookup = SystemAPI.GetComponentLookup<LocalTransform>(isReadOnly: true);
 
             bool hasStatQ = SystemAPI.TryGetSingletonRW<Wassup.Battle.Effects.StatModifierApplyEventsSingleton>(out var statModSingleton);
             bool hasStackQ = SystemAPI.TryGetSingletonRW<Wassup.Battle.Effects.StackModifierApplyEventsSingleton>(out var stackModSingleton);
@@ -150,6 +153,26 @@ namespace Wassup.Battle.Combat
                 {
                     bestTarget = bestTargetPrio;
                     bestTargetPos = bestTargetPosPrio;
+                }
+
+                // aggro-targeting Unit 5 — sticky override: an aggroed enemy ignores
+                // filter/priority/nearest and targets ONLY its guardian, and only when
+                // in range (otherwise it holds fire while walking toward the anchor).
+                if (aggroLookup.HasComponent(attackerEntity))
+                {
+                    bestTarget = Entity.Null;
+                    var g = aggroLookup[attackerEntity].guardian;
+                    if (g != Entity.Null && aggroTransformLookup.HasComponent(g))
+                    {
+                        float3 gPos = aggroTransformLookup[g].Position;
+                        int2 gCell = GridMath.WorldToCell(gPos, tileSize, gridSize, origin: ffOrigin);
+                        int gDist = math.max(math.abs(gCell.x - atkCell.x), math.abs(gCell.y - atkCell.y));
+                        if (gDist <= tileRange)
+                        {
+                            bestTarget = g;
+                            bestTargetPos = gPos;
+                        }
+                    }
                 }
 
                 // Fire if cooldown ready and target exists.

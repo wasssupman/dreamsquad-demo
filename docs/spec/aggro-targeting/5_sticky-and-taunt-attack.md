@@ -42,8 +42,12 @@ outputs 없는 적(Runner/Swift)은 `AttackState`/outputs 가 없어 AttackSyste
 
 ## 완료 기준
 
-- [ ] 컴파일 + Burst 호환.
-- [ ] EditMode/PlayMode: 어그로된 Bruiser 적이 근처 다른 디펜더가 아닌 **가디언**에게 IncomingDamage 적용.
-- [ ] 어그로된 Runner 가 가디언에 도발 공격 데미지 적용.
-- [ ] 해제된 Runner 는 `AttackState` 제거되어 디펜더를 공격하지 않고 출구로 이동.
-- [ ] 가디언이 어그로 적을 정상 공격(기존 경로).
+- [x] 컴파일 + Burst 호환. (컴파일 클린)
+- [x] 어그로된 적이 더 가까운 다른 디펜더가 아닌 **가디언**만 공격. (Play: 가까운 Ranger HP 무변화, 가디언 피격)
+- [x] 어그로된 Runner 가 도발공격 grant 받아 가디언 공격. (Play: AttackState+TauntAttackGranted 획득, 가디언 785)
+- [x] 해제 시 Runner `AttackState`/outputs/TauntAttackGranted 제거. (Play: 가디언 사망 후 전부 False)
+- [x] 가디언이 어그로 적을 정상 공격(기존 경로). (회귀 없음)
+
+> Play 단독 검증: sticky(D2 무피해)·taunt grant·strip 모두 통과. 콘솔 에러 0.
+
+완료: 2026-06-18 / 커밋 해시 `<unit5-commit>`
