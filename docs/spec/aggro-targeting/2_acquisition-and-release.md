@@ -44,4 +44,4 @@ ISystem, `[UpdateInGroup(typeof(SimulationSystemGroup))]`, `[UpdateBefore(typeof
 
 > 정식 EditMode 테스트는 Unit 6 에서 작성. 본 단위는 Play 실월드 reflection 으로 동작 검증.
 
-완료: 2026-06-18 / 커밋 해시 `<unit2-commit>`
+완료: 2026-06-18 / 커밋 해시 `665d0e7`
