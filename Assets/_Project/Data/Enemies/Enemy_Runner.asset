@@ -14,6 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.AttackUnitData
   displayName: Runner
   enemyClass: 2
+  attackMethod: 0
+  targetMode: 0
+  aimMode: 0
+  targetPriorityClass: 0
+  targetClassMask: -1
   health: 20
   moveSpeed: 7.2
   attackDamage: 0

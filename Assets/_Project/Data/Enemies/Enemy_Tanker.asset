@@ -14,6 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Wassup.Data.AttackUnitData
   displayName: Tanker
   enemyClass: 1
+  attackMethod: 1
+  targetMode: 1
+  aimMode: 0
+  targetPriorityClass: 0
+  targetClassMask: -1
   health: 100
   moveSpeed: 1.5
   attackDamage: 20

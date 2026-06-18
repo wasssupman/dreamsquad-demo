@@ -27,6 +27,8 @@ bake 스위치(Unit 2)가 거동 필드를 소비하기 **전에** 6종 적 SO �
 
 ## 완료 기준
 
-- [ ] 6종 .asset 거동 필드 reflection 확인.
-- [ ] 이 시점엔 bake 미변경(Unit 2 전)이므로 런타임 동작 불변 — 데이터만 기입.
-- [ ] EditMode/Play 회귀 없음(필드 추가만).
+- [x] 6종 .asset 거동 필드 reflection 확인 (Runner None/None/Stop, Tanker Melee/Nearest, Needler Proj/Focus/MoveAndShoot, Rootcaster Proj/Focus/Stop/Ranger, Basic Melee/Focus).
+- [x] 이 시점엔 bake 미변경(Unit 2 전)이므로 런타임 동작 불변 — 데이터만 기입.
+- [x] 컴파일/역직렬화 회귀 없음(필드 추가만).
+
+완료: 2026-06-18 / 커밋 해시 `<unit1-commit>`

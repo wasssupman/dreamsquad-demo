@@ -14,6 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.AttackUnitData
   displayName: Needler
   enemyClass: 4
+  attackMethod: 2
+  targetMode: 2
+  aimMode: 1
+  targetPriorityClass: 0
+  targetClassMask: -1
   health: 35
   moveSpeed: 2.8
   attackDamage: 3
