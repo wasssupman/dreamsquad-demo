@@ -72,4 +72,4 @@ public DefenderClassFlags targetClassMask    = DefenderClassFlags.Everything;
 - [x] enum 3종 + DefenderClassFlags(Everything==-1, Ranger=2), `EnemyBehavior`/`FocusTarget` 인식.
 - [x] AttackUnitData 신규 필드 5종 노출, 기본값 역직렬화 회귀 없음.
 
-완료: 2026-06-18 / 커밋 해시 `<unit0-commit>`
+완료: 2026-06-18 / 커밋 해시 `5d92be1`
