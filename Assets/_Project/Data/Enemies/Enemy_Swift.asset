@@ -21,6 +21,9 @@ MonoBehaviour:
   attackCooldown: 1
   projectile: {fileID: 0}
   movePauseOnAttackSec: 0
+  aggroAttackDamage: 5
+  aggroAttackCooldown: 1
+  aggroAttackRange: 1
   outputs: []
   visualMesh: {fileID: 0}
   visualMaterial: {fileID: 2100000, guid: 0abe7b1a1835a4db2a903ad952609783, type: 2}

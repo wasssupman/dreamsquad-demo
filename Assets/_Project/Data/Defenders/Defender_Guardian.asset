@@ -15,9 +15,9 @@ MonoBehaviour:
   id: guardian
   role: 2
   displayName: Guardian
-  health: 80
+  health: 800
   attackRange: 2
-  attackDamage: 15
+  attackDamage: 25
   attackCooldown: 2
   attackTargetCount: 1
   visualMesh: {fileID: 0}
@@ -37,7 +37,7 @@ MonoBehaviour:
   onPlaceDuration: 6
   cost: 2
   targetAllies: 0
-  hazardCastEnabled: 0
+  hazardCastEnabled: 1
   hazardCastRange: 0
   hazardCastCooldown: 0
   hazardCastKind: 0
@@ -46,6 +46,8 @@ MonoBehaviour:
   hazardFootprintWidth: 1
   hazardFootprintHeight: 1
   rarity: 0
+  aggroCapacity: 4
+  aggroRange: 0
   skeletonDataAsset: {fileID: 11400000, guid: b0640b88ee78d49f38774a3a4b09bf4d, type: 2}
   spineSkinName: Goat
   idleAnimation: idle

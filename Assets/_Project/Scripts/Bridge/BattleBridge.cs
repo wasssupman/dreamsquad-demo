@@ -2807,6 +2807,17 @@ namespace Wassup.Bridge
                 attackTargetCount = unitData.attackTargetCount,
                 targetMask = unitData.targetAllies ? (int)Faction.Defender : (int)Faction.Enemy,
             });
+            // aggro-targeting Unit 1 — guardians (aggroCapacity > 0) become aggro
+            // anchors. Fighter/Ranger (aggroCapacity == 0) get no AggroProvider.
+            if (unitData.aggroCapacity > 0)
+            {
+                float aggroRange = unitData.aggroRange > 0f ? unitData.aggroRange : unitData.attackRange;
+                _em.AddComponentData(entity, new Wassup.Battle.Effects.AggroProvider
+                {
+                    capacity = unitData.aggroCapacity,
+                    range = aggroRange,
+                });
+            }
             _em.AddComponentData(entity, new Wassup.Battle.Combat.DefenderCcData
             {
                 knockbackDistance   = unitData.knockbackDistance,
@@ -3428,6 +3439,17 @@ namespace Wassup.Bridge
                     });
                 }
             }
+
+            // aggro-targeting Unit 1 — taunt-attack profile for enemies with no
+            // normal outputs (Runner/Swift) so they can hit the guardian while
+            // aggroed. AggroAssignmentSystem activates it on aggro, strips on release.
+            if (entry.unitType.aggroAttackDamage > 0f)
+                _em.AddComponentData(entity, new Wassup.Battle.Combat.AggroAttackProfile
+                {
+                    damage = entry.unitType.aggroAttackDamage,
+                    cooldown = entry.unitType.aggroAttackCooldown,
+                    range = entry.unitType.aggroAttackRange,
+                });
 
             _em.AddComponentData(entity, new PathFollowState
             {

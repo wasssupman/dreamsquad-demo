@@ -59,6 +59,8 @@ if (entry.unitType.aggroAttackDamage > 0f)
 
 ## 완료 기준
 
-- [ ] 컴파일 + reflection 으로 Guardian 엔티티에 `AggroProvider{capacity>0}` 부착 확인.
-- [ ] Runner/Swift 엔티티에 `AggroAttackProfile` 부착, Fighter/Ranger 엔티티엔 `AggroProvider` 없음.
-- [ ] Play 진입 시 기존 전투 회귀 없음.
+- [x] 컴파일 + reflection 으로 Guardian 엔티티에 `AggroProvider{capacity>0}` 부착 확인. (Play: capacity=4, range=2)
+- [x] Runner 엔티티에 `AggroAttackProfile{5,1,1}` 부착, Ranger 엔티티엔 `AggroProvider` 없음.
+- [x] Play 진입 시 기존 전투 회귀 없음 (아그로 관련 에러 0).
+
+완료: 2026-06-18 / 커밋 해시 `<unit1-commit>`
