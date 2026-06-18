@@ -46,4 +46,4 @@ _em.AddComponentData(entity, new Wassup.Battle.Combat.EnemyTargetFilter
 - [x] Runner `AggroAttackProfile` 유지(어그로 회귀 없음).
 - [x] enemyClass→Ranger 하드코딩 grep 제거 확인.
 
-완료: 2026-06-18 / 커밋 해시 `<unit2-commit>`
+완료: 2026-06-18 / 커밋 해시 `e0191a8`
