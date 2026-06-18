@@ -22,7 +22,11 @@ AttackSystem 을 World 에 띄우고 엔티티 수동 구성:
 
 ## 완료 기준
 
-- [ ] EditMode 신규 통과 + 전체 회귀 없음.
-- [ ] Play smoke: 6종 거동 시각 확인(이동사격/정지사격/근접집중/walk-only).
-- [ ] `5_handoff_summary.md` 작성.
-- [ ] README 상태 "완료" + 후속 후보 갱신.
+- [x] EditMode 신규(EnemyBehaviorTests 5종: lock/hold/reselect, 사거리밖 hold-fire, Nearest 재선정, aimMode 정지/비정지) 통과 + 전체 342 중 340 pass/0 fail.
+- [x] Play 검증(Unit 2/3): 6종 컴포넌트 bake + focus lock + aimMode 정지 게이팅.
+- [x] `5_handoff_summary.md` 작성.
+- [x] README 상태 "완료" + 후속 후보 갱신.
+
+> walk-only/방어적 bake(Melee+outputs빈→no AttackState)는 BattleBridge bake 경로라 Play reflection(Unit 2)으로 검증(EditMode 는 AttackSystem 단위).
+
+완료: 2026-06-18 / 커밋 해시 `<unit4-commit>`

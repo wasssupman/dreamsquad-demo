@@ -1,6 +1,6 @@
 # Spec — Enemy Behavior Components
 
-> 상태: 초안 (구현 전) · 2026-06-18
+> 상태: 완료 2026-06-18 (Unit 0~4) · handoff: `5_handoff_summary.md`
 > 적 거동을 SO enum 필드로 명시 선택 → ECS 컴포넌트로 bake. 외형(mesh/spine)과 기능(공격/타게팅/이동)을 분리.
 
 ## 목표
