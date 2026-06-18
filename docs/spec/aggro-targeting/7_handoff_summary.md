@@ -10,7 +10,7 @@
 - `70dc5b2` unit 3 — 어그로 보행+stack
 - `59ddc7e` unit 4 — 공격필터+우선순위
 - `030d484` unit 5 — sticky + 도발공격
-- (이 커밋) unit 6 — EditMode 테스트 + 사망 가디언 획득 가드 보강
+- `7a87d58` unit 6 — EditMode 테스트 + 사망 가디언 획득 가드 보강
 
 ## Implemented
 
