@@ -3427,7 +3427,7 @@ namespace Wassup.Bridge
                     range = entry.unitType.attackRange,
                     cooldownDuration = entry.unitType.attackCooldown,
                     cooldownRemaining = 0f,
-                    attackTargetCount = 1,
+                    attackTargetCount = Mathf.Max(1, entry.unitType.attackTargetCount),
                     targetMask = (int)(Faction.Defender | Faction.BlockingHazard),
                     movePauseOnAttackSec = entry.unitType.movePauseOnAttackSec,
                 });

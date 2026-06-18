@@ -1,6 +1,6 @@
 # Spec — Enemy Behavior Components
 
-> 상태: 완료 2026-06-18 (Unit 0~4) · handoff: `5_handoff_summary.md`
+> 상태: 완료 2026-06-18 (Unit 0~4 + 6 적 근접 AoE) · handoff: `5_handoff_summary.md`
 > 적 거동을 SO enum 필드로 명시 선택 → ECS 컴포넌트로 bake. 외형(mesh/spine)과 기능(공격/타게팅/이동)을 분리.
 
 ## 목표
@@ -36,6 +36,7 @@
 | 2 | BattleBridge bake | `2_bridge-baking.md` | attackMethod 분기(방어적), 필터 SO 이전, enemyClass 하드코딩 제거 |
 | 3 | AttackSystem 소비 | `3_attacksystem-behavior.md` | FocusUntilDead(사거리 게이팅) + aimMode 정지 게이팅 |
 | 4 | 테스트 + handoff | `4_tests_and_handoff.md` | EditMode(focus/사거리/walk-only/filter) + handoff |
+| 6 | 적 근접 AoE | `6_enemy-aoe.md` | attackTargetCount SO 노출 + bake, 근접 적 2+ (Basic/Tanker=2) |
 
 ## 비목표 / 후속 후보
 

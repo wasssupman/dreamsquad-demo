@@ -31,6 +31,10 @@ namespace Wassup.Data
         public float attackDamage;
         public float attackRange = 1f;
         public float attackCooldown = 1f;
+        // enemy-behavior-components Unit 6 — melee AoE. Nearest N in-range targets hit
+        // per attack (melee/outputs path). 1 = single-target. Aggroed enemies are
+        // forced to 1 (guardian-only) by AttackSystem.
+        public int attackTargetCount = 1;
         public ProjectileData projectile;
         public float movePauseOnAttackSec;
 
