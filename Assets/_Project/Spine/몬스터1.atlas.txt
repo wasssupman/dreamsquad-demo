@@ -1,0 +1,132 @@
+
+몬스터1.png
+size: 1294, 439
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+계란
+  rotate: true
+  xy: 1076, 29
+  size: 75, 79
+  orig: 75, 79
+  offset: 0, 0
+  index: -1
+눈L
+  rotate: true
+  xy: 1181, 87
+  size: 71, 86
+  orig: 71, 86
+  offset: 0, 0
+  index: -1
+눈R
+  rotate: false
+  xy: 1157, 2
+  size: 60, 83
+  orig: 60, 83
+  offset: 0, 0
+  index: -1
+눈꺼풀L
+  rotate: false
+  xy: 1031, 199
+  size: 85, 43
+  orig: 85, 43
+  offset: 0, 0
+  index: -1
+눈꺼풀R
+  rotate: false
+  xy: 1219, 31
+  size: 68, 54
+  orig: 68, 54
+  offset: 0, 0
+  index: -1
+눈동자L
+  rotate: false
+  xy: 1076, 164
+  size: 34, 33
+  orig: 36, 35
+  offset: 1, 1
+  index: -1
+눈동자R
+  rotate: true
+  xy: 1076, 133
+  size: 29, 33
+  orig: 31, 35
+  offset: 1, 1
+  index: -1
+다리L
+  rotate: false
+  xy: 1217, 160
+  size: 75, 137
+  orig: 75, 137
+  offset: 0, 0
+  index: -1
+다리R
+  rotate: false
+  xy: 1217, 299
+  size: 75, 138
+  orig: 75, 138
+  offset: 0, 0
+  index: -1
+머리
+  rotate: false
+  xy: 2, 5
+  size: 489, 432
+  orig: 489, 432
+  offset: 0, 0
+  index: -1
+앞머리
+  rotate: false
+  xy: 794, 7
+  size: 280, 180
+  orig: 280, 180
+  offset: 0, 0
+  index: -1
+얼굴
+  rotate: false
+  xy: 750, 189
+  size: 279, 248
+  orig: 281, 250
+  offset: 1, 1
+  index: -1
+옷
+  rotate: true
+  xy: 493, 163
+  size: 274, 255
+  orig: 274, 255
+  offset: 0, 0
+  index: -1
+입
+  rotate: false
+  xy: 750, 176
+  size: 27, 11
+  orig: 29, 13
+  offset: 1, 1
+  index: -1
+카라
+  rotate: true
+  xy: 1118, 106
+  size: 136, 61
+  orig: 138, 63
+  offset: 1, 1
+  index: -1
+팔L
+  rotate: false
+  xy: 493, 6
+  size: 148, 155
+  orig: 148, 155
+  offset: 0, 0
+  index: -1
+팔R
+  rotate: false
+  xy: 643, 10
+  size: 149, 151
+  orig: 149, 151
+  offset: 0, 0
+  index: -1
+후라이팬
+  rotate: false
+  xy: 1031, 244
+  size: 184, 193
+  orig: 186, 195
+  offset: 1, 1
+  index: -1
