@@ -2957,7 +2957,7 @@ namespace Wassup.Bridge
             // Debug visual: semi-transparent cube that despawns with the obstacle.
             var cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
             cube.name = $"DebugObstacle_{cell.x}_{cell.y}";
-            cube.transform.position = new Vector3(worldPos.x, worldPos.y + tileSize * 0.5f, worldPos.z);
+            cube.transform.position = (Vector3)Wassup.Core.BoardSpace.ToView(new float3(worldPos.x, worldPos.y + tileSize * 0.5f, worldPos.z));
             cube.transform.localScale = Vector3.one * tileSize;
             var mat = cube.GetComponent<Renderer>().material;
             mat.color = new Color(1f, 0.4f, 0.1f, 0.7f);
@@ -2989,7 +2989,9 @@ namespace Wassup.Bridge
             }
 
             float3 worldOrigin = GridToWorldCenter(new Vector2Int(cell.x, cell.y), 0.05f);
-            var visual = Instantiate(so.visualPrefab, new Vector3(worldOrigin.x, worldOrigin.y, worldOrigin.z), Quaternion.identity);
+            // tilemap-view-backend 후속 — hazard 비주얼도 sim→view 변환 경계를 거친다(Legacy3D=identity).
+            Vector3 hazardPos = (Vector3)Wassup.Core.BoardSpace.ToView(worldOrigin);
+            var visual = Instantiate(so.visualPrefab, hazardPos, Quaternion.identity);
             var scale = ShapeToHazardVisualScale(so.shape, so.radius, visual.transform.localScale.y);
             visual.transform.localScale = scale * tileSize;
 
@@ -3030,7 +3032,8 @@ namespace Wassup.Bridge
 
             EnsureBlockingHazardVisualRoot();
             var p = _em.GetComponentData<LocalTransform>(entity).Position;
-            var visual = Instantiate(so.visualPrefab, new Vector3(p.x, p.y, p.z), Quaternion.identity, _blockingHazardVisualRoot);
+            // tilemap-view-backend 후속 — blocking hazard 비주얼도 sim→view 경계를 거친다(Legacy3D=identity).
+            var visual = Instantiate(so.visualPrefab, (Vector3)Wassup.Core.BoardSpace.ToView(p), Quaternion.identity, _blockingHazardVisualRoot);
             var presenter = visual.GetComponent<BlockingHazardPresenter>();
             if (presenter == null)
                 presenter = visual.AddComponent<BlockingHazardPresenter>();
@@ -3201,7 +3204,7 @@ namespace Wassup.Bridge
                 }
                 else if (so != null && so.destructionVfxPrefab != null)
                 {
-                    Instantiate(so.destructionVfxPrefab, new Vector3(evt.worldPosition.x, evt.worldPosition.y, evt.worldPosition.z), Quaternion.identity);
+                    Instantiate(so.destructionVfxPrefab, (Vector3)Wassup.Core.BoardSpace.ToView(evt.worldPosition), Quaternion.identity);
                 }
 
                 _blockingHazardVisualMap.Remove(evt.hazardEntity);

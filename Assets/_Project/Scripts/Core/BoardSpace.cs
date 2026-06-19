@@ -36,11 +36,12 @@ namespace Wassup.Core
             if (_mode == BoardViewMode.Legacy3D) return simWorld;
             float cx = (simWorld.x - _simOrigin.x) / _tileSize + 0.5f;
             float cy = (simWorld.z - _simOrigin.z) / _tileSize + 0.5f;
-            Vector3 view = _grid.transform.TransformPoint(
+            // Tilemap 은 보드를 정면으로 보는 평면 뷰다. 위치는 보드 평면(sim XZ) → 셀 로만 정한다.
+            // sim 높이(simWorld.y)를 화면 세로(view.y)에 더하지 않는다 — 더하면 객체마다 다른 접지
+            // 높이(유닛 0.5 / 해저드 0.05 / 투사체 등)가 제각각 셀에서 어긋난다. 평면 뷰에서
+            // "높이"는 화면 위치가 아니다(필요하면 그건 연출 레이어가 따로 다룰 문제).
+            return _grid.transform.TransformPoint(
                 _grid.CellToLocalInterpolated(new Vector3(cx, cy, 0f)));
-            // sim 높이(점프/낙하/부유 연출)는 화면 위 방향(Y) 가산으로 보존.
-            view.y += simWorld.y - _simOrigin.y;
-            return view;
         }
 
         // 입력(레이캐스트 히트) 경계용 역변환. 입력 평면 위의 점을 전제하므로

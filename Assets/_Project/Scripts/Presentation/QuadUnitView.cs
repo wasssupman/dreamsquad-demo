@@ -31,7 +31,14 @@ namespace Wassup.Presentation
         public void UpdatePosition(Vector3 world)
         {
             _simWorld = world;
-            transform.position = Wassup.Core.BoardSpace.ToView(world);
+            Vector3 view = Wassup.Core.BoardSpace.ToView(world);
+            // 이 빌보드는 Opaque(ZWrite On, Geometry queue). Tilemap 모드에선 보드/프랍 타일맵
+            // (Transparent, z=0)과 동일 평면이라, 나중에 그려지는 투명 타일맵이 ZTest LEqual 로
+            // 같은 깊이에서 덮어써 빌보드가 가려진다. 카메라 쪽(−Z)으로 살짝 당겨 보드 앞에 둔다.
+            // Legacy3D 는 유닛이 보드 위(y=0.5)에 떠 평면 충돌이 없으므로 건드리지 않는다.
+            if (Wassup.Core.BoardSpace.Mode != Wassup.Core.BoardViewMode.Legacy3D)
+                view.z -= 0.1f;
+            transform.position = view;
         }
 
         public void SetSortingOrder(int order)
