@@ -169,11 +169,14 @@ namespace Wassup.UI
 
             if (mainCamera == null) return;
             var ray = mainCamera.ScreenPointToRay(screenPos);
-            // map-origin-placement: 평면을 board 원점 높이에, 셀 변환은 bridge 헬퍼 경유.
-            var plane = new Plane(Vector3.up, bridge != null ? bridge.BoardOrigin : Vector3.zero);
+            // tilemap-view-backend — 입력 평면은 모드별(BoardSpace), 히트 지점을 sim 으로 되돌려
+            // 기존 셀 변환(bridge.DebugWorldToCell) 흐름 유지. (PlacementInput 과 동일 패턴.)
+            // Tilemap 모드는 보드가 수직 평면이라 옛 Plane(up) 은 카메라 레이와 평행해 교차 실패 →
+            // 스킬 타겟이 잡히지 않던 버그를 고친다. Legacy3D 는 동작 동일(plane=up@origin, ToSim=identity).
+            var plane = BoardSpace.RaycastPlane();
             if (!plane.Raycast(ray, out float enter)) return;
 
-            var worldPos = ray.GetPoint(enter);
+            var worldPos = (Vector3)BoardSpace.ToSim(ray.GetPoint(enter));
             Vector2Int tile;
             if (bridge != null)
             {
