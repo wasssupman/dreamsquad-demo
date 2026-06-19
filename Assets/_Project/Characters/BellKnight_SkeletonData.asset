@@ -23,7 +23,8 @@ MonoBehaviour:
     additiveMaterials: []
     multiplyMaterials: []
     screenMaterials: []
-  skeletonDataModifiers: []
+  skeletonDataModifiers:
+  - {fileID: 11400000, guid: b603877d9340c4322820ce4e6303bce2, type: 2}
   fromAnimation: []
   toAnimation: []
   duration: []
