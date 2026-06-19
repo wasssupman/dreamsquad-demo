@@ -32,3 +32,9 @@ MonoBehaviour:
   outputs: []
   visualMesh: {fileID: 0}
   visualMaterial: {fileID: 2100000, guid: 0abe7b1a1835a4db2a903ad952609783, type: 2}
+  skeletonDataAsset: {fileID: 11400000, guid: 256ac09226669405d912bb3414dba87f, type: 2}
+  spineSkinName: default
+  idleAnimation: walk
+  attackAnimation: attack
+  deathAnimation: dead
+  spineVisualScale: 0.85
