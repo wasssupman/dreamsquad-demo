@@ -394,7 +394,6 @@ Transform:
   m_Children:
   - {fileID: 1520756907}
   - {fileID: 673419658}
-  - {fileID: 1627119920}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &211636735
@@ -2683,169 +2682,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 172395676}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1627119919
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1627119920}
-  - component: {fileID: 1627119922}
-  - component: {fileID: 1627119921}
-  - component: {fileID: 1627119923}
-  m_Layer: 0
-  m_Name: PropsTilemap
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1627119920
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1627119919}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 172395676}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!483693784 &1627119921
-TilemapRenderer:
-  serializedVersion: 2
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1627119919}
-  m_Enabled: 1
-  m_CastShadows: 0
-  m_ReceiveShadows: 0
-  m_DynamicOccludee: 1
-  m_StaticShadowCaster: 0
-  m_MotionVectors: 1
-  m_LightProbeUsage: 0
-  m_ReflectionProbeUsage: 0
-  m_RayTracingMode: 0
-  m_RayTraceProcedural: 0
-  m_RayTracingAccelStructBuildFlagsOverride: 0
-  m_RayTracingAccelStructBuildFlags: 1
-  m_SmallMeshCulling: 1
-  m_ForceMeshLod: -1
-  m_MeshLodSelectionBias: 0
-  m_RenderingLayerMask: 1
-  m_RendererPriority: 0
-  m_Materials:
-  - {fileID: 2100000, guid: 9dfc825aed78fcd4ba02077103263b40, type: 2}
-  m_StaticBatchInfo:
-    firstSubMesh: 0
-    subMeshCount: 0
-  m_StaticBatchRoot: {fileID: 0}
-  m_ProbeAnchor: {fileID: 0}
-  m_LightProbeVolumeOverride: {fileID: 0}
-  m_ScaleInLightmap: 1
-  m_ReceiveGI: 1
-  m_PreserveUVs: 0
-  m_IgnoreNormalsForChartDetection: 0
-  m_ImportantGI: 0
-  m_StitchLightmapSeams: 1
-  m_SelectedEditorRenderState: 0
-  m_MinimumChartSize: 4
-  m_AutoUVMaxDistance: 0.5
-  m_AutoUVMaxAngle: 89
-  m_LightmapParameters: {fileID: 0}
-  m_GlobalIlluminationMeshLod: 0
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
-  m_SortingOrder: -5
-  m_MaskInteraction: 0
-  m_ChunkSize: {x: 32, y: 32, z: 32}
-  m_ChunkCullingBounds: {x: 0, y: 0, z: 0}
-  m_MaxChunkCount: 16
-  m_MaxFrameAge: 16
-  m_SortOrder: 0
-  m_Mode: 1
-  m_DetectChunkCullingBounds: 0
---- !u!1839735485 &1627119922
-Tilemap:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1627119919}
-  m_Enabled: 1
-  m_Tiles: {}
-  m_AnimatedTiles: {}
-  m_TileAssetArray: []
-  m_TileSpriteArray: []
-  m_TileMatrixArray: []
-  m_TileColorArray: []
-  m_TileObjectToInstantiateArray: []
-  m_AnimationFrameRate: 1
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_Origin: {x: 0, y: 0, z: 0}
-  m_Size: {x: 0, y: 0, z: 1}
-  m_TileAnchor: {x: 0.5, y: 0.5, z: 0}
-  m_TileOrientation: 0
-  m_TileOrientationMatrix:
-    e00: 1
-    e01: 0
-    e02: 0
-    e03: 0
-    e10: 0
-    e11: 1
-    e12: 0
-    e13: 0
-    e20: 0
-    e21: 0
-    e22: 1
-    e23: 0
-    e30: 0
-    e31: 0
-    e32: 0
-    e33: 1
---- !u!114 &1627119923
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1627119919}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 459f0fa86604f4ea2b0f9413be7a0272, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Presentation.TilemapPropScatter
-  groundTilemap: {fileID: 1520756905}
-  propsTilemap: {fileID: 1627119922}
-  decoGroundTile: {fileID: 11400000, guid: c8c3e25b24f1d451dbcc18d6d753abd3, type: 2}
-  propTiles:
-  - {fileID: 11400000, guid: b8e814086d3a840d68429e364630a717, type: 2}
-  - {fileID: 11400000, guid: 6cea08e6a8dc844fea60f464b21cad0d, type: 2}
-  - {fileID: 11400000, guid: 633e5de12b2354085a7795f2867669ab, type: 2}
-  - {fileID: 11400000, guid: 1450f5fb2a8054e0d865d252f4c0eec4, type: 2}
-  - {fileID: 11400000, guid: 4f954d50655794c15897f9265151504d, type: 2}
-  - {fileID: 11400000, guid: 0d93784617ff84e48957936e6819e2f5, type: 2}
-  - {fileID: 11400000, guid: 3dd9ed930f56b4a26abfdfb4b61e03ac, type: 2}
-  - {fileID: 11400000, guid: a17d3d317d6344cae97f7a67cf31284e, type: 2}
-  weights:
-  - 0.24
-  - 0.04
-  - 0.08
-  - 0.1
-  - 0.2
-  - 0.11
-  - 0.11
-  - 0.12
-  density: 0.45
-  seedSalt: 12345
 --- !u!1 &1628485821
 GameObject:
   m_ObjectHideFlags: 0
@@ -3232,7 +3068,19 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 1939350643}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 0}
+        m_TargetAssemblyTypeName: 
+        m_MethodName: 
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: 
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!114 &1939350643
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3288,7 +3136,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.3}
   m_AnchorMax: {x: 0.5, y: 0.3}
-  m_AnchoredPosition: {x: 0, y: -120}
+  m_AnchoredPosition: {x: 0, y: -116}
   m_SizeDelta: {x: 320, y: 80}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &1939688407
@@ -3363,9 +3211,9 @@ MonoBehaviour:
   _projectileViewPool: {fileID: 808760338}
   mapView: {fileID: 211636736}
   placementInput: {fileID: 1495062452}
-  boardViewMode: 1
+  boardViewMode: 0
   tilemapMapView: {fileID: 172395674}
-  tileSet: {fileID: 11400000, guid: d780c834df42b40c18b728204ba621fb, type: 2}
+  tileSet: {fileID: 11400000, guid: d818ceae446114c88a0bb553a8b87317, type: 2}
   tilemapCameraPresetRect: {fileID: 11400000, guid: 73ae958cfa7504f9c9fcdec440db387e, type: 2}
   tilemapCameraPresetIso: {fileID: 11400000, guid: 3d42947ee5b244f2dbf7438570a204a8, type: 2}
   legacyCharacterScale: 0.7
@@ -3471,7 +3319,19 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 2082553759}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 0}
+        m_TargetAssemblyTypeName: 
+        m_MethodName: 
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: 
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!114 &2082553759
 MonoBehaviour:
   m_ObjectHideFlags: 0
