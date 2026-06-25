@@ -88,6 +88,8 @@ namespace Wassup.Bridge
         [SerializeField] private Vector2 blobShadowFootprint = new Vector2(1.35f, 0.95f);
         [SerializeField] private Color blobShadowColor = new Color(0f, 0f, 0f, 0.45f);
         [SerializeField] private float blobShadowGroundY = 0.02f;
+        [Tooltip("tilemap-real-shadows — ON=진짜 캐스트 그림자(바닥 receive + 빌보드 cast, 블롭 OFF). 모바일은 강제 블롭.")]
+        [SerializeField] private bool useRealShadows = true;
         [Tooltip("Tilemap 모드에서 비활성할 Legacy 환경 오브젝트 (씬 정리 후 배선). 빈 배열 = no-op.")]
         [SerializeField] private GameObject[] tilemapHiddenEnvironment;
         [Header("Stack Modifier Registry")]
@@ -136,6 +138,8 @@ namespace Wassup.Bridge
         public static Vector2 BlobShadowFootprint { get; private set; } = new Vector2(1.35f, 0.95f);
         public static Color BlobShadowColor { get; private set; } = new Color(0f, 0f, 0f, 0.45f);
         public static float BlobShadowGroundY { get; private set; } = 0.02f;
+        // tilemap-real-shadows — 진짜 그림자 모드(데스크톱) vs 블롭(모바일/OFF). 빌드 시 모바일 강제 OFF.
+        public static bool UseRealShadows { get; private set; }
         private const float SynergyPerNeighbor = 0.1f;
         private readonly HashSet<Entity> _synergyActivatedEntities = new();
         private int _synergyActivations;
@@ -626,12 +630,14 @@ namespace Wassup.Bridge
             BlobShadowFootprint = blobShadowFootprint;
             BlobShadowColor = blobShadowColor;
             BlobShadowGroundY = blobShadowGroundY;
+            // 모바일은 shadowmap 비용 회피 위해 강제 블롭. 데스크톱/에디터는 serialized 값.
+            UseRealShadows = useRealShadows && !Application.isMobilePlatform;
             ApplyEnvironmentGating(UseTilemapView); // tilemap=숨김 / Legacy3D=복원 (빈 목록이면 no-op)
 
             if (UseTilemapView)
             {
                 if (tilemapMapView != null)
-                    tilemapMapView.Initialize(_generatedMap, tileSize, tileSet, boardViewMode);
+                    tilemapMapView.Initialize(_generatedMap, tileSize, tileSet, boardViewMode, UseRealShadows);
                 else
                     Debug.LogError("[BattleBridge] boardViewMode 이 Tilemap 이지만 tilemapMapView 가 비어있다.", this);
                 // Tilemap 모드 sim origin 은 무조건 zero — 비활성 mapView transform 을 읽지 않는다 (README 계약).

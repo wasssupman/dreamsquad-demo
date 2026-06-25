@@ -36,10 +36,20 @@ namespace Wassup.Presentation
                 if (billboard == null) billboard = gameObject.AddComponent<Billboard>();
                 billboard.Setup(BillboardMode.Tilted, BattleBridge.CharacterBillboardTilt);
 
-                if (BattleBridge.BlobShadowSprite != null)
-                    BlobShadow.Attach(transform, BattleBridge.BlobShadowSprite, BattleBridge.BlobShadowSize,
-                        BattleBridge.BlobShadowFootprint, BattleBridge.BlobShadowColor,
-                        BattleBridge.BlobShadowGroundY, BoardSortOrder.ShadowOrder);
+                // tilemap-real-shadows — 진짜 그림자(실루엣 cast) vs 블롭(상호배타).
+                if (BattleBridge.UseRealShadows)
+                {
+                    // URP/Unlit + _ALPHATEST_ON → ShadowCaster 가 실루엣 cast. 평면이라 TwoSided.
+                    _renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.TwoSided;
+                }
+                else
+                {
+                    _renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                    if (BattleBridge.BlobShadowSprite != null)
+                        BlobShadow.Attach(transform, BattleBridge.BlobShadowSprite, BattleBridge.BlobShadowSize,
+                            BattleBridge.BlobShadowFootprint, BattleBridge.BlobShadowColor,
+                            BattleBridge.BlobShadowGroundY, BoardSortOrder.ShadowOrder);
+                }
             }
             else
             {

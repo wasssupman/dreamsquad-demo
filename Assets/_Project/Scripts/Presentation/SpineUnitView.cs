@@ -60,12 +60,29 @@ namespace Wassup.Presentation
             var billboard = gameObject.AddComponent<Billboard>();
             billboard.Setup(BillboardMode.Tilted, BattleBridge.CharacterBillboardTilt);
 
-            // tilted-billboard unit 3 — 발밑 블롭 그림자 (Tilemap 모드만; Legacy3D 는 유닛이 떠 있어 미적용).
-            // 유닛 자식으로 붙어 유닛 파괴 시 함께 사라진다.
-            if (BattleBridge.BlobShadowSprite != null && Wassup.Core.BoardSpace.Mode != Wassup.Core.BoardViewMode.Legacy3D)
-                BlobShadow.Attach(transform, BattleBridge.BlobShadowSprite, BattleBridge.BlobShadowSize,
-                    BattleBridge.BlobShadowFootprint, BattleBridge.BlobShadowColor,
-                    BattleBridge.BlobShadowGroundY, BoardSortOrder.ShadowOrder);
+            ApplyTilemapShadow();
+        }
+
+        // tilemap-real-shadows — Tilemap 모드 그림자: 진짜(빌보드 cast) vs 블롭(상호배타).
+        // 진짜 = renderer 가 실루엣 그림자 cast(평면이라 TwoSided). 블롭 = 발밑 타원 + cast OFF.
+        private void ApplyTilemapShadow()
+        {
+            if (Wassup.Core.BoardSpace.Mode == Wassup.Core.BoardViewMode.Legacy3D) return;
+            var renderers = GetComponentsInChildren<Renderer>(true);
+            if (BattleBridge.UseRealShadows)
+            {
+                for (int i = 0; i < renderers.Length; i++)
+                    renderers[i].shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.TwoSided;
+            }
+            else
+            {
+                for (int i = 0; i < renderers.Length; i++)
+                    renderers[i].shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                if (BattleBridge.BlobShadowSprite != null)
+                    BlobShadow.Attach(transform, BattleBridge.BlobShadowSprite, BattleBridge.BlobShadowSize,
+                        BattleBridge.BlobShadowFootprint, BattleBridge.BlobShadowColor,
+                        BattleBridge.BlobShadowGroundY, BoardSortOrder.ShadowOrder);
+            }
         }
 
         public void UpdatePosition(Vector3 world)

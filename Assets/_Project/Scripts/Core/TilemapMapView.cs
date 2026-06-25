@@ -15,6 +15,8 @@ namespace Wassup.Core
         [SerializeField] private Grid grid;
         [SerializeField] private Tilemap groundTilemap;
         [SerializeField] private Tilemap overlayTilemap;
+        // tilemap-real-shadows unit 0 — 그림자 receive 머티리얼(Wassup/Tile_ShadowReceive). 비면 기존 머티리얼 유지.
+        [SerializeField] private Material groundShadowMaterial;
 
         private TileSetData _tileSet;
         private readonly Dictionary<Vector2Int, Coroutine> _activeFlashes = new();
@@ -24,11 +26,12 @@ namespace Wassup.Core
 
         // BattleBridge 맵 빌드 시 호출 (unit 2). Grid cellLayout/cellSize 를 모드에 맞춰 설정한 뒤
         // 전체 셀을 일괄 페인트한다. 재진입(RebuildDraftMap) 안전 — Clear 선행.
-        public void Initialize(in GeneratedMap map, float tileSize, TileSetData tileSet, BoardViewMode mode)
+        public void Initialize(in GeneratedMap map, float tileSize, TileSetData tileSet, BoardViewMode mode,
+            bool realShadows = false)
         {
             Clear();
             _tileSet = tileSet;
-            ConfigureGrid(tileSize, tileSet, mode);
+            ConfigureGrid(tileSize, tileSet, mode, realShadows);
             PaintGround(in map);
             PaintMarkers(in map);
             CenterBoardAtWorldOrigin(in map);
@@ -55,7 +58,7 @@ namespace Wassup.Core
             if (overlayTilemap != null) overlayTilemap.ClearAllTiles();
         }
 
-        private void ConfigureGrid(float tileSize, TileSetData tileSet, BoardViewMode mode)
+        private void ConfigureGrid(float tileSize, TileSetData tileSet, BoardViewMode mode, bool realShadows)
         {
             if (grid == null) return;
             if (mode == BoardViewMode.TilemapIso)
@@ -81,6 +84,21 @@ namespace Wassup.Core
             // unit 4 — "보드 레이어 < 유닛 레이어" 1규칙. 유닛/VFX 는 BoardSortOrder(양수) 사용 → 보드는 음수.
             SetRendererSorting(groundTilemap, -20);
             SetRendererSorting(overlayTilemap, -10);
+
+            // tilemap-real-shadows — 진짜 그림자 모드일 때만 바닥 receive 머티리얼 적용. 아니면 기존 룩 유지.
+            // 타일/맵은 RECEIVE 만(유닛·프랍만 CAST). receive 셰이더엔 ShadowCaster 패스가 없어 이미
+            // cast 못 하지만, 의도 못박기 위해 두 타일맵 모두 cast off 를 명시한다.
+            SetRendererCastShadows(groundTilemap, false);
+            SetRendererCastShadows(overlayTilemap, false);
+            if (realShadows && groundShadowMaterial != null && groundTilemap != null)
+            {
+                var tmr = groundTilemap.GetComponent<TilemapRenderer>();
+                if (tmr != null)
+                {
+                    tmr.sharedMaterial = groundShadowMaterial;
+                    tmr.receiveShadows = true;
+                }
+            }
         }
 
         // unit 1 — 페인트된 ground 영역의 월드 bounds (카메라 프레이밍용; iso 마름모도 실측).
@@ -99,6 +117,17 @@ namespace Wassup.Core
             if (tilemap == null) return;
             var r = tilemap.GetComponent<TilemapRenderer>();
             if (r != null) r.sortingOrder = order;
+        }
+
+        // tilemap-real-shadows — 타일/맵은 그림자를 드리우지 않는다(유닛·프랍만 cast).
+        private static void SetRendererCastShadows(Tilemap tilemap, bool cast)
+        {
+            if (tilemap == null) return;
+            var r = tilemap.GetComponent<TilemapRenderer>();
+            if (r != null)
+                r.shadowCastingMode = cast
+                    ? UnityEngine.Rendering.ShadowCastingMode.On
+                    : UnityEngine.Rendering.ShadowCastingMode.Off;
         }
 
         private void PaintGround(in GeneratedMap map)
