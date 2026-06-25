@@ -1,7 +1,7 @@
 # 6 — Handoff Summary
 
 ## Commit
-- **미커밋** (작성 시점). `main` 브랜치. 커밋 시 feat 브랜치 권장(`feat/tilemap-world-surround`).
+- `a7e794b` `feat(view): Tilemap 광역 터레인 + 배경/원경 프랍 (tilemap-world-surround 0~5)` · 브랜치 `feat/tilemap-world-surround` (main 미머지).
 
 ## Implemented (단위 0~5, 전부 Presentation 계층 · sim/ECS 무영향)
 - **내부 Deco 생성**: MapGrid 맵에 `ObstaclePlacer.DesignateDeco`(Place→Deco, Walk 불변, 시드 결정적). 노브 `MapThemeData.mapGridBuildableKeepRatio`(forest=0.6).
