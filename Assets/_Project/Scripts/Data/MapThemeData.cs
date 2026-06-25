@@ -221,6 +221,20 @@ namespace Wassup.Data
         [Range(0.2f, 0.6f)]
         [Tooltip("Minimum ratio of original Place tiles preserved after obstacle conversion.")]
         public float minPlaceableRatio = 0.4f;
+
+        [Header("MapGrid Interior Deco (tilemap-world-surround)")]
+        [Range(0f, 1f)]
+        [Tooltip("MapGrid 맵 내부에 장식용 Deco 셀을 만들기 위해 buildable Place 로 남길 비율. 1=off(변환 없음), " +
+                 "예: 0.6=Place 60% 유지·40% 를 Deco(grass)로. Walk 경로는 불변, 시드 결정적.")]
+        public float mapGridBuildableKeepRatio = 1f;
+
+        [Header("Distant Ring Props (tilemap-world-surround)")]
+        [Range(0f, 1f)]
+        [Tooltip("외곽 터레인 링 셀에 원경 프랍을 뿌릴 확률. 0 = off.")]
+        public float ringPropDensity;
+        [Min(0f)]
+        [Tooltip("링 바깥쪽으로 갈수록 프랍 밀도 감소율(셀당). 클수록 가장자리가 더 비어 자연 페이드.")]
+        public float ringPropFalloffPerCell = 0.12f;
     }
 
     [Serializable]

@@ -21,8 +21,17 @@ namespace Wassup.Core
         private TileSetData _tileSet;
         private readonly Dictionary<Vector2Int, Coroutine> _activeFlashes = new();
         private readonly HashSet<Vector2Int> _hoverCells = new();
+        // tilemap-world-surround unit 2 — 배경 프랍 호스트(Deco) 판정용 셀/리전 메타 + 프랍 인스턴스 루트.
+        private BoardVisualPlan _visualPlan;
+        private Transform _backgroundPropsRoot;
+        // tilemap-world-surround unit 4 — 외곽 링 원경 프랍 인스턴스 루트.
+        private Transform _ringPropsRoot;
 
         public Grid Grid => grid;
+        public BoardVisualPlan VisualPlan => _visualPlan;
+
+        // 평면 빌보드 프랍이 바닥 타일과 z-fight 나지 않도록 살짝 띄우는 world +Y 오프셋.
+        private const float PropGroundLift = 0.02f;
 
         // BattleBridge 맵 빌드 시 호출 (unit 2). Grid cellLayout/cellSize 를 모드에 맞춰 설정한 뒤
         // 전체 셀을 일괄 페인트한다. 재진입(RebuildDraftMap) 안전 — Clear 선행.
@@ -35,6 +44,8 @@ namespace Wassup.Core
             PaintGround(in map);
             PaintMarkers(in map);
             CenterBoardAtWorldOrigin(in map);
+            // 배경 프랍 배치(Deco/Env 호스트) 판정에 쓰는 셀/리전/anchor 메타. Legacy MapView 와 동일 빌더.
+            _visualPlan = map.IsCreated ? BoardVisualPlanBuilder.Build(map, map.seed) : null;
         }
 
         // tilted-billboard unit 1 — 보드 중앙을 월드 원점(X·Z=0)에 맞춘다. XZ 바닥이라 수평면(X,Z)만 정렬,
@@ -56,6 +67,8 @@ namespace Wassup.Core
             _hoverCells.Clear();
             if (groundTilemap != null) groundTilemap.ClearAllTiles();
             if (overlayTilemap != null) overlayTilemap.ClearAllTiles();
+            if (_backgroundPropsRoot != null) { SafeDestroy(_backgroundPropsRoot.gameObject); _backgroundPropsRoot = null; }
+            if (_ringPropsRoot != null) { SafeDestroy(_ringPropsRoot.gameObject); _ringPropsRoot = null; }
         }
 
         private void ConfigureGrid(float tileSize, TileSetData tileSet, BoardViewMode mode, bool realShadows)
@@ -145,6 +158,42 @@ namespace Wassup.Core
                 tiles[y * w + x] = _tileSet != null ? _tileSet.GroundTileFor(type) : null;
             }
             groundTilemap.SetTilesBlock(bounds, tiles);
+            PaintSurroundRing(w, h);
+        }
+
+        // tilemap-world-surround unit 3 — 플레이 보드 밖 외곽 링을 터레인 타일로 칠하고 톤다운 틴트.
+        // sim 무관(순수 시각). 바깥쪽으로 갈수록 어둡게(surroundEdgeFade) 해 어두운 배경에 자연 블렌딩.
+        private void PaintSurroundRing(int w, int h)
+        {
+            if (groundTilemap == null || _tileSet == null) return;
+            int R = _tileSet.ringRadius;
+            var tile = _tileSet.TerrainTileOrFallback;
+            if (R <= 0 || tile == null) return;
+
+            for (int y = -R; y < h + R; y++)
+            for (int x = -R; x < w + R; x++)
+            {
+                if (x >= 0 && x < w && y >= 0 && y < h) continue; // 플레이 영역 스킵 (원색 유지)
+                var pos = new Vector3Int(x, y, 0);
+                groundTilemap.SetTile(pos, tile);
+                groundTilemap.SetTileFlags(pos, TileFlags.None); // per-cell color 허용
+                int ringDist = RingDistance(x, y, w, h);          // 1..R (보드 경계로부터)
+                float baseT = R > 1 ? Mathf.Clamp01((ringDist - 1) / (float)(R - 1)) : 0f;
+                // 노이즈로 페이드를 교란해 동심 사각형 banding 을 유기적으로 깬다(+1000 오프셋: Perlin 음수좌표 회피).
+                float n = Mathf.PerlinNoise((x + 1000) * _tileSet.surroundNoiseScale, (y + 1000) * _tileSet.surroundNoiseScale);
+                float t = Mathf.Clamp01(baseT + (n - 0.5f) * _tileSet.surroundNoiseAmount);
+                float factor = 1f - _tileSet.surroundEdgeFade * t; // 바깥일수록 어둡게
+                Color c = _tileSet.surroundTint;
+                groundTilemap.SetColor(pos, new Color(c.r * factor, c.g * factor, c.b * factor, 1f));
+            }
+        }
+
+        // 플레이 보드(0..w, 0..h) 경계로부터의 링 레이어 거리(Chebyshev, 1..R).
+        private static int RingDistance(int x, int y, int w, int h)
+        {
+            int dx = x < 0 ? -x : (x >= w ? x - (w - 1) : 0);
+            int dy = y < 0 ? -y : (y >= h ? y - (h - 1) : 0);
+            return Mathf.Max(dx, dy);
         }
 
         private void PaintMarkers(in GeneratedMap map)
@@ -213,6 +262,126 @@ namespace Wassup.Core
             foreach (var c in _activeFlashes.Values)
                 if (c != null) StopCoroutine(c);
             _activeFlashes.Clear();
+        }
+
+        // --- 배경 프랍 (tilemap-world-surround unit 2) ---
+
+        // Deco/Env 셀에 배경 프랍 프리팹을 배치한다. 위치는 grid 권위(BoardSpace.ToView 와 동일 수식) —
+        // Legacy 의 raw (x,y)*tileSize 와 달리 90° 회전·센터링을 자동 반영. 정렬/마커/틴트는 MapView 헬퍼 재사용.
+        public void InstantiateBackgroundProps(
+            BoardVisualPlan plan,
+            MapThemeData theme,
+            IReadOnlyList<PropPlacement> placements,
+            bool castShadows)
+        {
+            if (_backgroundPropsRoot != null) { SafeDestroy(_backgroundPropsRoot.gameObject); _backgroundPropsRoot = null; }
+            if (grid == null || plan == null || theme == null || theme.tileProps == null ||
+                placements == null || placements.Count == 0)
+                return;
+
+            var propsRoot = new GameObject("BackgroundProps");
+            _backgroundPropsRoot = propsRoot.transform;
+            _backgroundPropsRoot.SetParent(transform, false);
+
+            for (int i = 0; i < placements.Count; i++)
+            {
+                var placement = placements[i];
+                if (placement.propIndex < 0 || placement.propIndex >= theme.tileProps.Length) continue;
+                var prop = theme.tileProps[placement.propIndex];
+                if (prop == null || prop.prefab == null) continue;
+
+                float centerX = placement.x + (placement.width - 1) * 0.5f;
+                float centerY = placement.y + (placement.height - 1) * 0.5f;
+                var instance = Instantiate(prop.prefab, _backgroundPropsRoot);
+                instance.name = $"{prop.name}_{placement.x}_{placement.y}";
+                // world 좌표/회전으로 설정 → 부모(grid) 90° 회전 비상속. PropBillboard 가 LateUpdate 로 facing override.
+                instance.transform.position = CellCenterToWorld(centerX, centerY);
+                instance.transform.rotation = Quaternion.Euler(0f, placement.rotationYaw, 0f);
+                instance.transform.localScale = Vector3.one * placement.scale;
+                MapView.ApplyPropSorting(instance, prop, placement, plan);
+                MapView.DisablePropDebugMarkers(instance);
+                if (castShadows) SetPropCastShadows(instance);
+                if (theme.propGlobalTint != Color.white)
+                    MapView.ApplyPropGlobalTint(instance, theme.propGlobalTint);
+            }
+        }
+
+        // tilemap-world-surround unit 4 — 외곽 터레인 링 셀에 원경 프랍을 저밀도로 흩뿌린다.
+        // VisualPlan(sim 그리드) 밖이라 BackgroundPropPlacer 를 못 쓰는 별도 경량 scatter.
+        // 바깥쪽 falloff 로 밀도 감소(가장자리 페이드), 원경이라 그림자 OFF 기본, 꽃 등은 제외.
+        public void InstantiateRingProps(MapThemeData theme, int2 playableSize, int seed, bool castShadows, float densityScale = 1f)
+        {
+            if (_ringPropsRoot != null) { SafeDestroy(_ringPropsRoot.gameObject); _ringPropsRoot = null; }
+            if (grid == null || _tileSet == null || theme == null || theme.tileProps == null) return;
+            int R = _tileSet.ringRadius;
+            float density = theme.ringPropDensity * Mathf.Clamp01(densityScale);
+            if (R <= 0 || density <= 0f) return;
+            int w = playableSize.x, h = playableSize.y;
+
+            float totalW = 0f;
+            for (int i = 0; i < theme.tileProps.Length; i++)
+            {
+                var p = theme.tileProps[i];
+                if (p != null && p.prefab != null && !p.excludeFromDistantRing) totalW += Mathf.Max(0, p.placementWeight);
+            }
+            if (totalW <= 0f) return;
+
+            var rng = Unity.Mathematics.Random.CreateFromIndex((uint)(seed ^ 0x246813) | 1u);
+            var root = new GameObject("RingProps");
+            _ringPropsRoot = root.transform;
+            _ringPropsRoot.SetParent(transform, false);
+
+            for (int y = -R; y < h + R; y++)
+            for (int x = -R; x < w + R; x++)
+            {
+                if (x >= 0 && x < w && y >= 0 && y < h) continue;
+                int ringDist = RingDistance(x, y, w, h);
+                float falloff = Mathf.Clamp01(1f - theme.ringPropFalloffPerCell * (ringDist - 1));
+                if (rng.NextFloat() > density * falloff) continue;
+
+                float roll = rng.NextFloat(0f, totalW);
+                Wassup.Data.PropData prop = null;
+                for (int i = 0; i < theme.tileProps.Length; i++)
+                {
+                    var p = theme.tileProps[i];
+                    if (p == null || p.prefab == null || p.excludeFromDistantRing) continue;
+                    roll -= Mathf.Max(0, p.placementWeight);
+                    if (roll <= 0f) { prop = p; break; }
+                }
+                if (prop == null) continue;
+
+                var inst = Instantiate(prop.prefab, _ringPropsRoot);
+                inst.name = prop.name + "_ring_" + x + "_" + y;
+                inst.transform.position = CellCenterToWorld(x, y);
+                inst.transform.localScale = Vector3.one * (1f + rng.NextFloat(-prop.scaleJitter, prop.scaleJitter));
+                MapView.DisablePropDebugMarkers(inst);
+                if (castShadows) SetPropCastShadows(inst);
+            }
+        }
+
+        // grid 권위 cell→world. BoardSpace.ToView 와 동일 셀중심(+0.5) 수식. 바닥 z-fight 회피용 미세 +Y lift.
+        public Vector3 CellCenterToWorld(float cellX, float cellY)
+        {
+            if (grid == null) return new Vector3(cellX, 0f, cellY);
+            Vector3 world = grid.transform.TransformPoint(
+                grid.CellToLocalInterpolated(new Vector3(cellX + 0.5f, cellY + 0.5f, 0f)));
+            world.y += PropGroundLift;
+            return world;
+        }
+
+        // tilemap-real-shadows — 근경 프랍은 실루엣 그림자 CAST(TwoSided). 평면 빌보드 alpha-clip 은 셰이더 책임.
+        private static void SetPropCastShadows(GameObject instance)
+        {
+            var renderers = instance.GetComponentsInChildren<Renderer>(true);
+            for (int i = 0; i < renderers.Length; i++)
+                renderers[i].shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.TwoSided;
+        }
+
+        private static void SafeDestroy(Object obj)
+        {
+            if (obj == null) return;
+            if (Application.isPlaying) Destroy(obj);
+            else DestroyImmediate(obj);
         }
 
         // GeneratedMap 셀 (x, y) → Tilemap cell (x, y, 0). 변환 헬퍼 단일 지점.

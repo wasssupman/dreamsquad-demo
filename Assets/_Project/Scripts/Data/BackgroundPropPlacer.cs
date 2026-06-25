@@ -36,9 +36,9 @@ namespace Wassup.Data
 
                     var prop = theme.tileProps[propIndex];
                     var candidates = GetRegionCandidates(candidatesByRegion, anchor.regionId);
-                    if (!TryPlaceNearestCandidate(plan, prop, propIndex, anchor.cell, candidates, occupied, placements, ref rng, clusterId))
+                    if (!TryPlaceNearestCandidate(plan, theme, prop, propIndex, anchor.cell, candidates, occupied, placements, ref rng, clusterId))
                     {
-                        if (!TryPlace(plan, prop, propIndex, anchor.cell, occupied, placements, ref rng, clusterId))
+                        if (!TryPlace(plan, theme, prop, propIndex, anchor.cell, occupied, placements, ref rng, clusterId))
                             continue;
                     }
 
@@ -52,7 +52,7 @@ namespace Wassup.Data
                             if (maxCount > 0 && placements.Count >= maxCount)
                                 break;
 
-                            if (!TryPlaceNearestCandidate(plan, prop, propIndex, anchor.cell, candidates, occupied, placements, ref rng, clusterId, math.max(1, prop.clusterRadius)))
+                            if (!TryPlaceNearestCandidate(plan, theme, prop, propIndex, anchor.cell, candidates, occupied, placements, ref rng, clusterId, math.max(1, prop.clusterRadius)))
                                 break;
                         }
                     }
@@ -205,6 +205,7 @@ namespace Wassup.Data
 
         private static bool TryPlaceNearestCandidate(
             BoardVisualPlan plan,
+            MapThemeData theme,
             PropData prop,
             int propIndex,
             int2 anchorCell,
@@ -231,7 +232,7 @@ namespace Wassup.Data
                 if (score >= bestScore)
                     continue;
 
-                if (!CanPlaceAtCandidate(plan, prop, candidates[i], occupied, placements))
+                if (!CanPlaceAtCandidate(plan, theme, prop, candidates[i], occupied, placements))
                     continue;
 
                 bestIndex = i;
@@ -243,20 +244,23 @@ namespace Wassup.Data
 
             var cell = candidates[bestIndex];
             candidates.RemoveAt(bestIndex);
-            return TryPlace(plan, prop, propIndex, cell, occupied, placements, ref rng, clusterId);
+            return TryPlace(plan, theme, prop, propIndex, cell, occupied, placements, ref rng, clusterId);
         }
 
-        private static bool CanPlaceAtCandidate(BoardVisualPlan plan, PropData prop, int2 cell, NativeArray<bool> occupied, IReadOnlyList<PropPlacement> placements)
+        private static bool CanPlaceAtCandidate(BoardVisualPlan plan, MapThemeData theme, PropData prop, int2 cell, NativeArray<bool> occupied, IReadOnlyList<PropPlacement> placements)
         {
             int width = math.max(1, prop.footprintX);
             int height = math.max(1, prop.footprintY);
             int x = cell.x - width / 2;
             int y = cell.y - height / 2;
-            return CanFit(plan, prop, occupied, x, y) && !ViolatesMinDistance(prop, x, y, placements);
+            return CanFit(plan, prop, occupied, x, y)
+                && !ViolatesMinDistance(prop, x, y, placements)
+                && !ViolatesSameCategory(theme, prop, x, y, placements);
         }
 
         private static bool TryPlace(
             BoardVisualPlan plan,
+            MapThemeData theme,
             PropData prop,
             int propIndex,
             int2 cell,
@@ -269,7 +273,9 @@ namespace Wassup.Data
             int height = math.max(1, prop.footprintY);
             int x = cell.x - width / 2;
             int y = cell.y - height / 2;
-            if (!CanFit(plan, prop, occupied, x, y) || ViolatesMinDistance(prop, x, y, placements))
+            if (!CanFit(plan, prop, occupied, x, y)
+                || ViolatesMinDistance(prop, x, y, placements)
+                || ViolatesSameCategory(theme, prop, x, y, placements))
                 return false;
 
             for (int dy = 0; dy < height; dy++)
@@ -317,6 +323,33 @@ namespace Wassup.Data
 
             for (int i = 0; i < placements.Count; i++)
             {
+                float dx = math.abs(x - placements[i].x);
+                float dy = math.abs(y - placements[i].y);
+                if (math.max(dx, dy) < minDistance)
+                    return true;
+            }
+
+            return false;
+        }
+
+        // 같은 category 프랍이 Chebyshev 거리 sameCategoryMinDistanceCells 안에 있으면 차단.
+        // 꽃처럼 연속 배치가 어색한 타입을 흩어놓는 룰. category 비었거나 0 이면 무효 → 그 외엔 랜덤 허용.
+        // flower_y/p/w 처럼 변종이 여러 PropData 라도 category 만 같으면 한 그룹으로 본다.
+        private static bool ViolatesSameCategory(MapThemeData theme, PropData prop, int x, int y, IReadOnlyList<PropPlacement> placements)
+        {
+            int minDistance = math.max(0, prop.sameCategoryMinDistanceCells);
+            if (minDistance <= 0 || string.IsNullOrEmpty(prop.category) || theme == null || theme.tileProps == null)
+                return false;
+
+            for (int i = 0; i < placements.Count; i++)
+            {
+                int idx = placements[i].propIndex;
+                if (idx < 0 || idx >= theme.tileProps.Length)
+                    continue;
+                var other = theme.tileProps[idx];
+                if (other == null || other.category != prop.category)
+                    continue;
+
                 float dx = math.abs(x - placements[i].x);
                 float dy = math.abs(y - placements[i].y);
                 if (math.max(dx, dy) < minDistance)

@@ -27,6 +27,15 @@ namespace Wassup.Data
         public Vector2Int pathProximityRange = new Vector2Int(0, 255);
         public Vector2Int borderProximityRange = new Vector2Int(0, 255);
 
+        [Header("Adjacency (same-category spread)")]
+        [Tooltip("같은 category 끼리 인접 회피용 그룹. 비우면 회피 없음. 예: flower 변종들을 모두 \"flower\".")]
+        public string category;
+        [Min(0)]
+        [Tooltip("같은 category 프랍과의 최소 Chebyshev 간격(셀). 0=off. 예: 2 → 같은 카테고리끼리 8-이웃 인접 금지.")]
+        public int sameCategoryMinDistanceCells;
+        [Tooltip("원경(외곽 터레인 링) 배치에서 제외. 멀리서 안 보이는 작은 프랍(꽃 등)에 체크.")]
+        public bool excludeFromDistantRing;
+
         [Header("Generated Prefab")]
         public GameObject prefab;
 
@@ -43,6 +52,8 @@ namespace Wassup.Data
 
         [Header("Billboard")]
         public PropBillboardMode billboardMode = PropBillboardMode.FullCamera;
+        [Tooltip("Tilted 모드의 월드 X 틸트각(도). 캐릭터 레이어와 독립. 기본 0=틸트 없음.")]
+        public float tiltAngle;
 
         public Vector2Int Footprint => new Vector2Int(Mathf.Max(1, footprintX), Mathf.Max(1, footprintY));
         public bool HasSpriteVisual => sprite != null || sourceTexture != null;
@@ -54,5 +65,6 @@ namespace Wassup.Data
         FullCamera,
         YAxis,
         None,
+        Tilted,
     }
 }

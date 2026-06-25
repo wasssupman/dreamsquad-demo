@@ -802,7 +802,7 @@ namespace Wassup.Core
             }
         }
 
-        private static void DisablePropDebugMarkers(GameObject instance)
+        internal static void DisablePropDebugMarkers(GameObject instance)
         {
             var renderers = instance.GetComponentsInChildren<Renderer>(true);
             for (int i = 0; i < renderers.Length; i++)
@@ -813,7 +813,7 @@ namespace Wassup.Core
             }
         }
 
-        private static void ApplyPropSorting(
+        internal static void ApplyPropSorting(
             GameObject instance,
             PropData prop,
             Wassup.Data.PropPlacement placement,
@@ -828,7 +828,7 @@ namespace Wassup.Core
                 renderers[i].sortingOrder = order;
         }
 
-        private static void ApplyPropGlobalTint(GameObject instance, Color tint)
+        internal static void ApplyPropGlobalTint(GameObject instance, Color tint)
         {
             var renderers = instance.GetComponentsInChildren<SpriteRenderer>(true);
             for (int i = 0; i < renderers.Length; i++)

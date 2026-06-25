@@ -2871,7 +2871,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1627119920
 Transform:
   m_ObjectHideFlags: 0
@@ -3638,6 +3638,7 @@ MonoBehaviour:
   blobShadowColor: {r: 0, g: 0, b: 0, a: 0.45}
   blobShadowGroundY: 0.02
   useRealShadows: 1
+  mobilePropBudgetScale: 0.5
   tilemapHiddenEnvironment: []
   stackModifierAuthoring: []
 --- !u!4 &1939688409

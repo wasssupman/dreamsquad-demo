@@ -35,6 +35,14 @@ namespace Wassup.Presentation
         {
             if (billboardMode == PropBillboardMode.None) return;
 
+            // Tilted — 카메라 무관 정적 X 틸트(Billboard.cs Tilted 패턴). 캐릭터와 독립한 레이어 각도.
+            if (billboardMode == PropBillboardMode.Tilted)
+            {
+                var tiltTarget = visualRoot != null ? visualRoot : transform;
+                tiltTarget.rotation = Quaternion.Euler(data != null ? data.tiltAngle : 0f, 0f, 0f);
+                return;
+            }
+
             if (_camera == null || !_camera.isActiveAndEnabled)
                 _camera = Camera.main;
             if (_camera == null) return;

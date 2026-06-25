@@ -90,6 +90,9 @@ namespace Wassup.Bridge
         [SerializeField] private float blobShadowGroundY = 0.02f;
         [Tooltip("tilemap-real-shadows — ON=진짜 캐스트 그림자(바닥 receive + 빌보드 cast, 블롭 OFF). 모바일은 강제 블롭.")]
         [SerializeField] private bool useRealShadows = true;
+        [Range(0.1f, 1f)]
+        [Tooltip("tilemap-world-surround unit 5 — 모바일에서 배경/원경 프랍 수를 줄이는 예산 배율(1=풀, 0.5=절반). 데스크톱/에디터는 무시.")]
+        [SerializeField] private float mobilePropBudgetScale = 0.5f;
         [Tooltip("Tilemap 모드에서 비활성할 Legacy 환경 오브젝트 (씬 정리 후 배선). 빈 배열 = no-op.")]
         [SerializeField] private GameObject[] tilemapHiddenEnvironment;
         [Header("Stack Modifier Registry")]
@@ -621,6 +624,16 @@ namespace Wassup.Bridge
                 _generatedMap = BattleMapBuilder.BuildFallbackLinear(gridSize, seed, version, options.spawnLaneCount);
             }
 
+            // tilemap-world-surround unit 1 — MapGrid 내부에 장식 Deco 셀을 데이터로 designate (배경 프랍 호스트).
+            // theme.keepRatio<1 일 때만. Walk 경로 불변·시드 결정적. 페인트/VisualPlan(아래) 전에 실행해야 반영된다.
+            if (mapSource == MapSource.MapGrid && theme != null
+                && theme.mapGridBuildableKeepRatio < 1f && _generatedMap.IsCreated)
+            {
+                var decoRng = Unity.Mathematics.Random.CreateFromIndex((uint)(seed ^ 0x5A5A5A) | 1u);
+                ObstaclePlacer.DesignateDeco(ref decoRng, _generatedMap.tiles,
+                    _generatedMap.gridSize, theme.mapGridBuildableKeepRatio);
+            }
+
             // tilemap-mode-adoption unit 0 — 모드별 유닛 스케일/틸트를 빌드 시 1회 확정 (유닛 스폰 전).
             CharacterVisualScale = UseTilemapView ? tilemapCharacterScale : legacyCharacterScale;
             CharacterBillboardTilt = UseTilemapView ? tilemapBillboardTilt : characterBillboardTilt;
@@ -666,20 +679,37 @@ namespace Wassup.Bridge
 
             BuildFlowField();
 
-            // props/obstacles — Legacy3D 에서만 (Tilemap 모드 외곽 연출은 후속 theming spec).
-            // MapGrid 는 Walk + Place 만 칠하고 Env/Deco 가 없음 — prop placer 가 빈손이 됨.
-            if (!UseTilemapView && mapView != null && theme != null && mapSource != MapSource.MapGrid)
+            // props — Tilemap = grid 권위 배경 프랍(Deco 셀; unit 1 designate 후 존재), Legacy3D = 기존 경로.
+            // tilemap-world-surround unit 2: MapGrid 라도 내부 Deco 가 생기면 prop placer 가 채운다.
+            if (theme != null && theme.tileProps != null && theme.tileProps.Length > 0)
             {
-                if (theme.tileProps != null && theme.tileProps.Length > 0)
+                if (UseTilemapView && tilemapMapView != null)
+                {
+                    // unit 5 — 모바일 프랍 예산: 배경 프랍을 배율만큼 솎는다(앞쪽=중앙/가장자리 우선 보존, 필러 컷).
+                    float propScale = Application.isMobilePlatform ? Mathf.Clamp01(mobilePropBudgetScale) : 1f;
+                    var plan = tilemapMapView.VisualPlan;
+                    var placements = BackgroundPropPlacer.Generate(plan, theme, _generatedMap.seed);
+                    if (propScale < 1f && placements.Count > 0)
+                        placements = placements.GetRange(0, Mathf.Max(0, (int)(placements.Count * propScale)));
+                    tilemapMapView.InstantiateBackgroundProps(plan, theme, placements, UseRealShadows);
+                }
+                else if (!UseTilemapView && mapView != null && mapSource != MapSource.MapGrid)
                 {
                     var visualPlan = mapView.VisualPlan;
                     var placements = BackgroundPropPlacer.Generate(visualPlan, theme, _generatedMap.seed);
                     mapView.InstantiateBackgroundProps(visualPlan, theme, placements);
                 }
-                else
-                {
-                    mapView.InstantiateObstacles(_generatedMap, theme);
-                }
+            }
+            else if (!UseTilemapView && mapView != null && theme != null && mapSource != MapSource.MapGrid)
+            {
+                mapView.InstantiateObstacles(_generatedMap, theme);
+            }
+
+            // 원경 — 외곽 터레인 링 위 저밀도 프랍 (tilemap 모드). 그림자 OFF(원경). 모바일은 밀도 배율로 솎음.
+            if (UseTilemapView && tilemapMapView != null && theme != null)
+            {
+                float ringScale = Application.isMobilePlatform ? Mathf.Clamp01(mobilePropBudgetScale) : 1f;
+                tilemapMapView.InstantiateRingProps(theme, _generatedMap.gridSize, _generatedMap.seed, false, ringScale);
             }
 
             GameManager.Instance?.Logger?.LogMap(
