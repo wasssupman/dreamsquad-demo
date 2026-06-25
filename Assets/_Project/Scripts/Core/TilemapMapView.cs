@@ -31,6 +31,20 @@ namespace Wassup.Core
             ConfigureGrid(tileSize, tileSet, mode);
             PaintGround(in map);
             PaintMarkers(in map);
+            CenterBoardAtWorldOrigin(in map);
+        }
+
+        // tilted-billboard unit 1 — 보드 중앙을 월드 원점(X·Z=0)에 맞춘다. XZ 바닥이라 수평면(X,Z)만 정렬,
+        // Y(바닥 높이)는 보존. Tilemap 모드는 sim origin=0, 월드 배치는 grid.transform 권위라 view 전용 변경 — sim 무영향.
+        // ToView/ToSim/RaycastPlane 모두 grid 기준 live 라 정합 유지. 맵 크기 달라져도 재계산·idempotent.
+        private void CenterBoardAtWorldOrigin(in GeneratedMap map)
+        {
+            if (grid == null || !map.IsCreated) return;
+            // 보드 양 끝 셀의 월드 코너 중점 = 현재 보드 중심(rect/iso 모두 affine 이라 동일).
+            Vector3 min = grid.CellToWorld(new Vector3Int(0, 0, 0));
+            Vector3 max = grid.CellToWorld(new Vector3Int(map.gridSize.x, map.gridSize.y, 0));
+            Vector3 center = (min + max) * 0.5f;
+            grid.transform.position -= new Vector3(center.x, 0f, center.z);
         }
 
         public void Clear()
@@ -54,6 +68,10 @@ namespace Wassup.Core
                 grid.cellLayout = GridLayout.CellLayout.Rectangle;
                 grid.cellSize = new Vector3(tileSize, tileSize, 1f);
             }
+
+            // tilted-billboard — 타일맵을 XZ 바닥에 눕힌다(퍼스펙티브 3D 룩). grid 로컬 XY → 월드 XZ.
+            // BoardSpace.ToView/ToSim/RaycastPlane 가 모두 grid 기준이라 회전을 자동 추종한다.
+            grid.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
 
             // 셀 중심 anchor — GetCellCenterWorld 정합의 전제 (정합 테스트와 일치).
             var anchor = new Vector3(0.5f, 0.5f, 0f);

@@ -1,5 +1,6 @@
 using Unity.Entities;
 using UnityEngine;
+using Wassup.Bridge;
 
 namespace Wassup.Presentation
 {
@@ -8,6 +9,8 @@ namespace Wassup.Presentation
     {
         private MeshFilter _filter;
         private MeshRenderer _renderer;
+        private Transform _visual;       // tilted-billboard unit 4a: 발 피벗 자식(Tilemap). Legacy3D 는 root.
+        private Material _ownedMaterial; // Tilemap 전용 unlit 복사본 (transform 이 방향을 제어). 직접 소유/파괴.
         private Entity _entity;
         // tilemap-view-backend unit 3 — sim 좌표 보존 (sorting 셀 역산용; view 좌표는 z 소실).
         private Vector3 _simWorld;
@@ -17,27 +20,80 @@ namespace Wassup.Presentation
         public void Configure(Entity entity, Mesh mesh, Material material, float visualScale)
         {
             _entity = entity;
-
-            if (_filter == null) _filter = gameObject.AddComponent<MeshFilter>();
-            if (_renderer == null) _renderer = gameObject.AddComponent<MeshRenderer>();
-
-            _filter.sharedMesh = mesh != null
-                ? mesh
-                : Resources.GetBuiltinResource<Mesh>("Quad.fbx");
-            _renderer.sharedMaterial = material;
+            Mesh quad = mesh != null ? mesh : Resources.GetBuiltinResource<Mesh>("Quad.fbx");
+            bool tilemap = Wassup.Core.BoardSpace.Mode != Wassup.Core.BoardViewMode.Legacy3D;
             transform.localScale = Vector3.one * Mathf.Max(0.01f, visualScale);
+
+            if (tilemap)
+            {
+                // tilted-billboard unit 4a — Spine 과 동일 메커니즘: object-space unlit + Billboard transform 틸트.
+                // 발 피벗: Quad(센터, Y −0.5..0.5)를 +0.5 올려 밑동을 root 원점(셀)에 둔다 → 틸트가 발 기준.
+                EnsureVisualChild(quad);
+                _ownedMaterial = BuildUnlitMaterial(material, _ownedMaterial);
+                _renderer.sharedMaterial = _ownedMaterial;
+
+                var billboard = GetComponent<Billboard>();
+                if (billboard == null) billboard = gameObject.AddComponent<Billboard>();
+                billboard.Setup(BillboardMode.Tilted, BattleBridge.CharacterBillboardTilt);
+
+                if (BattleBridge.BlobShadowSprite != null)
+                    BlobShadow.Attach(transform, BattleBridge.BlobShadowSprite, BattleBridge.BlobShadowSize,
+                        BattleBridge.BlobShadowFootprint, BattleBridge.BlobShadowColor,
+                        BattleBridge.BlobShadowGroundY, BoardSortOrder.ShadowOrder);
+            }
+            else
+            {
+                // Legacy3D — 기존 셰이더 빌보드 경로 그대로(메시/머티리얼 root, Billboard 없음).
+                if (_filter == null) _filter = gameObject.AddComponent<MeshFilter>();
+                if (_renderer == null) _renderer = gameObject.AddComponent<MeshRenderer>();
+                _filter.sharedMesh = quad;
+                _renderer.sharedMaterial = material;
+            }
+        }
+
+        private void EnsureVisualChild(Mesh quad)
+        {
+            if (_visual == null)
+            {
+                var go = new GameObject("Visual");
+                _visual = go.transform;
+                _visual.SetParent(transform, false);
+                _visual.localPosition = new Vector3(0f, 0.5f, 0f); // 발 피벗
+                _filter = go.AddComponent<MeshFilter>();
+                _renderer = go.AddComponent<MeshRenderer>();
+            }
+            _filter.sharedMesh = quad;
+        }
+
+        // 전달받은(공유일 수 있는) 머티리얼을 변조하지 않고, object-space URP/Unlit 복사본을 소유한다.
+        private static Material BuildUnlitMaterial(Material source, Material previousOwned)
+        {
+            if (previousOwned != null) Destroy(previousOwned);
+            var m = new Material(Shader.Find("Universal Render Pipeline/Unlit"));
+            Texture tex = source != null
+                ? (source.HasProperty("_BaseMap") ? source.GetTexture("_BaseMap") : source.mainTexture)
+                : null;
+            Color col = source != null && source.HasProperty("_BaseColor") ? source.GetColor("_BaseColor") : Color.white;
+            if (m.HasProperty("_BaseMap")) m.SetTexture("_BaseMap", tex);
+            m.mainTexture = tex;
+            if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", col);
+            // 알파 컷아웃 + 양면(빌보드 메시 뒷면도 보이게)
+            if (m.HasProperty("_AlphaClip")) m.SetFloat("_AlphaClip", 1f);
+            if (m.HasProperty("_Cutoff")) m.SetFloat("_Cutoff", 0.5f);
+            m.EnableKeyword("_ALPHATEST_ON");
+            if (m.HasProperty("_Cull")) m.SetFloat("_Cull", 0f); // Cull Off
+            m.renderQueue = (int)UnityEngine.Rendering.RenderQueue.AlphaTest;
+            return m;
         }
 
         public void UpdatePosition(Vector3 world)
         {
             _simWorld = world;
             Vector3 view = Wassup.Core.BoardSpace.ToView(world);
-            // 이 빌보드는 Opaque(ZWrite On, Geometry queue). Tilemap 모드에선 보드/프랍 타일맵
-            // (Transparent, z=0)과 동일 평면이라, 나중에 그려지는 투명 타일맵이 ZTest LEqual 로
-            // 같은 깊이에서 덮어써 빌보드가 가려진다. 카메라 쪽(−Z)으로 살짝 당겨 보드 앞에 둔다.
-            // Legacy3D 는 유닛이 보드 위(y=0.5)에 떠 평면 충돌이 없으므로 건드리지 않는다.
+            // Tilemap 모드는 타일맵이 XZ 바닥. 빌보드 밑동이 바닥 Y 와 같으면 z-fighting → 살짝 띄운다.
+            // Legacy3D 는 유닛이 보드 위(y=0.5)에 떠 충돌이 없으므로 건드리지 않는다.
             if (Wassup.Core.BoardSpace.Mode != Wassup.Core.BoardViewMode.Legacy3D)
-                view.z -= 0.1f;
+                view.y += 0.01f;
             transform.position = view;
         }
 
@@ -56,6 +112,11 @@ namespace Wassup.Presentation
                 _simWorld,
                 tileSize,
                 BoardSortOrder.CharacterOffset));
+        }
+
+        private void OnDestroy()
+        {
+            if (_ownedMaterial != null) Destroy(_ownedMaterial);
         }
     }
 }

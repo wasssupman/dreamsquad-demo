@@ -10,6 +10,11 @@ namespace Wassup.Data
         public bool orthographic = true;
         [Tooltip("보드 절반 크기에 더할 여유(월드 유닛). orthographicSize = 보드 half-extent + 이 값.")]
         public float orthoSizePadding = 1.5f;
+        [Header("Perspective (tilted-billboard — XZ 바닥 + 퍼스펙티브)")]
+        [Tooltip("orthographic=false 일 때 수직 FOV(도).")]
+        public float fieldOfView = 40f;
+        [Tooltip("퍼스펙티브 framing 여유 배율 (보드 바운딩 구가 화면에 차는 정도). 1=딱맞음.")]
+        public float perspectiveFitMargin = 1.12f;
         [Tooltip("보드 중심(view 공간) 기준 카메라 위치 오프셋.")]
         public Vector3 positionOffset = new Vector3(0f, 0f, -20f);
         public Vector3 rotationEuler = Vector3.zero;

@@ -53,23 +53,25 @@ namespace Wassup.Presentation
             }
 
             PlayIdleLooping();
+
+            // tilted-billboard unit 0 — 틸트는 Billboard 컴포넌트가 소유. 스폰 시 1회 주입
+            // (Tilemap=tilemapBillboardTilt / Legacy3D=characterBillboardTilt, BattleBridge 가 모드별 세팅).
+            // 카메라 yaw 고정(0) 전제라 월드 X 틸트로 충분. ScaleX(좌우반전)는 skeleton 채널이라 독립.
+            var billboard = gameObject.AddComponent<Billboard>();
+            billboard.Setup(BillboardMode.Tilted, BattleBridge.CharacterBillboardTilt);
+
+            // tilted-billboard unit 3 — 발밑 블롭 그림자 (Tilemap 모드만; Legacy3D 는 유닛이 떠 있어 미적용).
+            // 유닛 자식으로 붙어 유닛 파괴 시 함께 사라진다.
+            if (BattleBridge.BlobShadowSprite != null && Wassup.Core.BoardSpace.Mode != Wassup.Core.BoardViewMode.Legacy3D)
+                BlobShadow.Attach(transform, BattleBridge.BlobShadowSprite, BattleBridge.BlobShadowSize,
+                    BattleBridge.BlobShadowFootprint, BattleBridge.BlobShadowColor,
+                    BattleBridge.BlobShadowGroundY, BoardSortOrder.ShadowOrder);
         }
 
         public void UpdatePosition(Vector3 world)
         {
             _simWorld = world;
             transform.position = Wassup.Core.BoardSpace.ToView(world);
-        }
-
-        private void LateUpdate()
-        {
-            // Spine units don't use the Quad billboard shader, so they'd otherwise
-            // stand fully upright. Lean them back around X toward the angled camera.
-            // Battle camera yaw is fixed at 0 (BattleBridge frames at Euler(pitch,0,0)),
-            // so a world-X tilt is enough. Rotates around the transform origin (feet),
-            // leaving position and sorting untouched. ScaleX (left/right facing) lives
-            // on the skeleton, so it is independent of this transform rotation.
-            transform.rotation = Quaternion.Euler(BattleBridge.CharacterBillboardTilt, 0f, 0f);
         }
 
         public void UpdateSortingOrder(Unity.Mathematics.int2 gridSize, float tileSize)

@@ -79,7 +79,15 @@ namespace Wassup.Bridge
         [Header("Tilemap mode tuning (tilemap-mode-adoption)")]
         [SerializeField] private float legacyCharacterScale = 0.7f;
         [SerializeField] private float tilemapCharacterScale = 0.42f;
-        [SerializeField] private float tilemapBillboardTilt = 0f;
+        // tilted-billboard unit 2 — XZ 바닥 + 퍼스펙티브에서 캐릭터가 카메라를 향해 서도록 월드 X 틸트.
+        // Legacy3D 와 동일 수학(Euler(tilt,0,0)). 카메라 pitch×0.7~0.8 (pitch55→≈45). 양수. 실측 튜닝.
+        [SerializeField] private float tilemapBillboardTilt = 45f;
+        [Header("Blob shadow (tilted-billboard unit 3) — Tilemap 모드 접지 그림자")]
+        [SerializeField] private Sprite blobShadowSprite;
+        [SerializeField] private float blobShadowSize = 1f;
+        [SerializeField] private Vector2 blobShadowFootprint = new Vector2(1.35f, 0.95f);
+        [SerializeField] private Color blobShadowColor = new Color(0f, 0f, 0f, 0.45f);
+        [SerializeField] private float blobShadowGroundY = 0.02f;
         [Tooltip("Tilemap 모드에서 비활성할 Legacy 환경 오브젝트 (씬 정리 후 배선). 빈 배열 = no-op.")]
         [SerializeField] private GameObject[] tilemapHiddenEnvironment;
         [Header("Stack Modifier Registry")]
@@ -122,6 +130,12 @@ namespace Wassup.Bridge
         // poked at runtime (e.g. via tooling) to tune the lean without recompiling.
         // tilemap-mode-adoption unit 0 — 맵 빌드 시 Tilemap 모드면 tilemapBillboardTilt(기본 0) 로 덮어쓴다.
         public static float CharacterBillboardTilt = 35f;
+        // tilted-billboard unit 3 — 블롭 그림자 데이터(하드코딩 금지: serialized 필드에서 빌드 시 미러).
+        public static Sprite BlobShadowSprite { get; private set; }
+        public static float BlobShadowSize { get; private set; } = 1f;
+        public static Vector2 BlobShadowFootprint { get; private set; } = new Vector2(1.35f, 0.95f);
+        public static Color BlobShadowColor { get; private set; } = new Color(0f, 0f, 0f, 0.45f);
+        public static float BlobShadowGroundY { get; private set; } = 0.02f;
         private const float SynergyPerNeighbor = 0.1f;
         private readonly HashSet<Entity> _synergyActivatedEntities = new();
         private int _synergyActivations;
@@ -606,6 +620,12 @@ namespace Wassup.Bridge
             // tilemap-mode-adoption unit 0 — 모드별 유닛 스케일/틸트를 빌드 시 1회 확정 (유닛 스폰 전).
             CharacterVisualScale = UseTilemapView ? tilemapCharacterScale : legacyCharacterScale;
             CharacterBillboardTilt = UseTilemapView ? tilemapBillboardTilt : characterBillboardTilt;
+            // tilted-billboard unit 3 — 블롭 그림자 데이터 미러(스폰 시 view 가 읽는다).
+            BlobShadowSprite = blobShadowSprite;
+            BlobShadowSize = blobShadowSize;
+            BlobShadowFootprint = blobShadowFootprint;
+            BlobShadowColor = blobShadowColor;
+            BlobShadowGroundY = blobShadowGroundY;
             ApplyEnvironmentGating(UseTilemapView); // tilemap=숨김 / Legacy3D=복원 (빈 목록이면 no-op)
 
             if (UseTilemapView)
@@ -634,7 +654,9 @@ namespace Wassup.Bridge
             Wassup.Core.BoardSpace.Configure(boardViewMode, BoardOrigin, tileSize,
                 tilemapMapView != null ? tilemapMapView.Grid : null);
 
-            if (UseTilemapView) ApplyTilemapCameraPreset(); // 모드별 ortho 카메라 — 매 빌드 idempotent 재적용
+            // tilted-billboard — 런타임 카메라 자동 조정 비활성. 씬에 수동 배치한 카메라를 그대로 사용한다.
+            // (퍼스펙티브 전환 튜닝 중: 카메라 pos/rot/fov 를 씬에서 직접 잡고 덮어쓰지 않도록 주석 처리)
+            // if (UseTilemapView) ApplyTilemapCameraPreset(); // 모드별 카메라 — 매 빌드 idempotent 재적용
 
             BuildFlowField();
 
@@ -2627,22 +2649,56 @@ namespace Wassup.Bridge
             cam.orthographic = preset.orthographic;
             float aspect = cam.aspect > 0.01f ? cam.aspect : (16f / 9f);
 
-            // unit 1 — 페인트된 보드 실측 bounds 로 프레이밍 (iso 마름모도 정확). 없으면 gridSize 추정 폴백.
+            // tilted-billboard unit 1 — 보드 월드 bounds 산출 (페인트 실측 우선, 없으면 gridSize 추정).
+            Bounds board;
             if (tilemapMapView != null && tilemapMapView.TryGetBoardWorldBounds(out var b))
             {
-                cam.orthographicSize = Mathf.Max(b.extents.y, b.extents.x / aspect) + preset.orthoSizePadding;
-                cam.transform.position = new Vector3(b.center.x, b.center.y, 0f) + preset.positionOffset;
+                board = b;
             }
             else
             {
                 int2 g = _generatedMap.gridSize;
                 float3 centerSim = new float3((g.x - 1) * 0.5f * tileSize, 0f, (g.y - 1) * 0.5f * tileSize);
                 Vector3 centerView = Wassup.Core.BoardSpace.ToView(centerSim);
-                cam.orthographicSize = Mathf.Max(g.y * tileSize * 0.5f, g.x * tileSize * 0.5f / aspect) + preset.orthoSizePadding;
-                cam.transform.position = centerView + preset.positionOffset;
+                board = new Bounds(centerView, new Vector3(g.x * tileSize, g.y * tileSize, 0f));
             }
 
+            // 회전 먼저 — framing 은 회전된 카메라 기준으로 계산해야 틸트해도 화면에 꽉/중앙.
             cam.transform.rotation = Quaternion.Euler(preset.rotationEuler);
+
+            if (preset.orthographic)
+            {
+                // ortho: positionOffset 은 "view 축 거리"로 해석. 보드 중심 정면 배치.
+                float dist = preset.positionOffset.magnitude;
+                if (dist < 0.01f) dist = 20f;
+                cam.transform.position = board.center - cam.transform.forward * dist;
+
+                // orthographicSize: 보드 8코너를 카메라 view 공간 투영해 실제 화면 extent 산출(틸트/iso 자동 보정).
+                Vector3 ext = board.extents;
+                float maxX = 0f, maxY = 0f;
+                for (int sx = -1; sx <= 1; sx += 2)
+                    for (int sy = -1; sy <= 1; sy += 2)
+                        for (int sz = -1; sz <= 1; sz += 2)
+                        {
+                            Vector3 corner = board.center + new Vector3(sx * ext.x, sy * ext.y, sz * ext.z);
+                            Vector3 v = cam.transform.InverseTransformPoint(corner);
+                            maxX = Mathf.Max(maxX, Mathf.Abs(v.x));
+                            maxY = Mathf.Max(maxY, Mathf.Abs(v.y));
+                        }
+                cam.orthographicSize = Mathf.Max(maxY, maxX / aspect) + preset.orthoSizePadding;
+            }
+            else
+            {
+                // 퍼스펙티브: FOV 로 보드 바운딩 구를 화면에 맞춘다. distance = R / sin(fov/2).
+                // 가로 FOV ≥ 세로 FOV(aspect>1)라 세로 기준 구-fit 이면 항상 들어온다. pitch 와 무관하게 추종.
+                cam.fieldOfView = preset.fieldOfView;
+                float radius = board.extents.magnitude;
+                if (radius < 0.01f) radius = 1f;
+                float half = Mathf.Deg2Rad * preset.fieldOfView * 0.5f;
+                float dist = radius / Mathf.Max(0.01f, Mathf.Sin(half)) * preset.perspectiveFitMargin;
+                cam.transform.position = board.center - cam.transform.forward * dist;
+            }
+
             cam.nearClipPlane = preset.nearClip;
             cam.farClipPlane = preset.farClip;
             cam.transparencySortMode = preset.transparencySortMode;

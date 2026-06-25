@@ -12,10 +12,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 05b012d28bd034d709fda0d72fad982a, type: 3}
   m_Name: CameraPreset_TilemapRect
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.BoardCameraPreset
-  orthographic: 1
+  orthographic: 0
   orthoSizePadding: 1.5
+  fieldOfView: 40
+  perspectiveFitMargin: 1.12
   positionOffset: {x: 0, y: 0, z: -20}
-  rotationEuler: {x: 0, y: 0, z: 0}
+  rotationEuler: {x: 55, y: 0, z: 0}
   transparencySortMode: 3
   sortAxis: {x: 0, y: 1, z: 0}
   nearClip: 0.1

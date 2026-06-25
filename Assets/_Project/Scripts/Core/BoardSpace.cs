@@ -64,13 +64,14 @@ namespace Wassup.Core
             return ToView(_simOrigin + simDir) - ToView(_simOrigin);
         }
 
-        // 모드별 포인터 입력 평면. Legacy3D = 보드 표면(XZ, 보드 원점 높이),
-        // Tilemap 모드 = Grid 위치를 지나는 XY 평면.
+        // 모드별 포인터 입력 평면. Legacy3D = 보드 표면(XZ, 보드 원점 높이).
+        // Tilemap 모드 = Grid 평면. 법선을 grid.transform.forward(로컬 +Z)에서 유도해 grid 회전을
+        // 자동 추종 — XY 정면뷰든 XZ 바닥이든 동일 코드(틸트 빌보드 전환 후 XZ).
         public static Plane RaycastPlane()
         {
             if (_mode == BoardViewMode.Legacy3D)
                 return new Plane(Vector3.up, (Vector3)_simOrigin);
-            return new Plane(Vector3.back, _grid.transform.position);
+            return new Plane(_grid.transform.forward, _grid.transform.position);
         }
     }
 }
