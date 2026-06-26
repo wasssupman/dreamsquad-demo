@@ -32,7 +32,21 @@
 - 씬 저장 시 PropsTilemap 비활성 포함. 프리뷰 타일 유입 주의(edit 모드 저장).
 
 ## Follow-up
-- 실기기 프로파일링 후 프랍 캡/밀도 재튜닝.
+
+### 다음 작업 (이월 — 사용자 지정 2026-06-26)
+다음 세션이 이어받을 우선 작업. 본 spec 본체는 완료, 아래는 "정식 자산화 + 잔여 토대" 정리.
+
+- **머지 결정**: `feat/tilemap-world-surround` → main 머지/PR 여부.
+- **프랍 에셋 정식화**: 현재 `Data/Theme/test/`·`Prefabs/Props/test/`·스프라이트 `Generated/Tiles/Test/` 의 "test" 네이밍 → 정식 위치/이름 승격(keeper 자산).
+- **고아 에셋 정리**: forest.tileProps 가 기존 21종 → test 7종으로 교체되며 옛 21종 프랍 고아 → 삭제/보존 결정.
+- **4b 프랍 틸트 휴면 처리**: `PropData.tiltAngle` + `PropBillboardMode.Tilted` 도입했으나 7종 전부 FullCamera/tilt 0 = 미사용. 퍼스펙티브 맞춤 Tilted 적용 or 휴면 유지/제거 결정.
+- **Legacy 환경 프랍 노출 확인**: `tilemapHiddenEnvironment: []`(빈 배열). 스크린샷상 누출 없어 사실상 해소로 보이나 확정 확인.
+
+### 폐기 (사용자 지정 2026-06-26)
+- ~~멀티 시즌(lava/lunar/cosmic) 테마에 동일 ring/deco 처리~~ — **드롭**. forest(S1)만 유지.
+
+### 장기 후보 (당장 불필요)
+- 실기기 프로파일링 후 프랍 캡/밀도/`mobilePropBudgetScale` 재튜닝.
 - tilemap 모드 시즌 스카이박스(현재 다크 페이드 대체).
 - 프랍 그림자 strength/soft 튜닝(tilemap-real-shadows 종속).
-- handoff 커밋 해시 반영(커밋 후).
+- (선택) 원경 나무가 안쪽 링 가장자리 약간 침범 → 안쪽 1~2 링 나무 비우기.
