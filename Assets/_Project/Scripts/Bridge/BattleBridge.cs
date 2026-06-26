@@ -87,7 +87,7 @@ namespace Wassup.Bridge
         [SerializeField] private float blobShadowSize = 1f;
         [SerializeField] private Vector2 blobShadowFootprint = new Vector2(1.35f, 0.95f);
         [SerializeField] private Color blobShadowColor = new Color(0f, 0f, 0f, 0.45f);
-        [SerializeField] private float blobShadowGroundY = 0.02f;
+        [SerializeField] private float blobShadowGroundY = 0.216f; // blob 을 발 평면에서 ~5px(@1080) 띄워 접지점 가독.
         [Tooltip("tilemap-real-shadows — ON=진짜 캐스트 그림자(바닥 receive + 빌보드 cast, 블롭 OFF). 모바일은 강제 블롭.")]
         [SerializeField] private bool useRealShadows = true;
         [Range(0.1f, 1f)]
