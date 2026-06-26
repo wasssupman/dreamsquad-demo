@@ -19,7 +19,7 @@ MonoBehaviour:
   visualFootprint: {x: 1, y: 1}
   placementWeight: 10
   minDistanceCells: 1
-  visualOffset: {x: 0, y: 0.22425531, z: 0}
+  visualOffset: {x: 0, y: 0, z: 0}
   visualScale: 0.68
   preferredAnchorTypes: 
   preferredRegionSizeMin: 0
