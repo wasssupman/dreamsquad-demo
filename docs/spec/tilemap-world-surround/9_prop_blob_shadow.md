@@ -26,7 +26,10 @@
   `BlobShadow.Attach(instance.transform, sprite, BlobShadowSize * max(0.01, prop.visualScale), BlobShadowFootprint, BlobShadowColor, BlobShadowGroundY, BoardSortOrder.ShadowOrder)`.
 - **크기**: blob 은 부모 lossyScale 을 보정(월드 크기 고정)하므로, 프랍 크기 반영은 `size *= prop.visualScale`
   (나무 큰 blob, 꽃 작은 blob). footprint/color/groundY 는 캐릭터와 공용 데이터(BattleBridge serialized).
-- blob 은 instance 자식 → 프랍 destroy 시 함께 소멸. LateUpdate 가 발(셀 XZ)+groundY 에 평평하게 고정.
+- blob 은 instance 자식 → 프랍 destroy 시 함께 소멸. LateUpdate 가 XZ+groundY 에 평평하게 고정.
+- **위치 = 스프라이트 몸통 바로 아래**: 틸트(+y 누움)로 스프라이트가 발에서 `+z` 떨어지므로, blob 은 발 피벗이
+  아니라 `SpriteRenderer.bounds.center` XZ 를 따라간다(`BlobShadow.Attach(..., follow)`). 탑다운 룩.
+  follow 미지정(캐릭터)은 기존 발 위치 유지.
 - `SetPropCastShadows` 는 RingProps 참조로 남되 미호출(원경 그림자 없음). 추후 원경 그림자 필요 시 재활용.
 
 ## 완료 기준
