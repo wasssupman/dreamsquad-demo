@@ -71,3 +71,12 @@
 - 프랍 그림자 strength/soft 튜닝(tilemap-real-shadows 종속).
 - 원경 프랍 blob 확장(데스크톱 포함 원경 접지) — 9 의 후속. 현재 근경만(사용자 지정), 원경은 그림자 없음.
 - (선택) 원경 나무가 안쪽 링 가장자리 약간 침범 → 안쪽 1~2 링 나무 비우기.
+
+#### 코드 리뷰 후속 (2026-06-26 리뷰, 11/12 에서 critical 해소 후 잔여)
+- **테스트** [S] · `BackgroundPropPlacer.OccludesPlay`(public static) + visualFootprint EditMode 회귀 테스트.
+  "게임플레이 가림 방지 핵심 순수 로직인데 커버리지 0" (리뷰 강권). +y depth/width 중심정렬/상하좌우 케이스.
+- **`Billboard` ↔ `PropBillboard` 통합** [M] · 둘 다 `Euler(tilt,0,0)`. 틸트 로직 공유. 대규모라 보류.
+- **minor** [S] · `_WxD` 파일명↔`visualFootprint` drift 위험(필드가 source). `TryPlaceNearestCandidate`↔`TryPlace`
+  중복 fit/occlusion 검사(M5). 모바일 `placements.GetRange` truncation 이 공간이 아닌 순서 기반(M7).
+- **`rotationYaw`** [S] · tilemap 경로에서 미적용(PropBillboard override). `PropPlacement` 공용이라 Legacy(MapView)가
+  아직 사용 → 제거 불가. tilemap 전용이면 적용 or 문서화.
