@@ -6,7 +6,7 @@ namespace Wassup.Data
 {
     public static class BackgroundPropPlacer
     {
-        public static List<PropPlacement> Generate(BoardVisualPlan plan, MapThemeData theme, int seed)
+        public static List<PropPlacement> Generate(BoardVisualPlan plan, MapThemeData theme, int seed, bool occlusionAware = false)
         {
             var placements = new List<PropPlacement>();
             if (plan == null || theme == null || theme.tileProps == null || theme.tileProps.Length == 0)
@@ -36,9 +36,9 @@ namespace Wassup.Data
 
                     var prop = theme.tileProps[propIndex];
                     var candidates = GetRegionCandidates(candidatesByRegion, anchor.regionId);
-                    if (!TryPlaceNearestCandidate(plan, theme, prop, propIndex, anchor.cell, candidates, occupied, placements, ref rng, clusterId))
+                    if (!TryPlaceNearestCandidate(plan, theme, prop, propIndex, anchor.cell, candidates, occupied, placements, ref rng, clusterId, occlusionAware))
                     {
-                        if (!TryPlace(plan, theme, prop, propIndex, anchor.cell, occupied, placements, ref rng, clusterId))
+                        if (!TryPlace(plan, theme, prop, propIndex, anchor.cell, occupied, placements, ref rng, clusterId, occlusionAware))
                             continue;
                     }
 
@@ -52,7 +52,7 @@ namespace Wassup.Data
                             if (maxCount > 0 && placements.Count >= maxCount)
                                 break;
 
-                            if (!TryPlaceNearestCandidate(plan, theme, prop, propIndex, anchor.cell, candidates, occupied, placements, ref rng, clusterId, math.max(1, prop.clusterRadius)))
+                            if (!TryPlaceNearestCandidate(plan, theme, prop, propIndex, anchor.cell, candidates, occupied, placements, ref rng, clusterId, occlusionAware, math.max(1, prop.clusterRadius)))
                                 break;
                         }
                     }
@@ -128,6 +128,26 @@ namespace Wassup.Data
 
         public static bool IsBackgroundCell(BoardVisualCell cell)
             => cell.zoneType == BoardZoneType.Env;
+
+        // unit 10 — 발 셀에서 틸트 누운 방향(+y)으로 visualFootprint.depth 만큼이 플레이 타일(Walk/Place)을
+        // 침범하면 true. 큰 나무가 플레이 앞(-y)에 와서 유닛을 가리는 걸 막는다. depth<=1 = 가림 없음(skip).
+        private static bool VisualFootprintHitsPlay(BoardVisualPlan plan, PropData prop, int footX, int footY)
+        {
+            int vw = math.max(1, prop.visualFootprint.x);
+            int vd = math.max(1, prop.visualFootprint.y);
+            if (vd <= 1) return false;
+            int half = (vw - 1) / 2;
+            for (int k = 1; k < vd; k++)
+            for (int ix = 0; ix < vw; ix++)
+            {
+                int x = footX - half + ix;
+                int y = footY + k; // +y = 틸트 누운 방향(실측 확정)
+                if (x < 0 || y < 0 || x >= plan.gridSize.x || y >= plan.gridSize.y) continue;
+                var z = plan.CellAt(new int2(x, y)).zoneType;
+                if (z == BoardZoneType.Walk || z == BoardZoneType.Place) return true;
+            }
+            return false;
+        }
 
         private static List<int2>[] BuildCandidatesByRegion(BoardVisualPlan plan, MapThemeData theme, float density, ref Random rng)
         {
@@ -214,6 +234,7 @@ namespace Wassup.Data
             List<PropPlacement> placements,
             ref Random rng,
             int clusterId,
+            bool occlusionAware,
             int maxDistance = int.MaxValue)
         {
             if (candidates == null || candidates.Count == 0)
@@ -232,7 +253,7 @@ namespace Wassup.Data
                 if (score >= bestScore)
                     continue;
 
-                if (!CanPlaceAtCandidate(plan, theme, prop, candidates[i], occupied, placements))
+                if (!CanPlaceAtCandidate(plan, theme, prop, candidates[i], occupied, placements, occlusionAware))
                     continue;
 
                 bestIndex = i;
@@ -244,10 +265,10 @@ namespace Wassup.Data
 
             var cell = candidates[bestIndex];
             candidates.RemoveAt(bestIndex);
-            return TryPlace(plan, theme, prop, propIndex, cell, occupied, placements, ref rng, clusterId);
+            return TryPlace(plan, theme, prop, propIndex, cell, occupied, placements, ref rng, clusterId, occlusionAware);
         }
 
-        private static bool CanPlaceAtCandidate(BoardVisualPlan plan, MapThemeData theme, PropData prop, int2 cell, NativeArray<bool> occupied, IReadOnlyList<PropPlacement> placements)
+        private static bool CanPlaceAtCandidate(BoardVisualPlan plan, MapThemeData theme, PropData prop, int2 cell, NativeArray<bool> occupied, IReadOnlyList<PropPlacement> placements, bool occlusionAware)
         {
             int width = math.max(1, prop.footprintX);
             int height = math.max(1, prop.footprintY);
@@ -255,7 +276,8 @@ namespace Wassup.Data
             int y = cell.y - height / 2;
             return CanFit(plan, prop, occupied, x, y)
                 && !ViolatesMinDistance(prop, x, y, placements)
-                && !ViolatesSameCategory(theme, prop, x, y, placements);
+                && !ViolatesSameCategory(theme, prop, x, y, placements)
+                && !(occlusionAware && VisualFootprintHitsPlay(plan, prop, cell.x, cell.y));
         }
 
         private static bool TryPlace(
@@ -267,7 +289,8 @@ namespace Wassup.Data
             NativeArray<bool> occupied,
             List<PropPlacement> placements,
             ref Random rng,
-            int clusterId)
+            int clusterId,
+            bool occlusionAware)
         {
             int width = math.max(1, prop.footprintX);
             int height = math.max(1, prop.footprintY);
@@ -275,7 +298,8 @@ namespace Wassup.Data
             int y = cell.y - height / 2;
             if (!CanFit(plan, prop, occupied, x, y)
                 || ViolatesMinDistance(prop, x, y, placements)
-                || ViolatesSameCategory(theme, prop, x, y, placements))
+                || ViolatesSameCategory(theme, prop, x, y, placements)
+                || (occlusionAware && VisualFootprintHitsPlay(plan, prop, cell.x, cell.y)))
                 return false;
 
             for (int dy = 0; dy < height; dy++)

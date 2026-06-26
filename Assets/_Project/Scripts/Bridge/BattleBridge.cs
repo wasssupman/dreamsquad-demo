@@ -688,7 +688,8 @@ namespace Wassup.Bridge
                     // unit 5 — 모바일 프랍 예산: 배경 프랍을 배율만큼 솎는다(앞쪽=중앙/가장자리 우선 보존, 필러 컷).
                     float propScale = Application.isMobilePlatform ? Mathf.Clamp01(mobilePropBudgetScale) : 1f;
                     var plan = tilemapMapView.VisualPlan;
-                    var placements = BackgroundPropPlacer.Generate(plan, theme, _generatedMap.seed);
+                    // unit 10 — tilemap 은 빌보드 틸트가 있어 occlusion 인지 배치(큰 프랍이 플레이 +y 가림 방지). Legacy3D 는 off.
+                    var placements = BackgroundPropPlacer.Generate(plan, theme, _generatedMap.seed, occlusionAware: true);
                     if (propScale < 1f && placements.Count > 0)
                         placements = placements.GetRange(0, Mathf.Max(0, (int)(placements.Count * propScale)));
                     tilemapMapView.InstantiateBackgroundProps(plan, theme, placements, UseRealShadows);

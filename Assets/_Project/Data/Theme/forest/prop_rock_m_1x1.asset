@@ -10,16 +10,17 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 934f1261c7a44f2389308d8e101207cd, type: 3}
-  m_Name: prop_rock_s
+  m_Name: prop_rock_m_1x1
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.PropData
-  id: prop_rock_s
-  displayName: rock_s
+  id: prop_rock_m
+  displayName: rock_m
   footprintX: 1
   footprintY: 1
-  placementWeight: 9
+  visualFootprint: {x: 1, y: 1}
+  placementWeight: 8
   minDistanceCells: 1
-  visualOffset: {x: 0, y: 0.118705034, z: 0}
-  visualScale: 0.5
+  visualOffset: {x: 0, y: 0.28587785, z: 0}
+  visualScale: 0.7
   preferredAnchorTypes: 
   preferredRegionSizeMin: 0
   clusterRadius: 1
@@ -33,9 +34,9 @@ MonoBehaviour:
   sameCategoryMinDistanceCells: 0
   excludeFromDistantRing: 0
   distantRingWeight: 1
-  prefab: {fileID: 8019810157831662659, guid: 9f6564ed9c1f5405b8b086513dd17c4d, type: 3}
-  sprite: {fileID: 21300000, guid: 57f7ac38470964952adb5e67920c096f, type: 3}
-  sourceTexture: {fileID: 2800000, guid: 57f7ac38470964952adb5e67920c096f, type: 3}
+  prefab: {fileID: 8398517002041191910, guid: fc7a599a52ddc4ab1af94d04eb5aff37, type: 3}
+  sprite: {fileID: 21300000, guid: 00877732259c4497d91d9c31491d8aee, type: 3}
+  sourceTexture: {fileID: 2800000, guid: 00877732259c4497d91d9c31491d8aee, type: 3}
   spriteColor: {r: 1, g: 1, b: 1, a: 1}
   sortingOrder: 0
   skeletonDataAsset: {fileID: 0}

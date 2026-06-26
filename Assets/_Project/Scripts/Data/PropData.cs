@@ -13,6 +13,8 @@ namespace Wassup.Data
         [Header("Placement")]
         [Min(1)] public int footprintX = 1;
         [Min(1)] public int footprintY = 1;
+        [Tooltip("비주얼 가림 풋프린트(틸트 누운 방향 기준). x=폭, y=depth(+y 셀 수). 1x1=가림 없음, 1x4=큰 나무. 배치 시 이 범위가 플레이 타일 침범하면 거부(occlusionAware). footprint(sim 발자국)와 별개.")]
+        public Vector2Int visualFootprint = new Vector2Int(1, 1);
         [Min(0)] public int placementWeight = 10;
         [Min(0)] public int minDistanceCells;
         public Vector3 visualOffset;
