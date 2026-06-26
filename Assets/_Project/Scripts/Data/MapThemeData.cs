@@ -235,6 +235,9 @@ namespace Wassup.Data
         [Min(0f)]
         [Tooltip("링 바깥쪽으로 갈수록 프랍 밀도 감소율(셀당). 클수록 가장자리가 더 비어 자연 페이드.")]
         public float ringPropFalloffPerCell = 0.12f;
+        [Min(0)]
+        [Tooltip("원경 링 프랍을 플레이 셀(Walk/Place)로부터 이 Chebyshev 거리 이내엔 배치 안 함. 0=off. 틸트 나무가 플레이 영역을 덮는 것 방지.")]
+        public int ringPlayClearanceCells = 3;
     }
 
     [Serializable]

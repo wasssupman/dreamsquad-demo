@@ -42,7 +42,13 @@
 - ~~**4b 프랍 틸트**: `PropData.tiltAngle` + `Tilted` 미사용 → 적용 or 휴면 결정.~~ — **완료** (316d45a, `7_prop_tilt_apply.md`. 7종 Tilted 전환, flower 38°/rock 45°/tree 50°. 코드 무변경, 원근감 회복).
 - **Legacy 환경 프랍 노출 확인**: `tilemapHiddenEnvironment: []`(빈 배열). 스크린샷상 누출 없어 사실상 해소로 보이나 확정 확인.
 
-#### 프랍 비주얼 가림 회피 (occlusion-aware placement) — 방향성만 기록, 구현 보류 (2026-06-26)
+#### 프랍 비주얼 가림 회피 (occlusion-aware placement)
+
+**원경 = 단순 버퍼로 해소 (8, 구현됨)**: `MapThemeData.ringPlayClearanceCells`(forest=3) — 플레이 셀
+(Walk/Place) Chebyshev 3타일 이내 링 셀은 비운다(`TilemapMapView.NearPlayCell`). 보드 앞쪽 원경 나무가
+플레이 영역 덮는 문제 해소. 근경은 미적용(실측: Env 77셀 전부 플레이 3 이내 → 근경 적용 시 보드 내부 프랍 전멸).
+
+**근경 = 정밀 occlusion 모델, 여전히 보류 (방향성만)**:
 
 **문제**: 틸트(7) 적용 후, footprint 1×1 나무라도 `Euler(φ,0,0)`로 **+Z(셀 +y, 보드 안쪽) 방향으로 누워** 화면상
 여러 셀을 가린다. 현재 `BackgroundPropPlacer.CanFit`은 footprint만 Env 검사 → 비주얼 투영 무지. `InstantiateRingProps`는

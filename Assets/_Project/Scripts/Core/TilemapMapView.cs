@@ -331,6 +331,9 @@ namespace Wassup.Core
             }
             if (totalW <= 0f) return;
 
+            // unit 8 — 틸트 나무가 플레이 영역을 덮지 않게, 플레이 셀(Walk/Place) 근처 링 셀은 비운다.
+            int clearance = theme.ringPlayClearanceCells;
+
             var rng = Unity.Mathematics.Random.CreateFromIndex((uint)(seed ^ 0x246813) | 1u);
             var root = new GameObject("RingProps");
             _ringPropsRoot = root.transform;
@@ -340,6 +343,7 @@ namespace Wassup.Core
             for (int x = -R; x < w + R; x++)
             {
                 if (x >= 0 && x < w && y >= 0 && y < h) continue;
+                if (clearance > 0 && NearPlayCell(_visualPlan, x, y, clearance)) continue;
                 int ringDist = RingDistance(x, y, w, h);
                 float falloff = Mathf.Clamp01(1f - theme.ringPropFalloffPerCell * (ringDist - 1));
                 if (rng.NextFloat() > density * falloff) continue;
@@ -362,6 +366,22 @@ namespace Wassup.Core
                 MapView.DisablePropDebugMarkers(inst);
                 if (castShadows) SetPropCastShadows(inst);
             }
+        }
+
+        // unit 8 — (cx,cy) Chebyshev r 이내에 플레이 셀(Walk/Place)이 있으면 true. 보드 밖 좌표는 비-플레이.
+        private static bool NearPlayCell(BoardVisualPlan plan, int cx, int cy, int r)
+        {
+            if (plan == null) return false;
+            int w = plan.gridSize.x, h = plan.gridSize.y;
+            for (int dy = -r; dy <= r; dy++)
+            for (int dx = -r; dx <= r; dx++)
+            {
+                int x = cx + dx, y = cy + dy;
+                if (x < 0 || y < 0 || x >= w || y >= h) continue;
+                var z = plan.CellAt(new int2(x, y)).zoneType;
+                if (z == BoardZoneType.Walk || z == BoardZoneType.Place) return true;
+            }
+            return false;
         }
 
         // grid 권위 cell→world. BoardSpace.ToView 와 동일 셀중심(+0.5) 수식. 바닥 z-fight 회피용 미세 +Y lift.
