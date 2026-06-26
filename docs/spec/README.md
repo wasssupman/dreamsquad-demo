@@ -120,6 +120,15 @@ code + git history        구현 상세
 
 > 출처 spec 이 섞여 있다. 그룹 헤더 또는 항목 끝의 `(spec-slug)` 라벨로 출처 표기.
 
+#### 적 스폰/이동 비주얼 (enemy-spawn-positioning)
+
+스폰 위치 개선(완료 2026-06-26) 후 남은 시각 다듬기. 코어/이동 변경 없음.
+
+- **비주얼 수직추적** [M] · 코너에서도 적 비주얼이 항상 경로 수직 유지. sim 은 중심선 두고 View 가 진행방향 수직 렌더 오프셋. 현재 sim 스폰 오프셋은 코너에서 측면→앞뒤로 회전.
+- **Quad 폴백 visualOffset 배선** [S] · Spine 없는 적의 `QuadUnitView` 경로에 `AttackUnitData.visualOffset` 전달. 현재 미배선(적=Spine 라 무영향).
+- **유닛 간 separation/boid** [M] · 겹침 동적 해소(스폰 분산과 별개로 행진 중 밀집 완화).
+- **블록 시 우회 재라우팅** [M] · 복도 차단 시 `BuildFlowField` rebuild 트리거(walk 마스크에 blockedCells 반영). flow field 유지 결론(유닛별 BFS 아님). 이동 아키텍처 별도 스펙.
+
 #### Modifier framework — Producer 확장 (modifier-framework-and-healer)
 
 framework 코어 변경 0. 새 producer 레이어 추가로 다양한 효과 적용 경로 확보. producer-agnostic 설계 검증 시점.
