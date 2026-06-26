@@ -41,5 +41,5 @@ MonoBehaviour:
   skeletonDataAsset: {fileID: 0}
   spineSkinName: 
   idleAnimation: idle
-  billboardMode: 0
-  tiltAngle: 0
+  billboardMode: 3
+  tiltAngle: 45
