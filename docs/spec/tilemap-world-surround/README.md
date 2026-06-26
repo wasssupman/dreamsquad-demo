@@ -54,7 +54,8 @@
 | 3 | `3_terrain_ring.md` | 링 페인트 + 톤다운 | 외곽 터레인 링 + 채도↓ 로 보드 구분 |
 | 4 | `4_distant_props.md` | 원경 프랍 | 링 위 저밀도 프랍 + falloff, 그림자 OFF |
 | 5 | `5_budget_and_camera.md` | 모바일/카메라 | 그림자 정책·프랍 캡·링+스카이박스 합성 검증 |
-| 6 | `6_handoff_summary.md` | 인계 | 구현 종료 요약 |
+| 6 | `6_handoff_summary.md` | 인계 | 구현 종료 요약 + 후속(머지/정식화/틸트/occlusion) |
+| 7 | `7_prop_tilt_apply.md` | 4b 적용 | 프랍 Tilted 전환(flower 38°/rock 45°/tree 50°) — 배경 원근감 |
 
 ## 후속 후보 (범위 밖)
 

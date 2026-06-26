@@ -39,8 +39,23 @@
 - ~~**머지 결정**: `feat/tilemap-world-surround` → main 머지/PR 여부.~~ — **완료** (ff 머지, main `0f07a8c`, remote 없어 PR 생략).
 - ~~**프랍 에셋 정식화**: `Data/Theme/test/`·`Prefabs/Props/test/`·`Generated/Tiles/Test/` → 정식 위치 승격.~~ — **완료** (264097d. 28 에셋 R100 rename → `Data/Theme/forest/`·`Prefabs/Props/forest/`·`Art/Theme/forest/`. forest.asset 참조·PropBillboard 295 런타임 검증. 파일명 유지, 폴더만 승격).
 - **고아 에셋 정리**: forest.tileProps 가 기존 21종 → test 7종으로 교체되며 옛 21종 프랍 고아 → 삭제/보존 결정.
-- **4b 프랍 틸트 휴면 처리**: `PropData.tiltAngle` + `PropBillboardMode.Tilted` 도입했으나 7종 전부 FullCamera/tilt 0 = 미사용. 퍼스펙티브 맞춤 Tilted 적용 or 휴면 유지/제거 결정.
+- ~~**4b 프랍 틸트**: `PropData.tiltAngle` + `Tilted` 미사용 → 적용 or 휴면 결정.~~ — **완료** (316d45a, `7_prop_tilt_apply.md`. 7종 Tilted 전환, flower 38°/rock 45°/tree 50°. 코드 무변경, 원근감 회복).
 - **Legacy 환경 프랍 노출 확인**: `tilemapHiddenEnvironment: []`(빈 배열). 스크린샷상 누출 없어 사실상 해소로 보이나 확정 확인.
+
+#### 프랍 비주얼 가림 회피 (occlusion-aware placement) — 방향성만 기록, 구현 보류 (2026-06-26)
+
+**문제**: 틸트(7) 적용 후, footprint 1×1 나무라도 `Euler(φ,0,0)`로 **+Z(셀 +y, 보드 안쪽) 방향으로 누워** 화면상
+여러 셀을 가린다. 현재 `BackgroundPropPlacer.CanFit`은 footprint만 Env 검사 → 비주얼 투영 무지. `InstantiateRingProps`는
+Env/footprint 검사 자체가 없어 보드 앞쪽(작은 y) 링의 큰 나무가 플레이 영역(Walk/Place)을 덮음.
+
+**기하 근거**: 틸트 빌보드 up `(0,1,0)→(0,cosφ,sinφ)`. 누운 수평 성분 = `H·sinφ`. prop_tree 추정 H≈2.86
+(visualOffset.y 1.428=half-height) → `+y`로 ≈2.2셀 투영(footprint 1×1, 비주얼 ~1×3). 방향 `+y` 고정(카메라 고정).
+
+**합의된 접근 (정밀 occlusion 모델)**: per-prop `L=⌈H·sinφ/cell⌉` 자동 산출(하드코딩 회피) → occlusion 셀
+`{(cx, cy+1..cy+L)}`(폭=footprintX). 근경=`CanFit`에 occlusion 셀까지 Env 요구. 원경=링 배치 시 occlusion이
+플레이 영역(0..w,0..h) 침범하면 큰 프랍 skip(작은 것 대체). 별도 작업 단위(`8_occlusion_aware_placement.md`)로
+설계 예정. **착수 전 Play 실측으로 누운 방향 `+y`·tree 투영 길이 확정해 L 산출식 못박기.** 대안(근사 휴리스틱:
+앞쪽 링 큰프랍 가중치 0 + tree footprintY 확대)은 단순하나 경계 누락 → 정밀 모델 권장.
 
 ### 폐기 (사용자 지정 2026-06-26)
 - ~~멀티 시즌(lava/lunar/cosmic) 테마에 동일 ring/deco 처리~~ — **드롭**. forest(S1)만 유지.
