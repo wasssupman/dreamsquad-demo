@@ -300,9 +300,11 @@ namespace Wassup.Core
                 float centerY = placement.y + (placement.height - 1) * 0.5f;
                 var instance = Instantiate(prop.prefab, _backgroundPropsRoot);
                 instance.name = $"{prop.name}_{placement.x}_{placement.y}";
-                // world 좌표/회전으로 설정 → 부모(grid) 90° 회전 비상속. PropBillboard 가 LateUpdate 로 facing override.
+                // position 은 world(grid 권위). rotation 은 부모(BackgroundProps, XZ 바닥 90°) 상속 →
+                // visualOffset 가 바닥 평면으로 적용돼 접지(원경 RingProps 와 동일). rotation 을 Euler(0,yaw,0)
+                // 으로 강제하면 부모 90° 를 무시해 visualOffset 높이가 월드 +y 로 적용 → 공중부양 버그.
+                // yaw 는 PropBillboard(Tilted/FullCamera)가 override 하므로 미적용.
                 instance.transform.position = CellCenterToWorld(centerX, centerY);
-                instance.transform.rotation = Quaternion.Euler(0f, placement.rotationYaw, 0f);
                 instance.transform.localScale = Vector3.one * placement.scale;
                 MapView.ApplyPropSorting(instance, prop, placement, plan);
                 MapView.DisablePropDebugMarkers(instance);
