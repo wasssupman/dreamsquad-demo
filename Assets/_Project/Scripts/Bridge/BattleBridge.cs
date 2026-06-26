@@ -710,7 +710,7 @@ namespace Wassup.Bridge
             if (UseTilemapView && tilemapMapView != null && theme != null)
             {
                 float ringScale = Application.isMobilePlatform ? Mathf.Clamp01(mobilePropBudgetScale) : 1f;
-                tilemapMapView.InstantiateRingProps(theme, _generatedMap.gridSize, _generatedMap.seed, false, ringScale);
+                tilemapMapView.InstantiateRingProps(theme, _generatedMap.gridSize, _generatedMap.seed, ringScale);
             }
 
             GameManager.Instance?.Logger?.LogMap(

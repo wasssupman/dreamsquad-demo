@@ -129,25 +129,32 @@ namespace Wassup.Data
         public static bool IsBackgroundCell(BoardVisualCell cell)
             => cell.zoneType == BoardZoneType.Env;
 
-        // unit 10 — 발 셀에서 틸트 누운 방향(+y)으로 visualFootprint.depth 만큼이 플레이 타일(Walk/Place)을
-        // 침범하면 true. 큰 나무가 플레이 앞(-y)에 와서 유닛을 가리는 걸 막는다. depth<=1 = 가림 없음(skip).
-        private static bool VisualFootprintHitsPlay(BoardVisualPlan plan, PropData prop, int footX, int footY)
+        // unit 11(B) — 틸트 가림 occlusion 공용 판정(근경 prop + 원경 ring 공유).
+        // origin 셀에서 틸트 누운 방향(+y)으로 depth 셀, 폭 width(중심 정렬) 안에 플레이 셀(Walk/Place)이 있으면 true.
+        // +y 는 틸트 빌보드가 눕는 방향(BoardSpace XZ 바닥 + 카메라 고정, 실측 확정). 보드 밖 좌표=비-플레이.
+        public static bool OccludesPlay(BoardVisualPlan plan, int originX, int originY, int width, int depth)
         {
-            int vw = math.max(1, prop.visualFootprint.x);
-            int vd = math.max(1, prop.visualFootprint.y);
-            if (vd <= 1) return false;
-            int half = (vw - 1) / 2;
-            for (int k = 1; k < vd; k++)
-            for (int ix = 0; ix < vw; ix++)
+            if (plan == null || width <= 0 || depth <= 0) return false;
+            int w = plan.gridSize.x, h = plan.gridSize.y;
+            int half = (width - 1) / 2;
+            for (int k = 1; k <= depth; k++)
+            for (int ix = 0; ix < width; ix++)
             {
-                int x = footX - half + ix;
-                int y = footY + k; // +y = 틸트 누운 방향(실측 확정)
-                if (x < 0 || y < 0 || x >= plan.gridSize.x || y >= plan.gridSize.y) continue;
+                int x = originX - half + ix;
+                int y = originY + k;
+                if (x < 0 || y < 0 || x >= w || y >= h) continue;
                 var z = plan.CellAt(new int2(x, y)).zoneType;
                 if (z == BoardZoneType.Walk || z == BoardZoneType.Place) return true;
             }
             return false;
         }
+
+        // unit 10 — 근경 프랍: 발 셀 +y 로 visualFootprint(width × depth-1) 가 플레이 타일 침범하면 거부.
+        // depth = visualFootprint.y - 1 (발 셀 제외). vd<=1 → depth 0 → 가림 없음.
+        private static bool VisualFootprintHitsPlay(BoardVisualPlan plan, PropData prop, int footX, int footY)
+            => OccludesPlay(plan, footX, footY,
+                math.max(1, prop.visualFootprint.x),
+                math.max(1, prop.visualFootprint.y) - 1);
 
         private static List<int2>[] BuildCandidatesByRegion(BoardVisualPlan plan, MapThemeData theme, float density, ref Random rng)
         {

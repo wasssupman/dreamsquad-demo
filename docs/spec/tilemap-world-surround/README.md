@@ -59,6 +59,8 @@
 | 8 | `8_ring_play_clearance.md` | 원경 버퍼 | 원경 링 프랍을 플레이 **하단** 3타일 이내 배치 금지(`ringPlayClearanceCells`, +y 누움 반영) |
 | 9 | `9_prop_blob_shadow.md` | 모바일 그림자 | 근경 프랍 모바일 blob 폴백(real cast off 시, 캐릭터와 대칭) |
 | 10 | `10_visual_footprint_placement.md` | 시인성 배치 | 명시 `visualFootprint`(1x4 등)로 근경 큰 프랍 방향성(+y) 배치 — 유닛 가림 방지 |
+| 11 | `11_prop_foot_pivot.md` | 근본 수정 | 프랍 발 피벗 정착(`visualOffset.y=0`) — 부양/blob 어긋남 근원 해소 |
+| 12 | `12_occlusion_unify_cleanup.md` | 리뷰 정리 | occlusion 1함수(`OccludesPlay`) 통합 + dead `castShadows`/`SetPropCastShadows` 제거 |
 
 ## 후속 후보 (범위 밖)
 

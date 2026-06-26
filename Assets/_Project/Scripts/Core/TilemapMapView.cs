@@ -318,7 +318,7 @@ namespace Wassup.Core
         // tilemap-world-surround unit 4 — 외곽 터레인 링 셀에 원경 프랍을 저밀도로 흩뿌린다.
         // VisualPlan(sim 그리드) 밖이라 BackgroundPropPlacer 를 못 쓰는 별도 경량 scatter.
         // 바깥쪽 falloff 로 밀도 감소(가장자리 페이드), 원경이라 그림자 OFF 기본, 꽃 등은 제외.
-        public void InstantiateRingProps(MapThemeData theme, int2 playableSize, int seed, bool castShadows, float densityScale = 1f)
+        public void InstantiateRingProps(MapThemeData theme, int2 playableSize, int seed, float densityScale = 1f)
         {
             if (_ringPropsRoot != null) { SafeDestroy(_ringPropsRoot.gameObject); _ringPropsRoot = null; }
             if (grid == null || _tileSet == null || theme == null || theme.tileProps == null) return;
@@ -347,7 +347,9 @@ namespace Wassup.Core
             for (int x = -R; x < w + R; x++)
             {
                 if (x >= 0 && x < w && y >= 0 && y < h) continue;
-                if (clearance > 0 && WouldOccludePlay(_visualPlan, x, y, clearance)) continue;
+                // unit 8rev + 11(B) — 링이 플레이 하단(-y)에 있어 +y 누움으로 가리는 경우만 비운다.
+                // 근경과 동일한 occlusion 판정 공유(width=2r+1 중심, depth=r).
+                if (clearance > 0 && BackgroundPropPlacer.OccludesPlay(_visualPlan, x, y, 2 * clearance + 1, clearance)) continue;
                 int ringDist = RingDistance(x, y, w, h);
                 float falloff = Mathf.Clamp01(1f - theme.ringPropFalloffPerCell * (ringDist - 1));
                 if (rng.NextFloat() > density * falloff) continue;
@@ -368,26 +370,7 @@ namespace Wassup.Core
                 inst.transform.position = CellCenterToWorld(x, y);
                 inst.transform.localScale = Vector3.one * (1f + rng.NextFloat(-prop.scaleJitter, prop.scaleJitter));
                 MapView.DisablePropDebugMarkers(inst);
-                if (castShadows) SetPropCastShadows(inst);
             }
-        }
-
-        // unit 8 (rev, unit 10 맥락) — 링 셀의 +y(틸트 누운 방향, 보드 안쪽)쪽 r 이내에 플레이 셀(Walk/Place)이
-        // 있으면 true = 이 링이 플레이 영역 하단(-y)에 있어 틸트(+y 누움)로 플레이를 가리는 경우. 그 경우만 비운다.
-        // 플레이의 상/좌/우 원경 링은 +y 로 누워도 플레이를 안 가리므로 허용(빽빽한 숲 유지).
-        private static bool WouldOccludePlay(BoardVisualPlan plan, int cx, int cy, int r)
-        {
-            if (plan == null) return false;
-            int w = plan.gridSize.x, h = plan.gridSize.y;
-            for (int dy = 1; dy <= r; dy++) // +y(위, 보드 안쪽)쪽만 검사
-            for (int dx = -r; dx <= r; dx++)
-            {
-                int x = cx + dx, y = cy + dy;
-                if (x < 0 || y < 0 || x >= w || y >= h) continue;
-                var z = plan.CellAt(new int2(x, y)).zoneType;
-                if (z == BoardZoneType.Walk || z == BoardZoneType.Place) return true;
-            }
-            return false;
         }
 
         // grid 권위 cell→world. BoardSpace.ToView 와 동일 셀중심(+0.5) 수식. 바닥 z-fight 회피용 미세 +Y lift.
@@ -398,14 +381,6 @@ namespace Wassup.Core
                 grid.CellToLocalInterpolated(new Vector3(cellX + 0.5f, cellY + 0.5f, 0f)));
             world.y += PropGroundLift;
             return world;
-        }
-
-        // tilemap-real-shadows — 근경 프랍은 실루엣 그림자 CAST(TwoSided). 평면 빌보드 alpha-clip 은 셰이더 책임.
-        private static void SetPropCastShadows(GameObject instance)
-        {
-            var renderers = instance.GetComponentsInChildren<Renderer>(true);
-            for (int i = 0; i < renderers.Length; i++)
-                renderers[i].shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.TwoSided;
         }
 
         // unit 9 — real cast 가 꺼지는 모바일에서 근경 프랍 발밑 blob 폴백(캐릭터와 대칭).

@@ -50,10 +50,17 @@
 - **원경 = 하단 클리어런스 (8, 8rev)**: `ringPlayClearanceCells`(forest=3). 링이 플레이 `+y` 방향에
   플레이를 둘 때(=플레이 하단 링)만 비운다(`WouldOccludePlay`, dy∈[1,r]). 상/좌/우 원경은 빽빽한 숲 유지.
 - **근경 = 명시 visual footprint (10)**: per-prop `visualFootprint`(width×depth, tree 1x4·rock_l 1x2·나머지
-  1x1, 파일명 `_WxD` 라벨). 발 셀 `+y`로 depth 셀이 플레이(Walk/Place) 침범하면 배치 거부
-  (`BackgroundPropPlacer.VisualFootprintHitsPlay`, tilemap 전용 `occlusionAware`). 큰 나무는 플레이 뒤(+y)
-  /가장자리로 빠지고 보드 내부는 낮은 꽃/돌 → 유닛 시인성 + 산속 마을. 정밀 H·sinφ 동적모델 대신
-  **명시 데이터 채택**(사용자 지정: 예측·튜닝·디버그 우월).
+  1x1, PropData+prefab 파일명 `_WxD` 라벨). 발 셀 `+y`로 depth 셀이 플레이 침범하면 배치 거부
+  (tilemap 전용 `occlusionAware`). 큰 나무는 플레이 뒤(+y)/가장자리로, 보드 내부는 낮은 꽃/돌 → 시인성+산속마을.
+- **occlusion 통합 (12)**: 원경/근경이 `BackgroundPropPlacer.OccludesPlay(plan, originX, originY, width, depth)`
+  공유. `+y` 방향은 이 한 곳에만 하드코딩(카메라 고정). 근경=`(footX,footY,vf.x,vf.y-1)`, 원경=`(x,y,2r+1,r)`.
+
+#### 프랍 발 피벗 + 그림자 정책 (11, 9rev)
+- **발 피벗 (11)**: `visualOffset.y=0` — sprite 하단 pivot 이 곧 발. tilemap 부모 90° 가 `(0,0,0)`을 그대로 둠 →
+  좌표계 오버로드(스프라이트 +z 깊이 밀림)·부모 결합·blob 어긋남 동시 해소. **부양/blob 땜빵의 근본**.
+  Legacy3D=MapGrid 라 keeper 프랍 미사용 → 무영향. (코드 리뷰 2026-06-26 식별)
+- **그림자 정책**: 프랍=blob only(SpriteRenderer 가 ShadowCaster pass 없어 real cast 구조적 불가, dead 제거됨) /
+  캐릭터=real(desktop)+blob(mobile) / 원경=무그림자(의도). blob=발 피벗 정렬(df3729d).
 
 ### 폐기 (사용자 지정 2026-06-26)
 - ~~멀티 시즌(lava/lunar/cosmic) 테마에 동일 ring/deco 처리~~ — **드롭**. forest(S1)만 유지.
