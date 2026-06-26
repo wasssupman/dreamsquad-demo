@@ -31,35 +31,25 @@ namespace Wassup.Presentation
         {
             if (mode == BillboardMode.None) return;
 
-            Quaternion rot;
-            switch (mode)
+            var facing = ToFacing(mode);
+            Camera cam = null;
+            if (facing != BillboardRotation.Facing.Tilted)
             {
-                case BillboardMode.YAxis:
-                {
-                    if (!EnsureCamera()) return;
-                    Vector3 dir = transform.position - _camera.transform.position;
-                    dir.y = 0f;
-                    if (dir.sqrMagnitude < 0.0001f) return;
-                    rot = Quaternion.LookRotation(dir.normalized, Vector3.up);
-                    break;
-                }
-                case BillboardMode.Full:
-                {
-                    if (!EnsureCamera()) return;
-                    rot = _camera.transform.rotation;
-                    break;
-                }
-                // TiltedDynamic 은 후속(README). 현재 Tilted 와 동일 폴백.
-                case BillboardMode.Tilted:
-                case BillboardMode.TiltedDynamic:
-                default:
-                    rot = Quaternion.Euler(tiltAngle, 0f, 0f);
-                    break;
+                if (!EnsureCamera()) return;
+                cam = _camera;
             }
 
-            if (flip180) rot *= Quaternion.Euler(0f, 180f, 0f);
-            transform.rotation = rot;
+            var rot = BillboardRotation.Compute(facing, tiltAngle, cam, transform.position, flip180);
+            if (rot.HasValue) transform.rotation = rot.Value;
         }
+
+        // TiltedDynamic 은 후속(README). 현재 Tilted 와 동일.
+        private static BillboardRotation.Facing ToFacing(BillboardMode m) => m switch
+        {
+            BillboardMode.YAxis => BillboardRotation.Facing.YAxis,
+            BillboardMode.Full => BillboardRotation.Facing.Camera,
+            _ => BillboardRotation.Facing.Tilted,
+        };
 
         private bool EnsureCamera()
         {

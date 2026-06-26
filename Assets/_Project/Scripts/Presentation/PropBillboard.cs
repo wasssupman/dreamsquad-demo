@@ -35,30 +35,29 @@ namespace Wassup.Presentation
         {
             if (billboardMode == PropBillboardMode.None) return;
 
-            // Tilted — 카메라 무관 정적 X 틸트(Billboard.cs Tilted 패턴). 캐릭터와 독립한 레이어 각도.
-            if (billboardMode == PropBillboardMode.Tilted)
-            {
-                var tiltTarget = visualRoot != null ? visualRoot : transform;
-                tiltTarget.rotation = Quaternion.Euler(data != null ? data.tiltAngle : 0f, 0f, 0f);
-                return;
-            }
-
-            if (_camera == null || !_camera.isActiveAndEnabled)
-                _camera = Camera.main;
-            if (_camera == null) return;
-
             var target = visualRoot != null ? visualRoot : transform;
-            if (billboardMode == PropBillboardMode.YAxis)
+            var facing = ToFacing(billboardMode);
+            Camera cam = null;
+            if (facing != BillboardRotation.Facing.Tilted)
             {
-                var direction = target.position - _camera.transform.position;
-                direction.y = 0f;
-                if (direction.sqrMagnitude > 0.0001f)
-                    target.rotation = Quaternion.LookRotation(direction.normalized, Vector3.up);
-                return;
+                if (_camera == null || !_camera.isActiveAndEnabled)
+                    _camera = Camera.main;
+                if (_camera == null) return;
+                cam = _camera;
             }
 
-            target.rotation = _camera.transform.rotation;
+            // tilt 출처는 데이터(캐릭터 레이어와 독립). 프랍은 flip180 미사용.
+            float tilt = data != null ? data.tiltAngle : 0f;
+            var rot = BillboardRotation.Compute(facing, tilt, cam, target.position, flip180: false);
+            if (rot.HasValue) target.rotation = rot.Value;
         }
+
+        private static BillboardRotation.Facing ToFacing(PropBillboardMode m) => m switch
+        {
+            PropBillboardMode.YAxis => BillboardRotation.Facing.YAxis,
+            PropBillboardMode.FullCamera => BillboardRotation.Facing.Camera,
+            _ => BillboardRotation.Facing.Tilted,
+        };
 
         private void ApplyData()
         {
