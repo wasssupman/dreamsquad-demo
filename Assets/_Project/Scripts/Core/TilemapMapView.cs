@@ -347,7 +347,7 @@ namespace Wassup.Core
             for (int x = -R; x < w + R; x++)
             {
                 if (x >= 0 && x < w && y >= 0 && y < h) continue;
-                if (clearance > 0 && NearPlayCell(_visualPlan, x, y, clearance)) continue;
+                if (clearance > 0 && WouldOccludePlay(_visualPlan, x, y, clearance)) continue;
                 int ringDist = RingDistance(x, y, w, h);
                 float falloff = Mathf.Clamp01(1f - theme.ringPropFalloffPerCell * (ringDist - 1));
                 if (rng.NextFloat() > density * falloff) continue;
@@ -372,12 +372,14 @@ namespace Wassup.Core
             }
         }
 
-        // unit 8 — (cx,cy) Chebyshev r 이내에 플레이 셀(Walk/Place)이 있으면 true. 보드 밖 좌표는 비-플레이.
-        private static bool NearPlayCell(BoardVisualPlan plan, int cx, int cy, int r)
+        // unit 8 (rev, unit 10 맥락) — 링 셀의 +y(틸트 누운 방향, 보드 안쪽)쪽 r 이내에 플레이 셀(Walk/Place)이
+        // 있으면 true = 이 링이 플레이 영역 하단(-y)에 있어 틸트(+y 누움)로 플레이를 가리는 경우. 그 경우만 비운다.
+        // 플레이의 상/좌/우 원경 링은 +y 로 누워도 플레이를 안 가리므로 허용(빽빽한 숲 유지).
+        private static bool WouldOccludePlay(BoardVisualPlan plan, int cx, int cy, int r)
         {
             if (plan == null) return false;
             int w = plan.gridSize.x, h = plan.gridSize.y;
-            for (int dy = -r; dy <= r; dy++)
+            for (int dy = 1; dy <= r; dy++) // +y(위, 보드 안쪽)쪽만 검사
             for (int dx = -r; dx <= r; dx++)
             {
                 int x = cx + dx, y = cy + dy;

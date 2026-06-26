@@ -43,26 +43,17 @@
 - ~~**4b 프랍 틸트**: `PropData.tiltAngle` + `Tilted` 미사용 → 적용 or 휴면 결정.~~ — **완료** (316d45a, `7_prop_tilt_apply.md`. 7종 Tilted 전환, flower 38°/rock 45°/tree 50°. 코드 무변경, 원근감 회복).
 - **Legacy 환경 프랍 노출 확인**: `tilemapHiddenEnvironment: []`(빈 배열). 스크린샷상 누출 없어 사실상 해소로 보이나 확정 확인.
 
-#### 프랍 비주얼 가림 회피 (occlusion-aware placement)
+#### 프랍 비주얼 가림 회피 (occlusion-aware placement) — 해소됨
 
-**원경 = 단순 버퍼로 해소 (8, 구현됨)**: `MapThemeData.ringPlayClearanceCells`(forest=3) — 플레이 셀
-(Walk/Place) Chebyshev 3타일 이내 링 셀은 비운다(`TilemapMapView.NearPlayCell`). 보드 앞쪽 원경 나무가
-플레이 영역 덮는 문제 해소. 근경은 미적용(실측: Env 77셀 전부 플레이 3 이내 → 근경 적용 시 보드 내부 프랍 전멸).
+틸트(7) 후 큰 프랍이 `+y`(셀, 실측 확정)로 누워 플레이 유닛을 가리는 문제. 원경/근경 각각 해소:
 
-**근경 = 정밀 occlusion 모델, 여전히 보류 (방향성만)**:
-
-**문제**: 틸트(7) 적용 후, footprint 1×1 나무라도 `Euler(φ,0,0)`로 **+Z(셀 +y, 보드 안쪽) 방향으로 누워** 화면상
-여러 셀을 가린다. 현재 `BackgroundPropPlacer.CanFit`은 footprint만 Env 검사 → 비주얼 투영 무지. `InstantiateRingProps`는
-Env/footprint 검사 자체가 없어 보드 앞쪽(작은 y) 링의 큰 나무가 플레이 영역(Walk/Place)을 덮음.
-
-**기하 근거**: 틸트 빌보드 up `(0,1,0)→(0,cosφ,sinφ)`. 누운 수평 성분 = `H·sinφ`. prop_tree 추정 H≈2.86
-(visualOffset.y 1.428=half-height) → `+y`로 ≈2.2셀 투영(footprint 1×1, 비주얼 ~1×3). 방향 `+y` 고정(카메라 고정).
-
-**합의된 접근 (정밀 occlusion 모델)**: per-prop `L=⌈H·sinφ/cell⌉` 자동 산출(하드코딩 회피) → occlusion 셀
-`{(cx, cy+1..cy+L)}`(폭=footprintX). 근경=`CanFit`에 occlusion 셀까지 Env 요구. 원경=링 배치 시 occlusion이
-플레이 영역(0..w,0..h) 침범하면 큰 프랍 skip(작은 것 대체). 별도 작업 단위(`8_occlusion_aware_placement.md`)로
-설계 예정. **착수 전 Play 실측으로 누운 방향 `+y`·tree 투영 길이 확정해 L 산출식 못박기.** 대안(근사 휴리스틱:
-앞쪽 링 큰프랍 가중치 0 + tree footprintY 확대)은 단순하나 경계 누락 → 정밀 모델 권장.
+- **원경 = 하단 클리어런스 (8, 8rev)**: `ringPlayClearanceCells`(forest=3). 링이 플레이 `+y` 방향에
+  플레이를 둘 때(=플레이 하단 링)만 비운다(`WouldOccludePlay`, dy∈[1,r]). 상/좌/우 원경은 빽빽한 숲 유지.
+- **근경 = 명시 visual footprint (10)**: per-prop `visualFootprint`(width×depth, tree 1x4·rock_l 1x2·나머지
+  1x1, 파일명 `_WxD` 라벨). 발 셀 `+y`로 depth 셀이 플레이(Walk/Place) 침범하면 배치 거부
+  (`BackgroundPropPlacer.VisualFootprintHitsPlay`, tilemap 전용 `occlusionAware`). 큰 나무는 플레이 뒤(+y)
+  /가장자리로 빠지고 보드 내부는 낮은 꽃/돌 → 유닛 시인성 + 산속 마을. 정밀 H·sinφ 동적모델 대신
+  **명시 데이터 채택**(사용자 지정: 예측·튜닝·디버그 우월).
 
 ### 폐기 (사용자 지정 2026-06-26)
 - ~~멀티 시즌(lava/lunar/cosmic) 테마에 동일 ring/deco 처리~~ — **드롭**. forest(S1)만 유지.
