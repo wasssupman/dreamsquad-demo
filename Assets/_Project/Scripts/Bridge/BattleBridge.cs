@@ -692,7 +692,7 @@ namespace Wassup.Bridge
                     var placements = BackgroundPropPlacer.Generate(plan, theme, _generatedMap.seed, occlusionAware: true);
                     if (propScale < 1f && placements.Count > 0)
                         placements = placements.GetRange(0, Mathf.Max(0, (int)(placements.Count * propScale)));
-                    tilemapMapView.InstantiateBackgroundProps(plan, theme, placements, UseRealShadows);
+                    tilemapMapView.InstantiateBackgroundProps(plan, theme, placements);
                 }
                 else if (!UseTilemapView && mapView != null && mapSource != MapSource.MapGrid)
                 {

@@ -278,8 +278,7 @@ namespace Wassup.Core
         public void InstantiateBackgroundProps(
             BoardVisualPlan plan,
             MapThemeData theme,
-            IReadOnlyList<PropPlacement> placements,
-            bool castShadows)
+            IReadOnlyList<PropPlacement> placements)
         {
             if (_backgroundPropsRoot != null) { SafeDestroy(_backgroundPropsRoot.gameObject); _backgroundPropsRoot = null; }
             if (grid == null || plan == null || theme == null || theme.tileProps == null ||
@@ -307,9 +306,8 @@ namespace Wassup.Core
                 instance.transform.localScale = Vector3.one * placement.scale;
                 MapView.ApplyPropSorting(instance, prop, placement, plan);
                 MapView.DisablePropDebugMarkers(instance);
-                // unit 9 — 데스크톱=real cast / 모바일(real off)=발밑 blob 폴백(캐릭터와 대칭).
-                if (castShadows) SetPropCastShadows(instance);
-                else AttachPropBlob(instance, prop);
+                // unit 9 (rev) — 프랍 그림자 = blob 통일(데스크톱/모바일). 실시간 cast 는 프랍에서 미사용(사용자 결정).
+                AttachPropBlob(instance, prop);
                 if (theme.propGlobalTint != Color.white)
                     MapView.ApplyPropGlobalTint(instance, theme.propGlobalTint);
             }

@@ -10,8 +10,8 @@
 - **프랍 에셋 7종**: Test 스프라이트(flower×3/rock×3/tree) → prefab+PropData+머티리얼. 그림자용 `URP/Unlit+_ALPHATEST_ON`.
 - **외곽 터레인 링**: `PaintSurroundRing` — 보드 밖에 **플레이 영역과 동일 풀 타일**(decoTile) + `Color.Lerp(흰색, surroundFarColor, t)` 그라데이션(안쪽=원색 매끄러운 연속, 바깥=어두움) + Perlin 노이즈로 banding 제거.
 - **원경 프랍(침엽수림)**: `InstantiateRingProps` — 링 scatter + falloff, 그림자 OFF, 꽃 제외. `distantRingWeight`(tree=14·rock=1) + density 0.55 로 빽빽한 침엽수림 backdrop(~230).
-- **모바일 예산**: `mobilePropBudgetScale`(0.5) — 모바일에서 근경/원경 프랍 솎음. 그림자: 데스크톱 근경 real cast / 원경 off / **모바일 근경 = blob 폴백(9), 원경 off**.
-- **근경 프랍 blob 폴백(9)**: real cast 가 꺼지는 모바일에서 근경 프랍 발밑 타원 blob(캐릭터와 대칭, `BlobShadow.Attach`, size×visualScale). 원경 링은 제외(사용자 지정). `9_prop_blob_shadow.md`.
+- **모바일 예산**: `mobilePropBudgetScale`(0.5) — 모바일에서 근경/원경 프랍 솎음. 그림자: **근경 = blob 통일(데스크톱/모바일, 9rev)** / 원경 off / 캐릭터는 데스크톱 real cast 유지.
+- **근경 프랍 blob(9, 9rev)**: 프랍 real cast 가 데스크톱에서도 동작 안 해, real cast 제거하고 발밑 타원 blob 으로 통일(`BlobShadow.Attach`, size×visualScale). 원경 링은 그림자 없음(사용자 지정). `9_prop_blob_shadow.md`.
 
 ## Key Files
 - `Scripts/Bridge/BattleBridge.cs` (Deco designate · prop gate · ring 호출 · 모바일 예산 · 그림자 정책)
