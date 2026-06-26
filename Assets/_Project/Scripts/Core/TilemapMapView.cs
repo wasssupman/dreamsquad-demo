@@ -413,8 +413,7 @@ namespace Wassup.Core
         private static void AttachPropBlob(GameObject instance, PropData prop)
         {
             if (BattleBridge.BlobShadowSprite == null || prop == null) return;
-            // 틸트로 발에서 떨어진 스프라이트 몸통 바로 아래에 깔리도록 SpriteRenderer 를 follow 로 전달.
-            var follow = instance.GetComponentInChildren<SpriteRenderer>();
+            // blob 은 프랍 피벗(발) XZ 의 바닥에 깔린다. 부양 버그 수정 후 발 피벗이 곧 스프라이트 하단이라 정렬됨.
             BlobShadow.Attach(
                 instance.transform,
                 BattleBridge.BlobShadowSprite,
@@ -422,8 +421,7 @@ namespace Wassup.Core
                 BattleBridge.BlobShadowFootprint,
                 BattleBridge.BlobShadowColor,
                 BattleBridge.BlobShadowGroundY,
-                BoardSortOrder.ShadowOrder,
-                follow);
+                BoardSortOrder.ShadowOrder);
         }
 
         private static void SafeDestroy(Object obj)

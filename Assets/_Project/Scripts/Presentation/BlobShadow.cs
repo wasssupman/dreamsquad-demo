@@ -12,13 +12,10 @@ namespace Wassup.Presentation
         private float _groundY;
         private float _size;
         private Vector2 _footprint;
-        // 선택: 지정 시 이 렌더러의 월드 AABB 중심 XZ 를 따라간다(틸트로 발에서 떨어진 스프라이트 몸통 바로 아래).
-        // null 이면 target 발 위치(캐릭터 기존 동작).
-        private SpriteRenderer _follow;
 
         // 유닛 자식으로 생성 — 유닛 파괴 시 함께 사라진다. 월드 transform 은 LateUpdate 가 직접 구동.
         public static BlobShadow Attach(Transform target, Sprite sprite, float size,
-            Vector2 footprint, Color color, float groundY, int sortingOrder, SpriteRenderer follow = null)
+            Vector2 footprint, Color color, float groundY, int sortingOrder)
         {
             var go = new GameObject("BlobShadow");
             go.transform.SetParent(target, false);
@@ -31,16 +28,14 @@ namespace Wassup.Presentation
             bs._size = size;
             bs._footprint = footprint;
             bs._groundY = groundY;
-            bs._follow = follow;
             return bs;
         }
 
         private void LateUpdate()
         {
             if (_target == null) return;
-            // 발밑(셀 XZ) + 바닥 높이. 유닛 틸트와 무관하게 바닥에 평평(Euler 90,0,0 → 쿼드가 XZ 에 눕는다).
-            // _follow 지정 시 스프라이트 몸통(AABB 중심) XZ 를 따라가 오브젝트 바로 아래에 깔린다.
-            Vector3 p = _follow != null ? _follow.bounds.center : _target.position;
+            // 발밑(피벗 XZ) + 바닥 높이. 유닛/프랍 틸트와 무관하게 바닥에 평평(Euler 90,0,0 → 쿼드가 XZ 에 눕는다).
+            Vector3 p = _target.position;
             transform.position = new Vector3(p.x, _groundY, p.z);
             transform.rotation = Quaternion.Euler(90f, 0f, 0f);
             // 부모(유닛) 스케일 보정 — 월드 footprint 를 유지(타원: X=가로, Y(로컬)→Z(깊이)).
