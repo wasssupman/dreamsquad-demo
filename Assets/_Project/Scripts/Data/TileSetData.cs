@@ -27,11 +27,8 @@ namespace Wassup.Data
         [Min(0)]
         [Tooltip("외곽 터레인 링 두께(셀). 0 = 링 없음.")]
         public int ringRadius;
-        [Tooltip("외곽 링 톤다운 색(플레이 영역 대비 채도/명도↓). 보드는 흰색(원색) 유지.")]
-        public Color surroundTint = new Color(0.5f, 0.55f, 0.5f, 1f);
-        [Range(0f, 1f)]
-        [Tooltip("링 바깥쪽으로 갈수록 어두워지는 정도(배경에 블렌딩). 1=가장자리 거의 검정.")]
-        public float surroundEdgeFade = 0.85f;
+        [Tooltip("외곽 링 그라데이션의 '가장 바깥(원경)' 목표색. 안쪽(보드 경계)=플레이 영역 풀 타일 원색(흰색)에서 이 색으로 멀어질수록 그라데이션. 어둡게 둘수록 배경에 블렌딩.")]
+        public Color surroundFarColor = new Color(0.06f, 0.07f, 0.06f, 1f);
         [Range(0.02f, 1f)]
         [Tooltip("톤다운 페이드 교란 노이즈 주파수. 작을수록 큰 얼룩, 클수록 잔 얼룩.")]
         public float surroundNoiseScale = 0.25f;

@@ -22,6 +22,7 @@ MonoBehaviour:
   rejectTile: {fileID: 11400000, guid: 4c4f79cd82642494ea257c47a155261e, type: 2}
   terrainTile: {fileID: 0}
   ringRadius: 6
-  surroundTint: {r: 0.5, g: 0.55, b: 0.5, a: 1}
-  surroundEdgeFade: 0.85
+  surroundFarColor: {r: 0.06, g: 0.07, b: 0.06, a: 1}
+  surroundNoiseScale: 0.25
+  surroundNoiseAmount: 0.5
   isoCellSize: {x: 1, y: 0.5, z: 1}

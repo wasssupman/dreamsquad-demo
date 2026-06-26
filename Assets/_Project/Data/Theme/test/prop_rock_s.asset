@@ -29,6 +29,10 @@ MonoBehaviour:
   scaleJitter: 0
   pathProximityRange: {x: 0, y: 255}
   borderProximityRange: {x: 0, y: 255}
+  category: 
+  sameCategoryMinDistanceCells: 0
+  excludeFromDistantRing: 0
+  distantRingWeight: 1
   prefab: {fileID: 8019810157831662659, guid: 9f6564ed9c1f5405b8b086513dd17c4d, type: 3}
   sprite: {fileID: 21300000, guid: 57f7ac38470964952adb5e67920c096f, type: 3}
   sourceTexture: {fileID: 2800000, guid: 57f7ac38470964952adb5e67920c096f, type: 3}

@@ -146,5 +146,5 @@ MonoBehaviour:
   - {fileID: 5073162552732502671, guid: 711cd5aea3d224a4488537bd76a4c0ab, type: 3}
   minPlaceableRatio: 0.4
   mapGridBuildableKeepRatio: 0.6
-  ringPropDensity: 0.22
-  ringPropFalloffPerCell: 0.12
+  ringPropDensity: 0.55
+  ringPropFalloffPerCell: 0.04

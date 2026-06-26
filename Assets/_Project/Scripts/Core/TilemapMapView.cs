@@ -167,6 +167,7 @@ namespace Wassup.Core
         {
             if (groundTilemap == null || _tileSet == null) return;
             int R = _tileSet.ringRadius;
+            // 원경 링도 플레이 영역과 같은 풀 타일(decoTile)을 쓴다. terrainTile 지정 시 그것 우선.
             var tile = _tileSet.TerrainTileOrFallback;
             if (R <= 0 || tile == null) return;
 
@@ -179,12 +180,12 @@ namespace Wassup.Core
                 groundTilemap.SetTileFlags(pos, TileFlags.None); // per-cell color 허용
                 int ringDist = RingDistance(x, y, w, h);          // 1..R (보드 경계로부터)
                 float baseT = R > 1 ? Mathf.Clamp01((ringDist - 1) / (float)(R - 1)) : 0f;
-                // 노이즈로 페이드를 교란해 동심 사각형 banding 을 유기적으로 깬다(+1000 오프셋: Perlin 음수좌표 회피).
+                // 노이즈로 그라데이션을 교란해 동심 사각형 banding 을 유기적으로 깬다(+1000 오프셋: Perlin 음수좌표 회피).
                 float n = Mathf.PerlinNoise((x + 1000) * _tileSet.surroundNoiseScale, (y + 1000) * _tileSet.surroundNoiseScale);
                 float t = Mathf.Clamp01(baseT + (n - 0.5f) * _tileSet.surroundNoiseAmount);
-                float factor = 1f - _tileSet.surroundEdgeFade * t; // 바깥일수록 어둡게
-                Color c = _tileSet.surroundTint;
-                groundTilemap.SetColor(pos, new Color(c.r * factor, c.g * factor, c.b * factor, 1f));
+                // 안쪽(보드 경계, t=0)=플레이 영역 풀 타일 원색(흰색), 바깥(t=1)=surroundFarColor 로 그라데이션.
+                Color c = Color.Lerp(Color.white, _tileSet.surroundFarColor, t);
+                groundTilemap.SetColor(pos, new Color(c.r, c.g, c.b, 1f));
             }
         }
 
@@ -195,6 +196,10 @@ namespace Wassup.Core
             int dy = y < 0 ? -y : (y >= h ? y - (h - 1) : 0);
             return Mathf.Max(dx, dy);
         }
+
+        // 원경 링 가중치: distantRingWeight 가 지정(>=0)되면 그것, 아니면 placementWeight.
+        private static float RingWeight(Wassup.Data.PropData p)
+            => p.distantRingWeight >= 0f ? p.distantRingWeight : Mathf.Max(0, p.placementWeight);
 
         private void PaintMarkers(in GeneratedMap map)
         {
@@ -322,7 +327,7 @@ namespace Wassup.Core
             for (int i = 0; i < theme.tileProps.Length; i++)
             {
                 var p = theme.tileProps[i];
-                if (p != null && p.prefab != null && !p.excludeFromDistantRing) totalW += Mathf.Max(0, p.placementWeight);
+                if (p != null && p.prefab != null && !p.excludeFromDistantRing) totalW += RingWeight(p);
             }
             if (totalW <= 0f) return;
 
@@ -345,7 +350,7 @@ namespace Wassup.Core
                 {
                     var p = theme.tileProps[i];
                     if (p == null || p.prefab == null || p.excludeFromDistantRing) continue;
-                    roll -= Mathf.Max(0, p.placementWeight);
+                    roll -= RingWeight(p);
                     if (roll <= 0f) { prop = p; break; }
                 }
                 if (prop == null) continue;

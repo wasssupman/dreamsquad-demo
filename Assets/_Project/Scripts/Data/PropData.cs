@@ -35,6 +35,8 @@ namespace Wassup.Data
         public int sameCategoryMinDistanceCells;
         [Tooltip("원경(외곽 터레인 링) 배치에서 제외. 멀리서 안 보이는 작은 프랍(꽃 등)에 체크.")]
         public bool excludeFromDistantRing;
+        [Tooltip("원경(외곽 링) 전용 배치 가중치. <0 = placementWeight 사용. 침엽수림처럼 링 분포를 보드와 따로 잡을 때(나무↑·돌↓).")]
+        public float distantRingWeight = -1f;
 
         [Header("Generated Prefab")]
         public GameObject prefab;

@@ -8,8 +8,8 @@
 - **보드 내부 프랍**: `BattleBridge` gate 해제 + `TilemapMapView.InstantiateBackgroundProps`(좌표 grid 권위=BoardSpace 수식). 근경 그림자 CAST.
 - **같은-category 인접 회피 룰**: `PropData.category/sameCategoryMinDistanceCells` + `BackgroundPropPlacer.ViolatesSameCategory`. 꽃 연속 배치 방지(꽃=2).
 - **프랍 에셋 7종**: Test 스프라이트(flower×3/rock×3/tree) → prefab+PropData+머티리얼. 그림자용 `URP/Unlit+_ALPHATEST_ON`.
-- **외곽 터레인 링**: `PaintSurroundRing` — 보드 밖 grass 링 + 톤다운(바깥 페이드 + Perlin 노이즈로 banding 제거).
-- **원경 프랍**: `InstantiateRingProps` — 링 저밀도 scatter + falloff, 그림자 OFF, 꽃 제외(`excludeFromDistantRing`).
+- **외곽 터레인 링**: `PaintSurroundRing` — 보드 밖에 **플레이 영역과 동일 풀 타일**(decoTile) + `Color.Lerp(흰색, surroundFarColor, t)` 그라데이션(안쪽=원색 매끄러운 연속, 바깥=어두움) + Perlin 노이즈로 banding 제거.
+- **원경 프랍(침엽수림)**: `InstantiateRingProps` — 링 scatter + falloff, 그림자 OFF, 꽃 제외. `distantRingWeight`(tree=14·rock=1) + density 0.55 로 빽빽한 침엽수림 backdrop(~230).
 - **모바일 예산**: `mobilePropBudgetScale`(0.5) — 모바일에서 근경/원경 프랍 솎음. 그림자: 근경 cast/원경 off/모바일 전부 off.
 
 ## Key Files
