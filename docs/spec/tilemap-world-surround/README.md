@@ -1,6 +1,6 @@
 # Tilemap 광역 터레인 + 배경/원경 프랍
 
-> 상태: 구현 완료 (단위 0~5 + 원경 그라데이션·침엽수림 rev) · 커밋 `a7e794b`/`750e7c9` · 브랜치 `feat/tilemap-world-surround` (main 미머지, 2026-06-26)
+> 상태: 구현 완료 (단위 0~5 + 원경 그라데이션·침엽수림 rev) · 커밋 `a7e794b`/`750e7c9` · **main 머지됨** (ff `0f07a8c`, 2026-06-26)
 > 전제: `tilted-billboard`(퍼스펙티브+XZ 바닥), `tilemap-real-shadows`(바닥 receive + 빌보드 cast). 커밋 `47e7925`, `a9c0b00`, `e62ea35`.
 > 대상: `Assets/_Project/Scenes/BattleScene.unity` (Tilemap, URP). Legacy3D 불변.
 

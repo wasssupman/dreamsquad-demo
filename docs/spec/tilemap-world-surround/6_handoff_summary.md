@@ -1,7 +1,7 @@
 # 6 — Handoff Summary
 
 ## Commit
-- `a7e794b` `feat(view): Tilemap 광역 터레인 + 배경/원경 프랍 (tilemap-world-surround 0~5)` · 브랜치 `feat/tilemap-world-surround` (main 미머지).
+- `a7e794b` `feat(view): Tilemap 광역 터레인 + 배경/원경 프랍 (tilemap-world-surround 0~5)` · **main 머지됨** (fast-forward, main tip `0f07a8c`, 2026-06-26).
 
 ## Implemented (단위 0~5, 전부 Presentation 계층 · sim/ECS 무영향)
 - **내부 Deco 생성**: MapGrid 맵에 `ObstaclePlacer.DesignateDeco`(Place→Deco, Walk 불변, 시드 결정적). 노브 `MapThemeData.mapGridBuildableKeepRatio`(forest=0.6).
@@ -36,7 +36,7 @@
 ### 다음 작업 (이월 — 사용자 지정 2026-06-26)
 다음 세션이 이어받을 우선 작업. 본 spec 본체는 완료, 아래는 "정식 자산화 + 잔여 토대" 정리.
 
-- **머지 결정**: `feat/tilemap-world-surround` → main 머지/PR 여부.
+- ~~**머지 결정**: `feat/tilemap-world-surround` → main 머지/PR 여부.~~ — **완료** (ff 머지, main `0f07a8c`, remote 없어 PR 생략).
 - **프랍 에셋 정식화**: 현재 `Data/Theme/test/`·`Prefabs/Props/test/`·스프라이트 `Generated/Tiles/Test/` 의 "test" 네이밍 → 정식 위치/이름 승격(keeper 자산).
 - **고아 에셋 정리**: forest.tileProps 가 기존 21종 → test 7종으로 교체되며 옛 21종 프랍 고아 → 삭제/보존 결정.
 - **4b 프랍 틸트 휴면 처리**: `PropData.tiltAngle` + `PropBillboardMode.Tilted` 도입했으나 7종 전부 FullCamera/tilt 0 = 미사용. 퍼스펙티브 맞춤 Tilted 적용 or 휴면 유지/제거 결정.
