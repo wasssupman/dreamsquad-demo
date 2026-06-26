@@ -15,7 +15,7 @@
 - `Assets/_Project/Scripts/Data/BackgroundPropPlacer.cs` — `VisualFootprintHitsPlay` 헬퍼 + `occlusionAware`
   파라미터 전파(Generate→TryPlaceNearestCandidate→CanPlaceAtCandidate / TryPlace)
 - `Assets/_Project/Scripts/Bridge/BattleBridge.cs` — tilemap Generate 호출에 `occlusionAware: true`(legacy=false)
-- 7종 PropData: `visualFootprint` 값 + 파일명에 `_WxD` 라벨(가독). source of truth=필드, 파일명은 라벨.
+- 7종 PropData + prefab: `visualFootprint` 값 + 파일명에 `_WxD` 라벨(가독). source of truth=필드, 파일명은 라벨. material(_cast)·sprite 는 종속 에셋이라 미라벨.
 
 ## 구현
 

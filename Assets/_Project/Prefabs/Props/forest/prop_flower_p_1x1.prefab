@@ -102,7 +102,7 @@ GameObject:
   - component: {fileID: 7988287280412962691}
   - component: {fileID: 4838248866175928040}
   m_Layer: 0
-  m_Name: prop_flower_p
+  m_Name: prop_flower_p_1x1
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
