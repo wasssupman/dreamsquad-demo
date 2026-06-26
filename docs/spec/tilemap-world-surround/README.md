@@ -57,6 +57,7 @@
 | 6 | `6_handoff_summary.md` | 인계 | 구현 종료 요약 + 후속(머지/정식화/틸트/occlusion) |
 | 7 | `7_prop_tilt_apply.md` | 4b 적용 | 프랍 Tilted 전환(flower 38°/rock 45°/tree 50°) — 배경 원근감 |
 | 8 | `8_ring_play_clearance.md` | 원경 버퍼 | 원경 링 프랍을 플레이 셀 3타일 이내 배치 금지(`ringPlayClearanceCells`) |
+| 9 | `9_prop_blob_shadow.md` | 모바일 그림자 | 근경 프랍 모바일 blob 폴백(real cast off 시, 캐릭터와 대칭) |
 
 ## 후속 후보 (범위 밖)
 

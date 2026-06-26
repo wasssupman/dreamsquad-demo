@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Tilemaps;
+using Wassup.Bridge;
 using Wassup.Data;
+using Wassup.Presentation;
 
 namespace Wassup.Core
 {
@@ -305,7 +307,9 @@ namespace Wassup.Core
                 instance.transform.localScale = Vector3.one * placement.scale;
                 MapView.ApplyPropSorting(instance, prop, placement, plan);
                 MapView.DisablePropDebugMarkers(instance);
+                // unit 9 — 데스크톱=real cast / 모바일(real off)=발밑 blob 폴백(캐릭터와 대칭).
                 if (castShadows) SetPropCastShadows(instance);
+                else AttachPropBlob(instance, prop);
                 if (theme.propGlobalTint != Color.white)
                     MapView.ApplyPropGlobalTint(instance, theme.propGlobalTint);
             }
@@ -400,6 +404,21 @@ namespace Wassup.Core
             var renderers = instance.GetComponentsInChildren<Renderer>(true);
             for (int i = 0; i < renderers.Length; i++)
                 renderers[i].shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.TwoSided;
+        }
+
+        // unit 9 — real cast 가 꺼지는 모바일에서 근경 프랍 발밑 blob 폴백(캐릭터와 대칭).
+        // blob 은 부모 lossyScale 보정으로 월드 크기 고정 → 프랍 크기 반영은 size *= visualScale.
+        private static void AttachPropBlob(GameObject instance, PropData prop)
+        {
+            if (BattleBridge.BlobShadowSprite == null || prop == null) return;
+            BlobShadow.Attach(
+                instance.transform,
+                BattleBridge.BlobShadowSprite,
+                BattleBridge.BlobShadowSize * Mathf.Max(0.01f, prop.visualScale),
+                BattleBridge.BlobShadowFootprint,
+                BattleBridge.BlobShadowColor,
+                BattleBridge.BlobShadowGroundY,
+                BoardSortOrder.ShadowOrder);
         }
 
         private static void SafeDestroy(Object obj)
