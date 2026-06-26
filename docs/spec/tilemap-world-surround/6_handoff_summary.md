@@ -17,7 +17,7 @@
 - `Scripts/Core/TilemapMapView.cs` (VisualPlan · InstantiateBackgroundProps · PaintSurroundRing · InstantiateRingProps · CellCenterToWorld)
 - `Scripts/Data/BackgroundPropPlacer.cs` (theme threading · ViolatesSameCategory)
 - `Scripts/Data/{PropData,TileSetData,MapThemeData,ObstaclePlacer}.cs`, `Scripts/Presentation/PropBillboard.cs`
-- 에셋: `Prefabs/Props/test/`, `Data/Theme/test/`, `Map/Theme/forest/forest.asset`(tileProps 교체·튜닝), `Generated/Tiles/AutoTileTest/TileSet_AutoTileTest.asset`(ring 값), `Scenes/BattleScene.unity`(PropsTilemap 비활성)
+- 에셋(정식화 후): `Prefabs/Props/forest/`(prefab+mat), `Data/Theme/forest/prop_{flower_*,rock_*,tree}.asset`, `Art/Theme/forest/`(스프라이트 7), `Map/Theme/forest/forest.asset`(tileProps 교체·튜닝), `Generated/Tiles/AutoTileTest/TileSet_AutoTileTest.asset`(ring 값), `Scenes/BattleScene.unity`(PropsTilemap 비활성)
 
 ## Verified
 - compile 0 에러. Editor Play(BattleScene, MapGrid+Tilemap): Deco grass + 근경 프랍(그림자 CAST 확인) + 외곽 링(유기적 페이드) + 원경 트리/돌. 가독성 유지.
@@ -28,7 +28,7 @@
 - 프랍 좌표는 반드시 `CellCenterToWorld`(grid). raw `(x,y)*tileSize` 금지.
 - 링 셀은 sim 무관 — `GeneratedMap.gridSize`/`BoardSpace.Configure` 는 N×M 유지.
 - Legacy3D 경로 불변: ObstaclePlacer.Place 동일 keepTarget, MapView 헬퍼는 visibility만 internal 확대.
-- forest 테마 tileProps 가 기존 21종 → test 7종으로 교체됨. 옛 21종 에셋은 보존(고아).
+- forest 테마 tileProps 가 기존 21종 → keeper 7종으로 교체됨. 7종은 `forest` 정식 위치로 승격(264097d, R100 GUID 보존). 옛 21종 `prop_style_*` 에셋은 아직 보존(고아 — 3번에서 정리).
 - 씬 저장 시 PropsTilemap 비활성 포함. 프리뷰 타일 유입 주의(edit 모드 저장).
 
 ## Follow-up
@@ -37,7 +37,7 @@
 다음 세션이 이어받을 우선 작업. 본 spec 본체는 완료, 아래는 "정식 자산화 + 잔여 토대" 정리.
 
 - ~~**머지 결정**: `feat/tilemap-world-surround` → main 머지/PR 여부.~~ — **완료** (ff 머지, main `0f07a8c`, remote 없어 PR 생략).
-- **프랍 에셋 정식화**: 현재 `Data/Theme/test/`·`Prefabs/Props/test/`·스프라이트 `Generated/Tiles/Test/` 의 "test" 네이밍 → 정식 위치/이름 승격(keeper 자산).
+- ~~**프랍 에셋 정식화**: `Data/Theme/test/`·`Prefabs/Props/test/`·`Generated/Tiles/Test/` → 정식 위치 승격.~~ — **완료** (264097d. 28 에셋 R100 rename → `Data/Theme/forest/`·`Prefabs/Props/forest/`·`Art/Theme/forest/`. forest.asset 참조·PropBillboard 295 런타임 검증. 파일명 유지, 폴더만 승격).
 - **고아 에셋 정리**: forest.tileProps 가 기존 21종 → test 7종으로 교체되며 옛 21종 프랍 고아 → 삭제/보존 결정.
 - **4b 프랍 틸트 휴면 처리**: `PropData.tiltAngle` + `PropBillboardMode.Tilted` 도입했으나 7종 전부 FullCamera/tilt 0 = 미사용. 퍼스펙티브 맞춤 Tilted 적용 or 휴면 유지/제거 결정.
 - **Legacy 환경 프랍 노출 확인**: `tilemapHiddenEnvironment: []`(빈 배열). 스크린샷상 누출 없어 사실상 해소로 보이나 확정 확인.
