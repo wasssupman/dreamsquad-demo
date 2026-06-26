@@ -116,6 +116,8 @@ namespace Wassup.Data
         public string SpineAttackAnimation => attackAnimation;
         public string SpineDeathAnimation => deathAnimation;
         public float SpineVisualScale => spineVisualScale;
+        // enemy-spawn-positioning 0 — 방어 유닛은 본 spec 범위 밖. 계약 기본값(오프셋 없음).
+        public Vector3 SpineVisualOffset => Vector3.zero;
         public string SpineDragAnimation => dragAnimation;
         public string SpineDeployAnimation => deployAnimation;
         public string SpineCastAnchorBone => castAnchorBone;

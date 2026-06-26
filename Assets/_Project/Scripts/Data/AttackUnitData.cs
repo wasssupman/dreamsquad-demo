@@ -65,6 +65,9 @@ namespace Wassup.Data
         public string deathAnimation = "die";
         public float spineVisualScale = 1f;
 
+        // enemy-spawn-positioning 0 — 비주얼 피봇 미세조정(view-space). 기본 0 = 피봇이 이동타일 중심(sim 좌표)에 정렬.
+        public Vector3 visualOffset;
+
         public string SpineDisplayName => displayName;
         public SkeletonDataAsset SpineSkeletonDataAsset => skeletonDataAsset;
         public string SpineSkinName => spineSkinName;
@@ -72,5 +75,6 @@ namespace Wassup.Data
         public string SpineAttackAnimation => attackAnimation;
         public string SpineDeathAnimation => deathAnimation;
         public float SpineVisualScale => spineVisualScale;
+        public Vector3 SpineVisualOffset => visualOffset;
     }
 }

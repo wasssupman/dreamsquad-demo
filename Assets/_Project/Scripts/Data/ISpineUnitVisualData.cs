@@ -1,4 +1,5 @@
 using Spine.Unity;
+using UnityEngine;
 
 namespace Wassup.Data
 {
@@ -15,5 +16,7 @@ namespace Wassup.Data
         string SpineAttackAnimation { get; }
         string SpineDeathAnimation { get; }
         float SpineVisualScale { get; }
+        // enemy-spawn-positioning 0 — 유닛 타입별 비주얼 피봇 미세조정(view-space). 기본 0.
+        Vector3 SpineVisualOffset { get; }
     }
 }

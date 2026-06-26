@@ -26,8 +26,7 @@ namespace Wassup.Presentation
             _visualData = visualData;
             _defenderExtras = defenderExtras;
             _entity = entity;
-            _simWorld = worldPos;
-            transform.position = Wassup.Core.BoardSpace.ToView(worldPos);
+            ApplyRenderPosition(worldPos);
             float s = Mathf.Max(0.01f, visualData.SpineVisualScale * BattleBridge.CharacterVisualScale);
             transform.localScale = new Vector3(s, s, s);
 
@@ -87,8 +86,16 @@ namespace Wassup.Presentation
 
         public void UpdatePosition(Vector3 world)
         {
+            ApplyRenderPosition(world);
+        }
+
+        // enemy-spawn-positioning 0 — 렌더 위치의 단일 지점: sim 좌표(ToView) + 유닛 타입별 피봇 오프셋.
+        // _simWorld 은 순수 sim 좌표 유지(정렬/셀 역산용). visualOffset 은 view-space 시각 보정만(sim 무영향).
+        private void ApplyRenderPosition(Vector3 world)
+        {
             _simWorld = world;
-            transform.position = Wassup.Core.BoardSpace.ToView(world);
+            Vector3 offset = _visualData != null ? (Vector3)_visualData.SpineVisualOffset : Vector3.zero;
+            transform.position = (Vector3)Wassup.Core.BoardSpace.ToView(world) + offset;
         }
 
         public void UpdateSortingOrder(Unity.Mathematics.int2 gridSize, float tileSize)
