@@ -75,7 +75,8 @@
 #### 코드 리뷰 후속 (2026-06-26 리뷰, 11/12 에서 critical 해소 후 잔여)
 - **테스트** [S] · `BackgroundPropPlacer.OccludesPlay`(public static) + visualFootprint EditMode 회귀 테스트.
   "게임플레이 가림 방지 핵심 순수 로직인데 커버리지 0" (리뷰 강권). +y depth/width 중심정렬/상하좌우 케이스.
-- **`Billboard` ↔ `PropBillboard` 통합** [M] · 둘 다 `Euler(tilt,0,0)`. 틸트 로직 공유. 대규모라 보류.
+- ~~**`Billboard` ↔ `PropBillboard` 통합** [M] · 둘 다 `Euler(tilt,0,0)`. 틸트 로직 공유.~~ **완료**
+  (13, `f03974d`) — `BillboardRotation.Compute` 순수 static 추출. enum/직렬화 무변경. EditMode 8/8.
 - **minor** [S] · `_WxD` 파일명↔`visualFootprint` drift 위험(필드가 source). `TryPlaceNearestCandidate`↔`TryPlace`
   중복 fit/occlusion 검사(M5). 모바일 `placements.GetRange` truncation 이 공간이 아닌 순서 기반(M7).
 - **`rotationYaw`** [S] · tilemap 경로에서 미적용(PropBillboard override). `PropPlacement` 공용이라 Legacy(MapView)가
