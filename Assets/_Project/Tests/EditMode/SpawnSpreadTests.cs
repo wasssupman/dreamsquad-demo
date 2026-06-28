@@ -4,31 +4,41 @@ using Wassup.Battle.Movement;
 
 namespace Wassup.Tests.EditMode
 {
-    // enemy-spawn-positioning 1 — 스폰 측면 분산 순수 수학 회귀.
+    // enemy-spawn-positioning — 스폰 측면 분산(중앙 ± 연속 랜덤) 순수 수학 회귀.
     public class SpawnSpreadTests
     {
         private const float Eps = 1e-4f;
 
         [Test]
-        public void SlotFraction_ThreeSlots_SpansNegToPos()
+        public void FractionRange_Symmetric_WhenTopScaleOne()
         {
-            Assert.AreEqual(-0.33f, SpawnSpread.SlotFraction(0, 3, 0.33f), Eps);
-            Assert.AreEqual( 0.00f, SpawnSpread.SlotFraction(1, 3, 0.33f), Eps);
-            Assert.AreEqual( 0.33f, SpawnSpread.SlotFraction(2, 3, 0.33f), Eps);
+            var r = SpawnSpread.FractionRange(0.2f, 1f);
+            Assert.AreEqual(-0.2f, r.x, Eps);
+            Assert.AreEqual( 0.2f, r.y, Eps);
         }
 
         [Test]
-        public void SlotFraction_SingleSlot_IsCentered()
+        public void FractionRange_TopScale_CompressesTopOnly()
         {
-            Assert.AreEqual(0f, SpawnSpread.SlotFraction(0, 1, 0.33f), Eps);
+            var r = SpawnSpread.FractionRange(0.2f, 0.5f);
+            Assert.AreEqual(-0.2f, r.x, Eps);  // 하단 불변
+            Assert.AreEqual( 0.1f, r.y, Eps);  // 상단만 절반
         }
 
         [Test]
-        public void SlotFraction_ClampsToHalfTileMax()
+        public void FractionRange_ClampsFractionToMaxHalf()
         {
-            // 0.9 를 요청해도 셀 침범 방지를 위해 MaxHalfFraction(0.49) 로 클램프.
-            Assert.AreEqual( SpawnSpread.MaxHalfFraction, SpawnSpread.SlotFraction(2, 3, 0.9f), Eps);
-            Assert.AreEqual(-SpawnSpread.MaxHalfFraction, SpawnSpread.SlotFraction(0, 3, 0.9f), Eps);
+            var r = SpawnSpread.FractionRange(0.9f, 1f);
+            Assert.AreEqual(-SpawnSpread.MaxHalfFraction, r.x, Eps);
+            Assert.AreEqual( SpawnSpread.MaxHalfFraction, r.y, Eps);
+        }
+
+        [Test]
+        public void FractionRange_SaturatesTopScale()
+        {
+            Assert.AreEqual( 0.2f, SpawnSpread.FractionRange(0.2f, 2f).y, Eps);  // >1 → 1
+            Assert.AreEqual( 0.0f, SpawnSpread.FractionRange(0.2f, 0f).y, Eps);  // 0 → 상단 0
+            Assert.AreEqual(-0.2f, SpawnSpread.FractionRange(0.2f, 0f).x, Eps);  // 하단 그대로
         }
 
         [Test]
@@ -56,28 +66,31 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
-        public void LateralOffset_StaysInsideCell()
+        public void LateralOffset_AlongPerpendicular_PlanarOnly()
         {
-            // 어떤 슬롯이든 |XZ| < 0.5·tileSize (셀 불변식).
-            const float tile = 1f;
-            for (int s = 0; s < 3; s++)
-            {
-                var o = SpawnSpread.LateralOffset(s, 3, 0.49f, tile, new float2(1f, 0f));
-                Assert.AreEqual(0f, o.y, Eps);                               // 평면 오프셋
-                Assert.Less(math.length(new float2(o.x, o.z)), 0.5f * tile); // 셀 안
-            }
+            var o = SpawnSpread.LateralOffset(0.2f, 1f, new float2(1f, 0f));
+            Assert.AreEqual(0f, o.x, Eps);            // 진행축(X) 성분 0
+            Assert.AreEqual(0f, o.y, Eps);            // 평면
+            Assert.AreEqual(0.2f, math.abs(o.z), Eps);
         }
 
         [Test]
-        public void LateralOffset_PerpendicularToFlow_AndSymmetric()
+        public void LateralOffset_ZeroFrac_IsZero()
         {
-            float2 flow = new float2(1f, 0f);
-            var bottom = SpawnSpread.LateralOffset(0, 3, 0.33f, 1f, flow);
-            var top    = SpawnSpread.LateralOffset(2, 3, 0.33f, 1f, flow);
-            Assert.AreEqual(0f, bottom.x, Eps); // 진행축(X) 성분 0
-            Assert.AreEqual(0f, top.x, Eps);
-            Assert.AreEqual(-bottom.z, top.z, Eps); // 상/하 대칭
-            Assert.AreNotEqual(0f, top.z);
+            var o = SpawnSpread.LateralOffset(0f, 1f, new float2(1f, 0f));
+            Assert.Less(math.length(o), Eps);
+        }
+
+        [Test]
+        public void LateralOffset_ClampsToCell()
+        {
+            const float tile = 1f;
+            // |frac| 가 범위를 넘어도 셀 불변식 보장(< 0.5·tile).
+            var hi = SpawnSpread.LateralOffset( 0.9f, tile, new float2(1f, 0f));
+            var lo = SpawnSpread.LateralOffset(-0.9f, tile, new float2(1f, 0f));
+            Assert.Less(math.length(new float2(hi.x, hi.z)), 0.5f * tile);
+            Assert.Less(math.length(new float2(lo.x, lo.z)), 0.5f * tile);
+            Assert.AreEqual(SpawnSpread.MaxHalfFraction, math.abs(hi.z), Eps);
         }
     }
 }

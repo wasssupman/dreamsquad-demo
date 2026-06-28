@@ -58,14 +58,12 @@ namespace Wassup.Bridge
         [SerializeField] private float spineDefenderYOffset = 0f;
 
         [Header("Spawn Spread")]
-        [Tooltip("스폰 시 적을 이동타일 폭 안 상/중/하 sub-cell 로 분산(겹침 방지). 끄면 셀 중심 한 점.")]
+        [Tooltip("스폰 시 적을 이동타일 폭 안에서 중앙 기준 ± 연속 랜덤 오프셋으로 분산(겹침 방지). 끄면 셀 중심 한 점.")]
         [SerializeField] private bool spawnSpreadEnabled = true;
-        [Tooltip("분산 슬롯 수(예: 3=상/중/하). 1 = 분산 없음.")]
-        [SerializeField, Range(1, 5)] private int spawnSpreadSlots = 3;
-        [Tooltip("타일폭 대비 분산 절반폭. 0.49 미만이라 유닛이 스폰 셀을 벗어나지 않음.")]
-        [SerializeField, Range(0f, 0.49f)] private float spawnSpreadFraction = 0.33f;
-        [Tooltip("슬롯 배정: Sequential=lane별 순차, Random=map seed 결정론.")]
-        [SerializeField] private Wassup.Battle.Movement.SpawnSpreadMode spawnSpreadMode = Wassup.Battle.Movement.SpawnSpreadMode.Sequential;
+        [Tooltip("타일폭 대비 분산 절반폭(±범위). 0.49 미만이라 유닛이 스폰 셀을 벗어나지 않음.")]
+        [SerializeField, Range(0f, 0.49f)] private float spawnSpreadFraction = 0.2f;
+        [Tooltip("상단(뒤쪽) 범위 압축 비율. 1=대칭, <1=상단만 좁혀 낮춤(키 큰 캐릭터 보정).")]
+        [SerializeField, Range(0f, 1f)] private float spawnSpreadTopScale = 0.5f;
 
         [Header("Character Billboard")]
         // Spine units have no shader billboard (unlike the Quad fallback that uses
@@ -196,8 +194,7 @@ namespace Wassup.Bridge
         // Phase 9 flow field 싱글톤 entity reference
         private Entity _flowFieldSingleton = Entity.Null;
 
-        // enemy-spawn-positioning 1 — 스폰 측면 분산 상태(맵 빌드마다 리셋).
-        private readonly Dictionary<int, int> _spawnSlotCursor = new();
+        // enemy-spawn-positioning — 스폰 측면 분산 RNG(맵 빌드마다 시드 리셋, 결정론).
         private Unity.Mathematics.Random _spawnSpreadRng;
 
         // map-origin-placement: board 월드 원점. 모든 grid↔world 변환의 단일 소스.
@@ -526,10 +523,10 @@ namespace Wassup.Bridge
             }
         }
 
-        // enemy-spawn-positioning 1 — 스폰 셀의 flow 진행방향 수직으로 슬롯(상/중/하) sub-cell 오프셋 계산.
-        private float3 ComputeSpawnLateralOffset(int spawnIndex, int2 spawnCell)
+        // enemy-spawn-positioning — 스폰 셀의 flow 진행방향 수직으로 중앙 ± 연속 랜덤 오프셋 계산.
+        private float3 ComputeSpawnLateralOffset(int2 spawnCell)
         {
-            if (!spawnSpreadEnabled || spawnSpreadSlots <= 1) return float3.zero;
+            if (!spawnSpreadEnabled || spawnSpreadFraction <= 0f) return float3.zero;
 
             float2 flowDir = float2.zero; // flow 0 → SpawnSpread.Perpendicular 가 (1,0) 기준 폴백.
             if (_flowFieldSingleton != Entity.Null && _em.Exists(_flowFieldSingleton) &&
@@ -540,19 +537,10 @@ namespace Wassup.Bridge
                 if (idx >= 0 && idx < field.flow.Length) flowDir = field.flow[idx];
             }
 
-            int slot = NextSpawnSlot(spawnIndex);
-            return Wassup.Battle.Movement.SpawnSpread.LateralOffset(
-                slot, spawnSpreadSlots, spawnSpreadFraction, tileSize, flowDir);
-        }
-
-        // Sequential=lane별 round-robin / Random=맵 시드 결정론.
-        private int NextSpawnSlot(int spawnIndex)
-        {
-            if (spawnSpreadMode == Wassup.Battle.Movement.SpawnSpreadMode.Random)
-                return _spawnSpreadRng.NextInt(0, spawnSpreadSlots);
-            _spawnSlotCursor.TryGetValue(spawnIndex, out int cur);
-            _spawnSlotCursor[spawnIndex] = cur + 1;
-            return cur % spawnSpreadSlots;
+            // 중앙 기준 [−fraction, +fraction·topScale] 연속 랜덤 (상단은 topScale 로 좁힘).
+            float2 range = Wassup.Battle.Movement.SpawnSpread.FractionRange(spawnSpreadFraction, spawnSpreadTopScale);
+            float frac = _spawnSpreadRng.NextFloat(range.x, range.y);
+            return Wassup.Battle.Movement.SpawnSpread.LateralOffset(frac, tileSize, flowDir);
         }
 
         // Phase 10A (P10A-04A): GeneratedMap dispose 멱등. 재시작/redraft 시 TearDown 후 재생성.
@@ -723,8 +711,7 @@ namespace Wassup.Bridge
 
             BuildFlowField();
 
-            // enemy-spawn-positioning 1 — 스폰 분산 슬롯/RNG 를 맵 시드로 리셋(결정론).
-            _spawnSlotCursor.Clear();
+            // enemy-spawn-positioning — 스폰 분산 RNG 를 맵 시드로 리셋(결정론).
             _spawnSpreadRng = Unity.Mathematics.Random.CreateFromIndex((uint)_generatedMap.seed);
 
             // props — Tilemap = grid 권위 배경 프랍(Deco 셀; unit 1 designate 후 존재), Legacy3D = 기존 경로.
@@ -3544,7 +3531,7 @@ namespace Wassup.Bridge
             var spawnWorldPos = GridToWorldCenter(new Vector2Int(spawn.x, spawn.y), spawnHeight);
             // enemy-spawn-positioning 1 — 셀 중심에 sub-cell 측면 오프셋(진행방향 수직)을 더해 스폰 겹침 해소.
             // |오프셋|<0.5·tileSize 라 유닛은 같은 셀에 머문다 → flow/goal/cell-trim 등 셀 단위 시스템 불변.
-            spawnWorldPos += ComputeSpawnLateralOffset(spawnIndex, spawn);
+            spawnWorldPos += ComputeSpawnLateralOffset(spawn);
             _em.AddComponentData(entity, LocalTransform.FromPositionRotationScale(spawnWorldPos, quaternion.identity, CharacterVisualScale));
 
             _em.AddComponent<AttackUnitTag>(entity);
