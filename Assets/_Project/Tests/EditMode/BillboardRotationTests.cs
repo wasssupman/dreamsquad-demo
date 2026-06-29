@@ -102,5 +102,81 @@ namespace Wassup.Tests.EditMode
                 Object.DestroyImmediate(camGo);
             }
         }
+
+        // ----- tilted-billboard unit 6: ResolveDistanceTilt (refElev = 라이브 카메라 pitch) -----
+
+        [Test]
+        public void DistanceTilt_NullCamera_ReturnsBase()
+        {
+            float t = BillboardRotation.ResolveDistanceTilt(45f, 0.78f, 28f, 62f, null, Vector3.zero);
+            Assert.AreEqual(45f, t, Eps);
+        }
+
+        [Test]
+        public void DistanceTilt_ZeroFactor_ReturnsBase()
+        {
+            var camGo = new GameObject("TestCam");
+            try
+            {
+                var cam = camGo.AddComponent<Camera>();
+                camGo.transform.position = new Vector3(0f, 10f, -10f);
+                camGo.transform.LookAt(Vector3.zero);
+                float t = BillboardRotation.ResolveDistanceTilt(45f, 0f, 28f, 62f, cam, Vector3.zero);
+                Assert.AreEqual(45f, t, Eps);
+            }
+            finally { Object.DestroyImmediate(camGo); }
+        }
+
+        [Test]
+        public void DistanceTilt_PropAtCameraLookCenter_ReturnsBase()
+        {
+            var camGo = new GameObject("TestCam");
+            try
+            {
+                var cam = camGo.AddComponent<Camera>();
+                // cam at (0,10,-10) looking at origin → pitch 45. prop at origin → elev to cam = 45 = pitch → delta 0.
+                camGo.transform.position = new Vector3(0f, 10f, -10f);
+                camGo.transform.LookAt(Vector3.zero);
+                float t = BillboardRotation.ResolveDistanceTilt(45f, 0.78f, 28f, 62f, cam, Vector3.zero);
+                Assert.AreEqual(45f, t, 0.1f);
+            }
+            finally { Object.DestroyImmediate(camGo); }
+        }
+
+        [Test]
+        public void DistanceTilt_NearerProp_HigherElev_IncreasesTilt()
+        {
+            var camGo = new GameObject("TestCam");
+            try
+            {
+                var cam = camGo.AddComponent<Camera>();
+                camGo.transform.position = new Vector3(0f, 10f, -10f);
+                camGo.transform.LookAt(Vector3.zero); // pitch 45, look-center = origin
+                // near prop (closer in XZ than center) → higher elev → tilt > base; far prop → tilt < base.
+                float near = BillboardRotation.ResolveDistanceTilt(45f, 0.78f, 0f, 90f, cam, new Vector3(0f, 0f, -5f));
+                float far = BillboardRotation.ResolveDistanceTilt(45f, 0.78f, 0f, 90f, cam, new Vector3(0f, 0f, 5f));
+                Assert.Greater(near, 45f);
+                Assert.Less(far, 45f);
+            }
+            finally { Object.DestroyImmediate(camGo); }
+        }
+
+        [Test]
+        public void DistanceTilt_ClampsToRange()
+        {
+            var camGo = new GameObject("TestCam");
+            try
+            {
+                var cam = camGo.AddComponent<Camera>();
+                camGo.transform.position = new Vector3(0f, 10f, -10f);
+                camGo.transform.LookAt(Vector3.zero); // pitch 45
+                // prop nearly under camera → elev ~89 → base + (89-45)*2 huge → clamp to max.
+                float t = BillboardRotation.ResolveDistanceTilt(45f, 2f, 28f, 62f, cam, new Vector3(0f, 0f, -9.8f));
+                Assert.LessOrEqual(t, 62f + Eps);
+                Assert.GreaterOrEqual(t, 28f - Eps);
+                Assert.AreEqual(62f, t, 0.5f); // actually hits the max clamp
+            }
+            finally { Object.DestroyImmediate(camGo); }
+        }
     }
 }

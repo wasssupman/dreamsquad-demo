@@ -45,6 +45,7 @@
 | 3 | `3_blob_shadow.md` | 신규 | `BlobShadow` 컴포넌트 + 스폰 배선 + 정렬 |
 | 4 | `4_prop_layer_unify.md` | 통합/레이어 | Quad·Prop 를 `Billboard` 로 수렴 + 프랍 per-data 틸트각 |
 | 5 | `5_handoff_summary.md` | 인계 | 구현 종료 요약 (구현 후 작성) |
+| 6 | `6_prop_distance_tilt.md` | 신규 | 배경 프랍 거리(elevation) 기반 틸트 — 퍼스펙티브 근/원 부조화 보정 (캐릭터 제외) |
 
 ## 튜닝 시작값 (실측 조정 전제)
 
@@ -55,5 +56,5 @@
 
 - **검정 아웃라인(DST/CotL)**: URP 호환 셰이더 별도 검증 필요. 별도 spec.
 - **sim-height → 화면 offset**: 호버 유닛/투사체 아크의 높이 표현. 현재 평면뷰 유지.
-- **TiltedDynamic**: elevation 기반 동적 틸트. ortho+고정프랍이면 고정틸트로 충분, 필요 시 도입.
+- **TiltedDynamic**: elevation 기반 동적 틸트. 퍼스펙티브 전환으로 도입 정당화됨 → **배경 프랍은 unit 6 에서 스폰 bake 로 실현**(정적 카메라라 per-frame 불필요). 이동 캐릭터는 휘청 회피 위해 제외(고정 유지).
 - **GroundWander 풍 앰비언트 크리터**: 경로 이동 디펜스라 게임플레이엔 부적합, 데코 한정 검토.

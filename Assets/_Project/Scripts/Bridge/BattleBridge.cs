@@ -93,6 +93,13 @@ namespace Wassup.Bridge
         // tilted-billboard unit 2 — XZ 바닥 + 퍼스펙티브에서 캐릭터가 카메라를 향해 서도록 월드 X 틸트.
         // Legacy3D 와 동일 수학(Euler(tilt,0,0)). 카메라 pitch×0.7~0.8 (pitch55→≈45). 양수. 실측 튜닝.
         [SerializeField] private float tilemapBillboardTilt = 45f;
+        [Header("Prop distance tilt (tilted-billboard unit 6) — 배경 프랍 거리 기반 틸트")]
+        [Tooltip("0=비활성(고정 틸트). 프랍 위치별 시선 elevation 편차에 곱하는 계수. 권장 ≈0.78(카메라 pitch×0.78≈중앙 틸트). Legacy3D 는 빌드 시 0.")]
+        [SerializeField] private float propDistanceTiltFactor = 0.78f;
+        [Tooltip("거리 틸트 하한(도).")]
+        [SerializeField] private float propDistanceTiltMin = 28f;
+        [Tooltip("거리 틸트 상한(도).")]
+        [SerializeField] private float propDistanceTiltMax = 62f;
         [Header("Blob shadow (tilted-billboard unit 3) — Tilemap 모드 접지 그림자")]
         [SerializeField] private Sprite blobShadowSprite;
         [SerializeField] private float blobShadowSize = 1f;
@@ -146,6 +153,10 @@ namespace Wassup.Bridge
         // poked at runtime (e.g. via tooling) to tune the lean without recompiling.
         // tilemap-mode-adoption unit 0 — 맵 빌드 시 Tilemap 모드면 tilemapBillboardTilt(기본 0) 로 덮어쓴다.
         public static float CharacterBillboardTilt = 35f;
+        // tilted-billboard unit 6 — 배경 프랍 거리 기반 틸트 튜닝 미러(PropBillboard 가 읽음). factor=0=비활성.
+        public static float PropDistanceTiltFactor { get; private set; }
+        public static float PropDistanceTiltMin { get; private set; } = 28f;
+        public static float PropDistanceTiltMax { get; private set; } = 62f;
         // tilted-billboard unit 3 — 블롭 그림자 데이터(하드코딩 금지: serialized 필드에서 빌드 시 미러).
         public static Sprite BlobShadowSprite { get; private set; }
         public static float BlobShadowSize { get; private set; } = 1f;
@@ -671,6 +682,11 @@ namespace Wassup.Bridge
             // tilemap-mode-adoption unit 0 — 모드별 유닛 스케일/틸트를 빌드 시 1회 확정 (유닛 스폰 전).
             CharacterVisualScale = UseTilemapView ? tilemapCharacterScale : legacyCharacterScale;
             CharacterBillboardTilt = UseTilemapView ? tilemapBillboardTilt : characterBillboardTilt;
+            // tilted-billboard unit 6 — 배경 프랍 거리 틸트 미러. Legacy3D 는 비활성(factor=0).
+            // refElev(기준 elevation)은 PropBillboard 가 라이브 카메라 pitch 에서 도출 — 페이즈별 카메라 변화 자기보정.
+            PropDistanceTiltFactor = UseTilemapView ? propDistanceTiltFactor : 0f;
+            PropDistanceTiltMin = propDistanceTiltMin;
+            PropDistanceTiltMax = propDistanceTiltMax;
             // tilted-billboard unit 3 — 블롭 그림자 데이터 미러(스폰 시 view 가 읽는다).
             BlobShadowSprite = blobShadowSprite;
             BlobShadowSize = blobShadowSize;
