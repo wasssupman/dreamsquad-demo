@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Tile_Sand
   m_EditorClassIdentifier: UnityEngine.dll::UnityEngine.Tilemaps.Tile
   m_Sprite: {fileID: 21300000, guid: 8dc6dc335a19a4dd7a7d31d274db67dc, type: 3}
-  m_Color: {r: 0.96, g: 0.95, b: 0.86, a: 1}
+  m_Color: {r: 0.88, g: 0.9, b: 0.66, a: 1}
   m_Transform:
     e00: 1
     e01: 0

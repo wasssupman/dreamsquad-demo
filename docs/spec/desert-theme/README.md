@@ -1,6 +1,6 @@
 # Desert Theme
 
-> 상태: 완료 2026-06-30 (재활용 기반 arid 사막, 사용자 육안 통과 @ option 1). 후속: teal 오토타일 엣지 · 프랍 moss · sand 색조.
+> 상태: 완료 2026-06-30 (재활용 기반 arid 사막 + 폴리시: teal 엣지 해결·sand 색조·moss 완화). 선인장 아트만 차단(후속). 사용자 육안 통과.
 > 전제: 테마 = `MapThemeData`. 런타임 선택 = `SeasonRuntime.Active.mapTheme` ← `SeasonData.mapTheme` ← `SeasonRegistry.defaultSeason`.
 > 대상: `Map/Theme/desert/`, `Art/Theme/desert/`, `Data/Theme/desert/`, `Data/TileSets/`, `Data/Season/`. forest 불변.
 
@@ -33,10 +33,15 @@
 | 2 | `2_tileset_hook_and_ground.md` | 테마-구동 tileSet 훅(코드) + `TileSet_Desert`+`Tile_Sand` | ✅ |
 | 3 | `3_season_separation_verify.md` | season_S2_desert + 레지스트리 + forest 분리(PropData 복제) + Play 검증 | ✅ |
 
+## 폴리시 (unit 5, 2026-06-30 후속)
+
+- **teal 오토타일 엣지 ✅ 해결**: Test/ 의 107 오토타일 스프라이트를 PIL 로 teal→sand recolor → `Generated/Tiles/Desert/`, `AutoTile_PlaceDirt_Desert`/`_Stone_Desert` 생성(스프라이트 guid 재매핑), `TileSet_Desert` 의 place/walk 재연결. 씬 무변경.
+- **sand 색조 ✅**: `Tile_Sand.color` salmon→골든탄.
+- **프랍 green moss ⚠️ 완화**: `propGlobalTint` 강화(웜)로 녹색→khaki. 큰 통나무/보울더 잔여 녹색은 "마른 이끼"로 수용(사용자 결정).
+- **선인장 아트 ⛔ 차단**: 프로젝트에 사막 식생 스프라이트 0, 직접 작성 불가. 아트 확보 시 전용 PropData/프리팹.
+
 ## 후속 후보
 
-- **teal 오토타일 엣지**: place/walk 오토타일의 grass-edge 가 사막에서 teal. 사막용 오토타일 엣지 필요(중간 공수).
-- **프랍 green moss**: 일부 프랍(boulder/stump/log) 녹색 이끼 — 프랍 스프라이트 아트. 사막용 재오서링 또는 moss 강한 프랍 제외.
-- **sand 색조**: 약간 salmon. Tile_Sand.color/surroundFarColor 추가 튜닝 또는 sand 텍스처 교체.
-- **desert 를 기본 시즌으로** 할지(현재 forest 기본).
-- 선인장/야자 등 사막 식생 신규 아트.
+- moss 잔여가 거슬리면 mossy 프랍(fallen_log/boulder_cluster) 큐레이션 제외.
+- desert 를 기본 시즌으로(현재 forest 기본 — `defaultSeason` 한 줄).
+- 선인장/야자 식생 아트 + 사막 전용 path(스톤이 쿨톤) 워밍.

@@ -12,8 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3b30c45c967584f8a89f212b2956ff1e, type: 3}
   m_Name: TileSet_Desert
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.TileSetData
-  walkTile: {fileID: 11400000, guid: 22c1d51c87ee449bbb57d4927b8395ed, type: 2}
-  placeTile: {fileID: 11400000, guid: e856806903a8a4dc39a93fcbae6c750a, type: 2}
+  walkTile: {fileID: 11400000, guid: 529223cad0c1856ceb917593ab18cf60, type: 2}
+  placeTile: {fileID: 11400000, guid: ba13b357cd641392538b8ea1be68de09, type: 2}
   envTile: {fileID: 11400000, guid: a2e47f7164742432988f40087fe3f542, type: 2}
   decoTile: {fileID: 11400000, guid: a2e47f7164742432988f40087fe3f542, type: 2}
   goalTile: {fileID: 11400000, guid: 69f6c5d839d34432aa2f163b4d65d2e6, type: 2}
