@@ -26,3 +26,5 @@
 
 - compile 0. Play → 프랍 그림자가 발밑 정중앙 원형, 좌우/깊이 무관하게 일관. 매 프레임 강제 없음(정적 프랍).
 - 사용자 육안 통과. 통과 시 확인 일자 + 커밋 해시 추가.
+
+확인: 2026-06-29 사용자 육안 통과 · 커밋 4704d4f (deltaZ=0.000 전 프랍, screen-lift/offset 전량 제거). 스크린샷 `Assets/Screenshots/prop_shadow_v5_static_foot.png`.

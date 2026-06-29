@@ -1,6 +1,6 @@
 # Background Prop Shadow Polish
 
-> 상태: 진행 중 — units 0~2 완료 2026-06-29 (커밋 ee10b86), units 3~4 진행 중 (블롭 모델 단순화 + 정적 스폰)
+> 상태: 완료 2026-06-29 (units 0~4, 사용자 육안 통과). 커밋 ee10b86(0~2) · 4704d4f(3~4)
 > 전제: `tilted-billboard` unit 3 (blob shadow), `tilemap-world-surround` unit 4 (원경 링 프랍), `tilemap-real-shadows`.
 > 대상: `Assets/_Project/Scenes/BattleScene.unity` (Tilemap, URP). Legacy3D 불변.
 

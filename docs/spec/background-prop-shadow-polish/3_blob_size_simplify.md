@@ -29,3 +29,5 @@
 
 - compile 0. Play → 프랍 블롭이 원형 접지로 보이고 프랍 발 크기와 어울린다. 크기 어색하면 `BlobShadowSize`(전역) 또는 프랍별 `visualScale` 로 튜닝.
 - 사용자 육안 통과. 통과 시 확인 일자 + 커밋 해시 추가.
+
+확인: 2026-06-29 사용자 육안 통과 · 커밋 4704d4f (원형, BlobShadowSize×visualScale, 측정 worldScale 1.50/0.68). 스크린샷 `Assets/Screenshots/prop_shadow_v2_circular.png`.
