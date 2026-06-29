@@ -17,7 +17,7 @@
 ## 공통 원칙 (착수 전 확정 — 2026-06-29 설계 논의)
 
 - **레인 시스템 안 만든다.** `laneIndex`/동적 재배정/lane 회귀/goal 레인 = 전부 폐기(후속 후보 II). 이 spec 은 **결함 3개 픽스**만.
-- **① tile-invariant**: 모든 이동모드가 walk 셀 위. aggro 는 guardian 의 Place 타일 진입 대신 **인접 walk 타일에서 사거리로 정지**해 공격. (넉백 impulse 는 이미 cell-trim 제약 → 무변경. 토네이도/portal 은 의도된 오버라이드 → 제외.)
+- **① tile-invariant**: aggro 의 본질은 **이동목표 변경뿐**(goal→guardian). 별도 self-walk 로코모션을 두지 말고 **기존 cell-trim 을 그대로 통과**시켜 walk 타일 위에 머물게 한다(현 `continue` bypass 제거). non-walk 셀은 cell-trim 이 이미 벽으로 취급 → 적은 guardian 인접 walk 타일 경계에 정착, 공격은 기존 `AttackSystem`(sticky-target)이 사거리에서 처리. **별도 사거리정지/stuck 코드 불필요.** guardian 사망 시 target 이 goal 로 되돌아가 현재 walk 셀에서 flow 재개 → **별도 return 로직 불필요**(적이 경로를 안 벗어났으니 복귀할 게 없음). 즉 unit 1+2 가 aggro 생애주기(시작/중/종료)를 전부 커버한다. (넉백 impulse 는 이미 cell-trim 제약 → 무변경. 토네이도/portal 제외.)
 - **② 코너 복원 = `target=0 + dead-band`**: `dead-band ≈ 스폰 분산폭(≈0.2·tile)`. 직진 분산은 밴드 안이라 **불변(보존)**, 코너 드리프트(밴드 밖, 0.29~0.49)만 밴드로 복원. **유닛별 target 아님**(레인 없음 → 중앙 0 이 유일 target).
 - **rate 속도비례**: `rate = k·follow.speed` (k≈0.4). 상수 rate 금지.
 - **③ 결정론 스폰 분산**: RNG → 저불일치 결정론 수열(golden-ratio Weyl). `|offset| < 0.5·tile` 불변식 유지.
@@ -29,8 +29,8 @@
 |---|---|---|---|
 | 0 | 결정론 스폰 분산 (③) | `0_deterministic_spawn_spread.md` | `SpawnSpread` RNG → 결정론 수열. EditMode |
 | 1 | 코너 복원 (②) | `1_corner_recenter.md` | 순수 헬퍼 + `MovementSystem` flow branch target=0+deadband. EditMode |
-| 2 | aggro 타일 제약 (①) | `2_aggro_tile_constrain.md` | aggro self-walk cell-trim + 사거리 정지 + stuck 폴백. EditMode+Play |
-| 3 | 통합 검증 | `3_verify.md` | Play: 타일 이탈 0 / 코너 비-엣지 / 결정론 재현 |
+| 2 | aggro 타일 제약 (①) | `2_aggro_tile_constrain.md` | cell-trim 을 헬퍼로 추출 → aggro 분기에서도 통과(`continue` bypass 제거). 이동목표만 guardian. 별도 사거리정지/stuck 코드 없음. EditMode+Play |
+| 3 | 통합 검증 | `3_verify.md` | Play **동적 검증**: 타일이탈 0 / 코너 비엣지 / 결정론 / **aggro 시작→guardian 접근(타일 위)** / **aggro 종료→goal 경로 복귀(타일 위)** |
 
 순서는 격리도 낮은→높은(안전→위험). 단위 간 강한 의존 없음.
 
@@ -43,7 +43,7 @@
 ## 후속 후보 (현 스코프 밖)
 
 - **(II) 결정론 레인 대형 시스템** [L] · `laneIndex` + 동적 nearest-lane 재배정(코너 축변화·복도 재획득 시 snap) + 질서있는 lane 전진/분기(가디언별)/재집결. 2026-06-29 설계 논의에서 "버그 픽스 ≠ 기능"으로 분리. 동적 재배정 안은 코너까지 우아하게 처리함이 검증됨(축 바뀔 때 nearest-lane snap = 엣지-허깅 자동 해소). product 가치 확인 후 별도 spec.
-- **aggro 타일 경로탐색** [M] · unit 2 는 greedy+clamp. guardian 이 벽 뒤면 stuck → 사거리 공격 폴백. 정식 경로탐색은 별도.
+- **aggro 정식 경로탐색** [M] · unit 2 는 greedy 방향 + cell-trim(벽 sliding 근사). guardian 이 벽 뒤로 멀면 근사가 거칠 수 있음. 정식 path/guardian flow 는 별도(현재 불필요).
 
 ## 참조: 코너 엣지-허깅 메커니즘
 

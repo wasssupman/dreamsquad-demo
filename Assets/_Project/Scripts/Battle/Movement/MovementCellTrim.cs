@@ -35,5 +35,18 @@ namespace Wassup.Battle.Movement
                 desired.y,
                 math.clamp(desired.z, centerZ - half, centerZ + half));
         }
+
+        // enemy-tile-movement-integrity unit 2 — flow 분기와 aggro 분기가 공유하는 cell-trim.
+        // desired 가 wall(zero-flow) 또는 obstacle 셀로 넘어가면 currentCell 경계로 clamp.
+        // 모든 이동 모드(flow follow, aggro target chase)를 walk 타일 위에 묶는 단일 지점.
+        public static float3 Apply(float3 desired, int2 currentCell, in FlowFieldSingleton field,
+                                   bool hasObstacles, in ObstacleSingleton obstacles)
+        {
+            int2 targetCell = GridMath.WorldToCell(desired, field.tileSize, field.gridSize, origin: field.origin);
+            if (currentCell.Equals(targetCell)) return desired;
+            bool isWall = IsWallCell(targetCell, in field);
+            if (!isWall && hasObstacles) isWall = obstacles.blockedCells.Contains(targetCell);
+            return isWall ? ClampToBoundary(desired, currentCell, field.tileSize, origin: field.origin) : desired;
+        }
     }
 }

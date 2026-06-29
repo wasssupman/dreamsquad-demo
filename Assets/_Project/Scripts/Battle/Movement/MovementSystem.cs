@@ -52,9 +52,11 @@ namespace Wassup.Battle.Movement
             {
                 float3 current = transform.ValueRO.Position;
 
-                // aggro-targeting Unit 3 — aggroed enemy abandons the flow path and
-                // self-walks (own speed) toward its guardian, then stacks (stops) on it.
-                // NOT a forced pull (tornado); destination override + own locomotion.
+                // aggro-targeting / enemy-tile-movement-integrity unit 2 — aggro 의 본질은
+                // 이동목표 변경(goal→guardian)뿐. 별도 로코모션이 아니라, guardian 방향 step 을
+                // 다른 이동과 같은 cell-trim 에 통과시켜 walk 타일 위에 머물게 한다. non-walk
+                // (guardian 의 Place 타일 포함)는 cell-trim 이 벽으로 막아 적은 인접 walk 타일
+                // 경계에 정착, 공격은 AttackSystem(sticky-target)이 사거리에서 처리.
                 // Ignores EnemyAttackMovePause so it keeps closing on the anchor.
                 if (aggroLookup.HasComponent(entity))
                 {
@@ -69,9 +71,12 @@ namespace Wassup.Battle.Movement
                             float aggroSpeedMul = modifierStatsLookup.HasComponent(entity)
                                 ? modifierStatsLookup[entity].moveSpeedMul : 1f;
                             float step = follow.ValueRO.speed * aggroSpeedMul * dt;
-                            transform.ValueRW.Position = (step >= dist)
+                            float3 desiredAggro = (step >= dist)
                                 ? new float3(gpos.x, current.y, gpos.z)
                                 : current + math.normalize(to) * step;
+                            int2 aggroCell = GridMath.WorldToCell(current, field.tileSize, field.gridSize, origin: field.origin);
+                            transform.ValueRW.Position = MovementCellTrim.Apply(
+                                desiredAggro, aggroCell, in field, hasObstacles, in obstacleSingleton);
                         }
                         continue; // skip flow/portal/tornado/goal/pause while aggroed
                     }
@@ -183,16 +188,8 @@ namespace Wassup.Battle.Movement
                     desired += LateralRecenter.Compute(current, cell, stepDir,
                         follow.ValueRO.speed * speedMul, dt, field.tileSize, field.origin);
 
-                // Cell-trim (option B): prevent impulse from pushing into wall or obstacle cells.
-                int2 targetCell = GridMath.WorldToCell(desired, field.tileSize, field.gridSize, origin: field.origin);
-                if (!cell.Equals(targetCell))
-                {
-                    bool isWall = MovementCellTrim.IsWallCell(targetCell, in field);
-                    if (!isWall && hasObstacles)
-                        isWall = obstacleSingleton.blockedCells.Contains(targetCell);
-                    if (isWall)
-                        desired = MovementCellTrim.ClampToBoundary(desired, cell, field.tileSize, origin: field.origin);
-                }
+                // Cell-trim (option B): keep impulse/recenter from pushing into wall/obstacle cells.
+                desired = MovementCellTrim.Apply(desired, cell, in field, hasObstacles, in obstacleSingleton);
 
                 transform.ValueRW.Position = desired;
             }
