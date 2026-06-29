@@ -22,3 +22,8 @@
 - compile 0 에러.
 - EditMode `LateralRecenterTests` 6종 + `SpawnSpreadTests` 무회귀 green.
 - Play 코너 통과 시 perp 가 deadband(≈0.25·tile) 이하로 수렴, 직진 분산 보존(unit 3 통합 검증). deadband 가 시각적으로 여전히 엣지처럼 보이면 unit 3 에서 상수 하향 검토(분산 약간 압축 감수).
+
+---
+
+확인: 2026-06-29 · 커밋 `be1d950` · compile 0 · EditMode 21/21.
+Play 측정(20×10 맵, 코너 4셀): 적 perp **최대 0.250(=deadband)**, 엣지-허깅 밴드(0.29~0.49) **0건**. 코너 통과 적이 셀 엣지(0.49) 대신 deadband(0.25)에 정착 — 스폰 분산(≤0.2)은 보존(밴드 안 무손). 정착점 0.25 가 여전히 엣지스러우면 unit 3 에서 `DeadbandFraction` 하향 검토.
