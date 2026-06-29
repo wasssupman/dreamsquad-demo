@@ -20,6 +20,10 @@ running Play 에서 `execute_code` 로 적 `LocalTransform` + `FlowFieldSingleto
 
 세 결함의 핵심(타일 유지·코너·결정론)은 라이브/구조적으로 충족. aggro-종료 복귀만 합성 논거(논리 airtight).
 
+### 라이브 재확인 (fresh 세션, 2026-06-29)
+
+taunt defender 직접 배치 후 측정: aggro 적 **3마리 전원 sim walk 타일 위**(offWalk 0), walk 셀 가장자리(perp 0.27~0.50)에 정착. 사용자 관찰 "타일 벗어남"은 **엣지 + 스프라이트 피벗 겹침 착시**로 확정 — 발(sim)은 타일 안. aggro 타일 제약 라이브 확인. ※ 가장자리까지 미는 이유 = aggro 가 guardian 중심까지 밀어붙임(`stackThreshold` 0.05, standoff 미구현). standoff(사거리 정지)는 **다음 spec** 으로 분리(이동 무결성과 무관).
+
 ## 발견된 별개 이슈 (follow-up, 이 spec 범위 밖)
 
 - **QuadUnit 뷰 누수** — Play 중 `QuadUnit_Needler_88` 이 그리드 밖 (1,−3) 에 떠 있었으나, 가장 가까운 live 적까지 4.56 유닛 = **뒤에 적 없는 orphaned 뷰**. 이름의 `88` 은 재활용된 생성-시점 entity.Index. `QuadUnitViewPool` 이 엔티티 사망 시 Quad 뷰를 해제 안 하는 presentation 누수로 추정(Spine 뷰 11 정상). sim 이동과 무관 → README 후속 후보.
