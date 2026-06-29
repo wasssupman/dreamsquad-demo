@@ -2947,7 +2947,7 @@ namespace Wassup.Bridge
                 damage = unitData.attackDamage,
                 range = unitData.attackRange,
                 cooldownDuration = unitData.attackCooldown,
-                cooldownRemaining = 0f,
+                cooldownRemaining = unitData.deployDelaySec, // attack-hit-delay 2 — 배치 직후 deployDelaySec 동안 idle(공격 X)
                 attackTargetCount = unitData.attackTargetCount,
                 targetMask = unitData.targetAllies ? (int)Faction.Defender : (int)Faction.Enemy,
                 hitDelaySec = unitData.hitDelaySec,

@@ -30,6 +30,7 @@
 |---|---|---|---|
 | 0 | 필드 plumbing | `0_field_plumbing.md` | `AttackState`/`AttackUnitData`/`DefenderUnitData` hitDelaySec + baking. **기본 0, 동작 무변경.** compile |
 | 1 | AttackSystem 재구성 | `1_attacksystem_split.md` | fire 분리(start/resolve) + 지연 tick. Play 검증 |
+| 2 | 배치 지연 (deploy delay) | `2_deploy_delay.md` | `DefenderUnitData.deployDelaySec` → 배치 시 초기 `cooldownRemaining`. 그동안 idle(자동). AttackSystem 무수정. compile |
 
 ## 후속 후보
 
