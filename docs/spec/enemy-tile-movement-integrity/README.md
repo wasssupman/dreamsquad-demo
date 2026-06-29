@@ -1,6 +1,6 @@
 # enemy-tile-movement-integrity — 적 타일 이동 무결성 (이동 결함 픽스)
 
-> 상태: 진행 중 (2026-06-29 착수). `movement-lane-centering` 초안에서 리프레임 — **"레인 시스템"은 명시적으로 폐기**, 결함 픽스만.
+> 상태: 완료 2026-06-29 (units 0~3). `movement-lane-centering` 초안에서 리프레임 — **"레인 시스템"은 명시적으로 폐기**, 결함 픽스만. handoff: `4_handoff_summary.md`.
 
 ## 배경 / 문제
 
@@ -44,6 +44,7 @@
 
 - **(II) 결정론 레인 대형 시스템** [L] · `laneIndex` + 동적 nearest-lane 재배정(코너 축변화·복도 재획득 시 snap) + 질서있는 lane 전진/분기(가디언별)/재집결. 2026-06-29 설계 논의에서 "버그 픽스 ≠ 기능"으로 분리. 동적 재배정 안은 코너까지 우아하게 처리함이 검증됨(축 바뀔 때 nearest-lane snap = 엣지-허깅 자동 해소). product 가치 확인 후 별도 spec.
 - **aggro 정식 경로탐색** [M] · unit 2 는 greedy 방향 + cell-trim(벽 sliding 근사). guardian 이 벽 뒤로 멀면 근사가 거칠 수 있음. 정식 path/guardian flow 는 별도(현재 불필요).
+- **QuadUnit 뷰 누수** [S] · Play 중 `QuadUnit_Needler_88` 이 그리드 밖에 orphaned(뒤에 live 적 없음, 4.56 유닛 거리). `QuadUnitViewPool` 가 엔티티 사망 시 Quad 뷰 미해제 추정(Spine 뷰는 정상). presentation 누수, sim 이동 무관 (`3_verify.md` 측정).
 
 ## 참조: 코너 엣지-허깅 메커니즘
 
