@@ -1,6 +1,6 @@
 # aggro-standoff — aggro 사거리 정지 (이동 종료 조건)
 
-> 상태: 진행 중 (2026-06-29 착수). `enemy-tile-movement-integrity` 후속(거기 후속 후보에서 승격).
+> 상태: 완료 2026-06-29 (unit 0, Play 검증 PASS). `enemy-tile-movement-integrity` 후속(거기 후속 후보에서 승격).
 
 ## 배경 / 문제
 
@@ -36,3 +36,4 @@ aggro 공격 사거리 = **1 고정**(현 계획), taunt acquisition(`AggroProvi
 ## 후속 후보
 
 - **aggro 정식 경로탐색** [M] · greedy+cell-trim 근사 대체(guardian 벽 뒤). `enemy-tile-movement-integrity` 에서 이관.
+- **aggro 공격 사거리 통일** [S] · 현재 standoff 는 `AttackState.range`(native, 측정 4~8) 사용 → 원거리 적은 2~3타일 떨어져 정지. aggro 시 고정 range(예 1)로 모으려면 `AggroAttackProfile`/override 데이터 작업. 디자인 결정(standoff 로직과 별개).
