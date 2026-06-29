@@ -28,4 +28,4 @@ Tilemap 모드 바닥이 테마 무관(scene `BattleBridge.tileSet`)이던 문�
 - compile 0. Play(desert 활성) 에서 바닥이 sand 로 렌더(`tile_desert_sand` 가 Ground Tilemap 에 페인트됨 — 확인).
 - forest 활성 시 기존 바닥 불변.
 
-확인: 2026-06-30 컴파일 0, desert 바닥 sand 렌더 확인(스샷 `desert_v2_ground.png`/`desert_v3_final.png`). 커밋 대기.
+확인: 2026-06-30 컴파일 0, desert 바닥 sand 렌더 확인(스샷 `desert_v2_ground.png`/`desert_v3_final.png`). 커밋 5ebe315.

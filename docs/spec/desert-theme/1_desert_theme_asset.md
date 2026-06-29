@@ -24,4 +24,4 @@ forest.asset 을 복제해 desert `MapThemeData` 를 만들고, 사막용 틴트
 
 - desert.asset 생성, 틴트/tileProps 세팅. (바닥 렌더는 unit 2 의 tileSet 으로 검증.)
 
-확인: 2026-06-30 desert.asset 구성 OK (guid febf3efe…). 커밋 대기.
+확인: 2026-06-30 desert.asset 구성 OK (guid febf3efe…). 커밋 5ebe315.

@@ -28,4 +28,4 @@ desert 를 시즌으로 선택 가능하게 하고, 테마 데이터를 forest �
 - Play(desert 활성) 168 프랍 + sand 바닥 렌더, console 0. tileProps → desert 13 / forest 0.
 - 사용자 육안 통과(option 1: 현 상태 + 값 튜닝). teal 엣지·프랍 moss·sand 색조는 후속.
 
-확인: 2026-06-30 사용자 육안 통과(arid 사막). 스샷 `desert_v3_final.png`. 커밋 대기.
+확인: 2026-06-30 사용자 육안 통과(arid 사막). 스샷 `desert_v3_final.png`. 커밋 5ebe315.

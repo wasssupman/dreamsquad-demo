@@ -2,7 +2,7 @@
 
 ## Commit
 
-- (desert feat 커밋 해시 기입 예정) — desert 테마(테마-구동 tileSet 훅 + 사막 바닥/프랍).
+- `5ebe315` — desert 테마(테마-구동 tileSet 훅 + 사막 바닥/프랍).
 - 선행: `668242f` chore(theme) 미사용 volcano/S2~S4 정리.
 
 ## Implemented

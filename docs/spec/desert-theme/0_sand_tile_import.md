@@ -22,4 +22,4 @@
 
 - import 성공, Sprite 로드 가능(1×1 world). → unit 2 의 `Tile_Sand` 가 이 스프라이트를 사용.
 
-확인: 2026-06-30 import OK (guid 8dc6dc33…, 1024², Bilinear/Uncompressed). 커밋 대기.
+확인: 2026-06-30 import OK (guid 8dc6dc33…, 1024², Bilinear/Uncompressed). 커밋 5ebe315.
