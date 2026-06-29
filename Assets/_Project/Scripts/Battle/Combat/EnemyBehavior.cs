@@ -9,5 +9,7 @@ namespace Wassup.Battle.Combat
     {
         public Wassup.Data.EnemyTargetMode targetMode;
         public Wassup.Data.EnemyAimMode aimMode;
+        // enemy-ai-fsm Unit 0 — Engaging 이동 정책. Movement 가 RO 로 읽는다. (aimMode 는 3b 에서 제거)
+        public Wassup.Data.EngageMovement engageMovement;
     }
 }

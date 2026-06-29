@@ -20,6 +20,8 @@ namespace Wassup.Data
         public EnemyAttackMethod attackMethod = EnemyAttackMethod.Melee;
         public EnemyTargetMode targetMode = EnemyTargetMode.Nearest;
         public EnemyAimMode aimMode = EnemyAimMode.StopToAttack;
+        // enemy-ai-fsm Unit 0 — Engaging 이동 정책(aimMode 대체). unit 4 에서 SO 마이그레이션 후 bake 직접 사용.
+        public EngageMovement engageMovement = EngageMovement.Halt;
         public DefenderClass targetPriorityClass = DefenderClass.None; // None = no priority
         public DefenderClassFlags targetClassMask = DefenderClassFlags.Everything;
 

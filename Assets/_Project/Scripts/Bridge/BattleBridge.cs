@@ -3624,6 +3624,15 @@ namespace Wassup.Bridge
             {
                 targetMode = entry.unitType.targetMode,
                 aimMode = entry.unitType.aimMode,
+                // enemy-ai-fsm Unit 0 — 임시 aimMode 파생(SO 직접 값은 unit 4 마이그레이션).
+                engageMovement = entry.unitType.aimMode == Wassup.Data.EnemyAimMode.MoveAndShoot
+                    ? Wassup.Data.EngageMovement.Advance
+                    : Wassup.Data.EngageMovement.Halt,
+            });
+            // enemy-ai-fsm Unit 0 — FSM 상태 초기값. EnemyAiStateSystem(unit 1)이 매 틱 갱신.
+            _em.AddComponentData(entity, new Wassup.Battle.Combat.EnemyAiState
+            {
+                value = Wassup.Battle.Combat.AiState.Marching,
             });
             if (entry.unitType.targetMode == Wassup.Data.EnemyTargetMode.FocusUntilDead)
                 _em.AddComponentData(entity, new Wassup.Battle.Combat.FocusTarget { current = Entity.Null });

@@ -33,3 +33,7 @@ public enum EngageMovement : byte { Halt, Advance }   // aimMode StopToAttack→
 - compile 통과, 콘솔 에러 0.
 - 기존 동작 변화 없음(상태 컴포넌트는 추가만, 아직 아무도 읽지 않음 — 레거시 경로 그대로 작동).
 - 적 스폰 시 `EnemyAiState` 와 `EnemyBehavior.engageMovement` 가 부여됨을 EditMode 또는 reflection 으로 확인.
+
+---
+
+✅ **완료 2026-06-30** — 컴파일 PASS(콘솔 에러 0), 동작 무변(컴포넌트 추가만, 미사용). 스폰 부여는 BattleBridge `AddComponentData` 로 보장, 런타임 갱신 검증은 unit 1 통합 테스트로 이관.
