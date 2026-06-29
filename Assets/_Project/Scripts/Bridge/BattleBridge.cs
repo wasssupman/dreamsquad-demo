@@ -698,7 +698,10 @@ namespace Wassup.Bridge
             if (UseTilemapView)
             {
                 if (tilemapMapView != null)
-                    tilemapMapView.Initialize(_generatedMap, tileSize, tileSet, boardViewMode, UseRealShadows);
+                    // 테마-구동 tileSet: theme 이 지정하면 그걸, 아니면 scene 의 tileSet 폴백 (desert-theme).
+                    tilemapMapView.Initialize(_generatedMap, tileSize,
+                        theme != null && theme.tileSet != null ? theme.tileSet : tileSet,
+                        boardViewMode, UseRealShadows);
                 else
                     Debug.LogError("[BattleBridge] boardViewMode 이 Tilemap 이지만 tilemapMapView 가 비어있다.", this);
                 // Tilemap 모드 sim origin 은 무조건 zero — 비활성 mapView transform 을 읽지 않는다 (README 계약).

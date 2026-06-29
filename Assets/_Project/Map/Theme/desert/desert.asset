@@ -1,0 +1,153 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8bf4e43b5104a4537a201022bb0f9ea2, type: 3}
+  m_Name: desert
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.MapThemeData
+  tileSet: {fileID: 11400000, guid: 466c1d82c5e4f46deadd3ee05123b681, type: 2}
+  placeTileTexture: {fileID: 0}
+  walkTileTexture: {fileID: 0}
+  envTileTexture: {fileID: 2800000, guid: 8dc6dc335a19a4dd7a7d31d274db67dc, type: 3}
+  decoTileTexture: {fileID: 2800000, guid: 8dc6dc335a19a4dd7a7d31d274db67dc, type: 3}
+  placeTileVariants: []
+  walkTileVariants: []
+  envTileVariants:
+  - {fileID: 2800000, guid: 8dc6dc335a19a4dd7a7d31d274db67dc, type: 3}
+  - {fileID: 2800000, guid: 8dc6dc335a19a4dd7a7d31d274db67dc, type: 3}
+  - {fileID: 2800000, guid: 8dc6dc335a19a4dd7a7d31d274db67dc, type: 3}
+  - {fileID: 2800000, guid: 8dc6dc335a19a4dd7a7d31d274db67dc, type: 3}
+  decoTileVariants:
+  - {fileID: 2800000, guid: 8dc6dc335a19a4dd7a7d31d274db67dc, type: 3}
+  - {fileID: 2800000, guid: 8dc6dc335a19a4dd7a7d31d274db67dc, type: 3}
+  - {fileID: 2800000, guid: 8dc6dc335a19a4dd7a7d31d274db67dc, type: 3}
+  - {fileID: 2800000, guid: 8dc6dc335a19a4dd7a7d31d274db67dc, type: 3}
+  tileVariantNoiseScale: 0.13
+  tileVariantJitter: 0.24
+  tileVariantSeedOffset: 421
+  placeSurfaceRules: []
+  walkSurfaceRules: []
+  envSurfaceRules:
+  - texture: {fileID: 2800000, guid: 8dc6dc335a19a4dd7a7d31d274db67dc, type: 3}
+    weight: 1.1
+    noiseRange: {x: 0, y: 0.55}
+    moistureRange: {x: 0, y: 1}
+    nearPathMultiplier: 1.05
+    edgeMultiplier: 1
+  - texture: {fileID: 2800000, guid: 8dc6dc335a19a4dd7a7d31d274db67dc, type: 3}
+    weight: 0.8
+    noiseRange: {x: 0.48, y: 1}
+    moistureRange: {x: 0, y: 0.7}
+    nearPathMultiplier: 0.7
+    edgeMultiplier: 1.65
+  - texture: {fileID: 2800000, guid: 8dc6dc335a19a4dd7a7d31d274db67dc, type: 3}
+    weight: 0.95
+    noiseRange: {x: 0.18, y: 0.78}
+    moistureRange: {x: 0.2, y: 1}
+    nearPathMultiplier: 1.15
+    edgeMultiplier: 0.9
+  - texture: {fileID: 2800000, guid: 8dc6dc335a19a4dd7a7d31d274db67dc, type: 3}
+    weight: 0.7
+    noiseRange: {x: 0.65, y: 1}
+    moistureRange: {x: 0, y: 0.9}
+    nearPathMultiplier: 0.55
+    edgeMultiplier: 1.85
+  decoSurfaceRules:
+  - texture: {fileID: 2800000, guid: 8dc6dc335a19a4dd7a7d31d274db67dc, type: 3}
+    weight: 1.05
+    noiseRange: {x: 0.42, y: 1}
+    moistureRange: {x: 0, y: 0.75}
+    nearPathMultiplier: 0.65
+    edgeMultiplier: 1.7
+  - texture: {fileID: 2800000, guid: 8dc6dc335a19a4dd7a7d31d274db67dc, type: 3}
+    weight: 0.95
+    noiseRange: {x: 0, y: 0.62}
+    moistureRange: {x: 0, y: 1}
+    nearPathMultiplier: 1
+    edgeMultiplier: 1
+  - texture: {fileID: 2800000, guid: 8dc6dc335a19a4dd7a7d31d274db67dc, type: 3}
+    weight: 0.8
+    noiseRange: {x: 0.15, y: 0.82}
+    moistureRange: {x: 0.2, y: 1}
+    nearPathMultiplier: 1.1
+    edgeMultiplier: 0.85
+  - texture: {fileID: 2800000, guid: 8dc6dc335a19a4dd7a7d31d274db67dc, type: 3}
+    weight: 0.9
+    noiseRange: {x: 0.58, y: 1}
+    moistureRange: {x: 0, y: 0.9}
+    nearPathMultiplier: 0.5
+    edgeMultiplier: 1.9
+  pathSurfaceInfluence: 0.32
+  edgeSurfaceInfluence: 0.38
+  walkSingleTexture: {fileID: 0}
+  walkStraightNSTexture: {fileID: 0}
+  walkStraightEWTexture: {fileID: 0}
+  walkCornerTexture: {fileID: 0}
+  walkEndTexture: {fileID: 0}
+  walkTJunctionTexture: {fileID: 0}
+  walkCrossTexture: {fileID: 0}
+  terrainDetailTextures: []
+  terrainDetailDensity: 0.12
+  terrainDetailScale: 0.28
+  placeBackgroundEdgeTexture: {fileID: 0}
+  placeEdgeTexture: {fileID: 0}
+  placeOuterCornerTexture: {fileID: 0}
+  placeInnerCornerTexture: {fileID: 0}
+  placeInnerCornerScale: 0.34
+  placeInnerCornerOpacity: 0.34
+  placeOuterCornerScale: 0.46
+  placeOuterCornerOpacity: 0.38
+  placeEdgeOpacity: 0.32
+  placeEdgeThickness: 0.08
+  placeEdgeFalloff: 0.5
+  tileThickness: 0.44
+  tileTopScale: 0.93
+  tileBaseScale: 1
+  tileSideColor: {r: 0.45, g: 0.34, b: 0.2, a: 1}
+  placeBaseTint: {r: 0.98, g: 0.93, b: 0.8, a: 1}
+  walkBaseTint: {r: 1, g: 0.9, b: 0.62, a: 1}
+  envBaseTint: {r: 1, g: 0.93, b: 0.74, a: 1}
+  propGlobalTint: {r: 1, g: 0.9, b: 0.72, a: 1}
+  tileProps:
+  - {fileID: 11400000, guid: 847f963c6a6b24affa8e907354530ace, type: 2}
+  - {fileID: 11400000, guid: d5e00020966124d69a64bba187257aed, type: 2}
+  - {fileID: 11400000, guid: e53cfb7d559a640a296de33d5d2f17e6, type: 2}
+  - {fileID: 11400000, guid: 460ceffb182874ce489887eda29817fb, type: 2}
+  - {fileID: 11400000, guid: df8abc52e0e7140528c3b31cadeb50d2, type: 2}
+  - {fileID: 11400000, guid: 057190a0013e6409d99e8157ecd01284, type: 2}
+  - {fileID: 11400000, guid: b9e4784bcccb44a97a3b63861ad377a2, type: 2}
+  - {fileID: 11400000, guid: 3a361e63fdc2f4c309c6a1417a97d101, type: 2}
+  - {fileID: 11400000, guid: d0ccf42ad20b54a5b9c4a00fd0ffc24a, type: 2}
+  - {fileID: 11400000, guid: 556b7abdf24a64077b315ec1f44bad91, type: 2}
+  - {fileID: 11400000, guid: e8d275931086e4d9590efc46cb5b74b2, type: 2}
+  - {fileID: 11400000, guid: 34052626114a44fdd8ab5779b6c9d196, type: 2}
+  - {fileID: 11400000, guid: 9f001998f8a484ca1a2a29778484d175, type: 2}
+  decorProps: []
+  tilePropDensity: 1
+  maxTilePropCount: 60
+  propPoissonMinDistance: 1
+  propPoissonDensityPerRegionArea: 3
+  propPoissonMaxAttemptsPerRegion: 512
+  propRepeatAvoidanceWindow: 2
+  spawnGoalPropAvoidRadius: 1
+  spawnGoalPropDensityMultiplier: 0.55
+  pathAdjacentSmallPropMaxArea: 1
+  pathAdjacentLargePropWeightMultiplier: 0.45
+  largePropInnerWeightMultiplier: 0.55
+  obstaclePrefabs:
+  - {fileID: 8074820532000868882, guid: fff782a4ccd5c462783fe947c4a1c02f, type: 3}
+  - {fileID: 8513532867696311611, guid: 3ad8bbe03050c46e08b97ef65bf990ac, type: 3}
+  - {fileID: 2955207690451317735, guid: 86f7ff63b329c4d589de508ff2c36327, type: 3}
+  - {fileID: 5073162552732502671, guid: 711cd5aea3d224a4488537bd76a4c0ab, type: 3}
+  minPlaceableRatio: 0.4
+  mapGridBuildableKeepRatio: 0.6
+  ringPropDensity: 0.35
+  ringPropFalloffPerCell: 0.04
+  ringPlayClearanceCells: 3

@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3b30c45c967584f8a89f212b2956ff1e, type: 3}
+  m_Name: TileSet_Desert
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.TileSetData
+  walkTile: {fileID: 11400000, guid: 22c1d51c87ee449bbb57d4927b8395ed, type: 2}
+  placeTile: {fileID: 11400000, guid: e856806903a8a4dc39a93fcbae6c750a, type: 2}
+  envTile: {fileID: 11400000, guid: a2e47f7164742432988f40087fe3f542, type: 2}
+  decoTile: {fileID: 11400000, guid: a2e47f7164742432988f40087fe3f542, type: 2}
+  goalTile: {fileID: 11400000, guid: 69f6c5d839d34432aa2f163b4d65d2e6, type: 2}
+  spawnTile: {fileID: 11400000, guid: 07262bdc2f17e4d4e848d0111fe0e3aa, type: 2}
+  hoverTile: {fileID: 11400000, guid: b5aa087a910fa45d480c0bd1fcef682d, type: 2}
+  rejectTile: {fileID: 11400000, guid: 4c4f79cd82642494ea257c47a155261e, type: 2}
+  terrainTile: {fileID: 11400000, guid: a2e47f7164742432988f40087fe3f542, type: 2}
+  ringRadius: 6
+  surroundFarColor: {r: 0.5, g: 0.39, b: 0.24, a: 1}
+  surroundNoiseScale: 0.25
+  surroundNoiseAmount: 0.5
+  isoCellSize: {x: 1, y: 0.5, z: 1}
