@@ -194,8 +194,8 @@ namespace Wassup.Bridge
         // Phase 9 flow field 싱글톤 entity reference
         private Entity _flowFieldSingleton = Entity.Null;
 
-        // enemy-spawn-positioning — 스폰 측면 분산 RNG(맵 빌드마다 시드 리셋, 결정론).
-        private Unity.Mathematics.Random _spawnSpreadRng;
+        // enemy-tile-movement-integrity unit 0 — 스폰 측면 분산 순번(맵 빌드마다 0 리셋). 결정론 수열 인덱스.
+        private int _spawnSpreadCounter;
 
         // map-origin-placement: board 월드 원점. 모든 grid↔world 변환의 단일 소스.
         // BuildFlowField 에서 mapView.transform.position 으로 캡처. mapView 없으면 zero.
@@ -523,7 +523,7 @@ namespace Wassup.Bridge
             }
         }
 
-        // enemy-spawn-positioning — 스폰 셀의 flow 진행방향 수직으로 중앙 ± 연속 랜덤 오프셋 계산.
+        // enemy-spawn-positioning / tile-movement-integrity u0 — 스폰 셀 flow 수직으로 중앙 ± 결정론 오프셋 계산.
         private float3 ComputeSpawnLateralOffset(int2 spawnCell)
         {
             if (!spawnSpreadEnabled || spawnSpreadFraction <= 0f) return float3.zero;
@@ -537,9 +537,9 @@ namespace Wassup.Bridge
                 if (idx >= 0 && idx < field.flow.Length) flowDir = field.flow[idx];
             }
 
-            // 중앙 기준 [−fraction, +fraction·topScale] 연속 랜덤 (상단은 topScale 로 좁힘).
-            float2 range = Wassup.Battle.Movement.SpawnSpread.FractionRange(spawnSpreadFraction, spawnSpreadTopScale);
-            float frac = _spawnSpreadRng.NextFloat(range.x, range.y);
+            // 중앙 기준 [−fraction, +fraction·topScale] 결정론 분율 (상단은 topScale 로 좁힘).
+            float frac = Wassup.Battle.Movement.SpawnSpread.DeterministicFraction(
+                _spawnSpreadCounter++, spawnSpreadFraction, spawnSpreadTopScale);
             return Wassup.Battle.Movement.SpawnSpread.LateralOffset(frac, tileSize, flowDir);
         }
 
@@ -711,8 +711,8 @@ namespace Wassup.Bridge
 
             BuildFlowField();
 
-            // enemy-spawn-positioning — 스폰 분산 RNG 를 맵 시드로 리셋(결정론).
-            _spawnSpreadRng = Unity.Mathematics.Random.CreateFromIndex((uint)_generatedMap.seed);
+            // enemy-tile-movement-integrity unit 0 — 스폰 분산 순번 리셋(결정론 수열은 시드 불필요).
+            _spawnSpreadCounter = 0;
 
             // props — Tilemap = grid 권위 배경 프랍(Deco 셀; unit 1 designate 후 존재), Legacy3D = 기존 경로.
             // tilemap-world-surround unit 2: MapGrid 라도 내부 Deco 가 생기면 prop placer 가 채운다.

@@ -1,6 +1,6 @@
 # enemy-spawn-positioning — 적 유닛 스폰 위치 개선
 
-> 상태: 완료 2026-06-29 (units 0~4 · 커밋 `2487bb0`,`010a32e`,`06cc883`). 코너 lane-centering 은 별도 스펙 `movement-lane-centering` 으로 분리.
+> 상태: 완료 2026-06-29 (units 0~4 · 커밋 `2487bb0`,`010a32e`,`06cc883`). 코너 lane-centering 은 별도 스펙 `enemy-tile-movement-integrity` 으로 분리.
 
 ## 목표 (검증 질문)
 
@@ -42,11 +42,11 @@
 ## 코너·출구 거동 (수용)
 
 - **직진**: 변주 보존. **90° 코너**: 측면 변주가 진행축 앞뒤로 회전(겹침 아님). **goal**: 출구 깔때기로 모임(정상).
-- TD 직진 위주 맵이면 자연스러움. 코너 엣지-허깅(±0.49) 복원은 별도 스펙 `movement-lane-centering` 으로 분리(2026-06-29 리뷰).
+- TD 직진 위주 맵이면 자연스러움. 코너 엣지-허깅(±0.49) 복원은 별도 스펙 `enemy-tile-movement-integrity` 으로 분리(2026-06-29 리뷰).
 
 ## 후속 후보 (현 스코프 밖)
 
-- **코너 lane-centering** → `docs/spec/movement-lane-centering/` 초안(2026-06-29 리뷰로 분리). 코너 엣지-허깅 복원 — 본 spec 스코프 밖.
+- **코너 lane-centering** → `docs/spec/enemy-tile-movement-integrity/` 초안(2026-06-29 리뷰로 분리). 코너 엣지-허깅 복원 — 본 spec 스코프 밖.
 - 유닛 간 separation / boid 회피.
 - 블록 시 우회 재라우팅(`BuildFlowField` rebuild 트리거) — 이동 아키텍처 별도 스펙(flow field 유지 결론).
 - Quad 폴백 경로 `visualOffset` 미배선(적=Spine 라 무영향).

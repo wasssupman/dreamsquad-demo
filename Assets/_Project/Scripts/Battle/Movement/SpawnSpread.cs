@@ -3,7 +3,7 @@ using Unity.Mathematics;
 namespace Wassup.Battle.Movement
 {
     // enemy-spawn-positioning — 스폰 측면 분산의 순수 수학.
-    // 스폰마다 진행방향 수직으로 중앙 기준 ± 작은 연속 오프셋(랜덤은 호출측 RNG).
+    // 스폰마다 진행방향 수직으로 중앙 기준 ± 작은 오프셋(분율은 결정론 수열 DeterministicFraction, RNG 없음).
     // |오프셋| < 0.5·tileSize 불변식을 여기서 강제한다 → 셀 침범 방지로 WorldToCell/goal/cell-trim 등
     // 셀 단위 시스템이 유닛을 같은 셀로 본다.
     public static class SpawnSpread
@@ -17,6 +17,16 @@ namespace Wassup.Battle.Movement
         {
             float half = math.clamp(spreadFraction, 0f, MaxHalfFraction);
             return new float2(-half, half * math.saturate(topScale));
+        }
+
+        // enemy-tile-movement-integrity unit 0 — 결정론 스폰 분율.
+        // 스폰 순번 index 를 golden-ratio(φ⁻¹) Weyl 저불일치 수열로 [min,max] 범위에 매핑.
+        // RNG 없이 결정론적이며(같은 index→같은 값) 연속 스폰이 멀리 떨어진 분율을 받아 한 점 겹침을 줄인다.
+        public static float DeterministicFraction(int index, float spreadFraction, float topScale)
+        {
+            float2 range = FractionRange(spreadFraction, topScale);
+            float t = math.frac(index * 0.61803398875f); // φ⁻¹ Weyl 수열 → [0,1)
+            return math.lerp(range.x, range.y, t);
         }
 
         // 진행방향(XZ)의 단위 수직벡터. 0 입력은 (1,0) 기준으로 폴백.

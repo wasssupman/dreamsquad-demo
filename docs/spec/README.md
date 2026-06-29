@@ -124,7 +124,7 @@ code + git history        구현 상세
 
 스폰 위치 개선(완료 2026-06-29, units 0~4) 후 남은 항목.
 
-- **코너 lane-centering** → `docs/spec/movement-lane-centering/` (초안, 2026-06-29 분리). 코너에서 유닛이 셀 엣지(±0.49)에 얼어붙는 것 복원. flow 에 중심 복원력 없음이 원인.
+- **적 타일 이동 무결성** → `docs/spec/enemy-tile-movement-integrity/` (진행 중, 2026-06-29 — `movement-lane-centering` 리프레임). 결함 3종: 코너 엣지-허깅 복원(target=0+deadband) · aggro 타일 제약 · 결정론 스폰. 레인 대형 시스템(II)은 후속 후보로 분리.
 - **Quad 폴백 visualOffset 배선** [S] · Spine 없는 적의 `QuadUnitView` 경로에 `AttackUnitData.visualOffset` 전달. 현재 미배선(적=Spine 라 무영향).
 - **유닛 간 separation/boid** [M] · 겹침 동적 해소(스폰 분산과 별개로 행진 중 밀집 완화).
 - **블록 시 우회 재라우팅** [M] · 복도 차단 시 `BuildFlowField` rebuild 트리거(walk 마스크에 blockedCells 반영). flow field 유지 결론(유닛별 BFS 아님). 이동 아키텍처 별도 스펙.

@@ -4,7 +4,7 @@ using Wassup.Battle.Movement;
 
 namespace Wassup.Tests.EditMode
 {
-    // enemy-spawn-positioning — 스폰 측면 분산(중앙 ± 연속 랜덤) 순수 수학 회귀.
+    // enemy-spawn-positioning / enemy-tile-movement-integrity u0 — 스폰 측면 분산 순수 수학 회귀(결정론 분율 포함).
     public class SpawnSpreadTests
     {
         private const float Eps = 1e-4f;
@@ -91,6 +91,57 @@ namespace Wassup.Tests.EditMode
             Assert.Less(math.length(new float2(hi.x, hi.z)), 0.5f * tile);
             Assert.Less(math.length(new float2(lo.x, lo.z)), 0.5f * tile);
             Assert.AreEqual(SpawnSpread.MaxHalfFraction, math.abs(hi.z), Eps);
+        }
+
+        // enemy-tile-movement-integrity unit 0 — 결정론 분율 수열 회귀.
+        [Test]
+        public void DeterministicFraction_IsDeterministic_SameIndexSameValue()
+        {
+            for (int i = 0; i < 8; i++)
+                Assert.AreEqual(
+                    SpawnSpread.DeterministicFraction(i, 0.2f, 1f),
+                    SpawnSpread.DeterministicFraction(i, 0.2f, 1f), Eps);
+        }
+
+        [Test]
+        public void DeterministicFraction_WithinRange()
+        {
+            var r = SpawnSpread.FractionRange(0.2f, 1f);
+            for (int i = 0; i < 64; i++)
+            {
+                float f = SpawnSpread.DeterministicFraction(i, 0.2f, 1f);
+                Assert.GreaterOrEqual(f, r.x - Eps);
+                Assert.LessOrEqual(f, r.y + Eps);
+            }
+        }
+
+        [Test]
+        public void DeterministicFraction_RespectsTopScale()
+        {
+            for (int i = 0; i < 64; i++)
+            {
+                float f = SpawnSpread.DeterministicFraction(i, 0.2f, 0.5f);
+                Assert.GreaterOrEqual(f, -0.2f - Eps);   // 하단 −0.2
+                Assert.LessOrEqual(f, 0.1f + Eps);       // 상단 topScale 0.5 → +0.1
+            }
+        }
+
+        [Test]
+        public void DeterministicFraction_ConsecutiveIndices_AreSeparated()
+        {
+            // golden-ratio Weyl: 연속 index 는 같은 분율로 뭉치지 않는다(anti-stack).
+            for (int i = 0; i < 16; i++)
+                Assert.Greater(
+                    math.abs(SpawnSpread.DeterministicFraction(i,     0.2f, 1f)
+                           - SpawnSpread.DeterministicFraction(i + 1, 0.2f, 1f)),
+                    0.05f);
+        }
+
+        [Test]
+        public void DeterministicFraction_Index0_IsRangeMin()
+        {
+            var r = SpawnSpread.FractionRange(0.2f, 1f);
+            Assert.AreEqual(r.x, SpawnSpread.DeterministicFraction(0, 0.2f, 1f), Eps);  // frac(0)=0 → min
         }
     }
 }

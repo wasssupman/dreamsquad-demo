@@ -34,7 +34,7 @@
 - `spawnSpreadFraction`/`topScale` 은 BattleScene serialized(C# default 0.2/0.5, 씬 미저장). 튜닝은 사용자 영역.
 
 ## Follow-up
-- **코너 lane-centering** → `docs/spec/movement-lane-centering/` (2026-06-29 분리). 코너에서 유닛이 셀
+- **코너 lane-centering** → `docs/spec/enemy-tile-movement-integrity/` (2026-06-29 분리). 코너에서 유닛이 셀
   엣지(±0.49)에 얼어붙어 경로 밖처럼 보임 — flow 에 중심 복원력 없음. ecs-reviewer + 설계 비평 결과
   **본 spec 스코프 밖 + 메커니즘 재설계 필요**로 판정 → 별도 스펙. 진단/측정은 `4_continuous_spread.md` 완료 라인.
 - Quad 폴백 `visualOffset` 미배선(적=Spine 라 무영향).
