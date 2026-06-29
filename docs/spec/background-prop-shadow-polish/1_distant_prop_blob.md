@@ -20,4 +20,4 @@
 - compile 0. Play → 외곽 링 원경 프랍 발밑에 블롭 그림자가 보인다(근경과 일관).
 - 사용자 육안 통과. 통과 시 확인 일자 + 커밋 해시 추가.
 
-확인: 2026-06-29 사용자 육안 통과. 링 나무 94/94 블롭 부착 확인. 스크린샷 `Assets/Screenshots/prop_shadow_far_forest.png`.
+확인: 2026-06-29 사용자 육안 통과 · 커밋 ee10b86. 링 나무 94/94 블롭 부착 확인. 스크린샷 `Assets/Screenshots/prop_shadow_far_forest.png`.

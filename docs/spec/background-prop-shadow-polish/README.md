@@ -1,6 +1,6 @@
 # Background Prop Shadow Polish
 
-> 상태: 완료 2026-06-29 (units 0~2, 사용자 육안 통과)
+> 상태: 완료 2026-06-29 (units 0~2, 사용자 육안 통과 · 커밋 ee10b86)
 > 전제: `tilted-billboard` unit 3 (blob shadow), `tilemap-world-surround` unit 4 (원경 링 프랍), `tilemap-real-shadows`.
 > 대상: `Assets/_Project/Scenes/BattleScene.unity` (Tilemap, URP). Legacy3D 불변.
 
