@@ -3,7 +3,7 @@
 ## 목적
 
 외곽 터레인 링 셀에 원경 프랍을 저밀도로 흩뿌려 보드를 자연 환경(숲/바위 경계)으로 감싼다.
-원경이라 그림자 OFF, 작은 프랍(꽃)은 제외.
+작은 프랍(꽃)은 제외. (그림자: 최초엔 OFF 였으나 `background-prop-shadow-polish` unit 1 에서 근경과 동일 접지 블롭 ON 으로 갱신.)
 
 ## 변경 대상
 
@@ -19,7 +19,7 @@
 - 셀마다 `density * falloff` 확률로 배치. `falloff = clamp01(1 - ringPropFalloffPerCell*(ringDist-1))` → 바깥일수록 성김.
 - 가중치 선택은 **`RingWeight(p)` 누적 롤**: `distantRingWeight>=0` 이면 그것, 아니면 `placementWeight`.
   → **보드 위 분포는 그대로 두고 링에서만 별도 분포**(침엽수림처럼 나무 압도·돌 가끔). **`excludeFromDistantRing` 프랍(꽃)은 제외**.
-- 위치는 `CellCenterToWorld`(grid 권위). 그림자: BattleBridge 가 `castShadows=false` 로 호출(원경 OFF). 시드 결정적.
+- 위치는 `CellCenterToWorld`(grid 권위). 시드 결정적. (그림자: 현 구현은 별도 castShadows 인자 없이 `AttachPropBlob` 로 근경과 동일 블롭 부착 — `background-prop-shadow-polish` unit 1.)
 - 시즌 백드롭 EdgeProps(12 앵커)와 공존(별개 레이어).
 
 ## 데이터 (forest 적용값 — 침엽수림 backdrop)

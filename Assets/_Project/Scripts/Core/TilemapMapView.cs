@@ -317,7 +317,8 @@ namespace Wassup.Core
 
         // tilemap-world-surround unit 4 — 외곽 터레인 링 셀에 원경 프랍을 저밀도로 흩뿌린다.
         // VisualPlan(sim 그리드) 밖이라 BackgroundPropPlacer 를 못 쓰는 별도 경량 scatter.
-        // 바깥쪽 falloff 로 밀도 감소(가장자리 페이드), 원경이라 그림자 OFF 기본, 꽃 등은 제외.
+        // 바깥쪽 falloff 로 밀도 감소(가장자리 페이드), 꽃 등은 제외.
+        // background-prop-shadow-polish unit 1 — 원경 프랍도 근경과 동일 접지 블롭 부착(이전엔 그림자 OFF).
         public void InstantiateRingProps(MapThemeData theme, int2 playableSize, int seed, float densityScale = 1f)
         {
             if (_ringPropsRoot != null) { SafeDestroy(_ringPropsRoot.gameObject); _ringPropsRoot = null; }
@@ -370,6 +371,8 @@ namespace Wassup.Core
                 inst.transform.position = CellCenterToWorld(x, y);
                 inst.transform.localScale = Vector3.one * (1f + rng.NextFloat(-prop.scaleJitter, prop.scaleJitter));
                 MapView.DisablePropDebugMarkers(inst);
+                // background-prop-shadow-polish unit 1 — 원경도 근경과 동일 접지 블롭(blob size 는 prop.visualScale 기반 → 작은 원경 프랍은 작은 블롭).
+                AttachPropBlob(inst, prop);
             }
         }
 
