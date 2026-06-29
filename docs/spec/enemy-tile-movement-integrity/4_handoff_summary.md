@@ -8,7 +8,7 @@
 
 ## Implemented (units 0~3)
 - **리프레임**: `movement-lane-centering` 초안 → `enemy-tile-movement-integrity`. "레인 대형 시스템"은 명시적으로 폐기(후속 후보 II). **적 타일 이동 결함 3종 픽스**만.
-- **① 결정론 스폰(unit 0)**: `SpawnSpread.DeterministicFraction`(golden-ratio Weyl) 로 `_spawnSpreadRng` 대체. RNG 0.
+- **① 결정론 스폰(unit 0, rev)**: `SpawnSpread.LaneFraction`(폭 중앙 대칭 이산 N-레인 round-robin, `spawnSubLaneCount` 기본 3) 로 `_spawnSpreadRng` 대체. RNG 0. (초기 golden-ratio 연속 → 사용자 의도대로 이산 N줄로 rev.)
 - **② 코너 복원(unit 1)**: `LateralRecenter`(target=0 + dead-band 0.25·tile, rate 0.4·speed). flow 수직 성분이 밴드 밖일 때만 중심 쪽으로(가장자리까지). 직진 스폰 분산은 밴드 안이라 보존, 코너 엣지-허깅만 교정. zero-flow recovery 스킵, 임펄스 측면성분 보존.
 - **③ aggro 타일 제약(unit 2)**: cell-trim 을 `MovementCellTrim.Apply` 로 추출 → flow·aggro 두 분기 공유. aggro 는 이동목표 변경(goal→guardian)뿐, cell-trim bypass 제거 → walk 타일 위에 머묾. 별도 사거리정지/stuck/return 코드 없음.
 - **핵심 통찰**: 세 문제는 "target 으로의 이동이 유효 타일 경로 위에 머문다"의 단면. aggro-종료 복귀는 **unit 2 가 흡수**(타일 안 벗어났으니 flow 재개 = 복귀). unit 1+2 가 aggro 생애주기 전부 커버.

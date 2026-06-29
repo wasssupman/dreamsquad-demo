@@ -93,55 +93,56 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(SpawnSpread.MaxHalfFraction, math.abs(hi.z), Eps);
         }
 
-        // enemy-tile-movement-integrity unit 0 — 결정론 분율 수열 회귀.
+        // enemy-tile-movement-integrity unit 0(rev) — 이산 N-레인 분율 회귀.
         [Test]
-        public void DeterministicFraction_IsDeterministic_SameIndexSameValue()
+        public void LaneFraction_LaneCount1_AlwaysCenter()
         {
-            for (int i = 0; i < 8; i++)
+            for (int i = 0; i < 5; i++)
+                Assert.AreEqual(0f, SpawnSpread.LaneFraction(i, 1, 0.2f, 1f), Eps);
+        }
+
+        [Test]
+        public void LaneFraction_ThreeLanes_TopScaleOne_Symmetric()
+        {
+            Assert.AreEqual(-0.2f, SpawnSpread.LaneFraction(0, 3, 0.2f, 1f), Eps); // 하
+            Assert.AreEqual( 0.0f, SpawnSpread.LaneFraction(1, 3, 0.2f, 1f), Eps); // 중
+            Assert.AreEqual( 0.2f, SpawnSpread.LaneFraction(2, 3, 0.2f, 1f), Eps); // 상
+        }
+
+        [Test]
+        public void LaneFraction_ThreeLanes_TopScale_CompressesTopOnly()
+        {
+            Assert.AreEqual(-0.2f, SpawnSpread.LaneFraction(0, 3, 0.2f, 0.5f), Eps); // 하 불변
+            Assert.AreEqual( 0.0f, SpawnSpread.LaneFraction(1, 3, 0.2f, 0.5f), Eps); // 중
+            Assert.AreEqual( 0.1f, SpawnSpread.LaneFraction(2, 3, 0.2f, 0.5f), Eps); // 상만 절반
+        }
+
+        [Test]
+        public void LaneFraction_RoundRobin_PeriodicEveryN()
+        {
+            for (int i = 0; i < 6; i++)
                 Assert.AreEqual(
-                    SpawnSpread.DeterministicFraction(i, 0.2f, 1f),
-                    SpawnSpread.DeterministicFraction(i, 0.2f, 1f), Eps);
+                    SpawnSpread.LaneFraction(i, 3, 0.2f, 1f),
+                    SpawnSpread.LaneFraction(i + 3, 3, 0.2f, 1f), Eps);
         }
 
         [Test]
-        public void DeterministicFraction_WithinRange()
+        public void LaneFraction_ConsecutiveIndices_DifferentLanes()
         {
-            var r = SpawnSpread.FractionRange(0.2f, 1f);
-            for (int i = 0; i < 64; i++)
-            {
-                float f = SpawnSpread.DeterministicFraction(i, 0.2f, 1f);
-                Assert.GreaterOrEqual(f, r.x - Eps);
-                Assert.LessOrEqual(f, r.y + Eps);
-            }
+            // round-robin: 연속 스폰은 서로 다른 레인 → 한 점 겹침 회피.
+            for (int i = 0; i < 6; i++)
+                Assert.AreNotEqual(
+                    SpawnSpread.LaneFraction(i,     3, 0.2f, 1f),
+                    SpawnSpread.LaneFraction(i + 1, 3, 0.2f, 1f));
         }
 
         [Test]
-        public void DeterministicFraction_RespectsTopScale()
+        public void LaneFraction_WithinCellInvariant()
         {
-            for (int i = 0; i < 64; i++)
-            {
-                float f = SpawnSpread.DeterministicFraction(i, 0.2f, 0.5f);
-                Assert.GreaterOrEqual(f, -0.2f - Eps);   // 하단 −0.2
-                Assert.LessOrEqual(f, 0.1f + Eps);       // 상단 topScale 0.5 → +0.1
-            }
-        }
-
-        [Test]
-        public void DeterministicFraction_ConsecutiveIndices_AreSeparated()
-        {
-            // golden-ratio Weyl: 연속 index 는 같은 분율로 뭉치지 않는다(anti-stack).
-            for (int i = 0; i < 16; i++)
-                Assert.Greater(
-                    math.abs(SpawnSpread.DeterministicFraction(i,     0.2f, 1f)
-                           - SpawnSpread.DeterministicFraction(i + 1, 0.2f, 1f)),
-                    0.05f);
-        }
-
-        [Test]
-        public void DeterministicFraction_Index0_IsRangeMin()
-        {
-            var r = SpawnSpread.FractionRange(0.2f, 1f);
-            Assert.AreEqual(r.x, SpawnSpread.DeterministicFraction(0, 0.2f, 1f), Eps);  // frac(0)=0 → min
+            // spreadFraction 가 범위를 넘어도 |분율| < 0.5(셀 불변식).
+            for (int n = 1; n <= 7; n++)
+                for (int i = 0; i < n; i++)
+                    Assert.Less(math.abs(SpawnSpread.LaneFraction(i, n, 0.9f, 1f)), 0.5f);
         }
     }
 }

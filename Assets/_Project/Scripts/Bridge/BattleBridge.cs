@@ -58,12 +58,14 @@ namespace Wassup.Bridge
         [SerializeField] private float spineDefenderYOffset = 0f;
 
         [Header("Spawn Spread")]
-        [Tooltip("스폰 시 적을 이동타일 폭 안에서 중앙 기준 ± 연속 랜덤 오프셋으로 분산(겹침 방지). 끄면 셀 중심 한 점.")]
+        [Tooltip("스폰 시 적을 이동타일 폭 안에서 중앙 기준 대칭 이산 N-레인 오프셋으로 분산(겹침 방지). 끄면 셀 중심 한 점.")]
         [SerializeField] private bool spawnSpreadEnabled = true;
-        [Tooltip("타일폭 대비 분산 절반폭(±범위). 0.49 미만이라 유닛이 스폰 셀을 벗어나지 않음.")]
+        [Tooltip("타일폭 대비 분산 절반폭(바깥 레인 ±범위). 0.49 미만이라 유닛이 스폰 셀을 벗어나지 않음.")]
         [SerializeField, Range(0f, 0.49f)] private float spawnSpreadFraction = 0.2f;
         [Tooltip("상단(뒤쪽) 범위 압축 비율. 1=대칭, <1=상단만 좁혀 낮춤(키 큰 캐릭터 보정).")]
         [SerializeField, Range(0f, 1f)] private float spawnSpreadTopScale = 0.5f;
+        [Tooltip("측면 레인 수(폭 중앙 기준 대칭). 1=중앙 한 줄, 3=중/상/하. 스폰 순서대로 round-robin 배정.")]
+        [SerializeField, Range(1, 7)] private int spawnSubLaneCount = 3;
 
         [Header("Character Billboard")]
         // Spine units have no shader billboard (unlike the Quad fallback that uses
@@ -523,7 +525,7 @@ namespace Wassup.Bridge
             }
         }
 
-        // enemy-spawn-positioning / tile-movement-integrity u0 — 스폰 셀 flow 수직으로 중앙 ± 결정론 오프셋 계산.
+        // enemy-spawn-positioning / tile-movement-integrity u0(rev) — 스폰 셀 flow 수직으로 중앙 기준 이산 N-레인 오프셋 계산.
         private float3 ComputeSpawnLateralOffset(int2 spawnCell)
         {
             if (!spawnSpreadEnabled || spawnSpreadFraction <= 0f) return float3.zero;
@@ -537,9 +539,9 @@ namespace Wassup.Bridge
                 if (idx >= 0 && idx < field.flow.Length) flowDir = field.flow[idx];
             }
 
-            // 중앙 기준 [−fraction, +fraction·topScale] 결정론 분율 (상단은 topScale 로 좁힘).
-            float frac = Wassup.Battle.Movement.SpawnSpread.DeterministicFraction(
-                _spawnSpreadCounter++, spawnSpreadFraction, spawnSpreadTopScale);
+            // 폭 중앙 기준 대칭 이산 N-레인 분율 (상단은 topScale 로 좁힘). 스폰 순서 round-robin.
+            float frac = Wassup.Battle.Movement.SpawnSpread.LaneFraction(
+                _spawnSpreadCounter++, spawnSubLaneCount, spawnSpreadFraction, spawnSpreadTopScale);
             return Wassup.Battle.Movement.SpawnSpread.LateralOffset(frac, tileSize, flowDir);
         }
 

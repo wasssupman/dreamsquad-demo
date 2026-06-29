@@ -20,14 +20,14 @@
 - **① tile-invariant**: aggro 의 본질은 **이동목표 변경뿐**(goal→guardian). 별도 self-walk 로코모션을 두지 말고 **기존 cell-trim 을 그대로 통과**시켜 walk 타일 위에 머물게 한다(현 `continue` bypass 제거). non-walk 셀은 cell-trim 이 이미 벽으로 취급 → 적은 guardian 인접 walk 타일 경계에 정착, 공격은 기존 `AttackSystem`(sticky-target)이 사거리에서 처리. **별도 사거리정지/stuck 코드 불필요.** guardian 사망 시 target 이 goal 로 되돌아가 현재 walk 셀에서 flow 재개 → **별도 return 로직 불필요**(적이 경로를 안 벗어났으니 복귀할 게 없음). 즉 unit 1+2 가 aggro 생애주기(시작/중/종료)를 전부 커버한다. (넉백 impulse 는 이미 cell-trim 제약 → 무변경. 토네이도/portal 제외.)
 - **② 코너 복원 = `target=0 + dead-band`**: `dead-band ≈ 스폰 분산폭(≈0.2·tile)`. 직진 분산은 밴드 안이라 **불변(보존)**, 코너 드리프트(밴드 밖, 0.29~0.49)만 밴드로 복원. **유닛별 target 아님**(레인 없음 → 중앙 0 이 유일 target).
 - **rate 속도비례**: `rate = k·follow.speed` (k≈0.4). 상수 rate 금지.
-- **③ 결정론 스폰 분산**: RNG → 저불일치 결정론 수열(golden-ratio Weyl). `|offset| < 0.5·tile` 불변식 유지.
+- **③ 결정론 스폰 분산**: RNG → **결정론 이산 N-레인 round-robin**(폭 중앙 대칭, rev). `|offset| < 0.5·tile` 불변식 유지. 분배 로직은 동일, granularity·순서만 이산·주기.
 - **맥락 경계**: Movement 맥락만 `LocalTransform` 쓰기. 스폰 오프셋 세팅은 `BattleBridge` gateway.
 
 ## 작업 단위
 
 | # | 작업 | 문서 | 목적 |
 |---|---|---|---|
-| 0 | 결정론 스폰 분산 (③) | `0_deterministic_spawn_spread.md` | `SpawnSpread` RNG → 결정론 수열. EditMode |
+| 0 | 결정론 스폰 분산 (③) | `0_deterministic_spawn_spread.md` | `SpawnSpread` RNG → 이산 N-레인 round-robin(rev). EditMode |
 | 1 | 코너 복원 (②) | `1_corner_recenter.md` | 순수 헬퍼 + `MovementSystem` flow branch target=0+deadband. EditMode |
 | 2 | aggro 타일 제약 (①) | `2_aggro_tile_constrain.md` | cell-trim 을 헬퍼로 추출 → aggro 분기에서도 통과(`continue` bypass 제거). 이동목표만 guardian. 별도 사거리정지/stuck 코드 없음. EditMode+Play |
 | 3 | 통합 검증 | `3_verify.md` | Play **동적 검증**: 타일이탈 0 / 코너 비엣지 / 결정론 / **aggro 시작→guardian 접근(타일 위)** / **aggro 종료→goal 경로 복귀(타일 위)** |

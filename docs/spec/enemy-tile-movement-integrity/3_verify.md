@@ -16,7 +16,7 @@ running Play 에서 `execute_code` 로 적 `LocalTransform` + `FlowFieldSingleto
 | **aggro 시작 → 타일 유지** | live ✅ | 진짜 aggro 적(idx88)이 walk 셀 (10,1) 경계(perp 0.499)에 정착, guardian Place 타일 **미진입** — unit 2 정상 |
 | **코너 비엣지** | live ✅ | 코너 4셀 맵, 적 perp **최대 0.250**(=deadband), 엣지-허깅(0.29~0.49) 0건 (unit 1) |
 | **aggro 종료 → goal 복귀** | compositional ✅ | 별도 라이브 데모 미실행. 논리: aggro 가 적을 walk 타일에 유지(✅ live) + `Aggroed` 제거 시 동일 flow 분기가 인계(11 비-aggro 적으로 ✅ live) → 복귀 = 검증된 두 사실의 합성. 별도 return 코드 없음 |
-| **결정론** | structural ✅ | unit 0 EditMode(`DeterministicFraction` 결정론 5종) + 이동/스폰 경로 RNG 잔존 0 |
+| **결정론** | structural ✅ | unit 0 EditMode(`LaneFraction` 이산 N-레인 6종) + 이동/스폰 경로 RNG 잔존 0 |
 
 세 결함의 핵심(타일 유지·코너·결정론)은 라이브/구조적으로 충족. aggro-종료 복귀만 합성 논거(논리 airtight).
 
