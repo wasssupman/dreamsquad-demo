@@ -58,7 +58,7 @@ SpriteRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 9dfc825aed78fcd4ba02077103263b40, type: 2}
+  - {fileID: 2100000, guid: c331bb24ceea040f0a5c66257d8e02b5, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -134,7 +134,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 0d4932feaf6d4c9a9b8b441dbfaea12a, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Presentation.PropBillboard
   data: {fileID: 11400000, guid: df59eb8605254473691f0ff0fb6323f4, type: 2}
   visualRoot: {fileID: 6239862709761659541}
