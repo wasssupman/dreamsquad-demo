@@ -4,8 +4,10 @@ using Unity.Core;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
+using Wassup.Battle.Combat;
 using Wassup.Battle.Effects;
 using Wassup.Battle.Movement;
+using Wassup.Data;
 
 namespace Wassup.Tests.EditMode
 {
@@ -68,6 +70,15 @@ namespace Wassup.Tests.EditMode
             var e = _em.CreateEntity();
             _em.AddComponentData(e, LocalTransform.FromPosition(pos));
             _em.AddComponentData(e, new PathFollowState { speed = speed });
+            return e;
+        }
+
+        // enemy-ai-fsm Unit 2 — FSM 상태를 직접 부여한 적(EnemyAiStateSystem 없이 MovementSystem 단독 검증).
+        private Entity CreateEnemy(float3 pos, float speed, AiState state, EngageMovement engage = EngageMovement.Halt)
+        {
+            var e = CreateUnit(pos, speed);
+            _em.AddComponentData(e, new EnemyAiState { value = state });
+            _em.AddComponentData(e, new EnemyBehavior { engageMovement = engage });
             return e;
         }
 
@@ -140,26 +151,46 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(1f, pos.x, 1e-4f, "MoveSpeedMul 0.5 × speed 2 × 1s = 1.0");
         }
 
+        // enemy-ai-fsm Unit 2 — 이동/정지를 EnemyAiState + engageMovement 로 결정(레거시 movePause 대체).
+        // Advance↔Halt 대비가 분기를 실제로 구분함을 보장.
         [Test]
-        public void MovementPauseRequest_Adds_Pause_And_Blocks_Movement_Until_Expired()
+        public void Marching_MovesAlongFlow()
         {
             CreateLinearFlowField();
-            var e = CreateUnit(new float3(0f, 0f, 0f), speed: 2f);
+            var e = CreateEnemy(new float3(0f, 0f, 0f), speed: 2f, AiState.Marching);
+            Tick(1f);
+            Assert.AreEqual(2f, _em.GetComponentData<LocalTransform>(e).Position.x, 1e-4f,
+                "Marching → flow 이동");
+        }
 
-            _pauseQueue.Enqueue(new MovementPauseRequest { target = e, duration = 1f });
-            Tick(0.5f);
+        [Test]
+        public void Engaging_Halt_StopsMovement()
+        {
+            CreateLinearFlowField();
+            var e = CreateEnemy(new float3(0f, 0f, 0f), speed: 2f, AiState.Engaging, EngageMovement.Halt);
+            Tick(1f);
+            Assert.AreEqual(0f, _em.GetComponentData<LocalTransform>(e).Position.x, 1e-4f,
+                "Engaging-Halt → 정지");
+        }
 
-            var pos = _em.GetComponentData<LocalTransform>(e).Position;
-            Assert.AreEqual(0f, pos.x, 1e-4f, "pause request should stop movement while remaining > 0");
-            Assert.IsTrue(_em.HasComponent<EnemyAttackMovePause>(e));
+        [Test]
+        public void Engaging_Advance_MovesAlongFlow()
+        {
+            CreateLinearFlowField();
+            var e = CreateEnemy(new float3(0f, 0f, 0f), speed: 2f, AiState.Engaging, EngageMovement.Advance);
+            Tick(1f);
+            Assert.AreEqual(2f, _em.GetComponentData<LocalTransform>(e).Position.x, 1e-4f,
+                "Engaging-Advance → 이동하며 공격");
+        }
 
-            Tick(0.5f);
-            pos = _em.GetComponentData<LocalTransform>(e).Position;
-            Assert.AreEqual(0f, pos.x, 1e-4f, "the frame that expires pause is still consumed by pause countdown");
-
-            Tick(0.5f);
-            pos = _em.GetComponentData<LocalTransform>(e).Position;
-            Assert.AreEqual(1f, pos.x, 1e-4f, "movement resumes after pause expires");
+        [Test]
+        public void Standoff_StopsMovement()
+        {
+            CreateLinearFlowField();
+            var e = CreateEnemy(new float3(0f, 0f, 0f), speed: 2f, AiState.Standoff, EngageMovement.Advance);
+            Tick(1f);
+            Assert.AreEqual(0f, _em.GetComponentData<LocalTransform>(e).Position.x, 1e-4f,
+                "Standoff → 정지(engageMovement 무관)");
         }
     }
 }

@@ -3,6 +3,7 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
+using Wassup.Battle.Combat;
 using Wassup.Battle.Effects;
 
 namespace Wassup.Battle.Movement
@@ -27,7 +28,6 @@ namespace Wassup.Battle.Movement
             var field = SystemAPI.GetSingleton<FlowFieldSingleton>();
             var ccLookup = SystemAPI.GetBufferLookup<CcEffect>(isReadOnly: true);
             var modifierStatsLookup = SystemAPI.GetComponentLookup<ModifierStats>(isReadOnly: true);
-            var attackPauseLookup = SystemAPI.GetComponentLookup<EnemyAttackMovePause>(isReadOnly: false);
             var hasObstacles = SystemAPI.TryGetSingleton<ObstacleSingleton>(out var obstacleSingleton);
 
             var portalQuery = SystemAPI.QueryBuilder().WithAll<PortalLink>().Build();
@@ -40,8 +40,9 @@ namespace Wassup.Battle.Movement
             // can self-walk toward their anchor. Separate RO query avoids aliasing the
             // RW LocalTransform in the movement loop below.
             var aggroLookup = SystemAPI.GetComponentLookup<Aggroed>(isReadOnly: true);
-            // aggro-standoff — 적의 공격 사거리(Combat AttackState) RO 읽기. 도달 조건 판정용.
-            var attackStateLookup = SystemAPI.GetComponentLookup<Wassup.Battle.Combat.AttackState>(isReadOnly: true);
+            // enemy-ai-fsm Unit 2 — EnemyAiState(Combat) RO 소비. 이동/정지를 상태로 결정.
+            var aiStateLookup = SystemAPI.GetComponentLookup<EnemyAiState>(isReadOnly: true);
+            var behaviorLookup = SystemAPI.GetComponentLookup<EnemyBehavior>(isReadOnly: true);
             var guardianPos = new NativeHashMap<Entity, float3>(16, Allocator.Temp);
             foreach (var (gTransform, gEntity) in
                      SystemAPI.Query<RefRO<LocalTransform>>().WithAll<AggroProvider>().WithEntityAccess())
@@ -54,52 +55,32 @@ namespace Wassup.Battle.Movement
             {
                 float3 current = transform.ValueRO.Position;
 
-                // aggro-targeting / enemy-tile-movement-integrity unit 2 — aggro 의 본질은
-                // 이동목표 변경(goal→guardian)뿐. 별도 로코모션이 아니라, guardian 방향 step 을
-                // 다른 이동과 같은 cell-trim 에 통과시켜 walk 타일 위에 머물게 한다. non-walk
-                // (guardian 의 Place 타일 포함)는 cell-trim 이 벽으로 막아 적은 인접 walk 타일
-                // 경계에 정착, 공격은 AttackSystem(sticky-target)이 사거리에서 처리.
-                // Ignores EnemyAttackMovePause so it keeps closing on the anchor.
-                if (aggroLookup.HasComponent(entity))
+                // enemy-ai-fsm Unit 2 — 이동을 EnemyAiState 로 결정(상태는 EnemyAiStateSystem 이 Movement 전에 set).
+                //  Standoff = 정지(가디언 사거리 도달, 공격은 AttackSystem). Chasing = 가디언 anchor 로 self-walk.
+                //  aggro 의 본질은 이동목표 변경(goal→guardian)뿐 — guardian step 을 다른 이동과 같은 cell-trim 에
+                //  통과시켜 walk 타일 위에 머물게 한다. 도달 여부 판정은 더 이상 여기서 안 하고 상태가 대신한다.
+                AiState ai = aiStateLookup.HasComponent(entity) ? aiStateLookup[entity].value : AiState.Marching;
+
+                if (ai == AiState.Standoff) continue; // 정지
+
+                if (ai == AiState.Chasing && aggroLookup.HasComponent(entity))
                 {
                     var guardian = aggroLookup[entity].guardian;
                     if (guardianPos.TryGetValue(guardian, out var gpos))
                     {
                         float3 to = gpos - current; to.y = 0f;
                         float dist = math.length(to);
-                        // aggro-standoff (M1) — 도달 판정을 AttackSystem 발사와 동일한 tile-Chebyshev 사거리로 통일.
-                        // tileDist ≤ RangeToTiles(range) 면 정지(= 발사 가능). Euclidean dist 와 발사 metric 불일치로
-                        // range<0.5·tile 시 "정지하나 발사 못함" soft stall 이던 것 제거 → 정지⟺발사가능 일관.
                         int2 aggroCell = GridMath.WorldToCell(current, field.tileSize, field.gridSize, origin: field.origin);
-                        int2 gCell = GridMath.WorldToCell(gpos, field.tileSize, field.gridSize, origin: field.origin);
-                        int tileDist = math.max(math.abs(aggroCell.x - gCell.x), math.abs(aggroCell.y - gCell.y));
-                        int tileRange = attackStateLookup.HasComponent(entity)
-                            ? GridMath.RangeToTiles(attackStateLookup[entity].range) : 0;
-                        if (tileDist > tileRange)
-                        {
-                            float aggroSpeedMul = modifierStatsLookup.HasComponent(entity)
-                                ? modifierStatsLookup[entity].moveSpeedMul : 1f;
-                            float step = follow.ValueRO.speed * aggroSpeedMul * dt;
-                            float3 desiredAggro = (step >= dist)
-                                ? new float3(gpos.x, current.y, gpos.z)
-                                : current + math.normalize(to) * step;
-                            transform.ValueRW.Position = MovementCellTrim.Apply(
-                                desiredAggro, aggroCell, in field, hasObstacles, in obstacleSingleton);
-                        }
-                        continue; // skip flow/portal/tornado/goal/pause while aggroed
+                        float aggroSpeedMul = modifierStatsLookup.HasComponent(entity)
+                            ? modifierStatsLookup[entity].moveSpeedMul : 1f;
+                        float step = follow.ValueRO.speed * aggroSpeedMul * dt;
+                        float3 desiredAggro = (step >= dist)
+                            ? new float3(gpos.x, current.y, gpos.z)
+                            : current + math.normalize(to) * step;
+                        transform.ValueRW.Position = MovementCellTrim.Apply(
+                            desiredAggro, aggroCell, in field, hasObstacles, in obstacleSingleton);
                     }
-                    // guardian missing (AggroAssignmentSystem should have released) → fall through
-                }
-
-                if (attackPauseLookup.HasComponent(entity))
-                {
-                    var pause = attackPauseLookup[entity];
-                    if (pause.remaining > 0f)
-                    {
-                        pause.remaining = math.max(0f, pause.remaining - dt);
-                        attackPauseLookup[entity] = pause;
-                        continue;
-                    }
+                    continue; // chasing: skip flow/portal/tornado/goal (guardian 없으면 정지)
                 }
 
                 // 1. Portal entry: 내부에 있으면 exit 으로 텔레포트. exitWaypointIndex 제거됨 —
@@ -145,6 +126,14 @@ namespace Wassup.Battle.Movement
                     break;
                 }
                 if (pulled) continue;
+
+                // enemy-ai-fsm Unit 2 — Engaging-Halt 면 정지(공격은 AttackSystem), Engaging-Advance·Marching 은 flow 이동.
+                if (ai == AiState.Engaging)
+                {
+                    bool advance = behaviorLookup.HasComponent(entity)
+                        && behaviorLookup[entity].engageMovement == Wassup.Data.EngageMovement.Advance;
+                    if (!advance) continue; // Halt → 정지
+                }
 
                 // 4. Flow field step
                 int idx = GridMath.CellIndex(cell, field.gridSize);
