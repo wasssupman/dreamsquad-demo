@@ -136,8 +136,10 @@ namespace Wassup.Battle.Movement
                 // 4. Flow field step
                 int idx = GridMath.CellIndex(cell, field.gridSize);
                 float2 dir = field.flow[idx];
+                bool zeroFlowRecovery = false;
                 if (math.lengthsq(dir) < 1e-6f)
                 {
+                    zeroFlowRecovery = true;
                     // Zero-flow cell: impulse may have pushed entity into an unreachable cell.
                     // Try 4 cardinal neighbors; move toward the one with the smallest finite dist.
                     float2 recovDir = float2.zero;
@@ -173,6 +175,13 @@ namespace Wassup.Battle.Movement
                                                            // and returns zero for <1e-6 magnitude (already guarded above).
                 float3 flowStep = new float3(stepDir.x, 0, stepDir.y) * follow.ValueRO.speed * speedMul * dt;
                 float3 desired = current + flowStep + impulseDisplacement;
+
+                // enemy-tile-movement-integrity unit 1 — 코너 엣지-허깅 측면 복원(target=0 + dead-band).
+                // zero-flow recovery 분기는 스킵(이미 교정 이동 중). 임펄스 측면성분은 이 프레임 보존
+                // (recenter 는 current 기준 standing 오프셋만 당김 → 넉백은 이후 프레임에 점진 복귀).
+                if (!zeroFlowRecovery)
+                    desired += LateralRecenter.Compute(current, cell, stepDir,
+                        follow.ValueRO.speed * speedMul, dt, field.tileSize, field.origin);
 
                 // Cell-trim (option B): prevent impulse from pushing into wall or obstacle cells.
                 int2 targetCell = GridMath.WorldToCell(desired, field.tileSize, field.gridSize, origin: field.origin);
