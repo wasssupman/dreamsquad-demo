@@ -396,10 +396,10 @@ namespace Wassup.Core
                 instance.transform,
                 BattleBridge.BlobShadowSprite,
                 BattleBridge.BlobShadowSize * Mathf.Max(0.01f, prop.visualScale),
-                BattleBridge.BlobShadowFootprint,
                 BattleBridge.BlobShadowColor,
                 BattleBridge.BlobShadowGroundY,
-                BoardSortOrder.ShadowOrder);
+                BoardSortOrder.ShadowOrder,
+                live: false); // 프랍은 정적 — 스폰 시 1회 세팅
         }
 
         private static void SafeDestroy(Object obj)

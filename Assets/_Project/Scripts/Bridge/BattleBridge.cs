@@ -102,8 +102,8 @@ namespace Wassup.Bridge
         [SerializeField] private float propDistanceTiltMax = 62f;
         [Header("Blob shadow (tilted-billboard unit 3) — Tilemap 모드 접지 그림자")]
         [SerializeField] private Sprite blobShadowSprite;
+        [Tooltip("블롭 월드 지름의 1타일 기준 배율(원형). 프랍별 추가 배율은 PropData.visualScale.")]
         [SerializeField] private float blobShadowSize = 1f;
-        [SerializeField] private Vector2 blobShadowFootprint = new Vector2(1.35f, 0.95f);
         [SerializeField] private Color blobShadowColor = new Color(0f, 0f, 0f, 0.45f);
         [SerializeField] private float blobShadowGroundY = 0.216f; // blob 을 발 평면에서 ~5px(@1080) 띄워 접지점 가독.
         [Tooltip("tilemap-real-shadows — ON=진짜 캐스트 그림자(바닥 receive + 빌보드 cast, 블롭 OFF). 모바일은 강제 블롭.")]
@@ -160,7 +160,6 @@ namespace Wassup.Bridge
         // tilted-billboard unit 3 — 블롭 그림자 데이터(하드코딩 금지: serialized 필드에서 빌드 시 미러).
         public static Sprite BlobShadowSprite { get; private set; }
         public static float BlobShadowSize { get; private set; } = 1f;
-        public static Vector2 BlobShadowFootprint { get; private set; } = new Vector2(1.35f, 0.95f);
         public static Color BlobShadowColor { get; private set; } = new Color(0f, 0f, 0f, 0.45f);
         public static float BlobShadowGroundY { get; private set; } = 0.02f;
         // tilemap-real-shadows — 진짜 그림자 모드(데스크톱) vs 블롭(모바일/OFF). 빌드 시 모바일 강제 OFF.
@@ -690,7 +689,6 @@ namespace Wassup.Bridge
             // tilted-billboard unit 3 — 블롭 그림자 데이터 미러(스폰 시 view 가 읽는다).
             BlobShadowSprite = blobShadowSprite;
             BlobShadowSize = blobShadowSize;
-            BlobShadowFootprint = blobShadowFootprint;
             BlobShadowColor = blobShadowColor;
             BlobShadowGroundY = blobShadowGroundY;
             // 모바일은 shadowmap 비용 회피 위해 강제 블롭. 데스크톱/에디터는 serialized 값.

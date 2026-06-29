@@ -47,8 +47,8 @@ namespace Wassup.Presentation
                     _renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                     if (BattleBridge.BlobShadowSprite != null)
                         BlobShadow.Attach(transform, BattleBridge.BlobShadowSprite, BattleBridge.BlobShadowSize,
-                            BattleBridge.BlobShadowFootprint, BattleBridge.BlobShadowColor,
-                            BattleBridge.BlobShadowGroundY, BoardSortOrder.ShadowOrder);
+                            BattleBridge.BlobShadowColor,
+                            BattleBridge.BlobShadowGroundY, BoardSortOrder.ShadowOrder, live: true); // 유닛은 이동 — 매 프레임 따라감
                 }
             }
             else
