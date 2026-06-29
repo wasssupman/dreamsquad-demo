@@ -21,5 +21,10 @@ namespace Wassup.Battle.Combat
         // Movement-context pause request duration emitted after this attacker fires.
         // MovementSystem owns the EnemyAttackMovePause component write.
         public float movePauseOnAttackSec;
+
+        // attack-hit-delay — 공격 시작 후 타격 판정까지 지연(초). 0 = 즉시(현행). config.
+        public float hitDelaySec;
+        // 진행 중인 타격 지연 남은 시간(초). >0 = 시작됨/타격 전. runtime(Combat 소유).
+        public float hitDelayRemaining;
     }
 }

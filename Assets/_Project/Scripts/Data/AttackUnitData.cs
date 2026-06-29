@@ -37,6 +37,8 @@ namespace Wassup.Data
         public int attackTargetCount = 1;
         public ProjectileData projectile;
         public float movePauseOnAttackSec;
+        // attack-hit-delay — 공격 시작 후 타격 판정까지 지연(초). 0 = 즉시.
+        public float hitDelaySec = 0f;
 
         // aggro-targeting Unit 0 — taunt attack. Used ONLY while aggroed, by
         // enemies that have no normal outputs (Runner/Swift) so they can still

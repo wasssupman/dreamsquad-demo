@@ -17,6 +17,8 @@ namespace Wassup.Data
         public float attackRange = 3f;
         public float attackDamage = 20f;
         public float attackCooldown = 1f; // seconds between attacks
+        // attack-hit-delay — 공격 시작 후 타격 판정까지 지연(초). 0 = 즉시.
+        public float hitDelaySec = 0f;
 
         // Phase 8 §13 follow-up — melee-only AoE cap. Projectile defenders
         // still hit a single target (splash is handled by ProjectileData).

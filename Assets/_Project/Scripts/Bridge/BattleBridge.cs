@@ -2950,6 +2950,7 @@ namespace Wassup.Bridge
                 cooldownRemaining = 0f,
                 attackTargetCount = unitData.attackTargetCount,
                 targetMask = unitData.targetAllies ? (int)Faction.Defender : (int)Faction.Enemy,
+                hitDelaySec = unitData.hitDelaySec,
             });
             // aggro-targeting Unit 4 — expose defender class so enemies can filter/prioritize.
             _em.AddComponentData(entity, new Wassup.Battle.Units.DefenderClassTag { value = unitData.role });
@@ -3580,6 +3581,7 @@ namespace Wassup.Bridge
                     attackTargetCount = Mathf.Max(1, entry.unitType.attackTargetCount),
                     targetMask = (int)(Faction.Defender | Faction.BlockingHazard),
                     movePauseOnAttackSec = entry.unitType.movePauseOnAttackSec,
+                    hitDelaySec = entry.unitType.hitDelaySec,
                 });
                 var outputBuf = _em.AddBuffer<Wassup.Battle.Combat.AttackOutputElement>(entity);
                 foreach (var output in entry.unitType.outputs)
