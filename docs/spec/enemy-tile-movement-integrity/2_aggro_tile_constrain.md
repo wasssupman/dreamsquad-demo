@@ -21,3 +21,8 @@ aggro 의 본질은 **이동목표 변경뿐**(goal→guardian). 현재 aggro �
 - compile 0 에러.
 - EditMode `MovementCellTrimApplyTests` 5종(same-cell 불변 / walk 통과 / wall clamp / OOB clamp / obstacle clamp) + 기존 무회귀 green.
 - Play 동적 검증(unit 3): aggro 시작 시 적이 guardian 으로 **타일 위** 접근(Place/프랍 진입 0), guardian 사망 시 **타일 위로** goal 경로 복귀.
+
+---
+
+확인: 2026-06-29 · 커밋 `cfe04ec` · compile 0 · EditMode 25/25(신규 cell-trim Apply 4종).
+flow 분기 cell-trim 은 인라인→`Apply` 로 **동작 동일**(추출만). aggro 분기는 cell-trim bypass 제거 = 유일한 동작 변경. **aggro 의 실제 거동(타일 유지·공격·복귀)은 unit 3 Play 동적 검증에서 확인** 예정.
