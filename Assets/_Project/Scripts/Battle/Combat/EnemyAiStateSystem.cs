@@ -1,0 +1,154 @@
+using Unity.Burst;
+using Unity.Collections;
+using Unity.Entities;
+using Unity.Mathematics;
+using Unity.Transforms;
+using Wassup.Battle.Effects;
+using Wassup.Battle.Movement;
+using Wassup.Battle.Units;
+using Wassup.Data;
+
+namespace Wassup.Battle.Combat
+{
+    // enemy-ai-fsm Unit 1 — 적 FSM 전이 평가. Combat 소유, EnemyAiState 의 유일한 writer.
+    // 전이 트리거(타겟·사거리·aggro)를 평가해 매 틱 상태를 set. Movement/Attack 은 RO 소비.
+    [BurstCompile]
+    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateAfter(typeof(TauntAttackGrantSystem))]
+    [UpdateBefore(typeof(MovementSystem))]
+    public partial struct EnemyAiStateSystem : ISystem
+    {
+        [BurstCompile]
+        public void OnCreate(ref SystemState state)
+        {
+            state.RequireForUpdate<EnemyAiState>();
+        }
+
+        [BurstCompile]
+        public void OnUpdate(ref SystemState state)
+        {
+            bool hasFlowField = SystemAPI.TryGetSingleton<FlowFieldSingleton>(out var flowField);
+            float tileSize = hasFlowField ? flowField.tileSize : 1f;
+            int2 gridSize = hasFlowField ? flowField.gridSize : new int2(128, 128);
+            float3 ffOrigin = hasFlowField ? flowField.origin : float3.zero;
+
+            // 타겟(디펜더) 후보 스냅샷 — AttackSystem 과 동일 후보 풀.
+            var candQuery = SystemAPI.QueryBuilder()
+                .WithAll<FactionTag, Health, LocalTransform>()
+                .WithNone<PendingDeployment, DeadTag>()
+                .Build();
+            var candEntities = candQuery.ToEntityArray(Allocator.Temp);
+            var candTransforms = candQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
+            var candFactions = candQuery.ToComponentDataArray<FactionTag>(Allocator.Temp);
+
+            var attackLookup = SystemAPI.GetComponentLookup<AttackState>(true);
+            var aggroLookup = SystemAPI.GetComponentLookup<Aggroed>(true);
+            var transformLookup = SystemAPI.GetComponentLookup<LocalTransform>(true);
+            var classLookup = SystemAPI.GetComponentLookup<DefenderClassTag>(true);
+            var healthLookup = SystemAPI.GetComponentLookup<Health>(true);
+            var deadLookup = SystemAPI.GetComponentLookup<DeadTag>(true);
+            var focusLookup = SystemAPI.GetComponentLookup<FocusTarget>(true);
+            var filterLookup = SystemAPI.GetComponentLookup<EnemyTargetFilter>(true);
+            var behaviorLookup = SystemAPI.GetComponentLookup<EnemyBehavior>(true);
+
+            foreach (var (aiState, transform, enemyEntity) in
+                     SystemAPI.Query<RefRW<EnemyAiState>, RefRO<LocalTransform>>().WithEntityAccess())
+            {
+                float3 atkPos = transform.ValueRO.Position;
+                int2 atkCell = GridMath.WorldToCell(atkPos, tileSize, gridSize, origin: ffOrigin);
+                bool hasAttack = attackLookup.HasComponent(enemyEntity);
+                int tileRange = hasAttack ? GridMath.RangeToTiles(attackLookup[enemyEntity].range) : 0;
+                int mask = hasAttack ? attackLookup[enemyEntity].targetMask : 0;
+
+                bool aggroed = aggroLookup.HasComponent(enemyEntity);
+                bool guardianInRange = false;
+                bool hasFireTarget = false;
+
+                if (aggroed)
+                {
+                    // 가디언 사거리 판정엔 AttackState.range 필요. 없으면 Chasing 고착(M5).
+                    if (hasAttack)
+                    {
+                        var g = aggroLookup[enemyEntity].guardian;
+                        if (g != Entity.Null && transformLookup.HasComponent(g))
+                        {
+                            int2 gCell = GridMath.WorldToCell(transformLookup[g].Position, tileSize, gridSize, origin: ffOrigin);
+                            int gDist = math.max(math.abs(gCell.x - atkCell.x), math.abs(gCell.y - atkCell.y));
+                            guardianInRange = gDist <= tileRange;
+                        }
+                    }
+                }
+                else if (hasAttack)
+                {
+                    hasFireTarget = HasFireTarget(enemyEntity, atkCell, tileRange, mask,
+                        candEntities, candTransforms, candFactions, tileSize, gridSize, ffOrigin,
+                        classLookup, transformLookup, healthLookup, deadLookup, focusLookup, filterLookup, behaviorLookup);
+                }
+
+                aiState.ValueRW.value = Evaluate(aggroed, guardianInRange, hasFireTarget);
+            }
+
+            candEntities.Dispose();
+            candTransforms.Dispose();
+            candFactions.Dispose();
+        }
+
+        // 순수 전이 함수. aggro 우선, 비-aggro 는 "AttackSystem 이 fire 할 타겟 존재" 로 Engaging/Marching.
+        public static AiState Evaluate(bool aggroed, bool guardianInRange, bool hasFireTarget)
+        {
+            if (aggroed) return guardianInRange ? AiState.Standoff : AiState.Chasing;
+            return hasFireTarget ? AiState.Engaging : AiState.Marching;
+        }
+
+        // ⚠ AttackSystem fire 조건 미러 (AttackSystem.cs:131-189). 타겟 선정 로직 변경 시 동기화 필요.
+        // FocusUntilDead 락이 걸린 적은 락 타겟이 사거리 내일 때만 fire → 그때만 Engaging(데드락 방지).
+        static bool HasFireTarget(
+            Entity attacker, int2 atkCell, int tileRange, int mask,
+            in NativeArray<Entity> candEntities,
+            in NativeArray<LocalTransform> candTransforms,
+            in NativeArray<FactionTag> candFactions,
+            float tileSize, int2 gridSize, float3 ffOrigin,
+            in ComponentLookup<DefenderClassTag> classLookup,
+            in ComponentLookup<LocalTransform> transformLookup,
+            in ComponentLookup<Health> healthLookup,
+            in ComponentLookup<DeadTag> deadLookup,
+            in ComponentLookup<FocusTarget> focusLookup,
+            in ComponentLookup<EnemyTargetFilter> filterLookup,
+            in ComponentLookup<EnemyBehavior> behaviorLookup)
+        {
+            // FocusUntilDead 락 미러: 락 타겟만 fire 가능.
+            if (behaviorLookup.HasComponent(attacker)
+                && behaviorLookup[attacker].targetMode == EnemyTargetMode.FocusUntilDead
+                && focusLookup.HasComponent(attacker))
+            {
+                Entity cur = focusLookup[attacker].current;
+                bool curValid = cur != Entity.Null
+                    && healthLookup.HasComponent(cur) && healthLookup[cur].value > 0f
+                    && !deadLookup.HasComponent(cur);
+                if (curValid)
+                {
+                    if (!transformLookup.HasComponent(cur)) return false;
+                    int2 cCell = GridMath.WorldToCell(transformLookup[cur].Position, tileSize, gridSize, origin: ffOrigin);
+                    int cDist = math.max(math.abs(cCell.x - atkCell.x), math.abs(cCell.y - atkCell.y));
+                    return cDist <= tileRange;
+                }
+                // invalid 락 → nearest/filter 경로로 진행
+            }
+
+            bool hasFilter = filterLookup.HasComponent(attacker);
+            int filterMask = hasFilter ? filterLookup[attacker].classMask : -1;
+
+            for (int i = 0; i < candEntities.Length; i++)
+            {
+                if (((int)candFactions[i].value & mask) == 0) continue;
+                if (candEntities[i] == attacker) continue;
+                int cclass = classLookup.HasComponent(candEntities[i]) ? (int)classLookup[candEntities[i]].value : -1;
+                if (hasFilter && cclass >= 0 && (filterMask & (1 << cclass)) == 0) continue;
+                int2 tgtCell = GridMath.WorldToCell(candTransforms[i].Position, tileSize, gridSize, origin: ffOrigin);
+                int tileDist = math.max(math.abs(tgtCell.x - atkCell.x), math.abs(tgtCell.y - atkCell.y));
+                if (tileDist <= tileRange) return true;
+            }
+            return false;
+        }
+    }
+}
