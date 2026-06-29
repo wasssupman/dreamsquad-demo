@@ -122,9 +122,9 @@ code + git history        구현 상세
 
 #### 적 스폰/이동 비주얼 (enemy-spawn-positioning)
 
-스폰 위치 개선(완료 2026-06-26) 후 남은 시각 다듬기. 코어/이동 변경 없음.
+스폰 위치 개선(완료 2026-06-29, units 0~4) 후 남은 항목.
 
-- **비주얼 수직추적** [M] · 코너에서도 적 비주얼이 항상 경로 수직 유지. sim 은 중심선 두고 View 가 진행방향 수직 렌더 오프셋. 현재 sim 스폰 오프셋은 코너에서 측면→앞뒤로 회전.
+- **코너 lane-centering** → `docs/spec/movement-lane-centering/` (초안, 2026-06-29 분리). 코너에서 유닛이 셀 엣지(±0.49)에 얼어붙는 것 복원. flow 에 중심 복원력 없음이 원인.
 - **Quad 폴백 visualOffset 배선** [S] · Spine 없는 적의 `QuadUnitView` 경로에 `AttackUnitData.visualOffset` 전달. 현재 미배선(적=Spine 라 무영향).
 - **유닛 간 separation/boid** [M] · 겹침 동적 해소(스폰 분산과 별개로 행진 중 밀집 완화).
 - **블록 시 우회 재라우팅** [M] · 복도 차단 시 `BuildFlowField` rebuild 트리거(walk 마스크에 blockedCells 반영). flow field 유지 결론(유닛별 BFS 아님). 이동 아키텍처 별도 스펙.

@@ -28,4 +28,4 @@ unit 1/3 후속(사용자 관찰). 뚜렷한 상/중/하 3레인은 인위적으
 
 완료 확인 2026-06-29 — compile 0 / EditMode `SpawnSpreadTests` 10/10 / Play 측정(execute_code): 적 13마리 중
 10마리가 spread 범위(avg z 0.175) 내 — 중앙±변주 정상. off-tile 이상치 3마리는 코너 엣지-허깅(±0.49)으로
-판명(spread 상한 0.1·넉백 무관) → unit 5(lane-centering)에서 처리.
+판명(spread 상한 0.1·넉백 무관) → 별도 스펙 `movement-lane-centering` 으로 분리(2026-06-29 리뷰).
