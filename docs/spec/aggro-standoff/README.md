@@ -1,6 +1,6 @@
 # aggro-standoff — aggro 사거리 정지 (이동 종료 조건)
 
-> 상태: 완료 2026-06-29 (unit 0, Play 검증 PASS). `enemy-tile-movement-integrity` 후속(거기 후속 후보에서 승격).
+> 상태: 완료 2026-06-29 (units 0~1, Play 검증 PASS). `enemy-tile-movement-integrity` 후속(거기 후속 후보에서 승격).
 
 ## 배경 / 문제
 
@@ -14,7 +14,7 @@ aggro 적이 **공격범위에 들어온 순간 이동을 멈추고**(도달 완
 
 "적은 target 으로 이동, target 도달 조건 충족 시 정지."
 - goal target → 도달 = goal 셀 진입.
-- **aggro target → 도달 = 공격범위 안** (`dist ≤ AttackState.range`) → 이동 종료.
+- **aggro target → 도달 = 공격범위 안** (`tileDist ≤ RangeToTiles(range)`, AttackSystem 발사와 동일 tile-Chebyshev metric — unit 1) → 이동 종료.
 
 ## 공통 원칙 / 결정 (2026-06-29 확정)
 
@@ -28,6 +28,7 @@ aggro 적이 **공격범위에 들어온 순간 이동을 멈추고**(도달 완
 | # | 작업 | 문서 | 목적 |
 |---|---|---|---|
 | 0 | standoff | `0_standoff.md` | MovementSystem 도달조건=range + TauntGrant 순서. Play 검증 |
+| 1 | metric 통일 (M1) | `1_metric_unify.md` | 정지 판정을 AttackSystem 발사와 동일한 tile-Chebyshev 로(soft stall 제거). EditMode 26 |
 
 ## 데이터 주의 (로직 아님)
 
@@ -37,5 +38,5 @@ aggro 공격 사거리 = **1 고정**(현 계획), taunt acquisition(`AggroProvi
 
 - **aggro 정식 경로탐색** [M] · greedy+cell-trim 근사 대체(guardian 벽 뒤). `enemy-tile-movement-integrity` 에서 이관.
 - **aggro 공격 사거리 통일** [S] · 현재 standoff 는 `AttackState.range`(native, 측정 4~8) 사용 → 원거리 적은 2~3타일 떨어져 정지. aggro 시 고정 range(예 1)로 모으려면 `AggroAttackProfile`/override 데이터 작업. 디자인 결정(standoff 로직과 별개).
-- **standoff/발사 metric 통일** [S] · (투트랙 리뷰 2026-06-29 M1) 정지=Euclidean `dist≤range`(MovementSystem), 발사=tile-Chebyshev `≤RangeToTiles(range)`(AttackSystem). `range<0.5·tile` 면 `RangeToTiles=0` → 적이 서지만 발사 못 함(soft stall). 현 데이터(≥1·측정 4~8) 안전. min aggro range≥~0.7·tile 가드 또는 metric 통일.
+- ~~**standoff/발사 metric 통일** [S] (M1)~~ → **완료 (unit 1)**: 정지 판정을 tile-Chebyshev `≤RangeToTiles(range)`(AttackSystem 동일)로 통일 → 정지⟺발사가능 일관, soft stall 소멸.
 - **aggro/코너 PlayMode smoke** [S] · (M2) 합성 경로(aggro chase→cell-trim / flow→recenter→cell-trim+zeroFlow skip) 자동 테스트 부재(EditMode 는 pure-math seam 만). aggroed 적 사거리 도달+데미지 / 코너 적 recenter 무벽침투 smoke 1개.

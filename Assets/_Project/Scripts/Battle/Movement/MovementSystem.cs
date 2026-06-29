@@ -67,11 +67,15 @@ namespace Wassup.Battle.Movement
                     {
                         float3 to = gpos - current; to.y = 0f;
                         float dist = math.length(to);
-                        // aggro-standoff — 도달 조건 = 공격범위 안. AttackState.range 안에 들면 이동 종료
-                        // (그 자리에서 AttackSystem 이 발사). range 없으면 0 → 경계까지 접근(폴백).
-                        float standoff = attackStateLookup.HasComponent(entity)
-                            ? attackStateLookup[entity].range : 0f;
-                        if (dist > standoff)
+                        // aggro-standoff (M1) — 도달 판정을 AttackSystem 발사와 동일한 tile-Chebyshev 사거리로 통일.
+                        // tileDist ≤ RangeToTiles(range) 면 정지(= 발사 가능). Euclidean dist 와 발사 metric 불일치로
+                        // range<0.5·tile 시 "정지하나 발사 못함" soft stall 이던 것 제거 → 정지⟺발사가능 일관.
+                        int2 aggroCell = GridMath.WorldToCell(current, field.tileSize, field.gridSize, origin: field.origin);
+                        int2 gCell = GridMath.WorldToCell(gpos, field.tileSize, field.gridSize, origin: field.origin);
+                        int tileDist = math.max(math.abs(aggroCell.x - gCell.x), math.abs(aggroCell.y - gCell.y));
+                        int tileRange = attackStateLookup.HasComponent(entity)
+                            ? GridMath.RangeToTiles(attackStateLookup[entity].range) : 0;
+                        if (tileDist > tileRange)
                         {
                             float aggroSpeedMul = modifierStatsLookup.HasComponent(entity)
                                 ? modifierStatsLookup[entity].moveSpeedMul : 1f;
@@ -79,7 +83,6 @@ namespace Wassup.Battle.Movement
                             float3 desiredAggro = (step >= dist)
                                 ? new float3(gpos.x, current.y, gpos.z)
                                 : current + math.normalize(to) * step;
-                            int2 aggroCell = GridMath.WorldToCell(current, field.tileSize, field.gridSize, origin: field.origin);
                             transform.ValueRW.Position = MovementCellTrim.Apply(
                                 desiredAggro, aggroCell, in field, hasObstacles, in obstacleSingleton);
                         }
