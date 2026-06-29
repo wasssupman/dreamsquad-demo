@@ -40,6 +40,8 @@ namespace Wassup.Battle.Movement
             // can self-walk toward their anchor. Separate RO query avoids aliasing the
             // RW LocalTransform in the movement loop below.
             var aggroLookup = SystemAPI.GetComponentLookup<Aggroed>(isReadOnly: true);
+            // aggro-standoff — 적의 공격 사거리(Combat AttackState) RO 읽기. 도달 조건 판정용.
+            var attackStateLookup = SystemAPI.GetComponentLookup<Wassup.Battle.Combat.AttackState>(isReadOnly: true);
             var guardianPos = new NativeHashMap<Entity, float3>(16, Allocator.Temp);
             foreach (var (gTransform, gEntity) in
                      SystemAPI.Query<RefRO<LocalTransform>>().WithAll<AggroProvider>().WithEntityAccess())
@@ -65,8 +67,11 @@ namespace Wassup.Battle.Movement
                     {
                         float3 to = gpos - current; to.y = 0f;
                         float dist = math.length(to);
-                        const float stackThreshold = 0.05f;
-                        if (dist > stackThreshold)
+                        // aggro-standoff — 도달 조건 = 공격범위 안. AttackState.range 안에 들면 이동 종료
+                        // (그 자리에서 AttackSystem 이 발사). range 없으면 0 → 경계까지 접근(폴백).
+                        float standoff = attackStateLookup.HasComponent(entity)
+                            ? attackStateLookup[entity].range : 0f;
+                        if (dist > standoff)
                         {
                             float aggroSpeedMul = modifierStatsLookup.HasComponent(entity)
                                 ? modifierStatsLookup[entity].moveSpeedMul : 1f;

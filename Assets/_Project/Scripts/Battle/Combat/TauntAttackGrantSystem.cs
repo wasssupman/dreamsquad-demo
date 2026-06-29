@@ -15,6 +15,7 @@ namespace Wassup.Battle.Combat
     [UpdateInGroup(typeof(SimulationSystemGroup))]
     [UpdateAfter(typeof(AggroAssignmentSystem))]
     [UpdateBefore(typeof(AttackSystem))]
+    [UpdateBefore(typeof(Wassup.Battle.Movement.MovementSystem))] // aggro-standoff: 부여 range 동일 프레임 가시
     public partial struct TauntAttackGrantSystem : ISystem
     {
         // Not Bursted: RequireAnyForUpdate(params EntityQuery[]) allocates a managed array.
