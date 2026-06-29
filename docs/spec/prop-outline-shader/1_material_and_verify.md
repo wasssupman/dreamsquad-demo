@@ -27,4 +27,4 @@ unit 0 셰이더를 forest 전 프랍에 적용하고, Play→게임뷰 스크�
 - 내부 스트로크가 배경 무관하게 보이고 발밑 링 없음, 베이스 룩 회귀 없음.
 - 사용자 육안 통과. 통과 시 확인 일자 + 커밋 해시 추가.
 
-확인: 2026-06-29 사용자 육안 통과 ("이게 좋다"). 내부 스트로크, width 0.03, 다크 색. 168 라이브 프랍 적용, console 0. 스크린샷 `Assets/Screenshots/prop_outline_v8_w03_boulder.png` · `v9_w03_board.png`.
+확인: 2026-06-29 사용자 육안 통과 ("이게 좋다"). 내부 스트로크, width 0.03, 다크 색. 168 라이브 프랍 적용, console 0. 커밋 50a5c5e. 스크린샷 `Assets/Screenshots/prop_outline_v8_w03_boulder.png` · `v9_w03_board.png`.

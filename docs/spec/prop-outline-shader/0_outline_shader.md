@@ -44,4 +44,4 @@
 - `ShaderUtil.ShaderHasError` false, console 0. 셰이더 `Wassup/Prop Outline (Sprite)` 등록.
 - (unit 1) 적용 후 Play 스크린샷: 가장자리 스트로크가 배경 무관하게 보이고 발밑 링 없음, 베이스 룩 회귀 없음.
 
-확인: 2026-06-29 셰이더 컴파일 OK (내부 스트로크 버전). 시각 확정 대기.
+확인: 2026-06-29 컴파일 OK (ShaderHasError false) + 사용자 육안 통과. 커밋 50a5c5e.
