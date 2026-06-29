@@ -23,3 +23,7 @@
 - EditMode `SpawnSpreadTests` 전체 green (신규 5종 포함): 결정론(같은 index 동일값) / 범위 내([min,max]) / topScale 준수 / 연속 index 분리(>0.05) / index 0 = min.
 - 기존 `FractionRange`/`Perpendicular`/`LateralOffset` 테스트 무회귀.
 - Play 스폰 시 적이 셀 내 분산되며 한 점 적층 없음(육안, unit 3 통합 검증에서 확인).
+
+---
+
+확인: 2026-06-29 · 커밋 `6f17120` · compile 0 에러 + EditMode `SpawnSpreadTests` 15/15 green.
