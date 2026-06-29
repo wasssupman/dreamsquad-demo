@@ -208,14 +208,22 @@ namespace Wassup.Battle.Combat
                     }
                 }
 
-                // Fire if cooldown ready and target exists.
-                if (bestTarget != Entity.Null && attack.ValueRO.cooldownRemaining <= 0f)
+                // attack-hit-delay — fire 를 START(공격 시작) / RESOLVE(타격 판정) 로 분리.
+                // 지연 중이면 tick → 만료한 프레임에 RESOLVE(재판정된 bestTarget). 아니면 쿨다운+타겟 조건 시 START.
+                bool doResolve = false;
+                if (attack.ValueRO.hitDelayRemaining > 0f)
                 {
-                    bool isDefender = defenderTagLookup.HasComponent(attackerEntity);
+                    float rem = attack.ValueRO.hitDelayRemaining - dt;
+                    attack.ValueRW.hitDelayRemaining = math.max(0f, rem);
+                    if (rem <= 0f) doResolve = true;   // 지연 만료 → 이번 프레임 타격
+                    // 지연 중엔 새 공격 START 안 함
+                }
+                else if (bestTarget != Entity.Null && attack.ValueRO.cooldownRemaining <= 0f)
+                {
+                    // ── START ── 애니메이션 + 이동정지 + 쿨다운 리셋 + 지연 세팅 (타격은 RESOLVE).
+                    bool isDefenderStart = defenderTagLookup.HasComponent(attackerEntity);
 
-                    // Unified visual trigger — defenders and enemies enqueue the same
-                    // event so SpineUnitPool plays the attack animation regardless
-                    // of attacker faction.
+                    // Unified visual trigger — 공격 시작 시 애니메이션/facing.
                     if (attackWriter.HasValue)
                     {
                         attackWriter.Value.Enqueue(new UnitAttackVisualEvent
@@ -225,11 +233,37 @@ namespace Wassup.Battle.Combat
                         });
                     }
 
-                    float damageMul = modifierStatsLookup.HasComponent(attackerEntity)
-                        ? modifierStatsLookup[attackerEntity].damageMul
-                        : 1f;
                     float attackSpeedMul = modifierStatsLookup.HasComponent(attackerEntity)
                         ? modifierStatsLookup[attackerEntity].attackSpeedMul
+                        : 1f;
+                    float effectiveCooldownMul = attackSpeedMul > 0f ? 1f / attackSpeedMul : 1f;
+                    attack.ValueRW.cooldownRemaining = attack.ValueRO.cooldownDuration * effectiveCooldownMul;
+
+                    // enemy-behavior-components Unit 3 — StopToAttack 면 공격 동안 이동 정지.
+                    bool stopToAttack = behaviorLookup.HasComponent(attackerEntity)
+                        ? behaviorLookup[attackerEntity].aimMode == Wassup.Data.EnemyAimMode.StopToAttack
+                        : true;
+                    if (!isDefenderStart && hasMovementPauseQ && stopToAttack)
+                    {
+                        var pauseDuration = attack.ValueRO.movePauseOnAttackSec;
+                        if (pauseDuration > 0f)
+                            movementPauseSingleton.ValueRW.queue.Enqueue(new MovementPauseRequest
+                            {
+                                target = attackerEntity,
+                                duration = pauseDuration,
+                            });
+                    }
+
+                    // 타격 지연: 0 이면 이번 프레임 즉시 RESOLVE(현행), >0 이면 지연 시작.
+                    if (attack.ValueRO.hitDelaySec <= 0f) doResolve = true;
+                    else attack.ValueRW.hitDelayRemaining = attack.ValueRO.hitDelaySec;
+                }
+
+                // ── RESOLVE ── 타격 판정/적용 (재판정된 bestTarget). 데미지/투사체/넉백.
+                if (doResolve && bestTarget != Entity.Null)
+                {
+                    float damageMul = modifierStatsLookup.HasComponent(attackerEntity)
+                        ? modifierStatsLookup[attackerEntity].damageMul
                         : 1f;
                     // All defender/enemy hit effects come through AttackOutputElement.
                     // AttackState.damage remains only as serialized authoring compatibility.
@@ -421,26 +455,7 @@ namespace Wassup.Battle.Combat
                         }
                     }
 
-                    float effectiveCooldownMul = attackSpeedMul > 0f ? 1f / attackSpeedMul : 1f;
-                    attack.ValueRW.cooldownRemaining = attack.ValueRO.cooldownDuration * effectiveCooldownMul;
-                    bool isEnemy = !isDefender;
-                    // enemy-behavior-components Unit 3 — aimMode gates the move-pause.
-                    // StopToAttack pauses (default for legacy/no-behavior); MoveAndShoot keeps moving.
-                    bool stopToAttack = behaviorLookup.HasComponent(attackerEntity)
-                        ? behaviorLookup[attackerEntity].aimMode == Wassup.Data.EnemyAimMode.StopToAttack
-                        : true;
-                    if (isEnemy && hasMovementPauseQ && stopToAttack)
-                    {
-                        var pauseDuration = attack.ValueRO.movePauseOnAttackSec;
-                        if (pauseDuration > 0f)
-                            movementPauseSingleton.ValueRW.queue.Enqueue(new MovementPauseRequest
-                            {
-                                target = attackerEntity,
-                                duration = pauseDuration,
-                            });
-                    }
-
-                    // [Defender only] Knockback CC — enemies do not carry DefenderCcData.
+                    // [Defender only] Knockback CC — enemies do not carry DefenderCcData. (RESOLVE 시점)
                     if (ccWriter.HasValue && defenderCcLookup.HasComponent(attackerEntity))
                     {
                         var ccData = defenderCcLookup[attackerEntity];

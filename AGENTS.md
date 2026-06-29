@@ -5,11 +5,11 @@ Use `CLAUDE.md` as the detailed policy source of truth.
 
 ## Current Spec Status
 
-- Last finalized spec: `docs/spec/aggro-standoff/`
-- Status: completed 2026-06-29 (unit 0 — aggro 도달조건=공격범위(`dist ≤ AttackState.range`), Play PASS). 직전 `enemy-tile-movement-integrity`(units 0~3) 완료.
-- Commits: `738f2c1`(standoff) · tile-movement: `6f17120`/`be1d950`/`cfe04ec`/`61cb98c`(N-레인 rev)
-- Active next: `docs/spec/attack-hit-delay/` — 진행 중(2026-06-29). 공격 시작 후 `hitDelaySec` 초 뒤 타격 판정. unit 0(필드 plumbing, 기본 0 무동작) 완료·compile·EditMode 26/26. **unit 1(AttackSystem fire 분리=start/resolve+지연 tick) 대기.** 후속: aggro 사거리통일[S]·QuadUnit 누수[S]·(II)레인[L].
-- ⚠️ 테스트 값: `WaveA.asset` `defeatGoalReachedCount` 100 (원래 10) — 검증용, 미커밋. 되돌릴 것.
+- Last finalized spec: `docs/spec/attack-hit-delay/`
+- Status: completed 2026-06-29 (units 0~2 — hitDelaySec 필드 + AttackSystem fire START/RESOLVE 분리 + 배치지연 deployDelaySec. Play PASS). 직전: aggro-standoff, enemy-tile-movement-integrity.
+- Commits: `a20c277`(0)·`9d124f6`(2 deploy)·`(unit1)` · 양트랙 리뷰 APPROVE(`e3d5d79`)
+- Active next: 미정. 후속: aggro 사거리통일/standoff metric M1[S]·aggro/코너 PlayMode smoke M2[S]·TauntGrant hitDelaySec authoring[S]·QuadUnit 누수[S]·(II)레인[L].
+- 참고: 라이브 검증 시 에디터 **포커스** 필요(비포커스면 Play 시뮬 tick 안 함). WaveA defeatGoalReachedCount 는 10 으로 복원됨(clean).
 - Next source of truth: `docs/spec/README.md` Follow-up Backlog
 
 ## Required Reading
