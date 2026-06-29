@@ -37,3 +37,5 @@ aggro 공격 사거리 = **1 고정**(현 계획), taunt acquisition(`AggroProvi
 
 - **aggro 정식 경로탐색** [M] · greedy+cell-trim 근사 대체(guardian 벽 뒤). `enemy-tile-movement-integrity` 에서 이관.
 - **aggro 공격 사거리 통일** [S] · 현재 standoff 는 `AttackState.range`(native, 측정 4~8) 사용 → 원거리 적은 2~3타일 떨어져 정지. aggro 시 고정 range(예 1)로 모으려면 `AggroAttackProfile`/override 데이터 작업. 디자인 결정(standoff 로직과 별개).
+- **standoff/발사 metric 통일** [S] · (투트랙 리뷰 2026-06-29 M1) 정지=Euclidean `dist≤range`(MovementSystem), 발사=tile-Chebyshev `≤RangeToTiles(range)`(AttackSystem). `range<0.5·tile` 면 `RangeToTiles=0` → 적이 서지만 발사 못 함(soft stall). 현 데이터(≥1·측정 4~8) 안전. min aggro range≥~0.7·tile 가드 또는 metric 통일.
+- **aggro/코너 PlayMode smoke** [S] · (M2) 합성 경로(aggro chase→cell-trim / flow→recenter→cell-trim+zeroFlow skip) 자동 테스트 부재(EditMode 는 pure-math seam 만). aggroed 적 사거리 도달+데미지 / 코너 적 recenter 무벽침투 smoke 1개.

@@ -36,3 +36,4 @@
 
 - **애니메이션 타격 프레임 동기** [M] · 시간(초) 대신 Spine 타격 event 로 판정. 현재는 시간 근사.
 - **hazard caster cast delay** [S] · 캐스트류 별도 지연(현재 0).
+- **unit 1 선결** (투트랙 리뷰 2026-06-29 B-L1/L2): unit 1 에서 `hitDelayRemaining` 를 실제 소비할 것 + `TauntAttackGrantSystem` 의 granted `AttackState` 에 `hitDelaySec` 세팅(현재 default 0, authoring 경로 없음). M1(standoff/발사 metric, aggro-standoff 후속)도 AttackSystem 손볼 때 같이 검토.
