@@ -1,6 +1,7 @@
 # Enemy AI FSM
 
-> 상태: **계획 — 구현 대기** (2026-06-30 설계 승인)
+> 상태: **구현 완료 · 자동검증 PASS · 라이브 육안 검증 대기** (2026-06-30)
+> units 0~5 구현/커밋 완료. EditMode(MovementSystem 11/11 등)·PlayMode smoke PASS, 양트랙/ecs 리뷰 APPROVE. 남은 것은 unit 5 완료기준 3 — 에디터 포커스 Play 로 Vanguard 정지/공격·Advance 이동사격·aggro standoff 복귀 육안 확인(사용자). 확인되면 "완료" 로 전환. handoff: `6_handoff_summary.md`.
 
 ## 목표
 
@@ -25,7 +26,7 @@
 | 3a | `3a_attack_consume.md` | `AttackSystem` 상태 기반 fire로 전환 | ✅ |
 | 3b | `3b_legacy_removal.md` | 레거시 제거(aimMode/movePause/EnemyAttackMovePause/DrainSystem/큐) + 테스트 정리 | ✅ |
 | 4 | `4_so_migration.md` | 적 SO 9종 `engageMovement` 마이그레이션 | ✅ |
-| 5 | `5_playmode_verify.md` | PlayMode smoke 갱신 + Play 검증 | — |
+| 5 | `5_playmode_verify.md` | PlayMode smoke 갱신 + Play 검증 (자동 ✅ / 라이브 육안 ⏳) | — |
 
 ## Feature-wide 계약
 
@@ -47,3 +48,5 @@
 - **타겟 스캔 1패스 공유** [S] · 전이와 AttackSystem 이 각각 사거리 스캔(2패스). 로직은 `TrySelectTarget` 공유로 일치하나 스캔 자체는 중복. 엔티티 수 증가 시 1패스 캐시 검토. (M2)
 - **stun 명시 상태화** [S] · stun 게이트 구현 후 `Stunned` 를 enum 상태로 승격(복귀 재평가) 검토. CC 콘텐츠 확장 시.
 - **HFSM 승격** [L] · 행동이 깊어지면 상태 내 하위상태. 현 4상태로 충분.
+- **Standoff/Chasing 스킬캐리어 면역 테스트/의도확정** [S] · `MovementSystem` 은 `Standoff`/`Chasing` 에서 early-return 하여 portal 텔레포트·tornado pull 에 **면역**(Engaging-Halt 와 비대칭). 이 비대칭은 aggro-standoff 시점부터의 기존 동작이고 enemy-ai-fsm 범위 밖이라 미테스트. portal/tornado 블록을 early-return 위로 옮기는 리팩터가 조용히 동작을 바꿀 수 있음. 음성 테스트(`Standoff_OnPortal_DoesNotTeleport`) 추가 또는 spec 에 의도 명시 검토. (ecs-review unit5 M1)
+- **Engaging-Advance + 스킬캐리어 경로 테스트** [S] · 신규 테스트는 Engaging-Halt 직교성만 잠금. Advance(스킬캐리어 후 flow 진행) 조합은 미커버. 리스크 낮음(portal/tornado 가 Engaging 분기보다 선행). (ecs-review unit5)
