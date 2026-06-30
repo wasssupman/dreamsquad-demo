@@ -16,7 +16,7 @@ MonoBehaviour:
   enemyClass: 3
   attackMethod: 1
   targetMode: 2
-  aimMode: 0
+  engageMovement: 0
   targetPriorityClass: 0
   targetClassMask: -1
   health: 60
@@ -26,7 +26,10 @@ MonoBehaviour:
   attackCooldown: 0.5
   attackTargetCount: 2
   projectile: {fileID: 0}
-  movePauseOnAttackSec: 0
+  hitDelaySec: 0
+  aggroAttackDamage: 0
+  aggroAttackCooldown: 1
+  aggroAttackRange: 1
   outputs:
   - kind: 0
     magnitude: 10
@@ -37,3 +40,10 @@ MonoBehaviour:
     stackMaxStack: 0
   visualMesh: {fileID: 0}
   visualMaterial: {fileID: 2100000, guid: fda8488d60e7f4b25a9846eb038050d9, type: 2}
+  skeletonDataAsset: {fileID: 0}
+  spineSkinName: 
+  idleAnimation: idle
+  attackAnimation: attack
+  deathAnimation: die
+  spineVisualScale: 1
+  visualOffset: {x: 0, y: 0, z: 0}

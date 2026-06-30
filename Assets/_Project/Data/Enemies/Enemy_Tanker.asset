@@ -16,7 +16,7 @@ MonoBehaviour:
   enemyClass: 1
   attackMethod: 1
   targetMode: 1
-  aimMode: 0
+  engageMovement: 0
   targetPriorityClass: 0
   targetClassMask: -1
   health: 100
@@ -26,7 +26,10 @@ MonoBehaviour:
   attackCooldown: 0.6
   attackTargetCount: 2
   projectile: {fileID: 0}
-  movePauseOnAttackSec: 0
+  hitDelaySec: 0
+  aggroAttackDamage: 0
+  aggroAttackCooldown: 1
+  aggroAttackRange: 1
   outputs:
   - kind: 0
     magnitude: 20
@@ -41,5 +44,6 @@ MonoBehaviour:
   spineSkinName: default
   idleAnimation: walk
   attackAnimation: attack-1
-  deathAnimation:
+  deathAnimation: 
   spineVisualScale: 1.05
+  visualOffset: {x: 0, y: 0, z: 0}

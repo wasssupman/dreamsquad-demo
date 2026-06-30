@@ -16,7 +16,7 @@ MonoBehaviour:
   enemyClass: 4
   attackMethod: 2
   targetMode: 1
-  aimMode: 1
+  engageMovement: 1
   targetPriorityClass: 0
   targetClassMask: -1
   health: 40
@@ -26,7 +26,7 @@ MonoBehaviour:
   attackCooldown: 1.5
   attackTargetCount: 1
   projectile: {fileID: 11400000, guid: 2a1e70d9b5c234e97a1f56e419433f2a, type: 2}
-  movePauseOnAttackSec: 0
+  hitDelaySec: 0
   aggroAttackDamage: 0
   aggroAttackCooldown: 1
   aggroAttackRange: 1
@@ -53,3 +53,4 @@ MonoBehaviour:
   attackAnimation: attack
   deathAnimation: die
   spineVisualScale: 1
+  visualOffset: {x: 0, y: 0, z: 0}
