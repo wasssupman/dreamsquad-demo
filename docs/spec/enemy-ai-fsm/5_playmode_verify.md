@@ -27,3 +27,8 @@ PlayMode smoke 가 커버할 것:
 - EditMode 전체 PASS.
 - 위 라이브 시나리오 육안 확인.
 - README 상태 라인을 "완료 YYYY-MM-DD" 로 갱신하고 `6_handoff_summary.md` 작성.
+
+---
+
+✅ **자동 검증 완료 2026-06-30** — MovementSystemTests 에 FSM 회귀 3종 이관(Chasing self-walk, Engaging-Halt portal/tornado 직교성), 11/11 PASS. PlayMode smoke 는 FSM 스택을 라이브 구동(EnemyAiStateSystem→Movement→Attack)하여 aggro Chasing→Standoff→데미지 검증, 1/1 PASS. 풀 EditMode 회귀 없음(6건 "Destroy from edit mode"는 직전 PlayMode 씬 잔류 거짓실패 — 도메인 리로드 후 7/7 PASS 재확인 / 1건 ObstaclePlacer 는 기존 flaky, FSM 무관). ecs-reviewer APPROVE(테스트 정합·결정론·회귀민감, L1 정확값 단언 반영).
+> ⏳ **라이브 육안 검증 미완**: 완료 기준 3(Vanguard 정지/공격·디펜더 처치 후 행진, Advance 적 이동사격, aggro standoff 복귀)은 에디터 **포커스** Play 가 필요해 사용자 확인 대기.

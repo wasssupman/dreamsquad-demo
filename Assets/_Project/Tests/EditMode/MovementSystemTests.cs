@@ -186,5 +186,64 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(0f, _em.GetComponentData<LocalTransform>(e).Position.x, 1e-4f,
                 "Standoff → 정지(engageMovement 무관)");
         }
+
+        // enemy-ai-fsm Unit 5 (unit 2 에서 이관) — Chasing self-walk: aggro 적은 flow(+x) 가 아니라
+        // 가디언 anchor 로 이동. 가디언을 enemy 뒤(-x)에 둬 flow 와 반대 방향 이동으로 분기 구분.
+        [Test]
+        public void Chasing_SelfWalksTowardGuardian_NotFlow()
+        {
+            CreateLinearFlowField();
+            var guardian = _em.CreateEntity();
+            _em.AddComponentData(guardian, LocalTransform.FromPosition(new float3(2f, 0f, 0f)));
+            _em.AddComponentData(guardian, new AggroProvider { capacity = 8, range = 8f });
+
+            var e = CreateEnemy(new float3(3f, 0f, 0f), speed: 2f, AiState.Chasing, EngageMovement.Halt);
+            _em.AddComponentData(e, new Aggroed { guardian = guardian });
+
+            Tick(1f);
+
+            var pos = _em.GetComponentData<LocalTransform>(e).Position;
+            // step(2) >= dist(1) → guardian 위치로 snap. flow(+x)였다면 x>3. self-walk(-x)는 정확히 2.0.
+            Assert.AreEqual(2f, pos.x, 1e-4f, "Chasing → 가디언(x=2)으로 self-walk, flow(+x) 무시");
+            Assert.AreEqual(0f, pos.z, 1e-4f, "z 드리프트 없음");
+        }
+
+        // enemy-ai-fsm Unit 5 — Halt 직교성: Engaging-Halt 정지는 flow 만 막는다.
+        // 스킬 캐리어(portal)는 Halt 게이트 이전이라 정지 중에도 텔레포트.
+        [Test]
+        public void EngagingHalt_StillTeleportsThroughPortal()
+        {
+            CreateLinearFlowField();
+            var portal = _em.CreateEntity();
+            _em.AddComponentData(portal, new PortalLink
+            {
+                entryWorld = new float3(0f, 0f, 0f), exitWorld = new float3(3f, 0f, 0f),
+                entryRadius = 0.5f, remaining = 99f,
+            });
+
+            var e = CreateEnemy(new float3(0f, 0f, 0f), speed: 2f, AiState.Engaging, EngageMovement.Halt);
+            Tick(1f);
+
+            Assert.AreEqual(3f, _em.GetComponentData<LocalTransform>(e).Position.x, 1e-4f,
+                "Engaging-Halt 라도 portal 텔레포트는 적용(이후 flow 는 Halt 로 정지)");
+        }
+
+        // enemy-ai-fsm Unit 5 — Halt 직교성: 토네이도 pull 도 Halt 게이트 이전이라 정지 중에도 당겨짐.
+        [Test]
+        public void EngagingHalt_StillPulledByTornado()
+        {
+            CreateLinearFlowField();
+            var tornado = _em.CreateEntity();
+            _em.AddComponentData(tornado, new TornadoField
+            {
+                centerWorld = new float3(3f, 0f, 0f), tileRange = 5, pullSpeed = 2f, remaining = 99f,
+            });
+
+            var e = CreateEnemy(new float3(0f, 0f, 0f), speed: 2f, AiState.Engaging, EngageMovement.Halt);
+            Tick(1f);
+
+            Assert.AreEqual(2f, _em.GetComponentData<LocalTransform>(e).Position.x, 1e-4f,
+                "Engaging-Halt 라도 tornado pull 적용(pullSpeed 2 × 1s = 2)");
+        }
     }
 }
