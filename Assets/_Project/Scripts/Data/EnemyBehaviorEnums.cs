@@ -10,8 +10,9 @@ namespace Wassup.Data
     public enum EnemyTargetMode { None, Nearest, FocusUntilDead }
 
     // enemy-ai-fsm — Engaging 상태의 이동 정책(구 aimMode 대체).
-    // Halt = 타겟 사거리 도달 시 정지하고 공격, Advance = 목표로 이동하며 공격.
-    public enum EngageMovement : byte { Halt, Advance }
+    // Halt = 타겟 사거리 도달 시 정지하고 공격, Advance = 목표로 이동하며 공격,
+    // Pulse = 타격 진행 중(AttackState.hitDelayRemaining>0) 정지·아니면 전진(진동, unit 7).
+    public enum EngageMovement : byte { Halt, Advance, Pulse }
 
     // Allowed defender classes for an enemy's target filter. bit = 1 << (int)DefenderClass
     // (matches EnemyTargetFilter.classMask). Everything == ~0 == -1 preserves the

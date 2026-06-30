@@ -43,6 +43,8 @@ namespace Wassup.Battle.Movement
             // enemy-ai-fsm Unit 2 — EnemyAiState(Combat) RO 소비. 이동/정지를 상태로 결정.
             var aiStateLookup = SystemAPI.GetComponentLookup<EnemyAiState>(isReadOnly: true);
             var behaviorLookup = SystemAPI.GetComponentLookup<EnemyBehavior>(isReadOnly: true);
+            // enemy-ai-fsm Unit 7 — Pulse 진동: AttackState(Combat) RO 로 스윙 진행(hitDelayRemaining) 판정.
+            var attackStateLookup = SystemAPI.GetComponentLookup<AttackState>(isReadOnly: true);
             var guardianPos = new NativeHashMap<Entity, float3>(16, Allocator.Temp);
             foreach (var (gTransform, gEntity) in
                      SystemAPI.Query<RefRO<LocalTransform>>().WithAll<AggroProvider>().WithEntityAccess())
@@ -127,12 +129,22 @@ namespace Wassup.Battle.Movement
                 }
                 if (pulled) continue;
 
-                // enemy-ai-fsm Unit 2 — Engaging-Halt 면 정지(공격은 AttackSystem), Engaging-Advance·Marching 은 flow 이동.
+                // enemy-ai-fsm Unit 2/7 — Engaging 이동정책. Halt=정지, Advance=flow 전진,
+                // Pulse=타격 진행중(hitDelayRemaining>0) 정지·아니면 전진(진동). 정지여도 공격은 AttackSystem.
                 if (ai == AiState.Engaging)
                 {
-                    bool advance = behaviorLookup.HasComponent(entity)
-                        && behaviorLookup[entity].engageMovement == Wassup.Data.EngageMovement.Advance;
-                    if (!advance) continue; // Halt → 정지
+                    var engage = behaviorLookup.HasComponent(entity)
+                        ? behaviorLookup[entity].engageMovement
+                        : Wassup.Data.EngageMovement.Halt;
+                    bool advance;
+                    if (engage == Wassup.Data.EngageMovement.Advance)
+                        advance = true;
+                    else if (engage == Wassup.Data.EngageMovement.Pulse)
+                        advance = !(attackStateLookup.HasComponent(entity)
+                                    && attackStateLookup[entity].hitDelayRemaining > 0f);
+                    else
+                        advance = false; // Halt
+                    if (!advance) continue; // 정지
                 }
 
                 // 4. Flow field step

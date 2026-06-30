@@ -245,5 +245,53 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(2f, _em.GetComponentData<LocalTransform>(e).Position.x, 1e-4f,
                 "Engaging-Halt 라도 tornado pull 적용(pullSpeed 2 × 1s = 2)");
         }
+
+        // enemy-ai-fsm Unit 7 — Pulse 진동: Engaging 에서 타격 진행 중(hitDelayRemaining>0)이면
+        // 정지(스윙), 회복(==0)이면 flow 전진. 어그로 유무에 따른 A(camp)/B(pulse) 분기의 B 절반.
+        [Test]
+        public void Engaging_Pulse_AttackInProgress_Stops()
+        {
+            CreateLinearFlowField();
+            var e = CreateEnemy(new float3(0f, 0f, 0f), speed: 2f, AiState.Engaging, EngageMovement.Pulse);
+            _em.AddComponentData(e, new AttackState { hitDelaySec = 0.3f, hitDelayRemaining = 0.3f });
+            Tick(1f);
+            Assert.AreEqual(0f, _em.GetComponentData<LocalTransform>(e).Position.x, 1e-4f,
+                "Pulse + 타격 진행중(hitDelayRemaining>0) → 정지(스윙)");
+        }
+
+        [Test]
+        public void Engaging_Pulse_AttackRecovered_MovesAlongFlow()
+        {
+            CreateLinearFlowField();
+            var e = CreateEnemy(new float3(0f, 0f, 0f), speed: 2f, AiState.Engaging, EngageMovement.Pulse);
+            _em.AddComponentData(e, new AttackState { hitDelaySec = 0.3f, hitDelayRemaining = 0f });
+            Tick(1f);
+            Assert.AreEqual(2f, _em.GetComponentData<LocalTransform>(e).Position.x, 1e-4f,
+                "Pulse + 타격 회복(hitDelayRemaining==0) → flow 전진");
+        }
+
+        // enemy-ai-fsm Unit 7 (ecs-review M1) — A-fork 잠금: 어그로 Standoff 는 engageMovement 무관 정지.
+        // Pulse + hitDelayRemaining=0(Engaging이면 전진할 값)이어도 Standoff 가 먼저 정지 → 어그로 시 캠프 보장.
+        [Test]
+        public void Standoff_Pulse_StaysCamped_IgnoringEngageMovement()
+        {
+            CreateLinearFlowField();
+            var e = CreateEnemy(new float3(0f, 0f, 0f), speed: 2f, AiState.Standoff, EngageMovement.Pulse);
+            _em.AddComponentData(e, new AttackState { hitDelaySec = 0.3f, hitDelayRemaining = 0f });
+            Tick(1f);
+            Assert.AreEqual(0f, _em.GetComponentData<LocalTransform>(e).Position.x, 1e-4f,
+                "Standoff → engageMovement 무관 정지(Pulse 적도 어그로 시 캠프). A/B 자동분기의 A 절반");
+        }
+
+        // enemy-ai-fsm Unit 7 (ecs-review M2) — Pulse + AttackState 없음 → 전진(degenerate Advance, 안전 fallback).
+        [Test]
+        public void Engaging_Pulse_NoAttackState_MovesAlongFlow()
+        {
+            CreateLinearFlowField();
+            var e = CreateEnemy(new float3(0f, 0f, 0f), speed: 2f, AiState.Engaging, EngageMovement.Pulse);
+            Tick(1f);
+            Assert.AreEqual(2f, _em.GetComponentData<LocalTransform>(e).Position.x, 1e-4f,
+                "Pulse + AttackState 없음 → flow 전진(fallback)");
+        }
     }
 }
