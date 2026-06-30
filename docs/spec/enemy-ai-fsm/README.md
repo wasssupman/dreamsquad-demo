@@ -1,7 +1,7 @@
 # Enemy AI FSM
 
-> 상태: **units 0~5 자동검증 PASS · Pulse 모드(7~8) 진행 중** (2026-06-30)
-> units 0~5(기반 FSM) 구현/커밋 완료, EditMode·PlayMode·리뷰 APPROVE. 후속으로 진동형 교전이동(Pulse) 을 units 7~8 로 추가 중. 라이브 육안 검증(기반 FSM unit 5 완료기준 3 + Pulse unit 8)은 마지막에 사용자 Play 로 일괄 확인. handoff: `6_handoff_summary.md`.
+> 상태: **units 0~8 자동검증 PASS · 라이브 육안 검증 대기** (2026-06-30)
+> units 0~5(기반 FSM) + 7~8(Pulse 진동) 구현/커밋 완료. EditMode(MovementSystem 15/15 등)·PlayMode·리뷰 APPROVE. 남은 것은 라이브 Play 육안 검증(아래 일괄 체크리스트) — 사용자 확인 후 "완료" 전환. handoff: `6_handoff_summary.md`.
 
 ## 목표
 
@@ -28,7 +28,7 @@
 | 4 | `4_so_migration.md` | 적 SO 9종 `engageMovement` 마이그레이션 | ✅ |
 | 5 | `5_playmode_verify.md` | PlayMode smoke 갱신 + Play 검증 (자동 ✅ / 라이브 육안 ⏳) | — |
 | 7 | `7_pulse_engage.md` | `EngageMovement.Pulse`(진동형) + MovementSystem Engaging 분기 + TDD | ✅ |
-| 8 | `8_vanguard_pulse_migration.md` | Vanguard Pulse 전환(hitDelaySec=0.3) + Play 검증 | — |
+| 8 | `8_vanguard_pulse_migration.md` | Vanguard Pulse 전환(hitDelaySec=0.3) + Play 검증 (데이터 ✅ / 라이브 육안 ⏳) | — |
 
 ## Feature-wide 계약
 

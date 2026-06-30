@@ -23,3 +23,8 @@ Vanguard 를 진동형(Pulse)으로 전환하고, 진동이 보이도록 `hitDel
   - 비어그로: Vanguard 가 디펜더에게 걸어 들어가며 공격(제자리 캠프 아님), 붙으면 제자리 연타.
   - 어그로: 가디언 추격→사거리 도달 시 **정지** 공격(캠프), 가디언 사망 시 행진 복귀.
   - 콘솔 에러/leak 0.
+
+---
+
+✅ **데이터 마이그레이션 완료 2026-06-30** — Enemy_Vanguard.asset `engageMovement: 0→2`(Pulse), `hitDelaySec: 0→0.3`. diff 클린(타 게임플레이 값 변동 0). 메커니즘은 unit 7(MovementSystemTests 15/15 PASS)이 잠금.
+> ⏳ **라이브 육안 검증 미완**: 완료 기준 Play(비어그로 pulse 전진 / 어그로 camp)는 에디터 **포커스** Play 필요 — 기반 FSM unit 5 검증과 함께 사용자 일괄 확인 대기.
