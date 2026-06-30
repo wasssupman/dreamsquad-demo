@@ -61,6 +61,8 @@ namespace Wassup.Battle.Combat
             var aggroTransformLookup = SystemAPI.GetComponentLookup<LocalTransform>(isReadOnly: true);
             // enemy-behavior-components Unit 3 — targetMode/aimMode + FocusUntilDead lock.
             var behaviorLookup = SystemAPI.GetComponentLookup<EnemyBehavior>(isReadOnly: true);
+            // enemy-ai-fsm 3a — fire 게이트용 상태 RO.
+            var aiStateLookup = SystemAPI.GetComponentLookup<EnemyAiState>(isReadOnly: true);
             var focusLookup = SystemAPI.GetComponentLookup<FocusTarget>(isReadOnly: false);
             var healthLookup = SystemAPI.GetComponentLookup<Health>(isReadOnly: true);
             var deadLookup = SystemAPI.GetComponentLookup<DeadTag>(isReadOnly: true);
@@ -68,7 +70,6 @@ namespace Wassup.Battle.Combat
             bool hasStatQ = SystemAPI.TryGetSingletonRW<Wassup.Battle.Effects.StatModifierApplyEventsSingleton>(out var statModSingleton);
             bool hasStackQ = SystemAPI.TryGetSingletonRW<Wassup.Battle.Effects.StackModifierApplyEventsSingleton>(out var stackModSingleton);
             bool hasFlowField = SystemAPI.TryGetSingleton<Wassup.Battle.Effects.FlowFieldSingleton>(out var flowField);
-            bool hasMovementPauseQ = SystemAPI.TryGetSingletonRW<MovementPauseRequestEventsSingleton>(out var movementPauseSingleton);
 
             // Attack-output log channel — enqueue one event per output-per-target fired.
             NativeQueue<AttackOutputLogEvent>.ParallelWriter? attackOutputLogWriter = null;
@@ -220,43 +221,40 @@ namespace Wassup.Battle.Combat
                 }
                 else if (bestTarget != Entity.Null && attack.ValueRO.cooldownRemaining <= 0f)
                 {
-                    // ── START ── 애니메이션 + 이동정지 + 쿨다운 리셋 + 지연 세팅 (타격은 RESOLVE).
+                    // ── START ── 애니메이션 + 쿨다운 리셋 + 지연 세팅 (타격은 RESOLVE).
                     bool isDefenderStart = defenderTagLookup.HasComponent(attackerEntity);
 
-                    // Unified visual trigger — 공격 시작 시 애니메이션/facing.
-                    if (attackWriter.HasValue)
+                    // enemy-ai-fsm 3a — 적은 Engaging|Standoff 에서만 fire. 디펜더는 상태머신 대상 아님(항상 fire).
+                    bool stateAllowsFire = true;
+                    if (!isDefenderStart && aiStateLookup.HasComponent(attackerEntity))
                     {
-                        attackWriter.Value.Enqueue(new UnitAttackVisualEvent
+                        var ai = aiStateLookup[attackerEntity].value;
+                        stateAllowsFire = ai == AiState.Engaging || ai == AiState.Standoff;
+                    }
+
+                    if (stateAllowsFire)
+                    {
+                        // Unified visual trigger — 공격 시작 시 애니메이션/facing.
+                        if (attackWriter.HasValue)
                         {
-                            attacker = attackerEntity,
-                            targetWorld = bestTargetPos,
-                        });
-                    }
-
-                    float attackSpeedMul = modifierStatsLookup.HasComponent(attackerEntity)
-                        ? modifierStatsLookup[attackerEntity].attackSpeedMul
-                        : 1f;
-                    float effectiveCooldownMul = attackSpeedMul > 0f ? 1f / attackSpeedMul : 1f;
-                    attack.ValueRW.cooldownRemaining = attack.ValueRO.cooldownDuration * effectiveCooldownMul;
-
-                    // enemy-behavior-components Unit 3 — StopToAttack 면 공격 동안 이동 정지.
-                    bool stopToAttack = behaviorLookup.HasComponent(attackerEntity)
-                        ? behaviorLookup[attackerEntity].aimMode == Wassup.Data.EnemyAimMode.StopToAttack
-                        : true;
-                    if (!isDefenderStart && hasMovementPauseQ && stopToAttack)
-                    {
-                        var pauseDuration = attack.ValueRO.movePauseOnAttackSec;
-                        if (pauseDuration > 0f)
-                            movementPauseSingleton.ValueRW.queue.Enqueue(new MovementPauseRequest
+                            attackWriter.Value.Enqueue(new UnitAttackVisualEvent
                             {
-                                target = attackerEntity,
-                                duration = pauseDuration,
+                                attacker = attackerEntity,
+                                targetWorld = bestTargetPos,
                             });
-                    }
+                        }
 
-                    // 타격 지연: 0 이면 이번 프레임 즉시 RESOLVE(현행), >0 이면 지연 시작.
-                    if (attack.ValueRO.hitDelaySec <= 0f) doResolve = true;
-                    else attack.ValueRW.hitDelayRemaining = attack.ValueRO.hitDelaySec;
+                        float attackSpeedMul = modifierStatsLookup.HasComponent(attackerEntity)
+                            ? modifierStatsLookup[attackerEntity].attackSpeedMul
+                            : 1f;
+                        float effectiveCooldownMul = attackSpeedMul > 0f ? 1f / attackSpeedMul : 1f;
+                        attack.ValueRW.cooldownRemaining = attack.ValueRO.cooldownDuration * effectiveCooldownMul;
+
+                        // 이동 정지는 MovementSystem 이 EnemyAiState 로 처리(레거시 aimMode/movePause enqueue 제거).
+                        // 타격 지연: 0 이면 이번 프레임 즉시 RESOLVE, >0 이면 지연 시작.
+                        if (attack.ValueRO.hitDelaySec <= 0f) doResolve = true;
+                        else attack.ValueRW.hitDelayRemaining = attack.ValueRO.hitDelaySec;
+                    }
                 }
 
                 // ── RESOLVE ── 타격 판정/적용 (재판정된 bestTarget). 데미지/투사체/넉백.

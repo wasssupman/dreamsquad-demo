@@ -133,22 +133,7 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(0, Incoming(a), "old target no longer hit");
         }
 
-        [Test]
-        public void AimMode_StopToAttack_EnqueuesPause()
-        {
-            MakeEnemy(0f, EnemyTargetMode.Nearest, EnemyAimMode.StopToAttack);
-            MakeDefender(1f);
-            _simGroup.Update();
-            Assert.AreEqual(1, _pauseQueue.Count, "StopToAttack enqueues a move-pause on fire");
-        }
-
-        [Test]
-        public void AimMode_MoveAndShoot_NoPause()
-        {
-            MakeEnemy(0f, EnemyTargetMode.Nearest, EnemyAimMode.MoveAndShoot);
-            MakeDefender(1f);
-            _simGroup.Update();
-            Assert.AreEqual(0, _pauseQueue.Count, "MoveAndShoot does not pause");
-        }
+        // enemy-ai-fsm 3a — AimMode pause 테스트 제거(이동정지는 EnemyAiState 가 표현,
+        // AttackSystem 은 더는 MovementPauseRequest 를 enqueue 하지 않는다). pause 큐 스캐폴딩은 3b 에서 정리.
     }
 }

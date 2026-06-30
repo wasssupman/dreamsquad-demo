@@ -12,7 +12,7 @@
 
 - 적(`AttackUnitTag`, non-defender) fire 게이트에 상태 조건 추가: `EnemyAiState.value ∈ { Engaging, Standoff }` 일 때만 START 진입. `Marching`/`Chasing` 이면 fire 안 함.
 - **cooldown tick 보존 (M1)**: cooldown(`hitDelayRemaining`/`cooldownRemaining`) tick 은 상태와 무관하게 **계속** 돈다(현행 `AttackSystem.cs:107` 무조건 tick 유지). 도착 시 즉발(fire-ready on arrival) 동작 보존. 상태는 **fire 게이트만** 조건화한다.
-- 타겟 선정은 unit 1 에서 추출한 공유 `TrySelectTarget` 헬퍼를 그대로 사용 — 전이가 본 "타겟 존재"와 동일 로직이라 상태=Engaging 인데 타겟 못 찾는 불일치가 없다.
+- 전이(unit 1 `EnemyAiStateSystem.HasFireTarget`)가 AttackSystem 의 fire 조건을 **미러**하므로, 상태=Engaging 인데 bestTarget 못 찾는 불일치가 없다(동기화는 미러 주석 책임 — 공유 헬퍼 추출은 README 후속).
 - **제거**: `AttackSystem.cs:242–255` 의 aimMode 판정 + `movementPauseSingleton.queue.Enqueue(MovementPauseRequest{...})` 블록 전체. 정지는 이제 Movement 가 상태로 처리하므로 AttackSystem 은 pause 를 발행하지 않는다.
 - hit-delay START/RESOLVE 분리, cooldown, 타겟 우선순위 체인(Aggroed > FocusUntilDead > filter > nearest), outputs/투사체 경로는 **그대로 유지**.
 - 디펜더 경로(`isDefenderStart`)는 상태머신 대상이 아니므로 영향 없음 — 디펜더는 `EnemyAiState` 컴포넌트가 없고 기존 로직대로 fire.
@@ -27,3 +27,8 @@
 - `Marching`/`Chasing` 중 fire 안 함.
 - 기존 `AttackSystemUnifiedLoopTests` 통과(디펜더 경로 무변). 적 fire 경로 회귀 없음.
 - `MovementPauseRequest` enqueue 호출 0(grep 확인).
+
+---
+
+✅ **완료 2026-06-30** — 컴파일 PASS(0 errors). AttackSystemStateGateTests RED→GREEN(Marching/Chasing 미발사 ↔ Engaging/Standoff 발사 + Marching→Engaging 전이 즉발). 전체 EditMode 회귀 없음(ObstaclePlacer 1건만 사전 무관). 투트랙 리뷰 APPROVE — H2 데드락 부재(미러 등가)·맥락경계(Combat RO)·Burst·cooldown tick 보존 PASS.
+> 주의(ecs M1): RESOLVE 는 START 게이트 밖이라, Advance 적이 hit-delay 만료 프레임에 사거리로 진입하면 상태=Marching 인데 타격이 날 수 있다(1틱 경계 의미 불일치, 데미지 이중/누락 없음 — attack-hit-delay 의 "commit 된 swing 은 착탄" 설계대로 정상).
