@@ -19,8 +19,7 @@ namespace Wassup.Data
         [Header("Behavior")]
         public EnemyAttackMethod attackMethod = EnemyAttackMethod.Melee;
         public EnemyTargetMode targetMode = EnemyTargetMode.Nearest;
-        public EnemyAimMode aimMode = EnemyAimMode.StopToAttack;
-        // enemy-ai-fsm Unit 0 — Engaging 이동 정책(aimMode 대체). unit 4 에서 SO 마이그레이션 후 bake 직접 사용.
+        // enemy-ai-fsm — Engaging 이동 정책(구 aimMode 대체). Halt=멈춰서 공격, Advance=이동하며 공격.
         public EngageMovement engageMovement = EngageMovement.Halt;
         public DefenderClass targetPriorityClass = DefenderClass.None; // None = no priority
         public DefenderClassFlags targetClassMask = DefenderClassFlags.Everything;
@@ -38,7 +37,6 @@ namespace Wassup.Data
         // forced to 1 (guardian-only) by AttackSystem.
         public int attackTargetCount = 1;
         public ProjectileData projectile;
-        public float movePauseOnAttackSec;
         // attack-hit-delay — 공격 시작 후 타격 판정까지 지연(초). 0 = 즉시.
         public float hitDelaySec = 0f;
 

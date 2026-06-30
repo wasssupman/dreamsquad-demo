@@ -53,7 +53,7 @@ namespace Wassup.Tests.EditMode
                 range = range, cooldownDuration = 1f, attackTargetCount = 1,
                 targetMask = (int)Faction.Defender,
             });
-            _em.AddComponentData(e, new EnemyBehavior { targetMode = mode, aimMode = EnemyAimMode.StopToAttack });
+            _em.AddComponentData(e, new EnemyBehavior { targetMode = mode });
             _em.AddComponentData(e, new EnemyTargetFilter { classMask = -1, priorityClass = -1 });
             _em.AddComponentData(e, new EnemyAiState { value = AiState.Marching });
             if (mode == EnemyTargetMode.FocusUntilDead)

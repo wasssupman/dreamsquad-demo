@@ -17,7 +17,6 @@ namespace Wassup.Tests.EditMode
         private EntityManager _em;
         private SimulationSystemGroup _simGroup;
         private Entity _fieldEntity;
-        private NativeQueue<MovementPauseRequest> _pauseQueue;
 
         [SetUp]
         public void SetUp()
@@ -25,11 +24,7 @@ namespace Wassup.Tests.EditMode
             _world = new World("MovementSystemTestWorld");
             _em = _world.EntityManager;
             _simGroup = _world.CreateSystemManaged<SimulationSystemGroup>();
-            _simGroup.AddSystemToUpdateList(_world.CreateSystem<MovementPauseRequestDrainSystem>());
             _simGroup.AddSystemToUpdateList(_world.CreateSystem<MovementSystem>());
-            _pauseQueue = new NativeQueue<MovementPauseRequest>(Allocator.Persistent);
-            var pauseSingleton = _em.CreateEntity();
-            _em.AddComponentData(pauseSingleton, new MovementPauseRequestEventsSingleton { queue = _pauseQueue });
         }
 
         [TearDown]
@@ -42,7 +37,6 @@ namespace Wassup.Tests.EditMode
                 var f = _em.GetComponentData<FlowFieldSingleton>(_fieldEntity);
                 f.Dispose();
             }
-            if (_pauseQueue.IsCreated) _pauseQueue.Dispose();
             _world?.Dispose();
         }
 

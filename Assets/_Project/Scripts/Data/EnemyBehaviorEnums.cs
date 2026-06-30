@@ -9,9 +9,7 @@ namespace Wassup.Data
 
     public enum EnemyTargetMode { None, Nearest, FocusUntilDead }
 
-    public enum EnemyAimMode { StopToAttack, MoveAndShoot }
-
-    // enemy-ai-fsm Unit 0 — Engaging 상태의 이동 정책(aimMode 대체 예정, 3b 에서 aimMode 제거).
+    // enemy-ai-fsm — Engaging 상태의 이동 정책(구 aimMode 대체).
     // Halt = 타겟 사거리 도달 시 정지하고 공격, Advance = 목표로 이동하며 공격.
     public enum EngageMovement : byte { Halt, Advance }
 

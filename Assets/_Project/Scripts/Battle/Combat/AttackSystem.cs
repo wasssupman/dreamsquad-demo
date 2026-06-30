@@ -59,7 +59,7 @@ namespace Wassup.Battle.Combat
             // aggro-targeting Unit 5 — aggroed enemy sticky-targets its guardian.
             var aggroLookup = SystemAPI.GetComponentLookup<Aggroed>(isReadOnly: true);
             var aggroTransformLookup = SystemAPI.GetComponentLookup<LocalTransform>(isReadOnly: true);
-            // enemy-behavior-components Unit 3 — targetMode/aimMode + FocusUntilDead lock.
+            // enemy-behavior-components Unit 3 — targetMode + FocusUntilDead lock.
             var behaviorLookup = SystemAPI.GetComponentLookup<EnemyBehavior>(isReadOnly: true);
             // enemy-ai-fsm 3a — fire 게이트용 상태 RO.
             var aiStateLookup = SystemAPI.GetComponentLookup<EnemyAiState>(isReadOnly: true);

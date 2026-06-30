@@ -1,23 +1,20 @@
 using NUnit.Framework;
-using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 using Wassup.Battle.Combat;
-using Wassup.Battle.Movement;
 using Wassup.Battle.Units;
 using Wassup.Data;
 
 namespace Wassup.Tests.EditMode
 {
     // enemy-behavior-components Unit 4 — AttackSystem behavior consumption:
-    // FocusUntilDead lock/hold/reselect/range-gating + aimMode move-pause gating.
+    // FocusUntilDead lock/hold/reselect/range-gating.
     public class EnemyBehaviorTests
     {
         private World _world;
         private EntityManager _em;
         private SimulationSystemGroup _simGroup;
-        private NativeQueue<MovementPauseRequest> _pauseQueue;
 
         [SetUp]
         public void SetUp()
@@ -26,17 +23,12 @@ namespace Wassup.Tests.EditMode
             _em = _world.EntityManager;
             _simGroup = _world.CreateSystemManaged<SimulationSystemGroup>();
             _simGroup.AddSystemToUpdateList(_world.CreateSystem<AttackSystem>());
-
-            _pauseQueue = new NativeQueue<MovementPauseRequest>(Allocator.Persistent);
-            var s = _em.CreateEntity();
-            _em.AddComponentData(s, new MovementPauseRequestEventsSingleton { queue = _pauseQueue });
         }
 
         [TearDown]
         public void TearDown()
         {
             if (_world != null && _world.IsCreated) _world.Dispose();
-            if (_pauseQueue.IsCreated) _pauseQueue.Dispose();
         }
 
         private Entity MakeDefender(float x, DefenderClass cls = DefenderClass.Guardian)
@@ -50,7 +42,7 @@ namespace Wassup.Tests.EditMode
             return e;
         }
 
-        private Entity MakeEnemy(float x, EnemyTargetMode targetMode, EnemyAimMode aimMode, float movePause = 0.5f)
+        private Entity MakeEnemy(float x, EnemyTargetMode targetMode)
         {
             var e = _em.CreateEntity();
             _em.AddComponentData(e, new Health { value = 100000f, max = 100000f });
@@ -59,11 +51,11 @@ namespace Wassup.Tests.EditMode
             _em.AddComponentData(e, new AttackState
             {
                 damage = 10f, range = 5f, cooldownDuration = 1f, cooldownRemaining = 0f,
-                attackTargetCount = 1, targetMask = (int)Faction.Defender, movePauseOnAttackSec = movePause,
+                attackTargetCount = 1, targetMask = (int)Faction.Defender,
             });
             var ob = _em.AddBuffer<AttackOutputElement>(e);
             ob.Add(new AttackOutputElement { value = new AttackOutput { kind = AttackOutputKind.Damage, magnitude = 10f } });
-            _em.AddComponentData(e, new EnemyBehavior { targetMode = targetMode, aimMode = aimMode });
+            _em.AddComponentData(e, new EnemyBehavior { targetMode = targetMode });
             _em.AddComponentData(e, new EnemyTargetFilter { classMask = -1, priorityClass = -1 });
             if (targetMode == EnemyTargetMode.FocusUntilDead)
                 _em.AddComponentData(e, new FocusTarget { current = Entity.Null });
@@ -85,7 +77,7 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void FocusUntilDead_Locks_Holds_ThenReselectsOnDeath()
         {
-            var f = MakeEnemy(0f, EnemyTargetMode.FocusUntilDead, EnemyAimMode.StopToAttack);
+            var f = MakeEnemy(0f, EnemyTargetMode.FocusUntilDead);
             var a = MakeDefender(1f);   // nearest
             MakeDefender(3f);           // farther
             _simGroup.Update();
@@ -104,7 +96,7 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void FocusUntilDead_OutOfRange_HoldsFire_KeepsLock()
         {
-            var f = MakeEnemy(0f, EnemyTargetMode.FocusUntilDead, EnemyAimMode.StopToAttack);
+            var f = MakeEnemy(0f, EnemyTargetMode.FocusUntilDead);
             var a = MakeDefender(1f);
             _simGroup.Update();
             Assert.AreEqual(a, Locked(f));
@@ -120,7 +112,7 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void Nearest_RepicksClosest_UnlikeFocus()
         {
-            var n = MakeEnemy(0f, EnemyTargetMode.Nearest, EnemyAimMode.StopToAttack);
+            var n = MakeEnemy(0f, EnemyTargetMode.Nearest);
             var a = MakeDefender(2f);
             _simGroup.Update();
             Assert.Greater(Incoming(a), 0, "nearest hits A");
@@ -133,7 +125,5 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(0, Incoming(a), "old target no longer hit");
         }
 
-        // enemy-ai-fsm 3a — AimMode pause 테스트 제거(이동정지는 EnemyAiState 가 표현,
-        // AttackSystem 은 더는 MovementPauseRequest 를 enqueue 하지 않는다). pause 큐 스캐폴딩은 3b 에서 정리.
     }
 }

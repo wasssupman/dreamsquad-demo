@@ -199,7 +199,6 @@ namespace Wassup.Bridge
         private NativeQueue<Wassup.Battle.Effects.HazardDestroyedEvent> _hazardDestroyedQueue;
         private NativeQueue<Wassup.Battle.Effects.HazardSpawnRequest> _hazardSpawnRequestQueue;
         private NativeQueue<Wassup.Battle.Combat.AttackOutputLogEvent> _attackOutputLogQueue;
-        private NativeQueue<Wassup.Battle.Movement.MovementPauseRequest> _movementPauseRequestQueue;
         private Unity.Collections.NativeHashSet<Unity.Mathematics.int2> _blockedCells;
         private Unity.Collections.NativeParallelMultiHashMap<Unity.Mathematics.int2, Wassup.Battle.Effects.HazardEffect> _hazardCellToEffects;
 
@@ -421,7 +420,6 @@ namespace Wassup.Bridge
             DestroyEntitiesByType<Wassup.Battle.Effects.HazardDestroyedEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.HazardSpawnRequestsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Combat.AttackOutputLogEventsSingleton>();
-            DestroyEntitiesByType<Wassup.Battle.Movement.MovementPauseRequestEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.ObstacleSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.HazardSingleton>();
         }
@@ -440,7 +438,6 @@ namespace Wassup.Bridge
             if (_statModifierQueue.IsCreated) _statModifierQueue.Dispose();
             if (_stackModifierQueue.IsCreated) _stackModifierQueue.Dispose();
             if (_attackOutputLogQueue.IsCreated) _attackOutputLogQueue.Dispose();
-            if (_movementPauseRequestQueue.IsCreated) _movementPauseRequestQueue.Dispose();
             if (_hazardRuntimeEventQueue.IsCreated) _hazardRuntimeEventQueue.Dispose();
             if (_hazardDestroyedQueue.IsCreated) _hazardDestroyedQueue.Dispose();
             if (_hazardSpawnRequestQueue.IsCreated) _hazardSpawnRequestQueue.Dispose();
@@ -1004,13 +1001,6 @@ namespace Wassup.Bridge
             _attackOutputLogQueue = new NativeQueue<Wassup.Battle.Combat.AttackOutputLogEvent>(Allocator.Persistent);
             var attackOutputLogSingleton = _em.CreateEntity();
             _em.AddComponentData(attackOutputLogSingleton, new Wassup.Battle.Combat.AttackOutputLogEventsSingleton { queue = _attackOutputLogQueue });
-
-            // Combat→Movement pause request channel. MovementSystem owns the actual
-            // EnemyAttackMovePause component add/update.
-            if (_movementPauseRequestQueue.IsCreated) _movementPauseRequestQueue.Dispose();
-            _movementPauseRequestQueue = new NativeQueue<Wassup.Battle.Movement.MovementPauseRequest>(Allocator.Persistent);
-            var movementPauseSingleton = _em.CreateEntity();
-            _em.AddComponentData(movementPauseSingleton, new Wassup.Battle.Movement.MovementPauseRequestEventsSingleton { queue = _movementPauseRequestQueue });
 
             // Obstacle blocked-cells set. ObstacleLifetimeSystem rebuilds it each frame.
             if (_blockedCells.IsCreated) _blockedCells.Dispose();
@@ -3583,7 +3573,6 @@ namespace Wassup.Bridge
                     cooldownRemaining = 0f,
                     attackTargetCount = Mathf.Max(1, entry.unitType.attackTargetCount),
                     targetMask = (int)(Faction.Defender | Faction.BlockingHazard),
-                    movePauseOnAttackSec = entry.unitType.movePauseOnAttackSec,
                     hitDelaySec = entry.unitType.hitDelaySec,
                 });
                 var outputBuf = _em.AddBuffer<Wassup.Battle.Combat.AttackOutputElement>(entity);
@@ -3623,11 +3612,8 @@ namespace Wassup.Bridge
             _em.AddComponentData(entity, new Wassup.Battle.Combat.EnemyBehavior
             {
                 targetMode = entry.unitType.targetMode,
-                aimMode = entry.unitType.aimMode,
-                // enemy-ai-fsm Unit 0 — 임시 aimMode 파생(SO 직접 값은 unit 4 마이그레이션).
-                engageMovement = entry.unitType.aimMode == Wassup.Data.EnemyAimMode.MoveAndShoot
-                    ? Wassup.Data.EngageMovement.Advance
-                    : Wassup.Data.EngageMovement.Halt,
+                // enemy-ai-fsm — SO 의 engageMovement 직접 bake(값 세팅은 unit 4 SO 마이그레이션).
+                engageMovement = entry.unitType.engageMovement,
             });
             // enemy-ai-fsm Unit 0 — FSM 상태 초기값. EnemyAiStateSystem(unit 1)이 매 틱 갱신.
             _em.AddComponentData(entity, new Wassup.Battle.Combat.EnemyAiState

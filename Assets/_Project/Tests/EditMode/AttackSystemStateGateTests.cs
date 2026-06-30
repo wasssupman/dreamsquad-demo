@@ -55,7 +55,7 @@ namespace Wassup.Tests.EditMode
             });
             var ob = _em.AddBuffer<AttackOutputElement>(e);
             ob.Add(new AttackOutputElement { value = new AttackOutput { kind = AttackOutputKind.Damage, magnitude = 10f } });
-            _em.AddComponentData(e, new EnemyBehavior { targetMode = EnemyTargetMode.Nearest, aimMode = EnemyAimMode.StopToAttack });
+            _em.AddComponentData(e, new EnemyBehavior { targetMode = EnemyTargetMode.Nearest });
             _em.AddComponentData(e, new EnemyTargetFilter { classMask = -1, priorityClass = -1 });
             _em.AddComponentData(e, new EnemyAiState { value = state });
             return e;
