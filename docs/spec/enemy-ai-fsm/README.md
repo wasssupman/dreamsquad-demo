@@ -29,6 +29,7 @@
 | 5 | `5_playmode_verify.md` | PlayMode smoke 갱신 + Play 검증 (자동 ✅ / 라이브 육안 ⏳) | — |
 | 7 | `7_pulse_engage.md` | `EngageMovement.Pulse`(진동형) + MovementSystem Engaging 분기 + TDD | ✅ |
 | 8 | `8_vanguard_pulse_migration.md` | Vanguard Pulse 전환(hitDelaySec=0.3) + Play 검증 (데이터 ✅ / 라이브 육안 ⏳) | — |
+| 9 | `9_rootcaster_pulse_migration.md` | Rootcaster Pulse 전환(hitDelaySec=0.6) + Play 검증 (데이터 ✅ / 라이브 육안 ⏳) | — |
 
 ## Feature-wide 계약
 
@@ -45,7 +46,8 @@
 ## 후속 후보 (현 범위 밖)
 
 - **Pulse 멈춤시간 분리** [S] · 현재 Pulse(unit 7) 는 멈춤구간 = `hitDelaySec`(타격지연)에 연동. 멈춤시간과 텔레그래프를 따로 튜닝하려면 `attackMotionSec` 별도 필드. 필요 시.
-- **Pulse 적용 확대** [S] · 현재 Vanguard 만 Pulse. Basic/Tanker 등 다른 근접에도 진동을 줄지는 콘텐츠 결정. 원거리 캠퍼(Sniper/Rootcaster)는 Halt 유지 권장.
+- **Pulse 적용 확대** [S] · 현재 Vanguard(근접)·Rootcaster(원거리, unit 9) Pulse. Basic/Tanker/Needler 등 추가 적용은 콘텐츠 결정. Sniper 는 장거리 글래스캐논이라 Halt 유지 권장.
+- **Pulse 멈춤시간 분리(attackMotionSec, option b)** [S] · Rootcaster(unit 9)는 사용자 결정으로 hitDelaySec 연동(이동-우세, 쏘며 전진). "서서 쏘고 한 발 전진"(대기-우세, 원거리 사거리 유지)을 원하면 멈춤시간을 타격지연과 분리한 `attackMotionSec` 필드 + MovementSystem 분기 필요. 원거리 적이 늘거나 캠프 정체성이 중요해지면 검토.
 - **경계 깜빡임 deadband** [S] · Engaging↔Marching 사거리 경계 hysteresis. tile-Chebyshev 이산이라 우선순위 낮음. 실측 후 필요 시.
 - **stun 직교 게이트** [S] · 현재 stun(`CcKind.Stun`)은 이동/공격을 멈추지 않음(미구현). 전이/Movement/Attack 에 stun 게이트 추가 — CC 파이프라인 spec 과 함께. (H1)
 - **타겟 스캔 1패스 공유** [S] · 전이와 AttackSystem 이 각각 사거리 스캔(2패스). 로직은 `TrySelectTarget` 공유로 일치하나 스캔 자체는 중복. 엔티티 수 증가 시 1패스 캐시 검토. (M2)
