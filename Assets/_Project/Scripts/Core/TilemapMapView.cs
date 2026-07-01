@@ -296,23 +296,30 @@ namespace Wassup.Core
                 var prop = theme.tileProps[placement.propIndex];
                 if (prop == null || prop.prefab == null) continue;
 
-                float centerX = placement.x + (placement.width - 1) * 0.5f;
-                float centerY = placement.y + (placement.height - 1) * 0.5f;
-                var instance = Instantiate(prop.prefab, _backgroundPropsRoot);
-                instance.name = $"{prop.name}_{placement.x}_{placement.y}";
-                // position 은 world(grid 권위). rotation 은 부모(BackgroundProps, XZ 바닥 90°) 상속 →
-                // visualOffset 가 바닥 평면으로 적용돼 접지(원경 RingProps 와 동일). rotation 을 Euler(0,yaw,0)
-                // 으로 강제하면 부모 90° 를 무시해 visualOffset 높이가 월드 +y 로 적용 → 공중부양 버그.
-                // yaw 는 PropBillboard(Tilted/FullCamera)가 override 하므로 미적용.
-                instance.transform.position = CellCenterToWorld(centerX, centerY);
-                instance.transform.localScale = Vector3.one * placement.scale;
-                MapView.ApplyPropSorting(instance, prop, placement, plan);
-                MapView.DisablePropDebugMarkers(instance);
-                // unit 9 (rev) — 프랍 그림자 = blob 통일(데스크톱/모바일). 실시간 cast 는 프랍에서 미사용(사용자 결정).
-                AttachPropBlob(instance, prop);
-                if (theme.propGlobalTint != Color.white)
-                    MapView.ApplyPropGlobalTint(instance, theme.propGlobalTint);
+                InstantiateProp(prop, placement, plan, theme, _backgroundPropsRoot);
             }
+        }
+
+        // prop-placement-layer unit 0 — 단일 프랍 인스턴스화(배경/구조물 공통 재사용 지점).
+        // resolved PropData 를 받는다 — placement.propIndex 로 tileProps 를 재조회하지 않는다
+        // (구조물 프랍은 tileProps 밖이라 이게 필수 계약).
+        // rotation 은 부모(BackgroundProps/그 외 root, XZ 바닥 90°) 상속 — Euler(0,yaw,0) 강제 시
+        // 부모 90° 를 무시해 visualOffset 이 월드 +y 로 적용되는 공중부양 버그. yaw 는 PropBillboard 가 override.
+        private void InstantiateProp(PropData prop, PropPlacement placement,
+                                     BoardVisualPlan plan, MapThemeData theme, Transform root)
+        {
+            float centerX = placement.x + (placement.width - 1) * 0.5f;
+            float centerY = placement.y + (placement.height - 1) * 0.5f;
+            var instance = Instantiate(prop.prefab, root);
+            instance.name = $"{prop.name}_{placement.x}_{placement.y}";
+            instance.transform.position = CellCenterToWorld(centerX, centerY);
+            instance.transform.localScale = Vector3.one * placement.scale;
+            MapView.ApplyPropSorting(instance, prop, placement, plan);
+            MapView.DisablePropDebugMarkers(instance);
+            // 프랍 그림자 = blob 통일(데스크톱/모바일). 실시간 cast 는 프랍에서 미사용(사용자 결정).
+            AttachPropBlob(instance, prop);
+            if (theme.propGlobalTint != Color.white)
+                MapView.ApplyPropGlobalTint(instance, theme.propGlobalTint);
         }
 
         // tilemap-world-surround unit 4 — 외곽 터레인 링 셀에 원경 프랍을 저밀도로 흩뿌린다.
