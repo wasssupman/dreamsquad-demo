@@ -12,6 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 76be7b1982d44400ea2bbe396d3eea24, type: 3}
   m_Name: Enemy_Basic
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.AttackUnitData
+  id: basic
   displayName: Basic
   enemyClass: 3
   attackMethod: 1

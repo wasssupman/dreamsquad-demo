@@ -6,6 +6,10 @@ namespace Wassup.Data
     [CreateAssetMenu(fileName = "AttackUnit", menuName = "Wassup/AttackUnit", order = 10)]
     public class AttackUnitData : ScriptableObject, ISpineUnitVisualData
     {
+        // unit-stat-spreadsheet-schema Unit 1 — stable id for spreadsheet import
+        // matching. Fixed once assigned; independent of asset/display name.
+        // Mirrors DefenderUnitData.id.
+        public string id;
         public string displayName;
 
         // enemy-class-system Unit 0 — enemy archetype LABEL only. Behavior is NOT

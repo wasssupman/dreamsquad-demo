@@ -3,6 +3,7 @@
     "rootNamespace": "Wassup.Tests.EditMode",
     "references": [
         "Wassup.Runtime",
+        "Wassup.Editor.UnitStatImport",
         "Unity.Entities",
         "Unity.Collections",
         "Unity.Mathematics",
@@ -18,7 +19,8 @@
     "allowUnsafeCode": false,
     "overrideReferences": true,
     "precompiledReferences": [
-        "nunit.framework.dll"
+        "nunit.framework.dll",
+        "Newtonsoft.Json.dll"
     ],
     "autoReferenced": false,
     "defineConstraints": [

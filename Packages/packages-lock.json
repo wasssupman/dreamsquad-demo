@@ -16,6 +16,26 @@
       "source": "local-tarball",
       "dependencies": {}
     },
+    "com.unity.2d.tilemap": {
+      "version": "1.0.0",
+      "depth": 1,
+      "source": "builtin",
+      "dependencies": {
+        "com.unity.modules.tilemap": "1.0.0",
+        "com.unity.modules.uielements": "1.0.0"
+      }
+    },
+    "com.unity.2d.tilemap.extras": {
+      "version": "7.0.1",
+      "depth": 0,
+      "source": "registry",
+      "dependencies": {
+        "com.unity.2d.tilemap": "1.0.0",
+        "com.unity.modules.tilemap": "1.0.0",
+        "com.unity.modules.jsonserialize": "1.0.0"
+      },
+      "url": "https://packages.unity.com"
+    },
     "com.unity.ai.navigation": {
       "version": "2.0.12",
       "depth": 0,
@@ -142,9 +162,19 @@
     },
     "com.unity.nuget.newtonsoft-json": {
       "version": "3.2.2",
-      "depth": 1,
+      "depth": 0,
       "source": "registry",
       "dependencies": {},
+      "url": "https://packages.unity.com"
+    },
+    "com.unity.postprocessing": {
+      "version": "3.5.4",
+      "depth": 0,
+      "source": "registry",
+      "dependencies": {
+        "com.unity.modules.imgui": "1.0.0",
+        "com.unity.modules.physics": "1.0.0"
+      },
       "url": "https://packages.unity.com"
     },
     "com.unity.probuilder": {
