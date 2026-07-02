@@ -200,7 +200,7 @@ board-visualization spec 자체는 ROI 부족으로 wrap 종료. 진단/실험�
 
 #### 프랍 접지/프레임 (prop-upright-root 파생)
 
-- **desert 테마 접지 fix** [S] · desert 풀의 `prop_style_*`·`prop_dummy_*` 가 아직 FullCamera + nonzero visualOffset(접지 fix `c6c77dc`/`f395afd` 의 desert 미적용분). forest 와 동일하게 Tilted + BottomCenter 재임포트 + offset 0. prop-upright-root unit0 audit 에서 발견, 프레임 문제와 성격 달라 분리.
+- ~~**desert 테마 접지 fix**~~ [완료 2026-07-03] · desert prop_style_*/prop_dummy_* + 공유 forest dummy PropData 를 Tilted + offset 0 + 텍스처 BottomCenter 로 정합. 실제 렌더 sink 는 dummy 2종뿐(prop_style_* 는 공유 forest 프리팹의 baked data 로 이미 정상)이었고 나머지는 데이터 hygiene. Play 검증(`desert_dummy_grounding_verify.png`).
 - **ObstaclePlacer 테스트 기존 실패** [S] · `ObstaclePlacerTests.Place_PreservesWalkAndMinimumPlaceRatio`(≥36 기대, 31). dea2733(phase10) 테스트, 맵 생성 결정론 실패. prop-upright-root 작업과 무관하게 HEAD 에서 이미 실패 — 회귀 아님. minPlaceableRatio/ObstaclePlacer 로직 별도 조사.
 
 #### 기타

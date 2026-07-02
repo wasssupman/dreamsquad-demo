@@ -16,10 +16,21 @@ MonoBehaviour:
   displayName: dead tree 1 3
   footprintX: 1
   footprintY: 3
-  placementWeight: 1
+  visualFootprint: {x: 1, y: 1}
   minDistanceCells: 2
-  visualOffset: {x: 0, y: 0.9345045, z: 0}
+  visualOffset: {x: 0, y: 0, z: 0}
   visualScale: 1.0609009
+  preferredAnchorTypes: 
+  preferredRegionSizeMin: 0
+  clusterRadius: 1
+  clusterCount: 1
+  clusterProbability: 0
+  rotationJitterDegrees: 0
+  scaleJitter: 0
+  pathProximityRange: {x: 0, y: 255}
+  borderProximityRange: {x: 0, y: 255}
+  category: 
+  sameCategoryMinDistanceCells: 0
   prefab: {fileID: 5306084646255470108, guid: 0f5497313302c409bba09a0e72d5b184, type: 3}
   sprite: {fileID: 21300000, guid: b931cf344defe4cbfa0bb963f6a70d46, type: 3}
   sourceTexture: {fileID: 2800000, guid: b931cf344defe4cbfa0bb963f6a70d46, type: 3}
@@ -28,4 +39,5 @@ MonoBehaviour:
   skeletonDataAsset: {fileID: 0}
   spineSkinName: 
   idleAnimation: idle
-  billboardMode: 0
+  billboardMode: 3
+  tiltAngle: 50

@@ -16,10 +16,21 @@ MonoBehaviour:
   displayName: fallen log 2 1
   footprintX: 2
   footprintY: 1
-  placementWeight: 1
+  visualFootprint: {x: 1, y: 1}
   minDistanceCells: 1
-  visualOffset: {x: 0, y: 0.46, z: 0}
+  visualOffset: {x: 0, y: 0, z: 0}
   visualScale: 0.96130615
+  preferredAnchorTypes: 
+  preferredRegionSizeMin: 0
+  clusterRadius: 1
+  clusterCount: 1
+  clusterProbability: 0
+  rotationJitterDegrees: 0
+  scaleJitter: 0
+  pathProximityRange: {x: 0, y: 255}
+  borderProximityRange: {x: 0, y: 255}
+  category: 
+  sameCategoryMinDistanceCells: 0
   prefab: {fileID: 3901127091003368502, guid: 600533078329b4f27a9740a221399c32, type: 3}
   sprite: {fileID: 21300000, guid: 44f1b26ed33eb4bdf8bf37045955acd0, type: 3}
   sourceTexture: {fileID: 2800000, guid: 44f1b26ed33eb4bdf8bf37045955acd0, type: 3}
@@ -28,4 +39,5 @@ MonoBehaviour:
   skeletonDataAsset: {fileID: 0}
   spineSkinName: 
   idleAnimation: idle
-  billboardMode: 0
+  billboardMode: 3
+  tiltAngle: 45

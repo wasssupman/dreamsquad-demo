@@ -16,10 +16,21 @@ MonoBehaviour:
   displayName: boulder cluster 2 2
   footprintX: 2
   footprintY: 2
-  placementWeight: 8
+  visualFootprint: {x: 1, y: 1}
   minDistanceCells: 2
-  visualOffset: {x: 0, y: 0.83906156, z: 0}
+  visualOffset: {x: 0, y: 0, z: 0}
   visualScale: 1.381349
+  preferredAnchorTypes: 
+  preferredRegionSizeMin: 0
+  clusterRadius: 1
+  clusterCount: 1
+  clusterProbability: 0
+  rotationJitterDegrees: 0
+  scaleJitter: 0
+  pathProximityRange: {x: 0, y: 255}
+  borderProximityRange: {x: 0, y: 255}
+  category: 
+  sameCategoryMinDistanceCells: 0
   prefab: {fileID: 7300266097913936527, guid: 2dfb3f5a4f79a4aa68a6ae167196b967, type: 3}
   sprite: {fileID: 21300000, guid: df207a05bb77c426bb8e66803cfaf65c, type: 3}
   sourceTexture: {fileID: 2800000, guid: df207a05bb77c426bb8e66803cfaf65c, type: 3}
@@ -28,4 +39,5 @@ MonoBehaviour:
   skeletonDataAsset: {fileID: 0}
   spineSkinName: 
   idleAnimation: idle
-  billboardMode: 0
+  billboardMode: 3
+  tiltAngle: 45
