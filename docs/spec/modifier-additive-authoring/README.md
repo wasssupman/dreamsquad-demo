@@ -1,6 +1,6 @@
 # Modifier Additive Authoring (Policy B)
 
-상태: **진행 중 (2026-07-03 착수)**
+상태: **완료 2026-07-03** — unit 0~2 구현·커밋. Play smoke(버프 합산 GameLog 확인) 후속.
 
 ## 배경
 
