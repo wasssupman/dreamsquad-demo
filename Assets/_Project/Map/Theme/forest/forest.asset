@@ -120,16 +120,6 @@ MonoBehaviour:
   walkBaseTint: {r: 1, g: 0.92, b: 0.62, a: 1}
   envBaseTint: {r: 0.72, g: 0.66, b: 0.72, a: 1}
   propGlobalTint: {r: 0.98, g: 0.9, b: 0.76, a: 1}
-  tileProps:
-  - {fileID: 11400000, guid: b6e6c460ab1b947ae9aca94977bba8da, type: 2}
-  - {fileID: 11400000, guid: 65bdcf5eeefae480897cb81da13e8708, type: 2}
-  - {fileID: 11400000, guid: 35a3d1606d84549cc83188b56498feaf, type: 2}
-  - {fileID: 11400000, guid: c766759613b1c45a8a9720b7d9b33cb3, type: 2}
-  - {fileID: 11400000, guid: 23f779b67a5044a8d96a2ef0baa61e34, type: 2}
-  - {fileID: 11400000, guid: 5c9aca8217a2349d48d0a17ec9745f87, type: 2}
-  - {fileID: 11400000, guid: caad5cf698a9d4225b5a0f0947ac9342, type: 2}
-  - {fileID: 11400000, guid: c3d53c4f026334bae9a74546e8c9f7d5, type: 2}
-  - {fileID: 11400000, guid: 33290296dad74486da3fb7b118e9bdb4, type: 2}
   playAreaProps:
   - prop: {fileID: 11400000, guid: b6e6c460ab1b947ae9aca94977bba8da, type: 2}
     weight: 10
@@ -144,24 +134,20 @@ MonoBehaviour:
   - prop: {fileID: 11400000, guid: 5c9aca8217a2349d48d0a17ec9745f87, type: 2}
     weight: 6
   - prop: {fileID: 11400000, guid: caad5cf698a9d4225b5a0f0947ac9342, type: 2}
-    weight: 9
+    weight: 1
   - prop: {fileID: 11400000, guid: c3d53c4f026334bae9a74546e8c9f7d5, type: 2}
     weight: 8
   - prop: {fileID: 11400000, guid: 33290296dad74486da3fb7b118e9bdb4, type: 2}
     weight: 8
+  - prop: {fileID: 11400000, guid: cd63225f659e84743818c5fdf6ccad67, type: 2}
+    weight: 1
   distantRingProps:
   - prop: {fileID: 11400000, guid: c766759613b1c45a8a9720b7d9b33cb3, type: 2}
     weight: 1
-  - prop: {fileID: 11400000, guid: 23f779b67a5044a8d96a2ef0baa61e34, type: 2}
-    weight: 1
-  - prop: {fileID: 11400000, guid: 5c9aca8217a2349d48d0a17ec9745f87, type: 2}
-    weight: 1
+  - prop: {fileID: 11400000, guid: cd63225f659e84743818c5fdf6ccad67, type: 2}
+    weight: 3
   - prop: {fileID: 11400000, guid: caad5cf698a9d4225b5a0f0947ac9342, type: 2}
-    weight: 14
-  - prop: {fileID: 11400000, guid: c3d53c4f026334bae9a74546e8c9f7d5, type: 2}
-    weight: 8
-  - prop: {fileID: 11400000, guid: 33290296dad74486da3fb7b118e9bdb4, type: 2}
-    weight: 8
+    weight: 3
   decorProps: []
   goalStructureProp: {fileID: 11400000, guid: 4c7389088193f48a9bc29d132c85a108, type: 2}
   spawnStructureProp: {fileID: 11400000, guid: c03633f30ff5640309292fad4d579cce, type: 2}
