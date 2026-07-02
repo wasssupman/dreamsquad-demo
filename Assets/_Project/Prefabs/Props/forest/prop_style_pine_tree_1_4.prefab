@@ -207,7 +207,7 @@ GameObject:
   - component: {fileID: 4073720327238366733}
   - component: {fileID: 3593189031032811227}
   m_Layer: 0
-  m_Name: prop_style_pine_tree_1_1
+  m_Name: prop_style_pine_tree_1_4
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

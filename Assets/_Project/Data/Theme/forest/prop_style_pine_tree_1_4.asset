@@ -10,16 +10,27 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 934f1261c7a44f2389308d8e101207cd, type: 3}
-  m_Name: prop_style_pine_tree_1_1
+  m_Name: prop_style_pine_tree_1_4
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.PropData
   id: prop_style_pine_tree_1_1
   displayName: pine tree 1 1
   footprintX: 1
   footprintY: 1
-  placementWeight: 18
+  visualFootprint: {x: 1, y: 1}
   minDistanceCells: 1
-  visualOffset: {x: 0, y: 0.46, z: 0}
+  visualOffset: {x: 0, y: 0, z: 0}
   visualScale: 0.6947493
+  preferredAnchorTypes: 
+  preferredRegionSizeMin: 0
+  clusterRadius: 1
+  clusterCount: 1
+  clusterProbability: 0
+  rotationJitterDegrees: 0
+  scaleJitter: 0
+  pathProximityRange: {x: 0, y: 255}
+  borderProximityRange: {x: 0, y: 255}
+  category: 
+  sameCategoryMinDistanceCells: 0
   prefab: {fileID: 4775245906002921811, guid: 3e0ef5313123c42f2baa3e26edaba107, type: 3}
   sprite: {fileID: 21300000, guid: 34b96ae1f9e9549b58d7891d5e4b0c81, type: 3}
   sourceTexture: {fileID: 2800000, guid: 34b96ae1f9e9549b58d7891d5e4b0c81, type: 3}
@@ -28,4 +39,5 @@ MonoBehaviour:
   skeletonDataAsset: {fileID: 0}
   spineSkinName: 
   idleAnimation: idle
-  billboardMode: 0
+  billboardMode: 3
+  tiltAngle: 48
