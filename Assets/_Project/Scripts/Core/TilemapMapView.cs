@@ -292,6 +292,9 @@ namespace Wassup.Core
             var propsRoot = new GameObject("BackgroundProps");
             _backgroundPropsRoot = propsRoot.transform;
             _backgroundPropsRoot.SetParent(transform, false);
+            // prop-upright-root unit 1 — 부모(90°X)를 상쇄해 프랍 저작 프레임을 upright 로.
+            // +Y=월드 위. 위치는 transform.position(월드)로 세팅되므로 placement 무변경, 로컬 프레임만 upright.
+            _backgroundPropsRoot.localRotation = Quaternion.Euler(-90f, 0f, 0f);
 
             for (int i = 0; i < placements.Count; i++)
             {
@@ -422,6 +425,8 @@ namespace Wassup.Core
             var root = new GameObject("RingProps");
             _ringPropsRoot = root.transform;
             _ringPropsRoot.SetParent(transform, false);
+            // prop-upright-root unit 1 — background 와 동일 upright 프레임(부모 90° 상쇄).
+            _ringPropsRoot.localRotation = Quaternion.Euler(-90f, 0f, 0f);
 
             for (int y = -R; y < h + R; y++)
             for (int x = -R; x < w + R; x++)

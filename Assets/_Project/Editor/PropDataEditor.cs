@@ -115,9 +115,8 @@ namespace Wassup.Editor
             }
 
             // 기본값: footprint 종횡비(긴축 정규화) × visualScale, 틸트로 눕는 몸체 중심의 지면 투영.
-            // 좌표 관례: 프랍 인스턴스는 90°X 회전된 root(BackgroundProps 등) 아래 놓이므로
-            // 프리팹 local y = 월드 깊이(+Z, 틸트 눕는 방향), local -z = 월드 높이(+Y).
-            // 회전은 identity — 부모 90°X 가 쿼드를 XZ 바닥에 눕힌다(스프라이트는 양면 렌더).
+            // prop-upright-root — 프랍은 upright 프레임(props 루트가 부모 90° 상쇄) 아래 놓인다.
+            // 관례: +Y=월드 높이, +Z=월드 깊이(틸트 눕는 방향). 쿼드는 Euler(90,0,0)로 XZ 바닥에 눕힌다(양면 렌더).
             var fp = data.Footprint;
             float fpMax = Mathf.Max(fp.x, fp.y);
             float scale = Mathf.Max(0.01f, data.visualScale);
@@ -125,8 +124,8 @@ namespace Wassup.Editor
             float depthOffset = data.billboardMode == PropBillboardMode.Tilted
                 ? 0.5f * worldHeight * Mathf.Sin(data.tiltAngle * Mathf.Deg2Rad)
                 : 0f;
-            go.transform.localPosition = new Vector3(0f, depthOffset, -BlobGroundLiftLocal);
-            go.transform.localRotation = Quaternion.identity;
+            go.transform.localPosition = new Vector3(0f, BlobGroundLiftLocal, depthOffset);
+            go.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
             go.transform.localScale = new Vector3(
                 BlobBaseSize * scale * fp.x / fpMax,
                 BlobBaseSize * scale * fp.y / fpMax,
