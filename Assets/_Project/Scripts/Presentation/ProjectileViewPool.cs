@@ -8,11 +8,15 @@ using Wassup.Data;
 
 namespace Wassup.Presentation
 {
-    // Attached once to each instantiated view — caches Renderer[] so ApplyMpb
-    // and ReturnToPool never call GetComponentsInChildren on hot paths.
+    // Attached once to each instantiated view — caches component arrays so ApplyMpb,
+    // ReturnToPool, and ResetVfx never call GetComponentsInChildren on hot paths.
     public class ViewRendererCache : MonoBehaviour
     {
         public Renderer[] renderers;
+        public TrailRenderer[] trails;
+        // Top-level particle systems only. Play(true) cascades to children/subemitters,
+        // so restarting only roots preserves authored trigger relationships.
+        public ParticleSystem[] rootParticles;
     }
 
     public class ProjectileViewPool : MonoBehaviour
@@ -67,13 +71,27 @@ namespace Wassup.Presentation
 
             float hueShift = (float)(_visualRng.NextDouble() * 2 - 1) * data.hueJitter;
             float rollDeg  = (float)(_visualRng.NextDouble() * 2 - 1) * data.rotationJitter;
-            Color finalTint = ApplyHueShift(data.tintColor, hueShift);
 
-            ApplyMpb(view, finalTint, data.emissionMultiplier, SelectTexture(data));
+            // ga-reskin unit 1: preserveVfxColors 면 데이터 recolor(tint/emission/texture)를 건너뛰고
+            // 프리팹 머티리얼 고유 색을 그대로 쓴다. GA 처럼 _Color(HDR 밝기)·_EmissionColor 가 이미
+            // authored 된 VFX 는 MPB 흰색 덮어쓰기로 밝기/색이 죽으므로 as-is 재현에 필수.
+            // RNG draw 수는 위에서 항상 동일하게 소비 → 시각 결정성 유지.
+            if (!data.preserveVfxColors)
+            {
+                Color finalTint = ApplyHueShift(data.tintColor, hueShift);
+                ApplyMpb(view, finalTint, data.emissionMultiplier, SelectTexture(data));
+            }
 
             // Fix 2: reset to prefab rotation before applying roll — no accumulation across pool reuse.
             view.transform.localRotation = data.projectilePrefab.transform.localRotation
                 * Quaternion.Euler(0f, 0f, rollDeg);
+
+            // ga-reskin unit 1: 첫 SyncTransforms 전에 스폰 위치를 즉시 세팅하고 trail/particle 을
+            // 리셋한다. 안 그러면 풀 재사용 시 이전 사망 위치 → 새 스폰 위치로 world-space 파티클/
+            // TrailRenderer 가 streak(줄) 을 그린다.
+            float3 spawnView = Wassup.Core.BoardSpace.ToView(initialPosition);
+            view.transform.position = new Vector3(spawnView.x, spawnView.y, spawnView.z);
+            ResetVfx(view);
 
             _active[entity] = new ProjectileViewState
             {
@@ -82,7 +100,7 @@ namespace Wassup.Presentation
                 facing = data.facing,
                 spinSpeed = data.spinSpeed,
                 // tilemap-view-backend unit 3 — lastPosition 은 view 좌표로 보존(velocity 를 view 공간에서 계산).
-                lastPosition = Wassup.Core.BoardSpace.ToView(initialPosition),   // Fix 1
+                lastPosition = spawnView,   // Fix 1
             };
         }
 
@@ -146,6 +164,7 @@ namespace Wassup.Presentation
             view.SetActive(true);
             float3 hitView = Wassup.Core.BoardSpace.ToView(position); // sim→view
             view.transform.position = new Vector3(hitView.x, hitView.y, hitView.z);
+            ResetVfx(view);   // ga-reskin unit 1: 풀 재사용 시 파티클 재생 신선도
             float lifetime = hitVfxLifetime > 0f ? hitVfxLifetime : GetParticleLifetime(view);
             StartCoroutine(DespawnAfter(view, hitPrefab, lifetime));
         }
@@ -157,6 +176,7 @@ namespace Wassup.Presentation
             view.transform.position = position;
             if (facingDir.sqrMagnitude > 0.0001f)
                 view.transform.rotation = Quaternion.LookRotation(facingDir, Vector3.up);
+            ResetVfx(view);   // ga-reskin unit 1: 풀 재사용 시 파티클 재생 신선도
             float life = lifetime > 0f ? lifetime : GetParticleLifetime(view);
             StartCoroutine(DespawnAfter(view, castPrefab, life));
         }
@@ -244,7 +264,45 @@ namespace Wassup.Presentation
             var view = Instantiate(prefab, transform);
             var rc = view.AddComponent<ViewRendererCache>();
             rc.renderers = view.GetComponentsInChildren<Renderer>(includeInactive: true);
+            rc.trails = view.GetComponentsInChildren<TrailRenderer>(includeInactive: true);
+            rc.rootParticles = ComputeRootParticles(
+                view.transform, view.GetComponentsInChildren<ParticleSystem>(includeInactive: true));
             return view;
+        }
+
+        // ga-reskin unit 1: 풀 재사용 시 잔상 제거 + 파티클 신선 재생.
+        // 캐시된 배열만 순회하므로 핫패스 GetComponentsInChildren 없음.
+        // 가정: top-level PS 는 스폰 시 재생돼야 하는 시스템(현재 GA 투사체/hit/muzzle 은 모두
+        // "play now"). playOnAwake=false 로 지연 트리거되는 루트 시스템을 쓰는 프리팹이 생기면
+        // 이 강제 Play(true) 가 authored 타이밍을 깨므로 그때 재검토.
+        private static void ResetVfx(GameObject view)
+        {
+            if (!view.TryGetComponent<ViewRendererCache>(out var cache)) return;
+            if (cache.trails != null)
+                foreach (var t in cache.trails)
+                    if (t != null) t.Clear();
+            if (cache.rootParticles != null)
+                foreach (var p in cache.rootParticles)
+                    if (p != null) { p.Clear(true); p.Play(true); }
+        }
+
+        // 조상에 ParticleSystem 이 없는 top-level PS 만 추림. Play(true) 가 자식/서브에미터로
+        // cascade 되므로, 루트만 재시작하면 authored 트리거 관계를 깨지 않는다.
+        // 탐색은 프리팹 내부로 한정(viewRoot 위 풀 계층까지 올라가지 않음).
+        private static ParticleSystem[] ComputeRootParticles(Transform viewRoot, ParticleSystem[] all)
+        {
+            var stopAt = viewRoot.parent; // 풀 컨테이너 — 여기 도달 전까지만 조상 검사.
+            var roots = new List<ParticleSystem>(all.Length);
+            foreach (var p in all)
+            {
+                bool nested = false;
+                for (var t = p.transform.parent; t != null && t != stopAt; t = t.parent)
+                {
+                    if (t.GetComponent<ParticleSystem>() != null) { nested = true; break; }
+                }
+                if (!nested) roots.Add(p);
+            }
+            return roots.ToArray();
         }
 
         private void Return(Entity entity)

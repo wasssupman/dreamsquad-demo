@@ -40,6 +40,11 @@ namespace Wassup.Data
         public ProjectileFacing facing = ProjectileFacing.AlongVelocity;
         public float spinSpeed = 0f;
 
+        [Header("As-is VFX")]
+        [Tooltip("true 면 tint/emission/texture 변종 recolor 를 건너뛰고 프리팹 머티리얼 고유 색을 " +
+                 "그대로 쓴다. 이미 색이 완성된 VFX(예: GabrielAguiar) 용. false 면 기존 데이터 recolor.")]
+        public bool preserveVfxColors = false;
+
         [Header("Variation - deterministic")]
         public Color tintColor = Color.white;
         public float emissionMultiplier = 1f;
