@@ -15,7 +15,7 @@ MonoBehaviour:
   id: marksman
   role: 1
   displayName: Marksman
-  health: 45
+  health: 450
   attackRange: 6
   attackDamage: 40
   attackCooldown: 1

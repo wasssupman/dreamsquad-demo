@@ -15,7 +15,7 @@ MonoBehaviour:
   id: cannon
   role: 1
   displayName: Cannon
-  health: 40
+  health: 400
   attackRange: 5
   attackDamage: 60
   attackCooldown: 2.5

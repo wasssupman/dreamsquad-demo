@@ -15,10 +15,12 @@ MonoBehaviour:
   id: poison_caster
   role: 4
   displayName: Poison Caster
-  health: 45
+  health: 450
   attackRange: 0
   attackDamage: 0
   attackCooldown: 4
+  hitDelaySec: 0
+  deployDelaySec: 0
   attackTargetCount: 1
   visualMesh: {fileID: 0}
   visualMaterial: {fileID: 2100000, guid: 6fa13ca4169ea45da96dbc3495b7b178, type: 2}
@@ -39,6 +41,8 @@ MonoBehaviour:
   hazardFootprintWidth: 1
   hazardFootprintHeight: 1
   rarity: 2
+  aggroCapacity: 0
+  aggroRange: 0
   skeletonDataAsset: {fileID: 11400000, guid: b0640b88ee78d49f38774a3a4b09bf4d, type: 2}
   spineSkinName: Goat
   idleAnimation: idle

@@ -15,7 +15,7 @@ MonoBehaviour:
   id: ice_caster
   role: 4
   displayName: Ice Caster
-  health: 45
+  health: 450
   attackRange: 0
   attackDamage: 0
   attackCooldown: 4

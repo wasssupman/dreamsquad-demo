@@ -15,7 +15,7 @@ MonoBehaviour:
   id: ranger
   role: 1
   displayName: Ranger
-  health: 40
+  health: 400
   attackRange: 5
   attackDamage: 10
   attackCooldown: 0.4

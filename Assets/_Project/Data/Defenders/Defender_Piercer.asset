@@ -15,7 +15,7 @@ MonoBehaviour:
   id: piercer
   role: 1
   displayName: Piercer
-  health: 55
+  health: 550
   attackRange: 3
   attackDamage: 45
   attackCooldown: 1.5

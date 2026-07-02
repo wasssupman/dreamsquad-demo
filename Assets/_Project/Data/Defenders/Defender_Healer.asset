@@ -15,7 +15,7 @@ MonoBehaviour:
   id: healer
   role: 5
   displayName: Healer
-  health: 50
+  health: 500
   attackRange: 3
   attackDamage: 0
   attackCooldown: 3

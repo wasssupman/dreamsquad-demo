@@ -15,7 +15,7 @@ MonoBehaviour:
   id: fire_caster
   role: 4
   displayName: Fire Caster
-  health: 45
+  health: 450
   attackRange: 0
   attackDamage: 0
   attackCooldown: 3.5

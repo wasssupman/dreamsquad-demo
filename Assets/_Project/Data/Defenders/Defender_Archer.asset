@@ -15,10 +15,12 @@ MonoBehaviour:
   id: archer
   role: 1
   displayName: Archer
-  health: 50
+  health: 500
   attackRange: 4
-  attackDamage: 15
+  attackDamage: 25
   attackCooldown: 1.5
+  hitDelaySec: 0
+  deployDelaySec: 0
   attackTargetCount: 1
   visualMesh: {fileID: 0}
   visualMaterial: {fileID: 2100000, guid: 8b475daf22c6b455cae26332bd71a8bd, type: 2}
@@ -46,6 +48,8 @@ MonoBehaviour:
   hazardFootprintWidth: 1
   hazardFootprintHeight: 1
   rarity: 1
+  aggroCapacity: 0
+  aggroRange: 0
   skeletonDataAsset: {fileID: 11400000, guid: b0640b88ee78d49f38774a3a4b09bf4d, type: 2}
   spineSkinName: Lamb
   idleAnimation: idle
