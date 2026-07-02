@@ -16,6 +16,15 @@ namespace Wassup.Battle.Effects
     [UpdateAfter(typeof(StatModifierTickSystem))]
     public partial struct ModifierStatsAggregateSystem : ISystem
     {
+        // modifier-stacking-policy — framework clamp bounds (not per-unit stats).
+        // Ranges are wide enough that normal single modifiers never hit them; only
+        // pathological stacking is bounded. Move floor keeps a slow from fully
+        // freezing a unit (full stop is CcKind.Stun's job).
+        private const float MulStatFloor = 0.2f;   // damage/attackSpeed/dmgTaken: max -80%
+        private const float MulStatCeil = 5f;      //   … max +400%
+        private const float MoveMulFloor = 0.15f;
+        private const float MoveMulCeil = 3f;
+
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
@@ -74,12 +83,17 @@ namespace Wassup.Battle.Effects
                     }
                 }
 
-                // Combine: override wins; otherwise (base + Σadd) * Πmul.
-                stats.ValueRW.damageMul      = dHasOver ? dOver : (1f + dAdd) * dMul;
-                stats.ValueRW.attackSpeedMul = aHasOver ? aOver : (1f + aAdd) * aMul;
-                stats.ValueRW.dmgTakenMul    = tHasOver ? tOver : (1f + tAdd) * tMul;
-                stats.ValueRW.regenPerSec    = rHasOver ? rOver : (0f + rAdd) * rMul;
-                stats.ValueRW.moveSpeedMul   = mHasOver ? mOver : (1f + mAdd) * mMul;
+                // Combine: override wins; otherwise (base + Σadd) * Πmul, then clamp.
+                // modifier-stacking-policy — distinct-source multiplicative modifiers
+                // stack unbounded (ModifierApplySystem keys slots on source); the clamp
+                // stops a debuff product decaying a stat to ~0 or a buff running away.
+                // regenPerSec is a resource value (base 0), not a multiplier — no clamp
+                // beyond preventing a negative rate.
+                stats.ValueRW.damageMul      = ModifierMath.CombineMul(dHasOver, dOver, dAdd, dMul, MulStatFloor, MulStatCeil);
+                stats.ValueRW.attackSpeedMul = ModifierMath.CombineMul(aHasOver, aOver, aAdd, aMul, MulStatFloor, MulStatCeil);
+                stats.ValueRW.dmgTakenMul    = ModifierMath.CombineMul(tHasOver, tOver, tAdd, tMul, MulStatFloor, MulStatCeil);
+                stats.ValueRW.regenPerSec    = math.max(0f, rHasOver ? rOver : (0f + rAdd) * rMul);
+                stats.ValueRW.moveSpeedMul   = ModifierMath.CombineMul(mHasOver, mOver, mAdd, mMul, MoveMulFloor, MoveMulCeil);
 
                 dirty.ValueRW = false;
             }
