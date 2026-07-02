@@ -17,6 +17,6 @@
 
 ## 완료 기준
 
-- [ ] compile 오류 없음
-- [ ] 단위 테스트 6+ 통과: null / 빈 배열 / 1개 read / 1개 write / 2개+ 거부 / kind 필터(다른 kind 항목 무시)
-- [ ] 기존 스위트 회귀 없음
+- [x] compile 오류 없음 (2026-07-02)
+- [x] 단위 테스트 8종 통과: null / 빈 배열 / 1개 read / 1개 write / 2개+ 거부(read·write) / 0개 write 거부 / kind 필터
+- [x] 기존 스위트 회귀 없음 (430개, 기지 실패 ObstaclePlacer 1건 제외 전부 통과)
