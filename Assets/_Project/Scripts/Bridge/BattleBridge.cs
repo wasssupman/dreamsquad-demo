@@ -130,6 +130,8 @@ namespace Wassup.Bridge
         private readonly HashSet<Vector2Int> _occupiedTiles = new();
         private readonly Dictionary<Vector2Int, (Entity entity, DefenderUnitData data)> _defenderByTile = new();
         private readonly HashSet<Entity> _onPlaceTriggeredEntities = new();
+        // effect-tiles unit 1 — 셀 → 효과 타일 (bridge-side, sim 무관). 맵 빌드마다 재구축.
+        private readonly Dictionary<Vector2Int, EffectTileData> _effectTilesByCell = new();
         private readonly List<ProjectileData> _projectileDataByIndex = new();
         private readonly Dictionary<ProjectileData, int> _projectileDataIndex = new();
         private readonly List<HazardSO> _zoneHazardRegistry = new();
@@ -768,6 +770,22 @@ namespace Wassup.Bridge
             if (UseTilemapView && tilemapMapView != null && theme != null)
             {
                 tilemapMapView.InstantiateStructureProps(_generatedMap, theme, tilemapMapView.VisualPlan);
+            }
+
+            // effect-tiles unit 1 — Place 셀 seed 결정론 효과 타일. 페인트는 Initialize(Clear) 이후 계약.
+            // dict clear 는 가드 밖 — 이전 빌드 잔존 제거(테마가 효과 타일 없어도).
+            _effectTilesByCell.Clear();
+            if (UseTilemapView && tilemapMapView != null && theme != null &&
+                theme.effectTiles != null && theme.effectTiles.Length > 0 && theme.effectTileCount > 0)
+            {
+                var effectCells = Wassup.Data.EffectTilePlacer.SelectCells(
+                    _generatedMap, _generatedMap.seed, theme.effectTileCount);
+                for (int i = 0; i < effectCells.Count; i++)
+                {
+                    // 셀 목록이 seed 셔플이라 round-robin 종류 배정도 셀 기준 seed-랜덤 + 고른 분배.
+                    var data = theme.effectTiles[i % theme.effectTiles.Length];
+                    AddEffectTile(new Vector2Int(effectCells[i].x, effectCells[i].y), data);
+                }
             }
 
             GameManager.Instance?.Logger?.LogMap(
@@ -3072,6 +3090,17 @@ namespace Wassup.Bridge
 
             CreateHealthBar(entity, yOffset: 0.9f * CharacterVisualScale, baseScale: 0.35f * CharacterVisualScale);
             return entity;
+        }
+
+        // effect-tiles unit 1 — 효과 타일 단일 진입점: dict 등록 + View 페인트. 셀당 1개(덮어쓰기).
+        // 맵 빌드 seed 선정이 첫 client — 후속 런타임 생성 루트(드림캐쳐/유닛 능력)도 이 진입점 사용.
+        // 셀 점유 시 즉시 적용은 unit 2 에서 채운다 (순서 무관 불변식).
+        public void AddEffectTile(Vector2Int cell, EffectTileData data)
+        {
+            if (data == null) return;
+            _effectTilesByCell[cell] = data;
+            if (UseTilemapView && tilemapMapView != null)
+                tilemapMapView.SetEffectTile(cell, data.overlayTile);
         }
 
         private void TriggerOnPlaceAndSynergy(DefenderUnitData unitData, Vector2Int cell, Entity entity)

@@ -178,6 +178,13 @@ namespace Wassup.Data
         [Tooltip("각 spawn 셀에 세울 3D 메쉬 구조물 프랍. null 이면 기존 마커 타일 유지.")]
         public PropData spawnStructureProp;
 
+        [Header("Effect Tiles (effect-tiles)")]
+        [Tooltip("맵 빌드 시 Place 셀에 seed 결정론으로 배치할 효과 타일 종류 풀. 비면 효과 타일 없음.")]
+        public EffectTileData[] effectTiles;
+        [Min(0)]
+        [Tooltip("맵당 효과 타일 개수.")]
+        public int effectTileCount = 3;
+
         [Range(0f, 1f)]
         [Tooltip("Chance to attempt a tile prop placement at each eligible background cell.")]
         public float tilePropDensity = 0.25f;

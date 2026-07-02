@@ -131,6 +131,11 @@ MonoBehaviour:
   decorProps: []
   goalStructureProp: {fileID: 11400000, guid: 4c7389088193f48a9bc29d132c85a108, type: 2}
   spawnStructureProp: {fileID: 11400000, guid: c03633f30ff5640309292fad4d579cce, type: 2}
+  effectTiles:
+  - {fileID: 11400000, guid: 0e0f732b856bb4b1880e74774b22cb69, type: 2}
+  - {fileID: 11400000, guid: 0ee1c60d07e494bb49a83feefb0b0c04, type: 2}
+  - {fileID: 11400000, guid: a84cc90d3166f4246b101c21c6270d51, type: 2}
+  effectTileCount: 3
   tilePropDensity: 1
   maxTilePropCount: 60
   propPoissonMinDistance: 1

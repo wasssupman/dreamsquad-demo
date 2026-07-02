@@ -30,6 +30,10 @@ namespace Wassup.Core
         private Transform _ringPropsRoot;
         // prop-placement-layer unit 1 — goal/spawn 구조물 프랍 루트. 부모(90°X)를 역회전 상쇄해 메쉬가 똑바로 선다.
         private Transform _structurePropsRoot;
+        // effect-tiles unit 1 — 효과 타일 전용 런타임 타일맵. overlayTilemap 은 hover/reject 가
+        // SetTile/null 로 덮어쓰므로 공유 금지. sorting -15 = ground(-20) 위 / overlay·hover(-10) 아래.
+        // 런타임 생성 → 씬 SerializeField/저장 불필요.
+        private Tilemap _effectTilemap;
 
         public Grid Grid => grid;
         public BoardVisualPlan VisualPlan => _visualPlan;
@@ -71,6 +75,7 @@ namespace Wassup.Core
             _hoverCells.Clear();
             if (groundTilemap != null) groundTilemap.ClearAllTiles();
             if (overlayTilemap != null) overlayTilemap.ClearAllTiles();
+            if (_effectTilemap != null) _effectTilemap.ClearAllTiles();
             if (_backgroundPropsRoot != null) { SafeDestroy(_backgroundPropsRoot.gameObject); _backgroundPropsRoot = null; }
             if (_ringPropsRoot != null) { SafeDestroy(_ringPropsRoot.gameObject); _ringPropsRoot = null; }
             if (_structurePropsRoot != null) { SafeDestroy(_structurePropsRoot.gameObject); _structurePropsRoot = null; }
@@ -360,6 +365,26 @@ namespace Wassup.Core
             var footprint = prop.Footprint;
             var placement = new PropPlacement(0, cell.x, cell.y, footprint.x, footprint.y, 0u, 0f, prop.visualScale, -1);
             InstantiateProp(prop, placement, plan, theme, _structurePropsRoot);
+        }
+
+        // effect-tiles unit 1 — 효과 타일 페인트. Initialize(Clear 포함) 이후 호출 계약 (아니면 지워짐).
+        public void SetEffectTile(Vector2Int cell, TileBase tile)
+        {
+            if (grid == null) return;
+            EnsureEffectTilemap();
+            _effectTilemap.SetTile(ToCell(cell), tile);
+        }
+
+        private void EnsureEffectTilemap()
+        {
+            if (_effectTilemap != null) return;
+            var go = new GameObject("EffectTiles");
+            go.transform.SetParent(grid.transform, false); // grid 90°X 회전 상속 — ground/overlay 와 동일 평면
+            _effectTilemap = go.AddComponent<Tilemap>();
+            var r = go.AddComponent<TilemapRenderer>();
+            _effectTilemap.tileAnchor = new Vector3(0.5f, 0.5f, 0f); // 셀 중심 anchor (정합 전제와 일치)
+            r.sortingOrder = -15;
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         }
 
         // tilemap-world-surround unit 4 — 외곽 터레인 링 셀에 원경 프랍을 저밀도로 흩뿌린다.

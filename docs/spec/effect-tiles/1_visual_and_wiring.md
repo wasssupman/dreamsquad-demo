@@ -7,8 +7,9 @@
 ## 변경 대상
 
 - `Assets/_Project/Scripts/Core/TilemapMapView.cs` — 런타임 효과 타일맵(lazy 생성: grid 하위 GO + Tilemap + TilemapRenderer, anchor 0.5/0.5, sorting −15, cast off) + `SetEffectTile(cell, TileBase)`/`ClearEffectTile(cell)` + `Clear()` 에서 ClearAllTiles
-- `Assets/_Project/Scripts/Bridge/BattleBridge.cs` — `[SerializeField] EffectTileData[] effectTiles` + `[SerializeField] int effectTileCount = 3` + `Dictionary<Vector2Int, EffectTileData> _effectTilesByCell` + `AddEffectTile(cell, data)` + 맵 빌드 배선
-- authoring: `EffectTileData` 에셋 3종(공격력/공속/받는피해) + placeholder overlayTile(기존 PH 스프라이트 + 틴트: 버프=초록/파랑, 디버프=빨강) + BattleBridge 배열 지정
+- `Assets/_Project/Scripts/Data/MapThemeData.cs` — `effectTiles[]` + `effectTileCount = 3` (구현 시 BattleBridge SerializeField 에서 변경: 씬 수정/저장 회피 + 구조물 프랍(goal/spawnStructureProp)·리뷰 m6 과 일관. 테마별 swap 가능)
+- `Assets/_Project/Scripts/Bridge/BattleBridge.cs` — `Dictionary<Vector2Int, EffectTileData> _effectTilesByCell` + `AddEffectTile(cell, data)` + 맵 빌드 배선
+- authoring: `EffectTileData` 에셋 3종(공격력/공속/받는피해) + placeholder overlayTile(PH_Hover 스프라이트 + 틴트: 주황/파랑=버프, 빨강=디버프) + forest 테마 배선
 
 ## 구현
 
