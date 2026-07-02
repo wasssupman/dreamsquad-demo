@@ -2965,7 +2965,6 @@ namespace Wassup.Bridge
             _em.AddComponentData(entity, new FactionTag { value = Faction.Defender });
             _em.AddComponentData(entity, new AttackState
             {
-                damage = unitData.attackDamage,
                 range = unitData.attackRange,
                 cooldownDuration = unitData.attackCooldown,
                 cooldownRemaining = unitData.deployDelaySec, // attack-hit-delay 2 — 배치 직후 deployDelaySec 동안 idle(공격 X)
@@ -3625,8 +3624,8 @@ namespace Wassup.Bridge
 
             // enemy-behavior-components Unit 2 — attackMethod decides attack components.
             // Defensive (Critic C1): Melee/Projectile with empty outputs → walk-only
-            // (no AttackState), never a damage-0 attacker. Attack effects still come
-            // through outputs[]; attackDamage remains serialized compatibility data.
+            // (no AttackState), never a damage-0 attacker. All hit effects come
+            // through outputs[] (AttackOutputElement).
             var attackMethod = entry.unitType.attackMethod;
             bool hasAttackOutputs = entry.unitType.outputs != null && entry.unitType.outputs.Length > 0;
             bool wantsAttack = attackMethod != Wassup.Data.EnemyAttackMethod.None;
@@ -3639,7 +3638,6 @@ namespace Wassup.Bridge
             {
                 _em.AddComponentData(entity, new AttackState
                 {
-                    damage = entry.unitType.attackDamage,
                     range = entry.unitType.attackRange,
                     cooldownDuration = entry.unitType.attackCooldown,
                     cooldownRemaining = 0f,

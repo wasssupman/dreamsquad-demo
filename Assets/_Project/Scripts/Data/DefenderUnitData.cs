@@ -15,7 +15,6 @@ namespace Wassup.Data
         public string displayName;
         public float health = 50f;
         public float attackRange = 3f;
-        public float attackDamage = 20f;
         public float attackCooldown = 1f; // seconds between attacks
         // attack-hit-delay — 공격 시작 후 타격 판정까지 지연(초). 0 = 즉시.
         public float hitDelaySec = 0f;
@@ -37,8 +36,7 @@ namespace Wassup.Data
         public ProjectileData projectile;
 
         // modifier-legacy-migration unit 0: hit outputs are the runtime source of
-        // truth for defender attacks. `attackDamage` remains serialized for authoring
-        // compatibility only; defenders with no outputs deal no runtime damage.
+        // truth for defender attacks. Defenders with no outputs deal no runtime damage.
         [Header("Attack Outputs")]
         public AttackOutput[] outputs;
 

@@ -18,7 +18,12 @@
 
 ## 완료 기준
 
-- [ ] compile 오류 없음 (테스트 포함)
-- [ ] grep 체크리스트 0건 기록 (허용 예외 제외)
-- [ ] 전체 EditMode 스위트 회귀 없음
-- [ ] Play smoke: 전투 데미지/킬 동작 전후 동일, walk-only 경고 패턴 동일, console 무오류
+- [x] compile 오류 없음 (테스트 포함, 2026-07-02)
+- [x] grep 체크리스트: SO `attackDamage` 참조 0건 — 남은 것은 전부 DTO shim(`Editor/UnitStatImport` + 그 테스트)과 `aggroAttackDamage`뿐
+- [x] 전체 EditMode 스위트 회귀 없음 (444개, 기지 실패 ObstaclePlacer 1건 제외)
+- [x] asset 재직렬화 없음 (Defenders/Enemies 0 dirty 유지 — 필드 미소비라 stale YAML 라인만 잔존, Unity 무시). BattleBridge 베이크 후 `AttackState.damage`는 default(0) — dead read라 동작 무변화
+- [ ] Play smoke 시각 확인 — 동시 세션 작업 중이라 보류. 데미지 경로는 outputs 전용임이 unit 1·3 테스트로 입증됨
+
+## 주의
+
+`90d88a9`(다른 세션)이 `attackDamage`를 15→25로 "밸런스"했으나 이는 죽은 필드였음 — 실데미지(outputs=15)는 불변. 본 유닛의 필드 삭제로 그 25 값이 사라지지만 게임플레이 영향 0. asset 파일의 stale `attackDamage:` 라인은 재직렬화 시점에 자연 제거됨(별도 스크럽 불필요).

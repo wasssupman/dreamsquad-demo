@@ -193,14 +193,16 @@ namespace Wassup.Tests.EditMode.UnitStatImport
         public void ApplyNonNullFields_SkipsProjectedAndDeprecatedFields()
         {
             var so = ScriptableObject.CreateInstance<DefenderUnitData>();
-            so.attackDamage = 25f; // legacy field still exists until unit 4
+            so.health = 50f;
 
-            // atk/heal/attackDamage must NOT be reflection-copied (no SO field / shim / projected).
+            // atk/heal are projected (not reflection fields); attackDamage is a removed
+            // shim column. None may be reflection-copied, and none matches an SO field,
+            // so nothing is applied and no "no field" warning path corrupts real stats.
             var dto = new DefenderStatDto { id = "archer", atk = 99f, heal = 99f, attackDamage = 99f };
             int applied = UnitStatFieldMapper.ApplyNonNullFields(dto, so);
 
             Assert.AreEqual(0, applied, "projected/deprecated fields must not count as reflection-applied");
-            Assert.AreEqual(25f, so.attackDamage, "deprecated attackDamage must never be written by the mapper");
+            Assert.AreEqual(50f, so.health, "unrelated fields untouched");
 
             Object.DestroyImmediate(so);
         }

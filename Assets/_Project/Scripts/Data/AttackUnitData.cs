@@ -31,9 +31,6 @@ namespace Wassup.Data
         public float health = 100f;
         public float moveSpeed = 2f;
 
-        // Phase 4: enemy→defender attack. Leaving attackDamage <= 0 preserves the
-        // Phase 0-3 behavior of "pure passing" enemies that only reach the goal.
-        public float attackDamage;
         public float attackRange = 1f;
         public float attackCooldown = 1f;
         // enemy-behavior-components Unit 6 — melee AoE. Nearest N in-range targets hit
@@ -54,9 +51,7 @@ namespace Wassup.Data
         public float aggroAttackRange = 1f;
 
         // modifier-legacy-migration unit 1: hit outputs are the runtime source
-        // of truth for enemy attacks. `attackDamage` remains serialized for
-        // authoring compatibility only; enemies with no outputs deal no runtime
-        // damage.
+        // of truth for enemy attacks. Enemies with no outputs deal no runtime damage.
         [Header("Attack Outputs")]
         public AttackOutput[] outputs;
 
