@@ -56,3 +56,5 @@ public WeightedProp[] distantRingProps;
 - 메뉴 실행 후 `forest.asset` 인스펙터에서 `playAreaProps` = 기존 tileProps 전부, `distantRingProps` = 꽃 등 excludeFromDistantRing 제외 목록으로 populate 확인.
 - 멱등: 메뉴 재실행 시 값 변화 없음.
 - placer 미변경이므로 Play 시 프랍 배치 **육안 동일**(회귀 없음).
+
+확인: 2026-07-02 · `a0ce63c` — compile 클린, forest 9/6·desert 13/13 populate, 멱등성(재실행 skip 0/2) 검증.

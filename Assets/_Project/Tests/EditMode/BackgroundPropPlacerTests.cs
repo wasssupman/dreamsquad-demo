@@ -69,7 +69,7 @@ namespace Wassup.Tests.EditMode
             var prefab = new GameObject("PropPrefab");
             var prop = CreateProp(2, 1, prefab);
             var theme = ScriptableObject.CreateInstance<MapThemeData>();
-            theme.tileProps = new[] { prop };
+            SetPlayArea(theme, prop);
             theme.tilePropDensity = 1f;
             var a = CreateMap(new int2(5, 3), MapTileType.Deco);
             var b = CreateMap(new int2(5, 3), MapTileType.Deco);
@@ -106,7 +106,7 @@ namespace Wassup.Tests.EditMode
             var prop2x1 = CreateProp(2, 1, prefabA);
             var prop1x2 = CreateProp(1, 2, prefabB);
             var theme = ScriptableObject.CreateInstance<MapThemeData>();
-            theme.tileProps = new[] { prop2x1, prop1x2 };
+            SetPlayArea(theme, prop2x1, prop1x2);
             theme.tilePropDensity = 1f;
             var map = CreateMap(new int2(5, 4), MapTileType.Deco);
             try
@@ -154,7 +154,7 @@ namespace Wassup.Tests.EditMode
             var prefab = new GameObject("PropPrefab");
             var prop = CreateProp(2, 2, prefab);
             var theme = ScriptableObject.CreateInstance<MapThemeData>();
-            theme.tileProps = new[] { prop };
+            SetPlayArea(theme, prop);
             theme.tilePropDensity = 1f;
             theme.maxTilePropCount = 1;
             theme.largePropInnerWeightMultiplier = 1f;
@@ -185,10 +185,8 @@ namespace Wassup.Tests.EditMode
             var prefabB = new GameObject("PropPrefabB");
             var propA = CreateProp(1, 1, prefabA);
             var propB = CreateProp(1, 1, prefabB);
-            propA.placementWeight = 1000;
-            propB.placementWeight = 1;
             var theme = ScriptableObject.CreateInstance<MapThemeData>();
-            theme.tileProps = new[] { propA, propB };
+            SetPlayArea(theme, (propA, 1000f), (propB, 1f));
             theme.tilePropDensity = 1f;
             theme.maxTilePropCount = 2;
             theme.propRepeatAvoidanceWindow = 1;
@@ -219,7 +217,7 @@ namespace Wassup.Tests.EditMode
             var prop = CreateProp(1, 1, prefab);
             prop.minDistanceCells = 2;
             var theme = ScriptableObject.CreateInstance<MapThemeData>();
-            theme.tileProps = new[] { prop };
+            SetPlayArea(theme, prop);
             theme.tilePropDensity = 1f;
             theme.maxTilePropCount = 8;
             theme.spawnGoalPropAvoidRadius = 0;
@@ -254,10 +252,8 @@ namespace Wassup.Tests.EditMode
             var prefabLarge = new GameObject("PropPrefabLarge");
             var small = CreateProp(1, 1, prefabSmall);
             var large = CreateProp(2, 2, prefabLarge);
-            small.placementWeight = 1;
-            large.placementWeight = 1000;
             var theme = ScriptableObject.CreateInstance<MapThemeData>();
-            theme.tileProps = new[] { small, large };
+            SetPlayArea(theme, (small, 1f), (large, 1000f));
             theme.tilePropDensity = 1f;
             theme.maxTilePropCount = 1;
             theme.spawnGoalPropAvoidRadius = 0;
@@ -292,7 +288,7 @@ namespace Wassup.Tests.EditMode
             var prefab = new GameObject("PropPrefab");
             var prop = CreateProp(1, 1, prefab);
             var theme = ScriptableObject.CreateInstance<MapThemeData>();
-            theme.tileProps = new[] { prop };
+            SetPlayArea(theme, prop);
             theme.tilePropDensity = 1f;
             theme.maxTilePropCount = 1;
             theme.spawnGoalPropAvoidRadius = 10;
@@ -322,7 +318,7 @@ namespace Wassup.Tests.EditMode
             var prefab = new GameObject("PropPrefab");
             var prop = CreateProp(1, 1, prefab);
             var theme = ScriptableObject.CreateInstance<MapThemeData>();
-            theme.tileProps = new[] { prop };
+            SetPlayArea(theme, prop);
             var map = CreateMap(new int2(4, 4), MapTileType.Deco);
             try
             {
@@ -374,7 +370,7 @@ namespace Wassup.Tests.EditMode
             prop.clusterCount = 3;
             prop.clusterRadius = 3;
             var theme = ScriptableObject.CreateInstance<MapThemeData>();
-            theme.tileProps = new[] { prop };
+            SetPlayArea(theme, prop);
             theme.tilePropDensity = 1f;
             theme.maxTilePropCount = 3;
             theme.spawnGoalPropAvoidRadius = 0;
@@ -398,6 +394,21 @@ namespace Wassup.Tests.EditMode
                 Object.DestroyImmediate(prop);
                 Object.DestroyImmediate(prefab);
             }
+        }
+
+        // prop-area-pools — 근경 풀은 WeightedProp[] playAreaProps. 기본 weight 10.
+        private static void SetPlayArea(MapThemeData theme, params PropData[] props)
+        {
+            theme.playAreaProps = new WeightedProp[props.Length];
+            for (int i = 0; i < props.Length; i++)
+                theme.playAreaProps[i] = new WeightedProp { prop = props[i], weight = 10f };
+        }
+
+        private static void SetPlayArea(MapThemeData theme, params (PropData prop, float weight)[] entries)
+        {
+            theme.playAreaProps = new WeightedProp[entries.Length];
+            for (int i = 0; i < entries.Length; i++)
+                theme.playAreaProps[i] = new WeightedProp { prop = entries[i].prop, weight = entries[i].weight };
         }
 
         private static PropData CreateProp(int width, int height, GameObject prefab)

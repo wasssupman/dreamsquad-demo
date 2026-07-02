@@ -289,7 +289,7 @@ namespace Wassup.Core
             IReadOnlyList<PropPlacement> placements)
         {
             if (_backgroundPropsRoot != null) { SafeDestroy(_backgroundPropsRoot.gameObject); _backgroundPropsRoot = null; }
-            if (grid == null || plan == null || theme == null || theme.tileProps == null ||
+            if (grid == null || plan == null || theme == null || theme.playAreaProps == null ||
                 placements == null || placements.Count == 0)
                 return;
 
@@ -300,8 +300,8 @@ namespace Wassup.Core
             for (int i = 0; i < placements.Count; i++)
             {
                 var placement = placements[i];
-                if (placement.propIndex < 0 || placement.propIndex >= theme.tileProps.Length) continue;
-                var prop = theme.tileProps[placement.propIndex];
+                if (placement.propIndex < 0 || placement.propIndex >= theme.playAreaProps.Length) continue;
+                var prop = theme.playAreaProps[placement.propIndex]?.prop;
                 if (prop == null || prop.prefab == null) continue;
 
                 InstantiateProp(prop, placement, plan, theme, _backgroundPropsRoot);

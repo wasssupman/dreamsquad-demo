@@ -9,7 +9,7 @@ namespace Wassup.Data
         public static List<PropPlacement> Generate(BoardVisualPlan plan, MapThemeData theme, int seed, bool occlusionAware = false)
         {
             var placements = new List<PropPlacement>();
-            if (plan == null || theme == null || theme.tileProps == null || theme.tileProps.Length == 0)
+            if (plan == null || theme == null || theme.playAreaProps == null || theme.playAreaProps.Length == 0)
                 return placements;
 
             float density = math.saturate(theme.tilePropDensity);
@@ -34,7 +34,7 @@ namespace Wassup.Data
                     if (!TrySelectProp(plan, theme, anchor, density, recentPropIndices, ref rng, out int propIndex))
                         continue;
 
-                    var prop = theme.tileProps[propIndex];
+                    var prop = theme.playAreaProps[propIndex].prop;
                     var candidates = GetRegionCandidates(candidatesByRegion, anchor.regionId);
                     if (!TryPlaceNearestCandidate(plan, theme, prop, propIndex, anchor.cell, candidates, occupied, placements, ref rng, clusterId, occlusionAware))
                     {
@@ -193,21 +193,24 @@ namespace Wassup.Data
             propIndex = -1;
             var cell = plan.CellAt(anchor.cell);
             float total = 0f;
-            var weights = new float[theme.tileProps.Length];
-            for (int i = 0; i < theme.tileProps.Length; i++)
+            var weights = new float[theme.playAreaProps.Length];
+            for (int i = 0; i < theme.playAreaProps.Length; i++)
             {
-                var prop = theme.tileProps[i];
+                var entry = theme.playAreaProps[i];
+                if (entry == null)
+                    continue;
+                var prop = entry.prop;
                 if (!IsEligible(plan, prop, anchor, cell))
                     continue;
 
                 float spawnGoalMultiplier = IsNearSpawnOrGoal(plan, anchor.cell, math.max(0, theme.spawnGoalPropAvoidRadius))
                     ? math.saturate(theme.spawnGoalPropDensityMultiplier)
                     : 1f;
-                float weight = math.max(0, prop.placementWeight) * cell.decorBudgetBias * density * spawnGoalMultiplier;
+                float weight = math.max(0f, entry.weight) * cell.decorBudgetBias * density * spawnGoalMultiplier;
                 int area = math.max(1, prop.footprintX) * math.max(1, prop.footprintY);
                 if (area > math.max(1, theme.pathAdjacentSmallPropMaxArea) && cell.pathProximity <= 1)
                     weight *= math.saturate(theme.pathAdjacentLargePropWeightMultiplier);
-                if (theme.propRepeatAvoidanceWindow > 0 && theme.tileProps.Length > 1 && recentPropIndices.Contains(i))
+                if (theme.propRepeatAvoidanceWindow > 0 && theme.playAreaProps.Length > 1 && recentPropIndices.Contains(i))
                     weight = 0f;
                 weights[i] = weight;
                 total += weight;
@@ -321,7 +324,7 @@ namespace Wassup.Data
 
         private static bool IsEligible(BoardVisualPlan plan, PropData prop, BoardDecorAnchor anchor, BoardVisualCell cell)
         {
-            if (prop == null || prop.prefab == null || prop.placementWeight <= 0)
+            if (prop == null || prop.prefab == null)
                 return false;
 
             if (anchor.regionId < 0 || anchor.regionId >= plan.Regions.Count)
@@ -369,15 +372,16 @@ namespace Wassup.Data
         private static bool ViolatesSameCategory(MapThemeData theme, PropData prop, int x, int y, IReadOnlyList<PropPlacement> placements)
         {
             int minDistance = math.max(0, prop.sameCategoryMinDistanceCells);
-            if (minDistance <= 0 || string.IsNullOrEmpty(prop.category) || theme == null || theme.tileProps == null)
+            if (minDistance <= 0 || string.IsNullOrEmpty(prop.category) || theme == null || theme.playAreaProps == null)
                 return false;
 
             for (int i = 0; i < placements.Count; i++)
             {
                 int idx = placements[i].propIndex;
-                if (idx < 0 || idx >= theme.tileProps.Length)
+                if (idx < 0 || idx >= theme.playAreaProps.Length)
                     continue;
-                var other = theme.tileProps[idx];
+                var otherEntry = theme.playAreaProps[idx];
+                var other = otherEntry?.prop;
                 if (other == null || other.category != prop.category)
                     continue;
 

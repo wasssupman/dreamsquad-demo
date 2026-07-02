@@ -734,7 +734,7 @@ namespace Wassup.Bridge
 
             // props — Tilemap = grid 권위 배경 프랍(Deco 셀; unit 1 designate 후 존재), Legacy3D = 기존 경로.
             // tilemap-world-surround unit 2: MapGrid 라도 내부 Deco 가 생기면 prop placer 가 채운다.
-            if (theme != null && theme.tileProps != null && theme.tileProps.Length > 0)
+            if (theme != null && theme.playAreaProps != null && theme.playAreaProps.Length > 0)
             {
                 if (UseTilemapView && tilemapMapView != null)
                 {
