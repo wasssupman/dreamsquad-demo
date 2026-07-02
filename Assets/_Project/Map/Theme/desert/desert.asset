@@ -129,7 +129,66 @@ MonoBehaviour:
   - {fileID: 11400000, guid: e8d275931086e4d9590efc46cb5b74b2, type: 2}
   - {fileID: 11400000, guid: 34052626114a44fdd8ab5779b6c9d196, type: 2}
   - {fileID: 11400000, guid: 9f001998f8a484ca1a2a29778484d175, type: 2}
+  playAreaProps:
+  - prop: {fileID: 11400000, guid: 847f963c6a6b24affa8e907354530ace, type: 2}
+    weight: 9
+  - prop: {fileID: 11400000, guid: d5e00020966124d69a64bba187257aed, type: 2}
+    weight: 8
+  - prop: {fileID: 11400000, guid: e53cfb7d559a640a296de33d5d2f17e6, type: 2}
+    weight: 6
+  - prop: {fileID: 11400000, guid: 460ceffb182874ce489887eda29817fb, type: 2}
+    weight: 10
+  - prop: {fileID: 11400000, guid: df8abc52e0e7140528c3b31cadeb50d2, type: 2}
+    weight: 8
+  - prop: {fileID: 11400000, guid: 057190a0013e6409d99e8157ecd01284, type: 2}
+    weight: 1
+  - prop: {fileID: 11400000, guid: b9e4784bcccb44a97a3b63861ad377a2, type: 2}
+    weight: 12
+  - prop: {fileID: 11400000, guid: 3a361e63fdc2f4c309c6a1417a97d101, type: 2}
+    weight: 14
+  - prop: {fileID: 11400000, guid: d0ccf42ad20b54a5b9c4a00fd0ffc24a, type: 2}
+    weight: 16
+  - prop: {fileID: 11400000, guid: 556b7abdf24a64077b315ec1f44bad91, type: 2}
+    weight: 8
+  - prop: {fileID: 11400000, guid: e8d275931086e4d9590efc46cb5b74b2, type: 2}
+    weight: 13
+  - prop: {fileID: 11400000, guid: 34052626114a44fdd8ab5779b6c9d196, type: 2}
+    weight: 1
+  - prop: {fileID: 11400000, guid: 9f001998f8a484ca1a2a29778484d175, type: 2}
+    weight: 1
+  distantRingProps:
+  - prop: {fileID: 11400000, guid: 847f963c6a6b24affa8e907354530ace, type: 2}
+    weight: 1
+  - prop: {fileID: 11400000, guid: d5e00020966124d69a64bba187257aed, type: 2}
+    weight: 1
+  - prop: {fileID: 11400000, guid: e53cfb7d559a640a296de33d5d2f17e6, type: 2}
+    weight: 1
+  - prop: {fileID: 11400000, guid: 460ceffb182874ce489887eda29817fb, type: 2}
+    weight: 10
+  - prop: {fileID: 11400000, guid: df8abc52e0e7140528c3b31cadeb50d2, type: 2}
+    weight: 8
+  - prop: {fileID: 11400000, guid: 057190a0013e6409d99e8157ecd01284, type: 2}
+    weight: 1
+  - prop: {fileID: 11400000, guid: b9e4784bcccb44a97a3b63861ad377a2, type: 2}
+    weight: 12
+  - prop: {fileID: 11400000, guid: 3a361e63fdc2f4c309c6a1417a97d101, type: 2}
+    weight: 14
+  - prop: {fileID: 11400000, guid: d0ccf42ad20b54a5b9c4a00fd0ffc24a, type: 2}
+    weight: 16
+  - prop: {fileID: 11400000, guid: 556b7abdf24a64077b315ec1f44bad91, type: 2}
+    weight: 8
+  - prop: {fileID: 11400000, guid: e8d275931086e4d9590efc46cb5b74b2, type: 2}
+    weight: 13
+  - prop: {fileID: 11400000, guid: 34052626114a44fdd8ab5779b6c9d196, type: 2}
+    weight: 1
+  - prop: {fileID: 11400000, guid: 9f001998f8a484ca1a2a29778484d175, type: 2}
+    weight: 1
   decorProps: []
+  goalStructureProp: {fileID: 0}
+  spawnStructureProp: {fileID: 0}
+  effectTiles: []
+  effectTileCount: 3
+  effectTileMaterial: {fileID: 0}
   tilePropDensity: 1
   maxTilePropCount: 60
   propPoissonMinDistance: 1

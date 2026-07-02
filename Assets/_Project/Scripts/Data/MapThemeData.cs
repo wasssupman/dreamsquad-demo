@@ -169,6 +169,14 @@ namespace Wassup.Data
         [Tooltip("Generated map background tiles (Deco/Env) can receive these footprint-based props.")]
         public PropData[] tileProps;
 
+        [Header("Play Area Props (prop-area-pools)")]
+        [Tooltip("플레이 영역(Env 셀) 근경 프랍 풀. 항목별 weight = 룰렛 base. weight<=0 또는 prefab 없음 = 제외. distantRingProps 와 독립.")]
+        public WeightedProp[] playAreaProps;
+
+        [Header("Distant Ring Props (prop-area-pools)")]
+        [Tooltip("외곽 터레인 링 원경 프랍 풀. 근경과 독립 리스트. 같은 PropData 를 다른 weight 로 양쪽에 등록 가능. 한쪽에만 넣으면 그 영역 전용.")]
+        public WeightedProp[] distantRingProps;
+
         [Tooltip("Props reserved for designer-authored or future outer-map decoration placement.")]
         public PropData[] decorProps;
 
@@ -257,6 +265,14 @@ namespace Wassup.Data
         [Min(0)]
         [Tooltip("원경 링 프랍을 플레이 셀(Walk/Place)로부터 이 Chebyshev 거리 이내엔 배치 안 함. 0=off. 틸트 나무가 플레이 영역을 덮는 것 방지.")]
         public int ringPlayClearanceCells = 3;
+    }
+
+    // prop-area-pools — 영역별(근경/원경) 프랍 가용 목록의 한 항목. weight = 룰렛 base.
+    [Serializable]
+    public sealed class WeightedProp
+    {
+        public PropData prop;
+        [Min(0f)] public float weight = 10f;
     }
 
     [Serializable]
