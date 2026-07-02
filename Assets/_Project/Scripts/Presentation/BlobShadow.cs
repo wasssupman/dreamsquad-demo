@@ -22,7 +22,9 @@ namespace Wassup.Presentation
         // 에디터 생성기(PropDataEditor) 전용 — 프리팹 저장 전에 authored 플래그를 굽는다.
         public void MarkAuthored() => authoredInPrefab = true;
 
-        // authored 블롭: 외형(sprite/color/sort)과 바닥 높이는 전역 계약 유지, 위치 XZ·크기만 프리팹 소유.
+        // authored 블롭: 외형(sprite/color/sort)만 전역값 적용. transform 은 일절 건드리지 않는다 —
+        // 위치/회전/크기 전부 프리팹 소유. (월드 Y 스냅은 90°X 부모 좌표계에서 authored 오프셋을
+        // 인스턴스화 타이밍 의존으로 왜곡시켜 제거함. 바닥 높이도 프리팹에 굽는다.)
         private void Awake()
         {
             if (!authoredInPrefab) return; // 런타임 Attach 경로는 Attach() 가 전부 세팅
@@ -31,8 +33,6 @@ namespace Wassup.Presentation
             if (BattleBridge.BlobShadowSprite != null) sr.sprite = BattleBridge.BlobShadowSprite;
             sr.color = BattleBridge.BlobShadowColor;
             sr.sortingOrder = BoardSortOrder.ShadowOrder;
-            Vector3 p = transform.position;
-            transform.position = new Vector3(p.x, BattleBridge.BlobShadowGroundY, p.z);
         }
 
         // 유닛 자식으로 생성 — 유닛 파괴 시 함께 사라진다.

@@ -14,8 +14,8 @@
 
 ## 구현
 
-- **소유권 분리**: 위치 XZ·크기(footprint 종횡비)·회전 = **프리팹 소유** (프랍별 확정값, 에디터에서 WYSIWYG 조정).
-  sprite·color·sortingOrder·바닥 Y = **전역 소유** — authored 블롭의 `Awake()` 가 `BattleBridge.BlobShadow*` 전역값으로 덮어 기존 "모든 수치는 데이터에서" 계약 유지.
+- **소유권 분리**: transform 전체(위치·회전·크기) = **프리팹 소유**. `Awake()` 는 sprite·color·sortingOrder 만 전역값(`BattleBridge.BlobShadow*`)으로 적용하고 **transform 은 일절 건드리지 않는다** — 초기 구현의 "월드 Y 스냅"은 90°X 부모 좌표계에서 authored 오프셋을 인스턴스화 타이밍 의존으로 왜곡시켜 제거(실측으로 확인).
+- **좌표 관례**: 프랍 인스턴스는 90°X 회전된 root 아래 놓이므로, 프리팹 local **y = 월드 깊이(+Z, 틸트 눕는 방향)**, local **-z = 월드 높이(+Y)**. 회전은 identity(부모 90°X 가 쿼드를 바닥에 눕힘). 바닥 높이 authoring 기본값 = local z `-0.196` (= BlobShadowGroundY 0.216 − PropGroundLift 0.02).
 - **생성기 기본값**: 크기 = `1타일 × visualScale × footprint 종횡비(fx/max, fy/max)` (긴축 정규화), 위치 z = Tilted 프랍의 몸체 중심 지면 투영(`0.5 × 월드높이 × sin(tilt)`), 회전 = Euler(90,0,0).
   기본값은 출발점 — 캔버스 여백이 큰 아트는 프리팹에서 손튜닝 (통나무: z 0.45, scale 1.4×0.7).
 - **재생성 보존**: `GeneratePrefab` 재실행 시 기존 프리팹의 블롭 transform 을 복사해 수동 튜닝을 날리지 않는다.

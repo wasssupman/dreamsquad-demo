@@ -13,9 +13,11 @@ namespace Wassup.Editor
         private const string DefaultPrefabFolder = "Assets/_Project/Prefabs/Props";
         private const float PropSpritePixelsPerUnit = 256f;
 
-        // shadow-polish unit 6 — authored 블롭 기본값. 색/바닥Y 는 런타임에 BattleBridge 전역값으로 덮인다(프리뷰용).
+        // shadow-polish unit 6 — authored 블롭 기본값. 색은 런타임에 BattleBridge 전역값으로 덮인다(프리뷰용).
         private const string BlobShadowSpritePath = "Assets/_Project/Art/blob_shadow.png";
         private const float BlobBaseSize = 1f; // BattleBridge.blobShadowSize 기본(1타일)과 동일 출발점
+        // 월드 바닥 높이 = BlobShadowGroundY(0.216) − PropGroundLift(0.02). authoring 기본값(프랍별 조정 가능).
+        private const float BlobGroundLiftLocal = 0.196f;
         private static readonly Color BlobPreviewColor = new Color(0f, 0f, 0f, 0.45f);
 
         public override void OnInspectorGUI()
@@ -112,16 +114,19 @@ namespace Wassup.Editor
                 return;
             }
 
-            // 기본값: footprint 종횡비(긴축 정규화) × visualScale, 틸트로 눕는 몸체 중심의 지면 투영(+Z).
+            // 기본값: footprint 종횡비(긴축 정규화) × visualScale, 틸트로 눕는 몸체 중심의 지면 투영.
+            // 좌표 관례: 프랍 인스턴스는 90°X 회전된 root(BackgroundProps 등) 아래 놓이므로
+            // 프리팹 local y = 월드 깊이(+Z, 틸트 눕는 방향), local -z = 월드 높이(+Y).
+            // 회전은 identity — 부모 90°X 가 쿼드를 XZ 바닥에 눕힌다(스프라이트는 양면 렌더).
             var fp = data.Footprint;
             float fpMax = Mathf.Max(fp.x, fp.y);
             float scale = Mathf.Max(0.01f, data.visualScale);
             float worldHeight = (sprite != null ? sprite.bounds.size.y : 1f) * scale;
-            float zOffset = data.billboardMode == PropBillboardMode.Tilted
+            float depthOffset = data.billboardMode == PropBillboardMode.Tilted
                 ? 0.5f * worldHeight * Mathf.Sin(data.tiltAngle * Mathf.Deg2Rad)
                 : 0f;
-            go.transform.localPosition = new Vector3(0f, 0f, zOffset);
-            go.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            go.transform.localPosition = new Vector3(0f, depthOffset, -BlobGroundLiftLocal);
+            go.transform.localRotation = Quaternion.identity;
             go.transform.localScale = new Vector3(
                 BlobBaseSize * scale * fp.x / fpMax,
                 BlobBaseSize * scale * fp.y / fpMax,
