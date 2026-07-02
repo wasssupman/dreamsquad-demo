@@ -128,6 +128,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 23f779b67a5044a8d96a2ef0baa61e34, type: 2}
   - {fileID: 11400000, guid: 5c9aca8217a2349d48d0a17ec9745f87, type: 2}
   - {fileID: 11400000, guid: caad5cf698a9d4225b5a0f0947ac9342, type: 2}
+  - {fileID: 11400000, guid: c3d53c4f026334bae9a74546e8c9f7d5, type: 2}
+  - {fileID: 11400000, guid: 33290296dad74486da3fb7b118e9bdb4, type: 2}
   decorProps: []
   goalStructureProp: {fileID: 11400000, guid: 4c7389088193f48a9bc29d132c85a108, type: 2}
   spawnStructureProp: {fileID: 11400000, guid: c03633f30ff5640309292fad4d579cce, type: 2}
