@@ -165,10 +165,6 @@ namespace Wassup.Data
         [Tooltip("Global multiplicative tint applied to all background prop SpriteRenderers on top of their spriteColor. Use to pull vivid crystal/accent props into the board palette.")]
         public Color propGlobalTint = new Color(0.88f, 0.88f, 0.88f, 1f);
 
-        [Header("Background Props")]
-        [Tooltip("Generated map background tiles (Deco/Env) can receive these footprint-based props.")]
-        public PropData[] tileProps;
-
         [Header("Play Area Props (prop-area-pools)")]
         [Tooltip("플레이 영역(Env 셀) 근경 프랍 풀. 항목별 weight = 룰렛 base. weight<=0 또는 prefab 없음 = 제외. distantRingProps 와 독립.")]
         public WeightedProp[] playAreaProps;
@@ -177,6 +173,7 @@ namespace Wassup.Data
         [Tooltip("외곽 터레인 링 원경 프랍 풀. 근경과 독립 리스트. 같은 PropData 를 다른 weight 로 양쪽에 등록 가능. 한쪽에만 넣으면 그 영역 전용.")]
         public WeightedProp[] distantRingProps;
 
+        [Header("Background Props (reserved)")]
         [Tooltip("Props reserved for designer-authored or future outer-map decoration placement.")]
         public PropData[] decorProps;
 

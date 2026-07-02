@@ -48,3 +48,7 @@ grep -rn "tileProps\|excludeFromDistantRing\|distantRingWeight\|RingWeight" Asse
 - `run_tests` EditMode `BackgroundPropPlacerTests` green (회귀 없음).
 - 위 grep dead ref 0.
 - Play→스크린샷 재확인: unit 2 검증 결과와 동일 (배치 회귀 없음).
+
+결정: `placementWeight` 는 소비자 0(PropDataEditor 미참조·string 참조 0) 확인 → **제거**. 근경 weight 는 `WeightedProp.weight` 가 유일 권위, 신규 항목 기본값은 WeightedProp 초기값 10.
+
+확인: 2026-07-02 · `prop_area_pools_unit3_verify_1.png` — 필드 4종(tileProps/placementWeight/excludeFromDistantRing/distantRingWeight) + RingWeight + 마이그레이션 삭제. compile 클린, dead code ref 0, Play 회귀 없음.

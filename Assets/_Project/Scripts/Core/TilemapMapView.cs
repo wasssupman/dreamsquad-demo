@@ -207,10 +207,6 @@ namespace Wassup.Core
             return Mathf.Max(dx, dy);
         }
 
-        // 원경 링 가중치: distantRingWeight 가 지정(>=0)되면 그것, 아니면 placementWeight.
-        private static float RingWeight(Wassup.Data.PropData p)
-            => p.distantRingWeight >= 0f ? p.distantRingWeight : Mathf.Max(0, p.placementWeight);
-
         private void PaintMarkers(in GeneratedMap map)
         {
             if (overlayTilemap == null || _tileSet == null || !map.IsCreated) return;
@@ -309,8 +305,8 @@ namespace Wassup.Core
         }
 
         // prop-placement-layer unit 0 — 단일 프랍 인스턴스화(배경/구조물 공통 재사용 지점).
-        // resolved PropData 를 받는다 — placement.propIndex 로 tileProps 를 재조회하지 않는다
-        // (구조물 프랍은 tileProps 밖이라 이게 필수 계약).
+        // resolved PropData 를 받는다 — placement.propIndex 로 playAreaProps 를 재조회하지 않는다
+        // (구조물 프랍은 playAreaProps 밖이라 이게 필수 계약).
         // rotation 은 부모(BackgroundProps/그 외 root, XZ 바닥 90°) 상속 — Euler(0,yaw,0) 강제 시
         // 부모 90° 를 무시해 visualOffset 이 월드 +y 로 적용되는 공중부양 버그. yaw 는 PropBillboard 가 override.
         private void InstantiateProp(PropData prop, PropPlacement placement,
@@ -409,8 +405,8 @@ namespace Wassup.Core
             if (R <= 0 || density <= 0f) return;
             int w = playableSize.x, h = playableSize.y;
 
-            // prop-area-pools unit 2 — 원경 풀은 distantRingProps(WeightedProp[]). 근경과 독립.
-            // 리스트 소속 자체가 opt-in 이라 excludeFromDistantRing 필터 불필요.
+            // prop-area-pools unit 2 — 원경 풀은 distantRingProps(WeightedProp[]). 근경(playAreaProps)과 독립.
+            // 리스트 소속 자체가 opt-in — 프랍을 원경에서 빼려면 이 리스트에서 제거하면 된다.
             float totalW = 0f;
             for (int i = 0; i < theme.distantRingProps.Length; i++)
             {
