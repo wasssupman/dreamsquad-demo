@@ -198,6 +198,10 @@ board-visualization spec 자체는 ROI 부족으로 wrap 종료. 진단/실험�
 - **영역별 밀도/falloff 리스트 이관** [S] · 현재 `tilePropDensity`/`ringPropDensity` 는 테마 전역. WeightedProp 리스트 단위 또는 영역별 파라미터로 세분화.
 - **원경 카테고리 회피** [S] · `sameCategoryMinDistanceCells` 를 원경 링에도 적용(현재 근경 전용). 원경 나무 군집 자연화.
 
+#### 프랍 접지/프레임 (prop-upright-root 파생)
+
+- **desert 테마 접지 fix** [S] · desert 풀의 `prop_style_*`·`prop_dummy_*` 가 아직 FullCamera + nonzero visualOffset(접지 fix `c6c77dc`/`f395afd` 의 desert 미적용분). forest 와 동일하게 Tilted + BottomCenter 재임포트 + offset 0. prop-upright-root unit0 audit 에서 발견, 프레임 문제와 성격 달라 분리.
+
 #### 기타
 
 - **Healer 전용 Spine asset** [S] · 현재 Archer Spine reuse. 전용 rig + idle/heal-cast/death 애니메이션. 시각 식별성, 기능 영향 없음. (modifier-framework-and-healer)
