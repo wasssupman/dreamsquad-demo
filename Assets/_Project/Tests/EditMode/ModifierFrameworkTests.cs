@@ -385,5 +385,32 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(0.2f, stats.damageMul, 1e-5f, "damageMul must clamp to its own 0.2 floor.");
             Assert.AreEqual(0.15f, stats.moveSpeedMul, 1e-5f, "moveSpeedMul must clamp to its own 0.15 floor, not damage's 0.2.");
         }
+
+        // ── modifier-additive-authoring: additive buffs SUM, and the sum is ceiled ──
+        // Two distinct-stackId additive DamageMul deltas (+3.0 each, the shape buffs
+        // now author) sum to 1 + 3 + 3 = 7, which the stacking-policy ceil pulls to 5.
+        // If additive buffs multiplied instead, this would read (1+3)*(1+3)=16→ceil too,
+        // so the intermediate slot count + the SUM (not product) is what this pins.
+        [Test]
+        public void AdditiveBuffs_Sum_ThenCeil()
+        {
+            var e = CreateEntityWithModifierStats();
+
+            _statQueue.Enqueue(new StatModifierApplyEvent
+            {
+                target = e, stat = StatKind.DamageMul, op = CombineOp.Additive,
+                magnitude = 3f, duration = 100f, source = e, stackId = 0,
+            });
+            _statQueue.Enqueue(new StatModifierApplyEvent
+            {
+                target = e, stat = StatKind.DamageMul, op = CombineOp.Additive,
+                magnitude = 3f, duration = 100f, source = e, stackId = 1,
+            });
+            Tick();
+
+            Assert.AreEqual(2, _em.GetBuffer<StatModifierSlot>(e).Length, "distinct stackId → two additive slots");
+            Assert.AreEqual(5f, _em.GetComponentData<ModifierStats>(e).damageMul, 1e-5f,
+                "1 + Σadd(3+3)=7 clamped to the 5.0 ceil (buffs sum, not compound).");
+        }
     }
 }

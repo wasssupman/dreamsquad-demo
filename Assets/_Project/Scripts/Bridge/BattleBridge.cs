@@ -2290,6 +2290,12 @@ namespace Wassup.Bridge
         // modifier-additive-authoring — the central helper applies the increase/reduction
         // policy (ModifierAuthoring): buffs (multiplier>=1) become additive deltas that sum,
         // reductions stay multiplicative. Callers keep passing multipliers unchanged.
+        // INVARIANT: op is now part of the merge key (source,stat,op,stackId). A single
+        // (stat, stackId, source=target) channel must stay one-directional — never mix
+        // values across the 1.0 boundary. Straddling would leave an Additive and a
+        // Multiplicative slot coexisting instead of refreshing (slot accumulation). All
+        // current channels are one-directional; keep new ones so (e.g. don't route both
+        // haste and slow through EnqueueMoveSpeedMul's stackId=0).
         private void EnqueueStatModifier(Entity target, Wassup.Battle.Effects.StatKind stat, float multiplier, float duration, ushort stackId)
         {
             if (!_statModifierQueue.IsCreated) return;
@@ -2352,9 +2358,6 @@ namespace Wassup.Bridge
             FirstDefenderPlaced?.Invoke();
         }
 
-        private void EnqueueStatMul(Entity target, Wassup.Battle.Effects.StatKind stat, float multiplier, float duration, ushort stackId)
-            => EnqueueStatModifier(target, stat, multiplier, duration, stackId);
-
         // Applies one card to all currently-placed matching defenders and records
         // it so future placements (ApplyActiveDcEffectsTo) inherit it.
         public void ApplyDreamcatcherCard(Wassup.Data.DreamcatcherCard card)
@@ -2370,7 +2373,7 @@ namespace Wassup.Bridge
                     var data = kv.Value.data;
                     var entity = kv.Value.entity;
                     if (data != null && _em.Exists(entity) && MatchesDcAxis(data, card.axis))
-                        EnqueueStatMul(entity, stat, mult, DcDuration, sid);
+                        EnqueueStatModifier(entity, stat, mult, DcDuration, sid);
                 }
             }
         }
@@ -2382,7 +2385,7 @@ namespace Wassup.Bridge
             {
                 var e = _activeDcEffects[i];
                 if (MatchesDcAxis(data, e.axis))
-                    EnqueueStatMul(entity, e.stat, e.mult, DcDuration, e.stackId);
+                    EnqueueStatModifier(entity, e.stat, e.mult, DcDuration, e.stackId);
             }
         }
 
@@ -3076,7 +3079,8 @@ namespace Wassup.Bridge
         // effect-tiles unit 2 — 셀에 효과 타일이 있으면 배치 유닛에 효과 부여 (기존 modifier 파이프라인).
         // source=배치유닛 + 전용 stackId=2 → merge-key 가 on-place(0)/시너지(1)와 분리 스택, 재호출은 refresh(멱등).
         // duration=∞ (시너지 관용) — 유닛 제거/재배치 기능이 없어 revocation 불요(spec 후속).
-        // EffectTileData.op 를 존중해야 해서 EnqueueStatMul(op 고정) 대신 직접 enqueue (EnqueueSynergyMul 미러).
+        // EffectTileData.op 를 존중해야 해서 중앙 EnqueueStatModifier(값 기준 op 결정, additive-authoring
+        // Policy B) 를 우회하고 직접 enqueue — 타일이 저작한 op 를 그대로 쓴다(정책 non-goal, spec 참조).
         // unit 4 — 다중 stat: entries 루프. stat 이 다르면 같은 stackId 여도 슬롯 분리.
         private void ApplyEffectTileIfAny(Vector2Int cell, Entity entity)
         {
