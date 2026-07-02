@@ -13,6 +13,11 @@ namespace Wassup.Editor
         private const string DefaultPrefabFolder = "Assets/_Project/Prefabs/Props";
         private const float PropSpritePixelsPerUnit = 256f;
 
+        // shadow-polish unit 6 — authored 블롭 기본값. 색/바닥Y 는 런타임에 BattleBridge 전역값으로 덮인다(프리뷰용).
+        private const string BlobShadowSpritePath = "Assets/_Project/Art/blob_shadow.png";
+        private const float BlobBaseSize = 1f; // BattleBridge.blobShadowSize 기본(1타일)과 동일 출발점
+        private static readonly Color BlobPreviewColor = new Color(0f, 0f, 0f, 0.45f);
+
         public override void OnInspectorGUI()
         {
             DrawDefaultInspector();
@@ -65,6 +70,8 @@ namespace Wassup.Editor
             var billboard = root.AddComponent<PropBillboard>();
             billboard.Configure(data, visual, spriteRenderer, skeletonAnimation);
 
+            AttachAuthoredBlob(root.transform, data, sprite);
+
             var path = $"{prefabFolder}/{data.name}.prefab";
             var prefab = PrefabUtility.SaveAsPrefabAsset(root, path);
             Object.DestroyImmediate(root);
@@ -80,6 +87,45 @@ namespace Wassup.Editor
             AssetDatabase.SaveAssets();
             Selection.activeObject = prefab;
             EditorGUIUtility.PingObject(prefab);
+        }
+
+        // shadow-polish unit 6 — 블롭을 프리팹에 굽는다. 이미지마다 피벗/여백이 달라 런타임 계산으로는
+        // 그림자 위치가 정규화되지 않으므로, 프리팹이 위치 XZ/크기의 source of truth (프랍별 미세조정 지점).
+        // 재생성 시 기존 프리팹의 블롭 transform 을 보존한다 — 수동 튜닝을 날리지 않기 위함.
+        private static void AttachAuthoredBlob(Transform root, PropData data, Sprite sprite)
+        {
+            var previous = data.prefab != null ? data.prefab.GetComponentInChildren<BlobShadow>(true) : null;
+
+            var go = new GameObject("BlobShadow");
+            go.transform.SetParent(root, false);
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite = AssetDatabase.LoadAssetAtPath<Sprite>(BlobShadowSpritePath);
+            sr.color = BlobPreviewColor;
+            sr.sortingOrder = BoardSortOrder.ShadowOrder;
+            go.AddComponent<BlobShadow>().MarkAuthored();
+
+            if (previous != null)
+            {
+                go.transform.localPosition = previous.transform.localPosition;
+                go.transform.localRotation = previous.transform.localRotation;
+                go.transform.localScale = previous.transform.localScale;
+                return;
+            }
+
+            // 기본값: footprint 종횡비(긴축 정규화) × visualScale, 틸트로 눕는 몸체 중심의 지면 투영(+Z).
+            var fp = data.Footprint;
+            float fpMax = Mathf.Max(fp.x, fp.y);
+            float scale = Mathf.Max(0.01f, data.visualScale);
+            float worldHeight = (sprite != null ? sprite.bounds.size.y : 1f) * scale;
+            float zOffset = data.billboardMode == PropBillboardMode.Tilted
+                ? 0.5f * worldHeight * Mathf.Sin(data.tiltAngle * Mathf.Deg2Rad)
+                : 0f;
+            go.transform.localPosition = new Vector3(0f, 0f, zOffset);
+            go.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            go.transform.localScale = new Vector3(
+                BlobBaseSize * scale * fp.x / fpMax,
+                BlobBaseSize * scale * fp.y / fpMax,
+                1f);
         }
 
         private static Sprite ResolveSprite(PropData data)

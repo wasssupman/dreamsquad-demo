@@ -1,6 +1,7 @@
 # Background Prop Shadow Polish
 
 > 상태: 완료 2026-06-29 (units 0~4, 사용자 육안 통과). 커밋 ee10b86(0~2) · 4704d4f(3~4)
+> rev 2026-07-02: unit 6 — 프랍 블롭 프리팹 authoring 전환 (멀티셀 footprint 프랍 도입 + 이미지별 피벗/여백 편차에 따른 unit 3·4 계약 개정)
 > 전제: `tilted-billboard` unit 3 (blob shadow), `tilemap-world-surround` unit 4 (원경 링 프랍), `tilemap-real-shadows`.
 > 대상: `Assets/_Project/Scenes/BattleScene.unity` (Tilemap, URP). Legacy3D 불변.
 
@@ -15,8 +16,8 @@
 - **프랍 그림자 = 블롭 통일 유지.** 실시간 cast 는 프랍에서 미사용(기존 사용자 결정, 불변). 캐릭터 real-shadow 경로 불변.
 - **원경 프랍도 동일 블롭 사용.** unit 1 에서 `tilemap-world-surround/4_distant_props.md` 의 "원경 그림자 OFF" 계약을 **ON 으로 갱신**한다. 별도 거리 dimming 없이 동일 `AttachPropBlob` 경로 재사용.
 - **모든 수치는 데이터에서.** 블롭(alpha/size)은 `BattleBridge` serialized → static 미러, 프랍별 크기는 `PropData.visualScale`, 밀도는 `forest.asset`. 하드코딩 금지.
-- **블롭 크기 모델 (unit 3)**: `블롭 월드 지름 = BlobShadowSize(1타일 기준 전역, 1.0) × prop.visualScale(프랍별)`, **원형**. footprint 타원 제거 — 바닥 평면 + 퍼스펙티브가 화면상 타원을 만든다. 부모 lossyScale 나눗셈은 유지(틸트·jitter·placement 스케일 상쇄, load-bearing).
-- **정적 스폰 (unit 4)**: 프랍 블롭은 스폰 시 transform 1회 세팅(`live: false`), 매 프레임 강제 없음. 유닛 블롭만 라이브(`live: true`, 이동 따라가기). **방향 offset 없음 — 발밑 정중앙**(좌우/깊이/페이즈 무관 일관). 방향성 그림자는 후속 후보.
+- **블롭 소유권 (unit 3, unit 6 개정)**: 신규 프랍 블롭은 **프리팹 authored** — 위치 XZ·크기(footprint 종횡비)·회전은 프리팹 소유(생성기 기본값 + 프랍별 손튜닝), sprite·color·sort·바닥 Y 는 Awake 에서 전역값(BattleBridge) 적용. 블롭 미내장 레거시 프리팹은 종전 런타임 원형 모델(`BlobShadowSize × visualScale`, lossyScale 상쇄) 폴백 유지.
+- **정적 스폰 (unit 4, unit 6 개정)**: 신규 프랍 블롭은 프리팹 값 그대로(런타임 transform 계산 없음), 레거시 프랍은 스폰 시 1회 세팅(`live: false`). 유닛 블롭만 라이브(`live: true`, 이동 따라가기). 방향성 그림자는 후속 후보.
 - **변경마다 Play→게임뷰 스크린샷 육안 검증 후 확정.** 수치는 시각 판단으로 수렴(아래 시작값은 출발점일 뿐).
 
 ## 작업 단위
@@ -28,6 +29,7 @@
 | 2 | `2_ring_density_reduce.md` | `ringPropDensity` 하향 | 원경 프랍 밀도 낮추기 |
 | 3 | `3_blob_size_simplify.md` | 블롭 크기 모델 단순화 | footprint 제거 → 원형, `BlobShadowSize×visualScale` 1타일 기준 |
 | 4 | `4_blob_static_spawn.md` | 정적 스폰 (매 프레임 강제 제거) | 프랍 블롭 스폰 1회 세팅, offset 없음(발밑), 유닛만 라이브 |
+| 6 | `6_prefab_authored_blob.md` | 프랍 블롭 프리팹 authoring 전환 (rev) | 이미지별 피벗/여백 편차 해소 — 블롭을 프리팹에 굽고 프랍별 미세조정 |
 
 ## 후속 후보
 

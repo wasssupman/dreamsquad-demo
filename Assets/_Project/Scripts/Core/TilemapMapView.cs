@@ -324,8 +324,7 @@ namespace Wassup.Core
             instance.transform.localScale = Vector3.one * placement.scale;
             MapView.ApplyPropSorting(instance, prop, placement, plan);
             MapView.DisablePropDebugMarkers(instance);
-            // 프랍 그림자 = blob 통일(데스크톱/모바일). 실시간 cast 는 프랍에서 미사용(사용자 결정).
-            AttachPropBlob(instance, prop);
+            // 프랍 그림자 = 프리팹 authored 블롭 (shadow-polish unit 6). 런타임 부착 없음 — 프리팹이 source of truth.
             if (theme.propGlobalTint != Color.white)
                 MapView.ApplyPropGlobalTint(instance, theme.propGlobalTint);
         }
@@ -453,8 +452,7 @@ namespace Wassup.Core
                 inst.transform.position = CellCenterToWorld(x, y);
                 inst.transform.localScale = Vector3.one * (1f + rng.NextFloat(-prop.scaleJitter, prop.scaleJitter));
                 MapView.DisablePropDebugMarkers(inst);
-                // background-prop-shadow-polish unit 1 — 원경도 근경과 동일 접지 블롭(blob size 는 prop.visualScale 기반 → 작은 원경 프랍은 작은 블롭).
-                AttachPropBlob(inst, prop);
+                // 원경도 동일 프리팹이라 authored 블롭 포함 (shadow-polish unit 6). 런타임 부착 없음.
             }
         }
 
@@ -466,22 +464,6 @@ namespace Wassup.Core
                 grid.CellToLocalInterpolated(new Vector3(cellX + 0.5f, cellY + 0.5f, 0f)));
             world.y += PropGroundLift;
             return world;
-        }
-
-        // unit 9 — real cast 가 꺼지는 모바일에서 근경 프랍 발밑 blob 폴백(캐릭터와 대칭).
-        // blob 은 부모 lossyScale 보정으로 월드 크기 고정 → 프랍 크기 반영은 size *= visualScale.
-        private static void AttachPropBlob(GameObject instance, PropData prop)
-        {
-            if (BattleBridge.BlobShadowSprite == null || prop == null) return;
-            // blob 은 프랍 피벗(발) XZ 의 바닥에 깔린다. 부양 버그 수정 후 발 피벗이 곧 스프라이트 하단이라 정렬됨.
-            BlobShadow.Attach(
-                instance.transform,
-                BattleBridge.BlobShadowSprite,
-                BattleBridge.BlobShadowSize * Mathf.Max(0.01f, prop.visualScale),
-                BattleBridge.BlobShadowColor,
-                BattleBridge.BlobShadowGroundY,
-                BoardSortOrder.ShadowOrder,
-                live: false); // 프랍은 정적 — 스폰 시 1회 세팅
         }
 
         private static void SafeDestroy(Object obj)
