@@ -17,14 +17,13 @@ MonoBehaviour:
   displayName: Archer
   health: 500
   attackRange: 4
-  attackDamage: 25
   attackCooldown: 1.5
   hitDelaySec: 0
   deployDelaySec: 0
   attackTargetCount: 1
   visualMesh: {fileID: 0}
   visualMaterial: {fileID: 2100000, guid: 8b475daf22c6b455cae26332bd71a8bd, type: 2}
-  projectile: {fileID: 11400000, guid: 9ba8609078272458283efd21cf035040, type: 2}
+  projectile: {fileID: 11400000, guid: 2a375ddbc447748b18784fcaac0732e1, type: 2}
   outputs:
   - kind: 0
     magnitude: 15

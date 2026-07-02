@@ -1,7 +1,7 @@
 # Projectile GA Reskin Spec
 
 **작성일**: 2026-07-03
-**상태**: 계획 승인 — 유닛 0 착수
+**상태**: 유닛 0~2 구현·커밋 (파일럿 Archer 배선 완료, 실게임 육안 확인 대기)
 **파이프라인 토대**: `docs/spec/projectile-visual-upgrade/` (완료 2026-04-28). ViewPool·ProjectileData 스키마·hit event 채널을 그대로 재사용한다. 이 spec 은 벤더 자산만 교체하는 리스킨이다.
 **목표**: 투사체 시각을 Gabriel Aguiar *Unique Projectiles Vol 4* 프리팹 외형으로 업그레이드한다. 파일럿 = Arrow. 코드 파이프라인 무변경(단, streak 가드 1건 추가), side-by-side 신규 에셋.
 
@@ -16,6 +16,14 @@
 - GA Arrow01 의 모든 시각 요소는 **transform 위치**에만 의존한다 — world-space 흩뿌림 궤적, local-space 몸체 오라, TrailRenderer×3, Light. 우리 `SyncTransforms` 가 매 프레임 transform 을 world 공간에서 구동하므로 데모의 Rigidbody 무버와 시각적으로 동일한 입력이다.
 - `emitterVelocityMode: Rigidbody`(4중 3) 는 무해 — 그 속도를 쓰는 두 기능(InheritVelocity, RateOverDistance)이 **전부 꺼짐**. RB 제거가 외형에 영향 0. (일반화 안전장치로 스트립 시 전 PS 를 `Transform` 모드로 강제.)
 - 프리팹의 2번째 "MonoBehaviour" 는 URP `UniversalAdditionalLightData` = Light 부속(=시각). **제거 금지**. 스트립은 타입 지정 제거만 한다.
+
+## 런타임 실측 (2026-07-03, Play 직접 검증)
+
+정적 분석이 놓친 것을 런타임 테스트가 잡음:
+
+- **`autodestruct=True` (트레일 3개)** — GA 데모용 자가정리 속성인데 우리 풀링과 충돌해 재사용 시 트레일이 사라짐. **최우선 필수 수정**, 스트립에 `autodestruct=false` 추가로 해결. (스크린샷: 비행 시 트레일 유지 확인.)
+- **색 씻김(preserveVfxColors)** — 예측보다 **미묘**. native 가 약간 더 선명한 HDR 광채, MPB-흰색은 약간 옅음. 선택적 화질 향상(사용자 유지 결정).
+- **streak** — 순간이동 시 world-space 파티클發 modest 잔상. autodestruct=false 로 트레일이 살아남으면 재사용 streak 이 생기므로 `ResetVfx` Clear 가 짝으로 필요.
 
 ## 작업 단위 목록
 

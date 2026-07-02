@@ -28,3 +28,5 @@
 - GA 데모 씬(`GabrielAguiarProductions/UniqueProjectilesVol_4/Scenes/…`) 에서 Arrow01 스크린샷 = 레퍼런스.
 - A/B 육안 "같은 외형"(궤적·코어·트레일·임팩트). streak 없음, 콘솔 Error/Warning 0, GameObject 누수 없음.
 - 통과 확인 후 이 파일 하단에 확인 일자 + 커밋 해시 추가하고 커밋.
+
+진행 2026-07-03 — `Projectile_Arrow_GA` 생성(proj=스트립 GA애로우, hit=vfx_Hit_Arrow01, cast=vfx_Muzzle_Arrow01, preserveVfxColors=true). `Defender_Archer.projectile` → GA 배선. Play 직접 비행 테스트로 트레일 유지+native 색 vivid 확인(스크린샷). **실게임 전투(Archer 발사 via ViewPool) 육안 확인 대기** — 사용자 플레이 세션에서 확정.
