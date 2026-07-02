@@ -2738,6 +2738,7 @@ namespace Wassup.Bridge
 
             int onPlaceAffected = ApplyOnPlaceEffect(binding.data, cell, entity);
             _onPlaceTriggeredEntities.Add(entity);
+            ApplyEffectTileIfAny(cell, entity); // effect-tiles unit 2 — 가드 뒤 exactly-once (드래그 경로)
             LogOnPlaceAndSynergy(binding.data, cell, onPlaceAffected);
             return true;
         }
@@ -3092,15 +3093,42 @@ namespace Wassup.Bridge
             return entity;
         }
 
+        // effect-tiles unit 2 — 효과 타일 modifier 슬롯 네임스페이스.
+        // 규약: on-place/skill=0 · 시너지=1 · 드림캐쳐=100+ (EnqueueSynergyMul/_dcStackCounter 참조).
+        private const ushort EffectTileStackId = 2;
+
         // effect-tiles unit 1 — 효과 타일 단일 진입점: dict 등록 + View 페인트. 셀당 1개(덮어쓰기).
         // 맵 빌드 seed 선정이 첫 client — 후속 런타임 생성 루트(드림캐쳐/유닛 능력)도 이 진입점 사용.
-        // 셀 점유 시 즉시 적용은 unit 2 에서 채운다 (순서 무관 불변식).
         public void AddEffectTile(Vector2Int cell, EffectTileData data)
         {
             if (data == null) return;
             _effectTilesByCell[cell] = data;
             if (UseTilemapView && tilemapMapView != null)
                 tilemapMapView.SetEffectTile(cell, data.overlayTile);
+            // unit 2 — 점유 셀 즉시 적용(순서 무관 불변식). 맵 빌드 시점엔 유닛이 없어
+            // 현재는 후속 런타임 생성 루트(드림캐쳐/유닛 능력)에서만 도달. 재적용은 merge-key refresh 라 멱등.
+            if (_defenderByTile.TryGetValue(cell, out var occupant))
+                ApplyEffectTileIfAny(cell, occupant.entity);
+        }
+
+        // effect-tiles unit 2 — 셀에 효과 타일이 있으면 배치 유닛에 효과 부여 (기존 modifier 파이프라인).
+        // source=배치유닛 + 전용 stackId=2 → merge-key 가 on-place(0)/시너지(1)와 분리 스택, 재호출은 refresh(멱등).
+        // duration=∞ (시너지 관용) — 유닛 제거/재배치 기능이 없어 revocation 불요(spec 후속).
+        // EffectTileData.op 를 존중해야 해서 EnqueueStatMul(op 고정) 대신 직접 enqueue (EnqueueSynergyMul 미러).
+        private void ApplyEffectTileIfAny(Vector2Int cell, Entity entity)
+        {
+            if (!_effectTilesByCell.TryGetValue(cell, out var data) || data == null) return;
+            if (!_statModifierQueue.IsCreated || entity == Entity.Null) return;
+            _statModifierQueue.Enqueue(new Wassup.Battle.Effects.StatModifierApplyEvent
+            {
+                target    = entity,
+                stat      = data.stat,
+                op        = data.op,
+                magnitude = data.magnitude,
+                duration  = float.PositiveInfinity,
+                source    = entity,
+                stackId   = EffectTileStackId,
+            });
         }
 
         private void TriggerOnPlaceAndSynergy(DefenderUnitData unitData, Vector2Int cell, Entity entity)
@@ -3112,6 +3140,7 @@ namespace Wassup.Bridge
             int onPlaceAffected = ApplyOnPlaceEffect(unitData, cell, entity);
             ApplyOnPlacePush(unitData, cell);
             _onPlaceTriggeredEntities.Add(entity);
+            ApplyEffectTileIfAny(cell, entity); // effect-tiles unit 2 — 가드 뒤 exactly-once
             RecomputeSynergyFor(cell);
             LogOnPlaceAndSynergy(unitData, cell, onPlaceAffected);
         }
