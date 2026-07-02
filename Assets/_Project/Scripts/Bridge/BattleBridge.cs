@@ -2287,70 +2287,42 @@ namespace Wassup.Bridge
 
         // Unit 8: channel enqueue helpers — route legacy effect produces through StatModifier channel.
         // source=target ensures the ApplySystem merge-key matches per-entity, preventing slot accumulation.
-        public void EnqueueDamageMul(Entity target, float multiplier, float duration)
+        // modifier-additive-authoring — the central helper applies the increase/reduction
+        // policy (ModifierAuthoring): buffs (multiplier>=1) become additive deltas that sum,
+        // reductions stay multiplicative. Callers keep passing multipliers unchanged.
+        private void EnqueueStatModifier(Entity target, Wassup.Battle.Effects.StatKind stat, float multiplier, float duration, ushort stackId)
         {
             if (!_statModifierQueue.IsCreated) return;
+            Wassup.Battle.Effects.ModifierAuthoring.FromMultiplier(multiplier, out var op, out var magnitude);
             _statModifierQueue.Enqueue(new Wassup.Battle.Effects.StatModifierApplyEvent
             {
                 target    = target,
-                stat      = Wassup.Battle.Effects.StatKind.DamageMul,
-                op        = Wassup.Battle.Effects.CombineOp.Multiplicative,
-                magnitude = multiplier,
+                stat      = stat,
+                op        = op,
+                magnitude = magnitude,
                 duration  = duration,
                 source    = target,
-                stackId   = 0,
+                stackId   = stackId,
             });
         }
+
+        public void EnqueueDamageMul(Entity target, float multiplier, float duration)
+            => EnqueueStatModifier(target, Wassup.Battle.Effects.StatKind.DamageMul, multiplier, duration, 0);
 
         // RapidFire / CooldownReduction: multiplier here means "attack speed factor" (how much faster to fire).
         // AttackSpeedMul > 1 = faster attacks. Legacy ApplyCooldownReduction stored 1/multiplier as a cooldown divisor;
         // the new channel stores the speed multiplier directly (ModifierStatsAggregateSystem applies it to attackSpeedMul).
         public void EnqueueAttackSpeedMul(Entity target, float multiplier, float duration)
-        {
-            if (!_statModifierQueue.IsCreated) return;
-            _statModifierQueue.Enqueue(new Wassup.Battle.Effects.StatModifierApplyEvent
-            {
-                target    = target,
-                stat      = Wassup.Battle.Effects.StatKind.AttackSpeedMul,
-                op        = Wassup.Battle.Effects.CombineOp.Multiplicative,
-                magnitude = multiplier,
-                duration  = duration,
-                source    = target,
-                stackId   = 0,
-            });
-        }
+            => EnqueueStatModifier(target, Wassup.Battle.Effects.StatKind.AttackSpeedMul, multiplier, duration, 0);
 
         public void EnqueueMoveSpeedMul(Entity target, float multiplier, float duration)
-        {
-            if (!_statModifierQueue.IsCreated) return;
-            _statModifierQueue.Enqueue(new Wassup.Battle.Effects.StatModifierApplyEvent
-            {
-                target    = target,
-                stat      = Wassup.Battle.Effects.StatKind.MoveSpeedMul,
-                op        = Wassup.Battle.Effects.CombineOp.Multiplicative,
-                magnitude = multiplier,
-                duration  = duration,
-                source    = target,
-                stackId   = 0,
-            });
-        }
+            => EnqueueStatModifier(target, Wassup.Battle.Effects.StatKind.MoveSpeedMul, multiplier, duration, 0);
 
         // Synergy: infinite duration, magnitude refreshed each recompute.
-        // magnitude=1.0 is the multiplicative identity (neighbors==0 case).
+        // multiplier=1.0 (neighbors==0) authors as the additive identity (+0.0).
+        // stackId=1 distinguishes synergy slot from onplace/skill DamageMul (stackId=0).
         private void EnqueueSynergyMul(Entity target, float multiplier)
-        {
-            if (!_statModifierQueue.IsCreated) return;
-            _statModifierQueue.Enqueue(new Wassup.Battle.Effects.StatModifierApplyEvent
-            {
-                target    = target,
-                stat      = Wassup.Battle.Effects.StatKind.DamageMul,
-                op        = Wassup.Battle.Effects.CombineOp.Multiplicative,
-                magnitude = multiplier,
-                duration  = float.PositiveInfinity,
-                source    = target,
-                stackId   = 1,   // stackId=1 distinguishes synergy slot from onplace/skill DamageMul (stackId=0)
-            });
-        }
+            => EnqueueStatModifier(target, Wassup.Battle.Effects.StatKind.DamageMul, multiplier, float.PositiveInfinity, 1);
 
         // ingame-dreamcatcher Unit 2 — dreamcatcher card effects are match-long and
         // apply to current + future matching defenders. stackId starts at 100 to
@@ -2381,19 +2353,7 @@ namespace Wassup.Bridge
         }
 
         private void EnqueueStatMul(Entity target, Wassup.Battle.Effects.StatKind stat, float multiplier, float duration, ushort stackId)
-        {
-            if (!_statModifierQueue.IsCreated) return;
-            _statModifierQueue.Enqueue(new Wassup.Battle.Effects.StatModifierApplyEvent
-            {
-                target    = target,
-                stat      = stat,
-                op        = Wassup.Battle.Effects.CombineOp.Multiplicative,
-                magnitude = multiplier,
-                duration  = duration,
-                source    = target,
-                stackId   = stackId,
-            });
-        }
+            => EnqueueStatModifier(target, stat, multiplier, duration, stackId);
 
         // Applies one card to all currently-placed matching defenders and records
         // it so future placements (ApplyActiveDcEffectsTo) inherit it.

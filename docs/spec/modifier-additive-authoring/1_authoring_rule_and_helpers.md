@@ -19,6 +19,6 @@
 
 ## 완료 기준
 
-- [ ] `ModifierAuthoringTests` 통과: 1.3→(Additive,0.3) / 1.0→(Additive,0.0) / 0.6→(Multiplicative,0.6) / 0.0→(Multiplicative,0.0)
-- [ ] compile 오류 없음
-- [ ] 전체 EditMode 스위트 — unit 2 전까지는 기존 테스트가 여전히 통과(직접 enqueue라 무영향), unit 2에서 shape 갱신
+- [x] `ModifierAuthoringTests` 4종 통과 (2026-07-03): 1.3→(Additive,0.3) / 1.0→(Additive,0.0) / 0.6→(Multiplicative,0.6) / 0.0→(Multiplicative,0.0). TDD RED(타입 미존재)→GREEN
+- [x] compile 오류 없음, 5 헬퍼가 중앙 `EnqueueStatModifier` 경유
+- [x] 전체 EditMode 461개 회귀 없음 (기존 직접-enqueue 테스트 무영향, unit 2에서 shape 갱신)
