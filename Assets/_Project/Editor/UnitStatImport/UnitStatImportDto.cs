@@ -22,6 +22,12 @@ namespace Wassup.Editor.UnitStatImport
         public DefenderRarity? rarity;
         public float? health;
         public float? attackRange;
+        // unit-stat-projection Unit 3 — projected onto the unique Damage/Heal output
+        // magnitude (not a reflection-mapped field; see skip-list in UnitStatFieldMapper).
+        public float? atk;
+        public float? heal;
+        // Deprecation shim: renamed to `atk`. Kept 1 release to warn instead of
+        // silently no-op if the sheet still sends the old column.
         public float? attackDamage;
         public float? attackCooldown;
         public float? hitDelaySec;
@@ -47,11 +53,16 @@ namespace Wassup.Editor.UnitStatImport
 
         public float? health;
         public float? moveSpeed;
+        // unit-stat-projection Unit 3 — projected onto the unique Damage output magnitude.
+        public float? atk;
+        // Deprecation shim: renamed to `atk`. Warns instead of silent no-op.
         public float? attackDamage;
         public float? attackRange;
         public float? attackCooldown;
         public int? attackTargetCount;
         public float? hitDelaySec;
+        // aggroAttackDamage is a LIVE scalar (AggroAttackProfile → TauntAttackGrantSystem);
+        // reflection-mapped to the SO, NOT in the projection skip-list.
         public float? aggroAttackDamage;
         public float? aggroAttackCooldown;
         public float? aggroAttackRange;

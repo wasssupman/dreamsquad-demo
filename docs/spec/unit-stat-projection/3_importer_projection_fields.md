@@ -21,8 +21,12 @@
 
 ## 완료 기준
 
-- [ ] compile 오류 없음
-- [ ] 신규 테스트 6+ 통과: atk 적용(magnitude 갱신) / Damage 0개 skip+사유 / (합성) Damage 2개+ skip / heal 적용 / atk 생략 시 기존 magnitude 유지 / attackDamage 수신 시 미적용+경고
-- [ ] `UnitRosterInvariantTests` 전 asset 통과
-- [ ] 수동: 로컬 JSON(또는 실 엔드포인트)으로 Archer `atk` 왕복 — outputs magnitude 갱신 + 카드 DMG 연동 확인. 실 엔드포인트 미제공 시 잔류 항목으로 기록
-- [ ] 기존 스위트 회귀 없음
+- [x] compile 오류 없음 (2026-07-02)
+- [x] 신규 테스트 통과: DTO atk/heal 역직렬화 / skip-list(atk·heal·attackDamage 미복사, aggroAttackDamage 유지) / 투영 magnitude 갱신 / Damage 0개 skip+사유 / Damage 2개+ skip / heal 적용 / atk 생략 시 magnitude 유지 / attackDamage shim 경고
+- [x] `UnitRosterInvariantTests` 전 asset 통과 (Damage≤1 / Heal≤1 / id 타입별 유일 — 교차타입 sniper 중복은 정상으로 확인)
+- [x] end-to-end 왕복 (execute_code, 순 변화 0): archer atk=15 → `projected 1`, poison_caster atk → `skipped — no Damage output`, archer attackDamage → shim 경고. 실 Swagger 엔드포인트 왕복은 URL 미제공으로 잔류
+- [x] 기존 스위트 회귀 없음 (444개, 기지 실패 1건 제외)
+
+## 주의 (2026-07-02)
+
+end-to-end 검증 중 `ApplyPayload`가 매칭 SO에 무조건 `SetDirty`+`SaveAssetIfDirty`를 호출하는 특성 때문에 `Defender_Archer.asset`·`Defender_PoisonCaster.asset`이 재직렬화됨(기본값 필드 라인 추가). 두 파일은 세션 시작 전부터 사용자 WIP 로 dirty 상태였고, 커밋에는 포함하지 않음. 실 asset 대상 검증 시 Save 부작용에 유의.

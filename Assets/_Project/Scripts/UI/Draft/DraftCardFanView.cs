@@ -82,6 +82,7 @@ namespace Wassup.UI.Draft
             }
             LayoutHomes();
             ResetCardsToOffscreen();
+            UiLayer.Apply(gameObject);
         }
 
         public Sequence PlayEnterSequence()
@@ -256,8 +257,13 @@ namespace Wassup.UI.Draft
             bannerLabel.fontStyle = FontStyles.Bold;
             bannerLabel.raycastTarget = false;
 
-            // Stats label.
-            var stats = $"{unit.displayName}\n\nHP  {unit.health:0}\nRNG {unit.attackRange:0.##}\nDMG {unit.attackDamage:0}\nCD  {unit.attackCooldown:0.##}s";
+            // Stats label. unit-stat-projection Unit 2 — DMG는 outputs의 유일 Damage
+            // 항목이 SoT. hazard caster/Healer 처럼 직접 데미지 output 이 없으면 "-"
+            // (숫자를 보이면 거짓말이 됨).
+            var dmgText = AttackOutputStats.TryGetUniqueMagnitude(unit.outputs, AttackOutputKind.Damage, out var dmg)
+                ? dmg.ToString("0")
+                : "-";
+            var stats = $"{unit.displayName}\n\nHP  {unit.health:0}\nRNG {unit.attackRange:0.##}\nDMG {dmgText}\nCD  {unit.attackCooldown:0.##}s";
             var labelGo = new GameObject("Label", typeof(RectTransform));
             labelGo.transform.SetParent(go.transform, false);
             var labelRt = (RectTransform)labelGo.transform;

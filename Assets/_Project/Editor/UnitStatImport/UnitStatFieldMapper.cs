@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
 
@@ -11,13 +12,23 @@ namespace Wassup.Editor.UnitStatImport
     {
         private const BindingFlags PublicInstance = BindingFlags.Public | BindingFlags.Instance;
 
+        // unit-stat-projection Unit 3 — fields the generic name-match copy must NOT
+        // touch. `id` = match key; `atk`/`heal` = projected onto outputs elsewhere;
+        // `attackDamage` = deprecated shim (warned, never written). NOTE: this is an
+        // exact-name set, not a `*AttackDamage` pattern — `aggroAttackDamage` is a live
+        // field and stays reflection-mapped.
+        private static readonly HashSet<string> NonReflectedFields = new()
+        {
+            "id", "atk", "heal", "attackDamage",
+        };
+
         public static int ApplyNonNullFields(object dto, ScriptableObject so)
         {
             int appliedCount = 0;
 
             foreach (var dtoField in dto.GetType().GetFields(PublicInstance))
             {
-                if (dtoField.Name == "id") continue;
+                if (NonReflectedFields.Contains(dtoField.Name)) continue;
 
                 object dtoValue = dtoField.GetValue(dto);
                 if (dtoValue == null) continue; // absent in JSON -> keep existing SO value

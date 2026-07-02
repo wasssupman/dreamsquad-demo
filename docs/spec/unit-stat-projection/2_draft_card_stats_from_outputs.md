@@ -16,6 +16,7 @@
 
 ## 완료 기준
 
-- [ ] compile 오류 없음
-- [ ] 수동 Play (Draft 화면): Archer DMG **15**, Marksman 40 무변화, PoisonCaster·Healer `"-"`, console 무오류
-- [ ] 기존 스위트 회귀 없음
+- [x] compile 오류 없음 (2026-07-02)
+- [x] 데이터 검증: asset outputs 실측 — Archer Damage=15, Marksman=40, PoisonCaster outputs 없음, Healer는 Heal만(Damage 없음) → 표기 로직상 Archer **15**, Marksman 40, PoisonCaster·Healer `"-"` 렌더 확정
+- [ ] 수동 Play (Draft 화면) 시각 확인 — 사용자 확인 대기
+- [x] 기존 스위트 회귀 없음 (444개, 기지 실패 ObstaclePlacer 1건 제외)

@@ -100,7 +100,7 @@ namespace Wassup.Editor.UnitStatImport
         internal static string ApplyPayload(UnitStatImportPayload payload)
         {
             var log = new StringBuilder();
-            int matched = 0, unmatched = 0, fieldsApplied = 0;
+            int matched = 0, unmatched = 0, fieldsApplied = 0, projected = 0, skipped = 0;
 
             var defendersById = BuildAssetIndex<DefenderUnitData>(DefenderFolder, so => so.id, log);
             var enemiesById = BuildAssetIndex<AttackUnitData>(EnemyFolder, so => so.id, log);
@@ -112,6 +112,9 @@ namespace Wassup.Editor.UnitStatImport
                 if (string.IsNullOrEmpty(dto.id) || !defendersById.TryGetValue(dto.id, out var so))
                 { unmatched++; log.AppendLine($"[defender] no match for id='{dto.id}'"); continue; }
                 fieldsApplied += UnitStatFieldMapper.ApplyNonNullFields(dto, so);
+                ProjectMagnitude(so.outputs, AttackOutputKind.Damage, dto.atk, "atk", $"defender '{dto.id}'", log, ref projected, ref skipped);
+                ProjectMagnitude(so.outputs, AttackOutputKind.Heal, dto.heal, "heal", $"defender '{dto.id}'", log, ref projected, ref skipped);
+                WarnDeprecatedAttackDamage(dto.attackDamage, $"defender '{dto.id}'", log);
                 EditorUtility.SetDirty(so);
                 AssetDatabase.SaveAssetIfDirty(so);
                 matched++;
@@ -123,13 +126,49 @@ namespace Wassup.Editor.UnitStatImport
                 if (string.IsNullOrEmpty(dto.id) || !enemiesById.TryGetValue(dto.id, out var so))
                 { unmatched++; log.AppendLine($"[enemy] no match for id='{dto.id}'"); continue; }
                 fieldsApplied += UnitStatFieldMapper.ApplyNonNullFields(dto, so);
+                ProjectMagnitude(so.outputs, AttackOutputKind.Damage, dto.atk, "atk", $"enemy '{dto.id}'", log, ref projected, ref skipped);
+                WarnDeprecatedAttackDamage(dto.attackDamage, $"enemy '{dto.id}'", log);
                 EditorUtility.SetDirty(so);
                 AssetDatabase.SaveAssetIfDirty(so);
                 matched++;
             }
 
-            log.Insert(0, $"Matched {matched}, unmatched {unmatched}, fields applied {fieldsApplied}.\n");
+            log.Insert(0, $"Matched {matched}, unmatched {unmatched}, fields applied {fieldsApplied}, projected {projected}, skipped {skipped}.\n");
             return log.ToString();
+        }
+
+        // unit-stat-projection Unit 3 — a planner-facing scalar (atk/heal) writes the
+        // unique output of its kind. 0 or 2+ matches is ambiguous: skip + report the
+        // reason so the miss is visible, never guess a target.
+        internal static void ProjectMagnitude(AttackOutput[] outputs, AttackOutputKind kind, float? value,
+            string field, string label, StringBuilder log, ref int projected, ref int skipped)
+        {
+            if (value == null) return; // omitted -> keep existing magnitude
+            if (AttackOutputStats.TrySetUniqueMagnitude(outputs, kind, value.Value))
+            {
+                projected++;
+                return;
+            }
+            skipped++;
+            int count = CountOfKind(outputs, kind);
+            string reason = count == 0
+                ? $"no {kind} output"
+                : $"{count} {kind} outputs (need exactly 1)";
+            log.AppendLine($"[{label}] {field}={value.Value} skipped — {reason}.");
+        }
+
+        internal static void WarnDeprecatedAttackDamage(float? attackDamage, string label, StringBuilder log)
+        {
+            if (attackDamage == null) return;
+            log.AppendLine($"[{label}] 'attackDamage' is deprecated (renamed to 'atk') and was NOT applied — update the sheet column.");
+        }
+
+        private static int CountOfKind(AttackOutput[] outputs, AttackOutputKind kind)
+        {
+            if (outputs == null) return 0;
+            int n = 0;
+            foreach (var o in outputs) if (o.kind == kind) n++;
+            return n;
         }
 
         // hotfix ⑥ — one scan per import. An id shared by 2+ assets is an ambiguous
