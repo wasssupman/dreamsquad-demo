@@ -778,6 +778,7 @@ namespace Wassup.Bridge
             if (UseTilemapView && tilemapMapView != null && theme != null &&
                 theme.effectTiles != null && theme.effectTiles.Length > 0 && theme.effectTileCount > 0)
             {
+                tilemapMapView.SetEffectTileMaterial(theme.effectTileMaterial); // 펄스 발광 머티리얼(있으면)
                 var effectCells = Wassup.Data.EffectTilePlacer.SelectCells(
                     _generatedMap, _generatedMap.seed, theme.effectTileCount);
                 // unit 4 — 종류 배정을 seed rng per-cell 로 (round-robin 은 종류 수 > count 면 뒤 종류가 영영 안 나옴).

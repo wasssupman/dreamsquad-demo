@@ -375,6 +375,16 @@ namespace Wassup.Core
             _effectTilemap.SetTile(ToCell(cell), tile);
         }
 
+        // 효과 타일맵 전용 머티리얼 지정(펄스 발광 등). null 이면 기본 유지. TilemapRenderer 는
+        // 타일맵당 머티리얼 1개라 전용 _effectTilemap 전체에 균일 적용된다.
+        public void SetEffectTileMaterial(Material material)
+        {
+            if (grid == null || material == null) return;
+            EnsureEffectTilemap();
+            var r = _effectTilemap.GetComponent<TilemapRenderer>();
+            if (r != null) r.sharedMaterial = material;
+        }
+
         private void EnsureEffectTilemap()
         {
             if (_effectTilemap != null) return;

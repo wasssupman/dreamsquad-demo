@@ -138,6 +138,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 8e0b183d2532b4169ad73b8bf15e5d57, type: 2}
   - {fileID: 11400000, guid: e067dcb089be444e49e36ad700951eff, type: 2}
   effectTileCount: 3
+  effectTileMaterial: {fileID: 2100000, guid: 7be5dd845e71843738d299537da4390e, type: 2}
   tilePropDensity: 1
   maxTilePropCount: 60
   propPoissonMinDistance: 1

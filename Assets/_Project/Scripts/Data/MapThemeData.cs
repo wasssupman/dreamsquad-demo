@@ -184,6 +184,8 @@ namespace Wassup.Data
         [Min(0)]
         [Tooltip("맵당 효과 타일 개수.")]
         public int effectTileCount = 3;
+        [Tooltip("효과 타일맵 전용 머티리얼(부드러운 발광 펄스 등). 비면 기본 스프라이트 머티리얼.")]
+        public Material effectTileMaterial;
 
         [Range(0f, 1f)]
         [Tooltip("Chance to attempt a tile prop placement at each eligible background cell.")]
