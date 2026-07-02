@@ -19,6 +19,7 @@
 
 ## 완료 기준
 
-- [ ] 갱신된 테스트가 새 결합값으로 통과
-- [ ] 전체 EditMode 스위트 회귀 없음
-- [ ] (수동) Play smoke: 버프 2개 이상 겹친 디펜더 데미지가 합산(곱연산 아님)으로 나오는지 GameLog 확인
+- [x] 갱신된 테스트가 새 결합값으로 통과 (2026-07-03): EffectIntegration synergy `2.6→2.3`(damage 26→23), EffectTile `1.25×1.2×1.1 → 1.25×(1+0.2+0.1)=1.625`. EffectTile 은 명시 op 유지, on-place/synergy만 Additive.
+- [x] 전체 EditMode 461개 회귀 없음 (스크립트 리로드로 play-residue 거짓 실패 6건 해소 후 확인, 기존 ObstaclePlacer 1건만 잔존)
+- [x] DreamcatcherCombatDamageTest(PlayMode): +200% 카드가 additive +2.0 임을 주석 정정. 단언은 baseline 1.0 에서 additive/mult 결과 동일(3.0)이라 무변경 — 전체 PlayMode run 은 focus 필요 시 후속
+- [ ] (수동) Play smoke: 버프 2개 이상 겹친 디펜더 데미지가 합산으로 나오는지 GameLog 확인 — 사용자 확인 대기

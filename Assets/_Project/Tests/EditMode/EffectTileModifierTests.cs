@@ -34,18 +34,20 @@ namespace Wassup.Tests.EditMode
                 var defender = em.CreateEntity();
                 em.AddComponentData(defender, new ModifierStats());
 
-                // 효과 타일(1.25, stackId=2) + on-place 류(1.2, stackId=0) + 시너지 류(1.1, stackId=1) — 같은 stat.
+                // 효과 타일(1.25, stackId=2, EffectTile 명시 op = Multiplicative 유지) +
+                // on-place 류(+0.2, stackId=0) + 시너지 류(+0.1, stackId=1). modifier-additive-
+                // authoring: on-place/synergy 는 증가라 이제 Additive 델타. 결합 = 곱×합.
                 statQ.Enqueue(MakeEvent(defender, 1.25f, EffectTileStackId));
-                statQ.Enqueue(MakeEvent(defender, 1.2f, 0));
-                statQ.Enqueue(MakeEvent(defender, 1.1f, 1));
+                statQ.Enqueue(MakeAdditiveEvent(defender, 0.2f, 0));
+                statQ.Enqueue(MakeAdditiveEvent(defender, 0.1f, 1));
 
                 world.SetTime(new TimeData(world.Time.ElapsedTime + 1f, 1f));
                 simGroup.Update();
 
                 Assert.AreEqual(3, em.GetBuffer<StatModifierSlot>(defender).Length,
                     "stackId 네임스페이스(0/1/2)로 3개 슬롯이 분리 공존해야 한다.");
-                Assert.AreEqual(1.25f * 1.2f * 1.1f, em.GetComponentData<ModifierStats>(defender).damageMul, 1e-4f,
-                    "Multiplicative 3중 스택.");
+                Assert.AreEqual(1.25f * (1f + 0.2f + 0.1f), em.GetComponentData<ModifierStats>(defender).damageMul, 1e-4f,
+                    "effect-tile(mul) × (1 + Σadd of on-place+synergy).");
             }
             finally
             {
@@ -146,6 +148,7 @@ namespace Wassup.Tests.EditMode
         }
 
         // BattleBridge.ApplyEffectTileIfAny 의 이벤트 shape 재현 (source=target, duration=∞).
+        // EffectTile 은 명시 op 저작을 존중하므로 Multiplicative 로 남는다(additive-authoring 범위 밖).
         private static StatModifierApplyEvent MakeEvent(Entity target, float magnitude, ushort stackId)
             => new StatModifierApplyEvent
             {
@@ -153,6 +156,19 @@ namespace Wassup.Tests.EditMode
                 stat      = StatKind.DamageMul,
                 op        = CombineOp.Multiplicative,
                 magnitude = magnitude,
+                duration  = float.PositiveInfinity,
+                source    = target,
+                stackId   = stackId,
+            };
+
+        // on-place/synergy 등 증가형 버프의 새 shape — BattleBridge 헬퍼가 Additive 델타로 저작.
+        private static StatModifierApplyEvent MakeAdditiveEvent(Entity target, float delta, ushort stackId)
+            => new StatModifierApplyEvent
+            {
+                target    = target,
+                stat      = StatKind.DamageMul,
+                op        = CombineOp.Additive,
+                magnitude = delta,
                 duration  = float.PositiveInfinity,
                 source    = target,
                 stackId   = stackId,

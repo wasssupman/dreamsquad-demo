@@ -143,7 +143,9 @@ namespace Wassup.Tests.EditMode
                 cooldownRemaining = 0f,
                 targetMask = (int)Faction.Enemy,
             });
-            // damageMul×2 (boost) + damageMul×1.3 (synergy) = combined ×2.6.
+            // modifier-additive-authoring — boost and synergy are increases, so
+            // BattleBridge now authors them as additive deltas: +1.0 (×2 boost) and
+            // +0.3 (×1.3 synergy). They SUM: 1 + 1.0 + 0.3 = 2.3 (not the old ×2.6 product).
             var outputs = em.AddBuffer<AttackOutputElement>(defender);
             outputs.Add(new AttackOutputElement
             {
@@ -157,8 +159,8 @@ namespace Wassup.Tests.EditMode
             em.AddComponent<ModifierStatsDirty>(defender);
             em.SetComponentEnabled<ModifierStatsDirty>(defender, true);
             var slots = em.AddBuffer<StatModifierSlot>(defender);
-            slots.Add(new StatModifierSlot { header = new ModifierHeader { remaining = 10f }, stat = StatKind.DamageMul, op = CombineOp.Multiplicative, magnitude = 2f });
-            slots.Add(new StatModifierSlot { header = new ModifierHeader { remaining = 10f }, stat = StatKind.DamageMul, op = CombineOp.Multiplicative, magnitude = 1.3f });
+            slots.Add(new StatModifierSlot { header = new ModifierHeader { remaining = 10f }, stat = StatKind.DamageMul, op = CombineOp.Additive, magnitude = 1.0f });
+            slots.Add(new StatModifierSlot { header = new ModifierHeader { remaining = 10f }, stat = StatKind.DamageMul, op = CombineOp.Additive, magnitude = 0.3f });
 
             var attacker = em.CreateEntity();
             em.AddComponentData(attacker, LocalTransform.FromPosition(new float3(1f, 0f, 0f)));
@@ -170,11 +172,11 @@ namespace Wassup.Tests.EditMode
             world.SetTime(new TimeData(world.Time.ElapsedTime + 0.016f, 0.016f));
             simGroup.Update();
 
-            // Expected: 10 base × 2.0 × 1.3 = 26.
+            // Expected: 10 base × (1 + 1.0 + 0.3) = 10 × 2.3 = 23.
             var incoming = em.GetBuffer<IncomingDamage>(attacker);
             Assert.AreEqual(1, incoming.Length);
-            Assert.AreEqual(26f, incoming[0].amount, 1e-4f,
-                "emittedDamage must multiply base × damageMul(boost) × damageMul(synergy) via ModifierStats");
+            Assert.AreEqual(23f, incoming[0].amount, 1e-4f,
+                "additive boost + synergy deltas sum into damageMul (base × (1 + Σadd))");
         }
 
         [Test]
