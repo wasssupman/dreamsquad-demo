@@ -16,10 +16,21 @@ MonoBehaviour:
   displayName: ruin wall 3 1
   footprintX: 3
   footprintY: 1
-  placementWeight: 8
+  visualFootprint: {x: 1, y: 1}
   minDistanceCells: 2
-  visualOffset: {x: 0, y: 0.46, z: 0}
-  visualScale: 0.69680476
+  visualOffset: {x: 0, y: 0, z: 0}
+  visualScale: 0.84
+  preferredAnchorTypes: 
+  preferredRegionSizeMin: 0
+  clusterRadius: 1
+  clusterCount: 1
+  clusterProbability: 0
+  rotationJitterDegrees: 0
+  scaleJitter: 0
+  pathProximityRange: {x: 0, y: 255}
+  borderProximityRange: {x: 0, y: 255}
+  category: 
+  sameCategoryMinDistanceCells: 0
   prefab: {fileID: 8012585365789377178, guid: b638fe1c9fc744551bf071ff0d61161c, type: 3}
   sprite: {fileID: 21300000, guid: 10c48310ecd6f4f51b169ba2e7c5bd39, type: 3}
   sourceTexture: {fileID: 2800000, guid: 10c48310ecd6f4f51b169ba2e7c5bd39, type: 3}
@@ -28,4 +39,5 @@ MonoBehaviour:
   skeletonDataAsset: {fileID: 0}
   spineSkinName: 
   idleAnimation: idle
-  billboardMode: 0
+  billboardMode: 3
+  tiltAngle: 50
