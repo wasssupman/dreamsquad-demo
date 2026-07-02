@@ -26,8 +26,12 @@ REST API 호출 및 스프레드시트→JSON 변환 파이프라인(Swagger 기
 - **버전 필드**: 1차 스키마엔 미포함 (컨슈머 단일, YAGNI). 필요해지면 후속 후보로 승격.
 - **레거시 caveat**: `attackDamage`는 두 SO 모두 레거시 스칼라 필드. 런타임 데미지의 실제 source of truth는 `AttackOutput[] outputs`이며, 이번 스키마 범위 밖.
 
+## 스키마 v2
+
+시트 `atk`/`heal` → outputs 투영 및 `attackDamage` 컬럼 폐기(deprecation shim)는 **`docs/spec/unit-stat-projection/`** 에서 정의한다. v2 delta의 SoT는 그쪽 `0_projection_contract.md`.
+
 ## 후속 후보
 
 - **실 엔드포인트 왕복 검증** [S] · `Window/Wassup/Unit Stat Import`에서 실제 Swagger REST URL로 1회 import 확인 (이번 세션은 URL 미제공으로 미검증).
-- **AttackOutput[] outputs 스프레드시트 반영** [M] · 현재 범위 밖(멀티 히트/DoT/스플래시 등 메커니즘). 별도 spec에서 논의.
+- **AttackOutput[] outputs 스프레드시트 반영** [M] · 단순 magnitude 투영은 unit-stat-projection 에서 진행. 멀티 히트/항목 구성 등 배열 전체 노출은 여전히 범위 밖.
 - **ObstaclePlacerTests 무관 실패** [S] · `Place_PreservesWalkAndMinimumPlaceRatio` (expected >=36, was 31) — 이번 변경과 무관, 별도 확인 필요.
