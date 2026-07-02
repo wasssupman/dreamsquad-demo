@@ -24,7 +24,7 @@
 | JSON 키 | 타입 | SO 필드 | 비고 |
 |---|---|---|---|
 | `id` | string | `id` | 매칭키 (기존 필드) |
-| `displayName` | string | `displayName` | 참조용 |
+| `displayName` | string | `displayName` | 표시명 — 제공 시 덮어씀 (부분 갱신 규칙 동일) |
 | `role` | string (enum) | `role` | `None/Ranger/Guardian/Fighter/Caster/Support` |
 | `rarity` | string (enum) | `rarity` | `Common/Rare/Epic/Ego` |
 | `health` | number | `health` | |
@@ -45,7 +45,7 @@
 | JSON 키 | 타입 | SO 필드 | 비고 |
 |---|---|---|---|
 | `id` | string | `id` (**신규 추가 필요**) | 매칭키 |
-| `displayName` | string | `displayName` | 참조용 |
+| `displayName` | string | `displayName` | 표시명 — 제공 시 덮어씀 (부분 갱신 규칙 동일) |
 | `enemyClass` | string (enum) | `enemyClass` | `None/Tanker/Runner/Bruiser/Shooter` |
 | `attackMethod` | string (enum) | `attackMethod` | `None/Melee/Projectile` |
 | `targetMode` | string (enum) | `targetMode` | `None/Nearest/FocusUntilDead` |
@@ -67,8 +67,9 @@
 
 ### 공통 컨벤션
 
-- Enum은 C# 멤버명 문자열 그대로 (서수 아님).
-- 매칭은 `id` 기준 업데이트만 (upsert 없음, 미매칭 id는 무시).
+- Enum은 C# 멤버명 문자열 (서수 아님). 표기 권장은 C# 멤버명 그대로, 수용은 case-insensitive (일반 enum·flags 배열 동일 규칙). 미지 멤버명은 임포트 실패.
+- `targetClassMask`에서 `"Everything"`과 개별 클래스명 혼용은 거부된다 (importer 검증 구현됨).
+- 매칭은 `id` 기준 업데이트만 (upsert 없음, 미매칭 id는 무시). payload 중복 id 행은 첫 행만 적용, asset 측 중복 id는 해당 id 전체 skip.
 - 빈 셀 → JSON 키 생략 → 임포트 시 기존 SO 값 유지 (부분 갱신).
 - 스키마 버전 필드는 1차 범위에 포함하지 않음.
 

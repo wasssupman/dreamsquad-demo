@@ -77,6 +77,67 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             Assert.Throws<JsonSerializationException>(() => JsonConvert.DeserializeObject<UnitStatImportPayload>(json));
         }
 
+        // hotfix ⑤ — one parsing rule for planners: member names are accepted
+        // case-insensitively across plain enums and the flags array alike.
+        [Test]
+        public void Deserialize_TargetClassMaskLowercaseNames_Accepted()
+        {
+            const string json = @"{ ""defenders"": [], ""enemies"": [
+                { ""id"": ""basic"", ""targetClassMask"": [""ranger"", ""guardian""] }
+            ] }";
+
+            var payload = JsonConvert.DeserializeObject<UnitStatImportPayload>(json);
+
+            Assert.AreEqual(DefenderClassFlags.Ranger | DefenderClassFlags.Guardian, payload.enemies[0].targetClassMask);
+        }
+
+        [Test]
+        public void Deserialize_TargetClassMaskUnknownName_Throws()
+        {
+            const string json = @"{ ""defenders"": [], ""enemies"": [
+                { ""id"": ""basic"", ""targetClassMask"": [""Rangr""] }
+            ] }";
+
+            Assert.Throws<JsonSerializationException>(() => JsonConvert.DeserializeObject<UnitStatImportPayload>(json));
+        }
+
+        // hotfix ⑥ — a payload repeating the same id must apply only the first
+        // row. Fake ids match no asset, so this exercises the dedup path
+        // read-only against the real AssetDatabase.
+        [Test]
+        public void ApplyPayload_DuplicatePayloadId_SkipsSubsequentRows()
+        {
+            var payload = new UnitStatImportPayload
+            {
+                defenders = new[]
+                {
+                    new DefenderStatDto { id = "zz_dup_test", health = 1f },
+                    new DefenderStatDto { id = "zz_dup_test", health = 2f },
+                },
+                enemies = new EnemyStatDto[0],
+            };
+
+            string log = UnitStatImportWindow.ApplyPayload(payload);
+
+            StringAssert.Contains("duplicate row for id='zz_dup_test'", log);
+        }
+
+        // hotfix ④ — pins the clarified contract: displayName is a normal
+        // partial-update field, overwritten when provided.
+        [Test]
+        public void ApplyNonNullFields_DisplayName_OverwritesWhenProvided()
+        {
+            var so = ScriptableObject.CreateInstance<DefenderUnitData>();
+            so.displayName = "Archer";
+
+            var dto = new DefenderStatDto { id = "archer", displayName = "Longbow Archer" };
+            UnitStatFieldMapper.ApplyNonNullFields(dto, so);
+
+            Assert.AreEqual("Longbow Archer", so.displayName);
+
+            Object.DestroyImmediate(so);
+        }
+
         [Test]
         public void ApplyNonNullFields_OnlyOverwritesProvidedFields()
         {

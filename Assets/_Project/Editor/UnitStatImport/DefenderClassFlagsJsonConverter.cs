@@ -17,7 +17,7 @@ namespace Wassup.Editor.UnitStatImport
             var names = serializer.Deserialize<string[]>(reader);
             if (names == null || names.Length == 0) return DefenderClassFlags.None;
 
-            if (names.Length > 1 && Array.IndexOf(names, nameof(DefenderClassFlags.Everything)) >= 0)
+            if (names.Length > 1 && Array.Exists(names, n => string.Equals(n, nameof(DefenderClassFlags.Everything), StringComparison.OrdinalIgnoreCase)))
             {
                 throw new JsonSerializationException(
                     $"targetClassMask mixes \"{nameof(DefenderClassFlags.Everything)}\" with other class names ({string.Join(", ", names)}) — use either [\"{nameof(DefenderClassFlags.Everything)}\"] alone or a list of individual classes.");
@@ -26,7 +26,14 @@ namespace Wassup.Editor.UnitStatImport
             DefenderClassFlags result = DefenderClassFlags.None;
             foreach (var name in names)
             {
-                result |= (DefenderClassFlags)Enum.Parse(typeof(DefenderClassFlags), name, ignoreCase: false);
+                // hotfix ⑤ — case-insensitive, matching Json.NET's default enum
+                // parsing so planners get one consistent rule across all columns.
+                if (!Enum.TryParse(name, ignoreCase: true, out DefenderClassFlags flag))
+                {
+                    throw new JsonSerializationException(
+                        $"targetClassMask contains unknown class name \"{name}\" — valid: {string.Join(", ", Enum.GetNames(typeof(DefenderClassFlags)))}.");
+                }
+                result |= flag;
             }
             return result;
         }

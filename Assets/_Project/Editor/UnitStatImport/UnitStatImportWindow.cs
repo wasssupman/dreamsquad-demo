@@ -27,6 +27,9 @@ namespace Wassup.Editor.UnitStatImport
         private void OnEnable()
         {
             _url = EditorPrefs.GetString(UrlPrefsKey, "");
+            // hotfix ③ — serialized true survives a domain reload while the
+            // completed callback does not; reset so the Import button never sticks.
+            _requestInFlight = false;
         }
 
         private void OnGUI()
@@ -94,54 +97,61 @@ namespace Wassup.Editor.UnitStatImport
             }
         }
 
-        private static string ApplyPayload(UnitStatImportPayload payload)
+        internal static string ApplyPayload(UnitStatImportPayload payload)
         {
             var log = new StringBuilder();
             int matched = 0, unmatched = 0, fieldsApplied = 0;
 
+            var defendersById = BuildAssetIndex<DefenderUnitData>(DefenderFolder, so => so.id, log);
+            var enemiesById = BuildAssetIndex<AttackUnitData>(EnemyFolder, so => so.id, log);
+
+            var seenIds = new System.Collections.Generic.HashSet<string>();
             foreach (var dto in payload?.defenders ?? Array.Empty<DefenderStatDto>())
             {
-                var so = FindDefenderById(dto.id);
-                if (so == null) { unmatched++; log.AppendLine($"[defender] no match for id='{dto.id}'"); continue; }
+                if (!seenIds.Add($"defender:{dto.id}")) { log.AppendLine($"[defender] duplicate row for id='{dto.id}' — skipped."); continue; }
+                if (string.IsNullOrEmpty(dto.id) || !defendersById.TryGetValue(dto.id, out var so))
+                { unmatched++; log.AppendLine($"[defender] no match for id='{dto.id}'"); continue; }
                 fieldsApplied += UnitStatFieldMapper.ApplyNonNullFields(dto, so);
                 EditorUtility.SetDirty(so);
+                AssetDatabase.SaveAssetIfDirty(so);
                 matched++;
             }
 
             foreach (var dto in payload?.enemies ?? Array.Empty<EnemyStatDto>())
             {
-                var so = FindEnemyById(dto.id);
-                if (so == null) { unmatched++; log.AppendLine($"[enemy] no match for id='{dto.id}'"); continue; }
+                if (!seenIds.Add($"enemy:{dto.id}")) { log.AppendLine($"[enemy] duplicate row for id='{dto.id}' — skipped."); continue; }
+                if (string.IsNullOrEmpty(dto.id) || !enemiesById.TryGetValue(dto.id, out var so))
+                { unmatched++; log.AppendLine($"[enemy] no match for id='{dto.id}'"); continue; }
                 fieldsApplied += UnitStatFieldMapper.ApplyNonNullFields(dto, so);
                 EditorUtility.SetDirty(so);
+                AssetDatabase.SaveAssetIfDirty(so);
                 matched++;
             }
 
-            AssetDatabase.SaveAssets();
             log.Insert(0, $"Matched {matched}, unmatched {unmatched}, fields applied {fieldsApplied}.\n");
             return log.ToString();
         }
 
-        private static DefenderUnitData FindDefenderById(string id)
+        // hotfix ⑥ — one scan per import. An id shared by 2+ assets is an ambiguous
+        // write target: drop it from the index entirely and report, never guess.
+        private static System.Collections.Generic.Dictionary<string, T> BuildAssetIndex<T>(
+            string folder, Func<T, string> idSelector, StringBuilder log) where T : ScriptableObject
         {
-            if (string.IsNullOrEmpty(id)) return null;
-            foreach (var guid in AssetDatabase.FindAssets("t:DefenderUnitData", new[] { DefenderFolder }))
+            var byId = new System.Collections.Generic.Dictionary<string, T>();
+            var ambiguous = new System.Collections.Generic.HashSet<string>();
+            foreach (var guid in AssetDatabase.FindAssets($"t:{typeof(T).Name}", new[] { folder }))
             {
-                var asset = AssetDatabase.LoadAssetAtPath<DefenderUnitData>(AssetDatabase.GUIDToAssetPath(guid));
-                if (asset != null && asset.id == id) return asset;
+                var asset = AssetDatabase.LoadAssetAtPath<T>(AssetDatabase.GUIDToAssetPath(guid));
+                if (asset == null) continue;
+                string id = idSelector(asset);
+                if (string.IsNullOrEmpty(id)) continue;
+                if (!byId.TryAdd(id, asset) && ambiguous.Add(id))
+                {
+                    byId.Remove(id);
+                    log.AppendLine($"[{typeof(T).Name}] duplicate asset id '{id}' — all assets with this id skipped.");
+                }
             }
-            return null;
-        }
-
-        private static AttackUnitData FindEnemyById(string id)
-        {
-            if (string.IsNullOrEmpty(id)) return null;
-            foreach (var guid in AssetDatabase.FindAssets("t:AttackUnitData", new[] { EnemyFolder }))
-            {
-                var asset = AssetDatabase.LoadAssetAtPath<AttackUnitData>(AssetDatabase.GUIDToAssetPath(guid));
-                if (asset != null && asset.id == id) return asset;
-            }
-            return null;
+            return byId;
         }
     }
 }
