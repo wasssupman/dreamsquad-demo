@@ -67,7 +67,6 @@ namespace Wassup.Tests.EditMode
             var defender = CreateTarget(em, Faction.Defender, new float3(0f, 0f, 0f), defenderTag: true);
             em.AddComponentData(defender, new AttackState
             {
-                damage = 3f,
                 range = 5f,
                 cooldownDuration = 1f,
                 cooldownRemaining = 0f,
@@ -98,7 +97,6 @@ namespace Wassup.Tests.EditMode
             var enemy = CreateTarget(em, Faction.Enemy, new float3(0f, 0f, 0f), attackerTag: true);
             em.AddComponentData(enemy, new AttackState
             {
-                damage = 4f,
                 range = 5f,
                 cooldownDuration = 1f,
                 cooldownRemaining = 0f,

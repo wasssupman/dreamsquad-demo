@@ -264,7 +264,6 @@ namespace Wassup.Battle.Combat
                         ? modifierStatsLookup[attackerEntity].damageMul
                         : 1f;
                     // All defender/enemy hit effects come through AttackOutputElement.
-                    // AttackState.damage remains only as serialized authoring compatibility.
                     bool hasOutputs = outputBufferLookup.HasBuffer(attackerEntity);
 
                     if (hasOutputs)

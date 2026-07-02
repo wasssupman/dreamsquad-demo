@@ -50,7 +50,7 @@ namespace Wassup.Tests.EditMode
             _em.AddComponentData(e, LocalTransform.FromPosition(new float3(x, 0, 0)));
             _em.AddComponentData(e, new AttackState
             {
-                damage = 10f, range = 5f, cooldownDuration = 1f, cooldownRemaining = 0f,
+                range = 5f, cooldownDuration = 1f, cooldownRemaining = 0f,
                 attackTargetCount = 1, targetMask = (int)Faction.Defender,
             });
             var ob = _em.AddBuffer<AttackOutputElement>(e);

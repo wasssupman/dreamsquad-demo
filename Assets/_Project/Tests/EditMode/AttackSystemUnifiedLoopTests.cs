@@ -77,7 +77,6 @@ namespace Wassup.Tests.EditMode
             _em.AddBuffer<IncomingDamage>(e);
             _em.AddComponentData(e, new AttackState
             {
-                damage = damage,
                 range = range,
                 cooldownDuration = cooldownDuration,
                 cooldownRemaining = 0f,

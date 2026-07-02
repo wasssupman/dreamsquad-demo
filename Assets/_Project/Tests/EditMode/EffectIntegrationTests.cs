@@ -75,7 +75,6 @@ namespace Wassup.Tests.EditMode
             em.AddBuffer<IncomingDamage>(defender);
             em.AddComponentData(defender, new AttackState
             {
-                damage = 10f,
                 range = 5f,
                 cooldownDuration = 4f,
                 cooldownRemaining = 0f,
@@ -118,7 +117,6 @@ namespace Wassup.Tests.EditMode
             var attackState = em.GetComponentData<AttackState>(defender);
             Assert.AreEqual(2f, attackState.cooldownRemaining, 1e-4f,
                 "attackSpeedMul 2.0 should halve the cooldown reset value");
-            Assert.AreEqual(10f, attackState.damage, 1e-5f, "AttackState.damage must remain unchanged (Combat-owned).");
             Assert.AreEqual(4f, attackState.cooldownDuration, 1e-5f, "AttackState.cooldownDuration must remain unchanged.");
         }
 
@@ -140,7 +138,6 @@ namespace Wassup.Tests.EditMode
             em.AddBuffer<IncomingDamage>(defender);
             em.AddComponentData(defender, new AttackState
             {
-                damage = 10f,
                 range = 5f,
                 cooldownDuration = 4f,
                 cooldownRemaining = 0f,
@@ -196,7 +193,6 @@ namespace Wassup.Tests.EditMode
             em.AddComponentData(attacker, new FactionTag { value = Faction.Enemy });
             em.AddComponentData(attacker, new AttackState
             {
-                damage = 7f,
                 range = 2f,
                 cooldownDuration = 1f,
                 cooldownRemaining = 0f,

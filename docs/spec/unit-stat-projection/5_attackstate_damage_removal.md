@@ -18,6 +18,7 @@
 
 ## 완료 기준
 
-- [ ] compile 오류 없음
-- [ ] 전체 EditMode 스위트 회귀 없음 (수정된 ~10 테스트 파일 포함)
-- [ ] Play smoke: 데미지/aggro(taunt) 공격 동작 전후 동일
+- [x] compile 오류 없음 (2026-07-02)
+- [x] 전체 EditMode 스위트 회귀 없음 (444개, 기지 실패 ObstaclePlacer 1건 제외). 수정 테스트 6파일: AttackSystemMask(2)·UnifiedLoop(1)·StateGate·EnemyBehavior·EnemyTargetPriority·EffectIntegration(초기화 3 + assertion 1)
+- [x] asset 무관 (AttackState는 IComponentData, 직렬화 안 됨). `ProjectileState`/`AggroAttackProfile`/`MeteorPending`/`ProjectileSpawnRequest`의 `damage` 는 별개 컴포넌트로 미변경
+- [ ] Play smoke 시각 확인 — 동시 세션 작업 중이라 보류. TauntAttack dead write 제거 후에도 aggro 데미지는 outputs magnitude(=57 라인) 경유 불변

@@ -41,7 +41,6 @@ namespace Wassup.Battle.Combat
                 var p = profile.ValueRO;
                 ecb.AddComponent(entity, new AttackState
                 {
-                    damage = p.damage,
                     range = p.range,
                     cooldownDuration = p.cooldown,
                     cooldownRemaining = 0f,
