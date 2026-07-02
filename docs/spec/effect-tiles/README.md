@@ -1,6 +1,6 @@
 # effect-tiles — 배치 타일 효과 타일 (버프/디버프)
 
-> 상태: units 0~2 완료 2026-07-02 (`f07f1a6`·`b1c191d`·`c8ee5c2` · EditMode 6/6 · Play 검증 PASS) → **unit 4 진행**(다중 stat + 신규 타일). 신규 ECS 시스템 0개. 2-렌즈 스펙 리뷰 GO-WITH-CHANGES 반영.
+> 상태: **완료 2026-07-02** (units 0~2 `f07f1a6`·`b1c191d`·`c8ee5c2` + unit 4 다중 stat `41d4361` + 비주얼 폴리시: 구분 글리프 `a987c82` · 펄스 셰이더 `faf2f00`). EditMode 7/7 · Play 검증 PASS. 신규 ECS 시스템 0개. 2-렌즈 스펙 리뷰 GO-WITH-CHANGES 반영.
 
 ## 배경 / 목표
 

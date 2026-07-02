@@ -4,6 +4,8 @@
 - unit 0 `f07f1a6` — EffectTileData SO + EffectTilePlacer.SelectCells + EditMode 4종.
 - unit 1 `b1c191d` — 런타임 효과 타일맵(−15) + AddEffectTile + 맵빌드 배선 + 에셋/테마.
 - unit 2 `c8ee5c2` — 배치 훅(ApplyEffectTileIfAny, stackId=2) + EditMode 2종.
+- unit 4 `41d4361` — EffectTileData.effects[] 다중 stat + 글래스캐논/재생 + 종류 배정 rng.
+- 비주얼 `a987c82` — 구분 심볼 글리프 5종(절차 생성, 형태+색). `faf2f00` — 효과 타일맵 펄스 발광 셰이더(Wassup/EffectTilePulse, theme.effectTileMaterial).
 
 ## Implemented
 - 맵 빌드 시 Place 셀 seed 결정론 선정(`EffectTilePlacer.SelectCells`, `seed^0x51F15EED|1u`) → `AddEffectTile` 로 dict 등록+페인트.
