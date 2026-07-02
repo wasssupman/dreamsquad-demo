@@ -23,4 +23,12 @@
 - [x] `ModifierMathTests` 6종 통과 (2026-07-03): identity / 단일 디버프(범위 내) / 누적 디버프→floor / 누적 버프→ceil / additive / override 클램프 — TDD RED(타입 미존재 컴파일 실패) 확인 후 GREEN
 - [x] compile 오류 없음
 - [x] 전체 EditMode 스위트 회귀 없음 (450개, 기지 실패 ObstaclePlacer 1건 제외. 정상 범위 modifier는 클램프에 안 걸림)
-- [ ] (수동) Play 재현: Guardian + Debuffer 다수 시 데미지가 floor(15×0.2=3) 아래로 안 떨어짐 — 사용자 확인 대기
+- [x] (수동) Play 재현 확인 (2026-07-03, GameLog `session-...150632`): Guardian Damage 최소 **3.0**(=15×floor 0.2), 이전 0.24 소멸이 해소. distinct [3.0, 3.24, 5.4, 9.0, 15.0, 19.5] — 버프/디버프 변동은 유지(의도)되나 바닥이 뚫리지 않음
+
+## Review 반영 (2026-07-03)
+
+투트랙 리뷰 (code-reviewer + ecs-reviewer) 판정 **APPROVE + APPROVE**. 반영:
+
+- **배선 회귀 가드** (양측 M1): `ModifierFrameworkTests.Clamp_DamageAndMove_UseTheirOwnFloor` 신설 — damageMul↔0.2 / moveSpeedMul↔0.15 각자 floor 시스템 레벨 검증(상수 스왑/오배선 잡음). ModifierMathTests에 음수 additive·×0·move bound 케이스 추가.
+- **moveSpeed floor 근거 정정** (ecs M1): "완전정지는 Stun 담당" 삭제. Stun은 생산만·소비 없음(dead CC) 확인 → 주석/README를 "예방적 floor, 현 slow는 미도달(Ice ×0.4), root는 전용 flag로"로 정정. Stun 소비 구현/제거는 후속 후보 등록.
+- **regenPerSec Override 음수** (ecs M2): `math.max(0)`가 Override 음수도 삼킴. 현 producer 없어 실害 0 → 후속 후보 등록.

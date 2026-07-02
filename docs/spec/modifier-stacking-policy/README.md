@@ -29,10 +29,12 @@ Play 검증(2026-07-02, GameLog `session-...130202`)에서 실측: `aggroCapacit
 ## Feature-wide 계약
 
 - 클램프 대상은 **배율 스탯 4종** (`damageMul`/`attackSpeedMul`/`dmgTakenMul`/`moveSpeedMul`). `regenPerSec`는 base 0 자원값이라 제외(음수만 방지).
-- 정책 경계값(framework 상수, 정상 플레이 미간섭·병리만 차단): damage/attackSpeed/dmgTaken `[0.2, 5]`, moveSpeed `[0.15, 3]` (슬로우가 완전 정지 못 하게 — 정지는 `CcKind.Stun` 담당).
+- 정책 경계값(framework 상수, 정상 플레이 미간섭·병리만 차단): damage/attackSpeed/dmgTaken `[0.2, 5]`, moveSpeed `[0.15, 3]`. moveSpeed floor는 **예방적** — 현 저작 slow는 floor에 도달 안 함(Ice slow ×0.4). 완전정지(root)는 현재 미구현이며(`CcKind.Stun`은 생산만·소비 없음), 필요해지면 moveSpeedMul→0이 아닌 전용 이동 flag로 만들어야 한다(그래야 이 floor에 안 걸림).
 - `Override` op는 클램프 이전에 우선하되, 최종값도 동일 범위로 클램프(저작 실수 방지).
 
 ## 후속 후보
 
 - **Additive 저작 전환 밸런스 패스** [M] · Debuffer(`DamageMul 0.6 Mult` → `−0.4 Add`), `BoostNearbyDefenders`(×1.3 → +0.3) 등. 곱연산은 의도된 희귀 효과에만 남김.
 - **clamp 경계값 authoring** [S] · config SO로 노출 (밸런싱 필요 시).
+- **`CcKind.Stun` 소비 구현 또는 제거** [S] · 현재 Stun은 `StackModifierTickSystem`에서 생산되나 `MovementSystem` switch에 case가 없어 아무 효과 없음(dead CC). 완전정지가 필요하면 소비 구현, 아니면 enum/생산 제거. (ecs-review M1)
+- **regenPerSec Override 음수 처리** [S] · `math.max(0f, …)`가 Override 음수 regen(의도적 지속감소)도 0으로 삼킴. 현재 음수 regen producer 없어 실害 없음. (ecs-review M2)

@@ -48,6 +48,28 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
+        public void NegativeAdditive_DrivingRawBelowZero_ClampedToFloor()
+        {
+            // stacked additive debuffs: 1 + (-2) = -1 → floored (never negative).
+            Assert.AreEqual(Floor, ModifierMath.CombineMul(false, 0f, add: -2f, mul: 1f, Floor, Ceil), 1e-5f);
+        }
+
+        [Test]
+        public void ZeroMultiplier_ClampedToFloor()
+        {
+            // a ×0 modifier would nullify the stat; the floor keeps it above 0.
+            Assert.AreEqual(Floor, ModifierMath.CombineMul(false, 0f, add: 0f, mul: 0f, Floor, Ceil), 1e-5f);
+        }
+
+        [Test]
+        public void MoveBounds_ClampToOwnFloor()
+        {
+            // move-stat bounds (0.15/3) resolve independently of the damage bounds.
+            Assert.AreEqual(0.15f, ModifierMath.CombineMul(false, 0f, add: 0f, mul: 0.03f, 0.15f, 3f), 1e-5f);
+            Assert.AreEqual(3f, ModifierMath.CombineMul(false, 0f, add: 0f, mul: 4f, 0.15f, 3f), 1e-5f);
+        }
+
+        [Test]
         public void Override_WinsOverAddAndMul_ButStillClamped()
         {
             // override value used instead of (1+add)*mul, and itself clamped.

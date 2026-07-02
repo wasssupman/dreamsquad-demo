@@ -352,5 +352,38 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(0, _em.GetBuffer<StatModifierSlot>(e).Length,
                 "Expired slot must be removed from the buffer.");
         }
+
+        // ── modifier-stacking-policy wiring guard ───────────────────────────────────
+        // System-level check that each stat is clamped with ITS OWN bound: damageMul
+        // floors at 0.2, moveSpeedMul at 0.15. Distinct-source multiplicative stacks
+        // (distinct stackId → separate slots) drive both below their floors. A swap of
+        // MulStatFloor/MoveMulFloor, or moveSpeedMul routed through the wrong constant,
+        // fails here even though the pure-function tests still pass.
+        [Test]
+        public void Clamp_DamageAndMove_UseTheirOwnFloor()
+        {
+            var e = CreateEntityWithModifierStats();
+
+            // 5 distinct ×0.6 DamageMul (0.6^5 ≈ 0.078) and 5 distinct ×0.5 MoveSpeedMul
+            // (0.5^5 ≈ 0.031) — both well below their respective floors.
+            for (ushort i = 0; i < 5; i++)
+            {
+                _statQueue.Enqueue(new StatModifierApplyEvent
+                {
+                    target = e, stat = StatKind.DamageMul, op = CombineOp.Multiplicative,
+                    magnitude = 0.6f, duration = 100f, source = e, stackId = i,
+                });
+                _statQueue.Enqueue(new StatModifierApplyEvent
+                {
+                    target = e, stat = StatKind.MoveSpeedMul, op = CombineOp.Multiplicative,
+                    magnitude = 0.5f, duration = 100f, source = e, stackId = i,
+                });
+            }
+            Tick();
+
+            var stats = _em.GetComponentData<ModifierStats>(e);
+            Assert.AreEqual(0.2f, stats.damageMul, 1e-5f, "damageMul must clamp to its own 0.2 floor.");
+            Assert.AreEqual(0.15f, stats.moveSpeedMul, 1e-5f, "moveSpeedMul must clamp to its own 0.15 floor, not damage's 0.2.");
+        }
     }
 }

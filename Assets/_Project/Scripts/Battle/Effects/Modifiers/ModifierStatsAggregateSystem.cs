@@ -18,8 +18,10 @@ namespace Wassup.Battle.Effects
     {
         // modifier-stacking-policy — framework clamp bounds (not per-unit stats).
         // Ranges are wide enough that normal single modifiers never hit them; only
-        // pathological stacking is bounded. Move floor keeps a slow from fully
-        // freezing a unit (full stop is CcKind.Stun's job).
+        // pathological cross-source stacking is bounded. The move floor is preemptive:
+        // no authored slow currently reaches it (Ice slow is x0.4), and there is no
+        // full-stop movement CC consumer yet — a root, if ever needed, must be a
+        // dedicated movement flag, not moveSpeedMul->0 (which this floor would cap).
         private const float MulStatFloor = 0.2f;   // damage/attackSpeed/dmgTaken: max -80%
         private const float MulStatCeil = 5f;      //   … max +400%
         private const float MoveMulFloor = 0.15f;
