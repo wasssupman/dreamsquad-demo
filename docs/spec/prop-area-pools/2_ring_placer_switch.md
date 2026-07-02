@@ -31,3 +31,5 @@
   - `distantRingProps` 에만 있는 프랍이 **플레이 영역에 안 나타남**.
   - 전체 배경 자연스러움 육안 확인 (memory: `feedback_background_screenshot_verify`).
 - 스크린샷은 `Assets/Screenshots/` 에 내가 만든 파일명으로 저장 (통삭제 금지 폴더 — memory: `project_screenshots_scratch_folder`).
+
+확인: 2026-07-02 · `prop_area_pools_unit2_verify_1.png` — 버섯·꽃이 플레이 영역에만, 원경 링엔 부재. 근경/원경 독립 구동 확인. compile 클린, Play 에러 0.

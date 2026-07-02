@@ -403,17 +403,19 @@ namespace Wassup.Core
         public void InstantiateRingProps(MapThemeData theme, int2 playableSize, int seed, float densityScale = 1f)
         {
             if (_ringPropsRoot != null) { SafeDestroy(_ringPropsRoot.gameObject); _ringPropsRoot = null; }
-            if (grid == null || _tileSet == null || theme == null || theme.tileProps == null) return;
+            if (grid == null || _tileSet == null || theme == null || theme.distantRingProps == null) return;
             int R = _tileSet.ringRadius;
             float density = theme.ringPropDensity * Mathf.Clamp01(densityScale);
             if (R <= 0 || density <= 0f) return;
             int w = playableSize.x, h = playableSize.y;
 
+            // prop-area-pools unit 2 — 원경 풀은 distantRingProps(WeightedProp[]). 근경과 독립.
+            // 리스트 소속 자체가 opt-in 이라 excludeFromDistantRing 필터 불필요.
             float totalW = 0f;
-            for (int i = 0; i < theme.tileProps.Length; i++)
+            for (int i = 0; i < theme.distantRingProps.Length; i++)
             {
-                var p = theme.tileProps[i];
-                if (p != null && p.prefab != null && !p.excludeFromDistantRing) totalW += RingWeight(p);
+                var entry = theme.distantRingProps[i];
+                if (entry != null && entry.prop != null && entry.prop.prefab != null) totalW += Mathf.Max(0f, entry.weight);
             }
             if (totalW <= 0f) return;
 
@@ -438,12 +440,12 @@ namespace Wassup.Core
 
                 float roll = rng.NextFloat(0f, totalW);
                 Wassup.Data.PropData prop = null;
-                for (int i = 0; i < theme.tileProps.Length; i++)
+                for (int i = 0; i < theme.distantRingProps.Length; i++)
                 {
-                    var p = theme.tileProps[i];
-                    if (p == null || p.prefab == null || p.excludeFromDistantRing) continue;
-                    roll -= RingWeight(p);
-                    if (roll <= 0f) { prop = p; break; }
+                    var entry = theme.distantRingProps[i];
+                    if (entry == null || entry.prop == null || entry.prop.prefab == null) continue;
+                    roll -= Mathf.Max(0f, entry.weight);
+                    if (roll <= 0f) { prop = entry.prop; break; }
                 }
                 if (prop == null) continue;
 

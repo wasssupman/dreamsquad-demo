@@ -50,3 +50,5 @@ weight 를 쓰던 테스트(`Generate_AvoidsRecentlyUsedProp`: 1000/1, `Generate
 - compile 성공.
 - `run_tests` EditMode `BackgroundPropPlacerTests` 전 케이스 green.
 - Play 시 근경 프랍 배치 육안 동일(회귀 없음). 원경은 아직 `tileProps` 사용(unit 2 대상)이라 unit 1 시점엔 정상.
+
+확인: 2026-07-02 · `b5ad11a` — compile 클린, `BackgroundPropPlacerTests` 12/12 green (weight 의존 2개 포함).
