@@ -780,10 +780,12 @@ namespace Wassup.Bridge
             {
                 var effectCells = Wassup.Data.EffectTilePlacer.SelectCells(
                     _generatedMap, _generatedMap.seed, theme.effectTileCount);
+                // unit 4 — 종류 배정을 seed rng per-cell 로 (round-robin 은 종류 수 > count 면 뒤 종류가 영영 안 나옴).
+                var kindRng = Unity.Mathematics.Random.CreateFromIndex(
+                    (uint)(_generatedMap.seed ^ 0x7EFFEC7) | 1u);
                 for (int i = 0; i < effectCells.Count; i++)
                 {
-                    // 셀 목록이 seed 셔플이라 round-robin 종류 배정도 셀 기준 seed-랜덤 + 고른 분배.
-                    var data = theme.effectTiles[i % theme.effectTiles.Length];
+                    var data = theme.effectTiles[kindRng.NextInt(0, theme.effectTiles.Length)];
                     AddEffectTile(new Vector2Int(effectCells[i].x, effectCells[i].y), data);
                 }
             }
@@ -3115,20 +3117,25 @@ namespace Wassup.Bridge
         // source=배치유닛 + 전용 stackId=2 → merge-key 가 on-place(0)/시너지(1)와 분리 스택, 재호출은 refresh(멱등).
         // duration=∞ (시너지 관용) — 유닛 제거/재배치 기능이 없어 revocation 불요(spec 후속).
         // EffectTileData.op 를 존중해야 해서 EnqueueStatMul(op 고정) 대신 직접 enqueue (EnqueueSynergyMul 미러).
+        // unit 4 — 다중 stat: entries 루프. stat 이 다르면 같은 stackId 여도 슬롯 분리.
         private void ApplyEffectTileIfAny(Vector2Int cell, Entity entity)
         {
-            if (!_effectTilesByCell.TryGetValue(cell, out var data) || data == null) return;
+            if (!_effectTilesByCell.TryGetValue(cell, out var data) || data == null || data.effects == null) return;
             if (!_statModifierQueue.IsCreated || entity == Entity.Null) return;
-            _statModifierQueue.Enqueue(new Wassup.Battle.Effects.StatModifierApplyEvent
+            for (int i = 0; i < data.effects.Length; i++)
             {
-                target    = entity,
-                stat      = data.stat,
-                op        = data.op,
-                magnitude = data.magnitude,
-                duration  = float.PositiveInfinity,
-                source    = entity,
-                stackId   = EffectTileStackId,
-            });
+                var e = data.effects[i];
+                _statModifierQueue.Enqueue(new Wassup.Battle.Effects.StatModifierApplyEvent
+                {
+                    target    = entity,
+                    stat      = e.stat,
+                    op        = e.op,
+                    magnitude = e.magnitude,
+                    duration  = float.PositiveInfinity,
+                    source    = entity,
+                    stackId   = EffectTileStackId,
+                });
+            }
         }
 
         private void TriggerOnPlaceAndSynergy(DefenderUnitData unitData, Vector2Int cell, Entity entity)

@@ -10,12 +10,16 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 62db7ae9296bc4a84b9df10a4401c33d, type: 3}
-  m_Name: effect_tile_fragile
+  m_Name: effect_tile_glass_cannon
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.EffectTileData
-  id: effect_tile_fragile
-  displayName: "\uBC1B\uB294 \uD53C\uD574 +25%"
-  overlayTile: {fileID: 11400000, guid: 746349ce7bf5849eda604ebd8e2c3c40, type: 2}
+  id: effect_tile_glass_cannon
+  displayName: "\uAE00\uB798\uC2A4\uCE90\uB17C (\uACF5\uACA9 +40% / \uBC1B\uB294\uD53C\uD574
+    +40%)"
+  overlayTile: {fileID: 11400000, guid: ac30261308f7d4f4d8cc9d15649df7ba, type: 2}
   effects:
+  - stat: 0
+    op: 0
+    magnitude: 1.4
   - stat: 2
     op: 0
-    magnitude: 1.25
+    magnitude: 1.4

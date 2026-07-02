@@ -10,12 +10,12 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 62db7ae9296bc4a84b9df10a4401c33d, type: 3}
-  m_Name: effect_tile_fragile
+  m_Name: effect_tile_regen
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.EffectTileData
-  id: effect_tile_fragile
-  displayName: "\uBC1B\uB294 \uD53C\uD574 +25%"
-  overlayTile: {fileID: 11400000, guid: 746349ce7bf5849eda604ebd8e2c3c40, type: 2}
+  id: effect_tile_regen
+  displayName: "\uC7AC\uC0DD (+1 HP/s)"
+  overlayTile: {fileID: 11400000, guid: 0eaf0902739804296a412592c5b6c88c, type: 2}
   effects:
-  - stat: 2
-    op: 0
-    magnitude: 1.25
+  - stat: 3
+    op: 1
+    magnitude: 1

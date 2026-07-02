@@ -1,6 +1,6 @@
 # effect-tiles — 배치 타일 효과 타일 (버프/디버프)
 
-> 상태: 착수 (2026-07-02). 신규 ECS 시스템 0개 — 기존 modifier 파이프라인 + overlay 비주얼 재사용. 2-렌즈 스펙 리뷰(ECS/설계) **GO-WITH-CHANGES** 반영(M1 stackId 규약·M2 unit 분할).
+> 상태: units 0~2 완료 2026-07-02 (`f07f1a6`·`b1c191d`·`c8ee5c2` · EditMode 6/6 · Play 검증 PASS) → **unit 4 진행**(다중 stat + 신규 타일). 신규 ECS 시스템 0개. 2-렌즈 스펙 리뷰 GO-WITH-CHANGES 반영.
 
 ## 배경 / 목표
 
@@ -37,8 +37,9 @@ Place 타일 위에 오버레이되는 **효과 타일**. 그 셀에 방어 유�
 |---|---|---|---|
 | 0 | 데이터 + 셀 선정 (순수) | `0_data_and_selection.md` | EffectTileData SO + EffectTilePlacer.SelectCells + EditMode 결정론 테스트. compile+테스트 |
 | 1 | 비주얼 + 맵빌드 배선 | `1_visual_and_wiring.md` | 런타임 효과 타일맵 + AddEffectTile + 맵빌드 배선 + 에셋 3종. Play 시각 |
-| 2 | 배치 훅 + 검증 | `2_placement_hook.md` | 두 경로 → EnqueueStatMul(stackId=2). EditMode 통합(ModifierStats 단언) + Play 검증 |
-| 3 | handoff | `3_handoff_summary.md` | — |
+| 2 | 배치 훅 + 검증 | `2_placement_hook.md` | 두 경로 → modifier enqueue(stackId=2). EditMode 통합 + Play 검증. ✅ |
+| 3 | handoff | `3_handoff_summary.md` | units 0~2 인계 지도 |
+| 4 | 다중 stat + 신규 타일 | `4_multi_stat_and_new_tiles.md` | `effects[]` 배열 확장 + 글래스캐논(×1.4/×1.4) + 재생(Additive) + 종류 배정 rng 화 |
 
 ## 후속 후보
 
@@ -48,3 +49,15 @@ Place 타일 위에 오버레이되는 **효과 타일**. 그 셀에 방어 유�
 - **셀당 다중 효과 스택** [S] · 현재 셀당 1개.
 - **효과 타일 tooltip/드래그 미리보기 UI** [S].
 - **EffectTileSetConfig SO** [S] · BattleBridge 의 effectTiles[]/count 필드를 config SO 로 이관(리뷰 m6, 선택).
+
+### 아이데이션 이관 (2026-07-02, 미채택분)
+
+- **적 경로 타일** [M] · Walk 셀 늪(감속)/가시(도트) — `path-zone-hazards` Zone hazard 를 맵 빌드 시 저작 배치. 효과 타일의 공격면 쌍.
+- **사거리 타일** [M] · `RangeMul` StatKind 신규(enum+aggregate+AttackSystem 사거리 소비 1곳). 배치 퍼즐 직결.
+- **속성 부여 타일** [M] · 타일 위 유닛 공격이 Poison/Fire 스택 부여 — PoisonCaster 의 attack→stack 파이프라인 재사용, 배치 시 bridge 가 AttackState 스택 파라미터 세팅.
+- **환급 타일** [S] · 배치 시 `CostRuntime.AddCost` 보너스.
+- **직군 공명 타일** [S] · DefenderClass 조건부 배율.
+- **미스터리 타일** [S] · 배치 순간 seed 롤 효과 확정.
+- **시너지 증폭 타일** [S] · `EnqueueSynergyMul` 개입.
+- **킬 보상 타일** [M] · EnemyKilledEvents killer 귀속 필요.
+- (대형) 승급/연쇄/웨이브 반응/어그로 타일 [L].

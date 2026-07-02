@@ -99,6 +99,52 @@ namespace Wassup.Tests.EditMode
             }
         }
 
+        [Test]
+        public void EffectTileModifier_MultiStatEntriesApplyDistinctSlots()
+        {
+            using var world = new World("EffectTileModifierTests_MultiStat");
+            var em = world.EntityManager;
+            var simGroup = world.CreateSystemManaged<SimulationSystemGroup>();
+            simGroup.AddSystemToUpdateList(world.CreateSystem<ModifierApplySystem>());
+            simGroup.AddSystemToUpdateList(world.CreateSystem<StatModifierTickSystem>());
+            simGroup.AddSystemToUpdateList(world.CreateSystem<ModifierStatsAggregateSystem>());
+
+            var statQ = new NativeQueue<StatModifierApplyEvent>(Allocator.Persistent);
+            var stackQ = new NativeQueue<StackModifierApplyEvent>(Allocator.Persistent);
+            try
+            {
+                var qe = em.CreateEntity();
+                em.AddComponentData(qe, new StatModifierApplyEventsSingleton { queue = statQ });
+                em.AddComponentData(qe, new StackModifierApplyEventsSingleton { queue = stackQ });
+
+                var defender = em.CreateEntity();
+                em.AddComponentData(defender, new ModifierStats());
+
+                // 글래스캐논 타일 shape: 한 타일이 stat 2개 entry — 같은 stackId=2, stat 만 다름.
+                statQ.Enqueue(MakeEvent(defender, 1.4f, EffectTileStackId)); // DamageMul
+                statQ.Enqueue(new StatModifierApplyEvent
+                {
+                    target = defender, stat = StatKind.DmgTakenMul, op = CombineOp.Multiplicative,
+                    magnitude = 1.4f, duration = float.PositiveInfinity, source = defender,
+                    stackId = EffectTileStackId,
+                });
+
+                world.SetTime(new TimeData(world.Time.ElapsedTime + 1f, 1f));
+                simGroup.Update();
+
+                Assert.AreEqual(2, em.GetBuffer<StatModifierSlot>(defender).Length,
+                    "stat 이 다르면 같은 stackId 여도 슬롯 분리.");
+                var ms = em.GetComponentData<ModifierStats>(defender);
+                Assert.AreEqual(1.4f, ms.damageMul, 1e-4f);
+                Assert.AreEqual(1.4f, ms.dmgTakenMul, 1e-4f);
+            }
+            finally
+            {
+                statQ.Dispose();
+                stackQ.Dispose();
+            }
+        }
+
         // BattleBridge.ApplyEffectTileIfAny 의 이벤트 shape 재현 (source=target, duration=∞).
         private static StatModifierApplyEvent MakeEvent(Entity target, float magnitude, ushort stackId)
             => new StatModifierApplyEvent

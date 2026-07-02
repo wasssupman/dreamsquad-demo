@@ -15,6 +15,7 @@ MonoBehaviour:
   id: effect_tile_attack_speed
   displayName: "\uACF5\uC18D +20%"
   overlayTile: {fileID: 11400000, guid: 47ac0cffb501548aebbd0707d0e4b8a6, type: 2}
-  stat: 1
-  op: 0
-  magnitude: 1.2
+  effects:
+  - stat: 1
+    op: 0
+    magnitude: 1.2
