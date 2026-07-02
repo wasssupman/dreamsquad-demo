@@ -201,6 +201,7 @@ board-visualization spec 자체는 ROI 부족으로 wrap 종료. 진단/실험�
 #### 프랍 접지/프레임 (prop-upright-root 파생)
 
 - **desert 테마 접지 fix** [S] · desert 풀의 `prop_style_*`·`prop_dummy_*` 가 아직 FullCamera + nonzero visualOffset(접지 fix `c6c77dc`/`f395afd` 의 desert 미적용분). forest 와 동일하게 Tilted + BottomCenter 재임포트 + offset 0. prop-upright-root unit0 audit 에서 발견, 프레임 문제와 성격 달라 분리.
+- **ObstaclePlacer 테스트 기존 실패** [S] · `ObstaclePlacerTests.Place_PreservesWalkAndMinimumPlaceRatio`(≥36 기대, 31). dea2733(phase10) 테스트, 맵 생성 결정론 실패. prop-upright-root 작업과 무관하게 HEAD 에서 이미 실패 — 회귀 아님. minPlaceableRatio/ObstaclePlacer 로직 별도 조사.
 
 #### 기타
 
@@ -219,6 +220,8 @@ board-visualization spec 자체는 ROI 부족으로 wrap 종료. 진단/실험�
 - **반복 씬 로드 ECS leak 점검** [M] · 2-씬 전환으로 BattleScene 반복 로드 → 기존 **BattleBridge.StartBattle Persistent allocates 경고** 백로그가 더 중요. 재진입 시 ECS World/Persistent 정리 경로 검증.
 
 ### Promoted / Closed
+
+- **Prop upright root** → `docs/spec/prop-upright-root/` (completed 2026-07-03, units 0~1 — 프랍을 90° 타일맵 루트에서 떼어 upright 저작 프레임(+Y=위). 루트 flip + 블롭 마이그레이션 + EditMode 테스트. desert 접지는 follow-up)
 
 - **Prop area pools** → `docs/spec/prop-area-pools/` (completed 2026-07-02, units 0~3 — 근경 playAreaProps / 원경 distantRingProps 독립 WeightedProp[] 풀 분리 + 인스펙터 영역별 weight. tileProps/placementWeight 등 retire)
 

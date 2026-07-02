@@ -1,6 +1,6 @@
 # prop-upright-root — 프랍을 90° 타일맵 루트에서 떼어 upright 저작 프레임으로
 
-상태: 초안 rev2 (설계 승인 2026-07-02, spec critic 반영)
+상태: 완료 2026-07-03 (units 0~1, forest Play PASS. desert 접지는 follow-up)
 
 ## 문제
 
