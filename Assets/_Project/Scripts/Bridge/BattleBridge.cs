@@ -764,6 +764,12 @@ namespace Wassup.Bridge
                 tilemapMapView.InstantiateRingProps(theme, _generatedMap.gridSize, _generatedMap.seed, ringScale);
             }
 
+            // prop-placement-layer unit 1 — goal/spawn 3D 구조물 프랍 (Tilemap). tileProps 와 독립 가드.
+            if (UseTilemapView && tilemapMapView != null && theme != null)
+            {
+                tilemapMapView.InstantiateStructureProps(_generatedMap, theme, tilemapMapView.VisualPlan);
+            }
+
             GameManager.Instance?.Logger?.LogMap(
                 _generatedMap.seed,
                 _generatedMap.generatorVersion,

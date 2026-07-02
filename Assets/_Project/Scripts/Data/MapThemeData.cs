@@ -172,6 +172,12 @@ namespace Wassup.Data
         [Tooltip("Props reserved for designer-authored or future outer-map decoration placement.")]
         public PropData[] decorProps;
 
+        [Header("Structures (prop-placement-layer)")]
+        [Tooltip("goal 셀에 세울 3D 메쉬 구조물 프랍(billboard 아님). null 이면 기존 마커 타일 유지.")]
+        public PropData goalStructureProp;
+        [Tooltip("각 spawn 셀에 세울 3D 메쉬 구조물 프랍. null 이면 기존 마커 타일 유지.")]
+        public PropData spawnStructureProp;
+
         [Range(0f, 1f)]
         [Tooltip("Chance to attempt a tile prop placement at each eligible background cell.")]
         public float tilePropDensity = 0.25f;

@@ -12,6 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8bf4e43b5104a4537a201022bb0f9ea2, type: 3}
   m_Name: forest
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.MapThemeData
+  tileSet: {fileID: 0}
   placeTileTexture: {fileID: 2800000, guid: b52ebbe8439dd430581bfc6221e31a1d, type: 3}
   walkTileTexture: {fileID: 2800000, guid: a8cfb32d8863147a3b0795695797bc6e, type: 3}
   envTileTexture: {fileID: 2800000, guid: e218892d8b22f41df96877ad5893627f, type: 3}
@@ -128,6 +129,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 5c9aca8217a2349d48d0a17ec9745f87, type: 2}
   - {fileID: 11400000, guid: caad5cf698a9d4225b5a0f0947ac9342, type: 2}
   decorProps: []
+  goalStructureProp: {fileID: 11400000, guid: 4c7389088193f48a9bc29d132c85a108, type: 2}
+  spawnStructureProp: {fileID: 11400000, guid: c03633f30ff5640309292fad4d579cce, type: 2}
   tilePropDensity: 1
   maxTilePropCount: 60
   propPoissonMinDistance: 1

@@ -28,6 +28,8 @@ namespace Wassup.Core
         private Transform _backgroundPropsRoot;
         // tilemap-world-surround unit 4 — 외곽 링 원경 프랍 인스턴스 루트.
         private Transform _ringPropsRoot;
+        // prop-placement-layer unit 1 — goal/spawn 구조물 프랍 루트. 부모(90°X)를 역회전 상쇄해 메쉬가 똑바로 선다.
+        private Transform _structurePropsRoot;
 
         public Grid Grid => grid;
         public BoardVisualPlan VisualPlan => _visualPlan;
@@ -71,6 +73,7 @@ namespace Wassup.Core
             if (overlayTilemap != null) overlayTilemap.ClearAllTiles();
             if (_backgroundPropsRoot != null) { SafeDestroy(_backgroundPropsRoot.gameObject); _backgroundPropsRoot = null; }
             if (_ringPropsRoot != null) { SafeDestroy(_ringPropsRoot.gameObject); _ringPropsRoot = null; }
+            if (_structurePropsRoot != null) { SafeDestroy(_structurePropsRoot.gameObject); _structurePropsRoot = null; }
         }
 
         private void ConfigureGrid(float tileSize, TileSetData tileSet, BoardViewMode mode, bool realShadows)
@@ -320,6 +323,43 @@ namespace Wassup.Core
             AttachPropBlob(instance, prop);
             if (theme.propGlobalTint != Color.white)
                 MapView.ApplyPropGlobalTint(instance, theme.propGlobalTint);
+        }
+
+        // prop-placement-layer unit 1 — goal/spawn 셀에 3D 메쉬 구조물 프랍을 세운다.
+        // 메쉬는 빌보드 아님 → 부모(XZ 바닥 90°X)를 역회전(-90°X)한 root 아래 두면 identity 로 똑바로 선다.
+        // 구조물이 놓인 셀의 placeholder 마커 타일(overlay)은 제거. sim(GeneratedMap/FlowField) 무변경.
+        public void InstantiateStructureProps(in GeneratedMap map, MapThemeData theme, BoardVisualPlan plan)
+        {
+            if (_structurePropsRoot != null) { SafeDestroy(_structurePropsRoot.gameObject); _structurePropsRoot = null; }
+            if (grid == null || theme == null || !map.IsCreated) return;
+            if (theme.goalStructureProp == null && theme.spawnStructureProp == null) return;
+
+            var root = new GameObject("StructureProps");
+            _structurePropsRoot = root.transform;
+            _structurePropsRoot.SetParent(transform, false);
+            // 부모(grid, 월드 90°X) 상쇄 → root 월드 업라이트. 메쉬 child 는 회전 없이 똑바로 선다.
+            _structurePropsRoot.localRotation = Quaternion.Euler(-90f, 0f, 0f);
+
+            if (theme.goalStructureProp != null && theme.goalStructureProp.prefab != null)
+            {
+                PlaceStructure(theme.goalStructureProp, map.goal, plan, theme);
+                if (overlayTilemap != null) overlayTilemap.SetTile(ToCell(map.goal), null);
+            }
+            if (theme.spawnStructureProp != null && theme.spawnStructureProp.prefab != null && map.spawns.IsCreated)
+            {
+                for (int i = 0; i < map.spawns.Length; i++)
+                {
+                    PlaceStructure(theme.spawnStructureProp, map.spawns[i], plan, theme);
+                    if (overlayTilemap != null) overlayTilemap.SetTile(ToCell(map.spawns[i]), null);
+                }
+            }
+        }
+
+        private void PlaceStructure(PropData prop, int2 cell, BoardVisualPlan plan, MapThemeData theme)
+        {
+            var footprint = prop.Footprint;
+            var placement = new PropPlacement(0, cell.x, cell.y, footprint.x, footprint.y, 0u, 0f, prop.visualScale, -1);
+            InstantiateProp(prop, placement, plan, theme, _structurePropsRoot);
         }
 
         // tilemap-world-surround unit 4 — 외곽 터레인 링 셀에 원경 프랍을 저밀도로 흩뿌린다.
