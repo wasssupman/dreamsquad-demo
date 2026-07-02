@@ -122,6 +122,15 @@ namespace Wassup.Editor
                     if (dep) velDep.Add(p.name);
                 }
 
+                // 5) TrailRenderer.autodestruct 끄기. GA 는 데모(충돌 시 투사체 파괴)용으로 켜뒀지만,
+                //    우리 풀링(같은 GameObject 재사용)에선 트레일 포인트 만료 시 트레일 GO 를 스스로
+                //    파괴해 재사용된 투사체가 트레일을 잃는다. 풀 안전화에 필수.
+                int trails = 0;
+                foreach (var tr in root.GetComponentsInChildren<TrailRenderer>(true))
+                {
+                    if (tr.autodestruct) { tr.autodestruct = false; trails++; }
+                }
+
                 // 잔존 vendor MonoBehaviour 감사 (Unity 내장/URP 는 제외) — 데모 스크립트 누락 탐지.
                 var leftover = new List<string>();
                 foreach (var mb in root.GetComponentsInChildren<MonoBehaviour>(true))
@@ -136,6 +145,7 @@ namespace Wassup.Editor
                 sb.AppendLine($"[GaStripper] {name}:");
                 sb.AppendLine($"  제거 → mover {movers} / rigidbody {rbs} / collider {cols}");
                 sb.AppendLine($"  ParticleSystem {ps}개 → emitterVelocityMode=Transform");
+                sb.AppendLine($"  TrailRenderer autodestruct 해제 {trails}개 (풀 재사용 안전화)");
                 sb.AppendLine(velDep.Count > 0
                     ? $"  velocity 의존 PS(스트립으로 Transform 고정됨): {string.Join(", ", velDep)}"
                     : "  velocity 의존 PS: 없음 (RB 제거 영향 0)");

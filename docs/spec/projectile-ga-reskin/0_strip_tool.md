@@ -21,6 +21,7 @@ GA 벤더 투사체 프리팹을, 우리 ECS-driven 파이프라인이 그대로
     - `GetComponentsInChildren<Rigidbody>(true)` 전부.
     - `GetComponentsInChildren<Collider>(true)` 전부.
   - **속도 소스 고정**: `GetComponentsInChildren<ParticleSystem>(true)` 각각 `var m = ps.main; m.emitterVelocityMode = ParticleSystemEmitterVelocityMode.Transform;`
+  - **트레일 풀 안전화**: `GetComponentsInChildren<TrailRenderer>(true)` 각각 `autodestruct = false`. GA 는 데모(충돌 시 투사체 파괴)용으로 켜뒀지만, 우리 풀링(같은 GO 재사용)에선 트레일 포인트 만료 시 트레일 GO 를 스스로 파괴 → 재사용 투사체가 트레일을 잃음. **런타임 테스트로만 드러난 필수 수정**.
   - **감사 로그**(Debug.Log): 각 PS 에 대해 velocity 의존 여부 = `ps.inheritVelocity.enabled || (emission.rateOverDistance 상수>0) || (renderer.renderMode == Stretch)`. 의존 PS 이름을 나열(RB 제거로 영향받았을 뻔한 시스템 가시화).
   - `PrefabUtility.SaveAsPrefabAsset(root, outPath)` → `PrefabUtility.UnloadPrefabContents(root)`.
 - **유지 검증**: URP `UniversalAdditionalLightData`, `Light`, `ParticleSystem(Renderer)`, `TrailRenderer`, `MeshRenderer/Filter` 는 건드리지 않는다.
@@ -29,7 +30,7 @@ GA 벤더 투사체 프리팹을, 우리 ECS-driven 파이프라인이 그대로
 ## 완료 기준
 
 - `vfx_Projectile_Arrow01` 선택 → 메뉴 실행 → `Assets/_Project/VFX/Projectiles/GA/vfx_Projectile_Arrow01.prefab` 생성.
-- 결과 프리팹: `ProjectileMoveScript`/`Rigidbody`/`Collider` **0개**, ParticleSystem 4 / TrailRenderer 3 / Light 1 (+URP LightData) **유지**, 전 PS `emitterVelocityMode == Transform`.
+- 결과 프리팹: `ProjectileMoveScript`/`Rigidbody`/`Collider` **0개**, ParticleSystem 4 / TrailRenderer 3 / Light 1 (+URP LightData) **유지**, 전 PS `emitterVelocityMode == Transform`, 전 TrailRenderer `autodestruct == false`.
 - 감사 로그 출력(Arrow01 은 velocity 의존 PS 0 이라 "없음" 로그 예상).
 - `read_console` Error/Warning 0. (검증: MCP 로 결과 프리팹 컴포넌트 목록 조회.)
 
