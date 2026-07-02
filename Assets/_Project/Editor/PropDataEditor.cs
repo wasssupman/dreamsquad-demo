@@ -179,6 +179,14 @@ namespace Wassup.Editor
             textureImporter.crunchedCompression = false;
             textureImporter.spritePixelsPerUnit = PropSpritePixelsPerUnit;
 
+            // 접지 pivot: 틸트 빌보드는 Visual 원점(=지면)을 축으로 회전한다. pivot 이 중앙이면
+            // 스프라이트 아래 절반이 지면 아래로 묻힌다(prop_tree_1x4 는 BottomCenter 라 정상, 기본 Center 는 깔림).
+            // standing 프랍의 base 가 지면에 서도록 BottomCenter 강제. visualOffset 은 미세 조정용으로만.
+            var spriteSettings = new TextureImporterSettings();
+            textureImporter.ReadTextureSettings(spriteSettings);
+            spriteSettings.spriteAlignment = (int)SpriteAlignment.BottomCenter;
+            textureImporter.SetTextureSettings(spriteSettings);
+
             ConfigurePlatformTexture(textureImporter, "Standalone");
             ConfigurePlatformTexture(textureImporter, "Android");
             ConfigurePlatformTexture(textureImporter, "iPhone");
