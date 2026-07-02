@@ -98,3 +98,10 @@ $RECYCLE.BIN/
 # Codex hook runtime state
 .codex/tmp/
 .codex/hooks/state/
+
+# Unity IL2CPP / build output (never ship, never commit)
+/hello_BackUpThisFolder_ButDontShipItWithYourGame/
+/.utmp/
+
+# Non-tracked scratch screenshots (visual-verification captures)
+/Assets/Screenshots/
