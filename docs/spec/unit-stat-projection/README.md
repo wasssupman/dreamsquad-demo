@@ -1,6 +1,6 @@
 # Unit Stat Projection
 
-상태: **진행 중 (2026-07-02 착수)** — unit 0 계약 확정, unit 1부터 구현 예정
+상태: **완료 2026-07-02** — unit 0~5 구현·커밋 (handoff `6_handoff_summary.md`). Play 시각 확인 + 실 엔드포인트 왕복은 후속.
 
 ## 목표
 
@@ -18,7 +18,7 @@ ralplan 합의(2026-07-02, Planner→Architect SOUND-WITH-REVISIONS→Critic APP
 | 3 | 구현 | `3_importer_projection_fields.md` | DTO `atk`/`heal` + 임포터 투영 + deprecation shim |
 | 4 | 구현+마이그레이션 (severable) | `4_legacy_attackdamage_removal.md` | SO 양측 `attackDamage` 삭제 + 베이크 라인 정리 |
 | 5 | 구현 (severable) | `5_attackstate_damage_removal.md` | ECS `AttackState.damage` dead 필드 제거 |
-| 6 | handoff | `6_handoff_summary.md` | 종료 인계 (구현 종료 시 작성) |
+| 6 | handoff | `6_handoff_summary.md` | 종료 인계 |
 
 순서: 0 → 1 → {2, 3} → 4 → 5 → 6. unit 4는 2·3 완료 후에만 착수(UI가 attackDamage를 읽는 상태에서 필드 삭제 금지). 각 유닛 종료 시 code-review → 수정 → 다음.
 
