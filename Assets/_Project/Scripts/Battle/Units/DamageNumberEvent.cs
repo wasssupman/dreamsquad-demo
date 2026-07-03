@@ -11,8 +11,9 @@ namespace Wassup.Battle.Units
     //
     // unit-health-display unit 0 — enemy hit micro-bar plumbing:
     //   entity  = the damaged enemy (view anchor lookup key on the Mono side).
-    //   hpRatio = clamp(newHp/max, 0, 1) AFTER this frame's damage+heal settle
-    //             (0 when max <= 0). Enqueued post-settlement so막타=0.
+    //   hpRatio = Health.ComputeRatio(newHp, max) AFTER this frame's damage+heal
+    //             settle (clamp[0,1]; 0 when max<=0). Enqueued post-settlement so
+    //             a killing blow reports 0.
     public struct DamageNumberEvent
     {
         public float3 position;

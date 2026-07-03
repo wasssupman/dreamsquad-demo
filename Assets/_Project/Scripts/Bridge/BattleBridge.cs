@@ -1812,8 +1812,7 @@ namespace Wassup.Bridge
             }
             if (!_em.HasComponent<Health>(entity)) return Color.white;
             var h = _em.GetComponentData<Health>(entity);
-            float ratio = h.max > 0f ? h.value / h.max : 0f;
-            return healthDisplayStyle.EvaluateTint(ratio);
+            return healthDisplayStyle.EvaluateTint(Health.ComputeRatio(h.value, h.max));
         }
 
         private void DrainDefenderDeathEvents()

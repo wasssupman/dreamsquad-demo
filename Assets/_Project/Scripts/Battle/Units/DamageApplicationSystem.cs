@@ -95,7 +95,7 @@ namespace Wassup.Battle.Units
                         position = _transformLookup[entity].Position,
                         amount = totalDamage,
                         entity = entity,
-                        hpRatio = maxHp > 0f ? math.clamp(newHp / maxHp, 0f, 1f) : 0f,
+                        hpRatio = Health.ComputeRatio(newHp, maxHp),
                     });
                 }
 
