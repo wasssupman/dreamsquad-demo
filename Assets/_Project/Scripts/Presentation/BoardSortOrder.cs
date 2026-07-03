@@ -7,6 +7,9 @@ namespace Wassup.Presentation
     {
         public const int CharacterOffset = 1;
         public const int HealthBarOffset = 2;
+        // 투사체 VFX: 유닛 order(Compute 최대 ≈ 보드행×10+열, 수백대) 보다 확실히 위,
+        // 데미지 숫자(32000)·UI 아래. 근접 시 적 스프라이트에 가려지지 않게.
+        public const int ProjectileOffset = 1000;
         // tilted-billboard unit 3 — 블롭 그림자: 바닥 타일맵(ground −20 / overlay −10) 위, 캐릭터(양수) 아래.
         public const int ShadowOrder = -5;
 

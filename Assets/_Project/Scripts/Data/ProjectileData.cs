@@ -34,6 +34,9 @@ namespace Wassup.Data
         public float hitThreshold = 0.3f;
         public float visualScale = 0.3f;
 
+        [Tooltip("비행체 시각을 view 공간에서 위로 띄우는 높이(월드 유닛). ECS/속도엔 영향 없이 렌더 Y 에만 더한다. 타일에 깔리는 것 방지용.")]
+        public float visualHeightOffset = 0f;
+
         public GameObject projectilePrefab;
         public GameObject hitPrefab;
 

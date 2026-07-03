@@ -28,6 +28,7 @@ namespace Wassup.Presentation
             public ProjectileFacing facing;
             public float spinSpeed;
             public float3 lastPosition;
+            public float heightOffset;   // view 공간 Y 렌더 오프셋 (ECS/velocity 엔 미반영)
         }
 
         private static readonly int PropBaseColor    = Shader.PropertyToID("_BaseColor");
@@ -90,7 +91,7 @@ namespace Wassup.Presentation
             // 리셋한다. 안 그러면 풀 재사용 시 이전 사망 위치 → 새 스폰 위치로 world-space 파티클/
             // TrailRenderer 가 streak(줄) 을 그린다.
             float3 spawnView = Wassup.Core.BoardSpace.ToView(initialPosition);
-            view.transform.position = new Vector3(spawnView.x, spawnView.y, spawnView.z);
+            view.transform.position = new Vector3(spawnView.x, spawnView.y + data.visualHeightOffset, spawnView.z);
             ResetVfx(view);
 
             _active[entity] = new ProjectileViewState
@@ -100,7 +101,8 @@ namespace Wassup.Presentation
                 facing = data.facing,
                 spinSpeed = data.spinSpeed,
                 // tilemap-view-backend unit 3 — lastPosition 은 view 좌표로 보존(velocity 를 view 공간에서 계산).
-                lastPosition = spawnView,   // Fix 1
+                lastPosition = spawnView,   // Fix 1 (오프셋 미포함 = 순수 위치, velocity 정확)
+                heightOffset = data.visualHeightOffset,
             };
         }
 
@@ -122,7 +124,7 @@ namespace Wassup.Presentation
                 // sim→view 1회. 위치·속도·LookRotation 전부 view 공간끼리 (lastPosition 도 view).
                 float3 pos = Wassup.Core.BoardSpace.ToView(simPos);
                 var view = state.view;
-                view.transform.position = new Vector3(pos.x, pos.y, pos.z);
+                view.transform.position = new Vector3(pos.x, pos.y + state.heightOffset, pos.z);
 
                 switch (state.facing)
                 {
@@ -151,6 +153,7 @@ namespace Wassup.Presentation
                         view = s.view, prefab = s.prefab,
                         facing = s.facing, spinSpeed = s.spinSpeed,
                         lastPosition = pos,
+                        heightOffset = s.heightOffset,
                     };
             }
 
@@ -267,6 +270,10 @@ namespace Wassup.Presentation
             rc.trails = view.GetComponentsInChildren<TrailRenderer>(includeInactive: true);
             rc.rootParticles = ComputeRootParticles(
                 view.transform, view.GetComponentsInChildren<ParticleSystem>(includeInactive: true));
+            // 투사체/hit/cast VFX 를 유닛 스프라이트 위로. Instantiate 당 1회만(풀 재사용은
+            // stack.Pop 으로 빠져 스킵) → 누적 없음. 렌더러 간 상대 순서(mesh/trail/flare)는 보존.
+            foreach (var r in rc.renderers)
+                r.sortingOrder += BoardSortOrder.ProjectileOffset;
             return view;
         }
 
