@@ -15,7 +15,8 @@ MonoBehaviour:
   id: ga_shuriken
   speed: 12
   hitThreshold: 0.35
-  visualScale: 1
+  visualScale: 0.6
+  visualHeightOffset: 0.7
   projectilePrefab: {fileID: 3500177083152406594, guid: ac84dea2b36954d78b8be24de74231a6, type: 3}
   hitPrefab: {fileID: 0}
   facing: 2

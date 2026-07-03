@@ -1,0 +1,39 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 57583d0eae98a4723adcd8b7082d6d7d, type: 3}
+  m_Name: Projectile_CardsThrow01_GA
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.ProjectileData
+  id: ga_cardsthrow01
+  speed: 12
+  hitThreshold: 0.35
+  visualScale: 0.6
+  visualHeightOffset: 0.7
+  projectilePrefab: {fileID: 5463288443460184200, guid: e94095ba3ed7a4ad28025a11ad3f6fbf, type: 3}
+  hitPrefab: {fileID: 0}
+  facing: 0
+  spinSpeed: 0
+  preserveVfxColors: 1
+  tintColor: {r: 1, g: 1, b: 1, a: 1}
+  emissionMultiplier: 1
+  scaleJitter: 0
+  hueJitter: 0
+  rotationJitter: 0
+  textureVariants: []
+  selectMode: 0
+  hitVfxLifetime: 0
+  castPrefab: {fileID: 0}
+  castVfxLifetime: 0
+  onHitEffect: 0
+  onHitMagnitude: 0
+  onHitDuration: 0
+  splashRadius: 0
+  splashDamageMul: 0.5

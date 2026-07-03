@@ -15,7 +15,8 @@ MonoBehaviour:
   id: ga_shard
   speed: 12
   hitThreshold: 0.35
-  visualScale: 1
+  visualScale: 0.6
+  visualHeightOffset: 0.7
   projectilePrefab: {fileID: 2434046309409848306, guid: d81e0d70d662d45b98ebabedf47ff195, type: 3}
   hitPrefab: {fileID: 0}
   facing: 0

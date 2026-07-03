@@ -15,7 +15,8 @@ MonoBehaviour:
   id: arrow_ga
   speed: 12
   hitThreshold: 0.35
-  visualScale: 1.5
+  visualScale: 0.9
+  visualHeightOffset: 0.7
   projectilePrefab: {fileID: 5235823842293382238, guid: 671f9cac2b2c14fd1a8e03e2a0dbac8b, type: 3}
   hitPrefab: {fileID: 0}
   facing: 0

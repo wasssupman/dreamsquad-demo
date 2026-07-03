@@ -15,7 +15,8 @@ MonoBehaviour:
   id: ga_explosivebullet
   speed: 12
   hitThreshold: 0.35
-  visualScale: 1
+  visualScale: 0.6
+  visualHeightOffset: 0.7
   projectilePrefab: {fileID: 5389977913138891458, guid: d555877fc920444d19f87e09fce9fbe3, type: 3}
   hitPrefab: {fileID: 0}
   facing: 0
