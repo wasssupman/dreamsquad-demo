@@ -17,6 +17,7 @@ namespace Wassup.Presentation
         private readonly Dictionary<Entity, EnemyHitBarView> _active = new Dictionary<Entity, EnemyHitBarView>();
         private readonly Queue<EnemyHitBarView> _idle = new Queue<EnemyHitBarView>();
         private bool _missingStyleLogged;
+        private bool _missingCameraLogged;
 
         // anchor: 적 뷰 transform(view 좌표, nullable). fallbackViewBase: anchor 없을 때
         // 고정 위치(ToView(evt.position)). hpRatio: 정산 후 [0,1].
@@ -34,7 +35,11 @@ namespace Wassup.Presentation
             var cam = billboardCamera != null ? billboardCamera : Camera.main;
             if (cam == null)
             {
-                Debug.LogError("[EnemyHitBarSpawner] 빌보드 카메라를 찾을 수 없습니다 (billboardCamera/Camera.main 모두 null).");
+                if (!_missingCameraLogged) // 이벤트마다 도배 방지 (style 게이팅과 대칭)
+                {
+                    Debug.LogError("[EnemyHitBarSpawner] 빌보드 카메라를 찾을 수 없습니다 (billboardCamera/Camera.main 모두 null).");
+                    _missingCameraLogged = true;
+                }
                 return;
             }
 
@@ -47,6 +52,14 @@ namespace Wassup.Presentation
             var view = Get();
             _active[entity] = view;
             view.Play(entity, anchor, fallbackViewBase, hpRatio, style, cam, OnComplete);
+        }
+
+        // 전투 teardown 시 잔여 마이크로바 정리 (TileHealthGaugeLayer.Clear 와 대칭).
+        public void Clear()
+        {
+            foreach (var kv in _active)
+                if (kv.Value != null) { kv.Value.Deactivate(); _idle.Enqueue(kv.Value); }
+            _active.Clear();
         }
 
         private EnemyHitBarView Get()

@@ -63,7 +63,7 @@ namespace Wassup.Presentation
 
         private void SetRatio(float hpRatio)
         {
-            float r = hpRatio > 0f ? (hpRatio < 1f ? hpRatio : 1f) : 0f;
+            float r = HealthDisplayStyle.SafeRatio01(hpRatio);
             _bgColor = _style.HitBarBgColor;
             _fillColor = _style.EvaluateHitBarFill(r);
             Vector2 size = _style.HitBarSize;
@@ -108,6 +108,15 @@ namespace Wassup.Presentation
             var cb = _onComplete;
             _onComplete = null;
             cb?.Invoke(this);
+        }
+
+        // teardown 시 스포너 Clear 가 호출. 콜백 없이 즉시 비활성(풀 관리는 스포너가 직접).
+        public void Deactivate()
+        {
+            _playing = false;
+            _anchor = null;
+            _onComplete = null;
+            gameObject.SetActive(false);
         }
 
         private void EnsureBuilt()

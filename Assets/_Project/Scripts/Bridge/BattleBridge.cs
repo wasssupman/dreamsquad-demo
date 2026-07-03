@@ -350,6 +350,7 @@ namespace Wassup.Bridge
             if (enemyViewPool != null) enemyViewPool.DisposeAll();
             if (defenderFallbackViewPool != null) defenderFallbackViewPool.DisposeAll();
             if (tileHealthGaugeLayer != null) tileHealthGaugeLayer.Clear(); // unit 3 — 게이지 전체 정리
+            if (enemyHitBarSpawner != null) enemyHitBarSpawner.Clear(); // unit 2 — 잔여 마이크로바 정리(생명주기 대칭)
             ClearBlockingHazardVisuals();
             SetNextWaveButtonVisible(false);
 
@@ -800,6 +801,7 @@ namespace Wassup.Bridge
             _pending.Clear();
             _occupiedTiles.Clear();
             _defenderByTile.Clear();
+            tileHealthGaugeLayer?.Clear(); // unit 3 — 게이지 정리를 _defenderByTile 리셋과 co-locate(불변식)
             // ingame-dreamcatcher Unit 2/3 — reset card registry + triggers for a new match.
             _activeDcEffects.Clear();
             _dcStackCounter = 100;

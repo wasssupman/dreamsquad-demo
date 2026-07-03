@@ -20,17 +20,17 @@ namespace Wassup.Presentation
             gameObject.SetActive(true);
             transform.position = tileCenterView + Vector3.up * style.GaugeYOffset;
 
-            float r = ratio > 0f ? (ratio < 1f ? ratio : 1f) : 0f;
+            float r = HealthDisplayStyle.SafeRatio01(ratio);
             Color col = style.EvaluateGaugeColor(r);
             float s = tileWorldSize * style.GaugeTileFill;
             float t = style.GaugeThickness;
             float half = s * 0.5f;
 
             // 각 변 = 둘레의 1/4. 시계방향 top→right→bottom→left 순으로 채워진다.
-            float ft = Mathf.Clamp01(r / 0.25f);
-            float fr = Mathf.Clamp01((r - 0.25f) / 0.25f);
-            float fb = Mathf.Clamp01((r - 0.5f) / 0.25f);
-            float fl = Mathf.Clamp01((r - 0.75f) / 0.25f);
+            float ft = EdgeFill(r, 0);
+            float fr = EdgeFill(r, 1);
+            float fb = EdgeFill(r, 2);
+            float fl = EdgeFill(r, 3);
 
             // 로컬 XY(눕힌 뒤 월드 XZ 에 대응). 각 변은 채워진 구간의 중심에 놓고 그만큼 스케일.
             SetEdge(0, new Vector3(-half + s * ft * 0.5f, half, 0f), new Vector3(s * ft, t, 1f), col); // top → 오른쪽
@@ -38,6 +38,11 @@ namespace Wassup.Presentation
             SetEdge(2, new Vector3(half - s * fb * 0.5f, -half, 0f), new Vector3(s * fb, t, 1f), col);  // bottom ← 왼쪽
             SetEdge(3, new Vector3(-half, -half + s * fl * 0.5f, 0f), new Vector3(t, s * fl, 1f), col); // left ↑
         }
+
+        // 둘레 시계방향 fill: 각 변(edge 0=top,1=right,2=bottom,3=left)이 [k/4,(k+1)/4] 구간을 담당.
+        // ratio 는 SafeRatio01 후 값 가정. 순수 함수 — EditMode 테스트 대상.
+        public static float EdgeFill(float ratio01, int edgeIndex)
+            => Mathf.Clamp01((ratio01 - edgeIndex * 0.25f) / 0.25f);
 
         public void Hide()
         {

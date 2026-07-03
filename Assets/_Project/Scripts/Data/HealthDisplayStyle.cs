@@ -34,7 +34,7 @@ namespace Wassup.Data
 
         public Color EvaluateHitBarFill(float ratio)
         {
-            float r = ratio > 0f ? (ratio < 1f ? ratio : 1f) : 0f;
+            float r = SafeRatio01(ratio);
             return hitBarFillGradient != null ? hitBarFillGradient.Evaluate(r) : Color.white;
         }
 
@@ -60,16 +60,20 @@ namespace Wassup.Data
 
         public Color EvaluateGaugeColor(float ratio)
         {
-            float r = ratio > 0f ? (ratio < 1f ? ratio : 1f) : 0f;
+            float r = SafeRatio01(ratio);
             return gaugeColorGradient != null ? gaugeColorGradient.Evaluate(r) : Color.white;
         }
 
         // ratio → tint Color. ratio 는 clamp[0,1] + NaN(=max<=0 division) 가드 후 gradient 평가.
         // 뷰는 이 메서드를 모른다 — BattleBridge 가 호출해 Color 만 뷰에 넘긴다.
+        // NaN-safe [0,1] 정규화 — Mathf.Clamp01(NaN)==NaN 트랩 회피. 체력 표기 전역 단일 정의
+        // (SO evaluator 3종 + 뷰의 fill 계산이 공유). NaN → 0(빈사).
+        public static float SafeRatio01(float ratio)
+            => ratio > 0f ? (ratio < 1f ? ratio : 1f) : 0f;
+
         public Color EvaluateTint(float ratio)
         {
-            // NaN-safe clamp: Mathf.Clamp01(NaN) 은 NaN 을 그대로 반환하므로 직접 처리.
-            float r = ratio > 0f ? (ratio < 1f ? ratio : 1f) : 0f;
+            float r = SafeRatio01(ratio);
             return enemyTintGradient != null ? enemyTintGradient.Evaluate(r) : Color.white;
         }
 
