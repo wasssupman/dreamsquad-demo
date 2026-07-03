@@ -38,7 +38,7 @@ Legacy 렌더 서브시스템과 그것만 읽는 43개 LEGACY 테마 필드를 
 |---|---|---|---|
 | 0 | `0_extract_shared_prop_helpers.md` | `MapView`의 공용 프랍 헬퍼(ApplyPropSorting 등)를 중립 static 클래스(`PropInstanceUtil` 등)로 추출, `TilemapMapView` 참조 전환 | compile, Tilemap Play 프랍 렌더 무변경 |
 | 1 | `1_resolve_input_maptype_dep.md` | 입력/배치(`PlacementInput`/`DefenderSelector`/`DefenderDragPlacementController`)의 `MapView` 의존을 Tilemap 경로/중립 인터페이스로 전환 | compile, D&D 배치 Play 검증 |
-| 2 | `2_remove_legacy_render.md` | `MapView`/`TerrainSurfaceSelector`/`TerrainTileRuleResolver` + `TerrainSurfaceSelectorTests` 삭제, `BattleBridge` `!UseTilemapView` 분기 정리, `BackdropMounter` Legacy 게이트 처리 | compile, Tilemap Play 무회귀 |
+| 2 | `2_remove_legacy_render.md` | `MapView`/`TerrainSurfaceSelector`/`TerrainTileRuleResolver` + 전용 테스트 삭제, `BattleBridge` mapView 경로 정리, **백드롭 통삭제**(BackdropMounter/AnchorTable/SeasonBackdropData — 사용자 결정 2026-07-03) | compile, Tilemap Play 무회귀 |
 | 3 | `3_remove_legacy3d_mode.md` | `BoardViewMode.Legacy3D` 값 + presentation 9파일 분기 제거, `BattleScene_Legacy3D.unity` 삭제 | compile, 전 모드 Play 무회귀 |
 | 4 | `4_remove_legacy_theme_fields.md` | LEGACY 43개 필드 삭제(텍스처/surface/walk shape/place transition/zone tint + nested `TerrainSurfaceVariant`), forest/desert.asset 재직렬화 정리 | compile, Tilemap Play 무회귀, 인스펙터 정리 확인 |
 | 5 | `5_handoff_summary.md` | 회귀 확인 + handoff | — |

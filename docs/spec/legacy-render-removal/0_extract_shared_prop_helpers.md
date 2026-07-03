@@ -30,4 +30,4 @@ ACTIVE 렌더 경로(`TilemapMapView`)가 Legacy `MapView`의 static 헬퍼 3종
 - [x] `rg "MapView\.(ApplyPropSorting|ApplyPropGlobalTint|DisablePropDebugMarkers)" Assets` → 0건
 - [x] Tilemap Play 스크린샷: 프랍 sorting/tint/마커 숨김이 기존과 동일 (배경/프랍 변경 = 육안 검증 필수)
 
-확인 2026-07-03 — compile 0 에러 · grep 0건 · Play 스크린샷(`legacy_removal_u0_props_verify.png`, 근경 41/링 123/구조물 3) 사용자 통과.
+확인 2026-07-03 — compile 0 에러 · grep 0건 · Play 스크린샷(`legacy_removal_u0_props_verify.png`, 근경 41/링 123/구조물 3) 사용자 통과. 커밋 `ab13b8d`.
