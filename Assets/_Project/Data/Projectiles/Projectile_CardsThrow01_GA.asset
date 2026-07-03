@@ -18,7 +18,7 @@ MonoBehaviour:
   visualScale: 0.6
   visualHeightOffset: 0.7
   projectilePrefab: {fileID: 5463288443460184200, guid: e94095ba3ed7a4ad28025a11ad3f6fbf, type: 3}
-  hitPrefab: {fileID: 0}
+  hitPrefab: {fileID: 6986871770166649600, guid: c40e712d3097c6541879acea732bf03d, type: 3}
   facing: 0
   spinSpeed: 0
   preserveVfxColors: 1
