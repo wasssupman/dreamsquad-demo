@@ -63,6 +63,8 @@ namespace Wassup.Data
 
         [Header("Hit VFX")]
         public float hitVfxLifetime = 0f;
+        [Tooltip("hit VFX 스케일 배수. GA muzzle-hit 처럼 원본이 작으면 키운다.")]
+        public float hitVfxScale = 1f;
 
         [Header("Cast VFX")]
         public GameObject castPrefab;

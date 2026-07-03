@@ -161,12 +161,15 @@ namespace Wassup.Presentation
         }
 
         // Fix 5: hitVfxLifetime > 0 overrides auto-detect.
-        public void PlayHit(GameObject hitPrefab, float3 position, float hitVfxLifetime = 0f)
+        public void PlayHit(GameObject hitPrefab, float3 position, float hitVfxLifetime = 0f,
+                            float heightOffset = 0f, float scale = 1f)
         {
             var view = GetOrCreate(hitPrefab);
             view.SetActive(true);
+            view.transform.localScale = Vector3.one * scale;   // 원본이 작으면 키움
             float3 hitView = Wassup.Core.BoardSpace.ToView(position); // sim→view
-            view.transform.position = new Vector3(hitView.x, hitView.y, hitView.z);
+            // heightOffset: 바닥에 깔리지 않게 view Y 로 띄움 (투사체 visualHeightOffset 과 동일 개념).
+            view.transform.position = new Vector3(hitView.x, hitView.y + heightOffset, hitView.z);
             ResetVfx(view);   // ga-reskin unit 1: 풀 재사용 시 파티클 재생 신선도
             float lifetime = hitVfxLifetime > 0f ? hitVfxLifetime : GetParticleLifetime(view);
             StartCoroutine(DespawnAfter(view, hitPrefab, lifetime));

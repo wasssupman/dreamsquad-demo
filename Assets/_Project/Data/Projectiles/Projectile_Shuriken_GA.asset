@@ -18,7 +18,7 @@ MonoBehaviour:
   visualScale: 0.6
   visualHeightOffset: 0.7
   projectilePrefab: {fileID: 3500177083152406594, guid: ac84dea2b36954d78b8be24de74231a6, type: 3}
-  hitPrefab: {fileID: 0}
+  hitPrefab: {fileID: 3051299296646875860, guid: 3985142132a202d4d9d60925e9745886, type: 3}
   facing: 2
   spinSpeed: 720
   preserveVfxColors: 1
@@ -30,6 +30,7 @@ MonoBehaviour:
   textureVariants: []
   selectMode: 0
   hitVfxLifetime: 0
+  hitVfxScale: 2
   castPrefab: {fileID: 3051299296646875860, guid: 3985142132a202d4d9d60925e9745886, type: 3}
   castVfxLifetime: 0
   onHitEffect: 0
