@@ -26,3 +26,5 @@
 - compile 0 에러 + EditMode 무회귀.
 - 신규 EditMode 테스트: `EvaluateTint` — ratio 0/0.5/1 경계, 음수/1 초과 clamp, gradient 양끝 색 일치.
 - Play 스크린샷: 만피 적은 원색, 저체력 적은 창백/검붉음 단계가 육안 구분. 사망 애니메이션 중 틴트 유지.
+
+— 완료 확인 2026-07-04 · 커밋 `c32b056` (코드+에셋). compile 0, EditMode 439 중 438 통과(무관 사전 ObstaclePlacer 1건). 새 테스트 5개 통과. Play 검증: HP 만피→빈사 분포 적들이 원색→창백→검붉음 그라데이션 육안 확인(WaveA 적은 QuadUnitView 경로; Spine RGB 경로는 코드 대칭 + `_dying` 가드). **미완**: BattleBridge `healthDisplayStyle` 씬 필드가 in-memory 배선만 — BattleScene.unity 가 병렬 WIP 로 dirty 라 저장 보류. 영속화 필요(fresh 로드/빌드 시 null → 틴트 스킵+경고).
