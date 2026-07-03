@@ -1,6 +1,6 @@
 # Unit Stat Spreadsheet Schema
 
-상태: **Unit 0~1 구현 완료 (2026-07-02) — 실 엔드포인트 왕복 검증 대기**
+상태: **Unit 0~2 구현 완료 (2026-07-02) — 실 Swagger 엔드포인트 왕복 검증만 후속**. atk/heal 투영·레거시 제거는 → `docs/spec/unit-stat-projection/` (완료).
 
 ## 목표
 

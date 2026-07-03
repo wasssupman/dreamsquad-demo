@@ -1,6 +1,6 @@
 # Modifier Stacking Policy
 
-상태: **완료 2026-07-03** — 클램프 구현·커밋 (Play 재현 확인 + Additive 저작 전환은 후속)
+상태: **완료 2026-07-03** — 클램프 구현·커밋 + Play 재현 확인(Guardian 바닥 3.0). Additive 저작 전환은 → `docs/spec/modifier-additive-authoring/` (완료).
 
 ## 배경 / 문제
 

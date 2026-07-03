@@ -1,6 +1,6 @@
 # Modifier Additive Authoring (Policy B)
 
-상태: **완료 2026-07-03** — unit 0~2 구현·커밋. Play smoke(버프 합산 GameLog 확인) 후속.
+상태: **완료 2026-07-03** — unit 0~2 구현·커밋 + 투트랙 리뷰 APPROVE + Play smoke 확증(GameLog 버프 2개 = 15×1.4=21.0 합산). EffectTile 버프 Additive 저작만 후속.
 
 ## 배경
 
