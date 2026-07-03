@@ -44,3 +44,4 @@
 - **상태이상 틴트 합성 규칙** [S] · Slow/버프 틴트가 생기면 헬스 틴트와 곱연산 합성 규격화.
 - **웨이브 압력 게이지** [M] · 상단 HUD 에 웨이브 총 잔여 HP. 비동기 토너먼트 관전 정보.
 - **보스/엘리트 상시 바** [S] · 위협 개체만 승격 표시.
+- **적 틴트 poll 효율화** [S] · (투트랙 리뷰 M1) `SyncMonoUnitViews` 가 매 프레임 적마다 `GetComponentData<Health>` + gradient + `SetHealthTint`(만피=白 no-op 포함). 배치 `ToComponentDataArray<Health>` 또는 last-ratio 캐시로 full-HP 반복 write 제거. 현재 sync point 신규 아님·GC 없음이라 비블로커, 적 수 급증 시 착수.

@@ -19,7 +19,8 @@
 - drain 에서 `spawner.Show(evt.entity, anchor, evt.hpRatio)`. anchor 해석은 BattleBridge 가: `spineUnitPool.TryGet` → `enemyViewPool.TryGet` → 뷰 transform(view 좌표), 둘 다 실패 시 `BoardSpace.ToView(evt.position)` 고정 위치 fallback. 기존 `damageNumberSpawner.Spawn` 호출은 그대로 병행.
 - 스포너 내부 `Dictionary<Entity, EnemyHitBarView>` — 활성 바 있으면 fill 갱신 + hold 타이머 리셋(스택 금지). 풀링은 `DamageNumberPool` 패턴 미러.
 - `EnemyHitBarView`: anchor Transform 을 hold 동안 따라감(+headYOffset), anchor 파괴 시 마지막 위치에서 페이드 계속. 빌보드는 `DamageNumberView` 와 같은 카메라-facing 처리. fill 은 스프라이트 X 스케일(피벗 좌측)로 표현.
-- `hpRatio <= 0`(막타): fill 0 으로 표시 후 즉시 페이드 시작.
+- `hpRatio <= 0`(막타): fill 0 으로 표시 후 즉시 페이드 시작. **바를 새로 유지하지 않는다**(kill 이 lingering 바를 남기지 않게).
+- **계약 주의(투트랙 리뷰 M4)**: `evt.entity` 는 막타 프레임에 이미 despawn 됐을 수 있다 → anchor 는 view `TryGet` 실패 시 `ToView(evt.position)` fallback 이 필수(위 참조). `evt.hpRatio` 는 같은 프레임 damage+heal **net** 정산값이라, heal 이 섞이면 데미지 숫자(>0)와 함께 예상보다 높은 fill 이 나올 수 있다 — 정상 동작으로 간주.
 - sorting: `BoardSortOrder` 에 고정 상수(캐릭터/투사체(1000) 위, 데미지 숫자(32000) 아래 — 예: 16000) 추가, bg/fill 오더 bg+0/fill+1.
 - 스포너 미할당 시 기존 데미지 숫자만 동작 (null 가드).
 
