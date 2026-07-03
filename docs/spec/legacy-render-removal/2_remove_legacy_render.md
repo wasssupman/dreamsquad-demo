@@ -39,7 +39,9 @@
 
 ## 완료 기준
 
-- [ ] compile 통과 (에러 0)
-- [ ] `rg "\bMapView\b" Assets --type cs` 주석 외 0건
-- [ ] EditMode 테스트 스위트 PASS (TilemapMapViewTests 포함, TerrainSurfaceSelectorTests 는 삭제됨; ObstaclePlacerTests 1건은 기존 실패 — 회귀 아님)
-- [ ] Tilemap Play 스크린샷 무회귀 (바닥/프랍/hover 피드백)
+- [x] compile 통과 (에러 0)
+- [x] `rg "\bMapView\b" Assets --type cs` 주석 외 0건
+- [x] EditMode 테스트 스위트 PASS (TilemapMapViewTests 포함, TerrainSurfaceSelectorTests 는 삭제됨; ObstaclePlacerTests 1건은 기존 실패 — 회귀 아님)
+- [x] Tilemap Play 스크린샷 무회귀 (바닥/프랍/hover 피드백)
+
+확인 2026-07-03 — compile 0 · 주석 외 참조 0건 · EditMode 434개 중 기존 실패 1건(ObstaclePlacer, 회귀 아님) 외 PASS · Play 스크린샷(`legacy_removal_u2_noregress.png`, 프랍 45/링 118/구조물 3 + hover(3,3) 하이라이트 정상) · 콘솔 에러 0. 백드롭 통삭제 포함(파일 10종+meta), Follow-up Backlog seasonal 그룹 정리 동반.

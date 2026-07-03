@@ -52,7 +52,7 @@ namespace Wassup.Core
             PaintGround(in map);
             PaintMarkers(in map);
             CenterBoardAtWorldOrigin(in map);
-            // 배경 프랍 배치(Deco/Env 호스트) 판정에 쓰는 셀/리전/anchor 메타. Legacy MapView 와 동일 빌더.
+            // 배경 프랍 배치(Deco/Env 호스트) 판정에 쓰는 셀/리전/anchor 메타.
             _visualPlan = map.IsCreated ? BoardVisualPlanBuilder.Build(map, map.seed) : null;
         }
 
@@ -221,7 +221,7 @@ namespace Wassup.Core
             }
         }
 
-        // --- 배치 피드백 (MapView.SetPlacementHover/FlashTileReject/ClearPlacementHover 대응) ---
+        // --- 배치 피드백 (SetPlacementHover/FlashTileReject/ClearPlacementHover) ---
 
         public void SetPlacementHover(Vector2Int cell, bool valid)
         {
@@ -278,7 +278,7 @@ namespace Wassup.Core
         // --- 배경 프랍 (tilemap-world-surround unit 2) ---
 
         // Deco/Env 셀에 배경 프랍 프리팹을 배치한다. 위치는 grid 권위(BoardSpace.ToView 와 동일 수식) —
-        // Legacy 의 raw (x,y)*tileSize 와 달리 90° 회전·센터링을 자동 반영. 정렬/마커/틴트는 MapView 헬퍼 재사용.
+        // raw (x,y)*tileSize 와 달리 90° 회전·센터링을 자동 반영. 정렬/마커/틴트는 PropInstanceUtil 헬퍼 사용.
         public void InstantiateBackgroundProps(
             BoardVisualPlan plan,
             MapThemeData theme,

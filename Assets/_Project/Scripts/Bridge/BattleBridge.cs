@@ -19,7 +19,6 @@ using Wassup.Core;
 using Wassup.Data;
 using Wassup.Data.MapGrid;
 using Wassup.Data.Season;
-using Wassup.Presentation.Backdrop;
 using Wassup.Rendering;
 using Wassup.UI;
 using TMPro;
@@ -42,7 +41,6 @@ namespace Wassup.Bridge
         [SerializeField] private MapDocument mapDocument;
         [Header("Season")]
         [SerializeField] private SeasonRegistry seasonRegistry;
-        [SerializeField] private bool enableSeasonBackdrop = true;
         [SerializeField] private MapPathShape mapPathShape = MapPathShape.Free;
         [SerializeField] private MapGenerationOptions mapGenerationOptions = MapGenerationOptions.Default;
         [SerializeField] private float tileSize = 1f;
@@ -78,8 +76,7 @@ namespace Wassup.Bridge
         [SerializeField] private Wassup.Presentation.DamageNumberSpawner damageNumberSpawner;
         [SerializeField] private Wassup.UI.ScoreHudView scoreHud;
         [SerializeField] private Wassup.Presentation.ProjectileViewPool _projectileViewPool;
-        // Phase 9 P9-07 — tileSize 단일 소스화. Awake 에서 MapView/PlacementInput 으로 주입.
-        [SerializeField] private Wassup.Core.MapView mapView;
+        // Phase 9 P9-07 — tileSize 단일 소스화. Awake 에서 PlacementInput 으로 주입.
         [SerializeField] private Wassup.Core.PlacementInput placementInput;
         [Header("Tilemap View Backend (tilemap-view-backend)")]
         [SerializeField] private Wassup.Core.BoardViewMode boardViewMode = Wassup.Core.BoardViewMode.Legacy3D;
@@ -118,7 +115,6 @@ namespace Wassup.Bridge
 
         private ManualMapInput? _manualMapInput;
         private GeneratedMap _generatedMap;
-        private GameObject _backdropRoot;
         private int2? _mapGridGridSizeOverride;
 
         private World _world;
@@ -211,9 +207,9 @@ namespace Wassup.Bridge
         private int _spawnSpreadCounter;
 
         // map-origin-placement: board 월드 원점. 모든 grid↔world 변환의 단일 소스.
-        // BuildFlowField 에서 mapView.transform.position 으로 캡처. mapView 없으면 zero.
+        // Tilemap 모드는 무조건 zero (BuildMapForBattle 에서 고정).
         private float3 _boardOrigin = float3.zero;
-        // tilemap-view-backend — Tilemap 뷰 경로 여부 (Legacy3D = false). 맵 빌드/헬스바/backdrop 분기 기준.
+        // tilemap-view-backend — Tilemap 뷰 경로 여부 (Legacy3D = false). 맵 빌드/헬스바 분기 기준.
         private bool UseTilemapView => boardViewMode != Wassup.Core.BoardViewMode.Legacy3D;
         private bool _healthBarRenderGateLogged;
 
@@ -230,9 +226,6 @@ namespace Wassup.Bridge
 
         private void Awake()
         {
-            if (mapView == null)
-                Debug.LogError("[BattleBridge] mapView reference missing — assign in Inspector.", this);
-
             if (placementInput == null)
                 Debug.LogError("[BattleBridge] placementInput reference missing — assign in Inspector.", this);
 
@@ -353,7 +346,6 @@ namespace Wassup.Bridge
 
         private void TeardownCurrentBattle()
         {
-            BackdropMounter.Unmount(ref _backdropRoot);
             _running = false;
             _placementAllowed = false;
             if (skillRuntime != null) skillRuntime.ResetAll();
@@ -484,8 +476,7 @@ namespace Wassup.Bridge
             // 기존 싱글톤 있으면 arrays dispose + entity destroy (멱등성 보장)
             TeardownFlowField();
 
-            // map-origin-placement: _boardOrigin 은 BuildMapForBattle 이 mapView.Initialize 직후
-            // 캡처한다(backdrop Mount 가 BuildFlowField 보다 먼저 호출되므로 그쪽이 단일 캡처 지점).
+            // map-origin-placement: _boardOrigin 은 BuildMapForBattle 이 설정한다 (Tilemap = zero 고정).
 
             int w = _generatedMap.gridSize.x;
             int h = _generatedMap.gridSize.y;
@@ -584,7 +575,6 @@ namespace Wassup.Bridge
             TeardownFlowField();
 
             var theme   = SeasonRuntime.Active?.mapTheme;
-            var backdrop = SeasonRuntime.Active?.backdrop;
 
             // match-seed-unification — 맵 시드는 GameManager 주입 matchSeed 에서 파생.
             // 미주입(0, 예: 테스트 직접 호출) 시 즉석 random matchSeed 로 폴백해 항상 유효.
@@ -703,21 +693,10 @@ namespace Wassup.Bridge
                         boardViewMode, UseRealShadows);
                 else
                     Debug.LogError("[BattleBridge] boardViewMode 이 Tilemap 이지만 tilemapMapView 가 비어있다.", this);
-                // Tilemap 모드 sim origin 은 무조건 zero — 비활성 mapView transform 을 읽지 않는다 (README 계약).
+                // Tilemap 모드 sim origin 은 무조건 zero (README 계약).
                 _boardOrigin = float3.zero;
             }
-            else
-            {
-                // map-origin-placement: board 원점을 MapView.transform.position 에서 1회 캡처.
-                if (mapView != null) mapView.Initialize(_generatedMap, tileSize, theme);
-                _boardOrigin = mapView != null ? (float3)mapView.transform.position : float3.zero;
-            }
             if (placementInput != null) placementInput.Initialize(_generatedMap, tileSize);
-
-            // Backdrop mount — Legacy3D 에서만. always Unmount first so RebuildDraftMap is safe.
-            BackdropMounter.Unmount(ref _backdropRoot);
-            if (!UseTilemapView && enableSeasonBackdrop && backdrop != null && Camera.main != null)
-                _backdropRoot = BackdropMounter.Mount(_generatedMap, Camera.main, backdrop, tileSize, BoardOrigin);
 
             // sim↔view 변환의 단일 지점 — BuildFlowField 직전 1회 설정 (Legacy3D = identity).
             Wassup.Core.BoardSpace.Configure(boardViewMode, BoardOrigin, tileSize,
@@ -747,16 +726,6 @@ namespace Wassup.Bridge
                         placements = placements.GetRange(0, Mathf.Max(0, (int)(placements.Count * propScale)));
                     tilemapMapView.InstantiateBackgroundProps(plan, theme, placements);
                 }
-                else if (!UseTilemapView && mapView != null && mapSource != MapSource.MapGrid)
-                {
-                    var visualPlan = mapView.VisualPlan;
-                    var placements = BackgroundPropPlacer.Generate(visualPlan, theme, _generatedMap.seed);
-                    mapView.InstantiateBackgroundProps(visualPlan, theme, placements);
-                }
-            }
-            else if (!UseTilemapView && mapView != null && theme != null && mapSource != MapSource.MapGrid)
-            {
-                mapView.InstantiateObstacles(_generatedMap, theme);
             }
 
             // 원경 — 외곽 터레인 링 위 저밀도 프랍 (tilemap 모드). 그림자 OFF(원경). 모바일은 밀도 배율로 솎음.
@@ -1062,7 +1031,6 @@ namespace Wassup.Bridge
                 return;
             }
 
-            BackdropMounter.Unmount(ref _backdropRoot);
             _running = false;
             _placementAllowed = false;
             SetNextWaveButtonVisible(false);
@@ -1104,15 +1072,12 @@ namespace Wassup.Bridge
         // for option toggle / Redraft. Mirrors the relevant subset of TeardownCurrentBattle.
         private void CleanupDraftMapBeforeRebuild()
         {
-            BackdropMounter.Unmount(ref _backdropRoot);
             if (_em != null)
             {
                 DestroyEntitiesByType<Wassup.Battle.Effects.Hazard>();
                 DestroyEntitiesByType<Wassup.Battle.Effects.BlockingHazard>();
                 DestroyEntitiesByType<Wassup.Battle.Effects.Obstacle>();
             }
-
-            if (mapView != null) mapView.ResetVisualRoots();
 
             ClearBlockingHazardVisuals();
             _zoneHazardRegistry.Clear();
@@ -2797,25 +2762,21 @@ namespace Wassup.Bridge
         public void SetPlacementHover(Vector2Int cell, bool valid)
         {
             if (UseTilemapView) { if (tilemapMapView != null) tilemapMapView.SetPlacementHover(cell, valid); }
-            else if (mapView != null) mapView.SetPlacementHover(cell, valid);
         }
 
         public void ClearPlacementHover(Vector2Int cell)
         {
             if (UseTilemapView) { if (tilemapMapView != null) tilemapMapView.ClearPlacementHover(cell); }
-            else if (mapView != null) mapView.ClearPlacementHover(cell);
         }
 
         public void ClearPlacementHover()
         {
             if (UseTilemapView) { if (tilemapMapView != null) tilemapMapView.ClearPlacementHover(); }
-            else if (mapView != null) mapView.ClearPlacementHover();
         }
 
         public void FlashPlacementReject(Vector2Int cell)
         {
             if (UseTilemapView) { if (tilemapMapView != null) tilemapMapView.FlashTileReject(cell); }
-            else if (mapView != null) mapView.FlashTileReject(cell);
         }
 
         public float PlayDeploymentPresentation(DefenderUnitData unitData, Vector2Int cell, Entity entity)
@@ -3489,7 +3450,6 @@ namespace Wassup.Bridge
                 resultScreen.RedraftRequested -= OnRedraftRequested;
             }
 
-            BackdropMounter.Unmount(ref _backdropRoot);
             TeardownCurrentBattle();
 
             if (_healthBarMaterial != null) Destroy(_healthBarMaterial);

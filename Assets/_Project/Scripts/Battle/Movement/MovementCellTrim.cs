@@ -22,7 +22,7 @@ namespace Wassup.Battle.Movement
             return math.lengthsq(field.flow[GridMath.CellIndex(cell, field.gridSize)]) < 1e-6f;
         }
 
-        // origin = board world origin (= MapView.transform.position). Default zero keeps
+        // origin = board world origin (Tilemap mode = zero). Default zero keeps
         // legacy callers identical. Cell boundaries are offset by origin so the trim
         // invariant holds in board-local space. See docs/spec/map-origin-placement.
         public static float3 ClampToBoundary(float3 desired, int2 currentCell, float tileSize, float3 origin = default)

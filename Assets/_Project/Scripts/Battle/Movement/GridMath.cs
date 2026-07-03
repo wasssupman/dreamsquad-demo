@@ -6,7 +6,7 @@ namespace Wassup.Battle.Movement
     [BurstCompile]
     public static class GridMath
     {
-        // origin = board world origin (= MapView.transform.position). Default zero keeps
+        // origin = board world origin (Tilemap mode = zero). Default zero keeps
         // legacy callers identical until they pass the captured board origin. See
         // docs/spec/map-origin-placement.
         public static int2 WorldToCell(float3 worldPos, float tileSize, int2 gridSize, float3 origin = default)

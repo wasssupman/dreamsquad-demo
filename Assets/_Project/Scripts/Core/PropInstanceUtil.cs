@@ -4,8 +4,8 @@ using Wassup.Presentation;
 
 namespace Wassup.Core
 {
-    // 프랍 인스턴스 공용 후처리 헬퍼 (legacy-render-removal unit 0 — MapView 에서 verbatim 추출).
-    // Legacy MapView / 현행 TilemapMapView 양쪽이 쓰는 렌더 중립 유틸.
+    // 프랍 인스턴스 공용 후처리 헬퍼 (legacy-render-removal unit 0 — 구 MapView 에서 verbatim 추출).
+    // TilemapMapView 가 쓰는 렌더 중립 유틸.
     internal static class PropInstanceUtil
     {
         internal static void DisablePropDebugMarkers(GameObject instance)

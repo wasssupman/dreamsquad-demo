@@ -9,6 +9,5 @@ namespace Wassup.Data.Season
         public string seasonId = "S1_Forest";
         public string displayName = "Verdant Bloom";
         public MapThemeData mapTheme;
-        public SeasonBackdropData backdrop;
     }
 }
