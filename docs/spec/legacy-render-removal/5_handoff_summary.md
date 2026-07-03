@@ -39,4 +39,4 @@
 ## Follow-up
 
 - → `docs/spec/README.md` Follow-up Backlog "렌더 파이프라인" 그룹: BattleScene MapView 잔재 씬 청소 [S]
-- GA 히트 VFX "Particle Velocity curves must all be in the same mode" 콘솔 플러딩 — projectile-ga-reskin 후속 (이 spec 무관)
+- ~~"Particle Velocity curves must all be in the same mode" 콘솔 플러딩~~ — 해결 `63c7240`. 원인은 GA 가 아니라 `HazardVisual_Poison` 파티클 velocity 모드 혼용이었음
