@@ -1,7 +1,7 @@
 # unit-health-display — 적/방어유닛 체력 표기
 
-> 상태: 구현 완료 2026-07-04 (units 0~3). 최종 리뷰/handoff 진행 중.
-> unit 0(`74b3807`) · unit 1(`c32b056`+리팩`1119489`+씬`7c3820f`) · unit 2(`f51e41e`) · unit 3(`ca37995`).
+> 상태: 완료 2026-07-04 (units 0~3 + 투트랙 리뷰 반영). handoff: `4_handoff_summary.md`.
+> unit 0(`74b3807`) · unit 1(`c32b056`+리팩`1119489`+씬`7c3820f`) · unit 2(`f51e41e`) · unit 3(`ca37995`) · 리뷰수정(`d35db12`).
 
 ## 배경 / 문제
 
@@ -45,4 +45,5 @@
 - **상태이상 틴트 합성 규칙** [S] · Slow/버프 틴트가 생기면 헬스 틴트와 곱연산 합성 규격화.
 - **웨이브 압력 게이지** [M] · 상단 HUD 에 웨이브 총 잔여 HP. 비동기 토너먼트 관전 정보.
 - **보스/엘리트 상시 바** [S] · 위협 개체만 승격 표시.
-- **적 틴트 poll 효율화** [S] · (투트랙 리뷰 M1) `SyncMonoUnitViews` 가 매 프레임 적마다 `GetComponentData<Health>` + gradient + `SetHealthTint`(만피=白 no-op 포함). 배치 `ToComponentDataArray<Health>` 또는 last-ratio 캐시로 full-HP 반복 write 제거. 현재 sync point 신규 아님·GC 없음이라 비블로커, 적 수 급증 시 착수.
+- **체력 표기 poll 효율화** [S] · (투트랙 리뷰 unit1-M1 + unit2/3-M3) `SyncMonoUnitViews` 가 매 프레임 적/방어유닛마다 `GetComponentData<Health>` + gradient + 뷰 write(틴트/게이지). 만피·불변 HP 도 무조건 재계산·재빌드. 배치 `ToComponentDataArray<Health>` 또는 entity/cell→last-ratio 캐시로 `Mathf.Approximately` skip. 현재 sync point 신규 아님·GC 없음·유닛 수 그리드 상한이라 비블로커, 유닛 급증 시 착수.
+- **타일 게이지 시각 폴리시** [S] · (리뷰 L2/L3) fill inset `pad=0.18` 를 SO 로, 코너 조인트 갭(각 edge 가 `s` 만 커버) 보정. 4-edge 계단식 → 연속 SDF 셰이더 교체도 이 범주.
