@@ -157,7 +157,6 @@ namespace Wassup.Tests.EditMode
             SetPlayArea(theme, prop);
             theme.tilePropDensity = 1f;
             theme.maxTilePropCount = 1;
-            theme.largePropInnerWeightMultiplier = 1f;
             var map = CreateMap(new int2(5, 5), MapTileType.Deco);
             try
             {

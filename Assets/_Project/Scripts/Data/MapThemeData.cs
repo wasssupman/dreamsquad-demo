@@ -134,9 +134,6 @@ namespace Wassup.Data
         [Range(0.04f, 0.18f)]
         public float placeEdgeThickness = 0.1f;
 
-        [Range(0f, 1f)]
-        public float placeEdgeFalloff = 0.5f;
-
         [Min(0.01f)]
         [Tooltip("Visual tile block thickness below the y=0 gameplay plane.")]
         public float tileThickness = 0.16f;
@@ -144,10 +141,6 @@ namespace Wassup.Data
         [Range(0.75f, 1f)]
         [Tooltip("Top surface size relative to tileSize. Lower values reveal more dark seams.")]
         public float tileTopScale = 0.9f;
-
-        [Range(0.8f, 1.05f)]
-        [Tooltip("Base cube size relative to tileSize. Slightly larger than the top creates visible side mass.")]
-        public float tileBaseScale = 0.98f;
 
         [Tooltip("Shared dark side color for the low cube body under each tile.")]
         public Color tileSideColor = new Color(0.2f, 0.18f, 0.22f, 1f);
@@ -172,10 +165,6 @@ namespace Wassup.Data
         [Header("Distant Ring Props (prop-area-pools)")]
         [Tooltip("외곽 터레인 링 원경 프랍 풀. 근경과 독립 리스트. 같은 PropData 를 다른 weight 로 양쪽에 등록 가능. 한쪽에만 넣으면 그 영역 전용.")]
         public WeightedProp[] distantRingProps;
-
-        [Header("Background Props (reserved)")]
-        [Tooltip("Props reserved for designer-authored or future outer-map decoration placement.")]
-        public PropData[] decorProps;
 
         [Header("Structures (prop-placement-layer)")]
         [Tooltip("goal 셀에 세울 3D 메쉬 구조물 프랍(billboard 아님). null 이면 기존 마커 타일 유지.")]
@@ -232,10 +221,6 @@ namespace Wassup.Data
         [Range(0f, 1f)]
         [Tooltip("Weight multiplier for large props next to walk/path cells.")]
         public float pathAdjacentLargePropWeightMultiplier = 0.15f;
-
-        [Range(0f, 1f)]
-        [Tooltip("Weight multiplier for large props away from map edges. Lower values push large props toward outer background regions.")]
-        public float largePropInnerWeightMultiplier = 0.35f;
 
         [Header("Obstacle Prefabs (single-cell)")]
         [Tooltip("Place -> Deco converted tiles instantiate one random prefab from this list.")]
