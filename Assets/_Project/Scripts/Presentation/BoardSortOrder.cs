@@ -6,7 +6,6 @@ namespace Wassup.Presentation
     public static class BoardSortOrder
     {
         public const int CharacterOffset = 1;
-        public const int HealthBarOffset = 2;
         // 투사체 VFX: 유닛 order(Compute 최대 ≈ 보드행×10+열, 수백대) 보다 확실히 위,
         // 데미지 숫자(32000)·UI 아래. 근접 시 적 스프라이트에 가려지지 않게.
         public const int ProjectileOffset = 1000;

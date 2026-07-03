@@ -52,8 +52,8 @@ namespace Wassup.Battle.Combat.Projectile
             // Phase 4: snapshot all living attack units up-front so a Splash hit
             // can iterate them without doing a nested SystemAPI.Query inside the
             // projectile-iteration loop (Entities 1.4.x does not guarantee that
-            // behavior). AttackUnitTag filter keeps HealthBar and other entities
-            // out of the AOE pool.
+            // behavior). AttackUnitTag filter keeps non-enemy entities out of the
+            // AOE pool.
             var aoeQuery = SystemAPI.QueryBuilder().WithAll<AttackUnitTag, LocalTransform>().Build();
             var aoeEntities = aoeQuery.ToEntityArray(Allocator.Temp);
             var aoeTransforms = aoeQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);

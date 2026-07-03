@@ -14,7 +14,6 @@ using Wassup.Battle.Combat.Projectile;
 using Wassup.Battle.Effects;
 using Wassup.Battle.Movement;
 using Wassup.Battle.Units;
-using Wassup.Battle.Units.HealthBar;
 using Wassup.Core;
 using Wassup.Data;
 using Wassup.Data.MapGrid;
@@ -141,8 +140,6 @@ namespace Wassup.Bridge
         private bool _projectileSpawnRequestQueryCreated;
         private EntityQuery _projectileQuery;
         private bool _projectileQueryCreated;
-        private RenderMeshArray _healthBarRenderArray;
-        private Material _healthBarMaterial;
         // tilemap-mode-adoption unit 0 — 모드별 유닛 스케일. const 제거. 맵 빌드 시 모드 기준으로 설정.
         // 기본값 = Legacy 값(0.7) 이라 빌드 전/Legacy3D 에서 현행 동일.
         public static float CharacterVisualScale { get; private set; } = 0.7f;
@@ -211,7 +208,6 @@ namespace Wassup.Bridge
         private float3 _boardOrigin = float3.zero;
         // tilemap-view-backend — Tilemap 뷰 경로 여부 (Legacy3D = false). 맵 빌드/헬스바 분기 기준.
         private bool UseTilemapView => boardViewMode != Wassup.Core.BoardViewMode.Legacy3D;
-        private bool _healthBarRenderGateLogged;
 
         // match-seed-unification — GameManager 가 주입하는 단일 매치 시드.
         // 맵/웨이브/비주얼 시드가 여기서 파생된다(작업 2/3). 0 = 미주입(즉석 폴백).
@@ -391,7 +387,6 @@ namespace Wassup.Bridge
             DestroyEntitiesByType<AttackUnitTag>();
             DestroyEntitiesByType<DefenderUnitTag>();
             DestroyEntitiesByType<ProjectileTag>();
-            DestroyEntitiesByType<HealthBarTag>();
             DestroyEntitiesByType<Wassup.Battle.Effects.Hazard>();
             DestroyEntitiesByType<Wassup.Battle.Effects.BlockingHazard>();
             DestroyEntitiesByType<Wassup.Battle.Effects.Obstacle>();
@@ -2383,56 +2378,6 @@ namespace Wassup.Bridge
             }
         }
 
-        // Shared mesh/material for every health bar so adding more units does not
-        // allocate per-entity assets. Lazily created and disposed on scene teardown.
-        private RenderMeshArray GetOrCreateHealthBarRenderArray()
-        {
-            if (_healthBarRenderArray.MaterialReferences != null &&
-                _healthBarRenderArray.MaterialReferences.Length > 0)
-                return _healthBarRenderArray;
-
-            _healthBarMaterial = RuntimeMaterialFactory.CreateOpaque(new Color(0.2f, 0.95f, 0.2f, 1f));
-            var mesh = Resources.GetBuiltinResource<Mesh>("Quad.fbx");
-            _healthBarRenderArray = new RenderMeshArray(new[] { _healthBarMaterial }, new[] { mesh });
-            return _healthBarRenderArray;
-        }
-
-        private void CreateHealthBar(Entity owner, float yOffset, float baseScale)
-        {
-            var entity = _em.CreateEntity();
-#if UNITY_EDITOR
-            _em.SetName(entity, "HealthBar");
-#endif
-            _em.AddComponent<HealthBarTag>(entity);
-            _em.AddComponentData(entity, new HealthBarState
-            {
-                owner = owner,
-                yOffset = yOffset,
-                baseScale = baseScale,
-            });
-            _em.AddComponentData(entity, LocalTransform.FromPositionRotationScale(
-                new float3(0f, 0f, 0f), quaternion.identity, baseScale));
-
-            // tilemap-view-backend — Tilemap 모드에서는 Entities Graphics 렌더 컴포넌트 생성을 게이팅.
-            // HealthBarSystem 은 불변 (렌더 컴포넌트가 없으면 그릴 게 없을 뿐). Mono 오버레이 헬스바는 후속 후보.
-            if (UseTilemapView)
-            {
-                if (!_healthBarRenderGateLogged)
-                {
-                    Debug.Log("[BattleBridge] HealthBar render gated: tilemap view mode");
-                    _healthBarRenderGateLogged = true;
-                }
-                return;
-            }
-
-            var arr = GetOrCreateHealthBarRenderArray();
-            var desc = new RenderMeshDescription(
-                shadowCastingMode: UnityEngine.Rendering.ShadowCastingMode.Off,
-                receiveShadows: false);
-            RenderMeshUtility.AddComponents(entity, _em, desc, arr,
-                MaterialMeshInfo.FromRenderMeshArrayIndices(0, 0));
-        }
-
         private int GetOrCreateProjectileDataIndex(ProjectileData projectile)
         {
             if (_projectileDataIndex.TryGetValue(projectile, out var idx)) return idx;
@@ -3015,7 +2960,6 @@ namespace Wassup.Bridge
             // ingame-dreamcatcher Unit 2 — inherit active match-long card effects.
             ApplyActiveDcEffectsTo(entity, unitData);
 
-            CreateHealthBar(entity, yOffset: 0.9f * CharacterVisualScale, baseScale: 0.35f * CharacterVisualScale);
             return entity;
         }
 
@@ -3156,7 +3100,6 @@ namespace Wassup.Bridge
             _em.SetName(entity, $"BlockingHazard_{so.name}_{cell.x}_{cell.y}");
 #endif
 
-            CreateHealthBar(entity, yOffset: 1.35f * CharacterVisualScale, baseScale: 0.55f * CharacterVisualScale);
 
             if (so.visualPrefab == null)
             {
@@ -3453,7 +3396,6 @@ namespace Wassup.Bridge
 
             TeardownCurrentBattle();
 
-            if (_healthBarMaterial != null) Destroy(_healthBarMaterial);
             for (int i = 0; i < _ownedRuntimeMaterials.Count; i++)
             {
                 if (_ownedRuntimeMaterials[i] != null)
@@ -3664,7 +3606,6 @@ namespace Wassup.Bridge
             _em.AddComponent<Wassup.Battle.Effects.ModifierStatsDirty>(entity);
             _em.SetComponentEnabled<Wassup.Battle.Effects.ModifierStatsDirty>(entity, false);
 
-            CreateHealthBar(entity, yOffset: 0.9f * CharacterVisualScale, baseScale: 0.35f * CharacterVisualScale);
         }
 
         private Material CreateAttackUnitRuntimeMaterial(Material source)

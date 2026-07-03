@@ -62,19 +62,6 @@ namespace Wassup.Battle.Units
                 damageBuffer.Clear();
                 totalDamage *= dmgTakenMul;
 
-                // Enemy-only floating damage number. Filter to AttackUnitTag so defender
-                // hits produce no popup (per spec scope). amount is post-mitigation damage.
-                if (hasDamageNumberQueue && totalDamage > 0f
-                    && _attackTagLookup.HasComponent(entity)
-                    && _transformLookup.HasComponent(entity))
-                {
-                    damageNumberSingleton.ValueRW.queue.Enqueue(new DamageNumberEvent
-                    {
-                        position = _transformLookup[entity].Position,
-                        amount = totalDamage,
-                    });
-                }
-
                 // ── IncomingHeal drain (pulse channel — must Clear each frame) ───
                 float pulseHeal = 0f;
                 bool hasPulse = false;
@@ -91,8 +78,27 @@ namespace Wassup.Battle.Units
                 float totalHeal = pulseHeal + regenPerSec * dt;
 
                 // ── Health update with clamp ─────────────────────────────────────
-                float newHp = math.min(health.ValueRO.max, health.ValueRO.value - totalDamage + totalHeal);
+                float maxHp = health.ValueRO.max;
+                float newHp = math.min(maxHp, health.ValueRO.value - totalDamage + totalHeal);
                 health.ValueRW.value = newHp;
+
+                // Enemy-only floating damage number + hit micro-bar. Filter to
+                // AttackUnitTag so defender hits produce no popup (per spec scope).
+                // amount is post-mitigation damage; hpRatio reflects HP AFTER this
+                // frame settles (0 on the killing blow).
+                if (hasDamageNumberQueue && totalDamage > 0f
+                    && _attackTagLookup.HasComponent(entity)
+                    && _transformLookup.HasComponent(entity))
+                {
+                    damageNumberSingleton.ValueRW.queue.Enqueue(new DamageNumberEvent
+                    {
+                        position = _transformLookup[entity].Position,
+                        amount = totalDamage,
+                        entity = entity,
+                        hpRatio = maxHp > 0f ? math.clamp(newHp / maxHp, 0f, 1f) : 0f,
+                    });
+                }
+
                 // Only enqueue VFX for IncomingHeal pulses (hasPulse + positive amount).
                 // RegenPerSec is excluded to avoid spamming VFX every frame.
                 if (hasHealAppliedQueue && hasPulse && pulseHeal > 0f && _transformLookup.HasComponent(entity))
