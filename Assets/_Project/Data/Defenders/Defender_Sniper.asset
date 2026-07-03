@@ -17,12 +17,13 @@ MonoBehaviour:
   displayName: Sniper
   health: 250
   attackRange: 7
-  attackDamage: 80
   attackCooldown: 3
+  hitDelaySec: 0
+  deployDelaySec: 0
   attackTargetCount: 1
   visualMesh: {fileID: 0}
   visualMaterial: {fileID: 2100000, guid: a1b2c3d4e5f601234567890abcdef101, type: 2}
-  projectile: {fileID: 11400000, guid: a9befe796063d4d638e6c900719f71db, type: 2}
+  projectile: {fileID: 11400000, guid: 3ff11c1bd9a37449fb137b0993b15d0b, type: 2}
   outputs:
   - kind: 0
     magnitude: 80
@@ -46,6 +47,8 @@ MonoBehaviour:
   hazardFootprintWidth: 1
   hazardFootprintHeight: 1
   rarity: 1
+  aggroCapacity: 0
+  aggroRange: 0
   skeletonDataAsset: {fileID: 11400000, guid: b0640b88ee78d49f38774a3a4b09bf4d, type: 2}
   spineSkinName: Owl
   idleAnimation: idle

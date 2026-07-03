@@ -17,12 +17,13 @@ MonoBehaviour:
   displayName: Marksman
   health: 450
   attackRange: 6
-  attackDamage: 40
   attackCooldown: 1
+  hitDelaySec: 0
+  deployDelaySec: 0
   attackTargetCount: 1
   visualMesh: {fileID: 0}
   visualMaterial: {fileID: 2100000, guid: a1b2c3d4e5f601234567890abcdef105, type: 2}
-  projectile: {fileID: 11400000, guid: 2c9c91d62002f4c1aa822551525c8ca4, type: 2}
+  projectile: {fileID: 11400000, guid: 7a28b52abfc76442fab4980e2e6a41a9, type: 2}
   outputs:
   - kind: 0
     magnitude: 40
@@ -46,6 +47,8 @@ MonoBehaviour:
   hazardFootprintWidth: 1
   hazardFootprintHeight: 1
   rarity: 0
+  aggroCapacity: 0
+  aggroRange: 0
   skeletonDataAsset: {fileID: 11400000, guid: b0640b88ee78d49f38774a3a4b09bf4d, type: 2}
   spineSkinName: Lamb
   idleAnimation: idle

@@ -17,12 +17,13 @@ MonoBehaviour:
   displayName: Cannon
   health: 400
   attackRange: 5
-  attackDamage: 60
   attackCooldown: 2.5
+  hitDelaySec: 0
+  deployDelaySec: 0
   attackTargetCount: 1
   visualMesh: {fileID: 0}
   visualMaterial: {fileID: 2100000, guid: cb64122add98548e09b4225537464cf9, type: 2}
-  projectile: {fileID: 11400000, guid: e222cc6b62b6d4ae99fbd71912742f2c, type: 2}
+  projectile: {fileID: 11400000, guid: a66fdaa37f36a43b1af11ee8fb47fb8d, type: 2}
   outputs:
   - kind: 0
     magnitude: 60
@@ -46,6 +47,8 @@ MonoBehaviour:
   hazardFootprintWidth: 1
   hazardFootprintHeight: 1
   rarity: 0
+  aggroCapacity: 0
+  aggroRange: 0
   skeletonDataAsset: {fileID: 11400000, guid: b0640b88ee78d49f38774a3a4b09bf4d, type: 2}
   spineSkinName: Goat
   idleAnimation: idle
