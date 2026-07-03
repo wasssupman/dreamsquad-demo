@@ -1921,7 +1921,8 @@ namespace Wassup.Bridge
                 if (evt.dataIndex < 0 || evt.dataIndex >= _projectileDataByIndex.Count) continue;
                 var data = _projectileDataByIndex[evt.dataIndex];
                 if (data.hitPrefab != null)
-                    _projectileViewPool?.PlayHit(data.hitPrefab, evt.position, data.hitVfxLifetime);
+                    _projectileViewPool?.PlayHit(data.hitPrefab, evt.position, data.hitVfxLifetime,
+                        data.visualHeightOffset, data.hitVfxScale);
             }
         }
 
