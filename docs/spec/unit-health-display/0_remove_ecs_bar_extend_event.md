@@ -24,3 +24,5 @@
 - compile 0 에러 (HealthBar 타입 잔여 참조 grep 0).
 - EditMode 전체 무회귀.
 - 동작 변화 0 — 헬스바는 원래 안 보였고, 데미지 숫자 위치/값 현행 유지.
+
+— 완료 확인 2026-07-03 · 커밋 `74b3807` (병렬 legacy-removal 과 HealthBar 삭제가 겹쳐 그 세션이 격리 커밋). compile 0, EditMode 434 중 433 통과 — 유일 실패 `ObstaclePlacerTests` 는 이 변경/legacy-removal 양쪽과 무관한 사전 실패(placer 는 obstaclePrefabs/minPlaceableRatio 만 읽고, 제거된 43 필드는 전부 텍스처 비주얼).
