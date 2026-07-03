@@ -14,6 +14,8 @@ namespace Wassup.Presentation
         // unit-health-display unit 2 — 적 피격 마이크로바: 캐릭터·투사체(1000) 위, 데미지 숫자(32000) 아래.
         // bg = 이 값, fill = +1.
         public const int HitBarOrder = 16000;
+        // unit-health-display unit 3 — 방어유닛 타일 테두리 게이지: 바닥 데칼(그림자 −5 위, 캐릭터 양수 아래).
+        public const int TileGaugeOrder = -4;
 
         public static int Compute(int2 gridSize, int cellX, int cellY, int offset = 0)
             => (gridSize.y - cellY) * 10 + cellX + offset;

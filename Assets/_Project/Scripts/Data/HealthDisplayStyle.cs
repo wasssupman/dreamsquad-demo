@@ -38,6 +38,32 @@ namespace Wassup.Data
             return hitBarFillGradient != null ? hitBarFillGradient.Evaluate(r) : Color.white;
         }
 
+        [Header("Defender Tile Gauge (unit 3)")]
+        [Tooltip("게이지 사각 한 변 길이 = tileSize × 이 비율")]
+        [SerializeField] private float gaugeTileFill = 0.9f;
+        [Tooltip("테두리 두께(월드)")]
+        [SerializeField] private float gaugeThickness = 0.08f;
+        [Tooltip("바닥 위로 띄우는 높이(z-fight 방지)")]
+        [SerializeField] private float gaugeYOffset = 0.03f;
+        [Tooltip("만피(1-eps)면 게이지 숨김")]
+        [SerializeField] private bool gaugeHideWhenFull = true;
+        [Tooltip("만피 판정 여유")]
+        [SerializeField] private float gaugeFullEpsilon = 0.001f;
+        [Tooltip("게이지 색 램프 (time = hpRatio: 1=녹, 0=적)")]
+        [SerializeField] private Gradient gaugeColorGradient = DefaultHitBarFill();
+
+        public float GaugeTileFill => Mathf.Clamp(gaugeTileFill, 0.1f, 1f);
+        public float GaugeThickness => Mathf.Max(0.001f, gaugeThickness);
+        public float GaugeYOffset => gaugeYOffset;
+        public bool GaugeHideWhenFull => gaugeHideWhenFull;
+        public float GaugeFullEpsilon => Mathf.Max(0f, gaugeFullEpsilon);
+
+        public Color EvaluateGaugeColor(float ratio)
+        {
+            float r = ratio > 0f ? (ratio < 1f ? ratio : 1f) : 0f;
+            return gaugeColorGradient != null ? gaugeColorGradient.Evaluate(r) : Color.white;
+        }
+
         // ratio → tint Color. ratio 는 clamp[0,1] + NaN(=max<=0 division) 가드 후 gradient 평가.
         // 뷰는 이 메서드를 모른다 — BattleBridge 가 호출해 Color 만 뷰에 넘긴다.
         public Color EvaluateTint(float ratio)

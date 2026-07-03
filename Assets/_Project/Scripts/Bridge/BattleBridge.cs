@@ -72,6 +72,8 @@ namespace Wassup.Bridge
         [SerializeField] private Wassup.Data.HealthDisplayStyle healthDisplayStyle;
         // unit-health-display unit 2 — 적 피격 마이크로바 스포너.
         [SerializeField] private Wassup.Presentation.EnemyHitBarSpawner enemyHitBarSpawner;
+        // unit-health-display unit 3 — 방어유닛 타일 테두리 게이지 레이어.
+        [SerializeField] private Wassup.Presentation.TileHealthGaugeLayer tileHealthGaugeLayer;
         [SerializeField] private Wassup.UI.ScoreHudView scoreHud;
         [SerializeField] private Wassup.Presentation.ProjectileViewPool _projectileViewPool;
         // Phase 9 P9-07 — tileSize 단일 소스화. Awake 에서 PlacementInput 으로 주입.
@@ -347,6 +349,7 @@ namespace Wassup.Bridge
             if (spineUnitPool != null) spineUnitPool.DisposeAll();
             if (enemyViewPool != null) enemyViewPool.DisposeAll();
             if (defenderFallbackViewPool != null) defenderFallbackViewPool.DisposeAll();
+            if (tileHealthGaugeLayer != null) tileHealthGaugeLayer.Clear(); // unit 3 — 게이지 전체 정리
             ClearBlockingHazardVisuals();
             SetNextWaveButtonVisible(false);
 
@@ -1784,6 +1787,14 @@ namespace Wassup.Bridge
 
                 var p = _em.GetComponentData<LocalTransform>(entity).Position;
                 var world = new Vector3(p.x, p.y + spineDefenderYOffset, p.z);
+                // unit-health-display unit 3 — 타일 게이지: defender HP read-only → 타일 중심(바닥)
+                // view 좌표로 Set. 만피 숨김은 레이어가 처리.
+                if (tileHealthGaugeLayer != null && _em.HasComponent<Health>(entity))
+                {
+                    var dh = _em.GetComponentData<Health>(entity);
+                    var tileCenterView = (Vector3)Wassup.Core.BoardSpace.ToView(new Vector3(p.x, 0f, p.z));
+                    tileHealthGaugeLayer.Set(kv.Key, tileCenterView, tileSize, Health.ComputeRatio(dh.value, dh.max));
+                }
                 if (spineUnitPool != null && spineUnitPool.TryGet(entity, out var spineView))
                 {
                     spineView.UpdatePosition(world);
@@ -1830,6 +1841,7 @@ namespace Wassup.Bridge
                 }
                 _defenderByTile.Remove(cell);
                 _occupiedTiles.Remove(cell);
+                tileHealthGaugeLayer?.Hide(cell); // unit 3 — 사망 시 게이지 제거
                 RecomputeSynergyFor(cell);
                 Debug.Log($"[BattleBridge] Defender died @ {cell}; tile freed, synergy recomputed.");
             }
