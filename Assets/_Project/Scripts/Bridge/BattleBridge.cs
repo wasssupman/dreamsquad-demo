@@ -1286,7 +1286,6 @@ namespace Wassup.Bridge
 
         public DefenderUnitData[] DefenderPool => defenderPool;
         public float TileSize => tileSize;
-        public MapView MapView => mapView;
         // map-origin-placement: 입력(레이캐스트 평면)이 board 원점을 읽는 단일 창구.
         public Vector3 BoardOrigin => new Vector3(_boardOrigin.x, _boardOrigin.y, _boardOrigin.z);
         public PlacementInput PlacementInput => placementInput;

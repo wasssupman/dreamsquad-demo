@@ -191,7 +191,7 @@ namespace Wassup.UI
             if (dragPlacementController == null)
                 dragPlacementController = gameObject.AddComponent<DefenderDragPlacementController>();
             if (bridge != null)
-                dragPlacementController.Configure(bridge, bridge.MapView, Camera.main, bridge.PlacementInput);
+                dragPlacementController.Configure(bridge, Camera.main, bridge.PlacementInput);
         }
     }
 }

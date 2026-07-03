@@ -12,7 +12,6 @@ namespace Wassup.UI
     public class DefenderDragPlacementController : MonoBehaviour
     {
         [SerializeField] private BattleBridge bridge;
-        [SerializeField] private MapView mapView;
         [SerializeField] private Camera mainCamera;
         [SerializeField] private PlacementInput placementInput;
         [SerializeField] private float previewHeight = 0.35f;
@@ -30,10 +29,9 @@ namespace Wassup.UI
             public bool isValidTile;
         }
 
-        public void Configure(BattleBridge battleBridge, MapView view, Camera camera, PlacementInput input)
+        public void Configure(BattleBridge battleBridge, Camera camera, PlacementInput input)
         {
             bridge = battleBridge;
-            mapView = view;
             mainCamera = camera != null ? camera : Camera.main;
             placementInput = input;
         }

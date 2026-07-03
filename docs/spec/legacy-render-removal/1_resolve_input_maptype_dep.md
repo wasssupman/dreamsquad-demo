@@ -22,6 +22,8 @@
 
 ## 완료 기준
 
-- [ ] compile 통과 (에러 0)
-- [ ] `PlacementInput/DefenderSelector/DefenderDragPlacementController` 에 `MapView` 타입 참조 0건
-- [ ] Play 검증: D&D 배치 — 드래그 hover 하이라이트 / 유효 배치 / 무효 셀 reject 플래시 동작 동일
+- [x] compile 통과 (에러 0)
+- [x] `PlacementInput/DefenderSelector/DefenderDragPlacementController` 에 `MapView` 타입 참조 0건
+- [x] Play 검증: D&D 배치 — 드래그 hover 하이라이트 / 유효 배치 / 무효 셀 reject 플래시 동작 동일
+
+확인 2026-07-03 — compile 0 · MapView 참조 0건 · Play 드래그 플로우 코드 구동 검증: 유효 셀 hover valid=True(하이라이트 스크린샷 `legacy_removal_u1_hover_visible.png`), EndDrag 배치 0→1(`legacy_removal_u1_placed_visible.png`), 점유 셀 재드래그 invalid+reject(1→1), 콘솔 에러 0. Configure 3-인자 경로는 DefenderSelector.EnsureDragController 경유로 검증.

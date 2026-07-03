@@ -19,7 +19,6 @@ namespace Wassup.Core
     {
         [SerializeField] private BattleBridge bridge;
         [SerializeField] private Camera mainCamera;
-        [SerializeField] private MapView mapView;
         [SerializeField] private bool clickPlacementEnabled = true;
 
         private GeneratedMap _map;
