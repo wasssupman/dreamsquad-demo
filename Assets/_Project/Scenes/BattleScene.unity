@@ -2704,7 +2704,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Core.PlacementInput
   bridge: {fileID: 1939688408}
   mainCamera: {fileID: 0}
-  mapView: {fileID: 211636736}
   clickPlacementEnabled: 1
 --- !u!114 &1495062453
 MonoBehaviour:
@@ -3589,7 +3588,6 @@ MonoBehaviour:
   mapGridSettings: {fileID: 11400000, guid: 1f2599c24bec64c26941cf5e9b0137e1, type: 2}
   mapDocument: {fileID: 0}
   seasonRegistry: {fileID: 11400000, guid: d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8, type: 2}
-  enableSeasonBackdrop: 1
   mapPathShape: 1
   mapGenerationOptions:
     pathShape: 0
@@ -3617,24 +3615,28 @@ MonoBehaviour:
   enemyViewPool: {fileID: 0}
   defenderFallbackViewPool: {fileID: 0}
   spineDefenderYOffset: 0
-  characterBillboardTilt: 35
+  spawnSpreadEnabled: 1
+  spawnSpreadFraction: 0.2
+  spawnSpreadTopScale: 0.5
+  spawnSubLaneCount: 3
   vfxSpawner: {fileID: 1795146346}
   damageNumberSpawner: {fileID: 1795146348}
+  healthDisplayStyle: {fileID: 11400000, guid: e5f5c0ef9295247f6a489dfa4d64df6a, type: 2}
   scoreHud: {fileID: 1279129162}
   _projectileViewPool: {fileID: 808760338}
-  mapView: {fileID: 211636736}
   placementInput: {fileID: 1495062452}
   boardViewMode: 1
   tilemapMapView: {fileID: 172395674}
   tileSet: {fileID: 11400000, guid: d780c834df42b40c18b728204ba621fb, type: 2}
   tilemapCameraPresetRect: {fileID: 11400000, guid: 73ae958cfa7504f9c9fcdec440db387e, type: 2}
   tilemapCameraPresetIso: {fileID: 11400000, guid: 3d42947ee5b244f2dbf7438570a204a8, type: 2}
-  legacyCharacterScale: 0.7
   tilemapCharacterScale: 0.42
   tilemapBillboardTilt: 45
+  propDistanceTiltFactor: 0.78
+  propDistanceTiltMin: 28
+  propDistanceTiltMax: 62
   blobShadowSprite: {fileID: 21300000, guid: 952c54b00e0c643b7a3c22cd1f3b3b7d, type: 3}
   blobShadowSize: 1
-  blobShadowFootprint: {x: 1.55, y: 1.1}
   blobShadowColor: {r: 0, g: 0, b: 0, a: 0.3}
   blobShadowGroundY: 0.216
   useRealShadows: 1
