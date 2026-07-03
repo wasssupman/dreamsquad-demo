@@ -70,6 +70,8 @@ namespace Wassup.Bridge
         [SerializeField] private Wassup.Presentation.DamageNumberSpawner damageNumberSpawner;
         // unit-health-display — 체력 표기 시각 파라미터 단일 소스. unit 1 은 적 저체력 틴트만 사용.
         [SerializeField] private Wassup.Data.HealthDisplayStyle healthDisplayStyle;
+        // unit-health-display unit 2 — 적 피격 마이크로바 스포너.
+        [SerializeField] private Wassup.Presentation.EnemyHitBarSpawner enemyHitBarSpawner;
         [SerializeField] private Wassup.UI.ScoreHudView scoreHud;
         [SerializeField] private Wassup.Presentation.ProjectileViewPool _projectileViewPool;
         // Phase 9 P9-07 — tileSize 단일 소스화. Awake 에서 PlacementInput 으로 주입.
@@ -1945,13 +1947,32 @@ namespace Wassup.Bridge
         private void DrainDamageNumberEvents()
         {
             if (!_damageNumberEventQueue.IsCreated) return;
-            if (damageNumberSpawner == null) { _damageNumberEventQueue.Clear(); return; }
+            bool hasNumbers = damageNumberSpawner != null;
+            bool hasBars = enemyHitBarSpawner != null;
+            if (!hasNumbers && !hasBars) { _damageNumberEventQueue.Clear(); return; }
             while (_damageNumberEventQueue.TryDequeue(out var evt))
             {
                 if (evt.amount <= 0f) continue;
-                damageNumberSpawner.Spawn(
-                    new Vector3(evt.position.x, evt.position.y, evt.position.z), evt.amount);
+                var simPos = new Vector3(evt.position.x, evt.position.y, evt.position.z);
+                if (hasNumbers)
+                    damageNumberSpawner.Spawn(simPos, evt.amount);
+                if (hasBars)
+                {
+                    // unit 2 — anchor = 적 뷰 transform(view 좌표). 막타로 뷰가 이미 사라졌으면
+                    // ToView(evt.position) 고정 위치로 fallback(M4 계약).
+                    Transform anchor = ResolveEnemyViewTransform(evt.entity);
+                    Vector3 fallbackView = (Vector3)Wassup.Core.BoardSpace.ToView(simPos);
+                    enemyHitBarSpawner.Show(evt.entity, anchor, fallbackView, evt.hpRatio);
+                }
             }
+        }
+
+        // unit-health-display unit 2 — 마이크로바 anchor 해석. Spine → Quad 뷰 순, 둘 다 없으면 null.
+        private Transform ResolveEnemyViewTransform(Entity entity)
+        {
+            if (spineUnitPool != null && spineUnitPool.TryGet(entity, out var sv) && sv != null) return sv.transform;
+            if (enemyViewPool != null && enemyViewPool.TryGet(entity, out var qv) && qv != null) return qv.transform;
+            return null;
         }
 
         // Enemy kills → live score HUD. One score bump per enemy killed by damage.
