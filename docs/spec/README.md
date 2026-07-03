@@ -129,6 +129,15 @@ code + git history        구현 상세
 - **유닛 간 separation/boid** [M] · 겹침 동적 해소(스폰 분산과 별개로 행진 중 밀집 완화).
 - **블록 시 우회 재라우팅** [M] · 복도 차단 시 `BuildFlowField` rebuild 트리거(walk 마스크에 blockedCells 반영). flow field 유지 결론(유닛별 BFS 아님). 이동 아키텍처 별도 스펙.
 
+#### 체력 표기 (unit-health-display)
+
+적/방어유닛 체력 표기(완료 2026-07-04, units 0~3 — 적 피격 마이크로바 + 저체력 틴트, 방어유닛 타일 테두리 게이지, 투트랙 리뷰 반영). 상세 후속: `docs/spec/unit-health-display/README.md`.
+
+- **킬 포어캐스트 마크** [M] · `IncomingDamage` + 비행 투사체 예약 데미지 ≥ 잔여 HP 인 적에 스컬 마크. 바가 못 주는 의사결정 정보. 투사체 데미지 귀속 필요.
+- **체력 표기 poll 효율화** [S] · `SyncMonoUnitViews` 가 매 프레임 적/방어유닛 `Health` 조회 + 뷰 write(틴트/게이지). entity/cell→last-ratio 캐시로 skip. 비블로커(유닛 수 그리드 상한).
+- **타일 게이지 시각 폴리시** [S] · fill inset `pad=0.18` SO화, 코너 조인트 갭 보정, 4-edge 계단식 → 연속 SDF 셰이더 교체.
+- **hazard 체력 표시 / 상태이상 틴트 합성 / 웨이브 압력 게이지 / 보스 상시 바** — unit-health-display README 후속 후보.
+
 #### Modifier framework — Producer 확장 (modifier-framework-and-healer)
 
 framework 코어 변경 0. 새 producer 레이어 추가로 다양한 효과 적용 경로 확보. producer-agnostic 설계 검증 시점.
