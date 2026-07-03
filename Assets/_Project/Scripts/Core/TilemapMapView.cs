@@ -321,11 +321,11 @@ namespace Wassup.Core
             instance.name = $"{prop.name}_{placement.x}_{placement.y}";
             instance.transform.position = CellCenterToWorld(centerX, centerY);
             instance.transform.localScale = Vector3.one * placement.scale;
-            MapView.ApplyPropSorting(instance, prop, placement, plan);
-            MapView.DisablePropDebugMarkers(instance);
+            PropInstanceUtil.ApplyPropSorting(instance, prop, placement, plan);
+            PropInstanceUtil.DisablePropDebugMarkers(instance);
             // 프랍 그림자 = 프리팹 authored 블롭 (shadow-polish unit 6). 런타임 부착 없음 — 프리팹이 source of truth.
             if (theme.propGlobalTint != Color.white)
-                MapView.ApplyPropGlobalTint(instance, theme.propGlobalTint);
+                PropInstanceUtil.ApplyPropGlobalTint(instance, theme.propGlobalTint);
         }
 
         // prop-placement-layer unit 1 — goal/spawn 셀에 3D 메쉬 구조물 프랍을 세운다.
@@ -454,7 +454,7 @@ namespace Wassup.Core
                 inst.name = prop.name + "_ring_" + x + "_" + y;
                 inst.transform.position = CellCenterToWorld(x, y);
                 inst.transform.localScale = Vector3.one * (1f + rng.NextFloat(-prop.scaleJitter, prop.scaleJitter));
-                MapView.DisablePropDebugMarkers(inst);
+                PropInstanceUtil.DisablePropDebugMarkers(inst);
                 // 원경도 동일 프리팹이라 authored 블롭 포함 (shadow-polish unit 6). 런타임 부착 없음.
             }
         }

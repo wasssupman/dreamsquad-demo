@@ -795,44 +795,11 @@ namespace Wassup.Core
                 instance.transform.localPosition = pos;
                 instance.transform.localRotation = Quaternion.Euler(0f, placement.rotationYaw, 0f);
                 instance.transform.localScale = Vector3.one * placement.scale;
-                ApplyPropSorting(instance, prop, placement, plan);
-                DisablePropDebugMarkers(instance);
+                PropInstanceUtil.ApplyPropSorting(instance, prop, placement, plan);
+                PropInstanceUtil.DisablePropDebugMarkers(instance);
                 if (theme.propGlobalTint != Color.white)
-                    ApplyPropGlobalTint(instance, theme.propGlobalTint);
+                    PropInstanceUtil.ApplyPropGlobalTint(instance, theme.propGlobalTint);
             }
-        }
-
-        internal static void DisablePropDebugMarkers(GameObject instance)
-        {
-            var renderers = instance.GetComponentsInChildren<Renderer>(true);
-            for (int i = 0; i < renderers.Length; i++)
-            {
-                string n = renderers[i].gameObject.name.ToLowerInvariant();
-                if (n.Contains("marker") || n.Contains("footprint") || n.Contains("debug") || n.Contains("bounds"))
-                    renderers[i].gameObject.SetActive(false);
-            }
-        }
-
-        internal static void ApplyPropSorting(
-            GameObject instance,
-            PropData prop,
-            Wassup.Data.PropPlacement placement,
-            BoardVisualPlan plan)
-        {
-            if (instance == null || prop == null)
-                return;
-
-            int order = prop.sortingOrder + BoardSortOrder.Compute(plan.gridSize, placement.x, placement.y);
-            var renderers = instance.GetComponentsInChildren<SpriteRenderer>(true);
-            for (int i = 0; i < renderers.Length; i++)
-                renderers[i].sortingOrder = order;
-        }
-
-        internal static void ApplyPropGlobalTint(GameObject instance, Color tint)
-        {
-            var renderers = instance.GetComponentsInChildren<SpriteRenderer>(true);
-            for (int i = 0; i < renderers.Length; i++)
-                renderers[i].color = renderers[i].color * tint;
         }
 
         private static void SafeDestroy(Object obj)
