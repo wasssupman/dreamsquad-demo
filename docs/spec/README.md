@@ -177,7 +177,8 @@ hazard caster defender 4종 MVP 이후 남은 확장 후보.
 
 board-visualization spec 자체는 ROI 부족으로 wrap 종료. 진단/실험은 `docs/spec/board-visualization/29_final_handoff.md` 참조.
 
-- **palette-and-overlay-fix** [M] · `forest.asset` red-tint 결정 실험 + Bug A (`_tileTextureMaterials` 캐시 키) / Bug B (Place edge mask 가 Env 이웃 한정) / Bug C (overlay alpha 0.25 너무 낮음). board-visualization wrap 의 root cause 후보. 새 spec 으로 시작 권장.
+- ~~**palette-and-overlay-fix**~~ [무효화 2026-07-03] · 대상(Legacy 렌더 텍스처/오버레이/tint 경로)이 legacy-render-removal 로 통삭제됨.
+- **BattleScene MapView 잔재 씬 청소** [S] · 구 MapView GameObject(missing-script) + `BattleBridge.mapView` stale serialized 참조 제거. 씬 dirty WIP 정리 후 SaveScene 격리 절차로. (legacy-render-removal handoff)
 - **17r prop-distribution-retry** [S] · V-001 잔존. Poisson 정공법 재구현.
 - **23 volcano-theme-fill** [M] · 두 번째 테마 자산 채움.
 - **BattleBridge.StartBattle Persistent allocates 경고** [S] · 반복 시작 시 leak 추적. ECS 컨텍스트 정리 경로 점검.
@@ -221,6 +222,8 @@ board-visualization spec 자체는 ROI 부족으로 wrap 종료. 진단/실험�
 - **반복 씬 로드 ECS leak 점검** [M] · 2-씬 전환으로 BattleScene 반복 로드 → 기존 **BattleBridge.StartBattle Persistent allocates 경고** 백로그가 더 중요. 재진입 시 ECS World/Persistent 정리 경로 검증.
 
 ### Promoted / Closed
+
+- **Legacy render removal** → `docs/spec/legacy-render-removal/` (completed 2026-07-03, units 0~4 — Legacy MapView 렌더/Legacy3D 모드/시즌 백드롭/테마 LEGACY 43필드 완전 삭제, ~6,300줄 순삭. Tilemap 경로 무회귀. 씬 MapView 잔재 청소는 follow-up)
 
 - **Projectile GA reskin** → `docs/spec/projectile-ga-reskin/` (completed 2026-07-03, units 0~6 — GabrielAguiar UniqueProjectiles Vol4 50종 라이브러리 + 스트립/스왑 툴 + ViewPool as-is 가드(streak/preserveVfxColors) + 높이오프셋 + ProjectileOffset sorting + muzzle-hit. 실게임 검증 PASS. 최종 변종선택/스케일/미사용정리는 사용자 취향 후속)
 

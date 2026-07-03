@@ -1,6 +1,6 @@
 # legacy-render-removal — Legacy MapView 렌더 경로 제거
 
-상태: 초안 (설계 승인 2026-07-03)
+상태: 완료 2026-07-03 (units 0~4 커밋 `ab13b8d`·`11816ff`·`73a2efd`·`82a5992`·`ba3366b`, handoff `5_handoff_summary.md`)
 
 ## 문제
 
