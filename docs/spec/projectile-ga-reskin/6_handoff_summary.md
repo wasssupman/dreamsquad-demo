@@ -47,7 +47,7 @@
 ## Follow-up
 
 - 디펜더별 **최종 변종 선택**(사용자, 50종 중) + 스케일/높이 취향 미세조정.
-- **미매칭 hit 2개**: Arrow20 / CardsThrow01 (패키지에 매칭 muzzle 없음 → 대체 muzzle 지정 필요).
+- ~~미매칭 hit 2개~~ 해결(`3c80fb2`): Arrow20→Arrow01 muzzle, CardsThrow01→Card01 muzzle. GA 50종 전부 hit 보유.
 - 안 쓰는 변종 SO/프리팹 정리(50은 많음).
 - 모바일 최적화(라이트/트레일 감축, soft particle) — 미착수.
 - tint 플러밍(데이터-드리븐 recolor 원할 시).
