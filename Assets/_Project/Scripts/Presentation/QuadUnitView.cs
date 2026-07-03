@@ -11,6 +11,7 @@ namespace Wassup.Presentation
         private MeshRenderer _renderer;
         private Transform _visual;       // tilted-billboard unit 4a: 발 피벗 자식.
         private Material _ownedMaterial; // unlit 복사본 (transform 이 방향을 제어). 직접 소유/파괴.
+        private Color _baseColor = Color.white; // unit-health-display unit 1 — 틴트 곱 기준(원본 base color).
         private Entity _entity;
         // tilemap-view-backend unit 3 — sim 좌표 보존 (sorting 셀 역산용; view 좌표는 z 소실).
         private Vector3 _simWorld;
@@ -27,6 +28,9 @@ namespace Wassup.Presentation
             // 발 피벗: Quad(센터, Y −0.5..0.5)를 +0.5 올려 밑동을 root 원점(셀)에 둔다 → 틸트가 발 기준.
             EnsureVisualChild(quad);
             _ownedMaterial = BuildUnlitMaterial(material, _ownedMaterial);
+            _baseColor = _ownedMaterial.HasProperty("_BaseColor")
+                ? _ownedMaterial.GetColor("_BaseColor")
+                : Color.white;
             _renderer.sharedMaterial = _ownedMaterial;
 
             var billboard = GetComponent<Billboard>();
@@ -91,6 +95,14 @@ namespace Wassup.Presentation
             // 타일맵이 XZ 바닥. 빌보드 밑동이 바닥 Y 와 같으면 z-fighting → 살짝 띄운다.
             view.y += 0.01f;
             transform.position = view;
+        }
+
+        // unit-health-display unit 1 — 적 저체력 틴트(fallback quad 뷰). 원본 base color × tint.
+        // Configure 가 매번 머티리얼을 새로 빌드하므로 재스폰 시 자동으로 무틴트로 리셋된다.
+        public void SetHealthTint(Color tint)
+        {
+            if (_ownedMaterial == null || !_ownedMaterial.HasProperty("_BaseColor")) return;
+            _ownedMaterial.SetColor("_BaseColor", _baseColor * tint);
         }
 
         public void SetSortingOrder(int order)

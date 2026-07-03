@@ -113,6 +113,18 @@ namespace Wassup.Presentation
                 renderers[i].sortingOrder = order;
         }
 
+        // unit-health-display unit 1 — 적 저체력 틴트. BattleBridge 가 HealthDisplayStyle 로
+        // ratio→Color 를 평가해 주입한다(뷰는 SO 를 모른다). _dying 중엔 마지막 틴트를 유지해
+        // 죽음 연출 색을 덮지 않는다. 알파는 건드리지 않음(RGB 만).
+        public void SetHealthTint(Color tint)
+        {
+            if (_dying || _skeleton == null || _skeleton.Skeleton == null) return;
+            var skel = _skeleton.Skeleton;
+            skel.R = tint.r;
+            skel.G = tint.g;
+            skel.B = tint.b;
+        }
+
         public void PlayAttack()
         {
             if (_dying || _skeleton == null) return;

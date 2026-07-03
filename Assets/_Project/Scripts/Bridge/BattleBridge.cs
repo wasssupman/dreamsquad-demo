@@ -68,6 +68,8 @@ namespace Wassup.Bridge
         // Spine units have no shader billboard (unlike the Quad fallback that uses
         [SerializeField] private Wassup.Presentation.VfxSpawner vfxSpawner;
         [SerializeField] private Wassup.Presentation.DamageNumberSpawner damageNumberSpawner;
+        // unit-health-display — 체력 표기 시각 파라미터 단일 소스. unit 1 은 적 저체력 틴트만 사용.
+        [SerializeField] private Wassup.Data.HealthDisplayStyle healthDisplayStyle;
         [SerializeField] private Wassup.UI.ScoreHudView scoreHud;
         [SerializeField] private Wassup.Presentation.ProjectileViewPool _projectileViewPool;
         // Phase 9 P9-07 — tileSize 단일 소스화. Awake 에서 PlacementInput 으로 주입.
@@ -1747,15 +1749,20 @@ namespace Wassup.Bridge
 
                             var p = _em.GetComponentData<LocalTransform>(entity).Position;
                             var world = new Vector3(p.x, p.y, p.z);
+                            // unit-health-display unit 1 — 적 저체력 틴트. HP read-only 평가는
+                            // BattleBridge 소관(ECS 창구), 뷰는 Color 만 받아 적용.
+                            Color tint = EvaluateEnemyHealthTint(entity);
                             if (spineUnitPool != null && spineUnitPool.TryGet(entity, out var spineView))
                             {
                                 spineView.UpdatePosition(world);
                                 if (canSort) spineView.UpdateSortingOrder(gridSize, tileSize);
+                                spineView.SetHealthTint(tint);
                             }
                             else if (enemyViewPool.TryGet(entity, out var view))
                             {
                                 view.UpdatePosition(world);
                                 if (canSort) view.UpdateSortingOrder(gridSize, tileSize);
+                                view.SetHealthTint(tint);
                             }
                         }
                     }
@@ -1787,6 +1794,26 @@ namespace Wassup.Bridge
                     if (canSort) fallbackView.UpdateSortingOrder(gridSize, tileSize);
                 }
             }
+        }
+
+        // unit-health-display unit 1 — 적 HP read-only 조회 → HealthDisplayStyle 로 ratio→Color.
+        // ECS 경계: HP 는 Units 소유, BattleBridge 는 창구로서 읽기만 한다. SO 미할당 시 무틴트(白).
+        private bool _healthTintWarned;
+        private Color EvaluateEnemyHealthTint(Entity entity)
+        {
+            if (healthDisplayStyle == null)
+            {
+                if (!_healthTintWarned)
+                {
+                    Debug.LogWarning("[BattleBridge] healthDisplayStyle 미할당 — 적 체력 틴트 스킵.");
+                    _healthTintWarned = true;
+                }
+                return Color.white;
+            }
+            if (!_em.HasComponent<Health>(entity)) return Color.white;
+            var h = _em.GetComponentData<Health>(entity);
+            float ratio = h.max > 0f ? h.value / h.max : 0f;
+            return healthDisplayStyle.EvaluateTint(ratio);
         }
 
         private void DrainDefenderDeathEvents()
