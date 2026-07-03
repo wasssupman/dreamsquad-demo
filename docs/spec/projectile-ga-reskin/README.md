@@ -1,7 +1,7 @@
 # Projectile GA Reskin Spec
 
 **작성일**: 2026-07-03
-**상태**: 유닛 0~5 구현·커밋 (GA 50종 라이브러리 + 높이/sorting 수정, 실게임 룩/scale 튜닝 + 최종 변종 선택 대기)
+**상태**: 완료 2026-07-03 (유닛 0~5 구현·커밋, 실게임 Play 검증 PASS). 최종 변종/스케일 선택은 사용자 취향 대기 → `6_handoff_summary.md` 참조.
 **파이프라인 토대**: `docs/spec/projectile-visual-upgrade/` (완료 2026-04-28). ViewPool·ProjectileData 스키마·hit event 채널을 그대로 재사용한다. 이 spec 은 벤더 자산만 교체하는 리스킨이다.
 **목표**: 투사체 시각을 Gabriel Aguiar *Unique Projectiles Vol 4* 프리팹 외형으로 업그레이드한다. 파일럿 = Arrow. 코드 파이프라인 무변경(단, streak 가드 1건 추가), side-by-side 신규 에셋.
 
@@ -34,7 +34,8 @@
 | 2 | `2_pilot_arrow_wiring.md` | 파일럿 `Projectile_Arrow_GA` 신규 에셋 + Archer 와이어링 + A/B 시각 검증 |
 | 3 | `3_variant_pack.md` | GA 변종 4종(ExplosiveBullet/Shard/Shuriken/Rock) + Archer 순환 스왑 메뉴 |
 | 4 | `4_full_library.md` | GA 투사체 50종 전체 라이브러리(스트립본 + SO) |
-| 5 | `5_render_height_and_sorting.md` | visualHeightOffset(타일 위 부양) + ProjectileOffset(유닛 위 sorting) |
+| 5 | `5_render_height_and_sorting.md` | visualHeightOffset(타일 위 부양) + ProjectileOffset(유닛 위 sorting) + hit=muzzle/scale |
+| 6 | `6_handoff_summary.md` | 인계 요약 — 커밋/구현/검증/주의점/후속 |
 
 ## 공통 원칙 (계약)
 
