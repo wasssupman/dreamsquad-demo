@@ -34,7 +34,9 @@ Legacy 렌더만 읽던 `MapThemeData` 필드 43개 + nested `TerrainSurfaceVari
 
 ## 완료 기준
 
-- [ ] compile 통과 (에러 0)
-- [ ] 삭제 필드명 grep 0건 (코드 + asset YAML)
-- [ ] Tilemap Play 스크린샷 무회귀 (바닥 tileSet/프랍/tint)
-- [ ] forest/desert 인스펙터: LEGACY 그룹 소멸, tileSet·프랍풀·propGlobalTint 값 보존
+- [x] compile 통과 (에러 0)
+- [x] 삭제 필드명 grep 0건 (코드 + asset YAML)
+- [x] Tilemap Play 스크린샷 무회귀 (바닥 tileSet/프랍/tint)
+- [x] forest/desert 인스펙터: LEGACY 그룹 소멸, tileSet·프랍풀·propGlobalTint 값 보존
+
+확인 2026-07-03 — compile 0 · 코드/YAML grep 0건 · asset 재직렬화 순수 삭제(−225줄, 추가 0줄) · 값 보존 스냅샷(forest: playProps 10/ring 3/tint 0.98,0.9,0.76/effectTiles 5 · desert: TileSet_Desert/playProps 13/ring 13) · Play 스크린샷(`legacy_removal_u4_theme_verify.png`, 프랍 44/117/3 + 이펙트 타일 정상) · EditMode 434개 기존실패 1건 외 PASS.
