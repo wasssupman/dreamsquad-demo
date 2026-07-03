@@ -9,7 +9,7 @@ namespace Wassup.Core
     // sim 좌표 규약은 GridMath 와 동일: 정수배 = 셀 중심 (Tilemap 의 셀 중심은 +0.5 보정).
     public static class BoardSpace
     {
-        private static BoardViewMode _mode = BoardViewMode.Legacy3D;
+        private static BoardViewMode _mode = BoardViewMode.TilemapRect;
         private static float3 _simOrigin;
         private static float _tileSize = 1f;
         private static GridLayout _grid;
@@ -17,13 +17,14 @@ namespace Wassup.Core
         public static BoardViewMode Mode => _mode;
 
         // BattleBridge 맵 빌드 시 1회 호출. 정적 상태 쓰기는 이 메서드가 유일하다.
-        // Tilemap 모드인데 grid 가 없으면 시뮬레이션이 보이지 않는 것보다 Legacy 로 사는 쪽을 택한다.
+        // grid 없는 잘못된 구성은 받지 않는다 — 마지막 유효 구성을 유지하고 명시 에러.
+        // (identity 폴백 모드는 legacy-render-removal unit 3 에서 제거. 사용 전 Configure 가 계약.)
         public static void Configure(BoardViewMode mode, float3 simOrigin, float tileSize, GridLayout grid)
         {
-            if (mode != BoardViewMode.Legacy3D && grid == null)
+            if (grid == null)
             {
-                Debug.LogError("[BoardSpace] Tilemap mode requires a GridLayout; falling back to Legacy3D.");
-                mode = BoardViewMode.Legacy3D;
+                Debug.LogError("[BoardSpace] Tilemap mode requires a GridLayout; ignoring Configure.");
+                return;
             }
             _mode = mode;
             _simOrigin = simOrigin;
@@ -33,7 +34,6 @@ namespace Wassup.Core
 
         public static float3 ToView(float3 simWorld)
         {
-            if (_mode == BoardViewMode.Legacy3D) return simWorld;
             float cx = (simWorld.x - _simOrigin.x) / _tileSize + 0.5f;
             float cy = (simWorld.z - _simOrigin.z) / _tileSize + 0.5f;
             // Tilemap 은 보드를 정면으로 보는 평면 뷰다. 위치는 보드 평면(sim XZ) → 셀 로만 정한다.
@@ -48,7 +48,6 @@ namespace Wassup.Core
         // sim 높이는 simOrigin.y 로 둔다 — ToView 의 높이 가산과 대칭이 아니다.
         public static float3 ToSim(float3 viewWorld)
         {
-            if (_mode == BoardViewMode.Legacy3D) return viewWorld;
             Vector3 cell = _grid.LocalToCellInterpolated(
                 _grid.transform.InverseTransformPoint(viewWorld));
             return new float3(
@@ -60,17 +59,13 @@ namespace Wassup.Core
         // 방향/회전 벡터용 — 변환의 선형부만 적용 (facing, 투사체 회전, cast 방향).
         public static float3 ToViewVector(float3 simDir)
         {
-            if (_mode == BoardViewMode.Legacy3D) return simDir;
             return ToView(_simOrigin + simDir) - ToView(_simOrigin);
         }
 
-        // 모드별 포인터 입력 평면. Legacy3D = 보드 표면(XZ, 보드 원점 높이).
-        // Tilemap 모드 = Grid 평면. 법선을 grid.transform.forward(로컬 +Z)에서 유도해 grid 회전을
+        // 포인터 입력 평면 = Grid 평면. 법선을 grid.transform.forward(로컬 +Z)에서 유도해 grid 회전을
         // 자동 추종 — XY 정면뷰든 XZ 바닥이든 동일 코드(틸트 빌보드 전환 후 XZ).
         public static Plane RaycastPlane()
         {
-            if (_mode == BoardViewMode.Legacy3D)
-                return new Plane(Vector3.up, (Vector3)_simOrigin);
             return new Plane(_grid.transform.forward, _grid.transform.position);
         }
     }

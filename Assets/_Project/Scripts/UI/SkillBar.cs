@@ -172,7 +172,7 @@ namespace Wassup.UI
             // tilemap-view-backend — 입력 평면은 모드별(BoardSpace), 히트 지점을 sim 으로 되돌려
             // 기존 셀 변환(bridge.DebugWorldToCell) 흐름 유지. (PlacementInput 과 동일 패턴.)
             // Tilemap 모드는 보드가 수직 평면이라 옛 Plane(up) 은 카메라 레이와 평행해 교차 실패 →
-            // 스킬 타겟이 잡히지 않던 버그를 고친다. Legacy3D 는 동작 동일(plane=up@origin, ToSim=identity).
+            // 스킬 타겟이 잡히지 않던 버그를 고친다.
             var plane = BoardSpace.RaycastPlane();
             if (!plane.Raycast(ray, out float enter)) return;
 

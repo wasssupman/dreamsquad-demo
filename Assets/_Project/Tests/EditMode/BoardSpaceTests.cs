@@ -13,8 +13,8 @@ namespace Wassup.Tests.EditMode
         [TearDown]
         public void TearDown()
         {
-            // BoardSpace 는 정적 상태 — 테스트 간 누수 방지를 위해 Legacy 로 리셋.
-            BoardSpace.Configure(BoardViewMode.Legacy3D, float3.zero, 1f, null);
+            // BoardSpace 는 정적 상태이나 "안전 idle 모드"는 없다(Legacy identity 폴백 제거).
+            // 모든 사용처는 Configure 후 사용이 계약 — 각 테스트가 자체 Configure 로 시작한다.
             if (_gridGo != null) Object.DestroyImmediate(_gridGo);
         }
 
@@ -34,19 +34,21 @@ namespace Wassup.Tests.EditMode
                 $"{label}: expected {expected}, got {actual}");
         }
 
-        // --- 1. Legacy3D = identity ---
+        // --- 1. Configure 가드 (legacy-render-removal unit 3 — grid 없는 구성은 무시 + 에러) ---
 
         [Test]
-        public void Legacy3D_AllConversions_AreIdentity()
+        public void Configure_NullGrid_LogsErrorAndKeepsLastValidConfig()
         {
-            BoardSpace.Configure(BoardViewMode.Legacy3D, new float3(3f, 0.5f, -2f), 2f, null);
+            var grid = CreateGrid(GridLayout.CellLayout.Rectangle, Vector3.one, Vector3.zero);
+            BoardSpace.Configure(BoardViewMode.TilemapRect, new float3(3f, 0f, 5f), 2f, grid);
+            var before = BoardSpace.ToView(new float3(3f, 0f, 5f));
 
-            var p = new float3(7.3f, 1.2f, -4.8f);
-            AssertNear(p, BoardSpace.ToView(p), "ToView");
-            AssertNear(p, BoardSpace.ToSim(p), "ToSim");
+            UnityEngine.TestTools.LogAssert.Expect(LogType.Error,
+                "[BoardSpace] Tilemap mode requires a GridLayout; ignoring Configure.");
+            BoardSpace.Configure(BoardViewMode.TilemapRect, float3.zero, 1f, null);
 
-            var d = new float3(0.6f, 0f, -0.8f);
-            AssertNear(d, BoardSpace.ToViewVector(d), "ToViewVector");
+            // 마지막 유효 구성 유지 — 변환 결과 불변.
+            AssertNear(before, BoardSpace.ToView(new float3(3f, 0f, 5f)), "config retained");
         }
 
         // --- 2. 라운드트립 (보드 평면 위 점, y = simOrigin.y) ---
@@ -140,17 +142,11 @@ namespace Wassup.Tests.EditMode
             Assert.Greater(math.distance(dirX, dirZ), 0.1f, "diagonals must be distinct");
         }
 
-        // --- 5. RaycastPlane 모드별 방향 ---
+        // --- 5. RaycastPlane = Grid 평면 ---
 
         [Test]
-        public void RaycastPlane_MatchesViewMode()
+        public void RaycastPlane_MatchesGridPlane()
         {
-            BoardSpace.Configure(BoardViewMode.Legacy3D, new float3(0f, 1.5f, 0f), 1f, null);
-            var legacy = BoardSpace.RaycastPlane();
-            AssertNear(new float3(0f, 1f, 0f), legacy.normal, "legacy normal is +Y");
-            Assert.Less(math.abs(legacy.GetDistanceToPoint(new Vector3(9f, 1.5f, -4f))), 1e-3f,
-                "legacy plane passes through board height");
-
             var grid = CreateGrid(GridLayout.CellLayout.Rectangle, Vector3.one, new Vector3(2f, 3f, 1f));
             BoardSpace.Configure(BoardViewMode.TilemapRect, float3.zero, 1f, grid);
             var tilemap = BoardSpace.RaycastPlane();

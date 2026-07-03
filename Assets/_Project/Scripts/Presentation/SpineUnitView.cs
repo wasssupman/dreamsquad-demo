@@ -54,7 +54,7 @@ namespace Wassup.Presentation
             PlayIdleLooping();
 
             // tilted-billboard unit 0 — 틸트는 Billboard 컴포넌트가 소유. 스폰 시 1회 주입
-            // (Tilemap=tilemapBillboardTilt / Legacy3D=characterBillboardTilt, BattleBridge 가 모드별 세팅).
+            // (tilemapBillboardTilt, BattleBridge 가 세팅).
             // 카메라 yaw 고정(0) 전제라 월드 X 틸트로 충분. ScaleX(좌우반전)는 skeleton 채널이라 독립.
             var billboard = gameObject.AddComponent<Billboard>();
             billboard.Setup(BillboardMode.Tilted, BattleBridge.CharacterBillboardTilt);
@@ -66,7 +66,6 @@ namespace Wassup.Presentation
         // 진짜 = renderer 가 실루엣 그림자 cast(평면이라 TwoSided). 블롭 = 발밑 타원 + cast OFF.
         private void ApplyTilemapShadow()
         {
-            if (Wassup.Core.BoardSpace.Mode == Wassup.Core.BoardViewMode.Legacy3D) return;
             var renderers = GetComponentsInChildren<Renderer>(true);
             if (BattleBridge.UseRealShadows)
             {

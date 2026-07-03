@@ -3,7 +3,7 @@ using UnityEngine;
 namespace Wassup.Data
 {
     // tilemap-view-backend unit 4 — Tilemap 모드 카메라 프리셋. 하드코딩 금지: 투영/거리/각도/정렬축 전부 에셋.
-    // Legacy3D 는 프리셋 미적용(현행 씬 카메라 유지). orthographicSize 는 런타임에 gridSize+tileSize 로 계산.
+    // orthographicSize 는 런타임에 gridSize+tileSize 로 계산.
     [CreateAssetMenu(menuName = "Wassup/Board Camera Preset", fileName = "CameraPreset")]
     public class BoardCameraPreset : ScriptableObject
     {

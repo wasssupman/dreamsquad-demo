@@ -19,7 +19,7 @@ namespace Wassup.Tests.EditMode
         [TearDown]
         public void TearDown()
         {
-            BoardSpace.Configure(BoardViewMode.Legacy3D, float3.zero, 1f, null);
+            // BoardSpace 리셋 불필요 — 안전 idle 모드 없음, 각 테스트가 자체 Configure 로 시작 (unit 3).
             if (_root != null) Object.DestroyImmediate(_root);
         }
 

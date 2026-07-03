@@ -68,7 +68,7 @@ namespace Wassup.Presentation
 
         private void ApplyFrame(float n)
         {
-            // driftUp 은 화면 위 방향(Y) 연출 — Legacy3D·Tilemap 모두 Y 가 화면 위라 무변환 (view 공간 _startPos 기준).
+            // driftUp 은 화면 위 방향(Y) 연출 — Y 가 화면 위라 무변환 (view 공간 _startPos 기준).
             transform.position = _startPos + Vector3.up * (_style.driftUp * n);
 
             float curve = _style.scaleCurve != null && _style.scaleCurve.length > 0

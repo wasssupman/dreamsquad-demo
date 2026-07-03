@@ -66,11 +66,6 @@ namespace Wassup.Bridge
 
         [Header("Character Billboard")]
         // Spine units have no shader billboard (unlike the Quad fallback that uses
-        // Billboard_Unlit), so they stand fully upright in the XY plane and read as
-        // stiff standees under the angled camera. Tilt them back around X toward the
-        // camera so they look planted. 0 = upright, larger = leans toward the camera.
-        // Pivots at the unit origin (feet) → sorting/position unaffected.
-        [SerializeField] private float characterBillboardTilt = 35f;
         [SerializeField] private Wassup.Presentation.VfxSpawner vfxSpawner;
         [SerializeField] private Wassup.Presentation.DamageNumberSpawner damageNumberSpawner;
         [SerializeField] private Wassup.UI.ScoreHudView scoreHud;
@@ -78,19 +73,18 @@ namespace Wassup.Bridge
         // Phase 9 P9-07 — tileSize 단일 소스화. Awake 에서 PlacementInput 으로 주입.
         [SerializeField] private Wassup.Core.PlacementInput placementInput;
         [Header("Tilemap View Backend (tilemap-view-backend)")]
-        [SerializeField] private Wassup.Core.BoardViewMode boardViewMode = Wassup.Core.BoardViewMode.Legacy3D;
+        [SerializeField] private Wassup.Core.BoardViewMode boardViewMode = Wassup.Core.BoardViewMode.TilemapRect;
         [SerializeField] private Wassup.Core.TilemapMapView tilemapMapView;
         [SerializeField] private Wassup.Data.TileSetData tileSet;
         [SerializeField] private Wassup.Data.BoardCameraPreset tilemapCameraPresetRect;
         [SerializeField] private Wassup.Data.BoardCameraPreset tilemapCameraPresetIso;
         [Header("Tilemap mode tuning (tilemap-mode-adoption)")]
-        [SerializeField] private float legacyCharacterScale = 0.7f;
         [SerializeField] private float tilemapCharacterScale = 0.42f;
         // tilted-billboard unit 2 — XZ 바닥 + 퍼스펙티브에서 캐릭터가 카메라를 향해 서도록 월드 X 틸트.
-        // Legacy3D 와 동일 수학(Euler(tilt,0,0)). 카메라 pitch×0.7~0.8 (pitch55→≈45). 양수. 실측 튜닝.
+        // Euler(tilt,0,0). 카메라 pitch×0.7~0.8 (pitch55→≈45). 양수. 실측 튜닝.
         [SerializeField] private float tilemapBillboardTilt = 45f;
         [Header("Prop distance tilt (tilted-billboard unit 6) — 배경 프랍 거리 기반 틸트")]
-        [Tooltip("0=비활성(고정 틸트). 프랍 위치별 시선 elevation 편차에 곱하는 계수. 권장 ≈0.78(카메라 pitch×0.78≈중앙 틸트). Legacy3D 는 빌드 시 0.")]
+        [Tooltip("0=비활성(고정 틸트). 프랍 위치별 시선 elevation 편차에 곱하는 계수. 권장 ≈0.78(카메라 pitch×0.78≈중앙 틸트).")]
         [SerializeField] private float propDistanceTiltFactor = 0.78f;
         [Tooltip("거리 틸트 하한(도).")]
         [SerializeField] private float propDistanceTiltMin = 28f;
@@ -140,14 +134,12 @@ namespace Wassup.Bridge
         private bool _projectileSpawnRequestQueryCreated;
         private EntityQuery _projectileQuery;
         private bool _projectileQueryCreated;
-        // tilemap-mode-adoption unit 0 — 모드별 유닛 스케일. const 제거. 맵 빌드 시 모드 기준으로 설정.
-        // 기본값 = Legacy 값(0.7) 이라 빌드 전/Legacy3D 에서 현행 동일.
-        public static float CharacterVisualScale { get; private set; } = 0.7f;
-        // Live-readable mirror of characterBillboardTilt, read by SpineUnitView each
+        // tilemap-mode-adoption unit 0 — 유닛 스케일. const 제거. 맵 빌드 시 설정.
+        public static float CharacterVisualScale { get; private set; } = 0.42f;
+        // Live-readable mirror of tilemapBillboardTilt, read by SpineUnitView each
         // LateUpdate. Synced from the serialized field in Awake/OnValidate; can be
         // poked at runtime (e.g. via tooling) to tune the lean without recompiling.
-        // tilemap-mode-adoption unit 0 — 맵 빌드 시 Tilemap 모드면 tilemapBillboardTilt(기본 0) 로 덮어쓴다.
-        public static float CharacterBillboardTilt = 35f;
+        public static float CharacterBillboardTilt = 45f;
         // tilted-billboard unit 6 — 배경 프랍 거리 기반 틸트 튜닝 미러(PropBillboard 가 읽음). factor=0=비활성.
         public static float PropDistanceTiltFactor { get; private set; }
         public static float PropDistanceTiltMin { get; private set; } = 28f;
@@ -206,8 +198,6 @@ namespace Wassup.Bridge
         // map-origin-placement: board 월드 원점. 모든 grid↔world 변환의 단일 소스.
         // Tilemap 모드는 무조건 zero (BuildMapForBattle 에서 고정).
         private float3 _boardOrigin = float3.zero;
-        // tilemap-view-backend — Tilemap 뷰 경로 여부 (Legacy3D = false). 맵 빌드/헬스바 분기 기준.
-        private bool UseTilemapView => boardViewMode != Wassup.Core.BoardViewMode.Legacy3D;
 
         // match-seed-unification — GameManager 가 주입하는 단일 매치 시드.
         // 맵/웨이브/비주얼 시드가 여기서 파생된다(작업 2/3). 0 = 미주입(즉석 폴백).
@@ -222,6 +212,9 @@ namespace Wassup.Bridge
 
         private void Awake()
         {
+            if (tilemapMapView == null)
+                Debug.LogError("[BattleBridge] tilemapMapView reference missing — assign in Inspector.", this);
+
             if (placementInput == null)
                 Debug.LogError("[BattleBridge] placementInput reference missing — assign in Inspector.", this);
 
@@ -232,7 +225,7 @@ namespace Wassup.Bridge
                 Debug.LogError("[BattleBridge] SeasonRegistry / activeSeason / mapTheme 가 wiring 되지 않았다. BattleScene 에 SeasonRegistry.asset 을 연결하라.", this);
             }
 
-            CharacterBillboardTilt = characterBillboardTilt;
+            CharacterBillboardTilt = tilemapBillboardTilt;
 
             EnsureMonoViewPools();
         }
@@ -240,7 +233,7 @@ namespace Wassup.Bridge
         private void OnValidate()
         {
             // Keep the static mirror in sync while tuning in the inspector (edit/play).
-            CharacterBillboardTilt = characterBillboardTilt;
+            CharacterBillboardTilt = tilemapBillboardTilt;
         }
 
         private void Start()
@@ -662,12 +655,12 @@ namespace Wassup.Bridge
                     _generatedMap.gridSize, theme.mapGridBuildableKeepRatio);
             }
 
-            // tilemap-mode-adoption unit 0 — 모드별 유닛 스케일/틸트를 빌드 시 1회 확정 (유닛 스폰 전).
-            CharacterVisualScale = UseTilemapView ? tilemapCharacterScale : legacyCharacterScale;
-            CharacterBillboardTilt = UseTilemapView ? tilemapBillboardTilt : characterBillboardTilt;
-            // tilted-billboard unit 6 — 배경 프랍 거리 틸트 미러. Legacy3D 는 비활성(factor=0).
+            // tilemap-mode-adoption unit 0 — 유닛 스케일/틸트를 빌드 시 1회 확정 (유닛 스폰 전).
+            CharacterVisualScale = tilemapCharacterScale;
+            CharacterBillboardTilt = tilemapBillboardTilt;
+            // tilted-billboard unit 6 — 배경 프랍 거리 틸트 미러.
             // refElev(기준 elevation)은 PropBillboard 가 라이브 카메라 pitch 에서 도출 — 페이즈별 카메라 변화 자기보정.
-            PropDistanceTiltFactor = UseTilemapView ? propDistanceTiltFactor : 0f;
+            PropDistanceTiltFactor = propDistanceTiltFactor;
             PropDistanceTiltMin = propDistanceTiltMin;
             PropDistanceTiltMax = propDistanceTiltMax;
             // tilted-billboard unit 3 — 블롭 그림자 데이터 미러(스폰 시 view 가 읽는다).
@@ -677,45 +670,43 @@ namespace Wassup.Bridge
             BlobShadowGroundY = blobShadowGroundY;
             // 모바일은 shadowmap 비용 회피 위해 강제 블롭. 데스크톱/에디터는 serialized 값.
             UseRealShadows = useRealShadows && !Application.isMobilePlatform;
-            ApplyEnvironmentGating(UseTilemapView); // tilemap=숨김 / Legacy3D=복원 (빈 목록이면 no-op)
+            ApplyEnvironmentGating(); // 비-타일맵 환경 오브젝트 숨김 (빈 목록이면 no-op)
 
-            if (UseTilemapView)
-            {
-                if (tilemapMapView != null)
-                    // 테마-구동 tileSet: theme 이 지정하면 그걸, 아니면 scene 의 tileSet 폴백 (desert-theme).
-                    tilemapMapView.Initialize(_generatedMap, tileSize,
-                        theme != null && theme.tileSet != null ? theme.tileSet : tileSet,
-                        boardViewMode, UseRealShadows);
-                else
-                    Debug.LogError("[BattleBridge] boardViewMode 이 Tilemap 이지만 tilemapMapView 가 비어있다.", this);
-                // Tilemap 모드 sim origin 은 무조건 zero (README 계약).
-                _boardOrigin = float3.zero;
-            }
+            // view-init 는 view 부재 시 조용히 skip — headless(EditMode 테스트) sim 빌드 계약.
+            // 실제 씬의 오배선 감지는 Awake 의 null 체크가 담당한다 (Awake 는 EditMode 테스트에서 안 불림).
+            if (tilemapMapView != null)
+                // 테마-구동 tileSet: theme 이 지정하면 그걸, 아니면 scene 의 tileSet 폴백 (desert-theme).
+                tilemapMapView.Initialize(_generatedMap, tileSize,
+                    theme != null && theme.tileSet != null ? theme.tileSet : tileSet,
+                    boardViewMode, UseRealShadows);
+            // sim origin 은 무조건 zero (README 계약).
+            _boardOrigin = float3.zero;
             if (placementInput != null) placementInput.Initialize(_generatedMap, tileSize);
 
-            // sim↔view 변환의 단일 지점 — BuildFlowField 직전 1회 설정 (Legacy3D = identity).
-            Wassup.Core.BoardSpace.Configure(boardViewMode, BoardOrigin, tileSize,
-                tilemapMapView != null ? tilemapMapView.Grid : null);
+            // sim↔view 변환의 단일 지점 — BuildFlowField 직전 1회 설정. grid 없으면(headless) skip —
+            // BoardSpace 는 view 계층 전용이라 sim 빌드에 불필요하고, null 전달은 Configure 가 에러로 거부한다.
+            if (tilemapMapView != null && tilemapMapView.Grid != null)
+                Wassup.Core.BoardSpace.Configure(boardViewMode, BoardOrigin, tileSize, tilemapMapView.Grid);
 
             // tilted-billboard — 런타임 카메라 자동 조정 비활성. 씬에 수동 배치한 카메라를 그대로 사용한다.
             // (퍼스펙티브 전환 튜닝 중: 카메라 pos/rot/fov 를 씬에서 직접 잡고 덮어쓰지 않도록 주석 처리)
-            // if (UseTilemapView) ApplyTilemapCameraPreset(); // 모드별 카메라 — 매 빌드 idempotent 재적용
+            // ApplyTilemapCameraPreset(); // 매 빌드 idempotent 재적용
 
             BuildFlowField();
 
             // enemy-tile-movement-integrity unit 0 — 스폰 분산 순번 리셋(결정론 수열은 시드 불필요).
             _spawnSpreadCounter = 0;
 
-            // props — Tilemap = grid 권위 배경 프랍(Deco 셀; unit 1 designate 후 존재), Legacy3D = 기존 경로.
+            // props — grid 권위 배경 프랍(Deco 셀; unit 1 designate 후 존재).
             // tilemap-world-surround unit 2: MapGrid 라도 내부 Deco 가 생기면 prop placer 가 채운다.
             if (theme != null && theme.playAreaProps != null && theme.playAreaProps.Length > 0)
             {
-                if (UseTilemapView && tilemapMapView != null)
+                if (tilemapMapView != null)
                 {
                     // unit 5 — 모바일 프랍 예산: 배경 프랍을 배율만큼 솎는다(앞쪽=중앙/가장자리 우선 보존, 필러 컷).
                     float propScale = Application.isMobilePlatform ? Mathf.Clamp01(mobilePropBudgetScale) : 1f;
                     var plan = tilemapMapView.VisualPlan;
-                    // unit 10 — tilemap 은 빌보드 틸트가 있어 occlusion 인지 배치(큰 프랍이 플레이 +y 가림 방지). Legacy3D 는 off.
+                    // unit 10 — 빌보드 틸트가 있어 occlusion 인지 배치(큰 프랍이 플레이 +y 가림 방지).
                     var placements = BackgroundPropPlacer.Generate(plan, theme, _generatedMap.seed, occlusionAware: true);
                     if (propScale < 1f && placements.Count > 0)
                         placements = placements.GetRange(0, Mathf.Max(0, (int)(placements.Count * propScale)));
@@ -723,15 +714,15 @@ namespace Wassup.Bridge
                 }
             }
 
-            // 원경 — 외곽 터레인 링 위 저밀도 프랍 (tilemap 모드). 그림자 OFF(원경). 모바일은 밀도 배율로 솎음.
-            if (UseTilemapView && tilemapMapView != null && theme != null)
+            // 원경 — 외곽 터레인 링 위 저밀도 프랍. 그림자 OFF(원경). 모바일은 밀도 배율로 솎음.
+            if (tilemapMapView != null && theme != null)
             {
                 float ringScale = Application.isMobilePlatform ? Mathf.Clamp01(mobilePropBudgetScale) : 1f;
                 tilemapMapView.InstantiateRingProps(theme, _generatedMap.gridSize, _generatedMap.seed, ringScale);
             }
 
-            // prop-placement-layer unit 1 — goal/spawn 3D 구조물 프랍 (Tilemap). playAreaProps 와 독립 가드.
-            if (UseTilemapView && tilemapMapView != null && theme != null)
+            // prop-placement-layer unit 1 — goal/spawn 3D 구조물 프랍. playAreaProps 와 독립 가드.
+            if (tilemapMapView != null && theme != null)
             {
                 tilemapMapView.InstantiateStructureProps(_generatedMap, theme, tilemapMapView.VisualPlan);
             }
@@ -739,7 +730,7 @@ namespace Wassup.Bridge
             // effect-tiles unit 1 — Place 셀 seed 결정론 효과 타일. 페인트는 Initialize(Clear) 이후 계약.
             // dict clear 는 가드 밖 — 이전 빌드 잔존 제거(테마가 효과 타일 없어도).
             _effectTilesByCell.Clear();
-            if (UseTilemapView && tilemapMapView != null && theme != null &&
+            if (tilemapMapView != null && theme != null &&
                 theme.effectTiles != null && theme.effectTiles.Length > 0 && theme.effectTileCount > 0)
             {
                 tilemapMapView.SetEffectTileMaterial(theme.effectTileMaterial); // 펄스 발광 머티리얼(있으면)
@@ -1673,18 +1664,10 @@ namespace Wassup.Bridge
             go.name = "MeteorWarning";
             var col = go.GetComponent<Collider>();
             if (col != null) Destroy(col);
-            // tilemap-view-backend unit 3 — 모드별 평면. Legacy3D=XZ 바닥(법선 +Y), Tilemap=XY 보드(법선 −Z, 카메라 향함).
+            // tilemap-view-backend unit 3 — XY 보드 평면 (법선 −Z, 카메라 향함).
             Vector3 viewCenter = Wassup.Core.BoardSpace.ToView(centerWorld);
-            if (Wassup.Core.BoardSpace.Mode == Wassup.Core.BoardViewMode.Legacy3D)
-            {
-                go.transform.position = new Vector3(viewCenter.x, 0.02f, viewCenter.z);
-                go.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
-            }
-            else
-            {
-                go.transform.position = new Vector3(viewCenter.x, viewCenter.y, viewCenter.z - 0.05f);
-                go.transform.rotation = Quaternion.identity; // Quad 기본 법선 −Z = 카메라 향함
-            }
+            go.transform.position = new Vector3(viewCenter.x, viewCenter.y, viewCenter.z - 0.05f);
+            go.transform.rotation = Quaternion.identity; // Quad 기본 법선 −Z = 카메라 향함
             float d = radiusWorld * 2f;
             go.transform.localScale = new Vector3(d, d, 1f);
             var rend = go.GetComponent<MeshRenderer>();
@@ -1899,9 +1882,8 @@ namespace Wassup.Bridge
             // anchor 는 ResolveCastAnchor 결과 = view 공간. targetWorld 는 sim → view 로 맞춰서 빼야 방향이 정확.
             if (spineUnitPool == null || !spineUnitPool.TryResolveAnchor(defender, out var anchor)) return;
             var dir = (Vector3)Wassup.Core.BoardSpace.ToView(targetWorld) - anchor;
-            // 캐스트 방향을 화면 평면에 평탄화: Legacy3D=XZ 바닥(Y 제거), Tilemap=XY 보드(깊이 Z 제거).
-            if (Wassup.Core.BoardSpace.Mode == Wassup.Core.BoardViewMode.Legacy3D) dir.y = 0f;
-            else dir.z = 0f;
+            // 캐스트 방향을 화면 평면(XY 보드)에 평탄화 — 깊이 Z 제거.
+            dir.z = 0f;
             _projectileViewPool.PlayCast(data.castPrefab, anchor, dir, data.castVfxLifetime);
         }
 
@@ -2692,37 +2674,37 @@ namespace Wassup.Bridge
             }
         }
 
-        // unit 1 — Tilemap 모드에서 비활성할 Legacy 환경 오브젝트 (skybox 는 카메라 clearFlags 가 처리).
-        // 빈 배열 = no-op. 실제 대상 배선은 dirty BattleScene 정리(unit 2) 후. Legacy3D 진입 시 복원.
-        private void ApplyEnvironmentGating(bool tilemap)
+        // unit 1 — Tilemap 뷰에서 항상 숨길 환경 오브젝트 (skybox 는 카메라 clearFlags 가 처리).
+        // 빈 배열 = no-op. 실제 대상 배선은 dirty BattleScene 정리(unit 2) 후.
+        private void ApplyEnvironmentGating()
         {
             if (tilemapHiddenEnvironment == null) return;
             for (int i = 0; i < tilemapHiddenEnvironment.Length; i++)
             {
                 var go = tilemapHiddenEnvironment[i];
-                if (go != null) go.SetActive(!tilemap);
+                if (go != null) go.SetActive(false);
             }
         }
 
-        // tilemap-view-backend unit 3 — 배치 hover/reject 피드백을 활성 뷰로 분기 (PlacementInput/DragController 공용 단일 경로).
+        // tilemap-view-backend unit 3 — 배치 hover/reject 피드백 (PlacementInput/DragController 공용 단일 경로).
         public void SetPlacementHover(Vector2Int cell, bool valid)
         {
-            if (UseTilemapView) { if (tilemapMapView != null) tilemapMapView.SetPlacementHover(cell, valid); }
+            if (tilemapMapView != null) tilemapMapView.SetPlacementHover(cell, valid);
         }
 
         public void ClearPlacementHover(Vector2Int cell)
         {
-            if (UseTilemapView) { if (tilemapMapView != null) tilemapMapView.ClearPlacementHover(cell); }
+            if (tilemapMapView != null) tilemapMapView.ClearPlacementHover(cell);
         }
 
         public void ClearPlacementHover()
         {
-            if (UseTilemapView) { if (tilemapMapView != null) tilemapMapView.ClearPlacementHover(); }
+            if (tilemapMapView != null) tilemapMapView.ClearPlacementHover();
         }
 
         public void FlashPlacementReject(Vector2Int cell)
         {
-            if (UseTilemapView) { if (tilemapMapView != null) tilemapMapView.FlashTileReject(cell); }
+            if (tilemapMapView != null) tilemapMapView.FlashTileReject(cell);
         }
 
         public float PlayDeploymentPresentation(DefenderUnitData unitData, Vector2Int cell, Entity entity)
@@ -2973,7 +2955,7 @@ namespace Wassup.Bridge
         {
             if (data == null) return;
             _effectTilesByCell[cell] = data;
-            if (UseTilemapView && tilemapMapView != null)
+            if (tilemapMapView != null)
                 tilemapMapView.SetEffectTile(cell, data.overlayTile);
             // unit 2 — 점유 셀 즉시 적용(순서 무관 불변식). 맵 빌드 시점엔 유닛이 없어
             // 현재는 후속 런타임 생성 루트(드림캐쳐/유닛 능력)에서만 도달. 재적용은 merge-key refresh 라 멱등.
@@ -3067,7 +3049,7 @@ namespace Wassup.Bridge
             }
 
             float3 worldOrigin = GridToWorldCenter(new Vector2Int(cell.x, cell.y), 0.05f);
-            // tilemap-view-backend 후속 — hazard 비주얼도 sim→view 변환 경계를 거친다(Legacy3D=identity).
+            // tilemap-view-backend 후속 — hazard 비주얼도 sim→view 변환 경계를 거친다(BoardSpace 경유).
             Vector3 hazardPos = (Vector3)Wassup.Core.BoardSpace.ToView(worldOrigin);
             var visual = Instantiate(so.visualPrefab, hazardPos, Quaternion.identity);
             var scale = ShapeToHazardVisualScale(so.shape, so.radius, visual.transform.localScale.y);
@@ -3100,7 +3082,6 @@ namespace Wassup.Bridge
             _em.SetName(entity, $"BlockingHazard_{so.name}_{cell.x}_{cell.y}");
 #endif
 
-
             if (so.visualPrefab == null)
             {
                 Debug.LogWarning($"[BattleBridge] BlockingHazardSO '{so.name}' has no visualPrefab. Spawned hazard will be invisible.");
@@ -3109,7 +3090,7 @@ namespace Wassup.Bridge
 
             EnsureBlockingHazardVisualRoot();
             var p = _em.GetComponentData<LocalTransform>(entity).Position;
-            // tilemap-view-backend 후속 — blocking hazard 비주얼도 sim→view 경계를 거친다(Legacy3D=identity).
+            // tilemap-view-backend 후속 — blocking hazard 비주얼도 sim→view 경계를 거친다(BoardSpace 경유).
             var visual = Instantiate(so.visualPrefab, (Vector3)Wassup.Core.BoardSpace.ToView(p), Quaternion.identity, _blockingHazardVisualRoot);
             var presenter = visual.GetComponent<BlockingHazardPresenter>();
             if (presenter == null)
@@ -3605,7 +3586,6 @@ namespace Wassup.Bridge
             });
             _em.AddComponent<Wassup.Battle.Effects.ModifierStatsDirty>(entity);
             _em.SetComponentEnabled<Wassup.Battle.Effects.ModifierStatsDirty>(entity, false);
-
         }
 
         private Material CreateAttackUnitRuntimeMaterial(Material source)

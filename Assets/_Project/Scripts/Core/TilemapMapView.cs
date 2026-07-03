@@ -89,7 +89,7 @@ namespace Wassup.Core
                 grid.cellLayout = GridLayout.CellLayout.Isometric;
                 grid.cellSize = tileSet != null ? tileSet.isoCellSize : new Vector3(1f, 0.5f, 1f);
             }
-            else // TilemapRect (Legacy3D 는 이 뷰를 쓰지 않는다)
+            else // TilemapRect
             {
                 grid.cellLayout = GridLayout.CellLayout.Rectangle;
                 grid.cellSize = new Vector3(tileSize, tileSize, 1f);
