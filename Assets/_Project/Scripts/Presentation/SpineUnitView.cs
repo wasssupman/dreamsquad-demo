@@ -15,6 +15,8 @@ namespace Wassup.Presentation
         private IDefenderSpineExtras _defenderExtras;
         private Entity _entity;
         private bool _dying;
+        private string _attackAnimationName;
+        private const float FacingMoveEpsilon = 0.001f;
         // tilemap-view-backend unit 3 — sim 좌표 보존. transform.position 은 view 좌표(ToView)라
         // sorting 셀 역산에 쓸 수 없다(z 소실). sorting 은 이 sim 좌표로 계산한다.
         private Vector3 _simWorld;
@@ -85,6 +87,7 @@ namespace Wassup.Presentation
 
         public void UpdatePosition(Vector3 world)
         {
+            FaceAlongMovement(world);
             ApplyRenderPosition(world);
         }
 
@@ -115,6 +118,7 @@ namespace Wassup.Presentation
             if (_dying || _skeleton == null) return;
             string attack = ResolveAnimation(_visualData.SpineAttackAnimation);
             if (string.IsNullOrEmpty(attack)) return;
+            _attackAnimationName = attack;
             var state = _skeleton.AnimationState;
             state.SetAnimation(0, attack, false);
             string idle = ResolveAnimation(_visualData.SpineIdleAnimation, "idle", "Idle", "walk", "Walk");
@@ -170,12 +174,40 @@ namespace Wassup.Presentation
             if (_dying || _skeleton == null || _skeleton.Skeleton == null) return;
             // worldPoint 는 sim 좌표(NotifyAttack 경유) — view 좌표로 변환해 view transform 과 같은 공간에서 비교.
             float dx = ((Vector3)Wassup.Core.BoardSpace.ToView(worldPoint)).x - transform.position.x;
-            if (Mathf.Approximately(dx, 0f)) return;
+            SetFacingByViewDelta(dx);
+        }
+
+        private void FaceAlongMovement(Vector3 world)
+        {
+            if (_dying || IsAttackAnimationPlaying()) return;
+            float dx = ((Vector3)Wassup.Core.BoardSpace.ToView(world)).x
+                       - ((Vector3)Wassup.Core.BoardSpace.ToView(_simWorld)).x;
+            SetFacingByViewDelta(dx);
+        }
+
+        private bool IsAttackAnimationPlaying()
+        {
+            if (_skeleton == null || string.IsNullOrEmpty(_attackAnimationName)) return false;
+            var current = _skeleton.AnimationState?.GetCurrent(0);
+            return current != null
+                   && !current.Loop
+                   && current.Animation != null
+                   && current.Animation.Name == _attackAnimationName;
+        }
+
+        private void SetFacingByViewDelta(float dx)
+        {
+            if (_dying || _skeleton == null || _skeleton.Skeleton == null) return;
+            if (Mathf.Abs(dx) <= FacingMoveEpsilon) return;
             float currentAbs = Mathf.Abs(_skeleton.Skeleton.ScaleX);
             if (currentAbs < 0.001f) currentAbs = 1f;
-            float desiredSign = dx >= 0f ? -1f : 1f;
+            float desiredSign = IsEnemyView()
+                ? (dx >= 0f ? 1f : -1f)
+                : (dx >= 0f ? -1f : 1f);
             _skeleton.Skeleton.ScaleX = currentAbs * desiredSign;
         }
+
+        private bool IsEnemyView() => _defenderExtras == null;
 
         public Vector3 ResolveCastAnchor()
         {
