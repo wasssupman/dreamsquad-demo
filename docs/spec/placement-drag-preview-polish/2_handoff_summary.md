@@ -9,11 +9,13 @@
 - 드래그 프리뷰가 배치 유닛과 **동일 45° 빌보드 틸트**로 섬(이전엔 꼿꼿). Play readback euler `(45,0,0)==(45,0,0)`.
 - 프리뷰 = **3노드**: `root(빈 wrapper, Billboard·position·Destroy 대상) → pivot(머리 위 +swayHangHeight = 고리) → child(SkeletonAnimation, 아래로 -오프셋)`. root 에 `Billboard`(Tilted, `CharacterBillboardTilt`).
 - **포인터 sway = 매달린 키링**(`aa17880` 계층·정정 → `4e51f1c` velocity-lean 최종): 포인터=고리, 몸이 아래 매달려 스윙. `swayPivot`=**pivot**(고리) 회전. 매 프레임 `Update()`: 목표각 = `-포인터속도 × swayLeanPerVel`(진행 반대 lean, clamp), 스프링이 lag/overshoot 로 추종. 끄는 내내 뒤로 눕고(가시), 멈추면 목표→0 스윙백+감쇠. (가속도-only 모델은 정상 드래그에서 ~2°=불가시라 폐기.)
-- sway 파라미터 7종 SerializeField (빠릿+진폭축소 튜닝 `1667841`): `swayHangHeight 1.5`/`swayMaxAngle 16`/`swayLeanPerVel 0.035`/`swaySpring 120`(≈1.74Hz)/`swayDamping 4.5`(ζ≈0.21)/`swayPointerResponse 26`/`swayPointerDecay 16`. 시뮬: 드래그 lean -15° → 정지 스윙백 +6.7° 오버슈트 → 수렴(zeroCross 4, ~0.6s 주기). (역동/큰진폭 원하면 spring↓·leanPerVel↑·damping↓.)
+- sway 파라미터는 **`DragSwaySettings` SO 로 분리**(`7300cbf`) — 컨트롤러가 런타임 AddComponent 라 인스펙터 튜닝이 안 돼서. `Assets/_Project/Data/Config/DragSwaySettings.asset` 편집 → 런타임 반영. DefenderSelector.swaySettings 에 할당(BattleScene). 미할당 시 클래스 기본값 폴백. 현재값(빠릿+저진폭): `hangHeight 1.5`/`maxAngle 16`/`leanPerVel 0.035`/`spring 120`(≈1.74Hz)/`damping 4.5`(ζ≈0.21)/`pointerResponse 26`/`pointerDecay 16`. 시뮬: 드래그 -15° → 정지 스윙백 +6.7° → 수렴(~0.6s). (역동/큰진폭 = spring↓·leanPerVel↑·damping↓.)
 - fallback capsule 프리뷰: `swayPivot=null` → sway/빌보드 스킵(스코프 밖).
 
 ## Key Files
-- `Assets/_Project/Scripts/UI/DefenderDragPlacementController.cs` — 전부 여기. `TryCreateSpinePreview`(계층), `Update()`(스프링), `UpdateDrag`(impulse), `CleanupSession`(리셋), `DragSession.swayPivot`.
+- `Assets/_Project/Scripts/UI/DefenderDragPlacementController.cs` — 전부 여기. `TryCreateSpinePreview`(3노드 계층), `Update()`(velocity-lean 스프링), `UpdateDrag`(포인터속도 측정), `CleanupSession`(리셋), `DragSession.swayPivot`, `Sway` 프로퍼티(SO 폴백).
+- `Assets/_Project/Scripts/Data/DragSwaySettings.cs` + `Assets/_Project/Data/Config/DragSwaySettings.asset` — sway 튜닝값(에디터 편집점).
+- `Assets/_Project/Scripts/UI/DefenderSelector.cs` — 컨트롤러 런타임 부착 + `swaySettings` SO 주입(`Configure`).
 - 소유권 참조: `Assets/_Project/Scripts/Presentation/Billboard.cs`(root 회전 소유), `SpineUnitView.cs`(배치 유닛의 동일 Billboard 셋업).
 
 ## Verified
