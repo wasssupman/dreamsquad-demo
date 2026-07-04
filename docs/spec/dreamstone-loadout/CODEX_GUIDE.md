@@ -37,6 +37,17 @@
 
 각 unit 구현 후 투트랙 리뷰(code-reviewer 일반 품질 + ecs-reviewer ECS 도메인) → 수정 → 다음 unit. 설계 크리틱은 이미 1회 완료(2026-07-04, 스펙에 반영됨).
 
+## 리뷰 요청 시그널 (Claude 세션 감시용)
+
+리뷰는 병행 Claude 세션이 수행한다. unit 하나의 완료 기준을 충족하면 아래 한 줄을 마커 파일에 **append** 하라 (디렉토리 없으면 생성. 이 파일은 세션 간 시그널 전용 — **커밋 금지**):
+
+```bash
+mkdir -p .omc/review-requests
+echo "unit=<N> status=ready ts=$(date -u +%Y-%m-%dT%H:%M:%SZ) note=<한줄 요약>" >> .omc/review-requests/dreamstone-loadout.log
+```
+
+Claude 세션이 이 파일과 새 커밋을 감시하고 있다가 리뷰를 시작한다. 리뷰 지적 반영 전까지 다음 unit 으로 넘어가지 말 것.
+
 ## 검증 질문 (feature 전체의 합격선)
 
 스쿼드 페이지에서 드림스톤을 최대 4개 장착·저장하고 게임을 시작하면, 배치된(그리고 이후 배치되는) 모든 아군 유닛에 스톤 스탯이 매치 내내 적용되는가? 유니크 공격력 스톤 4개 = 정확히 +30%인가?
