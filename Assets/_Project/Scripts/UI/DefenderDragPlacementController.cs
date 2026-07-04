@@ -21,17 +21,17 @@ namespace Wassup.UI
         [Header("Drag sway (hanging keyring)")]
         // 고리(pivot)→몸 길이. 캐릭터가 이 높이만큼 위 pivot 아래에 매달린다(로컬 단위, root 스케일 적용).
         [SerializeField] private float swayHangHeight = 1.5f;
-        [SerializeField] private float swayMaxAngle = 24f;
+        [SerializeField] private float swayMaxAngle = 28f;
         // 포인터 속도(px/s) → 목표 lean 각(deg). 몸이 진행 반대로 이만큼 눕는다.
-        [SerializeField] private float swayLeanPerVel = 0.05f;
-        // 목표각 추종 강성(↑=빠른 추종/짧은 주기). ω=sqrt(spring).
-        [SerializeField] private float swaySpring = 50f;
-        // 감쇠(↓=오래 흔들림/overshoot 큼). ζ = damping / (2·sqrt(spring)).
-        [SerializeField] private float swayDamping = 5f;
+        [SerializeField] private float swayLeanPerVel = 0.06f;
+        // 목표각 추종 강성(↑=빠른 추종/짧은 주기·스냅). ω=sqrt(spring).
+        [SerializeField] private float swaySpring = 65f;
+        // 감쇠(↓=바운스 큼/오래 흔들림). ζ = damping / (2·sqrt(spring)). 3 ≈ ζ0.19 = 2~3회 오버슈트.
+        [SerializeField] private float swayDamping = 3f;
         // 포인터 속도 스무딩 반응 속도(1/s). 클수록 즉각.
         [SerializeField] private float swayPointerResponse = 20f;
-        // 입력 없을 때 포인터 속도가 0으로 감쇠(1/s) → 정지 시 감속이 역스윙으로 등록.
-        [SerializeField] private float swayPointerDecay = 12f;
+        // 입력 없을 때 포인터 속도가 0으로 감쇠(1/s) → 정지 시 목표 급락 = 큰 스윙백(스프링 릴리즈).
+        [SerializeField] private float swayPointerDecay = 16f;
 
         private DragSession _session;
         private Material _previewMaterial;
