@@ -18,11 +18,20 @@ namespace Wassup.UI
         [SerializeField] private float previewHeight = 0.35f;
         [SerializeField] private float previewScale = 0.65f;
 
-        [Header("Drag sway")]
-        [SerializeField] private float swayMaxAngle = 18f;
-        [SerializeField] private float swaySpring = 90f;
-        [SerializeField] private float swayDamping = 12f;
-        [SerializeField] private float swayImpulseScale = 0.6f;
+        [Header("Drag sway (hanging keyring)")]
+        // 고리(pivot)→몸 길이. 캐릭터가 이 높이만큼 위 pivot 아래에 매달린다(로컬 단위, root 스케일 적용).
+        [SerializeField] private float swayHangHeight = 1.5f;
+        [SerializeField] private float swayMaxAngle = 24f;
+        // 중력 복원(↑=빠른 스윙/짧은 주기). ω=sqrt(spring).
+        [SerializeField] private float swaySpring = 60f;
+        // 감쇠(↓=오래 흔들림). ζ = damping / (2·sqrt(spring)).
+        [SerializeField] private float swayDamping = 6f;
+        // 포인터(고리) 가속도 → 각속도 impulse 배율.
+        [SerializeField] private float swayAccelScale = 0.03f;
+        // 포인터 속도 스무딩 반응 속도(1/s). 클수록 즉각.
+        [SerializeField] private float swayPointerResponse = 20f;
+        // 입력 없을 때 포인터 속도가 0으로 감쇠(1/s) → 정지 시 감속이 역스윙으로 등록.
+        [SerializeField] private float swayPointerDecay = 12f;
 
         private DragSession _session;
         private Material _previewMaterial;
@@ -30,6 +39,9 @@ namespace Wassup.UI
         private float _swayVel;
         private float _lastPointerX;
         private bool _hasLastPointer;
+        private float _ptrVelRaw;   // 최신 측정 포인터 x속도(px/s), 입력 없으면 0으로 감쇠
+        private float _ptrVel;      // 스무딩된 포인터 x속도
+        private float _prevPtrVel;  // 직전 프레임 스무딩 속도(가속도 계산용)
 
         private struct DragSession
         {
@@ -68,7 +80,20 @@ namespace Wassup.UI
         private void Update()
         {
             if (!_session.active || _session.preview == null || _session.swayPivot == null) return;
-            float dt = Time.unscaledDeltaTime;
+            float dt = Mathf.Max(Time.unscaledDeltaTime, 1e-4f);
+
+            // 포인터(고리) 속도: 최신 샘플로 스무딩 chase, 입력 없으면 0으로 감쇠.
+            // → 정지 시 속도가 0으로 떨어지는 것도 "감속"으로 잡혀 역스윙이 발생.
+            _ptrVel = Mathf.Lerp(_ptrVel, _ptrVelRaw, 1f - Mathf.Exp(-swayPointerResponse * dt));
+            _ptrVelRaw = Mathf.Lerp(_ptrVelRaw, 0f, 1f - Mathf.Exp(-swayPointerDecay * dt));
+
+            // 매달린 진자 forcing = 고리 가속도(=스무딩 속도의 변화). 등속이면 0 → 똑바로 매달림.
+            // 출발 시 몸이 진행 반대로 lag, 정지 시 반대로 overshoot.
+            float accelImpulse = _ptrVel - _prevPtrVel;
+            _prevPtrVel = _ptrVel;
+            _swayVel += -accelImpulse * swayAccelScale;
+
+            // 중력 복원(각0=수직 아래로) + 감쇠.
             _swayVel += (-swaySpring * _swayAngle - swayDamping * _swayVel) * dt;
             _swayAngle = Mathf.Clamp(_swayAngle + _swayVel * dt, -swayMaxAngle, swayMaxAngle);
             _session.swayPivot.localRotation = Quaternion.Euler(0f, 0f, _swayAngle);
@@ -78,8 +103,12 @@ namespace Wassup.UI
         {
             if (!_session.active) return;
 
+            // 고리(포인터) 수평 속도만 측정 — forcing(가속도)은 Update 가 이 속도의 변화로 계산.
             if (_hasLastPointer)
-                _swayVel += -(screenPosition.x - _lastPointerX) * swayImpulseScale;
+            {
+                float ddt = Mathf.Max(Time.unscaledDeltaTime, 1e-4f);
+                _ptrVelRaw = (screenPosition.x - _lastPointerX) / ddt;
+            }
             _lastPointerX = screenPosition.x;
             _hasLastPointer = true;
 
@@ -188,9 +217,17 @@ namespace Wassup.UI
             var billboard = root.AddComponent<Billboard>();
             billboard.Setup(BillboardMode.Tilted, BattleBridge.CharacterBillboardTilt);
 
+            // 매달린 키링: pivot(고리)을 머리 위(+Y)로, 몸(skeleton)을 그 아래(-Y)로 오프셋.
+            // → pivot 의 Z회전 = 몸이 고리 아래에서 스윙(발 고정 오뚝이 아님).
+            var pivot = new GameObject($"DragPreview_{unitData.displayName}_Pivot");
+            pivot.transform.SetParent(root.transform, false);
+            pivot.transform.localPosition = new Vector3(0f, swayHangHeight, 0f);
+            pivot.transform.localRotation = Quaternion.identity;
+            pivot.transform.localScale = Vector3.one;
+
             var child = new GameObject($"DragPreview_{unitData.displayName}_Spine");
-            child.transform.SetParent(root.transform, false);
-            child.transform.localPosition = Vector3.zero;
+            child.transform.SetParent(pivot.transform, false);
+            child.transform.localPosition = new Vector3(0f, -swayHangHeight, 0f);
             child.transform.localRotation = Quaternion.identity;
             child.transform.localScale = Vector3.one;
 
@@ -217,7 +254,7 @@ namespace Wassup.UI
             root.transform.localScale = Vector3.one * scale;
             SetPreviewAlpha(skeleton, 0.62f);
             preview = root;
-            swayPivot = child.transform;
+            swayPivot = pivot.transform; // 고리(pivot)을 회전 → 몸이 아래에서 스윙
             return true;
         }
 
@@ -296,6 +333,9 @@ namespace Wassup.UI
             if (_session.preview != null) Destroy(_session.preview);
             _swayAngle = 0f;
             _swayVel = 0f;
+            _ptrVelRaw = 0f;
+            _ptrVel = 0f;
+            _prevPtrVel = 0f;
             _hasLastPointer = false;
             _session = default;
             if (placementInput != null) placementInput.SetClickPlacementEnabled(true);
