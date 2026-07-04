@@ -33,3 +33,4 @@
 > 완료 확인(부분) 2026-07-04 — 코드 구현 + 리뷰 M1 반영 + 리그 게이트 PASS(compile clean, EditMode 12/12 회귀 green). OutgameScene wiring(stoneCatalog/stoneSlotsContainer, 구 ownedContainer 정리) + Play 육안 검증 pending.
 > 완료 확인(2차) 2026-07-04 — OutgameScene `stoneCatalog` 씬 배선(YAML 1줄) + `stoneSlotsContainer` 런타임 fallback 커밋. 리그 게이트 PASS(compile + EditMode 12/12 + PlayMode 4/4, Outgame 왕복 포함). 잔여: 스쿼드 페이지 Play 육안/스크린샷(레이아웃·피커 렌더·등급 색, 구 ownedContainer 정리 여부 판단).
 > 완료 확인(3차) 2026-07-04 — 육안 검증 지적 반영: 피커 캔버스 rect 0×0 (스크림 무효 → 모달이 메인과 겹침) 풀스트레치 수정 + 라틴 전용 폰트의 두부 라벨(＋/해제/닫기) ASCII 화(+/CLEAR/CLOSE) + 씬 TestModeButton 형제 순서(패널 관통) 정정. 리그 상호작용 진단(RC1 회귀 어설션 포함) 4/4 PASS. 최종 육안 재확인 대기.
+> 완료 확인(4차) 2026-07-04 — "유닛 선택 → 드림스톤 페이즈 전환" 버그 근본 수정: 중첩 Canvas 의 overrideSorting 이 렌더만 올리고 레이캐스트 우선순위는 못 올려 스크림이 클릭을 못 막던 것 (리그 물리클릭 시뮬로 재현→수정 실증). 피커를 루트 캔버스 직속 last-sibling 패널로 재구성 + 그리드를 슬롯 줄과 비겹침 하단 밴드로 이동. 물리클릭/상호작용 진단 + smoke 5/5 PASS.

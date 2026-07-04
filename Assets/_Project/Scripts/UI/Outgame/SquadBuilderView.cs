@@ -58,6 +58,13 @@ namespace Wassup.UI
             Refresh();
         }
 
+        // Structural fix (2026-07-04 리그 물리클릭 재현) — don't leave the picker modal
+        // active on the root canvas after SquadPanel itself is disabled/closed.
+        private void OnDisable()
+        {
+            ClosePicker();
+        }
+
         private void EnsureBuilt()
         {
             if (_built) return;
@@ -219,6 +226,13 @@ namespace Wassup.UI
             }
 
             UiLayer.Apply(_pickerPanel);
+            // Structural raycast-priority fix (2026-07-04 리그 물리클릭 재현) — a nested
+            // canvas's overrideSorting only raises RENDER order, not GraphicRaycaster
+            // event priority, so taps still resolved to the main page's slots underneath
+            // even with the modal visually on top. Same-canvas last-sibling wins both
+            // render order and raycast priority (see BuildPickerOnce for the panel's
+            // parent — the root Canvas, not a nested one).
+            _pickerPanel.transform.SetAsLastSibling();
             _pickerPanel.SetActive(true);
         }
 
@@ -301,36 +315,24 @@ namespace Wassup.UI
             Refresh();
         }
 
-        // Runtime overlay canvas (DreamcatcherSelectionView pattern): its own Canvas
-        // (high sortingOrder) + a near-opaque full-screen scrim Image that blocks
-        // background input while the modal is open.
+        // Structural fix (2026-07-04 리그 물리클릭 재현) — a nested Canvas's
+        // overrideSorting only raises RENDER order; GraphicRaycaster event priority
+        // still follows the enclosing canvas's raycast order, so taps "through" the
+        // modal resolved to the main page's slots underneath it (a unit-slot pick was
+        // silently hitting a stone slot instead). Fix: no separate canvas — the picker
+        // panel is a same-canvas sibling parented directly under the root Canvas, and
+        // OpenPicker calls SetAsLastSibling() on open so it wins both render order and
+        // raycast priority. Scrim: near-opaque full-screen Image blocks background input.
         private void BuildPickerOnce()
         {
             if (_pickerBuilt) return;
             _pickerBuilt = true;
 
-            var canvasGo = new GameObject("StonePickerCanvas", typeof(RectTransform));
-            canvasGo.transform.SetParent(transform, false);
-            // RC1 (2026-07-04 육안 검증에서 적발) — new GameObject 의 RectTransform 기본값은
-            // 중앙 앵커 + sizeDelta 0x0. 부모(SquadPanel)가 풀스크린이므로 스트레치 =
-            // 전면 스크림; 미설정 시 스크림 면적이 0이 되어 모달이 메인 화면과 맨살로 겹쳐 보인다.
-            var crt = (RectTransform)canvasGo.transform;
-            crt.anchorMin = Vector2.zero; crt.anchorMax = Vector2.one;
-            crt.offsetMin = Vector2.zero; crt.offsetMax = Vector2.zero;
-            var canvas = canvasGo.AddComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = 50;
-            // Picker canvas is nested under this view (not a root object), so
-            // sortingOrder alone is ignored without overrideSorting — unlike
-            // DreamcatcherSelectionView, whose canvas host is a root object.
-            canvas.overrideSorting = true;
-            var scaler = canvasGo.AddComponent<CanvasScaler>();
-            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1920, 1080);
-            canvasGo.AddComponent<GraphicRaycaster>();
+            var hostCanvas = GetComponentInParent<Canvas>();
+            Transform parent = hostCanvas != null ? hostCanvas.rootCanvas.transform : transform.root;
 
-            _pickerPanel = new GameObject("Panel", typeof(RectTransform), typeof(Image));
-            _pickerPanel.transform.SetParent(canvasGo.transform, false);
+            _pickerPanel = new GameObject("StonePickerPanel", typeof(RectTransform), typeof(Image));
+            _pickerPanel.transform.SetParent(parent, false);
             var prt = (RectTransform)_pickerPanel.transform;
             prt.anchorMin = Vector2.zero; prt.anchorMax = Vector2.one; prt.offsetMin = Vector2.zero; prt.offsetMax = Vector2.zero;
             _pickerPanel.GetComponent<Image>().color = new Color(0.03f, 0.03f, 0.06f, 0.94f);
@@ -346,21 +348,24 @@ namespace Wassup.UI
             var gridGo = new GameObject("Grid", typeof(RectTransform), typeof(GridLayoutGroup));
             gridGo.transform.SetParent(_pickerPanel.transform, false);
             _pickerGrid = gridGo.GetComponent<RectTransform>();
-            _pickerGrid.sizeDelta = new Vector2(1400, 560); _pickerGrid.anchoredPosition = new Vector2(0, 20);
+            // RC2 (2026-07-04) — grid band pinned below the slot rows (unit row ~-180,
+            // stone row ~-480) so a stray click at the same screen coords right after
+            // the modal closes cannot land on a slot button underneath it.
+            _pickerGrid.sizeDelta = new Vector2(1400, 440); _pickerGrid.anchoredPosition = new Vector2(0, -170);
             var glg = gridGo.GetComponent<GridLayoutGroup>();
             glg.cellSize = new Vector2(150, 70);
             glg.spacing = new Vector2(12, 12);
             glg.childAlignment = TextAnchor.UpperCenter;
 
             var clearBtn = CreateButton("CLEAR", _pickerPanel.transform, new Vector2(200, 60), new Color(0.5f, 0.16f, 0.16f, 1f), out _);
-            ((RectTransform)clearBtn.transform).anchoredPosition = new Vector2(-160, -380);
+            ((RectTransform)clearBtn.transform).anchoredPosition = new Vector2(-160, -455);
             clearBtn.onClick.AddListener(OnPickerClear);
 
             var closeBtn = CreateButton("CLOSE", _pickerPanel.transform, new Vector2(200, 60), new Color(0.28f, 0.28f, 0.32f, 1f), out _);
-            ((RectTransform)closeBtn.transform).anchoredPosition = new Vector2(160, -380);
+            ((RectTransform)closeBtn.transform).anchoredPosition = new Vector2(160, -455);
             closeBtn.onClick.AddListener(ClosePicker);
 
-            UiLayer.Apply(canvasGo);
+            UiLayer.Apply(_pickerPanel);
             _pickerPanel.SetActive(false);
         }
 
