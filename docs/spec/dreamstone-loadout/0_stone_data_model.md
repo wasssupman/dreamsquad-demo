@@ -29,3 +29,5 @@
 
 - compile 클린
 - EditMode `DreamstoneCatalogTests` 통과: validator (a)(b)(c) + `ById` 조회
+
+> 완료 확인 2026-07-04 — Unity compile clean, `DreamstoneCatalogTests` validator 조건 PASS. EditMode 전체 재실행은 기존 `ObstaclePlacerTests.Place_PreservesWalkAndMinimumPlaceRatio` 실패 1건만 재발.

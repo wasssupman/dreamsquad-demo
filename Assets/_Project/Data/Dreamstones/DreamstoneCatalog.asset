@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 839add7e37d514ff887f817d40972523, type: 3}
+  m_Name: DreamstoneCatalog
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.Dreamstone.DreamstoneCatalog
+  stones:
+  - {fileID: 11400000, guid: 7333262751208405db2720e94d810f75, type: 2}
+  - {fileID: 11400000, guid: b630d111b1e0b4278b09767739e2ecb8, type: 2}
+  - {fileID: 11400000, guid: 2b2ba02a4b76b48dba8bd2ff231ca279, type: 2}
+  - {fileID: 11400000, guid: 34c50127675cf4825ac71ab1c97b53b6, type: 2}
+  - {fileID: 11400000, guid: 170ece09e2fa6424aaaa270356e42a51, type: 2}
+  - {fileID: 11400000, guid: 313fc92cc92bb42508087dec13b41099, type: 2}
+  - {fileID: 11400000, guid: ffa3c448a93e84e419044d5150ee0952, type: 2}
+  - {fileID: 11400000, guid: 39e09e15a52b940cc98a6befc11f16f1, type: 2}
+  - {fileID: 11400000, guid: 5b47a8ad4352e4d4e8b4df3719633948, type: 2}
+  - {fileID: 11400000, guid: 550b16e4e50024f829f531ca11e636fe, type: 2}
+  - {fileID: 11400000, guid: 16ab111c2afb747ffb2cef553e3a925d, type: 2}
+  - {fileID: 11400000, guid: cc59574c53e864fa1b448fa4ab47b861, type: 2}
+  - {fileID: 11400000, guid: 2f26443b1fd5f460d83e2f43de3dce93, type: 2}
+  - {fileID: 11400000, guid: 658e8cd6677dd4cc58da5b5e4ecd6534, type: 2}
+  - {fileID: 11400000, guid: 87db6a79d90b24d57bff0288da491c0c, type: 2}
+  - {fileID: 11400000, guid: d9482b105e2774ad6a912112b432924b, type: 2}
