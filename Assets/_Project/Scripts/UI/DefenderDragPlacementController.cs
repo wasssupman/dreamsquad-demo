@@ -5,6 +5,7 @@ using UnityEngine;
 using Wassup.Bridge;
 using Wassup.Core;
 using Wassup.Data;
+using Wassup.Presentation;
 using Wassup.Rendering;
 
 namespace Wassup.UI
@@ -25,6 +26,7 @@ namespace Wassup.UI
             public bool active;
             public DefenderUnitData unit;
             public GameObject preview;
+            public Transform swayPivot;
             public Vector2Int? hoverTile;
             public bool isValidTile;
         }
@@ -46,7 +48,8 @@ namespace Wassup.UI
             {
                 active = true,
                 unit = unitData,
-                preview = CreatePreview(unitData),
+                preview = CreatePreview(unitData, out var swayPivot),
+                swayPivot = swayPivot,
             };
             if (placementInput != null) placementInput.SetClickPlacementEnabled(false);
             UpdateDrag(screenPosition);
@@ -143,20 +146,31 @@ namespace Wassup.UI
             return true;
         }
 
-        private GameObject CreatePreview(DefenderUnitData unitData)
+        private GameObject CreatePreview(DefenderUnitData unitData, out Transform swayPivot)
         {
-            if (TryCreateSpinePreview(unitData, out var spinePreview))
+            if (TryCreateSpinePreview(unitData, out var spinePreview, out swayPivot))
                 return spinePreview;
+            swayPivot = null;
             return CreateFallbackPreview(unitData);
         }
 
-        private bool TryCreateSpinePreview(DefenderUnitData unitData, out GameObject preview)
+        private bool TryCreateSpinePreview(DefenderUnitData unitData, out GameObject preview, out Transform swayPivot)
         {
             preview = null;
+            swayPivot = null;
             if (unitData == null || unitData.skeletonDataAsset == null) return false;
 
-            var go = new GameObject($"DragPreview_{unitData.displayName}_Spine");
-            var skeleton = go.AddComponent<SkeletonAnimation>();
+            var root = new GameObject($"DragPreview_{unitData.displayName}");
+            var billboard = root.AddComponent<Billboard>();
+            billboard.Setup(BillboardMode.Tilted, BattleBridge.CharacterBillboardTilt);
+
+            var child = new GameObject($"DragPreview_{unitData.displayName}_Spine");
+            child.transform.SetParent(root.transform, false);
+            child.transform.localPosition = Vector3.zero;
+            child.transform.localRotation = Quaternion.identity;
+            child.transform.localScale = Vector3.one;
+
+            var skeleton = child.AddComponent<SkeletonAnimation>();
             skeleton.skeletonDataAsset = unitData.skeletonDataAsset;
             skeleton.initialSkinName = string.IsNullOrEmpty(unitData.spineSkinName) ? "default" : unitData.spineSkinName;
             skeleton.Initialize(true);
@@ -176,9 +190,10 @@ namespace Wassup.UI
                 skeleton.AnimationState.SetAnimation(0, animation, true);
 
             float scale = Mathf.Max(0.01f, unitData.spineVisualScale * BattleBridge.CharacterVisualScale);
-            go.transform.localScale = Vector3.one * scale;
+            root.transform.localScale = Vector3.one * scale;
             SetPreviewAlpha(skeleton, 0.62f);
-            preview = go;
+            preview = root;
+            swayPivot = child.transform;
             return true;
         }
 
