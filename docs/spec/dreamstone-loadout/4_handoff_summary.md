@@ -37,6 +37,7 @@ dreamstone-loadout 구현 종료. 최신 계약은 README + 번호 문서 우선
 ## Notes
 
 - **되돌리지 말 것**: set-then-apply(배치 전 직접 등록은 BeginPlacement 클리어에 지워짐) · MatchesDcAxis의 명시적 `All` 분기(빠지면 조용한 no-op) · 스톤 중복 장착 허용(캡 산식 전제) · CardTargetAxis.All은 enum 끝(직렬화 보존)
+- REDRAFT 스톤 누수 수정(Codex 외부 리뷰 HIGH, 2026-07-04): `OnRedraftRequested`/`TryConfirm` 두 드래프트 진입점에서만 pending 스톤 클리어. **teardown 일괄 클리어는 금지** — RESTART 의 스톤 재적용 계약과 충돌한다.
 - 등급 캡 표는 validator 상수(런타임 소비자 없음). 런타임 표시 필요 시 SO 승격
 - 씬 배선은 YAML 정밀 삽입 2줄(에디터 잠금 상태에서 진행) — 에디터가 씬을 다시 저장해도 커밋돼 있어 안전. stoneSlotsContainer는 fallback이라 씬 authoring 선택사항
 

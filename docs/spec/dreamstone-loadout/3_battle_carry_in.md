@@ -23,6 +23,7 @@
 - GameManager: `StartSquadMatch` 와 **`StartTestModeMatch`(별도 미러 메서드 — 누락 주의)** 양쪽에서 `SelectedSquad().stoneIds` → `DreamstoneCatalog.ById` 해석(null/빈칸 skip) → `bridge.SetDreamstones(...)`. 드래프트 폴백 경로는 호출 없음.
 - 같은 스탯 스톤 4개도 stackId 가 각각 달라 additive 슬롯 4개로 공존(+30%). 버프(≥1)=additive, 감소형(<1)=multiplicative — 기존 `modifier-additive-authoring` 정책·one-directional 채널 불변식 그대로 (각 스톤은 stackId 당 단일 고정값이라 어떤 (stat,op,stackId) 채널도 1.0 경계를 straddle 하지 않음 — EffectiveHealth 스톤은 mult<1 로 항상 multiplicative).
 - **알려진 기존 버그(범위 밖)**: headless 드림캐쳐 auto-pick 이 `SetPhase(Placement)` 시점(= `BeginPlacement` 클리어 직전, PlacementPhaseView.cs:56-58)에 등록돼 지워지는 문제. 스톤의 set-then-apply 와 독립이므로 이 spec 에서 고치지 않는다 → README 후속 후보. smoke 테스트는 카드 선택을 배치 시작 이후로 두어 이 경로와 얽히지 않게 설계.
+- **redraft/draft 확정 경로는 pending 스톤을 명시 클리어** (Codex 외부 리뷰 HIGH 반영, 2026-07-04): `BattleBridge.OnRedraftRequested()` 와 `DraftController.TryConfirm()` 둘 다 진입 시점에 `_pendingDreamstones`/`SetDreamstones(null)` 을 클리어한다 — 드래프트 폴백 경로는 스톤 개념이 없다는 계약을 실제로 강제. teardown(`TeardownCurrentBattle`) 에서 일괄 클리어하지 않는 이유: 정상 RESTART 는 스톤 재적용이 계약(완료 기준의 "재시작 회귀")이라 teardown 레벨 클리어와 충돌한다.
 
 ## 완료 기준
 

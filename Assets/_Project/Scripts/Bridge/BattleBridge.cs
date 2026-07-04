@@ -309,6 +309,9 @@ namespace Wassup.Bridge
                 logger.StartSession();
             }
             if (_world != null) TeardownCurrentBattle();
+            // dreamstone-loadout — redraft discards the squad staging; a draft match
+            // must never inherit stones (Codex review 2026-07-04).
+            _pendingDreamstones = null;
             if (resultScreen != null) resultScreen.Hide();
             _running = false;
             _resultShown = false;

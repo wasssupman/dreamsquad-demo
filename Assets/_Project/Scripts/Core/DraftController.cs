@@ -119,6 +119,9 @@ namespace Wassup.Core
 
             if (battleBridge != null)
             {
+                // draft-confirmed match carries no squad stones by construction
+                // (스펙: 드래프트 폴백 경로 미적용).
+                battleBridge.SetDreamstones(null);
                 battleBridge.SetDefenderPool(_session.PickedArray());
                 battleBridge.SetMapGenerationOptions(SelectedMapGenerationOptions);
 

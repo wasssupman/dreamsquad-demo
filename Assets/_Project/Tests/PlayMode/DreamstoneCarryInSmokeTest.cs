@@ -204,6 +204,88 @@ namespace Wassup.Tests.PlayMode
                 "StartSquadMatch carry-in (wired stoneCatalog): 4x Unique ATK stone = +30% damageMul");
         }
 
+        // dreamstone-loadout — regression for a Codex external-review HIGH: stones
+        // staged for a squad match must NOT leak into a subsequently-drafted match.
+        // Root cause: DraftController.TryConfirm() never cleared BattleBridge's
+        // pending stone list, so a stale staging survived into the next
+        // BeginPlacement (draft mode's "드래프트 폴백 경로 미적용" contract violated).
+        // Mirrors DraftFlowSmokeTest's discard/confirm technique, but driven against
+        // the real scene's BattleBridge + DraftController (not a synthetic bare
+        // GameObject) so it exercises the actual TryConfirm() -> SetDreamstones(null) fix.
+        [UnityTest]
+        public IEnumerator StonesDoNotLeakIntoRedraftedMatch()
+        {
+            LogAssert.ignoreFailingMessages = true;
+            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            for (int i = 0; i < 6; i++) yield return null;
+
+            var bridge = Object.FindObjectOfType<BattleBridge>();
+            Assert.IsNotNull(bridge, "BattleBridge present");
+            NeutralizeSceneController();
+            var cat = FindCatalog();
+            Assert.IsNotNull(cat, "DefenderCatalog loaded");
+            var ranger = cat.ById("ranger");
+            Assert.IsNotNull(ranger, "ranger unit exists");
+            var gm = Object.FindObjectOfType<GameManager>();
+            Assert.IsNotNull(gm, "GameManager present");
+            var draftController = Object.FindObjectOfType<DraftController>();
+            Assert.IsNotNull(draftController, "DraftController present in BattleScene");
+
+            // 1) Stage 4x Unique ATK stone for a squad match and confirm it actually
+            // applies (same staging as EquippedStones_ApplyStackAndSurviveRestart).
+            var atkUnique = ScriptableObject.CreateInstance<DreamstoneData>();
+            atkUnique.id = "stone_atk_unique_test";
+            atkUnique.grade = DreamstoneGrade.Unique;
+            atkUnique.effect = new CardEffect { kind = CardBuffKind.AttackDamage, percent = 7.5f };
+            var fourStones = new List<DreamstoneData> { atkUnique, atkUnique, atkUnique, atkUnique };
+
+            bridge.SetDreamstones(fourStones);
+            bridge.SetDefenderPool(new[] { ranger });
+            bridge.BeginPlacement();
+            gm.CostRuntime.ResetToStart();
+            gm.CostRuntime.AddCost(1000);
+            yield return null;
+
+            Assert.IsTrue(PlaceFirstValid(bridge, ranger), "place ranger under squad staging");
+            yield return null;
+            yield return null;
+            yield return null;
+
+            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+            Assert.AreEqual(1.30f, GetStat(bridge, em, "ranger").damageMul, 0.01f,
+                "stone staging established before drafting a new match");
+
+            // 2) Drive a full draft flow (DraftFlowSmokeTest's discard/confirm
+            // technique) against the scene's real DraftController/BattleBridge wiring.
+            draftController.BeginDraft(12345);
+            yield return null;
+            Assert.GreaterOrEqual(draftController.Session.Pool.Count, draftController.DiscardCount,
+                "draft pool has enough entries to discard from");
+            for (int i = 0; i < draftController.DiscardCount; i++)
+                Assert.IsTrue(draftController.ToggleDiscard(draftController.Session.Pool[i]), $"discard {i} succeeds");
+            Assert.IsTrue(draftController.Session.IsFull, "session full after discards");
+            Assert.IsTrue(draftController.TryConfirm(), "draft confirms -- calls SetDreamstones(null) under the fix");
+            yield return null;
+
+            // 3) Enter placement for the drafted match and place a drafted unit --
+            // must NOT inherit the stale stone staging from step 1.
+            bridge.BeginPlacement();
+            gm.CostRuntime.ResetToStart();
+            gm.CostRuntime.AddCost(1000);
+            yield return null;
+
+            var draftedUnits = draftController.Session.PickedArray();
+            Assert.IsTrue(draftedUnits.Length > 0, "draft produced picks");
+            var draftedUnit = draftedUnits[0];
+            Assert.IsTrue(PlaceFirstValid(bridge, draftedUnit), "place drafted unit");
+            yield return null;
+            yield return null;
+            yield return null;
+
+            Assert.AreEqual(1.0f, GetStat(bridge, em, draftedUnit.id).damageMul, 0.01f,
+                "drafted match must not inherit the previous squad match's stones (Codex review 2026-07-04)");
+        }
+
         private static DreamcatcherCard MakeCard(CardTargetAxis axis, CardBuffKind kind, float pct)
         {
             var c = ScriptableObject.CreateInstance<DreamcatcherCard>();
