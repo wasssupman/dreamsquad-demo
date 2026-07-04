@@ -138,6 +138,17 @@ code + git history        구현 상세
 - **타일 게이지 시각 폴리시** [S] · fill inset `pad=0.18` SO화, 코너 조인트 갭 보정, 4-edge 계단식 → 연속 SDF 셰이더 교체.
 - **hazard 체력 표시 / 상태이상 틴트 합성 / 웨이브 압력 게이지 / 보스 상시 바** — unit-health-display README 후속 후보.
 
+#### 배치 프리뷰 / 범위 (placement-attack-range-preview, placement-drag-preview-polish)
+
+드래그 배치 UX 2종(공격범위 격자 표시 + 프리뷰 각도/sway·정렬) 완료 2026-07-04 후 남은 항목.
+
+- **배치 스킬 범위 표시** [M] · `onPlaceRange`/`hazardCastRange` 를 다른 색 채널로. 웜(공격)/쿨(스킬) 색코드 + 채널별 펄스 위상차, 필요 시 border 타일. 2번째 색 채널 시점에 `EnsureRangeTilemap`/펄스 로직 파라미터 추출. (range-preview)
+- **Guardian 어그로 반경 시각화** [S] · `aggroRange` 를 또 다른 표기로(공격 범위와 별개 성격). (range-preview)
+- **이미 배치된 유닛 선택/탭 시 범위 표시** [S] · 현재는 드래그 중만. (range-preview)
+- **배치 유닛 idle sway** [S] · 현재 sway 는 드래그 프리뷰 전용. 배치된 유닛의 상시 미세 흔들림. (drag-preview)
+- **드롭 bounce / 세로·전후 흔들림** [S] · 현재 sway 는 좌우 1축. 드롭 착지 반동·다축 진자. (drag-preview)
+- **fallback capsule 프리뷰 각도/sway** [S] · Spine 없는 유닛 경로(현재 스킵, 3D 프리미티브라 무영향). (drag-preview)
+
 #### Modifier framework — Producer 확장 (modifier-framework-and-healer)
 
 framework 코어 변경 0. 새 producer 레이어 추가로 다양한 효과 적용 경로 확보. producer-agnostic 설계 검증 시점.
@@ -232,6 +243,8 @@ board-visualization spec 자체는 ROI 부족으로 wrap 종료. 진단/실험�
 
 ### Promoted / Closed
 
+- **Placement attack-range preview** → `docs/spec/placement-attack-range-preview/` (completed 2026-07-04, units 0~2 — 드래그 배치 중 공격범위를 노란 격자 outline 로 동기 펄스 표시. `Tilemap.color` tint + 전용 `_rangeTilemap`(sorting -12) + Chebyshev `RangeToTiles`. e2e 드래그 추종 Play 검증)
+- **Placement drag-preview polish** → `docs/spec/placement-drag-preview-polish/` (completed 2026-07-04, units 0~1 + rev — 프리뷰 빌보드 각도 정합 + 매달린 키링 velocity-lean sway(SO 튜닝) + 프랍 위 정렬. Play(MCP) 검증)
 - **Dreamstone loadout** → `docs/spec/dreamstone-loadout/` (completed 2026-07-04, units 0~3 + 씬 배선 + e2e — 스쿼드 4슬롯 드림스톤 장착, 등급 캡 데이터 계약(유니크4=+30% additive), 슬롯 탭→피커 모달 UI, set-then-apply 반입. 리뷰 4단(설계 크리틱/unit별/투트랙/Codex HIGH). 획득/인벤토리는 후속)
 
 - **Legacy render removal** → `docs/spec/legacy-render-removal/` (completed 2026-07-03, units 0~4 — Legacy MapView 렌더/Legacy3D 모드/시즌 백드롭/테마 LEGACY 43필드 완전 삭제, ~6,300줄 순삭. Tilemap 경로 무회귀. 씬 MapView 잔재 청소는 follow-up)

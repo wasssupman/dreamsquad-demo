@@ -1,8 +1,8 @@
 # placement-drag-preview-polish
 
-상태: 구현 완료 (units 0~1. 커밋 `d96cd82` 빌보드 / sway `354e418`→`aa17880`→**`4e51f1c` velocity-lean 최종**).
-빌보드 각도 정합(euler 45==45). sway = **매달린 키링**(머리 위 pivot·velocity-lean, Play 검증: 700px/s→-24° tilt 육안 확인).
-잔여: 사용자 취향 튜닝(swayLeanPerVel/swayHangHeight/spring·damping).
+상태: **완료 2026-07-04**. unit0 빌보드(`d96cd82`) + unit1 sway(velocity-lean `4e51f1c`, 튜닝 `1667841`) +
+sway 파라미터 SO 추출(`7300cbf`, 에디터 튜닝) + 프리뷰 정렬 프랍 위(`e849480`). Play(MCP) 검증 완료.
+상세·전 커밋: `2_handoff_summary.md`. 취향 튜닝은 `Assets/_Project/Data/Config/DragSwaySettings.asset`.
 
 ## 목표
 
