@@ -22,12 +22,12 @@ namespace Wassup.UI
         // 고리(pivot)→몸 길이. 캐릭터가 이 높이만큼 위 pivot 아래에 매달린다(로컬 단위, root 스케일 적용).
         [SerializeField] private float swayHangHeight = 1.5f;
         [SerializeField] private float swayMaxAngle = 24f;
-        // 중력 복원(↑=빠른 스윙/짧은 주기). ω=sqrt(spring).
-        [SerializeField] private float swaySpring = 60f;
-        // 감쇠(↓=오래 흔들림). ζ = damping / (2·sqrt(spring)).
-        [SerializeField] private float swayDamping = 6f;
-        // 포인터(고리) 가속도 → 각속도 impulse 배율.
-        [SerializeField] private float swayAccelScale = 0.03f;
+        // 포인터 속도(px/s) → 목표 lean 각(deg). 몸이 진행 반대로 이만큼 눕는다.
+        [SerializeField] private float swayLeanPerVel = 0.05f;
+        // 목표각 추종 강성(↑=빠른 추종/짧은 주기). ω=sqrt(spring).
+        [SerializeField] private float swaySpring = 50f;
+        // 감쇠(↓=오래 흔들림/overshoot 큼). ζ = damping / (2·sqrt(spring)).
+        [SerializeField] private float swayDamping = 5f;
         // 포인터 속도 스무딩 반응 속도(1/s). 클수록 즉각.
         [SerializeField] private float swayPointerResponse = 20f;
         // 입력 없을 때 포인터 속도가 0으로 감쇠(1/s) → 정지 시 감속이 역스윙으로 등록.
@@ -40,8 +40,7 @@ namespace Wassup.UI
         private float _lastPointerX;
         private bool _hasLastPointer;
         private float _ptrVelRaw;   // 최신 측정 포인터 x속도(px/s), 입력 없으면 0으로 감쇠
-        private float _ptrVel;      // 스무딩된 포인터 x속도
-        private float _prevPtrVel;  // 직전 프레임 스무딩 속도(가속도 계산용)
+        private float _ptrVel;      // 스무딩된 포인터 x속도(→ 목표 lean 각 산출)
 
         private struct DragSession
         {
@@ -82,20 +81,17 @@ namespace Wassup.UI
             if (!_session.active || _session.preview == null || _session.swayPivot == null) return;
             float dt = Mathf.Max(Time.unscaledDeltaTime, 1e-4f);
 
-            // 포인터(고리) 속도: 최신 샘플로 스무딩 chase, 입력 없으면 0으로 감쇠.
-            // → 정지 시 속도가 0으로 떨어지는 것도 "감속"으로 잡혀 역스윙이 발생.
+            // 포인터(고리) 속도: 최신 샘플로 스무딩 chase, 입력 없으면 0으로 감쇠(정지 시 목표→0).
             _ptrVel = Mathf.Lerp(_ptrVel, _ptrVelRaw, 1f - Mathf.Exp(-swayPointerResponse * dt));
             _ptrVelRaw = Mathf.Lerp(_ptrVelRaw, 0f, 1f - Mathf.Exp(-swayPointerDecay * dt));
 
-            // 매달린 진자 forcing = 고리 가속도(=스무딩 속도의 변화). 등속이면 0 → 똑바로 매달림.
-            // 출발 시 몸이 진행 반대로 lag, 정지 시 반대로 overshoot.
-            float accelImpulse = _ptrVel - _prevPtrVel;
-            _prevPtrVel = _ptrVel;
-            _swayVel += -accelImpulse * swayAccelScale;
+            // 매달린 몸의 목표각 = 진행 반대로 trail(속도 비례). 끌면 뒤로 눕고, 멈추면 목표→0.
+            float target = Mathf.Clamp(-_ptrVel * swayLeanPerVel, -swayMaxAngle, swayMaxAngle);
 
-            // 중력 복원(각0=수직 아래로) + 감쇠.
-            _swayVel += (-swaySpring * _swayAngle - swayDamping * _swayVel) * dt;
-            _swayAngle = Mathf.Clamp(_swayAngle + _swayVel * dt, -swayMaxAngle, swayMaxAngle);
+            // 목표각을 스프링이 추종(감쇠) → lag/overshoot 로 관성 스윙. 등속=목표 유지, 정지=스윙백.
+            _swayVel += ((target - _swayAngle) * swaySpring - _swayVel * swayDamping) * dt;
+            _swayAngle += _swayVel * dt;
+            _swayAngle = Mathf.Clamp(_swayAngle, -swayMaxAngle * 1.4f, swayMaxAngle * 1.4f); // overshoot 허용
             _session.swayPivot.localRotation = Quaternion.Euler(0f, 0f, _swayAngle);
         }
 
@@ -335,7 +331,6 @@ namespace Wassup.UI
             _swayVel = 0f;
             _ptrVelRaw = 0f;
             _ptrVel = 0f;
-            _prevPtrVel = 0f;
             _hasLastPointer = false;
             _session = default;
             if (placementInput != null) placementInput.SetClickPlacementEnabled(true);
