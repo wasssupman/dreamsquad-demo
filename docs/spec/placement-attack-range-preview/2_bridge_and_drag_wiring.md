@@ -55,4 +55,4 @@ if (changed) bridge?.SetPlacementRange(cell, _session.unit);
   drop / 취소 시 범위 사라짐. 빨강(배치 불가) 타일 위에서도 노란 범위 유지.
 - 스크린샷으로 노란 펄스 육안 확인(메모리: 시각 변경 스크린샷 검증).
 
-부분 확인 2026-07-04 (`b3cd345`) — 코드리뷰·compile 통과, 렌더/펄스/격자 경로 검증(unit1). **실제 카드-드래그 e2e(커서 따라 범위 이동·drop clear)는 spec2 Play 테스트 때 함께 확정 예정.**
+완료 확인 2026-07-04 (`b3cd345`) — 코드리뷰·compile 통과, 렌더/펄스/격자 경로 검증(unit1). **e2e 드래그 확정**: spec2 Play 에서 `BeginDrag/UpdateDrag` 구동 시 `_rangeCells=44`(엣지 clip) 로 범위가 실제 드래그 hover 를 따라 페인트됨(스크린샷 `drag_billboard.png`).

@@ -1,6 +1,6 @@
 # placement-attack-range-preview
 
-상태: 구현 완료 (units 0~2 커밋 2026-07-04 · `eded85d`/`81d1d79`/`b3cd345`). 렌더·펄스·격자 스타일 Play 검증 완료. 잔여: 실제 카드-드래그 e2e 확정(spec2 Play 때).
+상태: 완료 2026-07-04 (units 0~2 · `eded85d`/`81d1d79`/`b3cd345` + docs `1625de5`). 렌더·펄스·격자 스타일·e2e 드래그 추종(`_rangeCells=44`) 전부 Play 검증 완료.
 
 ## 목표
 

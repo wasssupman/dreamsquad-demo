@@ -1,6 +1,6 @@
 # placement-drag-preview-polish
 
-상태: 진행 중 (착수 2026-07-04)
+상태: 구현 완료 (units 0~1 커밋 2026-07-04 · `d96cd82`/`354e418`). 빌보드 각도 정합(euler 45==45)·sway lean/settle 검증. 잔여: 사용자 focused Play 에서 sway 느낌/부호 최종 육안.
 
 ## 목표
 

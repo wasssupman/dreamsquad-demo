@@ -57,3 +57,5 @@ _session.swayPivot.localRotation = Quaternion.Euler(0f, 0f, _swayAngle);
   **멈추면 감쇠 진동 후 정지**(얼어붙지 않음). 45° 틸트 위에서 좌우 lean 으로 읽히고, 발 피벗이라 뜨지 않음.
 - 배치된 실제 유닛에는 sway 없음. 드롭 / 취소 시 상태 리셋.
 - 스크린샷 또는 짧은 육안으로 감쇠(settle) 확인.
+
+부분 확인 2026-07-04 (`354e418`) — compile 0err, x+ 플릭 시 lean(`_swayAngle`/`_swayVel` 비영, 방향 시계방향/윗부분 오른쪽), 정지 후 `angle=0 vel=0` 수렴(settle) + 스프링 안정(spring 90·damping 12). **잔여: 사용자 focused Play 에서 흔들림 느낌 + impulse 부호 최종 확인**(부호 뒤집기 원하면 `_swayVel += -(dx)*scale` 의 부호 1줄).
