@@ -21,6 +21,9 @@ namespace Wassup.Core
         [SerializeField] private Material groundShadowMaterial;
 
         private TileSetData _tileSet;
+        private Tilemap _rangeTilemap;
+        private readonly HashSet<Vector2Int> _rangeCells = new();
+        private int2 _gridSize;
         private readonly Dictionary<Vector2Int, Coroutine> _activeFlashes = new();
         private readonly HashSet<Vector2Int> _hoverCells = new();
         // tilemap-world-surround unit 2 — 배경 프랍 호스트(Deco) 판정용 셀/리전 메타 + 프랍 인스턴스 루트.
@@ -47,6 +50,7 @@ namespace Wassup.Core
             bool realShadows = false)
         {
             Clear();
+            _gridSize = map.IsCreated ? map.gridSize : default;
             _tileSet = tileSet;
             ConfigureGrid(tileSize, tileSet, mode, realShadows);
             PaintGround(in map);
@@ -76,9 +80,20 @@ namespace Wassup.Core
             if (groundTilemap != null) groundTilemap.ClearAllTiles();
             if (overlayTilemap != null) overlayTilemap.ClearAllTiles();
             if (_effectTilemap != null) _effectTilemap.ClearAllTiles();
+            if (_rangeTilemap != null) _rangeTilemap.ClearAllTiles();
+            _rangeCells.Clear();
             if (_backgroundPropsRoot != null) { SafeDestroy(_backgroundPropsRoot.gameObject); _backgroundPropsRoot = null; }
             if (_ringPropsRoot != null) { SafeDestroy(_ringPropsRoot.gameObject); _ringPropsRoot = null; }
             if (_structurePropsRoot != null) { SafeDestroy(_structurePropsRoot.gameObject); _structurePropsRoot = null; }
+        }
+
+        private void Update()
+        {
+            if (_rangeTilemap == null || _rangeCells.Count == 0 || _tileSet == null) return;
+            float t = 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * _tileSet.rangePulseSpeed);
+            float a = Mathf.Lerp(_tileSet.rangePulseMinAlpha, _tileSet.rangePulseMaxAlpha, t);
+            var c = _tileSet.rangeColor; c.a = a;
+            _rangeTilemap.color = c;
         }
 
         private void ConfigureGrid(float tileSize, TileSetData tileSet, BoardViewMode mode, bool realShadows)
@@ -393,6 +408,49 @@ namespace Wassup.Core
             _effectTilemap.tileAnchor = new Vector3(0.5f, 0.5f, 0f); // 셀 중심 anchor (정합 전제와 일치)
             r.sortingOrder = -15;
             r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        }
+
+        private void EnsureRangeTilemap()
+        {
+            if (_rangeTilemap != null) return;
+            if (grid == null) return;
+            var go = new GameObject("PlacementRangeTiles");
+            go.transform.SetParent(grid.transform, false);
+            _rangeTilemap = go.AddComponent<Tilemap>();
+            var r = go.AddComponent<TilemapRenderer>();
+            _rangeTilemap.tileAnchor = new Vector3(0.5f, 0.5f, 0f);
+            r.sortingOrder = -12;
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            if (overlayTilemap != null)
+            {
+                var or = overlayTilemap.GetComponent<TilemapRenderer>();
+                if (or != null) r.sharedMaterial = or.sharedMaterial;
+            }
+        }
+
+        public void SetPlacementRange(Vector2Int center, int tileRange)
+        {
+            if (grid == null || _tileSet == null || _tileSet.rangeTile == null || tileRange <= 0) return;
+            ClearPlacementRange();
+            EnsureRangeTilemap();
+            for (int dx = -tileRange; dx <= tileRange; dx++)
+            for (int dz = -tileRange; dz <= tileRange; dz++)
+            {
+                if (dx == 0 && dz == 0) continue;
+                var cell = new Vector2Int(center.x + dx, center.y + dz);
+                if (cell.x < 0 || cell.x >= _gridSize.x || cell.y < 0 || cell.y >= _gridSize.y) continue;
+                _rangeTilemap.SetTile(ToCell(cell), _tileSet.rangeTile);
+                _rangeCells.Add(cell);
+            }
+            var c = _tileSet.rangeColor; c.a = _rangeTilemap.color.a; _rangeTilemap.color = c;
+        }
+
+        public void ClearPlacementRange()
+        {
+            if (_rangeCells.Count == 0) return;
+            if (_rangeTilemap != null)
+                foreach (var cell in _rangeCells) _rangeTilemap.SetTile(ToCell(cell), null);
+            _rangeCells.Clear();
         }
 
         // tilemap-world-surround unit 4 — 외곽 터레인 링 셀에 원경 프랍을 저밀도로 흩뿌린다.
