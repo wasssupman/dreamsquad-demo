@@ -1,6 +1,6 @@
 # placement-attack-range-preview
 
-상태: 진행 중 (착수 2026-07-04)
+상태: 구현 완료 (units 0~2 커밋 2026-07-04 · `eded85d`/`81d1d79`/`b3cd345`). 렌더·펄스·격자 스타일 Play 검증 완료. 잔여: 실제 카드-드래그 e2e 확정(spec2 Play 때).
 
 ## 목표
 
@@ -46,6 +46,10 @@
   unit 1 에서 **에디터 렌더로 노란색+alpha 펄스가 실제로 보이는지 최우선 확인**. 안 보이면
   per-cell 폴백(`SetTileFlags(cell, TileFlags.None)` + `SetColor(cell, pulseColor)`, PaintSurroundRing
   과 동일 패턴, 매 펄스 프레임 재적용 ~48콜)으로 전환. 폴백도 전 셀 동일 alpha 라 동기 유지.
+- **시각 형태 = 격자 outline (map 가시성)**: `rangeTile` 스프라이트는 **셀 테두리만 그리는 격자 outline**
+  (중앙 투명). solid fill 은 맵을 과하게 가려 폐기(사용자 결정 2026-07-04). 현재 에셋
+  `Assets/_Project/Data/TileSets/tile_grid_outline.png`(64px, **2px** 흰 테두리, PPU 64, Bilinear/Uncompressed).
+  **형태 조정은 rangeTile 에셋 교체로만** — 페인트/펄스 코드는 스프라이트-agnostic(코드 무관).
 - **데이터 주도(하드코딩 금지)**: rangeTile / rangeColor / pulseMinAlpha / pulseMaxAlpha / pulseSpeed
   전부 `TileSetData`. (-12 등 sorting 정수는 기존 -10/-15/-20 과 동류의 구조 상수 — 게임플레이 수치 아님.)
 - **BattleBridge 게이트웨이**: DragController 는 `bridge.SetPlacementRange/ClearPlacementRange` 만 호출

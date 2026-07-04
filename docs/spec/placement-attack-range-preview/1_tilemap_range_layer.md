@@ -81,3 +81,5 @@ _rangeTilemap.color = c;
   노란 tint / alpha 펄스가 안 보이면 README 의 per-cell 폴백(`SetTileFlags` + `SetColor`)으로 전환.
 - `ClearPlacementRange()` 후 범위 타일 전부 사라짐.
 - 경계 밖 셀은 안 칠해짐. 맵 재빌드(Initialize) 후에도 `_rangeTilemap` 누수/중복 없음.
+
+완료 확인 2026-07-04 (`81d1d79`) — Play `SetPlacementRange((10,5),3)`→48셀 페인트, 격자 tint 렌더 + 펄스(alpha 0.85↔0.458) 스크린샷 확인, 런타임 `_tileSet`=TileSet_AutoTileTest(테마 오버라이드 없음). `Tilemap.color` 전역 tint 동작 → per-cell 폴백 불필요.

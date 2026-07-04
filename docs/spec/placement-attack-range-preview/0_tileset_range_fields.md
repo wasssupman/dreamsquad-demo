@@ -24,8 +24,10 @@ public Color rangeColor = new Color(1f, 0.85f, 0.1f, 1f); // 노랑
 [Min(0.05f)] public float rangePulseSpeed = 3f; // sin(unscaledTime * speed) 각속도 → 주기 ≈ 2s
 ```
 
-- `rangeTile`: 무채색 solid 스프라이트 Tile 재사용(있으면). 없으면 1px 흰색 스프라이트로 Tile 하나 생성.
-  tint 로 색을 제어하므로 스프라이트 자체는 **무채색이 이상적**(유채색이면 rangeColor 와 곱해져 의도색 안 나옴).
+- `rangeTile`: **무채색 격자 outline 타일** = 셀 테두리만 흰색, 중앙 투명(맵 가시성). tint 로 색을 제어하므로
+  스프라이트는 **무채색**(유채색이면 rangeColor 와 곱해져 의도색 안 나옴). 현재 에셋
+  `Assets/_Project/Data/TileSets/tile_grid_outline.png` (64px, 2px 테두리, PPU 64, Bilinear/Uncompressed, alphaIsTransparency).
+  ※ solid fill 은 맵을 과하게 가려 폐기(사용자 결정) — 형태 변경은 이 에셋 스프라이트 교체로만.
 - 코드 기본값은 시작점 — 실제 값은 SO 인스펙터에서 조정.
 
 ## 완료 기준
@@ -34,3 +36,5 @@ public Color rangeColor = new Color(1f, 0.85f, 0.1f, 1f); // 노랑
 - TileSet 에셋 인스펙터에 rangeTile / rangeColor / pulseMinAlpha / pulseMaxAlpha / pulseSpeed
   5필드가 보이고, rangeTile 에 무채색 solid 타일이 배정됨.
 - 이 unit 단독으로 시각 변화 없음(unit 1 이 소비).
+
+완료 확인 2026-07-04 (`eded85d`) — compile 0err, 인스펙터 5필드, rangeTile=격자 outline(`tile_grid_outline`) 배정.
