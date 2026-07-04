@@ -26,3 +26,5 @@
   - 정규화 — null / 길이 부족 / 길이 초과 각각 4슬롯으로
   - 구버전 JSON 호환 — stoneIds 없는 JSON 로드 시 빈 4슬롯
   - SetStoneSlot — 지정 슬롯 배정 / `""` 해제 / 중복 허용 / 범위 밖 index false
+
+> 완료 확인 2026-07-04 — EditMode 12/12 PASS (리뷰어 테스트 리그 배치 실행, ProfileStoreTests+DreamstoneCatalogTests), compile clean.

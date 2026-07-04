@@ -155,5 +155,79 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(2, squad.FilledCount());
             Assert.IsFalse(squad.IsEmpty());
         }
+
+        // dreamstone-loadout Unit 1 — stoneIds round-trip, normalization, legacy JSON
+        // compat, and the SetStoneSlot helper.
+
+        [Test]
+        public void Squad_StoneSlots_RoundTrip_IncludingDuplicates()
+        {
+            var cat = MakeCatalog("scout", "ranger");
+            var profile = ProfileStore.LoadOrCreateAt(_path, cat);
+            var sel = profile.SelectedSquad();
+            sel.stoneIds[0] = "atk_unique";
+            sel.stoneIds[1] = "atk_unique";
+            sel.stoneIds[3] = "hp_rare";
+            ProfileStore.SaveAt(_path, profile);
+
+            var loaded = ProfileStore.LoadOrCreateAt(_path, cat);
+            var squad = loaded.SelectedSquad();
+
+            Assert.AreEqual(SquadSave.StoneSlotCount, squad.stoneIds.Count);
+            Assert.AreEqual("atk_unique", squad.stoneIds[0]);
+            Assert.AreEqual("atk_unique", squad.stoneIds[1], "duplicate stone ids across slots are allowed");
+            Assert.AreEqual("", squad.stoneIds[2]);
+            Assert.AreEqual("hp_rare", squad.stoneIds[3]);
+        }
+
+        [Test]
+        public void NormalizeSlots_StoneIds_PadsTrimsAndReplacesNull()
+        {
+            var squad = new SquadSave { stoneIds = null };
+            squad.NormalizeSlots();
+            CollectionAssert.AreEqual(new[] { "", "", "", "" }, squad.stoneIds, "null list pads to 4 empty slots");
+
+            squad.stoneIds = new List<string> { "a", null };
+            squad.NormalizeSlots();
+            CollectionAssert.AreEqual(new[] { "a", "", "", "" }, squad.stoneIds, "short list pads, null entries become \"\"");
+
+            squad.stoneIds = new List<string> { "a", "b", "c", "d", "e" };
+            squad.NormalizeSlots();
+            CollectionAssert.AreEqual(new[] { "a", "b", "c", "d" }, squad.stoneIds, "long list trims to 4");
+        }
+
+        [Test]
+        public void LoadOrCreate_OnLegacyJsonWithoutStoneIds_NormalizesToEmptySlots()
+        {
+            // Pre-dreamstone-loadout profile JSON: SquadSave had no stoneIds field.
+            var legacyJson = "{\"schemaVersion\":1,\"ownedUnitIds\":[\"scout\"],\"squads\":[{\"id\":\"squad_1\",\"name\":\"Squad 1\",\"unitIds\":[\"scout\",\"\",\"\",\"\",\"\",\"\",\"\"]}],\"dreamcatcherDecks\":[],\"selectedSquadId\":\"squad_1\",\"selectedDeckId\":\"\"}";
+            File.WriteAllText(_path, legacyJson);
+            var cat = MakeCatalog("scout");
+
+            var profile = ProfileStore.LoadOrCreateAt(_path, cat);
+            var squad = profile.SelectedSquad();
+
+            Assert.IsNotNull(squad);
+            Assert.AreEqual(SquadSave.StoneSlotCount, squad.stoneIds.Count);
+            CollectionAssert.AreEqual(new[] { "", "", "", "" }, squad.stoneIds);
+        }
+
+        [Test]
+        public void SetStoneSlot_AssignsClearsDuplicatesAndRejectsOutOfRange()
+        {
+            var squad = new SquadSave();
+
+            Assert.IsTrue(squad.SetStoneSlot(0, "atk_unique"));
+            Assert.AreEqual("atk_unique", squad.stoneIds[0]);
+
+            Assert.IsTrue(squad.SetStoneSlot(1, "atk_unique"), "duplicate id in another slot is allowed");
+            Assert.AreEqual("atk_unique", squad.stoneIds[1]);
+
+            Assert.IsTrue(squad.SetStoneSlot(0, ""), "empty id clears the slot");
+            Assert.AreEqual("", squad.stoneIds[0]);
+
+            Assert.IsFalse(squad.SetStoneSlot(-1, "x"), "negative index rejected");
+            Assert.IsFalse(squad.SetStoneSlot(SquadSave.StoneSlotCount, "x"), "index at/beyond StoneSlotCount rejected");
+        }
     }
 }

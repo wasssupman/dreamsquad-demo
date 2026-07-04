@@ -48,9 +48,15 @@ namespace Wassup.Core
     {
         public const int SlotCount = 7;
 
+        // dreamstone-loadout Unit 1 — 4 stone slots, squad-owned (not account-owned).
+        // Holds DreamstoneData.id (Wassup.Data), empty slot = "". Duplicate ids across
+        // slots are allowed by design (e.g. 4x the same Unique attack stone).
+        public const int StoneSlotCount = 4;
+
         public string id;
         public string name = "Squad 1";
         public List<string> unitIds = new List<string>();
+        public List<string> stoneIds = new List<string>();
 
         public bool IsEmpty()
         {
@@ -77,6 +83,26 @@ namespace Wassup.Core
                 if (unitIds[i] == null) unitIds[i] = "";
             while (unitIds.Count < SlotCount) unitIds.Add("");
             if (unitIds.Count > SlotCount) unitIds.RemoveRange(SlotCount, unitIds.Count - SlotCount);
+
+            // dreamstone-loadout Unit 1 — same pad/trim, independent slot count.
+            if (stoneIds == null) stoneIds = new List<string>();
+            for (int i = 0; i < stoneIds.Count; i++)
+                if (stoneIds[i] == null) stoneIds[i] = "";
+            while (stoneIds.Count < StoneSlotCount) stoneIds.Add("");
+            if (stoneIds.Count > StoneSlotCount) stoneIds.RemoveRange(StoneSlotCount, stoneIds.Count - StoneSlotCount);
+        }
+
+        // dreamstone-loadout Unit 1 — assign (or clear, id="") a single stone slot by
+        // index. No "first empty slot" search: the picker modal (Unit 2) always targets
+        // an explicit slot. Duplicate ids are not rejected — dedup would break the
+        // "4x Unique" scenario the stat-cap contract relies on.
+        public bool SetStoneSlot(int index, string id)
+        {
+            if (stoneIds == null) stoneIds = new List<string>();
+            if (index < 0 || index >= StoneSlotCount) return false;
+            NormalizeSlots();
+            stoneIds[index] = id ?? "";
+            return true;
         }
     }
 
