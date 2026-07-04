@@ -18,8 +18,18 @@ namespace Wassup.UI
         [SerializeField] private float previewHeight = 0.35f;
         [SerializeField] private float previewScale = 0.65f;
 
+        [Header("Drag sway")]
+        [SerializeField] private float swayMaxAngle = 18f;
+        [SerializeField] private float swaySpring = 90f;
+        [SerializeField] private float swayDamping = 12f;
+        [SerializeField] private float swayImpulseScale = 0.6f;
+
         private DragSession _session;
         private Material _previewMaterial;
+        private float _swayAngle;
+        private float _swayVel;
+        private float _lastPointerX;
+        private bool _hasLastPointer;
 
         private struct DragSession
         {
@@ -55,9 +65,23 @@ namespace Wassup.UI
             UpdateDrag(screenPosition);
         }
 
+        private void Update()
+        {
+            if (!_session.active || _session.preview == null || _session.swayPivot == null) return;
+            float dt = Time.unscaledDeltaTime;
+            _swayVel += (-swaySpring * _swayAngle - swayDamping * _swayVel) * dt;
+            _swayAngle = Mathf.Clamp(_swayAngle + _swayVel * dt, -swayMaxAngle, swayMaxAngle);
+            _session.swayPivot.localRotation = Quaternion.Euler(0f, 0f, _swayAngle);
+        }
+
         public void UpdateDrag(Vector2 screenPosition)
         {
             if (!_session.active) return;
+
+            if (_hasLastPointer)
+                _swayVel += -(screenPosition.x - _lastPointerX) * swayImpulseScale;
+            _lastPointerX = screenPosition.x;
+            _hasLastPointer = true;
 
             if (TryScreenToPlacement(screenPosition, out var cell, out var world))
             {
@@ -270,6 +294,9 @@ namespace Wassup.UI
             ClearHover();
             bridge?.ClearPlacementRange();
             if (_session.preview != null) Destroy(_session.preview);
+            _swayAngle = 0f;
+            _swayVel = 0f;
+            _hasLastPointer = false;
             _session = default;
             if (placementInput != null) placementInput.SetClickPlacementEnabled(true);
         }
