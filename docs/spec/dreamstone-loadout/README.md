@@ -1,7 +1,8 @@
 # dreamstone-loadout
 
-> 상태: 스펙 확정 2026-07-04 · 구현 대기 (Codex 이관 — `CODEX_GUIDE.md` 참조)
-> 설계 크리틱(ecs-reviewer) 1회 반영 완료 · UI 구조 C안(슬롯 탭→피커 모달) 확정
+> 상태: 구현 완료 2026-07-04 (units 0~3 + 씬 배선 + e2e — 잔여: 스쿼드 페이지 Play 육안/스크린샷). handoff → `4_handoff_summary.md`
+> 커밋: 0 `5a47adf` · 1 `926aea6` · 2 `5d6ef22` · 3 `6d28b74` · 배선/e2e `2289362`
+> 설계 크리틱(ecs-reviewer) 1회 + unit별 리뷰 + unit3 투트랙 반영 완료 · UI 구조 C안(슬롯 탭→피커 모달)
 > 선행: `squad-loadout` (완료) · `ingame-dreamcatcher` (완료 — 매치 효과 레지스트리 재사용)
 > 브레인스토밍 결정 2026-07-04: 하드캡=데이터 계약+검증 테스트 · 스탯 4종 재사용 · 같은 스톤 중복 장착 허용 · 인벤토리 없음(카탈로그 전체 목록 장착) · UI 구조=슬롯 탭→피커 모달(C안)
 
