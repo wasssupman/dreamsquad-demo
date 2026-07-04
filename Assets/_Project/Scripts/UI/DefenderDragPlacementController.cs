@@ -245,6 +245,9 @@ namespace Wassup.UI
             float scale = Mathf.Max(0.01f, unitData.spineVisualScale * BattleBridge.CharacterVisualScale);
             root.transform.localScale = Vector3.one * scale;
             SetPreviewAlpha(skeleton, 0.62f);
+            // 드래그 실루엣이 배경 프랍/유닛에 가려지지 않게 정렬을 위로.
+            var skelRenderer = skeleton.GetComponent<MeshRenderer>();
+            if (skelRenderer != null) skelRenderer.sortingOrder = BoardSortOrder.DragPreviewOrder;
             preview = root;
             swayPivot = pivot.transform; // 고리(pivot)을 회전 → 몸이 아래에서 스윙
             return true;
