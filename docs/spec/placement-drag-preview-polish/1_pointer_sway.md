@@ -58,4 +58,15 @@ _session.swayPivot.localRotation = Quaternion.Euler(0f, 0f, _swayAngle);
 - 배치된 실제 유닛에는 sway 없음. 드롭 / 취소 시 상태 리셋.
 - 스크린샷 또는 짧은 육안으로 감쇠(settle) 확인.
 
-부분 확인 2026-07-04 (`354e418`) — compile 0err, x+ 플릭 시 lean(`_swayAngle`/`_swayVel` 비영, 방향 시계방향/윗부분 오른쪽), 정지 후 `angle=0 vel=0` 수렴(settle) + 스프링 안정(spring 90·damping 12). **잔여: 사용자 focused Play 에서 흔들림 느낌 + impulse 부호 최종 확인**(부호 뒤집기 원하면 `_swayVel += -(dx)*scale` 의 부호 1줄).
+부분 확인 2026-07-04 (`354e418`) — compile 0err, lean/settle 수치 확인.
+
+**모델 정정 2026-07-04 (`aa17880`)** — 위 velocity-impulse + 발 피벗 모델이 목적("포인터=고리,
+몸이 아래 매달려 스윙")과 어긋나 재작성:
+- **계층 3노드**: `root(셀·Billboard) → pivot(머리 위 +swayHangHeight = 고리) → skeleton(-오프셋)`.
+  `swayPivot` = **pivot**(고리) 회전 → 몸이 아래에서 스윙(발 고정 오뚝이 아님).
+- **가속도 구동 진자**: 포인터 속도(`_ptrVel`)를 스무딩 chase + 입력 없을 때 0으로 감쇠(정지 감속 등록),
+  그 **변화(=고리 가속도)**로 `_swayVel += -Δv·swayAccelScale`. 등속=수직 매달림 / 출발=역lag / 정지=overshoot.
+- 파라미터 7종 SerializeField: `swayHangHeight/swayMaxAngle/swaySpring/swayDamping/swayAccelScale/`
+  `swayPointerResponse/swayPointerDecay`. compile 0err.
+- **잔여: 사용자 focused Play 육안 + 튜닝** — 특히 `swayHangHeight`(몸이 고리 아래 얼마나 매달리나),
+  `swayAccelScale`(스윙 크기). 부호는 진행 반대 trail(관성)로 이미 맞춤.

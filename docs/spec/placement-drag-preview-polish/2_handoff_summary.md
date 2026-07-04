@@ -7,9 +7,9 @@
 
 ## Implemented
 - 드래그 프리뷰가 배치 유닛과 **동일 45° 빌보드 틸트**로 섬(이전엔 꼿꼿). Play readback euler `(45,0,0)==(45,0,0)`.
-- 프리뷰 = **root(빈 wrapper) + child(SkeletonAnimation)** 2노드. root 에 `Billboard`(Tilted, `CharacterBillboardTilt`), 드래그 position/scale/Destroy 는 root 대상.
-- **포인터 sway**: 수평 pointer delta → `_swayVel` impulse, 매 프레임 `Update()` 가 감쇠 스프링 적분, `child(swayPivot).localRotation = Euler(0,0,_swayAngle)`.
-- sway 파라미터 4종 SerializeField(`swayMaxAngle 18`/`swaySpring 90`/`swayDamping 12`/`swayImpulseScale 0.6`).
+- 프리뷰 = **3노드**: `root(빈 wrapper, Billboard·position·Destroy 대상) → pivot(머리 위 +swayHangHeight = 고리) → child(SkeletonAnimation, 아래로 -오프셋)`. root 에 `Billboard`(Tilted, `CharacterBillboardTilt`).
+- **포인터 sway = 매달린 키링**(`aa17880` 정정): 포인터=고리, 몸이 아래 매달려 스윙. `swayPivot`=**pivot**(고리) 회전. 매 프레임 `Update()` 가 **가속도 구동 진자** 적분 — 포인터 속도 스무딩·감쇠 후 그 변화(=고리 가속도)로 `_swayVel += -Δv·accelScale` + 중력복원·감쇠. 등속=수직 / 출발=역lag / 정지=overshoot.
+- sway 파라미터 7종 SerializeField: `swayHangHeight 1.5`/`swayMaxAngle 24`/`swaySpring 60`/`swayDamping 6`/`swayAccelScale 0.03`/`swayPointerResponse 20`/`swayPointerDecay 12`.
 - fallback capsule 프리뷰: `swayPivot=null` → sway/빌보드 스킵(스코프 밖).
 
 ## Key Files
@@ -25,7 +25,8 @@
 ## Notes (되돌리면 안 되는 의도)
 - **Billboard 는 root 를 매 `LateUpdate` 로 통째 덮어씀** → sway 는 반드시 **child(swayPivot)** 에 얹어야 함(root 에 주면 지워짐). 이게 2노드 계층의 이유(unit0 이 전제).
 - **스프링 적분은 반드시 `Update()`(매 프레임)** — 드래그 입력(`OnDrag→UpdateDrag`)은 포인터 이동 시만 발화하므로 거기서 적분하면 멈추는 순간 각도 고정(F1). `dt=Time.unscaledDeltaTime`.
-- 피벗 = 발(Billboard "피벗=발"). child local-Z roll 은 발에서 좌우 lean — 피벗 오프셋 금지(올리면 발 뜸).
+- **피벗 = 머리 위 고리**(발 아님). 몸이 고리 아래 매달려 스윙하므로 발이 뜨는 건 **의도**(키링 dangle). swayPivot 을 발(localPos 0)로 되돌리면 오뚝이가 됨 — 되돌리지 말 것.
+- forcing 은 포인터 **속도**가 아니라 **가속도**(속도의 변화). velocity 로 주면 등속 드래그에서 계속 기운 채 유지(진자 아님). `swayPointerDecay` 로 포인터 속도가 0으로 감쇠해야 "정지" 감속이 역스윙으로 잡힘.
 - 배치 결과(실제 유닛)에는 sway 없음. 프리뷰 전용.
 
 ## Follow-up

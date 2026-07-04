@@ -1,6 +1,8 @@
 # placement-drag-preview-polish
 
-상태: 구현 완료 (units 0~1 커밋 2026-07-04 · `d96cd82`/`354e418`). 빌보드 각도 정합(euler 45==45)·sway lean/settle 검증. 잔여: 사용자 focused Play 에서 sway 느낌/부호 최종 육안.
+상태: 구현 완료 (units 0~1 커밋 2026-07-04 · `d96cd82`/`354e418` → sway 모델 정정 `aa17880`).
+빌보드 각도 정합(euler 45==45). sway = **매달린 키링**(머리 위 pivot·가속도 진자, compile 0err).
+잔여: 사용자 focused Play 육안 + 튜닝(swayHangHeight/swayAccelScale).
 
 ## 목표
 
