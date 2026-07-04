@@ -27,3 +27,5 @@
 - 에디터 Play: 유닛/스톤 각각 슬롯 탭 → 피커 → 장착/해제/저장 → 씬 재진입 후 장착 상태 유지
 - 스톤 중복 장착(같은 스톤을 2개 슬롯에) 동작 확인
 - 게임뷰 스크린샷으로 메인/모달 레이아웃, 등급 색 육안 확인
+
+> 완료 확인(부분) 2026-07-04 — 코드 구현 + 리뷰 M1 반영 + 리그 게이트 PASS(compile clean, EditMode 12/12 회귀 green). OutgameScene wiring(stoneCatalog/stoneSlotsContainer, 구 ownedContainer 정리) + Play 육안 검증 pending.
