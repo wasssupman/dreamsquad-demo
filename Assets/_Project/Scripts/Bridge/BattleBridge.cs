@@ -2763,6 +2763,18 @@ namespace Wassup.Bridge
             if (tilemapMapView != null) tilemapMapView.ClearPlacementHover();
         }
 
+        public void SetPlacementRange(Vector2Int center, DefenderUnitData unit)
+        {
+            if (tilemapMapView == null || unit == null) return;
+            int tileRange = GridMath.RangeToTiles(unit.attackRange);
+            tilemapMapView.SetPlacementRange(center, tileRange);
+        }
+
+        public void ClearPlacementRange()
+        {
+            if (tilemapMapView != null) tilemapMapView.ClearPlacementRange();
+        }
+
         public void FlashPlacementReject(Vector2Int cell)
         {
             if (tilemapMapView != null) tilemapMapView.FlashTileReject(cell);

@@ -229,6 +229,7 @@ namespace Wassup.UI
 
         private void SetHover(Vector2Int cell, bool valid)
         {
+            bool changed = !_session.hoverTile.HasValue || _session.hoverTile.Value != cell;
             if (_session.hoverTile.HasValue && _session.hoverTile.Value != cell)
                 bridge?.ClearPlacementHover(_session.hoverTile.Value);
 
@@ -237,12 +238,14 @@ namespace Wassup.UI
             if (_session.preview != null && !_session.preview.activeSelf)
                 _session.preview.SetActive(true);
             bridge?.SetPlacementHover(cell, valid);
+            if (changed) bridge?.SetPlacementRange(cell, _session.unit);
         }
 
         private void ClearHover()
         {
             if (_session.hoverTile.HasValue)
                 bridge?.ClearPlacementHover(_session.hoverTile.Value);
+            bridge?.ClearPlacementRange();
             _session.hoverTile = null;
             _session.isValidTile = false;
         }
@@ -250,6 +253,7 @@ namespace Wassup.UI
         private void CleanupSession()
         {
             ClearHover();
+            bridge?.ClearPlacementRange();
             if (_session.preview != null) Destroy(_session.preview);
             _session = default;
             if (placementInput != null) placementInput.SetClickPlacementEnabled(true);
