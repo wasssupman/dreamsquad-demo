@@ -9,7 +9,7 @@
 - 드래그 프리뷰가 배치 유닛과 **동일 45° 빌보드 틸트**로 섬(이전엔 꼿꼿). Play readback euler `(45,0,0)==(45,0,0)`.
 - 프리뷰 = **3노드**: `root(빈 wrapper, Billboard·position·Destroy 대상) → pivot(머리 위 +swayHangHeight = 고리) → child(SkeletonAnimation, 아래로 -오프셋)`. root 에 `Billboard`(Tilted, `CharacterBillboardTilt`).
 - **포인터 sway = 매달린 키링**(`aa17880` 계층·정정 → `4e51f1c` velocity-lean 최종): 포인터=고리, 몸이 아래 매달려 스윙. `swayPivot`=**pivot**(고리) 회전. 매 프레임 `Update()`: 목표각 = `-포인터속도 × swayLeanPerVel`(진행 반대 lean, clamp), 스프링이 lag/overshoot 로 추종. 끄는 내내 뒤로 눕고(가시), 멈추면 목표→0 스윙백+감쇠. (가속도-only 모델은 정상 드래그에서 ~2°=불가시라 폐기.)
-- sway 파라미터 7종 SerializeField: `swayHangHeight 1.5`/`swayMaxAngle 24`/`swayLeanPerVel 0.05`/`swaySpring 50`/`swayDamping 5`/`swayPointerResponse 20`/`swayPointerDecay 12`.
+- sway 파라미터 7종 SerializeField (역동 튜닝 `fb7bf79`): `swayHangHeight 1.5`/`swayMaxAngle 28`/`swayLeanPerVel 0.06`/`swaySpring 65`/`swayDamping 3`(ζ≈0.19 바운시)/`swayPointerResponse 20`/`swayPointerDecay 16`. 시뮬: 드래그 -26° → 정지 스윙백 +9° 오버슈트 → -5° 반동 → 수렴(2~3회 진동).
 - fallback capsule 프리뷰: `swayPivot=null` → sway/빌보드 스킵(스코프 밖).
 
 ## Key Files
