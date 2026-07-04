@@ -21,6 +21,14 @@ namespace Wassup.Data
         public TileBase hoverTile;
         public TileBase rejectTile;
 
+        [Header("Attack range highlight (placement-attack-range-preview)")]
+        // 중립(흰색 계열) solid 타일. 색은 rangeColor 가 tint 로 입힌다.
+        public TileBase rangeTile;
+        public Color rangeColor = new Color(1f, 0.85f, 0.1f, 1f); // 노랑
+        [Range(0f, 1f)] public float rangePulseMinAlpha = 0.35f;
+        [Range(0f, 1f)] public float rangePulseMaxAlpha = 0.85f;
+        [Min(0.05f)] public float rangePulseSpeed = 3f; // sin(unscaledTime * speed) 각속도
+
         [Header("Surround terrain ring (tilemap-world-surround)")]
         [Tooltip("플레이 보드 밖 외곽 링에 칠할 터레인 타일. 비면 decoTile(grass) 폴백.")]
         public TileBase terrainTile;
