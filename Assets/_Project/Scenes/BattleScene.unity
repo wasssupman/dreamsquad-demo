@@ -1682,6 +1682,7 @@ MonoBehaviour:
   bridge: {fileID: 1939688408}
   draftController: {fileID: 20521825}
   dragPlacementController: {fileID: 0}
+  swaySettings: {fileID: 11400000, guid: 680d35e2ba6a44815bf731006e75eddf, type: 2}
 --- !u!4 &915292525
 Transform:
   m_ObjectHideFlags: 0

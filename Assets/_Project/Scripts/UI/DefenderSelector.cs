@@ -17,6 +17,9 @@ namespace Wassup.UI
         [SerializeField] private BattleBridge bridge;
         [SerializeField] private DraftController draftController;
         [SerializeField] private DefenderDragPlacementController dragPlacementController;
+        // 드래그 프리뷰 sway 튜닝값(SO). 컨트롤러가 런타임 부착이라 여기서 할당해 주입한다.
+        // 미할당이면 컨트롤러가 클래스 기본값으로 폴백. 에셋 편집이 런타임에 반영된다.
+        [SerializeField] private DragSwaySettings swaySettings;
 
         private GameObject _panel;
         private Transform _slotContainer;
@@ -142,6 +145,8 @@ namespace Wassup.UI
             hlg.childForceExpandWidth = true;
             hlg.childForceExpandHeight = true;
             _slotContainer = _panel.transform;
+
+            UiLayer.Apply(gameObject);
         }
 
         private void RebuildSlots(DefenderUnitData[] pool)
@@ -182,6 +187,8 @@ namespace Wassup.UI
 
                 _slots[i] = new SlotView { data = data, background = bg, nameLabel = tmp, button = btn };
             }
+
+            UiLayer.Apply(gameObject);
         }
 
         private void EnsureDragController()
@@ -191,7 +198,7 @@ namespace Wassup.UI
             if (dragPlacementController == null)
                 dragPlacementController = gameObject.AddComponent<DefenderDragPlacementController>();
             if (bridge != null)
-                dragPlacementController.Configure(bridge, Camera.main, bridge.PlacementInput);
+                dragPlacementController.Configure(bridge, Camera.main, bridge.PlacementInput, swaySettings);
         }
     }
 }

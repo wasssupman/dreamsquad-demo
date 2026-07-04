@@ -18,20 +18,12 @@ namespace Wassup.UI
         [SerializeField] private float previewHeight = 0.35f;
         [SerializeField] private float previewScale = 0.65f;
 
-        [Header("Drag sway (hanging keyring)")]
-        // 고리(pivot)→몸 길이. 캐릭터가 이 높이만큼 위 pivot 아래에 매달린다(로컬 단위, root 스케일 적용).
-        [SerializeField] private float swayHangHeight = 1.5f;
-        [SerializeField] private float swayMaxAngle = 16f;
-        // 포인터 속도(px/s) → 목표 lean 각(deg). 몸이 진행 반대로 이만큼 눕는다.
-        [SerializeField] private float swayLeanPerVel = 0.035f;
-        // 목표각 추종 강성(↑=빠른 추종/짧은 주기·스냅). ω=sqrt(spring). 120 ≈ 1.75Hz.
-        [SerializeField] private float swaySpring = 120f;
-        // 감쇠(↓=바운스 큼/오래 흔들림). ζ = damping / (2·sqrt(spring)). 4.5 ≈ ζ0.21 = 스냅+2회 바운스.
-        [SerializeField] private float swayDamping = 4.5f;
-        // 포인터 속도 스무딩 반응 속도(1/s). 클수록 즉각(빠릿).
-        [SerializeField] private float swayPointerResponse = 26f;
-        // 입력 없을 때 포인터 속도가 0으로 감쇠(1/s) → 정지 시 목표 급락 = 큰 스윙백(스프링 릴리즈).
-        [SerializeField] private float swayPointerDecay = 16f;
+        // Drag sway(매달린 키링) 튜닝값은 DragSwaySettings SO 에서 온다. 이 컨트롤러는 런타임
+        // AddComponent(DefenderSelector) 라 인스펙터 튜닝이 안 되므로 수치를 SO 로 분리 —
+        // DefenderSelector 에 SO 를 할당하면 Configure 로 주입되고, 에셋 편집이 그대로 반영된다.
+        // 미주입 시 클래스 기본값 인스턴스로 폴백(never null).
+        private DragSwaySettings _sway;
+        private DragSwaySettings Sway => _sway != null ? _sway : (_sway = ScriptableObject.CreateInstance<DragSwaySettings>());
 
         private DragSession _session;
         private Material _previewMaterial;
@@ -52,11 +44,13 @@ namespace Wassup.UI
             public bool isValidTile;
         }
 
-        public void Configure(BattleBridge battleBridge, Camera camera, PlacementInput input)
+        public void Configure(BattleBridge battleBridge, Camera camera, PlacementInput input,
+            DragSwaySettings swaySettings = null)
         {
             bridge = battleBridge;
             mainCamera = camera != null ? camera : Camera.main;
             placementInput = input;
+            if (swaySettings != null) _sway = swaySettings;
         }
 
         public void BeginDrag(DefenderUnitData unitData, Vector2 screenPosition)
@@ -79,19 +73,20 @@ namespace Wassup.UI
         private void Update()
         {
             if (!_session.active || _session.preview == null || _session.swayPivot == null) return;
+            var s = Sway;
             float dt = Mathf.Max(Time.unscaledDeltaTime, 1e-4f);
 
             // 포인터(고리) 속도: 최신 샘플로 스무딩 chase, 입력 없으면 0으로 감쇠(정지 시 목표→0).
-            _ptrVel = Mathf.Lerp(_ptrVel, _ptrVelRaw, 1f - Mathf.Exp(-swayPointerResponse * dt));
-            _ptrVelRaw = Mathf.Lerp(_ptrVelRaw, 0f, 1f - Mathf.Exp(-swayPointerDecay * dt));
+            _ptrVel = Mathf.Lerp(_ptrVel, _ptrVelRaw, 1f - Mathf.Exp(-s.pointerResponse * dt));
+            _ptrVelRaw = Mathf.Lerp(_ptrVelRaw, 0f, 1f - Mathf.Exp(-s.pointerDecay * dt));
 
             // 매달린 몸의 목표각 = 진행 반대로 trail(속도 비례). 끌면 뒤로 눕고, 멈추면 목표→0.
-            float target = Mathf.Clamp(-_ptrVel * swayLeanPerVel, -swayMaxAngle, swayMaxAngle);
+            float target = Mathf.Clamp(-_ptrVel * s.leanPerVel, -s.maxAngle, s.maxAngle);
 
             // 목표각을 스프링이 추종(감쇠) → lag/overshoot 로 관성 스윙. 등속=목표 유지, 정지=스윙백.
-            _swayVel += ((target - _swayAngle) * swaySpring - _swayVel * swayDamping) * dt;
+            _swayVel += ((target - _swayAngle) * s.spring - _swayVel * s.damping) * dt;
             _swayAngle += _swayVel * dt;
-            _swayAngle = Mathf.Clamp(_swayAngle, -swayMaxAngle * 1.4f, swayMaxAngle * 1.4f); // overshoot 허용
+            _swayAngle = Mathf.Clamp(_swayAngle, -s.maxAngle * 1.4f, s.maxAngle * 1.4f); // overshoot 허용
             _session.swayPivot.localRotation = Quaternion.Euler(0f, 0f, _swayAngle);
         }
 
@@ -215,15 +210,16 @@ namespace Wassup.UI
 
             // 매달린 키링: pivot(고리)을 머리 위(+Y)로, 몸(skeleton)을 그 아래(-Y)로 오프셋.
             // → pivot 의 Z회전 = 몸이 고리 아래에서 스윙(발 고정 오뚝이 아님).
+            float hang = Sway.hangHeight;
             var pivot = new GameObject($"DragPreview_{unitData.displayName}_Pivot");
             pivot.transform.SetParent(root.transform, false);
-            pivot.transform.localPosition = new Vector3(0f, swayHangHeight, 0f);
+            pivot.transform.localPosition = new Vector3(0f, hang, 0f);
             pivot.transform.localRotation = Quaternion.identity;
             pivot.transform.localScale = Vector3.one;
 
             var child = new GameObject($"DragPreview_{unitData.displayName}_Spine");
             child.transform.SetParent(pivot.transform, false);
-            child.transform.localPosition = new Vector3(0f, -swayHangHeight, 0f);
+            child.transform.localPosition = new Vector3(0f, -hang, 0f);
             child.transform.localRotation = Quaternion.identity;
             child.transform.localScale = Vector3.one;
 
