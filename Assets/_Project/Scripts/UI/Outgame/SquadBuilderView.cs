@@ -80,14 +80,76 @@ namespace Wassup.UI
 
         private void BuildStoneSlots()
         {
+            var container = EnsureStoneSlotsContainer();
             for (int i = 0; i < SquadSave.StoneSlotCount; i++)
             {
                 int index = i;
-                var btn = CreateButton("＋", stoneSlotsContainer, new Vector2(120, 120), EmptySlotColor, out var label);
+                var btn = CreateButton("＋", container, new Vector2(120, 120), EmptySlotColor, out var label);
                 btn.onClick.AddListener(() => OpenPicker(PickerMode.Stone, index));
                 _stoneSlotLabels.Add(label);
                 _stoneSlotBgs.Add(btn.GetComponent<Image>());
             }
+        }
+
+        // dreamstone-loadout Unit 2 (rev) — scene authoring runtime fallback (wiring
+        // minimization decision 2026-07-04, editor locked). If OutgameScene later wires
+        // stoneSlotsContainer via Inspector, that assignment wins — this only runs when
+        // the field is still unassigned. Mirrors the scene's "SlotsRow" (unit slot row)
+        // layout: same RectTransform anchor/pivot/size + HorizontalLayoutGroup config,
+        // placed one row below it.
+        private RectTransform EnsureStoneSlotsContainer()
+        {
+            if (stoneSlotsContainer != null) return stoneSlotsContainer;
+
+            Transform parent = slotsContainer != null ? slotsContainer.parent : transform;
+            var go = new GameObject("StoneSlotsRow(Runtime)", typeof(RectTransform));
+            go.transform.SetParent(parent, false);
+            var rt = go.GetComponent<RectTransform>();
+
+            if (slotsContainer != null)
+            {
+                rt.anchorMin = slotsContainer.anchorMin;
+                rt.anchorMax = slotsContainer.anchorMax;
+                rt.pivot = slotsContainer.pivot;
+                rt.sizeDelta = slotsContainer.sizeDelta;
+                rt.anchoredPosition = slotsContainer.anchoredPosition + new Vector2(0f, -(slotsContainer.sizeDelta.y + 20f));
+            }
+            else
+            {
+                // Both containers unassigned (test / malformed scene safety net) — the
+                // scene's real SlotsRow values, so the fallback still looks reasonable.
+                rt.anchorMin = new Vector2(0.5f, 1f);
+                rt.anchorMax = new Vector2(0.5f, 1f);
+                rt.pivot = new Vector2(0.5f, 1f);
+                rt.sizeDelta = new Vector2(1000, 140);
+                rt.anchoredPosition = Vector2.zero;
+            }
+
+            var hlg = go.AddComponent<HorizontalLayoutGroup>();
+            var sourceHlg = slotsContainer != null ? slotsContainer.GetComponent<HorizontalLayoutGroup>() : null;
+            if (sourceHlg != null)
+            {
+                hlg.padding = new RectOffset(sourceHlg.padding.left, sourceHlg.padding.right, sourceHlg.padding.top, sourceHlg.padding.bottom);
+                hlg.spacing = sourceHlg.spacing;
+                hlg.childAlignment = sourceHlg.childAlignment;
+                hlg.childControlWidth = sourceHlg.childControlWidth;
+                hlg.childControlHeight = sourceHlg.childControlHeight;
+                hlg.childForceExpandWidth = sourceHlg.childForceExpandWidth;
+                hlg.childForceExpandHeight = sourceHlg.childForceExpandHeight;
+            }
+            else
+            {
+                hlg.spacing = 12;
+                hlg.childAlignment = TextAnchor.MiddleCenter;
+                hlg.childControlWidth = false;
+                hlg.childControlHeight = false;
+                hlg.childForceExpandWidth = false;
+                hlg.childForceExpandHeight = false;
+            }
+
+            UiLayer.Apply(go);
+            stoneSlotsContainer = rt;
+            return rt;
         }
 
         public void Refresh()

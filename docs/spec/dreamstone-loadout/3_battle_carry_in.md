@@ -32,3 +32,4 @@
 - 기존 드림캐쳐 / 스쿼드 carry-in smoke 회귀 통과, 콘솔 새 에러 0
 
 > 완료 확인(부분) 2026-07-04 — 리그 게이트 PASS: compile clean + EditMode 12/12 회귀 + PlayMode 2/2 (단독 1.30 / 복합 1.40 / 재시작 1.30 green). 투트랙 리뷰 반영(M2 pending 클리어, L1 주석). BattleScene stoneCatalog wiring + GameManager 경유 실게임 Play 검증 pending.
+> 완료 확인 2026-07-04 — BattleScene `stoneCatalog` 씬 배선(YAML 1줄) + `EquippedSquad_StartSquadMatch_EndToEnd`(프로필 장착 → StartSquadMatch → 씬 배선 카탈로그 경유 → 배치 유닛 damageMul 1.30) 리그 PASS. **검증 질문 자동화로 충족** — pending 해소.

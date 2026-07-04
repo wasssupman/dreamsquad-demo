@@ -10,6 +10,7 @@ using Wassup.Core;
 using Wassup.Bridge;
 using Wassup.Data;
 using Wassup.Battle.Effects;
+using Wassup.UI;
 
 namespace Wassup.Tests.PlayMode
 {
@@ -20,8 +21,23 @@ namespace Wassup.Tests.PlayMode
     // no scene DreamcatcherController interference).
     public class DreamstoneCarryInSmokeTest
     {
+        private PlayerProfileSO _profSO;
+
         [TearDown]
-        public void TearDown() => LogAssert.ignoreFailingMessages = false;
+        public void TearDown()
+        {
+            LogAssert.ignoreFailingMessages = false;
+            // Clear the in-memory squad so other tests / a draft path are not polluted
+            // by this run's setup (SquadCarryInSmokeTest pattern, extended to stoneIds).
+            // No-op for the bridge-direct test above, which never sets _profSO.
+            var squad = _profSO != null && _profSO.profile != null ? _profSO.profile.SelectedSquad() : null;
+            if (squad != null)
+            {
+                for (int i = 0; i < squad.unitIds.Count; i++) squad.unitIds[i] = "";
+                if (squad.stoneIds != null)
+                    for (int i = 0; i < squad.stoneIds.Count; i++) squad.stoneIds[i] = "";
+            }
+        }
 
         // Stop any in-flight tweens so they do not fire OnComplete after the next
         // test unloads their target (DreamcatcherEffectTest pattern).
@@ -111,6 +127,81 @@ namespace Wassup.Tests.PlayMode
             yield return null;
             Assert.AreEqual(1.30f, GetStat(bridge, em, "ranger").damageMul, 0.01f,
                 "restart re-applies the stone loadout exactly once -- no accumulation, no loss");
+        }
+
+        // dreamstone-loadout Unit 3 (rev, review follow-up) — end-to-end through the
+        // real production seam this class's first test bypasses: GameManager.Start ->
+        // StartSquadMatch -> ResolveEquippedStones -> GameManager.stoneCatalog ->
+        // BattleBridge.SetDreamstones. Mirrors SquadCarryInSmokeTest's profile-priming
+        // technique (OutgameMenuController reflection to reach the live PlayerProfileSO)
+        // and forces a deterministic squad exactly like it does for unitIds.
+        //
+        // NOTE: requires BattleScene's GameManager.stoneCatalog scene reference (wired
+        // 2026-07-04, same commit as this test). Unwired, ResolveEquippedStones resolves
+        // to an empty list and damageMul stays at 1.0 — exactly the silent-no-op wiring
+        // seam this test guards against regressing.
+        [UnityTest]
+        public IEnumerator EquippedSquad_StartSquadMatch_EndToEnd()
+        {
+            yield return SceneManager.LoadSceneAsync(SceneNames.Outgame, LoadSceneMode.Single);
+            yield return null;
+
+            var menu = Object.FindObjectOfType<OutgameMenuController>();
+            Assert.IsNotNull(menu, "outgame menu present");
+            _profSO = (PlayerProfileSO)menu.GetType()
+                .GetField("profileSO", BindingFlags.NonPublic | BindingFlags.Instance)
+                .GetValue(menu);
+            Assert.IsNotNull(_profSO, "profileSO wired");
+
+            var profile = _profSO.profile;
+            var squad = profile.SelectedSquad();
+            Assert.IsNotNull(squad, "default squad exists");
+            Assert.GreaterOrEqual(profile.ownedUnitIds.Count, 2, "owned pool seeded");
+
+            // Force a deterministic filled squad + 4x Unique ATK stone regardless of
+            // disk state ("stone_atk_unique" — the real unit 0 catalog asset id).
+            squad.unitIds[0] = profile.ownedUnitIds[0];
+            squad.unitIds[1] = profile.ownedUnitIds[1];
+            for (int i = 0; i < SquadSave.StoneSlotCount; i++) squad.stoneIds[i] = "stone_atk_unique";
+            string placedUnitId = squad.unitIds[0];
+
+            // BattleScene/DraftView pre-existing missing-script noise on load.
+            LogAssert.ignoreFailingMessages = true;
+
+            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            yield return null;
+            yield return null;
+
+            var gm = Object.FindObjectOfType<GameManager>();
+            Assert.IsNotNull(gm, "battle GameManager present");
+            var bridge = Object.FindObjectOfType<BattleBridge>();
+            Assert.IsNotNull(bridge, "BattleBridge present");
+            NeutralizeSceneController();
+
+            // squad map-setup — squad mode opens a map-setup step first; the player
+            // presses START to advance. Simulate that here (SquadCarryInSmokeTest).
+            Assert.AreNotEqual(GamePhase.Draft, gm.CurrentPhase, "squad mode skips draft");
+            gm.RequestPlacement();
+            yield return null;
+            yield return null;
+            Assert.AreEqual(GamePhase.Placement, gm.CurrentPhase,
+                "after map-setup START, squad mode enters Placement");
+
+            gm.CostRuntime.ResetToStart();
+            gm.CostRuntime.AddCost(1000);
+            yield return null;
+
+            var cat = FindCatalog();
+            var unit = cat.ById(placedUnitId);
+            Assert.IsNotNull(unit, "squad unit 0 resolves from catalog");
+            Assert.IsTrue(PlaceFirstValid(bridge, unit), "place squad unit 0");
+            yield return null;
+            yield return null;
+            yield return null;
+
+            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+            Assert.AreEqual(1.30f, GetStat(bridge, em, placedUnitId).damageMul, 0.01f,
+                "StartSquadMatch carry-in (wired stoneCatalog): 4x Unique ATK stone = +30% damageMul");
         }
 
         private static DreamcatcherCard MakeCard(CardTargetAxis axis, CardBuffKind kind, float pct)
