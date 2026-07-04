@@ -71,7 +71,7 @@ namespace Wassup.UI
             for (int i = 0; i < SquadSave.SlotCount; i++)
             {
                 int index = i;
-                var btn = CreateButton("＋", slotsContainer, new Vector2(120, 120), EmptySlotColor, out var label);
+                var btn = CreateButton("+", slotsContainer, new Vector2(120, 120), EmptySlotColor, out var label);
                 btn.onClick.AddListener(() => OpenPicker(PickerMode.Unit, index));
                 _unitSlotLabels.Add(label);
                 _unitSlotBgs.Add(btn.GetComponent<Image>());
@@ -84,7 +84,7 @@ namespace Wassup.UI
             for (int i = 0; i < SquadSave.StoneSlotCount; i++)
             {
                 int index = i;
-                var btn = CreateButton("＋", container, new Vector2(120, 120), EmptySlotColor, out var label);
+                var btn = CreateButton("+", container, new Vector2(120, 120), EmptySlotColor, out var label);
                 btn.onClick.AddListener(() => OpenPicker(PickerMode.Stone, index));
                 _stoneSlotLabels.Add(label);
                 _stoneSlotBgs.Add(btn.GetComponent<Image>());
@@ -161,7 +161,7 @@ namespace Wassup.UI
                 string id = (squad != null && i < squad.unitIds.Count) ? squad.unitIds[i] : "";
                 if (string.IsNullOrEmpty(id))
                 {
-                    _unitSlotLabels[i].text = "＋";
+                    _unitSlotLabels[i].text = "+";
                     _unitSlotBgs[i].color = EmptySlotColor;
                     continue;
                 }
@@ -175,7 +175,7 @@ namespace Wassup.UI
                 string id = (squad != null && squad.stoneIds != null && i < squad.stoneIds.Count) ? squad.stoneIds[i] : "";
                 if (string.IsNullOrEmpty(id))
                 {
-                    _stoneSlotLabels[i].text = "＋";
+                    _stoneSlotLabels[i].text = "+";
                     _stoneSlotBgs[i].color = EmptySlotColor;
                     continue;
                 }
@@ -311,6 +311,12 @@ namespace Wassup.UI
 
             var canvasGo = new GameObject("StonePickerCanvas", typeof(RectTransform));
             canvasGo.transform.SetParent(transform, false);
+            // RC1 (2026-07-04 육안 검증에서 적발) — new GameObject 의 RectTransform 기본값은
+            // 중앙 앵커 + sizeDelta 0x0. 부모(SquadPanel)가 풀스크린이므로 스트레치 =
+            // 전면 스크림; 미설정 시 스크림 면적이 0이 되어 모달이 메인 화면과 맨살로 겹쳐 보인다.
+            var crt = (RectTransform)canvasGo.transform;
+            crt.anchorMin = Vector2.zero; crt.anchorMax = Vector2.one;
+            crt.offsetMin = Vector2.zero; crt.offsetMax = Vector2.zero;
             var canvas = canvasGo.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvas.sortingOrder = 50;
@@ -346,11 +352,11 @@ namespace Wassup.UI
             glg.spacing = new Vector2(12, 12);
             glg.childAlignment = TextAnchor.UpperCenter;
 
-            var clearBtn = CreateButton("해제", _pickerPanel.transform, new Vector2(200, 60), new Color(0.5f, 0.16f, 0.16f, 1f), out _);
+            var clearBtn = CreateButton("CLEAR", _pickerPanel.transform, new Vector2(200, 60), new Color(0.5f, 0.16f, 0.16f, 1f), out _);
             ((RectTransform)clearBtn.transform).anchoredPosition = new Vector2(-160, -380);
             clearBtn.onClick.AddListener(OnPickerClear);
 
-            var closeBtn = CreateButton("닫기", _pickerPanel.transform, new Vector2(200, 60), new Color(0.28f, 0.28f, 0.32f, 1f), out _);
+            var closeBtn = CreateButton("CLOSE", _pickerPanel.transform, new Vector2(200, 60), new Color(0.28f, 0.28f, 0.32f, 1f), out _);
             ((RectTransform)closeBtn.transform).anchoredPosition = new Vector2(160, -380);
             closeBtn.onClick.AddListener(ClosePicker);
 
