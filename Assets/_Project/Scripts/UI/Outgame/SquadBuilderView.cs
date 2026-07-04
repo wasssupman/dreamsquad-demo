@@ -241,15 +241,29 @@ namespace Wassup.UI
             if (_pickerPanel != null) _pickerPanel.SetActive(false);
         }
 
+        // dreamstone-loadout Unit 2 (rev, 2026-07-04 육안 피드백) — dim already-slotted
+        // items at build time. Items are recreated fresh on every OpenPicker, so the
+        // dim reflects the squad state at open — no separate refresh path needed.
         private void BuildUnitPickerItems()
         {
             if (catalog == null || profileSO == null || profileSO.profile == null) return;
+            var squad = Squad;
             foreach (var id in profileSO.profile.ownedUnitIds)
             {
                 var unit = catalog.ById(id);
                 string label = unit != null ? DisplayName(unit) : id;
                 string captured = id;
-                var btn = CreateButton(label, _pickerGrid, new Vector2(150, 70), OwnedUnitColor, out _);
+                bool alreadySlotted = squad != null && squad.unitIds.Contains(id);
+                var bg = alreadySlotted ? DimColor(OwnedUnitColor, 0.4f) : OwnedUnitColor;
+                var btn = CreateButton(label, _pickerGrid, new Vector2(150, 70), bg, out var lbl);
+                if (alreadySlotted)
+                {
+                    // Unit picker: already-slotted units are NOT selectable — squad is a
+                    // set of units. PickUnit's own dedup guard stays as a second line of
+                    // defense (e.g. if this ever gets called from elsewhere).
+                    lbl.color = new Color(lbl.color.r, lbl.color.g, lbl.color.b, 0.5f);
+                    btn.interactable = false;
+                }
                 btn.onClick.AddListener(() => PickUnit(captured));
                 _pickerItems.Add(btn.gameObject);
             }
@@ -258,12 +272,23 @@ namespace Wassup.UI
         private void BuildStonePickerItems()
         {
             if (stoneCatalog == null) return;
+            var squad = Squad;
             foreach (var id in stoneCatalog.AllIds())
             {
                 var stone = stoneCatalog.ById(id);
                 if (stone == null) continue;
                 string captured = id;
-                var btn = CreateButton(StoneSummary(stone), _pickerGrid, new Vector2(150, 70), GradeColor(stone.grade), out _);
+                bool alreadySlotted = squad != null && squad.stoneIds != null && squad.stoneIds.Contains(id);
+                var bg = alreadySlotted ? DimColor(GradeColor(stone.grade), 0.55f) : GradeColor(stone.grade);
+                var btn = CreateButton(StoneItemLabel(stone), _pickerGrid, new Vector2(150, 70), bg, out var lbl);
+                lbl.fontSize = 14;
+                if (alreadySlotted)
+                {
+                    // Stone picker: dim-only, selection STAYS enabled — duplicate stone
+                    // equip is a feature-wide contract (e.g. "4x Unique ATK stone" cap
+                    // scenario), so this must never block a pick like the unit picker does.
+                    lbl.color = new Color(lbl.color.r, lbl.color.g, lbl.color.b, 0.7f);
+                }
                 btn.onClick.AddListener(() => PickStone(captured));
                 _pickerItems.Add(btn.gameObject);
             }
@@ -390,6 +415,17 @@ namespace Wassup.UI
             string sign = stone.effect.percent >= 0 ? "+" : "";
             return $"{abbr} {sign}{stone.effect.percent:0.#}%";
         }
+
+        // dreamstone-loadout Unit 2 (rev, 2026-07-04) — picker-item-only label: asset
+        // displayName on its own line above the stat summary, so the 16-item grid
+        // reads as named stones rather than bare stat abbreviations. Main-screen slot
+        // labels stay StoneSummary-only (unchanged, kept compact).
+        private static string StoneItemLabel(DreamstoneData stone) =>
+            string.IsNullOrEmpty(stone.displayName) ? StoneSummary(stone) : $"{stone.displayName}\n{StoneSummary(stone)}";
+
+        // dreamstone-loadout Unit 2 (rev, 2026-07-04) — dim an already-slotted picker
+        // item's background by a flat RGB factor (alpha untouched).
+        private static Color DimColor(Color c, float factor) => new Color(c.r * factor, c.g * factor, c.b * factor, c.a);
 
         private static Color GradeColor(DreamstoneGrade grade)
         {
