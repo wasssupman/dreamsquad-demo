@@ -24,6 +24,8 @@ namespace Wassup.Core
         // in Start; null/empty → existing draft path).
         [SerializeField] private PlayerProfileSO profileSO;
         [SerializeField] private DefenderCatalog catalog;
+        // dreamstone-loadout Unit 3 — resolves SquadSave.stoneIds to assets for carry-in.
+        [SerializeField] private DreamstoneCatalog stoneCatalog;
 
         // match-seed-unification — 단일 매치 시드 소유. 맵·웨이브가 여기서 파생된다.
         [Header("Match Seed")]
@@ -192,6 +194,11 @@ namespace Wassup.Core
             }
             battleBridge.SetDefenderPool(units.ToArray());
 
+            // dreamstone-loadout Unit 3 — set-then-apply: stage the squad's equipped
+            // stones now; BattleBridge applies them once BeginPlacement clears+reapplies
+            // its match-effect registry (see BattleBridge.BeginPlacement/SetDreamstones).
+            battleBridge.SetDreamstones(ResolveEquippedStones(squad));
+
             // Skills stay independent of units — roll a fresh loadout like draft does.
             if (skillLoadout != null)
             {
@@ -234,6 +241,11 @@ namespace Wassup.Core
             else
                 Debug.LogWarning("[GameManager] 테스트 모드 디펜더 없음 — 저장 스쿼드/프리셋 모두 비어 있음.");
 
+            // dreamstone-loadout Unit 3 — StartSquadMatch 미러. 스톤은 스쿼드 소속이라
+            // 디펜더가 프리셋으로 폴백해도(위 defenders) 저장 스쿼드의 장착 스톤은 그대로 반입한다.
+            var stoneSquad = (profileSO != null && profileSO.profile != null) ? profileSO.profile.SelectedSquad() : null;
+            battleBridge.SetDreamstones(ResolveEquippedStones(stoneSquad));
+
             // Skills stay independent of units — roll a fresh loadout like draft does.
             if (skillLoadout != null)
             {
@@ -268,6 +280,23 @@ namespace Wassup.Core
                 if (u != null) units.Add(u);
             }
             return units.ToArray();
+        }
+
+        // dreamstone-loadout Unit 3 — resolve a squad's equipped stoneIds to assets
+        // via the catalog. Missing catalog/squad/list, or an id the catalog no longer
+        // has (asset deleted), are skipped — same "resolve at read time, don't fail
+        // storage" policy as ResolveSquadDefenders/SquadDraw use for unitIds.
+        private List<DreamstoneData> ResolveEquippedStones(SquadSave squad)
+        {
+            var stones = new List<DreamstoneData>();
+            if (squad == null || squad.stoneIds == null || stoneCatalog == null) return stones;
+            foreach (var id in squad.stoneIds)
+            {
+                if (string.IsNullOrEmpty(id)) continue;
+                var stone = stoneCatalog.ById(id);
+                if (stone != null) stones.Add(stone);
+            }
+            return stones;
         }
 
         private void OnDisable()

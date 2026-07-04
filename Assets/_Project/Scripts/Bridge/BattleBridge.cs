@@ -805,6 +805,9 @@ namespace Wassup.Bridge
             // ingame-dreamcatcher Unit 2/3 — reset card registry + triggers for a new match.
             _activeDcEffects.Clear();
             _dcStackCounter = 100;
+            // dreamstone-loadout Unit 3 — set-then-apply: reapply the pending stone
+            // loadout right after the clear above (single point, see SetDreamstones).
+            ApplyPendingDreamstones();
             _firstDefenderPlacedFired = false;
             _onPlaceTriggeredEntities.Clear();
             _synergyActivatedEntities.Clear();
@@ -1020,6 +1023,9 @@ namespace Wassup.Bridge
 
         public void StopBattle()
         {
+            // dreamstone-loadout Unit 3 — reset symmetry: pending loadout must not outlive the match (review M2).
+            _pendingDreamstones = null;
+
             if (HasLiveEntityManager())
             {
                 TeardownCurrentBattle();
@@ -2417,7 +2423,55 @@ namespace Wassup.Bridge
                 case Wassup.Data.CardTargetAxis.ClassRanger: return data.role == Wassup.Data.DefenderClass.Ranger;
                 case Wassup.Data.CardTargetAxis.ClassGuardian: return data.role == Wassup.Data.DefenderClass.Guardian;
                 case Wassup.Data.CardTargetAxis.Cost1: return data.cost == 1;
+                // dreamstone-loadout Unit 3 — All must be explicit. Falling to default
+                // (false) would silently no-op every equipped stone with no error.
+                case Wassup.Data.CardTargetAxis.All: return true;
                 default: return false;
+            }
+        }
+
+        // dreamstone-loadout Unit 3 — squad-equipped stones, set-then-apply (mirrors
+        // SetDefenderPool). GameManager calls this BEFORE BeginPlacement; storing here
+        // only stages the pending list. BeginPlacement applies it right after clearing
+        // _activeDcEffects (below), so clear+reapply happen at a single point and a
+        // match restart can neither leak (re-added on top of stale entries) nor drop
+        // (cleared with nothing to restore) the loadout.
+        private System.Collections.Generic.IReadOnlyList<Wassup.Data.DreamstoneData> _pendingDreamstones;
+
+        public void SetDreamstones(System.Collections.Generic.IReadOnlyList<Wassup.Data.DreamstoneData> stones)
+        {
+            _pendingDreamstones = stones;
+        }
+
+        // Applies the pending stone loadout into the same _activeDcEffects registry
+        // ApplyDreamcatcherCard uses, targeting axis=All (every allied defender).
+        // Called only from BeginPlacement, immediately after its clear — see the
+        // set-then-apply note on SetDreamstones above.
+        private void ApplyPendingDreamstones()
+        {
+            if (_pendingDreamstones == null) return;
+            for (int i = 0; i < _pendingDreamstones.Count; i++)
+            {
+                var stone = _pendingDreamstones[i];
+                if (stone == null) continue;
+                if (!MapDcEffect(stone.effect, out var stat, out var mult)) continue;
+                ushort sid = _dcStackCounter++;
+                _activeDcEffects.Add(new ActiveDcEffect { axis = Wassup.Data.CardTargetAxis.All, stat = stat, mult = mult, stackId = sid });
+                // No defenders are placed yet at this point in BeginPlacement (_defenderByTile
+                // was just cleared above) — this loop is a no-op today, but sharing it with
+                // ApplyDreamcatcherCard's identical loop is harmless and keeps both call sites
+                // symmetric if that ever changes. Ordering dependency (review L1): this method
+                // runs before EnsureQueriesAndQueues() further down in BeginPlacement, so
+                // _statModifierQueue is not yet IsCreated here — moving the stone apply to
+                // after placement begins would make EnqueueStatModifier's IsCreated guard
+                // silently swallow it instead of a clean no-op.
+                foreach (var kv in _defenderByTile)
+                {
+                    var data = kv.Value.data;
+                    var entity = kv.Value.entity;
+                    if (data != null && _em.Exists(entity) && MatchesDcAxis(data, Wassup.Data.CardTargetAxis.All))
+                        EnqueueStatModifier(entity, stat, mult, DcDuration, sid);
+                }
             }
         }
 

@@ -4,7 +4,9 @@ using UnityEngine;
 namespace Wassup.Data
 {
     // ingame-dreamcatcher Unit 1 — which allied units a card targets.
-    public enum CardTargetAxis { ClassRanger, ClassGuardian, Cost1 }
+    // dreamstone-loadout Unit 3 — All appended at the end (existing DreamcatcherCard
+    // assets serialize axis as int 0~2; inserting earlier would relabel them).
+    public enum CardTargetAxis { ClassRanger, ClassGuardian, Cost1, All }
 
     // ingame-dreamcatcher Unit 1 — what a card buffs. Maps to StatModifier in
     // Unit 2: AttackDamage→DamageMul, AttackSpeed→AttackSpeedMul,

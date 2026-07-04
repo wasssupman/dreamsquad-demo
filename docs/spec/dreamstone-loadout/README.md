@@ -47,3 +47,4 @@
 - (크리틱 이관) headless 드림캐쳐 auto-pick 이 `BeginPlacement` 클리어 직전에 등록돼 지워지는 기존 버그 (PlacementPhaseView.cs:56-58 순서)
 - (크리틱 이관) `DreamcatcherSelectionView.Summary` axis 라벨 체인에 `All`/default 가드 추가
 - (크리틱 이관) 체력 스톤 표기 vs 실효(EHP +33.5%) 차이의 플레이어 노출 방식 (툴팁 등)
+- (리뷰 이관) StartSquadMatch 경유 통합 검증 자동화 — 현 PlayMode smoke 는 bridge 직접 구동이라 GameManager/카탈로그 해석/씬 wiring seam 을 우회함. wiring 후 실게임 Play 검증이 1차 커버.
