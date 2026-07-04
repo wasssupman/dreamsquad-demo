@@ -68,5 +68,13 @@ _session.swayPivot.localRotation = Quaternion.Euler(0f, 0f, _swayAngle);
   그 **변화(=고리 가속도)**로 `_swayVel += -Δv·swayAccelScale`. 등속=수직 매달림 / 출발=역lag / 정지=overshoot.
 - 파라미터 7종 SerializeField: `swayHangHeight/swayMaxAngle/swaySpring/swayDamping/swayAccelScale/`
   `swayPointerResponse/swayPointerDecay`. compile 0err.
-- **잔여: 사용자 focused Play 육안 + 튜닝** — 특히 `swayHangHeight`(몸이 고리 아래 얼마나 매달리나),
-  `swayAccelScale`(스윙 크기). 부호는 진행 반대 trail(관성)로 이미 맞춤.
+- 부호는 진행 반대 trail(관성)로 맞춤.
+
+**모델 재정정 rev2 2026-07-04 (`4e51f1c`)** — 가속도-only 모델이 안 보이는 문제 해결:
+- 가속도 forcing 은 등속 드래그 중 ≈0 + 스케일 과소 → 정상 드래그에서 ~2°(불가시)였음.
+- **velocity-lean** 으로 교체: 목표각 = `-포인터속도 × swayLeanPerVel`(진행 반대 lean), 스프링이
+  lag/overshoot 로 추종. 끄는 내내 뒤로 눕고(가시), 멈추면 목표→0 스윙백+감쇠(관성). 3노드 매달림 유지.
+- 파라미터: `swayHangHeight/swayMaxAngle/swayLeanPerVel/swaySpring/swayDamping/swayPointerResponse/swayPointerDecay`.
+- **Play 검증(MCP, timeScale=0 동결)**: `_ptrVelRaw=700` → `_swayAngle=-24°`(clamp), pivot localEulerZ=336° 실제
+  적용, 캐릭터 tilt 스크린샷 `-24° vs 0°` 비교로 육안 확인. → 플러밍·물리 모두 확정.
+- **잔여: 사용자 취향 튜닝**(swayLeanPerVel 스윙량 / swayHangHeight 매달림 / spring·damping 감쇠 느낌).
