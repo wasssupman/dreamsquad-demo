@@ -232,6 +232,8 @@ board-visualization spec 자체는 ROI 부족으로 wrap 종료. 진단/실험�
 
 ### Promoted / Closed
 
+- **Dreamstone loadout** → `docs/spec/dreamstone-loadout/` (**spec 확정 2026-07-04 · 구현 대기 — Codex 이관**. 스쿼드 4슬롯 드림스톤 장착 + 게임 시작 시 아군 전체 매치 상시 버프. 설계 크리틱 반영·UI C안 확정. 구현 진입점: `CODEX_GUIDE.md`)
+
 - **Legacy render removal** → `docs/spec/legacy-render-removal/` (completed 2026-07-03, units 0~4 — Legacy MapView 렌더/Legacy3D 모드/시즌 백드롭/테마 LEGACY 43필드 완전 삭제, ~6,300줄 순삭. Tilemap 경로 무회귀. 씬 MapView 잔재 청소는 follow-up)
 
 - **Projectile GA reskin** → `docs/spec/projectile-ga-reskin/` (completed 2026-07-03, units 0~6 — GabrielAguiar UniqueProjectiles Vol4 50종 라이브러리 + 스트립/스왑 툴 + ViewPool as-is 가드(streak/preserveVfxColors) + 높이오프셋 + ProjectileOffset sorting + muzzle-hit. 실게임 검증 PASS. 최종 변종선택/스케일/미사용정리는 사용자 취향 후속)
