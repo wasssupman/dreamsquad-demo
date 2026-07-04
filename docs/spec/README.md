@@ -232,7 +232,7 @@ board-visualization spec 자체는 ROI 부족으로 wrap 종료. 진단/실험�
 
 ### Promoted / Closed
 
-- **Dreamstone loadout** → `docs/spec/dreamstone-loadout/` (**spec 확정 2026-07-04 · 구현 대기 — Codex 이관**. 스쿼드 4슬롯 드림스톤 장착 + 게임 시작 시 아군 전체 매치 상시 버프. 설계 크리틱 반영·UI C안 확정. 구현 진입점: `CODEX_GUIDE.md`)
+- **Dreamstone loadout** → `docs/spec/dreamstone-loadout/` (completed 2026-07-04, units 0~3 + 씬 배선 + e2e — 스쿼드 4슬롯 드림스톤 장착, 등급 캡 데이터 계약(유니크4=+30% additive), 슬롯 탭→피커 모달 UI, set-then-apply 반입. 리뷰 4단(설계 크리틱/unit별/투트랙/Codex HIGH). 획득/인벤토리는 후속)
 
 - **Legacy render removal** → `docs/spec/legacy-render-removal/` (completed 2026-07-03, units 0~4 — Legacy MapView 렌더/Legacy3D 모드/시즌 백드롭/테마 LEGACY 43필드 완전 삭제, ~6,300줄 순삭. Tilemap 경로 무회귀. 씬 MapView 잔재 청소는 follow-up)
 
