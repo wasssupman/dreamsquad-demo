@@ -138,16 +138,19 @@ code + git history        구현 상세
 - **타일 게이지 시각 폴리시** [S] · fill inset `pad=0.18` SO화, 코너 조인트 갭 보정, 4-edge 계단식 → 연속 SDF 셰이더 교체.
 - **hazard 체력 표시 / 상태이상 틴트 합성 / 웨이브 압력 게이지 / 보스 상시 바** — unit-health-display README 후속 후보.
 
-#### 배치 프리뷰 / 범위 (placement-attack-range-preview, placement-drag-preview-polish)
+#### 배치 프리뷰 / 범위 (placement-attack-range-preview, placement-drag-preview-polish, keyring-cord-preview)
 
-드래그 배치 UX 2종(공격범위 격자 표시 + 프리뷰 각도/sway·정렬) 완료 2026-07-04 후 남은 항목.
+드래그 배치 UX(공격범위 격자 표시 + 프리뷰 sway → **키링화** 완료 2026-07-05) 후 남은 항목.
 
 - **배치 스킬 범위 표시** [M] · `onPlaceRange`/`hazardCastRange` 를 다른 색 채널로. 웜(공격)/쿨(스킬) 색코드 + 채널별 펄스 위상차, 필요 시 border 타일. 2번째 색 채널 시점에 `EnsureRangeTilemap`/펄스 로직 파라미터 추출. (range-preview)
 - **Guardian 어그로 반경 시각화** [S] · `aggroRange` 를 또 다른 표기로(공격 범위와 별개 성격). (range-preview)
 - **이미 배치된 유닛 선택/탭 시 범위 표시** [S] · 현재는 드래그 중만. (range-preview)
+- **키링 중력 드롭 방식** [S] · 움직일 땐 유닛이 손가락에 붙고, 멈추면 중력으로 툭 떨어져 매달리는 물리감(사용자 제안, 현 스프링 follow 의 대안). (keyring)
+- **키링 고리/줄 실제 아트** [S] · 현재 절차적 원 링 + 단색 LineRenderer. 금속 링/체인 스프라이트로 스왑. (keyring)
+- **줄 sag 곡선** [S] · 현재 2점 직선. 정적 catenary 곡선으로 끈 느낌. (keyring)
 - **배치 유닛 idle sway** [S] · 현재 sway 는 드래그 프리뷰 전용. 배치된 유닛의 상시 미세 흔들림. (drag-preview)
-- **드롭 bounce / 세로·전후 흔들림** [S] · 현재 sway 는 좌우 1축. 드롭 착지 반동·다축 진자. (drag-preview)
-- **fallback capsule 프리뷰 각도/sway** [S] · Spine 없는 유닛 경로(현재 스킵, 3D 프리미티브라 무영향). (drag-preview)
+- **드롭 bounce / 세로·전후 흔들림** [S] · 드롭 착지 반동·다축 진자. (drag-preview)
+- **fallback capsule 프리뷰 sway** [S] · Spine 없는 유닛 경로(현재 스킵, 키링 미적용). (keyring/drag-preview)
 
 #### Modifier framework — Producer 확장 (modifier-framework-and-healer)
 
@@ -243,6 +246,7 @@ board-visualization spec 자체는 ROI 부족으로 wrap 종료. 진단/실험�
 
 ### Promoted / Closed
 
+- **Placement keyring cord preview** → `docs/spec/keyring-cord-preview/` (completed 2026-07-05, squash 머지 `d197bc7` — 드래그 프리뷰 키링화: 고리=손가락(공중)·유닛=보드 스프링 follow(무게추 흔들림)·**하이라이트는 마우스 고정**(스윙 유닛 아님). 이전 drag-preview sway 완전 교체(SO 스키마도). camUp 수직분리·워밍업 금지 등 되돌리면 안 되는 설계는 handoff 참조. 탐색 이력 16커밋은 `feature/keyring-cord` 브랜치. 중력 드롭·아트 스왑은 후속)
 - **Placement attack-range preview** → `docs/spec/placement-attack-range-preview/` (completed 2026-07-04, units 0~2 — 드래그 배치 중 공격범위를 노란 격자 outline 로 동기 펄스 표시. `Tilemap.color` tint + 전용 `_rangeTilemap`(sorting -12) + Chebyshev `RangeToTiles`. e2e 드래그 추종 Play 검증)
 - **Placement drag-preview polish** → `docs/spec/placement-drag-preview-polish/` (completed 2026-07-04, units 0~1 + rev — 프리뷰 빌보드 각도 정합 + 매달린 키링 velocity-lean sway(SO 튜닝) + 프랍 위 정렬. Play(MCP) 검증)
 - **Dreamstone loadout** → `docs/spec/dreamstone-loadout/` (completed 2026-07-04, units 0~3 + 씬 배선 + e2e — 스쿼드 4슬롯 드림스톤 장착, 등급 캡 데이터 계약(유니크4=+30% additive), 슬롯 탭→피커 모달 UI, set-then-apply 반입. 리뷰 4단(설계 크리틱/unit별/투트랙/Codex HIGH). 획득/인벤토리는 후속)
