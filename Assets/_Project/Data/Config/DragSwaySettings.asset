@@ -12,10 +12,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29b8b73016fd4433dbba47a28c176c11, type: 3}
   m_Name: DragSwaySettings
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DragSwaySettings
-  hangHeight: 1.5
-  maxAngle: 16
-  leanPerVel: 0.035
-  spring: 120
-  damping: 4.5
-  pointerResponse: 26
-  pointerDecay: 16
+  ropeLength: 2
+  maxAngle: 8
+  spring: 100
+  damping: 2.5
+  maxSpeed: 12
+  cordWidth: 0.14
+  cordColor: {r: 0.45, g: 0.38, b: 0.28, a: 1}
+  ringRadius: 0.18
+  charmDrop: 0

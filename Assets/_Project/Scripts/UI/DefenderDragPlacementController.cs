@@ -1,6 +1,5 @@
 using System.Collections;
 using Spine.Unity;
-using Unity.Entities;
 using UnityEngine;
 using Wassup.Bridge;
 using Wassup.Core;
@@ -18,28 +17,37 @@ namespace Wassup.UI
         [SerializeField] private float previewHeight = 0.35f;
         [SerializeField] private float previewScale = 0.65f;
 
-        // Drag sway(매달린 키링) 튜닝값은 DragSwaySettings SO 에서 온다. 이 컨트롤러는 런타임
-        // AddComponent(DefenderSelector) 라 인스펙터 튜닝이 안 되므로 수치를 SO 로 분리 —
-        // DefenderSelector 에 SO 를 할당하면 Configure 로 주입되고, 에셋 편집이 그대로 반영된다.
-        // 미주입 시 클래스 기본값 인스턴스로 폴백(never null).
-        private DragSwaySettings _sway;
-        private DragSwaySettings Sway => _sway != null ? _sway : (_sway = ScriptableObject.CreateInstance<DragSwaySettings>());
+        // 드래그 프리뷰 키링 튜닝값은 DragSwaySettings SO 에서 온다. 컨트롤러가 런타임 AddComponent 라
+        // 인스펙터 튜닝이 안 되므로 SO 로 분리 — DefenderSelector 에 할당하면 Configure 로 주입. 미주입 시 기본값.
+        private DragSwaySettings _cfg;
+        private DragSwaySettings Cfg => _cfg != null ? _cfg : (_cfg = ScriptableObject.CreateInstance<DragSwaySettings>());
+
+        private const int RingSegments = 14;
 
         private DragSession _session;
-        private Material _previewMaterial;
-        private float _swayAngle;
-        private float _swayVel;
-        private float _lastPointerX;
-        private bool _hasLastPointer;
-        private float _ptrVelRaw;   // 최신 측정 포인터 x속도(px/s), 입력 없으면 0으로 감쇠
-        private float _ptrVel;      // 스무딩된 포인터 x속도(→ 목표 lean 각 산출)
+        private Material _previewMaterial; // 폴백 capsule 용
+        private Material _cordMaterial;    // 줄/고리 공유(세션마다 생성 금지)
+
+        // 키링 배치 상태: 고리 = 손가락(공중). 유닛 = 보드에 서서 무게추처럼 스프링 지연으로 뒤따라옴.
+        private Vector3 _ringWorld;        // 고리(손가락, 공중)
+        private Vector3 _unitTargetWorld;  // 유닛 발 목표(고리 바로 아래 보드) — 손가락 즉시 추종
+        private Vector3 _unitPosWorld;     // 유닛 발 실제(스프링 지연)
+        private Vector3 _unitVelWorld;
+        private bool _posInit;
+        private bool _onBoard;
 
         private struct DragSession
         {
             public bool active;
             public DefenderUnitData unit;
-            public GameObject preview;
-            public Transform swayPivot;
+            public GameObject preview;      // root(scale 1). 자식이 고리/줄/실루엣.
+            public LineRenderer cordLine;
+            public Transform ring;
+            public Transform endNode;       // 빌보드. 유닛 머리 위치.
+            public Transform swingPivot;    // 머리 중심 기울임.
+            public Transform spineChild;
+            public float visualScale;
+            public float unitHeight;        // 실루엣 월드 높이(발→머리). 머리 오프셋용.
             public Vector2Int? hoverTile;
             public bool isValidTile;
         }
@@ -50,7 +58,7 @@ namespace Wassup.UI
             bridge = battleBridge;
             mainCamera = camera != null ? camera : Camera.main;
             placementInput = input;
-            if (swaySettings != null) _sway = swaySettings;
+            if (swaySettings != null) _cfg = swaySettings;
         }
 
         public void BeginDrag(DefenderUnitData unitData, Vector2 screenPosition)
@@ -59,65 +67,119 @@ namespace Wassup.UI
             CleanupSession();
             if (mainCamera == null) mainCamera = Camera.main;
 
-            _session = new DragSession
-            {
-                active = true,
-                unit = unitData,
-                preview = CreatePreview(unitData, out var swayPivot),
-                swayPivot = swayPivot,
-            };
+            _session = BuildSession(unitData);
             if (placementInput != null) placementInput.SetClickPlacementEnabled(false);
             UpdateDrag(screenPosition);
         }
 
         private void Update()
         {
-            if (!_session.active || _session.preview == null || _session.swayPivot == null) return;
-            var s = Sway;
+            if (!_session.active || _session.preview == null || _session.endNode == null || mainCamera == null) return;
+            if (!_onBoard || !_posInit) return;
+            var s = Cfg;
             float dt = Mathf.Max(Time.unscaledDeltaTime, 1e-4f);
+            var camT = mainCamera.transform;
 
-            // 포인터(고리) 속도: 최신 샘플로 스무딩 chase, 입력 없으면 0으로 감쇠(정지 시 목표→0).
-            _ptrVel = Mathf.Lerp(_ptrVel, _ptrVelRaw, 1f - Mathf.Exp(-s.pointerResponse * dt));
-            _ptrVelRaw = Mathf.Lerp(_ptrVelRaw, 0f, 1f - Mathf.Exp(-s.pointerDecay * dt));
+            // 무게추 스프링(탄성) + 속도 상한: spring/damping 으로 지연·탄성을 유지하고, maxSpeed 로 빠른
+            // 스와이프 시 속도만 제한 → 초기 튀어나감만 방지(탄성 자체는 spring/damping 으로 조절).
+            Vector3 accel = (_unitTargetWorld - _unitPosWorld) * s.spring - _unitVelWorld * s.damping;
+            _unitVelWorld += accel * dt;
+            if (s.maxSpeed > 0f)
+            {
+                float sp = _unitVelWorld.magnitude;
+                if (sp > s.maxSpeed) _unitVelWorld *= s.maxSpeed / sp;
+            }
+            _unitPosWorld += _unitVelWorld * dt;
 
-            // 매달린 몸의 목표각 = 진행 반대로 trail(속도 비례). 끌면 뒤로 눕고, 멈추면 목표→0.
-            float target = Mathf.Clamp(-_ptrVel * s.leanPerVel, -s.maxAngle, s.maxAngle);
+            // 배치: 고리(공중) · 유닛 머리(발+높이) · 줄(고리→머리).
+            if (_session.ring != null) _session.ring.position = _ringWorld;
+            Vector3 headPos = _unitPosWorld + camT.up * _session.unitHeight;
+            _session.endNode.position = headPos;
 
-            // 목표각을 스프링이 추종(감쇠) → lag/overshoot 로 관성 스윙. 등속=목표 유지, 정지=스윙백.
-            _swayVel += ((target - _swayAngle) * s.spring - _swayVel * s.damping) * dt;
-            _swayAngle += _swayVel * dt;
-            _swayAngle = Mathf.Clamp(_swayAngle, -s.maxAngle * 1.4f, s.maxAngle * 1.4f); // overshoot 허용
-            _session.swayPivot.localRotation = Quaternion.Euler(0f, 0f, _swayAngle);
+            // 유닛 기울임: 줄(고리→머리) 방향으로 기움(뒤로 처질수록 기욺). clamp maxAngle.
+            if (_session.swingPivot != null)
+            {
+                Vector3 toRing = (_ringWorld - headPos).normalized; // 머리→고리 = 유닛 up 방향
+                float x = Vector3.Dot(toRing, camT.right);
+                float y = Vector3.Dot(toRing, camT.up);
+                float lean = Mathf.Clamp(-Mathf.Atan2(x, Mathf.Max(y, 1e-3f)) * Mathf.Rad2Deg, -s.maxAngle, s.maxAngle);
+                _session.swingPivot.localRotation = Quaternion.Euler(0f, 0f, lean);
+            }
+
+            if (_session.cordLine != null)
+            {
+                if (_session.cordLine.positionCount != 2) _session.cordLine.positionCount = 2;
+                _session.cordLine.SetPosition(0, _ringWorld);
+                _session.cordLine.SetPosition(1, headPos);
+            }
+
+            // 하이라이트 = 마우스 바로 아래(안정) 칸. 흔들리는 유닛 위치가 아니라 마우스가 클램프 →
+            // 유닛은 좌우로 흔들려도 배치 대상 칸은 고정(게임 배치 정확도). 유닛은 그 칸 위에서 흔들린다.
+            UpdateHoverAtTarget();
         }
 
         public void UpdateDrag(Vector2 screenPosition)
         {
             if (!_session.active) return;
+            // 발↔고리 화면 세로 거리 = 유닛 키 + 줄 길이. 고리는 손가락에, 유닛은 그만큼 화면 아래 보드에.
+            float totalDrop = _session.unitHeight + Cfg.ropeLength * _session.visualScale;
 
-            // 고리(포인터) 수평 속도만 측정 — forcing(가속도)은 Update 가 이 속도의 변화로 계산.
-            if (_hasLastPointer)
+            if (TryComputeRingUnit(screenPosition, totalDrop, out Vector3 ringW, out Vector3 unitTargetW))
             {
-                float ddt = Mathf.Max(Time.unscaledDeltaTime, 1e-4f);
-                _ptrVelRaw = (screenPosition.x - _lastPointerX) / ddt;
-            }
-            _lastPointerX = screenPosition.x;
-            _hasLastPointer = true;
-
-            if (TryScreenToPlacement(screenPosition, out var cell, out var world))
-            {
-                if (_session.preview != null)
-                    // world 는 sim(셀 중심) — preview 는 view 오브젝트라 ToView 후 배치. previewHeight 는 화면 위(Y).
-                    _session.preview.transform.position = (Vector3)BoardSpace.ToView(world) + Vector3.up * previewHeight;
-
-                bool valid = bridge != null && bridge.CanPlaceDefenderAt(cell.x, cell.y, _session.unit, out _);
-                SetHover(cell, valid);
+                _ringWorld = ringW;
+                _unitTargetWorld = unitTargetW;
+                if (!_posInit) { _unitPosWorld = unitTargetW; _unitVelWorld = Vector3.zero; _posInit = true; }
+                _onBoard = true;
+                if (_session.preview != null && !_session.preview.activeSelf) _session.preview.SetActive(true);
             }
             else
             {
+                _onBoard = false;
                 ClearHover();
-                if (_session.preview != null)
-                    _session.preview.SetActive(false);
+                if (_session.preview != null) _session.preview.SetActive(false);
             }
+        }
+
+        // 손가락 ray → 고리(손가락 위치) + 유닛 발 목표. 수직 분리는 카메라-up(화면 세로) 기준:
+        // 고리는 손가락 ray 위, 발은 고리보다 화면상 totalDrop 아래이면서 보드 평면 위에 놓이도록 s 를 푼다.
+        // (월드-up 으로 올리면 기울어진 카메라에서 화면상 거의 안 올라가 고리·유닛이 겹친다.)
+        private bool TryComputeRingUnit(Vector2 screenPos, float totalDrop, out Vector3 ringW, out Vector3 unitTargetW)
+        {
+            ringW = default; unitTargetW = default;
+            if (mainCamera == null) return false;
+            var ray = mainCamera.ScreenPointToRay(screenPos);
+            var boardPlane = BoardSpace.RaycastPlane();
+            var camT = mainCamera.transform;
+            Vector3 N = boardPlane.normal;
+            float nd = Vector3.Dot(N, ray.direction);
+            if (Mathf.Abs(nd) < 1e-6f) return false;
+            // ring = camPos + s*rayDir(손가락 위), feet = ring - camUp*totalDrop 가 boardPlane 위가 되는 s.
+            float s = -(Vector3.Dot(N, camT.position - camT.up * totalDrop) + boardPlane.distance) / nd;
+            if (s <= 0f) return false;
+            ringW = camT.position + ray.direction * s;
+            Vector3 feet = ringW - camT.up * totalDrop;
+            Vector3 nUp = N.normalized;
+            if (Vector3.Dot(nUp, camT.position - feet) < 0f) nUp = -nUp;
+            unitTargetW = feet + nUp * previewHeight; // 발 = 보드 표면 + 살짝 띄움
+            return true;
+        }
+
+        private void UpdateHoverAtTarget()
+        {
+            // 스윙하는 _unitPosWorld 가 아니라 마우스 바로 아래 목표(_unitTargetWorld) 로 칸을 정한다 → 흔들림 없이 안정.
+            var sim = BoardSpace.ToSim(_unitTargetWorld);
+            Vector2Int cell;
+            if (bridge != null)
+            {
+                var c = bridge.DebugWorldToCell((Vector3)sim);
+                cell = new Vector2Int(c.x, c.y);
+            }
+            else
+            {
+                cell = new Vector2Int(Mathf.FloorToInt(sim.x + 0.5f), Mathf.FloorToInt(sim.z + 0.5f));
+            }
+            bool valid = bridge != null && bridge.CanPlaceDefenderAt(cell.x, cell.y, _session.unit, out _);
+            SetHover(cell, valid);
         }
 
         public void EndDrag(Vector2 screenPosition)
@@ -138,11 +200,11 @@ namespace Wassup.UI
             }
 
             if (session.hoverTile.HasValue)
-                bridge?.FlashPlacementReject(session.hoverTile.Value); // 활성 뷰 분기
+                bridge?.FlashPlacementReject(session.hoverTile.Value);
             CleanupSession();
         }
 
-        private IEnumerator RunDeployment(DefenderUnitData unitData, Vector2Int cell, Entity entity)
+        private IEnumerator RunDeployment(DefenderUnitData unitData, Vector2Int cell, Unity.Entities.Entity entity)
         {
             float duration = 0f;
             if (bridge != null)
@@ -163,67 +225,70 @@ namespace Wassup.UI
             bridge?.ActivateDeployedDefender(cell, entity);
         }
 
-        private bool TryScreenToPlacement(Vector2 screenPosition, out Vector2Int cell, out Vector3 world)
+        private DragSession BuildSession(DefenderUnitData unitData)
         {
-            cell = default;
-            world = default;
-            if (mainCamera == null) return false;
-
-            var ray = mainCamera.ScreenPointToRay(screenPosition);
-            // tilemap-view-backend unit 3 — 입력 평면 모드별(BoardSpace), 히트 지점을 sim 으로 되돌려 기존 셀 변환 유지.
-            var plane = BoardSpace.RaycastPlane();
-            if (!plane.Raycast(ray, out float enter)) return false;
-
-            world = (Vector3)BoardSpace.ToSim(ray.GetPoint(enter));
-            if (bridge != null)
-            {
-                var hitCell = bridge.DebugWorldToCell(world);
-                cell = new Vector2Int(hitCell.x, hitCell.y);
-                world = bridge.GridToWorldCenterVector(cell, 0f);
-            }
-            else
-            {
-                cell = new Vector2Int(
-                    Mathf.FloorToInt(world.x + 0.5f),
-                    Mathf.FloorToInt(world.z + 0.5f));
-            }
-            return true;
+            var session = new DragSession { active = true, unit = unitData };
+            if (TryBuildKeyringPreview(unitData, ref session))
+                return session;
+            session.preview = CreateFallbackPreview(unitData);
+            return session;
         }
 
-        private GameObject CreatePreview(DefenderUnitData unitData, out Transform swayPivot)
+        private bool TryBuildKeyringPreview(DefenderUnitData unitData, ref DragSession session)
         {
-            if (TryCreateSpinePreview(unitData, out var spinePreview, out swayPivot))
-                return spinePreview;
-            swayPivot = null;
-            return CreateFallbackPreview(unitData);
-        }
-
-        private bool TryCreateSpinePreview(DefenderUnitData unitData, out GameObject preview, out Transform swayPivot)
-        {
-            preview = null;
-            swayPivot = null;
             if (unitData == null || unitData.skeletonDataAsset == null) return false;
 
+            float scale = Mathf.Max(0.01f, unitData.spineVisualScale * BattleBridge.CharacterVisualScale);
+
             var root = new GameObject($"DragPreview_{unitData.displayName}");
-            var billboard = root.AddComponent<Billboard>();
-            billboard.Setup(BillboardMode.Tilted, BattleBridge.CharacterBillboardTilt);
+            var cordMat = CordMaterial();
 
-            // 매달린 키링: pivot(고리)을 머리 위(+Y)로, 몸(skeleton)을 그 아래(-Y)로 오프셋.
-            // → pivot 의 Z회전 = 몸이 고리 아래에서 스윙(발 고정 오뚝이 아님).
-            float hang = Sway.hangHeight;
-            var pivot = new GameObject($"DragPreview_{unitData.displayName}_Pivot");
-            pivot.transform.SetParent(root.transform, false);
-            pivot.transform.localPosition = new Vector3(0f, hang, 0f);
-            pivot.transform.localRotation = Quaternion.identity;
-            pivot.transform.localScale = Vector3.one;
+            // 고리(ring): 로컬 원 LineRenderer 루프(플레이스홀더) + 빌보드.
+            var ringGo = new GameObject($"{root.name}_Ring");
+            ringGo.transform.SetParent(root.transform, false);
+            var ringLr = ringGo.AddComponent<LineRenderer>();
+            ringLr.useWorldSpace = false;
+            ringLr.loop = true;
+            ringLr.numCapVertices = 2;
+            ringLr.positionCount = RingSegments;
+            for (int i = 0; i < RingSegments; i++)
+            {
+                float a = (i / (float)RingSegments) * Mathf.PI * 2f;
+                ringLr.SetPosition(i, new Vector3(Mathf.Cos(a), Mathf.Sin(a), 0f) * (Cfg.ringRadius * scale));
+            }
+            ringLr.sharedMaterial = cordMat;
+            ringLr.widthMultiplier = Cfg.cordWidth * scale;
+            ringLr.startColor = ringLr.endColor = Cfg.cordColor;
+            ringLr.sortingOrder = BoardSortOrder.DragPreviewOrder;
+            var ringBillboard = ringGo.AddComponent<Billboard>();
+            ringBillboard.Setup(BillboardMode.Tilted, BattleBridge.CharacterBillboardTilt);
 
-            var child = new GameObject($"DragPreview_{unitData.displayName}_Spine");
-            child.transform.SetParent(pivot.transform, false);
-            child.transform.localPosition = new Vector3(0f, -hang, 0f);
-            child.transform.localRotation = Quaternion.identity;
-            child.transform.localScale = Vector3.one;
+            // 줄(cord): 월드 LineRenderer, 2점(고리→머리).
+            var cordGo = new GameObject($"{root.name}_Cord");
+            cordGo.transform.SetParent(root.transform, false);
+            var cordLr = cordGo.AddComponent<LineRenderer>();
+            cordLr.useWorldSpace = true;
+            cordLr.numCapVertices = 2;
+            cordLr.positionCount = 2;
+            cordLr.sharedMaterial = cordMat;
+            cordLr.widthMultiplier = Cfg.cordWidth * scale;
+            cordLr.startColor = cordLr.endColor = Cfg.cordColor;
+            cordLr.sortingOrder = BoardSortOrder.DragPreviewOrder - 1;
 
-            var skeleton = child.AddComponent<SkeletonAnimation>();
+            // endNode(머리 위치, 빌보드) → swingPivot(머리 중심 기울임) → spineChild(실루엣).
+            var endNode = new GameObject($"{root.name}_End");
+            endNode.transform.SetParent(root.transform, false);
+            var endBillboard = endNode.AddComponent<Billboard>();
+            endBillboard.Setup(BillboardMode.Tilted, BattleBridge.CharacterBillboardTilt);
+
+            var swingPivot = new GameObject($"{root.name}_Swing");
+            swingPivot.transform.SetParent(endNode.transform, false);
+
+            var spineChild = new GameObject($"{root.name}_Spine");
+            spineChild.transform.SetParent(swingPivot.transform, false);
+            spineChild.transform.localScale = Vector3.one * scale;
+
+            var skeleton = spineChild.AddComponent<SkeletonAnimation>();
             skeleton.skeletonDataAsset = unitData.skeletonDataAsset;
             skeleton.initialSkinName = string.IsNullOrEmpty(unitData.spineSkinName) ? "default" : unitData.spineSkinName;
             skeleton.Initialize(true);
@@ -242,15 +307,40 @@ namespace Wassup.UI
             if (!string.IsNullOrEmpty(animation))
                 skeleton.AnimationState.SetAnimation(0, animation, true);
 
-            float scale = Mathf.Max(0.01f, unitData.spineVisualScale * BattleBridge.CharacterVisualScale);
-            root.transform.localScale = Vector3.one * scale;
             SetPreviewAlpha(skeleton, 0.62f);
-            // 드래그 실루엣이 배경 프랍/유닛에 가려지지 않게 정렬을 위로.
             var skelRenderer = skeleton.GetComponent<MeshRenderer>();
             if (skelRenderer != null) skelRenderer.sortingOrder = BoardSortOrder.DragPreviewOrder;
-            preview = root;
-            swayPivot = pivot.transform; // 고리(pivot)을 회전 → 몸이 아래에서 스윙
+
+            // 실루엣 머리(mesh 상단)를 endNode(=머리 위치)에 자동정렬 — 몸통이 아래로 서고, 발이 보드에 닿는다.
+            float unitHeight = scale; // 폴백
+            Vector3 charmPos = Vector3.down * Cfg.charmDrop;
+            if (skelRenderer != null && skelRenderer.localBounds.size.y > 0.01f)
+            {
+                var lb = skelRenderer.localBounds;
+                charmPos += new Vector3(-lb.center.x * scale, -lb.max.y * scale, 0f);
+                unitHeight = lb.size.y * scale;
+            }
+            spineChild.transform.localPosition = charmPos;
+
+            session.preview = root;
+            session.cordLine = cordLr;
+            session.ring = ringGo.transform;
+            session.endNode = endNode.transform;
+            session.swingPivot = swingPivot.transform;
+            session.spineChild = spineChild.transform;
+            session.visualScale = scale;
+            session.unitHeight = unitHeight;
             return true;
+        }
+
+        private Material CordMaterial()
+        {
+            if (_cordMaterial == null)
+            {
+                var shader = Shader.Find("Sprites/Default");
+                _cordMaterial = new Material(shader) { name = "KeyringCordMat" };
+            }
+            return _cordMaterial;
         }
 
         private static string ResolveAnimation(SkeletonAnimation skeleton, params string[] candidates)
@@ -326,12 +416,10 @@ namespace Wassup.UI
             ClearHover();
             bridge?.ClearPlacementRange();
             if (_session.preview != null) Destroy(_session.preview);
-            _swayAngle = 0f;
-            _swayVel = 0f;
-            _ptrVelRaw = 0f;
-            _ptrVel = 0f;
-            _hasLastPointer = false;
             _session = default;
+            _posInit = false;
+            _onBoard = false;
+            _unitVelWorld = Vector3.zero;
             if (placementInput != null) placementInput.SetClickPlacementEnabled(true);
         }
 
@@ -344,6 +432,7 @@ namespace Wassup.UI
         {
             CleanupSession();
             if (_previewMaterial != null) Destroy(_previewMaterial);
+            if (_cordMaterial != null) Destroy(_cordMaterial);
         }
     }
 }

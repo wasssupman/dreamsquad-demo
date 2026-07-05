@@ -2,27 +2,33 @@ using UnityEngine;
 
 namespace Wassup.Data
 {
-    // placement-drag-preview-polish — 드래그 프리뷰 sway(매달린 키링) 튜닝값.
-    // DefenderDragPlacementController 가 런타임 AddComponent 라 인스펙터 튜닝이 안 되므로
-    // 수치를 SO 로 분리(프로젝트 원칙: 수치=ScriptableObject). DefenderSelector 에 할당 →
-    // Configure 로 컨트롤러에 주입. 미할당이면 컨트롤러가 이 클래스 기본값으로 인스턴스를 만들어 사용.
-    // 에셋을 편집하면 다음 Play(및 런타임)에서 그대로 반영된다.
+    // keyring-cord-preview — 드래그 프리뷰 키링 스윙(제어형 스프링 진자) + 줄/고리 비주얼 튜닝값.
+    // 움직임은 자유 물리 시뮬이 아니라 이동범위·각도·스프링·댐핑으로 제어한다(고리 아래 실루엣이 진자처럼 스윙).
+    // 컨트롤러가 런타임 AddComponent 라 인스펙터 튜닝이 안 되므로 SO 로 분리. DefenderSelector 에 할당 →
+    // Configure 로 주입. 미할당이면 컨트롤러가 클래스 기본값 인스턴스로 폴백. 에셋 편집은 런타임 즉시 반영.
     [CreateAssetMenu(menuName = "Wassup/Drag Sway Settings", fileName = "DragSwaySettings")]
     public class DragSwaySettings : ScriptableObject
     {
-        [Tooltip("고리(pivot)→몸 길이. 몸이 이만큼 위 고리 아래 매달린다(스윙 반경).")]
-        public float hangHeight = 1.5f;
-        [Tooltip("최대 lean 각(deg). 오버슈트는 이 값의 1.4배까지 허용.")]
-        public float maxAngle = 16f;
-        [Tooltip("포인터 속도(px/s) → 목표 lean 각(deg). 진행 반대로 눕는 양. ↑=진폭 큼.")]
-        public float leanPerVel = 0.035f;
-        [Tooltip("목표각 추종 강성(↑=빠릿/짧은 주기). ω=sqrt(spring). 120≈1.74Hz.")]
-        public float spring = 120f;
-        [Tooltip("감쇠(↓=바운스 큼/오래 흔들림). ζ = damping/(2·sqrt(spring)). 4.5≈ζ0.21.")]
-        public float damping = 4.5f;
-        [Tooltip("포인터 속도 스무딩 반응(1/s). ↑=즉각(빠릿).")]
-        public float pointerResponse = 26f;
-        [Tooltip("입력 없을 때 포인터 속도 0 감쇠(1/s). ↑=정지 시 큰 스윙백.")]
-        public float pointerDecay = 16f;
+        [Header("추종 (무게추 스프링 + 속도 상한)")]
+        [Tooltip("고리→유닛 줄 길이(로컬, 월드=×visualScale). 고리 아래 매달리는 길이.")]
+        public float ropeLength = 2.0f;
+        [Tooltip("유닛 최대 기울임각(deg). 흔들리는 정도. ↓=덜 흔들림.")]
+        public float maxAngle = 8f;
+        [Tooltip("추종 강성/탄성(↑=팽팽/빠릿, ↓=늘어지고 부드럽게). 탄성 세기.")]
+        public float spring = 100f;
+        [Tooltip("감쇠(↓=바운스·출렁 큼/floaty, ↑=빨리 멎음). 탄성 잔진동.")]
+        public float damping = 2.5f;
+        [Tooltip("추종 최대 속도(월드/s). 빠른 스와이프 시 이 속도로만 제한 → 튀어나감 방지(탄성은 유지). 0=무제한.")]
+        public float maxSpeed = 12f;
+
+        [Header("줄/고리 비주얼")]
+        [Tooltip("줄 폭(로컬, 월드=×visualScale). 너무 얇으면 sub-pixel 로 렌더 컬링됨.")]
+        public float cordWidth = 0.14f;
+        [Tooltip("줄 색.")]
+        public Color cordColor = new Color(0.45f, 0.38f, 0.28f, 1f);
+        [Tooltip("고리(링) 반경(로컬, 월드=×visualScale).")]
+        public float ringRadius = 0.18f;
+        [Tooltip("실루엣 추가 드롭(로컬). 머리는 줄 끝 자동정렬, 이 값은 미세조정. 0=머리가 줄 끝.")]
+        public float charmDrop = 0.0f;
     }
 }
