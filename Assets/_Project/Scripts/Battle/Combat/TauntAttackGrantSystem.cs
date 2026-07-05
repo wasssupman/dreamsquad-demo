@@ -12,7 +12,7 @@ namespace Wassup.Battle.Combat
     // changes to Combat components (AttackState / AttackOutputElement). Runs after
     // assignment and before AttackSystem so granted attacks fire the same frame.
     [BurstCompile]
-    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateInGroup(typeof(BattleSimGroup))]
     [UpdateAfter(typeof(AggroAssignmentSystem))]
     [UpdateBefore(typeof(AttackSystem))]
     [UpdateBefore(typeof(Wassup.Battle.Movement.MovementSystem))] // aggro-standoff: 부여 range 동일 프레임 가시

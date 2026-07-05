@@ -3,6 +3,7 @@ using Spine.Unity;
 using UnityEngine;
 using Wassup.Bridge;
 using Wassup.Core;
+using Wassup.Core.TimeControl;
 using Wassup.Data;
 using Wassup.Presentation;
 using Wassup.Rendering;
@@ -16,6 +17,9 @@ namespace Wassup.UI
         [SerializeField] private PlacementInput placementInput;
         [SerializeField] private float previewHeight = 0.35f;
         [SerializeField] private float previewScale = 0.65f;
+        // time-manager Unit 5 — 드래그 배치 중 전투만 이 배율로 느려진다. 드래그 프리뷰/입력은
+        // Interaction 도메인(unscaledDeltaTime)이라 실시간 유지된다. 0=정지, 1=영향 없음.
+        [SerializeField, Range(0f, 1f)] private float dragSlowmoScale = 0.2f;
 
         // 드래그 프리뷰 키링 튜닝값은 DragSwaySettings SO 에서 온다. 컨트롤러가 런타임 AddComponent 라
         // 인스펙터 튜닝이 안 되므로 SO 로 분리 — DefenderSelector 에 할당하면 Configure 로 주입. 미주입 시 기본값.
@@ -25,6 +29,7 @@ namespace Wassup.UI
         private const int RingSegments = 14;
 
         private DragSession _session;
+        private TimeLease _slowmoLease; // time-manager Unit 5 — 드래그 중 Battle 슬로우모 lease
         private Material _previewMaterial; // 폴백 capsule 용
         private Material _cordMaterial;    // 줄/고리 공유(세션마다 생성 금지)
 
@@ -65,6 +70,8 @@ namespace Wassup.UI
         {
             if (unitData == null || bridge == null) return;
             CleanupSession();
+            // time-manager Unit 5 — 드래그 시작 시 전투만 슬로우모. 드롭/취소 시 CleanupSession 에서 해제.
+            _slowmoLease = TimeManager.Instance.Request(TimeDomain.Battle, dragSlowmoScale);
             if (mainCamera == null) mainCamera = Camera.main;
 
             _session = BuildSession(unitData);
@@ -413,6 +420,7 @@ namespace Wassup.UI
 
         private void CleanupSession()
         {
+            _slowmoLease.Dispose(); // time-manager Unit 5 — 슬로우모 해제(멱등)
             ClearHover();
             bridge?.ClearPlacementRange();
             if (_session.preview != null) Destroy(_session.preview);

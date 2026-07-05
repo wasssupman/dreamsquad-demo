@@ -6,6 +6,7 @@ using UnityEngine.TestTools;
 using UnityEngine.SceneManagement;
 using Unity.Entities;
 using Wassup.Core;
+using Wassup.Core.TimeControl;
 using Wassup.Bridge;
 using Wassup.Data;
 using Wassup.Battle.Effects;
@@ -25,7 +26,7 @@ namespace Wassup.Tests.PlayMode
         [UnityTearDown]
         public IEnumerator UnityTearDown()
         {
-            Time.timeScale = 1f; // a scene DreamcatcherController may have paused.
+            TimeManager.Instance.ResetAll(); // 씬 DreamcatcherController 가 TimeManager lease 로 정지했을 수 있음.
             PrimeTween.Tween.StopAll();
             yield return null;
         }

@@ -5,7 +5,7 @@ using Wassup.Battle.Movement;
 namespace Wassup.Battle.Effects
 {
     [BurstCompile]
-    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateInGroup(typeof(BattleSimGroup))]
     [UpdateAfter(typeof(MovementSystem))]
     public partial struct CcDecaySystem : ISystem
     {

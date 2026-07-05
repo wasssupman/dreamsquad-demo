@@ -15,7 +15,7 @@ namespace Wassup.Battle.Combat
     // (attack-event enqueue, buff scaling, projectile, knockback CC) branch on
     // ComponentLookup.HasComponent so no attacker-tag filtering is needed in the query.
     [BurstCompile]
-    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateInGroup(typeof(BattleSimGroup))]
     [UpdateAfter(typeof(MovementSystem))]
     public partial struct AttackSystem : ISystem
     {

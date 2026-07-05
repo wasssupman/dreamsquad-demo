@@ -18,7 +18,7 @@ namespace Wassup.Battle.Combat
     // timer itself sits on the MeteorPending component, but the *damage write*
     // stays in the Combat context to preserve the ownership rule from TRD §2.5.
     [BurstCompile]
-    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateInGroup(typeof(BattleSimGroup))]
     [UpdateAfter(typeof(AttackSystem))]
     public partial struct MeteorResolutionSystem : ISystem
     {

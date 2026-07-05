@@ -7,6 +7,7 @@ using UnityEngine.TestTools;
 using UnityEngine.SceneManagement;
 using Unity.Entities;
 using Wassup.Core;
+using Wassup.Core.TimeControl;
 using Wassup.Bridge;
 using Wassup.Data;
 using Wassup.Battle.Effects;
@@ -44,7 +45,7 @@ namespace Wassup.Tests.PlayMode
         [UnityTearDown]
         public IEnumerator UnityTearDown()
         {
-            Time.timeScale = 1f;
+            TimeManager.Instance.ResetAll();
             PrimeTween.Tween.StopAll();
             yield return null;
         }
@@ -158,11 +159,17 @@ namespace Wassup.Tests.PlayMode
             Assert.IsNotNull(squad, "default squad exists");
             Assert.GreaterOrEqual(profile.ownedUnitIds.Count, 2, "owned pool seeded");
 
-            // Force a deterministic filled squad + 4x Unique ATK stone regardless of
-            // disk state ("stone_atk_unique" — the real unit 0 catalog asset id).
+            // Force a deterministic filled squad + the Unique Attack Stone block
+            // (stone_001..stone_004 = tiers 7.5/6/6/4.5, sum 24 -- unit 5 rev
+            // 2026-07-06b replaced the old flat "stone_atk_unique" x4 duplicate-id
+            // catalog with 64 individually-owned stones; that legacy id no longer
+            // resolves, so this e2e now equips the 4 real distinct instances).
             squad.unitIds[0] = profile.ownedUnitIds[0];
             squad.unitIds[1] = profile.ownedUnitIds[1];
-            for (int i = 0; i < SquadSave.StoneSlotCount; i++) squad.stoneIds[i] = "stone_atk_unique";
+            squad.stoneIds[0] = "stone_001";
+            squad.stoneIds[1] = "stone_002";
+            squad.stoneIds[2] = "stone_003";
+            squad.stoneIds[3] = "stone_004";
             string placedUnitId = squad.unitIds[0];
 
             // BattleScene/DraftView pre-existing missing-script noise on load.
@@ -200,8 +207,8 @@ namespace Wassup.Tests.PlayMode
             yield return null;
 
             var em = World.DefaultGameObjectInjectionWorld.EntityManager;
-            Assert.AreEqual(1.30f, GetStat(bridge, em, placedUnitId).damageMul, 0.01f,
-                "StartSquadMatch carry-in (wired stoneCatalog): 4x Unique ATK stone = +30% damageMul");
+            Assert.AreEqual(1.24f, GetStat(bridge, em, placedUnitId).damageMul, 0.01f,
+                "StartSquadMatch carry-in (wired stoneCatalog): Unique ATK 7.5+6+6+4.5 = +24% damageMul");
         }
 
         // dreamstone-loadout — regression for a Codex external-review HIGH: stones

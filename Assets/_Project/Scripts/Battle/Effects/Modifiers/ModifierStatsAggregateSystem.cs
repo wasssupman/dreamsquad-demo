@@ -12,7 +12,7 @@ using Unity.Mathematics;
 namespace Wassup.Battle.Effects
 {
     [BurstCompile]
-    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateInGroup(typeof(BattleSimGroup))]
     [UpdateAfter(typeof(StatModifierTickSystem))]
     public partial struct ModifierStatsAggregateSystem : ISystem
     {

@@ -6,7 +6,7 @@ using Unity.Mathematics;
 
 namespace Wassup.Battle.Effects
 {
-    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateInGroup(typeof(BattleSimGroup))]
     [UpdateBefore(typeof(StatModifierTickSystem))]
     public partial struct ModifierApplySystem : ISystem
     {

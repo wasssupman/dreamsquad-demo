@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Unity.Entities;
 using UnityEngine;
+using Wassup.Core.TimeControl;
 using Wassup.Data;
 
 namespace Wassup.Presentation
@@ -9,6 +10,18 @@ namespace Wassup.Presentation
     {
         private readonly Dictionary<Entity, SpineUnitView> _byEntity = new();
         private readonly List<Entity> _scratch = new();
+
+        // time-manager Unit 4 — Battle 스케일 변화 시 활성 유닛 애니 속도 fan-out.
+        // (스폰 순간 초기화는 SpineUnitView.Spawn 이 pull 로 처리 — 스폰 레이스 방지.)
+        private void OnEnable() => TimeManager.Instance.ScaleChanged += OnBattleScaleChanged;
+        private void OnDisable() => TimeManager.Instance.ScaleChanged -= OnBattleScaleChanged;
+
+        private void OnBattleScaleChanged(TimeDomain domain, float scale)
+        {
+            if (domain != TimeDomain.Battle) return;
+            foreach (var kv in _byEntity)
+                if (kv.Value != null) kv.Value.SetAnimationTimeScale(scale);
+        }
 
         public bool TrySpawn(ISpineUnitVisualData visualData, IDefenderSpineExtras defenderExtras, Entity entity, Vector3 worldPos, string namePrefix, out SpineUnitView view)
         {

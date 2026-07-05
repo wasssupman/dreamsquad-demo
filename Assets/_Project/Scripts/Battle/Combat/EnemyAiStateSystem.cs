@@ -13,7 +13,7 @@ namespace Wassup.Battle.Combat
     // enemy-ai-fsm Unit 1 — 적 FSM 전이 평가. Combat 소유, EnemyAiState 의 유일한 writer.
     // 전이 트리거(타겟·사거리·aggro)를 평가해 매 틱 상태를 set. Movement/Attack 은 RO 소비.
     [BurstCompile]
-    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateInGroup(typeof(BattleSimGroup))]
     [UpdateAfter(typeof(TauntAttackGrantSystem))]
     [UpdateBefore(typeof(MovementSystem))]
     public partial struct EnemyAiStateSystem : ISystem

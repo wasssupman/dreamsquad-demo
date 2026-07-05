@@ -11,7 +11,7 @@ namespace Wassup.Battle.Effects
     // Runs after MovementSystem + AttackSystem so this frame's consumers see the
     // pre-tick value; the removal only takes effect next frame via ECB playback.
     [BurstCompile]
-    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateInGroup(typeof(BattleSimGroup))]
     public partial struct EffectTickSystem : ISystem
     {
         // OnCreate is not Burst-compiled because RequireAnyForUpdate takes a

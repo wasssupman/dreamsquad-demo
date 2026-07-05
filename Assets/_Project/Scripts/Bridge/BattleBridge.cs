@@ -20,6 +20,8 @@ using Wassup.Data.MapGrid;
 using Wassup.Data.Season;
 using Wassup.Rendering;
 using Wassup.UI;
+using Wassup.Battle;
+using Wassup.Core.TimeControl;
 using TMPro;
 // DraftController lives in Wassup.Core above.
 
@@ -162,6 +164,10 @@ namespace Wassup.Bridge
         private int _synergyActivations;
         private int _synergyPeakCount;
         private float _startTime;
+        // time-manager Unit 3 — 전투 도메인 스케일이 반영된 경과 클럭(웨이브/타이머 load-bearing).
+        // _startTime(실시간)은 cosmetic 이벤트/로그 타임스탬프 전용으로 남긴다.
+        private double _battleClock;
+        private Entity _battleTimeScaleEntity = Entity.Null;
         private float _timerDuration;
         private bool _running;
         private bool _placementAllowed;
@@ -347,6 +353,9 @@ namespace Wassup.Bridge
             _running = false;
             _placementAllowed = false;
             if (skillRuntime != null) skillRuntime.ResetAll();
+            // time-manager — 시간 스케일 요청도 매치 경계에서 초기화(앱 수명 싱글턴이라 매치 간
+            // 잔존 방지; 고아 lease 안전망). skillRuntime.ResetAll 과 동일 지점(시작·종료 양쪽).
+            TimeManager.Instance.ResetAll();
             if (GameManager.Instance != null && GameManager.Instance.CostRuntime != null)
                 GameManager.Instance.CostRuntime.StopRegen();
             if (spineUnitPool != null) spineUnitPool.DisposeAll();
@@ -415,6 +424,10 @@ namespace Wassup.Bridge
             DestroyEntitiesByType<Wassup.Battle.Combat.AttackOutputLogEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.ObstacleSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.HazardSingleton>();
+            // time-manager H1 — BattleTimeScale singleton 도 다른 인프라 싱글턴과 대칭으로 파괴.
+            // 누락 시 StopBattle 후 orphan 이 남고 다음 프레임 새 엔티티가 생겨 2개 → TryGetSingleton
+            // 실패 → 이후 모든 전투에서 시간 제어(정지/슬로우모)가 영구 무력화된다.
+            DestroyEntitiesByType<BattleTimeScale>();
         }
 
         private void DisposeEcsInfrastructureNativeContainers()
@@ -821,6 +834,9 @@ namespace Wassup.Bridge
             _placementAllowed = true;
             _resultShown = false;
             if (skillRuntime != null) skillRuntime.ResetAll();
+            // time-manager — 시간 스케일 요청도 매치 경계에서 초기화(앱 수명 싱글턴이라 매치 간
+            // 잔존 방지; 고아 lease 안전망). skillRuntime.ResetAll 과 동일 지점(시작·종료 양쪽).
+            TimeManager.Instance.ResetAll();
             _usingGeneratedWaves = false;
             _usingAuthoredPlan = false;
             _wavePlan = default;
@@ -859,6 +875,7 @@ namespace Wassup.Bridge
                     _pending.Add(new PendingSpawnEntry { entry = deck.spawns[i], deckIndex = i });
             }
             _startTime = Time.time;
+            _battleClock = 0.0;
             // wave-authoring-test-mode unit 2 — 작성 모드는 plan.timerDurationSec(0=endless).
             // seed/legacy 경로는 deck.timerDurationSec 그대로(무변경).
             _timerDuration = _usingAuthoredPlan ? _wavePlan.timerDurationSec : deck.timerDurationSec;
@@ -1028,6 +1045,9 @@ namespace Wassup.Bridge
         {
             // dreamstone-loadout Unit 3 — reset symmetry: pending loadout must not outlive the match (review M2).
             _pendingDreamstones = null;
+            // time-manager Unit 3 — 시간 상태도 매치와 함께 리셋.
+            _battleClock = 0.0;
+            _battleTimeScaleEntity = Entity.Null;
 
             if (HasLiveEntityManager())
             {
@@ -1193,7 +1213,9 @@ namespace Wassup.Bridge
                 return;
             }
 
-            float elapsedSec = Time.time - _startTime;
+            // time-manager Unit 3 — 강제 웨이브의 triggerTimeSec 기준도 Battle 클럭이어야 한다.
+            // Update 의 스폰 게이트가 _battleClock 을 쓰므로 실시간을 쓰면 정지/슬로우모 시 갈라진다.
+            float elapsedSec = (float)_battleClock;
             var wave = _wavePlan.waves[_nextWaveIndex];
             GameManager.Instance?.Logger?.RecordWaveEvent("wave_forced", wave.waveIndex, elapsedSec, true);
             QueueWave(wave, elapsedSec, true, elapsedSec);
@@ -1699,9 +1721,14 @@ namespace Wassup.Bridge
 
         private void Update()
         {
+            // time-manager Unit 3 — 매 프레임 Battle 스케일을 ECS 로 흘린다(placement 슬로우모 포함).
+            PushBattleTimeScaleToEcs();
+
             if (!_running) return;
 
-            float t = Time.time - _startTime;
+            // 웨이브/스폰/타이머는 실시간이 아니라 Battle-스케일 클럭을 따른다(정지·슬로우모 반영).
+            _battleClock += TimeManager.Instance.DeltaTime(TimeDomain.Battle);
+            float t = (float)_battleClock;
             QueueDueWaves(t);
             for (int i = _pending.Count - 1; i >= 0; i--)
             {
@@ -1733,6 +1760,20 @@ namespace Wassup.Bridge
         {
             SyncMonoUnitViews();
             if (_em != null) _projectileViewPool?.SyncTransforms(_em);
+        }
+
+        // time-manager Unit 3 — TimeManager.ScaleOf(Battle) 을 ECS singleton 으로 write 해
+        // BattleScaledRateManager 가 읽게 한다. _running 무관하게 매 프레임 호출(placement 중
+        // 드래그 슬로우모도 반영). ECS 경계: BattleBridge 만 EntityManager 에 접근한다.
+        private void PushBattleTimeScaleToEcs()
+        {
+            if (_world == null || !_world.IsCreated || _em == default) return;
+            if (_battleTimeScaleEntity == Entity.Null || !_em.Exists(_battleTimeScaleEntity))
+                _battleTimeScaleEntity = _em.CreateEntity(typeof(BattleTimeScale));
+            _em.SetComponentData(_battleTimeScaleEntity, new BattleTimeScale
+            {
+                Value = TimeManager.Instance.ScaleOf(TimeDomain.Battle)
+            });
         }
 
         private void SyncMonoUnitViews()
@@ -2511,13 +2552,13 @@ namespace Wassup.Bridge
             }
         }
 
-        public float TimerRemaining => _running ? Mathf.Max(0f, _timerDuration - (Time.time - _startTime)) : 0f;
+        public float TimerRemaining => _running ? Mathf.Max(0f, _timerDuration - (float)_battleClock) : 0f;
 
         private void CheckTimer()
         {
             if (_resultShown) return;
             if (_timerDuration <= 0f) return;
-            if (Time.time - _startTime < _timerDuration) return;
+            if ((float)_battleClock < _timerDuration) return;
 
             _resultShown = true;
             _running = false;
@@ -2550,7 +2591,7 @@ namespace Wassup.Bridge
 
         private int CalculatePlayerScore()
         {
-            float durationSec = Mathf.Max(0f, Time.time - _startTime);
+            float durationSec = Mathf.Max(0f, (float)_battleClock);
             return Math.Max(0, (int)(durationSec * 10f - _goalReachedCount * 50));
         }
 

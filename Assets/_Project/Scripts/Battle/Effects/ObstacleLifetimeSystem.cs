@@ -7,7 +7,7 @@ using Wassup.Battle.Units;
 namespace Wassup.Battle.Effects
 {
     [BurstCompile]
-    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateInGroup(typeof(BattleSimGroup))]
     [UpdateBefore(typeof(MovementSystem))]
     public partial struct ObstacleLifetimeSystem : ISystem
     {

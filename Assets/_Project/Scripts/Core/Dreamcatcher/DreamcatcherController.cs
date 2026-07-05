@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using Wassup.Bridge;
+using Wassup.Core.TimeControl;
 using Wassup.Data;
 using Wassup.UI;
 
@@ -23,6 +24,9 @@ namespace Wassup.Core
         [SerializeField] private DreamcatcherCardCatalog cardCatalog;
 
         private List<DreamcatcherCard> _resolvedDeck;
+        // time-manager Unit 5 — 카드 선택 중 전투 정지를 TimeManager lease 로 소유(구 Time.timeScale=0
+        // 대체). Battle 도메인만 멈추고 선택 UI 는 실시간으로 살아있다.
+        private TimeLease _pauseLease;
 
         private void OnEnable()
         {
@@ -42,6 +46,8 @@ namespace Wassup.Core
                 GameManager.Instance.PhaseChanged -= OnPhaseChanged;
             if (bridge != null)
                 bridge.WaveMilestoneReached -= OnWaveMilestone;
+            // time-manager Unit 5 — 선택 도중 비활성화돼도 정지 lease 가 남지 않도록 해제(멱등).
+            _pauseLease.Dispose();
         }
 
         private void OnPhaseChanged(GamePhase phase)
@@ -83,7 +89,9 @@ namespace Wassup.Core
             if (selectionView != null)
             {
                 // Pause so enemies/cooldowns freeze while the player chooses.
-                Time.timeScale = 0f;
+                // 전투 도메인만 정지(priority 100) — 선택 UI 는 인터랙션 도메인이라 실시간 유지.
+                _pauseLease.Dispose(); // 혹시 남은 lease 정리(멱등)
+                _pauseLease = TimeManager.Instance.Request(TimeDomain.Battle, 0f, priority: 100);
                 selectionView.Show(three, OnPicked);
             }
             else
@@ -95,7 +103,7 @@ namespace Wassup.Core
 
         private void OnPicked(DreamcatcherCard card)
         {
-            Time.timeScale = 1f;
+            _pauseLease.Dispose(); // 전투 재개
             Pick(card);
         }
 

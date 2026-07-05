@@ -3,6 +3,7 @@ using Spine.Unity;
 using Unity.Entities;
 using UnityEngine;
 using Wassup.Bridge;
+using Wassup.Core.TimeControl;
 using Wassup.Data;
 
 namespace Wassup.Presentation
@@ -62,6 +63,18 @@ namespace Wassup.Presentation
             billboard.Setup(BillboardMode.Tilted, BattleBridge.CharacterBillboardTilt);
 
             ApplyTilemapShadow();
+
+            // time-manager Unit 4 — 스폰 순간의 Battle 스케일을 pull 해 초기화(슬로우모/정지 중
+            // 스폰된 유닛도 즉시 동기화; ScaleChanged 이벤트는 스폰 이후 변화만 전달하므로 레이스 방지).
+            SetAnimationTimeScale(TimeManager.Instance.ScaleOf(TimeDomain.Battle));
+        }
+
+        // time-manager Unit 4 — 전투 표현 재생 속도를 Battle 도메인 스케일에 맞춘다.
+        // spine-unity 는 Time.deltaTime * timeScale 로 진행하는데 전역 timeScale 은 1 고정이라,
+        // 이 값을 직접 세팅하지 않으면 슬로우모에서 애니만 풀스피드로 튀어 시뮬과 desync 된다.
+        public void SetAnimationTimeScale(float scale)
+        {
+            if (_skeleton != null) _skeleton.timeScale = scale;
         }
 
         // tilemap-real-shadows — Tilemap 모드 그림자: 진짜(빌보드 cast) vs 블롭(상호배타).

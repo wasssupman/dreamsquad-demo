@@ -7,7 +7,7 @@ namespace Wassup.Battle.Units
     // Converts any zero-HP entity into the shared death path, even when HP was
     // changed outside DamageApplicationSystem.
     [BurstCompile]
-    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateInGroup(typeof(BattleSimGroup))]
     [UpdateBefore(typeof(UnitLifecycleSystem))]
     public partial struct HealthDeathSystem : ISystem
     {

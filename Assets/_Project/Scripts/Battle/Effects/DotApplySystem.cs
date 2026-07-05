@@ -5,7 +5,7 @@ using Wassup.Battle.Units;
 namespace Wassup.Battle.Effects
 {
     [BurstCompile]
-    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateInGroup(typeof(BattleSimGroup))]
     [UpdateAfter(typeof(CcApplySystem))]
     [UpdateBefore(typeof(CcDecaySystem))]
     public partial struct DotApplySystem : ISystem

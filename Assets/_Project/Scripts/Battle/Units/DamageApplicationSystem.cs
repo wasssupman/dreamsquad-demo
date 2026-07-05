@@ -12,7 +12,7 @@ namespace Wassup.Battle.Units
     // Also applies RegenPerSec from ModifierStats directly (not via IncomingHeal).
     // When health crosses zero the entity gets a DeadTag so UnitLifecycleSystem can destroy it.
     [BurstCompile]
-    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateInGroup(typeof(BattleSimGroup))]
     [UpdateAfter(typeof(AttackSystem))]
     public partial struct DamageApplicationSystem : ISystem
     {

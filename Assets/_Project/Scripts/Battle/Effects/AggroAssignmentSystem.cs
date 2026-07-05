@@ -17,7 +17,7 @@ namespace Wassup.Battle.Effects
     // ("시간당 어그로 수량" = per-attack target count × attack speed) is a follow-up;
     // see docs/spec/aggro-targeting/README.md.
     [BurstCompile]
-    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateInGroup(typeof(BattleSimGroup))]
     [UpdateBefore(typeof(MovementSystem))]
     public partial struct AggroAssignmentSystem : ISystem
     {

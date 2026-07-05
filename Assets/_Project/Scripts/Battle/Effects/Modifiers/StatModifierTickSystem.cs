@@ -6,7 +6,7 @@ using Unity.Entities;
 namespace Wassup.Battle.Effects
 {
     [BurstCompile]
-    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateInGroup(typeof(BattleSimGroup))]
     [UpdateAfter(typeof(ModifierApplySystem))]
     [UpdateBefore(typeof(ModifierStatsAggregateSystem))]
     public partial struct StatModifierTickSystem : ISystem

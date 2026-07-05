@@ -15,7 +15,7 @@ namespace Wassup.Battle.Combat.Projectile
     // shooter's AttackState is not touched — cooldown reset happens inside
     // AttackSystem at launch time.
     [BurstCompile]
-    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateInGroup(typeof(BattleSimGroup))]
     [UpdateAfter(typeof(ProjectileMoveSystem))]
     public partial struct ProjectileHitSystem : ISystem
     {

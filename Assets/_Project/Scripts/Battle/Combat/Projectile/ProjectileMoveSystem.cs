@@ -14,7 +14,7 @@ namespace Wassup.Battle.Combat.Projectile
     // EntityManager.Exists() is not Burst-compatible; HasComponent on the lookup
     // serves the same purpose within a Burst-compiled ISystem.
     [BurstCompile]
-    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateInGroup(typeof(BattleSimGroup))]
     public partial struct ProjectileMoveSystem : ISystem
     {
         [BurstCompile]

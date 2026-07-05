@@ -11,7 +11,7 @@ namespace Wassup.Battle.Units
     // Owns entity lifecycle for units. Destroys any unit carrying PastGoalTag (reached end of path)
     // or DeadTag (health dropped to zero). Emits GoalReachedEvent when an attack unit reaches the goal.
     [BurstCompile]
-    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateInGroup(typeof(BattleSimGroup))]
     [UpdateAfter(typeof(DamageApplicationSystem))]
     public partial struct UnitLifecycleSystem : ISystem
     {

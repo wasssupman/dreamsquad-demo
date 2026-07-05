@@ -9,7 +9,7 @@ namespace Wassup.Battle.Units
     // original scale. Read-only from Health; we only write the entity's own
     // LocalTransform.Scale while the flash is active.
     [BurstCompile]
-    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateInGroup(typeof(BattleSimGroup))]
     public partial struct HitFlashSystem : ISystem
     {
         private const float PeakBonus = 0.2f;

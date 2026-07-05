@@ -11,7 +11,7 @@ using Wassup.Data;
 
 namespace Wassup.Battle.Effects
 {
-    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateInGroup(typeof(BattleSimGroup))]
     [UpdateAfter(typeof(ModifierStatsAggregateSystem))]
     public partial struct StackModifierTickSystem : ISystem
     {

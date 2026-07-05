@@ -9,7 +9,7 @@ using Wassup.Battle.Effects;
 namespace Wassup.Battle.Movement
 {
     [BurstCompile]
-    [UpdateInGroup(typeof(SimulationSystemGroup))]
+    [UpdateInGroup(typeof(BattleSimGroup))]
     public partial struct MovementSystem : ISystem
     {
         [BurstCompile]
