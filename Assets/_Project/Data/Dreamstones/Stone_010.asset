@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.Dreamstone.DreamstoneData
   id: stone_010
   displayName: Rare Attack Stone
+  icon: {fileID: 21300000, guid: 0aa56f940286e4c0bbfff4e5dbc15a6b, type: 3}
   grade: 1
   effect:
     kind: 0

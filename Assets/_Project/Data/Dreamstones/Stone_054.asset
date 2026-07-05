@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.Dreamstone.DreamstoneData
   id: stone_054
   displayName: Epic Cost Stone
+  icon: {fileID: 21300000, guid: ef0fca52c914d4f828fc228a75b61bfa, type: 3}
   grade: 2
   effect:
     kind: 4

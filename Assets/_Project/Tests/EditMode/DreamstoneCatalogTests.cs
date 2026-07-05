@@ -35,6 +35,7 @@ namespace Wassup.Tests.EditMode
                 var stone = catalog.stones[i];
                 Assert.IsNotNull(stone, $"stone[{i}] is assigned");
                 Assert.AreEqual($"stone_{i + 1:D3}", stone.id, $"catalog order == sequential id order at index {i}");
+                Assert.IsNotNull(stone.icon, $"{stone.id} icon assigned");
                 Assert.IsTrue(seen.Add(stone.id), $"duplicate id: {stone.id}");
 
                 Assert.IsTrue(GradeCaps.TryGetValue(stone.grade, out var cap), $"{stone.id} grade cap");

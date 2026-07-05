@@ -15,6 +15,7 @@ namespace Wassup.Data
     {
         public string id;
         public string displayName;
+        public Sprite icon;
         public DreamstoneGrade grade;
         public CardEffect effect;
     }

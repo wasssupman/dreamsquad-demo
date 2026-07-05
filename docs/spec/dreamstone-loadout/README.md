@@ -1,6 +1,6 @@
 # dreamstone-loadout
 
-> 상태: **완료 2026-07-04** (units 0~3 + 씬 배선 + e2e + 사용자 육안/스탯 검증 + 외부 리뷰 반영). handoff → `4_handoff_summary.md`
+> 상태: **확장 진행 중 2026-07-06** (units 0~6 완료, unit 7 드림스톤 아이콘/스크롤 피커 진행). handoff → `4_handoff_summary.md`
 > 커밋: 0 `5a47adf` · 1 `926aea6` · 2 `5d6ef22` · 3 `6d28b74` · 배선/e2e `2289362` · UI픽스 `a691144`·`d93fa82`·`7ab66b0` · REDRAFT 누수 `f4bfa09`
 > 리뷰: 설계 크리틱 1회 + unit별 + unit3 투트랙 + Codex 외부 리뷰(HIGH 1건 수정) 반영 · UI 구조 C안(슬롯 탭→피커 모달)
 > 선행: `squad-loadout` (완료) · `ingame-dreamcatcher` (완료 — 매치 효과 레지스트리 재사용)
@@ -25,6 +25,7 @@
 | 4 | 인계 | `4_handoff_summary.md` | handoff (구현 종료 시 작성) |
 | 5 | 확장 | `5_stone_copies.md` | 개별 아이템 64종(순차 id) + 등급 캐파 내 소수1자리 상중하 티어 + 평면 피커 |
 | 6 | 확장 | `6_cost_rate_stones.md` | MOVE 스톤 폐기 → 코스트 생산속도 스톤 + CostRuntime 배율 배선 |
+| 7 | 확장 | `7_icon_scroll_picker.md` | 스탯 타입별 드림스톤 아이콘 SO 매핑 + 스크롤 아이콘 피커 UI |
 
 ## Feature-wide 계약
 
@@ -44,7 +45,6 @@
 
 - 스톤 획득처(가챠/꿈런 파밍/교환), 보유 인벤토리/수량 모델
 - 강화/합성/분해, 세트 효과, 슬롯 조건(스탯별 전용 슬롯 등)
-- 스톤 아이콘/아트 (MVP 는 등급 색 + 텍스트 라벨)
 - RegenPerSec 등 절대치 스탯 스톤
 - 런타임 클램프 (크로스 소스 스태킹이 밸런스 문제가 되면)
 - 다중 스쿼드 간 스톤 공유/배타 규칙 (보유 모델 도입 시)

@@ -45,12 +45,14 @@ namespace Wassup.UI
         private readonly List<Image> _unitSlotBgs = new List<Image>();
         private readonly List<TMP_Text> _stoneSlotLabels = new List<TMP_Text>();
         private readonly List<Image> _stoneSlotBgs = new List<Image>();
+        private readonly List<Image> _stoneSlotIcons = new List<Image>();
         private bool _built;
 
         // Picker modal — one runtime overlay, reused for unit slots and stone slots.
         private enum PickerMode { Unit, Stone }
         private bool _pickerBuilt;
         private GameObject _pickerPanel;
+        private ScrollRect _pickerScrollRect;
         private RectTransform _pickerGrid;
         private GridLayoutGroup _pickerGridLayout;
         private TMP_Text _pickerTitle;
@@ -101,9 +103,11 @@ namespace Wassup.UI
             {
                 int index = i;
                 var btn = CreateButton("+", container, new Vector2(120, 120), EmptySlotColor, out var label);
+                var icon = CreateIconImage(btn.transform, new Vector2(66, 66), new Vector2(0, 14));
                 btn.onClick.AddListener(() => OpenPicker(PickerMode.Stone, index));
                 _stoneSlotLabels.Add(label);
                 _stoneSlotBgs.Add(btn.GetComponent<Image>());
+                _stoneSlotIcons.Add(icon);
             }
         }
 
@@ -191,8 +195,10 @@ namespace Wassup.UI
                 string id = (squad != null && squad.stoneIds != null && i < squad.stoneIds.Count) ? squad.stoneIds[i] : "";
                 if (string.IsNullOrEmpty(id))
                 {
+                    SetStoneSlotLabelMode(_stoneSlotLabels[i], false);
                     _stoneSlotLabels[i].text = "+";
                     _stoneSlotBgs[i].color = EmptySlotColor;
+                    SetIcon(_stoneSlotIcons[i], null);
                     continue;
                 }
                 var stone = stoneCatalog != null ? stoneCatalog.ById(id) : null;
@@ -200,12 +206,16 @@ namespace Wassup.UI
                 {
                     // Catalog missing this id (asset deleted) — show the raw id, neutral
                     // color; still clearable via the picker's [해제] (squad-loadout policy).
+                    SetStoneSlotLabelMode(_stoneSlotLabels[i], false);
                     _stoneSlotLabels[i].text = id;
                     _stoneSlotBgs[i].color = EmptySlotColor;
+                    SetIcon(_stoneSlotIcons[i], null);
                     continue;
                 }
+                SetStoneSlotLabelMode(_stoneSlotLabels[i], true);
                 _stoneSlotLabels[i].text = StoneSummary(stone);
                 _stoneSlotBgs[i].color = GradeColor(stone.grade);
+                SetIcon(_stoneSlotIcons[i], stone.icon);
             }
 
             if (statusText != null)
@@ -233,14 +243,15 @@ namespace Wassup.UI
             else
             {
                 _pickerTitle.text = "SELECT DREAMSTONE";
-                // dreamstone-loadout Unit 5 (rev 2026-07-06b) — 64 flat items need a
-                // compact cell to fit the fixed grid band (1400x440) without scrolling
-                // (~11 cols x 6 rows at 110x54 + 8 spacing).
-                _pickerGridLayout.cellSize = new Vector2(110, 54);
-                _pickerGridLayout.spacing = new Vector2(8, 8);
+                // dreamstone-loadout Unit 7 — 64 flat items now render as icon cells
+                // inside a ScrollRect instead of being squeezed into one text-only band.
+                _pickerGridLayout.cellSize = new Vector2(150, 150);
+                _pickerGridLayout.spacing = new Vector2(12, 12);
                 BuildStonePickerItems();
             }
 
+            if (_pickerScrollRect != null)
+                _pickerScrollRect.verticalNormalizedPosition = 1f;
             UiLayer.Apply(_pickerPanel);
             // Structural raycast-priority fix (2026-07-04 리그 물리클릭 재현) — a nested
             // canvas's overrideSorting only raises RENDER order, not GraphicRaycaster
@@ -304,9 +315,7 @@ namespace Wassup.UI
                 string captured = id;
                 bool alreadySlotted = equipped.Contains(id);
                 var bg = alreadySlotted ? DimColor(GradeColor(stone.grade), 0.4f) : GradeColor(stone.grade);
-                string label = $"{stone.displayName}\n{StoneSummary(stone)}";
-                var btn = CreateButton(label, _pickerGrid, new Vector2(110, 54), bg, out var lbl);
-                lbl.fontSize = 11;
+                var btn = CreateStonePickerButton(stone, bg, alreadySlotted, out var lbl);
                 if (alreadySlotted)
                 {
                     lbl.color = new Color(lbl.color.r, lbl.color.g, lbl.color.b, 0.5f);
@@ -396,20 +405,44 @@ namespace Wassup.UI
             _pickerTitle.alignment = TextAlignmentOptions.Center; _pickerTitle.fontSize = 36; _pickerTitle.color = Color.white;
             if (font != null) _pickerTitle.font = font;
 
-            var gridGo = new GameObject("Grid", typeof(RectTransform), typeof(GridLayoutGroup));
-            gridGo.transform.SetParent(_pickerPanel.transform, false);
-            _pickerGrid = gridGo.GetComponent<RectTransform>();
+            var scrollGo = new GameObject("Scroll", typeof(RectTransform), typeof(Image), typeof(ScrollRect));
+            scrollGo.transform.SetParent(_pickerPanel.transform, false);
+            var srt = scrollGo.GetComponent<RectTransform>();
             // RC2 (2026-07-04) — grid band pinned below the slot rows (unit row ~-180,
             // stone row ~-480) so a stray click at the same screen coords right after
-            // the modal closes cannot land on a slot button underneath it. Band size/
-            // position is fixed regardless of mode (dreamstone-loadout Unit 5 rev
-            // 2026-07-06b keeps this contract for the 64-item flat stone grid too —
-            // see OpenPicker for the per-mode cellSize/spacing that fits it in).
-            _pickerGrid.sizeDelta = new Vector2(1400, 440); _pickerGrid.anchoredPosition = new Vector2(0, -170);
+            // the modal closes cannot land on a slot button underneath it.
+            srt.sizeDelta = new Vector2(1400, 440); srt.anchoredPosition = new Vector2(0, -170);
+            scrollGo.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0f);
+            _pickerScrollRect = scrollGo.GetComponent<ScrollRect>();
+            _pickerScrollRect.horizontal = false;
+            _pickerScrollRect.vertical = true;
+            _pickerScrollRect.movementType = ScrollRect.MovementType.Clamped;
+            _pickerScrollRect.scrollSensitivity = 28f;
+
+            var viewportGo = new GameObject("Viewport", typeof(RectTransform), typeof(Image), typeof(Mask));
+            viewportGo.transform.SetParent(scrollGo.transform, false);
+            var vrt = viewportGo.GetComponent<RectTransform>();
+            vrt.anchorMin = Vector2.zero; vrt.anchorMax = Vector2.one; vrt.offsetMin = Vector2.zero; vrt.offsetMax = Vector2.zero;
+            viewportGo.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.02f);
+            viewportGo.GetComponent<Mask>().showMaskGraphic = false;
+
+            var gridGo = new GameObject("Grid", typeof(RectTransform), typeof(GridLayoutGroup), typeof(ContentSizeFitter));
+            gridGo.transform.SetParent(viewportGo.transform, false);
+            _pickerGrid = gridGo.GetComponent<RectTransform>();
+            _pickerGrid.anchorMin = new Vector2(0f, 1f);
+            _pickerGrid.anchorMax = new Vector2(1f, 1f);
+            _pickerGrid.pivot = new Vector2(0.5f, 1f);
+            _pickerGrid.anchoredPosition = Vector2.zero;
+            _pickerGrid.sizeDelta = new Vector2(0, 440);
             _pickerGridLayout = gridGo.GetComponent<GridLayoutGroup>();
             _pickerGridLayout.cellSize = new Vector2(150, 70);
             _pickerGridLayout.spacing = new Vector2(12, 12);
             _pickerGridLayout.childAlignment = TextAnchor.UpperCenter;
+            var fitter = gridGo.GetComponent<ContentSizeFitter>();
+            fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+            fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+            _pickerScrollRect.viewport = vrt;
+            _pickerScrollRect.content = _pickerGrid;
 
             var clearBtn = CreateButton("CLEAR", _pickerPanel.transform, new Vector2(200, 60), new Color(0.5f, 0.16f, 0.16f, 1f), out _);
             ((RectTransform)clearBtn.transform).anchoredPosition = new Vector2(-160, -455);
@@ -478,6 +511,85 @@ namespace Wassup.UI
             label.text = text; label.alignment = TextAlignmentOptions.Center; label.fontSize = 20; label.color = Color.white;
             if (font != null) label.font = font;
             return go.GetComponent<Button>();
+        }
+
+        private Button CreateStonePickerButton(DreamstoneData stone, Color bg, bool dimmed, out TMP_Text label)
+        {
+            var go = new GameObject("StoneItem", typeof(RectTransform), typeof(Image), typeof(Button));
+            go.transform.SetParent(_pickerGrid, false);
+            go.GetComponent<RectTransform>().sizeDelta = _pickerGridLayout.cellSize;
+            go.GetComponent<Image>().color = bg;
+
+            var icon = CreateIconImage(go.transform, new Vector2(78, 78), new Vector2(0, 26));
+            SetIcon(icon, stone != null ? stone.icon : null);
+
+            var l = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
+            l.transform.SetParent(go.transform, false);
+            var lrt = l.GetComponent<RectTransform>();
+            lrt.anchorMin = new Vector2(0, 0);
+            lrt.anchorMax = new Vector2(1, 0);
+            lrt.pivot = new Vector2(0.5f, 0);
+            lrt.sizeDelta = new Vector2(0, 44);
+            lrt.anchoredPosition = new Vector2(0, 10);
+            label = l.GetComponent<TextMeshProUGUI>();
+            label.text = stone != null ? StoneSummary(stone) : "";
+            label.alignment = TextAlignmentOptions.Center;
+            label.fontSize = 17;
+            label.color = Color.white;
+            if (font != null) label.font = font;
+
+            if (dimmed)
+            {
+                var group = go.AddComponent<CanvasGroup>();
+                group.alpha = 0.55f;
+            }
+
+            return go.GetComponent<Button>();
+        }
+
+        private Image CreateIconImage(Transform parent, Vector2 size, Vector2 anchoredPosition)
+        {
+            var go = new GameObject("Icon", typeof(RectTransform), typeof(Image));
+            go.transform.SetParent(parent, false);
+            var rt = go.GetComponent<RectTransform>();
+            rt.sizeDelta = size;
+            rt.anchoredPosition = anchoredPosition;
+            var img = go.GetComponent<Image>();
+            img.preserveAspect = true;
+            img.raycastTarget = false;
+            img.enabled = false;
+            return img;
+        }
+
+        private static void SetIcon(Image image, Sprite sprite)
+        {
+            if (image == null) return;
+            image.sprite = sprite;
+            image.enabled = sprite != null;
+        }
+
+        private static void SetStoneSlotLabelMode(TMP_Text label, bool occupied)
+        {
+            if (label == null) return;
+            var rt = label.GetComponent<RectTransform>();
+            if (occupied)
+            {
+                rt.anchorMin = new Vector2(0, 0);
+                rt.anchorMax = new Vector2(1, 0);
+                rt.pivot = new Vector2(0.5f, 0);
+                rt.sizeDelta = new Vector2(0, 30);
+                rt.anchoredPosition = new Vector2(0, 8);
+                label.fontSize = 14;
+            }
+            else
+            {
+                rt.anchorMin = Vector2.zero;
+                rt.anchorMax = Vector2.one;
+                rt.pivot = new Vector2(0.5f, 0.5f);
+                rt.offsetMin = Vector2.zero;
+                rt.offsetMax = Vector2.zero;
+                label.fontSize = 20;
+            }
         }
     }
 }
