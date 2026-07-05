@@ -12,6 +12,9 @@ dreamstone-loadout 구현 종료. 최신 계약은 README + 번호 문서 우선
 - 배선 `2289362` — stoneCatalog 씬 배선(2줄) + stoneSlotsContainer 런타임 fallback + StartSquadMatch e2e
 - 육안 반영 `a691144`(렌더링 3건: 피커 캔버스 rect 0×0 / 두부 라벨 ASCII화 / TestModeButton 관통) · `d93fa82`(피커 레이캐스트 관통 — 루트 캔버스 last-sibling 재구성) · `7ab66b0`(장착 항목 딤드 + 스톤 displayName 2줄)
 - REDRAFT 누수 `f4bfa09` — Codex 외부 리뷰 HIGH, 드래프트 진입점 pending 클리어 + 회귀 테스트
+- 확장 5 `f23eb8f` — 개별 아이템 64종(순차 id stone_001~064) + 캐파 내 소수1자리 [상,중,중,하] 티어 (유니크 7.5/6/6/4.5 등)
+- 확장 6 `140d8f6` — MOVE 폐기 → 코스트 생산속도(CostRate) 스톤 + CostRuntime.RegenRateMultiplier 배선 (배율은 매치 진입 결정 지점만, 드래프트 확정=1.0). 실측 검증: 재생률 1.24/s vs 1.00/s (비율 정확 1.24)
+- 확장 7 `c51338c` — 스탯별 아이콘 4종 + ScrollRect 아이콘 피커 (타 세션 구현, 리뷰 APPROVE + 아이콘 maxTextureSize 256 조정)
 - 부수 `a21d91e` — UiLayer.cs 누락 커밋 보충(HEAD 컴파일 복구, spec2 세션 몫 대리)
 
 ## Implemented
@@ -36,6 +39,8 @@ dreamstone-loadout 구현 종료. 최신 계약은 README + 번호 문서 우선
 - 리뷰: 설계 크리틱 1회(ecs-reviewer, CRITICAL set-then-apply 사전 적발) + unit별 리뷰 + unit 3 투트랙(양측 코드 APPROVE) + Codex 외부 리뷰(HIGH 1건 → `f4bfa09` 수정)
 - 육안: 사용자 확인 OK (2026-07-04, UI 픽스 3라운드 반영 후). 피커 상호작용은 리그 물리클릭·상호작용 진단(레이캐스트 차단/딤드 계약 어설션)으로 게이트화.
 - 스탯 검증: 혼합 등급 +17.5% 를 모디파이어 원장(슬롯 덤프)으로 확인. 라이브 "20→22" 관찰은 가디언 배치버프(+30%, 6초) + 가산(additive) 정책 + 팝업 반올림 조합으로 정합 — 스톤 정상 (기본 15 × 1.475 = 22.125).
+- 코스트 생산속도 실측: 프레임 단위 누적 측정(이산 점프 필터)으로 스톤 +24% → 재생률 비율 정확히 1.2400 (리그 진단 CostRegenMeasurementDiagnostic, 리그 전용).
+- 주의: 리그 픽커 진단은 실사용자 디스크 프로필을 읽으므로 시작 시 스톤 슬롯을 비우는 격리 필수 (unit 7 게이트 false-fail 교훈).
 
 ## Notes
 

@@ -27,3 +27,5 @@
 - `DreamstoneCatalogTests` 가 모든 스톤의 `icon != null` 을 검증한다.
 - 스쿼드 페이지에서 드림스톤 피커가 스크롤 가능하고 각 항목에 아이콘, 등급 배경, 수치 요약이 보인다.
 - 드림스톤 슬롯에 장착된 스톤 아이콘이 표시되고 빈 슬롯은 기존 `+` 상태를 유지한다.
+
+> 완료 확인 2026-07-06 — 커밋 `c51338c` 리뷰 APPROVE: ScrollRect 구성 표준(Viewport+Mask+ContentSizeFitter), RC2 밴드·last-sibling·딤드(interactable=false + CanvasGroup) 계약 전부 보존, validator icon!=null 포함. 리그 게이트 EditMode 27/27 + PlayMode green (유일 실패는 리뷰어 진단의 프로필 격리 결함 — 진단 수정으로 해소, 사용자 디스크 프로필 장착 상태에 진단이 오염되던 문제). 리뷰 M1 반영: 아이콘 4종 maxTextureSize 2048→256 (소스 1254², 표시 66~78px — 모바일 메모리/빌드).

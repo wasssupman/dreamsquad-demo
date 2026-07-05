@@ -249,7 +249,7 @@ board-visualization spec 자체는 ROI 부족으로 wrap 종료. 진단/실험�
 - **Placement keyring cord preview** → `docs/spec/keyring-cord-preview/` (completed 2026-07-05, squash 머지 `d197bc7` — 드래그 프리뷰 키링화: 고리=손가락(공중)·유닛=보드 스프링 follow(무게추 흔들림)·**하이라이트는 마우스 고정**(스윙 유닛 아님). 이전 drag-preview sway 완전 교체(SO 스키마도). camUp 수직분리·워밍업 금지 등 되돌리면 안 되는 설계는 handoff 참조. 탐색 이력 16커밋은 `feature/keyring-cord` 브랜치. 중력 드롭·아트 스왑은 후속)
 - **Placement attack-range preview** → `docs/spec/placement-attack-range-preview/` (completed 2026-07-04, units 0~2 — 드래그 배치 중 공격범위를 노란 격자 outline 로 동기 펄스 표시. `Tilemap.color` tint + 전용 `_rangeTilemap`(sorting -12) + Chebyshev `RangeToTiles`. e2e 드래그 추종 Play 검증)
 - **Placement drag-preview polish** → `docs/spec/placement-drag-preview-polish/` (completed 2026-07-04, units 0~1 + rev — 프리뷰 빌보드 각도 정합 + 매달린 키링 velocity-lean sway(SO 튜닝) + 프랍 위 정렬. Play(MCP) 검증)
-- **Dreamstone loadout** → `docs/spec/dreamstone-loadout/` (completed 2026-07-04, units 0~3 + 씬 배선 + e2e — 스쿼드 4슬롯 드림스톤 장착, 등급 캡 데이터 계약(유니크4=+30% additive), 슬롯 탭→피커 모달 UI, set-then-apply 반입. 리뷰 4단(설계 크리틱/unit별/투트랙/Codex HIGH). 획득/인벤토리는 후속)
+- **Dreamstone loadout** → `docs/spec/dreamstone-loadout/` (completed 2026-07-06, units 0~7 — 스쿼드 4슬롯 장착 + set-then-apply 반입 + 개별 아이템 64종(순차 id·캐파 내 티어 스탯) + 코스트 생산속도 매치 배선 + 아이콘 스크롤 피커. 리뷰 4단 + 실측 검증. 획득/인벤토리는 후속)
 
 - **Legacy render removal** → `docs/spec/legacy-render-removal/` (completed 2026-07-03, units 0~4 — Legacy MapView 렌더/Legacy3D 모드/시즌 백드롭/테마 LEGACY 43필드 완전 삭제, ~6,300줄 순삭. Tilemap 경로 무회귀. 씬 MapView 잔재 청소는 follow-up)
 
