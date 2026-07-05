@@ -17,28 +17,67 @@ namespace Wassup.Tests.EditMode
             { DreamstoneGrade.Unique, 30f },
         };
 
+        // dreamstone-loadout Unit 5 (rev 2026-07-06b) — flat item-instance model: 64
+        // individually-owned stones, no grouping/duplicate concept. Ids are sequential
+        // stone_001..stone_064, catalog order == id order. Tiers are 0.1-precision
+        // decimals (cap, 0.8*cap, 0.8*cap, 0.6*cap) per kind, cap = grade cap / 4.
         [Test]
         public void CatalogAssets_AreValid()
         {
             var catalog = UnityEditor.AssetDatabase.LoadAssetAtPath<DreamstoneCatalog>(CatalogPath);
             Assert.IsNotNull(catalog, "DreamstoneCatalog asset exists");
             Assert.IsNotNull(catalog.stones, "catalog.stones assigned");
-            Assert.AreEqual(16, catalog.stones.Length, "4 grades x 4 stat stones");
+            Assert.AreEqual(64, catalog.stones.Length, "64 individually-owned stone items");
 
             var seen = new HashSet<string>();
             for (int i = 0; i < catalog.stones.Length; i++)
             {
                 var stone = catalog.stones[i];
                 Assert.IsNotNull(stone, $"stone[{i}] is assigned");
-                Assert.IsFalse(string.IsNullOrWhiteSpace(stone.id), $"{stone.name} id");
+                Assert.AreEqual($"stone_{i + 1:D3}", stone.id, $"catalog order == sequential id order at index {i}");
                 Assert.IsTrue(seen.Add(stone.id), $"duplicate id: {stone.id}");
-                Assert.Greater(stone.effect.percent, 0f, $"{stone.id} percent");
 
                 Assert.IsTrue(GradeCaps.TryGetValue(stone.grade, out var cap), $"{stone.id} grade cap");
-                Assert.LessOrEqual(
-                    stone.effect.percent,
-                    cap / 4f + 0.0001f,
-                    $"{stone.id} percent must not exceed grade cap / 4");
+                float tierCap = cap / 4f;
+                float tenths = stone.effect.percent * 10f;
+                Assert.AreEqual(Mathf.Round(tenths), tenths, 0.001f, $"{stone.id} percent must be 0.1-precision");
+                Assert.LessOrEqual(stone.effect.percent, tierCap + 0.0001f, $"{stone.id} percent must not exceed grade cap / 4");
+            }
+        }
+
+        // dreamstone-loadout Unit 5 (rev 2026-07-06b) — every consecutive 4-id block
+        // is one "kind" (same grade + same effect.kind), tiered exactly
+        // [cap, 0.8*cap, 0.8*cap, 0.6*cap] where cap = grade cap / 4.
+        [Test]
+        public void Catalog_TierBlocks_AreConsistent()
+        {
+            var catalog = UnityEditor.AssetDatabase.LoadAssetAtPath<DreamstoneCatalog>(CatalogPath);
+            Assert.IsNotNull(catalog, "DreamstoneCatalog asset exists");
+            Assert.AreEqual(0, catalog.stones.Length % 4, "stones divide evenly into 4-id blocks");
+
+            for (int block = 0; block < catalog.stones.Length; block += 4)
+            {
+                var top = catalog.stones[block];
+                var midA = catalog.stones[block + 1];
+                var midB = catalog.stones[block + 2];
+                var bottom = catalog.stones[block + 3];
+                string label = $"block[{block / 4}] ({top.id}..{bottom.id})";
+
+                Assert.AreEqual(top.grade, midA.grade, $"{label} grade consistent");
+                Assert.AreEqual(top.grade, midB.grade, $"{label} grade consistent");
+                Assert.AreEqual(top.grade, bottom.grade, $"{label} grade consistent");
+                Assert.AreEqual(top.effect.kind, midA.effect.kind, $"{label} effect.kind consistent");
+                Assert.AreEqual(top.effect.kind, midB.effect.kind, $"{label} effect.kind consistent");
+                Assert.AreEqual(top.effect.kind, bottom.effect.kind, $"{label} effect.kind consistent");
+                Assert.AreEqual(top.displayName, midA.displayName, $"{label} displayName consistent (tier differs only by %)");
+
+                Assert.IsTrue(GradeCaps.TryGetValue(top.grade, out var cap), $"{label} grade cap");
+                float tierCap = cap / 4f;
+
+                Assert.AreEqual(tierCap, top.effect.percent, 0.0001f, $"{label} top tier == grade cap / 4");
+                Assert.AreEqual(tierCap * 0.8f, midA.effect.percent, 0.0001f, $"{label} mid tier == 0.8 * (grade cap / 4)");
+                Assert.AreEqual(tierCap * 0.8f, midB.effect.percent, 0.0001f, $"{label} mid tier == 0.8 * (grade cap / 4)");
+                Assert.AreEqual(tierCap * 0.6f, bottom.effect.percent, 0.0001f, $"{label} bottom tier == 0.6 * (grade cap / 4)");
             }
         }
 
@@ -48,14 +87,20 @@ namespace Wassup.Tests.EditMode
             var catalog = UnityEditor.AssetDatabase.LoadAssetAtPath<DreamstoneCatalog>(CatalogPath);
             Assert.IsNotNull(catalog, "DreamstoneCatalog asset exists");
 
-            var uniqueAttack = catalog.ById("stone_atk_unique");
-            Assert.IsNotNull(uniqueAttack);
-            Assert.AreEqual(CardBuffKind.AttackDamage, uniqueAttack.effect.kind);
-            Assert.AreEqual(DreamstoneGrade.Unique, uniqueAttack.grade);
-            Assert.AreEqual(7.5f, uniqueAttack.effect.percent, 0.0001f);
+            // stone_001 == top-tier Unique Attack Stone (block 0 of the ATK/Unique
+            // stat-major, grade-descending catalog order).
+            var topUniqueAttack = catalog.ById("stone_001");
+            Assert.IsNotNull(topUniqueAttack);
+            Assert.AreEqual(CardBuffKind.AttackDamage, topUniqueAttack.effect.kind);
+            Assert.AreEqual(DreamstoneGrade.Unique, topUniqueAttack.grade);
+            Assert.AreEqual(7.5f, topUniqueAttack.effect.percent, 0.0001f);
 
             Assert.IsNull(catalog.ById(""));
             Assert.IsNull(catalog.ById("missing"));
+            // dreamstone-loadout Unit 5 — pre-rev ids are gone; a legacy save
+            // referencing them must resolve to null (skip -> empty slot on load,
+            // no migration), not throw.
+            Assert.IsNull(catalog.ById("stone_atk_unique"));
         }
     }
 }

@@ -15,7 +15,15 @@ namespace Wassup.UI
     // UI review, option C). Main screen now shows slots only (unit 7 + stone 4);
     // the old inline owned-unit grid moved into a single runtime picker modal
     // shared by both unit and stone slots. Stone assignment goes through unit 1's
-    // SquadSave.SetStoneSlot helper — duplicates allowed, no dedup.
+    // SquadSave.SetStoneSlot helper.
+    //
+    // dreamstone-loadout Unit 5 (rev 2026-07-06b) — stones are 64 flat, individually
+    // owned items (stone_001..stone_064, no grouping/duplicate concept at all). The
+    // picker lists every item; an equipped id is dimmed and unselectable — the exact
+    // same "one item, one slot" rule as the unit picker (no special-case stone
+    // policy anymore). Stat tiers within a kind (e.g. 4 Unique Attack Stones) differ
+    // by %, so which specific item a player equips matters, unlike the discarded
+    // first draft of this unit (grouped-by-kind, count badge, first-unequipped-pick).
     public class SquadBuilderView : MonoBehaviour
     {
         [SerializeField] private DefenderCatalog catalog;
@@ -44,6 +52,7 @@ namespace Wassup.UI
         private bool _pickerBuilt;
         private GameObject _pickerPanel;
         private RectTransform _pickerGrid;
+        private GridLayoutGroup _pickerGridLayout;
         private TMP_Text _pickerTitle;
         private readonly List<GameObject> _pickerItems = new List<GameObject>();
         private PickerMode _pickerMode;
@@ -217,11 +226,18 @@ namespace Wassup.UI
             if (mode == PickerMode.Unit)
             {
                 _pickerTitle.text = "SELECT UNIT";
+                _pickerGridLayout.cellSize = new Vector2(150, 70);
+                _pickerGridLayout.spacing = new Vector2(12, 12);
                 BuildUnitPickerItems();
             }
             else
             {
                 _pickerTitle.text = "SELECT DREAMSTONE";
+                // dreamstone-loadout Unit 5 (rev 2026-07-06b) — 64 flat items need a
+                // compact cell to fit the fixed grid band (1400x440) without scrolling
+                // (~11 cols x 6 rows at 110x54 + 8 spacing).
+                _pickerGridLayout.cellSize = new Vector2(110, 54);
+                _pickerGridLayout.spacing = new Vector2(8, 8);
                 BuildStonePickerItems();
             }
 
@@ -269,27 +285,37 @@ namespace Wassup.UI
             }
         }
 
+        // dreamstone-loadout Unit 5 (rev 2026-07-06b) — flat, individually-owned
+        // items: 64 catalog stones, no grouping. An equipped id is dimmed and
+        // unselectable (identical dim/interactable rule to BuildUnitPickerItems) —
+        // "one item, one slot", no other restriction.
         private void BuildStonePickerItems()
         {
             if (stoneCatalog == null) return;
             var squad = Squad;
+            var equipped = new HashSet<string>();
+            if (squad != null && squad.stoneIds != null)
+                foreach (var id in squad.stoneIds) if (!string.IsNullOrEmpty(id)) equipped.Add(id);
+
             foreach (var id in stoneCatalog.AllIds())
             {
                 var stone = stoneCatalog.ById(id);
                 if (stone == null) continue;
                 string captured = id;
-                bool alreadySlotted = squad != null && squad.stoneIds != null && squad.stoneIds.Contains(id);
-                var bg = alreadySlotted ? DimColor(GradeColor(stone.grade), 0.55f) : GradeColor(stone.grade);
-                var btn = CreateButton(StoneItemLabel(stone), _pickerGrid, new Vector2(150, 70), bg, out var lbl);
-                lbl.fontSize = 14;
+                bool alreadySlotted = equipped.Contains(id);
+                var bg = alreadySlotted ? DimColor(GradeColor(stone.grade), 0.4f) : GradeColor(stone.grade);
+                string label = $"{stone.displayName}\n{StoneSummary(stone)}";
+                var btn = CreateButton(label, _pickerGrid, new Vector2(110, 54), bg, out var lbl);
+                lbl.fontSize = 11;
                 if (alreadySlotted)
                 {
-                    // Stone picker: dim-only, selection STAYS enabled — duplicate stone
-                    // equip is a feature-wide contract (e.g. "4x Unique ATK stone" cap
-                    // scenario), so this must never block a pick like the unit picker does.
-                    lbl.color = new Color(lbl.color.r, lbl.color.g, lbl.color.b, 0.7f);
+                    lbl.color = new Color(lbl.color.r, lbl.color.g, lbl.color.b, 0.5f);
+                    btn.interactable = false;
                 }
-                btn.onClick.AddListener(() => PickStone(captured));
+                else
+                {
+                    btn.onClick.AddListener(() => PickStone(captured));
+                }
                 _pickerItems.Add(btn.gameObject);
             }
         }
@@ -375,12 +401,15 @@ namespace Wassup.UI
             _pickerGrid = gridGo.GetComponent<RectTransform>();
             // RC2 (2026-07-04) — grid band pinned below the slot rows (unit row ~-180,
             // stone row ~-480) so a stray click at the same screen coords right after
-            // the modal closes cannot land on a slot button underneath it.
+            // the modal closes cannot land on a slot button underneath it. Band size/
+            // position is fixed regardless of mode (dreamstone-loadout Unit 5 rev
+            // 2026-07-06b keeps this contract for the 64-item flat stone grid too —
+            // see OpenPicker for the per-mode cellSize/spacing that fits it in).
             _pickerGrid.sizeDelta = new Vector2(1400, 440); _pickerGrid.anchoredPosition = new Vector2(0, -170);
-            var glg = gridGo.GetComponent<GridLayoutGroup>();
-            glg.cellSize = new Vector2(150, 70);
-            glg.spacing = new Vector2(12, 12);
-            glg.childAlignment = TextAnchor.UpperCenter;
+            _pickerGridLayout = gridGo.GetComponent<GridLayoutGroup>();
+            _pickerGridLayout.cellSize = new Vector2(150, 70);
+            _pickerGridLayout.spacing = new Vector2(12, 12);
+            _pickerGridLayout.childAlignment = TextAnchor.UpperCenter;
 
             var clearBtn = CreateButton("CLEAR", _pickerPanel.transform, new Vector2(200, 60), new Color(0.5f, 0.16f, 0.16f, 1f), out _);
             ((RectTransform)clearBtn.transform).anchoredPosition = new Vector2(-160, -455);
@@ -415,13 +444,6 @@ namespace Wassup.UI
             string sign = stone.effect.percent >= 0 ? "+" : "";
             return $"{abbr} {sign}{stone.effect.percent:0.#}%";
         }
-
-        // dreamstone-loadout Unit 2 (rev, 2026-07-04) — picker-item-only label: asset
-        // displayName on its own line above the stat summary, so the 16-item grid
-        // reads as named stones rather than bare stat abbreviations. Main-screen slot
-        // labels stay StoneSummary-only (unchanged, kept compact).
-        private static string StoneItemLabel(DreamstoneData stone) =>
-            string.IsNullOrEmpty(stone.displayName) ? StoneSummary(stone) : $"{stone.displayName}\n{StoneSummary(stone)}";
 
         // dreamstone-loadout Unit 2 (rev, 2026-07-04) — dim an already-slotted picker
         // item's background by a flat RGB factor (alpha untouched).
