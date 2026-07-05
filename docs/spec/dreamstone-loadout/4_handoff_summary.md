@@ -19,10 +19,10 @@ dreamstone-loadout 구현 종료. 최신 계약은 README + 번호 문서 우선
 
 ## Implemented
 
-- 스톤 16종(4등급×4스탯, 수치=캡÷4) 카탈로그 + EditMode validator가 등급 예산 강제
-- 스쿼드별 4슬롯 장착(중복 허용, 구버전 JSON 호환), 피커 모달 UI(유닛/스톤 동일 인터랙션)
+- 스톤 64종(개별 아이템, 순차 id, 종류당 [상,중,중,하] 티어 — ATK/AS/HP/COST × 4등급) + EditMode validator 가 캐파·순차·티어 강제
+- 스쿼드별 4슬롯 장착(개별 아이템 — 장착 제한 없음·장착분 딤드, 구버전 JSON 호환), 아이콘 스크롤 피커 모달(유닛/스톤 동일 인터랙션)
 - 게임 시작 시 아군 전체 매치 상시 버프: SetDreamstones(pending) → BeginPlacement 클리어 직후 적용(set-then-apply). ECS 변경 0
-- 유니크 ATK 4개 = 정확히 +30% (additive), 드림캐쳐 카드와 공존, 재시작 정확 1회 재적용
+- 유니크 ATK 종류 4개 = 정확히 +24% (additive, 티어 합), 드림캐쳐 카드와 공존, 재시작 정확 1회 재적용. 코스트 스톤은 CostRuntime 배율 경로
 - StartSquadMatch/StartTestModeMatch 양 경로 반입, 드래프트 폴백 미적용
 
 ## Key Files
@@ -44,7 +44,7 @@ dreamstone-loadout 구현 종료. 최신 계약은 README + 번호 문서 우선
 
 ## Notes
 
-- **되돌리지 말 것**: set-then-apply(배치 전 직접 등록은 BeginPlacement 클리어에 지워짐) · MatchesDcAxis의 명시적 `All` 분기(빠지면 조용한 no-op) · 스톤 중복 장착 허용(캡 산식 전제) · CardTargetAxis.All은 enum 끝(직렬화 보존)
+- **되돌리지 말 것**: set-then-apply(배치 전 직접 등록은 BeginPlacement 클리어에 지워짐) · MatchesDcAxis의 명시적 `All` 분기(빠지면 조용한 no-op) · 개별 아이템 모델(unit 5 — 같은 id 는 한 슬롯, 종류 중복은 다른 아이템으로; 구 '중복 장착 허용' 계약은 폐기됨) · CardTargetAxis.All은 enum 끝(직렬화 보존)
 - REDRAFT 스톤 누수 수정(Codex 외부 리뷰 HIGH, 2026-07-04): `OnRedraftRequested`/`TryConfirm` 두 드래프트 진입점에서만 pending 스톤 클리어. **teardown 일괄 클리어는 금지** — RESTART 의 스톤 재적용 계약과 충돌한다.
 - 등급 캡 표는 validator 상수(런타임 소비자 없음). 런타임 표시 필요 시 SO 승격
 - 씬 배선은 YAML 정밀 삽입 2줄(에디터 잠금 상태에서 진행) — 에디터가 씬을 다시 저장해도 커밋돼 있어 안전. stoneSlotsContainer는 fallback이라 씬 authoring 선택사항
