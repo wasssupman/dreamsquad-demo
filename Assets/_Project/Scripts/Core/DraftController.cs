@@ -122,6 +122,10 @@ namespace Wassup.Core
                 // draft-confirmed match carries no squad stones by construction
                 // (스펙: 드래프트 폴백 경로 미적용).
                 battleBridge.SetDreamstones(null);
+                // dreamstone-loadout Unit 6 — same entry point resets the CostRate
+                // multiplier (a drafted match carries no squad stone buffs at all,
+                // entity or cost — REDRAFT-leak fix's symmetry, unit 3).
+                GameManager.Instance?.CostRuntime?.SetRegenRateMultiplier(1f);
                 battleBridge.SetDefenderPool(_session.PickedArray());
                 battleBridge.SetMapGenerationOptions(SelectedMapGenerationOptions);
 

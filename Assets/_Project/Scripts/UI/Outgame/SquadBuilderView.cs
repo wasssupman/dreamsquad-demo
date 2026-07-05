@@ -440,6 +440,10 @@ namespace Wassup.UI
             string abbr = stone.effect.kind == CardBuffKind.AttackDamage ? "ATK"
                         : stone.effect.kind == CardBuffKind.AttackSpeed ? "AS"
                         : stone.effect.kind == CardBuffKind.EffectiveHealth ? "HP"
+                        // dreamstone-loadout Unit 6 — MoveSpeed stones are retired
+                        // (kept only for enum serialization safety); CostRate is the
+                        // stone kind that now lives where MOVE used to.
+                        : stone.effect.kind == CardBuffKind.CostRate ? "COST"
                         : "MOVE";
             string sign = stone.effect.percent >= 0 ? "+" : "";
             return $"{abbr} {sign}{stone.effect.percent:0.#}%";

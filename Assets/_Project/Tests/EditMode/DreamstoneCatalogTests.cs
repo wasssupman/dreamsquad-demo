@@ -81,6 +81,28 @@ namespace Wassup.Tests.EditMode
             }
         }
 
+        // dreamstone-loadout Unit 6 — MoveSpeed stones retired entirely (replaced by
+        // CostRate stones, useless on placement-only defenders); the enum value
+        // itself survives for serialization safety, but no catalog asset may use it
+        // anymore. stone_049..stone_064 (indices 48..63, the last stat-major block)
+        // are the CostRate block.
+        [Test]
+        public void Catalog_NoMoveSpeedStones_CostRateBlockExists()
+        {
+            var catalog = UnityEditor.AssetDatabase.LoadAssetAtPath<DreamstoneCatalog>(CatalogPath);
+            Assert.IsNotNull(catalog, "DreamstoneCatalog asset exists");
+
+            foreach (var stone in catalog.stones)
+                Assert.AreNotEqual(CardBuffKind.MoveSpeed, stone.effect.kind, $"{stone.id} must not be MoveSpeed (retired)");
+
+            for (int i = 48; i < 64; i++)
+            {
+                var stone = catalog.stones[i];
+                Assert.AreEqual(CardBuffKind.CostRate, stone.effect.kind, $"{stone.id} must be CostRate");
+                Assert.IsTrue(stone.displayName.EndsWith("Cost Stone"), $"{stone.id} displayName ends with 'Cost Stone'");
+            }
+        }
+
         [Test]
         public void ById_ReturnsCatalogStone()
         {

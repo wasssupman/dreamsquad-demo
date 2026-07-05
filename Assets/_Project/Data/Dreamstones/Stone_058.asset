@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: Stone_058
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.Dreamstone.DreamstoneData
   id: stone_058
-  displayName: Rare Move Speed Stone
+  displayName: Rare Cost Stone
   grade: 1
   effect:
-    kind: 3
+    kind: 4
     percent: 2.4

@@ -198,6 +198,12 @@ namespace Wassup.Core
             // stones now; BattleBridge applies them once BeginPlacement clears+reapplies
             // its match-effect registry (see BattleBridge.BeginPlacement/SetDreamstones).
             battleBridge.SetDreamstones(ResolveEquippedStones(squad));
+            // dreamstone-loadout Unit 6 — CostRate stones route to CostRuntime instead
+            // of the entity registry above. Match-entry is one of the only two call
+            // sites allowed to touch this multiplier (see CostRuntime's contract
+            // comment) — ResetToStart/Configure (called every placement entry,
+            // including mid-match Restart) must never set it.
+            if (costRuntime != null) costRuntime.SetRegenRateMultiplier(ResolveCostRateMultiplier(squad));
 
             // Skills stay independent of units — roll a fresh loadout like draft does.
             if (skillLoadout != null)
@@ -245,6 +251,8 @@ namespace Wassup.Core
             // 디펜더가 프리셋으로 폴백해도(위 defenders) 저장 스쿼드의 장착 스톤은 그대로 반입한다.
             var stoneSquad = (profileSO != null && profileSO.profile != null) ? profileSO.profile.SelectedSquad() : null;
             battleBridge.SetDreamstones(ResolveEquippedStones(stoneSquad));
+            // dreamstone-loadout Unit 6 — StartSquadMatch 미러 (CostRate 분리 적용).
+            if (costRuntime != null) costRuntime.SetRegenRateMultiplier(ResolveCostRateMultiplier(stoneSquad));
 
             // Skills stay independent of units — roll a fresh loadout like draft does.
             if (skillLoadout != null)
@@ -283,9 +291,12 @@ namespace Wassup.Core
         }
 
         // dreamstone-loadout Unit 3 — resolve a squad's equipped stoneIds to assets
-        // via the catalog. Missing catalog/squad/list, or an id the catalog no longer
-        // has (asset deleted), are skipped — same "resolve at read time, don't fail
-        // storage" policy as ResolveSquadDefenders/SquadDraw use for unitIds.
+        // via the catalog, for the entity-buff path (BattleBridge.SetDreamstones).
+        // Missing catalog/squad/list, or an id the catalog no longer has (asset
+        // deleted), are skipped — same "resolve at read time, don't fail storage"
+        // policy as ResolveSquadDefenders/SquadDraw use for unitIds.
+        // dreamstone-loadout Unit 6 — CostRate stones are excluded here; they have
+        // no entity stat and route to CostRuntime instead (ResolveCostRateMultiplier).
         private List<DreamstoneData> ResolveEquippedStones(SquadSave squad)
         {
             var stones = new List<DreamstoneData>();
@@ -294,9 +305,28 @@ namespace Wassup.Core
             {
                 if (string.IsNullOrEmpty(id)) continue;
                 var stone = stoneCatalog.ById(id);
-                if (stone != null) stones.Add(stone);
+                if (stone != null && stone.effect.kind != CardBuffKind.CostRate) stones.Add(stone);
             }
             return stones;
+        }
+
+        // dreamstone-loadout Unit 6 — sum equipped CostRate stone percents into a
+        // CostRuntime regen multiplier (1 + Σ%/100). Same resolve policy as
+        // ResolveEquippedStones (skip missing catalog/squad/list/unresolved ids).
+        // Only match-entry call sites (StartSquadMatch/StartTestModeMatch) call
+        // this — see CostRuntime.SetRegenRateMultiplier for the full ownership
+        // contract (ResetToStart/Configure must never touch the multiplier).
+        private float ResolveCostRateMultiplier(SquadSave squad)
+        {
+            float sum = 0f;
+            if (squad == null || squad.stoneIds == null || stoneCatalog == null) return 1f;
+            foreach (var id in squad.stoneIds)
+            {
+                if (string.IsNullOrEmpty(id)) continue;
+                var stone = stoneCatalog.ById(id);
+                if (stone != null && stone.effect.kind == CardBuffKind.CostRate) sum += stone.effect.percent;
+            }
+            return 1f + sum / 100f;
         }
 
         private void OnDisable()

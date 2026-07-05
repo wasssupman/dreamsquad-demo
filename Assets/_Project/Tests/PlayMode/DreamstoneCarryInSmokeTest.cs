@@ -211,6 +211,54 @@ namespace Wassup.Tests.PlayMode
                 "StartSquadMatch carry-in (wired stoneCatalog): Unique ATK 7.5+6+6+4.5 = +24% damageMul");
         }
 
+        // dreamstone-loadout Unit 6 — CostRate stones route through GameManager to
+        // CostRuntime instead of BattleBridge's entity registry. Mirrors
+        // EquippedSquad_StartSquadMatch_EndToEnd's profile-priming technique, but
+        // equips a single Unique Cost Stone (stone_049, +7.5%) and asserts the
+        // CostRuntime side effect directly via the (now public) RegenRateMultiplier
+        // property rather than an entity ModifierStats read.
+        [UnityTest]
+        public IEnumerator EquippedCostRateStone_StartSquadMatch_SetsRegenRateMultiplier()
+        {
+            yield return SceneManager.LoadSceneAsync(SceneNames.Outgame, LoadSceneMode.Single);
+            yield return null;
+
+            var menu = Object.FindObjectOfType<OutgameMenuController>();
+            Assert.IsNotNull(menu, "outgame menu present");
+            _profSO = (PlayerProfileSO)menu.GetType()
+                .GetField("profileSO", BindingFlags.NonPublic | BindingFlags.Instance)
+                .GetValue(menu);
+            Assert.IsNotNull(_profSO, "profileSO wired");
+
+            var profile = _profSO.profile;
+            var squad = profile.SelectedSquad();
+            Assert.IsNotNull(squad, "default squad exists");
+            Assert.GreaterOrEqual(profile.ownedUnitIds.Count, 1, "owned pool seeded");
+
+            // Force a deterministic filled squad (unitIds must be non-empty for
+            // GameManager.Start to take the squad branch at all) equipped with only
+            // stone_049 (Unique Cost Stone, +7.5%); remaining 3 stone slots empty.
+            squad.unitIds[0] = profile.ownedUnitIds[0];
+            squad.stoneIds[0] = "stone_049";
+            squad.stoneIds[1] = "";
+            squad.stoneIds[2] = "";
+            squad.stoneIds[3] = "";
+
+            // BattleScene/DraftView pre-existing missing-script noise on load.
+            LogAssert.ignoreFailingMessages = true;
+
+            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            yield return null;
+            yield return null;
+
+            var gm = Object.FindObjectOfType<GameManager>();
+            Assert.IsNotNull(gm, "battle GameManager present");
+            Assert.IsNotNull(gm.CostRuntime, "CostRuntime wired");
+
+            Assert.AreEqual(1.075f, gm.CostRuntime.RegenRateMultiplier, 0.001f,
+                "StartSquadMatch routes CostRate stones to CostRuntime: stone_049 +7.5% => 1.075x regen");
+        }
+
         // dreamstone-loadout — regression for a Codex external-review HIGH: stones
         // staged for a squad match must NOT leak into a subsequently-drafted match.
         // Root cause: DraftController.TryConfirm() never cleared BattleBridge's
@@ -251,6 +299,11 @@ namespace Wassup.Tests.PlayMode
             bridge.BeginPlacement();
             gm.CostRuntime.ResetToStart();
             gm.CostRuntime.AddCost(1000);
+            // dreamstone-loadout Unit 6 — this test drives BattleBridge directly
+            // (bypasses GameManager.StartSquadMatch/ResolveCostRateMultiplier), so
+            // stage the CostRate multiplier by hand here to simulate "a squad match
+            // with an equipped Cost stone was in progress" before the redraft.
+            gm.CostRuntime.SetRegenRateMultiplier(1.5f);
             yield return null;
 
             Assert.IsTrue(PlaceFirstValid(bridge, ranger), "place ranger under squad staging");
@@ -273,6 +326,12 @@ namespace Wassup.Tests.PlayMode
             Assert.IsTrue(draftController.Session.IsFull, "session full after discards");
             Assert.IsTrue(draftController.TryConfirm(), "draft confirms -- calls SetDreamstones(null) under the fix");
             yield return null;
+
+            // dreamstone-loadout Unit 6 — TryConfirm's SetDreamstones(null) neighbor
+            // line must have reset the CostRate multiplier too (same entry point,
+            // same "drafted match carries no squad stone buffs" contract).
+            Assert.AreEqual(1.0f, gm.CostRuntime.RegenRateMultiplier, 0.0001f,
+                "draft confirm resets RegenRateMultiplier to 1.0 -- no cost-stone leak either");
 
             // 3) Enter placement for the drafted match and place a drafted unit --
             // must NOT inherit the stale stone staging from step 1.

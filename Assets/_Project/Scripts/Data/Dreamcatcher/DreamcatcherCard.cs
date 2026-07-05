@@ -11,7 +11,12 @@ namespace Wassup.Data
     // ingame-dreamcatcher Unit 1 — what a card buffs. Maps to StatModifier in
     // Unit 2: AttackDamage→DamageMul, AttackSpeed→AttackSpeedMul,
     // EffectiveHealth→DmgTakenMul (damage-taken reduction proxy), MoveSpeed→MoveSpeedMul.
-    public enum CardBuffKind { AttackDamage, AttackSpeed, EffectiveHealth, MoveSpeed }
+    // dreamstone-loadout Unit 6 — CostRate appended at the end (existing card/stone
+    // assets serialize kind as int 0~3; inserting earlier would relabel them).
+    // CostRate has no StatModifier/entity mapping — BattleBridge.MapDcEffect's
+    // switch has no case for it and safely no-ops via its default branch; the value
+    // is consumed entirely by GameManager -> CostRuntime.SetRegenRateMultiplier.
+    public enum CardBuffKind { AttackDamage, AttackSpeed, EffectiveHealth, MoveSpeed, CostRate }
 
     // dreamcatcher-deck-builder Unit 0 — deck-rule category. Unique cards are
     // capped per deck (<=2); Normal cards may repeat.

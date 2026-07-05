@@ -67,8 +67,61 @@ namespace Wassup.Tests.EditMode
             _rt.TrySpend(10);
             _rt.BeginRegen();
             Assert.IsTrue(_rt.RegenActive);
-            // Actual per-frame regen is driven by Unity's Update loop; Play-mode
-            // testing validates the math. EditMode only asserts the flag.
+            // dreamstone-loadout Unit 6 — Update()'s regen step is now exposed as
+            // Tick(dt) (see the Tick_* tests below), so the actual regen math is
+            // EditMode-testable directly; this test still only covers the flag.
+        }
+
+        // dreamstone-loadout Unit 6 — CostRate stone multiplier. Tick() is the
+        // extracted regen step from CostRuntime.Update(); EditMode can drive it
+        // directly instead of needing a Play-mode frame.
+        [Test]
+        public void Tick_DefaultMultiplier_RegensAtBaseRate()
+        {
+            _rt.BeginRegen();
+            Assert.AreEqual(1f, _rt.RegenRateMultiplier, "default multiplier is 1 (no stone buff)");
+
+            _rt.Tick(1f); // regenPerSec=1 * multiplier=1 * dt=1 => +1
+
+            Assert.AreEqual(11, _rt.CurrentInt);
+        }
+
+        [Test]
+        public void Tick_WithMultiplier2_RegensTwiceAsFast()
+        {
+            _rt.BeginRegen();
+            _rt.SetRegenRateMultiplier(2f);
+
+            _rt.Tick(1f); // regenPerSec=1 * multiplier=2 * dt=1 => +2
+
+            Assert.AreEqual(12, _rt.CurrentInt);
+        }
+
+        [Test]
+        public void SetRegenRateMultiplier_ClampsNegativeToZeroFloor()
+        {
+            _rt.SetRegenRateMultiplier(-5f);
+            Assert.AreEqual(0f, _rt.RegenRateMultiplier);
+
+            _rt.BeginRegen();
+            _rt.Tick(1f); // multiplier=0 => no regen at all
+            Assert.AreEqual(10, _rt.CurrentInt);
+        }
+
+        [Test]
+        public void ResetToStart_And_Configure_DoNotTouchRegenRateMultiplier()
+        {
+            // dreamstone-loadout Unit 6 — ownership contract: only
+            // SetRegenRateMultiplier may change this value. ResetToStart/Configure
+            // run on every placement entry (including mid-match Restart), which
+            // must NOT wipe the squad's equipped CostRate stone buff.
+            _rt.SetRegenRateMultiplier(1.5f);
+
+            _rt.Configure(startingCost: 6f, max: 12f, regenPerSec: 2f);
+            Assert.AreEqual(1.5f, _rt.RegenRateMultiplier, "Configure must not touch the multiplier");
+
+            _rt.ResetToStart();
+            Assert.AreEqual(1.5f, _rt.RegenRateMultiplier, "ResetToStart must not touch the multiplier");
         }
 
         [Test]

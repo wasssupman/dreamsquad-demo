@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: Stone_063
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.Dreamstone.DreamstoneData
   id: stone_063
-  displayName: Common Move Speed Stone
+  displayName: Common Cost Stone
   grade: 0
   effect:
-    kind: 3
+    kind: 4
     percent: 1.6
