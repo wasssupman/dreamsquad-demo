@@ -23,6 +23,7 @@ namespace Wassup.Presentation
         private float _punchT;
         private Color _faceColor;
         private bool _playing;
+        private int _index; // spawner-owned monotonic spawn index (deterministic motion — unit 1)
 
         private void Awake()
         {
@@ -32,15 +33,16 @@ namespace Wassup.Presentation
             if (_renderer != null) _renderer.sortingOrder = 32000;
         }
 
-        public void Play(int amount, Vector3 worldPos, Camera cam, DamageNumberStyle style, Action<DamageNumberView> onComplete)
+        // viewPos 는 이미 view 공간(스포너가 ToView + 머리 앵커 + 격자 스냅 적용). 여기서 재변환 금지 — 이중 ToView 방지.
+        public void Play(int amount, Vector3 viewPos, Camera cam, DamageNumberStyle style, Action<DamageNumberView> onComplete, int index)
         {
             if (_tmp == null) _tmp = GetComponent<TextMeshPro>();
             if (_renderer == null) _renderer = GetComponent<MeshRenderer>();
             _camera = cam;
             _style = style;
             _onComplete = onComplete;
-            // tilemap-view-backend unit 3 — worldPos 는 sim. view 로 변환해 보존 (이후 drift/billboard 는 view 공간).
-            _startPos = Wassup.Core.BoardSpace.ToView(worldPos);
+            _index = index;
+            _startPos = viewPos;
             _lifetime = Mathf.Max(0.05f, style.lifetime);
 
             float t = style.Normalize(amount);
@@ -49,7 +51,7 @@ namespace Wassup.Presentation
             _tmp.text = amount.ToString();
             _faceColor = style.EvaluateColor(t);
 
-            transform.position = _startPos; // view 좌표 (위에서 ToView)
+            transform.position = _startPos; // 스포너가 넘긴 view 공간 위치
             transform.localScale = Vector3.one;
             gameObject.SetActive(true);
             _elapsed = 0f;
@@ -95,8 +97,19 @@ namespace Wassup.Presentation
 
         private void Finish()
         {
+            // _playing/_onComplete 를 먼저 정리한 뒤 비활성화 → OnDisable 이 중복 콜백을 내지 않는다.
             _playing = false;
+            var cb = _onComplete;
+            _onComplete = null;
             gameObject.SetActive(false);
+            cb?.Invoke(this);
+        }
+
+        // 비정상 반납(씬 언로드/StopBattle 자식 비활성/도메인 리로드) 시에도 점유 셀을 풀도록 완료 콜백을 멱등 호출.
+        private void OnDisable()
+        {
+            if (!_playing) return; // 자연 종료(Finish)는 이미 콜백을 냈다.
+            _playing = false;
             var cb = _onComplete;
             _onComplete = null;
             cb?.Invoke(this);

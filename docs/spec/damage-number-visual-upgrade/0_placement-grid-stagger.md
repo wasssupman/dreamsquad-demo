@@ -59,3 +59,7 @@
 - Play: 단일 적 다단 히트 + 근접 다수 AoE 에서 숫자가 **겹치지 않고 화면 격자로 위쪽으로 퍼진다**. **4자리 숫자**로도 인접 셀 비겹침 확인.
 - 풀 반납/`OnDisable`/`StopBattle` 후 점유 집합 누수 0(반복 전투 후 집합 크기 = 활성 뷰 수).
 - `DamageNumberPlacementTests`: 점유 셀 집합·의도 셀 입력에 `FindFreeCell` 이 겹치지 않는 가장 가까운 셀을 결정론적으로 반환(RNG/시간 미사용). run_tests 통과.
+
+---
+
+- **검증 2026-07-07**: compile 에러 0 · `DamageNumberPlacementTests` **7/7 통과** (MCP). 머리위/격자 육안 튜닝(headViewOffset·cellSize)은 unit 1 과 함께 Play 세션에서 확정 예정 — 값은 `DamageNumberStyle` 직렬화라 Play 중 실시간 조정.
