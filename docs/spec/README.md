@@ -126,7 +126,8 @@ code + git history        구현 상세
 
 - ~~**신규 유닛 프로필 reconcile**~~ [해결 2026-07-06] · 유닛을 프로필-소유(`ownedUnitIds`)에서 아예 제거하고 SquadBuilderView 가 `DefenderCatalog` 를 직독 → 모든 유닛 상시 오픈, 신규 유닛 자동 노출. 유닛 수집/가챠 도입 시 재검토(그때 소유 개념 부활). PlayerProfile.ownedUnitIds 삭제(JSON back-compat: 구 필드 무시).
 - **slow-곡사포 / 임팩트 CC / arcHeight 거리비례 / 전용 Spine rig** [S/M] · artillery-defender 후속.
-- **Meteor→TileAoe 수렴 / Bezier 궤적 / non-Damage payload / Homing+TileAoe** [S/M] · projectile-trajectory-payload 엔진 확장 후속.
+- **Meteor→TileAoe 수렴 + GA 낙하 비주얼** → `docs/spec/projectile-trajectory-payload/` units 7~9 로 승격(2026-07-06, 진행 중).
+- **Bezier 궤적 / non-Damage payload / Homing+TileAoe** [S/M] · projectile-trajectory-payload 엔진 확장 후속.
 
 #### 적 스폰/이동 비주얼 (enemy-spawn-positioning)
 

@@ -1,6 +1,8 @@
 # Projectile Trajectory × Payload — 투사체 궤적/페이로드 분해 리팩터
 
-> 상태: **완료(엔진) 2026-07-06** — units 0~5 구현·리뷰·커밋. Play e2e 검증은 후속 `artillery-defender` 로 이관. handoff: `6_handoff_summary.md`.
+> 상태: **확장 라운드(Meteor 수렴+비주얼) 진행 중 2026-07-06** — 엔진(units 0~5)은 완료·리뷰·커밋(handoff: `6_handoff_summary.md`), Play e2e 는 `artillery-defender` 로 실증 완료. 이번 라운드 = units 7~9: Meteor 를 SkyFall×TileAoe 로 수렴(7, 동작보존) → 레거시 삭제(8) → GA 낙하 비주얼(9, 의도된 시각 변경).
+>
+> 라운드 검증 질문: **Meteor 가 전용 시스템/큐/캐리어 없이 단일 투사체 라이프사이클로 동작하고(무회귀), GA 프리팹 낙하가 "하늘에서 떨어지는" 느낌을 주는가?** — 원래 후속의 [S] 함수-dedup 을 풀 수렴+비주얼로 확장한 product 결정(2026-07-06).
 
 ## 목표
 
@@ -31,7 +33,10 @@
 | 4 | `4_tileaoe_payload.md` | arm | ImpactSystem `TileAoe` payload arm: 착탄 셀 반경 flat AOE + impact VFX |
 | 5 | `5_spawn_wiring.md` | 배선 | AttackSystem RESOLVE `flightMode` 분기 + 셀 고정 + **단일** SpawnRequest 경로 + BattleBridge convert/drain |
 | ~~6~~ | ~~integration_validation~~ | → 이관 | Play e2e(곡사 실발사→arc→AOE→셀낙하→틸트보드 Y)는 authored 유닛이 필요해 `artillery-defender` 로 이관. 엔진 로직은 EditMode 로 pin됨 |
-| 6 | `6_handoff_summary.md` | 인계 | 커밋/구현/주의/후속 요약 |
+| 6 | `6_handoff_summary.md` | 인계 | 커밋/구현/주의/후속 요약 (엔진 라운드) |
+| 7 | `7_meteor_skyfall_convergence.md` | 이관 | Meteor → `SkyFall`×`TileAoe` 동작 보존 수렴 (시각 무변경, 레거시 미사용화) |
+| 8 | `8_meteor_legacy_removal.md` | 삭제 | `MeteorPending`/`MeteorResolutionSystem`/`MeteorBurst` 큐 삭제 + 채널 목록 문서(CLAUDE.md·TRD) 갱신 |
+| 9 | `9_meteor_ga_skyfall_visual.md` | 비주얼 | GA 프리팹 낙하 연출 (후보 스크린샷 비교→사용자 픽, `MeteorFall` 은퇴, view-공간 Y) |
 
 ## Feature-wide 계약 (load-bearing)
 
@@ -40,7 +45,7 @@
 3. **MoveSystem = switch(MovementKind).** 각 arm 이 위치 갱신 + 자기 도착 클램프 소유. `Homing`(타겟 추적, 도착=거리, 타겟 소실 시 파괴) / `BallisticArc`(origin→impact XZ lerp, Y=sin(t·π)·arcHeight, 도착=t≥1).
 4. **ImpactSystem = switch(PayloadKind).** 도착 판정 + 해결 소유(현 `ProjectileHitSystem` 위치 유지). `SingleSplash`(기존 outputs + splash + HitFlash) / `TileAoe`(착탄 셀 반경 flat, HitFlash 미적용 = Meteor 선례). **`TileAoe` 는 AOE 중심을 `ProjectileState.impact`(고정 착탄점)에서 읽는다 → payload=TileAoe 스폰은 궤적과 무관하게 `impact` 를 락해야 한다.** v1 은 `BallisticArc` 와만 페어링(곡사포). `Homing+TileAoe` 는 impact=타겟 도착위치 락이 필요 → 후속.
 5. **순수 계산은 static Burst 함수 + EditMode 테스트.** `ArcPosition`, `flightTime`(speed>0 가드 + min clamp), `TileAoe.IsInTileRange`/`TileDistance`(셀 Chebyshev 멤버십). 테스트는 `Assets/_Project/Tests/EditMode/`.
-6. **데미지 출처 = `DefenderUnitData.outputs` 의 Damage 합산.** 홈잉 경로와 동일. 새 magic damage 필드 금지. 궤적/페이로드 파라미터(arcHeight/impactTileRange/flightMode)만 `ProjectileData` 신규 필드.
+6. **데미지 출처** — defender 발사 = `DefenderUnitData.outputs` 의 Damage 합산(홈잉 경로와 동일). **skill 발사(unit 7+) = `SkillData` magnitude 를 `request.damage` 에 스냅샷.** 어느 쪽이든 새 magic damage 필드 금지. 궤적/페이로드 파라미터(arcHeight/impactTileRange/flightMode/flightTime)만 request/`ProjectileData` 신규 필드.
 7. **홈잉 무회귀가 완료 기준.** 기존 PlayMode smoke + splash 동작이 unit 1 이후 그대로여야 한다.
 8. **신규 궤적 비용 = enum 케이스 + 위치 순수함수 + MoveSystem arm 1개** (시스템/드레인/태그 0). 베지어가 이 계약의 리트머스 — 후속 후보.
 9. **새 ECS 맥락/NativeQueue/Manager 0.** 전부 Combat. `IncomingDamage` 는 Combat→Units 채널(선례 유지). `ProjectileHitEventsSingleton` VFX 채널 재사용.
@@ -49,12 +54,12 @@
 
 - **곡사포 authored 유닛** (ProjectileData/DefenderUnitData SO · 프리팹 · 아이콘 · draft 편입 · 실매치 play) → `docs/spec/artillery-defender/` (이 리팩터의 첫 소비자).
 - **Bezier 궤적** [S] · `MovementKind.BezierToPoint` + `BezierPos` 순수함수 + MoveSystem arm 1개. 이 spec 의 seam 이 옳은지의 증명 대상이지만 실제 arm 은 소비자 생길 때.
-- **Meteor 를 `TileAoe` 로 수렴** [S] · `MeteorResolutionSystem` 이 신설 `TileAoe.IsInTileRange` 채택(dedup 완성). cross-context 라 이 spec 밖 — Meteor(Effects/Combat) 안 건드림.
+- ~~**Meteor 를 `TileAoe` 로 수렴** [S]~~ → **units 7~9 로 승격**(2026-07-06, 함수 dedup 을 풀 파이프라인 수렴+GA 비주얼로 확장).
 - **non-Damage payload** [M] · 착탄 시 ApplyStat/ApplyStack 도 AOE(slow-곡사포 등). 현재 TileAoe payload 는 Damage-only.
 - **임팩트 CC/knockback** [S] · `DefenderCcData` 를 AOE 대상에 적용.
 
 ## 주의
 
-- **BattleBridge.cs dirty 상태** — 현재 dreamstone WIP 로 dirty. 이 리팩터는 `SpawnProjectile`(~2076)·convert(~2990-3091) 를 건드리므로, 코드 착수 전 dreamstone WIP 를 커밋/격리해 hunk 충돌을 막는다(병행 세션 커밋 위생).
+- **BattleBridge.cs 병행 세션 충돌** — (엔진 라운드 당시 dreamstone WIP 는 커밋됨) units 7~8 이 BattleBridge drain/teardown 을 건드리므로, 각 unit 착수 직전 `git status` 로 BattleBridge dirty 여부 확인 후 명시 경로 스테이징(lessons/02 병행 세션 커밋 위생).
 - **틸트보드 Y (해결 2026-07-06)** — `BoardSpace.ToView` 는 sim-Y 를 **drop**(평면 보드 = 셀 XZ 만). 따라서 arc 를 sim-Y 에 실으면 화면에 안 보인다. **arc 높이는 view 공간에서** `ProjectileViewPool` 이 `BallisticArc.ArcHeight(saturate(elapsed/flightTime))` 로 view.y 에 더한다(기존 heightOffset 패턴). velocity 에 접혀 포탄이 arc 따라 피칭. sim(ArcPosition)/AOE/타이밍 무변경. Cannon 임시 곡사화로 Play 검증 OK.
 - **신규 .cs refresh scope=all** — enum/컴포넌트/시스템 신규 파일 추가 시 부분 refresh 면 cascading CS0246. scope=all 로 refresh.
