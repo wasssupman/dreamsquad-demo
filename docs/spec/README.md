@@ -120,6 +120,10 @@ code + git history        구현 상세
 
 > 출처 spec 이 섞여 있다. 그룹 헤더 또는 항목 끝의 `(spec-slug)` 라벨로 출처 표기.
 
+#### 곡사포 유닛 (artillery-defender)
+
+- **곡사포 authored 유닛** → `docs/spec/artillery-defender/` [M] · **착수 가능** — projectile-trajectory-payload 엔진 완료로 곡사 궤적/AOE 런타임 활성. ProjectileData(flightMode=BallisticToCell)+DefenderUnitData SO+프리팹+아이콘(256)+draft 편입+**Play e2e 검증(리팩터 첫 실증)**. slow-곡사포/임팩트 CC/arcHeight 거리비례/Bezier 궤적/Homing+TileAoe/Meteor→TileAoe 수렴은 그 spec 의 후속.
+
 #### 적 스폰/이동 비주얼 (enemy-spawn-positioning)
 
 스폰 위치 개선(완료 2026-06-29, units 0~4) 후 남은 항목.
@@ -245,6 +249,8 @@ board-visualization spec 자체는 ROI 부족으로 wrap 종료. 진단/실험�
 - **반복 씬 로드 ECS leak 점검** [M] · 2-씬 전환으로 BattleScene 반복 로드 → 기존 **BattleBridge.StartBattle Persistent allocates 경고** 백로그가 더 중요. 재진입 시 ECS World/Persistent 정리 경로 검증.
 
 ### Promoted / Closed
+
+- **Projectile trajectory × payload** → `docs/spec/projectile-trajectory-payload/` (엔진 완료 2026-07-06, units 0~5 — 투사체를 궤적(Homing/BallisticArc)×페이로드(SingleSplash/TileAoe) 직교 2축으로 분해. 홈잉 무회귀 이관 + BallisticArc 궤적 + TileAoe 반경 AOE + 곡사 발사 배선. 커밋 `e5836bc`~`27a452a`, 양트랙 리뷰 3게이트, EditMode 498/499. Play e2e 는 artillery-defender 로 이관. 신규 시스템/큐/맥락 0)
 
 - **Placement keyring cord preview** → `docs/spec/keyring-cord-preview/` (completed 2026-07-05, squash 머지 `d197bc7` — 드래그 프리뷰 키링화: 고리=손가락(공중)·유닛=보드 스프링 follow(무게추 흔들림)·**하이라이트는 마우스 고정**(스윙 유닛 아님). 이전 drag-preview sway 완전 교체(SO 스키마도). camUp 수직분리·워밍업 금지 등 되돌리면 안 되는 설계는 handoff 참조. 탐색 이력 16커밋은 `feature/keyring-cord` 브랜치. 중력 드롭·아트 스왑은 후속)
 - **Placement attack-range preview** → `docs/spec/placement-attack-range-preview/` (completed 2026-07-04, units 0~2 — 드래그 배치 중 공격범위를 노란 격자 outline 로 동기 펄스 표시. `Tilemap.color` tint + 전용 `_rangeTilemap`(sorting -12) + Chebyshev `RangeToTiles`. e2e 드래그 추종 Play 검증)

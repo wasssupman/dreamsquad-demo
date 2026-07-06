@@ -1,6 +1,6 @@
 # Projectile Trajectory × Payload — 투사체 궤적/페이로드 분해 리팩터
 
-> 상태: 초안 (설계 확정, 미구현) · 2026-07-06
+> 상태: **완료(엔진) 2026-07-06** — units 0~5 구현·리뷰·커밋. Play e2e 검증은 후속 `artillery-defender` 로 이관. handoff: `6_handoff_summary.md`.
 
 ## 목표
 
@@ -30,8 +30,8 @@
 | 3 | `3_ballistic_arc_trajectory.md` | arm+테스트 | MoveSystem `BallisticArc` arm: `ArcPosition` + `flightTime=dist/speed` static + EditMode |
 | 4 | `4_tileaoe_payload.md` | arm | ImpactSystem `TileAoe` payload arm: 착탄 셀 반경 flat AOE + impact VFX |
 | 5 | `5_spawn_wiring.md` | 배선 | AttackSystem RESOLVE `flightMode` 분기 + 셀 고정 + **단일** SpawnRequest 경로 + BattleBridge convert/drain |
-| 6 | `6_integration_validation.md` | 검증 게이트 | 홈잉 무회귀 재확인 + ballistic+AOE synthetic 통합 + 틸트보드 Y (코드 커밋 없음) |
-| 7 | `7_handoff_summary.md` | 인계 | 구현 종료 요약 |
+| ~~6~~ | ~~integration_validation~~ | → 이관 | Play e2e(곡사 실발사→arc→AOE→셀낙하→틸트보드 Y)는 authored 유닛이 필요해 `artillery-defender` 로 이관. 엔진 로직은 EditMode 로 pin됨 |
+| 6 | `6_handoff_summary.md` | 인계 | 커밋/구현/주의/후속 요약 |
 
 ## Feature-wide 계약 (load-bearing)
 

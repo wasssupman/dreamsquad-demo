@@ -1,6 +1,6 @@
 # Artillery Defender — 곡사포 유닛 (후속)
 
-> 상태: 대기 (선행 spec `projectile-trajectory-payload` 완료 후 착수) · 2026-07-06
+> 상태: **착수 가능** — 선행 `projectile-trajectory-payload` 엔진 완료(2026-07-06, 커밋 `e5836bc`~`27a452a`). 곡사 궤적/AOE 페이로드/발사 배선이 런타임 활성이라, 이 spec 은 authored 에셋만 만들면 된다. **Play e2e 검증(곡사 실발사→arc→셀낙하→AOE→틸트보드 Y)이 이 리팩터의 첫 실증** — unit 3(draft 편입 + Play 검증)에 포함.
 
 ## 목표
 
