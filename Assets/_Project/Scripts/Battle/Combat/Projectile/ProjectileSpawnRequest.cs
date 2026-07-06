@@ -29,10 +29,16 @@ namespace Wassup.Battle.Combat.Projectile
         public float hitThreshold;
 
         // ── Ballistic-arc trajectory ─────────────────────────────────────────
-        // impact = cell-locked strike point. flightTime/elapsed are derived at
-        // drain time (flightTime = distance/speed), so they are not carried here.
+        // impact = cell-locked strike point. For BallisticArc, flightTime is
+        // derived at drain time (distance/speed) so `flightTime` below is ignored
+        // there; elapsed always starts at 0 and accumulates in MoveSystem.
         public float3 impact;
         public float arcHeight;
+
+        // ── Sky-fall trajectory ──────────────────────────────────────────────
+        // Request-carried flight time (seconds). SkyFall has zero travel distance
+        // so the drain cannot derive it from speed; Meteor maps warningSec here.
+        public float flightTime;
 
         // ── Single-splash payload ────────────────────────────────────────────
         public OnHitEffectType onHitEffect;

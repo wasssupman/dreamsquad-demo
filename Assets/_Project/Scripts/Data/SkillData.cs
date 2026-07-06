@@ -47,6 +47,12 @@ namespace Wassup.Data
         // the effect resolves. 0 = immediate effect on cast (legacy behavior).
         public float warningSec;
 
+        // projectile-trajectory-payload unit 7 — projectile ridden when the skill
+        // fires through the unified projectile pipeline (Meteor: SkyFall×TileAoe,
+        // flightTime = warningSec). Null for non-projectile skills; a projectile
+        // skill with this unassigned drops the cast with a warning (config error).
+        public ProjectileData projectile;
+
         // Slot background tint — identifies the skill in the SkillBar without an
         // icon texture.
         public Color uiTint = Color.white;

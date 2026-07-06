@@ -16,5 +16,12 @@ namespace Wassup.Battle.Combat.Projectile
         // arrive when elapsed >= flightTime. No target entity — impact is fixed at
         // fire time, so target death/movement in flight is irrelevant.
         BallisticArcToPoint = 1,
+
+        // Hold at the cell-locked impact for flightTime, then arrive (Meteor
+        // telegraph semantics: warningSec → flightTime). The sim position never
+        // travels — the falling visual is view-space only, added by the
+        // presentation layer. flightTime is request-carried, not speed-derived
+        // (zero travel distance).
+        SkyFall = 2,
     }
 }

@@ -10,5 +10,13 @@ namespace Wassup.Battle.Combat.Projectile
     {
         public float3 position;
         public int dataIndex;
+
+        // Payload discriminator + world radius so the drain can route AOE bursts
+        // (TileAoe with no hitPrefab → VfxSpawner.SpawnMeteorBurst) without ECS
+        // lookups. radiusWorld = impactTileRange * tileSize, snapshotted at
+        // resolve time because the radius is per-cast (skill range), not a
+        // ProjectileData constant (unit 7).
+        public PayloadKind payload;
+        public float radiusWorld;
     }
 }

@@ -24,3 +24,4 @@ MonoBehaviour:
   cost: 4
   warningSec: 1.5
   uiTint: {r: 1, g: 0.5, b: 0.15, a: 1}
+  projectile: {fileID: 11400000, guid: 1705ed345dda4014bc5b6019f1a84e77, type: 2}

@@ -142,6 +142,7 @@ namespace Wassup.Battle.Combat.Projectile
                                 {
                                     position = targetPos,
                                     dataIndex = projectile.ValueRO.dataIndex,
+                                    payload = PayloadKind.SingleSplash,
                                 });
 
                             // Splash AOE: reduced damage to every other AttackUnit within
@@ -189,9 +190,12 @@ namespace Wassup.Battle.Combat.Projectile
                     {
                         // Flat AOE to every enemy within impactTileRange of the
                         // cell-locked impact — no direct target, no falloff (shares
-                        // the tile-membership rule with MeteorResolutionSystem). Damage
-                        // is the pre-summed Damage-output total (contract: no new field);
-                        // non-Damage outputs are a follow-up (v1 is Damage-only).
+                        // the tile-membership rule with the legacy Meteor resolver).
+                        // Damage source depends on the spawner: defender-fired = the
+                        // pre-summed Damage-output total; skill-fired (Meteor) =
+                        // SkillData.magnitude — both snapshotted into state.damage
+                        // (contract: no new field). non-Damage outputs are a
+                        // follow-up (v1 is Damage-only).
                         float3 impactWorld = projectile.ValueRO.impact;
                         int2 centerCell = GridMath.WorldToCell(impactWorld, tileSize, gridSize, origin: ffOrigin);
                         int tileRange = projectile.ValueRO.impactTileRange;
@@ -206,12 +210,15 @@ namespace Wassup.Battle.Combat.Projectile
 
                         // Impact-crater VFX at the cell (not a target position). No
                         // per-target HitFlash: an AOE strike flashing N enemies is
-                        // visual noise — matches the Meteor precedent.
+                        // visual noise — matches the Meteor precedent. radiusWorld
+                        // snapshots the per-cast AOE radius for the burst visual.
                         if (hasHitChannel)
                             hitQueue.Enqueue(new ProjectileHitEvent
                             {
                                 position = impactWorld,
                                 dataIndex = projectile.ValueRO.dataIndex,
+                                payload = PayloadKind.TileAoe,
+                                radiusWorld = tileRange * tileSize,
                             });
                         break;
                     }

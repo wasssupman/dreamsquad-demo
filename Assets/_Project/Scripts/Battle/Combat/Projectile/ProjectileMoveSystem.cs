@@ -88,6 +88,19 @@ namespace Wassup.Battle.Combat.Projectile
                         break;
                     }
 
+                    case MovementKind.SkyFall:
+                    {
+                        // Sky-fall telegraph (Meteor): sim position holds at the
+                        // cell-locked impact for the whole flight — the legacy path
+                        // had no sim travel either. Only elapsed advances; the
+                        // falling visual is view-space only (presentation layer).
+                        float elapsed = projectile.ValueRO.elapsed + dt;
+                        projectile.ValueRW.elapsed = elapsed;
+                        if (SkyFall.Arrived(elapsed, projectile.ValueRO.flightTime))
+                            projectile.ValueRW.impactReached = true;
+                        break;
+                    }
+
                     default:
                         // Unhandled movement kind: destroy rather than leak an
                         // immortal entity (no position, no arrival, no resolve). A

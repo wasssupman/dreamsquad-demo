@@ -1638,25 +1638,48 @@ namespace Wassup.Bridge
             return preview;
         }
 
-        // Phase 7 — Meteor. Spawns a carrier entity + a MonoBehaviour-side warning
-        // ring for `skill.warningSec`; MeteorResolutionSystem applies the AoE damage
-        // when the warning expires.
+        // projectile-trajectory-payload unit 7 — Meteor rides the unified projectile
+        // lifecycle (SkyFall × TileAoe, flightTime = warningSec). The request is
+        // built HERE (not EffectSpawner): the ProjectileData registry is bridge-
+        // private and ProjectileSpawnRequest is Combat-owned, so the bridge is the
+        // only seam that can emit it without a context-boundary violation. No ECS
+        // carrier entity — SpawnProjectile is called directly (legacy MeteorPending
+        // path retired; deletion is unit 8).
         private int ApplyMeteor(Vector2Int tile, SkillData skill)
         {
             float3 centerWorld = GridToWorldCenter(tile);
             int tileRange = GridMath.RangeToTiles(skill.range);
             float radiusWorld = tileRange * tileSize; // VFX only
             float warn = skill.warningSec > 0f ? skill.warningSec : 0f;
-            EffectSpawner.SpawnMeteor(_em, centerWorld, tileRange, skill.magnitude, warn);
+            if (skill.projectile == null)
+            {
+                // Config error, visibly dropped — GetOrCreateProjectileDataIndex
+                // would NRE on null and a silent fallback would hide the miswiring.
+                Debug.LogWarning($"[BattleBridge] Skill '{skill.id}' has no ProjectileData assigned; meteor cast dropped.");
+                return 0;
+            }
+            var req = new ProjectileSpawnRequest
+            {
+                movement = MovementKind.SkyFall,
+                payload = PayloadKind.TileAoe,
+                origin = centerWorld,
+                impact = centerWorld,
+                damage = skill.magnitude,
+                visualScale = skill.projectile.visualScale,
+                dataIndex = GetOrCreateProjectileDataIndex(skill.projectile),
+                impactTileRange = tileRange,
+                flightTime = warn,
+            };
+            SpawnProjectile(req, Entity.Null);
             SpawnMeteorWarningVisual(centerWorld, radiusWorld, warn);
             // Phase 8 §13: falling streak during the warning window. Silent
             // no-op when meteorFallPrefab slot empty — Meteor still plays
             // without the falling visual.
             if (vfxSpawner != null && warn > 0f)
                 vfxSpawner.SpawnMeteorFall(new Vector3(centerWorld.x, 0f, centerWorld.z), warn);
-            // Actual damage count is reported async by MeteorResolutionSystem; at
-            // cast time we conservatively pre-count current overlaps so the log is
-            // informative without waiting for the burst.
+            // Actual damage resolves async (ProjectileHitSystem TileAoe arm at
+            // flightTime); at cast time we conservatively pre-count current
+            // overlaps so the log is informative without waiting for the burst.
             if (!_aliveAttackersQueryCreated) return 0;
             var entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
             int preview = 0;
@@ -1992,6 +2015,16 @@ namespace Wassup.Bridge
                 if (data.hitPrefab != null)
                     _projectileViewPool?.PlayHit(data.hitPrefab, evt.position, data.hitVfxLifetime,
                         data.visualHeightOffset, data.hitVfxScale);
+                else if (evt.payload == PayloadKind.TileAoe && evt.radiusWorld > 0f && vfxSpawner != null)
+                    // unit 7 — Meteor burst rides the unified hit channel. Routing
+                    // rule: authored hitPrefab wins (artillery keeps its GA impact);
+                    // a prefab-less TileAoe falls back to the legacy burst visual.
+                    // radiusWorld travels on the event because the AOE radius is
+                    // per-cast (skill range), not a ProjectileData constant.
+                    // NOTE: "prefab-less TileAoe" semantically means Meteor today —
+                    // if a second prefab-less TileAoe projectile is ever authored,
+                    // gate this on an explicit burst flag instead of hitPrefab==null.
+                    vfxSpawner.SpawnMeteorBurst(new Vector3(evt.position.x, 0f, evt.position.z), evt.radiusWorld);
             }
         }
 
@@ -2129,6 +2162,17 @@ namespace Wassup.Bridge
                 state.impactTileRange = req.impactTileRange;
                 state.flightTime = BallisticArc.FlightTime(spawnPos, ballisticImpact, req.speed, projData.minFlightTime);
             }
+            else if (req.movement == MovementKind.SkyFall)
+            {
+                // Sky-fall (unit 7): sim holds at the cell-locked impact; flightTime
+                // is request-carried (Meteor's warningSec), not speed-derived — the
+                // travel distance is zero so BallisticArc.FlightTime would clamp to
+                // minFlightTime and distort the telegraph timing.
+                state.origin = spawnPos;
+                state.impact = new float3(req.impact.x, spawnHeight, req.impact.z);
+                state.impactTileRange = req.impactTileRange;
+                state.flightTime = math.max(req.flightTime, 0f);
+            }
             _em.AddComponentData(entity, state);
 
             if (hasSnapshot)
@@ -2139,7 +2183,11 @@ namespace Wassup.Bridge
                 outputSnapshot.Dispose();
             }
 
-            _projectileViewPool?.Spawn(entity, projData, spawnPos);
+            // Viewless projectiles (unit 7 — Meteor before its visual round): a
+            // registered ProjectileData with no prefab means "sim only"; the pool
+            // has no null-prefab guard, so the skip lives here.
+            if (projData != null && projData.projectilePrefab != null)
+                _projectileViewPool?.Spawn(entity, projData, spawnPos);
         }
 
         // Fires the defender's on-place effect on surrounding entities. Returns

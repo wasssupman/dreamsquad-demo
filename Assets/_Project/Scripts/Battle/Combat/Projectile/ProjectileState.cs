@@ -38,8 +38,10 @@ namespace Wassup.Battle.Combat.Projectile
         public float hitThreshold;
 
         // ── Ballistic-arc trajectory (MovementKind.BallisticArcToPoint) ──────
+        // Shared by SkyFall, which also locks impact and ticks elapsed.
         // impact is cell-locked at fire time; the target entity is not tracked.
-        // flightTime is derived from distance/speed at spawn; elapsed ticks up.
+        // flightTime: BallisticArc derives it from distance/speed at spawn;
+        // SkyFall carries it on the request (warningSec). elapsed ticks up.
         public float3 origin;
         public float3 impact;
         public float flightTime;

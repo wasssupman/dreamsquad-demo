@@ -29,3 +29,5 @@ Meteor 스킬을 레거시 경로(`MeteorPending` → `MeteorResolutionSystem` �
 - compile PASS + EditMode: SkyFall 순수함수 + 기존 전체 GREEN.
 - Play: meteor 캐스트 → 링+스트릭 → `warningSec` 후 동일 반경 데미지+버스트, 무회귀. `MeteorPending` 엔티티 미생성(쿼리 확인).
 - 캐스트 반복 후 잔존 엔티티 증가 없음(leak 확인).
+
+확인 2026-07-06 — 리그 EditMode 10/10+506/509 · MCP Play 검증: MeteorPending=0 유지, Projectile 1→0(소멸), HP 120→80(=magnitude 40 정확), 콘솔 클린 · 투트랙 리뷰 양측 APPROVE(주석 5건 반영) · 사용자 진행 승인. 링/스트릭 육안은 코드 무변경이라 1x 플레이에서 언제든 확인 가능.
