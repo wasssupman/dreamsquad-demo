@@ -1,6 +1,6 @@
 # damage-number-visual-upgrade
 
-> 상태: **계획 2026-07-07** — 승인 후 unit 0 부터 구현. 코덱스 에셋(하프톤 텍스처·스파크 파티클)은 별도 `assets-codex-request.md`.
+> 상태: **진행중 2026-07-07** — units 0·1 구현·커밋 완료(`3ba0f57`, `831c923`). units 2·3 은 **코덱스 에셋 대기**(하프톤 텍스처·스파크 파티클, `assets-codex-request.md`).
 
 ## 상위 목표
 
