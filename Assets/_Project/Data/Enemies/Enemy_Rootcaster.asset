@@ -22,7 +22,6 @@ MonoBehaviour:
   targetClassMask: -1
   health: 45
   moveSpeed: 1.8
-  attackDamage: 14
   attackRange: 6
   attackCooldown: 2.2
   attackTargetCount: 1

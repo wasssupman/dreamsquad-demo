@@ -17,8 +17,9 @@ MonoBehaviour:
   displayName: Healer
   health: 500
   attackRange: 3
-  attackDamage: 0
   attackCooldown: 3
+  hitDelaySec: 0
+  deployDelaySec: 0
   attackTargetCount: 3
   visualMesh: {fileID: 0}
   visualMaterial: {fileID: 2100000, guid: 0fa3aa86ccc0643bcba349ade2f4baea, type: 2}
@@ -46,6 +47,8 @@ MonoBehaviour:
   hazardFootprintWidth: 1
   hazardFootprintHeight: 1
   rarity: 1
+  aggroCapacity: 0
+  aggroRange: 0
   skeletonDataAsset: {fileID: 11400000, guid: b0640b88ee78d49f38774a3a4b09bf4d, type: 2}
   spineSkinName: Lamb
   idleAnimation: idle

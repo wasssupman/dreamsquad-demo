@@ -29,4 +29,6 @@
 
 - [x] compile 오류 없음 (2026-07-06, unityMCP `read_console` 0 errors)
 - [x] 신규 테스트 12종 + 기존 스위트 회귀 없음 (2026-07-06, EditMode 510개 중 실패 1 = 알려진 무관 상시 실패 `ObstaclePlacerTests.Place_PreservesWalkAndMinimumPlaceRatio`)
-- [ ] **실 API 왕복**: 시드 입력된 실 시트를 `Defenders`/`Enemies` 로 GET → import → 결과 로그 `unmatched 0`, projected/skipped 카운트가 예상치(projected 18 = def 11 + enemy 7, skipped 7)와 일치, 값 스팟체크 3유닛. ※ git diff 0 은 판정 기준이 아님 (SaveAssetIfDirty 가 YAML 누락 키를 기본값 라인으로 추가 기록할 수 있음). 2026-07-06 현재 시트 탭 미생성(`구글 시트 연동 실패`) — 시드 입력 대기
+- [x] **실 API 왕복** (2026-07-06): `Defenders`/`Enemies` GET → import → `Matched 25, unmatched 0, fields applied 318, projected 19, skipped 0`. 시트 데이터는 시드와 25유닛 전 필드 동치(사전 대조). SO 값 변경 0 — asset diff 는 레거시 `attackDamage` 잔존 라인 제거 + 누락 키 기본값 명시뿐 (재직렬화 정규화).
+  - 카운트 해석: projected 19 = def atk 11 + heal 1 + enemy atk 7. 빈 atk 셀은 키 생략 → no-op (skip 아님; 초안의 "skipped 7" 예상은 오산이었음).
+  - **잔여**: Enemies 탭 헤더 2개가 계약과 다름 (`name`→`displayName`, `type`→`enemyClass`) — 해당 두 컬럼만 무시됨 (fields applied 318 = 336 − 2×9). 헤더 정정 후 재실행 시 336 기대.
