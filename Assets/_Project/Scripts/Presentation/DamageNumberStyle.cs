@@ -39,7 +39,7 @@ namespace Wassup.Presentation
         [Tooltip("발치 view 위치에서 머리 위로 올릴 world-up 오프셋. ToView 이후 적용 — sim-Y 가 아니다(BoardSpace 가 sim 높이를 버림).")]
         public float headViewOffset = 1.4f;
         [Tooltip("겹침 방지 격자 셀 크기 (카메라축 투영 world 단위; x=화면 가로, y=화면 세로). Play 에서 4자리 숫자 비겹침으로 튜닝.")]
-        public Vector2 cellSize = new Vector2(1.4f, 0.9f);
+        public Vector2 cellSize = new Vector2(0.85f, 0.55f);
         [Tooltip("점유 시 빈 셀을 찾는 최대 링 수")]
         public int maxSearchRings = 4;
 

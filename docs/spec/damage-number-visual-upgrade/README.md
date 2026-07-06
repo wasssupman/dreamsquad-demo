@@ -44,3 +44,4 @@
 - **`DamageNumberStyle` SO 승격** — 다중 프리셋 필요 시 `[Serializable]` → `ScriptableObject`. 현재는 단일 스타일이라 불필요. [S]
 - **트리밍 커스텀 모바일 셰이더** — unit 2 의 비-모바일 Distance Field 셰이더가 실기 프로파일에서 무거우면 face-tex+glow 만 남긴 경량 셰이더 저작. [M]
 - **유닛별 정밀 머리 앵커** — unit 0 은 단일 고정 view 오프셋. 적/디펜더/보스 키 차이를 뷰 bounds/height 해석으로 정밀 앵커링(entity→view 매핑 경유). 대형 유닛 정합용. [S]
+- **진짜 emissive (URP Bloom)** — 현재 글로우는 TMP SDF 가짜 밴드(사용자 선택, 모바일 안전). 진짜 발광은 배틀 카메라 post-processing ON + Bloom 볼륨 + 숫자 HDR(>1). 전역 렌더 변경(씬 전체 밝은 픽셀 번짐) + 모바일 풀스크린 후처리 비용 동반 → 데미지넘버 스코프 밖 별도 스펙. [M]

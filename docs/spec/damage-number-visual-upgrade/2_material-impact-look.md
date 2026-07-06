@@ -35,3 +35,9 @@
 - Play: 숫자 면에 하프톤 점 패턴 + 흰 외곽선 + 은은한 글로우로 배경과 분리돼 강렬하게 읽힌다(스크린샷, 참고 이미지 대조).
 - **Android 실기기 프로파일 게이트(하드)**: 동시 10+ 숫자 팝업 시 프레임 급락 없음을 실기에서 측정 확인. 실패 시 폴백 A/B 로 이관(이 게이트를 통과해야 unit 2 완료 인정).
 - 플레이스홀더 배선 완료 → 코덱스 텍스처 슬롯 교체가 `.mat` 한 곳 수정으로 끝난다.
+
+---
+
+- **검증 2026-07-07**: 신규 `DamageNumber Impact Mat`(비-모바일 `TextMeshPro/Distance Field`, 기존 outline mat 복제 — **in-place 스왑 아님**). `_FaceTex`=medium 하프톤@1.0 · 흰 아웃라인 0.28 · 강한 warm 가짜 글로우(power1/outer1). 프리팹 `DamageNumber_Popup` TMP+MeshRenderer 배선 + vertex gradient on. 오프스크린 렌더로 **인게임 크기 가독성 확인**(청록 247·오렌지 5599 에서 하프톤·아웃라인·글로우 모두 읽힘, 팔레트 충돌 없음).
+- **글로우 방식 결정(2026-07-07)**: 씬에 post-processing Volume 0·배틀 카메라 post-FX OFF 확인 → 현재는 TMP SDF **가짜 글로우 밴드**. 사용자 선택 = **가짜 글로우 유지(모바일 안전)**. 진짜 emissive(URP Bloom)는 전역 렌더 변경이라 후속 스펙 보류.
+- **Android 실기 프로파일 게이트: 미완** — 비-모바일 셰이더 실기 프레임 확인은 사용자 실기 테스트 대기. 문제 시 폴백 A/B.
