@@ -42,10 +42,14 @@ namespace Wassup.Tests.PlayMode
             var profile = _profSO.profile;
             var squad = profile.SelectedSquad();
             Assert.IsNotNull(squad, "default squad exists");
-            Assert.GreaterOrEqual(profile.ownedUnitIds.Count, 2, "owned pool seeded");
+            var catalogIds = new System.Collections.Generic.List<string>(
+                ((Wassup.Data.DefenderCatalog)menu.GetType()
+                    .GetField("catalog", BindingFlags.NonPublic | BindingFlags.Instance)
+                    .GetValue(menu)).AllIds());
+            Assert.GreaterOrEqual(catalogIds.Count, 2, "catalog has units");
             // Force a deterministic filled squad regardless of disk state.
-            squad.unitIds[0] = profile.ownedUnitIds[0];
-            squad.unitIds[1] = profile.ownedUnitIds[1];
+            squad.unitIds[0] = catalogIds[0];
+            squad.unitIds[1] = catalogIds[1];
 
             // BattleScene/DraftView pre-existing missing-script noise on load.
             LogAssert.ignoreFailingMessages = true;

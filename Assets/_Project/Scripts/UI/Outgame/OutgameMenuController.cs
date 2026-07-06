@@ -26,7 +26,7 @@ namespace Wassup.UI
                 return;
             }
             profileSO.profile = ProfileStore.LoadOrCreate(catalog);
-            Debug.Log($"[OutgameMenuController] Profile loaded: {profileSO.profile.ownedUnitIds.Count} units. path={ProfileStore.Path}");
+            Debug.Log($"[OutgameMenuController] Profile loaded: {(catalog != null ? catalog.units.Length : 0)} catalog units. path={ProfileStore.Path}");
             ClosePanels();
         }
 

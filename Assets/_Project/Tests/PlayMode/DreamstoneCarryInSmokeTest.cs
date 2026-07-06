@@ -157,15 +157,19 @@ namespace Wassup.Tests.PlayMode
             var profile = _profSO.profile;
             var squad = profile.SelectedSquad();
             Assert.IsNotNull(squad, "default squad exists");
-            Assert.GreaterOrEqual(profile.ownedUnitIds.Count, 2, "owned pool seeded");
+            var catalogIds = new System.Collections.Generic.List<string>(
+                ((Wassup.Data.DefenderCatalog)menu.GetType()
+                    .GetField("catalog", BindingFlags.NonPublic | BindingFlags.Instance)
+                    .GetValue(menu)).AllIds());
+            Assert.GreaterOrEqual(catalogIds.Count, 2, "catalog has units");
 
             // Force a deterministic filled squad + the Unique Attack Stone block
             // (stone_001..stone_004 = tiers 7.5/6/6/4.5, sum 24 -- unit 5 rev
             // 2026-07-06b replaced the old flat "stone_atk_unique" x4 duplicate-id
             // catalog with 64 individually-owned stones; that legacy id no longer
             // resolves, so this e2e now equips the 4 real distinct instances).
-            squad.unitIds[0] = profile.ownedUnitIds[0];
-            squad.unitIds[1] = profile.ownedUnitIds[1];
+            squad.unitIds[0] = catalogIds[0];
+            squad.unitIds[1] = catalogIds[1];
             squad.stoneIds[0] = "stone_001";
             squad.stoneIds[1] = "stone_002";
             squad.stoneIds[2] = "stone_003";
@@ -233,12 +237,16 @@ namespace Wassup.Tests.PlayMode
             var profile = _profSO.profile;
             var squad = profile.SelectedSquad();
             Assert.IsNotNull(squad, "default squad exists");
-            Assert.GreaterOrEqual(profile.ownedUnitIds.Count, 1, "owned pool seeded");
+            var catalogIds = new System.Collections.Generic.List<string>(
+                ((Wassup.Data.DefenderCatalog)menu.GetType()
+                    .GetField("catalog", BindingFlags.NonPublic | BindingFlags.Instance)
+                    .GetValue(menu)).AllIds());
+            Assert.GreaterOrEqual(catalogIds.Count, 1, "catalog has units");
 
             // Force a deterministic filled squad (unitIds must be non-empty for
             // GameManager.Start to take the squad branch at all) equipped with only
             // stone_049 (Unique Cost Stone, +7.5%); remaining 3 stone slots empty.
-            squad.unitIds[0] = profile.ownedUnitIds[0];
+            squad.unitIds[0] = catalogIds[0];
             squad.stoneIds[0] = "stone_049";
             squad.stoneIds[1] = "";
             squad.stoneIds[2] = "";

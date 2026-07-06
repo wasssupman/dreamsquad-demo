@@ -275,7 +275,8 @@ namespace Wassup.UI
         {
             if (catalog == null || profileSO == null || profileSO.profile == null) return;
             var squad = Squad;
-            foreach (var id in profileSO.profile.ownedUnitIds)
+            // Units are not profile-owned — every catalog unit is always pickable.
+            foreach (var id in catalog.AllIds())
             {
                 var unit = catalog.ById(id);
                 string label = unit != null ? DisplayName(unit) : id;

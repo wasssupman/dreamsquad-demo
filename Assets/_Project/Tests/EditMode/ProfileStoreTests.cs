@@ -54,7 +54,7 @@ namespace Wassup.Tests.EditMode
 
             Assert.IsTrue(File.Exists(_path), "default profile should be persisted");
             Assert.AreEqual(ProfileStore.CurrentSchemaVersion, profile.schemaVersion);
-            CollectionAssert.AreEquivalent(new[] { "scout", "ranger", "guardian" }, profile.ownedUnitIds);
+            // units are not profile-owned — availability comes from the catalog directly.
             // squad-loadout Unit 0 — default profile now ships a free starter squad.
             Assert.AreEqual(1, profile.squads.Count);
             Assert.AreEqual("squad_1", profile.selectedSquadId);
@@ -75,7 +75,6 @@ namespace Wassup.Tests.EditMode
             var loaded = ProfileStore.LoadOrCreateAt(_path, cat);
 
             Assert.AreEqual(original.schemaVersion, loaded.schemaVersion);
-            CollectionAssert.AreEqual(original.ownedUnitIds, loaded.ownedUnitIds);
             Assert.AreEqual("alpha", loaded.selectedSquadId);
             Assert.AreEqual("deck1", loaded.selectedDeckId);
             // default "squad_1" + added "alpha"
@@ -97,7 +96,6 @@ namespace Wassup.Tests.EditMode
 
             Assert.IsNotNull(profile);
             Assert.IsTrue(File.Exists(_path + ".bak"), "corrupt file should be backed up");
-            CollectionAssert.AreEquivalent(new[] { "scout" }, profile.ownedUnitIds);
         }
 
         [Test]

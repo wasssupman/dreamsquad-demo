@@ -31,7 +31,7 @@ namespace Wassup.Core
                     {
                         // Migration hook: when CurrentSchemaVersion advances, transform
                         // older profiles here before returning. Only v1 exists today.
-                        EnsureNonNull(profile);
+                        EnsureNonNull(profile, catalog);
                         return profile;
                     }
                     Debug.LogWarning("[ProfileStore] Parsed profile was null; recreating default.");
@@ -59,22 +59,17 @@ namespace Wassup.Core
         static PlayerProfile CreateDefault(DefenderCatalog catalog)
         {
             var p = new PlayerProfile { schemaVersion = CurrentSchemaVersion };
-            if (catalog != null)
-            {
-                foreach (var id in catalog.AllIds()) p.ownedUnitIds.Add(id);
-            }
-            EnsureDefaultSquad(p);
+            EnsureDefaultSquad(p, catalog);
             return p;
         }
 
         // JsonUtility may leave collection fields null when absent/partial in the
         // source JSON. Keep callers from null-checking every list.
-        static void EnsureNonNull(PlayerProfile p)
+        static void EnsureNonNull(PlayerProfile p, DefenderCatalog catalog)
         {
-            if (p.ownedUnitIds == null) p.ownedUnitIds = new System.Collections.Generic.List<string>();
             if (p.squads == null) p.squads = new System.Collections.Generic.List<SquadSave>();
             if (p.dreamcatcherDecks == null) p.dreamcatcherDecks = new System.Collections.Generic.List<DeckSave>();
-            EnsureDefaultSquad(p);
+            EnsureDefaultSquad(p, catalog);
         }
 
         // squad-loadout Unit 0 — guarantee at least one squad (free starter, per
@@ -84,7 +79,7 @@ namespace Wassup.Core
         // to an empty squad, and GameManager.Start falls back to the legacy draft.
         // Filling the selected squad from owned units when it is empty makes the build
         // enter squad mode out of the box.
-        static void EnsureDefaultSquad(PlayerProfile p)
+        static void EnsureDefaultSquad(PlayerProfile p, DefenderCatalog catalog)
         {
             if (p.squads == null) p.squads = new System.Collections.Generic.List<SquadSave>();
             if (p.squads.Count == 0)
@@ -96,12 +91,17 @@ namespace Wassup.Core
                 p.selectedSquadId = p.squads[0].id;
 
             // Seed only when the selected squad is empty — never overwrite a squad the
-            // player has filled. Fills slots in owned order, up to SlotCount.
+            // player has filled. Units are not profile-owned (all units are always
+            // available), so the starter squad is seeded straight from the catalog.
             var selected = p.SelectedSquad();
-            if (selected != null && selected.IsEmpty() && p.ownedUnitIds != null && p.ownedUnitIds.Count > 0)
+            if (selected != null && selected.IsEmpty() && catalog != null)
             {
-                int n = Mathf.Min(SquadSave.SlotCount, p.ownedUnitIds.Count);
-                for (int i = 0; i < n; i++) selected.unitIds[i] = p.ownedUnitIds[i];
+                int i = 0;
+                foreach (var id in catalog.AllIds())
+                {
+                    if (i >= SquadSave.SlotCount) break;
+                    selected.unitIds[i++] = id;
+                }
             }
         }
 

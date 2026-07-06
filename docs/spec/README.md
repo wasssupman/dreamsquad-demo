@@ -124,7 +124,7 @@ code + git history        구현 상세
 
 곡사포 유닛 완료(→ Promoted). 남은 후속:
 
-- **신규 유닛 프로필 reconcile** [S] · `ProfileStore.LoadOrCreate` 가 기존 저장 프로필에 카탈로그 신규 유닛을 안 보태 → 새 defender 가 기존 플레이어에게 안 열림. 로드 시 카탈로그 reconcile(누락 id 추가) 여부 = 진행/획득 정책 결정. 지금은 프로필 수동 패치 우회.
+- ~~**신규 유닛 프로필 reconcile**~~ [해결 2026-07-06] · 유닛을 프로필-소유(`ownedUnitIds`)에서 아예 제거하고 SquadBuilderView 가 `DefenderCatalog` 를 직독 → 모든 유닛 상시 오픈, 신규 유닛 자동 노출. 유닛 수집/가챠 도입 시 재검토(그때 소유 개념 부활). PlayerProfile.ownedUnitIds 삭제(JSON back-compat: 구 필드 무시).
 - **slow-곡사포 / 임팩트 CC / arcHeight 거리비례 / 전용 Spine rig** [S/M] · artillery-defender 후속.
 - **Meteor→TileAoe 수렴 / Bezier 궤적 / non-Damage payload / Homing+TileAoe** [S/M] · projectile-trajectory-payload 엔진 확장 후속.
 

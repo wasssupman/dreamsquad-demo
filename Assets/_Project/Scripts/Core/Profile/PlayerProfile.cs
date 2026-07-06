@@ -10,7 +10,9 @@ namespace Wassup.Core
     public class PlayerProfile
     {
         public int schemaVersion = 1;
-        public List<string> ownedUnitIds = new List<string>();
+
+        // Units are not profile-owned — all catalog units are always available
+        // (SquadBuilderView lists the catalog directly). No ownedUnitIds by design.
 
         // B (squad-loadout) fills these; C/D (dreamcatcher) fill the decks.
         public List<SquadSave> squads = new List<SquadSave>();
