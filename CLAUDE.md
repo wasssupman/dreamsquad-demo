@@ -70,6 +70,7 @@
 | "다음에 뭐 할까 / 후속 후보는?" | `docs/spec/README.md` 하단 **Follow-up Backlog** 섹션 — 종료된 spec 에서 이관된 후보. 새 spec 시작 전에 먼저 확인 |
 | "과거 어떻게 만들어졌나?" | `docs/prototype/PHASE{0..10}.md` — 프로토타이핑 단계 종료 스펙 (읽기 전용 아카이브) |
 | "이 프로젝트/환경 고유의 함정은?" | `docs/reference/lessons/` — 실제로 겪은 지뢰 모음 (Unity MCP 운용·git/씬 위생·Spine/타일맵/프랍·시뮬 설계). **Unity 조작·에셋 작업·커밋 전에 해당 주제 파일 一讀** |
+| "새 플레이 오브젝트의 생성→렌더 정거장은?" | `docs/reference/object-pipeline-map.md` — 아키타입별 파이프라인 체크표. **플레이 오브젝트 spec README 작성 시 대조 필수** |
 | "VFX 를 만드려면?" | `.claude/skills/unity-vfx-authoring/` + `unity-vfx-integration/` 스킬 |
 | "Unity 씬 와이어링?" | `.claude/skills/unity-feature-wiring/` 스킬 |
 
@@ -107,6 +108,7 @@ docs/spec/{feature-slug}/
 - **파일번호는 작업 순서**: 같은 feature 에 추가 작업이 생기면 기존 파일번호 뒤에 누적 (rev 표기 가능)
 - **완료 기준**: 각 파일 하단에 "완료 기준" 섹션 필수. compile / 테스트 / 시각 검증 기준을 명시
 - **변경 대상**: 파일 경로 명시 (예: `Assets/_Project/Scripts/Bridge/BattleBridge.cs`)
+- **파이프라인 커버리지**: 플레이 오브젝트(유닛/적/투사체/해저드/VFX 등)를 신설하거나 생성→렌더 경로를 변경하는 spec 의 README 에는 `파이프라인 커버리지` 섹션 필수. `docs/reference/object-pipeline-map.md` 의 가장 가까운 아키타입 표를 복사해 대조하고, 해당 없는 정거장은 빈 칸이 아니라 **`N/A + 이유`** 로 적는다.
 - **handoff summary**: feature 구현이 커밋되었거나 세션이 넘어갈 때 `{N+1}_handoff_summary.md` 를 작성한다. 길이는 30~80줄, "구현됨 / 핵심 파일 / 검증 / 주의점 / 다음 후보" 만 담는다. handoff 는 source of truth 가 아니라 다음 에이전트가 커밋과 spec 을 빠르게 찾기 위한 지도다.
 
 ### 참고 예시
@@ -127,7 +129,7 @@ docs/spec/{feature-slug}/
 2. 사용자 승인 후, 작업 단위 파일 `0_{topic}.md` 부터 순서대로 구현한다. **한 번에 한 파일**. 선행 의존이 있으면 같이 언급.
 3. 구현 완료 후 사용자에게 "완료 확인"을 요청한다. 에디터 또는 실기기에서 확인 가능한 방식을 구체적으로 알려준다.
 4. 사용자가 통과를 확인하면 해당 작업 단위 파일의 "완료 기준" 섹션 하단에 확인 일자 + 커밋 해시를 한 줄 추가하고 커밋한다.
-5. feature 전체 종료 시 `docs/spec/{feature-slug}/README.md` 상단에 "상태: 완료 YYYY-MM-DD" 를 기재하고 `{N+1}_handoff_summary.md` 를 작성한다.
+5. feature 전체 종료 시 `docs/spec/{feature-slug}/README.md` 상단에 "상태: 완료 YYYY-MM-DD" 를 기재하고 `{N+1}_handoff_summary.md` 를 작성한다. 이때 파이프라인 맵(`docs/reference/object-pipeline-map.md`)에 구조 변경(새 아키타입/정거장 추가·제거, 앵커 파일 이동)이 생겼는지 확인하고 필요 시 같은 커밋에서 맵을 갱신한다.
 6. 커밋 이후 다른 에이전트가 이어받을 가능성이 있으면, 커밋 해시와 검증 결과를 handoff summary 에 먼저 반영한 뒤 필요하면 별도 docs 커밋으로 묶는다.
 
 ### Handoff 작성 규칙
