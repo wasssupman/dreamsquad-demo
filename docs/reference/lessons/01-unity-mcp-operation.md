@@ -60,6 +60,13 @@ Write 로 만든 새 `.cs` 는 `refresh_unity(scope=scripts)` 로는 import 안 
 - sway/프리뷰 Update 는 `Time.unscaledDeltaTime` 을 써서 동결 중에도 애니메이트됨.
 - 컨트롤러 **`.enabled=false` 금지** — `OnDisable→CleanupSession` 이 프리뷰를 파괴. 정적 고정은 상태 필드 직접 세팅.
 
+## `execute_code` 가 mono 커맨드라인 길이로 고장난 환경
+
+이 프로젝트/머신에서 `execute_code` 는 코드·경로와 무관하게 `mono.exe: 파일 이름이나 확장명이 너무 깁니다` 로 즉사한다 (CodeDom 컴파일이 전 어셈블리 참조를 커맨드라인에 나열 → Windows 한계 초과).
+
+- **처방**: 에디터 내 일회성 실행이 필요하면 **임시 `[MenuItem]` 정적 메서드 스크립트**를 Write → `refresh_unity(scope=all, compile=request)` → `execute_menu_item` → 결과는 `Debug.Log` 대신 **파일로 기록** (`read_console` 은 멀티라인 메시지를 첫 줄로 자른다) → 검증 후 스크립트+meta 삭제 + refresh. 실례: unit-stat-spreadsheet-schema 왕복 검증 (2026-07-06).
+- 세션 중 `claude mcp add` 로 등록한 MCP 서버는 그 세션에서 안 잡힌다 — 브리지에 HTTP JSON-RPC 직결(initialize → Mcp-Session-Id 헤더 유지)로 우회 가능.
+
 ## Codex 도 unityMCP 를 쓸 수 있다
 
 Codex 에도 unityMCP 가 붙어 있어(`~/.codex/config.toml`) 에디터 작업 위임이 가능하다. 단 긴 Play 작업은 백그라운드로 빠져 회수가 불안정 — 짧은 조회/조작 위주로.
