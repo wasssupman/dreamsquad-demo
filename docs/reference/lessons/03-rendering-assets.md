@@ -58,6 +58,10 @@ BattleScene Tilemap 모드 Main Camera 는 **런타임 정적이 아니다**. �
 
 코드베이스에 구세대(PPU 545, 프랍별 `_cast` mat)와 신세대(공용 mat) 패턴이 공존해 **"기존 애셋 미러링"이 그럴듯하지만 틀린 경로**다. 정식 파이프라인·강제 값은 `.claude/skills/unity-prop-tile-authoring/SKILL.md`.
 
+## PixPlays 이펙트는 duration 을 무시한다 (지속형은 loop 오버라이드)
+
+`LocationVfx.Play(VfxData)` 는 위치/스케일만 잡고 `ParticleSystem.Play()` 한 번 — **VfxData.Duration 을 소비하지 않는다**. PixPlays AOE 계열(WaterAOE 등)은 "t=0 버스트 + 수명 0.6~2s + 사이클 5s"로 저작돼 있어 지속 스킬(포탈 8s)에 붙이면 앞 1~2초만 보이고 공백. **처방**: 소비 프리팹의 **중첩 인스턴스에만 오버라이드**(공용 에셋 무접촉) — 연속 계열에 `loop=true` + `duration≈startLifetime`(버스트 연속 재발화), 버스트 개수는 모바일 예산으로 감축. Flash 류는 캐스트 액센트로 원샷 유지. 수명 정리는 루트 GO 의 `Destroy(duration)` 에 위임. 검증은 에디트 모드 `Simulate(사이클 중간 t)` 파티클 카운트(0=공백 증명).
+
 ## 벤더 투사체 VFX 를 ECS 파이프라인에 넣을 때
 
 벤더 VFX(예: GabrielAguiar)를 `ProjectileViewPool`(ECS SyncTransforms 가 transform 구동)에 넣을 때 view-only 로 스트립, 3가지 필수:
