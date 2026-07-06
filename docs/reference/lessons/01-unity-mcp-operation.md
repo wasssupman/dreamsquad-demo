@@ -60,6 +60,15 @@ Write 로 만든 새 `.cs` 는 `refresh_unity(scope=scripts)` 로는 import 안 
 - sway/프리뷰 Update 는 `Time.unscaledDeltaTime` 을 써서 동결 중에도 애니메이트됨.
 - 컨트롤러 **`.enabled=false` 금지** — `OnDisable→CleanupSession` 이 프리뷰를 파괴. 정적 고정은 상태 필드 직접 세팅.
 
+## VFX 후보 비교는 파티클 Simulate 동결 라인업으로
+
+움직이는 VFX(투사체 낙하, 폭발)를 MCP 스크린샷으로 비교하려면 실시간 캡처는 실패한다 — MCP 왕복(1~4초)이 재생 창(0.5~1.5초)을 계속 놓친다. 정답:
+
+1. 후보 프리팹들을 보드 위에 **일렬로 Instantiate**(빈 GO 부모 `__CandidateLineup` 아래).
+2. `ps.Simulate(0.25~0.55f, true, true); ps.Pause(true);` 로 **원하는 재생 시점에 동결**.
+3. 스크린샷 1장에 전 후보 비교 → 사용자 픽. 다른 시점은 재-Simulate 후 재촬영.
+4. 부모 GO `DestroyImmediate` 로 정리. (TrailRenderer 는 Simulate 안 되므로 트레일 느낌은 실플레이/사용자 육안으로.)
+
 ## Codex 도 unityMCP 를 쓸 수 있다
 
 Codex 에도 unityMCP 가 붙어 있어(`~/.codex/config.toml`) 에디터 작업 위임이 가능하다. 단 긴 Play 작업은 백그라운드로 빠져 회수가 불안정 — 짧은 조회/조작 위주로.

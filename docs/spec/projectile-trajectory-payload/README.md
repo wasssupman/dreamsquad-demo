@@ -1,8 +1,8 @@
 # Projectile Trajectory × Payload — 투사체 궤적/페이로드 분해 리팩터
 
-> 상태: **확장 라운드(Meteor 수렴+비주얼) 진행 중 2026-07-06** — 엔진(units 0~5)은 완료·리뷰·커밋(handoff: `6_handoff_summary.md`), Play e2e 는 `artillery-defender` 로 실증 완료. 이번 라운드 = units 7~9: Meteor 를 SkyFall×TileAoe 로 수렴(7, 동작보존) → 레거시 삭제(8) → GA 낙하 비주얼(9, 의도된 시각 변경).
+> 상태: **완료 2026-07-06** — 엔진 라운드(units 0~5, handoff `6_handoff_summary.md`) + Meteor 라운드(units 7~9: SkyFall×TileAoe 수렴 → 레거시 삭제(채널 15→14) → GA 낙하/임팩트 비주얼). Meteor 라운드 handoff → `10_handoff_summary.md`.
 >
-> 라운드 검증 질문: **Meteor 가 전용 시스템/큐/캐리어 없이 단일 투사체 라이프사이클로 동작하고(무회귀), GA 프리팹 낙하가 "하늘에서 떨어지는" 느낌을 주는가?** — 원래 후속의 [S] 함수-dedup 을 풀 수렴+비주얼로 확장한 product 결정(2026-07-06).
+> 라운드 검증 질문(답: YES): **Meteor 가 전용 시스템/큐/캐리어 없이 단일 투사체 라이프사이클로 동작하고(무회귀), GA 프리팹 낙하가 "하늘에서 떨어지는" 느낌을 주는가?** — 사용자 육안 확정(Rock02 낙하 + Hit_Rock03 파편, 화면 밖 등장·후반 압축 낙하).
 
 ## 목표
 
