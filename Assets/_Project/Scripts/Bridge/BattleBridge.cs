@@ -2470,6 +2470,12 @@ namespace Wassup.Bridge
                     stat = Wassup.Battle.Effects.StatKind.DmgTakenMul; mult = 1f / (1f + eff.percent / 100f); return true;
                 case Wassup.Data.CardBuffKind.MoveSpeed:
                     stat = Wassup.Battle.Effects.StatKind.MoveSpeedMul; mult = 1f + eff.percent / 100f; return true;
+                // dreamstone-loadout Unit 6 — CardBuffKind.CostRate has no entity/ECS
+                // stat (it scales CostRuntime.RegenRateMultiplier, a MonoBehaviour-side
+                // resource, not a StatModifier channel). It falls through to this
+                // default branch on purpose: GameManager.ResolveEquippedStones already
+                // filters CostRate stones out of the list handed to SetDreamstones, so
+                // this is a defensive no-op, never an expected live path.
                 default:
                     stat = Wassup.Battle.Effects.StatKind.DamageMul; mult = 1f; return false;
             }
