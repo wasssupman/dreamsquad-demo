@@ -12,6 +12,9 @@ namespace Wassup.Data.StatImport
     // (and float?/enum? fields would otherwise choke on "").
     public static class SheetEnvelopeParser
     {
+        public static string BuildSheetUrl(string baseUrl, string sheetName)
+            => $"{baseUrl.Trim().TrimEnd('/')}/{Uri.EscapeDataString(sheetName.Trim())}";
+
         public static T[] ParseSheetRows<T>(string body, out string error)
         {
             error = null;

@@ -174,109 +174,46 @@ namespace Wassup.Editor.UnitStatImport
             return null;
         }
 
-        // unit 4 envelope parsing lives in the runtime SheetEnvelopeParser since
-        // runtime-stat-refresh unit 0; this forward keeps the window API (and its
-        // tests) stable.
+        // The parse/apply core lives in the runtime assembly (SheetEnvelopeParser /
+        // UnitStatApplier) since runtime-stat-refresh units 0-1, shared with the
+        // in-build refresher. These forwards keep the window API (and its tests)
+        // stable.
         internal static T[] ParseSheetRows<T>(string body, out string error)
             => SheetEnvelopeParser.ParseSheetRows<T>(body, out error);
 
         internal static string BuildSheetUrl(string baseUrl, string sheetName)
-            => $"{baseUrl.Trim().TrimEnd('/')}/{Uri.EscapeDataString(sheetName.Trim())}";
+            => SheetEnvelopeParser.BuildSheetUrl(baseUrl, sheetName);
 
+        internal static void ProjectMagnitude(AttackOutput[] outputs, AttackOutputKind kind, float? value,
+            string field, string label, StringBuilder log, ref int projected, ref int skipped)
+            => UnitStatApplier.ProjectMagnitude(outputs, kind, value, field, label, log, ref projected, ref skipped);
+
+        internal static void WarnDeprecatedAttackDamage(float? attackDamage, string label, StringBuilder log)
+            => UnitStatApplier.WarnDeprecatedAttackDamage(attackDamage, label, log);
+
+        // Editor apply = shared core + AssetDatabase scan + per-asset disk save.
         internal static string ApplyPayload(UnitStatImportPayload payload)
         {
             var log = new StringBuilder();
-            int matched = 0, unmatched = 0, fieldsApplied = 0, projected = 0, skipped = 0;
+            var defendersById = UnitStatApplier.BuildIndex(
+                LoadAssets<DefenderUnitData>(DefenderFolder), so => so.id, log, nameof(DefenderUnitData));
+            var enemiesById = UnitStatApplier.BuildIndex(
+                LoadAssets<AttackUnitData>(EnemyFolder), so => so.id, log, nameof(AttackUnitData));
 
-            var defendersById = BuildAssetIndex<DefenderUnitData>(DefenderFolder, so => so.id, log);
-            var enemiesById = BuildAssetIndex<AttackUnitData>(EnemyFolder, so => so.id, log);
-
-            var seenIds = new HashSet<string>();
-            foreach (var dto in payload?.defenders ?? Array.Empty<DefenderStatDto>())
+            return UnitStatApplier.Apply(payload, defendersById, enemiesById, so =>
             {
-                if (!seenIds.Add($"defender:{dto.id}")) { log.AppendLine($"[defender] duplicate row for id='{dto.id}' — skipped."); continue; }
-                if (string.IsNullOrEmpty(dto.id) || !defendersById.TryGetValue(dto.id, out var so))
-                { unmatched++; log.AppendLine($"[defender] no match for id='{dto.id}'"); continue; }
-                fieldsApplied += UnitStatFieldMapper.ApplyNonNullFields(dto, so);
-                ProjectMagnitude(so.outputs, AttackOutputKind.Damage, dto.atk, "atk", $"defender '{dto.id}'", log, ref projected, ref skipped);
-                ProjectMagnitude(so.outputs, AttackOutputKind.Heal, dto.heal, "heal", $"defender '{dto.id}'", log, ref projected, ref skipped);
-                WarnDeprecatedAttackDamage(dto.attackDamage, $"defender '{dto.id}'", log);
                 EditorUtility.SetDirty(so);
                 AssetDatabase.SaveAssetIfDirty(so);
-                matched++;
-            }
-
-            foreach (var dto in payload?.enemies ?? Array.Empty<EnemyStatDto>())
-            {
-                if (!seenIds.Add($"enemy:{dto.id}")) { log.AppendLine($"[enemy] duplicate row for id='{dto.id}' — skipped."); continue; }
-                if (string.IsNullOrEmpty(dto.id) || !enemiesById.TryGetValue(dto.id, out var so))
-                { unmatched++; log.AppendLine($"[enemy] no match for id='{dto.id}'"); continue; }
-                fieldsApplied += UnitStatFieldMapper.ApplyNonNullFields(dto, so);
-                ProjectMagnitude(so.outputs, AttackOutputKind.Damage, dto.atk, "atk", $"enemy '{dto.id}'", log, ref projected, ref skipped);
-                WarnDeprecatedAttackDamage(dto.attackDamage, $"enemy '{dto.id}'", log);
-                EditorUtility.SetDirty(so);
-                AssetDatabase.SaveAssetIfDirty(so);
-                matched++;
-            }
-
-            log.Insert(0, $"Matched {matched}, unmatched {unmatched}, fields applied {fieldsApplied}, projected {projected}, skipped {skipped}.\n");
-            return log.ToString();
+            }, log);
         }
 
-        // unit-stat-projection Unit 3 — a planner-facing scalar (atk/heal) writes the
-        // unique output of its kind. 0 or 2+ matches is ambiguous: skip + report the
-        // reason so the miss is visible, never guess a target.
-        internal static void ProjectMagnitude(AttackOutput[] outputs, AttackOutputKind kind, float? value,
-            string field, string label, StringBuilder log, ref int projected, ref int skipped)
+        private static IEnumerable<T> LoadAssets<T>(string folder) where T : ScriptableObject
         {
-            if (value == null) return; // omitted -> keep existing magnitude
-            if (AttackOutputStats.TrySetUniqueMagnitude(outputs, kind, value.Value))
-            {
-                projected++;
-                return;
-            }
-            skipped++;
-            int count = CountOfKind(outputs, kind);
-            string reason = count == 0
-                ? $"no {kind} output"
-                : $"{count} {kind} outputs (need exactly 1)";
-            log.AppendLine($"[{label}] {field}={value.Value} skipped — {reason}.");
-        }
-
-        internal static void WarnDeprecatedAttackDamage(float? attackDamage, string label, StringBuilder log)
-        {
-            if (attackDamage == null) return;
-            log.AppendLine($"[{label}] 'attackDamage' is deprecated (renamed to 'atk') and was NOT applied — update the sheet column.");
-        }
-
-        private static int CountOfKind(AttackOutput[] outputs, AttackOutputKind kind)
-        {
-            if (outputs == null) return 0;
-            int n = 0;
-            foreach (var o in outputs) if (o.kind == kind) n++;
-            return n;
-        }
-
-        // hotfix ⑥ — one scan per import. An id shared by 2+ assets is an ambiguous
-        // write target: drop it from the index entirely and report, never guess.
-        private static Dictionary<string, T> BuildAssetIndex<T>(
-            string folder, Func<T, string> idSelector, StringBuilder log) where T : ScriptableObject
-        {
-            var byId = new Dictionary<string, T>();
-            var ambiguous = new HashSet<string>();
             foreach (var guid in AssetDatabase.FindAssets($"t:{typeof(T).Name}", new[] { folder }))
             {
                 var asset = AssetDatabase.LoadAssetAtPath<T>(AssetDatabase.GUIDToAssetPath(guid));
-                if (asset == null) continue;
-                string id = idSelector(asset);
-                if (string.IsNullOrEmpty(id)) continue;
-                if (!byId.TryAdd(id, asset) && ambiguous.Add(id))
-                {
-                    byId.Remove(id);
-                    log.AppendLine($"[{typeof(T).Name}] duplicate asset id '{id}' — all assets with this id skipped.");
-                }
+                if (asset != null) yield return asset;
             }
-            return byId;
         }
     }
 }

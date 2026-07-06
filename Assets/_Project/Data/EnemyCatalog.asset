@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e3944ccaec34aed4bb56409081a61953, type: 3}
+  m_Name: EnemyCatalog
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.EnemyCatalog
+  units:
+  - {fileID: 11400000, guid: d8f78ad31ef4e4cd3ba3b2405d899e54, type: 2}
+  - {fileID: 11400000, guid: 23687f8df52d940258a2e9f5e38c33bc, type: 2}
+  - {fileID: 11400000, guid: c8c97e20c19b64742b73262253966903, type: 2}
+  - {fileID: 11400000, guid: cd1692d6a9af9419b9871a40c9e670cc, type: 2}
+  - {fileID: 11400000, guid: b2784981455b648589a8bd5d8c225424, type: 2}
+  - {fileID: 11400000, guid: 7ab2d97d212554352a263b4acf8e02e3, type: 2}
+  - {fileID: 11400000, guid: ed2bfe7dff71d415b84563f3ebc293b9, type: 2}
+  - {fileID: 11400000, guid: a50475686b6034b219173681f81f3dcd, type: 2}
+  - {fileID: 11400000, guid: c50542723e75741f2a22013717a9b118, type: 2}
