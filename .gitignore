@@ -84,16 +84,12 @@ $RECYCLE.BIN/
 # OMC (oh-my-claudecode)
 .omc/
 
-# Claude Code local state (settings, session cache)
-.claude/*
-# ...but keep project-scoped skills versioned so the repo carries the
-# Unity-specific authoring/integration/wiring skills for any collaborator.
-!.claude/skills/
-!.claude/skills/**
-!.claude/agents/
-!.claude/agents/**
-!.claude/hooks/
-!.claude/hooks/**
+# Claude Code — share project config (settings.json, skills, agents, hooks) so a
+# fresh clone reproduces the workflow; ignore only personal/local state.
+# See docs/spec/workflow-reproducibility.
+.claude/settings.local.json
+.claude/worktrees/
+CLAUDE.local.md
 
 # Codex hook runtime state
 .codex/tmp/
