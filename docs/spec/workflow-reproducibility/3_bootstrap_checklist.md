@@ -18,9 +18,10 @@
 3. **첫 실행** (게임 재현): 클론 → Unity Hub 로 열기 → 패키지 자동복원(manifest/lock tracked) → 씬 Play.
 4. **(b) 환경 부트스트랩 체크리스트** — 커밋 불가, 새 클론마다 수행:
    - [ ] Unity 6000.4.3f1 설치 + 라이선스
-   - [ ] (선택) OMC/superpowers 설치 — 미설치 시 바닐라로도 규약 준수 가능. 설치법 링크
+   - [ ] Claude Code 첫 실행: 클론된 `.claude/settings.json` 의 **project 훅을 1회 검토/승인**(신뢰 프롬프트 — 정상 보안 게이트)
+   - [ ] (선택) OMC/superpowers 설치 — 미설치 시 바닐라로도 규약 준수 가능. 설치법 링크. **단, 투트랙 리뷰(`two-track-review` 스킬)는 OMC 의 code-reviewer 에이전트에 의존 → 투트랙 리뷰를 쓰려면 OMC 필수**
    - [ ] Codex 사용 시: 인증 + `AGENTS.md`(=CLAUDE.md symlink) 자동 로드 확인
-   - [ ] 개인 permission: 공용분은 `settings.json` 자동, 개인 광범위분은 각자 `settings.local.json` 에 추가
+   - [ ] 개인 permission: 공용 read-only 5종은 `settings.json` 자동, 그 외는 각자 승인해 `settings.local.json` 에 축적
    - [ ] MCP: 사용자가 직접 설정 (이 spec 범위 밖 — README 엔 "각자 설정" 한 줄만)
 5. **규약 읽는 순서**: `CLAUDE.md` → `docs/spec/README.md`(Follow-up Backlog) → 최근 spec README + handoff. 상태 재구성은 `catchup` 스킬.
 6. **워크플로우 요약**: spec-driven · 1파일=1커밋 · 투트랙 리뷰 · 맥락(Units/Movement/Combat/Effects) 경계.

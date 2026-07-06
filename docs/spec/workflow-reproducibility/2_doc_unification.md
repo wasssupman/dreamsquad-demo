@@ -28,5 +28,5 @@ Codex(AGENTS.md) 와 Claude(CLAUDE.md) 가 **동일 정책**을 읽게 해, CLAU
 ## 완료 기준
 
 - `readlink AGENTS.md` == `CLAUDE.md`. `cat AGENTS.md` 가 CLAUDE.md 전문 출력. ✅ 2026-07-06
-- git 에 심링크 커밋(typechange), 클론 시 재현. ✅ (커밋 아래)
+- git 에 심링크 커밋(typechange), 클론 시 재현. ✅ 커밋 `6467f4b`
 - Codex 세션 시작 시 CLAUDE.md 정책(절대제약·맥락분리) 로드 확인. ⏳ 다음 Codex 세션에서 라이브 확인 대기.

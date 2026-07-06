@@ -9,7 +9,7 @@
 
 - **상태 사일로 3개 실존**: `~/.claude/projects/` 에 `-Users-sy-dev-wassup`, `...-wassup-gen`, `...-wassup-gen-docs-SoT-Project-ONE`. → 다른 폴더에서 작업할 때마다 메모리·permission·세션 상태가 **각각 분절**.
 - **메모리 38개**: 그 경로에만. 재클론(새 경로)·머신 교체·재설치 시 소실.
-- **permission allow 180개** (`settings.local.json`): 그 폴더에만. 재클론 시 전부 소실 → 프롬프트 폭증.
+- **permission allow 188개** (`settings.local.json`): 그 폴더에만. 재클론 시 전부 소실 → 프롬프트 폭증.
 - **훅 배선**(`settings.json`)·**OMC 설치**: 레포 밖.
 
 ## fresh clone(새 경로)에서 무엇이 사라지나 — 이식 인벤토리
@@ -17,7 +17,7 @@
 | 자산 | 현재 위치 | 새 경로 클론 | 조치 |
 |---|---|---|---|
 | ECS 리뷰 훅 배선 | `.claude/settings.json` (gitignored) | ✗ | **(a)** 커밋 → 단위 0 |
-| permission allow 180 | `settings.local.json` (개인) | ✗ | **(a)** 프로젝트 공용·안전분만 승격 → 단위 0 |
+| permission allow 188 | `settings.local.json` (개인) | ✗ | **(a)** 프로젝트 공용·안전분만 승격 → 단위 0 |
 | 축적 지식 38 | `~/.claude` 메모리 (경로 키) | ✗ | **(a)** 참조 문서 승격 → 단위 1 |
 | Codex 정책 로드 | AGENTS soft 포인터 | △ | **(a)** symlink → 단위 2 |
 | 프로젝트 스킬/에이전트 | `.claude/skills`,`agents` (tracked) | ✓ | 이미 됨 |
