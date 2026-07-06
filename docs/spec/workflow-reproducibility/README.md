@@ -1,6 +1,6 @@
 # workflow-reproducibility
 
-> 상태: **초안 (재현성 프레임 · MCP 제외) 2026-07-06** — 이전 프레임(team-onboarding)에서 확장.
+> 상태: **완료 2026-07-06** (units 0~3 · critic 리뷰 APPROVE-WITH-CHANGES 반영 `9845778` · fresh clone 실측 검증). handoff → `4_handoff_summary.md`
 > 검증 질문: **새 폴더에 fresh clone 한 뒤, 최소 수작업으로 기존 워크플로우(스펙 주도 · 하네스 · 스킬/훅 · 축적 지식 · 투트랙 리뷰)가 재현되는가?** — 팀원뿐 아니라 **다른 경로로 재클론한 나 자신**에게도.
 
 ## 배경 — "협업"이 아니라 "재현성" 문제 (실측)

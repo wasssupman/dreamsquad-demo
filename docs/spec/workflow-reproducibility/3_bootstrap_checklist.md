@@ -34,3 +34,5 @@
 - 프로젝트 무지한 사람(또는 새 경로 클론한 나)이 README 만으로 (a) 첫 Play 도달, (b) 부트스트랩 단계 완주, 규약 위치 파악.
 - (b) 체크리스트가 실제 fresh clone 1회로 검증됨(단계 누락 없음).
 - CLAUDE.md/AGENTS.md 와 중복 최소(README=사람·부트스트랩, CLAUDE=에이전트 정책).
+
+확인 2026-07-06 — fresh clone(새 경로, scratchpad) 실측: settings.json 훅+allow 5종·훅 스크립트·스킬 7종·AGENTS symlink 해석·lessons 5파일·엔진 버전 전부 재현, `settings.local.json` 미유출, ECS 훅 스모크 실행 exit 0. Unity 첫 임포트/Play 와 Claude Code 훅 승인 프롬프트는 수동 단계라 자동 검증 범위 밖(체크리스트에 명시).
