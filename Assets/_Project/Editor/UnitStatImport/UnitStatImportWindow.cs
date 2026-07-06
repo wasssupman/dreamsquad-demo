@@ -69,6 +69,24 @@ namespace Wassup.Editor.UnitStatImport
             }
 
             EditorGUILayout.Space();
+            EditorGUILayout.LabelField("Export", EditorStyles.boldLabel);
+            // unit 5 — SO → one row-array JSON file per sheet tab, named after the
+            // sheet name fields above so file ↔ tab mapping is unambiguous.
+            using (new EditorGUI.DisabledScope(_requestInFlight
+                || string.IsNullOrWhiteSpace(_defenderSheet) || string.IsNullOrWhiteSpace(_enemySheet)))
+            {
+                if (GUILayout.Button("Export SO → JSON Files"))
+                {
+                    string folder = EditorUtility.SaveFolderPanel("Export Unit Stat JSON", "", "");
+                    if (!string.IsNullOrEmpty(folder))
+                    {
+                        _statusLog = UnitStatExporter.ExportToFolder(
+                            folder, _defenderSheet, _enemySheet, DefenderFolder, EnemyFolder);
+                    }
+                }
+            }
+
+            EditorGUILayout.Space();
             EditorGUILayout.LabelField("Result", EditorStyles.boldLabel);
             EditorGUILayout.TextArea(_statusLog, GUILayout.MinHeight(120));
         }

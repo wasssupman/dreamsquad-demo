@@ -19,11 +19,11 @@
 - **필드 범위 = import 서브셋과 동일** (계약 표의 컬럼만). DTO 를 공유하므로 컬럼 추가 시 DTO 필드 하나로 양방향이 함께 따라온다.
 - **atk/heal 역투영**: unique output 의 magnitude 를 읽는다 (`AttackOutputStats` 의 카운트 로직 재사용). 0개 또는 2개+ 는 키 생략 — import 의 "빈 셀 = 유지" 와 대칭.
 - **전체 스냅샷**: 각 유닛의 서브셋 필드를 항상 전부 채운다 (diff export 없음).
-- **출력 형태**: `{ "defenders": [...], "enemies": [...] }` 단일 파일 — 사람이 시트에 옮기는 용도의 통합 뷰. POST 확장 시 시트별 분할은 그 unit 에서 결정.
-- 파일은 UTF-8, 들여쓰기 2. repo 밖 경로 저장 기본 (임의 산출물 커밋 방지).
+- **출력 형태**: **시트(탭)별 파일** — `{DefenderSheet}.json` / `{EnemySheet}.json` (윈도우의 시트명 필드 그대로, 기본 `Defenders.json`/`Enemies.json`). 각 파일은 행 객체 배열 `[ {...}, ... ]` — API `data` 필드·시트 탭과 1:1 대응. null 필드는 키 생략(빈 셀 대응), `targetClassMask` 는 콤마 문자열로 직렬화(셀 표기와 동일).
+- 파일은 UTF-8, 들여쓰기. 저장 위치는 폴더 선택 다이얼로그 (repo 밖 기본 — 임의 산출물 커밋 방지). 행 순서는 id 오름차순 고정.
 
 ## 완료 기준
 
-- [ ] compile 오류 없음, 기존 스위트 회귀 없음
-- [ ] 신규 테스트: **왕복 대칭** — 계약 JSON 을 import 로 SO(테스트용 인스턴스)에 적용 → export → 원본 payload 와 동치. flags WriteJson (부분/Everything/None), atk 역투영(unique/0개/2개+ 생략)
-- [ ] 수동: Export 실행 → 산출 JSON 이 `3_seed_unit_stats.json` 과 값 동치 (시드 검증의 상호 확인 겸함)
+- [x] compile 오류 없음, 기존 스위트 회귀 없음 (2026-07-06, EditMode 518개 — 무관 상시 실패 1건 외 전부 통과)
+- [x] 신규 테스트 8종: 역방향 매퍼, atk/heal 역투영(unique/모호 생략), flags WriteJson(부분/Everything/None), enum 멤버명 직렬화, null 키 생략, 왕복 대칭, 실 에셋 export 통합(개수/파싱)
+- [x] Export 산출 JSON ↔ `3_seed_unit_stats.json` 25유닛 전 필드 동치 확인 (2026-07-06, 자동 대조). 첫 대조에서 enum 서수 직렬화 결함 발견 → `StringEnumConverter` 로 수정 후 동치

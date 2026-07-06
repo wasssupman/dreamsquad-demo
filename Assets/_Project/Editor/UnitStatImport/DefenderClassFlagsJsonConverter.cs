@@ -60,6 +60,9 @@ namespace Wassup.Editor.UnitStatImport
             return result;
         }
 
+        // unit 5 — writes the sheet-cell scalar form (comma-separated names), so an
+        // exported file can be pasted into a sheet column and round-trips through the
+        // string branch of ReadJson above.
         public override void WriteJson(JsonWriter writer, DefenderClassFlags? value, JsonSerializer serializer)
         {
             if (value == null)
@@ -67,21 +70,24 @@ namespace Wassup.Editor.UnitStatImport
                 writer.WriteNull();
                 return;
             }
-
-            writer.WriteStartArray();
             if (value.Value == DefenderClassFlags.Everything)
             {
                 writer.WriteValue(nameof(DefenderClassFlags.Everything));
-                writer.WriteEndArray();
+                return;
+            }
+            if (value.Value == DefenderClassFlags.None)
+            {
+                writer.WriteValue(nameof(DefenderClassFlags.None));
                 return;
             }
 
+            var names = new List<string>();
             foreach (DefenderClassFlags flag in Enum.GetValues(typeof(DefenderClassFlags)))
             {
                 if (flag == DefenderClassFlags.None || flag == DefenderClassFlags.Everything) continue;
-                if ((value.Value & flag) == flag) writer.WriteValue(flag.ToString());
+                if ((value.Value & flag) == flag) names.Add(flag.ToString());
             }
-            writer.WriteEndArray();
+            writer.WriteValue(string.Join(",", names));
         }
 
         private static bool ContainsIgnoreCase(string[] names, string target)
