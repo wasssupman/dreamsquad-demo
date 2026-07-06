@@ -71,7 +71,22 @@ namespace Wassup.Battle.Combat.Projectile
                         break;
                     }
 
-                    // MovementKind.BallisticArcToPoint arm — added in unit 3.
+                    case MovementKind.BallisticArcToPoint:
+                    {
+                        // No target entity: fly a fixed arc to the cell-locked impact
+                        // over flightTime. Target death/movement in flight is
+                        // irrelevant — impact was locked at fire time.
+                        float elapsed = projectile.ValueRO.elapsed + dt;
+                        float flightTime = projectile.ValueRO.flightTime;
+                        float t = flightTime > 0f ? math.saturate(elapsed / flightTime) : 1f;
+                        transform.ValueRW.Position = BallisticArc.ArcPosition(
+                            projectile.ValueRO.origin, projectile.ValueRO.impact,
+                            projectile.ValueRO.arcHeight, t);
+                        projectile.ValueRW.elapsed = elapsed;
+                        if (elapsed >= flightTime)
+                            projectile.ValueRW.impactReached = true;
+                        break;
+                    }
 
                     default:
                         // Unhandled movement kind: destroy rather than leak an

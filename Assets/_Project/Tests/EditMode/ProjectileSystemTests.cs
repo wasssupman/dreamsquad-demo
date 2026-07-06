@@ -183,5 +183,36 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(1, buffer.Length, "damage applied on the arrival frame");
             Assert.AreEqual(25f, buffer[0].amount, 1e-3f);
         }
+
+        // Exercises the BallisticArc movement arm (unit 3): a target-less projectile
+        // flies a fixed arc to a locked impact over flightTime, arriving by elapsed
+        // rather than distance. Payload is left SingleSplash with no target, so it
+        // simply consumes itself on arrival (TileAoe damage payload arrives in unit 4).
+        [Test]
+        public void Ballistic_Arcs_To_Impact_And_Arrives_By_FlightTime()
+        {
+            var proj = _em.CreateEntity();
+            _em.AddComponent<ProjectileTag>(proj);
+            _em.AddComponentData(proj, LocalTransform.FromPosition(new float3(0f, 0f, 0f)));
+            _em.AddComponentData(proj, new ProjectileState
+            {
+                movement = MovementKind.BallisticArcToPoint,
+                payload = PayloadKind.SingleSplash, // no target → no damage, just consumes on arrival
+                origin = new float3(0f, 0f, 0f),
+                impact = new float3(4f, 0f, 0f),
+                flightTime = 1f,
+                arcHeight = 2f,
+            });
+
+            Tick(0.5f); // t=0.5 → XZ midpoint + apex
+            Assert.IsTrue(_em.Exists(proj), "still flying mid-arc");
+            var pos = _em.GetComponentData<LocalTransform>(proj).Position;
+            Assert.AreEqual(2f, pos.x, 1e-3f, "XZ lerped to midpoint");
+            Assert.AreEqual(0f, pos.z, 1e-3f);
+            Assert.AreEqual(2f, pos.y, 1e-3f, "arc apex = arcHeight at t=0.5");
+
+            Tick(0.5f); // elapsed 1.0 >= flightTime → arrives, consumed
+            Assert.IsFalse(_em.Exists(proj), "arrives at flightTime and is consumed");
+        }
     }
 }
