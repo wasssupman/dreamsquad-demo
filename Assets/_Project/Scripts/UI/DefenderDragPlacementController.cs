@@ -75,6 +75,8 @@ namespace Wassup.UI
             if (mainCamera == null) mainCamera = Camera.main;
 
             _session = BuildSession(unitData);
+            bridge?.SetEnemiesDimmed(true); // placement-enemy-see-through — 적 반투명 on
+            bridge?.SetPlacementHighlightAboveUnits(true); // unit 6 — 배치 하이라이트를 적 위로
             if (placementInput != null) placementInput.SetClickPlacementEnabled(false);
             UpdateDrag(screenPosition);
         }
@@ -314,7 +316,7 @@ namespace Wassup.UI
             if (!string.IsNullOrEmpty(animation))
                 skeleton.AnimationState.SetAnimation(0, animation, true);
 
-            SetPreviewAlpha(skeleton, 0.62f);
+            SetPreviewAlpha(skeleton, 1f); // placement-enemy-see-through unit 5 — 드래그 유닛은 불투명(적만 투명해져, 배치 유닛이 최상단 초점)
             var skelRenderer = skeleton.GetComponent<MeshRenderer>();
             if (skelRenderer != null) skelRenderer.sortingOrder = BoardSortOrder.DragPreviewOrder;
 
@@ -388,7 +390,7 @@ namespace Wassup.UI
                 Color color = Color.white;
                 if (unitData.visualMaterial != null && unitData.visualMaterial.HasProperty("_BaseColor"))
                     color = unitData.visualMaterial.GetColor("_BaseColor");
-                color.a = 0.55f;
+                color.a = 1f; // placement-enemy-see-through unit 5 — 폴백 프리뷰도 불투명
                 RuntimeMaterialFactory.ApplyColor(_previewMaterial, color);
                 renderer.sharedMaterial = _previewMaterial;
             }
@@ -421,6 +423,8 @@ namespace Wassup.UI
         private void CleanupSession()
         {
             _slowmoLease.Dispose(); // time-manager Unit 5 — 슬로우모 해제(멱등)
+            bridge?.SetEnemiesDimmed(false); // placement-enemy-see-through — 적 반투명 off(드롭·거부·비활성 모든 종료 경유)
+            bridge?.SetPlacementHighlightAboveUnits(false); // unit 6 — 하이라이트 소팅 원복
             ClearHover();
             bridge?.ClearPlacementRange();
             if (_session.preview != null) Destroy(_session.preview);

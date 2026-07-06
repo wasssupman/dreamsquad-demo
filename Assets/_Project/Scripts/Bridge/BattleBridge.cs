@@ -54,6 +54,14 @@ namespace Wassup.Bridge
         [SerializeField] private Wassup.Presentation.SpineUnitPool spineUnitPool;
         [SerializeField] private Wassup.Presentation.QuadUnitViewPool enemyViewPool;
         [SerializeField] private Wassup.Presentation.QuadUnitViewPool defenderFallbackViewPool;
+        // placement-enemy-see-through unit 3 — 드래그 배치 중 적 반투명(가려진 뒤 타일 가시성).
+        [SerializeField] private float enemyDragDimAlpha = 0.3f;
+        [SerializeField] private float enemyDragDimFadeSpeed = 8f;
+        private bool _enemyDimActive;
+        private float _enemyDimAlpha = 1f;
+        public void SetEnemiesDimmed(bool active) => _enemyDimActive = active;
+        // placement-enemy-see-through unit 6 — 드래그 중 배치 하이라이트를 적 위로(TilemapMapView 포워딩).
+        public void SetPlacementHighlightAboveUnits(bool above) => tilemapMapView?.SetPlacementHighlightAboveUnits(above);
         [SerializeField] private float spineDefenderYOffset = 0f;
 
         [Header("Spawn Spread")]
@@ -1717,6 +1725,12 @@ namespace Wassup.Bridge
             // time-manager Unit 3 — 매 프레임 Battle 스케일을 ECS 로 흘린다(placement 슬로우모 포함).
             PushBattleTimeScaleToEcs();
 
+            // placement-enemy-see-through unit 3 — 적 dim 알파 페이드. unscaled 라 드래그 슬로우모와 무관.
+            // _running 이전에 둬서 페이즈 무관하게 항상 원복/페이드가 진행되게 한다.
+            float dimTarget = _enemyDimActive ? Mathf.Clamp01(enemyDragDimAlpha) : 1f;
+            _enemyDimAlpha = Mathf.MoveTowards(_enemyDimAlpha, dimTarget,
+                enemyDragDimFadeSpeed * UnityEngine.Time.unscaledDeltaTime);
+
             if (!_running) return;
 
             // 웨이브/스폰/타이머는 실시간이 아니라 Battle-스케일 클럭을 따른다(정지·슬로우모 반영).
@@ -1801,16 +1815,21 @@ namespace Wassup.Bridge
                             // unit-health-display unit 1 — 적 저체력 틴트. HP read-only 평가는
                             // BattleBridge 소관(ECS 창구), 뷰는 Color 만 받아 적용.
                             Color tint = EvaluateEnemyHealthTint(entity);
+                            // placement-enemy-see-through unit 3 — 적만 dim(디펜더 루프는 미적용).
+                            // SetDimmed 를 SetHealthTint 앞에 — quad 는 SetHealthTint 가 알파를 반영한다.
+                            bool dimmed = _enemyDimAlpha < 0.999f;
                             if (spineUnitPool != null && spineUnitPool.TryGet(entity, out var spineView))
                             {
                                 spineView.UpdatePosition(world);
                                 if (canSort) spineView.UpdateSortingOrder(gridSize, tileSize);
+                                spineView.SetDimmed(dimmed, _enemyDimAlpha);
                                 spineView.SetHealthTint(tint);
                             }
                             else if (enemyViewPool.TryGet(entity, out var view))
                             {
                                 view.UpdatePosition(world);
                                 if (canSort) view.UpdateSortingOrder(gridSize, tileSize);
+                                view.SetDimmed(dimmed, _enemyDimAlpha);
                                 view.SetHealthTint(tint);
                             }
                         }

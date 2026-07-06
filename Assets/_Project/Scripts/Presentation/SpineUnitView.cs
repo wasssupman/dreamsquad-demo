@@ -21,6 +21,9 @@ namespace Wassup.Presentation
         // tilemap-view-backend unit 3 — sim 좌표 보존. transform.position 은 view 좌표(ToView)라
         // sorting 셀 역산에 쓸 수 없다(z 소실). sorting 은 이 sim 좌표로 계산한다.
         private Vector3 _simWorld;
+        // placement-enemy-see-through unit 2 — dim 페이드용 blob 참조.
+        private BlobShadow _blob;
+        private bool _shadowTransparent; // 실그림자 토글 상태 캐시(매 프레임 alloc 방지).
 
         public Entity Entity => _entity;
 
@@ -92,7 +95,7 @@ namespace Wassup.Presentation
                 for (int i = 0; i < renderers.Length; i++)
                     renderers[i].shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 if (BattleBridge.BlobShadowSprite != null)
-                    BlobShadow.Attach(transform, BattleBridge.BlobShadowSprite, BattleBridge.BlobShadowSize,
+                    _blob = BlobShadow.Attach(transform, BattleBridge.BlobShadowSprite, BattleBridge.BlobShadowSize,
                         BattleBridge.BlobShadowColor,
                         BattleBridge.BlobShadowGroundY, BoardSortOrder.ShadowOrder, live: true); // 유닛은 이동 — 매 프레임 따라감
             }
@@ -136,6 +139,28 @@ namespace Wassup.Presentation
             skel.R = tint.r;
             skel.G = tint.g;
             skel.B = tint.b;
+        }
+
+        // placement-enemy-see-through unit 2 — 드래그 배치 중 반투명 전환.
+        // 적 Spine 머티리얼은 PMA transparent 라 블렌드 전환 없이 skeleton.A 로 페이드한다.
+        // R/G/B(health tint)와 독립. _dying 중엔 사망 연출 색/알파를 덮지 않는다.
+        public void SetDimmed(bool transparent, float alpha)
+        {
+            float a = Mathf.Clamp01(alpha);
+            if (!_dying && _skeleton != null && _skeleton.Skeleton != null)
+                _skeleton.Skeleton.A = a;
+            _blob?.SetDimAlpha(transparent ? a : 1f);
+            // 그림자 캐스팅 토글은 상태 변화 시에만 — QuadUnitView 와 일관, 매 프레임 GetComponentsInChildren alloc 방지.
+            if (BattleBridge.UseRealShadows && transparent != _shadowTransparent)
+            {
+                var mode = transparent
+                    ? UnityEngine.Rendering.ShadowCastingMode.Off
+                    : UnityEngine.Rendering.ShadowCastingMode.TwoSided;
+                var renderers = GetComponentsInChildren<Renderer>(true);
+                for (int i = 0; i < renderers.Length; i++)
+                    renderers[i].shadowCastingMode = mode;
+                _shadowTransparent = transparent;
+            }
         }
 
         public void PlayAttack()

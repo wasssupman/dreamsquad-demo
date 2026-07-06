@@ -22,6 +22,8 @@ namespace Wassup.Core
 
         private TileSetData _tileSet;
         private Tilemap _rangeTilemap;
+        // placement-enemy-see-through unit 6 — 하이라이트 상승 상태(sticky). range 타일맵 lazy 생성 시 반영.
+        private bool _highlightAbove;
         private readonly HashSet<Vector2Int> _rangeCells = new();
         private int2 _gridSize;
         private readonly Dictionary<Vector2Int, Coroutine> _activeFlashes = new();
@@ -155,6 +157,16 @@ namespace Wassup.Core
             if (tilemap == null) return;
             var r = tilemap.GetComponent<TilemapRenderer>();
             if (r != null) r.sortingOrder = order;
+        }
+
+        // placement-enemy-see-through unit 6 — 드래그 중 배치 하이라이트(range/overlay)를 적(빌보드) 위로 임시 상승.
+        // 10000/10002 = 유닛(Compute 수백)·투사체(+1000) 위, 힛바(16000)·드래그 프리뷰(20000) 아래.
+        // 드래그 종료 시 기본값(overlay -10 / range -12) 복원. "보드<유닛" 기본 규칙은 드래그 밖에서 불변.
+        public void SetPlacementHighlightAboveUnits(bool above)
+        {
+            _highlightAbove = above; // range 타일맵이 아직 없으면 EnsureRangeTilemap 이 생성 시 이 값을 반영.
+            SetRendererSorting(overlayTilemap, above ? 10002 : -10);
+            SetRendererSorting(_rangeTilemap, above ? 10000 : -12);
         }
 
         // tilemap-real-shadows — 타일/맵은 그림자를 드리우지 않는다(유닛·프랍만 cast).
@@ -419,7 +431,7 @@ namespace Wassup.Core
             _rangeTilemap = go.AddComponent<Tilemap>();
             var r = go.AddComponent<TilemapRenderer>();
             _rangeTilemap.tileAnchor = new Vector3(0.5f, 0.5f, 0f);
-            r.sortingOrder = -12;
+            r.sortingOrder = _highlightAbove ? 10000 : -12; // 드래그 중 lazy 생성 시 상승 반영(unit 6).
             r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             if (overlayTilemap != null)
             {

@@ -15,6 +15,10 @@ namespace Wassup.Presentation
         private Entity _entity;
         // tilemap-view-backend unit 3 — sim 좌표 보존 (sorting 셀 역산용; view 좌표는 z 소실).
         private Vector3 _simWorld;
+        // placement-enemy-see-through unit 1 — dim 상태(재스폰 시 Configure 가 리셋).
+        private bool _transparentApplied;
+        private float _dimAlpha = 1f;
+        private BlobShadow _blob;
 
         public Entity Entity => _entity;
 
@@ -47,10 +51,14 @@ namespace Wassup.Presentation
             {
                 _renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 if (BattleBridge.BlobShadowSprite != null)
-                    BlobShadow.Attach(transform, BattleBridge.BlobShadowSprite, BattleBridge.BlobShadowSize,
+                    _blob = BlobShadow.Attach(transform, BattleBridge.BlobShadowSprite, BattleBridge.BlobShadowSize,
                         BattleBridge.BlobShadowColor,
                         BattleBridge.BlobShadowGroundY, BoardSortOrder.ShadowOrder, live: true); // 유닛은 이동 — 매 프레임 따라감
             }
+
+            // 재스폰/머티리얼 리빌드는 cutout 기준으로 되돌린다 → 다음 SetDimmed 가 정확히 재적용.
+            _transparentApplied = false;
+            _dimAlpha = 1f;
         }
 
         private void EnsureVisualChild(Mesh quad)
@@ -102,7 +110,50 @@ namespace Wassup.Presentation
         public void SetHealthTint(Color tint)
         {
             if (_ownedMaterial == null || !_ownedMaterial.HasProperty("_BaseColor")) return;
-            _ownedMaterial.SetColor("_BaseColor", _baseColor * tint);
+            Color c = _baseColor * tint;
+            c.a = _baseColor.a * _dimAlpha; // dim 알파는 tint 와 독립으로 접어 넣는다(매 프레임 재적용).
+            _ownedMaterial.SetColor("_BaseColor", c);
+        }
+
+        // placement-enemy-see-through unit 1 — 드래그 배치 중 반투명 전환.
+        // cutout(_ALPHATEST_ON) 은 알파를 낮춰도 안 비치므로 dim 동안 transparent 블렌드로 전환한다.
+        // 블렌드 상태 플립은 변경 시 1회, 알파는 SetHealthTint(매 프레임)가 _BaseColor.a 로 반영.
+        public void SetDimmed(bool transparent, float alpha)
+        {
+            _dimAlpha = Mathf.Clamp01(alpha);
+            if (transparent != _transparentApplied && _ownedMaterial != null)
+            {
+                if (transparent)
+                {
+                    _ownedMaterial.SetFloat("_Surface", 1f);
+                    _ownedMaterial.SetFloat("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                    _ownedMaterial.SetFloat("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                    _ownedMaterial.SetFloat("_ZWrite", 0f);
+                    _ownedMaterial.SetFloat("_AlphaClip", 0f);
+                    _ownedMaterial.DisableKeyword("_ALPHATEST_ON");
+                    _ownedMaterial.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+                    _ownedMaterial.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+                    if (_renderer != null && BattleBridge.UseRealShadows)
+                        _renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                }
+                else
+                {
+                    _ownedMaterial.SetFloat("_Surface", 0f);
+                    _ownedMaterial.SetFloat("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.One);
+                    _ownedMaterial.SetFloat("_DstBlend", (int)UnityEngine.Rendering.BlendMode.Zero);
+                    _ownedMaterial.SetFloat("_ZWrite", 1f);
+                    _ownedMaterial.SetFloat("_AlphaClip", 1f);
+                    _ownedMaterial.EnableKeyword("_ALPHATEST_ON");
+                    _ownedMaterial.DisableKeyword("_SURFACE_TYPE_TRANSPARENT");
+                    _ownedMaterial.renderQueue = (int)UnityEngine.Rendering.RenderQueue.AlphaTest;
+                    if (_renderer != null)
+                        _renderer.shadowCastingMode = BattleBridge.UseRealShadows
+                            ? UnityEngine.Rendering.ShadowCastingMode.TwoSided
+                            : UnityEngine.Rendering.ShadowCastingMode.Off;
+                }
+                _transparentApplied = transparent;
+            }
+            _blob?.SetDimAlpha(transparent ? _dimAlpha : 1f);
         }
 
         public void SetSortingOrder(int order)

@@ -18,6 +18,9 @@ namespace Wassup.Presentation
         private float _groundY;
         private float _size;
         private bool _live;
+        // placement-enemy-see-through unit 0 — dim 페이드용 원색 캐시.
+        private SpriteRenderer _sr;
+        private Color _baseColor = Color.white;
 
         // 에디터 생성기(PropDataEditor) 전용 — 프리팹 저장 전에 authored 플래그를 굽는다.
         public void MarkAuthored() => authoredInPrefab = true;
@@ -33,6 +36,8 @@ namespace Wassup.Presentation
             if (BattleBridge.BlobShadowSprite != null) sr.sprite = BattleBridge.BlobShadowSprite;
             sr.color = BattleBridge.BlobShadowColor;
             sr.sortingOrder = BoardSortOrder.ShadowOrder;
+            _sr = sr;
+            _baseColor = sr.color;
         }
 
         // 유닛 자식으로 생성 — 유닛 파괴 시 함께 사라진다.
@@ -51,8 +56,19 @@ namespace Wassup.Presentation
             bs._size = size;
             bs._groundY = groundY;
             bs._live = live;
+            bs._sr = sr;
+            bs._baseColor = color;
             bs.ApplyTransform(); // 스폰 시 1회 — 정적 프랍은 이걸로 끝.
             return bs;
+        }
+
+        // placement-enemy-see-through unit 0 — 드래그 배치 중 blob 그림자도 함께 페이드.
+        // 원색 알파에 배수만 적용(색조/정렬/transform 불변). factor=1 이면 원상 복구.
+        public void SetDimAlpha(float factor)
+        {
+            if (_sr == null) return;
+            factor = Mathf.Clamp01(factor);
+            _sr.color = new Color(_baseColor.r, _baseColor.g, _baseColor.b, _baseColor.a * factor);
         }
 
         private void LateUpdate()
