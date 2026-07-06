@@ -89,8 +89,8 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             var enemyCatalog = MakeEnemyCatalog(basic);
 
             string log = UnitStatRuntimeRefresher.ApplyBodies(
-                SuccessBody(@"{ ""id"": ""archer"", ""health"": ""450"", ""atk"": ""20"" }"),
-                SuccessBody(@"{ ""id"": ""basic"", ""health"": 80 }"),
+                SuccessBody(@"{ ""id"": ""archer"", ""health"": ""450"", ""atk"": ""20"" }"), null,
+                SuccessBody(@"{ ""id"": ""basic"", ""health"": 80 }"), null,
                 "Defenders", "Enemies", defenderCatalog, enemyCatalog);
 
             Assert.AreEqual(450f, archer.health);
@@ -112,8 +112,8 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             var enemyCatalog = MakeEnemyCatalog();
 
             string log = UnitStatRuntimeRefresher.ApplyBodies(
-                SuccessBody(@"{ ""id"": ""archer"", ""health"": 450 }"),
-                ErrorBody,
+                SuccessBody(@"{ ""id"": ""archer"", ""health"": 450 }"), null,
+                ErrorBody, null,
                 "Defenders", "Enemies", defenderCatalog, enemyCatalog);
 
             Assert.AreEqual(450f, archer.health, "healthy sheet must still apply");
@@ -133,7 +133,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             var enemyCatalog = MakeEnemyCatalog();
 
             string log = UnitStatRuntimeRefresher.ApplyBodies(
-                ErrorBody, ErrorBody, "Defenders", "Enemies", defenderCatalog, enemyCatalog);
+                ErrorBody, null, ErrorBody, null, "Defenders", "Enemies", defenderCatalog, enemyCatalog);
 
             Assert.AreEqual(500f, archer.health, "no apply may happen when both sheets fail");
             StringAssert.DoesNotContain("Matched", log);

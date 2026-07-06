@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using UnityEngine;
 
 namespace Wassup.Data
@@ -19,16 +18,6 @@ namespace Wassup.Data
                 if (units[i] != null && units[i].id == id) return units[i];
             }
             return null;
-        }
-
-        public IEnumerable<string> AllIds()
-        {
-            if (units == null) yield break;
-            for (int i = 0; i < units.Length; i++)
-            {
-                if (units[i] != null && !string.IsNullOrEmpty(units[i].id))
-                    yield return units[i].id;
-            }
         }
     }
 }

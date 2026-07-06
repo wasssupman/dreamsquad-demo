@@ -34,6 +34,19 @@ namespace Wassup.Data.StatImport
             return byId;
         }
 
+        // simplify pass (2026-07-06) — the partial-update payload contract in one
+        // place: a failed sheet contributes no rows (the healthy one still
+        // applies); both failed -> null (caller reports errors only).
+        public static UnitStatImportPayload BuildPayload(DefenderStatDto[] defenders, EnemyStatDto[] enemies)
+        {
+            if (defenders == null && enemies == null) return null;
+            return new UnitStatImportPayload
+            {
+                defenders = defenders ?? Array.Empty<DefenderStatDto>(),
+                enemies = enemies ?? Array.Empty<EnemyStatDto>(),
+            };
+        }
+
         // onApplied: the editor passes SetDirty+SaveAssetIfDirty; the runtime
         // refresher passes null (in-memory instances only — asset writes are
         // editor-only API).

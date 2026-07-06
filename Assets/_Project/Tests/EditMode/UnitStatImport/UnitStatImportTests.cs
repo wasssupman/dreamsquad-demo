@@ -234,7 +234,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             var log = new System.Text.StringBuilder();
             int projected = 0, skipped = 0;
 
-            UnitStatImportWindow.ProjectMagnitude(outputs, AttackOutputKind.Damage, 30f, "atk", "defender 'x'", log, ref projected, ref skipped);
+            UnitStatApplier.ProjectMagnitude(outputs, AttackOutputKind.Damage, 30f, "atk", "defender 'x'", log, ref projected, ref skipped);
 
             Assert.AreEqual(30f, outputs[0].magnitude);
             Assert.AreEqual(1, projected);
@@ -248,7 +248,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             var log = new System.Text.StringBuilder();
             int projected = 0, skipped = 0;
 
-            UnitStatImportWindow.ProjectMagnitude(outputs, AttackOutputKind.Damage, 30f, "atk", "defender 'poisoncaster'", log, ref projected, ref skipped);
+            UnitStatApplier.ProjectMagnitude(outputs, AttackOutputKind.Damage, 30f, "atk", "defender 'poisoncaster'", log, ref projected, ref skipped);
 
             Assert.AreEqual(0, projected);
             Assert.AreEqual(1, skipped);
@@ -266,7 +266,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             var log = new System.Text.StringBuilder();
             int projected = 0, skipped = 0;
 
-            UnitStatImportWindow.ProjectMagnitude(outputs, AttackOutputKind.Damage, 30f, "atk", "defender 'x'", log, ref projected, ref skipped);
+            UnitStatApplier.ProjectMagnitude(outputs, AttackOutputKind.Damage, 30f, "atk", "defender 'x'", log, ref projected, ref skipped);
 
             Assert.AreEqual(0, projected);
             Assert.AreEqual(1, skipped);
@@ -281,7 +281,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             var log = new System.Text.StringBuilder();
             int projected = 0, skipped = 0;
 
-            UnitStatImportWindow.ProjectMagnitude(outputs, AttackOutputKind.Heal, 25f, "heal", "defender 'healer'", log, ref projected, ref skipped);
+            UnitStatApplier.ProjectMagnitude(outputs, AttackOutputKind.Heal, 25f, "heal", "defender 'healer'", log, ref projected, ref skipped);
 
             Assert.AreEqual(25f, outputs[0].magnitude);
             Assert.AreEqual(1, projected);
@@ -294,7 +294,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             var log = new System.Text.StringBuilder();
             int projected = 0, skipped = 0;
 
-            UnitStatImportWindow.ProjectMagnitude(outputs, AttackOutputKind.Damage, null, "atk", "defender 'x'", log, ref projected, ref skipped);
+            UnitStatApplier.ProjectMagnitude(outputs, AttackOutputKind.Damage, null, "atk", "defender 'x'", log, ref projected, ref skipped);
 
             Assert.AreEqual(15f, outputs[0].magnitude, "omitted atk must keep existing magnitude");
             Assert.AreEqual(0, projected);
@@ -306,7 +306,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
         {
             var log = new System.Text.StringBuilder();
 
-            UnitStatImportWindow.WarnDeprecatedAttackDamage(25f, "defender 'archer'", log);
+            UnitStatApplier.WarnDeprecatedAttackDamage(25f, "defender 'archer'", log);
 
             StringAssert.Contains("attackDamage", log.ToString());
             StringAssert.Contains("NOT applied", log.ToString());
@@ -317,7 +317,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
         {
             var log = new System.Text.StringBuilder();
 
-            UnitStatImportWindow.WarnDeprecatedAttackDamage(null, "defender 'archer'", log);
+            UnitStatApplier.WarnDeprecatedAttackDamage(null, "defender 'archer'", log);
 
             Assert.AreEqual(0, log.Length);
         }
@@ -331,7 +331,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
                 { ""id"": ""archer"", ""health"": ""500"", ""role"": ""RANGER"" }
             ] }";
 
-            var rows = UnitStatImportWindow.ParseSheetRows<DefenderStatDto>(body, out string error);
+            var rows = SheetEnvelopeParser.ParseSheetRows<DefenderStatDto>(body, out string error);
 
             Assert.IsNull(error);
             Assert.AreEqual(1, rows.Length);
@@ -347,7 +347,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
                 { ""id"": ""archer"", ""health"": """", ""cost"": ""  "" }
             ] }";
 
-            var rows = UnitStatImportWindow.ParseSheetRows<DefenderStatDto>(body, out string error);
+            var rows = SheetEnvelopeParser.ParseSheetRows<DefenderStatDto>(body, out string error);
 
             Assert.IsNull(error);
             Assert.IsNull(rows[0].health, "blank cell must behave like an omitted key (keep existing)");
@@ -361,7 +361,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
                 ""errorCode"": ""INTERNAL_SERVER_ERROR"", ""code"": ""C004"",
                 ""errorMessage"": ""서버 내부 오류가 발생했습니다."", ""detailMessage"": ""구글 시트 연동 실패"" } }";
 
-            var rows = UnitStatImportWindow.ParseSheetRows<DefenderStatDto>(body, out string error);
+            var rows = SheetEnvelopeParser.ParseSheetRows<DefenderStatDto>(body, out string error);
 
             Assert.IsNull(rows);
             StringAssert.Contains("INTERNAL_SERVER_ERROR", error);
@@ -371,7 +371,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
         [Test]
         public void ParseSheetRows_MalformedBody_ReturnsParseError()
         {
-            var rows = UnitStatImportWindow.ParseSheetRows<DefenderStatDto>("<html>oops</html>", out string error);
+            var rows = SheetEnvelopeParser.ParseSheetRows<DefenderStatDto>("<html>oops</html>", out string error);
 
             Assert.IsNull(rows);
             StringAssert.Contains("JSON parse failed", error);
@@ -380,7 +380,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
         [Test]
         public void ParseSheetRows_EmptyBody_ReturnsError()
         {
-            var rows = UnitStatImportWindow.ParseSheetRows<DefenderStatDto>(null, out string error);
+            var rows = SheetEnvelopeParser.ParseSheetRows<DefenderStatDto>(null, out string error);
 
             Assert.IsNull(rows);
             StringAssert.Contains("empty response body", error);
@@ -436,7 +436,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
         {
             Assert.AreEqual(
                 "https://x.example/api/sheet/My%20Sheet",
-                UnitStatImportWindow.BuildSheetUrl("https://x.example/api/sheet/ ", " My Sheet "));
+                SheetEnvelopeParser.BuildSheetUrl("https://x.example/api/sheet/ ", " My Sheet "));
         }
 
         // ── unit 5: SO → JSON export ─────────────────────────────────────────────

@@ -15,6 +15,22 @@ namespace Wassup.Data.StatImport
         public static string BuildSheetUrl(string baseUrl, string sheetName)
             => $"{baseUrl.Trim().TrimEnd('/')}/{Uri.EscapeDataString(sheetName.Trim())}";
 
+        // simplify pass (2026-07-06) — the per-sheet "N rows / fetch failed" log
+        // policy, shared so the editor and runtime result texts never drift.
+        public static T[] ParseSheetLogged<T>(string body, string transportError,
+            string sheetLabel, System.Text.StringBuilder log)
+        {
+            var rows = ParseSheetRows<T>(body, out string error);
+            if (rows != null)
+            {
+                log.AppendLine($"[{sheetLabel}] {rows.Length} rows received.");
+                return rows;
+            }
+            string http = transportError != null ? $" (HTTP: {transportError})" : "";
+            log.AppendLine($"[{sheetLabel}] fetch failed: {error}{http}");
+            return null;
+        }
+
         public static T[] ParseSheetRows<T>(string body, out string error)
         {
             error = null;

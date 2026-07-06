@@ -30,3 +30,4 @@
 - 앱 시작 시 자동 fetch (버튼 없이 항상 최신) — QA 워크플로우 안정화 후 판단
 - 갱신 결과 상세(변경 diff) UI 표시 — unit-stat spec 백로그의 dry-run 프리뷰와 통합 가능
 - 릴리즈용 밸런스 배포 채널 (버전 관리/서명) — 라이브 기능으로 승격 시 별도 spec
+- **제네릭 `ScriptableCatalog<T>` 베이스** [S] · Defender/Enemy/Dreamstone/DreamcatcherCard 카탈로그 4곳이 units/ById 패턴 중복 (simplify 리뷰 2026-07-06). id 접근 인터페이스가 필요해 현 규칙(과도한 추상화 금지)상 보류 — 5번째 카탈로그가 생기거나 카탈로그 공통 기능이 늘면 승격

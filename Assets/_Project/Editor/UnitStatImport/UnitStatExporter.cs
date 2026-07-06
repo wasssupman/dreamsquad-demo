@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using Newtonsoft.Json;
-using UnityEditor;
 using UnityEngine;
 using Wassup.Data;
 using Wassup.Data.StatImport;
@@ -55,8 +54,8 @@ namespace Wassup.Editor.UnitStatImport
         {
             var log = new StringBuilder();
 
-            var defenders = LoadAllSortedById<DefenderUnitData>(defenderAssetFolder);
-            var enemies = LoadAllSortedById<AttackUnitData>(enemyAssetFolder);
+            var defenders = LoadAllSortedById<DefenderUnitData>(defenderAssetFolder, so => so.id);
+            var enemies = LoadAllSortedById<AttackUnitData>(enemyAssetFolder, so => so.id);
 
             var defenderRows = new DefenderStatDto[defenders.Count];
             for (int i = 0; i < defenders.Count; i++) defenderRows[i] = ToDto(defenders[i]);
@@ -73,19 +72,11 @@ namespace Wassup.Editor.UnitStatImport
             return log.ToString();
         }
 
-        private static List<T> LoadAllSortedById<T>(string folder) where T : ScriptableObject
+        private static List<T> LoadAllSortedById<T>(string folder, Func<T, string> idSelector) where T : ScriptableObject
         {
-            var assets = new List<T>();
-            foreach (var guid in AssetDatabase.FindAssets($"t:{typeof(T).Name}", new[] { folder }))
-            {
-                var asset = AssetDatabase.LoadAssetAtPath<T>(AssetDatabase.GUIDToAssetPath(guid));
-                if (asset != null) assets.Add(asset);
-            }
-            assets.Sort((a, b) => string.CompareOrdinal(IdOf(a), IdOf(b)));
+            var assets = new List<T>(UnitAssetScan.Enumerate<T>(folder));
+            assets.Sort((a, b) => string.CompareOrdinal(idSelector(a), idSelector(b)));
             return assets;
         }
-
-        private static string IdOf(ScriptableObject so) =>
-            so is DefenderUnitData d ? d.id : so is AttackUnitData e ? e.id : so.name;
     }
 }
