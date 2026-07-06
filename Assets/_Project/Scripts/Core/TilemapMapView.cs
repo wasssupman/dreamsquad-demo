@@ -428,7 +428,9 @@ namespace Wassup.Core
             }
         }
 
-        public void SetPlacementRange(Vector2Int center, int tileRange)
+        // includeCenter — 배치 프리뷰는 중심 셀(유닛 위치)을 비우고, 스킬 AOE 는
+        // 중심도 피해 범위라 포함한다 (range-preview unit 3).
+        public void SetPlacementRange(Vector2Int center, int tileRange, bool includeCenter = false)
         {
             if (grid == null || _tileSet == null || _tileSet.rangeTile == null || tileRange <= 0) return;
             ClearPlacementRange();
@@ -436,7 +438,7 @@ namespace Wassup.Core
             for (int dx = -tileRange; dx <= tileRange; dx++)
             for (int dz = -tileRange; dz <= tileRange; dz++)
             {
-                if (dx == 0 && dz == 0) continue;
+                if (!includeCenter && dx == 0 && dz == 0) continue;
                 var cell = new Vector2Int(center.x + dx, center.y + dz);
                 if (cell.x < 0 || cell.x >= _gridSize.x || cell.y < 0 || cell.y >= _gridSize.y) continue;
                 _rangeTilemap.SetTile(ToCell(cell), _tileSet.rangeTile);

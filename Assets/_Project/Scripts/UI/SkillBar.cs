@@ -159,6 +159,10 @@ namespace Wassup.UI
                 return;
             }
 
+            // range-preview unit 3 — 조준 중 포인터 아래 셀에 공격 범위 격자를
+            // 매 프레임 추종 표시(배치 드래그와 동일 UX). 클릭 전에 갱신한다.
+            UpdateAimRangePreview();
+
             var pointer = Pointer.current;
             if (pointer == null || !pointer.press.wasPressedThisFrame) return;
 
@@ -264,10 +268,37 @@ namespace Wassup.UI
             }
         }
 
+        // range-preview unit 3 — TilePoint 스킬만 범위 표시(Portal 은 range 개념이
+        // 다르고, DefenderUnit 타겟은 셀 범위가 없다). 셀이 바뀔 때만 재구성.
+        private Vector2Int _lastAimRangeCell = new(-1, -1);
+
+        private void UpdateAimRangePreview()
+        {
+            if (bridge == null || _aimingSkill == null || mainCamera == null) return;
+            if (_aimingSkill.target != SkillTargetType.TilePoint ||
+                _aimingSkill.effect == SkillEffectType.Portal) return;
+
+            var pointer = Pointer.current;
+            if (pointer == null) return;
+            var ray = mainCamera.ScreenPointToRay(pointer.position.ReadValue());
+            var plane = BoardSpace.RaycastPlane();
+            if (!plane.Raycast(ray, out float enter)) return;
+            var worldPos = (Vector3)BoardSpace.ToSim(ray.GetPoint(enter));
+            var hitCell = bridge.DebugWorldToCell(worldPos);
+            var cell = new Vector2Int(hitCell.x, hitCell.y);
+            if (cell == _lastAimRangeCell) return;
+            _lastAimRangeCell = cell;
+            bridge.SetSkillAimRange(cell, _aimingSkill);
+        }
+
         private void ExitAimMode()
         {
             _aimingSkill = null;
             _portalEntryTile = new Vector2Int(-1, -1);
+            _lastAimRangeCell = new Vector2Int(-1, -1);
+            // 캐스트 성공 직후엔 bridge 가 텔레그래프 소유자로 전환돼 있어 이
+            // clear 는 no-op — 착탄 예고를 지우지 않는다(소유자 게이트).
+            if (bridge != null) bridge.ClearSkillAimRange();
             if (GameManager.Instance != null) GameManager.Instance.IsAiming = false;
             if (_aimLabel != null) _aimLabel.gameObject.SetActive(false);
         }

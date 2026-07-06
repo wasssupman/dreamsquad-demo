@@ -1039,6 +1039,10 @@ namespace Wassup.Bridge
             // time-manager Unit 3 — 시간 상태도 매치와 함께 리셋.
             _battleClock = 0.0;
             _battleTimeScaleEntity = Entity.Null;
+            // range-preview unit 3 — 매치 종료 시 격자 표시 무조건 해제(비행 중
+            // 종료로 impact drain 이 못 지운 텔레그래프 잔상 방지).
+            _rangeOwner = RangeDisplayOwner.None;
+            if (tilemapMapView != null) tilemapMapView.ClearPlacementRange();
 
             if (HasLiveEntityManager())
             {
@@ -1640,7 +1644,6 @@ namespace Wassup.Bridge
         {
             float3 centerWorld = GridToWorldCenter(tile);
             int tileRange = GridMath.RangeToTiles(skill.range);
-            float radiusWorld = tileRange * tileSize; // VFX only
             float warn = skill.warningSec > 0f ? skill.warningSec : 0f;
             if (skill.projectile == null)
             {
@@ -1662,7 +1665,9 @@ namespace Wassup.Bridge
                 flightTime = warn,
             };
             SpawnProjectile(req, Entity.Null);
-            SpawnMeteorWarningVisual(centerWorld, radiusWorld, warn);
+            // range-preview unit 3 — 착탄 예고는 빨간 쿼드 대신 격자 고정 표시.
+            // TileAoe impact drain(버스트 시점)이 해제한다.
+            PinSkillTelegraph(tile, tileRange);
             // Phase 8 §13: falling streak during the warning window. Silent
             // no-op when meteorFallPrefab slot empty — Meteor still plays
             // without the falling visual.
@@ -1706,31 +1711,6 @@ namespace Wassup.Bridge
             }
 
             return 1;
-        }
-
-        // Meteor telegraph: a flat translucent red quad on the ground that
-        // auto-destroys after warningSec. Deliberately MonoBehaviour-only — ECS
-        // holds the resolution timer, but the *visual* is a gameplay-layer object.
-        private void SpawnMeteorWarningVisual(float3 centerWorld, float radiusWorld, float warningSec)
-        {
-            if (warningSec <= 0f) return;
-            var go = GameObject.CreatePrimitive(PrimitiveType.Quad);
-            go.name = "MeteorWarning";
-            var col = go.GetComponent<Collider>();
-            if (col != null) Destroy(col);
-            // tilemap-view-backend unit 3 — XY 보드 평면 (법선 −Z, 카메라 향함).
-            Vector3 viewCenter = Wassup.Core.BoardSpace.ToView(centerWorld);
-            go.transform.position = new Vector3(viewCenter.x, viewCenter.y, viewCenter.z - 0.05f);
-            go.transform.rotation = Quaternion.identity; // Quad 기본 법선 −Z = 카메라 향함
-            float d = radiusWorld * 2f;
-            go.transform.localScale = new Vector3(d, d, 1f);
-            var rend = go.GetComponent<MeshRenderer>();
-            if (rend != null)
-            {
-                var mat = RuntimeMaterialFactory.CreateTransparent(new Color(1f, 0.15f, 0.15f, 0.55f));
-                rend.sharedMaterial = mat;
-            }
-            Destroy(go, warningSec);
         }
 
         private void Update()
@@ -1993,6 +1973,7 @@ namespace Wassup.Bridge
                     _projectileViewPool?.PlayHit(data.hitPrefab, evt.position, data.hitVfxLifetime,
                         data.visualHeightOffset, data.hitVfxScale);
                 else if (evt.payload == PayloadKind.TileAoe && evt.radiusWorld > 0f && vfxSpawner != null)
+                {
                     // unit 7 — Meteor burst rides the unified hit channel. Routing
                     // rule: authored hitPrefab wins (artillery keeps its GA impact);
                     // a prefab-less TileAoe falls back to the legacy burst visual.
@@ -2002,6 +1983,9 @@ namespace Wassup.Bridge
                     // if a second prefab-less TileAoe projectile is ever authored,
                     // gate this on an explicit burst flag instead of hitPrefab==null.
                     vfxSpawner.SpawnMeteorBurst(new Vector3(evt.position.x, 0f, evt.position.z), evt.radiusWorld);
+                    // range-preview unit 3 — 착탄과 함께 격자 텔레그래프 해제.
+                    ClearSkillTelegraph();
+                }
             }
         }
 
@@ -2914,15 +2898,48 @@ namespace Wassup.Bridge
             if (tilemapMapView != null) tilemapMapView.ClearPlacementHover();
         }
 
+        // range-preview unit 3 — 격자 범위 표시(_rangeTilemap)의 현재 소유자.
+        // 배치 드래그(Placement)·스킬 조준 추종(SkillAim)·캐스트 후 착탄 예고
+        // (SkillTelegraph)가 같은 tilemap 을 시분할 사용한다. clear 는 소유자가
+        // 일치할 때만 동작 — aim 종료(캐스트 직후)가 방금 고정된 텔레그래프를
+        // 지우거나, 텔레그래프 해제가 진행 중인 드래그 표시를 지우는 간섭 방지.
+        // (aim 진입이 배치를 취소하는 기존 규칙 덕에 동시 set 경쟁은 없다.)
+        private enum RangeDisplayOwner { None, Placement, SkillAim, SkillTelegraph }
+        private RangeDisplayOwner _rangeOwner = RangeDisplayOwner.None;
+
         public void SetPlacementRange(Vector2Int center, DefenderUnitData unit)
         {
             if (tilemapMapView == null || unit == null) return;
             int tileRange = GridMath.RangeToTiles(unit.attackRange);
             tilemapMapView.SetPlacementRange(center, tileRange);
+            _rangeOwner = RangeDisplayOwner.Placement;
         }
 
-        public void ClearPlacementRange()
+        public void ClearPlacementRange() => ClearRange(RangeDisplayOwner.Placement);
+
+        // 스킬 조준 범위 — 배치와 달리 중심 셀 포함(AOE 는 중심도 피해 범위).
+        public void SetSkillAimRange(Vector2Int center, SkillData skill)
         {
+            if (tilemapMapView == null || skill == null) return;
+            tilemapMapView.SetPlacementRange(center, GridMath.RangeToTiles(skill.range), includeCenter: true);
+            _rangeOwner = RangeDisplayOwner.SkillAim;
+        }
+
+        public void ClearSkillAimRange() => ClearRange(RangeDisplayOwner.SkillAim);
+
+        private void PinSkillTelegraph(Vector2Int cell, int tileRange)
+        {
+            if (tilemapMapView == null) return;
+            tilemapMapView.SetPlacementRange(cell, tileRange, includeCenter: true);
+            _rangeOwner = RangeDisplayOwner.SkillTelegraph;
+        }
+
+        private void ClearSkillTelegraph() => ClearRange(RangeDisplayOwner.SkillTelegraph);
+
+        private void ClearRange(RangeDisplayOwner caller)
+        {
+            if (_rangeOwner != caller) return;
+            _rangeOwner = RangeDisplayOwner.None;
             if (tilemapMapView != null) tilemapMapView.ClearPlacementRange();
         }
 

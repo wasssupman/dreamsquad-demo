@@ -1,6 +1,6 @@
 # placement-attack-range-preview
 
-상태: 완료 2026-07-04 (units 0~2 · `eded85d`/`81d1d79`/`b3cd345` + docs `1625de5`). 렌더·펄스·격자 스타일·e2e 드래그 추종(`_rangeCells=44`) 전부 Play 검증 완료.
+상태: 완료 2026-07-04 (units 0~2 · `eded85d`/`81d1d79`/`b3cd345` + docs `1625de5`) + **확장 unit 3 (2026-07-06)**: TilePoint 스킬 aim/텔레그래프도 같은 격자 표시로 통일(빨간 쿼드 텔레그래프 삭제). 사용자 요청으로 승격.
 
 ## 목표
 
@@ -22,8 +22,9 @@
 | 0 | `0_tileset_range_fields.md` | data | `TileSetData` 에 rangeTile + 색/펄스 파라미터 |
 | 1 | `1_tilemap_range_layer.md` | view | `_rangeTilemap` 생성 + Set/Clear + 동기 펄스 |
 | 2 | `2_bridge_and_drag_wiring.md` | wiring | BattleBridge 포워딩 + DragController 배선 |
+| 3 | `3_skill_aim_range.md` | 확장 | 스킬 aim 커서 추종 + 캐스트 후 텔레그래프 격자 통일 (owner 게이트, 빨간 쿼드 삭제) |
 
-의존: `0 → 1 → 2` (순차).
+의존: `0 → 1 → 2` (순차) · `3` 은 2 완료 후 독립.
 
 ## Feature-wide 계약
 
