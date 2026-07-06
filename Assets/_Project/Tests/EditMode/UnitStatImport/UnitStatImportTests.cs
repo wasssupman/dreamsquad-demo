@@ -320,5 +320,122 @@ namespace Wassup.Tests.EditMode.UnitStatImport
 
             Assert.AreEqual(0, log.Length);
         }
+
+        // ── unit 4: API envelope adaptation ──────────────────────────────────────
+
+        [Test]
+        public void ParseSheetRows_SuccessEnvelope_BindsRowsAndCoercesNumericStrings()
+        {
+            const string body = @"{ ""success"": true, ""data"": [
+                { ""id"": ""archer"", ""health"": ""500"", ""role"": ""RANGER"" }
+            ] }";
+
+            var rows = UnitStatImportWindow.ParseSheetRows<DefenderStatDto>(body, out string error);
+
+            Assert.IsNull(error);
+            Assert.AreEqual(1, rows.Length);
+            Assert.AreEqual("archer", rows[0].id);
+            Assert.AreEqual(500f, rows[0].health, "numeric cells may arrive as strings");
+            Assert.AreEqual(DefenderClass.Ranger, rows[0].role, "uppercase sheet enum names accepted");
+        }
+
+        [Test]
+        public void ParseSheetRows_EmptyStringCell_TreatedAsOmitted()
+        {
+            const string body = @"{ ""success"": true, ""data"": [
+                { ""id"": ""archer"", ""health"": """", ""cost"": ""  "" }
+            ] }";
+
+            var rows = UnitStatImportWindow.ParseSheetRows<DefenderStatDto>(body, out string error);
+
+            Assert.IsNull(error);
+            Assert.IsNull(rows[0].health, "blank cell must behave like an omitted key (keep existing)");
+            Assert.IsNull(rows[0].cost, "whitespace-only cell must behave like an omitted key");
+        }
+
+        [Test]
+        public void ParseSheetRows_SuccessFalse_ReportsErrorDetail()
+        {
+            const string body = @"{ ""success"": false, ""errorDetail"": {
+                ""errorCode"": ""INTERNAL_SERVER_ERROR"", ""code"": ""C004"",
+                ""errorMessage"": ""서버 내부 오류가 발생했습니다."", ""detailMessage"": ""구글 시트 연동 실패"" } }";
+
+            var rows = UnitStatImportWindow.ParseSheetRows<DefenderStatDto>(body, out string error);
+
+            Assert.IsNull(rows);
+            StringAssert.Contains("INTERNAL_SERVER_ERROR", error);
+            StringAssert.Contains("구글 시트 연동 실패", error);
+        }
+
+        [Test]
+        public void ParseSheetRows_MalformedBody_ReturnsParseError()
+        {
+            var rows = UnitStatImportWindow.ParseSheetRows<DefenderStatDto>("<html>oops</html>", out string error);
+
+            Assert.IsNull(rows);
+            StringAssert.Contains("JSON parse failed", error);
+        }
+
+        [Test]
+        public void ParseSheetRows_EmptyBody_ReturnsError()
+        {
+            var rows = UnitStatImportWindow.ParseSheetRows<DefenderStatDto>(null, out string error);
+
+            Assert.IsNull(rows);
+            StringAssert.Contains("empty response body", error);
+        }
+
+        [Test]
+        public void Deserialize_TargetClassMaskCommaString_CombinesFlags()
+        {
+            var dto = JsonConvert.DeserializeObject<EnemyStatDto>(
+                @"{ ""id"": ""basic"", ""targetClassMask"": ""Ranger, guardian"" }");
+
+            Assert.AreEqual(DefenderClassFlags.Ranger | DefenderClassFlags.Guardian, dto.targetClassMask);
+        }
+
+        [Test]
+        public void Deserialize_TargetClassMaskStringEverything_ParsesAsEverything()
+        {
+            var dto = JsonConvert.DeserializeObject<EnemyStatDto>(
+                @"{ ""id"": ""basic"", ""targetClassMask"": ""Everything"" }");
+
+            Assert.AreEqual(DefenderClassFlags.Everything, dto.targetClassMask);
+        }
+
+        [Test]
+        public void Deserialize_TargetClassMaskStringNone_ParsesAsNone()
+        {
+            var dto = JsonConvert.DeserializeObject<EnemyStatDto>(
+                @"{ ""id"": ""basic"", ""targetClassMask"": ""None"" }");
+
+            Assert.AreEqual(DefenderClassFlags.None, dto.targetClassMask);
+        }
+
+        [Test]
+        public void Deserialize_TargetClassMaskBlankString_ParsesAsNullKeepExisting()
+        {
+            var dto = JsonConvert.DeserializeObject<EnemyStatDto>(
+                @"{ ""id"": ""basic"", ""targetClassMask"": ""  "" }");
+
+            Assert.IsNull(dto.targetClassMask, "blank mask cell must mean keep-existing, not None");
+        }
+
+        [Test]
+        public void Deserialize_TargetClassMaskStringSentinelMixed_Throws()
+        {
+            Assert.Throws<JsonSerializationException>(() => JsonConvert.DeserializeObject<EnemyStatDto>(
+                @"{ ""id"": ""basic"", ""targetClassMask"": ""Everything,Ranger"" }"));
+            Assert.Throws<JsonSerializationException>(() => JsonConvert.DeserializeObject<EnemyStatDto>(
+                @"{ ""id"": ""basic"", ""targetClassMask"": ""None,Ranger"" }"));
+        }
+
+        [Test]
+        public void BuildSheetUrl_TrimsSlashAndEscapesSheetName()
+        {
+            Assert.AreEqual(
+                "https://x.example/api/sheet/My%20Sheet",
+                UnitStatImportWindow.BuildSheetUrl("https://x.example/api/sheet/ ", " My Sheet "));
+        }
     }
 }

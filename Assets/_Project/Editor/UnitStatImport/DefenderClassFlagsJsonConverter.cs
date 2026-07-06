@@ -1,26 +1,48 @@
 using System;
+using System.Collections.Generic;
 using Newtonsoft.Json;
 using Wassup.Data;
 
 namespace Wassup.Editor.UnitStatImport
 {
-    // unit-stat-spreadsheet-schema Unit 1 — targetClassMask is contracted as a JSON
-    // string array (e.g. ["Ranger","Guardian"], ["Everything"], []). Newtonsoft has no
-    // built-in way to OR multiple enum names from an array into one [Flags] value, so
-    // this converter bridges that gap for DefenderClassFlags specifically.
+    // unit-stat-spreadsheet-schema Unit 1 — targetClassMask is contracted as enum
+    // member names OR'd into one [Flags] value. Newtonsoft has no built-in way to do
+    // that, so this converter bridges the gap for DefenderClassFlags specifically.
+    // Unit 4 — the real sheet pipeline delivers cells as scalar strings, so the
+    // comma-separated cell convention ("Ranger,Guardian" / "Everything" / "None")
+    // is accepted alongside the unit 1 JSON string-array form.
     public class DefenderClassFlagsJsonConverter : JsonConverter<DefenderClassFlags?>
     {
         public override DefenderClassFlags? ReadJson(JsonReader reader, Type objectType, DefenderClassFlags? existingValue, bool hasExistingValue, JsonSerializer serializer)
         {
             if (reader.TokenType == JsonToken.Null) return null;
 
-            var names = serializer.Deserialize<string[]>(reader);
-            if (names == null || names.Length == 0) return DefenderClassFlags.None;
+            string[] names;
+            if (reader.TokenType == JsonToken.String)
+            {
+                // comma-separated sheet cell. A blank cell means "keep existing"
+                // (same as an omitted key), so all-whitespace parses to null.
+                var parts = ((string)reader.Value).Split(',');
+                var trimmed = new List<string>(parts.Length);
+                foreach (var part in parts)
+                {
+                    var name = part.Trim();
+                    if (name.Length > 0) trimmed.Add(name);
+                }
+                if (trimmed.Count == 0) return null;
+                names = trimmed.ToArray();
+            }
+            else
+            {
+                names = serializer.Deserialize<string[]>(reader);
+                if (names == null || names.Length == 0) return DefenderClassFlags.None;
+            }
 
-            if (names.Length > 1 && Array.Exists(names, n => string.Equals(n, nameof(DefenderClassFlags.Everything), StringComparison.OrdinalIgnoreCase)))
+            // sentinels are exclusive: "Everything"/"None" may not mix with class names.
+            if (names.Length > 1 && (ContainsIgnoreCase(names, nameof(DefenderClassFlags.Everything)) || ContainsIgnoreCase(names, nameof(DefenderClassFlags.None))))
             {
                 throw new JsonSerializationException(
-                    $"targetClassMask mixes \"{nameof(DefenderClassFlags.Everything)}\" with other class names ({string.Join(", ", names)}) — use either [\"{nameof(DefenderClassFlags.Everything)}\"] alone or a list of individual classes.");
+                    $"targetClassMask mixes a sentinel (\"{nameof(DefenderClassFlags.Everything)}\"/\"{nameof(DefenderClassFlags.None)}\") with other class names ({string.Join(", ", names)}) — use a sentinel alone or a list of individual classes.");
             }
 
             DefenderClassFlags result = DefenderClassFlags.None;
@@ -61,5 +83,8 @@ namespace Wassup.Editor.UnitStatImport
             }
             writer.WriteEndArray();
         }
+
+        private static bool ContainsIgnoreCase(string[] names, string target)
+            => Array.Exists(names, n => string.Equals(n, target, StringComparison.OrdinalIgnoreCase));
     }
 }
