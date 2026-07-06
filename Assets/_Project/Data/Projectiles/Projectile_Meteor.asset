@@ -15,10 +15,10 @@ MonoBehaviour:
   id: meteor
   speed: 0
   hitThreshold: 0.3
-  visualScale: 1
+  visualScale: 1.3
   visualHeightOffset: 0
-  projectilePrefab: {fileID: 0}
-  hitPrefab: {fileID: 0}
+  projectilePrefab: {fileID: 6397809041764924944, guid: e7a9c7a9d9c3e4d56ab014c6384e8188, type: 3}
+  hitPrefab: {fileID: 1190586612074608, guid: 6eae0c3b49163d44c9f7970fbe47a4d9, type: 3}
   facing: 0
   spinSpeed: 0
   preserveVfxColors: 1
@@ -30,7 +30,7 @@ MonoBehaviour:
   textureVariants: []
   selectMode: 0
   hitVfxLifetime: 0
-  hitVfxScale: 1
+  hitVfxScale: 2.5
   castPrefab: {fileID: 0}
   castVfxLifetime: 0
   onHitEffect: 0
@@ -42,3 +42,5 @@ MonoBehaviour:
   arcHeight: 0
   impactTileRange: 0
   minFlightTime: 0
+  dropHeight: 9
+  fallPortion: 0.35

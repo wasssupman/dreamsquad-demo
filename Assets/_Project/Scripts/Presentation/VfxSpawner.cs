@@ -17,7 +17,6 @@ namespace Wassup.Presentation
         [Header("Phase 8 §13 — Prefab slots (all required)")]
         [SerializeField] private GameObject placementRingPrefab;
         [SerializeField] private GameObject meteorBurstPrefab;
-        [SerializeField] private GameObject meteorFallPrefab;
         [SerializeField] private GameObject tornadoPrefab;
         [SerializeField] private GameObject portalPrefab;
         [SerializeField] private GameObject healAppliedPrefab;
@@ -35,22 +34,6 @@ namespace Wassup.Presentation
                 new Vector3(worldPos.x, worldPos.y + 0.02f, worldPos.z),
                 Quaternion.identity, transform);
             Destroy(go, 0.6f);
-        }
-
-        // V2a — Meteor falling streak during the warning window. Spawned alongside
-        // the procedural warning ring (BattleBridge.SpawnMeteorWarningVisual).
-        public void SpawnMeteorFall(Vector3 targetWorld, float warningSec)
-        {
-            if (meteorFallPrefab == null)
-            {
-                Debug.LogError("[VfxSpawner] meteorFallPrefab 미할당 — Inspector에서 prefab을 연결해주세요.");
-                return;
-            }
-            targetWorld = Wassup.Core.BoardSpace.ToView(targetWorld); // sim→view; MeteorFall 은 view 좌표로 보간(추가 변환 없음)
-            var go = Instantiate(meteorFallPrefab, targetWorld, Quaternion.identity, transform);
-            var fall = go.GetComponent<MeteorFall>();
-            if (fall != null) fall.Launch(targetWorld, warningSec);
-            else Destroy(go, warningSec + 0.1f);
         }
 
         // V2b — Meteor explosion burst at impact.

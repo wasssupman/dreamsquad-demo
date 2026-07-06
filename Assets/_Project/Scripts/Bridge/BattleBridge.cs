@@ -1042,6 +1042,7 @@ namespace Wassup.Bridge
             // range-preview unit 3 — 매치 종료 시 격자 표시 무조건 해제(비행 중
             // 종료로 impact drain 이 못 지운 텔레그래프 잔상 방지).
             _rangeOwner = RangeDisplayOwner.None;
+            _skillTelegraphProjectile = Entity.Null;
             if (tilemapMapView != null) tilemapMapView.ClearPlacementRange();
 
             if (HasLiveEntityManager())
@@ -1663,16 +1664,14 @@ namespace Wassup.Bridge
                 dataIndex = GetOrCreateProjectileDataIndex(skill.projectile),
                 impactTileRange = tileRange,
                 flightTime = warn,
+                // unit 9 — SkyFall 은 arcHeight 슬롯을 낙하 시작 높이로 재사용
+                // (신규 state/request 필드 0). 뷰가 (1-t)·dropHeight 를 view-Y 에 더한다.
+                arcHeight = skill.projectile.dropHeight,
             };
-            SpawnProjectile(req, Entity.Null);
-            // range-preview unit 3 — 착탄 예고는 빨간 쿼드 대신 격자 고정 표시.
-            // TileAoe impact drain(버스트 시점)이 해제한다.
+            // range-preview unit 3 / unit 9 — 착탄 예고는 격자 고정 표시. 해제는
+            // "이 투사체의 착탄 이벤트"를 source 엔티티로 정확 판별(hit VFX 유무 무관).
+            _skillTelegraphProjectile = SpawnProjectile(req, Entity.Null);
             PinSkillTelegraph(tile, tileRange);
-            // Phase 8 §13: falling streak during the warning window. Silent
-            // no-op when meteorFallPrefab slot empty — Meteor still plays
-            // without the falling visual.
-            if (vfxSpawner != null && warn > 0f)
-                vfxSpawner.SpawnMeteorFall(new Vector3(centerWorld.x, 0f, centerWorld.z), warn);
             // Actual damage resolves async (ProjectileHitSystem TileAoe arm at
             // flightTime); at cast time we conservatively pre-count current
             // overlaps so the log is informative without waiting for the burst.
@@ -1969,22 +1968,22 @@ namespace Wassup.Bridge
             {
                 if (evt.dataIndex < 0 || evt.dataIndex >= _projectileDataByIndex.Count) continue;
                 var data = _projectileDataByIndex[evt.dataIndex];
+                // Visual routing: authored hitPrefab wins (GA impact); a prefab-less
+                // TileAoe falls back to the legacy procedural burst. radiusWorld
+                // travels on the event because the AOE radius is per-cast.
                 if (data.hitPrefab != null)
                     _projectileViewPool?.PlayHit(data.hitPrefab, evt.position, data.hitVfxLifetime,
                         data.visualHeightOffset, data.hitVfxScale);
                 else if (evt.payload == PayloadKind.TileAoe && evt.radiusWorld > 0f && vfxSpawner != null)
-                {
-                    // unit 7 — Meteor burst rides the unified hit channel. Routing
-                    // rule: authored hitPrefab wins (artillery keeps its GA impact);
-                    // a prefab-less TileAoe falls back to the legacy burst visual.
-                    // radiusWorld travels on the event because the AOE radius is
-                    // per-cast (skill range), not a ProjectileData constant.
-                    // NOTE: "prefab-less TileAoe" semantically means Meteor today —
-                    // if a second prefab-less TileAoe projectile is ever authored,
-                    // gate this on an explicit burst flag instead of hitPrefab==null.
                     vfxSpawner.SpawnMeteorBurst(new Vector3(evt.position.x, 0f, evt.position.z), evt.radiusWorld);
-                    // range-preview unit 3 — 착탄과 함께 격자 텔레그래프 해제.
+
+                // 텔레그래프 해제는 visual 라우팅과 분리 — source 엔티티 정확 판별
+                // (unit 9: meteor 에 hitPrefab 이 생겨도, artillery 착탄이 남의
+                // 텔레그래프를 지워도 안 되므로 hitPrefab-null 추론을 쓰지 않는다).
+                if (evt.source != Entity.Null && evt.source == _skillTelegraphProjectile)
+                {
                     ClearSkillTelegraph();
+                    _skillTelegraphProjectile = Entity.Null;
                 }
             }
         }
@@ -2067,12 +2066,14 @@ namespace Wassup.Bridge
             requestData.Dispose();
         }
 
-        private void SpawnProjectile(ProjectileSpawnRequest req, Entity shooter)
+        // Returns the spawned projectile entity (Entity.Null when dropped) so
+        // skill casts can track their telegraph's projectile (unit 9).
+        private Entity SpawnProjectile(ProjectileSpawnRequest req, Entity shooter)
         {
             if (req.dataIndex < 0 || req.dataIndex >= _projectileDataByIndex.Count)
             {
                 Debug.LogWarning($"[BattleBridge] ProjectileSpawnRequest dataIndex {req.dataIndex} out of range; dropping.");
-                return;
+                return Entity.Null;
             }
 
             // Snapshot shooter's outputs BEFORE any structural change. Subsequent
@@ -2133,6 +2134,8 @@ namespace Wassup.Bridge
                 state.impact = new float3(req.impact.x, spawnHeight, req.impact.z);
                 state.impactTileRange = req.impactTileRange;
                 state.flightTime = math.max(req.flightTime, 0f);
+                // unit 9 — arcHeight 슬롯 = 낙하 시작 높이(view 렌더 전용).
+                state.arcHeight = req.arcHeight;
             }
             _em.AddComponentData(entity, state);
 
@@ -2144,11 +2147,17 @@ namespace Wassup.Bridge
                 outputSnapshot.Dispose();
             }
 
-            // Viewless projectiles (unit 7 — Meteor before its visual round): a
+            // Viewless projectiles (unit 7 — prefab-less ProjectileData): a
             // registered ProjectileData with no prefab means "sim only"; the pool
             // has no null-prefab guard, so the skip lives here.
+            // unit 9 — SkyFall 은 첫 프레임부터 하늘(dropHeight)에서 시작해야
+            // 풀링 TrailRenderer 가 지면→하늘 스트릭을 긋지 않는다.
             if (projData != null && projData.projectilePrefab != null)
-                _projectileViewPool?.Spawn(entity, projData, spawnPos);
+            {
+                float initialDrop = req.movement == MovementKind.SkyFall ? projData.dropHeight : 0f;
+                _projectileViewPool?.Spawn(entity, projData, spawnPos, initialDrop);
+            }
+            return entity;
         }
 
         // Fires the defender's on-place effect on surrounding entities. Returns
@@ -2906,6 +2915,8 @@ namespace Wassup.Bridge
         // (aim 진입이 배치를 취소하는 기존 규칙 덕에 동시 set 경쟁은 없다.)
         private enum RangeDisplayOwner { None, Placement, SkillAim, SkillTelegraph }
         private RangeDisplayOwner _rangeOwner = RangeDisplayOwner.None;
+        // unit 9 — 현재 텔레그래프가 추적 중인 스킬 투사체. 그 착탄 이벤트에서만 해제.
+        private Entity _skillTelegraphProjectile = Entity.Null;
 
         public void SetPlacementRange(Vector2Int center, DefenderUnitData unit)
         {

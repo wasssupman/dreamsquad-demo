@@ -143,6 +143,7 @@ namespace Wassup.Battle.Combat.Projectile
                                     position = targetPos,
                                     dataIndex = projectile.ValueRO.dataIndex,
                                     payload = PayloadKind.SingleSplash,
+                                    source = entity,
                                 });
 
                             // Splash AOE: reduced damage to every other AttackUnit within
@@ -219,6 +220,7 @@ namespace Wassup.Battle.Combat.Projectile
                                 dataIndex = projectile.ValueRO.dataIndex,
                                 payload = PayloadKind.TileAoe,
                                 radiusWorld = tileRange * tileSize,
+                                source = entity,
                             });
                         break;
                     }

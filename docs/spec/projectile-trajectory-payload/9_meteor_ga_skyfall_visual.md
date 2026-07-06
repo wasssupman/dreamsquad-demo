@@ -20,9 +20,18 @@
 4. **스폰 배선**: unit 7 의 viewless 스폰 → `Projectile_Meteor_GA` 뷰 스폰으로 교체. `SpawnMeteorFall` 호출 제거, `MeteorFall.cs` 삭제.
 5. (선택) 버스트를 GA hit 프리팹으로 업그레이드 — 기본은 기존 `SpawnMeteorBurst` 유지, 후보 비교 시 함께 보여주고 사용자 픽.
 
+## As-built (rev2 — 사용자 픽 + 확장)
+
+- **픽(사용자, 라인업 스크린샷 비교)**: 낙하 = `vfx_Projectile_Rock02`(보라 크리스탈, scale 1.3) · 임팩트 = vendor `vfx_Hit_Rock03` 직참조(파편 비산, hitVfxScale 2.5 — artillery 의 vendor Muzzle_Rock01 선례, PS-only 확인).
+- **임팩트 스왑 = hitPrefab 경로**: 스펙 항목 5(선택)를 실현. 이로 인해 "prefab-less TileAoe=meteor" 텔레그래프 판별이 깨지므로 **`ProjectileHitEvent.source`(발사체 엔티티) 매칭으로 리팩터** — artillery 착탄이 남의 텔레그래프를 지우는 것도 원천 차단. `SpawnProjectile` 이 Entity 반환.
+- **낙하 연출(사용자 피드백 2회 반영)**: `dropHeight 9`(등장점 화면 밖 — 팝인 은폐) + `fallPortion 0.35` 신설(낙하를 비행 후반에 압축, 대기 구간 뷰 숨김 → "빠르게 내리꽂힘"). 게임플레이 타이밍(warningSec·데미지) 불변, 순수 뷰. `SkyFall.FallProgress` static 순수함수 + EditMode.
+- **단일 텔레그래프 가정(계약)**: `_skillTelegraphProjectile` 은 슬롯 1개 — meteor cooldown 18s ≫ flight 1.5s 라 동시 비행 불가 전제. 스킬 다중화 시 Dictionary 로 확장(리뷰 B-M1).
+- reveal 시 `ResetVfx` 명시 호출 — prefab `playOnAwake` 암묵 의존 제거(리뷰 M1).
+
 ## 완료 기준
 
-- Play: meteor 캐스트 → GA 투사체가 하늘에서 착탄 셀로 낙하(트레일 방향 정상) → 버스트 → 데미지 무회귀.
-- 검증법: 슬로모(`TimeManager.Request(Battle, 0.2f)`) + 연속 스크린샷으로 낙하 시퀀스 캡처(lessons/01) → **사용자 육안 확정**이 게이트.
+- Play: meteor 캐스트 → 격자 텔레그래프 → GA 투사체가 화면 밖 상공에서 내리꽂힘 → 파편 폭발 → 데미지 무회귀. **사용자 육안 확정**이 게이트.
 - 풀 재사용 2회차 스폰에서 트레일 잔존/소실 없음(autodestruct 함정 — 런타임에서만 드러남).
 - `rg "MeteorFall"` 코드 0 매칭.
+
+확인 2026-07-06 — 사용자 육안 확정("좋아좋아" — 조합 4,5 + 높이/속도 튜닝 2회). 리그 EditMode 510/513(무관 1)·SkyFallTests 14/14 → 리뷰 반영 후 15. 투트랙 리뷰 양측 APPROVE(M1 ResetVfx·가드 테스트·주석 반영). MeteorFall/SpawnMeteorFall/meteorFallPrefab 잔존 0.

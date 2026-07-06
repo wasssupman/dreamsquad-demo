@@ -30,6 +30,9 @@ namespace Wassup.Presentation
             public float spinSpeed;
             public float3 lastPosition;
             public float heightOffset;   // view 공간 Y 렌더 오프셋 (ECS/velocity 엔 미반영)
+            // unit 9 — SkyFall 낙하 압축(뷰 전용): 낙하가 비행 후반 이 비율에 압축된다.
+            // 1 = 전체 구간 등속. ECS state 를 늘리지 않고 view 딕셔너리에 태운다.
+            public float fallPortion;
         }
 
         private static readonly int PropBaseColor    = Shader.PropertyToID("_BaseColor");
@@ -63,7 +66,9 @@ namespace Wassup.Presentation
         public int ActiveCount => _active.Count;
 
         // Fix 1: initialPosition prevents first-frame wrong-direction rotation for AlongVelocity.
-        public void Spawn(Entity entity, ProjectileData data, float3 initialPosition)
+        // initialDropOffset (unit 9, SkyFall): 첫 프레임 뷰를 낙하 시작 높이에서 시작시킨다 —
+        // 지면에 스폰 후 첫 Sync 에서 하늘로 점프하면 풀링 TrailRenderer 가 스트릭을 긋는다.
+        public void Spawn(Entity entity, ProjectileData data, float3 initialPosition, float initialDropOffset = 0f)
         {
             var view = GetOrCreate(data.projectilePrefab);
             view.SetActive(true);
@@ -92,6 +97,10 @@ namespace Wassup.Presentation
             // 리셋한다. 안 그러면 풀 재사용 시 이전 사망 위치 → 새 스폰 위치로 world-space 파티클/
             // TrailRenderer 가 streak(줄) 을 그린다.
             float3 spawnView = Wassup.Core.BoardSpace.ToView(initialPosition);
+            // 낙하 오프셋은 SyncTransforms 의 pos(y+=drop) 와 같은 축(view-Y)에 선반영 —
+            // lastPosition 에도 포함해야 첫 프레임 velocity 가 ≈0 이 되어(지면→하늘
+            // 오차분이 안 섞여) 잘못된 위쪽 페이싱 플래시가 없다.
+            spawnView.y += initialDropOffset;
             view.transform.position = new Vector3(spawnView.x, spawnView.y + data.visualHeightOffset, spawnView.z);
             ResetVfx(view);
 
@@ -102,8 +111,9 @@ namespace Wassup.Presentation
                 facing = data.facing,
                 spinSpeed = data.spinSpeed,
                 // tilemap-view-backend unit 3 — lastPosition 은 view 좌표로 보존(velocity 를 view 공간에서 계산).
-                lastPosition = spawnView,   // Fix 1 (오프셋 미포함 = 순수 위치, velocity 정확)
+                lastPosition = spawnView,   // Fix 1 (heightOffset 미포함 = 순수 위치, velocity 정확)
                 heightOffset = data.visualHeightOffset,
+                fallPortion = data.fallPortion,
             };
         }
 
@@ -134,6 +144,29 @@ namespace Wassup.Presentation
                     var ps = em.GetComponentData<ProjectileState>(entity);
                     if (ps.movement == MovementKind.BallisticArcToPoint && ps.flightTime > 0f)
                         pos.y += BallisticArc.ArcHeight(ps.arcHeight, math.saturate(ps.elapsed / ps.flightTime));
+                    // unit 9 — SkyFall 낙하: arcHeight 슬롯 = 낙하 시작 높이. sim 은 착탄 셀에
+                    // 고정이므로 화면 낙하는 전부 여기 view-Y 로 표현된다. pos 에 접혀
+                    // AlongVelocity 페이싱이 아래를 향하고 트레일이 위로 남는다.
+                    // fallPortion < 1 이면 낙하를 비행 후반에 압축하고, 대기(pre-fall)
+                    // 구간엔 뷰를 숨긴다 — 상공 호버가 화면에 보이는 어색함 제거. 낙하
+                    // 시작 프레임에 시작 높이에서 등장(transform 이 그 높이를 유지하고
+                    // 있어 트레일 스트릭 없음, 파티클은 활성화 시점에 신선 재생).
+                    // 텔레그래프(flightTime·데미지 타이밍)는 불변, 시각만 바뀐다.
+                    else if (ps.movement == MovementKind.SkyFall)
+                    {
+                        float p = SkyFall.Progress(ps.elapsed, ps.flightTime);
+                        float fp = state.fallPortion;
+                        bool falling = fp >= 1f || p >= 1f - fp;
+                        if (state.view.activeSelf != falling)
+                        {
+                            state.view.SetActive(falling);
+                            // reveal 시 파티클/트레일 명시 재생 — prefab 의 playOnAwake
+                            // 에 암묵 의존하지 않는다(리뷰 M1). 위치는 대기 내내 시작
+                            // 높이에 고정돼 있어 트레일 스트릭 없음.
+                            if (falling) ResetVfx(state.view);
+                        }
+                        pos.y += ps.arcHeight * (1f - SkyFall.FallProgress(p, fp));
+                    }
                 }
 
                 var view = state.view;
@@ -167,6 +200,7 @@ namespace Wassup.Presentation
                         facing = s.facing, spinSpeed = s.spinSpeed,
                         lastPosition = pos,
                         heightOffset = s.heightOffset,
+                        fallPortion = s.fallPortion,
                     };
             }
 

@@ -95,5 +95,12 @@ namespace Wassup.Data
         public int impactTileRange = 1;
         [Tooltip("최소 비행 시간(초). 근거리에서도 arc 가 보이게 하한. BallisticToCell 전용.")]
         public float minFlightTime = 0.3f;
+
+        [Header("SkyFall (스킬 낙하 투사체 — Meteor)")]
+        [Tooltip("낙하 시작 높이(월드 유닛, view 공간 Y). flightTime(warningSec) 동안 이 높이에서 착탄 셀로 떨어진다. 내부적으로 state 의 arcHeight 슬롯을 재사용.")]
+        public float dropHeight = 6f;
+
+        [Tooltip("낙하가 차지하는 비행 후반 비율(0~1). 1=전체 구간 등속 낙하, 0.35=마지막 35% 에 압축(상공 대기 후 내리꽂힘 — 텔레그래프 시간은 그대로, 시각만 빨라짐). 순수 뷰 파라미터.")]
+        [Range(0.05f, 1f)] public float fallPortion = 1f;
     }
 }
