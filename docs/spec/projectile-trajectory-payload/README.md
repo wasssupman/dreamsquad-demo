@@ -38,7 +38,7 @@
 1. **직교 2축.** 투사체 = 궤적 × 페이로드. `ProjectileState` 가 `MovementKind` + `PayloadKind` 를 discriminator 로 보유한다. 두 축은 자유 조합(홈잉+AOE, 곡사+단일 도 성립).
 2. **단일 라이프사이클.** `ProjectileSpawnRequest → BattleBridge drain → 엔티티+뷰 → MoveSystem → ImpactSystem → 파괴`. **궤적/페이로드별 별도 시스템·드레인·태그 신설 금지** (band-aid 금지). 캐리어 태그는 `ProjectileTag` 하나 → teardown/뷰 회수 자동 커버.
 3. **MoveSystem = switch(MovementKind).** 각 arm 이 위치 갱신 + 자기 도착 클램프 소유. `Homing`(타겟 추적, 도착=거리, 타겟 소실 시 파괴) / `BallisticArc`(origin→impact XZ lerp, Y=sin(t·π)·arcHeight, 도착=t≥1).
-4. **ImpactSystem = switch(PayloadKind).** 도착 판정 + 해결 소유(현 `ProjectileHitSystem` 위치 유지). `SingleSplash`(기존 outputs + splash + HitFlash) / `TileAoe`(착탄 셀 반경 flat, HitFlash 미적용 = Meteor 선례).
+4. **ImpactSystem = switch(PayloadKind).** 도착 판정 + 해결 소유(현 `ProjectileHitSystem` 위치 유지). `SingleSplash`(기존 outputs + splash + HitFlash) / `TileAoe`(착탄 셀 반경 flat, HitFlash 미적용 = Meteor 선례). **`TileAoe` 는 AOE 중심을 `ProjectileState.impact`(고정 착탄점)에서 읽는다 → payload=TileAoe 스폰은 궤적과 무관하게 `impact` 를 락해야 한다.** v1 은 `BallisticArc` 와만 페어링(곡사포). `Homing+TileAoe` 는 impact=타겟 도착위치 락이 필요 → 후속.
 5. **순수 계산은 static Burst 함수 + EditMode 테스트.** `ArcPosition`, `flightTime`(speed>0 가드 + min clamp), `TileAoe.IsInTileRange`/`TileDistance`(셀 Chebyshev 멤버십). 테스트는 `Assets/_Project/Tests/EditMode/`.
 6. **데미지 출처 = `DefenderUnitData.outputs` 의 Damage 합산.** 홈잉 경로와 동일. 새 magic damage 필드 금지. 궤적/페이로드 파라미터(arcHeight/impactTileRange/flightMode)만 `ProjectileData` 신규 필드.
 7. **홈잉 무회귀가 완료 기준.** 기존 PlayMode smoke + splash 동작이 unit 1 이후 그대로여야 한다.

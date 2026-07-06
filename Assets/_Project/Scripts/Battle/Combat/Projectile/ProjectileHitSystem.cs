@@ -4,6 +4,7 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 using Wassup.Battle.Effects;
+using Wassup.Battle.Movement;
 using Wassup.Battle.Units;
 using Wassup.Data;
 
@@ -56,6 +57,14 @@ namespace Wassup.Battle.Combat.Projectile
             var aoeQuery = SystemAPI.QueryBuilder().WithAll<AttackUnitTag, LocalTransform>().Build();
             var aoeEntities = aoeQuery.ToEntityArray(Allocator.Temp);
             var aoeTransforms = aoeQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
+
+            // Grid params for the TileAoe payload (impact cell + candidate cells).
+            // Same source MeteorResolutionSystem uses; defaults keep it safe before
+            // the flow field exists (early frames / tests). Hoisted out of the loop.
+            bool hasFlowField = SystemAPI.TryGetSingleton<FlowFieldSingleton>(out var flowField);
+            float tileSize = hasFlowField ? flowField.tileSize : 1f;
+            int2 gridSize = hasFlowField ? flowField.gridSize : new int2(128, 128);
+            float3 ffOrigin = hasFlowField ? flowField.origin : float3.zero;
 
             foreach (var (projectile, entity) in
                      SystemAPI.Query<RefRO<ProjectileState>>()
@@ -176,7 +185,42 @@ namespace Wassup.Battle.Combat.Projectile
                         break;
                     }
 
-                    // PayloadKind.TileAoe — added in unit 4.
+                    case PayloadKind.TileAoe:
+                    {
+                        // Flat AOE to every enemy within impactTileRange of the
+                        // cell-locked impact — no direct target, no falloff (shares
+                        // the tile-membership rule with MeteorResolutionSystem). Damage
+                        // is the pre-summed Damage-output total (contract: no new field);
+                        // non-Damage outputs are a follow-up (v1 is Damage-only).
+                        float3 impactWorld = projectile.ValueRO.impact;
+                        int2 centerCell = GridMath.WorldToCell(impactWorld, tileSize, gridSize, origin: ffOrigin);
+                        int tileRange = projectile.ValueRO.impactTileRange;
+                        float dmg = projectile.ValueRO.damage;
+                        for (int i = 0; i < aoeEntities.Length; i++)
+                        {
+                            int2 cell = GridMath.WorldToCell(aoeTransforms[i].Position, tileSize, gridSize, origin: ffOrigin);
+                            if (!TileAoe.IsInTileRange(cell, centerCell, tileRange)) continue;
+                            if (damageBufferLookup.HasBuffer(aoeEntities[i]))
+                                ecb.AppendToBuffer(aoeEntities[i], new IncomingDamage { amount = dmg });
+                        }
+
+                        // Impact-crater VFX at the cell (not a target position). No
+                        // per-target HitFlash: an AOE strike flashing N enemies is
+                        // visual noise — matches the Meteor precedent.
+                        if (hasHitChannel)
+                            hitQueue.Enqueue(new ProjectileHitEvent
+                            {
+                                position = impactWorld,
+                                dataIndex = projectile.ValueRO.dataIndex,
+                            });
+                        break;
+                    }
+
+                    default:
+                        // Unknown payload: no resolution. Unlike MoveSystem's default,
+                        // this can't leak — the projectile is consumed unconditionally
+                        // just below. Present for parity / intent when a future arm lands.
+                        break;
                 }
 
                 ecb.DestroyEntity(entity);

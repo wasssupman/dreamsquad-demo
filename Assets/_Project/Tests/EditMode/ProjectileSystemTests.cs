@@ -214,5 +214,43 @@ namespace Wassup.Tests.EditMode
             Tick(0.5f); // elapsed 1.0 >= flightTime → arrives, consumed
             Assert.IsFalse(_em.Exists(proj), "arrives at flightTime and is consumed");
         }
+
+        // TileAoe payload (unit 4): on arrival, every enemy within impactTileRange of
+        // the locked impact cell takes the same flat damage; those outside are spared.
+        // No FlowFieldSingleton in the test world → WorldToCell uses tileSize=1. The
+        // impact sits at an interior cell (10,0,10) with all candidates at positive
+        // coordinates, so no negative-axis clamp distorts the cell distances — the
+        // diagonal candidate is a genuine Chebyshev-1 diagonal.
+        [Test]
+        public void TileAoe_Payload_Damages_Every_Enemy_In_Impact_Range()
+        {
+            var inRangeAxis = MakeTarget(new float3(11f, 0f, 10f));  // cell (11,10) → Chebyshev 1
+            var inRangeDiag = MakeTarget(new float3(9f, 0f, 11f));   // cell (9,11)  → Chebyshev 1 (true diagonal)
+            var outOfRange = MakeTarget(new float3(13f, 0f, 10f));   // cell (13,10) → Chebyshev 3
+
+            var proj = _em.CreateEntity();
+            _em.AddComponent<ProjectileTag>(proj);
+            _em.AddComponentData(proj, LocalTransform.FromPosition(new float3(10f, 0f, 10f)));
+            _em.AddComponentData(proj, new ProjectileState
+            {
+                movement = MovementKind.BallisticArcToPoint,
+                payload = PayloadKind.TileAoe,
+                origin = new float3(10f, 0f, 10f),
+                impact = new float3(10f, 0f, 10f),
+                flightTime = 0f,       // arrives immediately (t clamps to 1)
+                arcHeight = 0f,
+                impactTileRange = 1,
+                damage = 30f,
+            });
+
+            Tick(0.016f);
+
+            Assert.IsFalse(_em.Exists(proj), "consumed on impact");
+            Assert.AreEqual(1, _em.GetBuffer<IncomingDamage>(inRangeAxis).Length);
+            Assert.AreEqual(30f, _em.GetBuffer<IncomingDamage>(inRangeAxis)[0].amount, 1e-3f, "flat damage, no falloff");
+            Assert.AreEqual(1, _em.GetBuffer<IncomingDamage>(inRangeDiag).Length);
+            Assert.AreEqual(30f, _em.GetBuffer<IncomingDamage>(inRangeDiag)[0].amount, 1e-3f, "diagonal within range still hit");
+            Assert.AreEqual(0, _em.GetBuffer<IncomingDamage>(outOfRange).Length, "outside impactTileRange untouched");
+        }
     }
 }
