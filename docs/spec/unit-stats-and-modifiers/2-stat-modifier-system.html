@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>스탯 모디파이어 시스템 스펙 (Mono · ECS 비의존)</title>
+<style>
+  :root{--bg:#0f1115;--panel:#171a21;--panel2:#1c2029;--line:#2a2f3a;--txt:#d7dbe3;--muted:#8b93a3;--accent:#5fa8ff;--accent2:#7ee0b8;--warn:#ffcf6b;--bad:#ff8a8a;--code:#0b0d11;--chip:#222836;}
+  *{box-sizing:border-box}html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Noto Sans KR",sans-serif;}
+  .wrap{display:grid;grid-template-columns:260px 1fr;gap:0;max-width:1280px;margin:0 auto}
+  nav{position:sticky;top:0;align-self:start;height:100vh;overflow:auto;padding:24px 18px;border-right:1px solid var(--line);background:var(--panel);}
+  nav h2{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:18px 0 8px}
+  nav a{display:block;color:var(--txt);text-decoration:none;padding:4px 8px;border-radius:6px;font-size:13.5px}
+  nav a:hover{background:var(--panel2);color:var(--accent)}
+  nav .brand{font-weight:700;font-size:15px;color:#fff;margin-bottom:4px}
+  nav .sub{font-size:12px;color:var(--muted);margin-bottom:8px}
+  nav .doclink{display:block;font-size:12.5px;color:var(--accent2);text-decoration:none;padding:4px 8px;border:1px solid var(--line);border-radius:6px;margin-top:6px}
+  main{padding:40px 48px 120px;min-width:0}
+  h1{font-size:30px;line-height:1.25;margin:0 0 6px;color:#fff}
+  .lead{color:var(--muted);font-size:15px;margin:0 0 18px}
+  h2.sec{font-size:22px;margin:46px 0 6px;color:#fff;padding-top:8px;border-top:1px solid var(--line)}
+  h2.sec .n{color:var(--accent);font-weight:700;margin-right:10px}
+  h3{font-size:17px;margin:26px 0 8px;color:#eef1f6}
+  h4{font-size:14.5px;margin:18px 0 6px;color:var(--accent2);letter-spacing:.02em}
+  p{margin:10px 0}
+  code{background:var(--chip);padding:1.5px 6px;border-radius:5px;font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;font-size:13px;color:#e6e9f0}
+  pre{background:var(--code);border:1px solid var(--line);border-radius:10px;padding:16px 18px;overflow:auto;margin:14px 0}
+  pre code{background:none;padding:0;color:#cdd6e6;font-size:12.5px;line-height:1.65}
+  table{border-collapse:collapse;width:100%;margin:14px 0;font-size:13.5px;background:var(--panel);border-radius:10px;overflow:hidden}
+  th,td{border:1px solid var(--line);padding:9px 12px;text-align:left;vertical-align:top}
+  th{background:var(--panel2);color:#fff;font-weight:600;font-size:13px}
+  td code{font-size:12px}
+  .callout{border-left:3px solid var(--accent);background:var(--panel);padding:12px 16px;border-radius:0 10px 10px 0;margin:16px 0}
+  .callout.warn{border-color:var(--warn)}.callout.good{border-color:var(--accent2)}.callout b{color:#fff}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:900px){.wrap{grid-template-columns:1fr}nav{display:none}main{padding:28px 18px}.grid2{grid-template-columns:1fr}}
+  .pill{font-size:11.5px;color:var(--muted);border:1px dashed var(--line);padding:2px 8px;border-radius:6px}
+  ul.tight{margin:8px 0;padding-left:20px}ul.tight li{margin:4px 0}
+  .footer{margin-top:60px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12.5px}
+  a.src{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav>
+  <div class="brand">스탯 모디파이어 시스템</div>
+  <div class="sub">구현 스펙 · Mono · ECS 비의존</div>
+  <a class="doclink" href="./1-static-stat-structure.html">→ 자매: 정적 스탯 구조</a>
+  <h2>문서</h2>
+  <a href="#intro">0. 개요 &amp; 범위</a>
+  <a href="#arch">1. 아키텍처 (흐름)</a>
+  <a href="#modifier">2. 모디파이어 모델</a>
+  <a href="#math">3. Final 계산 규약</a>
+  <a href="#status">4. 상태이상 스택 (확장)</a>
+  <a href="#boundary">5. 드림캐쳐 경계</a>
+  <a href="#classes">6. Mono 클래스</a>
+  <a href="#determinism">7. 결정성 체크리스트</a>
+  <a href="#goals">8. 설계 목표 &amp; 효과</a>
+</nav>
+<main>
+<h1>스탯 모디파이어 시스템 스펙</h1>
+<p class="lead">MonoBehaviour 기반 · ECS 비의존 · 기준 문서: 기획 PART B</p>
+
+<div class="callout">
+<b>이 문서의 위치</b><br>
+<b>버프/디버프 모디파이어 로직 + Final 연산 + 결정성</b>의 단일 source of truth다. 정적 스탯 구조(레이어·카탈로그·StatId·내구)는 <a class="src" href="./1-static-stat-structure.html">자매 문서 「정적 스탯 구조」</a>를 전제로 한다. 특정 실행 프레임워크(ECS/DOTS 등)에 의존하지 않으며, 순수 C# + 고정 틱 시뮬으로 표현한다.
+</div>
+
+<h2 class="sec" id="intro"><span class="n">0</span>개요 &amp; 범위</h2>
+<h3>0.1 정의한다</h3>
+<ul class="tight">
+  <li><b>모디파이어 데이터 모델</b> (Flat/Percent, source, duration, stack)</li>
+  <li><b>적용·갱신·만료·중첩</b> 규칙</li>
+  <li><b>Final 집계 규약</b> (고정소수점, 가산비율 1회 승산, 소스 ID 정렬, 단일 나눗셈 헬퍼, 캡)</li>
+  <li><b>상태이상 스택</b> 선택 모듈</li>
+  <li><b>드림캐쳐 경계</b> (단방향 의존)</li>
+  <li><b>결정성 체크리스트</b></li>
+</ul>
+<h3>0.2 전제 / 위임</h3>
+<ul class="tight">
+  <li>스탯 식별자·카탈로그·내구 → <span class="pill">자매 문서 「정적 스탯 구조」</span> 전제</li>
+  <li>구체 수치·확률·계수·캡 값 → <span class="pill">밸런싱 spec</span></li>
+  <li>효과·시너지·조건 슬롯의 의미 → <span class="pill">드림캐쳐 spec</span></li>
+</ul>
+<h3>0.3 불변 원칙 (PART B 승계)</h3>
+<table>
+<tr><th>원칙</th><th>규칙</th></tr>
+<tr><td>수 표현</td><td>고정소수점 정수, 스케일 <code>1000</code> (소수점 3자리)</td></tr>
+<tr><td>비율 합성</td><td><b>가산 후 1회 승산.</b> 10% + 10% = 20% (1.1×1.1=21% 금지)</td></tr>
+<tr><td>합산 순서</td><td>모디파이어를 <b>소스 ID로 정렬</b> 후 합산</td></tr>
+<tr><td>나눗셈</td><td>단일 헬퍼(<code>FixedMath.Div</code>) + truncate toward zero 통일. 직접 <code>/</code> 금지</td></tr>
+<tr><td>시간</td><td>고정 틱(예 1/30s). <code>deltaTime</code> 가변 틱 금지</td></tr>
+<tr><td>확률 발동</td><td><b>전면 배제.</b> PRNG는 맵/웨이브 시드성 요소 한정, 스탯 레이어 미사용</td></tr>
+</table>
+
+<h2 class="sec" id="arch"><span class="n">1</span>아키텍처 (모디파이어 흐름)</h2>
+<p>모든 박스는 <b>일반 C# 객체</b>이고, 화살표는 메서드 호출이다 — 큐·시스템·월드 없음.</p>
+<pre><code>효과 레이어              UnitStats.AddModifier()      dirty=true      고정 틱마다
+(드림캐쳐·특성·유닛효과) → Flat/Percent, source,    →            →  dirty 시 Recalculate() 1회
+모디파이어 생산자          duration                                   → EffectiveStats 갱신</code></pre>
+<p>모든 적용은 효과 레이어가 <code>AddModifier()</code>를 직접 호출하는 것으로 끝난다. 적용 시점(프레임)과 집계 시점(고정 틱 <code>Recalculate</code>)이 분리돼 있어, 같은 틱에 들어온 다중 모디파이어가 일관되게 합산된다.</p>
+
+<h2 class="sec" id="modifier"><span class="n">2</span>모디파이어 모델</h2>
+<h3>2.1 데이터</h3>
+<pre><code>public enum ModifierMode : byte { Flat, Percent }   // Override는 §2.5 선택 확장
+
+public struct StatModifier
+{
+    public StatId  stat;          // 대상 스탯 (자매 문서 §4)
+    public ModifierMode mode;     // Flat(상수) / Percent(비율, BASE=1000 단위)
+    public int     value;         // 고정소수점. Flat=정수×1000, Percent=10%→100
+    public int     remainingTicks;// 만료까지 남은 틱. INFINITE = 영구
+    public int     sourceId;      // 결정적 정렬 키 (효과/시너지/특성 고유 ID)
+    public ushort  stackId;       // 동일 소스의 다중 인스턴스 구분(기본 0)
+}</code></pre>
+<h3>2.2 적용 — refresh-or-add</h3>
+<p>병합 키 = <code>(sourceId, stat, mode, stackId)</code>. 같은 키가 있으면 <b>갱신</b>, 없으면 추가.</p>
+<pre><code>void AddModifier(StatModifier m)
+{
+    int i = FindByKey(m.sourceId, m.stat, m.mode, m.stackId);
+    if (i &gt;= 0) {
+        var e = modifiers[i];
+        e.remainingTicks = Max(e.remainingTicks, m.remainingTicks); // 긴 쪽 유지
+        e.value = m.value;                                          // 최신 크기로
+        modifiers[i] = e;
+    } else {
+        modifiers.Add(m);
+    }
+    dirty = true;
+}</code></pre>
+<h3>2.3 만료 — 고정 틱</h3>
+<pre><code>void Tick()   // 고정 틱마다 1회 (예: 1/30s)
+{
+    bool changed = false;
+    for (int i = modifiers.Count - 1; i &gt;= 0; i--) {
+        var m = modifiers[i];
+        if (m.remainingTicks == INFINITE) continue;
+        if (--m.remainingTicks &lt;= 0) { modifiers.RemoveAt(i); changed = true; }
+        else modifiers[i] = m;
+    }
+    if (changed) dirty = true;
+    if (dirty) { Recalculate(); dirty = false; }
+}</code></pre>
+<h3>2.4 중첩 규칙</h3>
+<ul class="tight">
+  <li>동일 효과 중첩은 <b>기본 누산</b>(Flat은 합, Percent는 합) — §3 공식이 자연히 처리.</li>
+  <li>서로 다른 소스의 같은 스탯 버프는 각각 별도 슬롯으로 공존.</li>
+  <li>중첩 한도·우선순위 수치는 밸런싱 위임. 결과는 항상 §3의 캡으로 보호.</li>
+</ul>
+<h3>2.5 Override (선택 확장)</h3>
+<div class="callout">기획 PART B는 Flat/Percent만 요구한다. <code>Override</code>(강제 설정)는 <b>지금 도입하지 않는다.</b> "강제 고정값" 요구가 실제로 생기면 <code>ModifierMode.Override</code> 추가 + "Override 존재 시 Flat/Percent 무시하고 max(override) 채택" 규칙으로 확장한다. YAGNI.</div>
+
+<h2 class="sec" id="math"><span class="n">3</span>Final 계산 규약</h2>
+<h3>3.1 핵심 공식</h3>
+<pre><code>Final = clamp(
+    FixedMath.Div( (Base + ΣFlat) * (BASE + ΣPercent), BASE ),
+    cap.min, cap.max
+)
+
+// BASE = 1000 (= 100%)
+// Flat 먼저 가산 → Percent 합산 후 1회 승산 → 클램프</code></pre>
+<div class="callout good"><b>가산 후 1회 승산 (승산 누적 금지)</b> — 10% + 10% 버프는 <code>(BASE + 100 + 100) = 1200</code> → 20% 증가. <code>1.1 × 1.1 = 21%</code>가 아니다. 추적·디버깅·밸런싱이 압도적으로 쉬워지고 곱셈 순서 의존성이 사라진다.</div>
+<h3>3.2 결정적 합산 — 소스 ID 정렬</h3>
+<pre><code>void Recalculate()
+{
+    foreach (StatId s in modifiableStats) {
+        long flat = 0, pct = 0;
+        // 소스 ID(그다음 stackId)로 정렬한 뷰에서 합산 → 환경 무관 동일 결과
+        foreach (var m in ModifiersFor(s).OrderBy(m =&gt; m.sourceId).ThenBy(m =&gt; m.stackId)) {
+            if (m.mode == ModifierMode.Flat) flat += m.value;
+            else                             pct  += m.value;   // Percent
+        }
+        long baseVal = prototype[s];
+        long final = FixedMath.Div((baseVal + flat) * (BASE + pct), BASE);
+        effective[s] = (int)FixedMath.Clamp(final, cap[s].min, cap[s].max);
+    }
+}</code></pre>
+<div class="callout warn"><b>나눗셈이 결정성의 진짜 함정</b> — 깨지는 건 곱셈이 아니라 정수 나눗셈의 나머지 처리다. 직접 <code>/</code> 금지, 전 코드가 <code>FixedMath.Div</code>(truncate toward zero) <b>하나</b>만 경유한다.</div>
+<h3>3.3 정수 스탯 처리</h3>
+<p><code>ProjectileCount</code>, <code>AttackTargetCount</code> 같은 정수 스탯도 동일 고정소수점으로 계산하되, <b>소비 시점에 <code>/1000</code> 후 truncate</b>해 정수로 환산. 내부 누적은 항상 스케일된 정수로 유지.</p>
+<h3>3.4 캡 테이블</h3>
+<table>
+<tr><th>StatId</th><th>min</th><th>max</th><th>근거</th></tr>
+<tr><td><code>Cost</code></td><td>0</td><td>TBD</td><td>코스트 ≥ 0 (배치 코스트 감소 효과의 하한)</td></tr>
+<tr><td><code>AttackSpeed</code></td><td>TBD</td><td>TBD</td><td>공속 상한 (틱 분해능 보호)</td></tr>
+<tr><td><code>Health</code> / <code>AttackPower</code></td><td>0</td><td>TBD</td><td>음수 방지</td></tr>
+<tr><td><i>특성 합산 천장</i></td><td>—</td><td><b>+15%</b></td><td>스쿼드 특성 P2W 하드캡(PART A.6.3). 글로벌 상한</td></tr>
+</table>
+<p class="lead">구체 수치는 밸런싱 spec. 이 시스템은 <b>캡을 적용하는 메커니즘</b>만 보장한다.</p>
+
+<h2 class="sec" id="status"><span class="n">4</span>상태이상 스택 (선택 모듈)</h2>
+<p>기획상 "속성/속성별 스택"은 미래 확장이다. 코어 모디파이어 엔진과 <b>분리된 모듈</b>로 둔다 — 도입 전까지 없어도 코어가 성립한다.</p>
+<pre><code>public enum StackKind : byte { Fire, Ice, Bleed, Poison }
+
+public struct StatusStack {            // 유닛별 List&lt;StatusStack&gt;
+    public StackKind kind;
+    public byte count, maxStack;       // SO 캡 (기본 5)
+    public int  remainingTicks;        // 갱신 정책: 적용 시 perAppDuration로 리셋
+    public byte lastTriggered;         // 임계값 엣지 감지 캐시
+}
+
+// StackThresholdSO: count 오름차순 ThresholdRule[]
+//   atStack, mode(Edge|Consume), derived(ApplyDot|ApplyStun|ApplyStat), magnitude, duration
+//   → 임계 통과 시 DoT/Stun을 큐잉하거나 StatModifier를 생성(§2로 환류)</code></pre>
+<ul class="tight">
+  <li>스택 누적 → 임계값 통과 시 파생 효과(DoT/Stun/Stat). <code>ApplyStat</code> 파생은 §2 모디파이어로 환류.</li>
+  <li>이 모듈은 <code>StatusStackController</code> 하나로 캡슐화. 코어 <code>UnitStats</code>는 이를 몰라도 동작.</li>
+  <li>확률 없음 — 스택은 <b>결정적</b> 누적이다.</li>
+</ul>
+
+<h2 class="sec" id="boundary"><span class="n">5</span>드림캐쳐 경계 (단방향 의존)</h2>
+<div class="grid2">
+<div>
+<h4>스탯/모디파이어 시스템이 소유</h4>
+<ul class="tight">
+  <li>스탯 식별자(<code>StatId</code>)와 어휘</li>
+  <li>모디파이어 적용 API(<code>AddModifier</code>/만료)</li>
+  <li>Final 산출·캡</li>
+  <li>읽기용 런타임 카운터 (자매 문서 §6)</li>
+</ul>
+</div>
+<div>
+<h4>드림캐쳐가 소유 (이 문서 밖)</h4>
+<ul class="tight">
+  <li>효과의 <em>의미</em>·시너지·조건 슬롯 조합</li>
+  <li>배치효과/특수효과의 발동 트리거</li>
+  <li>"N타일 이내" 등 공간 조건 평가</li>
+  <li>파생 데미지/실드의 양과 타이밍</li>
+</ul>
+</div>
+</div>
+<div class="callout good"><b>단방향</b> — 유닛 문서가 어휘의 출처이고 드림캐쳐는 그것을 따른다. 드림캐쳐는 <code>AddModifier(stat, mode, value, duration, sourceId)</code> 호출 + 카운터 읽기만 한다. 스탯 시스템은 드림캐쳐를 <b>전혀 모른다</b>. 이 경계가 중복과 순환 의존을 막는다.</div>
+
+<h2 class="sec" id="classes"><span class="n">6</span>Mono 클래스 설계 (모디파이어)</h2>
+<table>
+<tr><th>타입</th><th>종류</th><th>책임</th><th>의존</th></tr>
+<tr><td><code>FixedMath</code></td><td>static class</td><td>Scale/BASE=1000, <code>Mul</code>/<code>Div</code>(truncate)/<code>Clamp</code>/<code>FromPercent</code>/<code>ToDisplay</code>. 모든 산술의 단일 관문</td><td>없음</td></tr>
+<tr><td><code>ModifierMode</code></td><td>enum</td><td>Flat / Percent (/ Override 확장)</td><td>없음</td></tr>
+<tr><td><code>StatModifier</code></td><td>struct</td><td>순수 데이터(§2.1)</td><td><code>StatId</code></td></tr>
+<tr><td><code>UnitStats</code> (모디파이어 부분)</td><td>MonoBehaviour/holder</td><td><code>AddModifier</code> / <code>Tick</code> / <code>Recalculate</code> / <code>Get(StatId)</code></td><td><code>FixedMath</code>, <code>StatModifier</code>, <code>EffectiveStats</code></td></tr>
+<tr><td><code>StatusStackController</code></td><td>선택 모듈</td><td>상태이상 스택(§4). 코어와 분리</td><td><code>UnitStats</code>, <code>StackThresholdSO</code></td></tr>
+</table>
+<pre><code>// 소비자 — 모디파이어 적용된 Final 읽기
+int dmg  = stats.Get(StatId.AttackPower);    // Final (고정소수점)
+int rate = stats.Get(StatId.AttackSpeed);    // 초당 N회 → 틱 간격으로 환산
+int step = stats.Get(StatId.MoveSpeed);      // 초당 N타일 → 틱당 누적</code></pre>
+
+<h2 class="sec" id="determinism"><span class="n">7</span>결정성 체크리스트</h2>
+<table>
+<tr><th>축</th><th>규칙</th><th>코드 강제 지점</th></tr>
+<tr><td>수 표현</td><td>고정소수점 정수, 스케일 1000</td><td><code>FixedMath</code> 외부에서 raw float 스탯 금지</td></tr>
+<tr><td>스탯 연산</td><td><code>(Base+ΣFlat)×(BASE+ΣPercent)</code>, 가산비율·1회 승산</td><td><code>Recalculate()</code> 단일 경로</td></tr>
+<tr><td>나눗셈</td><td>truncate toward zero, 단일 헬퍼</td><td>직접 <code>/</code> 금지 → <code>FixedMath.Div</code></td></tr>
+<tr><td>합산 순서</td><td>소스 ID(→stackId) 정렬 후 합산</td><td><code>OrderBy(sourceId).ThenBy(stackId)</code></td></tr>
+<tr><td>시간</td><td>고정 틱(1/30s 등), 공속·이동 전부 틱 정수 환산</td><td><code>Tick()</code>만 시뮬, 렌더는 가변 허용</td></tr>
+<tr><td>난수</td><td>결정적 PRNG(xorshift/PCG), 시드 파생·소비 순서 고정</td><td>스탯 레이어 미사용. 맵/웨이브 시드 한정</td></tr>
+<tr><td>확률 발동</td><td>전면 배제</td><td>크리티컬·확률 추가발동 스탯 자체를 모델에 두지 않음</td></tr>
+</table>
+
+<h2 class="sec" id="goals"><span class="n">8</span>설계 목표 &amp; 효과</h2>
+<ul class="tight">
+  <li><b>비동기 토너먼트 결정성</b> — 고정소수점 + 가산비율 1회 승산 + 소스 ID 정렬 + 고정 틱으로 "동일 시드 → 동일 결과"를 보장한다.</li>
+  <li><b>디버깅 용이</b> — 승산 누적·순서 의존을 제거해 임의 스탯값을 손으로 재현할 수 있다.</li>
+  <li><b>확장 용이</b> — 모디파이어 대상이 <code>StatId</code>로 일반화돼 있어, 새 스탯을 추가해도 집계 코드가 그대로 작동한다.</li>
+  <li><b>엔진 비의존</b> — 순수 C# + 고정 틱. 어떤 Mono 프로젝트에도 그대로 이식된다.</li>
+</ul>
+<div class="callout good">이 모델이 기존 ECS 구현에서 무엇을 바꾸는지에 대한 비교는 별도 문서 <a class="src" href="./3-migration-notes.md">기존 구현 → Mono 마이그레이션 노트</a> 참조.</div>
+
+<div class="footer">
+스탯 모디파이어 시스템 스펙 · Mono · ECS 비의존 · 기준 PART B<br>
+미결(위임): 캡 구체 수치, 특성 +15% 하드캡 적용 지점, 속성/스택 모듈 도입 시점 — 밸런싱/후속 spec.<br>
+정적 구조: <a class="src" href="./1-static-stat-structure.html">유닛 정적 스탯 구조</a> 참조.
+</div>
+</main>
+</div>
+</body>
+</html>

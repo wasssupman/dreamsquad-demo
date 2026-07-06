@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>유닛 정적 스탯 구조 스펙 (Mono · ECS 비의존)</title>
+<style>
+  :root{--bg:#0f1115;--panel:#171a21;--panel2:#1c2029;--line:#2a2f3a;--txt:#d7dbe3;--muted:#8b93a3;--accent:#5fa8ff;--accent2:#7ee0b8;--warn:#ffcf6b;--bad:#ff8a8a;--code:#0b0d11;--chip:#222836;}
+  *{box-sizing:border-box}html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Noto Sans KR",sans-serif;}
+  .wrap{display:grid;grid-template-columns:260px 1fr;gap:0;max-width:1280px;margin:0 auto}
+  nav{position:sticky;top:0;align-self:start;height:100vh;overflow:auto;padding:24px 18px;border-right:1px solid var(--line);background:var(--panel);}
+  nav h2{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:18px 0 8px}
+  nav a{display:block;color:var(--txt);text-decoration:none;padding:4px 8px;border-radius:6px;font-size:13.5px}
+  nav a:hover{background:var(--panel2);color:var(--accent)}
+  nav .brand{font-weight:700;font-size:15px;color:#fff;margin-bottom:4px}
+  nav .sub{font-size:12px;color:var(--muted);margin-bottom:8px}
+  nav .doclink{display:block;font-size:12.5px;color:var(--accent2);text-decoration:none;padding:4px 8px;border:1px solid var(--line);border-radius:6px;margin-top:6px}
+  main{padding:40px 48px 120px;min-width:0}
+  h1{font-size:30px;line-height:1.25;margin:0 0 6px;color:#fff}
+  .lead{color:var(--muted);font-size:15px;margin:0 0 18px}
+  h2.sec{font-size:22px;margin:46px 0 6px;color:#fff;padding-top:8px;border-top:1px solid var(--line)}
+  h2.sec .n{color:var(--accent);font-weight:700;margin-right:10px}
+  h3{font-size:17px;margin:26px 0 8px;color:#eef1f6}
+  h4{font-size:14.5px;margin:18px 0 6px;color:var(--accent2);letter-spacing:.02em}
+  p{margin:10px 0}
+  code{background:var(--chip);padding:1.5px 6px;border-radius:5px;font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;font-size:13px;color:#e6e9f0}
+  pre{background:var(--code);border:1px solid var(--line);border-radius:10px;padding:16px 18px;overflow:auto;margin:14px 0}
+  pre code{background:none;padding:0;color:#cdd6e6;font-size:12.5px;line-height:1.65}
+  table{border-collapse:collapse;width:100%;margin:14px 0;font-size:13.5px;background:var(--panel);border-radius:10px;overflow:hidden}
+  th,td{border:1px solid var(--line);padding:9px 12px;text-align:left;vertical-align:top}
+  th{background:var(--panel2);color:#fff;font-weight:600;font-size:13px}
+  td code{font-size:12px}
+  .tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:999px;background:var(--chip);color:var(--muted);border:1px solid var(--line);margin-right:4px}
+  .tag.proto{color:#9ec5ff;border-color:#2f3f5c}.tag.mod{color:#ffc97a;border-color:#5c4a2f}.tag.final{color:#7ee0b8;border-color:#2f5c48}.tag.run{color:#d7a8ff;border-color:#4a2f5c}
+  .callout{border-left:3px solid var(--accent);background:var(--panel);padding:12px 16px;border-radius:0 10px 10px 0;margin:16px 0}
+  .callout.warn{border-color:var(--warn)}.callout.good{border-color:var(--accent2)}.callout b{color:#fff}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:900px){.wrap{grid-template-columns:1fr}nav{display:none}main{padding:28px 18px}.grid2{grid-template-columns:1fr}}
+  .pill{font-size:11.5px;color:var(--muted);border:1px dashed var(--line);padding:2px 8px;border-radius:6px}
+  ul.tight{margin:8px 0;padding-left:20px}ul.tight li{margin:4px 0}
+  .footer{margin-top:60px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12.5px}
+  a.src{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav>
+  <div class="brand">유닛 정적 스탯 구조</div>
+  <div class="sub">구현 스펙 · Mono · ECS 비의존</div>
+  <a class="doclink" href="./2-stat-modifier-system.html">→ 자매: 스탯 모디파이어 시스템</a>
+  <h2>문서</h2>
+  <a href="#intro">0. 개요 &amp; 범위</a>
+  <a href="#layers">1. 스탯 3+1 레이어</a>
+  <a href="#flow">2. 데이터 흐름</a>
+  <a href="#catalog">3. 스탯 카탈로그</a>
+  <a href="#statid">4. StatId 식별자</a>
+  <a href="#durability">5. 내구 모델 (실드)</a>
+  <a href="#counters">6. 런타임 카운터</a>
+  <a href="#classes">7. Mono 데이터 클래스</a>
+  <a href="#goals">8. 설계 목표 &amp; 효과</a>
+</nav>
+<main>
+<h1>유닛 정적 스탯 구조 스펙</h1>
+<p class="lead">MonoBehaviour 기반 · ECS 비의존 · 기준 문서: 기획 PART B</p>
+
+<div class="callout">
+<b>이 문서의 위치</b><br>
+<b>정적 스탯 구조</b>의 단일 source of truth다. 어떤 스탯이 존재하고, 어떤 레이어로 다뤄지며, 어디에 저장되고, 내구·카운터가 어떻게 구성되는지를 정의한다. 버프/디버프의 <b>적용·연산·결정성</b>은 <a class="src" href="./2-stat-modifier-system.html">자매 문서 「스탯 모디파이어 시스템」</a>으로 위임한다. 특정 실행 프레임워크(ECS/DOTS 등)에 의존하지 않으며, 순수 C# + ScriptableObject로 표현한다.
+</div>
+
+<h2 class="sec" id="intro"><span class="n">0</span>개요 &amp; 범위</h2>
+<h3>0.1 정의한다</h3>
+<ul class="tight">
+  <li>스탯 <b>3+1 레이어</b> 모델 (Prototype / Modifier / Final / Runtime)</li>
+  <li>스탯 <b>카탈로그</b> (공용 / 특공대 / 악몽 / 매치)</li>
+  <li><b>StatId</b> 식별자 체계 (효과 레이어와의 공통 어휘)</li>
+  <li><b>내구 모델</b> (방어력 없음, 실드 → 체력)</li>
+  <li><b>런타임 카운터</b> 구성</li>
+  <li>정적 데이터를 담는 <b>Mono 클래스 구조</b></li>
+</ul>
+<h3>0.2 위임한다</h3>
+<ul class="tight">
+  <li>모디파이어 적용·만료·중첩·Final 연산·결정성 → <span class="pill">자매 문서</span></li>
+  <li>구체 수치·확률·계수·캡 값 → <span class="pill">밸런싱 spec</span></li>
+  <li>효과·시너지·드림캐쳐의 의미 → <span class="pill">드림캐쳐 spec</span></li>
+  <li>유닛 비주얼·연출(Spine/VFX) → <span class="pill">프레젠테이션 레이어</span> (스탯 SO에 섞지 않음)</li>
+</ul>
+<h3>0.3 불변 원칙 (PART B 승계, 정적 구조 관련)</h3>
+<table>
+<tr><th>원칙</th><th>규칙</th></tr>
+<tr><td>수 표현</td><td>고정소수점 정수, 스케일 <code>1000</code> (표시할 때만 <code>/1000</code>)</td></tr>
+<tr><td>내구</td><td>방어력 스탯 없음. 실드 → 체력 순 차감</td></tr>
+<tr><td>확률</td><td>확률 발동 스탯을 모델에 두지 않음</td></tr>
+<tr><td>프레젠테이션 분리</td><td>비주얼/연출은 스탯 데이터와 분리(god-object 방지)</td></tr>
+</table>
+
+<h2 class="sec" id="layers"><span class="n">1</span>스탯 3+1 레이어</h2>
+<table>
+<tr><th>레이어</th><th>정의</th><th>저장 위치 (Mono)</th><th>가변성</th></tr>
+<tr><td><span class="tag proto">Prototype</span></td><td>원본 기준값. 불변.</td><td><code>UnitStatBlock</code> (ScriptableObject)</td><td>읽기 전용</td></tr>
+<tr><td><span class="tag mod">Modifier</span></td><td>버프/디버프가 얹는 변경분 (Flat / Percent).</td><td><code>UnitStats.modifiers</code></td><td>효과 레이어가 추가/만료 (자매 문서)</td></tr>
+<tr><td><span class="tag final">Final</span></td><td>Prototype + Modifier 적용 최종값. 캐시.</td><td><code>UnitStats.effective</code></td><td>dirty 시 재계산 (자매 문서)</td></tr>
+<tr><td><span class="tag run">Runtime</span></td><td>현재 체력·누산 카운터 등 인스턴스 종속.</td><td><code>UnitStats.runtime</code> + <code>Durability</code></td><td>시뮬이 갱신</td></tr>
+</table>
+<div class="callout"><b>Final ≠ Runtime</b> — "최종 공격력"은 Final(파생 캐시)이고 "현재 체력"은 Runtime(독립 상태)이다. 체력은 Prototype·Modifier로 <b>최대치</b>가 정해지지만, 현재 체력은 데미지/회복으로 따로 움직인다. 둘을 한 곳에 섞지 않는다.</div>
+
+<h2 class="sec" id="flow"><span class="n">2</span>데이터 흐름 (정적 관점)</h2>
+<pre><code>UnitStatBlock        UnitStats (인스턴스 보유자)         EffectiveStats        소비자
+(ScriptableObject) → Prototype 참조 + List&lt;StatModifier&gt; → StatId별 Final  →  공격/이동/내구
+불변 Prototype        + Final 캐시 + Runtime</code></pre>
+<ul class="tight">
+  <li>한 유닛 인스턴스는 <code>UnitStatBlock</code>(공유 불변 자산)을 참조하고, 자신만의 모디파이어 목록·Final 캐시·Runtime 상태를 가진다.</li>
+  <li>모디파이어를 <b>생산</b>하는 쪽(효과/시너지/특성/드림캐쳐)과 그 <b>적용·집계</b> 로직은 자매 문서가 다룬다.</li>
+</ul>
+
+<h2 class="sec" id="catalog"><span class="n">3</span>스탯 카탈로그</h2>
+<p>4개 블록으로 분리. 공용 블록은 특공대·악몽이 <b>공유</b>하고, 전용 블록은 합성으로 덧붙인다(god-object 분해). 레이어: P=Prototype, M=Modifier 대상, R=Runtime.</p>
+<h3>3.1 공용 스탯 (모든 유닛)</h3>
+<table>
+<tr><th>StatId</th><th>레이어</th><th>단위/의미</th><th>비고</th></tr>
+<tr><td><code>Cost</code></td><td>P</td><td>예산</td><td>유닛 파워 총량의 기준</td></tr>
+<tr><td><code>Health</code></td><td>P·M</td><td>최대 체력</td><td>Runtime 현재체력은 별도(§5)</td></tr>
+<tr><td><code>AttackPower</code></td><td>P·M</td><td>공격력</td><td>실제 데미지의 기준값</td></tr>
+<tr><td><code>AttackSpeed</code></td><td>P·M</td><td>초당 N회</td><td>틱 단위 정수로 환산해 누적</td></tr>
+<tr><td><code>MoveSpeed</code></td><td>P·M</td><td>초당 N타일</td><td>특공대는 0(고정)</td></tr>
+<tr><td><code>ProjectileSpeed</code></td><td>P</td><td>초당 N타일</td><td>원거리만 의미</td></tr>
+<tr><td><code>ProjectileCount</code></td><td>P·M</td><td>정수</td><td>증가 = 데미지 뻥튀기, 밸런싱 검증 대상</td></tr>
+<tr><td><code>AttackRange</code></td><td>P</td><td>타일 거리</td><td>1 = 배치 타일 기준 1타일. 확장 시 Shape 지정</td></tr>
+<tr><td><code>AttackTargetCount</code></td><td>P·M</td><td>정수</td><td>근접 다수 / 원거리 단일발사+스플래시</td></tr>
+<tr><td><code>Shield</code></td><td>M</td><td>실드량</td><td>Prototype 기본 0, 버프로 부여(§5)</td></tr>
+</table>
+<h3>3.2 특공대 전용 스탯</h3>
+<table>
+<tr><th>StatId</th><th>레이어</th><th>의미</th></tr>
+<tr><td><code>Class</code></td><td>P</td><td>가디언 / 레인저 / 파이터</td></tr>
+<tr><td><code>PostPlaceDelay</code></td><td>P</td><td>배치 후 첫 공격까지 대기(배치 스킬 고려)</td></tr>
+<tr><td><code>AggroCount</code></td><td>P</td><td>어그로 끌 수 있는 악몽 최대 수(0 = 없음)</td></tr>
+<tr><td><code>AggroRange</code></td><td>P</td><td>가디언 어그로 범위(= 공격 범위)</td></tr>
+<tr><td><code>AggroFilter</code></td><td>P</td><td>추후 논의</td></tr>
+</table>
+<h3>3.3 악몽 전용 스탯</h3>
+<table>
+<tr><th>StatId</th><th>레이어</th><th>의미</th></tr>
+<tr><td><code>NightmareClass</code></td><td>P</td><td>탱커 / 러너 등</td></tr>
+<tr><td><code>AttackFilter</code></td><td>P</td><td>어떤 클래스 특공대를 먼저 칠지. 어그로 우선 → 사거리 내 → 타일거리 → 잔여체력 → 생성순</td></tr>
+</table>
+<h3>3.4 매치 스탯</h3>
+<table>
+<tr><th>StatId</th><th>레이어</th><th>의미</th></tr>
+<tr><td><code>GimmickType</code> / <code>ThemeType</code> / <code>MapSize</code></td><td>P</td><td>매치 환경 식별</td></tr>
+<tr><td><code>CostProductionRate</code></td><td>P·M</td><td>코스트 생산 속도(상수/비율 모디파이어 가능)</td></tr>
+<tr><td><code>DeployedUnitCount</code></td><td>R</td><td>증감하는 <b>현재값(게이지)</b> — 상태형 조건 평가용</td></tr>
+</table>
+<div class="callout warn"><b>속성/스택은 미래 확장</b> — "나중에 추가할 만한 스탯: 속성, 속성별 스택"은 자매 문서의 선택 모듈로 분리한다. 코어 카탈로그에 지금 박지 않는다.</div>
+
+<h2 class="sec" id="statid"><span class="n">4</span>StatId 식별자 체계</h2>
+<p>모든 수치 스탯은 단일 <code>StatId</code> enum으로 식별한다 — 효과 레이어와 스탯 레이어의 <b>공통 어휘</b>(드림캐쳐가 단방향으로 따른다).</p>
+<pre><code>public enum StatId : byte
+{
+    // 공용
+    Cost, Health, AttackPower, AttackSpeed, MoveSpeed,
+    ProjectileSpeed, ProjectileCount, AttackRange, AttackTargetCount, Shield,
+    // 특공대
+    PostPlaceDelay, AggroCount, AggroRange,
+    // 매치
+    CostProductionRate,
+}</code></pre>
+<div class="callout"><b>비-수치 식별자는 분리</b> — <code>Class</code>, <code>NightmareClass</code>, <code>AttackFilter</code>, <code>GimmickType</code> 등 enum/카테고리 값은 <code>StatId</code>에 넣지 않는다(Flat/Percent 산술 대상이 아님). 별도 enum으로 두고 모디파이어 대상에서 제외.</div>
+
+<h2 class="sec" id="durability"><span class="n">5</span>내구 모델 (실드 단일)</h2>
+<div class="callout"><b>방어력 스탯 없음.</b> 내구는 실드 하나로 표현한다 — 데미지 감산(% 경감)이 없으므로 결정성·직관성이 단순해진다.</div>
+<pre><code>// 모든 데미지(일반 공격 + 드캐 독립 데미지)는 동일 규칙
+void ApplyDamage(int amount)   // amount: 고정소수점
+{
+    int absorbed = Min(shield, amount);
+    shield -= absorbed;
+    int spill = amount - absorbed;
+    currentHealth = Max(0, currentHealth - spill);
+}</code></pre>
+<ul class="tight">
+  <li>실드는 체력보다 <b>먼저</b> 까인다. 데미지는 실드 → 체력 순.</li>
+  <li>드림캐쳐 파생 데미지(반사·폭격·스플래시)도 동일 규칙. 출처 무관 단일 경로.</li>
+  <li>실드량은 <code>Shield</code> Final이 상한, 현재 실드는 Runtime 상태.</li>
+</ul>
+
+<h2 class="sec" id="counters"><span class="n">6</span>런타임 카운터</h2>
+<p>효과 레이어가 조건 평가에 쓰는 누산값. 스탯 엔진은 <b>세기만</b> 하고 의미는 부여하지 않는다.</p>
+<table>
+<tr><th>스코프</th><th>카운터</th><th>리셋 정책</th></tr>
+<tr><td>유닛</td><td>총 공격 횟수, 생존 시간(틱), 피격 횟수, 인접 유닛 수(All/클래스/코스트별, 공격범위 내)</td><td>인스턴스 종속 → 사망 시 소멸, 별도 리셋 없음</td></tr>
+<tr><td>매치</td><td>배치/사망 횟수(All/코스트/클래스), 배치된 유닛 수(게이지), 코스트 사용량, 스킬 사용 횟수, 악몽 퇴치 수</td><td>매치 내내 누적, 별도 리셋 없음</td></tr>
+<tr><td>드캐 전용</td><td>"N회마다"용 누산기</td><td><b>별개</b> 누산기 — 발동 시 그것만 리셋. 유닛/매치 총계는 불변</td></tr>
+</table>
+<div class="callout"><b>경계</b> — "공격 2회마다 발동"은 드캐 전용 누산기로 세고 발동 시 리셋한다. 유닛의 "총 공격 횟수"는 그와 무관하게 계속 증가한다. 두 카운터를 섞지 않는 것이 재현성의 핵심.</div>
+
+<h2 class="sec" id="classes"><span class="n">7</span>Mono 데이터 클래스 설계</h2>
+<table>
+<tr><th>타입</th><th>종류</th><th>책임</th><th>의존</th></tr>
+<tr><td><code>StatId</code></td><td>enum</td><td>식별자 어휘</td><td>없음</td></tr>
+<tr><td><code>UnitStatBlock</code></td><td>ScriptableObject</td><td>Prototype 값. 공용 + 특공대/악몽 전용 블록 합성</td><td><code>StatId</code></td></tr>
+<tr><td><code>EffectiveStats</code></td><td>struct/class</td><td>StatId→Final 배열 캐시</td><td><code>StatId</code></td></tr>
+<tr><td><code>RuntimeCounters</code></td><td>class</td><td>유닛 스코프 누산값(§6)</td><td>없음</td></tr>
+<tr><td><code>Durability</code></td><td>struct</td><td>현재 체력 + 실드, <code>ApplyDamage</code>(§5)</td><td><code>FixedMath</code>*</td></tr>
+<tr><td><code>UnitStats</code></td><td>MonoBehaviour / holder</td><td>Prototype 참조 + 모디파이어 목록 + Final 캐시 + Durability + Counters</td><td>위 전부</td></tr>
+</table>
+<p class="lead">* <code>FixedMath</code>(고정소수점 산술 헬퍼)의 <b>연산 규약</b>은 자매 문서가 소유. 정적 구조 관점에선 "모든 스탯 값이 스케일 1000 정수"라는 표현 규칙만 전제.</p>
+<pre><code>// 정적 구조 — 합성 블록 예시
+[CreateAssetMenu(menuName = "Units/StatBlock")]
+public class UnitStatBlock : ScriptableObject
+{
+    public CommonStats    common;     // 공용(§3.1)
+    public DefenderStats  defender;   // 특공대 전용(§3.2), 악몽이면 미사용
+    public NightmareStats nightmare;  // 악몽 전용(§3.3), 특공대면 미사용
+}
+
+// 소비자 — 정적 Prototype 읽기(모디파이어 미적용 시)
+int baseAtk = block.common.attackPower;   // 고정소수점</code></pre>
+
+<h2 class="sec" id="goals"><span class="n">8</span>설계 목표 &amp; 효과</h2>
+<ul class="tight">
+  <li><b>경계 명확</b> — 스탯 데이터와 효과 의미를 분리하고, 단일 god-object를 공용/전용 블록으로 분해해 확장 시 충돌 면적을 줄인다.</li>
+  <li><b>엔진 비의존</b> — 순수 C# + ScriptableObject. 어떤 Mono 프로젝트에도 그대로 이식되며, 특정 실행 프레임워크에 묶이지 않는다.</li>
+  <li><b>단일 표현</b> — 공격값 등 스탯은 하나의 식별자(<code>StatId</code>)·하나의 저장처(Prototype)로만 표현해 authoring 이중표현·혼란을 제거한다.</li>
+</ul>
+<div class="callout good">이 스펙이 기존 ECS 구현에서 무엇을 바꾸는지에 대한 비교는 별도 문서 <a class="src" href="./3-migration-notes.md">기존 구현 → Mono 마이그레이션 노트</a> 참조.</div>
+
+<div class="footer">
+유닛 정적 스탯 구조 스펙 · Mono · ECS 비의존 · 기준 PART B<br>
+미결(위임): 캡 구체 수치, AggroFilter 정의, 속성/스택 도입 시점 — 밸런싱/후속 spec.<br>
+연산·결정성: <a class="src" href="./2-stat-modifier-system.html">스탯 모디파이어 시스템</a> 참조.
+</div>
+</main>
+</div>
+</body>
+</html>
