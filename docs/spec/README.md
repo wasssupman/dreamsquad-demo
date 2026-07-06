@@ -120,9 +120,13 @@ code + git history        구현 상세
 
 > 출처 spec 이 섞여 있다. 그룹 헤더 또는 항목 끝의 `(spec-slug)` 라벨로 출처 표기.
 
-#### 곡사포 유닛 (artillery-defender)
+#### 곡사포 / 투사체 후속 (artillery-defender, projectile-trajectory-payload)
 
-- **곡사포 authored 유닛** → `docs/spec/artillery-defender/` [M] · **착수 가능** — projectile-trajectory-payload 엔진 완료로 곡사 궤적/AOE 런타임 활성. ProjectileData(flightMode=BallisticToCell)+DefenderUnitData SO+프리팹+아이콘(256)+draft 편입+**Play e2e 검증(리팩터 첫 실증)**. slow-곡사포/임팩트 CC/arcHeight 거리비례/Bezier 궤적/Homing+TileAoe/Meteor→TileAoe 수렴은 그 spec 의 후속.
+곡사포 유닛 완료(→ Promoted). 남은 후속:
+
+- **신규 유닛 프로필 reconcile** [S] · `ProfileStore.LoadOrCreate` 가 기존 저장 프로필에 카탈로그 신규 유닛을 안 보태 → 새 defender 가 기존 플레이어에게 안 열림. 로드 시 카탈로그 reconcile(누락 id 추가) 여부 = 진행/획득 정책 결정. 지금은 프로필 수동 패치 우회.
+- **slow-곡사포 / 임팩트 CC / arcHeight 거리비례 / 전용 Spine rig** [S/M] · artillery-defender 후속.
+- **Meteor→TileAoe 수렴 / Bezier 궤적 / non-Damage payload / Homing+TileAoe** [S/M] · projectile-trajectory-payload 엔진 확장 후속.
 
 #### 적 스폰/이동 비주얼 (enemy-spawn-positioning)
 
@@ -249,6 +253,8 @@ board-visualization spec 자체는 ROI 부족으로 wrap 종료. 진단/실험�
 - **반복 씬 로드 ECS leak 점검** [M] · 2-씬 전환으로 BattleScene 반복 로드 → 기존 **BattleBridge.StartBattle Persistent allocates 경고** 백로그가 더 중요. 재진입 시 ECS World/Persistent 정리 경로 검증.
 
 ### Promoted / Closed
+
+- **Artillery defender** → `docs/spec/artillery-defender/` (completed 2026-07-06 — 곡사포 유닛: `Projectile_ArtilleryShell`(Rock ballistic) + `Defender_Artillery`(range7/cd3.5/dmg60, Cannon Spine 재사용) + DefenderCatalog 등록. projectile-trajectory-payload 엔진의 첫 Play 실증. 신규유닛 프로필 reconcile 은 후속)
 
 - **Projectile trajectory × payload** → `docs/spec/projectile-trajectory-payload/` (엔진 완료 2026-07-06, units 0~5 — 투사체를 궤적(Homing/BallisticArc)×페이로드(SingleSplash/TileAoe) 직교 2축으로 분해. 홈잉 무회귀 이관 + BallisticArc 궤적 + TileAoe 반경 AOE + 곡사 발사 배선. 커밋 `e5836bc`~`27a452a`, 양트랙 리뷰 3게이트, EditMode 498/499. Play e2e 는 artillery-defender 로 이관. 신규 시스템/큐/맥락 0)
 
