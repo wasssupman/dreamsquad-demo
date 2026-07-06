@@ -31,4 +31,4 @@
 - [x] 신규 테스트 12종 + 기존 스위트 회귀 없음 (2026-07-06, EditMode 510개 중 실패 1 = 알려진 무관 상시 실패 `ObstaclePlacerTests.Place_PreservesWalkAndMinimumPlaceRatio`)
 - [x] **실 API 왕복** (2026-07-06): `Defenders`/`Enemies` GET → import → `Matched 25, unmatched 0, fields applied 318, projected 19, skipped 0`. 시트 데이터는 시드와 25유닛 전 필드 동치(사전 대조). SO 값 변경 0 — asset diff 는 레거시 `attackDamage` 잔존 라인 제거 + 누락 키 기본값 명시뿐 (재직렬화 정규화).
   - 카운트 해석: projected 19 = def atk 11 + heal 1 + enemy atk 7. 빈 atk 셀은 키 생략 → no-op (skip 아님; 초안의 "skipped 7" 예상은 오산이었음).
-  - **잔여**: Enemies 탭 헤더 2개가 계약과 다름 (`name`→`displayName`, `type`→`enemyClass`) — 해당 두 컬럼만 무시됨 (fields applied 318 = 336 − 2×9). 헤더 정정 후 재실행 시 336 기대.
+  - ~~잔여: Enemies 탭 헤더 2개~~ → 정정 완료 (2026-07-06). 재실행 결과 `fields applied 336` 확인 + 시트발 attackRange 변경 5건이 대상 asset 5개에만 정확 반영 (`2f6dcd53`).

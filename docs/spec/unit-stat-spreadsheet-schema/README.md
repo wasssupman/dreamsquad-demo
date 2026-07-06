@@ -1,6 +1,6 @@
 # Unit Stat Spreadsheet Schema
 
-상태: **Unit 0~2 구현 완료 (2026-07-02) · Unit 3~5 spec 작성 (2026-07-06, 실 API 계약 확인 반영) — 구현 대기**. atk/heal 투영·레거시 제거는 → `docs/spec/unit-stat-projection/` (완료).
+상태: **완료 2026-07-06** — 실 구글 시트 왕복 검증 포함 (시드 no-op + 밸런스 변경 반영 확인). 인계는 `6_handoff_summary.md`. atk/heal 투영·레거시 제거는 → `docs/spec/unit-stat-projection/` (완료).
 
 ## 목표
 
@@ -16,6 +16,7 @@
 | 3 | 데이터+docs | `3_seed_json_and_sheet_guide.md` | 시드 JSON(`3_seed_unit_stats.json`) 보존 + 시트 입력 규약 |
 | 4 | 구현 | `4_api_envelope_adaptation.md` | 실 API envelope/2-call/errorDetail/mask 콤마 문자열 반영 + 실 왕복 검증 |
 | 5 | 구현 | `5_so_to_json_export.md` | SO→JSON export (파일 저장, 추후 POST body 생성기) |
+| 6 | 인계 | `6_handoff_summary.md` | feature 종료 요약 (커밋/검증/주의점/후속) |
 
 ## Feature-wide 계약
 
