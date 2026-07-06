@@ -243,6 +243,11 @@ board-visualization spec 자체는 ROI 부족으로 wrap 종료. 진단/실험�
 - **GA 투사체 최종화** [S] · 디펜더별 최종 변종 선택(50종 중) + 스케일/높이 취향 미세조정 + 안 쓰는 변종 SO/프리팹 정리. (projectile-ga-reskin)
 - **GA 투사체 모바일 최적화** [M] · 라이트/트레일 감축 · soft particle 토글 · 실기기 프로파일. tint 데이터-드리븐 recolor 는 별도(preserveVfxColors 우회 필요). (projectile-ga-reskin)
 
+#### 파이프라인 커버리지 — 후속 (object-pipeline-map)
+
+- **spec 파일 트리거 훅** [S] · `docs/spec/**/README.md` Write/Edit 시 파이프라인 커버리지 섹션 리마인더 주입(PostToolUse 훅). 템플릿 규칙 정착 후 잔여 누락 케이스 확인되면.
+- **리뷰 게이트** [S] · two-track-review/critic 체크리스트에 "파이프라인 정거장 누락" 항목 추가.
+
 #### 워크플로우 재현성 — 후속 (workflow-reproducibility)
 
 - **문서 수명주기 정리** [S] · PRD/TRD 는 폐기된 "프로토타입/Phase" 프레임을 현재형으로 서술하는 legacy — staleness 배너 + supersession 포인터(현재 진실원=CLAUDE.md+spec)로 정직하게 동결.
@@ -261,6 +266,8 @@ board-visualization spec 자체는 ROI 부족으로 wrap 종료. 진단/실험�
 - **반복 씬 로드 ECS leak 점검** [M] · 2-씬 전환으로 BattleScene 반복 로드 → 기존 **BattleBridge.StartBattle Persistent allocates 경고** 백로그가 더 중요. 재진입 시 ECS World/Persistent 정리 경로 검증.
 
 ### Promoted / Closed
+
+- **Object pipeline map** → `docs/spec/object-pipeline-map/` (completed 2026-07-06, unit 0, 커밋 `aeccbc3a` — 플레이 오브젝트 생성→렌더 정거장 체크표 `docs/reference/object-pipeline-map.md`(아키타입 10종, `.cs` 앵커 57건 실측) + CLAUDE.md 파이프라인 커버리지 필수 섹션 규칙(N/A+이유 강제). artillery-defender 사후 대조로 카탈로그 등록 확인 포인트 승격. 훅/리뷰 게이트는 후속)
 
 - **Workflow reproducibility** → `docs/spec/workflow-reproducibility/` (completed 2026-07-06, units 0~3 — fresh clone 워크플로우 재현: `.claude` 표준 추적+settings 분할(훅·read-only 권한 커밋) + auto-memory 27건 → `docs/reference/lessons/` 승격 + AGENTS=CLAUDE symlink + 루트 README 부트스트랩. critic APPROVE-WITH-CHANGES 반영, fresh clone 실측 검증. MCP/LFS 는 범위 밖)
 

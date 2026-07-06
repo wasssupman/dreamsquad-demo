@@ -1,6 +1,6 @@
 # Object Pipeline Map — 플레이 오브젝트 생성→렌더 커버리지 체계
 
-상태: 진행 중 (2026-07-06 시작)
+상태: 완료 2026-07-06 (unit 0, 커밋 `aeccbc3a`) — handoff: `1_handoff_summary.md`
 
 ## 목표
 
