@@ -40,6 +40,6 @@
 ## Follow-up
 
 - Claude Code 훅 승인 프롬프트·Unity 첫 Play 는 수동 단계 — 실제 새 머신/팀원 첫 클론 때 README 체크리스트 완주 확인.
-- 개인 auto-memory 승격 27건의 **포인터 슬림화**(memory 본문 → lessons 링크로 축약, drift 방지) — 보류 중.
+- ~~개인 auto-memory 승격 27건의 포인터 슬림화~~ — **불필요 판정(2026-07-06)**: drift 는 "lessons 먼저" 규칙(memory `project-lessons-repo-first`)으로 예방되고, 재현성에는 무기여(개인 사일로 정리일 뿐). stale memory 는 발견 시점에 해당 건만 삭제/포인터화(on-contact).
 - 문서 수명주기 정리(PRD/TRD staleness 배너)·ADR 로그 — README 후속 후보 참조.
 - deepinit 을 다시 쓸 경우 AGENTS.md 생성 정책과 symlink 충돌 해소 방안.
