@@ -16,7 +16,7 @@ MonoBehaviour:
   maxAngle: 8
   spring: 100
   damping: 2.5
-  maxSpeed: 12
+  maxSpeed: 26.7
   cordWidth: 0.14
   cordColor: {r: 0.45, g: 0.38, b: 0.28, a: 1}
   ringRadius: 0.18
