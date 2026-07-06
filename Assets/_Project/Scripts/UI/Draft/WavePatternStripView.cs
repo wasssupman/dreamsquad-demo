@@ -73,6 +73,7 @@ namespace Wassup.UI.Draft
             catch (Exception ex) { AddMessageCard("WAVE PREVIEW UNAVAILABLE", ex.Message); return; }
 
             for (int i = 0; i < plan.waves.Count; i++) AddWaveCard(plan.waves[i]);
+            UiLayer.Apply(gameObject);
         }
 
         // Dramatic entry: header drops from top, cards stagger-fade in left→right.
@@ -344,6 +345,7 @@ namespace Wassup.UI.Draft
             toggleTmp.color = new Color(0.12f, 0.10f, 0.06f, 1f);
             toggleTmp.alignment = TextAlignmentOptions.Center;
             toggleTmp.raycastTarget = false;
+            UiLayer.Apply(gameObject);
         }
 
         // ── Event handlers ────────────────────────────────────────────────────

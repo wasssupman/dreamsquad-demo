@@ -82,6 +82,8 @@ namespace Wassup.UI
                 _segments[i] = fillImg;
             }
             _segmentCount = max;
+
+            UiLayer.Apply(gameObject);
         }
 
         private void Update()
@@ -157,6 +159,8 @@ namespace Wassup.UI
             hlg.childForceExpandWidth = true;
             hlg.childForceExpandHeight = true;
             _segmentRow = rowGO.transform;
+
+            UiLayer.Apply(gameObject);
         }
     }
 }

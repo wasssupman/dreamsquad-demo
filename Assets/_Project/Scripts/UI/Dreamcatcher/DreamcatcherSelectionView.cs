@@ -40,6 +40,8 @@ namespace Wassup.UI
                 var go = BuildCardButton(card);
                 _cards.Add(go);
             }
+
+            UiLayer.Apply(gameObject);
             _panel.SetActive(true);
         }
 
@@ -136,6 +138,8 @@ namespace Wassup.UI
             var hlg = rowGo.AddComponent<HorizontalLayoutGroup>();
             hlg.spacing = 30; hlg.childAlignment = TextAnchor.MiddleCenter;
             hlg.childControlWidth = false; hlg.childControlHeight = false; hlg.childForceExpandWidth = false; hlg.childForceExpandHeight = false;
+
+            UiLayer.Apply(gameObject);
         }
     }
 }

@@ -198,6 +198,8 @@ namespace Wassup.UI.Draft
 
             BuildSkillPanel();
             if (mapSettings != null) mapSettings.Initialize(controller);
+
+            UiLayer.Apply(gameObject);
         }
 
         private void BuildSkillPanel()
@@ -271,6 +273,8 @@ namespace Wassup.UI.Draft
                 rt.offsetMin = new Vector2(4f, 4f);
                 rt.offsetMax = new Vector2(-4f, 0f);
             }
+
+            UiLayer.Apply(gameObject);
         }
 
         private static TextMeshProUGUI CreateLabel(Transform parent, string name, string text,

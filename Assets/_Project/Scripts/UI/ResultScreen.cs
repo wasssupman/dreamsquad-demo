@@ -147,6 +147,8 @@ namespace Wassup.UI
 
             restartButton = CreateButton(buttonRow.transform, "RestartButton", "RESTART", new Color(0.2f, 0.5f, 0.9f, 1f));
             redraftButton = CreateButton(buttonRow.transform, "RedraftButton", "REDRAFT", new Color(0.85f, 0.55f, 0.18f, 1f));
+
+            UiLayer.Apply(gameObject);
         }
 
         private static string BuildLeaderboard(int playerScore)

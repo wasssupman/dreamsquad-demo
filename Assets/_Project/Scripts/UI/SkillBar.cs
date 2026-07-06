@@ -319,6 +319,8 @@ namespace Wassup.UI
             _aimLabel.color = Color.yellow;
             _aimLabel.alignment = TextAlignmentOptions.Center;
             aimGO.SetActive(false);
+
+            UiLayer.Apply(gameObject);
         }
 
         private void RebuildSlots(SkillData[] loadout)
@@ -378,6 +380,8 @@ namespace Wassup.UI
                     button = btn,
                 };
             }
+
+            UiLayer.Apply(gameObject);
         }
     }
 }

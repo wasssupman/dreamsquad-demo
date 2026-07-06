@@ -102,6 +102,8 @@ namespace Wassup.UI
             _label.fontSize = 48;
             _label.color = Color.white;
             _label.alignment = TextAlignmentOptions.Center;
+
+            UiLayer.Apply(gameObject);
         }
     }
 }

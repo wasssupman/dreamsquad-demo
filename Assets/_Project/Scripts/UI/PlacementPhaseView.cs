@@ -152,6 +152,8 @@ namespace Wassup.UI
             bl.fontSize = 32;
             bl.color = Color.white;
             bl.alignment = TextAlignmentOptions.Center;
+
+            UiLayer.Apply(gameObject);
         }
     }
 }

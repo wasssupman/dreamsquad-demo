@@ -173,6 +173,8 @@ namespace Wassup.UI
             _valueRect.sizeDelta = new Vector2(420f, 104f);
             _value.text = "0";
             _value.color = baseColor;
+
+            UiLayer.Apply(gameObject);
         }
 
         private TextMeshProUGUI MakeText(string name, Transform parent, float size, Vector2 pivot)
