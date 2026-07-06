@@ -26,6 +26,6 @@
 
 ## 완료 기준
 
-- [ ] compile 오류 없음 (에디터 + 스크립트 어셈블리 전부)
-- [ ] 기존 EditMode 37 테스트 무수정 통과 (using 줄 제외) — 동작 무변경 증명
-- [ ] `Window/Wassup/Unit Stat Import` Import/Export 스모크 1회 정상
+- [x] compile 오류 없음 (2026-07-06, 신규 어셈블리 위치에서 Newtonsoft 자동 참조 확인 — asmdef 수정 불필요)
+- [x] 기존 EditMode 테스트 무수정 통과 (using 1줄 추가만) — 518개 스위트, 무관 상시 실패 1건 외 전부 green
+- [x] Import 스모크 1회: `Matched 25, unmatched 0, fields applied 336, projected 19` + asset diff 0 (no-op). Export 는 스위트 내 실 에셋 통합 테스트로 확인

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using Newtonsoft.Json;
 using Wassup.Data;
 
-namespace Wassup.Editor.UnitStatImport
+namespace Wassup.Data.StatImport
 {
     // unit-stat-spreadsheet-schema Unit 1 — targetClassMask is contracted as enum
     // member names OR'd into one [Flags] value. Newtonsoft has no built-in way to do

@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
 
-namespace Wassup.Editor.UnitStatImport
+namespace Wassup.Data.StatImport
 {
     // unit-stat-spreadsheet-schema Unit 1 — copies non-null DTO fields onto a
     // ScriptableObject by matching field names. DTO field names are chosen to equal

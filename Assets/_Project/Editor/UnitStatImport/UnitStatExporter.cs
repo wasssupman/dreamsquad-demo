@@ -6,6 +6,7 @@ using Newtonsoft.Json;
 using UnityEditor;
 using UnityEngine;
 using Wassup.Data;
+using Wassup.Data.StatImport;
 
 namespace Wassup.Editor.UnitStatImport
 {

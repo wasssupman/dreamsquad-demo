@@ -2,6 +2,7 @@ using Newtonsoft.Json;
 using NUnit.Framework;
 using UnityEngine;
 using Wassup.Data;
+using Wassup.Data.StatImport;
 using Wassup.Editor.UnitStatImport;
 
 namespace Wassup.Tests.EditMode.UnitStatImport

@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
-using Newtonsoft.Json.Linq;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Networking;
 using Wassup.Data;
+using Wassup.Data.StatImport;
 
 namespace Wassup.Editor.UnitStatImport
 {
@@ -174,69 +174,11 @@ namespace Wassup.Editor.UnitStatImport
             return null;
         }
 
-        // unit 4 — parses the per-sheet envelope and binds data rows to DTOs.
-        // Empty-string cells are stripped before binding: the sheet contract reads a
-        // blank cell as "keep the existing SO value", identical to an omitted key
-        // (and float?/enum? fields would otherwise choke on "").
+        // unit 4 envelope parsing lives in the runtime SheetEnvelopeParser since
+        // runtime-stat-refresh unit 0; this forward keeps the window API (and its
+        // tests) stable.
         internal static T[] ParseSheetRows<T>(string body, out string error)
-        {
-            error = null;
-            if (string.IsNullOrWhiteSpace(body))
-            {
-                error = "empty response body";
-                return null;
-            }
-
-            JObject root;
-            try
-            {
-                root = JObject.Parse(body);
-            }
-            catch (Exception e)
-            {
-                error = $"JSON parse failed: {e.Message}";
-                return null;
-            }
-
-            if (!(root.Value<bool?>("success") ?? false))
-            {
-                var detail = root["errorDetail"] as JObject;
-                error = detail == null
-                    ? "success=false (no errorDetail)"
-                    : $"{detail.Value<string>("errorCode")} — {detail.Value<string>("errorMessage")} / {detail.Value<string>("detailMessage")}";
-                return null;
-            }
-
-            var rows = root["data"] as JArray;
-            if (rows == null)
-            {
-                error = "success=true but 'data' is not an array";
-                return null;
-            }
-
-            foreach (var row in rows)
-            {
-                var obj = row as JObject;
-                if (obj == null) continue;
-                var emptyProps = new List<string>();
-                foreach (var prop in obj.Properties())
-                {
-                    if (prop.Value.Type == JTokenType.String && string.IsNullOrWhiteSpace((string)prop.Value))
-                        emptyProps.Add(prop.Name);
-                }
-                foreach (var name in emptyProps) obj.Remove(name);
-            }
-
-            try
-            {
-                return rows.ToObject<T[]>();
-            }
-            catch (Exception e)
-            {
-                error = $"row binding failed: {e.Message}";
-                return null;
-            }
-        }
+            => SheetEnvelopeParser.ParseSheetRows<T>(body, out error);
 
         internal static string BuildSheetUrl(string baseUrl, string sheetName)
             => $"{baseUrl.Trim().TrimEnd('/')}/{Uri.EscapeDataString(sheetName.Trim())}";
