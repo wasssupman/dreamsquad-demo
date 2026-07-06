@@ -25,4 +25,4 @@
 - [x] compile 오류 없음 (2026-07-06)
 - [x] EditMode 신규 5 테스트: 카탈로그 매칭 apply/미매칭/중복 id 전체 skip(3개+ 재등록 버그 고정)/atk 투영/한쪽 시트 실패 부분 적용/양쪽 실패 무적용 — 스위트 523개 통과
 - [x] `EnemyCatalog.asset` 생성 + 9종 등록 (MCP manage_scriptable_object)
-- [ ] 에디터 Play 에서 `Refresh` 1회 → 로그 카운트 정상 — unit 2 씬 배선 후 Play 검증에 포함
+- [x] 에디터 Play 에서 `Refresh` 1회 → 로그 카운트 정상 (unit 2 Play 검증에서 확인: `Matched 25, unmatched 0`)

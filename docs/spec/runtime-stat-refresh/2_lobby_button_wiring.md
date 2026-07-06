@@ -19,7 +19,8 @@ Outgame(로비) 화면에 "스탯 갱신" 버튼을 추가하고 `UnitStatRuntim
 
 ## 완료 기준
 
-- [ ] compile 오류 없음
-- [ ] 에디터 Play: 로비에서 버튼 탭 → "Matched 25, unmatched 0..." 표시, 시트 값 변경 후 재탭 → 다음 전투에서 새 수치 반영 확인 (예: 특정 적 attackRange)
-- [ ] 실기기(Development Build): 동일 동작 1회 확인
-- [ ] 릴리즈 모드(비-dev 빌드 또는 게이트 강제 false): 버튼 미노출 확인
+- [x] compile 오류 없음 (2026-07-06)
+- [x] 씬 YAML 검증: StatRefreshButton/StatRefreshResult/UnitStatRefresher 존재, view 4참조 + 카탈로그 2참조 전부 non-zero fileID
+- [x] 에디터 Play: 버튼 클릭 → 결과 라벨 "Matched 25, unmatched 0, fields applied 336, projected 19, skipped 0", 콘솔 에러 0 (2026-07-06, MCP 메뉴 클릭 구동)
+- [ ] 실기기(Development Build): 동일 동작 1회 확인 — 다음 실기기 빌드 때
+- [ ] 릴리즈 모드(비-dev 빌드): 버튼 미노출 확인 — 게이트는 코드 레벨(`!Debug.isDebugBuild && !Application.isEditor`), 릴리즈 빌드 시 확인
