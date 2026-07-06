@@ -26,7 +26,7 @@ description: Use when adding a new map decoration prop or ground tile from a sou
    - footprint 규칙: 빌보드 프랍은 `footprintX/Y = 1,1`(sim 발자국), **파일명 AxB 는 `visualFootprint`** (틸트 시각 가림). 멀티셀 차단 프랍만 예외 — 그때만 질문.
    - 디자인 값(사람 판단): `placementWeight`, `category`(+`sameCategoryMinDistanceCells`), `billboardMode`/`tiltAngle`, `visualScale`. baseline 복사값을 기본 제안으로.
 3. **프리팹 생성**: 에디터에서 PropData 인스펙터의 **"Generate Billboard Prefab" 버튼** (또는 UnityMCP `execute_code` 로 `Wassup.Editor.PropDataEditor` 의 private static `GeneratePrefab` reflection 호출). 도구가 자동 처리: 임포트 설정(Sprite/Single, **PPU 256 고정**, mipmap off, Bilinear, Clamp, **Uncompressed RGBA32 전 플랫폼**), Root+Visual 계층, `PropBillboard.Configure`(data 자기참조), `data.prefab` 역참조, `Prefabs/Props/{theme}/` 저장.
-   - **도구가 피벗은 설정하지 않는다** — TextureImporter `spriteAlignment` 를 **BottomCenter(7)** 로 별도 설정 후 reimport (Center 피벗이면 Tilted 모드에서 절반이 지면에 묻힘).
+   - 피벗은 도구가 **BottomCenter(7) 로 강제**한다 (`ConfigureTextureImporter`, 2026-07-02 fix — Center 피벗이면 Tilted 모드에서 절반이 지면에 묻힘). 도구를 거치지 않고 임포트한 텍스처만 `spriteAlignment` 수동 확인.
    - 도구가 **BlobShadow 자식을 자동 내장** (footprint 종횡비 + 틸트 투영 기본값). 그림자 위치/크기의 source of truth 는 프리팹 — 아트 여백 따라 프리팹에서 미세조정하고, 재생성해도 기존 블롭 튜닝은 보존됨. 색/알파는 전역(BattleBridge) 소유.
    - **PPU 256 고정 → 캔버스 px 가 월드 크기 결정**: `visualScale = 목표 월드폭 ÷ (캔버스px/256)`. 소스를 다른 해상도로 교체하면 visualScale·블롭 재점검.
 4. **머티리얼**: 생성 직후 Visual 의 SpriteRenderer 에 공용 `Prefabs/Props/forest/mat/PropOutline_Sprite_Unlit.mat` 할당. **프랍별 `_cast` mat 복제 금지** (구세대 레거시 패턴).

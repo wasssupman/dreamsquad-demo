@@ -6,7 +6,7 @@ per-user 메모리(38개)는 `~/.claude/projects/<cwd-경로>/memory/` 에 **경
 
 ## 변경 대상
 
-- `docs/reference/` 하위 신규 문서(주제별 1~2개, 예: `unity-mcp-gotchas.md`, `authoring-and-scene-hygiene.md`)
+- `docs/reference/lessons/` (as-built): `README.md`(인덱스) + `01-unity-mcp-operation.md` + `02-dev-workflow-git-scene.md` + `03-rendering-assets.md` + `04-sim-design.md`
 - 원본 메모리 파일: **무손상**(삭제·이동 금지, 개인 유지).
 
 ## 구현
