@@ -4,6 +4,7 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 using UnityEngine;
+using Wassup.Battle.Combat.Projectile;
 using Wassup.Data;
 
 namespace Wassup.Presentation
@@ -123,6 +124,18 @@ namespace Wassup.Presentation
                 var simPos = em.GetComponentData<LocalTransform>(entity).Position;
                 // sim→view 1회. 위치·속도·LookRotation 전부 view 공간끼리 (lastPosition 도 view).
                 float3 pos = Wassup.Core.BoardSpace.ToView(simPos);
+
+                // Ballistic arc height is a presentation concern: BoardSpace.ToView drops
+                // sim Y on the flat board, so the visible parabola is added here in view
+                // space. Folding it into `pos` (before velocity) also pitches the shell
+                // along the arc for AlongVelocity facing.
+                if (em.HasComponent<ProjectileState>(entity))
+                {
+                    var ps = em.GetComponentData<ProjectileState>(entity);
+                    if (ps.movement == MovementKind.BallisticArcToPoint && ps.flightTime > 0f)
+                        pos.y += BallisticArc.ArcHeight(ps.arcHeight, math.saturate(ps.elapsed / ps.flightTime));
+                }
+
                 var view = state.view;
                 view.transform.position = new Vector3(pos.x, pos.y + state.heightOffset, pos.z);
 

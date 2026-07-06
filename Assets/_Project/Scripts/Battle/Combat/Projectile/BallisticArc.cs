@@ -9,10 +9,17 @@ namespace Wassup.Battle.Combat.Projectile
     {
         // t in [0,1]. At t=0 → origin, t=1 → impact (the arc term is 0 at both ends);
         // t=0.5 → apex (linear midpoint + arcHeight).
+        // Visual arc height above the board plane at progress t (sine bump: 0 at both
+        // ends, apex = arcHeight at t=0.5). The presentation layer adds this in VIEW
+        // space because BoardSpace.ToView drops sim Y on the flat tilemap board — a
+        // bump baked into sim Y is invisible.
+        public static float ArcHeight(float arcHeight, float t)
+            => math.sin(t * math.PI) * arcHeight;
+
         public static float3 ArcPosition(float3 origin, float3 impact, float arcHeight, float t)
         {
             float3 p = math.lerp(origin, impact, t);
-            p.y += math.sin(t * math.PI) * arcHeight;
+            p.y += ArcHeight(arcHeight, t);
             return p;
         }
 

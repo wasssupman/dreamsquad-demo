@@ -32,7 +32,7 @@
 
 - EditMode 498/499 (유일 실패 `ObstaclePlacerTests.Place_PreservesWalkAndMinimumPlaceRatio` ≥36 기대 31 = **HEAD 기존 결함, 무관**).
 - 홈잉 무회귀(6 프로젝타일 테스트), 곡사 arc/AOE/분기(신규 테스트), 양트랙 리뷰 게이트 2회(unit 1, unit 3+4, unit 5) 전부 통과.
-- Play e2e 미실행 — 후속 이관.
+- Play: Cannon 임시 곡사화로 synthetic 검증(2026-07-06) — arc/AOE/셀낙하 OK. **버그 발견+수정**: `BoardSpace.ToView` 가 sim-Y drop → arc 안 보임 → arc 높이를 **view 공간**(`ProjectileViewPool`, `BallisticArc.ArcHeight`)으로 이동. 실유닛 정식 검증은 artillery-defender.
 
 ## Notes (되돌리면 안 되는 의도)
 

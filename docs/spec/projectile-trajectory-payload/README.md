@@ -56,5 +56,5 @@
 ## 주의
 
 - **BattleBridge.cs dirty 상태** — 현재 dreamstone WIP 로 dirty. 이 리팩터는 `SpawnProjectile`(~2076)·convert(~2990-3091) 를 건드리므로, 코드 착수 전 dreamstone WIP 를 커밋/격리해 hunk 충돌을 막는다(병행 세션 커밋 위생).
-- **틸트보드 Y** — arc 의 sim-Y 가 `ProjectileViewPool.SyncTransforms`→`BoardSpace.ToView` 를 거쳐 화면에서 "수직 높이" 로 읽히는지 페이즈별 pitch 변동 하에 실측(재작업 위험 1순위, unit 6).
+- **틸트보드 Y (해결 2026-07-06)** — `BoardSpace.ToView` 는 sim-Y 를 **drop**(평면 보드 = 셀 XZ 만). 따라서 arc 를 sim-Y 에 실으면 화면에 안 보인다. **arc 높이는 view 공간에서** `ProjectileViewPool` 이 `BallisticArc.ArcHeight(saturate(elapsed/flightTime))` 로 view.y 에 더한다(기존 heightOffset 패턴). velocity 에 접혀 포탄이 arc 따라 피칭. sim(ArcPosition)/AOE/타이밍 무변경. Cannon 임시 곡사화로 Play 검증 OK.
 - **신규 .cs refresh scope=all** — enum/컴포넌트/시스템 신규 파일 추가 시 부분 refresh 면 cascading CS0246. scope=all 로 refresh.
