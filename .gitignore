@@ -101,3 +101,44 @@ CLAUDE.local.md
 
 # Non-tracked scratch screenshots (visual-verification captures)
 /Assets/Screenshots/
+
+# ── Project scratch / experiments (never commit) ────────────────────
+# Burst debug output (name literally says DoNotShip)
+*_BurstDebugInformation_DoNotShip/
+
+# Superpowers tool scratch (brainstorm sessions, server state, etc.)
+.superpowers/
+
+# Recovery / sandbox experiment folders
+/Assets/_Recovery/
+/Assets/_Recovery.meta
+/Assets/_Sandbox/
+/Assets/_Sandbox.meta
+
+# Default-named Unity junk (accidental "New X" assets)
+/Assets/New Terrain.asset
+/Assets/New Terrain.asset.meta
+/Assets/**/New Material*.mat
+/Assets/**/New Material*.mat.meta
+/Assets/**/GameObject (*) Profile.asset
+/Assets/**/GameObject (*) Profile.asset.meta
+
+# BG_test scratch art + generated derivatives
+/Assets/_Project/Art/BG_test*
+/Assets/_Project/Generated/Props/BG_test*
+/Assets/_Project/Generated/Props/Materials/BG_test*
+
+# ChatGPT-generated scratch images
+/Assets/**/ChatGPT Image*
+
+# PaletteSanity sanity-check scene
+/Assets/_Project/Scenes/PaletteSanity.unity
+/Assets/_Project/Scenes/PaletteSanity.unity.meta
+
+# Loose screenshot captures (Korean "스크린샷" prefix, scattered outside /Assets/Screenshots)
+스크린샷*
+
+# Orphan folder metas for scratch/empty generated folders
+/Assets/_Project/Generated/Props/Materials.meta
+/Assets/_Project/Generated/Tiles.meta
+/Assets/_Project/Scenes/BattleScene.meta
