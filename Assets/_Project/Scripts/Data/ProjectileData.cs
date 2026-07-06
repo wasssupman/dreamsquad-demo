@@ -26,6 +26,15 @@ namespace Wassup.Data
         SpinAroundUp,
     }
 
+    // Trajectory mode. Homing tracks the target entity (legacy). BallisticToCell
+    // lobs an arc to the target's cell locked at fire time and resolves as a
+    // tile-AOE. BattleBridge maps this to (MovementKind, PayloadKind) at convert.
+    public enum ProjectileFlightMode
+    {
+        Homing,
+        BallisticToCell,
+    }
+
     [CreateAssetMenu(fileName = "Projectile", menuName = "Wassup/Projectile", order = 13)]
     public class ProjectileData : ScriptableObject
     {
@@ -77,5 +86,14 @@ namespace Wassup.Data
         public float onHitDuration;
         public float splashRadius;
         public float splashDamageMul = 0.5f;
+
+        [Header("Ballistic (flightMode = BallisticToCell)")]
+        public ProjectileFlightMode flightMode = ProjectileFlightMode.Homing;
+        [Tooltip("포물선 정점 높이(월드 유닛). BallisticToCell 전용.")]
+        public float arcHeight = 2f;
+        [Tooltip("착탄 셀 기준 AOE 반경(타일, Chebyshev 거리). BallisticToCell 전용.")]
+        public int impactTileRange = 1;
+        [Tooltip("최소 비행 시간(초). 근거리에서도 arc 가 보이게 하한. BallisticToCell 전용.")]
+        public float minFlightTime = 0.3f;
     }
 }

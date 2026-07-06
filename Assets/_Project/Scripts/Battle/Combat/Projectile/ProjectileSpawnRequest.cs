@@ -20,12 +20,12 @@ namespace Wassup.Battle.Combat.Projectile
         // ── Shared ───────────────────────────────────────────────────────────
         public float3 origin;
         public float damage;
+        public float speed;   // homing: flight speed · ballistic: derives flightTime in the drain
         public float visualScale;
         public int dataIndex;
 
         // ── Homing trajectory ────────────────────────────────────────────────
         public Entity target;
-        public float speed;
         public float hitThreshold;
 
         // ── Ballistic-arc trajectory ─────────────────────────────────────────

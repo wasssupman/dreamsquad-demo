@@ -2103,8 +2103,12 @@ namespace Wassup.Bridge
             var spawnPos = new float3(req.origin.x, spawnHeight, req.origin.z);
             _em.AddComponentData(entity, LocalTransform.FromPositionRotationScale(spawnPos, quaternion.identity, req.visualScale));
             _em.AddComponent<ProjectileTag>(entity);
-            _em.AddComponentData(entity, new ProjectileState
+
+            var projData = _projectileDataByIndex[req.dataIndex];
+            var state = new ProjectileState
             {
+                movement = req.movement,
+                payload = req.payload,
                 target = req.target,
                 speed = req.speed,
                 damage = req.damage,
@@ -2113,7 +2117,19 @@ namespace Wassup.Bridge
                 splashRadius = req.splashRadius,
                 splashDamageMul = req.splashDamageMul,
                 dataIndex = req.dataIndex,
-            });
+            };
+            if (req.movement == MovementKind.BallisticArcToPoint)
+            {
+                // Keep origin and impact on the same spawn-height plane so the arc's
+                // linear Y stays flat and only the sine bump lifts the shell.
+                var ballisticImpact = new float3(req.impact.x, spawnHeight, req.impact.z);
+                state.origin = spawnPos;
+                state.impact = ballisticImpact;
+                state.arcHeight = req.arcHeight;
+                state.impactTileRange = req.impactTileRange;
+                state.flightTime = BallisticArc.FlightTime(spawnPos, ballisticImpact, req.speed, projData.minFlightTime);
+            }
+            _em.AddComponentData(entity, state);
 
             if (hasSnapshot)
             {
@@ -2123,8 +2139,7 @@ namespace Wassup.Bridge
                 outputSnapshot.Dispose();
             }
 
-            var data = _projectileDataByIndex[req.dataIndex];
-            _projectileViewPool?.Spawn(entity, data, spawnPos);
+            _projectileViewPool?.Spawn(entity, projData, spawnPos);
         }
 
         // Fires the defender's on-place effect on surrounding entities. Returns
@@ -2518,6 +2533,13 @@ namespace Wassup.Bridge
                 }
             }
         }
+
+        // Maps the authoring-side ProjectileFlightMode onto the ECS trajectory/payload
+        // axes. v1 pairs the two coherent combos; other combinations are follow-ups.
+        private static (MovementKind movement, PayloadKind payload) ResolveProjectileAxes(ProjectileFlightMode mode)
+            => mode == ProjectileFlightMode.BallisticToCell
+                ? (MovementKind.BallisticArcToPoint, PayloadKind.TileAoe)
+                : (MovementKind.HomingToEntity, PayloadKind.SingleSplash);
 
         private int GetOrCreateProjectileDataIndex(ProjectileData projectile)
         {
@@ -3073,6 +3095,7 @@ namespace Wassup.Bridge
             if (unitData.projectile != null)
             {
                 var dataIndex = GetOrCreateProjectileDataIndex(unitData.projectile);
+                var axes = ResolveProjectileAxes(unitData.projectile.flightMode);
                 _em.AddComponentData(entity, new ProjectileRef
                 {
                     dataIndex = dataIndex,
@@ -3082,6 +3105,10 @@ namespace Wassup.Bridge
                     onHitEffect = unitData.projectile.onHitEffect,
                     splashRadius = unitData.projectile.splashRadius,
                     splashDamageMul = unitData.projectile.splashDamageMul,
+                    movement = axes.movement,
+                    payload = axes.payload,
+                    arcHeight = unitData.projectile.arcHeight,
+                    impactTileRange = unitData.projectile.impactTileRange,
                 });
             }
 
@@ -3670,6 +3697,7 @@ namespace Wassup.Bridge
                 if (attackMethod == Wassup.Data.EnemyAttackMethod.Projectile && entry.unitType.projectile != null)
                 {
                     var dataIndex = GetOrCreateProjectileDataIndex(entry.unitType.projectile);
+                    var axes = ResolveProjectileAxes(entry.unitType.projectile.flightMode);
                     _em.AddComponentData(entity, new ProjectileRef
                     {
                         dataIndex = dataIndex,
@@ -3679,6 +3707,10 @@ namespace Wassup.Bridge
                         onHitEffect = entry.unitType.projectile.onHitEffect,
                         splashRadius = entry.unitType.projectile.splashRadius,
                         splashDamageMul = entry.unitType.projectile.splashDamageMul,
+                        movement = axes.movement,
+                        payload = axes.payload,
+                        arcHeight = entry.unitType.projectile.arcHeight,
+                        impactTileRange = entry.unitType.projectile.impactTileRange,
                     });
                 }
             }

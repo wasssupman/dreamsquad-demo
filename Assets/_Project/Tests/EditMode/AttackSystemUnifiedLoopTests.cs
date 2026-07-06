@@ -148,6 +148,8 @@ namespace Wassup.Tests.EditMode
 
             Assert.IsTrue(_em.HasComponent<ProjectileSpawnRequest>(defender),
                 "Defender with ProjectileRef should have ProjectileSpawnRequest added");
+            Assert.AreEqual(MovementKind.HomingToEntity, _em.GetComponentData<ProjectileSpawnRequest>(defender).movement,
+                "default ProjectileRef (movement=0) should stage a homing request");
             Assert.AreEqual(5f, _em.GetComponentData<ProjectileSpawnRequest>(defender).damage, 1e-4f,
                 "Projectile defender should snapshot Damage output as projectile damage");
             Assert.AreEqual(0, _em.GetBuffer<IncomingDamage>(enemy).Length,
@@ -392,6 +394,51 @@ namespace Wassup.Tests.EditMode
                 "DeadTag entity must be excluded from target pool");
             Assert.AreEqual(0, _attackEventQueue.Count,
                 "No attack event when no valid targets exist");
+        }
+
+        // ─── projectile-trajectory-payload unit 5: a ballistic ProjectileRef stages a
+        // BallisticArcToPoint spawn request (NOT a homing one), with the target's cell
+        // locked as the impact and no tracked target entity. Guards the RESOLVE branch
+        // that must fire before the homing request would be added. ───
+
+        [Test]
+        public void Ballistic_ProjectileRef_Stages_Ballistic_Request_With_Locked_Impact()
+        {
+            var defender = CreateAttacker(
+                Faction.Defender, new float3(0f, 0f, 0f),
+                damage: 7f, range: 10f, cooldownDuration: 1f,
+                targetMask: (int)Faction.Enemy,
+                defenderTag: true);
+
+            _em.AddComponentData(defender, new ProjectileRef
+            {
+                speed = 10f,
+                visualScale = 1f,
+                dataIndex = 0,
+                movement = MovementKind.BallisticArcToPoint,
+                payload = PayloadKind.TileAoe,
+                arcHeight = 2f,
+                impactTileRange = 1,
+            });
+
+            var enemy = CreateTarget(Faction.Enemy, new float3(3f, 0f, 0f), attackerTag: true);
+
+            Tick();
+
+            Assert.IsTrue(_em.HasComponent<ProjectileSpawnRequest>(defender),
+                "ballistic defender stages a spawn request");
+            var req = _em.GetComponentData<ProjectileSpawnRequest>(defender);
+            Assert.AreEqual(MovementKind.BallisticArcToPoint, req.movement, "ballistic, not homing");
+            Assert.AreEqual(PayloadKind.TileAoe, req.payload);
+            Assert.AreEqual(Entity.Null, req.target, "ballistic tracks no target entity");
+            Assert.AreEqual(7f, req.damage, 1e-4f, "damage = summed Damage output");
+            Assert.AreEqual(1, req.impactTileRange);
+            Assert.AreEqual(2f, req.arcHeight, 1e-4f);
+            // Impact locked near the enemy's cell (x≈3), not left at the origin.
+            Assert.Greater(req.impact.x, 2f, "impact locked to the target's cell, not the shooter");
+            Assert.Less(req.impact.x, 4f);
+            Assert.AreEqual(0, _em.GetBuffer<IncomingDamage>(enemy).Length,
+                "no direct damage on the ballistic fire frame (resolves at impact)");
         }
     }
 }

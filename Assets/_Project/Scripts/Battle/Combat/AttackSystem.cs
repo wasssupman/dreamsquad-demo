@@ -297,19 +297,46 @@ namespace Wassup.Battle.Combat
                                 projectileOutputs.Add(new ProjectileSpawnOutputElement { value = o });
                             }
 
-                            ecb.AddComponent(attackerEntity, new ProjectileSpawnRequest
+                            if (projRef.movement == MovementKind.BallisticArcToPoint)
                             {
-                                target = bestTarget,
-                                origin = atkPos,
-                                damage = projectileDamage,
-                                speed = projRef.speed,
-                                hitThreshold = projRef.hitThreshold,
-                                visualScale = projRef.visualScale,
-                                dataIndex = projRef.dataIndex,
-                                onHitEffect = projRef.onHitEffect,
-                                splashRadius = projRef.splashRadius,
-                                splashDamageMul = projRef.splashDamageMul,
-                            });
+                                // Lock the target's current cell as the impact point so
+                                // the shell lands there even if the target dies or moves
+                                // mid-flight. Only XZ matters here — the drain sets the
+                                // final Y to the spawn-height plane, so Y is a placeholder.
+                                int2 impactCell = GridMath.WorldToCell(bestTargetPos, tileSize, gridSize, origin: ffOrigin);
+                                float3 impactWorld = GridMath.CellToWorldCenter(impactCell, tileSize, 0f, origin: ffOrigin);
+                                ecb.AddComponent(attackerEntity, new ProjectileSpawnRequest
+                                {
+                                    movement = MovementKind.BallisticArcToPoint,
+                                    payload = projRef.payload,
+                                    origin = atkPos,
+                                    impact = impactWorld,
+                                    damage = projectileDamage,
+                                    speed = projRef.speed,
+                                    visualScale = projRef.visualScale,
+                                    dataIndex = projRef.dataIndex,
+                                    arcHeight = projRef.arcHeight,
+                                    impactTileRange = projRef.impactTileRange,
+                                });
+                            }
+                            else
+                            {
+                                ecb.AddComponent(attackerEntity, new ProjectileSpawnRequest
+                                {
+                                    movement = MovementKind.HomingToEntity,
+                                    payload = projRef.payload,
+                                    target = bestTarget,
+                                    origin = atkPos,
+                                    damage = projectileDamage,
+                                    speed = projRef.speed,
+                                    hitThreshold = projRef.hitThreshold,
+                                    visualScale = projRef.visualScale,
+                                    dataIndex = projRef.dataIndex,
+                                    onHitEffect = projRef.onHitEffect,
+                                    splashRadius = projRef.splashRadius,
+                                    splashDamageMul = projRef.splashDamageMul,
+                                });
+                            }
                         }
                         else
                         {

@@ -15,5 +15,12 @@ namespace Wassup.Battle.Combat.Projectile
         public OnHitEffectType onHitEffect;
         public float splashRadius;
         public float splashDamageMul;
+
+        // Ballistic (flightMode = BallisticToCell). Mapped from ProjectileData.flightMode
+        // at convert time in BattleBridge; AttackSystem branches on `movement`.
+        public MovementKind movement;
+        public PayloadKind payload;
+        public float arcHeight;
+        public int impactTileRange;
     }
 }
