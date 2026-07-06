@@ -26,7 +26,7 @@
 |---|---|---|---|
 | 0 | `0_axis_contract.md` | 계약 | `MovementKind`/`PayloadKind` enum + `ProjectileState`/`ProjectileSpawnRequest` 필드 재구성 (**additive**, 홈잉 무변경, 컴파일만) |
 | 1 | `1_homing_migration.md` | 리팩터 | `ProjectileMoveSystem`/`ProjectileHitSystem` → `Move`(switch, Homing arm) / `Impact`(switch, SingleSplash arm) **동작 보존** 이관 |
-| 2 | `2_tileaoe_primitive.md` | 신설+테스트 | `TileAoe.CollectInRange` static 순수함수 (Meteor L70-77 과 동일 의미) + EditMode |
+| 2 | `2_tileaoe_primitive.md` | 신설+테스트 | `TileAoe.IsInTileRange`/`TileDistance` static 순수함수 (Meteor L70-77 과 동일 의미) + EditMode |
 | 3 | `3_ballistic_arc_trajectory.md` | arm+테스트 | MoveSystem `BallisticArc` arm: `ArcPosition` + `flightTime=dist/speed` static + EditMode |
 | 4 | `4_tileaoe_payload.md` | arm | ImpactSystem `TileAoe` payload arm: 착탄 셀 반경 flat AOE + impact VFX |
 | 5 | `5_spawn_wiring.md` | 배선 | AttackSystem RESOLVE `flightMode` 분기 + 셀 고정 + **단일** SpawnRequest 경로 + BattleBridge convert/drain |
@@ -39,7 +39,7 @@
 2. **단일 라이프사이클.** `ProjectileSpawnRequest → BattleBridge drain → 엔티티+뷰 → MoveSystem → ImpactSystem → 파괴`. **궤적/페이로드별 별도 시스템·드레인·태그 신설 금지** (band-aid 금지). 캐리어 태그는 `ProjectileTag` 하나 → teardown/뷰 회수 자동 커버.
 3. **MoveSystem = switch(MovementKind).** 각 arm 이 위치 갱신 + 자기 도착 클램프 소유. `Homing`(타겟 추적, 도착=거리, 타겟 소실 시 파괴) / `BallisticArc`(origin→impact XZ lerp, Y=sin(t·π)·arcHeight, 도착=t≥1).
 4. **ImpactSystem = switch(PayloadKind).** 도착 판정 + 해결 소유(현 `ProjectileHitSystem` 위치 유지). `SingleSplash`(기존 outputs + splash + HitFlash) / `TileAoe`(착탄 셀 반경 flat, HitFlash 미적용 = Meteor 선례).
-5. **순수 계산은 static Burst 함수 + EditMode 테스트.** `ArcPosition`, `flightTime`(speed>0 가드 + min clamp), `TileAoe.CollectInRange`(반경 경계). 테스트는 `Assets/_Project/Tests/EditMode/`.
+5. **순수 계산은 static Burst 함수 + EditMode 테스트.** `ArcPosition`, `flightTime`(speed>0 가드 + min clamp), `TileAoe.IsInTileRange`/`TileDistance`(셀 Chebyshev 멤버십). 테스트는 `Assets/_Project/Tests/EditMode/`.
 6. **데미지 출처 = `DefenderUnitData.outputs` 의 Damage 합산.** 홈잉 경로와 동일. 새 magic damage 필드 금지. 궤적/페이로드 파라미터(arcHeight/impactTileRange/flightMode)만 `ProjectileData` 신규 필드.
 7. **홈잉 무회귀가 완료 기준.** 기존 PlayMode smoke + splash 동작이 unit 1 이후 그대로여야 한다.
 8. **신규 궤적 비용 = enum 케이스 + 위치 순수함수 + MoveSystem arm 1개** (시스템/드레인/태그 0). 베지어가 이 계약의 리트머스 — 후속 후보.
@@ -49,7 +49,7 @@
 
 - **곡사포 authored 유닛** (ProjectileData/DefenderUnitData SO · 프리팹 · 아이콘 · draft 편입 · 실매치 play) → `docs/spec/artillery-defender/` (이 리팩터의 첫 소비자).
 - **Bezier 궤적** [S] · `MovementKind.BezierToPoint` + `BezierPos` 순수함수 + MoveSystem arm 1개. 이 spec 의 seam 이 옳은지의 증명 대상이지만 실제 arm 은 소비자 생길 때.
-- **Meteor 를 `TileAoe` 로 수렴** [S] · `MeteorResolutionSystem` 이 신설 `TileAoe.CollectInRange` 채택(dedup 완성). cross-context 라 이 spec 밖 — Meteor(Effects/Combat) 안 건드림.
+- **Meteor 를 `TileAoe` 로 수렴** [S] · `MeteorResolutionSystem` 이 신설 `TileAoe.IsInTileRange` 채택(dedup 완성). cross-context 라 이 spec 밖 — Meteor(Effects/Combat) 안 건드림.
 - **non-Damage payload** [M] · 착탄 시 ApplyStat/ApplyStack 도 AOE(slow-곡사포 등). 현재 TileAoe payload 는 Damage-only.
 - **임팩트 CC/knockback** [S] · `DefenderCcData` 를 AOE 대상에 적용.
 
