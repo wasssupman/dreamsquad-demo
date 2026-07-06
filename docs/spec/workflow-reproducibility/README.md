@@ -53,8 +53,6 @@
 6. **문서 계층 불변**: 승격 지식은 참조 문서(`docs/reference/…`), 정책 문서 비대화 금지.
 7. **스코프 엄수**: 재현성 세팅만. 게임 기능·리팩터·MCP 는 범위 밖.
 
-## 후속 후보 (현 범위 밖)
+## 후속 후보
 
-- **문서 수명주기 정리** [P2]: PRD/TRD 는 "프로토타입/Phase" 프레임에 동결된 legacy(자기를 "매번 주입"이라 서술하나 실제 주입은 CLAUDE.md뿐). staleness 배너 + supersession 포인터로 정직하게 동결.
-- **ADR 로그** [P2]: 횡단 결정(TimeManager·구조적 결정론·ECS 맥락 규칙)을 `docs/decisions/` 에 동결·번호·supersede 규칙으로. 단위 1(지식 승격)과 합류 가능.
-- **thick 하네스 표준화**: OMC/superpowers 마켓플레이스 커밋(사용자 결정 시).
+→ `docs/spec/README.md` Follow-up Backlog "워크플로우 재현성 — 후속" 서브그룹으로 이관 (문서 수명주기·ADR 로그·deepinit↔symlink·첫 실전 클론 확인·thick 하네스).

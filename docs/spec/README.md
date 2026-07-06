@@ -243,6 +243,14 @@ board-visualization spec 자체는 ROI 부족으로 wrap 종료. 진단/실험�
 - **GA 투사체 최종화** [S] · 디펜더별 최종 변종 선택(50종 중) + 스케일/높이 취향 미세조정 + 안 쓰는 변종 SO/프리팹 정리. (projectile-ga-reskin)
 - **GA 투사체 모바일 최적화** [M] · 라이트/트레일 감축 · soft particle 토글 · 실기기 프로파일. tint 데이터-드리븐 recolor 는 별도(preserveVfxColors 우회 필요). (projectile-ga-reskin)
 
+#### 워크플로우 재현성 — 후속 (workflow-reproducibility)
+
+- **문서 수명주기 정리** [S] · PRD/TRD 는 폐기된 "프로토타입/Phase" 프레임을 현재형으로 서술하는 legacy — staleness 배너 + supersession 포인터(현재 진실원=CLAUDE.md+spec)로 정직하게 동결.
+- **ADR 로그** [M] · 횡단 결정(TimeManager·구조적 결정론·ECS 맥락 규칙)을 `docs/decisions/` 에 동결·번호·supersede 규칙으로. `docs/reference/lessons/` 와 합류 가능.
+- **deepinit ↔ AGENTS symlink 충돌 정책** [S] · deepinit 재실행 시 AGENTS.md 를 실제 파일로 재생성해 symlink 이 풀림 — 재적용 자동화 또는 deepinit 출력 위치 변경.
+- **첫 실전 클론 체크리스트 완주 확인** [S] · 새 머신/팀원 첫 클론에서 루트 README 부트스트랩 체크리스트(훅 승인·Unity 첫 Play) 실전 검증.
+- **thick 하네스 표준화** [S] · OMC/superpowers 를 `enabledPlugins`+`extraKnownMarketplaces` 로 커밋해 팀 동일 오케스트레이션(사용자 결정 시).
+
 #### Outgame / squad / dreamcatcher — 후속 (outgame-scene-and-flow, squad-loadout, ingame-dreamcatcher)
 
 - **드림캐쳐 카드 보유/콘텐츠 확장** [L] · ownedCardIds + 가챠/꿈런 파밍, 카드 콘텐츠 확장(기획 일반10+고유3+무의식2, 신규 메커닉 채널), 다중 덱 수집/전환·이름 편집·무의식 편입. (D 후속)
@@ -253,6 +261,8 @@ board-visualization spec 자체는 ROI 부족으로 wrap 종료. 진단/실험�
 - **반복 씬 로드 ECS leak 점검** [M] · 2-씬 전환으로 BattleScene 반복 로드 → 기존 **BattleBridge.StartBattle Persistent allocates 경고** 백로그가 더 중요. 재진입 시 ECS World/Persistent 정리 경로 검증.
 
 ### Promoted / Closed
+
+- **Workflow reproducibility** → `docs/spec/workflow-reproducibility/` (completed 2026-07-06, units 0~3 — fresh clone 워크플로우 재현: `.claude` 표준 추적+settings 분할(훅·read-only 권한 커밋) + auto-memory 27건 → `docs/reference/lessons/` 승격 + AGENTS=CLAUDE symlink + 루트 README 부트스트랩. critic APPROVE-WITH-CHANGES 반영, fresh clone 실측 검증. MCP/LFS 는 범위 밖)
 
 - **Artillery defender** → `docs/spec/artillery-defender/` (completed 2026-07-06 — 곡사포 유닛: `Projectile_ArtilleryShell`(Rock ballistic) + `Defender_Artillery`(range7/cd3.5/dmg60, Cannon Spine 재사용) + DefenderCatalog 등록. projectile-trajectory-payload 엔진의 첫 Play 실증. 신규유닛 프로필 reconcile 은 후속)
 
