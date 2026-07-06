@@ -51,6 +51,16 @@ namespace Wassup.Presentation
         [Tooltip("숫자별 index 결정론 미세 회전 최대 각(도)")]
         public float maxTiltDeg = 6f;
 
+        [Header("Impact spark (unit 3)")]
+        [Tooltip("클러스터당 스파크 파티클 재생 여부")]
+        public bool enableSpark = true;
+        [Tooltip("이 데미지 이상만 스파크(작은 히트 스팸 방지)")]
+        public float sparkMinDamage = 1f;
+        [Tooltip("프레임 내 이 반경(view 월드) 안의 스폰들을 한 클러스터로 묶어 스파크 1회")]
+        public float sparkClusterRadius = 1.2f;
+        [Tooltip("스파크 파티클 스케일 배수")]
+        public float sparkScale = 1f;
+
         // clamp01 normalized magnitude used for size + color.
         public float Normalize(float amount)
         {

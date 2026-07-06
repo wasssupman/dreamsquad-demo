@@ -35,3 +35,7 @@
 - Play: 다수 데미지가 동시에 뜰 때 타격 지점에 스파크가 클러스터당 1회 튄다 — 숫자 수만큼 파티클이 폭증하지 않는다(스크린샷/프로파일 확인).
 - 실기기 스모크: 대규모 AoE 에서 파티클로 인한 프레임 급락 없음.
 - 스파크 미도착/비활성 시에도 0·1·2 룩이 온전히 동작(이 unit 은 순수 가산 레이어).
+
+---
+
+- **검증 2026-07-07**: 파티클 `DamageNumberSpark_SKELETON.prefab`(Shuriken, MaxParticles 24, burst 16, loop=false, playOnAwake=false, Billboard, URP/Particles/Unlit additive `DamageNumberSpark.mat`, sortOrder 32000) — VFX 저작 스킬 규약 준수(_SKELETON 접미사 유지, 사용자 폴리시 전까지). 오프스크린 Simulate 렌더로 방사형 스파크 버스트 확인(16 파티클, additive 정상). 스포너 배칭: `Spawn` 이 프레임 위치 누적 → `LateUpdate` 가 `sparkClusterRadius` 로 그리디 클러스터 → 클러스터당 1회 재생 + 풀 재활용(`IsAlive` 회수). ECS 무접근·새 채널 0. 빈 슬롯 경고(OnValidate + 1회) 구현. sparkPrefab 을 BattleScene 스포너에 배선·저장(clean diff). compile 0 err. **combat 중 실제 발화·클러스터 육안은 Play 최종 확인 대기.**

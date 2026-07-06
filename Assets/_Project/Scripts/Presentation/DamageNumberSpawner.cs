@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -13,6 +14,12 @@ namespace Wassup.Presentation
     //  - Overlap avoidance uses an occupancy grid in the camera billboard basis
     //    (project onto camera right/up) so cells are screen-aligned regardless of
     //    board tilt; a deterministic upward-biased spiral finds the nearest free cell.
+    //
+    // Impact spark (unit 3):
+    //  - Spawn is called per-event during BattleBridge drain; it only accumulates the
+    //    frame's spawn positions. LateUpdate clusters them and plays ONE pooled spark
+    //    per cluster (mobile draw-call safe — not one particle per number). Pure
+    //    presentation: no ECS access, no new event channel.
     public class DamageNumberSpawner : MonoBehaviour
     {
         [Header("Required")]
@@ -23,12 +30,23 @@ namespace Wassup.Presentation
         [Tooltip("미할당 시 Camera.main 사용")]
         [SerializeField] private Camera billboardCamera;
 
+        [Header("Impact spark (unit 3)")]
+        [Tooltip("클러스터당 스파크 파티클 _SKELETON 프리팹. 비우면 스파크 없이 진행(경고 후 스킵).")]
+        [SerializeField] private GameObject sparkPrefab;
+
         private DamageNumberPool _pool;
 
         // Occupancy grid state (view lifetime reservation, camera-basis cells).
         private readonly HashSet<Vector2Int> _occupied = new HashSet<Vector2Int>();
         private readonly Dictionary<DamageNumberView, Vector2Int> _active = new Dictionary<DamageNumberView, Vector2Int>();
         private int _spawnSeq; // monotonic per session — feeds deterministic motion (unit 1).
+
+        // Spark batching + pooling (unit 3).
+        private readonly List<Vector3> _frameSparks = new List<Vector3>();
+        private readonly Queue<ParticleSystem> _sparkIdle = new Queue<ParticleSystem>();
+        private readonly List<ParticleSystem> _sparkActive = new List<ParticleSystem>();
+        private bool[] _clusterUsed = new bool[0];
+        private bool _sparkWarned;
 
         // Cached spiral offsets (ring-ordered, upward-biased). Rebuilt if ring count changes.
         private static Vector2Int[] _spiral;
@@ -44,6 +62,8 @@ namespace Wassup.Presentation
         private void OnValidate()
         {
             style?.EnsureDefaults();
+            if (style != null && style.enableSpark && sparkPrefab == null)
+                Debug.LogWarning("[DamageNumberSpawner] enableSpark=true 인데 sparkPrefab 슬롯이 비었습니다 — 스파크 없이 진행합니다.");
         }
 
         public void Spawn(Vector3 worldPos, float amount)
@@ -92,6 +112,10 @@ namespace Wassup.Presentation
             _occupied.Add(slot);
             _active[view] = slot;
             view.Play(shown, finalPos, cam, style, OnViewComplete, _spawnSeq++);
+
+            // Accumulate for this frame's spark clustering (flushed in LateUpdate).
+            if (style.enableSpark && shown >= style.sparkMinDamage)
+                _frameSparks.Add(finalPos);
         }
 
         // Completion callback (natural Finish or idempotent OnDisable): free the reserved
@@ -104,6 +128,91 @@ namespace Wassup.Presentation
                 _active.Remove(view);
             }
             _pool.Return(view);
+        }
+
+        private void LateUpdate()
+        {
+            FlushFrameSparks();
+            ReclaimSparks();
+        }
+
+        // Cluster this frame's spawn positions and play ONE pooled spark per cluster.
+        private void FlushFrameSparks()
+        {
+            int n = _frameSparks.Count;
+            if (n == 0) return;
+            if (!style.enableSpark || sparkPrefab == null)
+            {
+                if (style.enableSpark && sparkPrefab == null && !_sparkWarned)
+                {
+                    Debug.LogWarning("[DamageNumberSpawner] sparkPrefab slot empty, skipping impact spark");
+                    _sparkWarned = true;
+                }
+                _frameSparks.Clear();
+                return;
+            }
+            if (_clusterUsed.Length < n) _clusterUsed = new bool[n];
+            else Array.Clear(_clusterUsed, 0, n);
+            float r2 = Mathf.Max(0.0001f, style.sparkClusterRadius);
+            r2 *= r2;
+            for (int i = 0; i < n; i++)
+            {
+                if (_clusterUsed[i]) continue;
+                Vector3 sum = _frameSparks[i];
+                int c = 1;
+                _clusterUsed[i] = true;
+                for (int j = i + 1; j < n; j++)
+                {
+                    if (_clusterUsed[j]) continue;
+                    if ((_frameSparks[j] - _frameSparks[i]).sqrMagnitude <= r2)
+                    {
+                        sum += _frameSparks[j];
+                        c++;
+                        _clusterUsed[j] = true;
+                    }
+                }
+                PlaySparkAt(sum / c);
+            }
+            _frameSparks.Clear();
+        }
+
+        private void PlaySparkAt(Vector3 pos)
+        {
+            var ps = GetSpark();
+            if (ps == null) return;
+            var tr = ps.transform;
+            tr.position = pos;
+            tr.localScale = Vector3.one * Mathf.Max(0.01f, style.sparkScale);
+            ps.gameObject.SetActive(true);
+            ps.Clear(true);
+            ps.Play(true);
+            _sparkActive.Add(ps);
+        }
+
+        private ParticleSystem GetSpark()
+        {
+            while (_sparkIdle.Count > 0)
+            {
+                var s = _sparkIdle.Dequeue();
+                if (s != null) return s;
+            }
+            var go = Instantiate(sparkPrefab, transform);
+            return go.GetComponent<ParticleSystem>();
+        }
+
+        private void ReclaimSparks()
+        {
+            for (int i = _sparkActive.Count - 1; i >= 0; i--)
+            {
+                var s = _sparkActive[i];
+                if (s == null) { _sparkActive.RemoveAt(i); continue; }
+                if (!s.IsAlive(true))
+                {
+                    _sparkActive.RemoveAt(i);
+                    s.gameObject.SetActive(false);
+                    _sparkIdle.Enqueue(s);
+                }
+            }
         }
 
         // Pure, deterministic (no RNG / no time): return the nearest free cell to `intended`

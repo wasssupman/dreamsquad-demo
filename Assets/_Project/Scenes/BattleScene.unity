@@ -3231,7 +3231,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Presentation.VfxSpawner
   placementRingPrefab: {fileID: 8053883155973515113, guid: cf6e23343ef194cdd972a28ca709b0dc, type: 3}
   meteorBurstPrefab: {fileID: 8217825365897153352, guid: 47d7505ab854d4b3c9cb7bbfcde057cc, type: 3}
-  meteorFallPrefab: {fileID: 6307914016584682601, guid: 22d24687be7f9462e9dd7f63b94dce1d, type: 3}
   tornadoPrefab: {fileID: 207745087118991948, guid: ae85f8af7e5c6c44c91e2f6966a4354b, type: 3}
   portalPrefab: {fileID: 6817788139784616374, guid: 8a018bf2f3cb64a26b5a382a6bfc6d73, type: 3}
   healAppliedPrefab: {fileID: 6736404335509753307, guid: c73c83b92a33347efa457dcb948b2ba7, type: 3}
@@ -3272,18 +3271,18 @@ MonoBehaviour:
     maxFontSize: 11.7
     damageColor:
       serializedVersion: 2
-      key0: {r: 1, g: 1, b: 1, a: 1}
-      key1: {r: 1, g: 1, b: 1, a: 1}
-      key2: {r: 0, g: 0, b: 0, a: 0}
-      key3: {r: 0, g: 0, b: 0, a: 0}
+      key0: {r: 0.208, g: 0.878, b: 0.816, a: 1}
+      key1: {r: 0.42, g: 0.941, b: 0.42, a: 1}
+      key2: {r: 1, g: 0.824, b: 0.227, a: 0}
+      key3: {r: 1, g: 0.416, b: 0.165, a: 0}
       key4: {r: 0, g: 0, b: 0, a: 0}
       key5: {r: 0, g: 0, b: 0, a: 0}
       key6: {r: 0, g: 0, b: 0, a: 0}
       key7: {r: 0, g: 0, b: 0, a: 0}
       ctime0: 0
-      ctime1: 65535
-      ctime2: 0
-      ctime3: 0
+      ctime1: 26214
+      ctime2: 45875
+      ctime3: 65535
       ctime4: 0
       ctime5: 0
       ctime6: 0
@@ -3298,7 +3297,7 @@ MonoBehaviour:
       atime7: 0
       m_Mode: 0
       m_ColorSpace: -1
-      m_NumColorKeys: 2
+      m_NumColorKeys: 4
       m_NumAlphaKeys: 2
     bigHitPunchMul: 1.6
     scaleCurve:
@@ -3376,8 +3375,18 @@ MonoBehaviour:
       m_PreInfinity: 2
       m_PostInfinity: 2
       m_RotationOrder: 4
-  headYOffset: 0.6
+    headViewOffset: 1.4
+    cellSize: {x: 0.85, y: 0.55}
+    maxSearchRings: 4
+    topBoost: 1.35
+    shakeAmp: 0.12
+    maxTiltDeg: 6
+    enableSpark: 1
+    sparkMinDamage: 1
+    sparkClusterRadius: 1.2
+    sparkScale: 1
   billboardCamera: {fileID: 1420088185}
+  sparkPrefab: {fileID: 372493123055174974, guid: 791501f91a6bd41babdb587fabb8231a, type: 3}
 --- !u!1 &1869950622
 GameObject:
   m_ObjectHideFlags: 0
@@ -3702,6 +3711,8 @@ MonoBehaviour:
   spineUnitPool: {fileID: 810041860}
   enemyViewPool: {fileID: 0}
   defenderFallbackViewPool: {fileID: 0}
+  enemyDragDimAlpha: 0.3
+  enemyDragDimFadeSpeed: 8
   spineDefenderYOffset: 0
   spawnSpreadEnabled: 1
   spawnSpreadFraction: 0.2
