@@ -6,9 +6,11 @@ using Unity.Transforms;
 
 namespace Wassup.Battle.Combat.Projectile
 {
-    // Advances each projectile toward its target each frame. When the target no
-    // longer exists (destroyed by DamageApplicationSystem or a prior hit) the
-    // projectile is destroyed — we never apply damage to a ghost target.
+    // Movement axis of the projectile pipeline: advances each projectile's position
+    // per its MovementKind and flags arrival (ProjectileState.impactReached) once the
+    // trajectory reaches its endpoint. Payload resolution is a separate concern —
+    // ProjectileHitSystem consumes the flag. Arrival lives here (not in the impact
+    // system) because only the trajectory knows its own arrival condition.
     //
     // Target validity is checked through a read-only ComponentLookup<LocalTransform>.
     // EntityManager.Exists() is not Burst-compatible; HasComponent on the lookup
@@ -31,30 +33,53 @@ namespace Wassup.Battle.Combat.Projectile
             var transformLookup = SystemAPI.GetComponentLookup<LocalTransform>(isReadOnly: true);
 
             foreach (var (transform, projectile, entity) in
-                     SystemAPI.Query<RefRW<LocalTransform>, RefRO<ProjectileState>>()
+                     SystemAPI.Query<RefRW<LocalTransform>, RefRW<ProjectileState>>()
                               .WithAll<ProjectileTag>()
                               .WithEntityAccess())
             {
-                var target = projectile.ValueRO.target;
-                if (target == Entity.Null || !transformLookup.HasComponent(target))
+                switch (projectile.ValueRO.movement)
                 {
-                    ecb.DestroyEntity(entity);
-                    continue;
-                }
+                    case MovementKind.HomingToEntity:
+                    {
+                        var target = projectile.ValueRO.target;
+                        if (target == Entity.Null || !transformLookup.HasComponent(target))
+                        {
+                            // Target gone (destroyed by DamageApplicationSystem or a
+                            // prior hit) — never apply damage to a ghost target.
+                            ecb.DestroyEntity(entity);
+                            break;
+                        }
 
-                float3 currentPos = transform.ValueRO.Position;
-                float3 targetPos = transformLookup[target].Position;
-                float3 delta = targetPos - currentPos;
-                float dist = math.length(delta);
-                float step = projectile.ValueRO.speed * dt;
+                        float3 currentPos = transform.ValueRO.Position;
+                        float3 targetPos = transformLookup[target].Position;
+                        float3 delta = targetPos - currentPos;
+                        float dist = math.length(delta);
+                        float step = projectile.ValueRO.speed * dt;
 
-                if (dist <= step)
-                {
-                    transform.ValueRW.Position = targetPos;
-                }
-                else
-                {
-                    transform.ValueRW.Position = currentPos + math.normalize(delta) * step;
+                        float3 newPos = dist <= step ? targetPos : currentPos + math.normalize(delta) * step;
+                        transform.ValueRW.Position = newPos;
+
+                        // Arrival: within hitThreshold on the XZ plane. Condition moved
+                        // verbatim from the legacy ProjectileHitSystem distance check,
+                        // evaluated against the post-move position (Hit used to run
+                        // after Move, so this is the same value it saw).
+                        float dx = targetPos.x - newPos.x;
+                        float dz = targetPos.z - newPos.z;
+                        float thr = projectile.ValueRO.hitThreshold;
+                        if (dx * dx + dz * dz <= thr * thr)
+                            projectile.ValueRW.impactReached = true;
+                        break;
+                    }
+
+                    // MovementKind.BallisticArcToPoint arm — added in unit 3.
+
+                    default:
+                        // Unhandled movement kind: destroy rather than leak an
+                        // immortal entity (no position, no arrival, no resolve). A
+                        // visible symptom (the projectile vanishes) beats a silent
+                        // leak if a future arm is ever forgotten.
+                        ecb.DestroyEntity(entity);
+                        break;
                 }
             }
 

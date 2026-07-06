@@ -157,5 +157,31 @@ namespace Wassup.Tests.EditMode
             var buffer = _em.GetBuffer<IncomingDamage>(target);
             Assert.AreEqual(0, buffer.Length, "no damage should have been applied");
         }
+
+        // Directly exercises the trajectory/payload seam introduced in
+        // projectile-trajectory-payload unit 1: a projectile flies for several
+        // frames, arrives on a *later* frame (MoveSystem sets impactReached), and
+        // ProjectileHitSystem resolves it that same frame. The other hit tests all
+        // resolve on frame 1 or never arrive, so none pin down this hand-off.
+        [Test]
+        public void Move_Then_Arrives_And_Resolves_On_A_Later_Frame()
+        {
+            var target = MakeTarget(new float3(10f, 0f, 0f));
+            var proj = MakeProjectile(new float3(0f, 0f, 0f), target, speed: 4f, damage: 25f, hitThreshold: 0.5f);
+
+            Tick(1f); // x: 0 → 4, not yet in range
+            Assert.IsTrue(_em.Exists(proj), "still flying after frame 1");
+            Assert.AreEqual(0, _em.GetBuffer<IncomingDamage>(target).Length, "no damage mid-flight (frame 1)");
+
+            Tick(1f); // x: 4 → 8, still not in range
+            Assert.IsTrue(_em.Exists(proj), "still flying after frame 2");
+            Assert.AreEqual(0, _em.GetBuffer<IncomingDamage>(target).Length, "no damage mid-flight (frame 2)");
+
+            Tick(1f); // dist 2 <= step 4 → snap to target → arrives → resolves this frame
+            Assert.IsFalse(_em.Exists(proj), "projectile arrives and is consumed on a later frame");
+            var buffer = _em.GetBuffer<IncomingDamage>(target);
+            Assert.AreEqual(1, buffer.Length, "damage applied on the arrival frame");
+            Assert.AreEqual(25f, buffer[0].amount, 1e-3f);
+        }
     }
 }
