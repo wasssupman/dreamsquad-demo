@@ -263,6 +263,8 @@ board-visualization spec 자체는 ROI 부족으로 wrap 종료. 진단/실험�
 
 ### Promoted / Closed
 
+- **Placement enemy see-through** → `docs/spec/placement-enemy-see-through/` (completed 2026-07-06, units 0~6, `9941f27` — 드래그 배치 중 적 유닛(Spine·Quad 혼합)을 반투명화해 가려진 뒤 보드 타일 노출. cutout↔transparent 런타임 전환(Quad)·PMA skeleton.A(Spine)·그림자 페이드·health tint 합성·매프레임 재적용. 프리뷰 불투명/최상단(unit 5) + 배치 하이라이트 적 위로(unit 6). 순수 프레젠테이션, ECS 변경 0·채널 14개 불변. two-track APPROVE(0~4)+M1 반영. 스텐실/후처리 리빌·블로킹 하자드 반투명은 후속)
+
 - **Portal VFX upgrade** → `docs/spec/portal-vfx-upgrade/` (completed 2026-07-06, unit 0 — 물빔(WaterBeam 어거지) 제거 + 스월 지속화(loop+사이클 오버라이드, LocationVfx 가 duration 무시하는 원인 해소). 룬 게이트 실험은 사용자 반려·롤백. 입구/출구 시각 구분은 후속 후보)
 
 - **Workflow reproducibility** → `docs/spec/workflow-reproducibility/` (completed 2026-07-06, units 0~3 — fresh clone 워크플로우 재현: `.claude` 표준 추적+settings 분할(훅·read-only 권한 커밋) + auto-memory 27건 → `docs/reference/lessons/` 승격 + AGENTS=CLAUDE symlink + 루트 README 부트스트랩. critic APPROVE-WITH-CHANGES 반영, fresh clone 실측 검증. MCP/LFS 는 범위 밖)
