@@ -1,6 +1,7 @@
 using System;
 using TMPro;
 using UnityEngine;
+using Wassup.Core.TimeControl;
 
 namespace Wassup.Presentation
 {
@@ -24,6 +25,8 @@ namespace Wassup.Presentation
         private Color _faceColor;
         private bool _playing;
         private int _index; // spawner-owned monotonic spawn index (deterministic motion — unit 1)
+        private Color _gradTopRGB; // 정점 그라데이션 상단 RGB (알파는 매 프레임 페이드로 주입)
+        private float _tiltDeg;    // index 결정론 미세 roll
 
         private void Awake()
         {
@@ -50,6 +53,15 @@ namespace Wassup.Presentation
             _tmp.fontSize = Mathf.Lerp(style.minFontSize, style.maxFontSize, t);
             _tmp.text = amount.ToString();
             _faceColor = style.EvaluateColor(t);
+            // 정점 그라데이션 상단 밝기(RGB 캐시). 알파는 ApplyFrame 이 4-corner 로 주입(페이드와 분리).
+            _gradTopRGB = new Color(
+                Mathf.Clamp01(_faceColor.r * style.topBoost),
+                Mathf.Clamp01(_faceColor.g * style.topBoost),
+                Mathf.Clamp01(_faceColor.b * style.topBoost), 1f);
+            _tmp.enableVertexGradient = true;
+            // index 결정론 미세 회전(±maxTiltDeg): frac(index·φ) 저불일치 시퀀스, RNG/시간 미사용.
+            float h = _index * 0.61803398875f; h -= Mathf.Floor(h);
+            _tiltDeg = (h * 2f - 1f) * style.maxTiltDeg;
 
             transform.position = _startPos; // 스포너가 넘긴 view 공간 위치
             transform.localScale = Vector3.one;
@@ -62,7 +74,10 @@ namespace Wassup.Presentation
         private void Update()
         {
             if (!_playing) return;
-            _elapsed += Time.deltaTime;
+            // 글로벌 Time.timeScale 은 1 고정 → Time.deltaTime 은 TimeManager 정지에 안 멈춘다.
+            // Battle 도메인 델타 경유(정지/슬로우 반영). TimeManager 부재 시에만 폴백.
+            var tm = TimeManager.Instance;
+            _elapsed += tm != null ? tm.DeltaTime(TimeDomain.Battle) : Time.deltaTime;
             float n = _elapsed / _lifetime;
             if (n >= 1f) { Finish(); return; }
             ApplyFrame(n);
@@ -70,8 +85,19 @@ namespace Wassup.Presentation
 
         private void ApplyFrame(float n)
         {
-            // driftUp 은 화면 위 방향(Y) 연출 — Y 가 화면 위라 무변환 (view 공간 _startPos 기준).
-            transform.position = _startPos + Vector3.up * (_style.driftUp * n);
+            // driftUp: view 공간 world-up 상승 (앵커와 동일 축).
+            Vector3 pos = _startPos + Vector3.up * (_style.driftUp * n);
+            // 대형 히트 셰이크: 방향 시드는 index(구조적), 진동은 수명 클럭 n, 초반 감쇠. 화면 평면에서 흔든다.
+            if (_style.shakeAmp > 0f && _punchT > 0f && _camera != null)
+            {
+                float decay = 1f - n; decay *= decay;
+                float mag = _style.shakeAmp * _punchT * decay;
+                float phase = _index * 2.3999632f;
+                Vector3 dir = _camera.transform.right * Mathf.Cos(phase + n * 46f)
+                            + _camera.transform.up * Mathf.Sin(phase * 1.31f + n * 39f);
+                pos += dir * mag;
+            }
+            transform.position = pos;
 
             float curve = _style.scaleCurve != null && _style.scaleCurve.length > 0
                 ? _style.scaleCurve.Evaluate(n)
@@ -84,15 +110,17 @@ namespace Wassup.Presentation
             float a = _style.alphaCurve != null && _style.alphaCurve.length > 0
                 ? _style.alphaCurve.Evaluate(n)
                 : 1f - n;
-            var c = _faceColor; c.a = a;
-            _tmp.color = c;
+            // 정점 그라데이션(상단 밝게) 유지 + 페이드는 4-corner 알파로만 — 단색 _tmp.color 덮어쓰기 금지.
+            Color bot = _faceColor; bot.a = a;
+            Color top = _gradTopRGB; top.a = a;
+            _tmp.colorGradient = new VertexGradient(top, top, bot, bot);
         }
 
         private void LateUpdate()
         {
             if (!_playing || _camera == null) return;
-            // Full billboard: copy camera rotation so the number stays readable.
-            transform.rotation = _camera.transform.rotation;
+            // 빌보드(카메라 정렬) + index 결정론 미세 roll — 격자의 딱딱함 완화.
+            transform.rotation = _camera.transform.rotation * Quaternion.Euler(0f, 0f, _tiltDeg);
         }
 
         private void Finish()

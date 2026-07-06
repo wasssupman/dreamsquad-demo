@@ -24,7 +24,7 @@ namespace Wassup.Presentation
         [Tooltip("월드 TMP 폰트 크기(최대 데미지)")]
         public float maxFontSize = 11.7f;
 
-        [Header("Magnitude → color (흰→노랑→주황→빨강)")]
+        [Header("Magnitude → color (청록→스프링그린→골드→오렌지)")]
         public Gradient damageColor = new Gradient();
 
         [Header("Punch")]
@@ -42,6 +42,14 @@ namespace Wassup.Presentation
         public Vector2 cellSize = new Vector2(1.4f, 0.9f);
         [Tooltip("점유 시 빈 셀을 찾는 최대 링 수")]
         public int maxSearchRings = 4;
+
+        [Header("Impact / motion")]
+        [Tooltip("정점 그라데이션 상단 밝기 배수 (면색 × 이 값, clamp01)")]
+        public float topBoost = 1.35f;
+        [Tooltip("대형 히트 셰이크 진폭(월드). 소형 히트(_punchT→0)엔 0 수렴, 수명 초반 감쇠")]
+        public float shakeAmp = 0.12f;
+        [Tooltip("숫자별 index 결정론 미세 회전 최대 각(도)")]
+        public float maxTiltDeg = 6f;
 
         // clamp01 normalized magnitude used for size + color.
         public float Normalize(float amount)
@@ -73,19 +81,35 @@ namespace Wassup.Presentation
                     new Keyframe(0.6f, 1f),
                     new Keyframe(1f, 0f));
             }
-            if (damageColor == null || damageColor.colorKeys == null || damageColor.colorKeys.Length == 0)
+            if (NeedsPaletteDefault())
             {
                 damageColor = new Gradient();
                 damageColor.SetKeys(
                     new[]
                     {
-                        new GradientColorKey(Color.white, 0f),
-                        new GradientColorKey(new Color(1f, 0.92f, 0.23f), 0.4f),   // yellow
-                        new GradientColorKey(new Color(1f, 0.55f, 0.1f), 0.7f),    // orange
-                        new GradientColorKey(new Color(1f, 0.2f, 0.18f), 1f),      // red
+                        new GradientColorKey(new Color(0.208f, 0.878f, 0.816f), 0f),  // cyan #35E0D0
+                        new GradientColorKey(new Color(0.420f, 0.941f, 0.420f), 0.4f),// spring green #6BF06B
+                        new GradientColorKey(new Color(1f, 0.824f, 0.227f), 0.7f),    // gold #FFD23A
+                        new GradientColorKey(new Color(1f, 0.416f, 0.165f), 1f),      // hot orange #FF6A2A
                     },
                     new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(1f, 1f) });
             }
+        }
+
+        // `new Gradient()` 의 pristine 기본값(2키 모두 흰색)만 미구성으로 보고 팔레트를 채운다.
+        // 이 게이트가 없으면(구 Length==0 검사) 흰→흰 기본이 length 2 라 팔레트가 영원히 미적용.
+        // 실제 튜닝(키 3개+ 또는 비-흰색)은 보존한다.
+        private bool NeedsPaletteDefault()
+        {
+            if (damageColor == null || damageColor.colorKeys == null || damageColor.colorKeys.Length == 0)
+                return true;
+            var k = damageColor.colorKeys;
+            return k.Length == 2 && IsApproxWhite(k[0].color) && IsApproxWhite(k[1].color);
+        }
+
+        private static bool IsApproxWhite(Color c)
+        {
+            return c.r > 0.99f && c.g > 0.99f && c.b > 0.99f;
         }
     }
 }
