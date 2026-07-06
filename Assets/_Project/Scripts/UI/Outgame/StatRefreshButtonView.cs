@@ -10,7 +10,9 @@ namespace Wassup.UI
     // numbers). Hidden outside development builds; the release APK never shows it.
     public class StatRefreshButtonView : MonoBehaviour
     {
-        private const string IdleLabel = "스탯 갱신";
+        // menu font assets (LiberationSans/Anton/Bangers) carry no Korean glyphs —
+        // all lobby labels are English all-caps; keep these matching.
+        private const string IdleLabel = "REFRESH STATS";
 
         [SerializeField] private UnitStatRuntimeRefresher refresher;
         [SerializeField] private Button button;
@@ -37,7 +39,7 @@ namespace Wassup.UI
         {
             if (refresher == null || refresher.RequestInFlight) return;
             button.interactable = false;
-            if (label != null) label.text = "갱신 중...";
+            if (label != null) label.text = "REFRESHING...";
 
             refresher.Refresh(log =>
             {
