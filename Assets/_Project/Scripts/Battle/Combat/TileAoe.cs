@@ -4,7 +4,7 @@ namespace Wassup.Battle.Combat
 {
     // Shared tile-AOE membership primitive. A candidate cell is "in range" of a
     // center cell when their Chebyshev (chessboard) tile distance is within
-    // tileRange — the same rule MeteorResolutionSystem applies inline and the
+    // tileRange — the rule the legacy Meteor resolver applied inline (removed unit 8) and the
     // projectile TileAoe payload (unit 4) reuses. Pure + Burst-compatible; callers
     // convert world positions to cells via GridMath.WorldToCell, then loop
     // candidates calling IsInTileRange (no list is materialized here).

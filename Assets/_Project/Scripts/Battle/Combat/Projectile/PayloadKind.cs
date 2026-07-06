@@ -11,7 +11,7 @@ namespace Wassup.Battle.Combat.Projectile
 
         // Flat AOE to every enemy within impactTileRange (Chebyshev tiles) of the
         // impact cell — no direct target, no falloff. Shares the tile-membership
-        // primitive with MeteorResolutionSystem.
+        // primitive the legacy Meteor resolver used (removed unit 8).
         TileAoe = 1,
     }
 }

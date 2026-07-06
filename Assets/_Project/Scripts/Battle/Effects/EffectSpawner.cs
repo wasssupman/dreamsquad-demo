@@ -62,21 +62,6 @@ namespace Wassup.Battle.Effects
             return e;
         }
 
-        // Phase 7 — Meteor: unlike Slow/Tornado, this spawns a dedicated carrier
-        // entity. MeteorResolutionSystem consumes + destroys it when warningRemaining <= 0.
-        public static Entity SpawnMeteor(EntityManager em, float3 centerWorld, int tileRange, float damage, float warningSec)
-        {
-            var e = em.CreateEntity();
-            em.AddComponentData(e, new MeteorPending
-            {
-                centerWorld = centerWorld,
-                tileRange = tileRange,
-                damage = damage,
-                warningRemaining = warningSec,
-            });
-            return e;
-        }
-
         // Phase 7 — Portal: carrier entity with the two endpoints. Re-cast spawns a
         // separate link (player-decided overlap) rather than merging.
         // Phase 9: exitWaypointIndex parameter dropped. After teleport, next-frame

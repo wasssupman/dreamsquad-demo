@@ -23,3 +23,5 @@ unit 7 로 미사용이 된 Meteor 전용 파이프라인을 삭제한다. Nativ
 - compile PASS + EditMode 전체 GREEN (알려진 무관 사전실패 ObstaclePlacer 제외).
 - Play smoke: meteor 캐스트 → unit 7 과 동일 동작. StopBattle/재시작 시 teardown 에러·leak 경고 없음.
 - CLAUDE.md·TRD 채널 개수/목록 일치.
+
+확인 2026-07-06 — rg 잔존 0 · 리그 EditMode 506/509(동일 베이스라인) · MCP Play smoke: 캐스트→투사체 1→0 해결·콘솔 에러/경고 0·teardown 클린 · CLAUDE.md 채널 15→14 갱신(TRD 는 열거 목록 없음 확인, 무편집).

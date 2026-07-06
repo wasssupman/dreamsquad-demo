@@ -59,7 +59,7 @@ namespace Wassup.Battle.Combat.Projectile
             var aoeTransforms = aoeQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
 
             // Grid params for the TileAoe payload (impact cell + candidate cells).
-            // Same source MeteorResolutionSystem uses; defaults keep it safe before
+            // Same source the legacy Meteor resolver used; defaults keep it safe before
             // the flow field exists (early frames / tests). Hoisted out of the loop.
             bool hasFlowField = SystemAPI.TryGetSingleton<FlowFieldSingleton>(out var flowField);
             float tileSize = hasFlowField ? flowField.tileSize : 1f;

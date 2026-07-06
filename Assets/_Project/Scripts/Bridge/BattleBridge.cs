@@ -185,7 +185,6 @@ namespace Wassup.Bridge
         private int _goalReachedCount;
         private NativeQueue<GoalReachedEvent> _goalEventQueue;
         private NativeQueue<DefenderDeathEvent> _defenderDeathQueue;
-        private NativeQueue<Wassup.Battle.Combat.MeteorBurstEvent> _meteorBurstQueue;
         private NativeQueue<Wassup.Battle.Combat.UnitAttackVisualEvent> _unitAttackVisualQueue;
         private NativeQueue<Wassup.Battle.Combat.Projectile.ProjectileHitEvent> _projectileHitEventQueue;
         private NativeQueue<Wassup.Battle.Units.HealAppliedEvent> _healAppliedEventQueue;
@@ -409,7 +408,6 @@ namespace Wassup.Bridge
         {
             DestroyEntitiesByType<GoalReachedEventsSingleton>();
             DestroyEntitiesByType<DefenderDeathEventsSingleton>();
-            DestroyEntitiesByType<Wassup.Battle.Combat.MeteorBurstEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Combat.UnitAttackVisualEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Combat.Projectile.ProjectileHitEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Units.HealAppliedEventsSingleton>();
@@ -434,7 +432,6 @@ namespace Wassup.Bridge
         {
             if (_goalEventQueue.IsCreated) _goalEventQueue.Dispose();
             if (_defenderDeathQueue.IsCreated) _defenderDeathQueue.Dispose();
-            if (_meteorBurstQueue.IsCreated) _meteorBurstQueue.Dispose();
             if (_unitAttackVisualQueue.IsCreated) _unitAttackVisualQueue.Dispose();
             if (_projectileHitEventQueue.IsCreated) _projectileHitEventQueue.Dispose();
             if (_healAppliedEventQueue.IsCreated) _healAppliedEventQueue.Dispose();
@@ -925,12 +922,6 @@ namespace Wassup.Bridge
             _defenderDeathQueue = new NativeQueue<DefenderDeathEvent>(Allocator.Persistent);
             var deathSingleton = _em.CreateEntity();
             _em.AddComponentData(deathSingleton, new DefenderDeathEventsSingleton { queue = _defenderDeathQueue });
-
-            // Phase 8 §12 Meteor burst event channel for VFX timing.
-            if (_meteorBurstQueue.IsCreated) _meteorBurstQueue.Dispose();
-            _meteorBurstQueue = new NativeQueue<Wassup.Battle.Combat.MeteorBurstEvent>(Allocator.Persistent);
-            var meteorBurstSingleton = _em.CreateEntity();
-            _em.AddComponentData(meteorBurstSingleton, new Wassup.Battle.Combat.MeteorBurstEventsSingleton { queue = _meteorBurstQueue });
 
             // Unified attack visual trigger channel — every attacker (defender
             // or enemy) enqueues one event per fire so SpineUnitPool can play
@@ -1643,8 +1634,8 @@ namespace Wassup.Bridge
         // built HERE (not EffectSpawner): the ProjectileData registry is bridge-
         // private and ProjectileSpawnRequest is Combat-owned, so the bridge is the
         // only seam that can emit it without a context-boundary violation. No ECS
-        // carrier entity — SpawnProjectile is called directly (legacy MeteorPending
-        // path retired; deletion is unit 8).
+        // carrier entity — SpawnProjectile is called directly (legacy meteor-carrier
+        // path removed in unit 8).
         private int ApplyMeteor(Vector2Int tile, SkillData skill)
         {
             float3 centerWorld = GridToWorldCenter(tile);
@@ -1764,7 +1755,6 @@ namespace Wassup.Bridge
 
             DrainProjectileSpawnRequests();
             DrainDefenderDeathEvents();
-            DrainMeteorBurstEvents();
             DrainUnitAttackVisualEvents();
             DrainProjectileHitEvents();
             DrainHealAppliedEvents();
@@ -1919,19 +1909,6 @@ namespace Wassup.Bridge
                 tileHealthGaugeLayer?.Hide(cell); // unit 3 — 사망 시 게이지 제거
                 RecomputeSynergyFor(cell);
                 Debug.Log($"[BattleBridge] Defender died @ {cell}; tile freed, synergy recomputed.");
-            }
-        }
-
-        // Phase 8 §12 — when MeteorResolutionSystem burns its AoE, it enqueues a
-        // burst event so the VFX layer can fire a particle burst on the same
-        // frame without any ECS references on the MonoBehaviour side.
-        private void DrainMeteorBurstEvents()
-        {
-            if (!_meteorBurstQueue.IsCreated) return;
-            while (_meteorBurstQueue.TryDequeue(out var evt))
-            {
-                if (vfxSpawner == null) continue;
-                vfxSpawner.SpawnMeteorBurst(new Vector3(evt.center.x, 0f, evt.center.z), evt.radius);
             }
         }
 
