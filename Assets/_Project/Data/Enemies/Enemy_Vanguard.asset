@@ -45,5 +45,5 @@ MonoBehaviour:
   idleAnimation: Walk
   attackAnimation: Attack1
   deathAnimation: Die
-  spineVisualScale: 0.5
+  spineVisualScale: 0.65
   visualOffset: {x: 0, y: 0, z: 0}
