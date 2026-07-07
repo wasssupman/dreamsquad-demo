@@ -1,6 +1,6 @@
 # Outgame Login Gate — 데모 사용자 구분용 로그인
 
-상태: spec 작성 (2026-07-07, Firebase 익명 REST 방식으로 개정) — 구현 대기
+상태: **구현 완료 2026-07-07** — critic 리뷰(APPROVE-WITH-CHANGES) 반영 + 에디터 Play 4케이스 검증. 잔여: 실기기 Development Build 1회. 인계는 `2_handoff_summary.md`
 
 ## 목표
 

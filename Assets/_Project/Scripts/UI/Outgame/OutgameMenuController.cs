@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using Wassup.Core;
+using Wassup.Core.Api;
 using Wassup.Data;
 
 namespace Wassup.UI
@@ -17,9 +18,17 @@ namespace Wassup.UI
         [SerializeField] private GameObject dreamcatcherPanel;
         // wave-authoring-test-mode unit 4 — 테스트 모드 플랜 피커 패널.
         [SerializeField] private GameObject testModePanel;
+        // outgame-login-gate unit 1 — auth gate. menuRoot wraps every lobby button;
+        // this controller solely owns menuRoot/loginPanel visibility (the view only
+        // runs the sign-in flow).
+        [SerializeField] private GameObject menuRoot;
+        [SerializeField] private LoginPanelView loginPanel;
 
         private void Awake()
         {
+            ApplyAuthGate();
+            if (loginPanel != null) loginPanel.onSignedIn += ApplyAuthGate;
+
             if (profileSO == null)
             {
                 Debug.LogError("[OutgameMenuController] PlayerProfileSO unassigned.", this);
@@ -28,6 +37,18 @@ namespace Wassup.UI
             profileSO.profile = ProfileStore.LoadOrCreate(catalog);
             Debug.Log($"[OutgameMenuController] Profile loaded: {(catalog != null ? catalog.units.Length : 0)} catalog units. path={ProfileStore.Path}");
             ClosePanels();
+        }
+
+        private void OnDestroy()
+        {
+            if (loginPanel != null) loginPanel.onSignedIn -= ApplyAuthGate;
+        }
+
+        private void ApplyAuthGate()
+        {
+            bool signedIn = UserSession.IsSignedIn;
+            if (menuRoot != null) menuRoot.SetActive(signedIn);
+            if (loginPanel != null) loginPanel.gameObject.SetActive(!signedIn);
         }
 
         // A-stage: load BattleScene as-is (draft fallback runs while

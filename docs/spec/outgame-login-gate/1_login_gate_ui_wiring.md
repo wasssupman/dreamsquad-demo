@@ -19,7 +19,8 @@ OutgameScene 에 로그인 패널을 추가하고, 인증 전에는 로비 메�
 
 ## 완료 기준
 
-- [ ] compile 오류 없음
-- [ ] 씬 YAML: LoginPanel/참조 필드 전부 non-zero
-- [ ] 에디터 Play: 최초(저장값 없음) → 메뉴 숨김+패널 표시 → 이름 입력+LOGIN → 메뉴 노출, `UserSession.userId` 채워짐. 재시작 Play → 자동 로그인으로 패널 스킵. 빈 이름 시 안내. 콘솔 에러 0
+- [x] compile 오류 없음 (2026-07-07, EditMode 532개 통과)
+- [x] 씬 YAML: LoginPanelView 5참조 + OutgameMenuController(menuRoot/loginPanel) 전부 non-zero
+- [x] 에디터 Play (2026-07-07, 4케이스): ① 미인증 → 메뉴 숨김+패널 표시 ② 이름+LOGIN → `SIGNED IN AS SJ-EDITOR`, userId 수신, 메뉴 전환 ③ 세션 클리어 후 재Play → 자동 재로그인 **같은 userId** (신원 정책 실증) ④ 빈 이름 → `ENTER YOUR NAME`. 콘솔 에러 0, 패널 시각 확인(스크린샷)
+- [x] 참고: 이 에디터는 Enter Play Mode 도메인 리로드 off — static UserSession 이 Play 재진입을 생존함 (씬 재방문 스킵 경로와 동일 거동)
 - [ ] 실기기 Development Build 1회 (다음 빌드 때)
