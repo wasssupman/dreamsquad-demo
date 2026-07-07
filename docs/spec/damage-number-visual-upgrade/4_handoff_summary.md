@@ -45,6 +45,10 @@
 - **스파크 프리팹**: VFX 저작 규약상 `_SKELETON` 유지. 사용자 폴리시 후 정식 prefab 화 가능.
 - 튜닝값 전부 `DamageNumberStyle`(BattleScene 스포너 인스펙터, Play 실시간) + 머티리얼 `.mat`.
 
+## 스파크 파티클 rev (2026-07-07, "다른 파티클로 — 작은 입자 터짐")
+
+별(star) 텍스처 → **GA `Circle18`(꽉 찬 라운드 도트)** 로 교체. 참고 이미지의 뾰족한 스파크가 아닌 "작은 입자들이 터지는" 형태. GA 히트 프리팹(vfx_Hit_*, 4~17 PS)은 모바일 부담+투사체 스타일이라 미채택 — GA **텍스처만** 우리 단일 경량 PS 에 재활용. 도트 버스트 튜닝(size 0.12~0.3·burst 30·gravity 0.12·방사). 후보 스캔: `GabrielAguiarProductions/Textures/`(Circle18/002·Impact·ImpactWhite·Flare·Smoke) + `PixPlays/ElementalBlastVFX`·Hits.
+
 ## 강도 rev (2026-07-07, Play 피드백 "잘 안 보인다")
 
 가독성/임팩트 부스트: 머티리얼에 **어두운 드롭섀도(underlay)** 추가(바쁜 배경 분리) + 아웃라인 0.28→0.35 · BattleScene 폰트 5.2~11.7→**8~18** · 펀치 1.6→2.4 · driftUp 0.7→0.9 · 스파크 size/burst/scale 확대(0.62/22/1.4). 값은 전부 라이브(scene/mat).
