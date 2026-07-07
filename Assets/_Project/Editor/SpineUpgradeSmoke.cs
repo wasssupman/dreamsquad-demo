@@ -74,6 +74,27 @@ public static class SpineUpgradeSmoke
             Debug.Log($"[SMOKE] combined skin OK: single={singleCount}, combined={combinedCount}, cacheHit={ReferenceEquals(combined, combined2)}");
         }
 
+        // unit-parts-appearance 2 — validator 규칙 검증 (인스펙터와 같은 코어)
+        {
+            var sda = UnityEditor.AssetDatabase.LoadAssetAtPath<Spine.Unity.SkeletonDataAsset>(
+                "Assets/Layer Lab/2D Art Maker/AMCasual Character/Demo/SpineAnimation/Casual Character_SkeletonData.asset");
+            var probe = ScriptableObject.CreateInstance<Wassup.Data.DefenderUnitData>();
+            probe.skeletonDataAsset = sda;
+            probe.partSkins.AddRange(new[] { "top/top_c_1", "top/top_c_2", "helmet/helmet_c_1", "hair_short/hair_short_c_1", "no/skin" });
+            probe.slotColors.Add(new Wassup.Data.SpineSlotColor { slotName = "eye", color = Color.red });
+            var warnings = Wassup.Editor.UnitVisualDataValidator.CollectWarnings(probe);
+            // 기대 5건: 없는 스킨(no/skin), top 중복, 본체(skin) 누락, helmet+hair_short 배타, eye 색 키잉
+            if (warnings.Count != 5)
+            {
+                Debug.LogError($"[SMOKE] validator expected 5 warnings, got {warnings.Count}:\n - " + string.Join("\n - ", warnings));
+                ok = false;
+            }
+            var keyed = Wassup.Editor.UnitVisualDataValidator.CollectColorKeyedSlots(sda.GetSkeletonData(false));
+            if (!keyed.Contains("eye")) { Debug.LogError("[SMOKE] color-keyed slot detection missed 'eye'"); ok = false; }
+            Object.DestroyImmediate(probe);
+            Debug.Log($"[SMOKE] validator OK: warnings={warnings.Count}, keyedSlots=[{string.Join(",", keyed)}]");
+        }
+
         Debug.Log(ok ? "[SMOKE] SpinePipelineSmoke PASS" : "[SMOKE] SpinePipelineSmoke FAIL");
         EditorApplication.Exit(ok ? 0 : 1);
     }
