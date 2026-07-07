@@ -2,8 +2,10 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 
-// spine-runtime-4-2-upgrade 검증용 임시 스크립트 — 업그레이드 종료 시 삭제.
-// batchmode: -executeMethod SpineUpgradeSmoke.OpenBattleScene
+// Spine 파이프라인 배치 검증 하네스. spine-runtime-4-2-upgrade 에서 시작해
+// unit-parts-appearance 의 상시 스모크로 승격 (합성/캐시/validator/임포터 resolve/16종 시안).
+// batchmode: -executeMethod SpineUpgradeSmoke.SpinePipelineSmoke (씬 로드만: OpenBattleScene)
+// 에디터가 열려 있으면 격리 리그(worktree + Library CoW 클론, lessons 02)에서 실행할 것.
 public static class SpineUpgradeSmoke
 {
     public static void OpenBattleScene()
