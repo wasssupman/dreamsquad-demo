@@ -1732,6 +1732,13 @@ MonoBehaviour:
   projectileFireClip: {fileID: 8300000, guid: fc4cd59f881f84776b2dd2d22526b617, type: 3}
   projectileFireVolume: 0.4
   projectileFireMinInterval: 0.045
+  deployVoiceClips:
+  - {fileID: 8300000, guid: a3aaf22b7cb434d7d9d2299ec1d3dfa7, type: 3}
+  - {fileID: 8300000, guid: 5aff51c083a7a434f85ce20c6be0f572, type: 3}
+  - {fileID: 8300000, guid: 832b70e1572ed447d938e24479984152, type: 3}
+  - {fileID: 8300000, guid: eb70a4c09c43d491680d4bbf8bdb1724, type: 3}
+  - {fileID: 8300000, guid: 42a39eff6f93c487391e160373271d07, type: 3}
+  deployVoiceVolume: 0.8
   bgmClip: {fileID: 8300000, guid: 0f1ffe20701064ad69bd1d71cbc381c5, type: 3}
   bgmVolume: 0.35
   bgmOnlyInBattle: 1

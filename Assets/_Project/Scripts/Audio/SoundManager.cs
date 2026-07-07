@@ -23,6 +23,11 @@ namespace Wassup.Core
         [Tooltip("발사음 최소 간격(초) — 다발 발사 시 과중첩 방지")]
         [SerializeField] private float projectileFireMinInterval = 0.045f;
 
+        [Header("Deploy voice")]
+        [Tooltip("유닛 배치 시 캐주얼 추임새(라인 세트, 순환 재생). 비면 무음.")]
+        [SerializeField] private AudioClip[] deployVoiceClips;
+        [Range(0f, 1f)] [SerializeField] private float deployVoiceVolume = 0.8f;
+
         [Header("BGM")]
         [Tooltip("전투 배경음. Null → 무음.")]
         [SerializeField] private AudioClip bgmClip;
@@ -36,6 +41,7 @@ namespace Wassup.Core
 
         private AudioSource[] _voices;
         private int _next;
+        private int _deployVoiceNext;
         private AudioSource _bgmSource;
         private float _lastProjectileFire = -100f;
         private bool _subscribed;
@@ -117,6 +123,19 @@ namespace Wassup.Core
             _next = (_next + 1) % _voices.Length;
             src.pitch = 1f;
             src.PlayOneShot(projectileFireClip, projectileFireVolume);
+        }
+
+        // Casual deploy interjection — rotates through the line set for variety.
+        public void PlayDeployVoice()
+        {
+            if (deployVoiceClips == null || deployVoiceClips.Length == 0 || _voices == null) return;
+            var clip = deployVoiceClips[_deployVoiceNext % deployVoiceClips.Length];
+            _deployVoiceNext++;
+            if (clip == null) return;
+            var src = _voices[_next];
+            _next = (_next + 1) % _voices.Length;
+            src.pitch = 1f;
+            src.PlayOneShot(clip, deployVoiceVolume);
         }
 
         public void PlayBgm()
