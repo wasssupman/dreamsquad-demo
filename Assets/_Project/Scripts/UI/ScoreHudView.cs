@@ -156,7 +156,14 @@ namespace Wassup.UI
         // Accumulates only; the visual hit is flushed in LateUpdate (see above).
         public void OnEnemyKilled()
         {
-            _targetScore += pointsPerKill;
+            OnEnemyKilled(pointsPerKill);
+        }
+
+        // Overload: 가변 per-kill 점수 (origin 3751a612 — battle-log/가변 스코어링 보존).
+        // 병합 유지: 누적만, 연출 트리거는 LateUpdate flush.
+        public void OnEnemyKilled(int points)
+        {
+            _targetScore += Mathf.Max(0, points);
             _pendingKills++;
         }
 

@@ -32,6 +32,7 @@ namespace Wassup.Core
         [Tooltip("0 이면 매 판 새 시드. 0 이 아니면 재현용 고정 — 맵·웨이브가 매 판 동일.")]
         [SerializeField] private int debugFixedMatchSeed = 0;
         public int MatchSeed { get; private set; }
+        public bool MatchSeedFixed => debugFixedMatchSeed != 0;
 
         public BattleLogger Logger => logger;
         public DraftController DraftController => draftController;
@@ -131,6 +132,7 @@ namespace Wassup.Core
         {
             MatchSeed = debugFixedMatchSeed != 0 ? debugFixedMatchSeed : Wassup.Core.MatchSeed.GenerateRandom();
             if (battleBridge != null) battleBridge.SetMatchSeed(MatchSeed);
+            if (logger != null) logger.SetMatchSeeds(MatchSeed, MatchSeedFixed);
             Debug.Log($"[GameManager] matchSeed={MatchSeed} (fixed={debugFixedMatchSeed != 0})");
         }
 
@@ -164,6 +166,7 @@ namespace Wassup.Core
                 // draft-stage-map-prebuild Unit 2 — build the map before entering Draft
                 // so the playfield renders behind the card fan. Option toggles trigger
                 // RebuildDraftMap via DraftController (Unit 3).
+                logger?.SetEntryMode("draft");
                 if (battleBridge != null) battleBridge.PrepareDraftMap();
 
                 SetPhase(GamePhase.Draft);
@@ -172,6 +175,7 @@ namespace Wassup.Core
             else if (battleBridge != null)
             {
                 Debug.LogWarning("[GameManager] draftController unset; starting battle with inspector defenderPool fallback.");
+                logger?.SetEntryMode("direct");
                 SetPhase(GamePhase.Battle);
                 battleBridge.StartBattle();
             }
@@ -182,6 +186,7 @@ namespace Wassup.Core
         // (rev 2026-06-05 — no random fill).
         private void StartSquadMatch(SquadSave squad)
         {
+            logger?.SetEntryMode("squad");
             battleBridge.SetMapGenerationOptions(MapGenerationOptions.Default);
             // squad-loadout regression fix — build the themed map (tile style +
             // background props) before placement, exactly as the draft path does
@@ -209,6 +214,7 @@ namespace Wassup.Core
                 return;
             }
             battleBridge.SetDefenderPool(units.ToArray());
+            LogSquadCarryIn(squad, units);
 
             // dreamstone-loadout Unit 3 — set-then-apply: stage the squad's equipped
             // stones now; BattleBridge applies them once BeginPlacement clears+reapplies
@@ -220,11 +226,13 @@ namespace Wassup.Core
             // comment) — ResetToStart/Configure (called every placement entry,
             // including mid-match Restart) must never set it.
             if (costRuntime != null) costRuntime.SetRegenRateMultiplier(ResolveCostRateMultiplier(squad));
+            LogDreamstoneCarryIn(squad);
 
             // Skills stay independent of units — roll a fresh loadout like draft does.
             if (skillLoadout != null)
             {
                 skillLoadout.Roll();
+                LogSkillLoadout();
                 if (skillLoadout.Picked.Count > 0)
                 {
                     var arr = new SkillData[skillLoadout.Picked.Count];
@@ -243,6 +251,7 @@ namespace Wassup.Core
         // 디펜더 프리셋으로 바로 placement 진입. StartSquadMatch 미러.
         private void StartTestModeMatch()
         {
+            logger?.SetEntryMode("test", testMode: true);
             var plan = TestModeContext.Plan;
             var fallbackPreset = TestModeContext.DefenderPreset;
             TestModeContext.Clear(); // 1회 소비
@@ -259,7 +268,11 @@ namespace Wassup.Core
                 defenders = fallbackPreset;
 
             if (defenders != null && defenders.Length > 0)
+            {
                 battleBridge.SetDefenderPool(defenders);
+                var squadForLog = (profileSO != null && profileSO.profile != null) ? profileSO.profile.SelectedSquad() : null;
+                LogSquadCarryIn(squadForLog, new List<DefenderUnitData>(defenders));
+            }
             else
                 Debug.LogWarning("[GameManager] 테스트 모드 디펜더 없음 — 저장 스쿼드/프리셋 모두 비어 있음.");
 
@@ -269,11 +282,13 @@ namespace Wassup.Core
             battleBridge.SetDreamstones(ResolveEquippedStones(stoneSquad));
             // dreamstone-loadout Unit 6 — StartSquadMatch 미러 (CostRate 분리 적용).
             if (costRuntime != null) costRuntime.SetRegenRateMultiplier(ResolveCostRateMultiplier(stoneSquad));
+            LogDreamstoneCarryIn(stoneSquad);
 
             // Skills stay independent of units — roll a fresh loadout like draft does.
             if (skillLoadout != null)
             {
                 skillLoadout.Roll();
+                LogSkillLoadout();
                 if (skillLoadout.Picked.Count > 0)
                 {
                     var arr = new SkillData[skillLoadout.Picked.Count];
@@ -304,6 +319,65 @@ namespace Wassup.Core
                 if (u != null) units.Add(u);
             }
             return units.ToArray();
+        }
+
+        private void LogSquadCarryIn(SquadSave squad, List<DefenderUnitData> units)
+        {
+            if (logger == null || units == null) return;
+
+            var ids = new List<string>();
+            if (squad != null && squad.unitIds != null)
+                foreach (var id in squad.unitIds)
+                    if (!string.IsNullOrEmpty(id)) ids.Add(id);
+
+            var names = new List<string>();
+            foreach (var unit in units)
+                if (unit != null) names.Add(unit.displayName);
+
+            logger.SetSquad(squad != null ? squad.id : string.Empty, squad != null ? squad.name : string.Empty, ids, names);
+        }
+
+        private void LogDreamstoneCarryIn(SquadSave squad)
+        {
+            if (logger == null) return;
+
+            var records = new List<DreamstoneRecord>();
+            if (squad != null && squad.stoneIds != null && stoneCatalog != null)
+            {
+                for (int i = 0; i < squad.stoneIds.Count; i++)
+                {
+                    var id = squad.stoneIds[i];
+                    if (string.IsNullOrEmpty(id)) continue;
+                    var stone = stoneCatalog.ById(id);
+                    if (stone == null) continue;
+                    records.Add(new DreamstoneRecord
+                    {
+                        id = stone.id,
+                        name = stone.displayName,
+                        grade = stone.grade.ToString(),
+                        kind = stone.effect.kind.ToString(),
+                        percent = stone.effect.percent,
+                        slotIndex = i,
+                    });
+                }
+            }
+
+            logger.SetDreamstones(records);
+        }
+
+        private void LogSkillLoadout()
+        {
+            if (logger == null || skillLoadout == null) return;
+
+            var pickedIds = new List<string>();
+            foreach (var skill in skillLoadout.Picked)
+                if (skill != null) pickedIds.Add(skill.id);
+            logger.SetSkillLoadout(pickedIds);
+
+            var poolIds = new List<string>();
+            foreach (var skill in skillLoadout.Pool)
+                if (skill != null) poolIds.Add(skill.id);
+            logger.SetSkillPool(poolIds, skillLoadout.Seed);
         }
 
         // dreamstone-loadout Unit 3 — resolve a squad's equipped stoneIds to assets

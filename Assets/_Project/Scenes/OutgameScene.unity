@@ -176,7 +176,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 0.05, g: 0.05, b: 0.08, a: 1}
+  m_Color: {r: 0.05, g: 0.05, b: 0.08, a: 0.9607843}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -303,7 +303,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 0.05, g: 0.05, b: 0.08, a: 1}
+  m_Color: {r: 0.05, g: 0.05, b: 0.08, a: 0.9607843}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -965,6 +965,11 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &295664196 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 5806972590797065247, guid: 729fc567d06d1a04585ba125ac6bf1ce, type: 3}
+  m_PrefabInstance: {fileID: 874493424}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &324130832
 GameObject:
   m_ObjectHideFlags: 0
@@ -2010,7 +2015,10 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 121471080214863274, guid: 78c10373ea9a5d94ca7e0da2e68b98b8, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 921796606}
   m_SourcePrefab: {fileID: 100100000, guid: 78c10373ea9a5d94ca7e0da2e68b98b8, type: 3}
 --- !u!224 &602903951 stripped
 RectTransform:
@@ -2402,7 +2410,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &803765617
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2638,13 +2646,29 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 5806972590797065247, guid: 729fc567d06d1a04585ba125ac6bf1ce, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 874493430}
   m_SourcePrefab: {fileID: 100100000, guid: 729fc567d06d1a04585ba125ac6bf1ce, type: 3}
 --- !u!224 &874493425 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 1604917256114593008, guid: 729fc567d06d1a04585ba125ac6bf1ce, type: 3}
   m_PrefabInstance: {fileID: 874493424}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &874493430
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 295664196}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8edb4e2acaf0e0643bedabdd5e8df6f2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.LobbyKeyringDrag
+  settings: {fileID: 11400000, guid: cb18a486bb8f1644ca99d77223ef8734, type: 2}
 --- !u!1 &882241831
 GameObject:
   m_ObjectHideFlags: 0
@@ -2782,6 +2806,24 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 882241831}
   m_CullTransparentMesh: 1
+--- !u!1 &921796601 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 121471080214863274, guid: 78c10373ea9a5d94ca7e0da2e68b98b8, type: 3}
+  m_PrefabInstance: {fileID: 602903950}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &921796606
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 921796601}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8edb4e2acaf0e0643bedabdd5e8df6f2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.LobbyKeyringDrag
+  settings: {fileID: 11400000, guid: cb18a486bb8f1644ca99d77223ef8734, type: 2}
 --- !u!1 &959132312
 GameObject:
   m_ObjectHideFlags: 0

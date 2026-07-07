@@ -1,7 +1,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Reflection;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -171,6 +170,7 @@ namespace Wassup.Bridge
         private readonly HashSet<Entity> _synergyActivatedEntities = new();
         private int _synergyActivations;
         private int _synergyPeakCount;
+        private const int EnemyKillScoreDelta = 10;
         private float _startTime;
         // time-manager Unit 3 — 전투 도메인 스케일이 반영된 경과 클럭(웨이브/타이머 load-bearing).
         // _startTime(실시간)은 cosmetic 이벤트/로그 타임스탬프 전용으로 남긴다.
@@ -178,6 +178,7 @@ namespace Wassup.Bridge
         private Entity _battleTimeScaleEntity = Entity.Null;
         private float _timerDuration;
         private bool _running;
+        public float LogElapsedTime => Mathf.Max(0f, (float)_battleClock);
         private bool _placementAllowed;
         private bool _resultShown;
         // draft-stage-map-prebuild Unit 0 — ECS infrastructure idempotent guard.
@@ -275,12 +276,11 @@ namespace Wassup.Bridge
             var logger = GameManager.Instance?.Logger;
             if (logger != null)
             {
-                logger.EndSession();
-                logger.StartSession();
-                // Phase 7 (Q6=a): Restart keeps the same picked skill loadout,
-                // but logger.StartSession() created an empty SkillRecord — so
-                // re-populate skill.loadout/pool/seed so the new log file carries
-                // the same audit trail the player actually plays with.
+                logger.StartReplacementSession("restart", incrementRestartIndex: true);
+                if (GameManager.Instance != null) logger.SetMatchSeeds(GameManager.Instance.MatchSeed, GameManager.Instance.MatchSeedFixed);
+                // Phase 7 (Q6=a): Restart keeps the same picked skill loadout;
+                // refresh it after the session rollover so the new log mirrors
+                // the loadout the player actually plays with.
                 ReLogSkillLoadoutForNewSession(logger);
             }
 
@@ -318,8 +318,8 @@ namespace Wassup.Bridge
             var logger = GameManager.Instance?.Logger;
             if (logger != null)
             {
-                logger.EndSession();
-                logger.StartSession();
+                logger.StartReplacementSession("redraft", incrementRestartIndex: false);
+                if (GameManager.Instance != null) logger.SetMatchSeeds(GameManager.Instance.MatchSeed, GameManager.Instance.MatchSeedFixed);
             }
             if (_world != null) TeardownCurrentBattle();
             // dreamstone-loadout — redraft discards the squad staging; a draft match
@@ -347,8 +347,9 @@ namespace Wassup.Bridge
             var logger = GameManager.Instance?.Logger;
             if (logger != null)
             {
-                logger.EndSession();
-                logger.StartSession();
+                logger.StartReplacementSession("restart", incrementRestartIndex: true);
+                if (GameManager.Instance != null) logger.SetMatchSeeds(GameManager.Instance.MatchSeed, GameManager.Instance.MatchSeedFixed);
+                ReLogSkillLoadoutForNewSession(logger);
             }
             TeardownCurrentBattle();
             if (resultScreen != null) resultScreen.Hide();
@@ -2055,10 +2056,15 @@ namespace Wassup.Bridge
         private void DrainEnemyKilledEvents()
         {
             if (!_enemyKilledEventQueue.IsCreated) return;
-            if (scoreHud == null) { _enemyKilledEventQueue.Clear(); return; }
-            while (_enemyKilledEventQueue.TryDequeue(out _))
+            while (_enemyKilledEventQueue.TryDequeue(out var evt))
             {
-                scoreHud.OnEnemyKilled();
+                scoreHud?.OnEnemyKilled(EnemyKillScoreDelta);
+                int2 grid = _generatedMap.IsCreated ? _generatedMap.gridSize : GridSize;
+                var cell = GridMath.WorldToCell(evt.position, tileSize, grid, origin: _boardOrigin);
+                float time = LogElapsedTime;
+                var logger = GameManager.Instance?.Logger;
+                logger?.RecordKill(string.Empty, new Vector2Int(cell.x, cell.y), time);
+                logger?.AddScoreEvent("enemy_killed", EnemyKillScoreDelta, time);
             }
         }
 
@@ -2609,7 +2615,7 @@ namespace Wassup.Bridge
                     SetNextWaveButtonVisible(false);
                     int playerScore = CalculatePlayerScore();
                     GameManager.Instance?.Logger?.SetResult("defeat", _goalReachedCount);
-                    WriteLoggedScore(playerScore);
+                    GameManager.Instance?.Logger?.SetScore(playerScore);
                     resultScreen?.ShowDefeat(playerScore);
                     Debug.Log("[BattleBridge] DEFEAT triggered.");
                     return;
@@ -2630,7 +2636,7 @@ namespace Wassup.Bridge
             SetNextWaveButtonVisible(false);
             int playerScore = CalculatePlayerScore();
             GameManager.Instance?.Logger?.SetResult("victory_timeout", _goalReachedCount);
-            WriteLoggedScore(playerScore);
+            GameManager.Instance?.Logger?.SetScore(playerScore);
             resultScreen?.ShowVictory(playerScore);
             Debug.Log("[BattleBridge] VICTORY — timer expired, player survived.");
         }
@@ -2649,7 +2655,7 @@ namespace Wassup.Bridge
             SetNextWaveButtonVisible(false);
             int playerScore = CalculatePlayerScore();
             GameManager.Instance?.Logger?.SetResult("victory", _goalReachedCount);
-            WriteLoggedScore(playerScore);
+            GameManager.Instance?.Logger?.SetScore(playerScore);
             resultScreen?.ShowVictory(playerScore);
             Debug.Log("[BattleBridge] VICTORY — all attack units defeated.");
         }
@@ -2658,26 +2664,6 @@ namespace Wassup.Bridge
         {
             float durationSec = Mathf.Max(0f, (float)_battleClock);
             return Math.Max(0, (int)(durationSec * 10f - _goalReachedCount * 50));
-        }
-
-        private void WriteLoggedScore(int playerScore)
-        {
-            var logger = GameManager.Instance?.Logger;
-            if (logger == null) return;
-
-            var currentEntryField = logger.GetType().GetField("currentEntry",
-                BindingFlags.Instance | BindingFlags.NonPublic);
-            var currentEntry = currentEntryField?.GetValue(logger);
-            if (currentEntry == null) return;
-
-            var resultField = currentEntry.GetType().GetField("result",
-                BindingFlags.Instance | BindingFlags.Public);
-            var battleResult = resultField?.GetValue(currentEntry);
-            if (battleResult == null) return;
-
-            var scoreField = battleResult.GetType().GetField("score",
-                BindingFlags.Instance | BindingFlags.Public);
-            scoreField?.SetValue(battleResult, playerScore);
         }
 
         // Random-pick legacy entry (Phase 0-3 behavior). Phase 4 prefers
@@ -3352,11 +3338,15 @@ namespace Wassup.Bridge
             int dataIndex = RegisterBlockingHazardSO(so);
             var entity = Wassup.Battle.Effects.EffectSpawner.SpawnBlockingHazard(_em, so, cell, dataIndex);
             if (entity == Unity.Entities.Entity.Null)
+            {
+                RecordBlockingHazard(so, cell, "spawn_rejected", "EffectSpawner rejected spawn");
                 return entity;
+            }
 
 #if UNITY_EDITOR
             _em.SetName(entity, $"BlockingHazard_{so.name}_{cell.x}_{cell.y}");
 #endif
+            RecordBlockingHazard(so, cell, "spawn", string.Empty);
 
             if (so.visualPrefab == null)
             {
@@ -3542,7 +3532,55 @@ namespace Wassup.Bridge
                 }
 
                 _blockingHazardVisualMap.Remove(evt.hazardEntity);
+                RecordBlockingHazardDestroyed(so, evt.worldPosition);
             }
+        }
+
+        private void RecordBlockingHazard(BlockingHazardSO so, Unity.Mathematics.int2 cell, string eventType, string reason)
+        {
+            if (so == null) return;
+            int side = BlockingHazardLogSide(so);
+            GameManager.Instance?.Logger?.RecordBlockingHazard(new Logging.BlockingHazardLog
+            {
+                event_type = eventType,
+                hazard_id = so.name,
+                tile = new Vector2Int(cell.x, cell.y),
+                time = LogElapsedTime,
+                width = side,
+                height = side,
+                hp = Mathf.RoundToInt(so.maxHp),
+                reason = reason ?? string.Empty,
+            });
+        }
+
+        private void RecordBlockingHazardDestroyed(BlockingHazardSO so, float3 worldPosition)
+        {
+            var cell = WorldToLogCell(worldPosition);
+            int side = BlockingHazardLogSide(so);
+            GameManager.Instance?.Logger?.RecordBlockingHazard(new Logging.BlockingHazardLog
+            {
+                event_type = "destroyed",
+                hazard_id = so != null ? so.name : string.Empty,
+                tile = cell,
+                time = LogElapsedTime,
+                width = side,
+                height = side,
+                hp = 0,
+                reason = string.Empty,
+            });
+        }
+
+        private Vector2Int WorldToLogCell(float3 worldPosition)
+        {
+            int2 grid = _generatedMap.IsCreated ? _generatedMap.gridSize : GridSize;
+            var cell = GridMath.WorldToCell(worldPosition, tileSize, grid, origin: _boardOrigin);
+            return new Vector2Int(cell.x, cell.y);
+        }
+
+        private static int BlockingHazardLogSide(BlockingHazardSO so)
+        {
+            if (so == null) return 0;
+            return so.shape == HazardShape.SingleCell ? 1 : 3;
         }
 
         // --- Stack Modifier SO Registry ---
