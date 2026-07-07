@@ -1729,6 +1729,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Core.SoundManager
   scoreTickClip: {fileID: 8300000, guid: 8b656e97eda9946f18e43b434b780a9e, type: 3}
   scoreTickVolume: 0.6
+  projectileFireClip: {fileID: 8300000, guid: fc4cd59f881f84776b2dd2d22526b617, type: 3}
+  projectileFireVolume: 0.4
+  projectileFireMinInterval: 0.045
+  bgmClip: {fileID: 8300000, guid: 0f1ffe20701064ad69bd1d71cbc381c5, type: 3}
+  bgmVolume: 0.35
+  bgmOnlyInBattle: 1
   voiceCount: 6
 --- !u!4 &1004191867
 Transform:

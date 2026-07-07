@@ -2082,7 +2082,10 @@ namespace Wassup.Bridge
                 var req = requestData[i];
                 // Spine attack trigger moved to DrainUnitAttackVisualEvents
                 // so both projectile and melee defenders share the same hook.
-                SpawnProjectile(req, requestEntities[i]);
+                var spawnedProjectile = SpawnProjectile(req, requestEntities[i]);
+                // battle-audio: defender projectile launch SFX (throttled in SoundManager).
+                if (spawnedProjectile != Entity.Null)
+                    Wassup.Core.SoundManager.Instance?.PlayProjectileFire();
                 _em.RemoveComponent<ProjectileSpawnRequest>(requestEntities[i]);
                 if (_em.HasBuffer<ProjectileSpawnOutputElement>(requestEntities[i]))
                     _em.RemoveComponent<ProjectileSpawnOutputElement>(requestEntities[i]);
