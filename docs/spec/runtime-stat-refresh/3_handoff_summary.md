@@ -6,7 +6,8 @@
 - `6e44868e` refactor(stat-import): 공유 로직 런타임 이동 (unit 0)
 - `d307a540` feat(stat-refresh): EnemyCatalog + 런타임 갱신 서비스 (unit 1)
 - `95ea1e92` feat(stat-refresh): 로비 스탯 갱신 버튼 + 씬 배선 (unit 2)
-- (+ 직후 simplify 리팩토링 커밋 — 4각도 리뷰 반영, 병렬 fetch)
+- `c48b070e` refactor(stat-import): simplify 4각도 리뷰 반영 — 병렬 fetch + 공유 코어 마감
+- `06ef3f74` fix(ui): 버튼 라벨 영문화 (보유 TMP 폰트에 한글 글리프 없음)
 
 ## Implemented
 
@@ -34,6 +35,7 @@
 - **런타임 갱신은 메모리 한정** — Save 계열 호출 금지 계약. 에디터 Play 중 사용 시 로드된 asset 인스턴스에 값이 남는다(도메인 리로드로 복귀). 에디터 영구 반영은 `Window/Wassup/Unit Stat Import`.
 - 에디터/런타임의 파싱·적용·로그 문자열은 전부 공유 코어에서 나온다 — 규칙 변경 시 그쪽만 수정.
 - Play 검증은 임시 `[MenuItem]` + `execute_menu_item` 패턴 사용 (execute_code 고장 — lessons/01 참조), 검증 후 삭제됨.
+- **UI 텍스트는 영문만** — 보유 TMP 폰트(LiberationSans/Anton/Bangers)에 한글 글리프 없음. 한글 UI 는 한글 SDF 폰트 에셋 추가가 선행돼야 한다. 씬 파일을 디스크에서 직접 고치면 열려 있는 에디터 씬에는 자동 반영 안 됨(재로드 필요).
 
 ## Follow-up
 
