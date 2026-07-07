@@ -17,7 +17,7 @@
 ## Feature-wide 계약
 
 - **SoundManager 재사용**: 새 매니저 없음. score-hud 의 `Wassup.Core.SoundManager`(BattleScene GameObject)에 필드/메서드 추가.
-- **투사체 훅 위치**: `BattleBridge` 의 `ProjectileSpawnRequest` 드레인 루프(방어유닛 원거리 공격). 스킬/메테오(`ApplyMeteor` → `SpawnProjectile` 직접)는 이 경로 밖이라 미포함. `BattleBridge` 는 MonoBehaviour 이므로 `SoundManager` 호출은 ECS 경계 위반 아님.
+- **투사체 훅 위치 + 디펜더 필터**: `BattleBridge` 의 `ProjectileSpawnRequest` 드레인 루프. 이 드레인은 **디펜더·적 원거리 공격 공용**이므로, 슈터가 `DefenderUnitTag` 보유일 때만 `PlayProjectileFire`(적 투사체는 무음, 사용자 요청). 스킬/메테오(`ApplyMeteor` → `SpawnProjectile` 직접)는 이 경로 밖이라 미포함. `BattleBridge` 는 MonoBehaviour 이므로 `SoundManager` 호출은 ECS 경계 위반 아님.
 - **스로틀**: 다발 발사 과중첩 방지 — `PlayProjectileFire` 는 `projectileFireMinInterval`(0.045s) 내 재호출 skip.
 - **BGM 페이즈**: `SoundManager` 가 `GameManager.PhaseChanged` 지연 구독 → `Battle` 진입 재생, 이탈 정지(`bgmOnlyInBattle`). BGM import=Streaming(메모리 절약).
 - **저작-시점 클립**: ElevenLabs 로 생성한 로컬 에셋 재생. 런타임 API 호출 0. 튜닝값(볼륨·스로틀·`bgmOnlyInBattle`) 전부 `[SerializeField]`.
