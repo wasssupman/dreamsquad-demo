@@ -263,6 +263,8 @@ board-visualization spec 자체는 ROI 부족으로 wrap 종료. 진단/실험�
 
 ### Promoted / Closed
 
+- **Damage number visual upgrade** → `docs/spec/damage-number-visual-upgrade/` (완료 2026-07-07, units 0~3 + Play 튜닝 다회 — 순수 프레젠테이션(ECS 변경 0). 머리위 앵커(sim-Y drop 회피)·카메라축 겹침방지 격자·청록→골드→오렌지 팔레트·정점 그라데이션·TimeManager 델타 교정·index 결정론 셰이크/회전 + 하프톤/글로우/흰아웃라인/드롭섀도 머티리얼(비-모바일 Distance Field 변종) + 클러스터 스파크. 스파크는 별→**GA Circle18 라운드 도트 버스트 + 폰트색 틴트 emissive + 임팩트 플래시** 로 재작업(GA 텍스처만 재활용, 단일 경량 PS). 2트랙 critic BLOCKER 2건 반영. 후속: unit 2 Android 실기 프로파일 게이트·유닛별 정밀 앵커·진짜 emissive(URP Bloom))
+
 - **Placement enemy see-through** → `docs/spec/placement-enemy-see-through/` (completed 2026-07-06, units 0~6, `9941f27` — 드래그 배치 중 적 유닛(Spine·Quad 혼합)을 반투명화해 가려진 뒤 보드 타일 노출. cutout↔transparent 런타임 전환(Quad)·PMA skeleton.A(Spine)·그림자 페이드·health tint 합성·매프레임 재적용. 프리뷰 불투명/최상단(unit 5) + 배치 하이라이트 적 위로(unit 6). 순수 프레젠테이션, ECS 변경 0·채널 14개 불변. two-track APPROVE(0~4)+M1 반영. 스텐실/후처리 리빌·블로킹 하자드 반투명은 후속)
 
 - **Portal VFX upgrade** → `docs/spec/portal-vfx-upgrade/` (completed 2026-07-06, unit 0 — 물빔(WaterBeam 어거지) 제거 + 스월 지속화(loop+사이클 오버라이드, LocationVfx 가 duration 무시하는 원인 해소). 룬 게이트 실험은 사용자 반려·롤백. 입구/출구 시각 구분은 후속 후보)

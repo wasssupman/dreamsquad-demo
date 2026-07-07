@@ -1,6 +1,6 @@
 # damage-number-visual-upgrade
 
-> 상태: **구현 완료 2026-07-07** — units 0~3 전부 구현·커밋. Play 최종 육안 확인(스파크 발화·전체 룩) + unit 2 Android 실기 프로파일 게이트만 대기. 코덱스 에셋 5종 반입 완료.
+> 상태: **완료 2026-07-07** — units 0~3 구현 + Play 피드백 다회 튜닝 완료. 스파크는 GA `Circle18` 라운드 도트 버스트 + 폰트색 틴트 emissive + 임팩트 플래시로 재작업. 남은 후속: unit 2 **Android 실기 프로파일 게이트**(하드) · 취향 미세조정. 커스텀 지점은 `4_handoff_summary.md` 참조.
 
 ## 상위 목표
 
