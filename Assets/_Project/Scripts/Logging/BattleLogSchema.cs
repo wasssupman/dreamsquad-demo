@@ -12,16 +12,42 @@ namespace Wassup.Logging
         public string timestamp_start;
         public string timestamp_end;
         public string attack_deck_id;
+        public MatchSeedRecord match = new();
+        public EntryRecord entry = new();
         public MapRecord map = new();
         public WavePatternRecord wavePattern = new();
         public DraftRecord draft = new();
+        public SquadRecord squad = new();
+        public List<DreamstoneRecord> dreamstones = new();
+        public DreamcatcherRecord dreamcatcher = new();
         public SkillRecord skill = new();
         public List<HazardLog> hazards = new();
+        public List<BlockingHazardLog> blocking_hazards = new();
         public SynergyRecord synergy = new();
         public List<OnPlaceUsageLog> on_place_usages = new();
         public List<PlacementLog> placements = new();
         public List<AttackOutputUsageLog> attack_outputs = new();
+        public List<KillLog> kills = new();
+        public List<ScoreEventLog> score_events = new();
         public BattleResult result = new();
+    }
+
+    [Serializable]
+    public class MatchSeedRecord
+    {
+        public int matchSeed;
+        public int mapSeed;
+        public int waveSeed;
+        public int visualSeed;
+        public bool fixedSeed;
+    }
+
+    [Serializable]
+    public class EntryRecord
+    {
+        public string mode;
+        public bool testMode;
+        public int restartIndex;
     }
 
     [Serializable]
@@ -99,7 +125,64 @@ namespace Wassup.Logging
     {
         public List<string> pool = new();
         public List<string> picked = new();
+        public List<string> discarded = new();
         public int seed;
+    }
+
+    [Serializable]
+    public class SquadRecord
+    {
+        public string id;
+        public string name;
+        public List<string> unitIds = new();
+        public List<string> unitNames = new();
+    }
+
+    [Serializable]
+    public class DreamstoneRecord
+    {
+        public string id;
+        public string name;
+        public string grade;
+        public string kind;
+        public float percent;
+        public int slotIndex;
+    }
+
+    [Serializable]
+    public class DreamcatcherRecord
+    {
+        public string deckId;
+        public string deckName;
+        public List<string> deckCardIds = new();
+        public List<DreamcatcherOfferLog> offers = new();
+        public List<DreamcatcherPickLog> picks = new();
+    }
+
+    [Serializable]
+    public class DreamcatcherOfferLog
+    {
+        public string trigger;
+        public int waveNumber;
+        public float time;
+        public List<string> cardIds = new();
+    }
+
+    [Serializable]
+    public class DreamcatcherPickLog
+    {
+        public string cardId;
+        public string cardName;
+        public string axis;
+        public float time;
+        public List<DreamcatcherEffectRecord> effects = new();
+    }
+
+    [Serializable]
+    public class DreamcatcherEffectRecord
+    {
+        public string kind;
+        public float percent;
     }
 
     [Serializable]
@@ -143,6 +226,19 @@ namespace Wassup.Logging
         public int target_index;
     }
 
+    [Serializable]
+    public class BlockingHazardLog
+    {
+        public string event_type;
+        public string hazard_id;
+        public Vector2Int tile;
+        public float time;
+        public int width;
+        public int height;
+        public int hp;
+        public string reason;
+    }
+
     // Phase 4: tracks adjacency synergy activity over the session. `activations`
     // counts how many distinct defender entities have transitioned from "no
     // synergy" to "has synergy" at least once; `peakCount` is the largest number
@@ -174,6 +270,23 @@ namespace Wassup.Logging
         public float duration;        // ApplyStat / ApplyStack only, else 0
         public Vector2Int source_tile;
         public Vector2Int target_tile;
+        public float time;
+    }
+
+    [Serializable]
+    public class KillLog
+    {
+        public string unit_type;
+        public Vector2Int tile;
+        public float time;
+    }
+
+    [Serializable]
+    public class ScoreEventLog
+    {
+        public string event_type;
+        public int delta;
+        public int score;
         public float time;
     }
 }

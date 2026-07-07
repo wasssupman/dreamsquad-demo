@@ -89,7 +89,12 @@ namespace Wassup.UI
         // Called by BattleBridge once per enemy kill drained from EnemyKilledEvents.
         public void OnEnemyKilled()
         {
-            _targetScore += pointsPerKill;
+            OnEnemyKilled(pointsPerKill);
+        }
+
+        public void OnEnemyKilled(int points)
+        {
+            _targetScore += Mathf.Max(0, points);
             _punchTimer = punchDuration;
         }
 

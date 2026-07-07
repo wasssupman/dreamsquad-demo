@@ -4,6 +4,7 @@ using System.IO;
 using Unity.Mathematics;
 using UnityEngine;
 using Wassup.Data;
+using Wassup.Core;
 
 namespace Wassup.Logging
 {
@@ -15,6 +16,8 @@ namespace Wassup.Logging
         private BattleLogEntry currentEntry;
         private DateTime startedAt;
         private string filePath;
+        private int score;
+        private int restartIndex;
 
         public void StartSession()
         {
@@ -25,6 +28,8 @@ namespace Wassup.Logging
                 timestamp_start = startedAt.ToString("o"),
             };
             currentEntry.result.outcome = "unknown";
+            score = 0;
+            restartIndex = 0;
             var dir = ResolveLogDirectory();
             Directory.CreateDirectory(dir);
             var fileName = $"session-{startedAt:yyyyMMdd-HHmmss}-{currentEntry.session_id[..8]}.json";
@@ -32,10 +37,101 @@ namespace Wassup.Logging
             Debug.Log($"[BattleLogger] Session started. Log will be written to: {filePath}");
         }
 
+        public void StartReplacementSession(string entryMode, bool incrementRestartIndex)
+        {
+            var previous = currentEntry;
+            int nextRestartIndex = restartIndex;
+            if (incrementRestartIndex)
+                nextRestartIndex = Math.Max(restartIndex, previous != null ? previous.entry.restartIndex : 0) + 1;
+
+            EndSession();
+            StartSession();
+            restartIndex = nextRestartIndex;
+            CopyCarryInContext(previous);
+            SetEntryMode(entryMode, previous != null && previous.entry.testMode);
+            currentEntry.entry.restartIndex = restartIndex;
+        }
+
         public void SetAttackDeckId(string deckId)
         {
             if (currentEntry == null) return;
             currentEntry.attack_deck_id = deckId ?? string.Empty;
+        }
+
+        public void SetMatchSeeds(int matchSeed, bool fixedSeed)
+        {
+            if (currentEntry == null) return;
+            currentEntry.match.matchSeed = matchSeed;
+            int seed = matchSeed != 0 ? matchSeed : 1;
+            currentEntry.match.mapSeed = MatchSeed.DeriveMapSeed(seed);
+            currentEntry.match.waveSeed = MatchSeed.DeriveWaveSeed(seed);
+            currentEntry.match.visualSeed = MatchSeed.DeriveVisualSeed(seed);
+            currentEntry.match.fixedSeed = fixedSeed;
+        }
+
+        public void SetEntryMode(string mode, bool testMode = false)
+        {
+            if (currentEntry == null) return;
+            currentEntry.entry.mode = mode ?? string.Empty;
+            currentEntry.entry.testMode = testMode;
+        }
+
+        private void CopyCarryInContext(BattleLogEntry previous)
+        {
+            if (currentEntry == null || previous == null) return;
+
+            currentEntry.attack_deck_id = previous.attack_deck_id;
+            currentEntry.match = CopyMatch(previous.match);
+            currentEntry.draft = CopyDraft(previous.draft);
+            currentEntry.squad = CopySquad(previous.squad);
+            currentEntry.dreamstones = previous.dreamstones != null
+                ? new List<DreamstoneRecord>(previous.dreamstones)
+                : new List<DreamstoneRecord>();
+            currentEntry.dreamcatcher.deckId = previous.dreamcatcher.deckId;
+            currentEntry.dreamcatcher.deckName = previous.dreamcatcher.deckName;
+            currentEntry.dreamcatcher.deckCardIds = previous.dreamcatcher.deckCardIds != null
+                ? new List<string>(previous.dreamcatcher.deckCardIds)
+                : new List<string>();
+            currentEntry.skill.loadout = previous.skill.loadout != null ? new List<string>(previous.skill.loadout) : new List<string>();
+            currentEntry.skill.pool = previous.skill.pool != null ? new List<string>(previous.skill.pool) : new List<string>();
+            currentEntry.skill.seed = previous.skill.seed;
+        }
+
+        private static MatchSeedRecord CopyMatch(MatchSeedRecord source)
+        {
+            if (source == null) return new MatchSeedRecord();
+            return new MatchSeedRecord
+            {
+                matchSeed = source.matchSeed,
+                mapSeed = source.mapSeed,
+                waveSeed = source.waveSeed,
+                visualSeed = source.visualSeed,
+                fixedSeed = source.fixedSeed,
+            };
+        }
+
+        private static DraftRecord CopyDraft(DraftRecord source)
+        {
+            if (source == null) return new DraftRecord();
+            return new DraftRecord
+            {
+                pool = source.pool != null ? new List<string>(source.pool) : new List<string>(),
+                picked = source.picked != null ? new List<string>(source.picked) : new List<string>(),
+                discarded = source.discarded != null ? new List<string>(source.discarded) : new List<string>(),
+                seed = source.seed,
+            };
+        }
+
+        private static SquadRecord CopySquad(SquadRecord source)
+        {
+            if (source == null) return new SquadRecord();
+            return new SquadRecord
+            {
+                id = source.id,
+                name = source.name,
+                unitIds = source.unitIds != null ? new List<string>(source.unitIds) : new List<string>(),
+                unitNames = source.unitNames != null ? new List<string>(source.unitNames) : new List<string>(),
+            };
         }
 
         public void LogMap(int seed, int generatorVersion, int2 gridSize, int spawnCount, string pathShape = "")
@@ -99,7 +195,49 @@ namespace Wassup.Logging
             if (currentEntry == null || draft == null) return;
             currentEntry.draft.pool = new System.Collections.Generic.List<string>(draft.pool);
             currentEntry.draft.picked = new System.Collections.Generic.List<string>(draft.picked);
+            currentEntry.draft.discarded = new System.Collections.Generic.List<string>(draft.discarded);
             currentEntry.draft.seed = draft.seed;
+        }
+
+        public void SetSquad(string id, string name, IEnumerable<string> unitIds, IEnumerable<string> unitNames)
+        {
+            if (currentEntry == null) return;
+            currentEntry.squad.id = id ?? string.Empty;
+            currentEntry.squad.name = name ?? string.Empty;
+            currentEntry.squad.unitIds = unitIds != null ? new List<string>(unitIds) : new List<string>();
+            currentEntry.squad.unitNames = unitNames != null ? new List<string>(unitNames) : new List<string>();
+        }
+
+        public void SetDreamstones(IEnumerable<DreamstoneRecord> stones)
+        {
+            if (currentEntry == null) return;
+            currentEntry.dreamstones = stones != null ? new List<DreamstoneRecord>(stones) : new List<DreamstoneRecord>();
+        }
+
+        public void SetDreamcatcherDeck(string deckId, string deckName, IEnumerable<string> cardIds)
+        {
+            if (currentEntry == null) return;
+            currentEntry.dreamcatcher.deckId = deckId ?? string.Empty;
+            currentEntry.dreamcatcher.deckName = deckName ?? string.Empty;
+            currentEntry.dreamcatcher.deckCardIds = cardIds != null ? new List<string>(cardIds) : new List<string>();
+        }
+
+        public void RecordDreamcatcherOffer(string trigger, int waveNumber, float time, IEnumerable<string> cardIds)
+        {
+            if (currentEntry == null) return;
+            currentEntry.dreamcatcher.offers.Add(new DreamcatcherOfferLog
+            {
+                trigger = trigger ?? string.Empty,
+                waveNumber = waveNumber,
+                time = time,
+                cardIds = cardIds != null ? new List<string>(cardIds) : new List<string>(),
+            });
+        }
+
+        public void RecordDreamcatcherPick(DreamcatcherPickLog pick)
+        {
+            if (currentEntry == null || pick == null) return;
+            currentEntry.dreamcatcher.picks.Add(pick);
         }
 
         public void SetSkillLoadout(System.Collections.Generic.IEnumerable<string> ids)
@@ -129,6 +267,12 @@ namespace Wassup.Logging
             if (currentEntry == null || hazard == null) return;
             if (currentEntry.hazards.Count >= 2000) return;
             currentEntry.hazards.Add(hazard);
+        }
+
+        public void RecordBlockingHazard(BlockingHazardLog hazard)
+        {
+            if (currentEntry == null || hazard == null) return;
+            currentEntry.blocking_hazards.Add(hazard);
         }
 
         public void RecordOnPlace(OnPlaceUsageLog usage)
@@ -170,6 +314,38 @@ namespace Wassup.Logging
                 time = time,
                 cost_spent = costSpent
             });
+        }
+
+        public void RecordKill(string unitType, Vector2Int tile, float time)
+        {
+            if (currentEntry == null) return;
+            currentEntry.kills.Add(new KillLog
+            {
+                unit_type = unitType ?? string.Empty,
+                tile = tile,
+                time = time,
+            });
+        }
+
+        public void AddScoreEvent(string eventType, int delta, float time)
+        {
+            if (currentEntry == null) return;
+            score = Math.Max(0, score + delta);
+            currentEntry.score_events.Add(new ScoreEventLog
+            {
+                event_type = eventType ?? string.Empty,
+                delta = delta,
+                score = score,
+                time = time,
+            });
+            currentEntry.result.score = score;
+        }
+
+        public void SetScore(int value)
+        {
+            if (currentEntry == null) return;
+            score = Math.Max(0, value);
+            currentEntry.result.score = score;
         }
 
         // Set the final battle outcome. Caller should invoke this before EndSession

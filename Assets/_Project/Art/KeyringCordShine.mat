@@ -30,12 +30,12 @@ Material:
     m_Ints: []
     m_Floats:
     - _ColorMask: 15
-    - _ShineSpeed: 0.5
-    - _ShineStrength: 0.9
-    - _ShineWidth: 0.12
-    - _SparkleScale: 10
-    - _SparkleSpeed: 2
-    - _SparkleStrength: 0.7
+    - _ShineSpeed: 0.9
+    - _ShineStrength: 1.5
+    - _ShineWidth: 0.18
+    - _SparkleScale: 16
+    - _SparkleSpeed: 3.5
+    - _SparkleStrength: 1.3
     - _Stencil: 0
     - _StencilComp: 8
     - _StencilOp: 0

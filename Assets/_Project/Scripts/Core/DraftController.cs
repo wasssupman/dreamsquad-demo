@@ -114,6 +114,7 @@ namespace Wassup.Core
                 var record = new DraftRecord { seed = _session.Seed };
                 foreach (var u in _session.Pool) if (u != null) record.pool.Add(u.displayName);
                 foreach (var u in _session.Picked) if (u != null) record.picked.Add(u.displayName);
+                foreach (var u in _session.Discarded) if (u != null) record.discarded.Add(u.displayName);
                 logger.SetDraft(record);
             }
 

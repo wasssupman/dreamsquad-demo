@@ -24,6 +24,7 @@ namespace Wassup.Core
         [SerializeField] private DreamcatcherCardCatalog cardCatalog;
 
         private List<DreamcatcherCard> _resolvedDeck;
+        private DeckSave _resolvedDeckSave;
         // time-manager Unit 5 — 카드 선택 중 전투 정지를 TimeManager lease 로 소유(구 Time.timeScale=0
         // 대체). Battle 도메인만 멈추고 선택 UI 는 실시간으로 살아있다.
         private TimeLease _pauseLease;
@@ -54,7 +55,8 @@ namespace Wassup.Core
         {
             if (phase != GamePhase.Placement) return;
             _resolvedDeck = ResolveDeck(); // fresh resolve per match entry
-            OnSelectionTrigger();
+            LogDeck();
+            OnSelectionTrigger("placement", 0);
         }
 
         // Selected saved deck (validated) resolved via the card catalog; falls back
@@ -62,8 +64,10 @@ namespace Wassup.Core
         private List<DreamcatcherCard> ResolveDeck()
         {
             var save = (profileSO != null && profileSO.profile != null) ? profileSO.profile.SelectedDeck() : null;
+            _resolvedDeckSave = null;
             if (save != null && cardCatalog != null && DeckRules.Validate(save.cardIds, cardCatalog, out _))
             {
+                _resolvedDeckSave = save;
                 var list = new List<DreamcatcherCard>(save.cardIds.Count);
                 foreach (var id in save.cardIds)
                 {
@@ -79,12 +83,13 @@ namespace Wassup.Core
             return fallback;
         }
 
-        private void OnWaveMilestone(int waveNumber) => OnSelectionTrigger();
+        private void OnWaveMilestone(int waveNumber) => OnSelectionTrigger("wave", waveNumber);
 
-        private void OnSelectionTrigger()
+        private void OnSelectionTrigger(string trigger, int waveNumber)
         {
             var three = Draw3();
             if (three.Count == 0) return;
+            LogOffer(trigger, waveNumber, three);
 
             if (selectionView != null)
             {
@@ -133,7 +138,52 @@ namespace Wassup.Core
         public void Pick(DreamcatcherCard card)
         {
             if (card == null || bridge == null) return;
+            LogPick(card);
             bridge.ApplyDreamcatcherCard(card);
+        }
+
+        private void LogDeck()
+        {
+            var logger = GameManager.Instance?.Logger;
+            if (logger == null || _resolvedDeck == null) return;
+            var ids = new List<string>();
+            foreach (var card in _resolvedDeck)
+                if (card != null) ids.Add(card.id);
+            logger.SetDreamcatcherDeck(
+                _resolvedDeckSave != null ? _resolvedDeckSave.id : "default",
+                _resolvedDeckSave != null ? _resolvedDeckSave.name : (deck != null ? deck.name : "Default"),
+                ids);
+        }
+
+        private void LogOffer(string trigger, int waveNumber, List<DreamcatcherCard> cards)
+        {
+            var logger = GameManager.Instance?.Logger;
+            if (logger == null) return;
+            var ids = new List<string>();
+            foreach (var card in cards)
+                if (card != null) ids.Add(card.id);
+            logger.RecordDreamcatcherOffer(trigger, waveNumber, bridge.LogElapsedTime, ids);
+        }
+
+        private void LogPick(DreamcatcherCard card)
+        {
+            var logger = GameManager.Instance?.Logger;
+            if (logger == null || card == null) return;
+            var pick = new Wassup.Logging.DreamcatcherPickLog
+            {
+                cardId = card.id,
+                cardName = card.displayName,
+                axis = card.axis.ToString(),
+                time = bridge.LogElapsedTime,
+            };
+            if (card.effects != null)
+                foreach (var effect in card.effects)
+                    pick.effects.Add(new Wassup.Logging.DreamcatcherEffectRecord
+                    {
+                        kind = effect.kind.ToString(),
+                        percent = effect.percent,
+                    });
+            logger.RecordDreamcatcherPick(pick);
         }
     }
 }
