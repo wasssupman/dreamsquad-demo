@@ -25,4 +25,4 @@ TMP 머티리얼 글로우(GLOW_ON) 대신 **별도 additive Image 2개**로 구
 - Play: 처치 시 발광 펄스 + 샤인 스윕이 보이고, 바쁜 배경 위에서도 숫자가 강렬히 분리 + **가독 유지**.
 - 진짜 Bloom/post-FX 미사용(모바일 안전).
 
-✅ 2026-07-07: compile 0 err + 오프스크린 합성 렌더로 글로우(0.22 flash·숫자 가독)·대각 샤인 글린트 확인(`score_glowshine_preview3.png`). Play 는 사용자 확인 대기.
+✅ 2026-07-07: compile 0 err + 오프스크린 합성 렌더로 글로우(0.22 flash·숫자 가독)·대각 샤인 글린트 확인(`score_glowshine_preview3.png`) + **Play 검증 통과**. 커밋 `0274a04d`. Play 피드백 "샤인 직선 이동이 튄다" → 샤인 알파 0.5→0.22·스윕 0.4→0.25s 약화(`2be826de`), 재-Play "훨씬 자연스럽다" 확인.

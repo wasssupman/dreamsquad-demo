@@ -33,4 +33,4 @@
 - 마일스톤: `_targetScore / milestoneInterval` 통과 감지 → 풀스크린 비네트 `Image`(생성 `ScoreVignette.png` 가장자리 램프, Score Additive 머티리얼) ease-out 페이드. Battle 리셋 시 `_lastMilestone=0`.
 - 정리: OnDisable/phase-exit 에서 킥 트윈 Stop + 패널 위치/회전 리셋 + 비네트 알파 0.
 
-✅ 2026-07-07: compile 0 err + 오프스크린 렌더로 비네트 edge-flash(중앙 투명·가장자리 골드) 확인(`score_vignette_preview.png`). 패널 킥/마일스톤 트리거는 Play 확인 대기.
+✅ 2026-07-07: compile 0 err + 오프스크린 렌더로 비네트 edge-flash(중앙 투명·가장자리 골드) 확인(`score_vignette_preview.png`) + **Play 검증 통과**. 커밋 `079be28b`.
