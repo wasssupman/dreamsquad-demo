@@ -23,6 +23,8 @@ namespace Wassup.UI
         // runs the sign-in flow).
         [SerializeField] private GameObject menuRoot;
         [SerializeField] private LoginPanelView loginPanel;
+        // 로비 캐릭터(Hello/World) 그룹 — 로그인 전에는 노출하지 않는다.
+        [SerializeField] private GameObject lobbyCharactersRoot;
 
         private void Awake()
         {
@@ -48,6 +50,7 @@ namespace Wassup.UI
         {
             bool signedIn = UserSession.IsSignedIn;
             if (menuRoot != null) menuRoot.SetActive(signedIn);
+            if (lobbyCharactersRoot != null) lobbyCharactersRoot.SetActive(signedIn);
             if (loginPanel != null) loginPanel.gameObject.SetActive(!signedIn);
         }
 
