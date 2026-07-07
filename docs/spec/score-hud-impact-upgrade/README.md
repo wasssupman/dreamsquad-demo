@@ -1,6 +1,6 @@
 # score-hud-impact-upgrade
 
-> 상태: **시각 완료 2026-07-07** — units 0~3 구현·커밋·**Play 검증 통과**(샤인 약화 `2be826de` 반영). 사운드(unit 4)는 ElevenLabs 클립 확보 후로 게이트(미착수). 커밋: `b559d136`(0)·`d2e3b833`(1)·`0274a04d`(2)·`079be28b`(3).
+> 상태: **완료 2026-07-07** — units 0~3(시각) 구현·커밋·**Play 검증 통과**. **사운드(unit 4)는 후속 후보로 이관**(이 spec 미착수, ElevenLabs 클립 확보 시 별도 착수). 커밋: `b559d136`·`d2e3b833`·`0274a04d`·`079be28b`·`2be826de`(샤인 fix)·`5d435b55`(docs).
 
 ## 검증 질문
 
@@ -28,9 +28,9 @@
 | 1 | `1_impact-burst-particles.md` | 처치당 방사형 골드 스파크/코인 UiEmber 절차 파티클 (풀링·결정론 분산) | 기존 텍스처 재활용 |
 | 2 | `2_glow-shine-sweep.md` | 숫자 발광 펄스 + 대각 샤인 스윕 (가짜 글로우, 모바일 안전) | `.mat` (자체 저작) |
 | 3 | `3_screen-feedback.md` | UI-space 패널 킥/셰이크 + 마일스톤 화면 가장자리 플래시(선택) | 없음 |
-| 4 | `4_sound-soundmanager.md` | **[게이트]** SoundManager + 처치 틱(피치 상승) 배선 | **ElevenLabs 클립** ⚠️ |
+| 4 | `4_sound-soundmanager.md` | **[후속 이관]** SoundManager + 처치 틱 — 이 spec 미착수, 후속 후보로(설계 문서 유지) | ElevenLabs 클립 |
 
-**0~3은 에셋 의존 0/최소 → 즉시 구현·검증. 4는 ElevenLabs 클립 확보 후.**
+**0~3(시각) 완료·Play 통과. unit 4(사운드)는 후속 후보 — 설계는 `4_sound-soundmanager.md` 에 보존, ElevenLabs 키 확보 시 착수.**
 
 ## Feature-wide 계약
 
@@ -53,6 +53,7 @@
 
 ## 후속 후보 (현 스코프 밖)
 
+- **사운드 (unit 4)** — SoundManager + 처치 틱(빠른 연속 시 피치 상승). ElevenLabs Text-to-Sound-Effects 저작-시점 SFX 생성 → 로컬 재생(런타임 API 금지). 설계·계약: `4_sound-soundmanager.md`. ElevenLabs 키 확보 시 착수. [S]
 - **연속처치 heat 상승** — 빠른 연속 킬이 버스트/글로우/셰이크를 시각적으로 가열(점수 배수 아님). 콤보 메커닉으로 번질 위험 → 분리. [S]
 - **킬 위치 "+10" 플로팅 연결** — `EnemyKilledEvent.position`(현 reserved) 활용, 처치 위치에서 점수로 날아드는 연출. [M]
 - **콤보/연속처치 배수 스코어링** — 표시 로직에 스코어링 메커닉 추가. 점수 모델 변경. [M]
