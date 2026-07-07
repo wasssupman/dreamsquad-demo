@@ -8,7 +8,7 @@ namespace Wassup.UI
     // 하나를 랜덤 재생하고, 재생 중 추가 입력은 무시한다. 걷기/대기 중에는 언제든 리액션 진입 가능.
     // Animator 는 IsWalking bool + 리액션은 state 직접 Play(원샷, exit time 으로 idle 복귀).
     // 튜닝값은 전부 프리팹 SerializeField (canvas 좌표 단위).
-    public class HelloLobbyRoamer : MonoBehaviour, IPointerClickHandler
+    public class HelloLobbyRoamer : MonoBehaviour, IPointerClickHandler, ILobbyKeyringTarget
     {
         private static readonly int IsWalkingHash = Animator.StringToHash("IsWalking");
         // hello_attack 상태는 컨트롤러에 남아 있지만 풀에서 제외 (2026-07-07 사용자 결정)
@@ -26,6 +26,7 @@ namespace Wassup.UI
         private float _idleRemaining;
         private bool _walking;
         private float _reactionRemaining;
+        private bool _keyringSuspended;
         private readonly float[] _reactionLengths = new float[ReactionStates.Length];
 
         public bool IsWalking => _walking;
@@ -70,10 +71,32 @@ namespace Wassup.UI
             _reactionRemaining = _reactionLengths[pick];
         }
 
+        // lobby-keyring-drag — 드래그 픽업: 진행 중 리액션 강제 종료 + 로밍 정지.
+        // 리액션 클립은 exit time 으로 idle 에 자연 복귀하므로 애니는 건드리지 않는다.
+        public void SuspendForKeyring()
+        {
+            if (IsReacting)
+            {
+                _reactionRemaining = 0f;
+                LobbyReactionLock.Release(this);
+            }
+            _walking = false;
+            _animator.SetBool(IsWalkingHash, false);
+            _keyringSuspended = true;
+        }
+
+        // 착지 완료: 새 위치에서 idle 타이머 재추첨 후 로밍 자연 재개.
+        public void ResumeFromKeyring()
+        {
+            _keyringSuspended = false;
+            _idleRemaining = Random.Range(idleDurationRange.x, idleDurationRange.y);
+        }
+
         // Update 에서 분리된 이유: 비포커스 에디터에선 프레임이 안 흘러, 에디터 검증 툴이
         // dt 를 직접 주입해 로직을 전진시킬 수 있어야 한다.
         public void Tick(float dt)
         {
+            if (_keyringSuspended) return;
             if (IsReacting)
             {
                 _reactionRemaining -= dt;

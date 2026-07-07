@@ -38,3 +38,5 @@
 
 - compile 클린 (Unity 콘솔 에러 0).
 - `LobbyKeyringSettings.asset` 생성, 기본값 상기 표와 일치.
+
+확인 2026-07-07 — 사용자 통과 확인. 커밋 `f076a76b`.
