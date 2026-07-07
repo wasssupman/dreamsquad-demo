@@ -65,11 +65,11 @@ MonoBehaviour:
   - skin/skin_1
   slotColors: []
   idleAnimation: Idle
-  attackAnimation: Attack1
+  attackAnimation: Attack3
   deathAnimation: Die
-  spineVisualScale: 1
-  dragAnimation: Run
-  deployAnimation: cast-spell2
+  spineVisualScale: 1.3
+  dragAnimation: Attack1
+  deployAnimation: Hit
   placementVfxPrefab: {fileID: 96566848741554304, guid: 12bfc3638c321cb498765554bb7194eb, type: 3}
   attackVfxPrefab: {fileID: 0}
   knockbackDistance: 2

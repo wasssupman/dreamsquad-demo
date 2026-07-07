@@ -21,7 +21,7 @@ public static class SpineUpgradeSmoke
         bool ok = true;
         var targets = new (string path, string skin, string[] anims)[]
         {
-            ("Assets/_Project/Data/Defenders/Defender_Scout.asset", "full_skins", new[] { "Idle", "Attack1", "Die", "Run" }),
+            ("Assets/_Project/Data/Defenders/Defender_Scout.asset", "full_skins", new[] { "Idle", "Attack3", "Die", "Attack1", "Hit" }),
             ("Assets/_Project/Data/Enemies/Enemy_Vanguard.asset", "full_skins", new[] { "Walk", "Attack1", "Die" }),
         };
         foreach (var t in targets)
@@ -157,6 +157,11 @@ public static class SpineUpgradeSmoke
                 var skin = Wassup.Presentation.SpineCombinedSkinCache.GetOrBuild(skel, d.partSkins, d.name);
                 if (skin.Attachments.Count <= 6) { Debug.LogError($"[SMOKE] {d.name}: 합성 어태치 {skin.Attachments.Count} — 본체뿐"); ok = false; }
                 comboKeys.Add(string.Join("|", d.partSkins));
+                // 애니 필드가 실제 클립으로 해석되는지 (스켈레톤 교체/잔존값 검출)
+                foreach (var (field, v) in new[] { ("idle", d.idleAnimation), ("attack", d.attackAnimation),
+                         ("death", d.deathAnimation), ("drag", d.dragAnimation), ("deploy", d.deployAnimation) })
+                    if (!string.IsNullOrEmpty(v) && skel.FindAnimation(v) == null)
+                    { Debug.LogError($"[SMOKE] {d.name}: {field}Animation '{v}' 클립 없음"); ok = false; }
             }
             if (checked_ != 16) { Debug.LogError($"[SMOKE] Defender {checked_}종 (기대 16)"); ok = false; }
             if (comboKeys.Count != checked_) { Debug.LogError($"[SMOKE] 조합 중복: unique={comboKeys.Count}/{checked_}"); ok = false; }

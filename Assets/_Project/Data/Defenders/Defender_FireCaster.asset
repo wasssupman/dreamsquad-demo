@@ -63,11 +63,11 @@ MonoBehaviour:
   - slotName: helmet_hair
     color: {r: 0.76, g: 0.23, b: 0.13, a: 1}
   idleAnimation: Idle
-  attackAnimation: Attack1
+  attackAnimation: Attack3
   deathAnimation: Die
-  spineVisualScale: 1
-  dragAnimation: Run
-  deployAnimation: cast-spell2
+  spineVisualScale: 1.3
+  dragAnimation: Attack1
+  deployAnimation: Hit
   placementVfxPrefab: {fileID: 0}
   attackVfxPrefab: {fileID: 0}
   knockbackDistance: 0
