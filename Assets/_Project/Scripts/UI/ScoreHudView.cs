@@ -56,13 +56,15 @@ namespace Wassup.UI
         [SerializeField] private float glowFlashAlpha = 0.22f;
         [SerializeField] private float glowFlashDuration = 0.35f;
         [SerializeField] private float glowPulseScale = 1.35f;
-        [SerializeField] private Color shineColor = new Color(1f, 0.96f, 0.82f, 0.5f);
+        [Tooltip("은은한 글린트 — 알파 낮게(직선 이동이 튀지 않게)")]
+        [SerializeField] private Color shineColor = new Color(1f, 0.96f, 0.82f, 0.22f);
         [SerializeField] private float shineWidth = 24f;
         [Tooltip("대각 기울기(도)")]
         [SerializeField] private float shineTiltDeg = 18f;
         [Tooltip("좌→우 스윕 거리(px)")]
         [SerializeField] private float shineTravel = 340f;
-        [SerializeField] private float shineDuration = 0.4f;
+        [Tooltip("스윕 시간 — 짧게(빠른 섬광)")]
+        [SerializeField] private float shineDuration = 0.25f;
 
         [Header("Screen feedback")]
         [Tooltip("처치 시 패널 UI-space 셰이크 강도(px). 배틀 카메라는 안 건드림.")]

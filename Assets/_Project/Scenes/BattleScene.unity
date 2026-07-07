@@ -2322,11 +2322,11 @@ MonoBehaviour:
   glowFlashAlpha: 0.22
   glowFlashDuration: 0.35
   glowPulseScale: 1.35
-  shineColor: {r: 1, g: 0.96, b: 0.82, a: 0.5}
+  shineColor: {r: 1, g: 0.96, b: 0.82, a: 0.22}
   shineWidth: 24
   shineTiltDeg: 18
   shineTravel: 340
-  shineDuration: 0.4
+  shineDuration: 0.25
   kickStrength: 11
   kickRotation: 3
   kickDuration: 0.3
