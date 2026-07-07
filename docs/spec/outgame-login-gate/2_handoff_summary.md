@@ -34,7 +34,14 @@
 - idToken 수명 1시간 — 세션 중 만료 대응은 후속 (시작 시 refresh 로 항상 신선하게 시작)
 - 프로브/검증 과정에서 익명 계정 2개 생성됨 (`claude-probe`, `sj-editor`) — 내부 dev, 정리 불필요
 
+## Unit 3 추가 (2026-07-07)
+
+- PlayMode `AuthE2ETest` — 실 엔드포인트 인증 체인 E2E (2회 green). 네트워크 의존, 실행당 익명 계정 1개 생성
+- `DevButtons` 그룹(DevOnlyGroup 게이트) = REFRESH STATS + **RESET ACCOUNT** — 리셋 시 prefs/세션 클리어 후 로그인 화면 복귀 (Play 검증 완료)
+- 발견: PlayMode 스위트에 무관 플레이크 (실행마다 실패 조합 변동 — Dreamcatcher/Dreamstone/ProjectileVisual 계열). 별도 조사 후보
+
 ## Follow-up
 
 - 실기기 Development Build 1회 (unit 1 체크박스 잔여)
-- README 후속 후보: 세션 중 401 대응, 테스트 기록 적재(userId 사용), 계정 승격(sign/link), 로그아웃 버튼
+- PlayMode 스위트 플레이크 조사 (unit 3 참고 — 이 spec 무관, 전투/비주얼 테스트 간 오염 의심)
+- README 후속 후보: 세션 중 401 대응, 테스트 기록 적재(userId 사용), 계정 승격(sign/link)

@@ -127,6 +127,19 @@ namespace Wassup.UI
             onSignedIn?.Invoke();
         }
 
+        // outgame-login-gate unit 3 — dev "RESET ACCOUNT": forget the stored
+        // account entirely. The next login mints a new anonymous identity.
+        public void ResetAccount()
+        {
+            PlayerPrefs.DeleteKey(RefreshTokenPrefsKey);
+            PlayerPrefs.DeleteKey(UserNamePrefsKey);
+            PlayerPrefs.Save();
+            UserSession.Clear();
+            if (nameInput != null) nameInput.text = "";
+            SetBusy(false, "");
+            Debug.Log("[LoginPanel] account reset.");
+        }
+
         private void HandleFailure(string error, bool clearTokenIfDefinitive)
         {
             if (clearTokenIfDefinitive && FirebaseAuthRestClient.IsDefinitiveAuthError(error))

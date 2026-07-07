@@ -22,6 +22,7 @@
 |---|---|---|---|
 | 0 | 구현 | `0_auth_clients_and_session.md` | `ApiEnvelope` 공통 파서 + `FirebaseAuthRestClient` + `UserSignApi` + `UserSession` + EditMode 테스트 |
 | 1 | 구현+wiring | `1_login_gate_ui_wiring.md` | 로그인 패널(이름 입력+버튼+상태) + 로비 메뉴 게이팅 + 씬 배선 + Play 검증 |
+| 3 | 구현+wiring | `3_e2e_and_dev_buttons.md` | 실 엔드포인트 E2E 테스트 + DevButtons 그룹(계정 리셋 → 로그인 화면 복귀) |
 
 ## Feature-wide 계약
 

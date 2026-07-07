@@ -51,6 +51,15 @@ namespace Wassup.UI
             if (loginPanel != null) loginPanel.gameObject.SetActive(!signedIn);
         }
 
+        // outgame-login-gate unit 3 — dev button: forget the account and fall
+        // back to the login screen.
+        public void OnResetAccount()
+        {
+            ClosePanels();
+            if (loginPanel != null) loginPanel.ResetAccount();
+            ApplyAuthGate();
+        }
+
         // A-stage: load BattleScene as-is (draft fallback runs while
         // PlayerProfileSO has no selected squad). C wires the squad/dreamcatcher
         // carry-in. Scene names live in SceneNames to keep the two LoadScene
