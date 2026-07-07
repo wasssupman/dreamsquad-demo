@@ -28,6 +28,8 @@ namespace Wassup.Data
         [Range(0f, 1f)] public float bounceDamping = 0.35f;
         [Tooltip("이 속도(px/s) 미만으로 착지하면 반동 없이 정지.")]
         public float bounceMinSpeed = 300f;
+        [Tooltip("낙하 중 기울임이 0(직립)으로 복귀하는 속도(deg/s).")]
+        public float fallUprightSpeed = 90f;
 
         [Header("착지")]
         [Tooltip("착지 x 최소(anchoredPosition). 화면 밖 드롭 방지.")]

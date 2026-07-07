@@ -13,6 +13,7 @@ namespace Wassup.UI
         private static readonly int IsWalkingHash = Animator.StringToHash("IsWalking");
         // hello_attack 상태는 컨트롤러에 남아 있지만 풀에서 제외 (2026-07-07 사용자 결정)
         private static readonly string[] ReactionStates = { "hello_interaction" };
+        private const string IdleState = "hello_idle";
 
         [SerializeField] private float minX = -600f;
         [SerializeField] private float maxX = 600f;
@@ -61,9 +62,10 @@ namespace Wassup.UI
         }
 
         // 리액션 시작. 자신 또는 다른 캐릭터가 재생 중이면 무시(전역 잠금). 검증 툴 호출용 public.
+        // 단발 클릭만 리액션 — 키링 드래그/낙하 중(suspended)에는 진입 불가(스와이프와 구분).
         public void TriggerReaction()
         {
-            if (IsReacting || !LobbyReactionLock.TryAcquire(this)) return;
+            if (_keyringSuspended || IsReacting || !LobbyReactionLock.TryAcquire(this)) return;
             int pick = Random.Range(0, ReactionStates.Length);
             _walking = false;
             _animator.SetBool(IsWalkingHash, false);
@@ -71,8 +73,8 @@ namespace Wassup.UI
             _reactionRemaining = _reactionLengths[pick];
         }
 
-        // lobby-keyring-drag — 드래그 픽업: 진행 중 리액션 강제 종료 + 로밍 정지.
-        // 리액션 클립은 exit time 으로 idle 에 자연 복귀하므로 애니는 건드리지 않는다.
+        // lobby-keyring-drag — 드래그 픽업: 진행 중 리액션 강제 종료 + 로밍 정지 +
+        // idle 즉시 전환(스와이프 중에는 IDLE 만 재생 — 2026-07-07 사용자 결정).
         public void SuspendForKeyring()
         {
             if (IsReacting)
@@ -82,6 +84,7 @@ namespace Wassup.UI
             }
             _walking = false;
             _animator.SetBool(IsWalkingHash, false);
+            _animator.Play(IdleState, 0, 0f);
             _keyringSuspended = true;
         }
 

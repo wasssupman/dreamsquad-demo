@@ -11,6 +11,7 @@ namespace Wassup.UI
     public class WorldLobbyCharacter : MonoBehaviour, IPointerClickHandler, ILobbyKeyringTarget
     {
         private const string ReactionState = "world_interaction";
+        private const string IdleState = "world_idle";
 
         private Animator _animator;
         private float _reactionRemaining;
@@ -43,15 +44,16 @@ namespace Wassup.UI
         }
 
         // 리액션 시작. 자신 또는 다른 캐릭터가 재생 중이면 무시. 검증 툴 호출용 public.
+        // 단발 클릭만 리액션 — 키링 드래그/낙하 중(suspended)에는 진입 불가(스와이프와 구분).
         public void TriggerReaction()
         {
-            if (IsReacting || !LobbyReactionLock.TryAcquire(this)) return;
+            if (_keyringSuspended || IsReacting || !LobbyReactionLock.TryAcquire(this)) return;
             _animator.Play(ReactionState, 0, 0f);
             _reactionRemaining = _reactionLength;
         }
 
-        // lobby-keyring-drag — 드래그 픽업: 진행 중 리액션 강제 종료. 클립은 exit time 으로
-        // idle 에 자연 복귀하므로 애니는 건드리지 않는다.
+        // lobby-keyring-drag — 드래그 픽업: 진행 중 리액션 강제 종료 + idle 즉시 전환
+        // (스와이프 중에는 IDLE 만 재생 — 2026-07-07 사용자 결정).
         public void SuspendForKeyring()
         {
             if (IsReacting)
@@ -59,6 +61,7 @@ namespace Wassup.UI
                 _reactionRemaining = 0f;
                 LobbyReactionLock.Release(this);
             }
+            _animator.Play(IdleState, 0, 0f);
             _keyringSuspended = true;
         }
 

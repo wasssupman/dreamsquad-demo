@@ -26,6 +26,7 @@
 | 낙하 | `gravity` | 4000 | 낙하 가속(px/s²) |
 | 낙하 | `bounceDamping` | 0.35 | 착지 반발 계수(0~1). 1회 작은 바운스 기준 |
 | 낙하 | `bounceMinSpeed` | 300 | 이 속도(px/s) 미만 착지 시 반동 없이 정지 |
+| 낙하 | `fallUprightSpeed` | 90 | 낙하 중 기울임의 직립 복귀 속도(deg/s) — unit 2 에서 추가 |
 | 착지 | `landingMinX` / `landingMaxX` | -800 / 800 | 착지 x 클램프(anchoredPosition) |
 | 비주얼 | `cordWidth` | 8 | 줄 폭(px) |
 | 비주얼 | `cordColor` | (0.45, 0.38, 0.28) | 줄/고리 색 |

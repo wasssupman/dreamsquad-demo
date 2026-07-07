@@ -40,9 +40,11 @@
 5. **바닥 y = 캐릭터 초기 `anchoredPosition.y`** (Awake 캡처). 착지 x는
    `landingMinX/MaxX` 클램프.
 6. **상태머신 `Idle → Dragging → Falling → Idle`.** Falling 중 BeginDrag 로 재잡기
-   허용. `IsBusy`(Dragging∨Falling) 동안 캐릭터 클릭 리액션 차단.
-7. **드래그 시작 시 진행 중 리액션 강제 종료** + `LobbyReactionLock` 해제. 드래그
-   자체는 락을 잡지 않는다(다른 캐릭터의 리액션은 드래그와 공존 가능).
+   허용. 픽업~착지(suspended) 동안 캐릭터 클릭 리액션 차단.
+7. **단발 클릭 = 리액션, 스와이프 = 키링. 스와이프 중에는 IDLE 만 재생**
+   (2026-07-07 사용자 결정). 드래그 시작 시 진행 중 리액션/걷기를 강제 종료하고
+   idle 상태를 즉시 Play + `LobbyReactionLock` 해제. 드래그 자체는 락을 잡지
+   않는다(다른 캐릭터의 리액션은 드래그와 공존 가능).
 8. **캐릭터 접점은 `ILobbyKeyringTarget`** (`SuspendForKeyring`/`ResumeFromKeyring`,
    구현체 hello·world 2개). 드래그 컴포넌트는 캐릭터 내부 상태를 직접 만지지 않는다.
 9. **리그(고리/줄)는 런타임 생성** UI Image. 고리 스프라이트는 절차적 annulus 텍스처

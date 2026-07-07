@@ -29,10 +29,15 @@ unit 1 의 임시 즉시 스냅을 실제 연출로 교체: 놓으면 중력 낙
 EditMode 테스트 1~2개: ① 높은 낙하 → 반동 1회 이상 후 결국 floorY 정지,
 ② `bounceMinSpeed` 미만 착지 → 반동 없이 즉시 정지.
 
-**클릭 가드** (hello/world 각 `OnPointerClick`):
-`LobbyKeyringDrag.IsBusy`(Dragging∨Falling) 이면 리액션 무시. 참조는 Awake
-`GetComponent`. (이 프로젝트에서 드래그 후에도 클릭이 발화한 전례 —
-`DraftCardView.cs` 가드 패턴 승계.)
+**클릭 vs 스와이프 구분** (2026-07-07 사용자 결정 — 단발 클릭만 리액션, 스와이프는
+키링, 스와이프 중에는 IDLE 만 재생):
+
+- 리액션 가드는 `TriggerReaction` 진입부의 `_keyringSuspended` 플래그로 처리.
+  suspended 는 픽업(Suspend)~착지(Resume) 구간과 정확히 일치하므로
+  `LobbyKeyringDrag.IsBusy` 참조 없이 같은 계약을 만족한다(드래그 직후 발화하는
+  클릭도 낙하 중 = suspended 라 차단 — `DraftCardView.cs` 전례 대응).
+- `SuspendForKeyring` 에서 진행 중 리액션/걷기 강제 종료 후 **idle 상태 즉시
+  Play** (`hello_idle`/`world_idle`) — 매달린 동안 리액션 클립이 계속 돌지 않게.
 
 ## 완료 기준
 

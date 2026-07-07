@@ -9,12 +9,12 @@ namespace Wassup.UI
     // 스와이프하면 키링 모드: 고리(손가락) → 줄 → 캐릭터가 매달려 스프링 스윙.
     // 동작 모델은 인게임 keyring-cord-preview 계약의 캔버스 px 이식(코드 공유 없음).
     // 전 좌표는 캐릭터 부모 RectTransform 로컬. 튜닝값은 LobbyKeyringSettings SO.
-    // unit 1 — EndDrag 는 임시 즉시 바닥 스냅. 낙하/바운스는 unit 2 에서 교체.
+    // 놓으면 중력 낙하 → 바닥에서 작은 바운스 후 정지 → 캐릭터 행동 재개. 낙하 중 재잡기 허용.
     public class LobbyKeyringDrag : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler
     {
         [SerializeField] private LobbyKeyringSettings settings;
 
-        private enum Phase { Idle, Dragging }
+        private enum Phase { Idle, Dragging, Falling }
 
         private static Sprite _ringSprite; // 절차적 annulus, 1회 생성 공유
 
@@ -29,6 +29,7 @@ namespace Wassup.UI
         private Vector2 _fingerLocal; // 손가락(=고리) 위치
         private Vector2 _headPos;     // 캐릭터 머리 실제 위치(스프링 지연)
         private Vector2 _headVel;
+        private float _fallVelY;      // 낙하 세로 속도(px/s)
         private RectTransform _cord;
         private RectTransform _ring;
         private Image _cordImage;
@@ -54,12 +55,13 @@ namespace Wassup.UI
             if (settings == null || _phase == Phase.Dragging) return; // 세션 1개 — 두 번째 포인터 무시
             if (!TryScreenToLocal(eventData, out var local)) return;
 
+            bool regrab = _phase == Phase.Falling; // 낙하 중 재잡기 — 이미 suspended
             _pointerId = eventData.pointerId;
             _fingerLocal = local;
             // 현재 위치에서 시작해 스프링이 자연히 끌어올린다(목표 스냅 금지 — 잡아 올리는 느낌).
-            _headPos = _rt.anchoredPosition + new Vector2(0f, HeadOffsetY);
-            _headVel = Vector2.zero;
-            _target?.SuspendForKeyring();
+            _headPos = _rt.anchoredPosition + (Vector2)(_rt.localRotation * new Vector3(0f, HeadOffsetY, 0f));
+            _headVel = regrab ? new Vector2(0f, _fallVelY) : Vector2.zero; // 낙하 속도 승계
+            if (!regrab) _target?.SuspendForKeyring();
             BuildRig();
             _phase = Phase.Dragging;
         }
@@ -73,7 +75,19 @@ namespace Wassup.UI
         public void OnEndDrag(PointerEventData eventData)
         {
             if (_phase != Phase.Dragging || eventData.pointerId != _pointerId) return;
-            EndSession();
+            BeginFall();
+        }
+
+        // 놓기: 리그 제거, x 는 놓은 위치(착지 범위 클램프) 고정, 스윙 속도의 y 성분을
+        // 초기 낙하 속도로 승계(툭 놓는 연속감). 착지 판정은 Tick 의 FallStep.
+        private void BeginFall()
+        {
+            DestroyRig();
+            var p = _rt.anchoredPosition;
+            _rt.anchoredPosition = new Vector2(
+                Mathf.Clamp(p.x, settings.landingMinX, settings.landingMaxX), p.y);
+            _fallVelY = _headVel.y;
+            _phase = Phase.Falling;
         }
 
         private void Update()
@@ -84,10 +98,14 @@ namespace Wassup.UI
         // Update 에서 분리 — 기존 로비 스크립트처럼 에디터 검증 툴이 dt 를 직접 주입할 수 있게.
         public void Tick(float dt)
         {
-            if (_phase != Phase.Dragging || settings == null) return;
-            var s = settings;
+            if (_phase == Phase.Idle || settings == null) return;
             dt = Mathf.Max(dt, 1e-4f);
+            if (_phase == Phase.Dragging) TickDrag(settings, dt);
+            else TickFall(settings, dt);
+        }
 
+        private void TickDrag(LobbyKeyringSettings s, float dt)
+        {
             // 무게추 스프링 + 속도 상한. 워밍업(가속 램프) 금지 — 인게임 계약 승계.
             Vector2 headTarget = _fingerLocal + Vector2.down * s.ropeLength;
             Vector2 accel = (headTarget - _headPos) * s.spring - _headVel * s.damping;
@@ -110,6 +128,43 @@ namespace Wassup.UI
             _rt.anchoredPosition = _headPos - (Vector2)(rot * new Vector3(0f, HeadOffsetY, 0f));
 
             UpdateRig(s);
+        }
+
+        private void TickFall(LobbyKeyringSettings s, float dt)
+        {
+            var p = _rt.anchoredPosition;
+            float y = p.y;
+            bool landed = FallStep(ref y, ref _fallVelY, _floorY, dt, s.gravity, s.bounceDamping, s.bounceMinSpeed);
+            _rt.anchoredPosition = new Vector2(p.x, y);
+            if (!landed)
+            {
+                // 낙하 동안 기울임은 직립으로 서서히 복귀
+                _rt.localRotation = Quaternion.RotateTowards(
+                    _rt.localRotation, Quaternion.identity, s.fallUprightSpeed * dt);
+                return;
+            }
+            _rt.localRotation = Quaternion.identity;
+            _phase = Phase.Idle;
+            _target?.ResumeFromKeyring();
+        }
+
+        // 중력 적분 + 착지/반동 판정. 순수 계산 — EditMode 테스트 대상.
+        // 반환 true = 반동 없이 바닥에 정착(착지 속도 < bounceMinSpeed).
+        public static bool FallStep(ref float y, ref float velY, float floorY, float dt,
+            float gravity, float bounceDamping, float bounceMinSpeed)
+        {
+            velY -= gravity * dt;
+            y += velY * dt;
+            if (y > floorY) return false;
+            y = floorY;
+            float impact = -velY; // 착지 속도(양수)
+            if (impact >= bounceMinSpeed && bounceDamping > 0f)
+            {
+                velY = impact * bounceDamping;
+                return false;
+            }
+            velY = 0f;
+            return true;
         }
 
         private bool TryScreenToLocal(PointerEventData eventData, out Vector2 local)
@@ -165,8 +220,8 @@ namespace Wassup.UI
             _cordImage = null; _ringImage = null;
         }
 
-        // unit 1 임시: 즉시 바닥 스냅. unit 2 에서 중력 낙하 + 바운스로 교체.
-        private void EndSession()
+        // OnDisable/씬 전환 즉시 정리 — 연출 없이 바닥 스냅(멱등, CleanupSession 패턴).
+        private void CancelSession()
         {
             DestroyRig();
             float x = Mathf.Clamp(_rt.anchoredPosition.x, settings.landingMinX, settings.landingMaxX);
@@ -178,7 +233,7 @@ namespace Wassup.UI
 
         private void OnDisable()
         {
-            if (_phase != Phase.Idle) EndSession(); // CleanupSession 패턴 — 멱등 정리
+            if (_phase != Phase.Idle) CancelSession();
         }
 
         // 흰색 annulus(도넛) 스프라이트 1회 생성. 두께는 고정 비율 — 절차적 플레이스홀더.
