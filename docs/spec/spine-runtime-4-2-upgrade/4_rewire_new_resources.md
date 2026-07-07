@@ -34,4 +34,6 @@
 
 신규 리소스 = **Layer Lab "2D Art Maker — AMCasual Character"** (Spine 4.2.43 export, 파츠 스킨 480개, 원본 `.spine` 동봉 → 수급 규약 충족). 결정: Defender 16종 우선 적용, Enemy 는 몬스터형 리소스 후속 수급 전까지 동일 스켈레톤 임시 사용. 유저 에디터가 열려 있어 배치 검증은 격리 리그(worktree + Library CoW 클론, lessons 02)에서 수행.
 
-**잔여(에디터 시각 확인 필요)**: ① rig 방향 — FaceToward 가 반대면 `Characters/SkeletonFlipX.asset` 을 CC SkeletonData 의 skeletonDataModifiers 에 부착 ② URP 실렌더 ③ Play 전투 시나리오 ④ Android 실기기. 파츠 조합 외형 시스템(Layer Lab 프리팹 export 방식 채택)은 별도 spec 으로 진행.
+**잔여(에디터 시각 확인 필요)**: ① rig 방향 — FaceToward 가 반대면 `Characters/SkeletonFlipX.asset` 을 CC SkeletonData 의 skeletonDataModifiers 에 부착 ② URP 실렌더 ③ Play 전투 시나리오 ④ Android 실기기. 파츠 조합 외형 시스템은 별도 spec 으로 진행 (외형 정의 방식은 해당 spec 설계 시 확정).
+
+→ 2026-07-07 사용자 에디터 확인: 렌더/방향 정상 보고 ("잘 나온다"). SkeletonFlipX 부착 불필요. 실기기 확인만 잔여.
