@@ -215,6 +215,7 @@ namespace Wassup.UI
             _ring.SetSiblingIndex(_rt.GetSiblingIndex()); // 줄 앞·캐릭터 뒤
             _ringImage = ringGo.AddComponent<Image>();
             _ringImage.sprite = s.ringSprite != null ? s.ringSprite : RingSprite();
+            if (s.ringMaterial != null) _ringImage.material = s.ringMaterial; // 발광(홀로) 셰이더
             _ringImage.raycastTarget = false;
         }
 

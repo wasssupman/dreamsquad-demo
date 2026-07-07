@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8c1192884885d0143af09677a43783ca, type: 3}
   m_Name: LobbyKeyringSettings
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.LobbyKeyringSettings
-  ropeLength: 160
+  ropeLength: 220
   spring: 100
   damping: 2.5
   maxSpeed: 2400
@@ -26,7 +26,8 @@ MonoBehaviour:
   cordWidth: 8
   cordColor: {r: 1, g: 1, b: 1, a: 1}
   ringRadius: 28
-  cordAttachDrop: 60
-  ringSprite: {fileID: 21300000, guid: 0471a460bad0a5b44904218df09819c3, type: 3}
-  cordSprite: {fileID: 21300000, guid: f966905e5963fe347bf73c826ee44d3b, type: 3}
-  cordMaterial: {fileID: 2100000, guid: 4e702dad59e50b346bdb0cd43ecb98de, type: 2}
+  cordAttachDrop: 110
+  ringSprite: {fileID: 21300000, guid: 25ff1a8e6c1096b4593f8dd8e4ab37e7, type: 3}
+  cordSprite: {fileID: 21300000, guid: 8234daf2053c90442bbeb92cbc65d4a8, type: 3}
+  cordMaterial: {fileID: 2100000, guid: bcfbcecdf31415746ab3012b14d3ec1c, type: 2}
+  ringMaterial: {fileID: 2100000, guid: bcfbcecdf31415746ab3012b14d3ec1c, type: 2}

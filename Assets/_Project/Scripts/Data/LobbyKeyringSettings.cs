@@ -52,7 +52,9 @@ namespace Wassup.Data
         public Sprite ringSprite;
         [Tooltip("줄 스프라이트(세로 스트레치 전제). 비우면 단색 사각형.")]
         public Sprite cordSprite;
-        [Tooltip("줄 머티리얼(샤인 셰이더). 비우면 기본 UI 머티리얼.")]
+        [Tooltip("줄 머티리얼(샤인/홀로 셰이더). 비우면 기본 UI 머티리얼.")]
         public Material cordMaterial;
+        [Tooltip("고리 머티리얼(발광 셰이더). 비우면 기본 UI 머티리얼.")]
+        public Material ringMaterial;
     }
 }

@@ -25,6 +25,8 @@
 | 2 | `2_fall_bounce.md` | 중력 낙하 + 바운스 착지 + 재잡기 + 클릭 가드 | 놓기 연출 |
 | 3 | `3_scene_wiring.md` | OutgameScene 와이어링 + Play 검증 | 완성 |
 | 4 | `4_handoff_summary.md` | 인계 요약 | 종료 시 작성 |
+| 5 | `5_cord_ring_art_shine.md` | 고리/줄 생성 아트 + 샤인 셰이더 (rev) | 로프 스타일, 보존됨 |
+| 6 | `6_hologram_style.md` | 홀로그램 스타일 교체 (SF) | 현행 스타일 |
 
 ## Feature-wide 계약
 
