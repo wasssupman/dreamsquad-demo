@@ -33,34 +33,11 @@ namespace Wassup.Data.StatImport
 
         public static T[] ParseSheetRows<T>(string body, out string error)
         {
-            error = null;
-            if (string.IsNullOrWhiteSpace(body))
-            {
-                error = "empty response body";
-                return null;
-            }
+            // envelope validation + errorDetail wording live in ApiEnvelope
+            // (outgame-login-gate unit 0) — one definition for every consumer.
+            if (!Wassup.Core.Api.ApiEnvelope.TryGetData(body, out var data, out error)) return null;
 
-            JObject root;
-            try
-            {
-                root = JObject.Parse(body);
-            }
-            catch (Exception e)
-            {
-                error = $"JSON parse failed: {e.Message}";
-                return null;
-            }
-
-            if (!(root.Value<bool?>("success") ?? false))
-            {
-                var detail = root["errorDetail"] as JObject;
-                error = detail == null
-                    ? "success=false (no errorDetail)"
-                    : $"{detail.Value<string>("errorCode")} — {detail.Value<string>("errorMessage")} / {detail.Value<string>("detailMessage")}";
-                return null;
-            }
-
-            var rows = root["data"] as JArray;
+            var rows = data as JArray;
             if (rows == null)
             {
                 error = "success=true but 'data' is not an array";

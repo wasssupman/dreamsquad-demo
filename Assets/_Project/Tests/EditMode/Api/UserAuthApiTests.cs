@@ -1,0 +1,120 @@
+using NUnit.Framework;
+using Wassup.Core.Api;
+
+namespace Wassup.Tests.EditMode.Api
+{
+    // outgame-login-gate Unit 0 — pure parse/session coverage (no live network).
+    public class UserAuthApiTests
+    {
+        // ── ApiEnvelope ──────────────────────────────────────────────────────────
+
+        [Test]
+        public void ApiEnvelope_Parse_SuccessObject_Binds()
+        {
+            const string body = @"{ ""success"": true, ""data"": { ""userId"": ""u-1"", ""userName"": ""sj"", ""provider"": ""GUEST"" } }";
+
+            var user = ApiEnvelope.Parse<UserSignApi.SignedInUser>(body, out string error);
+
+            Assert.IsNull(error);
+            Assert.AreEqual("u-1", user.userId);
+            Assert.AreEqual("sj", user.userName);
+            Assert.AreEqual("GUEST", user.provider);
+        }
+
+        [Test]
+        public void ApiEnvelope_Parse_SuccessFalse_ReportsErrorDetail()
+        {
+            const string body = @"{ ""success"": false, ""errorDetail"": {
+                ""errorCode"": ""AUTHENTICATION_FAIL"", ""errorMessage"": ""인증 실패"" } }";
+
+            var user = ApiEnvelope.Parse<UserSignApi.SignedInUser>(body, out string error);
+
+            Assert.IsNull(user);
+            StringAssert.Contains("AUTHENTICATION_FAIL", error);
+        }
+
+        [Test]
+        public void ApiEnvelope_Parse_MalformedOrEmpty_ReturnsError()
+        {
+            Assert.IsNull(ApiEnvelope.Parse<UserSignApi.SignedInUser>("<html>", out string e1));
+            StringAssert.Contains("JSON parse failed", e1);
+            Assert.IsNull(ApiEnvelope.Parse<UserSignApi.SignedInUser>(null, out string e2));
+            StringAssert.Contains("empty response body", e2);
+        }
+
+        // ── FirebaseAuthRestClient parsers ───────────────────────────────────────
+
+        [Test]
+        public void TryParseSignUp_CamelCase_Succeeds()
+        {
+            const string body = @"{ ""idToken"": ""id-1"", ""refreshToken"": ""rt-1"", ""localId"": ""uid-1"", ""expiresIn"": ""3600"" }";
+
+            Assert.IsTrue(FirebaseAuthRestClient.TryParseSignUp(body, out var tokens, out string error));
+            Assert.IsNull(error);
+            Assert.AreEqual("id-1", tokens.idToken);
+            Assert.AreEqual("rt-1", tokens.refreshToken);
+            Assert.AreEqual("uid-1", tokens.localId);
+        }
+
+        [Test]
+        public void TryParseRefresh_SnakeCase_Succeeds()
+        {
+            const string body = @"{ ""id_token"": ""id-2"", ""refresh_token"": ""rt-2"", ""user_id"": ""uid-2"", ""expires_in"": ""3600"" }";
+
+            Assert.IsTrue(FirebaseAuthRestClient.TryParseRefresh(body, out var tokens, out string error));
+            Assert.IsNull(error);
+            Assert.AreEqual("id-2", tokens.idToken);
+            Assert.AreEqual("rt-2", tokens.refreshToken);
+            Assert.AreEqual("uid-2", tokens.localId);
+        }
+
+        [Test]
+        public void TryParseRefresh_FirebaseError_IsDefinitive()
+        {
+            const string body = @"{ ""error"": { ""code"": 400, ""message"": ""TOKEN_EXPIRED"" } }";
+
+            Assert.IsFalse(FirebaseAuthRestClient.TryParseRefresh(body, out _, out string error));
+            StringAssert.Contains("TOKEN_EXPIRED", error);
+            Assert.IsTrue(FirebaseAuthRestClient.IsDefinitiveAuthError(error),
+                "a Firebase-rejected token must be classified definitive (stored token may be discarded)");
+        }
+
+        [Test]
+        public void IsDefinitiveAuthError_NetworkOrParseErrors_AreTransient()
+        {
+            Assert.IsFalse(FirebaseAuthRestClient.IsDefinitiveAuthError("network: Cannot connect to destination host"));
+            Assert.IsFalse(FirebaseAuthRestClient.IsDefinitiveAuthError("JSON parse failed: x"));
+            Assert.IsFalse(FirebaseAuthRestClient.IsDefinitiveAuthError(null));
+        }
+
+        // ── UserSignApi ──────────────────────────────────────────────────────────
+
+        [Test]
+        public void BuildMetadataBody_ContainsUserNameAndVersion()
+        {
+            string json = UserSignApi.BuildMetadataBody("tester");
+
+            StringAssert.Contains("\"userName\":\"tester\"", json);
+            StringAssert.Contains("\"appVersion\":", json);
+            StringAssert.Contains("\"osType\":", json);
+        }
+
+        // ── UserSession ──────────────────────────────────────────────────────────
+
+        [Test]
+        public void UserSession_SetAndClear()
+        {
+            UserSession.Clear();
+            Assert.IsFalse(UserSession.IsSignedIn);
+
+            UserSession.Set(new UserSignApi.SignedInUser { userId = "u-1", userName = "sj" }, "id-token");
+            Assert.IsTrue(UserSession.IsSignedIn);
+            Assert.AreEqual("u-1", UserSession.Current.userId);
+            Assert.AreEqual("id-token", UserSession.IdToken);
+
+            UserSession.Clear();
+            Assert.IsFalse(UserSession.IsSignedIn);
+            Assert.IsNull(UserSession.IdToken);
+        }
+    }
+}
