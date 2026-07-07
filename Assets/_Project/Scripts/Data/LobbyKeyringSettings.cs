@@ -44,5 +44,15 @@ namespace Wassup.Data
         public Color cordColor = new Color(0.45f, 0.38f, 0.28f, 1f);
         [Tooltip("고리(링) 반경(px).")]
         public float ringRadius = 28f;
+        [Tooltip("줄 끝을 rect 상단에서 머리 안쪽으로 내리는 깊이(px). 줄이 캐릭터 뒤에 그려져 머리 뒤로 연결돼 보인다.")]
+        public float cordAttachDrop = 60f;
+
+        [Header("아트 (미할당 시 절차적 폴백)")]
+        [Tooltip("고리 스프라이트. 비우면 절차적 annulus.")]
+        public Sprite ringSprite;
+        [Tooltip("줄 스프라이트(세로 스트레치 전제). 비우면 단색 사각형.")]
+        public Sprite cordSprite;
+        [Tooltip("줄 머티리얼(샤인 셰이더). 비우면 기본 UI 머티리얼.")]
+        public Material cordMaterial;
     }
 }

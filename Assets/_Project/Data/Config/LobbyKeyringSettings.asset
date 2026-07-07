@@ -20,8 +20,13 @@ MonoBehaviour:
   gravity: 4000
   bounceDamping: 0.35
   bounceMinSpeed: 300
+  fallUprightSpeed: 90
   landingMinX: -800
   landingMaxX: 800
   cordWidth: 8
-  cordColor: {r: 0.45, g: 0.38, b: 0.28, a: 1}
+  cordColor: {r: 1, g: 1, b: 1, a: 1}
   ringRadius: 28
+  cordAttachDrop: 60
+  ringSprite: {fileID: 21300000, guid: 0471a460bad0a5b44904218df09819c3, type: 3}
+  cordSprite: {fileID: 21300000, guid: f966905e5963fe347bf73c826ee44d3b, type: 3}
+  cordMaterial: {fileID: 2100000, guid: 4e702dad59e50b346bdb0cd43ecb98de, type: 2}

@@ -186,8 +186,11 @@ namespace Wassup.UI
             }
             if (_cord != null)
             {
-                Vector2 d = _headPos - _fingerLocal;
-                _cord.anchoredPosition = (_fingerLocal + _headPos) * 0.5f;
+                // 줄 끝은 rect 상단이 아니라 머리 안쪽(cordAttachDrop 만큼 아래) — 줄이 캐릭터
+                // 뒤에 그려지므로 머리 뒤로 연결돼 보인다(상단 투명 여백 위에 뜨는 것 방지).
+                Vector2 attach = _headPos - (Vector2)(_rt.localRotation * new Vector3(0f, s.cordAttachDrop, 0f));
+                Vector2 d = attach - _fingerLocal;
+                _cord.anchoredPosition = (_fingerLocal + attach) * 0.5f;
                 _cord.sizeDelta = new Vector2(s.cordWidth, d.magnitude);
                 _cord.localRotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(d.y, d.x) * Mathf.Rad2Deg - 90f);
                 _cordImage.color = s.cordColor;
@@ -196,19 +199,22 @@ namespace Wassup.UI
 
         private void BuildRig()
         {
+            var s = settings;
             var cordGo = new GameObject("KeyringCord", typeof(RectTransform));
             _cord = (RectTransform)cordGo.transform;
             _cord.SetParent(_parentRt, false);
             _cord.SetSiblingIndex(_rt.GetSiblingIndex()); // 캐릭터 뒤에 깔림
-            _cordImage = cordGo.AddComponent<Image>();    // sprite null = 흰 사각형, 틴트로 색
+            _cordImage = cordGo.AddComponent<Image>();    // 스프라이트 미할당 = 흰 사각형, 틴트로 색
             _cordImage.raycastTarget = false;
+            if (s.cordSprite != null) _cordImage.sprite = s.cordSprite;
+            if (s.cordMaterial != null) _cordImage.material = s.cordMaterial; // 샤인 셰이더
 
             var ringGo = new GameObject("KeyringRing", typeof(RectTransform));
             _ring = (RectTransform)ringGo.transform;
             _ring.SetParent(_parentRt, false);
             _ring.SetSiblingIndex(_rt.GetSiblingIndex()); // 줄 앞·캐릭터 뒤
             _ringImage = ringGo.AddComponent<Image>();
-            _ringImage.sprite = RingSprite();
+            _ringImage.sprite = s.ringSprite != null ? s.ringSprite : RingSprite();
             _ringImage.raycastTarget = false;
         }
 
