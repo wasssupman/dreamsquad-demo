@@ -73,7 +73,23 @@ namespace Wassup.Core
 
         private void Awake()
         {
-            Screen.SetResolution(1920, 1080, true);
+            // 비율 고정 + 영역만 확장: 세로를 1080 으로 캡하고 가로는 물리 화면 aspect 로 계산.
+            // 과거 SetResolution(1920,1080,true) 은 기기 aspect(20:9 등)와 달라 16:9 프레임버퍼가
+            // 물리 화면에 비균등 stretch → 모든 오브젝트가 가로로 찌그러짐. 세로 기준 캡이라
+            // 고DPI 다운스케일(GPU 부하 절감)은 유지하되, aspect 는 기기 그대로 → 왜곡 없이 가로만 확장.
+            int sysW = Display.main.systemWidth;
+            int sysH = Display.main.systemHeight;
+            if (sysW > 0 && sysH > 0)
+            {
+                int targetH = Mathf.Min(1080, sysH);   // 네이티브보다 위로 올리지 않음(업스케일 방지)
+                int targetW = Mathf.RoundToInt(targetH * ((float)sysW / sysH));
+                Screen.SetResolution(targetW, targetH, true);
+            }
+
+            // 타겟 프레임 60 고정. vSyncCount=0 이어야 90/120Hz 패널에서 vSync 가
+            // targetFrameRate 를 덮어쓰지 않고 60 캡이 확실히 적용된다(모바일 배터리 절감).
+            QualitySettings.vSyncCount = 0;
+            Application.targetFrameRate = 60;
             if (Instance != null && Instance != this)
             {
                 Destroy(gameObject);
