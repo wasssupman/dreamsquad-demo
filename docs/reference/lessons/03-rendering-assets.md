@@ -10,6 +10,19 @@ spine-unity 런타임은 **4.2 고정**(2026-07-07 업그레이드, `Assets/Spin
 - **잘못 임포트 시 복구**(3.8 시절 검증, 동일 원리): `git checkout HEAD -- Assets/Spine "Assets/Spine Examples"` → `git clean -nfd`(dry-run 범위 확인) → `-fd` → stale CS2001 남으면 `AssetDatabase.Refresh(ForceUpdate)` + asmdef `ImportAsset(ForceUpdate)` + `CompilationPipeline.RequestScriptCompilation()`.
 - **배치 모드 `-importPackage` 는 컴파일 에러 상태에서 abort** 된다("Scripts have compiler errors"). 런타임 폴더를 지운 뒤 재임포트하는 업그레이드 경로는 배치로 불가 — unitypackage 를 tar.gz 로 직접 추출해 pathname 대로 배치하면 GUID/meta 보존 동일 결과 (4.2 업그레이드에서 실증).
 
+## Spine 4.2 신규 리소스 수급 규약
+
+신규 스켈레톤을 제작/외주/구매로 들일 때의 체크리스트 (spec: `docs/spec/spine-runtime-4-2-upgrade/3_new_asset_conventions.md`):
+
+1. **Export**: Spine Editor **4.2.xx** 만. 바이너리(`.skel`) 권장, JSON 은 디버깅용. major.minor 불일치 데이터는 로드 불가.
+2. **원본 `.spine` 보존(필수)**: `art/spine/{SkeletonName}.spine` 으로 repo 에 커밋. 외주/구매 시 원본 포함을 계약 조건에 넣는다. 3.8 리소스 전량 폐기의 근본 원인이 원본 부재.
+3. **확장자 rename**: `.skel` → `.skel.bytes`, `.atlas` → `.atlas.txt` (임포터 인식 조건. 3.8 시절 8종이 rename 누락으로 임포트 실패 전례).
+4. **파일명 ASCII 만**: 한글명은 위 NFC/NFD 함정 직행.
+5. **텍스처/알파**: PMA export 기본, Unity 텍스처 설정(sRGB, Alpha Is Transparency 끔)과 일치. `SpineUnitView` 사망 페이드가 PMA 전제(`Skeleton.A` 직접 조작).
+6. **rig 방향**: "ScaleX=+1 에서 -x(왼쪽) 바라봄" 관례. 어기는 rig 은 SkeletonData 의 `skeletonDataModifiers` 에 `Assets/_Project/Characters/SkeletonFlipX.asset` 부착.
+7. **배치 위치**: `Assets/_Project/Characters/{SkeletonName}/` 폴더 단위.
+8. **임포트 검증**: `_SkeletonData`/`_Atlas`/`_Material` 자동 생성 → 프리뷰 애니 재생 → 콘솔 경고 0.
+
 ## 한글명 Spine 에셋 macOS 임포트 깨짐 (3중 수정)
 
 macOS 에서 한글명 Spine 에셋을 임포트하면 깨진다. 원인 3개 모두 고쳐야:
