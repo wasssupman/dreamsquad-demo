@@ -3264,11 +3264,11 @@ MonoBehaviour:
   popupPrefab: {fileID: 8575853805804975632, guid: 42d63c3da04cf4e7d902a8e4909ce16c, type: 3}
   style:
     lifetime: 0.8
-    driftUp: 0.9
+    driftUp: 0.7
     lowDamage: 1
     highDamage: 50
-    minFontSize: 8
-    maxFontSize: 18
+    minFontSize: 5.2
+    maxFontSize: 11.7
     damageColor:
       serializedVersion: 2
       key0: {r: 0.208, g: 0.878, b: 0.816, a: 1}
@@ -3299,7 +3299,7 @@ MonoBehaviour:
       m_ColorSpace: -1
       m_NumColorKeys: 4
       m_NumAlphaKeys: 2
-    bigHitPunchMul: 2.4
+    bigHitPunchMul: 1.6
     scaleCurve:
       serializedVersion: 2
       m_Curve:
@@ -3384,7 +3384,7 @@ MonoBehaviour:
     enableSpark: 1
     sparkMinDamage: 1
     sparkClusterRadius: 1.2
-    sparkScale: 1.4
+    sparkScale: 1.6
   billboardCamera: {fileID: 1420088185}
   sparkPrefab: {fileID: 372493123055174974, guid: 791501f91a6bd41babdb587fabb8231a, type: 3}
 --- !u!1 &1869950622
