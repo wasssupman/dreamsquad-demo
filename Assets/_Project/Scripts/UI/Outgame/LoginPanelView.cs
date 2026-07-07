@@ -23,6 +23,9 @@ namespace Wassup.UI
 
         [SerializeField] private TMP_InputField nameInput;
         [SerializeField] private Button loginButton;
+        // unit 4 — guest escape hatch. Stays interactable while busy so a hung
+        // request never locks the game.
+        [SerializeField] private Button skipButton;
         [SerializeField] private TMP_Text statusLabel;
         // Firebase web apiKey is a public client identifier by design.
         [SerializeField] private string firebaseApiKey = "AIzaSyBFy7R0JJqLwkEJR7DwKz2da-QgrwU4CdM";
@@ -31,10 +34,15 @@ namespace Wassup.UI
         public event Action onSignedIn;
 
         private bool _busy;
+        // unit 4 — bumped by ResetAccount. Async sign-in chains capture the epoch
+        // at start and abort on mismatch, so a late success can't re-persist an
+        // account the user just reset.
+        private int _authEpoch;
 
         private void Awake()
         {
             loginButton.onClick.AddListener(OnLoginClicked);
+            if (skipButton != null) skipButton.onClick.AddListener(OnSkipClicked);
             if (nameInput != null) nameInput.text = PlayerPrefs.GetString(UserNamePrefsKey, "");
             SetStatus("");
         }
@@ -50,17 +58,42 @@ namespace Wassup.UI
             if (string.IsNullOrEmpty(storedToken) || string.IsNullOrEmpty(storedName)) return;
 
             SetBusy(true, "SIGNING IN...");
+            int epoch = _authEpoch;
             FirebaseAuthRestClient.RefreshIdToken(firebaseApiKey, storedToken, (tokens, error) =>
             {
-                if (this == null) return;
+                if (this == null || epoch != _authEpoch) return;
                 if (tokens == null) { HandleFailure(error, clearTokenIfDefinitive: true); return; }
-                SignInToGameServer(tokens.Value, storedName);
+                SignInToGameServer(tokens.Value, storedName, epoch);
             });
         }
 
         private void OnDestroy()
         {
             if (loginButton != null) loginButton.onClick.RemoveListener(OnLoginClicked);
+            if (skipButton != null) skipButton.onClick.RemoveListener(OnSkipClicked);
+        }
+
+        // unit 4 — enter without auth. Session-only guest identity: nothing is
+        // persisted, so the next app launch shows the login panel again. If an
+        // in-flight sign-in later succeeds, the real session overwrites the
+        // guest one (a promotion, not a conflict).
+        private void OnSkipClicked()
+        {
+            // an established real session (e.g. skip clicked during the
+            // post-success linger) must never be demoted to guest — just close
+            // the gate immediately.
+            if (UserSession.IsSignedIn) { onSignedIn?.Invoke(); return; }
+
+            string userName = nameInput != null ? nameInput.text.Trim() : "";
+            if (userName.Length == 0) userName = "GUEST";
+            UserSession.Set(new UserSignApi.SignedInUser
+            {
+                userId = "",
+                userName = userName,
+                provider = "guest",
+            }, idToken: "");
+            Debug.Log($"[LoginPanel] entered without login as guest '{userName}'.");
+            onSignedIn?.Invoke();
         }
 
         private void OnLoginClicked()
@@ -74,17 +107,18 @@ namespace Wassup.UI
             }
 
             SetBusy(true, "SIGNING IN...");
+            int epoch = _authEpoch;
             string storedToken = PlayerPrefs.GetString(RefreshTokenPrefsKey, "");
             if (!string.IsNullOrEmpty(storedToken))
             {
                 FirebaseAuthRestClient.RefreshIdToken(firebaseApiKey, storedToken, (tokens, error) =>
                 {
-                    if (this == null) return;
-                    if (tokens != null) { SignInToGameServer(tokens.Value, userName); return; }
+                    if (this == null || epoch != _authEpoch) return;
+                    if (tokens != null) { SignInToGameServer(tokens.Value, userName, epoch); return; }
                     if (FirebaseAuthRestClient.IsDefinitiveAuthError(error))
                     {
                         PlayerPrefs.DeleteKey(RefreshTokenPrefsKey);
-                        SignUpFresh(userName);
+                        SignUpFresh(userName, epoch);
                         return;
                     }
                     HandleFailure(error, clearTokenIfDefinitive: false);
@@ -92,32 +126,36 @@ namespace Wassup.UI
             }
             else
             {
-                SignUpFresh(userName);
+                SignUpFresh(userName, epoch);
             }
         }
 
-        private void SignUpFresh(string userName)
+        private void SignUpFresh(string userName, int epoch)
         {
             FirebaseAuthRestClient.SignUpAnonymous(firebaseApiKey, (tokens, error) =>
             {
-                if (this == null) return;
+                if (this == null || epoch != _authEpoch) return;
                 if (tokens == null) { HandleFailure(error, clearTokenIfDefinitive: false); return; }
-                SignInToGameServer(tokens.Value, userName);
+                SignInToGameServer(tokens.Value, userName, epoch);
             });
         }
 
-        private void SignInToGameServer(FirebaseAuthRestClient.AuthTokens tokens, string userName)
+        private void SignInToGameServer(FirebaseAuthRestClient.AuthTokens tokens, string userName, int epoch)
         {
             UserSignApi.SignIn(gameApiBaseUrl, tokens.idToken, userName, (user, error) =>
             {
-                if (this == null) return;
+                if (this == null || epoch != _authEpoch) return;
                 if (user == null) { HandleFailure(error, clearTokenIfDefinitive: false); return; }
 
                 PlayerPrefs.SetString(RefreshTokenPrefsKey, tokens.refreshToken);
                 PlayerPrefs.SetString(UserNamePrefsKey, userName);
                 UserSession.Set(user, tokens.idToken);
                 SetBusy(false, $"SIGNED IN AS {user.userName}".ToUpperInvariant());
-                StartCoroutine(NotifySignedInAfterLinger());
+                // panel may have been deactivated by a skip (unit 4) while this
+                // request was in flight — StartCoroutine would throw there, and
+                // no notify is needed: the gate is already open and the
+                // UserSession.Set above promoted the guest to the real account.
+                if (isActiveAndEnabled) StartCoroutine(NotifySignedInAfterLinger());
             });
         }
 
@@ -131,6 +169,7 @@ namespace Wassup.UI
         // account entirely. The next login mints a new anonymous identity.
         public void ResetAccount()
         {
+            _authEpoch++; // abort in-flight sign-in chains (unit 4)
             PlayerPrefs.DeleteKey(RefreshTokenPrefsKey);
             PlayerPrefs.DeleteKey(UserNamePrefsKey);
             PlayerPrefs.Save();

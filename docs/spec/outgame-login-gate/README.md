@@ -1,6 +1,6 @@
 # Outgame Login Gate — 데모 사용자 구분용 로그인
 
-상태: **구현 완료 2026-07-07** — critic 리뷰(APPROVE-WITH-CHANGES) 반영 + 에디터 Play 4케이스 검증. 잔여: 실기기 Development Build 1회. 인계는 `2_handoff_summary.md`
+상태: **unit 4 진행 중 2026-07-07** (units 0~3 구현 완료 — critic 리뷰 반영 + 에디터 Play 4케이스 검증). 잔여: 실기기 Development Build 1회. 인계는 `2_handoff_summary.md`
 
 ## 목표
 
@@ -23,6 +23,7 @@
 | 0 | 구현 | `0_auth_clients_and_session.md` | `ApiEnvelope` 공통 파서 + `FirebaseAuthRestClient` + `UserSignApi` + `UserSession` + EditMode 테스트 |
 | 1 | 구현+wiring | `1_login_gate_ui_wiring.md` | 로그인 패널(이름 입력+버튼+상태) + 로비 메뉴 게이팅 + 씬 배선 + Play 검증 |
 | 3 | 구현+wiring | `3_e2e_and_dev_buttons.md` | 실 엔드포인트 E2E 테스트 + DevButtons 그룹(계정 리셋 → 로그인 화면 복귀) |
+| 4 | 구현+wiring | `4_skip_login_button.md` | 로그인 스킵 버튼(우하단) — 인증 없이 게스트 세션으로 진입, 로그인 실패가 진행을 잠그지 않게 |
 
 ## Feature-wide 계약
 
@@ -36,6 +37,7 @@
 - **로그인 흐름**: 이름 입력(공백 불가) → (저장 토큰 refresh 시도 →) 익명 signUp → idToken 으로 sign-in → refreshToken/userName 저장 → 메뉴 전환.
 - **헤더 계약**: `X-SERVICE-APP-VERSION = Application.version` (Swagger 상 optional — body 의 `metadata.appVersion` 과 동일 값 전송, 서버 게이팅 키 여부는 실 프로브에서 확인).
 - **실패 처리**: 각 단계 실패 시 사유를 패널에 영문으로 표시, 재시도 가능. 게임이 잠기지 않게 요청 중에도 강제 종료 가능(버튼만 비활성). 릴리즈 게이트 없음 (데모 앱 자체가 내부용).
+- **로그인 스킵 (unit 4)**: 패널 우하단 `ENTER WITHOUT LOGIN >` — 게스트 `UserSession`(provider="guest", 영속화 없음)으로 게이트 통과. 게임은 API 없이 동작하므로 인증 실패가 진행을 잠그지 않는다. busy 중에도 눌린다.
 - **UI 텍스트는 영문** (보유 TMP 폰트에 한글 글리프 없음).
 - **스코프 제외**: 구글 로그인·계정 연동(`sign/link`), 세션 중 토큰 만료(1시간) 대응, 로그아웃 UI, 테스트 기록 전송(userId 사용처) — 후속.
 
