@@ -2313,6 +2313,20 @@ MonoBehaviour:
     endSizeMul: 0.15
     extraPerKill: 4
     extraMax: 22
+  additiveMaterial: {fileID: 2100000, guid: 5c7e38a9ab87c47a191d08f6be087311, type: 2}
+  glowSprite: {fileID: 21300000, guid: a8a98f296412a44b3b8a3a347a3108fa, type: 3}
+  shineSprite: {fileID: 21300000, guid: ea9b8f5ae51634d8a830f27e8299bb87, type: 3}
+  glowColor: {r: 1, g: 0.68, b: 0.24, a: 1}
+  glowSize: 200
+  glowRestAlpha: 0.05
+  glowFlashAlpha: 0.22
+  glowFlashDuration: 0.35
+  glowPulseScale: 1.35
+  shineColor: {r: 1, g: 0.96, b: 0.82, a: 0.5}
+  shineWidth: 24
+  shineTiltDeg: 18
+  shineTravel: 340
+  shineDuration: 0.4
   topOffset: -76
   valueFontSize: 83
   captionFontSize: 29

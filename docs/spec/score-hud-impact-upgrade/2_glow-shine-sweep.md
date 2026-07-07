@@ -4,22 +4,25 @@
 
 처치 순간 점수 숫자가 **발광 펄스**(순간 밝아졌다 안착) + **대각 라이트 스트릭 스윕**(좌→우로 훑는 광택)으로 "빛나며 오른다". 배경(바쁜 전투 화면)과 분리되어 강렬하게 읽히게 한다. 진짜 URP Bloom이 아닌 모바일 안전 가짜 글로우.
 
-## 변경 대상
+## 변경 대상 (실제)
 
-- `Assets/_Project/Scripts/UI/ScoreHudView.cs`
-- 머티리얼: `Kanit Outline Mat.mat`(unit 0 에서 생성, Kanit SDF atlas)에서 파생한 **TMP SDF 머티리얼** glow/underlay 변종. 별도 `Score Impact Mat` 이 필요하면 Kanit atlas 기준으로 저작.
-- 샤인 오버레이용 additive `Image`(+`RectMask2D`)
+- `Assets/_Project/Scripts/UI/ScoreHudView.cs` — 글로우/샤인 `Image` 생성(BuildCanvas) + 수동 Update 타이머(`UpdateGlowShine`) + TriggerHit 트리거
+- 신규 `Assets/_Project/Shaders/UI_Additive.shader`(`Wassup/UI/Additive`, `Blend SrcAlpha One`) + `Assets/_Project/VFX/Score Additive.mat`
+- 신규 스프라이트 `Assets/_Project/VFX/Textures/ScoreGlow.png`(소프트 라디얼) · `ScoreShine.png`(소프트 세로 바) — 절차 생성 후 Sprite 임포트
 
-## 구현
+## 구현 (실제)
 
-- **발광 펄스**: 처치 시 TMP 머티리얼 글로우/underlay 파라미터를 짧게 펄스(PrimeTween `Tween.MaterialProperty`/`MaterialColor` 또는 코드 SetFloat), 또는 값 뒤 라디얼 글로우 `Image` 알파/스케일 펄스. 데미지 스펙의 "가짜 글로우 밴드"와 같은 판단(모바일 안전).
-- **샤인 스윕 — `DraftCardFoil_UI` 재활용 금지**: 그 셰이더는 UGUI **Image** 셰이더(UnityUI.cginc)라 TMP 폰트 머티리얼로 못 쓰고(텍스트 렌더 깨짐), `_Time` 기반 무한 shimmer 라 one-shot 아니다. 대신 **별도 additive `Image` 오버레이**를 숫자 위 `RectMask2D` 안에서 좌→우 1회 이동(PrimeTween one-shot, 처치마다 트리거). 글리프 모양 마스킹이 필요하면 숫자 자체를 마스크로 쓴다(foil 셰이더 아님).
-- **가독성 보강**: 필요 시 어두운 드롭섀도/아웃라인으로 배경 분리(데미지 스펙 강도 rev와 동일 결).
-- **직렬화/에셋**: 글로우 강도·펄스 시간·스윕 속도·색은 `[SerializeField]` + `.mat` 파라미터. 하드코딩 금지.
+TMP 머티리얼 글로우(GLOW_ON) 대신 **별도 additive Image 2개**로 구현 — 숫자 머티리얼(모바일 안전 `fe393ace`) 불변, 예측 가능·정밀 제어.
+
+- **발광**: 숫자 뒤 라디얼 글로우 `Image`(additive, 골드). 평상시 `glowRestAlpha`(0.05, 은은한 백라이트), 처치 시 `glowFlashAlpha`(0.22) flare 후 `glowFlashDuration` 감쇠 + `glowPulseScale` 스케일 펄스. **가독성 우선** — additive 글로우가 강하면 골드 숫자를 덮으므로 flash 알파 절제(0.55→0.22, 오프스크린 렌더로 확인).
+- **샤인 스윕**: 숫자 위 얇은 대각(`shineTiltDeg` 18°) additive `Image`(폭 `shineWidth` 24), 처치 시 좌→우 `shineTravel` 스윕 + `sin` 페이드. `DraftCardFoil_UI` 는 TMP 불가·무한 shimmer 라 미사용. 마스킹 없이 얇은 글린트가 숫자를 지나감.
+- **시간축**: 수동 타이머 `unscaledDeltaTime`(PrimeTween Image API 불확실성 회피). 모달 중에도 동작.
+- **직렬화/에셋**: 글로우/샤인 색·크기·알파·시간·스윕 전부 `[SerializeField]`. 셰이더는 빌드 안전(빌트인 legacy additive 스트립 위험 → 자체 셰이더).
 
 ## 완료 기준
 
-- compile: CS 에러/경고 0.
-- Play: 처치 시 발광 펄스 + 샤인 스윕이 보이고, 바쁜 배경 위에서도 숫자가 강렬히 분리됨.
-- 오프스크린 렌더/스크린샷으로 글로우·스윕 육안 확인(플랫 bg는 관대 — 최종은 사용자 Play).
-- 진짜 Bloom/post-FX 미사용 확인(모바일 안전).
+- compile: CS/셰이더 에러 0.
+- Play: 처치 시 발광 펄스 + 샤인 스윕이 보이고, 바쁜 배경 위에서도 숫자가 강렬히 분리 + **가독 유지**.
+- 진짜 Bloom/post-FX 미사용(모바일 안전).
+
+✅ 2026-07-07: compile 0 err + 오프스크린 합성 렌더로 글로우(0.22 flash·숫자 가독)·대각 샤인 글린트 확인(`score_glowshine_preview3.png`). Play 는 사용자 확인 대기.

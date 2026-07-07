@@ -41,6 +41,29 @@ namespace Wassup.UI
         [Header("Impact burst (procedural gold spark quads)")]
         [SerializeField] private ScoreBurstStyle burst = new ScoreBurstStyle();
 
+        [Header("Glow & shine (additive, Wassup/UI/Additive)")]
+        [Tooltip("Additive UI 머티리얼. Null → 기본(알파 블렌드).")]
+        [SerializeField] private Material additiveMaterial;
+        [Tooltip("소프트 라디얼 글로우 스프라이트")]
+        [SerializeField] private Sprite glowSprite;
+        [Tooltip("소프트 세로 바 샤인 스프라이트")]
+        [SerializeField] private Sprite shineSprite;
+        [SerializeField] private Color glowColor = new Color(1f, 0.68f, 0.24f, 1f);
+        [SerializeField] private float glowSize = 200f;
+        [Tooltip("평상시 은은한 글로우 알파 (숫자 가독 우선 — 낮게)")]
+        [SerializeField] private float glowRestAlpha = 0.05f;
+        [Tooltip("처치 순간 플래시 글로우 알파 (숫자를 덮지 않게 절제)")]
+        [SerializeField] private float glowFlashAlpha = 0.22f;
+        [SerializeField] private float glowFlashDuration = 0.35f;
+        [SerializeField] private float glowPulseScale = 1.35f;
+        [SerializeField] private Color shineColor = new Color(1f, 0.96f, 0.82f, 0.5f);
+        [SerializeField] private float shineWidth = 24f;
+        [Tooltip("대각 기울기(도)")]
+        [SerializeField] private float shineTiltDeg = 18f;
+        [Tooltip("좌→우 스윕 거리(px)")]
+        [SerializeField] private float shineTravel = 340f;
+        [SerializeField] private float shineDuration = 0.4f;
+
         [Header("Layout")]
         // Sits just below the timer (timer panel: y -12, height 60 -> bottom ~-72).
         [SerializeField] private float topOffset = -76f;
@@ -60,6 +83,13 @@ namespace Wassup.UI
         private Tween _punchTween;
         private Tween _colorTween;
         private ScoreBurstPool _burstPool;
+        private Image _glowImage;
+        private RectTransform _glowRect;
+        private Image _shineImage;
+        private RectTransform _shineRect;
+        private float _glowFlash;
+        private float _shineT = 2f;
+        private float _shineBaseY;
 
         private void Awake()
         {
@@ -86,6 +116,7 @@ namespace Wassup.UI
             if (_value != null) _value.text = Mathf.CeilToInt(_shownScore).ToString();
 
             _burstPool?.Tick(Time.unscaledDeltaTime);
+            UpdateGlowShine(Time.unscaledDeltaTime);
         }
 
         // Flush accumulated kills once per frame (after all Update() drains), so an
@@ -133,6 +164,39 @@ namespace Wassup.UI
                 Vector2 center = _valueRect.anchoredPosition + new Vector2(0f, -_valueRect.rect.height * 0.5f);
                 _burstPool.Emit(center, killCount);
             }
+
+            // Flare the glow and launch a shine sweep.
+            _glowFlash = 1f;
+            _shineT = 0f;
+        }
+
+        private void UpdateGlowShine(float dt)
+        {
+            if (_glowImage != null)
+            {
+                if (_glowFlash > 0f)
+                    _glowFlash = Mathf.Max(0f, _glowFlash - dt / Mathf.Max(0.0001f, glowFlashDuration));
+                var gc = glowColor;
+                gc.a = Mathf.Lerp(glowRestAlpha, glowFlashAlpha, _glowFlash);
+                _glowImage.color = gc;
+                if (_glowRect != null)
+                {
+                    float s = Mathf.Lerp(1f, glowPulseScale, _glowFlash);
+                    _glowRect.localScale = new Vector3(s, s, 1f);
+                }
+            }
+
+            if (_shineImage != null && _shineT <= 1f)
+            {
+                _shineT += dt / Mathf.Max(0.0001f, shineDuration);
+                float t = Mathf.Clamp01(_shineT);
+                if (_shineRect != null)
+                    _shineRect.anchoredPosition = new Vector2(
+                        Mathf.Lerp(-shineTravel * 0.5f, shineTravel * 0.5f, t), _shineBaseY);
+                var sc = shineColor;
+                sc.a = shineColor.a * Mathf.Sin(t * Mathf.PI); // fade in then out
+                _shineImage.color = sc;
+            }
         }
 
         private void StopFeedbackTweens()
@@ -142,6 +206,12 @@ namespace Wassup.UI
             if (_valueRect != null) _valueRect.localScale = Vector3.one;
             if (_value != null) _value.color = baseColor;
             _burstPool?.ClearAll();
+
+            _glowFlash = 0f;
+            _shineT = 2f;
+            if (_glowImage != null) { var gc = glowColor; gc.a = glowRestAlpha; _glowImage.color = gc; }
+            if (_glowRect != null) _glowRect.localScale = Vector3.one;
+            if (_shineImage != null) { var sc = shineColor; sc.a = 0f; _shineImage.color = sc; }
         }
 
         private void EnsureSubscribed()
@@ -231,6 +301,32 @@ namespace Wassup.UI
             _burstPool = new ScoreBurstPool();
             _burstPool.Init((RectTransform)_panel.transform, burst);
 
+            Vector2 valueCenter = _valueRect.anchoredPosition + new Vector2(0f, -_valueRect.rect.height * 0.5f);
+            _shineBaseY = valueCenter.y;
+
+            // Soft radial glow behind the number (subtle at rest, flares on each hit).
+            _glowImage = MakeImage("Glow", _panel.transform, glowSprite);
+            _glowRect = _glowImage.rectTransform;
+            _glowRect.anchorMin = new Vector2(0.5f, 1f);
+            _glowRect.anchorMax = new Vector2(0.5f, 1f);
+            _glowRect.pivot = new Vector2(0.5f, 0.5f);
+            _glowRect.anchoredPosition = valueCenter;
+            _glowRect.sizeDelta = new Vector2(glowSize, glowSize);
+            _glowRect.SetAsFirstSibling(); // behind burst + caption + value
+            { var gc = glowColor; gc.a = glowRestAlpha; _glowImage.color = gc; }
+
+            // Diagonal shine streak swept over the number on each hit (on top).
+            _shineImage = MakeImage("Shine", _panel.transform, shineSprite);
+            _shineRect = _shineImage.rectTransform;
+            _shineRect.anchorMin = new Vector2(0.5f, 1f);
+            _shineRect.anchorMax = new Vector2(0.5f, 1f);
+            _shineRect.pivot = new Vector2(0.5f, 0.5f);
+            _shineRect.anchoredPosition = new Vector2(0f, valueCenter.y);
+            _shineRect.sizeDelta = new Vector2(shineWidth, 96f);
+            _shineRect.localRotation = Quaternion.Euler(0f, 0f, shineTiltDeg);
+            _shineRect.SetAsLastSibling();
+            { var sc = shineColor; sc.a = 0f; _shineImage.color = sc; }
+
             UiLayer.Apply(gameObject);
         }
 
@@ -246,6 +342,17 @@ namespace Wassup.UI
             tmp.textWrappingMode = TextWrappingModes.NoWrap;
             tmp.raycastTarget = false;
             return tmp;
+        }
+
+        private Image MakeImage(string name, Transform parent, Sprite sprite)
+        {
+            var go = new GameObject(name, typeof(RectTransform));
+            go.transform.SetParent(parent, false);
+            var img = go.AddComponent<Image>();
+            if (sprite != null) img.sprite = sprite;
+            if (additiveMaterial != null) img.material = additiveMaterial;
+            img.raycastTarget = false;
+            return img;
         }
     }
 }
