@@ -6,8 +6,8 @@
 
 ## 변경 대상
 
-- `Assets/_Project/Scripts/UI/ScoreHudView.cs` (또는 보조 `ScoreBurstEmitter.cs` 분리)
-- 스파크 텍스처(기존 재활용, 존재 확인됨): `Assets/GabrielAguiarProductions/Textures/` — 코인/별 느낌엔 `Flare01.png`·`ImpactWhite01.png`, 도트엔 `Circle18.png`. 데미지 스파크가 이미 `Circle18` 도트라 **점수는 다른 텍스처**(Flare/별)로 구분.
+- 신규 `Assets/_Project/Scripts/UI/ScoreBurstPool.cs` (plain 클래스, ScoreHudView 가 소유·구동) + `ScoreHudView.cs` (직렬화 `ScoreBurstStyle burst` + Tick/Emit/ClearAll 배선)
+- 스파크 텍스처: **생성한 `Assets/_Project/VFX/Textures/ScoreSpark.png`** (소프트 4점 스파클, 절차 생성 후 Sprite 임포트). 빌트인 `Resources.GetBuiltinResource` UI 스프라이트는 null·GA 텍스처는 Sprite 아님 → 자체 스파클로 결정. 데미지의 둥근 `Circle18` 도트와 **형상 구분**(4점 반짝임).
 
 ## 구현
 
@@ -26,3 +26,5 @@
 - **AoE/전멸 프레임**: 한 프레임 다처치가 폭증 대신 강화된 1버스트로 병합, 전역 쿼드 상한 초과 시 skip 확인.
 - 연속 다처치에도 풀 재사용(오브젝트 무한 증가 없음), 반납 누수 0.
 - 오프스크린 렌더 또는 Play 스크린샷으로 버스트 형상/색 육안 확인.
+
+✅ 2026-07-07: compile 0 err + 오프스크린 렌더로 골드 4점 스파클 방사 확인(`score_burst_preview2.png`). Play(실제 처치 반응·병합)는 사용자 확인 대기.

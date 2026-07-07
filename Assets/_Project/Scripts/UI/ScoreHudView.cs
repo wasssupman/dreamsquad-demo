@@ -38,6 +38,9 @@ namespace Wassup.UI
         [Tooltip("안착 리치 골드 색")]
         [SerializeField] private Color baseColor = new Color(1f, 0.78f, 0.28f);
 
+        [Header("Impact burst (procedural gold spark quads)")]
+        [SerializeField] private ScoreBurstStyle burst = new ScoreBurstStyle();
+
         [Header("Layout")]
         // Sits just below the timer (timer panel: y -12, height 60 -> bottom ~-72).
         [SerializeField] private float topOffset = -76f;
@@ -56,6 +59,7 @@ namespace Wassup.UI
         private int _pendingKills;
         private Tween _punchTween;
         private Tween _colorTween;
+        private ScoreBurstPool _burstPool;
 
         private void Awake()
         {
@@ -80,6 +84,8 @@ namespace Wassup.UI
             _shownScore = Mathf.Lerp(_shownScore, _targetScore, Mathf.Clamp01(Time.unscaledDeltaTime * rollLerp));
             if (Mathf.Abs(_targetScore - _shownScore) < 0.5f) _shownScore = _targetScore;
             if (_value != null) _value.text = Mathf.CeilToInt(_shownScore).ToString();
+
+            _burstPool?.Tick(Time.unscaledDeltaTime);
         }
 
         // Flush accumulated kills once per frame (after all Update() drains), so an
@@ -120,6 +126,13 @@ namespace Wassup.UI
             if (_colorTween.isAlive) _colorTween.Stop();
             _value.color = flashColor;
             _colorTween = Tween.Color(_value, flashColor, baseColor, punchDuration, Ease.OutQuad, useUnscaledTime: true);
+
+            // Radial gold spark burst from the number center (behind the digits).
+            if (_burstPool != null)
+            {
+                Vector2 center = _valueRect.anchoredPosition + new Vector2(0f, -_valueRect.rect.height * 0.5f);
+                _burstPool.Emit(center, killCount);
+            }
         }
 
         private void StopFeedbackTweens()
@@ -128,6 +141,7 @@ namespace Wassup.UI
             if (_colorTween.isAlive) _colorTween.Stop();
             if (_valueRect != null) _valueRect.localScale = Vector3.one;
             if (_value != null) _value.color = baseColor;
+            _burstPool?.ClearAll();
         }
 
         private void EnsureSubscribed()
@@ -213,6 +227,9 @@ namespace Wassup.UI
             _valueRect.sizeDelta = new Vector2(420f, 104f);
             _value.text = "0";
             _value.color = baseColor;
+
+            _burstPool = new ScoreBurstPool();
+            _burstPool.Init((RectTransform)_panel.transform, burst);
 
             UiLayer.Apply(gameObject);
         }

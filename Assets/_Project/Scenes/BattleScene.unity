@@ -2300,6 +2300,19 @@ MonoBehaviour:
   maxMultiKillBoost: 2.5
   flashColor: {r: 1, g: 0.97, b: 0.85, a: 1}
   baseColor: {r: 1, g: 0.78, b: 0.28, a: 1}
+  burst:
+    sprite: {fileID: 21300000, guid: c3dd9a3e0f25d471583f182bd2a406eb, type: 3}
+    color: {r: 1, g: 0.82, b: 0.32, a: 1}
+    countPerKill: 9
+    maxConcurrent: 72
+    speed: 340
+    drag: 2.6
+    gravity: 680
+    lifetime: 0.55
+    startSize: 24
+    endSizeMul: 0.15
+    extraPerKill: 4
+    extraMax: 22
   topOffset: -76
   valueFontSize: 83
   captionFontSize: 29
