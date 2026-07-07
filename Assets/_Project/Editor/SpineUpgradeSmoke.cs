@@ -168,6 +168,42 @@ public static class SpineUpgradeSmoke
             Debug.Log($"[SMOKE] defender looks OK: {checked_}종, unique={comboKeys.Count}, empty={empty}");
         }
 
+        // enemy provisional human looks — 7종 임시 휴먼 스켈레톤 물림(기어 0 + 원색 틴트) 검증.
+        // 몬스터형 리소스 수급 전 임시 상태. partSkins 가 있는 적만 대상(Vanguard/Tanker 단일 스킨은 스킵).
+        {
+            string[] guids = UnityEditor.AssetDatabase.FindAssets("t:AttackUnitData", new[] { "Assets/_Project/Data/Enemies" });
+            var gearCats = new System.Collections.Generic.HashSet<string> {
+                "helmet", "hair_hat", "gear_left", "gear_right", "gloves", "boots", "back", "eyewear", "top" };
+            var comboKeys = new System.Collections.Generic.HashSet<string>();
+            int provisional = 0;
+            foreach (string guid in guids)
+            {
+                string path = UnityEditor.AssetDatabase.GUIDToAssetPath(guid);
+                var e = UnityEditor.AssetDatabase.LoadAssetAtPath<Wassup.Data.AttackUnitData>(path);
+                if (e == null || e.partSkins.Count == 0) continue; // 단일 스킨 적은 대상 아님
+                provisional++;
+                var w = Wassup.Editor.UnitVisualDataValidator.CollectWarnings(e);
+                if (w.Count != 0) { Debug.LogError($"[SMOKE] {e.name} 경고 {w.Count}건:\n - " + string.Join("\n - ", w)); ok = false; }
+                if (!e.partSkins.Contains("skin/skin_1")) { Debug.LogError($"[SMOKE] {e.name}: 본체 skin/skin_1 누락"); ok = false; }
+                foreach (var ps in e.partSkins)
+                {
+                    string cat = ps.Split('/')[0];
+                    if (gearCats.Contains(cat)) { Debug.LogError($"[SMOKE] {e.name}: 기어 착용 {cat} (브리프=기어 미착용 위반)"); ok = false; }
+                }
+                if (e.slotColors.Count == 0) { Debug.LogError($"[SMOKE] {e.name}: slotColors 비어 있음(원색 틴트 없음)"); ok = false; }
+                var skel = e.skeletonDataAsset.GetSkeletonData(false);
+                var skin = Wassup.Presentation.SpineCombinedSkinCache.GetOrBuild(skel, e.partSkins, e.name);
+                if (skin.Attachments.Count <= 6) { Debug.LogError($"[SMOKE] {e.name}: 합성 어태치 {skin.Attachments.Count} — 얼굴/머리 누락 의심"); ok = false; }
+                comboKeys.Add(string.Join("|", e.partSkins));
+                foreach (var (field, v) in new[] { ("idle", e.idleAnimation), ("attack", e.attackAnimation), ("death", e.deathAnimation) })
+                    if (!string.IsNullOrEmpty(v) && skel.FindAnimation(v) == null)
+                    { Debug.LogError($"[SMOKE] {e.name}: {field}Animation '{v}' 클립 없음"); ok = false; }
+            }
+            if (provisional != 7) { Debug.LogError($"[SMOKE] enemy 임시 조합 {provisional}종 (기대 7)"); ok = false; }
+            if (comboKeys.Count != provisional) { Debug.LogError($"[SMOKE] enemy 조합 중복: unique={comboKeys.Count}/{provisional}"); ok = false; }
+            Debug.Log($"[SMOKE] enemy provisional looks OK: {provisional}종, unique={comboKeys.Count}");
+        }
+
         Debug.Log(ok ? "[SMOKE] SpinePipelineSmoke PASS" : "[SMOKE] SpinePipelineSmoke FAIL");
         EditorApplication.Exit(ok ? 0 : 1);
     }

@@ -40,10 +40,36 @@ MonoBehaviour:
     stackMaxStack: 0
   visualMesh: {fileID: 0}
   visualMaterial: {fileID: 2100000, guid: 112dc5365207046e290909023bcecaf4, type: 2}
-  skeletonDataAsset: {fileID: 0}
-  spineSkinName: 
-  idleAnimation: idle
-  attackAnimation: attack
-  deathAnimation: die
+  skeletonDataAsset: {fileID: 11400000, guid: ee98f82138b60430f97c6863317c3a2f, type: 2}
+  spineSkinName: full_skins
+  idleAnimation: Walk
+  attackAnimation: Attack1
+  deathAnimation: Die
   spineVisualScale: 1.3
+  partSkins:
+  - bottom/bottom_c_40
+  - brow/brow_c_8
+  - eyes/eyes_c_15
+  - hair_short/hair_short_c_7
+  - mouth/mouth_c_9
+  - skin/skin_1
+  slotColors:
+  - slotName: body
+    color: {r: 0.56, g: 0.07, b: 0.15, a: 1}
+  - slotName: leg_l
+    color: {r: 0.56, g: 0.07, b: 0.15, a: 1}
+  - slotName: leg_r
+    color: {r: 0.56, g: 0.07, b: 0.15, a: 1}
+  - slotName: arm_l
+    color: {r: 0.56, g: 0.07, b: 0.15, a: 1}
+  - slotName: arm_r
+    color: {r: 0.56, g: 0.07, b: 0.15, a: 1}
+  - slotName: head
+    color: {r: 0.56, g: 0.07, b: 0.15, a: 1}
+  - slotName: hair
+    color: {r: 0.05, g: 0.05, b: 0.07, a: 1}
+  - slotName: hair_long
+    color: {r: 0.05, g: 0.05, b: 0.07, a: 1}
+  - slotName: helmet_hair
+    color: {r: 0.05, g: 0.05, b: 0.07, a: 1}
   visualOffset: {x: 0, y: 0, z: 0}
