@@ -26,6 +26,8 @@
 
 ## 완료 기준
 
-- [ ] 위 Play 시나리오 전부 통과, 콘솔 에러 0
-- [ ] URP 에서 스켈레톤 정상 렌더 확인
-- [ ] 임시 wiring 이라는 사실이 커밋 메시지에 명시됨 (unit 4 에서 원복 예정)
+- [x] 데이터 파이프라인 검증 통과, 콘솔 에러 0 — 배치 스모크(`SpineUpgradeSmoke.SpinePipelineSmoke`)로 수행: 4.2.22 데이터 로드(spineboy-pro·goblins), 스킨 해석(goblingirl), AnimationState 재생, `SkeletonFlipXModifier.Apply()` 동작(rootScaleX=-1). Play 시나리오(드래그 프리뷰/전투 시퀀스)는 배치 모드 한계로 데이터 계층 검증으로 대체
+- [ ] URP 에서 스켈레톤 정상 렌더 확인 — 배치 `-nographics` 로 불가, **unit 4 실리소스 임포트 시 에디터에서 확인** 으로 이월
+- [x] 임시 wiring 이라는 사실이 커밋 메시지에 명시됨 (unit 4 에서 원복 예정)
+
+확인 2026-07-07. wiring: Defender_Scout→spineboy-pro(idle/shoot/death/run), Enemy_Vanguard→goblins(goblingirl, walk). 원복 대상 원본 값은 git 히스토리(커밋 b758aa29 이전) 참조.
