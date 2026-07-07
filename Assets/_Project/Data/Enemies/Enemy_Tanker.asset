@@ -40,10 +40,10 @@ MonoBehaviour:
     stackMaxStack: 0
   visualMesh: {fileID: 0}
   visualMaterial: {fileID: 2100000, guid: 3040a5917ceba49b48a1616e771e9e80, type: 2}
-  skeletonDataAsset: {fileID: 11400000, guid: 417792703a7d2400192c34d7f8396608, type: 2}
-  spineSkinName: default
-  idleAnimation: walk
-  attackAnimation: attack-1
-  deathAnimation: 
+  skeletonDataAsset: {fileID: 11400000, guid: ee98f82138b60430f97c6863317c3a2f, type: 2}
+  spineSkinName: full_skins
+  idleAnimation: Walk
+  attackAnimation: Attack1
+  deathAnimation: Die
   spineVisualScale: 1.05
   visualOffset: {x: 0, y: 0, z: 0}

@@ -40,10 +40,10 @@ MonoBehaviour:
     stackMaxStack: 0
   visualMesh: {fileID: 0}
   visualMaterial: {fileID: 2100000, guid: fda8488d60e7f4b25a9846eb038050d9, type: 2}
-  skeletonDataAsset: {fileID: 11400000, guid: 2e4e11d4dd87d844a876d18c4d76a612, type: 2}
-  spineSkinName: goblingirl
-  idleAnimation: walk
-  attackAnimation: walk
-  deathAnimation: walk
+  skeletonDataAsset: {fileID: 11400000, guid: ee98f82138b60430f97c6863317c3a2f, type: 2}
+  spineSkinName: full_skins
+  idleAnimation: Walk
+  attackAnimation: Attack1
+  deathAnimation: Die
   spineVisualScale: 0.5
   visualOffset: {x: 0, y: 0, z: 0}

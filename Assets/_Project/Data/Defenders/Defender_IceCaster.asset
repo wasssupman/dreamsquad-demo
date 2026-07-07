@@ -42,13 +42,13 @@ MonoBehaviour:
   rarity: 2
   aggroCapacity: 0
   aggroRange: 0
-  skeletonDataAsset: {fileID: 11400000, guid: b0640b88ee78d49f38774a3a4b09bf4d, type: 2}
-  spineSkinName: Owl
-  idleAnimation: idle
-  attackAnimation: cast-spell
-  deathAnimation: die
+  skeletonDataAsset: {fileID: 11400000, guid: ee98f82138b60430f97c6863317c3a2f, type: 2}
+  spineSkinName: full_skins
+  idleAnimation: Idle
+  attackAnimation: Attack1
+  deathAnimation: Die
   spineVisualScale: 1
-  dragAnimation: find-item/find-item-loop
+  dragAnimation: Run
   deployAnimation: cast-spell2
   placementVfxPrefab: {fileID: 0}
   attackVfxPrefab: {fileID: 0}

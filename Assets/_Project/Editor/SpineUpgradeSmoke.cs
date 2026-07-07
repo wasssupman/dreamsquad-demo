@@ -19,8 +19,8 @@ public static class SpineUpgradeSmoke
         bool ok = true;
         var targets = new (string path, string skin, string[] anims)[]
         {
-            ("Assets/_Project/Data/Defenders/Defender_Scout.asset", "default", new[] { "idle", "shoot", "death", "run" }),
-            ("Assets/_Project/Data/Enemies/Enemy_Vanguard.asset", "goblingirl", new[] { "walk" }),
+            ("Assets/_Project/Data/Defenders/Defender_Scout.asset", "full_skins", new[] { "Idle", "Attack1", "Die", "Run" }),
+            ("Assets/_Project/Data/Enemies/Enemy_Vanguard.asset", "full_skins", new[] { "Walk", "Attack1", "Die" }),
         };
         foreach (var t in targets)
         {
@@ -49,7 +49,7 @@ public static class SpineUpgradeSmoke
         else
         {
             var sda = UnityEditor.AssetDatabase.LoadAssetAtPath<Spine.Unity.SkeletonDataAsset>(
-                "Assets/Spine Examples/Spine Skeletons/spineboy-pro/spineboy-pro_SkeletonData.asset");
+                "Assets/Layer Lab/2D Art Maker/AMCasual Character/Demo/SpineAnimation/Casual Character_SkeletonData.asset");
             var data = sda.GetSkeletonData(false);
             flip.Apply(data);
             float rootScaleX = data.Bones.Items[0].ScaleX;

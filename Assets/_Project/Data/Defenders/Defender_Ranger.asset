@@ -49,13 +49,13 @@ MonoBehaviour:
   rarity: 0
   aggroCapacity: 0
   aggroRange: 0
-  skeletonDataAsset: {fileID: 11400000, guid: b0640b88ee78d49f38774a3a4b09bf4d, type: 2}
-  spineSkinName: Goat
-  idleAnimation: idle
-  attackAnimation: weapons/blunderbuss/heavy-horizontal-shoot
-  deathAnimation: die
+  skeletonDataAsset: {fileID: 11400000, guid: ee98f82138b60430f97c6863317c3a2f, type: 2}
+  spineSkinName: full_skins
+  idleAnimation: Idle
+  attackAnimation: Attack1
+  deathAnimation: Die
   spineVisualScale: 1
-  dragAnimation: find-item/find-item-loop
+  dragAnimation: Run
   deployAnimation: cast-spell2
   placementVfxPrefab: {fileID: 4060967071236614201, guid: c91958420bcc8d647ae19c0e7caeafa6, type: 3}
   attackVfxPrefab: {fileID: 0}

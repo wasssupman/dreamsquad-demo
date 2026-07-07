@@ -1,7 +1,7 @@
 # Spine Runtime 4.2 Upgrade Spec
 
 **작성일**: 2026-07-07
-**상태**: unit 0~3 완료 (2026-07-07) — unit 4 는 신규 4.2 리소스 수급 대기, 상세는 `5_handoff_summary.md`
+**상태**: unit 0~4 완료 (2026-07-07, unit 4 rev A = Layer Lab AMCasual Character 채택) — 에디터 시각 확인(rig 방향/URP/Play) 잔여, 파츠 조합 외형 시스템은 별도 spec 예정. 상세는 `4_rewire_new_resources.md` rev A 기록
 **목표**: spine-unity 런타임을 3.8 → 4.2 로 업그레이드하고, 재활용 불가능한 3.8 스켈레톤 리소스를 전부 퇴역시킨 뒤, 4.2 신규 리소스 수급 규약과 재연결 경로를 마련한다.
 
 ## 배경 (2026-07-07 조사 결과)

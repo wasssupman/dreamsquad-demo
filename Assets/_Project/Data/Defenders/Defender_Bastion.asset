@@ -49,13 +49,13 @@ MonoBehaviour:
   rarity: 1
   aggroCapacity: 4
   aggroRange: 0
-  skeletonDataAsset: {fileID: 11400000, guid: b0640b88ee78d49f38774a3a4b09bf4d, type: 2}
-  spineSkinName: Lamb
-  idleAnimation: idle
-  attackAnimation: attack-combo1-dagger
-  deathAnimation: die
+  skeletonDataAsset: {fileID: 11400000, guid: ee98f82138b60430f97c6863317c3a2f, type: 2}
+  spineSkinName: full_skins
+  idleAnimation: Idle
+  attackAnimation: Attack1
+  deathAnimation: Die
   spineVisualScale: 1
-  dragAnimation: find-item/find-item-loop
+  dragAnimation: Run
   deployAnimation: attack-combo1-dagger
   placementVfxPrefab: {fileID: 2427901435903505602, guid: 971aa18e6a15c0d48bf889c9d9df4fce, type: 3}
   attackVfxPrefab: {fileID: 6426699771996326788, guid: d2bf7f11edac4e8459d42fb4ce84890b, type: 3}
