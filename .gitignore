@@ -142,3 +142,6 @@ CLAUDE.local.md
 /Assets/_Project/Generated/Props/Materials.meta
 /Assets/_Project/Generated/Tiles.meta
 /Assets/_Project/Scenes/BattleScene.meta
+
+# omx 플러그인 로컬 상태 (세션별 툴 상태 — 커밋 대상 아님)
+/.omx/
