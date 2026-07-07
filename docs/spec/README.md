@@ -140,10 +140,9 @@ code + git history        구현 상세
 
 #### 점수 HUD 타격감 (score-hud-impact-upgrade)
 
-점수 HUD 임팩트 업그레이드 완료(2026-07-07, units 0~3 — 탄성 슬램/골드 아이덴티티/Kanit 폰트·골드 스파클 버스트·발광+샤인·패널 킥/마일스톤 플래시, Play 통과). 상세: `docs/spec/score-hud-impact-upgrade/`.
+점수 HUD 임팩트 업그레이드 **완료(2026-07-07, units 0~4)** — 탄성 슬램/골드 아이덴티티/Kanit 폰트·골드 스파클 버스트·발광+샤인·패널 킥/마일스톤 플래시(Play 통과) + SoundManager 처치 틱(ElevenLabs `ScoreTick`, 피치 상승). 상세: `docs/spec/score-hud-impact-upgrade/`.
 
-- **사운드 (unit 4)** [S] · SoundManager + 처치 틱(빠른 연속 시 피치 상승). ElevenLabs 저작-시점 SFX 생성 → 로컬 재생(런타임 API 금지). 설계·계약 보존: `4_sound-soundmanager.md`. ElevenLabs 키 확보 시 착수.
-- **연속처치 heat · 킬 위치 "+N" 플로팅 · 콤보 배수 스코어링 · 적별 차등 점수 · 진짜 URP Bloom** [S~M] · 상세는 spec README "후속 후보".
+- **연속처치 heat · 킬 위치 "+N" 플로팅 · 콤보 배수 스코어링 · 적별 차등 점수 · 진짜 URP Bloom · SFX 다양화(마일스톤 팡파레)** [S~M] · 상세는 spec README "후속 후보".
 
 #### 체력 표기 (unit-health-display)
 

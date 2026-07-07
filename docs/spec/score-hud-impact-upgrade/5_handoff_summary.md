@@ -1,6 +1,6 @@
 # 5 · Handoff Summary — score-hud-impact-upgrade
 
-> **완료 2026-07-07** — units 0~3(시각) 구현·커밋·Play 검증 통과. 사운드(unit 4)는 **후속 후보로 이관**(미착수, ElevenLabs 클립 확보 시 착수). merge `0bad98a4` 로 origin(battle-log/lobby-keyring/스킵로그인)과 통합, `BattleBridge` 가 `OnEnemyKilled(EnemyKillScoreDelta=10)` 로 구동.
+> **완료 2026-07-07** — units 0~4 전부 구현·커밋. 시각(0~3) Play 검증 통과, 사운드(4) SoundManager + ElevenLabs `ScoreTick` 배선(Play 청각 검증은 사용자). merge `0bad98a4` 로 origin(battle-log/lobby-keyring/스킵로그인)과 통합, `BattleBridge` 가 `OnEnemyKilled(EnemyKillScoreDelta=10)` 로 구동.
 
 ## Commit
 

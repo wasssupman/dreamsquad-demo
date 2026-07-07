@@ -1698,6 +1698,53 @@ Transform:
   m_Children: []
   m_Father: {fileID: 725522407}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1004191865
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1004191867}
+  - component: {fileID: 1004191866}
+  m_Layer: 0
+  m_Name: SoundManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1004191866
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1004191865}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c01d18bdd639e4ab4b51841743ba090a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Core.SoundManager
+  scoreTickClip: {fileID: 8300000, guid: 8b656e97eda9946f18e43b434b780a9e, type: 3}
+  scoreTickVolume: 0.6
+  voiceCount: 6
+--- !u!4 &1004191867
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1004191865}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1072617483
 GameObject:
   m_ObjectHideFlags: 0
@@ -2335,6 +2382,10 @@ MonoBehaviour:
   milestoneColor: {r: 1, g: 0.8, b: 0.35, a: 1}
   milestoneFlashAlpha: 0.5
   milestoneDuration: 0.55
+  soundPitchBase: 1
+  soundPitchMax: 1.7
+  soundPitchPerKill: 0.06
+  soundHeatDecay: 1.4
   topOffset: -76
   valueFontSize: 83
   captionFontSize: 29
@@ -3808,3 +3859,4 @@ SceneRoots:
   - {fileID: 725522407}
   - {fileID: 543066564}
   - {fileID: 1218224328}
+  - {fileID: 1004191867}

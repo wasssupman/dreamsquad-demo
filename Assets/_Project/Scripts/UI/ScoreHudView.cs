@@ -80,6 +80,16 @@ namespace Wassup.UI
         [SerializeField] private float milestoneFlashAlpha = 0.5f;
         [SerializeField] private float milestoneDuration = 0.55f;
 
+        [Header("Sound (SoundManager)")]
+        [Tooltip("처치 틱 기본 피치")]
+        [SerializeField] private float soundPitchBase = 1f;
+        [Tooltip("빠른 연속 처치 시 피치 상한")]
+        [SerializeField] private float soundPitchMax = 1.7f;
+        [Tooltip("처치당 피치 상승분(연속 시 누적)")]
+        [SerializeField] private float soundPitchPerKill = 0.06f;
+        [Tooltip("피치 heat 감쇠(1/s) — 처치 멈추면 기본 피치로")]
+        [SerializeField] private float soundHeatDecay = 1.4f;
+
         [Header("Layout")]
         // Sits just below the timer (timer panel: y -12, height 60 -> bottom ~-72).
         [SerializeField] private float topOffset = -76f;
@@ -111,6 +121,7 @@ namespace Wassup.UI
         private int _lastMilestone;
         private Tween _kickPosTween;
         private Tween _kickRotTween;
+        private float _soundHeat;
 
         private void Awake()
         {
@@ -138,6 +149,8 @@ namespace Wassup.UI
 
             _burstPool?.Tick(Time.unscaledDeltaTime);
             UpdateGlowShine(Time.unscaledDeltaTime);
+            if (_soundHeat > 0f)
+                _soundHeat = Mathf.Max(0f, _soundHeat - soundHeatDecay * Time.unscaledDeltaTime);
         }
 
         // Flush accumulated kills once per frame (after all Update() drains), so an
@@ -215,6 +228,11 @@ namespace Wassup.UI
                 int m = _targetScore / milestoneInterval;
                 if (m > _lastMilestone) { _lastMilestone = m; _milestoneFlash = 1f; }
             }
+
+            // Score tick — pitch climbs on rapid consecutive kills (heat), decays over time.
+            _soundHeat = Mathf.Min(_soundHeat + killCount * soundPitchPerKill,
+                                   Mathf.Max(0f, soundPitchMax - soundPitchBase));
+            SoundManager.Instance?.PlayScoreTick(soundPitchBase + _soundHeat);
         }
 
         private void UpdateGlowShine(float dt)
@@ -305,6 +323,7 @@ namespace Wassup.UI
                 _shownScore = 0f;
                 _pendingKills = 0;
                 _lastMilestone = 0;
+                _soundHeat = 0f;
                 StopFeedbackTweens();
                 if (_value != null) { _value.text = "0"; _value.color = baseColor; }
                 if (_valueRect != null) _valueRect.localScale = Vector3.one;

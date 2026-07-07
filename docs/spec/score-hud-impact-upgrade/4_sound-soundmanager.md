@@ -1,6 +1,6 @@
-# 4 — 사운드 (SoundManager + 처치 틱) · [게이트]
+# 4 — 사운드 (SoundManager + 처치 틱)
 
-> **상태: 게이트** — ElevenLabs 클립 확보 후 진행. API 사용은 일단 미룸(사용자 결정 2026-07-07). 0~3 시각 목표 먼저.
+> **상태: 완료 2026-07-07** — SoundManager 신설 + ScoreHudView 배선(연속 처치 피치 상승 heat). 클립=ElevenLabs 생성 `ScoreTick.mp3`(후보 5종 오디션 → A_arcade 채택). BattleScene 에 SoundManager GameObject 배선.
 
 ## 목적
 
@@ -31,3 +31,11 @@
 - SoundManager compile + 씬 배선 + `ScoreHudView` 호출 연결.
 - 클립 할당 후 Play: 처치 시 틱, 빠른 연속 처치 시 피치 상승 육안(청각) 확인.
 - 클립 미할당 상태에서도 에러/예외 0(no-op).
+
+## 구현 메모 (실제)
+
+- `SoundManager`(`Wassup.Core`, `Scripts/Audio/SoundManager.cs`): 씬-로컬 싱글톤(DontDestroyOnLoad 아님), `Awake` 에서 `voiceCount`(6)개 `AudioSource` 라운드로빈 풀 생성(2D, playOnAwake=false). `PlayScoreTick(pitch)` — 클립 null 이면 no-op, pitch 0.5~3 clamp.
+- **피치 heat**: `ScoreHudView` 가 flush마다 `_soundHeat += killCount*soundPitchPerKill`(상한 `soundPitchMax-soundPitchBase`), `PlayScoreTick(soundPitchBase+_soundHeat)`. heat 는 `soundHeatDecay`/s 로 감쇠 → 처치 멈추면 기본 피치. Battle 리셋 시 heat=0.
+- 클립: ElevenLabs `POST /v1/sound-generation`(mp3 128k/44.1k, duration 0.5 최소). 프롬프트 "crisp bright arcade score tick". 5종 생성→오디션→`ScoreTick.mp3` 채택, 나머지 폐기. 저작-시점 생성, 런타임 API 0.
+
+✅ 2026-07-07: compile 0 err + SoundManager GameObject BattleScene 배선 + ScoreTick 클립 할당. Play 청각 검증(틱·피치 상승)은 사용자 확인.
