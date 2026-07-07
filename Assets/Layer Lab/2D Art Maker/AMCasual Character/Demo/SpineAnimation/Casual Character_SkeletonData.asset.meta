@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: ee98f82138b60430f97c6863317c3a2f
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 11400000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 316781
+  packageName: 2D Art Maker - Casual Characters
+  packageVersion: 1.1.3
+  assetPath: Assets/Layer Lab/2D Art Maker/AMCasual Character/Demo/SpineAnimation/Casual
+    Character_SkeletonData.asset
+  uploadId: 946102

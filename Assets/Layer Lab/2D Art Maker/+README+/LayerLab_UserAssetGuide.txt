@@ -1,0 +1,645 @@
+================================================================================
+    2D Art Maker - User Asset Guide
+    Version 1.0 | Layer Lab
+================================================================================
+
+Thank you for choosing and using our assets!
+
+For more information, please visit:
+https://tinyurl.com/LayerLabAssetGuide
+
+
+================================================================================
+ TABLE OF CONTENTS
+================================================================================
+
+  1. Overview
+  2. Requirements & Setup
+  3. Project Structure
+  4. Quick Start (5-Minute Guide)
+  5. Character Customization - Parts
+  6. Character Customization - Colors
+  7. Preset System (Save & Load)
+  8. Experience Mode (Character Movement)
+  9. Exporting Characters as Prefabs
+  10. Integrating Characters Into Your Game
+  11. Working with Spine Data
+  12. Camera & UI System
+  13. Audio System
+  14. Tips & Best Practices
+  15. Troubleshooting / FAQ
+  16. Font & License Information
+
+
+================================================================================
+ 1. OVERVIEW
+================================================================================
+
+2D Art Maker is a Spine-based 2D character customization system for Unity.
+Users can mix and match various parts (hair, top, bottom, weapons, etc.) and
+change colors to create unique characters.
+
+Each character asset contains hundreds of interchangeable parts across
+15 categories. All assets share the same codebase and work identically.
+
+
+================================================================================
+ 2. REQUIREMENTS & SETUP
+================================================================================
+
+[Requirements]
+  - Unity 2021.3 LTS or later (2022.3+ recommended)
+  - Spine Runtime for Unity (spine-unity package)
+    Download: https://ko.esotericsoftware.com/spine-unity-download
+
+[Installation Steps]
+  1. Import the Spine Runtime package into your Unity project first.
+  2. Import the 2D Art Maker asset package.
+  3. Open the demo scene in your asset folder:
+     [Asset Folder] > Demo > Scenes > Demo_[AssetName].unity
+  4. Press Play to start customizing characters immediately.
+
+[Important]
+  - Make sure the Spine package is imported BEFORE the Art Maker asset.
+  - If you see pink/missing materials, reimport the Spine package.
+
+
+================================================================================
+ 3. PROJECT STRUCTURE
+================================================================================
+
+Assets/Layer Lab/2D Art Maker/
+|
+|-- _CommonSource/              Shared code, prefabs, shaders, fonts
+|   |-- Scripts/                All C# source code
+|   |-- Prefabs/                UI and utility prefabs
+|   |-- Shader&Materials/       Custom shaders (Light2D, Wind, Vignette)
+|   |-- Font/                   LINESeedSans SDF fonts
+|   `-- Spine/                  Shared Spine data (fire effect)
+|
+|-- [Asset Name]/               Character theme assets
+|   |-- Demo/
+|   |   |-- Scenes/             Demo scene
+|   |   |-- SpineAnimation/     Spine skeleton data & atlas
+|   |   |-- PartsThumbnail/     UI thumbnail images for each part
+|   |   `-- PresetData/         Saved preset ScriptableObjects
+|   `-- SpineSource/            Original Spine project files & images
+|
+`-- +README+/                   This guide document
+
+
+================================================================================
+ 4. QUICK START (5-MINUTE GUIDE)
+================================================================================
+
+  1. Open Demo Scene
+     Open the Demo scene in your asset folder and press Play.
+
+  2. Customize Parts
+     Click any part slot on the left panel (hair, top, boots, etc.).
+     A parts list will appear on the right. Click to equip.
+
+  3. Change Colors
+     Click Hair, Brow, Beard, or Skin slot.
+     The color picker will appear. Drag to change hue/saturation/value.
+
+  4. Randomize
+     Click the "Random" button (dice icon) to generate a random character.
+
+  5. Save to Preset
+     Right-click a preset slot (bottom of screen) to save current character.
+     Left-click a preset slot to load a saved character.
+
+  6. Experience Mode
+     Click the "Experience" button to enter movement mode.
+     Click anywhere on the map to move the character.
+     Click "Home" to return to customization mode.
+
+  7. Export as Prefab (Editor Only)
+     Click the "Save Prefab" button to export the current character
+     as an independent prefab to Assets/CharacterPrefabs/.
+
+
+================================================================================
+ 5. CHARACTER CUSTOMIZATION - PARTS
+================================================================================
+
+[Available Part Categories - 15 Types]
+
+  Category       Description              Hideable   Color
+  ----------     ----------------------   --------   -----
+  Hair           Hair style (default)     Yes        Yes
+  Helmet         Head armor / hat         Yes        No
+  Brow           Eyebrows                 No         Yes
+  Eyes           Eye style                No         No
+  Mouth          Mouth / expression       No         No
+  Beard          Facial hair              Yes        Yes
+  Eyewear        Glasses / goggles        Yes        No
+  Top            Upper body clothing      Yes        No
+  Bottom         Lower body clothing      Yes        No
+  Boots          Footwear                 Yes        No
+  Gloves         Hand wear                Yes        No
+  Back           Cape / backpack          Yes        No
+  Gear Left      Left hand equipment      Yes        No
+  Gear Right     Right hand equipment     Yes        No
+  Skin           Body skin tone           No         Yes
+
+  Hideable = Can be unequipped or hidden with the eye icon
+  Color    = Supports color customization via Color Picker
+
+[How to Change Parts]
+
+  Method 1: Click Slot
+    - Click a part slot on the left panel.
+    - A detailed list opens on the right side.
+    - Click any item in the list to equip it.
+    - Click the "X" or press Escape to close the list.
+
+  Method 2: Arrow Navigation
+    - Hover over a part slot.
+    - Left/Right arrows appear.
+    - Click arrows to cycle through parts one by one.
+
+  Method 3: Unequip / Reset
+    - Right-click a part slot to unequip that part.
+    - Click the "Reset" button in the parts list to remove the part.
+    - Only parts marked as "Hideable" can be removed.
+
+  Method 4: Hide/Show Toggle
+    - For hideable parts, click the eye icon on the slot.
+    - The part will become invisible but remains equipped.
+    - Click again to show it.
+
+[Helmet + Hair Interaction]
+  When a helmet is equipped:
+    - The regular hair is automatically replaced with a helmet-compatible
+      hair style (shorter/tucked in).
+    - Removing the helmet restores the original hair style.
+    - The helmet hair always matches your selected hair style number.
+
+
+================================================================================
+ 6. CHARACTER CUSTOMIZATION - COLORS
+================================================================================
+
+[Color-Changeable Parts]
+  Only 4 parts support color changes:
+    - Hair    : Changes hair color (including helmet hair)
+    - Brow    : Changes eyebrow color
+    - Beard   : Changes facial hair color
+    - Skin    : Changes entire body skin tone
+                (body, head, arms, legs)
+
+[Using the Color Picker]
+
+  The color picker uses an HSV (Hue-Saturation-Value) model:
+
+  +---------------------------+
+  |  Saturation-Value Area    |  Drag the circle indicator to adjust
+  |  (large square)           |  saturation (X-axis) and brightness (Y-axis)
+  |         o <-- indicator   |
+  +---------------------------+
+  |  Hue Slider (strip)       |  Drag to change the base hue (color)
+  |   ^ indicator             |
+  +---------------------------+
+
+  1. Click a color-changeable part slot (Hair, Brow, Beard, or Skin).
+  2. The color picker appears on the right panel.
+  3. Drag the Hue slider to select a base color.
+  4. Drag within the SV area to adjust saturation and brightness.
+  5. Changes apply to the character in real-time.
+
+[Hex Color Input]
+  - The current color's hex code is displayed (e.g., #FF5733).
+  - Type a hex code directly into the input field and press Enter.
+  - Click the Copy button to copy the hex code to clipboard.
+
+[Favorite Colors]
+  - Save frequently used colors to favorite slots (up to 20).
+  - Click "Add" button to save the current color to a favorite slot.
+  - Click a favorite slot to select it, click again to apply.
+  - Right-click a favorite slot to delete it.
+
+[Random Colors]
+  - The "Random" button randomizes ALL parts AND colors simultaneously.
+  - Random color ranges: Hue (0~1), Saturation (0.5~1), Value (0.5~1).
+
+
+================================================================================
+ 7. PRESET SYSTEM (SAVE & LOAD)
+================================================================================
+
+Presets let you save and load complete character configurations.
+
+[Saving a Preset]
+  1. Customize your character (parts + colors).
+  2. Right-click an empty preset slot at the bottom of the screen.
+  3. The current character's parts, colors, and color picker positions
+     are all saved.
+  4. The preset slot thumbnail updates to show the saved character.
+
+[Loading a Preset]
+  1. Left-click a preset slot that has a saved character.
+  2. All parts and colors are applied to the main character instantly.
+
+[What Gets Saved]
+  - All 15 part type selections (index per category)
+  - 4 color values (hair, beard, brow, skin/body)
+  - Color picker position data (for accurate color restoration)
+
+[Preset Data Storage]
+  - Presets are stored in PresetData ScriptableObjects.
+  - Location: [Asset Folder]/Demo/PresetData/
+  - Data persists between play sessions in the Editor.
+  - For runtime builds, you need to implement your own save system
+    (e.g., JSON serialization, PlayerPrefs, etc.).
+
+
+================================================================================
+ 8. EXPERIENCE MODE (CHARACTER MOVEMENT)
+================================================================================
+
+[Entering Experience Mode]
+  - Click the "Experience" button (play icon).
+  - The customization UI hides.
+  - The character becomes movable.
+
+[Controls]
+  - Click/tap anywhere on the map to move the character.
+  - The character automatically plays Walk/Run animation while moving.
+  - The character plays Idle animation when stopped.
+  - The character faces the movement direction automatically.
+  - Footstep sounds play synchronized with the step animation event.
+
+[Camera]
+  - The camera follows the character smoothly.
+  - Scroll mouse wheel to zoom in/out (range: 3x ~ 10x).
+  - Camera is bounded within the map area.
+
+[Returning to Customization]
+  - Click the "Home" button to return.
+  - The character returns to its original position.
+  - The customization UI reappears.
+
+[Animation Browser]
+  - Use the left/right arrows near the animation name display.
+  - Cycle through all available animations:
+    Idle, Run, Attack, Attack2, Hit, Die, and more.
+
+
+================================================================================
+ 9. EXPORTING CHARACTERS AS PREFABS
+================================================================================
+
+This feature works in the Unity Editor only.
+
+[How to Export]
+  1. Customize your character in Play mode.
+  2. Click the "Save Prefab" button (in the Editor UI).
+  3. A prefab is created at: Assets/CharacterPrefabs/
+  4. A PNG thumbnail (512x512, transparent background) is also saved.
+
+[What Gets Exported]
+  The prefab contains a CharacterPrefabData component with:
+    - All equipped part data (PartsType + selected index + hidden state)
+    - All color data (hair, beard, brow, body slot colors)
+    - Color picker positions (for future restoration)
+
+[Using the Exported Prefab]
+  1. Drag the prefab from Assets/CharacterPrefabs/ into any scene.
+  2. The CharacterPrefabData component automatically applies all saved
+     parts and colors on Start().
+  3. The character is fully self-contained and independent.
+
+[Naming Convention]
+  - Prefab: Character_YYYYMMDD_HHmmss.prefab
+  - Thumbnail: Character_YYYYMMDD_HHmmss_Thumbnail.png
+
+
+================================================================================
+ 10. INTEGRATING CHARACTERS INTO YOUR GAME
+================================================================================
+
+--- METHOD 1: Using Exported Prefabs (Simplest) ---
+
+  Best for: Pre-made characters, NPCs, static display
+
+  1. Export character as prefab (see Section 9).
+  2. Drag prefab into your game scene.
+  3. Add your own movement/AI scripts to the prefab.
+  4. The character renders with the exact customization you set.
+
+  Note: This method creates a fixed character. Players cannot customize
+  it at runtime (unless you add your own UI).
+
+
+--- METHOD 2: Using PartsManager Directly (Recommended for Runtime) ---
+
+  Best for: In-game character creation, player customization
+
+  1. Copy the character SkeletonAnimation object into your scene.
+  2. Add a PartsManager component to it.
+  3. In your script:
+
+     // Initialize
+     partsManager.Init();
+
+     // Equip specific parts
+     partsManager.EquipParts(PartsType.Top, 5);        // Equip top #5
+     partsManager.EquipParts(PartsType.Hair_Short, 12); // Hair style #12
+     partsManager.EquipParts(PartsType.Boots, 3);       // Boots #3
+
+     // Change colors
+     partsManager.ChangeSkinColor(new Color(1f, 0.85f, 0.72f));
+     partsManager.ChangeHairColor(Color.red);
+     partsManager.ChangeBeardColor(Color.black);
+     partsManager.ChangeBrowColor(new Color(0.3f, 0.2f, 0.1f));
+
+     // Or use the unified color method
+     partsManager.ApplyColorByType(PartsType.Hair_Short, Color.red);
+
+     // Get current state
+     int currentTopIndex = partsManager.GetCurrentPartIndex(PartsType.Top);
+     string currentTopName = partsManager.GetCurrentPartsName(PartsType.Top);
+     List<string> allTopSkins = partsManager.GetCurrentSkinNames(PartsType.Top);
+
+     // Hide/show parts
+     partsManager.SetHideItem(PartsType.Helmet, true);  // Hide helmet
+
+     // Random character
+     partsManager.RandomParts();
+
+     // Play animation
+     partsManager.PlayAnimation("Idle");
+     partsManager.PlayAnimation("Run");
+     partsManager.PlayAnimation("Attack");
+
+  4. To save/load character data:
+
+     // Save: Get all active indices
+     Dictionary<PartsType, int> savedParts = partsManager.ActiveIndices;
+     Color savedHairColor = partsManager.GetColorBySlotType("hair");
+     // ... serialize to JSON, PlayerPrefs, etc.
+
+     // Load: Apply saved indices
+     partsManager.SetSkinActiveIndex(savedParts);
+     partsManager.ChangeHairColor(savedHairColor);
+     // ...
+
+
+--- METHOD 3: Using SkeletonGraphic for UI (UGUI Canvas) ---
+
+  Best for: Character display in UI, menus, inventory screens
+
+  1. Create a Canvas in your scene.
+  2. Add a SkeletonGraphic component instead of SkeletonAnimation.
+  3. Assign the same SkeletonData asset.
+  4. Add PartsManager component.
+  5. PartsManager supports both SkeletonAnimation and SkeletonGraphic.
+  6. Use the same API as Method 2.
+
+
+--- METHOD 4: Full Customization UI in Your Game ---
+
+  Best for: Character creation screen in your game
+
+  1. Copy the entire Demo scene setup:
+     - Player object (with PartsManager)
+     - UI Canvas (PanelParts, PanelPartsList, ColorPicker, etc.)
+     - DemoControl object
+     - Camera setup
+  2. Customize the UI layout/style to match your game.
+  3. All part thumbnails are in Demo/PartsThumbnail/ folders.
+  4. Modify DemoControl.cs to integrate with your game flow.
+  5. Replace the preset system with your own save/load system.
+
+
+--- SAVING CHARACTER DATA FOR YOUR GAME ---
+
+  The asset uses ScriptableObjects for preset storage, which works
+  in the Editor but not in runtime builds. For your game, implement:
+
+  [Option A: JSON Serialization]
+    var data = new CharacterSaveData();
+    data.parts = partsManager.ActiveIndices;
+    data.hairColor = partsManager.GetColorBySlotType("hair");
+    data.skinColor = partsManager.GetColorBySlotType("body");
+    string json = JsonUtility.ToJson(data);
+    File.WriteAllText(savePath, json);
+
+  [Option B: PlayerPrefs]
+    foreach (var kvp in partsManager.ActiveIndices)
+        PlayerPrefs.SetInt($"char_{kvp.Key}", kvp.Value);
+    PlayerPrefs.Save();
+
+  [Option C: ScriptableObject (Editor Only)]
+    Use the built-in PresetData system as-is.
+
+
+================================================================================
+ 11. WORKING WITH SPINE DATA
+================================================================================
+
+[Spine Files]
+  Each character theme includes:
+    - {Name}.json          : Skeleton data (bones, slots, skins, animations)
+    - {Name}.atlas.txt     : Atlas definition
+    - {Name}.png           : Atlas texture
+    - {Name}_SkeletonData  : Unity SkeletonDataAsset
+    - {Name}_Atlas          : Unity AtlasAsset
+    - {Name}_Material       : Spine material
+
+[SpineSource Folder]
+  Contains the original Spine Editor project file (.spine) and all
+  individual part images organized by category. You can:
+    - Open in Spine Editor to modify animations
+    - Add new skins/parts
+    - Adjust bone structure
+    - Export updated JSON/atlas
+
+[Skin Naming Convention]
+  All skins follow this pattern:
+    {category}/{category}_{prefix}_{number}
+
+  Examples:
+    top/top_c_1              (top style #1)
+    boots/boots_c_15         (boots #15)
+    hair_short/hair_short_c_7  (hair style #7)
+
+  The prefix letter (e.g., _c_, _f_) identifies the asset theme.
+
+  Categories: back, beard, boots, bottom, brow, eye, eyewear,
+  gear_left, gear_right, gloves, hair_short, hair_hat, helmet,
+  mouth, top, skin
+
+[Adding Custom Parts]
+  1. Open the .spine file in Spine Editor.
+  2. Create a new skin following the naming convention.
+  3. Add your art to the appropriate slots.
+  4. Export JSON + Atlas.
+  5. Replace the files in Demo/SpineAnimation/.
+  6. PartsManager will automatically detect new skins on Init().
+
+[Animations]
+  Common animations included:
+    - Idle     : Standing idle
+    - Run      : Running
+    - Attack   : Primary attack
+    - Attack2  : Secondary attack
+    - Hit      : Taking damage
+    - Die      : Death
+  Additional animations may be included depending on the asset.
+
+
+================================================================================
+ 12. CAMERA & UI SYSTEM
+================================================================================
+
+[Camera]
+  - CameraControl component on the Main Camera.
+  - Follows the player character with smooth damping.
+  - Zoom: Mouse scroll wheel (range configurable in Inspector).
+  - Bounded by 4 boundary objects in the scene.
+
+[UI Structure]
+  - PanelParts: Grid of part category slots (left side).
+  - PanelPartsList: Detailed list of parts + ColorPicker (right side).
+  - PanelPreset: Preset save/load slots (bottom).
+  - AnimationController: Animation name + prev/next arrows.
+  - Buttons: Random, Experience, Home, Save Prefab, SNS links.
+
+[Custom Shaders Included]
+  - Light2D.shader: 2D lighting effect for atmosphere.
+  - WindShader.shader: Wind animation for foliage.
+  - Vignette.shader: Screen edge darkening effect.
+
+
+================================================================================
+ 13. AUDIO SYSTEM
+================================================================================
+
+[AudioManager]
+  Handles all sound effects. Uses Resources.Load with caching.
+
+  Sound files should be placed in: Resources/@Sound-Forge/
+
+  Available sounds:
+    - Button click sounds (ButtonDefault, ButtonRandom, ButtonClose, ButtonEye)
+    - Character footstep sounds (character_step_right1~3, character_step_left1~3)
+
+  Footstep sounds are triggered by Spine Animation Events ("Step").
+
+[Playing Custom Sounds]
+  AudioManager.Instance.PlaySound("your_sound_name");
+  AudioManager.Instance.PlaySound("your_sound_name", 0.5f); // with volume
+
+
+================================================================================
+ 14. TIPS & BEST PRACTICES
+================================================================================
+
+[Performance]
+  - The "Optimize Skin" option (PartsManager Inspector) repacks all active
+    skins into a single atlas texture, reducing draw calls.
+  - Only enable this for final display, not during active customization.
+  - Avoid calling EquipParts() in a loop. Use SetSkinActiveIndex() for
+    batch operations instead.
+
+[Memory]
+  - Each character uses one Spine atlas texture.
+  - With Optimize Skin enabled, a runtime atlas is generated.
+  - Call FinalizeCharacter() when customization is complete.
+
+[Mobile Considerations]
+  - The demo uses mouse input. For mobile, touch input works via
+    Unity's touch-to-mouse emulation for basic interactions.
+  - Right-click features (preset save, part unequip) need alternative
+    UI for mobile (e.g., long press, dedicated buttons).
+  - Consider reducing atlas texture resolution for mobile builds.
+
+[Multiple Characters in One Scene]
+  - Each character needs its own SkeletonAnimation + PartsManager.
+  - The demo uses a singleton Player, but you can instantiate multiple
+    PartsManager instances for NPCs or multiplayer characters.
+  - Just call partsManager.Init() on each instance.
+
+
+================================================================================
+ 15. TROUBLESHOOTING / FAQ
+================================================================================
+
+Q: Characters appear with missing/pink textures.
+A: Make sure the Spine Runtime package is imported correctly.
+   Reimport the atlas assets in Demo/SpineAnimation/.
+
+Q: "MissingReferenceException" errors on Play.
+A: Check that all scene references are properly assigned in the
+   DemoControl, Player, and PanelParts Inspector fields.
+
+Q: Parts don't show up after calling EquipParts().
+A: Make sure you called partsManager.Init() first.
+   Check that the part index is within valid range (0 to count-1).
+
+Q: Colors reset every frame / don't apply.
+A: This is by design. Spine animations reset slot colors every frame.
+   The PartsManager reapplies custom colors in LateUpdate automatically.
+   Make sure your color changes go through PartsManager methods.
+
+Q: Preset data doesn't save between sessions in a build.
+A: PresetData uses ScriptableObjects, which don't persist in builds.
+   Implement your own save system (JSON, PlayerPrefs) for builds.
+
+Q: Build fails with "CharacterPrefabUtility not found".
+A: The prefab export feature is Editor-only. It's wrapped in
+   #if UNITY_EDITOR and should not cause build errors.
+   If it does, ensure ButtonAction.cs has the #if guard.
+
+Q: How do I add new part categories?
+A: 1. Add to the PartsType enum in PartsManager.cs.
+   2. Add skin list field and mapping in PartsManager.
+   3. Create matching skins in the Spine project.
+   4. Add a UI slot in PanelParts.
+
+Q: Can I use multiple 2D Art Maker assets in one project?
+A: Yes. Each asset has its own SkeletonData and can coexist.
+   They all share the same _CommonSource code.
+
+Q: Character scale looks wrong.
+A: Check the SkeletonAnimation component's "Initial Scale" setting.
+   The demo uses a specific scale for the demo map.
+
+
+================================================================================
+ 16. FONT & LICENSE INFORMATION
+================================================================================
+
+[Font]
+  This asset uses 'LINESeedSans' fonts provided by LY Corp.
+  You must review and comply with the licensing terms:
+  - LINESeedSans: https://seed.line.me/index_kr.html
+  - License: SIL Open Font License (https://scripts.sil.org/OFL)
+
+[Spine]
+  Spine Runtime is required. Download from:
+  https://ko.esotericsoftware.com/spine-unity-download
+  Spine Runtime license applies separately.
+
+[Asset License]
+  This asset is subject to the Unity Asset Store EULA.
+  https://unity.com/legal/as-terms
+
+
+================================================================================
+ SUPPORT
+================================================================================
+
+  Discord : https://discord.gg/qCsVSHHcY7
+  Facebook: https://www.facebook.com/layerlab
+  YouTube : https://www.youtube.com/@LayerlabGames
+  Store   : https://assetstore.unity.com/publishers/5232
+
+
+================================================================================
+ Thank you for using 2D Art Maker!
+ Layer Lab
+================================================================================
