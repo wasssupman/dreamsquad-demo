@@ -60,6 +60,8 @@ namespace Wassup.Presentation
         public float sparkClusterRadius = 1.2f;
         [Tooltip("스파크 파티클 스케일 배수")]
         public float sparkScale = 1f;
+        [Tooltip("스파크 도트를 히트(폰트) 색으로 틴트할 때 emissive 부스트 배수(additive)")]
+        public float sparkColorBoost = 1.4f;
 
         // clamp01 normalized magnitude used for size + color.
         public float Normalize(float amount)

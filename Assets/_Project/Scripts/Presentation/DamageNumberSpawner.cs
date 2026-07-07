@@ -43,6 +43,8 @@ namespace Wassup.Presentation
 
         // Spark batching + pooling (unit 3).
         private readonly List<Vector3> _frameSparks = new List<Vector3>();
+        private readonly List<Color> _frameSparkColors = new List<Color>(); // parallel to _frameSparks — hit(font) tint
+
         private readonly Queue<ParticleSystem> _sparkIdle = new Queue<ParticleSystem>();
         private readonly List<ParticleSystem> _sparkActive = new List<ParticleSystem>();
         private bool[] _clusterUsed = new bool[0];
@@ -115,7 +117,10 @@ namespace Wassup.Presentation
 
             // Accumulate for this frame's spark clustering (flushed in LateUpdate).
             if (style.enableSpark && shown >= style.sparkMinDamage)
+            {
                 _frameSparks.Add(finalPos);
+                _frameSparkColors.Add(style.EvaluateColor(style.Normalize(shown)));
+            }
         }
 
         // Completion callback (natural Finish or idempotent OnDisable): free the reserved
@@ -149,6 +154,7 @@ namespace Wassup.Presentation
                     _sparkWarned = true;
                 }
                 _frameSparks.Clear();
+                _frameSparkColors.Clear();
                 return;
             }
             if (_clusterUsed.Length < n) _clusterUsed = new bool[n];
@@ -171,18 +177,24 @@ namespace Wassup.Presentation
                         _clusterUsed[j] = true;
                     }
                 }
-                PlaySparkAt(sum / c);
+                PlaySparkAt(sum / c, _frameSparkColors[i]);
             }
             _frameSparks.Clear();
+            _frameSparkColors.Clear();
         }
 
-        private void PlaySparkAt(Vector3 pos)
+        private void PlaySparkAt(Vector3 pos, Color tint)
         {
             var ps = GetSpark();
             if (ps == null) return;
             var tr = ps.transform;
             tr.position = pos;
             tr.localScale = Vector3.one * Mathf.Max(0.01f, style.sparkScale);
+            // 도트를 히트(폰트) 색으로 틴트 + emissive 부스트(additive). 자식 플래시 PS 는 프리팹 색 유지.
+            var main = ps.main;
+            Color c = tint * Mathf.Max(0f, style.sparkColorBoost);
+            c.a = 1f;
+            main.startColor = c;
             ps.gameObject.SetActive(true);
             ps.Clear(true);
             ps.Play(true);

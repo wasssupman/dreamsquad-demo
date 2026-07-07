@@ -49,6 +49,8 @@
 
 별(star) 텍스처 → **GA `Circle18`(꽉 찬 라운드 도트)** 로 교체. 참고 이미지의 뾰족한 스파크가 아닌 "작은 입자들이 터지는" 형태. GA 히트 프리팹(vfx_Hit_*, 4~17 PS)은 모바일 부담+투사체 스타일이라 미채택 — GA **텍스처만** 우리 단일 경량 PS 에 재활용. 도트 버스트 튜닝(size 0.12~0.3·burst 30·gravity 0.12·방사). 후보 스캔: `GabrielAguiarProductions/Textures/`(Circle18/002·Impact·ImpactWhite·Flare·Smoke) + `PixPlays/ElementalBlastVFX`·Hits.
 
+추가 반영("임팩트 플래시 + 폰트색 틴트 emissive"): ① **중앙 임팩트 플래시** — 프리팹에 `Flash` 자식 PS(back_glow 소프트 라디얼, `DamageNumberSparkFlash.mat` additive, 1버스트 큰 파티클 짧게, sortOrder 31990=숫자 뒤). ② **도트 틴트** — 스포너가 프레임별 히트 색(`EvaluateColor`)을 병렬 리스트로 추적 → 클러스터당 대표 색으로 `main.startColor` 설정(히트별 색 매칭). 도트 `.mat` `_BaseColor`=white 로 틴트가 순수 반영. ③ **emissive** — additive + `sparkColorBoost`(1.4) 부스트. 플래시는 white-warm 유지(틴트 안 함).
+
 ## 강도 rev (2026-07-07, Play 피드백 "잘 안 보인다")
 
 가독성/임팩트 부스트: 머티리얼에 **어두운 드롭섀도(underlay)** 추가(바쁜 배경 분리) + 아웃라인 0.28→0.35 · BattleScene 폰트 5.2~11.7→**8~18** · 펀치 1.6→2.4 · driftUp 0.7→0.9 · 스파크 size/burst/scale 확대(0.62/22/1.4). 값은 전부 라이브(scene/mat).
