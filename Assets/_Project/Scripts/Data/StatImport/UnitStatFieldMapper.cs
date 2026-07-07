@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
 
-namespace Wassup.Editor.UnitStatImport
+namespace Wassup.Data.StatImport
 {
     // unit-stat-spreadsheet-schema Unit 1 — copies non-null DTO fields onto a
     // ScriptableObject by matching field names. DTO field names are chosen to equal
@@ -21,6 +21,45 @@ namespace Wassup.Editor.UnitStatImport
         {
             "id", "atk", "heal", "attackDamage",
         };
+
+        // unit 5 — export skip set. `id` IS read (it is the row key in the export);
+        // atk/heal are reverse-projected from outputs elsewhere; attackDamage is a
+        // deprecated shim that must never reappear in exported files.
+        private static readonly HashSet<string> ExportSkippedFields = new()
+        {
+            "atk", "heal", "attackDamage",
+        };
+
+        // unit 5 — reverse of ApplyNonNullFields: reads same-named SO fields into the
+        // DTO's nullable fields, producing a full snapshot row for export.
+        public static int ReadFieldsToDto(ScriptableObject so, object dto)
+        {
+            int readCount = 0;
+
+            foreach (var dtoField in dto.GetType().GetFields(PublicInstance))
+            {
+                if (ExportSkippedFields.Contains(dtoField.Name)) continue;
+
+                var soField = so.GetType().GetField(dtoField.Name, PublicInstance);
+                if (soField == null)
+                {
+                    Debug.LogWarning($"[UnitStatExport] {so.GetType().Name} '{so.name}' has no field '{dtoField.Name}' — skipped.");
+                    continue;
+                }
+
+                var targetType = System.Nullable.GetUnderlyingType(dtoField.FieldType) ?? dtoField.FieldType;
+                if (!targetType.IsAssignableFrom(soField.FieldType))
+                {
+                    Debug.LogWarning($"[UnitStatExport] '{dtoField.Name}' on '{so.name}': DTO expects {targetType.Name}, SO has {soField.FieldType.Name} — skipped.");
+                    continue;
+                }
+
+                dtoField.SetValue(dto, soField.GetValue(so));
+                readCount++;
+            }
+
+            return readCount;
+        }
 
         public static int ApplyNonNullFields(object dto, ScriptableObject so)
         {

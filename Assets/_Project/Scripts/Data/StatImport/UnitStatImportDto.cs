@@ -1,7 +1,7 @@
 using Newtonsoft.Json;
 using Wassup.Data;
 
-namespace Wassup.Editor.UnitStatImport
+namespace Wassup.Data.StatImport
 {
     // unit-stat-spreadsheet-schema Unit 1 — JSON contract per
     // docs/spec/unit-stat-spreadsheet-schema/0_json_schema_contract.md.

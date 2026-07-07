@@ -1,5 +1,7 @@
 # 0. JSON Schema Contract
 
+> **개정 (2026-07-06)**: 아래 "최상위 구조"(`{defenders:[], enemies:[]}`)는 실 API 확인으로 폐기 — 실 계약은 시트(탭)당 `{success, data:[행], errorDetail}` envelope 이다. `4_api_envelope_adaptation.md` 가 SoT. 유닛별 필드 표·공통 컨벤션은 계속 유효하며, `targetClassMask` 셀 표기는 `3_seed_json_and_sheet_guide.md` 의 콤마 문자열 규약이 우선한다.
+
 ## 목적
 
 기획파트가 관리하는 Defender/Enemy 스프레드시트 → REST API → JSON 변환 결과물이 어떤 형태여야 하는지 확정한다. 이 JSON을 소비하는 Unity Editor 임포터는 후속 유닛에서 구현한다.

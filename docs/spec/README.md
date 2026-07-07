@@ -244,6 +244,11 @@ board-visualization spec 자체는 ROI 부족으로 wrap 종료. 진단/실험�
 - **GA 투사체 최종화** [S] · 디펜더별 최종 변종 선택(50종 중) + 스케일/높이 취향 미세조정 + 안 쓰는 변종 SO/프리팹 정리. (projectile-ga-reskin)
 - **GA 투사체 모바일 최적화** [M] · 라이트/트레일 감축 · soft particle 토글 · 실기기 프로파일. tint 데이터-드리븐 recolor 는 별도(preserveVfxColors 우회 필요). (projectile-ga-reskin)
 
+#### 파이프라인 커버리지 — 후속 (object-pipeline-map)
+
+- **spec 파일 트리거 훅** [S] · `docs/spec/**/README.md` Write/Edit 시 파이프라인 커버리지 섹션 리마인더 주입(PostToolUse 훅). 템플릿 규칙 정착 후 잔여 누락 케이스 확인되면.
+- **리뷰 게이트** [S] · two-track-review/critic 체크리스트에 "파이프라인 정거장 누락" 항목 추가.
+
 #### 워크플로우 재현성 — 후속 (workflow-reproducibility)
 
 - **문서 수명주기 정리** [S] · PRD/TRD 는 폐기된 "프로토타입/Phase" 프레임을 현재형으로 서술하는 legacy — staleness 배너 + supersession 포인터(현재 진실원=CLAUDE.md+spec)로 정직하게 동결.
@@ -268,6 +273,7 @@ board-visualization spec 자체는 ROI 부족으로 wrap 종료. 진단/실험�
 - **Placement enemy see-through** → `docs/spec/placement-enemy-see-through/` (completed 2026-07-06, units 0~6, `9941f27` — 드래그 배치 중 적 유닛(Spine·Quad 혼합)을 반투명화해 가려진 뒤 보드 타일 노출. cutout↔transparent 런타임 전환(Quad)·PMA skeleton.A(Spine)·그림자 페이드·health tint 합성·매프레임 재적용. 프리뷰 불투명/최상단(unit 5) + 배치 하이라이트 적 위로(unit 6). 순수 프레젠테이션, ECS 변경 0·채널 14개 불변. two-track APPROVE(0~4)+M1 반영. 스텐실/후처리 리빌·블로킹 하자드 반투명은 후속)
 
 - **Portal VFX upgrade** → `docs/spec/portal-vfx-upgrade/` (completed 2026-07-06, unit 0 — 물빔(WaterBeam 어거지) 제거 + 스월 지속화(loop+사이클 오버라이드, LocationVfx 가 duration 무시하는 원인 해소). 룬 게이트 실험은 사용자 반려·롤백. 입구/출구 시각 구분은 후속 후보)
+- **Object pipeline map** → `docs/spec/object-pipeline-map/` (completed 2026-07-06, unit 0, 커밋 `aeccbc3a` — 플레이 오브젝트 생성→렌더 정거장 체크표 `docs/reference/object-pipeline-map.md`(아키타입 10종, `.cs` 앵커 57건 실측) + CLAUDE.md 파이프라인 커버리지 필수 섹션 규칙(N/A+이유 강제). artillery-defender 사후 대조로 카탈로그 등록 확인 포인트 승격. 훅/리뷰 게이트는 후속)
 
 - **Workflow reproducibility** → `docs/spec/workflow-reproducibility/` (completed 2026-07-06, units 0~3 — fresh clone 워크플로우 재현: `.claude` 표준 추적+settings 분할(훅·read-only 권한 커밋) + auto-memory 27건 → `docs/reference/lessons/` 승격 + AGENTS=CLAUDE symlink + 루트 README 부트스트랩. critic APPROVE-WITH-CHANGES 반영, fresh clone 실측 검증. MCP/LFS 는 범위 밖)
 

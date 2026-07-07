@@ -22,8 +22,7 @@ MonoBehaviour:
   targetClassMask: -1
   health: 35
   moveSpeed: 2.8
-  attackDamage: 3
-  attackRange: 4
+  attackRange: 2
   attackCooldown: 0.35
   attackTargetCount: 1
   projectile: {fileID: 11400000, guid: 2a1e70d9b5c234e97a1f56e419433f2a, type: 2}

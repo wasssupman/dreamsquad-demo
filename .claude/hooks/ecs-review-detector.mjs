@@ -11,17 +11,18 @@
  */
 
 import { execSync } from 'child_process';
-import { join, dirname } from 'path';
-import { homedir } from 'os';
-import { fileURLToPath, pathToFileURL } from 'url';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-// Reuse OMC's stdin reader
-const { readStdin } = await import(
-  pathToFileURL(join(homedir(), '.claude', 'hooks', 'lib', 'stdin.mjs')).href
-);
+// Inline stdin reader — no external dependency (avoids breaking when OMC's
+// global helper path moves; this hook is project-owned).
+function readStdin() {
+  return new Promise((resolve) => {
+    let buf = '';
+    process.stdin.setEncoding('utf8');
+    process.stdin.on('data', (c) => (buf += c));
+    process.stdin.on('end', () => resolve(buf));
+    process.stdin.on('error', () => resolve(''));
+  });
+}
 
 // ── Review keyword detection ──────────────────────────────────────────────
 // Note: \b word boundary doesn't work with Korean (non-ASCII) chars — use plain alternation

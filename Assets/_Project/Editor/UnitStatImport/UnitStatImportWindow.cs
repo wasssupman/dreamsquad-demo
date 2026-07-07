@@ -1,23 +1,30 @@
-using System;
 using System.Text;
-using Newtonsoft.Json;
 using UnityEditor;
 using UnityEngine;
-using UnityEngine.Networking;
 using Wassup.Data;
+using Wassup.Data.StatImport;
 
 namespace Wassup.Editor.UnitStatImport
 {
     // unit-stat-spreadsheet-schema Unit 1 — fetches the spreadsheet-authored stat
     // payload from the REST API and applies it to existing Defender/Enemy SO assets.
     // Update-only by id match; never creates new .asset files.
+    // Unit 4 — real API contract: GET {baseUrl}/{sheetName}, one call per tab,
+    // per-sheet envelope {success, data:[row], errorDetail}. The parse/fetch/apply
+    // core lives in the runtime assembly (SheetEnvelopeParser / SheetFetcher /
+    // UnitStatApplier), shared with the in-build refresher.
     public class UnitStatImportWindow : EditorWindow
     {
-        private const string UrlPrefsKey = "Wassup.UnitStatImport.Url";
+        private const string BaseUrlPrefsKey = "Wassup.UnitStatImport.BaseUrl";
+        private const string DefenderSheetPrefsKey = "Wassup.UnitStatImport.DefenderSheet";
+        private const string EnemySheetPrefsKey = "Wassup.UnitStatImport.EnemySheet";
+        private const string DefaultBaseUrl = "https://dev-api-somnia.cashroyale.games/demo/google/sheet";
         private const string DefenderFolder = "Assets/_Project/Data/Defenders";
         private const string EnemyFolder = "Assets/_Project/Data/Enemies";
 
-        private string _url = "";
+        private string _baseUrl = "";
+        private string _defenderSheet = "";
+        private string _enemySheet = "";
         private string _statusLog = "";
         private bool _requestInFlight;
 
@@ -26,7 +33,9 @@ namespace Wassup.Editor.UnitStatImport
 
         private void OnEnable()
         {
-            _url = EditorPrefs.GetString(UrlPrefsKey, "");
+            _baseUrl = EditorPrefs.GetString(BaseUrlPrefsKey, DefaultBaseUrl);
+            _defenderSheet = EditorPrefs.GetString(DefenderSheetPrefsKey, "Defenders");
+            _enemySheet = EditorPrefs.GetString(EnemySheetPrefsKey, "Enemies");
             // hotfix ③ — serialized true survives a domain reload while the
             // completed callback does not; reset so the Import button never sticks.
             _requestInFlight = false;
@@ -37,17 +46,42 @@ namespace Wassup.Editor.UnitStatImport
             EditorGUILayout.LabelField("Unit Stat Import", EditorStyles.boldLabel);
 
             EditorGUI.BeginChangeCheck();
-            _url = EditorGUILayout.TextField("API URL", _url);
+            _baseUrl = EditorGUILayout.TextField("API Base URL", _baseUrl);
+            _defenderSheet = EditorGUILayout.TextField("Defender Sheet", _defenderSheet);
+            _enemySheet = EditorGUILayout.TextField("Enemy Sheet", _enemySheet);
             if (EditorGUI.EndChangeCheck())
             {
-                EditorPrefs.SetString(UrlPrefsKey, _url);
+                EditorPrefs.SetString(BaseUrlPrefsKey, _baseUrl);
+                EditorPrefs.SetString(DefenderSheetPrefsKey, _defenderSheet);
+                EditorPrefs.SetString(EnemySheetPrefsKey, _enemySheet);
             }
 
-            using (new EditorGUI.DisabledScope(_requestInFlight || string.IsNullOrWhiteSpace(_url)))
+            bool inputsMissing = string.IsNullOrWhiteSpace(_baseUrl)
+                || string.IsNullOrWhiteSpace(_defenderSheet)
+                || string.IsNullOrWhiteSpace(_enemySheet);
+            using (new EditorGUI.DisabledScope(_requestInFlight || inputsMissing))
             {
                 if (GUILayout.Button(_requestInFlight ? "Importing..." : "Import"))
                 {
-                    StartImport(_url);
+                    StartImport();
+                }
+            }
+
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("Export", EditorStyles.boldLabel);
+            // unit 5 — SO → one row-array JSON file per sheet tab, named after the
+            // sheet name fields above so file ↔ tab mapping is unambiguous.
+            using (new EditorGUI.DisabledScope(_requestInFlight
+                || string.IsNullOrWhiteSpace(_defenderSheet) || string.IsNullOrWhiteSpace(_enemySheet)))
+            {
+                if (GUILayout.Button("Export SO → JSON Files"))
+                {
+                    string folder = EditorUtility.SaveFolderPanel("Export Unit Stat JSON", "", "");
+                    if (!string.IsNullOrEmpty(folder))
+                    {
+                        _statusLog = UnitStatExporter.ExportToFolder(
+                            folder, _defenderSheet, _enemySheet, DefenderFolder, EnemyFolder);
+                    }
                 }
             }
 
@@ -56,141 +90,55 @@ namespace Wassup.Editor.UnitStatImport
             EditorGUILayout.TextArea(_statusLog, GUILayout.MinHeight(120));
         }
 
-        private void StartImport(string url)
+        private void StartImport()
         {
             _requestInFlight = true;
             _statusLog = "Requesting...";
 
-            var request = UnityWebRequest.Get(url);
-            var operation = request.SendWebRequest();
-            operation.completed += _ => OnRequestComplete(request);
+            SheetFetcher.FetchBoth(
+                SheetEnvelopeParser.BuildSheetUrl(_baseUrl, _defenderSheet),
+                SheetEnvelopeParser.BuildSheetUrl(_baseUrl, _enemySheet),
+                (defenderFetch, enemyFetch) =>
+                {
+                    try
+                    {
+                        _statusLog = ApplyFetched(defenderFetch, enemyFetch);
+                    }
+                    finally
+                    {
+                        _requestInFlight = false;
+                        Repaint();
+                    }
+                });
         }
 
-        private void OnRequestComplete(UnityWebRequest request)
-        {
-            try
-            {
-                if (request.result != UnityWebRequest.Result.Success)
-                {
-                    _statusLog = $"Request failed: {request.error}";
-                    return;
-                }
-
-                UnitStatImportPayload payload;
-                try
-                {
-                    payload = JsonConvert.DeserializeObject<UnitStatImportPayload>(request.downloadHandler.text);
-                }
-                catch (Exception e)
-                {
-                    _statusLog = $"JSON parse failed: {e.Message}";
-                    return;
-                }
-
-                _statusLog = ApplyPayload(payload);
-            }
-            finally
-            {
-                request.Dispose();
-                _requestInFlight = false;
-                Repaint();
-            }
-        }
-
-        internal static string ApplyPayload(UnitStatImportPayload payload)
+        private string ApplyFetched(SheetFetcher.Result defenderFetch, SheetFetcher.Result enemyFetch)
         {
             var log = new StringBuilder();
-            int matched = 0, unmatched = 0, fieldsApplied = 0, projected = 0, skipped = 0;
+            var defenders = SheetEnvelopeParser.ParseSheetLogged<DefenderStatDto>(
+                defenderFetch.body, defenderFetch.transportError, _defenderSheet, log);
+            var enemies = SheetEnvelopeParser.ParseSheetLogged<EnemyStatDto>(
+                enemyFetch.body, enemyFetch.transportError, _enemySheet, log);
 
-            var defendersById = BuildAssetIndex<DefenderUnitData>(DefenderFolder, so => so.id, log);
-            var enemiesById = BuildAssetIndex<AttackUnitData>(EnemyFolder, so => so.id, log);
+            var payload = UnitStatApplier.BuildPayload(defenders, enemies);
+            if (payload == null) return log.ToString();
+            return ApplyPayload(payload, log);
+        }
 
-            var seenIds = new System.Collections.Generic.HashSet<string>();
-            foreach (var dto in payload?.defenders ?? Array.Empty<DefenderStatDto>())
+        // Editor apply = shared core + AssetDatabase scan + per-asset disk save.
+        internal static string ApplyPayload(UnitStatImportPayload payload, StringBuilder log = null)
+        {
+            log ??= new StringBuilder();
+            var defendersById = UnitStatApplier.BuildIndex(
+                UnitAssetScan.Enumerate<DefenderUnitData>(DefenderFolder), so => so.id, log, nameof(DefenderUnitData));
+            var enemiesById = UnitStatApplier.BuildIndex(
+                UnitAssetScan.Enumerate<AttackUnitData>(EnemyFolder), so => so.id, log, nameof(AttackUnitData));
+
+            return UnitStatApplier.Apply(payload, defendersById, enemiesById, so =>
             {
-                if (!seenIds.Add($"defender:{dto.id}")) { log.AppendLine($"[defender] duplicate row for id='{dto.id}' — skipped."); continue; }
-                if (string.IsNullOrEmpty(dto.id) || !defendersById.TryGetValue(dto.id, out var so))
-                { unmatched++; log.AppendLine($"[defender] no match for id='{dto.id}'"); continue; }
-                fieldsApplied += UnitStatFieldMapper.ApplyNonNullFields(dto, so);
-                ProjectMagnitude(so.outputs, AttackOutputKind.Damage, dto.atk, "atk", $"defender '{dto.id}'", log, ref projected, ref skipped);
-                ProjectMagnitude(so.outputs, AttackOutputKind.Heal, dto.heal, "heal", $"defender '{dto.id}'", log, ref projected, ref skipped);
-                WarnDeprecatedAttackDamage(dto.attackDamage, $"defender '{dto.id}'", log);
                 EditorUtility.SetDirty(so);
                 AssetDatabase.SaveAssetIfDirty(so);
-                matched++;
-            }
-
-            foreach (var dto in payload?.enemies ?? Array.Empty<EnemyStatDto>())
-            {
-                if (!seenIds.Add($"enemy:{dto.id}")) { log.AppendLine($"[enemy] duplicate row for id='{dto.id}' — skipped."); continue; }
-                if (string.IsNullOrEmpty(dto.id) || !enemiesById.TryGetValue(dto.id, out var so))
-                { unmatched++; log.AppendLine($"[enemy] no match for id='{dto.id}'"); continue; }
-                fieldsApplied += UnitStatFieldMapper.ApplyNonNullFields(dto, so);
-                ProjectMagnitude(so.outputs, AttackOutputKind.Damage, dto.atk, "atk", $"enemy '{dto.id}'", log, ref projected, ref skipped);
-                WarnDeprecatedAttackDamage(dto.attackDamage, $"enemy '{dto.id}'", log);
-                EditorUtility.SetDirty(so);
-                AssetDatabase.SaveAssetIfDirty(so);
-                matched++;
-            }
-
-            log.Insert(0, $"Matched {matched}, unmatched {unmatched}, fields applied {fieldsApplied}, projected {projected}, skipped {skipped}.\n");
-            return log.ToString();
-        }
-
-        // unit-stat-projection Unit 3 — a planner-facing scalar (atk/heal) writes the
-        // unique output of its kind. 0 or 2+ matches is ambiguous: skip + report the
-        // reason so the miss is visible, never guess a target.
-        internal static void ProjectMagnitude(AttackOutput[] outputs, AttackOutputKind kind, float? value,
-            string field, string label, StringBuilder log, ref int projected, ref int skipped)
-        {
-            if (value == null) return; // omitted -> keep existing magnitude
-            if (AttackOutputStats.TrySetUniqueMagnitude(outputs, kind, value.Value))
-            {
-                projected++;
-                return;
-            }
-            skipped++;
-            int count = CountOfKind(outputs, kind);
-            string reason = count == 0
-                ? $"no {kind} output"
-                : $"{count} {kind} outputs (need exactly 1)";
-            log.AppendLine($"[{label}] {field}={value.Value} skipped — {reason}.");
-        }
-
-        internal static void WarnDeprecatedAttackDamage(float? attackDamage, string label, StringBuilder log)
-        {
-            if (attackDamage == null) return;
-            log.AppendLine($"[{label}] 'attackDamage' is deprecated (renamed to 'atk') and was NOT applied — update the sheet column.");
-        }
-
-        private static int CountOfKind(AttackOutput[] outputs, AttackOutputKind kind)
-        {
-            if (outputs == null) return 0;
-            int n = 0;
-            foreach (var o in outputs) if (o.kind == kind) n++;
-            return n;
-        }
-
-        // hotfix ⑥ — one scan per import. An id shared by 2+ assets is an ambiguous
-        // write target: drop it from the index entirely and report, never guess.
-        private static System.Collections.Generic.Dictionary<string, T> BuildAssetIndex<T>(
-            string folder, Func<T, string> idSelector, StringBuilder log) where T : ScriptableObject
-        {
-            var byId = new System.Collections.Generic.Dictionary<string, T>();
-            var ambiguous = new System.Collections.Generic.HashSet<string>();
-            foreach (var guid in AssetDatabase.FindAssets($"t:{typeof(T).Name}", new[] { folder }))
-            {
-                var asset = AssetDatabase.LoadAssetAtPath<T>(AssetDatabase.GUIDToAssetPath(guid));
-                if (asset == null) continue;
-                string id = idSelector(asset);
-                if (string.IsNullOrEmpty(id)) continue;
-                if (!byId.TryAdd(id, asset) && ambiguous.Add(id))
-                {
-                    byId.Remove(id);
-                    log.AppendLine($"[{typeof(T).Name}] duplicate asset id '{id}' — all assets with this id skipped.");
-                }
-            }
-            return byId;
+            }, log);
         }
     }
 }

@@ -17,7 +17,6 @@ MonoBehaviour:
   displayName: Poison Caster
   health: 450
   attackRange: 0
-  attackDamage: 0
   attackCooldown: 4
   hitDelaySec: 0
   deployDelaySec: 0
