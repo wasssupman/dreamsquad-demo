@@ -32,6 +32,8 @@
 
 ## 완료 기준
 
-- [ ] 컴파일 에러 0
-- [ ] 기존 렌더 무변화 (전 유닛 여전히 full_skins 단일 스킨) — 배치 스모크 그린
-- [ ] Defender 인스펙터에 partSkins/slotColors 필드 노출 확인
+- [x] 컴파일 에러 0 (격리 리그 배치 검증)
+- [x] 기존 렌더 무변화 (전 유닛 여전히 full_skins 단일 스킨) — 배치 스모크 PASS
+- [ ] Defender 인스펙터에 partSkins/slotColors 필드 노출 확인 — 에디터 시각 항목, unit 2 에서 드롭다운 확인과 함께 수행
+
+확인 2026-07-07 (배치 검증 기준). SpineSlotColor.cs.meta 는 리그 생성분 회수(guid ad59ba91...).

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Spine.Unity;
 using UnityEngine;
 using Wassup.Battle.Effects;
@@ -90,6 +91,13 @@ namespace Wassup.Data
         // tile-based world so a single SO knob is enough to normalise rig size.
         public float spineVisualScale = 1f;
 
+        // unit-parts-appearance 0 — 파츠 조합 외형. 비어 있으면 spineSkinName 단일 스킨.
+        // 순서가 의미를 갖는다(뒤 파츠가 슬롯 단위로 덮음). 조립은 인스펙터 드롭다운
+        // 또는 Layer Lab 데모 → 임포트 도구 경유.
+        [Header("Parts Appearance")]
+        [SpineSkin(dataField: "skeletonDataAsset")] public List<string> partSkins = new List<string>();
+        public List<SpineSlotColor> slotColors = new List<SpineSlotColor>();
+
         [Header("Deployment Presentation")]
         public string dragAnimation = "idle";
         public string deployAnimation = "deploy";
@@ -120,6 +128,8 @@ namespace Wassup.Data
         public float SpineVisualScale => spineVisualScale;
         // enemy-spawn-positioning 0 — 방어 유닛은 본 spec 범위 밖. 계약 기본값(오프셋 없음).
         public Vector3 SpineVisualOffset => Vector3.zero;
+        public IReadOnlyList<string> SpinePartSkins => partSkins;
+        public IReadOnlyList<SpineSlotColor> SpineSlotColors => slotColors;
         public string SpineDragAnimation => dragAnimation;
         public string SpineDeployAnimation => deployAnimation;
         public string SpineCastAnchorBone => castAnchorBone;

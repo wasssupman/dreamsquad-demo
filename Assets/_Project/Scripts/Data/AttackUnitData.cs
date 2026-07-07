@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Spine.Unity;
 using UnityEngine;
 
@@ -66,6 +67,12 @@ namespace Wassup.Data
         public string deathAnimation = "die";
         public float spineVisualScale = 1f;
 
+        // unit-parts-appearance 0 — 파츠 조합 외형. 비어 있으면 spineSkinName 단일 스킨.
+        // 순서가 의미를 갖는다(뒤 파츠가 슬롯 단위로 덮음).
+        [Header("Parts Appearance")]
+        [SpineSkin(dataField: "skeletonDataAsset")] public List<string> partSkins = new List<string>();
+        public List<SpineSlotColor> slotColors = new List<SpineSlotColor>();
+
         // enemy-spawn-positioning 0 — 비주얼 피봇 미세조정(view-space). 기본 0 = 피봇이 이동타일 중심(sim 좌표)에 정렬.
         public Vector3 visualOffset;
 
@@ -77,5 +84,7 @@ namespace Wassup.Data
         public string SpineDeathAnimation => deathAnimation;
         public float SpineVisualScale => spineVisualScale;
         public Vector3 SpineVisualOffset => visualOffset;
+        public IReadOnlyList<string> SpinePartSkins => partSkins;
+        public IReadOnlyList<SpineSlotColor> SpineSlotColors => slotColors;
     }
 }
