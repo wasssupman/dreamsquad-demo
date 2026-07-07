@@ -8,7 +8,7 @@
 
 - `Assets/_Project/Scripts/Data/ISpineUnitVisualData.cs` — 멤버 2개 추가
 - `Assets/_Project/Scripts/Data/SpineSlotColor.cs` — 신규 (직렬화 struct)
-- `Assets/_Project/Scripts/Data/DefenderUnitData.cs`, `AttackUnitData.cs`, `PropData.cs` — 필드 + 프로퍼티 구현 (인터페이스 구현체 전부)
+- `Assets/_Project/Scripts/Data/DefenderUnitData.cs`, `AttackUnitData.cs` — 필드 + 프로퍼티 구현. **인터페이스 구현체는 이 2개가 전부** (critic 검증: PropData 는 ISpineUnitVisualData 를 구현하지 않고 유사 필드를 PropBillboard 가 직접 읽는 구조라 제외 — 죽은 필드 방지)
 
 ## 구현
 
@@ -28,7 +28,7 @@
    public List<SpineSlotColor> slotColors = new();
    ```
    `[SpineSkin]` 은 spine-unity 어트리뷰트 — 인스펙터에서 해당 SkeletonData 의 스킨 드롭다운을 띄운다 (unit 2 에서 검증/보완).
-4. PropData 는 파츠를 쓰지 않지만 인터페이스 구현체라 동일 필드를 갖는다 (빈 목록 고정, 별도 UI 노출 불필요).
+4. `[SpineSkin]` 은 List<string> 요소에 동작 확인됨 (SpineTreeItemDrawerBase 가 string 드로어 + `FindBaseOrSiblingProperty` 가 SO 루트의 skeletonDataAsset 을 찾음. Layer Lab PartsManager 자체가 동일 패턴 출하 중).
 
 ## 완료 기준
 
