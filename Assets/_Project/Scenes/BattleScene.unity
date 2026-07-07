@@ -3384,7 +3384,7 @@ MonoBehaviour:
     enableSpark: 1
     sparkMinDamage: 1
     sparkClusterRadius: 1.2
-    sparkScale: 1.6
+    sparkScale: 1.1
   billboardCamera: {fileID: 1420088185}
   sparkPrefab: {fileID: 372493123055174974, guid: 791501f91a6bd41babdb587fabb8231a, type: 3}
 --- !u!1 &1869950622
