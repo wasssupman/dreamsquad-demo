@@ -2290,14 +2290,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 01d323433481b469e85530baf961e81a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.ScoreHudView
-  scoreFont: {fileID: 11400000, guid: 7f50de03946cd4d229e8920dd91dbd1a, type: 2}
-  scoreMaterial: {fileID: 2100000, guid: 34861eb7e483349f2b94c3d36a80b1b9, type: 2}
+  scoreFont: {fileID: 11400000, guid: 3e875d8f3088f4559af897fb924f19a5, type: 2}
+  scoreMaterial: {fileID: 2100000, guid: 52e1410b5122a4e3b980294f42e9eb02, type: 2}
   pointsPerKill: 10
-  rollLerp: 12
-  punchScale: 1.45
-  punchDuration: 0.2
-  flashColor: {r: 1, g: 0.85, b: 0.2, a: 1}
-  baseColor: {r: 1, g: 1, b: 1, a: 1}
+  rollLerp: 14
+  punchScale: 1.5
+  punchDuration: 0.28
+  multiKillBoost: 0.35
+  maxMultiKillBoost: 2.5
+  flashColor: {r: 1, g: 0.97, b: 0.85, a: 1}
+  baseColor: {r: 1, g: 0.78, b: 0.28, a: 1}
   topOffset: -76
   valueFontSize: 83
   captionFontSize: 29
