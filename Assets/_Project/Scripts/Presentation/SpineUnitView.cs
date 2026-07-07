@@ -240,13 +240,14 @@ namespace Wassup.Presentation
             if (Mathf.Abs(dx) <= FacingMoveEpsilon) return;
             float currentAbs = Mathf.Abs(_skeleton.Skeleton.ScaleX);
             if (currentAbs < 0.001f) currentAbs = 1f;
-            float desiredSign = IsEnemyView()
-                ? (dx >= 0f ? 1f : -1f)
-                : (dx >= 0f ? -1f : 1f);
+            // 적/디펜더 모두 Casual Character 단일 리그를 공유한다(unit-parts-appearance 6).
+            // 리그 컨벤션: ScaleX=+1 이 -x(왼쪽)를 본다 → dx>0(오른쪽 이동/타겟)이면 -1 로 뒤집어 +x 를 향한다.
+            // 과거엔 적이 반대 방향의 별도 리그라 부호를 enemy/defender 로 분기했으나, 단일 리그가 된
+            // 지금은 규칙도 하나다. 방향이 반대인 미래 리그는 코드 분기 대신 SkeletonFlipX modifier 로
+            // 데이터에서 정규화한다(net facing = Skeleton.ScaleX * rootScaleX).
+            float desiredSign = dx >= 0f ? -1f : 1f;
             _skeleton.Skeleton.ScaleX = currentAbs * desiredSign;
         }
-
-        private bool IsEnemyView() => _defenderExtras == null;
 
         public Vector3 ResolveCastAnchor()
         {
