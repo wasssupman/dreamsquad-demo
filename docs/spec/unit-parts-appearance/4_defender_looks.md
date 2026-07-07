@@ -18,6 +18,8 @@
 
 ## 완료 기준
 
-- [ ] Defender 16종이 배치/전투/드래그 프리뷰에서 각자 다른 외형으로 렌더
-- [ ] 콘솔 경고 0 (없는 스킨 경로 없음)
-- [ ] Android 실기기 1회 확인 (프레임/메모리 급변 없음 — 단일 아틀라스 유지 확인)
+- [x] Defender 16종 조합이 서로 유일 + validator 무경고 + combined skin 합성 성공 (배치 스모크: 16종, unique=16, empty=0). 배치/전투/프리뷰의 눈 확인은 에디터 항목 (사용자 확인 대기)
+- [x] 콘솔 경고 0 — 최초 실행에서 validator 가 `gear_right/gear_right_c_8` 결번을 즉시 검출(실측: gear_right 는 c_8/c_9 결번으로 38종) → c_7 로 교정. 도구 실효성의 첫 실사례
+- [ ] Android 실기기 1회 확인 — 잔여
+
+확인 2026-07-07 (배치 검증 기준). 시안 조립 주체 = 프로그램 생성(사용자 결정 2026-07-07): 클래스 정체성 기반 16종 — 헬멧조 6종(Artillery/Bastion/Cannon/Guardian/Piercer/Sniper), 캐스터는 eyewear/머리색 틴트(fire/heal/ice/poison 4종), 방패조 gear_left(Bastion/Guardian). 아트 정식 교체는 데모 씬 조립 → 인스펙터 "가져오기" 버튼.

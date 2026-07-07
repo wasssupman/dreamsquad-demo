@@ -44,6 +44,24 @@ MonoBehaviour:
   aggroRange: 0
   skeletonDataAsset: {fileID: 11400000, guid: ee98f82138b60430f97c6863317c3a2f, type: 2}
   spineSkinName: full_skins
+  partSkins:
+  - boots/boots_c_22
+  - bottom/bottom_c_25
+  - brow/brow_c_8
+  - eyes/eyes_c_8
+  - gloves/gloves_c_20
+  - hair_short/hair_short_c_15
+  - mouth/mouth_c_7
+  - gear_right/gear_right_c_33
+  - top/top_c_40
+  - skin/skin_1
+  slotColors:
+  - slotName: hair
+    color: {r: 0.76, g: 0.23, b: 0.13, a: 1}
+  - slotName: hair_long
+    color: {r: 0.76, g: 0.23, b: 0.13, a: 1}
+  - slotName: helmet_hair
+    color: {r: 0.76, g: 0.23, b: 0.13, a: 1}
   idleAnimation: Idle
   attackAnimation: Attack1
   deathAnimation: Die

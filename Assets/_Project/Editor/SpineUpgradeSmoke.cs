@@ -137,6 +137,30 @@ public static class SpineUpgradeSmoke
             Debug.Log($"[SMOKE] importer resolve OK: A={partsA.Count}(hat), B={partsB.Count}(short), colors={colors.Count}, roundtripWarnings={w2.Count}");
         }
 
+        // unit-parts-appearance 4 — Defender 16종 실에셋 시안 검증 (무경고 + 합성 + 유일성)
+        {
+            string[] guids = UnityEditor.AssetDatabase.FindAssets("t:DefenderUnitData", new[] { "Assets/_Project/Data/Defenders" });
+            var comboKeys = new System.Collections.Generic.HashSet<string>();
+            int checked_ = 0, empty = 0;
+            foreach (string guid in guids)
+            {
+                string path = UnityEditor.AssetDatabase.GUIDToAssetPath(guid);
+                var d = UnityEditor.AssetDatabase.LoadAssetAtPath<Wassup.Data.DefenderUnitData>(path);
+                if (d == null) continue;
+                checked_++;
+                if (d.partSkins.Count == 0) { empty++; Debug.LogError($"[SMOKE] {d.name}: partSkins 비어 있음"); ok = false; continue; }
+                var w = Wassup.Editor.UnitVisualDataValidator.CollectWarnings(d);
+                if (w.Count != 0) { Debug.LogError($"[SMOKE] {d.name} 경고 {w.Count}건:\n - " + string.Join("\n - ", w)); ok = false; }
+                var skel = d.skeletonDataAsset.GetSkeletonData(false);
+                var skin = Wassup.Presentation.SpineCombinedSkinCache.GetOrBuild(skel, d.partSkins, d.name);
+                if (skin.Attachments.Count <= 6) { Debug.LogError($"[SMOKE] {d.name}: 합성 어태치 {skin.Attachments.Count} — 본체뿐"); ok = false; }
+                comboKeys.Add(string.Join("|", d.partSkins));
+            }
+            if (checked_ != 16) { Debug.LogError($"[SMOKE] Defender {checked_}종 (기대 16)"); ok = false; }
+            if (comboKeys.Count != checked_) { Debug.LogError($"[SMOKE] 조합 중복: unique={comboKeys.Count}/{checked_}"); ok = false; }
+            Debug.Log($"[SMOKE] defender looks OK: {checked_}종, unique={comboKeys.Count}, empty={empty}");
+        }
+
         Debug.Log(ok ? "[SMOKE] SpinePipelineSmoke PASS" : "[SMOKE] SpinePipelineSmoke FAIL");
         EditorApplication.Exit(ok ? 0 : 1);
     }
