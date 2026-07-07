@@ -1,7 +1,7 @@
 # Unit Parts Appearance Spec (파츠 조합 외형 시스템)
 
 **작성일**: 2026-07-07
-**상태**: unit 0~4 완료 + unit 6(Enemy 임시 외형) 완료 (2026-07-07, 배치 검증 기준) — 에디터/실기기 시각 확인 잔여, 상세는 `5_handoff_summary.md`
+**상태**: unit 0~4 완료 + unit 6(Enemy 임시 외형 + facing 수정) 완료 — 에디터 시각 확인 통과(2026-07-07). Android 실기기 확인만 잔여. 상세는 `5_handoff_summary.md`
 **상위 맥락**: `docs/spec/spine-runtime-4-2-upgrade/` 후속. Layer Lab "2D Art Maker — AMCasual Character"(Spine 4.2.43, 파츠 스킨 479개/16 카테고리 + `full_skins` 1종) 채택 완료, 전 Defender 가 `full_skins` 단일 스킨으로 렌더 중.
 **critic 리뷰**: 2026-07-07 2-lane 리뷰(파이프라인 융화 / 조립 편의성) 반영 완료 — 각 unit 문서의 rev 주석 참조. 판정: 구조 블로커 없음, unit 1(프리뷰 경로·캐시 키·eye 틴트)·unit 3(helmet/hair 배타·색 확장·프리팹 1차 입력) 계약 보강으로 해소.
 **목표**: 유닛 외형을 "파츠 스킨 조합 + 슬롯 색상" 데이터로 정의하고 런타임에 combined skin 으로 합성한다. 기획/아트가 원하는 모양을 직접 조립하는 에디터 워크플로우를 제공한다. (외형 정의 방식 = 데이터 에셋 필드, 2026-07-07 사용자 확정)

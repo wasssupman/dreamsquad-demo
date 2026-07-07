@@ -8,6 +8,8 @@
 - `ea0985b7` unit 2 — UnitVisualDataValidator (HelpBox, 색 키잉 슬롯 동적 탐지)
 - `01e8b9be` unit 3 — LayerLabPresetImporter (프리팹 1차/프리셋 보조, 배타 resolve, 색 확장)
 - `8b20d2e6` unit 4 — Defender 16종 시안 (프로그램 생성, 전 조합 유일·무경고)
+- `fc333507` unit 6 — Enemy 7종 임시 휴먼 외형 (기어 0 + 원색 틴트, 몬스터 리소스 전 stopgap)
+- `d7ef2d58` fix(facing) — 적이 이동 방향과 반대로 보던 문제(단일 리그 공유로 facing 규칙 통합). 사용자 시각 확인 통과(2026-07-07)
 
 ## Implemented
 

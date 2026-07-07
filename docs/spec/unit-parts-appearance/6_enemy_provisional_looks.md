@@ -41,11 +41,16 @@
 
 - [x] 7종 정적 검증: 파츠 스킨 실존, 결번 0, 기어 카테고리 0, 카테고리 중복 0, `skin/skin_1` 포함, 틴트 슬롯 실존 (2026-07-07)
 - [x] 배치 스모크 PASS: `[SMOKE] enemy provisional looks OK: 7종, unique=7` — 조합 어태치>6(얼굴/머리 존재), validator 무경고, Walk/Attack1/Die 클립 해석, 조합 유일 (2026-07-07, 격리 리그)
-- [ ] **에디터/실기기 시각 확인(사용자)**: 전투에서 7종이 원색 나쁜놈으로 구분되는지, 얼굴 표정(eyes/brow/mouth 인덱스)·머리(hair_short) 어울리는지. 인덱스는 best-guess 라 인스펙터 드롭다운으로 교체 가능.
+- [x] **에디터 시각 확인(사용자) — 통과 (2026-07-07)**: 전투에서 7종 렌더 + facing 확인 완료. 커밋 `fc333507`(외형) + `d7ef2d58`(facing 수정). 얼굴/머리/색 세부는 인스펙터 드롭다운·`slotColors` 로 언제든 튜닝 가능(구조는 고정).
+
+## 후속 발견 — facing 수정 (d7ef2d58)
+
+적을 휴먼 리그에 물린 뒤 **이동 방향과 반대로 바라보는** 증상 확인. 원인은 데이터 flip 이 아니라 `SpineUnitView.SetFacingByViewDelta` 의 enemy/defender 역부호 분기(과거 적/디펜더가 반대 방향 별도 리그 쓰던 시절의 잔재). 단일 Casual Character 리그 공유가 된 지금은 규칙을 하나로 통합(`dx>=0 → ScaleX -1`)해 해결. 디펜더 경로 무영향. 방향 반대 리그는 코드 분기가 아니라 `SkeletonFlipX` modifier(데이터 정규화)로 처리하는 게 설계 의도.
 
 ## 주의점
 
 - **임시 상태다.** 몬스터형 리소스가 들어오면 이 7종을 교체한다(README 후속 후보).
 - quad 폴백 경로는 유지(`visualMaterial` 미삭제) — skeleton 이 다시 null 이 되면 자동 폴백.
 - Vanguard/Tanker 는 `full_skins` 단일 스킨이라 partSkins 없음 → 스모크 대상에서 제외(`partSkins.Count == 0` 스킵).
-- 얼굴/머리 인덱스는 색 틴트만큼 검증되지 않았다(시각 확인 전). 구조적 유효성만 보장.
+- 얼굴/머리 인덱스는 색 틴트만큼 검증되지 않았다(구조 유효성만 배치 보장, 시각은 사용자 확인 통과).
+- **facing 규칙은 이제 전 유닛 단일**(`SetFacingByViewDelta` 분기 제거). 새 캐릭터 리그 추가 시 방향이 반대면 코드가 아니라 `SkeletonFlipX` modifier 를 그 SkeletonDataAsset 의 `skeletonDataModifiers` 에 붙여 정규화할 것.
