@@ -23,7 +23,7 @@
 - **하위 호환**: 파츠 목록이 비어 있으면 기존 `spineSkinName` 단일 스킨 경로 그대로 동작한다. 현행 `full_skins` 상태가 기본값으로 유지된다.
 - **런타임은 Layer Lab 코드 무의존.** Layer Lab 스크립트는 asmdef 없는 Assembly-CSharp 소속이라 `Wassup.Runtime`(asmdef)에서 구조적으로 참조 불가 — 이 경계를 유지한다. Layer Lab 타입 접근은 에디터 유틸(Assembly-CSharp-Editor)만 허용.
 - **combined skin 은 유닛 데이터 단위로 캐시**한다 (같은 조합 = `Skin` 객체 공유, 상한 = 유닛 데이터 종수라 정리 불필요). 런타임 아틀라스 리팩(Layer Lab `IsOptimizeSkin` 류)은 사용하지 않는다 — 단일 아틀라스 페이지라 이득이 없다.
-- **파츠 스킨 경로 규약**: `{category}/{category}_c_{n}` (Casual Character 스킨 네이밍, 예: `helmet/helmet_c_12`).
+- **파츠 스킨 경로 규약**: `{category}/{category}_c_{n}` (Casual Character 스킨 네이밍, 예: `helmet/helmet_c_12`). **예외: 본체는 `skin/skin_1`** (`_c_` 인픽스 없음, unit 1 스모크에서 실측) — 이름 패턴에 의존하지 말고 스킨 목록 StartsWith 스캔으로 다룰 것.
 - **색상은 슬롯 단위 틴트**로, 사망 페이드(`Skeleton.A`)와 곱연산으로 독립 동작해야 한다.
 - Enemy 는 몬스터형 스켈레톤 수급 전까지 범위 밖 (Defender 우선, 2026-07-07 사용자 결정). 단 데이터 계약(unit 0)은 공용 인터페이스라 Enemy 도 자동으로 갖춘다.
 

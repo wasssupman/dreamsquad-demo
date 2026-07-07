@@ -302,15 +302,9 @@ namespace Wassup.UI
             skeleton.initialSkinName = string.IsNullOrEmpty(unitData.spineSkinName) ? "default" : unitData.spineSkinName;
             skeleton.Initialize(true);
 
-            if (!string.IsNullOrEmpty(unitData.spineSkinName) && skeleton.Skeleton != null)
-            {
-                var skin = skeleton.Skeleton.Data.FindSkin(unitData.spineSkinName);
-                if (skin != null)
-                {
-                    skeleton.Skeleton.SetSkin(skin);
-                    skeleton.Skeleton.SetSlotsToSetupPose();
-                }
-            }
+            // unit-parts-appearance 1 — 스폰 경로(SpineUnitView)와 동일한 공용 헬퍼로 일원화.
+            if (skeleton.Skeleton != null)
+                SpineCombinedSkinCache.Apply(skeleton.Skeleton, unitData);
 
             string animation = ResolveAnimation(skeleton, unitData.dragAnimation, unitData.idleAnimation, unitData.attackAnimation);
             if (!string.IsNullOrEmpty(animation))

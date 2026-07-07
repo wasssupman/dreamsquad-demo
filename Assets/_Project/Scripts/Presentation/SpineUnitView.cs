@@ -41,21 +41,10 @@ namespace Wassup.Presentation
             _skeleton.initialSkinName = string.IsNullOrEmpty(visualData.SpineSkinName) ? "default" : visualData.SpineSkinName;
             _skeleton.Initialize(true);
 
-            if (!string.IsNullOrEmpty(visualData.SpineSkinName) && _skeleton.Skeleton != null)
-            {
-                Skin skin = _skeleton.Skeleton.Data.FindSkin(visualData.SpineSkinName);
-                if (skin != null)
-                {
-                    _skeleton.Skeleton.SetSkin(skin);
-                    _skeleton.Skeleton.SetSlotsToSetupPose();
-                }
-                else
-                {
-                    Debug.LogWarning(
-                        $"[SpineUnitView] Skin '{visualData.SpineSkinName}' not found for '{visualData.SpineDisplayName}'.",
-                        this);
-                }
-            }
+            // unit-parts-appearance 1 — 단일/조합 스킨 + 슬롯 틴트는 공용 헬퍼가 소유
+            // (드래그 프리뷰와 동일 경로).
+            if (_skeleton.Skeleton != null)
+                SpineCombinedSkinCache.Apply(_skeleton.Skeleton, visualData);
 
             PlayIdleLooping();
 
