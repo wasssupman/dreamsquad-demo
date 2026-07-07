@@ -1,0 +1,25 @@
+# Unit 4 — Defender 16종 1차 외형 적용
+
+## 목적
+
+도구 체인(unit 1~3)을 실전 투입해 Defender 16종에 서로 구분되는 외형 조합을 적용한다. 이 unit 은 컨텐츠 작업이며 도구 검증을 겸한다.
+
+## 변경 대상
+
+- `Assets/_Project/Data/Defenders/Defender_*.asset` 16종 — partSkins/slotColors 채움
+
+## 구현
+
+1. 클래스 정체성 기준 1차 조합 (예: Guardian=중갑+방패, Sniper=후드+장총, Caster=로브+지팡이).
+   조립 주체는 사용자/아트 — 데모 씬에서 조립 후 unit 3 도구로 이관. 아트 리소스가 아닌
+   임시 시안이어도 "16종이 서로 구분된다" 를 만족하면 통과.
+2. 클래스별 gear(무기) 파츠는 공격 모션(Attack1)과 어울리는지 Play 로 확인.
+3. 적용 후 드래그 프리뷰(DefenderDragPlacementController 경로)에도 combined skin 이
+   반영되는지 확인 — 프리뷰는 별도 AddComponent 경로라 unit 1 에서 누락됐을 수 있음.
+   누락 시 이 unit 에서 프리뷰 경로에도 동일 적용 (rev 로 기록).
+
+## 완료 기준
+
+- [ ] Defender 16종이 배치/전투/드래그 프리뷰에서 각자 다른 외형으로 렌더
+- [ ] 콘솔 경고 0 (없는 스킨 경로 없음)
+- [ ] Android 실기기 1회 확인 (프레임/메모리 급변 없음 — 단일 아틀라스 유지 확인)
