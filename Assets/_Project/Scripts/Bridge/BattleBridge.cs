@@ -2781,8 +2781,8 @@ namespace Wassup.Bridge
             GameManager.Instance?.Logger?.RecordPlacement(unitData.displayName, cell, Time.time - _startTime, unitData.cost);
             entity = CreateDefenderEntity(cell, unitData, pendingDeployment: true, spawnPlacementVfx: false);
             ApplyOnPlacePush(unitData, cell);
-            // battle-audio: casual deploy interjection on successful placement.
-            Wassup.Core.SoundManager.Instance?.PlayDeployVoice();
+            // battle-audio: per-character casual deploy interjection (class-fitting voice).
+            Wassup.Core.SoundManager.Instance?.PlayDeployVoice(unitData.deployVoiceClip);
             Debug.Log($"[BattleBridge] Began pending deployment for {unitData.displayName} at ({tileX},{tileY}).");
             return true;
         }

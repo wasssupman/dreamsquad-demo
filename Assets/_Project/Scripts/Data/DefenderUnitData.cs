@@ -31,6 +31,9 @@ namespace Wassup.Data
         public Mesh visualMesh;
         public Material visualMaterial;
 
+        // battle-audio: 배치 시 캐릭터별 캐주얼 추임새(클래스 어울리는 짧은 라인, TTS 보이스).
+        public AudioClip deployVoiceClip;
+
         // Phase 3: when set, the AttackSystem queues a ProjectileSpawnRequest rather
         // than appending IncomingDamage immediately. Leaving this null keeps the
         // Phase 0-2 direct-damage path for regression coverage.

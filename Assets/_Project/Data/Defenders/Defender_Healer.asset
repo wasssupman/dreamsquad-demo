@@ -23,6 +23,7 @@ MonoBehaviour:
   attackTargetCount: 3
   visualMesh: {fileID: 0}
   visualMaterial: {fileID: 2100000, guid: 0fa3aa86ccc0643bcba349ade2f4baea, type: 2}
+  deployVoiceClip: {fileID: 8300000, guid: 15ac08747b36d48f0b3d1b5762639ec4, type: 3}
   projectile: {fileID: 0}
   outputs:
   - kind: 1
@@ -51,6 +52,10 @@ MonoBehaviour:
   aggroRange: 0
   skeletonDataAsset: {fileID: 11400000, guid: ee98f82138b60430f97c6863317c3a2f, type: 2}
   spineSkinName: full_skins
+  idleAnimation: Idle
+  attackAnimation: Attack3
+  deathAnimation: Die
+  spineVisualScale: 1.3
   partSkins:
   - boots/boots_c_27
   - bottom/bottom_c_30
@@ -69,10 +74,6 @@ MonoBehaviour:
     color: {r: 0.95, g: 0.85, b: 0.55, a: 1}
   - slotName: helmet_hair
     color: {r: 0.95, g: 0.85, b: 0.55, a: 1}
-  idleAnimation: Idle
-  attackAnimation: Attack3
-  deathAnimation: Die
-  spineVisualScale: 1.3
   dragAnimation: Attack1
   deployAnimation: Hit
   placementVfxPrefab: {fileID: 0}

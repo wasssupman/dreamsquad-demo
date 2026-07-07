@@ -23,6 +23,7 @@ MonoBehaviour:
   attackTargetCount: 1
   visualMesh: {fileID: 0}
   visualMaterial: {fileID: 2100000, guid: a1b2c3d4e5f601234567890abcdef101, type: 2}
+  deployVoiceClip: {fileID: 8300000, guid: d6de6a4598ddc4b459f33117254670ba, type: 3}
   projectile: {fileID: 11400000, guid: 3ff11c1bd9a37449fb137b0993b15d0b, type: 2}
   outputs:
   - kind: 0
@@ -51,6 +52,10 @@ MonoBehaviour:
   aggroRange: 0
   skeletonDataAsset: {fileID: 11400000, guid: ee98f82138b60430f97c6863317c3a2f, type: 2}
   spineSkinName: full_skins
+  idleAnimation: Idle
+  attackAnimation: Attack3
+  deathAnimation: Die
+  spineVisualScale: 1.3
   partSkins:
   - boots/boots_c_16
   - bottom/bottom_c_50
@@ -64,10 +69,6 @@ MonoBehaviour:
   - top/top_c_18
   - skin/skin_1
   slotColors: []
-  idleAnimation: Idle
-  attackAnimation: Attack3
-  deathAnimation: Die
-  spineVisualScale: 1.3
   dragAnimation: Attack1
   deployAnimation: Hit
   placementVfxPrefab: {fileID: 4060967071236614201, guid: c91958420bcc8d647ae19c0e7caeafa6, type: 3}
