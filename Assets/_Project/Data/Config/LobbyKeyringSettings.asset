@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8c1192884885d0143af09677a43783ca, type: 3}
+  m_Name: LobbyKeyringSettings
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.LobbyKeyringSettings
+  ropeLength: 160
+  spring: 100
+  damping: 2.5
+  maxSpeed: 2400
+  maxAngle: 8
+  gravity: 4000
+  bounceDamping: 0.35
+  bounceMinSpeed: 300
+  landingMinX: -800
+  landingMaxX: 800
+  cordWidth: 8
+  cordColor: {r: 0.45, g: 0.38, b: 0.28, a: 1}
+  ringRadius: 28
