@@ -2327,6 +2327,14 @@ MonoBehaviour:
   shineTiltDeg: 18
   shineTravel: 340
   shineDuration: 0.4
+  kickStrength: 11
+  kickRotation: 3
+  kickDuration: 0.3
+  milestoneInterval: 100
+  vignetteSprite: {fileID: 21300000, guid: 81dc17ec18fd24896ba17ce06c640d0f, type: 3}
+  milestoneColor: {r: 1, g: 0.8, b: 0.35, a: 1}
+  milestoneFlashAlpha: 0.5
+  milestoneDuration: 0.55
   topOffset: -76
   valueFontSize: 83
   captionFontSize: 29

@@ -64,6 +64,20 @@ namespace Wassup.UI
         [SerializeField] private float shineTravel = 340f;
         [SerializeField] private float shineDuration = 0.4f;
 
+        [Header("Screen feedback")]
+        [Tooltip("처치 시 패널 UI-space 셰이크 강도(px). 배틀 카메라는 안 건드림.")]
+        [SerializeField] private float kickStrength = 11f;
+        [Tooltip("처치 시 패널 회전 펀치(도)")]
+        [SerializeField] private float kickRotation = 3f;
+        [SerializeField] private float kickDuration = 0.3f;
+        [Tooltip("마일스톤 간격(점). 통과 시 화면 가장자리 플래시.")]
+        [SerializeField] private int milestoneInterval = 100;
+        [Tooltip("풀스크린 비네트 스프라이트(가장자리 밝음). Null → 플래시 생략.")]
+        [SerializeField] private Sprite vignetteSprite;
+        [SerializeField] private Color milestoneColor = new Color(1f, 0.8f, 0.35f, 1f);
+        [SerializeField] private float milestoneFlashAlpha = 0.5f;
+        [SerializeField] private float milestoneDuration = 0.55f;
+
         [Header("Layout")]
         // Sits just below the timer (timer panel: y -12, height 60 -> bottom ~-72).
         [SerializeField] private float topOffset = -76f;
@@ -90,6 +104,11 @@ namespace Wassup.UI
         private float _glowFlash;
         private float _shineT = 2f;
         private float _shineBaseY;
+        private Image _vignetteImage;
+        private float _milestoneFlash;
+        private int _lastMilestone;
+        private Tween _kickPosTween;
+        private Tween _kickRotTween;
 
         private void Awake()
         {
@@ -168,6 +187,25 @@ namespace Wassup.UI
             // Flare the glow and launch a shine sweep.
             _glowFlash = 1f;
             _shineT = 0f;
+
+            // UI-space panel kick (battle camera is never touched).
+            if (_panel != null)
+            {
+                if (_kickPosTween.isAlive) _kickPosTween.Stop();
+                if (_kickRotTween.isAlive) _kickRotTween.Stop();
+                float ks = kickStrength * intensity;
+                _kickPosTween = Tween.ShakeLocalPosition(_panel.transform,
+                    new Vector3(ks, ks * 0.6f, 0f), kickDuration, useUnscaledTime: true);
+                _kickRotTween = Tween.PunchLocalRotation(_panel.transform,
+                    new Vector3(0f, 0f, kickRotation * intensity), kickDuration, useUnscaledTime: true);
+            }
+
+            // Milestone edge-flash on crossing each interval (display-only trigger).
+            if (milestoneInterval > 0)
+            {
+                int m = _targetScore / milestoneInterval;
+                if (m > _lastMilestone) { _lastMilestone = m; _milestoneFlash = 1f; }
+            }
         }
 
         private void UpdateGlowShine(float dt)
@@ -197,6 +235,14 @@ namespace Wassup.UI
                 sc.a = shineColor.a * Mathf.Sin(t * Mathf.PI); // fade in then out
                 _shineImage.color = sc;
             }
+
+            if (_vignetteImage != null && _milestoneFlash > 0f)
+            {
+                _milestoneFlash = Mathf.Max(0f, _milestoneFlash - dt / Mathf.Max(0.0001f, milestoneDuration));
+                var vc = milestoneColor;
+                vc.a = milestoneFlashAlpha * _milestoneFlash * _milestoneFlash; // ease-out fade
+                _vignetteImage.color = vc;
+            }
         }
 
         private void StopFeedbackTweens()
@@ -212,6 +258,17 @@ namespace Wassup.UI
             if (_glowImage != null) { var gc = glowColor; gc.a = glowRestAlpha; _glowImage.color = gc; }
             if (_glowRect != null) _glowRect.localScale = Vector3.one;
             if (_shineImage != null) { var sc = shineColor; sc.a = 0f; _shineImage.color = sc; }
+
+            if (_kickPosTween.isAlive) _kickPosTween.Stop();
+            if (_kickRotTween.isAlive) _kickRotTween.Stop();
+            if (_panel != null)
+            {
+                var prt = (RectTransform)_panel.transform;
+                prt.anchoredPosition = new Vector2(0f, topOffset);
+                prt.localRotation = Quaternion.identity;
+            }
+            _milestoneFlash = 0f;
+            if (_vignetteImage != null) { var vc = milestoneColor; vc.a = 0f; _vignetteImage.color = vc; }
         }
 
         private void EnsureSubscribed()
@@ -238,6 +295,7 @@ namespace Wassup.UI
                 _targetScore = 0;
                 _shownScore = 0f;
                 _pendingKills = 0;
+                _lastMilestone = 0;
                 StopFeedbackTweens();
                 if (_value != null) { _value.text = "0"; _value.color = baseColor; }
                 if (_valueRect != null) _valueRect.localScale = Vector3.one;
@@ -326,6 +384,16 @@ namespace Wassup.UI
             _shineRect.localRotation = Quaternion.Euler(0f, 0f, shineTiltDeg);
             _shineRect.SetAsLastSibling();
             { var sc = shineColor; sc.a = 0f; _shineImage.color = sc; }
+
+            // Fullscreen milestone edge-flash vignette (on the canvas, behind the panel).
+            _vignetteImage = MakeImage("MilestoneVignette", transform, vignetteSprite);
+            var vrt = _vignetteImage.rectTransform;
+            vrt.anchorMin = Vector2.zero;
+            vrt.anchorMax = Vector2.one;
+            vrt.offsetMin = Vector2.zero;
+            vrt.offsetMax = Vector2.zero;
+            vrt.SetAsFirstSibling();
+            { var vc = milestoneColor; vc.a = 0f; _vignetteImage.color = vc; }
 
             UiLayer.Apply(gameObject);
         }
