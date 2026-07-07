@@ -290,8 +290,10 @@ ECS와 MonoBehaviour 양쪽에 공통 적용되는 추상화 상한선이다. �
 
 ### 5.2 아키텍처 악취
 
-- `XxxManager` 싱글톤 남발. `GameManager` 1개만 허용
-  - **의도된 예외 1개: `Wassup.Core.TimeControl.TimeManager`** (도메인 스코프 시간 제어). 시간 스케일이 전투 시뮬(ECS)·BattleBridge 웨이브/타이머·전투 표현·UI 다수 계층에 걸쳐 널리 소비되어 단일 권한이 필요하다. 사용자 승인하 도입(spec `docs/spec/time-manager/`). 순수 C# 싱글턴(MonoBehaviour 아님). 이 외 새 `XxxManager` 싱글톤은 여전히 금지.
+- `XxxManager` 싱글톤 남발 지양. 명확한 단일 역할 매니저만 허용(2026-07-07 완화, CLAUDE.md §5 참조)
+  - **의도된 예외: `Wassup.Core.TimeControl.TimeManager`** (도메인 스코프 시간 제어). 시간 스케일이 전투 시뮬(ECS)·BattleBridge 웨이브/타이머·전투 표현·UI 다수 계층에 걸쳐 널리 소비되어 단일 권한이 필요하다. 사용자 승인하 도입(spec `docs/spec/time-manager/`). 순수 C# 싱글턴(MonoBehaviour 아님).
+  - **의도된 예외: `SoundManager`** (전역 SFX/오디오 재생). 사용자 승인하 도입(2026-07-07, spec `docs/spec/score-hud-impact-upgrade/` unit 4). 오디오는 여러 계층에서 발화되므로 단일 재생 권한이 자연스럽다.
+  - 이 둘 외 새 `XxxManager` 싱글톤은 기능이 실제로 전역 권한을 요구할 때만, 애매하면 질문 후 신설.
 - MonoBehaviour에 전투 로직 직접 작성 (전투는 ECS 시스템에서만)
 - SystemBase 남발 (ISystem 우선)
 - ECS Component 과다 (10개 이상 만들기 전에 재검토)

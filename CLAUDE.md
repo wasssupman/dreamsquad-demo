@@ -52,7 +52,7 @@
 2. **맥락 경계 엄수**: Component 쓰기는 소유 맥락만. 맥락 간 직접 호출 금지.
 3. **SubScene 금지**, **SystemBase 남발 금지**(ISystem 우선), **네트워크 코드 완전 금지**.
 4. **Authoring/Runtime 분리**: ScriptableObject/프리팹/Spine/Particle/UI 는 MonoBehaviour 계층에 두고, ECS 런타임 상태는 unmanaged Component/Buffer 중심으로 유지한다.
-5. **Manager 싱글톤은 GameManager 1개만**. 그 외 `XxxManager` 싱글톤 금지.
+5. **Manager 싱글톤 제한 완화** (2026-07-07 사용자 결정): 기존 "GameManager 1개만" 하드 캡 해제. 명확한 단일 역할의 매니저(예: `SoundManager`)는 허용한다. 단 무분별한 `XxxManager` 남발은 지양 — 기능이 실제로 전역 매니저를 요구할 때만 신설하고, 애매하면 질문한다.
 6. **하드코딩된 수치 금지**. 모든 유닛 스탯/공격 패턴/스킬 값/VFX 파라미터는 ScriptableObject 또는 프리팹에서 나온다.
 7. **상속 2단계 최대** (MonoBehaviour, ScriptableObject에 적용).
 8. **인터페이스는 구현체 2개 이상일 때만 생성**. "나중을 위한" 추상 레이어 금지.

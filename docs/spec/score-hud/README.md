@@ -34,7 +34,7 @@
 - **점수 로직은 뷰 소유**: `pointsPerKill`(직렬화) + 누적 점수는 `ScoreHudView` 가 보유. BattleBridge 는 킬당 `OnEnemyKilled()` 만 호출. 표시 전용이라 외부 노출 불필요.
 - **표시/리셋**: `GameManager.Instance.PhaseChanged` 구독. `Battle` 진입 시 점수 0 리셋 + 표시, 그 외 phase 숨김.
 - **연출 수치 전부 직렬화**: pointsPerKill, 롤 시간, 펀치 스케일/시간, 플래시 색은 `ScoreHudView` `[SerializeField]`. 하드코딩 금지(TRD §5).
-- **폰트 구분**: 점수는 데미지 숫자와 **다른 폰트**를 쓴다. 점수=`Anton SDF.asset` + `Score Outline Mat.mat`(굵은 콘덴스드), 데미지=`Bangers SDF`. 미할당 시 기본 폰트 폴백. (사용자 요청 2026-06-05: 데미지/점수 폰트 분리)
+- **폰트 구분**: 점수는 데미지 숫자와 **다른 폰트**를 쓴다. 점수=`Anton SDF.asset` + `Score Outline Mat.mat`(굵은 콘덴스드), 데미지=`Bangers SDF`. 미할당 시 기본 폰트 폴백. (사용자 요청 2026-06-05: 데미지/점수 폰트 분리) — **2026-07-07 갱신: 점수 폰트를 Anton → `Kanit Bold Italic`(다이내믹 이탤릭)로 교체. spec `score-hud-impact-upgrade` unit 0. "다른 폰트" 원칙은 유지.**
 - **배치(개정)**: 점수를 화면 최상단 여백(게임영역 바깥)으로 올린다 — `topOffset=-8`. 보드 위로 뜨는 데미지 숫자와 겹치지 않게. (초기 "타이머 아래(-92)" 에서 상향)
 - **크기**: 데미지/점수 모두 1.3배 — 데미지 폰트 5.2~11.7, 점수 값 83 / 캡션 29. (사용자 요청 2026-06-05)
 
