@@ -2,12 +2,13 @@
 
 Spine, 타일맵 렌더, 프랍/VFX authoring, 카메라에서 겪은 함정.
 
-## Spine 런타임은 3.8 고정 — 4.x 임포트 절대 금지
+## Spine 런타임은 4.2 고정 — export 는 Spine Editor 4.2.xx 만
 
-spine-unity 런타임은 **3.8 고정**(`Assets/Spine/version.txt` = `spine-unity-3.8-2021-11-10`). 게임 캐릭터(player-main·몬스터1·BellKnight·BellMage·DoubleWolf·FleshSwarmer·ForestWormBoss·HeartWolf·MutantShroom3·WolfLamb) skeleton 이 전부 3.8 export 이고 원본 `.spine` 소스는 repo·git 어디에도 없다(재-export 불가).
+spine-unity 런타임은 **4.2 고정**(2026-07-07 업그레이드, `Assets/Spine/package.json` = 4.2.120, spec: `docs/spec/spine-runtime-4-2-upgrade/`). 스켈레톤 데이터는 **major.minor 가 일치하는 런타임에서만 로드**된다 — 4.2 export ↔ 4.2.xx 런타임만 성립, 패치 버전만 상호 호환. 다른 버전 런타임 임포트로 덮어쓰지 말 것.
 
-- **절대 금지**: Asset Store 등에서 최신 spine-unity(4.x) 임포트. `Assets/Spine` 을 in-place 덮어써 런타임이 4.3 이 되고 3.8 데이터를 못 읽어 캐릭터 전부 로드 실패. 3.8↔4.x 데이터 포맷 비호환.
-- **잘못 임포트 시 복구**(검증됨): `git checkout HEAD -- Assets/Spine "Assets/Spine Examples"` → `git clean -nfd`(dry-run 범위 확인) → `-fd` → stale CS2001 남으면 `AssetDatabase.Refresh(ForceUpdate)` + asmdef `ImportAsset(ForceUpdate)` + `CompilationPipeline.RequestScriptCompilation()`.
+- 3.8 시절 리소스(player-main·몬스터1·BellKnight 등)는 원본 `.spine` 부재로 재-export 불가라 **전량 퇴역**했다(커밋 b758aa29). 신규 리소스는 반드시 원본 `.spine` 을 함께 보존한다 — 그래야 향후 4.3+ 업그레이드가 재제작이 아닌 재-export 로 끝난다.
+- **잘못 임포트 시 복구**(3.8 시절 검증, 동일 원리): `git checkout HEAD -- Assets/Spine "Assets/Spine Examples"` → `git clean -nfd`(dry-run 범위 확인) → `-fd` → stale CS2001 남으면 `AssetDatabase.Refresh(ForceUpdate)` + asmdef `ImportAsset(ForceUpdate)` + `CompilationPipeline.RequestScriptCompilation()`.
+- **배치 모드 `-importPackage` 는 컴파일 에러 상태에서 abort** 된다("Scripts have compiler errors"). 런타임 폴더를 지운 뒤 재임포트하는 업그레이드 경로는 배치로 불가 — unitypackage 를 tar.gz 로 직접 추출해 pathname 대로 배치하면 GUID/meta 보존 동일 결과 (4.2 업그레이드에서 실증).
 
 ## 한글명 Spine 에셋 macOS 임포트 깨짐 (3중 수정)
 
@@ -15,7 +16,7 @@ macOS 에서 한글명 Spine 에셋을 임포트하면 깨진다. 원인 3개 �
 
 1. **NFC/NFD 정규화(핵심)**: Spine 이 쓴 이름은 NFC 인데 macOS 파일시스템은 파일명을 NFD 로 저장 → 텍스처 못 찾음("Material is missing texture"). 한글 파일명을 NFC 로 rename(`unicodedata.normalize('NFC', ...)`), 깨진 `_Atlas`/`_Material` 삭제 후 refresh 재생성.
 2. **확장자**: `*.json.txt` 인식 안 됨 → `.json`(또는 `.skel.bytes`).
-3. **버전 문자열**: 4.x→3.8 다운 export 시 `"spine":"3.8-from-4.0-..."` 가 3.8 파서를 죽임 → json 의 `"spine"` 필드를 `"3.8.99"` 로.
+3. **버전 문자열**(3.8 시절 이력): 4.x→3.8 다운 export 시 `"spine":"3.8-from-4.0-..."` 가 3.8 파서를 죽였음 → json 의 `"spine"` 필드를 수동 수정했던 사례. 4.2 체제에서는 다운 export 자체를 하지 않는다.
 
 가능하면 파일명 영문으로 두면 NFC/NFD 자체 회피(정상 레퍼런스: `player-main`).
 

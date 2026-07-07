@@ -25,8 +25,10 @@ spine-unity 런타임을 4.2 로 교체한다. 삭제와 임포트를 **한 커�
 
 ## 완료 기준
 
-- [ ] `Assets/Spine/version.txt` 또는 `package.json` 이 4.2 를 보고
-- [ ] 컴파일 에러 0 (Unity 6000.4.3f1 에서 — 공식 지원 상한 초과 리스크의 판정 지점)
-- [ ] BattleScene Play 진입, 콘솔 에러 0
-- [ ] lessons 03 갱신 완료
-- [ ] 실패 시: 원인 기록 후 `git revert` 로 3.8 복귀, spec README 리스크 섹션에 결과 기재
+- [x] `Assets/Spine/version.txt` 또는 `package.json` 이 4.2 를 보고 (4.2.120, `spine-unity-4.2-2026-05-29.unitypackage`)
+- [x] 컴파일 에러 0 (Unity 6000.4.3f1 에서 — 공식 지원 상한 초과 리스크 해소. `SkeletonDataModifierAsset`·`GetColor/SetColor` 존속, 코드 무수정 컴파일)
+- [x] BattleScene 로드 콘솔 에러 0 (배치 스모크 rootCount=14. Play 진입은 배치 한계로 씬 로드 검증 대체)
+- [x] lessons 03 갱신 완료 (4.2 고정 규칙 + 배치 -importPackage abort 발견사항)
+- [x] 실패 시 계획 미사용 (성공)
+
+확인 2026-07-07. 발견사항: 컴파일 에러 상태에서 배치 `-importPackage` 가 abort → unitypackage 를 tar.gz 직접 추출(GUID/meta 보존)로 우회. `Assets/Editor/SpineSettings.asset` 은 4.2 가 재생성.

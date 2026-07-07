@@ -24,7 +24,9 @@
 
 ## 완료 기준
 
-- [ ] 컴파일 에러 0 (런타임은 아직 3.8 그대로)
-- [ ] BattleScene 로드 시 에러 0, Play 진입 가능 (유닛 스켈레톤 미표시는 허용)
-- [ ] `Assets` 하위에 3.8 스켈레톤 데이터 파일 0건 (`find` 로 `.skel*`/`.atlas*`/`_SkeletonData` 검증)
-- [ ] `SkeletonFlipX.asset` 이 GUID 유지한 채 `Characters/` 에 존재
+- [x] 컴파일 에러 0 (런타임은 아직 3.8 그대로)
+- [x] BattleScene 로드 시 에러 0 (배치 스모크: rootCount=14, isLoaded=True. Play 진입은 배치 모드 한계로 씬 로드 검증으로 대체)
+- [x] `Assets` 하위에 3.8 스켈레톤 데이터 파일 0건 (`find` 로 `.skel*`/`.atlas*`/`_SkeletonData` 검증)
+- [x] `SkeletonFlipX.asset` 이 GUID 유지한 채 `Characters/` 에 존재 (git R100 rename)
+
+확인 2026-07-07 — 커밋 b758aa29. Deco.png 는 BattleScene 참조 확인되어 보존.
