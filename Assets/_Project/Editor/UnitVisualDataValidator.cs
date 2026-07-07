@@ -123,6 +123,7 @@ namespace Wassup.Editor
             if (target is ISpineUnitVisualData data)
                 foreach (string warning in UnitVisualDataValidator.CollectWarnings(data))
                     EditorGUILayout.HelpBox(warning, MessageType.Warning);
+            LayerLabImportSection.Draw(this); // unit-parts-appearance 3
         }
     }
 

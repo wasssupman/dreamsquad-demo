@@ -95,6 +95,48 @@ public static class SpineUpgradeSmoke
             Debug.Log($"[SMOKE] validator OK: warnings={warnings.Count}, keyedSlots=[{string.Join(",", keyed)}]");
         }
 
+        // unit-parts-appearance 3 — 임포터 resolve 규칙 검증 (helmet/hair 배타 + 색 확장 + validator 왕복)
+        {
+            var sda = UnityEditor.AssetDatabase.LoadAssetAtPath<Spine.Unity.SkeletonDataAsset>(
+                "Assets/Layer Lab/2D Art Maker/AMCasual Character/Demo/SpineAnimation/Casual Character_SkeletonData.asset");
+            var data = sda.GetSkeletonData(false);
+            var allTypes = (LayerLab.ArtMaker.PartsType[])System.Enum.GetValues(typeof(LayerLab.ArtMaker.PartsType));
+
+            // 시나리오 A: 헬멧 착용 (전 카테고리 index 0 — Layer Lab 이 Hair_Hat 을 미러 저장하는 형태)
+            var equipped = new System.Collections.Generic.Dictionary<LayerLab.ArtMaker.PartsType, (int, bool)>();
+            foreach (var t in allTypes) if (t != LayerLab.ArtMaker.PartsType.None) equipped[t] = (0, false);
+            var issuesA = new System.Collections.Generic.List<string>();
+            var partsA = Wassup.Editor.LayerLabPresetImporter.ResolveParts(data, equipped, issuesA);
+            bool aOk = partsA.Count == 15 && issuesA.Count == 0
+                && partsA.Exists(p => p.StartsWith("hair_hat/")) && !partsA.Exists(p => p.StartsWith("hair_short/"))
+                && partsA.Contains("skin/skin_1");
+            if (!aOk) { Debug.LogError($"[SMOKE] resolve A(helmet) FAIL: n={partsA.Count}, issues={issuesA.Count}, parts=[{string.Join(",", partsA)}]"); ok = false; }
+
+            // 시나리오 B: 헬멧 미착용 (helmet=-1) → hair_short 포함, hair_hat/helmet 제외
+            var bare = new System.Collections.Generic.Dictionary<LayerLab.ArtMaker.PartsType, (int, bool)>(equipped);
+            bare[LayerLab.ArtMaker.PartsType.Helmet] = (-1, false);
+            var issuesB = new System.Collections.Generic.List<string>();
+            var partsB = Wassup.Editor.LayerLabPresetImporter.ResolveParts(data, bare, issuesB);
+            bool bOk = partsB.Count == 14 && partsB.Exists(p => p.StartsWith("hair_short/")) && !partsB.Exists(p => p.StartsWith("hair_hat/"));
+            if (!bOk) { Debug.LogError($"[SMOKE] resolve B(bare) FAIL: n={partsB.Count}, parts=[{string.Join(",", partsB)}]"); ok = false; }
+
+            // 색 확장: body+hair 논리 키 → 9슬롯 (6+3), setup 동일 색은 스킵됨
+            var logical = new System.Collections.Generic.Dictionary<string, Color> { { "body", Color.red }, { "hair", Color.blue } };
+            var issuesC = new System.Collections.Generic.List<string>();
+            var colors = Wassup.Editor.LayerLabPresetImporter.ResolveColors(data, logical, issuesC);
+            if (colors.Count != 9) { Debug.LogError($"[SMOKE] color expansion expected 9, got {colors.Count}: [{string.Join(",", colors.ConvertAll(c => c.slotName))}]"); ok = false; }
+
+            // validator 왕복: resolve 결과는 무경고여야 함
+            var probe2 = ScriptableObject.CreateInstance<Wassup.Data.DefenderUnitData>();
+            probe2.skeletonDataAsset = sda;
+            probe2.partSkins.AddRange(partsA);
+            probe2.slotColors.AddRange(colors);
+            var w2 = Wassup.Editor.UnitVisualDataValidator.CollectWarnings(probe2);
+            if (w2.Count != 0) { Debug.LogError($"[SMOKE] resolved output has warnings:\n - " + string.Join("\n - ", w2)); ok = false; }
+            Object.DestroyImmediate(probe2);
+            Debug.Log($"[SMOKE] importer resolve OK: A={partsA.Count}(hat), B={partsB.Count}(short), colors={colors.Count}, roundtripWarnings={w2.Count}");
+        }
+
         Debug.Log(ok ? "[SMOKE] SpinePipelineSmoke PASS" : "[SMOKE] SpinePipelineSmoke FAIL");
         EditorApplication.Exit(ok ? 0 : 1);
     }

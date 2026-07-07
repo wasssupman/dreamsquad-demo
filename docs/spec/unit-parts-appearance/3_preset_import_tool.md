@@ -34,6 +34,9 @@ Layer Lab 데모 씬에서 눈으로 조립한 결과를 버튼 한 번으로 �
 
 ## 완료 기준
 
-- [ ] 데모에서 만든 조합이 버튼 클릭으로 Defender 데이터에 복사되고 게임에서 **동일 외형**으로 렌더 — **헬멧 착용/미착용 프리팹 각 1개** 왕복 검증 (배타 규칙 검증)
-- [ ] 색상 왕복: 데모에서 바꾼 피부/머리색이 게임에서 11슬롯 전체에 재현 (부분 틴트 아님)
-- [ ] Wassup.Runtime 은 여전히 Layer Lab 무의존 (에디터 어셈블리만 접근)
+- [x] resolve 규칙 배치 검증: 헬멧 착용(15파츠, hair_hat)/미착용(14파츠, hair_short) 배타 정확, resolve 결과가 validator 무경고 왕복
+- [x] 색 확장 배치 검증: 논리 키 2종(body/hair) → 9슬롯 확장 (setup 동일 색은 no-op 스킵)
+- [x] Wassup.Runtime 은 여전히 Layer Lab 무의존 (임포터는 Assembly-CSharp-Editor 소속)
+- [ ] 실제 데모 씬 조립 → SavePrefab → 가져오기 → BattleScene 렌더의 눈 왕복 — 에디터 항목, unit 4 에서 실조합으로 수행
+
+확인 2026-07-07 (배치 검증 기준). GUI 는 유닛 데이터 인스펙터 하단 "Layer Lab 외형 가져오기" 섹션 (프리팹/PresetData 겸용, 프리셋은 읽을 때 SetDirty 영속화).
