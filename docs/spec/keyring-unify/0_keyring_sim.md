@@ -45,4 +45,4 @@ public static class KeyringSim
 
 확인 2026-07-08 — compile 클린 · EditMode 통과(키링 7개, 무관 사전실패 2 제외) · 8앵글
 코드리뷰 후 CONFIRMED 1(Vector2 오버로드)·PLAUSIBLE 1(헤더) 반영. 사용자 진행 승인.
-Play 스모크 체감 확인은 unit 3 시각 검증에서 재확인 예정.
+Play 스모크 체감 확인은 unit 3 시각 검증에서 재확인 예정. 커밋 `76bcb69f`.

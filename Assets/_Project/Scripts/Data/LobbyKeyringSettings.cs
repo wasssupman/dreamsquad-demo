@@ -47,14 +47,8 @@ namespace Wassup.Data
         [Tooltip("줄 끝을 rect 상단에서 머리 안쪽으로 내리는 깊이(px). 줄이 캐릭터 뒤에 그려져 머리 뒤로 연결돼 보인다.")]
         public float cordAttachDrop = 60f;
 
-        [Header("아트 (미할당 시 절차적 폴백)")]
-        [Tooltip("고리 스프라이트. 비우면 절차적 annulus.")]
-        public Sprite ringSprite;
-        [Tooltip("줄 스프라이트(세로 스트레치 전제). 비우면 단색 사각형.")]
-        public Sprite cordSprite;
-        [Tooltip("줄 머티리얼(샤인/홀로 셰이더). 비우면 기본 UI 머티리얼.")]
-        public Material cordMaterial;
-        [Tooltip("고리 머티리얼(발광 셰이더). 비우면 기본 UI 머티리얼.")]
-        public Material ringMaterial;
+        [Header("아트 (keyring-unify 1 — 스타일 단일 소스)")]
+        [Tooltip("키링 스타일(스프라이트/머티리얼). 비우면 전체 절차적 폴백, 스타일 내 개별 슬롯 비면 해당 요소만 폴백.")]
+        public KeyringStyle style;
     }
 }

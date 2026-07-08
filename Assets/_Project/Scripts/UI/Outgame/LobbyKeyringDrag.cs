@@ -173,22 +173,23 @@ namespace Wassup.UI
         private void BuildRig()
         {
             var s = settings;
+            var st = s.style; // keyring-unify 1 — 스타일 단일 소스. null = 전체 절차적 폴백.
             var cordGo = new GameObject("KeyringCord", typeof(RectTransform));
             _cord = (RectTransform)cordGo.transform;
             _cord.SetParent(_parentRt, false);
             _cord.SetSiblingIndex(_rt.GetSiblingIndex()); // 캐릭터 뒤에 깔림
             _cordImage = cordGo.AddComponent<Image>();    // 스프라이트 미할당 = 흰 사각형, 틴트로 색
             _cordImage.raycastTarget = false;
-            if (s.cordSprite != null) _cordImage.sprite = s.cordSprite;
-            if (s.cordMaterial != null) _cordImage.material = s.cordMaterial; // 샤인 셰이더
+            if (st != null && st.cordSprite != null) _cordImage.sprite = st.cordSprite;
+            if (st != null && st.uiCordMaterial != null) _cordImage.material = st.uiCordMaterial; // 샤인/홀로 셰이더
 
             var ringGo = new GameObject("KeyringRing", typeof(RectTransform));
             _ring = (RectTransform)ringGo.transform;
             _ring.SetParent(_parentRt, false);
             _ring.SetSiblingIndex(_rt.GetSiblingIndex()); // 줄 앞·캐릭터 뒤
             _ringImage = ringGo.AddComponent<Image>();
-            _ringImage.sprite = s.ringSprite != null ? s.ringSprite : RingSprite();
-            if (s.ringMaterial != null) _ringImage.material = s.ringMaterial; // 발광(홀로) 셰이더
+            _ringImage.sprite = st != null && st.ringSprite != null ? st.ringSprite : RingSprite();
+            if (st != null && st.uiRingMaterial != null) _ringImage.material = st.uiRingMaterial; // 발광(홀로) 셰이더
             _ringImage.raycastTarget = false;
         }
 
