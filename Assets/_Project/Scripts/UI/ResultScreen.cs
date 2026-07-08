@@ -5,6 +5,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using Wassup.Core;
+using Wassup.Core.Api;
 
 namespace Wassup.UI
 {
@@ -16,25 +17,21 @@ namespace Wassup.UI
         private TextMeshProUGUI resultLabel;
         private TextMeshProUGUI leaderboardLabel;
         private Button restartButton;
-        private Button redraftButton;
         private GameObject _panel;
         private bool _built;
 
         public event Action RestartRequested;
-        public event Action RedraftRequested;
 
         private void Awake()
         {
             BuildCanvas();
             gameObject.SetActive(false);
             if (restartButton != null) restartButton.onClick.AddListener(OnRestartClicked);
-            if (redraftButton != null) redraftButton.onClick.AddListener(OnRedraftClicked);
         }
 
         private void OnDestroy()
         {
             if (restartButton != null) restartButton.onClick.RemoveListener(OnRestartClicked);
-            if (redraftButton != null) redraftButton.onClick.RemoveListener(OnRedraftClicked);
         }
 
         public void ShowDefeat()
@@ -71,7 +68,60 @@ namespace Wassup.UI
         }
 
         private void OnRestartClicked() => RestartRequested?.Invoke();
-        private void OnRedraftClicked() => RedraftRequested?.Invoke();
+
+        // tournament-play-report Unit 4 — swap the bot leaderboard for the real
+        // tournament ranking once it arrives (popup shows the bot list first;
+        // guests / fetch failures simply never get here). A response landing
+        // after the popup closed (e.g. instant RESTART) is dropped.
+        //
+        // Tournament slots are pre-assigned (maxEntryCount, currently 10): every
+        // slot is rendered, and slots no opponent has taken yet read WAITING...
+        // (English — the TMP font ships no Korean glyphs).
+        public void UpdateLeaderboard(TournamentApi.ResultData data, string ownUserId)
+        {
+            if (!gameObject.activeSelf) return;
+            if (data == null || leaderboardLabel == null) return;
+
+            // dev server omits the schema's `rank` field (probe 2026-07-08) —
+            // order by score and derive the display rank from position; a
+            // server-provided rank (>0) wins when it ever appears.
+            var entries = data.entries != null
+                ? new List<TournamentApi.ResultEntry>(data.entries)
+                : new List<TournamentApi.ResultEntry>();
+            entries.Sort((a, b) => b.score.CompareTo(a.score));
+
+            int totalSlots = Mathf.Max(data.maxEntryCount, entries.Count);
+            if (totalSlots == 0) return; // nothing meaningful to draw — keep the bot list
+
+            var builder = new StringBuilder();
+            builder.AppendLine("<mspace=0.65em>RANK NAME       SCORE</mspace>");
+            for (int i = 0; i < totalSlots; i++)
+            {
+                if (i < entries.Count)
+                {
+                    var e = entries[i];
+                    int rank = e.rank > 0 ? e.rank : i + 1;
+                    string line = $"{rank.ToString().PadRight(4)}{DisplayName(e.userName).PadRight(10)}{e.score.ToString().PadLeft(6)}";
+                    if (!string.IsNullOrEmpty(ownUserId) && e.userId == ownUserId)
+                        builder.AppendLine($"<mspace=0.65em><color=#FFD54A>{line}</color></mspace>");
+                    else
+                        builder.AppendLine($"<mspace=0.65em>{line}</mspace>");
+                }
+                else
+                {
+                    string line = $"{(i + 1).ToString().PadRight(4)}{"WAITING...".PadRight(10)}{"-".PadLeft(6)}";
+                    builder.AppendLine($"<mspace=0.65em><color=#9AA0A6>{line}</color></mspace>");
+                }
+            }
+            leaderboardLabel.text = builder.ToString().TrimEnd();
+        }
+
+        // empty names would collapse the mspace column; long ones would break it.
+        private static string DisplayName(string userName)
+        {
+            if (string.IsNullOrEmpty(userName)) return "?";
+            return userName.Length <= 10 ? userName : userName.Substring(0, 10);
+        }
 
         private void BuildCanvas()
         {
@@ -123,9 +173,11 @@ namespace Wassup.UI
             var leaderboardPanel = new GameObject("LeaderboardPanel", typeof(RectTransform), typeof(Image));
             leaderboardPanel.transform.SetParent(_panel.transform, false);
             leaderboardPanel.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.24f);
-            SetPreferredHeight(leaderboardPanel, 360f);
+            // tournament-play-report Unit 4 — sized for header + 10 tournament
+            // slots (was 360/32 for the 6-row bot list).
+            SetPreferredHeight(leaderboardPanel, 440f);
 
-            leaderboardLabel = CreateLabel(leaderboardPanel.transform, "LeaderboardLabel", "", 32, TextAlignmentOptions.TopLeft);
+            leaderboardLabel = CreateLabel(leaderboardPanel.transform, "LeaderboardLabel", "", 28, TextAlignmentOptions.TopLeft);
             leaderboardLabel.richText = true;
             leaderboardLabel.enableWordWrapping = false;
             var leaderboardRect = (RectTransform)leaderboardLabel.transform;
@@ -146,7 +198,6 @@ namespace Wassup.UI
             buttonLayout.childForceExpandHeight = false;
 
             restartButton = CreateButton(buttonRow.transform, "RestartButton", "RESTART", new Color(0.2f, 0.5f, 0.9f, 1f));
-            redraftButton = CreateButton(buttonRow.transform, "RedraftButton", "REDRAFT", new Color(0.85f, 0.55f, 0.18f, 1f));
 
             UiLayer.Apply(gameObject);
         }

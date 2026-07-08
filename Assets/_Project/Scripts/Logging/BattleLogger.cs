@@ -372,6 +372,19 @@ namespace Wassup.Logging
 #endif
         }
 
+        // tournament-play-report Unit 1 — serialize the current entry WITHOUT
+        // closing the session (file write stays in EndSession). Compact form for
+        // network transport. Fills timestamp_end/duration_sec on the live entry;
+        // safe because EndSession later overwrites both with final values.
+        public string SnapshotJson()
+        {
+            if (currentEntry == null) return null;
+            var now = DateTime.UtcNow;
+            currentEntry.timestamp_end = now.ToString("o");
+            currentEntry.result.duration_sec = (float)(now - startedAt).TotalSeconds;
+            return JsonUtility.ToJson(currentEntry, prettyPrint: false);
+        }
+
         public void EndSession()
         {
             if (currentEntry == null)

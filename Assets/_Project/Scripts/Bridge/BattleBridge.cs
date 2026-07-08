@@ -257,7 +257,6 @@ namespace Wassup.Bridge
             if (resultScreen != null)
             {
                 resultScreen.RestartRequested += OnRestartRequested;
-                resultScreen.RedraftRequested += OnRedraftRequested;
             }
         }
 
@@ -280,6 +279,10 @@ namespace Wassup.Bridge
                 ReLogSkillLoadoutForNewSession(logger);
             }
 
+            // tournament-play-report Unit 3 — a restart is a new tournament
+            // attempt. The sole live restart path since the REDRAFT removal.
+            Wassup.Core.Api.TournamentMatchReporter.BeginMatch();
+
             TeardownCurrentBattle();
             if (resultScreen != null) resultScreen.Hide();
             _running = false;
@@ -298,58 +301,6 @@ namespace Wassup.Bridge
             var poolIds = new System.Collections.Generic.List<string>();
             foreach (var s in ctl.Pool) if (s != null) poolIds.Add(s.id);
             logger.SetSkillPool(poolIds, ctl.Seed);
-        }
-
-        private void OnRedraftRequested()
-        {
-            if (draftController == null)
-            {
-                Debug.LogWarning("[BattleBridge] RedraftRequested but draftController unset; falling back to RestartBattle.");
-                RestartBattle();
-                return;
-            }
-            // Re-opening the draft invalidates the previous session — roll the log,
-            // tear down ECS state, hide the result panel, then let DraftController
-            // show the pick UI. StartBattle will fire again inside TryConfirm.
-            var logger = GameManager.Instance?.Logger;
-            if (logger != null)
-            {
-                logger.StartReplacementSession("redraft", incrementRestartIndex: false);
-                if (GameManager.Instance != null) logger.SetMatchSeeds(GameManager.Instance.MatchSeed, GameManager.Instance.MatchSeedFixed);
-            }
-            if (_world != null) TeardownCurrentBattle();
-            // dreamstone-loadout — redraft discards the squad staging; a draft match
-            // must never inherit stones (Codex review 2026-07-04).
-            _pendingDreamstones = null;
-            if (resultScreen != null) resultScreen.Hide();
-            _running = false;
-            _resultShown = false;
-            // draft-stage-map-prebuild Unit 3 — TeardownCurrentBattle disposed the map;
-            // rebuild it before re-entering draft so the playfield is ready.
-            PrepareDraftMap();
-            draftController.BeginDraft();
-        }
-
-        // External MB entry point — tears down current ECS state and starts a fresh session on the same deck/map.
-        public void RestartBattle()
-        {
-            if (_world == null)
-            {
-                // No battle started yet — delegate to StartBattle.
-                StartBattle();
-                return;
-            }
-            // Roll the log over: close current session, start a fresh one so each battle has its own JSON file.
-            var logger = GameManager.Instance?.Logger;
-            if (logger != null)
-            {
-                logger.StartReplacementSession("restart", incrementRestartIndex: true);
-                if (GameManager.Instance != null) logger.SetMatchSeeds(GameManager.Instance.MatchSeed, GameManager.Instance.MatchSeedFixed);
-                ReLogSkillLoadoutForNewSession(logger);
-            }
-            TeardownCurrentBattle();
-            if (resultScreen != null) resultScreen.Hide();
-            StartBattle();
         }
 
         private void TeardownCurrentBattle()
@@ -2552,6 +2503,7 @@ namespace Wassup.Bridge
                     GameManager.Instance?.Logger?.SetResult("defeat", _goalReachedCount);
                     GameManager.Instance?.Logger?.SetScore(playerScore);
                     resultScreen?.ShowDefeat(playerScore);
+                    ReportMatchResult(playerScore);
                     Debug.Log("[BattleBridge] DEFEAT triggered.");
                     return;
                 }
@@ -2572,6 +2524,7 @@ namespace Wassup.Bridge
             GameManager.Instance?.Logger?.SetResult("victory_timeout", _goalReachedCount);
             GameManager.Instance?.Logger?.SetScore(playerScore);
             resultScreen?.ShowVictory(playerScore);
+            ReportMatchResult(playerScore);
             Debug.Log("[BattleBridge] VICTORY — timer expired, player survived.");
         }
 
@@ -2590,7 +2543,20 @@ namespace Wassup.Bridge
             GameManager.Instance?.Logger?.SetResult("victory", _goalReachedCount);
             GameManager.Instance?.Logger?.SetScore(playerScore);
             resultScreen?.ShowVictory(playerScore);
+            ReportMatchResult(playerScore);
             Debug.Log("[BattleBridge] VICTORY — all attack units defeated.");
+        }
+
+        // tournament-play-report Units 3/4 — shared result-popup hook: snapshot
+        // the battle log (SetResult/SetScore must already be applied), send
+        // complete, and swap the popup's bot leaderboard for the real ranking
+        // when it arrives. Guests and failures fall through silently — the bot
+        // list stays.
+        private void ReportMatchResult(int playerScore)
+        {
+            var logger = GameManager.Instance?.Logger;
+            Wassup.Core.Api.TournamentMatchReporter.ReportResult(playerScore, logger?.SnapshotJson(),
+                ranking => resultScreen?.UpdateLeaderboard(ranking, Wassup.Core.Api.UserSession.Current?.userId));
         }
 
         private int CalculatePlayerScore()
@@ -3621,7 +3587,6 @@ namespace Wassup.Bridge
             if (resultScreen != null)
             {
                 resultScreen.RestartRequested -= OnRestartRequested;
-                resultScreen.RedraftRequested -= OnRedraftRequested;
             }
 
             TeardownCurrentBattle();

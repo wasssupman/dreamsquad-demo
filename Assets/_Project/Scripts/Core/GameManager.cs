@@ -133,6 +133,9 @@ namespace Wassup.Core
         private void OnEnable()
         {
             if (logger != null) logger.StartSession();
+            // tournament-play-report Unit 3 — one tournament attempt per battle
+            // entry; restarts issue their own via BattleBridge.OnRestartRequested.
+            Wassup.Core.Api.TournamentMatchReporter.BeginMatch();
         }
 
         // match-seed-unification — 매치당 1회: 고정 노브 우선, 아니면 새 랜덤 시드.
