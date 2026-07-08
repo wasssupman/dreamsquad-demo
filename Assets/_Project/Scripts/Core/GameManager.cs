@@ -72,6 +72,19 @@ namespace Wassup.Core
             PhaseChanged?.Invoke(phase);
         }
 
+        // 타겟 프레임 60 고정 — 앱 전역 관심사라 씬/인스턴스와 무관하게 앱 시작 시 1회만 세팅한다.
+        // GameManager 는 battle-scoped 라 Awake 로는 OutgameScene 콜드 스타트를 못 잡는다
+        // (로비가 첫 씬이면 세팅 코드가 안 걸려 플랫폼 기본값 30fps 로 떨어짐).
+        // BeforeSceneLoad 훅은 첫 씬 로드 전 1회 호출되고 인스턴스 존재 여부와 무관하다.
+        // vSyncCount=0 이어야 90/120Hz 패널에서 vSync 가 targetFrameRate 를 덮어쓰지 않고
+        // 60 캡이 확실히 적용된다(모바일 배터리 절감).
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        private static void ApplyFrameRateCap()
+        {
+            QualitySettings.vSyncCount = 0;
+            Application.targetFrameRate = 60;
+        }
+
         private void Awake()
         {
             // 비율 고정 + 영역만 확장: 세로를 1080 으로 캡하고 가로는 물리 화면 aspect 로 계산.
@@ -87,10 +100,6 @@ namespace Wassup.Core
                 Screen.SetResolution(targetW, targetH, true);
             }
 
-            // 타겟 프레임 60 고정. vSyncCount=0 이어야 90/120Hz 패널에서 vSync 가
-            // targetFrameRate 를 덮어쓰지 않고 60 캡이 확실히 적용된다(모바일 배터리 절감).
-            QualitySettings.vSyncCount = 0;
-            Application.targetFrameRate = 60;
             if (Instance != null && Instance != this)
             {
                 Destroy(gameObject);
