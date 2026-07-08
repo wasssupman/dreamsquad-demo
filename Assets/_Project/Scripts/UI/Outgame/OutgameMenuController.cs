@@ -25,6 +25,10 @@ namespace Wassup.UI
         [SerializeField] private LoginPanelView loginPanel;
         // 로비 캐릭터(Hello/World) 그룹 — 로그인 전에는 노출하지 않는다.
         [SerializeField] private GameObject lobbyCharactersRoot;
+        // dreamcatcher-card-art — 개발용 버튼 묶음(TestMode/RefreshStats/ResetAccount).
+        // 로비 레이어 전용: 패널이 열리면 숨긴다. GameObject.active 대신 CanvasGroup 을
+        // 토글해 DevOnlyGroup 의 빌드 게이트(비-dev 빌드에서 GO 비활성화)와 충돌하지 않는다.
+        [SerializeField] private CanvasGroup devButtonsGroup;
 
         private void Awake()
         {
@@ -84,6 +88,7 @@ namespace Wassup.UI
         {
             ClosePanels();
             if (panel != null) panel.SetActive(true);
+            SetDevButtonsVisible(false);
         }
 
         private void ClosePanels()
@@ -91,6 +96,17 @@ namespace Wassup.UI
             if (squadPanel != null) squadPanel.SetActive(false);
             if (dreamcatcherPanel != null) dreamcatcherPanel.SetActive(false);
             if (testModePanel != null) testModePanel.SetActive(false);
+            SetDevButtonsVisible(true);
+        }
+
+        // Dev buttons live on the lobby layer only: fade + disable their raycasts
+        // while a panel is up so they never sit above (or eat clicks over) it.
+        private void SetDevButtonsVisible(bool visible)
+        {
+            if (devButtonsGroup == null) return;
+            devButtonsGroup.alpha = visible ? 1f : 0f;
+            devButtonsGroup.interactable = visible;
+            devButtonsGroup.blocksRaycasts = visible;
         }
     }
 }

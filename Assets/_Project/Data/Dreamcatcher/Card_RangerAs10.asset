@@ -18,3 +18,4 @@ MonoBehaviour:
   effects:
   - kind: 1
     percent: 10
+  art: {fileID: 21300000, guid: 1811a223ad8c4255bd9869a6ea2add0b, type: 3}

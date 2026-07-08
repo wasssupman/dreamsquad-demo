@@ -21,3 +21,4 @@ MonoBehaviour:
     percent: 50
   - kind: 1
     percent: -50
+  art: {fileID: 21300000, guid: 04f72994e93146eb96d71e412d8e8b55, type: 3}

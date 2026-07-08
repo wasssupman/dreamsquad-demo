@@ -8,9 +8,12 @@ using Wassup.Data;
 namespace Wassup.UI
 {
     // dreamcatcher-deck-builder Unit 2 — deck builder inside DreamcatcherPanel.
-    // Tap owned cards to add (up to 10, unique<=2), tap deck slots to remove, SAVE
-    // when valid. Persists to PlayerProfile.dreamcatcherDecks (deck_1). MVP: all 6
-    // cards owned.
+    // dreamcatcher-card-art Unit 2 — upgraded from flat color buttons to art
+    // cards: each card is an image (tarot-style art from DreamcatcherCard.art)
+    // stacked over an effect-text line (vertical column). The owned collection
+    // is a 5-per-row vertically scrollable grid; deck slots use the same card
+    // style in a 5-per-row grid. Layout is code-driven (containers are used as
+    // anchors only) so no scene surgery is required.
     public class DreamcatcherDeckBuilderView : MonoBehaviour
     {
         [SerializeField] private DreamcatcherCardCatalog catalog;
@@ -23,14 +26,54 @@ namespace Wassup.UI
 
         private const string DeckId = "deck_1";
         private readonly List<string> _working = new List<string>();
-        private bool _ownedBuilt;
+        private bool _built;
+        private RectTransform _deckGrid;   // grid parent for deck slot cards
+        private RectTransform _ownedGrid;  // scroll content for owned cards
 
-        private static readonly Color NormalColor = new Color(0.18f, 0.32f, 0.62f, 1f);
-        private static readonly Color UniqueColor = new Color(0.72f, 0.42f, 0.12f, 1f);
+        // Detail popup widgets (built once, re-populated per tap).
+        private GameObject _popupRoot;
+        private Image _popupArt;
+        private Image _popupArtFallback;
+        private TMP_Text _popupTitle;
+        private TMP_Text _popupEffect;
+        private Button _popupActionBtn;
+        private TMP_Text _popupActionLabel;
+        private TMP_Text _popupActionHint;
+
+        // Card geometry (reference resolution 1920x1080). Portrait art (2:3).
+        private const int OwnedColumns = 5;
+        private const int DeckColumns = 10; // deck tray = single row of 10 slots
+        private static readonly Vector2 OwnedCell = new Vector2(190, 300);
+        private static readonly Vector2 OwnedSpacing = new Vector2(16, 16);
+        private static readonly Vector2 DeckSpacing = new Vector2(6, 6);
+        // Deck slots (10 columns) are sized at runtime to fit the same content
+        // width as the 5-column collection grid, so the "MY DECK" frame and the
+        // collection line up on one shared, centered column.
+        private Vector2 _deckCell = new Vector2(90, 135);
+        private const float CardPad = 6f;
+
+        // Confirm ("MY DECK") frame geometry + palette.
+        private const float DeckFrameTopY = -128f;
+        private const float FrameHeaderH = 48f;
+        private const float FramePadX = 26f;
+        private const float FramePadBottom = 18f;
+        private static readonly Color FrameBg = new Color(0.12f, 0.15f, 0.26f, 0.96f);
+        private static readonly Color FrameAccent = new Color(0.90f, 0.72f, 0.34f, 1f);
+        private static readonly Color HeaderGold = new Color(0.96f, 0.83f, 0.48f, 1f);
+        private static readonly Color SectionMuted = new Color(0.68f, 0.72f, 0.82f, 1f);
+        private static readonly Color ActionAdd = new Color(0.20f, 0.55f, 0.28f, 1f);
+        private static readonly Color ActionRemove = new Color(0.55f, 0.22f, 0.24f, 1f);
+        private static readonly Color ActionDisabled = new Color(0.28f, 0.30f, 0.36f, 1f);
+        private static readonly Color DimOverlay = new Color(0.02f, 0.03f, 0.06f, 0.66f);
+
+        private static readonly Color NormalFrame = new Color(0.14f, 0.17f, 0.28f, 1f);
+        private static readonly Color UniqueFrame = new Color(0.42f, 0.30f, 0.08f, 1f);
+        private static readonly Color ArtFallbackNormal = new Color(0.22f, 0.28f, 0.44f, 1f);
+        private static readonly Color ArtFallbackUnique = new Color(0.55f, 0.40f, 0.14f, 1f);
 
         private void OnEnable()
         {
-            BuildOwnedOnce();
+            BuildLayoutOnce();
             LoadWorking();
             if (saveButton != null) saveButton.onClick.AddListener(OnSave);
             Refresh();
@@ -49,28 +92,88 @@ namespace Wassup.UI
                 foreach (var id in deck.cardIds) if (!string.IsNullOrEmpty(id)) _working.Add(id);
         }
 
-        private void BuildOwnedOnce()
+        private void BuildLayoutOnce()
         {
-            if (_ownedBuilt || catalog == null) return;
-            _ownedBuilt = true;
+            if (_built) return;
+            _built = true;
+
+            // One shared, centered content column drives both areas so the deck
+            // frame and the collection grid line up on the same left/right edges.
+            float contentWidth = OwnedColumns * OwnedCell.x + (OwnedColumns - 1) * OwnedSpacing.x;
+
+            // Deck tray: single row of 10 slots inside a framed "confirm" area just
+            // under the title. Slot width is derived so the tray fits inside the
+            // shared content width (minus the frame padding).
+            if (deckContainer != null)
+            {
+                float deckTrayWidth = contentWidth - 2f * FramePadX;
+                float deckCellW = (deckTrayWidth - (DeckColumns - 1) * DeckSpacing.x) / DeckColumns;
+                _deckCell = new Vector2(deckCellW, Mathf.Round(deckCellW * 1.5f));
+
+                deckContainer.anchorMin = new Vector2(0.5f, 1f);
+                deckContainer.anchorMax = new Vector2(0.5f, 1f);
+                deckContainer.pivot = new Vector2(0.5f, 1f);
+                deckContainer.anchoredPosition = new Vector2(0f, DeckFrameTopY - FrameHeaderH);
+                deckContainer.sizeDelta = new Vector2(deckTrayWidth, _deckCell.y);
+                BuildDeckFrame(deckContainer.parent, deckContainer.GetSiblingIndex(), deckTrayWidth);
+                _deckGrid = BuildGrid(deckContainer, DeckColumns, _deckCell, DeckSpacing);
+            }
+
+            // Owned collection: scrollable 5-per-row grid filling the lower band
+            // (above the status line + Save/Close buttons). Same centered width.
+            if (ownedContainer != null)
+            {
+                ownedContainer.anchorMin = new Vector2(0.5f, 0f);
+                ownedContainer.anchorMax = new Vector2(0.5f, 0f);
+                ownedContainer.pivot = new Vector2(0.5f, 0f);
+                ownedContainer.anchoredPosition = new Vector2(0f, 250f);
+                ownedContainer.sizeDelta = new Vector2(contentWidth, 430f);
+                _ownedGrid = BuildScrollGrid(ownedContainer, OwnedColumns, OwnedCell, OwnedSpacing);
+                BuildSectionLabel(ownedContainer.parent, "COLLECTION", new Vector2(0f, 250f + 430f + 4f), 22f, SectionMuted, FontStyles.Normal);
+                // Owned cards are populated by Refresh() so equipped-card sorting
+                // and dimming stay in sync with the current deck.
+            }
+        }
+
+        // Rebuilt whenever the deck changes: cards already in the deck are pushed
+        // to the back (after the available ones, catalog order preserved in each
+        // group) and rendered dimmed.
+        private void RebuildOwnedCards()
+        {
+            if (_ownedGrid == null || catalog == null) return;
+            for (int i = _ownedGrid.childCount - 1; i >= 0; i--) Destroy(_ownedGrid.GetChild(i).gameObject);
+
+            var available = new List<string>();
+            var equipped = new List<string>();
             foreach (var id in catalog.AllIds())
+                (_working.Contains(id) ? equipped : available).Add(id);
+
+            foreach (var id in available)
             {
                 var card = catalog.ById(id);
-                string captured = id;
-                var btn = CreateCardButton(ownedContainer, card, () => AddCard(captured));
+                CreateCardView(_ownedGrid, card, () => ShowCardPopup(card, false, -1), OwnedCell, false);
+            }
+            foreach (var id in equipped)
+            {
+                var card = catalog.ById(id);
+                CreateCardView(_ownedGrid, card, () => ShowCardPopup(card, false, -1), OwnedCell, true);
             }
         }
 
         private void Refresh()
         {
-            // rebuild deck slot views from _working
-            for (int i = deckContainer.childCount - 1; i >= 0; i--) Destroy(deckContainer.GetChild(i).gameObject);
-            for (int i = 0; i < _working.Count; i++)
+            if (_deckGrid != null)
             {
-                var card = catalog != null ? catalog.ById(_working[i]) : null;
-                int index = i;
-                CreateCardButton(deckContainer, card, () => RemoveAt(index));
+                for (int i = _deckGrid.childCount - 1; i >= 0; i--) Destroy(_deckGrid.GetChild(i).gameObject);
+                for (int i = 0; i < _working.Count; i++)
+                {
+                    var card = catalog != null ? catalog.ById(_working[i]) : null;
+                    int index = i;
+                    CreateCardView(_deckGrid, card, () => ShowCardPopup(card, true, index), _deckCell);
+                }
             }
+
+            RebuildOwnedCards();
 
             bool valid = DeckRules.Validate(_working, catalog, out var reason);
             int unique = DeckRules.UniqueCount(_working, catalog);
@@ -120,27 +223,404 @@ namespace Wassup.UI
             if (statusText != null) statusText.text = "Saved";
         }
 
-        private Button CreateCardButton(Transform parent, DreamcatcherCard card, UnityEngine.Events.UnityAction onClick)
+        // --- card view -------------------------------------------------------
+
+        private void CreateCardView(Transform parent, DreamcatcherCard card, UnityEngine.Events.UnityAction onClick)
         {
-            var go = new GameObject("Card", typeof(RectTransform), typeof(Image), typeof(Button));
-            go.transform.SetParent(parent, false);
-            go.GetComponent<RectTransform>().sizeDelta = new Vector2(150, 64);
-            go.GetComponent<Image>().color = (card != null && card.category == CardCategory.Unique) ? UniqueColor : NormalColor;
-            go.GetComponent<Button>().onClick.AddListener(onClick);
-            var l = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
-            l.transform.SetParent(go.transform, false);
-            var lrt = l.GetComponent<RectTransform>();
-            lrt.anchorMin = Vector2.zero; lrt.anchorMax = Vector2.one; lrt.offsetMin = new Vector2(4, 4); lrt.offsetMax = new Vector2(-4, -4);
-            var tmp = l.GetComponent<TextMeshProUGUI>();
-            tmp.text = card != null ? Summary(card) : "?";
-            tmp.alignment = TextAlignmentOptions.Center; tmp.fontSize = 16; tmp.color = Color.white;
-            if (font != null) tmp.font = font;
-            return go.GetComponent<Button>();
+            CreateCardView(parent, card, onClick, OwnedCell);
         }
 
-        private static string Summary(DreamcatcherCard card)
+        // Image-only card: the full art fills the framed cell. Effect text now
+        // lives in the detail popup (opened by onClick). Unique cards keep the
+        // gold frame tint. The art blocks no raycasts so the root button gets taps.
+        // dimmed cards (already in the deck) get a translucent dark overlay.
+        private void CreateCardView(Transform parent, DreamcatcherCard card, UnityEngine.Events.UnityAction onClick, Vector2 cell, bool dimmed = false)
         {
-            return string.IsNullOrEmpty(card.displayName) ? card.id : card.displayName;
+            bool unique = card != null && card.category == CardCategory.Unique;
+
+            var go = new GameObject("Card", typeof(RectTransform), typeof(Image), typeof(Button));
+            go.transform.SetParent(parent, false);
+            var rt = go.GetComponent<RectTransform>();
+            rt.sizeDelta = cell;
+            go.GetComponent<Image>().color = unique ? UniqueFrame : NormalFrame;
+            go.GetComponent<Button>().onClick.AddListener(onClick);
+
+            var artGo = new GameObject("Art", typeof(RectTransform), typeof(Image));
+            artGo.transform.SetParent(go.transform, false);
+            var art = (RectTransform)artGo.transform;
+            art.anchorMin = Vector2.zero;
+            art.anchorMax = Vector2.one;
+            art.offsetMin = new Vector2(CardPad, CardPad);
+            art.offsetMax = new Vector2(-CardPad, -CardPad);
+            var artImg = artGo.GetComponent<Image>();
+            artImg.raycastTarget = false;
+            if (card != null && card.art != null)
+            {
+                artImg.sprite = card.art;
+                artImg.preserveAspect = true;
+                artImg.color = Color.white;
+            }
+            else
+            {
+                artImg.sprite = null;
+                artImg.color = unique ? ArtFallbackUnique : ArtFallbackNormal;
+            }
+
+            if (dimmed)
+            {
+                var dimGo = new GameObject("Dim", typeof(RectTransform), typeof(Image));
+                dimGo.transform.SetParent(go.transform, false);
+                var drt = (RectTransform)dimGo.transform;
+                drt.anchorMin = Vector2.zero; drt.anchorMax = Vector2.one; drt.offsetMin = Vector2.zero; drt.offsetMax = Vector2.zero;
+                var dimImg = dimGo.GetComponent<Image>();
+                dimImg.color = DimOverlay;
+                dimImg.raycastTarget = false;
+
+                var badge = new GameObject("InDeck", typeof(RectTransform), typeof(TextMeshProUGUI));
+                badge.transform.SetParent(go.transform, false);
+                var brt = (RectTransform)badge.transform;
+                brt.anchorMin = new Vector2(0f, 0f); brt.anchorMax = new Vector2(1f, 0f); brt.pivot = new Vector2(0.5f, 0f);
+                brt.offsetMin = new Vector2(0f, 8f); brt.offsetMax = new Vector2(0f, 34f);
+                var btmp = badge.GetComponent<TextMeshProUGUI>();
+                btmp.text = "IN DECK";
+                btmp.alignment = TextAlignmentOptions.Center;
+                btmp.fontSize = 16f;
+                btmp.fontStyle = FontStyles.Bold;
+                btmp.color = HeaderGold;
+                btmp.raycastTarget = false;
+                if (font != null) btmp.font = font;
+            }
+        }
+
+        // --- detail popup ----------------------------------------------------
+
+        // Modal card detail: large art + stylish effect text + an add/remove
+        // action + close. Built once, re-populated per tap. Outside click or the
+        // X button closes it.
+        private void ShowCardPopup(DreamcatcherCard card, bool fromDeck, int deckIndex)
+        {
+            if (card == null) return;
+            EnsurePopup();
+            _popupRoot.transform.SetAsLastSibling();
+
+            bool unique = card.category == CardCategory.Unique;
+            _popupArt.sprite = card.art;
+            _popupArt.enabled = card.art != null;
+            _popupArtFallback.color = unique ? ArtFallbackUnique : ArtFallbackNormal;
+            _popupArtFallback.enabled = card.art == null;
+
+            _popupTitle.text = string.IsNullOrEmpty(card.displayName) ? card.id : card.displayName;
+            _popupEffect.text = PopupBody(card);
+
+            _popupActionBtn.onClick.RemoveAllListeners();
+            if (fromDeck)
+            {
+                _popupActionLabel.text = "REMOVE FROM DECK";
+                _popupActionBtn.image.color = ActionRemove;
+                _popupActionBtn.interactable = true;
+                _popupActionHint.text = string.Empty;
+                _popupActionBtn.onClick.AddListener(() => { RemoveAt(deckIndex); HidePopup(); });
+            }
+            else
+            {
+                bool full = _working.Count >= DeckRules.DeckSize;
+                bool uniqueBlock = unique && DeckRules.UniqueCount(_working, catalog) >= DeckRules.MaxUnique;
+                bool canAdd = !full && !uniqueBlock;
+                _popupActionLabel.text = "ADD TO DECK";
+                _popupActionBtn.image.color = canAdd ? ActionAdd : ActionDisabled;
+                _popupActionBtn.interactable = canAdd;
+                _popupActionHint.text = full ? "Deck full (10/10)" : uniqueBlock ? "Unique limit (2/2)" : string.Empty;
+                string capturedId = card.id;
+                _popupActionBtn.onClick.AddListener(() => { AddCard(capturedId); HidePopup(); });
+            }
+
+            _popupRoot.SetActive(true);
+        }
+
+        private void HidePopup()
+        {
+            if (_popupRoot != null) _popupRoot.SetActive(false);
+        }
+
+        private void EnsurePopup()
+        {
+            if (_popupRoot != null) return;
+
+            // Full-screen dim overlay; clicking it (outside the panel) closes.
+            _popupRoot = new GameObject("CardPopup", typeof(RectTransform), typeof(Image), typeof(Button));
+            _popupRoot.transform.SetParent(transform, false);
+            var ort = (RectTransform)_popupRoot.transform;
+            ort.anchorMin = Vector2.zero; ort.anchorMax = Vector2.one; ort.offsetMin = Vector2.zero; ort.offsetMax = Vector2.zero;
+            _popupRoot.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.78f);
+            _popupRoot.GetComponent<Button>().transition = Selectable.Transition.None;
+            _popupRoot.GetComponent<Button>().onClick.AddListener(HidePopup);
+
+            // Gold border (slightly larger rect behind the panel).
+            var border = new GameObject("Border", typeof(RectTransform), typeof(Image));
+            border.transform.SetParent(_popupRoot.transform, false);
+            var brt = (RectTransform)border.transform;
+            brt.anchorMin = brt.anchorMax = new Vector2(0.5f, 0.5f);
+            brt.pivot = new Vector2(0.5f, 0.5f);
+            brt.sizeDelta = new Vector2(736f, 996f);
+            border.GetComponent<Image>().color = FrameAccent;
+
+            // Panel body — carries a no-op Button so clicks inside the panel are
+            // consumed here and do NOT bubble up to the overlay's close handler
+            // (uGUI routes a click to the nearest ancestor click handler).
+            var panel = new GameObject("Panel", typeof(RectTransform), typeof(Image), typeof(Button));
+            panel.transform.SetParent(_popupRoot.transform, false);
+            var prt = (RectTransform)panel.transform;
+            prt.anchorMin = prt.anchorMax = new Vector2(0.5f, 0.5f);
+            prt.pivot = new Vector2(0.5f, 0.5f);
+            prt.sizeDelta = new Vector2(728f, 988f);
+            panel.GetComponent<Image>().color = new Color(0.11f, 0.13f, 0.23f, 1f);
+            panel.GetComponent<Button>().transition = Selectable.Transition.None;
+
+            // Top gold accent bar.
+            var accent = new GameObject("Accent", typeof(RectTransform), typeof(Image));
+            accent.transform.SetParent(panel.transform, false);
+            var acrt = (RectTransform)accent.transform;
+            acrt.anchorMin = new Vector2(0f, 1f); acrt.anchorMax = new Vector2(1f, 1f); acrt.pivot = new Vector2(0.5f, 1f);
+            acrt.offsetMin = new Vector2(0f, -5f); acrt.offsetMax = new Vector2(0f, 0f);
+            accent.GetComponent<Image>().color = FrameAccent;
+
+            // Large art.
+            var artGo = new GameObject("Art", typeof(RectTransform), typeof(Image));
+            artGo.transform.SetParent(panel.transform, false);
+            var art = (RectTransform)artGo.transform;
+            art.anchorMin = new Vector2(0.5f, 1f); art.anchorMax = new Vector2(0.5f, 1f); art.pivot = new Vector2(0.5f, 1f);
+            art.anchoredPosition = new Vector2(0f, -34f);
+            art.sizeDelta = new Vector2(380f, 540f);
+            _popupArt = artGo.GetComponent<Image>();
+            _popupArt.preserveAspect = true;
+            _popupArt.raycastTarget = false;
+
+            var fbGo = new GameObject("ArtFallback", typeof(RectTransform), typeof(Image));
+            fbGo.transform.SetParent(artGo.transform, false);
+            var fb = (RectTransform)fbGo.transform;
+            fb.anchorMin = Vector2.zero; fb.anchorMax = Vector2.one; fb.offsetMin = Vector2.zero; fb.offsetMax = Vector2.zero;
+            _popupArtFallback = fbGo.GetComponent<Image>();
+            _popupArtFallback.raycastTarget = false;
+
+            _popupTitle = MakePopupText(panel.transform, new Vector2(0f, -586f), new Vector2(640f, 50f), 34f, HeaderGold, FontStyles.Bold);
+            _popupEffect = MakePopupText(panel.transform, new Vector2(0f, -640f), new Vector2(620f, 150f), 28f, Color.white, FontStyles.Normal);
+            _popupActionHint = MakePopupText(panel.transform, new Vector2(0f, -806f), new Vector2(560f, 26f), 20f, SectionMuted, FontStyles.Italic);
+
+            // Action button (add/remove). Transition=None so image.color sticks
+            // (default ColorTint would override it with the white normal color).
+            var actGo = new GameObject("Action", typeof(RectTransform), typeof(Image), typeof(Button));
+            actGo.transform.SetParent(panel.transform, false);
+            var actrt = (RectTransform)actGo.transform;
+            actrt.anchorMin = new Vector2(0.5f, 1f); actrt.anchorMax = new Vector2(0.5f, 1f); actrt.pivot = new Vector2(0.5f, 1f);
+            actrt.anchoredPosition = new Vector2(0f, -844f);
+            actrt.sizeDelta = new Vector2(400f, 88f);
+            _popupActionBtn = actGo.GetComponent<Button>();
+            _popupActionBtn.transition = Selectable.Transition.None;
+            _popupActionLabel = MakePopupText(actGo.transform, Vector2.zero, new Vector2(400f, 88f), 30f, Color.white, FontStyles.Bold);
+            _popupActionLabel.rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
+            _popupActionLabel.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
+            _popupActionLabel.rectTransform.pivot = new Vector2(0.5f, 0.5f);
+            _popupActionLabel.rectTransform.anchoredPosition = Vector2.zero;
+            _popupActionLabel.raycastTarget = false;
+
+            // Close (X) — top-right of the panel.
+            var closeGo = new GameObject("Close", typeof(RectTransform), typeof(Image), typeof(Button));
+            closeGo.transform.SetParent(panel.transform, false);
+            var crt = (RectTransform)closeGo.transform;
+            crt.anchorMin = new Vector2(1f, 1f); crt.anchorMax = new Vector2(1f, 1f); crt.pivot = new Vector2(1f, 1f);
+            crt.anchoredPosition = new Vector2(-14f, -14f);
+            crt.sizeDelta = new Vector2(64f, 64f);
+            closeGo.GetComponent<Image>().color = new Color(0.30f, 0.10f, 0.12f, 1f);
+            var closeBtn = closeGo.GetComponent<Button>();
+            closeBtn.transition = Selectable.Transition.None;
+            closeBtn.onClick.AddListener(HidePopup);
+            var xLabel = MakePopupText(closeGo.transform, Vector2.zero, new Vector2(64f, 64f), 34f, Color.white, FontStyles.Bold);
+            xLabel.text = "X";
+            xLabel.raycastTarget = false;
+            xLabel.rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
+            xLabel.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
+            xLabel.rectTransform.pivot = new Vector2(0.5f, 0.5f);
+            xLabel.rectTransform.anchoredPosition = Vector2.zero;
+        }
+
+        private TMP_Text MakePopupText(Transform parent, Vector2 anchoredPos, Vector2 size, float fontSize, Color color, FontStyles style)
+        {
+            var go = new GameObject("Text", typeof(RectTransform), typeof(TextMeshProUGUI));
+            go.transform.SetParent(parent, false);
+            var rt = (RectTransform)go.transform;
+            rt.anchorMin = new Vector2(0.5f, 1f); rt.anchorMax = new Vector2(0.5f, 1f); rt.pivot = new Vector2(0.5f, 1f);
+            rt.anchoredPosition = anchoredPos;
+            rt.sizeDelta = size;
+            var tmp = go.GetComponent<TextMeshProUGUI>();
+            tmp.alignment = TextAlignmentOptions.Center;
+            tmp.fontSize = fontSize;
+            tmp.color = color;
+            tmp.fontStyle = style;
+            if (font != null) tmp.font = font;
+            return tmp;
+        }
+
+        // Rich effect body for the popup: gold axis header + one line per buff.
+        private static string PopupBody(DreamcatcherCard card)
+        {
+            string axis = card.axis == CardTargetAxis.ClassRanger ? "RANGER"
+                        : card.axis == CardTargetAxis.ClassGuardian ? "GUARDIAN"
+                        : card.axis == CardTargetAxis.Cost1 ? "COST-1 UNITS"
+                        : "ALL UNITS";
+            var lines = new List<string>();
+            if (card.effects != null)
+            {
+                foreach (var e in card.effects)
+                {
+                    string k = e.kind == CardBuffKind.AttackDamage ? "Attack"
+                             : e.kind == CardBuffKind.AttackSpeed ? "Attack Speed"
+                             : e.kind == CardBuffKind.EffectiveHealth ? "Health"
+                             : e.kind == CardBuffKind.MoveSpeed ? "Move Speed"
+                             : "Cost Rate";
+                    string sign = e.percent >= 0 ? "+" : "";
+                    string col = e.percent >= 0 ? "#8BE28B" : "#E28B8B";
+                    lines.Add($"{k}  <color={col}>{sign}{e.percent:0}%</color>");
+                }
+            }
+            string cat = card.category == CardCategory.Unique ? "<color=#F0B44E>UNIQUE</color>" : "<color=#9AA6C0>NORMAL</color>";
+            return $"<size=22><color=#F5D480><b>{axis}</b></color>  ·  {cat}</size>\n\n" + string.Join("\n", lines);
+        }
+
+        // --- layout helpers --------------------------------------------------
+
+        // Configures/creates a plain (non-scrolling) grid directly on the
+        // container. Reuses an existing GridLayoutGroup if present.
+        private static RectTransform BuildGrid(RectTransform container, int columns, Vector2 cell, Vector2 spacing)
+        {
+            var grid = container.GetComponent<GridLayoutGroup>();
+            if (grid == null) grid = container.gameObject.AddComponent<GridLayoutGroup>();
+            grid.cellSize = cell;
+            grid.spacing = spacing;
+            grid.startCorner = GridLayoutGroup.Corner.UpperLeft;
+            grid.startAxis = GridLayoutGroup.Axis.Horizontal;
+            grid.childAlignment = TextAnchor.UpperCenter;
+            grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+            grid.constraintCount = columns;
+            return container;
+        }
+
+        // Wraps the container in a vertical ScrollRect (Viewport + masked
+        // Content grid). Returns the content RectTransform to parent cards into.
+        private RectTransform BuildScrollGrid(RectTransform container, int columns, Vector2 cell, Vector2 spacing)
+        {
+            var oldGrid = container.GetComponent<GridLayoutGroup>();
+            if (oldGrid != null) Destroy(oldGrid);
+
+            var scroll = container.GetComponent<ScrollRect>();
+            if (scroll == null) scroll = container.gameObject.AddComponent<ScrollRect>();
+            scroll.horizontal = false;
+            scroll.vertical = true;
+            scroll.movementType = ScrollRect.MovementType.Clamped;
+            scroll.scrollSensitivity = 32f;
+
+            var viewportGo = new GameObject("Viewport", typeof(RectTransform), typeof(Image), typeof(RectMask2D));
+            viewportGo.transform.SetParent(container, false);
+            var vrt = (RectTransform)viewportGo.transform;
+            vrt.anchorMin = Vector2.zero;
+            vrt.anchorMax = Vector2.one;
+            vrt.offsetMin = Vector2.zero;
+            vrt.offsetMax = Vector2.zero;
+            vrt.pivot = new Vector2(0.5f, 0.5f);
+            viewportGo.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.001f); // near-invisible, mask needs a graphic
+
+            var contentGo = new GameObject("Content", typeof(RectTransform), typeof(GridLayoutGroup), typeof(ContentSizeFitter));
+            contentGo.transform.SetParent(viewportGo.transform, false);
+            var crt = (RectTransform)contentGo.transform;
+            crt.anchorMin = new Vector2(0f, 1f);
+            crt.anchorMax = new Vector2(1f, 1f);
+            crt.pivot = new Vector2(0.5f, 1f);
+            crt.anchoredPosition = Vector2.zero;
+            crt.sizeDelta = Vector2.zero;
+
+            var grid = contentGo.GetComponent<GridLayoutGroup>();
+            grid.cellSize = cell;
+            grid.spacing = spacing;
+            grid.startCorner = GridLayoutGroup.Corner.UpperLeft;
+            grid.startAxis = GridLayoutGroup.Axis.Horizontal;
+            grid.childAlignment = TextAnchor.UpperCenter;
+            grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+            grid.constraintCount = columns;
+
+            var fitter = contentGo.GetComponent<ContentSizeFitter>();
+            fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+            fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+            scroll.viewport = vrt;
+            scroll.content = crt;
+            return crt;
+        }
+
+        // Framed "confirm" area behind the deck tray: dark backing panel + gold
+        // top accent + "MY DECK" header. Inserted just behind the deck tray so
+        // the slot cards render on top.
+        private void BuildDeckFrame(Transform parent, int siblingIndex, float deckWidth)
+        {
+            if (parent == null) return;
+
+            var frameGo = new GameObject("DeckFrame", typeof(RectTransform), typeof(Image));
+            frameGo.transform.SetParent(parent, false);
+            frameGo.transform.SetSiblingIndex(siblingIndex);
+            var frt = (RectTransform)frameGo.transform;
+            frt.anchorMin = new Vector2(0.5f, 1f);
+            frt.anchorMax = new Vector2(0.5f, 1f);
+            frt.pivot = new Vector2(0.5f, 1f);
+            frt.anchoredPosition = new Vector2(0f, DeckFrameTopY);
+            frt.sizeDelta = new Vector2(deckWidth + 2f * FramePadX, FrameHeaderH + _deckCell.y + FramePadBottom);
+            frameGo.GetComponent<Image>().color = FrameBg;
+
+            var accentGo = new GameObject("Accent", typeof(RectTransform), typeof(Image));
+            accentGo.transform.SetParent(frameGo.transform, false);
+            var art = (RectTransform)accentGo.transform;
+            art.anchorMin = new Vector2(0f, 1f);
+            art.anchorMax = new Vector2(1f, 1f);
+            art.pivot = new Vector2(0.5f, 1f);
+            art.offsetMin = new Vector2(2f, -4f);
+            art.offsetMax = new Vector2(-2f, 0f);
+            accentGo.GetComponent<Image>().color = FrameAccent;
+
+            var headerGo = new GameObject("Header", typeof(RectTransform), typeof(TextMeshProUGUI));
+            headerGo.transform.SetParent(frameGo.transform, false);
+            var hrt = (RectTransform)headerGo.transform;
+            hrt.anchorMin = new Vector2(0f, 1f);
+            hrt.anchorMax = new Vector2(1f, 1f);
+            hrt.pivot = new Vector2(0.5f, 1f);
+            hrt.sizeDelta = new Vector2(0f, FrameHeaderH);
+            hrt.anchoredPosition = new Vector2(0f, -4f);
+            var htmp = headerGo.GetComponent<TextMeshProUGUI>();
+            htmp.text = "MY DECK";
+            htmp.alignment = TextAlignmentOptions.Center;
+            htmp.fontStyle = FontStyles.Bold;
+            htmp.characterSpacing = 6f;
+            htmp.fontSize = 26f;
+            htmp.color = HeaderGold;
+            if (font != null) htmp.font = font;
+        }
+
+        // A small section caption anchored to the bottom of the panel.
+        private void BuildSectionLabel(Transform parent, string text, Vector2 anchoredPos, float size, Color color, FontStyles style)
+        {
+            if (parent == null) return;
+            var go = new GameObject("SectionLabel", typeof(RectTransform), typeof(TextMeshProUGUI));
+            go.transform.SetParent(parent, false);
+            var rt = (RectTransform)go.transform;
+            rt.anchorMin = new Vector2(0.5f, 0f);
+            rt.anchorMax = new Vector2(0.5f, 0f);
+            rt.pivot = new Vector2(0.5f, 0f);
+            rt.anchoredPosition = anchoredPos;
+            rt.sizeDelta = new Vector2(500f, 32f);
+            var tmp = go.GetComponent<TextMeshProUGUI>();
+            tmp.text = text;
+            tmp.alignment = TextAlignmentOptions.Center;
+            tmp.fontStyle = style;
+            tmp.characterSpacing = 6f;
+            tmp.fontSize = size;
+            tmp.color = color;
+            if (font != null) tmp.font = font;
         }
     }
 }

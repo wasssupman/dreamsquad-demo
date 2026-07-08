@@ -10,12 +10,12 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: cdcd617d396824acd8882a45466b4886, type: 3}
-  m_Name: Card_Cost1As5
+  m_Name: Card_AllMove10
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
-  id: cost1_as_5
-  displayName: Cost-1 AS +5%
-  axis: 2
+  id: all_move_10
+  displayName: All Move +10%
+  axis: 3
   effects:
-  - kind: 1
-    percent: 5
-  art: {fileID: 21300000, guid: b7ccff15aff54aeda28907bc8630c15b, type: 3}
+  - kind: 3
+    percent: 10
+  art: {fileID: 21300000, guid: f9e5a4fe286e414188cd060ddaf9a50c, type: 3}

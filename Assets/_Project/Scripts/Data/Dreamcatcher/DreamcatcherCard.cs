@@ -37,5 +37,10 @@ namespace Wassup.Data
         public CardTargetAxis axis;
         public CardCategory category = CardCategory.Normal;
         public CardEffect[] effects; // usually 1; fortress has 2
+        // dreamcatcher-card-art Unit 0 — tarot-style card art shown on the deck
+        // page (image + effect text column). Nullable: view falls back to a
+        // category color when unassigned. Appended last to keep serialization
+        // order stable for existing card assets.
+        public Sprite art;
     }
 }
