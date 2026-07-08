@@ -34,7 +34,7 @@ namespace Wassup.UI.Draft
         private const float CardStaggerSec   =  0.06f;
         private const float CardFadeDurSec   =  0.30f;
 
-        private const float OverlayAlpha         = 0.60f;
+        private static readonly float OverlayAlpha = UiOverlay.DimAlpha; // 통일 dim (단일 소스)
         private const float OverlayFadeInDurSec  = 0.15f;
         private const float OverlayFadeDurSec    = 0.20f;
         private const float ExitDurSec           = 0.38f;
@@ -370,7 +370,20 @@ namespace Wassup.UI.Draft
             le.preferredWidth  = CardWidth;
             le.minWidth        = CardWidth;
             le.preferredHeight = CardHeight;
-            go.GetComponent<Image>().color = new Color(0.12f, 0.14f, 0.20f, 0.95f);
+            // dark-bg 대응 — near-black 오버레이(UiOverlay.Dim) 위에서 카드가 떠 보이도록
+            // 밝은 슬레이트 테두리 + 그보다 어두운 채움의 2단 구조. 단색 카드가 배경에 묻히던 문제 해소.
+            go.GetComponent<Image>().color = new Color(0.34f, 0.40f, 0.55f, 1f); // border/frame
+
+            var fillGo = new GameObject("Fill", typeof(RectTransform), typeof(Image));
+            fillGo.transform.SetParent(go.transform, false);
+            var fillRt = (RectTransform)fillGo.transform;
+            fillRt.anchorMin = Vector2.zero;
+            fillRt.anchorMax = Vector2.one;
+            fillRt.offsetMin = new Vector2(2f, 2f);
+            fillRt.offsetMax = new Vector2(-2f, -2f);
+            var fillImg = fillGo.GetComponent<Image>();
+            fillImg.color = new Color(0.17f, 0.20f, 0.29f, 1f);
+            fillImg.raycastTarget = false;
 
             var accentGo = new GameObject("Accent", typeof(RectTransform), typeof(Image));
             accentGo.transform.SetParent(go.transform, false);

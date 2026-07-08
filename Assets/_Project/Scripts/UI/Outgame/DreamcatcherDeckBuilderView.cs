@@ -351,7 +351,7 @@ namespace Wassup.UI
             _popupRoot.transform.SetParent(transform, false);
             var ort = (RectTransform)_popupRoot.transform;
             ort.anchorMin = Vector2.zero; ort.anchorMax = Vector2.one; ort.offsetMin = Vector2.zero; ort.offsetMax = Vector2.zero;
-            _popupRoot.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.78f);
+            _popupRoot.GetComponent<Image>().color = UiOverlay.Dim;
             _popupRoot.GetComponent<Button>().transition = Selectable.Transition.None;
             _popupRoot.GetComponent<Button>().onClick.AddListener(HidePopup);
 

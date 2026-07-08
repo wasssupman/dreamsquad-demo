@@ -1,3 +1,4 @@
+using PrimeTween;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -19,11 +20,16 @@ namespace Wassup.UI
         [SerializeField] private DraftController draftController;
 
         [Header("Timer")]
-        [SerializeField] private float timerFontSize = 40f;
+        [Tooltip("타이머 전용 폰트(미지정 시 기본 TMP). Anton SDF 권장")]
+        [SerializeField] private TMP_FontAsset timerFont;
+        [SerializeField] private float timerFontSize = 44f;
         [SerializeField] private Color timerColor = Color.white;
         [SerializeField] private Color timerWarnColor = Color.red;
         [Tooltip("이 초 미만이면 타이머를 경고색으로")]
         [SerializeField] private float warnSeconds = 30f;
+        [Tooltip("초가 바뀔 때 pop 강도(일반 / 경고구간)")]
+        [SerializeField] private float tickPunch = 0.16f;
+        [SerializeField] private float tickPunchWarn = 0.36f;
 
         [Header("Next wave button")]
         [SerializeField] private Color buttonColor = new Color(0.12f, 0.42f, 0.82f, 0.95f);
@@ -39,6 +45,10 @@ namespace Wassup.UI
         private Button _waveButton;
         private TextMeshProUGUI _waveLabel;
         private bool _built;
+
+        // 초 단위 변화 감지용(직전 표시된 총 초). -1 = 아직 표시 전(첫 표시엔 pop 생략).
+        private int _lastShownSec = -1;
+        private Tween _tickTween;
 
         private void Awake()
         {
@@ -70,7 +80,7 @@ namespace Wassup.UI
                 GameManager.Instance.PlacementRequested -= OnBattleStart;
         }
 
-        private void OnBattleStart() { if (_panel != null) _panel.SetActive(true); }
+        private void OnBattleStart() { if (_panel != null) _panel.SetActive(true); _lastShownSec = -1; }
         private void OnDraftStarted() { if (_panel != null) _panel.SetActive(false); }
 
         private void Update()
@@ -84,8 +94,26 @@ namespace Wassup.UI
                 if (remaining < 0f) remaining = 0f;
                 int min = (int)(remaining / 60f);
                 int sec = (int)(remaining % 60f);
+                int totalSec = min * 60 + sec;
+                bool warn = remaining < warnSeconds;
                 _timerLabel.text = $"{min}:{sec:D2}";
-                _timerLabel.color = remaining < warnSeconds ? timerWarnColor : timerColor;
+                _timerLabel.color = warn ? timerWarnColor : timerColor;
+
+                // 초가 바뀔 때마다 pop — 카운트다운이 살아있게 느껴지도록. 경고구간은 더 크게.
+                // 첫 표시(_lastShownSec == -1)엔 생략, useUnscaledTime 로 정지/슬로우 중에도 동작.
+                if (totalSec != _lastShownSec)
+                {
+                    if (_lastShownSec >= 0)
+                    {
+                        if (_tickTween.isAlive) _tickTween.Stop();
+                        _timerLabel.rectTransform.localScale = Vector3.one;
+                        float strength = warn ? tickPunchWarn : tickPunch;
+                        float dur = warn ? 0.30f : 0.22f;
+                        _tickTween = Tween.PunchScale(_timerLabel.rectTransform,
+                            Vector3.one * strength, dur, useUnscaledTime: true);
+                    }
+                    _lastShownSec = totalSec;
+                }
             }
 
             // Next-wave row — visible only for generated-wave battles; label/interactable
@@ -157,8 +185,10 @@ namespace Wassup.UI
             trt.offsetMin = new Vector2(0f, -66f);
             trt.offsetMax = new Vector2(0f, 0f);
             _timerLabel = timerGO.AddComponent<TextMeshProUGUI>();
+            if (timerFont != null) _timerLabel.font = timerFont;
             _timerLabel.text = "3:00";
             _timerLabel.fontSize = timerFontSize;
+            _timerLabel.fontStyle = FontStyles.Bold;
             _timerLabel.color = timerColor;
             _timerLabel.alignment = TextAlignmentOptions.Center;
             _timerLabel.raycastTarget = false;

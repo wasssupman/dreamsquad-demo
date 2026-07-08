@@ -396,7 +396,7 @@ namespace Wassup.UI
             _pickerPanel.transform.SetParent(parent, false);
             var prt = (RectTransform)_pickerPanel.transform;
             prt.anchorMin = Vector2.zero; prt.anchorMax = Vector2.one; prt.offsetMin = Vector2.zero; prt.offsetMax = Vector2.zero;
-            _pickerPanel.GetComponent<Image>().color = new Color(0.03f, 0.03f, 0.06f, 0.94f);
+            _pickerPanel.GetComponent<Image>().color = UiOverlay.Dim;
 
             var titleGo = new GameObject("Title", typeof(RectTransform), typeof(TextMeshProUGUI));
             titleGo.transform.SetParent(_pickerPanel.transform, false);

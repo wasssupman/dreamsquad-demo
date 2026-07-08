@@ -97,7 +97,7 @@ namespace Wassup.UI
             backdrop.transform.SetParent(transform, false);
             var backdropRect = (RectTransform)backdrop.transform;
             Stretch(backdropRect);
-            backdrop.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.84f);
+            backdrop.GetComponent<Image>().color = UiOverlay.Dim;
 
             _panel = new GameObject("ResultPanel", typeof(RectTransform), typeof(Image), typeof(VerticalLayoutGroup));
             _panel.transform.SetParent(transform, false);

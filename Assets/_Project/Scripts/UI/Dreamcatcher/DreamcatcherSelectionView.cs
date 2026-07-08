@@ -121,7 +121,7 @@ namespace Wassup.UI
             _panel.transform.SetParent(transform, false);
             var prt = (RectTransform)_panel.transform;
             prt.anchorMin = Vector2.zero; prt.anchorMax = Vector2.one; prt.offsetMin = Vector2.zero; prt.offsetMax = Vector2.zero;
-            _panel.GetComponent<Image>().color = new Color(0.03f, 0.03f, 0.06f, 0.94f);
+            _panel.GetComponent<Image>().color = UiOverlay.Dim;
 
             var titleGo = new GameObject("Title", typeof(RectTransform), typeof(TextMeshProUGUI));
             titleGo.transform.SetParent(_panel.transform, false);

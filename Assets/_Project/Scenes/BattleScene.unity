@@ -2031,12 +2031,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.NextWaveDock
   bridge: {fileID: 1939688408}
   draftController: {fileID: 20521825}
+  timerFont: {fileID: 11400000, guid: 7f50de03946cd4d229e8920dd91dbd1a, type: 2}
   timerFontSize: 40
   timerColor: {r: 1, g: 1, b: 1, a: 1}
   timerWarnColor: {r: 1, g: 0, b: 0, a: 1}
   warnSeconds: 30
+  tickPunch: 0.16
+  tickPunchWarn: 0.36
   buttonColor: {r: 0.12, g: 0.42, b: 0.82, a: 0.95}
   buttonFontSize: 28
+  backingColor: {r: 0, g: 0, b: 0, a: 0.45}
 --- !u!1 &1192245888
 GameObject:
   m_ObjectHideFlags: 0
