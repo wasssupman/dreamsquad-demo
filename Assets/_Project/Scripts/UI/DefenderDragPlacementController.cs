@@ -91,14 +91,8 @@ namespace Wassup.UI
 
             // 무게추 스프링(탄성) + 속도 상한: spring/damping 으로 지연·탄성을 유지하고, maxSpeed 로 빠른
             // 스와이프 시 속도만 제한 → 초기 튀어나감만 방지(탄성 자체는 spring/damping 으로 조절).
-            Vector3 accel = (_unitTargetWorld - _unitPosWorld) * s.spring - _unitVelWorld * s.damping;
-            _unitVelWorld += accel * dt;
-            if (s.maxSpeed > 0f)
-            {
-                float sp = _unitVelWorld.magnitude;
-                if (sp > s.maxSpeed) _unitVelWorld *= s.maxSpeed / sp;
-            }
-            _unitPosWorld += _unitVelWorld * dt;
+            KeyringSim.SpringStep(ref _unitPosWorld, ref _unitVelWorld, _unitTargetWorld,
+                s.spring, s.damping, s.maxSpeed, dt);
 
             // 배치: 고리(공중) · 유닛 머리(발+높이) · 줄(고리→머리).
             if (_session.ring != null) _session.ring.position = _ringWorld;
@@ -109,9 +103,8 @@ namespace Wassup.UI
             if (_session.swingPivot != null)
             {
                 Vector3 toRing = (_ringWorld - headPos).normalized; // 머리→고리 = 유닛 up 방향
-                float x = Vector3.Dot(toRing, camT.right);
-                float y = Vector3.Dot(toRing, camT.up);
-                float lean = Mathf.Clamp(-Mathf.Atan2(x, Mathf.Max(y, 1e-3f)) * Mathf.Rad2Deg, -s.maxAngle, s.maxAngle);
+                float lean = KeyringSim.LeanAngle(
+                    Vector3.Dot(toRing, camT.right), Vector3.Dot(toRing, camT.up), s.maxAngle);
                 _session.swingPivot.localRotation = Quaternion.Euler(0f, 0f, lean);
             }
 

@@ -107,22 +107,14 @@ namespace Wassup.UI
         private void TickDrag(LobbyKeyringSettings s, float dt)
         {
             // 무게추 스프링 + 속도 상한. 워밍업(가속 램프) 금지 — 인게임 계약 승계.
+            // keyring-unify 0 — 수학은 KeyringSim 공유(Vector2 오버로드, 인게임 Vector3 와 bit-exact).
             Vector2 headTarget = _fingerLocal + Vector2.down * s.ropeLength;
-            Vector2 accel = (headTarget - _headPos) * s.spring - _headVel * s.damping;
-            _headVel += accel * dt;
-            if (s.maxSpeed > 0f)
-            {
-                float sp = _headVel.magnitude;
-                if (sp > s.maxSpeed) _headVel *= s.maxSpeed / sp;
-            }
-            _headPos += _headVel * dt;
+            KeyringSim.SpringStep(ref _headPos, ref _headVel, headTarget, s.spring, s.damping, s.maxSpeed, dt);
 
             // 기울임 = 줄(머리→고리) 방향, maxAngle 클램프. 회전 중심은 머리 —
             // reparent 없이 피벗 위치를 역산(pos = 머리 - Rotate(머리 오프셋, θ)).
             Vector2 toRing = (_fingerLocal - _headPos).normalized;
-            float lean = Mathf.Clamp(
-                -Mathf.Atan2(toRing.x, Mathf.Max(toRing.y, 1e-3f)) * Mathf.Rad2Deg,
-                -s.maxAngle, s.maxAngle);
+            float lean = KeyringSim.LeanAngle(toRing.x, toRing.y, s.maxAngle);
             var rot = Quaternion.Euler(0f, 0f, lean);
             _rt.localRotation = rot;
             _rt.anchoredPosition = _headPos - (Vector2)(rot * new Vector3(0f, HeadOffsetY, 0f));
@@ -134,7 +126,7 @@ namespace Wassup.UI
         {
             var p = _rt.anchoredPosition;
             float y = p.y;
-            bool landed = FallStep(ref y, ref _fallVelY, _floorY, dt, s.gravity, s.bounceDamping, s.bounceMinSpeed);
+            bool landed = KeyringSim.FallStep(ref y, ref _fallVelY, _floorY, dt, s.gravity, s.bounceDamping, s.bounceMinSpeed);
             _rt.anchoredPosition = new Vector2(p.x, y);
             if (!landed)
             {
@@ -146,25 +138,6 @@ namespace Wassup.UI
             _rt.localRotation = Quaternion.identity;
             _phase = Phase.Idle;
             _target?.ResumeFromKeyring();
-        }
-
-        // 중력 적분 + 착지/반동 판정. 순수 계산 — EditMode 테스트 대상.
-        // 반환 true = 반동 없이 바닥에 정착(착지 속도 < bounceMinSpeed).
-        public static bool FallStep(ref float y, ref float velY, float floorY, float dt,
-            float gravity, float bounceDamping, float bounceMinSpeed)
-        {
-            velY -= gravity * dt;
-            y += velY * dt;
-            if (y > floorY) return false;
-            y = floorY;
-            float impact = -velY; // 착지 속도(양수)
-            if (impact >= bounceMinSpeed && bounceDamping > 0f)
-            {
-                velY = impact * bounceDamping;
-                return false;
-            }
-            velY = 0f;
-            return true;
         }
 
         private bool TryScreenToLocal(PointerEventData eventData, out Vector2 local)

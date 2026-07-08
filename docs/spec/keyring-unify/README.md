@@ -27,7 +27,7 @@
 ## Feature-wide 계약
 
 1. **동작(수학) 무변경.** unit 0 은 순수 리팩토링 — 현행 상수 기반 수치 스냅샷 EditMode 테스트로 등가를 고정한다.
-2. **`KeyringSim` = 순수 static, 좌표계 비의존.** Vector3 기준(아웃게임은 z=0). dt clamp(`Mathf.Max(dt,1e-4f)`)·초기화·재잡기·좌표 산출은 호출측에 잔류.
+2. **`KeyringSim` = 순수 static, 좌표계 비의존.** Vector3 본체 + Vector2 포워딩 오버로드(아웃게임 — 호출측 마샬링의 copy-back 누락 풋건을 KeyringSim 이 흡수, z=0 왕복 bit-exact). dt clamp(`Mathf.Max(dt,1e-4f)`)·초기화·재잡기·좌표 산출은 호출측에 잔류.
 3. **`LeanAngle` 내부 정규화 금지.** 호출측 입력 그대로(인게임=단위벡터의 camRight/camUp 투영값 = 비단위 2D, 아웃게임=단위 2D). eps `1e-3` floor 유지 — 스케일 불변 아니지만 현행 동작 보존이 우선.
 4. **`KeyringStyle` SO = 스타일 단일 소스** (ringSprite / cordSprite / uiCordMaterial / uiRingMaterial / worldCordMaterial / worldRingMaterial). 2단 폴백: `style == null` → 전체 절차적(현행), style 내 슬롯 null → 해당 요소만 폴백.
 5. **팔레트는 머티리얼 소유** (UI/월드 2곳 중복 수용) — UGUI 는 MaterialPropertyBlock 미지원이라 SO 팔레트 런타임 주입은 clone 수명 관리 비용이 더 크다. SO 헤더에 "팔레트 변경 = 머티리얼 2곳" 명시.

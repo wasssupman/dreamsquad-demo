@@ -19,6 +19,10 @@ public static class KeyringSim
     // 무게추 스프링+감쇠+속도상한 적분. dt clamp 는 호출측 책임(현행 Mathf.Max(dt,1e-4f) 유지).
     public static void SpringStep(ref Vector3 pos, ref Vector3 vel, Vector3 target,
         float spring, float damping, float maxSpeed, float dt);
+    // Vector2 포워딩 오버로드(아웃게임) — Vector3 본체 위임, z=0 왕복 bit-exact.
+    // 호출측 마샬링의 copy-back 누락 풋건 흡수 (unit 0 리뷰 반영).
+    public static void SpringStep(ref Vector2 pos, ref Vector2 vel, Vector2 target,
+        float spring, float damping, float maxSpeed, float dt);
     // 줄 방향 → 기울임각(deg). 내부 정규화 금지 — 입력은 호출측 그대로
     // (인게임: 단위벡터의 camRight/camUp 투영 = 비단위 2D, 아웃게임: 단위 2D).
     public static float LeanAngle(float x, float y, float maxAngle);
@@ -30,7 +34,7 @@ public static class KeyringSim
 
 - `SpringStep` 본문 = 현행 두 곳과 동일 연산 순서: `accel = (target-pos)*spring - vel*damping` → `vel += accel*dt` → `maxSpeed > 0` 이면 magnitude 클램프 → `pos += vel*dt`. (DefenderDragPlacementController.cs:94-101 ≡ LobbyKeyringDrag.cs:111-118, Vector2 ⊂ Vector3 z=0 bit-exact — critic 검증 완료.)
 - `LeanAngle` 본문 = `Mathf.Clamp(-Mathf.Atan2(x, Mathf.Max(y, 1e-3f)) * Mathf.Rad2Deg, -maxAngle, maxAngle)`.
-- 아웃게임 호출부는 Vector2 ↔ Vector3 변환(z=0)으로 연결. 초기화(`_posInit` 스냅 vs 낙하속도 승계 재잡기)는 각 호출측 잔류.
+- 아웃게임 호출부는 Vector2 오버로드를 직접 호출(마샬링은 KeyringSim 내부). 초기화(`_posInit` 스냅 vs 낙하속도 승계 재잡기)는 각 호출측 잔류.
 - 테스트: FallStep 기존 케이스 재조준 + SpringStep/LeanAngle 을 **현행 에셋 상수**(spring 100 / damping 2.5 / maxSpeed 12·2400 / maxAngle 8)로 수 스텝 돌린 수치 스냅샷(기대값은 추출 전 코드로 산출) — bit-exact 회귀 방지.
 
 ## 완료 기준
@@ -38,3 +42,7 @@ public static class KeyringSim
 - compile 클린, EditMode 전체 통과 (재조준 FallStep + 신규 스냅샷).
 - 두 컨트롤러의 diff 가 수학 인라인 → `KeyringSim` 호출 대체뿐임을 리뷰로 확인 (동작 무변경).
 - 에디터 Play 스모크: 인게임 드래그 스윙 / 아웃게임 스와이프·낙하가 리팩토링 전과 체감 동일.
+
+확인 2026-07-08 — compile 클린 · EditMode 통과(키링 7개, 무관 사전실패 2 제외) · 8앵글
+코드리뷰 후 CONFIRMED 1(Vector2 오버로드)·PLAUSIBLE 1(헤더) 반영. 사용자 진행 승인.
+Play 스모크 체감 확인은 unit 3 시각 검증에서 재확인 예정.
