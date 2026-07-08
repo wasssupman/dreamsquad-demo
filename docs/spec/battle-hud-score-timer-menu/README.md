@@ -1,6 +1,6 @@
 # battle-hud-score-timer-menu
 
-> 상태: 완료 2026-07-08 — 작업 0~3 구현·Play 확인·커밋. handoff: `4_handoff_summary.md`
+> 상태: 완료 2026-07-08 — 작업 0~3, 5 구현·Play 확인·커밋. handoff: `4_handoff_summary.md`
 
 ## 상위 목표
 
@@ -39,6 +39,7 @@
 | 2 | 신규 UI | `2_menu_popup.md` | 메뉴 팝업 컨트롤러(오픈/pause/나가기/재개) + ReturnToMenuButton 배선 변경 |
 | 3 | 통합/제거 | `3_wavestrip_in_popup.md` | 팝업에서 WavePatternStripView 구동 + "!" 토글 제거 + SquadPrepView 정리 |
 | 4 | handoff | `4_handoff_summary.md` | 종료/인계 요약 (구현 후 작성) |
+| 5 | UI/디자인 | `5_score_badge.md` | 점수 UI 배지/플레이트화 — 밋밋함 해소(연출과 별개의 정적 프레임) |
 
 ## 파이프라인 커버리지
 

@@ -15,6 +15,7 @@ battle-hud-score-timer-menu 구현 종료 인계. 최신 계약은 README + 번�
 - 팝업이 `WavePatternStripView` `FadeIn()/Roll()` 구동. 배틀 중 "!" 토글 완전 제거(draft·squad 공용이라 드래프트 재열람도 은퇴).
 - 팝업 레이아웃: 중복 dim 제거(스트립 오버레이가 유일 dim), 스트립 `SetSortingOverride(950)` 로 팝업(960) 아래 안 깔리게, 버튼 화면 하단 배치.
 - 코스트 리젠이 Battle 도메인 스케일 반영(정지 시 0, 슬로우모 비례).
+- (작업 5) 점수 UI 배지화: 절차적 라운드 플레이트(SDF 9-slice) + 골드 테두리 + "SCORE" 골드 탭. 배지를 화면 우상단 모서리(cornerPadding 36px)로 이동.
 
 ## Key Files
 - `Assets/_Project/Scripts/UI/NextWaveDock.cs` (신규) — 우하단 타이머+웨이브 dock

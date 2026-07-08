@@ -94,11 +94,28 @@ namespace Wassup.UI
         // The star of the HUD: the timer no longer stacks above the score (it moved
         // to the bottom-right NextWaveDock), so the score owns the top-center and sits
         // near the top edge, larger than before.
-        [SerializeField] private float topOffset = -24f;
         [SerializeField] private float valueFontSize = 104f;
-        [SerializeField] private float captionFontSize = 34f;
+        [SerializeField] private float captionFontSize = 30f;
+        [Tooltip("배지를 화면 우상단 모서리에 붙이고 이만큼 여백(px)")]
+        [SerializeField] private float cornerPadding = 36f;
+
+        [Header("Badge plate (static frame — battle-hud Unit 5)")]
+        [Tooltip("어두운 반투명 플레이트 fill 색")]
+        [SerializeField] private Color plateColor = new Color(0.04f, 0.055f, 0.08f, 0.62f);
+        [SerializeField] private Color plateBorderColor = new Color(1f, 0.78f, 0.28f, 0.95f);
+        [SerializeField] private float plateBorderWidth = 3f;
+        [SerializeField] private float plateCornerRadius = 26f;
+        [SerializeField] private Vector2 plateSize = new Vector2(360f, 148f);
+        [Tooltip("플레이트 상단이 패널 top 아래로 들어가는 양(탭이 걸치도록)")]
+        [SerializeField] private float plateTopInset = 20f;
+        [Header("Score tab (SCORE 라벨 배너)")]
+        [SerializeField] private Color tabColor = new Color(1f, 0.78f, 0.28f, 1f);
+        [SerializeField] private Color tabTextColor = new Color(0.1f, 0.08f, 0.04f, 1f);
+        [SerializeField] private Vector2 tabSize = new Vector2(196f, 46f);
 
         private GameObject _panel;
+        private Vector2 _panelBasePos;
+        private Image _plateImage;
         private TextMeshProUGUI _caption;
         private TextMeshProUGUI _value;
         private RectTransform _valueRect;
@@ -293,7 +310,7 @@ namespace Wassup.UI
             if (_panel != null)
             {
                 var prt = (RectTransform)_panel.transform;
-                prt.anchoredPosition = new Vector2(0f, topOffset);
+                prt.anchoredPosition = _panelBasePos;
                 prt.localRotation = Quaternion.identity;
             }
             _milestoneFlash = 0f;
@@ -357,31 +374,26 @@ namespace Wassup.UI
             if (gameObject.GetComponent<GraphicRaycaster>() == null)
                 gameObject.AddComponent<GraphicRaycaster>();
 
+            // Badge anchored to the screen's top-right corner, cornerPadding px inset.
+            // Panel width matches the plate so its centered children hug the right edge.
             _panel = new GameObject("ScorePanel", typeof(RectTransform));
             _panel.transform.SetParent(transform, false);
             var prt = (RectTransform)_panel.transform;
-            prt.anchorMin = new Vector2(0.5f, 1f);
-            prt.anchorMax = new Vector2(0.5f, 1f);
-            prt.pivot = new Vector2(0.5f, 1f);
-            prt.anchoredPosition = new Vector2(0f, topOffset);
-            prt.sizeDelta = new Vector2(480f, 170f);
+            prt.anchorMin = new Vector2(1f, 1f);
+            prt.anchorMax = new Vector2(1f, 1f);
+            prt.pivot = new Vector2(1f, 1f);
+            _panelBasePos = new Vector2(-cornerPadding, -cornerPadding);
+            prt.anchoredPosition = _panelBasePos;
+            prt.sizeDelta = new Vector2(plateSize.x, 170f);
 
-            _caption = MakeText("Caption", _panel.transform, captionFontSize, new Vector2(0f, 1f));
-            var crt = _caption.rectTransform;
-            crt.anchorMin = new Vector2(0.5f, 1f);
-            crt.anchorMax = new Vector2(0.5f, 1f);
-            crt.pivot = new Vector2(0.5f, 1f);
-            crt.anchoredPosition = new Vector2(0f, 0f);
-            crt.sizeDelta = new Vector2(360f, 34f);
-            _caption.text = "SCORE";
-            _caption.color = new Color(1f, 1f, 1f, 0.8f);
+            // Caption ("SCORE") is built later inside the badge tab (see below).
 
             _value = MakeText("Value", _panel.transform, valueFontSize, new Vector2(0.5f, 1f));
             _valueRect = _value.rectTransform;
             _valueRect.anchorMin = new Vector2(0.5f, 1f);
             _valueRect.anchorMax = new Vector2(0.5f, 1f);
             _valueRect.pivot = new Vector2(0.5f, 1f);
-            _valueRect.anchoredPosition = new Vector2(0f, -40f);
+            _valueRect.anchoredPosition = new Vector2(0f, -48f);
             _valueRect.sizeDelta = new Vector2(480f, 124f);
             _value.text = "0";
             _value.color = baseColor;
@@ -414,6 +426,45 @@ namespace Wassup.UI
             _shineRect.localRotation = Quaternion.Euler(0f, 0f, shineTiltDeg);
             _shineRect.SetAsLastSibling();
             { var sc = shineColor; sc.a = 0f; _shineImage.color = sc; }
+
+            // ── Badge plate (Unit 5): dark rounded plate + gold border behind the
+            // number, and a "SCORE" gold tab straddling its top edge. Static frame — the
+            // existing juice (punch/flash/burst/glow/shine) plays on top of this.
+            _plateImage = MakeSolidImage("Plate", _panel.transform);
+            _plateImage.sprite = MakeRoundedRectSprite(plateCornerRadius, plateBorderWidth, plateColor, plateBorderColor);
+            _plateImage.type = Image.Type.Sliced;
+            var platert = _plateImage.rectTransform;
+            platert.anchorMin = new Vector2(0.5f, 1f);
+            platert.anchorMax = new Vector2(0.5f, 1f);
+            platert.pivot = new Vector2(0.5f, 1f);
+            platert.anchoredPosition = new Vector2(0f, -plateTopInset);
+            platert.sizeDelta = plateSize;
+            platert.SetAsFirstSibling(); // behind glow + number + everything else in the panel
+
+            var tabGO = new GameObject("ScoreTab", typeof(RectTransform), typeof(Image));
+            tabGO.transform.SetParent(_panel.transform, false);
+            var tabImg = tabGO.GetComponent<Image>();
+            tabImg.sprite = MakeRoundedRectSprite(tabSize.y * 0.5f, 0f, tabColor, tabColor);
+            tabImg.type = Image.Type.Sliced;
+            tabImg.raycastTarget = false;
+            var tabRt = tabImg.rectTransform;
+            tabRt.anchorMin = new Vector2(0.5f, 1f);
+            tabRt.anchorMax = new Vector2(0.5f, 1f);
+            tabRt.pivot = new Vector2(0.5f, 1f);
+            tabRt.anchoredPosition = new Vector2(0f, 2f);
+            tabRt.sizeDelta = tabSize;
+            tabRt.SetAsLastSibling(); // in front of the plate + number
+
+            _caption = MakeText("Caption", tabGO.transform, captionFontSize, new Vector2(0.5f, 0.5f));
+            var crt = _caption.rectTransform;
+            crt.anchorMin = Vector2.zero;
+            crt.anchorMax = Vector2.one;
+            crt.offsetMin = Vector2.zero;
+            crt.offsetMax = Vector2.zero;
+            _caption.text = "SCORE";
+            _caption.fontStyle = FontStyles.Bold | FontStyles.SmallCaps;
+            _caption.characterSpacing = 6f;
+            _caption.color = tabTextColor;
 
             // Fullscreen milestone edge-flash vignette (on the canvas, behind the panel).
             _vignetteImage = MakeImage("MilestoneVignette", transform, vignetteSprite);
@@ -451,6 +502,55 @@ namespace Wassup.UI
             if (additiveMaterial != null) img.material = additiveMaterial;
             img.raycastTarget = false;
             return img;
+        }
+
+        // Plain alpha-blended Image (default material) — used for the badge plate/tab,
+        // which must NOT use the additive material MakeImage applies.
+        private Image MakeSolidImage(string name, Transform parent)
+        {
+            var go = new GameObject(name, typeof(RectTransform));
+            go.transform.SetParent(parent, false);
+            var img = go.AddComponent<Image>();
+            img.raycastTarget = false;
+            return img;
+        }
+
+        // Procedural rounded-rect sprite (SDF frame) for 9-slicing. `border` > 0 draws a
+        // border-colored ring `border` px thick around the edge; 0 → solid pill/fill.
+        private static Sprite MakeRoundedRectSprite(float radius, float border, Color fill, Color borderColor)
+        {
+            int r = Mathf.Max(1, Mathf.RoundToInt(radius));
+            int b = Mathf.Max(0, Mathf.RoundToInt(border));
+            int pad = 2 * b + 8;                 // stretchable center strip (keeps 9-slice valid)
+            int size = 2 * r + pad;
+            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false)
+            {
+                wrapMode = TextureWrapMode.Clamp,
+                filterMode = FilterMode.Bilinear
+            };
+            var px = new Color32[size * size];
+            float half = (size - 1) * 0.5f;
+            float bx = half - r, by = half - r;  // half-extent of the straight region
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    float qx = Mathf.Abs(x - half) - bx;
+                    float qy = Mathf.Abs(y - half) - by;
+                    float outside = Mathf.Sqrt(Mathf.Max(qx, 0f) * Mathf.Max(qx, 0f) +
+                                               Mathf.Max(qy, 0f) * Mathf.Max(qy, 0f));
+                    float sd = outside + Mathf.Min(Mathf.Max(qx, qy), 0f) - r; // <=0 inside
+                    float aa = Mathf.Clamp01(0.5f - sd);                        // edge antialias
+                    Color c = (b > 0 && sd > -b) ? borderColor : fill;
+                    c.a *= aa;
+                    px[y * size + x] = c;
+                }
+            }
+            tex.SetPixels32(px);
+            tex.Apply();
+            float bd = r + b + 1;                // 9-slice border (< size/2 by construction)
+            return Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f),
+                                 100f, 0, SpriteMeshType.FullRect, new Vector4(bd, bd, bd, bd));
         }
     }
 }
