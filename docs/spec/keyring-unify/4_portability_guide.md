@@ -35,3 +35,6 @@ lobby-keyring-drag README 계약 1 은 삭제하지 않고 취소선/주석으�
 
 - `docs/reference/keyring-portability.md` 존재, 목차 4절 충족, 80줄 이내.
 - `lobby-keyring-drag/README.md` 계약 1 폐기 표기 — 문서·코드 모순 해소.
+
+확인 2026-07-08 — 가이드 작성(4절, 함정 11건 — unit 2 에서 실증된 uv swap 누락 포함),
+구 계약 1 취소선 폐기 + keyring-unify 포인터. 커밋은 본 unit 커밋 해시 참조.

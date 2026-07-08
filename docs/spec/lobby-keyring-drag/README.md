@@ -30,8 +30,10 @@
 
 ## Feature-wide 계약
 
-1. **인게임 무변경.** `DefenderDragPlacementController` / `DragSwaySettings`(코드·에셋)
-   불가침. 가져오는 것은 동작 모델과 파라미터 구성뿐, 코드 공유 없음.
+1. ~~**인게임 무변경.** `DefenderDragPlacementController` / `DragSwaySettings`(코드·에셋)
+   불가침. 가져오는 것은 동작 모델과 파라미터 구성뿐, 코드 공유 없음.~~
+   **[폐기 2026-07-08]** keyring-unify 로 대체 — 수학은 `KeyringSim`, 스타일은
+   `KeyringStyle` SO 로 양 컨텍스트 공유. 현행 계약은 `docs/spec/keyring-unify/` 참조.
 2. **좌표계 = 캔버스 px.** 모든 계산은 캐릭터 부모 RectTransform 로컬 좌표.
    Screen Space Overlay 캔버스이므로 `ScreenPointToLocalPointInRectangle(camera: null)`.
 3. **고리 = 손가락.** 캐릭터 머리 목표 = 손가락에서 `ropeLength` 아래. 위치는

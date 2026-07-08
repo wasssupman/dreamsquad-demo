@@ -1,6 +1,7 @@
 # Spec — Keyring Unify (로직·비주얼 통합 리팩토링)
 
-> 상태: **승인 2026-07-08 — 구현 중** (critic 리뷰 APPROVE_WITH_CHANGES 반영, 비주얼 = 로비 동일 스타일로 시작 + 시인성 문제 시 머티리얼 파라미터만 튜닝)
+> 상태: **units 0~4 구현 완료 2026-07-08 — unit 3 사용자 Play 육안 확인 대기** (critic 리뷰 APPROVE_WITH_CHANGES 반영, 비주얼 = 로비 동일 스타일 + 필요 시 머티리얼 파라미터 튜닝)
+> 커밋: `2d85b508`(spec) · `76bcb69f`(0) · `143db2f8`(1) · `cb221775`(2) · `e4b15c28`(3)
 > design: `docs/plans/2026-07-08-keyring-unify-design.md`
 
 ## 상위 목표
