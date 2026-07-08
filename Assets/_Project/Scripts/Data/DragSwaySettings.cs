@@ -30,5 +30,9 @@ namespace Wassup.Data
         public float ringRadius = 0.18f;
         [Tooltip("실루엣 추가 드롭(로컬). 머리는 줄 끝 자동정렬, 이 값은 미세조정. 0=머리가 줄 끝.")]
         public float charmDrop = 0.0f;
+
+        [Header("스타일 (keyring-unify 3)")]
+        [Tooltip("키링 스타일 — 월드 슬롯(ringSprite/worldCord·RingMaterial) 사용. 비우면 절차적 폴백(원 루프 + cordColor 단색 줄).")]
+        public KeyringStyle style;
     }
 }

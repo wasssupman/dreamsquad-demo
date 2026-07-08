@@ -17,7 +17,8 @@ MonoBehaviour:
   spring: 100
   damping: 2.5
   maxSpeed: 26.7
-  cordWidth: 0.14
+  cordWidth: 0.3
   cordColor: {r: 0.45, g: 0.38, b: 0.28, a: 1}
-  ringRadius: 0.18
+  ringRadius: 0.24
   charmDrop: 0
+  style: {fileID: 11400000, guid: 8ddb116cb88747dabf6a8881495f1815, type: 2}

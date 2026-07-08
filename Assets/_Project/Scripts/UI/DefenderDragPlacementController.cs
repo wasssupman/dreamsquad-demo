@@ -243,38 +243,54 @@ namespace Wassup.UI
             float scale = Mathf.Max(0.01f, unitData.spineVisualScale * BattleBridge.CharacterVisualScale);
 
             var root = new GameObject($"DragPreview_{unitData.displayName}");
-            var cordMat = CordMaterial();
+            var st = Cfg.style; // keyring-unify 3 — 스타일. null/슬롯 null = 절차적 폴백.
 
-            // 고리(ring): 로컬 원 LineRenderer 루프(플레이스홀더) + 빌보드.
+            // 고리(ring): 스타일 스프라이트가 있으면 SpriteRenderer(홀로), 없으면 로컬 원 LineRenderer 루프.
             var ringGo = new GameObject($"{root.name}_Ring");
             ringGo.transform.SetParent(root.transform, false);
-            var ringLr = ringGo.AddComponent<LineRenderer>();
-            ringLr.useWorldSpace = false;
-            ringLr.loop = true;
-            ringLr.numCapVertices = 2;
-            ringLr.positionCount = RingSegments;
-            for (int i = 0; i < RingSegments; i++)
+            if (st != null && st.ringSprite != null)
             {
-                float a = (i / (float)RingSegments) * Mathf.PI * 2f;
-                ringLr.SetPosition(i, new Vector3(Mathf.Cos(a), Mathf.Sin(a), 0f) * (Cfg.ringRadius * scale));
+                var ringSr = ringGo.AddComponent<SpriteRenderer>();
+                ringSr.sprite = st.ringSprite;
+                if (st.worldRingMaterial != null) ringSr.sharedMaterial = st.worldRingMaterial;
+                ringSr.color = Color.white; // 계약 7 — 스타일 적용 시 틴트 중성화(cordColor 갈색 오염 방지)
+                ringSr.sortingOrder = BoardSortOrder.DragPreviewOrder;
+                // 지름 = ringRadius*2 — 절차적 원(반경 ringRadius*scale)과 크기 등가.
+                float spriteWidth = st.ringSprite.bounds.size.x;
+                if (spriteWidth > 1e-4f)
+                    ringGo.transform.localScale = Vector3.one * (Cfg.ringRadius * 2f * scale / spriteWidth);
             }
-            ringLr.sharedMaterial = cordMat;
-            ringLr.widthMultiplier = Cfg.cordWidth * scale;
-            ringLr.startColor = ringLr.endColor = Cfg.cordColor;
-            ringLr.sortingOrder = BoardSortOrder.DragPreviewOrder;
+            else
+            {
+                var ringLr = ringGo.AddComponent<LineRenderer>();
+                ringLr.useWorldSpace = false;
+                ringLr.loop = true;
+                ringLr.numCapVertices = 2;
+                ringLr.positionCount = RingSegments;
+                for (int i = 0; i < RingSegments; i++)
+                {
+                    float a = (i / (float)RingSegments) * Mathf.PI * 2f;
+                    ringLr.SetPosition(i, new Vector3(Mathf.Cos(a), Mathf.Sin(a), 0f) * (Cfg.ringRadius * scale));
+                }
+                ringLr.sharedMaterial = CordMaterial();
+                ringLr.widthMultiplier = Cfg.cordWidth * scale;
+                ringLr.startColor = ringLr.endColor = Cfg.cordColor;
+                ringLr.sortingOrder = BoardSortOrder.DragPreviewOrder;
+            }
             var ringBillboard = ringGo.AddComponent<Billboard>();
             ringBillboard.Setup(BillboardMode.Tilted, BattleBridge.CharacterBillboardTilt);
 
-            // 줄(cord): 월드 LineRenderer, 2점(고리→머리).
+            // 줄(cord): 월드 LineRenderer, 2점(고리→머리). 스타일 머티리얼(u=길이, _LengthAxis=1) 또는 절차적 단색.
             var cordGo = new GameObject($"{root.name}_Cord");
             cordGo.transform.SetParent(root.transform, false);
             var cordLr = cordGo.AddComponent<LineRenderer>();
             cordLr.useWorldSpace = true;
             cordLr.numCapVertices = 2;
             cordLr.positionCount = 2;
-            cordLr.sharedMaterial = cordMat;
+            bool styledCord = st != null && st.worldCordMaterial != null;
+            cordLr.sharedMaterial = styledCord ? st.worldCordMaterial : CordMaterial();
             cordLr.widthMultiplier = Cfg.cordWidth * scale;
-            cordLr.startColor = cordLr.endColor = Cfg.cordColor;
+            cordLr.startColor = cordLr.endColor = styledCord ? Color.white : Cfg.cordColor;
             cordLr.sortingOrder = BoardSortOrder.DragPreviewOrder - 1;
 
             // endNode(머리 위치, 빌보드) → swingPivot(머리 중심 기울임) → spineChild(실루엣).
