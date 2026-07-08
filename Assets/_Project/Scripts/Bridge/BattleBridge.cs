@@ -403,6 +403,10 @@ namespace Wassup.Bridge
             DestroyEntitiesByType<AttackUnitTag>();
             DestroyEntitiesByType<DefenderUnitTag>();
             DestroyEntitiesByType<ProjectileTag>();
+            // dreamcatcher-unit-trigger Unit 1 — request carriers normally die in
+            // the same-frame drain; this covers stragglers when battle stops
+            // between stage and drain.
+            DestroyEntitiesByType<ProjectileRequestCarrier>();
             DestroyEntitiesByType<Wassup.Battle.Effects.Hazard>();
             DestroyEntitiesByType<Wassup.Battle.Effects.BlockingHazard>();
             DestroyEntitiesByType<Wassup.Battle.Effects.Obstacle>();
@@ -822,6 +826,7 @@ namespace Wassup.Bridge
             // ingame-dreamcatcher Unit 2/3 — reset card registry + triggers for a new match.
             _activeDcEffects.Clear();
             _dcStackCounter = 100;
+            _dcInstanceCounter = 0; // dreamcatcher-unit-trigger Unit 1 — per-match instance ids
             // dreamstone-loadout Unit 3 — set-then-apply: reapply the pending stone
             // loadout right after the clear above (single point, see SetDreamstones).
             ApplyPendingDreamstones();
@@ -2019,6 +2024,14 @@ namespace Wassup.Bridge
                 var spawnedProjectile = SpawnProjectile(req, requestEntities[i]);
                 if (spawnedProjectile != Entity.Null && shooterIsDefender)
                     Wassup.Core.SoundManager.Instance?.PlayProjectileFire();
+                // dreamcatcher-unit-trigger Unit 1 — dedicated carrier entities are
+                // destroyed outright: no vestigial empty entity, and no redundant
+                // RemoveComponent structural change on an entity about to die.
+                if (_em.HasComponent<ProjectileRequestCarrier>(requestEntities[i]))
+                {
+                    _em.DestroyEntity(requestEntities[i]);
+                    continue;
+                }
                 _em.RemoveComponent<ProjectileSpawnRequest>(requestEntities[i]);
                 if (_em.HasBuffer<ProjectileSpawnOutputElement>(requestEntities[i]))
                     _em.RemoveComponent<ProjectileSpawnOutputElement>(requestEntities[i]);
@@ -2434,6 +2447,84 @@ namespace Wassup.Bridge
                 if (MatchesDcAxis(data, e.axis))
                     EnqueueStatModifier(entity, e.stat, e.mult, DcDuration, e.stackId);
             }
+        }
+
+        // dreamcatcher-unit-trigger Unit 1 — unit-bound card attach: bakes each
+        // DcMechanic (definition layer, ECS-free) into a DcTriggerSlot on the
+        // defender entity. Translator role: an architecture swap rewrites this,
+        // never the definitions. Recall registry (card↔unit↔instanceId, death
+        // reclaim) is a follow-up spec — attach only for now.
+        private int _dcInstanceCounter;
+
+        public bool ApplyDreamcatcherCardToUnit(Entity defender, Wassup.Data.DreamcatcherCard card)
+        {
+            if (card == null || card.binding != Wassup.Data.CardBinding.Unit) return false;
+            if (card.mechanics == null || card.mechanics.Length == 0) return false;
+            if (!HasLiveEntityManager() || !_em.Exists(defender))
+            {
+                Debug.LogWarning($"[BattleBridge] ApplyDreamcatcherCardToUnit('{card?.id}'): ECS not ready or defender entity gone — card not attached.");
+                return false;
+            }
+            // Contract 2: slots live on defenders only. AttackSystem's RESOLVE arm
+            // counts defender attacks, and teardown reaches the buffer through the
+            // defender entity — a non-defender attach would silently never fire and
+            // could orphan the buffer across matches.
+            if (!_em.HasComponent<DefenderUnitTag>(defender))
+            {
+                Debug.LogWarning($"[BattleBridge] ApplyDreamcatcherCardToUnit('{card.id}'): target entity is not a defender — card not attached.");
+                return false;
+            }
+
+            int attached = 0;
+            for (int i = 0; i < card.mechanics.Length; i++) // bake-time only read (managed array)
+            {
+                var m = card.mechanics[i];
+                if (m.trigger.kind == Wassup.Data.DcTriggerKind.None ||
+                    m.payload.kind == Wassup.Data.DcPayloadKind.None ||
+                    (m.trigger.kind == Wassup.Data.DcTriggerKind.AttackN && m.trigger.period <= 0))
+                {
+                    Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: None kind or non-positive period — skipped.");
+                    continue;
+                }
+                var slot = new DcTriggerSlot
+                {
+                    instanceId = _dcInstanceCounter++,
+                    trigger = m.trigger.kind,
+                    period = (ushort)math.clamp(m.trigger.period, 0, ushort.MaxValue),
+                    counter = 0,
+                    payload = m.payload.kind,
+                    magnitude = m.payload.magnitude,
+                    projectileDataIndex = -1,
+                };
+                if (m.payload.kind == Wassup.Data.DcPayloadKind.ProjectileToTarget)
+                {
+                    if (m.payload.projectile == null)
+                    {
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: ProjectileToTarget without ProjectileData — skipped.");
+                        continue;
+                    }
+                    if (m.payload.magnitude <= 0f)
+                    {
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: non-positive magnitude — skipped.");
+                        continue;
+                    }
+                    slot.projectileDataIndex = GetOrCreateProjectileDataIndex(m.payload.projectile);
+                    slot.speed = m.payload.projectile.speed;
+                    slot.hitThreshold = m.payload.projectile.hitThreshold;
+                    slot.visualScale = m.payload.projectile.visualScale;
+                }
+                // Immediate (non-ECB) AddBuffer — same technique as ModifierApplySystem's
+                // bufferless path: several attaches in one frame must all land; a
+                // deferred AddBuffer would keep only the last. (Ownership is a separate
+                // question: bridge-side attach writes follow the existing spawn-time
+                // precedent — ProjectileRef/AttackState/AttackOutputElement.)
+                var buf = _em.HasBuffer<DcTriggerSlot>(defender)
+                    ? _em.GetBuffer<DcTriggerSlot>(defender)
+                    : _em.AddBuffer<DcTriggerSlot>(defender);
+                buf.Add(slot);
+                attached++;
+            }
+            return attached > 0;
         }
 
         private static bool MapDcEffect(Wassup.Data.CardEffect eff, out Wassup.Battle.Effects.StatKind stat, out float mult)
