@@ -7,8 +7,9 @@
 ## 변경 대상
 
 - `Assets/_Project/Scripts/UI/MenuPopup.cs` — Open/Close 에서 스트립 구동
-- `Assets/_Project/Scripts/UI/Draft/WavePatternStripView.cs` — "!" 토글 제거
+- `Assets/_Project/Scripts/UI/Draft/WavePatternStripView.cs` — "!" 토글 제거 (`_toggleButton`/`_toggleEnabled`/`OnToggleClicked`/`SetToggleEnabled` 삭제, `WaveToggle` 빌드 블록 제거)
 - `Assets/_Project/Scripts/UI/Outgame/SquadPrepView.cs` — `SetToggleEnabled(true)` 호출 정리
+- `Assets/_Project/Scripts/UI/Draft/DraftView.cs` — `SetToggleEnabled(false/true)` 호출 제거 (토글이 사라졌으므로). 인트로 Unroll→dwell→Roll 흐름은 유지
 - `BattleScene.unity` — MenuPopup 에 WavePatternStripView 참조 주입
 
 ## 구현
@@ -28,7 +29,7 @@
   - `wavePatternStrip.SetToggleEnabled(true)` 호출 제거. `SnapHidden()` 준비는 유지(팝업 FadeIn 전제).
 
 ### 회귀 주의
-- **드래프트 모드**: draft 시작 시 `Unroll()` 자동 인트로는 이 spec 범위 밖 — 건드리지 않는다. draft 의 스트립 동작 회귀 없는지 확인.
+- **드래프트 모드**: draft 시작 시 `Unroll()`→dwell→`Roll()` 자동 인트로는 **유지**한다(건드리지 않음). 단 "!" 토글이 draft·squad 공용이라, 제거하면서 **드래프트 카드픽 단계의 웨이브 재열람 창구도 함께 은퇴**한다(배틀에선 메뉴 팝업이 대체, 드래프트엔 대체 없음 — 인트로에서 이미 1회 노출). 사용자 결정 "느낌표 제거"에 따른 의도된 결과.
 - 스트립을 두 소비자(SquadPrep 준비 + MenuPopup)가 공유 — 상태 머신(`State`)이 FadeIn↔Roll 로만 오가므로 충돌 없음. 팝업 열림 중 draft 진입 같은 동시성은 실제 플로우상 발생 안 함.
 
 ## 완료 기준
@@ -38,3 +39,5 @@
 - [ ] 메뉴 팝업 오픈 → 중상단에 공격패턴 스트립 FadeIn, [재개] → 스트립 Roll 퇴장.
 - [ ] 드래프트 모드 스트립(Unroll 인트로/스와이프) 회귀 없음.
 - [ ] 스쿼드 준비 → 배틀 진입 플로우 정상(deck 반영된 스트립).
+
+> 확인: 2026-07-08 사용자 Play 확인 통과 (작업 2와 묶어 검증). "!" WaveToggle 부재, 팝업 Open→FadeIn·Close→Roll, 스트립 정렬 부스트로 팝업 위 렌더. 스코프 확대: DraftView 토글 제어 제거(드래프트 카드픽 재열람 은퇴, 사용자 승인).

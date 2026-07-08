@@ -49,12 +49,12 @@ namespace Wassup.UI
 
             if (wavePatternStrip != null)
             {
-                // Keep the strip active but hidden with its "!" toggle live — the
-                // attack pattern is now viewable only on demand, never force-shown.
+                // Keep the strip active but hidden — the attack pattern is now viewed
+                // from the in-battle pause menu popup (MenuPopup drives FadeIn/Roll),
+                // not the retired "!" on-demand toggle. Prep just readies the deck.
                 wavePatternStrip.gameObject.SetActive(true);
                 wavePatternStrip.RebuildFromDeck();
                 wavePatternStrip.SnapHidden();
-                wavePatternStrip.SetToggleEnabled(true);
             }
 
             // No auto-intro: advance straight to placement (dreamcatcher pick).

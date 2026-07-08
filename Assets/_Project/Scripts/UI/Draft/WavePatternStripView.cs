@@ -46,12 +46,11 @@ namespace Wassup.UI.Draft
         private RectTransform _cardGrid;     // ScrollRect root (for position/alpha tweening)
         private RectTransform _cardContent;  // HorizontalLayoutGroup content (cards go here)
         private CanvasGroup _cardGridGroup;
-        private Button _toggleButton;
         private readonly List<RectTransform> _cardRects = new();
         private State _state = State.Hidden;
         private Sequence _activeTween;
-        private bool _toggleEnabled = true;
         private bool _built;
+        private Canvas _sortCanvas;   // overrideSorting canvas for popup layering (Unit 3)
 
         private static readonly Color TankerColor = new(1f, 0.3f, 0.3f, 1f);
         private static readonly Color BasicColor  = new(0.55f, 0.25f, 0.8f, 1f);
@@ -193,10 +192,29 @@ namespace Wassup.UI.Draft
             _state = State.Hidden;
         }
 
-        public void SetToggleEnabled(bool value)
+        // battle-hud-score-timer-menu Unit 3 — lift the whole strip above another
+        // overlay canvas (the pause menu popup) while shown, then release. The strip
+        // normally renders on the DraftView canvas (low order); the popup needs it on
+        // top so its own dim overlay isn't covered. Adds an overrideSorting Canvas +
+        // raycaster on demand so the cards stay swipeable at the boosted order.
+        public void SetSortingOverride(bool on, int order = 950)
         {
-            _toggleEnabled = value;
-            if (_toggleButton != null) _toggleButton.interactable = value;
+            if (on)
+            {
+                if (_sortCanvas == null)
+                {
+                    _sortCanvas = gameObject.GetComponent<Canvas>();
+                    if (_sortCanvas == null) _sortCanvas = gameObject.AddComponent<Canvas>();
+                    if (gameObject.GetComponent<GraphicRaycaster>() == null)
+                        gameObject.AddComponent<GraphicRaycaster>();
+                }
+                _sortCanvas.overrideSorting = true;
+                _sortCanvas.sortingOrder = order;
+            }
+            else if (_sortCanvas != null)
+            {
+                _sortCanvas.overrideSorting = false;
+            }
         }
 
         // ── Unity lifecycle ───────────────────────────────────────────────────
@@ -318,33 +336,9 @@ namespace Wassup.UI.Draft
             scrollRect.decelerationRate  = 0.135f;
             scrollRect.scrollSensitivity = 30f;
 
-            // Toggle button: top-left corner, beneath map settings toggle.
-            var toggleGo = new GameObject("WaveToggle", typeof(RectTransform), typeof(Image), typeof(Button));
-            toggleGo.transform.SetParent(transform, false);
-            var toggleRt = (RectTransform)toggleGo.transform;
-            toggleRt.anchorMin = new Vector2(0f, 1f);
-            toggleRt.anchorMax = new Vector2(0f, 1f);
-            toggleRt.pivot     = new Vector2(0f, 1f);
-            toggleRt.anchoredPosition = new Vector2(40f, -110f);
-            toggleRt.sizeDelta = new Vector2(72f, 72f);
-            toggleGo.GetComponent<Image>().color = new Color(0.95f, 0.74f, 0.2f, 1f);
-            _toggleButton = toggleGo.GetComponent<Button>();
-            _toggleButton.onClick.AddListener(OnToggleClicked);
-
-            var toggleLabelGo = new GameObject("Label", typeof(RectTransform));
-            toggleLabelGo.transform.SetParent(toggleGo.transform, false);
-            var toggleLabelRt = (RectTransform)toggleLabelGo.transform;
-            toggleLabelRt.anchorMin = Vector2.zero;
-            toggleLabelRt.anchorMax = Vector2.one;
-            toggleLabelRt.offsetMin = Vector2.zero;
-            toggleLabelRt.offsetMax = Vector2.zero;
-            var toggleTmp = toggleLabelGo.AddComponent<TextMeshProUGUI>();
-            toggleTmp.text = "!";
-            toggleTmp.fontSize = 48;
-            toggleTmp.fontStyle = FontStyles.Bold;
-            toggleTmp.color = new Color(0.12f, 0.10f, 0.06f, 1f);
-            toggleTmp.alignment = TextAlignmentOptions.Center;
-            toggleTmp.raycastTarget = false;
+            // battle-hud-score-timer-menu Unit 3 — the in-battle "!" on-demand toggle is
+            // retired; the attack pattern is now viewed from the pause menu popup, which
+            // drives FadeIn()/Roll() directly.
             UiLayer.Apply(gameObject);
         }
 
@@ -353,16 +347,6 @@ namespace Wassup.UI.Draft
         private void OnBackgroundClicked()
         {
             if (_state == State.Shown) OnDwellInterrupt?.Invoke();
-        }
-
-        private void OnToggleClicked()
-        {
-            if (!_toggleEnabled) return;
-            switch (_state)
-            {
-                case State.Hidden: FadeIn(); break;   // soft re-open; no dwell interrupt
-                case State.Shown:  Roll();   break;
-            }
         }
 
         // ── Card helpers ──────────────────────────────────────────────────────

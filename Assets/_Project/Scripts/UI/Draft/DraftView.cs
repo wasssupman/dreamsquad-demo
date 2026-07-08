@@ -84,7 +84,6 @@ namespace Wassup.UI.Draft
             if (strip != null)
             {
                 strip.RebuildFromDeck();
-                strip.SetToggleEnabled(false);
             }
             // Fan stays hidden during the strip phase — cards must not peek
             // from below while the wave preview is on screen.
@@ -99,7 +98,6 @@ namespace Wassup.UI.Draft
 
             _state = State.Rolling;
             if (strip != null) yield return strip.Roll().ToYieldInstruction();
-            if (strip != null) strip.SetToggleEnabled(true);
 
             _state = State.Drafting;
             if (fan != null)

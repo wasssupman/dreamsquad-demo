@@ -1,6 +1,6 @@
 # battle-hud-score-timer-menu
 
-> 상태: 초안 (작업 대기) — 2026-07-08 작성
+> 상태: 완료 2026-07-08 — 작업 0~3 구현·Play 확인·커밋. handoff: `4_handoff_summary.md`
 
 ## 상위 목표
 

@@ -29,6 +29,10 @@ namespace Wassup.UI
         [SerializeField] private Color buttonColor = new Color(0.12f, 0.42f, 0.82f, 0.95f);
         [SerializeField] private float buttonFontSize = 28f;
 
+        [Header("Backing")]
+        [Tooltip("타이머+버튼 뒤 dimmed 배경 판")]
+        [SerializeField] private Color backingColor = new Color(0f, 0f, 0f, 0.45f);
+
         private GameObject _panel;
         private TextMeshProUGUI _timerLabel;
         private GameObject _buttonRoot;
@@ -130,6 +134,18 @@ namespace Wassup.UI
             prt.pivot = new Vector2(1f, 0f);
             prt.anchoredPosition = new Vector2(-40f, 40f);
             prt.sizeDelta = new Vector2(250f, 150f);
+
+            // Dimmed backing plate behind the timer + button rows (first child → behind).
+            var backing = new GameObject("Backing", typeof(RectTransform), typeof(Image));
+            backing.transform.SetParent(_panel.transform, false);
+            var bkrt = (RectTransform)backing.transform;
+            bkrt.anchorMin = Vector2.zero;
+            bkrt.anchorMax = Vector2.one;
+            bkrt.offsetMin = new Vector2(-10f, -10f);
+            bkrt.offsetMax = new Vector2(10f, 10f);
+            var bkimg = backing.GetComponent<Image>();
+            bkimg.color = backingColor;
+            bkimg.raycastTarget = false;
 
             // Timer row (top).
             var timerGO = new GameObject("Timer", typeof(RectTransform));
