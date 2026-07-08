@@ -32,6 +32,7 @@
 - **직렬화 필드 0**: 팔레트/dim 은 `private static readonly` 코드 상수. `ResultScreen` 에 `[SerializeField]` 없음 → BattleScene diff 0(HEAD clean). 씬 와이어링/시즌 텍스처 임포트 변경 없음(cosmic 은 Texture2D 로 원복).
 - **`??` 금지**: `GetComponent<T>() ?? AddComponent<T>()` 는 Unity fake-null 을 안 걸러 에디터 NRE. `if (== null)` 패턴 유지.
 - 행 교체는 detach-then-Destroy(플레이 모드). 결과 팝업은 매치당 1회라 풀링 불필요.
+- **캔버스 sortingOrder=2000 (최상위 모달)**: 게임 종료 모달이라 모든 오버레이 UI(ScoreHud 6·독 7~8·DefenderSelector 4·MENU 1000) 위에 dim 이 깔려야 한다. 초기 4 는 인게임 HUD 가 dim 위로 새는 버그 → 2000 으로 상향. 낮추지 말 것.
 
 ## Follow-up
 

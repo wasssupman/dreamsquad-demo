@@ -272,7 +272,10 @@ namespace Wassup.UI
             var canvas = gameObject.GetComponent<Canvas>();
             if (canvas == null) canvas = gameObject.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = 4;
+            // Terminal game-over modal — must sit above ALL other UI so the dim covers
+            // the battle HUD (ScoreHud 6, docks 7-8, DefenderSelector 4) and the MENU
+            // button (1000). Was 4, which let the HUD bleed over the dim.
+            canvas.sortingOrder = 2000;
 
             if (gameObject.GetComponent<CanvasScaler>() == null)
             {
