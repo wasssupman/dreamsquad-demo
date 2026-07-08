@@ -272,7 +272,7 @@ board-visualization spec 자체는 ROI 부족으로 wrap 종료. 진단/실험�
 #### Outgame / squad / dreamcatcher — 후속 (outgame-scene-and-flow, squad-loadout, ingame-dreamcatcher)
 
 - **드림캐쳐 카드 보유/콘텐츠 확장** [L] · ownedCardIds + 가챠/꿈런 파밍, 카드 콘텐츠 확장(기획 일반10+고유3+무의식2, 신규 메커닉 채널), 다중 덱 수집/전환·이름 편집·무의식 편입. (D 후속)
-- **드림캐쳐 복합 효과** [L] · row-only/crit/pierce/splash/lowcost-summon/guardian-taunt/match-start-cost + 무의식 2장. 신규 메커닉/채널 필요.
+- **드림캐쳐 복합 효과** [L] · row-only/crit/pierce/splash/lowcost-summon/guardian-taunt/match-start-cost + 무의식 2장. 신규 메커닉/채널 필요. 트리거형 메커닉(개별유닛 바인딩 + N회 공격 발동) 토대는 → `docs/spec/dreamcatcher-unit-trigger/` 로 부분 승격 (2026-07-08).
 - **진짜 MaxHealthMul 채널** [M] · 현재 HP 카드는 DmgTakenMul 프록시. 정확한 max-HP 증가 채널(Health/Units 맥락).
 - **스쿼드 class/특성** [L] · class 라벨(완료, C unit0)을 이용한 슬롯 조건 + 타입별 특성(스탯 합산, 하드캡 15%). 다중 스쿼드 수집/전환, 가챠/꿈런 파밍/교환/리롤/등급.
 - **한글 TMP 폰트** [S] · 현재 LiberationSans only → UI 라벨 영문. 로컬라이즈 패스에서 한글 폰트 에셋 도입.
