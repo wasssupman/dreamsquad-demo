@@ -18,7 +18,7 @@ MonoBehaviour:
   health: 350
   attackRange: 7
   attackCooldown: 3.5
-  hitDelaySec: 0
+  hitDelaySec: 0.3
   deployDelaySec: 0
   attackTargetCount: 1
   visualMesh: {fileID: 0}

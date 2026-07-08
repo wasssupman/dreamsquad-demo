@@ -26,7 +26,7 @@ MonoBehaviour:
   attackCooldown: 0.5
   attackTargetCount: 2
   projectile: {fileID: 0}
-  hitDelaySec: 0
+  hitDelaySec: 0.3
   aggroAttackDamage: 0
   aggroAttackCooldown: 1
   aggroAttackRange: 1

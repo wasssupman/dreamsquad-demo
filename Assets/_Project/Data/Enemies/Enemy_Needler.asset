@@ -26,7 +26,7 @@ MonoBehaviour:
   attackCooldown: 0.35
   attackTargetCount: 1
   projectile: {fileID: 11400000, guid: 2a1e70d9b5c234e97a1f56e419433f2a, type: 2}
-  hitDelaySec: 0
+  hitDelaySec: 0.3
   aggroAttackDamage: 0
   aggroAttackCooldown: 1
   aggroAttackRange: 1
