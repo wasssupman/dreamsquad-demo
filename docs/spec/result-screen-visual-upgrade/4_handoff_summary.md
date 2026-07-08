@@ -35,6 +35,13 @@
 - **최상위 모달 (nested canvas + dim 렌더)**: `ResultScreen` 은 씬에서 root `ResultCanvas`(overlay, order 0) 아래 **중첩**된다. 중첩 canvas 는 `overrideSorting=true` 없이는 `sortingOrder` 를 무시하므로 반드시 `overrideSorting=true` + `sortingOrder=2000` 을 함께 둔다(이게 없으면 order 0 로 취급돼 ScoreHud 6·MENU 1000 이 dim 위로 샌다). **되돌리지 말 것.**
 - **dim 은 명시 스프라이트 필수**: 이 경로에서 null-sprite `Image` 는 렌더되지 않아(보드가 dim 안 먹고 밝게 보임) `UiRoundedSprite.Make` 흰색 스프라이트를 dim 에 부여한다. 빨강 배경 테스트로 dim 커버 검증.
 
+## Unit 5 (후속 2026-07-08)
+
+- **dock = Battle 전용**: `NextWaveDock` 이 `PhaseChanged` 구독으로 전환(`GamePhase.Battle` 만 표시). Draft/Placement/Result 에서 숨김.
+- **game-over → `GamePhase.Result`**: `BattleBridge.ReportMatchResult` 에서 `SetPhase(Result)` — 미사용 enum 활성화. Battle-gated HUD(dock·ScoreHud·CostDisplay·SkillBar) 일괄 비활성화. RESTART 은 Result→Placement→Battle 로 복원. **되돌리지 말 것.**
+- **결과 스탯**: `ResultScreen.Show*(score, remainingSec, leaks)` → 헤더에 `TIME m:ss  LEAKS n`. 누수=`_goalReachedCount`, 남은시간=`RemainingBattleSeconds()`(game-over 시점 캡처, timeout=0).
+- 상세: `5_dock_phase_gating_and_result_stats.md`.
+
 ## Follow-up
 
 - 등장 애니메이션(패널 슬라이드/스코어 카운트업/배지 팝) — 정적 레이아웃 확정 후 별도.

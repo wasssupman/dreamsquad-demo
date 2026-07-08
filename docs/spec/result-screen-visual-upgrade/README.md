@@ -33,6 +33,7 @@
 | 2 | UI | `2_leaderboard_rows.md` | 행별 플레이트 + 순위 배지 렌더 + 순수 `BuildRows` + EditMode 테스트 |
 | 3 | verify | `3_scene_wire_and_verify.md` | Play 검증(승/패·게스트·실랭킹·겹침 해소). ~~시즌 배경 와이어링~~ 폐기 |
 | 4 | handoff | `4_handoff_summary.md` | 인계 요약 |
+| 5 | UI | `5_dock_phase_gating_and_result_stats.md` | dock=Battle 전용(game-over Result phase) + 결과 팝업 TIME/LEAKS 스탯 |
 
 ## 파이프라인 커버리지
 

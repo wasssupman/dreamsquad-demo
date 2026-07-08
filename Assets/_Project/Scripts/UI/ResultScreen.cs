@@ -46,6 +46,7 @@ namespace Wassup.UI
 
         private TextMeshProUGUI resultLabel;
         private TextMeshProUGUI scoreSubLabel;
+        private TextMeshProUGUI statsLabel;
         private Image tabImage;
         private Button restartButton;
         private RectTransform _listContent;
@@ -74,18 +75,40 @@ namespace Wassup.UI
             if (restartButton != null) restartButton.onClick.RemoveListener(OnRestartClicked);
         }
 
-        public void ShowDefeat() => ShowDefeat(0);
-        public void ShowDefeat(int playerScore) => ShowResult("DEFEAT", playerScore);
-        public void ShowVictory() => ShowVictory(0);
-        public void ShowVictory(int playerScore) => ShowResult("VICTORY", playerScore);
+        // End-of-match summary stats shown on the result popup (null → hidden).
+        public readonly struct MatchStats
+        {
+            public readonly float RemainingSec;
+            public readonly int Leaks;
+            public MatchStats(float remainingSec, int leaks) { RemainingSec = remainingSec; Leaks = leaks; }
+        }
 
-        private void ShowResult(string resultText, int playerScore)
+        public void ShowDefeat() => ShowResult("DEFEAT", 0, null);
+        public void ShowDefeat(int playerScore) => ShowResult("DEFEAT", playerScore, null);
+        public void ShowDefeat(int playerScore, float remainingSec, int leaks)
+            => ShowResult("DEFEAT", playerScore, new MatchStats(remainingSec, leaks));
+        public void ShowVictory() => ShowResult("VICTORY", 0, null);
+        public void ShowVictory(int playerScore) => ShowResult("VICTORY", playerScore, null);
+        public void ShowVictory(int playerScore, float remainingSec, int leaks)
+            => ShowResult("VICTORY", playerScore, new MatchStats(remainingSec, leaks));
+
+        private void ShowResult(string resultText, int playerScore, MatchStats? stats)
         {
             if (!_built) BuildCanvas();
             resultLabel.text = resultText;
             bool win = resultText == "VICTORY";
             if (tabImage != null) tabImage.color = win ? goldColor : defeatColor;
             if (scoreSubLabel != null) scoreSubLabel.text = $"YOUR SCORE   {playerScore:N0}";
+            if (statsLabel != null)
+            {
+                if (stats.HasValue)
+                {
+                    int t = Mathf.Max(0, Mathf.CeilToInt(stats.Value.RemainingSec));
+                    statsLabel.text = $"TIME {t / 60}:{t % 60:D2}      LEAKS {stats.Value.Leaks}";
+                    statsLabel.gameObject.SetActive(true);
+                }
+                else statsLabel.gameObject.SetActive(false);
+            }
             RenderRows(BuildBotRows(playerScore));
             gameObject.SetActive(true);
         }
@@ -359,14 +382,26 @@ namespace Wassup.UI
             resultLabel.characterSpacing = 8f;
             StretchFull((RectTransform)resultLabel.transform);
 
-            scoreSubLabel = CreateLabel(hr, "ScoreSub", "", 30, TextAlignmentOptions.Center, goldColor);
+            scoreSubLabel = CreateLabel(hr, "ScoreSub", "", 28, TextAlignmentOptions.Center, goldColor);
             scoreSubLabel.fontStyle = FontStyles.SmallCaps;
             scoreSubLabel.characterSpacing = 4f;
             var ssr = (RectTransform)scoreSubLabel.transform;
             ssr.anchorMin = ssr.anchorMax = new Vector2(0.5f, 1f);
             ssr.pivot = new Vector2(0.5f, 1f);
-            ssr.sizeDelta = new Vector2(460f, 44f);
-            ssr.anchoredPosition = new Vector2(0f, -104f);
+            ssr.sizeDelta = new Vector2(560f, 36f);
+            ssr.anchoredPosition = new Vector2(0f, -96f);
+
+            // End-of-match stats line (TIME m:ss / LEAKS n). Hidden until Show* passes stats.
+            statsLabel = CreateLabel(hr, "StatsSub", "", 23, TextAlignmentOptions.Center,
+                new Color(0.72f, 0.76f, 0.82f, 1f));
+            statsLabel.fontStyle = FontStyles.SmallCaps;
+            statsLabel.characterSpacing = 3f;
+            var str = (RectTransform)statsLabel.transform;
+            str.anchorMin = str.anchorMax = new Vector2(0.5f, 1f);
+            str.pivot = new Vector2(0.5f, 1f);
+            str.sizeDelta = new Vector2(560f, 32f);
+            str.anchoredPosition = new Vector2(0f, -134f);
+            statsLabel.gameObject.SetActive(false);
         }
 
         private void BuildList(RectTransform panel)

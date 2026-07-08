@@ -2502,7 +2502,7 @@ namespace Wassup.Bridge
                     int playerScore = CalculatePlayerScore();
                     GameManager.Instance?.Logger?.SetResult("defeat", _goalReachedCount);
                     GameManager.Instance?.Logger?.SetScore(playerScore);
-                    resultScreen?.ShowDefeat(playerScore);
+                    resultScreen?.ShowDefeat(playerScore, RemainingBattleSeconds(), _goalReachedCount);
                     ReportMatchResult(playerScore);
                     Debug.Log("[BattleBridge] DEFEAT triggered.");
                     return;
@@ -2511,6 +2511,10 @@ namespace Wassup.Bridge
         }
 
         public float TimerRemaining => _running ? Mathf.Max(0f, _timerDuration - (float)_battleClock) : 0f;
+
+        // Seconds left on the match clock at query time — unlike TimerRemaining this
+        // stays valid after _running is cleared (used to stamp the result popup).
+        private float RemainingBattleSeconds() => Mathf.Max(0f, _timerDuration - (float)_battleClock);
 
         private void CheckTimer()
         {
@@ -2523,7 +2527,7 @@ namespace Wassup.Bridge
             int playerScore = CalculatePlayerScore();
             GameManager.Instance?.Logger?.SetResult("victory_timeout", _goalReachedCount);
             GameManager.Instance?.Logger?.SetScore(playerScore);
-            resultScreen?.ShowVictory(playerScore);
+            resultScreen?.ShowVictory(playerScore, 0f, _goalReachedCount); // timer expired → 0 left
             ReportMatchResult(playerScore);
             Debug.Log("[BattleBridge] VICTORY — timer expired, player survived.");
         }
@@ -2542,7 +2546,7 @@ namespace Wassup.Bridge
             int playerScore = CalculatePlayerScore();
             GameManager.Instance?.Logger?.SetResult("victory", _goalReachedCount);
             GameManager.Instance?.Logger?.SetScore(playerScore);
-            resultScreen?.ShowVictory(playerScore);
+            resultScreen?.ShowVictory(playerScore, RemainingBattleSeconds(), _goalReachedCount);
             ReportMatchResult(playerScore);
             Debug.Log("[BattleBridge] VICTORY — all attack units defeated.");
         }
@@ -2554,6 +2558,10 @@ namespace Wassup.Bridge
         // list stays.
         private void ReportMatchResult(int playerScore)
         {
+            // Match is over — enter the Result phase so battle-only HUD (NextWaveDock,
+            // ScoreHud, CostDisplay, SkillBar) deactivates. RESTART goes Result →
+            // Placement → Battle (BeginPlacementPhase), which re-shows them.
+            GameManager.Instance?.SetPhase(GamePhase.Result);
             var logger = GameManager.Instance?.Logger;
             Wassup.Core.Api.TournamentMatchReporter.ReportResult(playerScore, logger?.SnapshotJson(),
                 ranking => resultScreen?.UpdateLeaderboard(ranking, Wassup.Core.Api.UserSession.Current?.userId));
