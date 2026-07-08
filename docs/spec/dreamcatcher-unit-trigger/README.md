@@ -62,6 +62,7 @@
 
 ## 후속 후보
 
+- **공격 개조형 카드 부류 (c)** — 트리거 없는 상시 산출물 개조(튕김/관통 등) → `docs/spec/dreamcatcher-attack-mod-bounce/` 로 승격 (2026-07-09).
 - **SelfTileAoe 페이로드** [S] · "주변 1타일 물결" — TileAoe payload, impact=자기 셀 락.
 - **NextAttackModifier 페이로드 + charge 소모형 모디파이어 만료** [M] · "5회마다 다음 공격 2배" — 시간이 아니라 공격 N회로 꺼지는 StatModifierSlot 수명. 모디파이어 시스템 범용 확장.
 - **추가 트리거 소스** [M] · Kill / Damaged / NextWave — 각 소스(EnemyKilled, DamageApplication, bridge)에서 슬롯 카운트 훅.
