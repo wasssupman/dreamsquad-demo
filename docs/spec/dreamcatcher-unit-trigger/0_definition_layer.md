@@ -46,6 +46,8 @@ public DcMechanic[] mechanics;           // 보통 0~1개. binding=Unit 카드�
 
 ## 완료 기준
 
-- [ ] 컴파일 통과 (신규 .cs 는 refresh scope=all — lessons 참조)
-- [ ] 기존 `DreamcatcherCard` 에셋 인스펙터에서 값 변동 없음 (binding=Axis, mechanics 비어 있음)
-- [ ] 정의 계층 파일에 ECS/Battle 참조 없음 (리뷰 육안)
+- [x] 컴파일 통과 (신규 .cs 는 refresh scope=all — lessons 참조)
+- [x] 기존 `DreamcatcherCard` 에셋 인스펙터에서 값 변동 없음 (binding=Axis, mechanics 비어 있음)
+- [x] 정의 계층 파일에 ECS/Battle 참조 없음 (리뷰 육안)
+
+완료 확인: 2026-07-08 — 컴파일 0 에러, 기존 카드 에셋 dirty 없음(직렬화 무변동), code-review(low) 지적 0건. 이 문서와 동일 커밋.

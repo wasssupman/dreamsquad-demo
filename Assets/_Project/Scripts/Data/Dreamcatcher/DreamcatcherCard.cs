@@ -22,6 +22,12 @@ namespace Wassup.Data
     // capped per deck (<=2); Normal cards may repeat.
     public enum CardCategory { Normal, Unique }
 
+    // dreamcatcher-unit-trigger Unit 0 — how a card binds to its targets.
+    // Axis = existing axis-matched buff (current + future matching defenders);
+    // Unit = attached to one individual defender. Default 0 = Axis preserves
+    // every existing card asset's behavior.
+    public enum CardBinding { Axis, Unit }
+
     [Serializable]
     public struct CardEffect
     {
@@ -42,5 +48,13 @@ namespace Wassup.Data
         // category color when unassigned. Appended last to keep serialization
         // order stable for existing card assets.
         public Sprite art;
+        // dreamcatcher-unit-trigger Unit 0 — appended last to keep serialization
+        // order stable for existing card assets (binding deserializes as 0=Axis,
+        // mechanics as empty). effects[] and mechanics[] may coexist, but the
+        // current interpretation path consumes mechanics only for binding=Unit
+        // cards (ApplyDreamcatcherCard stays Axis-only). Bake-time read only —
+        // never iterate mechanics per-frame (managed array).
+        public CardBinding binding;
+        public DcMechanic[] mechanics;
     }
 }
