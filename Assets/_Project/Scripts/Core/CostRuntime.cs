@@ -1,9 +1,11 @@
 using UnityEngine;
+using Wassup.Core.TimeControl;
 
 namespace Wassup.Core
 {
-    // Phase 6 resource manager. MonoBehaviour so Update() drives continuous
-    // regen via Time.deltaTime, but intentionally NOT a singleton — GameManager
+    // Phase 6 resource manager. MonoBehaviour so Update() drives continuous regen via
+    // the Battle time domain (TimeManager) — so menu pause and drag slow-mo scale cost
+    // regen the same way they scale the sim — but intentionally NOT a singleton — GameManager
     // is the only allowed Instance in the project (CLAUDE.md rule). External
     // code accesses this via GameManager.CostRuntime or a wired SerializeField.
     //
@@ -81,7 +83,10 @@ namespace Wassup.Core
             _current = Mathf.Min(_max, _current + amount);
         }
 
-        private void Update() => Tick(Time.deltaTime);
+        // Scale regen by the Battle domain: paused (menu popup) → dt 0 → no regen;
+        // slow-mo (D&D drag) → proportionally slower. Global Time.timeScale stays 1,
+        // so under normal play this equals the prior Time.deltaTime behavior.
+        private void Update() => Tick(TimeManager.Instance.DeltaTime(TimeDomain.Battle));
 
         // dreamstone-loadout Unit 6 — regen step extracted from Update() so EditMode
         // tests can drive it directly (MonoBehaviour.Update never runs in EditMode).
