@@ -1,7 +1,9 @@
 # Spec: 준비단계 공격패턴 플로우 변경 (prep-attack-pattern-flow)
 
-> 상태: **완료 2026-06-04**
+> 상태: **완료 2026-07-08** — Unit 3 이 진입 시 자동 인트로를 폐지(아래 참조). (Unit 0/1 완료 2026-06-04)
 > 범위: **Squad 모드 (MAP SETUP / `SquadPrepView`) 한정**. Draft 모드(`DraftView`)는 건드리지 않는다.
+
+> ⚠️ **개정 (Unit 3, 2026-07-08)**: 진입 시 공격패턴 자동 인트로(Unroll→1초→Roll)를 **폐지**한다. 진입 → (공격패턴 안 뜸) → 드캐 3중1 → 배치. 공격패턴은 좌상단 "!" 토글로만 열람(배치·전투 중 상시). Unit 0 의 자동 인트로 계약은 무효, Unit 1 의 지속 토글 계약은 유지. 상세 `3_remove-auto-intro.md`.
 
 ## 검증 질문
 
@@ -38,8 +40,9 @@
 
 | 파일 | 작업 | 문서 | 목적 |
 |---|---|---|---|
-| 0 | 자동 인트로 + 자동 진행 | `0_attack-pattern-auto-intro.md` | 진입 시 펼침→1초 dwell→접힘→`RequestPlacement()` 자동 호출 (START 게이트 제거) |
+| 0 | 자동 인트로 + 자동 진행 | `0_attack-pattern-auto-intro.md` | ~~진입 시 펼침→1초 dwell→접힘→`RequestPlacement()` 자동 호출~~ (Unit 3 에서 폐지) |
 | 1 | 지속 토글 | `1_persistent-toggle.md` | strip + 맵설정 active 유지 → 배치/전투 중 토글 + 드캐 차단 검증 |
+| 3 | 자동 인트로 제거 | `3_remove-auto-intro.md` | 진입 시 강제 표시 폐지 → 곧바로 배치/드캐. 공격패턴은 "!" 토글로만 열람 |
 
 ## 후속 후보 (현 스코프 밖)
 
