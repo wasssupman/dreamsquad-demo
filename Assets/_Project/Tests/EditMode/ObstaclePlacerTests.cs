@@ -30,8 +30,15 @@ namespace Wassup.Tests.EditMode
 
                 ObstaclePlacer.Place(ref rng, tiles, gridSize, theme);
 
+                // Walk 은 절대 건드리지 않는다.
                 Assert.AreEqual(originalWalk, Count(tiles, MapTileType.Walk));
-                Assert.GreaterOrEqual(Count(tiles, MapTileType.Place), (int)math.ceil(originalPlace * theme.minPlaceableRatio));
+
+                // Place() 는 clamp(ratio,0.2,0.8) 에 dirt-coverage 감쇠 0.85× 를 곱한
+                // keepFraction 으로 Place 를 남긴다(ObstaclePlacer.Place 주석 참조).
+                // 따라서 보존 하한은 ratio 단독이 아니라 이 유효 비율 기준이다.
+                float effectiveKeep = math.clamp(theme.minPlaceableRatio, 0.2f, 0.8f) * 0.85f;
+                int expectedFloor = (int)math.ceil(originalPlace * effectiveKeep);
+                Assert.GreaterOrEqual(Count(tiles, MapTileType.Place), expectedFloor);
             }
             finally
             {
