@@ -2,7 +2,7 @@
 
 ## Commit
 
-(이 feature 커밋 — 해시는 커밋 후 기재) feat(dreamcatcher): 카드 아트 그리드 + 10종 확장
+`63d44050` feat(dreamcatcher): 카드 아트 그리드 + 상세 팝업 + 10종 확장 (branch `feature/dreamcatcher-card-art`, 47 files)
 
 ## Implemented
 

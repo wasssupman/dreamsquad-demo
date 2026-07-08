@@ -1,6 +1,6 @@
 # dreamcatcher-card-art
 
-> 상태: 완료 2026-07-08 (units 0~3, Play 검증 완료)
+> 상태: 완료 2026-07-08 (units 0~6, Play 검증 완료, 커밋 `63d44050`, branch `feature/dreamcatcher-card-art`)
 > 선행: `dreamcatcher-deck-builder`(완료, 페이지·덱규칙·카탈로그), `ingame-dreamcatcher`(완료, 카드 데이터).
 > handoff → `4_handoff_summary.md`.
 
