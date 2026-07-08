@@ -1155,7 +1155,6 @@ MonoBehaviour:
   draftController: {fileID: 20521825}
   mapSettings: {fileID: 1939162979}
   wavePatternStrip: {fileID: 1634174272}
-  introDwellSec: 1
 --- !u!4 &563611223
 Transform:
   m_ObjectHideFlags: 0
@@ -1455,12 +1454,12 @@ Transform:
   - {fileID: 220057793}
   - {fileID: 836730385}
   - {fileID: 915292525}
-  - {fileID: 1236522319}
   - {fileID: 1628485823}
   - {fileID: 1075095675}
   - {fileID: 313970632}
   - {fileID: 1132040372}
   - {fileID: 1279129163}
+  - {fileID: 1151968986}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &780954126
@@ -1984,6 +1983,58 @@ Transform:
   - {fileID: 569439754}
   m_Father: {fileID: 725522407}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1151968985
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1151968986}
+  - component: {fileID: 1151968987}
+  m_Layer: 0
+  m_Name: NextWaveDock
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1151968986
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1151968985}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 725522407}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1151968987
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1151968985}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bab5055d6219440049719164d2550e4c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.NextWaveDock
+  bridge: {fileID: 1939688408}
+  draftController: {fileID: 20521825}
+  timerFontSize: 40
+  timerColor: {r: 1, g: 1, b: 1, a: 1}
+  timerWarnColor: {r: 1, g: 0, b: 0, a: 1}
+  warnSeconds: 30
+  buttonColor: {r: 0.12, g: 0.42, b: 0.82, a: 0.95}
+  buttonFontSize: 28
 --- !u!1 &1192245888
 GameObject:
   m_ObjectHideFlags: 0
@@ -2269,52 +2320,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1236522317
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1236522319}
-  - component: {fileID: 1236522318}
-  m_Layer: 5
-  m_Name: TimerDisplay
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1236522318
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1236522317}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b16edd4216ed84393a98faa438c97307, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.TimerDisplay
-  bridge: {fileID: 1939688408}
-  draftController: {fileID: 20521825}
---- !u!4 &1236522319
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1236522317}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 725522407}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1279129161
 GameObject:
   m_ObjectHideFlags: 0
@@ -2393,9 +2398,9 @@ MonoBehaviour:
   soundPitchMax: 1.7
   soundPitchPerKill: 0.06
   soundHeatDecay: 1.4
-  topOffset: -76
-  valueFontSize: 83
-  captionFontSize: 29
+  topOffset: -24
+  valueFontSize: 104
+  captionFontSize: 34
 --- !u!4 &1279129163
 Transform:
   m_ObjectHideFlags: 0

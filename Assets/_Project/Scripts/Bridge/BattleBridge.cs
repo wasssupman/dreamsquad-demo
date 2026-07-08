@@ -7,7 +7,6 @@ using Unity.Mathematics;
 using Unity.Rendering;
 using Unity.Transforms;
 using UnityEngine;
-using UnityEngine.UI;
 using Wassup.Battle.Combat;
 using Wassup.Battle.Combat.Projectile;
 using Wassup.Battle.Effects;
@@ -21,7 +20,6 @@ using Wassup.Rendering;
 using Wassup.UI;
 using Wassup.Battle;
 using Wassup.Core.TimeControl;
-using TMPro;
 // DraftController lives in Wassup.Core above.
 
 namespace Wassup.Bridge
@@ -189,8 +187,6 @@ namespace Wassup.Bridge
         private WavePlanAsset _authoredPlan;
         private bool _usingAuthoredPlan;
         private int _nextWaveIndex;
-        private Button _nextWaveButton;
-        private TextMeshProUGUI _nextWaveLabel;
         private int _goalReachedCount;
         private NativeQueue<GoalReachedEvent> _goalEventQueue;
         private NativeQueue<DefenderDeathEvent> _defenderDeathQueue;
@@ -372,7 +368,6 @@ namespace Wassup.Bridge
             if (tileHealthGaugeLayer != null) tileHealthGaugeLayer.Clear(); // unit 3 — 게이지 전체 정리
             if (enemyHitBarSpawner != null) enemyHitBarSpawner.Clear(); // unit 2 — 잔여 마이크로바 정리(생명주기 대칭)
             ClearBlockingHazardVisuals();
-            SetNextWaveButtonVisible(false);
 
             if (HasLiveEntityManager())
             {
@@ -847,7 +842,6 @@ namespace Wassup.Bridge
             _usingAuthoredPlan = false;
             _wavePlan = default;
             _nextWaveIndex = 0;
-            SetNextWaveButtonVisible(false);
 
             EnsureQueriesAndQueues();
 
@@ -888,7 +882,6 @@ namespace Wassup.Bridge
             _running = true;
             if (_usingGeneratedWaves)
                 QueueDueWaves(0f);
-            RefreshNextWaveButton();
             if (_usingAuthoredPlan)
                 Debug.Log($"[BattleBridge] Battle started with AUTHORED plan '{_authoredPlan.displayName}' waves={_wavePlan.waves.Count} endless={(_timerDuration <= 0f)}.");
             else
@@ -1062,7 +1055,6 @@ namespace Wassup.Bridge
 
             _running = false;
             _placementAllowed = false;
-            SetNextWaveButtonVisible(false);
             DisposeEcsInfrastructureNativeContainers();
             DisposeCachedQueries();
             TeardownGeneratedMap();
@@ -1206,17 +1198,19 @@ namespace Wassup.Bridge
                 QueueWave(_wavePlan.waves[_nextWaveIndex], _wavePlan.waves[_nextWaveIndex].triggerTimeSec, false, elapsedSec);
                 _nextWaveIndex++;
             }
-            RefreshNextWaveButton();
         }
+
+        // Read-only wave-progress state for the UI (NextWaveDock polls these). The dock
+        // owns the button/label chrome; BattleBridge (ECS gateway) no longer builds UI.
+        public bool NextWaveAvailable => _running && _usingGeneratedWaves && _wavePlan.waves != null;
+        public bool NextWaveHasNext => NextWaveAvailable && _nextWaveIndex < _wavePlan.waves.Count;
+        public int NextWaveNumber => _nextWaveIndex + 1;
 
         public void ForceNextWave()
         {
             if (!_running || !_usingGeneratedWaves || _wavePlan.waves == null) return;
             if (_nextWaveIndex >= _wavePlan.waves.Count)
-            {
-                RefreshNextWaveButton();
                 return;
-            }
 
             // time-manager Unit 3 — 강제 웨이브의 triggerTimeSec 기준도 Battle 클럭이어야 한다.
             // Update 의 스폰 게이트가 _battleClock 을 쓰므로 실시간을 쓰면 정지/슬로우모 시 갈라진다.
@@ -1225,7 +1219,6 @@ namespace Wassup.Bridge
             GameManager.Instance?.Logger?.RecordWaveEvent("wave_forced", wave.waveIndex, elapsedSec, true);
             QueueWave(wave, elapsedSec, true, elapsedSec);
             _nextWaveIndex++;
-            RefreshNextWaveButton();
         }
 
         private void QueueWave(GeneratedWave wave, float baseTriggerTimeSec, bool forced, float elapsedSec)
@@ -1292,68 +1285,6 @@ namespace Wassup.Bridge
         public void SetSkillLoadout(SkillData[] loadout)
         {
             _skillLoadout = loadout;
-        }
-
-        private void EnsureNextWaveButton()
-        {
-            if (_nextWaveButton != null) return;
-
-            var canvasGO = new GameObject("NextWaveCanvas", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
-            canvasGO.transform.SetParent(transform, false);
-            var canvas = canvasGO.GetComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = 7;
-            var scaler = canvasGO.GetComponent<CanvasScaler>();
-            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1920f, 1080f);
-
-            var buttonGO = new GameObject("NextWaveButton", typeof(RectTransform), typeof(Image), typeof(Button));
-            buttonGO.transform.SetParent(canvasGO.transform, false);
-            var rt = (RectTransform)buttonGO.transform;
-            rt.anchorMin = new Vector2(1f, 0f);
-            rt.anchorMax = new Vector2(1f, 0f);
-            rt.pivot = new Vector2(1f, 0f);
-            rt.anchoredPosition = new Vector2(-40f, 40f);
-            rt.sizeDelta = new Vector2(250f, 72f);
-            buttonGO.GetComponent<Image>().color = new Color(0.12f, 0.42f, 0.82f, 0.95f);
-
-            _nextWaveButton = buttonGO.GetComponent<Button>();
-            _nextWaveButton.onClick.AddListener(ForceNextWave);
-
-            var labelGO = new GameObject("Label", typeof(RectTransform));
-            labelGO.transform.SetParent(buttonGO.transform, false);
-            var labelRT = (RectTransform)labelGO.transform;
-            labelRT.anchorMin = Vector2.zero;
-            labelRT.anchorMax = Vector2.one;
-            labelRT.offsetMin = Vector2.zero;
-            labelRT.offsetMax = Vector2.zero;
-            _nextWaveLabel = labelGO.AddComponent<TextMeshProUGUI>();
-            _nextWaveLabel.text = "NEXT WAVE";
-            _nextWaveLabel.fontSize = 28;
-            _nextWaveLabel.color = Color.white;
-            _nextWaveLabel.alignment = TextAlignmentOptions.Center;
-
-            canvasGO.SetActive(false);
-        }
-
-        private void SetNextWaveButtonVisible(bool visible)
-        {
-            if (_nextWaveButton == null) return;
-            _nextWaveButton.transform.parent.gameObject.SetActive(visible);
-        }
-
-        private void RefreshNextWaveButton()
-        {
-            EnsureNextWaveButton();
-
-            bool visible = _running && _usingGeneratedWaves && _wavePlan.waves != null;
-            SetNextWaveButtonVisible(visible);
-            if (!visible) return;
-
-            bool hasNext = _nextWaveIndex < _wavePlan.waves.Count;
-            _nextWaveButton.interactable = hasNext;
-            if (_nextWaveLabel != null)
-                _nextWaveLabel.text = hasNext ? $"NEXT WAVE {_nextWaveIndex + 1}" : "NO WAVES";
         }
 
         // ============== Skill casting (Phase 2) ==============
@@ -2617,7 +2548,6 @@ namespace Wassup.Bridge
                 {
                     _resultShown = true;
                     _running = false;
-                    SetNextWaveButtonVisible(false);
                     int playerScore = CalculatePlayerScore();
                     GameManager.Instance?.Logger?.SetResult("defeat", _goalReachedCount);
                     GameManager.Instance?.Logger?.SetScore(playerScore);
@@ -2638,7 +2568,6 @@ namespace Wassup.Bridge
 
             _resultShown = true;
             _running = false;
-            SetNextWaveButtonVisible(false);
             int playerScore = CalculatePlayerScore();
             GameManager.Instance?.Logger?.SetResult("victory_timeout", _goalReachedCount);
             GameManager.Instance?.Logger?.SetScore(playerScore);
@@ -2657,7 +2586,6 @@ namespace Wassup.Bridge
 
             _resultShown = true;
             _running = false;
-            SetNextWaveButtonVisible(false);
             int playerScore = CalculatePlayerScore();
             GameManager.Instance?.Logger?.SetResult("victory", _goalReachedCount);
             GameManager.Instance?.Logger?.SetScore(playerScore);

@@ -91,10 +91,12 @@ namespace Wassup.UI
         [SerializeField] private float soundHeatDecay = 1.4f;
 
         [Header("Layout")]
-        // Sits just below the timer (timer panel: y -12, height 60 -> bottom ~-72).
-        [SerializeField] private float topOffset = -76f;
-        [SerializeField] private float valueFontSize = 83f;
-        [SerializeField] private float captionFontSize = 29f;
+        // The star of the HUD: the timer no longer stacks above the score (it moved
+        // to the bottom-right NextWaveDock), so the score owns the top-center and sits
+        // near the top edge, larger than before.
+        [SerializeField] private float topOffset = -24f;
+        [SerializeField] private float valueFontSize = 104f;
+        [SerializeField] private float captionFontSize = 34f;
 
         private GameObject _panel;
         private TextMeshProUGUI _caption;
@@ -362,7 +364,7 @@ namespace Wassup.UI
             prt.anchorMax = new Vector2(0.5f, 1f);
             prt.pivot = new Vector2(0.5f, 1f);
             prt.anchoredPosition = new Vector2(0f, topOffset);
-            prt.sizeDelta = new Vector2(420f, 140f);
+            prt.sizeDelta = new Vector2(480f, 170f);
 
             _caption = MakeText("Caption", _panel.transform, captionFontSize, new Vector2(0f, 1f));
             var crt = _caption.rectTransform;
@@ -370,7 +372,7 @@ namespace Wassup.UI
             crt.anchorMax = new Vector2(0.5f, 1f);
             crt.pivot = new Vector2(0.5f, 1f);
             crt.anchoredPosition = new Vector2(0f, 0f);
-            crt.sizeDelta = new Vector2(360f, 28f);
+            crt.sizeDelta = new Vector2(360f, 34f);
             _caption.text = "SCORE";
             _caption.color = new Color(1f, 1f, 1f, 0.8f);
 
@@ -379,8 +381,8 @@ namespace Wassup.UI
             _valueRect.anchorMin = new Vector2(0.5f, 1f);
             _valueRect.anchorMax = new Vector2(0.5f, 1f);
             _valueRect.pivot = new Vector2(0.5f, 1f);
-            _valueRect.anchoredPosition = new Vector2(0f, -34f);
-            _valueRect.sizeDelta = new Vector2(420f, 104f);
+            _valueRect.anchoredPosition = new Vector2(0f, -40f);
+            _valueRect.sizeDelta = new Vector2(480f, 124f);
             _value.text = "0";
             _value.color = baseColor;
 
