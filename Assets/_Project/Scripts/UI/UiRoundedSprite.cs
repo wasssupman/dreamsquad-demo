@@ -1,0 +1,80 @@
+using UnityEngine;
+
+namespace Wassup.UI
+{
+    /// 런타임에 절차적으로 굽는 라운드렉트/원 UI 스프라이트의 단일 소스.
+    /// 새 아트 없이 네이비 플레이트·골드 테두리·순위 배지 등을 코드로 만든다.
+    /// (score-hud-impact-upgrade 의 사설 MakeRoundedRectSprite 를 공용화 —
+    ///  result-screen-visual-upgrade unit 0.)
+    public static class UiRoundedSprite
+    {
+        /// 9-slice 라운드렉트 스프라이트. border>0 이면 border px 두께의 테두리 링을
+        /// borderColor 로, 안쪽은 fill 로 채운다. Image.Type.Sliced 로 사용.
+        public static Sprite Make(float radius, float border, Color fill, Color borderColor)
+        {
+            int r = Mathf.Max(1, Mathf.RoundToInt(radius));
+            int b = Mathf.Max(0, Mathf.RoundToInt(border));
+            int pad = 2 * b + 8;                 // stretchable center strip (keeps 9-slice valid)
+            int size = 2 * r + pad;
+            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false)
+            {
+                wrapMode = TextureWrapMode.Clamp,
+                filterMode = FilterMode.Bilinear
+            };
+            var px = new Color32[size * size];
+            float half = (size - 1) * 0.5f;
+            float bx = half - r, by = half - r;  // half-extent of the straight region
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    float qx = Mathf.Abs(x - half) - bx;
+                    float qy = Mathf.Abs(y - half) - by;
+                    float outside = Mathf.Sqrt(Mathf.Max(qx, 0f) * Mathf.Max(qx, 0f) +
+                                               Mathf.Max(qy, 0f) * Mathf.Max(qy, 0f));
+                    float sd = outside + Mathf.Min(Mathf.Max(qx, qy), 0f) - r; // <=0 inside
+                    float aa = Mathf.Clamp01(0.5f - sd);                        // edge antialias
+                    Color c = (b > 0 && sd > -b) ? borderColor : fill;
+                    c.a *= aa;
+                    px[y * size + x] = c;
+                }
+            }
+            tex.SetPixels32(px);
+            tex.Apply();
+            float bd = r + b + 1;                // 9-slice border (< size/2 by construction)
+            return Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f),
+                                 100f, 0, SpriteMeshType.FullRect, new Vector4(bd, bd, bd, bd));
+        }
+
+        /// 꽉 찬 원 스프라이트(순위 배지용). border>0 이면 borderColor 링을 두른다.
+        /// 고정 크기로 쓰므로 9-slice 불필요 — Image.Type.Simple 로 사용.
+        public static Sprite MakeCircle(int diameter, Color fill, float border = 0f, Color borderColor = default)
+        {
+            int size = Mathf.Max(2, diameter);
+            int b = Mathf.Max(0, Mathf.RoundToInt(border));
+            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false)
+            {
+                wrapMode = TextureWrapMode.Clamp,
+                filterMode = FilterMode.Bilinear
+            };
+            var px = new Color32[size * size];
+            float half = (size - 1) * 0.5f;
+            float rOuter = half;
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    float dist = Mathf.Sqrt((x - half) * (x - half) + (y - half) * (y - half));
+                    float sd = dist - rOuter;                       // <=0 inside the disc
+                    float aa = Mathf.Clamp01(0.5f - sd);            // edge antialias
+                    Color c = (b > 0 && sd > -b) ? borderColor : fill;
+                    c.a *= aa;
+                    px[y * size + x] = c;
+                }
+            }
+            tex.SetPixels32(px);
+            tex.Apply();
+            return Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100f);
+        }
+    }
+}
