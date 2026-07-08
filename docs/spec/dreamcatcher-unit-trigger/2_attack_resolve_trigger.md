@@ -34,6 +34,8 @@ AttackSystem:
 
 ## 완료 기준
 
-- [ ] EditMode `DcTriggerTests`: period=5 에서 4회 false→5회째 true+counter 리셋 / period=1 매회 true / period=0 항상 false / 독립 counter 2개 비간섭
-- [ ] 기존 EditMode/PlayMode 무회귀
-- [ ] execute_code Play 확인: 부착 유닛의 5회째 타격마다 캐리어 request 가 생성·드레인되어 투사체 엔티티 스폰 (unit 3 에서 e2e 확정)
+- [x] EditMode `DcTriggerTests`: period=5 에서 4회 false→5회째 true+counter 리셋 / period=1 매회 true / period=0 항상 false / 독립 counter 2개 비간섭
+- [x] 기존 EditMode/PlayMode 무회귀
+- [x] execute_code Play 확인: 부착 유닛의 5회째 타격마다 캐리어 request 가 생성·드레인되어 투사체 엔티티 스폰 (unit 3 에서 e2e 확정)
+
+완료 확인: 2026-07-09 — 컴파일 클린, EditMode 565 (신규 DcTriggerTests 4/4, 실패는 기지 사전실패 2건뿐). 실전투 Play(HP 부스트 아처, period=2): 세션 로그에 `Archer Damage 20.0 × 5` 가 기본 공격(15.0×8)과 나란히 기록 — 위상 정확, 전투 중 캐리어 잔존 0. 패배 종료 프레임의 미드레인 캐리어 1개 잔존 경로 실측 → 설계대로 teardown 안전망 대상(무해). ecs-reviewer: CRITICAL/HIGH 0, MEDIUM 1건 반영(미지원 payload 발동 시 침묵 소비 → LogWarning). 이 문서와 동일 커밋.

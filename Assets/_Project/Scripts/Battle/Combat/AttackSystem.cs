@@ -64,6 +64,8 @@ namespace Wassup.Battle.Combat
             // enemy-ai-fsm 3a — fire 게이트용 상태 RO.
             var aiStateLookup = SystemAPI.GetComponentLookup<EnemyAiState>(isReadOnly: true);
             var focusLookup = SystemAPI.GetComponentLookup<FocusTarget>(isReadOnly: false);
+            // dreamcatcher-unit-trigger unit 2 — triggered card slots (counter RW).
+            var dcSlotLookup = SystemAPI.GetBufferLookup<DcTriggerSlot>(isReadOnly: false);
             var healthLookup = SystemAPI.GetComponentLookup<Health>(isReadOnly: true);
             var deadLookup = SystemAPI.GetComponentLookup<DeadTag>(isReadOnly: true);
 
@@ -523,6 +525,71 @@ namespace Wassup.Battle.Combat
                                         remainingTime = ccData.knockbackDuration,
                                     },
                                 });
+                            }
+                        }
+                    }
+
+                    // [Defender only] dreamcatcher-unit-trigger unit 2 — triggered card
+                    // slots count once per attack RESOLVE (multi-output attacks still
+                    // count 1; a resolve that lapsed with no valid target counts 0).
+                    // bestTarget is guaranteed alive here: RESOLVE applies damage via
+                    // the deferred IncomingDamage buffer, so nothing in this block can
+                    // have destroyed it.
+                    if (defenderTagLookup.HasComponent(attackerEntity) && dcSlotLookup.HasBuffer(attackerEntity))
+                    {
+                        var dcSlots = dcSlotLookup[attackerEntity];
+                        for (int si = 0; si < dcSlots.Length; si++)
+                        {
+                            var slot = dcSlots[si];
+                            if (slot.trigger != Wassup.Data.DcTriggerKind.AttackN) continue;
+                            ushort dcCounter = slot.counter;
+                            bool dcFired = DcTrigger.Tick(ref dcCounter, slot.period);
+                            slot.counter = dcCounter;
+                            dcSlots[si] = slot;
+                            if (!dcFired) continue;
+
+                            if (slot.payload != Wassup.Data.DcPayloadKind.ProjectileToTarget)
+                            {
+                                // Counting is trigger-side semantics and ticks regardless,
+                                // but a fired trigger with no payload arm is an integration
+                                // bug (a future DcPayloadKind landed without its arm here) —
+                                // fail loudly instead of silently consuming the fire.
+                                UnityEngine.Debug.LogWarning("[AttackSystem] DcTriggerSlot fired with unhandled payload kind.");
+                            }
+                            else
+                            {
+                                // Dedicated request-carrier entity: the shooter's own
+                                // attack may stage a ProjectileSpawnRequest this same
+                                // frame and the request is a single IComponentData.
+                                // ECB deferred creation is required — a direct
+                                // EntityManager.CreateEntity inside this query foreach
+                                // would throw. The carrier materializes at ecb.Playback
+                                // below, before BattleBridge's drain, and the drain
+                                // destroys it after spawning the projectile.
+                                var dcCarrier = ecb.CreateEntity();
+                                ecb.AddComponent(dcCarrier, new ProjectileSpawnRequest
+                                {
+                                    movement = MovementKind.HomingToEntity,
+                                    payload = PayloadKind.SingleSplash,
+                                    target = bestTarget,
+                                    origin = atkPos,
+                                    damage = slot.magnitude, // flat — no damageMul (spec contract 7)
+                                    speed = slot.speed,
+                                    hitThreshold = slot.hitThreshold,
+                                    visualScale = slot.visualScale,
+                                    dataIndex = slot.projectileDataIndex,
+                                });
+                                ecb.AddComponent<ProjectileRequestCarrier>(dcCarrier);
+                                if (attackOutputLogWriter.HasValue)
+                                    attackOutputLogWriter.Value.Enqueue(new AttackOutputLogEvent
+                                    {
+                                        attacker  = attackerEntity,
+                                        kind      = Wassup.Data.AttackOutputKind.Damage,
+                                        magnitude = slot.magnitude,
+                                        duration  = 0f,
+                                        sourcePos = atkPos,
+                                        targetPos = bestTargetPos,
+                                    });
                             }
                         }
                     }
