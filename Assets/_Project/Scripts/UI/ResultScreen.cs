@@ -273,8 +273,11 @@ namespace Wassup.UI
             if (canvas == null) canvas = gameObject.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             // Terminal game-over modal — must sit above ALL other UI so the dim covers
-            // the battle HUD (ScoreHud 6, docks 7-8, DefenderSelector 4) and the MENU
-            // button (1000). Was 4, which let the HUD bleed over the dim.
+            // the battle HUD (ScoreHud 6, docks 7-8) and the MENU button (1000).
+            // This ResultScreen lives *nested* under a root "ResultCanvas", so a plain
+            // sortingOrder is IGNORED — overrideSorting=true is required for the nested
+            // canvas to sort as its own unit above everything.
+            canvas.overrideSorting = true;
             canvas.sortingOrder = 2000;
 
             if (gameObject.GetComponent<CanvasScaler>() == null)
@@ -288,10 +291,15 @@ namespace Wassup.UI
                 gameObject.AddComponent<GraphicRaycaster>();
 
             // Full-screen dim behind the panel — shared overlay tone, no art BG.
+            // Explicit solid sprite (not a null-sprite Image) so it reliably draws a
+            // filled quad across the whole screen.
             var dim = new GameObject("Dim", typeof(RectTransform), typeof(Image));
             dim.transform.SetParent(transform, false);
             StretchFull((RectTransform)dim.transform);
-            dim.GetComponent<Image>().color = UiOverlay.Dim;
+            var dimImg = dim.GetComponent<Image>();
+            dimImg.sprite = UiRoundedSprite.Make(2f, 0f, Color.white, Color.white);
+            dimImg.type = Image.Type.Sliced;
+            dimImg.color = UiOverlay.Dim;
 
             // Panel.
             var panel = new GameObject("ResultPanel", typeof(RectTransform), typeof(Image));

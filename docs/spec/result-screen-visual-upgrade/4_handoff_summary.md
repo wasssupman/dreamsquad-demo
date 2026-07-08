@@ -32,7 +32,8 @@
 - **직렬화 필드 0**: 팔레트/dim 은 `private static readonly` 코드 상수. `ResultScreen` 에 `[SerializeField]` 없음 → BattleScene diff 0(HEAD clean). 씬 와이어링/시즌 텍스처 임포트 변경 없음(cosmic 은 Texture2D 로 원복).
 - **`??` 금지**: `GetComponent<T>() ?? AddComponent<T>()` 는 Unity fake-null 을 안 걸러 에디터 NRE. `if (== null)` 패턴 유지.
 - 행 교체는 detach-then-Destroy(플레이 모드). 결과 팝업은 매치당 1회라 풀링 불필요.
-- **캔버스 sortingOrder=2000 (최상위 모달)**: 게임 종료 모달이라 모든 오버레이 UI(ScoreHud 6·독 7~8·DefenderSelector 4·MENU 1000) 위에 dim 이 깔려야 한다. 초기 4 는 인게임 HUD 가 dim 위로 새는 버그 → 2000 으로 상향. 낮추지 말 것.
+- **최상위 모달 (nested canvas + dim 렌더)**: `ResultScreen` 은 씬에서 root `ResultCanvas`(overlay, order 0) 아래 **중첩**된다. 중첩 canvas 는 `overrideSorting=true` 없이는 `sortingOrder` 를 무시하므로 반드시 `overrideSorting=true` + `sortingOrder=2000` 을 함께 둔다(이게 없으면 order 0 로 취급돼 ScoreHud 6·MENU 1000 이 dim 위로 샌다). **되돌리지 말 것.**
+- **dim 은 명시 스프라이트 필수**: 이 경로에서 null-sprite `Image` 는 렌더되지 않아(보드가 dim 안 먹고 밝게 보임) `UiRoundedSprite.Make` 흰색 스프라이트를 dim 에 부여한다. 빨강 배경 테스트로 dim 커버 검증.
 
 ## Follow-up
 
