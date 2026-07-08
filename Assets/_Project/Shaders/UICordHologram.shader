@@ -65,6 +65,7 @@ Shader "Wassup/UI/CordHologram"
             #pragma fragment frag
             #include "UnityCG.cginc"
             #include "UnityUI.cginc"
+            #include "KeyringHologramCommon.hlsl" // keyring-unify 2 — 효과 함수 공용(월드 셰이더와 공유)
             #pragma multi_compile_local _ UNITY_UI_CLIP_RECT
             #pragma multi_compile_local _ UNITY_UI_ALPHACLIP
 
@@ -117,40 +118,27 @@ Shader "Wassup/UI/CordHologram"
                 return OUT;
             }
 
-            float hash21(float2 p)
-            {
-                return frac(sin(dot(p, float2(12.9898, 78.233))) * 43758.5453);
-            }
-
             fixed4 frag(v2f IN) : SV_Target
             {
                 float t = _Time.y;
                 float2 uv = IN.texcoord;
 
-                // 행 글리치: 시간 해시가 임계 초과인 행만 uv.x 어긋남
-                float row = floor(uv.y * 48.0);
-                float g = hash21(float2(row, floor(t * _GlitchSpeed)));
-                if (g > 0.92)
-                    uv.x += (g - 0.96) * 2.0 * _GlitchAmount;
+                // 행 글리치: 시간 해시가 임계 초과인 행만 uv.x 어긋남 (UGUI: 길이축=uv.y, 폭=uv.x)
+                uv.x += KeyringGlitchOffset(uv.y, t, _GlitchSpeed, _GlitchAmount);
 
                 half4 tex = tex2D(_MainTex, uv) + _TextureSampleAdd;
 
-                // 그라데이션 (시안→마젠타)
-                fixed3 grad = lerp(_ColorA.rgb, _ColorB.rgb, uv.y);
-
-                // 스캔라인: 아래로 흐르는 감쇠 줄무늬
-                float scan = 1.0 - _ScanStrength * (0.5 + 0.5 * sin(uv.y * _ScanDensity - t * _ScanSpeed));
-
-                // 플리커: 시간 해시 기반 전체 밝기 떨림
-                float fl = 1.0 - _FlickerStrength * hash21(float2(floor(t * _FlickerSpeed), 7.0));
-
-                // 펄스: 줄을 따라 흐르는 밝은 밴드 (백색광)
-                float pos = frac(t * _PulseSpeed);
-                float pulse = smoothstep(_PulseWidth, 0.0, abs(uv.y - pos)) * _PulseStrength;
+                // 그라데이션·스캔라인·플리커·펄스 — KeyringHologramCommon 공용 함수
+                // (fixed→float 정밀도 승격은 keyring-unify 계약 6의 허용 예외)
+                float fl;
+                float3 rgb = KeyringHoloColor(tex.rgb, tex.a, uv.y, t,
+                    _ColorA.rgb, _ColorB.rgb, _Intensity,
+                    _ScanDensity, _ScanSpeed, _ScanStrength,
+                    _FlickerSpeed, _FlickerStrength,
+                    _PulseSpeed, _PulseWidth, _PulseStrength, fl);
 
                 half4 col;
-                col.rgb = (grad * tex.rgb * scan + pulse.xxx * tex.a) * _Intensity * fl;
-                col.rgb *= IN.color.rgb;
+                col.rgb = rgb * IN.color.rgb;
                 col.a = tex.a * IN.color.a * fl;
 
                 #ifdef UNITY_UI_CLIP_RECT

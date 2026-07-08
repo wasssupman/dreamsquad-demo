@@ -16,5 +16,5 @@ MonoBehaviour:
   cordSprite: {fileID: 21300000, guid: 8234daf2053c90442bbeb92cbc65d4a8, type: 3}
   uiCordMaterial: {fileID: 2100000, guid: bcfbcecdf31415746ab3012b14d3ec1c, type: 2}
   uiRingMaterial: {fileID: 2100000, guid: bcfbcecdf31415746ab3012b14d3ec1c, type: 2}
-  worldCordMaterial: {fileID: 0}
-  worldRingMaterial: {fileID: 0}
+  worldCordMaterial: {fileID: 2100000, guid: 96482c9696af42fe97da1167bca73c97, type: 2}
+  worldRingMaterial: {fileID: 2100000, guid: 44e0ab9fed5b4172830c63f0b0884133, type: 2}
