@@ -26,10 +26,15 @@ namespace Wassup.UI
         private SlotView[] _slots;
         private bool _built;
 
+        // ui-tweak 2026-07-08 — 포트레이트 슬롯은 상시 테두리/딤 없이, 선택된 슬롯만
+        // 골드 프레임으로 표시한다.
+        private static readonly Color SelectionFrameColor = new Color(1f, 0.82f, 0.28f, 1f);
+
         private struct SlotView
         {
             public DefenderUnitData data;
             public Image background;
+            public Image portrait;
             public TextMeshProUGUI nameLabel;
             public Button button;
         }
@@ -93,8 +98,17 @@ namespace Wassup.UI
             {
                 ref var s = ref _slots[i];
                 bool isSelected = s.data == current;
-                var matColor = s.data.visualMaterial != null ? s.data.visualMaterial.GetColor("_BaseColor") : Color.gray;
-                s.background.color = isSelected ? Color.Lerp(matColor, Color.white, 0.45f) : matColor;
+                if (s.portrait != null && s.portrait.enabled)
+                {
+                    // 딤/상시 테두리 제거: 포트레이트는 항상 풀 밝기, 선택 슬롯만 골드 프레임.
+                    s.background.color = isSelected ? SelectionFrameColor : Color.clear;
+                }
+                else
+                {
+                    // 폴백(포트레이트 없음): 기존 단색 배경 + 선택 시 밝게.
+                    var matColor = s.data.visualMaterial != null ? s.data.visualMaterial.GetColor("_BaseColor") : Color.gray;
+                    s.background.color = isSelected ? Color.Lerp(matColor, Color.white, 0.45f) : matColor;
+                }
             }
         }
 
@@ -138,7 +152,9 @@ namespace Wassup.UI
             prt.anchorMax = new Vector2(0f, 0f);
             prt.pivot = new Vector2(0f, 0f);
             prt.anchoredPosition = new Vector2(40f, 40f);
-            prt.sizeDelta = new Vector2(760f, 100f);
+            // ui-tweak 2026-07-08 — 유닛 슬롯 20% 확대(760x100 → 912x120). 슬롯은
+            // childForceExpand 로 패널을 채우므로 패널 크기만 키우면 균등 확대된다.
+            prt.sizeDelta = new Vector2(912f, 120f);
 
             var hlg = _panel.AddComponent<HorizontalLayoutGroup>();
             hlg.spacing = 8f;
@@ -165,27 +181,59 @@ namespace Wassup.UI
                     typeof(RectTransform), typeof(Image), typeof(Button));
                 go.transform.SetParent(_slotContainer, false);
                 var bg = go.GetComponent<Image>();
-                bg.color = data.visualMaterial != null ? data.visualMaterial.GetColor("_BaseColor") : Color.gray;
+                // 포트레이트가 있으면 상시 테두리 없음(투명). 선택 시에만 Update 가 프레임을 칠한다.
+                // 폴백(포트레이트 없음)만 단색 배경 유지.
+                bg.color = data.portrait != null
+                    ? Color.clear
+                    : (data.visualMaterial != null ? data.visualMaterial.GetColor("_BaseColor") : Color.gray);
                 var btn = go.GetComponent<Button>();
                 int idx = i;
                 btn.onClick.AddListener(() => OnSlotClicked(idx));
                 var dragSlot = go.AddComponent<DefenderDragSlot>();
                 dragSlot.Bind(data, dragPlacementController);
 
+                // defender-portraits 3 — 포트레이트 채움(약간의 패딩으로 background 가
+                // 선택 테두리로 보이게). raycastTarget=false 라 드래그 입력은 슬롯 루트가 받는다.
+                var portraitGO = new GameObject("Portrait", typeof(RectTransform), typeof(Image));
+                portraitGO.transform.SetParent(go.transform, false);
+                var prt = (RectTransform)portraitGO.transform;
+                prt.anchorMin = Vector2.zero;
+                prt.anchorMax = Vector2.one;
+                prt.offsetMin = new Vector2(4f, 4f);
+                prt.offsetMax = new Vector2(-4f, -4f);
+                var portraitImg = portraitGO.GetComponent<Image>();
+                portraitImg.preserveAspect = true;
+                portraitImg.raycastTarget = false;
+                portraitImg.sprite = data.portrait;
+                portraitImg.enabled = data.portrait != null;
+
                 var nameGO = new GameObject("Name", typeof(RectTransform));
                 nameGO.transform.SetParent(go.transform, false);
                 var nrt = (RectTransform)nameGO.transform;
-                nrt.anchorMin = Vector2.zero;
-                nrt.anchorMax = Vector2.one;
-                nrt.offsetMin = new Vector2(4f, 4f);
-                nrt.offsetMax = new Vector2(-4f, -4f);
+                if (data.portrait != null)
+                {
+                    // 포트레이트가 있으면 이름은 하단 소형 오버레이.
+                    nrt.anchorMin = new Vector2(0f, 0f);
+                    nrt.anchorMax = new Vector2(1f, 0f);
+                    nrt.pivot = new Vector2(0.5f, 0f);
+                    nrt.sizeDelta = new Vector2(0f, 22f);
+                    nrt.anchoredPosition = new Vector2(0f, 2f);
+                }
+                else
+                {
+                    // 폴백: 기존 중앙 텍스트.
+                    nrt.anchorMin = Vector2.zero;
+                    nrt.anchorMax = Vector2.one;
+                    nrt.offsetMin = new Vector2(4f, 4f);
+                    nrt.offsetMax = new Vector2(-4f, -4f);
+                }
                 var tmp = nameGO.AddComponent<TextMeshProUGUI>();
                 tmp.text = data.displayName;
-                tmp.fontSize = 18;
+                tmp.fontSize = data.portrait != null ? 14 : 18;
                 tmp.color = Color.white;
                 tmp.alignment = TextAlignmentOptions.Center;
 
-                _slots[i] = new SlotView { data = data, background = bg, nameLabel = tmp, button = btn };
+                _slots[i] = new SlotView { data = data, background = bg, portrait = portraitImg, nameLabel = tmp, button = btn };
             }
 
             UiLayer.Apply(gameObject);

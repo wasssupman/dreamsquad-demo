@@ -43,6 +43,7 @@ namespace Wassup.UI
 
         private readonly List<TMP_Text> _unitSlotLabels = new List<TMP_Text>();
         private readonly List<Image> _unitSlotBgs = new List<Image>();
+        private readonly List<Image> _unitSlotIcons = new List<Image>();
         private readonly List<TMP_Text> _stoneSlotLabels = new List<TMP_Text>();
         private readonly List<Image> _stoneSlotBgs = new List<Image>();
         private readonly List<Image> _stoneSlotIcons = new List<Image>();
@@ -89,10 +90,14 @@ namespace Wassup.UI
             for (int i = 0; i < SquadSave.SlotCount; i++)
             {
                 int index = i;
-                var btn = CreateButton("+", slotsContainer, new Vector2(120, 120), EmptySlotColor, out var label);
+                // ui-tweak 2026-07-08 — 편성 슬롯 포트레이트 확대(120→165). SlotsRow(scene)
+                // 폭/높이도 함께 확대(1260x190).
+                var btn = CreateButton("+", slotsContainer, new Vector2(165, 165), EmptySlotColor, out var label);
+                var icon = CreateIconImage(btn.transform, new Vector2(130, 130), new Vector2(0, 18));
                 btn.onClick.AddListener(() => OpenPicker(PickerMode.Unit, index));
                 _unitSlotLabels.Add(label);
                 _unitSlotBgs.Add(btn.GetComponent<Image>());
+                _unitSlotIcons.Add(icon);
             }
         }
 
@@ -181,11 +186,17 @@ namespace Wassup.UI
                 string id = (squad != null && i < squad.unitIds.Count) ? squad.unitIds[i] : "";
                 if (string.IsNullOrEmpty(id))
                 {
+                    SetSlotLabelMode(_unitSlotLabels[i], false);
                     _unitSlotLabels[i].text = "+";
                     _unitSlotBgs[i].color = EmptySlotColor;
+                    SetIcon(_unitSlotIcons[i], null);
                     continue;
                 }
                 var unit = catalog != null ? catalog.ById(id) : null;
+                var portrait = unit != null ? unit.portrait : null;
+                SetIcon(_unitSlotIcons[i], portrait);
+                // 포트레이트가 있으면 이름을 하단 소형 라벨로, 없으면 기존 중앙 텍스트 폴백.
+                SetSlotLabelMode(_unitSlotLabels[i], portrait != null);
                 _unitSlotLabels[i].text = unit != null ? DisplayName(unit) : id;
                 _unitSlotBgs[i].color = OwnedUnitColor;
             }
@@ -195,7 +206,7 @@ namespace Wassup.UI
                 string id = (squad != null && squad.stoneIds != null && i < squad.stoneIds.Count) ? squad.stoneIds[i] : "";
                 if (string.IsNullOrEmpty(id))
                 {
-                    SetStoneSlotLabelMode(_stoneSlotLabels[i], false);
+                    SetSlotLabelMode(_stoneSlotLabels[i], false);
                     _stoneSlotLabels[i].text = "+";
                     _stoneSlotBgs[i].color = EmptySlotColor;
                     SetIcon(_stoneSlotIcons[i], null);
@@ -206,13 +217,13 @@ namespace Wassup.UI
                 {
                     // Catalog missing this id (asset deleted) — show the raw id, neutral
                     // color; still clearable via the picker's [해제] (squad-loadout policy).
-                    SetStoneSlotLabelMode(_stoneSlotLabels[i], false);
+                    SetSlotLabelMode(_stoneSlotLabels[i], false);
                     _stoneSlotLabels[i].text = id;
                     _stoneSlotBgs[i].color = EmptySlotColor;
                     SetIcon(_stoneSlotIcons[i], null);
                     continue;
                 }
-                SetStoneSlotLabelMode(_stoneSlotLabels[i], true);
+                SetSlotLabelMode(_stoneSlotLabels[i], true);
                 _stoneSlotLabels[i].text = StoneSummary(stone);
                 _stoneSlotBgs[i].color = GradeColor(stone.grade);
                 SetIcon(_stoneSlotIcons[i], stone.icon);
@@ -236,8 +247,10 @@ namespace Wassup.UI
             if (mode == PickerMode.Unit)
             {
                 _pickerTitle.text = "SELECT UNIT";
-                _pickerGridLayout.cellSize = new Vector2(150, 70);
-                _pickerGridLayout.spacing = new Vector2(12, 12);
+                // ui-tweak 2026-07-08 — 유닛 포트레이트 아이템 50% 확대(150→225). 그리드는
+                // 폭에 맞춰 열 수가 줄고 스크롤로 흐른다.
+                _pickerGridLayout.cellSize = new Vector2(225, 225);
+                _pickerGridLayout.spacing = new Vector2(16, 16);
                 BuildUnitPickerItems();
             }
             else
@@ -283,7 +296,7 @@ namespace Wassup.UI
                 string captured = id;
                 bool alreadySlotted = squad != null && squad.unitIds.Contains(id);
                 var bg = alreadySlotted ? DimColor(OwnedUnitColor, 0.4f) : OwnedUnitColor;
-                var btn = CreateButton(label, _pickerGrid, new Vector2(150, 70), bg, out var lbl);
+                var btn = CreateUnitPickerButton(unit, label, bg, alreadySlotted, out var lbl);
                 if (alreadySlotted)
                 {
                     // Unit picker: already-slotted units are NOT selectable — squad is a
@@ -412,7 +425,9 @@ namespace Wassup.UI
             // RC2 (2026-07-04) — grid band pinned below the slot rows (unit row ~-180,
             // stone row ~-480) so a stray click at the same screen coords right after
             // the modal closes cannot land on a slot button underneath it.
-            srt.sizeDelta = new Vector2(1400, 440); srt.anchoredPosition = new Vector2(0, -170);
+            // ui-tweak 2026-07-08 — 그리드를 타이틀(y 380, 하단 340) 바로 아래(24px)로 올리고
+            // 늘어난 세로 공간을 활용해 밴드를 키운다. top = -34+350 = 316 = 340-24.
+            srt.sizeDelta = new Vector2(1400, 700); srt.anchoredPosition = new Vector2(0, -34);
             scrollGo.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0f);
             _pickerScrollRect = scrollGo.GetComponent<ScrollRect>();
             _pickerScrollRect.horizontal = false;
@@ -514,6 +529,42 @@ namespace Wassup.UI
             return go.GetComponent<Button>();
         }
 
+        // defender-portraits 2 — 유닛 피커 셀. CreateStonePickerButton 과 동형: 포트레이트
+        // 아이콘 + 하단 이름 라벨. portrait 미할당 유닛은 아이콘 숨김(이름만).
+        private Button CreateUnitPickerButton(DefenderUnitData unit, string label, Color bg, bool dimmed, out TMP_Text lbl)
+        {
+            var go = new GameObject("UnitItem", typeof(RectTransform), typeof(Image), typeof(Button));
+            go.transform.SetParent(_pickerGrid, false);
+            go.GetComponent<RectTransform>().sizeDelta = _pickerGridLayout.cellSize;
+            go.GetComponent<Image>().color = bg;
+
+            var icon = CreateIconImage(go.transform, new Vector2(150, 150), new Vector2(0, 34));
+            SetIcon(icon, unit != null ? unit.portrait : null);
+
+            var l = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
+            l.transform.SetParent(go.transform, false);
+            var lrt = l.GetComponent<RectTransform>();
+            lrt.anchorMin = new Vector2(0, 0);
+            lrt.anchorMax = new Vector2(1, 0);
+            lrt.pivot = new Vector2(0.5f, 0);
+            lrt.sizeDelta = new Vector2(0, 48);
+            lrt.anchoredPosition = new Vector2(0, 10);
+            lbl = l.GetComponent<TextMeshProUGUI>();
+            lbl.text = label;
+            lbl.alignment = TextAlignmentOptions.Center;
+            lbl.fontSize = 22;
+            lbl.color = Color.white;
+            if (font != null) lbl.font = font;
+
+            if (dimmed)
+            {
+                var group = go.AddComponent<CanvasGroup>();
+                group.alpha = 0.55f;
+            }
+
+            return go.GetComponent<Button>();
+        }
+
         private Button CreateStonePickerButton(DreamstoneData stone, Color bg, bool dimmed, out TMP_Text label)
         {
             var go = new GameObject("StoneItem", typeof(RectTransform), typeof(Image), typeof(Button));
@@ -569,7 +620,7 @@ namespace Wassup.UI
             image.enabled = sprite != null;
         }
 
-        private static void SetStoneSlotLabelMode(TMP_Text label, bool occupied)
+        private static void SetSlotLabelMode(TMP_Text label, bool occupied)
         {
             if (label == null) return;
             var rt = label.GetComponent<RectTransform>();
