@@ -29,4 +29,6 @@
 구현 확인 2026-07-08 — compile·콘솔 클린. reflection BuildSession + 오프스크린 렌더로
 스타일 경로(SpriteRenderer 링 + 월드 홀로 줄) 렌더 확인, 클론(style=null)로 절차적 폴백
 재현 확인. 빔 글로우 여백으로 가늘어 보여 SO 튜닝: cordWidth 0.14→0.3, ringRadius
-0.18→0.24 (Play 중 실시간 재조정 가능). 리뷰 (none). **사용자 Play 육안 확인 대기.**
+0.18→0.24 (Play 중 실시간 재조정 가능). 리뷰 (none).
+
+사용자 Play 육안 확인 통과 2026-07-08 ("잘되는듯"). 커밋 `e4b15c28`.
