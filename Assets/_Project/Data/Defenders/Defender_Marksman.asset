@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DefenderUnitData
   id: marksman
   role: 1
-  displayName: Marksman
+  displayName: 마크스맨
   health: 450
   attackRange: 6
   attackCooldown: 1

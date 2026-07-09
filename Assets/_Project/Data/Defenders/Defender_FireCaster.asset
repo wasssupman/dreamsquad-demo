@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DefenderUnitData
   id: fire_caster
   role: 4
-  displayName: Fire Caster
+  displayName: 파이어캐스터
   health: 450
   attackRange: 0
   attackCooldown: 3.5

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DefenderUnitData
   id: ranger
   role: 1
-  displayName: Ranger
+  displayName: 레인저
   health: 400
   attackRange: 5
   attackCooldown: 0.4

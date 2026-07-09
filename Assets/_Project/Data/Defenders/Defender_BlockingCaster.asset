@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DefenderUnitData
   id: blocking_caster
   role: 4
-  displayName: Blocking Caster
+  displayName: 블로킹캐스터
   health: 450
   attackRange: 0
   attackCooldown: 5

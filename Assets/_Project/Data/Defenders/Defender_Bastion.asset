@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DefenderUnitData
   id: bastion
   role: 2
-  displayName: Bastion
+  displayName: 배스티온
   health: 1500
   attackRange: 2
   attackCooldown: 0.5

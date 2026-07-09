@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DefenderUnitData
   id: guardian
   role: 2
-  displayName: Guardian
+  displayName: 가디언
   health: 800
   attackRange: 2
   attackCooldown: 2

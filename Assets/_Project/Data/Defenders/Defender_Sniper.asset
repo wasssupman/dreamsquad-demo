@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DefenderUnitData
   id: sniper
   role: 1
-  displayName: Sniper
+  displayName: 스나이퍼
   health: 250
   attackRange: 7
   attackCooldown: 3
