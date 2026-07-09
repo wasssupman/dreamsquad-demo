@@ -2779,7 +2779,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Core.PlacementInput
   bridge: {fileID: 1939688408}
   mainCamera: {fileID: 0}
-  clickPlacementEnabled: 1
+  clickPlacementEnabled: 0
 --- !u!114 &1495062453
 MonoBehaviour:
   m_ObjectHideFlags: 0
