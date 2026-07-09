@@ -39,4 +39,20 @@ namespace Wassup.Data
         public DcTriggerSpec trigger;
         public DcPayloadSpec payload;
     }
+
+    // dreamcatcher-attack-mod-bounce Unit 0 — card class (c): trigger-less,
+    // always-on modification of the bound unit's base attack output. Same
+    // architecture-agnostic contract as the trigger definitions above: pure
+    // data, no ECS references; interpretation lives in BattleBridge (bake) and
+    // AttackSystem (spawn-time injection). Append new kinds at the end.
+    public enum DcAttackModKind { None, ProjectileBounce }
+
+    [Serializable]
+    public struct DcAttackModSpec
+    {
+        public DcAttackModKind kind;
+        public int count;          // ProjectileBounce: bounce count
+        public int tileRange;      // retarget search radius (Chebyshev tiles)
+        public float damageMul;    // per-bounce decay (1 = no decay)
+    }
 }

@@ -55,5 +55,14 @@ namespace Wassup.Battle.Combat.Projectile
 
         // ── Tile-AOE payload (PayloadKind.TileAoe) ───────────────────────────
         public int impactTileRange;
+
+        // ── Bounce (dreamcatcher-attack-mod-bounce) ──────────────────────────
+        // Post-resolution survival for SingleSplash: while bounceRemaining > 0
+        // and a retarget candidate exists, the impact system re-homes instead of
+        // destroying. Defaults 0/0/0 = every existing spawn keeps the legacy
+        // destroy path. Owned write after launch: ProjectileHitSystem only.
+        public int bounceRemaining;
+        public int bounceTileRange;   // retarget search radius (Chebyshev tiles)
+        public float bounceDamageMul; // per-bounce decay applied to damage sources
     }
 }

@@ -47,6 +47,12 @@ namespace Wassup.Battle.Combat.Projectile
 
         // ── Tile-AOE payload ─────────────────────────────────────────────────
         public int impactTileRange;
+
+        // ── Bounce (dreamcatcher-attack-mod-bounce) ──────────────────────────
+        // Copied verbatim onto ProjectileState by the drain. Defaults 0 = no-op.
+        public int bounceRemaining;
+        public int bounceTileRange;
+        public float bounceDamageMul;
     }
 
     public struct ProjectileSpawnOutputElement : IBufferElementData

@@ -33,6 +33,8 @@ public enum DcAttackModKind { None, ProjectileBounce } // 후속 kind 는 append
 
 ## 완료 기준
 
-- [ ] 컴파일 통과 (refresh scope=all)
-- [ ] 기존 카드/투사체 에셋·경로 무변동 (필드 append-only, 기본값 0)
-- [ ] 정의 계층에 ECS 참조 없음
+- [x] 컴파일 통과 (refresh scope=all)
+- [x] 기존 카드/투사체 에셋·경로 무변동 (필드 append-only, 기본값 0)
+- [x] 정의 계층에 ECS 참조 없음
+
+완료 확인: 2026-07-09 — 컴파일 클린, EditMode 582 통과(머지 후). append-only 필드라 기존 에셋 직렬화 무변동. code-review(low) 지적 0건. 이 문서와 동일 커밋.

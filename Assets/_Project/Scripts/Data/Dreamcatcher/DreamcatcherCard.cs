@@ -56,5 +56,9 @@ namespace Wassup.Data
         // never iterate mechanics per-frame (managed array).
         public CardBinding binding;
         public DcMechanic[] mechanics;
+        // dreamcatcher-attack-mod-bounce Unit 0 — card class (c): always-on
+        // attack-output modifications (usually 0~1). Appended last; bake-time
+        // read only, same rules as mechanics above.
+        public DcAttackModSpec[] attackMods;
     }
 }
