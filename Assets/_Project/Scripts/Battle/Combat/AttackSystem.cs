@@ -66,6 +66,8 @@ namespace Wassup.Battle.Combat
             var focusLookup = SystemAPI.GetComponentLookup<FocusTarget>(isReadOnly: false);
             // dreamcatcher-unit-trigger unit 2 — triggered card slots (counter RW).
             var dcSlotLookup = SystemAPI.GetBufferLookup<DcTriggerSlot>(isReadOnly: false);
+            // attack-mod-bounce unit 3 — always-on attack mods aggregated onto the base homing shot.
+            var dcAttackModLookup = SystemAPI.GetBufferLookup<DcAttackModSlot>(isReadOnly: true);
             var healthLookup = SystemAPI.GetComponentLookup<Health>(isReadOnly: true);
             var deadLookup = SystemAPI.GetComponentLookup<DeadTag>(isReadOnly: true);
 
@@ -323,6 +325,25 @@ namespace Wassup.Battle.Combat
                             }
                             else
                             {
+                                // attack-mod-bounce unit 3 — aggregate always-on mods onto
+                                // this base homing shot only (count sum / range max / mul
+                                // product). Ballistic + dc-trigger carrier shots are
+                                // excluded by construction (contract 4). Defaults 0/0/1 =
+                                // no bounce.
+                                int dcBounceCount = 0, dcBounceRange = 0;
+                                float dcBounceMul = 1f;
+                                if (defenderTagLookup.HasComponent(attackerEntity) && dcAttackModLookup.HasBuffer(attackerEntity))
+                                {
+                                    var mods = dcAttackModLookup[attackerEntity];
+                                    for (int di = 0; di < mods.Length; di++)
+                                    {
+                                        var mod = mods[di];
+                                        if (mod.kind != Wassup.Data.DcAttackModKind.ProjectileBounce) continue;
+                                        dcBounceCount += mod.count;
+                                        dcBounceRange = math.max(dcBounceRange, mod.tileRange);
+                                        dcBounceMul *= mod.damageMul;
+                                    }
+                                }
                                 ecb.AddComponent(attackerEntity, new ProjectileSpawnRequest
                                 {
                                     movement = MovementKind.HomingToEntity,
@@ -337,6 +358,9 @@ namespace Wassup.Battle.Combat
                                     onHitEffect = projRef.onHitEffect,
                                     splashRadius = projRef.splashRadius,
                                     splashDamageMul = projRef.splashDamageMul,
+                                    bounceRemaining = dcBounceCount,
+                                    bounceTileRange = dcBounceRange,
+                                    bounceDamageMul = dcBounceMul,
                                 });
                             }
                         }

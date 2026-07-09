@@ -2415,7 +2415,9 @@ namespace Wassup.Bridge
         public bool ApplyDreamcatcherCardToUnit(Entity defender, Wassup.Data.DreamcatcherCard card)
         {
             if (card == null || card.binding != Wassup.Data.CardBinding.Unit) return false;
-            if (card.mechanics == null || card.mechanics.Length == 0) return false;
+            bool hasMechanics = card.mechanics != null && card.mechanics.Length > 0;
+            bool hasAttackMods = card.attackMods != null && card.attackMods.Length > 0;
+            if (!hasMechanics && !hasAttackMods) return false;
             if (!HasLiveEntityManager() || !_em.Exists(defender))
             {
                 Debug.LogWarning($"[BattleBridge] ApplyDreamcatcherCardToUnit('{card?.id}'): ECS not ready or defender entity gone — card not attached.");
@@ -2432,7 +2434,8 @@ namespace Wassup.Bridge
             }
 
             int attached = 0;
-            for (int i = 0; i < card.mechanics.Length; i++) // bake-time only read (managed array)
+            int mechanicsLen = hasMechanics ? card.mechanics.Length : 0;
+            for (int i = 0; i < mechanicsLen; i++) // bake-time only read (managed array)
             {
                 var m = card.mechanics[i];
                 if (m.trigger.kind == Wassup.Data.DcTriggerKind.None ||
@@ -2478,6 +2481,41 @@ namespace Wassup.Bridge
                     ? _em.GetBuffer<DcTriggerSlot>(defender)
                     : _em.AddBuffer<DcTriggerSlot>(defender);
                 buf.Add(slot);
+                attached++;
+            }
+
+            // dreamcatcher-attack-mod-bounce unit 3 — always-on attack-output
+            // modifiers (card class c). AttackSystem aggregates these onto the base
+            // attack's Homing request at spawn time. Trigger-less; no counter.
+            int modsLen = hasAttackMods ? card.attackMods.Length : 0;
+            for (int i = 0; i < modsLen; i++)
+            {
+                var m = card.attackMods[i];
+                if (m.kind == Wassup.Data.DcAttackModKind.None || m.count <= 0 || m.damageMul <= 0f)
+                {
+                    Debug.LogWarning($"[BattleBridge] Card '{card.id}' attackMod {i}: None kind / non-positive count / non-positive damageMul — skipped.");
+                    continue;
+                }
+                // Contract 4 — ProjectileBounce needs HomingToEntity×SingleSplash output.
+                // Melee (no ProjectileRef) has no projectile to modify; skip that mod
+                // only (mechanics on the same card may still apply).
+                if (m.kind == Wassup.Data.DcAttackModKind.ProjectileBounce &&
+                    !_em.HasComponent<ProjectileRef>(defender))
+                {
+                    Debug.LogWarning($"[BattleBridge] Card '{card.id}' attackMod {i}: ProjectileBounce on a non-projectile (melee) unit — skipped.");
+                    continue;
+                }
+                var modBuf = _em.HasBuffer<DcAttackModSlot>(defender)
+                    ? _em.GetBuffer<DcAttackModSlot>(defender)
+                    : _em.AddBuffer<DcAttackModSlot>(defender);
+                modBuf.Add(new DcAttackModSlot
+                {
+                    instanceId = _dcInstanceCounter++,
+                    kind = m.kind,
+                    count = m.count,
+                    tileRange = m.tileRange,
+                    damageMul = m.damageMul,
+                });
                 attached++;
             }
             return attached > 0;

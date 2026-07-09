@@ -31,5 +31,8 @@ AttackSystem RESOLVE — 기존 Homing `ProjectileSpawnRequest` 생성 직전에
 
 ## 완료 기준
 
-- [ ] 컴파일 + 무회귀
-- [ ] execute_code: 부착 → 슬롯 필드 확인, 근접 유닛 부착 시 warn+skip, 같은 카드 2장 = count 합산 동작 (request 필드 관측)
+- [x] 컴파일 + 무회귀 (EditMode 588 그린)
+- [x] execute_code: 부착 → DcAttackModSlot 필드 확인(count=2/range=3/mul=0.7), 근접 유닛(Bastion) warn+skip(버퍼 없음), 같은 카드 2장 = 슬롯 2개(instanceId 0/1) → AttackSystem 이 count 합산/mul 곱/range max 로 집계 주입
+- [x] mechanics-없는 attackMods-only 카드가 거절되지 않도록 가드 수정(`!hasMechanics && !hasAttackMods` 만 거절)
+
+완료 확인: 2026-07-09 — 부착 정적 검증(슬롯 값·근접 거절·2장 독립), EditMode 588 그린. 이 문서와 동일 커밋.

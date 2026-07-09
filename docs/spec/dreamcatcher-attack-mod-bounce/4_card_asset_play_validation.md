@@ -23,7 +23,11 @@
 
 ## 완료 기준
 
-- [ ] 2회 튕김 + 히트당 데미지 (로그/육안)
-- [ ] 합산 스택(2장=4회)
-- [ ] 무회귀 3종 (미부착/근접 skip/기존 투사체) + 콘솔 클린
-- [ ] 사용자 완료 확인 후 확인 일자 + 커밋 해시 기입
+- [x] 2회 튕김 + 히트당 데미지 (사용자 육안 — bounce 아처 화살이 적 사이로 꺾임)
+- [x] 합산 스택(2장=4회) — 부착 정적 검증 + AttackSystem count 합산
+- [x] 무회귀 3종 (미부착/근접 skip/기존 투사체) + 콘솔 클린 (EditMode 588 그린)
+- [x] 사용자 완료 확인
+
+> 카드 실제 값: `Card_BouncyBead.asset` — id=bouncy_bead, "통통 구슬", binding=Unit, category=Unique, attackMods=[{ProjectileBounce, count=2, tileRange=3, damageMul=1.0}]. **bounce 는 카드 투사체가 아니라 유닛의 기본 공격 투사체(아처 화살)를 튕긴다** (DcAttackModSpec 엔 투사체 필드 없음). A→B→A 재히트 허용(직전 대상만 제외) = v1 확정.
+
+완료 확인: 2026-07-09 — 사용자 육안 확인(bounce 아처 재비행). 이 문서와 동일 커밋.

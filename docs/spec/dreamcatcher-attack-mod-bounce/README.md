@@ -1,6 +1,8 @@
 # Dreamcatcher Attack-Mod: Projectile Bounce — 공격 개조형 카드 부류 + 투사체 튕김
 
-> 상태: **작성 2026-07-09, 구현 대기**
+> 상태: **완료 2026-07-09** (units 0~4 + handoff). 검증 질문 YES — 사용자 육안(bounce 아처 재비행). 인계: `5_handoff_summary.md`.
+>
+> **확장 비용 실측 결과**: "한 번 지불" 이 맞았다. 재사용 가능 튕김 프리미티브 + 카드 부류 (c) 를 열었고, 아키텍처-의존은 ImpactSystem arm + AttackSystem 주입(얇은 글루)에만 국한. 정의계층·순수함수는 아키텍처-중립. 신규 시스템/드레인/큐/맥락 0.
 >
 > 설계 배경: `docs/spec/dreamcatcher-unit-trigger/` 의 "확장 비용 지도" 中 **한 번 지불** 사례를 실측하는 spec. 드림캐쳐 카드 부류 (c) = 공격 개조형(트리거 없음, 기본 공격 산출물 상시 개조)을 열고, 첫 개조로 "투사체 N회 튕김"을 구현한다. 2계층 원칙(정의=아키텍처 비의존 / 해석=bridge 베이크 + Combat)과 부착 인프라(instanceId, 가드, 회수 seam)는 unit-trigger 의 것을 그대로 재사용한다.
 
