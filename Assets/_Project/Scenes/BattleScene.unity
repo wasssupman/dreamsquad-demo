@@ -1187,7 +1187,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &569439753
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1964,7 +1964,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1132040370}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d30b68b0bc62c447c97c650117d8abfd, type: 3}
   m_Name: 
@@ -3810,6 +3810,63 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.MenuPopup
   buttonFont: {fileID: 11400000, guid: 218cce73e3172a04a8c536a4d368d90f, type: 2}
   wavePatternStrip: {fileID: 1634174272}
+--- !u!1 &2054561896
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2054561898}
+  - component: {fileID: 2054561897}
+  m_Layer: 0
+  m_Name: DreamcatcherHandController
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &2054561897
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2054561896}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 26fe978c35172d54685d760b21f2b8d5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Core.DreamcatcherHandController
+  bridge: {fileID: 1939688408}
+  config: {fileID: 11400000, guid: b1ff068a6a1b7a44b8fd4ea85f159ff6, type: 2}
+  profileSO: {fileID: 11400000, guid: e610b4c0bbbeb4becb09188e400e6a55, type: 2}
+  cardCatalog: {fileID: 11400000, guid: 7e41a0cd1ffdc4b6c872ef0ac3d8df0e, type: 2}
+  fallbackDeck: {fileID: 11400000, guid: d3a884355714e4262a953d61fa97e2af, type: 2}
+  skillLoadout: {fileID: 1495062453}
+  activeCards:
+  - {fileID: 11400000, guid: c2156bc97318c334c90169a18c55dc80, type: 2}
+  - {fileID: 11400000, guid: 7abe7cdbbb2d0754db92e7e980b3a9a3, type: 2}
+  - {fileID: 11400000, guid: 534083247e5810b44a3308840442e689, type: 2}
+  - {fileID: 11400000, guid: f76bf930b1cf2004ab994885fe7336d8, type: 2}
+  - {fileID: 11400000, guid: aee631d1aa88aa847a311bbf02546792, type: 2}
+  - {fileID: 11400000, guid: 58eb9d4db7ed0364fbdcf8139fa49763, type: 2}
+--- !u!4 &2054561898
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2054561896}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2082553756
 GameObject:
   m_ObjectHideFlags: 0
@@ -3950,3 +4007,4 @@ SceneRoots:
   - {fileID: 543066564}
   - {fileID: 1218224328}
   - {fileID: 1004191867}
+  - {fileID: 2054561898}
