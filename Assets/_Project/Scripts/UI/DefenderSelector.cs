@@ -25,6 +25,12 @@ namespace Wassup.UI
         private Transform _slotContainer;
         private bool _built;
 
+        // dreamcatcher-awakening-hand unit 6 — flip-transition hook. The hand
+        // view (DreamcatcherHandView) is the single owner of the strip↔hand
+        // state and animates/toggles this panel; the selector's own show/hide
+        // events (draft/placement) stay untouched.
+        public GameObject PanelGO => _panel;
+
         private void Awake()
         {
             EnsureDragController();
