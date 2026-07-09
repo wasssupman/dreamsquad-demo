@@ -10,5 +10,10 @@ namespace Wassup.Battle.Units
     public struct EnemyKilledEvent
     {
         public float3 position;
+        // dreamcatcher-awakening-hand unit 1 — awakening granted by this kill,
+        // copied from the enemy's baked AwakeningReward at enqueue time (the
+        // entity is destroyed before the bridge drains). Appended last; 0 when
+        // the component was absent.
+        public int awakeningReward;
     }
 }

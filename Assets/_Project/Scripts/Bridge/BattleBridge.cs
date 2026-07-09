@@ -1786,7 +1786,11 @@ namespace Wassup.Bridge
             while (_defenderDeathQueue.TryDequeue(out var evt))
             {
                 var cell = new Vector2Int(evt.cell.x, evt.cell.y);
-                if (spineUnitPool != null && _defenderByTile.TryGetValue(cell, out var binding))
+                // dreamcatcher-awakening-hand unit 1 — capture the binding BEFORE
+                // removal so DefenderDied can carry the entity (card-recovery key)
+                // and the SO (awakeningReward) regardless of the spine pool.
+                bool hasBinding = _defenderByTile.TryGetValue(cell, out var binding);
+                if (spineUnitPool != null && hasBinding)
                 {
                     spineUnitPool.NotifyDeath(binding.entity);
                     defenderFallbackViewPool?.Despawn(binding.entity);
@@ -1815,6 +1819,12 @@ namespace Wassup.Bridge
                         visualScale = 1f,
                     }, Entity.Null);
                 }
+
+                // dreamcatcher-awakening-hand unit 1 — relay after cleanup so the
+                // tile/synergy state is consistent when subscribers run. Entity is
+                // already destroyed in ECS; it is passed as a registry KEY only.
+                if (hasBinding)
+                    DefenderDied?.Invoke(binding.entity, binding.data);
             }
         }
 
@@ -1966,6 +1976,8 @@ namespace Wassup.Bridge
             while (_enemyKilledEventQueue.TryDequeue(out var evt))
             {
                 scoreHud?.OnEnemyKilled(EnemyKillScoreDelta);
+                // dreamcatcher-awakening-hand unit 1 — awakening economy relay.
+                EnemyKilledAwakening?.Invoke(evt.awakeningReward);
                 int2 grid = _generatedMap.IsCreated ? _generatedMap.gridSize : GridSize;
                 var cell = GridMath.WorldToCell(evt.position, tileSize, grid, origin: _boardOrigin);
                 float time = LogElapsedTime;
@@ -2386,6 +2398,14 @@ namespace Wassup.Bridge
         public event System.Action FirstDefenderPlaced;
         public event System.Action<int> WaveMilestoneReached; // 1-indexed wave number
         private bool _firstDefenderPlacedFired;
+
+        // dreamcatcher-awakening-hand unit 1 — death-drain relays for the awakening
+        // economy. Fired from the existing drains (no new queue/context); absent
+        // subscribers no-op. EnemyKilledAwakening carries the kill's baked grant.
+        // DefenderDied carries the dead entity (unit-card recovery key) + its SO
+        // (subscriber reads data.awakeningReward).
+        public event System.Action<int> EnemyKilledAwakening;
+        public event System.Action<Entity, Wassup.Data.DefenderUnitData> DefenderDied;
 
         private void FireFirstDefenderPlacedOnce()
         {
@@ -3940,6 +3960,13 @@ namespace Wassup.Bridge
             _em.AddComponent<AttackUnitTag>(entity);
             _em.AddComponentData(entity, new Health { value = entry.unitType.health, max = entry.unitType.health });
             _em.AddComponentData(entity, new FactionTag { value = Faction.Enemy });
+            // dreamcatcher-awakening-hand unit 1 — bake the death grant so
+            // DamageApplicationSystem can stamp it into EnemyKilledEvent.
+            // Unconditional attach (0 allowed) keeps the lookup branch-free.
+            _em.AddComponentData(entity, new AwakeningReward
+            {
+                value = Mathf.Max(0, entry.unitType.awakeningReward),
+            });
             // Pre-attach empty buffers so downstream systems never need structural AddBuffer on hot paths.
             _em.AddBuffer<IncomingDamage>(entity);
             _em.AddBuffer<CcEffect>(entity);

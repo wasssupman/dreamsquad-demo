@@ -23,6 +23,8 @@ namespace Wassup.Battle.Units
         // content-1 ① (가시 갑옷) — count defender damage-taken (DamagedCounter is Units-owned).
         private ComponentLookup<DefenderUnitTag> _defenderTagLookup;
         private BufferLookup<DamagedCounter> _damagedCounterLookup;
+        // dreamcatcher-awakening-hand unit 1 — per-enemy awakening grant baked at spawn.
+        private ComponentLookup<AwakeningReward> _awakeningRewardLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -34,6 +36,7 @@ namespace Wassup.Battle.Units
             _healBufferLookup = state.GetBufferLookup<IncomingHeal>(isReadOnly: false);
             _defenderTagLookup     = state.GetComponentLookup<DefenderUnitTag>(isReadOnly: true);
             _damagedCounterLookup  = state.GetBufferLookup<DamagedCounter>(isReadOnly: false);
+            _awakeningRewardLookup = state.GetComponentLookup<AwakeningReward>(isReadOnly: true);
         }
 
         [BurstCompile]
@@ -46,6 +49,7 @@ namespace Wassup.Battle.Units
             _healBufferLookup.Update(ref state);
             _defenderTagLookup.Update(ref state);
             _damagedCounterLookup.Update(ref state);
+            _awakeningRewardLookup.Update(ref state);
             bool hasHealAppliedQueue = SystemAPI.TryGetSingletonRW<HealAppliedEventsSingleton>(out var healAppliedSingleton);
             bool hasDamageNumberQueue = SystemAPI.TryGetSingletonRW<DamageNumberEventsSingleton>(out var damageNumberSingleton);
             bool hasEnemyKilledQueue = SystemAPI.TryGetSingletonRW<EnemyKilledEventsSingleton>(out var enemyKilledSingleton);
@@ -165,6 +169,10 @@ namespace Wassup.Battle.Units
                         enemyKilledSingleton.ValueRW.queue.Enqueue(new EnemyKilledEvent
                         {
                             position = _transformLookup[entity].Position,
+                            // dreamcatcher-awakening-hand unit 1 — copy the baked
+                            // grant now; the entity is gone before the bridge drains.
+                            awakeningReward = _awakeningRewardLookup.HasComponent(entity)
+                                ? _awakeningRewardLookup[entity].value : 0,
                         });
                     }
                 }
