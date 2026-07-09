@@ -1,6 +1,6 @@
 # Nightmare Catcher — 보스/적 능동 스킬 (드림캐쳐 프레임워크 편입)
 
-> 상태: **로직 정의 완료** — units 0~3 + 렌즈 A(로직 완결성) 크리틱 **2패스 통과**(HIGH 3 · MED 3 · N1~3 반영). 배선 문서(4~6) 착수 대기.
+> 상태: **스펙 작성 완료 (units 0~6)** — 로직 정의(0~3, 렌즈 A 2패스 통과) + 배선(4~6). **코드 0줄**, 구현 착수 대기.
 >
 > 선행 토대: `docs/spec/dreamcatcher-unit-trigger/` (trigger×payload 프레임워크), `docs/spec/dreamcatcher-content-1/` (트리거/페이로드 확장 선례).
 
@@ -29,9 +29,9 @@
 | 1 | `1_boss_threat_table.md` | 계약 | 보스 전용 위협 테이블 — `(공격자, 누적피해)` 버퍼 + 위협 리더 조회 + **투사체 owner 귀속**(원거리 반영). 텔레포트 타겟 소스 |
 | 2 | `2_barrage_mechanic.md` | 계약(로직) | 융단폭격 완결 정의 — 주기 accumulator + 결정론 진앙 선택 + SkyFall×TileAoe 재사용 |
 | 3 | `3_teleport_mechanic.md` | 계약(로직) | 텔레포트 완결 정의 — 임계치 accumulator(반복·래치) + SelfBlink(Combat→Movement seam) |
-| 4 | `4_faction_neutral_gates.md` | 배선 | (렌즈 B 대상) 게이트 5곳 `isDefender`→`hasSlot` 완화 + defender 무회귀 증명 |
-| 5 | `5_enemy_bake_hook.md` | 배선 | 적/보스 스폰 시 슬롯 베이크 (`TauntAttackGrantSystem` 선례) |
-| 6 | `6_boss_play_validation.md` | 검증 | 보스 프리팹 + Play e2e (주기 폭격·임계치 텔레포트·직교성·defender 무회귀) |
+| 4 | `4_faction_neutral_gates.md` | 배선 | BossTag + 신규 arm 태생적 중립(slot/threat 존재 게이트) + AreaBarrage 페이로드 진영 파라미터화. 기존 arm 게이트 개방은 지연(MVP 신규 트리거라 불요) |
+| 5 | `5_enemy_bake_hook.md` | 배선 | 적/보스 스폰 시 BossTag+ThreatTable+DcTriggerSlot 베이크(병렬 경로) + arm 시스템 3개 등록 (`TauntAttackGrantSystem` 선례) |
+| 6 | `6_boss_play_validation.md` | 검증 | 보스 authoring + Play e2e(주기 폭격·임계치 텔레포트·직교성·무회귀) + 렌즈 B + 파이프라인 커버리지 |
 
 > **문서 작성 순서 ≠ 코드 커밋 순서.** 0~3(로직 정의)을 먼저 써서 렌즈 A 크리틱에 건다. 4~6(아키텍처 배선)은 로직 검증 후 작성하고, 게이트 회귀는 렌즈 B 로 유닛 4 코드 이후 별도 리뷰.
 
@@ -49,7 +49,7 @@
 
 ## 파이프라인 커버리지
 
-> 대조 대상: `docs/reference/object-pipeline-map.md` §투사체(융단폭격) + §적유닛(보스). 신설 정거장은 유닛 4~6 배선 문서에서 채운다. 로직 정의 단계(0~3)는 계약만 — 렌즈 A 크리틱 통과 후 이 표를 아키타입별로 확정한다.
+> 대조 대상: `docs/reference/object-pipeline-map.md` §투사체(융단폭격) + §적유닛(보스). **아키타입별 정거장 대조표는 `6_boss_play_validation.md` §파이프라인 커버리지에 확정.** 신규 채널 +2(`ThreatHitEventsSingleton`·`BlinkRequestEventsSingleton`), 신규 SO 타입 0, teardown 은 `AttackUnitTag` 적 경로 상속.
 
 ## 후속 후보 (스코프 밖)
 

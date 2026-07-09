@@ -15,6 +15,7 @@
 - **완화**: 발동 arm/부착 API 게이트를 `isDefender`→`hasSlot` 로. strict superset — 슬롯은 명시 베이크로만 생기므로 defender 동작 불변(회귀 0).
 - **병렬**: 부착·정리 라이프사이클(`_activeDcEffects` 미래배치 상속, `DestroyEntitiesByType<DefenderUnitTag>` teardown, 덱 UI)은 defender 배치 파이프라인에 얽혀 있어 **손대지 않고** 적 스폰에 별도 베이크 훅(`TauntAttackGrantSystem` 선례).
 - **완전 일반화 기각 이유**: 두 번째 사용처(적)가 실제로 돌기 전에 공통부를 추출하면 defender 회귀 위험만 크다. "구체 구현부터, 반복 생기면 추출"(CLAUDE.md). 공통부 추출은 후속.
+- **배선 정교화 (unit 4~6 작성 중 발견)**: "게이트 5곳 완화"는 보스가 **기존 트리거**(AttackN/OnDamagedN/OnDeath/bounce)를 쓸 때의 일반 메커니즘이다. 그러나 MVP 두 트리거(Periodic/Threshold)는 **신규 kind → 신규 arm** 이라, 기존 게이트를 여는 대신 **신규 arm 을 태생적 진영중립**(slot/threat 버퍼 존재로 게이트)으로 짓는다. → MVP 가 실제로 건드리는 진영 게이트는 **페이로드 1곳**(AreaBarrage TileAoe victim 풀). 기존 arm 게이트 개방은 지연(YAGNI). 보스 teardown 은 `AttackUnitTag` 적 경로 상속이라 신규 teardown 0.
 
 ### D3. 복합 행동 = 직교 슬롯의 합 (FSM 상태 증식 기각)
 폭격·텔레포트·기본공격은 상호배타 상태가 아니라 **동시에 도는 직교 행동**. 하나의 `AiState` enum 에 넣으면 `Marching×Casting×Enraged…` 조합 폭발. → 각자 독립 accumulator/슬롯으로 틱하고, `AiState`(Marching/Engaging/Chasing/Standoff)는 이동/교전 게이트로만 유지. 스킬이 이동을 **하드 중단**할 때만 `AiState.Casting` 1개 추가 검토 — MVP 두 스킬(순간=즉시, 폭격=백그라운드)은 **FSM 무변경**. 이 프로젝트가 이미 쓰는 ECS 관용구(드림캐쳐가 증거).
