@@ -76,13 +76,14 @@ namespace Wassup.Data
         [Header("Presentation")]
         public Sprite portrait;
 
-        // aggro-targeting Unit 0 — magnet aggro. aggroCapacity = max enemies this
-        // unit can hold at once. 0 = no aggro (Fighter/Ranger); only Guardian-role
-        // units set > 0. aggroRange 0 falls back to attackRange. Concrete numbers
-        // are delegated to the balancing spec.
+        // aggro-targeting Unit 10 — magnet aggro (히트 구동). aggroCapacity = max
+        // enemies this unit can hold at once. 0 = no aggro (Fighter/Ranger); only
+        // Guardian-role units set > 0. 획득 트리거는 가디언의 공격 명중 —
+        // AttackSystem RESOLVE 가 히트 적을 AggroHitEvent 로 넘긴다(별도 range 없음:
+        // 획득 범위 = 공격 사거리). 구 aggroRange 폐기(근접 즉시 배정 산물).
+        // Concrete numbers are delegated to the balancing spec.
         [Header("Aggro")]
         public int aggroCapacity = 0;
-        public float aggroRange = 0f;
 
         // Phase 8: Spine skeleton skin + animation names. When spineSkinName is
         // empty or skeletonDataAsset is null, BattleBridge falls back to the

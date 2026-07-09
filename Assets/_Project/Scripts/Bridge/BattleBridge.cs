@@ -79,6 +79,8 @@ namespace Wassup.Bridge
         [SerializeField] private Wassup.Data.HealthDisplayStyle healthDisplayStyle;
         // unit-health-display unit 2 — 적 피격 마이크로바 스포너.
         [SerializeField] private Wassup.Presentation.EnemyHitBarSpawner enemyHitBarSpawner;
+        // aggro-targeting Unit 13 — 어그로된 적 머리 위 아이콘 스포너(상태 구동 reconcile).
+        [SerializeField] private Wassup.Presentation.AggroIconSpawner aggroIconSpawner;
         // unit-health-display unit 3 — 방어유닛 타일 테두리 게이지 레이어.
         [SerializeField] private Wassup.Presentation.TileHealthGaugeLayer tileHealthGaugeLayer;
         [SerializeField] private Wassup.UI.ScoreHudView scoreHud;
@@ -127,6 +129,9 @@ namespace Wassup.Bridge
         private EntityManager _em;
         private EntityQuery _aliveAttackersQuery;
         private bool _aliveAttackersQueryCreated;
+        // aggro-targeting Unit 13 — 어그로된 적 아이콘 reconcile 용 쿼리(Aggroed).
+        private EntityQuery _aggroedQuery;
+        private bool _aggroedQueryCreated;
         private readonly List<PendingSpawnEntry> _pending = new();
         private readonly List<Material> _ownedRuntimeMaterials = new();
         private readonly HashSet<Vector2Int> _occupiedTiles = new();
@@ -192,6 +197,8 @@ namespace Wassup.Bridge
         private NativeQueue<DefenderDeathEvent> _defenderDeathQueue;
         private NativeQueue<Wassup.Battle.Combat.UnitAttackVisualEvent> _unitAttackVisualQueue;
         private NativeQueue<Wassup.Battle.Combat.Projectile.ProjectileHitEvent> _projectileHitEventQueue;
+        // aggro-targeting Unit 11 — Combat(AttackSystem)→Effects(AggroStateSystem) 히트 채널.
+        private NativeQueue<Wassup.Battle.Effects.AggroHitEvent> _aggroHitEventQueue;
         private NativeQueue<Wassup.Battle.Units.HealAppliedEvent> _healAppliedEventQueue;
         private NativeQueue<Wassup.Battle.Units.DamageNumberEvent> _damageNumberEventQueue;
         private NativeQueue<Wassup.Battle.Units.EnemyKilledEvent> _enemyKilledEventQueue;
@@ -318,6 +325,7 @@ namespace Wassup.Bridge
             if (defenderFallbackViewPool != null) defenderFallbackViewPool.DisposeAll();
             if (tileHealthGaugeLayer != null) tileHealthGaugeLayer.Clear(); // unit 3 — 게이지 전체 정리
             if (enemyHitBarSpawner != null) enemyHitBarSpawner.Clear(); // unit 2 — 잔여 마이크로바 정리(생명주기 대칭)
+            if (aggroIconSpawner != null) aggroIconSpawner.Clear(); // aggro-targeting unit 13 — 잔여 아이콘 정리
             ClearBlockingHazardVisuals();
 
             if (HasLiveEntityManager())
@@ -379,6 +387,7 @@ namespace Wassup.Bridge
             DestroyEntitiesByType<Wassup.Battle.Effects.HazardDestroyedEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.HazardSpawnRequestsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Combat.AttackOutputLogEventsSingleton>();
+            DestroyEntitiesByType<Wassup.Battle.Effects.AggroHitEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.ObstacleSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.HazardSingleton>();
             // time-manager H1 — BattleTimeScale singleton 도 다른 인프라 싱글턴과 대칭으로 파괴.
@@ -393,6 +402,7 @@ namespace Wassup.Bridge
             if (_defenderDeathQueue.IsCreated) _defenderDeathQueue.Dispose();
             if (_unitAttackVisualQueue.IsCreated) _unitAttackVisualQueue.Dispose();
             if (_projectileHitEventQueue.IsCreated) _projectileHitEventQueue.Dispose();
+            if (_aggroHitEventQueue.IsCreated) _aggroHitEventQueue.Dispose();
             if (_healAppliedEventQueue.IsCreated) _healAppliedEventQueue.Dispose();
             if (_damageNumberEventQueue.IsCreated) _damageNumberEventQueue.Dispose();
             if (_enemyKilledEventQueue.IsCreated) _enemyKilledEventQueue.Dispose();
@@ -412,6 +422,7 @@ namespace Wassup.Bridge
             if (!HasLiveEntityManager())
             {
                 _aliveAttackersQueryCreated = false;
+                _aggroedQueryCreated = false;
                 _projectileSpawnRequestQueryCreated = false;
                 _projectileQueryCreated = false;
                 return;
@@ -421,6 +432,11 @@ namespace Wassup.Bridge
             {
                 _aliveAttackersQuery.Dispose();
                 _aliveAttackersQueryCreated = false;
+            }
+            if (_aggroedQueryCreated)
+            {
+                _aggroedQuery.Dispose();
+                _aggroedQueryCreated = false;
             }
             if (_projectileSpawnRequestQueryCreated)
             {
@@ -857,6 +873,11 @@ namespace Wassup.Bridge
                 _aliveAttackersQuery = _em.CreateEntityQuery(ComponentType.ReadOnly<AttackUnitTag>());
                 _aliveAttackersQueryCreated = true;
             }
+            if (!_aggroedQueryCreated)
+            {
+                _aggroedQuery = _em.CreateEntityQuery(ComponentType.ReadOnly<Wassup.Battle.Effects.Aggroed>());
+                _aggroedQueryCreated = true;
+            }
 
             if (!_projectileSpawnRequestQueryCreated)
             {
@@ -897,6 +918,14 @@ namespace Wassup.Bridge
             _projectileHitEventQueue = new NativeQueue<Wassup.Battle.Combat.Projectile.ProjectileHitEvent>(Allocator.Persistent);
             var projectileHitSingleton = _em.CreateEntity();
             _em.AddComponentData(projectileHitSingleton, new Wassup.Battle.Combat.Projectile.ProjectileHitEventsSingleton { queue = _projectileHitEventQueue });
+
+            // aggro-targeting Unit 11 — Combat→Effects 히트 채널. AttackSystem(Combat)이
+            // 가디언 명중을 enqueue, AggroStateSystem(Effects)이 드레인해 Aggroed 부착.
+            // 브리지는 lifecycle 만 관리(드레인 안 함 — 순수 ECS 내부 통신).
+            if (_aggroHitEventQueue.IsCreated) _aggroHitEventQueue.Dispose();
+            _aggroHitEventQueue = new NativeQueue<Wassup.Battle.Effects.AggroHitEvent>(Allocator.Persistent);
+            var aggroHitSingleton = _em.CreateEntity();
+            _em.AddComponentData(aggroHitSingleton, new Wassup.Battle.Effects.AggroHitEventsSingleton { queue = _aggroHitEventQueue });
 
             // Units→Presentation heal pulse channel. DamageApplicationSystem
             // enqueues one event per entity whose IncomingHeal buffer was drained.
@@ -1654,7 +1683,31 @@ namespace Wassup.Bridge
         private void LateUpdate()
         {
             SyncMonoUnitViews();
+            ReconcileAggroIcons();
             if (_em != null) _projectileViewPool?.SyncTransforms(_em);
+        }
+
+        // aggro-targeting Unit 13 — 어그로된 적 머리 위 아이콘 상태 구동 reconcile.
+        // Aggroed 보유 적마다 아이콘 Ensure, 프레임 끝에 해제된 적 아이콘 회수.
+        // 뷰 좌표는 SyncMonoUnitViews 가 이미 갱신했으므로 그 뒤에 호출한다.
+        private void ReconcileAggroIcons()
+        {
+            if (aggroIconSpawner == null || _em == null || !_aggroedQueryCreated) return;
+            aggroIconSpawner.BeginFrame();
+            var aggroed = _aggroedQuery.ToEntityArray(Allocator.Temp);
+            try
+            {
+                for (int i = 0; i < aggroed.Length; i++)
+                {
+                    var anchor = ResolveEnemyViewTransform(aggroed[i]);
+                    if (anchor != null) aggroIconSpawner.Ensure(aggroed[i], anchor);
+                }
+            }
+            finally
+            {
+                aggroed.Dispose();
+            }
+            aggroIconSpawner.EndFrame();
         }
 
         // time-manager Unit 3 — TimeManager.ScaleOf(Battle) 을 ECS singleton 으로 write 해
@@ -3244,15 +3297,15 @@ namespace Wassup.Bridge
             });
             // aggro-targeting Unit 4 — expose defender class so enemies can filter/prioritize.
             _em.AddComponentData(entity, new Wassup.Battle.Units.DefenderClassTag { value = unitData.role });
-            // aggro-targeting Unit 1 — guardians (aggroCapacity > 0) become aggro
-            // anchors. Fighter/Ranger (aggroCapacity == 0) get no AggroProvider.
+            // aggro-targeting Unit 10 — guardians (aggroCapacity > 0) carry AggroCapacity
+            // (존재=가디언 표식). Fighter/Ranger (aggroCapacity == 0) get none. 획득은
+            // 히트 구동(AttackSystem RESOLVE→AggroHitEvent) — 별도 range 없음.
             if (unitData.aggroCapacity > 0)
             {
-                float aggroRange = unitData.aggroRange > 0f ? unitData.aggroRange : unitData.attackRange;
-                _em.AddComponentData(entity, new Wassup.Battle.Effects.AggroProvider
+                _em.AddComponentData(entity, new Wassup.Battle.Effects.AggroCapacity
                 {
-                    capacity = unitData.aggroCapacity,
-                    range = aggroRange,
+                    max = unitData.aggroCapacity,
+                    held = 0,
                 });
             }
             _em.AddComponentData(entity, new Wassup.Battle.Combat.DefenderCcData

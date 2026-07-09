@@ -13,7 +13,7 @@ namespace Wassup.Battle.Combat
     // assignment and before AttackSystem so granted attacks fire the same frame.
     [BurstCompile]
     [UpdateInGroup(typeof(BattleSimGroup))]
-    [UpdateAfter(typeof(AggroAssignmentSystem))]
+    [UpdateAfter(typeof(AggroStateSystem))]
     [UpdateBefore(typeof(AttackSystem))]
     [UpdateBefore(typeof(Wassup.Battle.Movement.MovementSystem))] // aggro-standoff: 부여 range 동일 프레임 가시
     public partial struct TauntAttackGrantSystem : ISystem

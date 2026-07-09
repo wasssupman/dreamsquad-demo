@@ -20,7 +20,7 @@ MonoBehaviour:
   attackCooldown: 2
   hitDelaySec: 0.3
   deployDelaySec: 0
-  attackTargetCount: 1
+  attackTargetCount: 2
   visualMesh: {fileID: 0}
   visualMaterial: {fileID: 2100000, guid: 6fa13ca4169ea45da96dbc3495b7b178, type: 2}
   deployVoiceClip: {fileID: 8300000, guid: ea7b77cf5c26d46d29a237efef3b95ca, type: 3}

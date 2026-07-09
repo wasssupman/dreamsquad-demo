@@ -47,7 +47,7 @@ namespace Wassup.Battle.Movement
             var attackStateLookup = SystemAPI.GetComponentLookup<AttackState>(isReadOnly: true);
             var guardianPos = new NativeHashMap<Entity, float3>(16, Allocator.Temp);
             foreach (var (gTransform, gEntity) in
-                     SystemAPI.Query<RefRO<LocalTransform>>().WithAll<AggroProvider>().WithEntityAccess())
+                     SystemAPI.Query<RefRO<LocalTransform>>().WithAll<AggroCapacity>().WithEntityAccess())
                 guardianPos[gEntity] = gTransform.ValueRO.Position;
 
             foreach (var (transform, follow, entity) in

@@ -102,6 +102,28 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
+        public void SelectTargets_EmptyCandidates_ReturnsZero()
+        {
+            var cands = new NativeArray<AggroCandidate>(0, Allocator.Temp);
+            var outIdx = new NativeArray<int>(2, Allocator.Temp);
+            int n = AggroTargeting.SelectTargets(
+                int2.zero, float3.zero, tileRange: 2, held: 0, capacity: 4, cands, outIdx);
+            Assert.AreEqual(0, n, "후보 0 → 선정 0");
+            cands.Dispose(); outIdx.Dispose();
+        }
+
+        [Test]
+        public void SelectTargets_ZeroMaxTargets_ReturnsZero()
+        {
+            var cands = Cands(C(1, 0, false));
+            var outIdx = new NativeArray<int>(0, Allocator.Temp); // maxTargets 0
+            int n = AggroTargeting.SelectTargets(
+                int2.zero, float3.zero, tileRange: 2, held: 0, capacity: 4, cands, outIdx);
+            Assert.AreEqual(0, n, "maxTargets 0 → 선정 0");
+            cands.Dispose(); outIdx.Dispose();
+        }
+
+        [Test]
         public void SelectTargets_DoesNotExceedMaxTargets()
         {
             var cands = Cands(
