@@ -128,7 +128,7 @@ namespace Wassup.UI
             var trt = titleGo.GetComponent<RectTransform>();
             trt.sizeDelta = new Vector2(800, 120); trt.anchoredPosition = new Vector2(0, 340);
             var ttmp = titleGo.GetComponent<TextMeshProUGUI>();
-            ttmp.text = "DREAMCATCHER"; ttmp.alignment = TextAlignmentOptions.Center; ttmp.fontSize = 48; ttmp.color = Color.white;
+            ttmp.text = "드림캐쳐"; ttmp.alignment = TextAlignmentOptions.Center; ttmp.fontSize = 48; ttmp.color = Color.white;
             if (font != null) ttmp.font = font;
 
             var rowGo = new GameObject("CardRow", typeof(RectTransform));

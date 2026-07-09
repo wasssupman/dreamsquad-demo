@@ -130,7 +130,7 @@ namespace Wassup.UI
                 bool hasNext = bridge.NextWaveHasNext;
                 if (_waveButton != null) _waveButton.interactable = hasNext;
                 if (_waveLabel != null)
-                    _waveLabel.text = hasNext ? $"NEXT WAVE {bridge.NextWaveNumber}" : "NO WAVES";
+                    _waveLabel.text = hasNext ? $"다음 웨이브 {bridge.NextWaveNumber}" : "웨이브 없음";
             }
         }
 
@@ -218,7 +218,7 @@ namespace Wassup.UI
             lrt.offsetMin = Vector2.zero;
             lrt.offsetMax = Vector2.zero;
             _waveLabel = labelGO.AddComponent<TextMeshProUGUI>();
-            _waveLabel.text = "NEXT WAVE";
+            _waveLabel.text = "다음 웨이브";
             _waveLabel.fontSize = buttonFontSize;
             _waveLabel.color = Color.white;
             _waveLabel.alignment = TextAlignmentOptions.Center;

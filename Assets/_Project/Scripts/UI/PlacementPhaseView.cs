@@ -100,7 +100,7 @@ namespace Wassup.UI
             if (!_active) return;
             _remaining -= Time.deltaTime;
             if (_remaining <= 0f) { _remaining = 0f; FinishPlacement(); return; }
-            _countdownLabel.text = $"PLACEMENT PHASE  ·  {Mathf.CeilToInt(_remaining)}s";
+            _countdownLabel.text = $"배치 단계  ·  {Mathf.CeilToInt(_remaining)}초";
         }
 
         private void OnStartClicked() => FinishPlacement();
@@ -181,7 +181,7 @@ namespace Wassup.UI
             lrt.anchorMin = Vector2.zero; lrt.anchorMax = Vector2.one;
             lrt.offsetMin = Vector2.zero; lrt.offsetMax = Vector2.zero;
             _countdownLabel = labelGO.AddComponent<TextMeshProUGUI>();
-            _countdownLabel.text = "PLACEMENT PHASE";
+            _countdownLabel.text = "배치 단계";
             _countdownLabel.fontSize = 36;
             _countdownLabel.color = Color.yellow;
             _countdownLabel.alignment = TextAlignmentOptions.Center;
@@ -249,7 +249,7 @@ namespace Wassup.UI
             blrt.offsetMin = Vector2.zero; blrt.offsetMax = Vector2.zero;
             var bl = btnLabelGO.AddComponent<TextMeshProUGUI>();
             if (startLabelFont != null) bl.font = startLabelFont;
-            bl.text = "START BATTLE";
+            bl.text = "전투 시작";
             bl.color = startLabelColor;
             bl.alignment = TextAlignmentOptions.Center;
             bl.textWrappingMode = TextWrappingModes.NoWrap;

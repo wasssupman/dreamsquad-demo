@@ -69,7 +69,7 @@ namespace Wassup.UI.Draft
 
             GeneratedWavePlan plan;
             try { plan = WavePatternGenerator.Generate(deck); }
-            catch (Exception ex) { AddMessageCard("WAVE PREVIEW UNAVAILABLE", ex.Message); return; }
+            catch (Exception ex) { AddMessageCard("웨이브 미리보기 불가", ex.Message); return; }
 
             for (int i = 0; i < plan.waves.Count; i++) AddWaveCard(plan.waves[i]);
             UiLayer.Apply(gameObject);
@@ -269,7 +269,7 @@ namespace Wassup.UI.Draft
             _headerGroup = headerGo.GetComponent<CanvasGroup>();
 
             var headerTmp = headerGo.AddComponent<TextMeshProUGUI>();
-            headerTmp.text = "INCOMING WAVES";
+            headerTmp.text = "다가오는 웨이브";
             headerTmp.fontSize = 78;
             headerTmp.fontStyle = FontStyles.Bold;
             headerTmp.color = new Color(1f, 0.86f, 0.24f, 1f);
@@ -400,7 +400,7 @@ namespace Wassup.UI.Draft
                 new Vector2(0f, 0.55f), new Vector2(0.55f, 1f),
                 new Vector2(20f, 0f), new Vector2(0f, -8f), TextAlignmentOptions.MidlineLeft);
 
-            AddText(go.transform, "Time", $"{wave.triggerTimeSec:0.#}s", 22,
+            AddText(go.transform, "Time", $"{wave.triggerTimeSec:0.#}초", 22,
                 new Color(0.7f, 0.78f, 0.92f, 1f), bold: false,
                 new Vector2(0.55f, 0.6f), new Vector2(1f, 1f),
                 new Vector2(0f, 0f), new Vector2(-14f, -6f), TextAlignmentOptions.TopRight);

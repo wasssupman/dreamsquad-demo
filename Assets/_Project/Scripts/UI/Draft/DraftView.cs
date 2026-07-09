@@ -212,7 +212,7 @@ namespace Wassup.UI.Draft
             _skillPanel.sizeDelta = new Vector2(240f, 360f);
             panelGO.GetComponent<Image>().color = new Color(0.1f, 0.1f, 0.15f, 0.9f);
 
-            var titleTmp = CreateLabel(_skillPanel, "Title", "THIS ROUND\nSKILLS",
+            var titleTmp = CreateLabel(_skillPanel, "Title", "이번 라운드\n스킬",
                 fontSize: 20, alignment: TextAlignmentOptions.Center);
             var titleRt = (RectTransform)titleTmp.transform;
             titleRt.anchorMin = new Vector2(0f, 1f);
@@ -263,7 +263,7 @@ namespace Wassup.UI.Draft
                 nrt.offsetMin = new Vector2(4f, 0f);
                 nrt.offsetMax = new Vector2(-4f, -4f);
 
-                var costTmp = CreateLabel(slot.transform, "Cost", $"cost {skill.cost}",
+                var costTmp = CreateLabel(slot.transform, "Cost", $"코스트 {skill.cost}",
                     fontSize: 18, alignment: TextAlignmentOptions.Center);
                 var rt = (RectTransform)costTmp.transform;
                 rt.anchorMin = new Vector2(0f, 0f);

@@ -210,7 +210,7 @@ namespace Wassup.UI
                 {
                     _portalEntryTile = tile;
                     if (_aimLabel != null)
-                        _aimLabel.text = $"[{_aimingSkill.displayName}] Tap exit tile";
+                        _aimLabel.text = $"[{_aimingSkill.displayName}] 출구 타일 선택";
                     return;
                 }
                 bool portalCast = bridge.CastPortal(_aimingSkill, _portalEntryTile, tile, out _);
@@ -262,8 +262,8 @@ namespace Wassup.UI
             if (_aimLabel != null)
             {
                 _aimLabel.text = skill.effect == SkillEffectType.Portal
-                    ? $"[{skill.displayName}] Tap entry tile"
-                    : $"[{skill.displayName}] Tap target";
+                    ? $"[{skill.displayName}] 입구 타일 선택"
+                    : $"[{skill.displayName}] 대상 선택";
                 _aimLabel.gameObject.SetActive(true);
             }
         }

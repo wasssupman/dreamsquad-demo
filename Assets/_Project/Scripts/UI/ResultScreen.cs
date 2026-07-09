@@ -83,28 +83,28 @@ namespace Wassup.UI
             public MatchStats(float remainingSec, int leaks) { RemainingSec = remainingSec; Leaks = leaks; }
         }
 
-        public void ShowDefeat() => ShowResult("DEFEAT", 0, null);
-        public void ShowDefeat(int playerScore) => ShowResult("DEFEAT", playerScore, null);
+        public void ShowDefeat() => ShowResult("패배", 0, null);
+        public void ShowDefeat(int playerScore) => ShowResult("패배", playerScore, null);
         public void ShowDefeat(int playerScore, float remainingSec, int leaks)
-            => ShowResult("DEFEAT", playerScore, new MatchStats(remainingSec, leaks));
-        public void ShowVictory() => ShowResult("VICTORY", 0, null);
-        public void ShowVictory(int playerScore) => ShowResult("VICTORY", playerScore, null);
+            => ShowResult("패배", playerScore, new MatchStats(remainingSec, leaks));
+        public void ShowVictory() => ShowResult("승리", 0, null);
+        public void ShowVictory(int playerScore) => ShowResult("승리", playerScore, null);
         public void ShowVictory(int playerScore, float remainingSec, int leaks)
-            => ShowResult("VICTORY", playerScore, new MatchStats(remainingSec, leaks));
+            => ShowResult("승리", playerScore, new MatchStats(remainingSec, leaks));
 
         private void ShowResult(string resultText, int playerScore, MatchStats? stats)
         {
             if (!_built) BuildCanvas();
             resultLabel.text = resultText;
-            bool win = resultText == "VICTORY";
+            bool win = resultText == "승리";
             if (tabImage != null) tabImage.color = win ? goldColor : defeatColor;
-            if (scoreSubLabel != null) scoreSubLabel.text = $"YOUR SCORE   {playerScore:N0}";
+            if (scoreSubLabel != null) scoreSubLabel.text = $"내 점수   {playerScore:N0}";
             if (statsLabel != null)
             {
                 if (stats.HasValue)
                 {
                     int t = Mathf.Max(0, Mathf.CeilToInt(stats.Value.RemainingSec));
-                    statsLabel.text = $"TIME {t / 60}:{t % 60:D2}      LEAKS {stats.Value.Leaks}";
+                    statsLabel.text = $"시간 {t / 60}:{t % 60:D2}      유출 {stats.Value.Leaks}";
                     statsLabel.gameObject.SetActive(true);
                 }
                 else statsLabel.gameObject.SetActive(false);
@@ -180,7 +180,7 @@ namespace Wassup.UI
                 }
                 else
                 {
-                    rows.Add(new Row(i + 1, "WAITING...", 0, false, true));
+                    rows.Add(new Row(i + 1, "대기 중...", 0, false, true));
                 }
             }
             return rows;
@@ -191,8 +191,8 @@ namespace Wassup.UI
         {
             var botScores = BotScoreGenerator.GenerateBotScores(5, playerScore, playerScore);
             var seed = new List<(string name, int score, bool isPlayer)>(botScores.Length + 1);
-            for (int i = 0; i < botScores.Length; i++) seed.Add(($"Bot-{i + 1}", botScores[i], false));
-            seed.Add(("YOU", playerScore, true));
+            for (int i = 0; i < botScores.Length; i++) seed.Add(($"봇-{i + 1}", botScores[i], false));
+            seed.Add(("나", playerScore, true));
             seed.Sort((a, b) => b.score.CompareTo(a.score));
 
             var rows = new List<Row>(seed.Count);
@@ -455,7 +455,7 @@ namespace Wassup.UI
             btnRt.anchoredPosition = Vector2.zero;
             restartButton = btn.GetComponent<Button>();
 
-            var label = CreateLabel(btn.transform, "Label", "RESTART", 34, TextAlignmentOptions.Center, BadgeTextDark);
+            var label = CreateLabel(btn.transform, "Label", "다시하기", 34, TextAlignmentOptions.Center, BadgeTextDark);
             label.fontStyle = FontStyles.Bold | FontStyles.SmallCaps;
             label.characterSpacing = 6f;
             StretchFull((RectTransform)label.transform);

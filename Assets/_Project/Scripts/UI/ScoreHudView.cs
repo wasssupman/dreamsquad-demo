@@ -461,7 +461,7 @@ namespace Wassup.UI
             crt.anchorMax = Vector2.one;
             crt.offsetMin = Vector2.zero;
             crt.offsetMax = Vector2.zero;
-            _caption.text = "SCORE";
+            _caption.text = "점수";
             _caption.fontStyle = FontStyles.Bold | FontStyles.SmallCaps;
             _caption.characterSpacing = 6f;
             _caption.color = tabTextColor;

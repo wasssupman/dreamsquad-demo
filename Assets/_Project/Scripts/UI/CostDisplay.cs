@@ -37,7 +37,7 @@ namespace Wassup.UI
         private static readonly Color ValueColor = Color.white;
 
         private const float PlateW = 363f;
-        private const float PlateH = 130f;
+        private const float PlateH = 112f;
 
         private GameObject _panel;
         private Transform _barRow;
@@ -162,14 +162,15 @@ namespace Wassup.UI
             prt.anchorMin = new Vector2(0f, 0f);
             prt.anchorMax = new Vector2(0f, 0f);
             prt.pivot = new Vector2(0f, 0f);
-            prt.anchoredPosition = new Vector2(40f, 150f);
+            // 아래 DefenderSelector(상단 y≈160)와 명확히 분리되도록 위로 올려 갭 확보.
+            prt.anchoredPosition = new Vector2(40f, 184f);
             prt.sizeDelta = new Vector2(PlateW, PlateH);
             // Landscape badge with even inner padding (Pad). 9-sliced panel so the
             // rounded corners stay crisp when stretched wide. Top row = bolt + inline
             // "N/Max"; bottom row = bar gauge. Compact height, no floating whitespace.
             const float Pad = 18f;
-            const float TopRowH = 50f;
-            const float BarRowH = 34f;
+            const float TopRowH = 46f;
+            const float BarRowH = 24f;
             var plate = _panel.GetComponent<Image>();
             plate.sprite = costPanelSprite != null
                 ? costPanelSprite

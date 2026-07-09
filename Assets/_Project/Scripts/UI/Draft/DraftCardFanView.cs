@@ -263,7 +263,7 @@ namespace Wassup.UI.Draft
             var dmgText = AttackOutputStats.TryGetUniqueMagnitude(unit.outputs, AttackOutputKind.Damage, out var dmg)
                 ? dmg.ToString("0")
                 : "-";
-            var stats = $"{unit.displayName}\n\nHP  {unit.health:0}\nRNG {unit.attackRange:0.##}\nDMG {dmgText}\nCD  {unit.attackCooldown:0.##}s";
+            var stats = $"{unit.displayName}\n\n체력 {unit.health:0}\n사거리 {unit.attackRange:0.##}\n공격 {dmgText}\n쿨 {unit.attackCooldown:0.##}초";
             var labelGo = new GameObject("Label", typeof(RectTransform));
             labelGo.transform.SetParent(go.transform, false);
             var labelRt = (RectTransform)labelGo.transform;
@@ -308,10 +308,10 @@ namespace Wassup.UI.Draft
 
         private static string SlotLabel(DraftSlotType slotType) => slotType switch
         {
-            DraftSlotType.Basic => "BASIC",
-            DraftSlotType.Meta => "META",
-            DraftSlotType.Collection => "COLLECT",
-            DraftSlotType.Ego => "EGO",
+            DraftSlotType.Basic => "기본",
+            DraftSlotType.Meta => "메타",
+            DraftSlotType.Collection => "수집",
+            DraftSlotType.Ego => "에고",
             _ => string.Empty,
         };
     }
