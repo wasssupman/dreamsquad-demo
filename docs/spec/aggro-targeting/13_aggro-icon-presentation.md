@@ -34,4 +34,5 @@
 - [ ] 적 사망/디스폰 → 아이콘 회수(잔류 없음).
 - [ ] 아이콘 파라미터가 전부 SO 에서(하드코딩 0). teardown 후 잔여 아이콘 0.
 
-코드/에셋 완료: 2026-07-09 (Spawner/View/Style + BattleBridge reconcile 배선 + `AggroIconStyle.asset`(붉은 주황, 절차적 "!" 폴백) / 커밋 `b84b6887` + asset). **씬 GameObject 배선(AggroIconSpawner GO + BattleBridge.aggroIconSpawner 할당) + Play 스모크는 잔여** — 에디터 포커스·씬 저장 필요라 사용자 확인 단계.
+코드/에셋 완료: 2026-07-09 (Spawner/View/Style + BattleBridge reconcile 배선 + `AggroIconStyle.asset`(붉은 주황, 절차적 "!" 폴백) / 커밋 `b84b6887` + asset).
+씬 배선 완료: 2026-07-09 (BattleScene 에 `AggroIconSpawner` GO + `style`=AggroIconStyle + `BattleBridge.aggroIconSpawner` 연결, reflection 검증·저장 / 커밋 `5ea07f6c`). Play 진입 에러 0. **아이콘 표시/해제 육안 스모크만 잔여**(포커스 필요, 사용자).
