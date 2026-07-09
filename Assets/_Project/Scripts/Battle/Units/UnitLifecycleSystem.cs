@@ -5,6 +5,7 @@ using Unity.Transforms;
 using Wassup.Battle.Combat;
 using Wassup.Battle.Effects;
 using Wassup.Battle.Movement;
+using Wassup.Data;
 
 namespace Wassup.Battle.Units
 {
@@ -63,6 +64,10 @@ namespace Wassup.Battle.Units
             // Enqueue happens before DestroyEntity so BattleBridge sees the tile
             // coordinate before the entity is gone.
             bool hasDefenderSink = _defenderDeathSingletonQuery.CalculateEntityCount() == 1;
+            // content-1 ② — read the dying defender's OnDeath×SelfTileAoe slot (RO,
+            // cross-context read of a Combat buffer is allowed) and bake it into the
+            // event BEFORE ecb destroys the entity.
+            var dcSlotLookup = SystemAPI.GetBufferLookup<DcTriggerSlot>(isReadOnly: true);
             foreach (var (tile, entity) in
                      SystemAPI.Query<RefRO<DefenderTile>>()
                               .WithAll<DeadTag, DefenderUnitTag>()
@@ -70,8 +75,25 @@ namespace Wassup.Battle.Units
             {
                 if (hasDefenderSink)
                 {
+                    var evt = new DefenderDeathEvent { cell = tile.ValueRO.cell };
+                    if (dcSlotLookup.HasBuffer(entity))
+                    {
+                        var slots = dcSlotLookup[entity];
+                        for (int s = 0; s < slots.Length; s++)
+                        {
+                            if (slots[s].trigger == DcTriggerKind.OnDeath &&
+                                slots[s].payload == DcPayloadKind.SelfTileAoe)
+                            {
+                                evt.hasOnDeathAoe = true;
+                                evt.aoeDamage = slots[s].magnitude;
+                                evt.aoeTileRange = slots[s].tileRange;
+                                evt.aoeDataIndex = slots[s].projectileDataIndex;
+                                break; // first OnDeath slot only (v1)
+                            }
+                        }
+                    }
                     var singleton = _defenderDeathSingletonQuery.GetSingletonRW<DefenderDeathEventsSingleton>();
-                    singleton.ValueRW.queue.Enqueue(new DefenderDeathEvent { cell = tile.ValueRO.cell });
+                    singleton.ValueRW.queue.Enqueue(evt);
                 }
                 ecb.DestroyEntity(entity);
             }

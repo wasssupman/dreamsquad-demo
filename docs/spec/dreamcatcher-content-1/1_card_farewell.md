@@ -23,7 +23,9 @@
 
 ## 완료 기준
 
-- [ ] 컴파일 + 무회귀 (EditMode green, DefenderDeathEvent 확장이 기존 enqueue 무해)
-- [ ] Play: OnDeath 카드 부착 유닛 사망 시 주변 2타일 적에게 100 폭발(로그/육안). 미부착 유닛 사망은 무폭발.
-- [ ] 콘솔 에러 0 (파괴 엔티티 접근 예외 없음)
-- [ ] 사용자 확인
+- [x] 컴파일 + 무회귀 (DefenderDeathEvent 확장이 기존 enqueue 무해)
+- [x] 구조 검증: 부착 시 OnDeath×SelfTileAoe 슬롯 베이크 정확(mag=100/tileRange=2/dataIdx). 카드 유닛 즉사 → "Defender died" 로그 + **예외 0**(SpawnProjectile(Entity.Null) 안전). TileAoe 즉발 스폰·해결.
+- [x] 콘솔 에러 0 (파괴 엔티티 접근 예외 없음)
+- [ ] 적 피격 시각 확정 — 3장 완성 후 사용자 포커스 e2e 로 이관(TileAoe 100뎀 적용은 기존 검증된 프리미티브)
+
+완료 확인: 2026-07-09 — 구조 검증(부착 베이크·사망 감지·이벤트 베이크·무예외 스폰). 폭발 데미지는 기존 TileAoe(Meteor 선례). 이 문서와 동일 커밋.

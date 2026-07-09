@@ -1795,6 +1795,25 @@ namespace Wassup.Bridge
                 tileHealthGaugeLayer?.Hide(cell); // unit 3 — 사망 시 게이지 제거
                 RecomputeSynergyFor(cell);
                 Debug.Log($"[BattleBridge] Defender died @ {cell}; tile freed, synergy recomputed.");
+
+                // content-1 ② (작별 선물) — OnDeath×SelfTileAoe explosion at the dead
+                // cell. Payload was baked into the event before the entity died, so
+                // this touches no destroyed entity. Immediate (flightTime 0) TileAoe.
+                if (evt.hasOnDeathAoe && evt.aoeDataIndex >= 0)
+                {
+                    var impactWorld = GridToWorldCenter(cell, spawnHeight);
+                    SpawnProjectile(new ProjectileSpawnRequest
+                    {
+                        movement = MovementKind.SkyFall,
+                        payload = PayloadKind.TileAoe,
+                        impact = impactWorld,
+                        damage = evt.aoeDamage,
+                        impactTileRange = evt.aoeTileRange,
+                        flightTime = 0f,
+                        dataIndex = evt.aoeDataIndex,
+                        visualScale = 1f,
+                    }, Entity.Null);
+                }
             }
         }
 
@@ -2470,6 +2489,24 @@ namespace Wassup.Bridge
                     slot.projectileDataIndex = GetOrCreateProjectileDataIndex(m.payload.projectile);
                     slot.speed = m.payload.projectile.speed;
                     slot.hitThreshold = m.payload.projectile.hitThreshold;
+                    slot.visualScale = m.payload.projectile.visualScale;
+                }
+                else if (m.payload.kind == Wassup.Data.DcPayloadKind.SelfTileAoe)
+                {
+                    // content-1 ② — OnDeath explosion. Needs an AOE-view ProjectileData
+                    // (impact crater VFX) + positive damage + tileRange.
+                    if (m.payload.projectile == null)
+                    {
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: SelfTileAoe without ProjectileData (AOE view) — skipped.");
+                        continue;
+                    }
+                    if (m.payload.magnitude <= 0f)
+                    {
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: non-positive magnitude — skipped.");
+                        continue;
+                    }
+                    slot.projectileDataIndex = GetOrCreateProjectileDataIndex(m.payload.projectile);
+                    slot.tileRange = math.max(0, m.payload.tileRange);
                     slot.visualScale = m.payload.projectile.visualScale;
                 }
                 // Immediate (non-ECB) AddBuffer — same technique as ModifierApplySystem's
