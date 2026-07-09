@@ -55,5 +55,7 @@
 - **ballistic/TileAoe 튕김 해석** [M] · 대상 없는 산출물의 "튕김" 재정의 필요(파편? 연쇄 낙하?) — 호환표 확장 결정.
 - **bounce 를 유닛 고유 능력으로** [S] · `ProjectileData` 또는 `DefenderUnitData` 에 기본 bounce 값 — 프리미티브는 이미 카드와 무관하게 동작하므로 authoring 노출만.
 - **개조형 kind 확장** [?] · pierce(관통)/crit 등 — kind append + 주입/해결 지점 arm. pierce 는 bounce 와 유사한 생존 분기 계열.
+- **non-Damage output 감쇠** [S] · 현재 튕김 감쇠는 Damage magnitude 만(계약 3). Slow 등 ApplyStat/ApplyStack output 은 매 튕김 full 적용 — 개조형 카드가 non-Damage output 유닛에 붙으면 밸런스 함정 가능(ecs-review M1). 콘텐츠가 그 조합을 쓸 때 재검토.
+- **bounceDamageMul 하한 가드** [S] · unit 3 부착 가드에서 `damageMul > 0` 강제(0 이면 첫 튕김 후 영구 0 데미지). v1 카드는 1.0 이라 무해하나 authoring 방어.
 - **튕김 히트 로깅** [S] · `ProjectileState` 에 shooter 참조를 실어 ImpactSystem 이 AttackOutputLog 를 enqueue — 밸런스 로그 완전성.
 - **튕김 히스토리 전체 제외** [S] · A→B→A 재히트를 막으려면 히트 히스토리 저장 필요(고정 배열) — 기획이 원할 때.

@@ -2037,6 +2037,11 @@ namespace Wassup.Bridge
                 splashRadius = req.splashRadius,
                 splashDamageMul = req.splashDamageMul,
                 dataIndex = req.dataIndex,
+                // dreamcatcher-attack-mod-bounce unit 2 — copy bounce params
+                // verbatim; defaults 0 = every existing spawn keeps legacy destroy.
+                bounceRemaining = req.bounceRemaining,
+                bounceTileRange = req.bounceTileRange,
+                bounceDamageMul = req.bounceDamageMul,
             };
             if (req.movement == MovementKind.BallisticArcToPoint)
             {

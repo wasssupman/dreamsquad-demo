@@ -38,7 +38,9 @@ namespace Wassup.Battle.Combat.Projectile
             var transformLookup = SystemAPI.GetComponentLookup<LocalTransform>(isReadOnly: true);
             var damageBufferLookup = SystemAPI.GetBufferLookup<IncomingDamage>(isReadOnly: false);
             var healBufferLookup = SystemAPI.GetBufferLookup<Wassup.Battle.Units.IncomingHeal>(isReadOnly: false);
-            var outputLookup = SystemAPI.GetBufferLookup<AttackOutputElement>(isReadOnly: true);
+            // RW: a bouncing projectile decays its outputs-buffer Damage entries in
+            // place (that buffer is the damage source when present) — bounce unit 2.
+            var outputLookup = SystemAPI.GetBufferLookup<AttackOutputElement>(isReadOnly: false);
             var hitFlashLookup = SystemAPI.GetComponentLookup<HitFlashTag>(isReadOnly: true);
             bool hasStatQ = SystemAPI.TryGetSingleton<StatModifierApplyEventsSingleton>(out var statEvents);
             bool hasStackQ = SystemAPI.TryGetSingleton<StackModifierApplyEventsSingleton>(out var stackEvents);
@@ -57,6 +59,11 @@ namespace Wassup.Battle.Combat.Projectile
             var aoeQuery = SystemAPI.QueryBuilder().WithAll<AttackUnitTag, LocalTransform>().Build();
             var aoeEntities = aoeQuery.ToEntityArray(Allocator.Temp);
             var aoeTransforms = aoeQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
+            // Positions snapshot for the pure BounceRetarget.FindNext (architecture-
+            // neutral: it takes float3, not LocalTransform/Entity) — bounce unit 2.
+            var aoePositions = new NativeArray<float3>(aoeTransforms.Length, Allocator.Temp);
+            for (int i = 0; i < aoeTransforms.Length; i++)
+                aoePositions[i] = aoeTransforms[i].Position;
 
             // Grid params for the TileAoe payload (impact cell + candidate cells).
             // Same source the legacy Meteor resolver used; defaults keep it safe before
@@ -72,6 +79,10 @@ namespace Wassup.Battle.Combat.Projectile
                               .WithEntityAccess())
             {
                 if (!projectile.ValueRO.impactReached) continue;
+
+                // bounce unit 2 — set true only when a SingleSplash projectile
+                // re-targets; the unconditional destroy below is then skipped.
+                bool bounced = false;
 
                 switch (projectile.ValueRO.payload)
                 {
@@ -183,6 +194,51 @@ namespace Wassup.Battle.Combat.Projectile
                                     duration = HitFlashDuration,
                                     originalScale = transformLookup[target].Scale,
                                 });
+
+                            // bounce unit 2 — post-resolution survival. The resolution
+                            // above (damage/VFX/flash) ran unchanged; now, if charges
+                            // remain and a retarget exists, re-home the SAME entity
+                            // instead of destroying it (view/trail continuity is free).
+                            if (projectile.ValueRO.bounceRemaining > 0)
+                            {
+                                // Exclude the just-hit target (its index in the snapshot);
+                                // damage is deferred (IncomingDamage) so it is still alive here.
+                                int excludeIdx = -1;
+                                for (int i = 0; i < aoeEntities.Length; i++)
+                                    if (aoeEntities[i] == target) { excludeIdx = i; break; }
+
+                                int nextIdx = BounceRetarget.FindNext(
+                                    targetPos, excludeIdx, aoePositions,
+                                    projectile.ValueRO.bounceTileRange, tileSize, gridSize, ffOrigin);
+
+                                if (nextIdx >= 0)
+                                {
+                                    float mul = projectile.ValueRO.bounceDamageMul;
+                                    var next = projectile.ValueRO;
+                                    next.target = aoeEntities[nextIdx];
+                                    next.impactReached = false;
+                                    next.bounceRemaining = projectile.ValueRO.bounceRemaining - 1;
+                                    next.damage = projectile.ValueRO.damage * mul;
+                                    ecb.SetComponent(entity, next);
+
+                                    // Decay the outputs-buffer Damage entries too — that
+                                    // buffer, not state.damage, is the source when present.
+                                    if (mul != 1f && outputLookup.HasBuffer(entity))
+                                    {
+                                        var buf = outputLookup[entity];
+                                        for (int oi = 0; oi < buf.Length; oi++)
+                                        {
+                                            var e = buf[oi];
+                                            if (e.value.kind == AttackOutputKind.Damage)
+                                            {
+                                                e.value.magnitude *= mul;
+                                                buf[oi] = e;
+                                            }
+                                        }
+                                    }
+                                    bounced = true;
+                                }
+                            }
                         }
                         break;
                     }
@@ -232,13 +288,17 @@ namespace Wassup.Battle.Combat.Projectile
                         break;
                 }
 
-                ecb.DestroyEntity(entity);
+                // bounce unit 2 — a re-targeted projectile survives; the destroy
+                // stays unconditional for TileAoe/default and non-bouncing hits.
+                if (!bounced)
+                    ecb.DestroyEntity(entity);
             }
 
             ecb.Playback(state.EntityManager);
             ecb.Dispose();
             aoeEntities.Dispose();
             aoeTransforms.Dispose();
+            aoePositions.Dispose();
         }
     }
 }

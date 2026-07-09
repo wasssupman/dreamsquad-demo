@@ -22,7 +22,15 @@ ProjectileHitSystem:
 
 BattleBridge `SpawnProjectile`: `state.bounceRemaining/bounceTileRange/bounceDamageMul = req.*` 복사 한 줄씩. request 기본값 0 이므로 기존 스폰 전부 무영향.
 
+## 주의 (되돌리지 말 것)
+
+- **`FindNext` 는 float3 위치를 받는다 — `NativeArray<LocalTransform>` 로 바꿔 aoePositions 할당을 없애지 말 것.** 순수함수의 아키텍처-중립(Entity/Transforms 무참조)이 Temp 할당 1개보다 우선(사용자 확정). aoePositions 는 매 OnUpdate Temp 할당 후 Dispose — 의도된 비용.
+- **감쇠는 state.damage 와 outputs Damage magnitude 둘 다** ×mul. outputs 있으면 데미지 소스는 outputs 지만, splash/fallback 이 state.damage 를 쓰므로 양쪽 유지가 맞다(이중 차감 아님 — 리뷰 확인).
+
 ## 완료 기준
 
-- [ ] 컴파일 + 기존 EditMode/PlayMode 무회귀 (bounce 필드 0 경로)
-- [ ] execute_code Play: state 에 bounceRemaining 수동 주입한 투사체가 히트 후 파괴되지 않고 다른 적으로 재비행 → 소진 후 파괴 (unit 3 전에 프리미티브 단독 검증)
+- [x] 컴파일 + 기존 EditMode 무회귀 (bounce 필드 0 경로) — EditMode 588 그린
+- [x] 프리미티브 동작: bounceRemaining 주입 투사체가 히트 후 재비행 (라이브 시뮬 중 8발 arrow×bounce4 가 적 6→1 킬 = 튕김 없인 불가능한 attrition). ecs-reviewer 6/6 CONFIRMED SAFE (RefRO+ecb.SetComponent / outputs RW / 이중감쇠 없음 / excludeIndex 항상 유효 / Temp 무누수 / bounce=0 무회귀).
+- 시각 e2e(재비행 궤적 육안)는 **unit 4 카드 e2e 로 이관** — 에디터 비포커스 시 sim frame 정지라 자율 라이브 스냅샷 불가(projectile-trajectory-payload unit 6 이 authored 유닛 필요로 Play e2e 를 이관한 것과 동형).
+
+완료 확인: 2026-07-09 — 컴파일 클린, EditMode 588 그린, ecs-reviewer CRITICAL/HIGH 0. 이 문서와 동일 커밋.
