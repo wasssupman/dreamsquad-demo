@@ -13,6 +13,7 @@ namespace Wassup.Presentation
 
         private Camera _camera;
         private Transform _anchor;
+        private Vector3 _lastBasePos; // anchor 원위치(offset 미포함) — 파괴 후에도 offset 누적 방지(critic H1)
         private Vector3 _offset;
         private float _scale;
         private bool _billboard;
@@ -38,9 +39,21 @@ namespace Wassup.Presentation
             _scale = entry.scale <= 0f ? 1f : entry.scale;
             _billboard = entry.billboard;
             EnsureBuilt(entry);
+            ApplyMutable(entry); // 풀 재사용 시에도 매 Show 재적용(critic M1 — registry 값 변경 대비)
+            _lastBasePos = anchor != null ? anchor.position : Vector3.zero;
             _active = true;
             gameObject.SetActive(true);
             Follow();
+        }
+
+        // 재사용마다 갱신될 수 있는 시각 속성(폴백 틴트/정렬). 프리팹은 자체 정의.
+        private void ApplyMutable(StatusFxRegistry.Entry entry)
+        {
+            if (_usesFallback && _fallbackSr != null)
+            {
+                _fallbackSr.color = entry.fallbackTint.a > 0f ? entry.fallbackTint : Color.white;
+                _fallbackSr.sortingOrder = 15000;
+            }
         }
 
         // 같은 유닛 유지: anchor 갱신만.
@@ -63,8 +76,7 @@ namespace Wassup.Presentation
                 go.transform.SetParent(transform, false);
                 _fallbackSr = go.AddComponent<SpriteRenderer>();
                 _fallbackSr.sprite = FallbackSprite();
-                _fallbackSr.color = entry.fallbackTint.a > 0f ? entry.fallbackTint : Color.white;
-                _fallbackSr.sortingOrder = 15000;
+                // 색/정렬은 ApplyMutable 이 매 Show 재적용.
             }
         }
 
@@ -75,8 +87,8 @@ namespace Wassup.Presentation
 
         private void Follow()
         {
-            Vector3 basePos = _anchor != null ? _anchor.position : transform.position;
-            transform.position = basePos + _offset;
+            if (_anchor != null) _lastBasePos = _anchor.position; // 파괴되면 마지막 위치 유지
+            transform.position = _lastBasePos + _offset;
             // 폴백 "!"만 약한 펄스(현 어그로 외형 보존). 프리팹은 자체 애니메이션.
             float s = _scale;
             if (_usesFallback) s *= 1f + 0.12f * Mathf.Sin(Time.time * 3f);

@@ -74,13 +74,20 @@ namespace Wassup.Presentation
             }
         }
 
-        // 전투 teardown 시 잔여 연출 정리.
+        // 전투 teardown 시 전량 파괴(재시작마다 kind별 풀 누적 방지, critic M2).
         public void Clear()
         {
             foreach (var kv in _active)
-                if (kv.Value != null) { kv.Value.Hide(); Recycle(kv.Key.Item2, kv.Value); }
+                if (kv.Value != null) Destroy(kv.Value.gameObject);
             _active.Clear();
             _seen.Clear();
+            foreach (var q in _pool.Values)
+                while (q.Count > 0)
+                {
+                    var v = q.Dequeue();
+                    if (v != null) Destroy(v.gameObject);
+                }
+            _pool.Clear();
         }
 
         private StatusFxView Get(StatusFxKind kind)
