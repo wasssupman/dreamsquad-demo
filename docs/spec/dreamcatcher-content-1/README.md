@@ -1,6 +1,6 @@
 # Dreamcatcher Content 1 — 신규 드림캐쳐 3종 (트리거·수명 어휘 확장)
 
-> 상태: **작성 2026-07-09, 구현 대기**
+> 상태: **완료 2026-07-09** (units 0~3 + handoff). impl ecs-review CRITICAL/HIGH 0. 인계: `4_handoff_summary.md`.
 >
 > 배경: unit-trigger / attack-mod-bounce 로 세운 2계층·확장비용 패턴을 신규 콘텐츠 3장으로 실증. 3장 모두 순수 데이터가 아니라 **enum+arm+훅** 확장이 필요하지만 각 확장은 국소적. "확장 비용 지도"의 여러 축(신규 트리거 3종, 신규 페이로드 2종, 신규 즉발-타이머 부류)을 실제 카드로 검증.
 
@@ -63,3 +63,11 @@
 - NextAttackDoubleFire 를 charges>1 / 지속시간형으로 일반화.
 - SelfTileAoe 에 non-Damage(슬로우 폭발 등) — 현재 Damage-only.
 - LethalTimer 를 "만료 시 임의 효과"로 일반화(자폭 외).
+- **TRD 2.5 에 IComponentData 단발 핸드오프 채널 명문화** (impl-review M1) — `NextAttackDoubleFire`/`IncomingDamage` 가 Buffer/NativeQueue 외 제3 크로스맥락 패턴. 규칙에 한 줄 추가해 오해 방지.
+- **SelfBuffLethal 중복 부착 가드** (M2) — 같은 유닛 2장이면 LethalTimer 가 덮어써짐(v1 단일 카드라 미도달). 누적/거절 정책.
+- **다중 DamagedCounter charge 누적** (M3) — 같은 period 2장이 동시 발동해도 charge 1개(bonus 1발). 스택 시 피드백/누적.
+- **신규 시스템 EditMode 테스트** (M4) — LethalTimerSystem 카운트다운·DamagedCounter→NextAttackDoubleFire 핸드오프·OnDeath 베이크 체인. 현재 DcTrigger.Tick 만 테스트(코어). 시스템 통합은 World 필요(ModifierFrameworkTests 선례처럼 무거움).
+
+## 의도된 시너지
+
+- **③ 마지막 불꽃 + ② 작별 선물**: 카미카제 자폭(LethalTimer→DeadTag)이 OnDeath 를 달아 **자폭 위치에 폭발**. 어휘 재조합 콤보로 의도됨(별 코드 없이 성립).
