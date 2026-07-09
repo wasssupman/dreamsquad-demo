@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Projectile_Shard02_GA
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.ProjectileData
   id: ga_shard02
-  speed: 12
+  speed: 26
   hitThreshold: 0.35
   visualScale: 0.6
   visualHeightOffset: 0.7
@@ -38,3 +38,9 @@ MonoBehaviour:
   onHitDuration: 0
   splashRadius: 0
   splashDamageMul: 0.5
+  flightMode: 0
+  arcHeight: 2
+  impactTileRange: 1
+  minFlightTime: 0.3
+  dropHeight: 6
+  fallPortion: 1
