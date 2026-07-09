@@ -91,7 +91,7 @@ namespace Wassup.UI
                 userId = "",
                 userName = userName,
                 provider = "guest",
-            }, idToken: "");
+            }, idToken: "", gameApiBaseUrl);
             Debug.Log($"[LoginPanel] entered without login as guest '{userName}'.");
             onSignedIn?.Invoke();
         }
@@ -149,7 +149,7 @@ namespace Wassup.UI
 
                 PlayerPrefs.SetString(RefreshTokenPrefsKey, tokens.refreshToken);
                 PlayerPrefs.SetString(UserNamePrefsKey, userName);
-                UserSession.Set(user, tokens.idToken);
+                UserSession.Set(user, tokens.idToken, gameApiBaseUrl);
                 SetBusy(false, $"SIGNED IN AS {user.userName}".ToUpperInvariant());
                 // panel may have been deactivated by a skip (unit 4) while this
                 // request was in flight — StartCoroutine would throw there, and

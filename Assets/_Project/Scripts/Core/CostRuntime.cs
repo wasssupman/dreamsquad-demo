@@ -45,7 +45,7 @@ namespace Wassup.Core
         // equipped CostRate stones. So neither may ever set it. Only three call
         // sites own this value: GameManager.StartSquadMatch/StartTestModeMatch set
         // it from equipped stones at match-entry; DraftController.TryConfirm resets
-        // it to 1 (a drafted match carries no squad stone buffs). RestartBattle
+        // it to 1 (a drafted match carries no squad stone buffs). The restart path
         // does not call SetRegenRateMultiplier at all — no-contact is the point.
         public void SetRegenRateMultiplier(float multiplier) => _regenRateMultiplier = Mathf.Max(0f, multiplier);
 

@@ -103,11 +103,22 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void FallProgress_ZeroPortion_GuardsDivide()
         {
-            // authoring 은 [Range(0.05,1)] 로 막지만 순수함수 계약으로 가드를 핀:
-            // fp=0 → NaN/Inf 없이 유한값(대기 전 구간 → impact 직전 점프).
+            // fp=0 은 authoring 이 [Range(0.05,1)] 로 막는 도달 불가 입력 — 순수함수
+            // 계약만 핀다. divide 가드(math.max(fp, 1e-4))가 NaN/Inf 를 막고, 분자도
+            // 0(=p-(1-0)=0)이라 saturate(0)=0 으로 수렴한다: fp→0 이면 낙하 진행이
+            // 전 구간 0(뷰가 상공에 붙박임)이라는 의미. 실 최솟값에서의 정상 도달은
+            // FallProgress_MinAuthoredPortion_ReachesOneAtImpact 가 별도로 핀다.
             float v = SkyFall.FallProgress(1f, 0f);
             Assert.IsFalse(float.IsNaN(v) || float.IsInfinity(v));
-            Assert.AreEqual(1f, v, 1e-3f);
+            Assert.AreEqual(0f, v, 1e-3f);
+        }
+
+        [Test]
+        public void FallProgress_MinAuthoredPortion_ReachesOneAtImpact()
+        {
+            // authoring 최솟값 fp=0.05 에선 착탄(p=1)에 낙하 완료(1)에 도달해야 한다
+            // (뷰가 지면=heightOffset 0 에 안착). fp=0 퇴화 케이스와 대비되는 실계약.
+            Assert.AreEqual(1f, SkyFall.FallProgress(1f, 0.05f), 1e-4f);
         }
     }
 }

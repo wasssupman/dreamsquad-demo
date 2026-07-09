@@ -53,7 +53,9 @@ namespace Wassup.UI
         private const float CardPad = 6f;
 
         // Confirm ("MY DECK") frame geometry + palette.
-        private const float DeckFrameTopY = -128f;
+        // ui-tweak 2026-07-08 — 타이틀(PanelTitle, y -60..-180)과 겹치던 MY DECK 프레임을
+        // 타이틀 박스 아래로 내려 타이틀이 가려지지 않게 한다.
+        private const float DeckFrameTopY = -196f;
         private const float FrameHeaderH = 48f;
         private const float FramePadX = 26f;
         private const float FramePadBottom = 18f;
@@ -126,10 +128,14 @@ namespace Wassup.UI
                 ownedContainer.anchorMin = new Vector2(0.5f, 0f);
                 ownedContainer.anchorMax = new Vector2(0.5f, 0f);
                 ownedContainer.pivot = new Vector2(0.5f, 0f);
-                ownedContainer.anchoredPosition = new Vector2(0f, 250f);
-                ownedContainer.sizeDelta = new Vector2(contentWidth, 430f);
+                // ui-tweak 2026-07-08 — 프레임을 내린 만큼 컬렉션 높이를 400 으로 줄여
+                // 하단 상태텍스트(y 180..236)/버튼과 겹치지 않게 한다.
+                const float ownedBottomY = 250f;
+                const float ownedHeight = 400f;
+                ownedContainer.anchoredPosition = new Vector2(0f, ownedBottomY);
+                ownedContainer.sizeDelta = new Vector2(contentWidth, ownedHeight);
                 _ownedGrid = BuildScrollGrid(ownedContainer, OwnedColumns, OwnedCell, OwnedSpacing);
-                BuildSectionLabel(ownedContainer.parent, "COLLECTION", new Vector2(0f, 250f + 430f + 4f), 22f, SectionMuted, FontStyles.Normal);
+                BuildSectionLabel(ownedContainer.parent, "COLLECTION", new Vector2(0f, ownedBottomY + ownedHeight + 4f), 22f, SectionMuted, FontStyles.Normal);
                 // Owned cards are populated by Refresh() so equipped-card sorting
                 // and dimming stay in sync with the current deck.
             }

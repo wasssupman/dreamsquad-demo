@@ -435,7 +435,7 @@ namespace Wassup.UI
             _posInit = false;
             _onBoard = false;
             _unitVelWorld = Vector3.zero;
-            if (placementInput != null) placementInput.SetClickPlacementEnabled(true);
+            // ui-tweak 2026-07-08 — 클릭 배치 은퇴. 드래그 종료 후 재활성화하지 않는다.
         }
 
         private void OnDisable()

@@ -71,6 +71,11 @@ namespace Wassup.Data
         [Header("Rarity")]
         public DefenderRarity rarity = DefenderRarity.Common;
 
+        // defender-portraits 0 — 스쿼드/배치 UI 표시용 클래스 포트레이트. null 이면
+        // 텍스트/단색 폴백. ECS 런타임/전투 로직은 참조하지 않는 순수 프레젠테이션 데이터.
+        [Header("Presentation")]
+        public Sprite portrait;
+
         // aggro-targeting Unit 0 — magnet aggro. aggroCapacity = max enemies this
         // unit can hold at once. 0 = no aggro (Fighter/Ranger); only Guardian-role
         // units set > 0. aggroRange 0 falls back to attackRange. Concrete numbers

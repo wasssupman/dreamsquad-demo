@@ -1,0 +1,128 @@
+using Newtonsoft.Json.Linq;
+using NUnit.Framework;
+using Wassup.Core.Api;
+
+namespace Wassup.Tests.EditMode.Api
+{
+    // tournament-play-report Unit 0 — pure parse/build coverage (no live network).
+    public class TournamentApiTests
+    {
+        // ── play ─────────────────────────────────────────────────────────────────
+
+        [Test]
+        public void TryParsePlay_Success_BindsConsumedFields()
+        {
+            const string body = @"{ ""success"": true, ""data"": {
+                ""status"": ""IN_PROGRESS"",
+                ""tournamentTypeId"": 1,
+                ""tournamentEntryId"": ""e-1"",
+                ""tournamentEntryAttemptId"": ""a-1"" } }";
+
+            var state = TournamentApi.TryParsePlay(body, out string error);
+
+            Assert.IsNull(error);
+            Assert.AreEqual("IN_PROGRESS", state.status);
+            Assert.AreEqual("e-1", state.tournamentEntryId);
+            Assert.AreEqual("a-1", state.tournamentEntryAttemptId);
+        }
+
+        [Test]
+        public void TryParsePlay_ErrorDetail_ReportsCode()
+        {
+            const string body = @"{ ""success"": false, ""errorDetail"": {
+                ""errorCode"": ""SHOP_NOT_ENOUGH_ASSET"", ""errorMessage"": ""잔액 부족"" } }";
+
+            var state = TournamentApi.TryParsePlay(body, out string error);
+
+            Assert.IsNull(state);
+            StringAssert.Contains("SHOP_NOT_ENOUGH_ASSET", error);
+        }
+
+        [Test]
+        public void TryParsePlay_MissingData_ReturnsError()
+        {
+            Assert.IsNull(TournamentApi.TryParsePlay(@"{ ""success"": true }", out string error));
+            StringAssert.Contains("data", error);
+        }
+
+        // ── URLs ─────────────────────────────────────────────────────────────────
+
+        [Test]
+        public void BuildUrls_TrimTrailingSlashAndComposePathParams()
+        {
+            const string baseUrl = "https://dev-api-somnia.cashroyale.games/ ";
+
+            Assert.AreEqual("https://dev-api-somnia.cashroyale.games/tournament/play",
+                TournamentApi.BuildPlayUrl(baseUrl));
+            Assert.AreEqual("https://dev-api-somnia.cashroyale.games/tournament/complete/a-1/420",
+                TournamentApi.BuildCompleteUrl(baseUrl, "a-1", 420));
+            Assert.AreEqual("https://dev-api-somnia.cashroyale.games/tournament/result/tournament/e-1",
+                TournamentApi.BuildResultUrl(baseUrl, "e-1"));
+        }
+
+        // ── complete body ────────────────────────────────────────────────────────
+
+        [Test]
+        public void BuildCompleteBody_EscapesEmbeddedJson_RoundTrips()
+        {
+            // battle log JSON is a string value inside the body — quotes and
+            // newlines must survive the embedding.
+            const string debugJson = "{\"result\":{\"outcome\":\"victory\"},\n\"note\":\"line1\nline2\"}";
+
+            string body = TournamentApi.BuildCompleteBody(debugJson);
+            var parsed = JObject.Parse(body);
+
+            Assert.AreEqual(debugJson, parsed.Value<string>("debug"));
+        }
+
+        [Test]
+        public void BuildCompleteBody_NullDebug_YieldsEmptyString()
+        {
+            var parsed = JObject.Parse(TournamentApi.BuildCompleteBody(null));
+            Assert.AreEqual(string.Empty, parsed.Value<string>("debug"));
+        }
+
+        // ── result ───────────────────────────────────────────────────────────────
+
+        [Test]
+        public void TryParseResult_Success_BindsEntries()
+        {
+            const string body = @"{ ""success"": true, ""data"": {
+                ""entryCount"": 2,
+                ""maxEntryCount"": 10,
+                ""entries"": [
+                    { ""userId"": ""u-1"", ""userName"": ""sj"", ""score"": 900, ""rank"": 1 },
+                    { ""userId"": ""u-2"", ""userName"": ""bot"", ""score"": 450, ""rank"": 2 } ] } }";
+
+            var result = TournamentApi.TryParseResult(body, out string error);
+
+            Assert.IsNull(error);
+            Assert.AreEqual(2, result.entryCount);
+            Assert.AreEqual(10, result.maxEntryCount);
+            Assert.AreEqual(2, result.entries.Count);
+            Assert.AreEqual("sj", result.entries[0].userName);
+            Assert.AreEqual(900, result.entries[0].score);
+            Assert.AreEqual(1, result.entries[0].rank);
+            Assert.AreEqual("u-2", result.entries[1].userId);
+        }
+
+        // ── UserSession baseUrl carry ────────────────────────────────────────────
+
+        [Test]
+        public void UserSession_Set_CarriesBaseUrl_AndClearDropsIt()
+        {
+            UserSession.Clear();
+
+            UserSession.Set(new UserSignApi.SignedInUser { userId = "u-1" }, "id-token",
+                "https://dev-api-somnia.cashroyale.games");
+            Assert.AreEqual("https://dev-api-somnia.cashroyale.games", UserSession.GameServerBaseUrl);
+
+            // the 2-arg form (pre-existing callers) must not wipe a stored URL.
+            UserSession.Set(new UserSignApi.SignedInUser { userId = "u-2" }, "id-token-2");
+            Assert.AreEqual("https://dev-api-somnia.cashroyale.games", UserSession.GameServerBaseUrl);
+
+            UserSession.Clear();
+            Assert.IsNull(UserSession.GameServerBaseUrl);
+        }
+    }
+}

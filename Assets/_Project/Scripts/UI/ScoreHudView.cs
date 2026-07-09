@@ -515,42 +515,10 @@ namespace Wassup.UI
             return img;
         }
 
-        // Procedural rounded-rect sprite (SDF frame) for 9-slicing. `border` > 0 draws a
-        // border-colored ring `border` px thick around the edge; 0 → solid pill/fill.
+        // Procedural rounded-rect sprite (SDF frame) for 9-slicing — shared helper
+        // (result-screen-visual-upgrade unit 0). `border` > 0 draws a border-colored
+        // ring `border` px thick around the edge; 0 → solid pill/fill.
         private static Sprite MakeRoundedRectSprite(float radius, float border, Color fill, Color borderColor)
-        {
-            int r = Mathf.Max(1, Mathf.RoundToInt(radius));
-            int b = Mathf.Max(0, Mathf.RoundToInt(border));
-            int pad = 2 * b + 8;                 // stretchable center strip (keeps 9-slice valid)
-            int size = 2 * r + pad;
-            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false)
-            {
-                wrapMode = TextureWrapMode.Clamp,
-                filterMode = FilterMode.Bilinear
-            };
-            var px = new Color32[size * size];
-            float half = (size - 1) * 0.5f;
-            float bx = half - r, by = half - r;  // half-extent of the straight region
-            for (int y = 0; y < size; y++)
-            {
-                for (int x = 0; x < size; x++)
-                {
-                    float qx = Mathf.Abs(x - half) - bx;
-                    float qy = Mathf.Abs(y - half) - by;
-                    float outside = Mathf.Sqrt(Mathf.Max(qx, 0f) * Mathf.Max(qx, 0f) +
-                                               Mathf.Max(qy, 0f) * Mathf.Max(qy, 0f));
-                    float sd = outside + Mathf.Min(Mathf.Max(qx, qy), 0f) - r; // <=0 inside
-                    float aa = Mathf.Clamp01(0.5f - sd);                        // edge antialias
-                    Color c = (b > 0 && sd > -b) ? borderColor : fill;
-                    c.a *= aa;
-                    px[y * size + x] = c;
-                }
-            }
-            tex.SetPixels32(px);
-            tex.Apply();
-            float bd = r + b + 1;                // 9-slice border (< size/2 by construction)
-            return Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f),
-                                 100f, 0, SpriteMeshType.FullRect, new Vector4(bd, bd, bd, bd));
-        }
+            => UiRoundedSprite.Make(radius, border, fill, borderColor);
     }
 }

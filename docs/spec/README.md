@@ -280,6 +280,7 @@ board-visualization spec 자체는 ROI 부족으로 wrap 종료. 진단/실험�
 
 ### Promoted / Closed
 
+- **Result screen visual upgrade** → `docs/spec/result-screen-visual-upgrade/` (완료 2026-07-08, units 0~3 — 결과 팝업 리더보드를 인게임 HUD 언어(네이비/골드 홀로그램)로 리스킨: `UiRoundedSprite` 공용 절차 스프라이트 + 행별 플레이트·순위 배지(금/은/동)·본인 골드 강조·WAITING 회색 + **RESTART 하단 고정 3영역 앵커 레이아웃**(단일 VerticalLayoutGroup 겹침 결함 제거). 순수 `BuildRows` + EditMode 6. tournament-play-report 배선 불변, 순수 프레젠테이션. 배경은 시즌 아트 시도 → 인게임에서 풀스크린이 보드 덮어 폐기, `UiOverlay.Dim` 유지. 직렬화 필드 0(씬 diff 0). 후속: 등장 애니메이션·ScrollRect·한글 폰트)
 - **Damage number visual upgrade** → `docs/spec/damage-number-visual-upgrade/` (완료 2026-07-07, units 0~3 + Play 튜닝 다회 — 순수 프레젠테이션(ECS 변경 0). 머리위 앵커(sim-Y drop 회피)·카메라축 겹침방지 격자·청록→골드→오렌지 팔레트·정점 그라데이션·TimeManager 델타 교정·index 결정론 셰이크/회전 + 하프톤/글로우/흰아웃라인/드롭섀도 머티리얼(비-모바일 Distance Field 변종) + 클러스터 스파크. 스파크는 별→**GA Circle18 라운드 도트 버스트 + 폰트색 틴트 emissive + 임팩트 플래시** 로 재작업(GA 텍스처만 재활용, 단일 경량 PS). 2트랙 critic BLOCKER 2건 반영. 후속: unit 2 Android 실기 프로파일 게이트·유닛별 정밀 앵커·진짜 emissive(URP Bloom))
 
 - **Placement enemy see-through** → `docs/spec/placement-enemy-see-through/` (completed 2026-07-06, units 0~6, `9941f27` — 드래그 배치 중 적 유닛(Spine·Quad 혼합)을 반투명화해 가려진 뒤 보드 타일 노출. cutout↔transparent 런타임 전환(Quad)·PMA skeleton.A(Spine)·그림자 페이드·health tint 합성·매프레임 재적용. 프리뷰 불투명/최상단(unit 5) + 배치 하이라이트 적 위로(unit 6). 순수 프레젠테이션, ECS 변경 0·채널 14개 불변. two-track APPROVE(0~4)+M1 반영. 스텐실/후처리 리빌·블로킹 하자드 반투명은 후속)

@@ -17,7 +17,6 @@ namespace Wassup.UI
     public class NextWaveDock : MonoBehaviour
     {
         [SerializeField] private BattleBridge bridge;
-        [SerializeField] private DraftController draftController;
 
         [Header("Timer")]
         [Tooltip("타이머 전용 폰트(미지정 시 기본 TMP). Anton SDF 권장")]
@@ -56,35 +55,40 @@ namespace Wassup.UI
             if (_panel != null) _panel.SetActive(false);
         }
 
-        private void OnEnable()
-        {
-            if (draftController != null)
-            {
-                draftController.DraftConfirmed += OnBattleStart;
-                draftController.DraftStarted += OnDraftStarted;
-            }
-            // Squad mode has no draft — placement entry comes via PlacementRequested.
-            // (GameManager sets Instance in Awake, before this OnEnable.)
-            if (GameManager.Instance != null)
-                GameManager.Instance.PlacementRequested += OnBattleStart;
-        }
+        private bool _subscribed;
 
         private void OnDisable()
         {
-            if (draftController != null)
-            {
-                draftController.DraftConfirmed -= OnBattleStart;
-                draftController.DraftStarted -= OnDraftStarted;
-            }
-            if (GameManager.Instance != null)
-                GameManager.Instance.PlacementRequested -= OnBattleStart;
+            if (_subscribed && GameManager.Instance != null)
+                GameManager.Instance.PhaseChanged -= OnPhaseChanged;
+            _subscribed = false;
         }
 
-        private void OnBattleStart() { if (_panel != null) _panel.SetActive(true); _lastShownSec = -1; }
-        private void OnDraftStarted() { if (_panel != null) _panel.SetActive(false); }
+        // GameManager.Instance may not be set when OnEnable runs (scene load order), so
+        // subscribe lazily in Update — mirrors ScoreHudView.
+        private void EnsureSubscribed()
+        {
+            if (_subscribed) return;
+            if (GameManager.Instance == null) return;
+            GameManager.Instance.PhaseChanged += OnPhaseChanged;
+            _subscribed = true;
+            OnPhaseChanged(GameManager.Instance.CurrentPhase);
+        }
+
+        // The dock (match countdown + early-summon NextWave) is a Battle-phase control:
+        // shown only during Battle, hidden in Draft/Placement/None. At game-over the
+        // phase stays Battle, but the result overlay covers the dock.
+        private void OnPhaseChanged(GamePhase phase)
+        {
+            if (_panel == null) return;
+            bool battle = phase == GamePhase.Battle;
+            if (_panel.activeSelf != battle) _panel.SetActive(battle);
+            if (battle) _lastShownSec = -1;
+        }
 
         private void Update()
         {
+            EnsureSubscribed();
             if (bridge == null || _panel == null || !_panel.activeSelf) return;
 
             // Timer row — always visible while the dock is shown.

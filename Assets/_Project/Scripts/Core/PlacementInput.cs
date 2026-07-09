@@ -19,7 +19,9 @@ namespace Wassup.Core
     {
         [SerializeField] private BattleBridge bridge;
         [SerializeField] private Camera mainCamera;
-        [SerializeField] private bool clickPlacementEnabled = true;
+        // ui-tweak 2026-07-08 — 클릭 배치 은퇴. 배치는 드래그-드롭 전용이므로 기본 비활성.
+        // (드래그 중 DefenderDragPlacementController 가 잠시 false 로 유지하던 경로도 무의미해짐.)
+        [SerializeField] private bool clickPlacementEnabled = false;
 
         private GeneratedMap _map;
         private float _tileSize = 1f;

@@ -8,10 +8,10 @@ using Wassup.Data;
 
 namespace Wassup.UI
 {
-    // Phase 4 explicit placement UI. Shows the 7 picked defender types in a
-    // bottom-left strip; clicking a slot promotes that type via
-    // GameManager.SelectedDefender so PlacementInput places the specific type
-    // rather than a random draw. First slot auto-selects on draft confirm.
+    // 배치 스트립: picked defender 타입을 하단에 표시하는 드래그-드롭 소스.
+    // ui-tweak 2026-07-08 — 선택(click-to-select) 개념 제거. 배치는 슬롯을 끌어다 놓는
+    // 드래그-드롭 전용(DefenderDragSlot/DefenderDragPlacementController)이며, 클릭 배치는
+    // 비활성화되어 GameManager.SelectedDefender 를 채우지 않는다(선택 하이라이트 없음).
     public class DefenderSelector : MonoBehaviour
     {
         [SerializeField] private BattleBridge bridge;
@@ -23,16 +23,7 @@ namespace Wassup.UI
 
         private GameObject _panel;
         private Transform _slotContainer;
-        private SlotView[] _slots;
         private bool _built;
-
-        private struct SlotView
-        {
-            public DefenderUnitData data;
-            public Image background;
-            public TextMeshProUGUI nameLabel;
-            public Button button;
-        }
 
         private void Awake()
         {
@@ -73,45 +64,11 @@ namespace Wassup.UI
             if (bridge == null || bridge.DefenderPool == null) return;
             RebuildSlots(bridge.DefenderPool);
             _panel.SetActive(true);
-            if (_slots != null && _slots.Length > 0) Select(_slots[0].data);
         }
 
         private void OnDraftStarted()
         {
             _panel.SetActive(false);
-            Select(null);
-        }
-
-        private void Update()
-        {
-            if (_slots == null) return;
-            // Single source of truth: GameManager.SelectedDefender. External
-            // clears (e.g. SkillBar entering aim mode) immediately remove the
-            // highlight without any local shadow copy to keep in sync.
-            var current = GameManager.Instance != null ? GameManager.Instance.SelectedDefender : null;
-            for (int i = 0; i < _slots.Length; i++)
-            {
-                ref var s = ref _slots[i];
-                bool isSelected = s.data == current;
-                var matColor = s.data.visualMaterial != null ? s.data.visualMaterial.GetColor("_BaseColor") : Color.gray;
-                s.background.color = isSelected ? Color.Lerp(matColor, Color.white, 0.45f) : matColor;
-            }
-        }
-
-        private void Select(DefenderUnitData data)
-        {
-            var gm = GameManager.Instance;
-            if (gm == null) return;
-            gm.SelectedDefender = data;
-            // Last-pressed-wins mutual exclusion: any pending skill aim cancels
-            // as soon as the player decisively picks a placement target.
-            if (data != null) gm.RaiseAimCanceled();
-        }
-
-        private void OnSlotClicked(int index)
-        {
-            if (_slots == null || index < 0 || index >= _slots.Length) return;
-            Select(_slots[index].data);
         }
 
         private void BuildCanvas()
@@ -138,7 +95,9 @@ namespace Wassup.UI
             prt.anchorMax = new Vector2(0f, 0f);
             prt.pivot = new Vector2(0f, 0f);
             prt.anchoredPosition = new Vector2(40f, 40f);
-            prt.sizeDelta = new Vector2(760f, 100f);
+            // ui-tweak 2026-07-08 — 유닛 슬롯 20% 확대(760x100 → 912x120). 슬롯은
+            // childForceExpand 로 패널을 채우므로 패널 크기만 키우면 균등 확대된다.
+            prt.sizeDelta = new Vector2(912f, 120f);
 
             var hlg = _panel.AddComponent<HorizontalLayoutGroup>();
             hlg.spacing = 8f;
@@ -154,38 +113,64 @@ namespace Wassup.UI
             for (int i = _slotContainer.childCount - 1; i >= 0; i--)
                 Destroy(_slotContainer.GetChild(i).gameObject);
 
-            if (pool == null || pool.Length == 0) { _slots = null; return; }
-            _slots = new SlotView[pool.Length];
+            if (pool == null || pool.Length == 0) return;
 
             for (int i = 0; i < pool.Length; i++)
             {
                 var data = pool[i];
                 if (data == null) continue;
                 var go = new GameObject($"Slot_{data.displayName}",
-                    typeof(RectTransform), typeof(Image), typeof(Button));
+                    typeof(RectTransform), typeof(Image));
                 go.transform.SetParent(_slotContainer, false);
                 var bg = go.GetComponent<Image>();
-                bg.color = data.visualMaterial != null ? data.visualMaterial.GetColor("_BaseColor") : Color.gray;
-                var btn = go.GetComponent<Button>();
-                int idx = i;
-                btn.onClick.AddListener(() => OnSlotClicked(idx));
+                // 상시 테두리 없음: 포트레이트 슬롯은 투명 배경(드래그 레이캐스트 타겟 역할만).
+                // 폴백(포트레이트 없음)만 단색 배경 유지.
+                bg.color = data.portrait != null
+                    ? Color.clear
+                    : (data.visualMaterial != null ? data.visualMaterial.GetColor("_BaseColor") : Color.gray);
                 var dragSlot = go.AddComponent<DefenderDragSlot>();
                 dragSlot.Bind(data, dragPlacementController);
+
+                // defender-portraits 3 — 포트레이트 채움(4px 패딩). raycastTarget=false 라
+                // 드래그 입력은 슬롯 루트(bg Image)가 받는다.
+                var portraitGO = new GameObject("Portrait", typeof(RectTransform), typeof(Image));
+                portraitGO.transform.SetParent(go.transform, false);
+                var prt = (RectTransform)portraitGO.transform;
+                prt.anchorMin = Vector2.zero;
+                prt.anchorMax = Vector2.one;
+                prt.offsetMin = new Vector2(4f, 4f);
+                prt.offsetMax = new Vector2(-4f, -4f);
+                var portraitImg = portraitGO.GetComponent<Image>();
+                portraitImg.preserveAspect = true;
+                portraitImg.raycastTarget = false;
+                portraitImg.sprite = data.portrait;
+                portraitImg.enabled = data.portrait != null;
 
                 var nameGO = new GameObject("Name", typeof(RectTransform));
                 nameGO.transform.SetParent(go.transform, false);
                 var nrt = (RectTransform)nameGO.transform;
-                nrt.anchorMin = Vector2.zero;
-                nrt.anchorMax = Vector2.one;
-                nrt.offsetMin = new Vector2(4f, 4f);
-                nrt.offsetMax = new Vector2(-4f, -4f);
+                if (data.portrait != null)
+                {
+                    // 포트레이트가 있으면 이름은 하단 소형 오버레이.
+                    nrt.anchorMin = new Vector2(0f, 0f);
+                    nrt.anchorMax = new Vector2(1f, 0f);
+                    nrt.pivot = new Vector2(0.5f, 0f);
+                    nrt.sizeDelta = new Vector2(0f, 22f);
+                    nrt.anchoredPosition = new Vector2(0f, 2f);
+                }
+                else
+                {
+                    // 폴백: 기존 중앙 텍스트.
+                    nrt.anchorMin = Vector2.zero;
+                    nrt.anchorMax = Vector2.one;
+                    nrt.offsetMin = new Vector2(4f, 4f);
+                    nrt.offsetMax = new Vector2(-4f, -4f);
+                }
                 var tmp = nameGO.AddComponent<TextMeshProUGUI>();
                 tmp.text = data.displayName;
-                tmp.fontSize = 18;
+                tmp.fontSize = data.portrait != null ? 14 : 18;
                 tmp.color = Color.white;
                 tmp.alignment = TextAlignmentOptions.Center;
-
-                _slots[i] = new SlotView { data = data, background = bg, nameLabel = tmp, button = btn };
             }
 
             UiLayer.Apply(gameObject);
