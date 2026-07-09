@@ -79,8 +79,9 @@ namespace Wassup.Bridge
         [SerializeField] private Wassup.Data.HealthDisplayStyle healthDisplayStyle;
         // unit-health-display unit 2 — 적 피격 마이크로바 스포너.
         [SerializeField] private Wassup.Presentation.EnemyHitBarSpawner enemyHitBarSpawner;
-        // aggro-targeting Unit 13 — 어그로된 적 머리 위 아이콘 스포너(상태 구동 reconcile).
-        [SerializeField] private Wassup.Presentation.AggroIconSpawner aggroIconSpawner;
+        // unit-status-fx Unit 2 — 상태 연출 스포너(상태 구동 reconcile). 어그로가 첫
+        // 등록 상태(Aggro kind), 스턴 등은 registry 항목 + 아래 reconcile 훅으로 추가.
+        [SerializeField] private Wassup.Presentation.StatusFxSpawner statusFxSpawner;
         // unit-health-display unit 3 — 방어유닛 타일 테두리 게이지 레이어.
         [SerializeField] private Wassup.Presentation.TileHealthGaugeLayer tileHealthGaugeLayer;
         [SerializeField] private Wassup.UI.ScoreHudView scoreHud;
@@ -325,7 +326,7 @@ namespace Wassup.Bridge
             if (defenderFallbackViewPool != null) defenderFallbackViewPool.DisposeAll();
             if (tileHealthGaugeLayer != null) tileHealthGaugeLayer.Clear(); // unit 3 — 게이지 전체 정리
             if (enemyHitBarSpawner != null) enemyHitBarSpawner.Clear(); // unit 2 — 잔여 마이크로바 정리(생명주기 대칭)
-            if (aggroIconSpawner != null) aggroIconSpawner.Clear(); // aggro-targeting unit 13 — 잔여 아이콘 정리
+            if (statusFxSpawner != null) statusFxSpawner.Clear(); // unit-status-fx unit 2 — 잔여 상태 연출 정리
             ClearBlockingHazardVisuals();
 
             if (HasLiveEntityManager())
@@ -1683,31 +1684,39 @@ namespace Wassup.Bridge
         private void LateUpdate()
         {
             SyncMonoUnitViews();
-            ReconcileAggroIcons();
+            ReconcileStatusFx();
             if (_em != null) _projectileViewPool?.SyncTransforms(_em);
         }
 
-        // aggro-targeting Unit 13 — 어그로된 적 머리 위 아이콘 상태 구동 reconcile.
-        // Aggroed 보유 적마다 아이콘 Ensure, 프레임 끝에 해제된 적 아이콘 회수.
-        // 뷰 좌표는 SyncMonoUnitViews 가 이미 갱신했으므로 그 뒤에 호출한다.
-        private void ReconcileAggroIcons()
+        // unit-status-fx Unit 2 — 상태 연출 상태 구동 reconcile. 상태별 ECS 소스로 활성
+        // 유닛을 찾아 (유닛, kind) 연출 Ensure, 프레임 끝에 해제된 것 회수. 뷰 좌표는
+        // SyncMonoUnitViews 가 이미 갱신했으므로 그 뒤에 호출. 새 상태 추가 = 아래에
+        // 쿼리 + Ensure 몇 줄(예: Stun 컴포넌트 쿼리 → Ensure(e, StatusFxKind.Stun, anchor)).
+        private void ReconcileStatusFx()
         {
-            if (aggroIconSpawner == null || _em == null || !_aggroedQueryCreated) return;
-            aggroIconSpawner.BeginFrame();
-            var aggroed = _aggroedQuery.ToEntityArray(Allocator.Temp);
-            try
+            if (statusFxSpawner == null || _em == null) return;
+            statusFxSpawner.BeginFrame();
+
+            // Aggro: Aggroed 보유 적.
+            if (_aggroedQueryCreated)
             {
-                for (int i = 0; i < aggroed.Length; i++)
+                var aggroed = _aggroedQuery.ToEntityArray(Allocator.Temp);
+                try
                 {
-                    var anchor = ResolveEnemyViewTransform(aggroed[i]);
-                    if (anchor != null) aggroIconSpawner.Ensure(aggroed[i], anchor);
+                    for (int i = 0; i < aggroed.Length; i++)
+                    {
+                        var anchor = ResolveEnemyViewTransform(aggroed[i]);
+                        if (anchor != null)
+                            statusFxSpawner.Ensure(aggroed[i], Wassup.Data.StatusFxKind.Aggro, anchor);
+                    }
+                }
+                finally
+                {
+                    aggroed.Dispose();
                 }
             }
-            finally
-            {
-                aggroed.Dispose();
-            }
-            aggroIconSpawner.EndFrame();
+
+            statusFxSpawner.EndFrame();
         }
 
         // time-manager Unit 3 — TimeManager.ScaleOf(Battle) 을 ECS singleton 으로 write 해
