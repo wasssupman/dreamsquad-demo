@@ -13,6 +13,6 @@ MonoBehaviour:
   m_Name: DefaultCostConfig
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.CostConfig
   startingCost: 10
-  maxCost: 15
+  maxCost: 10
   regenPerSec: 0.5
   placementPhaseDuration: 30
