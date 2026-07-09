@@ -2457,6 +2457,23 @@ namespace Wassup.Bridge
             for (int i = 0; i < mechanicsLen; i++) // bake-time only read (managed array)
             {
                 var m = card.mechanics[i];
+
+                // content-1 ③ (마지막 불꽃) — instant SelfBuffLethal (trigger=None, no
+                // slot). Handled BEFORE the trigger guard, which rejects trigger==None.
+                if (m.payload.kind == Wassup.Data.DcPayloadKind.SelfBuffLethal)
+                {
+                    if (m.payload.magnitude <= 0f || m.payload.duration <= 0f)
+                    {
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: SelfBuffLethal non-positive magnitude/duration — skipped.");
+                        continue;
+                    }
+                    // 공속 +magnitude% for `duration` 초 (기존 StatModifier) + 만료 시 자폭.
+                    EnqueueAttackSpeedMul(defender, 1f + m.payload.magnitude / 100f, m.payload.duration);
+                    _em.AddComponentData(defender, new Wassup.Battle.Units.LethalTimer { remaining = m.payload.duration });
+                    attached++; // 즉발 branch 도 성공 시 카운트 (critic M2)
+                    continue;
+                }
+
                 if (m.trigger.kind == Wassup.Data.DcTriggerKind.None ||
                     m.payload.kind == Wassup.Data.DcPayloadKind.None ||
                     (m.trigger.kind == Wassup.Data.DcTriggerKind.AttackN && m.trigger.period <= 0))
