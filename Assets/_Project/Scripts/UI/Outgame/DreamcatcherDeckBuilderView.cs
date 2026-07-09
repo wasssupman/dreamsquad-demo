@@ -184,17 +184,18 @@ namespace Wassup.UI
             bool valid = DeckRules.Validate(_working, catalog, out var reason);
             int squad = DeckRules.SquadCount(_working, catalog);
             if (statusText != null)
-                statusText.text = $"{_working.Count}/{DeckRules.DeckSize}  ·  squad {squad}/{DeckRules.MaxSquad}  ·  {reason}";
+                statusText.text = $"{_working.Count}/{DeckRules.EffectiveDeckSize(catalog)}  ·  squad {squad}/{DeckRules.EffectiveMax(catalog, CardType.Squad)}  ·  {reason}";
             if (saveButton != null) saveButton.interactable = valid;
         }
 
         private void AddCard(string id)
         {
             if (catalog == null) return;
-            if (_working.Count >= DeckRules.DeckSize) return;
+            if (_working.Count >= DeckRules.EffectiveDeckSize(catalog)) return;
             var card = catalog.ById(id);
             if (card == null) return;
-            if (card.type == CardType.Squad && DeckRules.SquadCount(_working, catalog) >= DeckRules.MaxSquad) return;
+            int typeMax = DeckRules.EffectiveMax(catalog, card.type);
+            if (typeMax >= 0 && DeckRules.TypeCount(_working, catalog, card.type) >= typeMax) return;
             _working.Add(id);
             Refresh();
         }
@@ -329,13 +330,16 @@ namespace Wassup.UI
             }
             else
             {
-                bool full = _working.Count >= DeckRules.DeckSize;
-                bool squadBlock = card.type == CardType.Squad && DeckRules.SquadCount(_working, catalog) >= DeckRules.MaxSquad;
-                bool canAdd = !full && !squadBlock;
+                int deckMax = DeckRules.EffectiveDeckSize(catalog);
+                int typeMax = DeckRules.EffectiveMax(catalog, card.type);
+                bool full = _working.Count >= deckMax;
+                bool typeBlock = typeMax >= 0 && DeckRules.TypeCount(_working, catalog, card.type) >= typeMax;
+                bool canAdd = !full && !typeBlock;
                 _popupActionLabel.text = "ADD TO DECK";
                 _popupActionBtn.image.color = canAdd ? ActionAdd : ActionDisabled;
                 _popupActionBtn.interactable = canAdd;
-                _popupActionHint.text = full ? "Deck full (10/10)" : squadBlock ? "Squad limit (2/2)" : string.Empty;
+                _popupActionHint.text = full ? $"Deck full ({deckMax}/{deckMax})"
+                    : typeBlock ? $"{card.type} limit ({typeMax}/{typeMax})" : string.Empty;
                 string capturedId = card.id;
                 _popupActionBtn.onClick.AddListener(() => { AddCard(capturedId); HidePopup(); });
             }

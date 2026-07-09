@@ -9,6 +9,9 @@ namespace Wassup.Data
     public class DreamcatcherCardCatalog : ScriptableObject
     {
         public DreamcatcherCard[] cards;
+        // dreamcatcher-card-taxonomy unit 2 — tunable deck constraints. Null =
+        // DeckRules falls back to its default consts (10 / squad≤2 / unit∞).
+        public DeckRuleConfig ruleConfig;
 
         public DreamcatcherCard ById(string id)
         {
