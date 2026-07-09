@@ -1,7 +1,8 @@
 # Spec — Unit Status FX (상태별 프리팹 연출 시스템)
 
-> 상태: 진행중 2026-07-09
+> 상태: **완료 2026-07-09** (인프라 + 어그로 이관) — 커밋 `02a9db24`. handoff `4_handoff.md`.
 > 출처: aggro-targeting 후속. 어그로 전용 `AggroIcon*` 를 **상태 종류별 프리팹 연출** 인프라로 일반화.
+> 실제 추가 상태(스턴/빙결/독)는 각 ECS 소스 준비 시 registry 항목 + reconcile 훅으로 붙이는 후속.
 
 ## 목표
 
