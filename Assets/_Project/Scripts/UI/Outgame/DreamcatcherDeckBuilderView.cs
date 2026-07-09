@@ -182,9 +182,9 @@ namespace Wassup.UI
             RebuildOwnedCards();
 
             bool valid = DeckRules.Validate(_working, catalog, out var reason);
-            int unique = DeckRules.UniqueCount(_working, catalog);
+            int squad = DeckRules.SquadCount(_working, catalog);
             if (statusText != null)
-                statusText.text = $"{_working.Count}/{DeckRules.DeckSize}  ·  unique {unique}/{DeckRules.MaxUnique}  ·  {reason}";
+                statusText.text = $"{_working.Count}/{DeckRules.DeckSize}  ·  squad {squad}/{DeckRules.MaxSquad}  ·  {reason}";
             if (saveButton != null) saveButton.interactable = valid;
         }
 
@@ -194,7 +194,7 @@ namespace Wassup.UI
             if (_working.Count >= DeckRules.DeckSize) return;
             var card = catalog.ById(id);
             if (card == null) return;
-            if (card.category == CardCategory.Unique && DeckRules.UniqueCount(_working, catalog) >= DeckRules.MaxUnique) return;
+            if (card.type == CardType.Squad && DeckRules.SquadCount(_working, catalog) >= DeckRules.MaxSquad) return;
             _working.Add(id);
             Refresh();
         }
@@ -330,12 +330,12 @@ namespace Wassup.UI
             else
             {
                 bool full = _working.Count >= DeckRules.DeckSize;
-                bool uniqueBlock = unique && DeckRules.UniqueCount(_working, catalog) >= DeckRules.MaxUnique;
-                bool canAdd = !full && !uniqueBlock;
+                bool squadBlock = card.type == CardType.Squad && DeckRules.SquadCount(_working, catalog) >= DeckRules.MaxSquad;
+                bool canAdd = !full && !squadBlock;
                 _popupActionLabel.text = "ADD TO DECK";
                 _popupActionBtn.image.color = canAdd ? ActionAdd : ActionDisabled;
                 _popupActionBtn.interactable = canAdd;
-                _popupActionHint.text = full ? "Deck full (10/10)" : uniqueBlock ? "Unique limit (2/2)" : string.Empty;
+                _popupActionHint.text = full ? "Deck full (10/10)" : squadBlock ? "Squad limit (2/2)" : string.Empty;
                 string capturedId = card.id;
                 _popupActionBtn.onClick.AddListener(() => { AddCard(capturedId); HidePopup(); });
             }

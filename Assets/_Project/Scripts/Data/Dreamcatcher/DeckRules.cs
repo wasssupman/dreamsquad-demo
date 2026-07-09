@@ -3,13 +3,15 @@ using System.Collections.Generic;
 namespace Wassup.Data
 {
     // dreamcatcher-deck-builder Unit 1 — pure deck validity: exactly 10 cards,
-    // at most 2 Unique. Single source of truth for the builder (save gate) and
-    // the in-game carry-in (fallback decision). cardIds holds filled cards only
-    // (the builder excludes empty slots).
+    // at most 2 Squad-type. Single source of truth for the builder (save gate)
+    // and the in-game carry-in (fallback decision). cardIds holds filled cards
+    // only (the builder excludes empty slots).
+    // dreamcatcher-card-taxonomy — cap moved from CardCategory.Unique to
+    // CardType.Squad (squad-wide buffs are limited; unit cards may fill the rest).
     public static class DeckRules
     {
         public const int DeckSize = 10;
-        public const int MaxUnique = 2;
+        public const int MaxSquad = 2;
 
         public static bool Validate(IReadOnlyList<string> cardIds, DreamcatcherCardCatalog catalog, out string reason)
         {
@@ -25,7 +27,7 @@ namespace Wassup.Data
                 return false;
             }
 
-            int unique = 0;
+            int squad = 0;
             for (int i = 0; i < cardIds.Count; i++)
             {
                 var card = catalog.ById(cardIds[i]);
@@ -34,11 +36,11 @@ namespace Wassup.Data
                     reason = $"unknown card: {cardIds[i]}";
                     return false;
                 }
-                if (card.category == CardCategory.Unique) unique++;
+                if (card.type == CardType.Squad) squad++;
             }
-            if (unique > MaxUnique)
+            if (squad > MaxSquad)
             {
-                reason = $"too many unique ({unique}/{MaxUnique})";
+                reason = $"too many squad ({squad}/{MaxSquad})";
                 return false;
             }
 
@@ -46,16 +48,16 @@ namespace Wassup.Data
             return true;
         }
 
-        public static int UniqueCount(IReadOnlyList<string> cardIds, DreamcatcherCardCatalog catalog)
+        public static int SquadCount(IReadOnlyList<string> cardIds, DreamcatcherCardCatalog catalog)
         {
             if (cardIds == null || catalog == null) return 0;
-            int unique = 0;
+            int squad = 0;
             for (int i = 0; i < cardIds.Count; i++)
             {
                 var card = catalog.ById(cardIds[i]);
-                if (card != null && card.category == CardCategory.Unique) unique++;
+                if (card != null && card.type == CardType.Squad) squad++;
             }
-            return unique;
+            return squad;
         }
     }
 }

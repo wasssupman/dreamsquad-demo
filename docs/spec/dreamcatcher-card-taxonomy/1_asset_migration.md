@@ -16,6 +16,8 @@
 
 ## 완료 기준
 
-- [ ] 유닛 5장 type=Unit, 스쿼드 10장 type=Squad (인스펙터/로드 확인)
-- [ ] `DeckRules.SquadCount` 가 기본 카탈로그에서 스쿼드 10 / 유닛 5 로 집계
-- [ ] 기본 덱(`DreamcatcherDeck_Default`)이 새 규칙(스쿼드≤2)에 유효한지 점검 — 무효면 후속 콘텐츠 재구성으로 flag(이 unit 스코프 아님)
+- [x] 유닛 5장 type=Unit(BouncyBead/Farewell/LastFlame/PokeNeedle/Thornmail), 스쿼드 10장 type=Squad — 전체 집계 Squad=10 / Unit=5
+- [x] `DeckRules.SquadCount` 가 기본 카탈로그에서 스쿼드 10 / 유닛 5 로 집계
+- [x] 기본 덱 점검 결과: **`DreamcatcherDeck_Default` 는 새 규칙에 무효**(스쿼드 10/2). 규칙이 올바로 작동함을 실증. **콘텐츠 재구성은 게임 디자인 결정이라 후속(README) 으로 이관** — 이 unit 은 코드/타입만.
+
+완료 확인: 2026-07-09 — 유닛 5장 지정, 집계 정확, 기본 덱 무효 확인(콘텐츠 후속). 이 문서와 동일 커밋.

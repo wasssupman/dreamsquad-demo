@@ -33,6 +33,8 @@ public CardType type;
 
 ## 완료 기준
 
-- [ ] 컴파일 통과 (신규 enum refresh scope=all)
-- [ ] 기존 카드 에셋 로드 무변동 (type append zero-init = Squad, 유닛 카드는 unit 1 에서 지정)
-- [ ] DeckRules 가 스쿼드 개수로 캡 검증 (EditMode 있으면 갱신)
+- [x] 컴파일 통과 (신규 enum refresh scope=all)
+- [x] 기존 카드 에셋 로드 무변동 (type append zero-init = Squad)
+- [x] DeckRules 가 스쿼드 개수로 캡 검증 — `DeckRulesTests` Squad 의미로 마이그레이션 6/6 통과, 전체 588 그린
+
+완료 확인: 2026-07-09 — CardType 필드 + DeckRules Squad≤2 이전 + deck-builder 캡 갱신 + 테스트 마이그레이션. 이 문서와 동일 커밋.

@@ -28,6 +28,12 @@ namespace Wassup.Data
     // every existing card asset's behavior.
     public enum CardBinding { Axis, Unit }
 
+    // dreamcatcher-card-taxonomy — Squad(축 스탯 버프) / Unit(개별 부착 메커니즘).
+    // The deck cap now keys on this (Squad ≤2), not on CardCategory. Coincides with
+    // binding (Squad=Axis, Unit=Unit) but is its own authoritative field. Default 0
+    // = Squad preserves existing stat cards without touching their assets.
+    public enum CardType { Squad, Unit }
+
     [Serializable]
     public struct CardEffect
     {
@@ -60,5 +66,8 @@ namespace Wassup.Data
         // attack-output modifications (usually 0~1). Appended last; bake-time
         // read only, same rules as mechanics above.
         public DcAttackModSpec[] attackMods;
+        // dreamcatcher-card-taxonomy — Squad/Unit type. Deck cap keys on this.
+        // Appended last; zero-init = Squad for existing stat cards.
+        public CardType type;
     }
 }

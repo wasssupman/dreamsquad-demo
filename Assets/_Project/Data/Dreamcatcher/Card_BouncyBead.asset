@@ -25,3 +25,4 @@ MonoBehaviour:
     count: 2
     tileRange: 3
     damageMul: 1
+  type: 1

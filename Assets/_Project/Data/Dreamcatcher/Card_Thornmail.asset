@@ -30,3 +30,4 @@ MonoBehaviour:
       tileRange: 0
       duration: 0
   attackMods: []
+  type: 1

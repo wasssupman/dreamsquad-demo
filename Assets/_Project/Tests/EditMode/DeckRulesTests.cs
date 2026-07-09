@@ -6,7 +6,9 @@ using Wassup.Data;
 
 namespace Wassup.Tests.EditMode
 {
-    // dreamcatcher-deck-builder Unit 1 — DeckRules validity (exactly 10, unique<=2).
+    // dreamcatcher-deck-builder Unit 1 — DeckRules validity (exactly 10, squad<=2).
+    // dreamcatcher-card-taxonomy — cap moved from CardCategory.Unique to CardType.Squad.
+    // u* = Squad-type (capped), n* = Unit-type (uncapped, repeatable).
     public class DeckRulesTests
     {
         private readonly List<Object> _created = new List<Object>();
@@ -19,11 +21,11 @@ namespace Wassup.Tests.EditMode
             _created.Add(_catalog);
             _catalog.cards = new[]
             {
-                MakeCard("n1", CardCategory.Normal),
-                MakeCard("n2", CardCategory.Normal),
-                MakeCard("u1", CardCategory.Unique),
-                MakeCard("u2", CardCategory.Unique),
-                MakeCard("u3", CardCategory.Unique),
+                MakeCard("n1", CardType.Unit),
+                MakeCard("n2", CardType.Unit),
+                MakeCard("u1", CardType.Squad),
+                MakeCard("u2", CardType.Squad),
+                MakeCard("u3", CardType.Squad),
             };
         }
 
@@ -34,10 +36,10 @@ namespace Wassup.Tests.EditMode
             _created.Clear();
         }
 
-        private DreamcatcherCard MakeCard(string id, CardCategory cat)
+        private DreamcatcherCard MakeCard(string id, CardType type)
         {
             var c = ScriptableObject.CreateInstance<DreamcatcherCard>();
-            c.id = id; c.category = cat;
+            c.id = id; c.type = type;
             _created.Add(c);
             return c;
         }
@@ -45,7 +47,7 @@ namespace Wassup.Tests.EditMode
         private static List<string> Repeat(string id, int n) => Enumerable.Repeat(id, n).ToList();
 
         [Test]
-        public void TenNormals_IsValid()
+        public void TenUnits_IsValid()
         {
             Assert.IsTrue(DeckRules.Validate(Repeat("n1", 10), _catalog, out var reason), reason);
             Assert.AreEqual("ok", reason);
@@ -65,14 +67,14 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
-        public void TwoUnique_IsValid_ThreeUnique_Invalid()
+        public void TwoSquad_IsValid_ThreeSquad_Invalid()
         {
             var ok = new List<string>(Repeat("n1", 8)) { "u1", "u2" };
-            Assert.IsTrue(DeckRules.Validate(ok, _catalog, out _), "2 unique allowed");
+            Assert.IsTrue(DeckRules.Validate(ok, _catalog, out _), "2 squad allowed");
 
             var bad = new List<string>(Repeat("n1", 7)) { "u1", "u2", "u3" };
-            Assert.IsFalse(DeckRules.Validate(bad, _catalog, out var reason), "3 unique rejected");
-            StringAssert.Contains("unique", reason);
+            Assert.IsFalse(DeckRules.Validate(bad, _catalog, out var reason), "3 squad rejected");
+            StringAssert.Contains("squad", reason);
         }
 
         [Test]
@@ -84,11 +86,11 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
-        public void UniqueCount_IsAccurate()
+        public void SquadCount_IsAccurate()
         {
             var deck = new List<string>(Repeat("n1", 8)) { "u1", "u2" };
-            Assert.AreEqual(2, DeckRules.UniqueCount(deck, _catalog));
-            Assert.AreEqual(0, DeckRules.UniqueCount(Repeat("n1", 10), _catalog));
+            Assert.AreEqual(2, DeckRules.SquadCount(deck, _catalog));
+            Assert.AreEqual(0, DeckRules.SquadCount(Repeat("n1", 10), _catalog));
         }
     }
 }
