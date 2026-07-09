@@ -18,14 +18,13 @@
 **카운트·발화 (Units)**: `DamageApplicationSystem` — defender(`DefenderUnitTag`)이고 이번 프레임 피격(`totalDamage>0`)이며 `DamagedCounter` 버퍼 보유 시 **슬롯 순회**하며 각 slot 에 `DcTrigger.Tick(ref slot.counter, slot.period)`(순수함수 재사용, 값 write-back). 어느 슬롯이든 발동하면 `ecb.AddComponent(entity, new NextAttackDoubleFire{ charges=1 })`(이미 있으면 유지). 프레임당 피격=1카운트. `BufferLookup<DamagedCounter>` RW.
 - **핸드오프 (critic H2)**: `NextAttackDoubleFire` = Combat-소유 채널, Units 가 생산(Add)·Combat 이 소비(Remove). `IncomingDamage`(Units 소유, Combat append) 선례의 역방향 — 확립 패턴.
 
-**소비 (Combat, critic H3/H4)**: `AttackSystem` RESOLVE — `nextAttackDoubleFireLookup.HasComponent(attackerEntity) && charges>0` 이면:
-- **output 발행만 2회** 반복. 투사체 경로는 2번째 샷을 **캐리어 엔티티**(`ProjectileRequestCarrier`)로 발행 — `ProjectileSpawnRequest` 는 엔티티당 1개라 attacker 에 두 번 Add 불가. 근접 output 경로는 2회 적용.
-- **DcTriggerSlot 틱·CC 넉백·쿨다운 리셋은 1회 유지**(2회 반복 밖). AttackOutputLog 는 발행 따라 2회(2히트 = 2로그, 의도).
-- 소비 즉시 `ecb.RemoveComponent<NextAttackDoubleFire>`(다음 1회 한정).
+**소비 (Combat) — 쿨다운0 자연 2연발 (H3/H4 원천 회피)**: RESOLVE 블록을 2회 복제하면 투사체 request 충돌(H3)·CC/틱 중복(H4)이 생긴다. 대신 **AttackSystem START 에서 더블파이어 charge 를 만나면 그 공격의 쿨다운을 0 으로** 만들고 charge 를 즉시 `ecb.RemoveComponent`. 결과: 유닛이 다음 프레임(hitDelay 후) 곧바로 한 번 더 공격 → **2연발**. 각 샷이 온전한 정상 공격이라 DC틱/CC/넉백/로그가 **실제 샷당 1회씩** 자연 발생(복제 없음). 2번째 샷은 charge 없어 정상 쿨다운(정확히 2발). `ComponentLookup<NextAttackDoubleFire>` + ecb Remove.
 
 ## 완료 기준
 
-- [ ] 컴파일 + 무회귀 (EditMode green — AttackN 카드 더블틱 없음)
-- [ ] Play: 부착 유닛 5회 피격 후 다음 공격 2발(투사체 2개 또는 로그 Damage x2). 5회 미만 정상 1발.
-- [ ] 맥락 경계: DamageApplicationSystem=DamagedCounter+NextAttackDoubleFire Add 만, AttackSystem=NextAttackDoubleFire read+Remove 만. DcTriggerSlot 은 Units 가 안 씀.
-- [ ] 사용자 확인
+- [x] 컴파일 + 무회귀 (EditMode green — 쿨다운0 방식이라 AttackN 더블틱 원천 없음)
+- [x] 구조 검증: 부착 시 **DamagedCounter 버퍼(period=5), DcTriggerSlot 아님**(맥락 경계 H1 확인). counter 4→(피격)→5도달 발화·리셋·charge 부여, 아처 공격이 charge 소비(RemoveComponent) — 랩어라운드+발화+소비 실증.
+- [x] 맥락 경계: DamageApplicationSystem=DamagedCounter tick+NextAttackDoubleFire Add 만, AttackSystem=charge read+Remove 만. DcTriggerSlot 은 Units 가 안 씀.
+- [ ] 2연발 육안(투사체 2개) — 3장 완성 후 사용자 포커스 e2e
+
+완료 확인: 2026-07-09 — 구조 검증(DamagedCounter 베이크·카운트 랩어라운드·발화·charge 소비). 2발 시각은 사용자 e2e. 이 문서와 동일 커밋.

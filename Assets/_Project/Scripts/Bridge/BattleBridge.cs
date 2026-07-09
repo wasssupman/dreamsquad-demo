@@ -2481,6 +2481,32 @@ namespace Wassup.Bridge
                     Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: None kind or non-positive period — skipped.");
                     continue;
                 }
+
+                // content-1 ① (가시 갑옷) — OnDamagedN×NextAttackDoubleFire bakes into
+                // DamagedCounter (Units-owned buffer), NOT DcTriggerSlot (Combat): the
+                // count is written where the defender takes damage (DamageApplicationSystem,
+                // Units). Buffer element → same card twice = independent counters.
+                if (m.trigger.kind == Wassup.Data.DcTriggerKind.OnDamagedN &&
+                    m.payload.kind == Wassup.Data.DcPayloadKind.NextAttackDoubleFire)
+                {
+                    if (m.trigger.period <= 0)
+                    {
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: OnDamagedN non-positive period — skipped.");
+                        continue;
+                    }
+                    var dbuf = _em.HasBuffer<Wassup.Battle.Units.DamagedCounter>(defender)
+                        ? _em.GetBuffer<Wassup.Battle.Units.DamagedCounter>(defender)
+                        : _em.AddBuffer<Wassup.Battle.Units.DamagedCounter>(defender);
+                    dbuf.Add(new Wassup.Battle.Units.DamagedCounter
+                    {
+                        instanceId = _dcInstanceCounter++,
+                        period = (ushort)math.clamp(m.trigger.period, 0, ushort.MaxValue),
+                        counter = 0,
+                    });
+                    attached++;
+                    continue;
+                }
+
                 var slot = new DcTriggerSlot
                 {
                     instanceId = _dcInstanceCounter++,

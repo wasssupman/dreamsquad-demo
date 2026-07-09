@@ -20,6 +20,9 @@ namespace Wassup.Battle.Units
         private ComponentLookup<LocalTransform> _transformLookup;
         private ComponentLookup<AttackUnitTag> _attackTagLookup;
         private BufferLookup<IncomingHeal> _healBufferLookup;
+        // content-1 ① (가시 갑옷) — count defender damage-taken (DamagedCounter is Units-owned).
+        private ComponentLookup<DefenderUnitTag> _defenderTagLookup;
+        private BufferLookup<DamagedCounter> _damagedCounterLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -29,6 +32,8 @@ namespace Wassup.Battle.Units
             _transformLookup  = state.GetComponentLookup<LocalTransform>(isReadOnly: true);
             _attackTagLookup  = state.GetComponentLookup<AttackUnitTag>(isReadOnly: true);
             _healBufferLookup = state.GetBufferLookup<IncomingHeal>(isReadOnly: false);
+            _defenderTagLookup     = state.GetComponentLookup<DefenderUnitTag>(isReadOnly: true);
+            _damagedCounterLookup  = state.GetBufferLookup<DamagedCounter>(isReadOnly: false);
         }
 
         [BurstCompile]
@@ -39,6 +44,8 @@ namespace Wassup.Battle.Units
             _transformLookup.Update(ref state);
             _attackTagLookup.Update(ref state);
             _healBufferLookup.Update(ref state);
+            _defenderTagLookup.Update(ref state);
+            _damagedCounterLookup.Update(ref state);
             bool hasHealAppliedQueue = SystemAPI.TryGetSingletonRW<HealAppliedEventsSingleton>(out var healAppliedSingleton);
             bool hasDamageNumberQueue = SystemAPI.TryGetSingletonRW<DamageNumberEventsSingleton>(out var damageNumberSingleton);
             bool hasEnemyKilledQueue = SystemAPI.TryGetSingletonRW<EnemyKilledEventsSingleton>(out var enemyKilledSingleton);
@@ -124,6 +131,26 @@ namespace Wassup.Battle.Units
                         amount = pulseHeal,
                     });
                 }
+                // content-1 ① (가시 갑옷) — N회 피격 카운트(프레임당 피격=1). 발동 시
+                // 더블파이어 charge 를 Combat 으로 넘긴다(NextAttackDoubleFire). 카운터
+                // write 는 Units 안에서만(DamagedCounter=Units 소유), Combat 은 charge 만 read.
+                if (totalDamage > 0f && newHp > 0f
+                    && _defenderTagLookup.HasComponent(entity)
+                    && _damagedCounterLookup.HasBuffer(entity))
+                {
+                    var counters = _damagedCounterLookup[entity];
+                    bool fired = false;
+                    for (int c = 0; c < counters.Length; c++)
+                    {
+                        var slot = counters[c];
+                        ushort cnt = slot.counter;
+                        if (DcTrigger.Tick(ref cnt, slot.period)) fired = true;
+                        slot.counter = cnt;
+                        counters[c] = slot;
+                    }
+                    if (fired) ecb.AddComponent(entity, new NextAttackDoubleFire { charges = 1 });
+                }
+
                 if (newHp <= 0f)
                 {
                     ecb.AddComponent<DeadTag>(entity);

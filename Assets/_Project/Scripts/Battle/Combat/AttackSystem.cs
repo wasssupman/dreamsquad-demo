@@ -68,6 +68,8 @@ namespace Wassup.Battle.Combat
             var dcSlotLookup = SystemAPI.GetBufferLookup<DcTriggerSlot>(isReadOnly: false);
             // attack-mod-bounce unit 3 — always-on attack mods aggregated onto the base homing shot.
             var dcAttackModLookup = SystemAPI.GetBufferLookup<DcAttackModSlot>(isReadOnly: true);
+            // content-1 ① (가시 갑옷) — double-fire charge (Units→Combat handoff), read+cleared here.
+            var nextDoubleFireLookup = SystemAPI.GetComponentLookup<NextAttackDoubleFire>(isReadOnly: true);
             var healthLookup = SystemAPI.GetComponentLookup<Health>(isReadOnly: true);
             var deadLookup = SystemAPI.GetComponentLookup<DeadTag>(isReadOnly: true);
 
@@ -253,6 +255,17 @@ namespace Wassup.Battle.Combat
                             : 1f;
                         float effectiveCooldownMul = attackSpeedMul > 0f ? 1f / attackSpeedMul : 1f;
                         attack.ValueRW.cooldownRemaining = attack.ValueRO.cooldownDuration * effectiveCooldownMul;
+
+                        // content-1 ① (가시 갑옷) — double-fire charge: zero this attack's
+                        // cooldown so the unit immediately attacks again (2연발), then
+                        // consume the charge (ONE bonus shot). Each shot is a full normal
+                        // attack, so DC-tick / CC / knockback / log happen once per real
+                        // shot — no in-RESOLVE duplication (avoids critic H3/H4).
+                        if (isDefenderStart && nextDoubleFireLookup.HasComponent(attackerEntity))
+                        {
+                            attack.ValueRW.cooldownRemaining = 0f;
+                            ecb.RemoveComponent<NextAttackDoubleFire>(attackerEntity);
+                        }
 
                         // 이동 정지는 MovementSystem 이 EnemyAiState 로 처리(레거시 aimMode/movePause enqueue 제거).
                         // 타격 지연: 0 이면 이번 프레임 즉시 RESOLVE, >0 이면 지연 시작.
