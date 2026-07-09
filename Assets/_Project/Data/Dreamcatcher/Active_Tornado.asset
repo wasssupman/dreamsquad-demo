@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cdcd617d396824acd8882a45466b4886, type: 3}
+  m_Name: Active_Tornado
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
+  id: active_tornado
+  displayName: Tornado
+  axis: 0
+  category: 0
+  effects: []
+  art: {fileID: 0}
+  binding: 0
+  mechanics: []
+  attackMods: []
+  type: 2
+  placementWarmupSec: 0
+  skill: {fileID: 11400000, guid: a1f7c4d2e85b4e6f9c3d7b8e2a1f5d60, type: 2}

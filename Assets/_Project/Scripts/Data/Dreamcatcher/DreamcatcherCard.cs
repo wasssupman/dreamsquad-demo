@@ -79,5 +79,11 @@ namespace Wassup.Data
         // Combined with an AttackSpeed effect this reads as "wait N s, then buffed".
         // Default 0 = no warmup (existing squad cards unaffected).
         public float placementWarmupSec;
+        // dreamcatcher-awakening-hand unit 2 — the SkillData an Active-type card
+        // wraps (common per-match dreamcatcher; cast via the existing skill
+        // pipeline, cost paid in awakening). Only meaningful when type==Active;
+        // other types ignore it. SkillData is a pure-data SO, so the definition
+        // layer stays ECS-free. Appended last (existing assets deserialize null).
+        public SkillData skill;
     }
 }
