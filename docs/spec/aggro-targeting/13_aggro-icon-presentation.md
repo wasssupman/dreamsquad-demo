@@ -33,3 +33,5 @@
 - [ ] 해제(가디언 사망) → 아이콘 즉시 사라짐.
 - [ ] 적 사망/디스폰 → 아이콘 회수(잔류 없음).
 - [ ] 아이콘 파라미터가 전부 SO 에서(하드코딩 0). teardown 후 잔여 아이콘 0.
+
+코드/에셋 완료: 2026-07-09 (Spawner/View/Style + BattleBridge reconcile 배선 + `AggroIconStyle.asset`(붉은 주황, 절차적 "!" 폴백) / 커밋 `b84b6887` + asset). **씬 GameObject 배선(AggroIconSpawner GO + BattleBridge.aggroIconSpawner 할당) + Play 스모크는 잔여** — 에디터 포커스·씬 저장 필요라 사용자 확인 단계.

@@ -27,3 +27,5 @@
 - [ ] 가디언이 여유 있을 때 사거리 내 비-어그로 적을 우선 타격(Play: 겹친 어그로 적 대신 신규 적 히트).
 - [ ] 명중 프레임에 `AggroHitEvent` enqueue(reflection 큐 카운트 확인).
 - [ ] 비-가디언(Fighter 등)은 이벤트 emit 안 함.
+
+완료: 2026-07-09 (채널 15개 갱신, critic H1 primary 정렬 반영 / 커밋 `b84b6887`)

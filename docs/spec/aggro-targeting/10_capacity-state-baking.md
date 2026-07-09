@@ -32,3 +32,5 @@
 - [ ] 가디언 배치 → `AggroCapacity{max=4, held=0}` 부착(Play reflection 조회).
 - [ ] Fighter/Ranger(aggroCapacity=0) → `AggroCapacity` 미부착.
 - [ ] Guardian.asset `attackTargetCount ≥ 2`.
+
+완료: 2026-07-09 (컴파일 클린, Guardian 2로 상향 / 커밋 `b84b6887`)

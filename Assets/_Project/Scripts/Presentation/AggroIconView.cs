@@ -10,6 +10,10 @@ namespace Wassup.Presentation
     // AggroIconStyle 에서. 스포너가 풀링한다.
     public class AggroIconView : MonoBehaviour
     {
+        // 아트 스프라이트 미할당 시 절차적 폴백(느낌표 원반) — 마이크로바/게이지가
+        // 절차 스프라이트를 쓰는 것과 동일 선례. 색/크기는 AggroIconStyle 이 결정.
+        private static Sprite _fallbackSprite;
+
         private SpriteRenderer _sr;
         private Camera _camera;
         private AggroIconStyle _style;
@@ -26,7 +30,7 @@ namespace Wassup.Presentation
             _style = style;
             _camera = cam;
             EnsureBuilt();
-            _sr.sprite = style.icon;
+            _sr.sprite = style.icon != null ? style.icon : FallbackSprite();
             _sr.color = style.tint;
             _sr.sortingOrder = style.sortingOrder;
             _anchor = anchor;
@@ -49,6 +53,29 @@ namespace Wassup.Presentation
             var go = new GameObject("Icon");
             go.transform.SetParent(transform, false);
             _sr = go.AddComponent<SpriteRenderer>();
+        }
+
+        // 느낌표(!) 모양 흰색 스프라이트를 절차적으로 1회 생성. 색은 tint 로 곱해진다.
+        private static Sprite FallbackSprite()
+        {
+            if (_fallbackSprite != null) return _fallbackSprite;
+            const int S = 64;
+            var tex = new Texture2D(S, S, TextureFormat.RGBA32, false) { filterMode = FilterMode.Bilinear };
+            var clear = new Color(1, 1, 1, 0);
+            var px = new Color[S * S];
+            for (int i = 0; i < px.Length; i++) px[i] = clear;
+            // 텍스처 y=0 은 하단. "!"가 바로 서도록 막대는 위(높은 y), 점은 아래(낮은 y).
+            int cx = S / 2;
+            for (int y = 22; y < 52; y++) // 세로 막대(위)
+                for (int x = cx - 5; x <= cx + 5; x++)
+                    px[y * S + x] = Color.white;
+            for (int y = 8; y < 18; y++)  // 점(아래)
+                for (int x = cx - 5; x <= cx + 5; x++)
+                    px[y * S + x] = Color.white;
+            tex.SetPixels(px);
+            tex.Apply();
+            _fallbackSprite = Sprite.Create(tex, new Rect(0, 0, S, S), new Vector2(0.5f, 0.5f), S);
+            return _fallbackSprite;
         }
 
         private void Update()

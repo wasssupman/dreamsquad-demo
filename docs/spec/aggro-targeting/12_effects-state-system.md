@@ -39,3 +39,5 @@ OnCreate: `RequireAnyForUpdate(AggroCapacity, Aggroed)` — 마지막 가디언 
 - [ ] 히트 이벤트 → `Aggroed` 부착(Play). 근접만으로는 어그로 안 걸림(공격 전 walk-past).
 - [ ] 여유 1슬롯에 같은 틱 2히트 → 1개만 부착(H1). 2 가디언이 같은 적 히트 → 1개만(선점).
 - [ ] 가디언 사망 → 링크 적 전원 해제 → 출구 복귀.
+
+완료: 2026-07-09 (AggroStateSystemTests 8 통과, critic M4 Exists 방어 / 커밋 `b84b6887`)

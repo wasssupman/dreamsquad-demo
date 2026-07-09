@@ -1,6 +1,6 @@
 # Spec — Aggro Targeting (자석 디펜스 어그로)
 
-> 상태: Unit 0~8 완료 2026-06-18(근접 모델) · **재설계 진행중 2026-07-09: 근접→히트 구동 (Unit 9~14)**
+> 상태: Unit 0~8 완료 2026-06-18(근접 모델) · **히트 구동 재설계 Unit 9~13 코드 완료 2026-07-09** (커밋 `1f8246d6`/`b84b6887`, EditMode 604 통과) · **잔여: 씬 GameObject 배선 + Play 스모크(Unit 13/14)** — handoff `15_hit_driven_handoff.md`
 > 출처 기획: `꿈결타게팅어그로 상세 기획 v0.1.1` (approved). 본 spec 은 그 기획의 **어그로 부분만** 코드 구현 단위로 내린 것. 도발(에픽 가디언)·점수·드림캐쳐·인접 시너지는 범위 밖.
 
 ## ⚠ 재설계 (2026-07-09): 근접 즉시 배정 → 히트 구동
@@ -71,7 +71,8 @@ object-pipeline-map 에 "오버헤드 View" 아키타입 추가 필요 여부는
 | 11 | Combat arm | `11_combat-hit-arm.md` | AttackSystem aggro-aware 타겟팅 + 히트 emit + `AggroHitEvents` 채널 |
 | 12 | Effects arm | `12_effects-state-system.md` | `AggroStateSystem`(해제/held재계산/드레인 프로토콜) |
 | 13 | Mono 소비: 아이콘 | `13_aggro-icon-presentation.md` | `AggroIconSpawner`/View + BattleBridge reconcile + SO |
-| 14 | 테스트 + handoff | `14_hit-driven-tests-handoff.md` | H1 시스템 테스트 + PlayMode smoke + handoff + 이식 가이드 |
+| 14 | 테스트 + handoff | `14_hit-driven-tests-handoff.md` | H1 시스템 테스트(완료) + PlayMode smoke(잔여) + handoff + 이식 가이드 |
+| 15 | handoff 요약 | `15_hit_driven_handoff.md` | 커밋/구현/검증/잔여 인계 지도 |
 
 ## 비목표 / 후속 후보
 
