@@ -6,7 +6,7 @@
 
 ## 변경 대상
 
-- 신규: `Assets/_Project/Scripts/Battle/Effects/LethalTimerSystem.cs`
+- 신규: `Assets/_Project/Scripts/Battle/Units/LethalTimerSystem.cs` (**Units** — DeadTag 부여는 소멸 도메인)
 - 수정: `Assets/_Project/Scripts/Bridge/BattleBridge.cs` — `ApplyDreamcatcherCardToUnit`(가드 재구조화 + SelfBuffLethal 즉발 처리)
 - 신규 에셋: `Assets/_Project/Data/Dreamcatcher/Card_LastFlame.asset`
 
@@ -19,9 +19,9 @@
 - `_em.AddComponent(entity, new LethalTimer{ remaining = duration })`
 - **`attached++` (critic M2)** — 즉발 branch 도 성공 시 카운트해야 API 가 true 반환.
 
-**자폭**: `LethalTimerSystem`(ISystem, Effects, `[UpdateInGroup(BattleSimGroup)]`) — `SystemAPI.Query<RefRW<LethalTimer>>().WithNone<DeadTag>()`(critic H5 — 데미지 사망과 이중 DeadTag 방지) 순회: `remaining -= SystemAPI.Time.DeltaTime`(StatModifier 와 동일 dt 소스), `<=0` 이면 `ecb.AddComponent<DeadTag>` + `RemoveComponent<LethalTimer>`. 이후는 기존 사망 경로(UnitLifecycleSystem → DefenderDeathEvent → bridge 제거)가 처리. **③이 만든 사망이 ②(OnDeath)를 달면 콤보** — UnitLifecycleSystem 이 죽는 엔티티 슬롯을 읽으므로 성립.
+**자폭**: `LethalTimerSystem`(ISystem, **Units**, `[UpdateInGroup(BattleSimGroup)]`) — `SystemAPI.Query<RefRW<LethalTimer>>().WithNone<DeadTag>()`(critic H5 — 데미지 사망과 이중 DeadTag 방지) 순회: `remaining -= SystemAPI.Time.DeltaTime`(StatModifier 와 동일 dt 소스), `<=0` 이면 `ecb.AddComponent<DeadTag>` + `RemoveComponent<LethalTimer>`. 이후는 기존 사망 경로(UnitLifecycleSystem → DefenderDeathEvent → bridge 제거)가 처리. **③이 만든 사망이 ②(OnDeath)를 달면 콤보** — UnitLifecycleSystem 이 죽는 엔티티 슬롯을 읽으므로 성립.
 
-**주의**: LethalTimer=Effects 소유. DeadTag/사망은 기존 경로 재사용(신규 death 채널 금지). 공속 버프 5s 만료 ≈ 자폭 5s 는 같은 dt 라 동프레임 수렴.
+**주의**: LethalTimer=**Units** 소유 — Effects 에 두면 Effects 시스템이 DeadTag(Units 도메인)를 구조적으로 쓰는 맥락 위반(리뷰 반영 2026-07-09). DeadTag/사망은 기존 경로 재사용(신규 death 채널 금지). 공속 버프 5s 만료 ≈ 자폭 5s 는 같은 dt 라 동프레임 수렴.
 
 ## 완료 기준
 

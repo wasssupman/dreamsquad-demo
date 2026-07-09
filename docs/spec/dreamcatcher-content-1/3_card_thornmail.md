@@ -13,9 +13,9 @@
 
 ## 구현
 
-**부착 (critic H1)**: `trigger.kind==OnDamagedN && payload.kind==NextAttackDoubleFire` 이면 **`DamagedCounter{ period=5 }`** 를 부착(DcTriggerSlot 아님 — Units 가 쓸 상태는 Units 소유). NextAttackDoubleFire 는 파라미터 없음.
+**부착 (critic H1)**: `trigger.kind==OnDamagedN && payload.kind==NextAttackDoubleFire` 이면 **`DamagedCounter{ instanceId=_dcInstanceCounter++, period=5, counter=0 }`** 를 defender 의 `DynamicBuffer<DamagedCounter>` 에 append(DcTriggerSlot 아님 — Units 가 쓸 상태는 Units 소유. buffer 라 같은 카드 2장=독립 카운터 2개, DcTriggerSlot 부착과 동형). NextAttackDoubleFire 는 파라미터 없음.
 
-**카운트·발화 (Units)**: `DamageApplicationSystem` — defender(`DefenderUnitTag`)이고 이번 프레임 피격(`totalDamage>0`)이며 `DamagedCounter` 보유 시 `DcTrigger.Tick(ref counter, period)`(순수함수 재사용). 발동 시 `ecb.AddComponent(entity, new NextAttackDoubleFire{ charges=1 })`(이미 있으면 유지). 프레임당 피격=1카운트. `ComponentLookup<DamagedCounter>` RW.
+**카운트·발화 (Units)**: `DamageApplicationSystem` — defender(`DefenderUnitTag`)이고 이번 프레임 피격(`totalDamage>0`)이며 `DamagedCounter` 버퍼 보유 시 **슬롯 순회**하며 각 slot 에 `DcTrigger.Tick(ref slot.counter, slot.period)`(순수함수 재사용, 값 write-back). 어느 슬롯이든 발동하면 `ecb.AddComponent(entity, new NextAttackDoubleFire{ charges=1 })`(이미 있으면 유지). 프레임당 피격=1카운트. `BufferLookup<DamagedCounter>` RW.
 - **핸드오프 (critic H2)**: `NextAttackDoubleFire` = Combat-소유 채널, Units 가 생산(Add)·Combat 이 소비(Remove). `IncomingDamage`(Units 소유, Combat append) 선례의 역방향 — 확립 패턴.
 
 **소비 (Combat, critic H3/H4)**: `AttackSystem` RESOLVE — `nextAttackDoubleFireLookup.HasComponent(attackerEntity) && charges>0` 이면:

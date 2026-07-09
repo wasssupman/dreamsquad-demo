@@ -39,7 +39,7 @@
 4. **사망 타이밍(②)**: defender 는 death 프레임에 `UnitLifecycleSystem` 이 `ecb.DestroyEntity` → bridge 드레인 시점엔 **엔티티가 이미 파괴됨**. 따라서 OnDeath 페이로드(magnitude/tileRange/dataIndex)는 파괴 전 `UnitLifecycleSystem` 이 슬롯을 RO 로 읽어 **`DefenderDeathEvent` 에 실어 보낸다**. bridge 는 이벤트 데이터로만 TileAoe 스폰(파괴된 엔티티 접근 금지).
 5. **페이로드는 기존 프리미티브 재사용**: SelfTileAoe = 기존 `PayloadKind.TileAoe` 투사체(사망 셀 impact 락, 즉발). NextAttackDoubleFire = **output 발행만 2회**(DC틱/CC/쿨다운은 1회 — 아래 계약 6). 공속 버프 = 기존 `StatKind.AttackSpeedMul` StatModifier(duration).
 6. **더블파이어 범위 한정(①)**: 2회 반복은 **데미지 output 발행 블록만** 감싼다. 투사체 경로는 2번째 샷을 **캐리어 엔티티**로(기존 `ProjectileRequestCarrier` — `ProjectileSpawnRequest` 는 엔티티당 1개라 attacker 에 두 번 AddComponent 불가). `DcTriggerSlot` 틱·CC 넉백·AttackOutputLog-per-attack·쿨다운 리셋은 RESOLVE 당 1회 유지.
-7. **신규 컴포넌트 소유**: `DamagedCounter`(Units), `NextAttackDoubleFire`(Combat 채널), `LethalTimer`(Effects). DeadTag 부여는 기존 사망 경로 재사용(신규 death 채널 금지). `LethalTimerSystem` 은 `WithNone<DeadTag>` 가드(데미지 사망과 같은 프레임 이중 DeadTag 방지).
+7. **신규 컴포넌트 소유**: `DamagedCounter`(Units, buffer — 카드 다중 스택 시 독립 카운터), `NextAttackDoubleFire`(Combat 채널), `LethalTimer`(**Units** — DeadTag/소멸이 Units 도메인이므로 Effects 금지). DeadTag 부여는 기존 사망 경로 재사용(신규 death 채널 금지). `LethalTimerSystem` 은 `WithNone<DeadTag>` 가드(데미지 사망과 같은 프레임 이중 DeadTag 방지).
 6. **바인딩/부착은 기존 API**: `ApplyDreamcatcherCardToUnit` 확장(가드 재사용). ②①은 mechanics 트리거 슬롯, ③은 부착 시점에 즉시 StatModifier+LethalTimer 부여(슬롯 카운트 없음).
 8. **③ 즉발 부착**: `trigger=None`+`payload=SelfBuffLethal` 카드는 기존 부착 가드가 `trigger==None` 을 거절하므로 **가드 재구조화 필요**(None 은 payload 도 None 일 때만 거절). 즉발 branch 는 슬롯 미저장이라 `attached++` 를 명시적으로 올려야 `ApplyDreamcatcherCardToUnit` 이 true 반환.
 9. **무회귀**: 신규 enum 케이스는 기존 switch 의 새 arm — default/미지원은 기존대로. 신규 컴포넌트 없는 유닛은 무영향. 기존 카드(콕콕바늘/통통구슬) 로드 무변동.

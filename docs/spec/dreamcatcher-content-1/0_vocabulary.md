@@ -10,7 +10,7 @@
 - 수정: `Assets/_Project/Scripts/Battle/Combat/DcTriggerSlot.cs` (`tileRange` 필드 append — SelfTileAoe 용)
 - 신규: `Assets/_Project/Scripts/Battle/Units/DamagedCounter.cs` (Units — ① 피격 카운터)
 - 신규: `Assets/_Project/Scripts/Battle/Combat/NextAttackDoubleFire.cs` (Combat 핸드오프 채널)
-- 신규: `Assets/_Project/Scripts/Battle/Effects/LethalTimer.cs` (Effects — ③ 자폭)
+- 신규: `Assets/_Project/Scripts/Battle/Units/LethalTimer.cs` (**Units** — ③ 자폭. 소멸/DeadTag 는 Units 도메인이므로 Effects 아님)
 
 ## 구현
 
@@ -34,9 +34,10 @@ public float duration;  // SelfBuffLethal: 지속/자폭 초
 
 `DcTriggerSlot.cs` — `public int tileRange;` append (SelfTileAoe 베이크용; 기존 필드 뒤).
 
-`DamagedCounter` (Units) — ① 피격 카운터. **Combat 의 DcTriggerSlot 과 분리**(맥락 경계: Units 가 쓸 상태는 Units 소유):
+`DamagedCounter` (Units) — ① 피격 카운터. **Combat 의 DcTriggerSlot 과 분리**(맥락 경계: Units 가 쓸 상태는 Units 소유). **buffer element** — 같은 카드 2장 = 독립 카운터 2개(unit-trigger 계약 4 와 동형):
 ```csharp
-public struct DamagedCounter : IComponentData
+[InternalBufferCapacity(2)]
+public struct DamagedCounter : IBufferElementData
 {
     public int instanceId; public ushort period; public ushort counter;
 }
@@ -47,7 +48,7 @@ public struct DamagedCounter : IComponentData
 public struct NextAttackDoubleFire : IComponentData { public int charges; }
 ```
 
-`LethalTimer` (Effects) — 자폭 타이머:
+`LethalTimer` (Units) — 자폭 타이머. 만료 시 DeadTag 부여가 Units 도메인(생성/소멸/Health) 안에서 일어나도록 Units 소유:
 ```csharp
 public struct LethalTimer : IComponentData { public float remaining; }
 ```
