@@ -120,6 +120,13 @@ code + git history        구현 상세
 
 > 출처 spec 이 섞여 있다. 그룹 헤더 또는 항목 끝의 `(spec-slug)` 라벨로 출처 표기.
 
+#### 유닛 상태 표현 / 인디케이터 (aggro-targeting 파생, 2026-07-09)
+
+어그로 아이콘("!")을 만들며 드러난 일반화. **두 축으로 분리** — "느끼게 할 상태 연출" ↔ "훑어볼 정보 배지". 순차 진행 예정.
+
+- **어그로 아이콘 → 상태 연출 (unit-status-fx)** [M] · 현 머리 위 "!" 는 플레이스홀더. 어그로처럼 거동을 바꾸는 상태는 아이콘이 아니라 연출(온-바디 VFX/마커/가디언 tether/틴트)이 맞다. `AggroIcon*`(Spawner/View/Style) 를 그 첫 케이스로 재편. **다음 우선순위.** (aggro-targeting)
+- **모디파이어 인디케이터 스트립 (unit-modifier-indicators)** [M] · 버프/디버프(`ModifierStats` 델타·DoT 스택 Fire/Ice/Bleed/Poison)/드림캐쳐 부착(`DreamcatcherCard.art`)을 머리 위 아이콘 행으로. 스택/듀레이션 뱃지 + `+N` 오버플로. 상태 연출과 **다른 축**(정보 vs 느낌). 한 상태가 둘 다일 수 있음(예: 독=온-바디 VFX + 스택 아이콘). (aggro-targeting)
+
 #### 곡사포 / 투사체 후속 (artillery-defender, projectile-trajectory-payload)
 
 곡사포 유닛 완료(→ Promoted). 남은 후속:

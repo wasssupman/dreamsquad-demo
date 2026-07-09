@@ -34,7 +34,10 @@
 - 채널은 **소비자(Effects) 소유** — Combat 은 enqueue만, Aggroed/AggroCapacity 쓰기는 AggroStateSystem 단독.
 - 근접 전용(투사체 가디언 없음). bestTarget=null 이면 RESOLVE 진입 안 함 → hitCount 0 안전.
 
-## Follow-up (잔여)
-- **씬 배선 + Play 스모크(Unit 13/14 잔여)**: BattleScene 에 `AggroIconSpawner` GameObject 추가 → `style`=`AggroIconStyle.asset` 할당 → `BattleBridge.aggroIconSpawner` 에 연결 → 씬 저장. 그 후 Play: 가디언 공격 명중→어그로→겹침→가디언 사망 해제, 아이콘 표시/해제, capacity 초과 데미지-only 육안 확인. (에디터 포커스·씬 저장 사용자 필요.)
+## 상태: 완료 2026-07-09
+씬 배선(`5ea07f6c`) + 밸런스 capacity 2(`8c892d3d`) + 사용자 Play 확인. Play 진입 에러 0.
+
+## Follow-up (별도 spec, 순차 진행)
+- **어그로 아이콘 → 상태 연출(unit-status-fx)**: 현 "!" 는 플레이스홀더. 어그로는 "느끼게 할 상태"라 아이콘 배지가 아니라 연출(온-바디 VFX/마커/가디언 tether/틴트). `AggroIcon*` 를 그 첫 케이스로 재편. **다음 우선순위**.
+- **모디파이어 인디케이터 스트립(unit-modifier-indicators)**: 버프/디버프(`ModifierStats`·DoT 스택)/드림캐쳐(`DreamcatcherCard.art`) 아이콘 행. 어그로 연출과 다른 축(정보 배지).
 - 투사체 가디언 지원(ProjectileHit emit arm), 도발 에픽 가디언 — 별도 spec.
-- `object-pipeline-map.md` 에 "오버헤드 View" 아키타입 추가 여부 판정.

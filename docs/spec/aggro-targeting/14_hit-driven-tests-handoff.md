@@ -30,7 +30,9 @@
 
 ## 완료 기준
 
-- [ ] EditMode 전부 green(H1 시스템 테스트 포함).
-- [ ] PlayMode smoke 시나리오 사용자 육안 통과(스크린샷).
-- [ ] handoff 작성. reference 이식 가이드에 아그로 항목 반영(선택).
-- [ ] `docs/reference/object-pipeline-map.md` 에 아이콘(오버헤드 View) 정거장 반영 필요 여부 확인.
+- [x] EditMode 전부 green(H1 시스템 테스트 포함). — 604 통과, 무관 한글화 1건 제외.
+- [x] PlayMode smoke 사용자 육안 통과 — 사용자 확인("잘된다"), capacity 1/2 튜닝 검증. Play 진입 에러 0.
+- [x] handoff 작성(`15_hit_driven_handoff.md`).
+- [x] object-pipeline-map: 아이콘은 신규 아키타입 아님(EnemyHitBar 오버헤드 View 재사용), 맵 갱신 불필요로 판정.
+
+완료: 2026-07-09 (커밋 `5ea07f6c`/`8c892d3d`). 어그로 아이콘 연출 승격·모디파이어 스트립은 후속 spec.

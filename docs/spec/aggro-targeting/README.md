@@ -1,6 +1,7 @@
 # Spec — Aggro Targeting (자석 디펜스 어그로)
 
-> 상태: Unit 0~8 완료 2026-06-18(근접 모델) · **히트 구동 재설계 Unit 9~13 완료 2026-07-09**(코드+테스트+씬배선, 커밋 `1f8246d6`/`b84b6887`/`5ea07f6c`, EditMode 604 통과, Play 진입 에러 0) · **잔여: 아이콘/전투 육안 Play 스모크(Unit 14, 포커스 필요)** — handoff `15_hit_driven_handoff.md`
+> 상태: **완료 2026-07-09** — 히트 구동 재설계(Unit 9~14). 코드+EditMode 604 통과+씬 배선+밸런스(capacity 2)+사용자 Play 확인. 커밋 `1f8246d6`/`b84b6887`/`5ea07f6c`/`8c892d3d`. handoff `15_hit_driven_handoff.md`.
+> (Unit 0~8 근접 모델은 이 재설계로 대체됨.)
 > 출처 기획: `꿈결타게팅어그로 상세 기획 v0.1.1` (approved). 본 spec 은 그 기획의 **어그로 부분만** 코드 구현 단위로 내린 것. 도발(에픽 가디언)·점수·드림캐쳐·인접 시너지는 범위 밖.
 
 ## ⚠ 재설계 (2026-07-09): 근접 즉시 배정 → 히트 구동
@@ -76,6 +77,8 @@ object-pipeline-map 에 "오버헤드 View" 아키타입 추가 필요 여부는
 
 ## 비목표 / 후속 후보
 
+- **어그로 아이콘 → 상태 연출(unit-status-fx) 승격** — 현 머리 위 "!" 는 **플레이스홀더**. 어그로는 "느끼게 할 상태"라 아이콘 배지가 아니라 연출(온-바디 VFX/마커/가디언 tether/틴트)이 어울린다. `AggroIcon*` 는 그 첫 케이스로 재편 대상. 별도 spec `unit-status-fx`.
+- **모디파이어 인디케이터 스트립(unit-modifier-indicators)** — 버프/디버프(`ModifierStats` 델타·DoT 스택 Fire/Ice/Bleed/Poison)/드림캐쳐 부착(`DreamcatcherCard.art`)을 머리 위 아이콘 행으로. 스택/듀레이션 뱃지 + `+N` 오버플로. 어그로 연출(위)과는 **다른 축**(정보용 배지 vs 느낌 연출). 별도 spec.
 - **도발(에픽 가디언)** — aggroCount 무한 해제 + 범위 일괄 어그로 + 최근 우선 중첩. 별도 spec.
 - ~~**"시간당 어그로 수량" 파워 스탯 정식화**~~ — Unit 9~14 히트 구동 전환으로 **채택**(공격 명중이 어그로 발생). rate 세분화(공격당 대상수는 `attackTargetCount`, 속도는 쿨다운으로 이미 표현)는 밸런싱 위임.
 - **투사체(원거리) 가디언** — 현재 가디언 전원 근접(Guardian/Bastion). 투사체 가디언 신설 시 히트 emit arm 을 `ProjectileHit/ImpactSystem` 에 추가. v1 근접 전용.
