@@ -30,6 +30,7 @@
 | 2 | `2_squad-ui-portrait.md` | `SquadBuilderView` 유닛 슬롯 + 유닛 피커에 포트레이트 표시 |
 | 3 | `3_ingame-selector-portrait.md` | `DefenderSelector` 배치 스트립 슬롯에 포트레이트 표시 |
 | 4 | `4_portrait-sizing-and-ui-tweaks.md` | 포트레이트 크기 확대 + 드림캐쳐 타이틀 가림 수정(육안 피드백) |
+| 6 | `6_remove-selection-and-clickplacement.md` | 인게임 선택 로직/프레임 제거 + 클릭 배치 비활성(드래그-드롭 전용) |
 
 ## feature-wide 계약
 
