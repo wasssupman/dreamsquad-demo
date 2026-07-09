@@ -88,6 +88,11 @@ namespace Wassup.UI
         {
             ClosePanels();
             if (panel != null) panel.SetActive(true);
+            // 로비 버튼 묶음(menuRoot)은 MenuCanvas 상에서 패널들보다 뒤 sibling —
+            // 그대로 두면 패널 위에 렌더/클릭된다. 패널이 열리는 동안 통째로 숨긴다.
+            // (devButtonsGroup 은 menuRoot 의 자식이라 함께 사라지지만, CanvasGroup
+            //  상태를 맞춰두기 위해 명시 토글도 유지한다.)
+            if (menuRoot != null) menuRoot.SetActive(false);
             SetDevButtonsVisible(false);
         }
 
@@ -96,6 +101,9 @@ namespace Wassup.UI
             if (squadPanel != null) squadPanel.SetActive(false);
             if (dreamcatcherPanel != null) dreamcatcherPanel.SetActive(false);
             if (testModePanel != null) testModePanel.SetActive(false);
+            // 패널을 닫으면 로비 버튼을 되살린다. 단 로그인 게이트를 존중 — 미로그인
+            // 상태에서는 계속 숨겨야 하므로 signedIn 을 반영한다(Awake 진입 시에도 안전).
+            if (menuRoot != null) menuRoot.SetActive(UserSession.IsSignedIn);
             SetDevButtonsVisible(true);
         }
 
