@@ -1,8 +1,8 @@
 # Dreamcatcher Unit Trigger — 개별유닛 바인딩 + 트리거형 메커닉
 
-> 상태: **작성 2026-07-08, 구현 대기**
+> 상태: **완료 2026-07-09** (units 0~3 + handoff). 검증 질문 YES — 실전투 Play 확인.
 >
-> 설계 배경: `docs/plans/2026-07-08-dreamcatcher-unit-trigger-design.md`
+> 설계 배경: `docs/plans/2026-07-08-dreamcatcher-unit-trigger-design.md` · 인계: `4_handoff_summary.md`
 
 ## 목표
 
@@ -23,7 +23,7 @@
 | 1 | `1_ecs_slot_and_attach.md` | 계약+배선 | `DcTriggerSlot` buffer(Combat) + request 캐리어 엔티티 파괴 분기 + `BattleBridge` 부착/베이크 API |
 | 2 | `2_attack_resolve_trigger.md` | arm+테스트 | AttackSystem RESOLVE 카운트/발동 arm + `DcTrigger.Tick` 순수함수 EditMode |
 | 3 | `3_card_asset_play_validation.md` | 에셋+검증 | 콕콕 바늘 카드 SO + Play e2e (5회째 발사·20 데미지·독립 카운터) |
-| 4 | `4_handoff_summary.md` | 인계 | 종료 시 작성 |
+| 4 | `4_handoff_summary.md` | 인계 | 종료 요약 (완료 2026-07-09) |
 
 ## Feature-wide 계약 (load-bearing)
 
