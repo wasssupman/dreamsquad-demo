@@ -776,6 +776,7 @@ namespace Wassup.Bridge
             tileHealthGaugeLayer?.Clear(); // unit 3 — 게이지 정리를 _defenderByTile 리셋과 co-locate(불변식)
             // ingame-dreamcatcher Unit 2/3 — reset card registry + triggers for a new match.
             _activeDcEffects.Clear();
+            _activeWarmups.Clear(); // dreamcatcher-squad-warmup — per-match placement warmups
             _dcStackCounter = 100;
             _dcInstanceCounter = 0; // dreamcatcher-unit-trigger Unit 1 — per-match instance ids
             // dreamstone-loadout Unit 3 — set-then-apply: reapply the pending stone
@@ -2395,33 +2396,71 @@ namespace Wassup.Bridge
 
         // Applies one card to all currently-placed matching defenders and records
         // it so future placements (ApplyActiveDcEffectsTo) inherit it.
+        // dreamcatcher-squad-warmup — squad cards with placementWarmupSec force N s
+        // idle on matching units at placement. Registry mirrors _activeDcEffects so
+        // future placements inherit it. Cleared in BeginPlacement.
+        private readonly System.Collections.Generic.List<(Wassup.Data.CardTargetAxis axis, float sec)> _activeWarmups =
+            new System.Collections.Generic.List<(Wassup.Data.CardTargetAxis, float)>();
+
         public void ApplyDreamcatcherCard(Wassup.Data.DreamcatcherCard card)
         {
-            if (card == null || card.effects == null) return;
-            foreach (var eff in card.effects)
+            if (card == null) return;
+            if (card.effects != null)
             {
-                if (!MapDcEffect(eff, out var stat, out var mult)) continue;
-                ushort sid = _dcStackCounter++;
-                _activeDcEffects.Add(new ActiveDcEffect { axis = card.axis, stat = stat, mult = mult, stackId = sid });
+                foreach (var eff in card.effects)
+                {
+                    if (!MapDcEffect(eff, out var stat, out var mult)) continue;
+                    ushort sid = _dcStackCounter++;
+                    _activeDcEffects.Add(new ActiveDcEffect { axis = card.axis, stat = stat, mult = mult, stackId = sid });
+                    foreach (var kv in _defenderByTile)
+                    {
+                        var data = kv.Value.data;
+                        var entity = kv.Value.entity;
+                        if (data != null && _em.Exists(entity) && MatchesDcAxis(data, card.axis))
+                            EnqueueStatModifier(entity, stat, mult, DcDuration, sid);
+                    }
+                }
+            }
+            // dreamcatcher-squad-warmup — placement warmup (idle) for matching units.
+            if (card.placementWarmupSec > 0f)
+            {
+                _activeWarmups.Add((card.axis, card.placementWarmupSec));
                 foreach (var kv in _defenderByTile)
                 {
                     var data = kv.Value.data;
                     var entity = kv.Value.entity;
-                    if (data != null && _em.Exists(entity) && MatchesDcAxis(data, card.axis))
-                        EnqueueStatModifier(entity, stat, mult, DcDuration, sid);
+                    if (data != null && MatchesDcAxis(data, card.axis))
+                        ApplyPlacementWarmup(entity, card.placementWarmupSec);
                 }
             }
         }
 
         private void ApplyActiveDcEffectsTo(Entity entity, DefenderUnitData data)
         {
-            if (data == null || _activeDcEffects.Count == 0 || !_em.Exists(entity)) return;
+            if (data == null || !_em.Exists(entity)) return;
             for (int i = 0; i < _activeDcEffects.Count; i++)
             {
                 var e = _activeDcEffects[i];
                 if (MatchesDcAxis(data, e.axis))
                     EnqueueStatModifier(entity, e.stat, e.mult, DcDuration, e.stackId);
             }
+            // dreamcatcher-squad-warmup — future placements inherit active warmups.
+            for (int i = 0; i < _activeWarmups.Count; i++)
+            {
+                var w = _activeWarmups[i];
+                if (MatchesDcAxis(data, w.axis))
+                    ApplyPlacementWarmup(entity, w.sec);
+            }
+        }
+
+        // dreamcatcher-squad-warmup — force `sec` seconds of idle by extending the
+        // unit's attack cooldown (never shortening an existing deploy delay).
+        private void ApplyPlacementWarmup(Entity e, float sec)
+        {
+            if (!_em.Exists(e) || !_em.HasComponent<AttackState>(e)) return;
+            var a = _em.GetComponentData<AttackState>(e);
+            a.cooldownRemaining = math.max(a.cooldownRemaining, sec);
+            _em.SetComponentData(e, a);
         }
 
         // dreamcatcher-unit-trigger Unit 1 — unit-bound card attach: bakes each

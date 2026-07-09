@@ -18,11 +18,11 @@ namespace Wassup.Data
     // is consumed entirely by GameManager -> CostRuntime.SetRegenRateMultiplier.
     public enum CardBuffKind { AttackDamage, AttackSpeed, EffectiveHealth, MoveSpeed, CostRate }
 
-    // dreamcatcher-deck-builder Unit 0 — deck-rule category (RETIRED). The deck cap
-    // moved to CardType.Squad (taxonomy unit 0~1) and the deck-builder now colors/
-    // labels by CardType. This enum/field is kept dormant on the SO for back-compat
-    // (no consumer reads it) — remove entirely in a later cleanup if desired.
-    public enum CardCategory { Normal, Unique }
+    // dreamcatcher-deck-builder Unit 0 — deck-rule category (deck cap RETIRED, now
+    // on CardType.Squad). Reused as a concept label: dreamcatcher-squad-warmup adds
+    // Subconscious(무의식). deck-builder no longer colors/labels by this (dormant for
+    // frame color); a card may still declare its concept here. Append at end.
+    public enum CardCategory { Normal, Unique, Subconscious }
 
     // dreamcatcher-unit-trigger Unit 0 — how a card binds to its targets.
     // Axis = existing axis-matched buff (current + future matching defenders);
@@ -71,5 +71,10 @@ namespace Wassup.Data
         // dreamcatcher-card-taxonomy — Squad/Unit type. Deck cap keys on this.
         // Appended last; zero-init = Squad for existing stat cards.
         public CardType type;
+        // dreamcatcher-squad-warmup — squad card: on placement, force this many
+        // seconds of idle (AttackState.cooldownRemaining) before the unit can act.
+        // Combined with an AttackSpeed effect this reads as "wait N s, then buffed".
+        // Default 0 = no warmup (existing squad cards unaffected).
+        public float placementWarmupSec;
     }
 }
