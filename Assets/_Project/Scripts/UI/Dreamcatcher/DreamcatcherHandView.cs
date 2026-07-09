@@ -23,6 +23,9 @@ namespace Wassup.UI
         [SerializeField] private AwakeningGaugeView gaugeView;
         [SerializeField] private DefenderSelector defenderSelector;
         [SerializeField] private AwakeningConfig config;
+        // unit 7 — card drag targeting (screen ray → board cell → defender).
+        [SerializeField] private Wassup.Bridge.BattleBridge bridge;
+        [SerializeField] private Camera mainCamera;
         [SerializeField] private TMP_FontAsset labelFont;  // Jua — Korean battle UI
         [SerializeField] private TMP_FontAsset numberFont; // Anton — cost digits
         [SerializeField] private float flipHalfDuration = 0.14f;
@@ -38,6 +41,12 @@ namespace Wassup.UI
         public IReadOnlyList<CardSlot> Slots => _slots;
         public event System.Action HandRefreshed;
 
+        // Drag-slot service surface (unit 7).
+        public DreamcatcherHandController Controller => handController;
+        public Wassup.Bridge.BattleBridge Bridge => bridge;
+        public Camera MainCamera => mainCamera != null ? mainCamera : (mainCamera = Camera.main);
+        public AwakeningConfig Config => config;
+
         public class CardSlot
         {
             public GameObject root;
@@ -48,6 +57,10 @@ namespace Wassup.UI
             public GameObject costBadge;
             public TextMeshProUGUI costLabel;
             public CanvasGroup group;
+            public Image pendingFill;      // unit 7 — radial confirm countdown
+            public DreamcatcherCardDragSlot dragSlot;
+            public Vector2 homePos;        // unit 7 — restore anchor after drag/cancel
+            public float homeRotZ;
             public int entryId = -1;       // -1 = empty slot
             public DreamcatcherCard card;
             public bool usable;
@@ -58,6 +71,8 @@ namespace Wassup.UI
         private bool _built;
         private Coroutine _flip;
         private TimeLease _slomoLease;
+        private DreamcatcherCardDragSlot _pendingSlot; // single pending at a time
+        private bool _refreshQueued; // M4 — refreshes are deferred while pending
 
         private void Awake()
         {
@@ -93,10 +108,55 @@ namespace Wassup.UI
         private void OnToggled()
         {
             if (Transitioning) return; // mash guard
-            // critic H1 — pending-cancel on toggle is unit 7's hook (PendingCanceler);
-            // the view simply flips. Drag slots listen for CloseStarted.
+            // critic H1 (b) — toggling during a pending countdown cancels the
+            // pending (no spend) FIRST, then the hand closes.
+            if (_pendingSlot != null) _pendingSlot.CancelPending();
             if (State == HandState.UnitStrip) Open();
             else Close();
+        }
+
+        private void Update()
+        {
+            // ESC = cancel rule (spec unit 7 §6): drop any drag/pending, no spend.
+            if (State != HandState.Hand) return;
+            var kb = UnityEngine.InputSystem.Keyboard.current;
+            if (kb == null || !kb.escapeKey.wasPressedThisFrame) return;
+            CancelAllCardInteraction();
+        }
+
+        private void CancelAllCardInteraction()
+        {
+            if (_pendingSlot != null) _pendingSlot.CancelPending();
+            foreach (var slot in _slots)
+                if (slot.dragSlot != null && slot.dragSlot.IsDragging)
+                    slot.dragSlot.CancelDrag();
+        }
+
+        // ── unit 7 drag-slot services ────────────────────────────────────────
+
+        public bool CanStartDrag(int index)
+        {
+            if (State != HandState.Hand || Transitioning) return false;
+            if (_pendingSlot != null) return false; // one interaction at a time
+            if (index < 0 || index >= _slots.Count) return false;
+            var slot = _slots[index];
+            return slot.entryId >= 0 && slot.usable;
+        }
+
+        public void RestoreSlotHome(int index)
+        {
+            if (index < 0 || index >= _slots.Count) return;
+            var slot = _slots[index];
+            slot.rect.anchoredPosition = slot.homePos;
+            slot.rect.localEulerAngles = new Vector3(0f, 0f, slot.homeRotZ);
+        }
+
+        public void NotifyPendingStarted(DreamcatcherCardDragSlot slot) => _pendingSlot = slot;
+
+        public void NotifyPendingEnded(DreamcatcherCardDragSlot slot)
+        {
+            if (_pendingSlot == slot) _pendingSlot = null;
+            if (_refreshQueued) { _refreshQueued = false; Refresh(); }
         }
 
         // Battle/Placement 이탈 → 강제 클로즈 (critic H2). Placement 재진입 리셋은
@@ -119,7 +179,11 @@ namespace Wassup.UI
                     Close(); // auto-return after a committed use (user-confirmed UX)
                     break;
                 case DreamcatcherHandController.HandChangeReason.Recovered:
-                    Refresh(); // update only — no state change
+                    // M4 — a recovery re-render while a card floats in pending
+                    // would resurrect its strip slot (double-commit window).
+                    // Defer until the pending resolves.
+                    if (_pendingSlot != null) _refreshQueued = true;
+                    else Refresh(); // update only — no state change
                     break;
             }
         }
@@ -154,6 +218,8 @@ namespace Wassup.UI
         // No animation: phase exits, disable, and Placement resets land here.
         private void ForceClose()
         {
+            // critic H2 — drop any in-flight drag/pending first (no spend).
+            CancelAllCardInteraction();
             _slomoLease.Dispose();
             if (_flip != null) { StopCoroutine(_flip); _flip = null; }
             State = HandState.UnitStrip;
@@ -230,6 +296,7 @@ namespace Wassup.UI
             for (int i = 0; i < _slots.Count; i++)
             {
                 var slot = _slots[i];
+                RestoreSlotHome(i); // undo any drag/pending float
                 if (i < hand.Count)
                     BindCard(slot, hand[i].entryId, hand[i].card);
                 else
@@ -399,6 +466,30 @@ namespace Wassup.UI
                 slot.costLabel.color = Color.white;
                 slot.costLabel.alignment = TextAlignmentOptions.Center;
                 slot.costLabel.raycastTarget = false;
+
+                // unit 7 — radial confirm-pending countdown overlay (hidden until
+                // a touchup starts the delay; realtime fill 1→0).
+                var pendGO = new GameObject("PendingFill", typeof(RectTransform), typeof(Image));
+                pendGO.transform.SetParent(slot.root.transform, false);
+                var pdrt = (RectTransform)pendGO.transform;
+                pdrt.anchorMin = Vector2.zero;
+                pdrt.anchorMax = Vector2.one;
+                pdrt.offsetMin = Vector2.zero;
+                pdrt.offsetMax = Vector2.zero;
+                slot.pendingFill = pendGO.GetComponent<Image>();
+                slot.pendingFill.sprite = null;
+                slot.pendingFill.color = new Color(1f, 1f, 1f, 0.28f);
+                slot.pendingFill.type = Image.Type.Filled;
+                slot.pendingFill.fillMethod = Image.FillMethod.Radial360;
+                slot.pendingFill.fillOrigin = (int)Image.Origin360.Top;
+                slot.pendingFill.fillClockwise = false;
+                slot.pendingFill.raycastTarget = false;
+                pendGO.SetActive(false);
+
+                slot.homePos = slot.rect.anchoredPosition;
+                slot.homeRotZ = slot.rect.localEulerAngles.z;
+                slot.dragSlot = slot.root.AddComponent<DreamcatcherCardDragSlot>();
+                slot.dragSlot.Bind(this, i);
 
                 _slots.Add(slot);
             }

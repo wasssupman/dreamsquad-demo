@@ -2483,6 +2483,20 @@ namespace Wassup.Bridge
             _em.SetComponentData(e, a);
         }
 
+        // dreamcatcher-awakening-hand unit 7 — defender lookup for card-drag
+        // targeting (hover highlight + Unit-card attach target). Read-only view
+        // over the tile→binding registry; Entity is a key for the attach APIs.
+        public bool TryGetDefenderAt(Vector2Int cell, out Entity defender)
+        {
+            if (_defenderByTile.TryGetValue(cell, out var binding))
+            {
+                defender = binding.entity;
+                return true;
+            }
+            defender = Entity.Null;
+            return false;
+        }
+
         // dreamcatcher-unit-trigger Unit 1 — unit-bound card attach: bakes each
         // DcMechanic (definition layer, ECS-free) into a DcTriggerSlot on the
         // defender entity. Translator role: an architecture swap rewrites this,

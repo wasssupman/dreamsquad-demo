@@ -3014,6 +3014,8 @@ MonoBehaviour:
   gaugeView: {fileID: 1012444854}
   defenderSelector: {fileID: 915292524}
   config: {fileID: 11400000, guid: b1ff068a6a1b7a44b8fd4ea85f159ff6, type: 2}
+  bridge: {fileID: 1939688408}
+  mainCamera: {fileID: 1420088185}
   labelFont: {fileID: 11400000, guid: 218cce73e3172a04a8c536a4d368d90f, type: 2}
   numberFont: {fileID: 11400000, guid: 7f50de03946cd4d229e8920dd91dbd1a, type: 2}
   flipHalfDuration: 0.14
