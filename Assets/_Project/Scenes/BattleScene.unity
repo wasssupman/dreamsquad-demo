@@ -1920,6 +1920,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.CostDisplay
   gameManager: {fileID: 1495062450}
+  costPanelSprite: {fileID: 21300000, guid: 7498396673481ab4ab7f0a6d0b1d9421, type: 3}
+  costEnergyIcon: {fileID: 21300000, guid: df956c11e21074948acef866ba4a34a0, type: 3}
+  costBarFilled: {fileID: 21300000, guid: b67bd304568ecc840b864c12c9daeadd, type: 3}
+  costBarEmpty: {fileID: 21300000, guid: 5a53efaa2e57bfc42b70c85fa911d169, type: 3}
+  numberFont: {fileID: 11400000, guid: 218cce73e3172a04a8c536a4d368d90f, type: 2}
 --- !u!4 &1075095675
 Transform:
   m_ObjectHideFlags: 0
@@ -2030,7 +2035,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.NextWaveDock
   bridge: {fileID: 1939688408}
-  draftController: {fileID: 20521825}
   timerFont: {fileID: 11400000, guid: 7f50de03946cd4d229e8920dd91dbd1a, type: 2}
   timerFontSize: 40
   timerColor: {r: 1, g: 1, b: 1, a: 1}
@@ -3122,6 +3126,18 @@ MonoBehaviour:
   bridge: {fileID: 1939688408}
   draftController: {fileID: 20521825}
   gameManager: {fileID: 1495062450}
+  startButtonBackground: {fileID: 21300000, guid: 28f2212786468bd48bd8ef2496cde2b7, type: 3}
+  startFillColor: {r: 0.96, g: 0.58, b: 0.14, a: 1}
+  startBorderColor: {r: 1, g: 0.9, b: 0.55, a: 1}
+  startBorderWidth: 5
+  startCornerRadius: 30
+  startLabelColor: {r: 0.2, g: 0.09, b: 0.02, a: 1}
+  startLabelFont: {fileID: 11400000, guid: 3bdb50f67da0c45ad8e5e8a0fb65daa7, type: 2}
+  startLabelOutlineColor: {r: 0.35, g: 0.13, b: 0.02, a: 1}
+  startLabelOutlineWidth: 0.22
+  startAuraColor: {r: 1, g: 0.72, b: 0.25, a: 0.5}
+  startPulseScale: 1.06
+  startPulsePeriod: 0.9
 --- !u!4 &1628485823
 Transform:
   m_ObjectHideFlags: 0
