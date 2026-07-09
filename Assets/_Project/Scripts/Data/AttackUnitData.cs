@@ -86,5 +86,12 @@ namespace Wassup.Data
         public Vector3 SpineVisualOffset => visualOffset;
         public IReadOnlyList<string> SpinePartSkins => partSkins;
         public IReadOnlyList<SpineSlotColor> SpineSlotColors => slotColors;
+
+        // dreamcatcher-awakening-hand unit 0 — awakening currency granted when
+        // this nightmare dies. Class-scale backfill: small/runner 1, mid 2,
+        // large/special 3. Appended last to keep serialization order stable;
+        // existing assets pick up the initializer (1) until backfilled.
+        [Header("Awakening")]
+        public int awakeningReward = 1;
     }
 }

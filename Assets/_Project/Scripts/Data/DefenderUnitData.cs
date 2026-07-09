@@ -142,6 +142,13 @@ namespace Wassup.Data
         public string SpineDeployAnimation => deployAnimation;
         public string SpineCastAnchorBone => castAnchorBone;
         public Vector3 SpineCastAnchorLocalOffset => castAnchorLocalOffset;
+
+        // dreamcatcher-awakening-hand unit 0 — awakening currency granted when
+        // this defender dies ("death is income": sacrificing units feeds the
+        // dreamcatcher economy). Appended last to keep serialization order
+        // stable; existing assets pick up the initializer (4) until re-saved.
+        [Header("Awakening")]
+        public int awakeningReward = 4;
     }
 
     public enum OnPlaceEffectType

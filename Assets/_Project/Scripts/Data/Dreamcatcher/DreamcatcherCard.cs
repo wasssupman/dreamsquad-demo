@@ -34,7 +34,10 @@ namespace Wassup.Data
     // The deck cap now keys on this (Squad ≤2), not on CardCategory. Coincides with
     // binding (Squad=Axis, Unit=Unit) but is its own authoritative field. Default 0
     // = Squad preserves existing stat cards without touching their assets.
-    public enum CardType { Squad, Unit }
+    // dreamcatcher-awakening-hand unit 0 — Active appended at the end (common
+    // per-match dreamcatchers wrapping a SkillData; the skill field arrives in
+    // unit 2). Appending keeps existing assets' serialized ints stable.
+    public enum CardType { Squad, Unit, Active }
 
     [Serializable]
     public struct CardEffect

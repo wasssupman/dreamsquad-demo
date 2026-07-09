@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d79f6095b0cc4794aa96f2c649743a6c, type: 3}
+  m_Name: AwakeningConfig
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.AwakeningConfig
+  gaugeMax: 100
+  gaugeStart: 0
+  costSquad: 30
+  costUnit: 15
+  costActive: 20
+  handSize: 5
+  maxAttachPerUnit: 3
+  slomoTimeScale: 0.3
+  confirmDelaySec: 1.5
