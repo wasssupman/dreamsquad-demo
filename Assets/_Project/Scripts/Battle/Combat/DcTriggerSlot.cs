@@ -27,5 +27,7 @@ namespace Wassup.Battle.Combat
         public float speed;
         public float hitThreshold;
         public float visualScale;
+        // dreamcatcher-content-1 — SelfTileAoe(OnDeath 폭발): AOE 반경(타일). 기본 0.
+        public int tileRange;
     }
 }

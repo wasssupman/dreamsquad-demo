@@ -55,6 +55,8 @@ public struct LethalTimer : IComponentData { public float remaining; }
 
 ## 완료 기준
 
-- [ ] 컴파일 통과 (신규 .cs refresh scope=all)
-- [ ] 기존 카드(콕콕바늘/통통구슬)·투사체 에셋 로드 무변동 (append-only, zero-init)
-- [ ] 정의계층(DcMechanic)에 ECS 참조 없음
+- [x] 컴파일 통과 (신규 .cs refresh scope=all)
+- [x] 기존 카드(콕콕바늘/통통구슬)·투사체 에셋 로드 무변동 (append-only, zero-init — git status 에 에셋 dirty 없음)
+- [x] 정의계층(DcMechanic)에 ECS 참조 없음 (using System 뿐)
+
+완료 확인: 2026-07-09 — 컴파일 클린, 기존 에셋 무변동. 이 문서와 동일 커밋.
