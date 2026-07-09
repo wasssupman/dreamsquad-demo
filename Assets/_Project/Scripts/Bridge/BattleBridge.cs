@@ -77,6 +77,8 @@ namespace Wassup.Bridge
         [SerializeField] private Wassup.Presentation.DamageNumberSpawner damageNumberSpawner;
         // unit-health-display — 체력 표기 시각 파라미터 단일 소스. unit 1 은 적 저체력 틴트만 사용.
         [SerializeField] private Wassup.Data.HealthDisplayStyle healthDisplayStyle;
+        // enemy-walk-anim-speed unit 0 — 걷기 애니 속도 변조 파라미터(SpineUnitView 가 정적 미러로 읽음).
+        [SerializeField] private Wassup.Data.WalkAnimSpeedStyle walkAnimSpeedStyle;
         // unit-health-display unit 2 — 적 피격 마이크로바 스포너.
         [SerializeField] private Wassup.Presentation.EnemyHitBarSpawner enemyHitBarSpawner;
         // unit-status-fx Unit 2 — 상태 연출 스포너(상태 구동 reconcile). 어그로가 첫
@@ -170,6 +172,14 @@ namespace Wassup.Bridge
         public static float BlobShadowGroundY { get; private set; } = 0.02f;
         // tilemap-real-shadows — 진짜 그림자 모드(데스크톱) vs 블롭(모바일/OFF). 빌드 시 모바일 강제 OFF.
         public static bool UseRealShadows { get; private set; }
+        // enemy-walk-anim-speed unit 0 — 걷기 애니 속도 변조 미러(SpineUnitView 가 읽음). SO 미할당 시
+        // Enabled=false → 뷰는 배율 1.0(현행 동작, 회귀 없음). 빌드 시 serialized SO 에서 1회 복사.
+        public static bool WalkAnimSpeedEnabled { get; private set; }
+        public static float WalkAnimRefSpeed { get; private set; } = 2.5f;
+        public static float WalkAnimMinTimeScale { get; private set; } = 0.15f;
+        public static float WalkAnimMaxTimeScale { get; private set; } = 2f;
+        public static float WalkAnimSmoothing { get; private set; } = 0.2f;
+        public static float WalkAnimTeleportGuard { get; private set; } = 1.5f;
         private const float SynergyPerNeighbor = 0.1f;
         private readonly HashSet<Entity> _synergyActivatedEntities = new();
         private int _synergyActivations;
@@ -667,6 +677,16 @@ namespace Wassup.Bridge
             BlobShadowGroundY = blobShadowGroundY;
             // 모바일은 shadowmap 비용 회피 위해 강제 블롭. 데스크톱/에디터는 serialized 값.
             UseRealShadows = useRealShadows && !Application.isMobilePlatform;
+            // enemy-walk-anim-speed unit 0 — 걷기 애니 속도 변조 미러. SO 미할당 시 비활성(배율 1.0).
+            WalkAnimSpeedEnabled = walkAnimSpeedStyle != null;
+            if (WalkAnimSpeedEnabled)
+            {
+                WalkAnimRefSpeed = walkAnimSpeedStyle.referenceSpeed;
+                WalkAnimMinTimeScale = walkAnimSpeedStyle.minTimeScale;
+                WalkAnimMaxTimeScale = walkAnimSpeedStyle.maxTimeScale;
+                WalkAnimSmoothing = walkAnimSpeedStyle.smoothing;
+                WalkAnimTeleportGuard = walkAnimSpeedStyle.teleportGuard;
+            }
             ApplyEnvironmentGating(); // 비-타일맵 환경 오브젝트 숨김 (빈 목록이면 no-op)
 
             // view-init 는 view 부재 시 조용히 skip — headless(EditMode 테스트) sim 빌드 계약.
@@ -1892,7 +1912,7 @@ namespace Wassup.Bridge
             while (_unitAttackVisualQueue.TryDequeue(out var evt))
             {
                 var targetWorld = new Vector3(evt.targetWorld.x, evt.targetWorld.y, evt.targetWorld.z);
-                spineUnitPool?.NotifyAttack(evt.attacker, targetWorld);
+                spineUnitPool?.NotifyAttack(evt.attacker, targetWorld, evt.attackAnimPeriod);
 
                 var defData = FindDefenderData(evt.attacker);
                 if (defData == null) continue;

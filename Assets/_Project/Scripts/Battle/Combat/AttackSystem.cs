@@ -247,6 +247,18 @@ namespace Wassup.Battle.Combat
 
                     if (stateAllowsFire)
                     {
+                        float attackSpeedMul = modifierStatsLookup.HasComponent(attackerEntity)
+                            ? modifierStatsLookup[attackerEntity].attackSpeedMul
+                            : 1f;
+                        float effectiveCooldownMul = attackSpeedMul > 0f ? 1f / attackSpeedMul : 1f;
+                        // attack-anim-speed-match unit 1 — 정상 간격(초). double-fire 로 cooldownRemaining
+                        // 을 0 화하기 전의 값이라 애니는 정상속도 유지.
+                        float attackInterval = attack.ValueRO.cooldownDuration * effectiveCooldownMul;
+                        // 실제 발사 주기 = max(간격, hitDelay). hitDelayRemaining>0 동안 다음 START 가 막히므로
+                        // (윗줄 hitDelay tick 분기), hitDelaySec>interval 이면 실주기는 hitDelaySec. 애니를 이
+                        // 주기에 맞춰야 실발사보다 빨리 끝나지 않는다(critic MEDIUM #1).
+                        float attackAnimPeriod = math.max(attackInterval, attack.ValueRO.hitDelaySec);
+
                         // Unified visual trigger — 공격 시작 시 애니메이션/facing.
                         if (attackWriter.HasValue)
                         {
@@ -254,14 +266,11 @@ namespace Wassup.Battle.Combat
                             {
                                 attacker = attackerEntity,
                                 targetWorld = bestTargetPos,
+                                attackAnimPeriod = attackAnimPeriod,
                             });
                         }
 
-                        float attackSpeedMul = modifierStatsLookup.HasComponent(attackerEntity)
-                            ? modifierStatsLookup[attackerEntity].attackSpeedMul
-                            : 1f;
-                        float effectiveCooldownMul = attackSpeedMul > 0f ? 1f / attackSpeedMul : 1f;
-                        attack.ValueRW.cooldownRemaining = attack.ValueRO.cooldownDuration * effectiveCooldownMul;
+                        attack.ValueRW.cooldownRemaining = attackInterval;
 
                         // content-1 ① (가시 갑옷) — double-fire charge: zero this attack's
                         // cooldown so the unit immediately attacks again (2연발), then

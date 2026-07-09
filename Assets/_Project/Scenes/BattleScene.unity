@@ -3772,6 +3772,7 @@ MonoBehaviour:
   vfxSpawner: {fileID: 1795146346}
   damageNumberSpawner: {fileID: 1795146348}
   healthDisplayStyle: {fileID: 11400000, guid: e5f5c0ef9295247f6a489dfa4d64df6a, type: 2}
+  walkAnimSpeedStyle: {fileID: 11400000, guid: 0edf5da9f35ba424e91340d1cccd1cce, type: 2}
   enemyHitBarSpawner: {fileID: 543066563}
   statusFxSpawner: {fileID: 1737790243}
   tileHealthGaugeLayer: {fileID: 1218224327}
