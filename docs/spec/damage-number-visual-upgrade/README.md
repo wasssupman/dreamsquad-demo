@@ -1,6 +1,6 @@
 # damage-number-visual-upgrade
 
-> 상태: **완료 2026-07-07** — units 0~3 구현 + Play 피드백 다회 튜닝 완료. 스파크는 GA `Circle18` 라운드 도트 버스트 + 폰트색 틴트 emissive + 임팩트 플래시로 재작업. 남은 후속: unit 2 **Android 실기 프로파일 게이트**(하드) · 취향 미세조정. 커스텀 지점은 `4_handoff_summary.md` 참조.
+> 상태: **완료 2026-07-07** · rev 2026-07-09 (unit 5 — cellSize 축소) — units 0~3 구현 + Play 피드백 다회 튜닝 완료. 스파크는 GA `Circle18` 라운드 도트 버스트 + 폰트색 틴트 emissive + 임팩트 플래시로 재작업. 남은 후속: unit 2 **Android 실기 프로파일 게이트**(하드) · 취향 미세조정. 커스텀 지점은 `4_handoff_summary.md` 참조.
 
 ## 상위 목표
 
@@ -21,6 +21,7 @@
 | 1 | `1_palette-gradient-motion.md` | 마그니튜드 팔레트 재설계 + 정점 그라데이션 + 모션 강화 | 없음 (즉시) |
 | 2 | `2_material-impact-look.md` | 하프톤 페이스 텍스처 + 글로우 + 흰 아웃라인 | 하프톤 텍스처 |
 | 3 | `3_spark-hook.md` | 클러스터당 공용 스파크 삽입점 (선택/후행) | 스파크 파티클 |
+| 5 | `5_cellsize-tighten.md` | rev — 히트별 개별 폰트 유입으로 밀도↑ → `cellSize` 축소 튜닝 | 없음 |
 | — | `assets-codex-request.md` | 코덱스 에셋 요청서 (별도, 비-작업단위) | — |
 
 **0·1 은 코덱스 의존 0** — 즉시 구현·검증 가능. 그 사이 코덱스에 에셋 요청 → 도착하면 2·3. 병목 없음.

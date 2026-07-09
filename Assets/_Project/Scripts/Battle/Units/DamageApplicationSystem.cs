@@ -56,10 +56,13 @@ namespace Wassup.Battle.Units
                 float regenPerSec = hasModifierStats ? _buffStatsLookup[entity].regenPerSec  : 0f;
 
                 // ── IncomingDamage drain ─────────────────────────────────────────
+                // Sum for the Health update, but keep the buffer intact until the
+                // per-hit damage numbers below are enqueued (each entry = one font,
+                // not the frame's sum — a projectile hit and a same-frame dreamcatcher
+                // hit must show as two separate numbers).
                 float totalDamage = 0f;
                 for (int i = 0; i < damageBuffer.Length; i++)
                     totalDamage += damageBuffer[i].amount;
-                damageBuffer.Clear();
                 totalDamage *= dmgTakenMul;
 
                 // ── IncomingHeal drain (pulse channel — must Clear each frame) ───
@@ -84,20 +87,32 @@ namespace Wassup.Battle.Units
 
                 // Enemy-only floating damage number + hit micro-bar. Filter to
                 // AttackUnitTag so defender hits produce no popup (per spec scope).
-                // amount is post-mitigation damage; hpRatio reflects HP AFTER this
-                // frame settles (0 on the killing blow).
-                if (hasDamageNumberQueue && totalDamage > 0f
+                // One font PER hit (buffer entry), not the frame's sum: each entry's
+                // post-mitigation amount is its own number. hpRatio is the settled
+                // ratio AFTER the whole frame (0 on the killing blow) — every font
+                // this frame drives the micro-bar to that same final ratio.
+                if (hasDamageNumberQueue
                     && _attackTagLookup.HasComponent(entity)
                     && _transformLookup.HasComponent(entity))
                 {
-                    damageNumberSingleton.ValueRW.queue.Enqueue(new DamageNumberEvent
+                    float3 pos = _transformLookup[entity].Position;
+                    float settledRatio = Health.ComputeRatio(newHp, maxHp);
+                    for (int i = 0; i < damageBuffer.Length; i++)
                     {
-                        position = _transformLookup[entity].Position,
-                        amount = totalDamage,
-                        entity = entity,
-                        hpRatio = Health.ComputeRatio(newHp, maxHp),
-                    });
+                        float hitAmount = damageBuffer[i].amount * dmgTakenMul;
+                        if (hitAmount <= 0f) continue;
+                        damageNumberSingleton.ValueRW.queue.Enqueue(new DamageNumberEvent
+                        {
+                            position = pos,
+                            amount = hitAmount,
+                            entity = entity,
+                            hpRatio = settledRatio,
+                        });
+                    }
                 }
+
+                // Buffer consumed — clear after per-hit fonts are read.
+                damageBuffer.Clear();
 
                 // Only enqueue VFX for IncomingHeal pulses (hasPulse + positive amount).
                 // RegenPerSec is excluded to avoid spamming VFX every frame.

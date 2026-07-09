@@ -3363,7 +3363,7 @@ MonoBehaviour:
       m_PostInfinity: 2
       m_RotationOrder: 4
     headViewOffset: 1.4
-    cellSize: {x: 0.85, y: 0.55}
+    cellSize: {x: 0.45, y: 0.32}
     maxSearchRings: 4
     topBoost: 1.35
     shakeAmp: 0.12

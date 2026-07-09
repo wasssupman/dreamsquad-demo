@@ -3,11 +3,12 @@ using Unity.Mathematics;
 
 namespace Wassup.Battle.Units
 {
-    // Units->Presentation one-shot signal: an enemy (AttackUnitTag) took damage
-    // this frame. position = enemy LocalTransform.Position (feet) at enqueue;
-    // the spawner adds a head Y-offset. amount = total damage applied this frame
-    // (post-mitigation, always > 0 at enqueue site). Magnitude drives popup
-    // size/color in presentation.
+    // Units->Presentation one-shot signal: an enemy (AttackUnitTag) took damage.
+    // position = enemy LocalTransform.Position (feet) at enqueue; the spawner adds
+    // a head Y-offset. amount = ONE hit's post-mitigation damage — the system
+    // enqueues one event per IncomingDamage entry, not the frame's sum, so a
+    // projectile hit and a same-frame dreamcatcher hit surface as two numbers
+    // (damage-number-popup unit 6). Magnitude drives popup size/color.
     //
     // unit-health-display unit 0 — enemy hit micro-bar plumbing:
     //   entity  = the damaged enemy (view anchor lookup key on the Mono side).

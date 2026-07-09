@@ -1,6 +1,6 @@
 # Spec — 데미지 숫자 팝업 (Damage Number Popup)
 
-> 상태: **완료 2026-06-05**
+> 상태: **완료 2026-06-05** · rev 2026-07-09 (unit 6 — 히트별 개별 폰트)
 > 검증 질문: *"방어유닛이 적을 히트할 때, 적 머리 위에 스타일리쉬하고 강력한 데미지 텍스트가 뜨는가?"*
 
 ## 상위 목표
@@ -25,12 +25,13 @@
 | 3 | 뷰·풀 | `3_view-and-pool.md` | `DamageNumberView` (월드 TMP, 펀치 스케일·드리프트·페이드·빌보드, 값→크기/색) + 간단 풀 + 팝업 프리팹 |
 | 4 | 스포너·브리지 | `4_spawner-and-bridge.md` | `DamageNumberSpawner` MonoBehaviour + `BattleBridge.DrainDamageNumberEvents()` + 씬 wiring + Play 검증 |
 | 5 | 인계 | `5_handoff_summary.md` | 구현 종료 요약 (커밋 후) |
+| 6 | rev · enqueue | `6_per-hit-fonts.md` | 프레임 합산 폰트 1개 → **히트(버퍼 엔트리)마다 폰트 1개**. Health 차감은 합계 유지 |
 
 ## Feature-wide 계약
 
 - **이벤트 구조체**: `DamageNumberEvent { float3 position; float amount; }`. `position` 은 enqueue 시점 적 `LocalTransform.Position`(발치). 머리 오프셋은 스포너의 직렬화 필드로 적용(하드코딩 금지). 적만 enqueue 하므로 타입 필드 불필요.
 - **채널 소유**: NativeQueue 싱글턴은 `BattleBridge` 가 생성·소유·해제한다(다른 13→14개와 동일 패턴, `HealAppliedEventsSingleton` 미러). 채널 수 **14 → 15**. `CLAUDE.md` 의 채널 목록도 unit 0 에서 갱신한다.
-- **enqueue 위치**: `DamageApplicationSystem`(Units 맥락) 한 곳만. `AttackUnitTag` 보유 엔티티 + `totalDamage > 0` 일 때만. 맥락 경계 위반 없음(쓰기 = NativeQueue enqueue, Units 가 소유 싱글턴에 쓰는 것).
+- **enqueue 위치**: `DamageApplicationSystem`(Units 맥락) 한 곳만. `AttackUnitTag` 보유 엔티티. **enqueue 단위 = 히트 1개(= `IncomingDamage` 버퍼 엔트리 1개), 프레임 합산 아님** (unit 6, rev 2026-07-09). Health 차감은 여전히 합계로 하되, 폰트는 엔트리마다 하나씩 낸다 — 같은 프레임 다중 히트(기본 공격 + 드림캐쳐 등)가 별도 숫자로 뜬다. 맥락 경계 위반 없음(쓰기 = NativeQueue enqueue).
 - **드레인**: `BattleBridge.Update()` 드레인 시퀀스에 `DrainDamageNumberEvents()` 추가(`DrainHealAppliedEvents` 인근). 스포너 null 이면 큐 Clear 후 return(힐 패턴과 동일).
 - **연출 파라미터는 전부 에셋/직렬화**: 수명, 드리프트 거리/속도, 펀치 스케일, 머리 Y오프셋, 값→크기 곡선, 값→색 그라데이션 임계값은 `DamageNumberSpawner`/`DamageNumberView` 의 `[SerializeField]` 또는 TMP 머티리얼에서 나온다. 코드 상수 하드코딩 금지(TRD §5).
 - **빌보드**: 팝업은 매 LateUpdate 카메라를 정면으로 바라본다(전투 카메라 yaw=0, pitch 고정). 유닛 빌보드 틸트와 별개.
@@ -42,5 +43,5 @@
 - 디펜더 피격 데미지 숫자(색 구분). — 사용자가 "적만" 으로 확정.
 - 힐 숫자 텍스트 표시(현재 힐은 파티클만). — 같은 `DamageNumberView` 재사용 후보지만 별도 spec.
 - 크리티컬/약점 시스템 연동(현재 전투에 크리티컬 개념 없음).
-- 누적 데미지 합산 표시(DoT 틱 묶기) — 우선 틱마다 단발 표시로 시작.
+- ~~누적 데미지 합산 표시(DoT 틱 묶기)~~ → **반대 방향으로 확정** (unit 6, 2026-07-09): 합산하지 않고 히트마다 개별 폰트. 겹침은 배치 격자(`damage-number-visual-upgrade`)가 흡수.
 - 데미지 타입별 아이콘/색(물리/마법 등) — 현재 데미지 타입 미구분.
