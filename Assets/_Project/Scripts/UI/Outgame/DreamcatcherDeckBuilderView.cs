@@ -243,13 +243,15 @@ namespace Wassup.UI
         // dimmed cards (already in the deck) get a translucent dark overlay.
         private void CreateCardView(Transform parent, DreamcatcherCard card, UnityEngine.Events.UnityAction onClick, Vector2 cell, bool dimmed = false)
         {
-            bool unique = card != null && card.category == CardCategory.Unique;
+            // dreamcatcher-card-taxonomy — frame keys on TYPE (Unit=gold, Squad=blue),
+            // not the retired category grade. category is now dormant on the SO.
+            bool unitType = card != null && card.type == CardType.Unit;
 
             var go = new GameObject("Card", typeof(RectTransform), typeof(Image), typeof(Button));
             go.transform.SetParent(parent, false);
             var rt = go.GetComponent<RectTransform>();
             rt.sizeDelta = cell;
-            go.GetComponent<Image>().color = unique ? UniqueFrame : NormalFrame;
+            go.GetComponent<Image>().color = unitType ? UniqueFrame : NormalFrame;
             go.GetComponent<Button>().onClick.AddListener(onClick);
 
             var artGo = new GameObject("Art", typeof(RectTransform), typeof(Image));
@@ -270,7 +272,7 @@ namespace Wassup.UI
             else
             {
                 artImg.sprite = null;
-                artImg.color = unique ? ArtFallbackUnique : ArtFallbackNormal;
+                artImg.color = unitType ? ArtFallbackUnique : ArtFallbackNormal;
             }
 
             if (dimmed)
@@ -310,10 +312,10 @@ namespace Wassup.UI
             EnsurePopup();
             _popupRoot.transform.SetAsLastSibling();
 
-            bool unique = card.category == CardCategory.Unique;
+            bool unitType = card.type == CardType.Unit;
             _popupArt.sprite = card.art;
             _popupArt.enabled = card.art != null;
-            _popupArtFallback.color = unique ? ArtFallbackUnique : ArtFallbackNormal;
+            _popupArtFallback.color = unitType ? ArtFallbackUnique : ArtFallbackNormal;
             _popupArtFallback.enabled = card.art == null;
 
             _popupTitle.text = string.IsNullOrEmpty(card.displayName) ? card.id : card.displayName;
@@ -492,8 +494,9 @@ namespace Wassup.UI
                     lines.Add($"{k}  <color={col}>{sign}{e.percent:0}%</color>");
                 }
             }
-            string cat = card.category == CardCategory.Unique ? "<color=#F0B44E>UNIQUE</color>" : "<color=#9AA6C0>NORMAL</color>";
-            return $"<size=22><color=#F5D480><b>{axis}</b></color>  ·  {cat}</size>\n\n" + string.Join("\n", lines);
+            // dreamcatcher-card-taxonomy — label shows TYPE (Squad/Unit), retired grade.
+            string typeLabel = card.type == CardType.Unit ? "<color=#F0B44E>UNIT</color>" : "<color=#9AA6C0>SQUAD</color>";
+            return $"<size=22><color=#F5D480><b>{axis}</b></color>  ·  {typeLabel}</size>\n\n" + string.Join("\n", lines);
         }
 
         // --- layout helpers --------------------------------------------------

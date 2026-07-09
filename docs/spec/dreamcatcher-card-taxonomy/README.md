@@ -32,7 +32,7 @@
 
 ## 후속 후보
 
-- deck-builder 프레임 색/라벨을 category → **type(스쿼드/유닛)** 기준으로 전환.
+- ~~deck-builder 프레임 색/라벨을 category → type 전환~~ **완료 2026-07-09** (Unit=금/Squad=청, 라벨 UNIT/SQUAD).
+- ~~category 무효화~~ **완료 2026-07-09** — 소비처 0, SO 필드만 dormant 유지(back-compat). 완전 삭제는 후속 cleanup.
+- ~~기본 덱 유효성~~ **해결 2026-07-09** — config 무제한(maxSquad/maxUnit=-1, deckSize=10)으로 기본 덱 valid. 실제 타입 캡은 config 조정 시 발효.
 - 무의식(Subconscious) 컨셉/전용 슬롯 도입(현재 미구현, deck-builder 후속).
-- category(Normal/Unique) 완전 제거 여부 재검토(현재 cosmetic 유지).
-- 기본 덱(`DreamcatcherDeck_Default`)이 새 규칙(스쿼드≤2)에 유효한지 콘텐츠 재구성.

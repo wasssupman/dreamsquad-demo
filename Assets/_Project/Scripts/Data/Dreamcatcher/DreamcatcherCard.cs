@@ -18,8 +18,10 @@ namespace Wassup.Data
     // is consumed entirely by GameManager -> CostRuntime.SetRegenRateMultiplier.
     public enum CardBuffKind { AttackDamage, AttackSpeed, EffectiveHealth, MoveSpeed, CostRate }
 
-    // dreamcatcher-deck-builder Unit 0 — deck-rule category. Unique cards are
-    // capped per deck (<=2); Normal cards may repeat.
+    // dreamcatcher-deck-builder Unit 0 — deck-rule category (RETIRED). The deck cap
+    // moved to CardType.Squad (taxonomy unit 0~1) and the deck-builder now colors/
+    // labels by CardType. This enum/field is kept dormant on the SO for back-compat
+    // (no consumer reads it) — remove entirely in a later cleanup if desired.
     public enum CardCategory { Normal, Unique }
 
     // dreamcatcher-unit-trigger Unit 0 — how a card binds to its targets.
@@ -47,7 +49,7 @@ namespace Wassup.Data
         public string id;
         public string displayName;
         public CardTargetAxis axis;
-        public CardCategory category = CardCategory.Normal;
+        public CardCategory category = CardCategory.Normal; // RETIRED — dormant, no consumer
         public CardEffect[] effects; // usually 1; fortress has 2
         // dreamcatcher-card-art Unit 0 — tarot-style card art shown on the deck
         // page (image + effect text column). Nullable: view falls back to a
