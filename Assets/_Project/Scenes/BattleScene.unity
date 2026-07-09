@@ -1753,6 +1753,56 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1012444853
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1012444855}
+  - component: {fileID: 1012444854}
+  m_Layer: 0
+  m_Name: AwakeningGaugeView
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1012444854
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1012444853}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cccb91fdd225c7b42a60882e752aa56e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.AwakeningGaugeView
+  handController: {fileID: 2054561897}
+  labelFont: {fileID: 11400000, guid: 218cce73e3172a04a8c536a4d368d90f, type: 2}
+  numberFont: {fileID: 11400000, guid: 7f50de03946cd4d229e8920dd91dbd1a, type: 2}
+  backingColor: {r: 0.07, g: 0.05, b: 0.14, a: 0.88}
+  fillColor: {r: 0.62, g: 0.4, b: 1, a: 0.95}
+  valuePunchScale: 1.18
+--- !u!4 &1012444855
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1012444853}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1072617483
 GameObject:
   m_ObjectHideFlags: 0
@@ -4008,3 +4058,4 @@ SceneRoots:
   - {fileID: 1218224328}
   - {fileID: 1004191867}
   - {fileID: 2054561898}
+  - {fileID: 1012444855}
