@@ -44,7 +44,8 @@ public struct DcTriggerSpec
 
 ### DcPayloadSpec — 재사용 (신규 필드 최소)
 
-- **AreaBarrage**: `magnitude`(타일당 데미지) + `tileRange`(AoE 반경) + `projectile`(SkyFall 낙하 비주얼) — **기존 필드 재사용**.
+- **AreaBarrage**: `magnitude`(타일당 데미지) + `tileRange`(AoE 반경) + `projectile`(SkyFall 낙하 비주얼) + `duration`(**낙하 텔레그래프 초 → SkyFall `flightTime`**) — **기존 필드 재사용, 신규 필드 0**.
+  - (rev 2 공백 보완) SkyFall 은 이동거리 0 이라 drain 이 속도로 `flightTime` 을 유도할 수 없다 — request-carried 가 계약(Meteor 는 `SkillData.warningSec` 를 실었음, `BattleBridge:1613`/`ProjectileState` drain `:2180`). 나이트매어 쪽 소스는 `DcPayloadSpec.duration` 재사용. `duration=0` = 즉시 착탄(정의된 동작, Meteor `:1899` 선례) — 게임필상 텔레그래프 값은 unit 6 authoring 결정.
 - **SelfBlink**: `tileRange`(착지 탐색 반경) 재사용. 목적지 정책은 §3 에서 고정(추가 필드 불요 판단, 두 번째 blink 변종 등장 시 재평가).
 
 기본값 0 이면 기존 카드 에셋은 전부 inert — 직렬화 append-only 계약(계약 8) 준수.

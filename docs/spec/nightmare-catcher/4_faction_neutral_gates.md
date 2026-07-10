@@ -22,7 +22,7 @@
 아래 defender 게이트는 **그대로 둔다**(MVP 두 트리거가 안 씀):
 - AttackN arm — `AttackSystem.cs:651`
 - ProjectileBounce inject — `AttackSystem.cs:364`
-- OnDamagedN — `DamageApplicationSystem.cs:138`
+- OnDamagedN — `DamageApplicationSystem.cs:~142` (rev 2: awakening-hand AwakeningReward lookup +4줄 드리프트)
 - OnDeath — `UnitLifecycleSystem.cs:73`
 
 보스가 이 트리거(AttackN 등)를 실제로 쓸 때 `isDefender→hasSlot` 완화. design.md D2 의 "5 게이트 완화"는 일반 메커니즘 서술이고, **이 MVP 는 신규 트리거라 실제로 건드리는 진영 게이트는 페이로드 1곳뿐**.

@@ -44,7 +44,7 @@ static Entity ThreatLeader(DynamicBuffer<ThreatEntry> table, ...aliveCheck)
 
 → **(A) 채택 + 원거리 귀속** (사용자 결정 2026-07-10 — 렌즈 A HIGH-2 반영):
 - 근접(`AttackSystem:502`) — 공격자 엔티티가 쿼리 내에서 알려짐 → 즉시 귀속.
-- 투사체(`ProjectileHitSystem`) — **현재 `ProjectileState` 에 shooter 필드 없음**(`target` 만 존재). → `ProjectileSpawnRequest`/`ProjectileState` 에 `owner`(발사 defender) 필드 추가, 스폰 지점(`AttackSystem` 발사 arm)에서 채우고, 히트/스플래시/TileAoe 착탄 시 대상이 보스면 `ThreatHitEvent{boss, owner, amount}` enqueue.
+- 투사체(`ProjectileHitSystem`) — **현재 `ProjectileState` 에 shooter 필드 없음**(`target` 만 존재). → `ProjectileSpawnRequest`/`ProjectileState` 에 `owner`(발사 defender) 필드 추가, 스폰 지점(`AttackSystem` 발사 arm — 기본 공격·dc-trigger 캐리어 발사 모두, 콕콕바늘류 카드 투사체도 부착 defender 로 귀속)에서 채우고, 히트/스플래시/TileAoe 착탄 시 대상이 보스면 `ThreatHitEvent{boss, owner, amount}` enqueue. bridge 캐스트 스킬(Meteor 등 Active 카드)은 owner 미설정(=Null) 유지.
 - 근접+원거리 모두 누적 → 텔레포트가 진짜 "가장 많은 데미지" 리더를 조준. **폴백(§3)은 상시 경로가 아니라 진짜 엣지**(보스 무피해로 위협 0, 또는 리더 사망)로 격하.
 
 > **회귀 격리**: 범용 `IncomingDamage` 는 무변경. `owner` 필드는 추가만(기본 `Entity.Null`), `ThreatHitEvent` enqueue 는 **대상이 보스일 때만** — defender 피격 경로 무영향.

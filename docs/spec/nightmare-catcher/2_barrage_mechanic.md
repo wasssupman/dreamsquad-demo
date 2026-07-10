@@ -28,7 +28,8 @@
 ### 페이로드 — AreaBarrage (기존 프리미티브 재사용 + 진영축 1개 추가)
 
 - 진앙 셀 중심 **Chebyshev `tileRange`(=3) 이내 모든 방어유닛**에 `magnitude`(=10) flat 데미지.
-- 전달 = 플레이어 Meteor 파이프라인 재사용: `SkyFall × TileAoe` 투사체 1발을 진앙 셀에 발사(`impactTileRange=tileRange`, `damage=magnitude`). 낙하/이동은 기존 `ProjectileMoveSystem` 그대로.
+- 전달 = 플레이어 Meteor 파이프라인 재사용: `SkyFall × TileAoe` 투사체 1발을 진앙 셀에 발사(`impactTileRange=tileRange`, `damage=magnitude`, `flightTime=duration` — unit 0 rev 2). 낙하/이동은 기존 `ProjectileMoveSystem` 그대로.
+- **발사 경로 = ECS 캐리어 요청 (rev 2 명시)**: arm 이 `ecb.CreateEntity` 캐리어에 `ProjectileSpawnRequest` + `ProjectileRequestCarrier` 를 실어 기존 drain 에 태운다(dc-trigger 계약 6 선례 — 보스 본체의 기본공격 request 와 같은 프레임 충돌 방지). bridge 의 `CastSkillAtTile`(Mono, 현 Active 카드 경로)은 **사용하지 않는다** — ECS arm 은 bridge 를 호출할 수 없고, SkyFall 비주얼 파라미터(`dataIndex`/`dropHeight` 등)는 슬롯에 베이크된 `projectileDataIndex` 로 온다(unit 5, dc-trigger 슬롯 선례).
 - ⚠ **진영 반전 (렌즈 A HIGH-1)**: 기존 `ProjectileHitSystem` 의 TileAoe 착탄 풀은 `WithAll<AttackUnitTag>`(=적) 로 만든다(`ProjectileHitSystem.cs:59`). 이를 **verbatim** 태우면 진앙(방어유닛) 주변의 **적**이 맞고 방어유닛은 0 데미지 — 검증 질문 정면 위반. → 착탄 arm 을 **진영 파라미터화**(투사체에 target-faction 플래그 → `DefenderUnitTag` 풀 순회)한다. **"새 데미지 경로 0" 아님, 진영축 1개 추가한 재사용.** 플래그 **기본값 = 적(enemy)** — 플레이어 Meteor/기존 투사체는 플래그 미설정이라 기존 enemy-타겟 그대로(무회귀, N3). 보스 폭격만 defender 플래그 세팅.
 - **보스 자해 없음**: 착탄 풀이 방어유닛 전용이므로 보스(적)는 애초에 미포함(진영 파라미터화의 부수 효과).
 - flat 데미지(계약 8): 공격자 `damageMul` 미적용.
@@ -39,6 +40,7 @@
 - **생존 방어유닛 0**: 진앙 없음 → 발동 no-op. **timer 는 리셋**(`elapsed -= period`), 백로그 누적 안 함.
 - **동시 다중 슬롯**: 슬롯 2개가 같은 틱 발동 시 각자 자기 진앙에 독립 폭격(정상). 시각 겹침은 후속.
 - **기본공격과 직교**: 폭격 발동이 보스의 `AttackState`/이동/`AiState` 를 건드리지 않는다(계약 4). 보스는 폭격 중에도 계속 이동·기본공격.
+- **슬로모 하 감속 (rev 2)**: 손패 열림 동안 Battle 도메인 0.3x(awakening-hand) — accumulator 는 도메인 dt 로 tick 하므로 주기·낙하 텔레그래프도 시뮬 전체와 함께 감속. 의도된 동작(별도 처리 금지).
 - **진앙 셀-락**: 발동 시점 진앙 셀을 SkyFall `impact` 로 락. 낙하 텔레그래프 동안 진앙 방어유닛이 이동/사망하면 빈 셀 타격 — 방어유닛은 타일 고정이라 대체로 무해, 정의된 동작(빗나감 허용).
 
 ## 완료 기준

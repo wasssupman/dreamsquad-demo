@@ -1,8 +1,9 @@
 # Nightmare Catcher — 보스/적 능동 스킬 (드림캐쳐 프레임워크 편입)
 
-> 상태: **스펙 작성 완료 (units 0~6)** — 로직 정의(0~3, 렌즈 A 2패스 통과) + 배선(4~6). **코드 0줄**, 구현 착수 대기.
+> 상태: **스펙 작성 완료 (units 0~6, rev 2)** — 로직 정의(0~3, 렌즈 A 2패스 통과) + 배선(4~6). **코드 0줄**, 구현 착수 대기.
+> 이력: rev 2 (2026-07-10) = `dreamcatcher-awakening-hand` 전면 개편(3중1→각성치+순환 손패) 병합 후 정합 패스 — 로직 계약 무손상 확인, 배선 앵커·무회귀 대상 갱신, 각성 경제 편입. 하단 "rev 2 정합" 참조.
 >
-> 선행 토대: `docs/spec/dreamcatcher-unit-trigger/` (trigger×payload 프레임워크), `docs/spec/dreamcatcher-content-1/` (트리거/페이로드 확장 선례).
+> 선행 토대: `docs/spec/dreamcatcher-unit-trigger/` (trigger×payload 프레임워크), `docs/spec/dreamcatcher-content-1/` (트리거/페이로드 확장 선례), `docs/spec/dreamcatcher-awakening-hand/` (사용 방식 — 각성치·손패·Active 카드).
 
 ## 목표
 
@@ -20,6 +21,16 @@
 ## 검증 질문
 
 > 보스에 부착된 나이트매어캐쳐가 **10초 주기로** 임의 방어유닛 중심 3타일 AoE 폭격을 발사하는가? 최대체력이 **누적 10% 감소할 때마다** 자신에게 가장 많은 데미지를 입힌 방어유닛 근처로 순간이동하는가? 이 둘이 **기본 이동/공격과 동시에(직교)** 굴러가는가? 그리고 방어유닛의 기존 드림캐쳐/스탯 카드 경로는 **무회귀**인가?
+
+## rev 2 정합 — awakening-hand 개편 (2026-07-10)
+
+이 spec 은 `dreamcatcher-awakening-hand`(각성치+CR 순환 손패, 3중1/SkillBar 폐지) 병합 **이전**(888d420d)에 작성됐다. 개편 diff(`888d420d..HEAD`) 대조 결과:
+
+- **로직 계약(units 0~3) 무손상.** 개편은 Mono/UI 계층(손패·게이지·bridge 부착 API)만 변경 — AttackSystem/ProjectileHitSystem/MovementSystem/`DcMechanic`/`DcTriggerSlot`/투사체 struct 전부 무변경(diff 0줄). enum append 좌표 유효.
+- **무회귀 대상 표현 갱신**: 플레이어 Meteor 는 이제 SkillBar(dormant)가 아니라 **Active 카드**(`CastSkillAtTile`, `skillRuntime` 배선 해제 상태)로 캐스트된다. owner=Null 가드(N2)·진영 플래그 기본값=enemy(N3)는 그대로 유효 — 단 Active 카드로 Meteor 사용 빈도가 늘어 이 무회귀 표면을 더 자주 밟는다(unit 6 e2e 갱신).
+- **각성 경제 자동 편입**: 적 스폰이 `AwakeningReward` 를 무조건 베이크하므로 **보스 처치도 각성치를 준다**(`AttackUnitData.awakeningReward` — 보스 값은 unit 6 authoring 결정). 역방향: **폭격이 방어유닛을 죽이면** 기존 사망 드레인이 각성 +4 와 부착 카드 회수(호스트 사망 → 큐 맨 뒤)를 자동 구동 — 신규 코드 0, unit 6 e2e 관찰 항목.
+- **슬로모 상호작용**: 손패 열림 동안 Battle 도메인 0.3x — PeriodicTimer accumulator·SkyFall 텔레그래프도 시뮬 전체와 함께 감속(도메인 dt 설계의 의도된 결과 — "위기에 손패 열고 폭격을 늦춘다"는 정상 플레이).
+- **배선 앵커 드리프트**: BattleBridge +161줄 등으로 라인 이동(스폰 베이크 :4022→:4166 등) — units 4~6 앵커 갱신됨(rev 2).
 
 ## 작업 단위
 

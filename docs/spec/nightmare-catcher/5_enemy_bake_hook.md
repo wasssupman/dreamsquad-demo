@@ -7,17 +7,17 @@
 ## 변경 대상
 
 - `Assets/_Project/Scripts/Data/AttackUnitData.cs` (authoring 필드 append)
-- `Assets/_Project/Scripts/Bridge/BattleBridge.cs` (적 스폰 베이크, `:4022` 인근)
+- `Assets/_Project/Scripts/Bridge/BattleBridge.cs` (적 스폰 베이크, `SpawnUnit` `:4126` — rev 2 앵커 보정)
 - 신규 시스템: `BossPeriodicTriggerSystem`, `BossHealthThresholdSystem` (Combat), `BlinkApplySystem` (Movement)
 
 ## 구현
 
 ### Authoring (데이터로 선언)
-- `AttackUnitData` 에 `DcMechanic[] nightmareMechanics` (+ threat 사용 여부) 필드 **append**(직렬화 back-compat). 나이트매어 mechanics 있으면 그 적이 곧 보스.
+- `AttackUnitData` 에 `DcMechanic[] nightmareMechanics` (+ threat 사용 여부) 필드 **append**(직렬화 back-compat). 나이트매어 mechanics 있으면 그 적이 곧 보스. (rev 2: awakening-hand 가 이미 `awakeningReward` 를 끝에 추가함(`:95`) — 그 **뒤**에 append.)
 
 ### 스폰 베이크 (병렬 경로)
-- 적 스폰(`BattleBridge.cs:4022` `AddComponent<AttackUnitTag>` 인근)에서 `nightmareMechanics` 있으면 → **BossTag + ThreatTable 버퍼 + DcTriggerSlot 베이크**.
-- 베이크 로직은 기존 defender 경로(`BattleBridge.cs:2631` DcTriggerSlot 빌드, `:2681` 버퍼 add/get) **재사용/병렬**. defender 전용 부착 API(`:2555` `ApplyDreamcatcherCardToUnit`, defender 가드)는 **안 씀** — 적 스폰은 별도 진입점.
+- 적 스폰 `SpawnUnit`(`BattleBridge.cs:4126`, `AddComponent<AttackUnitTag>` = `:4166` — rev 2 앵커 보정)에서 `nightmareMechanics` 있으면 → **BossTag + ThreatTable 버퍼 + DcTriggerSlot 베이크**. 같은 함수의 `AwakeningReward` 무조건 부착(awakening-hand unit 1)이 스폰-베이크 선례 — 보스 분기도 같은 자리.
+- 베이크 로직은 기존 defender 경로(DcTriggerSlot 빌드 `:2775`, 버퍼 add/get `:2826` — rev 2 보정) **재사용/병렬**. defender 전용 부착 API(`:2699` `ApplyDreamcatcherCardToUnit`, defender 가드)는 **안 씀** — 적 스폰은 별도 진입점. (rev 2: 이 API 는 이제 awakening-hand 손패의 Unit 카드 부착에 쓰이고 회수 레지스트리와 연동된다 — 보스 슬롯은 손패 레지스트리 **미등록**이 맞다(회수 순환 무관). `instanceId` 는 기존 `_dcInstanceCounter`(`:2697`, 매치 리셋 `:818`) 공유로 세션 유일성 유지.)
 - **Teardown 은 신규 0**: 보스 = `AttackUnitTag` → `DestroyEntitiesByType<AttackUnitTag>()`(`:373`)로 적과 함께 정리. defender teardown(`DestroyEntitiesByType<DefenderUnitTag>`) 무관. 라이프사이클 병렬이 여기서 성립.
 
 ### 신규 arm 시스템 (선례: `TauntAttackGrantSystem`)
