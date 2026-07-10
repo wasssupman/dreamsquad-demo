@@ -50,6 +50,15 @@ namespace Wassup.Battle.Movement
                      SystemAPI.Query<RefRO<LocalTransform>>().WithAll<AggroCapacity>().WithEntityAccess())
                 guardianPos[gEntity] = gTransform.ValueRO.Position;
 
+            // enemy-hunter-targeting unit 2 — 헌터(보스) 추격 대상 위치 스냅샷.
+            // guardianPos 와 동일 패턴: 별도 RO 쿼리라 아래 RW LocalTransform 루프와
+            // aliasing 안 함(ComponentLookup<LocalTransform> 은 RW 와 alias → 금지).
+            var huntTargetLookup = SystemAPI.GetComponentLookup<HuntTarget>(isReadOnly: true);
+            var defenderPos = new NativeHashMap<Entity, float3>(32, Allocator.Temp);
+            foreach (var (dTransform, dEntity) in
+                     SystemAPI.Query<RefRO<LocalTransform>>().WithAll<Wassup.Battle.Units.DefenderUnitTag>().WithEntityAccess())
+                defenderPos[dEntity] = dTransform.ValueRO.Position;
+
             foreach (var (transform, follow, entity) in
                      SystemAPI.Query<RefRW<LocalTransform>, RefRO<PathFollowState>>()
                               .WithNone<PastGoalTag>()
@@ -65,24 +74,42 @@ namespace Wassup.Battle.Movement
 
                 if (ai == AiState.Standoff) continue; // 정지
 
-                if (ai == AiState.Chasing && aggroLookup.HasComponent(entity))
+                if (ai == AiState.Chasing)
                 {
-                    var guardian = aggroLookup[entity].guardian;
-                    if (guardianPos.TryGetValue(guardian, out var gpos))
+                    // enemy-hunter-targeting unit 2 — Chasing anchor 소스 분기:
+                    // aggro 면 guardian(기존), 아니면 헌터 HuntTarget(신규). step/cell-trim
+                    // 로직은 두 소스 공유 — anchor 만 다르다.
+                    float3 anchor = default;
+                    bool hasAnchor = false;
+                    if (aggroLookup.HasComponent(entity)
+                        && guardianPos.TryGetValue(aggroLookup[entity].guardian, out var gpos))
                     {
-                        float3 to = gpos - current; to.y = 0f;
+                        anchor = gpos; hasAnchor = true;
+                    }
+                    else if (huntTargetLookup.HasComponent(entity))
+                    {
+                        var ht = huntTargetLookup[entity].value;
+                        if (ht != Entity.Null && defenderPos.TryGetValue(ht, out var hpos))
+                        {
+                            anchor = hpos; hasAnchor = true;
+                        }
+                    }
+
+                    if (hasAnchor)
+                    {
+                        float3 to = anchor - current; to.y = 0f;
                         float dist = math.length(to);
-                        int2 aggroCell = GridMath.WorldToCell(current, field.tileSize, field.gridSize, origin: field.origin);
-                        float aggroSpeedMul = modifierStatsLookup.HasComponent(entity)
+                        int2 chaseCell = GridMath.WorldToCell(current, field.tileSize, field.gridSize, origin: field.origin);
+                        float chaseSpeedMul = modifierStatsLookup.HasComponent(entity)
                             ? modifierStatsLookup[entity].moveSpeedMul : 1f;
-                        float step = follow.ValueRO.speed * aggroSpeedMul * dt;
-                        float3 desiredAggro = (step >= dist)
-                            ? new float3(gpos.x, current.y, gpos.z)
+                        float step = follow.ValueRO.speed * chaseSpeedMul * dt;
+                        float3 chaseDesired = (step >= dist)
+                            ? new float3(anchor.x, current.y, anchor.z)
                             : current + math.normalize(to) * step;
                         transform.ValueRW.Position = MovementCellTrim.Apply(
-                            desiredAggro, aggroCell, in field, hasObstacles, in obstacleSingleton);
+                            chaseDesired, chaseCell, in field, hasObstacles, in obstacleSingleton);
                     }
-                    continue; // chasing: skip flow/portal/tornado/goal (guardian 없으면 정지)
+                    continue; // chasing: skip flow/portal/tornado/goal (anchor 없으면 정지)
                 }
 
                 // 1. Portal entry: 내부에 있으면 exit 으로 텔레포트. exitWaypointIndex 제거됨 —
@@ -206,6 +233,7 @@ namespace Wassup.Battle.Movement
             portals.Dispose();
             tornadoFields.Dispose();
             guardianPos.Dispose();
+            defenderPos.Dispose();
             ecb.Playback(state.EntityManager);
             ecb.Dispose();
         }
