@@ -6,31 +6,40 @@ using Wassup.Data;
 
 namespace Wassup.UI
 {
-    // dreamcatcher-awakening-hand unit 7~8 — drag-to-use for one hand card slot
+    // dreamcatcher-awakening-hand unit 7~9 — drag-to-use for one hand card slot
     // (DefenderDragSlot pattern: the slot IS the drag source). Owned/bound by
     // DreamcatcherHandView, which supplies bridge/camera/controller.
     //
-    // Flow: drag the card out of the hand → unit-targeting cards highlight the
-    // defender under the pointer (placement hover tile raised ABOVE units — the
-    // same visual as defender drag placement) → touchup commits IMMEDIATELY
-    // (confirm-pending removed by user decision 2026-07-10; spend/cycle happen
-    // only inside a successful Commit*). Touchup inside the hand panel = cancel.
-    // Active: TilePoint casts at the cell (range preview), Portal enters the
-    // two-tap state (exit tap commits), DefenderUnit targets like Unit cards.
+    // Aim modes (classified ONCE at drag start — single source, every handler
+    // branches on it):
+    // - Defender (Unit/Squad/Active-DefenderUnit): the card stays seated in the
+    //   hand (StS style) and a dotted arrow runs to the pointer; the hovered
+    //   defender shows a red spine tint. Touchup on a unit commits immediately.
+    // - ActiveTile (Meteor 계열): the card follows the pointer with the skill
+    //   range preview; touchup on a tile casts.
+    // - ActivePortal: touchup = entry tile, then a second field tap picks the
+    //   exit (old SkillBar two-tap machine).
+    // Cancel = touchup inside the hand panel / ESC / phase exit — never spends.
     public class DreamcatcherCardDragSlot : MonoBehaviour,
         IBeginDragHandler, IDragHandler, IEndDragHandler
     {
+        private enum AimMode
+        {
+            None,        // unclassifiable (Active without a skill) — drag blocked
+            Defender,    // arrow + unit tint + unit drop
+            ActiveTile,  // card-follow + range preview + tile drop
+            ActivePortal // card-follow + entry drop → two-tap exit
+        }
+
         private DreamcatcherHandView _view;
         private int _index;
 
         private bool _dragging;
-        // rev 4-6 — StS식: 유닛 타겟 카드는 카드가 손패에 고정(확대)되고 카드→포인터
-        // 점선 화살표로 조준한다. 비타겟(Squad/타일/Portal)은 기존 카드 추종 유지.
-        private bool _arrowMode;
+        private AimMode _mode = AimMode.None;
         private Vector2Int? _hoverCell; // hovered defender's cell (Active-defender commit arg)
         private Entity _hoverEntity = Entity.Null;
-        // unit 8 — Active aim state. _activeAiming mirrors GameManager.IsAiming
-        // (critic M1: PlacementInput mutual exclusion, old SkillBar lifecycle).
+        // unit 8 (M1) — Active aim mirrors GameManager.IsAiming (PlacementInput
+        // mutual exclusion, old SkillBar lifecycle).
         private bool _activeAiming;
         private Vector2Int? _portalEntryCell;          // Portal two-tap: entry captured
         private Vector2Int _lastRangeCell = new(-1, -1); // aim range preview cache
@@ -46,13 +55,22 @@ namespace Wassup.UI
 
         private DreamcatcherHandView.CardSlot Slot => _view.Slots[_index];
 
-        // unit 9 — Squad cards are host-bound now: they aim at a defender too
-        // (arrow mode + spine tint), the anywhere-touchup path is retired.
-        private static bool TargetsDefender(DreamcatcherCard card) =>
-            card != null && (card.type == CardType.Unit ||
-                card.type == CardType.Squad ||
-                (card.type == CardType.Active && card.skill != null &&
-                 card.skill.target == SkillTargetType.DefenderUnit));
+        private static AimMode Classify(DreamcatcherCard card)
+        {
+            if (card == null) return AimMode.None;
+            switch (card.type)
+            {
+                case CardType.Unit:
+                case CardType.Squad: // unit 9 — host-bound, aims like Unit
+                    return AimMode.Defender;
+                case CardType.Active when card.skill != null:
+                    if (card.skill.target == SkillTargetType.DefenderUnit) return AimMode.Defender;
+                    return card.skill.effect == SkillEffectType.Portal
+                        ? AimMode.ActivePortal : AimMode.ActiveTile;
+                default:
+                    return AimMode.None;
+            }
+        }
 
         // ── drag ─────────────────────────────────────────────────────────────
 
@@ -60,21 +78,15 @@ namespace Wassup.UI
         {
             if (_view == null || _portalEntryCell.HasValue || !_view.CanStartDrag(_index)) return;
             var slot = Slot;
+            _mode = Classify(slot.card);
+            if (_mode == AimMode.None) return;
 
             _dragging = true;
             slot.rect.SetAsLastSibling(); // float above sibling cards
+            if (_mode == AimMode.Defender)
+                slot.rect.localScale = Vector3.one * 1.08f; // 선택 카드 강조(카드는 손패 고정)
 
-            // rev 4-6 — 유닛 타겟 카드는 화살표 조준 모드.
-            _arrowMode = TargetsDefender(slot.card);
-            if (_arrowMode)
-            {
-                slot.rect.localScale = Vector3.one * 1.08f; // 선택 카드 강조
-                _view.TargetArrow?.Show();
-            }
-
-            // unit 8 (M1) — Active aim mirrors the old SkillBar lifecycle:
-            // IsAiming gates PlacementInput while the card aims at the field.
-            if (slot.card != null && slot.card.type == CardType.Active && GameManager.Instance != null)
+            if (slot.card.type == CardType.Active && GameManager.Instance != null)
             {
                 _activeAiming = true;
                 GameManager.Instance.IsAiming = true;
@@ -86,13 +98,12 @@ namespace Wassup.UI
         public void OnDrag(PointerEventData eventData)
         {
             if (!_dragging) return;
-            var card = Slot.card;
             // 호버 판정을 먼저 — 화살표 색(유효 타겟)이 같은 프레임에 반영되도록.
-            if (card != null && TargetsDefender(card))
-                UpdateUnitHover(eventData.position);
-            else if (card != null && card.type == CardType.Active && card.skill != null &&
-                     card.skill.effect != SkillEffectType.Portal)
-                UpdateAimRange(eventData.position, card.skill); // SkillBar range-preview reuse
+            switch (_mode)
+            {
+                case AimMode.Defender: UpdateUnitHover(eventData.position); break;
+                case AimMode.ActiveTile: UpdateAimRange(eventData.position, Slot.card.skill); break;
+            }
             UpdateDragVisual(eventData.position);
         }
 
@@ -104,78 +115,58 @@ namespace Wassup.UI
             var slot = Slot;
             bool insideHand = _view.HandPanelRect != null && RectTransformUtility
                 .RectangleContainsScreenPoint(_view.HandPanelRect, eventData.position, null);
-
-            if (insideHand || slot.card == null)
+            if (insideHand)
             {
                 CancelDrag();
                 return;
             }
 
-            switch (slot.card.type)
+            switch (_mode)
             {
-                case CardType.Unit:
+                case AimMode.Defender:
+                {
                     UpdateUnitHover(eventData.position);
-                    if (_hoverEntity != Entity.Null)
+                    if (_hoverEntity == Entity.Null) { CancelDrag(); return; } // no unit under touchup
+                    var host = _hoverEntity;
+                    var cell = _hoverCell ?? default;
+                    int entryId = slot.entryId;
+                    // 대상은 같고 커밋 API 만 타입별로 다르다.
+                    switch (slot.card.type)
                     {
-                        var target = _hoverEntity;
-                        CommitNow(() => _view.Controller.CommitUnit(slot.entryId, target));
+                        case CardType.Unit:
+                            CommitNow(() => _view.Controller.CommitUnit(entryId, host));
+                            break;
+                        case CardType.Squad: // unit 9 — host-bound squad
+                            CommitNow(() => _view.Controller.CommitSquad(entryId, host));
+                            break;
+                        default: // Active-DefenderUnit — CastSkillOnDefender takes the CELL
+                            CommitNow(() => _view.Controller.CommitActiveDefender(entryId, cell));
+                            break;
                     }
-                    else CancelDrag(); // no defender under the touchup point
-                    break;
+                    return;
+                }
 
-                case CardType.Squad:
-                    // unit 9 — host-bound: needs a defender under the touchup
-                    // point, exactly like Unit cards (anywhere-touchup retired).
-                    UpdateUnitHover(eventData.position);
-                    if (_hoverEntity != Entity.Null)
+                case AimMode.ActiveTile:
+                    if (TryScreenToCell(eventData.position, out var tile))
                     {
-                        var host = _hoverEntity;
-                        CommitNow(() => _view.Controller.CommitSquad(slot.entryId, host));
+                        ClearAimRange();
+                        CommitNow(() => _view.Controller.CommitActiveTile(slot.entryId, tile));
                     }
                     else CancelDrag();
-                    break;
+                    return;
 
-                case CardType.Active:
-                    EndActiveDrag(eventData.position, slot);
-                    break;
+                case AimMode.ActivePortal:
+                    // Two-tap: touchup = entry tile, the NEXT field tap (Update
+                    // below) picks the exit and commits. IsAiming stays true.
+                    if (TryScreenToCell(eventData.position, out var entry))
+                        _portalEntryCell = entry;
+                    else CancelDrag();
+                    return;
 
                 default:
                     CancelDrag();
-                    break;
+                    return;
             }
-        }
-
-        // unit 8 — Active touchup routes by the wrapped skill's target type.
-        private void EndActiveDrag(Vector2 screenPos, DreamcatcherHandView.CardSlot slot)
-        {
-            var skill = slot.card.skill;
-            if (skill == null) { CancelDrag(); return; }
-
-            if (skill.target == SkillTargetType.DefenderUnit)
-            {
-                UpdateUnitHover(screenPos);
-                if (_hoverCell.HasValue)
-                {
-                    var cell = _hoverCell.Value;
-                    CommitNow(() => _view.Controller.CommitActiveDefender(slot.entryId, cell));
-                }
-                else CancelDrag();
-                return;
-            }
-
-            if (!TryScreenToCell(screenPos, out var tile)) { CancelDrag(); return; }
-
-            if (skill.effect == SkillEffectType.Portal)
-            {
-                // Two-tap (old SkillBar state machine): touchup = entry tile,
-                // the NEXT field tap picks the exit and commits. IsAiming stays
-                // true throughout; hand-area tap / ESC cancels.
-                _portalEntryCell = tile;
-                return;
-            }
-
-            ClearAimRange();
-            CommitNow(() => _view.Controller.CommitActiveTile(slot.entryId, tile));
         }
 
         // Portal second tap — polled like the old SkillBar aim loop.
@@ -195,9 +186,9 @@ namespace Wassup.UI
             }
 
             var entry = _portalEntryCell.Value;
-            var slot = Slot;
+            int entryId = Slot.entryId;
             _portalEntryCell = null;
-            CommitNow(() => _view.Controller.CommitActivePortal(slot.entryId, entry, exitTile));
+            CommitNow(() => _view.Controller.CommitActivePortal(entryId, entry, exitTile));
         }
 
         // Touchup applies immediately: spend/cycle only happen inside a
@@ -206,24 +197,44 @@ namespace Wassup.UI
         private void CommitNow(System.Func<bool> commit)
         {
             bool ok = commit();
-            HideArrow();
-            ClearHover();
-            EndActiveAim();
+            EndInteraction();
             if (!ok) _view.RestoreSlotHome(_index);
             _view.NotifyInteractionEnded();
         }
 
-        private void HideArrow()
+        public void CancelDrag()
         {
-            if (!_arrowMode) return;
-            _arrowMode = false;
-            _view.TargetArrow?.Hide();
-            _view.RestoreSlotHome(_index); // 확대 복원(성공 시 Refresh 가 재정렬)
+            _dragging = false;
+            EndInteraction();
+            _view.RestoreSlotHome(_index);
+            _view.NotifyInteractionEnded();
         }
+
+        // Shared teardown for every interaction end (commit, cancel, disable):
+        // arrow, hover tint, aim preview/IsAiming, portal state, mode.
+        private void EndInteraction()
+        {
+            if (_mode == AimMode.Defender)
+            {
+                _view.TargetArrow?.Hide();
+                _view.RestoreSlotHome(_index); // 확대 복원(성공 시 Refresh 가 재정렬)
+            }
+            ClearHover();
+            ClearAimRange();
+            _portalEntryCell = null;
+            if (_activeAiming)
+            {
+                _activeAiming = false;
+                if (GameManager.Instance != null) GameManager.Instance.IsAiming = false;
+            }
+            _mode = AimMode.None;
+        }
+
+        // ── aim visuals ──────────────────────────────────────────────────────
 
         private void UpdateDragVisual(Vector2 screenPos)
         {
-            if (_arrowMode)
+            if (_mode == AimMode.Defender)
             {
                 // 카드는 손패에 고정 — 화살표만 포인터를 따른다(붉음=유효 타겟).
                 var slot = Slot;
@@ -241,8 +252,8 @@ namespace Wassup.UI
         {
             Entity found = Entity.Null;
             Vector2Int? cell = null;
-            // rev 4 root-cause fix — 1차: 스프라이트 스크린 렉트 픽킹(몸체 포인팅).
-            // 보드 평면 셀 조회는 발밑을 정확히 가리킬 때만 맞아서 2차로 강등.
+            // rev 4-3 — 1차: 스프라이트 스크린 렉트 픽킹(몸체 포인팅). 보드 평면 셀
+            // 조회는 발밑을 정확히 가리킬 때만 맞아서 2차(폴백 quad 뷰 포함).
             if (_view.Bridge.TryPickDefenderAtScreen(_view.MainCamera, screenPos, out var picked, out var pickedCell))
             {
                 cell = pickedCell;
@@ -254,7 +265,7 @@ namespace Wassup.UI
                 found = entity;
             }
 
-            // rev 4-4 — 포커스 표시는 유닛 스파인 틴트만(타일 하이라이트 제거, 사용자 확정).
+            // rev 4-4 — 포커스 표시는 호버 유닛 스파인 틴트 단일(타일 하이라이트 없음).
             if (found != _hoverEntity)
             {
                 if (_hoverEntity != Entity.Null)
@@ -267,20 +278,21 @@ namespace Wassup.UI
             _hoverEntity = found;
         }
 
+        private void ClearHover()
+        {
+            if (_hoverEntity != Entity.Null && _view != null && _view.Bridge != null)
+                _view.Bridge.SetDefenderHoverHighlight(_hoverEntity, false, default);
+            _hoverCell = null;
+            _hoverEntity = Entity.Null;
+        }
+
+        // F1 — pointer→board-cell lives on the bridge (shared with the aim/
+        // placement flows); this is a thin null-guarded forward.
         private bool TryScreenToCell(Vector2 screenPos, out Vector2Int cell)
         {
             cell = default;
-            var cam = _view.MainCamera;
             var bridge = _view.Bridge;
-            if (cam == null || bridge == null) return false;
-            // SkillBar aim pattern: pointer ray → board plane → sim → cell.
-            var ray = cam.ScreenPointToRay(screenPos);
-            var plane = BoardSpace.RaycastPlane();
-            if (!plane.Raycast(ray, out float enter)) return false;
-            var world = (Vector3)BoardSpace.ToSim(ray.GetPoint(enter));
-            var hit = bridge.DebugWorldToCell(world);
-            cell = new Vector2Int(hit.x, hit.y);
-            return true;
+            return bridge != null && bridge.TryScreenToCell(_view.MainCamera, screenPos, out cell);
         }
 
         private void UpdateAimRange(Vector2 screenPos, SkillData skill)
@@ -298,43 +310,12 @@ namespace Wassup.UI
             _lastRangeCell = new Vector2Int(-1, -1);
         }
 
-        private void EndActiveAim()
-        {
-            ClearAimRange();
-            _portalEntryCell = null;
-            if (_activeAiming)
-            {
-                _activeAiming = false;
-                if (GameManager.Instance != null) GameManager.Instance.IsAiming = false;
-            }
-        }
-
-        public void CancelDrag()
-        {
-            _dragging = false;
-            HideArrow();
-            ClearHover();
-            EndActiveAim(); // covers portal-mode cancel too
-            _view.RestoreSlotHome(_index);
-            _view.NotifyInteractionEnded();
-        }
-
-        private void ClearHover()
-        {
-            if (_hoverEntity != Entity.Null && _view != null && _view.Bridge != null)
-                _view.Bridge.SetDefenderHoverHighlight(_hoverEntity, false, default);
-            _hoverCell = null;
-            _hoverEntity = Entity.Null;
-        }
-
         private void OnDisable()
         {
-            // Panel deactivation mid-drag: never leave a stale hover tile,
-            // sorting override, or IsAiming behind.
+            // Panel deactivation mid-drag: never leave a stale hover tint,
+            // aim preview, or IsAiming behind.
             _dragging = false;
-            HideArrow();
-            ClearHover();
-            EndActiveAim();
+            EndInteraction();
         }
     }
 }

@@ -2617,6 +2617,25 @@ namespace Wassup.Bridge
             _em.SetComponentData(e, a);
         }
 
+        // awakening-hand simplify F1 — pointer→board-cell as a single shared
+        // helper. The exact ray→RaycastPlane→ToSim→cell block is hand-rolled in
+        // SkillBar/PlacementInput too (pre-existing copies; consolidation is a
+        // follow-up) — new call sites MUST use this instead of a sixth copy.
+        // BoardSpace.RaycastPlane (not Plane(up)) is load-bearing: the tilemap
+        // front-view board plane is near-parallel to an up-plane ray.
+        public bool TryScreenToCell(Camera cam, Vector2 screenPos, out Vector2Int cell)
+        {
+            cell = default;
+            if (cam == null) return false;
+            var ray = cam.ScreenPointToRay(screenPos);
+            var plane = Wassup.Core.BoardSpace.RaycastPlane();
+            if (!plane.Raycast(ray, out float enter)) return false;
+            var world = (Vector3)Wassup.Core.BoardSpace.ToSim(ray.GetPoint(enter));
+            var hit = DebugWorldToCell(world);
+            cell = new Vector2Int(hit.x, hit.y);
+            return true;
+        }
+
         // dreamcatcher-awakening-hand unit 7 — defender lookup for card-drag
         // targeting (hover highlight + Unit-card attach target). Read-only view
         // over the tile→binding registry; Entity is a key for the attach APIs.

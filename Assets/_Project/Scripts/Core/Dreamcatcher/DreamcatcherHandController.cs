@@ -197,11 +197,7 @@ namespace Wassup.Core
             if (AtAttachCap(host, card)) return false;
             int handle = bridge.ApplyDreamcatcherCardHosted(card);
             if (handle < 0) return false; // contributed nothing — no spend
-            if (!_deck.UseUnit(entryId, HandSize)) return false; // guarded by TryGetUsable
-            _attachedTo[entryId] = (host, handle);
-            Spend(card);
-            HandChanged?.Invoke(HandChangeReason.Used);
-            return true;
+            return AttachAndSpend(entryId, card, host, handle);
         }
 
         public bool CommitUnit(int entryId, Entity target)
@@ -211,8 +207,14 @@ namespace Wassup.Core
             // Apply first: a failed attach (entity gone, non-defender) must not
             // spend or cycle (contract 9).
             if (!bridge.ApplyDreamcatcherCardToUnit(target, card)) return false;
+            return AttachAndSpend(entryId, card, target, handle: -1); // slots die with the entity — no revoke
+        }
+
+        // Shared attach tail: out-of-pool, host registry, spend, notify.
+        private bool AttachAndSpend(int entryId, DreamcatcherCard card, Entity host, int handle)
+        {
             if (!_deck.UseUnit(entryId, HandSize)) return false; // guarded by TryGetUsable
-            _attachedTo[entryId] = (target, -1); // slots die with the entity — no revoke
+            _attachedTo[entryId] = (host, handle);
             Spend(card);
             HandChanged?.Invoke(HandChangeReason.Used);
             return true;

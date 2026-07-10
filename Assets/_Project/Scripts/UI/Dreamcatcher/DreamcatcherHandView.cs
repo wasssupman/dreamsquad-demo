@@ -42,7 +42,6 @@ namespace Wassup.UI
         // the cancel-region test.
         public RectTransform HandPanelRect => _panel != null ? (RectTransform)_panel.transform : null;
         public IReadOnlyList<CardSlot> Slots => _slots;
-        public event System.Action HandRefreshed;
 
         // Drag-slot service surface (unit 7).
         public DreamcatcherHandController Controller => handController;
@@ -316,7 +315,6 @@ namespace Wassup.UI
                     BindEmpty(slot);
             }
             RefreshUsability();
-            HandRefreshed?.Invoke();
         }
 
         private void RefreshUsability()
