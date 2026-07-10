@@ -37,7 +37,13 @@ if (ai == AiState.Chasing) {
 
 ## 완료 기준
 
-- [ ] 보스가 HuntTarget 방어유닛으로 self-walk(cell-trim 통과, walk 타일 유지).
-- [ ] 사거리 도달 → FSM 이 Engaging 전환 → 정지·공격(chasing 분기 이탈).
-- [ ] 기존 aggro Chasing 무변경 — 무회귀.
-- [ ] (렌즈 B) huntTargetLookup RO·위치 라이브 조회·맥락 경계(Movement 는 HuntTarget 읽기만).
+- [x] 보스가 HuntTarget 방어유닛으로 self-walk(cell-trim 통과, walk 타일 유지) — 코드. Play 확인은 unit 3.
+- [x] 사거리 도달 → FSM 이 Engaging 전환 → chasing 분기 이탈(anchor 무관, ai!=Chasing).
+- [x] 기존 aggro Chasing 무변경 — anchor 분기 첫 가지가 guardian(기존)과 동일, EditMode 649/651 무회귀.
+- [ ] (렌즈 B) huntTargetLookup RO·맥락 경계 — units 1·2 묶음 실행 중.
+
+## 구현 소결정 (aliasing 회피)
+
+- **위치 조회는 `defenderPos` 스냅샷**(별도 RO 쿼리)로 확정 — spec 초안의 "transformLookup 라이브 조회"는 이동 루프의 `RefRW<LocalTransform>` 와 **aliasing 위반**(ComponentLookup<LocalTransform> RO + query RW 동시 = 금지)이라 불가. guardianPos 선례와 동일 패턴(별도 쿼리는 안전). 방어유닛은 타일 고정이라 프레임 내 스냅샷 = 라이브와 동등.
+
+확인 2026-07-11 — 컴파일 클린 + EditMode 649/651 그린 + 커밋 `43e23954`.
