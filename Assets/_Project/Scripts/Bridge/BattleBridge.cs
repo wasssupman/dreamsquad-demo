@@ -825,7 +825,7 @@ namespace Wassup.Bridge
             tileHealthGaugeLayer?.Clear(); // unit 3 — 게이지 정리를 _defenderByTile 리셋과 co-locate(불변식)
             // ingame-dreamcatcher Unit 2/3 — reset card registry + triggers for a new match.
             _activeDcEffects.Clear();
-            _activeWarmups.Clear(); // dreamcatcher-squad-warmup — per-match placement warmups
+            _activePlacementSleeps.Clear(); // combat-action-lock — 매치별 placement-aura Sleep 등록 초기화
             _dcStackCounter = 100;
             _dcInstanceCounter = 0; // dreamcatcher-unit-trigger Unit 1 — per-match instance ids
             // dreamstone-loadout Unit 3 — set-then-apply: reapply the pending stone
@@ -2552,10 +2552,10 @@ namespace Wassup.Bridge
 
         // Applies one card to all currently-placed matching defenders and records
         // it so future placements (ApplyActiveDcEffectsTo) inherit it.
-        // dreamcatcher-squad-warmup — squad cards with placementWarmupSec force N s
-        // idle on matching units at placement. Registry mirrors _activeDcEffects so
-        // future placements inherit it. Cleared in BeginPlacement.
-        private readonly System.Collections.Generic.List<(int handle, Wassup.Data.CardTargetAxis axis, float sec)> _activeWarmups =
+        // combat-action-lock — placement-aura 가 신규 배치 유닛에 걸 Sleep(초) 등록부.
+        // _activeDcEffects 를 미러 → 미래 배치 유닛이 상속. BeginPlacement 에서 clear.
+        // (구 dreamcatcher-squad-warmup 레지스트리; warmup → Sleep 승격으로 개명.)
+        private readonly System.Collections.Generic.List<(int handle, Wassup.Data.CardTargetAxis axis, float sec)> _activePlacementSleeps =
             new System.Collections.Generic.List<(int, Wassup.Data.CardTargetAxis, float)>();
 
         // awakening-hand unit 9 — host-bound squad apply. Same squad-wide effect
@@ -2564,10 +2564,10 @@ namespace Wassup.Bridge
         // Returns -1 when the card contributed nothing (no spend at the caller).
         public int ApplyDreamcatcherCardHosted(Wassup.Data.DreamcatcherCard card)
         {
-            int before = _activeDcEffects.Count + _activeWarmups.Count;
+            int before = _activeDcEffects.Count + _activePlacementSleeps.Count;
             int handle = _dcHandleCounter++;
             ApplyDreamcatcherCardInternal(card, handle);
-            return (_activeDcEffects.Count + _activeWarmups.Count) > before ? handle : -1;
+            return (_activeDcEffects.Count + _activePlacementSleeps.Count) > before ? handle : -1;
         }
 
         private void ApplyDreamcatcherCardInternal(Wassup.Data.DreamcatcherCard card, int handle)
@@ -2589,18 +2589,9 @@ namespace Wassup.Bridge
                     }
                 }
             }
-            // dreamcatcher-squad-warmup — placement warmup (idle) for matching units.
-            if (card.placementWarmupSec > 0f)
-            {
-                _activeWarmups.Add((handle, card.axis, card.placementWarmupSec));
-                foreach (var kv in _defenderByTile)
-                {
-                    var data = kv.Value.data;
-                    var entity = kv.Value.entity;
-                    if (data != null && MatchesDcAxis(data, card.axis))
-                        ApplyPlacementWarmup(entity, card.placementWarmupSec);
-                }
-            }
+            // combat-action-lock — 구 Squad placementWarmupSec(idle) 경로 은퇴. warmup 개념은
+            // placement-aura(PlacementAura payload)가 Sleep 으로만 부여한다(RegisterPlacementAura).
+            // placementWarmupSec SO 필드는 reader 없는 dead 필드(RETIRED — DreamcatcherCard 참조).
         }
 
         // awakening-hand unit 9 — end a hosted squad card's effects (host died).
@@ -2630,8 +2621,8 @@ namespace Wassup.Bridge
                 }
                 _activeDcEffects.RemoveAt(i);
             }
-            for (int i = _activeWarmups.Count - 1; i >= 0; i--)
-                if (_activeWarmups[i].handle == handle) _activeWarmups.RemoveAt(i);
+            for (int i = _activePlacementSleeps.Count - 1; i >= 0; i--)
+                if (_activePlacementSleeps[i].handle == handle) _activePlacementSleeps.RemoveAt(i);
         }
 
         private void ApplyActiveDcEffectsTo(Entity entity, DefenderUnitData data)
@@ -2643,19 +2634,19 @@ namespace Wassup.Bridge
                 if (MatchesDcAxis(data, e.axis))
                     EnqueueStatModifier(entity, e.stat, e.mult, DcDuration, e.stackId);
             }
-            // dreamcatcher-squad-warmup — future placements inherit active warmups.
-            for (int i = 0; i < _activeWarmups.Count; i++)
+            // combat-action-lock — 신규 배치 유닛이 활성 placement-aura Sleep 을 상속.
+            for (int i = 0; i < _activePlacementSleeps.Count; i++)
             {
-                var w = _activeWarmups[i];
+                var w = _activePlacementSleeps[i];
                 if (MatchesDcAxis(data, w.axis))
-                    ApplyPlacementWarmup(entity, w.sec);
+                    ApplyPlacementSleep(entity, w.sec);
             }
         }
 
-        // combat-action-lock unit 4 — warmup 을 Sleep 상태로 승격. cooldownRemaining 직접쓰기
-        // 폐기(층위 비대칭 해소). 잠 = 공격+이동 정지 + 피격 시 해제(wake-on-hit). CcEffect 는
-        // 소유 맥락(Effects)이 CcDecay 로 만료·소비. defender 는 unit 2 로 CcEffect 버퍼 보유.
-        private void ApplyPlacementWarmup(Entity e, float sec)
+        // combat-action-lock unit 4 — 배치 유닛에 Sleep(sec 초) 부여. 구 warmup(cooldownRemaining
+        // 직접쓰기) 은퇴 = 층위 비대칭 해소. 잠 = 공격+이동 정지 + 피격 시 해제(wake-on-hit).
+        // CcEffect 는 소유 맥락(Effects)이 CcDecay 로 만료·소비. defender 는 unit 2 로 버퍼 보유.
+        private void ApplyPlacementSleep(Entity e, float sec)
         {
             if (sec <= 0f || !_em.Exists(e) || !_em.HasBuffer<Wassup.Battle.Effects.CcEffect>(e)) return;
             Wassup.Battle.Effects.EffectSpawner.ApplyCc(_em, e, new Wassup.Battle.Effects.CcEffect
@@ -2958,7 +2949,7 @@ namespace Wassup.Bridge
                     handle = handle,
                 });
             }
-            if (warmupSec > 0f) _activeWarmups.Add((handle, axis, warmupSec));
+            if (warmupSec > 0f) _activePlacementSleeps.Add((handle, axis, warmupSec));
             return handle;
         }
 

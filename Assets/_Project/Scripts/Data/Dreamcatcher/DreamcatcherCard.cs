@@ -74,10 +74,9 @@ namespace Wassup.Data
         // dreamcatcher-card-taxonomy — Squad/Unit type. Deck cap keys on this.
         // Appended last; zero-init = Squad for existing stat cards.
         public CardType type;
-        // dreamcatcher-squad-warmup — squad card: on placement, force this many
-        // seconds of idle (AttackState.cooldownRemaining) before the unit can act.
-        // Combined with an AttackSpeed effect this reads as "wait N s, then buffed".
-        // Default 0 = no warmup (existing squad cards unaffected).
+        // RETIRED (combat-action-lock) — 구 Squad warmup 필드. warmup 개념은 은퇴하고
+        // placement-aura(PlacementAura payload) 가 Sleep 상태로 대체함. **코드에서 아무도
+        // 읽지 않는 dead 필드** — append-only 직렬화 유지 위해 필드만 잔존(모든 카드 0).
         public float placementWarmupSec;
         // dreamcatcher-awakening-hand unit 2 — the SkillData an Active-type card
         // wraps (common per-match dreamcatcher; cast via the existing skill
