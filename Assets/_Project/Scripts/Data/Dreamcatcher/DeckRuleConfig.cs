@@ -9,6 +9,11 @@ namespace Wassup.Data
     [CreateAssetMenu(fileName = "DeckRuleConfig", menuName = "Wassup/DeckRuleConfig", order = 23)]
     public class DeckRuleConfig : ScriptableObject
     {
+        // dreamcatcher-sheet-sync unit 2 — DcConfig sheet-tab row key. Appended so
+        // the existing asset keeps its serialized values (id backfilled to
+        // "deck_rule_default" in the same commit).
+        public string id;
+
         public int deckSize = 10;
         public int maxSquad = 2;   // CardType.Squad cap
         public int maxUnit = -1;   // CardType.Unit cap; <0 = unlimited

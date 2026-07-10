@@ -15,3 +15,4 @@ MonoBehaviour:
   deckSize: 10
   maxSquad: -1
   maxUnit: -1
+  id: deck_rule_default

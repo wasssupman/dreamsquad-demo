@@ -21,3 +21,4 @@ MonoBehaviour:
   maxAttachPerUnit: 3
   slomoTimeScale: 0.3
   confirmDelaySec: 1.5
+  id: awakening_default
