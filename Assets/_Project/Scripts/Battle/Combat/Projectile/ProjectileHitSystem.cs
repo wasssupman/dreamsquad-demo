@@ -44,6 +44,12 @@ namespace Wassup.Battle.Combat.Projectile
             var hitFlashLookup = SystemAPI.GetComponentLookup<HitFlashTag>(isReadOnly: true);
             bool hasStatQ = SystemAPI.TryGetSingleton<StatModifierApplyEventsSingleton>(out var statEvents);
             bool hasStackQ = SystemAPI.TryGetSingleton<StackModifierApplyEventsSingleton>(out var stackEvents);
+            // nightmare-catcher unit 1 — 보스 위협 귀속: 피격자가 ThreatEntry 버퍼
+            // 보유(보스 베이크) && owner 가 defender 인 착탄만 enqueue. 스킬 투사체
+            // (owner == Null, 플레이어 Meteor)와 defender 피격 경로는 무영향.
+            bool hasThreatQ = SystemAPI.TryGetSingleton<ThreatHitEventsSingleton>(out var threatEvents);
+            var threatLookup = SystemAPI.GetBufferLookup<ThreatEntry>(isReadOnly: true);
+            var defenderTagLookup = SystemAPI.GetComponentLookup<DefenderUnitTag>(isReadOnly: true);
 
             // Combat→Presentation: hit-VFX channel. May not exist before
             // BattleBridge.EnsureQueriesAndQueues runs (very first frames in
@@ -84,6 +90,15 @@ namespace Wassup.Battle.Combat.Projectile
                 // re-targets; the unconditional destroy below is then skipped.
                 bool bounced = false;
 
+                // nightmare-catcher unit 1 — per-projectile threat gate (N2).
+                // A shooter that died mid-flight fails the defender-tag check
+                // (despawned / version-bumped entity) and the credit is dropped —
+                // harmless: Leader's alive mask excludes dead attackers anyway.
+                var threatOwner = projectile.ValueRO.owner;
+                bool creditThreat = hasThreatQ
+                    && threatOwner != Entity.Null
+                    && defenderTagLookup.HasComponent(threatOwner);
+
                 switch (projectile.ValueRO.payload)
                 {
                     case PayloadKind.SingleSplash:
@@ -105,7 +120,10 @@ namespace Wassup.Battle.Combat.Projectile
                                     {
                                         case AttackOutputKind.Damage:
                                             if (damageBufferLookup.HasBuffer(target))
+                                            {
                                                 ecb.AppendToBuffer(target, new IncomingDamage { amount = output.magnitude });
+                                                ThreatTable.TryCredit(threatEvents.queue, creditThreat, threatLookup, target, threatOwner, output.magnitude);
+                                            }
                                             break;
 
                                         case AttackOutputKind.Heal:
@@ -144,7 +162,10 @@ namespace Wassup.Battle.Combat.Projectile
                             }
 
                             if (!handledOutputs && damageBufferLookup.HasBuffer(target))
+                            {
                                 ecb.AppendToBuffer(target, new IncomingDamage { amount = projectile.ValueRO.damage });
+                                ThreatTable.TryCredit(threatEvents.queue, creditThreat, threatLookup, target, threatOwner, projectile.ValueRO.damage);
+                            }
 
                             // Combat→Presentation: one hit event per direct target —
                             // splash secondary damage gets no extra VFX (intentional).
@@ -174,7 +195,10 @@ namespace Wassup.Battle.Combat.Projectile
                                     float dz = aoeTransforms[i].Position.z - aoeCenter.z;
                                     if (dx * dx + dz * dz > splashRadiusSq) continue;
                                     if (damageBufferLookup.HasBuffer(candidate))
+                                    {
                                         ecb.AppendToBuffer(candidate, new IncomingDamage { amount = splashDamage });
+                                        ThreatTable.TryCredit(threatEvents.queue, creditThreat, threatLookup, candidate, threatOwner, splashDamage);
+                                    }
                                 }
                             }
 
@@ -262,7 +286,10 @@ namespace Wassup.Battle.Combat.Projectile
                             int2 cell = GridMath.WorldToCell(aoeTransforms[i].Position, tileSize, gridSize, origin: ffOrigin);
                             if (!TileAoe.IsInTileRange(cell, centerCell, tileRange)) continue;
                             if (damageBufferLookup.HasBuffer(aoeEntities[i]))
+                            {
                                 ecb.AppendToBuffer(aoeEntities[i], new IncomingDamage { amount = dmg });
+                                ThreatTable.TryCredit(threatEvents.queue, creditThreat, threatLookup, aoeEntities[i], threatOwner, dmg);
+                            }
                         }
 
                         // Impact-crater VFX at the cell (not a target position). No

@@ -53,6 +53,11 @@ namespace Wassup.Battle.Combat.Projectile
         public int bounceRemaining;
         public int bounceTileRange;
         public float bounceDamageMul;
+
+        // ── Shooter attribution (nightmare-catcher unit 1) ───────────────────
+        // Copied verbatim onto ProjectileState by the drain. Default Entity.Null
+        // (bridge-cast skills) = no threat attribution.
+        public Entity owner;
     }
 
     public struct ProjectileSpawnOutputElement : IBufferElementData

@@ -89,6 +89,14 @@ namespace Wassup.Battle.Combat
             if (SystemAPI.TryGetSingletonRW<Wassup.Battle.Effects.AggroHitEventsSingleton>(out var aggroHitSingleton))
                 aggroHitWriter = aggroHitSingleton.ValueRW.queue.AsParallelWriter();
 
+            // nightmare-catcher unit 1 — 보스 위협 귀속 채널 + 게이트 lookup.
+            // enqueue 는 피격자가 ThreatEntry 버퍼 보유(보스 베이크) && 공격자가
+            // defender 일 때만 — defender 피격/일반 적 경로 무영향(회귀 격리).
+            // 직접 큐 핸들 사용은 statModSingleton 선례(메인스레드 foreach).
+            bool hasThreatQ = SystemAPI.TryGetSingletonRW<ThreatHitEventsSingleton>(out var threatHitSingleton);
+            NativeQueue<ThreatHitEvent> threatQueue = hasThreatQ ? threatHitSingleton.ValueRW.queue : default;
+            var threatLookup = SystemAPI.GetBufferLookup<ThreatEntry>(isReadOnly: true);
+
             // Hoist attack-event singleton writer — every attacker (defender or
             // enemy) enqueues one event per fire so SpineUnitPool can trigger the
             // attack animation and facing flip uniformly. Defender-specific
@@ -350,6 +358,7 @@ namespace Wassup.Battle.Combat
                                     dataIndex = projRef.dataIndex,
                                     arcHeight = projRef.arcHeight,
                                     impactTileRange = projRef.impactTileRange,
+                                    owner = attackerEntity, // nightmare-catcher unit 1 — threat attribution
                                 });
                             }
                             else
@@ -390,6 +399,7 @@ namespace Wassup.Battle.Combat
                                     bounceRemaining = dcBounceCount,
                                     bounceTileRange = dcBounceRange,
                                     bounceDamageMul = dcBounceMul,
+                                    owner = attackerEntity, // nightmare-catcher unit 1 — threat attribution
                                 });
                             }
                         }
@@ -489,6 +499,10 @@ namespace Wassup.Battle.Combat
                                 }
                             }
 
+                            // nightmare-catcher unit 1 — 공격 단위 불변식 hoist:
+                            // 위협 credit 여부는 공격자에만 의존(피격자별 버퍼 체크는
+                            // TryCredit 내부). ProjectileHitSystem 의 creditThreat 대칭.
+                            bool creditThreat = hasThreatQ && defenderTagLookup.HasComponent(attackerEntity);
                             for (int ti = 0; ti < hitCount; ti++)
                             {
                                 Entity hitTarget = hitTargets[ti];
@@ -500,6 +514,8 @@ namespace Wassup.Battle.Combat
                                         case Wassup.Data.AttackOutputKind.Damage:
                                             ecb.AppendToBuffer(hitTarget,
                                                 new IncomingDamage { amount = o.magnitude * damageMul });
+                                            ThreatTable.TryCredit(threatQueue, creditThreat, threatLookup,
+                                                hitTarget, attackerEntity, o.magnitude * damageMul);
                                             if (attackOutputLogWriter.HasValue)
                                                 attackOutputLogWriter.Value.Enqueue(new AttackOutputLogEvent
                                                 {
@@ -691,6 +707,9 @@ namespace Wassup.Battle.Combat
                                     hitThreshold = slot.hitThreshold,
                                     visualScale = slot.visualScale,
                                     dataIndex = slot.projectileDataIndex,
+                                    // nightmare-catcher unit 1 — card projectiles credit
+                                    // the bound defender, not the carrier entity.
+                                    owner = attackerEntity,
                                 });
                                 ecb.AddComponent<ProjectileRequestCarrier>(dcCarrier);
                                 if (attackOutputLogWriter.HasValue)

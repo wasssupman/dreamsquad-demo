@@ -210,6 +210,8 @@ namespace Wassup.Bridge
         private NativeQueue<Wassup.Battle.Combat.Projectile.ProjectileHitEvent> _projectileHitEventQueue;
         // aggro-targeting Unit 11 — Combat(AttackSystem)→Effects(AggroStateSystem) 히트 채널.
         private NativeQueue<Wassup.Battle.Effects.AggroHitEvent> _aggroHitEventQueue;
+        // nightmare-catcher unit 1 — Combat→Combat 보스 위협 귀속 채널.
+        private NativeQueue<Wassup.Battle.Combat.ThreatHitEvent> _threatHitEventQueue;
         private NativeQueue<Wassup.Battle.Units.HealAppliedEvent> _healAppliedEventQueue;
         private NativeQueue<Wassup.Battle.Units.DamageNumberEvent> _damageNumberEventQueue;
         private NativeQueue<Wassup.Battle.Units.EnemyKilledEvent> _enemyKilledEventQueue;
@@ -399,6 +401,7 @@ namespace Wassup.Bridge
             DestroyEntitiesByType<Wassup.Battle.Effects.HazardSpawnRequestsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Combat.AttackOutputLogEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.AggroHitEventsSingleton>();
+            DestroyEntitiesByType<Wassup.Battle.Combat.ThreatHitEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.ObstacleSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.HazardSingleton>();
             // time-manager H1 — BattleTimeScale singleton 도 다른 인프라 싱글턴과 대칭으로 파괴.
@@ -414,6 +417,7 @@ namespace Wassup.Bridge
             if (_unitAttackVisualQueue.IsCreated) _unitAttackVisualQueue.Dispose();
             if (_projectileHitEventQueue.IsCreated) _projectileHitEventQueue.Dispose();
             if (_aggroHitEventQueue.IsCreated) _aggroHitEventQueue.Dispose();
+            if (_threatHitEventQueue.IsCreated) _threatHitEventQueue.Dispose();
             if (_healAppliedEventQueue.IsCreated) _healAppliedEventQueue.Dispose();
             if (_damageNumberEventQueue.IsCreated) _damageNumberEventQueue.Dispose();
             if (_enemyKilledEventQueue.IsCreated) _enemyKilledEventQueue.Dispose();
@@ -947,6 +951,15 @@ namespace Wassup.Bridge
             _aggroHitEventQueue = new NativeQueue<Wassup.Battle.Effects.AggroHitEvent>(Allocator.Persistent);
             var aggroHitSingleton = _em.CreateEntity();
             _em.AddComponentData(aggroHitSingleton, new Wassup.Battle.Effects.AggroHitEventsSingleton { queue = _aggroHitEventQueue });
+
+            // nightmare-catcher unit 1 — Combat→Combat 보스 위협 귀속 채널. 데미지
+            // 생산자(AttackSystem 근접 / ProjectileHitSystem 착탄)가 보스(ThreatEntry
+            // 버퍼 보유) 피격을 enqueue, Combat 드레인이 ThreatTable 에 누적(unit 3).
+            // 브리지는 lifecycle 만 관리(드레인 안 함 — 순수 ECS 내부 통신).
+            if (_threatHitEventQueue.IsCreated) _threatHitEventQueue.Dispose();
+            _threatHitEventQueue = new NativeQueue<Wassup.Battle.Combat.ThreatHitEvent>(Allocator.Persistent);
+            var threatHitSingleton = _em.CreateEntity();
+            _em.AddComponentData(threatHitSingleton, new Wassup.Battle.Combat.ThreatHitEventsSingleton { queue = _threatHitEventQueue });
 
             // Units→Presentation heal pulse channel. DamageApplicationSystem
             // enqueues one event per entity whose IncomingHeal buffer was drained.
@@ -2156,6 +2169,9 @@ namespace Wassup.Bridge
                 bounceRemaining = req.bounceRemaining,
                 bounceTileRange = req.bounceTileRange,
                 bounceDamageMul = req.bounceDamageMul,
+                // nightmare-catcher unit 1 — shooter attribution, verbatim copy.
+                // Null (bridge-cast skills) = no threat credit.
+                owner = req.owner,
             };
             if (req.movement == MovementKind.BallisticArcToPoint)
             {

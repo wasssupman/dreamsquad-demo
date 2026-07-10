@@ -64,5 +64,13 @@ namespace Wassup.Battle.Combat.Projectile
         public int bounceRemaining;
         public int bounceTileRange;   // retarget search radius (Chebyshev tiles)
         public float bounceDamageMul; // per-bounce decay applied to damage sources
+
+        // ── Shooter attribution (nightmare-catcher unit 1) ───────────────────
+        // Entity that fired this projectile, filled at the AttackSystem launch
+        // arms (base shots and dc-trigger carriers alike); Entity.Null for
+        // bridge-cast skills (player Meteor — intentionally not threat-credited).
+        // ProjectileHitSystem reads it to enqueue ThreatHitEvent on victims that
+        // carry a ThreatEntry buffer (boss). Survives bounce re-homing.
+        public Entity owner;
     }
 }
