@@ -53,6 +53,8 @@ static Entity ThreatLeader(DynamicBuffer<ThreatEntry> table, ...aliveCheck)
 
 ## 완료 기준
 
-- [ ] `ThreatLeader` 순수함수 EditMode 테스트(누적·동점 결정론·죽은 attacker(LocalTransform 부재) 제외·빈 테이블 Null).
+- [x] `ThreatLeader` 순수함수 EditMode 테스트(누적·동점 결정론·죽은 attacker(LocalTransform 부재) 제외·빈 테이블 Null).
 - [ ] `owner` 필드가 근접+원거리 양쪽 데미지를 보스 위협에 귀속(원거리 defender 만으로도 리더 성립) — Play 확인.
 - [ ] 위협 채널 (A) 가 보스 대상 히트에만 발화(defender 피격은 무영향) — 회귀 0 확인.
+
+확인 2026-07-10 — 코드/EditMode 완료(621 중 619 그린, ThreatTableTests 7종). Play 항목 2건은 보스 베이크 부재로 unit 6 e2e 이연. code-review(medium) 반영 3(TryCredit 단일화·근접 게이트 hoist·CLAUDE.md 채널 16)/기각 3. 커밋 `507dc1e5`.

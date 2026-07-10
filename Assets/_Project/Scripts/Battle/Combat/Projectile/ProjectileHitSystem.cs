@@ -71,6 +71,14 @@ namespace Wassup.Battle.Combat.Projectile
             for (int i = 0; i < aoeTransforms.Length; i++)
                 aoePositions[i] = aoeTransforms[i].Position;
 
+            // nightmare-catcher unit 4 — defender pool for the faction-
+            // parameterized TileAoe (boss AreaBarrage hits defenders, HIGH-1).
+            // Snapshot built alongside the enemy pool, same lifetime; splash and
+            // bounce intentionally keep the enemy pool only.
+            var defenderQuery = SystemAPI.QueryBuilder().WithAll<DefenderUnitTag, LocalTransform>().Build();
+            var defenderEntities = defenderQuery.ToEntityArray(Allocator.Temp);
+            var defenderTransforms = defenderQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
+
             // Grid params for the TileAoe payload (impact cell + candidate cells).
             // Same source the legacy Meteor resolver used; defaults keep it safe before
             // the flow field exists (early frames / tests). Hoisted out of the loop.
@@ -281,14 +289,21 @@ namespace Wassup.Battle.Combat.Projectile
                         int2 centerCell = GridMath.WorldToCell(impactWorld, tileSize, gridSize, origin: ffOrigin);
                         int tileRange = projectile.ValueRO.impactTileRange;
                         float dmg = projectile.ValueRO.damage;
-                        for (int i = 0; i < aoeEntities.Length; i++)
+                        // nightmare-catcher unit 4 — victim pool by targetFaction.
+                        // Enemy(0) = legacy pool so player Meteor / defender
+                        // ballistic are byte-identical to before (N3); the boss
+                        // AreaBarrage arm is the only Defender setter (unit 2).
+                        bool hitsDefenders = projectile.ValueRO.targetFaction == ProjectileTargetFaction.Defender;
+                        var victims = hitsDefenders ? defenderEntities : aoeEntities;
+                        var victimTransforms = hitsDefenders ? defenderTransforms : aoeTransforms;
+                        for (int i = 0; i < victims.Length; i++)
                         {
-                            int2 cell = GridMath.WorldToCell(aoeTransforms[i].Position, tileSize, gridSize, origin: ffOrigin);
+                            int2 cell = GridMath.WorldToCell(victimTransforms[i].Position, tileSize, gridSize, origin: ffOrigin);
                             if (!TileAoe.IsInTileRange(cell, centerCell, tileRange)) continue;
-                            if (damageBufferLookup.HasBuffer(aoeEntities[i]))
+                            if (damageBufferLookup.HasBuffer(victims[i]))
                             {
-                                ecb.AppendToBuffer(aoeEntities[i], new IncomingDamage { amount = dmg });
-                                ThreatTable.TryCredit(threatEvents.queue, creditThreat, threatLookup, aoeEntities[i], threatOwner, dmg);
+                                ecb.AppendToBuffer(victims[i], new IncomingDamage { amount = dmg });
+                                ThreatTable.TryCredit(threatEvents.queue, creditThreat, threatLookup, victims[i], threatOwner, dmg);
                             }
                         }
 
@@ -326,6 +341,8 @@ namespace Wassup.Battle.Combat.Projectile
             aoeEntities.Dispose();
             aoeTransforms.Dispose();
             aoePositions.Dispose();
+            defenderEntities.Dispose();
+            defenderTransforms.Dispose();
         }
     }
 }

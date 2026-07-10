@@ -33,7 +33,9 @@
 
 ## 완료 기준
 
-- [ ] `BossTag` 컴파일. 신규 arm 이 slot/threat 버퍼 존재로만 게이트(`DefenderUnitTag` 미참조) — 코드 검증.
-- [ ] AreaBarrage 착탄이 defender 풀, 플레이어 Meteor 는 enemy 풀(플래그 기본값) — 진영 분기 무회귀.
-- [ ] 기존 arm 게이트(AttackN/OnDamagedN/OnDeath/bounce) **미개방** 확인 — 스코프 규율.
-- [ ] (렌즈 B) 진영 파라미터화가 ProjectileHitSystem 의 맥락 경계/Burst 를 안 깨는지 ecs-reviewer.
+- [x] `BossTag` 컴파일. 신규 arm 이 slot/threat 버퍼 존재로만 게이트(`DefenderUnitTag` 미참조) — 코드 검증. (arm 본체 검증은 unit 2·3 에서 재확인)
+- [x] AreaBarrage 착탄이 defender 풀, 플레이어 Meteor 는 enemy 풀(플래그 기본값) — 진영 분기 무회귀. (`ProjectileTargetFaction` zero=Enemy 로 구조적 성립. Play 확인은 unit 6)
+- [x] 기존 arm 게이트(AttackN/OnDamagedN/OnDeath/bounce) **미개방** 확인 — 스코프 규율.
+- [ ] (렌즈 B) 진영 파라미터화가 ProjectileHitSystem 의 맥락 경계/Burst 를 안 깨는지 ecs-reviewer. (unit 5 직후 4·5 묶음 실행 예정)
+
+확인 2026-07-10 — 컴파일 클린 + EditMode 619/621 그린 + code-review(low) findings 0. 커밋은 unit 4 코드 커밋 해시 참조.

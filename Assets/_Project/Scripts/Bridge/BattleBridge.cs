@@ -2172,6 +2172,8 @@ namespace Wassup.Bridge
                 // nightmare-catcher unit 1 — shooter attribution, verbatim copy.
                 // Null (bridge-cast skills) = no threat credit.
                 owner = req.owner,
+                // nightmare-catcher unit 4 — TileAoe victim faction, verbatim copy.
+                targetFaction = req.targetFaction,
             };
             if (req.movement == MovementKind.BallisticArcToPoint)
             {

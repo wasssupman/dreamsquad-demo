@@ -4,6 +4,13 @@ using Wassup.Data;
 
 namespace Wassup.Battle.Combat.Projectile
 {
+    // nightmare-catcher unit 4 — which faction pool a TileAoe impact damages.
+    // Zero value = Enemy so every existing spawn (player Meteor, defender
+    // ballistic) keeps the legacy enemy-target pool by construction (N3);
+    // only the boss AreaBarrage arm sets Defender. Other payload kinds
+    // (SingleSplash/bounce) stay enemy-only and ignore this.
+    public enum ProjectileTargetFaction : byte { Enemy = 0, Defender = 1 }
+
     // Per-projectile flight data, decomposed into two orthogonal axes:
     // `movement` (trajectory) and `payload` (impact resolution). Defaults
     // (HomingToEntity / SingleSplash) reproduce the legacy homing projectile so
@@ -72,5 +79,9 @@ namespace Wassup.Battle.Combat.Projectile
         // ProjectileHitSystem reads it to enqueue ThreatHitEvent on victims that
         // carry a ThreatEntry buffer (boss). Survives bounce re-homing.
         public Entity owner;
+
+        // ── TileAoe victim faction (nightmare-catcher unit 4) ────────────────
+        // Default Enemy(0) = legacy pool; boss AreaBarrage sets Defender.
+        public ProjectileTargetFaction targetFaction;
     }
 }

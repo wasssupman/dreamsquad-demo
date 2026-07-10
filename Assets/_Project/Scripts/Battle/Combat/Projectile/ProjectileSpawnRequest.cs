@@ -58,6 +58,11 @@ namespace Wassup.Battle.Combat.Projectile
         // Copied verbatim onto ProjectileState by the drain. Default Entity.Null
         // (bridge-cast skills) = no threat attribution.
         public Entity owner;
+
+        // ── TileAoe victim faction (nightmare-catcher unit 4) ────────────────
+        // Copied verbatim onto ProjectileState by the drain. Default Enemy(0) =
+        // legacy pool (player Meteor / defender ballistic unchanged, N3).
+        public ProjectileTargetFaction targetFaction;
     }
 
     public struct ProjectileSpawnOutputElement : IBufferElementData
