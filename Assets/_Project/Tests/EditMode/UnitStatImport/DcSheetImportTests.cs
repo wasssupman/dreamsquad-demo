@@ -314,6 +314,22 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             StringAssert.Contains("out of range", log.ToString());
         }
 
+        // dreamcatcher-sheet-sync unit 4 — awakeningReward rides the existing
+        // reflection contract both ways (new column = one DTO field).
+        [Test]
+        public void AwakeningReward_RoundTripsThroughUnitDtos()
+        {
+            var so = ScriptableObject.CreateInstance<DefenderUnitData>();
+            so.awakeningReward = 7;
+
+            var exported = new DefenderStatDto();
+            UnitStatFieldMapper.ReadFieldsToDto(so, exported);
+            Assert.AreEqual(7, exported.awakeningReward, "export must read the SO value");
+
+            UnitStatFieldMapper.ApplyNonNullFields(new DefenderStatDto { awakeningReward = 9 }, so);
+            Assert.AreEqual(9, so.awakeningReward, "import must write the sheet value");
+        }
+
         [Test]
         public void OverlayMechanics_ProjectileToTargetWithoutRef_Warns()
         {

@@ -36,6 +36,10 @@ namespace Wassup.Data.StatImport
         public int? cost;
         public int? aggroCapacity;
         public float? aggroRange;
+        // dreamcatcher-sheet-sync unit 4 — awakening gauge granted on this
+        // defender's death (hardcoded-value audit gap: live scalar, was missing
+        // from the sheet contract).
+        public int? awakeningReward;
     }
 
     public class EnemyStatDto
@@ -66,5 +70,7 @@ namespace Wassup.Data.StatImport
         public float? aggroAttackDamage;
         public float? aggroAttackCooldown;
         public float? aggroAttackRange;
+        // dreamcatcher-sheet-sync unit 4 — awakening gauge granted on kill.
+        public int? awakeningReward;
     }
 }
