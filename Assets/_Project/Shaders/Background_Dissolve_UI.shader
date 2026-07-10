@@ -9,6 +9,8 @@ Shader "Wassup/UI/BackgroundDissolve"
         _Dissolve ("Progress", Range(0, 1)) = 0
         // 전환 모드: 0=노이즈 디졸브, 1=원형 확산, 2=수평 스윕, 3=크로스페이드
         _Mode ("Mode", Float) = 1
+        // 1 이면 공간 필드를 뒤집어 파면 진행 방향을 반전(중심에서 밖으로 퍼짐).
+        _Invert ("Invert Field", Float) = 0
         _Center ("Radial Center (UV)", Vector) = (0.5, 0.35, 0, 0)
         _MaxRadius ("Radial Max Radius", Float) = 1.2
         _Aspect ("Rect Aspect (w/h)", Float) = 1.7778
@@ -84,6 +86,7 @@ Shader "Wassup/UI/BackgroundDissolve"
             float _NoiseScale;
             float _Dissolve;
             float _Mode;
+            float _Invert;
             float4 _Center;
             float _MaxRadius;
             float _Aspect;
@@ -133,6 +136,9 @@ Shader "Wassup/UI/BackgroundDissolve"
                     {
                         field = i.uv.x + (noise - 0.5) * _NoiseAmount; // 수평 스윕
                     }
+
+                    // 필드 반전: 파면이 중심→밖으로 진행(반전 없으면 밖→중심).
+                    if (_Invert > 0.5) field = 1.0 - field;
 
                     // progress 0→아무것도 안 사라짐, 1→전부 사라짐 보장 리매핑
                     float margin = _EdgeWidth + _NoiseAmount + 0.02;

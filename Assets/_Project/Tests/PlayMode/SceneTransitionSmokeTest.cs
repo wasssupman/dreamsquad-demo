@@ -48,6 +48,16 @@ namespace Wassup.Tests.PlayMode
             Assert.IsNotNull(SceneTransition.Instance, "instance persists across scene swap");
             Assert.AreEqual(instanceId, SceneTransition.Instance.GetInstanceID(),
                 "same persistent instance (no duplicate spawned)");
+
+            // Unit 2 plumbing — the front cover renders through the reused radial-golden
+            // dissolve shader (a runtime material instance). Visual fidelity of the
+            // day↔night swap is confirmed by eye, not here.
+            var frontField = typeof(SceneTransition).GetField("frontImage",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            var front = frontField.GetValue(SceneTransition.Instance) as UnityEngine.UI.Image;
+            Assert.IsNotNull(front, "front cover Image wired on the prefab");
+            Assert.AreEqual("Wassup/UI/BackgroundDissolve", front.material.shader.name,
+                "front cover drives the reused dissolve shader");
         }
     }
 }
