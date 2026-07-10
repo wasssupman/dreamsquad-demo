@@ -47,7 +47,9 @@ namespace Wassup.Battle.Combat.Projectile
             // nightmare-catcher unit 1 — 보스 위협 귀속: 피격자가 ThreatEntry 버퍼
             // 보유(보스 베이크) && owner 가 defender 인 착탄만 enqueue. 스킬 투사체
             // (owner == Null, 플레이어 Meteor)와 defender 피격 경로는 무영향.
-            bool hasThreatQ = SystemAPI.TryGetSingleton<ThreatHitEventsSingleton>(out var threatEvents);
+            // RW 접근 = 큐 변이 의도 명시(AttackSystem 대칭 — 렌즈 B M1).
+            bool hasThreatQ = SystemAPI.TryGetSingletonRW<ThreatHitEventsSingleton>(out var threatEventsRW);
+            NativeQueue<ThreatHitEvent> threatQueue = hasThreatQ ? threatEventsRW.ValueRW.queue : default;
             var threatLookup = SystemAPI.GetBufferLookup<ThreatEntry>(isReadOnly: true);
             var defenderTagLookup = SystemAPI.GetComponentLookup<DefenderUnitTag>(isReadOnly: true);
 
@@ -130,7 +132,7 @@ namespace Wassup.Battle.Combat.Projectile
                                             if (damageBufferLookup.HasBuffer(target))
                                             {
                                                 ecb.AppendToBuffer(target, new IncomingDamage { amount = output.magnitude });
-                                                ThreatTable.TryCredit(threatEvents.queue, creditThreat, threatLookup, target, threatOwner, output.magnitude);
+                                                ThreatTable.TryCredit(threatQueue, creditThreat, threatLookup, target, threatOwner, output.magnitude);
                                             }
                                             break;
 
@@ -172,7 +174,7 @@ namespace Wassup.Battle.Combat.Projectile
                             if (!handledOutputs && damageBufferLookup.HasBuffer(target))
                             {
                                 ecb.AppendToBuffer(target, new IncomingDamage { amount = projectile.ValueRO.damage });
-                                ThreatTable.TryCredit(threatEvents.queue, creditThreat, threatLookup, target, threatOwner, projectile.ValueRO.damage);
+                                ThreatTable.TryCredit(threatQueue, creditThreat, threatLookup, target, threatOwner, projectile.ValueRO.damage);
                             }
 
                             // Combat→Presentation: one hit event per direct target —
@@ -205,7 +207,7 @@ namespace Wassup.Battle.Combat.Projectile
                                     if (damageBufferLookup.HasBuffer(candidate))
                                     {
                                         ecb.AppendToBuffer(candidate, new IncomingDamage { amount = splashDamage });
-                                        ThreatTable.TryCredit(threatEvents.queue, creditThreat, threatLookup, candidate, threatOwner, splashDamage);
+                                        ThreatTable.TryCredit(threatQueue, creditThreat, threatLookup, candidate, threatOwner, splashDamage);
                                     }
                                 }
                             }
@@ -303,7 +305,7 @@ namespace Wassup.Battle.Combat.Projectile
                             if (damageBufferLookup.HasBuffer(victims[i]))
                             {
                                 ecb.AppendToBuffer(victims[i], new IncomingDamage { amount = dmg });
-                                ThreatTable.TryCredit(threatEvents.queue, creditThreat, threatLookup, victims[i], threatOwner, dmg);
+                                ThreatTable.TryCredit(threatQueue, creditThreat, threatLookup, victims[i], threatOwner, dmg);
                             }
                         }
 

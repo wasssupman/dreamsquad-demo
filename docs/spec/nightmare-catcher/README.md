@@ -64,6 +64,8 @@
 
 ## 후속 후보 (스코프 밖)
 
+- **(렌즈 B M1 잔여, 2026-07-10)** `ProjectileHitSystem` 의 기존 `StatModifierApplyEventsSingleton`/`StackModifierApplyEventsSingleton` 접근을 `TryGetSingleton`→`TryGetSingletonRW` 로 정렬 — 큐 변이 싱글턴의 RO 접근은 동작하나(참조 시맨틱) 의도 표기가 틀림. 이번 spec 은 신규 threat 싱글턴만 정렬(기존 코드 무접촉 원칙).
+
 - **기본공격 100 / 채찍질(3타일 아군 이동속도 오라)** — 기존 프리미티브(`AttackOutput` / MoveSpeedMul Aura) 조합. 게이트 개방 후 데이터로 붙음. Aura 는 `modifier-framework-and-healer` 후속의 Aura defender 와 producer 공유.
 - **게이트 완전 일반화(공통부 추출)** — 적 경로가 실제로 돌기 시작한 뒤, defender/enemy 공통 부착·정리 라이프사이클을 추출. 두 번째 사용처 확정 후.
 - **보스 페이즈/캐스팅 상태** — 스킬이 이동을 하드 중단해야 할 때만 `AiState.Casting` 1개 추가. 현 MVP 는 불필요.

@@ -28,6 +28,20 @@ namespace Wassup.Battle.Combat
         public float hitThreshold;
         public float visualScale;
         // dreamcatcher-content-1 — SelfTileAoe(OnDeath 폭발): AOE 반경(타일). 기본 0.
+        // nightmare-catcher — AreaBarrage: 진앙 AoE 반경 / SelfBlink: 착지 탐색 반경.
         public int tileRange;
+
+        // ── nightmare-catcher unit 5 — periodic/threshold trigger state +
+        // barrage payload params. Baked only by the boss spawn path; defender
+        // card slots leave these 0 (inert). Owned writes stay Combat:
+        // elapsed/fireCount = BossPeriodicTriggerSystem, nextBoundaryIndex =
+        // BossHealthThresholdSystem (counter above stays AttackSystem-only).
+        public float periodSeconds;   // PeriodicTimer 주기 초 (<=0 = no-fire, 계약 9)
+        public float elapsed;         // PeriodicTimer accumulator (잔여 이월)
+        public int fireCount;         // AreaBarrage 진앙 round-robin (발동 시에만 증가)
+        public float fraction;        // HealthThreshold 경계 간격 (<=0 = no-fire)
+        public int nextBoundaryIndex; // HealthThreshold 래치 k (베이크 시 1, 단조 전진)
+        public float maxHpRef;        // 스폰 시점 maxHp 스냅샷 (경계 기준 고정)
+        public float duration;        // AreaBarrage 낙하 텔레그래프 초 → SkyFall flightTime
     }
 }

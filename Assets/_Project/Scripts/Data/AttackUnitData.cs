@@ -93,5 +93,12 @@ namespace Wassup.Data
         // existing assets pick up the initializer (1) until backfilled.
         [Header("Awakening")]
         public int awakeningReward = 1;
+
+        // nightmare-catcher unit 5 — 나이트매어캐쳐 메커닉 선언(정의 계층 DcMechanic,
+        // ECS 무참조). 비어있지 않으면 이 적이 곧 보스: 스폰 베이크가 BossTag +
+        // ThreatEntry(위협 테이블) + DcTriggerSlot 을 부착한다. 빈 배열/null =
+        // 일반 적 무변경. Appended last (직렬화 back-compat).
+        [Header("Nightmare Catcher")]
+        public DcMechanic[] nightmareMechanics;
     }
 }

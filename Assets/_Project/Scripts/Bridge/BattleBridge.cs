@@ -4141,6 +4141,74 @@ namespace Wassup.Bridge
             return math.abs(deckIndex) % laneCount;
         }
 
+        // nightmare-catcher unit 5 — boss spawn bake (병렬 경로): nightmareMechanics
+        // 를 선언한 적이 곧 보스. BossTag + ThreatEntry(위협 테이블, unit 1) +
+        // DcTriggerSlot 을 부착한다. defender 부착 API(ApplyDreamcatcherCardToUnit —
+        // defender 가드 + 손패 회수 레지스트리)는 의도적으로 미사용: 보스 슬롯은
+        // 손패 순환과 무관하고, teardown 은 AttackUnitTag 적 경로 상속(신규 0).
+        private void BakeNightmareMechanics(Entity entity, AttackUnitData unitType)
+        {
+            var mechanics = unitType.nightmareMechanics;
+            if (mechanics == null || mechanics.Length == 0) return;
+
+            _em.AddComponent<BossTag>(entity);
+            // 위협 테이블은 보스와 항상 동행 — 텔레포트 arm 의 타겟 소스.
+            // defender 히트가 쌓기 전까지 빈 버퍼(ThreatHitEvent 드레인이 채움).
+            _em.AddBuffer<ThreatEntry>(entity);
+            var slots = _em.AddBuffer<DcTriggerSlot>(entity);
+
+            for (int i = 0; i < mechanics.Length; i++) // bake-time only read (managed array)
+            {
+                var m = mechanics[i];
+                if (m.trigger.kind == Wassup.Data.DcTriggerKind.None ||
+                    m.payload.kind == Wassup.Data.DcPayloadKind.None)
+                {
+                    Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: None kind — skipped.");
+                    continue;
+                }
+                // 기존 트리거(AttackN/OnDamagedN/OnDeath)의 arm 은 defender 게이트
+                // 미개방(spec unit 4) — 보스에 베이크하면 침묵 no-op 이 되므로
+                // 사고 방지를 위해 명시 경고 후 스킵. 개방 시 이 가드를 함께 푼다.
+                if (m.trigger.kind != Wassup.Data.DcTriggerKind.PeriodicTimer &&
+                    m.trigger.kind != Wassup.Data.DcTriggerKind.HealthThreshold)
+                {
+                    Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: trigger '{m.trigger.kind}' arm is defender-gated (미개방) — skipped.");
+                    continue;
+                }
+
+                var slot = new DcTriggerSlot
+                {
+                    instanceId = _dcInstanceCounter++,
+                    trigger = m.trigger.kind,
+                    period = (ushort)math.clamp(m.trigger.period, 0, ushort.MaxValue),
+                    counter = 0,
+                    payload = m.payload.kind,
+                    magnitude = m.payload.magnitude,
+                    projectileDataIndex = -1,
+                    tileRange = math.max(0, m.payload.tileRange),
+                    // 트리거 상태(unit 5 append) — degenerate(<=0)는 트리거
+                    // 순수함수의 내부 가드가 no-fire 처리(계약 9).
+                    periodSeconds = m.trigger.periodSeconds,
+                    fraction = m.trigger.fraction,
+                    nextBoundaryIndex = 1,
+                    maxHpRef = unitType.health,
+                    duration = math.max(0f, m.payload.duration),
+                };
+                if (m.payload.kind == Wassup.Data.DcPayloadKind.AreaBarrage)
+                {
+                    // SkyFall 낙하 비주얼 필수 — Meteor 파이프라인 재사용(unit 2).
+                    if (m.payload.projectile == null || m.payload.magnitude <= 0f)
+                    {
+                        Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: AreaBarrage needs ProjectileData + positive magnitude — skipped.");
+                        continue;
+                    }
+                    slot.projectileDataIndex = GetOrCreateProjectileDataIndex(m.payload.projectile);
+                    slot.visualScale = m.payload.projectile.visualScale;
+                }
+                slots.Add(slot);
+            }
+        }
+
         private void SpawnUnit(PendingSpawnEntry pending)
         {
             var entry = pending.entry;
@@ -4194,6 +4262,10 @@ namespace Wassup.Bridge
             // Pre-attach empty buffers so downstream systems never need structural AddBuffer on hot paths.
             _em.AddBuffer<IncomingDamage>(entity);
             _em.AddBuffer<CcEffect>(entity);
+
+            // nightmare-catcher unit 5 — 보스 분기 베이크. nightmareMechanics 없는
+            // 일반 적은 이 호출이 즉시 return(무변경).
+            BakeNightmareMechanics(entity, entry.unitType);
 
             // enemy-behavior-components Unit 2 — attackMethod decides attack components.
             // Defensive (Critic C1): Melee/Projectile with empty outputs → walk-only
