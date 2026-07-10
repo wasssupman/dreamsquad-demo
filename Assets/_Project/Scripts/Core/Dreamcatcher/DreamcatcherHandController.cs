@@ -43,9 +43,12 @@ namespace Wassup.Core
         public int HandSize => config != null ? config.handSize : 5;
 
         private DreamcatcherCycleDeck _deck;
-        // entryId → attached defender entity. Reverse scan on death is O(attached),
-        // bounded by deck size — no reverse map needed.
-        private readonly Dictionary<int, Entity> _attachedTo = new Dictionary<int, Entity>();
+        // entryId → (host defender, revocation handle). Unit cards: handle=-1
+        // (their slots die with the entity — nothing to revoke). Squad cards
+        // (unit 9): handle>0, revoked on host death so the squad-wide effect
+        // ends with its owner. Reverse scan on death is O(attached).
+        private readonly Dictionary<int, (Entity host, int handle)> _attachedTo =
+            new Dictionary<int, (Entity, int)>();
         private readonly List<int> _recoverScratch = new List<int>();
 
         private void OnEnable()
@@ -141,15 +144,19 @@ namespace Wassup.Core
         {
             GainAwakening(data != null ? data.awakeningReward : 0);
 
-            // Unit-card recovery: every entry attached to the dead defender
-            // rejoins the queue at the back (death order = recovery order).
+            // Card recovery: every entry hosted by the dead defender rejoins the
+            // queue at the back (death order = recovery order). Squad entries
+            // (handle>0) also revoke their squad-wide effect (unit 9).
             if (_deck == null || _attachedTo.Count == 0) return;
             _recoverScratch.Clear();
             foreach (var kv in _attachedTo)
-                if (kv.Value == entity) _recoverScratch.Add(kv.Key);
+                if (kv.Value.host == entity) _recoverScratch.Add(kv.Key);
             if (_recoverScratch.Count == 0) return;
             foreach (var entryId in _recoverScratch)
             {
+                int handle = _attachedTo[entryId].handle;
+                if (handle > 0 && bridge != null)
+                    bridge.RevokeDreamcatcherEffects(handle);
                 _attachedTo.Remove(entryId);
                 _deck.Recover(entryId);
             }
@@ -181,29 +188,41 @@ namespace Wassup.Core
             return Gauge >= CostOf(card);
         }
 
-        public bool CommitSquad(int entryId)
+        // unit 9 — squad cards are HOST-BOUND: the effect hits the whole squad
+        // but belongs to the host defender; host death revokes it and recycles
+        // the card (same out-of-pool lifecycle as Unit cards).
+        public bool CommitSquad(int entryId, Entity host)
         {
             if (!TryGetUsable(entryId, CardType.Squad, out var card)) return false;
-            bridge.ApplyDreamcatcherCard(card); // void — axis apply cannot fail
-            SpendAndRecycle(entryId, card);
+            if (AtAttachCap(host, card)) return false;
+            int handle = bridge.ApplyDreamcatcherCardHosted(card);
+            if (handle < 0) return false; // contributed nothing — no spend
+            if (!_deck.UseUnit(entryId, HandSize)) return false; // guarded by TryGetUsable
+            _attachedTo[entryId] = (host, handle);
+            Spend(card);
+            HandChanged?.Invoke(HandChangeReason.Used);
             return true;
         }
 
         public bool CommitUnit(int entryId, Entity target)
         {
             if (!TryGetUsable(entryId, CardType.Unit, out var card)) return false;
-            if (CountAttachedTo(target) >= (config != null ? config.maxAttachPerUnit : 3))
-            {
-                Debug.Log($"[DreamcatcherHandController] '{card.id}' rejected — target at attach cap.");
-                return false;
-            }
+            if (AtAttachCap(target, card)) return false;
             // Apply first: a failed attach (entity gone, non-defender) must not
             // spend or cycle (contract 9).
             if (!bridge.ApplyDreamcatcherCardToUnit(target, card)) return false;
             if (!_deck.UseUnit(entryId, HandSize)) return false; // guarded by TryGetUsable
-            _attachedTo[entryId] = target;
+            _attachedTo[entryId] = (target, -1); // slots die with the entity — no revoke
             Spend(card);
             HandChanged?.Invoke(HandChangeReason.Used);
+            return true;
+        }
+
+        // Shared cap (unit 9): Unit + Squad attachments count together.
+        private bool AtAttachCap(Entity host, DreamcatcherCard card)
+        {
+            if (CountAttachedTo(host) < (config != null ? config.maxAttachPerUnit : 3)) return false;
+            Debug.Log($"[DreamcatcherHandController] '{card.id}' rejected — host at attach cap.");
             return true;
         }
 
@@ -270,7 +289,7 @@ namespace Wassup.Core
         {
             int count = 0;
             foreach (var kv in _attachedTo)
-                if (kv.Value == target) count++;
+                if (kv.Value.host == target) count++;
             return count;
         }
 

@@ -46,8 +46,11 @@ namespace Wassup.UI
 
         private DreamcatcherHandView.CardSlot Slot => _view.Slots[_index];
 
+        // unit 9 — Squad cards are host-bound now: they aim at a defender too
+        // (arrow mode + spine tint), the anywhere-touchup path is retired.
         private static bool TargetsDefender(DreamcatcherCard card) =>
             card != null && (card.type == CardType.Unit ||
+                card.type == CardType.Squad ||
                 (card.type == CardType.Active && card.skill != null &&
                  card.skill.target == SkillTargetType.DefenderUnit));
 
@@ -121,8 +124,15 @@ namespace Wassup.UI
                     break;
 
                 case CardType.Squad:
-                    // Anywhere outside the hand region applies (spec §5).
-                    CommitNow(() => _view.Controller.CommitSquad(slot.entryId));
+                    // unit 9 — host-bound: needs a defender under the touchup
+                    // point, exactly like Unit cards (anywhere-touchup retired).
+                    UpdateUnitHover(eventData.position);
+                    if (_hoverEntity != Entity.Null)
+                    {
+                        var host = _hoverEntity;
+                        CommitNow(() => _view.Controller.CommitSquad(slot.entryId, host));
+                    }
+                    else CancelDrag();
                     break;
 
                 case CardType.Active:

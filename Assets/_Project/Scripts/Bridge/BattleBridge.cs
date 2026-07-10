@@ -2469,10 +2469,14 @@ namespace Wassup.Bridge
             public Wassup.Battle.Effects.StatKind stat;
             public float mult;
             public ushort stackId;
+            // awakening-hand unit 9 — revocation group. 0 = legacy hostless apply
+            // (dormant 3-choose-1 path, match-permanent, never revoked).
+            public int handle;
         }
         private readonly System.Collections.Generic.List<ActiveDcEffect> _activeDcEffects =
             new System.Collections.Generic.List<ActiveDcEffect>();
         private ushort _dcStackCounter = 100;
+        private int _dcHandleCounter = 1; // unit 9 — hosted-apply revocation handles
         private const float DcDuration = 1e9f;
 
         // ingame-dreamcatcher Unit 3 — selection triggers. DreamcatcherController
@@ -2501,10 +2505,27 @@ namespace Wassup.Bridge
         // dreamcatcher-squad-warmup — squad cards with placementWarmupSec force N s
         // idle on matching units at placement. Registry mirrors _activeDcEffects so
         // future placements inherit it. Cleared in BeginPlacement.
-        private readonly System.Collections.Generic.List<(Wassup.Data.CardTargetAxis axis, float sec)> _activeWarmups =
-            new System.Collections.Generic.List<(Wassup.Data.CardTargetAxis, float)>();
+        private readonly System.Collections.Generic.List<(int handle, Wassup.Data.CardTargetAxis axis, float sec)> _activeWarmups =
+            new System.Collections.Generic.List<(int, Wassup.Data.CardTargetAxis, float)>();
 
+        // Legacy hostless apply — dormant 3-choose-1 path. Match-permanent
+        // (handle 0, never revoked).
         public void ApplyDreamcatcherCard(Wassup.Data.DreamcatcherCard card)
+            => ApplyDreamcatcherCardInternal(card, handle: 0);
+
+        // awakening-hand unit 9 — host-bound squad apply. Same squad-wide effect
+        // (current + future matching defenders), but the effects belong to a
+        // revocation group; the controller revokes it when the host dies.
+        // Returns -1 when the card contributed nothing (no spend at the caller).
+        public int ApplyDreamcatcherCardHosted(Wassup.Data.DreamcatcherCard card)
+        {
+            int before = _activeDcEffects.Count + _activeWarmups.Count;
+            int handle = _dcHandleCounter++;
+            ApplyDreamcatcherCardInternal(card, handle);
+            return (_activeDcEffects.Count + _activeWarmups.Count) > before ? handle : -1;
+        }
+
+        private void ApplyDreamcatcherCardInternal(Wassup.Data.DreamcatcherCard card, int handle)
         {
             if (card == null) return;
             if (card.effects != null)
@@ -2513,7 +2534,7 @@ namespace Wassup.Bridge
                 {
                     if (!MapDcEffect(eff, out var stat, out var mult)) continue;
                     ushort sid = _dcStackCounter++;
-                    _activeDcEffects.Add(new ActiveDcEffect { axis = card.axis, stat = stat, mult = mult, stackId = sid });
+                    _activeDcEffects.Add(new ActiveDcEffect { axis = card.axis, stat = stat, mult = mult, stackId = sid, handle = handle });
                     foreach (var kv in _defenderByTile)
                     {
                         var data = kv.Value.data;
@@ -2526,7 +2547,7 @@ namespace Wassup.Bridge
             // dreamcatcher-squad-warmup — placement warmup (idle) for matching units.
             if (card.placementWarmupSec > 0f)
             {
-                _activeWarmups.Add((card.axis, card.placementWarmupSec));
+                _activeWarmups.Add((handle, card.axis, card.placementWarmupSec));
                 foreach (var kv in _defenderByTile)
                 {
                     var data = kv.Value.data;
@@ -2535,6 +2556,37 @@ namespace Wassup.Bridge
                         ApplyPlacementWarmup(entity, card.placementWarmupSec);
                 }
             }
+        }
+
+        // awakening-hand unit 9 — end a hosted squad card's effects (host died).
+        // Revocation = NEUTRALIZE, not remove: the modifier merge rule
+        // ((source,stat,op,stackId) → magnitude=new, remaining=max) lets us
+        // re-apply magnitude 1.0 on the same stackId — the slot stays but the
+        // multiplier becomes the identity. No Effects-context change, no new
+        // channel. Registry entries are removed so future placements stop
+        // inheriting the effect/warmup.
+        public void RevokeDreamcatcherEffects(int handle)
+        {
+            if (handle <= 0) return;
+            bool live = HasLiveEntityManager();
+            for (int i = _activeDcEffects.Count - 1; i >= 0; i--)
+            {
+                var e = _activeDcEffects[i];
+                if (e.handle != handle) continue;
+                if (live)
+                {
+                    foreach (var kv in _defenderByTile)
+                    {
+                        var data = kv.Value.data;
+                        var entity = kv.Value.entity;
+                        if (data != null && _em.Exists(entity) && MatchesDcAxis(data, e.axis))
+                            EnqueueStatModifier(entity, e.stat, 1f, DcDuration, e.stackId);
+                    }
+                }
+                _activeDcEffects.RemoveAt(i);
+            }
+            for (int i = _activeWarmups.Count - 1; i >= 0; i--)
+                if (_activeWarmups[i].handle == handle) _activeWarmups.RemoveAt(i);
         }
 
         private void ApplyActiveDcEffectsTo(Entity entity, DefenderUnitData data)

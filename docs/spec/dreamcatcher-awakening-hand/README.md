@@ -56,7 +56,8 @@
 | 6 | `6_hand_view_flip.md` | UI | 유닛 선택 스트립 ↔ 손패 플립 전환 + StS풍 카드 핸드 뷰 + 슬로모 lease |
 | 7 | `7_card_drag_use.md` | UI | Unit/Squad 카드 스와이프 사용 (유닛 하이라이트/anywhere/취소) + 확정 지연 |
 | 8 | `8_active_use_and_validation.md` | UI+검증 | Active 카드 필드 사용(타일/유닛/Portal 2탭) + SkillBar dormant + 전체 Play e2e |
-| 9 | `9_handoff_summary.md` | 인계 | 종료 시 작성 |
+| 9 | `9_squad_host_binding.md` | rev 5 | Squad 호스트 바인딩 — 효과는 스쿼드 전체, 소유는 호스트, 사망 시 철회+회수 |
+| 10 | `10_handoff_summary.md` | 인계 | 종료 시 작성 |
 
 ## Feature-wide 계약 (load-bearing)
 
@@ -66,8 +67,8 @@
 2. **각성 게이지 = Mono 상태.** ECS 는 보상량 전달만. 가산은 bridge 사망 드레인의 C# 이벤트 구독(`WaveMilestoneReached` 선례). `gauge = min(gauge + reward, max)` — 초과분 소실.
 3. **ECS 확장은 최소**: 적 스폰 시 `AwakeningReward`(IComponentData, Units 소유) 베이크 → `DamageApplicationSystem`(기존 enqueue 지점)이 `EnemyKilledEvent.awakeningReward`(append)에 기입. defender 는 ECS 무변경 — `DrainDefenderDeathEvents` 시점에 bridge 가 binding 의 `DefenderUnitData` 직독. 신규 큐/맥락/시스템 0.
 4. **큐 = 12장 엔트리 단위**: 세이브덱 10(카탈로그 해석, 없으면 serialized 폴백) + Active 2(기존 `SkillLoadoutController.Roll` 결과를 Active 카드로 매핑). 12장을 **매치 시드로 셔플 1회**(`System.Random`, `UnityEngine.Random` 금지). 같은 카드 SO 2장 = 독립 엔트리.
-5. **순환 규칙**: 손패 = 큐 front `handSize`. **Squad/Active 사용(커밋) → 큐 맨 뒤**. **Unit 사용 → 아웃풀**(부착 레지스트리: 엔트리↔entity) → **부착 유닛 사망 → 큐 맨 뒤**(사망 순). 큐 < handSize 면 빈 슬롯.
-6. **적용은 기존 API 재사용**: Squad → `ApplyDreamcatcherCard`, Unit → `ApplyDreamcatcherCardToUnit`, Active → `CastSkillAtTile`/`CastSkillOnDefender`/`CastPortal`. 신규 적용/캐스트 경로 금지. Squad 반복 사용 스택 = 의도된 동작(게이지가 제약). **유닛당 부착 최대 `maxAttachPerUnit`(3)** — 컨트롤러 가드.
+5. **순환 규칙**: 손패 = 큐 front `handSize`. **Active 사용(커밋) → 큐 맨 뒤**. **Unit·Squad 사용 → 아웃풀**(레지스트리: 엔트리↔호스트) → **호스트 사망 → 큐 맨 뒤**(사망 순). 큐 < handSize 면 빈 슬롯. (rev 5/unit 9 — Squad 도 호스트 바인딩: 매치 영구·즉시 재순환이던 구 규칙 폐기, 사유는 밸런스.)
+6. **적용은 기존 API 재사용**: Squad → `ApplyDreamcatcherCardHosted`(핸들 발급; 호스트 사망 시 `RevokeDreamcatcherEffects` = 같은 stackId 에 배율 1.0 중립화 재적용 — unit 9), Unit → `ApplyDreamcatcherCardToUnit`, Active → `CastSkillAtTile`/`CastSkillOnDefender`/`CastPortal`. 신규 캐스트 경로 금지. Squad 스택은 호스트 생존 수만큼만(영구 스택 폐기). **호스트당 부착 최대 `maxAttachPerUnit`(3), Unit+Squad 합산** — 컨트롤러 가드.
 7. **Active 는 쿨다운·CostRuntime 미사용.** `SkillData.cooldownSec`/`cost` 는 dormant(에셋 값 유지, 소비 안 함). 재등장 간격 = 순환, 비용 = 각성치(`costActive`). **주의(critic C1)**: 기존 `CastSkillAtTile`/`CastPortal`/`CastSkillOnDefender` 는 내부에서 `skillRuntime.IsReady` 게이트 + `Consume` 을 강제한다 — **BattleBridge 의 `skillRuntime` SerializeField 배선을 해제**해야 `skillRuntime?.` 가드가 no-op 이 되어 계약이 성립한다(유일한 다른 소비자 SkillBar 도 dormant 라 안전).
 8. **게임은 안 멈춘다 + 슬로모**: 손패가 열려 있는 동안 `TimeManager.Request(TimeDomain.Battle, slomoTimeScale)` lease 보유(플립 백 시 해제, 멱등 Dispose — 구 pause lease 패턴). 일시정지(0f) 금지.
 9. **즉시 커밋 (rev 4)**: touchup 시 즉시 Commit — 적용·차감·순환·로그는 성공한 Commit 안에서만. 실패(대상 소멸/부착 상한/캐스트 거절) = 무차감·카드 원위치. 취소 = 드래그 중 손패 영역 복귀·ESC·토글·phase 이탈. 게이지 검증은 드래그 시작(dim)과 커밋 시점 이중. (~~confirmDelaySec pending~~ — critic H1/M4 는 pending 전제라 함께 은퇴; Recovered 재렌더는 드래그/2탭 중 deferral 로 동일하게 방어.)
