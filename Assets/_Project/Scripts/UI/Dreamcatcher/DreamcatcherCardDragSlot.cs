@@ -24,6 +24,9 @@ namespace Wassup.UI
         private int _index;
 
         private bool _dragging;
+        // rev 4-6 — StS식: 유닛 타겟 카드는 카드가 손패에 고정(확대)되고 카드→포인터
+        // 점선 화살표로 조준한다. 비타겟(Squad/타일/Portal)은 기존 카드 추종 유지.
+        private bool _arrowMode;
         private Vector2Int? _hoverCell; // hovered defender's cell (Active-defender commit arg)
         private Entity _hoverEntity = Entity.Null;
         // unit 8 — Active aim state. _activeAiming mirrors GameManager.IsAiming
@@ -58,6 +61,14 @@ namespace Wassup.UI
             _dragging = true;
             slot.rect.SetAsLastSibling(); // float above sibling cards
 
+            // rev 4-6 — 유닛 타겟 카드는 화살표 조준 모드.
+            _arrowMode = TargetsDefender(slot.card);
+            if (_arrowMode)
+            {
+                slot.rect.localScale = Vector3.one * 1.08f; // 선택 카드 강조
+                _view.TargetArrow?.Show();
+            }
+
             // unit 8 (M1) — Active aim mirrors the old SkillBar lifecycle:
             // IsAiming gates PlacementInput while the card aims at the field.
             if (slot.card != null && slot.card.type == CardType.Active && GameManager.Instance != null)
@@ -72,14 +83,14 @@ namespace Wassup.UI
         public void OnDrag(PointerEventData eventData)
         {
             if (!_dragging) return;
-            UpdateDragVisual(eventData.position);
             var card = Slot.card;
-            if (card == null) return;
-            if (TargetsDefender(card))
+            // 호버 판정을 먼저 — 화살표 색(유효 타겟)이 같은 프레임에 반영되도록.
+            if (card != null && TargetsDefender(card))
                 UpdateUnitHover(eventData.position);
-            else if (card.type == CardType.Active && card.skill != null &&
+            else if (card != null && card.type == CardType.Active && card.skill != null &&
                      card.skill.effect != SkillEffectType.Portal)
                 UpdateAimRange(eventData.position, card.skill); // SkillBar range-preview reuse
+            UpdateDragVisual(eventData.position);
         }
 
         public void OnEndDrag(PointerEventData eventData)
@@ -185,14 +196,33 @@ namespace Wassup.UI
         private void CommitNow(System.Func<bool> commit)
         {
             bool ok = commit();
+            HideArrow();
             ClearHover();
             EndActiveAim();
             if (!ok) _view.RestoreSlotHome(_index);
             _view.NotifyInteractionEnded();
         }
 
+        private void HideArrow()
+        {
+            if (!_arrowMode) return;
+            _arrowMode = false;
+            _view.TargetArrow?.Hide();
+            _view.RestoreSlotHome(_index); // 확대 복원(성공 시 Refresh 가 재정렬)
+        }
+
         private void UpdateDragVisual(Vector2 screenPos)
         {
+            if (_arrowMode)
+            {
+                // 카드는 손패에 고정 — 화살표만 포인터를 따른다(붉음=유효 타겟).
+                var slot = Slot;
+                Vector2 cardTop = (Vector2)slot.rect.position
+                                  + new Vector2(0f, slot.rect.rect.height * 0.5f * slot.rect.localScale.y);
+                _view.TargetArrow?.SetPath(cardTop, screenPos,
+                    _hoverEntity != Entity.Null, _view.UnitHoverTint);
+                return;
+            }
             // ScreenSpaceOverlay canvas: RectTransform.position is in screen pixels.
             Slot.rect.position = screenPos;
         }
@@ -272,6 +302,7 @@ namespace Wassup.UI
         public void CancelDrag()
         {
             _dragging = false;
+            HideArrow();
             ClearHover();
             EndActiveAim(); // covers portal-mode cancel too
             _view.RestoreSlotHome(_index);
@@ -291,6 +322,7 @@ namespace Wassup.UI
             // Panel deactivation mid-drag: never leave a stale hover tile,
             // sorting override, or IsAiming behind.
             _dragging = false;
+            HideArrow();
             ClearHover();
             EndActiveAim();
         }

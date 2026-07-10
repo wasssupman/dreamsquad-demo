@@ -50,6 +50,8 @@ namespace Wassup.UI
         public Camera MainCamera => mainCamera != null ? mainCamera : (mainCamera = Camera.main);
         public AwakeningConfig Config => config;
         public Color UnitHoverTint => unitHoverTint;
+        // rev 4-6 — StS식 유닛 타겟팅 화살표(카드 고정 + 카드→포인터 점선 아크).
+        public DreamcatcherTargetArrow TargetArrow => _targetArrow;
 
         public class CardSlot
         {
@@ -75,6 +77,7 @@ namespace Wassup.UI
         private bool _built;
         private Coroutine _flip;
         private TimeLease _slomoLease;
+        private DreamcatcherTargetArrow _targetArrow;
         // Recovered-refresh deferral: rebinding slots mid-drag would snap the
         // floating card home and swap its entryId under the pointer.
         private bool _refreshQueued;
@@ -160,6 +163,7 @@ namespace Wassup.UI
             var slot = _slots[index];
             slot.rect.anchoredPosition = slot.homePos;
             slot.rect.localEulerAngles = new Vector3(0f, 0f, slot.homeRotZ);
+            slot.rect.localScale = Vector3.one; // rev 4-6 — 화살표 모드 확대 복원
         }
 
         // Drag slots call this at every interaction end (commit/cancel) so a
@@ -398,6 +402,9 @@ namespace Wassup.UI
             backing.color = new Color(0.05f, 0.04f, 0.1f, 0.72f);
             // The backing IS the cancel region (unit 7): keep it a raycast target.
             backing.raycastTarget = true;
+
+            // rev 4-6 — 타겟팅 화살표는 패널 뒤 sibling 으로 붙여 카드 위에 그려진다.
+            _targetArrow = DreamcatcherTargetArrow.Create(transform);
         }
 
         private void EnsureSlots(int count)
