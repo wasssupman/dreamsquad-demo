@@ -120,6 +120,10 @@ code + git history        구현 상세
 
 > 출처 spec 이 섞여 있다. 그룹 헤더 또는 항목 끝의 `(spec-slug)` 라벨로 출처 표기.
 
+#### 보스 방어유닛 지향 이동 (헌터 재구현, 2026-07-11)
+
+- **보스가 방어유닛 쪽으로 이동·재교전** [M] · **Why**: 마칭은 flow→goal 한 방향이라 보스가 지나친/새로 배치된(뒤·옆) 방어유닛을 무시하고 지나간다 — 실시간 배치 대응이 핵심인 이 게임 루프를 무력화. **What**: 방어유닛들의 walkable 이웃에서 **multi-source BFS 로 "방어유닛 지향 flow field"** 를 만들고(기존 `FlowFieldBuilder` 소스만 goal→방어유닛), 헌팅 상태 보스가 그 field 를 flow-follow. 배치/사망 시에만 재빌드. **Scope 주의**: `enemy-hunter-targeting`(폐기 2026-07-11)의 직선추격+wall-slide 는 **재사용 금지** — 벽 고착/softlock 로 이어진 땜빵 사슬이라 통째로 revert됨. 그 README 의 폐기 사유·함정 기록을 먼저 읽고 **필드 기반**으로 재설계할 것. (enemy-hunter-targeting → 신규 spec)
+
 #### 유닛 상태 표현 / 인디케이터 (aggro-targeting 파생, 2026-07-09)
 
 어그로 아이콘("!")을 만들며 드러난 일반화. **두 축으로 분리** — "느끼게 할 상태 연출" ↔ "훑어볼 정보 배지". 순차 진행 예정.
