@@ -31,7 +31,8 @@ namespace Wassup.UI
         [SerializeField] private float flipHalfDuration = 0.14f;
         [SerializeField] private float fanAngle = 4f; // slight StS-style fan per slot
         // rev 4 — 카드 드래그 중 호버된 수비수의 스파인 틴트(포커스 대상 시각화).
-        [SerializeField] private Color unitHoverTint = new Color(1f, 0.9f, 0.3f, 1f);
+        // rev 4-4 — 붉은색 계열로 시인성 상향(사용자 확정). 유일한 포커스 표시(타일 하이라이트 제거).
+        [SerializeField] private Color unitHoverTint = new Color(1f, 0.28f, 0.22f, 1f);
 
         public enum HandState { UnitStrip, Hand }
         public HandState State { get; private set; } = HandState.UnitStrip;

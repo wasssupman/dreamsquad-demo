@@ -24,9 +24,8 @@ namespace Wassup.UI
         private int _index;
 
         private bool _dragging;
-        private Vector2Int? _hoverCell; // highlighted defender cell (Unit/Active-defender)
+        private Vector2Int? _hoverCell; // hovered defender's cell (Active-defender commit arg)
         private Entity _hoverEntity = Entity.Null;
-        private bool _hoverAboveUnits; // SetPlacementHighlightAboveUnits held
         // unit 8 — Active aim state. _activeAiming mirrors GameManager.IsAiming
         // (critic M1: PlacementInput mutual exclusion, old SkillBar lifecycle).
         private bool _activeAiming;
@@ -58,15 +57,6 @@ namespace Wassup.UI
 
             _dragging = true;
             slot.rect.SetAsLastSibling(); // float above sibling cards
-
-            // Defender-targeting cards: raise the hover tile above unit sprites,
-            // exactly like defender drag placement — without this the highlight
-            // renders underneath the hovered unit and is invisible.
-            if (TargetsDefender(slot.card) && _view.Bridge != null)
-            {
-                _hoverAboveUnits = true;
-                _view.Bridge.SetPlacementHighlightAboveUnits(true);
-            }
 
             // unit 8 (M1) — Active aim mirrors the old SkillBar lifecycle:
             // IsAiming gates PlacementInput while the card aims at the field.
@@ -224,12 +214,7 @@ namespace Wassup.UI
                 found = entity;
             }
 
-            if (_hoverCell.HasValue && (!cell.HasValue || cell.Value != _hoverCell.Value))
-                _view.Bridge.ClearPlacementHover(_hoverCell.Value);
-            if (cell.HasValue)
-                _view.Bridge.SetPlacementHover(cell.Value, valid: true);
-
-            // rev 4 — 포커스 대상은 유닛 자체에 표시: 호버된 수비수 스파인 틴트.
+            // rev 4-4 — 포커스 표시는 유닛 스파인 틴트만(타일 하이라이트 제거, 사용자 확정).
             if (found != _hoverEntity)
             {
                 if (_hoverEntity != Entity.Null)
@@ -295,17 +280,10 @@ namespace Wassup.UI
 
         private void ClearHover()
         {
-            if (_hoverCell.HasValue && _view != null && _view.Bridge != null)
-                _view.Bridge.ClearPlacementHover(_hoverCell.Value);
             if (_hoverEntity != Entity.Null && _view != null && _view.Bridge != null)
                 _view.Bridge.SetDefenderHoverHighlight(_hoverEntity, false, default);
             _hoverCell = null;
             _hoverEntity = Entity.Null;
-            if (_hoverAboveUnits && _view != null && _view.Bridge != null)
-            {
-                _hoverAboveUnits = false;
-                _view.Bridge.SetPlacementHighlightAboveUnits(false);
-            }
         }
 
         private void OnDisable()
