@@ -218,6 +218,8 @@ namespace Wassup.Bridge
         private NativeQueue<Wassup.Battle.Units.DamageNumberEvent> _damageNumberEventQueue;
         private NativeQueue<Wassup.Battle.Units.EnemyKilledEvent> _enemyKilledEventQueue;
         private NativeQueue<Wassup.Battle.Effects.EnemyCcEvent> _enemyCcQueue;
+        // combat-action-lock unit 3 — wake-on-hit(Sleep 해제) Units→Effects 채널.
+        private NativeQueue<Wassup.Battle.Effects.CcClearRequest> _ccClearQueue;
         private NativeQueue<Wassup.Battle.Effects.StatModifierApplyEvent> _statModifierQueue;
         private NativeQueue<Wassup.Battle.Effects.StackModifierApplyEvent> _stackModifierQueue;
         private NativeQueue<Wassup.Battle.Effects.HazardRuntimeEvent> _hazardRuntimeEventQueue;
@@ -396,6 +398,7 @@ namespace Wassup.Bridge
             DestroyEntitiesByType<Wassup.Battle.Units.DamageNumberEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Units.EnemyKilledEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.EnemyCcEventsSingleton>();
+            DestroyEntitiesByType<Wassup.Battle.Effects.CcClearRequestsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.StatModifierApplyEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.StackModifierApplyEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.HazardRuntimeEventsSingleton>();
@@ -426,6 +429,7 @@ namespace Wassup.Bridge
             if (_damageNumberEventQueue.IsCreated) _damageNumberEventQueue.Dispose();
             if (_enemyKilledEventQueue.IsCreated) _enemyKilledEventQueue.Dispose();
             if (_enemyCcQueue.IsCreated) _enemyCcQueue.Dispose();
+            if (_ccClearQueue.IsCreated) _ccClearQueue.Dispose();
             if (_statModifierQueue.IsCreated) _statModifierQueue.Dispose();
             if (_stackModifierQueue.IsCreated) _stackModifierQueue.Dispose();
             if (_attackOutputLogQueue.IsCreated) _attackOutputLogQueue.Dispose();
@@ -1001,6 +1005,13 @@ namespace Wassup.Bridge
             _enemyCcQueue = new NativeQueue<Wassup.Battle.Effects.EnemyCcEvent>(Allocator.Persistent);
             var enemyCcSingleton = _em.CreateEntity();
             _em.AddComponentData(enemyCcSingleton, new Wassup.Battle.Effects.EnemyCcEventsSingleton { queue = _enemyCcQueue });
+
+            // combat-action-lock unit 3 — wake-on-hit clear channel(16th). CcClearSystem 이
+            // drain 해 피격 유닛의 Sleep 을 제거(Units→Effects 단방향).
+            if (_ccClearQueue.IsCreated) _ccClearQueue.Dispose();
+            _ccClearQueue = new NativeQueue<Wassup.Battle.Effects.CcClearRequest>(Allocator.Persistent);
+            var ccClearSingleton = _em.CreateEntity();
+            _em.AddComponentData(ccClearSingleton, new Wassup.Battle.Effects.CcClearRequestsSingleton { queue = _ccClearQueue });
 
             // StatModifier apply channel. ModifierApplySystem drains this each frame to attach stat modifiers.
             if (_statModifierQueue.IsCreated) _statModifierQueue.Dispose();
@@ -2641,14 +2652,17 @@ namespace Wassup.Bridge
             }
         }
 
-        // dreamcatcher-squad-warmup — force `sec` seconds of idle by extending the
-        // unit's attack cooldown (never shortening an existing deploy delay).
+        // combat-action-lock unit 4 — warmup 을 Sleep 상태로 승격. cooldownRemaining 직접쓰기
+        // 폐기(층위 비대칭 해소). 잠 = 공격+이동 정지 + 피격 시 해제(wake-on-hit). CcEffect 는
+        // 소유 맥락(Effects)이 CcDecay 로 만료·소비. defender 는 unit 2 로 CcEffect 버퍼 보유.
         private void ApplyPlacementWarmup(Entity e, float sec)
         {
-            if (!_em.Exists(e) || !_em.HasComponent<AttackState>(e)) return;
-            var a = _em.GetComponentData<AttackState>(e);
-            a.cooldownRemaining = math.max(a.cooldownRemaining, sec);
-            _em.SetComponentData(e, a);
+            if (sec <= 0f || !_em.Exists(e) || !_em.HasBuffer<Wassup.Battle.Effects.CcEffect>(e)) return;
+            Wassup.Battle.Effects.EffectSpawner.ApplyCc(_em, e, new Wassup.Battle.Effects.CcEffect
+            {
+                kind = Wassup.Battle.Effects.CcKind.Sleep,
+                remainingTime = sec, // 무한 = float.PositiveInfinity
+            });
         }
 
         // awakening-hand simplify F1 — pointer→board-cell as a single shared
@@ -3531,6 +3545,9 @@ namespace Wassup.Bridge
             // Phase 4: defenders can now take damage from enemy attackers, so
             // they need an IncomingDamage buffer just like attack units have.
             _em.AddBuffer<IncomingDamage>(entity);
+            // combat-action-lock unit 2 — defender 도 CC(Sleep/Stun) 수신하도록 CcEffect 버퍼
+            // 사전 부착. ApplyActiveDcEffectsTo(3641, placement Sleep 적용) 이전이어야 함(MED4).
+            _em.AddBuffer<Wassup.Battle.Effects.CcEffect>(entity);
             _defenderByTile[cell] = (entity, unitData);
             _em.AddComponentData(entity, new DefenderTile { cell = new int2(cell.x, cell.y) });
 #if UNITY_EDITOR

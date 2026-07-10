@@ -74,6 +74,8 @@ namespace Wassup.Battle.Combat
             var nextDoubleFireLookup = SystemAPI.GetComponentLookup<NextAttackDoubleFire>(isReadOnly: true);
             var healthLookup = SystemAPI.GetComponentLookup<Health>(isReadOnly: true);
             var deadLookup = SystemAPI.GetComponentLookup<DeadTag>(isReadOnly: true);
+            // combat-action-lock — 행동불가(Sleep/Stun) 게이트용 RO CcEffect lookup.
+            var ccActionLookup = SystemAPI.GetBufferLookup<Wassup.Battle.Effects.CcEffect>(isReadOnly: true);
 
             bool hasStatQ = SystemAPI.TryGetSingletonRW<Wassup.Battle.Effects.StatModifierApplyEventsSingleton>(out var statModSingleton);
             bool hasStackQ = SystemAPI.TryGetSingletonRW<Wassup.Battle.Effects.StackModifierApplyEventsSingleton>(out var stackModSingleton);
@@ -130,6 +132,11 @@ namespace Wassup.Battle.Combat
                 {
                     attack.ValueRW.cooldownRemaining = math.max(0f, attack.ValueRO.cooldownRemaining - dt);
                 }
+
+                // combat-action-lock — Sleep/Stun: 공격 START 금지(쿨다운 틱은 위에서 유지 →
+                // wake 시 즉시 공격). 이미 시작된 스윙(hitDelayRemaining>0)의 RESOLVE 는 완료.
+                bool actionLocked = ccActionLookup.HasBuffer(attackerEntity)
+                    && Wassup.Battle.Effects.CcActionLock.IsLocked(ccActionLookup[attackerEntity]);
 
                 // Find nearest in-range target allowed by this attacker's mask.
                 float3 atkPos = transform.ValueRO.Position;
@@ -240,7 +247,7 @@ namespace Wassup.Battle.Combat
                     if (rem <= 0f) doResolve = true;   // 지연 만료 → 이번 프레임 타격
                     // 지연 중엔 새 공격 START 안 함
                 }
-                else if (bestTarget != Entity.Null && attack.ValueRO.cooldownRemaining <= 0f)
+                else if (!actionLocked && bestTarget != Entity.Null && attack.ValueRO.cooldownRemaining <= 0f)
                 {
                     // ── START ── 애니메이션 + 쿨다운 리셋 + 지연 세팅 (타격은 RESOLVE).
                     bool isDefenderStart = defenderTagLookup.HasComponent(attackerEntity);
