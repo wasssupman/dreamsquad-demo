@@ -85,5 +85,11 @@ namespace Wassup.Data
         // other types ignore it. SkillData is a pure-data SO, so the definition
         // layer stays ECS-free. Appended last (existing assets deserialize null).
         public SkillData skill;
+        // dreamcatcher-card-description Unit 0 — authored 효과/메커니즘 설명. 덱빌더
+        // 상세 팝업에서 자동 수치라인(effects[]) 아래에 렌더된다(빈 값이면 블록 생략).
+        // effects[] 자동생성이 못 덮는 Unit(mechanics/attackMods)·Active(skill) 카드의
+        // 유일한 읽을 수 있는 설명 소스. 순수 데이터(문자열) — 정의 계층 ECS-free 유지.
+        // 끝에 추가 → 기존 카드 에셋은 빈 문자열로 역직렬화(inert).
+        [TextArea] public string description;
     }
 }

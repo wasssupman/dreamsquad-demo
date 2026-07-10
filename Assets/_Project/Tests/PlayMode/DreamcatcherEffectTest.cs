@@ -90,9 +90,9 @@ namespace Wassup.Tests.PlayMode
             Assert.IsTrue(PlaceFirstValid(bridge, caster), "place caster");
 
             // AttackSpeed axis avoids synergy contamination (synergy buffs DamageMul).
-            bridge.ApplyDreamcatcherCard(MakeCard(CardTargetAxis.ClassRanger, CardBuffKind.AttackSpeed, 10f));
-            bridge.ApplyDreamcatcherCard(MakeCard(CardTargetAxis.ClassRanger, CardBuffKind.AttackSpeed, 10f)); // stack
-            bridge.ApplyDreamcatcherCard(MakeCard(CardTargetAxis.ClassGuardian, CardBuffKind.EffectiveHealth, 15f));
+            bridge.ApplyDreamcatcherCardHosted(MakeCard(CardTargetAxis.ClassRanger, CardBuffKind.AttackSpeed, 10f));
+            bridge.ApplyDreamcatcherCardHosted(MakeCard(CardTargetAxis.ClassRanger, CardBuffKind.AttackSpeed, 10f)); // stack
+            bridge.ApplyDreamcatcherCardHosted(MakeCard(CardTargetAxis.ClassGuardian, CardBuffKind.EffectiveHealth, 15f));
             yield return null;
             yield return null;
             yield return null;

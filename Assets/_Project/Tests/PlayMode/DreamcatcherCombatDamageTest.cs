@@ -81,7 +81,7 @@ namespace Wassup.Tests.PlayMode
             var card = ScriptableObject.CreateInstance<DreamcatcherCard>();
             card.axis = CardTargetAxis.ClassGuardian;             // guardian = ClassGuardian
             card.effects = new[] { new CardEffect { kind = CardBuffKind.AttackDamage, percent = 200f } }; // +200% → +2.0 additive
-            bridge.ApplyDreamcatcherCard(card);
+            bridge.ApplyDreamcatcherCardHosted(card);
             for (int i = 0; i < 3; i++) yield return null; // let ModifierApply/Aggregate run
             float buffedMul = em.GetComponentData<ModifierStats>(defender).damageMul;
 

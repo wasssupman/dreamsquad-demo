@@ -15,7 +15,16 @@ MonoBehaviour:
   id: guardian_hp_15
   displayName: Guardian HP +15%
   axis: 1
+  category: 0
   effects:
   - kind: 2
     percent: 15
   art: {fileID: 21300000, guid: 251ee720ac4e4636b9c5c6783818c877, type: 3}
+  binding: 0
+  mechanics: []
+  attackMods: []
+  type: 0
+  placementWarmupSec: 0
+  skill: {fileID: 0}
+  description: "\uAC00\uB514\uC5B8 \uACC4\uC5F4 \uC544\uAD70\uC758 \uCCB4\uB825\uC744
+    \uB298\uB824 \uC804\uC120\uC744 \uC9C0\uD0F1\uD55C\uB2E4."

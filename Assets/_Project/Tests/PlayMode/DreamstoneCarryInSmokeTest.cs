@@ -107,7 +107,7 @@ namespace Wassup.Tests.PlayMode
 
             // 복합 스택 — a same-stat dreamcatcher card pick coexists with the stones
             // (distinct stackId -> distinct additive slot, per ModifierStatsAggregateSystem).
-            bridge.ApplyDreamcatcherCard(MakeCard(CardTargetAxis.ClassRanger, CardBuffKind.AttackDamage, 10f));
+            bridge.ApplyDreamcatcherCardHosted(MakeCard(CardTargetAxis.ClassRanger, CardBuffKind.AttackDamage, 10f));
             yield return null;
             yield return null;
             yield return null;

@@ -2469,8 +2469,10 @@ namespace Wassup.Bridge
             public Wassup.Battle.Effects.StatKind stat;
             public float mult;
             public ushort stackId;
-            // awakening-hand unit 9 — revocation group. 0 = legacy hostless apply
-            // (dormant 3-choose-1 path, match-permanent, never revoked).
+            // awakening-hand unit 9 — revocation group. handle ≥1 = hosted squad
+            // apply, revoked on host death. handle 0 = non-revocable match-long apply
+            // (드림스톤 로드아웃, ApplyPendingDreamstones — 설계상 영구). 드림캐쳐의
+            // hostless 영속 apply 는 subconscious-unit unit 3 에서 은퇴.
             public int handle;
         }
         private readonly System.Collections.Generic.List<ActiveDcEffect> _activeDcEffects =
@@ -2507,11 +2509,6 @@ namespace Wassup.Bridge
         // future placements inherit it. Cleared in BeginPlacement.
         private readonly System.Collections.Generic.List<(int handle, Wassup.Data.CardTargetAxis axis, float sec)> _activeWarmups =
             new System.Collections.Generic.List<(int, Wassup.Data.CardTargetAxis, float)>();
-
-        // Legacy hostless apply — dormant 3-choose-1 path. Match-permanent
-        // (handle 0, never revoked).
-        public void ApplyDreamcatcherCard(Wassup.Data.DreamcatcherCard card)
-            => ApplyDreamcatcherCardInternal(card, handle: 0);
 
         // awakening-hand unit 9 — host-bound squad apply. Same squad-wide effect
         // (current + future matching defenders), but the effects belong to a
@@ -2918,7 +2915,7 @@ namespace Wassup.Bridge
         }
 
         // Applies the pending stone loadout into the same _activeDcEffects registry
-        // ApplyDreamcatcherCard uses, targeting axis=All (every allied defender).
+        // ApplyDreamcatcherCardInternal uses, targeting axis=All (every allied defender).
         // Called only from BeginPlacement, immediately after its clear — see the
         // set-then-apply note on SetDreamstones above.
         private void ApplyPendingDreamstones()
@@ -2933,7 +2930,7 @@ namespace Wassup.Bridge
                 _activeDcEffects.Add(new ActiveDcEffect { axis = Wassup.Data.CardTargetAxis.All, stat = stat, mult = mult, stackId = sid });
                 // No defenders are placed yet at this point in BeginPlacement (_defenderByTile
                 // was just cleared above) — this loop is a no-op today, but sharing it with
-                // ApplyDreamcatcherCard's identical loop is harmless and keeps both call sites
+                // ApplyDreamcatcherCardInternal's identical loop is harmless and keeps both call sites
                 // symmetric if that ever changes. Ordering dependency (review L1): this method
                 // runs before EnsureQueriesAndQueues() further down in BeginPlacement, so
                 // _statModifierQueue is not yet IsCreated here — moving the stone apply to

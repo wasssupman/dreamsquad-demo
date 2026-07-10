@@ -13,7 +13,10 @@ namespace Wassup.Data
     // SelfTileAoe(사망 폭발), NextAttackDoubleFire(다음 공격 2연발),
     // SelfBuffLethal(즉발 공속버프+자폭) payloads.
     public enum DcTriggerKind { None, AttackN, OnDamagedN, OnDeath }
-    public enum DcPayloadKind { None, ProjectileToTarget, SelfTileAoe, NextAttackDoubleFire, SelfBuffLethal }
+    // dreamcatcher-subconscious-unit — SelfWarmupBuff(느린 각성): 부착 즉시 공속
+    // +magnitude% (만료 타이머 없음, 유닛 생존 동안) + duration 초 warmup idle. 자폭
+    // 없음. 엔티티에 붙는 StatModifier 라 유닛 사망 시 함께 소멸. append 유지.
+    public enum DcPayloadKind { None, ProjectileToTarget, SelfTileAoe, NextAttackDoubleFire, SelfBuffLethal, SelfWarmupBuff }
 
     [Serializable]
     public struct DcTriggerSpec

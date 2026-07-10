@@ -15,7 +15,16 @@ MonoBehaviour:
   id: ranger_as_10
   displayName: Ranger AS +10%
   axis: 0
+  category: 0
   effects:
   - kind: 1
     percent: 10
   art: {fileID: 21300000, guid: 1811a223ad8c4255bd9869a6ea2add0b, type: 3}
+  binding: 0
+  mechanics: []
+  attackMods: []
+  type: 0
+  placementWarmupSec: 0
+  skill: {fileID: 0}
+  description: "\uB808\uC778\uC800 \uACC4\uC5F4 \uC544\uAD70\uC758 \uACF5\uACA9 \uC18D\uB3C4\uB97C
+    \uB055\uC5B4\uC62C\uB9B0\uB2E4."

@@ -24,3 +24,5 @@ MonoBehaviour:
   type: 2
   placementWarmupSec: 0
   skill: {fileID: 11400000, guid: a1f7c4d2e85b4e6f9c3d7b8e2a1f5d60, type: 2}
+  description: "\uD68C\uC624\uB9AC\uB97C \uC77C\uC73C\uCF1C \uC801\uC744 \uB04C\uC5B4\uB2F9\uAE30\uBA70
+    \uD53C\uD574\uB97C \uC900\uB2E4."
