@@ -45,7 +45,9 @@
 
 ## 완료 기준
 
-- [ ] `PeriodicTick` EditMode(주기 발동·잔여 이월·위상·**`period<=0` no-fire 가드**).
-- [ ] 진앙 round-robin 결정론 EditMode(같은 입력 → 같은 진앙 순회, no-op 미증가).
-- [ ] AreaBarrage 착탄이 **방어유닛 진영**을 때린다(진영 파라미터화) — 적/보스 자해 없음.
-- [ ] (배선 후) Play: 보스 스폰 후 10초 주기 진앙 폭격, 3타일 내 다중 방어유닛 10 데미지.
+- [x] `PeriodicTick` EditMode(주기 발동·잔여 이월·위상·**`period<=0` no-fire 가드** + 랙 스파이크 drip).
+- [x] 진앙 round-robin 결정론 EditMode(같은 입력 → 같은 진앙 순회 + 스냅샷 순서 무관, no-op 미증가는 arm 코드).
+- [x] AreaBarrage 착탄이 **방어유닛 진영**을 때린다(진영 파라미터화) — 적/보스 자해 없음. (`targetFaction=Defender` 유일 setter = 이 arm)
+- [ ] (배선 후) Play: 보스 스폰 후 10초 주기 진앙 폭격, 3타일 내 다중 방어유닛 10 데미지. (보스 에셋 — unit 6)
+
+확인 2026-07-10 — 컴파일 클린 + EditMode 627/629 그린(신규 8) + code-review(low) findings 0. 사용자 무회귀 스모크 승인("문제없어 보인다"). arcHeight(SkyFall 낙하높이)는 ECS arm 이 SO 를 못 읽어 drain 폴백으로 보충. 커밋은 unit 2 코드 커밋 해시 참조.

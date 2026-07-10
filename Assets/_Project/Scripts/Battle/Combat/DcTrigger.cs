@@ -16,5 +16,21 @@ namespace Wassup.Battle.Combat
             counter = 0;
             return true;
         }
+
+        // nightmare-catcher unit 2 — PeriodicTimer accumulator. Fires once when
+        // the accumulator reaches periodSeconds, carrying the remainder over
+        // (drift-free). periodSeconds <= 0 never fires AND never accumulates —
+        // the in-function guard (계약 9) that stops a zero-valued card from
+        // spin-firing every tick. At most one fire per tick: a lag spike that
+        // banks several periods drips one fire per subsequent tick (period ≫ dt,
+        // harmless by construction).
+        public static bool PeriodicTick(ref float elapsed, float dt, float periodSeconds)
+        {
+            if (periodSeconds <= 0f) return false;
+            elapsed += dt;
+            if (elapsed < periodSeconds) return false;
+            elapsed -= periodSeconds;
+            return true;
+        }
     }
 }

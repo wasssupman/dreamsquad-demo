@@ -2197,7 +2197,11 @@ namespace Wassup.Bridge
                 state.impactTileRange = req.impactTileRange;
                 state.flightTime = math.max(req.flightTime, 0f);
                 // unit 9 — arcHeight 슬롯 = 낙하 시작 높이(view 렌더 전용).
-                state.arcHeight = req.arcHeight;
+                // nightmare-catcher unit 2 — ECS arm 발 캐리어(보스 융단폭격)는
+                // SO 를 못 읽어 arcHeight=0 으로 온다 → 번역자인 drain 이
+                // ProjectileData.dropHeight 로 보충(Meteor 는 캐스트 시 직접 기입).
+                state.arcHeight = req.arcHeight > 0f ? req.arcHeight
+                    : (projData != null ? projData.dropHeight : 0f);
             }
             _em.AddComponentData(entity, state);
 
