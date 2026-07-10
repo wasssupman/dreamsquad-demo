@@ -36,8 +36,10 @@ namespace Wassup.Core
         [SerializeField] private float swapDuration = 1.2f;
         [Tooltip("스파인 로딩 화면 노출 시간(로드 시작 기준, 로딩이 즉시 끝나도 이만큼 고정 노출).")]
         [SerializeField] private float minLoadingSeconds = 2f;
-        [Tooltip("스파인 로딩 화면에서 배틀로 걷어내는 페이드.")]
+        [Tooltip("로딩 화면에서 다음 씬으로 걷어내는 페이드.")]
         [SerializeField] private float coverFadeOut = 0.3f;
+        [Tooltip("배경 디졸브가 없는 방향(예: 배틀→로비)에서 로딩 화면을 띄우는 페이드인.")]
+        [SerializeField] private float loadingFadeIn = 0.3f;
 
         [Header("Dissolve cover")]
         [SerializeField] private CanvasGroup coverGroup;
@@ -144,29 +146,42 @@ namespace Wassup.Core
         {
             if (coverGroup != null) coverGroup.blocksRaycasts = true;
 
-            // front = the on-screen time-of-day, so its opaque snap over the lobby is
-            // imperceptible. Synced from LobbyBackgroundDissolve (toggled by character
-            // touches); own toggled flag as fallback in scenes without it.
+            // The bg dissolve only makes sense when the current scene owns a matching
+            // day/night backdrop (the lobby). Leaving battle, there is nothing to
+            // dissolve → just fade the loading screen in.
             var lobbyBg = Object.FindFirstObjectByType<Wassup.UI.LobbyBackgroundDissolve>();
-            if (lobbyBg != null) _night = lobbyBg.IsNight;
-            frontImage.sprite = _night ? nightSprite : daySprite;
+            bool dissolveFromBg = lobbyBg != null;
 
-            _runtimeMat.SetFloat(DissolveId, 0f);
-            if (coverGroup != null) coverGroup.alpha = 1f;   // opaque snap, no fade-in
-            ApplyRadialUniforms(centerUv);
-
-            // The loading screen (spine over the dark backdrop) sits behind the front
-            // cover, already running — the dissolve REVEALS it from the click point.
-            if (loadingSpineGroup != null) loadingSpineGroup.alpha = 1f;
+            // Spine loading screen — running before it is shown, so it is already in
+            // motion when revealed.
             if (loadingSpine != null && loadingSpine.AnimationState != null && !string.IsNullOrEmpty(loadingAnimation))
                 loadingSpine.AnimationState.SetAnimation(0, loadingAnimation, true);
+            if (loadingSpineGroup != null) loadingSpineGroup.alpha = 1f;
 
             var op = SceneManager.LoadSceneAsync(sceneName, LoadSceneMode.Single);
             op.allowSceneActivation = false;
             float loadStart = Time.unscaledTime;
 
-            // Front dissolves away from the click point, revealing the spine loading screen.
-            yield return Dissolve(0f, 1f, swapDuration);
+            if (dissolveFromBg)
+            {
+                // front = on-screen time-of-day (opaque snap is imperceptible over the
+                // matching lobby backdrop); it dissolves away from the click point,
+                // revealing the loading screen behind it.
+                _night = lobbyBg.IsNight;
+                frontImage.sprite = _night ? nightSprite : daySprite;
+                _runtimeMat.SetFloat(DissolveId, 0f);
+                ApplyRadialUniforms(centerUv);
+                if (coverGroup != null) coverGroup.alpha = 1f;   // opaque snap, no fade-in
+                yield return Dissolve(0f, 1f, swapDuration);
+            }
+            else
+            {
+                // Battle → lobby: no bg dissolve. front fully dissolved (transparent) so
+                // only the dark backdrop + spine show; fade the loading screen in.
+                _runtimeMat.SetFloat(DissolveId, 1f);
+                if (coverGroup != null) coverGroup.alpha = 0f;
+                yield return FadeGroup(coverGroup, 0f, 1f, loadingFadeIn);
+            }
 
             while (op.progress < 0.9f) yield return null;
             while (Time.unscaledTime - loadStart < minLoadingSeconds) yield return null;   // 계약 #5
@@ -174,7 +189,7 @@ namespace Wassup.Core
             op.allowSceneActivation = true;
             while (!op.isDone) yield return null;
 
-            // Reveal the loaded scene from behind the cover (dark backdrop + spine fade out).
+            // Reveal the loaded scene from behind the cover (backdrop + spine fade out).
             yield return FadeGroup(coverGroup, 1f, 0f, coverFadeOut);
 
             if (loadingSpineGroup != null) loadingSpineGroup.alpha = 0f;

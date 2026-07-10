@@ -7,8 +7,10 @@
 검정 페이드를 버리고, 이미 authored 된 **라디얼 골든 디졸브**(`Wassup/UI/BackgroundDissolve`, 로비 캐릭터 터치 배경 전환)를 씬 전환 커버로 승격한다. 최종 흐름:
 
 1. **골든 디졸브** — 현재 시간대 배경(front)이 **클릭 지점(START 버튼)에서 퍼지는 골든 파면**으로 걷힌다. 캐릭터 클릭과 동일한 셰이더·모션.
-2. **스파인 로딩 화면** — 걷힌 뒤 드러나는 다크 배경 위에서 Casual Character `SkeletonGraphic` 러닝이 **2초** 재생되며 BattleScene 로딩.
-3. **배틀** — 커버 페이드아웃으로 로드된 씬 노출.
+2. **스파인 로딩 화면** — 걷힌 뒤 드러나는 다크 배경 위에서 Casual Character `SkeletonGraphic` 러닝이 **2초** 재생되며 다음 씬 로딩.
+3. **다음 씬** — 커버 페이드아웃으로 로드된 씬 노출.
+
+**방향 인지**: 배경 디졸브는 **현재 씬에 로비 배경(`LobbyBackgroundDissolve`)이 있을 때만**(로비→배틀). **배틀→로비**는 디졸브할 배경이 없으므로 **골든 디졸브 없이 로딩 화면만 페이드인** 후 로비 랜딩.
 
 ## 재활용 자산 (신규 제작 없음)
 
@@ -28,7 +30,8 @@
 - **현재→반대 동기화**: front 스프라이트 = 화면 현재 시간대. `LobbyBackgroundDissolve.IsNight` 를 읽어 맞춤(무감 스냅). 로비 없으면 자체 토글 fallback.
 - **라디얼 중심**: `Go` 시점 포인터 위치(Input System) → UV → `_Center`. 버튼에서 퍼짐.
 - **깜빡임 방지**: 커버를 페이드인하지 않고 **즉시 불투명**(`coverGroup.alpha=1`). front 가 로비 배경과 같아 무감.
-- **시퀀스**: front 불투명 스냅 → `_Dissolve` 0→1(swapDuration, 버튼에서 퍼짐) → 스파인 alpha=1·Run 재생 → 로드 게이트 + **minLoadingSeconds=2** 대기 → 씬 활성 → 커버 페이드아웃 → 배틀.
+- **시퀀스(로비→배틀)**: front 불투명 스냅 → `_Dissolve` 0→1(swapDuration, 버튼에서 퍼짐) → 스파인 Run → 로드 게이트 + **minLoadingSeconds=2** 대기 → 씬 활성 → 커버 페이드아웃.
+- **시퀀스(배틀→로비)**: `_Dissolve`=1(front 투명, 배경 없음) → 커버 `loadingFadeIn` 페이드인(다크+스파인) → minLoadingSeconds=2 대기 → 활성 → 페이드아웃. 디졸브 생략.
 - **수치 authoring**: swapDuration·minLoadingSeconds(2)·coverFadeOut·goldenTintStrength(0)·startNight·스프라이트·머티리얼 = 프리팹 SerializeField(제약 #6). 모든 모션 `unscaledTime`(제약 #7). `_MaxRadius` 기하 계산은 인라인(제약 #10).
 - **degrade**: 머티리얼/front 미할당이면 즉시 로드.
 
@@ -36,9 +39,9 @@
 
 - compile clean, 콘솔/Spine 에러 0.
 - PlayMode 스모크: `Go(Battle)` → 활성 씬 Battle, persistent 유지, front 가 디졸브 셰이더 인스턴스 사용.
-- Play 육안: START → 버튼 지점에서 골든 파면 디졸브(화면 전체 gold 워시 없음) → 러닝 스파인 로딩 화면 2초 → 배틀.
+- Play 육안: (로비→배틀) 버튼 지점 골든 파면 디졸브 → 러닝 로딩 2초 → 배틀. (배틀→로비) 디졸브 없이 로딩 화면만 페이드인 → 로비.
 
-확인: 2026-07-10 — 사용자 Play 확인(디졸브→로딩 화면 흐름, 버튼 중심 파면, 골든 워시 제거, 로딩 2초 고정).
+확인: 2026-07-10 — 사용자 Play 확인(양방향: 로비→배틀 디졸브+로딩, 배틀→로비 로딩만, 버튼 중심 파면, 골든 워시 제거, 로딩 2초).
 
 ## 알려진 사항 (후속)
 

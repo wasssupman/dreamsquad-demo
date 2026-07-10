@@ -12,7 +12,8 @@
 ## Implemented
 
 - `SceneTransition` — DontDestroyOnLoad persistent 컨트롤러. `[RuntimeInitializeOnLoadMethod(BeforeSceneLoad)]` 로 `Resources/SceneTransition.prefab` 자동 생성(씬 배선 0). 유일 공개 API = static `Go(sceneName)` (null-guard→hard-cut degrade).
-- 전환 시퀀스: front(현재 시간대 배경, dissolve mat) 불투명 스냅 → `_Dissolve` 0→1 골든 파면 디졸브(클릭 지점에서 퍼짐) → 다크 배경 위 Casual Character 러닝 로딩 화면 2초 → 커버 페이드아웃 → 배틀.
+- 전환 시퀀스: front(현재 시간대 배경, dissolve mat) 불투명 스냅 → `_Dissolve` 0→1 골든 파면 디졸브(클릭 지점에서 퍼짐) → 다크 배경 위 Casual Character 러닝 로딩 화면 2초 → 커버 페이드아웃 → 다음 씬.
+- **방향 인지**: 현재 씬에 `LobbyBackgroundDissolve` 있을 때만(로비→배틀) 배경 디졸브. **배틀→로비는 디졸브 없이 로딩 화면만 페이드인**(`loadingFadeIn`) 후 로비.
 - 로비 디졸브 셰이더(`Background_Dissolve_UI`) 재사용, 전역 gold 틴트 off(파면 글로우만). 라디얼 중심 = Input System 포인터 UV. `LobbyBackgroundDissolve.IsNight` 로 front=화면 현재 상태 동기화.
 - `allowSceneActivation` 게이팅으로 로딩 빈 프레임 미노출, 재진입 멱등, 모든 모션 unscaledTime(TimeManager 독립).
 
@@ -43,4 +44,3 @@
 
 - **로비 캐릭터·버튼 가려짐**: front 가 배경만 복제 → 전환 시작 시 전경 UI 즉시 사라짐. 해소 = 전체 화면 스크린샷 커버(알파·상하반전 편차로 보류, 사용자 "복잡하면 하지마"). 재도전 시 셰이더 `_OpaqueBase` 토글 + orientation 처리.
 - Spine 전용 브랜드 컷인 애니(현재는 Casual Character 러닝 재사용).
-- 배틀→로비(EXIT) 방향은 로비 없어 자체 토글 fallback — front 가 배틀 위에 잠깐 스냅될 수 있음(경미).
