@@ -56,6 +56,10 @@ namespace Wassup.UI
 
         public bool IsTransitioning => _progress >= 0f;
 
+        // 현재 표시 중인 시간대. SceneTransition 이 씬 전환 커버를 실제 로비 배경과
+        // 일치(현재→반대 스왑)시키기 위해 읽는다.
+        public bool IsNight => _isNight;
+
         public TransitionStyle Style
         {
             get => style;
