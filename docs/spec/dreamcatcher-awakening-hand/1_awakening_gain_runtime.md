@@ -31,3 +31,5 @@
 - [ ] Play 중 적 처치 시 `EnemyKilledAwakening` 발화 값이 해당 악몽 SO 의 `awakeningReward` 와 일치 (임시 로그 or unit 3 에서 확인).
 - [ ] defender 사망 시 `DefenderDied` 가 entity + data 로 발화.
 - [ ] ecs-review 대상 (Battle/ 변경).
+
+> 확인 2026-07-09 — 커밋 0b6000fd (ecs-review CRITICAL/HIGH 0 · 런타임 가산은 unit 4~ 에서 확인)

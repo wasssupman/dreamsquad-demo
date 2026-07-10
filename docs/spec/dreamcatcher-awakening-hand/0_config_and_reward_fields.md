@@ -31,3 +31,5 @@
 - [ ] `AwakeningConfig.asset` 생성, 인스펙터에서 필드 9종 확인.
 - [ ] defender/악몽 SO 각 1개 샘플의 `awakeningReward` 인스펙터 확인 (defender=4, 악몽=클래스별 값).
 - [ ] 기존 에셋 직렬화 값 변동 없음 (git diff 가 append 필드만).
+
+> 확인 2026-07-09 — 커밋 c52f7c9e (컴파일 클린 · config/백필 diff append-only 검증)

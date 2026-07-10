@@ -1,6 +1,7 @@
 # Dreamcatcher Awakening Hand — 사용 방식 전면 개편 (3중1 → 각성치 + CR식 순환 손패)
 
-> 상태: **구현 진행 중 2026-07-10 (rev 4 — 실플레이 피드백: 확정 지연 제거·유닛 호버 하이라이트 above-units 수정 / rev 3 — 설계 critic REVISE 반영: C1 skillRuntime 배선 해제 / H2 phase 강제 클로즈 / M1~M3 / L1~L3)**
+> 상태: **완료 2026-07-10** (units 0~9 + rev 4 실플레이 피드백 5건 + rev 5 Squad 호스트 바인딩 + simplify 리팩토링. 사용자 종합 Play 확인 "플레이 감각 좋음". 인계: `10_handoff_summary.md`)
+> 이력: rev 3 = 설계 critic REVISE 반영(C1 skillRuntime 배선 해제/H2 phase 강제 클로즈/M1~M3/L1~L3) · rev 4 = 확정 지연 제거·스크린 픽킹·붉은 틴트·네임 밴드·StS 화살표 · rev 5 = Squad 호스트 바인딩
 >
 > 설계 배경: 기존 3중1 선택(첫 배치 + 5웨이브마다, 일시정지 모달)을 버리고, 클래시 로얄의 덱 순환 구조를
 > 드림캐쳐에 적용해 **언제든 사용 가능한 실시간 요소**로 바꾼다. 기존 **공용 스킬**(매판 2종 롤 + 코스트
