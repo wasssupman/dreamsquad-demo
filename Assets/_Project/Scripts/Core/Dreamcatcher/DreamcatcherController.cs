@@ -139,7 +139,10 @@ namespace Wassup.Core
         {
             if (card == null || bridge == null) return;
             LogPick(card);
-            bridge.ApplyDreamcatcherCard(card);
+            // dreamcatcher-subconscious-unit unit 3 — hostless 영속 apply 은퇴. dormant
+            // 3-choose-1 경로는 revocable Hosted API 로 이관(핸들 무시 — host 미추적).
+            // 브릿지에 "match-permanent, never revoked" 공개 API 는 더 이상 없음.
+            bridge.ApplyDreamcatcherCardHosted(card);
         }
 
         private void LogDeck()

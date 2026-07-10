@@ -43,10 +43,11 @@ namespace Wassup.Core
         public int HandSize => config != null ? config.handSize : 5;
 
         private DreamcatcherCycleDeck _deck;
-        // entryId → (host defender, revocation handle). Unit cards: handle=-1
-        // (their slots die with the entity — nothing to revoke). Squad cards
-        // (unit 9): handle>0, revoked on host death so the squad-wide effect
-        // ends with its owner. Reverse scan on death is O(attached).
+        // entryId → (host defender, revocation handle). handle 0 = 무회수(엔티티 부착
+        // Unit 카드: 슬롯이 엔티티와 함께 소멸, revoke 대상 없음). handle>0 = host 사망 시
+        // revoke(Squad hosted 버프 unit 9 · placement-aura 오라). placement-aura unit 2 —
+        // 예전 -1 관례는 폐기(ApplyDreamcatcherCardToUnit 이 int 규약으로 0/>0 반환).
+        // Reverse scan on death is O(attached).
         private readonly Dictionary<int, (Entity host, int handle)> _attachedTo =
             new Dictionary<int, (Entity, int)>();
         private readonly List<int> _recoverScratch = new List<int>();
@@ -204,10 +205,12 @@ namespace Wassup.Core
         {
             if (!TryGetUsable(entryId, CardType.Unit, out var card)) return false;
             if (AtAttachCap(target, card)) return false;
-            // Apply first: a failed attach (entity gone, non-defender) must not
-            // spend or cycle (contract 9).
-            if (!bridge.ApplyDreamcatcherCardToUnit(target, card)) return false;
-            return AttachAndSpend(entryId, card, target, handle: -1); // slots die with the entity — no revoke
+            // Apply first: a failed attach (entity gone, non-defender) must not spend
+            // or cycle (contract 9). 반환 규약(placement-aura): <0 실패 / 0 무회수(엔티티
+            // 부착형) / >0 회수핸들(host 사망 시 RevokeDreamcatcherEffects — 오라 회수).
+            int handle = bridge.ApplyDreamcatcherCardToUnit(target, card);
+            if (handle < 0) return false;
+            return AttachAndSpend(entryId, card, target, handle);
         }
 
         // Shared attach tail: out-of-pool, host registry, spend, notify.

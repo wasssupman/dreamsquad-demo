@@ -1,9 +1,12 @@
 using System.Collections;
+using System.Collections.Generic;
 using Spine.Unity;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using Wassup.Data;
+using Wassup.Presentation;
 
 namespace Wassup.Core
 {
@@ -59,16 +62,26 @@ namespace Wassup.Core
         [SerializeField] private Vector2 fallbackCenter = new Vector2(0.5f, 0.35f);
 
         [Header("Spine loading screen")]
-        [Tooltip("디졸브가 드러내는 로딩 캐릭터. Null 이면 로딩 화면 생략.")]
-        [SerializeField] private SkeletonGraphic loadingSpine;
+        [Tooltip("함께 뛰어가는 로딩 러너들. 확정 스쿼드에서 뽑은 유닛 외형으로 스킨을 갈아끼운다. 비어 있으면 로딩 화면 생략.")]
+        [SerializeField] private SkeletonGraphic[] loadingRunners;
+        [Tooltip("러너 전체 페이드를 제어하는 그룹(LoadingRunners 부모의 CanvasGroup).")]
         [SerializeField] private CanvasGroup loadingSpineGroup;
         [SerializeField] private string loadingAnimation = "Run";
+
+        [Header("Loading squad source")]
+        [Tooltip("로비/배틀이 공유하는 in-memory 프로파일. SelectedSquad() 로 러너 외형을 뽑는다.")]
+        [SerializeField] private PlayerProfileSO profileSO;
+        [Tooltip("스쿼드 unitId → DefenderUnitData 해석용 카탈로그.")]
+        [SerializeField] private DefenderCatalog catalog;
 
         public static SceneTransition Instance { get; private set; }
 
         private Material _runtimeMat;
         private bool _night;
         private bool _transitioning;
+        // Authored skin per runner, captured before any squad injection so the
+        // no-squad fallback can restore the generic look (data-driven, no literal).
+        private string[] _runnerDefaultSkins;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void Bootstrap()
@@ -109,6 +122,15 @@ namespace Wassup.Core
                 coverGroup.alpha = 0f;                           // rest = fully hidden
                 coverGroup.blocksRaycasts = false;
             }
+            CaptureRunnerDefaults();
+        }
+
+        private void CaptureRunnerDefaults()
+        {
+            if (loadingRunners == null) return;
+            _runnerDefaultSkins = new string[loadingRunners.Length];
+            for (int i = 0; i < loadingRunners.Length; i++)
+                _runnerDefaultSkins[i] = loadingRunners[i] != null ? loadingRunners[i].initialSkinName : null;
         }
 
         private void OnDestroy()
@@ -152,10 +174,10 @@ namespace Wassup.Core
             var lobbyBg = Object.FindFirstObjectByType<Wassup.UI.LobbyBackgroundDissolve>();
             bool dissolveFromBg = lobbyBg != null;
 
-            // Spine loading screen — running before it is shown, so it is already in
-            // motion when revealed.
-            if (loadingSpine != null && loadingSpine.AnimationState != null && !string.IsNullOrEmpty(loadingAnimation))
-                loadingSpine.AnimationState.SetAnimation(0, loadingAnimation, true);
+            // Spine loading screen — resolve the confirmed squad into the runners and
+            // start them running before they are shown, so they are already in motion
+            // when revealed.
+            ConfigureRunners();
             if (loadingSpineGroup != null) loadingSpineGroup.alpha = 1f;
 
             var op = SceneManager.LoadSceneAsync(sceneName, LoadSceneMode.Single);
@@ -196,6 +218,109 @@ namespace Wassup.Core
             _night = !_night;   // flag toggles each transition (fallback)
             if (coverGroup != null) coverGroup.blocksRaycasts = false;
             _transitioning = false;
+        }
+
+        // Resolve the confirmed squad into the runner slots. Each runner shares the
+        // one Casual Character rig, so this is a pure skin swap (SpineCombinedSkinCache).
+        // A different random trio is chosen every load (user decision). No squad /
+        // no skeleton-equipped units → runners keep their authored default look so the
+        // loading screen is never empty.
+        private void ConfigureRunners()
+        {
+            if (loadingRunners == null || loadingRunners.Length == 0) return;
+
+            List<DefenderUnitData> units = BuildRunnerUnits(loadingRunners.Length);
+            bool fallback = units.Count == 0;
+
+            for (int i = 0; i < loadingRunners.Length; i++)
+            {
+                var runner = loadingRunners[i];
+                if (runner == null) continue;
+
+                if (i < units.Count)
+                {
+                    ApplyRunnerSkin(runner, units[i]);
+                    runner.gameObject.SetActive(true);
+                }
+                else if (fallback)
+                {
+                    RestoreRunnerDefault(runner, i);
+                    runner.gameObject.SetActive(true);
+                }
+                else
+                {
+                    runner.gameObject.SetActive(false);   // squad smaller than the runner count
+                }
+            }
+        }
+
+        // Selected squad → shuffled, skeleton-equipped defenders, capped at the runner
+        // count. Empty when no squad is selected or the catalog is missing.
+        private List<DefenderUnitData> BuildRunnerUnits(int max)
+        {
+            var chosen = new List<DefenderUnitData>();
+            var squad = profileSO != null && profileSO.profile != null ? profileSO.profile.SelectedSquad() : null;
+            if (squad == null || catalog == null) return chosen;
+
+            var ids = SquadDraw.Resolve(squad.unitIds);
+            var pool = new List<DefenderUnitData>();
+            for (int i = 0; i < ids.Count; i++)
+            {
+                var u = catalog.ById(ids[i]);
+                if (u != null && u.SpineSkeletonDataAsset != null) pool.Add(u);
+            }
+
+            // Fisher–Yates — a different trio each load.
+            for (int i = pool.Count - 1; i > 0; i--)
+            {
+                int j = Random.Range(0, i + 1);
+                (pool[i], pool[j]) = (pool[j], pool[i]);
+            }
+
+            int n = Mathf.Min(max, pool.Count);
+            for (int i = 0; i < n; i++) chosen.Add(pool[i]);
+            return chosen;
+        }
+
+        private void ApplyRunnerSkin(SkeletonGraphic runner, DefenderUnitData unit)
+        {
+            var dataAsset = unit.SpineSkeletonDataAsset;
+            if (dataAsset != null && runner.skeletonDataAsset != dataAsset)
+            {
+                runner.skeletonDataAsset = dataAsset;
+                runner.Initialize(true);
+            }
+            else if (runner.Skeleton == null)
+            {
+                runner.Initialize(false);
+            }
+            if (runner.Skeleton != null)
+                SpineCombinedSkinCache.Apply(runner.Skeleton, unit);
+            PlayRun(runner);
+        }
+
+        private void RestoreRunnerDefault(SkeletonGraphic runner, int index)
+        {
+            if (runner.Skeleton == null) runner.Initialize(false);
+            string defaultSkin = _runnerDefaultSkins != null && index < _runnerDefaultSkins.Length
+                ? _runnerDefaultSkins[index] : null;
+            if (runner.Skeleton != null && runner.Skeleton.Data != null && !string.IsNullOrEmpty(defaultSkin))
+            {
+                var skin = runner.Skeleton.Data.FindSkin(defaultSkin);
+                if (skin != null)
+                {
+                    runner.Skeleton.SetSkin(skin);
+                    runner.Skeleton.SetSlotsToSetupPose();
+                }
+            }
+            PlayRun(runner);
+        }
+
+        // Loop the run animation, already in motion before the runner is revealed.
+        private void PlayRun(SkeletonGraphic runner)
+        {
+            if (runner.AnimationState != null && !string.IsNullOrEmpty(loadingAnimation))
+                runner.AnimationState.SetAnimation(0, loadingAnimation, true);
         }
 
         // 계약 #7 — all cover motion is unscaled, independent of TimeManager / pause.

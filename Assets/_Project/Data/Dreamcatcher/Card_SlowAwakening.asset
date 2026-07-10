@@ -16,13 +16,23 @@ MonoBehaviour:
   displayName: "\uB290\uB9B0 \uAC01\uC131"
   axis: 3
   category: 2
-  effects:
-  - kind: 1
-    percent: 50
+  effects: []
   art: {fileID: 21300000, guid: 2d66a9df6822423db4e9a0a4acb612f8, type: 3}
-  binding: 0
-  mechanics: []
+  binding: 1
+  mechanics:
+  - trigger:
+      kind: 0
+      period: 0
+    payload:
+      kind: 8
+      magnitude: 50
+      projectile: {fileID: 0}
+      tileRange: 0
+      duration: 2
   attackMods: []
-  type: 0
-  placementWarmupSec: 2
+  type: 1
+  placementWarmupSec: 0
   skill: {fileID: 0}
+  description: "\uBD80\uCC29\uD55C \uC720\uB2DB \uC0DD\uC874 \uC911, \uC0C8\uB85C
+    \uBC30\uCE58\uB418\uB294 \uC720\uB2DB\uC774 2\uCD08 \uB4A4 \uAE68\uC5B4\uB098
+    \uACF5\uC18D +50%"

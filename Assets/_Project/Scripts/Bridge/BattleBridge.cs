@@ -2503,14 +2503,19 @@ namespace Wassup.Bridge
             public Wassup.Battle.Effects.StatKind stat;
             public float mult;
             public ushort stackId;
-            // awakening-hand unit 9 — revocation group. 0 = legacy hostless apply
-            // (dormant 3-choose-1 path, match-permanent, never revoked).
+            // awakening-hand unit 9 — revocation group. handle ≥1 = hosted squad
+            // apply, revoked on host death. handle 0 = non-revocable match-long apply
+            // (드림스톤 로드아웃, ApplyPendingDreamstones — 설계상 영구). 드림캐쳐의
+            // hostless 영속 apply 는 subconscious-unit unit 3 에서 은퇴.
             public int handle;
         }
         private readonly System.Collections.Generic.List<ActiveDcEffect> _activeDcEffects =
             new System.Collections.Generic.List<ActiveDcEffect>();
         private ushort _dcStackCounter = 100;
-        private int _dcHandleCounter = 1; // unit 9 — hosted-apply revocation handles
+        // unit 9 — hosted-apply revocation handles. review L1 — 앱 수명 monotonic:
+        // BeginPlacement 에서 의도적으로 리셋하지 않는다(등록 레지스트리는 매치마다 clear 돼
+        // stale handle 이 live 엔트리로 해석될 수 없고, 리셋하면 생존한 stale 맵과 alias 위험).
+        private int _dcHandleCounter = 1;
         private const float DcDuration = 1e9f;
 
         // ingame-dreamcatcher Unit 3 — selection triggers. DreamcatcherController
@@ -2541,11 +2546,6 @@ namespace Wassup.Bridge
         // future placements inherit it. Cleared in BeginPlacement.
         private readonly System.Collections.Generic.List<(int handle, Wassup.Data.CardTargetAxis axis, float sec)> _activeWarmups =
             new System.Collections.Generic.List<(int, Wassup.Data.CardTargetAxis, float)>();
-
-        // Legacy hostless apply — dormant 3-choose-1 path. Match-permanent
-        // (handle 0, never revoked).
-        public void ApplyDreamcatcherCard(Wassup.Data.DreamcatcherCard card)
-            => ApplyDreamcatcherCardInternal(card, handle: 0);
 
         // awakening-hand unit 9 — host-bound squad apply. Same squad-wide effect
         // (current + future matching defenders), but the effects belong to a
@@ -2730,16 +2730,18 @@ namespace Wassup.Bridge
         // reclaim) is a follow-up spec — attach only for now.
         private int _dcInstanceCounter;
 
-        public bool ApplyDreamcatcherCardToUnit(Entity defender, Wassup.Data.DreamcatcherCard card)
+        // dreamcatcher-placement-aura — 반환 규약: <0 실패(무차감) / 0 성공·회수불필요
+        // (엔티티 부착형: 슬롯이 엔티티와 함께 소멸) / >0 성공·회수핸들(host 사망 시 revoke).
+        public int ApplyDreamcatcherCardToUnit(Entity defender, Wassup.Data.DreamcatcherCard card)
         {
-            if (card == null || card.binding != Wassup.Data.CardBinding.Unit) return false;
+            if (card == null || card.binding != Wassup.Data.CardBinding.Unit) return -1;
             bool hasMechanics = card.mechanics != null && card.mechanics.Length > 0;
             bool hasAttackMods = card.attackMods != null && card.attackMods.Length > 0;
-            if (!hasMechanics && !hasAttackMods) return false;
+            if (!hasMechanics && !hasAttackMods) return -1;
             if (!HasLiveEntityManager() || !_em.Exists(defender))
             {
                 Debug.LogWarning($"[BattleBridge] ApplyDreamcatcherCardToUnit('{card?.id}'): ECS not ready or defender entity gone — card not attached.");
-                return false;
+                return -1;
             }
             // Contract 2: slots live on defenders only. AttackSystem's RESOLVE arm
             // counts defender attacks, and teardown reaches the buffer through the
@@ -2748,10 +2750,11 @@ namespace Wassup.Bridge
             if (!_em.HasComponent<DefenderUnitTag>(defender))
             {
                 Debug.LogWarning($"[BattleBridge] ApplyDreamcatcherCardToUnit('{card.id}'): target entity is not a defender — card not attached.");
-                return false;
+                return -1;
             }
 
             int attached = 0;
+            int auraHandle = 0; // >0 if a revocable placement-aura was registered
             int mechanicsLen = hasMechanics ? card.mechanics.Length : 0;
             for (int i = 0; i < mechanicsLen; i++) // bake-time only read (managed array)
             {
@@ -2770,6 +2773,28 @@ namespace Wassup.Bridge
                     EnqueueAttackSpeedMul(defender, 1f + m.payload.magnitude / 100f, m.payload.duration);
                     _em.AddComponentData(defender, new Wassup.Battle.Units.LethalTimer { remaining = m.payload.duration });
                     attached++; // 즉발 branch 도 성공 시 카운트 (critic M2)
+                    continue;
+                }
+
+                // dreamcatcher-placement-aura — host-bound future-only 스폰 오라(trigger=None).
+                // host·기존 유닛 미적용; host 생존 중 axis 매칭 신규 배치 유닛에 부여. host-bound
+                // handle 을 반환값으로 올려 host 사망 시 RevokeDreamcatcherEffects 로 회수.
+                if (m.payload.kind == Wassup.Data.DcPayloadKind.PlacementAura)
+                {
+                    if (m.payload.magnitude <= 0f)
+                    {
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: PlacementAura non-positive magnitude — skipped.");
+                        continue;
+                    }
+                    // review M1 — 카드당 PlacementAura 는 1개만. 두 번째는 등록하면 핸들이
+                    // 덮어써져 첫 오라가 host 사망 후에도 영구 누수 → 스킵(등록 안 함).
+                    if (auraHandle != 0)
+                    {
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: 카드당 PlacementAura 는 1개만 지원 — 추가 오라 스킵.");
+                        continue;
+                    }
+                    auraHandle = RegisterPlacementAura(card.axis, m.payload.magnitude, m.payload.duration);
+                    attached++;
                     continue;
                 }
 
@@ -2897,7 +2922,30 @@ namespace Wassup.Bridge
                 });
                 attached++;
             }
-            return attached > 0;
+            if (attached == 0) return -1;
+            return auraHandle;
+        }
+
+        // dreamcatcher-placement-aura — host-bound future-only aura. _defenderByTile
+        // 루프 없음 → 현재 유닛/host 미적용, ApplyActiveDcEffectsTo(신규 배치)에서만 상속.
+        // revocable handle 반환(host 사망 시 RevokeDreamcatcherEffects 로 전 수혜 유닛 회수).
+        private int RegisterPlacementAura(Wassup.Data.CardTargetAxis axis, float asPercent, float warmupSec)
+        {
+            int handle = _dcHandleCounter++;
+            if (asPercent > 0f)
+            {
+                ushort sid = _dcStackCounter++;
+                _activeDcEffects.Add(new ActiveDcEffect
+                {
+                    axis = axis,
+                    stat = Wassup.Battle.Effects.StatKind.AttackSpeedMul,
+                    mult = 1f + asPercent / 100f,
+                    stackId = sid,
+                    handle = handle,
+                });
+            }
+            if (warmupSec > 0f) _activeWarmups.Add((handle, axis, warmupSec));
+            return handle;
         }
 
         private static bool MapDcEffect(Wassup.Data.CardEffect eff, out Wassup.Battle.Effects.StatKind stat, out float mult)
@@ -2952,7 +3000,7 @@ namespace Wassup.Bridge
         }
 
         // Applies the pending stone loadout into the same _activeDcEffects registry
-        // ApplyDreamcatcherCard uses, targeting axis=All (every allied defender).
+        // ApplyDreamcatcherCardInternal uses, targeting axis=All (every allied defender).
         // Called only from BeginPlacement, immediately after its clear — see the
         // set-then-apply note on SetDreamstones above.
         private void ApplyPendingDreamstones()
@@ -2967,7 +3015,7 @@ namespace Wassup.Bridge
                 _activeDcEffects.Add(new ActiveDcEffect { axis = Wassup.Data.CardTargetAxis.All, stat = stat, mult = mult, stackId = sid });
                 // No defenders are placed yet at this point in BeginPlacement (_defenderByTile
                 // was just cleared above) — this loop is a no-op today, but sharing it with
-                // ApplyDreamcatcherCard's identical loop is harmless and keeps both call sites
+                // ApplyDreamcatcherCardInternal's identical loop is harmless and keeps both call sites
                 // symmetric if that ever changes. Ordering dependency (review L1): this method
                 // runs before EnsureQueriesAndQueues() further down in BeginPlacement, so
                 // _statModifierQueue is not yet IsCreated here — moving the stone apply to

@@ -72,6 +72,16 @@ namespace Wassup.UI
         private static readonly Color UniqueFrame = new Color(0.42f, 0.30f, 0.08f, 1f);
         private static readonly Color ArtFallbackNormal = new Color(0.22f, 0.28f, 0.44f, 1f);
         private static readonly Color ArtFallbackUnique = new Color(0.55f, 0.40f, 0.14f, 1f);
+        // dreamcatcher-subconscious-unit — 무의식(Subconscious) 등급 전용 프레임(보랏빛
+        // dream 톤). category 우선 > 타입색. category 는 프레임 채색으로만 재활성.
+        private static readonly Color SubconsciousFrame = new Color(0.34f, 0.18f, 0.48f, 1f);
+        private static readonly Color ArtFallbackSubconscious = new Color(0.46f, 0.28f, 0.62f, 1f);
+
+        private static bool IsSubconscious(DreamcatcherCard c) => c != null && c.category == CardCategory.Subconscious;
+        private static Color FrameColorOf(DreamcatcherCard c)
+            => IsSubconscious(c) ? SubconsciousFrame : (c != null && c.type == CardType.Unit ? UniqueFrame : NormalFrame);
+        private static Color ArtFallbackOf(DreamcatcherCard c)
+            => IsSubconscious(c) ? ArtFallbackSubconscious : (c != null && c.type == CardType.Unit ? ArtFallbackUnique : ArtFallbackNormal);
 
         private void OnEnable()
         {
@@ -243,15 +253,13 @@ namespace Wassup.UI
         // dimmed cards (already in the deck) get a translucent dark overlay.
         private void CreateCardView(Transform parent, DreamcatcherCard card, UnityEngine.Events.UnityAction onClick, Vector2 cell, bool dimmed = false)
         {
-            // dreamcatcher-card-taxonomy — frame keys on TYPE (Unit=gold, Squad=blue),
-            // not the retired category grade. category is now dormant on the SO.
-            bool unitType = card != null && card.type == CardType.Unit;
-
+            // dreamcatcher-card-taxonomy — frame keys on TYPE (Unit=gold, Squad=blue).
+            // dreamcatcher-subconscious-unit — 무의식 등급은 타입색보다 우선(보랏빛).
             var go = new GameObject("Card", typeof(RectTransform), typeof(Image), typeof(Button));
             go.transform.SetParent(parent, false);
             var rt = go.GetComponent<RectTransform>();
             rt.sizeDelta = cell;
-            go.GetComponent<Image>().color = unitType ? UniqueFrame : NormalFrame;
+            go.GetComponent<Image>().color = FrameColorOf(card);
             go.GetComponent<Button>().onClick.AddListener(onClick);
 
             var artGo = new GameObject("Art", typeof(RectTransform), typeof(Image));
@@ -272,7 +280,7 @@ namespace Wassup.UI
             else
             {
                 artImg.sprite = null;
-                artImg.color = unitType ? ArtFallbackUnique : ArtFallbackNormal;
+                artImg.color = ArtFallbackOf(card);
             }
 
             if (dimmed)
@@ -312,10 +320,9 @@ namespace Wassup.UI
             EnsurePopup();
             _popupRoot.transform.SetAsLastSibling();
 
-            bool unitType = card.type == CardType.Unit;
             _popupArt.sprite = card.art;
             _popupArt.enabled = card.art != null;
-            _popupArtFallback.color = unitType ? ArtFallbackUnique : ArtFallbackNormal;
+            _popupArtFallback.color = ArtFallbackOf(card); // dreamcatcher-subconscious-unit — 무의식 우선
             _popupArtFallback.enabled = card.art == null;
 
             _popupTitle.text = string.IsNullOrEmpty(card.displayName) ? card.id : card.displayName;
@@ -496,7 +503,18 @@ namespace Wassup.UI
             }
             // dreamcatcher-card-taxonomy — label shows TYPE (Squad/Unit), retired grade.
             string typeLabel = card.type == CardType.Unit ? "<color=#F0B44E>UNIT</color>" : "<color=#9AA6C0>SQUAD</color>";
-            return $"<size=22><color=#F5D480><b>{axis}</b></color>  ·  {typeLabel}</size>\n\n" + string.Join("\n", lines);
+            // dreamcatcher-card-description Unit 1 — header(축·타입) + 자동 수치라인
+            // (effects[], 있을 때만) + authored description(있을 때만). Unit 카드는
+            // effects 가 비어 description 이 유일한 본문이 된다.
+            // axis 칩은 Squad 전용: axis(CardTargetAxis)는 축 스탯 버프의 대상 필터라
+            // Unit 카드(개별 부착, MatchesDcAxis 미소비)에는 의미가 없다 → 타입 라벨만.
+            string header = card.type == CardType.Squad
+                ? $"<color=#F5D480><b>{axis}</b></color>  ·  {typeLabel}"
+                : typeLabel;
+            string body = $"<size=22>{header}</size>";
+            if (lines.Count > 0) body += "\n\n" + string.Join("\n", lines);
+            if (!string.IsNullOrEmpty(card.description)) body += $"\n\n<color=#D4DAE8>{card.description}</color>";
+            return body;
         }
 
         // --- layout helpers --------------------------------------------------

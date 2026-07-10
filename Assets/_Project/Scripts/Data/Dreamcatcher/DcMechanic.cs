@@ -16,7 +16,23 @@ namespace Wassup.Data
     // triggers + AreaBarrage(원격 진앙 TileAoe 폭격)·SelfBlink(자기 순간이동)
     // payloads. 보스/적 능동 스킬 편입 — 정의 계층은 진영을 모른다.
     public enum DcTriggerKind { None, AttackN, OnDamagedN, OnDeath, PeriodicTimer, HealthThreshold }
-    public enum DcPayloadKind { None, ProjectileToTarget, SelfTileAoe, NextAttackDoubleFire, SelfBuffLethal, AreaBarrage, SelfBlink }
+    // dreamcatcher-subconscious-unit — SelfWarmupBuff(7): reserved. 핸들러 미구현
+    // (BattleBridge 분기 유실, spec-review H4) — 어떤 카드도 사용 안 함. append-only 로 잔존.
+    // dreamcatcher-placement-aura — PlacementAura(8): host 부착 스폰 오라. host·기존 유닛
+    // 미적용, host 생존 중 axis 매칭 **신규 배치 유닛**에 magnitude% 공속(매치영구) + duration
+    // 초 warmup idle 부여. host 사망 시 회수(RegisterPlacementAura → RevokeDreamcatcherEffects).
+    public enum DcPayloadKind
+    {
+        None = 0,
+        ProjectileToTarget = 1,
+        SelfTileAoe = 2,
+        NextAttackDoubleFire = 3,
+        SelfBuffLethal = 4,
+        AreaBarrage = 5,
+        SelfBlink = 6,
+        SelfWarmupBuff = 7,
+        PlacementAura = 8,
+    }
 
     [Serializable]
     public struct DcTriggerSpec

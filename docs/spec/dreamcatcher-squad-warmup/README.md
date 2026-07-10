@@ -1,6 +1,8 @@
 # Dreamcatcher Squad Warmup — 배치 워밍업 스쿼드 카드 1종
 
-> 상태: **작성 2026-07-09, 구현 대기**
+> 상태: **완료 2026-07-09** — unit 0 landed(`81733a78`, Play 실증 cooldown 2s→0 · attackSpeedMul 1.5). 배치 워밍업 인프라(`placementWarmupSec` · `_activeWarmups` · `ApplyPlacementWarmup` · `BeginPlacement` clear) 구축.
+>
+> **계보 주의**: 이 spec 이 만든 "느린 각성" 카드의 *형태*는 이후 재설계됨 — `dreamcatcher-subconscious-unit`(Unit 부착) → `dreamcatcher-placement-aura`(스폰 오라, kind 6). 그러나 여기서 만든 **워밍업 인프라는 그대로 살아있고 placement-aura 가 재사용**(`RegisterPlacementAura` → `_activeWarmups.Add`). spec 작업 자체는 완료, 카드 최종 형태만 후속에서 진화.
 
 ## 목표
 
