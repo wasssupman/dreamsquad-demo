@@ -23,11 +23,19 @@ namespace Wassup.Data.StatImport
         // Both requests run concurrently (they are independent); onDone fires on
         // the main thread once both complete, so the join counter needs no lock.
         public static void FetchBoth(string urlA, string urlB, Action<Result, Result> onDone)
+            => FetchAll(new[] { urlA, urlB }, r => onDone(r[0], r[1]));
+
+        // dreamcatcher-sheet-sync unit 3 — N-tab generalization of FetchBoth
+        // (dreamcatcher pulls 6 tabs). Same main-thread join, no lock needed.
+        public static void FetchAll(string[] urls, Action<Result[]> onDone)
         {
-            var results = new Result[2];
-            int remaining = 2;
-            Fetch(urlA, r => { results[0] = r; if (--remaining == 0) onDone(results[0], results[1]); });
-            Fetch(urlB, r => { results[1] = r; if (--remaining == 0) onDone(results[0], results[1]); });
+            var results = new Result[urls.Length];
+            int remaining = urls.Length;
+            for (int i = 0; i < urls.Length; i++)
+            {
+                int slot = i;
+                Fetch(urls[slot], r => { results[slot] = r; if (--remaining == 0) onDone(results); });
+            }
         }
 
         public static void Fetch(string url, Action<Result> onDone)

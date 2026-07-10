@@ -38,6 +38,10 @@ namespace Wassup.Data.StatImport
 
             foreach (var dtoField in dto.GetType().GetFields(PublicInstance))
             {
+                // dreamcatcher-sheet-sync unit 3 — `_`-prefixed fields are the
+                // informational sheet columns (out of contract): export fills them
+                // by hand, reflection must never look for an SO counterpart.
+                if (dtoField.Name.StartsWith("_")) continue;
                 if (ExportSkippedFields.Contains(dtoField.Name)) continue;
 
                 var soField = so.GetType().GetField(dtoField.Name, PublicInstance);
@@ -67,6 +71,7 @@ namespace Wassup.Data.StatImport
 
             foreach (var dtoField in dto.GetType().GetFields(PublicInstance))
             {
+                if (dtoField.Name.StartsWith("_")) continue; // `_` columns: out of contract
                 if (NonReflectedFields.Contains(dtoField.Name)) continue;
 
                 object dtoValue = dtoField.GetValue(dto);
