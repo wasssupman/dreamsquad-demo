@@ -74,3 +74,4 @@ MonoBehaviour:
     color: {r: 0.04, g: 0.13, b: 0.1, a: 1}
   visualOffset: {x: 0, y: 0, z: 0}
   awakeningReward: 2
+  nightmareMechanics: []

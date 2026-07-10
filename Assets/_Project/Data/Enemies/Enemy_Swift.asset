@@ -66,3 +66,5 @@ MonoBehaviour:
   - slotName: helmet_hair
     color: {r: 0.15, g: 0.08, b: 0.04, a: 1}
   visualOffset: {x: 0, y: 0, z: 0}
+  awakeningReward: 1
+  nightmareMechanics: []

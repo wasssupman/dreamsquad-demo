@@ -50,3 +50,4 @@ MonoBehaviour:
   slotColors: []
   visualOffset: {x: 0, y: 0, z: 0}
   awakeningReward: 3
+  nightmareMechanics: []

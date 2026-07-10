@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DefenderUnitData
   id: scout
   role: 1
-  displayName: 스카우트
+  displayName: "\uC2A4\uCE74\uC6B0\uD2B8"
   health: 300
   attackRange: 2
   attackCooldown: 2
@@ -50,7 +50,6 @@ MonoBehaviour:
   rarity: 0
   portrait: {fileID: 21300000, guid: ba18d9bb3969e494db1ec70dc611347c, type: 3}
   aggroCapacity: 0
-  aggroRange: 0
   skeletonDataAsset: {fileID: 11400000, guid: ee98f82138b60430f97c6863317c3a2f, type: 2}
   spineSkinName: full_skins
   idleAnimation: Idle
@@ -82,3 +81,4 @@ MonoBehaviour:
   castAnchorLocalOffset: {x: 0.5, y: 1, z: 0}
   deploymentDuration: 0.45
   placementSkillDelay: 0
+  awakeningReward: 4
