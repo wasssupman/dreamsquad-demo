@@ -128,7 +128,7 @@ namespace Wassup.UI
         {
             if (_pendingSlot != null) _pendingSlot.CancelPending();
             foreach (var slot in _slots)
-                if (slot.dragSlot != null && slot.dragSlot.IsDragging)
+                if (slot.dragSlot != null && (slot.dragSlot.IsDragging || slot.dragSlot.IsPortalAiming))
                     slot.dragSlot.CancelDrag();
         }
 
@@ -138,6 +138,8 @@ namespace Wassup.UI
         {
             if (State != HandState.Hand || Transitioning) return false;
             if (_pendingSlot != null) return false; // one interaction at a time
+            foreach (var s in _slots) // portal two-tap in flight blocks new drags too
+                if (s.dragSlot != null && s.dragSlot.IsPortalAiming) return false;
             if (index < 0 || index >= _slots.Count) return false;
             var slot = _slots[index];
             return slot.entryId >= 0 && slot.usable;

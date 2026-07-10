@@ -26,11 +26,17 @@ namespace Wassup.UI
         private bool _dragging;
         private bool _pending;
         private Coroutine _pendingCo;
-        private Vector2Int? _hoverCell; // highlighted defender cell (Unit type)
+        private Vector2Int? _hoverCell; // highlighted defender cell (Unit/Active-defender)
         private Entity _hoverEntity = Entity.Null;
+        // unit 8 — Active aim state. _activeAiming mirrors GameManager.IsAiming
+        // (critic M1: PlacementInput mutual exclusion, old SkillBar lifecycle).
+        private bool _activeAiming;
+        private Vector2Int? _portalEntryCell;          // Portal two-tap: entry captured
+        private Vector2Int _lastRangeCell = new(-1, -1); // aim range preview cache
 
         public bool IsPending => _pending;
         public bool IsDragging => _dragging;
+        public bool IsPortalAiming => _portalEntryCell.HasValue;
 
         public void Bind(DreamcatcherHandView view, int index)
         {
@@ -44,13 +50,20 @@ namespace Wassup.UI
 
         public void OnBeginDrag(PointerEventData eventData)
         {
-            if (_view == null || _pending || !_view.CanStartDrag(_index)) return;
+            if (_view == null || _pending || _portalEntryCell.HasValue || !_view.CanStartDrag(_index)) return;
             var slot = Slot;
-            // Active cards use the aim flow (unit 8) — blocked here for now.
-            if (slot.card != null && slot.card.type == CardType.Active) return;
 
             _dragging = true;
             slot.rect.SetAsLastSibling(); // float above sibling cards
+
+            // unit 8 (M1) — Active aim mirrors the old SkillBar lifecycle:
+            // IsAiming gates PlacementInput while the card aims at the field.
+            if (slot.card != null && slot.card.type == CardType.Active && GameManager.Instance != null)
+            {
+                _activeAiming = true;
+                GameManager.Instance.IsAiming = true;
+                GameManager.Instance.SelectedDefender = null; // last-pressed-wins
+            }
             UpdateDragVisual(eventData.position);
         }
 
@@ -58,8 +71,20 @@ namespace Wassup.UI
         {
             if (!_dragging) return;
             UpdateDragVisual(eventData.position);
-            if (Slot.card != null && Slot.card.type == CardType.Unit)
-                UpdateUnitHover(eventData.position);
+            var card = Slot.card;
+            if (card == null) return;
+            switch (card.type)
+            {
+                case CardType.Unit:
+                    UpdateUnitHover(eventData.position);
+                    break;
+                case CardType.Active when card.skill != null:
+                    if (card.skill.target == SkillTargetType.DefenderUnit)
+                        UpdateUnitHover(eventData.position);
+                    else if (card.skill.effect != SkillEffectType.Portal)
+                        UpdateAimRange(eventData.position, card.skill); // SkillBar range-preview reuse
+                    break;
+            }
         }
 
         public void OnEndDrag(PointerEventData eventData)
@@ -94,9 +119,94 @@ namespace Wassup.UI
                     StartPending(() => _view.Controller.CommitSquad(slot.entryId));
                     break;
 
+                case CardType.Active:
+                    EndActiveDrag(eventData.position, slot);
+                    break;
+
                 default:
                     CancelDrag();
                     break;
+            }
+        }
+
+        // unit 8 — Active touchup routes by the wrapped skill's target type.
+        private void EndActiveDrag(Vector2 screenPos, DreamcatcherHandView.CardSlot slot)
+        {
+            var skill = slot.card.skill;
+            if (skill == null) { CancelDrag(); return; }
+
+            if (skill.target == SkillTargetType.DefenderUnit)
+            {
+                UpdateUnitHover(screenPos);
+                if (_hoverCell.HasValue)
+                {
+                    var cell = _hoverCell.Value;
+                    StartPending(() => _view.Controller.CommitActiveDefender(slot.entryId, cell));
+                }
+                else CancelDrag();
+                return;
+            }
+
+            if (!TryScreenToCell(screenPos, out var tile)) { CancelDrag(); return; }
+
+            if (skill.effect == SkillEffectType.Portal)
+            {
+                // Two-tap (old SkillBar state machine): touchup = entry tile,
+                // the NEXT field tap picks the exit and starts the pending.
+                // IsAiming stays true throughout; hand-area tap / ESC cancels.
+                _portalEntryCell = tile;
+                return;
+            }
+
+            ClearAimRange();
+            StartPending(() => _view.Controller.CommitActiveTile(slot.entryId, tile));
+        }
+
+        // Portal second tap — polled like the old SkillBar aim loop.
+        private void Update()
+        {
+            if (!_portalEntryCell.HasValue) return;
+            var pointer = UnityEngine.InputSystem.Pointer.current;
+            if (pointer == null || !pointer.press.wasPressedThisFrame) return;
+            var pos = pointer.position.ReadValue();
+
+            bool insideHand = _view.HandPanelRect != null && RectTransformUtility
+                .RectangleContainsScreenPoint(_view.HandPanelRect, pos, null);
+            if (insideHand || !TryScreenToCell(pos, out var exitTile))
+            {
+                CancelDrag(); // hand-area tap or off-board = cancel, no spend
+                return;
+            }
+
+            var entry = _portalEntryCell.Value;
+            var slot = Slot;
+            _portalEntryCell = null;
+            StartPending(() => _view.Controller.CommitActivePortal(slot.entryId, entry, exitTile));
+        }
+
+        private void UpdateAimRange(Vector2 screenPos, SkillData skill)
+        {
+            if (!TryScreenToCell(screenPos, out var cell)) return;
+            if (cell == _lastRangeCell) return;
+            _lastRangeCell = cell;
+            _view.Bridge.SetSkillAimRange(cell, skill);
+        }
+
+        private void ClearAimRange()
+        {
+            if (_lastRangeCell.x >= 0 && _view != null && _view.Bridge != null)
+                _view.Bridge.ClearSkillAimRange();
+            _lastRangeCell = new Vector2Int(-1, -1);
+        }
+
+        private void EndActiveAim()
+        {
+            ClearAimRange();
+            _portalEntryCell = null;
+            if (_activeAiming)
+            {
+                _activeAiming = false;
+                if (GameManager.Instance != null) GameManager.Instance.IsAiming = false;
             }
         }
 
@@ -193,6 +303,7 @@ namespace Wassup.UI
             var slot = Slot;
             if (slot.pendingFill != null) slot.pendingFill.gameObject.SetActive(false);
             ClearHover();
+            EndActiveAim(); // unit 8 — aim/IsAiming end with the pending outcome
             // On commit the controller fires HandChanged(Used) → the view
             // refreshes (slot homes restored) and auto-closes. On cancel/failure
             // just put the card back.
@@ -205,6 +316,7 @@ namespace Wassup.UI
             if (_pending) { CancelPending(); return; }
             _dragging = false;
             ClearHover();
+            EndActiveAim(); // covers portal-mode cancel too
             _view.RestoreSlotHome(_index);
         }
 
@@ -230,6 +342,7 @@ namespace Wassup.UI
             }
             _dragging = false;
             ClearHover();
+            EndActiveAim();
         }
     }
 }
