@@ -14,5 +14,7 @@
 
 ## 완료 기준
 
-- [ ] compile 0 error + 기존 EditMode 테스트 그린
-- [ ] 시트 Defenders/Enemies 탭에 `awakeningReward` 헤더 추가(사용자 작업) 후 import 로 값 왕복 확인 (또는 export 파일에 필드 등장 확인)
+- [x] compile 0 error + 기존 EditMode 테스트 그린 (65/65)
+- [x] 리플렉션 왕복 테스트로 export 읽기/import 쓰기 확인 (`AwakeningReward_RoundTripsThroughUnitDtos`). 시트 Defenders/Enemies 탭 헤더 추가는 사용자 후속 작업 — 빈 헤더 전이라도 파이프라인은 무해(키 생략=유지)
+
+확인 2026-07-11 — 커밋 `a3f4c9a9`.

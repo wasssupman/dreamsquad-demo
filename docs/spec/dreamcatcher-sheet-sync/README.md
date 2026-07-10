@@ -1,6 +1,6 @@
 # Dreamcatcher Sheet Sync — 드림캐쳐 카드/효과/설정 스프레드시트 관리
 
-> 상태: 설계 초안 2026-07-10 (사용자 승인 대기)
+> 상태: **완료 2026-07-11** — 실 구글 시트 왕복 검증 포함 (no-op IDENTICAL + farewell 밸런스 반영). units 0~1 `1eed2ee0` · 2 `e338c7da` · 3 `2608c179` · 4 `a3f4c9a9`. 인계는 `5_handoff_summary.md`.
 > 선행: `unit-stat-spreadsheet-schema` (완료) — API 계약·fetch/parse/apply 코어를 그대로 재사용한다.
 
 ## 목표

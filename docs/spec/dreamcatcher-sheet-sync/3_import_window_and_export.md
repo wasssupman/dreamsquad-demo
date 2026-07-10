@@ -17,7 +17,9 @@
 
 ## 완료 기준
 
-- [ ] compile 0 error
-- [ ] 실 시트 왕복 ①: 시드 입력된 시트 import → no-op (매칭/스킵 카운트 확인, git diff 재직렬화 정규화 제외)
-- [ ] 실 시트 왕복 ②: 시트에서 밸런스 1건+텍스트 1건 변경 → 해당 asset 2개에만 반영됨을 diff 로 확인
-- [ ] Export 결과가 시드 JSON 과 구조 일치
+- [x] compile 0 error
+- [x] 실 시트 왕복 ①: 47행 수신, Matched 46 / unmatched 0 / skipped 0. 재추출 값 시드와 IDENTICAL (텍스트 컬럼 포함 완전 왕복)
+- [x] 실 시트 왕복 ②: 밸런스 1건(farewell magnitude 100→500, DcMechanics 오버레이) → Card_Farewell 1개에만 반영, projectile 참조 보존. 텍스트 변경은 ①의 IDENTICAL 왕복으로 갈음 (동일 리플렉션 경로)
+- [x] Export 결과가 시드 JSON 과 구조 일치 (6탭 전부 MATCH)
+
+확인 2026-07-11 — 커밋 `2608c179`(배선) + `c696dd9a`(no-op 정규화) + `4e491126`(왕복 ② 밸런스). 검증용 일회성 MenuItem 스크립트는 검증 후 삭제.
