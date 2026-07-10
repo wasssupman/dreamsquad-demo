@@ -34,12 +34,15 @@
 - code-reviewer + ecs-reviewer 병렬. **양측 APPROVE** (CRITICAL/HIGH 0).
 - ECS PASS: 맥락 경계(RegisterPlacementAura=Mono List, 효과는 EnqueueStatModifier 큐 경유, BattleBridge 유일 게이트웨이) /
   레지스트리 lifecycle(BeginPlacement clear) / 회수 정확성(additive 0.5→0.0 동일 merge key) / Burst 무관.
-- **반영된 수정**: M1(다중 PlacementAura 핸들 누수 → 2번째 오라 스킵 가드) · L1(`_dcHandleCounter` monotonic 주석) ·
-  LOW1(테스트 warmup 을 자연 배치 쿨다운 baseline 과 분리) · test-gap(회수 후 신규 배치 미부여 assert 추가).
+- **반영된 수정**: M1(다중 PlacementAura 핸들 누수 → 2번째 오라 스킵 가드) · M2(컨트롤러 배선 통합 테스트) ·
+  L1(`_dcHandleCounter` monotonic 주석) · LOW1(테스트 warmup 을 자연 배치 쿨다운 baseline 과 분리) ·
+  test-gap(회수 후 신규 배치 미부여 assert 추가).
+- **M2 종결**: `PlacementAuraTest.Aura_RevokedWhenHostDies_ViaController` — 실제 `CommitUnit` → `_attachedTo`
+  handle(>0) 저장 → `OnDefenderDied` revoke 라우팅을 구동해 검증. 물리적 사망 발화(DrainDefenderDeathEvents
+  → DefenderDied)는 Squad unit 9 공유 기존 경로라 컨트롤러 핸들러 직접 구동으로 신규 plumbing 만 커버.
+- 검증(리뷰 반영 후): PlayMode **11/11**(PlacementAura 3 + 회귀 8) · EditMode 15/15.
 
 ## Follow-up
-- **M2(미해결)**: host **실제 사망** → 컨트롤러 `OnDefenderDied` → revoke 경로의 아우라 PlayMode 통합 테스트.
-  현재는 브릿지 `RevokeDreamcatcherEffects` 직접 호출로 계약 검증(컨트롤러 배선은 Squad unit 9 와 공유·기존). 딜 데미지·죽음 이벤트 구동 하네스 필요.
 - 다른 스폰-오라 카드 일반화(디버프는 H3 선행).
 - SelfWarmupBuff(5) reserved 값 정리 여부.
 - 무의식 프레임 인게임 손패 확대.

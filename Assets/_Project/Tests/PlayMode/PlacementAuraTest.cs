@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
@@ -135,7 +136,85 @@ namespace Wassup.Tests.PlayMode
             Assert.AreEqual(1.5f, GetStat(bridge, em, "guardian").attackSpeedMul, 0.01f, "매칭(guardian) 부여");
         }
 
+        // 컨트롤러 배선 통합(review M2): 실제 CommitUnit → _attachedTo(handle 저장) →
+        // OnDefenderDied(handle>0 라우팅) → RevokeDreamcatcherEffects. 물리적 사망 발화
+        // (DrainDefenderDeathEvents → DefenderDied)는 기존/Squad unit 9 공유 경로라 여기선
+        // 컨트롤러 핸들러를 직접 구동해 신규 plumbing(핸들 저장·라우팅)만 검증한다.
+        [UnityTest]
+        public IEnumerator Aura_RevokedWhenHostDies_ViaController()
+        {
+            LogAssert.ignoreFailingMessages = true;
+            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            for (int i = 0; i < 6; i++) yield return null;
+
+            var bridge = Object.FindObjectOfType<BattleBridge>();
+            NeutralizeSceneController();
+            var cat = FindCatalog();
+            var host = cat.ById("fire_caster");
+            var future = cat.ById("scout");
+
+            bridge.SetDefenderPool(new[] { host, future });
+            bridge.BeginPlacement();
+            var gm = Object.FindObjectOfType<GameManager>();
+            gm.CostRuntime.ResetToStart();
+            gm.CostRuntime.AddCost(1000);
+            yield return null;
+
+            Assert.IsTrue(PlaceFirstValid(bridge, host), "place host");
+            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+            var hostEntity = GetEntity(bridge, em, "fire_caster");
+
+            // 실제 컨트롤러 구성(비활성 → 필드 주입 → 활성). Placement 재진입은 유발하지 않는다
+            // (OnPhaseChanged 가 _deck 를 재빌드하므로). gauge 0 >= costUnit 0 로 사용 가능.
+            var cfg = ScriptableObject.CreateInstance<AwakeningConfig>();
+            cfg.costUnit = 0; cfg.handSize = 5; cfg.maxAttachPerUnit = 3;
+            var deck = new DreamcatcherCycleDeck(new List<DreamcatcherCard> { MakeAuraCard(CardTargetAxis.All, 50f, 2f) }, 0);
+
+            var go = new GameObject("HandController_Test");
+            go.SetActive(false);
+            var ctrl = go.AddComponent<DreamcatcherHandController>();
+            SetField(ctrl, "bridge", bridge);
+            SetField(ctrl, "config", cfg);
+            SetField(ctrl, "_deck", deck);
+            go.SetActive(true);
+
+            int entryId = deck.Hand(5)[0].entryId;
+            Assert.IsTrue(ctrl.CommitUnit(entryId, hostEntity), "CommitUnit(오라, host) 성공");
+            Assert.Greater(GetAttachedHandle(ctrl, entryId), 0, "회수핸들(>0)이 _attachedTo 에 저장됨");
+
+            Assert.IsTrue(PlaceFirstValid(bridge, future), "place future unit");
+            for (int i = 0; i < 3; i++) yield return null;
+            Assert.AreEqual(1.5f, GetStat(bridge, em, "scout").attackSpeedMul, 0.01f, "CommitUnit 경로 오라가 신규 배치 부여");
+
+            // host 사망 → 컨트롤러가 handle>0 을 revoke 로 라우팅.
+            InvokeOnDefenderDied(ctrl, hostEntity, host);
+            for (int i = 0; i < 3; i++) yield return null;
+            Assert.AreEqual(1.0f, GetStat(bridge, em, "scout").attackSpeedMul, 0.01f, "host 사망 시 컨트롤러 revoke → 원복");
+
+            Object.Destroy(go);
+        }
+
         // ── helpers ──────────────────────────────────────────────────────────
+
+        private static void SetField(object obj, string name, object value)
+        {
+            obj.GetType().GetField(name, BindingFlags.NonPublic | BindingFlags.Instance).SetValue(obj, value);
+        }
+
+        private static int GetAttachedHandle(DreamcatcherHandController ctrl, int entryId)
+        {
+            var f = typeof(DreamcatcherHandController).GetField("_attachedTo", BindingFlags.NonPublic | BindingFlags.Instance);
+            var dict = (System.Collections.IDictionary)f.GetValue(ctrl);
+            if (!dict.Contains(entryId)) return 0;
+            var val = dict[entryId];
+            return (int)val.GetType().GetField("Item2").GetValue(val);
+        }
+
+        private static void InvokeOnDefenderDied(DreamcatcherHandController ctrl, Entity host, DefenderUnitData data)
+        {
+            var m = typeof(DreamcatcherHandController).GetMethod("OnDefenderDied", BindingFlags.NonPublic | BindingFlags.Instance);
+            m.Invoke(ctrl, new object[] { host, data });
+        }
 
         private static DreamcatcherCard MakeAuraCard(CardTargetAxis axis, float asPct, float warmupSec)
         {
