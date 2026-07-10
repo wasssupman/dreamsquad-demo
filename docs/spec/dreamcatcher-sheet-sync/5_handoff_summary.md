@@ -41,7 +41,13 @@
 - 하드코딩 감사 결과 현행 awakening hand 경로는 클린. dormant 3중1 경로(`DreamcatcherController`) 의 `%5`/`Draw3` 는 레거시라 미시트화.
 - 검증용 일회성 MenuItem(`DcSheetSyncOneShot`) 은 unityMCP execute_code 고장 우회 패턴 — 재검증 필요 시 동일 패턴으로 재작성.
 
+## Incident (2026-07-11, 종결)
+
+- 유닛 시트가 7/6 동기화 이후의 Unity 측 변경(한글 displayName, 밸런스, Enemy_Boss_Nightmare 추가)을 모르는 stale 상태에서 import → 25에셋이 구값으로 덮임. **git restore 로 전량 원복** 후 현재 SO export 로 시트 재시드, 재임포트 26유닛 semantic diff 0 확증 (`52429f54`).
+- 교훈: SO 를 Unity 에서 고치면 즉시 Export 재시드. 방어책으로 dry-run diff 프리뷰(백로그) 우선순위 상향 권고.
+
 ## Follow-up
 
-- 시트 Defenders/Enemies 탭에 `awakeningReward` 헤더 추가 (사용자, 무해한 대기 상태)
+- **Import dry-run diff 프리뷰** [M] · 적용 전 "변경될 에셋/필드 목록" 표시 후 확인. staleness 사고의 구조적 방어 — 우선 추진 권고.
+- ~~시트 Defenders/Enemies 탭에 `awakeningReward` 헤더 추가~~ 완료 2026-07-11 (값 왕복 확인)
 - README 후속 후보: Dreamstones 탭 [S] · 런타임 리프레시 DC 확장 [M] · 드캐 외 하드코딩 밸런스(SynergyPerNeighbor 등) [S] · 기본 덱 id 리스트 노출 [S] · 시트發 카드 upsert [M]
