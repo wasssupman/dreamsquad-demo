@@ -32,7 +32,7 @@ skeleton.timeScale = battleScale × walkFactor    // 기존 time-manager 동기�
 2. **battleScale 과 합성.** 최종 `timeScale = battleScale × walkFactor`. battleScale(슬로우모/정지)은 여전히 `SpineUnitPool` 이 `ScaleChanged` 로 fan-out; 뷰가 이 값을 캐시해 매 프레임 walkFactor 와 곱한다. 정지(battleScale=0)는 그대로 프리즈.
 3. **sim-time 정규화.** simSpeed = disp / (realDt × battleScale) → 고유 속도만 반영해 슬로우모 이중감산 방지. simDt≤eps 프레임은 측정 스킵(직전 smoothed 유지).
 4. **텔레포트 가드.** 한 프레임 view 변위가 `teleportGuard` 초과면 측정 스킵(포탈 점프가 애니를 튀게 하지 않음).
-5. **정지 바닥값.** standoff 등 변위 0 → walkFactor 는 `minTimeScale` 로 클램프. minTimeScale 0 은 완전 프리즈, >0 은 미세 idle. 기본값은 튜닝으로 확정.
+5. **정지 바닥값.** ~~standoff 등 변위 0 → walkFactor 는 `minTimeScale` 로 클램프~~ → **⚠ unit 4 계약 11 로 정정됨(2026-07-11).** `minTimeScale` 은 느린 **이동**의 하한이지 **정지 유닛에 쓰는 값이 아니다** — 원 설계가 "정지"와 "느린 이동"을 혼동해 정지 유닛 idle 을 0.15x 슬로모로 재생하던 결함(사용자 실플레이 지적 "모두 슬로우모션"). 정정: 걷기 배율은 **이동 중(`_moving`)일 때만** 적용, 정지 유닛은 factor 1(자연속도). 상세 = `4_locomotion_walk_idle_switch.md` 계약 11. minTimeScale 은 이제 느린-이동 walk 의 하한으로만 유효.
 5b. **로코모션 루프에만 적용.** `timeScale` 은 Spine 트랙 전역 배율이라 걷기 배율을 그대로 곱하면 공격/사망/배치 애니까지 느려진다(정지 유닛의 walkFactor→minTimeScale 회귀). 따라서 walkFactor 는 **track0 현재 애니가 루프(걷기/idle)일 때만** 적용하고, 원샷(loop=false: 공격/사망/배치)에는 배율 1(=battleScale 만). 원샷 시작 시(`PlayAttack`/`PlayDeploy`/`Kill`) 즉시 재평가해 첫 프레임부터 정상속도.
 6. **하드코딩 금지.** refSpeed / minTimeScale / maxTimeScale / smoothing / teleportGuard 는 `WalkAnimSpeedStyle` SO 에서. BattleBridge 정적 미러로 뷰에 주입(기존 `CharacterVisualScale` 등과 동일 패턴). SO 미할당 시 배율 1.0 고정(현행 동작 = 회귀 없음).
 7. **디펜더 무영향.** 디펜더는 타일 고정(이동 없음) → 변위≈0. 배치 스킬/공격 애니는 명시 `SetAnimation` 경로라 timeScale 변조와 독립. 필요 시 디펜더는 refSpeed 게이트로 자연 제외.

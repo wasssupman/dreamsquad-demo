@@ -55,8 +55,13 @@ namespace Wassup.Battle.Movement
             // aliasing 안 함(ComponentLookup<LocalTransform> 은 RW 와 alias → 금지).
             var huntTargetLookup = SystemAPI.GetComponentLookup<HuntTarget>(isReadOnly: true);
             var defenderPos = new NativeHashMap<Entity, float3>(32, Allocator.Temp);
+            // WithNone<DeadTag> — FSM 후보 쿼리(EnemyAiStateSystem)와 대칭. 죽은 방어유닛을
+            // 추격 anchor 로 잡지 않는다(HuntTarget 은 FSM 이 이미 dead 를 거르지만 대칭 유지).
             foreach (var (dTransform, dEntity) in
-                     SystemAPI.Query<RefRO<LocalTransform>>().WithAll<Wassup.Battle.Units.DefenderUnitTag>().WithEntityAccess())
+                     SystemAPI.Query<RefRO<LocalTransform>>()
+                              .WithAll<Wassup.Battle.Units.DefenderUnitTag>()
+                              .WithNone<Wassup.Battle.Units.DeadTag>()
+                              .WithEntityAccess())
                 defenderPos[dEntity] = dTransform.ValueRO.Position;
 
             foreach (var (transform, follow, entity) in
@@ -97,42 +102,27 @@ namespace Wassup.Battle.Movement
 
                     if (hasAnchor)
                     {
-                        float3 to = anchor - current; to.y = 0f;
-                        float dist = math.length(to);
-                        if (dist > 1e-4f)
+                        int2 chaseCell = GridMath.WorldToCell(current, field.tileSize, field.gridSize, origin: field.origin);
+                        float chaseSpeedMul = modifierStatsLookup.HasComponent(entity)
+                            ? modifierStatsLookup[entity].moveSpeedMul : 1f;
+                        float step = follow.ValueRO.speed * chaseSpeedMul * dt;
+                        // 직선 추격 + 벽 축분리 슬라이드(순수함수, EditMode 고정).
+                        float3 moved = MovementChase.SlideStep(
+                            current, anchor, step, chaseCell, in field, hasObstacles, in obstacleSingleton);
+                        // softlock 가드(critic): 진행하면 Chasing 유지(continue). fully-boxed
+                        // (moved==current, concave/양축 벽)면 continue 하지 않고 아래 flow-march 로
+                        // 폴백 → 영구 freeze 대신 goal 로 전진(교전도 leak 도 못 하는 wave-stall 방지).
+                        if (math.distancesq(moved, current) > 1e-8f)
                         {
-                            int2 chaseCell = GridMath.WorldToCell(current, field.tileSize, field.gridSize, origin: field.origin);
-                            float chaseSpeedMul = modifierStatsLookup.HasComponent(entity)
-                                ? modifierStatsLookup[entity].moveSpeedMul : 1f;
-                            float step = follow.ValueRO.speed * chaseSpeedMul * dt;
-                            float3 chaseDir = to / dist;
-                            float3 full = (step >= dist)
-                                ? new float3(anchor.x, current.y, anchor.z)
-                                : current + chaseDir * step;
-                            float3 moved = MovementCellTrim.Apply(full, chaseCell, in field, hasObstacles, in obstacleSingleton);
-                            // enemy-hunter-targeting rev — 직선 스텝이 벽에 막혀 clamp 되면(오프패스
-                            // 수비유닛을 향한 대각선이 즉시 벽) 축 분리 슬라이드: x만/z만 시도해 벽을
-                            // 타고 접근한다. 이게 없으면 경로(walk 레인) 밖 수비유닛을 향해 스폰에
-                            // 즉시 고착된다(단일 레인 맵의 spawn-freeze 버그). 둘 다 막히면 제자리.
-                            if (math.distancesq(moved, full) > 1e-8f)
-                            {
-                                float3 xTry = new float3(current.x + chaseDir.x * step, current.y, current.z);
-                                float3 xMoved = MovementCellTrim.Apply(xTry, chaseCell, in field, hasObstacles, in obstacleSingleton);
-                                if (math.distancesq(xMoved, xTry) <= 1e-8f)
-                                {
-                                    moved = xMoved;
-                                }
-                                else
-                                {
-                                    float3 zTry = new float3(current.x, current.y, current.z + chaseDir.z * step);
-                                    float3 zMoved = MovementCellTrim.Apply(zTry, chaseCell, in field, hasObstacles, in obstacleSingleton);
-                                    if (math.distancesq(zMoved, zTry) <= 1e-8f) moved = zMoved;
-                                }
-                            }
                             transform.ValueRW.Position = moved;
+                            continue; // 추격 진행 — flow/portal/goal 스킵
                         }
+                        // else: fully-boxed → fall through to flow-march
                     }
-                    continue; // chasing: skip flow/portal/tornado/goal (anchor 없으면 정지)
+                    else
+                    {
+                        continue; // anchor 없음(타겟 소멸) — 이 프레임 정지, 다음 틱 FSM 재선정
+                    }
                 }
 
                 // 1. Portal entry: 내부에 있으면 exit 으로 텔레포트. exitWaypointIndex 제거됨 —
