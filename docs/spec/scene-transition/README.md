@@ -1,6 +1,6 @@
 # Spec — Scene Transition (씬 전환 연출)
 
-> 상태: units 0~2 **완료 2026-07-10** (280a10e9 / 3fb2c685 / cae9c51a, 인계 `3_handoff_summary.md`). **unit 4 진행 중** — 로딩 화면을 스쿼드 3인 러닝으로 교체(`4_squad-loading-runners.md`).
+> 상태: **완료 2026-07-10** — units 0~2 (280a10e9 / 3fb2c685 / cae9c51a) + unit 4 로딩 화면 스쿼드 3인 러닝 교체(ce623932, 사용자 Play 확인). 인계 `3_handoff_summary.md`.
 
 ## 한 줄
 

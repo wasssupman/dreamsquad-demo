@@ -53,6 +53,8 @@
 
 **검증 2026-07-10**: compile 0 에러, 프리팹 force 임포트 0 에러(한글 TMP YAML 정상), 계층 구조 확인(`get_hierarchy` — LoadingRunners/{Runner0,Runner1,Runner2,LoadingCaption}), `SceneTransitionSmokeTest` 2회 통과(프리팹 인스턴스화 + `ConfigureRunners` 폴백 경로 무에러). 라이브 오버레이 픽셀은 에디터 툴링으로 캡처 불가(Screen Space Overlay + 에디트모드 SkeletonGraphic 한계, uGUI 버튼 클릭 무스크립트) — **대형/캡션 위치 육안 확정은 Play 확인 필요**.
 
+**사용자 Play 확인 2026-07-10 (커밋 `ce623932`)**: 로비↔배틀 전환 시 확정 스쿼드 러너 대형·한글 캡션 정상. unit 4 및 scene-transition spec 전체 완료 마감.
+
 ## 후속 후보
 
 - **대형/좌우 반전 authoring variant**: 방향별(로비→배틀 vs 배틀→로비) 러닝 대형 차별화.
