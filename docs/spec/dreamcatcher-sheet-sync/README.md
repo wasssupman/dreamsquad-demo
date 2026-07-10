@@ -23,6 +23,7 @@
 | 3 | 구현 | `3_import_window_and_export.md` | Import 창 Dreamcatcher 섹션 (6탭 fetch→apply) + SO→JSON export + 실 왕복 검증 |
 | 4 | 구현 | `4_unit_sheet_awakening_reward.md` | 기존 Defenders/Enemies 탭에 `awakeningReward` 컬럼 (하드코딩 감사 결과 반영) |
 | 5 | 인계 | `5_handoff_summary.md` | (종료 시) |
+| 6 | 구현 | `6_review_fixes.md` | 3관점 리뷰(아키텍트/코드/프로세스) 반영 — H1/H2/M2 버그 + 무음 실패 방어 |
 
 ## Feature-wide 계약
 
@@ -34,6 +35,13 @@
 - **텍스트도 시트 관리**: displayName/description 은 기획 조작 대상 (현 에셋의 한글 오타도 시트에서 수정).
 - **코어 재사용**: `SheetFetcher`/`SheetEnvelopeParser`/`UnitStatApplier.BuildIndex` 공유. 규칙 분기 금지.
 
+## 운영 규칙 (2026-07-11 리뷰 확정)
+
+1. **Import 직전에 대상 Data 폴더를 커밋해 둔다** — import 결과가 리뷰 가능한 diff 가 되고, 사고 시 `git restore` 한 방으로 복구된다 (staleness 사고의 실제 복구 경로).
+2. **Import 결과는 Data 4폴더(Defenders/Enemies/Dreamcatcher/Skills) 전부 포함해 단일 커밋** — 절반 커밋은 정합성 깨진 스냅샷을 남긴다.
+3. **Unity 에서 SO 를 고치면 즉시 Export 로 시트에 되올린다** — 시트가 낡으면 다음 import 가 조용한 롤백이 된다.
+4. import 로그의 "headers not in contract" 경고는 컬럼 rename 사고 신호다 — 보이면 시트 헤더를 먼저 확인.
+
 ## 하드코딩 감사 결과 (2026-07-10)
 
 - **현행 awakening hand 경로는 클린** — 밸런스 수치 전부 `AwakeningConfig`/카드 SO 소재. 리팩토링 불요.
@@ -43,6 +51,10 @@
 
 ## 후속 후보
 
+- **Import dry-run diff 프리뷰** [M] · 적용 전 "변경될 에셋/필드 목록" 표시 후 확인. staleness·무음실패의 구조적 마감 — 3관점 리뷰 공통 최우선 권고 (2026-07-11).
+- **탭 배선 매핑 테이블화** [S] · `ApplyDcFetched` 의 위치기반 `r[0..5]` → 탭명↔DTO 매핑. 7번째 탭 추가 시점에.
+- **`RebuildEffects`/`RebuildAttackMods` 병합** [M] · 90% 중복 — 3번째 자식배열 도메인이 생기기 직전에 (추상화 규칙 준수).
+- **import 직전 git-dirty 검사** [S] · 대상 폴더에 미커밋 변경 있으면 경고 — dry-run 전까지의 값싼 방어.
 - **Dreamstones 탭** [S] · `DreamstoneData`(13종, CardEffect 재사용) 평탄 탭 — 유닛 패턴 그대로.
 - **런타임 리프레시(로비 버튼) 드림캐쳐 확장** [M] · `DreamcatcherCardCatalog` 경유. 5번째 카탈로그 발생 시 `ScriptableCatalog<T>` 승격 조건(runtime-stat-refresh 백로그) 함께 검토.
 - **드림캐쳐 외 하드코딩 밸런스** [S] · `BattleBridge.SynergyPerNeighbor=0.1f`, `EnemyKillScoreDelta=10`, 점수 산식(`durationSec*10 - goal*50`) — 별도 spec 으로 SO/시트화 검토.
