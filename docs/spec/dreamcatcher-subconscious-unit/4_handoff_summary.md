@@ -28,8 +28,13 @@
   `RevokeDreamcatcherEffects` 의 `handle<=0` 가드는 스톤 보호용, 유지.
 - squad `placementWarmupSec` 인프라(_activeWarmups)는 유지되나 현재 이를 쓰는 에셋 0개.
 
+## 정정 (2026-07-10, spec-review H4)
+- 위 "Implemented" 의 SelfWarmupBuff 분기는 **실제로는 BattleBridge 에 반영되지 않았다**(플래키
+  파일쓰기로 유실). 커밋 `fe4ba372` 시점의 느린 각성은 kind 5 핸들러 부재로 **no-op** 이었다.
+  PlayMode 8/8 은 이 경로를 실행하지 않아 놓쳤다. → `dreamcatcher-placement-aura` spec 에서
+  PlacementAura(kind 6)로 교체하며 실동작 확보. SelfWarmupBuff(5)는 reserved enum 으로 잔존.
+
 ## Follow-up
-- ⚠️ **느린 각성 메커니즘 재설계(신규 spec 진행 중)**: host 는 효과 미부여, host 생존 중
-  **신규 배치 유닛에만** 느린 각성 효과 부여. 본 spec 의 SelfWarmupBuff/부착 모델은 토대로 두되,
-  적용 대상 로직(부착 유닛 → 신규 배치 유닛)이 신규 spec 에서 교체된다.
+- ✅ **느린 각성 메커니즘 재설계 완료**: `dreamcatcher-placement-aura` spec — host 미부여, host 생존 중
+  axis 매칭 **신규 배치 유닛**에 부여, host 사망 시 회수. (본 spec 의 부착 모델·무의식 프레임은 토대로 재사용.)
 - 무의식 프레임 인게임 손패까지 확대(후속).

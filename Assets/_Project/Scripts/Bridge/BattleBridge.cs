@@ -2693,16 +2693,18 @@ namespace Wassup.Bridge
         // reclaim) is a follow-up spec — attach only for now.
         private int _dcInstanceCounter;
 
-        public bool ApplyDreamcatcherCardToUnit(Entity defender, Wassup.Data.DreamcatcherCard card)
+        // dreamcatcher-placement-aura — 반환 규약: <0 실패(무차감) / 0 성공·회수불필요
+        // (엔티티 부착형: 슬롯이 엔티티와 함께 소멸) / >0 성공·회수핸들(host 사망 시 revoke).
+        public int ApplyDreamcatcherCardToUnit(Entity defender, Wassup.Data.DreamcatcherCard card)
         {
-            if (card == null || card.binding != Wassup.Data.CardBinding.Unit) return false;
+            if (card == null || card.binding != Wassup.Data.CardBinding.Unit) return -1;
             bool hasMechanics = card.mechanics != null && card.mechanics.Length > 0;
             bool hasAttackMods = card.attackMods != null && card.attackMods.Length > 0;
-            if (!hasMechanics && !hasAttackMods) return false;
+            if (!hasMechanics && !hasAttackMods) return -1;
             if (!HasLiveEntityManager() || !_em.Exists(defender))
             {
                 Debug.LogWarning($"[BattleBridge] ApplyDreamcatcherCardToUnit('{card?.id}'): ECS not ready or defender entity gone — card not attached.");
-                return false;
+                return -1;
             }
             // Contract 2: slots live on defenders only. AttackSystem's RESOLVE arm
             // counts defender attacks, and teardown reaches the buffer through the
@@ -2711,10 +2713,11 @@ namespace Wassup.Bridge
             if (!_em.HasComponent<DefenderUnitTag>(defender))
             {
                 Debug.LogWarning($"[BattleBridge] ApplyDreamcatcherCardToUnit('{card.id}'): target entity is not a defender — card not attached.");
-                return false;
+                return -1;
             }
 
             int attached = 0;
+            int auraHandle = 0; // >0 if a revocable placement-aura was registered
             int mechanicsLen = hasMechanics ? card.mechanics.Length : 0;
             for (int i = 0; i < mechanicsLen; i++) // bake-time only read (managed array)
             {
@@ -2733,6 +2736,21 @@ namespace Wassup.Bridge
                     EnqueueAttackSpeedMul(defender, 1f + m.payload.magnitude / 100f, m.payload.duration);
                     _em.AddComponentData(defender, new Wassup.Battle.Units.LethalTimer { remaining = m.payload.duration });
                     attached++; // 즉발 branch 도 성공 시 카운트 (critic M2)
+                    continue;
+                }
+
+                // dreamcatcher-placement-aura — host-bound future-only 스폰 오라(trigger=None).
+                // host·기존 유닛 미적용; host 생존 중 axis 매칭 신규 배치 유닛에 부여. host-bound
+                // handle 을 반환값으로 올려 host 사망 시 RevokeDreamcatcherEffects 로 회수.
+                if (m.payload.kind == Wassup.Data.DcPayloadKind.PlacementAura)
+                {
+                    if (m.payload.magnitude <= 0f)
+                    {
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: PlacementAura non-positive magnitude — skipped.");
+                        continue;
+                    }
+                    auraHandle = RegisterPlacementAura(card.axis, m.payload.magnitude, m.payload.duration);
+                    attached++;
                     continue;
                 }
 
@@ -2860,7 +2878,30 @@ namespace Wassup.Bridge
                 });
                 attached++;
             }
-            return attached > 0;
+            if (attached == 0) return -1;
+            return auraHandle;
+        }
+
+        // dreamcatcher-placement-aura — host-bound future-only aura. _defenderByTile
+        // 루프 없음 → 현재 유닛/host 미적용, ApplyActiveDcEffectsTo(신규 배치)에서만 상속.
+        // revocable handle 반환(host 사망 시 RevokeDreamcatcherEffects 로 전 수혜 유닛 회수).
+        private int RegisterPlacementAura(Wassup.Data.CardTargetAxis axis, float asPercent, float warmupSec)
+        {
+            int handle = _dcHandleCounter++;
+            if (asPercent > 0f)
+            {
+                ushort sid = _dcStackCounter++;
+                _activeDcEffects.Add(new ActiveDcEffect
+                {
+                    axis = axis,
+                    stat = Wassup.Battle.Effects.StatKind.AttackSpeedMul,
+                    mult = 1f + asPercent / 100f,
+                    stackId = sid,
+                    handle = handle,
+                });
+            }
+            if (warmupSec > 0f) _activeWarmups.Add((handle, axis, warmupSec));
+            return handle;
         }
 
         private static bool MapDcEffect(Wassup.Data.CardEffect eff, out Wassup.Battle.Effects.StatKind stat, out float mult)
