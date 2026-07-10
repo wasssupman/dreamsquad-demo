@@ -47,3 +47,13 @@ if (ai == AiState.Chasing) {
 - **위치 조회는 `defenderPos` 스냅샷**(별도 RO 쿼리)로 확정 — spec 초안의 "transformLookup 라이브 조회"는 이동 루프의 `RefRW<LocalTransform>` 와 **aliasing 위반**(ComponentLookup<LocalTransform> RO + query RW 동시 = 금지)이라 불가. guardianPos 선례와 동일 패턴(별도 쿼리는 안전). 방어유닛은 타일 고정이라 프레임 내 스냅샷 = 라이브와 동등.
 
 확인 2026-07-11 — 컴파일 클린 + EditMode 649/651 그린 + 커밋 `43e23954`.
+
+## rev — 축 분리 wall-slide (spawn-freeze 버그, 실플레이 진단 2026-07-11)
+
+**증상**: 헌터 보스가 스폰 자리에서 안 움직이고 갇힘(Chasing 상태인데 9.6초간 이동 0). 방어유닛에 접근·교전 실패.
+
+**근본 원인(런타임 증거)**: 이 맵은 **적 경로가 단일 walk 레인**(y=1)이고 **방어유닛은 경로 밖 벽 셀**(y=2/y=7)에 배치된다. 직선 추격(대각선)의 첫 스텝이 곧장 벽 셀로 넘어가 `MovementCellTrim`이 매 프레임 제자리로 clamp → 고착. aggro 추격은 가디언이 보통 경로 위라 안 겪던 케이스(직선 추격의 가정 = 타겟이 walkable 직선상).
+
+**수정**: 직선 스텝이 clamp되면(벽) **축 분리 슬라이드**(x만 → 실패 시 z만)로 walkable 축을 타고 접근. 보스는 레인을 따라 x=9까지 미끄러져 방어유닛 사거리(2타일)에 진입 → FSM 이 Engaging 으로 전환 → 정지·공격. 둘 다 막히면 제자리(fully-boxed, 드묾).
+
+**한계(후속)**: wall-slide 는 greedy 근사라 오목(concave) 지형에선 완전 도달 실패 가능(그 경우 인접 도달분만 교전). 진짜 타겟 지향 pathfinding(수비유닛 flow-field)은 비용 커서 후속.

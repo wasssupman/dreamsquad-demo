@@ -99,15 +99,38 @@ namespace Wassup.Battle.Movement
                     {
                         float3 to = anchor - current; to.y = 0f;
                         float dist = math.length(to);
-                        int2 chaseCell = GridMath.WorldToCell(current, field.tileSize, field.gridSize, origin: field.origin);
-                        float chaseSpeedMul = modifierStatsLookup.HasComponent(entity)
-                            ? modifierStatsLookup[entity].moveSpeedMul : 1f;
-                        float step = follow.ValueRO.speed * chaseSpeedMul * dt;
-                        float3 chaseDesired = (step >= dist)
-                            ? new float3(anchor.x, current.y, anchor.z)
-                            : current + math.normalize(to) * step;
-                        transform.ValueRW.Position = MovementCellTrim.Apply(
-                            chaseDesired, chaseCell, in field, hasObstacles, in obstacleSingleton);
+                        if (dist > 1e-4f)
+                        {
+                            int2 chaseCell = GridMath.WorldToCell(current, field.tileSize, field.gridSize, origin: field.origin);
+                            float chaseSpeedMul = modifierStatsLookup.HasComponent(entity)
+                                ? modifierStatsLookup[entity].moveSpeedMul : 1f;
+                            float step = follow.ValueRO.speed * chaseSpeedMul * dt;
+                            float3 chaseDir = to / dist;
+                            float3 full = (step >= dist)
+                                ? new float3(anchor.x, current.y, anchor.z)
+                                : current + chaseDir * step;
+                            float3 moved = MovementCellTrim.Apply(full, chaseCell, in field, hasObstacles, in obstacleSingleton);
+                            // enemy-hunter-targeting rev — 직선 스텝이 벽에 막혀 clamp 되면(오프패스
+                            // 수비유닛을 향한 대각선이 즉시 벽) 축 분리 슬라이드: x만/z만 시도해 벽을
+                            // 타고 접근한다. 이게 없으면 경로(walk 레인) 밖 수비유닛을 향해 스폰에
+                            // 즉시 고착된다(단일 레인 맵의 spawn-freeze 버그). 둘 다 막히면 제자리.
+                            if (math.distancesq(moved, full) > 1e-8f)
+                            {
+                                float3 xTry = new float3(current.x + chaseDir.x * step, current.y, current.z);
+                                float3 xMoved = MovementCellTrim.Apply(xTry, chaseCell, in field, hasObstacles, in obstacleSingleton);
+                                if (math.distancesq(xMoved, xTry) <= 1e-8f)
+                                {
+                                    moved = xMoved;
+                                }
+                                else
+                                {
+                                    float3 zTry = new float3(current.x, current.y, current.z + chaseDir.z * step);
+                                    float3 zMoved = MovementCellTrim.Apply(zTry, chaseCell, in field, hasObstacles, in obstacleSingleton);
+                                    if (math.distancesq(zMoved, zTry) <= 1e-8f) moved = zMoved;
+                                }
+                            }
+                            transform.ValueRW.Position = moved;
+                        }
                     }
                     continue; // chasing: skip flow/portal/tornado/goal (anchor 없으면 정지)
                 }
