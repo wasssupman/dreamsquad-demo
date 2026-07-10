@@ -22,8 +22,10 @@
 
 ## 완료 기준
 
-- [ ] compile 0 error
-- [ ] EditMode 테스트: 정상 갱신 / 빈 셀 유지 / enum 오타 실패 / union config 부분 갱신 — 각 1케이스 이상
-- [ ] 시트 SoT 탭 테스트: 행 추가로 배열 성장 / 행 감소로 축소+리포트 / 탭 미등장 카드 유지 / 중복 (cardId,slot) 스킵
-- [ ] Unity SoT 탭 테스트: 범위 밖 slot 스킵 / projectile 참조 보존
+- [x] compile 0 error
+- [x] EditMode 테스트: 정상 갱신 / 빈 셀 유지 / enum 오타 실패 / union config 부분 갱신 — 각 1케이스 이상
+- [x] 시트 SoT 탭 테스트: 행 추가로 배열 성장 / 행 감소로 축소+리포트 / 탭 미등장 카드 유지 / 중복 (cardId,slot) 스킵
+- [x] Unity SoT 탭 테스트: 범위 밖 slot 스킵 / projectile 참조 보존
+
+확인 2026-07-11 — EditMode 64/64 (신규 15케이스 포함), 커밋 `e338c7da`.
 - [ ] 기존 UnitStatImportTests 전체 그린 유지
