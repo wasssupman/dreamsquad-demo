@@ -1,0 +1,458 @@
+{
+  "DcCards": [
+    {
+      "id": "active_meteor",
+      "displayName": "Meteor",
+      "type": "Active",
+      "binding": "Axis",
+      "axis": "ClassRanger",
+      "placementWarmupSec": 0,
+      "description": "지정한 지역에 운석을 떨어뜨려 광역 피해를 준다.",
+      "_skillId": "meteor"
+    },
+    {
+      "id": "active_portal",
+      "displayName": "Portal",
+      "type": "Active",
+      "binding": "Axis",
+      "axis": "ClassRanger",
+      "placementWarmupSec": 0,
+      "description": "포탈을 열어 적을 경로 뒤쪽으로 되돌린다.",
+      "_skillId": "portal"
+    },
+    {
+      "id": "active_power_surge",
+      "displayName": "Power Surge",
+      "type": "Active",
+      "binding": "Axis",
+      "axis": "ClassRanger",
+      "placementWarmupSec": 0,
+      "description": "아군의 공격력을 일시적으로 크게 끕어올린다.",
+      "_skillId": "power_surge"
+    },
+    {
+      "id": "active_rapid_fire",
+      "displayName": "Rapid Fire",
+      "type": "Active",
+      "binding": "Axis",
+      "axis": "ClassRanger",
+      "placementWarmupSec": 0,
+      "description": "아군의 공격 속도를 폭발적으로 높인다.",
+      "_skillId": "rapid_fire"
+    },
+    {
+      "id": "active_slow_field",
+      "displayName": "Slow Field",
+      "type": "Active",
+      "binding": "Axis",
+      "axis": "ClassRanger",
+      "placementWarmupSec": 0,
+      "description": "지정 지역에 감속 장판을 만들어 적을 느리게 한다.",
+      "_skillId": "slow_field"
+    },
+    {
+      "id": "active_tornado",
+      "displayName": "Tornado",
+      "type": "Active",
+      "binding": "Axis",
+      "axis": "ClassRanger",
+      "placementWarmupSec": 0,
+      "description": "회오리를 일으켜 적을 끌어당기며 피해를 준다.",
+      "_skillId": "tornado"
+    },
+    {
+      "id": "all_atk_8",
+      "displayName": "All ATK +8%",
+      "type": "Squad",
+      "binding": "Axis",
+      "axis": "All",
+      "placementWarmupSec": 0,
+      "description": "모든 아군의 공격력을 강화한다.",
+      "_skillId": ""
+    },
+    {
+      "id": "all_move_10",
+      "displayName": "All Move +10%",
+      "type": "Squad",
+      "binding": "Axis",
+      "axis": "All",
+      "placementWarmupSec": 0,
+      "description": "모든 아군의 이동 속도를 높인다.",
+      "_skillId": ""
+    },
+    {
+      "id": "bouncy_bead",
+      "displayName": "통통 구슬",
+      "type": "Unit",
+      "binding": "Unit",
+      "axis": "All",
+      "placementWarmupSec": 0,
+      "description": "상시: 공격 투사체가 3타일 내 2회 튕김 (감쇠 없음)",
+      "_skillId": ""
+    },
+    {
+      "id": "cost1_as_5",
+      "displayName": "Cost-1 AS +5%",
+      "type": "Squad",
+      "binding": "Axis",
+      "axis": "Cost1",
+      "placementWarmupSec": 0,
+      "description": "1코스트 유닛의 공격 속도를 높인다.",
+      "_skillId": ""
+    },
+    {
+      "id": "cost1_hp_10",
+      "displayName": "Cost-1 HP +10%",
+      "type": "Squad",
+      "binding": "Axis",
+      "axis": "Cost1",
+      "placementWarmupSec": 0,
+      "description": "1코스트 유닛의 체력을 높인다.",
+      "_skillId": ""
+    },
+    {
+      "id": "farewell",
+      "displayName": "작별 선물",
+      "type": "Unit",
+      "binding": "Unit",
+      "axis": "All",
+      "placementWarmupSec": 0,
+      "description": "사망 시 2타일 범위 100 폭발",
+      "_skillId": ""
+    },
+    {
+      "id": "guardian_as_8",
+      "displayName": "Guardian AS +8%",
+      "type": "Squad",
+      "binding": "Axis",
+      "axis": "ClassGuardian",
+      "placementWarmupSec": 0,
+      "description": "가디언 계열 아군의 공격 속도를 높인다.",
+      "_skillId": ""
+    },
+    {
+      "id": "guardian_fortress",
+      "displayName": "Guardian Fortress (HP +50% / AS -50%)",
+      "type": "Squad",
+      "binding": "Axis",
+      "axis": "ClassGuardian",
+      "placementWarmupSec": 0,
+      "description": "요새처럼 버틼다. 체력이 크게 늘지만 공격 속도는 절반으로 떨어진다.",
+      "_skillId": ""
+    },
+    {
+      "id": "guardian_hp_15",
+      "displayName": "Guardian HP +15%",
+      "type": "Squad",
+      "binding": "Axis",
+      "axis": "ClassGuardian",
+      "placementWarmupSec": 0,
+      "description": "가디언 계열 아군의 체력을 늘려 전선을 지탱한다.",
+      "_skillId": ""
+    },
+    {
+      "id": "last_flame",
+      "displayName": "마지막 불꽃",
+      "type": "Unit",
+      "binding": "Unit",
+      "axis": "All",
+      "placementWarmupSec": 0,
+      "description": "즉발 공속버프(+90%, 5초) + 5초 후 자폭",
+      "_skillId": ""
+    },
+    {
+      "id": "poke_needle",
+      "displayName": "콕콕 바늘",
+      "type": "Unit",
+      "binding": "Unit",
+      "axis": "All",
+      "placementWarmupSec": 0,
+      "description": "5회 공격마다 대상에 투사체 20 데미지",
+      "_skillId": ""
+    },
+    {
+      "id": "ranger_as_10",
+      "displayName": "Ranger AS +10%",
+      "type": "Squad",
+      "binding": "Axis",
+      "axis": "ClassRanger",
+      "placementWarmupSec": 0,
+      "description": "레인저 계열 아군의 공격 속도를 끕어올린다.",
+      "_skillId": ""
+    },
+    {
+      "id": "ranger_atk_10",
+      "displayName": "Ranger ATK +10%",
+      "type": "Squad",
+      "binding": "Axis",
+      "axis": "ClassRanger",
+      "placementWarmupSec": 0,
+      "description": "레인저 계열 아군의 공격력을 강화한다.",
+      "_skillId": ""
+    },
+    {
+      "id": "ranger_hp_12",
+      "displayName": "Ranger HP +12%",
+      "type": "Squad",
+      "binding": "Axis",
+      "axis": "ClassRanger",
+      "placementWarmupSec": 0,
+      "description": "레인저 계열 아군의 생존력을 높인다.",
+      "_skillId": ""
+    },
+    {
+      "id": "slow_awakening",
+      "displayName": "느린 각성",
+      "type": "Unit",
+      "binding": "Unit",
+      "axis": "All",
+      "placementWarmupSec": 0,
+      "description": "부착한 유닛 생존 중, 새로 배치되는 유닛이 2초 뒤 깨어나 공속 +50%",
+      "_skillId": ""
+    },
+    {
+      "id": "thornmail",
+      "displayName": "가시 갑옷",
+      "type": "Unit",
+      "binding": "Unit",
+      "axis": "All",
+      "placementWarmupSec": 0,
+      "description": "5회 피격 시 다음 공격 2연발",
+      "_skillId": ""
+    }
+  ],
+  "DcCardEffects": [
+    {
+      "cardId": "all_atk_8",
+      "slot": 0,
+      "kind": "AttackDamage",
+      "percent": 8
+    },
+    {
+      "cardId": "all_move_10",
+      "slot": 0,
+      "kind": "MoveSpeed",
+      "percent": 10
+    },
+    {
+      "cardId": "cost1_as_5",
+      "slot": 0,
+      "kind": "AttackSpeed",
+      "percent": 5
+    },
+    {
+      "cardId": "cost1_hp_10",
+      "slot": 0,
+      "kind": "EffectiveHealth",
+      "percent": 10
+    },
+    {
+      "cardId": "guardian_as_8",
+      "slot": 0,
+      "kind": "AttackSpeed",
+      "percent": 8
+    },
+    {
+      "cardId": "guardian_fortress",
+      "slot": 0,
+      "kind": "EffectiveHealth",
+      "percent": 50
+    },
+    {
+      "cardId": "guardian_fortress",
+      "slot": 1,
+      "kind": "AttackSpeed",
+      "percent": -50
+    },
+    {
+      "cardId": "guardian_hp_15",
+      "slot": 0,
+      "kind": "EffectiveHealth",
+      "percent": 15
+    },
+    {
+      "cardId": "ranger_as_10",
+      "slot": 0,
+      "kind": "AttackSpeed",
+      "percent": 10
+    },
+    {
+      "cardId": "ranger_atk_10",
+      "slot": 0,
+      "kind": "AttackDamage",
+      "percent": 10
+    },
+    {
+      "cardId": "ranger_hp_12",
+      "slot": 0,
+      "kind": "EffectiveHealth",
+      "percent": 12
+    }
+  ],
+  "DcMechanics": [
+    {
+      "cardId": "farewell",
+      "slot": 0,
+      "triggerKind": "OnDeath",
+      "triggerPeriod": 0,
+      "payloadKind": "SelfTileAoe",
+      "magnitude": 100,
+      "tileRange": 2,
+      "duration": 0,
+      "_projectileId": "meteor"
+    },
+    {
+      "cardId": "last_flame",
+      "slot": 0,
+      "triggerKind": "None",
+      "triggerPeriod": 0,
+      "payloadKind": "SelfBuffLethal",
+      "magnitude": 90,
+      "tileRange": 0,
+      "duration": 5,
+      "_projectileId": ""
+    },
+    {
+      "cardId": "poke_needle",
+      "slot": 0,
+      "triggerKind": "AttackN",
+      "triggerPeriod": 5,
+      "payloadKind": "ProjectileToTarget",
+      "magnitude": 20,
+      "tileRange": 0,
+      "duration": 0,
+      "_projectileId": "ga_shard02"
+    },
+    {
+      "cardId": "slow_awakening",
+      "slot": 0,
+      "triggerKind": "None",
+      "triggerPeriod": 0,
+      "payloadKind": "PlacementAura",
+      "magnitude": 50,
+      "tileRange": 0,
+      "duration": 2,
+      "_projectileId": ""
+    },
+    {
+      "cardId": "thornmail",
+      "slot": 0,
+      "triggerKind": "OnDamagedN",
+      "triggerPeriod": 5,
+      "payloadKind": "NextAttackDoubleFire",
+      "magnitude": 0,
+      "tileRange": 0,
+      "duration": 0,
+      "_projectileId": ""
+    }
+  ],
+  "DcAttackMods": [
+    {
+      "cardId": "bouncy_bead",
+      "slot": 0,
+      "kind": "ProjectileBounce",
+      "count": 2,
+      "tileRange": 3,
+      "damageMul": 1
+    }
+  ],
+  "DcSkills": [
+    {
+      "id": "meteor",
+      "displayName": "Meteor",
+      "_effect": "Meteor",
+      "_target": "TilePoint",
+      "range": 2,
+      "magnitude": 40,
+      "durationSec": 0,
+      "cooldownSec": 18,
+      "cost": 4,
+      "warningSec": 1.5,
+      "description": "1.5초 경고 후 내려약 40 AoE 데미지"
+    },
+    {
+      "id": "portal",
+      "displayName": "Portal",
+      "_effect": "Portal",
+      "_target": "TilePoint",
+      "range": 0,
+      "magnitude": 0,
+      "durationSec": 8,
+      "cooldownSec": 14,
+      "cost": 3,
+      "warningSec": 0,
+      "description": "두 타일 연결: 입구로 들어간 적이 출구로 순간이동 8초"
+    },
+    {
+      "id": "power_surge",
+      "displayName": "Power Surge",
+      "_effect": "PowerSurge",
+      "_target": "DefenderUnit",
+      "range": 0,
+      "magnitude": 2,
+      "durationSec": 8,
+      "cooldownSec": 30,
+      "cost": 3,
+      "warningSec": 0,
+      "description": "지정 방어 유닛 공격 데미지 ×2.0, 8초 지속."
+    },
+    {
+      "id": "rapid_fire",
+      "displayName": "Rapid Fire",
+      "_effect": "RapidFire",
+      "_target": "DefenderUnit",
+      "range": 0,
+      "magnitude": 2,
+      "durationSec": 6,
+      "cooldownSec": 25,
+      "cost": 2,
+      "warningSec": 0,
+      "description": "지정 방어 유닛 공격속도 ×2, 6초 지속."
+    },
+    {
+      "id": "slow_field",
+      "displayName": "Slow Field",
+      "_effect": "SlowField",
+      "_target": "TilePoint",
+      "range": 2,
+      "magnitude": 0.6,
+      "durationSec": 5,
+      "cooldownSec": 20,
+      "cost": 2,
+      "warningSec": 0,
+      "description": "지정 지점 반경 2.0 타일 내 적 이동속도 ×0.6, 5초 지속."
+    },
+    {
+      "id": "tornado",
+      "displayName": "Tornado",
+      "_effect": "Tornado",
+      "_target": "TilePoint",
+      "range": 2,
+      "magnitude": 6,
+      "durationSec": 2,
+      "cooldownSec": 12,
+      "cost": 3,
+      "warningSec": 0,
+      "description": "범위 내 적을 중심으로 끌어당김 2초"
+    }
+  ],
+  "DcConfig": [
+    {
+      "id": "awakening_default",
+      "gaugeMax": 100,
+      "gaugeStart": 0,
+      "costSquad": 30,
+      "costUnit": 15,
+      "costActive": 20,
+      "handSize": 5,
+      "maxAttachPerUnit": 3,
+      "slomoTimeScale": 0.3
+    },
+    {
+      "id": "deck_rule_default",
+      "deckSize": 10,
+      "maxSquad": -1,
+      "maxUnit": -1
+    }
+  ]
+}
