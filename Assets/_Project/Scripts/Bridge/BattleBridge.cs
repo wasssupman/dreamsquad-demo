@@ -212,6 +212,8 @@ namespace Wassup.Bridge
         private NativeQueue<Wassup.Battle.Effects.AggroHitEvent> _aggroHitEventQueue;
         // nightmare-catcher unit 1 — Combat→Combat 보스 위협 귀속 채널.
         private NativeQueue<Wassup.Battle.Combat.ThreatHitEvent> _threatHitEventQueue;
+        // nightmare-catcher unit 3 — Combat→Movement 텔레포트(SelfBlink) 요청 채널.
+        private NativeQueue<Wassup.Battle.Movement.BlinkRequestEvent> _blinkRequestQueue;
         private NativeQueue<Wassup.Battle.Units.HealAppliedEvent> _healAppliedEventQueue;
         private NativeQueue<Wassup.Battle.Units.DamageNumberEvent> _damageNumberEventQueue;
         private NativeQueue<Wassup.Battle.Units.EnemyKilledEvent> _enemyKilledEventQueue;
@@ -402,6 +404,7 @@ namespace Wassup.Bridge
             DestroyEntitiesByType<Wassup.Battle.Combat.AttackOutputLogEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.AggroHitEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Combat.ThreatHitEventsSingleton>();
+            DestroyEntitiesByType<Wassup.Battle.Movement.BlinkRequestEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.ObstacleSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.HazardSingleton>();
             // time-manager H1 — BattleTimeScale singleton 도 다른 인프라 싱글턴과 대칭으로 파괴.
@@ -418,6 +421,7 @@ namespace Wassup.Bridge
             if (_projectileHitEventQueue.IsCreated) _projectileHitEventQueue.Dispose();
             if (_aggroHitEventQueue.IsCreated) _aggroHitEventQueue.Dispose();
             if (_threatHitEventQueue.IsCreated) _threatHitEventQueue.Dispose();
+            if (_blinkRequestQueue.IsCreated) _blinkRequestQueue.Dispose();
             if (_healAppliedEventQueue.IsCreated) _healAppliedEventQueue.Dispose();
             if (_damageNumberEventQueue.IsCreated) _damageNumberEventQueue.Dispose();
             if (_enemyKilledEventQueue.IsCreated) _enemyKilledEventQueue.Dispose();
@@ -960,6 +964,14 @@ namespace Wassup.Bridge
             _threatHitEventQueue = new NativeQueue<Wassup.Battle.Combat.ThreatHitEvent>(Allocator.Persistent);
             var threatHitSingleton = _em.CreateEntity();
             _em.AddComponentData(threatHitSingleton, new Wassup.Battle.Combat.ThreatHitEventsSingleton { queue = _threatHitEventQueue });
+
+            // nightmare-catcher unit 3 — Combat→Movement 텔레포트 seam.
+            // BossHealthThresholdSystem(Combat) enqueue → BlinkApplySystem(Movement)
+            // 소비·위치 대입. 브리지는 lifecycle 만 관리.
+            if (_blinkRequestQueue.IsCreated) _blinkRequestQueue.Dispose();
+            _blinkRequestQueue = new NativeQueue<Wassup.Battle.Movement.BlinkRequestEvent>(Allocator.Persistent);
+            var blinkRequestSingleton = _em.CreateEntity();
+            _em.AddComponentData(blinkRequestSingleton, new Wassup.Battle.Movement.BlinkRequestEventsSingleton { queue = _blinkRequestQueue });
 
             // Units→Presentation heal pulse channel. DamageApplicationSystem
             // enqueues one event per entity whose IncomingHeal buffer was drained.

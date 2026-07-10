@@ -105,5 +105,68 @@ namespace Wassup.Tests.EditMode
             Assert.IsTrue(DcTrigger.PeriodicTick(ref elapsed, 0f, 1f));
             Assert.IsFalse(DcTrigger.PeriodicTick(ref elapsed, 0f, 1f), "bank exhausted");
         }
+
+        // ── nightmare-catcher unit 3 — HealthThreshold (반복·래치·다중 돌파) ──
+
+        [Test]
+        public void HealthThreshold_FiresBelowEachBoundary_InSequence()
+        {
+            int k = 1; // 베이크 초기값 — 경계 90%, 80%, …
+            Assert.IsFalse(DcTrigger.HealthThresholdEval(95f, 100f, 0.10f, ref k), "95 ≥ 90 no fire");
+            Assert.IsTrue(DcTrigger.HealthThresholdEval(89f, 100f, 0.10f, ref k), "89 < 90 fires");
+            Assert.AreEqual(2, k);
+            Assert.IsFalse(DcTrigger.HealthThresholdEval(85f, 100f, 0.10f, ref k), "85 ≥ 80 no fire");
+            Assert.IsTrue(DcTrigger.HealthThresholdEval(79f, 100f, 0.10f, ref k), "79 < 80 fires");
+            Assert.AreEqual(3, k);
+        }
+
+        [Test]
+        public void HealthThreshold_ExactBoundary_DoesNotFire()
+        {
+            int k = 1;
+            Assert.IsFalse(DcTrigger.HealthThresholdEval(90f, 100f, 0.10f, ref k), "strict < — 경계 위는 미발동");
+            Assert.AreEqual(1, k);
+        }
+
+        [Test]
+        public void HealthThreshold_BigHit_CrossesMultipleBoundaries_FiresOnce()
+        {
+            int k = 1;
+            // 100 → 55: 90/80/70/60 네 경계 관통 — 발동 1회, k 는 최심(60 아래 = 다음 경계 50, k=5).
+            Assert.IsTrue(DcTrigger.HealthThresholdEval(55f, 100f, 0.10f, ref k));
+            Assert.AreEqual(5, k, "k jumps to the deepest crossed boundary");
+            Assert.IsFalse(DcTrigger.HealthThresholdEval(55f, 100f, 0.10f, ref k), "same hp — no re-fire");
+        }
+
+        [Test]
+        public void HealthThreshold_HealBack_DoesNotRewindLatch()
+        {
+            int k = 1;
+            Assert.IsTrue(DcTrigger.HealthThresholdEval(89f, 100f, 0.10f, ref k)); // k → 2
+            // 힐로 95 회복 후 다시 89 로 — 같은 경계(90) 재돌파는 재발동 없음(래치 단조).
+            Assert.IsFalse(DcTrigger.HealthThresholdEval(95f, 100f, 0.10f, ref k));
+            Assert.IsFalse(DcTrigger.HealthThresholdEval(89f, 100f, 0.10f, ref k), "핑퐁 익스플로잇 차단");
+            Assert.AreEqual(2, k);
+            Assert.IsTrue(DcTrigger.HealthThresholdEval(79f, 100f, 0.10f, ref k), "다음 경계는 정상 발동");
+        }
+
+        [Test]
+        public void HealthThreshold_NonPositiveFractionOrMaxHp_NeverFires()
+        {
+            int k = 1;
+            Assert.IsFalse(DcTrigger.HealthThresholdEval(1f, 100f, 0f, ref k), "fraction 0 가드");
+            Assert.IsFalse(DcTrigger.HealthThresholdEval(1f, 100f, -0.1f, ref k), "fraction 음수 가드");
+            Assert.IsFalse(DcTrigger.HealthThresholdEval(1f, 0f, 0.10f, ref k), "maxHpRef 0 (미베이크 슬롯) 가드");
+            Assert.AreEqual(1, k, "가드 경로는 k 를 움직이지 않는다");
+        }
+
+        [Test]
+        public void HealthThreshold_ZeroHp_Terminates_AndFires()
+        {
+            int k = 1;
+            // hp 0: 경계가 0 이하로 내려오면 0 < 0/음수 는 거짓 — 종료 보장.
+            Assert.IsTrue(DcTrigger.HealthThresholdEval(0f, 100f, 0.10f, ref k));
+            Assert.AreEqual(10, k, "경계 10%·k=10 에서 0 < 100·(1-1.0)=0 이 거짓 — 정지");
+        }
     }
 }

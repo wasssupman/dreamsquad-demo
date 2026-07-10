@@ -46,8 +46,10 @@
 
 ## 완료 기준
 
-- [ ] `HealthThresholdEval` EditMode(반복 경계·다중 돌파 1회·래치 비회귀·k 전진·**`fraction<=0` no-fire 가드**·maxHpRef 스냅샷).
-- [ ] SelfBlink 가 Combat→Movement seam 으로만 위치 변경(직접 position 쓰기 0) — 맥락 경계 검증.
-- [ ] 목적지 결정론: **방향 degenerate → 기본축**, **링 `maxRingRadius` 초과 → skip**(NaN·비종료 없음).
-- [ ] 폴백 체인(리더→최근접→skip) 결정론.
-- [ ] (배선 후) Play: 보스 HP 10%씩 감소마다 위협 리더 근처로 blink, 힐 회복 시 재발동 없음.
+- [x] `HealthThresholdEval` EditMode(반복 경계·다중 돌파 1회·래치 비회귀·k 전진·**`fraction<=0` no-fire 가드**·maxHpRef 스냅샷·hp=0 종료).
+- [x] SelfBlink 가 Combat→Movement seam 으로만 위치 변경(직접 position 쓰기 0) — `BlinkApplySystem`(Movement)이 유일한 쓰기, Combat 은 `BlinkRequestEventsSingleton` enqueue 만.
+- [x] 목적지 결정론: **방향 degenerate → 기본축(world -Z 상수)**, **링 `maxRingRadius` 초과 → skip** — BlinkMath EditMode 7종(NaN·비종료 없음).
+- [x] 폴백 체인(리더→최근접(동점 entity index)→skip) 결정론 — 코드 검증 + Leader EditMode.
+- [ ] (배선 후) Play: 보스 HP 10%씩 감소마다 위협 리더 근처로 blink, 힐 회복 시 재발동 없음. (보스 에셋 — unit 6)
+
+확인 2026-07-10 — 컴파일 클린 + EditMode 640/642 그린(신규 13) + code-review(low) findings 0. walkable 확정 = `FlowFieldSingleton.dist != int.MaxValue`(도달 가능 셀 — 갇힘 방지까지 보장, defender 점유 셀 자연 제외). ThreatHit 드레인은 이 arm 상단에 배치(렌즈 B M2 폐색). 커밋은 unit 3 코드 커밋 해시 참조.

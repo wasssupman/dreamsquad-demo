@@ -32,5 +32,27 @@ namespace Wassup.Battle.Combat
             elapsed -= periodSeconds;
             return true;
         }
+
+        // nightmare-catcher unit 3 — HealthThreshold: fires when current hp
+        // drops below the next boundary maxHpRef·(1 − k·fraction), k starting
+        // at 1 (attach-time bake). Strict `<` — sitting exactly ON a boundary
+        // does not fire. A single big hit that punches through several
+        // boundaries advances k to the deepest crossed one but reports ONE
+        // fire (한 틱 다중 텔레포트 방지). k is a monotonic latch: healing back
+        // above a boundary never rewinds it (핑퐁 익스플로잇 차단). fraction
+        // <= 0 (zero-valued card) and maxHpRef <= 0 (unbaked slot) never fire
+        // — in-function guard (계약 9). Terminates: k++ strictly lowers the
+        // boundary toward −∞ while hp ≥ 0.
+        public static bool HealthThresholdEval(float hp, float maxHpRef, float fraction, ref int nextBoundaryIndex)
+        {
+            if (fraction <= 0f || maxHpRef <= 0f) return false;
+            bool fired = false;
+            while (hp < maxHpRef * (1f - nextBoundaryIndex * fraction))
+            {
+                nextBoundaryIndex++;
+                fired = true;
+            }
+            return fired;
+        }
     }
 }
