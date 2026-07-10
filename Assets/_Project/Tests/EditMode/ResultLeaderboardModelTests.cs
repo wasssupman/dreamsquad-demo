@@ -46,7 +46,7 @@ namespace Wassup.Tests.EditMode
             for (int i = 1; i < rows.Count; i++)
             {
                 Assert.IsTrue(rows[i].IsWaiting, $"slot {i} should be waiting");
-                Assert.AreEqual("WAITING...", rows[i].Name);
+                Assert.AreEqual("대기 중...", rows[i].Name); // battle-ui-korean 한글화 반영
                 Assert.AreEqual(i + 1, rows[i].Rank);
             }
         }
