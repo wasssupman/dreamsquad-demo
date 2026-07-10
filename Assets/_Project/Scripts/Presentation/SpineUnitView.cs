@@ -172,12 +172,46 @@ namespace Wassup.Presentation
                 renderers[i].sortingOrder = order;
         }
 
+        // dreamcatcher-awakening-hand rev 4 — 카드 드래그 타겟팅 호버 강조.
+        // on: 현재 RGB 를 저장하고 tint 로 교체 / off: 저장값 복원. 호버 중 들어오는
+        // SetHealthTint 는 저장값에 흡수해(스켈레톤 직접 쓰기 대신) 해제 시 최신
+        // 체력색으로 복원된다. 현재 defender 는 health tint 미적용(적 전용 루프)이라
+        // 실충돌은 없지만 순서 안전하게 방어. 알파 불변(RGB 만).
+        private bool _hoverHighlightActive;
+        private Color _savedTint = Color.white;
+
+        public void SetHoverHighlight(bool on, Color tint)
+        {
+            if (_dying || _skeleton == null || _skeleton.Skeleton == null) return;
+            var skel = _skeleton.Skeleton;
+            if (on)
+            {
+                if (!_hoverHighlightActive)
+                {
+                    _savedTint = new Color(skel.R, skel.G, skel.B);
+                    _hoverHighlightActive = true;
+                }
+                skel.R = tint.r;
+                skel.G = tint.g;
+                skel.B = tint.b;
+            }
+            else if (_hoverHighlightActive)
+            {
+                _hoverHighlightActive = false;
+                skel.R = _savedTint.r;
+                skel.G = _savedTint.g;
+                skel.B = _savedTint.b;
+            }
+        }
+
         // unit-health-display unit 1 — 적 저체력 틴트. BattleBridge 가 HealthDisplayStyle 로
         // ratio→Color 를 평가해 주입한다(뷰는 SO 를 모른다). _dying 중엔 마지막 틴트를 유지해
         // 죽음 연출 색을 덮지 않는다. 알파는 건드리지 않음(RGB 만).
         public void SetHealthTint(Color tint)
         {
             if (_dying || _skeleton == null || _skeleton.Skeleton == null) return;
+            // 호버 강조 중엔 저장값으로 흡수 — 해제 시 이 색으로 복원된다.
+            if (_hoverHighlightActive) { _savedTint = tint; return; }
             var skel = _skeleton.Skeleton;
             skel.R = tint.r;
             skel.G = tint.g;

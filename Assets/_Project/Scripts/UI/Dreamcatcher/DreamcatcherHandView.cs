@@ -30,6 +30,8 @@ namespace Wassup.UI
         [SerializeField] private TMP_FontAsset numberFont; // Anton — cost digits
         [SerializeField] private float flipHalfDuration = 0.14f;
         [SerializeField] private float fanAngle = 4f; // slight StS-style fan per slot
+        // rev 4 — 카드 드래그 중 호버된 수비수의 스파인 틴트(포커스 대상 시각화).
+        [SerializeField] private Color unitHoverTint = new Color(1f, 0.9f, 0.3f, 1f);
 
         public enum HandState { UnitStrip, Hand }
         public HandState State { get; private set; } = HandState.UnitStrip;
@@ -46,6 +48,7 @@ namespace Wassup.UI
         public Wassup.Bridge.BattleBridge Bridge => bridge;
         public Camera MainCamera => mainCamera != null ? mainCamera : (mainCamera = Camera.main);
         public AwakeningConfig Config => config;
+        public Color UnitHoverTint => unitHoverTint;
 
         public class CardSlot
         {

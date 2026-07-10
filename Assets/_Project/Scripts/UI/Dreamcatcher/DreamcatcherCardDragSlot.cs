@@ -222,6 +222,15 @@ namespace Wassup.UI
             if (cell.HasValue)
                 _view.Bridge.SetPlacementHover(cell.Value, valid: true);
 
+            // rev 4 — 포커스 대상은 유닛 자체에 표시: 호버된 수비수 스파인 틴트.
+            if (found != _hoverEntity)
+            {
+                if (_hoverEntity != Entity.Null)
+                    _view.Bridge.SetDefenderHoverHighlight(_hoverEntity, false, default);
+                if (found != Entity.Null)
+                    _view.Bridge.SetDefenderHoverHighlight(found, true, _view.UnitHoverTint);
+            }
+
             _hoverCell = cell;
             _hoverEntity = found;
         }
@@ -281,6 +290,8 @@ namespace Wassup.UI
         {
             if (_hoverCell.HasValue && _view != null && _view.Bridge != null)
                 _view.Bridge.ClearPlacementHover(_hoverCell.Value);
+            if (_hoverEntity != Entity.Null && _view != null && _view.Bridge != null)
+                _view.Bridge.SetDefenderHoverHighlight(_hoverEntity, false, default);
             _hoverCell = null;
             _hoverEntity = Entity.Null;
             if (_hoverAboveUnits && _view != null && _view.Bridge != null)

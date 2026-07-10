@@ -2579,6 +2579,16 @@ namespace Wassup.Bridge
             return false;
         }
 
+        // dreamcatcher-awakening-hand rev 4 — card-drag hover focus: tint the
+        // hovered defender's spine view so the attach target reads on the UNIT
+        // itself (a tile highlight alone hides under the sprite). View-only;
+        // fallback quad views simply get no tint (tile hover remains).
+        public void SetDefenderHoverHighlight(Entity defender, bool on, Color tint)
+        {
+            if (spineUnitPool != null && spineUnitPool.TryGet(defender, out var view) && view != null)
+                view.SetHoverHighlight(on, tint);
+        }
+
         // dreamcatcher-unit-trigger Unit 1 — unit-bound card attach: bakes each
         // DcMechanic (definition layer, ECS-free) into a DcTriggerSlot on the
         // defender entity. Translator role: an architecture swap rewrites this,
