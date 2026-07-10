@@ -1,6 +1,6 @@
 # Spec — Scene Transition (씬 전환 연출)
 
-> 상태: **초안 (미승인)** · 2026-07-10 작성
+> 상태: **완료 2026-07-10** (units 0~2 구현·검증·커밋: 280a10e9 / 3fb2c685 / cae9c51a). 인계: `3_handoff_summary.md`
 
 ## 한 줄
 
