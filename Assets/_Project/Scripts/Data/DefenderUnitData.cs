@@ -132,6 +132,9 @@ namespace Wassup.Data
         public SkeletonDataAsset SpineSkeletonDataAsset => skeletonDataAsset;
         public string SpineSkinName => spineSkinName;
         public string SpineIdleAnimation => idleAnimation;
+        // enemy-walk-anim-speed unit 4 — 디펜더는 타일 고정(이동 없음) → 걷기 애니 불요.
+        // 항상 idle 단일 루프(현행). 빈 문자열 = 스위칭 비활성.
+        public string SpineWalkAnimation => "";
         public string SpineAttackAnimation => attackAnimation;
         public string SpineDeathAnimation => deathAnimation;
         public float SpineVisualScale => spineVisualScale;

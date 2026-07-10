@@ -33,6 +33,13 @@ namespace Wassup.Presentation
         private float _walkFactor = 1f;
         private float _smoothedSpeed;
         private const float SimDtEpsilon = 1e-5f;
+        // enemy-walk-anim-speed unit 4 — 이동/정지 로코모션 애니 자동 전환.
+        // SpineWalkAnimation 설정 시 이동 중 walk / 정지 중 idle. 히스테리시스로 경계 flicker 방지.
+        // 임계값은 WalkAnimRefSpeed(SO) 대비 분율 — 별도 튜닝 필드 없이 이동 스케일과 연동.
+        private bool _locoMoving;
+        private const float LocoMoveOnFrac = 0.35f;   // _smoothedSpeed > ref×이 값 → walk
+        private const float LocoMoveOffFrac = 0.15f;  // _smoothedSpeed < ref×이 값 → idle
+        private const float LocoMixDuration = 0.15f;  // walk↔idle 크로스페이드 초
 
         public Entity Entity => _entity;
 
@@ -130,6 +137,8 @@ namespace Wassup.Presentation
             // enemy-walk-anim-speed unit 1 — 걷기 배율은 ApplyRenderPosition 이 _simWorld 를
             // 갱신하기 전에 측정한다(_simWorld = 직전 프레임 sim 위치).
             UpdateWalkTimeScale(world);
+            // enemy-walk-anim-speed unit 4 — 갱신된 _smoothedSpeed 로 walk↔idle 전환.
+            UpdateLocomotionAnimation();
             ApplyRenderPosition(world);
         }
 
@@ -285,9 +294,10 @@ namespace Wassup.Presentation
             // 근거다 — attackSpeedMul 클램프(0.2~5)는 그 위 배수만 제한. period<=0 면 폴백(TimeScale=1, 현행).
             if (attackAnimPeriod > 0f && entry != null && entry.Animation != null && entry.Animation.Duration > 0f)
                 entry.TimeScale = Mathf.Max(1f, entry.Animation.Duration / attackAnimPeriod);
-            string idle = ResolveAnimation(_visualData.SpineIdleAnimation, "idle", "Idle", "walk", "Walk");
-            if (!string.IsNullOrEmpty(idle))
-                state.AddAnimation(0, idle, true, 0f);
+            // enemy-walk-anim-speed unit 4 — 공격 후 복귀 = 현재 이동상태 로코모션(walk/idle).
+            string loco = ResolveLocomotionAnimation();
+            if (!string.IsNullOrEmpty(loco))
+                state.AddAnimation(0, loco, true, 0f);
             // 공격(원샷) 즉시 배율 1 반영 — 다음 UpdatePosition 을 기다리지 않고 이 프레임부터 정상속도.
             ApplyTimeScale();
         }
@@ -309,9 +319,10 @@ namespace Wassup.Presentation
             if (string.IsNullOrEmpty(animation)) return false;
             var state = _skeleton.AnimationState;
             state.SetAnimation(0, animation, false);
-            string idle = ResolveAnimation(_visualData.SpineIdleAnimation, "idle", "Idle", "walk", "Walk");
-            if (!string.IsNullOrEmpty(idle))
-                state.AddAnimation(0, idle, true, 0f);
+            // enemy-walk-anim-speed unit 4 — 배치 후 복귀도 로코모션 리졸브 경유.
+            string loco = ResolveLocomotionAnimation();
+            if (!string.IsNullOrEmpty(loco))
+                state.AddAnimation(0, loco, true, 0f);
             ApplyTimeScale(); // 배치(원샷) 즉시 배율 1 반영.
             return true;
         }
@@ -403,9 +414,43 @@ namespace Wassup.Presentation
         private void PlayIdleLooping()
         {
             if (_skeleton == null) return;
-            string animation = ResolveAnimation(_visualData.SpineIdleAnimation, "idle", "Idle", "walk", "Walk");
+            string animation = ResolveLocomotionAnimation();
             if (!string.IsNullOrEmpty(animation))
                 _skeleton.AnimationState.SetAnimation(0, animation, true);
+        }
+
+        // enemy-walk-anim-speed unit 4 — 현재 이동상태 기준 로코모션 루프 애니 이름.
+        // walk 애니(SpineWalkAnimation) 설정 + 이동 중이면 walk, 아니면 idle(폴백 체인 유지).
+        // _locoMoving 히스테리시스는 UpdateLocomotionAnimation 이 갱신 — 여기선 읽기만.
+        private string ResolveLocomotionAnimation()
+        {
+            string walk = ResolveAnimation(_visualData.SpineWalkAnimation);
+            if (!string.IsNullOrEmpty(walk) && _locoMoving) return walk;
+            return ResolveAnimation(_visualData.SpineIdleAnimation, "idle", "Idle", "walk", "Walk");
+        }
+
+        // enemy-walk-anim-speed unit 4 — 이동/정지에 따라 로코모션 루프를 walk↔idle 전환.
+        // walk 애니 미설정이면 즉시 반환(단일 idle 루프 = 현행 동작, 회귀 없음). 원샷(공격/
+        // 사망/배치) 진행 중이면 건드리지 않고 큐 복귀에 맡긴다. 전환은 크로스페이드.
+        private void UpdateLocomotionAnimation()
+        {
+            if (_dying || _skeleton == null) return;
+            if (string.IsNullOrEmpty(ResolveAnimation(_visualData.SpineWalkAnimation))) return;
+            var current = _skeleton.AnimationState?.GetCurrent(0);
+            if (current == null || !current.Loop) return; // 원샷 진행 중 — 유지
+
+            float refSpeed = Mathf.Max(0.01f, BattleBridge.WalkAnimRefSpeed);
+            if (_locoMoving && _smoothedSpeed < refSpeed * LocoMoveOffFrac) _locoMoving = false;
+            else if (!_locoMoving && _smoothedSpeed > refSpeed * LocoMoveOnFrac) _locoMoving = true;
+
+            string desired = ResolveLocomotionAnimation();
+            if (string.IsNullOrEmpty(desired)) return;
+            if (current.Animation == null || current.Animation.Name != desired)
+            {
+                var e = _skeleton.AnimationState.SetAnimation(0, desired, true);
+                if (e != null) e.MixDuration = LocoMixDuration;
+                ApplyTimeScale();
+            }
         }
 
         private string ResolveAnimation(params string[] candidates)

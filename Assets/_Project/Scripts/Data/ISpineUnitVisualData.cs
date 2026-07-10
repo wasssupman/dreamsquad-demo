@@ -14,6 +14,10 @@ namespace Wassup.Data
         SkeletonDataAsset SpineSkeletonDataAsset { get; }
         string SpineSkinName { get; }
         string SpineIdleAnimation { get; }
+        // enemy-walk-anim-speed unit 4 — 이동 중 재생할 걷기 애니. 비어 있으면
+        // 이동/정지 구분 없이 SpineIdleAnimation 단일 루프(현행 동작 = 회귀 없음).
+        // 설정 시: 이동 중 이 애니, 정지 중 SpineIdleAnimation 으로 자동 전환.
+        string SpineWalkAnimation { get; }
         string SpineAttackAnimation { get; }
         string SpineDeathAnimation { get; }
         float SpineVisualScale { get; }

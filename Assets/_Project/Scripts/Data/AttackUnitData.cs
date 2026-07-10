@@ -63,6 +63,9 @@ namespace Wassup.Data
         public SkeletonDataAsset skeletonDataAsset;
         public string spineSkinName;
         public string idleAnimation = "idle";
+        // enemy-walk-anim-speed unit 4 — 이동 중 걷기 애니. 비면 idleAnimation 단일 루프(현행).
+        // 정지가 잦은 적(예: 헌터 보스)은 idle 을 진짜 idle 로, walk 를 여기에 두어 슬로모 걷기 회피.
+        public string walkAnimation = "";
         public string attackAnimation = "attack";
         public string deathAnimation = "die";
         public float spineVisualScale = 1f;
@@ -80,6 +83,7 @@ namespace Wassup.Data
         public SkeletonDataAsset SpineSkeletonDataAsset => skeletonDataAsset;
         public string SpineSkinName => spineSkinName;
         public string SpineIdleAnimation => idleAnimation;
+        public string SpineWalkAnimation => walkAnimation;
         public string SpineAttackAnimation => attackAnimation;
         public string SpineDeathAnimation => deathAnimation;
         public float SpineVisualScale => spineVisualScale;
