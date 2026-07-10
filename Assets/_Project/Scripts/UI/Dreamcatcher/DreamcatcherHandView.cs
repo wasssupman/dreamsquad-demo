@@ -57,6 +57,7 @@ namespace Wassup.UI
             public RectTransform rect;
             public Image frame;
             public Image art;
+            public GameObject nameTag; // rev 4-5 — 하단 네임 밴드(어두운 배킹+이름, 항상 표시)
             public TextMeshProUGUI nameLabel;
             public GameObject costBadge;
             public TextMeshProUGUI costLabel;
@@ -332,20 +333,22 @@ namespace Wassup.UI
             slot.costBadge.SetActive(true);
             slot.costLabel.text = handController.CostOf(card).ToString();
 
+            // rev 4-5 — 이름은 아트 유무와 무관하게 항상 하단 밴드에 표시(시인성).
+            slot.nameTag.SetActive(true);
+            slot.nameLabel.text = card.displayName;
+
             if (card.art != null)
             {
                 slot.art.enabled = true;
                 slot.art.sprite = card.art;
                 slot.art.color = Color.white;
-                slot.nameLabel.text = "";
             }
             else
             {
-                // Active cards ship without tarot art: skill uiTint + name fallback.
+                // Active cards ship without tarot art: skill uiTint fallback.
                 slot.art.enabled = true;
                 slot.art.sprite = null;
                 slot.art.color = card.skill != null ? card.skill.uiTint : new Color(0.35f, 0.3f, 0.5f, 1f);
-                slot.nameLabel.text = card.displayName;
             }
         }
 
@@ -356,6 +359,7 @@ namespace Wassup.UI
             slot.usable = false;
             slot.frame.color = new Color(1f, 1f, 1f, 0.06f); // empty frame
             slot.art.enabled = false;
+            slot.nameTag.SetActive(false);
             slot.nameLabel.text = "";
             slot.costBadge.SetActive(false);
             slot.group.alpha = 1f;
@@ -434,16 +438,33 @@ namespace Wassup.UI
                 slot.art.preserveAspect = true;
                 slot.art.raycastTarget = false;
 
+                // rev 4-5 — 이름은 항상 표시: 아트 위에서도 읽히도록 하단 어두운
+                // 밴드 + 흰 텍스트 오버레이 (DefenderSelector 포트레이트 이름 관례).
+                slot.nameTag = new GameObject("NameTag", typeof(RectTransform), typeof(Image));
+                slot.nameTag.transform.SetParent(slot.root.transform, false);
+                var tagRt = (RectTransform)slot.nameTag.transform;
+                tagRt.anchorMin = new Vector2(0f, 0f);
+                tagRt.anchorMax = new Vector2(1f, 0f);
+                tagRt.pivot = new Vector2(0.5f, 0f);
+                tagRt.offsetMin = new Vector2(6f, 6f);   // 하단 밴드: y 6~36
+                tagRt.offsetMax = new Vector2(-6f, 36f);
+                var tagImg = slot.nameTag.GetComponent<Image>();
+                tagImg.color = new Color(0f, 0f, 0f, 0.62f);
+                tagImg.raycastTarget = false;
+
                 var nameGO = new GameObject("Name", typeof(RectTransform));
-                nameGO.transform.SetParent(slot.root.transform, false);
+                nameGO.transform.SetParent(slot.nameTag.transform, false);
                 var nrt = (RectTransform)nameGO.transform;
-                nrt.anchorMin = new Vector2(0f, 0.5f);
-                nrt.anchorMax = new Vector2(1f, 1f);
-                nrt.offsetMin = new Vector2(6f, 0f);
-                nrt.offsetMax = new Vector2(-6f, -8f);
+                nrt.anchorMin = Vector2.zero;
+                nrt.anchorMax = Vector2.one;
+                nrt.offsetMin = new Vector2(2f, 0f);
+                nrt.offsetMax = new Vector2(-2f, 0f);
                 slot.nameLabel = nameGO.AddComponent<TextMeshProUGUI>();
                 if (labelFont != null) slot.nameLabel.font = labelFont;
-                slot.nameLabel.fontSize = 22;
+                slot.nameLabel.fontSize = 20;
+                slot.nameLabel.enableAutoSizing = true; // 긴 영문 스탯명 축소 허용
+                slot.nameLabel.fontSizeMin = 12;
+                slot.nameLabel.fontSizeMax = 20;
                 slot.nameLabel.color = Color.white;
                 slot.nameLabel.alignment = TextAlignmentOptions.Center;
                 slot.nameLabel.raycastTarget = false;
