@@ -94,11 +94,22 @@ namespace Wassup.Battle.Combat
         }
 
         // 순수 전이 함수. aggro 우선, 비-aggro 는 "AttackSystem 이 fire 할 타겟 존재" 로 Engaging/Marching.
+        // 비-헌터 오버로드 — enemy-hunter-targeting 이전 계약을 그대로 보존(무회귀 고정).
         public static AiState Evaluate(bool aggroed, bool guardianInRange, bool hasFireTarget)
+            => Evaluate(aggroed, guardianInRange, hasFireTarget, isHunter: false, hasHuntTarget: false);
+
+        // enemy-hunter-targeting unit 0 — 헌터(보스) 축 추가. 비-aggro 헌터가 사거리
+        // 내 타겟이 없어도 추격 대상(HuntTarget)이 있으면 Chasing(goal 대신 추격) —
+        // 새 AiState 없이 기존 Chasing 재사용(계약 2). isHunter=false 면 기존과 동일.
+        public static AiState Evaluate(bool aggroed, bool guardianInRange, bool hasFireTarget,
+                                       bool isHunter, bool hasHuntTarget)
         {
             if (aggroed) return guardianInRange ? AiState.Standoff : AiState.Chasing;
-            return hasFireTarget ? AiState.Engaging : AiState.Marching;
+            if (hasFireTarget) return AiState.Engaging;
+            if (isHunter && hasHuntTarget) return AiState.Chasing;
+            return AiState.Marching;
         }
+
 
         // ⚠ AttackSystem fire 조건 미러 (AttackSystem.cs:131-189). 타겟 선정 로직 변경 시 동기화 필요.
         // FocusUntilDead 락이 걸린 적은 락 타겟이 사거리 내일 때만 fire → 그때만 Engaging(데드락 방지).

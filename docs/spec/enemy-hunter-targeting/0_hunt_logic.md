@@ -48,7 +48,9 @@ static int SelectNearestTarget(int2 atkCell, mask, cand..., out ...)
 
 ## 완료 기준
 
-- [ ] `HuntTarget.cs` 컴파일.
-- [ ] `Evaluate` 5인자 확장 — 비-헌터(isHunter=false) 결과가 3인자 시절과 동일(무회귀 테스트).
-- [ ] hunter 전이 테스트: 사거리 타겟 → Engaging / 없고 HuntTarget 있음 → Chasing / 없음 → Marching / aggro 우선.
-- [ ] 최근접 선정 결정론 EditMode(거리·동점 index·빈 풀 -1).
+- [x] `HuntTarget.cs` 컴파일.
+- [x] `Evaluate` 5인자 확장 — 비-헌터(isHunter=false) 결과가 3인자 시절과 동일(무회귀). 3인자 오버로드가 5인자에 위임, 기존 EnemyAiStateTransitionTests 5건 그대로 그린.
+- [x] hunter 전이 테스트: 사거리 타겟 → Engaging / 없고 HuntTarget 있음 → Chasing / 없음 → Marching / aggro 우선.
+- [x] 최근접 선정 결정론 EditMode(거리·동점 index·빈 풀 -1) — 순수함수 `HunterTargeting.NearestIndex`(SelectNearestTarget ECS 래퍼는 unit 1).
+
+확인 2026-07-10 — 컴파일 클린 + EditMode 13/13(신규 8 + 무회귀 5) + code-review(low) 0. 커밋은 unit 0 코드 커밋 해시 참조.
