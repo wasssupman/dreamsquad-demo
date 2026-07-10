@@ -12,14 +12,25 @@ namespace Wassup.Data
     // dreamcatcher-content-1 — OnDamagedN(5회 피격), OnDeath(사망) triggers +
     // SelfTileAoe(사망 폭발), NextAttackDoubleFire(다음 공격 2연발),
     // SelfBuffLethal(즉발 공속버프+자폭) payloads.
-    public enum DcTriggerKind { None, AttackN, OnDamagedN, OnDeath }
-    public enum DcPayloadKind { None, ProjectileToTarget, SelfTileAoe, NextAttackDoubleFire, SelfBuffLethal }
+    // nightmare-catcher unit 0 — PeriodicTimer(주기)·HealthThreshold(누적 임계치)
+    // triggers + AreaBarrage(원격 진앙 TileAoe 폭격)·SelfBlink(자기 순간이동)
+    // payloads. 보스/적 능동 스킬 편입 — 정의 계층은 진영을 모른다.
+    public enum DcTriggerKind { None, AttackN, OnDamagedN, OnDeath, PeriodicTimer, HealthThreshold }
+    public enum DcPayloadKind { None, ProjectileToTarget, SelfTileAoe, NextAttackDoubleFire, SelfBuffLethal, AreaBarrage, SelfBlink }
 
     [Serializable]
     public struct DcTriggerSpec
     {
         public DcTriggerKind kind;
         public int period; // AttackN: fire on every N-th attack resolve
+        // nightmare-catcher unit 0 — PeriodicTimer: 주기 초. <=0 이면 트리거
+        // 순수함수가 발동하지 않는다(kind 디스패치가 아닌 함수 내부 가드 —
+        // 값 누락(0) 카드의 매 틱 스핀-발동 방지). 기본 0 = 기존 카드 inert.
+        public float periodSeconds;
+        // nightmare-catcher unit 0 — HealthThreshold: 경계 간격(스폰 시점 maxHp
+        // 스냅샷 비율, 예 0.10 = 90%,80%,… 누적 하향 돌파마다 발동, 래치 단조).
+        // <=0 이면 발동 안 함(동일 가드). 기본 0 = inert.
+        public float fraction;
     }
 
     [Serializable]
@@ -28,14 +39,19 @@ namespace Wassup.Data
         public DcPayloadKind kind;
         // ProjectileToTarget: flat damage — attacker stat modifiers (damageMul)
         // are intentionally NOT applied (card values stay predictable).
+        // nightmare-catcher unit 0 — AreaBarrage: 타일당 flat 데미지(동일 원칙).
         public float magnitude;
-        // ProjectileToTarget only — trajectory/view definition. Other payload
-        // kinds leave this null; re-evaluate splitting this struct per-kind
-        // when a second payload kind lands (spec README follow-up).
+        // ProjectileToTarget: trajectory/view definition. nightmare-catcher
+        // unit 0 — AreaBarrage: SkyFall 낙하 비주얼. 나머지 kind 는 null 유지
+        // (kind별 struct 분리는 여전히 YAGNI — 전 필드 재사용으로 신규 필드 0).
         public ProjectileData projectile;
         // dreamcatcher-content-1 — SelfTileAoe: AOE 반경(타일). 기본 0 = 기존 카드 inert.
+        // nightmare-catcher unit 0 — AreaBarrage: 진앙 중심 Chebyshev AoE 반경 /
+        // SelfBlink: 착지 탐색 반경(링 순회 상한).
         public int tileRange;
         // dreamcatcher-content-1 — SelfBuffLethal: 지속/자폭 초. 기본 0.
+        // nightmare-catcher unit 0 — AreaBarrage: 낙하 텔레그래프 초 → SkyFall
+        // flightTime(request-carried, Meteor 의 warningSec 슬롯 대응). 0 = 즉시 착탄.
         public float duration;
     }
 
