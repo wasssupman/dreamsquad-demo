@@ -116,6 +116,10 @@ namespace Wassup.Editor.UnitStatImport
                         Repaint();
                     });
                 }
+            }
+            // review L1 — export is local SO → disk; it needs tab names, not the API URL.
+            using (new EditorGUI.DisabledScope(_requestInFlight || dcTabs == null))
+            {
                 if (GUILayout.Button("Export Dreamcatcher SO → JSON Files"))
                 {
                     string folder = EditorUtility.SaveFolderPanel("Export Dreamcatcher JSON", "", "");
@@ -148,7 +152,16 @@ namespace Wassup.Editor.UnitStatImport
             var urls = new string[tabNames.Length];
             for (int i = 0; i < tabNames.Length; i++)
                 urls[i] = SheetEnvelopeParser.BuildSheetUrl(baseUrl, tabNames[i]);
-            SheetFetcher.FetchAll(urls, results => onDone(ApplyDcFetched(results, tabNames)));
+            // review H2 — onDone must fire even when apply throws, or the window's
+            // _requestInFlight sticks until a domain reload (same guarantee the
+            // unit path gets from its try/finally).
+            SheetFetcher.FetchAll(urls, results =>
+            {
+                string result;
+                try { result = ApplyDcFetched(results, tabNames); }
+                catch (System.Exception e) { result = $"Import failed: {e}"; }
+                onDone(result);
+            });
         }
 
         internal static string ApplyDcFetched(SheetFetcher.Result[] r, string[] tabs)
@@ -166,6 +179,10 @@ namespace Wassup.Editor.UnitStatImport
             if (payload.cards == null && payload.cardEffects == null && payload.mechanics == null
                 && payload.attackMods == null && payload.skills == null && payload.configs == null)
                 return log.ToString();
+
+            // review (architect #3) — surface each tab's SoT mode so "can I delete
+            // this row?" never depends on remembering the spec.
+            log.AppendLine($"[mode] {tabs[1]}/{tabs[3]}: sheet-SoT (rows rebuild arrays; deleting a row deletes the effect) · {tabs[2]}: Unity-SoT (values only).");
 
             var cardsById = UnitStatApplier.BuildIndex(
                 UnitAssetScan.Enumerate<DreamcatcherCard>(DcFolder), so => so.id, log, nameof(DreamcatcherCard));

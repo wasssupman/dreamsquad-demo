@@ -91,10 +91,13 @@ namespace Wassup.Data.StatImport
                 string cardId = cardIdOf(dto);
                 if (string.IsNullOrEmpty(cardId) || !cardsById.TryGetValue(cardId, out var so))
                 { c.unmatched++; log.AppendLine($"[{label}] no match for cardId='{cardId}'"); continue; }
-                if (slotOf(dto) == null)
+                // review H1 — negative slots must poison like null ones: they are
+                // not "new" (isNew checks >= old.Length) and would index old[-1].
+                int? slot = slotOf(dto);
+                if (slot == null || slot < 0)
                 {
                     c.skipped++; poisoned.Add(so);
-                    log.AppendLine($"[{label}] '{cardId}' row without slot — card skipped.");
+                    log.AppendLine($"[{label}] '{cardId}' row without valid slot ({(slot == null ? "blank" : slot.ToString())}) — card skipped.");
                     continue;
                 }
                 if (!byCard.TryGetValue(so, out var list)) byCard[so] = list = new List<TDto>();

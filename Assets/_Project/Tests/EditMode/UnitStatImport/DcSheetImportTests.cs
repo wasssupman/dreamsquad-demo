@@ -314,6 +314,145 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             StringAssert.Contains("out of range", log.ToString());
         }
 
+        // ---- unit 6 (review fixes) — edge cases from the two-track review ----
+
+        [Test]
+        public void RebuildEffects_NegativeSlot_SkipsCardWithoutThrowing()
+        {
+            var so = NewCard("card_a");
+            so.effects = new[] { new CardEffect { kind = CardBuffKind.AttackDamage, percent = 10 } };
+            var log = new StringBuilder();
+
+            var payload = new DcSheetPayload
+            {
+                cardEffects = new[] { new DcCardEffectDto { cardId = "card_a", slot = -1, percent = 99 } },
+            };
+            Assert.DoesNotThrow(() =>
+                Apply(payload, new Dictionary<string, DreamcatcherCard> { ["card_a"] = so }, log: log));
+
+            Assert.AreEqual(10f, so.effects[0].percent, "negative slot must poison the card, not crash");
+            StringAssert.Contains("without valid slot", log.ToString());
+        }
+
+        [Test]
+        public void RebuildEffects_NullSlot_SkipsCard()
+        {
+            var so = NewCard("card_a");
+            so.effects = new[] { new CardEffect { kind = CardBuffKind.AttackDamage, percent = 10 } };
+
+            var payload = new DcSheetPayload
+            {
+                cardEffects = new[] { new DcCardEffectDto { cardId = "card_a", percent = 99 } },
+            };
+            Apply(payload, new Dictionary<string, DreamcatcherCard> { ["card_a"] = so });
+
+            Assert.AreEqual(10f, so.effects[0].percent);
+        }
+
+        // Pins the reorder semantics (review M1): a blank cell inherits the old
+        // entry AT THAT SLOT NUMBER, and the rebuilt array is slot-ordered rows —
+        // renumbering rows while leaving cells blank moves values by slot label.
+        [Test]
+        public void RebuildEffects_SlotGap_BlankCellsInheritBySlotNumber()
+        {
+            var so = NewCard("card_a");
+            so.effects = new[]
+            {
+                new CardEffect { kind = CardBuffKind.AttackDamage, percent = 10 },
+                new CardEffect { kind = CardBuffKind.AttackSpeed, percent = 20 },
+            };
+
+            var payload = new DcSheetPayload
+            {
+                cardEffects = new[] { new DcCardEffectDto { cardId = "card_a", slot = 1 } }, // blank kind/percent
+            };
+            Apply(payload, new Dictionary<string, DreamcatcherCard> { ["card_a"] = so });
+
+            Assert.AreEqual(1, so.effects.Length);
+            Assert.AreEqual(CardBuffKind.AttackSpeed, so.effects[0].kind, "blank cells inherit old[slot], not old[position]");
+            Assert.AreEqual(20f, so.effects[0].percent);
+        }
+
+        [Test]
+        public void RebuildAttackMods_RowRemoved_ShrinksAndReports()
+        {
+            var so = NewCard("bouncy_bead");
+            so.attackMods = new[]
+            {
+                new DcAttackModSpec { kind = DcAttackModKind.ProjectileBounce, count = 2 },
+                new DcAttackModSpec { kind = DcAttackModKind.ProjectileBounce, count = 3 },
+            };
+            var log = new StringBuilder();
+
+            var payload = new DcSheetPayload
+            {
+                attackMods = new[] { new DcAttackModDto { cardId = "bouncy_bead", slot = 0 } },
+            };
+            Apply(payload, new Dictionary<string, DreamcatcherCard> { ["bouncy_bead"] = so }, log: log);
+
+            Assert.AreEqual(1, so.attackMods.Length);
+            Assert.AreEqual(2, so.attackMods[0].count);
+            StringAssert.Contains("attackMods 2→1", log.ToString());
+        }
+
+        [Test]
+        public void OverlayMechanics_DuplicateRow_AppliesFirstSkipsRest()
+        {
+            var so = NewMechanicCard("poke_needle", null);
+            var log = new StringBuilder();
+
+            var payload = new DcSheetPayload
+            {
+                mechanics = new[]
+                {
+                    new DcMechanicDto { cardId = "poke_needle", slot = 0, magnitude = 30 },
+                    new DcMechanicDto { cardId = "poke_needle", slot = 0, magnitude = 40 },
+                },
+            };
+            Apply(payload, new Dictionary<string, DreamcatcherCard> { ["poke_needle"] = so }, log: log);
+
+            Assert.AreEqual(30f, so.mechanics[0].payload.magnitude, "first row applies, duplicates skip");
+            StringAssert.Contains("duplicate row", log.ToString());
+        }
+
+        [Test]
+        public void ChildTab_UnknownCardId_ReportsNoMatch()
+        {
+            var log = new StringBuilder();
+            var payload = new DcSheetPayload
+            {
+                cardEffects = new[] { new DcCardEffectDto { cardId = "ghost", slot = 0, percent = 1 } },
+            };
+            Apply(payload, new Dictionary<string, DreamcatcherCard>(), log: log);
+
+            StringAssert.Contains("no match for cardId='ghost'", log.ToString());
+        }
+
+        [Test]
+        public void Apply_EmptyPayload_ReportsZeroCounts()
+        {
+            var log = new StringBuilder();
+            Apply(new DcSheetPayload(), new Dictionary<string, DreamcatcherCard>(), log: log);
+            StringAssert.Contains("Matched 0, unmatched 0", log.ToString());
+        }
+
+        // review 3b — a renamed column must be reported, or edits in it vanish
+        // silently under the "blank cell = keep" rule. `_` columns stay exempt.
+        [Test]
+        public void ParseSheetLogged_UnknownHeader_IsReportedAndUnderscoreIsNot()
+        {
+            const string body = @"{ ""success"": true, ""data"": [
+                { ""id"": ""x"", ""displayNam"": ""oops"", ""_memo"": ""y"" }
+            ] }";
+            var log = new StringBuilder();
+
+            var rows = SheetEnvelopeParser.ParseSheetLogged<DcCardDto>(body, null, "DcCards", log);
+
+            Assert.AreEqual(1, rows.Length);
+            StringAssert.Contains("displayNam", log.ToString());
+            StringAssert.DoesNotContain("_memo", log.ToString());
+        }
+
         // dreamcatcher-sheet-sync unit 4 — awakeningReward rides the existing
         // reflection contract both ways (new column = one DTO field).
         [Test]

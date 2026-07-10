@@ -31,6 +31,7 @@ namespace Wassup.Data.StatImport
         {
             var results = new Result[urls.Length];
             int remaining = urls.Length;
+            if (remaining == 0) { onDone(results); return; } // review M2 — join would never fire
             for (int i = 0; i < urls.Length; i++)
             {
                 int slot = i;
@@ -41,6 +42,9 @@ namespace Wassup.Data.StatImport
         public static void Fetch(string url, Action<Result> onDone)
         {
             var request = UnityWebRequest.Get(url);
+            // review M2 — without a timeout a hung connection never completes the
+            // FetchAll join, freezing the import UI until domain reload.
+            request.timeout = 30;
             var operation = request.SendWebRequest();
             operation.completed += _ =>
             {
