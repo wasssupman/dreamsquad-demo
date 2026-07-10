@@ -47,6 +47,14 @@
 
 ## 완료 기준
 
-- [ ] 위 Play e2e 5개 실기/에디터 확인.
-- [ ] 렌즈 B 통과(반영 후).
-- [ ] 채널 목록(CLAUDE.md) +2 갱신 · `object-pipeline-map` 구조 변경 시 맵 갱신.
+- [x] 위 Play e2e 7개 실기/에디터 확인. (사용자 확인 2026-07-10 — 폭격 데미지 정상(피드백 부재였음), 텔레포트 동작, blink 연출 확인)
+- [x] 렌즈 B 통과(반영 후). (1·4·5 PASS + 2·3 arm PASS — CRITICAL/HIGH 0)
+- [x] 채널 목록(CLAUDE.md) +2 갱신(16→17: ThreatHit·BlinkRequest). `object-pipeline-map` 신규 아키타입 0 → 맵 갱신 불요.
+
+## rev 3 — 실플레이 피드백 반영 (2026-07-10)
+
+- **blink 연출**: 무연출이 어색 → `Projectile_BlinkPuff`(hit-VFX 전용 ProjectileData) 신설, 출발지+도착지 퍼프를 기존 `ProjectileHitEvents` 채널로 재생(신규 시스템/채널 0). 베이크(SelfBlink `projectile` 슬롯) + arm enqueue.
+- **VFX 렌더 함정**: GA 벤더 ProjectileData 의 `hitPrefab` 이 Muzzle(빔 2개·사실상 무연출)을 가리킴 — 오프스크린 렌더 픽셀검증으로 실물 임팩트(`vfx_Hit_RotatingSpheres03`, 2643px) 선별해 교체. (README 후속 후보 = GA hitPrefab 전수 정비)
+- **튜닝**: 퍼프 `hitVfxScale` 2, 텔레포트 `fraction` 0.10→**0.30**(HP1000 = 700/400/100 발동). config/SO 값이라 코드 무변경.
+- **보스 콘텐츠**: `Enemy_Boss_Nightmare`(HP1000·근접100·reward5·Tanker 외형 스케일2.1) + `WavePlan_BossTest`(t=6 보스1) + TestModeConfig/EnemyCatalog 등록.
+- **범위 밖 발견**: 보스가 타겟 없으면 goal 로 걸어가 누수 — 별도 spec `enemy-hunter-targeting` 으로 분리(사용자 확정).

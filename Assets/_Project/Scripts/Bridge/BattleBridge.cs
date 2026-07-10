@@ -4221,6 +4221,12 @@ namespace Wassup.Bridge
                     slot.projectileDataIndex = GetOrCreateProjectileDataIndex(m.payload.projectile);
                     slot.visualScale = m.payload.projectile.visualScale;
                 }
+                else if (m.payload.kind == Wassup.Data.DcPayloadKind.SelfBlink && m.payload.projectile != null)
+                {
+                    // rev 3 (실플레이 피드백) — blink 연출: hitPrefab 만 소비하는
+                    // 퍼프 ProjectileData(투사체로는 안 뜀). null 이면 무연출 blink.
+                    slot.projectileDataIndex = GetOrCreateProjectileDataIndex(m.payload.projectile);
+                }
                 slots.Add(slot);
             }
         }

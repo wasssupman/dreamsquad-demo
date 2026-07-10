@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e26b79bbb3da24d79900c004f0d4add0, type: 3}
+  m_Name: WavePlan_BossTest
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.WavePlanAsset
+  displayName: "보스 나이트메어 e2e"
+  timerDurationSec: 0
+  waves:
+  - durationSec: 90
+    intervalSec: 0.5
+    groups:
+    - triggerTimeSec: 0
+      unit: {fileID: 11400000, guid: d8f78ad31ef4e4cd3ba3b2405d899e54, type: 2}
+      count: 4
+    - triggerTimeSec: 6
+      unit: {fileID: 11400000, guid: a2fc78633cb4410896cdd585f849ee39, type: 2}
+      count: 1
+    - triggerTimeSec: 20
+      unit: {fileID: 11400000, guid: d8f78ad31ef4e4cd3ba3b2405d899e54, type: 2}
+      count: 3

@@ -1,7 +1,7 @@
 # Nightmare Catcher — 보스/적 능동 스킬 (드림캐쳐 프레임워크 편입)
 
-> 상태: **스펙 작성 완료 (units 0~6, rev 2)** — 로직 정의(0~3, 렌즈 A 2패스 통과) + 배선(4~6). **코드 0줄**, 구현 착수 대기.
-> 이력: rev 2 (2026-07-10) = `dreamcatcher-awakening-hand` 전면 개편(3중1→각성치+순환 손패) 병합 후 정합 패스 — 로직 계약 무손상 확인, 배선 앵커·무회귀 대상 갱신, 각성 경제 편입. 하단 "rev 2 정합" 참조.
+> 상태: **완료 2026-07-10** (units 0~6 전량 구현·커밋·Play e2e 확인 + rev 3 실플레이 피드백. 인계: `7_handoff_summary.md`)
+> 이력: rev 2 = `dreamcatcher-awakening-hand` 개편 정합 패스. rev 3 = 실플레이 피드백(blink 연출·VFX 렌더 함정·튜닝) + 범위 밖 발견(보스 누수 → `enemy-hunter-targeting` 분리).
 >
 > 선행 토대: `docs/spec/dreamcatcher-unit-trigger/` (trigger×payload 프레임워크), `docs/spec/dreamcatcher-content-1/` (트리거/페이로드 확장 선례), `docs/spec/dreamcatcher-awakening-hand/` (사용 방식 — 각성치·손패·Active 카드).
 
@@ -65,10 +65,15 @@
 ## 후속 후보 (스코프 밖)
 
 - **(렌즈 B M1 잔여, 2026-07-10)** `ProjectileHitSystem` 의 기존 `StatModifierApplyEventsSingleton`/`StackModifierApplyEventsSingleton` 접근을 `TryGetSingleton`→`TryGetSingletonRW` 로 정렬 — 큐 변이 싱글턴의 RO 접근은 동작하나(참조 시맨틱) 의도 표기가 틀림. 이번 spec 은 신규 threat 싱글턴만 정렬(기존 코드 무접촉 원칙).
+- **(최종 렌즈 B M1, 2026-07-10)** 투사체발 위협/데미지의 1프레임 지연 가능성 — `ProjectileHitSystem` 과 `DamageApplicationSystem`/`BossHealthThresholdSystem` 간 명시 순서 제약 없음(기존 성질, 60fps 비가시). 투사체 데미지만으로 경계를 넘는 프레임에서 blink 가 1프레임 늦을 수 있음. 문제화되면 `DamageApplicationSystem` 에 `[UpdateAfter(ProjectileHitSystem)]` 1줄.
+- **라이브 웨이브 보스 편성 규칙** — 이번 e2e 는 테스트 플랜(WavePlan_BossTest) 배선. 생성형 웨이브(WaveA 풀)에 보스를 넣으면 무작위 다수 등장하므로, "N웨이브째 보스 1기" 같은 편성 규칙은 밸런스/product 결정과 함께 별도 작업.
+- **보스 전용 아트/연출** — 현재 Tanker 외형 재사용(스케일 2.1) + Meteor 낙하 비주얼. 보스 실루엣·폭격 전용 VFX·blink 연출 고도화는 후속.
+- **(rev 3 발견) GA ProjectileData 들의 `hitPrefab` 이 머즐(Muzzle) 프리팹을 가리킴** — `Projectile_ExplosiveBullet_GA`·`Projectile_RotatingSpheres03_GA` 등에서 확인(머즐 = 빔 2개 0.35초, 사실상 무연출). 인게임 히트 이펙트가 전반적으로 빈약했다면 이것. 실물은 `GA/Prefabs/Hits/vfx_Hit_*` — 전수 재배정은 별도 데이터 정비 작업.
+- **폭격 피격 체감** — defender 피격은 데미지 팝업이 없는 기존 사양(DamageNumber enemy 전용 게이트). 폭격 맞는 순간의 체감 연출(팝업 진영 개방 or 피격 플래시)은 후속(실플레이 피드백 2026-07-10).
 
 - **기본공격 100 / 채찍질(3타일 아군 이동속도 오라)** — 기존 프리미티브(`AttackOutput` / MoveSpeedMul Aura) 조합. 게이트 개방 후 데이터로 붙음. Aura 는 `modifier-framework-and-healer` 후속의 Aura defender 와 producer 공유.
 - **게이트 완전 일반화(공통부 추출)** — 적 경로가 실제로 돌기 시작한 뒤, defender/enemy 공통 부착·정리 라이프사이클을 추출. 두 번째 사용처 확정 후.
 - **보스 페이즈/캐스팅 상태** — 스킬이 이동을 하드 중단해야 할 때만 `AiState.Casting` 1개 추가. 현 MVP 는 불필요.
-- **보스 어그로 저항/면역** — 현재 모든 적이 동일하게 `Aggroed` 대상. 보스가 가디언 자석에 저항하는 로직.
+- **보스 어그로 저항/면역** — 현재 모든 적이 동일하게 `Aggroed` 대상(보스도 끌림 — 실플레이 확인 2026-07-10, **사용자 확정: 면역 시스템 후속 추가**). `BossTag` 가 이미 있어 어그로 부착 지점 게이트 1줄로 구현 가능.
 - **위협 감쇠/타임아웃** — 누적피해 threat 의 시간 감쇠, off-target 해제 정책.
 - **나이트매어캐쳐 authoring/부착 UX** — 적 데이터에서 스킬 선언 → 스폰 시 자동 베이크. 인게임 선택 UI 아님(드림캐쳐 UX 와 대칭이나 별도).

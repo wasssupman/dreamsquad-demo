@@ -59,6 +59,11 @@ namespace Wassup.Battle.Combat
             var blinkQueue = blinkRW.ValueRW.queue;
             var ff = SystemAPI.GetSingleton<FlowFieldSingleton>();
 
+            // rev 3 (실플레이 피드백) — blink 연출: 출발/도착 퍼프를 기존 hit-VFX
+            // 채널(Combat→Presentation)로 재생. 슬롯에 베이크된 퍼프 dataIndex 사용.
+            bool hasHitQ = SystemAPI.TryGetSingletonRW<Projectile.ProjectileHitEventsSingleton>(out var hitRW);
+            NativeQueue<Projectile.ProjectileHitEvent> hitQueue = hasHitQ ? hitRW.ValueRW.queue : default;
+
             // Fallback pool = living defenders (payload targets the caster's
             // opposing side — same axis as the barrage epicenter pool).
             var defQuery = SystemAPI.QueryBuilder().WithAll<DefenderUnitTag, LocalTransform>().Build();
@@ -90,6 +95,24 @@ namespace Wassup.Battle.Combat
                                      out float3 destWorld))
                         {
                             blinkQueue.Enqueue(new BlinkRequestEvent { entity = entity, destWorld = destWorld });
+                            // 출발지 + 도착지 퍼프 (dataIndex < 0 = 무연출 blink).
+                            if (hasHitQ && slot.projectileDataIndex >= 0)
+                            {
+                                hitQueue.Enqueue(new Projectile.ProjectileHitEvent
+                                {
+                                    position = transform.ValueRO.Position,
+                                    dataIndex = slot.projectileDataIndex,
+                                    payload = Projectile.PayloadKind.SingleSplash,
+                                    source = entity,
+                                });
+                                hitQueue.Enqueue(new Projectile.ProjectileHitEvent
+                                {
+                                    position = destWorld,
+                                    dataIndex = slot.projectileDataIndex,
+                                    payload = Projectile.PayloadKind.SingleSplash,
+                                    source = entity,
+                                });
+                            }
                         }
                         // 목적지 실패(방어유닛 전멸/링 상한 초과) = skip — k 는
                         // 이미 전진(발동 소모 유지, 재발동 없음).

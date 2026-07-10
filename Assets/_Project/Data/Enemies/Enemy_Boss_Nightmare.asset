@@ -1,0 +1,75 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 76be7b1982d44400ea2bbe396d3eea24, type: 3}
+  m_Name: Enemy_Boss_Nightmare
+  m_EditorClassIdentifier: Assembly-CSharp::Wassup.Data.AttackUnitData
+  id: boss_nightmare
+  displayName: "\uB098\uC774\uD2B8\uBA54\uC5B4"
+  enemyClass: 1
+  attackMethod: 1
+  targetMode: 1
+  engageMovement: 0
+  targetPriorityClass: 0
+  targetClassMask: -1
+  health: 1000
+  moveSpeed: 1
+  attackRange: 2
+  attackCooldown: 1.2
+  attackTargetCount: 1
+  projectile: {fileID: 0}
+  hitDelaySec: 0.3
+  aggroAttackDamage: 0
+  aggroAttackCooldown: 1
+  aggroAttackRange: 1
+  outputs:
+  - kind: 0
+    magnitude: 100
+    duration: 0
+    stat: 0
+    op: 0
+    stackKind: 0
+    stackMaxStack: 0
+  visualMesh: {fileID: 0}
+  visualMaterial: {fileID: 2100000, guid: 3040a5917ceba49b48a1616e771e9e80, type: 2}
+  skeletonDataAsset: {fileID: 11400000, guid: ee98f82138b60430f97c6863317c3a2f, type: 2}
+  spineSkinName: full_skins
+  idleAnimation: Walk
+  attackAnimation: Attack1
+  deathAnimation: Die
+  spineVisualScale: 2.1
+  partSkins: []
+  slotColors: []
+  visualOffset: {x: 0, y: 0, z: 0}
+  awakeningReward: 5
+  nightmareMechanics:
+  - trigger:
+      kind: 4
+      period: 0
+      periodSeconds: 10
+      fraction: 0
+    payload:
+      kind: 5
+      magnitude: 10
+      projectile: {fileID: 11400000, guid: 1705ed345dda4014bc5b6019f1a84e77, type: 2}
+      tileRange: 3
+      duration: 1.5
+  - trigger:
+      kind: 5
+      period: 0
+      periodSeconds: 0
+      fraction: 0.3
+    payload:
+      kind: 6
+      magnitude: 0
+      projectile: {fileID: 11400000, guid: cbc979168a4b4c978e1765a3f427d06e, type: 2}
+      tileRange: 3
+      duration: 0
