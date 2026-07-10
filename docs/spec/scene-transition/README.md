@@ -1,6 +1,6 @@
 # Spec — Scene Transition (씬 전환 연출)
 
-> 상태: **완료 2026-07-10** (units 0~2 구현·검증·커밋: 280a10e9 / 3fb2c685 / cae9c51a). 인계: `3_handoff_summary.md`
+> 상태: units 0~2 **완료 2026-07-10** (280a10e9 / 3fb2c685 / cae9c51a, 인계 `3_handoff_summary.md`). **unit 4 진행 중** — 로딩 화면을 스쿼드 3인 러닝으로 교체(`4_squad-loading-runners.md`).
 
 ## 한 줄
 
@@ -39,6 +39,7 @@
 | 1 | 배선 | `1_wire-call-sites.md` | 직접 `LoadScene` 3곳을 `SceneTransition.Go` 로 리다이렉트. 모든 전환이 파이프라인 경유. |
 | 2 | 디졸브 커버 + 스파인 로딩 | `2_dissolve-cover-transition.md` | 커버를 **라디얼 골든 디졸브**(로비 배경 디졸브 재사용)로 교체 — 현재 배경(front)이 클릭 지점에서 골든 파면으로 걷히며 → **스파인 로딩 화면**(Casual Character 러닝 2초) → 배틀. **0+1 검증·커밋 후 게이트**. |
 | 3 | 인계 | `3_handoff_summary.md` | 구현/검증 종료 후 세션 인계 요약. |
+| 4 | 스쿼드 로딩 러너 | `4_squad-loading-runners.md` | 로딩 화면의 단일 제네릭 러닝 → **확정 스쿼드 3인이 함께 러닝**. 공유 `PlayerProfileSO`/`DefenderCatalog` 참조 + 러너 3슬롯 SkeletonGraphic + 스킨 주입. 폴백(스쿼드 미선택 시 기본 러너). |
 
 **순서 의존**: 0 → 1 (진입점 있어야 배선). **0+1 로 "끊김 없는 전환" 검증 질문을 먼저 종결·커밋**한 뒤, 그 위에 커버 비주얼(2)을 얹는다. 한 번에 한 파일, 사용자 확인 후 다음.
 
