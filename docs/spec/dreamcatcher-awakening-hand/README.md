@@ -89,6 +89,8 @@
 
 ## 후속 후보
 
+- **(simplify 리뷰 2026-07-10)** 스크린→셀 변환 잔여 4사본(SkillBar×2/PlacementInput/DefenderDragPlacementController) → `bridge.TryScreenToCell` 로 통합 / SkillBar 조준 상태기계(2탭·범위 프리뷰 캐시·IsAiming 수명) 공용 추출 — dormant 라 급하지 않음 / 오버레이 캔버스 보일러플레이트(15사본) → `UiLayer.EnsureOverlayCanvas` / 철회에 두 번째 수요 생기면 항등원 트릭 대신 Effects 에 stackId-remove 프리미티브.
+
 - 덱빌더에서 덱 **순서 편집** UX (문서의 "순서를 짜는" 덱빌딩 감성 — 셔플 대신 고정 순서 채택 시 필수).
 - 각성 게이지 연출(획득 플로팅/가득 참 강조), 카드 사용 VFX/SFX.
 - 부착 카드의 유닛 위 표시(뱃지/아이콘) + 유닛당 3개 슬롯 시각화.
