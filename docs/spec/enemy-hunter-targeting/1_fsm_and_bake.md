@@ -28,8 +28,14 @@
 
 ## 완료 기준
 
-- [ ] 보스 스폰 시 `HuntTarget` 부착 확인(reflection/Play).
-- [ ] 비-aggro 보스가 사거리 밖 방어유닛 존재 시 `Chasing` + HuntTarget=최근접 set.
-- [ ] 방어유닛 0 시 `Marching`. 사거리 내면 `Engaging`(HuntTarget 클리어).
-- [ ] 일반 적 FSM 무변경(BossTag 없으면 기존 경로) — 무회귀.
-- [ ] (렌즈 B) BossTag lookup·HuntTarget write 맥락 경계·Burst.
+- [x] 보스 스폰 시 `HuntTarget` 부착(BakeNightmareMechanics). — reflection/Play 확인은 unit 3.
+- [x] 비-aggro 보스가 사거리 밖 방어유닛 존재 시 `Chasing` + HuntTarget=최근접 set (FSM 블록).
+- [x] 방어유닛 0 시 `Marching`. 사거리 내/aggro 면 HuntTarget 클리어(Null).
+- [x] 일반 적 FSM 무변경(BossTag 없으면 블록 no-op) — EditMode 648/650 무회귀.
+- [ ] (렌즈 B) BossTag lookup·HuntTarget write 맥락 경계·Burst — unit 2 와 묶어 실행.
+
+확인 2026-07-11 — 컴파일 클린 + EditMode 648/650 그린 + code-review(medium): FocusUntilDead 락 미러 미적용은 **의도적 분기**(추격≠조준)로 코드 주석+후속 기록, 나머지 findings 0.
+
+## review 메모 (의도적 결정)
+
+- `SelectNearestTarget` 는 `HasFireTarget` 의 FocusUntilDead 락을 미러하지 않는다. 추격은 거리 좁히기 목적이라 최근접이 맞고, 사거리 진입 후 조준 대상은 `HasFireTarget` 이 락 규칙대로 재결정한다. FocusUntilDead 헌터가 실제로 생기면 재평가(후속).

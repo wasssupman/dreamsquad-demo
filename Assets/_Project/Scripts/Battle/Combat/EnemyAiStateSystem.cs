@@ -136,6 +136,9 @@ namespace Wassup.Battle.Combat
         // index(사거리 조건 없음 — 추격 대상). eligibility 필터(faction mask + class,
         // HasFireTarget 과 동일, 사거리 게이트만 제거)는 여기서, 최근접+동점 결정은
         // 순수함수 HunterTargeting.NearestIndex 로(제약 10 — EditMode 고정).
+        // 의도적 분기(review): HasFireTarget 의 FocusUntilDead 락은 미러하지 않는다 —
+        // 추격은 "거리 좁히기"라 최근접이 맞고, 사거리 진입 후 fire 대상은 HasFireTarget
+        // 이 락 규칙대로 재결정한다(추격≠조준). FocusUntilDead 헌터가 실제로 생기면 재평가.
         static int SelectNearestTarget(
             Entity attacker, int2 atkCell, int mask,
             in NativeArray<Entity> candEntities,
