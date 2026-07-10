@@ -52,8 +52,9 @@ namespace Wassup.Tests.PlayMode
             var host = cat.ById("fire_caster");   // 오라 host (자신은 미부여)
             var pre = cat.ById("ranger");          // 부착 전 배치 (미부여)
             var future = cat.ById("scout");        // 부착 후 배치 (부여 대상)
+            var afterRevoke = cat.ById("guardian"); // 회수 후 배치 (미부여 확인)
 
-            bridge.SetDefenderPool(new[] { host, pre, future });
+            bridge.SetDefenderPool(new[] { host, pre, future, afterRevoke });
             bridge.BeginPlacement();
             var gm = Object.FindObjectOfType<GameManager>();
             gm.CostRuntime.ResetToStart();
@@ -63,6 +64,8 @@ namespace Wassup.Tests.PlayMode
             Assert.IsTrue(PlaceFirstValid(bridge, host), "place host");
             Assert.IsTrue(PlaceFirstValid(bridge, pre), "place pre-existing");
             var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+            // review LOW1 — 오라 없는 자연 배치 쿨다운(baseline). scout warmup 을 이것과 분리 검증.
+            float baselineCd = GetCooldown(bridge, em, "ranger");
 
             var hostEntity = GetEntity(bridge, em, "fire_caster");
             Assert.AreNotEqual(Entity.Null, hostEntity, "host entity resolved");
@@ -78,7 +81,8 @@ namespace Wassup.Tests.PlayMode
             // 신규 배치 → 부여 (+ warmup)
             Assert.IsTrue(PlaceFirstValid(bridge, future), "place future unit");
             float cd = GetCooldown(bridge, em, "scout");
-            Assert.Greater(cd, 1.5f, "신규 배치 유닛 warmup(~2s) 적용");
+            Assert.GreaterOrEqual(cd, 1.9f, "신규 배치 유닛 warmup(~2s) 적용");
+            Assert.Greater(cd, baselineCd + 0.3f, "warmup 이 자연 배치 쿨다운과 분리되어 추가됨 (review LOW1)");
             for (int i = 0; i < 3; i++) yield return null;
             Assert.AreEqual(1.5f, GetStat(bridge, em, "scout").attackSpeedMul, 0.01f, "신규 배치 유닛 공속 +50%");
 
@@ -86,6 +90,11 @@ namespace Wassup.Tests.PlayMode
             bridge.RevokeDreamcatcherEffects(handle);
             for (int i = 0; i < 3; i++) yield return null;
             Assert.AreEqual(1.0f, GetStat(bridge, em, "scout").attackSpeedMul, 0.01f, "host 회수 시 수혜 유닛 원복");
+
+            // review test-gap — 회수 후 신규 배치는 상속 중단(레지스트리 제거 확인)
+            Assert.IsTrue(PlaceFirstValid(bridge, afterRevoke), "place post-revoke unit");
+            for (int i = 0; i < 3; i++) yield return null;
+            Assert.AreEqual(1.0f, GetStat(bridge, em, "guardian").attackSpeedMul, 0.01f, "회수 후 신규 배치 미부여");
         }
 
         [UnityTest]

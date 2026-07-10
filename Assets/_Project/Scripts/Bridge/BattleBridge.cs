@@ -2478,7 +2478,10 @@ namespace Wassup.Bridge
         private readonly System.Collections.Generic.List<ActiveDcEffect> _activeDcEffects =
             new System.Collections.Generic.List<ActiveDcEffect>();
         private ushort _dcStackCounter = 100;
-        private int _dcHandleCounter = 1; // unit 9 — hosted-apply revocation handles
+        // unit 9 — hosted-apply revocation handles. review L1 — 앱 수명 monotonic:
+        // BeginPlacement 에서 의도적으로 리셋하지 않는다(등록 레지스트리는 매치마다 clear 돼
+        // stale handle 이 live 엔트리로 해석될 수 없고, 리셋하면 생존한 stale 맵과 alias 위험).
+        private int _dcHandleCounter = 1;
         private const float DcDuration = 1e9f;
 
         // ingame-dreamcatcher Unit 3 — selection triggers. DreamcatcherController
@@ -2747,6 +2750,13 @@ namespace Wassup.Bridge
                     if (m.payload.magnitude <= 0f)
                     {
                         Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: PlacementAura non-positive magnitude — skipped.");
+                        continue;
+                    }
+                    // review M1 — 카드당 PlacementAura 는 1개만. 두 번째는 등록하면 핸들이
+                    // 덮어써져 첫 오라가 host 사망 후에도 영구 누수 → 스킵(등록 안 함).
+                    if (auraHandle != 0)
+                    {
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: 카드당 PlacementAura 는 1개만 지원 — 추가 오라 스킵.");
                         continue;
                     }
                     auraHandle = RegisterPlacementAura(card.axis, m.payload.magnitude, m.payload.duration);
