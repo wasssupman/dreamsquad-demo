@@ -33,12 +33,14 @@ namespace Wassup.Presentation
         private float _walkFactor = 1f;
         private float _smoothedSpeed;
         private const float SimDtEpsilon = 1e-5f;
-        // enemy-walk-anim-speed unit 4 — 이동/정지 로코모션 애니 자동 전환.
-        // SpineWalkAnimation 설정 시 이동 중 walk / 정지 중 idle. 히스테리시스로 경계 flicker 방지.
-        // 임계값은 WalkAnimRefSpeed(SO) 대비 분율 — 별도 튜닝 필드 없이 이동 스케일과 연동.
-        private bool _locoMoving;
-        private const float LocoMoveOnFrac = 0.35f;   // _smoothedSpeed > ref×이 값 → walk
-        private const float LocoMoveOffFrac = 0.15f;  // _smoothedSpeed < ref×이 값 → idle
+        // enemy-walk-anim-speed unit 4 — 이동/정지 상태(히스테리시스). 두 곳이 소비한다:
+        //  (1) ApplyTimeScale — 걷기 배율은 **이동 중일 때만** 적용, 정지 유닛은 factor 1(자연속도).
+        //      → 정지 유닛(디펜더/멈춘 적/보스)이 minTimeScale(0.15)로 슬로모 재생되던 버그 해소.
+        //  (2) UpdateLocomotionAnimation — walkAnimation 설정 시 이동=walk / 정지=idle 스위칭.
+        // 임계는 "정지" 판정이 목적이라 낮게(ref 대비 분율): 느린 이동은 여전히 배율 동기(발 접지 유지).
+        private bool _moving;
+        private const float LocoMoveOnFrac = 0.15f;   // _smoothedSpeed > ref×이 값 → 이동
+        private const float LocoMoveOffFrac = 0.05f;  // _smoothedSpeed < ref×이 값 → 정지
         private const float LocoMixDuration = 0.15f;  // walk↔idle 크로스페이드 초
 
         public Entity Entity => _entity;
@@ -97,7 +99,10 @@ namespace Wassup.Presentation
         private void ApplyTimeScale()
         {
             if (_skeleton == null) return;
-            float factor = IsLocomotionLoopPlaying() ? _walkFactor : 1f;
+            // 걷기 배율은 **이동 중 + 로코모션 루프**일 때만. 정지 유닛(디펜더/멈춘 적/보스)과
+            // 원샷(공격/사망/배치)은 factor 1 = 자연속도(battleScale 만). 이게 "정지 유닛 슬로모"
+            // 회귀 방지의 본질 — minTimeScale 은 느린 '이동' 하한이지 정지 유닛에 쓰라는 게 아니다.
+            float factor = (_moving && IsLocomotionLoopPlaying()) ? _walkFactor : 1f;
             _skeleton.timeScale = _battleScale * factor;
         }
 
@@ -159,6 +164,11 @@ namespace Wassup.Presentation
             _smoothedSpeed = Mathf.Lerp(_smoothedSpeed, simSpeed, BattleBridge.WalkAnimSmoothing);
             _walkFactor = Mathf.Clamp(_smoothedSpeed / BattleBridge.WalkAnimRefSpeed,
                 BattleBridge.WalkAnimMinTimeScale, BattleBridge.WalkAnimMaxTimeScale);
+            // unit 4 — 이동/정지 히스테리시스(ApplyTimeScale + 로코 스위칭 공용). 모든 유닛에
+            // 적용 — 정지 판정이라 임계 낮음(느린 이동은 여전히 _moving=true 로 배율 동기 유지).
+            float refSpeed = Mathf.Max(0.01f, BattleBridge.WalkAnimRefSpeed);
+            if (_moving && _smoothedSpeed < refSpeed * LocoMoveOffFrac) _moving = false;
+            else if (!_moving && _smoothedSpeed > refSpeed * LocoMoveOnFrac) _moving = true;
             ApplyTimeScale();
         }
 
@@ -425,7 +435,7 @@ namespace Wassup.Presentation
         private string ResolveLocomotionAnimation()
         {
             string walk = ResolveAnimation(_visualData.SpineWalkAnimation);
-            if (!string.IsNullOrEmpty(walk) && _locoMoving) return walk;
+            if (!string.IsNullOrEmpty(walk) && _moving) return walk;
             return ResolveAnimation(_visualData.SpineIdleAnimation, "idle", "Idle", "walk", "Walk");
         }
 
@@ -439,10 +449,7 @@ namespace Wassup.Presentation
             var current = _skeleton.AnimationState?.GetCurrent(0);
             if (current == null || !current.Loop) return; // 원샷 진행 중 — 유지
 
-            float refSpeed = Mathf.Max(0.01f, BattleBridge.WalkAnimRefSpeed);
-            if (_locoMoving && _smoothedSpeed < refSpeed * LocoMoveOffFrac) _locoMoving = false;
-            else if (!_locoMoving && _smoothedSpeed > refSpeed * LocoMoveOnFrac) _locoMoving = true;
-
+            // _moving 은 UpdateWalkTimeScale 이 이미 갱신(같은 프레임, UpdatePosition 순서).
             string desired = ResolveLocomotionAnimation();
             if (string.IsNullOrEmpty(desired)) return;
             if (current.Animation == null || current.Animation.Name != desired)
