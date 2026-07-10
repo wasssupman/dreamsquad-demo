@@ -2589,6 +2589,35 @@ namespace Wassup.Bridge
                 view.SetHoverHighlight(on, tint);
         }
 
+        // dreamcatcher-awakening-hand rev 4 — SCREEN-SPACE defender picking.
+        // Root cause fix: the board-plane raycast resolves the cell under the
+        // pointer's GROUND point, but tilted-billboard sprites rise above their
+        // cell on screen — pointing at a unit's body lands rows behind its feet
+        // and cell lookup misses. Here we test the pointer against each spine
+        // view's projected sprite rect instead (overlaps → nearest rect center).
+        // Callers should fall back to TryGetDefenderAt(cell) for feet-point taps
+        // and fallback quad views.
+        public bool TryPickDefenderAtScreen(Camera cam, Vector2 screenPos, out Entity defender, out Vector2Int cell)
+        {
+            defender = Entity.Null;
+            cell = default;
+            if (cam == null || spineUnitPool == null) return false;
+            float best = float.MaxValue;
+            foreach (var kv in _defenderByTile)
+            {
+                if (!spineUnitPool.TryGet(kv.Value.entity, out var view) || view == null) continue;
+                if (!view.TryGetScreenRect(cam, out var rect) || !rect.Contains(screenPos)) continue;
+                float d = (rect.center - screenPos).sqrMagnitude;
+                if (d < best)
+                {
+                    best = d;
+                    defender = kv.Value.entity;
+                    cell = kv.Key;
+                }
+            }
+            return defender != Entity.Null;
+        }
+
         // dreamcatcher-unit-trigger Unit 1 — unit-bound card attach: bakes each
         // DcMechanic (definition layer, ECS-free) into a DcTriggerSlot on the
         // defender entity. Translator role: an architecture swap rewrites this,

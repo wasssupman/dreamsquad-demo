@@ -211,7 +211,14 @@ namespace Wassup.UI
         {
             Entity found = Entity.Null;
             Vector2Int? cell = null;
-            if (TryScreenToCell(screenPos, out var c) && _view.Bridge.TryGetDefenderAt(c, out var entity))
+            // rev 4 root-cause fix — 1차: 스프라이트 스크린 렉트 픽킹(몸체 포인팅).
+            // 보드 평면 셀 조회는 발밑을 정확히 가리킬 때만 맞아서 2차로 강등.
+            if (_view.Bridge.TryPickDefenderAtScreen(_view.MainCamera, screenPos, out var picked, out var pickedCell))
+            {
+                cell = pickedCell;
+                found = picked;
+            }
+            else if (TryScreenToCell(screenPos, out var c) && _view.Bridge.TryGetDefenderAt(c, out var entity))
             {
                 cell = c;
                 found = entity;

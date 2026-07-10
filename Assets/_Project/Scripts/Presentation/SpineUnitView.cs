@@ -23,6 +23,8 @@ namespace Wassup.Presentation
         private Vector3 _simWorld;
         // placement-enemy-see-through unit 2 — dim 페이드용 blob 참조.
         private BlobShadow _blob;
+        // dreamcatcher-awakening-hand rev 4 — 스크린 픽킹용 렌더러 캐시(Spawn 시 1회).
+        private MeshRenderer _meshRenderer;
         private bool _shadowTransparent; // 실그림자 토글 상태 캐시(매 프레임 alloc 방지).
         // enemy-walk-anim-speed unit 1 — 걷기 애니 속도 변조 상태.
         // _battleScale: 슬로우모/정지 스케일(SpineUnitPool 이 ScaleChanged 로 fan-out).
@@ -47,6 +49,7 @@ namespace Wassup.Presentation
             _skeleton.skeletonDataAsset = visualData.SpineSkeletonDataAsset;
             _skeleton.initialSkinName = string.IsNullOrEmpty(visualData.SpineSkinName) ? "default" : visualData.SpineSkinName;
             _skeleton.Initialize(true);
+            _meshRenderer = GetComponent<MeshRenderer>();
 
             // unit-parts-appearance 1 — 단일/조합 스킨 + 슬롯 틴트는 공용 헬퍼가 소유
             // (드래그 프리뷰와 동일 경로).
@@ -170,6 +173,32 @@ namespace Wassup.Presentation
             var renderers = GetComponentsInChildren<Renderer>(true);
             for (int i = 0; i < renderers.Length; i++)
                 renderers[i].sortingOrder = order;
+        }
+
+        // dreamcatcher-awakening-hand rev 4 — 스크린 스페이스 픽킹: 스프라이트
+        // 렌더러 월드 AABB 를 화면에 투영한 사각형. 포인터가 유닛 "몸체" 위인지의
+        // 판정 근거다 — 보드 평면 레이캐스트(발밑 셀)는 틸트 빌보드가 화면상
+        // 위로 솟아 있어 몸체 포인팅을 놓친다(근본 원인). 카메라 뒤쪽이면 false.
+        public bool TryGetScreenRect(Camera cam, out Rect rect)
+        {
+            rect = default;
+            if (cam == null || _dying || _meshRenderer == null) return false;
+            var b = _meshRenderer.bounds;
+            Vector2 lo = new Vector2(float.MaxValue, float.MaxValue);
+            Vector2 hi = new Vector2(float.MinValue, float.MinValue);
+            for (int i = 0; i < 8; i++)
+            {
+                var corner = new Vector3(
+                    (i & 1) == 0 ? b.min.x : b.max.x,
+                    (i & 2) == 0 ? b.min.y : b.max.y,
+                    (i & 4) == 0 ? b.min.z : b.max.z);
+                var sp = cam.WorldToScreenPoint(corner);
+                if (sp.z <= 0f) return false;
+                lo = Vector2.Min(lo, new Vector2(sp.x, sp.y));
+                hi = Vector2.Max(hi, new Vector2(sp.x, sp.y));
+            }
+            rect = Rect.MinMaxRect(lo.x, lo.y, hi.x, hi.y);
+            return true;
         }
 
         // dreamcatcher-awakening-hand rev 4 — 카드 드래그 타겟팅 호버 강조.
