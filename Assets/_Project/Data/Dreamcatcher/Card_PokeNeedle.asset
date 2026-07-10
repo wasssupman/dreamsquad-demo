@@ -17,7 +17,7 @@ MonoBehaviour:
   axis: 3
   category: 1
   effects: []
-  art: {fileID: 0}
+  art: {fileID: 21300000, guid: 3e267a8703104cdbb1f2f2d8c767ea7a, type: 3}
   binding: 1
   mechanics:
   - trigger:
@@ -31,3 +31,5 @@ MonoBehaviour:
       duration: 0
   attackMods: []
   type: 1
+  placementWarmupSec: 0
+  skill: {fileID: 0}

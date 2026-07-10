@@ -17,7 +17,7 @@ MonoBehaviour:
   axis: 3
   category: 1
   effects: []
-  art: {fileID: 0}
+  art: {fileID: 21300000, guid: 3fc8076ab4e6462dbec4d625e6519ff7, type: 3}
   binding: 1
   mechanics: []
   attackMods:
@@ -26,3 +26,5 @@ MonoBehaviour:
     tileRange: 3
     damageMul: 1
   type: 1
+  placementWarmupSec: 0
+  skill: {fileID: 0}
