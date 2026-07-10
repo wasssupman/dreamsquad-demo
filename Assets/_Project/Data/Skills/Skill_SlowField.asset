@@ -23,4 +23,6 @@ MonoBehaviour:
   durationSec: 5
   cooldownSec: 20
   cost: 2
+  warningSec: 0
+  projectile: {fileID: 0}
   uiTint: {r: 0.2, g: 0.6, b: 1, a: 1}

@@ -12,6 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d79f6095b0cc4794aa96f2c649743a6c, type: 3}
   m_Name: AwakeningConfig
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.AwakeningConfig
+  id: awakening_default
   gaugeMax: 100
   gaugeStart: 0
   costSquad: 30
@@ -20,5 +21,3 @@ MonoBehaviour:
   handSize: 5
   maxAttachPerUnit: 3
   slomoTimeScale: 0.3
-  confirmDelaySec: 1.5
-  id: awakening_default
