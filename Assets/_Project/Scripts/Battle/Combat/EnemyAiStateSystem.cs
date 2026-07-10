@@ -50,6 +50,9 @@ namespace Wassup.Battle.Combat
             var focusLookup = SystemAPI.GetComponentLookup<FocusTarget>(true);
             var filterLookup = SystemAPI.GetComponentLookup<EnemyTargetFilter>(true);
             var behaviorLookup = SystemAPI.GetComponentLookup<EnemyBehavior>(true);
+            // enemy-hunter-targeting unit 1 — 헌터(보스) 게이트 + 추격 대상 write.
+            var bossLookup = SystemAPI.GetComponentLookup<BossTag>(true);
+            var huntLookup = SystemAPI.GetComponentLookup<HuntTarget>(false);
 
             foreach (var (aiState, transform, enemyEntity) in
                      SystemAPI.Query<RefRW<EnemyAiState>, RefRO<LocalTransform>>().WithEntityAccess())
@@ -85,7 +88,26 @@ namespace Wassup.Battle.Combat
                         classLookup, transformLookup, healthLookup, deadLookup, focusLookup, filterLookup, behaviorLookup);
                 }
 
-                aiState.ValueRW.value = Evaluate(aggroed, guardianInRange, hasFireTarget);
+                // enemy-hunter-targeting unit 1 — 헌터(보스)는 비-aggro·사거리 밖일 때
+                // 최근접 방어유닛을 추격 대상으로 잡는다. HuntTarget 은 스폰 베이크된
+                // 보스만 보유(HasComponent 가드) — 비-보스는 이 블록 전부 no-op.
+                bool isHunter = bossLookup.HasComponent(enemyEntity);
+                bool hasHuntTarget = false;
+                if (isHunter && huntLookup.HasComponent(enemyEntity))
+                {
+                    Entity target = Entity.Null;
+                    if (!aggroed && hasAttack && !hasFireTarget)
+                    {
+                        int idx = SelectNearestTarget(enemyEntity, atkCell, mask,
+                            candEntities, candTransforms, candFactions, tileSize, gridSize, ffOrigin,
+                            classLookup, filterLookup);
+                        if (idx >= 0) { target = candEntities[idx]; hasHuntTarget = true; }
+                    }
+                    // 사거리 내 타겟(Engaging) / aggro / 방어유닛 0 → 추격 잔상 클리어.
+                    huntLookup[enemyEntity] = new HuntTarget { value = target };
+                }
+
+                aiState.ValueRW.value = Evaluate(aggroed, guardianInRange, hasFireTarget, isHunter, hasHuntTarget);
             }
 
             candEntities.Dispose();
@@ -110,6 +132,46 @@ namespace Wassup.Battle.Combat
             return AiState.Marching;
         }
 
+        // enemy-hunter-targeting unit 1 — 후보 중 atkCell 최근접 방어유닛의 candEntities
+        // index(사거리 조건 없음 — 추격 대상). eligibility 필터(faction mask + class,
+        // HasFireTarget 과 동일, 사거리 게이트만 제거)는 여기서, 최근접+동점 결정은
+        // 순수함수 HunterTargeting.NearestIndex 로(제약 10 — EditMode 고정).
+        static int SelectNearestTarget(
+            Entity attacker, int2 atkCell, int mask,
+            in NativeArray<Entity> candEntities,
+            in NativeArray<LocalTransform> candTransforms,
+            in NativeArray<FactionTag> candFactions,
+            float tileSize, int2 gridSize, float3 ffOrigin,
+            in ComponentLookup<DefenderClassTag> classLookup,
+            in ComponentLookup<EnemyTargetFilter> filterLookup)
+        {
+            bool hasFilter = filterLookup.HasComponent(attacker);
+            int filterMask = hasFilter ? filterLookup[attacker].classMask : -1;
+
+            int n = candEntities.Length;
+            var elCells = new NativeArray<int2>(n, Allocator.Temp);
+            var elKeys = new NativeArray<int>(n, Allocator.Temp);
+            var elOrig = new NativeArray<int>(n, Allocator.Temp);
+            int m = 0;
+            for (int i = 0; i < n; i++)
+            {
+                if (((int)candFactions[i].value & mask) == 0) continue;
+                if (candEntities[i] == attacker) continue;
+                int cclass = classLookup.HasComponent(candEntities[i]) ? (int)classLookup[candEntities[i]].value : -1;
+                if (hasFilter && cclass >= 0 && (filterMask & (1 << cclass)) == 0) continue;
+                elCells[m] = GridMath.WorldToCell(candTransforms[i].Position, tileSize, gridSize, origin: ffOrigin);
+                elKeys[m] = candEntities[i].Index;
+                elOrig[m] = i;
+                m++;
+            }
+
+            int p = HunterTargeting.NearestIndex(atkCell, elCells.GetSubArray(0, m), elKeys.GetSubArray(0, m));
+            int result = p < 0 ? -1 : elOrig[p];
+            elCells.Dispose();
+            elKeys.Dispose();
+            elOrig.Dispose();
+            return result;
+        }
 
         // ⚠ AttackSystem fire 조건 미러 (AttackSystem.cs:131-189). 타겟 선정 로직 변경 시 동기화 필요.
         // FocusUntilDead 락이 걸린 적은 락 타겟이 사거리 내일 때만 fire → 그때만 Engaging(데드락 방지).
