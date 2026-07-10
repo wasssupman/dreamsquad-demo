@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DefenderUnitData
   id: archer
   role: 1
-  displayName: Archer
+  displayName: 아처
   health: 500
   attackRange: 4
   attackCooldown: 1.5

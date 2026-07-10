@@ -58,6 +58,8 @@ namespace Wassup.Battle.Combat
             var enemyFilterLookup = SystemAPI.GetComponentLookup<EnemyTargetFilter>(isReadOnly: true);
             // aggro-targeting Unit 5 — aggroed enemy sticky-targets its guardian.
             var aggroLookup = SystemAPI.GetComponentLookup<Aggroed>(isReadOnly: true);
+            // aggro-targeting Unit 11 — guardian(AggroCapacity) aggro-aware targeting + hit emit.
+            var aggroCapacityLookup = SystemAPI.GetComponentLookup<Wassup.Battle.Effects.AggroCapacity>(isReadOnly: true);
             var aggroTransformLookup = SystemAPI.GetComponentLookup<LocalTransform>(isReadOnly: true);
             // enemy-behavior-components Unit 3 — targetMode + FocusUntilDead lock.
             var behaviorLookup = SystemAPI.GetComponentLookup<EnemyBehavior>(isReadOnly: true);
@@ -81,6 +83,11 @@ namespace Wassup.Battle.Combat
             NativeQueue<AttackOutputLogEvent>.ParallelWriter? attackOutputLogWriter = null;
             if (SystemAPI.TryGetSingletonRW<AttackOutputLogEventsSingleton>(out var attackOutputLogSingleton))
                 attackOutputLogWriter = attackOutputLogSingleton.ValueRW.queue.AsParallelWriter();
+
+            // aggro-targeting Unit 11 — 가디언 명중 → Effects 로 넘길 히트 채널 writer.
+            NativeQueue<Wassup.Battle.Effects.AggroHitEvent>.ParallelWriter? aggroHitWriter = null;
+            if (SystemAPI.TryGetSingletonRW<Wassup.Battle.Effects.AggroHitEventsSingleton>(out var aggroHitSingleton))
+                aggroHitWriter = aggroHitSingleton.ValueRW.queue.AsParallelWriter();
 
             // Hoist attack-event singleton writer — every attacker (defender or
             // enemy) enqueues one event per fire so SpineUnitPool can trigger the
@@ -240,6 +247,18 @@ namespace Wassup.Battle.Combat
 
                     if (stateAllowsFire)
                     {
+                        float attackSpeedMul = modifierStatsLookup.HasComponent(attackerEntity)
+                            ? modifierStatsLookup[attackerEntity].attackSpeedMul
+                            : 1f;
+                        float effectiveCooldownMul = attackSpeedMul > 0f ? 1f / attackSpeedMul : 1f;
+                        // attack-anim-speed-match unit 1 — 정상 간격(초). double-fire 로 cooldownRemaining
+                        // 을 0 화하기 전의 값이라 애니는 정상속도 유지.
+                        float attackInterval = attack.ValueRO.cooldownDuration * effectiveCooldownMul;
+                        // 실제 발사 주기 = max(간격, hitDelay). hitDelayRemaining>0 동안 다음 START 가 막히므로
+                        // (윗줄 hitDelay tick 분기), hitDelaySec>interval 이면 실주기는 hitDelaySec. 애니를 이
+                        // 주기에 맞춰야 실발사보다 빨리 끝나지 않는다(critic MEDIUM #1).
+                        float attackAnimPeriod = math.max(attackInterval, attack.ValueRO.hitDelaySec);
+
                         // Unified visual trigger — 공격 시작 시 애니메이션/facing.
                         if (attackWriter.HasValue)
                         {
@@ -247,14 +266,11 @@ namespace Wassup.Battle.Combat
                             {
                                 attacker = attackerEntity,
                                 targetWorld = bestTargetPos,
+                                attackAnimPeriod = attackAnimPeriod,
                             });
                         }
 
-                        float attackSpeedMul = modifierStatsLookup.HasComponent(attackerEntity)
-                            ? modifierStatsLookup[attackerEntity].attackSpeedMul
-                            : 1f;
-                        float effectiveCooldownMul = attackSpeedMul > 0f ? 1f / attackSpeedMul : 1f;
-                        attack.ValueRW.cooldownRemaining = attack.ValueRO.cooldownDuration * effectiveCooldownMul;
+                        attack.ValueRW.cooldownRemaining = attackInterval;
 
                         // content-1 ① (가시 갑옷) — double-fire charge: zero this attack's
                         // cooldown so the unit immediately attacks again (2연발), then
@@ -389,41 +405,88 @@ namespace Wassup.Battle.Combat
                             var hitTargets = new NativeArray<Entity>(desiredCount, Allocator.Temp);
                             int hitCount = 0;
 
-                            hitTargets[hitCount++] = bestTarget;
-                            if (desiredCount > 1)
+                            // aggro-targeting Unit 11 — 가디언(AggroCapacity)이면 정의 계층
+                            // AggroTargeting.SelectTargets 로 aggro-aware 선정: 여유가 있으면
+                            // 비-어그로 최근접 우선(신규 팩 흡수), 상한 차면 겹친 팩 정리.
+                            bool isGuardian = aggroCapacityLookup.HasComponent(attackerEntity);
+                            if (isGuardian)
                             {
-                                var hitMaskO = new NativeArray<bool>(targetEntities.Length, Allocator.Temp);
-                                int seedIdx = -1;
+                                var cap = aggroCapacityLookup[attackerEntity];
+                                var cands = new NativeArray<AggroCandidate>(targetEntities.Length, Allocator.Temp);
+                                var candIdx = new NativeArray<int>(targetEntities.Length, Allocator.Temp);
+                                int nc = 0;
                                 for (int i = 0; i < targetEntities.Length; i++)
                                 {
-                                    if (targetEntities[i] == bestTarget) { seedIdx = i; break; }
+                                    if (((int)targetFactions[i].value & mask) == 0) continue;
+                                    if (targetEntities[i] == attackerEntity) continue;
+                                    float3 tp = targetTransforms[i].Position;
+                                    cands[nc] = new AggroCandidate
+                                    {
+                                        cell = GridMath.WorldToCell(tp, tileSize, gridSize, origin: ffOrigin),
+                                        pos = tp,
+                                        aggroed = aggroLookup.HasComponent(targetEntities[i]),
+                                    };
+                                    candIdx[nc] = i;
+                                    nc++;
                                 }
-                                if (seedIdx >= 0) hitMaskO[seedIdx] = true;
-
-                                for (int pass = 1; pass < desiredCount && hitCount < desiredCount; pass++)
+                                var outIdx = new NativeArray<int>(desiredCount, Allocator.Temp);
+                                int sel = AggroTargeting.SelectTargets(
+                                    atkCell, atkPos, tileRange, cap.held, cap.max,
+                                    cands.GetSubArray(0, nc), outIdx);
+                                for (int s = 0; s < sel; s++)
+                                    hitTargets[hitCount++] = targetEntities[candIdx[outIdx[s]]];
+                                // critic H1 — 가디언은 SelectTargets 결과가 일반 nearest(bestTarget)와
+                                // 다를 수 있다. 이후 넉백 CC/DC 캐리어/AttackOutputLog 가 bestTarget/
+                                // bestTargetPos 를 쓰므로, primary 를 실제 때린 적으로 정렬해 불일치를
+                                // 막는다(현재 가디언 넉백=0 이라 dormant 이나 미래 가디언·DC 카드 대비).
+                                if (hitCount > 0)
                                 {
-                                    float passSq = float.MaxValue;
-                                    int passIdx = -1;
+                                    int primaryI = candIdx[outIdx[0]];
+                                    bestTarget = targetEntities[primaryI];
+                                    bestTargetPos = targetTransforms[primaryI].Position;
+                                }
+                                cands.Dispose();
+                                candIdx.Dispose();
+                                outIdx.Dispose();
+                            }
+                            else
+                            {
+                                hitTargets[hitCount++] = bestTarget;
+                                if (desiredCount > 1)
+                                {
+                                    var hitMaskO = new NativeArray<bool>(targetEntities.Length, Allocator.Temp);
+                                    int seedIdx = -1;
                                     for (int i = 0; i < targetEntities.Length; i++)
                                     {
-                                        if (hitMaskO[i]) continue;
-                                        if (((int)targetFactions[i].value & mask) == 0) continue;
-                                        if (targetEntities[i] == attackerEntity) continue;
-                                        int2 tgtCellAoE = GridMath.WorldToCell(targetTransforms[i].Position, tileSize, gridSize, origin: ffOrigin);
-                                        int tileDistAoE = math.max(math.abs(tgtCellAoE.x - atkCell.x), math.abs(tgtCellAoE.y - atkCell.y));
-                                        if (tileDistAoE > tileRange) continue;
-                                        float d2 = DistanceSqToTarget(atkPos, targetEntities[i], targetTransforms[i].Position, blockingHazardCellsLookup, hasFlowField, flowField, out _);
-                                        if (d2 < passSq)
-                                        {
-                                            passSq = d2;
-                                            passIdx = i;
-                                        }
+                                        if (targetEntities[i] == bestTarget) { seedIdx = i; break; }
                                     }
-                                    if (passIdx < 0) break;
-                                    hitMaskO[passIdx] = true;
-                                    hitTargets[hitCount++] = targetEntities[passIdx];
+                                    if (seedIdx >= 0) hitMaskO[seedIdx] = true;
+
+                                    for (int pass = 1; pass < desiredCount && hitCount < desiredCount; pass++)
+                                    {
+                                        float passSq = float.MaxValue;
+                                        int passIdx = -1;
+                                        for (int i = 0; i < targetEntities.Length; i++)
+                                        {
+                                            if (hitMaskO[i]) continue;
+                                            if (((int)targetFactions[i].value & mask) == 0) continue;
+                                            if (targetEntities[i] == attackerEntity) continue;
+                                            int2 tgtCellAoE = GridMath.WorldToCell(targetTransforms[i].Position, tileSize, gridSize, origin: ffOrigin);
+                                            int tileDistAoE = math.max(math.abs(tgtCellAoE.x - atkCell.x), math.abs(tgtCellAoE.y - atkCell.y));
+                                            if (tileDistAoE > tileRange) continue;
+                                            float d2 = DistanceSqToTarget(atkPos, targetEntities[i], targetTransforms[i].Position, blockingHazardCellsLookup, hasFlowField, flowField, out _);
+                                            if (d2 < passSq)
+                                            {
+                                                passSq = d2;
+                                                passIdx = i;
+                                            }
+                                        }
+                                        if (passIdx < 0) break;
+                                        hitMaskO[passIdx] = true;
+                                        hitTargets[hitCount++] = targetEntities[passIdx];
+                                    }
+                                    hitMaskO.Dispose();
                                 }
-                                hitMaskO.Dispose();
                             }
 
                             for (int ti = 0; ti < hitCount; ti++)
@@ -513,6 +576,19 @@ namespace Wassup.Battle.Combat
                                             break;
                                     }
                                 }
+                            }
+
+                            // aggro-targeting Unit 11 — 가디언 명중분을 Effects 로 넘긴다.
+                            // Aggroed 부착/capacity 게이트/선점은 AggroStateSystem(Effects)이
+                            // 드레인 시 판정 — Combat 은 "때렸다" 사실만 전달(맥락 경계).
+                            if (isGuardian && aggroHitWriter.HasValue)
+                            {
+                                for (int ti = 0; ti < hitCount; ti++)
+                                    aggroHitWriter.Value.Enqueue(new Wassup.Battle.Effects.AggroHitEvent
+                                    {
+                                        guardian = attackerEntity,
+                                        enemy = hitTargets[ti],
+                                    });
                             }
                             hitTargets.Dispose();
                         }

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DefenderUnitData
   id: scout
   role: 1
-  displayName: Scout
+  displayName: 스카우트
   health: 300
   attackRange: 2
   attackCooldown: 2

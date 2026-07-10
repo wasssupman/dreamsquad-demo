@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DefenderUnitData
   id: artillery
   role: 1
-  displayName: Artillery
+  displayName: 아틸러리
   health: 350
   attackRange: 7
   attackCooldown: 3.5

@@ -24,6 +24,13 @@ namespace Wassup.Presentation
         // placement-enemy-see-through unit 2 — dim 페이드용 blob 참조.
         private BlobShadow _blob;
         private bool _shadowTransparent; // 실그림자 토글 상태 캐시(매 프레임 alloc 방지).
+        // enemy-walk-anim-speed unit 1 — 걷기 애니 속도 변조 상태.
+        // _battleScale: 슬로우모/정지 스케일(SpineUnitPool 이 ScaleChanged 로 fan-out).
+        // _walkFactor: 이동속도 기반 배율(SO 미할당 시 1 = 현행 동작). _smoothedSpeed: 변위 EMA.
+        private float _battleScale = 1f;
+        private float _walkFactor = 1f;
+        private float _smoothedSpeed;
+        private const float SimDtEpsilon = 1e-5f;
 
         public Entity Entity => _entity;
 
@@ -64,9 +71,33 @@ namespace Wassup.Presentation
         // time-manager Unit 4 — 전투 표현 재생 속도를 Battle 도메인 스케일에 맞춘다.
         // spine-unity 는 Time.deltaTime * timeScale 로 진행하는데 전역 timeScale 은 1 고정이라,
         // 이 값을 직접 세팅하지 않으면 슬로우모에서 애니만 풀스피드로 튀어 시뮬과 desync 된다.
+        // enemy-walk-anim-speed unit 1 — Battle 스케일과 걷기 배율(_walkFactor)을 곱해 합성한다.
+        // 이 진입점은 Battle 스케일만 갱신하고 실제 세팅은 ApplyTimeScale 이 담당(정지 프리즈 유지).
         public void SetAnimationTimeScale(float scale)
         {
-            if (_skeleton != null) _skeleton.timeScale = scale;
+            _battleScale = scale;
+            ApplyTimeScale();
+        }
+
+        // enemy-walk-anim-speed unit 1 — 최종 재생속도 = Battle 도메인 스케일 × 걷기 배율.
+        // battleScale=0(정지)이면 곱해서 0 → 프리즈.
+        // 단 timeScale 은 트랙 전역 배율이라, 걷기 배율은 **로코모션 루프(걷기/idle)가 재생 중일 때만**
+        // 적용한다. 공격/사망/배치 같은 원샷(loop=false)에는 배율 1 — 정지 유닛의 walkFactor(→minTimeScale)가
+        // 공격 애니까지 느리게 만드는 회귀 방지.
+        private void ApplyTimeScale()
+        {
+            if (_skeleton == null) return;
+            float factor = IsLocomotionLoopPlaying() ? _walkFactor : 1f;
+            _skeleton.timeScale = _battleScale * factor;
+        }
+
+        // 걷기 배율 적용 대상 판정: track0 의 현재 애니가 루프면 로코모션(걷기/idle)으로 본다.
+        // 공격/사망/배치는 loop=false 로 세팅되므로 자연 배제된다.
+        private bool IsLocomotionLoopPlaying()
+        {
+            if (_dying || _skeleton == null) return false;
+            var current = _skeleton.AnimationState?.GetCurrent(0);
+            return current != null && current.Loop;
         }
 
         // tilemap-real-shadows — Tilemap 모드 그림자: 진짜(빌보드 cast) vs 블롭(상호배타).
@@ -93,7 +124,30 @@ namespace Wassup.Presentation
         public void UpdatePosition(Vector3 world)
         {
             FaceAlongMovement(world);
+            // enemy-walk-anim-speed unit 1 — 걷기 배율은 ApplyRenderPosition 이 _simWorld 를
+            // 갱신하기 전에 측정한다(_simWorld = 직전 프레임 sim 위치).
+            UpdateWalkTimeScale(world);
             ApplyRenderPosition(world);
+        }
+
+        // enemy-walk-anim-speed unit 1 — 프레임당 실제 view 변위로 고유 이동속도를 추정해
+        // 걷기 애니 배율(_walkFactor)을 변조한다. sim-time 정규화(disp / (realDt × battleScale))로
+        // 슬로우모 이중감산을 피하고, 포탈 텔레포트는 변위 임계값으로 무시한다.
+        // SO 미할당(WalkAnimSpeedEnabled=false)이면 _walkFactor=1 유지 → 현행 동작.
+        private void UpdateWalkTimeScale(Vector3 world)
+        {
+            if (!BattleBridge.WalkAnimSpeedEnabled || _dying) return;
+            float simDt = Time.deltaTime * _battleScale;
+            if (simDt <= SimDtEpsilon) return; // 정지/도메인리로드 프레임 — 직전 배율 유지(ApplyTimeScale 은 battleScale 로 프리즈)
+            float disp = Vector3.Distance(
+                (Vector3)Wassup.Core.BoardSpace.ToView(world),
+                (Vector3)Wassup.Core.BoardSpace.ToView(_simWorld));
+            if (disp >= BattleBridge.WalkAnimTeleportGuard) return; // 포탈 점프 — 측정 스킵
+            float simSpeed = disp / simDt;
+            _smoothedSpeed = Mathf.Lerp(_smoothedSpeed, simSpeed, BattleBridge.WalkAnimSmoothing);
+            _walkFactor = Mathf.Clamp(_smoothedSpeed / BattleBridge.WalkAnimRefSpeed,
+                BattleBridge.WalkAnimMinTimeScale, BattleBridge.WalkAnimMaxTimeScale);
+            ApplyTimeScale();
         }
 
         // enemy-spawn-positioning 0 — 렌더 위치의 단일 지점: sim 좌표(ToView) + 유닛 타입별 피봇 오프셋.
@@ -152,17 +206,27 @@ namespace Wassup.Presentation
             }
         }
 
-        public void PlayAttack()
+        public void PlayAttack(float attackAnimPeriod = 0f)
         {
             if (_dying || _skeleton == null) return;
             string attack = ResolveAnimation(_visualData.SpineAttackAnimation);
             if (string.IsNullOrEmpty(attack)) return;
             _attackAnimationName = attack;
             var state = _skeleton.AnimationState;
-            state.SetAnimation(0, attack, false);
+            var entry = state.SetAnimation(0, attack, false);
+            // attack-anim-speed-match — 공격 애니를 실제 발사 주기(sim 값, max(간격, hitDelay))에 맞춰
+            // 압축 재생(compress-to-fit). TrackEntry.TimeScale 은 이 공격 애니만 스케일 →
+            // skeleton.timeScale(걷기/battleScale)과 독립 곱. 별도 튜닝 데이터 없이 공격속도 필드에서 직접 도출.
+            // 하한 1.0 은 구조 상수(느린 공격을 저작속도보다 느리게 늘리지 않음 = 자연+대기). 상한 없음.
+            // 배율은 animDuration/period 라 authoring 규율(과도히 작은 cooldownDuration 지양)이 유한성의 실질
+            // 근거다 — attackSpeedMul 클램프(0.2~5)는 그 위 배수만 제한. period<=0 면 폴백(TimeScale=1, 현행).
+            if (attackAnimPeriod > 0f && entry != null && entry.Animation != null && entry.Animation.Duration > 0f)
+                entry.TimeScale = Mathf.Max(1f, entry.Animation.Duration / attackAnimPeriod);
             string idle = ResolveAnimation(_visualData.SpineIdleAnimation, "idle", "Idle", "walk", "Walk");
             if (!string.IsNullOrEmpty(idle))
                 state.AddAnimation(0, idle, true, 0f);
+            // 공격(원샷) 즉시 배율 1 반영 — 다음 UpdatePosition 을 기다리지 않고 이 프레임부터 정상속도.
+            ApplyTimeScale();
         }
 
         public bool PlayDeploy()
@@ -185,6 +249,7 @@ namespace Wassup.Presentation
             string idle = ResolveAnimation(_visualData.SpineIdleAnimation, "idle", "Idle", "walk", "Walk");
             if (!string.IsNullOrEmpty(idle))
                 state.AddAnimation(0, idle, true, 0f);
+            ApplyTimeScale(); // 배치(원샷) 즉시 배율 1 반영.
             return true;
         }
 
@@ -199,6 +264,9 @@ namespace Wassup.Presentation
                 return;
             }
             var track = _skeleton.AnimationState.SetAnimation(0, death, false);
+            // 사망(원샷) 즉시 배율 1 반영 — Kill 이후엔 UpdatePosition 이 안 불려 마지막 walkFactor 로
+            // 굳는다(정지 유닛이면 minTimeScale 로 사망이 느려짐). _dying=true 라 factor=1 로 세팅됨.
+            ApplyTimeScale();
             track.Complete += _ => { if (this != null) Destroy(gameObject); };
         }
 

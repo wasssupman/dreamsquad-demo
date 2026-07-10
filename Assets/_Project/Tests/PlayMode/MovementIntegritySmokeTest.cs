@@ -57,7 +57,7 @@ namespace Wassup.Tests.PlayMode
             var gpos = new float3(field.origin.x + gcell.x * field.tileSize, 0f, field.origin.z + gcell.y * field.tileSize);
             var guardian = em.CreateEntity();
             em.AddComponentData(guardian, LocalTransform.FromPosition(gpos));
-            em.AddComponentData(guardian, new AggroProvider { capacity = 16, range = 8f });
+            em.AddComponentData(guardian, new AggroCapacity { max = 16, held = 0 });
             em.AddComponentData(guardian, new Health { value = 100000f, max = 100000f });
             em.AddComponentData(guardian, new FactionTag { value = Faction.Defender });
             em.AddBuffer<IncomingDamage>(guardian);

@@ -195,7 +195,7 @@ namespace Wassup.Tests.EditMode
             CreateLinearFlowField();
             var guardian = _em.CreateEntity();
             _em.AddComponentData(guardian, LocalTransform.FromPosition(new float3(2f, 0f, 0f)));
-            _em.AddComponentData(guardian, new AggroProvider { capacity = 8, range = 8f });
+            _em.AddComponentData(guardian, new AggroCapacity { max = 8, held = 0 });
 
             var e = CreateEnemy(new float3(3f, 0f, 0f), speed: 2f, AiState.Chasing, EngageMovement.Halt);
             _em.AddComponentData(e, new Aggroed { guardian = guardian });

@@ -41,11 +41,11 @@ namespace Wassup.Presentation
         public bool TryGet(Entity entity, out SpineUnitView view)
             => _byEntity.TryGetValue(entity, out view) && view != null;
 
-        public void NotifyAttack(Entity entity, Vector3? targetWorld = null)
+        public void NotifyAttack(Entity entity, Vector3? targetWorld = null, float attackAnimPeriod = 0f)
         {
             if (!_byEntity.TryGetValue(entity, out var view) || view == null) return;
             if (targetWorld.HasValue) view.FaceToward(targetWorld.Value);
-            view.PlayAttack();
+            view.PlayAttack(attackAnimPeriod);
         }
 
         public bool TryResolveAnchor(Entity entity, out Vector3 worldPos)

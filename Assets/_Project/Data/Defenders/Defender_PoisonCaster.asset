@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DefenderUnitData
   id: poison_caster
   role: 4
-  displayName: Poison Caster
+  displayName: 포이즌캐스터
   health: 450
   attackRange: 0
   attackCooldown: 4

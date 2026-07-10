@@ -20,6 +20,9 @@ namespace Wassup.UI
         // 드래그 프리뷰 sway 튜닝값(SO). 컨트롤러가 런타임 부착이라 여기서 할당해 주입한다.
         // 미할당이면 컨트롤러가 클래스 기본값으로 폴백. 에셋 편집이 런타임에 반영된다.
         [SerializeField] private DragSwaySettings swaySettings;
+        // ui-tweak 2026-07-09 — 슬롯 이름은 한글(음차). 기본 TMP 폰트는 한글 글리프가
+        // 없어 네모로 깨지므로 한글 SDF(Jua)를 주입한다. 미할당이면 라틴 폴백.
+        [SerializeField] private TMP_FontAsset nameFont;
 
         private GameObject _panel;
         private Transform _slotContainer;
@@ -161,7 +164,7 @@ namespace Wassup.UI
                     nrt.anchorMin = new Vector2(0f, 0f);
                     nrt.anchorMax = new Vector2(1f, 0f);
                     nrt.pivot = new Vector2(0.5f, 0f);
-                    nrt.sizeDelta = new Vector2(0f, 22f);
+                    nrt.sizeDelta = new Vector2(0f, 32f);
                     nrt.anchoredPosition = new Vector2(0f, 2f);
                 }
                 else
@@ -173,10 +176,20 @@ namespace Wassup.UI
                     nrt.offsetMax = new Vector2(-4f, -4f);
                 }
                 var tmp = nameGO.AddComponent<TextMeshProUGUI>();
+                if (nameFont != null) tmp.font = nameFont;
                 tmp.text = data.displayName;
-                tmp.fontSize = data.portrait != null ? 14 : 18;
-                tmp.color = Color.white;
+                tmp.fontSize = data.portrait != null ? 26 : 30;
+                // ui-tweak 2026-07-09 — 흰색은 밝은 크림/골드 포트레이트 위에서 안 읽힌다.
+                // 아웃라인은 글자를 뒤덮어 오히려 가독성을 해쳐 제거. 검정 볼드로 단순 대비.
+                tmp.color = Color.black;
+                tmp.fontStyle = FontStyles.Bold;
                 tmp.alignment = TextAlignmentOptions.Center;
+                // ui-tweak 2026-07-09 — 검정 글자에 얇은 흰색 아웃라인(할로). 두꺼우면
+                // 글자를 뒤덮으므로 0.12 로 얇게 — 밝은/어두운 포트레이트 양쪽에서 테두리 확보.
+                var nameMat = tmp.fontMaterial; // per-instance 복사본(슬롯 Destroy 시 정리됨)
+                nameMat.EnableKeyword(ShaderUtilities.Keyword_Outline);
+                nameMat.SetColor(ShaderUtilities.ID_OutlineColor, new Color(1f, 1f, 1f, 1f));
+                nameMat.SetFloat(ShaderUtilities.ID_OutlineWidth, 0.12f);
             }
 
             UiLayer.Apply(gameObject);
