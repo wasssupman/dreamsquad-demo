@@ -440,5 +440,70 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(0, _em.GetBuffer<IncomingDamage>(enemy).Length,
                 "no direct damage on the ballistic fire frame (resolves at impact)");
         }
+
+        // ─── dreamcatcher-unit-trigger: 콕콕바늘(AttackN×ProjectileToTarget)이 MELEE
+        // 디펜더(ProjectileRef 없음)에서도 트리거되는지 실증. 사용자 질문 검증
+        // (2026-07-10): 부착/발동 경로에 근접 게이트가 없으므로 근접 유닛도 5회째
+        // 공격에 니들 캐리어를 스폰해야 한다. 동시에 근접 직접타(IncomingDamage)는
+        // 매 틱 들어가야 한다(투사체 경로가 아니라 근접 경로임을 증명). ───
+
+        [Test]
+        public void Melee_PokeNeedle_Fires_Needle_Carrier_On_Fifth_Attack()
+        {
+            // 근접 디펜더: ProjectileRef 없음 → RESOLVE 의 outputs(근접) 분기.
+            // cooldown 을 dt 보다 작게 둬 매 틱 재발사.
+            var melee = CreateAttacker(
+                Faction.Defender, new float3(0f, 0f, 0f),
+                damage: 4f, range: 10f, cooldownDuration: 0.01f,
+                targetMask: (int)Faction.Enemy,
+                defenderTag: true);
+            Assert.IsFalse(_em.HasComponent<ProjectileRef>(melee),
+                "sanity: this defender is melee (no ProjectileRef)");
+
+            // 콕콕바늘 슬롯: 5회마다 20뎀 호밍 니들(dataIndex 0 은 sim 레벨 임의값).
+            var slots = _em.AddBuffer<DcTriggerSlot>(melee);
+            slots.Add(new DcTriggerSlot
+            {
+                instanceId = 1,
+                trigger = DcTriggerKind.AttackN,
+                period = 5,
+                counter = 0,
+                payload = DcPayloadKind.ProjectileToTarget,
+                magnitude = 20f,
+                projectileDataIndex = 0,
+                speed = 10f,
+                hitThreshold = 0.3f,
+                visualScale = 1f,
+            });
+
+            // 근접 사거리(1타일)에 적.
+            var enemy = CreateTarget(Faction.Enemy, new float3(1f, 0f, 0f), attackerTag: true);
+
+            using var carrierQuery = _em.CreateEntityQuery(
+                ComponentType.ReadOnly<ProjectileRequestCarrier>(),
+                ComponentType.ReadOnly<ProjectileSpawnRequest>());
+
+            // 4회 공격: 카운트만 쌓이고 니들은 아직 안 나감.
+            for (int i = 0; i < 4; i++) Tick();
+            Assert.AreEqual(0, carrierQuery.CalculateEntityCount(),
+                "니들은 5회째 전에 발사되면 안 된다(카운팅만)");
+            Assert.AreEqual(4, _em.GetBuffer<IncomingDamage>(enemy).Length,
+                "근접 디펜더는 매 공격 직접타를 넣는다(투사체 경로 아님 → 근접 경로 증명)");
+
+            // 5회째 공격: 니들 캐리어 스폰.
+            Tick();
+            Assert.AreEqual(1, carrierQuery.CalculateEntityCount(),
+                "MELEE 디펜더도 5회째 공격에 콕콕바늘 캐리어를 스폰해야 한다");
+
+            var carrier = carrierQuery.ToEntityArray(Allocator.Temp);
+            var req = _em.GetComponentData<ProjectileSpawnRequest>(carrier[0]);
+            carrier.Dispose();
+            Assert.AreEqual(MovementKind.HomingToEntity, req.movement, "니들은 대상 호밍");
+            Assert.AreEqual(20f, req.damage, 1e-4f, "니들 데미지는 flat magnitude(damageMul 미적용)");
+            Assert.AreEqual(0, req.dataIndex, "슬롯의 투사체 데이터 인덱스 사용");
+            Assert.AreEqual(enemy, req.target, "근접 유닛이 때리던 대상으로 호밍");
+            Assert.AreEqual(5, _em.GetBuffer<IncomingDamage>(enemy).Length,
+                "5회째에도 근접 직접타는 그대로(니들은 별도 산출물)");
+        }
     }
 }
