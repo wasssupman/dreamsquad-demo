@@ -1,6 +1,6 @@
 # Dreamcatcher Card Taxonomy — 타입(스쿼드/유닛) 축 도입 + 등급 캡 이전
 
-> 상태: **작성 2026-07-09, 구현 대기**
+> 상태: **완료 2026-07-09** — units 0~1(`6e46a562`) + unit 2 덱 규칙 config SO(`ec9541f6`) + 캡 무제한·category 무효화(`3b286146`). CardType{Squad,Unit} 축 + 덱 캡 등급→타입 이전. asset 집계 Squad 10 / Unit. (`Active` 타입·per-type 코스트는 `dreamcatcher-awakening-hand` 에서 이 축 위에 확장.)
 
 ## 목표
 
@@ -21,6 +21,7 @@
 |---|---|---|
 | 0 | `0_type_field_and_deck_rule.md` | `CardType` enum + SO 필드 + `DeckRules` 캡 이전(Squad≤2) + deck-builder 캡 체크 갱신 |
 | 1 | `1_asset_migration.md` | 카드 15장에 type 지정(스탯=Squad, 메커니즘 5장=Unit) + 기본 덱/카탈로그 검증 |
+| 2 | `2_deck_rule_config.md` | 덱 규칙 config SO(`DeckRuleConfig`) — 타입별 캡 숫자 조정을 실제 제약으로 (maxSquad/maxUnit) |
 
 ## Feature-wide 계약
 
