@@ -10,7 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 7086703089203000628}
   - component: {fileID: 2464222365186573000}
-  - component: {fileID: 5674798310402801670}
+  - component: {fileID: 6285492048132663757}
   m_Layer: 0
   m_Name: Front
   m_TagString: Untagged
@@ -45,7 +45,7 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1581462393742510906}
   m_CullTransparentMesh: 1
---- !u!114 &5674798310402801670
+--- !u!114 &6285492048132663757
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -231,8 +231,8 @@ RectTransform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 3573240820035470524}
-  - {fileID: 7086703089203000628}
   - {fileID: 321415925058562594}
+  - {fileID: 7086703089203000628}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -328,19 +328,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fbe752fbb4d2a499d964022c639f65c9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Core.SceneTransition
-  coverFadeIn: 0.15
   swapDuration: 1.2
-  loadingFadeIn: 0.25
-  minLoadingSeconds: 1
+  minLoadingSeconds: 2
   coverFadeOut: 0.3
   coverGroup: {fileID: 3583142053261453681}
-  frontImage: {fileID: 5674798310402801670}
+  frontImage: {fileID: 6285492048132663757}
   underImage: {fileID: 1841675467646157757}
   dissolveMaterial: {fileID: 2100000, guid: 31b16d9606de5b94da89d0f04a49468a, type: 2}
   daySprite: {fileID: 21300000, guid: f64075ae7a7eee74a9a31214a4ca6236, type: 3}
   nightSprite: {fileID: 21300000, guid: cbabb2e7259c9064bbfb0eb2b3e65c2a, type: 3}
   startNight: 1
-  goldenTintStrength: 0.4
+  goldenTintStrength: 0
   fallbackCenter: {x: 0.5, y: 0.35}
   loadingSpine: {fileID: 71648459363212362}
   loadingSpineGroup: {fileID: 6226396695068419197}
@@ -403,14 +401,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_Color: {r: 0.05, g: 0.05, b: 0.07, a: 1}
   m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: f64075ae7a7eee74a9a31214a4ca6236, type: 3}
+  m_Sprite: {fileID: 0}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1

@@ -11,16 +11,14 @@ namespace Wassup.Core
     // controller. Single public entry point: static Go(sceneName). Runs on a
     // DontDestroyOnLoad canvas so the cover survives the very scene swap it hides.
     //
-    // unit 2 flow (three beats):
-    //   1. 배경 스왑 — the lobby's radial-golden day↔night dissolve
-    //      (Wassup/UI/BackgroundDissolve), reused AS-IS but centered on the click
-    //      point (START button). front(current bg) → under(opposite bg).
-    //   2. 스파인 로딩 화면 — a Casual Character SkeletonGraphic runs over the swapped
-    //      bg while BattleScene streams in.
-    //   3. 배틀 — the cover fades out to the loaded scene.
-    // The lobby's own backdrop IS this same day/night sprite, so fading the matching
-    // cover in over the lobby is imperceptible (no screenshot). Values/assets are
-    // authored on Resources/SceneTransition prefab (no settings SO — 제약 #6).
+    // unit 2 flow: front (current time-of-day bg, dissolve material) snaps opaque —
+    // imperceptible because it matches the lobby backdrop — then dissolves away with
+    // the lobby's radial-golden wavefront (Wassup/UI/BackgroundDissolve) from the click
+    // point, REVEALING the spine loading screen behind it: a Casual Character
+    // SkeletonGraphic running over a solid-dark backdrop (under). BattleScene streams
+    // during the reveal; the cover then fades out to the loaded scene. Global gold tint
+    // is off (goldenTintStrength 0) so only the wavefront glow spreads from the button.
+    // Values/assets are authored on the Resources/SceneTransition prefab (제약 #6).
     public class SceneTransition : MonoBehaviour
     {
         private const string ResourcePath = "SceneTransition";
@@ -34,20 +32,18 @@ namespace Wassup.Core
         private static readonly int TintStrengthId = Shader.PropertyToID("_TintStrength");
 
         [Header("Timing (unscaled)")]
-        [Tooltip("front→under 골든 라디얼 스왑 시간 — 로비 배경 전환의 signature 모션.")]
+        [Tooltip("front 이 걷히며 스파인 로딩 화면을 드러내는 골든 라디얼 디졸브 시간.")]
         [SerializeField] private float swapDuration = 1.2f;
-        [Tooltip("스파인 로딩 화면 페이드인.")]
-        [SerializeField] private float loadingFadeIn = 0.25f;
-        [Tooltip("스파인 로딩 화면 최소 노출(로딩이 즉시 끝나도 이만큼 보여줌).")]
-        [SerializeField] private float minLoadingSeconds = 1f;
+        [Tooltip("스파인 로딩 화면 노출 시간(로드 시작 기준, 로딩이 즉시 끝나도 이만큼 고정 노출).")]
+        [SerializeField] private float minLoadingSeconds = 2f;
         [Tooltip("스파인 로딩 화면에서 배틀로 걷어내는 페이드.")]
         [SerializeField] private float coverFadeOut = 0.3f;
 
-        [Header("Dissolve cover (reused lobby background dissolve)")]
+        [Header("Dissolve cover")]
         [SerializeField] private CanvasGroup coverGroup;
-        [Tooltip("dissolve 머티리얼을 쓰는 앞 레이어(현재 시간대 배경).")]
+        [Tooltip("현재 시간대 배경(dissolve 머티리얼). 걷히며 로딩 화면을 드러냄.")]
         [SerializeField] private Image frontImage;
-        [Tooltip("드러나는 뒤 레이어(반대 시간대 배경).")]
+        [Tooltip("드러나는 로딩 배경(단색 다크).")]
         [SerializeField] private Image underImage;
         [Tooltip("Wassup/UI/BackgroundDissolve 머티리얼(로비와 동일). 런타임 인스턴스로 사용.")]
         [SerializeField] private Material dissolveMaterial;
@@ -55,14 +51,14 @@ namespace Wassup.Core
         [SerializeField] private Sprite nightSprite;
         [SerializeField] private bool startNight = true;
         [Range(0f, 1f)]
-        [SerializeField] private float goldenTintStrength = 0.4f;
+        [Tooltip("전역 골든 틴트(front 전체를 물들임). 0=파면 글로우만 버튼에서 퍼짐.")]
+        [SerializeField] private float goldenTintStrength = 0f;
         [Tooltip("포인터를 못 읽을 때 라디얼 확산 중심 (UV).")]
         [SerializeField] private Vector2 fallbackCenter = new Vector2(0.5f, 0.35f);
 
         [Header("Spine loading screen")]
-        [Tooltip("배경 스왑 뒤 로딩 중 재생되는 캐릭터. Null 이면 로딩 화면 생략.")]
+        [Tooltip("디졸브가 드러내는 로딩 캐릭터. Null 이면 로딩 화면 생략.")]
         [SerializeField] private SkeletonGraphic loadingSpine;
-        [Tooltip("loadingSpine 만 페이드하는 CanvasGroup (스왑 동안 숨김).")]
         [SerializeField] private CanvasGroup loadingSpineGroup;
         [SerializeField] private string loadingAnimation = "Run";
 
@@ -135,7 +131,7 @@ namespace Wassup.Core
         private void BeginGo(string sceneName)
         {
             if (_transitioning) return;   // 계약 #2 — re-entrancy guard, no double load
-            if (_runtimeMat == null || frontImage == null || underImage == null)
+            if (_runtimeMat == null || frontImage == null)
             {
                 SceneManager.LoadScene(sceneName);   // degrade to instant load
                 return;
@@ -148,51 +144,41 @@ namespace Wassup.Core
         {
             if (coverGroup != null) coverGroup.blocksRaycasts = true;
 
-            // Sync to the actual on-screen time-of-day so the swap always runs
-            // current→opposite. The lobby background state is owned by
-            // LobbyBackgroundDissolve (toggled by character touches); fall back to our
-            // own toggled flag in scenes without it (e.g. leaving battle).
+            // front = the on-screen time-of-day, so its opaque snap over the lobby is
+            // imperceptible. Synced from LobbyBackgroundDissolve (toggled by character
+            // touches); own toggled flag as fallback in scenes without it.
             var lobbyBg = Object.FindFirstObjectByType<Wassup.UI.LobbyBackgroundDissolve>();
             if (lobbyBg != null) _night = lobbyBg.IsNight;
-
-            // front = current time-of-day (matches the lobby backdrop), under = opposite.
             frontImage.sprite = _night ? nightSprite : daySprite;
-            underImage.sprite = _night ? daySprite : nightSprite;
-            _runtimeMat.SetFloat(DissolveId, 0f);
-            if (loadingSpineGroup != null) loadingSpineGroup.alpha = 0f;   // hidden during swap
 
-            // Snap the cover fully opaque (no fade-in). front(current bg) is opaque and
-            // matches the on-screen lobby backdrop, so this is imperceptible — exactly
-            // like a lobby character touch, which dissolves straight from the current bg.
-            // A fade-in would make both bg layers translucent and bleed `under` through.
-            if (coverGroup != null) coverGroup.alpha = 1f;
+            _runtimeMat.SetFloat(DissolveId, 0f);
+            if (coverGroup != null) coverGroup.alpha = 1f;   // opaque snap, no fade-in
             ApplyRadialUniforms(centerUv);
+
+            // The loading screen (spine over the dark backdrop) sits behind the front
+            // cover, already running — the dissolve REVEALS it from the click point.
+            if (loadingSpineGroup != null) loadingSpineGroup.alpha = 1f;
+            if (loadingSpine != null && loadingSpine.AnimationState != null && !string.IsNullOrEmpty(loadingAnimation))
+                loadingSpine.AnimationState.SetAnimation(0, loadingAnimation, true);
 
             var op = SceneManager.LoadSceneAsync(sceneName, LoadSceneMode.Single);
             op.allowSceneActivation = false;
+            float loadStart = Time.unscaledTime;
 
-            // Beat 1 — the star: front dissolves to under, the day↔night golden swap
-            // spreading from the click point, exactly like touching a lobby character.
+            // Front dissolves away from the click point, revealing the spine loading screen.
             yield return Dissolve(0f, 1f, swapDuration);
 
-            // Beat 2 — Spine loading screen runs over the swapped bg while the scene streams.
-            if (loadingSpine != null && loadingSpine.AnimationState != null && !string.IsNullOrEmpty(loadingAnimation))
-                loadingSpine.AnimationState.SetAnimation(0, loadingAnimation, true);
-            float loadStart = Time.unscaledTime;
-            yield return FadeGroup(loadingSpineGroup, 0f, 1f, loadingFadeIn);
-
             while (op.progress < 0.9f) yield return null;
-            // Show the loading screen at least minLoadingSeconds (계약 #5 — no flash).
-            while (Time.unscaledTime - loadStart < minLoadingSeconds) yield return null;
+            while (Time.unscaledTime - loadStart < minLoadingSeconds) yield return null;   // 계약 #5
 
             op.allowSceneActivation = true;
             while (!op.isDone) yield return null;
 
-            // Beat 3 — reveal the loaded scene from behind the cover (bg + spine fade out).
+            // Reveal the loaded scene from behind the cover (dark backdrop + spine fade out).
             yield return FadeGroup(coverGroup, 1f, 0f, coverFadeOut);
 
             if (loadingSpineGroup != null) loadingSpineGroup.alpha = 0f;
-            _night = !_night;   // flag toggles each transition (낮↔밤)
+            _night = !_night;   // flag toggles each transition (fallback)
             if (coverGroup != null) coverGroup.blocksRaycasts = false;
             _transitioning = false;
         }

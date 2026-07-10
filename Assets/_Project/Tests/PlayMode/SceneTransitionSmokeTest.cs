@@ -51,7 +51,7 @@ namespace Wassup.Tests.PlayMode
 
             // Unit 2 plumbing — the front cover renders through the reused radial-golden
             // dissolve shader (a runtime material instance). Visual fidelity of the
-            // day↔night swap is confirmed by eye, not here.
+            // dissolve is confirmed by eye, not here.
             var frontField = typeof(SceneTransition).GetField("frontImage",
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
             var front = frontField.GetValue(SceneTransition.Instance) as UnityEngine.UI.Image;
