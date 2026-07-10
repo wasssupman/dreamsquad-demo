@@ -4216,9 +4216,6 @@ namespace Wassup.Bridge
             if (mechanics == null || mechanics.Length == 0) return;
 
             _em.AddComponent<BossTag>(entity);
-            // enemy-hunter-targeting unit 1 — 헌터 추격 대상 슬롯 사전 부착(핫패스
-            // 구조변경 금지). EnemyAiStateSystem 이 매 틱 값만 write, MovementSystem RO.
-            _em.AddComponentData(entity, new Wassup.Battle.Combat.HuntTarget { value = Entity.Null });
             // 위협 테이블은 보스와 항상 동행 — 텔레포트 arm 의 타겟 소스.
             // defender 히트가 쌓기 전까지 빈 버퍼(ThreatHitEvent 드레인이 채움).
             _em.AddBuffer<ThreatEntry>(entity);

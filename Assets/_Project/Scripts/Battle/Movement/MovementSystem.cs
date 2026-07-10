@@ -50,20 +50,6 @@ namespace Wassup.Battle.Movement
                      SystemAPI.Query<RefRO<LocalTransform>>().WithAll<AggroCapacity>().WithEntityAccess())
                 guardianPos[gEntity] = gTransform.ValueRO.Position;
 
-            // enemy-hunter-targeting unit 2 — 헌터(보스) 추격 대상 위치 스냅샷.
-            // guardianPos 와 동일 패턴: 별도 RO 쿼리라 아래 RW LocalTransform 루프와
-            // aliasing 안 함(ComponentLookup<LocalTransform> 은 RW 와 alias → 금지).
-            var huntTargetLookup = SystemAPI.GetComponentLookup<HuntTarget>(isReadOnly: true);
-            var defenderPos = new NativeHashMap<Entity, float3>(32, Allocator.Temp);
-            // WithNone<DeadTag> — FSM 후보 쿼리(EnemyAiStateSystem)와 대칭. 죽은 방어유닛을
-            // 추격 anchor 로 잡지 않는다(HuntTarget 은 FSM 이 이미 dead 를 거르지만 대칭 유지).
-            foreach (var (dTransform, dEntity) in
-                     SystemAPI.Query<RefRO<LocalTransform>>()
-                              .WithAll<Wassup.Battle.Units.DefenderUnitTag>()
-                              .WithNone<Wassup.Battle.Units.DeadTag>()
-                              .WithEntityAccess())
-                defenderPos[dEntity] = dTransform.ValueRO.Position;
-
             foreach (var (transform, follow, entity) in
                      SystemAPI.Query<RefRW<LocalTransform>, RefRO<PathFollowState>>()
                               .WithNone<PastGoalTag>()
@@ -79,50 +65,24 @@ namespace Wassup.Battle.Movement
 
                 if (ai == AiState.Standoff) continue; // 정지
 
-                if (ai == AiState.Chasing)
+                if (ai == AiState.Chasing && aggroLookup.HasComponent(entity))
                 {
-                    // enemy-hunter-targeting unit 2 — Chasing anchor 소스 분기:
-                    // aggro 면 guardian(기존), 아니면 헌터 HuntTarget(신규). step/cell-trim
-                    // 로직은 두 소스 공유 — anchor 만 다르다.
-                    float3 anchor = default;
-                    bool hasAnchor = false;
-                    if (aggroLookup.HasComponent(entity)
-                        && guardianPos.TryGetValue(aggroLookup[entity].guardian, out var gpos))
+                    var guardian = aggroLookup[entity].guardian;
+                    if (guardianPos.TryGetValue(guardian, out var gpos))
                     {
-                        anchor = gpos; hasAnchor = true;
-                    }
-                    else if (huntTargetLookup.HasComponent(entity))
-                    {
-                        var ht = huntTargetLookup[entity].value;
-                        if (ht != Entity.Null && defenderPos.TryGetValue(ht, out var hpos))
-                        {
-                            anchor = hpos; hasAnchor = true;
-                        }
-                    }
-
-                    if (hasAnchor)
-                    {
-                        int2 chaseCell = GridMath.WorldToCell(current, field.tileSize, field.gridSize, origin: field.origin);
-                        float chaseSpeedMul = modifierStatsLookup.HasComponent(entity)
+                        float3 to = gpos - current; to.y = 0f;
+                        float dist = math.length(to);
+                        int2 aggroCell = GridMath.WorldToCell(current, field.tileSize, field.gridSize, origin: field.origin);
+                        float aggroSpeedMul = modifierStatsLookup.HasComponent(entity)
                             ? modifierStatsLookup[entity].moveSpeedMul : 1f;
-                        float step = follow.ValueRO.speed * chaseSpeedMul * dt;
-                        // 직선 추격 + 벽 축분리 슬라이드(순수함수, EditMode 고정).
-                        float3 moved = MovementChase.SlideStep(
-                            current, anchor, step, chaseCell, in field, hasObstacles, in obstacleSingleton);
-                        // softlock 가드(critic): 진행하면 Chasing 유지(continue). fully-boxed
-                        // (moved==current, concave/양축 벽)면 continue 하지 않고 아래 flow-march 로
-                        // 폴백 → 영구 freeze 대신 goal 로 전진(교전도 leak 도 못 하는 wave-stall 방지).
-                        if (math.distancesq(moved, current) > 1e-8f)
-                        {
-                            transform.ValueRW.Position = moved;
-                            continue; // 추격 진행 — flow/portal/goal 스킵
-                        }
-                        // else: fully-boxed → fall through to flow-march
+                        float step = follow.ValueRO.speed * aggroSpeedMul * dt;
+                        float3 desiredAggro = (step >= dist)
+                            ? new float3(gpos.x, current.y, gpos.z)
+                            : current + math.normalize(to) * step;
+                        transform.ValueRW.Position = MovementCellTrim.Apply(
+                            desiredAggro, aggroCell, in field, hasObstacles, in obstacleSingleton);
                     }
-                    else
-                    {
-                        continue; // anchor 없음(타겟 소멸) — 이 프레임 정지, 다음 틱 FSM 재선정
-                    }
+                    continue; // chasing: skip flow/portal/tornado/goal (guardian 없으면 정지)
                 }
 
                 // 1. Portal entry: 내부에 있으면 exit 으로 텔레포트. exitWaypointIndex 제거됨 —
@@ -246,7 +206,6 @@ namespace Wassup.Battle.Movement
             portals.Dispose();
             tornadoFields.Dispose();
             guardianPos.Dispose();
-            defenderPos.Dispose();
             ecb.Playback(state.EntityManager);
             ecb.Dispose();
         }
