@@ -1,7 +1,6 @@
 using System;
 using TMPro;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using Wassup.Core;
 using Wassup.Core.TimeControl;
@@ -83,7 +82,7 @@ namespace Wassup.UI
             // Release the pause before leaving; the scene teardown + TimeManager.ResetAll
             // at the match boundary also clears it, so double-release is harmless.
             if (_open) { _pauseLease.Dispose(); _open = false; }
-            SceneManager.LoadScene(SceneNames.Outgame);
+            SceneTransition.Go(SceneNames.Outgame);
         }
 
         private void BuildCanvas()

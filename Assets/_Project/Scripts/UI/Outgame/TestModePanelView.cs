@@ -1,6 +1,5 @@
 using UnityEngine;
 using UnityEngine.UI;
-using UnityEngine.SceneManagement;
 using TMPro;
 using Wassup.Core;
 using Wassup.Data;
@@ -93,7 +92,7 @@ namespace Wassup.UI
         {
             TestModeContext.Set(plan, config != null ? config.defenderPreset : null);
             Debug.Log($"[TestModePanelView] 테스트 모드 시작 — plan='{(plan != null ? plan.displayName : "NULL")}'.");
-            SceneManager.LoadScene(SceneNames.Battle);
+            SceneTransition.Go(SceneNames.Battle);
         }
 
         private void Close()

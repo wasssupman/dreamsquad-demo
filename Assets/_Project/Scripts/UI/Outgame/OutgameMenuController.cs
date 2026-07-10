@@ -1,5 +1,4 @@
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using Wassup.Core;
 using Wassup.Core.Api;
 using Wassup.Data;
@@ -73,7 +72,7 @@ namespace Wassup.UI
         // call sites in sync.
         public void OnStartGame()
         {
-            SceneManager.LoadScene(SceneNames.Battle);
+            SceneTransition.Go(SceneNames.Battle);
         }
 
         public void OnOpenSquad() => RaiseExclusive(squadPanel);
