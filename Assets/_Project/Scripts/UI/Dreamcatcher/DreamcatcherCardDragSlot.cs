@@ -1,4 +1,3 @@
-using System.Collections;
 using Unity.Entities;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -7,34 +6,33 @@ using Wassup.Data;
 
 namespace Wassup.UI
 {
-    // dreamcatcher-awakening-hand unit 7 — drag-to-use for one hand card slot
+    // dreamcatcher-awakening-hand unit 7~8 — drag-to-use for one hand card slot
     // (DefenderDragSlot pattern: the slot IS the drag source). Owned/bound by
-    // DreamcatcherHandView, which supplies bridge/camera/controller and the
-    // pending lock.
+    // DreamcatcherHandView, which supplies bridge/camera/controller.
     //
-    // Flow: drag the card out of the hand → (Unit type) defenders under the
-    // pointer highlight via the existing placement-hover tiles → touchup starts
-    // a REALTIME confirm-pending countdown (cancel by tapping the card) → on
-    // expiry the controller Commit* runs (spend/cycle happen only there).
-    // Touchup inside the hand panel = cancel. Active-type drag arrives in unit 8.
+    // Flow: drag the card out of the hand → unit-targeting cards highlight the
+    // defender under the pointer (placement hover tile raised ABOVE units — the
+    // same visual as defender drag placement) → touchup commits IMMEDIATELY
+    // (confirm-pending removed by user decision 2026-07-10; spend/cycle happen
+    // only inside a successful Commit*). Touchup inside the hand panel = cancel.
+    // Active: TilePoint casts at the cell (range preview), Portal enters the
+    // two-tap state (exit tap commits), DefenderUnit targets like Unit cards.
     public class DreamcatcherCardDragSlot : MonoBehaviour,
-        IBeginDragHandler, IDragHandler, IEndDragHandler, IPointerClickHandler
+        IBeginDragHandler, IDragHandler, IEndDragHandler
     {
         private DreamcatcherHandView _view;
         private int _index;
 
         private bool _dragging;
-        private bool _pending;
-        private Coroutine _pendingCo;
         private Vector2Int? _hoverCell; // highlighted defender cell (Unit/Active-defender)
         private Entity _hoverEntity = Entity.Null;
+        private bool _hoverAboveUnits; // SetPlacementHighlightAboveUnits held
         // unit 8 — Active aim state. _activeAiming mirrors GameManager.IsAiming
         // (critic M1: PlacementInput mutual exclusion, old SkillBar lifecycle).
         private bool _activeAiming;
         private Vector2Int? _portalEntryCell;          // Portal two-tap: entry captured
         private Vector2Int _lastRangeCell = new(-1, -1); // aim range preview cache
 
-        public bool IsPending => _pending;
         public bool IsDragging => _dragging;
         public bool IsPortalAiming => _portalEntryCell.HasValue;
 
@@ -46,15 +44,29 @@ namespace Wassup.UI
 
         private DreamcatcherHandView.CardSlot Slot => _view.Slots[_index];
 
+        private static bool TargetsDefender(DreamcatcherCard card) =>
+            card != null && (card.type == CardType.Unit ||
+                (card.type == CardType.Active && card.skill != null &&
+                 card.skill.target == SkillTargetType.DefenderUnit));
+
         // ── drag ─────────────────────────────────────────────────────────────
 
         public void OnBeginDrag(PointerEventData eventData)
         {
-            if (_view == null || _pending || _portalEntryCell.HasValue || !_view.CanStartDrag(_index)) return;
+            if (_view == null || _portalEntryCell.HasValue || !_view.CanStartDrag(_index)) return;
             var slot = Slot;
 
             _dragging = true;
             slot.rect.SetAsLastSibling(); // float above sibling cards
+
+            // Defender-targeting cards: raise the hover tile above unit sprites,
+            // exactly like defender drag placement — without this the highlight
+            // renders underneath the hovered unit and is invisible.
+            if (TargetsDefender(slot.card) && _view.Bridge != null)
+            {
+                _hoverAboveUnits = true;
+                _view.Bridge.SetPlacementHighlightAboveUnits(true);
+            }
 
             // unit 8 (M1) — Active aim mirrors the old SkillBar lifecycle:
             // IsAiming gates PlacementInput while the card aims at the field.
@@ -73,18 +85,11 @@ namespace Wassup.UI
             UpdateDragVisual(eventData.position);
             var card = Slot.card;
             if (card == null) return;
-            switch (card.type)
-            {
-                case CardType.Unit:
-                    UpdateUnitHover(eventData.position);
-                    break;
-                case CardType.Active when card.skill != null:
-                    if (card.skill.target == SkillTargetType.DefenderUnit)
-                        UpdateUnitHover(eventData.position);
-                    else if (card.skill.effect != SkillEffectType.Portal)
-                        UpdateAimRange(eventData.position, card.skill); // SkillBar range-preview reuse
-                    break;
-            }
+            if (TargetsDefender(card))
+                UpdateUnitHover(eventData.position);
+            else if (card.type == CardType.Active && card.skill != null &&
+                     card.skill.effect != SkillEffectType.Portal)
+                UpdateAimRange(eventData.position, card.skill); // SkillBar range-preview reuse
         }
 
         public void OnEndDrag(PointerEventData eventData)
@@ -109,14 +114,14 @@ namespace Wassup.UI
                     if (_hoverEntity != Entity.Null)
                     {
                         var target = _hoverEntity;
-                        StartPending(() => _view.Controller.CommitUnit(slot.entryId, target));
+                        CommitNow(() => _view.Controller.CommitUnit(slot.entryId, target));
                     }
                     else CancelDrag(); // no defender under the touchup point
                     break;
 
                 case CardType.Squad:
                     // Anywhere outside the hand region applies (spec §5).
-                    StartPending(() => _view.Controller.CommitSquad(slot.entryId));
+                    CommitNow(() => _view.Controller.CommitSquad(slot.entryId));
                     break;
 
                 case CardType.Active:
@@ -141,7 +146,7 @@ namespace Wassup.UI
                 if (_hoverCell.HasValue)
                 {
                     var cell = _hoverCell.Value;
-                    StartPending(() => _view.Controller.CommitActiveDefender(slot.entryId, cell));
+                    CommitNow(() => _view.Controller.CommitActiveDefender(slot.entryId, cell));
                 }
                 else CancelDrag();
                 return;
@@ -152,14 +157,14 @@ namespace Wassup.UI
             if (skill.effect == SkillEffectType.Portal)
             {
                 // Two-tap (old SkillBar state machine): touchup = entry tile,
-                // the NEXT field tap picks the exit and starts the pending.
-                // IsAiming stays true throughout; hand-area tap / ESC cancels.
+                // the NEXT field tap picks the exit and commits. IsAiming stays
+                // true throughout; hand-area tap / ESC cancels.
                 _portalEntryCell = tile;
                 return;
             }
 
             ClearAimRange();
-            StartPending(() => _view.Controller.CommitActiveTile(slot.entryId, tile));
+            CommitNow(() => _view.Controller.CommitActiveTile(slot.entryId, tile));
         }
 
         // Portal second tap — polled like the old SkillBar aim loop.
@@ -181,33 +186,19 @@ namespace Wassup.UI
             var entry = _portalEntryCell.Value;
             var slot = Slot;
             _portalEntryCell = null;
-            StartPending(() => _view.Controller.CommitActivePortal(slot.entryId, entry, exitTile));
+            CommitNow(() => _view.Controller.CommitActivePortal(slot.entryId, entry, exitTile));
         }
 
-        private void UpdateAimRange(Vector2 screenPos, SkillData skill)
+        // Touchup applies immediately: spend/cycle only happen inside a
+        // successful Commit* (a failed commit — target died, cap reached,
+        // cast rejected — costs nothing and the card snaps home).
+        private void CommitNow(System.Func<bool> commit)
         {
-            if (!TryScreenToCell(screenPos, out var cell)) return;
-            if (cell == _lastRangeCell) return;
-            _lastRangeCell = cell;
-            _view.Bridge.SetSkillAimRange(cell, skill);
-        }
-
-        private void ClearAimRange()
-        {
-            if (_lastRangeCell.x >= 0 && _view != null && _view.Bridge != null)
-                _view.Bridge.ClearSkillAimRange();
-            _lastRangeCell = new Vector2Int(-1, -1);
-        }
-
-        private void EndActiveAim()
-        {
-            ClearAimRange();
-            _portalEntryCell = null;
-            if (_activeAiming)
-            {
-                _activeAiming = false;
-                if (GameManager.Instance != null) GameManager.Instance.IsAiming = false;
-            }
+            bool ok = commit();
+            ClearHover();
+            EndActiveAim();
+            if (!ok) _view.RestoreSlotHome(_index);
+            _view.NotifyInteractionEnded();
         }
 
         private void UpdateDragVisual(Vector2 screenPos)
@@ -251,73 +242,39 @@ namespace Wassup.UI
             return true;
         }
 
-        // ── pending (view-only; sim is touched only at commit) ──────────────
-
-        private void StartPending(System.Func<bool> commit)
+        private void UpdateAimRange(Vector2 screenPos, SkillData skill)
         {
-            _pending = true;
-            _view.NotifyPendingStarted(this);
-            float delay = _view.Config != null ? Mathf.Max(0f, _view.Config.confirmDelaySec) : 0f;
-            if (_pendingCo != null) StopCoroutine(_pendingCo);
-            _pendingCo = StartCoroutine(PendingRoutine(delay, commit));
+            if (!TryScreenToCell(screenPos, out var cell)) return;
+            if (cell == _lastRangeCell) return;
+            _lastRangeCell = cell;
+            _view.Bridge.SetSkillAimRange(cell, skill);
         }
 
-        private IEnumerator PendingRoutine(float delay, System.Func<bool> commit)
+        private void ClearAimRange()
         {
-            var slot = Slot;
-            if (slot.pendingFill != null)
+            if (_lastRangeCell.x >= 0 && _view != null && _view.Bridge != null)
+                _view.Bridge.ClearSkillAimRange();
+            _lastRangeCell = new Vector2Int(-1, -1);
+        }
+
+        private void EndActiveAim()
+        {
+            ClearAimRange();
+            _portalEntryCell = null;
+            if (_activeAiming)
             {
-                slot.pendingFill.gameObject.SetActive(true);
-                slot.pendingFill.fillAmount = 1f;
+                _activeAiming = false;
+                if (GameManager.Instance != null) GameManager.Instance.IsAiming = false;
             }
-            float t = 0f;
-            while (t < delay)
-            {
-                t += Time.unscaledDeltaTime; // REALTIME — slomo must not stretch it (L1)
-                if (slot.pendingFill != null)
-                    slot.pendingFill.fillAmount = 1f - Mathf.Clamp01(t / delay);
-                yield return null;
-            }
-            _pendingCo = null;
-            FinishPending(committed: commit());
-        }
-
-        // Tap the floating card during the countdown = cancel (no spend).
-        public void OnPointerClick(PointerEventData eventData)
-        {
-            if (_pending) CancelPending();
-        }
-
-        // Also invoked by the view: hand toggle during pending (H1) and phase
-        // force-close (H2) both cancel; cancel never spends or cycles.
-        public void CancelPending()
-        {
-            if (!_pending) return;
-            if (_pendingCo != null) { StopCoroutine(_pendingCo); _pendingCo = null; }
-            FinishPending(committed: false);
-        }
-
-        private void FinishPending(bool committed)
-        {
-            _pending = false;
-            var slot = Slot;
-            if (slot.pendingFill != null) slot.pendingFill.gameObject.SetActive(false);
-            ClearHover();
-            EndActiveAim(); // unit 8 — aim/IsAiming end with the pending outcome
-            // On commit the controller fires HandChanged(Used) → the view
-            // refreshes (slot homes restored) and auto-closes. On cancel/failure
-            // just put the card back.
-            if (!committed) _view.RestoreSlotHome(_index);
-            _view.NotifyPendingEnded(this);
         }
 
         public void CancelDrag()
         {
-            if (_pending) { CancelPending(); return; }
             _dragging = false;
             ClearHover();
             EndActiveAim(); // covers portal-mode cancel too
             _view.RestoreSlotHome(_index);
+            _view.NotifyInteractionEnded();
         }
 
         private void ClearHover()
@@ -326,20 +283,17 @@ namespace Wassup.UI
                 _view.Bridge.ClearPlacementHover(_hoverCell.Value);
             _hoverCell = null;
             _hoverEntity = Entity.Null;
+            if (_hoverAboveUnits && _view != null && _view.Bridge != null)
+            {
+                _hoverAboveUnits = false;
+                _view.Bridge.SetPlacementHighlightAboveUnits(false);
+            }
         }
 
         private void OnDisable()
         {
-            // Panel deactivation kills coroutines — never leave a half-pending
-            // state or a stale hover tile behind.
-            if (_pending)
-            {
-                if (_pendingCo != null) { StopCoroutine(_pendingCo); _pendingCo = null; }
-                _pending = false;
-                var slot = _view != null && _index < _view.Slots.Count ? Slot : null;
-                if (slot != null && slot.pendingFill != null) slot.pendingFill.gameObject.SetActive(false);
-                _view?.NotifyPendingEnded(this);
-            }
+            // Panel deactivation mid-drag: never leave a stale hover tile,
+            // sorting override, or IsAiming behind.
             _dragging = false;
             ClearHover();
             EndActiveAim();

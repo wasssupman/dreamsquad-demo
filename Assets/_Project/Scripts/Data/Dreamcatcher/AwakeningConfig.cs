@@ -29,11 +29,8 @@ namespace Wassup.Data
         [Header("Use UX")]
         // Battle-domain time scale while the hand is open (TimeManager lease).
         // Never 0 — the game must not pause (spec contract 8).
+        // (confirmDelaySec removed 2026-07-10 — 오부착 방어 확정 지연 폐기, touchup 즉시 커밋.)
         public float slomoTimeScale = 0.3f;
-        // Seconds between touchup and commit while the pending card can still be
-        // cancelled. REALTIME (unscaled) — slomo must not stretch it. 0 = commit
-        // immediately on touchup.
-        public float confirmDelaySec = 1.5f;
 
         public int CostFor(CardType type)
         {

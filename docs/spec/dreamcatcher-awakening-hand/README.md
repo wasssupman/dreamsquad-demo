@@ -1,6 +1,6 @@
 # Dreamcatcher Awakening Hand — 사용 방식 전면 개편 (3중1 → 각성치 + CR식 순환 손패)
 
-> 상태: **구현 진행 중 2026-07-09 (rev 3 — 설계 critic REVISE 반영: C1 skillRuntime 배선 해제 / H1 pending-토글 / H2 phase 강제 클로즈 / M1~M4 / L1~L3)**
+> 상태: **구현 진행 중 2026-07-10 (rev 4 — 실플레이 피드백: 확정 지연 제거·유닛 호버 하이라이트 above-units 수정 / rev 3 — 설계 critic REVISE 반영: C1 skillRuntime 배선 해제 / H2 phase 강제 클로즈 / M1~M3 / L1~L3)**
 >
 > 설계 배경: 기존 3중1 선택(첫 배치 + 5웨이브마다, 일시정지 모달)을 버리고, 클래시 로얄의 덱 순환 구조를
 > 드림캐쳐에 적용해 **언제든 사용 가능한 실시간 요소**로 바꾼다. 기존 **공용 스킬**(매판 2종 롤 + 코스트
@@ -32,7 +32,7 @@
 2. **복귀 = 토글 재클릭 + 카드 사용(커밋) 시 자동 복귀 둘 다.**
 3. **덱 순서 = 매치 시드 셔플 1회** (기획 문서의 "순서 고정"과 달리 셔플 확정 — 같은 시드 = 같은 순서로 결정론 유지).
 4. **기본 수치 = 문서 기준**: 손패 5 / Unit 15 / Squad 30. (Active 20 은 튜닝 계수 ⑥ — 기본값만 배정.)
-5. **슬로모 + 확정 지연 둘 다 이번 spec 포함.**
+5. **슬로모 + 확정 지연 둘 다 이번 spec 포함.** → **rev 4 (2026-07-10): 확정 지연(오부착 방어)은 실플레이 확인 후 제거** — touchup 즉시 커밋. 취소는 드래그 중 손패 영역 복귀/ESC 로만.
 6. **Active 는 SkillRuntime 쿨다운·CostRuntime 코스트 둘 다 제거** — 재등장 간격은 순환 큐가, 비용은 각성치가 대체.
 7. **구 3중1 플로우와 SkillBar 는 dormant** — 코드 유지, 씬 배선/활성만 해제.
 
@@ -61,7 +61,7 @@
 ## Feature-wide 계약 (load-bearing)
 
 1. **모든 수치는 config/SO** (하드코딩 금지). `AwakeningConfig`: `gaugeMax=100`, `gaugeStart=0`, `costUnit=15`,
-   `costSquad=30`, `costActive=20`, `handSize=5`, `slomoTimeScale=0.3`, `confirmDelaySec=1.5`, `maxAttachPerUnit=3`.
+   `costSquad=30`, `costActive=20`, `handSize=5`, `slomoTimeScale=0.3`, `maxAttachPerUnit=3`. (`confirmDelaySec` 는 rev 4 에서 제거.)
    사망 보상은 유닛 SO 필드: `DefenderUnitData.awakeningReward`(기본 4), `AttackUnitData.awakeningReward`(타입별 1~3).
 2. **각성 게이지 = Mono 상태.** ECS 는 보상량 전달만. 가산은 bridge 사망 드레인의 C# 이벤트 구독(`WaveMilestoneReached` 선례). `gauge = min(gauge + reward, max)` — 초과분 소실.
 3. **ECS 확장은 최소**: 적 스폰 시 `AwakeningReward`(IComponentData, Units 소유) 베이크 → `DamageApplicationSystem`(기존 enqueue 지점)이 `EnemyKilledEvent.awakeningReward`(append)에 기입. defender 는 ECS 무변경 — `DrainDefenderDeathEvents` 시점에 bridge 가 binding 의 `DefenderUnitData` 직독. 신규 큐/맥락/시스템 0.
@@ -70,9 +70,9 @@
 6. **적용은 기존 API 재사용**: Squad → `ApplyDreamcatcherCard`, Unit → `ApplyDreamcatcherCardToUnit`, Active → `CastSkillAtTile`/`CastSkillOnDefender`/`CastPortal`. 신규 적용/캐스트 경로 금지. Squad 반복 사용 스택 = 의도된 동작(게이지가 제약). **유닛당 부착 최대 `maxAttachPerUnit`(3)** — 컨트롤러 가드.
 7. **Active 는 쿨다운·CostRuntime 미사용.** `SkillData.cooldownSec`/`cost` 는 dormant(에셋 값 유지, 소비 안 함). 재등장 간격 = 순환, 비용 = 각성치(`costActive`). **주의(critic C1)**: 기존 `CastSkillAtTile`/`CastPortal`/`CastSkillOnDefender` 는 내부에서 `skillRuntime.IsReady` 게이트 + `Consume` 을 강제한다 — **BattleBridge 의 `skillRuntime` SerializeField 배선을 해제**해야 `skillRuntime?.` 가드가 no-op 이 되어 계약이 성립한다(유일한 다른 소비자 SkillBar 도 dormant 라 안전).
 8. **게임은 안 멈춘다 + 슬로모**: 손패가 열려 있는 동안 `TimeManager.Request(TimeDomain.Battle, slomoTimeScale)` lease 보유(플립 백 시 해제, 멱등 Dispose — 구 pause lease 패턴). 일시정지(0f) 금지.
-9. **확정 지연**: touchup 후 `confirmDelaySec` 동안 pending(취소 가능, 뷰 전용, **실시간 기준 — 슬로모 무영향**) → 커밋 시에만 적용·차감·순환·로그. 취소/무효 드롭 = 무차감·무순환. 게이지 검증은 드래그 시작(dim)과 커밋 시점 이중. **pending 활성 entryId 는 손패에서 잠금**(재드래그 차단 — 이중 커밋 방지, critic M4). **pending 중 손패 토글 = pending 취소 후 닫기**(critic H1, 취소 규칙과 일관).
+9. **즉시 커밋 (rev 4)**: touchup 시 즉시 Commit — 적용·차감·순환·로그는 성공한 Commit 안에서만. 실패(대상 소멸/부착 상한/캐스트 거절) = 무차감·카드 원위치. 취소 = 드래그 중 손패 영역 복귀·ESC·토글·phase 이탈. 게이지 검증은 드래그 시작(dim)과 커밋 시점 이중. (~~confirmDelaySec pending~~ — critic H1/M4 는 pending 전제라 함께 은퇴; Recovered 재렌더는 드래그/2탭 중 deferral 로 동일하게 방어.)
 9-1. **손패 뷰 생명주기 (critic H2)**: 손패 뷰는 `GameManager.PhaseChanged` 를 구독해 **Battle/Placement 이탈 시 강제 클로즈**(UnitStrip 복귀 + pending 드롭·무차감 + 슬로모 lease Dispose + Portal 2탭 상태 해제). "손패 열린 채 매치 종료"가 e2e 케이스에 포함된다.
-10. **스와이프 = 기존 D&D 패턴 재사용**: `DefenderDragSlot`/`DefenderDragPlacementController` 세션 구조, 셀 변환·hover highlight 재사용. bridge 에 defender 셀 조회 공개 API 1개 추가 허용.
+10. **스와이프 = 기존 D&D 패턴 재사용**: `DefenderDragSlot`/`DefenderDragPlacementController` 세션 구조, 셀 변환·hover highlight 재사용. **유닛 타겟팅 카드 드래그 중엔 `SetPlacementHighlightAboveUnits(true)` 필수** — 없으면 하이라이트가 유닛 스프라이트 아래 깔려 안 보인다(rev 4 실측). bridge 에 defender 셀 조회 공개 API 1개 추가 허용.
 11. **dormant 전환 3건**: ① `DreamcatcherController`(3중1 트리거) + `DreamcatcherSelectionView`, ② `SkillBar`, ③ **BattleBridge 의 `skillRuntime` SerializeField 배선 해제**(critic C1 — 캐스트 API 내부 쿨다운 게이트 무력화). 코드 유지·씬 배선/활성 해제. `SkillLoadoutController` 는 **계속 사용**(Active 2종 롤 소스, 시드·로그 유지). Active 롤이 2장 미만(풀 미구성/매핑 누락)이면 **경고 후 있는 만큼만 주입해 진행**(큐 = 10+α, critic M2).
 12. **직렬화 append-only**: enum 케이스(`CardType.Active`)·SO 필드·이벤트 struct 필드는 끝에 추가(기존 에셋 값 보존, zero-init inert).
 

@@ -1,8 +1,10 @@
-# 7 — Unit/Squad 카드 스와이프 사용 + 확정 지연
+# 7 — Unit/Squad 카드 스와이프 사용
+
+> rev 4 (2026-07-10): **확정 지연(pending) 제거** — touchup 즉시 커밋. 아래 §4~5 의 pending 규칙은 은퇴, "Recovered 재렌더 deferral" 만 드래그/2탭 기준으로 존치. 유닛 호버 하이라이트는 `SetPlacementHighlightAboveUnits(true)` 동반 필수(유닛 스프라이트에 가림).
 
 ## 목적
 
-손패 카드를 스와이프해 사용하는 인터랙션의 본체: Unit 타입 = 유닛 위 touchup 부착(하이라이트), Squad 타입 = 아무 영역 touchup, 손패 영역 복귀 = 취소, touchup 후 확정 지연(취소 가능) 뒤 커밋. Active 타입 사용은 unit 8.
+손패 카드를 스와이프해 사용하는 인터랙션의 본체: Unit 타입 = 유닛 위 touchup 부착(하이라이트), Squad 타입 = 아무 영역 touchup, 손패 영역 복귀 = 취소, touchup 즉시 커밋. Active 타입 사용은 unit 8.
 
 ## 변경 대상
 

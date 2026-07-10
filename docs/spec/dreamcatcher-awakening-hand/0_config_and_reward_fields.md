@@ -19,7 +19,7 @@
    - `int costUnit = 15` / `int costSquad = 30` / `int costActive = 20` — 타입별 사용 비용. `CostFor(CardType)` 헬퍼는 **enum 케이스 switch 로 매핑**(위치/int 기반 금지 — enum 순서는 `{Squad=0, Unit=1, Active=2}` 인데 문서 서술 순서와 다르다, critic L2).
    - `int handSize = 5` — 손패 크기(큐 front N).
    - `float slomoTimeScale = 0.3f` — 손패 열림 중 Battle 도메인 감속 배율.
-   - `float confirmDelaySec = 1.5f` — touchup 후 커밋까지 취소 가능 pending 시간. 0 = 즉시 커밋. **실시간(unscaled) 기준** — 슬로모 배율 무영향(critic L1).
+   - ~~`confirmDelaySec`~~ — **rev 4 (2026-07-10) 제거**: 오부착 방어 확정 지연 폐기, touchup 즉시 커밋.
    - `int maxAttachPerUnit = 3` — 유닛당 Unit 카드 부착 상한.
 2. **`DefenderUnitData.awakeningReward`** (int, 기본 4) — 이 유닛 사망 시 부여량. 직렬화 끝 append + 이유 주석(프로젝트 관례).
 3. **`AttackUnitData.awakeningReward`** (int, 기본 1) — 악몽 사망 시 부여량.
