@@ -1,6 +1,6 @@
 # Spec — Enemy Walk Anim Speed Match (걷기 애니 ↔ 이동속도 동기)
 
-> 상태: **완료 2026-07-10** (units 0~2). 사용자 Play 통과("이건 좋다"), referenceSpeed 1.2 로 튜닝 확정. handoff `3_handoff_summary.md`.
+> 상태: **완료 2026-07-10** (units 0~2) + **rev 2 (2026-07-11) unit 4** — 이동=Walk/정지=Idle 자동 전환(`enemy-hunter-targeting` 실플레이서 발견). 사용자 Play 통과("이건 좋다"), referenceSpeed 1.2 튜닝 확정. handoff `3_handoff_summary.md`.
 > 출처: 사용자 요청. 적 걷기 애니가 이동속도와 무관하게 고정 재생돼 발이 미끄러지는(문워크) 어색함 제거.
 
 ## 문제
@@ -44,6 +44,7 @@ skeleton.timeScale = battleScale × walkFactor    // 기존 time-manager 동기�
 | 0 | SO + 미러 | `0_walk_anim_speed_style.md` | `WalkAnimSpeedStyle` SO 스키마 + BattleBridge 정적 미러 |
 | 1 | 뷰 변조 | `1_spine_view_speed_modulation.md` | SpineUnitView 변위 측정 + timeScale 합성 |
 | 2 | 배선·검증 | `2_authoring_and_wiring.md` | 에셋 생성 + BattleScene 배선 + Play 튜닝 검증 |
+| 4 | 로코 전환 | `4_locomotion_walk_idle_switch.md` | 이동=Walk/정지=Idle 자동 전환(walkAnimation 옵트인, 히스테리시스). rev 2 |
 
 ## 파이프라인 커버리지
 
