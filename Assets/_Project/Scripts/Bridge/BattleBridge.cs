@@ -4331,6 +4331,14 @@ namespace Wassup.Bridge
                     // 퍼프 ProjectileData(투사체로는 안 뜀). null 이면 무연출 blink.
                     slot.projectileDataIndex = GetOrCreateProjectileDataIndex(m.payload.projectile);
                 }
+                else if (m.payload.kind == Wassup.Data.DcPayloadKind.AllyMoveSpeedAura &&
+                         m.payload.duration <= m.trigger.periodSeconds)
+                {
+                    // nightmare-whip-aura unit 1 — authoring 계약: duration >
+                    // periodSeconds (merge-refresh 유지). 위반은 펄스 사이 버프
+                    // 만료(점멸) — 경고만, skip 하지 않는다(테스트 자유 유지).
+                    Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: AllyMoveSpeedAura duration({m.payload.duration}) <= periodSeconds({m.trigger.periodSeconds}) — 버프가 펄스 사이에 만료(점멸)합니다.");
+                }
                 slots.Add(slot);
             }
         }

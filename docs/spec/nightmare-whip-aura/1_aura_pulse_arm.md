@@ -41,6 +41,8 @@
 
 ## 완료 기준
 
-- [ ] 컴파일 클린 + 기존 EditMode 스위트 그린.
+- [x] 컴파일 클린 + 기존 EditMode 스위트 그린.
 - [ ] (in-memory 검증) 보스에 whip 슬롯 수동 베이크 → 3타일 내 적 `ModifierStats.moveSpeedMul == 1.2`, 범위 밖 1.0, 보스 자신 1.0 — MCP execute_code 로 확인.
-- [ ] code-review(변경 성격 = ECS 시뮬 → ecs-review) 후 다음 unit.
+- [x] code-review(변경 성격 = ECS 시뮬 → ecs-review) 후 다음 unit.
+
+확인 2026-07-12 — 컴파일 클린 + EditMode 701/703 그린. ecs-review 전관점 PASS(CRITICAL/HIGH/MED 0, LOW 1 = DcTriggerSlot.duration 주석 → 반영). in-memory 수치 검증은 unit 2 authoring 직후 같은 Play 세션에서 수행(에디터 포커스 필요). 커밋은 unit 1 코드 커밋 참조.
