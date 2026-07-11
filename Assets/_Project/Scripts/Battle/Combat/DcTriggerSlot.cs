@@ -43,5 +43,6 @@ namespace Wassup.Battle.Combat
         public int nextBoundaryIndex; // HealthThreshold 래치 k (베이크 시 1, 단조 전진)
         public float maxHpRef;        // 스폰 시점 maxHp 스냅샷 (경계 기준 고정)
         public float duration;        // AreaBarrage 낙하 텔레그래프 초 → SkyFall flightTime
+                                      // nightmare-whip-aura — AllyMoveSpeedAura: 펄스당 modifier TTL 초
     }
 }
