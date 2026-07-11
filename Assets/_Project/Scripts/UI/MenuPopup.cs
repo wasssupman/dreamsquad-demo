@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using Wassup.Core;
 using Wassup.Core.TimeControl;
+using Wassup.UI.Layout;
 
 namespace Wassup.UI
 {
@@ -90,21 +91,10 @@ namespace Wassup.UI
             if (_built) return;
             _built = true;
 
-            var canvas = gameObject.GetComponent<Canvas>();
-            if (canvas == null) canvas = gameObject.AddComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = PopupSortingOrder;  // above the boosted strip, below MENU button (1000)
-            if (gameObject.GetComponent<CanvasScaler>() == null)
-            {
-                var scaler = gameObject.AddComponent<CanvasScaler>();
-                scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-                scaler.referenceResolution = new Vector2(1920, 1080);
-            }
-            if (gameObject.GetComponent<GraphicRaycaster>() == null)
-                gameObject.AddComponent<GraphicRaycaster>();
+            var roots = UiCanvasSetup.Ensure(gameObject, sortingOrder: PopupSortingOrder);
 
             _root = new GameObject("PopupRoot", typeof(RectTransform));
-            _root.transform.SetParent(transform, false);
+            _root.transform.SetParent(roots.SafeAreaRoot, false);
             var rrt = (RectTransform)_root.transform;
             rrt.anchorMin = Vector2.zero;
             rrt.anchorMax = Vector2.one;

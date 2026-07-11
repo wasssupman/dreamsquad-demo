@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using Wassup.Bridge;
 using Wassup.Core;
+using Wassup.UI.Layout;
 
 namespace Wassup.UI
 {
@@ -144,22 +145,11 @@ namespace Wassup.UI
             if (_built) return;
             _built = true;
 
-            var canvas = gameObject.GetComponent<Canvas>();
-            if (canvas == null) canvas = gameObject.AddComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = 7;
-            if (gameObject.GetComponent<CanvasScaler>() == null)
-            {
-                var scaler = gameObject.AddComponent<CanvasScaler>();
-                scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-                scaler.referenceResolution = new Vector2(1920, 1080);
-            }
-            if (gameObject.GetComponent<GraphicRaycaster>() == null)
-                gameObject.AddComponent<GraphicRaycaster>();
+            var roots = UiCanvasSetup.Ensure(gameObject, sortingOrder: 7);
 
             // Bottom-right container (inherits the old NextWave button anchor).
             _panel = new GameObject("DockPanel", typeof(RectTransform));
-            _panel.transform.SetParent(transform, false);
+            _panel.transform.SetParent(roots.SafeAreaRoot, false);
             var prt = (RectTransform)_panel.transform;
             prt.anchorMin = new Vector2(1f, 0f);
             prt.anchorMax = new Vector2(1f, 0f);

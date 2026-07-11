@@ -2,6 +2,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using Wassup.Core;
+using Wassup.UI.Layout;
 
 namespace Wassup.UI
 {
@@ -157,18 +158,7 @@ namespace Wassup.UI
             if (_built) return;
             _built = true;
 
-            var canvas = gameObject.GetComponent<Canvas>();
-            if (canvas == null) canvas = gameObject.AddComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = 5;
-            if (gameObject.GetComponent<CanvasScaler>() == null)
-            {
-                var scaler = gameObject.AddComponent<CanvasScaler>();
-                scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-                scaler.referenceResolution = new Vector2(1920, 1080);
-            }
-            if (gameObject.GetComponent<GraphicRaycaster>() == null)
-                gameObject.AddComponent<GraphicRaycaster>();
+            var roots = UiCanvasSetup.Ensure(gameObject, sortingOrder: 5);
 
             _barEmptyFallback = UiRoundedSprite.Make(4f, 0f, BarEmpty, BarEmpty);
             _barFilledFallback = UiRoundedSprite.Make(4f, 0f, BarFilled, BarFilled);
@@ -177,7 +167,7 @@ namespace Wassup.UI
             // battle-hud-layout 1 — 코스트-스트립 한 클러스터: "코스트 확인→슬롯
             // 선택→드래그"가 한 시선 안에 돌도록 중앙 스트립 위에 밀착(CR 엘릭서 바 관례).
             _panel = new GameObject("CostPanel", typeof(RectTransform), typeof(Image));
-            _panel.transform.SetParent(transform, false);
+            _panel.transform.SetParent(roots.SafeAreaRoot, false);
             var prt = (RectTransform)_panel.transform;
             prt.anchorMin = new Vector2(0.5f, 0f);
             prt.anchorMax = new Vector2(0.5f, 0f);

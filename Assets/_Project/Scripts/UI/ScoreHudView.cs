@@ -3,6 +3,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using Wassup.Core;
+using Wassup.UI.Layout;
 
 namespace Wassup.UI
 {
@@ -361,23 +362,12 @@ namespace Wassup.UI
             if (_built) return;
             _built = true;
 
-            var canvas = gameObject.GetComponent<Canvas>();
-            if (canvas == null) canvas = gameObject.AddComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = 6;
-            if (gameObject.GetComponent<CanvasScaler>() == null)
-            {
-                var scaler = gameObject.AddComponent<CanvasScaler>();
-                scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-                scaler.referenceResolution = new Vector2(1920, 1080);
-            }
-            if (gameObject.GetComponent<GraphicRaycaster>() == null)
-                gameObject.AddComponent<GraphicRaycaster>();
+            var roots = UiCanvasSetup.Ensure(gameObject, sortingOrder: 6);
 
             // Badge anchored to the screen's top-right corner, cornerPadding px inset.
             // Panel width matches the plate so its centered children hug the right edge.
             _panel = new GameObject("ScorePanel", typeof(RectTransform));
-            _panel.transform.SetParent(transform, false);
+            _panel.transform.SetParent(roots.SafeAreaRoot, false);
             var prt = (RectTransform)_panel.transform;
             prt.anchorMin = new Vector2(1f, 1f);
             prt.anchorMax = new Vector2(1f, 1f);

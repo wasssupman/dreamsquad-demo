@@ -5,6 +5,7 @@ using UnityEngine.UI;
 using Wassup.Bridge;
 using Wassup.Core;
 using Wassup.Data;
+using Wassup.UI.Layout;
 
 namespace Wassup.UI
 {
@@ -107,20 +108,10 @@ namespace Wassup.UI
             if (_built) return;
             _built = true;
 
-            var canvas = gameObject.GetComponent<Canvas>();
-            if (canvas == null) canvas = gameObject.AddComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = 4;
-            if (gameObject.GetComponent<CanvasScaler>() == null)
-            {
-                var scaler = gameObject.AddComponent<CanvasScaler>();
-                scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-                scaler.referenceResolution = new Vector2(1920, 1080);
-            }
-            if (gameObject.GetComponent<GraphicRaycaster>() == null) gameObject.AddComponent<GraphicRaycaster>();
+            var roots = UiCanvasSetup.Ensure(gameObject, sortingOrder: 4);
 
             _panel = new GameObject("DefenderPanel", typeof(RectTransform));
-            _panel.transform.SetParent(transform, false);
+            _panel.transform.SetParent(roots.SafeAreaRoot, false);
             var prt = (RectTransform)_panel.transform;
             // battle-hud-layout 0 — bottom-center: 드림캐쳐 핸드(0,32)와 동일 축/y 로
             // 맞춰 스트립↔핸드 플립이 좌표 점프 없는 제자리 플립이 되게 한다.

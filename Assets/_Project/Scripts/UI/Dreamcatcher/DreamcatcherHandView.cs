@@ -6,6 +6,7 @@ using UnityEngine.UI;
 using Wassup.Core;
 using Wassup.Core.TimeControl;
 using Wassup.Data;
+using Wassup.UI.Layout;
 
 namespace Wassup.UI
 {
@@ -381,22 +382,11 @@ namespace Wassup.UI
             if (_built) return;
             _built = true;
 
-            var canvas = gameObject.GetComponent<Canvas>();
-            if (canvas == null) canvas = gameObject.AddComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = 5; // above the placement strip (4), below dock (7)
-            if (gameObject.GetComponent<CanvasScaler>() == null)
-            {
-                var scaler = gameObject.AddComponent<CanvasScaler>();
-                scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-                scaler.referenceResolution = new Vector2(1920, 1080);
-            }
-            if (gameObject.GetComponent<GraphicRaycaster>() == null)
-                gameObject.AddComponent<GraphicRaycaster>();
+            var roots = UiCanvasSetup.Ensure(gameObject, sortingOrder: 5);
 
             // Bottom-center hand panel.
             _panel = new GameObject("HandPanel", typeof(RectTransform), typeof(Image));
-            _panel.transform.SetParent(transform, false);
+            _panel.transform.SetParent(roots.SafeAreaRoot, false);
             var prt = (RectTransform)_panel.transform;
             prt.anchorMin = new Vector2(0.5f, 0f);
             prt.anchorMax = new Vector2(0.5f, 0f);

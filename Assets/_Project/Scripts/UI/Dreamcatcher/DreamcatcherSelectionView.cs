@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using Wassup.Data;
+using Wassup.UI.Layout;
 
 namespace Wassup.UI
 {
@@ -15,6 +16,7 @@ namespace Wassup.UI
         [SerializeField] private TMP_FontAsset font;
 
         private GameObject _panel;
+        private GameObject _contentRoot;
         private RectTransform _row;
         private bool _built;
         private Action<DreamcatcherCard> _onPick;
@@ -43,11 +45,13 @@ namespace Wassup.UI
 
             UiLayer.Apply(gameObject);
             _panel.SetActive(true);
+            _contentRoot.SetActive(true);
         }
 
         public void Hide()
         {
             if (_panel != null) _panel.SetActive(false);
+            if (_contentRoot != null) _contentRoot.SetActive(false);
         }
 
         private void OnPickInternal(DreamcatcherCard card)
@@ -104,27 +108,22 @@ namespace Wassup.UI
             if (_built) return;
             _built = true;
 
-            var canvas = gameObject.GetComponent<Canvas>();
-            if (canvas == null) canvas = gameObject.AddComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = 50;
-            if (gameObject.GetComponent<CanvasScaler>() == null)
-            {
-                var scaler = gameObject.AddComponent<CanvasScaler>();
-                scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-                scaler.referenceResolution = new Vector2(1920, 1080);
-            }
-            if (gameObject.GetComponent<GraphicRaycaster>() == null)
-                gameObject.AddComponent<GraphicRaycaster>();
+            var roots = UiCanvasSetup.Ensure(gameObject, sortingOrder: 50);
 
             _panel = new GameObject("Panel", typeof(RectTransform), typeof(Image));
-            _panel.transform.SetParent(transform, false);
+            _panel.transform.SetParent(roots.FullBleedRoot, false);
             var prt = (RectTransform)_panel.transform;
             prt.anchorMin = Vector2.zero; prt.anchorMax = Vector2.one; prt.offsetMin = Vector2.zero; prt.offsetMax = Vector2.zero;
             _panel.GetComponent<Image>().color = UiOverlay.Dim;
 
+            _contentRoot = new GameObject("ContentRoot", typeof(RectTransform));
+            _contentRoot.transform.SetParent(roots.SafeAreaRoot, false);
+            var contentRect = (RectTransform)_contentRoot.transform;
+            contentRect.anchorMin = Vector2.zero; contentRect.anchorMax = Vector2.one;
+            contentRect.offsetMin = Vector2.zero; contentRect.offsetMax = Vector2.zero;
+
             var titleGo = new GameObject("Title", typeof(RectTransform), typeof(TextMeshProUGUI));
-            titleGo.transform.SetParent(_panel.transform, false);
+            titleGo.transform.SetParent(_contentRoot.transform, false);
             var trt = titleGo.GetComponent<RectTransform>();
             trt.sizeDelta = new Vector2(800, 120); trt.anchoredPosition = new Vector2(0, 340);
             var ttmp = titleGo.GetComponent<TextMeshProUGUI>();
@@ -132,7 +131,7 @@ namespace Wassup.UI
             if (font != null) ttmp.font = font;
 
             var rowGo = new GameObject("CardRow", typeof(RectTransform));
-            rowGo.transform.SetParent(_panel.transform, false);
+            rowGo.transform.SetParent(_contentRoot.transform, false);
             _row = rowGo.GetComponent<RectTransform>();
             _row.sizeDelta = new Vector2(1000, 440); _row.anchoredPosition = new Vector2(0, 0);
             var hlg = rowGo.AddComponent<HorizontalLayoutGroup>();

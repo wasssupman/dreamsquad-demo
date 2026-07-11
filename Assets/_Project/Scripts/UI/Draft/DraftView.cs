@@ -4,6 +4,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using Wassup.Core;
+using Wassup.UI.Layout;
 
 namespace Wassup.UI.Draft
 {
@@ -181,29 +182,18 @@ namespace Wassup.UI.Draft
             if (_canvasBuilt) return;
             _canvasBuilt = true;
 
-            var canvas = gameObject.GetComponent<Canvas>();
-            if (canvas == null) canvas = gameObject.AddComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = 5;
-            if (gameObject.GetComponent<CanvasScaler>() == null)
-            {
-                var scaler = gameObject.AddComponent<CanvasScaler>();
-                scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-                scaler.referenceResolution = new Vector2(1920, 1080);
-            }
-            if (gameObject.GetComponent<GraphicRaycaster>() == null)
-                gameObject.AddComponent<GraphicRaycaster>();
+            var roots = UiCanvasSetup.Ensure(gameObject, sortingOrder: 5);
 
-            BuildSkillPanel();
+            BuildSkillPanel(roots.SafeAreaRoot);
             if (mapSettings != null) mapSettings.Initialize(controller);
 
             UiLayer.Apply(gameObject);
         }
 
-        private void BuildSkillPanel()
+        private void BuildSkillPanel(RectTransform safeAreaRoot)
         {
             var panelGO = new GameObject("SkillLoadoutPanel", typeof(RectTransform), typeof(Image));
-            panelGO.transform.SetParent(transform, false);
+            panelGO.transform.SetParent(safeAreaRoot, false);
             _skillPanel = (RectTransform)panelGO.transform;
             _skillPanel.anchorMin = new Vector2(1f, 0.5f);
             _skillPanel.anchorMax = new Vector2(1f, 0.5f);

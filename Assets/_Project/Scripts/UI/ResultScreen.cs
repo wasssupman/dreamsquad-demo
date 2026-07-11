@@ -5,6 +5,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using Wassup.Core;
 using Wassup.Core.Api;
+using Wassup.UI.Layout;
 
 namespace Wassup.UI
 {
@@ -290,11 +291,8 @@ namespace Wassup.UI
 
             BakeSprites();
 
-            // NB: use Unity's overridden == (not ??), which ?? bypasses — GetComponent
-            // can return a fake-null wrapper in the editor that ?? treats as non-null.
-            var canvas = gameObject.GetComponent<Canvas>();
-            if (canvas == null) canvas = gameObject.AddComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            var roots = UiCanvasSetup.Ensure(gameObject, sortingOrder: 2000);
+            var canvas = roots.Canvas;
             // Terminal game-over modal — must sit above ALL other UI so the dim covers
             // the battle HUD (ScoreHud 6, docks 7-8) and the MENU button (1000).
             // This ResultScreen lives *nested* under a root "ResultCanvas", so a plain
@@ -303,21 +301,11 @@ namespace Wassup.UI
             canvas.overrideSorting = true;
             canvas.sortingOrder = 2000;
 
-            if (gameObject.GetComponent<CanvasScaler>() == null)
-            {
-                var scaler = gameObject.AddComponent<CanvasScaler>();
-                scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-                scaler.referenceResolution = new Vector2(1920f, 1080f);
-                scaler.matchWidthOrHeight = 0.5f;
-            }
-            if (gameObject.GetComponent<GraphicRaycaster>() == null)
-                gameObject.AddComponent<GraphicRaycaster>();
-
             // Full-screen dim behind the panel — shared overlay tone, no art BG.
             // Explicit solid sprite (not a null-sprite Image) so it reliably draws a
             // filled quad across the whole screen.
             var dim = new GameObject("Dim", typeof(RectTransform), typeof(Image));
-            dim.transform.SetParent(transform, false);
+            dim.transform.SetParent(roots.FullBleedRoot, false);
             StretchFull((RectTransform)dim.transform);
             var dimImg = dim.GetComponent<Image>();
             dimImg.sprite = UiRoundedSprite.Make(2f, 0f, Color.white, Color.white);
@@ -326,7 +314,7 @@ namespace Wassup.UI
 
             // Panel.
             var panel = new GameObject("ResultPanel", typeof(RectTransform), typeof(Image));
-            panel.transform.SetParent(transform, false);
+            panel.transform.SetParent(roots.SafeAreaRoot, false);
             var panelRect = (RectTransform)panel.transform;
             panelRect.anchorMin = panelRect.anchorMax = panelRect.pivot = new Vector2(0.5f, 0.5f);
             panelRect.sizeDelta = new Vector2(PanelW, PanelH);

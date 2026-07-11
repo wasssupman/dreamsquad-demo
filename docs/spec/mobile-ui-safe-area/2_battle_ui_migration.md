@@ -22,8 +22,10 @@ BattleScene에서 authored/runtime Canvas가 섞여 확대·클립되는 상태�
 
 ## 완료 기준
 
-- [ ] 16:9 Draft/Placement/Battle/Hand/Result가 이관 전과 같은 위치·크기로 보인다.
-- [ ] 20:9에서 HUD 높이가 16:9 대비 커지지 않고 좌우 여유만 늘어난다.
-- [ ] full-screen scrim에 safe-area 모양의 빈 가장자리가 생기지 않는다.
-- [ ] 좌/우 edge HUD와 하단 조작부가 주입한 safe rect 밖으로 나가지 않는다.
-- [ ] 플립·START·Next Wave·메뉴·스킬 raycast가 정상이며 콘솔 에러 0.
+- [x] 16:9 Draft/Placement/Battle/Hand/Result가 이관 전과 같은 위치·크기로 보인다.
+- [x] 20:9에서 HUD 높이가 16:9 대비 커지지 않고 좌우 여유만 늘어난다.
+- [x] full-screen scrim에 safe-area 모양의 빈 가장자리가 생기지 않는다.
+- [x] 좌/우 edge HUD와 하단 조작부가 주입한 safe rect 밖으로 나가지 않는다.
+- [x] 플립·START·Next Wave·메뉴·스킬 raycast가 정상이며 콘솔 에러 0.
+
+사용자 시각 승인 2026-07-12 · 16:9/20:9 Draft·Placement·Battle·Hand·Result 캡처 검토. EditMode 697개 중 695 통과, 실패 0, 기존 Ignore 2. 구현 커밋은 아래 완료 기록과 함께 남긴다.
