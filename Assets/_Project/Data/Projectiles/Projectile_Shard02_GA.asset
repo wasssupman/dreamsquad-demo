@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: Projectile_Shard02_GA
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.ProjectileData
   id: ga_shard02
-  speed: 26
+  speed: 63.1
   hitThreshold: 0.35
-  visualScale: 0.6
+  visualScale: 5
   visualHeightOffset: 0.7
   projectilePrefab: {fileID: 1720853213954485116, guid: c4cfcaa80420d4f199ae6558ab44867c, type: 3}
   hitPrefab: {fileID: 3051299296646875860, guid: e6489607f5224a649894ef8c9808e8ac, type: 3}
