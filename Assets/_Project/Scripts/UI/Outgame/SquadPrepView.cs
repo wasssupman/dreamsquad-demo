@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using Wassup.Core;
 using Wassup.UI.Draft;
+using Wassup.UI.Layout;
 
 namespace Wassup.UI
 {
@@ -75,18 +76,7 @@ namespace Wassup.UI
             if (_built) return;
             _built = true;
 
-            var canvas = gameObject.GetComponent<Canvas>();
-            if (canvas == null) canvas = gameObject.AddComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = 8;
-            if (gameObject.GetComponent<CanvasScaler>() == null)
-            {
-                var scaler = gameObject.AddComponent<CanvasScaler>();
-                scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-                scaler.referenceResolution = new Vector2(1920, 1080);
-            }
-            if (gameObject.GetComponent<GraphicRaycaster>() == null)
-                gameObject.AddComponent<GraphicRaycaster>();
+            UiCanvasSetup.Ensure(gameObject, sortingOrder: 8);
         }
     }
 }
