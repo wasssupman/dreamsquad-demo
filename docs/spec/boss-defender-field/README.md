@@ -1,6 +1,6 @@
 # Boss Defender Field — 보스 방어유닛-지향 flow field 이동
 
-> 상태: **설계 승인 대기 (2026-07-11)**
+> 상태: **완료 2026-07-11** (units 0~3, 커밋 `dc298ceb` — EditMode 653/651 pass + Play e2e 트레이스 검증 + ecs-review APPROVE-WITH-CHANGES M3 반영. handoff: `4_handoff_summary.md`)
 >
 > 배경: `docs/spec/enemy-hunter-targeting/` (폐기 2026-07-11 — 직선추격+wall-slide 땜빵 사슬로 전량 revert. **그 README 의 폐기 사유를 먼저 읽을 것**). 이 spec 은 그 backlog 승격분 — 같은 목표를 필드 기반으로 재설계.
 

@@ -27,3 +27,5 @@
 - compile 클린, 기존 EditMode 전체 무회귀.
 - Play smoke: 전투 시작/재시작(redraft) 반복에 Persistent leak 경고 없음 (teardown 멱등).
 - 시각/동작 변화 없음 확인 (아직 소비자 없음).
+
+확인 2026-07-11 · 커밋 `dc298ceb` (Play 에서 배치 직후 소스 dist 0 확인, 판 재시작 다회 leak/에러 없음)

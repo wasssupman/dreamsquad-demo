@@ -122,7 +122,8 @@ code + git history        구현 상세
 
 #### 보스 방어유닛 지향 이동 (헌터 재구현, 2026-07-11)
 
-- **보스가 방어유닛 쪽으로 이동·재교전** → `docs/spec/boss-defender-field/` (승격 2026-07-11 — multi-source BFS defender field + Marching flow-follow 분기. 폐기된 enemy-hunter-targeting 의 함정 기록 계승)
+- **defender field dirty-skip 최적화** [S] · 방어유닛 셀 집합 불변 시 매 프레임 BFS 재빌드 skip. 현 그리드(20x10)에선 무의미 — 대형 그리드/프로파일 압박 시. (boss-defender-field, ecs-review M2)
+- **ecs-reviewer 채널 목록 stale** [S] · 에이전트 정의의 NativeQueue 채널 목록이 CLAUDE.md(17개)와 불일치. 리뷰 오탐 방지용 동기화. (boss-defender-field, ecs-review M1)
 
 #### 유닛 상태 표현 / 인디케이터 (aggro-targeting 파생, 2026-07-09)
 
@@ -290,6 +291,8 @@ board-visualization spec 자체는 ROI 부족으로 wrap 종료. 진단/실험�
 - **반복 씬 로드 ECS leak 점검** [M] · 2-씬 전환으로 BattleScene 반복 로드 → 기존 **BattleBridge.StartBattle Persistent allocates 경고** 백로그가 더 중요. 재진입 시 ECS World/Persistent 정리 경로 검증.
 
 ### Promoted / Closed
+
+- **보스 방어유닛 지향 이동** → `docs/spec/boss-defender-field/` (완료 2026-07-11, units 0~3, `dc298ceb` — 방어유닛 walkable 이웃 multi-source BFS "defender field"(Effects 싱글톤+매 프레임 재빌드) 를 보스(`BossTag`)가 Marching 에서 flow-follow. 지나친/뒤 배치 방어유닛에 역주행 재교전, 전멸까지 사냥(leak-proof), 0마리면 goal 마칭(무상태 fallback). FSM/채널 변경 0, 비-보스 무회귀 라이브 확인. 폐기된 enemy-hunter-targeting 의 직선추격/wall-slide 는 재도입 금지 계약)
 
 - **Enemy walk anim speed match** → `docs/spec/enemy-walk-anim-speed/` (완료 2026-07-10, units 0~2 — 적 Spine 걷기 애니를 실제 view 변위 기반 재생속도로 변조해 발 미끄러짐(문워크) 제거. `skeleton.timeScale = battleScale × walkFactor`(sim-time 정규화 속도/refSpeed, min/max/스무딩/텔레포트가드 = `WalkAnimSpeedStyle` SO + BattleBridge 미러). 포탈 텔레포트 무시·standoff 바닥. **회귀 수정**: timeScale 트랙 전역이라 걷기 배율이 공격/사망/배치까지 늦추던 것 → 로코모션 루프(Loop==true)에만 적용. 튜닝 확정 refSpeed 1.2/max 3.0. 순수 프레젠테이션, ECS 변경 0. 후속: 코너 접지 스냅·Android 프로파일)
 - **Attack anim speed match** → `docs/spec/attack-anim-speed-match/` (완료 2026-07-10, units 0~1 — 공격 Spine 애니를 실제 발사 주기에 compress-to-fit → 공속이 "빠른 스윙"으로 체감. `TrackEntry.TimeScale = max(1, animDuration / max(cooldownDuration/attackSpeedMul, hitDelaySec))`. **별도 튜닝 SO 없이 공격속도 필드(SO attackCooldown+버프+hitDelay)에서 직접 파생**(SoT 불변, 사용자 결정). 하한 1.0=구조 상수(느린 공격 자연+대기), 상한 없음(attackSpeedMul [0.2,5] 캡+authoring 규율). 산식 critic 1회 준수 판정+MEDIUM/LOW 반영. 시뮬 rate/데미지 불변. 후속: hit 프레임 정렬)

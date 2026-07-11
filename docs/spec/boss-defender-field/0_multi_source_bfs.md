@@ -28,3 +28,5 @@
   - 소스 0개(빈 배열/전부 벽 셀 이웃 없음) → 전 셀 MaxValue, flow 전부 zero.
   - `CollectDefenderSources`: 벽 셀 방어유닛의 walkable 이웃만 수집, 이웃 0 방어유닛은 무기여.
   - 벽 너머 소스(도달불가) → 해당 컴포넌트 셀만 유한, 나머지 MaxValue.
+
+확인 2026-07-11 · 커밋 `dc298ceb` (EditMode 신규 6종 + 기존 4종 무수정 통과)

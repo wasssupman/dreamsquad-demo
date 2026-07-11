@@ -23,3 +23,5 @@
 - compile 클린, 기존 EditMode 전체 무회귀 (특히 FlowFieldBuilder/Movement 관련).
 - 비-보스 적: diff 전후 이동 동일 (BossTag 없음 → hunting 항상 false → 코드 경로 동일).
 - 보스 + 방어유닛 존재: Play 에서 보스가 방어유닛 방향(뒤 포함)으로 걷는 것 확인 (정식 e2e 는 unit 3).
+
+확인 2026-07-11 · 커밋 `dc298ceb` (EditMode 653 무회귀 + FlowRecovery 4종, Play 트레이스 unit 3 참조)
