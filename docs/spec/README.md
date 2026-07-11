@@ -253,11 +253,13 @@ board-visualization spec 자체는 ROI 부족으로 wrap 종료. 진단/실험�
 - ~~**desert 테마 접지 fix**~~ [완료 2026-07-03] · desert prop_style_*/prop_dummy_* + 공유 forest dummy PropData 를 Tilted + offset 0 + 텍스처 BottomCenter 로 정합. 실제 렌더 sink 는 dummy 2종뿐(prop_style_* 는 공유 forest 프리팹의 baked data 로 이미 정상)이었고 나머지는 데이터 hygiene. Play 검증(`desert_dummy_grounding_verify.png`).
 - **ObstaclePlacer 테스트 기존 실패** [S] · `ObstaclePlacerTests.Place_PreservesWalkAndMinimumPlaceRatio`(≥36 기대, 31). dea2733(phase10) 테스트, 맵 생성 결정론 실패. prop-upright-root 작업과 무관하게 HEAD 에서 이미 실패 — 회귀 아님. minPlaceableRatio/ObstaclePlacer 로직 별도 조사.
 
-#### 모바일 디스플레이 대응 (mobile-aspect-fix — 비-spec 버그픽스 파생)
+#### 모바일 디스플레이·Battle HUD 대응
 
 모바일 aspect/framerate 수정(`GameManager.Awake` — 세로 1080 캡 + 기기 aspect 로 가로만 확장, `targetFrameRate=60` + `vSyncCount=0`) 후 남은 UI 후속.
 
-- **UI CanvasScaler Match=Height 전환** [M] · 코드 fallback 스칼러 ~15곳 + 씬 authored 스칼러가 `match` 기본값 0(width) → non-16:9(20:9 등)에서 UI 1.25배 확대·상하 클립. 세로 1080 정규화와 정합하려면 `matchWidthOrHeight=1`(height)로 전환. **블라인드 플립 위험 — 앵커 QA 세트 필요**: (1) stretch 앵커 배경 이미지 가로 늘어남 → cover(균등확대+크롭)로, (2) "중앙앵커+offset" HUD 가 wide 화면서 코너 이탈 → 코너 앵커로, (3) 코드+씬 스칼러 동시 적용(부분 적용 시 화면별 혼재 클립), (4) 엣지 HUD 노치 침범(별도 SafeArea 작업). **16:9 기준에선 match 0/1 동일 → 회귀 리스크 0**, 변화는 non-16:9 에서만.
+- **UI CanvasScaler Height + Safe Area 통일** → `docs/spec/mobile-ui-safe-area/` [M, 설계 완료·승인 대기]. Battle/Outgame 전체를 full-bleed/safe root로 분리하고 16:9~20:9 + Android cutout/gesture를 검증한다.
+- **Battle HUD Safe Action Tray** → `docs/spec/battle-hud-action-tray/` [L, 선행 spec 대기]. 비용·role·affordability 슬롯 정보, compact energy rail, tray↔hand 시각 정합, 배치 거부 원인 피드백.
+- **남은 허용 유출 HUD** [S/M] · `defeatGoalReachedCount` 대비 현재 유출/잔여 허용치를 전투 중 상시 표시해 패배 원인 예측성을 높인다. Action Tray와 다른 상단 생존 정보 scope로 별도 승격.
 
 #### 기타
 
