@@ -35,8 +35,12 @@ combat-action-lock 이 만든 Sleep 상태(적·아군 공통, wake-on-hit)를 �
 - **ecs-review M1**: 스파인 미보유 defender 는 앵커 해석 실패로 Zz 미표시(잠재 — 현 로스터 16기
   전원 스파인 보유) → `ResolveEnemyViewTransform` 을 `ResolveUnitViewTransform` 으로 정정(L1)하고
   `defenderFallbackViewPool` 분기 추가. 호출처 3곳(어그로/히트바/Sleep) 동반 갱신.
-- **ecs-review M2 (비차단, 후속)**: reconcile 스캔이 O(전체 유닛) — CcEffect 버퍼가 전 유닛 상주라
-  쿼리가 narrow 하지 않음. TD 규모 허용. 프로파일 등재 시 Effects 토글 enableable `AsleepTag` 후보.
+- **ecs-review M2 (수용된 특성)**: reconcile 스캔이 O(전체 유닛) — CcEffect 버퍼가 전 유닛 상주라
+  쿼리가 narrow 하지 않음. TD 규모(수십~수백)에서 문제 없어 **별도 후속 없이 수용**. 만약 프로파일에
+  등재되면 그때 이 spec 에 rev 로 Effects 토글 enableable `AsleepTag` 를 통합 처리한다(사용자 결정 2026-07-11:
+  후속 분리 대신 spec 내 통합).
+- **code-review LOW 통합 반영 (2026-07-11)**: 글리프 캐시 배열 크기를 enum 에서 유도(수동 커플링 제거),
+  `FillRect` 인덱스 컨벤션(x 포함/y 미포함) 주석 명시.
 - 에셋 확정치: offset (0.35, 2.2), scale 0.65, 틴트 (0.38, 0.52, 1) — 시인성 튜닝 결과.
 
 ## 완료 기준

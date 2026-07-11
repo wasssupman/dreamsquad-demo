@@ -10,7 +10,9 @@ namespace Wassup.Presentation
     public class StatusFxView : MonoBehaviour
     {
         // unit-status-fx 5 — 글리프별 절차 폴백 스프라이트 캐시 (인덱스 = FallbackGlyph).
-        private static readonly Sprite[] _fallbackSprites = new Sprite[2];
+        // 크기는 enum 에서 유도 — 새 글리프 추가 시 자동 확장 (code-review LOW1).
+        private static readonly Sprite[] _fallbackSprites =
+            new Sprite[System.Enum.GetValues(typeof(StatusFxRegistry.FallbackGlyph)).Length];
 
         private Camera _camera;
         private Transform _anchor;
@@ -122,6 +124,8 @@ namespace Wassup.Presentation
             var px = new Color[S * S];
             for (int i = 0; i < px.Length; i++) px[i] = clear;
 
+            // 인덱스 컨벤션 주의: x 는 [x0, x1] 양끝 포함, y 는 [y0, y1) 상단 미포함
+            // (code-review LOW2 — 새 글리프 작성 시 이 비대칭을 감안할 것).
             void FillRect(int x0, int x1, int y0, int y1)
             {
                 for (int y = y0; y < y1; y++)

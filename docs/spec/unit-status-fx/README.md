@@ -50,7 +50,5 @@
 
 - 실제 추가 상태(스턴/빙결/독) registry 등록 + ECS 소스 훅. 각 상태 ECS 표현 준비 시.
   (Sleep 은 unit 5 로 완료 2026-07-11 — CcEffect 버퍼 스캔 소스. Stun 도 같은 스캔에 kind 분기만 추가하면 됨.)
-- Sleep reconcile 스캔 O(전체 유닛) 최적화 — 프로파일 등재 시 Effects 토글 enableable `AsleepTag` (ecs-review M2).
-- 폴백 글리프 캐시 배열(2) ↔ FallbackGlyph enum 개수 수동 커플링 — 3번째 글리프 추가 시 주의 (code-review LOW).
 - follow 모드 확장(ground 링=회전 평면, on-body=오프셋0). 현재 overhead 빌보드 + 오프셋만.
 - 어그로 "!" → 전용 프리팹 연출(가디언 tether 등). 재사용 맵: BlobShadow(발밑)·DragPlacement cord(tether 템플릿)·SetHealthTint(틴트 충돌 주의).
