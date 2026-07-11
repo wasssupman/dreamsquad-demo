@@ -19,8 +19,10 @@
 
 ## 완료 기준
 
-- [ ] EditMode: 1920×1080 full rect가 full anchor를 반환한다.
-- [ ] EditMode: 좌/우 cutout 입력이 대응하는 x anchor를 반환한다.
-- [ ] EditMode: bottom gesture inset 입력이 양의 `anchorMin.y`를 반환한다.
-- [ ] EditMode: 잘못된 screen/safe rect가 NaN 없이 full-screen으로 폴백한다.
-- [ ] 컴파일 에러 0, 기존 테스트 회귀 없음.
+- [x] EditMode: 1920×1080 full rect가 full anchor를 반환한다.
+- [x] EditMode: 좌/우 cutout 입력이 대응하는 x anchor를 반환한다.
+- [x] EditMode: bottom gesture inset 입력이 양의 `anchorMin.y`를 반환한다.
+- [x] EditMode: 잘못된 screen/safe rect가 NaN 없이 full-screen으로 폴백한다.
+- [x] 컴파일 에러 0, 기존 테스트 회귀 없음.
+
+사용자 진행 승인 2026-07-11 — 시각 확인 가능한 unit까지 연속 진행 요청. EditMode 680개 중 678 통과, 실패 0, 기존 Ignore 2.
