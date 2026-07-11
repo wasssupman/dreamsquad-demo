@@ -7,9 +7,19 @@ namespace Wassup.Battle.Effects
     // 순수 함수. EditMode 테스트로 결정론 검증.
     public static class FlowFieldBuilder
     {
-        private static readonly int2[] Dirs = {
-            new int2(1, 0), new int2(-1, 0), new int2(0, 1), new int2(0, -1),
-        };
+        // boss-defender-field unit 0 — 기존 static readonly int2[] 를 switch 로 교체.
+        // Burst ISystem(DefenderFieldSystem)에서 호출 가능해야 하는데 managed 배열
+        // static 접근은 Burst 미보장. 순서(+x, -x, +y, -y)는 flow 타이브레이크 결정론 계약.
+        private static int2 Dir(int d)
+        {
+            switch (d)
+            {
+                case 0:  return new int2(1, 0);
+                case 1:  return new int2(-1, 0);
+                case 2:  return new int2(0, 1);
+                default: return new int2(0, -1);
+            }
+        }
 
         public static void Build(
             NativeArray<byte>   walkMask, // 1 = walkable, 0 = blocked
@@ -18,24 +28,47 @@ namespace Wassup.Battle.Effects
             NativeArray<float2> outFlow,
             NativeArray<int>    outDist)
         {
+            // boss-defender-field unit 0 — 단일 goal 은 1-소스 특수형. 유효하지 않은
+            // goal(경계 밖/벽)은 "유효 소스 0" 규칙으로 동일하게 빈 필드가 된다.
+            var sources = new NativeArray<int2>(1, Allocator.Temp);
+            try
+            {
+                sources[0] = goal;
+                BuildFromSources(walkMask, gridSize, sources, outFlow, outDist);
+            }
+            finally { sources.Dispose(); }
+        }
+
+        // boss-defender-field unit 0 — N-소스 BFS. 모든 유효 소스(경계 내 + walkable)가
+        // dist 0 에서 동시에 퍼진다 → 각 cell 의 flow 는 최근접 소스를 향한다.
+        // 유효 소스 0 개면 전 셀 int.MaxValue / zero-flow (소비자의 goal-fallback 신호).
+        public static void BuildFromSources(
+            NativeArray<byte>   walkMask,
+            int2                gridSize,
+            NativeArray<int2>   sources,
+            NativeArray<float2> outFlow,
+            NativeArray<int>    outDist)
+        {
             int w = gridSize.x, h = gridSize.y, n = w * h;
 
-            UnityEngine.Debug.Assert(walkMask.Length == n && outDist.Length == n && outFlow.Length == n,
-                $"FlowFieldBuilder: array length mismatch (expected {n}, got walkMask={walkMask.Length}, outFlow={outFlow.Length}, outDist={outDist.Length})");
+            AssertLengths(n, walkMask.Length, outFlow.Length, outDist.Length);
 
             for (int i = 0; i < n; i++) outDist[i] = int.MaxValue;
             for (int i = 0; i < n; i++) outFlow[i] = float2.zero;
 
-            if (goal.x < 0 || goal.x >= w || goal.y < 0 || goal.y >= h) return;
-            int goalIdx = goal.y * w + goal.x;
-            if (walkMask[goalIdx] == 0) return;
-
-            outDist[goalIdx] = 0;
-
             var queue = new NativeQueue<int2>(Allocator.Temp);
             try
             {
-                queue.Enqueue(goal);
+                for (int s = 0; s < sources.Length; s++)
+                {
+                    int2 src = sources[s];
+                    if (src.x < 0 || src.x >= w || src.y < 0 || src.y >= h) continue;
+                    int srcIdx = src.y * w + src.x;
+                    if (walkMask[srcIdx] == 0) continue;
+                    if (outDist[srcIdx] == 0) continue; // 중복 소스 무해
+                    outDist[srcIdx] = 0;
+                    queue.Enqueue(src);
+                }
 
                 while (queue.TryDequeue(out var c))
                 {
@@ -43,7 +76,7 @@ namespace Wassup.Battle.Effects
                     int cDist = outDist[cIdx];
                     for (int d = 0; d < 4; d++)
                     {
-                        int2 n2 = c + Dirs[d];
+                        int2 n2 = c + Dir(d);
                         if (n2.x < 0 || n2.x >= w || n2.y < 0 || n2.y >= h) continue;
                         int nIdx = n2.y * w + n2.x;
                         if (walkMask[nIdx] == 0) continue;
@@ -67,15 +100,48 @@ namespace Wassup.Battle.Effects
                 int2 bestDir = int2.zero;
                 for (int d = 0; d < 4; d++)
                 {
-                    int2 n2 = new int2(x, y) + Dirs[d];
+                    int2 n2 = new int2(x, y) + Dir(d);
                     if (n2.x < 0 || n2.x >= w || n2.y < 0 || n2.y >= h) continue;
                     int nIdx = n2.y * w + n2.x;
                     if (outDist[nIdx] >= bestDist) continue;
                     bestDist = outDist[nIdx];
-                    bestDir = Dirs[d];
+                    bestDir = Dir(d);
                 }
                 outFlow[idx] = new float2(bestDir.x, bestDir.y);
             }
+        }
+
+        // boss-defender-field unit 1 — Burst 호출 경로에서 managed string 포맷 제거.
+        // 관리 코드 호출자에선 기존 assert 그대로, Burst 컴파일 시 호출 자체가 사라진다.
+        [Unity.Burst.BurstDiscard]
+        private static void AssertLengths(int n, int walkLen, int flowLen, int distLen)
+        {
+            UnityEngine.Debug.Assert(walkLen == n && distLen == n && flowLen == n,
+                $"FlowFieldBuilder: array length mismatch (expected {n}, got walkMask={walkLen}, outFlow={flowLen}, outDist={distLen})");
+        }
+
+        // boss-defender-field unit 0 — 방어유닛 셀(Place=벽)의 walkable 4-이웃을 BFS 소스로
+        // 수집한다. 벽 셀은 직접 seed 불가하므로 이 이웃들이 "방어유닛 옆 도착 지점"이 된다.
+        // 중복 이웃 허용(BuildFromSources 가 dist 0 재삽입을 걸러냄). 반환값 = 수집된 소스 수.
+        public static int CollectDefenderSources(
+            NativeArray<byte> walkMask,
+            int2              gridSize,
+            NativeArray<int2> defenderCells,
+            NativeList<int2>  outSources)
+        {
+            outSources.Clear();
+            int w = gridSize.x, h = gridSize.y;
+            for (int i = 0; i < defenderCells.Length; i++)
+            {
+                for (int d = 0; d < 4; d++)
+                {
+                    int2 n2 = defenderCells[i] + Dir(d);
+                    if (n2.x < 0 || n2.x >= w || n2.y < 0 || n2.y >= h) continue;
+                    if (walkMask[n2.y * w + n2.x] == 0) continue;
+                    outSources.Add(n2);
+                }
+            }
+            return outSources.Length;
         }
     }
 }

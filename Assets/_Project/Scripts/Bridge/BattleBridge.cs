@@ -229,6 +229,9 @@ namespace Wassup.Bridge
 
         // Phase 9 flow field 싱글톤 entity reference
         private Entity _flowFieldSingleton = Entity.Null;
+        // boss-defender-field unit 1 — 방어유닛-지향 필드. goal field 와 라이프사이클 동일
+        // (BuildFlowField 생성 / TeardownFlowField 정리). 내용 갱신은 DefenderFieldSystem.
+        private Entity _defenderFieldSingleton = Entity.Null;
 
         // enemy-tile-movement-integrity unit 0 — 스폰 측면 분산 순번(맵 빌드마다 0 리셋). 결정론 수열 인덱스.
         private int _spawnSpreadCounter;
@@ -354,6 +357,7 @@ namespace Wassup.Bridge
             else
             {
                 _flowFieldSingleton = Entity.Null;
+                _defenderFieldSingleton = Entity.Null;
             }
 
             DisposeEcsInfrastructureNativeContainers();
@@ -519,6 +523,37 @@ namespace Wassup.Bridge
                 {
                     if (flow.IsCreated) flow.Dispose();
                     if (dist.IsCreated) dist.Dispose();
+                    throw;
+                }
+
+                // boss-defender-field unit 1 — 방어유닛-지향 필드 싱글톤. walkMask 는 위의
+                // Temp `walk` 를 Persistent 로 복사(goal field 는 저장 안 하는 값).
+                // flow/dist 는 초기 "소스 0" 상태(dist=MaxValue) — 내용은 DefenderFieldSystem 이
+                // 매 프레임 재빌드. teardown 은 TeardownFlowField 가 함께 처리(멱등).
+                var dWalk = new NativeArray<byte>(n, Allocator.Persistent);
+                var dFlow = new NativeArray<float2>(n, Allocator.Persistent);
+                var dDist = new NativeArray<int>(n, Allocator.Persistent);
+                try
+                {
+                    dWalk.CopyFrom(walk);
+                    for (int i = 0; i < n; i++) dDist[i] = int.MaxValue;
+
+                    _defenderFieldSingleton = _em.CreateEntity();
+                    _em.AddComponentData(_defenderFieldSingleton, new Wassup.Battle.Effects.DefenderFieldSingleton
+                    {
+                        walkMask = dWalk,
+                        flow     = dFlow,
+                        dist     = dDist,
+                        gridSize = _generatedMap.gridSize,
+                        tileSize = tileSize,
+                        origin   = _boardOrigin,
+                    });
+                }
+                catch
+                {
+                    if (dWalk.IsCreated) dWalk.Dispose();
+                    if (dFlow.IsCreated) dFlow.Dispose();
+                    if (dDist.IsCreated) dDist.Dispose();
                     throw;
                 }
             }
@@ -785,6 +820,7 @@ namespace Wassup.Bridge
             if (_world == null || !_world.IsCreated || _em == default)
             {
                 _flowFieldSingleton = Entity.Null;
+                _defenderFieldSingleton = Entity.Null;
                 return;
             }
             if (_flowFieldSingleton != Entity.Null && _em != null && _em.Exists(_flowFieldSingleton))
@@ -797,6 +833,18 @@ namespace Wassup.Bridge
                 _em.DestroyEntity(_flowFieldSingleton);
             }
             _flowFieldSingleton = Entity.Null;
+
+            // boss-defender-field unit 1 — defender field 는 goal field 와 라이프사이클 공유.
+            if (_defenderFieldSingleton != Entity.Null && _em != null && _em.Exists(_defenderFieldSingleton))
+            {
+                if (_em.HasComponent<Wassup.Battle.Effects.DefenderFieldSingleton>(_defenderFieldSingleton))
+                {
+                    var data = _em.GetComponentData<Wassup.Battle.Effects.DefenderFieldSingleton>(_defenderFieldSingleton);
+                    data.Dispose();
+                }
+                _em.DestroyEntity(_defenderFieldSingleton);
+            }
+            _defenderFieldSingleton = Entity.Null;
         }
 
         // Phase 6: placement phase enters this path — ECS state is initialized so

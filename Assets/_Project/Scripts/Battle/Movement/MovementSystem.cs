@@ -26,6 +26,10 @@ namespace Wassup.Battle.Movement
             float dt = SystemAPI.Time.DeltaTime;
 
             var field = SystemAPI.GetSingleton<FlowFieldSingleton>();
+            // boss-defender-field unit 2 — 방어유닛-지향 필드(Effects 소유, RO). 부재 시
+            // (테스트/티어다운) hunting 이 항상 false 로 떨어져 전원 기존 goal 경로.
+            bool hasHuntField = SystemAPI.TryGetSingleton<DefenderFieldSingleton>(out var huntField);
+            var bossLookup = SystemAPI.GetComponentLookup<BossTag>(isReadOnly: true);
             var ccLookup = SystemAPI.GetBufferLookup<CcEffect>(isReadOnly: true);
             var modifierStatsLookup = SystemAPI.GetComponentLookup<ModifierStats>(isReadOnly: true);
             var hasObstacles = SystemAPI.TryGetSingleton<ObstacleSingleton>(out var obstacleSingleton);
@@ -102,7 +106,17 @@ namespace Wassup.Battle.Movement
 
                 // 2. Current cell lookup + goal 판정
                 int2 cell = GridMath.WorldToCell(current, field.tileSize, field.gridSize, origin: field.origin);
-                if (cell.x == field.goalCell.x && cell.y == field.goalCell.y)
+                int idx = GridMath.CellIndex(cell, field.gridSize);
+
+                // boss-defender-field unit 2 — 보스 사냥 판정. hunt-dist 유한 = 도달 가능한
+                // 방어유닛 존재 → goal flow 대신 defender field 를 따른다. 방어유닛 0 이면
+                // DefenderFieldSystem 이 전 셀 MaxValue 로 리셋 → 자동으로 기존 마칭(계약 5).
+                bool hunting = hasHuntField && huntField.IsCreated
+                    && bossLookup.HasComponent(entity)
+                    && huntField.dist[idx] != int.MaxValue;
+
+                // 사냥 중엔 goal 셀을 지나쳐도 누수 안 함(leak-proof) — 방어유닛 전멸 후에만 도달 처리.
+                if (!hunting && cell.x == field.goalCell.x && cell.y == field.goalCell.y)
                 {
                     ecb.AddComponent<PastGoalTag>(entity);
                     continue;
@@ -147,23 +161,17 @@ namespace Wassup.Battle.Movement
                     if (!advance) continue; // 정지
                 }
 
-                // 4. Flow field step
-                int idx = GridMath.CellIndex(cell, field.gridSize);
-                float2 dir = field.flow[idx];
+                // 4. Flow field step — hunting 이면 defender field, 아니면 goal field.
+                float2 dir = hunting ? huntField.flow[idx] : field.flow[idx];
                 bool zeroFlowRecovery = false;
                 if (math.lengthsq(dir) < 1e-6f)
                 {
                     zeroFlowRecovery = true;
                     // Zero-flow cell: impulse may have pushed entity into an unreachable cell.
                     // Try 4 cardinal neighbors; move toward the one with the smallest finite dist.
-                    float2 recovDir = float2.zero;
-                    int bestD = field.dist[idx];
-                    int2 nb;
-                    int d;
-                    nb = cell + new int2( 1, 0); if (nb.x < field.gridSize.x) { d = field.dist[GridMath.CellIndex(nb, field.gridSize)]; if (d < bestD) { bestD = d; recovDir = new float2( 1, 0); } }
-                    nb = cell + new int2(-1, 0); if (nb.x >= 0)              { d = field.dist[GridMath.CellIndex(nb, field.gridSize)]; if (d < bestD) { bestD = d; recovDir = new float2(-1, 0); } }
-                    nb = cell + new int2( 0, 1); if (nb.y < field.gridSize.y) { d = field.dist[GridMath.CellIndex(nb, field.gridSize)]; if (d < bestD) { bestD = d; recovDir = new float2( 0, 1); } }
-                    nb = cell + new int2( 0,-1); if (nb.y >= 0)              { d = field.dist[GridMath.CellIndex(nb, field.gridSize)]; if (d < bestD) { bestD = d; recovDir = new float2( 0,-1); } }
+                    // hunting 이면 recovery 도 defender field 의 dist 기준(같은 그리드).
+                    // 계산은 FlowRecovery.RecoveryDir 순수함수 (ecs-review M3, EditMode 테스트).
+                    float2 recovDir = FlowRecovery.RecoveryDir(cell, hunting ? huntField.dist : field.dist, field.gridSize);
                     if (math.lengthsq(recovDir) < 1e-6f) continue; // truly isolated cell
                     dir = recovDir;
                 }
