@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4739c42e2394b412f846aa25fdfc1c62, type: 3}
+  m_Name: BattleHudTrayConfig
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.BattleHudTrayConfig
+  trayFrame: {fileID: 21300000, guid: 27bf95a81afb1408d9c3a86349a0c682, type: 3}
+  fallbackFill: {r: 0.05, g: 0.11, b: 0.2, a: 0.96}
+  fallbackBorder: {r: 0.94, g: 0.72, b: 0.24, a: 1}
+  placementSize: {x: 980, y: 136}
+  battleSize: {x: 980, y: 104}
+  anchoredY: 32
+  slotSpacing: 8
+  horizontalPadding: 18
+  verticalPadding: 12

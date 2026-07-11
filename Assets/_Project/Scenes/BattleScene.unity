@@ -1721,6 +1721,7 @@ MonoBehaviour:
   dragPlacementController: {fileID: 0}
   swaySettings: {fileID: 11400000, guid: 680d35e2ba6a44815bf731006e75eddf, type: 2}
   nameFont: {fileID: 11400000, guid: 218cce73e3172a04a8c536a4d368d90f, type: 2}
+  trayConfig: {fileID: 11400000, guid: 903c6fe71bf7844489939928774546b6, type: 2}
   placementSize: {x: 912, y: 120}
   battleSize: {x: 912, y: 88}
 --- !u!4 &915292525

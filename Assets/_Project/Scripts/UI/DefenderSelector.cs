@@ -24,6 +24,7 @@ namespace Wassup.UI
         // ui-tweak 2026-07-09 — 슬롯 이름은 한글(음차). 기본 TMP 폰트는 한글 글리프가
         // 없어 네모로 깨지므로 한글 SDF(Jua)를 주입한다. 미할당이면 라틴 폴백.
         [SerializeField] private TMP_FontAsset nameFont;
+        [SerializeField] private BattleHudTrayConfig trayConfig;
         // battle-hud-layout 2 — 페이즈별 스트립 크기. Battle 은 관전이 주 활동이라
         // 슬림 축소로 중앙 하단 보드 가림을 상쇄한다. 슬롯은 childForceExpand 라
         // 패널 크기만 바꾸면 균등 축소된다.
@@ -85,9 +86,9 @@ namespace Wassup.UI
         {
             if (_panel == null) return;
             if (phase == GamePhase.Battle)
-                ((RectTransform)_panel.transform).sizeDelta = battleSize;
+                ((RectTransform)_panel.transform).sizeDelta = BattleSize;
             else if (phase == GamePhase.Placement)
-                ((RectTransform)_panel.transform).sizeDelta = placementSize;
+                ((RectTransform)_panel.transform).sizeDelta = PlacementSize;
         }
 
         private void OnDraftConfirmed()
@@ -110,7 +111,7 @@ namespace Wassup.UI
 
             var roots = UiCanvasSetup.Ensure(gameObject, sortingOrder: 4);
 
-            _panel = new GameObject("DefenderPanel", typeof(RectTransform));
+            _panel = new GameObject("DefenderPanel", typeof(RectTransform), typeof(Image));
             _panel.transform.SetParent(roots.SafeAreaRoot, false);
             var prt = (RectTransform)_panel.transform;
             // battle-hud-layout 0 — bottom-center: 드림캐쳐 핸드(0,32)와 동일 축/y 로
@@ -118,19 +119,42 @@ namespace Wassup.UI
             prt.anchorMin = new Vector2(0.5f, 0f);
             prt.anchorMax = new Vector2(0.5f, 0f);
             prt.pivot = new Vector2(0.5f, 0f);
-            prt.anchoredPosition = new Vector2(0f, 32f);
+            prt.anchoredPosition = new Vector2(0f, AnchoredY);
             // ui-tweak 2026-07-08 — 유닛 슬롯 20% 확대(760x100 → 912x120). 슬롯은
             // childForceExpand 로 패널을 채우므로 패널 크기만 키우면 균등 확대된다.
-            prt.sizeDelta = placementSize;
+            prt.sizeDelta = PlacementSize;
+
+            var panelImage = _panel.GetComponent<Image>();
+            if (trayConfig != null && trayConfig.trayFrame != null)
+            {
+                panelImage.sprite = trayConfig.trayFrame;
+                panelImage.type = Image.Type.Sliced;
+                panelImage.color = Color.white;
+            }
+            else
+            {
+                var fill = trayConfig != null ? trayConfig.fallbackFill : new Color(0.05f, 0.11f, 0.20f, 0.96f);
+                var border = trayConfig != null ? trayConfig.fallbackBorder : new Color(0.94f, 0.72f, 0.24f, 1f);
+                panelImage.sprite = UiRoundedSprite.Make(22f, 2f, fill, border);
+                panelImage.type = Image.Type.Sliced;
+            }
+            panelImage.raycastTarget = false;
 
             var hlg = _panel.AddComponent<HorizontalLayoutGroup>();
-            hlg.spacing = 8f;
+            hlg.spacing = trayConfig != null ? trayConfig.slotSpacing : 8f;
+            int horizontalPadding = trayConfig != null ? trayConfig.horizontalPadding : 18;
+            int verticalPadding = trayConfig != null ? trayConfig.verticalPadding : 12;
+            hlg.padding = new RectOffset(horizontalPadding, horizontalPadding, verticalPadding, verticalPadding);
             hlg.childForceExpandWidth = true;
             hlg.childForceExpandHeight = true;
             _slotContainer = _panel.transform;
 
             UiLayer.Apply(gameObject);
         }
+
+        private Vector2 PlacementSize => trayConfig != null ? trayConfig.placementSize : placementSize;
+        private Vector2 BattleSize => trayConfig != null ? trayConfig.battleSize : battleSize;
+        private float AnchoredY => trayConfig != null ? trayConfig.anchoredY : 32f;
 
         private void RebuildSlots(DefenderUnitData[] pool)
         {

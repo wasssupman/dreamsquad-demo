@@ -8,6 +8,7 @@
 
 - 신규 `Assets/_Project/Scripts/Data/BattleHudTrayConfig.cs`
 - 신규 `Assets/_Project/Data/Config/BattleHudTrayConfig.asset`
+- 신규 `Assets/_Project/Art/UI/BattleHudTrayPlate_v2.png`
 - `Assets/_Project/Scripts/UI/DefenderSelector.cs`
 - `Assets/_Project/Scenes/BattleScene.unity`
 
@@ -15,7 +16,8 @@
 
 - Config에 safe edge를 제외한 트레이 전용 값만 둔다: anchored y, placement/battle/hand size, padding, slot spacing, energy rail size/overlap, name font 범위, tray/name/dim colors.
 - `DefenderClass`별 presentation entry는 role, 짧은 glyph, 색을 직렬화한다. 중복 role이 있거나 누락되면 neutral fallback을 사용한다.
-- `DefenderSelector`가 기존 `DefenderPanel` 내부에 raycast를 막지 않는 9-slice/procedural 배킹을 최하단 sibling으로 만든다.
+- `DefenderSelector`가 기존 `DefenderPanel` 내부에 raycast를 막지 않는 9-slice 배킹을 최하단 sibling으로 만든다.
+- 프로덕션 배킹은 `BattleHudTrayPlate_v2.png`를 사용한다. 텍스트·아이콘을 베이크하지 않은 투명 프레임이며, `BattleHudTrayConfig`가 Sprite와 border를 소유한다. 에셋 누락 시 procedural plate로 폴백한다.
 - 슬롯 container는 배킹의 padding 안을 채우며 기존 7슬롯 드래그 바인딩을 유지한다.
 - Config가 누락되면 현행 치수/색으로 안전하게 폴백하되 경고는 1회만 남긴다.
 
