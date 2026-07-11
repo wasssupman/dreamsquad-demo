@@ -8,10 +8,10 @@ using Wassup.Battle.Units;
 
 namespace Wassup.Battle.Effects
 {
-    // boss-defender-field unit 1 — 살아있는 방어유닛들의 walkable 4-이웃을 소스로
-    // multi-source BFS 를 매 프레임 재빌드. 그리드가 작아 배치/사망 이벤트 훅·dirty
-    // 추적 없이 매 프레임이 가장 단순(계약 4). 방어유닛 0 → BuildFromSources 가
-    // 전 셀 int.MaxValue 로 리셋 → Movement 의 goal-fallback 신호(계약 5).
+    // boss-defender-field unit 1/5 — 살아있는 방어유닛들을 "공격 가능한" walkable 셀
+    // (Chebyshev ≤ 헌터 사거리 min)을 소스로 multi-source BFS 를 매 프레임 재빌드.
+    // 그리드가 작아 배치/사망 이벤트 훅·dirty 추적 없이 매 프레임이 가장 단순(계약 4).
+    // 방어유닛 0 → BuildFromSources 가 전 셀 int.MaxValue 로 리셋 → goal-fallback(계약 5).
     [BurstCompile]
     [UpdateInGroup(typeof(BattleSimGroup))]
     [UpdateBefore(typeof(Wassup.Battle.Movement.MovementSystem))]
