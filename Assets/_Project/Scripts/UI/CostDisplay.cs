@@ -47,6 +47,8 @@ namespace Wassup.UI
         private Sprite _barEmptyFallback;
         private Sprite _barFilledFallback;
         private bool _built;
+        private bool _phaseVisible;
+        private bool _suppressed; // 드림캐쳐 핸드 오픈 중 true (SetSuppressed)
 
         private void Awake()
         {
@@ -66,8 +68,24 @@ namespace Wassup.UI
 
         private void OnPhaseChanged(GamePhase phase)
         {
-            bool show = phase == GamePhase.Placement || phase == GamePhase.Battle;
+            _phaseVisible = phase == GamePhase.Placement || phase == GamePhase.Battle;
+            RefreshVisible();
+        }
+
+        // battle-hud-layout 1 rev — 중앙 이동으로 배지(y164~276)가 드림캐쳐 핸드
+        // (y32~264)와 겹치게 됨. 핸드 오픈 중엔 스트립과 함께 배지도 퇴장한다
+        // ("유닛 손패 + 유닛 재화" 한 세트). HandView 는 신호만 보내고 표시 결정은
+        // 여기서 결합해 PhaseChanged 구독 순서 경합을 피한다.
+        public void SetSuppressed(bool value)
+        {
+            _suppressed = value;
+            RefreshVisible();
+        }
+
+        private void RefreshVisible()
+        {
             if (_panel == null) return;
+            bool show = _phaseVisible && !_suppressed;
             if (show) EnsureBars();
             _panel.SetActive(show);
         }
@@ -155,15 +173,17 @@ namespace Wassup.UI
             _barEmptyFallback = UiRoundedSprite.Make(4f, 0f, BarEmpty, BarEmpty);
             _barFilledFallback = UiRoundedSprite.Make(4f, 0f, BarFilled, BarFilled);
 
-            // Compact HUD panel, bottom-left above the DefenderSelector.
+            // Compact HUD panel, bottom-center above the DefenderSelector strip.
+            // battle-hud-layout 1 — 코스트-스트립 한 클러스터: "코스트 확인→슬롯
+            // 선택→드래그"가 한 시선 안에 돌도록 중앙 스트립 위에 밀착(CR 엘릭서 바 관례).
             _panel = new GameObject("CostPanel", typeof(RectTransform), typeof(Image));
             _panel.transform.SetParent(transform, false);
             var prt = (RectTransform)_panel.transform;
-            prt.anchorMin = new Vector2(0f, 0f);
-            prt.anchorMax = new Vector2(0f, 0f);
-            prt.pivot = new Vector2(0f, 0f);
-            // 아래 DefenderSelector(상단 y≈160)와 명확히 분리되도록 위로 올려 갭 확보.
-            prt.anchoredPosition = new Vector2(40f, 184f);
+            prt.anchorMin = new Vector2(0.5f, 0f);
+            prt.anchorMax = new Vector2(0.5f, 0f);
+            prt.pivot = new Vector2(0.5f, 0f);
+            // 스트립 상단(y=32+120=152) 위 12px 갭.
+            prt.anchoredPosition = new Vector2(0f, 164f);
             prt.sizeDelta = new Vector2(PlateW, PlateH);
             // Landscape badge with even inner padding (Pad). 9-sliced panel so the
             // rounded corners stay crisp when stretched wide. Top row = bolt + inline

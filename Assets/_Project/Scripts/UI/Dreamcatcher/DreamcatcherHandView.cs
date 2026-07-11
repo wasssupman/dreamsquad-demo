@@ -22,6 +22,9 @@ namespace Wassup.UI
         [SerializeField] private DreamcatcherHandController handController;
         [SerializeField] private AwakeningGaugeView gaugeView;
         [SerializeField] private DefenderSelector defenderSelector;
+        // battle-hud-layout 1 rev — 배지가 중앙 핸드와 겹치므로 핸드 오픈 중
+        // 스트립과 함께 배지도 퇴장시킨다. 표시 결정은 CostDisplay 가 소유.
+        [SerializeField] private CostDisplay costDisplay;
         [SerializeField] private AwakeningConfig config;
         // unit 7 — card drag targeting (screen ray → board cell → defender).
         [SerializeField] private Wassup.Bridge.BattleBridge bridge;
@@ -216,6 +219,7 @@ namespace Wassup.UI
             _slomoLease.Dispose();
             float scale = config != null ? Mathf.Max(0.01f, config.slomoTimeScale) : 0.3f;
             _slomoLease = TimeManager.Instance.Request(TimeDomain.Battle, scale, priority: 50);
+            if (costDisplay != null) costDisplay.SetSuppressed(true);
             StartFlip(from: StripPanel(), to: _panel);
         }
 
@@ -224,6 +228,7 @@ namespace Wassup.UI
             if (State == HandState.UnitStrip) return;
             State = HandState.UnitStrip;
             _slomoLease.Dispose();
+            if (costDisplay != null) costDisplay.SetSuppressed(false);
             StartFlip(from: _panel, to: StripPanel());
         }
 
@@ -235,6 +240,8 @@ namespace Wassup.UI
             _slomoLease.Dispose();
             if (_flip != null) { StopCoroutine(_flip); _flip = null; }
             State = HandState.UnitStrip;
+            // 억제 해제는 무조건 — 표시 여부는 CostDisplay 가 페이즈와 결합해 결정.
+            if (costDisplay != null) costDisplay.SetSuppressed(false);
             if (_panel != null)
             {
                 var rt = (RectTransform)_panel.transform;

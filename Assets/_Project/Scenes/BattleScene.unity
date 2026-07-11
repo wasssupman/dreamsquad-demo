@@ -1685,6 +1685,8 @@ MonoBehaviour:
   dragPlacementController: {fileID: 0}
   swaySettings: {fileID: 11400000, guid: 680d35e2ba6a44815bf731006e75eddf, type: 2}
   nameFont: {fileID: 11400000, guid: 218cce73e3172a04a8c536a4d368d90f, type: 2}
+  placementSize: {x: 912, y: 120}
+  battleSize: {x: 912, y: 88}
 --- !u!4 &915292525
 Transform:
   m_ObjectHideFlags: 0
@@ -3014,6 +3016,7 @@ MonoBehaviour:
   handController: {fileID: 2054561897}
   gaugeView: {fileID: 1012444854}
   defenderSelector: {fileID: 915292524}
+  costDisplay: {fileID: 1075095674}
   config: {fileID: 11400000, guid: b1ff068a6a1b7a44b8fd4ea85f159ff6, type: 2}
   bridge: {fileID: 1939688408}
   mainCamera: {fileID: 1420088185}
@@ -3021,6 +3024,7 @@ MonoBehaviour:
   numberFont: {fileID: 11400000, guid: 7f50de03946cd4d229e8920dd91dbd1a, type: 2}
   flipHalfDuration: 0.14
   fanAngle: 4
+  unitHoverTint: {r: 1, g: 0.28, b: 0.22, a: 1}
 --- !u!4 &1558370270
 Transform:
   m_ObjectHideFlags: 0
