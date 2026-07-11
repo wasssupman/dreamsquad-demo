@@ -67,10 +67,15 @@ namespace Wassup.Battle.Movement
                 //  통과시켜 walk 타일 위에 머물게 한다. 도달 여부 판정은 더 이상 여기서 안 하고 상태가 대신한다.
                 AiState ai = aiStateLookup.HasComponent(entity) ? aiStateLookup[entity].value : AiState.Marching;
 
+                // combat-action-lock — Sleep/Stun 은 자기주도 이동만 정지(외력=impulse/tornado/portal 유지).
+                // AiState 직후 조기 계산: Chasing/goal/tornado 분기가 flow-step 전에 continue 하므로.
+                bool locked = ccLookup.HasBuffer(entity) && CcActionLock.IsLocked(ccLookup[entity]);
+
                 if (ai == AiState.Standoff) continue; // 정지
 
                 if (ai == AiState.Chasing && aggroLookup.HasComponent(entity))
                 {
+                    if (locked) continue; // 잠/스턴: 제자리(자기주도 self-walk 정지)
                     var guardian = aggroLookup[entity].guardian;
                     if (guardianPos.TryGetValue(guardian, out var gpos))
                     {
@@ -147,6 +152,7 @@ namespace Wassup.Battle.Movement
                 // Pulse=타격 진행중(hitDelayRemaining>0) 정지·아니면 전진(진동). 정지여도 공격은 AttackSystem.
                 if (ai == AiState.Engaging)
                 {
+                    if (locked) continue; // 잠/스턴: advance 정지
                     var engage = behaviorLookup.HasComponent(entity)
                         ? behaviorLookup[entity].engageMovement
                         : Wassup.Data.EngageMovement.Halt;
@@ -195,13 +201,14 @@ namespace Wassup.Battle.Movement
                 float2 stepDir = math.normalizesafe(dir); // Phase 9: FlowFieldBuilder writes unit vectors;
                                                            // normalizesafe defensively handles future diagonal/non-unit flow
                                                            // and returns zero for <1e-6 magnitude (already guarded above).
-                float3 flowStep = new float3(stepDir.x, 0, stepDir.y) * follow.ValueRO.speed * speedMul * dt;
+                // combat-action-lock — 잠/스턴: 자기주도 flow-step 0, 넉백(impulse)은 유지.
+                float3 flowStep = locked ? float3.zero : new float3(stepDir.x, 0, stepDir.y) * follow.ValueRO.speed * speedMul * dt;
                 float3 desired = current + flowStep + impulseDisplacement;
 
                 // enemy-tile-movement-integrity unit 1 — 코너 엣지-허깅 측면 복원(target=0 + dead-band).
                 // zero-flow recovery 분기는 스킵(이미 교정 이동 중). 임펄스 측면성분은 이 프레임 보존
                 // (recenter 는 current 기준 standing 오프셋만 당김 → 넉백은 이후 프레임에 점진 복귀).
-                if (!zeroFlowRecovery)
+                if (!zeroFlowRecovery && !locked)
                     desired += LateralRecenter.Compute(current, cell, stepDir,
                         follow.ValueRO.speed * speedMul, dt, field.tileSize, field.origin);
 

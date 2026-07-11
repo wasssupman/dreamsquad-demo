@@ -25,6 +25,8 @@ namespace Wassup.Battle.Units
         private BufferLookup<DamagedCounter> _damagedCounterLookup;
         // dreamcatcher-awakening-hand unit 1 — per-enemy awakening grant baked at spawn.
         private ComponentLookup<AwakeningReward> _awakeningRewardLookup;
+        // combat-action-lock unit 3 — wake-on-hit: 피격 시 Sleep 보유 여부 RO 판정용.
+        private BufferLookup<CcEffect> _ccLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -37,6 +39,7 @@ namespace Wassup.Battle.Units
             _defenderTagLookup     = state.GetComponentLookup<DefenderUnitTag>(isReadOnly: true);
             _damagedCounterLookup  = state.GetBufferLookup<DamagedCounter>(isReadOnly: false);
             _awakeningRewardLookup = state.GetComponentLookup<AwakeningReward>(isReadOnly: true);
+            _ccLookup = state.GetBufferLookup<CcEffect>(isReadOnly: true);
         }
 
         [BurstCompile]
@@ -53,6 +56,8 @@ namespace Wassup.Battle.Units
             bool hasHealAppliedQueue = SystemAPI.TryGetSingletonRW<HealAppliedEventsSingleton>(out var healAppliedSingleton);
             bool hasDamageNumberQueue = SystemAPI.TryGetSingletonRW<DamageNumberEventsSingleton>(out var damageNumberSingleton);
             bool hasEnemyKilledQueue = SystemAPI.TryGetSingletonRW<EnemyKilledEventsSingleton>(out var enemyKilledSingleton);
+            bool hasCcClearQueue = SystemAPI.TryGetSingletonRW<CcClearRequestsSingleton>(out var ccClearSingleton);
+            _ccLookup.Update(ref state);
 
             var ecb = new EntityCommandBuffer(Allocator.Temp);
             foreach (var (health, damageBuffer, entity) in
@@ -135,6 +140,20 @@ namespace Wassup.Battle.Units
                         amount = pulseHeal,
                     });
                 }
+                // combat-action-lock unit 3 — wake-on-hit: 실제 피격(totalDamage>0) 시 Sleep 해제
+                // 요청. Units 는 CcEffect 직접 못 지움 → 이벤트로 Effects(CcClearSystem)에 위임.
+                // Stun 은 wake 대상 아님. lethal 포함(CcClearSystem 이 Exists 가드).
+                if (hasCcClearQueue && totalDamage > 0f && _ccLookup.HasBuffer(entity))
+                {
+                    var ccBuf = _ccLookup[entity];
+                    for (int i = 0; i < ccBuf.Length; i++)
+                        if (ccBuf[i].kind == CcKind.Sleep)
+                        {
+                            ccClearSingleton.ValueRW.queue.Enqueue(new CcClearRequest { entity = entity, kind = CcKind.Sleep });
+                            break;
+                        }
+                }
+
                 // content-1 ① (가시 갑옷) — N회 피격 카운트(프레임당 피격=1). 발동 시
                 // 더블파이어 charge 를 Combat 으로 넘긴다(NextAttackDoubleFire). 카운터
                 // write 는 Units 안에서만(DamagedCounter=Units 소유), Combat 은 charge 만 read.

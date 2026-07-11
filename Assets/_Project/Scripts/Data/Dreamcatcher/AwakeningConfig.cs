@@ -9,6 +9,11 @@ namespace Wassup.Data
     [CreateAssetMenu(fileName = "AwakeningConfig", menuName = "Wassup/AwakeningConfig", order = 24)]
     public class AwakeningConfig : ScriptableObject
     {
+        // dreamcatcher-sheet-sync unit 2 — DcConfig sheet-tab row key. Appended so
+        // the existing asset keeps its serialized values (id backfilled to
+        // "awakening_default" in the same commit).
+        public string id;
+
         [Header("Gauge")]
         public int gaugeMax = 100;   // awakening cap; gains past this are lost
         public int gaugeStart = 0;   // value at match start (reset every Placement entry)

@@ -65,8 +65,6 @@ namespace Wassup.Tests.PlayMode
             Assert.IsTrue(PlaceFirstValid(bridge, host), "place host");
             Assert.IsTrue(PlaceFirstValid(bridge, pre), "place pre-existing");
             var em = World.DefaultGameObjectInjectionWorld.EntityManager;
-            // review LOW1 — 오라 없는 자연 배치 쿨다운(baseline). scout warmup 을 이것과 분리 검증.
-            float baselineCd = GetCooldown(bridge, em, "ranger");
 
             var hostEntity = GetEntity(bridge, em, "fire_caster");
             Assert.AreNotEqual(Entity.Null, hostEntity, "host entity resolved");
@@ -81,9 +79,8 @@ namespace Wassup.Tests.PlayMode
 
             // 신규 배치 → 부여 (+ warmup)
             Assert.IsTrue(PlaceFirstValid(bridge, future), "place future unit");
-            float cd = GetCooldown(bridge, em, "scout");
-            Assert.GreaterOrEqual(cd, 1.9f, "신규 배치 유닛 warmup(~2s) 적용");
-            Assert.Greater(cd, baselineCd + 0.3f, "warmup 이 자연 배치 쿨다운과 분리되어 추가됨 (review LOW1)");
+            // warmup→Sleep 승격(combat-action-lock unit 4): 신규 배치 유닛에 Sleep 상태 부여.
+            Assert.IsTrue(HasCc(bridge, em, "scout", CcKind.Sleep), "신규 배치 유닛에 Sleep 부여(warmup 대체)");
             for (int i = 0; i < 3; i++) yield return null;
             Assert.AreEqual(1.5f, GetStat(bridge, em, "scout").attackSpeedMul, 0.01f, "신규 배치 유닛 공속 +50%");
 
@@ -255,11 +252,13 @@ namespace Wassup.Tests.PlayMode
             return default;
         }
 
-        private static float GetCooldown(BattleBridge bridge, EntityManager em, string id)
+        private static bool HasCc(BattleBridge bridge, EntityManager em, string id, CcKind kind)
         {
             var e = GetEntity(bridge, em, id);
-            if (e != Entity.Null && em.HasComponent<AttackState>(e)) return em.GetComponentData<AttackState>(e).cooldownRemaining;
-            return -1f;
+            if (e == Entity.Null || !em.HasBuffer<CcEffect>(e)) return false;
+            var buf = em.GetBuffer<CcEffect>(e);
+            for (int i = 0; i < buf.Length; i++) if (buf[i].kind == kind) return true;
+            return false;
         }
 
         private static Entity GetEntity(BattleBridge bridge, EntityManager em, string id)

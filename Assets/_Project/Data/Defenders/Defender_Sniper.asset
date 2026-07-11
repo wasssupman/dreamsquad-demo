@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DefenderUnitData
   id: sniper
   role: 1
-  displayName: 스나이퍼
+  displayName: "\uC2A4\uB098\uC774\uD37C"
   health: 250
   attackRange: 7
   attackCooldown: 3
@@ -50,7 +50,6 @@ MonoBehaviour:
   rarity: 1
   portrait: {fileID: 21300000, guid: 5f8d927ca9d3ed84da5bcae878945464, type: 3}
   aggroCapacity: 0
-  aggroRange: 0
   skeletonDataAsset: {fileID: 11400000, guid: ee98f82138b60430f97c6863317c3a2f, type: 2}
   spineSkinName: full_skins
   idleAnimation: Idle
@@ -83,3 +82,4 @@ MonoBehaviour:
   castAnchorLocalOffset: {x: 0.5, y: 1, z: 0}
   deploymentDuration: 0.45
   placementSkillDelay: 0
+  awakeningReward: 4

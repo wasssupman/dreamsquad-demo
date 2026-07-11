@@ -23,6 +23,8 @@ MonoBehaviour:
   - trigger:
       kind: 0
       period: 0
+      periodSeconds: 0
+      fraction: 0
     payload:
       kind: 8
       magnitude: 50

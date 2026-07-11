@@ -23,9 +23,11 @@ MonoBehaviour:
   - trigger:
       kind: 3
       period: 0
+      periodSeconds: 0
+      fraction: 0
     payload:
       kind: 2
-      magnitude: 100
+      magnitude: 500
       projectile: {fileID: 11400000, guid: 1705ed345dda4014bc5b6019f1a84e77, type: 2}
       tileRange: 2
       duration: 0

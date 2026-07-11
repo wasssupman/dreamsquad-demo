@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.SkillData
   id: tornado
   displayName: Tornado
-  description: "\uBC94\uC704 \uB0B4 \uC801\uC744 \uC911\uC2EC\uC73C\uB85C \uB04C\uC5B4\uB2F9\uAE40 2\uCD08"
+  description: "\uBC94\uC704 \uB0B4 \uC801\uC744 \uC911\uC2EC\uC73C\uB85C \uB04C\uC5B4\uB2F9\uAE40
+    2\uCD08"
   effect: 3
   target: 0
   range: 2
@@ -23,4 +24,5 @@ MonoBehaviour:
   cooldownSec: 12
   cost: 3
   warningSec: 0
+  projectile: {fileID: 0}
   uiTint: {r: 0.3, g: 0.85, b: 0.9, a: 1}

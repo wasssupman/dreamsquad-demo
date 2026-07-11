@@ -23,6 +23,11 @@ namespace Wassup.UI
         // ui-tweak 2026-07-09 — 슬롯 이름은 한글(음차). 기본 TMP 폰트는 한글 글리프가
         // 없어 네모로 깨지므로 한글 SDF(Jua)를 주입한다. 미할당이면 라틴 폴백.
         [SerializeField] private TMP_FontAsset nameFont;
+        // battle-hud-layout 2 — 페이즈별 스트립 크기. Battle 은 관전이 주 활동이라
+        // 슬림 축소로 중앙 하단 보드 가림을 상쇄한다. 슬롯은 childForceExpand 라
+        // 패널 크기만 바꾸면 균등 축소된다.
+        [SerializeField] private Vector2 placementSize = new Vector2(912f, 120f);
+        [SerializeField] private Vector2 battleSize = new Vector2(912f, 88f);
 
         private GameObject _panel;
         private Transform _slotContainer;
@@ -53,7 +58,10 @@ namespace Wassup.UI
             // pick strip there too. GameManager (-100 exec order) has set Instance
             // before this OnEnable.
             if (GameManager.Instance != null)
+            {
                 GameManager.Instance.PlacementRequested += OnDraftConfirmed;
+                GameManager.Instance.PhaseChanged += OnPhaseChanged;
+            }
         }
 
         private void OnDisable()
@@ -64,7 +72,21 @@ namespace Wassup.UI
                 draftController.DraftStarted -= OnDraftStarted;
             }
             if (GameManager.Instance != null)
+            {
                 GameManager.Instance.PlacementRequested -= OnDraftConfirmed;
+                GameManager.Instance.PhaseChanged -= OnPhaseChanged;
+            }
+        }
+
+        // battle-hud-layout 2 — Placement 풀 / Battle 슬림. 그 외 페이즈는 패널이
+        // 자체 이벤트로 숨으므로 크기를 건드리지 않는다.
+        private void OnPhaseChanged(GamePhase phase)
+        {
+            if (_panel == null) return;
+            if (phase == GamePhase.Battle)
+                ((RectTransform)_panel.transform).sizeDelta = battleSize;
+            else if (phase == GamePhase.Placement)
+                ((RectTransform)_panel.transform).sizeDelta = placementSize;
         }
 
         private void OnDraftConfirmed()
@@ -100,13 +122,15 @@ namespace Wassup.UI
             _panel = new GameObject("DefenderPanel", typeof(RectTransform));
             _panel.transform.SetParent(transform, false);
             var prt = (RectTransform)_panel.transform;
-            prt.anchorMin = new Vector2(0f, 0f);
-            prt.anchorMax = new Vector2(0f, 0f);
-            prt.pivot = new Vector2(0f, 0f);
-            prt.anchoredPosition = new Vector2(40f, 40f);
+            // battle-hud-layout 0 — bottom-center: 드림캐쳐 핸드(0,32)와 동일 축/y 로
+            // 맞춰 스트립↔핸드 플립이 좌표 점프 없는 제자리 플립이 되게 한다.
+            prt.anchorMin = new Vector2(0.5f, 0f);
+            prt.anchorMax = new Vector2(0.5f, 0f);
+            prt.pivot = new Vector2(0.5f, 0f);
+            prt.anchoredPosition = new Vector2(0f, 32f);
             // ui-tweak 2026-07-08 — 유닛 슬롯 20% 확대(760x100 → 912x120). 슬롯은
             // childForceExpand 로 패널을 채우므로 패널 크기만 키우면 균등 확대된다.
-            prt.sizeDelta = new Vector2(912f, 120f);
+            prt.sizeDelta = placementSize;
 
             var hlg = _panel.AddComponent<HorizontalLayoutGroup>();
             hlg.spacing = 8f;

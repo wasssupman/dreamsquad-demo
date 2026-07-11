@@ -14,8 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.SkillData
   id: rapid_fire
   displayName: Rapid Fire
-  description: "\uC9C0\uC815 \uBC29\uC5B4 \uC720\uB2DB \uACF5\uACA9\uC18D\uB3C4
-    \xD72, 6\uCD08 \uC9C0\uC18D."
+  description: "\uC9C0\uC815 \uBC29\uC5B4 \uC720\uB2DB \uACF5\uACA9\uC18D\uB3C4 \xD72,
+    6\uCD08 \uC9C0\uC18D."
   effect: 2
   target: 1
   range: 0
@@ -23,4 +23,6 @@ MonoBehaviour:
   durationSec: 6
   cooldownSec: 25
   cost: 2
+  warningSec: 0
+  projectile: {fileID: 0}
   uiTint: {r: 1, g: 0.85, b: 0.1, a: 1}

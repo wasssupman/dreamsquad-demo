@@ -20,10 +20,16 @@ namespace Wassup.Data.StatImport
         public static T[] ParseSheetLogged<T>(string body, string transportError,
             string sheetLabel, System.Text.StringBuilder log)
         {
-            var rows = ParseSheetRows<T>(body, out string error);
+            var unknownHeaders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var rows = ParseSheetRows<T>(body, out string error, unknownHeaders);
             if (rows != null)
             {
                 log.AppendLine($"[{sheetLabel}] {rows.Length} rows received.");
+                // review 3b — a renamed/removed column otherwise fails SILENTLY:
+                // the DTO field stays null and "blank cell = keep" swallows every
+                // edit in that column while the import still reports success.
+                if (unknownHeaders.Count > 0)
+                    log.AppendLine($"[{sheetLabel}] headers not in contract (edits in them are IGNORED): {string.Join(", ", unknownHeaders)} — check for renamed columns.");
                 return rows;
             }
             string http = transportError != null ? $" (HTTP: {transportError})" : "";
@@ -31,7 +37,10 @@ namespace Wassup.Data.StatImport
             return null;
         }
 
-        public static T[] ParseSheetRows<T>(string body, out string error)
+        // unknownHeaders (optional): collects sheet columns that bind to no DTO
+        // field. `_`-prefixed columns are out of contract by design and excluded.
+        public static T[] ParseSheetRows<T>(string body, out string error,
+            HashSet<string> unknownHeaders = null)
         {
             // envelope validation + errorDetail wording live in ApiEnvelope
             // (outgame-login-gate unit 0) — one definition for every consumer.
@@ -44,6 +53,14 @@ namespace Wassup.Data.StatImport
                 return null;
             }
 
+            HashSet<string> knownFields = null;
+            if (unknownHeaders != null)
+            {
+                knownFields = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var f in typeof(T).GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance))
+                    knownFields.Add(f.Name);
+            }
+
             foreach (var row in rows)
             {
                 var obj = row as JObject;
@@ -51,6 +68,8 @@ namespace Wassup.Data.StatImport
                 var emptyProps = new List<string>();
                 foreach (var prop in obj.Properties())
                 {
+                    if (knownFields != null && !prop.Name.StartsWith("_") && !knownFields.Contains(prop.Name))
+                        unknownHeaders.Add(prop.Name);
                     if (prop.Value.Type == JTokenType.String && string.IsNullOrWhiteSpace((string)prop.Value))
                         emptyProps.Add(prop.Name);
                 }

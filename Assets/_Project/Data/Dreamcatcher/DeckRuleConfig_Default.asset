@@ -12,6 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 87e089f5b39a84687a376a74b560ef86, type: 3}
   m_Name: DeckRuleConfig_Default
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DeckRuleConfig
+  id: deck_rule_default
   deckSize: 10
   maxSquad: -1
   maxUnit: -1
