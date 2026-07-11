@@ -21,8 +21,10 @@
 
 ## 완료 기준
 
-- [ ] EditMode 또는 PlayMode: setup 재호출 시 Canvas/root/component가 중복되지 않는다.
-- [ ] 기존 CanvasScaler가 Match Width/Constant Pixel Size여도 공통 계약으로 교정된다.
-- [ ] full-bleed root는 safe inset과 무관하게 화면 전체를 채운다.
-- [ ] safe root는 해상도/safe rect 변경 시에만 anchor를 갱신한다.
-- [ ] Profiler/코드 점검에서 프레임별 GC 할당과 `Find*` 호출이 없다.
+- [x] EditMode 또는 PlayMode: setup 재호출 시 Canvas/root/component가 중복되지 않는다.
+- [x] 기존 CanvasScaler가 Match Width/Constant Pixel Size여도 공통 계약으로 교정된다.
+- [x] full-bleed root는 safe inset과 무관하게 화면 전체를 채운다.
+- [x] safe root는 해상도/safe rect 변경 시에만 anchor를 갱신한다.
+- [x] Profiler/코드 점검에서 프레임별 GC 할당과 `Find*` 호출이 없다.
+
+사용자 진행 승인 2026-07-11 — 시각 확인 가능한 unit까지 연속 진행 요청. EditMode 697개 중 695 통과, 실패 0, 기존 Ignore 2.
