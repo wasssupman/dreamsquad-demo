@@ -34,6 +34,8 @@ static void SelectTargets(NativeArray<int2> candidateCells, int2 hostCell,
 
 ## 완료 기준
 
-- [ ] 컴파일 클린 (enum append 가 기존 카드 에셋 직렬화 안 깨짐 — 값 9 신규).
-- [ ] `AuraPulseTests` EditMode 4+: 경계 포함(정확히 tileRange)·대각(Chebyshev)·범위 밖 제외·빈 배열·hostCell 동일 셀 포함.
-- [ ] 기존 EditMode 스위트 그린(무회귀).
+- [x] 컴파일 클린 (enum append 가 기존 카드 에셋 직렬화 안 깨짐 — 값 9 신규).
+- [x] `AuraPulseTests` EditMode 4+: 경계 포함(정확히 tileRange)·대각(Chebyshev)·범위 밖 제외·빈 배열·hostCell 동일 셀 포함.
+- [x] 기존 EditMode 스위트 그린(무회귀).
+
+확인 2026-07-12 — 컴파일 클린 + EditMode 701/703 그린(신규 AuraPulse 6, skip 2는 무관 기존). 커밋은 unit 0 코드 커밋 참조.

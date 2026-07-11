@@ -21,6 +21,10 @@ namespace Wassup.Data
     // dreamcatcher-placement-aura — PlacementAura(8): host 부착 스폰 오라. host·기존 유닛
     // 미적용, host 생존 중 axis 매칭 **신규 배치 유닛**에 magnitude% 공속(매치영구) + duration
     // 초 warmup idle 부여. host 사망 시 회수(RegisterPlacementAura → RevokeDreamcatcherEffects).
+    // nightmare-whip-aura — AllyMoveSpeedAura(9): 펄스 오라(보스 "채찍질"). PeriodicTimer
+    // 펄스마다 host 기준 Chebyshev tileRange 내 **host 와 같은 진영** 유닛(host 자신 제외)에
+    // MoveSpeedMul ×(1+magnitude/100), TTL=duration 모디파이어 부여. duration>periodSeconds
+    // 가 authoring 계약(merge-refresh 유지) — 이탈/host 사망 시 TTL 자연 만료(revoke 없음).
     public enum DcPayloadKind
     {
         None = 0,
@@ -32,6 +36,7 @@ namespace Wassup.Data
         SelfBlink = 6,
         SelfWarmupBuff = 7,
         PlacementAura = 8,
+        AllyMoveSpeedAura = 9,
     }
 
     [Serializable]
@@ -56,6 +61,9 @@ namespace Wassup.Data
         // ProjectileToTarget: flat damage — attacker stat modifiers (damageMul)
         // are intentionally NOT applied (card values stay predictable).
         // nightmare-catcher unit 0 — AreaBarrage: 타일당 flat 데미지(동일 원칙).
+        // nightmare-whip-aura — AllyMoveSpeedAura: 이속 증가 %(20 = +20%,
+        // placement-aura 의 magnitude=% 컨벤션). 음수 = 아군 슬로우(허용,
+        // aggregator floor 클램프).
         public float magnitude;
         // ProjectileToTarget: trajectory/view definition. nightmare-catcher
         // unit 0 — AreaBarrage: SkyFall 낙하 비주얼. 나머지 kind 는 null 유지
@@ -64,10 +72,14 @@ namespace Wassup.Data
         // dreamcatcher-content-1 — SelfTileAoe: AOE 반경(타일). 기본 0 = 기존 카드 inert.
         // nightmare-catcher unit 0 — AreaBarrage: 진앙 중심 Chebyshev AoE 반경 /
         // SelfBlink: 착지 탐색 반경(링 순회 상한).
+        // nightmare-whip-aura — AllyMoveSpeedAura: host 중심 오라 반경(Chebyshev).
         public int tileRange;
         // dreamcatcher-content-1 — SelfBuffLethal: 지속/자폭 초. 기본 0.
         // nightmare-catcher unit 0 — AreaBarrage: 낙하 텔레그래프 초 → SkyFall
         // flightTime(request-carried, Meteor 의 warningSec 슬롯 대응). 0 = 즉시 착탄.
+        // nightmare-whip-aura — AllyMoveSpeedAura: 펄스당 버프 TTL 초.
+        // authoring 계약: duration > trigger.periodSeconds (위반 시 범위 내 점멸,
+        // 베이크가 경고). <=0 은 arm 이 enqueue skip.
         public float duration;
     }
 
