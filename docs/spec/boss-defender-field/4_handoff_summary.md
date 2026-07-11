@@ -1,8 +1,11 @@
 # 4 — Handoff Summary
 
+> rev 2026-07-11: unit 5 버그픽스 반영 — 소스 규칙 4-이웃 → 공격가능 반경(Chebyshev ≤ 헌터 사거리 min). 실플레이에서 레인 비인접 배치가 무시되던 결함 해소, 사용자 확인 완료.
+
 ## Commit
 
 - `dc298ceb` feat(boss-defender-field): 보스 방어유닛-지향 flow field 사냥 이동 (units 0~2)
+- unit 5: `5_attackable_sources_fix.md` 참조 (소스=공격가능 셀 + 보스 부재 재빌드 skip + R min-fold)
 
 ## Implemented
 
@@ -29,6 +32,7 @@
 
 ## Notes (되돌리면 안 되는 것)
 
+- **소스 = "공격 가능한 walkable 셀"(Chebyshev ≤ 헌터 사거리 min), 4-이웃으로 되돌리기 금지** — 4-이웃은 레인 비인접 배치를 전부 놓치는 검증된 결함(unit 5). min fold 를 max 로 바꾸면 이질 사거리 헌터 스톨 가능.
 - **직선추격/wall-slide 재도입 금지** — `enemy-hunter-targeting`(폐기) 사슬 참조. 이동은 오직 필드.
 - **벽 판정은 goal field 유지** — defender field 의 zero-flow 는 소스 셀(dist 0) 포함이라 벽 프록시 오판.
 - **fallback 은 per-frame 무상태** (`dist==MaxValue → goal flow`) — "방어유닛 0"과 "도달불가"를 한 규칙으로 처리하는 지점. 상태 추가 금지.

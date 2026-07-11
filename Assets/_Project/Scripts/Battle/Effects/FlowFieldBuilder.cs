@@ -120,22 +120,28 @@ namespace Wassup.Battle.Effects
                 $"FlowFieldBuilder: array length mismatch (expected {n}, got walkMask={walkLen}, outFlow={flowLen}, outDist={distLen})");
         }
 
-        // boss-defender-field unit 0 — 방어유닛 셀(Place=벽)의 walkable 4-이웃을 BFS 소스로
-        // 수집한다. 벽 셀은 직접 seed 불가하므로 이 이웃들이 "방어유닛 옆 도착 지점"이 된다.
-        // 중복 이웃 허용(BuildFromSources 가 dist 0 재삽입을 걸러냄). 반환값 = 수집된 소스 수.
+        // boss-defender-field unit 0/5 — 방어유닛을 "공격 가능한" walkable 셀을 BFS 소스로
+        // 수집한다: Chebyshev 거리 ≤ rangeTiles(보스 공격 사거리) 디스크, 자기 셀 제외.
+        // FSM 사거리 판정(HasFireTarget)과 같은 메트릭이라 소스 도달 = Engaging 전이 보장.
+        // (unit 5 rev — 초기 4-이웃 규칙은 레인 비인접 배치를 전부 놓쳐 goal 마칭 결함.)
+        // 중복 셀 허용(BuildFromSources 가 dist 0 재삽입을 걸러냄). 반환값 = 수집된 소스 수.
         public static int CollectDefenderSources(
             NativeArray<byte> walkMask,
             int2              gridSize,
             NativeArray<int2> defenderCells,
+            int               rangeTiles,
             NativeList<int2>  outSources)
         {
             outSources.Clear();
             int w = gridSize.x, h = gridSize.y;
             for (int i = 0; i < defenderCells.Length; i++)
             {
-                for (int d = 0; d < 4; d++)
+                int2 c = defenderCells[i];
+                for (int dy = -rangeTiles; dy <= rangeTiles; dy++)
+                for (int dx = -rangeTiles; dx <= rangeTiles; dx++)
                 {
-                    int2 n2 = defenderCells[i] + Dir(d);
+                    if (dx == 0 && dy == 0) continue; // 방어유닛 자신의 셀(Place=벽)
+                    int2 n2 = new int2(c.x + dx, c.y + dy);
                     if (n2.x < 0 || n2.x >= w || n2.y < 0 || n2.y >= h) continue;
                     if (walkMask[n2.y * w + n2.x] == 0) continue;
                     outSources.Add(n2);

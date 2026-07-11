@@ -196,34 +196,65 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
-        public void CollectDefenderSources_WallCellDefender_YieldsWalkableNeighborsOnly()
+        public void CollectDefenderSources_Range1_DiscIncludesDiagonals()
         {
-            // 3x3: lane on y=1 only. Defender at (1,0) (wall) → single walkable
-            // neighbor (1,1). Defender at (0,0) fully wall-locked except (0,1).
+            // 3x3: lane on y=1 only. R=1 Chebyshev 디스크는 대각 포함(FSM 사거리 메트릭).
             //  . . .   y=2 (wall)
             //  W W W   y=1 (walk)
-            //  D d .   y=0 (wall) — D=(0,0), d=(1,0)
+            //  . d .   y=0 (wall) — d=(1,0)
             var gridSize = new int2(3, 3);
             var walk = new NativeArray<byte>(9, Allocator.Temp);
-            var defenders = new NativeArray<int2>(2, Allocator.Temp);
+            var defenders = new NativeArray<int2>(1, Allocator.Temp);
             var outSources = new NativeList<int2>(Allocator.Temp);
             try
             {
                 for (int x = 0; x < 3; x++) walk[1 * 3 + x] = 1;
-                defenders[0] = new int2(0, 0);
-                defenders[1] = new int2(1, 0);
+                defenders[0] = new int2(1, 0);
 
-                int count = FlowFieldBuilder.CollectDefenderSources(walk, gridSize, defenders, outSources);
+                int count = FlowFieldBuilder.CollectDefenderSources(walk, gridSize, defenders, 1, outSources);
 
-                Assert.AreEqual(2, count);
-                Assert.AreEqual(new int2(0, 1), outSources[0], "defender (0,0) → walkable neighbor above");
-                Assert.AreEqual(new int2(1, 1), outSources[1], "defender (1,0) → walkable neighbor above");
+                Assert.AreEqual(3, count, "(0,1),(1,1),(2,1) — 대각 포함 레인 3셀");
+                bool has01 = false, has11 = false, has21 = false;
+                for (int i = 0; i < outSources.Length; i++)
+                {
+                    if (outSources[i].Equals(new int2(0, 1))) has01 = true;
+                    if (outSources[i].Equals(new int2(1, 1))) has11 = true;
+                    if (outSources[i].Equals(new int2(2, 1))) has21 = true;
+                }
+                Assert.IsTrue(has01 && has11 && has21);
             }
             finally { walk.Dispose(); defenders.Dispose(); outSources.Dispose(); }
         }
 
         [Test]
-        public void CollectDefenderSources_NoWalkableNeighbors_ContributesNothing()
+        public void CollectDefenderSources_DeepDefender_SourcedOnlyAtRange2()
+        {
+            // unit 5 회귀: 레인에서 2칸 떨어진 심층 배치 — R=1 이면 소스 0(구 결함 재현),
+            // R=2 면 레인 셀들이 소스가 된다.
+            //  W W W W W   y=3 (walk lane)
+            //  . . . . .   y=2 (wall)
+            //  . . d . .   y=1 (wall) — d=(2,1), 레인까지 Chebyshev 2
+            //  . . . . .   y=0
+            var gridSize = new int2(5, 4);
+            var walk = new NativeArray<byte>(20, Allocator.Temp);
+            var defenders = new NativeArray<int2>(1, Allocator.Temp);
+            var outSources = new NativeList<int2>(Allocator.Temp);
+            try
+            {
+                for (int x = 0; x < 5; x++) walk[3 * 5 + x] = 1;
+                defenders[0] = new int2(2, 1);
+
+                int c1 = FlowFieldBuilder.CollectDefenderSources(walk, gridSize, defenders, 1, outSources);
+                Assert.AreEqual(0, c1, "R=1: 레인 비인접 → 소스 0 (구 결함 상황)");
+
+                int c2 = FlowFieldBuilder.CollectDefenderSources(walk, gridSize, defenders, 2, outSources);
+                Assert.AreEqual(5, c2, "R=2: Chebyshev 2 안의 레인 셀 (0..4,3) 전부");
+            }
+            finally { walk.Dispose(); defenders.Dispose(); outSources.Dispose(); }
+        }
+
+        [Test]
+        public void CollectDefenderSources_NoWalkableInRange_ContributesNothing()
         {
             var gridSize = new int2(3, 3);
             var walk = new NativeArray<byte>(9, Allocator.Temp); // all wall
@@ -233,7 +264,7 @@ namespace Wassup.Tests.EditMode
             {
                 defenders[0] = new int2(1, 1);
 
-                int count = FlowFieldBuilder.CollectDefenderSources(walk, gridSize, defenders, outSources);
+                int count = FlowFieldBuilder.CollectDefenderSources(walk, gridSize, defenders, 2, outSources);
 
                 Assert.AreEqual(0, count);
                 Assert.AreEqual(0, outSources.Length);

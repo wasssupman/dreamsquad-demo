@@ -33,7 +33,7 @@
 3. **`DefenderFieldSingleton` 은 Effects 소유.** 유일 writer = `DefenderFieldSystem`(Effects). Movement 는 RO 소비. BattleBridge 는 생성/teardown 만 (기존 `FlowFieldSingleton` 라이프사이클 미러, 멱등).
 4. **매 프레임 재빌드, 이벤트 훅 없음.** 그리드가 작아 Burst BFS 1회는 무시 가능 — 배치/사망 추적 상태·재빌드 트리거·신규 NativeQueue 채널 전부 0.
 5. **fallback = per-frame, 무상태**: 보스 현재 셀의 hunt-dist 가 `int.MaxValue` 면 그 프레임은 goal flow 를 따른다. "방어유닛 0"과 "도달불가 방어유닛만 존재"가 같은 규칙으로 처리 → 정지 softlock 구조적 불가.
-6. **소스 = 각 방어유닛 셀의 walkable 4-이웃.** Place 셀은 벽이라 직접 seed 불가(폐기 spec 에서 goal-BFS 재사용이 막혔던 바로 그 지점). walkable 이웃이 0 인 방어유닛은 소스 미기여 → 자연히 fallback.
+6. **소스 = 방어유닛을 공격 가능한 walkable 셀 — Chebyshev ≤ R, R = 동시 헌터 사거리(타일)의 min(클램프 ≥1)** (unit 5 rev — 초기 "4-이웃" 규칙은 레인 비인접 배치를 전부 놓침). FSM `HasFireTarget` 과 같은 메트릭이라 소스 도달 = Engaging 전이 보장, min fold 라 짧은 사거리 헌터의 dist-0 스톨 구조적 불가. 사거리 밖 초심층 배치는 소스 미기여 → 자연히 fallback(보스가 물리적으로 공격 불가한 대상). Place 셀 자체는 벽이라 직접 seed 불가.
 7. **벽 판정은 goal field 유지.** `MovementCellTrim`/`IsWallCell` 은 계속 기존 `FlowFieldSingleton` 사용 — defender field 의 zero-flow 는 소스 셀(dist 0)도 포함하므로 벽 프록시로 쓰면 오판.
 8. **직선추격·wall-slide 재도입 금지** (폐기 spec 함정). 이동은 오직 필드 flow-follow.
 9. **결정론**: multi-source BFS 의 dist 는 소스 삽입 순서와 무관, flow 채움은 dist 기반 별도 패스(타이는 `Dirs` 순서 고정) — seeded RNG 없음.
@@ -46,5 +46,6 @@ N/A — 신규 플레이 오브젝트 0, 생성→렌더 경로 변경 0. 시뮬
 
 - **일반 헌터 아키타입** — `EnemyBehavior`/SO 데이터 플래그로 임의 적을 헌터로. 두 번째 수요 생기면 (BossTag 게이트 → 플래그 1줄 교체).
 - **보스 어그로 면역** — 현재는 aggro 우선(가디언 자석이 사냥을 중단시킴, 기존 동작 유지). 면역은 별도 결정.
-- **필드 dirty-skip 최적화** — 방어유닛 셀 집합 불변이면 재빌드 skip. 프로파일에서 문제 될 때만.
+- **필드 dirty-skip 최적화** — 방어유닛 셀 집합 불변이면 재빌드 skip. 프로파일에서 문제 될 때만. (보스 부재 skip 은 unit 5 에서 반영됨)
+- **R-별 필드 분리** — 이질 사거리 다중 보스가 동시에 사냥할 때, "긴 사거리 보스만 공격 가능한 심층 배치"까지 사냥하려면 사거리별 필드 필요. 현 콘텐츠(보스 1종)에선 불필요.
 - **추격 타겟 정책** — 최근접 외(최저 HP 등). BFS 소스 가중치로 표현 가능.
