@@ -123,7 +123,7 @@ code + git history        구현 상세
 #### 보스 방어유닛 지향 이동 (헌터 재구현, 2026-07-11)
 
 - **defender field dirty-skip 최적화** [S] · 방어유닛 셀 집합 불변 시 매 프레임 BFS 재빌드 skip. 현 그리드(20x10)에선 무의미 — 대형 그리드/프로파일 압박 시. (boss-defender-field, ecs-review M2)
-- **ecs-reviewer 채널 목록 stale** [S] · 에이전트 정의의 NativeQueue 채널 목록이 CLAUDE.md(17개)와 불일치. 리뷰 오탐 방지용 동기화. (boss-defender-field, ecs-review M1)
+- ~~**ecs-reviewer 채널 목록 stale**~~ — **완료 2026-07-11**. 재발 방지를 위해 목록 사본 자체를 제거 — 에이전트 정의가 CLAUDE.md § "ECS 맥락 분리"(source of truth) + 코드 실측 grep 을 가리키도록 변경. 코드 실측 18개 = CLAUDE.md 일치 확인. (boss-defender-field, ecs-review M1)
 
 #### 유닛 상태 표현 / 인디케이터 (aggro-targeting 파생, 2026-07-09)
 
