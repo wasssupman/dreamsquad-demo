@@ -74,3 +74,14 @@ MonoBehaviour:
       projectile: {fileID: 11400000, guid: cbc979168a4b4c978e1765a3f427d06e, type: 2}
       tileRange: 3
       duration: 0
+  - trigger:
+      kind: 4
+      period: 0
+      periodSeconds: 1
+      fraction: 0
+    payload:
+      kind: 9
+      magnitude: 20
+      projectile: {fileID: 0}
+      tileRange: 3
+      duration: 1.5

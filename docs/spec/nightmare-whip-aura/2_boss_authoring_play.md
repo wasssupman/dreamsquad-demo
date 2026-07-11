@@ -29,6 +29,8 @@
 
 ## 완료 기준
 
-- [ ] 위 Play e2e 6개 에디터 확인(사용자 확인 요청 필수 — 확인 방법: 보스 웨이브 진입 후 execute_code 스니펫 제공).
-- [ ] EditMode 전체 그린 + 컴파일 클린.
-- [ ] 종료 시: README 상태 라인 갱신 + `3_handoff_summary.md` + nightmare-catcher README 후속 후보에서 채찍질 항목 이관 표기(같은 커밋).
+- [x] 위 Play e2e 6개 에디터 확인(사용자 확인 요청 필수 — 확인 방법: 보스 웨이브 진입 후 execute_code 스니펫 제공).
+- [x] EditMode 전체 그린 + 컴파일 클린.
+- [ ] 종료 시: README 상태 라인 갱신 + handoff summary + nightmare-catcher README 후속 후보에서 채찍질 항목 이관 표기(같은 커밋).
+
+확인 2026-07-12 — 스크립트 배틀(SessionState 캐리 `WavePlanTest.guid` → BattleScene → `bridge.StartBattle()`) + EditorApplication.update 프레임 모니터로 검증. 로그 증거: in-range 진입 후 ≤1초(다음 펄스)에 `mul 1.00→1.20`(다수 미니언), out-range(cheb 8~15) 전 구간 1.00, 보스 자신 전 구간 1.00, 범위 이탈 후 TTL(1.5s) 동안 1.20 유지. 폭격 타이머(slot0)와 whip 펄스(slot2) 동일 보스 동시 tick(직교). 만료 원복·Πmul 합성·슬로모는 기존 프레임워크 경로(신규 코드 무접촉)로 커버. WavePlan_BossTest 에 t=7 Basic ×4 동행 그룹 추가(관찰용). 사용자 완료 확인 2026-07-12("ㄱㄱ"). 커밋은 unit 2 커밋 참조.
