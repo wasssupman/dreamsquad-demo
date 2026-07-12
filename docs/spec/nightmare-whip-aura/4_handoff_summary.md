@@ -6,7 +6,7 @@ spec `417f9f07` → u0 `b6ce8ab4`(payload 계약+순수함수) → u1 `70057706`
 
 ## Implemented
 
-- **채찍질** = `PeriodicTimer(1s)` × `AllyMoveSpeedAura(9)`: 매 펄스 host 기준 Chebyshev 3타일 내 **같은 진영** 유닛(host 제외, entity 비교)에 `MoveSpeedMul ×1.2`(TTL 1.5s) — `StatModifierApplyEventsSingleton` 경유, modifier 계층 코드 무변경.
+- **채찍질** = `PeriodicTimer(0.5s)` × `AllyMoveSpeedAura(9)`: 매 펄스 host 기준 Chebyshev 3타일 내 **같은 진영** 유닛(host 제외, entity 비교)에 `MoveSpeedMul ×1.2`(TTL 0.6s) — `StatModifierApplyEventsSingleton` 경유, modifier 계층 코드 무변경. (초기 1s/1.5s → 사용자 튜닝 2026-07-12: 이탈 후 잔여 0.1~0.6초로 단축, 슬롯 덤프로 소스=보스 단일·TTL 소진 검증)
 - 유지 = merge-refresh(duration>period), 해제 = TTL 자연 만료(범위 이탈·보스 사망, revoke 없음).
 - arm = `BossPeriodicTriggerSystem` 페이로드 분기(진영 풀 lazy 빌드, degenerate skip: mag==0/dur<=0). 신규 시스템/채널/슬롯 필드 0.
 - **오라 연출 (rev 2)** = 메커닉 데이터 선언(`DcPayloadSpec.auraPrefab/auraScale` — WindAura, scale 1.2 = 사용자 튜닝 2026-07-12) → 베이크 등록 → `DcAuraVisualPool`(plain class, 씬 배선 없음)이 host 뷰 추종. **kind-blind** — bridge/범용 인프라에 payload kind 분기 0. rev 1 원샷(`Projectile_WhipPulse`)·StatusFx 편입은 기각(3_whip_pulse_visual.md rev 이력 참조 — "지형 말뚝" 오독 / 메커닉 지식 누수).
@@ -26,7 +26,7 @@ spec `417f9f07` → u0 `b6ce8ab4`(payload 계약+순수함수) → u1 `70057706`
 
 ## Notes (되돌리면 안 되는 의도)
 
-- **duration(1.5) > periodSeconds(1)** 이 점멸 방지 authoring 계약 — 줄일 땐 쌍으로. 베이크 경고 유지.
+- **duration(0.6) > periodSeconds(0.5)** 이 점멸 방지 authoring 계약 — 줄일 땐 쌍으로(duration 0 = arm 가드로 스킬 무효). 베이크 경고 유지.
 - **메커닉 연출은 메커닉 데이터가 선언, 드림캐쳐 파이프라인이 구동** (사용자 확정 2026-07-12) — StatusFx/bridge reconcile 에 payload kind 분기 금지. 새 메커닉 오라 = auraPrefab 선언만.
 - **rev 1 원샷 arm 은 buffed>0 게이트** — 효과 없는 연출 금지. `projectile=null`(dataIndex -1) = 무연출 authoring.
 - 해제는 revoke 가 아니라 **TTL 만료** — 이탈 즉시 해제로 "개선"하려면 spec 재설계 필요(기각된 접근 B).
