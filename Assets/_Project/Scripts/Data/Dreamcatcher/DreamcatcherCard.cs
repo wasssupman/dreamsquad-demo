@@ -16,7 +16,11 @@ namespace Wassup.Data
     // CostRate has no StatModifier/entity mapping — BattleBridge.MapDcEffect's
     // switch has no case for it and safely no-ops via its default branch; the value
     // is consumed entirely by GameManager -> CostRuntime.SetRegenRateMultiplier.
-    public enum CardBuffKind { AttackDamage, AttackSpeed, EffectiveHealth, MoveSpeed, CostRate }
+    // dreamcatcher-new-abilities unit 0 — DamageVsCc: 활성 CcEffect(기절/수면/DoT/넉백)가
+    // 걸린 적에게 추가 피해 %. ⚠ 이동감속(Slow)은 이 엔진에서 CcEffect 가 아니라 MoveSpeedMul
+    // StatModifier 라 여기 해당 없음(카드 문안에 "둔화" 표기 금지). StatKind.DamageVsCcMul
+    // 로 매핑(unit 2). append-only.
+    public enum CardBuffKind { AttackDamage, AttackSpeed, EffectiveHealth, MoveSpeed, CostRate, DamageVsCc }
 
     // dreamcatcher-deck-builder Unit 0 — deck-rule category (deck cap RETIRED, now
     // on CardType.Squad). Reused as a concept label: dreamcatcher-squad-warmup adds

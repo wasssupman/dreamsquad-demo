@@ -141,6 +141,43 @@ namespace Wassup.Tests.EditMode
                 "remaining = max(old, new) — must not be reduced to the shorter new duration.");
         }
 
+        // ── dreamcatcher-new-abilities unit 3 ───────────────────────────────────────
+        // DamageVsCcMul(6번째 stat)은 슬롯이 없어도 집계가 base 1 로 써야 한다. 이게
+        // 깨지면(0 유지) shatter 미보유 유닛이 CC 걸린 적에게 데미지 0 = 적 무적(critic HIGH).
+        [Test]
+        public void DamageVsCcMul_AggregatesToBaseOne_WhenNoVsCcSlot()
+        {
+            var e = CreateEntityWithModifierStats(); // damageVsCcMul 필드는 0 으로 시작
+
+            // 무관한 DamageMul 모디파이어만 적용 → dirty 활성 → 집계 1회 실행.
+            _statQueue.Enqueue(new StatModifierApplyEvent
+            {
+                target = e, stat = StatKind.DamageMul, op = CombineOp.Multiplicative,
+                magnitude = 2f, duration = 100f, source = e, stackId = 0,
+            });
+            Tick();
+
+            Assert.AreEqual(1f, _em.GetComponentData<ModifierStats>(e).damageVsCcMul, 1e-5f,
+                "집계는 vsCc 슬롯이 없어도 base 1 을 써야 한다(0 이면 CC 적 무적).");
+        }
+
+        // shatter_hymn: DamageVsCcMul 모디파이어가 곱연산으로 집계된다.
+        [Test]
+        public void DamageVsCcMul_Combines_Multiplicatively()
+        {
+            var e = CreateEntityWithModifierStats();
+
+            _statQueue.Enqueue(new StatModifierApplyEvent
+            {
+                target = e, stat = StatKind.DamageVsCcMul, op = CombineOp.Multiplicative,
+                magnitude = 1.25f, duration = 100f, source = e, stackId = 0,
+            });
+            Tick();
+
+            Assert.AreEqual(1.25f, _em.GetComponentData<ModifierStats>(e).damageVsCcMul, 1e-5f,
+                "+25% vsCc → damageVsCcMul == 1.25.");
+        }
+
         // ── Test 2 ────────────────────────────────────────────────────────────────
         // ModifierStats combine formula: (1 + Σadd) * Πmul, and Override wins.
 

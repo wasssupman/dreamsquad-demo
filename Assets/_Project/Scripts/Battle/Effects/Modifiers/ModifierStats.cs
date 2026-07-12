@@ -9,6 +9,10 @@ namespace Wassup.Battle.Effects
         public float dmgTakenMul;     // 디폴트 1.0
         public float regenPerSec;     // 디폴트 0.0
         public float moveSpeedMul;    // 디폴트 1.0
+        // dreamcatcher-new-abilities unit 0 — CC 걸린 적 대상 데미지 배율. 디폴트 1.0.
+        // base 1 init(ModifierStatsAggregateSystem) + AttackSystem 소비는 unit 2.
+        // unit 0 단계엔 reader 없음(선언만).
+        public float damageVsCcMul;
     }
 
     // IEnableableComponent — Add 시 기본 disabled.

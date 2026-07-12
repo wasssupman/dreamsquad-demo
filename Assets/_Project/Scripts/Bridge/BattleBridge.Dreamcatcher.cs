@@ -321,6 +321,35 @@ namespace Wassup.Bridge
                     slot.tileRange = math.max(0, m.payload.tileRange);
                     slot.visualScale = m.payload.projectile.visualScale;
                 }
+                else if (m.payload.kind == Wassup.Data.DcPayloadKind.ApplyCcToTarget)
+                {
+                    // dreamcatcher-new-abilities unit 1 — 온-히트 CC(frost_arrow=Stun).
+                    // 투사체 불요. duration 초 만큼 적에 CcEffect(번역된 ccKind) 부여.
+                    // Impulse 는 magnitude(넉백 속도)도 사용. duration<=0 = 무의미 → skip.
+                    if (m.payload.duration <= 0f)
+                    {
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: ApplyCcToTarget non-positive duration — skipped.");
+                        continue;
+                    }
+                    slot.duration = m.payload.duration;
+                    slot.ccKind = MapDcCc(m.payload.ccKind);
+                }
+                else if (m.payload.kind == Wassup.Data.DcPayloadKind.ApplyStackToTarget)
+                {
+                    // dreamcatcher-new-abilities unit 1 — 온-히트 스택(ember_bite=Bleed).
+                    // magnitude=스택 수(floor,>=1), duration=스택당 지속. 스택→DoT 는
+                    // StackModifierTickSystem 이 GetStackThresholds(kind) 규칙으로 처리.
+                    if (m.payload.magnitude < 1f)
+                    {
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: ApplyStackToTarget magnitude<1 (no stacks) — skipped.");
+                        continue;
+                    }
+                    slot.duration = m.payload.duration;
+                    slot.stackKind = MapDcStack(m.payload.stackKind);
+                    // review B MED1 — maxStack 상한을 카드에서 authoring(tileRange 재사용).
+                    // 0 = 미설정 → fire 에서 기존 producer 선례 5 로 폴백.
+                    slot.tileRange = math.max(0, m.payload.tileRange);
+                }
                 // Immediate (non-ECB) AddBuffer — same technique as ModifierApplySystem's
                 // bufferless path: several attaches in one frame must all land; a
                 // deferred AddBuffer would keep only the last. (Ownership is a separate
@@ -406,6 +435,9 @@ namespace Wassup.Bridge
                     stat = Wassup.Battle.Effects.StatKind.DmgTakenMul; mult = 1f / (1f + eff.percent / 100f); return true;
                 case Wassup.Data.CardBuffKind.MoveSpeed:
                     stat = Wassup.Battle.Effects.StatKind.MoveSpeedMul; mult = 1f + eff.percent / 100f; return true;
+                // dreamcatcher-new-abilities unit 2 — shatter_hymn: CC 걸린 적 대상 데미지 +percent%.
+                case Wassup.Data.CardBuffKind.DamageVsCc:
+                    stat = Wassup.Battle.Effects.StatKind.DamageVsCcMul; mult = 1f + eff.percent / 100f; return true;
                 // dreamstone-loadout Unit 6 — CardBuffKind.CostRate has no entity/ECS
                 // stat (it scales CostRuntime.RegenRateMultiplier, a MonoBehaviour-side
                 // resource, not a StatModifier channel). It falls through to this
@@ -414,6 +446,30 @@ namespace Wassup.Bridge
                 // this is a defensive no-op, never an expected live path.
                 default:
                     stat = Wassup.Battle.Effects.StatKind.DamageMul; mult = 1f; return false;
+            }
+        }
+
+        // dreamcatcher-new-abilities unit 1 — 데이터 계층 CC/스택 선택자 → Battle enum
+        // 번역(정의 계층이 Battle 타입을 모르게 유지; MapDcEffect 와 동일 번역자 역할).
+        private static Wassup.Battle.Effects.CcKind MapDcCc(Wassup.Data.DcCcKind kind)
+        {
+            switch (kind)
+            {
+                case Wassup.Data.DcCcKind.Stun: return Wassup.Battle.Effects.CcKind.Stun;
+                case Wassup.Data.DcCcKind.Impulse: return Wassup.Battle.Effects.CcKind.Impulse;
+                default: return Wassup.Battle.Effects.CcKind.Stun;
+            }
+        }
+
+        private static Wassup.Battle.Effects.StackKind MapDcStack(Wassup.Data.DcStackKind kind)
+        {
+            switch (kind)
+            {
+                case Wassup.Data.DcStackKind.Fire: return Wassup.Battle.Effects.StackKind.Fire;
+                case Wassup.Data.DcStackKind.Ice: return Wassup.Battle.Effects.StackKind.Ice;
+                case Wassup.Data.DcStackKind.Bleed: return Wassup.Battle.Effects.StackKind.Bleed;
+                case Wassup.Data.DcStackKind.Poison: return Wassup.Battle.Effects.StackKind.Poison;
+                default: return Wassup.Battle.Effects.StackKind.Bleed;
             }
         }
 

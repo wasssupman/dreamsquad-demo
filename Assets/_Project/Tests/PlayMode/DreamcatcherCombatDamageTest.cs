@@ -98,6 +98,68 @@ namespace Wassup.Tests.PlayMode
                 $"buffed dealt {buffedDealt} should exceed 2x baseline {baseDealt} (mul {preMul:0.00}->{buffedMul:0.00})");
         }
 
+        // dreamcatcher-new-abilities unit 3 — shatter_hymn: CC 걸린 적에게 DamageVsCc
+        // 배율이 실제 전투 데미지를 올린다. 멜리 guardian(직접 IncomingDamage 경로)이
+        // Stun(CcEffect) 걸린 더미를 때린다 — 같은 창을 shatter 유무로 비교.
+        [UnityTest]
+        public IEnumerator DamageVsCc_BoostsDamage_AgainstCcdEnemy()
+        {
+            LogAssert.ignoreFailingMessages = true;
+            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            for (int i = 0; i < 6; i++) yield return null;
+
+            var bridge = Object.FindObjectOfType<BattleBridge>();
+            var gm = Object.FindObjectOfType<GameManager>();
+            var cat = FindDefenderCatalog();
+            var guardian = cat.ById("guardian"); // melee → 직접 데미지 경로(멜리 vsCc 분기)
+
+            bridge.SetDefenderPool(new[] { guardian });
+            bridge.BeginPlacement();
+            gm.CostRuntime.ResetToStart();
+            gm.CostRuntime.AddCost(100000);
+            yield return null;
+            Assert.IsTrue(PlaceFirstValid(bridge, guardian), "place guardian");
+            yield return null;
+
+            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+            var defender = FindDefender(bridge, em);
+            Assert.AreNotEqual(Entity.Null, defender, "defender resolved");
+
+            var defPos = em.GetComponentData<LocalTransform>(defender).Position;
+            const float EnemyHp = 1_000_000f;
+            var enemy = em.CreateEntity();
+            em.AddComponentData(enemy, LocalTransform.FromPosition(defPos + new float3(0.05f, 0f, 0f)));
+            em.AddComponentData(enemy, new Health { value = EnemyHp, max = EnemyHp });
+            em.AddComponentData(enemy, new FactionTag { value = Faction.Enemy });
+            em.AddBuffer<IncomingDamage>(enemy);
+            // CC 상태 세팅: 긴 Stun(창 내내 활성). AnyActiveCc(remaining>0) 게이트 만족.
+            var cc = em.AddBuffer<CcEffect>(enemy);
+            cc.Add(new CcEffect { kind = CcKind.Stun, remainingTime = 1000f });
+
+            yield return RunSeconds(8f); // on-place 버프 감쇠
+
+            em.SetComponentData(enemy, new Health { value = EnemyHp, max = EnemyHp });
+            yield return RunSeconds(6f);
+            float baseDealt = EnemyHp - em.GetComponentData<Health>(enemy).value;
+
+            // shatter_hymn: CC 걸린 적 대상 +200% (DamageVsCc). 축=ClassGuardian.
+            var card = ScriptableObject.CreateInstance<DreamcatcherCard>();
+            card.axis = CardTargetAxis.ClassGuardian;
+            card.effects = new[] { new CardEffect { kind = CardBuffKind.DamageVsCc, percent = 200f } };
+            bridge.ApplyDreamcatcherCardHosted(card);
+            for (int i = 0; i < 3; i++) yield return null;
+
+            em.SetComponentData(enemy, new Health { value = EnemyHp, max = EnemyHp });
+            yield return RunSeconds(6f);
+            float boostedDealt = EnemyHp - em.GetComponentData<Health>(enemy).value;
+
+            if (em.Exists(enemy)) em.DestroyEntity(enemy);
+
+            Assert.Greater(baseDealt, 0f, "baseline(무 shatter)도 CC 적에게 정상 데미지 — 무적 회귀 없음");
+            Assert.Greater(boostedDealt, baseDealt * 2f,
+                $"shatter 로 CC 적 데미지 급증 예상: boosted {boostedDealt} > 2x base {baseDealt}");
+        }
+
         private static IEnumerator RunSeconds(float seconds)
         {
             float t = 0f;

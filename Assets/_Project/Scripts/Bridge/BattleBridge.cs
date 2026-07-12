@@ -3362,6 +3362,7 @@ namespace Wassup.Bridge
                 dmgTakenMul    = 1f,
                 regenPerSec    = 0f,
                 moveSpeedMul   = 1f,
+                damageVsCcMul  = 1f, // dreamcatcher-new-abilities unit 2 — base 1 (dirty 는 disabled 로 추가돼 무-모디파이어 유닛은 집계가 안 돌므로 여기서 필수)
             });
             _em.AddComponent<Wassup.Battle.Effects.ModifierStatsDirty>(entity);
             _em.SetComponentEnabled<Wassup.Battle.Effects.ModifierStatsDirty>(entity, false);
@@ -4171,6 +4172,7 @@ namespace Wassup.Bridge
                 dmgTakenMul    = 1f,
                 regenPerSec    = 0f,
                 moveSpeedMul   = 1f,
+                damageVsCcMul  = 1f, // dreamcatcher-new-abilities unit 2 — base 1 (dirty 는 disabled 로 추가돼 무-모디파이어 유닛은 집계가 안 돌므로 여기서 필수)
             });
             _em.AddComponent<Wassup.Battle.Effects.ModifierStatsDirty>(entity);
             _em.SetComponentEnabled<Wassup.Battle.Effects.ModifierStatsDirty>(entity, false);

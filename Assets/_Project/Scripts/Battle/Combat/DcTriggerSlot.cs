@@ -44,5 +44,11 @@ namespace Wassup.Battle.Combat
         public float maxHpRef;        // 스폰 시점 maxHp 스냅샷 (경계 기준 고정)
         public float duration;        // AreaBarrage 낙하 텔레그래프 초 → SkyFall flightTime
                                       // nightmare-whip-aura — AllyMoveSpeedAura: 펄스당 modifier TTL 초
+
+        // dreamcatcher-new-abilities unit 0 — 온-히트 payload 선택자. bake 시 데이터
+        // 계층 DcCcKind/DcStackKind 를 Battle enum 으로 번역 저장(hot path 무번역).
+        // ApplyCcToTarget=ccKind, ApplyStackToTarget=stackKind. 소비는 unit 1.
+        public Wassup.Battle.Effects.CcKind ccKind;
+        public Wassup.Battle.Effects.StackKind stackKind;
     }
 }

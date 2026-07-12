@@ -26,6 +26,8 @@ namespace Wassup.Data
     // 펄스마다 host 기준 Chebyshev tileRange 내 **host 와 같은 진영** 유닛(host 자신 제외)에
     // MoveSpeedMul ×(1+magnitude/100), TTL=duration 모디파이어 부여. duration>periodSeconds
     // 가 authoring 계약(merge-refresh 유지) — 이탈/host 사망 시 TTL 자연 만료(revoke 없음).
+    // dreamcatcher-new-abilities unit 0 — ApplyCcToTarget(N번째 공격이 맞은 적에게 CC),
+    // ApplyStackToTarget(맞은 적에게 원소 스택/DoT) payloads.
     public enum DcPayloadKind
     {
         None = 0,
@@ -38,7 +40,21 @@ namespace Wassup.Data
         SelfWarmupBuff = 7,
         PlacementAura = 8,
         AllyMoveSpeedAura = 9,
+        ApplyCcToTarget = 10,
+        ApplyStackToTarget = 11,
     }
+
+    // dreamcatcher-new-abilities unit 0 — 데이터 계층 CC 선택자(공격 온-히트용). 정의
+    // 계층은 Battle 타입 참조 금지라 Battle.Effects.CcKind 를 직접 못 쓴다 → 이 미러를
+    // 두고 BattleBridge 가 bake 시 CcKind 로 번역(CardBuffKind→StatKind 와 동일 패턴).
+    // 실제 CcEffect 로 소비되는 종류만: Stun(행동 정지=얼림), Impulse(넉백). unit 1 발견 —
+    // 이 엔진의 "Slow" 는 CcEffect 가 아니라 MoveSpeedMul StatModifier(ZoneApplySystem)라
+    // 제외. 슬로우 카드가 필요하면 별도 stat 페이로드로(후속). append-only.
+    public enum DcCcKind { Stun, Impulse }
+
+    // dreamcatcher-new-abilities unit 0 — 데이터 계층 스택 선택자. Battle.Effects.StackKind
+    // 의 비-None 미러(번역은 BattleBridge). append-only.
+    public enum DcStackKind { Fire, Ice, Bleed, Poison }
 
     [Serializable]
     public struct DcTriggerSpec
@@ -89,6 +105,14 @@ namespace Wassup.Data
         // 어떤 payload kind 든 선언만 하면 동일 경로를 탄다(kind-blind).
         public GameObject auraPrefab;
         public float auraScale; // <=0 = 1 처리 (베이크/풀 공통 해석)
+        // dreamcatcher-new-abilities unit 0 — payload 다형성이 필드 다중화를 강제한다
+        // (위 "kind별 struct 분리 YAGNI" 는 스칼라 재사용 전제였고, CC/스택은 kind
+        // 판별자가 필요). ApplyCcToTarget: ccKind + duration(초). Stun 은 duration 만,
+        // Impulse 는 magnitude(넉백 속도)도 사용. ApplyStackToTarget: stackKind +
+        // magnitude(스택 수, floor 1~255) + duration(스택당 지속) + tileRange(maxStack 상한,
+        // 0=기본 5). 다른 kind 는 기본값 무시.
+        public DcCcKind ccKind;
+        public DcStackKind stackKind;
     }
 
     [Serializable]

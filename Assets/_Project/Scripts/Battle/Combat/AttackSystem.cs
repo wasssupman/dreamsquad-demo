@@ -311,6 +311,12 @@ namespace Wassup.Battle.Combat
                     float damageMul = modifierStatsLookup.HasComponent(attackerEntity)
                         ? modifierStatsLookup[attackerEntity].damageMul
                         : 1f;
+                    // dreamcatcher-new-abilities unit 2 — shatter_hymn: CC 걸린 적 대상
+                    // 추가 배율. 공격자 stat(부재→1); 대상별 활성 CC 게이트는 각 데미지
+                    // 지점에서(투사체=발사 시점 bestTarget, 멜리=hitTarget별).
+                    float attackerVsCc = modifierStatsLookup.HasComponent(attackerEntity)
+                        ? modifierStatsLookup[attackerEntity].damageVsCcMul
+                        : 1f;
                     // All defender/enemy hit effects come through AttackOutputElement.
                     bool hasOutputs = outputBufferLookup.HasBuffer(attackerEntity);
 
@@ -329,6 +335,10 @@ namespace Wassup.Battle.Combat
                                 if (o.kind == Wassup.Data.AttackOutputKind.Damage)
                                 {
                                     float amount = o.magnitude * damageMul;
+                                    // shatter_hymn — 발사 시점 의도 대상(bestTarget)이 CC 상태면
+                                    // 배율(투사체 bake 경로도 포함 — 궁수 콤보 살림, critic HIGH).
+                                    if (attackerVsCc != 1f && ccActionLookup.HasBuffer(bestTarget) && AnyActiveCc(ccActionLookup[bestTarget]))
+                                        amount *= attackerVsCc;
                                     o.magnitude = amount;
                                     projectileDamage += amount;
                                     if (attackOutputLogWriter.HasValue)
@@ -519,21 +529,27 @@ namespace Wassup.Battle.Combat
                                     switch (o.kind)
                                     {
                                         case Wassup.Data.AttackOutputKind.Damage:
-                                            ecb.AppendToBuffer(hitTarget,
-                                                new IncomingDamage { amount = o.magnitude * damageMul });
+                                        {
+                                            // shatter_hymn — 이 hitTarget 이 CC 상태면 배율(멜리/AoE 는
+                                            // 즉시 해결이라 대상별 현재 CC 로 판정).
+                                            float dmg = o.magnitude * damageMul;
+                                            if (attackerVsCc != 1f && ccActionLookup.HasBuffer(hitTarget) && AnyActiveCc(ccActionLookup[hitTarget]))
+                                                dmg *= attackerVsCc;
+                                            ecb.AppendToBuffer(hitTarget, new IncomingDamage { amount = dmg });
                                             ThreatTable.TryCredit(threatQueue, creditThreat, threatLookup,
-                                                hitTarget, attackerEntity, o.magnitude * damageMul);
+                                                hitTarget, attackerEntity, dmg);
                                             if (attackOutputLogWriter.HasValue)
                                                 attackOutputLogWriter.Value.Enqueue(new AttackOutputLogEvent
                                                 {
                                                     attacker  = attackerEntity,
                                                     kind      = Wassup.Data.AttackOutputKind.Damage,
-                                                    magnitude = o.magnitude * damageMul,
+                                                    magnitude = dmg,
                                                     duration  = 0f,
                                                     sourcePos = atkPos,
                                                     targetPos = bestTargetPos,
                                                 });
                                             break;
+                                        }
 
                                         case Wassup.Data.AttackOutputKind.Heal:
                                             ecb.AppendToBuffer(hitTarget, new Wassup.Battle.Units.IncomingHeal { amount = o.magnitude });
@@ -684,15 +700,9 @@ namespace Wassup.Battle.Combat
                             dcSlots[si] = slot;
                             if (!dcFired) continue;
 
-                            if (slot.payload != Wassup.Data.DcPayloadKind.ProjectileToTarget)
-                            {
-                                // Counting is trigger-side semantics and ticks regardless,
-                                // but a fired trigger with no payload arm is an integration
-                                // bug (a future DcPayloadKind landed without its arm here) —
-                                // fail loudly instead of silently consuming the fire.
-                                UnityEngine.Debug.LogWarning("[AttackSystem] DcTriggerSlot fired with unhandled payload kind.");
-                            }
-                            else
+                            // dreamcatcher-new-abilities unit 1 — payload 디스패치. AttackN
+                            // 슬롯이 발동하면 kind 별로 carrier(투사체)/CC/스택 중 하나를 실행.
+                            if (slot.payload == Wassup.Data.DcPayloadKind.ProjectileToTarget)
                             {
                                 // Dedicated request-carrier entity: the shooter's own
                                 // attack may stage a ProjectileSpawnRequest this same
@@ -730,6 +740,61 @@ namespace Wassup.Battle.Combat
                                         targetPos = bestTargetPos,
                                     });
                             }
+                            else if (slot.payload == Wassup.Data.DcPayloadKind.ApplyCcToTarget)
+                            {
+                                // frost_arrow — 맞은 적에게 CcEffect(번역된 ccKind). Stun 은
+                                // remainingTime 만, Impulse 는 넉백 벡터(발사 시점 방향)도.
+                                // 판정 대상 = 발사 시점 의도 대상 bestTarget(homing 명중 대상
+                                // 불일치는 허용 — spec 계약 6).
+                                if (ccWriter.HasValue)
+                                {
+                                    var cc = new Wassup.Battle.Effects.CcEffect
+                                    {
+                                        kind = slot.ccKind,
+                                        remainingTime = slot.duration,
+                                    };
+                                    bool emit = true;
+                                    if (slot.ccKind == Wassup.Battle.Effects.CcKind.Impulse)
+                                    {
+                                        // review B LOW1 — 공격자·대상 동일 셀이면 방향 0 →
+                                        // phantom impulse(방향 없는 CC) 방출 방지(기존 넉백 가드 대칭).
+                                        float3 kd = bestTargetPos - atkPos;
+                                        kd.y = 0f;
+                                        if (math.lengthsq(kd) > 1e-6f) cc.vector = math.normalize(kd) * slot.magnitude;
+                                        else emit = false;
+                                    }
+                                    if (emit)
+                                        ccWriter.Value.Enqueue(new Wassup.Battle.Effects.EnemyCcEvent
+                                        {
+                                            target = bestTarget,
+                                            effect = cc,
+                                        });
+                                }
+                            }
+                            else if (slot.payload == Wassup.Data.DcPayloadKind.ApplyStackToTarget)
+                            {
+                                // ember_bite — 맞은 적에게 원소 스택(번역된 stackKind).
+                                // 스택→DoT/기타는 StackModifierTickSystem 이 ThresholdRule 로 처리.
+                                if (hasStackQ)
+                                    stackModSingleton.ValueRW.queue.Enqueue(new Wassup.Battle.Effects.StackModifierApplyEvent
+                                    {
+                                        target         = bestTarget,
+                                        kind           = slot.stackKind,
+                                        // review B MED2 — 상한 clamp(무경계 (byte) 캐스트는 256→0 wrap
+                                        // = silent no-op). review B MED1 — maxStack 은 카드 authorable
+                                        // (slot.tileRange), 미설정(0) 시에만 기존 producer 선례 5.
+                                        countDelta     = (byte)math.clamp(slot.magnitude, 1f, 255f),
+                                        maxStack       = slot.tileRange > 0 ? (byte)math.min(slot.tileRange, 255) : (byte)5,
+                                        perAppDuration = slot.duration,
+                                        source         = attackerEntity,
+                                    });
+                            }
+                            else
+                            {
+                                // 발동했는데 payload arm 이 없음 = 통합 버그(신규 kind 가 arm
+                                // 없이 착지). 조용히 소모하지 말고 loud fail.
+                                UnityEngine.Debug.LogWarning("[AttackSystem] DcTriggerSlot fired with unhandled payload kind.");
+                            }
                         }
                     }
                 }
@@ -740,6 +805,16 @@ namespace Wassup.Battle.Combat
             targetEntities.Dispose();
             targetTransforms.Dispose();
             targetFactions.Dispose();
+        }
+
+        // dreamcatcher-new-abilities unit 2 — shatter_hymn 게이트: 대상에 활성 CcEffect
+        // (Stun/Sleep/Impulse/DoT, remaining>0)가 하나라도 있는가. frost(Stun)·
+        // ember(Bleed→DoT) 가 건 CC 를 감지. Slow 는 CcEffect 가 아니라 여기 해당 없음.
+        private static bool AnyActiveCc(in DynamicBuffer<Wassup.Battle.Effects.CcEffect> buf)
+        {
+            for (int i = 0; i < buf.Length; i++)
+                if (buf[i].remainingTime > 0f) return true;
+            return false;
         }
 
         private static float DistanceSqToTarget(

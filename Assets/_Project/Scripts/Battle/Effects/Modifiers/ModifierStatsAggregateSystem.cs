@@ -42,6 +42,8 @@ namespace Wassup.Battle.Effects
                 float tMul = 1f, tAdd = 0f, tOver = 0f; bool tHasOver = false;
                 float rMul = 1f, rAdd = 0f, rOver = 0f; bool rHasOver = false;
                 float mMul = 1f, mAdd = 0f, mOver = 0f; bool mHasOver = false;
+                // dreamcatcher-new-abilities unit 2 — DamageVsCcMul (base 1, 부재→1).
+                float vMul = 1f, vAdd = 0f, vOver = 0f; bool vHasOver = false;
 
                 // ── New-framework modifier slots (may be absent) ──────────────────
                 if (SystemAPI.HasBuffer<StatModifierSlot>(entity))
@@ -82,6 +84,12 @@ namespace Wassup.Battle.Effects
                             else if (s.op == CombineOp.Additive)       mAdd += s.magnitude;
                             else { mOver = math.max(mOver, s.magnitude); mHasOver = true; }
                         }
+                        else if (s.stat == StatKind.DamageVsCcMul)
+                        {
+                            if      (s.op == CombineOp.Multiplicative) vMul *= s.magnitude;
+                            else if (s.op == CombineOp.Additive)       vAdd += s.magnitude;
+                            else { vOver = math.max(vOver, s.magnitude); vHasOver = true; }
+                        }
                     }
                 }
 
@@ -96,6 +104,8 @@ namespace Wassup.Battle.Effects
                 stats.ValueRW.dmgTakenMul    = ModifierMath.CombineMul(tHasOver, tOver, tAdd, tMul, MulStatFloor, MulStatCeil);
                 stats.ValueRW.regenPerSec    = math.max(0f, rHasOver ? rOver : (0f + rAdd) * rMul);
                 stats.ValueRW.moveSpeedMul   = ModifierMath.CombineMul(mHasOver, mOver, mAdd, mMul, MoveMulFloor, MoveMulCeil);
+                // dreamcatcher-new-abilities unit 2 — base 1, 부재→1 (슬롯 없으면 vMul=1).
+                stats.ValueRW.damageVsCcMul  = ModifierMath.CombineMul(vHasOver, vOver, vAdd, vMul, MulStatFloor, MulStatCeil);
 
                 dirty.ValueRW = false;
             }
