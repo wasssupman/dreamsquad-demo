@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4739c42e2394b412f846aa25fdfc1c62, type: 3}
   m_Name: BattleHudTrayConfig
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.BattleHudTrayConfig
-  trayFrame: {fileID: 21300000, guid: 27bf95a81afb1408d9c3a86349a0c682, type: 3}
+  trayFrame: {fileID: 0}
   fallbackFill: {r: 0.05, g: 0.11, b: 0.2, a: 0.96}
   fallbackBorder: {r: 0.94, g: 0.72, b: 0.24, a: 1}
   placementSize: {x: 980, y: 136}
