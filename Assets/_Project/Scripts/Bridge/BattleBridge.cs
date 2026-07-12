@@ -2177,6 +2177,14 @@ namespace Wassup.Bridge
             return null;
         }
 
+        // unit-dreamcatcher-icons unit 1 — 부착 아이콘 스트립 앵커 조회. 게이트웨이 경유
+        // 읽기 전용 위임(뷰가 EntityManager/뷰 풀을 모르게 유지).
+        public bool TryGetUnitViewAnchor(Entity entity, out Transform anchor)
+        {
+            anchor = ResolveUnitViewTransform(entity);
+            return anchor != null;
+        }
+
         // Enemy kills → live score HUD. One score bump per enemy killed by damage.
         private void DrainEnemyKilledEvents()
         {
