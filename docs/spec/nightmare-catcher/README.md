@@ -71,7 +71,8 @@
 - **(rev 3 발견) GA ProjectileData 들의 `hitPrefab` 이 머즐(Muzzle) 프리팹을 가리킴** — `Projectile_ExplosiveBullet_GA`·`Projectile_RotatingSpheres03_GA` 등에서 확인(머즐 = 빔 2개 0.35초, 사실상 무연출). 인게임 히트 이펙트가 전반적으로 빈약했다면 이것. 실물은 `GA/Prefabs/Hits/vfx_Hit_*` — 전수 재배정은 별도 데이터 정비 작업.
 - **폭격 피격 체감** — defender 피격은 데미지 팝업이 없는 기존 사양(DamageNumber enemy 전용 게이트). 폭격 맞는 순간의 체감 연출(팝업 진영 개방 or 피격 플래시)은 후속(실플레이 피드백 2026-07-10).
 
-- **기본공격 100 / 채찍질(3타일 아군 이동속도 오라)** — 기존 프리미티브(`AttackOutput` / MoveSpeedMul Aura) 조합. 게이트 개방 후 데이터로 붙음. Aura 는 `modifier-framework-and-healer` 후속의 Aura defender 와 producer 공유.
+- **기본공격 100** — 기존 프리미티브(`AttackOutput`) 조합. 게이트 개방 후 데이터로 붙음. (근접 100 은 `Enemy_Boss_Nightmare` 기본공격으로 이미 반영 — 원거리화가 잔여.)
+- ~~채찍질(3타일 아군 이동속도 오라)~~ → **`docs/spec/nightmare-whip-aura/` 로 이관·완료 2026-07-12** (PeriodicTimer×AllyMoveSpeedAura 펄스 오라 + 펄스 연출).
 - **게이트 완전 일반화(공통부 추출)** — 적 경로가 실제로 돌기 시작한 뒤, defender/enemy 공통 부착·정리 라이프사이클을 추출. 두 번째 사용처 확정 후.
 - **보스 페이즈/캐스팅 상태** — 스킬이 이동을 하드 중단해야 할 때만 `AiState.Casting` 1개 추가. 현 MVP 는 불필요.
 - **보스 어그로 저항/면역** — 현재 모든 적이 동일하게 `Aggroed` 대상(보스도 끌림 — 실플레이 확인 2026-07-10, **사용자 확정: 면역 시스템 후속 추가**). `BossTag` 가 이미 있어 어그로 부착 지점 게이트 1줄로 구현 가능.
