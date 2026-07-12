@@ -301,6 +301,7 @@ board-visualization spec 자체는 ROI 부족으로 wrap 종료. 진단/실험�
 
 ### Promoted / Closed
 
+- **선물 페이즈(Gift Phase)** → `docs/spec/gift-phase/` (구현 완료 2026-07-13, units 0~5 + 코드리뷰, `29d9ffd7`~`4d4eee69` — 배치 직전 `GamePhase.Gift` 삽입. "루시드의 선물"(스킬 Active 2) / "림의 선물"(무의식 2) 랜덤 이벤트 → 저장10+선물2=12장 발라트로식 셔플 연출 → 각성버튼 fly-out → 배치. **CycleDeck 무변경**(Gift 에서 덱 1회 생성·`Hand(전체)` 연출·배치 재사용, 이중셔플 없음). Lucid=기존 SkillLoadout 재사용, Rim=Subconscious 시드추출+폴백. 무의식 카드 2장 저작(기존 effects 채널)·덱빌더 제외. HUD 노출을 `PhaseChanged(Placement)` 로 재게이팅. 순수 프레젠테이션+Mono, ECS 변경 0. **연출 시각 상세조정은 후속 스펙**. 트위닝 육안검증=사용자 포커스 Play)
 - **유닛 드림캐쳐 아이콘** → `docs/spec/unit-dreamcatcher-icons/` (완료 2026-07-12, units 0~2 — 배치 유닛 머리 위 부착 카드 미니 타로 스트립. `card.art` 재사용(신규 에셋 0), HandController registry + `AttachmentsChanged` 이벤트 구동, Squad 골드/Unit 청록 프레임, 사망 회수→소멸. 순수 프레젠테이션, ECS 변경 0. 트리거 진행도 뱃지·부착 연출은 후속)
 - **보스 방어유닛 지향 이동** → `docs/spec/boss-defender-field/` (완료 2026-07-11, units 0~3, `dc298ceb` — 방어유닛 walkable 이웃 multi-source BFS "defender field"(Effects 싱글톤+매 프레임 재빌드) 를 보스(`BossTag`)가 Marching 에서 flow-follow. 지나친/뒤 배치 방어유닛에 역주행 재교전, 전멸까지 사냥(leak-proof), 0마리면 goal 마칭(무상태 fallback). FSM/채널 변경 0, 비-보스 무회귀 라이브 확인. 폐기된 enemy-hunter-targeting 의 직선추격/wall-slide 는 재도입 금지 계약)
 
