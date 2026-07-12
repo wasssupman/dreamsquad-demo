@@ -4325,14 +4325,17 @@ namespace Wassup.Bridge
                     slot.projectileDataIndex = GetOrCreateProjectileDataIndex(m.payload.projectile);
                     slot.visualScale = m.payload.projectile.visualScale;
                 }
-                else if (m.payload.kind == Wassup.Data.DcPayloadKind.SelfBlink && m.payload.projectile != null)
+                else if ((m.payload.kind == Wassup.Data.DcPayloadKind.SelfBlink ||
+                          m.payload.kind == Wassup.Data.DcPayloadKind.AllyMoveSpeedAura) &&
+                         m.payload.projectile != null)
                 {
                     // rev 3 (실플레이 피드백) — blink 연출: hitPrefab 만 소비하는
-                    // 퍼프 ProjectileData(투사체로는 안 뜀). null 이면 무연출 blink.
+                    // 퍼프 ProjectileData(투사체로는 안 뜀). null 이면 무연출.
+                    // nightmare-whip-aura unit 3 — whip 펄스 연출도 같은 경로.
                     slot.projectileDataIndex = GetOrCreateProjectileDataIndex(m.payload.projectile);
                 }
-                else if (m.payload.kind == Wassup.Data.DcPayloadKind.AllyMoveSpeedAura &&
-                         m.payload.duration <= m.trigger.periodSeconds)
+                if (m.payload.kind == Wassup.Data.DcPayloadKind.AllyMoveSpeedAura &&
+                    m.payload.duration <= m.trigger.periodSeconds)
                 {
                     // nightmare-whip-aura unit 1 — authoring 계약: duration >
                     // periodSeconds (merge-refresh 유지). 위반은 펄스 사이 버프
