@@ -130,7 +130,7 @@ code + git history        구현 상세
 어그로 아이콘("!")을 만들며 드러난 일반화. **두 축으로 분리** — "느끼게 할 상태 연출" ↔ "훑어볼 정보 배지". 순차 진행 예정.
 
 - ~~**상태별 프리팹 연출 인프라 (unit-status-fx)**~~ — **완료 2026-07-09** (`02a9db24`). `AggroIcon*` → `StatusFx*` 일반화: `StatusFxKind` + `StatusFxRegistry`(상태마다 프리팹) + `StatusFxSpawner`/`View`. 어그로 이관(현 "!" 폴백 유지). **잔여**: 실제 상태(스턴/빙결/독) registry 등록 + ECS 소스 훅, 어그로 전용 프리팹 연출(가디언 tether 등). (unit-status-fx)
-- **모디파이어 인디케이터 스트립 (unit-modifier-indicators)** [M] · 버프/디버프(`ModifierStats` 델타·DoT 스택 Fire/Ice/Bleed/Poison)/드림캐쳐 부착(`DreamcatcherCard.art`)을 머리 위 아이콘 행으로. 스택/듀레이션 뱃지 + `+N` 오버플로. 상태 연출과 **다른 축**(정보 vs 느낌). 한 상태가 둘 다일 수 있음(예: 독=온-바디 VFX + 스택 아이콘). (aggro-targeting)
+- **모디파이어 인디케이터 스트립 (unit-modifier-indicators)** [M] · 버프/디버프(`ModifierStats` 델타·DoT 스택 Fire/Ice/Bleed/Poison)를 머리 위 아이콘 행으로. 스택/듀레이션 뱃지 + `+N` 오버플로. 상태 연출과 **다른 축**(정보 vs 느낌). 한 상태가 둘 다일 수 있음(예: 독=온-바디 VFX + 스택 아이콘). ~~드림캐쳐 부착 표기~~ 는 `docs/spec/unit-dreamcatcher-icons/` 로 분리 완료(2026-07-12) — 인디케이터 뷰 설계 시 해당 스트립과 y-오프셋/레이아웃 공존 고려. (aggro-targeting)
 
 #### 곡사포 / 투사체 후속 (artillery-defender, projectile-trajectory-payload)
 
@@ -292,6 +292,7 @@ board-visualization spec 자체는 ROI 부족으로 wrap 종료. 진단/실험�
 
 ### Promoted / Closed
 
+- **유닛 드림캐쳐 아이콘** → `docs/spec/unit-dreamcatcher-icons/` (완료 2026-07-12, units 0~2 — 배치 유닛 머리 위 부착 카드 미니 타로 스트립. `card.art` 재사용(신규 에셋 0), HandController registry + `AttachmentsChanged` 이벤트 구동, Squad 골드/Unit 청록 프레임, 사망 회수→소멸. 순수 프레젠테이션, ECS 변경 0. 트리거 진행도 뱃지·부착 연출은 후속)
 - **보스 방어유닛 지향 이동** → `docs/spec/boss-defender-field/` (완료 2026-07-11, units 0~3, `dc298ceb` — 방어유닛 walkable 이웃 multi-source BFS "defender field"(Effects 싱글톤+매 프레임 재빌드) 를 보스(`BossTag`)가 Marching 에서 flow-follow. 지나친/뒤 배치 방어유닛에 역주행 재교전, 전멸까지 사냥(leak-proof), 0마리면 goal 마칭(무상태 fallback). FSM/채널 변경 0, 비-보스 무회귀 라이브 확인. 폐기된 enemy-hunter-targeting 의 직선추격/wall-slide 는 재도입 금지 계약)
 
 - **Enemy walk anim speed match** → `docs/spec/enemy-walk-anim-speed/` (완료 2026-07-10, units 0~2 — 적 Spine 걷기 애니를 실제 view 변위 기반 재생속도로 변조해 발 미끄러짐(문워크) 제거. `skeleton.timeScale = battleScale × walkFactor`(sim-time 정규화 속도/refSpeed, min/max/스무딩/텔레포트가드 = `WalkAnimSpeedStyle` SO + BattleBridge 미러). 포탈 텔레포트 무시·standoff 바닥. **회귀 수정**: timeScale 트랙 전역이라 걷기 배율이 공격/사망/배치까지 늦추던 것 → 로코모션 루프(Loop==true)에만 적용. 튜닝 확정 refSpeed 1.2/max 3.0. 순수 프레젠테이션, ECS 변경 0. 후속: 코너 접지 스냅·Android 프로파일)

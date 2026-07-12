@@ -1,6 +1,6 @@
 # Unit Dreamcatcher Icons — 배치 유닛 머리 위 부착 카드 미니 아이콘
 
-> 상태: **초안 2026-07-12** (사용자 승인 대기)
+> 상태: **완료 2026-07-12** (units 0~2 + handoff — Play e2e 검증 통과, 아키텍트 리뷰 반영)
 >
 > 배경: Follow-up Backlog "유닛 상태 표현 / 인디케이터" 축 중 **드림캐쳐 부착 표기**만 분리한 spec. 모디파이어 인디케이터(버프/디버프 아이콘)는 스코프 밖 — backlog `unit-modifier-indicators` 항목 유지.
 

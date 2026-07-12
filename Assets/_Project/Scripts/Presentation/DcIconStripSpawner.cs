@@ -22,7 +22,7 @@ namespace Wassup.Presentation
 
         [Header("Layout")]
         [Tooltip("유닛 앵커 기준 스트립 오프셋. Sleep Zz(StatusFx) 와 y 분리")]
-        [SerializeField] private Vector3 offset = new Vector3(0f, 2.1f, 0f);
+        [SerializeField] private Vector3 offset = new Vector3(0f, 2.6f, 0f); // Play 튜닝 2026-07-12 — 2.1은 머리 겹침
         [SerializeField] private float cardHeight = 0.42f;
         [SerializeField] private float spacing = 0.05f;
 
@@ -35,7 +35,6 @@ namespace Wassup.Presentation
         private readonly Dictionary<Entity, List<DreamcatcherCard>> _byHost = new();
         private readonly Dictionary<Entity, DcIconStripView> _active = new();
         private readonly Queue<DcIconStripView> _pool = new();
-        private readonly Queue<List<DreamcatcherCard>> _listPool = new();
         private readonly List<Entity> _toHide = new();
         private Sprite _squadFrame;
         private Sprite _unitFrame;
@@ -59,15 +58,15 @@ namespace Wassup.Presentation
             if (cam == null) return;
             EnsureFrameSprites();
 
-            // host 별 그룹핑 (GetAttachments 의 entryId 순서 보존).
-            foreach (var kv in _byHost) RecycleList(kv.Value);
+            // host 별 그룹핑 (GetAttachments 의 entryId 순서 보존). 이벤트 구동 저빈도
+            // 경로라 리스트는 직접 할당 — 풀링은 매 프레임 reconcile 인 StatusFx 에서만 정당.
             _byHost.Clear();
             hand.GetAttachments(_attachments);
             foreach (var (host, card) in _attachments)
             {
                 if (!_byHost.TryGetValue(host, out var list))
                 {
-                    list = RentList();
+                    list = new List<DreamcatcherCard>();
                     _byHost[host] = list;
                 }
                 list.Add(card);
@@ -109,7 +108,6 @@ namespace Wassup.Presentation
                 var v = _pool.Dequeue();
                 if (v != null) Destroy(v.gameObject);
             }
-            foreach (var kv in _byHost) RecycleList(kv.Value);
             _byHost.Clear();
         }
 
@@ -129,23 +127,6 @@ namespace Wassup.Presentation
         {
             if (_squadFrame == null) _squadFrame = UiRoundedSprite.Make(10f, 3f, plateFill, squadBorder);
             if (_unitFrame == null) _unitFrame = UiRoundedSprite.Make(10f, 3f, plateFill, unitBorder);
-        }
-
-        private List<DreamcatcherCard> RentList()
-        {
-            if (_listPool.Count > 0)
-            {
-                var list = _listPool.Dequeue();
-                list.Clear();
-                return list;
-            }
-            return new List<DreamcatcherCard>();
-        }
-
-        private void RecycleList(List<DreamcatcherCard> list)
-        {
-            list.Clear();
-            _listPool.Enqueue(list);
         }
     }
 }
