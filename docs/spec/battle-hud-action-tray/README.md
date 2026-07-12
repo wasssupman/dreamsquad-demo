@@ -1,7 +1,7 @@
 # Battle HUD Action Tray — 비용 가독성·통합 하단 트레이 Spec
 
 **작성일**: 2026-07-11
-**상태**: 설계 완료, 선행 spec 대기
+**상태**: 에디터 범위 완료 2026-07-12 (units 0~4 구현·검증·커밋, unit 5 에디터 행렬 통과 — **실기 QA 보류**: 20:9 시각·Android 터치·PlayMode smoke. 인계: `6_handoff_summary.md`)
 **선행 조건**: `docs/spec/mobile-ui-safe-area/` 완료
 **검증 질문**: 플레이어가 1초 안에 현재 구매 가능한 유닛을 식별하고, Placement/Battle/드림캐쳐 전환 중에도 전장 가림과 실패 드래그가 줄어드는가?
 
