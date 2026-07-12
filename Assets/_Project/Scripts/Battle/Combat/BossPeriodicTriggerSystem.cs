@@ -59,6 +59,10 @@ namespace Wassup.Battle.Combat
             // (unlike the eager defender pool above, which the barrage epicenter
             // always needs and which carries no entities).
             bool hasStatEvents = SystemAPI.TryGetSingletonRW<StatModifierApplyEventsSingleton>(out var statEventsRef);
+            // unit 3 — 펄스 연출: 버프가 실제로 나간 펄스만 host 위치에 hit-VFX
+            // 1회 재생 (blink 퍼프 선례 — Combat→Presentation 기존 채널).
+            bool hasHitQ = SystemAPI.TryGetSingletonRW<ProjectileHitEventsSingleton>(out var hitRW);
+            NativeQueue<ProjectileHitEvent> hitQueue = hasHitQ ? hitRW.ValueRW.queue : default;
             var whipTargets = new NativeList<int>(Allocator.Temp);
             NativeArray<Entity> whipEnemyEntities = default, whipDefEntities = default;
             NativeArray<int2> whipEnemyCells = default;
@@ -115,11 +119,11 @@ namespace Wassup.Battle.Combat
                                 {
                                     var poolEntities = hostIsEnemy ? whipEnemyEntities : whipDefEntities;
                                     var poolCells = hostIsEnemy ? whipEnemyCells : defCells;
-                                    int2 hostCell = GridMath.WorldToCell(
-                                        SystemAPI.GetComponent<LocalTransform>(entity).Position,
-                                        ff.tileSize, ff.gridSize, origin: ff.origin);
+                                    float3 hostPos = SystemAPI.GetComponent<LocalTransform>(entity).Position;
+                                    int2 hostCell = GridMath.WorldToCell(hostPos, ff.tileSize, ff.gridSize, origin: ff.origin);
                                     AuraPulse.SelectTargets(poolCells, hostCell, slot.tileRange, ref whipTargets);
                                     float mul = 1f + slot.magnitude / 100f;
+                                    int buffed = 0;
                                     for (int ti = 0; ti < whipTargets.Length; ti++)
                                     {
                                         var target = poolEntities[whipTargets[ti]];
@@ -133,6 +137,19 @@ namespace Wassup.Battle.Combat
                                             duration = slot.duration,
                                             source = entity,
                                             stackId = 0,
+                                        });
+                                        buffed++;
+                                    }
+                                    // unit 3 — 효과 없는 연출 금지: 버프 ≥1 펄스만
+                                    // 재생. dataIndex < 0 = 무연출 authoring (blink 선례).
+                                    if (buffed > 0 && hasHitQ && slot.projectileDataIndex >= 0)
+                                    {
+                                        hitQueue.Enqueue(new ProjectileHitEvent
+                                        {
+                                            position = hostPos,
+                                            dataIndex = slot.projectileDataIndex,
+                                            payload = PayloadKind.SingleSplash,
+                                            source = entity,
                                         });
                                     }
                                 }

@@ -1,0 +1,46 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 57583d0eae98a4723adcd8b7082d6d7d, type: 3}
+  m_Name: Projectile_WhipPulse
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.ProjectileData
+  id: whip_pulse
+  speed: 10
+  hitThreshold: 0.3
+  visualScale: 0.3
+  visualHeightOffset: 0.7
+  projectilePrefab: {fileID: 0}
+  hitPrefab: {fileID: 1190586612074608, guid: 47f996c4a3c70c0429377da88c7ac5d8, type: 3}
+  facing: 0
+  spinSpeed: 0
+  preserveVfxColors: 1
+  tintColor: {r: 1, g: 1, b: 1, a: 1}
+  emissionMultiplier: 1
+  scaleJitter: 0
+  hueJitter: 0
+  rotationJitter: 0
+  textureVariants: []
+  selectMode: 0
+  hitVfxLifetime: 0
+  hitVfxScale: 1.3
+  castPrefab: {fileID: 0}
+  castVfxLifetime: 0
+  onHitEffect: 0
+  onHitMagnitude: 0
+  onHitDuration: 0
+  splashRadius: 0
+  splashDamageMul: 0.5
+  flightMode: 0
+  arcHeight: 2
+  impactTileRange: 1
+  minFlightTime: 0.3
+  dropHeight: 6
+  fallPortion: 1
