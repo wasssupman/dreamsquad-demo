@@ -21,3 +21,29 @@ MonoBehaviour:
   slotSpacing: 8
   horizontalPadding: 18
   verticalPadding: 12
+  costChipSprite: {fileID: 21300000, guid: ab817f48d75e14bc78a08eb446bd4245, type: 3}
+  costChipSize: {x: 34, y: 34}
+  costFontSize: 18
+  roleBadgeSize: {x: 26, y: 26}
+  roleFontSize: 14
+  nameFontMin: 16
+  nameFontMax: 26
+  nameBandColor: {r: 0, g: 0, b: 0, a: 0.35}
+  unaffordableDim: {r: 0.45, g: 0.45, b: 0.52, a: 1}
+  costWarnColor: {r: 1, g: 0.34, b: 0.28, a: 1}
+  roles:
+  - role: 1
+    glyph: "\uC6D0"
+    color: {r: 0.24, g: 0.62, b: 0.44, a: 0.95}
+  - role: 2
+    glyph: "\uC218"
+    color: {r: 0.26, g: 0.45, b: 0.82, a: 0.95}
+  - role: 3
+    glyph: "\uADFC"
+    color: {r: 0.82, g: 0.36, b: 0.24, a: 0.95}
+  - role: 4
+    glyph: "\uC220"
+    color: {r: 0.56, g: 0.34, b: 0.78, a: 0.95}
+  - role: 5
+    glyph: "\uBCF4"
+    color: {r: 0.32, g: 0.62, b: 0.3, a: 0.95}
