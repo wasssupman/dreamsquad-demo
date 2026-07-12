@@ -6,6 +6,8 @@ namespace Wassup.Data
     public enum StatusFxKind : byte
     {
         Aggro = 0,
+        // unit-status-fx 5 — Sleep(CcKind.Sleep, 적·아군 공통). 소스 = CcEffect 버퍼.
+        Sleep = 1,
         // Stun, Freeze, Poison … 나중에 끝에 추가 + registry 항목 + reconcile 소스 훅.
     }
 }

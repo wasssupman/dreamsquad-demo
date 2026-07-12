@@ -37,6 +37,10 @@ namespace Wassup.Core
 
         public event System.Action<int> GaugeChanged;
         public event System.Action<HandChangeReason> HandChanged;
+        // unit-dreamcatcher-icons unit 0 — fires only when the attach registry
+        // actually changes (attach / death recovery / placement reset).
+        // HandChanged is a superset: Active use fires Used without an attach change.
+        public event System.Action AttachmentsChanged;
 
         public int Gauge { get; private set; }
         public int GaugeMax => config != null ? config.gaugeMax : 100;
@@ -51,6 +55,7 @@ namespace Wassup.Core
         private readonly Dictionary<int, (Entity host, int handle)> _attachedTo =
             new Dictionary<int, (Entity, int)>();
         private readonly List<int> _recoverScratch = new List<int>();
+        private readonly List<int> _attachReadScratch = new List<int>();
 
         private void OnEnable()
         {
@@ -86,6 +91,7 @@ namespace Wassup.Core
             int seed = GameManager.Instance != null ? GameManager.Instance.MatchSeed : 0;
             _deck = new DreamcatcherCycleDeck(cards, seed);
             _attachedTo.Clear();
+            AttachmentsChanged?.Invoke();
             Gauge = config != null ? Mathf.Clamp(config.gaugeStart, 0, config.gaugeMax) : 0;
             GaugeChanged?.Invoke(Gauge);
             HandChanged?.Invoke(HandChangeReason.Reset);
@@ -162,6 +168,7 @@ namespace Wassup.Core
                 _deck.Recover(entryId);
             }
             HandChanged?.Invoke(HandChangeReason.Recovered);
+            AttachmentsChanged?.Invoke(); // 위 early-return 들을 지나면 회수가 1건 이상
         }
 
         private void GainAwakening(int reward)
@@ -218,6 +225,7 @@ namespace Wassup.Core
         {
             if (!_deck.UseUnit(entryId, HandSize)) return false; // guarded by TryGetUsable
             _attachedTo[entryId] = (host, handle);
+            AttachmentsChanged?.Invoke();
             Spend(card);
             HandChanged?.Invoke(HandChangeReason.Used);
             return true;
@@ -288,6 +296,22 @@ namespace Wassup.Core
         {
             Gauge = Mathf.Max(0, Gauge - CostOf(card));
             GaugeChanged?.Invoke(Gauge);
+        }
+
+        // unit-dreamcatcher-icons unit 0 — read-only attachment snapshot for
+        // presentation (icon strips). Fills the caller's list (no allocation);
+        // entryId-ascending order keeps strip order stable across rebuilds
+        // (dictionary iteration order is not deterministic after removals).
+        public void GetAttachments(List<(Entity host, DreamcatcherCard card)> results)
+        {
+            results.Clear();
+            if (_deck == null || _attachedTo.Count == 0) return;
+            _attachReadScratch.Clear();
+            foreach (var kv in _attachedTo) _attachReadScratch.Add(kv.Key);
+            _attachReadScratch.Sort();
+            foreach (var entryId in _attachReadScratch)
+                if (_deck.TryGetCard(entryId, out var card))
+                    results.Add((_attachedTo[entryId].host, card));
         }
 
         private int CountAttachedTo(Entity target)
