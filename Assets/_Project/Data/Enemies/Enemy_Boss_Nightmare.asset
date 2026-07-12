@@ -90,4 +90,4 @@ MonoBehaviour:
       tileRange: 3
       duration: 1.5
       auraPrefab: {fileID: 207745087118991948, guid: ae85f8af7e5c6c44c91e2f6966a4354b, type: 3}
-      auraScale: 1.6
+      auraScale: 1.2
