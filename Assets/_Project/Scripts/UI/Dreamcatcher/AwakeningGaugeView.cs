@@ -44,13 +44,10 @@ namespace Wassup.UI
         {
             if (handController != null)
                 handController.GaugeChanged += OnGaugeChanged;
-            // Reveal with the placement strip (squad entry) — same signal
-            // DefenderSelector uses. Draft mode reuses PlacementRequested too.
+            // gift-phase unit 3 — 노출을 PhaseChanged(Placement) 로 이관. 예전 PlacementRequested
+            // 는 이제 선물 페이즈 시작점이라 게이지가 선물 도중 튀어나온다.
             if (GameManager.Instance != null)
-            {
-                GameManager.Instance.PlacementRequested += OnPlacementRequested;
                 GameManager.Instance.PhaseChanged += OnPhaseChanged;
-            }
         }
 
         private void OnDisable()
@@ -58,24 +55,23 @@ namespace Wassup.UI
             if (handController != null)
                 handController.GaugeChanged -= OnGaugeChanged;
             if (GameManager.Instance != null)
-            {
-                GameManager.Instance.PlacementRequested -= OnPlacementRequested;
                 GameManager.Instance.PhaseChanged -= OnPhaseChanged;
-            }
-        }
-
-        private void OnPlacementRequested()
-        {
-            if (_panel != null) _panel.SetActive(true);
-            Refresh(handController != null ? handController.Gauge : 0, punch: false);
         }
 
         private void OnPhaseChanged(GamePhase phase)
         {
-            // Hide outside the playable window (Result/None); Placement re-entry
-            // comes back through PlacementRequested.
-            if (phase != GamePhase.Placement && phase != GamePhase.Battle && _panel != null)
+            if (_panel == null) return;
+            if (phase == GamePhase.Placement)
+            {
+                // 선물 종료 후 배치 진입에서 노출.
+                _panel.SetActive(true);
+                Refresh(handController != null ? handController.Gauge : 0, punch: false);
+            }
+            else if (phase != GamePhase.Battle)
+            {
+                // Battle 은 유지(배치에서 켜진 상태), 그 외(None/Draft/Gift/Result)는 숨김.
                 _panel.SetActive(false);
+            }
         }
 
         private void OnGaugeChanged(int value) => Refresh(value, punch: true);

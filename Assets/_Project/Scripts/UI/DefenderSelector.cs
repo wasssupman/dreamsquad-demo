@@ -71,33 +71,20 @@ namespace Wassup.UI
         private void OnEnable()
         {
             if (draftController != null)
-            {
-                draftController.DraftConfirmed += OnDraftConfirmed;
                 draftController.DraftStarted += OnDraftStarted;
-            }
-            // squad-loadout regression fix — squad mode has no draft, so the
-            // placement entry comes via GameManager.PlacementRequested. Show the
-            // pick strip there too. GameManager (-100 exec order) has set Instance
-            // before this OnEnable.
+            // gift-phase unit 3 — 트레이 노출은 PhaseChanged(Placement) 로 이관. 예전엔
+            // DraftConfirmed/PlacementRequested 로 노출했으나 그 신호는 이제 선물 페이즈
+            // 시작점이라 선물 도중 트레이가 튀어나온다. DraftStarted 는 숨김용으로 유지.
             if (GameManager.Instance != null)
-            {
-                GameManager.Instance.PlacementRequested += OnDraftConfirmed;
                 GameManager.Instance.PhaseChanged += OnPhaseChanged;
-            }
         }
 
         private void OnDisable()
         {
             if (draftController != null)
-            {
-                draftController.DraftConfirmed -= OnDraftConfirmed;
                 draftController.DraftStarted -= OnDraftStarted;
-            }
             if (GameManager.Instance != null)
-            {
-                GameManager.Instance.PlacementRequested -= OnDraftConfirmed;
                 GameManager.Instance.PhaseChanged -= OnPhaseChanged;
-            }
         }
 
         // battle-hud-layout 2 — Placement 풀 / Battle 슬림. 그 외 페이즈는 패널이
@@ -108,7 +95,11 @@ namespace Wassup.UI
             if (phase == GamePhase.Battle)
                 ((RectTransform)_panel.transform).sizeDelta = BattleSize;
             else if (phase == GamePhase.Placement)
+            {
+                // gift-phase unit 3 — 배치 진입(선물 종료 후)에서 트레이 리사이즈 + 노출·구성.
                 ((RectTransform)_panel.transform).sizeDelta = PlacementSize;
+                OnDraftConfirmed();
+            }
         }
 
         private void OnDraftConfirmed()

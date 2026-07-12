@@ -60,24 +60,12 @@ namespace Wassup.UI
             if (_panel != null) _panel.SetActive(false);
         }
 
-        private void OnEnable()
-        {
-            if (draftController != null) draftController.DraftConfirmed += OnDraftConfirmed;
-            // squad-loadout Unit 3 — squad mode has no draft; GameManager signals
-            // placement directly.
-            if (gameManager != null) gameManager.PlacementRequested += BeginPlacementPhase;
-        }
-
+        // gift-phase unit 3 — 진입 신호(DraftConfirmed/PlacementRequested)는 이제
+        // GiftPhaseView 가 받아 선물 페이즈를 거친 뒤 BeginPlacementPhase() 를 직접 호출한다.
+        // 여기서 직접 구독하면 선물을 건너뛰고 이중 진입하므로 구독하지 않는다.
         private void OnDisable()
         {
-            if (draftController != null) draftController.DraftConfirmed -= OnDraftConfirmed;
-            if (gameManager != null) gameManager.PlacementRequested -= BeginPlacementPhase;
             SetStartJuice(false);
-        }
-
-        private void OnDraftConfirmed()
-        {
-            BeginPlacementPhase();
         }
 
         public void BeginPlacementPhase()

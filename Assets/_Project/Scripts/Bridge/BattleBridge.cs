@@ -48,6 +48,9 @@ namespace Wassup.Bridge
         [SerializeField] private DraftController draftController;
         [SerializeField] private SkillRuntime skillRuntime;
         [SerializeField] private PlacementPhaseView _placementPhaseView;
+        // gift-phase unit 3 — 재시작도 선물 페이즈를 거친다. 배선되면 BeginGift() 로,
+        // 없으면 기존처럼 곧장 배치로 폴백.
+        [SerializeField] private GiftPhaseView _giftPhaseView;
         [SerializeField] private Wassup.Presentation.SpineUnitPool spineUnitPool;
         [SerializeField] private Wassup.Presentation.QuadUnitViewPool enemyViewPool;
         [SerializeField] private Wassup.Presentation.QuadUnitViewPool defenderFallbackViewPool;
@@ -293,11 +296,19 @@ namespace Wassup.Bridge
             }
         }
 
+        // gift-phase unit 3 — 재시작 진입은 선물 페이즈를 거친다(배선 시). 미배선이면
+        // 기존처럼 곧장 배치로(HandController 가 Placement 에서 폴백 구성).
+        private void EnterPlacementOrGift()
+        {
+            if (_giftPhaseView != null) _giftPhaseView.BeginGift();
+            else _placementPhaseView?.BeginPlacementPhase();
+        }
+
         private void OnRestartRequested()
         {
             if (_world == null)
             {
-                _placementPhaseView?.BeginPlacementPhase();
+                EnterPlacementOrGift();
                 return;
             }
 
@@ -320,7 +331,7 @@ namespace Wassup.Bridge
             if (resultScreen != null) resultScreen.Hide();
             _running = false;
             _resultShown = false;
-            _placementPhaseView?.BeginPlacementPhase();
+            EnterPlacementOrGift();
         }
 
         private void ReLogSkillLoadoutForNewSession(Logging.BattleLogger logger)
