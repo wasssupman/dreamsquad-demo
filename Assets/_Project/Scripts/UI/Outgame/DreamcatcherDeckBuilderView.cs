@@ -162,7 +162,12 @@ namespace Wassup.UI
             var available = new List<string>();
             var equipped = new List<string>();
             foreach (var id in catalog.AllIds())
+            {
+                // gift-phase unit 2 — 무의식(Subconscious) 카드는 "림의 선물" 전용.
+                // 덱빌더 선택 풀에서 제외(이미 저장 덱에 있으면 트레이에선 제거만 가능).
+                if (IsSubconscious(catalog.ById(id))) continue;
                 (_working.Contains(id) ? equipped : available).Add(id);
+            }
 
             foreach (var id in available)
             {

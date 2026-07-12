@@ -52,9 +52,10 @@ namespace Wassup.Data
         public string id;
         public string displayName;
         public CardTargetAxis axis;
-        // dreamcatcher-taxonomy-cleanup — deck-builder no longer keys deck rules on
-        // this (that moved to CardType), but it is NOT dead: DeckBuilderView reads
-        // category==Subconscious to pick the 무의식 frame/art-fallback color.
+        // deck-builder no longer keys deck rules on this (that moved to CardType), but it
+        // is load-bearing: DeckBuilderView reads category==Subconscious for the 무의식
+        // frame/art-fallback color, and gift-phase uses it for the Rim(림의 선물) 풀 필터 +
+        // 덱빌더 제외.
         public CardCategory category = CardCategory.Normal;
         public CardEffect[] effects; // usually 1; fortress has 2
         // dreamcatcher-card-art Unit 0 — tarot-style card art shown on the deck
