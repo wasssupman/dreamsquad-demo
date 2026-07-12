@@ -21,8 +21,10 @@
 
 ## 완료 기준
 
-- [ ] Tray↔Hand 전환이 좌표 점프 없이 같은 외곽 프레임의 앞뒷면처럼 보임.
-- [ ] Placement/Battle 어느 phase에서 열고 닫아도 원래 tray size/rail 위치 복원.
-- [ ] 빠른 연속 토글/ForceClose에서 panel·cost suppression stuck 없음.
-- [ ] slomo lease가 기존처럼 획득/해제되고 전투 time scale 누수 없음.
-- [ ] 16:9/20:9에서 카드 fan과 safe edge 충돌 없음.
+- [x] Tray↔Hand 전환이 좌표 점프 없이 같은 외곽 프레임의 앞뒷면처럼 보임.
+- [x] Placement/Battle 어느 phase에서 열고 닫아도 원래 tray size/rail 위치 복원.
+- [x] 빠른 연속 토글/ForceClose에서 panel·cost suppression stuck 없음.
+- [x] slomo lease가 기존처럼 획득/해제되고 전투 time scale 누수 없음.
+- [ ] 16:9/20:9에서 카드 fan과 safe edge 충돌 없음. (unit 5 QA 캡처 세트에서 일괄)
+
+확인 2026-07-12 — HandView 배킹을 trayConfig 공유 문법(라운드 22 + 골드 엣지 + 네이비 fill, handSize/anchoredY Config 소유)으로 통일, config 미할당 시 기존 단색 무회귀 폴백. Play 검증: 핸드 오픈 캡처(카드 fan 정상), Close 후 strip 복원, 연속 토글 x4 stuck 없음, battleScale=1 복귀(slomo 누수 없음). FlipRoutine/Open/Close/suppression 계약 무접촉. 씬 배선 1줄(trayConfig). 콘솔 0. 코드 커밋 `b96aef1e`.
