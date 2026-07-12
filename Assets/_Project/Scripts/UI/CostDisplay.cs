@@ -60,6 +60,11 @@ namespace Wassup.UI
         private Coroutine _pulse;
         private TextMeshProUGUI _pulseLabel;
         private static readonly Color PulseWarn = new(1f, 0.34f, 0.28f, 1f);
+        // action-tray rail 연출 — 정수 경계 팝/플래시 + 풀 게이지 글로우 상태.
+        private RectTransform[] _barRoots;
+        private int _lastShownInt = -1;
+        private bool _fullGlow;
+        private readonly System.Collections.Generic.HashSet<int> _flashing = new();
 
         // action-tray unit 4 — 비용 부족 슬롯 드래그 차단 피드백: 0.6초 rail pulse +
         // "코스트 N 부족" 라벨. 표시 중 재호출은 리셋 후 재시작(상태 누적 없음).
@@ -80,6 +85,42 @@ namespace Wassup.UI
             yield return new WaitForSecondsRealtime(0.6f); // UI 는 슬로모 무관 실시간
             ResetPulseVisual();
             _pulse = null;
+        }
+
+        // 정수 도달 — 새로 채워진 칸 스케일 펀치(1.25→1, 0.18s 실시간).
+        private System.Collections.IEnumerator PopSegment(int index)
+        {
+            var root = _barRoots != null && index < _barRoots.Length ? _barRoots[index] : null;
+            if (root == null) yield break;
+            float t = 0f;
+            const float dur = 0.18f;
+            while (t < dur && root != null)
+            {
+                t += Time.unscaledDeltaTime;
+                float k = Mathf.Clamp01(t / dur);
+                float s = Mathf.Lerp(1.25f, 1f, k * k); // ease-out
+                root.localScale = new Vector3(s, s, 1f);
+                yield return null;
+            }
+            if (root != null) root.localScale = Vector3.one;
+        }
+
+        // 소비 — 잃은 칸이 warn 색으로 번쩍인 뒤 원복(0.3s 실시간).
+        private System.Collections.IEnumerator FlashLostSegment(int index)
+        {
+            var fill = _bars != null && index < _bars.Length ? _bars[index] : null;
+            if (fill == null) yield break;
+            _flashing.Add(index);
+            float t = 0f;
+            const float dur = 0.3f;
+            while (t < dur && fill != null)
+            {
+                t += Time.unscaledDeltaTime;
+                fill.color = Color.Lerp(PulseWarn, Color.white, Mathf.Clamp01(t / dur));
+                yield return null;
+            }
+            if (fill != null) fill.color = Color.white;
+            _flashing.Remove(index);
         }
 
         private void ResetPulseVisual()
@@ -177,15 +218,19 @@ namespace Wassup.UI
 
             var emptySprite = costBarEmpty != null ? costBarEmpty : _barEmptyFallback;
             var filledSprite = costBarFilled != null ? costBarFilled : _barFilledFallback;
+            bool railMode = trayConfig != null;
 
             _bars = new Image[max];
+            _barRoots = new RectTransform[max];
             for (int i = 0; i < max; i++)
             {
                 var bar = new GameObject($"Bar{i}", typeof(RectTransform), typeof(Image));
                 bar.transform.SetParent(_barRow, false);
                 var bg = bar.GetComponent<Image>();
                 bg.sprite = emptySprite;
-                bg.preserveAspect = true;
+                // rail(가로 fill)은 세그먼트가 칸을 꽉 채워야 진행이 읽힌다 —
+                // preserveAspect 를 끄고 슬롯 폭 전체 사용. legacy 는 기존 유지.
+                bg.preserveAspect = !railMode;
                 bg.raycastTarget = false;
 
                 var fillGO = new GameObject("Fill", typeof(RectTransform), typeof(Image));
@@ -195,16 +240,19 @@ namespace Wassup.UI
                 frt.offsetMin = Vector2.zero; frt.offsetMax = Vector2.zero;
                 var fill = fillGO.GetComponent<Image>();
                 fill.sprite = filledSprite;
-                fill.preserveAspect = true;
+                fill.preserveAspect = !railMode;
                 fill.type = Image.Type.Filled;
-                fill.fillMethod = Image.FillMethod.Vertical;
-                fill.fillOrigin = (int)Image.OriginVertical.Bottom;
+                // action-tray rail 연출 — 리젠 진행은 가로(좌→우) fill 이 직관적.
+                fill.fillMethod = railMode ? Image.FillMethod.Horizontal : Image.FillMethod.Vertical;
+                fill.fillOrigin = railMode ? (int)Image.OriginHorizontal.Left : (int)Image.OriginVertical.Bottom;
                 fill.fillAmount = 0f;
                 fill.raycastTarget = false;
 
                 _bars[i] = fill;
+                _barRoots[i] = (RectTransform)bar.transform;
             }
             _barCount = max;
+            _lastShownInt = -1; // 재구성 후 연출 기준점 리셋
 
             UiLayer.Apply(gameObject);
         }
@@ -220,6 +268,34 @@ namespace Wassup.UI
             if (_bars != null)
                 for (int i = 0; i < _bars.Length; i++)
                     _bars[i].fillAmount = Mathf.Clamp01(current - i);
+
+            // action-tray rail 연출 — 정수 경계 이벤트: 도달 칸 팝 / 소비 칸 warn 플래시.
+            // 풀 게이지(=max)는 은은한 글로우 펄스로 "쓸 준비 됨" 신호.
+            if (trayConfig != null && _bars != null)
+            {
+                int curInt = rt.CurrentInt;
+                if (_lastShownInt >= 0 && curInt != _lastShownInt)
+                {
+                    if (curInt > _lastShownInt)
+                        for (int i = _lastShownInt; i < curInt && i < _bars.Length; i++)
+                            StartCoroutine(PopSegment(i));
+                    else
+                        for (int i = curInt; i < _lastShownInt && i < _bars.Length; i++)
+                            StartCoroutine(FlashLostSegment(i));
+                }
+                _lastShownInt = curInt;
+
+                int maxInt = Mathf.RoundToInt(rt.Max);
+                bool full = curInt >= maxInt;
+                if (full != _fullGlow || full)
+                {
+                    _fullGlow = full;
+                    float glow = full ? 0.82f + 0.18f * Mathf.Sin(Time.unscaledTime * 4f) : 1f;
+                    var c = new Color(glow, glow, glow, 1f);
+                    for (int i = 0; i < _bars.Length; i++)
+                        if (!_flashing.Contains(i)) _bars[i].color = full ? c : Color.white;
+                }
+            }
 
             if (_valueText != null)
                 _valueText.text = $"{rt.CurrentInt}<size=52%>/{Mathf.RoundToInt(rt.Max)}</size>";
@@ -255,9 +331,9 @@ namespace Wassup.UI
             // Landscape badge with even inner padding (Pad). 9-sliced panel so the
             // rounded corners stay crisp when stretched wide. Top row = bolt + inline
             // "N/Max"; bottom row = bar gauge. Compact height, no floating whitespace.
-            float Pad = railMode ? 10f : 18f;
+            float Pad = railMode ? 12f : 18f;
             float TopRowH = railMode ? 26f : 46f;
-            float BarRowH = railMode ? 20f : 24f;
+            float BarRowH = railMode ? 26f : 24f;
             var plate = _panel.GetComponent<Image>();
             // 시안 정합 — 레일은 별도 캡슐이 아니라 트레이와 같은 fill/border 의
             // 탭(overlap 으로 실루엣 연결). 레거시는 기존 스프라이트/팔레트.
@@ -271,7 +347,7 @@ namespace Wassup.UI
             _plateImage = plate; // unit 4 — pulse 틴트 대상
 
             // Energy bolt — rail: 좌측 세로 중앙(한 줄 시안) / legacy: top-left.
-            float iconSize = railMode ? 24f : 44f;
+            float iconSize = railMode ? 26f : 44f;
             var iconGO = new GameObject("EnergyIcon", typeof(RectTransform), typeof(Image));
             iconGO.transform.SetParent(_panel.transform, false);
             var irt = (RectTransform)iconGO.transform;
@@ -298,8 +374,8 @@ namespace Wassup.UI
 
             // Big current value + inline "/max" — rail: 볼트 옆(한 줄) / legacy: top row.
             float valueX = Pad + iconSize + (railMode ? 8f : 14f);
-            float valueW = railMode ? 92f : (plateW - valueX - Pad);
-            _valueText = MakeText("Value", railMode ? 26f : 40f, ValueColor, TextAlignmentOptions.MidlineLeft);
+            float valueW = railMode ? 104f : (plateW - valueX - Pad);
+            _valueText = MakeText("Value", railMode ? 30f : 40f, ValueColor, TextAlignmentOptions.MidlineLeft);
             _valueText.richText = true;
             var vrt = _valueText.rectTransform;
             if (railMode)

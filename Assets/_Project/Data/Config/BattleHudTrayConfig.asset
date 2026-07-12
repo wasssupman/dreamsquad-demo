@@ -16,7 +16,8 @@ MonoBehaviour:
   fallbackFill: {r: 0.05, g: 0.11, b: 0.2, a: 0.96}
   fallbackBorder: {r: 0.94, g: 0.72, b: 0.24, a: 1}
   placementSize: {x: 980, y: 136}
-  battleSize: {x: 980, y: 104}
+  battleSize: {x: 980, y: 136}
+  handSize: {x: 980, y: 232}
   anchoredY: 32
   slotSpacing: 8
   horizontalPadding: 18
@@ -30,7 +31,7 @@ MonoBehaviour:
   nameFontMin: 16
   nameFontMax: 26
   nameBandColor: {r: 0.02, g: 0.04, b: 0.09, a: 0.72}
-  railSize: {x: 440, y: 54}
+  railSize: {x: 980, y: 44}
   railOverlap: 14
   unaffordableDim: {r: 0.42, g: 0.42, b: 0.45, a: 1}
   costWarnColor: {r: 1, g: 0.34, b: 0.28, a: 1}
