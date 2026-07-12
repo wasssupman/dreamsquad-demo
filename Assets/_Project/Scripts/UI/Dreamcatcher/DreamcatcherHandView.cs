@@ -32,6 +32,9 @@ namespace Wassup.UI
         [SerializeField] private Camera mainCamera;
         [SerializeField] private TMP_FontAsset labelFont;  // Jua — Korean battle UI
         [SerializeField] private TMP_FontAsset numberFont; // Anton — cost digits
+        // action-tray unit 3 — 트레이 공유 외곽 문법(폭/y/fill/border). 미할당 시
+        // 기존 단색 배킹 그대로(무회귀 폴백).
+        [SerializeField] private Wassup.Data.BattleHudTrayConfig trayConfig;
         [SerializeField] private float flipHalfDuration = 0.14f;
         [SerializeField] private float fanAngle = 4f; // slight StS-style fan per slot
         // rev 4 — 카드 드래그 중 호버된 수비수의 스파인 틴트(포커스 대상 시각화).
@@ -391,10 +394,21 @@ namespace Wassup.UI
             prt.anchorMin = new Vector2(0.5f, 0f);
             prt.anchorMax = new Vector2(0.5f, 0f);
             prt.pivot = new Vector2(0.5f, 0f);
-            prt.anchoredPosition = new Vector2(0f, 32f);
-            prt.sizeDelta = new Vector2(980f, 232f);
+            prt.anchoredPosition = new Vector2(0f, trayConfig != null ? trayConfig.anchoredY : 32f);
+            prt.sizeDelta = trayConfig != null ? trayConfig.handSize : new Vector2(980f, 232f);
             var backing = _panel.GetComponent<Image>();
-            backing.color = new Color(0.05f, 0.04f, 0.1f, 0.72f);
+            // action-tray unit 3 — 트레이와 같은 외곽 문법(라운드+골드 엣지+네이비 fill)
+            // 으로 "같은 프레임의 앞뒷면" 시각 통일. config 미할당 시 기존 단색 유지.
+            if (trayConfig != null)
+            {
+                backing.sprite = UiRoundedSprite.Make(22f, 2f, trayConfig.fallbackFill, trayConfig.fallbackBorder);
+                backing.type = Image.Type.Sliced;
+                backing.color = Color.white;
+            }
+            else
+            {
+                backing.color = new Color(0.05f, 0.04f, 0.1f, 0.72f);
+            }
             // The backing IS the cancel region (unit 7): keep it a raycast target.
             backing.raycastTarget = true;
 

@@ -18,6 +18,8 @@ namespace Wassup.Data
         [Header("Layout")]
         public Vector2 placementSize = new Vector2(980f, 136f);
         public Vector2 battleSize = new Vector2(980f, 104f);
+        // action-tray unit 3 — 드림캐쳐 핸드 외곽(트레이와 같은 폭/문법, 높이는 카드 fan).
+        public Vector2 handSize = new Vector2(980f, 232f);
         public float anchoredY = 32f;
         public float slotSpacing = 8f;
         public int horizontalPadding = 18;
