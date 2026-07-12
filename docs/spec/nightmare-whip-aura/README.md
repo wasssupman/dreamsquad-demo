@@ -1,6 +1,6 @@
 # Nightmare Whip Aura — 보스 "채찍질" 아군 이속 오라
 
-> 상태: **설계 2026-07-11** (사용자 접근 승인, 구현 대기)
+> 상태: **완료 2026-07-12** (units 0~3 구현·커밋·검증. 인계: `4_handoff_summary.md`)
 > 설계 배경: `docs/plans/2026-07-11-nightmare-whip-aura-design.md`
 > 선행: `docs/spec/nightmare-catcher/`(트리거 프레임워크·보스 콘텐츠), `docs/spec/modifier-framework-and-healer/`(modifier 채널), `docs/spec/dreamcatcher-placement-aura/`(오라 선례)
 
@@ -23,6 +23,7 @@ nightmare-catcher 첫 지시 4종 스킬 중 마지막 미구현 항목 — **"�
 | 0 | `0_payload_contract.md` | 계약 | `DcPayloadKind.AllyMoveSpeedAura` append + 펄스 타겟 순수함수(EditMode). 동작 무변경 |
 | 1 | `1_aura_pulse_arm.md` | 로직/배선 | `BossPeriodicTriggerSystem` 페이로드 분기 + `BakeNightmareMechanics` 베이크(같은 커밋) |
 | 2 | `2_boss_authoring_play.md` | 검증 | `Enemy_Boss_Nightmare` mechanics 추가 + 테스트 웨이브 미니언 동행 + Play e2e |
+| 3 | `3_whip_pulse_visual.md` | 연출 (rev 1 스코프 추가) | 펄스 hit-VFX — `Projectile_WhipPulse`(Cylinder04) + arm enqueue, blink 퍼프 선례 |
 
 ## Feature-wide 계약 (load-bearing)
 
@@ -42,7 +43,7 @@ nightmare-catcher 첫 지시 4종 스킬 중 마지막 미구현 항목 — **"�
 
 ## 후속 후보 (스코프 밖)
 
-- **채찍질 VFX/연출** — 펄스 시각화(채찍 스윙·버프 링). 첫 지시에 없음, 보스 전용 연출 백로그(nightmare-catcher 후속)와 합류.
+- ~~채찍질 VFX/연출~~ → **unit 3 로 편입 구현** (rev 1, 사용자 요청 2026-07-12). 잔여: 전용 채찍 스윙 저작·버프 링 등 고도화는 보스 전용 연출 백로그(nightmare-catcher 후속)와 합류.
 - **defender-side 오라 카드** — 계약 2 로 이미 중립이라 카드 데이터만으로 성립. 카드 taxonomy/밸런스는 별도 product 결정.
 - **버프 아이콘/상태 표시** — 미니언 머리 위 버프 표시. `unit-status-fx` 계열 후속.
 - **기본공격 100 원거리화** — nightmare-catcher 후속 후보 잔여분(이 spec 범위 아님).
