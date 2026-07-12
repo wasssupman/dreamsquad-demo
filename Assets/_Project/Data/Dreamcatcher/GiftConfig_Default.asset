@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aa26a308f36bc4e7dbd21f9643dc325e, type: 3}
+  m_Name: GiftConfig_Default
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.GiftConfig
+  lucidWeight: 1
+  rimWeight: 1
+  rimGiftCount: 2
+  introTextSec: 1
+  baseCardsInSec: 0.5
+  giftAppendDelaySec: 1
+  giftAppendSec: 0.5
+  shuffleSec: 2
+  holdSec: 2
+  flyOutSec: 0.6
+  fastForwardInTestMode: 1

@@ -7,7 +7,9 @@ using Wassup.Logging;
 
 namespace Wassup.Core
 {
-    public enum GamePhase { None, Draft, Placement, Battle, Result }
+    // gift-phase unit 0 — Gift 를 Placement 앞에 삽입(선물 페이즈=배치 직전).
+    // 직렬화 필드/순서비교 없음(전부 == 비교)이라 정수 시프트 무해.
+    public enum GamePhase { None, Draft, Gift, Placement, Battle, Result }
 
     [DefaultExecutionOrder(-100)]
     public class GameManager : MonoBehaviour
