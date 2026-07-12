@@ -19,13 +19,13 @@ unit 3 의 정적 배열을 **correctness-critical 연출**로 바꾼다. 이 �
 | 4-1 | "X의 선물" 텍스트 등장→소멸 | scale/fade in→out, `introTextSec` |
 | 4-2a | 보유 10장 등장 | 순차 스폰 + scale/pos, `baseCardsInSec` |
 | 4-2b | `giftAppendDelaySec` 대기 후 선물 2장 덱 뒤 배열 | arc in, `giftAppendSec` (임팩트 플래시는 unit 5) |
-| (착지) | 확정 12장 최종 배열 = **캐시 순서 그대로** | 위치 = ordered12 인덱스 매핑 |
+| (착지) | 확정 12장 최종 배열 = **캐시 순서 그대로** | 위치 = Hand(12) 인덱스 매핑 |
 | 4-4 | 확인 홀드 | `holdSec` |
 | 4-5 | 12장이 각성 버튼으로 fly + scale→0 | `Tween.UIAnchoredPosition`(고정 좌표) + `Tween.Scale(0)`, `flyOutSec` |
 | 4-6 | `OnComplete` → `PlacementPhaseView.BeginPlacementPhase()` | — |
 
 세부:
-- **정착 순서는 unit 1 캐시(ordered12) 그대로** — 연출은 표현만, 순서를 재생성하지 않는다.
+- **정착 순서는 unit 1 캐시(Hand(12)) 그대로** — 연출은 표현만, 순서를 재생성하지 않는다.
 - **fly 타깃 = 고정 스크린 좌표**(critic m4): `AwakeningPanel` 은 배치 전까지 `SetActive(false)` 라 rect 해석 취약. 각성 버튼 앵커(우하단 `-40,220`, `sizeDelta 250×96`)에 대응하는 좌표를 `GiftPhaseView` 캔버스 로컬로 직접 계산(`RectTransformUtility`/앵커 산식). active 상태 무관.
 - 모든 트윈 `useUnscaledTime: true`.
 - 이 단계 셔플 구간(4-3)은 **단순 재배열**(즉시 또는 짧은 이동)로 대체 — 촤라락 비주얼은 unit 5.

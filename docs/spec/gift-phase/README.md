@@ -28,7 +28,7 @@
 | # | 문서 | 작업 | 목적 |
 |---|---|---|---|
 | 0 | `0_phase-model.md` | 토대(additive) | `GamePhase.Gift`·`GiftKind`·`GiftConfig` SO 추가. 동작 변경 0 |
-| 1 | `1_gift-deck-composition.md` | 로직 | `GiftDeckComposer` 시드 결정론 + Lucid/Rim + 폴백, `DreamcatcherCycleDeck` **no-shuffle 경로**, HandController 캐시(폴백 포함), EditMode |
+| 1 | `1_gift-deck-composition.md` | 로직 | `GiftDeckComposer` 시드 결정론 + Lucid/Rim + 폴백, HandController 가 Gift 에서 CycleDeck 생성·캐시(`Hand(12)` 연출·배치 재사용), EditMode |
 | 2 | `2_subconscious-cards-authoring.md` | 콘텐츠 | 무의식 카드 2~3장 .asset + 카탈로그 배열 등록 + 덱빌더 풀 제외 |
 | 3 | `3_gift-view-routing-wiring.md` | 통합 | GiftPhaseView(정적) + 진입/재시작 라우팅 hand-off + **배치 HUD 노출 트리거 재게이팅** + 씬 배선. flow 항상 성립 |
 | 4 | `4_gift-sequence-core.md` | 연출 코어 | intro 텍스트·10+2 등장·**정착 12장 == 캐시**·각성버튼 fly-out→BeginPlacement |
@@ -38,7 +38,7 @@
 
 1. **삽입 방식**: `GamePhase.Gift` enum 값을 `Placement` **앞**에 추가. 진입 신호(`DraftConfirmed`/`PlacementRequested`)와 재시작(`BattleBridge.OnRestartRequested`)을 GiftPhaseView 가 받아 `SetPhase(Gift)` 후 연출, 완료 시 `PlacementPhaseView.BeginPlacementPhase()` 를 **명시 호출**.
 2. **덱 authority 는 `DreamcatcherHandController`**. Gift 진입 시 확정 12장(순서 포함)을 계산·캐시하고, Placement 진입 시 기존 `AppendActiveCards` 대신 **캐시된 덱**을 소비. 캐시 없으면(Gift 우회) 기존 경로 폴백.
-3. **연출 순서 = 실제 사이클 큐 순서 (이중 셔플 금지)**. `DreamcatcherCycleDeck` 생성자는 **항상** Fisher-Yates 를 돌린다 → 캐시한 순서를 재셔플 없이 소비하는 **no-shuffle 수용 경로**를 CycleDeck 에 추가한다. Composer 가 공유 셔플 헬퍼로 확정 순서를 1회 만들고 CycleDeck 은 그대로 소비. EditMode 로 `Hand`/큐 순서 == 캐시 순서를 assert.
+3. **연출 순서 = 실제 사이클 큐 순서 (이중 셔플 금지)**. `DreamcatcherCycleDeck` 생성자는 **항상** Fisher-Yates 를 돌린다(변경하지 않음). Gift 진입 시 **실제 CycleDeck 인스턴스를 1회 생성**하고 `deck.Hand(12)`(handSize=12=전체 큐 순서, `DreamcatcherCycleDeck.cs:51`)로 확정 순서를 읽어 연출한다. **동일 인스턴스를 배치에서 재사용** → 재셔플/재구성 없음, 순서 100% 일치. **CycleDeck 코드 무변경**.
 4. **결정론**: 이벤트 선택·카드 추출·셔플 전부 **매치 시드**(`EnsureMatchSeed`, `GameManager.Start`) 기반. `MatchSeed` 는 재시작 간 고정이므로 **재시작은 동일 결과를 재생**한다(연출은 매번 재생, 결과는 결정론적으로 동일 — restartIndex 서브시드 미사용). 구조적 결정론 원칙 준수.
 5. **Lucid 선물** = 기존 `SkillLoadoutController.Picked`(2 Active) 재사용. **Rim 선물** = 카탈로그 `CardCategory.Subconscious` 카드에서 시드 2장 추출, 풀<2 면 임의 폴백. **Rim 이면 롤된 Active 스킬 2장은 인핸드에 붙지 않는다** — 스킬↔무의식 교환이 의도이며 "Lucid 무회귀"는 Lucid 경로에만 적용(m3).
 6. **무의식 카드는 덱빌더 10장 선택 풀에서 제외**(선물 전용). 기존 효과 채널만 사용, 신규 메커닉/채널 없음. 기존 `slow_awakening` 이 이미 저장 덱에 있으면 그대로 유지(제거만 가능, 재추가 불가·`DeckRules.Validate` 는 통과) — 마이그레이션 무해.
@@ -48,12 +48,15 @@
 
 ## 구조 변경 범위 (정직한 명시)
 
-**신규 SO 직렬화 필드 0**이지만, 다음 실제 코드 변경은 있다(critic M3):
-- `DreamcatcherCycleDeck` — pre-ordered no-shuffle 수용 경로 추가(계약 3).
-- `DreamcatcherHandController` — 선물 확정 덱 캐시 + 조회용 public API 추가.
-- `DreamcatcherCard.category` — 현재 "RETIRED/dormant" 주석이나, Rim 풀 필터 + 덱빌더 제외로 **다시 load-bearing** 이 된다. 주석 갱신.
-- `DefenderSelector`·`AwakeningGaugeView` — 노출 트리거 변경(계약 9).
-- ECS/시뮬 변경은 **0**(BattleBridge read 경계 불변, 새 맥락/큐 0).
+**드림캐쳐 설계(SO 스키마·카드 택소노미·덱 규칙·각성 파이프라인) 변경 0.** `DreamcatcherCard` 필드/enum, `DeckSave`/`DreamcatcherDeck`/`DeckRules`/`AwakeningConfig`, ECS 전투/모디파이어 채널, **`DreamcatcherCycleDeck`(계약 3, Hand(12) 재사용)** 모두 **불변**.
+
+다음은 스키마가 아닌 **런타임/콘텐츠** 변경이다:
+- `DreamcatcherHandController` — 덱 조합 **시점**을 Placement→Gift 로 이동 + Lucid/Rim 분기 + 확정 덱 인스턴스 캐시(원래 이 클래스가 덱 authority — 책임 범위 내).
+- `DreamcatcherCard.category` — 기존 dormant 필드를 **읽기만** 시작(Rim 풀 필터·덱빌더 제외). 스키마 변경 아님, 주석만 갱신.
+- `DreamcatcherDeckBuilderView` — 무의식 카드를 소유 그리드에서 제외(UI 동작).
+- 신규 무의식 `.asset` 2~3장 — 기존 스키마로 콘텐츠 추가.
+- `DefenderSelector`·`AwakeningGaugeView` — 노출 트리거 변경(계약 9, 드림캐쳐 설계와 무관한 UI 배관).
+- ECS/시뮬 변경 **0**(BattleBridge read 경계 불변, 새 맥락/큐 0).
 
 ## 파이프라인 커버리지
 
