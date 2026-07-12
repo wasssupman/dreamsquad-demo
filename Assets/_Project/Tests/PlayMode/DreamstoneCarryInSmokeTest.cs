@@ -18,8 +18,7 @@ namespace Wassup.Tests.PlayMode
     // dreamstone-loadout Unit 3 — equipped stones become a match-long, axis=All
     // buff on current + future defenders via BattleBridge.SetDreamstones (pending)
     // + BeginPlacement (apply, set-then-apply). Drives BattleBridge directly,
-    // mirroring DreamcatcherEffectTest's infra (SetDefenderPool + BeginPlacement,
-    // no scene DreamcatcherController interference).
+    // mirroring DreamcatcherEffectTest's infra (SetDefenderPool + BeginPlacement).
     public class DreamstoneCarryInSmokeTest
     {
         private PlayerProfileSO _profSO;
@@ -50,14 +49,6 @@ namespace Wassup.Tests.PlayMode
             yield return null;
         }
 
-        // The scene's DreamcatcherController would otherwise auto-pick on entering
-        // Placement and pollute the DamageMul channel this test measures.
-        private static void NeutralizeSceneController()
-        {
-            var dc = Object.FindObjectOfType<DreamcatcherController>();
-            if (dc != null) Object.Destroy(dc.gameObject);
-        }
-
         [UnityTest]
         public IEnumerator EquippedStones_ApplyStackAndSurviveRestart()
         {
@@ -67,9 +58,7 @@ namespace Wassup.Tests.PlayMode
             for (int i = 0; i < 6; i++) yield return null;
 
             var bridge = Object.FindObjectOfType<BattleBridge>();
-            Assert.IsNotNull(bridge, "BattleBridge present");
-            NeutralizeSceneController();
-            var cat = FindCatalog();
+            Assert.IsNotNull(bridge, "BattleBridge present");            var cat = FindCatalog();
             Assert.IsNotNull(cat, "DefenderCatalog loaded");
             var ranger = cat.ById("ranger");
             Assert.IsNotNull(ranger, "ranger unit exists");
@@ -187,8 +176,6 @@ namespace Wassup.Tests.PlayMode
             Assert.IsNotNull(gm, "battle GameManager present");
             var bridge = Object.FindObjectOfType<BattleBridge>();
             Assert.IsNotNull(bridge, "BattleBridge present");
-            NeutralizeSceneController();
-
             // squad map-setup — squad mode opens a map-setup step first; the player
             // presses START to advance. Simulate that here (SquadCarryInSmokeTest).
             Assert.AreNotEqual(GamePhase.Draft, gm.CurrentPhase, "squad mode skips draft");
@@ -283,9 +270,7 @@ namespace Wassup.Tests.PlayMode
             for (int i = 0; i < 6; i++) yield return null;
 
             var bridge = Object.FindObjectOfType<BattleBridge>();
-            Assert.IsNotNull(bridge, "BattleBridge present");
-            NeutralizeSceneController();
-            var cat = FindCatalog();
+            Assert.IsNotNull(bridge, "BattleBridge present");            var cat = FindCatalog();
             Assert.IsNotNull(cat, "DefenderCatalog loaded");
             var ranger = cat.ById("ranger");
             Assert.IsNotNull(ranger, "ranger unit exists");

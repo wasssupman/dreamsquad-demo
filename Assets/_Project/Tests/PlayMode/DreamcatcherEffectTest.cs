@@ -26,17 +26,9 @@ namespace Wassup.Tests.PlayMode
         [UnityTearDown]
         public IEnumerator UnityTearDown()
         {
-            TimeManager.Instance.ResetAll(); // 씬 DreamcatcherController 가 TimeManager lease 로 정지했을 수 있음.
+            TimeManager.Instance.ResetAll();
             PrimeTween.Tween.StopAll();
             yield return null;
-        }
-
-        // The scene's DreamcatcherController would otherwise fire on our placements
-        // (pausing via timeScale / drawing cards) and pollute these focused tests.
-        private static void NeutralizeSceneController()
-        {
-            var dc = Object.FindObjectOfType<DreamcatcherController>();
-            if (dc != null) Object.Destroy(dc.gameObject);
         }
 
         [UnityTest]
@@ -50,7 +42,6 @@ namespace Wassup.Tests.PlayMode
 
             var bridge = Object.FindObjectOfType<BattleBridge>();
             Assert.IsNotNull(bridge, "BattleBridge present");
-            NeutralizeSceneController();
             var cat = FindCatalog();
             Assert.IsNotNull(cat, "DefenderCatalog loaded");
 
@@ -108,64 +99,6 @@ namespace Wassup.Tests.PlayMode
             yield return null;
             yield return null;
             Assert.AreEqual(1.21f, GetStat(bridge, em, "scout").attackSpeedMul, 0.01f, "future ranger inherits stacked AS");
-        }
-
-        [UnityTest]
-        public IEnumerator EnteringPlacement_TriggersController_AutoPicksAndApplies()
-        {
-            LogAssert.ignoreFailingMessages = true;
-            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
-            for (int i = 0; i < 6; i++) yield return null;
-
-            var bridge = Object.FindObjectOfType<BattleBridge>();
-            NeutralizeSceneController();
-            var cat = FindCatalog();
-            var ranger = cat.ById("ranger");
-            var gm = Object.FindObjectOfType<GameManager>();
-
-            bridge.SetDefenderPool(new[] { ranger });
-            bridge.BeginPlacement();
-            gm.CostRuntime.ResetToStart();
-            gm.CostRuntime.AddCost(1000);
-            yield return null;
-
-            // deck of 3 ranger-AS cards so any auto-pick buffs the ranger's attack speed.
-            var deck = ScriptableObject.CreateInstance<DreamcatcherDeck>();
-            deck.cards = new[]
-            {
-                MakeCard(CardTargetAxis.ClassRanger, CardBuffKind.AttackSpeed, 10f),
-                MakeCard(CardTargetAxis.ClassRanger, CardBuffKind.AttackSpeed, 10f),
-                MakeCard(CardTargetAxis.ClassRanger, CardBuffKind.AttackSpeed, 10f),
-            };
-
-            // build controller inactive so fields are set before OnEnable subscribes.
-            var go = new GameObject("DreamcatcherController_Test");
-            go.SetActive(false);
-            var ctrl = go.AddComponent<DreamcatcherController>();
-            SetField(ctrl, "bridge", bridge);
-            SetField(ctrl, "deck", deck);
-            go.SetActive(true);
-
-            // Place a ranger BEFORE the pick (pick now happens on entering Placement).
-            Assert.IsTrue(PlaceFirstValid(bridge, ranger), "place ranger");
-            yield return null;
-
-            // Entering the Placement phase is the first-pick trigger.
-            gm.SetPhase(GamePhase.Placement);
-            yield return null;
-            yield return null;
-            yield return null;
-
-            var em = Unity.Entities.World.DefaultGameObjectInjectionWorld.EntityManager;
-            Assert.AreEqual(1.1f, GetStat(bridge, em, "ranger").attackSpeedMul, 0.01f,
-                "entering placement auto-picked a ranger card and applied it");
-
-            Object.Destroy(go);
-        }
-
-        private static void SetField(object obj, string name, object value)
-        {
-            obj.GetType().GetField(name, BindingFlags.NonPublic | BindingFlags.Instance).SetValue(obj, value);
         }
 
         private static DreamcatcherCard MakeCard(CardTargetAxis axis, CardBuffKind kind, float pct)

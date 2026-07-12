@@ -30,12 +30,6 @@ namespace Wassup.Tests.PlayMode
             yield return null;
         }
 
-        private static void NeutralizeSceneController()
-        {
-            var dc = Object.FindObjectOfType<DreamcatcherController>();
-            if (dc != null) Object.Destroy(dc.gameObject);
-        }
-
         [UnityTest]
         public IEnumerator Sleep_WakesOnHit_Stun_Persists_AndCoexist()
         {
@@ -43,9 +37,7 @@ namespace Wassup.Tests.PlayMode
             yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
             for (int i = 0; i < 6; i++) yield return null;
 
-            var bridge = Object.FindObjectOfType<BattleBridge>();
-            NeutralizeSceneController();
-            var cat = FindCatalog();
+            var bridge = Object.FindObjectOfType<BattleBridge>();            var cat = FindCatalog();
             var a = cat.ById("guardian"); // Sleep → 피격 시 해제
             var b = cat.ById("ranger");   // Sleep+Stun → 피격 시 Sleep 만 해제
 
@@ -85,9 +77,7 @@ namespace Wassup.Tests.PlayMode
             yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
             for (int i = 0; i < 6; i++) yield return null;
 
-            var bridge = Object.FindObjectOfType<BattleBridge>();
-            NeutralizeSceneController();
-            var cat = FindCatalog();
+            var bridge = Object.FindObjectOfType<BattleBridge>();            var cat = FindCatalog();
             var g = cat.ById("guardian");
             bridge.SetDefenderPool(new[] { g });
             bridge.BeginPlacement();

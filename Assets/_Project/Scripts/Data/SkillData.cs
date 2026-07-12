@@ -53,8 +53,8 @@ namespace Wassup.Data
         // skill with this unassigned drops the cast with a warning (config error).
         public ProjectileData projectile;
 
-        // Slot background tint — identifies the skill in the SkillBar without an
-        // icon texture.
+        // Slot background tint — identifies the skill in skill UI (오늘은 Active
+        // 드림캐쳐 손패 카드의 아트 폴백) without an icon texture.
         public Color uiTint = Color.white;
     }
 }

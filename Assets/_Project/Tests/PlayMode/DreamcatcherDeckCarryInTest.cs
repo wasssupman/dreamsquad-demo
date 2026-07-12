@@ -12,9 +12,12 @@ using Wassup.Data;
 
 namespace Wassup.Tests.PlayMode
 {
-    // dreamcatcher-deck-builder Unit 3 — the in-game controller draws from the
+    // dreamcatcher-deck-builder Unit 3 — the in-game deck resolves from the
     // profile's selected saved deck (via catalog), and falls back to the
     // serialized deck when none is selected.
+    // dreamcatcher-bridge-partial-cleanup unit 1 — 원 대상이던 구 3중1
+    // DreamcatcherController 삭제로, 동일 검증을 살아있는 각성 손패 경로
+    // (DreamcatcherHandController.ResolveAttachDeck)로 이관.
     public class DreamcatcherDeckCarryInTest
     {
         private PlayerProfileSO _profSO;
@@ -38,8 +41,8 @@ namespace Wassup.Tests.PlayMode
             yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
             for (int i = 0; i < 6; i++) yield return null;
 
-            var ctrl = Object.FindObjectOfType<DreamcatcherController>();
-            Assert.IsNotNull(ctrl, "scene DreamcatcherController present");
+            var ctrl = Object.FindObjectOfType<DreamcatcherHandController>();
+            Assert.IsNotNull(ctrl, "scene DreamcatcherHandController present");
             _profSO = (PlayerProfileSO)GetField(ctrl, "profileSO");
             var cardCatalog = (DreamcatcherCardCatalog)GetField(ctrl, "cardCatalog");
             Assert.IsNotNull(_profSO, "profileSO wired");
@@ -53,13 +56,13 @@ namespace Wassup.Tests.PlayMode
             profile.selectedDeckId = "deck_test";
 
             // resolve via the controller's private method
-            var resolved = (List<DreamcatcherCard>)Invoke(ctrl, "ResolveDeck");
+            var resolved = (List<DreamcatcherCard>)Invoke(ctrl, "ResolveAttachDeck");
             Assert.AreEqual(10, resolved.Count, "resolved 10 from saved deck");
             Assert.IsTrue(resolved.All(c => c.id == "ranger_atk_10"), "all from saved deck");
 
             // no selection → fallback to serialized deck (the default 10)
             profile.selectedDeckId = null;
-            var fallback = (List<DreamcatcherCard>)Invoke(ctrl, "ResolveDeck");
+            var fallback = (List<DreamcatcherCard>)Invoke(ctrl, "ResolveAttachDeck");
             Assert.AreEqual(10, fallback.Count, "fallback default deck has 10");
             Assert.IsTrue(fallback.Any(c => c.id != "ranger_atk_10"), "fallback is the default mix, not the saved deck");
         }

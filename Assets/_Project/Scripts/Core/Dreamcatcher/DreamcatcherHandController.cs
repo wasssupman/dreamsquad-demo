@@ -8,7 +8,7 @@ namespace Wassup.Core
 {
     // dreamcatcher-awakening-hand unit 4 — match controller for the awakening
     // currency + CR-style cycling hand. Replaces the retired 3-choose-1 flow
-    // (DreamcatcherController is scene-dormant, its code untouched).
+    // (구 DreamcatcherController 는 dreamcatcher-bridge-partial-cleanup unit 1 에서 삭제).
     //
     // Owns: awakening gauge (Mono state), the 12-entry cycle deck (attach deck 10
     // + common Active cards from the per-match SkillLoadoutController roll), and
@@ -98,8 +98,7 @@ namespace Wassup.Core
             LogDeck(cards);
         }
 
-        // Saved deck (validated, catalog-resolved) → serialized fallback. Mirrors
-        // the dormant DreamcatcherController.ResolveDeck (that code stays as-is).
+        // Saved deck (validated, catalog-resolved) → serialized fallback.
         private List<DreamcatcherCard> ResolveAttachDeck()
         {
             var result = new List<DreamcatcherCard>();
