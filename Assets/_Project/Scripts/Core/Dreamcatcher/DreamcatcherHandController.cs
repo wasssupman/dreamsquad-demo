@@ -67,6 +67,10 @@ namespace Wassup.Core
         private List<DreamcatcherCard> _giftBaseCards = new List<DreamcatcherCard>();
         private List<DreamcatcherCard> _giftAddedCards = new List<DreamcatcherCard>();
         private List<DreamcatcherCard> _lastComposedCards = new List<DreamcatcherCard>();
+        // gift-phase (review M1) — 이번 배치 진입에서 Gift 가 덱을 구성했는지. 배치 진입 시
+        // 소비한다. false 면 매 진입마다 새로 구성(원래 "배치 진입마다 재구성" 불변식) →
+        // gift 우회 폴백 경로에서 재시작 시 stale/소비된 _deck 재사용을 막는다.
+        private bool _giftDeckComposed;
         // entryId → (host defender, revocation handle). handle 0 = 무회수(엔티티 부착
         // Unit 카드: 슬롯이 엔티티와 함께 소멸, revoke 대상 없음). handle>0 = host 사망 시
         // revoke(Squad hosted 버프 unit 9 · placement-aura 오라). placement-aura unit 2 —
@@ -107,9 +111,11 @@ namespace Wassup.Core
             if (phase == GamePhase.Gift) { BuildGiftDeck(); return; }
             if (phase != GamePhase.Placement) return;
 
-            // Gift 페이즈가 이미 _deck 을 만들었으면 그대로 재사용(이중 셔플 방지,
-            // 연출이 보여준 순서 == 인게임 순서). Gift 우회면 기존 방식 폴백.
-            if (_deck == null) BuildFallbackDeck();
+            // Gift 페이즈가 이번 진입에서 _deck 을 구성했으면 그대로 재사용(이중 셔플 방지,
+            // 연출 순서 == 인게임 순서). 아니면(Gift 우회) 매 진입마다 새로 구성한다.
+            // 플래그는 진입마다 소비 — 다음 진입은 다시 Gift 구성 or 폴백을 강제한다.
+            if (!_giftDeckComposed) BuildFallbackDeck();
+            _giftDeckComposed = false;
             _attachedTo.Clear();
             AttachmentsChanged?.Invoke();
             Gauge = config != null ? Mathf.Clamp(config.gaugeStart, 0, config.gaugeMax) : 0;
@@ -136,6 +142,7 @@ namespace Wassup.Core
             _lastComposedCards = new List<DreamcatcherCard>(_giftBaseCards);
             _lastComposedCards.AddRange(_giftAddedCards);
             _deck = new DreamcatcherCycleDeck(_lastComposedCards, seed);
+            _giftDeckComposed = true; // 배치 진입이 이 _deck 을 재사용하도록(review M1)
             GiftDeckReady?.Invoke();
         }
 

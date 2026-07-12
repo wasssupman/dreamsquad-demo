@@ -14,7 +14,8 @@ namespace Wassup.UI
     public class PlacementPhaseView : MonoBehaviour
     {
         [SerializeField] private BattleBridge bridge;
-        [SerializeField] private DraftController draftController;
+        // gift-phase (review m2) — draftController 구독은 GiftPhaseView 로 이관되어 미사용,
+        // 필드 제거.
         [SerializeField] private GameManager gameManager;
 
         // ingame-ui-upgrade unit 0 — START 버튼을 우하단(dock 코너)으로 이동 + 캐주얼

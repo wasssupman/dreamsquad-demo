@@ -105,9 +105,10 @@ namespace Wassup.UI
 
         private void ProceedToPlacement()
         {
-            StopSequence();
-            if (_panel != null) _panel.SetActive(false);
+            // BeginPlacementPhase 를 먼저(도달 보장, review m4). 그 SetPhase(Placement) 가
+            // OnPhaseChanged 를 통해 패널 숨김 + 시퀀스 정리를 수행한다.
             if (placementPhaseView != null) placementPhaseView.BeginPlacementPhase();
+            else if (_panel != null) _panel.SetActive(false);
         }
 
         private void OnPhaseChanged(GamePhase phase)
@@ -121,8 +122,8 @@ namespace Wassup.UI
 
         private void StopSequence()
         {
+            // 모든 트윈은 _seq 의 멤버라 Sequence.Stop() 이 함께 정리한다.
             if (_seq.isAlive) _seq.Stop();
-            Tween.StopAll(this);
         }
 
         // ── sequence (unit 4 core + unit 5 juice) ─────────────────────────────
@@ -180,15 +181,17 @@ namespace Wassup.UI
             _seq.Chain(Tween.Alpha(_titleGroup, 0f, introOut, Ease.InQuad))
                 .Group(Tween.Scale(_title.rectTransform, Vector3.one * 1.35f, introOut, Ease.InQuad));
 
-            // 4-2a 보유 10장 등장(스태거 드롭인)
+            // 4-2a 보유 10장 등장(스태거 드롭인). baseCardsInSec 이 스태거 창과 카드
+            // 드롭인 길이를 함께 스케일하도록 duration 도 config 파생(review m5).
             float baseStagger = baseN > 1 ? baseIn / baseN : 0f;
+            float cardInDur = Mathf.Clamp(baseIn * 0.5f, 0.2f, 0.5f);
             for (int k = 0; k < baseN; k++)
             {
                 var rt = _cardWidgets[k].rt;
                 float d = k * baseStagger;
                 ChainOrGroup(k == 0,
-                    Tween.UIAnchoredPosition(rt, new Vector2(PreX(k, n), 0f), 0.30f, Ease.OutQuad, startDelay: d));
-                _seq.Group(Tween.Scale(rt, Vector3.one, 0.30f, Ease.OutBack, startDelay: d));
+                    Tween.UIAnchoredPosition(rt, new Vector2(PreX(k, n), 0f), cardInDur, Ease.OutQuad, startDelay: d));
+                _seq.Group(Tween.Scale(rt, Vector3.one, cardInDur, Ease.OutBack, startDelay: d));
             }
 
             // 4-2b 1초 뒤 선물 2장이 임팩트 있게 덱 뒤에 배열
