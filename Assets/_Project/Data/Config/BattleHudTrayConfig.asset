@@ -21,15 +21,18 @@ MonoBehaviour:
   slotSpacing: 8
   horizontalPadding: 18
   verticalPadding: 12
-  costChipSprite: {fileID: 21300000, guid: ab817f48d75e14bc78a08eb446bd4245, type: 3}
-  costChipSize: {x: 34, y: 34}
+  slotCostBolt: {fileID: 21300000, guid: df956c11e21074948acef866ba4a34a0, type: 3}
+  costPlateSize: {x: 56, y: 26}
   costFontSize: 18
+  costPlateColor: {r: 0.03, g: 0.06, b: 0.12, a: 0.88}
   roleBadgeSize: {x: 26, y: 26}
   roleFontSize: 14
   nameFontMin: 16
   nameFontMax: 26
-  nameBandColor: {r: 0, g: 0, b: 0, a: 0.35}
-  unaffordableDim: {r: 0.45, g: 0.45, b: 0.52, a: 1}
+  nameBandColor: {r: 0.02, g: 0.04, b: 0.09, a: 0.72}
+  railSize: {x: 440, y: 54}
+  railOverlap: 14
+  unaffordableDim: {r: 0.42, g: 0.42, b: 0.45, a: 1}
   costWarnColor: {r: 1, g: 0.34, b: 0.28, a: 1}
   roles:
   - role: 1

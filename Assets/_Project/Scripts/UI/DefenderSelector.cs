@@ -290,47 +290,60 @@ namespace Wassup.UI
             UiLayer.Apply(gameObject);
         }
 
-        // action-tray unit 1 — 좌상단 비용 chip. 스프라이트는 config(육각 배지),
-        // 누락 시 procedural 원형 폴백. 부족 glyph 는 기본 비활성.
+        // action-tray unit 1 — 좌상단 비용 플레이트 (시안: 다크 코너 플레이트에
+        // ⚡볼트 + 숫자). 볼트 스프라이트 누락 시 숫자만. 부족 glyph 는 기본 비활성.
         private TextMeshProUGUI BuildCostChip(Transform slot, int cost, out GameObject warnGlyph)
         {
-            var chipSize = trayConfig != null ? trayConfig.costChipSize : new Vector2(34f, 34f);
+            var plateSize = trayConfig != null ? trayConfig.costPlateSize : new Vector2(56f, 26f);
+            var plateColor = trayConfig != null ? trayConfig.costPlateColor : new Color(0.03f, 0.06f, 0.12f, 0.88f);
             var chipGO = new GameObject("CostChip", typeof(RectTransform), typeof(Image));
             chipGO.transform.SetParent(slot, false);
             var crt = (RectTransform)chipGO.transform;
             crt.anchorMin = new Vector2(0f, 1f);
             crt.anchorMax = new Vector2(0f, 1f);
             crt.pivot = new Vector2(0f, 1f);
-            crt.anchoredPosition = new Vector2(2f, -2f);
-            crt.sizeDelta = chipSize;
+            crt.anchoredPosition = new Vector2(3f, -3f);
+            crt.sizeDelta = plateSize;
             var chipImg = chipGO.GetComponent<Image>();
-            var chipSprite = trayConfig != null ? trayConfig.costChipSprite : null;
-            if (chipSprite != null)
-            {
-                chipImg.sprite = chipSprite;
-                chipImg.preserveAspect = true;
-            }
-            else
-            {
-                chipImg.sprite = UiRoundedSprite.MakeCircle(32,
-                    new Color(0.07f, 0.13f, 0.25f, 0.95f), 2f, new Color(0.94f, 0.72f, 0.24f, 1f));
-            }
+            chipImg.sprite = UiRoundedSprite.Make(8f, 0f, Color.white, Color.clear);
+            chipImg.type = Image.Type.Sliced;
+            chipImg.color = plateColor;
             chipImg.raycastTarget = false;
+
+            float numX = 6f;
+            var bolt = trayConfig != null ? trayConfig.slotCostBolt : null;
+            if (bolt != null)
+            {
+                float boltSize = plateSize.y - 8f;
+                var boltGO = new GameObject("Bolt", typeof(RectTransform), typeof(Image));
+                boltGO.transform.SetParent(chipGO.transform, false);
+                var brt2 = (RectTransform)boltGO.transform;
+                brt2.anchorMin = new Vector2(0f, 0.5f);
+                brt2.anchorMax = new Vector2(0f, 0.5f);
+                brt2.pivot = new Vector2(0f, 0.5f);
+                brt2.anchoredPosition = new Vector2(5f, 0f);
+                brt2.sizeDelta = new Vector2(boltSize, boltSize);
+                var boltImg = boltGO.GetComponent<Image>();
+                boltImg.sprite = bolt;
+                boltImg.preserveAspect = true;
+                boltImg.raycastTarget = false;
+                numX = 5f + boltSize + 3f;
+            }
 
             var numGO = new GameObject("Cost", typeof(RectTransform));
             numGO.transform.SetParent(chipGO.transform, false);
             var numRt = (RectTransform)numGO.transform;
             numRt.anchorMin = Vector2.zero;
             numRt.anchorMax = Vector2.one;
-            numRt.offsetMin = Vector2.zero;
-            numRt.offsetMax = Vector2.zero;
+            numRt.offsetMin = new Vector2(numX, 0f);
+            numRt.offsetMax = new Vector2(-4f, 0f);
             var numTmp = numGO.AddComponent<TextMeshProUGUI>();
             if (nameFont != null) numTmp.font = nameFont;
             numTmp.text = cost.ToString();
             numTmp.fontSize = trayConfig != null ? trayConfig.costFontSize : 18f;
             numTmp.fontStyle = FontStyles.Bold;
             numTmp.color = Color.white;
-            numTmp.alignment = TextAlignmentOptions.Center;
+            numTmp.alignment = TextAlignmentOptions.MidlineLeft;
             numTmp.textWrappingMode = TextWrappingModes.NoWrap;
             numTmp.raycastTarget = false;
 

@@ -2,6 +2,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using Wassup.Core;
+using Wassup.Data;
 using Wassup.UI.Layout;
 
 namespace Wassup.UI
@@ -28,6 +29,9 @@ namespace Wassup.UI
         [SerializeField] private Sprite costBarEmpty;
         [Tooltip("큰 숫자용 폰트(Jua/Anton 권장). 미지정 시 TMP 기본 볼드")]
         [SerializeField] private TMP_FontAsset numberFont;
+        // action-tray unit 2 — 트레이 공유 geometry(레일 치수·overlap·phase 높이).
+        // 미할당이면 기존 부유 배지(363×112, y164) 그대로 — 무회귀 폴백.
+        [SerializeField] private BattleHudTrayConfig trayConfig;
 
         // Fallback palette (used only when the matching sprite is missing).
         private static readonly Color PlateColor = new(0.07f, 0.09f, 0.13f, 0.92f);
@@ -70,7 +74,19 @@ namespace Wassup.UI
         private void OnPhaseChanged(GamePhase phase)
         {
             _phaseVisible = phase == GamePhase.Placement || phase == GamePhase.Battle;
+            // action-tray unit 2 — 레일은 트레이 top edge 추종(같은 config geometry,
+            // snap 전환). DefenderSelector.OnPhaseChanged 의 트레이 리사이즈와 같은
+            // 프레임에 정합된다.
+            if (trayConfig != null && _panel != null && (phase == GamePhase.Placement || phase == GamePhase.Battle))
+                ((RectTransform)_panel.transform).anchoredPosition = new Vector2(0f, RailYFor(phase));
             RefreshVisible();
+        }
+
+        // 레일 하단 y = 트레이 y + phase 트레이 높이 − overlap (트레이 상단 겹침).
+        private float RailYFor(GamePhase phase)
+        {
+            float trayH = phase == GamePhase.Battle ? trayConfig.battleSize.y : trayConfig.placementSize.y;
+            return trayConfig.anchoredY + trayH - trayConfig.railOverlap;
         }
 
         // battle-hud-layout 1 rev — 중앙 이동으로 배지(y164~276)가 드림캐쳐 핸드
@@ -166,37 +182,56 @@ namespace Wassup.UI
             // Compact HUD panel, bottom-center above the DefenderSelector strip.
             // battle-hud-layout 1 — 코스트-스트립 한 클러스터: "코스트 확인→슬롯
             // 선택→드래그"가 한 시선 안에 돌도록 중앙 스트립 위에 밀착(CR 엘릭서 바 관례).
+            // action-tray unit 2 — trayConfig 있으면 compact rail(트레이 top 겹침),
+            // 없으면 기존 부유 배지 그대로(무회귀 폴백).
+            bool railMode = trayConfig != null;
+            float plateW = railMode ? trayConfig.railSize.x : PlateW;
+            float plateH = railMode ? trayConfig.railSize.y : PlateH;
             _panel = new GameObject("CostPanel", typeof(RectTransform), typeof(Image));
             _panel.transform.SetParent(roots.SafeAreaRoot, false);
             var prt = (RectTransform)_panel.transform;
             prt.anchorMin = new Vector2(0.5f, 0f);
             prt.anchorMax = new Vector2(0.5f, 0f);
             prt.pivot = new Vector2(0.5f, 0f);
-            // 스트립 상단(y=32+120=152) 위 12px 갭.
-            prt.anchoredPosition = new Vector2(0f, 164f);
-            prt.sizeDelta = new Vector2(PlateW, PlateH);
+            // 레일: placement 트레이 top 겹침 / 레거시: 스트립 상단 위 12px 갭(y164).
+            prt.anchoredPosition = new Vector2(0f, railMode ? RailYFor(GamePhase.Placement) : 164f);
+            prt.sizeDelta = new Vector2(plateW, plateH);
             // Landscape badge with even inner padding (Pad). 9-sliced panel so the
             // rounded corners stay crisp when stretched wide. Top row = bolt + inline
             // "N/Max"; bottom row = bar gauge. Compact height, no floating whitespace.
-            const float Pad = 18f;
-            const float TopRowH = 46f;
-            const float BarRowH = 24f;
+            float Pad = railMode ? 10f : 18f;
+            float TopRowH = railMode ? 26f : 46f;
+            float BarRowH = railMode ? 20f : 24f;
             var plate = _panel.GetComponent<Image>();
-            plate.sprite = costPanelSprite != null
-                ? costPanelSprite
-                : UiRoundedSprite.Make(20f, 3f, PlateColor, PlateBorder);
+            // 시안 정합 — 레일은 별도 캡슐이 아니라 트레이와 같은 fill/border 의
+            // 탭(overlap 으로 실루엣 연결). 레거시는 기존 스프라이트/팔레트.
+            plate.sprite = railMode
+                ? UiRoundedSprite.Make(12f, 2f, trayConfig.fallbackFill, trayConfig.fallbackBorder)
+                : (costPanelSprite != null
+                    ? costPanelSprite
+                    : UiRoundedSprite.Make(20f, 3f, PlateColor, PlateBorder));
             plate.type = Image.Type.Sliced;
             plate.raycastTarget = false;
 
-            // Energy bolt (top-left).
-            const float iconSize = 44f;
+            // Energy bolt — rail: 좌측 세로 중앙(한 줄 시안) / legacy: top-left.
+            float iconSize = railMode ? 24f : 44f;
             var iconGO = new GameObject("EnergyIcon", typeof(RectTransform), typeof(Image));
             iconGO.transform.SetParent(_panel.transform, false);
             var irt = (RectTransform)iconGO.transform;
-            irt.anchorMin = new Vector2(0f, 1f);
-            irt.anchorMax = new Vector2(0f, 1f);
-            irt.pivot = new Vector2(0f, 1f);
-            irt.anchoredPosition = new Vector2(Pad, -(Pad + (TopRowH - iconSize) * 0.5f));
+            if (railMode)
+            {
+                irt.anchorMin = new Vector2(0f, 0.5f);
+                irt.anchorMax = new Vector2(0f, 0.5f);
+                irt.pivot = new Vector2(0f, 0.5f);
+                irt.anchoredPosition = new Vector2(Pad + 2f, 0f);
+            }
+            else
+            {
+                irt.anchorMin = new Vector2(0f, 1f);
+                irt.anchorMax = new Vector2(0f, 1f);
+                irt.pivot = new Vector2(0f, 1f);
+                irt.anchoredPosition = new Vector2(Pad, -(Pad + (TopRowH - iconSize) * 0.5f));
+            }
             irt.sizeDelta = new Vector2(iconSize, iconSize);
             var iconImg = iconGO.GetComponent<Image>();
             iconImg.sprite = costEnergyIcon != null ? costEnergyIcon
@@ -204,28 +239,53 @@ namespace Wassup.UI
             iconImg.preserveAspect = true;
             iconImg.raycastTarget = false;
 
-            // Big current value + inline "/max" (top row, vertically centered on bolt).
-            float valueX = Pad + iconSize + 14f;
-            _valueText = MakeText("Value", 40f, ValueColor, TextAlignmentOptions.MidlineLeft);
+            // Big current value + inline "/max" — rail: 볼트 옆(한 줄) / legacy: top row.
+            float valueX = Pad + iconSize + (railMode ? 8f : 14f);
+            float valueW = railMode ? 92f : (plateW - valueX - Pad);
+            _valueText = MakeText("Value", railMode ? 26f : 40f, ValueColor, TextAlignmentOptions.MidlineLeft);
             _valueText.richText = true;
             var vrt = _valueText.rectTransform;
-            vrt.anchorMin = new Vector2(0f, 1f);
-            vrt.anchorMax = new Vector2(0f, 1f);
-            vrt.pivot = new Vector2(0f, 1f);
-            vrt.anchoredPosition = new Vector2(valueX, -Pad);
-            vrt.sizeDelta = new Vector2(PlateW - valueX - Pad, TopRowH);
+            if (railMode)
+            {
+                vrt.anchorMin = new Vector2(0f, 0f);
+                vrt.anchorMax = new Vector2(0f, 1f);
+                vrt.pivot = new Vector2(0f, 0.5f);
+                vrt.anchoredPosition = new Vector2(valueX, 0f);
+                vrt.sizeDelta = new Vector2(valueW, 0f);
+            }
+            else
+            {
+                vrt.anchorMin = new Vector2(0f, 1f);
+                vrt.anchorMax = new Vector2(0f, 1f);
+                vrt.pivot = new Vector2(0f, 1f);
+                vrt.anchoredPosition = new Vector2(valueX, -Pad);
+                vrt.sizeDelta = new Vector2(valueW, TopRowH);
+            }
             _valueText.fontStyle = FontStyles.Bold;
             _valueText.text = "0";
 
-            // Bar gauge along the bottom, inset by Pad on left/right/bottom.
+            // Bar gauge — rail: 숫자 오른쪽 세로 중앙(한 줄 시안) / legacy: 하단 행.
             var rowGO = new GameObject("BarRow", typeof(RectTransform), typeof(HorizontalLayoutGroup));
             rowGO.transform.SetParent(_panel.transform, false);
             var rrt = (RectTransform)rowGO.transform;
-            rrt.anchorMin = new Vector2(0f, 0f);
-            rrt.anchorMax = new Vector2(1f, 0f);
-            rrt.pivot = new Vector2(0.5f, 0f);
-            rrt.offsetMin = new Vector2(Pad, Pad);
-            rrt.offsetMax = new Vector2(-Pad, Pad + BarRowH);
+            if (railMode)
+            {
+                float barX = valueX + valueW + 6f;
+                float inset = (plateH - BarRowH) * 0.5f;
+                rrt.anchorMin = new Vector2(0f, 0f);
+                rrt.anchorMax = new Vector2(1f, 1f);
+                rrt.pivot = new Vector2(0.5f, 0.5f);
+                rrt.offsetMin = new Vector2(barX, inset);
+                rrt.offsetMax = new Vector2(-(Pad + 4f), -inset);
+            }
+            else
+            {
+                rrt.anchorMin = new Vector2(0f, 0f);
+                rrt.anchorMax = new Vector2(1f, 0f);
+                rrt.pivot = new Vector2(0.5f, 0f);
+                rrt.offsetMin = new Vector2(Pad, Pad);
+                rrt.offsetMax = new Vector2(-Pad, Pad + BarRowH);
+            }
             var hlg = rowGO.GetComponent<HorizontalLayoutGroup>();
             hlg.spacing = 4f;
             hlg.childForceExpandWidth = true;

@@ -1786,7 +1786,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a3dd7678ed1494bdaa97a4e66be43106, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.Layout.UiSafeAreaFitter
 --- !u!1 &1004191865
 GameObject:
@@ -2075,7 +2075,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a3dd7678ed1494bdaa97a4e66be43106, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.Layout.UiSafeAreaFitter
 --- !u!1 &1075095673
 GameObject:
@@ -2112,6 +2112,7 @@ MonoBehaviour:
   costBarFilled: {fileID: 21300000, guid: b67bd304568ecc840b864c12c9daeadd, type: 3}
   costBarEmpty: {fileID: 21300000, guid: 5a53efaa2e57bfc42b70c85fa911d169, type: 3}
   numberFont: {fileID: 11400000, guid: 218cce73e3172a04a8c536a4d368d90f, type: 2}
+  trayConfig: {fileID: 11400000, guid: 903c6fe71bf7844489939928774546b6, type: 2}
 --- !u!4 &1075095675
 Transform:
   m_ObjectHideFlags: 0

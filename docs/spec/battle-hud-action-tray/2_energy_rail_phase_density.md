@@ -21,8 +21,10 @@
 
 ## 완료 기준
 
-- [ ] Placement에서 rail과 tray가 하나의 클러스터로 읽힘.
-- [ ] Battle에서 rail이 tray를 추종하고 사이에 44px 공백이 생기지 않음.
-- [ ] 0/부분 regen/10 상태에서 숫자·segment 가독성 유지.
-- [ ] Hand open 시 rail 퇴장, close 시 현재 phase 위치로 정확히 복귀.
-- [ ] 보드 최고 가림선이 현행 y=276보다 낮아지고 캡처로 비교 기록.
+- [x] Placement에서 rail과 tray가 하나의 클러스터로 읽힘.
+- [x] Battle에서 rail이 tray를 추종하고 사이에 44px 공백이 생기지 않음.
+- [x] 0/부분 regen/10 상태에서 숫자·segment 가독성 유지.
+- [x] Hand open 시 rail 퇴장, close 시 현재 phase 위치로 정확히 복귀.
+- [x] 보드 최고 가림선이 현행 y=276보다 낮아지고 캡처로 비교 기록.
+
+확인 2026-07-12 — 1차 구현(EnergyRail 아트 캡슐, 2줄 레이아웃)은 **시안(battle-hud-safe-action-tray-proposal.jpg)과 불일치로 사용자 기각** → rev: 레일 = 트레이 동색(fill/border 재사용) 탭(440×54, overlap 14, 시안 정합), ⚡+10/10+세그먼트 **한 줄**, 위치는 Config geometry 공유로 phase 추종. 같은 rev 에서 unit 1 비용 표기도 시안 정합(원형 chip → 다크 코너 플레이트 ⚡+숫자, 이름 밴드 0.72 다크, dim 그레이 근사). 가림선: 배지 top y=276 → 레일 top y=222(placement). `CostDisplay.trayConfig` 씬 배선 1줄, config 미할당 시 기존 부유 배지 무회귀 폴백. EnergyRail/CostChip 원본 PNG 는 미사용 잔존(다른 용도 후보). 콘솔 0. 사용자 일괄 확인은 units 3~5 체크리스트와 함께.
