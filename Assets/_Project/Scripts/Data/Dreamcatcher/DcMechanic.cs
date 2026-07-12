@@ -1,4 +1,5 @@
 using System;
+using UnityEngine;
 
 namespace Wassup.Data
 {
@@ -81,6 +82,13 @@ namespace Wassup.Data
         // authoring 계약: duration > trigger.periodSeconds (위반 시 범위 내 점멸,
         // 베이크가 경고). <=0 은 arm 이 enqueue skip.
         public float duration;
+        // nightmare-whip-aura unit 3 rev 2 — 메커닉이 host 에 상시 부착하는 루핑
+        // 오라 연출. 메커닉 데이터가 자기 연출을 선언하고 드림캐쳐 파이프라인
+        // (bake → DcAuraVisualPool)이 구동한다 — 범용 인프라(StatusFx 등)에 payload
+        // kind 분기를 넣지 않는다. null = 무연출(기존 카드 전부 기본값 유지).
+        // 어떤 payload kind 든 선언만 하면 동일 경로를 탄다(kind-blind).
+        public GameObject auraPrefab;
+        public float auraScale; // <=0 = 1 처리 (베이크/풀 공통 해석)
     }
 
     [Serializable]

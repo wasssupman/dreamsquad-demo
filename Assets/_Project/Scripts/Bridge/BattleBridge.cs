@@ -135,6 +135,9 @@ namespace Wassup.Bridge
         // aggro-targeting Unit 13 — 어그로된 적 아이콘 reconcile 용 쿼리(Aggroed).
         private EntityQuery _aggroedQuery;
         private bool _aggroedQueryCreated;
+        // nightmare-whip-aura unit 3 rev 2 — 메커닉 선언(auraPrefab) 부착 오라 풀.
+        // 런타임 소유(씬 배선 없음), 베이크 등록 시 lazy 생성, teardown 에서 해제.
+        private Wassup.Presentation.DcAuraVisualPool _dcAuraPool;
         private readonly List<PendingSpawnEntry> _pending = new();
         private readonly List<Material> _ownedRuntimeMaterials = new();
         private readonly HashSet<Vector2Int> _occupiedTiles = new();
@@ -346,6 +349,7 @@ namespace Wassup.Bridge
             if (tileHealthGaugeLayer != null) tileHealthGaugeLayer.Clear(); // unit 3 — 게이지 전체 정리
             if (enemyHitBarSpawner != null) enemyHitBarSpawner.Clear(); // unit 2 — 잔여 마이크로바 정리(생명주기 대칭)
             if (statusFxSpawner != null) statusFxSpawner.Clear(); // unit-status-fx unit 2 — 잔여 상태 연출 정리
+            _dcAuraPool?.Clear(); _dcAuraPool = null; // nightmare-whip-aura rev 2 — 드림캐쳐 부착 오라 정리(생명주기 대칭)
             ClearBlockingHazardVisuals();
 
             if (HasLiveEntityManager())
@@ -1789,6 +1793,7 @@ namespace Wassup.Bridge
         {
             SyncMonoUnitViews();
             ReconcileStatusFx();
+            if (_em != null) _dcAuraPool?.Sync(_em); // 드림캐쳐 부착 오라 — 뷰 좌표 갱신 뒤 추종
             if (_em != null) _projectileViewPool?.SyncTransforms(_em);
         }
 
@@ -4333,6 +4338,14 @@ namespace Wassup.Bridge
                     // 퍼프 ProjectileData(투사체로는 안 뜀). null 이면 무연출.
                     // nightmare-whip-aura unit 3 — whip 펄스 연출도 같은 경로.
                     slot.projectileDataIndex = GetOrCreateProjectileDataIndex(m.payload.projectile);
+                }
+                // nightmare-whip-aura unit 3 rev 2 — 메커닉 선언 부착 오라(kind 무관):
+                // 메커닉 데이터가 auraPrefab 을 선언하면 드림캐쳐 프레젠테이션 풀에
+                // 등록, host 생존 동안 뷰를 따라다닌다. bridge 는 전달만(kind 분기 없음).
+                if (m.payload.auraPrefab != null)
+                {
+                    _dcAuraPool ??= new Wassup.Presentation.DcAuraVisualPool(ResolveEnemyViewTransform);
+                    _dcAuraPool.Register(entity, m.payload.auraPrefab, m.payload.auraScale);
                 }
                 if (m.payload.kind == Wassup.Data.DcPayloadKind.AllyMoveSpeedAura &&
                     m.payload.duration <= m.trigger.periodSeconds)
