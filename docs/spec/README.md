@@ -120,6 +120,13 @@ code + git history        구현 상세
 
 > 출처 spec 이 섞여 있다. 그룹 헤더 또는 항목 끝의 `(spec-slug)` 라벨로 출처 표기.
 
+#### 나이트매어 보스 스킬 (nightmare-whip-aura 종료 이관, 2026-07-12)
+
+- **defender-side 오라 카드** [S] · `AllyMoveSpeedAura` 는 arm·오라 연출 모두 진영/kind 중립 — 카드 데이터 선언만으로 성립. 카드 taxonomy/밸런스는 product 결정. (nightmare-whip-aura)
+- **채찍질 전용 연출 고도화** [S] · 현 WindAura 재사용 → 전용 채찍 스윙/버프 링 저작(unity-vfx-authoring). 발동-순간 원샷 arm(`payload.projectile`)도 SO 게이트로 잔존해 조합 가능. (nightmare-whip-aura)
+- **수치 실측 튜닝** [S] · 펄스 0.5s/TTL 0.6s/+20%/3타일/오라 scale 1.2 — 전부 SO, 밸런스 실측 후 조정. (nightmare-whip-aura)
+- nightmare-catcher 잔여 후속(기본공격 원거리화 · 보스 어그로 면역[BossTag 게이트 1줄] · 위협 감쇠 · GA hitPrefab 전수 정비 · 폭격 피격 체감)은 `docs/spec/nightmare-catcher/README.md` 후속 후보 참조.
+
 #### 보스 방어유닛 지향 이동 (헌터 재구현, 2026-07-11)
 
 - **defender field dirty-skip 최적화** [S] · 방어유닛 셀 집합 불변 시 매 프레임 BFS 재빌드 skip. 현 그리드(20x10)에선 무의미 — 대형 그리드/프로파일 압박 시. (boss-defender-field, ecs-review M2)
