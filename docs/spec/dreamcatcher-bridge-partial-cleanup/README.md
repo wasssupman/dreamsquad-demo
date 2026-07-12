@@ -1,6 +1,6 @@
 # Dreamcatcher Bridge Partial + Dormant Cleanup — 번역자 물리 분리 & 구 3중1/SkillBar 은퇴
 
-> 상태: 작업 중 (2026-07-12 시작)
+> 상태: **완료 2026-07-12** — unit 0 `cc4f26b9` · unit 1 `bed30057`. 인계: `2_handoff_summary.md`
 >
 > 배경: 드림캐쳐 설계 리뷰(2026-07-12)의 권고 1·4. BattleBridge(4,587줄) 안에서 계속 자라는
 > 드림캐쳐 카드 번역자 구간을 partial class 로 물리 분리하고, 실플레이 검증이 끝난 지금

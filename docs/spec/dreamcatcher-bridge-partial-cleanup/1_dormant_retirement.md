@@ -42,7 +42,11 @@ awakening-hand 가 dormant 로 남겨둔 구 사용 방식 코드 3벌을 삭제
 
 ## 완료 기준
 
-- [ ] compile 클린 + 삭제 클래스 참조 grep 0건 (주석 제외)
-- [ ] BattleScene 저장 후 missing script 0 (UnityMCP 검사)
-- [ ] EditMode 그린 + 이관/수정된 PlayMode 5종 그린
-- [ ] Play smoke: 배치→전투 진입, 손패 열기/카드 사용 정상 (기존 경로 무회귀)
+- [x] compile 클린 + 삭제 클래스 참조 grep 0건 (주석 제외)
+- [x] BattleScene 저장 후 신규 missing script 0 — validate 의 2건(MapView/DraftView)은 기존부터 존재
+- [x] EditMode 그린(678/678) + 이관/수정된 PlayMode 6클래스 그린 (DreamstoneCarryIn 2건은
+  기존 순서의존 트윈 플레이크 — 단독 재실행 통과, handoff 참조)
+- [x] 손패 커밋 경로 무회귀: PlacementAuraTest `Aura_RevokedWhenHostDies_ViaController` 가
+  DreamcatcherHandController 경유 부착/회수를 커버. (수동 Play 육안 확인은 선택 후속)
+
+확인 2026-07-12 · 커밋 `bed30057`

@@ -35,7 +35,9 @@ BattleBridge 안의 드림캐쳐 카드 번역자 구간(~380줄)을 `BattleBrid
 
 ## 완료 기준
 
-- [ ] compile 클린 (Unity 콘솔 에러 0)
-- [ ] `BattleBridge.cs` 와 신규 파일 diff 가 이동만임을 육안 확인 (텍스트 동일)
-- [ ] EditMode 테스트 그린 (기존 스위트)
-- [ ] 신규 `.cs` + `.meta` 짝 커밋
+- [x] compile 클린 (Unity 콘솔 에러 0)
+- [x] `BattleBridge.cs` 와 신규 파일 diff 가 이동만임을 확인 (라인 범위 스크립트 이동 + 멤버 카운트 검증)
+- [x] EditMode 테스트 그린 (678/678, 스킵 2 = 기존 의도적 ignore)
+- [x] 신규 `.cs` + `.meta` 짝 커밋
+
+확인 2026-07-12 · 커밋 `cc4f26b9`
