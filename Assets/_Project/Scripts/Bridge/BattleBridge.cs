@@ -4394,7 +4394,7 @@ namespace Wassup.Bridge
                 // 등록, host 생존 동안 뷰를 따라다닌다. bridge 는 전달만(kind 분기 없음).
                 if (m.payload.auraPrefab != null)
                 {
-                    _dcAuraPool ??= new Wassup.Presentation.DcAuraVisualPool(ResolveEnemyViewTransform);
+                    _dcAuraPool ??= new Wassup.Presentation.DcAuraVisualPool(ResolveUnitViewTransform);
                     _dcAuraPool.Register(entity, m.payload.auraPrefab, m.payload.auraScale);
                 }
                 if (m.payload.kind == Wassup.Data.DcPayloadKind.AllyMoveSpeedAura &&
