@@ -9,19 +9,29 @@ namespace Wassup.Data
     [CreateAssetMenu(fileName = "StatusFxRegistry", menuName = "Wassup/Status FX Registry")]
     public class StatusFxRegistry : ScriptableObject
     {
+        // unit-status-fx 5 — 절차 폴백 글리프. 기본 0(Exclamation)이라 기존 Aggro
+        // 에셋 직렬화 하위호환(재저장 불필요). 새 글리프는 끝에 추가.
+        public enum FallbackGlyph : byte
+        {
+            Exclamation = 0,
+            Zz = 1,
+        }
+
         [Serializable]
         public struct Entry
         {
             public StatusFxKind kind;
-            [Tooltip("이 상태의 연출 프리팹. 비우면 절차적 '!' 폴백")]
+            [Tooltip("이 상태의 연출 프리팹. 비우면 절차적 글리프 폴백")]
             public GameObject prefab;
             [Tooltip("유닛 발치(anchor) 기준 로컬 오프셋 (머리 위 = +Y)")]
             public Vector3 localOffset;
             public float scale;
             [Tooltip("카메라 대면 빌보드 여부")]
             public bool billboard;
-            [Tooltip("prefab 없을 때 절차 '!' 틴트")]
+            [Tooltip("prefab 없을 때 절차 글리프 틴트")]
             public Color fallbackTint;
+            [Tooltip("prefab 없을 때 그릴 절차 글리프")]
+            public FallbackGlyph fallbackGlyph;
         }
 
         public Entry[] entries;

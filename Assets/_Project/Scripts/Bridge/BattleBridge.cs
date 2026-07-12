@@ -138,6 +138,9 @@ namespace Wassup.Bridge
         // nightmare-whip-aura unit 3 rev 2 — 메커닉 선언(auraPrefab) 부착 오라 풀.
         // 런타임 소유(씬 배선 없음), 베이크 등록 시 lazy 생성, teardown 에서 해제.
         private Wassup.Presentation.DcAuraVisualPool _dcAuraPool;
+        // unit-status-fx 5 — Sleep 연출 소스. CcEffect(Effects 소유)는 읽기만 한다.
+        private EntityQuery _ccEffectQuery;
+        private bool _ccEffectQueryCreated;
         private readonly List<PendingSpawnEntry> _pending = new();
         private readonly List<Material> _ownedRuntimeMaterials = new();
         private readonly HashSet<Vector2Int> _occupiedTiles = new();
@@ -454,6 +457,7 @@ namespace Wassup.Bridge
             {
                 _aliveAttackersQueryCreated = false;
                 _aggroedQueryCreated = false;
+                _ccEffectQueryCreated = false;
                 _projectileSpawnRequestQueryCreated = false;
                 _projectileQueryCreated = false;
                 return;
@@ -468,6 +472,11 @@ namespace Wassup.Bridge
             {
                 _aggroedQuery.Dispose();
                 _aggroedQueryCreated = false;
+            }
+            if (_ccEffectQueryCreated)
+            {
+                _ccEffectQuery.Dispose();
+                _ccEffectQueryCreated = false;
             }
             if (_projectileSpawnRequestQueryCreated)
             {
@@ -962,6 +971,11 @@ namespace Wassup.Bridge
             {
                 _aggroedQuery = _em.CreateEntityQuery(ComponentType.ReadOnly<Wassup.Battle.Effects.Aggroed>());
                 _aggroedQueryCreated = true;
+            }
+            if (!_ccEffectQueryCreated)
+            {
+                _ccEffectQuery = _em.CreateEntityQuery(ComponentType.ReadOnly<CcEffect>());
+                _ccEffectQueryCreated = true;
             }
 
             if (!_projectileSpawnRequestQueryCreated)
@@ -1814,7 +1828,7 @@ namespace Wassup.Bridge
                 {
                     for (int i = 0; i < aggroed.Length; i++)
                     {
-                        var anchor = ResolveEnemyViewTransform(aggroed[i]);
+                        var anchor = ResolveUnitViewTransform(aggroed[i]);
                         if (anchor != null)
                             statusFxSpawner.Ensure(aggroed[i], Wassup.Data.StatusFxKind.Aggro, anchor);
                     }
@@ -1822,6 +1836,31 @@ namespace Wassup.Bridge
                 finally
                 {
                     aggroed.Dispose();
+                }
+            }
+
+            // Sleep: CcEffect 버퍼에 Sleep(remainingTime>0) 보유 유닛 — 적·아군 공통
+            // (combat-action-lock; defender 는 spine 또는 폴백 뷰 브랜치로 앵커 해석됨).
+            if (_ccEffectQueryCreated)
+            {
+                var ccEntities = _ccEffectQuery.ToEntityArray(Allocator.Temp);
+                try
+                {
+                    for (int i = 0; i < ccEntities.Length; i++)
+                    {
+                        var buf = _em.GetBuffer<CcEffect>(ccEntities[i], isReadOnly: true);
+                        bool asleep = false;
+                        for (int j = 0; j < buf.Length; j++)
+                            if (buf[j].kind == CcKind.Sleep && buf[j].remainingTime > 0f) { asleep = true; break; }
+                        if (!asleep) continue;
+                        var anchor = ResolveUnitViewTransform(ccEntities[i]);
+                        if (anchor != null)
+                            statusFxSpawner.Ensure(ccEntities[i], Wassup.Data.StatusFxKind.Sleep, anchor);
+                    }
+                }
+                finally
+                {
+                    ccEntities.Dispose();
                 }
             }
 
@@ -2125,19 +2164,30 @@ namespace Wassup.Bridge
                 {
                     // unit 2 — anchor = 적 뷰 transform(view 좌표). 막타로 뷰가 이미 사라졌으면
                     // ToView(evt.position) 고정 위치로 fallback(M4 계약).
-                    Transform anchor = ResolveEnemyViewTransform(evt.entity);
+                    Transform anchor = ResolveUnitViewTransform(evt.entity);
                     Vector3 fallbackView = (Vector3)Wassup.Core.BoardSpace.ToView(simPos);
                     enemyHitBarSpawner.Show(evt.entity, anchor, fallbackView, evt.hpRatio);
                 }
             }
         }
 
-        // unit-health-display unit 2 — 마이크로바 anchor 해석. Spine → Quad 뷰 순, 둘 다 없으면 null.
-        private Transform ResolveEnemyViewTransform(Entity entity)
+        // unit-health-display unit 2 — 마이크로바 anchor 해석. Spine → Quad 뷰 순, 없으면 null.
+        // unit-status-fx 5 (ecs-review M1/L1) — defender Sleep 앵커로도 쓰이게 되어 이름을
+        // Unit 으로 정정하고, spine 미보유 defender 의 폴백 뷰 분기 추가(SyncMonoUnitViews 관례).
+        private Transform ResolveUnitViewTransform(Entity entity)
         {
             if (spineUnitPool != null && spineUnitPool.TryGet(entity, out var sv) && sv != null) return sv.transform;
             if (enemyViewPool != null && enemyViewPool.TryGet(entity, out var qv) && qv != null) return qv.transform;
+            if (defenderFallbackViewPool != null && defenderFallbackViewPool.TryGet(entity, out var fv) && fv != null) return fv.transform;
             return null;
+        }
+
+        // unit-dreamcatcher-icons unit 1 — 부착 아이콘 스트립 앵커 조회. 게이트웨이 경유
+        // 읽기 전용 위임(뷰가 EntityManager/뷰 풀을 모르게 유지).
+        public bool TryGetUnitViewAnchor(Entity entity, out Transform anchor)
+        {
+            anchor = ResolveUnitViewTransform(entity);
+            return anchor != null;
         }
 
         // Enemy kills → live score HUD. One score bump per enemy killed by damage.

@@ -2,7 +2,9 @@
 
 ## Commit
 
-spec `417f9f07` → u0 `b6ce8ab4`(payload 계약+순수함수) → u1 `70057706`(펄스 arm+베이크) → u2 `29085e9b`(authoring+e2e) → u3 `bfa858fb`(원샷 연출, rev 2 로 대체) → u3 rev 2(부착 오라 — 이 커밋). 브랜치 주의: 병행 세션 사정으로 `feat/mobile-ui-safe-area` 위에 커밋됨 — whip 커밋은 전부 whip 파일만 건드려 cherry-pick 분리 가능.
+**main 기준** (cherry-pick 이관 2026-07-12): spec `674ad818` → u0 `2e7238cf`(payload 계약+순수함수) → u1 `949b112d`(펄스 arm+베이크) → u2 `ea920c5e`(authoring+e2e) → u3 `80c74642`(원샷 연출, rev 2 로 대체) → 마감 docs `73bf77a1` → rev 2 `8fa52c81`(부착 오라) → 튜닝 `1936931b`(scale 1.2)·`7d2e324f`(0.5/0.6) → handoff `373d62cc`.
+
+원 작업은 병행 세션 사정으로 `feat/mobile-ui-safe-area` 위에서 진행(417f9f07~9eaef96e) 후 main 으로 cherry-pick — 파일 diff 0 검증. 브랜치 쪽 whip 커밋은 잔존하나 내용 동일이라 이후 브랜치→main 머지 시 무충돌 통과.
 
 ## Implemented
 
@@ -34,5 +36,4 @@ spec `417f9f07` → u0 `b6ce8ab4`(payload 계약+순수함수) → u1 `70057706`
 
 ## Follow-up
 
-- 전용 채찍 스윙/버프 링 연출 고도화 · defender-side 오라 카드(데이터만으로 성립) · 버프 아이콘(unit-status-fx 계열) · 수치 실측 튜닝(펄스/TTL/±%/반경 — 전부 SO).
-- nightmare-catcher 잔여 후속(기본공격 원거리화·어그로 면역 등)은 그쪽 README 참조.
+→ `docs/spec/README.md` Follow-up Backlog "나이트매어 보스 스킬" 그룹으로 이관 (2026-07-12).

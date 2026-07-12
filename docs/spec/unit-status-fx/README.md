@@ -32,6 +32,7 @@
 | 1 | Spawner/View 일반화 (AggroIcon* 재편) | `1_spawner-view.md` |
 | 2 | BattleBridge reconcile 일반화 + 씬 재배선 | `2_bridge-and-scene.md` |
 | 3 | registry 에셋 + Play 스모크 + handoff | `3_asset-tests-handoff.md` |
+| 5 | Sleep 상태 Zz 아이콘 (첫 추가 상태) | `5_sleep_status_icon.md` |
 
 ## 파이프라인 커버리지 (상태 연출 = 오버헤드/온-바디 View)
 
@@ -48,5 +49,6 @@
 ## 후속 후보
 
 - 실제 추가 상태(스턴/빙결/독) registry 등록 + ECS 소스 훅. 각 상태 ECS 표현 준비 시.
+  (Sleep 은 unit 5 로 완료 2026-07-11 — CcEffect 버퍼 스캔 소스. Stun 도 같은 스캔에 kind 분기만 추가하면 됨.)
 - follow 모드 확장(ground 링=회전 평면, on-body=오프셋0). 현재 overhead 빌보드 + 오프셋만.
 - 어그로 "!" → 전용 프리팹 연출(가디언 tether 등). 재사용 맵: BlobShadow(발밑)·DragPlacement cord(tether 템플릿)·SetHealthTint(틴트 충돌 주의).
