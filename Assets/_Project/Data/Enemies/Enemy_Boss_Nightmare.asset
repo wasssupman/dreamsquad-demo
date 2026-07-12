@@ -81,13 +81,13 @@ MonoBehaviour:
   - trigger:
       kind: 4
       period: 0
-      periodSeconds: 1
+      periodSeconds: 0.5
       fraction: 0
     payload:
       kind: 9
       magnitude: 20
       projectile: {fileID: 0}
       tileRange: 3
-      duration: 1.5
+      duration: 0.6
       auraPrefab: {fileID: 207745087118991948, guid: ae85f8af7e5c6c44c91e2f6966a4354b, type: 3}
       auraScale: 1.2
