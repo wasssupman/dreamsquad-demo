@@ -56,6 +56,20 @@ namespace Wassup.Bridge
         private readonly System.Collections.Generic.List<(int handle, Wassup.Data.CardTargetAxis axis, float sec)> _activePlacementSleeps =
             new System.Collections.Generic.List<(int, Wassup.Data.CardTargetAxis, float)>();
 
+        // dreamcatcher-taxonomy-cleanup unit 1 — single attach entry point for the
+        // production caller (controller). Scope keys on CardType: Unit = host-only
+        // mechanics/attackMods, else (Squad) = axis-set stat buff anchored at host.
+        // Returns the int handle convention (<0 fail / 0 no-revoke / >0 revoke
+        // handle). The two apply machines below stay distinct (different lifecycles)
+        // and remain public so tests can exercise each directly.
+        public int ApplyDreamcatcherCard(Entity host, Wassup.Data.DreamcatcherCard card)
+        {
+            if (card == null) return -1;
+            return card.type == Wassup.Data.CardType.Unit
+                ? ApplyDreamcatcherCardToUnit(host, card)
+                : ApplyDreamcatcherCardHosted(card);
+        }
+
         // awakening-hand unit 9 — host-bound squad apply. Same squad-wide effect
         // (current + future matching defenders), but the effects belong to a
         // revocation group; the controller revokes it when the host dies.
@@ -87,9 +101,9 @@ namespace Wassup.Bridge
                     }
                 }
             }
-            // combat-action-lock — 구 Squad placementWarmupSec(idle) 경로 은퇴. warmup 개념은
+            // combat-action-lock — 구 Squad warmup(idle) 경로 은퇴. warmup 개념은
             // placement-aura(PlacementAura payload)가 Sleep 으로만 부여한다(RegisterPlacementAura).
-            // placementWarmupSec SO 필드는 reader 없는 dead 필드(RETIRED — DreamcatcherCard 참조).
+            // dreamcatcher-taxonomy-cleanup unit 2 — 잔재 placementWarmupSec SO 필드도 제거됨.
         }
 
         // awakening-hand unit 9 — end a hosted squad card's effects (host died).
@@ -165,7 +179,7 @@ namespace Wassup.Bridge
         // (엔티티 부착형: 슬롯이 엔티티와 함께 소멸) / >0 성공·회수핸들(host 사망 시 revoke).
         public int ApplyDreamcatcherCardToUnit(Entity defender, Wassup.Data.DreamcatcherCard card)
         {
-            if (card == null || card.binding != Wassup.Data.CardBinding.Unit) return -1;
+            if (card == null || card.type != Wassup.Data.CardType.Unit) return -1;
             bool hasMechanics = card.mechanics != null && card.mechanics.Length > 0;
             bool hasAttackMods = card.attackMods != null && card.attackMods.Length > 0;
             if (!hasMechanics && !hasAttackMods) return -1;

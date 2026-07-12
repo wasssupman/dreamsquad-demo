@@ -123,7 +123,7 @@ namespace Wassup.Tests.PlayMode
             Assert.AreEqual(1.5f, GetStat(bridge, em, "guardian").attackSpeedMul, 0.01f, "매칭(guardian) 부여");
         }
 
-        // 컨트롤러 배선 통합(review M2): 실제 CommitUnit → _attachedTo(handle 저장) →
+        // 컨트롤러 배선 통합(review M2): 실제 CommitAttach → _attachedTo(handle 저장) →
         // OnDefenderDied(handle>0 라우팅) → RevokeDreamcatcherEffects. 물리적 사망 발화
         // (DrainDefenderDeathEvents → DefenderDied)는 기존/Squad unit 9 공유 경로라 여기선
         // 컨트롤러 핸들러를 직접 구동해 신규 plumbing(핸들 저장·라우팅)만 검증한다.
@@ -164,12 +164,12 @@ namespace Wassup.Tests.PlayMode
             go.SetActive(true);
 
             int entryId = deck.Hand(5)[0].entryId;
-            Assert.IsTrue(ctrl.CommitUnit(entryId, hostEntity), "CommitUnit(오라, host) 성공");
+            Assert.IsTrue(ctrl.CommitAttach(entryId, hostEntity), "CommitAttach(오라, host) 성공");
             Assert.Greater(GetAttachedHandle(ctrl, entryId), 0, "회수핸들(>0)이 _attachedTo 에 저장됨");
 
             Assert.IsTrue(PlaceFirstValid(bridge, future), "place future unit");
             for (int i = 0; i < 3; i++) yield return null;
-            Assert.AreEqual(1.5f, GetStat(bridge, em, "scout").attackSpeedMul, 0.01f, "CommitUnit 경로 오라가 신규 배치 부여");
+            Assert.AreEqual(1.5f, GetStat(bridge, em, "scout").attackSpeedMul, 0.01f, "CommitAttach 경로 오라가 신규 배치 부여");
 
             // host 사망 → 컨트롤러가 handle>0 을 revoke 로 라우팅.
             InvokeOnDefenderDied(ctrl, hostEntity, host);
@@ -206,7 +206,6 @@ namespace Wassup.Tests.PlayMode
             var c = ScriptableObject.CreateInstance<DreamcatcherCard>();
             c.axis = axis;
             c.type = CardType.Unit;
-            c.binding = CardBinding.Unit;
             c.mechanics = new[]
             {
                 new DcMechanic

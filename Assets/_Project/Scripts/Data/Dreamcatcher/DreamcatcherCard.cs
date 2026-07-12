@@ -24,16 +24,12 @@ namespace Wassup.Data
     // frame color); a card may still declare its concept here. Append at end.
     public enum CardCategory { Normal, Unique, Subconscious }
 
-    // dreamcatcher-unit-trigger Unit 0 — how a card binds to its targets.
-    // Axis = existing axis-matched buff (current + future matching defenders);
-    // Unit = attached to one individual defender. Default 0 = Axis preserves
-    // every existing card asset's behavior.
-    public enum CardBinding { Axis, Unit }
-
     // dreamcatcher-card-taxonomy — Squad(축 스탯 버프) / Unit(개별 부착 메커니즘).
-    // The deck cap now keys on this (Squad ≤2), not on CardCategory. Coincides with
-    // binding (Squad=Axis, Unit=Unit) but is its own authoritative field. Default 0
+    // The deck cap now keys on this (Squad ≤2), not on CardCategory. Default 0
     // = Squad preserves existing stat cards without touching their assets.
+    // dreamcatcher-taxonomy-cleanup — the sole authoritative taxonomy field.
+    // Runtime scope derives from it (Unit = host-attached mechanics / else =
+    // axis-set stat buff); the old redundant CardBinding was removed.
     // dreamcatcher-awakening-hand unit 0 — Active appended at the end (common
     // per-match dreamcatchers wrapping a SkillData; the skill field arrives in
     // unit 2). Appending keeps existing assets' serialized ints stable.
@@ -52,7 +48,10 @@ namespace Wassup.Data
         public string id;
         public string displayName;
         public CardTargetAxis axis;
-        public CardCategory category = CardCategory.Normal; // RETIRED — dormant, no consumer
+        // dreamcatcher-taxonomy-cleanup — deck-builder no longer keys deck rules on
+        // this (that moved to CardType), but it is NOT dead: DeckBuilderView reads
+        // category==Subconscious to pick the 무의식 frame/art-fallback color.
+        public CardCategory category = CardCategory.Normal;
         public CardEffect[] effects; // usually 1; fortress has 2
         // dreamcatcher-card-art Unit 0 — tarot-style card art shown on the deck
         // page (image + effect text column). Nullable: view falls back to a
@@ -60,12 +59,12 @@ namespace Wassup.Data
         // order stable for existing card assets.
         public Sprite art;
         // dreamcatcher-unit-trigger Unit 0 — appended last to keep serialization
-        // order stable for existing card assets (binding deserializes as 0=Axis,
-        // mechanics as empty). effects[] and mechanics[] may coexist, but the
-        // current interpretation path consumes mechanics only for binding=Unit
-        // cards (ApplyDreamcatcherCard stays Axis-only). Bake-time read only —
-        // never iterate mechanics per-frame (managed array).
-        public CardBinding binding;
+        // order stable for existing card assets (mechanics deserialize as empty).
+        // effects[] and mechanics[] may coexist, but the current interpretation
+        // path consumes mechanics only for type=Unit cards (Squad/axis apply stays
+        // effects-only). Bake-time read only — never iterate mechanics per-frame
+        // (managed array). dreamcatcher-taxonomy-cleanup — scope keys on CardType
+        // now (the redundant CardBinding was removed).
         public DcMechanic[] mechanics;
         // dreamcatcher-attack-mod-bounce Unit 0 — card class (c): always-on
         // attack-output modifications (usually 0~1). Appended last; bake-time
@@ -74,10 +73,6 @@ namespace Wassup.Data
         // dreamcatcher-card-taxonomy — Squad/Unit type. Deck cap keys on this.
         // Appended last; zero-init = Squad for existing stat cards.
         public CardType type;
-        // RETIRED (combat-action-lock) — 구 Squad warmup 필드. warmup 개념은 은퇴하고
-        // placement-aura(PlacementAura payload) 가 Sleep 상태로 대체함. **코드에서 아무도
-        // 읽지 않는 dead 필드** — append-only 직렬화 유지 위해 필드만 잔존(모든 카드 0).
-        public float placementWarmupSec;
         // dreamcatcher-awakening-hand unit 2 — the SkillData an Active-type card
         // wraps (common per-match dreamcatcher; cast via the existing skill
         // pipeline, cost paid in awakening). Only meaningful when type==Active;

@@ -187,36 +187,32 @@ namespace Wassup.Core
         public int CostOf(DreamcatcherCard card) =>
             (config != null && card != null) ? config.CostFor(card.type) : int.MaxValue;
 
-        // Drag-start / dim gate: in hand + affordable. Unit-type target caps are
-        // per-target and re-checked in CommitUnit.
+        // Drag-start / dim gate: in hand + affordable. Per-target attach caps are
+        // re-checked in CommitAttach.
         public bool CanUse(int entryId)
         {
             if (_deck == null || !_deck.TryGetCard(entryId, out var card)) return false;
             return Gauge >= CostOf(card);
         }
 
-        // unit 9 — squad cards are HOST-BOUND: the effect hits the whole squad
-        // but belongs to the host defender; host death revokes it and recycles
-        // the card (same out-of-pool lifecycle as Unit cards).
-        public bool CommitSquad(int entryId, Entity host)
+        // dreamcatcher-taxonomy-cleanup unit 1 — single attach commit for both
+        // host-attached kinds. Squad (axis-set buff anchored at host) and Unit
+        // (host-only mechanics) share the whole lifecycle: cap check, apply,
+        // out-of-pool, host↔handle registry, spend, host-death revoke/recycle.
+        // The bridge dispatcher picks the apply machine by CardType — the caller
+        // no longer forks. Active cards use the Commit*Active* skill paths.
+        //
+        // Apply first: a failed attach (entity gone, non-defender, contributed
+        // nothing) must not spend or cycle (contract 9). Handle 규약: <0 실패 /
+        // 0 무회수(엔티티 부착형: 슬롯이 엔티티와 함께 소멸) / >0 회수핸들(host 사망 시
+        // RevokeDreamcatcherEffects — squad 버프·placement-aura 오라 회수).
+        public bool CommitAttach(int entryId, Entity host)
         {
-            if (!TryGetUsable(entryId, CardType.Squad, out var card)) return false;
+            if (!TryGetUsableAttach(entryId, out var card)) return false;
             if (AtAttachCap(host, card)) return false;
-            int handle = bridge.ApplyDreamcatcherCardHosted(card);
+            int handle = bridge.ApplyDreamcatcherCard(host, card);
             if (handle < 0) return false; // contributed nothing — no spend
             return AttachAndSpend(entryId, card, host, handle);
-        }
-
-        public bool CommitUnit(int entryId, Entity target)
-        {
-            if (!TryGetUsable(entryId, CardType.Unit, out var card)) return false;
-            if (AtAttachCap(target, card)) return false;
-            // Apply first: a failed attach (entity gone, non-defender) must not spend
-            // or cycle (contract 9). 반환 규약(placement-aura): <0 실패 / 0 무회수(엔티티
-            // 부착형) / >0 회수핸들(host 사망 시 RevokeDreamcatcherEffects — 오라 회수).
-            int handle = bridge.ApplyDreamcatcherCardToUnit(target, card);
-            if (handle < 0) return false;
-            return AttachAndSpend(entryId, card, target, handle);
         }
 
         // Shared attach tail: out-of-pool, host registry, spend, notify.
@@ -270,6 +266,17 @@ namespace Wassup.Core
             if (_deck == null || bridge == null) return false;
             if (!_deck.TryGetCard(entryId, out card)) return false;
             if (card.type != expected) return false;
+            return Gauge >= CostOf(card);
+        }
+
+        // dreamcatcher-taxonomy-cleanup unit 1 — attach gate for both host-attached
+        // kinds (Squad|Unit). Active is rejected (it uses the skill-cast paths).
+        private bool TryGetUsableAttach(int entryId, out DreamcatcherCard card)
+        {
+            card = null;
+            if (_deck == null || bridge == null) return false;
+            if (!_deck.TryGetCard(entryId, out card)) return false;
+            if (card.type == CardType.Active) return false;
             return Gauge >= CostOf(card);
         }
 

@@ -17,9 +17,7 @@ namespace Wassup.Data.StatImport
         public string id;
         public string displayName;
         public CardType? type;
-        public CardBinding? binding;
         public CardTargetAxis? axis;
-        public float? placementWarmupSec;
         public string description;
     }
 

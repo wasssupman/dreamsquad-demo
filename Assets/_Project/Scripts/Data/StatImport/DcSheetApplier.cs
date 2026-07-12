@@ -25,8 +25,7 @@ namespace Wassup.Data.StatImport
         {
             var c = new Counters();
 
-            ApplyFlat(payload?.cards, "dc-card", dto => dto.id, cardsById, onApplied, log, c,
-                so => WarnTypeBindingMismatch(so, log));
+            ApplyFlat(payload?.cards, "dc-card", dto => dto.id, cardsById, onApplied, log, c, null);
             ApplyFlat(payload?.skills, "dc-skill", dto => dto.id, skillsById, onApplied, log, c, null);
             ApplyFlat(payload?.configs, "dc-config", dto => dto.id, configsById, onApplied, log, c, null);
 
@@ -64,15 +63,6 @@ namespace Wassup.Data.StatImport
                 onApplied?.Invoke(so);
                 c.matched++;
             }
-        }
-
-        // Squad must bind Axis, Unit must bind Unit (taxonomy contract 2); an
-        // Active card keeps whatever it has. Authoring mistake, not a hard error.
-        private static void WarnTypeBindingMismatch(DreamcatcherCard so, StringBuilder log)
-        {
-            if ((so.type == CardType.Squad && so.binding != CardBinding.Axis) ||
-                (so.type == CardType.Unit && so.binding != CardBinding.Unit))
-                log.AppendLine($"[dc-card] '{so.id}' type={so.type} but binding={so.binding} — check authoring.");
         }
 
         // -------- sheet-SoT tabs: group rows per card, rebuild the array --------

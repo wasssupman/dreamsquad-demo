@@ -37,14 +37,13 @@ namespace Wassup.Tests.EditMode.UnitStatImport
         public void Deserialize_CardDto_ParsesStringEnumsAndLeavesOmittedNull()
         {
             const string json = @"[{ ""id"": ""poke_needle"", ""type"": ""Unit"",
-                ""axis"": ""All"", ""placementWarmupSec"": 1.5 }]";
+                ""axis"": ""All"" }]";
 
             var rows = JsonConvert.DeserializeObject<DcCardDto[]>(json);
 
             Assert.AreEqual(CardType.Unit, rows[0].type);
             Assert.AreEqual(CardTargetAxis.All, rows[0].axis);
-            Assert.AreEqual(1.5f, rows[0].placementWarmupSec);
-            Assert.IsNull(rows[0].binding, "omitted column must stay null");
+            Assert.IsNull(rows[0].description, "omitted column must stay null");
         }
 
         [Test]
@@ -63,7 +62,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             var so = NewCard("ranger_atk_10");
             so.displayName = "old";
             so.axis = CardTargetAxis.ClassRanger;
-            so.placementWarmupSec = 2f;
+            so.description = "keep";
             var payload = new DcSheetPayload
             {
                 cards = new[] { new DcCardDto { id = "ranger_atk_10", displayName = "new", axis = CardTargetAxis.All } },
@@ -73,21 +72,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
 
             Assert.AreEqual("new", so.displayName);
             Assert.AreEqual(CardTargetAxis.All, so.axis);
-            Assert.AreEqual(2f, so.placementWarmupSec, "omitted column must keep the SO value");
-        }
-
-        [Test]
-        public void ApplyCards_TypeBindingMismatch_WarnsInLog()
-        {
-            var so = NewCard("weird");
-            so.type = CardType.Unit;
-            so.binding = CardBinding.Axis; // mismatch: Unit must bind Unit
-            var log = new StringBuilder();
-
-            Apply(new DcSheetPayload { cards = new[] { new DcCardDto { id = "weird" } } },
-                new Dictionary<string, DreamcatcherCard> { ["weird"] = so }, log: log);
-
-            StringAssert.Contains("check authoring", log.ToString());
+            Assert.AreEqual("keep", so.description, "omitted column must keep the SO value");
         }
 
         [Test]

@@ -130,19 +130,13 @@ namespace Wassup.UI
                     var host = _hoverEntity;
                     var cell = _hoverCell ?? default;
                     int entryId = slot.entryId;
-                    // 대상은 같고 커밋 API 만 타입별로 다르다.
-                    switch (slot.card.type)
-                    {
-                        case CardType.Unit:
-                            CommitNow(() => _view.Controller.CommitUnit(entryId, host));
-                            break;
-                        case CardType.Squad: // unit 9 — host-bound squad
-                            CommitNow(() => _view.Controller.CommitSquad(entryId, host));
-                            break;
-                        default: // Active-DefenderUnit — CastSkillOnDefender takes the CELL
-                            CommitNow(() => _view.Controller.CommitActiveDefender(entryId, cell));
-                            break;
-                    }
+                    // dreamcatcher-taxonomy-cleanup unit 1 — Unit/Squad share one
+                    // attach commit (host-bound, aims the same); only Active-
+                    // DefenderUnit forks (casts a skill at the CELL, not an attach).
+                    if (slot.card.type == CardType.Active)
+                        CommitNow(() => _view.Controller.CommitActiveDefender(entryId, cell));
+                    else
+                        CommitNow(() => _view.Controller.CommitAttach(entryId, host));
                     return;
                 }
 
