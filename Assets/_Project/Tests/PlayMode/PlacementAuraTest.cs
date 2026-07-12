@@ -32,12 +32,6 @@ namespace Wassup.Tests.PlayMode
             yield return null;
         }
 
-        private static void NeutralizeSceneController()
-        {
-            var dc = Object.FindObjectOfType<DreamcatcherController>();
-            if (dc != null) Object.Destroy(dc.gameObject);
-        }
-
         [UnityTest]
         public IEnumerator Aura_GrantsToNewPlacementsOnly_AndRevokesOnHostRevoke()
         {
@@ -46,9 +40,7 @@ namespace Wassup.Tests.PlayMode
             for (int i = 0; i < 6; i++) yield return null;
 
             var bridge = Object.FindObjectOfType<BattleBridge>();
-            Assert.IsNotNull(bridge, "BattleBridge present");
-            NeutralizeSceneController();
-            var cat = FindCatalog();
+            Assert.IsNotNull(bridge, "BattleBridge present");            var cat = FindCatalog();
 
             var host = cat.ById("fire_caster");   // 오라 host (자신은 미부여)
             var pre = cat.ById("ranger");          // 부착 전 배치 (미부여)
@@ -102,9 +94,7 @@ namespace Wassup.Tests.PlayMode
             yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
             for (int i = 0; i < 6; i++) yield return null;
 
-            var bridge = Object.FindObjectOfType<BattleBridge>();
-            NeutralizeSceneController();
-            var cat = FindCatalog();
+            var bridge = Object.FindObjectOfType<BattleBridge>();            var cat = FindCatalog();
 
             var host = cat.ById("fire_caster");
             var ranger = cat.ById("ranger");     // 신규·비매칭(Guardian 오라)
@@ -144,9 +134,7 @@ namespace Wassup.Tests.PlayMode
             yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
             for (int i = 0; i < 6; i++) yield return null;
 
-            var bridge = Object.FindObjectOfType<BattleBridge>();
-            NeutralizeSceneController();
-            var cat = FindCatalog();
+            var bridge = Object.FindObjectOfType<BattleBridge>();            var cat = FindCatalog();
             var host = cat.ById("fire_caster");
             var future = cat.ById("scout");
 

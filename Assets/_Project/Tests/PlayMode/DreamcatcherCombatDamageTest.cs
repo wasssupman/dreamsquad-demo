@@ -33,9 +33,6 @@ namespace Wassup.Tests.PlayMode
 
             var bridge = Object.FindObjectOfType<BattleBridge>();
             Assert.IsNotNull(bridge, "BattleBridge present");
-            // Remove the scene dreamcatcher controller so it doesn't pause / apply cards.
-            var sceneDc = Object.FindObjectOfType<DreamcatcherController>();
-            if (sceneDc != null) Object.Destroy(sceneDc.gameObject);
             var gm = Object.FindObjectOfType<GameManager>();
             var cat = FindDefenderCatalog();
             Assert.IsNotNull(cat, "DefenderCatalog loaded");

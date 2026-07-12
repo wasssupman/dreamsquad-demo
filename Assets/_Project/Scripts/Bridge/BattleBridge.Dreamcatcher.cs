@@ -40,12 +40,6 @@ namespace Wassup.Bridge
         private int _dcHandleCounter = 1;
         private const float DcDuration = 1e9f;
 
-        // ingame-dreamcatcher Unit 3 — selection triggers. DreamcatcherController
-        // subscribes; absent subscribers simply no-op (non-destructive).
-        public event System.Action FirstDefenderPlaced;
-        public event System.Action<int> WaveMilestoneReached; // 1-indexed wave number
-        private bool _firstDefenderPlacedFired;
-
         // dreamcatcher-awakening-hand unit 1 — death-drain relays for the awakening
         // economy. Fired from the existing drains (no new queue/context); absent
         // subscribers no-op. EnemyKilledAwakening carries the kill's baked grant.
@@ -53,13 +47,6 @@ namespace Wassup.Bridge
         // (subscriber reads data.awakeningReward).
         public event System.Action<int> EnemyKilledAwakening;
         public event System.Action<Entity, Wassup.Data.DefenderUnitData> DefenderDied;
-
-        private void FireFirstDefenderPlacedOnce()
-        {
-            if (_firstDefenderPlacedFired) return;
-            _firstDefenderPlacedFired = true;
-            FirstDefenderPlaced?.Invoke();
-        }
 
         // Applies one card to all currently-placed matching defenders and records
         // it so future placements (ApplyActiveDcEffectsTo) inherit it.

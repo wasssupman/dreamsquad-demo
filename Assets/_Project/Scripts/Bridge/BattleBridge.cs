@@ -892,7 +892,6 @@ namespace Wassup.Bridge
             // dreamstone-loadout Unit 3 — set-then-apply: reapply the pending stone
             // loadout right after the clear above (single point, see SetDreamstones).
             ApplyPendingDreamstones();
-            _firstDefenderPlacedFired = false;
             _onPlaceTriggeredEntities.Clear();
             _synergyActivatedEntities.Clear();
             _synergyActivations = 0;
@@ -1339,9 +1338,6 @@ namespace Wassup.Bridge
                 _pending.Add(new PendingSpawnEntry { entry = entries[i], deckIndex = baseDeckIndex + i });
 
             GameManager.Instance?.Logger?.RecordWaveEvent("wave_started", wave.waveIndex, elapsedSec, forced);
-            // ingame-dreamcatcher Unit 3 — every 5th wave (5/10/15…) offers a card.
-            if ((wave.waveIndex + 1) % 5 == 0)
-                WaveMilestoneReached?.Invoke(wave.waveIndex + 1);
             Debug.Log($"[BattleBridge] Wave {wave.waveIndex + 1} queued ({entries.Count} spawns, forced={forced}). {WavePatternGenerator.FormatSummary(wave)}");
         }
 
@@ -1441,9 +1437,9 @@ namespace Wassup.Bridge
         }
 
         // Phase 7 — Portal two-tap cast. Unlike CastSkillAtTile, this takes two
-        // tiles (entry/exit) in one call. SkillBar captures both taps before
-        // invoking. Returns false if the skill is not a Portal or the cooldown
-        // gate rejects.
+        // tiles (entry/exit) in one call; the caller (DreamcatcherCardDragSlot's
+        // Portal two-tap) captures both taps before invoking. Returns false if
+        // the skill is not a Portal or the cooldown gate rejects.
         public bool CastPortal(SkillData skill, Vector2Int entryTile, Vector2Int exitTile, out int affectedCount)
         {
             affectedCount = 0;
@@ -2614,8 +2610,8 @@ namespace Wassup.Bridge
 
         // awakening-hand simplify F1 — pointer→board-cell as a single shared
         // helper. The exact ray→RaycastPlane→ToSim→cell block is hand-rolled in
-        // SkillBar/PlacementInput too (pre-existing copies; consolidation is a
-        // follow-up) — new call sites MUST use this instead of a sixth copy.
+        // PlacementInput too (pre-existing copy; consolidation is a follow-up)
+        // — new call sites MUST use this instead of another copy.
         // BoardSpace.RaycastPlane (not Plane(up)) is load-bearing: the tilemap
         // front-view board plane is near-parallel to an up-plane ray.
         public bool TryScreenToCell(Camera cam, Vector2 screenPos, out Vector2Int cell)
@@ -2819,7 +2815,7 @@ namespace Wassup.Bridge
         private void ReportMatchResult(int playerScore)
         {
             // Match is over — enter the Result phase so battle-only HUD (NextWaveDock,
-            // ScoreHud, CostDisplay, SkillBar) deactivates. RESTART goes Result →
+            // ScoreHud, CostDisplay) deactivates. RESTART goes Result →
             // Placement → Battle (BeginPlacementPhase), which re-shows them.
             GameManager.Instance?.SetPhase(GamePhase.Result);
             var logger = GameManager.Instance?.Logger;
@@ -2916,7 +2912,6 @@ namespace Wassup.Bridge
 
             var entity = CreateDefenderEntity(cell, unitData, pendingDeployment: false, spawnPlacementVfx: true);
             TriggerOnPlaceAndSynergy(unitData, cell, entity);
-            FireFirstDefenderPlacedOnce();
 
             Debug.Log($"[BattleBridge] Placed {unitData.displayName} at ({tileX},{tileY}).");
             return true;
@@ -2960,7 +2955,6 @@ namespace Wassup.Bridge
             if (_em.HasComponent<PendingDeployment>(entity))
                 _em.RemoveComponent<PendingDeployment>(entity);
             RecomputeSynergyFor(cell);
-            FireFirstDefenderPlacedOnce();
             Debug.Log($"[BattleBridge] Activated deployed defender {binding.data.displayName} at {cell}.");
         }
 
