@@ -1,5 +1,6 @@
 using System.Collections;
 using Spine.Unity;
+using TMPro;
 using UnityEngine;
 using Wassup.Bridge;
 using Wassup.Core;
@@ -32,6 +33,12 @@ namespace Wassup.UI
         private TimeLease _slowmoLease; // time-manager Unit 5 — 드래그 중 Battle 슬로우모 lease
         private Material _previewMaterial; // 폴백 capsule 용
         private Material _cordMaterial;    // 줄/고리 공유(세션마다 생성 금지)
+        // action-tray unit 4 — 드래그 중 거부 사유 라벨(포인터 추종 오버레이).
+        // 색만으로 알리지 않는다: 사유별 글리프+한글 label+색 3중 표기.
+        private TMP_FontAsset _uiFont;
+        private GameObject _rejectCanvasGO;
+        private TextMeshProUGUI _rejectLabel;
+        private Vector2 _lastScreenPos;
 
         // 키링 배치 상태: 고리 = 손가락(공중). 유닛 = 보드에 서서 무게추처럼 스프링 지연으로 뒤따라옴.
         private Vector3 _ringWorld;        // 고리(손가락, 공중)
@@ -55,15 +62,18 @@ namespace Wassup.UI
             public float unitHeight;        // 실루엣 월드 높이(발→머리). 머리 오프셋용.
             public Vector2Int? hoverTile;
             public bool isValidTile;
+            // action-tray unit 4 — 마지막 hover 판정의 거부 사유(유효 칸이면 None).
+            public PlacementRejectReason rejectReason;
         }
 
         public void Configure(BattleBridge battleBridge, Camera camera, PlacementInput input,
-            DragSwaySettings swaySettings = null)
+            DragSwaySettings swaySettings = null, TMP_FontAsset uiFont = null)
         {
             bridge = battleBridge;
             mainCamera = camera != null ? camera : Camera.main;
             placementInput = input;
             if (swaySettings != null) _cfg = swaySettings;
+            if (uiFont != null) _uiFont = uiFont;
         }
 
         public void BeginDrag(DefenderUnitData unitData, Vector2 screenPosition)
@@ -123,6 +133,7 @@ namespace Wassup.UI
         public void UpdateDrag(Vector2 screenPosition)
         {
             if (!_session.active) return;
+            _lastScreenPos = screenPosition; // unit 4 — 거부 라벨 포인터 추종
             // 발↔고리 화면 세로 거리 = 유닛 키 + 줄 길이. 고리는 손가락에, 유닛은 그만큼 화면 아래 보드에.
             float totalDrop = _session.unitHeight + Cfg.ropeLength * _session.visualScale;
 
@@ -180,8 +191,68 @@ namespace Wassup.UI
             {
                 cell = new Vector2Int(Mathf.FloorToInt(sim.x + 0.5f), Mathf.FloorToInt(sim.z + 0.5f));
             }
-            bool valid = bridge != null && bridge.CanPlaceDefenderAt(cell.x, cell.y, _session.unit, out _);
+            // action-tray unit 4 — reason 을 버리지 않고 세션에 보관, 라벨로 구분 표기.
+            var reason = PlacementRejectReason.None;
+            bool valid = bridge != null && bridge.CanPlaceDefenderAt(cell.x, cell.y, _session.unit, out reason);
+            _session.rejectReason = valid ? PlacementRejectReason.None : reason;
             SetHover(cell, valid);
+            UpdateRejectLabel();
+        }
+
+        // action-tray unit 4 — 사유 매핑: coral X(비용) / amber ■(점유) / neutral —(불가).
+        private void UpdateRejectLabel()
+        {
+            bool show = _session.active && _onBoard && _session.hoverTile.HasValue
+                        && !_session.isValidTile && _session.rejectReason != PlacementRejectReason.None;
+            if (!show)
+            {
+                if (_rejectLabel != null && _rejectLabel.gameObject.activeSelf)
+                    _rejectLabel.gameObject.SetActive(false);
+                return;
+            }
+
+            EnsureRejectLabel();
+            string text;
+            Color color;
+            switch (_session.rejectReason)
+            {
+                case PlacementRejectReason.InsufficientCost:
+                    text = "X 코스트 부족"; color = new Color(1f, 0.42f, 0.36f, 1f); break;
+                case PlacementRejectReason.Occupied:
+                    text = "■ 점유됨"; color = new Color(1f, 0.76f, 0.30f, 1f); break;
+                default:
+                    text = "— 배치 불가"; color = new Color(0.82f, 0.83f, 0.88f, 1f); break;
+            }
+            if (!_rejectLabel.gameObject.activeSelf) _rejectLabel.gameObject.SetActive(true);
+            _rejectLabel.text = text;
+            _rejectLabel.color = color;
+            _rejectLabel.transform.position = new Vector3(_lastScreenPos.x, _lastScreenPos.y + 96f, 0f);
+        }
+
+        private void EnsureRejectLabel()
+        {
+            if (_rejectLabel != null) return;
+            _rejectCanvasGO = new GameObject("DragRejectCanvas", typeof(Canvas));
+            _rejectCanvasGO.transform.SetParent(transform, false);
+            var canvas = _rejectCanvasGO.GetComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvas.sortingOrder = 20001; // 드래그 프리뷰(20000) 위
+            var go = new GameObject("RejectLabel", typeof(RectTransform));
+            go.transform.SetParent(_rejectCanvasGO.transform, false);
+            var rt = (RectTransform)go.transform;
+            rt.sizeDelta = new Vector2(300f, 40f);
+            _rejectLabel = go.AddComponent<TextMeshProUGUI>();
+            if (_uiFont != null) _rejectLabel.font = _uiFont;
+            _rejectLabel.fontSize = 26f;
+            _rejectLabel.fontStyle = FontStyles.Bold;
+            _rejectLabel.alignment = TextAlignmentOptions.Center;
+            _rejectLabel.textWrappingMode = TextWrappingModes.NoWrap;
+            _rejectLabel.raycastTarget = false;
+            var mat = _rejectLabel.fontMaterial;
+            mat.EnableKeyword(ShaderUtilities.Keyword_Outline);
+            mat.SetColor(ShaderUtilities.ID_OutlineColor, new Color(0f, 0f, 0f, 0.9f));
+            mat.SetFloat(ShaderUtilities.ID_OutlineWidth, 0.16f);
+            go.SetActive(false);
         }
 
         public void EndDrag(Vector2 screenPosition)
@@ -421,6 +492,9 @@ namespace Wassup.UI
             bridge?.ClearPlacementRange();
             _session.hoverTile = null;
             _session.isValidTile = false;
+            _session.rejectReason = PlacementRejectReason.None; // unit 4
+            if (_rejectLabel != null && _rejectLabel.gameObject.activeSelf)
+                _rejectLabel.gameObject.SetActive(false);
         }
 
         private void CleanupSession()

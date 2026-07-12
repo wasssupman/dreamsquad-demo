@@ -54,6 +54,62 @@ namespace Wassup.UI
         private bool _built;
         private bool _phaseVisible;
         private bool _suppressed; // 드림캐쳐 핸드 오픈 중 true (SetSuppressed)
+        // action-tray unit 4 — 비용 부족 rail pulse. 코루틴 핸들 1개로 연속 입력
+        // 누적 방지(재시작 전 강제 리셋).
+        private Image _plateImage;
+        private Coroutine _pulse;
+        private TextMeshProUGUI _pulseLabel;
+        private static readonly Color PulseWarn = new(1f, 0.34f, 0.28f, 1f);
+
+        // action-tray unit 4 — 비용 부족 슬롯 드래그 차단 피드백: 0.6초 rail pulse +
+        // "코스트 N 부족" 라벨. 표시 중 재호출은 리셋 후 재시작(상태 누적 없음).
+        public void PulseInsufficient(int missing)
+        {
+            if (_panel == null || !_panel.activeSelf) return;
+            if (_pulse != null) { StopCoroutine(_pulse); ResetPulseVisual(); }
+            _pulse = StartCoroutine(PulseRoutine(Mathf.Max(1, missing)));
+        }
+
+        private System.Collections.IEnumerator PulseRoutine(int missing)
+        {
+            EnsurePulseLabel();
+            _pulseLabel.text = $"코스트 {missing} 부족";
+            _pulseLabel.gameObject.SetActive(true);
+            if (_plateImage != null) _plateImage.color = new Color(1f, 0.72f, 0.68f, 1f);
+            if (_valueText != null) _valueText.color = PulseWarn;
+            yield return new WaitForSecondsRealtime(0.6f); // UI 는 슬로모 무관 실시간
+            ResetPulseVisual();
+            _pulse = null;
+        }
+
+        private void ResetPulseVisual()
+        {
+            if (_pulseLabel != null) _pulseLabel.gameObject.SetActive(false);
+            if (_plateImage != null) _plateImage.color = Color.white;
+            if (_valueText != null) _valueText.color = ValueColor;
+        }
+
+        private void EnsurePulseLabel()
+        {
+            if (_pulseLabel != null) return;
+            var go = new GameObject("InsufficientLabel", typeof(RectTransform));
+            go.transform.SetParent(_panel.transform, false);
+            var rt = (RectTransform)go.transform;
+            rt.anchorMin = new Vector2(0.5f, 1f);
+            rt.anchorMax = new Vector2(0.5f, 1f);
+            rt.pivot = new Vector2(0.5f, 0f);
+            rt.anchoredPosition = new Vector2(0f, 6f);
+            rt.sizeDelta = new Vector2(260f, 34f);
+            _pulseLabel = go.AddComponent<TextMeshProUGUI>();
+            if (numberFont != null) _pulseLabel.font = numberFont;
+            _pulseLabel.fontSize = 24f;
+            _pulseLabel.fontStyle = FontStyles.Bold;
+            _pulseLabel.color = PulseWarn;
+            _pulseLabel.alignment = TextAlignmentOptions.Center;
+            _pulseLabel.textWrappingMode = TextWrappingModes.NoWrap;
+            _pulseLabel.raycastTarget = false;
+            go.SetActive(false);
+        }
 
         private void Awake()
         {
@@ -212,6 +268,7 @@ namespace Wassup.UI
                     : UiRoundedSprite.Make(20f, 3f, PlateColor, PlateBorder));
             plate.type = Image.Type.Sliced;
             plate.raycastTarget = false;
+            _plateImage = plate; // unit 4 — pulse 틴트 대상
 
             // Energy bolt — rail: 좌측 세로 중앙(한 줄 시안) / legacy: top-left.
             float iconSize = railMode ? 24f : 44f;

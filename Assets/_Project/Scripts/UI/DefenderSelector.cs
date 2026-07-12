@@ -25,6 +25,9 @@ namespace Wassup.UI
         // 없어 네모로 깨지므로 한글 SDF(Jua)를 주입한다. 미할당이면 라틴 폴백.
         [SerializeField] private TMP_FontAsset nameFont;
         [SerializeField] private BattleHudTrayConfig trayConfig;
+        // action-tray unit 4 — 비용 부족 차단 시 rail pulse 피드백 대상. 슬롯이
+        // 런타임 생성이라 전역 이벤트 대신 Bind 로 직접 참조를 넘긴다.
+        [SerializeField] private CostDisplay costDisplay;
         // battle-hud-layout 2 — 페이즈별 스트립 크기. Battle 은 관전이 주 활동이라
         // 슬림 축소로 중앙 하단 보드 가림을 상쇄한다. 슬롯은 childForceExpand 라
         // 패널 크기만 바꾸면 균등 축소된다.
@@ -196,7 +199,7 @@ namespace Wassup.UI
                     ? Color.clear
                     : (data.visualMaterial != null ? data.visualMaterial.GetColor("_BaseColor") : Color.gray);
                 var dragSlot = go.AddComponent<DefenderDragSlot>();
-                dragSlot.Bind(data, dragPlacementController);
+                dragSlot.Bind(data, dragPlacementController, costDisplay);
 
                 // defender-portraits 3 — 포트레이트 채움(4px 패딩). raycastTarget=false 라
                 // 드래그 입력은 슬롯 루트(bg Image)가 받는다.
@@ -448,7 +451,7 @@ namespace Wassup.UI
             if (dragPlacementController == null)
                 dragPlacementController = gameObject.AddComponent<DefenderDragPlacementController>();
             if (bridge != null)
-                dragPlacementController.Configure(bridge, Camera.main, bridge.PlacementInput, swaySettings);
+                dragPlacementController.Configure(bridge, Camera.main, bridge.PlacementInput, swaySettings, nameFont);
         }
     }
 }
