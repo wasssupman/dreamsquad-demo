@@ -9,7 +9,7 @@ spec `417f9f07` → u0 `b6ce8ab4`(payload 계약+순수함수) → u1 `70057706`
 - **채찍질** = `PeriodicTimer(1s)` × `AllyMoveSpeedAura(9)`: 매 펄스 host 기준 Chebyshev 3타일 내 **같은 진영** 유닛(host 제외, entity 비교)에 `MoveSpeedMul ×1.2`(TTL 1.5s) — `StatModifierApplyEventsSingleton` 경유, modifier 계층 코드 무변경.
 - 유지 = merge-refresh(duration>period), 해제 = TTL 자연 만료(범위 이탈·보스 사망, revoke 없음).
 - arm = `BossPeriodicTriggerSystem` 페이로드 분기(진영 풀 lazy 빌드, degenerate skip: mag==0/dur<=0). 신규 시스템/채널/슬롯 필드 0.
-- **오라 연출 (rev 2)** = 메커닉 데이터 선언(`DcPayloadSpec.auraPrefab/auraScale` — WindAura, scale 1.6) → 베이크 등록 → `DcAuraVisualPool`(plain class, 씬 배선 없음)이 host 뷰 추종. **kind-blind** — bridge/범용 인프라에 payload kind 분기 0. rev 1 원샷(`Projectile_WhipPulse`)·StatusFx 편입은 기각(3_whip_pulse_visual.md rev 이력 참조 — "지형 말뚝" 오독 / 메커닉 지식 누수).
+- **오라 연출 (rev 2)** = 메커닉 데이터 선언(`DcPayloadSpec.auraPrefab/auraScale` — WindAura, scale 1.2 = 사용자 튜닝 2026-07-12) → 베이크 등록 → `DcAuraVisualPool`(plain class, 씬 배선 없음)이 host 뷰 추종. **kind-blind** — bridge/범용 인프라에 payload kind 분기 0. rev 1 원샷(`Projectile_WhipPulse`)·StatusFx 편입은 기각(3_whip_pulse_visual.md rev 이력 참조 — "지형 말뚝" 오독 / 메커닉 지식 누수).
 - 베이크 = `BakeNightmareMechanics` 오라 등록 + duration<=period 경고 1줄. (rev 1 원샷 arm 코드는 SO 게이트로 잔존, 현재 미사용.)
 
 ## Key Files
