@@ -44,7 +44,7 @@
 | # | 작업 구분 | 목적 |
 |---|---|---|
 | 0 | 서브디바이드 카드-페이스 Graphic + off 폴백 | 카드 면을 N×M 격자로 방출(UV/preserveAspect 보존). **frame.color setter·`raycastTarget`·CanvasGroup 계약 보존**. `_Unfold=1` rest=현재 픽셀 동일. **off 폴백=즉시 평면(현재 딜)** 을 처음부터. |
-| 0.5 | 실기 perf spike | 5장 worst-case 해상도 Android 프로파일 → **서브디바이드 해상도 + `_Unfold` 전송(공유 머티리얼+버텍스 스트림)** 확정. unit 1 셰이더 착수 게이트. |
+| 0.5 ✓ | 실기 perf spike | `0_5_perf_spike.md` — 메시 비병목(≤0.32ms@24×24×5, 정적), 해상도=시각결정(기본 12~16), **`_Unfold`=per-instance 머티리얼 float**. GPU 셰이더 비용은 unit 1 실기 게이트로 이관. |
 | 1 | 크럼플 UGUI 셰이더 | **UI/Default 계열 CG**(stencil/`_ClipRect`/`_GUIZTestMode` = `DraftCardFoil_UI.shader` 재사용). `_Unfold` 0→1: **XY** 노이즈 변위 + 가짜 크리스 AO. Z inert. |
 | 2 | 딜 통합 + 라이프사이클 + 텍스트 alpha | `_Unfold` 를 `_dealSeq` 안 `Tween.Custom`(딜과 동일 stagger). 텍스트/배지 **별도 alpha 권한**으로 펴짐 끝 페이드-인. teardown/restore 강제 `_Unfold=1`, Refresh=평면 바인드(재구김 금지). |
 | 3 | 스타일 확정 + 시각 폴리시 + 실기 재검증 | 크럼플 스타일(D2) 확정, 크리스 음영/타이밍 폴리시, Android 재프로파일. |
@@ -53,8 +53,10 @@
 ## feature-wide 계약 (초안 rev1)
 
 - **rest 무회귀**: `_Unfold=1` = 현재 카드 면과 픽셀 동일. off 폴백 시 현재 딜과 완전 동일(escape hatch, unit 0 부터).
-- **`_Unfold` 전송 = 공유 머티리얼 1개 + 버텍스 스트림**. per-instance 머티리얼은 배치/leak 근거로 금지(실기서
-  버텍스 스트림이 불충분 판정될 때만 재고).
+- **`_Unfold` 전송 = per-instance 머티리얼 float**(unit 0.5 spike 확정 — `0_5_perf_spike.md`). 애니메이션되는
+  per-card 스칼라를 버텍스 스트림에 실으면 **매프레임 mesh 재방출=병목**이라 역효과. **크럼플 target/크리스는 정적
+  버텍스 스트림(UV1/2)에 1회 베이크**, `_Unfold` 만 머티리얼 float → **메시 정적, 프레임당 CPU 0**. per-instance
+  머티리얼 5장(5 draw call)은 `OnDestroy` 정리(`DraftCardVfxDriver` 선례). 메시 비용 실측 ≤0.32ms@24×24×5(정적).
 - **카드-페이스 그래픽은 기존 계약 보존**: `frame.color` setter(BindCard/dim), `raycastTarget=true`(드래그 픽킹은
   rect 기반이라 변위해도 히트테스트 무손상, 단 Graphic 상존·raycastable 유지), root `CanvasGroup`(dim 0.42) 호환.
   완료기준에 **drag/press-lift/dim 무회귀** 포함.
