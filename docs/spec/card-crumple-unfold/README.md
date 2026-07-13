@@ -45,7 +45,7 @@
 |---|---|---|
 | 0 | 서브디바이드 카드-페이스 Graphic + off 폴백 | 카드 면을 N×M 격자로 방출(UV/preserveAspect 보존). **frame.color setter·`raycastTarget`·CanvasGroup 계약 보존**. `_Unfold=1` rest=현재 픽셀 동일. **off 폴백=즉시 평면(현재 딜)** 을 처음부터. |
 | 0.5 ✓ | 실기 perf spike | `0_5_perf_spike.md` — 메시 비병목(≤0.32ms@24×24×5, 정적), 해상도=시각결정(기본 12~16), **`_Unfold`=per-instance 머티리얼 float**. GPU 셰이더 비용은 unit 1 실기 게이트로 이관. |
-| 1 | 크럼플 UGUI 셰이더 | **UI/Default 계열 CG**(stencil/`_ClipRect`/`_GUIZTestMode` = `DraftCardFoil_UI.shader` 재사용). `_Unfold` 0→1: **XY** 노이즈 변위 + 가짜 크리스 AO. Z inert. |
+| 1 ✓ | 크럼플 UGUI 셰이더 | `CardCrumple_UI.shader`(UI/Default CG, DraftCardFoil scaffold) + `UiCardFaceMesh` 노이즈 베이크(uv1 오프셋/uv2 크리스)+per-instance 머티리얼+`Unfold`. 오프스크린 검증: rest 무회귀·매끈 전이·blackout/collapse 수정. **XY-only 라 완만한 잔주름**(Overlay Z inert 한계). 실기 GPU 프로파일=unit 3. |
 | 2 | 딜 통합 + 라이프사이클 + 텍스트 alpha | `_Unfold` 를 `_dealSeq` 안 `Tween.Custom`(딜과 동일 stagger). 텍스트/배지 **별도 alpha 권한**으로 펴짐 끝 페이드-인. teardown/restore 강제 `_Unfold=1`, Refresh=평면 바인드(재구김 금지). |
 | 3 | 스타일 확정 + 시각 폴리시 + 실기 재검증 | 크럼플 스타일(D2) 확정, 크리스 음영/타이밍 폴리시, Android 재프로파일. |
 | 4 | handoff | 인계 요약. |
