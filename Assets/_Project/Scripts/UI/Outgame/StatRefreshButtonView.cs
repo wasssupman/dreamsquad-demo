@@ -8,16 +8,21 @@ namespace Wassup.UI
     // runtime-stat-refresh Unit 2 — dev/QA-only lobby button: pulls the latest
     // sheet balance into the in-memory catalog SOs (next battle uses the new
     // numbers). Hidden outside development builds; the release APK never shows it.
+    // unit 4 — refresher-agnostic: drives any IRuntimeRefresher (unit / dreamcatcher)
+    // so the two lobby buttons share one view. Unity can't serialize interface refs,
+    // so the source is a MonoBehaviour cast to IRuntimeRefresher at Awake.
     public class StatRefreshButtonView : MonoBehaviour
     {
         // menu font assets (LiberationSans/Anton/Bangers) carry no Korean glyphs —
         // all lobby labels are English all-caps; keep these matching.
-        private const string IdleLabel = "REFRESH STATS";
+        [SerializeField] private string idleLabel = "IMPORT UNIT";
 
-        [SerializeField] private UnitStatRuntimeRefresher refresher;
+        [SerializeField] private MonoBehaviour refresherSource;
         [SerializeField] private Button button;
         [SerializeField] private TMP_Text label;
         [SerializeField] private TMP_Text resultLabel;
+
+        private IRuntimeRefresher _refresher;
 
         private void Awake()
         {
@@ -26,6 +31,14 @@ namespace Wassup.UI
                 gameObject.SetActive(false);
                 return;
             }
+            _refresher = refresherSource as IRuntimeRefresher;
+            if (_refresher == null)
+            {
+                Debug.LogWarning($"[StatRefresh] '{name}' refresherSource is not an IRuntimeRefresher — button disabled.");
+                gameObject.SetActive(false);
+                return;
+            }
+            if (label != null) label.text = idleLabel;
             if (resultLabel != null) resultLabel.text = "";
             button.onClick.AddListener(OnClick);
         }
@@ -37,16 +50,16 @@ namespace Wassup.UI
 
         private void OnClick()
         {
-            if (refresher == null || refresher.RequestInFlight) return;
+            if (_refresher == null || _refresher.RequestInFlight) return;
             button.interactable = false;
             if (label != null) label.text = "REFRESHING...";
 
-            refresher.Refresh(log =>
+            _refresher.Refresh(log =>
             {
                 // the scene may have unloaded while the request was in flight
                 if (this == null || button == null) return;
                 button.interactable = true;
-                if (label != null) label.text = IdleLabel;
+                if (label != null) label.text = idleLabel;
                 if (resultLabel != null) resultLabel.text = FirstLine(log);
                 Debug.Log($"[StatRefresh]\n{log}");
             });

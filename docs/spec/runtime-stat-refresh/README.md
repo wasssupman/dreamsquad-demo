@@ -1,6 +1,6 @@
 # Runtime Stat Refresh — 로비 시트→SO 갱신 버튼
 
-상태: **구현 완료 2026-07-06** — 에디터 Play 검증 통과. 잔여: 실기기 Development Build 1회 확인 + 릴리즈 빌드 버튼 미노출 확인 (unit 2 완료 기준 참조)
+상태: **구현 완료 2026-07-06** (units 0~2) · **드림캐쳐 확장 완료 2026-07-13** (units 3~4). 인계 `5_handoff_summary.md`. 잔여: 실기기 Development Build 1회 확인 + 릴리즈 빌드 버튼 미노출 확인 (unit 2 완료 기준 참조)
 
 ## 목표
 
@@ -15,6 +15,8 @@
 | 0 | 리팩토링 | `0_shared_logic_to_runtime.md` | import 공유 로직(DTO/매퍼/컨버터/envelope 파싱)을 Editor asmdef → 런타임으로 이동. 동작 무변경 |
 | 1 | 구현 | `1_enemy_catalog_and_refresh_service.md` | `EnemyCatalog` 신설 + 런타임 갱신 서비스 (fetch→parse→카탈로그 id 매칭 apply) |
 | 2 | 구현+wiring | `2_lobby_button_wiring.md` | 로비(Outgame) 버튼 + 결과 표시 + 씬 배선 + Play/실기기 검증 |
+| 3 | 구현 | `3_dreamcatcher_runtime_refresher.md` | (2026-07-13) 드림캐쳐 확장 — `DcSheetRuntimeRefresher` (6탭 fetch→in-memory apply, 카탈로그+Active/스킬/config 참조) + EditMode 테스트 |
+| 4 | 구현+wiring | `4_dreamcatcher_lobby_button.md` | (2026-07-13) `IRuntimeRefresher` 인터페이스로 버튼 일반화 + "IMPORT UNIT"/"IMPORT DREAMCATCHER" 2버튼 씬 배선 |
 
 ## Feature-wide 계약
 

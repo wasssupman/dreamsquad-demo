@@ -10,7 +10,7 @@ namespace Wassup.Core
     // applies them to the catalog SO instances IN MEMORY (no asset writes — those
     // are editor-only APIs). Values hold for the app session; a restart reverts
     // to built values. Scene-local component, not a singleton.
-    public class UnitStatRuntimeRefresher : MonoBehaviour
+    public class UnitStatRuntimeRefresher : MonoBehaviour, IRuntimeRefresher
     {
         [SerializeField] private DefenderCatalog defenderCatalog;
         [SerializeField] private EnemyCatalog enemyCatalog;
