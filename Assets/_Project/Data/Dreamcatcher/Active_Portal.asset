@@ -17,7 +17,7 @@ MonoBehaviour:
   axis: 0
   category: 0
   effects: []
-  art: {fileID: 0}
+  art: {fileID: 21300000, guid: 820f88bb8c7646829569d04eded7fc0a, type: 3}
   binding: 0
   mechanics: []
   attackMods: []
