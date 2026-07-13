@@ -26,7 +26,7 @@
 - [x] 프롬프트 sidecar 가 JSON 임베드 + 업서트 규칙 포함.
 - [x] 임시 폴더 자동 정리(finally), worktree 오염 0.
 
-확인 2026-07-13 — 커밋 `<이 커밋>`. `ExportCombinedFile` 헤드리스 실행 결과가 `7_full_dreamcatcher_export.json` 과 동일.
+확인 2026-07-13 — 커밋 `d0f703e0`. `ExportCombinedFile` 헤드리스 실행 결과가 `7_full_dreamcatcher_export.json` 과 6탭 byte-identical.
 
 ## 사용법
 
