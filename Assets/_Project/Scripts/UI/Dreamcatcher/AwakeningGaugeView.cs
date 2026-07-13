@@ -155,7 +155,11 @@ namespace Wassup.UI
             var backing = _panel.GetComponent<Image>();
             backing.color = backingColor;
             var button = _panel.GetComponent<Button>();
-            button.onClick.AddListener(() => Toggled?.Invoke());
+            button.onClick.AddListener(() =>
+            {
+                Wassup.Core.SoundManager.Instance?.PlayUiTick(); // deck-sfx — 게이지 버튼 틱
+                Toggled?.Invoke();
+            });
 
             // Radial-less horizontal fill bar along the bottom edge.
             var fillBg = new GameObject("FillBg", typeof(RectTransform), typeof(Image));

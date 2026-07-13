@@ -1782,6 +1782,14 @@ MonoBehaviour:
   projectileFireMinInterval: 0.045
   cardAbsorbClip: {fileID: 8300000, guid: 22a918ae7fbf14d83b339bfca418d8d6, type: 3}
   cardAbsorbVolume: 0.7
+  cardDealClip: {fileID: 8300000, guid: 53f55f7b47d224fe8919f13cdc7d5470, type: 3}
+  cardDealVolume: 0.6
+  cardPickupClip: {fileID: 8300000, guid: 75332057c80074629a4751e470e7b27d, type: 3}
+  cardPickupVolume: 0.5
+  cardReturnClip: {fileID: 8300000, guid: 8bdfa4d91319c4c8f8df05c57860b084, type: 3}
+  cardReturnVolume: 0.5
+  uiTickClip: {fileID: 8300000, guid: 02e7adbdc761d49b4a8b48ba82010c41, type: 3}
+  uiTickVolume: 0.5
   deployVoiceVolume: 0.8
   bgmClip: {fileID: 8300000, guid: 0f1ffe20701064ad69bd1d71cbc381c5, type: 3}
   bgmVolume: 0.35

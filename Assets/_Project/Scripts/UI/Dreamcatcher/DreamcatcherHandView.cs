@@ -296,6 +296,8 @@ namespace Wassup.UI
             if (_focusIndex == index) return;
             _focusIndex = index;
             ApplyFocusTargets();
+            // deck-sfx — 카드 집기(press-to-lift). 유효 슬롯 focus 시에만(-1=해제는 무음).
+            if (index >= 0) SoundManager.Instance?.PlayCardPickup();
         }
 
         // Release only clears if this slot is still the focused one (overlapping
@@ -534,6 +536,7 @@ namespace Wassup.UI
         private void StartDeal()
         {
             StopDeal();
+            SoundManager.Instance?.PlayCardDeal(); // deck-sfx — 딜인(덱 드로우) 리플 1회
             _dealSeq = Sequence.Create();
             if (_backing != null)
             {

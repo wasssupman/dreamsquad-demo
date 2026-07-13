@@ -28,6 +28,20 @@ namespace Wassup.Core
         [SerializeField] private AudioClip cardAbsorbClip;
         [Range(0f, 1f)] [SerializeField] private float cardAbsorbVolume = 0.7f;
 
+        [Header("Deck / UI")]
+        [Tooltip("손패 딜인(덱 드로우) 리플. Null → no-op.")]
+        [SerializeField] private AudioClip cardDealClip;
+        [Range(0f, 1f)] [SerializeField] private float cardDealVolume = 0.6f;
+        [Tooltip("카드 집기(press-to-lift). Null → no-op.")]
+        [SerializeField] private AudioClip cardPickupClip;
+        [Range(0f, 1f)] [SerializeField] private float cardPickupVolume = 0.5f;
+        [Tooltip("카드 손패 복귀(취소/실패). Null → no-op.")]
+        [SerializeField] private AudioClip cardReturnClip;
+        [Range(0f, 1f)] [SerializeField] private float cardReturnVolume = 0.5f;
+        [Tooltip("UI 버튼 틱(게이지 토글 등). Null → no-op.")]
+        [SerializeField] private AudioClip uiTickClip;
+        [Range(0f, 1f)] [SerializeField] private float uiTickVolume = 0.5f;
+
         [Header("Deploy voice")]
         [Tooltip("배치 추임새 볼륨. 클립은 캐릭터별 DefenderUnitData.deployVoiceClip.")]
         [Range(0f, 1f)] [SerializeField] private float deployVoiceVolume = 0.85f;
@@ -137,6 +151,21 @@ namespace Wassup.Core
             src.pitch = 1f;
             src.PlayOneShot(cardAbsorbClip, cardAbsorbVolume);
         }
+
+        // 덱/UI 원샷 (손패 딜인·집기·복귀·UI 틱). 라운드로빈 보이스 재사용, 미할당 시 no-op.
+        private void PlayOneShot(AudioClip clip, float vol)
+        {
+            if (clip == null || _voices == null) return;
+            var src = _voices[_next];
+            _next = (_next + 1) % _voices.Length;
+            src.pitch = 1f;
+            src.PlayOneShot(clip, vol);
+        }
+
+        public void PlayCardDeal()   => PlayOneShot(cardDealClip, cardDealVolume);
+        public void PlayCardPickup() => PlayOneShot(cardPickupClip, cardPickupVolume);
+        public void PlayCardReturn() => PlayOneShot(cardReturnClip, cardReturnVolume);
+        public void PlayUiTick()     => PlayOneShot(uiTickClip, uiTickVolume);
 
         // Per-character casual deploy interjection (clip from the deployed DefenderUnitData).
         public void PlayDeployVoice(AudioClip clip)

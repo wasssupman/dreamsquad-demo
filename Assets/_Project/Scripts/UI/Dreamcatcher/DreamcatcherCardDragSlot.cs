@@ -243,6 +243,8 @@ namespace Wassup.UI
             EndInteraction();
             _view.RestoreSlotHome(_index);
             _view.NotifyInteractionEnded();
+            // deck-sfx — 카드 손패 복귀(취소/손패영역 드롭). 단일 취소 지점만(벌크 리셋 제외).
+            Wassup.Core.SoundManager.Instance?.PlayCardReturn();
         }
 
         // Shared teardown for every interaction end (commit, cancel, disable):
