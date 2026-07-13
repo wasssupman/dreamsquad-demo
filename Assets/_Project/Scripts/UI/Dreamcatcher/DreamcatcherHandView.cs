@@ -52,7 +52,7 @@ namespace Wassup.UI
         [SerializeField] private float dealTiltX = 50f;    // 누운 카드 → 세움(원근 ①)
         [SerializeField] private float clusterK = 0.3f;    // 시작 x 모임(덱 뭉침)
         // card-crumple-unfold unit 2 — 딜 안착과 동기로 구김이 풀림(살짝 늦게 끝, D3).
-        [SerializeField] private float crumpleUnfoldSec = 0.42f;
+        [SerializeField] private float crumpleUnfoldSec = 0.6f;
         [SerializeField] private float textFadeSec = 0.18f;
         // hand-deal-in unit 4 — 퇴장 침강(딜의 거울: 하단 덱으로 InBack).
         [SerializeField] private float sinkDurationSec = 0.26f;
@@ -783,6 +783,15 @@ namespace Wassup.UI
                 slot.dragSlot.Bind(this, i);
 
                 _slots.Add(slot);
+            }
+            // card-crumple-unfold — 카드가 실제 렌더되는 캔버스에 uv1/uv2 채널 보장(BuildCanvas 의
+            // GetComponentInChildren 이 카드 렌더 캔버스와 다를 수 있어 실제 ancestor 로 확정).
+            if (_slots.Count > 0)
+            {
+                var cv = _slots[0].root.GetComponentInParent<Canvas>();
+                if (cv != null)
+                    cv.additionalShaderChannels |=
+                        AdditionalCanvasShaderChannels.TexCoord1 | AdditionalCanvasShaderChannels.TexCoord2;
             }
             UiLayer.Apply(gameObject);
         }
