@@ -671,14 +671,16 @@ namespace Wassup.UI
                 slot.frame = slot.root.GetComponent<Image>();
                 slot.group = slot.root.GetComponent<CanvasGroup>();
 
-                var artGO = new GameObject("Art", typeof(RectTransform), typeof(Image));
+                // card-crumple-unfold unit 0 — art 는 서브디바이드 Graphic(구김 토대).
+                // frame(root Image)·드래그·CanvasGroup 은 그대로(D1 = art-only).
+                var artGO = new GameObject("Art", typeof(RectTransform), typeof(UiCardFaceMesh));
                 artGO.transform.SetParent(slot.root.transform, false);
                 var art = (RectTransform)artGO.transform;
                 art.anchorMin = Vector2.zero;
                 art.anchorMax = Vector2.one;
                 art.offsetMin = new Vector2(6f, 6f);
                 art.offsetMax = new Vector2(-6f, -6f);
-                slot.art = artGO.GetComponent<Image>();
+                slot.art = artGO.GetComponent<UiCardFaceMesh>();
                 slot.art.preserveAspect = true;
                 slot.art.raycastTarget = false;
 
