@@ -15,9 +15,9 @@ MonoBehaviour:
   id: awakening_default
   gaugeMax: 100
   gaugeStart: 0
-  costSquad: 30
-  costUnit: 15
+  costSquad: 20
+  costUnit: 20
   costActive: 20
-  handSize: 5
+  handSize: 4
   maxAttachPerUnit: 3
   slomoTimeScale: 0.3
