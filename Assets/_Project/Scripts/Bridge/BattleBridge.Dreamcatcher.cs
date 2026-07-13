@@ -407,19 +407,51 @@ namespace Wassup.Bridge
             for (int i = 0; i < modsLen; i++)
             {
                 var m = card.attackMods[i];
-                if (m.kind == Wassup.Data.DcAttackModKind.None || m.count <= 0 || m.damageMul <= 0f)
+                // dreamcatcher-content-2 unit 1 — per-kind validation. FrontmostTarget
+                // does not use `count`, so the legacy global `count > 0` guard would
+                // wrongly reject it. damageMul > 0 is the one shared requirement.
+                if (m.kind == Wassup.Data.DcAttackModKind.None || m.damageMul <= 0f)
                 {
-                    Debug.LogWarning($"[BattleBridge] Card '{card.id}' attackMod {i}: None kind / non-positive count / non-positive damageMul — skipped.");
+                    Debug.LogWarning($"[BattleBridge] Card '{card.id}' attackMod {i}: None kind / non-positive damageMul — skipped.");
                     continue;
                 }
-                // Contract 4 — ProjectileBounce needs HomingToEntity×SingleSplash output.
-                // Melee (no ProjectileRef) has no projectile to modify; skip that mod
-                // only (mechanics on the same card may still apply).
-                if (m.kind == Wassup.Data.DcAttackModKind.ProjectileBounce &&
-                    !_em.HasComponent<ProjectileRef>(defender))
+                if (m.kind == Wassup.Data.DcAttackModKind.ProjectileBounce)
                 {
-                    Debug.LogWarning($"[BattleBridge] Card '{card.id}' attackMod {i}: ProjectileBounce on a non-projectile (melee) unit — skipped.");
-                    continue;
+                    // Contract 4 — ProjectileBounce needs a positive bounce count and a
+                    // HomingToEntity×SingleSplash projectile to modify. Melee (no
+                    // ProjectileRef) has none; skip that mod only (same-card mechanics
+                    // may still apply).
+                    if (m.count <= 0)
+                    {
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' attackMod {i}: ProjectileBounce non-positive count — skipped.");
+                        continue;
+                    }
+                    if (!_em.HasComponent<ProjectileRef>(defender))
+                    {
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' attackMod {i}: ProjectileBounce on a non-projectile (melee) unit — skipped.");
+                        continue;
+                    }
+                }
+                else if (m.kind == Wassup.Data.DcAttackModKind.FrontmostTarget)
+                {
+                    // 끝을 보는 눈 — boosts the primary target's direct Damage, so it needs
+                    // a positive Damage-kind output to boost. Heal-only / output-less
+                    // support units would consume the card with zero effect → reject.
+                    // `count`/`tileRange` are ignored (uses the base attack range).
+                    if (!HasPositiveDamageOutput(defender))
+                    {
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' attackMod {i}: FrontmostTarget on a unit with no positive Damage output — skipped.");
+                        continue;
+                    }
+                    // Combat-owned per-attack lock; add once, idempotent across copies.
+                    if (!_em.HasComponent<FrontmostAttackLock>(defender))
+                        _em.AddComponentData(defender, new FrontmostAttackLock
+                        {
+                            active = false,
+                            target = Entity.Null,
+                            damageMulSnapshot = 1f,
+                            targetIsPriority = false,
+                        });
                 }
                 var modBuf = _em.HasBuffer<DcAttackModSlot>(defender)
                     ? _em.GetBuffer<DcAttackModSlot>(defender)
@@ -436,6 +468,19 @@ namespace Wassup.Bridge
             }
             if (attached == 0) return -1;
             return auraHandle;
+        }
+
+        // dreamcatcher-content-2 unit 1 — does this defender emit at least one positive
+        // Damage-kind attack output (vs heal-only / output-less)? Gates FrontmostTarget
+        // attach so 끝을 보는 눈 can't be spent inertly on a support unit.
+        private bool HasPositiveDamageOutput(Entity defender)
+        {
+            if (!_em.HasBuffer<AttackOutputElement>(defender)) return false;
+            var outs = _em.GetBuffer<AttackOutputElement>(defender);
+            for (int k = 0; k < outs.Length; k++)
+                if (outs[k].value.kind == Wassup.Data.AttackOutputKind.Damage && outs[k].value.magnitude > 0f)
+                    return true;
+            return false;
         }
 
         // dreamcatcher-placement-aura — host-bound future-only aura. _defenderByTile
