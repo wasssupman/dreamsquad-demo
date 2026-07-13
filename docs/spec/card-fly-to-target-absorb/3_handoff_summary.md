@@ -2,7 +2,7 @@
 
 ## Commit
 - `56d78acf` — unit 0 (카드 비행 presenter)
-- (이 커밋) — unit 1+2 (묵직 임팩트 반응 + 타일 타겟 일반화 + 하스스톤 3축 아치 + GA VFX)
+- `5aab7bfe` — unit 1+2 (묵직 임팩트 반응 + 타일 타겟 일반화 + 하스스톤 3축 아치 + GA VFX)
 
 ## Implemented
 - 커밋 성공 시 손패 카드(UGUI art 스냅샷 고스트)가 타겟으로 **하스스톤식 3축 아치**(rise→하늘 apex hang→가속 slam)로 날아가 찰싹.
