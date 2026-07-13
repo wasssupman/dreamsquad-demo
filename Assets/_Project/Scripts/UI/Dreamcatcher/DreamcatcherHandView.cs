@@ -51,6 +51,9 @@ namespace Wassup.UI
         [SerializeField] private float dealRise = 220f;   // 하단 바깥 시작 깊이
         [SerializeField] private float dealTiltX = 50f;    // 누운 카드 → 세움(원근 ①)
         [SerializeField] private float clusterK = 0.3f;    // 시작 x 모임(덱 뭉침)
+        // hand-deal-in unit 4 — 퇴장 침강(딜의 거울: 하단 덱으로 InBack).
+        [SerializeField] private float sinkDurationSec = 0.26f;
+        [SerializeField] private float sinkStaggerSec = 0.04f;
         // hand-deal-in unit 1 — 눌러서 들기(press-to-lift, 모바일: hover 아님).
         [SerializeField] private float focusRaise = 100f;
         [SerializeField] private float focusScale = 1.28f;
@@ -362,9 +365,12 @@ namespace Wassup.UI
             if (State == HandState.UnitStrip) return;
             State = HandState.UnitStrip;
             StopDeal();
-            _slomoLease.Dispose();
+            CancelAllCardInteraction(); // drop any in-flight drag (no spend)
+            _focusIndex = -1;
+            _slomoLease.Dispose(); // 슬로모 즉시 해제(연출은 realtime)
             if (costDisplay != null) costDisplay.SetSuppressed(false);
-            StartFlip(from: _panel, to: StripPanel());
+            // hand-deal-in unit 4 — 딜의 거울: 카드가 하단 덱으로 침강 → strip 폴드 인.
+            StartSink();
         }
 
         // No animation: phase exits, disable, and Placement resets land here.
@@ -399,34 +405,8 @@ namespace Wassup.UI
         private GameObject StripPanel() =>
             defenderSelector != null ? defenderSelector.PanelGO : null;
 
-        private void StartFlip(GameObject from, GameObject to)
-        {
-            if (_flip != null) StopCoroutine(_flip);
-            _flip = StartCoroutine(FlipRoutine(from, to));
-        }
-
-        // X-axis fold: `from` rotates 0→90 (edge-on, vanishes), then `to`
-        // rotates 90→0. Unscaled time — the flip must not slow under slomo.
-        private IEnumerator FlipRoutine(GameObject from, GameObject to)
-        {
-            if (from != null)
-            {
-                var rt = (RectTransform)from.transform;
-                yield return RotateX(rt, 0f, 90f);
-                from.SetActive(false);
-                rt.localEulerAngles = Vector3.zero;
-            }
-            if (to != null)
-            {
-                var rt = (RectTransform)to.transform;
-                rt.localEulerAngles = new Vector3(90f, 0f, 0f);
-                to.SetActive(true);
-                yield return RotateX(rt, 90f, 0f);
-                rt.localEulerAngles = Vector3.zero;
-            }
-            _flip = null;
-        }
-
+        // X-axis fold shared by the strip fold-out (OpenRoutine) and fold-in
+        // (StripFoldInRoutine). Unscaled time — the fold must not slow under slomo.
         private IEnumerator RotateX(RectTransform rt, float fromDeg, float toDeg)
         {
             float t = 0f;
@@ -499,6 +479,56 @@ namespace Wassup.UI
         private void StopDeal()
         {
             if (_dealSeq.isAlive) _dealSeq.Stop();
+        }
+
+        // Mirror of the deck-draw: cards sink back down to the deck (reverse
+        // stagger, InBack + scale-down + backing fade-out), then the defender
+        // strip folds back in. ForceClose's hard stop skips OnSinkComplete —
+        // it does the panel/strip teardown itself.
+        private void StartSink()
+        {
+            StopDeal();
+            _dealSeq = Sequence.Create();
+            if (_backing != null)
+                _dealSeq.Chain(Tween.Alpha(_backing, 0f, sinkDurationSec * 0.8f, Ease.InQuad));
+            int k = 0;
+            for (int i = _slots.Count - 1; i >= 0; i--) // 역순 침강
+            {
+                var slot = _slots[i];
+                if (slot.entryId < 0) continue;
+                var rt = slot.rect;
+                Vector2 dst = new Vector2(slot.homePos.x * clusterK, handBaseY - dealRise);
+                float d = k * sinkStaggerSec;
+                _dealSeq.Group(Tween.UIAnchoredPosition(rt, dst, sinkDurationSec, Ease.InBack, startDelay: d));
+                _dealSeq.Group(Tween.Scale(rt, Vector3.one * dealStartScale, sinkDurationSec, Ease.InBack, startDelay: d));
+                k++;
+            }
+            _dealSeq.ChainCallback(OnSinkComplete);
+        }
+
+        private void OnSinkComplete()
+        {
+            if (_panel != null)
+            {
+                ((RectTransform)_panel.transform).localEulerAngles = Vector3.zero;
+                _panel.SetActive(false);
+            }
+            for (int i = 0; i < _slots.Count; i++) RestoreSlotHome(i); // 다음 오픈 대비 home 복원
+            var strip = StripPanel();
+            if (strip != null)
+            {
+                strip.SetActive(true);
+                if (_flip != null) StopCoroutine(_flip);
+                _flip = StartCoroutine(StripFoldInRoutine((RectTransform)strip.transform));
+            }
+        }
+
+        private IEnumerator StripFoldInRoutine(RectTransform rt)
+        {
+            rt.localEulerAngles = new Vector3(90f, 0f, 0f);
+            yield return RotateX(rt, 90f, 0f);
+            rt.localEulerAngles = Vector3.zero;
+            _flip = null;
         }
 
         // ── hand rendering ───────────────────────────────────────────────────
