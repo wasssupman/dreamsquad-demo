@@ -18,9 +18,9 @@ MonoBehaviour:
   policy: 0
   thresholds:
   - atStack: 1
-    mode: 0
+    mode: 1
     derivedKind: 0
-    magnitude: 6
-    duration: 4
+    magnitude: 3
+    duration: 3
     stat: 0
     op: 0

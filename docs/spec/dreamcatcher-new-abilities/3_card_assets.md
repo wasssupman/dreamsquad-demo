@@ -30,7 +30,8 @@
 - [x] PlayMode shatter 테스트 통과 (`DreamcatcherCombatDamageTest.DamageVsCc_BoostsDamage_AgainstCcdEnemy`).
 - [x] 카드 3종 에셋 생성·카탈로그 등록. **ember Bleed ThresholdRule 신설**: `StackModifierSO` 에셋이 0개였음 → `StackModifier_Bleed`(ApplyDot dps6·4s, placeholder balance) 저작 + `BattleBridge.stackModifierAuthoring`(BattleScene) 배선.
 - [x] **온-히트 발동 PlayMode assertion** (`DreamcatcherOnHitTest`): frost N타 → 적 CcEffect(Stun) ✓ / ember N타 → 적 StackModifierSlot(Bleed) + Bleed 규칙 배선 가드 ✓. MapDcCc/MapDcStack 번역 커버.
-- [ ] **잔여**: 궁수(투사체) + shatter/frost/ember 경로는 통합 테스트 미커버(멜리 direct 경로만 검증, critic HIGH). shatter 투사체-bake 배율은 unit 2 코드 경로로 존재하나 실기 assertion 없음 — follow-up.
+- [ ] **잔여(하네스 한계)**: 궁수(투사체) shatter 투사체-bake(:331) 경로 통합 테스트 **미달성**. 합성 더미(Health/FactionTag/IncomingDamage/LocalTransform)로는 ranger 가 잡을 수 있는 투사체를 발사하지 않음(HP 데미지·ProjectileState.damage 둘 다 0 — 거리 0.05/2 무관, 4회 시도). 기존 dreamcatcher combat 테스트가 전부 melee guardian 인 이유와 동일. 실 enemy 아키타입 스폰 인프라 필요 → 별도 follow-up. shatter DamageVsCc **산식은 melee 통합 테스트 + 투트랙 리뷰로 검증**됨(:331 은 :523 과 동일 `attackerVsCc` 곱).
+  - frost/ember 는 RESOLVE 시점 적용이라 melee 경로가 곧 로직 경로(투사체 무관) — 별도 궁수 테스트 불요.
 
 ## two-track review 반영(2026-07-13)
 

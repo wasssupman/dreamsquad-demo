@@ -4,7 +4,8 @@
 >
 > **마감 세션(Unity 복구 후):**
 > - 카드 3종 저작·카탈로그 등록: `Card_ShatterHymn`(Squad, DamageVsCc 25) · `Card_FrostArrow`(Unit, AttackN3×ApplyCcToTarget Stun 0.6s) · `Card_EmberBite`(Unit, AttackN3×ApplyStackToTarget Bleed 1스택 4s).
-> - **ember 전제 해소**: `StackModifierSO` 에셋이 0개였음 → Bleed DoT 규칙(`StackModifier_Bleed`: atStack1 Edge ApplyDot **dps=6·4s = placeholder balance, 튜닝 대상**) 신설 + `BattleBridge.stackModifierAuthoring` 배선(BattleScene). 없으면 ember 스택이 무DoT.
+> - **ember 전제 해소**: `StackModifierSO` 에셋이 0개였음 → Bleed DoT 규칙(`StackModifier_Bleed`) 신설 + `BattleBridge.stackModifierAuthoring` 배선(BattleScene). 없으면 ember 스택이 무DoT.
+>   - **규칙 = `atStack1 Consume ApplyDot dps3·3s`** (밸런스 튜닝 대상). ⚠ 처음 Edge 로 뒀다가 결함 발견: Edge 는 스택-from-0 진입 시 1회만 발화하고 `lastTriggeredStack` 이 안 내려가 재발화 안 됨 → **빠른 공격자(스택 유지)는 1회만, 느린 공격자(스택 감쇠)는 반복** = 비일관. Consume(atStack1)는 매 적용마다 발화+소모 → 공격속도 무관 일관 반복 출혈. dps3×3s=9/proc ≈ 궁수 1타(10), 9<20(러너HP)라 1proc 즉사 없음.
 > - PlayMode 4/4 green: frost→CcEffect(Stun) · ember→StackModifierSlot(Bleed)+규칙배선 가드 · shatter(DamageMul·DamageVsCc). EditMode DamageVsCc 집계 2건 green(716 스위트 포함).
 > - frost="Slow" 원안은 이 엔진에서 CcEffect 아님(MoveSpeedMul) → **Stun 채택**(shatter 시너지 위해, DcCcKind 에 Slow 없음).
 
