@@ -1,6 +1,17 @@
 # dreamcatcher-kill-and-threshold
 
-> 상태: 드래프트 (대기) — Spec A 완료·커밋(2ab01723) 후. plan-review 반영본 2026-07-13. 구현 착수는 별도 결정(런타임 검증 = Unity 필요).
+> 상태: **완료 2026-07-13** — 코드 3유닛 + 카드 2종 + 테스트 + 투트랙 리뷰(양 트랙 APPROVE) 반영. EditMode 716 green(신규 KillAttribution 5), PlayMode Spec B 2/2 green(last_stand·devouring), 기존 dreamcatcher/combat PlayMode 회귀 0.
+>
+> **시트 연동(확인됨, 별도 스코프):** DcSheetExporter/Applier 왕복은 신규 카드를 자동 열거하지만 `DcMechanicDto` 스키마에 `triggerFraction`·`buffStat`(Spec B)·`ccKind`·`stackKind`(Spec A) 컬럼이 없어 정의값을 담지 못함(import 는 partial-update 라 손실 없음, 편집만 불가). 완전 연동 = `dreamcatcher-sheet-sync` 확장(Spec A 도 해당) 별도 스펙.
+>
+> **구현 노트 (드래프트 계획 대비 실제):**
+> - `HealthThreshold` 트리거·`fraction` 필드·`HealthThresholdEval` 는 nightmare-catcher(보스)가 **이미 구현** → unit 0 는 `OnKill`·`SelfStatBuff`·`buffStat` 만 신규.
+> - `BossHealthThresholdSystem` → **`HealthThresholdSystem` 개명** + ThreatEntry 게이팅 제거 + SelfStatBuff arm 추가(디펜더 last_stand 수용). 신규 시스템 없음.
+> - **buffStat 번역은 bake 시점**(`MapDcBuff` 추출) → slot 에 Battle `StatKind` + 배율(magnitude) baked. ccKind/stackKind 선례.
+> - **영구버프 = `duration<=0 → float.PositiveInfinity`**(기존 무한 컨벤션). last_stand=duration0(영구), devouring=4s TTL refresh.
+> - **킬 귀속**은 `KillAttribution.Consider` 순수 fold 로 분리(EditMode 결정성 고정). DamageApplicationSystem 이 프레임 내 source非Null 최대 amount = killer.
+> - **시트 통합 = N/A**: DcSheetApplier 는 id-match 부분갱신이라 시트에 없는 카드는 미터치. 능력 카드는 Unity-authored(값이 mechanics 에 baked). 시트 row 불요.
+> - **덱 통합 = 카탈로그 등록만**: 기본 덱(10장 preset)은 캡 유지 위해 미변경. 두 카드는 `DreamcatcherCardCatalog`(가용 카드 풀)에 등록 → 덱빌더에서 선택 가능.
 
 ## 상위 목표
 

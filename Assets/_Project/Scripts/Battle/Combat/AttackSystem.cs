@@ -535,7 +535,7 @@ namespace Wassup.Battle.Combat
                                             float dmg = o.magnitude * damageMul;
                                             if (attackerVsCc != 1f && ccActionLookup.HasBuffer(hitTarget) && AnyActiveCc(ccActionLookup[hitTarget]))
                                                 dmg *= attackerVsCc;
-                                            ecb.AppendToBuffer(hitTarget, new IncomingDamage { amount = dmg });
+                                            ecb.AppendToBuffer(hitTarget, new IncomingDamage { amount = dmg, source = attackerEntity });
                                             ThreatTable.TryCredit(threatQueue, creditThreat, threatLookup,
                                                 hitTarget, attackerEntity, dmg);
                                             if (attackOutputLogWriter.HasValue)

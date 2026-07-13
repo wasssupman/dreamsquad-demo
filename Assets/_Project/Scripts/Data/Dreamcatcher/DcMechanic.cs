@@ -16,7 +16,10 @@ namespace Wassup.Data
     // nightmare-catcher unit 0 — PeriodicTimer(주기)·HealthThreshold(누적 임계치)
     // triggers + AreaBarrage(원격 진앙 TileAoe 폭격)·SelfBlink(자기 순간이동)
     // payloads. 보스/적 능동 스킬 편입 — 정의 계층은 진영을 모른다.
-    public enum DcTriggerKind { None, AttackN, OnDamagedN, OnDeath, PeriodicTimer, HealthThreshold }
+    // dreamcatcher-kill-and-threshold unit 0 — OnKill(이 유닛이 적을 처치할 때마다).
+    // 발동 지점은 DamageApplicationSystem 킬 처리(주기/카운터 없음) — 다른 트리거처럼
+    // AttackSystem RESOLVE 를 타지 않는다. append-only.
+    public enum DcTriggerKind { None, AttackN, OnDamagedN, OnDeath, PeriodicTimer, HealthThreshold, OnKill }
     // dreamcatcher-subconscious-unit — SelfWarmupBuff(7): reserved. 핸들러 미구현
     // (BattleBridge 분기 유실, spec-review H4) — 어떤 카드도 사용 안 함. append-only 로 잔존.
     // dreamcatcher-placement-aura — PlacementAura(8): host 부착 스폰 오라. host·기존 유닛
@@ -42,6 +45,9 @@ namespace Wassup.Data
         AllyMoveSpeedAura = 9,
         ApplyCcToTarget = 10,
         ApplyStackToTarget = 11,
+        // dreamcatcher-kill-and-threshold unit 0 — 발동 시 시전 유닛 자신에게 StatModifier
+        // 부여(buffStat 선택자). last_stand(HealthThreshold×공격력) / devouring(OnKill×공속).
+        SelfStatBuff = 12,
     }
 
     // dreamcatcher-new-abilities unit 0 — 데이터 계층 CC 선택자(공격 온-히트용). 정의
@@ -113,6 +119,11 @@ namespace Wassup.Data
         // 0=기본 5). 다른 kind 는 기본값 무시.
         public DcCcKind ccKind;
         public DcStackKind stackKind;
+        // dreamcatcher-kill-and-threshold unit 0 — SelfStatBuff 선택자. 어떤 스탯을 자신에게
+        // 부여할지(CardBuffKind — 정의 계층이 Battle.StatKind 를 모르게 유지, bake 가
+        // MapDcBuff 로 번역). magnitude=%(30=+30%), duration=TTL초(<=0 = 영구, arm 이 해석).
+        // last_stand=AttackDamage / devouring=AttackSpeed. 다른 kind 는 무시.
+        public CardBuffKind buffStat;
     }
 
     [Serializable]

@@ -1046,7 +1046,7 @@ namespace Wassup.Bridge
             _em.AddComponentData(threatHitSingleton, new Wassup.Battle.Combat.ThreatHitEventsSingleton { queue = _threatHitEventQueue });
 
             // nightmare-catcher unit 3 — Combat→Movement 텔레포트 seam.
-            // BossHealthThresholdSystem(Combat) enqueue → BlinkApplySystem(Movement)
+            // HealthThresholdSystem(Combat) enqueue → BlinkApplySystem(Movement)
             // 소비·위치 대입. 브리지는 lifecycle 만 관리.
             if (_blinkRequestQueue.IsCreated) _blinkRequestQueue.Dispose();
             _blinkRequestQueue = new NativeQueue<Wassup.Battle.Movement.BlinkRequestEvent>(Allocator.Persistent);

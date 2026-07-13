@@ -131,7 +131,7 @@ namespace Wassup.Battle.Combat.Projectile
                                         case AttackOutputKind.Damage:
                                             if (damageBufferLookup.HasBuffer(target))
                                             {
-                                                ecb.AppendToBuffer(target, new IncomingDamage { amount = output.magnitude });
+                                                ecb.AppendToBuffer(target, new IncomingDamage { amount = output.magnitude, source = threatOwner });
                                                 ThreatTable.TryCredit(threatQueue, creditThreat, threatLookup, target, threatOwner, output.magnitude);
                                             }
                                             break;
@@ -173,7 +173,7 @@ namespace Wassup.Battle.Combat.Projectile
 
                             if (!handledOutputs && damageBufferLookup.HasBuffer(target))
                             {
-                                ecb.AppendToBuffer(target, new IncomingDamage { amount = projectile.ValueRO.damage });
+                                ecb.AppendToBuffer(target, new IncomingDamage { amount = projectile.ValueRO.damage, source = threatOwner });
                                 ThreatTable.TryCredit(threatQueue, creditThreat, threatLookup, target, threatOwner, projectile.ValueRO.damage);
                             }
 
@@ -206,7 +206,7 @@ namespace Wassup.Battle.Combat.Projectile
                                     if (dx * dx + dz * dz > splashRadiusSq) continue;
                                     if (damageBufferLookup.HasBuffer(candidate))
                                     {
-                                        ecb.AppendToBuffer(candidate, new IncomingDamage { amount = splashDamage });
+                                        ecb.AppendToBuffer(candidate, new IncomingDamage { amount = splashDamage, source = threatOwner });
                                         ThreatTable.TryCredit(threatQueue, creditThreat, threatLookup, candidate, threatOwner, splashDamage);
                                     }
                                 }
@@ -304,7 +304,7 @@ namespace Wassup.Battle.Combat.Projectile
                             if (!TileAoe.IsInTileRange(cell, centerCell, tileRange)) continue;
                             if (damageBufferLookup.HasBuffer(victims[i]))
                             {
-                                ecb.AppendToBuffer(victims[i], new IncomingDamage { amount = dmg });
+                                ecb.AppendToBuffer(victims[i], new IncomingDamage { amount = dmg, source = threatOwner });
                                 ThreatTable.TryCredit(threatQueue, creditThreat, threatLookup, victims[i], threatOwner, dmg);
                             }
                         }

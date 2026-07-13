@@ -350,6 +350,44 @@ namespace Wassup.Bridge
                     // 0 = 미설정 → fire 에서 기존 producer 선례 5 로 폴백.
                     slot.tileRange = math.max(0, m.payload.tileRange);
                 }
+                else if (m.payload.kind == Wassup.Data.DcPayloadKind.SelfStatBuff)
+                {
+                    // dreamcatcher-kill-and-threshold unit 1 — last_stand(HealthThreshold)/
+                    // devouring(OnKill). buffStat→StatKind 번역 후 배율/TTL 을 slot 에 baked.
+                    // 발동: HealthThreshold=HealthThresholdSystem(unit 1),
+                    // OnKill=DamageApplicationSystem(unit 2). 배율은 magnitude(flat 필드
+                    // 재사용), TTL 은 duration(<=0 = 영구, arm 이 Infinity 로 해석).
+                    if (!MapDcBuff(m.payload.buffStat, m.payload.magnitude, out var buffStat, out var buffMult))
+                    {
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: SelfStatBuff unmappable buffStat ({m.payload.buffStat}) — skipped.");
+                        continue;
+                    }
+                    slot.buffStat = buffStat;
+                    slot.magnitude = buffMult;
+                    slot.duration = m.payload.duration;
+                    // stackId 는 StatModifier 네임스페이스의 단일 할당자에서(squad 이펙트와
+                    // 공유) — instanceId 잘라쓰기(네임스페이스 오염) 대신. 슬롯당 고정 →
+                    // 매 킬/틱 refresh.
+                    slot.statBuffStackId = _dcStackCounter++;
+                    if (m.trigger.kind == Wassup.Data.DcTriggerKind.HealthThreshold)
+                    {
+                        // 디펜더 임계 상태 bake — 스폰 maxHp 스냅샷·경계 간격·래치 k=1.
+                        if (m.trigger.fraction <= 0f)
+                        {
+                            Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: HealthThreshold non-positive fraction — skipped.");
+                            continue;
+                        }
+                        if (!_em.HasComponent<Wassup.Battle.Units.Health>(defender))
+                        {
+                            Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: HealthThreshold target has no Health — skipped.");
+                            continue;
+                        }
+                        slot.fraction = m.trigger.fraction;
+                        slot.maxHpRef = _em.GetComponentData<Wassup.Battle.Units.Health>(defender).max;
+                        slot.nextBoundaryIndex = 1;
+                    }
+                    // OnKill: 추가 슬롯 상태 없음 — 매 킬 DamageApplicationSystem 에서 발동(unit 2).
+                }
                 // Immediate (non-ECB) AddBuffer — same technique as ModifierApplySystem's
                 // bufferless path: several attaches in one frame must all land; a
                 // deferred AddBuffer would keep only the last. (Ownership is a separate
@@ -423,21 +461,27 @@ namespace Wassup.Bridge
         }
 
         private static bool MapDcEffect(Wassup.Data.CardEffect eff, out Wassup.Battle.Effects.StatKind stat, out float mult)
+            => MapDcBuff(eff.kind, eff.percent, out stat, out mult);
+
+        // dreamcatcher-kill-and-threshold unit 1 — CardBuffKind→(StatKind,배율) 순수 번역.
+        // MapDcEffect(CardEffect)가 위임하고, SelfStatBuff bake 도 재사용(정의 계층이
+        // Battle.StatKind 를 모르게 유지하는 유일한 번역 지점).
+        private static bool MapDcBuff(Wassup.Data.CardBuffKind kind, float percent, out Wassup.Battle.Effects.StatKind stat, out float mult)
         {
-            switch (eff.kind)
+            switch (kind)
             {
                 case Wassup.Data.CardBuffKind.AttackDamage:
-                    stat = Wassup.Battle.Effects.StatKind.DamageMul; mult = 1f + eff.percent / 100f; return true;
+                    stat = Wassup.Battle.Effects.StatKind.DamageMul; mult = 1f + percent / 100f; return true;
                 case Wassup.Data.CardBuffKind.AttackSpeed:
-                    stat = Wassup.Battle.Effects.StatKind.AttackSpeedMul; mult = 1f + eff.percent / 100f; return true;
+                    stat = Wassup.Battle.Effects.StatKind.AttackSpeedMul; mult = 1f + percent / 100f; return true;
                 case Wassup.Data.CardBuffKind.EffectiveHealth:
                     // HP% proxy: less damage taken = higher effective health (max-HP unchanged).
-                    stat = Wassup.Battle.Effects.StatKind.DmgTakenMul; mult = 1f / (1f + eff.percent / 100f); return true;
+                    stat = Wassup.Battle.Effects.StatKind.DmgTakenMul; mult = 1f / (1f + percent / 100f); return true;
                 case Wassup.Data.CardBuffKind.MoveSpeed:
-                    stat = Wassup.Battle.Effects.StatKind.MoveSpeedMul; mult = 1f + eff.percent / 100f; return true;
+                    stat = Wassup.Battle.Effects.StatKind.MoveSpeedMul; mult = 1f + percent / 100f; return true;
                 // dreamcatcher-new-abilities unit 2 — shatter_hymn: CC 걸린 적 대상 데미지 +percent%.
                 case Wassup.Data.CardBuffKind.DamageVsCc:
-                    stat = Wassup.Battle.Effects.StatKind.DamageVsCcMul; mult = 1f + eff.percent / 100f; return true;
+                    stat = Wassup.Battle.Effects.StatKind.DamageVsCcMul; mult = 1f + percent / 100f; return true;
                 // dreamstone-loadout Unit 6 — CardBuffKind.CostRate has no entity/ECS
                 // stat (it scales CostRuntime.RegenRateMultiplier, a MonoBehaviour-side
                 // resource, not a StatModifier channel). It falls through to this

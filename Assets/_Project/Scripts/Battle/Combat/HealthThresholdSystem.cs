@@ -9,18 +9,23 @@ using Wassup.Battle.Units;
 
 namespace Wassup.Battle.Combat
 {
-    // nightmare-catcher unit 3 — HealthThreshold × SelfBlink arm + the threat
-    // channel drain. Gated on buffer presence only (faction-neutral — no
-    // BossTag/DefenderUnitTag in the gate, spec unit 4).
+    // nightmare-catcher unit 3 — HealthThreshold arm + the threat channel drain.
+    // dreamcatcher-kill-and-threshold unit 1 — 개명(BossHealthThresholdSystem→
+    // HealthThresholdSystem): 디펜더 last_stand(HealthThreshold×SelfStatBuff)를
+    // 함께 처리하므로 더 이상 보스 전용이 아니다. faction-neutral 쿼리(BossTag/
+    // DefenderUnitTag 게이트 없음)는 그대로.
     //
     // Two responsibilities, both Combat-owned:
     //  1. Drain ThreatHitEvents into the victims' ThreatEntry tables (the
     //     accumulation write — unit 1 staged the channel, this closes it).
-    //  2. Evaluate HealthThreshold slots against current Health (Units, RO)
-    //     and resolve the blink destination: threat leader → nearest living
-    //     defender → skip (래치는 이미 전진 — 재발동 없음). The position write
-    //     itself is Movement-owned, so the destination goes out through
-    //     BlinkRequestEventsSingleton (BlinkApplySystem 소비, 맥락 경계).
+    //     TryGetSingletonRW + HasBuffer 독립 가드라 ThreatEntry 없어도 무손상.
+    //  2. Evaluate HealthThreshold slots against current Health (Units, RO) and
+    //     resolve the payload:
+    //       - SelfStatBuff (last_stand): self 에 StatModifier enqueue(Effects 채널).
+    //         duration<=0 = 영구(float.PositiveInfinity). 디펜더는 flowfield 만
+    //         있으면 되므로 blink 채널 부재와 무관하게 발동.
+    //       - SelfBlink (boss): threat leader → nearest living defender → skip.
+    //         position write 는 Movement 소유라 BlinkRequestEventsSingleton 로 나감.
     //
     // Runs after DamageApplicationSystem so same-tick damage is visible to the
     // threshold, and after the same-tick threat hits have been enqueued
@@ -28,11 +33,12 @@ namespace Wassup.Battle.Combat
     [BurstCompile]
     [UpdateInGroup(typeof(BattleSimGroup))]
     [UpdateAfter(typeof(DamageApplicationSystem))]
-    public partial struct BossHealthThresholdSystem : ISystem
+    public partial struct HealthThresholdSystem : ISystem
     {
         public void OnCreate(ref SystemState state)
         {
-            state.RequireForUpdate<ThreatEntry>(); // 보스(위협 테이블 보유) 존재 시에만
+            // unit 1 — ThreatEntry 게이팅 제거: 보스 없이 디펜더만 있어도 last_stand
+            // 이 돌아야 한다. threat-drain 은 아래 TryGet/HasBuffer 로 독립 가드됨.
             state.RequireForUpdate<FlowFieldSingleton>();
         }
 
@@ -54,9 +60,11 @@ namespace Wassup.Battle.Combat
                 }
             }
 
+            // SelfStatBuff(디펜더 last_stand) 채널 — blink 부재와 무관하게 필요.
+            bool hasStatQ = SystemAPI.TryGetSingletonRW<StatModifierApplyEventsSingleton>(out var statRW);
+            // SelfBlink(보스) 채널 — 없으면 blink payload 만 skip(HealthThreshold
+            // 평가 자체는 계속 — SelfStatBuff 가 blink 없이 돌아야 함).
             bool hasBlinkQ = SystemAPI.TryGetSingletonRW<BlinkRequestEventsSingleton>(out var blinkRW);
-            if (!hasBlinkQ) return; // 채널 없으면 평가 무의미 (인프라 미기동 프레임)
-            var blinkQueue = blinkRW.ValueRW.queue;
             var ff = SystemAPI.GetSingleton<FlowFieldSingleton>();
 
             // rev 3 (실플레이 피드백) — blink 연출: 출발/도착 퍼프를 기존 hit-VFX
@@ -64,11 +72,13 @@ namespace Wassup.Battle.Combat
             bool hasHitQ = SystemAPI.TryGetSingletonRW<Projectile.ProjectileHitEventsSingleton>(out var hitRW);
             NativeQueue<Projectile.ProjectileHitEvent> hitQueue = hasHitQ ? hitRW.ValueRW.queue : default;
 
-            // Fallback pool = living defenders (payload targets the caster's
-            // opposing side — same axis as the barrage epicenter pool).
+            // Fallback pool = living defenders (SelfBlink 목적지 폴백 전용). 디펜더-only
+            // 판(last_stand 만 있고 blink 슬롯 없음)에서 매 프레임 쿼리+2배열 할당을 피하려
+            // 첫 SelfBlink 발동 때 지연 생성(ecs-review MEDIUM). BossPeriodic whip 풀 선례.
             var defQuery = SystemAPI.QueryBuilder().WithAll<DefenderUnitTag, LocalTransform>().Build();
-            var defEntities = defQuery.ToEntityArray(Allocator.Temp);
-            var defTransforms = defQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
+            NativeArray<Entity> defEntities = default;
+            NativeArray<LocalTransform> defTransforms = default;
+            bool defBuilt = false;
 
             // 2. Threshold eval + blink resolve.
             foreach (var (slotsRef, health, transform, entity) in
@@ -86,43 +96,79 @@ namespace Wassup.Battle.Combat
                     slot.nextBoundaryIndex = k;
                     if (fired)
                     {
-                        if (slot.payload != Wassup.Data.DcPayloadKind.SelfBlink)
+                        if (slot.payload == Wassup.Data.DcPayloadKind.SelfStatBuff)
                         {
-                            UnityEngine.Debug.LogWarning("[BossHealthThreshold] HealthThreshold slot fired with unhandled payload kind.");
-                        }
-                        else if (TryResolveBlinkDest(entity, transform.ValueRO.Position, slot.tileRange,
-                                     in transformLookup, in threatLookup, defEntities, defTransforms, in ff,
-                                     out float3 destWorld))
-                        {
-                            blinkQueue.Enqueue(new BlinkRequestEvent { entity = entity, destWorld = destWorld });
-                            // 출발지 + 도착지 퍼프 (dataIndex < 0 = 무연출 blink).
-                            if (hasHitQ && slot.projectileDataIndex >= 0)
+                            // last_stand — self 에 StatModifier(배율=magnitude, TTL=duration).
+                            // duration<=0 = 영구(float.PositiveInfinity, 기존 무한 컨벤션).
+                            // 채널 부재-가드: 없으면 조용히 skip(k 는 이미 전진 — 재발동 없음).
+                            if (hasStatQ)
                             {
-                                hitQueue.Enqueue(new Projectile.ProjectileHitEvent
+                                float ttl = slot.duration > 0f ? slot.duration : float.PositiveInfinity;
+                                // op/magnitude = FromMultiplier → +% 는 Additive 버킷(squad/on-place
+                                // %-buff 와 동일 스택 규칙, modifier-additive-authoring 관례 일치).
+                                ModifierAuthoring.FromMultiplier(slot.magnitude, out var buffOp, out var buffMag);
+                                statRW.ValueRW.queue.Enqueue(new StatModifierApplyEvent
                                 {
-                                    position = transform.ValueRO.Position,
-                                    dataIndex = slot.projectileDataIndex,
-                                    payload = Projectile.PayloadKind.SingleSplash,
+                                    target = entity,
+                                    stat = slot.buffStat,
+                                    op = buffOp,
+                                    magnitude = buffMag,
+                                    duration = ttl,
                                     source = entity,
-                                });
-                                hitQueue.Enqueue(new Projectile.ProjectileHitEvent
-                                {
-                                    position = destWorld,
-                                    dataIndex = slot.projectileDataIndex,
-                                    payload = Projectile.PayloadKind.SingleSplash,
-                                    source = entity,
+                                    stackId = slot.statBuffStackId,
                                 });
                             }
                         }
-                        // 목적지 실패(방어유닛 전멸/링 상한 초과) = skip — k 는
-                        // 이미 전진(발동 소모 유지, 재발동 없음).
+                        else if (slot.payload == Wassup.Data.DcPayloadKind.SelfBlink)
+                        {
+                            // 디펜더 폴백 풀은 여기서만 필요 — 첫 blink 발동 때 1회 생성.
+                            if (hasBlinkQ && !defBuilt)
+                            {
+                                defEntities = defQuery.ToEntityArray(Allocator.Temp);
+                                defTransforms = defQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
+                                defBuilt = true;
+                            }
+                            if (hasBlinkQ && TryResolveBlinkDest(entity, transform.ValueRO.Position, slot.tileRange,
+                                     in transformLookup, in threatLookup, defEntities, defTransforms, in ff,
+                                     out float3 destWorld))
+                            {
+                                blinkRW.ValueRW.queue.Enqueue(new BlinkRequestEvent { entity = entity, destWorld = destWorld });
+                                // 출발지 + 도착지 퍼프 (dataIndex < 0 = 무연출 blink).
+                                if (hasHitQ && slot.projectileDataIndex >= 0)
+                                {
+                                    hitQueue.Enqueue(new Projectile.ProjectileHitEvent
+                                    {
+                                        position = transform.ValueRO.Position,
+                                        dataIndex = slot.projectileDataIndex,
+                                        payload = Projectile.PayloadKind.SingleSplash,
+                                        source = entity,
+                                    });
+                                    hitQueue.Enqueue(new Projectile.ProjectileHitEvent
+                                    {
+                                        position = destWorld,
+                                        dataIndex = slot.projectileDataIndex,
+                                        payload = Projectile.PayloadKind.SingleSplash,
+                                        source = entity,
+                                    });
+                                }
+                            }
+                            // 목적지 실패(방어유닛 전멸/링 상한 초과) = skip — k 는
+                            // 이미 전진(발동 소모 유지, 재발동 없음).
+                        }
+                        else
+                        {
+                            UnityEngine.Debug.LogWarning("[HealthThreshold] HealthThreshold slot fired with unhandled payload kind.");
+                        }
                     }
                     slots[si] = slot;
                 }
             }
 
-            defEntities.Dispose();
-            defTransforms.Dispose();
+            if (defBuilt)
+            {
+                defEntities.Dispose();
+                defTransforms.Dispose();
+            }
         }
 
         // 폴백 체인: 위협 리더(alive) → 최근접 생존 방어유닛 → false(skip).

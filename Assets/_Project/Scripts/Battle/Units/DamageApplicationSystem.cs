@@ -27,6 +27,8 @@ namespace Wassup.Battle.Units
         private ComponentLookup<AwakeningReward> _awakeningRewardLookup;
         // combat-action-lock unit 3 — wake-on-hit: 피격 시 Sleep 보유 여부 RO 판정용.
         private BufferLookup<CcEffect> _ccLookup;
+        // dreamcatcher-kill-and-threshold unit 2 — killer 의 OnKill×SelfStatBuff 슬롯 RO 판정용.
+        private BufferLookup<DcTriggerSlot> _dcTriggerSlotLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -40,6 +42,7 @@ namespace Wassup.Battle.Units
             _damagedCounterLookup  = state.GetBufferLookup<DamagedCounter>(isReadOnly: false);
             _awakeningRewardLookup = state.GetComponentLookup<AwakeningReward>(isReadOnly: true);
             _ccLookup = state.GetBufferLookup<CcEffect>(isReadOnly: true);
+            _dcTriggerSlotLookup = state.GetBufferLookup<DcTriggerSlot>(isReadOnly: true);
         }
 
         [BurstCompile]
@@ -57,7 +60,10 @@ namespace Wassup.Battle.Units
             bool hasDamageNumberQueue = SystemAPI.TryGetSingletonRW<DamageNumberEventsSingleton>(out var damageNumberSingleton);
             bool hasEnemyKilledQueue = SystemAPI.TryGetSingletonRW<EnemyKilledEventsSingleton>(out var enemyKilledSingleton);
             bool hasCcClearQueue = SystemAPI.TryGetSingletonRW<CcClearRequestsSingleton>(out var ccClearSingleton);
+            // dreamcatcher-kill-and-threshold unit 2 — OnKill(devouring) self-buff 채널.
+            bool hasStatModQueue = SystemAPI.TryGetSingletonRW<StatModifierApplyEventsSingleton>(out var statModSingleton);
             _ccLookup.Update(ref state);
+            _dcTriggerSlotLookup.Update(ref state);
 
             var ecb = new EntityCommandBuffer(Allocator.Temp);
             foreach (var (health, damageBuffer, entity) in
@@ -77,8 +83,17 @@ namespace Wassup.Battle.Units
                 // not the frame's sum — a projectile hit and a same-frame dreamcatcher
                 // hit must show as two separate numbers).
                 float totalDamage = 0f;
+                // dreamcatcher-kill-and-threshold unit 2 — 킬 귀속: 이 프레임 IncomingDamage
+                // 중 source 非Null 최대 amount entry 의 source 가 killer (contract 4).
+                // DoT/on-place/환경(source=Null)은 미귀속 → OnKill 미발동(의도).
+                Entity killerSource = Entity.Null;
+                float killerAmount = 0f;
                 for (int i = 0; i < damageBuffer.Length; i++)
-                    totalDamage += damageBuffer[i].amount;
+                {
+                    var entry = damageBuffer[i];
+                    totalDamage += entry.amount;
+                    KillAttribution.Consider(entry.amount, entry.source, ref killerSource, ref killerAmount);
+                }
                 totalDamage *= dmgTakenMul;
 
                 // ── IncomingHeal drain (pulse channel — must Clear each frame) ───
@@ -193,6 +208,39 @@ namespace Wassup.Battle.Units
                             awakeningReward = _awakeningRewardLookup.HasComponent(entity)
                                 ? _awakeningRewardLookup[entity].value : 0,
                         });
+                    }
+
+                    // devouring_craving — killer 의 OnKill×SelfStatBuff 슬롯을 매 킬 발동.
+                    // EnemyKilled 큐 재소비가 아니라, killing entry 의 source(killer)로 killer
+                    // 의 DcTriggerSlot(Combat) RO 읽어 self 에 StatModifier 채널(Effects)
+                    // enqueue — 맥락 경계(읽기만·쓰기는 채널, contract 3). victim 진영 무관
+                    // (faction-neutral): killer 가 OnKill 슬롯을 가졌으면 발동.
+                    if (hasStatModQueue && killerSource != Entity.Null
+                        && _dcTriggerSlotLookup.HasBuffer(killerSource))
+                    {
+                        var kSlots = _dcTriggerSlotLookup[killerSource];
+                        for (int s = 0; s < kSlots.Length; s++)
+                        {
+                            var ks = kSlots[s];
+                            if (ks.trigger != Wassup.Data.DcTriggerKind.OnKill ||
+                                ks.payload != Wassup.Data.DcPayloadKind.SelfStatBuff) continue;
+                            // 비스택 refresh: 슬롯 고정 stackId 로 재부여 → 지속만 갱신.
+                            // duration<=0 = 영구(Infinity, HealthThresholdSystem 과 동일 컨벤션).
+                            // op/magnitude 는 FromMultiplier 로 분류 → +% 는 Additive 버킷(squad/
+                            // on-place %-buff 와 동일 스택 규칙, modifier-additive-authoring).
+                            float ttl = ks.duration > 0f ? ks.duration : float.PositiveInfinity;
+                            ModifierAuthoring.FromMultiplier(ks.magnitude, out var buffOp, out var buffMag);
+                            statModSingleton.ValueRW.queue.Enqueue(new StatModifierApplyEvent
+                            {
+                                target = killerSource,
+                                stat = ks.buffStat,
+                                op = buffOp,
+                                magnitude = buffMag,
+                                duration = ttl,
+                                source = killerSource,
+                                stackId = ks.statBuffStackId,
+                            });
+                        }
                     }
                 }
             }

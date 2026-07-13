@@ -13,7 +13,7 @@ namespace Wassup.Battle.Movement
     // producer so a same-tick request lands the same tick.
     [BurstCompile]
     [UpdateInGroup(typeof(BattleSimGroup))]
-    [UpdateAfter(typeof(Wassup.Battle.Combat.BossHealthThresholdSystem))]
+    [UpdateAfter(typeof(Wassup.Battle.Combat.HealthThresholdSystem))]
     public partial struct BlinkApplySystem : ISystem
     {
         public void OnCreate(ref SystemState state)
