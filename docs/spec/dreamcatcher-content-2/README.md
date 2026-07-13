@@ -1,6 +1,6 @@
 # Dreamcatcher Content 2 — 악몽의 여운 / 끝을 보는 눈
 
-> 상태: **설계 확정 2026-07-13 — 구현 착수** (사용자 결정 2건 반영: 시트=catalog-only, 사망=엄격 lapse). 선행 `card-fly-to-target-absorb` 완료·머지(5aab7bfe → 22f18eff)로 `BattleBridge.cs` clean.
+> 상태: **코드 완료(units 0~3) 2026-07-14 — 에셋(unit 4) 착수 대기.** units 0~3 구현·EditMode 검증(rig 743 passed 741/failed 0)·커밋. unit 4(카드 SO+catalog+아트)는 라이브 에디터(MCP)+카드 아트 필요로 미착수 — 스펙은 `4_card_assets.md`, 인계는 `5_handoff_summary.md`. 사용자 결정 2건: 시트=catalog-only, 사망=엄격 lapse.
 >
 > 설계 의도: 물리 이동·넉백·충돌 효과가 아니라 디펜스 게임의 핵심인 **킬 보상**과 **목표 지점 도달 위협 우선 제거**를 강화하는 Unit 드림캐쳐 2종을 추가한다.
 
