@@ -12,18 +12,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cdcd617d396824acd8882a45466b4886, type: 3}
   m_Name: Card_Cost1Hp10
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
-  id: cost1_hp_10
-  displayName: Cost-1 HP +10%
+  id: cost1_hp
+  displayName: "1\uCF54 \uC874\uBC84"
   axis: 2
   category: 0
   effects:
   - kind: 2
     percent: 10
   art: {fileID: 21300000, guid: 38870020468940cfb3e9463a3193de51, type: 3}
-  binding: 0
   mechanics: []
   attackMods: []
   type: 0
-  placementWarmupSec: 0
   skill: {fileID: 0}
   description: "1\uCF54\uC2A4\uD2B8 \uC720\uB2DB\uC758 \uCCB4\uB825\uC744 \uB192\uC778\uB2E4."

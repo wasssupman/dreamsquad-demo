@@ -59,16 +59,16 @@ namespace Wassup.Tests.EditMode.UnitStatImport
         [Test]
         public void ApplyCards_UpdatesFieldsAndKeepsOmitted()
         {
-            var so = NewCard("ranger_atk_10");
+            var so = NewCard("ranger_atk");
             so.displayName = "old";
             so.axis = CardTargetAxis.ClassRanger;
             so.description = "keep";
             var payload = new DcSheetPayload
             {
-                cards = new[] { new DcCardDto { id = "ranger_atk_10", displayName = "new", axis = CardTargetAxis.All } },
+                cards = new[] { new DcCardDto { id = "ranger_atk", displayName = "new", axis = CardTargetAxis.All } },
             };
 
-            Apply(payload, new Dictionary<string, DreamcatcherCard> { ["ranger_atk_10"] = so });
+            Apply(payload, new Dictionary<string, DreamcatcherCard> { ["ranger_atk"] = so });
 
             Assert.AreEqual("new", so.displayName);
             Assert.AreEqual(CardTargetAxis.All, so.axis);
