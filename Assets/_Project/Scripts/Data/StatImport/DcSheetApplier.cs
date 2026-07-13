@@ -208,6 +208,10 @@ namespace Wassup.Data.StatImport
                 if (dto.magnitude != null) { m.payload.magnitude = dto.magnitude.Value; c.fieldsApplied++; }
                 if (dto.tileRange != null) { m.payload.tileRange = dto.tileRange.Value; c.fieldsApplied++; }
                 if (dto.duration != null) { m.payload.duration = dto.duration.Value; c.fieldsApplied++; }
+                if (dto.triggerFraction != null) { m.trigger.fraction = dto.triggerFraction.Value; c.fieldsApplied++; }
+                if (dto.ccKind != null) { m.payload.ccKind = dto.ccKind.Value; c.fieldsApplied++; }
+                if (dto.stackKind != null) { m.payload.stackKind = dto.stackKind.Value; c.fieldsApplied++; }
+                if (dto.buffStat != null) { m.payload.buffStat = dto.buffStat.Value; c.fieldsApplied++; }
                 arr[dto.slot.Value] = m; // payload.projectile untouched by design
 
                 if (m.payload.kind == DcPayloadKind.ProjectileToTarget && m.payload.projectile == null)

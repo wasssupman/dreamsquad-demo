@@ -64,6 +64,8 @@ namespace Wassup.Editor.UnitStatImport
                         triggerKind = m.trigger.kind, triggerPeriod = m.trigger.period,
                         payloadKind = m.payload.kind, magnitude = m.payload.magnitude,
                         tileRange = m.payload.tileRange, duration = m.payload.duration,
+                        triggerFraction = m.trigger.fraction,
+                        ccKind = m.payload.ccKind, stackKind = m.payload.stackKind, buffStat = m.payload.buffStat,
                         _projectileId = m.payload.projectile != null ? m.payload.projectile.id : null,
                     });
                 }

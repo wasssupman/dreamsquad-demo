@@ -41,8 +41,12 @@
 | cardId / slot | string / int | |
 | triggerKind | enum DcTriggerKind | trigger.kind |
 | triggerPeriod | int | trigger.period |
+| triggerFraction | float | trigger.fraction (HealthThreshold 경계비율) · unit 7 |
 | payloadKind | enum DcPayloadKind | payload.kind |
 | magnitude / tileRange / duration | float / int / float | payload.* |
+| ccKind | enum DcCcKind | payload.ccKind (ApplyCcToTarget) · unit 7 |
+| stackKind | enum DcStackKind | payload.stackKind (ApplyStackToTarget) · unit 7 |
+| buffStat | enum CardBuffKind | payload.buffStat (SelfStatBuff 대상 스탯) · unit 7 |
 | _projectileId | (정보) | payload.projectile → ProjectileData.id |
 
 ### `DcAttackMods` — 상시 공격 변조 (행 = attackMods[] 1건, 키 = `cardId`+`slot`)
@@ -90,15 +94,18 @@
 
 ## payloadKind → 사용 컬럼 매트릭스 (기획 입력 가이드)
 
-| payloadKind | magnitude | tileRange | duration | projectile |
+| payloadKind | magnitude | tileRange | duration | 그 외 컬럼 |
 |---|---|---|---|---|
-| ProjectileToTarget | 투사체 flat 데미지 | — | — | 필수 (Unity 관리) |
+| ProjectileToTarget | 투사체 flat 데미지 | — | — | projectile 필수 (Unity 관리) |
 | SelfTileAoe | 폭발 데미지 | AOE 반경(타일) | — | — |
 | NextAttackDoubleFire | — | — | — | — |
 | SelfBuffLethal | 공속 +% | — | 지속/자폭 초 | — |
 | PlacementAura | 공속 +% (매치영구) | — | warmup idle 초 | — |
+| ApplyCcToTarget | (Impulse 넉백 세기) | — | CC 지속 초 | **ccKind** (Stun/Impulse) |
+| ApplyStackToTarget | 부여 스택 수 | (효과 반경) | 스택 지속 초 | **stackKind** (Fire/Ice/Bleed/Poison) |
+| SelfStatBuff | 버프 **퍼센트**(30 = +30%) | — | 지속 초(≤0=매치영구) | **buffStat** (AttackDamage/AttackSpeed…) |
 
-trigger: AttackN/OnDamagedN 만 `triggerPeriod`(N) 사용. None/OnDeath 는 0.
+trigger: AttackN/OnDamagedN 만 `triggerPeriod`(N) 사용. HealthThreshold 는 `triggerFraction`(경계비율, "임계 이하 1회" = 1−임계). OnKill/None/OnDeath 는 트리거 스칼라 0.
 
 ## 완료 기준
 

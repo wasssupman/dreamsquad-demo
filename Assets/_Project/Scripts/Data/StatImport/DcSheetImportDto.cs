@@ -41,6 +41,10 @@ namespace Wassup.Data.StatImport
         public float? magnitude;
         public int? tileRange;
         public float? duration;
+        public float? triggerFraction;   // trigger.fraction — HealthThreshold 경계비율
+        public DcCcKind? ccKind;          // payload.ccKind — ApplyCcToTarget
+        public DcStackKind? stackKind;    // payload.stackKind — ApplyStackToTarget
+        public CardBuffKind? buffStat;    // payload.buffStat — SelfStatBuff 대상 스탯
     }
 
     // Sheet-SoT child row (attackMods[] rebuild).
