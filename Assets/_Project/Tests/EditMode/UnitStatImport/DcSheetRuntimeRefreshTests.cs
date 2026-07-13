@@ -15,6 +15,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
 
         private static string Body(string rowsJson) => $"{{ \"success\": true, \"data\": [{rowsJson}] }}";
         private const string Empty = @"{ ""success"": true, ""data"": [] }";
+        private const string ErrorBody = @"{ ""success"": false, ""errorDetail"": { ""errorCode"": ""INTERNAL_SERVER_ERROR"", ""detailMessage"": ""구글 시트 연동 실패"" } }";
 
         private static SheetFetcher.Result[] Results(string cards, string effects, string mechanics,
             string attackMods, string skills, string config)
@@ -98,6 +99,33 @@ namespace Wassup.Tests.EditMode.UnitStatImport
 
             Assert.AreEqual("OLD", card.displayName, "unmatched sheet id must not touch other cards");
             StringAssert.Contains("no match for id='ghost'", log);
+
+            Object.DestroyImmediate(card);
+            Object.DestroyImmediate(catalog);
+        }
+
+        [Test]
+        public void ApplyBodies_OneTabFails_AppliesHealthyTabsOnly()
+        {
+            var card = ScriptableObject.CreateInstance<DreamcatcherCard>();
+            card.id = "test_card";
+            card.displayName = "OLD";
+            card.effects = new[] { new CardEffect { kind = CardBuffKind.AttackDamage, percent = 10f } };
+            var catalog = ScriptableObject.CreateInstance<DreamcatcherCardCatalog>();
+            catalog.cards = new[] { card };
+
+            // DcCards fails (error envelope); DcCardEffects succeeds — partial-update
+            // must still rebuild the effect while the failed tab is reported.
+            string log = DcSheetRuntimeRefresher.ApplyBodies(
+                Results(ErrorBody,
+                    Body(@"{ ""cardId"": ""test_card"", ""slot"": 0, ""kind"": ""AttackDamage"", ""percent"": 25 }"),
+                    Empty, Empty, Empty, Empty),
+                Tabs, catalog, null, null);
+
+            Assert.AreEqual(25f, card.effects[0].percent, "healthy DcCardEffects tab must still apply");
+            Assert.AreEqual("OLD", card.displayName, "failed DcCards tab must not change flat fields");
+            StringAssert.Contains("[DcCards] fetch failed", log);
+            StringAssert.Contains("구글 시트 연동 실패", log);
 
             Object.DestroyImmediate(card);
             Object.DestroyImmediate(catalog);
