@@ -51,6 +51,9 @@ namespace Wassup.UI
         [SerializeField] private float dealRise = 220f;   // 하단 바깥 시작 깊이
         [SerializeField] private float dealTiltX = 50f;    // 누운 카드 → 세움(원근 ①)
         [SerializeField] private float clusterK = 0.3f;    // 시작 x 모임(덱 뭉침)
+        // card-crumple-unfold unit 2 — 딜 안착과 동기로 구김이 풀림(살짝 늦게 끝, D3).
+        [SerializeField] private float crumpleUnfoldSec = 0.42f;
+        [SerializeField] private float textFadeSec = 0.18f;
         // hand-deal-in unit 4 — 퇴장 침강(딜의 거울: 하단 덱으로 InBack).
         [SerializeField] private float sinkDurationSec = 0.26f;
         [SerializeField] private float sinkStaggerSec = 0.04f;
@@ -93,10 +96,13 @@ namespace Wassup.UI
             public RectTransform rect;
             public Image frame;
             public Image art;
+            public UiCardFaceMesh face;  // card-crumple-unfold — art = 서브디바이드 크럼플 그래픽
             public GameObject nameTag; // rev 4-5 — 하단 네임 밴드(어두운 배킹+이름, 항상 표시)
             public TextMeshProUGUI nameLabel;
+            public CanvasGroup nameGroup; // 크럼플 중 숨겼다 펴짐 완료 시 페이드-인(TMP 비크럼플)
             public GameObject costBadge;
             public TextMeshProUGUI costLabel;
+            public CanvasGroup costGroup;
             public CanvasGroup group;
             public DreamcatcherCardDragSlot dragSlot;
             public Vector2 homePos;        // unit 7 — restore anchor after drag/cancel
@@ -300,6 +306,10 @@ namespace Wassup.UI
             slot.targetPos = slot.homePos;
             slot.targetRotZ = slot.homeRotZ;
             slot.targetScale = 1f;
+            // card-crumple-unfold unit 2 — 크럼플은 딜에서만: 평면(Unfold=1)+텍스트 표시 복원.
+            if (slot.face != null) slot.face.Unfold = 1f;
+            if (slot.nameGroup != null) slot.nameGroup.alpha = 1f;
+            if (slot.costGroup != null) slot.costGroup.alpha = 1f;
         }
 
         // Drag slots call this at every interaction end (commit/cancel) so a
@@ -466,12 +476,22 @@ namespace Wassup.UI
                 rt.anchoredPosition = new Vector2(slot.homePos.x * clusterK, handBaseY - dealRise);
                 rt.localScale = Vector3.one * dealStartScale;
                 rt.localEulerAngles = new Vector3(dealTiltX, 0f, slot.homeRotZ + jitter);
+                // card-crumple-unfold unit 2 — 시작 = 구겨짐 + 텍스트/코스트 숨김.
+                if (slot.face != null) slot.face.Unfold = 0f;
+                if (slot.nameGroup != null) slot.nameGroup.alpha = 0f;
+                if (slot.costGroup != null) slot.costGroup.alpha = 0f;
                 float d = dealt * dealStaggerSec;
                 _dealSeq.Group(Tween.UIAnchoredPosition(rt, slot.homePos, dealDurationSec, Ease.OutBack, startDelay: d));
                 _dealSeq.Group(Tween.Scale(rt, Vector3.one, dealDurationSec, Ease.OutBack, startDelay: d));
                 _dealSeq.Group(Tween.LocalRotation(rt, Quaternion.Euler(0f, 0f, slot.homeRotZ), dealDurationSec, Ease.OutQuad, startDelay: d));
                 // ②-B 안착 squash flex(4버텍스, 메인 트윈과 안 겹치게 안착 직후). 진짜 커브는 후속 spec.
                 _dealSeq.Group(Tween.PunchScale(rt, new Vector3(0.06f, -0.10f, 0f), 0.16f, frequency: 2f, startDelay: d + dealDurationSec));
+                // 구김 풀림(안착보다 살짝 늦게) + 텍스트/코스트는 펴짐 끝에 페이드-인.
+                if (slot.face != null)
+                    _dealSeq.Group(Tween.Custom(slot.face, 0f, 1f, crumpleUnfoldSec, (f, u) => f.Unfold = u, Ease.OutQuad, startDelay: d));
+                float textDelay = d + Mathf.Max(0f, crumpleUnfoldSec - textFadeSec);
+                if (slot.nameGroup != null) _dealSeq.Group(Tween.Alpha(slot.nameGroup, 1f, textFadeSec, Ease.OutQuad, startDelay: textDelay));
+                if (slot.costGroup != null) _dealSeq.Group(Tween.Alpha(slot.costGroup, 1f, textFadeSec, Ease.OutQuad, startDelay: textDelay));
                 dealt++;
             }
         }
@@ -610,6 +630,13 @@ namespace Wassup.UI
 
             var roots = UiCanvasSetup.Ensure(gameObject, sortingOrder: 5);
 
+            // card-crumple-unfold — Canvas 는 기본적으로 uv1/uv2 를 셰이더로 안 넘긴다.
+            // CardCrumple 셰이더가 접힘 데이터(TEXCOORD1/2)를 읽으려면 채널을 켜야 한다.
+            var canvas = GetComponentInChildren<Canvas>(true);
+            if (canvas != null)
+                canvas.additionalShaderChannels |=
+                    AdditionalCanvasShaderChannels.TexCoord1 | AdditionalCanvasShaderChannels.TexCoord2;
+
             // Bottom-center hand panel.
             _panel = new GameObject("HandPanel", typeof(RectTransform), typeof(Image));
             _panel.transform.SetParent(roots.SafeAreaRoot, false);
@@ -680,7 +707,8 @@ namespace Wassup.UI
                 art.anchorMax = Vector2.one;
                 art.offsetMin = new Vector2(6f, 6f);
                 art.offsetMax = new Vector2(-6f, -6f);
-                slot.art = artGO.GetComponent<UiCardFaceMesh>();
+                slot.face = artGO.GetComponent<UiCardFaceMesh>();
+                slot.art = slot.face;
                 slot.art.preserveAspect = true;
                 slot.art.raycastTarget = false;
 
@@ -697,6 +725,9 @@ namespace Wassup.UI
                 var tagImg = slot.nameTag.GetComponent<Image>();
                 tagImg.color = new Color(0f, 0f, 0f, 0.62f);
                 tagImg.raycastTarget = false;
+                slot.nameGroup = slot.nameTag.AddComponent<CanvasGroup>(); // 크럼플 중 페이드용
+
+
 
                 var nameGO = new GameObject("Name", typeof(RectTransform));
                 nameGO.transform.SetParent(slot.nameTag.transform, false);
@@ -727,6 +758,7 @@ namespace Wassup.UI
                 var badgeImg = slot.costBadge.GetComponent<Image>();
                 badgeImg.color = new Color(0.62f, 0.4f, 1f, 0.95f); // gauge fill color
                 badgeImg.raycastTarget = false;
+                slot.costGroup = slot.costBadge.AddComponent<CanvasGroup>(); // 크럼플 중 페이드용
 
                 var costTextGO = new GameObject("Value", typeof(RectTransform));
                 costTextGO.transform.SetParent(slot.costBadge.transform, false);

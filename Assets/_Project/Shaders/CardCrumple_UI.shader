@@ -62,8 +62,8 @@ Shader "Wassup/UI/CardCrumple"
                 float4 vertex  : POSITION;
                 float4 color   : COLOR;
                 float2 texcoord : TEXCOORD0;
-                float2 crumple : TEXCOORD1; // baked XY offset (구겨진 위치 = flat + crumple)
-                float2 crease  : TEXCOORD2; // .x = 크리스 깊이(0..1)
+                float2 fold    : TEXCOORD1; // .x = 접힘선 위 거리(local Y), .y = 접히는 반쪽 flag
+                float2 crease  : TEXCOORD2; // .x = 접힘선 그림자(0..1)
             };
 
             struct v2f
@@ -84,13 +84,15 @@ Shader "Wassup/UI/CardCrumple"
             v2f vert(appdata_t v)
             {
                 v2f o;
-                float k = 1.0 - saturate(_Unfold); // 1 = 완전히 구겨짐, 0 = 평면
+                float k = 1.0 - saturate(_Unfold); // 1 = 완전히 접힘, 0 = 평면
                 float4 pos = v.vertex;
-                pos.xy += v.crumple.xy * k;
+                // 상단 절반이 접힘선 아래로 접혀 내려온다(2× = 반쪽을 완전히 겹침).
+                pos.y -= 2.0 * v.fold.x * k;
                 o.worldPosition = pos;
                 o.vertex = UnityObjectToClipPos(pos);
                 o.uv = v.texcoord;
-                o.ao = float2(saturate(v.crease.x) * k, 0);
+                // 접힘선 그림자 + 접힌 반쪽(뒷면 느낌) 어둡게.
+                o.ao = float2(saturate(v.crease.x) * k + v.fold.y * k * 0.55, 0);
                 o.color = v.color * _Color;
                 return o;
             }
