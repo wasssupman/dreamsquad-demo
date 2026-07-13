@@ -2,6 +2,8 @@
 
 > 상태: **완료 2026-07-11** — 실 구글 시트 왕복 검증 포함 (no-op IDENTICAL + farewell 밸런스 반영). units 0~1 `1eed2ee0` · 2 `e338c7da` · 3 `2608c179` · 4 `a3f4c9a9`. 인계는 `5_handoff_summary.md`.
 > 선행: `unit-stat-spreadsheet-schema` (완료) — API 계약·fetch/parse/apply 코어를 그대로 재사용한다.
+>
+> ⏳ **왕복 검증 대기 (2026-07-13, 사내망 세션에서 진행)**: unit 7·8(신필드 5종 + 통합 export 버튼) 코드/문서/EditMode 완료·푸시됨. **남은 것 = 시트→SO import 왕복 1회.** 이번 세션에선 dev API(`dev-api-somnia.cashroyale.games:443`) 도달 불가(TCP 차단, VPN/사내망 게이팅)로 미실시. 사내망 붙은 세션 절차: ① Unity `Window/Wassup/Unit Stat Import` → **"Import Dreamcatcher"** 클릭 → ② Result 로그 확인(경고: `headers not in contract`=열이름틀림, `[cardId] effects N→M`=효과수변동, `slot out of range`=Unity-SoT라 정상) → ③ **`git diff Assets/_Project/Data/` 비어있으면 IDENTICAL 왕복 성공**(챗봇이 시트에 값 정확히 반영). diff 뜨면 그 카드/필드가 시트에서 틀어진 것. 신규 메커닉 행은 Unity-SoT overlay라 slot 0 값만 갱신됨.
 
 ## 목표
 
