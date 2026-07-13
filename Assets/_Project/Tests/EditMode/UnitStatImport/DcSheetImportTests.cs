@@ -294,7 +294,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
                     new DcMechanicDto
                     {
                         cardId = "last_stand", slot = 0,
-                        triggerKind = DcTriggerKind.HealthThreshold, triggerFraction = 0.7f,
+                        triggerKind = DcTriggerKind.HealthThreshold, triggerFraction = 0.7f, triggerPeriodSeconds = 2.5f,
                         payloadKind = DcPayloadKind.SelfStatBuff, buffStat = CardBuffKind.AttackDamage,
                         ccKind = DcCcKind.Stun, stackKind = DcStackKind.Bleed,
                     },
@@ -303,6 +303,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             Apply(payload, new Dictionary<string, DreamcatcherCard> { ["last_stand"] = so });
 
             Assert.AreEqual(0.7f, so.mechanics[0].trigger.fraction, "triggerFraction overlaid");
+            Assert.AreEqual(2.5f, so.mechanics[0].trigger.periodSeconds, "triggerPeriodSeconds overlaid");
             Assert.AreEqual(CardBuffKind.AttackDamage, so.mechanics[0].payload.buffStat, "buffStat overlaid");
             Assert.AreEqual(DcCcKind.Stun, so.mechanics[0].payload.ccKind, "ccKind overlaid");
             Assert.AreEqual(DcStackKind.Bleed, so.mechanics[0].payload.stackKind, "stackKind overlaid");
@@ -314,6 +315,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
         {
             var so = NewMechanicCard("last_stand", null);
             so.mechanics[0].trigger.fraction = 0.5f;
+            so.mechanics[0].trigger.periodSeconds = 3f;
             so.mechanics[0].payload.buffStat = CardBuffKind.AttackSpeed;
             so.mechanics[0].payload.ccKind = DcCcKind.Impulse;
             so.mechanics[0].payload.stackKind = DcStackKind.Poison;
@@ -326,6 +328,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
 
             Assert.AreEqual(12f, so.mechanics[0].payload.magnitude);
             Assert.AreEqual(0.5f, so.mechanics[0].trigger.fraction, "omitted triggerFraction keeps value");
+            Assert.AreEqual(3f, so.mechanics[0].trigger.periodSeconds, "omitted triggerPeriodSeconds keeps value");
             Assert.AreEqual(CardBuffKind.AttackSpeed, so.mechanics[0].payload.buffStat, "omitted buffStat keeps value");
             Assert.AreEqual(DcCcKind.Impulse, so.mechanics[0].payload.ccKind, "omitted ccKind keeps value");
             Assert.AreEqual(DcStackKind.Poison, so.mechanics[0].payload.stackKind, "omitted stackKind keeps value");

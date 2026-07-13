@@ -208,6 +208,7 @@ namespace Wassup.Data.StatImport
                 if (dto.magnitude != null) { m.payload.magnitude = dto.magnitude.Value; c.fieldsApplied++; }
                 if (dto.tileRange != null) { m.payload.tileRange = dto.tileRange.Value; c.fieldsApplied++; }
                 if (dto.duration != null) { m.payload.duration = dto.duration.Value; c.fieldsApplied++; }
+                if (dto.triggerPeriodSeconds != null) { m.trigger.periodSeconds = dto.triggerPeriodSeconds.Value; c.fieldsApplied++; }
                 if (dto.triggerFraction != null) { m.trigger.fraction = dto.triggerFraction.Value; c.fieldsApplied++; }
                 if (dto.ccKind != null) { m.payload.ccKind = dto.ccKind.Value; c.fieldsApplied++; }
                 if (dto.stackKind != null) { m.payload.stackKind = dto.stackKind.Value; c.fieldsApplied++; }

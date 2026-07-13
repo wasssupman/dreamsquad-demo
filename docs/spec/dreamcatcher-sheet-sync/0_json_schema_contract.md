@@ -40,7 +40,8 @@
 |---|---|---|
 | cardId / slot | string / int | |
 | triggerKind | enum DcTriggerKind | trigger.kind |
-| triggerPeriod | int | trigger.period |
+| triggerPeriod | int | trigger.period (AttackN N타) |
+| triggerPeriodSeconds | float | trigger.periodSeconds (PeriodicTimer 주기 초) · unit 7 |
 | triggerFraction | float | trigger.fraction (HealthThreshold 경계비율) · unit 7 |
 | payloadKind | enum DcPayloadKind | payload.kind |
 | magnitude / tileRange / duration | float / int / float | payload.* |
@@ -105,7 +106,7 @@
 | ApplyStackToTarget | 부여 스택 수 | (효과 반경) | 스택 지속 초 | **stackKind** (Fire/Ice/Bleed/Poison) |
 | SelfStatBuff | 버프 **퍼센트**(30 = +30%) | — | 지속 초(≤0=매치영구) | **buffStat** (AttackDamage/AttackSpeed…) |
 
-trigger: AttackN/OnDamagedN 만 `triggerPeriod`(N) 사용. HealthThreshold 는 `triggerFraction`(경계비율, "임계 이하 1회" = 1−임계). OnKill/None/OnDeath 는 트리거 스칼라 0.
+trigger 스칼라(종류별 배타적): AttackN/OnDamagedN → `triggerPeriod`(N타). PeriodicTimer → `triggerPeriodSeconds`(주기 초, ≤0 inert). HealthThreshold → `triggerFraction`(경계비율, "임계 이하 1회" = 1−임계). OnKill/None/OnDeath 는 트리거 스칼라 0.
 
 ## 완료 기준
 

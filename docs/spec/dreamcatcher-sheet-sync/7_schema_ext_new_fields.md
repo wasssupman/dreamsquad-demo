@@ -12,6 +12,7 @@
 | `payload.ccKind` | DcCcKind | `ccKind` | ApplyCcToTarget (Stun/Impulse) | Spec A (frost_arrow) |
 | `payload.stackKind` | DcStackKind | `stackKind` | ApplyStackToTarget (Fire/Ice/Bleed/Poison) | Spec A (ember_bite) |
 | `payload.buffStat` | CardBuffKind | `buffStat` | SelfStatBuff 대상 스탯 (AttackDamage/AttackSpeed…) | Spec B (last_stand/devouring) |
+| `trigger.periodSeconds` | float | `triggerPeriodSeconds` | PeriodicTimer 주기 초 | rev — 트리거 스칼라 trio 완결 (현재 카드 소비처 0, 미래대비) |
 
 - **trigger.* → 접두**(`triggerFraction`, `triggerKind`/`triggerPeriod` 선례). **payload 스칼라 → 무접두**(`ccKind`/`stackKind`/`buffStat`, `magnitude`/`tileRange`/`duration` 선례).
 - enum 은 C# 멤버명 문자열(case-insensitive) — 기존 컨벤션 그대로.
@@ -27,7 +28,6 @@
 
 ## 스코프 밖 (후속 후보)
 
-- **`periodSeconds`**(PeriodicTimer 트리거 주기초) — 동일 클래스의 5번째 시트 갭. 현재 사용자 요청(4필드) 밖. 필요 시 동일 패턴 1줄로 추가.
 - `auraPrefab`/`auraScale` — 에셋 참조 + 스칼라. 시트 계약 밖 유지(Unity authored).
 - 시트發 신규 카드 upsert — 기존 계약대로 update-only.
 

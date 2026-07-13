@@ -41,6 +41,7 @@ namespace Wassup.Data.StatImport
         public float? magnitude;
         public int? tileRange;
         public float? duration;
+        public float? triggerPeriodSeconds; // trigger.periodSeconds — PeriodicTimer 주기 초
         public float? triggerFraction;   // trigger.fraction — HealthThreshold 경계비율
         public DcCcKind? ccKind;          // payload.ccKind — ApplyCcToTarget
         public DcStackKind? stackKind;    // payload.stackKind — ApplyStackToTarget
