@@ -3,7 +3,10 @@
 > 상태: **완료 2026-07-11** — 실 구글 시트 왕복 검증 포함 (no-op IDENTICAL + farewell 밸런스 반영). units 0~1 `1eed2ee0` · 2 `e338c7da` · 3 `2608c179` · 4 `a3f4c9a9`. 인계는 `5_handoff_summary.md`.
 > 선행: `unit-stat-spreadsheet-schema` (완료) — API 계약·fetch/parse/apply 코어를 그대로 재사용한다.
 >
-> ⏳ **왕복 검증 대기 (2026-07-13, 사내망 세션에서 진행)**: unit 7·8(신필드 5종 + 통합 export 버튼) 코드/문서/EditMode 완료·푸시됨. **남은 것 = 시트→SO import 왕복 1회.** 이번 세션에선 dev API(`dev-api-somnia.cashroyale.games:443`) 도달 불가(TCP 차단, VPN/사내망 게이팅)로 미실시. 사내망 붙은 세션 절차: ① Unity `Window/Wassup/Unit Stat Import` → **"Import Dreamcatcher"** 클릭 → ② Result 로그 확인(경고: `headers not in contract`=열이름틀림, `[cardId] effects N→M`=효과수변동, `slot out of range`=Unity-SoT라 정상) → ③ **`git diff Assets/_Project/Data/` 비어있으면 IDENTICAL 왕복 성공**(챗봇이 시트에 값 정확히 반영). diff 뜨면 그 카드/필드가 시트에서 틀어진 것. 신규 메커닉 행은 Unity-SoT overlay라 slot 0 값만 갱신됨.
+> ✅ **왕복 검증 완료 (2026-07-13)**: unit 7·8(신필드 5종 + 통합 export 버튼) 시트→SO import 왕복 1회 성공. 결과: **Matched 60 / unmatched 0 / skipped 0**, 값·텍스트 드리프트 0 (diff 는 스키마 재직렬화 필드 catch-up 뿐 — `binding`/`placementWarmupSec` 제거 + `auraPrefab`/`auraScale`/`ccKind`/`stackKind`/`buffStat` 신필드 기본값). 한글 description 온전. dev API 는 이번엔 도달됨(이전 TCP 차단 해소).
+> - **검증 중 발견·수정된 시트 버그**: DcCards 첫 컬럼(기본키) 헤더가 mojibake(`D����`)로 깨져 29행 전량 unmatched → 사용자가 시트에서 `id` 로 정정 후 완전 매칭. 계약상 **DcCards 메인 탭 키 = `id`**(자식 탭 FK 는 `cardId` — 혼동 주의).
+> - **미해결 doc-hygiene**: 시트에 `binding`/`placementWarmupSec` 컬럼 잔존(taxonomy-cleanup `b8bb1157` 에서 C# 필드 제거 → import 는 "not in contract" 로 정상 무시). `0_json_schema_contract.md` DcCards 표(:24,:26)도 이 두 컬럼을 아직 나열 — 다음 export 재시드 또는 doc 정리 때 제거 대상.
+> - 재검증 절차: ① Unity `Window/Wassup/Unit Stat Import` → **"Import Dreamcatcher"** → ② Result 로그(`headers not in contract`=열이름틀림, `effects N→M`=효과수변동, `slot out of range`=Unity-SoT라 정상) → ③ **`git diff Assets/_Project/Data/` 가 스키마필드 외 비어있으면 IDENTICAL**.
 
 ## 목표
 

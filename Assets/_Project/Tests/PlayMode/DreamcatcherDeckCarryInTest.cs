@@ -48,23 +48,23 @@ namespace Wassup.Tests.PlayMode
             Assert.IsNotNull(_profSO, "profileSO wired");
             Assert.IsNotNull(cardCatalog, "cardCatalog wired");
 
-            // build a valid saved deck of 10x ranger_atk_10 and select it.
+            // build a valid saved deck of 10x ranger_atk and select it.
             var profile = _profSO.profile;
             profile.dreamcatcherDecks.Clear();
-            var deck = new DeckSave { id = "deck_test", name = "T", cardIds = Enumerable.Repeat("ranger_atk_10", 10).ToList() };
+            var deck = new DeckSave { id = "deck_test", name = "T", cardIds = Enumerable.Repeat("ranger_atk", 10).ToList() };
             profile.dreamcatcherDecks.Add(deck);
             profile.selectedDeckId = "deck_test";
 
             // resolve via the controller's private method
             var resolved = (List<DreamcatcherCard>)Invoke(ctrl, "ResolveAttachDeck");
             Assert.AreEqual(10, resolved.Count, "resolved 10 from saved deck");
-            Assert.IsTrue(resolved.All(c => c.id == "ranger_atk_10"), "all from saved deck");
+            Assert.IsTrue(resolved.All(c => c.id == "ranger_atk"), "all from saved deck");
 
             // no selection → fallback to serialized deck (the default 10)
             profile.selectedDeckId = null;
             var fallback = (List<DreamcatcherCard>)Invoke(ctrl, "ResolveAttachDeck");
             Assert.AreEqual(10, fallback.Count, "fallback default deck has 10");
-            Assert.IsTrue(fallback.Any(c => c.id != "ranger_atk_10"), "fallback is the default mix, not the saved deck");
+            Assert.IsTrue(fallback.Any(c => c.id != "ranger_atk"), "fallback is the default mix, not the saved deck");
         }
 
         private static object GetField(object o, string name) =>

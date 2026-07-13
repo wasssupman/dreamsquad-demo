@@ -58,6 +58,10 @@ namespace Wassup.Editor.UnitStatImport
                 for (int i = 0; i < (so.mechanics?.Length ?? 0); i++)
                 {
                     var m = so.mechanics[i];
+                    // dreamcatcher-data-hygiene unit 1 — payload discriminators are
+                    // only meaningful for the kind that consumes them; export blank
+                    // (null → key omitted) on other rows so the sheet stops showing
+                    // enum-zero noise (all-Stun/Fire/AttackDamage) as if it applied.
                     mechanicRows.Add(new MechanicRow
                     {
                         cardId = so.id, slot = i,
@@ -65,7 +69,9 @@ namespace Wassup.Editor.UnitStatImport
                         payloadKind = m.payload.kind, magnitude = m.payload.magnitude,
                         tileRange = m.payload.tileRange, duration = m.payload.duration,
                         triggerPeriodSeconds = m.trigger.periodSeconds, triggerFraction = m.trigger.fraction,
-                        ccKind = m.payload.ccKind, stackKind = m.payload.stackKind, buffStat = m.payload.buffStat,
+                        ccKind = m.payload.kind == DcPayloadKind.ApplyCcToTarget ? m.payload.ccKind : (DcCcKind?)null,
+                        stackKind = m.payload.kind == DcPayloadKind.ApplyStackToTarget ? m.payload.stackKind : (DcStackKind?)null,
+                        buffStat = m.payload.kind == DcPayloadKind.SelfStatBuff ? m.payload.buffStat : (CardBuffKind?)null,
                         _projectileId = m.payload.projectile != null ? m.payload.projectile.id : null,
                     });
                 }
