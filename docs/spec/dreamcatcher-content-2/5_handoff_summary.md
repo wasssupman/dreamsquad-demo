@@ -6,6 +6,7 @@
 - `ee9d567a` unit 1 — 순수 FrontmostTargeting 랭커 + EditMode + Bridge per-kind bake
 - `067f2743` unit 2 — AttackSystem frontmost 선택·잠금(START/RESOLVE, 엄격 lapse, ecs-review M1 반영)
 - `f14f21af` unit 3 — priority 직접 피해 +20% + Threat 동기
+- `9ebdbe5b` unit 4 — 카드 SO 2종 + catalog (임시 placeholder 아트)
 
 ## Implemented (units 0~3, 전부 검증·커밋)
 
@@ -38,6 +39,6 @@
 
 ## Follow-up (미완)
 
-- **unit 4 (에디터+아트 필요)**: 카드 SO 2종(스펙=`4_card_assets.md`, enum 값 검증됨) + catalog 등록 + 아트 `dreamcatcher_card_21/22.png`(1024×1536, 2:3). 아트는 아티스트 산출물. **MCP(라이브 에디터) 끊긴 상태로 미착수** — 복구(사용자가 Unity 창 포커스) 후 저작+Play e2e 검증.
-- **Play e2e**: 악몽의 여운 refresh/expiry, 끝을 보는 눈 flow-타겟 선택·+20%, 무카드 무회귀(모두 EditMode로 대리 검증됨, 최종은 실제 SO Play).
+- **실아트 교체**: 현재 `dreamcatcher_card_21/22.png`는 임시 placeholder("PLACEHOLDER" 표기, 1024×1536 Single Sprite). 사용자가 실아트 배정 → 같은 경로/guid 유지로 교체(guid 21=`5f9387e0eece4060b48e6cfc6d9355b8`, 22=`7c7f7e53636a4ccbbec61b36beaced75`)하면 SO art 참조 그대로 유효. 교체 후 카드 비주얼 육안 확인.
+- **라이브 Play e2e(최종 육안)**: 덱빌더 COLLECTION/손패 노출, 악몽의 여운 refresh/expiry, 끝을 보는 눈 flow-타겟+1.2배, 무카드 무회귀. 런타임 동작은 EditMode 20종으로 대리 검증됨(units 1~3); Afterglow arm은 devouring_craving(오늘 Play 검증)과 동일. SO baked 값·catalog는 execute_code로 확인 완료.
 - 시트 완전 미러링(eye DcAttackMods 행, Afterglow buffStat 컬럼) → `dreamcatcher-sheet-sync` 확장.
