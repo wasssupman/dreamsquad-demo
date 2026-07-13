@@ -421,6 +421,21 @@ namespace Wassup.Battle.Combat
                     float attackerVsCc = modifierStatsLookup.HasComponent(attackerEntity)
                         ? modifierStatsLookup[attackerEntity].damageVsCcMul
                         : 1f;
+                    // dreamcatcher-content-2 끝을 보는 눈 (unit 3) — the locked primary's +20%.
+                    // Only when the lock is active AND the pick was a real frontmost (not a
+                    // fallback nearest). fmPrioMul stays 0 (inert) otherwise; the melee arm
+                    // guards on fmPrioTarget != Null and the projectile encodes 0 = no bonus.
+                    Entity fmPrioTarget = Entity.Null;
+                    float fmPrioMul = 0f;
+                    if (wantFrontmost)
+                    {
+                        var l = frontmostLockLookup[attackerEntity];
+                        if (l.active && l.targetIsPriority)
+                        {
+                            fmPrioTarget = l.target;
+                            fmPrioMul = l.damageMulSnapshot;
+                        }
+                    }
                     // All defender/enemy hit effects come through AttackOutputElement.
                     bool hasOutputs = outputBufferLookup.HasBuffer(attackerEntity);
 
@@ -480,6 +495,9 @@ namespace Wassup.Battle.Combat
                                     arcHeight = projRef.arcHeight,
                                     impactTileRange = projRef.impactTileRange,
                                     owner = attackerEntity, // nightmare-catcher unit 1 — threat attribution
+                                    // 끝을 보는 눈 (unit 3) — TileAoe/ballistic priority victim + mul.
+                                    priorityTarget = fmPrioTarget,
+                                    priorityDamageMul = fmPrioMul,
                                 });
                             }
                             else
@@ -521,6 +539,9 @@ namespace Wassup.Battle.Combat
                                     bounceTileRange = dcBounceRange,
                                     bounceDamageMul = dcBounceMul,
                                     owner = attackerEntity, // nightmare-catcher unit 1 — threat attribution
+                                    // 끝을 보는 눈 (unit 3) — homing direct-victim priority + mul.
+                                    priorityTarget = fmPrioTarget,
+                                    priorityDamageMul = fmPrioMul,
                                 });
                             }
                         }
@@ -660,6 +681,11 @@ namespace Wassup.Battle.Combat
                                             float dmg = o.magnitude * damageMul;
                                             if (attackerVsCc != 1f && ccActionLookup.HasBuffer(hitTarget) && AnyActiveCc(ccActionLookup[hitTarget]))
                                                 dmg *= attackerVsCc;
+                                            // 끝을 보는 눈 (unit 3) — only the locked primary victim takes
+                                            // +20%; secondaries/AoE stay base. Same dmg feeds IncomingDamage
+                                            // AND ThreatTable.TryCredit below (no threat desync, HIGH 5).
+                                            if (fmPrioTarget != Entity.Null && hitTarget == fmPrioTarget)
+                                                dmg *= fmPrioMul;
                                             ecb.AppendToBuffer(hitTarget, new IncomingDamage { amount = dmg, source = attackerEntity });
                                             ThreatTable.TryCredit(threatQueue, creditThreat, threatLookup,
                                                 hitTarget, attackerEntity, dmg);

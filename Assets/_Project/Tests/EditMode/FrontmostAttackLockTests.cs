@@ -199,6 +199,33 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
+        public void Frontmost_Melee_PrimaryBoosted_SecondaryBase()
+        {
+            // unit 3 — base output 5, card mul 1.2. attackTargetCount=2 melee (non-guardian):
+            // locked primary takes +20% (6), the secondary stays base (5).
+            CreateLinearFlowField();
+            var def = CreateFrontmostDefender(new float3(0, 0, 0), range: 10f);
+            var atk = _em.GetComponentData<AttackState>(def);
+            atk.attackTargetCount = 2;
+            _em.SetComponentData(def, atk);
+            var primary = CreateEnemy(new float3(3, 0, 0));   // frontmost, flowDist 1
+            var secondary = CreateEnemy(new float3(1, 0, 0)); // flowDist 3
+            Tick();
+            Assert.AreEqual(6f, IncomingSum(primary), 1e-3f, "locked frontmost primary takes +20%");
+            Assert.AreEqual(5f, IncomingSum(secondary), 1e-3f, "secondary stays base");
+        }
+
+        [Test]
+        public void Frontmost_Fallback_NoPriorityBonus()
+        {
+            // No flow field → nearest fallback, non-priority → base damage, no ×1.2.
+            var def = CreateFrontmostDefender(new float3(0, 0, 0), range: 10f);
+            var only = CreateEnemy(new float3(1, 0, 0));
+            Tick();
+            Assert.AreEqual(5f, IncomingSum(only), 1e-3f, "fallback target takes base damage (no priority bonus)");
+        }
+
+        [Test]
         public void Guardian_ForcesFrontmostPrimary_NoDoubleHit()
         {
             // ecs-review M1: a guardian (multi-target) with the card must hit the locked

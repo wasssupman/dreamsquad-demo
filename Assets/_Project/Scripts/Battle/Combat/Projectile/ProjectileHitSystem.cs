@@ -109,6 +109,12 @@ namespace Wassup.Battle.Combat.Projectile
                     && threatOwner != Entity.Null
                     && defenderTagLookup.HasComponent(threatOwner);
 
+                // dreamcatcher-content-2 unit 3 (끝을 보는 눈) — only the exact victim entity
+                // that equals priorityTarget takes the +20%; splash secondaries stay base.
+                // prioMul resolves inert (1) unless a positive mul was carried (Null/0 default).
+                var prioTarget = projectile.ValueRO.priorityTarget;
+                float prioMul = projectile.ValueRO.priorityDamageMul > 0f ? projectile.ValueRO.priorityDamageMul : 1f;
+
                 switch (projectile.ValueRO.payload)
                 {
                     case PayloadKind.SingleSplash:
@@ -131,8 +137,11 @@ namespace Wassup.Battle.Combat.Projectile
                                         case AttackOutputKind.Damage:
                                             if (damageBufferLookup.HasBuffer(target))
                                             {
-                                                ecb.AppendToBuffer(target, new IncomingDamage { amount = output.magnitude, source = threatOwner });
-                                                ThreatTable.TryCredit(threatQueue, creditThreat, threatLookup, target, threatOwner, output.magnitude);
+                                                // 끝을 보는 눈 — direct victim priority (bounce direct
+                                                // target changes per hop, so A→B→A re-applies to A).
+                                                float dmg = target == prioTarget ? output.magnitude * prioMul : output.magnitude;
+                                                ecb.AppendToBuffer(target, new IncomingDamage { amount = dmg, source = threatOwner });
+                                                ThreatTable.TryCredit(threatQueue, creditThreat, threatLookup, target, threatOwner, dmg);
                                             }
                                             break;
 
@@ -173,8 +182,9 @@ namespace Wassup.Battle.Combat.Projectile
 
                             if (!handledOutputs && damageBufferLookup.HasBuffer(target))
                             {
-                                ecb.AppendToBuffer(target, new IncomingDamage { amount = projectile.ValueRO.damage, source = threatOwner });
-                                ThreatTable.TryCredit(threatQueue, creditThreat, threatLookup, target, threatOwner, projectile.ValueRO.damage);
+                                float dmg = target == prioTarget ? projectile.ValueRO.damage * prioMul : projectile.ValueRO.damage;
+                                ecb.AppendToBuffer(target, new IncomingDamage { amount = dmg, source = threatOwner });
+                                ThreatTable.TryCredit(threatQueue, creditThreat, threatLookup, target, threatOwner, dmg);
                             }
 
                             // Combat→Presentation: one hit event per direct target —
@@ -304,8 +314,11 @@ namespace Wassup.Battle.Combat.Projectile
                             if (!TileAoe.IsInTileRange(cell, centerCell, tileRange)) continue;
                             if (damageBufferLookup.HasBuffer(victims[i]))
                             {
-                                ecb.AppendToBuffer(victims[i], new IncomingDamage { amount = dmg, source = threatOwner });
-                                ThreatTable.TryCredit(threatQueue, creditThreat, threatLookup, victims[i], threatOwner, dmg);
+                                // 끝을 보는 눈 — only the locked priority entity, if it is actually
+                                // inside the impact range, takes +20%; the rest stay base.
+                                float vdmg = victims[i] == prioTarget ? dmg * prioMul : dmg;
+                                ecb.AppendToBuffer(victims[i], new IncomingDamage { amount = vdmg, source = threatOwner });
+                                ThreatTable.TryCredit(threatQueue, creditThreat, threatLookup, victims[i], threatOwner, vdmg);
                             }
                         }
 

@@ -252,5 +252,79 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(30f, _em.GetBuffer<IncomingDamage>(inRangeDiag)[0].amount, 1e-3f, "diagonal within range still hit");
             Assert.AreEqual(0, _em.GetBuffer<IncomingDamage>(outOfRange).Length, "outside impactTileRange untouched");
         }
+
+        // ── dreamcatcher-content-2 unit 3 (끝을 보는 눈) — priority direct-victim +20% ──
+
+        [Test]
+        public void Priority_DirectVictim_TakesBonus()
+        {
+            var target = MakeTarget(new float3(0.1f, 0f, 0f));
+            var proj = _em.CreateEntity();
+            _em.AddComponent<ProjectileTag>(proj);
+            _em.AddComponentData(proj, LocalTransform.FromPosition(new float3(0f, 0f, 0f)));
+            _em.AddComponentData(proj, new ProjectileState
+            {
+                target = target, speed = 100f, damage = 100f, hitThreshold = 0.5f,
+                priorityTarget = target, priorityDamageMul = 1.2f,
+            });
+            Tick(0.016f);
+            Assert.AreEqual(120f, _em.GetBuffer<IncomingDamage>(target)[0].amount, 1e-3f, "direct victim == priority → ×1.2");
+        }
+
+        [Test]
+        public void Priority_NonMatchingDirectVictim_StaysBase()
+        {
+            var target = MakeTarget(new float3(0.1f, 0f, 0f));
+            var elsewherePrio = MakeTarget(new float3(50f, 0f, 0f)); // priority points at a different entity
+            var proj = _em.CreateEntity();
+            _em.AddComponent<ProjectileTag>(proj);
+            _em.AddComponentData(proj, LocalTransform.FromPosition(new float3(0f, 0f, 0f)));
+            _em.AddComponentData(proj, new ProjectileState
+            {
+                target = target, speed = 100f, damage = 100f, hitThreshold = 0.5f,
+                priorityTarget = elsewherePrio, priorityDamageMul = 1.2f,
+            });
+            Tick(0.016f);
+            Assert.AreEqual(100f, _em.GetBuffer<IncomingDamage>(target)[0].amount, 1e-3f, "non-priority victim stays base");
+        }
+
+        [Test]
+        public void Priority_SplashSecondary_StaysBase_EvenIfPriorityEntity()
+        {
+            var direct = MakeTarget(new float3(0f, 0f, 0f));
+            var neighbor = MakeTarget(new float3(0.4f, 0f, 0f)); // within splash radius
+            var proj = _em.CreateEntity();
+            _em.AddComponent<ProjectileTag>(proj);
+            _em.AddComponentData(proj, LocalTransform.FromPosition(new float3(0f, 0f, 0f)));
+            _em.AddComponentData(proj, new ProjectileState
+            {
+                target = direct, speed = 100f, damage = 100f, hitThreshold = 0.5f,
+                onHitEffect = OnHitEffectType.Splash, splashRadius = 1f, splashDamageMul = 0.5f,
+                priorityTarget = neighbor, priorityDamageMul = 1.2f, // priority is a SPLASH secondary
+            });
+            Tick(0.016f);
+            Assert.AreEqual(100f, _em.GetBuffer<IncomingDamage>(direct)[0].amount, 1e-3f, "direct (non-priority) base");
+            Assert.AreEqual(50f, _em.GetBuffer<IncomingDamage>(neighbor)[0].amount, 1e-3f, "splash secondary stays base even when it is the priority entity");
+        }
+
+        [Test]
+        public void Priority_TileAoe_OnlyPriorityVictimBoosted()
+        {
+            var prio = MakeTarget(new float3(11f, 0f, 10f));   // in range, priority
+            var other = MakeTarget(new float3(9f, 0f, 10f));   // in range, base
+            var proj = _em.CreateEntity();
+            _em.AddComponent<ProjectileTag>(proj);
+            _em.AddComponentData(proj, LocalTransform.FromPosition(new float3(10f, 0f, 10f)));
+            _em.AddComponentData(proj, new ProjectileState
+            {
+                movement = MovementKind.BallisticArcToPoint, payload = PayloadKind.TileAoe,
+                origin = new float3(10f, 0f, 10f), impact = new float3(10f, 0f, 10f),
+                flightTime = 0f, arcHeight = 0f, impactTileRange = 1, damage = 30f,
+                priorityTarget = prio, priorityDamageMul = 1.2f,
+            });
+            Tick(0.016f);
+            Assert.AreEqual(36f, _em.GetBuffer<IncomingDamage>(prio)[0].amount, 1e-3f, "priority victim in AOE → ×1.2");
+            Assert.AreEqual(30f, _em.GetBuffer<IncomingDamage>(other)[0].amount, 1e-3f, "other AOE victims stay base");
+        }
     }
 }

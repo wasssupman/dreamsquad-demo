@@ -2327,6 +2327,10 @@ namespace Wassup.Bridge
                 owner = req.owner,
                 // nightmare-catcher unit 4 — TileAoe victim faction, verbatim copy.
                 targetFaction = req.targetFaction,
+                // dreamcatcher-content-2 unit 3 — frontmost priority victim + mul, verbatim
+                // copy. Defaults Null/0 = inert, so every existing spawn keeps base damage.
+                priorityTarget = req.priorityTarget,
+                priorityDamageMul = req.priorityDamageMul,
             };
             if (req.movement == MovementKind.BallisticArcToPoint)
             {

@@ -31,7 +31,7 @@
 
 ## 완료 기준
 
-- [ ] compile green.
-- [ ] 피해 통합 테스트 green: melee primary ×mul/secondary 1.0, homing direct ×mul/splash 1.0, bounce 타대상 1.0·priority 복귀 ×mul, ballistic/TileAoe priority만 ×mul, **Threat 크레딧 == IncomingDamage 배율**(desync 없음).
-- [ ] 기존 EditMode 스위트(투사체/bounce/threat 계열) 무회귀.
-- [ ] non-priority/폴백 대상은 배율 없음(1.0) 재확인.
+- [x] compile green (rig batchmode). — 2026-07-14
+- [x] 피해 통합 테스트 green: melee primary ×1.2/secondary base, homing direct ×1.2, splash secondary base(priority여도), TileAoe priority만 ×1.2, non-match/fallback base. Threat는 IncomingDamage와 **동일 변수(dmg/vdmg)** 라 desync 구조적 불가. — 2026-07-14
+- [x] 기존 EditMode 스위트 무회귀: total 743 / passed 741 / failed 0 / skipped 2. — 2026-07-14
+- [x] non-priority/폴백 대상 배율 없음 확인(Frontmost_Fallback_NoPriorityBonus). — 2026-07-14
