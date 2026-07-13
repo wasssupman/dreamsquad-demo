@@ -2197,6 +2197,26 @@ namespace Wassup.Bridge
             return anchor != null;
         }
 
+        // card-fly-to-target-absorb unit 1 — 카드 흡수 묵직 임팩트 게이트웨이(뷰가 뷰풀/EntityManager
+        // 를 모르게 유지). SpineUnitView 반응(펀치/플래시)은 spine 유닛일 때만; SpawnCardAbsorbVfx 는
+        // view 좌표를 그대로 VfxSpawner 에 위임(ToView 하지 않는 전용 경로).
+        public bool TryGetUnitView(Entity entity, out Wassup.Presentation.SpineUnitView view)
+        {
+            view = null;
+            return spineUnitPool != null && spineUnitPool.TryGet(entity, out view) && view != null;
+        }
+
+        public void SpawnCardAbsorbVfx(Vector3 viewPos)
+        {
+            if (vfxSpawner != null) vfxSpawner.SpawnCardAbsorb(viewPos);
+        }
+
+        // card-fly-to-target-absorb unit 2 — 타일/포탈 타겟의 셀 → **view** 월드 중심.
+        // GridToWorldCenter 는 sim 공간이라 ToView 1회(sim/view 경계). 유닛 케이스의
+        // transform.position(view)와 좌표계 일치 → 비행 투영/임팩트 VFX 가 어긋나지 않음.
+        public Vector3 GridCellToViewCenter(Vector2Int cell)
+            => Wassup.Core.BoardSpace.ToView(GridToWorldCenterVector(cell));
+
         // Enemy kills → live score HUD. One score bump per enemy killed by damage.
         private void DrainEnemyKilledEvents()
         {

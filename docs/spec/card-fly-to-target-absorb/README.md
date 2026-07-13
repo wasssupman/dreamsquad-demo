@@ -1,6 +1,6 @@
 # card-fly-to-target-absorb — 카드가 타겟으로 날아가 찰싹 흡수
 
-**상태: 초안 (다음 세션 이어서 진행) 2026-07-13**
+**상태: 완료 2026-07-13** (units 0~2 구현·Play 검증·커밋. handoff = `3_handoff_summary.md`)
 
 ## 목표
 
@@ -18,9 +18,10 @@
 
 ### 시퀀스
 
-1. **비행**: 손패 카드가 타겟 스크린 좌표(월드→스크린, 유닛 이동 **매프레임 추적**)로 **가속 접근**(Ease.InBack).
-   임팩트 직전 살짝 커짐(anticipation).
-2. **찰싹(1~2프레임)**: 닿는 순간 카드 **스쿼시 splat**(가로↑ 세로↓) + 동시에 **유닛(월드) 묵직 반응**:
+1. **비행 (하스스톤식 3축 아치)**: 손패 카드가 **하늘로 솟구쳤다가**(rise, apex 에서 살짝 hang·크게=카메라에
+   가까움) **위에서 아래로 내리찍는다**(slam, 가속 하강·작게=보드로 꽂힘). 스크린 Bézier(apex=start/end 위쪽)
+   + depth 스케일 펌프 + 미세 tilt. 타겟은 **매프레임 재투영 추적**(유닛 행진). 짧은 비행은 아치 비례 축소.
+2. **찰싹(1~2프레임)**: **내리찍는 착지 순간** 카드 **스쿼시 splat**(가로↑ 세로↓) + 동시에 **유닛(월드) 묵직 반응**:
    Spine 펀치 스케일 + 흰 플래시 틴트 + **링 충격파/버스트 파티클**(월드) + 미세 흔들림 + SoundManager "찰싹" 틱.
 3. **흡수(~0.08s)**: 카드가 유닛으로 빨려들며 축소·페이드 → 소멸. **안 머문다.**
 
@@ -80,8 +81,9 @@
 ## 파이프라인 커버리지
 
 - 날아가는 카드 = 런타임 UGUI(플레이 오브젝트 아님) → N/A.
-- **임팩트 링/버스트 = 월드 VFX 플레이 오브젝트** → `docs/reference/object-pipeline-map.md` 의 VFX 아키타입 대조 필요
-  (신설/재사용 여부는 unit 1 착수 시). 유닛 펀치/플래시는 `SpineUnitView` 프레젠테이션 확장.
+- **임팩트 VFX = 월드 VFX 플레이 오브젝트**: 기존 `VfxSpawner` 파이프라인에 슬롯(`cardAbsorbPrefab`=GA `vfx_Hit_Cylinder02`)
+  1개 추가 — 신규 아키타입 아님(prefab-only Shuriken VFX, `VfxSpawner.SpawnCardAbsorb` 가 view 좌표 직접 Instantiate).
+  유닛 펀치/플래시는 `SpineUnitView` 프레젠테이션 확장.
 
 ## 열린 결정 (다음 세션 착수 전)
 
@@ -92,7 +94,9 @@
     ([[project_tilemap_camera_pitch_per_phase]]). 카메라 Transform 을 직접 오프셋하면 그 재계산과 충돌 →
     킥은 카메라 rig 의 라이브 계산을 **존중하는 방식**(별도 오프셋 노드/데코레이터, base 값 위에 additive)이어야 함.
     카메라 소유 구조부터 확인 후 킥 지점 결정.
-- **링 충격파 VFX**: 기존 `VfxSpawner.SpawnPlacementRing`/`SpawnMeteorBurst` 재사용 vs 전용 저작(unity-vfx-authoring).
+- ~~**링 충격파 VFX**~~ **(결정 2026-07-13)**: 전용 슬롯 `VfxSpawner.cardAbsorbPrefab` = **GA `vfx_Hit_Cylinder02`**
+  (황금 에너지 기둥+플래시+아크). 기존 링/버스트 재사용은 이미 Meteor 등에서 쓰여 중복 → 미사용 GA hit 로 차별화.
+  오프스크린 렌더 11종 비교로 선정. 미할당 시 ring+burst 폴백.
 - **카드 고스트 비주얼 + "dissolve" 방식**: `UiCardFaceMesh`(크럼플 카드 페이스) 재사용 vs 단순 스냅샷 스프라이트.
   ⚠ spec 이 "dissolve" 라 쓰지만 선례(GiftPhaseView)는 **scale→0 + alpha** 다. 실제 셰이더 dissolve 로 가면
   UGUI 커스텀 셰이더 채널 스트립 함정([[project_ugui_custom_shader_uv_channels]])에 걸린다 — 단순 scale+fade 로

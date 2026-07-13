@@ -27,10 +27,11 @@ presenter 는 `System.Func<Vector3?>` **worldProvider** 를 받아 **매프레�
 - 타일(unit 2): `() => bridge.GridToWorldCenterVector(cell)` (고정).
 - provider 가 null(유닛 뷰 소멸) → 마지막 스크린 좌표로 비행 완료.
 
-### 비행 (PrimeTween 아님 — 이동 타겟 추적이라 Update 구동)
-고정 종점이 아니므로 GiftPhaseView 식 baked tween 대신 presenter 자체 `Update`:
-매프레임 worldProvider→screen 재투영, 고스트를 **가속**(속도 누적, Ease.InBack 느낌)으로 목표로 이동.
-임팩트 직전 살짝 커짐(anticipation). 도착 판정(거리 임계) 시 splat 단계로.
+### 비행 (하스스톤식 3축 아치 — 코루틴 시간 구동)
+고정 종점이 아니므로 baked tween 대신 presenter 코루틴. **rise → slam** 2페이즈 시간 구동:
+- **rise**(EaseOut): 스크린 Bézier 로 apex(start/end 위쪽 하늘)까지 솟구치며 감속 hang, depth 스케일 **커짐**(카메라 근접).
+- **slam**(EaseIn): apex→타겟으로 **가속 하강**하며 depth 스케일 **작아짐**(보드로 꽂힘). 착지 = 임팩트.
+매프레임 worldProvider→screen 재투영으로 end(타겟) 추적. apex 높이는 초기 수평거리 비례(짧은 비행 축소). 미세 tilt.
 
 ### 고스트 비주얼 (셰이더 dissolve 회피)
 슬롯 `art.sprite` 로 **단순 UGUI Image** 고스트를 Canvas(HandPanel 상위/오버레이)에 생성. 크럼플 face
@@ -50,4 +51,4 @@ presenter 는 `System.Func<Vector3?>` **worldProvider** 를 받아 **매프레�
 
 ---
 **확인 2026-07-13**: compile 클린(에러 0) + presenter 스폰 no-throw 스모크 통과. 사용자 Play 검증 통과
-(손패 카드→유닛 가속 비행→찰싹 splat→즉시 소멸, 행진 추적 정확, 취소 시 고스트 없음). 커밋: (아래 커밋 해시).
+(손패 카드→유닛 가속 비행→찰싹 splat→즉시 소멸, 행진 추적 정확, 취소 시 고스트 없음). 커밋: 56d78acf.

@@ -21,6 +21,12 @@ namespace Wassup.Presentation
         [SerializeField] private GameObject portalPrefab;
         [SerializeField] private GameObject healAppliedPrefab;
 
+        [Header("card-fly-to-target-absorb — 카드 흡수 임팩트")]
+        [Tooltip("카드가 유닛/타일에 내리찍힐 때 터지는 이펙트(GA vfx_Hit_Rock03: 코어 플래시+충격파 링+파편). Null → ring+burst 폴백.")]
+        [SerializeField] private GameObject cardAbsorbPrefab;
+        [Tooltip("흡수 이펙트 스케일(타일 1 유닛 기준 축소)")]
+        [SerializeField] private float cardAbsorbScale = 0.6f;
+
         // V1 — Placement pulse. One-shot outward radial burst that fades in 0.35s.
         public void SpawnPlacementRing(Vector3 worldPos)
         {
@@ -49,6 +55,36 @@ namespace Wassup.Presentation
             var go = Instantiate(meteorBurstPrefab, pos, Quaternion.identity, transform);
             go.transform.localScale = Vector3.one * Mathf.Max(0.1f, radiusWorld);
             Destroy(go, 1.2f);
+        }
+
+        // card-fly-to-target-absorb unit 1 — 카드 흡수 임팩트(링+버스트). 다른 Spawn* 과 달리
+        // 입력이 **이미 view 좌표**(유닛 뷰 transform.position)라 ToView 하지 않는다 — 이중변환 방지
+        // (sim/view 경계: docs/reference lessons). 기존 프리팹 재사용(전용 프리팹은 후속 후보).
+        public void SpawnCardAbsorb(Vector3 viewPos)
+        {
+            // 전용 임팩트 이펙트(GA hit) 우선 — 코어 플래시+충격파 링+파편이 한 프리팹에.
+            if (cardAbsorbPrefab != null)
+            {
+                var go = Instantiate(cardAbsorbPrefab,
+                    new Vector3(viewPos.x, viewPos.y + 0.05f, viewPos.z), Quaternion.identity, transform);
+                go.transform.localScale = Vector3.one * Mathf.Max(0.05f, cardAbsorbScale);
+                Destroy(go, 1.6f);
+                return;
+            }
+            // 폴백(프리팹 미할당) — 기존 링+버스트 재사용.
+            if (placementRingPrefab != null)
+            {
+                var ring = Instantiate(placementRingPrefab,
+                    new Vector3(viewPos.x, viewPos.y + 0.02f, viewPos.z), Quaternion.identity, transform);
+                Destroy(ring, 0.6f);
+            }
+            if (meteorBurstPrefab != null)
+            {
+                var burst = Instantiate(meteorBurstPrefab,
+                    new Vector3(viewPos.x, viewPos.y + 0.05f, viewPos.z), Quaternion.identity, transform);
+                burst.transform.localScale = Vector3.one * 0.6f;
+                Destroy(burst, 1.0f);
+            }
         }
 
         // V3 — Tornado swirl held for durationSec.

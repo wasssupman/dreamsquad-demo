@@ -14,19 +14,30 @@ namespace Wassup.UI
     // 머무름 없음(닿고 ~0.08s 소멸)이라 평평-스티커 문제도 없음.
     public class CardAbsorbFlightPresenter : MonoBehaviour
     {
-        [Header("Flight")]
-        [Tooltip("초기 속도(px/s, 스크린)")]
-        [SerializeField] private float baseSpeed = 700f;
-        [Tooltip("가속(px/s^2) — InBack 느낌의 가속 접근")]
-        [SerializeField] private float accel = 7000f;
-        [Tooltip("도착 판정 거리(px)")]
-        [SerializeField] private float arriveDist = 36f;
-        [Tooltip("비행 안전 상한(s) — 타겟 소실 시 무한루프 방지")]
-        [SerializeField] private float maxFlightTime = 1.2f;
-        [Tooltip("임팩트 직전 살짝 커짐(anticipation)")]
-        [SerializeField] private float anticipationScale = 1.15f;
-        [Tooltip("anticipation 시작 거리(px)")]
-        [SerializeField] private float anticipationDist = 130f;
+        // 하스스톤식 3축 아치: 하늘로 솟구쳤다가(rise) 위에서 아래로 내리찍는다(slam).
+        // 스크린 Bézier(솟구침) + depth 스케일 펌프(솟을 때 크게=카메라에 가깝게, 내리찍을 때
+        // 작게=보드로 꽂힘) + 하강 가속. 내리찍는 순간 = 임팩트(펀치/링/킥)와 일치.
+        [Header("Arc — rise")]
+        [Tooltip("솟구침 시간(s) — 하늘로 오르며 apex 에서 살짝 hang")]
+        [SerializeField] private float riseDur = 0.26f;
+        [Tooltip("apex 높이(px, 화면 위쪽). 짧은 비행엔 비례 축소")]
+        [SerializeField] private float apexRise = 760f;
+        [Tooltip("apex 최소 높이(px) — 근접 타겟도 최소 아치")]
+        [SerializeField] private float minApexRise = 280f;
+        [Tooltip("apex 가 최대 높이에 도달하는 기준 수평거리(px)")]
+        [SerializeField] private float arcRefDist = 560f;
+        [Tooltip("apex 수평 위치(start→end 보간, 0.5=중앙 · 타겟 쪽으로 살짝)")]
+        [SerializeField] private float apexBias = 0.62f;
+        [Tooltip("apex(하늘 정점)에서의 스케일 — depth 펌프(카메라에 가까움)")]
+        [SerializeField] private float apexScale = 1.4f;
+
+        [Header("Arc — slam")]
+        [Tooltip("내리찍기 시간(s) — 짧고 빠르게(가속 하강)")]
+        [SerializeField] private float slamDur = 0.16f;
+        [Tooltip("타겟에 꽂히는 순간 스케일 — 작게(보드로 파고듦)")]
+        [SerializeField] private float impactScale = 0.72f;
+        [Tooltip("비행 중 카드 기울기(도) — apex 에서 최대, 슬램에 0 으로 정렬")]
+        [SerializeField] private float tiltDeg = 12f;
 
         [Header("Splat / Dissolve")]
         [Tooltip("찰싹 스쿼시 (가로↑ 세로↓)")]
@@ -49,13 +60,14 @@ namespace Wassup.UI
 
         // startUiWorld: 발사 슬롯 rect.position(캔버스 월드). worldCam: 게임 카메라(월드→스크린).
         // worldProvider: 매프레임 타겟 월드 위치(유닛 행진 추적; null 반환 시 마지막값 유지).
+        // onImpact: 도착(splat) 순간 1회 — 마지막 타겟 월드(view) 좌표 전달(unit 1 묵직 반응 구동).
         public void Fly(Vector3 startUiWorld, Vector2 ghostSize, Sprite face, Camera worldCam,
-            Func<Vector3?> worldProvider)
+            Func<Vector3?> worldProvider, Action<Vector3> onImpact = null)
         {
             if (worldProvider == null || worldCam == null || _parentRect == null) return;
             Vector2 startScreen = RectTransformUtility.WorldToScreenPoint(_uiCam, startUiWorld);
             var ghost = CreateGhost(face, ghostSize);
-            StartCoroutine(FlyRoutine(ghost, startScreen, worldCam, worldProvider));
+            StartCoroutine(FlyRoutine(ghost, startScreen, worldCam, worldProvider, onImpact));
         }
 
         private RectTransform CreateGhost(Sprite face, Vector2 size)
@@ -75,52 +87,79 @@ namespace Wassup.UI
         }
 
         private IEnumerator FlyRoutine(RectTransform ghost, Vector2 startScreen, Camera worldCam,
-            Func<Vector3?> worldProvider)
+            Func<Vector3?> worldProvider, Action<Vector3> onImpact)
         {
             SetGhostScreen(ghost, startScreen);
-            Vector2 cur = startScreen;
-            Vector2 lastTarget = startScreen;
-            float speed = baseSpeed;
-            float t = 0f;
+            Vector3 lastWorld = worldCam.transform.position; // fallback
+            Vector2 endScreen = startScreen;
 
-            while (t < maxFlightTime)
+            // 아치 높이: 초기 수평거리에 비례(짧은 비행엔 작게, 하한 보장).
             {
-                float dt = Time.unscaledDeltaTime;
-                t += dt;
+                Vector3? w0 = worldProvider();
+                if (w0.HasValue) { lastWorld = w0.Value; endScreen = worldCam.WorldToScreenPoint(w0.Value); }
+            }
+            float initDist = Vector2.Distance(startScreen, endScreen);
+            float arcHeight = Mathf.Lerp(minApexRise, apexRise, Mathf.Clamp01(initDist / Mathf.Max(1f, arcRefDist)));
 
+            float total = Mathf.Max(0.02f, riseDur) + Mathf.Max(0.02f, slamDur);
+            float e = 0f;
+            while (e < total)
+            {
+                e += Time.unscaledDeltaTime;
+
+                // 타겟 추적(유닛 행진) — end 를 매프레임 재투영.
                 Vector3? w = worldProvider();
-                Vector2 target = w.HasValue ? (Vector2)worldCam.WorldToScreenPoint(w.Value) : lastTarget;
-                lastTarget = target;
+                if (w.HasValue) { lastWorld = w.Value; endScreen = worldCam.WorldToScreenPoint(w.Value); }
 
-                Vector2 dir = target - cur;
-                float dist = dir.magnitude;
+                // apex = start/end 위쪽(하늘). 수평은 타겟 쪽으로 살짝.
+                Vector2 apex = new Vector2(
+                    Mathf.Lerp(startScreen.x, endScreen.x, apexBias),
+                    Mathf.Max(startScreen.y, endScreen.y) + arcHeight);
 
-                if (dist < anticipationDist)
+                float bez, depth, tilt;
+                if (e < riseDur)
                 {
-                    float k = 1f - Mathf.Clamp01(dist / anticipationDist);
-                    ghost.localScale = Vector3.one * Mathf.Lerp(1f, anticipationScale, k);
+                    float u = Mathf.Clamp01(e / riseDur);
+                    float ue = 1f - (1f - u) * (1f - u); // EaseOut — apex 에서 감속(hang)
+                    bez = 0.5f * ue;                      // Bézier 전반부 → apex 부근
+                    depth = Mathf.Lerp(1f, apexScale, ue);
+                    tilt = Mathf.Lerp(0f, tiltDeg, ue);
+                }
+                else
+                {
+                    float u = Mathf.Clamp01((e - riseDur) / slamDur);
+                    float ue = u * u;                     // EaseIn — 가속 내리찍기(slam)
+                    bez = 0.5f + 0.5f * ue;               // Bézier 후반부 → 타겟
+                    depth = Mathf.Lerp(apexScale, impactScale, ue);
+                    tilt = Mathf.Lerp(tiltDeg, 0f, ue);   // 슬램에 정렬
                 }
 
-                speed += accel * dt;
-                float step = speed * dt;
-                if (dist <= arriveDist || step >= dist)
-                {
-                    cur = target;
-                    SetGhostScreen(ghost, cur);
-                    break;
-                }
-                cur += dir / dist * step;
-                SetGhostScreen(ghost, cur);
+                Vector2 pos = QuadBezier(startScreen, apex, endScreen, bez);
+                SetGhostScreen(ghost, pos);
+                ghost.localScale = Vector3.one * depth;
+                ghost.localRotation = Quaternion.Euler(0f, 0f, tilt);
                 yield return null;
             }
 
-            // 찰싹 splat — 가로↑ 세로↓
-            yield return LerpScale(ghost, ghost.localScale, new Vector3(splatScale.x, splatScale.y, 1f), splatTime);
+            // 내리찍는 순간 — 묵직 반응(유닛 펀치/플래시/링/킥/SFX). slam 착지와 일치.
+            SetGhostScreen(ghost, endScreen);
+            ghost.localRotation = Quaternion.identity;
+            onImpact?.Invoke(lastWorld);
+
+            // 찰싹 splat — 위에서 꽂힌 하강 스쿼시(가로↑ 세로↓)
+            yield return LerpScale(ghost, ghost.localScale,
+                new Vector3(impactScale * splatScale.x, impactScale * splatScale.y, 1f), splatTime);
             // 흡수 dissolve — scale→0 + alpha→0
             var img = ghost.GetComponent<Image>();
             yield return DissolveOut(ghost, img, dissolveTime);
 
             if (ghost != null) Destroy(ghost.gameObject);
+        }
+
+        private static Vector2 QuadBezier(Vector2 a, Vector2 b, Vector2 c, float t)
+        {
+            float it = 1f - t;
+            return it * it * a + 2f * it * t * b + t * t * c;
         }
 
         private void SetGhostScreen(RectTransform ghost, Vector2 screen)

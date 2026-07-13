@@ -102,7 +102,53 @@ namespace Wassup.UI
             var h = host;
             _flightPresenter.Fly(startUiWorld, ghostSize, face, MainCamera,
                 () => (b != null && b.TryGetUnitViewAnchor(h, out var tr) && tr != null)
-                    ? tr.position : (Vector3?)null);
+                    ? tr.position : (Vector3?)null,
+                worldPos => FireAbsorbImpact(h, worldPos));
+        }
+
+        // card-fly-to-target-absorb unit 2 — 타일/포탈 타겟(Active 스킬 셀 캐스트). 고정 셀
+        // view 중심으로 비행(추적 불필요) → 타일 월드에서 같은 찰싹(유닛 없음 → 펀치/플래시 생략).
+        public void FlyCardToCell(Vector3 startUiWorld, Vector2 ghostSize, Sprite face, Vector2Int cell)
+        {
+            EnsureFlightPresenter();
+            if (_flightPresenter == null) return;
+            var b = bridge;
+            var c = cell;
+            _flightPresenter.Fly(startUiWorld, ghostSize, face, MainCamera,
+                () => b != null ? (Vector3?)b.GridCellToViewCenter(c) : (Vector3?)null,
+                FireAbsorbImpactWorld);
+        }
+
+        // card-fly-to-target-absorb unit 1 — 닿는 순간 묵직 반응(타겟 월드에서). 메커닉이
+        // 게이트(bridge) 경유로 구동. 유닛 케이스는 펀치/흰플래시 추가, 그 외 공통 월드 반응.
+        private void FireAbsorbImpact(Entity host, Vector3 worldViewPos)
+        {
+            if (bridge != null && bridge.TryGetUnitView(host, out var view) && view != null)
+            {
+                view.PlayPunch();
+                view.FlashWhite();
+            }
+            FireAbsorbImpactWorld(worldViewPos);
+        }
+
+        // 공통 월드 반응: 링/버스트 + 찰싹 SFX + 카메라 킥(유닛 유무 무관).
+        private void FireAbsorbImpactWorld(Vector3 worldViewPos)
+        {
+            bridge?.SpawnCardAbsorbVfx(worldViewPos);
+            if (SoundManager.Instance != null) SoundManager.Instance.PlayCardAbsorb();
+            EnsureCameraKick()?.Kick();
+        }
+
+        private Wassup.Presentation.CameraImpactKick _cameraKick;
+
+        private Wassup.Presentation.CameraImpactKick EnsureCameraKick()
+        {
+            if (_cameraKick != null) return _cameraKick;
+            var cam = MainCamera;
+            if (cam == null) return null;
+            _cameraKick = cam.GetComponent<Wassup.Presentation.CameraImpactKick>();
+            if (_cameraKick == null) _cameraKick = cam.gameObject.AddComponent<Wassup.Presentation.CameraImpactKick>();
+            return _cameraKick;
         }
 
         private void EnsureFlightPresenter()

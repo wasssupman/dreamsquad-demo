@@ -23,6 +23,11 @@ namespace Wassup.Core
         [Tooltip("발사음 최소 간격(초) — 다발 발사 시 과중첩 방지")]
         [SerializeField] private float projectileFireMinInterval = 0.045f;
 
+        [Header("Card absorb")]
+        [Tooltip("카드 흡수 찰싹 틱 클립(card-fly-to-target-absorb). Null → no-op.")]
+        [SerializeField] private AudioClip cardAbsorbClip;
+        [Range(0f, 1f)] [SerializeField] private float cardAbsorbVolume = 0.7f;
+
         [Header("Deploy voice")]
         [Tooltip("배치 추임새 볼륨. 클립은 캐릭터별 DefenderUnitData.deployVoiceClip.")]
         [Range(0f, 1f)] [SerializeField] private float deployVoiceVolume = 0.85f;
@@ -121,6 +126,16 @@ namespace Wassup.Core
             _next = (_next + 1) % _voices.Length;
             src.pitch = 1f;
             src.PlayOneShot(projectileFireClip, projectileFireVolume);
+        }
+
+        // card-fly-to-target-absorb unit 1 — 카드가 유닛에 찰싹 흡수되는 임팩트 틱.
+        public void PlayCardAbsorb()
+        {
+            if (cardAbsorbClip == null || _voices == null) return;
+            var src = _voices[_next];
+            _next = (_next + 1) % _voices.Length;
+            src.pitch = 1f;
+            src.PlayOneShot(cardAbsorbClip, cardAbsorbVolume);
         }
 
         // Per-character casual deploy interjection (clip from the deployed DefenderUnitData).

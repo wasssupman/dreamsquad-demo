@@ -53,6 +53,7 @@ namespace Wassup.Presentation
             ApplyRenderPosition(worldPos);
             float s = Mathf.Max(0.01f, visualData.SpineVisualScale * BattleBridge.CharacterVisualScale);
             transform.localScale = new Vector3(s, s, s);
+            _baseScale = transform.localScale; // card-fly unit 1 — 펀치 펄스 복귀 기준
 
             _skeleton = gameObject.AddComponent<SkeletonAnimation>();
             _skeleton.skeletonDataAsset = visualData.SpineSkeletonDataAsset;
@@ -227,6 +228,7 @@ namespace Wassup.Presentation
         // 실충돌은 없지만 순서 안전하게 방어. 알파 불변(RGB 만).
         private bool _hoverHighlightActive;
         private Color _savedTint = Color.white;
+        private Vector3 _baseScale = Vector3.one; // card-fly unit 1 — 펀치 펄스 복귀 기준(스폰 시 캡처)
 
         public void SetHoverHighlight(bool on, Color tint)
         {
@@ -264,6 +266,63 @@ namespace Wassup.Presentation
             skel.R = tint.r;
             skel.G = tint.g;
             skel.B = tint.b;
+        }
+
+        // card-fly-to-target-absorb unit 1 — 카드 흡수 묵직 임팩트(타겟 월드 반응).
+        // 둘 다 self-contained: base 스케일/현재 틴트를 캡처해 복귀하므로 health/hover 틴트
+        // 로직과 충돌 없음. unscaled(슬로모 중에도 스냅) — 카드 비행과 톤 일치.
+        public void PlayPunch(float overshoot = 0.28f, float dur = 0.16f)
+        {
+            if (_dying || !gameObject.activeInHierarchy) return;
+            StartCoroutine(PunchRoutine(overshoot, dur));
+        }
+
+        private System.Collections.IEnumerator PunchRoutine(float overshoot, float dur)
+        {
+            // base 대비 크게 튄 뒤 base 로 복귀(살짝 세로 눌림 없이 균일 펀치 — 유닛은 3D 반응 주역).
+            Vector3 peak = _baseScale * (1f + Mathf.Max(0f, overshoot));
+            float half = Mathf.Max(0.01f, dur * 0.35f);
+            float e = 0f;
+            while (e < half) { e += Time.unscaledDeltaTime; if (_dying) yield break;
+                transform.localScale = Vector3.Lerp(_baseScale, peak, e / half); yield return null; }
+            float back = Mathf.Max(0.01f, dur - half);
+            e = 0f;
+            while (e < back) { e += Time.unscaledDeltaTime; if (_dying) yield break;
+                transform.localScale = Vector3.Lerp(peak, _baseScale, e / back); yield return null; }
+            if (!_dying) transform.localScale = _baseScale;
+        }
+
+        public void FlashWhite(float dur = 0.14f)
+        {
+            if (_dying || !gameObject.activeInHierarchy || _skeleton == null || _skeleton.Skeleton == null) return;
+            StartCoroutine(FlashRoutine(dur));
+        }
+
+        private System.Collections.IEnumerator FlashRoutine(float dur)
+        {
+            var skel = _skeleton.Skeleton;
+            // flash 시작 시 현재 색 캡처 → 흰색으로 튀었다가 그 색으로 복귀(health/hover 상태 무관).
+            Color restore = new Color(skel.R, skel.G, skel.B);
+            skel.R = 1f; skel.G = 1f; skel.B = 1f;
+            float e = 0f;
+            while (e < dur)
+            {
+                e += Time.unscaledDeltaTime;
+                if (_dying || _skeleton == null || _skeleton.Skeleton == null) yield break;
+                float k = Mathf.Clamp01(e / dur);
+                skel = _skeleton.Skeleton;
+                skel.R = Mathf.Lerp(1f, restore.r, k);
+                skel.G = Mathf.Lerp(1f, restore.g, k);
+                skel.B = Mathf.Lerp(1f, restore.b, k);
+                yield return null;
+            }
+            if (!_dying && _skeleton != null && _skeleton.Skeleton != null)
+            {
+                var s = _skeleton.Skeleton;
+                // 복귀 목표를 다시 저장값 기준으로 — hover 중이면 _savedTint 가 최신 resting.
+                Color target = _hoverHighlightActive ? _savedTint : restore;
+                s.R = target.r; s.G = target.g; s.B = target.b;
+            }
         }
 
         // placement-enemy-see-through unit 2 — 드래그 배치 중 반투명 전환.

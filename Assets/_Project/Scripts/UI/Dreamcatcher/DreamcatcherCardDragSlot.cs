@@ -141,7 +141,15 @@ namespace Wassup.UI
                     // attach commit (host-bound, aims the same); only Active-
                     // DefenderUnit forks (casts a skill at the CELL, not an attach).
                     if (slot.card.type == CardType.Active)
-                        CommitNow(() => _view.Controller.CommitActiveDefender(entryId, cell));
+                    {
+                        // card-fly unit 2 — Active-Defender 는 셀(타일 월드)로 찰싹(유닛 없음 반응).
+                        Vector3 startUiWorld = slot.rect.position;
+                        Vector2 ghostSize = slot.rect.rect.size;
+                        Sprite face = slot.art != null ? slot.art.sprite : null;
+                        var cell2 = cell;
+                        CommitNow(() => _view.Controller.CommitActiveDefender(entryId, cell),
+                            () => _view.FlyCardToCell(startUiWorld, ghostSize, face, cell2));
+                    }
                     else
                     {
                         // card-fly-to-target-absorb unit 0 — 발사점/스프라이트를 커밋 전에
@@ -160,7 +168,13 @@ namespace Wassup.UI
                     if (TryScreenToCell(eventData.position, out var tile))
                     {
                         ClearAimRange();
-                        CommitNow(() => _view.Controller.CommitActiveTile(slot.entryId, tile));
+                        // card-fly unit 2 — 타일 캐스트. 카드는 포인터를 따라와 타겟 근처라 짧은 찰싹.
+                        Vector3 tStart = slot.rect.position;
+                        Vector2 tSize = slot.rect.rect.size;
+                        Sprite tFace = slot.art != null ? slot.art.sprite : null;
+                        var tile2 = tile;
+                        CommitNow(() => _view.Controller.CommitActiveTile(slot.entryId, tile),
+                            () => _view.FlyCardToCell(tStart, tSize, tFace, tile2));
                     }
                     else CancelDrag();
                     return;
@@ -198,7 +212,14 @@ namespace Wassup.UI
             var entry = _portalEntryCell.Value;
             int entryId = Slot.entryId;
             _portalEntryCell = null;
-            CommitNow(() => _view.Controller.CommitActivePortal(entryId, entry, exitTile));
+            // card-fly unit 2 — 포탈 확정(두 번째 탭 = 출구). 카드는 출구 타일로 찰싹.
+            var pSlot = Slot;
+            Vector3 pStart = pSlot.rect.position;
+            Vector2 pSize = pSlot.rect.rect.size;
+            Sprite pFace = pSlot.art != null ? pSlot.art.sprite : null;
+            var exit2 = exitTile;
+            CommitNow(() => _view.Controller.CommitActivePortal(entryId, entry, exitTile),
+                () => _view.FlyCardToCell(pStart, pSize, pFace, exit2));
         }
 
         // Touchup applies immediately: spend/cycle only happen inside a
