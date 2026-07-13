@@ -3,7 +3,7 @@
 Spec B(last_stand·devouring_craving) 구현 인계. 최신 계약은 `README.md`(구현 노트 포함) 우선. 계획 배경/seam 지도는 `SESSION_HANDOFF.md`.
 
 ## Commit
-- (커밋 대기 — 사용자 사인오프 후 1커밋 예정)
+- `f67c2885` feat(dreamcatcher): kill-and-threshold — last_stand·devouring + IncomingDamage.source
 
 ## Implemented (compile + EditMode/PlayMode green)
 - **unit 0**: `DcTriggerKind.OnKill`·`DcPayloadKind.SelfStatBuff(12)` append + `DcPayloadSpec.buffStat`(CardBuffKind) + `DcTriggerSlot.buffStat`(Battle StatKind, bake-translated). `HealthThreshold`/`fraction`/`HealthThresholdEval` 는 기존재(nightmare-catcher) 재사용.
