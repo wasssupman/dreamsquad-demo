@@ -1,19 +1,19 @@
 {
-  "_note": "unit 7 — Spec A/B 신규 5카드를 구글 시트에 반영하기 위한 시트 업데이트 원본. enum 은 C# 멤버명 문자열. 탭별로 해당 배열을 시트에 append(또는 아래 TSV 를 셀에 붙여넣기). DcMechanics 는 Unity-SoT overlay 라 SO 에 이미 존재하는 slot 0 값을 되올리는 것.",
-  "cards": [
-    { "id": "shatter_hymn", "displayName": "산산이 부수는 성가", "type": "Squad", "axis": "All", "description": "모든 아군이 CC(기절/수면/속박) 걸린 적에게 +25% 피해" },
-    { "id": "frost_arrow", "displayName": "서리의 화살", "type": "Unit", "axis": "All", "description": "3번째 공격마다 대상을 0.6초 얼림(기절)" },
-    { "id": "ember_bite", "displayName": "불씨 물기", "type": "Unit", "axis": "All", "description": "3번째 공격마다 대상에 출혈 스택 — 지속 피해" },
-    { "id": "last_stand", "displayName": "최후의 발악", "type": "Unit", "axis": "All", "description": "HP가 30% 이하로 떨어지면 공격력 +30% (남은 전투 내내, 1회)" },
-    { "id": "devouring_craving", "displayName": "포식의 갈망", "type": "Unit", "axis": "All", "description": "적을 처치할 때마다 공격 속도 +8% (4초, 처치할 때마다 지속 갱신)" }
+  "_note": "unit 7 — Spec A/B 신규 5카드를 구글 시트에 반영. 탭명 키 = 1_seed_dreamcatcher.json 과 동일 포맷. enum 은 C# 멤버명 문자열. 각 탭 배열을 해당 시트 탭에 append. DcMechanics 는 Unity-SoT overlay(SO 에 이미 존재하는 slot 0 값을 시트로 노출). 빈 셀/생략 = 부분갱신(기존값 유지). binding/placementWarmupSec 는 정보 컬럼(importer 무시)이지만 시트 정합 위해 채움.",
+  "DcCards": [
+    { "id": "shatter_hymn", "displayName": "산산이 부수는 성가", "type": "Squad", "binding": "Axis", "axis": "All", "placementWarmupSec": 0, "description": "모든 아군이 CC(기절/수면/속박) 걸린 적에게 +25% 피해" },
+    { "id": "frost_arrow", "displayName": "서리의 화살", "type": "Unit", "binding": "Unit", "axis": "All", "placementWarmupSec": 0, "description": "3번째 공격마다 대상을 0.6초 얼림(기절)" },
+    { "id": "ember_bite", "displayName": "불씨 물기", "type": "Unit", "binding": "Unit", "axis": "All", "placementWarmupSec": 0, "description": "3번째 공격마다 대상에 출혈 스택 — 지속 피해" },
+    { "id": "last_stand", "displayName": "최후의 발악", "type": "Unit", "binding": "Unit", "axis": "All", "placementWarmupSec": 0, "description": "HP가 30% 이하로 떨어지면 공격력 +30% (남은 전투 내내, 1회)" },
+    { "id": "devouring_craving", "displayName": "포식의 갈망", "type": "Unit", "binding": "Unit", "axis": "All", "placementWarmupSec": 0, "description": "적을 처치할 때마다 공격 속도 +8% (4초, 처치할 때마다 지속 갱신)" }
   ],
-  "cardEffects": [
+  "DcCardEffects": [
     { "cardId": "shatter_hymn", "slot": 0, "kind": "DamageVsCc", "percent": 25 }
   ],
-  "mechanics": [
-    { "cardId": "frost_arrow", "slot": 0, "triggerKind": "AttackN", "triggerPeriod": 3, "payloadKind": "ApplyCcToTarget", "duration": 0.6, "ccKind": "Stun" },
-    { "cardId": "ember_bite", "slot": 0, "triggerKind": "AttackN", "triggerPeriod": 3, "payloadKind": "ApplyStackToTarget", "magnitude": 1, "duration": 4, "stackKind": "Bleed" },
-    { "cardId": "last_stand", "slot": 0, "triggerKind": "HealthThreshold", "triggerFraction": 0.7, "payloadKind": "SelfStatBuff", "magnitude": 30, "buffStat": "AttackDamage" },
-    { "cardId": "devouring_craving", "slot": 0, "triggerKind": "OnKill", "payloadKind": "SelfStatBuff", "magnitude": 8, "duration": 4, "buffStat": "AttackSpeed" }
+  "DcMechanics": [
+    { "cardId": "frost_arrow", "slot": 0, "triggerKind": "AttackN", "triggerPeriod": 3, "triggerPeriodSeconds": 0, "triggerFraction": 0, "payloadKind": "ApplyCcToTarget", "magnitude": 0, "tileRange": 0, "duration": 0.6, "ccKind": "Stun", "stackKind": "Fire", "buffStat": "AttackDamage" },
+    { "cardId": "ember_bite", "slot": 0, "triggerKind": "AttackN", "triggerPeriod": 3, "triggerPeriodSeconds": 0, "triggerFraction": 0, "payloadKind": "ApplyStackToTarget", "magnitude": 1, "tileRange": 0, "duration": 4, "ccKind": "Stun", "stackKind": "Bleed", "buffStat": "AttackDamage" },
+    { "cardId": "last_stand", "slot": 0, "triggerKind": "HealthThreshold", "triggerPeriod": 0, "triggerPeriodSeconds": 0, "triggerFraction": 0.7, "payloadKind": "SelfStatBuff", "magnitude": 30, "tileRange": 0, "duration": 0, "ccKind": "Stun", "stackKind": "Fire", "buffStat": "AttackDamage" },
+    { "cardId": "devouring_craving", "slot": 0, "triggerKind": "OnKill", "triggerPeriod": 0, "triggerPeriodSeconds": 0, "triggerFraction": 0, "payloadKind": "SelfStatBuff", "magnitude": 8, "tileRange": 0, "duration": 4, "ccKind": "Stun", "stackKind": "Fire", "buffStat": "AttackSpeed" }
   ]
 }
