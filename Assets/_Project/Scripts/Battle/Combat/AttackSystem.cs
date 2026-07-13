@@ -76,6 +76,10 @@ namespace Wassup.Battle.Combat
             var deadLookup = SystemAPI.GetComponentLookup<DeadTag>(isReadOnly: true);
             // combat-action-lock — 행동불가(Sleep/Stun) 게이트용 RO CcEffect lookup.
             var ccActionLookup = SystemAPI.GetBufferLookup<Wassup.Battle.Effects.CcEffect>(isReadOnly: true);
+            // dreamcatcher-content-2 끝을 보는 눈 — per-attack frontmost lock (RW, defender-owned)
+            // + PastGoal exclusion (goal-reached enemies are leak-pending, not valid frontmost).
+            var frontmostLockLookup = SystemAPI.GetComponentLookup<FrontmostAttackLock>(isReadOnly: false);
+            var pastGoalLookup = SystemAPI.GetComponentLookup<Wassup.Battle.Movement.PastGoalTag>(isReadOnly: true);
 
             bool hasStatQ = SystemAPI.TryGetSingletonRW<Wassup.Battle.Effects.StatModifierApplyEventsSingleton>(out var statModSingleton);
             bool hasStackQ = SystemAPI.TryGetSingletonRW<Wassup.Battle.Effects.StackModifierApplyEventsSingleton>(out var stackModSingleton);
@@ -157,6 +161,30 @@ namespace Wassup.Battle.Combat
                 float bestSqPrio = float.MaxValue;
                 Entity bestTargetPrio = Entity.Null;
                 float3 bestTargetPosPrio = default;
+                // dreamcatcher-content-2 끝을 보는 눈 — single-pass frontmost tracking (contract 1):
+                // reuse this same candidate loop, no second global query. Only defenders carrying
+                // the lock participate; the lock may linger without a slot after revoke, so also
+                // require a live FrontmostTarget slot. frontmostMul = product of active slots.
+                bool wantFrontmost = defenderTagLookup.HasComponent(attackerEntity)
+                                     && frontmostLockLookup.HasComponent(attackerEntity);
+                float frontmostMul = 1f;
+                if (wantFrontmost)
+                {
+                    bool hasSlot = false;
+                    if (dcAttackModLookup.HasBuffer(attackerEntity))
+                    {
+                        var fmods = dcAttackModLookup[attackerEntity];
+                        for (int di = 0; di < fmods.Length; di++)
+                            if (fmods[di].kind == Wassup.Data.DcAttackModKind.FrontmostTarget)
+                            { frontmostMul *= fmods[di].damageMul; hasSlot = true; }
+                    }
+                    wantFrontmost = hasSlot;
+                }
+                bool fmHasBest = false;
+                bool fmChosenIsPriority = false;
+                FrontmostTargeting.Candidate fmBest = default;
+                Entity fmBestEntity = Entity.Null;
+                float3 fmBestPos = default;
                 for (int i = 0; i < targetEntities.Length; i++)
                 {
                     if (((int)targetFactions[i].value & mask) == 0) continue;
@@ -180,6 +208,32 @@ namespace Wassup.Battle.Combat
                         bestSqPrio = d2;
                         bestTargetPrio = targetEntities[i];
                         bestTargetPosPrio = nearestPos;
+                    }
+                    // frontmost tracking — rank in-range candidates by FlowField remaining
+                    // distance, excluding PastGoal (leak-pending) and unreachable cells.
+                    if (wantFrontmost && !pastGoalLookup.HasComponent(targetEntities[i]))
+                    {
+                        int fdist = FrontmostTargeting.UnreachableDist;
+                        if (hasFlowField
+                            && tgtCell.x >= 0 && tgtCell.x < gridSize.x
+                            && tgtCell.y >= 0 && tgtCell.y < gridSize.y)
+                        {
+                            fdist = flowField.dist[GridMath.CellIndex(tgtCell, gridSize)];
+                        }
+                        if (fdist != FrontmostTargeting.UnreachableDist)
+                        {
+                            var fc = new FrontmostTargeting.Candidate
+                            {
+                                flowDist = fdist,
+                                sqDist = d2,
+                                entityIndex = targetEntities[i].Index,
+                                entityVersion = targetEntities[i].Version,
+                            };
+                            if (!fmHasBest || FrontmostTargeting.RanksBefore(fc, fmBest))
+                            {
+                                fmBest = fc; fmBestEntity = targetEntities[i]; fmBestPos = nearestPos; fmHasBest = true;
+                            }
+                        }
                     }
                 }
                 // priority override — prefer a priority-class target if any is in range.
@@ -234,6 +288,42 @@ namespace Wassup.Battle.Combat
                             bestTarget = g;
                             bestTargetPos = gPos;
                         }
+                    }
+                }
+
+                // dreamcatcher-content-2 끝을 보는 눈 — frontmost lock decision (contract 2/3, strict lapse).
+                // Defender-only; runs after the enemy focus/aggro blocks (which never touch defenders).
+                if (wantFrontmost)
+                {
+                    var fmLock = frontmostLockLookup[attackerEntity];
+                    bool midAttack = attack.ValueRO.hitDelayRemaining > 0f && fmLock.active;
+                    if (midAttack)
+                    {
+                        // Hold the START-locked identity through wind-up. Validate: alive, not
+                        // PastGoal, in range. Any failure = strict lapse (no reselect on
+                        // death/despawn/out-of-range/PastGoal).
+                        Entity lt = fmLock.target;
+                        bool ltValid = lt != Entity.Null
+                            && healthLookup.HasComponent(lt) && healthLookup[lt].value > 0f
+                            && !deadLookup.HasComponent(lt)
+                            && !pastGoalLookup.HasComponent(lt);
+                        if (ltValid)
+                        {
+                            float3 ltPos = aggroTransformLookup.HasComponent(lt)
+                                ? aggroTransformLookup[lt].Position : bestTargetPos;
+                            int2 ltCell = GridMath.WorldToCell(ltPos, tileSize, gridSize, origin: ffOrigin);
+                            int ltDist = math.max(math.abs(ltCell.x - atkCell.x), math.abs(ltCell.y - atkCell.y));
+                            if (ltDist <= tileRange) { bestTarget = lt; bestTargetPos = ltPos; }
+                            else bestTarget = Entity.Null; // out of range → lapse
+                        }
+                        else bestTarget = Entity.Null; // dead/despawn/PastGoal → lapse
+                    }
+                    else
+                    {
+                        // Not mid-attack: pick the current frontmost for a possible START this frame.
+                        // No reachable frontmost → keep the nearest fallback (non-priority, contract 3).
+                        if (fmHasBest) { bestTarget = fmBestEntity; bestTargetPos = fmBestPos; fmChosenIsPriority = true; }
+                        else fmChosenIsPriority = false;
                     }
                 }
 
@@ -296,6 +386,20 @@ namespace Wassup.Battle.Combat
                         {
                             attack.ValueRW.cooldownRemaining = 0f;
                             ecb.RemoveComponent<NextAttackDoubleFire>(attackerEntity);
+                        }
+
+                        // dreamcatcher-content-2 끝을 보는 눈 — lock this attack's frontmost pick and
+                        // snapshot the damage multiplier so mid-attack card changes don't alter an
+                        // in-flight attack (contract 2/4). Held through wind-up, released at RESOLVE.
+                        if (wantFrontmost)
+                        {
+                            frontmostLockLookup[attackerEntity] = new FrontmostAttackLock
+                            {
+                                active = true,
+                                target = bestTarget,
+                                damageMulSnapshot = frontmostMul,
+                                targetIsPriority = fmChosenIsPriority,
+                            };
                         }
 
                         // 이동 정지는 MovementSystem 이 EnemyAiState 로 처리(레거시 aimMode/movePause enqueue 제거).
@@ -468,9 +572,30 @@ namespace Wassup.Battle.Combat
                                 // 막는다(현재 가디언 넉백=0 이라 dormant 이나 미래 가디언·DC 카드 대비).
                                 if (hitCount > 0)
                                 {
-                                    int primaryI = candIdx[outIdx[0]];
-                                    bestTarget = targetEntities[primaryI];
-                                    bestTargetPos = targetTransforms[primaryI].Position;
+                                    // dreamcatcher-content-2 끝을 보는 눈 (contract 5) — a frontmost card
+                                    // forces the primary to the locked frontmost instead of SelectTargets'
+                                    // pick; secondaries still fill via aggro-aware selection.
+                                    bool keepFrontmostPrimary = wantFrontmost
+                                        && frontmostLockLookup[attackerEntity].active
+                                        && bestTarget != Entity.Null;
+                                    if (keepFrontmostPrimary)
+                                    {
+                                        // Force the locked frontmost as primary (contract 5). ecs-review
+                                        // M1: if SelectTargets already ranked it as a secondary, SWAP it
+                                        // to primary (no double-hit, keeps the displaced pick as a
+                                        // secondary); otherwise it displaces SelectTargets' own primary.
+                                        int existing = -1;
+                                        for (int s = 0; s < hitCount; s++)
+                                            if (hitTargets[s] == bestTarget) { existing = s; break; }
+                                        if (existing >= 0) hitTargets[existing] = hitTargets[0];
+                                        hitTargets[0] = bestTarget;
+                                    }
+                                    else
+                                    {
+                                        int primaryI = candIdx[outIdx[0]];
+                                        bestTarget = targetEntities[primaryI];
+                                        bestTargetPos = targetTransforms[primaryI].Position;
+                                    }
                                 }
                                 cands.Dispose();
                                 candIdx.Dispose();
@@ -797,6 +922,16 @@ namespace Wassup.Battle.Combat
                             }
                         }
                     }
+                }
+
+                // dreamcatcher-content-2 끝을 보는 눈 — every resolved attack (hit or strict lapse)
+                // releases the lock so the next attack re-selects the current frontmost (contract 2).
+                if (doResolve && wantFrontmost)
+                {
+                    frontmostLockLookup[attackerEntity] = new FrontmostAttackLock
+                    {
+                        active = false, target = Entity.Null, damageMulSnapshot = 1f, targetIsPriority = false,
+                    };
                 }
             }
 
