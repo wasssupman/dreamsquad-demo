@@ -126,6 +126,14 @@ namespace Wassup.Editor.UnitStatImport
                     if (!string.IsNullOrEmpty(folder))
                         _statusLog = DcSheetExporter.ExportToFolder(folder, dcTabs, DcFolder, SkillFolder);
                 }
+                // unit 8 — 시트 반영용 단일 파일(탭명 키 병합) + 챗봇 프롬프트 동시 출력.
+                if (GUILayout.Button("Export Dreamcatcher → 시트 페이로드 (1파일 + 프롬프트)"))
+                {
+                    string path = EditorUtility.SaveFilePanel(
+                        "Export Dreamcatcher 시트 페이로드", "", "dreamcatcher_sheet_payload", "json");
+                    if (!string.IsNullOrEmpty(path))
+                        _statusLog = DcSheetExporter.ExportCombinedFile(path, dcTabs, DcFolder, SkillFolder);
+                }
             }
 
             EditorGUILayout.Space();

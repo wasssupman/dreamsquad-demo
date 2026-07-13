@@ -124,5 +124,64 @@ namespace Wassup.Editor.UnitStatImport
                 new UTF8Encoding(false));
             log.AppendLine($"Exported {rows.Count} rows → {path}");
         }
+
+        // unit 8 — 한 파일로 시트 반영: 6탭을 탭명 키 단일 JSON 으로 합치고, 옆에
+        // 시트 챗봇용 프롬프트(.md)를 함께 쓴다. 붙여넣기 1회로 전체 반영 가능.
+        // 구현은 검증된 ExportToFolder 를 임시 폴더에 그대로 돌린 뒤 병합 — 수집
+        // 로직 중복 없음. 반환 = 사람이 읽는 로그.
+        public static string ExportCombinedFile(string outFilePath, string[] tabNames,
+            string dcAssetFolder, string skillAssetFolder)
+        {
+            string tempDir = Path.Combine(Path.GetTempPath(), "wassup_dc_export_" + System.Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempDir);
+            try
+            {
+                string perTabLog = ExportToFolder(tempDir, tabNames, dcAssetFolder, skillAssetFolder);
+
+                var root = new Newtonsoft.Json.Linq.JObject
+                {
+                    ["_note"] = "전 드림캐쳐 SO export 스냅샷. 각 탭명 키의 배열을 구글 시트 같은 이름 탭에 업서트(키=id 또는 (cardId,slot)). enum=C# 멤버명. DcCardEffects/DcAttackMods=시트-SoT(행=배열항목), DcMechanics=Unity-SoT(값 overlay).",
+                };
+                foreach (var tab in tabNames)
+                {
+                    string p = Path.Combine(tempDir, $"{tab.Trim()}.json");
+                    root[tab.Trim()] = Newtonsoft.Json.Linq.JArray.Parse(File.ReadAllText(p));
+                }
+
+                string json = root.ToString(Formatting.Indented);
+                File.WriteAllText(outFilePath, json, new UTF8Encoding(false));
+
+                string promptPath = Path.Combine(Path.GetDirectoryName(outFilePath), "dreamcatcher_sheet_prompt.md");
+                File.WriteAllText(promptPath, BuildChatbotPrompt(json), new UTF8Encoding(false));
+
+                return perTabLog
+                    + $"\nCombined → {outFilePath}"
+                    + $"\nPrompt   → {promptPath}";
+            }
+            finally
+            {
+                try { Directory.Delete(tempDir, true); } catch { /* 임시 폴더 정리 실패는 무해 */ }
+            }
+        }
+
+        private static string BuildChatbotPrompt(string embeddedJson)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("너는 이 구글 스프레드시트를 편집하는 어시스턴트다. 아래 JSON 은 게임에서 export 한 드림캐쳐 마스터데이터 전량 스냅샷이다. 각 탭에 반영해라.");
+            sb.AppendLine();
+            sb.AppendLine("규칙:");
+            sb.AppendLine("1. JSON top-level 키 = 시트 탭 이름(`_note` 제외). 각 배열을 같은 이름 탭에 반영, 없으면 생성.");
+            sb.AppendLine("2. 배열 원소=행, 객체 키=열 헤더(1행 헤더, 2행부터 데이터). 특정 행에 없는 키는 셀 비움.");
+            sb.AppendLine("3. 기존 헤더 순서 유지, JSON 에만 있는 새 열은 오른쪽에 추가.");
+            sb.AppendLine("4. 업서트(중복 생성 금지): DcCards/DcSkills/DcConfig 키=id · DcCardEffects/DcMechanics/DcAttackMods 키=(cardId,slot). 같은 키 행은 갱신, 없으면 추가, slot 오름차순. JSON 에 없는 기존 행은 지우지 마라.");
+            sb.AppendLine("5. 값 그대로: enum=문자열, 숫자=숫자, 한글 텍스트 원문 유지. 변형·번역·반올림 금지.");
+            sb.AppendLine("6. 반영 후 탭별 추가/갱신 행 수를 요약.");
+            sb.AppendLine();
+            sb.AppendLine("JSON:");
+            sb.AppendLine("```json");
+            sb.AppendLine(embeddedJson);
+            sb.AppendLine("```");
+            return sb.ToString();
+        }
     }
 }
