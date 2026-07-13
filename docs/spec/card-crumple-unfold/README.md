@@ -1,6 +1,28 @@
-# card-crumple-unfold — 카드 꼬깃꼬깃 → 펴짐 (초안 rev1)
+# card-crumple-unfold — 카드 반으로 접기 → 펴짐
 
-**상태: 계획 확정 2026-07-13** (plan critic 반영 · D1~D3 확정 · 구현 대기 — unit 0 부터)
+**상태: 구현·동작 확인 2026-07-13** (units 0~2, `59107ee4` 등 — Play 확인: 반으로 접혔다 펴짐. unit 3 실기 프로파일·튜닝 대기)
+
+## 구현 결과 (2026-07-13) — 노이즈 크럼플 → "반으로 접기"로 전환
+
+초안은 노이즈 종이-구김(크럼플)이었으나, 실제 구현 결과 **Overlay flat-UI 에서 노이즈 크럼플은 너무
+약해 안 읽혀** 사용자 요청으로 **결정론적 "반으로 접기"** 로 전환했다: 카드 상단 절반이 중앙 접힘선
+아래로 접혔다(Unfold=0) 딜 안착과 함께 펴진다(Unfold=1). 접힘선 그림자 + 접힌 반쪽 음영.
+
+**★ 핵심 root-cause(다시 겪지 말 것)**: 초반에 셰이더 버텍스 변위가 "1도 안 먹은" 진짜 원인은 노이즈가
+아니라 **Canvas 가 기본적으로 uv1/uv2(변위 데이터)를 셰이더로 안 넘긴 것**. mesh·shader·material 다
+정상인데도 스트립됨. `canvas.additionalShaderChannels |= TexCoord1 | TexCoord2` 로 해결
+(`DreamcatcherHandView.BuildCanvas`). 오프스크린 프리뷰 Canvas 도 동일하게 켜야 실제와 일치.
+→ lesson: `docs/reference/lessons/` 승격 후보 / memory `project_ugui_custom_shader_uv_channels`.
+
+**구현물**: `Assets/_Project/Shaders/CardCrumple_UI.shader`(UGUI CG, vert 에서 `pos.y -= 2·fold·(1-_Unfold)`),
+`UiCardFaceMesh.cs`(N×N 격자 + 접힘 데이터 uv1/uv2 정적 베이크 + per-instance 머티리얼 + `Unfold`),
+`DreamcatcherHandView`(딜이 `Unfold` 0→1 구동, 텍스트/코스트 CanvasGroup 페이드-인, 라이프사이클 복원, 채널 on).
+
+**남음**: unit 3 실기 GPU 프로파일(폴드는 노이즈보다 훨씬 싸서 저위험) · 접힘 방향/속도/그림자 튜닝 · handoff.
+
+---
+
+> 아래는 초안 시점 계획(노이즈 크럼플 기준) — 역사 참고용. 실제는 위 "구현 결과" 우선.
 
 ## 목표
 
