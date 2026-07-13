@@ -5,7 +5,7 @@
 ## Commit
 
 - `2ab01723` feat(dreamcatcher): dreamcatcher-new-abilities Spec A — 코드(unit 0~2 + 테스트).
-- 마감(에셋+Bleed규칙+검증): 별도 커밋 (아래 Verified).
+- `380fc1a1` feat(dreamcatcher): Spec A 마감 — 카드 3종 + Bleed DoT 규칙 + 검증.
 
 ## Implemented (code, compile-verified)
 
