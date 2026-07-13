@@ -1,6 +1,6 @@
 # Dreamcatcher Content 2 — 악몽의 여운 / 끝을 보는 눈
 
-> 상태: **units 0~4 완료 2026-07-14 (임시 placeholder 아트).** 코드(0~3) EditMode 검증(rig 743 passed 741/failed 0)·커밋. 에셋(4): 두 카드 SO 저작·import·catalog 등록(total 25) execute_code 검증. 실아트는 사용자 별도 배정(교체 후 재검증), 라이브 Play e2e는 최종 육안 확인으로 남김(런타임은 EditMode 20종 대리검증). 인계=`5_handoff_summary.md`. 사용자 결정 2건: 시트=catalog-only, 사망=엄격 lapse.
+> 상태: **완료 2026-07-14** (units 0~4, 사용자 Play 육안 확인). 코드(0~3) EditMode 검증(rig 743 passed 741/failed 0). 에셋(4): 두 카드 SO+catalog 등록(total 25), 사용자 육안 Play e2e 통과. **남은 후속: 실아트 배정(placeholder guid 유지 교체)** + 시트 완전 미러링(`dreamcatcher-sheet-sync` 확장, 선택). 인계=`5_handoff_summary.md`. 사용자 결정 2건: 시트=catalog-only, 사망=엄격 lapse.
 >
 > 설계 의도: 물리 이동·넉백·충돌 효과가 아니라 디펜스 게임의 핵심인 **킬 보상**과 **목표 지점 도달 위협 우선 제거**를 강화하는 Unit 드림캐쳐 2종을 추가한다.
 

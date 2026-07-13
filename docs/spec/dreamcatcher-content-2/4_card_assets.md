@@ -76,4 +76,4 @@ DreamcatcherCard script guid = `cdcd617d396824acd8882a45466b4886`. 공통: `axis
 - [x] 두 SO import 에러 0, catalog 등록(total 25), ID 중복 없음, art != null. execute_code 검증: nightmare_afterglow=OnKill×SelfStatBuff/AttackDamage/15/5, eye_on_the_end=FrontmostTarget/1.2. — 2026-07-14
 - [x] baked 값이 문안 수치(15%/5s/20%)와 일치. — 2026-07-14
 - [~] 아트: **임시 placeholder(dreamcatcher_card_21/22, 1024×1536 Single Sprite, mipmap off, "PLACEHOLDER" 표기)**. 실아트 사용자 별도 배정 → 교체 후 재검증.
-- [ ] 라이브 Play e2e(최종 육안): 덱빌더 COLLECTION/손패 노출, 악몽의 여운 refresh/expiry, 끝을 보는 눈 flow-타겟+1.2배, 무카드 무회귀. → 런타임 동작은 EditMode 20종으로 대리 검증됨(units 1~3). Afterglow arm은 devouring_craving(오늘 Play 검증)과 동일 arm.
+- [x] 라이브 Play e2e: 사용자 **육안 확인 완료 2026-07-14** (덱빌더 COLLECTION/손패 노출 + 인게임 동작). 런타임 동작은 EditMode 20종으로도 대리 검증됨(units 1~3), Afterglow arm은 devouring_craving과 동일.
