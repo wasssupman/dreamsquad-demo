@@ -33,4 +33,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 292f77f5e0c1a479988612af07553c7e, type: 2}
   - {fileID: 11400000, guid: 71caac32977884fbea881ff4731c00b3, type: 2}
   - {fileID: 11400000, guid: d98786845e026433ab421f63ccfce0c1, type: 2}
+  - {fileID: 11400000, guid: 61a46af624ed74e8194b723f29a1654c, type: 2}
+  - {fileID: 11400000, guid: 66d561516ceb849f297a69cecdfb07ce, type: 2}
+  - {fileID: 11400000, guid: 3e80fa182e183429185aea4d3d9d3bad, type: 2}
   ruleConfig: {fileID: 11400000, guid: 6466c645017304a0b99fde28e6a1f1da, type: 2}

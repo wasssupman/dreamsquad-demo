@@ -26,11 +26,11 @@
 ## 완료 기준
 
 - [x] 4개 어셈블리 `dotnet build` 오류 0개(신규 EditMode·PlayMode 테스트 컴파일 포함).
-- [ ] EditMode 집계 테스트 2건 통과(Unity 복구 시).
-- [ ] PlayMode shatter 테스트 통과(Unity 복구 시).
-- [ ] 카드 3종 에셋 생성·카탈로그 등록·frost/ember 발동 육안 확인(Unity 복구 시). ember 는 Bleed ThresholdRule 확인 후.
-- [ ] 궁수(투사체) + shatter 경로 육안/테스트 확인(critic HIGH — 멜리 테스트가 커버 못 하는 부분).
-- [ ] **온-히트 발동 PlayMode assertion**(two-track review test-gap): frost N타 → 적 CcEffect(Stun) / ember N타 → 적 StackModifierSlot(Bleed). EnemyCc·StackModifier drain 의 버퍼 생성 가정을 실기로 확인해야 해 speculative 미작성 — Unity 복구 시 필수. MapDcCc/MapDcStack 번역도 이 테스트로 커버.
+- [x] EditMode 집계 테스트 2건 통과 (`ModifierFrameworkTests` DamageVsCcMul base-1/combine — 716 스위트 green).
+- [x] PlayMode shatter 테스트 통과 (`DreamcatcherCombatDamageTest.DamageVsCc_BoostsDamage_AgainstCcdEnemy`).
+- [x] 카드 3종 에셋 생성·카탈로그 등록. **ember Bleed ThresholdRule 신설**: `StackModifierSO` 에셋이 0개였음 → `StackModifier_Bleed`(ApplyDot dps6·4s, placeholder balance) 저작 + `BattleBridge.stackModifierAuthoring`(BattleScene) 배선.
+- [x] **온-히트 발동 PlayMode assertion** (`DreamcatcherOnHitTest`): frost N타 → 적 CcEffect(Stun) ✓ / ember N타 → 적 StackModifierSlot(Bleed) + Bleed 규칙 배선 가드 ✓. MapDcCc/MapDcStack 번역 커버.
+- [ ] **잔여**: 궁수(투사체) + shatter/frost/ember 경로는 통합 테스트 미커버(멜리 direct 경로만 검증, critic HIGH). shatter 투사체-bake 배율은 unit 2 코드 경로로 존재하나 실기 assertion 없음 — follow-up.
 
 ## two-track review 반영(2026-07-13)
 

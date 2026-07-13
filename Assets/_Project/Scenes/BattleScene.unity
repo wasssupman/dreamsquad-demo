@@ -4035,7 +4035,8 @@ MonoBehaviour:
   useRealShadows: 1
   mobilePropBudgetScale: 0.5
   tilemapHiddenEnvironment: []
-  stackModifierAuthoring: []
+  stackModifierAuthoring:
+  - {fileID: 11400000, guid: 9ef2f1f251f1c48ca88ace43e01b0a12, type: 2}
 --- !u!4 &1939688409
 Transform:
   m_ObjectHideFlags: 0

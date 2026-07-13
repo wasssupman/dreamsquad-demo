@@ -4,14 +4,16 @@
 
 ## Commit
 
-- (미커밋 — Spec A 전체 완료 후 묶어 1커밋 예정, 사용자 지시 "a")
+- `2ab01723` feat(dreamcatcher): dreamcatcher-new-abilities Spec A — 코드(unit 0~2 + 테스트).
+- 마감(에셋+Bleed규칙+검증): 별도 커밋 (아래 Verified).
 
 ## Implemented (code, compile-verified)
 
 - **unit 0**: enum/필드 선언 — `DcPayloadKind.{ApplyCcToTarget,ApplyStackToTarget}`, `DcCcKind{Stun,Impulse}`/`DcStackKind{Fire,Ice,Bleed,Poison}`(데이터 미러), `DcPayloadSpec.{ccKind,stackKind}`, `CardBuffKind.DamageVsCc`, `StatKind.DamageVsCcMul`, `ModifierStats.damageVsCcMul`, `DcTriggerSlot.{ccKind,stackKind}`(Battle enum).
 - **unit 1**: frost/ember — bake(`BattleBridge.Dreamcatcher.cs`: ApplyCc/ApplyStack 분기 + `MapDcCc`/`MapDcStack` 번역) + fire(`AttackSystem.cs` RESOLVE DC-block 을 3-way 디스패치로: Projectile/ApplyCc(EnemyCc 채널, Stun=remaining·Impulse=넉백)/ApplyStack(StackModifier 채널)).
 - **unit 2**: shatter — `ModifierStatsAggregateSystem` 6번째 stat(base 1) + ModifierStats add-site ×2 `damageVsCcMul=1f` + `MapDcEffect` 매핑 + `AttackSystem` 투사체 bake·멜리 양 경로 배율 + `AnyActiveCc` 헬퍼.
-- **unit 3**: 테스트(EditMode 집계 base-1/combine 2건, PlayMode shatter 1건) 작성. 카드 `.asset` authoring 은 Unity 대기.
+- **unit 3**: 카드 3종 저작·카탈로그 등록(`Card_ShatterHymn`·`Card_FrostArrow`·`Card_EmberBite`). **Bleed DoT 규칙 신설**(`StackModifier_Bleed`, ApplyDot dps6·4s placeholder) + `BattleBridge.stackModifierAuthoring`(BattleScene) 배선 — 없으면 ember 무DoT. 온-히트 PlayMode 테스트(`DreamcatcherOnHitTest`: frost→Stun, ember→Bleed) 추가.
+- **Verified(마감)**: PlayMode 4/4 green(OnHit 2 + CombatDamage 2), EditMode 716 green. 씬 저장이 gift-phase in-memory drift(`draftController` unset)를 bake 하려던 것 격리 — 씬 revert 후 `stackModifierAuthoring` 한 줄만 텍스트 재적용(scene diff 2줄).
 
 ## Key Files
 

@@ -1,6 +1,12 @@
 # dreamcatcher-new-abilities
 
-> 상태: 코드 완료 2026-07-13 (dotnet build 4어셈블리 0 error). 카드 에셋 authoring·테스트 실행·PlayMode 검증은 Unity 복구 대기. critic plan-review 반영본.
+> 상태: **완료 2026-07-13** — 코드(2ab01723) + 카드 3종 에셋 + Bleed DoT 규칙 + PlayMode 검증까지 마감. two-track APPROVE.
+>
+> **마감 세션(Unity 복구 후):**
+> - 카드 3종 저작·카탈로그 등록: `Card_ShatterHymn`(Squad, DamageVsCc 25) · `Card_FrostArrow`(Unit, AttackN3×ApplyCcToTarget Stun 0.6s) · `Card_EmberBite`(Unit, AttackN3×ApplyStackToTarget Bleed 1스택 4s).
+> - **ember 전제 해소**: `StackModifierSO` 에셋이 0개였음 → Bleed DoT 규칙(`StackModifier_Bleed`: atStack1 Edge ApplyDot **dps=6·4s = placeholder balance, 튜닝 대상**) 신설 + `BattleBridge.stackModifierAuthoring` 배선(BattleScene). 없으면 ember 스택이 무DoT.
+> - PlayMode 4/4 green: frost→CcEffect(Stun) · ember→StackModifierSlot(Bleed)+규칙배선 가드 · shatter(DamageMul·DamageVsCc). EditMode DamageVsCc 집계 2건 green(716 스위트 포함).
+> - frost="Slow" 원안은 이 엔진에서 CcEffect 아님(MoveSpeedMul) → **Stun 채택**(shatter 시너지 위해, DcCcKind 에 Slow 없음).
 
 ## 상위 목표
 
