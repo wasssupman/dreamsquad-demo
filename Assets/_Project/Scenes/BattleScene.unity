@@ -1780,6 +1780,8 @@ MonoBehaviour:
   projectileFireClip: {fileID: 8300000, guid: fc4cd59f881f84776b2dd2d22526b617, type: 3}
   projectileFireVolume: 0.4
   projectileFireMinInterval: 0.045
+  cardAbsorbClip: {fileID: 8300000, guid: 22a918ae7fbf14d83b339bfca418d8d6, type: 3}
+  cardAbsorbVolume: 0.7
   deployVoiceVolume: 0.8
   bgmClip: {fileID: 8300000, guid: 0f1ffe20701064ad69bd1d71cbc381c5, type: 3}
   bgmVolume: 0.35
