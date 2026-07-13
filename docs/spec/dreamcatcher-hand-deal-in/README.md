@@ -1,6 +1,6 @@
 # dreamcatcher-hand-deal-in — 각성 손패 카드감 재설계 (StS/HS 손패)
 
-**상태: 재설계 승인, 구현 중 (2026-07-13)**
+**상태: 완료 2026-07-13** (units 0~4, `3f574a9c`·`f34ce20e`. handoff: `5_handoff_summary.md`)
 
 ## 목표
 
@@ -28,8 +28,7 @@
 | 2 | 덱-드로우 딜 | `2_deck_draw_deal.md` | 하단에서 곡선 상승 → 아치 안착(오버슛+틸트+squash flex). 각성 버튼 pulse. |
 | 3 | 상시 미세 흔들림 | `3_idle_ambient.md` | 무입력 idle bob/sway(index 위상차). 모바일 수동 역동감. |
 | 4 | 퇴장 침강 | `4_close_sink.md` | 카드가 하단 덱으로 역스태거 침강 → strip 폴드 인. |
-
-(구현 종료 시 `5_handoff_summary.md` 추가.)
+| 5 | handoff | `5_handoff_summary.md` | 커밋/구현/검증/주의점 인계 지도. |
 
 ## feature-wide 계약
 
