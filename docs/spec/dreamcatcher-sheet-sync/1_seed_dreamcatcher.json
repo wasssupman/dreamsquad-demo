@@ -1,5 +1,5 @@
 {
-  "_ARCHIVE_NOTE": "2026-07-10 SO snapshot. Do not re-seed: the Google sheet is the SoT now. For current values use the editor Export.",
+  "_ARCHIVE_NOTE": "2026-07-10 SO snapshot. Do not re-seed: the Google sheet is the SoT now. For current values use the editor Export. ⚠ 카드 id/이름은 dreamcatcher-data-hygiene (2026-07-13) 리네임 이전 값(all_atk_8 등) — 현행 슬러그는 7_full_dreamcatcher_export.json 참조.",
   "DcCards": [
     {
       "id": "active_meteor",

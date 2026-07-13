@@ -23,7 +23,8 @@
 
 ## Notes
 
-- **id 는 GUID 무관 안정 슬러그**: 카탈로그·기본덱·기프트config 는 GUID 참조라 리네임에 안 깨짐. id 문자열 의존은 시트·저장된 덱(DeckSave.cardIds, dev-disposable)·테스트뿐.
+- **id 는 GUID 무관 안정 슬러그**: 카탈로그·기본덱·기프트config 는 GUID 참조라 리네임에 안 깨짐. id 문자열 의존은 시트·저장된 덱(DeckSave.cardIds)·테스트뿐.
+- **⚠ 세이브 리셋 권장**: 옛 id 로 저장된 덱(`DeckSave.cardIds`)은 리네임 후 해석 실패 → default 덱으로 fallback(크래시 아님, 조용한 초기화). dev-disposable 이라 무시 가능하나, 기기에 남은 세이브가 있으면 덱을 다시 저장해야 새 카드가 물린다.
 - **시트 rename 은 전량 교체로만 가능**: 챗봇 upsert(키=id)는 옛/새 id 를 별개 행으로 봐 orphan 을 남긴다. 재시드 때 실제로 겪음 — DcCards/DcCardEffects/DcMechanics 를 JSON 으로 전량 교체해 해결(dead 컬럼 binding/placementWarmupSec 도 이때 제거됨).
 - 검증 import 가 재저장한 비-리네임 카드 20종의 스키마 재직렬화는 restore(스코프 유지) — 시트값과 동일함이 왕복으로 확증됐으므로 무손실.
 
