@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using PrimeTween;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -36,14 +37,38 @@ namespace Wassup.UI
         // 기존 단색 배킹 그대로(무회귀 폴백).
         [SerializeField] private Wassup.Data.BattleHudTrayConfig trayConfig;
         [SerializeField] private float flipHalfDuration = 0.14f;
-        [SerializeField] private float fanAngle = 4f; // slight StS-style fan per slot
+        // hand-deal-in unit 0 — StS/HS 아치 부채 기하 + 스프링 추종.
+        [SerializeField] private float cardOverlap = 54f;  // 카드 겹침(step = cardW - overlap)
+        [SerializeField] private float arcHeight = 46f;    // 포물선 아치 높이(가운데 솟음)
+        [SerializeField] private float rotMax = 10f;       // 바깥 카드 접선 회전(도)
+        [SerializeField] private float handBaseY = 16f;    // 부채 밑단 y
+        [SerializeField] private float springK = 14f;      // 스프링 추종 계수(클수록 빠름)
+        // hand-deal-in unit 2 — 덱-드로우 딜(하단에서 곡선 상승 → 아치 안착).
+        [SerializeField] private float dealStaggerSec = 0.05f;
+        [SerializeField] private float dealDurationSec = 0.34f;
+        [SerializeField] private float dealStartScale = 0.62f;
+        [SerializeField] private float trayFadeSec = 0.12f;
+        [SerializeField] private float dealRise = 220f;   // 하단 바깥 시작 깊이
+        [SerializeField] private float dealTiltX = 50f;    // 누운 카드 → 세움(원근 ①)
+        [SerializeField] private float clusterK = 0.3f;    // 시작 x 모임(덱 뭉침)
+        // hand-deal-in unit 1 — 눌러서 들기(press-to-lift, 모바일: hover 아님).
+        [SerializeField] private float focusRaise = 100f;
+        [SerializeField] private float focusScale = 1.28f;
+        [SerializeField] private float scatter = 42f;      // 양옆 밀어냄
+        [SerializeField] private int scatterNeighbors = 2;
+        // hand-deal-in unit 3 — 상시 미세 흔들림(무입력 역동감). 0 이면 정지.
+        [SerializeField] private float idleBobY = 5f;
+        [SerializeField] private float idleSwayX = 3f;
+        [SerializeField] private float idleFreq = 1.6f;
+        [SerializeField] private float idlePhase = 0.7f;
         // rev 4 — 카드 드래그 중 호버된 수비수의 스파인 틴트(포커스 대상 시각화).
         // rev 4-4 — 붉은색 계열로 시인성 상향(사용자 확정). 유일한 포커스 표시(타일 하이라이트 제거).
         [SerializeField] private Color unitHoverTint = new Color(1f, 0.28f, 0.22f, 1f);
 
         public enum HandState { UnitStrip, Hand }
         public HandState State { get; private set; } = HandState.UnitStrip;
-        public bool Transitioning => _flip != null;
+        // hand-deal-in unit 0 — 딜/수렴 시퀀스도 전이 상태(드래그/토글 가드).
+        public bool Transitioning => _flip != null || _dealSeq.isAlive;
 
         // unit 7 consumes these: card slots for drag sources + hand rect for
         // the cancel-region test.
@@ -73,15 +98,23 @@ namespace Wassup.UI
             public DreamcatcherCardDragSlot dragSlot;
             public Vector2 homePos;        // unit 7 — restore anchor after drag/cancel
             public float homeRotZ;
+            // hand-deal-in unit 0 — 스프링 목표(호버/복귀). base = home.
+            public Vector2 targetPos;
+            public float targetRotZ;
+            public float targetScale = 1f;
             public int entryId = -1;       // -1 = empty slot
             public DreamcatcherCard card;
             public bool usable;
         }
 
         private GameObject _panel;
+        private Image _backing;        // tray frame — deal 무대(카드와 별개로 페이드 인)
+        private float _backingAlpha = 1f;
         private readonly List<CardSlot> _slots = new List<CardSlot>();
         private bool _built;
         private Coroutine _flip;
+        private Sequence _dealSeq;      // hand-deal-in — 딜/수렴 트윈(teardown 에서 Stop)
+        private int _focusIndex = -1;  // hand-deal-in unit 1 — press-lift 대상 슬롯
         private TimeLease _slomoLease;
         private DreamcatcherTargetArrow _targetArrow;
         // Recovered-refresh deferral: rebinding slots mid-drag would snap the
@@ -130,11 +163,98 @@ namespace Wassup.UI
 
         private void Update()
         {
-            // ESC = cancel rule (spec unit 7 §6): drop any drag/portal-aim, no spend.
             if (State != HandState.Hand) return;
+            SpringSlots(); // hand-deal-in unit 0 — 슬롯 target 으로 매프레임 추종
+            // ESC = cancel rule (spec unit 7 §6): drop any drag/portal-aim, no spend.
             var kb = UnityEngine.InputSystem.Keyboard.current;
             if (kb == null || !kb.escapeKey.wasPressedThisFrame) return;
             CancelAllCardInteraction();
+        }
+
+        // Each card eases toward its target (arc base, or press-lifted in unit 1),
+        // with a small idle bob/sway (unit 3) added for non-focused cards. Skips
+        // slots owned by a transition (deal/sink/flip) or an active drag — those
+        // write the rect directly. Realtime dt (timeScale=1, TimeManager domain).
+        private void SpringSlots()
+        {
+            if (Transitioning) return;
+            float a = 1f - Mathf.Exp(-Mathf.Max(0.01f, springK) * Time.deltaTime);
+            float now = Time.time;
+            for (int i = 0; i < _slots.Count; i++)
+            {
+                var slot = _slots[i];
+                if (slot.entryId < 0 || OwnedByInteraction(slot)) continue;
+                // idle 흔들림은 눌러서 든 카드(focus)만 제외 — 그 카드는 안정적으로 들려 있어야.
+                Vector2 eff = slot.targetPos;
+                if (i != _focusIndex)
+                {
+                    float ph = now * idleFreq + i * idlePhase;
+                    eff += new Vector2(Mathf.Sin(ph * 0.7f) * idleSwayX, Mathf.Sin(ph) * idleBobY);
+                }
+                var rt = slot.rect;
+                rt.anchoredPosition = Vector2.Lerp(rt.anchoredPosition, eff, a);
+                float z = Mathf.LerpAngle(rt.localEulerAngles.z, slot.targetRotZ, a);
+                rt.localEulerAngles = new Vector3(0f, 0f, z);
+                float s = Mathf.Lerp(rt.localScale.x, slot.targetScale, a);
+                rt.localScale = new Vector3(s, s, 1f);
+            }
+        }
+
+        // ── press-to-lift focus (hand-deal-in unit 1, mobile) ─────────────────
+        // Drag slots report pointer DOWN/UP (not hover — no hover on touch).
+        // Focus only writes slot targets — the spring reads them — so press-lift,
+        // idle, drag, and deal all share one motion model.
+
+        public void SetFocus(int index)
+        {
+            // 손패 상태·전이·다른 카드 드래그 중이 아니고, 실제 카드가 든 슬롯일 때만 focus.
+            if (State != HandState.Hand || Transitioning || AnyInteractionActive()) index = -1;
+            else if (index >= 0 && (index >= _slots.Count || _slots[index].entryId < 0)) index = -1;
+            if (_focusIndex == index) return;
+            _focusIndex = index;
+            ApplyFocusTargets();
+        }
+
+        // Release only clears if this slot is still the focused one (overlapping
+        // cards can fire down(next) before up(prev)).
+        public void ClearFocus(int index)
+        {
+            if (_focusIndex == index) SetFocus(-1);
+        }
+
+        private void ApplyFocusTargets()
+        {
+            for (int i = 0; i < _slots.Count; i++)
+            {
+                var slot = _slots[i];
+                bool owned = OwnedByInteraction(slot);
+                if (!owned) slot.rect.SetSiblingIndex(i); // base z-order (right over left)
+                if (slot.entryId < 0 || owned) continue;
+
+                if (i == _focusIndex)
+                {
+                    slot.targetPos = slot.homePos + new Vector2(0f, focusRaise);
+                    slot.targetRotZ = 0f; // straighten
+                    slot.targetScale = slot.usable ? focusScale : 1.06f; // dim 카드는 살짝만
+                }
+                else
+                {
+                    float push = 0f;
+                    if (_focusIndex >= 0)
+                    {
+                        int delta = i - _focusIndex, ad = Mathf.Abs(delta);
+                        if (ad >= 1 && ad <= scatterNeighbors) push = Mathf.Sign(delta) * scatter / ad;
+                    }
+                    slot.targetPos = slot.homePos + new Vector2(push, 0f);
+                    slot.targetRotZ = slot.homeRotZ;
+                    slot.targetScale = 1f;
+                }
+            }
+            if (_focusIndex >= 0 && _focusIndex < _slots.Count)
+            {
+                var h = _slots[_focusIndex];
+                if (!OwnedByInteraction(h)) h.rect.SetAsLastSibling(); // 눌린 카드가 최상단
+            }
         }
 
         private void CancelAllCardInteraction()
@@ -147,10 +267,13 @@ namespace Wassup.UI
         private bool AnyInteractionActive()
         {
             foreach (var slot in _slots)
-                if (slot.dragSlot != null && (slot.dragSlot.IsDragging || slot.dragSlot.IsPortalAiming))
-                    return true;
+                if (OwnedByInteraction(slot)) return true;
             return false;
         }
+
+        // hand-deal-in — 이 슬롯을 드래그/포탈-조준이 소유하면 스프링/호버가 손대지 않는다.
+        private static bool OwnedByInteraction(CardSlot slot) =>
+            slot.dragSlot != null && (slot.dragSlot.IsDragging || slot.dragSlot.IsPortalAiming);
 
         // ── unit 7 drag-slot services ────────────────────────────────────────
 
@@ -170,6 +293,10 @@ namespace Wassup.UI
             slot.rect.anchoredPosition = slot.homePos;
             slot.rect.localEulerAngles = new Vector3(0f, 0f, slot.homeRotZ);
             slot.rect.localScale = Vector3.one; // rev 4-6 — 화살표 모드 확대 복원
+            // hand-deal-in unit 0 — 스프링 목표도 base 로 복원(호버/스프링 재개 시 튐 방지).
+            slot.targetPos = slot.homePos;
+            slot.targetRotZ = slot.homeRotZ;
+            slot.targetScale = 1f;
         }
 
         // Drag slots call this at every interaction end (commit/cancel) so a
@@ -224,13 +351,17 @@ namespace Wassup.UI
             float scale = config != null ? Mathf.Max(0.01f, config.slomoTimeScale) : 0.3f;
             _slomoLease = TimeManager.Instance.Request(TimeDomain.Battle, scale, priority: 50);
             if (costDisplay != null) costDisplay.SetSuppressed(true);
-            StartFlip(from: StripPanel(), to: _panel);
+            // hand-deal-in unit 2 — 버튼 pulse(인과 힌트) + strip 접기 → 덱-드로우 딜.
+            if (gaugeView != null) gaugeView.Pulse();
+            if (_flip != null) StopCoroutine(_flip);
+            _flip = StartCoroutine(OpenRoutine());
         }
 
         private void Close()
         {
             if (State == HandState.UnitStrip) return;
             State = HandState.UnitStrip;
+            StopDeal();
             _slomoLease.Dispose();
             if (costDisplay != null) costDisplay.SetSuppressed(false);
             StartFlip(from: _panel, to: StripPanel());
@@ -241,6 +372,7 @@ namespace Wassup.UI
         {
             // critic H2 — drop any in-flight drag/pending first (no spend).
             CancelAllCardInteraction();
+            StopDeal(); // hand-deal-in — 잔류 트윈/late-land 방지
             _slomoLease.Dispose();
             if (_flip != null) { StopCoroutine(_flip); _flip = null; }
             State = HandState.UnitStrip;
@@ -309,11 +441,72 @@ namespace Wassup.UI
             rt.localEulerAngles = new Vector3(toDeg, 0f, 0f);
         }
 
+        // ── deal-in (hand-deal-in unit 2) ─────────────────────────────────────
+
+        // Strip folds edge-on and vanishes, then the hand stages (backing fade)
+        // and cards deal up from the deck below the tray — no whole-panel fold-in.
+        private IEnumerator OpenRoutine()
+        {
+            var strip = StripPanel();
+            if (strip != null)
+            {
+                var srt = (RectTransform)strip.transform;
+                yield return RotateX(srt, 0f, 90f);
+                strip.SetActive(false);
+                srt.localEulerAngles = Vector3.zero;
+            }
+            var prt = (RectTransform)_panel.transform;
+            prt.localEulerAngles = Vector3.zero;
+            _panel.SetActive(true);
+            StartDeal();
+            _flip = null;
+        }
+
+        // Cards rise from a deck below the tray (not the button): each starts
+        // clustered off the bottom edge, laid back (X tilt), then springs up to
+        // its arc home with an OutBack overshoot + settle squash. Backing fades
+        // in as the stage. Unity timeScale stays 1 (TimeManager domain) →
+        // PrimeTween's default Time.deltaTime timing is realtime (no slomo drag).
+        private void StartDeal()
+        {
+            StopDeal();
+            _dealSeq = Sequence.Create();
+            if (_backing != null)
+            {
+                var c = _backing.color; c.a = 0f; _backing.color = c;
+                _dealSeq.Chain(Tween.Alpha(_backing, _backingAlpha, trayFadeSec, Ease.OutQuad));
+            }
+            int dealt = 0;
+            for (int i = 0; i < _slots.Count; i++)
+            {
+                var slot = _slots[i];
+                if (slot.entryId < 0) continue; // deal only real cards
+                var rt = slot.rect;
+                float jitter = ((i % 3) - 1) * 6f; // index 결정론 흐트러짐
+                rt.anchoredPosition = new Vector2(slot.homePos.x * clusterK, handBaseY - dealRise);
+                rt.localScale = Vector3.one * dealStartScale;
+                rt.localEulerAngles = new Vector3(dealTiltX, 0f, slot.homeRotZ + jitter);
+                float d = dealt * dealStaggerSec;
+                _dealSeq.Group(Tween.UIAnchoredPosition(rt, slot.homePos, dealDurationSec, Ease.OutBack, startDelay: d));
+                _dealSeq.Group(Tween.Scale(rt, Vector3.one, dealDurationSec, Ease.OutBack, startDelay: d));
+                _dealSeq.Group(Tween.LocalRotation(rt, Quaternion.Euler(0f, 0f, slot.homeRotZ), dealDurationSec, Ease.OutQuad, startDelay: d));
+                // ②-B 안착 squash flex(4버텍스, 메인 트윈과 안 겹치게 안착 직후). 진짜 커브는 후속 spec.
+                _dealSeq.Group(Tween.PunchScale(rt, new Vector3(0.06f, -0.10f, 0f), 0.16f, frequency: 2f, startDelay: d + dealDurationSec));
+                dealt++;
+            }
+        }
+
+        private void StopDeal()
+        {
+            if (_dealSeq.isAlive) _dealSeq.Stop();
+        }
+
         // ── hand rendering ───────────────────────────────────────────────────
 
         private void Refresh()
         {
             if (!_built || handController == null) return;
+            _focusIndex = -1; // 재바인딩 시 stale focus 해제(다음 press 가 재설정)
             EnsureSlots(handController.HandSize);
             var hand = handController.Hand();
             for (int i = 0; i < _slots.Count; i++)
@@ -411,6 +604,9 @@ namespace Wassup.UI
             }
             // The backing IS the cancel region (unit 7): keep it a raycast target.
             backing.raycastTarget = true;
+            // hand-deal-in unit 0 — 딜 무대 페이드용 참조(카드와 별개로 backing 만 페이드).
+            _backing = backing;
+            _backingAlpha = backing.color.a;
 
             // rev 4-6 — 타겟팅 화살표는 패널 뒤 sibling 으로 붙여 카드 위에 그려진다.
             _targetArrow = DreamcatcherTargetArrow.Create(transform);
@@ -422,8 +618,8 @@ namespace Wassup.UI
             foreach (var s in _slots) if (s.root != null) Destroy(s.root);
             _slots.Clear();
 
-            float cardW = 172f, cardH = 200f, spacing = 16f;
-            float total = count * cardW + (count - 1) * spacing;
+            float cardW = 172f, cardH = 200f;
+            float step = cardW - cardOverlap; // 겹친 부채(음수 간격 효과)
             for (int i = 0; i < count; i++)
             {
                 var slot = new CardSlot();
@@ -433,12 +629,14 @@ namespace Wassup.UI
                 slot.rect.anchorMin = new Vector2(0.5f, 0f);
                 slot.rect.anchorMax = new Vector2(0.5f, 0f);
                 slot.rect.pivot = new Vector2(0.5f, 0f);
-                float x = -total * 0.5f + cardW * 0.5f + i * (cardW + spacing);
-                slot.rect.anchoredPosition = new Vector2(x, 16f);
+                // StS/HS 포물선 아치: t∈[-1,1], 가운데 솟음 + 접선 회전.
+                float t = count == 1 ? 0f : (float)i / (count - 1) * 2f - 1f;
+                float x = -((count - 1) * step) * 0.5f + i * step;
+                float y = handBaseY + arcHeight * (1f - t * t);
+                float rotZ = -t * rotMax;
+                slot.rect.anchoredPosition = new Vector2(x, y);
                 slot.rect.sizeDelta = new Vector2(cardW, cardH);
-                // slight fan: outer cards tilt more (StS nod without arc math)
-                float mid = (count - 1) * 0.5f;
-                slot.rect.localEulerAngles = new Vector3(0f, 0f, -(i - mid) * fanAngle);
+                slot.rect.localEulerAngles = new Vector3(0f, 0f, rotZ);
 
                 slot.frame = slot.root.GetComponent<Image>();
                 slot.group = slot.root.GetComponent<CanvasGroup>();
@@ -513,7 +711,10 @@ namespace Wassup.UI
                 slot.costLabel.raycastTarget = false;
 
                 slot.homePos = slot.rect.anchoredPosition;
-                slot.homeRotZ = slot.rect.localEulerAngles.z;
+                slot.homeRotZ = rotZ; // 원값 저장(localEulerAngles.z 360 wrap 회피)
+                slot.targetPos = slot.homePos;
+                slot.targetRotZ = rotZ;
+                slot.targetScale = 1f;
                 slot.dragSlot = slot.root.AddComponent<DreamcatcherCardDragSlot>();
                 slot.dragSlot.Bind(this, i);
 

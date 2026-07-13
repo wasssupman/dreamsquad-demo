@@ -27,12 +27,22 @@ namespace Wassup.UI
 
         public event System.Action Toggled;
 
+        // hand-deal-in unit 2 — 손패 오픈 시 버튼이 반응(패널 punch + fill 발광). 덱-드로우
+        // 딜의 인과 힌트. unscaled(전투 슬로모에 안 눌림).
+        public void Pulse()
+        {
+            if (_panel == null || !_panel.activeInHierarchy) return;
+            if (_pulse != null) StopCoroutine(_pulse);
+            _pulse = StartCoroutine(PulseRoutine());
+        }
+
         private GameObject _panel;
         private TextMeshProUGUI _valueLabel;
         private Image _fill;
         private bool _built;
         private int _lastShown = -1;
         private Coroutine _punch;
+        private Coroutine _pulse;
 
         private void Awake()
         {
@@ -104,6 +114,25 @@ namespace Wassup.UI
             }
             rt.localScale = Vector3.one;
             _punch = null;
+        }
+
+        private System.Collections.IEnumerator PulseRoutine()
+        {
+            var rt = (RectTransform)_panel.transform;
+            const float dur = 0.22f;
+            float t = 0f;
+            Color baseFill = _fill != null ? _fill.color : default;
+            while (t < dur)
+            {
+                t += Time.unscaledDeltaTime; // UI must not slow under battle slomo
+                float k = 1f - Mathf.Abs(2f * Mathf.Clamp01(t / dur) - 1f); // up then down
+                rt.localScale = Vector3.one * Mathf.Lerp(1f, 1.12f, k);
+                if (_fill != null) _fill.color = Color.Lerp(baseFill, Color.white, k * 0.6f);
+                yield return null;
+            }
+            rt.localScale = Vector3.one;
+            if (_fill != null) _fill.color = baseFill;
+            _pulse = null;
         }
 
         private void BuildCanvas()

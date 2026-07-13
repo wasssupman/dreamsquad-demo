@@ -21,7 +21,8 @@ namespace Wassup.UI
     //   exit (old SkillBar two-tap machine).
     // Cancel = touchup inside the hand panel / ESC / phase exit — never spends.
     public class DreamcatcherCardDragSlot : MonoBehaviour,
-        IBeginDragHandler, IDragHandler, IEndDragHandler
+        IBeginDragHandler, IDragHandler, IEndDragHandler,
+        IPointerDownHandler, IPointerUpHandler
     {
         private enum AimMode
         {
@@ -55,6 +56,11 @@ namespace Wassup.UI
 
         private DreamcatcherHandView.CardSlot Slot => _view.Slots[_index];
 
+        // hand-deal-in unit 1 — 눌러서 들기(press-to-lift, 모바일): press=focus, release=clear.
+        // 뷰가 슬롯 target 을 조작(스프링이 해석). PointerDown 은 BeginDrag 보다 먼저 발화한다.
+        public void OnPointerDown(PointerEventData eventData) { if (_view != null && !_dragging) _view.SetFocus(_index); }
+        public void OnPointerUp(PointerEventData eventData) { if (_view != null) _view.ClearFocus(_index); }
+
         private static AimMode Classify(DreamcatcherCard card)
         {
             if (card == null) return AimMode.None;
@@ -82,6 +88,7 @@ namespace Wassup.UI
             if (_mode == AimMode.None) return;
 
             _dragging = true;
+            _view.SetFocus(-1); // hand-deal-in — 드래그 시작 시 focus 해제(이웃 scatter 복귀)
             slot.rect.SetAsLastSibling(); // float above sibling cards
             if (_mode == AimMode.Defender)
                 slot.rect.localScale = Vector3.one * 1.08f; // 선택 카드 강조(카드는 손패 고정)
