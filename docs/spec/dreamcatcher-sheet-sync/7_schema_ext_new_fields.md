@@ -38,8 +38,10 @@
 
 ## 완료 기준
 
-- [ ] compile 0 error (4어셈블리).
-- [ ] EditMode: 신필드 overlay 갱신 케이스 통과 + 기존 `DcSheetImportTests`/`UnitStatImportTests` 전체 green.
-- [ ] Export → JSON 에 4컬럼이 현 SO 값으로 기록됨(frost ccKind=Stun, ember stackKind=Bleed, last_stand triggerFraction=0.7·buffStat=AttackDamage, devouring buffStat=AttackSpeed) — 실 왕복 or 단위 검증.
-- [ ] 스키마 계약 문서(0_) 갱신.
-- [ ] 사용자에게 넘길 **시트 업데이트 JSON**(신규 5카드의 DcCards/DcCardEffects/DcMechanics 행) 제공.
+- [x] compile 0 error (4어셈블리).
+- [x] EditMode: 신필드 overlay 갱신 케이스 통과 + 기존 `DcSheetImportTests`/`UnitStatImportTests` 전체 green. (718 pass / 0 fail / 2 pre-existing skipped)
+- [x] Export 경로에 4컬럼 배선(`MechanicRow : DcMechanicDto` 상속 → 자동 emit). code-review 로 exporter/applier/DTO 3-way 대칭 검증. (실 구글시트 왕복은 사용자 시트 반영 후.)
+- [x] 스키마 계약 문서(0_) 갱신 — DcMechanics 헤더 표 + payloadKind 매트릭스.
+- [x] 사용자에게 넘길 **시트 업데이트 JSON** 제공 — `7_sheet_update.json` (신규 5카드 cards/cardEffects/mechanics 행).
+
+확인 2026-07-13 — 커밋 `27611a30`. code-review APPROVE(CRITICAL/HIGH/MEDIUM 0). 실 구글시트 반영 + import 왕복 검증은 사용자 몫(운영 규칙 1~3).

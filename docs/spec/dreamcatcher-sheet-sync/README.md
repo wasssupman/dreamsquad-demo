@@ -24,6 +24,7 @@
 | 4 | 구현 | `4_unit_sheet_awakening_reward.md` | 기존 Defenders/Enemies 탭에 `awakeningReward` 컬럼 (하드코딩 감사 결과 반영) |
 | 5 | 인계 | `5_handoff_summary.md` | (종료 시) |
 | 6 | 구현 | `6_review_fixes.md` | 3관점 리뷰(아키텍트/코드/프로세스) 반영 — H1/H2/M2 버그 + 무음 실패 방어 |
+| 7 | 확장 | `7_schema_ext_new_fields.md` | (2026-07-13) DcMechanics 에 Spec A/B 신필드 4종(`triggerFraction`/`ccKind`/`stackKind`/`buffStat`) 라운드트립 + 신규 5카드 시트 JSON(`7_sheet_update.json`). 커밋 `27611a30` |
 
 ## Feature-wide 계약
 
