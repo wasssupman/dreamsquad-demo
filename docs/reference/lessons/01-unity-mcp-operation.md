@@ -78,3 +78,14 @@ Write 로 만든 새 `.cs` 는 `refresh_unity(scope=scripts)` 로는 import 안 
 ## Codex 도 unityMCP 를 쓸 수 있다
 
 Codex 에도 unityMCP 가 붙어 있어(`~/.codex/config.toml`) 에디터 작업 위임이 가능하다. 단 긴 Play 작업은 백그라운드로 빠져 회수가 불안정 — 짧은 조회/조작 위주로.
+
+## PlayMode 전투 테스트: 합성 더미는 **멜리 전용**, 투사체는 안 맞는다
+
+**증상**: PlayMode 통합 테스트에서 디펜더를 배치하고 `em.CreateEntity()` 로 만든 합성 더미 적(`Health`+`FactionTag`+`IncomingDamage`+`LocalTransform`)을 사거리 안에 두면 — **멜리 유닛(guardian)은 정상 공격·데미지**가 들어가는데, **투사체 유닛(ranger)은 대상을 아예 못 맞힌다**. 피격 데미지·`ProjectileState.damage` 둘 다 0 (거리 0.05/2 무관, dreamcatcher-new-abilities 마감 때 4회 시도 전부 0).
+
+**원인(추정)**: 멜리 RESOLVE 는 대상에 `IncomingDamage` 를 직접 append 한다(더미로 충분). 투사체는 `AttackSystem` 이 spawn → `ProjectileMoveSystem`(호밍/impact) → `ProjectileHitSystem`(`impactReached` 시 데미지)로 이어지는데, 이 경로가 실 enemy 아키타입에만 있는 무언가(스폰 배선/컴포넌트)를 요구한다. **기존 dreamcatcher combat 테스트가 전부 melee guardian 인 게 이 이유.**
+
+- **처방**:
+  - 멜리 경로(직접 데미지·온-히트 CC/스택)는 합성 더미로 검증 가능.
+  - 투사체 고유 경로(bake 데미지·splash·bounce·homing impact)를 실기로 검증하려면 **실 enemy 를 웨이브로 스폰**(`StartBattle()` + `bridge.ForceNextWave()`, `MovementIntegritySmokeTest` 참고)해야 한다. 단 실 적은 이동하므로 데미지-윈도 비교가 지저분함.
+  - 검증 대상이 **"데미지 산식"**(예: shatter DamageVsCc 배율)이면 melee 경로 통합 테스트로 산식을 고정하고, 투사체 bake 지점(`AttackSystem` 의 projectile 분기)은 동일 곱을 쓰는지 **코드/리뷰로 확인** — melee 테스트가 산식을 증명하면 bake 지점은 같은 `attackerVsCc` 곱 한 줄이라 회귀 위험이 낮다.
