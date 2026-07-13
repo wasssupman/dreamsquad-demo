@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using PrimeTween;
 using TMPro;
+using Unity.Entities;
 using UnityEngine;
 using UnityEngine.UI;
 using Wassup.Core;
@@ -90,6 +91,32 @@ namespace Wassup.UI
         // rev 4-6 — StS식 유닛 타겟팅 화살표(카드 고정 + 카드→포인터 점선 아크).
         public DreamcatcherTargetArrow TargetArrow => _targetArrow;
 
+        // card-fly-to-target-absorb unit 0 — 커밋 성공 시 손패 카드가 유닛으로
+        // 날아가 찰싹 흡수. 발사점/스프라이트는 소비 전 호출부에서 캡처된 값.
+        // 타겟은 유닛 뷰 앵커 Transform 을 매프레임 추적(행진 중에도 안착).
+        public void FlyCardToUnit(Vector3 startUiWorld, Vector2 ghostSize, Sprite face, Entity host)
+        {
+            EnsureFlightPresenter();
+            if (_flightPresenter == null) return;
+            var b = bridge;
+            var h = host;
+            _flightPresenter.Fly(startUiWorld, ghostSize, face, MainCamera,
+                () => (b != null && b.TryGetUnitViewAnchor(h, out var tr) && tr != null)
+                    ? tr.position : (Vector3?)null);
+        }
+
+        private void EnsureFlightPresenter()
+        {
+            if (_flightPresenter != null) return;
+            var canvas = GetComponentInParent<Canvas>();
+            if (canvas == null) return;
+            canvas = canvas.rootCanvas != null ? canvas.rootCanvas : canvas;
+            var go = new GameObject("CardAbsorbFlight", typeof(RectTransform));
+            go.transform.SetParent(canvas.transform, false);
+            _flightPresenter = go.AddComponent<CardAbsorbFlightPresenter>();
+            _flightPresenter.Init(canvas);
+        }
+
         public class CardSlot
         {
             public GameObject root;
@@ -126,6 +153,7 @@ namespace Wassup.UI
         private int _focusIndex = -1;  // hand-deal-in unit 1 — press-lift 대상 슬롯
         private TimeLease _slomoLease;
         private DreamcatcherTargetArrow _targetArrow;
+        private CardAbsorbFlightPresenter _flightPresenter; // card-fly unit 0 — lazy, 캔버스 루트 하위
         // Recovered-refresh deferral: rebinding slots mid-drag would snap the
         // floating card home and swap its entryId under the pointer.
         private bool _refreshQueued;

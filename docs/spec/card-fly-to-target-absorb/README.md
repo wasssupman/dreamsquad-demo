@@ -34,15 +34,26 @@
 - **필수 조건 3개**: (1) 안착 즉시 dissolve(머무름 금지) (2) 타겟 스크린 좌표 매프레임 추적(유닛 행진)
   (3) 임팩트 반응은 **유닛/타일(월드)** 에서 발생.
 
-## 배선 (grounded — 실제 훅)
+## 배선 (grounded — 실제 훅, 코드 검증 2026-07-13)
 
-- **트리거**: `DreamcatcherCardDragSlot` 의 커밋 성공(`ok`) 직후 — `CommitAttach`(Unit/Squad),
-  `CommitActiveDefender`(유닛 셀), `CommitActiveTile`/`CommitActivePortal`(타일). `CommitNow(commit)` 의 `ok` 분기.
-- **타겟 월드 좌표**: 유닛 = `bridge.TryGetUnitViewAnchor(host, out Transform)`(DcIconStripSpawner 와 동일 게이트웨이).
-  타일 = 셀→월드(`BattleBridge` 셀 변환; `TryScreenToCell` 역/기존 cell→world 헬퍼 확인 필요).
-- **월드→스크린**: 카메라 project(billboardCamera/Camera.main). 매프레임 재투영(유닛 이동).
-- **유닛 반응**: `SpineUnitView` 에 펀치/흰-플래시 추가(현재 `SetHealthTint`/`SetHoverHighlight` 틴트만 있음) —
-  bridge 게이트 경유. 링/버스트 = `VfxSpawner`(`SpawnPlacementRing`/`SpawnMeteorBurst` 재사용 또는 전용 `SpawnCardAbsorb`).
+- **트리거**: `DreamcatcherCardDragSlot`(`Assets/_Project/Scripts/UI/Dreamcatcher/DreamcatcherCardDragSlot.cs`)
+  의 커밋 성공(`ok`) 직후. 성공 지점 = `CommitNow(System.Func<bool>)` L200 `bool ok = commit();` (현재 L202 는
+  실패 시 `RestoreSlotHome` 만; 성공 콜백 얹을 자리 = L200~L201 사이). 커밋 종류: `CommitAttach`(Unit/Squad, L146),
+  `CommitActiveDefender`(유닛 셀, L144), `CommitActiveTile`(L154), `CommitActivePortal`(L192) — 모두 `_view.Controller.*` 위임.
+- **⚠ 트리거 데이터 캡처 (unit 0 첫 결정, 계약 공백 닫기)**: 타겟 정보(host `Entity` / `cell` `Vector2Int`)는
+  각 호출부 지역변수(`_hoverEntity`, `_hoverCell`, `tile`, `exitTile`)로 **`CommitNow` 안에서는 접근 불가**
+  (`CommitNow` 는 `Func<bool>` 만 받음). 따라서 트리거는 둘 중 하나로 구현: **(a)** `CommitNow` 시그니처를 확장해
+  target descriptor 를 함께 넘김, **(b)** 각 호출부에서 `ok==true` 확인 후 별도 발화. **(a) 권장**(성공/취소 경로 단일화).
+- **타겟 월드 좌표 (2종, 비대칭)**:
+  - 유닛 = `bridge.TryGetUnitViewAnchor(Entity, out Transform)`(BattleBridge L2194; DcIconStripSpawner L90 와 동일
+    게이트웨이). **Transform → 매프레임 추적** 대상.
+  - 타일/포탈 = `bridge.GridToWorldCenterVector(Vector2Int cell, float y=0)`(BattleBridge L1521, public). **고정 Vector3 → 추적 불필요**.
+- **월드→스크린**: 카메라 project(billboardCamera/`Camera.main`). 유닛은 매프레임 재투영(행진), 타일은 1회 투영 후 고정.
+- **유닛 반응**: `SpineUnitView`(L12) 에 펀치/흰-플래시 **신설**(현재 `SetHealthTint` L258 / `SetHoverHighlight` L231
+  틴트 계열만, 펀치·플래시·shake 전무) — bridge 게이트 경유. 링/버스트 = `VfxSpawner`
+  (`SpawnPlacementRing` L25 / `SpawnMeteorBurst` L40 재사용 또는 전용 `SpawnCardAbsorb` 신설; 후자 없음 확인).
+- **SFX**: SoundManager 에 임의 클립 재생은 `PlayDeployVoice(AudioClip)`(이름 오용)뿐 — 찰싹은 전용
+  `[SerializeField] AudioClip` + 재생 메서드 신설(`PlayScoreTick` L104 패턴 참고).
 - **VFX 소유**: 메커닉-소유 원칙([[feedback_mechanic_vfx_owned_by_mechanic]]) — 흡수 VFX 는 드림캐쳐/카드 메커닉이
   선언·구동. StatusFx 에 kind 분기 금지.
 
@@ -60,7 +71,8 @@
 - **손패 카드 발사, UGUI, 안착 즉시 dissolve**(스티커 방지). 월드 카드 오브젝트 안 씀.
 - **아이콘 도킹 금지**(사용자 확정). 부착 아이콘은 기존 `AttachmentsChanged` 로 별개.
 - **임팩트 반응은 타겟(월드)** 에서 — 유닛 펀치/플래시/링/흔들림. 카드는 사라지고 유닛 반응이 주역.
-- **타겟 스크린 좌표 매프레임 추적**(유닛 행진 중에도 정확히 안착).
+- **타겟 스크린 좌표 매프레임 추적**(유닛 행진 중에도 정확히 안착). presenter API 는 **Transform(유닛, 추적)과
+  Vector3(타일/포탈, 고정) 두 좌표 소스를 모두** 받는다 — unit 0(유닛)/unit 2(타일) 공용 인터페이스.
 - **커밋 성공 시에만**(취소/실패는 카드 손패 복귀, 연출 없음). 실패 커밋은 비용 0 계약 유지.
 - **순수 프레젠테이션**: ECS 시뮬 변경 0. 트리거는 기존 커밋 경로의 성공 콜백에 얹기만.
 - **VFX 메커닉-소유**: 흡수 링/버스트는 카드 메커닉이 선언·구동.
@@ -73,13 +85,23 @@
 
 ## 열린 결정 (다음 세션 착수 전)
 
-- **흔들림 종류**: 카메라 셰이크(전체 화면, 프로젝트에 현재 없음) vs **유닛-로컬 흔들림/작은 킥**(국소). 묵직함엔
-  카메라 셰이크가 강하나 전투 전체를 흔들어 과할 수 있음 — 미세 카메라 킥 or 유닛-로컬 중 결정.
+- ~~**흔들림 종류**~~ **(결정 2026-07-13)**: **유닛-로컬 킥 + 미세 카메라 킥 둘 다**. 유닛-로컬 킥으로
+  타격 주체를 국소 강조하고, 임팩트 순간의 **짧은 미세 카메라 킥**(전역 셰이크 서비스 아님 — 1회성 소량 오프셋)을
+  얹어 묵직함을 보강한다. 전투 전체를 흔드는 풀 셰이크는 여전히 비목표(§후속 후보).
+  - **⚠ unit 1 착수 전 확인 (함정)**: 타일맵 카메라는 페이즈마다 pitch 를 **라이브 재계산**한다
+    ([[project_tilemap_camera_pitch_per_phase]]). 카메라 Transform 을 직접 오프셋하면 그 재계산과 충돌 →
+    킥은 카메라 rig 의 라이브 계산을 **존중하는 방식**(별도 오프셋 노드/데코레이터, base 값 위에 additive)이어야 함.
+    카메라 소유 구조부터 확인 후 킥 지점 결정.
 - **링 충격파 VFX**: 기존 `VfxSpawner.SpawnPlacementRing`/`SpawnMeteorBurst` 재사용 vs 전용 저작(unity-vfx-authoring).
-- **카드 고스트 비주얼**: `UiCardFaceMesh`(크럼플 카드 페이스) 재사용 vs 단순 스냅샷 스프라이트.
+- **카드 고스트 비주얼 + "dissolve" 방식**: `UiCardFaceMesh`(크럼플 카드 페이스) 재사용 vs 단순 스냅샷 스프라이트.
+  ⚠ spec 이 "dissolve" 라 쓰지만 선례(GiftPhaseView)는 **scale→0 + alpha** 다. 실제 셰이더 dissolve 로 가면
+  UGUI 커스텀 셰이더 채널 스트립 함정([[project_ugui_custom_shader_uv_channels]])에 걸린다 — 단순 scale+fade 로
+  충분한지 먼저 판단(충분하면 함정 자체가 소멸). 셰이더 dissolve 는 명확한 이유 있을 때만.
 - **타일 셀→월드 헬퍼**: `BattleBridge` 에 이미 있는지(cell→world 게이트) 확인, 없으면 추가.
 - **타이밍 값**: 비행 ~0.28s, dissolve ~0.08s, 펀치/플래시 duration 등 실측 튜닝.
 - **`SpineUnitView` 펀치/플래시 API**: 신설(bridge 게이트). 다수 호출처 생기면 hit 반응 일반화 검토.
+- **스쿼드 부착 앵커**: `CommitAttach` 의 host 가 squad 일 때 비행 타겟이 대표 유닛인지 스쿼드 중심인지 미정
+  (unit 0 착수 시 `TryGetUnitViewAnchor` 가 squad host 에 무엇을 반환하는지 확인).
 
 ## 비목표 / 후속 후보
 

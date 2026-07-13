@@ -143,7 +143,16 @@ namespace Wassup.UI
                     if (slot.card.type == CardType.Active)
                         CommitNow(() => _view.Controller.CommitActiveDefender(entryId, cell));
                     else
-                        CommitNow(() => _view.Controller.CommitAttach(entryId, host));
+                    {
+                        // card-fly-to-target-absorb unit 0 — 발사점/스프라이트를 커밋 전에
+                        // 캡처(성공 시 손패가 소비되므로). 유닛 케이스만 비행(타일=unit 2).
+                        Vector3 startUiWorld = slot.rect.position;
+                        Vector2 ghostSize = slot.rect.rect.size;
+                        Sprite face = slot.art != null ? slot.art.sprite : null;
+                        var host2 = host;
+                        CommitNow(() => _view.Controller.CommitAttach(entryId, host),
+                            () => _view.FlyCardToUnit(startUiWorld, ghostSize, face, host2));
+                    }
                     return;
                 }
 
@@ -195,11 +204,15 @@ namespace Wassup.UI
         // Touchup applies immediately: spend/cycle only happen inside a
         // successful Commit* (a failed commit — target died, cap reached,
         // cast rejected — costs nothing and the card snaps home).
-        private void CommitNow(System.Func<bool> commit)
+        // card-fly-to-target-absorb unit 0 — onSuccess 는 커밋 성공(ok) 시에만
+        // 발화(실패/취소는 비용 0 · 연출 없음 계약 유지). 비행 발사점(슬롯 위치)·
+        // 고스트 스프라이트는 commit() 이 손패를 소비하기 전에 호출부에서 캡처한다.
+        private void CommitNow(System.Func<bool> commit, System.Action onSuccess = null)
         {
             bool ok = commit();
             EndInteraction();
             if (!ok) _view.RestoreSlotHome(_index);
+            else onSuccess?.Invoke();
             _view.NotifyInteractionEnded();
         }
 
