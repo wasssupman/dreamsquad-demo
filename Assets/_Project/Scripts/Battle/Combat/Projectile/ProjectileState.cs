@@ -83,5 +83,14 @@ namespace Wassup.Battle.Combat.Projectile
         // ── TileAoe victim faction (nightmare-catcher unit 4) ────────────────
         // Default Enemy(0) = legacy pool; boss AreaBarrage sets Defender.
         public ProjectileTargetFaction targetFaction;
+
+        // ── Frontmost priority damage (dreamcatcher-content-2 끝을 보는 눈) ───
+        // Filled at launch from ProjectileSpawnRequest. Defaults Entity.Null / 0
+        // = no bonus (all legacy spawns inert). ProjectileHitSystem applies the
+        // multiplier only to the Damage-kind victim that equals priorityTarget,
+        // to both IncomingDamage and ThreatTable.TryCredit (no desync). Survives
+        // bounce re-homing but only fires while the direct victim == priorityTarget.
+        public Entity priorityTarget;
+        public float priorityDamageMul;
     }
 }

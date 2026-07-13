@@ -63,6 +63,15 @@ namespace Wassup.Battle.Combat.Projectile
         // Copied verbatim onto ProjectileState by the drain. Default Enemy(0) =
         // legacy pool (player Meteor / defender ballistic unchanged, N3).
         public ProjectileTargetFaction targetFaction;
+
+        // ── Frontmost priority damage (dreamcatcher-content-2 끝을 보는 눈) ───
+        // Copied verbatim onto ProjectileState by the drain. Defaults
+        // Entity.Null / 0 = no bonus, so every existing spawn is inert without
+        // touching legacy producers. ProjectileHitSystem multiplies only when the
+        // actual Damage-kind victim == priorityTarget, using
+        // (priorityDamageMul > 0 ? priorityDamageMul : 1). Wired in unit 3.
+        public Entity priorityTarget;
+        public float priorityDamageMul;
     }
 
     public struct ProjectileSpawnOutputElement : IBufferElementData

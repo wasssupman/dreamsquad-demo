@@ -138,14 +138,14 @@ namespace Wassup.Data
     // architecture-agnostic contract as the trigger definitions above: pure
     // data, no ECS references; interpretation lives in BattleBridge (bake) and
     // AttackSystem (spawn-time injection). Append new kinds at the end.
-    public enum DcAttackModKind { None, ProjectileBounce }
+    public enum DcAttackModKind { None, ProjectileBounce, FrontmostTarget }
 
     [Serializable]
     public struct DcAttackModSpec
     {
         public DcAttackModKind kind;
-        public int count;          // ProjectileBounce: bounce count
-        public int tileRange;      // retarget search radius (Chebyshev tiles)
-        public float damageMul;    // per-bounce decay (1 = no decay)
+        public int count;          // ProjectileBounce: bounce count · FrontmostTarget: unused
+        public int tileRange;      // ProjectileBounce: retarget radius (Chebyshev) · FrontmostTarget: unused (uses base attack range)
+        public float damageMul;    // ProjectileBounce: per-bounce decay (1 = no decay) · FrontmostTarget: primary-target damage multiplier
     }
 }
