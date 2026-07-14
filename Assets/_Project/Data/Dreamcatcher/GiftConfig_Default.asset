@@ -15,17 +15,17 @@ MonoBehaviour:
   lucidWeight: 1
   rimWeight: 1
   rimGiftCount: 2
-  introTextSec: 0.6
-  dealInSec: 1.1
-  revealSec: 0.9
-  stackSec: 0.45
-  riffleSec: 0.85
-  fanSec: 0.6
-  absorbFirstGapSec: 0.22
-  absorbMinGapSec: 0.07
-  absorbDecay: 0.75
+  introTextSec: 0.45
+  dealInSec: 0.9
+  revealSec: 0.75
+  stackSec: 0.4
+  riffleSec: 0.7
+  fanSec: 0.5
+  absorbFirstGapSec: 0.18
+  absorbMinGapSec: 0.06
+  absorbDecay: 0.7
   absorbFlightSec: 0.24
-  finisherPauseSec: 0.15
+  finisherPauseSec: 0.12
   gridCols: 5
   gridCell: {x: 210, y: 300}
   gridCenter: {x: 0, y: 90}
@@ -47,6 +47,23 @@ MonoBehaviour:
   rimAmbientColor: {r: 0.72, g: 0.1, b: 0.1, a: 0.36}
   rippleAlpha: 0.5
   vibrateOnReveal: 1
+  offscreenY: 900
+  dealSpinDeg: 18
+  restTiltDeg: 2
+  gridPulseScale: 0.05
+  gridPulseSec: 0.18
+  stackSquashScale: 0.06
+  sweepPunchScale: 0.07
+  sweepStaggerSec: 0.025
+  absorbRiseY: 90
+  absorbStretchY: 1.2
+  absorbImpactScale: 0.25
+  ringPopScale: 1.2
+  ringPopSec: 0.08
+  ringShrinkSec: 0.2
+  trailFadeSec: 0.25
+  tickPopSec: 0.16
+  rippleSec: 0.3
   cardSize: {x: 180, y: 252}
   frameRadius: 18
   frameBorder: 10

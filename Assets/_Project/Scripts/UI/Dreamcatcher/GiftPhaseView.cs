@@ -44,6 +44,7 @@ namespace Wassup.UI
         private Image _ambienceBottom;
         private readonly List<GiftCardWidget> _cardWidgets = new();
         private GiftCardWidget.Shared _shared;
+        private Sprite _gradientSprite;
         private Sequence _seq;
         private bool _built;
 
@@ -55,6 +56,9 @@ namespace Wassup.UI
 
         private void Awake()
         {
+            // 한 시퀀스가 ~250 트윈을 동시 보유(최대 소비처) — 기본 풀 200 초과로 인한
+            // 런타임 리사이즈 GC/경고를 선예약으로 차단(리뷰).
+            PrimeTweenConfig.SetTweensCapacity(400);
             BuildCanvas();
             if (_panel != null) _panel.SetActive(false);
         }
@@ -79,6 +83,12 @@ namespace Wassup.UI
         private void OnDestroy()
         {
             _shared?.Dispose();
+            if (_gradientSprite != null)
+            {
+                if (_gradientSprite.texture != null) Destroy(_gradientSprite.texture);
+                Destroy(_gradientSprite);
+                _gradientSprite = null;
+            }
         }
 
         // 진입점(라우팅): 드래프트 확정 / 배치 요청 / 재시작(BattleBridge)이 호출.
@@ -99,9 +109,17 @@ namespace Wassup.UI
             if (!_built) BuildCanvas();
             _panel.SetActive(true);
 
+            // 미배선 관용(리뷰): config 없이는 안무 불가 — 연출 없이 배치로.
+            if (giftConfig == null)
+            {
+                Debug.LogWarning("[GiftPhaseView] giftConfig 미배선 — 연출 생략, 즉시 배치로.");
+                ProceedToPlacement();
+                return;
+            }
+
             // Test 모드 fast-forward: 연출 스킵(현재 TestModeContext 는 배치 전 Clear 되어
             // 거의 미발동 — 향후 테스트 훅이 컨텍스트를 유지하면 즉시 배치로).
-            if (giftConfig != null && giftConfig.fastForwardInTestMode && TestModeContext.Active)
+            if (giftConfig.fastForwardInTestMode && TestModeContext.Active)
             {
                 ProceedToPlacement();
                 return;
@@ -168,9 +186,11 @@ namespace Wassup.UI
             }
 
             EnsureCardWidgets(n);
+            _cardsRoot.localScale = Vector3.one; // 중단된 squash 펀치 잔여 리셋(리뷰)
 
             // 초기 상태 — 내 덱은 하단 중앙 화면 밖("나로부터"), 선물은 kind 방향 밖 뒷면.
-            float revealFromY = lucid ? 900f : -900f;
+            int giftN = n - baseN;
+            float revealFromY = lucid ? cfg.offscreenY : -cfg.offscreenY;
             for (int k = 0; k < _cardWidgets.Count; k++)
             {
                 var w = _cardWidgets[k];
@@ -179,7 +199,10 @@ namespace Wassup.UI
                 if (!used) continue;
 
                 bool gifted = k >= baseN;
-                var card = gifted ? giftCards[k - baseN] : baseCards[k];
+                // 카운트 불일치 관용(리뷰): 초과분은 폴백 비주얼로 바인딩.
+                var card = gifted
+                    ? (k - baseN < giftCards.Count ? giftCards[k - baseN] : null)
+                    : baseCards[k];
                 w.Bind(card, cfg);
                 w.SetOrigin(gifted ? (lucid ? GiftOrigin.Lucid : GiftOrigin.Rim) : GiftOrigin.None,
                             cfg, _shared);
@@ -187,8 +210,8 @@ namespace Wassup.UI
                 w.Rt.localScale = Vector3.one;
                 w.Rt.localRotation = Quaternion.identity;
                 w.Rt.anchoredPosition = gifted
-                    ? new Vector2((k - baseN == 0 ? -1f : 1f) * cfg.revealSpreadX, revealFromY)
-                    : new Vector2(0f, -900f);
+                    ? new Vector2(RevealX(k - baseN, giftN, cfg), revealFromY)
+                    : new Vector2(0f, -cfg.offscreenY);
                 w.Rt.SetSiblingIndex(k);
             }
 
@@ -223,14 +246,14 @@ namespace Wassup.UI
                 var rt = _cardWidgets[k].Rt;
                 float d = k * dealStagger;
                 var slot = GridSlot(k, baseN, cfg);
-                rt.localRotation = Quaternion.Euler(0f, 0f, -18f); // 딜러 스핀 시작 각
+                rt.localRotation = Quaternion.Euler(0f, 0f, -cfg.dealSpinDeg); // 딜러 스핀 시작 각
                 _seq.Group(Tween.UIAnchoredPosition(rt, slot, dealFlight, Ease.OutQuad, startDelay: d));
-                _seq.Group(Tween.LocalRotation(rt, Quaternion.Euler(0f, 0f, ((k % 3) - 1) * 2f),
+                _seq.Group(Tween.LocalRotation(rt, Quaternion.Euler(0f, 0f, ((k % 3) - 1) * cfg.restTiltDeg),
                     dealFlight, Ease.OutBack, startDelay: d));
             }
             // 10번째 착지 → 그리드 전체 미세 펄스(덱 완성 박자)
             for (int k = 0; k < baseN; k++)
-                _seq.Group(Tween.PunchScale(_cardWidgets[k].Rt, Vector3.one * 0.05f, 0.18f,
+                _seq.Group(Tween.PunchScale(_cardWidgets[k].Rt, Vector3.one * cfg.gridPulseScale, cfg.gridPulseSec,
                     startDelay: cfg.dealInSec + 0.02f));
 
             // ③ 선물 리빌 = 존재의 개입 (kind 방향에서 뒷면 진입 → 내 덱 움찔 → 플립)
@@ -242,7 +265,7 @@ namespace Wassup.UI
             {
                 int k = baseN + g;
                 var rt = _cardWidgets[k].Rt;
-                var target = new Vector2((g == 0 ? -1f : 1f) * cfg.revealSpreadX, cfg.revealY);
+                var target = new Vector2(RevealX(g, giftN, cfg), cfg.revealY);
                 ChainOrGroup(g == 0,
                     Tween.UIAnchoredPosition(rt, target, approach, Ease.OutQuad, startDelay: g * 0.07f));
             }
@@ -309,7 +332,8 @@ namespace Wassup.UI
             {
                 for (int k = baseN; k < n; k++) _cardWidgets[k].Rt.SetAsLastSibling();
             });
-            _seq.Chain(Tween.PunchScale(_cardsRoot, new Vector3(0.03f, -0.06f, 0f), 0.16f));
+            _seq.Chain(Tween.PunchScale(_cardsRoot,
+                new Vector3(cfg.stackSquashScale * 0.5f, -cfg.stackSquashScale, 0f), 0.12f));
 
             // ④-b 리플 셔플 = 융합 (좌/우 분리 → 지퍼 재적층 + 잔상 트레일 + 글로우 리플)
             float split = cfg.riffleSec * 0.25f;
@@ -347,7 +371,7 @@ namespace Wassup.UI
                 }
             }
             _seq.ChainCallback(() => SpawnRipple(cfg.stackCenter, kindColor, cfg));
-            _seq.ChainDelay(0.12f);
+            _seq.ChainDelay(0.06f);
 
             // ⑤ 부채꼴 딜 = 이번 판의 내 덱 (좌→우 = 최종순서 1→12) + 하이라이트 스윕
             _seq.ChainCallback(() =>
@@ -375,12 +399,12 @@ namespace Wassup.UI
             for (int k = 0; k < n; k++) // 스윕 — 좌→우 순차 펄스, 프레임 카드는 스파크
             {
                 int f = finalPos.TryGetValue(k, out var idx) ? idx : k;
-                _seq.Group(Tween.PunchScale(_cardWidgets[k].Rt, Vector3.one * 0.07f, 0.16f,
-                    startDelay: fanMove + f * 0.03f));
+                _seq.Group(Tween.PunchScale(_cardWidgets[k].Rt, Vector3.one * cfg.sweepPunchScale, cfg.gridPulseSec,
+                    startDelay: fanMove + f * cfg.sweepStaggerSec));
                 if (k >= baseN)
                 {
                     var (pos, _) = GiftPhaseLayout.FanSlot(f, n, cfg.fanRadius, cfg.fanArcDeg, cfg.fanBaseY);
-                    _seq.Group(Tween.Delay(fanMove + f * 0.03f, () => SpawnTick(pos, kindColor, cfg, 0.6f)));
+                    _seq.Group(Tween.Delay(fanMove + f * cfg.sweepStaggerSec, () => SpawnTick(pos, kindColor, cfg, 0.6f)));
                 }
             }
 
@@ -399,14 +423,16 @@ namespace Wassup.UI
                 bool finisher = f == n - 1;
                 if (finisher) d += cfg.finisherPauseSec; // 반박자 멈춤
 
+                float diveDur = dive * (finisher ? 1.25f : 1f); // 위치·스케일·완료 삼자 일치(리뷰)
+                float stretchX = 1f - (cfg.absorbStretchY - 1f) * 0.5f;
                 ChainOrGroup(f == 0,
-                    Tween.UIAnchoredPosition(rt, fanPos + new Vector2(0f, 90f), rise, Ease.OutQuad, startDelay: d));
-                _seq.Group(Tween.Scale(rt, new Vector3(0.9f, 1.2f, 1f), rise, Ease.OutQuad, startDelay: d));
-                _seq.Group(Tween.UIAnchoredPosition(rt, FlyTarget, dive * (finisher ? 1.25f : 1f),
+                    Tween.UIAnchoredPosition(rt, fanPos + new Vector2(0f, cfg.absorbRiseY), rise, Ease.OutQuad, startDelay: d));
+                _seq.Group(Tween.Scale(rt, new Vector3(stretchX, cfg.absorbStretchY, 1f), rise, Ease.OutQuad, startDelay: d));
+                _seq.Group(Tween.UIAnchoredPosition(rt, FlyTarget, diveDur,
                     Ease.InQuad, startDelay: d + rise));
-                _seq.Group(Tween.Scale(rt, Vector3.one * 0.25f, dive, Ease.InQuad, startDelay: d + rise));
+                _seq.Group(Tween.Scale(rt, Vector3.one * cfg.absorbImpactScale, diveDur, Ease.InQuad, startDelay: d + rise));
                 int fi = f;
-                _seq.Group(Tween.Delay(d + rise + dive, () =>
+                _seq.Group(Tween.Delay(d + rise + diveDur, () =>
                 {
                     widget.Go.SetActive(false);
                     LightSegment(fi, kindColor);
@@ -418,10 +444,10 @@ namespace Wassup.UI
             _seq.ChainCallback(() =>
             {
                 if (_ring == null) return;
-                _fxTweens.Add(Tween.Scale(_ring, Vector3.one * 1.2f, 0.08f, Ease.OutQuad));
-                _fxTweens.Add(Tween.Scale(_ring, Vector3.zero, 0.22f, Ease.InBack, startDelay: 0.08f));
+                _fxTweens.Add(Tween.Scale(_ring, Vector3.one * cfg.ringPopScale, cfg.ringPopSec, Ease.OutQuad));
+                _fxTweens.Add(Tween.Scale(_ring, Vector3.zero, cfg.ringShrinkSec, Ease.InBack, startDelay: cfg.ringPopSec));
             });
-            _seq.ChainDelay(0.32f);
+            _seq.ChainDelay(cfg.ringPopSec + cfg.ringShrinkSec + 0.02f);
             _seq.ChainCallback(ProceedToPlacement);
         }
 
@@ -433,13 +459,17 @@ namespace Wassup.UI
         private Vector2 GridSlot(int k, int count, GiftConfig cfg)
             => cfg.gridCenter + GiftPhaseLayout.GridSlot(k, count, cfg.gridCols, cfg.gridCell);
 
+        // 리빌 센터 무대 g번째 카드 x — 2장이면 ±spread, 3+장도 등간격(리뷰: 겹침 방지).
+        private static float RevealX(int g, int giftN, GiftConfig cfg)
+            => (g - (giftN - 1) * 0.5f) * 2f * cfg.revealSpreadX;
+
         // ── 일회성 이펙트 (전부 _transientFx/_fxTweens 등록 — 중단 경로 정리) ──
         private void SpawnTrail(Vector2 pos, Color color, GiftConfig cfg)
         {
             var img = MakeFx("Trail", pos, cfg.cardSize, _shared.PlateSprite);
             img.color = new Color(color.r, color.g, color.b, 0.3f);
-            _fxTweens.Add(Tween.Alpha(img, 0f, 0.25f, Ease.OutQuad));
-            _fxTweens.Add(Tween.Scale(img.rectTransform, Vector3.one * 0.85f, 0.25f, Ease.OutQuad));
+            _fxTweens.Add(Tween.Alpha(img, 0f, cfg.trailFadeSec, Ease.OutQuad));
+            _fxTweens.Add(Tween.Scale(img.rectTransform, Vector3.one * 0.85f, cfg.trailFadeSec, Ease.OutQuad));
         }
 
         private void SpawnRipple(Vector2 pos, Color color, GiftConfig cfg)
@@ -447,18 +477,17 @@ namespace Wassup.UI
             var img = MakeFx("Ripple", pos, cfg.cardSize * 1.15f, _shared.FrameSprite);
             img.type = Image.Type.Sliced;
             img.color = new Color(color.r, color.g, color.b, cfg.rippleAlpha);
-            _fxTweens.Add(Tween.Scale(img.rectTransform, Vector3.one * 1.9f, 0.3f, Ease.OutQuad));
-            _fxTweens.Add(Tween.Alpha(img, 0f, 0.3f, Ease.OutQuad));
+            _fxTweens.Add(Tween.Scale(img.rectTransform, Vector3.one * 1.9f, cfg.rippleSec, Ease.OutQuad));
+            _fxTweens.Add(Tween.Alpha(img, 0f, cfg.rippleSec, Ease.OutQuad));
         }
 
         private void SpawnTick(Vector2 pos, Color color, GiftConfig cfg, float strength)
         {
-            var img = MakeFx("Tick", pos, Vector2.one * cfg.ringDotSize * 4f, null);
-            img.sprite = UiRoundedSprite.MakeCircle(48, Color.white);
+            var img = MakeFx("Tick", pos, Vector2.one * cfg.ringDotSize * 4f, _shared.DotSprite);
             img.color = new Color(color.r, color.g, color.b, 0.85f);
             img.rectTransform.localScale = Vector3.one * 0.4f;
-            _fxTweens.Add(Tween.Scale(img.rectTransform, Vector3.one * strength, 0.16f, Ease.OutQuad));
-            _fxTweens.Add(Tween.Alpha(img, 0f, 0.16f, Ease.OutQuad));
+            _fxTweens.Add(Tween.Scale(img.rectTransform, Vector3.one * strength, cfg.tickPopSec, Ease.OutQuad));
+            _fxTweens.Add(Tween.Alpha(img, 0f, cfg.tickPopSec, Ease.OutQuad));
         }
 
         private Image MakeFx(string name, Vector2 pos, Vector2 size, Sprite sprite)
@@ -478,9 +507,8 @@ namespace Wassup.UI
         // 수신 앵커 링 — FlyTarget(각성 버튼 근사)에 n 세그먼트. 카드가 닿을 때마다 점등.
         private void BuildRing(int n, Color color, GiftConfig cfg)
         {
-            var ringImg = MakeFx("AwakenRing", FlyTarget, Vector2.one * (cfg.ringRadius * 2f + 16f), null);
-            ringImg.sprite = UiRoundedSprite.MakeCircle(Mathf.RoundToInt(cfg.ringRadius * 2f + 16f),
-                Color.clear, 5f, Color.white);
+            var ringImg = MakeFx("AwakenRing", FlyTarget, Vector2.one * (cfg.ringRadius * 2f + 16f),
+                _shared.RingSprite);
             ringImg.color = new Color(color.r, color.g, color.b, 0f);
             _ring = ringImg.rectTransform;
             _ringDots.Clear();
@@ -493,7 +521,7 @@ namespace Wassup.UI
                 drt.sizeDelta = Vector2.one * cfg.ringDotSize;
                 drt.anchoredPosition = new Vector2(Mathf.Cos(ang), Mathf.Sin(ang)) * cfg.ringRadius;
                 var dot = dotGo.GetComponent<Image>();
-                dot.sprite = UiRoundedSprite.MakeCircle(24, Color.white);
+                dot.sprite = _shared.DotSprite;
                 dot.color = new Color(color.r, color.g, color.b, 0.18f);
                 dot.raycastTarget = false;
                 _ringDots.Add(dot);
@@ -530,7 +558,8 @@ namespace Wassup.UI
             _panel.GetComponent<Image>().color = Dim;
 
             // kind별 앰비언스 — 상단(루시드 금빛 강림) / 하단(림 적색 침투) 그라데이션.
-            var grad = MakeGradientSprite();
+            _gradientSprite = MakeGradientSprite();
+            var grad = _gradientSprite;
             _ambienceTop = MakeAmbience(prt, "AmbienceTop", grad, top: true);
             _ambienceBottom = MakeAmbience(prt, "AmbienceBottom", grad, top: false);
 

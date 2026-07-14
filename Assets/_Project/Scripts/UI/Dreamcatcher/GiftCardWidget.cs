@@ -34,6 +34,8 @@ namespace Wassup.UI
             public Sprite FrameSprite;   // 투명 fill + 흰 보더 링(틴트용)
             public Sprite PlateSprite;   // 흰 fill(틴트용)
             public Sprite EmblemSprite;  // 흰 링(뒷면 문양, 틴트용)
+            public Sprite DotSprite;     // 흰 원판(임팩트 틱/링 세그먼트, 틴트용)
+            public Sprite RingSprite;    // 수신 앵커 링 외곽(틴트용)
             public Material LucidFoil;
             public Material RimFoil;
 
@@ -47,6 +49,10 @@ namespace Wassup.UI
                         cfg.frameRadius, 0f, Color.white, Color.white),
                     EmblemSprite = UiRoundedSprite.MakeCircle(
                         96, Color.clear, 10f, Color.white),
+                    // 호출마다 재베이크 금지(리뷰) — 틱/링은 여기서 1회 굽고 색은 Image.color 틴트.
+                    DotSprite = UiRoundedSprite.MakeCircle(48, Color.white),
+                    RingSprite = UiRoundedSprite.MakeCircle(
+                        Mathf.RoundToInt(cfg.ringRadius * 2f + 16f), Color.clear, 5f, Color.white),
                 };
                 var shader = Shader.Find("Wassup/UI/DraftCardFoil");
                 if (shader != null)
@@ -68,10 +74,24 @@ namespace Wassup.UI
 
             public void Dispose()
             {
+                DestroySprite(ref FrameSprite);
+                DestroySprite(ref PlateSprite);
+                DestroySprite(ref EmblemSprite);
+                DestroySprite(ref DotSprite);
+                DestroySprite(ref RingSprite);
                 if (LucidFoil != null) Object.Destroy(LucidFoil);
                 if (RimFoil != null) Object.Destroy(RimFoil);
                 LucidFoil = null;
                 RimFoil = null;
+            }
+
+            // 절차 스프라이트는 백킹 Texture2D 까지 해제해야 누수가 없다(리뷰).
+            private static void DestroySprite(ref Sprite sprite)
+            {
+                if (sprite == null) return;
+                if (sprite.texture != null) Object.Destroy(sprite.texture);
+                Object.Destroy(sprite);
+                sprite = null;
             }
         }
 
@@ -198,16 +218,5 @@ namespace Wassup.UI
             _name.text = card != null ? card.displayName : "";
         }
 
-        // 프레임 글로우 펄스용 — 안무가 프레임 색 알파를 흔들 때 쓴다.
-        public void SetFrameAlpha(float a)
-        {
-            if (!_frame.gameObject.activeSelf) return;
-            var c = _frame.color;
-            c.a = a;
-            _frame.color = c;
-            c = _foil.color;
-            c.a = a;
-            _foil.color = c;
-        }
     }
 }

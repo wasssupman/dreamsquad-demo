@@ -19,20 +19,20 @@ namespace Wassup.Data
         [Tooltip("림의 선물이 지급하는 무의식 카드 수")]
         [Min(0)] public int rimGiftCount = 2;
 
-        [Header("Sequence timings (unit 2, seconds, unscaled — 합산 ≤ 6s)")]
-        public float introTextSec = 0.6f;
-        public float dealInSec = 1.1f;
-        public float revealSec = 0.9f;
-        public float stackSec = 0.45f;
-        public float riffleSec = 0.85f;
-        public float fanSec = 0.6f;
+        [Header("Sequence timings (unit 2, seconds, unscaled — 체인 실측 합산 ≤ 6s)")]
+        public float introTextSec = 0.45f;
+        public float dealInSec = 0.9f;
+        public float revealSec = 0.75f;
+        public float stackSec = 0.4f;
+        public float riffleSec = 0.7f;
+        public float fanSec = 0.5f;
         [Tooltip("흡수 가속 케이던스 — 첫 간격/최소 간격/감쇠")]
-        public float absorbFirstGapSec = 0.22f;
-        public float absorbMinGapSec = 0.07f;
-        [Range(0.3f, 1f)] public float absorbDecay = 0.75f;
+        public float absorbFirstGapSec = 0.18f;
+        public float absorbMinGapSec = 0.06f;
+        [Range(0.3f, 1f)] public float absorbDecay = 0.7f;
         public float absorbFlightSec = 0.24f;
         [Tooltip("12번째 카드 피니셔 — 반박자 멈춤")]
-        public float finisherPauseSec = 0.15f;
+        public float finisherPauseSec = 0.12f;
 
         [Header("Geometry (unit 2, cardsRoot 로컬)")]
         [Min(1)] public int gridCols = 5;
@@ -64,6 +64,33 @@ namespace Wassup.Data
         [Tooltip("셔플 완료 글로우 리플 알파")]
         [Range(0f, 1f)] public float rippleAlpha = 0.5f;
         public bool vibrateOnReveal = true;
+
+        [Header("Accent tuning (unit 2 rev1 — 리뷰 반영, 계약 4)")]
+        [Tooltip("딜/리빌 오프스크린 진입 거리(px)")]
+        public float offscreenY = 900f;
+        [Tooltip("딜러 스핀 시작 각(도) / 그리드 정착 미세 틸트(도)")]
+        public float dealSpinDeg = 18f;
+        public float restTiltDeg = 2f;
+        [Tooltip("덱 완성 펄스 — 펀치 스케일/길이")]
+        public float gridPulseScale = 0.05f;
+        public float gridPulseSec = 0.18f;
+        [Tooltip("스택 출렁 squash 강도")]
+        public float stackSquashScale = 0.06f;
+        [Tooltip("부채꼴 스윕 — 펀치 스케일/카드 간 간격")]
+        public float sweepPunchScale = 0.07f;
+        public float sweepStaggerSec = 0.025f;
+        [Tooltip("흡수 — 상승 높이(px)/세로 스트레치/임팩트 스케일")]
+        public float absorbRiseY = 90f;
+        public float absorbStretchY = 1.2f;
+        public float absorbImpactScale = 0.25f;
+        [Tooltip("링 찰칵 팝 — 스케일/팝 길이/수축 길이")]
+        public float ringPopScale = 1.2f;
+        public float ringPopSec = 0.08f;
+        public float ringShrinkSec = 0.2f;
+        [Tooltip("일회성 FX — 잔상 페이드/틱 팝/리플 확산 길이")]
+        public float trailFadeSec = 0.25f;
+        public float tickPopSec = 0.16f;
+        public float rippleSec = 0.3f;
 
         [Header("Card & frame (unit 1)")]
         public Vector2 cardSize = new Vector2(180f, 252f);
