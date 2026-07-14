@@ -40,10 +40,14 @@ namespace Wassup.Presentation
         private float _shakePhaseY;
         private float _punctWeight = 1f;
 
-        // unit 5 — 드래그 포커스 채널. 드래그 컨트롤러가 매 프레임 피드, 프레임 staleness 로
-        // 자동 해제(명시 Clear 불필요 — 컨트롤러 파괴/정리 누락에도 붙박이 방지).
-        private Vector3 _focusTarget;
-        private Vector3 _focusVel;
+        // unit 5 — 드래그 포커스 채널. 드래그 컨트롤러가 매 프레임 터치 스크린 좌표를 피드,
+        // 프레임 staleness 로 자동 해제(명시 Clear 불필요 — 컨트롤러 파괴/정리 누락에도 붙박이 방지).
+        // rev 3: 입력 = 스크린 NDC(월드 비의존), 추종 = 스프링-댐핑(KeyringSim) — 스프링 속도가
+        // 곧 스와이프 리드 속도(정지 시 0 수렴, 확확 안 바뀜).
+        private Vector2 _focusNdcTarget;
+        private Vector2 _focusNdc;
+        private Vector2 _focusNdcVel;
+        private bool _focusSpringInit;
         private int _focusFedFrame = -10;
         private float _focusWeight;
 
@@ -170,13 +174,15 @@ namespace Wassup.Presentation
             _shakeHeat = Mathf.Clamp01(heat01);
         }
 
-        // unit 5 — 드래그 포커스 피드. 드래그 중(온보드) 매 프레임 호출 — 피드가 끊기면
-        // (2프레임 초과) 자동 해제. targetViewPos = 드래그 유닛 위치(view), velWorld = 스프링 속도.
-        public void SetDragFocus(Vector3 targetViewPos, Vector3 velWorld)
+        // unit 5 rev 3 — 드래그 포커스 피드: 터치/포인터 **스크린 좌표(px)**. 드래그 중(온보드)
+        // 매 프레임 호출 — 피드가 끊기면(2프레임 초과) 자동 해제. 월드 좌표를 받지 않는 것이
+        // 계약(카메라 포즈 되먹임 원천 차단).
+        public void SetDragFocus(Vector2 screenPos)
         {
             if (config == null) return;
-            _focusTarget = targetViewPos;
-            _focusVel = velWorld;
+            _focusNdcTarget = new Vector2(
+                screenPos.x / Mathf.Max(1f, Screen.width) * 2f - 1f,
+                screenPos.y / Mathf.Max(1f, Screen.height) * 2f - 1f);
             _focusFedFrame = Time.frameCount;
         }
 
@@ -200,7 +206,9 @@ namespace Wassup.Presentation
             float breathTarget = (breathOn && !flying) ? 1f : 0f;
             bool breathActive = breathTarget > 0f || _breathWeight > 0f;
             // 드래그 포커스: 최근 2프레임 내 피드 + 비행 아님 → 목표 1. 페이드 잔여도 활성.
-            bool focusFed = Time.frameCount - _focusFedFrame <= 2 && config.focusDolly != 0f;
+            bool focusConfigured = config.focusDolly != 0f || config.focusLookWeight > 0f
+                || config.focusFovDelta != 0f;
+            bool focusFed = Time.frameCount - _focusFedFrame <= 2 && focusConfigured;
             float focusTarget = (focusFed && !flying) ? 1f : 0f;
             bool focusActive = focusTarget > 0f || _focusWeight > 0f;
             bool anyActive = _kickRemaining > 0f || flying || punctActive || breathActive || focusActive;
@@ -241,11 +249,25 @@ namespace Wassup.Presentation
                     focusTarget > _focusWeight ? config.focusFadeInSec : config.focusFadeOutSec));
             if (_focusWeight > 0f)
             {
-                Vector3 basePos = _homePos + _homeRot * _flightDelta.localPos;
+                // 스프링-댐핑 추종 — 타겟(NDC)으로 스무스하게 수렴, 스프링 속도 = 리드 속도.
+                if (!_focusSpringInit)
+                {
+                    _focusNdc = _focusNdcTarget; // 첫 활성화는 현 포인터에 스냅(스테일 스윙 방지)
+                    _focusNdcVel = Vector2.zero;
+                    _focusSpringInit = true;
+                }
+                Wassup.UI.KeyringSim.SpringStep(ref _focusNdc, ref _focusNdcVel, _focusNdcTarget,
+                    config.focusSpring, config.focusDamping, 0f,
+                    Mathf.Max(Time.unscaledDeltaTime, 1e-4f));
+
                 delta = CameraComposeMath.Add(delta, CameraComposeMath.FocusDelta(
-                    basePos, _homeRot, _focusTarget, _focusVel, _focusWeight,
+                    _focusNdc, _focusNdcVel, _homeFov, _cam.aspect, _focusWeight,
                     config.focusDolly, config.focusFovDelta, config.focusLookWeight,
                     config.focusLeanPerSpeed, config.focusLeanMaxDeg));
+            }
+            else
+            {
+                _focusSpringInit = false; // 다음 드래그는 새 포인터 위치에서 시작
             }
 
             // 구두점 채널 — 가중치 페이드 갱신 후 펄스/셰이크 합산.

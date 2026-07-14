@@ -64,10 +64,14 @@ namespace Wassup.Data
         public float focusFovDelta = -2f;
         [Tooltip("유닛 방향 lookat 블렌드. 포인터→카메라 피드백 루프의 수축 계수라 0.5 초과 금지 — 1.0 이면 발산(무한 회전). 정지 포인터의 최종 각 변위 = 오프셋 × w/(1-w).")]
         [Range(0f, 0.5f)] public float focusLookWeight = 0.25f;
-        [Tooltip("스와이프 속도(월드 유닛/s) → 시선 리드 각(도) 변환 계수.")]
-        public float focusLeanPerSpeed = 0.35f;
+        [Tooltip("스와이프 NDC 속도(화면폭 2 기준/s) → 시선 리드 각(도) 변환 계수.")]
+        public float focusLeanPerSpeed = 1.2f;
         [Tooltip("시선 리드 최대각(도).")]
         public float focusLeanMaxDeg = 2.5f;
+        [Tooltip("포인터 추종 스프링 강성(↑=빠릿). KeyringSim.SpringStep.")]
+        public float focusSpring = 60f;
+        [Tooltip("포인터 추종 감쇠(임계≈2√spring — 그 이상이면 출렁임 없음).")]
+        public float focusDamping = 14f;
         [Tooltip("포커스 진입 페이드(초).")]
         public float focusFadeInSec = 0.25f;
         [Tooltip("포커스 해제 페이드(초).")]

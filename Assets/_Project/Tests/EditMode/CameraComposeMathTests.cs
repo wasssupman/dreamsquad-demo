@@ -167,20 +167,19 @@ public class CameraComposeMathTests
     [Test]
     public void FocusDelta_ZeroWeight_IsIdentity()
     {
-        var d = CameraComposeMath.FocusDelta(HomePos, HomeRot, HomePos + HomeRot * Vector3.forward * 10f,
-            Vector3.one, 0f, 2f, -2f, 0.25f, 0.35f, 2.5f);
+        var d = CameraComposeMath.FocusDelta(new Vector2(0.7f, -0.3f), Vector2.one,
+            HomeFov, 1.78f, 0f, 2f, -2f, 0.25f, 1.2f, 2.5f);
         Assert.That(d.localPos, Is.EqualTo(Vector3.zero));
         Assert.That(d.yawDeg, Is.EqualTo(0f));
         Assert.That(d.fovDelta, Is.EqualTo(0f));
     }
 
     [Test]
-    public void FocusDelta_TargetStraightAhead_NoYawOrPitch_DollyForward()
+    public void FocusDelta_PointerAtCenter_NoYawOrPitch_DollyForward()
     {
-        // 타겟이 홈 forward 정면 — lookat 각 0, dolly 는 로컬 +z.
-        var target = HomePos + HomeRot * (Vector3.forward * 12f);
-        var d = CameraComposeMath.FocusDelta(HomePos, HomeRot, target,
-            Vector3.zero, 1f, 2f, -2f, 0.25f, 0.35f, 2.5f);
+        // 포인터가 화면 중앙(NDC 0,0) — lookat 각 0, dolly 는 로컬 +z.
+        var d = CameraComposeMath.FocusDelta(Vector2.zero, Vector2.zero,
+            HomeFov, 1.78f, 1f, 2f, -2f, 0.25f, 1.2f, 2.5f);
         Assert.That(d.yawDeg, Is.EqualTo(0f).Within(1e-4f));
         Assert.That(d.pitchDeg, Is.EqualTo(0f).Within(1e-4f));
         Assert.That(d.localPos.z, Is.EqualTo(2f).Within(1e-5f));
@@ -189,23 +188,21 @@ public class CameraComposeMathTests
     }
 
     [Test]
-    public void FocusDelta_TargetToTheRight_YieldsPositiveYaw_ScaledByLookWeight()
+    public void FocusDelta_PointerRightEdge_YieldsPositiveYaw_ScaledByLookWeight()
     {
-        // 타겟이 로컬 x=+z 대각(45°) — yaw 풀각 45 × lookWeight 0.25 = 11.25.
-        var target = HomePos + HomeRot * (new Vector3(1f, 0f, 1f).normalized * 10f);
-        var d = CameraComposeMath.FocusDelta(HomePos, HomeRot, target,
-            Vector3.zero, 1f, 2f, -2f, 0.25f, 0.35f, 2.5f);
-        Assert.That(d.yawDeg, Is.EqualTo(45f * 0.25f).Within(1e-3f));
+        // aspect 1, FOV 40: 우측 끝(ndc.x=1)의 ray 수평각 = atan(tan(20°)) = 20° 정확.
+        var d = CameraComposeMath.FocusDelta(new Vector2(1f, 0f), Vector2.zero,
+            40f, 1f, 1f, 2f, -2f, 0.25f, 1.2f, 2.5f);
+        Assert.That(d.yawDeg, Is.EqualTo(20f * 0.25f).Within(1e-3f));
+        Assert.That(d.pitchDeg, Is.EqualTo(0f).Within(1e-4f));
     }
 
     [Test]
     public void FocusDelta_SwipeLead_ClampedToMax()
     {
-        // 매우 빠른 우측 스와이프 — 리드 yaw 가 max(2.5°)로 클램프.
-        var target = HomePos + HomeRot * (Vector3.forward * 10f);
-        var vel = HomeRot * (Vector3.right * 100f);
-        var d = CameraComposeMath.FocusDelta(HomePos, HomeRot, target,
-            vel, 1f, 2f, -2f, 0f, 0.35f, 2.5f); // lookWeight 0 — 리드만 관측
+        // 매우 빠른 우측 스와이프(NDC 속도) — 리드 yaw 가 max(2.5°)로 클램프. lookWeight 0 — 리드만 관측.
+        var d = CameraComposeMath.FocusDelta(Vector2.zero, new Vector2(100f, 0f),
+            HomeFov, 1.78f, 1f, 2f, -2f, 0f, 1.2f, 2.5f);
         Assert.That(d.yawDeg, Is.EqualTo(2.5f).Within(1e-4f));
     }
 

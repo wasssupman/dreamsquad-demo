@@ -104,11 +104,10 @@ namespace Wassup.UI
             KeyringSim.SpringStep(ref _unitPosWorld, ref _unitVelWorld, _unitTargetWorld,
                 s.spring, s.damping, s.maxSpeed, dt);
 
-            // camera-direction unit 5 — 드래그 포커스 피드. 룩앳 타겟은 **포인터(고리) 위치**
-            // (유닛 아님 — 스프링 흔들림이 카메라에 전이되지 않고, 시선이 손끝을 따른다. rev 1).
-            // 속도는 스프링 속도(포인터 움직임의 감쇠 추종)로 스와이프 리드 산출. 매 프레임
-            // 피드가 계약 — 끊기면(오프보드/세션 종료/파괴) Director 가 staleness 로 자동 해제.
-            EnsureCameraDirector()?.SetDragFocus(_ringWorld, _unitVelWorld);
+            // camera-direction unit 5 rev 3 — 드래그 포커스 피드 = **터치/포인터 스크린 좌표 그대로**
+            // (고리/유닛 월드 좌표 아님 — 카메라 되먹임·스프링 출렁임 원천 차단, 스무딩은 Director
+            // 쪽 스프링-댐핑). 매 프레임 피드가 계약 — 끊기면(오프보드/세션 종료/파괴) staleness 해제.
+            EnsureCameraDirector()?.SetDragFocus(_lastScreenPos);
 
             // 배치: 고리(공중) · 유닛 머리(발+높이) · 줄(고리→머리).
             if (_session.ring != null) _session.ring.position = _ringWorld;

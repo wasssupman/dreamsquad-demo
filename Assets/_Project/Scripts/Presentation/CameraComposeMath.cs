@@ -93,36 +93,34 @@ namespace Wassup.Presentation
             };
         }
 
-        // unit 5 — 드래그 포커스 델타: 유닛 방향 dolly + 부분 lookat(yaw/pitch 풀각 × lookWeight)
-        // + 스와이프 속도 리드(홈 축 사영, 클램프) + FOV. weight 0 → 항등.
-        // basePos = 홈⊕비행 위치(회전은 홈 기준 — 비행 pitch 소폭 델타는 lookWeight 블렌드가 흡수).
+        // unit 5 rev 3 — 드래그 포커스 델타. 입력은 **터치 스크린 NDC**(-1..1, 중앙 0) —
+        // 월드/카메라 포즈 비의존이라 "카메라 회전→보드 재계산→타겟 이동" 되먹임 루프가
+        // 원천적으로 없다. 홈 FOV/aspect 로 포인터 ray 의 홈-로컬 방향을 복원해
+        // dolly(포인터 방향 전진) + 부분 lookat + 스와이프 리드(NDC 속도) + FOV 를 만든다.
+        // ndc/ndcVel 은 호출부(Director)가 스프링-댐핑으로 스무딩한 값 — 리드 속도 = 스프링 속도.
         public static CameraPoseDelta FocusDelta(
-            Vector3 basePos, Quaternion homeRot, Vector3 targetPos, Vector3 velWorld,
+            Vector2 ndc, Vector2 ndcVel, float homeFovDeg, float aspect,
             float weight, float dolly, float fovDelta, float lookWeight,
             float leanPerSpeed, float leanMaxDeg)
         {
             if (weight <= 0f) return default;
 
-            // 포인터 ray→보드 타겟→카메라 회전이 매 프레임 되먹임되는 루프에서 lookWeight 는
-            // 수축 계수다: w<1 이어야 수렴(정지 포인터 최종 변위 = 오프셋×w/(1-w)), w=1 은 발산.
-            // SO Range 캡(0.5)과 별개로 순수 함수 차원에서도 방어 클램프.
+            // 되먹임은 사라졌지만 각 증폭 상한으로 유지(풀 lookat 은 배치 좌표감 파괴).
             lookWeight = Mathf.Clamp(lookWeight, 0f, 0.5f);
 
-            Vector3 toTarget = targetPos - basePos;
-            float dist = toTarget.magnitude;
-            if (dist < 0.01f) return default;
-            Vector3 dirLocal = Quaternion.Inverse(homeRot) * (toTarget / dist);
+            float tanV = Mathf.Tan(homeFovDeg * 0.5f * Mathf.Deg2Rad);
+            float tanH = tanV * Mathf.Max(0.01f, aspect);
+            Vector3 dirLocal = new Vector3(ndc.x * tanH, ndc.y * tanV, 1f).normalized;
 
-            // 부분 lookat: 홈 forward(+z) 대비 타겟 방향의 yaw/pitch 풀각 → lookWeight 블렌드.
+            // 부분 lookat: 홈 forward(+z) 대비 포인터 ray 방향의 yaw/pitch 풀각 → lookWeight 블렌드.
             // 주의: 이 분해(Ry·Rx)는 Compose 적용 순서(yaw 먼저)의 전치라 두 각이 동시에 클 때
             // O(yaw×pitch) 교차항 오차가 있다 — 부분 블렌드(≤0.5)에선 무시 가능, 풀 lookat 금지.
             float yawFull = Mathf.Atan2(dirLocal.x, dirLocal.z) * Mathf.Rad2Deg;
             float pitchFull = -Mathf.Asin(Mathf.Clamp(dirLocal.y, -1f, 1f)) * Mathf.Rad2Deg;
 
-            // 스와이프 리드: 속도를 홈 right/up 에 사영 → 이동 방향으로 시선이 앞서감.
-            Vector3 velLocal = Quaternion.Inverse(homeRot) * velWorld;
-            float leadYaw = Mathf.Clamp(velLocal.x * leanPerSpeed, -leanMaxDeg, leanMaxDeg);
-            float leadPitch = Mathf.Clamp(-velLocal.y * leanPerSpeed, -leanMaxDeg, leanMaxDeg);
+            // 스와이프 리드: NDC 속도(스프링 속도) → 이동 방향으로 시선이 앞서감. 정지 시 0.
+            float leadYaw = Mathf.Clamp(ndcVel.x * leanPerSpeed, -leanMaxDeg, leanMaxDeg);
+            float leadPitch = Mathf.Clamp(-ndcVel.y * leanPerSpeed, -leanMaxDeg, leanMaxDeg);
 
             return new CameraPoseDelta
             {

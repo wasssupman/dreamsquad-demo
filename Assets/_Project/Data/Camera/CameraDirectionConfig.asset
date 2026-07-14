@@ -64,20 +64,22 @@ MonoBehaviour:
   pulseSec: 0.22
   shakeMaxPosAmp: 0.04
   shakeMaxRotAmp: 0.12
-  shakeFreqX: 11
+  shakeFreqX: 13.93
   shakeFreqY: 8.3
   punctuationFadeSec: 0.15
-  fovMin: 30
+  fovMin: 41
   fovMax: 60
   focusDolly: 1
   focusFovDelta: -1
   focusLookWeight: 0.25
-  focusLeanPerSpeed: 0.35
+  focusLeanPerSpeed: 1.2
   focusLeanMaxDeg: 2.5
+  focusSpring: 60
+  focusDamping: 14
   focusFadeInSec: 0.25
   focusFadeOutSec: 0.35
-  breathPosAmp: 0.03
-  breathRotAmp: 0.06
+  breathPosAmp: 0.07
+  breathRotAmp: -0.6
   breathWaves:
   - periodSec: 7.3
     phase01: 0
