@@ -126,6 +126,9 @@ namespace Wassup.Bridge
         [SerializeField] private GameObject[] tilemapHiddenEnvironment;
         [Header("Stack Modifier Registry")]
         [SerializeField] private Wassup.Data.StackModifierSO[] stackModifierAuthoring;
+        [Header("Battle Rules")]
+        [Tooltip("같은 방어 유닛을 인접 배치했을 때의 공격력 시너지. 기본 비활성.")]
+        [SerializeField] private bool enableAdjacencySynergy;
 
         private ManualMapInput? _manualMapInput;
         private GeneratedMap _generatedMap;
@@ -2573,6 +2576,12 @@ namespace Wassup.Bridge
         // write gateway stays a single code path (Phase 2 decision #9).
         private void RecomputeSynergyFor(Vector2Int cell)
         {
+            if (!enableAdjacencySynergy)
+            {
+                NeutralizeActiveSynergy();
+                return;
+            }
+
             var cells = new Vector2Int[]
             {
                 cell,
@@ -2622,6 +2631,19 @@ namespace Wassup.Bridge
             // Peak tracking: count entities that have received a non-trivial synergy enqueue this session
             int currentCount = _synergyActivatedEntities.Count;
             if (currentCount > _synergyPeakCount) _synergyPeakCount = currentCount;
+        }
+
+        // 시너지 토글을 끈 뒤에도 이전 stackId=1 슬롯이 남지 않도록 중립값(+0)으로 refresh 한다.
+        // Effects 소유 ModifierStats 는 직접 쓰지 않고 기존 StatModifierApplyEvents 채널만 사용한다.
+        private void NeutralizeActiveSynergy()
+        {
+            if (_synergyActivatedEntities.Count == 0) return;
+            foreach (var binding in _defenderByTile.Values)
+            {
+                if (_em.Exists(binding.entity) && !_em.HasComponent<PendingDeployment>(binding.entity))
+                    EnqueueSynergyMul(binding.entity, 1f);
+            }
+            _synergyActivatedEntities.Clear();
         }
 
         // Unit 8: channel enqueue helpers — route legacy effect produces through StatModifier channel.
