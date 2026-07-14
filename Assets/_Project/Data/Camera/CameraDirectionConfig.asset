@@ -60,3 +60,12 @@ MonoBehaviour:
       m_PreInfinity: 0
       m_PostInfinity: 0
       m_RotationOrder: 0
+  pulseFovDelta: -2.5
+  pulseSec: 0.22
+  shakeMaxPosAmp: 0.04
+  shakeMaxRotAmp: 0.12
+  shakeFreqX: 11
+  shakeFreqY: 8.3
+  punctuationFadeSec: 0.15
+  fovMin: 30
+  fovMax: 60

@@ -62,16 +62,33 @@ namespace Wassup.Presentation
             };
         }
 
+        // unit 2 — 킬 스트릭 셰이크 델타: 위상(0~1 누적) 기반 sin 합성. 같은 위상 → 같은 값
+        // (결정론, seeded RNG 아님). weight = heat × 비행 감쇠 가중치.
+        public static CameraPoseDelta ShakeDelta(
+            float phaseX01, float phaseY01, float weight, float posAmp, float rotAmp)
+        {
+            float sx = Mathf.Sin(phaseX01 * 2f * Mathf.PI);
+            float sy = Mathf.Sin(phaseY01 * 2f * Mathf.PI);
+            return new CameraPoseDelta
+            {
+                localPos = new Vector3(sx * posAmp * weight, sy * posAmp * weight, 0f),
+                rollDeg = sx * rotAmp * weight,
+            };
+        }
+
         // 홈 포즈 ⊕ 델타 → 절대 포즈. 델타 항등이면 홈 그대로.
+        // FOV 는 [fovMin, fovMax] 클램프 — 페이즈 델타+펄스가 SO 튜닝만으로 위험 FOV 가
+        // 되지 않도록 코드 계약으로 차단 (spec README).
         public static void Compose(
             Vector3 homePos, Quaternion homeRot, float homeFov, in CameraPoseDelta delta,
+            float fovMin, float fovMax,
             out Vector3 pos, out Quaternion rot, out float fov)
         {
             pos = homePos + homeRot * delta.localPos;
             rot = Quaternion.AngleAxis(delta.rollDeg, homeRot * Vector3.forward)
                 * Quaternion.AngleAxis(delta.pitchDeg, homeRot * Vector3.right)
                 * homeRot;
-            fov = homeFov + delta.fovDelta;
+            fov = Mathf.Clamp(homeFov + delta.fovDelta, fovMin, fovMax);
         }
     }
 }

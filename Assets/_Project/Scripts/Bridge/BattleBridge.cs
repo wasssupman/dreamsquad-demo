@@ -2115,6 +2115,26 @@ namespace Wassup.Bridge
             _projectileViewPool.PlayCast(data.castPrefab, anchor, dir, data.castVfxLifetime);
         }
 
+        // camera-direction unit 2 — 구두점 호출용 Director 캐시 (DreamcatcherHandView 패턴).
+        // 미배선이면 1회 경고 + 이후 no-op (miss 캐시). 씬 참조 추가 없이 런타임 조회.
+        private Wassup.Presentation.CameraDirector _cameraDirector;
+        private bool _cameraDirectorMissWarned;
+
+        private Wassup.Presentation.CameraDirector EnsureCameraDirector()
+        {
+            if (_cameraDirector != null) return _cameraDirector;
+            if (_cameraDirectorMissWarned) return null;
+            var cam = Camera.main;
+            if (cam == null) return null;
+            _cameraDirector = cam.GetComponent<Wassup.Presentation.CameraDirector>();
+            if (_cameraDirector == null)
+            {
+                Debug.LogWarning("[BattleBridge] CameraDirector 미배선 — 구두점 연출 생략.", this);
+                _cameraDirectorMissWarned = true;
+            }
+            return _cameraDirector;
+        }
+
         // Combat→Presentation hit-VFX channel drain. ProjectileHitSystem enqueues
         // one event per direct-target impact. Task 0 keeps this as a no-op
         // dequeue so the queue does not back up; task 3 connects it to the
@@ -2133,6 +2153,11 @@ namespace Wassup.Bridge
                         data.visualHeightOffset, data.hitVfxScale);
                 else if (evt.payload == PayloadKind.TileAoe && evt.radiusWorld > 0f && vfxSpawner != null)
                     vfxSpawner.SpawnMeteorBurst(new Vector3(evt.position.x, 0f, evt.position.z), evt.radiusWorld);
+
+                // camera-direction unit 2 — 헤비(광역) 착탄 구두점: 줌 펄스. 시각 라우팅
+                // (hitPrefab 유무)과 무관하게 TileAoe 착탄이면 발동. additive 전용 — 카메라 탈취 없음.
+                if (evt.payload == PayloadKind.TileAoe && evt.radiusWorld > 0f)
+                    EnsureCameraDirector()?.ZoomPulse();
 
                 // 텔레그래프 해제는 visual 라우팅과 분리 — source 엔티티 정확 판별
                 // (unit 9: meteor 에 hitPrefab 이 생겨도, artillery 착탄이 남의

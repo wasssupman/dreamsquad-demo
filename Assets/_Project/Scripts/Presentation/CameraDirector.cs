@@ -29,6 +29,17 @@ namespace Wassup.Presentation
         private float _kickStrength;
         private bool _settled; // 전 채널 비활성 상태에서 정착 포즈를 이미 써뒀는가 (아이들 프레임 no-op)
 
+        // unit 2 — 구두점 채널 (additive 전용, 카메라 탈취 없음).
+        // 줌 펄스: max-hold 재트리거(진폭 max, 누적 없음). 셰이크: ScoreHudView 가 매 프레임
+        // 밀어주는 킬 스트릭 heat 비례(지연 ≤1프레임 허용 계약). 비행 중 가중치 0 페이드.
+        private float _pulseRemaining;
+        private float _pulseDuration;
+        private float _pulseStrength;
+        private float _shakeHeat;
+        private float _shakePhaseX;
+        private float _shakePhaseY;
+        private float _punctWeight = 1f;
+
         // unit 1 — 페이즈 비행 채널. _flightDelta 가 현재(정착 또는 보간 중) 페이즈 델타.
         // 미등록 페이즈 = hold(현재 델타 유지), 최초 적용만 스냅 (spec 계약).
         private CameraPoseDelta _flightDelta;
@@ -121,19 +132,44 @@ namespace Wassup.Presentation
             _kickRemaining = _kickDuration;
         }
 
+        // unit 2 — 헤비 임팩트 줌 펄스. 연타 시 envelope 누적 없이 max 유지(과누적 방지):
+        // 진폭은 현재 유효값과 새 값의 max, 타이머는 재시작. pulseSec 0 = 펄스 끔.
+        public void ZoomPulse(float strength = 1f)
+        {
+            if (config == null) return;
+            float current = _pulseRemaining > 0f ? _pulseStrength : 0f;
+            _pulseStrength = Mathf.Max(current, Mathf.Clamp01(strength));
+            _pulseDuration = config.pulseSec;
+            _pulseRemaining = _pulseDuration;
+        }
+
+        // unit 2 — 킬 스트릭 heat(0~1). 소유는 ScoreHudView(산정·감쇠) — 여기는 미러만.
+        public void SetShakeHeat(float heat01)
+        {
+            _shakeHeat = Mathf.Clamp01(heat01);
+        }
+
         private void LateUpdate()
         {
             if (config == null) return;
 
-            // 채널 활성 판정. punctuation/ambient 채널은 후속 유닛에서 이 지점에 OR 된다.
+            // 채널 활성 판정. ambient 채널은 unit 3 에서 이 지점에 OR 된다.
             bool flying = _flightDuration > 0f && _flightElapsed < _flightDuration;
-            bool anyActive = _kickRemaining > 0f || flying;
+            bool punctInput = _pulseRemaining > 0f || _shakeHeat > 0.0001f;
+            // 비행 중 구두점 가중치 0 페이드 (비행이 최우선). 페이드 진행 자체도 활성으로 취급.
+            float punctTarget = flying ? 0f : 1f;
+            bool punctFading = !Mathf.Approximately(_punctWeight, punctTarget);
+            bool punctActive = punctInput && (_punctWeight > 0f || punctFading);
+            bool anyActive = _kickRemaining > 0f || flying || punctActive;
 
             // 아이들: 정착 포즈(홈⊕현재 페이즈 델타)를 1회만 쓰고 이후 프레임은 no-op —
             // 매 프레임 transform/FOV 재기입(하이어라키 dirty + 네이티브 세터)을 모바일에서
             // 아낀다. Director 가 유일한 쓰기 주체라 써둔 포즈가 그대로 유지된다.
             if (!anyActive)
             {
+                // 아이들 진입 시 구두점 가중치는 목표값으로 스냅 — 비행 직후 0에 얼어붙어
+                // 다음 펄스가 램프인과 겹쳐 약해지는 문제 방지(리뷰 반영). 입력 없으니 비가시.
+                _punctWeight = punctTarget;
                 if (_settled) return;
                 ComposeAndWrite(_flightDelta);
                 _settled = true;
@@ -155,6 +191,41 @@ namespace Wassup.Presentation
 
             var delta = _flightDelta;
 
+            // 구두점 채널 — 가중치 페이드 갱신 후 펄스/셰이크 합산.
+            _punctWeight = config.punctuationFadeSec <= 0f
+                ? punctTarget
+                : Mathf.MoveTowards(_punctWeight, punctTarget,
+                    Time.unscaledDeltaTime / config.punctuationFadeSec);
+
+            // 펄스 타이머는 가중치와 무관하게 실시간 감쇠 — 비행 중 얼렸다가 비행 후
+            // 뒤늦게 재생되는 "지연 펄스" 방지(리뷰 반영). 억제는 가중치(시각)가 담당.
+            float pulseEnv = 0f;
+            if (_pulseRemaining > 0f)
+            {
+                _pulseRemaining -= Time.unscaledDeltaTime;
+                pulseEnv = CameraComposeMath.KickEnvelope(_pulseRemaining, _pulseDuration);
+            }
+
+            if (_punctWeight > 0f)
+            {
+                if (pulseEnv > 0f)
+                {
+                    delta = CameraComposeMath.Add(delta, new CameraPoseDelta
+                    {
+                        fovDelta = config.pulseFovDelta * _pulseStrength * pulseEnv * _punctWeight,
+                    });
+                }
+                if (_shakeHeat > 0.0001f)
+                {
+                    float dt = Time.unscaledDeltaTime;
+                    _shakePhaseX = Mathf.Repeat(_shakePhaseX + config.shakeFreqX * dt, 1f);
+                    _shakePhaseY = Mathf.Repeat(_shakePhaseY + config.shakeFreqY * dt, 1f);
+                    delta = CameraComposeMath.Add(delta, CameraComposeMath.ShakeDelta(
+                        _shakePhaseX, _shakePhaseY, _shakeHeat * _punctWeight,
+                        config.shakeMaxPosAmp, config.shakeMaxRotAmp));
+                }
+            }
+
             // 킥 채널.
             if (_kickRemaining > 0f)
             {
@@ -170,6 +241,7 @@ namespace Wassup.Presentation
         private void ComposeAndWrite(in CameraPoseDelta delta)
         {
             CameraComposeMath.Compose(_homePos, _homeRot, _homeFov, delta,
+                config.fovMin, config.fovMax,
                 out var pos, out var rot, out var fov);
             transform.SetPositionAndRotation(pos, rot);
             _cam.fieldOfView = fov;
@@ -182,6 +254,8 @@ namespace Wassup.Presentation
             transform.SetPositionAndRotation(_homePos, _homeRot);
             _cam.fieldOfView = _homeFov;
             _kickRemaining = 0f;
+            _pulseRemaining = 0f;
+            _shakeHeat = 0f;
             _settled = false;
         }
     }

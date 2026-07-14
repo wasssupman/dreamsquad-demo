@@ -8,12 +8,14 @@ public class CameraComposeMathTests
     private static readonly Vector3 HomePos = new Vector3(3f, 12f, -8f);
     private static readonly Quaternion HomeRot = Quaternion.Euler(55f, 0f, 0f);
     private const float HomeFov = 40f;
+    private const float FovMin = 30f;
+    private const float FovMax = 60f;
 
     [Test]
     public void Compose_IdentityDelta_ReturnsHomeExactly()
     {
         CameraComposeMath.Compose(HomePos, HomeRot, HomeFov, CameraPoseDelta.Identity,
-            out var pos, out var rot, out var fov);
+            FovMin, FovMax, out var pos, out var rot, out var fov);
         Assert.That(pos, Is.EqualTo(HomePos));
         Assert.That(Quaternion.Angle(rot, HomeRot), Is.LessThan(1e-4f));
         Assert.That(fov, Is.EqualTo(HomeFov));
@@ -24,7 +26,7 @@ public class CameraComposeMathTests
     {
         var delta = new CameraPoseDelta { localPos = new Vector3(0f, -1f, 0f) };
         CameraComposeMath.Compose(HomePos, HomeRot, HomeFov, delta,
-            out var pos, out _, out _);
+            FovMin, FovMax, out var pos, out _, out _);
         Vector3 expected = HomePos + HomeRot * new Vector3(0f, -1f, 0f);
         Assert.That((pos - expected).magnitude, Is.LessThan(1e-5f));
     }
@@ -34,8 +36,19 @@ public class CameraComposeMathTests
     {
         var delta = new CameraPoseDelta { fovDelta = -3.5f };
         CameraComposeMath.Compose(HomePos, HomeRot, HomeFov, delta,
-            out _, out _, out var fov);
+            FovMin, FovMax, out _, out _, out var fov);
         Assert.That(fov, Is.EqualTo(HomeFov - 3.5f).Within(1e-5f));
+    }
+
+    [Test]
+    public void Compose_FovClamped_ToConfigRange()
+    {
+        CameraComposeMath.Compose(HomePos, HomeRot, HomeFov,
+            new CameraPoseDelta { fovDelta = -45f }, FovMin, FovMax, out _, out _, out var low);
+        CameraComposeMath.Compose(HomePos, HomeRot, HomeFov,
+            new CameraPoseDelta { fovDelta = +45f }, FovMin, FovMax, out _, out _, out var high);
+        Assert.That(low, Is.EqualTo(FovMin));
+        Assert.That(high, Is.EqualTo(FovMax));
     }
 
     [Test]
@@ -43,9 +56,31 @@ public class CameraComposeMathTests
     {
         var delta = new CameraPoseDelta { pitchDeg = 10f };
         CameraComposeMath.Compose(HomePos, HomeRot, HomeFov, delta,
-            out _, out var rot, out _);
+            FovMin, FovMax, out _, out var rot, out _);
         var expected = Quaternion.AngleAxis(10f, HomeRot * Vector3.right) * HomeRot;
         Assert.That(Quaternion.Angle(rot, expected), Is.LessThan(1e-4f));
+    }
+
+    [Test]
+    public void ShakeDelta_Deterministic_SameInputsSameOutput()
+    {
+        var a = CameraComposeMath.ShakeDelta(0.37f, 0.81f, 0.6f, 0.04f, 0.12f);
+        var b = CameraComposeMath.ShakeDelta(0.37f, 0.81f, 0.6f, 0.04f, 0.12f);
+        Assert.That(a.localPos, Is.EqualTo(b.localPos));
+        Assert.That(a.rollDeg, Is.EqualTo(b.rollDeg));
+    }
+
+    [Test]
+    public void ShakeDelta_ScalesWithWeight_AndZeroWeightIsIdentity()
+    {
+        var half = CameraComposeMath.ShakeDelta(0.2f, 0.7f, 0.5f, 0.04f, 0.12f);
+        var full = CameraComposeMath.ShakeDelta(0.2f, 0.7f, 1.0f, 0.04f, 0.12f);
+        var none = CameraComposeMath.ShakeDelta(0.2f, 0.7f, 0f, 0.04f, 0.12f);
+        Assert.That(half.localPos.x, Is.EqualTo(full.localPos.x * 0.5f).Within(1e-6f));
+        Assert.That(none.localPos, Is.EqualTo(Vector3.zero));
+        Assert.That(none.rollDeg, Is.EqualTo(0f));
+        Assert.That(none.pitchDeg, Is.EqualTo(0f));
+        Assert.That(none.fovDelta, Is.EqualTo(0f));
     }
 
     [Test]

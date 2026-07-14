@@ -36,5 +36,25 @@ namespace Wassup.Data
         [Header("페이즈 전환 비행 (unit 1)")]
         [Tooltip("페이즈별 포즈 델타. 미등록 페이즈 진입은 현재 델타 유지(hold).")]
         public CameraPhasePose[] phasePoses = System.Array.Empty<CameraPhasePose>();
+
+        [Header("배틀 구두점 (unit 2) — additive 전용, 카메라 탈취 없음")]
+        [Tooltip("헤비 임팩트(광역 착탄) 줌 펄스 FOV 델타(도). 음수 = 줌인.")]
+        public float pulseFovDelta = -2.5f;
+        [Tooltip("줌 펄스 시간(초). 0 = 펄스 끔.")]
+        public float pulseSec = 0.22f;
+        [Tooltip("킬 스트릭 셰이크 최대 위치 진폭(월드 유닛, heat=1 기준).")]
+        public float shakeMaxPosAmp = 0.04f;
+        [Tooltip("킬 스트릭 셰이크 최대 roll 진폭(도, heat=1 기준).")]
+        public float shakeMaxRotAmp = 0.12f;
+        [Tooltip("셰이크 가로 주파수(Hz).")]
+        public float shakeFreqX = 11f;
+        [Tooltip("셰이크 세로 주파수(Hz). X 와 비정수비로 두면 패턴 반복이 덜 보인다.")]
+        public float shakeFreqY = 8.3f;
+        [Tooltip("페이즈 비행 중 구두점 가중치 0 페이드 시간(초).")]
+        public float punctuationFadeSec = 0.15f;
+
+        [Header("최종 FOV 클램프 (spec README 계약 — SO 튜닝만으로 위험 FOV 차단)")]
+        public float fovMin = 30f;
+        public float fovMax = 60f;
     }
 }
