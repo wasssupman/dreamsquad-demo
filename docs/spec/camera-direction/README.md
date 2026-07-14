@@ -1,6 +1,6 @@
 # camera-direction — 연출 카메라 시스템
 
-상태: 완료 2026-07-14 (unit 0~3: d769bac3/c86eff33/fb078a3f/2fe2e000, unit 5 rev3: 71e2e8d7, unit 6~7: 이번 마무리 커밋; 사용자 Play 확인 완료)
+상태: 완료 2026-07-14 (unit 0~3: d769bac3/c86eff33/fb078a3f/2fe2e000, unit 5 rev3: 71e2e8d7, unit 6~7: 5c4e2d8e; 사용자 Play 확인 완료)
 
 ## 목표
 
