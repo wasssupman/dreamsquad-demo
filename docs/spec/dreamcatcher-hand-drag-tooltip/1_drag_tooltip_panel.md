@@ -16,10 +16,15 @@
 
 - `BuildCanvas()` 에서 HandPanel 형제로 툴팁 루트 생성(같은 `SafeAreaRoot` 직속, 기본
   비활성. UnitStrip 의 X-회전 flip 대상이 아니도록 Strip/HandPanel 의 자식 금지):
-  - 앵커 하단 중앙, pivot (0.5, 0). Y = HandPanel 상단 + 여백 (현재 `BattleHudTrayConfig`
-    기준 anchoredY 32 + 높이 232 — 하드코딩 말고 config/panel rect 에서 유도). 폭은
-    손패보다 좁게(≈ 420~520), 높이는 내용 기반(TMP preferred height) 또는 고정 상한.
-  - 반투명 어두운 배경 Image + 헤더 TMP(카드명 + 코스트) + 본문 TMP(`DreamcatcherCardText.Body`).
+  - **rev 1 (사용자 결정)**: 하단 중앙 고정이 아니라 **선택 카드 우측** — pivot (0,0),
+    Show 시 슬롯 homePos 기준 x = 카드 우측 모서리(seated 1.08 확대 여유) + 간격,
+    y = 카드 밑단 + rise. 우측이 safe area 를 넘으면 좌측 플립. 렌더는 패널 뒤
+    sibling(이웃 카드 위). 카드 idle bob 문법의 플로팅 둥실거림(base 가산 sin,
+    누적 금지). 폭 고정(≈ 480), 높이는 내용 기반(TMP preferred height).
+  - **rev 2 (사용자 피드백)**: 배경은 **불투명** 다크 네이비 + 골드 보더 + 하단 그림자.
+    카드 위에 렌더되는 패널이라 반투명은 카드 아트가 비쳐 시인성을 죽인다 — 부양감은
+    알파가 아닌 bob + 그림자 담당(HS/StS 툴팁 관례). 헤더 TMP(카드명 + 코스트) +
+    본문 TMP(`DreamcatcherCardText.Body`).
   - **모든 Graphic 의 `raycastTarget = false`** (배경 포함). CanvasGroup 으로 페이드.
 - `public void ShowDragTooltip(int slotIndex)` — 슬롯의 `card` 로 헤더/본문 채움.
   코스트는 `Controller.CostOf(slot.card)` (기존 슬롯 코스트 렌더와 동일 정책, L661~667).

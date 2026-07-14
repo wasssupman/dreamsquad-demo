@@ -71,6 +71,14 @@ namespace Wassup.UI
         // rev 4 — 카드 드래그 중 호버된 수비수의 스파인 틴트(포커스 대상 시각화).
         // rev 4-4 — 붉은색 계열로 시인성 상향(사용자 확정). 유일한 포커스 표시(타일 하이라이트 제거).
         [SerializeField] private Color unitHoverTint = new Color(1f, 0.28f, 0.22f, 1f);
+        // hand-drag-tooltip unit 1 — 드래그 시작 시 성능 툴팁.
+        // rev 1 (사용자 결정) — 선택 카드 우측에 붙고 카드처럼 둥실거리는 플로팅.
+        [SerializeField] private float tooltipWidth = 480f;
+        [SerializeField] private float tooltipGap = 18f;   // 카드 우측 모서리와의 간격
+        [SerializeField] private float tooltipRise = 90f;  // 카드 밑단 대비 띄우는 높이 (rev 2-1 사용자 +50)
+        [SerializeField] private float tooltipBobY = 6f;   // 플로팅 bob 진폭(카드 idle 문법)
+        [SerializeField] private float tooltipBobX = 3f;
+        [SerializeField] private float tooltipBobFreq = 1.2f;
 
         public enum HandState { UnitStrip, Hand }
         public HandState State { get; private set; } = HandState.UnitStrip;
@@ -203,6 +211,17 @@ namespace Wassup.UI
         // Recovered-refresh deferral: rebinding slots mid-drag would snap the
         // floating card home and swap its entryId under the pointer.
         private bool _refreshQueued;
+        // hand-drag-tooltip unit 1 — 성능 툴팁 위젯(패널 형제, 전 Graphic 비레이캐스트).
+        private GameObject _tooltipRoot;
+        private RectTransform _tooltipRect;
+        private CanvasGroup _tooltipGroup;
+        private TextMeshProUGUI _tooltipHeader;
+        private TextMeshProUGUI _tooltipBody;
+        private bool _tooltipVisible;
+        private Vector2 _tooltipBasePos; // rev 1 — bob 은 base 에 가산(누적 금지)
+        private const float TooltipLerpK = 16f;   // 페이드/스케일 추종(스프링 감성)
+        private const float TooltipPad = 14f;
+        private const float TooltipHiddenScale = 0.92f;
 
         private void Awake()
         {
@@ -246,6 +265,7 @@ namespace Wassup.UI
 
         private void Update()
         {
+            TickTooltip(); // hand-drag-tooltip unit 1 — 상태 무관(퇴장 페이드 완주)
             if (State != HandState.Hand) return;
             SpringSlots(); // hand-deal-in unit 0 — 슬롯 target 으로 매프레임 추종
             // ESC = cancel rule (spec unit 7 §6): drop any drag/portal-aim, no spend.
@@ -452,6 +472,8 @@ namespace Wassup.UI
             State = HandState.UnitStrip;
             StopDeal();
             CancelAllCardInteraction(); // drop any in-flight drag (no spend)
+            // hand-drag-tooltip unit 1 — 닫힘 계열은 즉시 숨김(침강 중 형제 잔류 방지).
+            HideDragTooltip(immediate: true);
             _focusIndex = -1;
             _slomoLease.Dispose(); // 슬로모 즉시 해제(연출은 realtime)
             if (costDisplay != null) costDisplay.SetSuppressed(false);
@@ -464,6 +486,7 @@ namespace Wassup.UI
         {
             // critic H2 — drop any in-flight drag/pending first (no spend).
             CancelAllCardInteraction();
+            HideDragTooltip(immediate: true); // hand-drag-tooltip unit 1
             StopDeal(); // hand-deal-in — 잔류 트윈/late-land 방지
             _slomoLease.Dispose();
             if (_flip != null) { StopCoroutine(_flip); _flip = null; }
@@ -744,6 +767,146 @@ namespace Wassup.UI
 
             // rev 4-6 — 타겟팅 화살표는 패널 뒤 sibling 으로 붙여 카드 위에 그려진다.
             _targetArrow = DreamcatcherTargetArrow.Create(transform);
+
+            BuildTooltip(roots.SafeAreaRoot);
+        }
+
+        // ── drag tooltip (hand-drag-tooltip unit 1, rev 1) ───────────────────
+        // 선택 카드 우측에 붙는 플로팅 성능 툴팁. 패널 뒤 sibling → 이웃 카드
+        // 위로 그려진다(우측 배치라 카드와 겹침이 정상). 위치는 Show 시 슬롯
+        // 기준으로 계산, 우측 공간 부족이면 좌측 플립. 전 Graphic
+        // raycastTarget=false (드래그/조준 판정 비간섭).
+
+        private void BuildTooltip(Transform parent)
+        {
+            _tooltipRoot = new GameObject("DragTooltip", typeof(RectTransform), typeof(Image), typeof(CanvasGroup));
+            _tooltipRoot.transform.SetParent(parent, false);
+            _tooltipRect = (RectTransform)_tooltipRoot.transform;
+            _tooltipRect.anchorMin = new Vector2(0.5f, 0f);
+            _tooltipRect.anchorMax = new Vector2(0.5f, 0f);
+            _tooltipRect.pivot = new Vector2(0f, 0f); // 좌하단 — 카드 우측 모서리에 붙임
+
+            var bg = _tooltipRoot.GetComponent<Image>();
+            // rev 2 (사용자 피드백) — 카드 위에 뜨는 패널이라 불투명 필수(반투명은
+            // 카드 아트가 비쳐 텍스트 대비를 죽인다). 부양감은 알파가 아니라
+            // bob + 그림자가 담당(HS/StS 툴팁 관례).
+            var fill = new Color(0.07f, 0.06f, 0.13f, 1f);
+            if (trayConfig != null)
+            {
+                bg.sprite = UiRoundedSprite.Make(16f, 2f, fill, trayConfig.fallbackBorder);
+                bg.type = Image.Type.Sliced;
+                bg.color = Color.white;
+            }
+            else
+            {
+                bg.color = fill;
+            }
+            bg.raycastTarget = false;
+            var shadow = _tooltipRoot.AddComponent<Shadow>();
+            shadow.effectDistance = new Vector2(0f, -5f);
+            shadow.effectColor = new Color(0f, 0f, 0f, 0.45f);
+            _tooltipGroup = _tooltipRoot.GetComponent<CanvasGroup>();
+            _tooltipGroup.alpha = 0f;
+            _tooltipGroup.blocksRaycasts = false;
+            _tooltipGroup.interactable = false;
+
+            _tooltipHeader = BuildTooltipLabel("Header", 22f, TextAlignmentOptions.Left);
+            _tooltipBody = BuildTooltipLabel("Body", 19f, TextAlignmentOptions.TopLeft);
+            _tooltipRoot.SetActive(false);
+        }
+
+        private TextMeshProUGUI BuildTooltipLabel(string name, float size, TextAlignmentOptions align)
+        {
+            var go = new GameObject(name, typeof(RectTransform));
+            go.transform.SetParent(_tooltipRoot.transform, false);
+            var rt = (RectTransform)go.transform;
+            rt.anchorMin = new Vector2(0f, 1f);
+            rt.anchorMax = new Vector2(1f, 1f);
+            rt.pivot = new Vector2(0.5f, 1f);
+            rt.offsetMin = new Vector2(TooltipPad, 0f);
+            rt.offsetMax = new Vector2(-TooltipPad, 0f);
+            var tmp = go.AddComponent<TextMeshProUGUI>();
+            if (labelFont != null) tmp.font = labelFont;
+            tmp.fontSize = size;
+            tmp.color = Color.white;
+            tmp.alignment = align;
+            tmp.raycastTarget = false;
+            return tmp;
+        }
+
+        // 드래그 시작 훅(DreamcatcherCardDragSlot.OnBeginDrag). 본문은 공용 포맷터,
+        // 코스트는 기존 슬롯 배지와 동일 정책(Controller.CostOf).
+        public void ShowDragTooltip(int slotIndex)
+        {
+            if (_tooltipRoot == null || slotIndex < 0 || slotIndex >= _slots.Count) return;
+            var card = _slots[slotIndex].card;
+            if (card == null || handController == null) return;
+
+            string title = string.IsNullOrEmpty(card.displayName) ? card.id : card.displayName;
+            _tooltipHeader.text = $"<b>{title}</b>  <color=#C9A6FF>{handController.CostOf(card)}</color>";
+            _tooltipBody.text = DreamcatcherCardText.Body(card);
+
+            // 내용 기반 세로 크기(TMP preferred). 폭은 고정, 라벨은 top-anchored 스택.
+            float innerW = tooltipWidth - TooltipPad * 2f;
+            float headerH = _tooltipHeader.GetPreferredValues(_tooltipHeader.text, innerW, 0f).y;
+            float bodyH = _tooltipBody.GetPreferredValues(_tooltipBody.text, innerW, 0f).y;
+            var hrt = (RectTransform)_tooltipHeader.transform;
+            hrt.anchoredPosition = new Vector2(0f, -TooltipPad);
+            hrt.sizeDelta = new Vector2(hrt.sizeDelta.x, headerH);
+            var brt = (RectTransform)_tooltipBody.transform;
+            float bodyTop = TooltipPad + headerH + 8f;
+            brt.anchoredPosition = new Vector2(0f, -bodyTop);
+            brt.sizeDelta = new Vector2(brt.sizeDelta.x, bodyH);
+            _tooltipRect.sizeDelta = new Vector2(tooltipWidth, bodyTop + bodyH + TooltipPad);
+
+            // rev 1 — 선택 카드 우측 모서리에 붙임(seated 1.08 확대 여유 포함).
+            // 우측이 safe area 를 넘으면 좌측 플립. 슬롯 좌표는 패널 기준(중앙축
+            // 동일), 높이는 카드 밑단 + rise.
+            var slot = _slots[slotIndex];
+            float halfCard = 172f * 0.54f + tooltipGap; // cardW/2 * 1.08
+            float x = slot.homePos.x + halfCard;
+            float safeHalf = ((RectTransform)_tooltipRect.parent).rect.width * 0.5f;
+            if (x + tooltipWidth > safeHalf - 8f)
+                x = slot.homePos.x - halfCard - tooltipWidth;
+            float panelY = trayConfig != null ? trayConfig.anchoredY : 32f;
+            _tooltipBasePos = new Vector2(x, panelY + slot.homePos.y + tooltipRise);
+            _tooltipRect.anchoredPosition = _tooltipBasePos;
+
+            _tooltipVisible = true;
+            if (!_tooltipRoot.activeSelf)
+            {
+                _tooltipGroup.alpha = 0f;
+                _tooltipRect.localScale = new Vector3(TooltipHiddenScale, TooltipHiddenScale, 1f);
+                _tooltipRoot.SetActive(true);
+            }
+        }
+
+        // 멱등 — EndInteraction 은 비드래그 상황(OnDisable 등)에서도 불린다.
+        // 커밋/취소는 페이드 아웃, 닫힘 계열(Close/ForceClose)은 immediate.
+        public void HideDragTooltip(bool immediate = false)
+        {
+            if (_tooltipRoot == null) return;
+            _tooltipVisible = false;
+            if (immediate)
+            {
+                _tooltipGroup.alpha = 0f;
+                _tooltipRoot.SetActive(false);
+            }
+        }
+
+        private void TickTooltip()
+        {
+            if (_tooltipRoot == null || !_tooltipRoot.activeSelf) return;
+            float a = 1f - Mathf.Exp(-TooltipLerpK * Time.deltaTime);
+            _tooltipGroup.alpha = Mathf.Lerp(_tooltipGroup.alpha, _tooltipVisible ? 1f : 0f, a);
+            float s = Mathf.Lerp(_tooltipRect.localScale.x, _tooltipVisible ? 1f : TooltipHiddenScale, a);
+            _tooltipRect.localScale = new Vector3(s, s, 1f);
+            // rev 1 — 카드 idle bob 문법의 둥실거림(base 가산, 누적 없음).
+            float t = Time.time;
+            _tooltipRect.anchoredPosition = _tooltipBasePos + new Vector2(
+                Mathf.Sin(t * tooltipBobFreq * 0.7f) * tooltipBobX,
+                Mathf.Sin(t * tooltipBobFreq) * tooltipBobY);
+            if (!_tooltipVisible && _tooltipGroup.alpha < 0.02f) _tooltipRoot.SetActive(false);
         }
 
         private void EnsureSlots(int count)

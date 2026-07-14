@@ -99,6 +99,7 @@ namespace Wassup.UI
                 GameManager.Instance.IsAiming = true;
                 GameManager.Instance.SelectedDefender = null; // last-pressed-wins
             }
+            _view.ShowDragTooltip(_index); // hand-drag-tooltip unit 1 — 성능 툴팁
             UpdateDragVisual(eventData.position);
         }
 
@@ -265,6 +266,9 @@ namespace Wassup.UI
                 if (GameManager.Instance != null) GameManager.Instance.IsAiming = false;
             }
             _mode = AimMode.None;
+            // hand-drag-tooltip unit 1 — 종료 깔때기에서 숨김(포탈 첫 탭은 종료가
+            // 아니라 조준 전환이므로 여기 안 옴 → 조준 중 유지 계약).
+            if (_view != null) _view.HideDragTooltip();
         }
 
         // ── aim visuals ──────────────────────────────────────────────────────
