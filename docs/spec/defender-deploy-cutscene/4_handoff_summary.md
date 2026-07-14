@@ -2,7 +2,7 @@
 
 ## Commit
 
-`<채워질 예정>` — feat(defender-deploy-cutscene): 드래그 배치 시 좌상단 유닛 컷신 (Ranger·Archer)
+`9e5221fc` — feat(defender-deploy-cutscene): 드래그 배치 시 좌상단 유닛 컷신 (Ranger·Archer)
 
 ## Implemented
 
