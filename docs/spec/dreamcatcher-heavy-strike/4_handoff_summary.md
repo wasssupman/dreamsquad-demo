@@ -30,6 +30,7 @@
 - compile: `dotnet build` 런타임/EditMode asmdef 0오류, Unity 콘솔 0 error.
 - EditMode: `DcTriggerTests` 에 WouldFire↔Tick 일치 2케이스(units 0·1 EditMode 런 TestResults 저장 확인).
 - **Play + 로그(2026-07-14)**: 배스티온(근접) #1~9=31.0 평타 / #10=62.0 정확히 ×2.00(부착 후 5회째). 전체 로그 유일 exact-2.0×, 무회귀. → 근접 강공 확증.
+- **시트 미러링(2026-07-14)**: DcCards + DcMechanics(slot 0)에 upsert 프롬프트로 반영, 라이브 시트 재fetch 대조 → SO↔시트 값 완전 일치, 카드 총 32장(+1)·중복 없음. (기존 catalog-only 방침에서 이 카드는 시트 미러링까지 진행.)
 
 ## Notes
 

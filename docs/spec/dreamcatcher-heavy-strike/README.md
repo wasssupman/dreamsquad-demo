@@ -28,7 +28,7 @@
 | mechanics | `AttackN(period=5) × <신규 payload>` 1슬롯, `magnitude = 2.0` |
 | attackMods | 빈 배열 |
 | 전용 아트 | `dreamcatcher_card_23.png` (다음 번호, 없으면 placeholder) |
-| 시트 행 | 없음 (catalog-only — content-2 / kill-and-threshold 선례) |
+| 시트 행 | 있음 — DcCards + DcMechanics(slot 0) 미러링 (2026-07-14, SO↔시트 값 일치 확인) |
 | 기본 덱 | 변경하지 않음 |
 
 ### authoring (예정)
@@ -85,7 +85,7 @@ mechanics[0]
 - 강공 전용 타격 VFX/SFX/화면 흔들림 등 연출 — 이번엔 데미지 배율만.
 - Squad(축 전체) 주기 강공 — 카운터가 유닛별이라 Squad 스코프는 대규모 재설계. 범위 밖.
 - 랜덤 확률 크리티컬 시스템(스탯 기반) — 결정론적 주기 강공과 다른 축. 범위 밖.
-- 시트 미러링(강공 payload 컬럼) — `dreamcatcher-sheet-sync` 확장(후속).
+- ~~시트 미러링(강공 payload 컬럼)~~ 완료 2026-07-14 — DcCards + DcMechanics 업서트, SO↔시트 값 일치 확인.
 - 배율/주기 밸런스 재조정, 기본 덱 자동 편입, 보유/해금 경제.
 
 ## 착수 리스크
