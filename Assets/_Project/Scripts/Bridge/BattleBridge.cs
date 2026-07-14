@@ -778,6 +778,9 @@ namespace Wassup.Bridge
 
             // tilted-billboard — 런타임 카메라 자동 조정 비활성. 씬에 수동 배치한 카메라를 그대로 사용한다.
             // (퍼스펙티브 전환 튜닝 중: 카메라 pos/rot/fov 를 씬에서 직접 잡고 덮어쓰지 않도록 주석 처리)
+            // camera-direction unit 0 이후 재활성 금지: 카메라 포즈는 CameraDirector 가 매 프레임
+            // 절대값으로 소유한다 — 이 호출을 되살려도 다음 LateUpdate 에 홈 포즈로 되돌려져 무효.
+            // 페이즈별 카메라가 필요하면 CameraDirector 의 페이즈 포즈 델타(spec unit 1)로 구현한다.
             // ApplyTilemapCameraPreset(); // 매 빌드 idempotent 재적용
 
             BuildFlowField();
@@ -3013,6 +3016,8 @@ namespace Wassup.Bridge
 
         // tilemap-view-backend unit 4 — 모드별 ortho 카메라 프리셋 적용. gridSize+tileSize 로 orthographicSize 계산.
         // 매 맵 빌드마다 호출 — 프리셋+gridSize 에서 결정론적이라 RebuildDraftMap 재진입에도 idempotent.
+        // [은퇴 — camera-direction unit 0] 호출부 없음. 카메라 포즈는 CameraDirector 가 유일 소유 —
+        // 재호출해도 다음 LateUpdate 에 덮여 무효. framing 산식(보드 fit) 참고용으로만 보존.
         private void ApplyTilemapCameraPreset()
         {
             var preset = boardViewMode == Wassup.Core.BoardViewMode.TilemapIso
