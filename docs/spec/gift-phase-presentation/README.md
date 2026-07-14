@@ -29,7 +29,7 @@
 | 1 | `1_holo_frame_and_widget.md` | 위젯 | 홀로 프레임 머티리얼(금/적, DraftCardFoil 재사용) + `GiftCardWidget` 분리 |
 | 2 | `2_choreography.md` | 안무 | `GiftPhaseView` 시퀀스 재작성 + `GiftConfig` 확장 + default asset |
 | 3 | `3_play_validation.md` | 검증 | Lucid/Rim 양쪽 포커스 Play 육안 확인 + 튜닝 기록 |
-| 5 | `5_tap_skip.md` | 추가 | 연출 중 터치 스킵 — 연출만 끊고 즉시 배치 진입 (덱 순서는 데이터 확정 선행) |
+| 5 | `5_tap_skip.md` | 추가 | 연출 중 터치 스킵(2단) — 리빌 전 탭은 리빌 포커스로, 이후 탭은 배치로 (덱 순서는 데이터 확정 선행) |
 
 ## Feature-wide 계약
 

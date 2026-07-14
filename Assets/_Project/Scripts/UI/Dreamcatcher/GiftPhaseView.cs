@@ -50,6 +50,15 @@ namespace Wassup.UI
         private float _seqStartTime;
         private bool _built;
 
+        // 탭 스킵(unit 5 rev1) — 전/후반부 판정과 후반부 시퀀스가 쓰는 판 컨텍스트.
+        private int _stage; // 0 = 리빌 포커스 전(인트로~플립), 1 = 리빌 이후(홀드~흡수)
+        private int _n, _baseN;
+        private int[] _keyByF;
+        private readonly Dictionary<int, int> _finalPos = new();
+        private Color _kindColor;
+        private Image _amb;
+        private Color _ambColor;
+
         // 시퀀스 도중 생성되는 일회성 이펙트(잔상/틱/리플/링) — 중단 경로에서도 정리.
         private readonly List<GameObject> _transientFx = new();
         private readonly List<Tween> _fxTweens = new();
@@ -159,16 +168,56 @@ namespace Wassup.UI
             _ringDots.Clear();
         }
 
-        // 탭 스킵 (unit 5) — 덱 순서는 OnGiftDeckReady 시점에 데이터로 확정돼 있으므로
-        // 연출만 끊고 즉시 배치로. 정리는 기존 중단 계약(StopSequence + OnPhaseChanged) 재사용.
+        // 탭 스킵 (unit 5 rev1) — 2단: 리빌 전 탭은 리빌 포커스로 점프(받은 카드 확인은
+        // 건너뛰지 않는다), 리빌 이후 탭은 배치로. 덱 순서는 데이터 확정 선행이라 연출만 끊는다.
         private void OnPanelTapped()
         {
             if (!_seq.isAlive) return;
             var cfg = giftConfig;
             if (cfg == null || !cfg.tapSkipEnabled) return;
             if (Time.unscaledTime - _seqStartTime < cfg.tapSkipGraceSec) return;
+            if (_stage == 0)
+            {
+                SkipToRevealFocus();
+                return;
+            }
             StopSequence();
             ProceedToPlacement();
+        }
+
+        // 탭 스킵 착지: 전반부 시퀀스를 끊고 리빌 포커스 상태(그리드 정착 + 선물 앞면·과시
+        // 스케일 + 앰비언스 온)를 직접 세팅한 뒤 후반부(홀드~흡수)를 시작한다.
+        private void SkipToRevealFocus()
+        {
+            var cfg = giftConfig;
+            if (_seq.isAlive) _seq.Stop();
+
+            _titleGroup.alpha = 0f;
+            _amb.color = _ambColor;
+            _cardsRoot.localScale = Vector3.one;
+            int giftN = _n - _baseN;
+            for (int k = 0; k < _n && k < _cardWidgets.Count; k++)
+            {
+                var w = _cardWidgets[k];
+                if (k < _baseN)
+                {
+                    w.Rt.anchoredPosition = GridSlot(k, _baseN, cfg);
+                    w.Rt.localRotation = Quaternion.Euler(0f, 0f, ((k % 3) - 1) * cfg.restTiltDeg);
+                    w.Rt.localScale = Vector3.one;
+                }
+                else
+                {
+                    w.Rt.anchoredPosition = new Vector2(RevealX(k - _baseN, giftN, cfg), cfg.revealY);
+                    w.Rt.localRotation = Quaternion.identity;
+                    w.Rt.localScale = Vector3.one * cfg.revealScale;
+                    w.SetFace(true);
+                }
+            }
+#if UNITY_ANDROID || UNITY_IOS
+            if (cfg.vibrateOnReveal && !Application.isEditor) Handheld.Vibrate();
+#endif
+            _seqStartTime = Time.unscaledTime; // 재-grace — 연속 탭이 리빌까지 날리는 것 방지
+            PlayFromRevealFocus();
         }
 
         // _panel Dim Image(풀블리드, raycastTarget on)에 부착되는 경량 탭 캐처.
@@ -183,11 +232,12 @@ namespace Wassup.UI
         {
             StopSequence();
             _seqStartTime = Time.unscaledTime;
+            _stage = 0;
 
             var cfg = giftConfig;
             var kind = handController.GiftKind;
             bool lucid = kind == GiftKind.Lucid;
-            Color kindColor = lucid ? cfg.lucidFrameColor : cfg.rimFrameColor;
+            Color kindColor = _kindColor = lucid ? cfg.lucidFrameColor : cfg.rimFrameColor;
 
             _title.text = lucid ? "루시드의 선물" : "림의 선물";
             _title.color = kindColor;
@@ -195,16 +245,17 @@ namespace Wassup.UI
             var baseCards = handController.GiftBaseCards;   // 10 (pre-shuffle 앞부분)
             var giftCards = handController.GiftAddedCards;  // 2  (pre-shuffle 뒷부분)
             var finalOrder = handController.GiftFinalOrder(); // 확정 순서(entryId 포함)
-            int n = finalOrder.Count;
-            int baseN = baseCards.Count;
+            int n = _n = finalOrder.Count;
+            int baseN = _baseN = baseCards.Count;
 
             // entryId → 최종 순서 인덱스. pre-shuffle 슬롯 k 의 entryId 는 k(삽입 순서).
-            var finalPos = new Dictionary<int, int>();
-            var keyByF = new int[n];
+            // 후반부 시퀀스(부채꼴/흡수)가 쓰므로 필드에 보관(탭 스킵 경로 공유).
+            _finalPos.Clear();
+            _keyByF = new int[n];
             for (int f = 0; f < finalOrder.Count; f++)
             {
-                finalPos[finalOrder[f].entryId] = f;
-                keyByF[f] = finalOrder[f].entryId;
+                _finalPos[finalOrder[f].entryId] = f;
+                _keyByF[f] = finalOrder[f].entryId;
             }
 
             EnsureCardWidgets(n);
@@ -238,9 +289,9 @@ namespace Wassup.UI
             }
 
             // 앰비언스 — Lucid 는 상단 금빛, Rim 은 하단 적색. 페이즈 내내 유지.
-            var amb = lucid ? _ambienceTop : _ambienceBottom;
+            var amb = _amb = lucid ? _ambienceTop : _ambienceBottom;
             var ambOff = lucid ? _ambienceBottom : _ambienceTop;
-            var ambColor = lucid ? cfg.lucidAmbientColor : cfg.rimAmbientColor;
+            var ambColor = _ambColor = lucid ? cfg.lucidAmbientColor : cfg.rimAmbientColor;
             amb.color = new Color(ambColor.r, ambColor.g, ambColor.b, 0f);
             ambOff.color = Color.clear;
 
@@ -330,6 +381,21 @@ namespace Wassup.UI
             }
             _seq.Group(Tween.Alpha(amb, Mathf.Min(1f, ambColor.a * 2.2f), flaunt * 0.4f, Ease.OutQuad));
             _seq.Group(Tween.Alpha(amb, ambColor.a, flaunt * 0.6f, Ease.InQuad, startDelay: flaunt * 0.4f));
+            // 리빌 포커스 도달 — 이후는 후반부 시퀀스로(자연 진행과 탭 스킵 착지 공유, unit 5 rev1).
+            _seq.ChainCallback(PlayFromRevealFocus);
+        }
+
+        // 후반부: 리빌 포커스 상태에서 시작 — 읽기 홀드 → 스택 수렴 → 리플 → 부채꼴 → 흡수.
+        private void PlayFromRevealFocus()
+        {
+            _stage = 1;
+            var cfg = giftConfig;
+            int n = _n, baseN = _baseN;
+            Color kindColor = _kindColor;
+            var finalPos = _finalPos;
+            var keyByF = _keyByF;
+
+            _seq = Sequence.Create();
             // 읽기 홀드 — 어떤 카드를 받았는지 확인하는 여유(사용자 결정 2026-07-14, +1s).
             _seq.ChainDelay(cfg.revealHoldSec);
 
