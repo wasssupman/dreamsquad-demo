@@ -29,9 +29,11 @@ MonoBehaviour:
   gridCols: 5
   gridCell: {x: 210, y: 300}
   gridCenter: {x: 0, y: 90}
-  revealSpreadX: 210
+  revealSpreadX: 240
   revealY: 60
-  revealScale: 2.1
+  revealScale: 1.7
+  revealDimAlpha: 0.6
+  revealDimFadeSec: 0.25
   revealHoldSec: 1
   presenceNudge: 16
   stackCenter: {x: 0, y: 40}

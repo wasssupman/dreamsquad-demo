@@ -40,6 +40,7 @@ namespace Wassup.UI
         private TextMeshProUGUI _title;
         private CanvasGroup _titleGroup;
         private RectTransform _cardsRoot;
+        private Image _revealDim; // unit 6 — 리빌 뒷판 딤 스크림(그리드 위·선물 아래)
         private RectTransform _fxRoot;
         private Image _ambienceTop;
         private Image _ambienceBottom;
@@ -195,6 +196,9 @@ namespace Wassup.UI
             _titleGroup.alpha = 0f;
             _amb.color = _ambColor;
             _cardsRoot.localScale = Vector3.one;
+            // unit 6 — 착지 상태에 딤 포함(자연 진행과 동일한 리빌 포커스 화면).
+            _revealDim.enabled = true;
+            _revealDim.color = new Color(0f, 0f, 0f, cfg.revealDimAlpha);
             int giftN = _n - _baseN;
             for (int k = 0; k < _n && k < _cardWidgets.Count; k++)
             {
@@ -287,6 +291,10 @@ namespace Wassup.UI
                     : new Vector2(0f, -cfg.offscreenY);
                 w.Rt.SetSiblingIndex(k);
             }
+            // unit 6 — 딤을 그리드/선물 사이에 삽입 + 재시작 리셋(잔류 방지).
+            _revealDim.color = new Color(0f, 0f, 0f, 0f);
+            _revealDim.enabled = false;
+            _revealDim.rectTransform.SetSiblingIndex(baseN);
 
             // 앰비언스 — Lucid 는 상단 금빛, Rim 은 하단 적색. 페이즈 내내 유지.
             var amb = _amb = lucid ? _ambienceTop : _ambienceBottom;
@@ -342,6 +350,9 @@ namespace Wassup.UI
                 ChainOrGroup(g == 0,
                     Tween.UIAnchoredPosition(rt, target, approach, Ease.OutQuad, startDelay: g * 0.07f));
             }
+            // unit 6 — 뒷판 딤 페이드 인(개입과 동시) — 선물 강조, 그리드 톤 다운.
+            _seq.Group(Tween.Custom(_revealDim, 0f, cfg.revealDimAlpha, cfg.revealDimFadeSec,
+                (img, a) => { img.enabled = a > 0f; img.color = new Color(0f, 0f, 0f, a); }, Ease.OutQuad));
             // 내 덱 움찔 — 존재 반대쪽으로 밀렸다가 복귀(진입과 동시).
             float nudge = lucid ? -cfg.presenceNudge : cfg.presenceNudge;
             for (int k = 0; k < baseN; k++)
@@ -414,8 +425,12 @@ namespace Wassup.UI
                 if (gifted) // 화면 앞에서 덱으로 — 편입 비행 중 원래 크기로 축소
                     _seq.Group(Tween.Scale(rt, Vector3.one, stackMove, Ease.InQuad, startDelay: d));
             }
+            // unit 6 — 딤 페이드 아웃(수렴과 동시) — 스킵 착지 경로 공유(여기가 유일 퇴장점).
+            _seq.Group(Tween.Custom(_revealDim, cfg.revealDimAlpha, 0f, stackMove * 0.6f,
+                (img, a) => img.color = new Color(0f, 0f, 0f, a), Ease.InQuad));
             _seq.ChainCallback(() =>
             {
+                _revealDim.enabled = false; // 픽셀필 절약(잔류 방지)
                 for (int k = baseN; k < n; k++) _cardWidgets[k].Rt.SetAsLastSibling();
             });
             _seq.Chain(Tween.PunchScale(_cardsRoot,
@@ -673,6 +688,20 @@ namespace Wassup.UI
             _cardsRoot.pivot = new Vector2(0.5f, 0.5f);
             _cardsRoot.anchoredPosition = new Vector2(0f, -20f);
             _cardsRoot.sizeDelta = new Vector2(1800f, 900f);
+
+            // unit 6 — 리빌 딤 스크림: 그리드(뒷판) 위 / 선물 카드 아래 sibling 로
+            // 끼워 넣는 풀블리드 흑색 1장. 같은 부모(_cardsRoot)라 정렬이 보장된다.
+            // 탭 캐치는 패널 Dim 소관 — 여긴 순수 비주얼(raycastTarget=false).
+            var dimGO = new GameObject("RevealDim", typeof(RectTransform), typeof(Image));
+            var drt = (RectTransform)dimGO.transform;
+            drt.SetParent(_cardsRoot, false);
+            drt.anchorMin = new Vector2(0.5f, 0.5f);
+            drt.anchorMax = new Vector2(0.5f, 0.5f);
+            drt.sizeDelta = new Vector2(4000f, 4000f); // cardsRoot 로컬 풀블리드 초과 커버
+            _revealDim = dimGO.GetComponent<Image>();
+            _revealDim.color = new Color(0f, 0f, 0f, 0f);
+            _revealDim.raycastTarget = false;
+            _revealDim.enabled = false;
 
             var fxGO = new GameObject("GiftFxRoot", typeof(RectTransform));
             _fxRoot = (RectTransform)fxGO.transform;
