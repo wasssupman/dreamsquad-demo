@@ -15,13 +15,38 @@ MonoBehaviour:
   lucidWeight: 1
   rimWeight: 1
   rimGiftCount: 2
-  introTextSec: 1
-  baseCardsInSec: 0.5
-  giftAppendDelaySec: 1
-  giftAppendSec: 0.5
-  shuffleSec: 2
-  holdSec: 2
-  flyOutSec: 0.6
+  introTextSec: 0.6
+  dealInSec: 1.1
+  revealSec: 0.9
+  stackSec: 0.45
+  riffleSec: 0.85
+  fanSec: 0.6
+  absorbFirstGapSec: 0.22
+  absorbMinGapSec: 0.07
+  absorbDecay: 0.75
+  absorbFlightSec: 0.24
+  finisherPauseSec: 0.15
+  gridCols: 5
+  gridCell: {x: 210, y: 300}
+  gridCenter: {x: 0, y: 90}
+  revealSpreadX: 130
+  revealY: 60
+  revealScale: 1.6
+  presenceNudge: 16
+  stackCenter: {x: 0, y: 40}
+  stackJitterRotDeg: 5
+  stackJitterOffset: 6
+  riffleSplitX: 180
+  riffleTiltDeg: 12
+  fanRadius: 950
+  fanArcDeg: 44
+  fanBaseY: -330
+  ringRadius: 80
+  ringDotSize: 16
+  lucidAmbientColor: {r: 1, g: 0.82, b: 0.42, a: 0.3}
+  rimAmbientColor: {r: 0.72, g: 0.1, b: 0.1, a: 0.36}
+  rippleAlpha: 0.5
+  vibrateOnReveal: 1
   cardSize: {x: 180, y: 252}
   frameRadius: 18
   frameBorder: 10

@@ -19,14 +19,51 @@ namespace Wassup.Data
         [Tooltip("림의 선물이 지급하는 무의식 카드 수")]
         [Min(0)] public int rimGiftCount = 2;
 
-        [Header("Sequence timings (seconds, unscaled)")]
-        public float introTextSec = 1.0f;
-        public float baseCardsInSec = 0.5f;
-        public float giftAppendDelaySec = 1.0f;
-        public float giftAppendSec = 0.5f;
-        public float shuffleSec = 2.0f;
-        public float holdSec = 2.0f;
-        public float flyOutSec = 0.6f;
+        [Header("Sequence timings (unit 2, seconds, unscaled — 합산 ≤ 6s)")]
+        public float introTextSec = 0.6f;
+        public float dealInSec = 1.1f;
+        public float revealSec = 0.9f;
+        public float stackSec = 0.45f;
+        public float riffleSec = 0.85f;
+        public float fanSec = 0.6f;
+        [Tooltip("흡수 가속 케이던스 — 첫 간격/최소 간격/감쇠")]
+        public float absorbFirstGapSec = 0.22f;
+        public float absorbMinGapSec = 0.07f;
+        [Range(0.3f, 1f)] public float absorbDecay = 0.75f;
+        public float absorbFlightSec = 0.24f;
+        [Tooltip("12번째 카드 피니셔 — 반박자 멈춤")]
+        public float finisherPauseSec = 0.15f;
+
+        [Header("Geometry (unit 2, cardsRoot 로컬)")]
+        [Min(1)] public int gridCols = 5;
+        public Vector2 gridCell = new Vector2(210f, 300f);
+        public Vector2 gridCenter = new Vector2(0f, 90f);
+        [Tooltip("선물 리빌 센터 무대 — 두 장 좌우 간격 절반 / 높이 / 과시 스케일")]
+        public float revealSpreadX = 130f;
+        public float revealY = 60f;
+        public float revealScale = 1.6f;
+        [Tooltip("개입 순간 내 덱 10장이 밀리는 거리(px)")]
+        public float presenceNudge = 16f;
+        public Vector2 stackCenter = new Vector2(0f, 40f);
+        public float stackJitterRotDeg = 5f;
+        public float stackJitterOffset = 6f;
+        [Tooltip("리플 — 좌우 뭉치 벌림 거리 / 바깥 틸트(도)")]
+        public float riffleSplitX = 180f;
+        public float riffleTiltDeg = 12f;
+        [Tooltip("부채꼴 — 원호 반경 / 전개 각도 / 밑단 y")]
+        public float fanRadius = 950f;
+        public float fanArcDeg = 44f;
+        public float fanBaseY = -330f;
+        [Tooltip("수신 앵커 링 — 반경 / 세그먼트 점 크기")]
+        public float ringRadius = 80f;
+        public float ringDotSize = 16f;
+
+        [Header("Ambience (unit 2, kind별)")]
+        public Color lucidAmbientColor = new Color(1f, 0.82f, 0.42f, 0.30f);
+        public Color rimAmbientColor = new Color(0.72f, 0.10f, 0.10f, 0.36f);
+        [Tooltip("셔플 완료 글로우 리플 알파")]
+        [Range(0f, 1f)] public float rippleAlpha = 0.5f;
+        public bool vibrateOnReveal = true;
 
         [Header("Card & frame (unit 1)")]
         public Vector2 cardSize = new Vector2(180f, 252f);
