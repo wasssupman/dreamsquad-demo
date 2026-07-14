@@ -388,6 +388,29 @@ namespace Wassup.Bridge
                     }
                     // OnKill: 추가 슬롯 상태 없음 — 매 킬 DamageApplicationSystem 에서 발동(unit 2).
                 }
+                else if (m.payload.kind == Wassup.Data.DcPayloadKind.HeavyStrike)
+                {
+                    // dreamcatcher-heavy-strike unit 1 — 응축된 일격. AttackN 전용 강공:
+                    // N회째 공격의 출력 데미지를 magnitude 배(2.0=×2). 다른 트리거로는
+                    // 무의미 → AttackN 강제. 배율<=1 은 강공이 아니므로(1=평타, <1=약화)
+                    // 거절. host 는 곱할 Damage output 이 있어야 함(eye 선례 재사용 —
+                    // 힐러/output 없는 caster 거절). slot.magnitude 는 이미 배율(위 generic bake).
+                    if (m.trigger.kind != Wassup.Data.DcTriggerKind.AttackN)
+                    {
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: HeavyStrike requires AttackN trigger — skipped.");
+                        continue;
+                    }
+                    if (m.payload.magnitude <= 1f)
+                    {
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: HeavyStrike magnitude<=1 (not a heavy hit) — skipped.");
+                        continue;
+                    }
+                    if (!HasPositiveDamageOutput(defender))
+                    {
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: HeavyStrike on a unit with no positive Damage output — skipped.");
+                        continue;
+                    }
+                }
                 // Immediate (non-ECB) AddBuffer — same technique as ModifierApplySystem's
                 // bufferless path: several attaches in one frame must all land; a
                 // deferred AddBuffer would keep only the last. (Ownership is a separate

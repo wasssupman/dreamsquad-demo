@@ -17,6 +17,14 @@ namespace Wassup.Battle.Combat
             return true;
         }
 
+        // dreamcatcher-heavy-strike unit 1 — non-mutating peek: does the NEXT Tick
+        // fire? Lets AttackSystem's heavy pre-scan decide "is THIS attack the N-th"
+        // BEFORE the owning Tick increments the counter. Matches Tick's fire
+        // condition exactly (period != 0 && counter+1 >= period) so the prediction
+        // equals the dc-trigger loop's dcFired. Counter ownership stays with Tick.
+        public static bool WouldFire(ushort counter, ushort period)
+            => period != 0 && counter + 1 >= period;
+
         // nightmare-catcher unit 2 — PeriodicTimer accumulator. Fires once when
         // the accumulator reaches periodSeconds, carrying the remainder over
         // (drift-free). periodSeconds <= 0 never fires AND never accumulates —

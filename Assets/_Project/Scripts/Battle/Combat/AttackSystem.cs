@@ -436,6 +436,26 @@ namespace Wassup.Battle.Combat
                             fmPrioMul = l.damageMulSnapshot;
                         }
                     }
+                    // dreamcatcher-heavy-strike unit 1 — 응축된 일격 pre-scan: is THIS attack
+                    // the N-th (→ 강공)? Aggregate the mul (product over copies). Read-only
+                    // peek (WouldFire) of the same pre-increment counter the dc-trigger loop
+                    // below Ticks, so this prediction == that loop's dcFired (counter write
+                    // ownership stays the loop). Carried on the projectile via heavyDamageMul;
+                    // consumed at hit-site + melee arm in unit 2 (inert until then).
+                    float heavyMul = 1f;
+                    if (defenderTagLookup.HasComponent(attackerEntity) && dcSlotLookup.HasBuffer(attackerEntity))
+                    {
+                        var heavySlots = dcSlotLookup[attackerEntity];
+                        for (int hi = 0; hi < heavySlots.Length; hi++)
+                        {
+                            var hs = heavySlots[hi];
+                            if (hs.trigger == Wassup.Data.DcTriggerKind.AttackN
+                                && hs.payload == Wassup.Data.DcPayloadKind.HeavyStrike
+                                && DcTrigger.WouldFire(hs.counter, hs.period))
+                                heavyMul *= hs.magnitude > 0f ? hs.magnitude : 1f;
+                        }
+                    }
+
                     // All defender/enemy hit effects come through AttackOutputElement.
                     bool hasOutputs = outputBufferLookup.HasBuffer(attackerEntity);
 
@@ -498,6 +518,8 @@ namespace Wassup.Battle.Combat
                                     // 끝을 보는 눈 (unit 3) — TileAoe/ballistic priority victim + mul.
                                     priorityTarget = fmPrioTarget,
                                     priorityDamageMul = fmPrioMul,
+                                    // 응축된 일격 (unit 1) — 강공 전-victim 배율(unit 2 hit-site 소비, 기본 1=inert).
+                                    heavyDamageMul = heavyMul,
                                 });
                             }
                             else
@@ -542,6 +564,8 @@ namespace Wassup.Battle.Combat
                                     // 끝을 보는 눈 (unit 3) — homing direct-victim priority + mul.
                                     priorityTarget = fmPrioTarget,
                                     priorityDamageMul = fmPrioMul,
+                                    // 응축된 일격 (unit 1) — 강공 전-victim 배율(unit 2 hit-site 소비, 기본 1=inert).
+                                    heavyDamageMul = heavyMul,
                                 });
                             }
                         }
@@ -939,6 +963,14 @@ namespace Wassup.Battle.Combat
                                         perAppDuration = slot.duration,
                                         source         = attackerEntity,
                                     });
+                            }
+                            else if (slot.payload == Wassup.Data.DcPayloadKind.HeavyStrike)
+                            {
+                                // dreamcatcher-heavy-strike unit 1 — 강공은 pre-scan(RESOLVE 상단)
+                                // 에서 이미 heavyMul 로 산출·공격 출력에 실렸다(투사체 캐리어 /
+                                // melee 곱은 unit 2). 여기서 발사할 carrier 없음. 이 케이스는
+                                // 발동 슬롯이 아래 unhandled 경고에 걸리지 않게 하기 위함 —
+                                // 루프의 HeavyStrike 역할은 위 Tick(카운터 소유)뿐.
                             }
                             else
                             {

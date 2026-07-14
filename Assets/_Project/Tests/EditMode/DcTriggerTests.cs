@@ -59,6 +59,33 @@ namespace Wassup.Tests.EditMode
             Assert.IsTrue(DcTrigger.Tick(ref b, 5), "B fires one resolve later");
         }
 
+        // ── dreamcatcher-heavy-strike unit 1 — WouldFire (non-mutating twin) ──
+
+        [Test]
+        public void WouldFire_MatchesTick_ForEveryCounterInPeriod()
+        {
+            // The heavy pre-scan predicts firing without touching the counter; it must
+            // equal what the counter-owning Tick returns for the same pre-increment
+            // counter, so pre-scan == the dc-trigger loop's dcFired.
+            const ushort period = 5;
+            for (ushort c = 0; c < period; c++)
+            {
+                ushort probe = c;
+                bool actual = DcTrigger.Tick(ref probe, period);
+                Assert.AreEqual(actual, DcTrigger.WouldFire(c, period), $"counter {c}: WouldFire must equal Tick");
+            }
+            Assert.IsTrue(DcTrigger.WouldFire(4, period), "counter 4 (the 5th resolve) fires");
+            Assert.IsFalse(DcTrigger.WouldFire(3, period), "counter 3 does not");
+        }
+
+        [Test]
+        public void WouldFire_Period1_AlwaysTrue_Period0_NeverFires()
+        {
+            Assert.IsTrue(DcTrigger.WouldFire(0, 1));
+            for (ushort c = 0; c < 10; c++)
+                Assert.IsFalse(DcTrigger.WouldFire(c, 0), "period 0 never fires (guard)");
+        }
+
         // ── nightmare-catcher unit 2 — PeriodicTimer accumulator ────────────
 
         [Test]
