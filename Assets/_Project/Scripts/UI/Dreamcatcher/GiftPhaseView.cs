@@ -257,10 +257,10 @@ namespace Wassup.UI
                     startDelay: cfg.dealInSec + 0.02f));
 
             // ③ 선물 리빌 = 존재의 개입 (kind 방향에서 뒷면 진입 → 내 덱 움찔 → 플립)
-            float approach = cfg.revealSec * 0.35f;
-            float flipHalf = cfg.revealSec * 0.12f;
-            float flaunt = cfg.revealSec * 0.3f;
-            float settle = cfg.revealSec * 0.23f;
+            // 과시 스케일로 홀드(revealHoldSec)까지 유지 — 축소는 스택 편입 비행에서(원근 서사).
+            float approach = cfg.revealSec * 0.4f;
+            float flipHalf = cfg.revealSec * 0.15f;
+            float flaunt = cfg.revealSec * 0.45f;
             for (int g = 0; g < n - baseN; g++)
             {
                 int k = baseN + g;
@@ -308,12 +308,8 @@ namespace Wassup.UI
             }
             _seq.Group(Tween.Alpha(amb, Mathf.Min(1f, ambColor.a * 2.2f), flaunt * 0.4f, Ease.OutQuad));
             _seq.Group(Tween.Alpha(amb, ambColor.a, flaunt * 0.6f, Ease.InQuad, startDelay: flaunt * 0.4f));
-            for (int g = 0; g < n - baseN; g++)
-            {
-                int k = baseN + g;
-                ChainOrGroup(g == 0,
-                    Tween.Scale(_cardWidgets[k].Rt, Vector3.one, settle, Ease.InOutQuad));
-            }
+            // 읽기 홀드 — 어떤 카드를 받았는지 확인하는 여유(사용자 결정 2026-07-14, +1s).
+            _seq.ChainDelay(cfg.revealHoldSec);
 
             // ④-a 스택 수렴 = 융합 시작 (선물 2장이 마지막에 파고듦 → 출렁)
             float stackMove = cfg.stackSec * 0.7f;
@@ -327,6 +323,8 @@ namespace Wassup.UI
                     Tween.UIAnchoredPosition(rt, cfg.stackCenter + jOff, stackMove, Ease.InOutQuad, startDelay: d));
                 _seq.Group(Tween.LocalRotation(rt, Quaternion.Euler(0f, 0f, jRot), stackMove,
                     Ease.InOutQuad, startDelay: d));
+                if (gifted) // 화면 앞에서 덱으로 — 편입 비행 중 원래 크기로 축소
+                    _seq.Group(Tween.Scale(rt, Vector3.one, stackMove, Ease.InQuad, startDelay: d));
             }
             _seq.ChainCallback(() =>
             {

@@ -38,10 +38,12 @@ namespace Wassup.Data
         [Min(1)] public int gridCols = 5;
         public Vector2 gridCell = new Vector2(210f, 300f);
         public Vector2 gridCenter = new Vector2(0f, 90f);
-        [Tooltip("선물 리빌 센터 무대 — 두 장 좌우 간격 절반 / 높이 / 과시 스케일")]
-        public float revealSpreadX = 130f;
+        [Tooltip("선물 리빌 센터 무대 — 두 장 좌우 간격 절반 / 높이 / 과시 스케일(화면 앞 근접감)")]
+        public float revealSpreadX = 210f;
         public float revealY = 60f;
-        public float revealScale = 1.6f;
+        public float revealScale = 2.1f;
+        [Tooltip("플립 후 읽기 홀드(초) — 받은 카드 확인 여유 (2026-07-14 사용자 결정)")]
+        public float revealHoldSec = 1.0f;
         [Tooltip("개입 순간 내 덱 10장이 밀리는 거리(px)")]
         public float presenceNudge = 16f;
         public Vector2 stackCenter = new Vector2(0f, 40f);
