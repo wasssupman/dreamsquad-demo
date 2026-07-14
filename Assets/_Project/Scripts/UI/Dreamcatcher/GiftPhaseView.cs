@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using PrimeTween;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using Wassup.Core;
 using Wassup.Data;
@@ -46,6 +47,7 @@ namespace Wassup.UI
         private GiftCardWidget.Shared _shared;
         private Sprite _gradientSprite;
         private Sequence _seq;
+        private float _seqStartTime;
         private bool _built;
 
         // 시퀀스 도중 생성되는 일회성 이펙트(잔상/틱/리플/링) — 중단 경로에서도 정리.
@@ -157,10 +159,30 @@ namespace Wassup.UI
             _ringDots.Clear();
         }
 
+        // 탭 스킵 (unit 5) — 덱 순서는 OnGiftDeckReady 시점에 데이터로 확정돼 있으므로
+        // 연출만 끊고 즉시 배치로. 정리는 기존 중단 계약(StopSequence + OnPhaseChanged) 재사용.
+        private void OnPanelTapped()
+        {
+            if (!_seq.isAlive) return;
+            var cfg = giftConfig;
+            if (cfg == null || !cfg.tapSkipEnabled) return;
+            if (Time.unscaledTime - _seqStartTime < cfg.tapSkipGraceSec) return;
+            StopSequence();
+            ProceedToPlacement();
+        }
+
+        // _panel Dim Image(풀블리드, raycastTarget on)에 부착되는 경량 탭 캐처.
+        private sealed class TapCatcher : MonoBehaviour, IPointerClickHandler
+        {
+            public System.Action Clicked;
+            public void OnPointerClick(PointerEventData eventData) => Clicked?.Invoke();
+        }
+
         // ── 안무 (unit 2) ──────────────────────────────────────────────────
         private void PlayGiftSequence()
         {
             StopSequence();
+            _seqStartTime = Time.unscaledTime;
 
             var cfg = giftConfig;
             var kind = handController.GiftKind;
@@ -554,6 +576,7 @@ namespace Wassup.UI
             prt.anchorMin = Vector2.zero; prt.anchorMax = Vector2.one;
             prt.offsetMin = Vector2.zero; prt.offsetMax = Vector2.zero;
             _panel.GetComponent<Image>().color = Dim;
+            _panel.AddComponent<TapCatcher>().Clicked = OnPanelTapped;
 
             // kind별 앰비언스 — 상단(루시드 금빛 강림) / 하단(림 적색 침투) 그라데이션.
             _gradientSprite = MakeGradientSprite();

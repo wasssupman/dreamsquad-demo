@@ -1,6 +1,7 @@
 # Gift Phase Presentation — "카드 딜러의 선물"
 
 > 상태: 완료 2026-07-14 (units 0~3 + 코드리뷰 10건 반영 + 사용자 Play 확인). handoff: `4_handoff_summary.md`
+> 추가: unit 5 탭 스킵 (2026-07-14) — 스모크/리뷰 완료, 사용자 Play 확인 대기.
 
 ## 한 줄
 
@@ -28,6 +29,7 @@
 | 1 | `1_holo_frame_and_widget.md` | 위젯 | 홀로 프레임 머티리얼(금/적, DraftCardFoil 재사용) + `GiftCardWidget` 분리 |
 | 2 | `2_choreography.md` | 안무 | `GiftPhaseView` 시퀀스 재작성 + `GiftConfig` 확장 + default asset |
 | 3 | `3_play_validation.md` | 검증 | Lucid/Rim 양쪽 포커스 Play 육안 확인 + 튜닝 기록 |
+| 5 | `5_tap_skip.md` | 추가 | 연출 중 터치 스킵 — 연출만 끊고 즉시 배치 진입 (덱 순서는 데이터 확정 선행) |
 
 ## Feature-wide 계약
 

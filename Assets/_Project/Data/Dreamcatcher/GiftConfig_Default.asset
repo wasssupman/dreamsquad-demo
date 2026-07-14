@@ -79,4 +79,6 @@ MonoBehaviour:
   foilIntensity: 0.35
   foilSpeed: 1.2
   foilHueShift: 0.06
+  tapSkipEnabled: 1
+  tapSkipGraceSec: 0.35
   fastForwardInTestMode: 1

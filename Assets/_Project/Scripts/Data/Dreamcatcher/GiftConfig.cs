@@ -115,6 +115,12 @@ namespace Wassup.Data
         [Range(0f, 4f)] public float foilSpeed = 1.2f;
         [Range(0f, 1f)] public float foilHueShift = 0.06f;
 
+        [Header("Tap skip (unit 5)")]
+        [Tooltip("연출 중 터치로 스킵(연출만 끊고 즉시 배치 진입 — 덱 순서는 이미 확정)")]
+        public bool tapSkipEnabled = true;
+        [Tooltip("연출 시작 직후 오탭 방지 무시 구간(초, unscaled)")]
+        [Min(0f)] public float tapSkipGraceSec = 0.35f;
+
         [Header("Test mode")]
         [Tooltip("테스트 모드에서 연출을 건너뛰고 즉시 배치로")]
         public bool fastForwardInTestMode = true;
