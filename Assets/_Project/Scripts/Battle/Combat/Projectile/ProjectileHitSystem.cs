@@ -115,6 +115,12 @@ namespace Wassup.Battle.Combat.Projectile
                 var prioTarget = projectile.ValueRO.priorityTarget;
                 float prioMul = projectile.ValueRO.priorityDamageMul > 0f ? projectile.ValueRO.priorityDamageMul : 1f;
 
+                // dreamcatcher-heavy-strike unit 2 (응축된 일격) — heavy multiplies EVERY
+                // Damage victim of this shot (direct/splash/bounce/TileAoe), unlike priority
+                // which is one victim. Carried on state, survives bounce re-homing. Default
+                // 0 → 1 (inert). Composes multiplicatively with prioMul below.
+                float heavyMul = projectile.ValueRO.heavyDamageMul > 0f ? projectile.ValueRO.heavyDamageMul : 1f;
+
                 switch (projectile.ValueRO.payload)
                 {
                     case PayloadKind.SingleSplash:
@@ -139,7 +145,8 @@ namespace Wassup.Battle.Combat.Projectile
                                             {
                                                 // 끝을 보는 눈 — direct victim priority (bounce direct
                                                 // target changes per hop, so A→B→A re-applies to A).
-                                                float dmg = target == prioTarget ? output.magnitude * prioMul : output.magnitude;
+                                                // 응축된 일격 — × heavyMul on top (전 victim, 여기선 direct).
+                                                float dmg = (target == prioTarget ? output.magnitude * prioMul : output.magnitude) * heavyMul;
                                                 ecb.AppendToBuffer(target, new IncomingDamage { amount = dmg, source = threatOwner });
                                                 ThreatTable.TryCredit(threatQueue, creditThreat, threatLookup, target, threatOwner, dmg);
                                             }
@@ -182,7 +189,7 @@ namespace Wassup.Battle.Combat.Projectile
 
                             if (!handledOutputs && damageBufferLookup.HasBuffer(target))
                             {
-                                float dmg = target == prioTarget ? projectile.ValueRO.damage * prioMul : projectile.ValueRO.damage;
+                                float dmg = (target == prioTarget ? projectile.ValueRO.damage * prioMul : projectile.ValueRO.damage) * heavyMul;
                                 ecb.AppendToBuffer(target, new IncomingDamage { amount = dmg, source = threatOwner });
                                 ThreatTable.TryCredit(threatQueue, creditThreat, threatLookup, target, threatOwner, dmg);
                             }
@@ -206,7 +213,8 @@ namespace Wassup.Battle.Combat.Projectile
                             {
                                 float3 aoeCenter = targetPos;
                                 float splashRadiusSq = projectile.ValueRO.splashRadius * projectile.ValueRO.splashRadius;
-                                float splashDamage = projectile.ValueRO.damage * projectile.ValueRO.splashDamageMul;
+                                // 응축된 일격 — splash secondaries도 강공 배율(한 방 통째, 전 victim).
+                                float splashDamage = projectile.ValueRO.damage * projectile.ValueRO.splashDamageMul * heavyMul;
                                 for (int i = 0; i < aoeEntities.Length; i++)
                                 {
                                     var candidate = aoeEntities[i];
@@ -316,7 +324,8 @@ namespace Wassup.Battle.Combat.Projectile
                             {
                                 // 끝을 보는 눈 — only the locked priority entity, if it is actually
                                 // inside the impact range, takes +20%; the rest stay base.
-                                float vdmg = victims[i] == prioTarget ? dmg * prioMul : dmg;
+                                // 응축된 일격 — × heavyMul on every victim in range (전 victim).
+                                float vdmg = (victims[i] == prioTarget ? dmg * prioMul : dmg) * heavyMul;
                                 ecb.AppendToBuffer(victims[i], new IncomingDamage { amount = vdmg, source = threatOwner });
                                 ThreatTable.TryCredit(threatQueue, creditThreat, threatLookup, victims[i], threatOwner, vdmg);
                             }

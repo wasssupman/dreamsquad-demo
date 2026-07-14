@@ -710,6 +710,10 @@ namespace Wassup.Battle.Combat
                                             // AND ThreatTable.TryCredit below (no threat desync, HIGH 5).
                                             if (fmPrioTarget != Entity.Null && hitTarget == fmPrioTarget)
                                                 dmg *= fmPrioMul;
+                                            // 응축된 일격 (unit 2) — 멜리 cleave 전 대상에 강공 배율(전 victim).
+                                            // heavyMul=1 이면 무영향. dmg 가 IncomingDamage+TryCredit 공통 →
+                                            // threat 동기. 이 공격의 heavyMul 은 pre-scan(unit 1)이 이미 산출.
+                                            dmg *= heavyMul;
                                             ecb.AppendToBuffer(hitTarget, new IncomingDamage { amount = dmg, source = attackerEntity });
                                             ThreatTable.TryCredit(threatQueue, creditThreat, threatLookup,
                                                 hitTarget, attackerEntity, dmg);
