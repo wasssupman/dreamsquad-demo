@@ -40,6 +40,13 @@ namespace Wassup.Presentation
         private float _shakePhaseY;
         private float _punctWeight = 1f;
 
+        // unit 5 — 드래그 포커스 채널. 드래그 컨트롤러가 매 프레임 피드, 프레임 staleness 로
+        // 자동 해제(명시 Clear 불필요 — 컨트롤러 파괴/정리 누락에도 붙박이 방지).
+        private Vector3 _focusTarget;
+        private Vector3 _focusVel;
+        private int _focusFedFrame = -10;
+        private float _focusWeight;
+
         // unit 3 — 앰비언트 브리딩 채널. 파동 위상 누적(절대 시각 비사용 — 장세션 float 정밀도),
         // 켜진 페이즈에서만, 비행 중 가중치 0 크로스페이드 후 서서히 복귀.
         private float[] _breathPhases = System.Array.Empty<float>();
@@ -163,6 +170,16 @@ namespace Wassup.Presentation
             _shakeHeat = Mathf.Clamp01(heat01);
         }
 
+        // unit 5 — 드래그 포커스 피드. 드래그 중(온보드) 매 프레임 호출 — 피드가 끊기면
+        // (2프레임 초과) 자동 해제. targetViewPos = 드래그 유닛 위치(view), velWorld = 스프링 속도.
+        public void SetDragFocus(Vector3 targetViewPos, Vector3 velWorld)
+        {
+            if (config == null) return;
+            _focusTarget = targetViewPos;
+            _focusVel = velWorld;
+            _focusFedFrame = Time.frameCount;
+        }
+
         private void LateUpdate()
         {
             if (config == null) return;
@@ -178,11 +195,15 @@ namespace Wassup.Presentation
             // 때까지는 활성(크로스페이드). 유효 파동 검사로 퇴화 config(전 파동 주기 0 등)가
             // 모션 0 인 채 settle 최적화를 영구 무효화하는 것 방지(리뷰 반영).
             bool breathOn = IsBreathPhase(_currentPhase)
-                && (config.breathPosAmp > 0f || config.breathRotAmp > 0f)
+                && (config.breathPosAmp != 0f || config.breathRotAmp != 0f) // 음수 진폭 = 위상 반전(유효)
                 && HasUsableBreathWave();
             float breathTarget = (breathOn && !flying) ? 1f : 0f;
             bool breathActive = breathTarget > 0f || _breathWeight > 0f;
-            bool anyActive = _kickRemaining > 0f || flying || punctActive || breathActive;
+            // 드래그 포커스: 최근 2프레임 내 피드 + 비행 아님 → 목표 1. 페이드 잔여도 활성.
+            bool focusFed = Time.frameCount - _focusFedFrame <= 2 && config.focusDolly != 0f;
+            float focusTarget = (focusFed && !flying) ? 1f : 0f;
+            bool focusActive = focusTarget > 0f || _focusWeight > 0f;
+            bool anyActive = _kickRemaining > 0f || flying || punctActive || breathActive || focusActive;
 
             // 아이들: 정착 포즈(홈⊕현재 페이즈 델타)를 1회만 쓰고 이후 프레임은 no-op —
             // 매 프레임 transform/FOV 재기입(하이어라키 dirty + 네이티브 세터)을 모바일에서
@@ -212,6 +233,20 @@ namespace Wassup.Presentation
             }
 
             var delta = _flightDelta;
+
+            // 드래그 포커스 채널 — 유닛 방향 dolly + 부분 lookat + 스와이프 리드.
+            // base 위치 = 홈⊕비행 localPos (회전은 홈 기준 — FocusDelta 주석 참조).
+            _focusWeight = Mathf.MoveTowards(_focusWeight, focusTarget,
+                Time.unscaledDeltaTime / Mathf.Max(0.01f,
+                    focusTarget > _focusWeight ? config.focusFadeInSec : config.focusFadeOutSec));
+            if (_focusWeight > 0f)
+            {
+                Vector3 basePos = _homePos + _homeRot * _flightDelta.localPos;
+                delta = CameraComposeMath.Add(delta, CameraComposeMath.FocusDelta(
+                    basePos, _homeRot, _focusTarget, _focusVel, _focusWeight,
+                    config.focusDolly, config.focusFovDelta, config.focusLookWeight,
+                    config.focusLeanPerSpeed, config.focusLeanMaxDeg));
+            }
 
             // 구두점 채널 — 가중치 페이드 갱신 후 펄스/셰이크 합산.
             _punctWeight = config.punctuationFadeSec <= 0f
@@ -321,6 +356,8 @@ namespace Wassup.Presentation
             _pulseRemaining = 0f;
             _shakeHeat = 0f;
             _breathWeight = 0f;
+            _focusWeight = 0f;
+            _focusFedFrame = -10;
             _settled = false;
         }
     }

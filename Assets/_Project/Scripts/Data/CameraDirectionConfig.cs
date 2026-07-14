@@ -57,6 +57,22 @@ namespace Wassup.Data
         public float fovMin = 30f;
         public float fovMax = 60f;
 
+        [Header("드래그 포커스 (unit 5) — 스와이프 중 유닛 줌인 + 방향 lookat 리드")]
+        [Tooltip("유닛 방향 전진 거리(월드 유닛). 0 = 포커스 끔.")]
+        public float focusDolly = 2f;
+        [Tooltip("포커스 중 FOV 델타(도). 음수 = 줌인.")]
+        public float focusFovDelta = -2f;
+        [Tooltip("유닛 방향 lookat 블렌드. 포인터→카메라 피드백 루프의 수축 계수라 0.5 초과 금지 — 1.0 이면 발산(무한 회전). 정지 포인터의 최종 각 변위 = 오프셋 × w/(1-w).")]
+        [Range(0f, 0.5f)] public float focusLookWeight = 0.25f;
+        [Tooltip("스와이프 속도(월드 유닛/s) → 시선 리드 각(도) 변환 계수.")]
+        public float focusLeanPerSpeed = 0.35f;
+        [Tooltip("시선 리드 최대각(도).")]
+        public float focusLeanMaxDeg = 2.5f;
+        [Tooltip("포커스 진입 페이드(초).")]
+        public float focusFadeInSec = 0.25f;
+        [Tooltip("포커스 해제 페이드(초).")]
+        public float focusFadeOutSec = 0.35f;
+
         [Header("앰비언트 브리딩 (unit 3) — 인지 임계 이하 상시 생명감")]
         [Tooltip("브리딩 위치 진폭(월드 유닛). 0 = 끔. 호버 셀 플립이 상한(spec).")]
         public float breathPosAmp = 0.03f;

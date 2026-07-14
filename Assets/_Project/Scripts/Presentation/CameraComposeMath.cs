@@ -9,6 +9,7 @@ namespace Wassup.Presentation
     {
         public Vector3 localPos; // 카메라 로컬 축 위치 오프셋
         public float pitchDeg;   // 홈 right 축 회전
+        public float yawDeg;     // 홈 up 축 회전 (unit 5 — 드래그 포커스 lookat)
         public float rollDeg;    // 홈 forward 축 회전
         public float fovDelta;
 
@@ -23,6 +24,7 @@ namespace Wassup.Presentation
             {
                 localPos = a.localPos + b.localPos,
                 pitchDeg = a.pitchDeg + b.pitchDeg,
+                yawDeg = a.yawDeg + b.yawDeg,
                 rollDeg = a.rollDeg + b.rollDeg,
                 fovDelta = a.fovDelta + b.fovDelta,
             };
@@ -36,6 +38,7 @@ namespace Wassup.Presentation
             {
                 localPos = Vector3.LerpUnclamped(a.localPos, b.localPos, t),
                 pitchDeg = Mathf.LerpUnclamped(a.pitchDeg, b.pitchDeg, t),
+                yawDeg = Mathf.LerpUnclamped(a.yawDeg, b.yawDeg, t),
                 rollDeg = Mathf.LerpUnclamped(a.rollDeg, b.rollDeg, t),
                 fovDelta = Mathf.LerpUnclamped(a.fovDelta, b.fovDelta, t),
             };
@@ -90,6 +93,46 @@ namespace Wassup.Presentation
             };
         }
 
+        // unit 5 — 드래그 포커스 델타: 유닛 방향 dolly + 부분 lookat(yaw/pitch 풀각 × lookWeight)
+        // + 스와이프 속도 리드(홈 축 사영, 클램프) + FOV. weight 0 → 항등.
+        // basePos = 홈⊕비행 위치(회전은 홈 기준 — 비행 pitch 소폭 델타는 lookWeight 블렌드가 흡수).
+        public static CameraPoseDelta FocusDelta(
+            Vector3 basePos, Quaternion homeRot, Vector3 targetPos, Vector3 velWorld,
+            float weight, float dolly, float fovDelta, float lookWeight,
+            float leanPerSpeed, float leanMaxDeg)
+        {
+            if (weight <= 0f) return default;
+
+            // 포인터 ray→보드 타겟→카메라 회전이 매 프레임 되먹임되는 루프에서 lookWeight 는
+            // 수축 계수다: w<1 이어야 수렴(정지 포인터 최종 변위 = 오프셋×w/(1-w)), w=1 은 발산.
+            // SO Range 캡(0.5)과 별개로 순수 함수 차원에서도 방어 클램프.
+            lookWeight = Mathf.Clamp(lookWeight, 0f, 0.5f);
+
+            Vector3 toTarget = targetPos - basePos;
+            float dist = toTarget.magnitude;
+            if (dist < 0.01f) return default;
+            Vector3 dirLocal = Quaternion.Inverse(homeRot) * (toTarget / dist);
+
+            // 부분 lookat: 홈 forward(+z) 대비 타겟 방향의 yaw/pitch 풀각 → lookWeight 블렌드.
+            // 주의: 이 분해(Ry·Rx)는 Compose 적용 순서(yaw 먼저)의 전치라 두 각이 동시에 클 때
+            // O(yaw×pitch) 교차항 오차가 있다 — 부분 블렌드(≤0.5)에선 무시 가능, 풀 lookat 금지.
+            float yawFull = Mathf.Atan2(dirLocal.x, dirLocal.z) * Mathf.Rad2Deg;
+            float pitchFull = -Mathf.Asin(Mathf.Clamp(dirLocal.y, -1f, 1f)) * Mathf.Rad2Deg;
+
+            // 스와이프 리드: 속도를 홈 right/up 에 사영 → 이동 방향으로 시선이 앞서감.
+            Vector3 velLocal = Quaternion.Inverse(homeRot) * velWorld;
+            float leadYaw = Mathf.Clamp(velLocal.x * leanPerSpeed, -leanMaxDeg, leanMaxDeg);
+            float leadPitch = Mathf.Clamp(-velLocal.y * leanPerSpeed, -leanMaxDeg, leanMaxDeg);
+
+            return new CameraPoseDelta
+            {
+                localPos = dirLocal * (dolly * weight),
+                yawDeg = (yawFull * lookWeight + leadYaw) * weight,
+                pitchDeg = (pitchFull * lookWeight + leadPitch) * weight,
+                fovDelta = fovDelta * weight,
+            };
+        }
+
         // 홈 포즈 ⊕ 델타 → 절대 포즈. 델타 항등이면 홈 그대로.
         // FOV 는 [fovMin, fovMax] 클램프 — 페이즈 델타+펄스가 SO 튜닝만으로 위험 FOV 가
         // 되지 않도록 코드 계약으로 차단 (spec README).
@@ -101,6 +144,7 @@ namespace Wassup.Presentation
             pos = homePos + homeRot * delta.localPos;
             rot = Quaternion.AngleAxis(delta.rollDeg, homeRot * Vector3.forward)
                 * Quaternion.AngleAxis(delta.pitchDeg, homeRot * Vector3.right)
+                * Quaternion.AngleAxis(delta.yawDeg, homeRot * Vector3.up)
                 * homeRot;
             fov = Mathf.Clamp(homeFov + delta.fovDelta, fovMin, fovMax);
         }

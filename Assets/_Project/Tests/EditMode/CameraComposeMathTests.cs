@@ -86,11 +86,12 @@ public class CameraComposeMathTests
     [Test]
     public void Add_SumsAllFields()
     {
-        var a = new CameraPoseDelta { localPos = Vector3.up, pitchDeg = 1f, rollDeg = 2f, fovDelta = 3f };
-        var b = new CameraPoseDelta { localPos = Vector3.right, pitchDeg = 10f, rollDeg = 20f, fovDelta = 30f };
+        var a = new CameraPoseDelta { localPos = Vector3.up, pitchDeg = 1f, yawDeg = 0.5f, rollDeg = 2f, fovDelta = 3f };
+        var b = new CameraPoseDelta { localPos = Vector3.right, pitchDeg = 10f, yawDeg = 5f, rollDeg = 20f, fovDelta = 30f };
         var sum = CameraComposeMath.Add(a, b);
         Assert.That(sum.localPos, Is.EqualTo(Vector3.up + Vector3.right));
         Assert.That(sum.pitchDeg, Is.EqualTo(11f));
+        Assert.That(sum.yawDeg, Is.EqualTo(5.5f));
         Assert.That(sum.rollDeg, Is.EqualTo(22f));
         Assert.That(sum.fovDelta, Is.EqualTo(33f));
     }
@@ -111,10 +112,11 @@ public class CameraComposeMathTests
     [Test]
     public void Lerp_Midpoint_IsComponentwiseAverage()
     {
-        var a = new CameraPoseDelta { pitchDeg = -8f, fovDelta = 0f };
-        var b = new CameraPoseDelta { pitchDeg = 0f, fovDelta = -4f };
+        var a = new CameraPoseDelta { pitchDeg = -8f, yawDeg = 2f, fovDelta = 0f };
+        var b = new CameraPoseDelta { pitchDeg = 0f, yawDeg = 6f, fovDelta = -4f };
         var mid = CameraComposeMath.Lerp(a, b, 0.5f);
         Assert.That(mid.pitchDeg, Is.EqualTo(-4f).Within(1e-5f));
+        Assert.That(mid.yawDeg, Is.EqualTo(4f).Within(1e-5f));
         Assert.That(mid.fovDelta, Is.EqualTo(-2f).Within(1e-5f));
     }
 
@@ -150,6 +152,61 @@ public class CameraComposeMathTests
     public void KickEnvelope_ZeroDuration_IsZero()
     {
         Assert.That(CameraComposeMath.KickEnvelope(0.1f, 0f), Is.EqualTo(0f));
+    }
+
+    [Test]
+    public void Compose_YawDelta_RotatesAroundHomeUp()
+    {
+        var delta = new CameraPoseDelta { yawDeg = 15f };
+        CameraComposeMath.Compose(HomePos, HomeRot, HomeFov, delta,
+            FovMin, FovMax, out _, out var rot, out _);
+        var expected = Quaternion.AngleAxis(15f, HomeRot * Vector3.up) * HomeRot;
+        Assert.That(Quaternion.Angle(rot, expected), Is.LessThan(1e-4f));
+    }
+
+    [Test]
+    public void FocusDelta_ZeroWeight_IsIdentity()
+    {
+        var d = CameraComposeMath.FocusDelta(HomePos, HomeRot, HomePos + HomeRot * Vector3.forward * 10f,
+            Vector3.one, 0f, 2f, -2f, 0.25f, 0.35f, 2.5f);
+        Assert.That(d.localPos, Is.EqualTo(Vector3.zero));
+        Assert.That(d.yawDeg, Is.EqualTo(0f));
+        Assert.That(d.fovDelta, Is.EqualTo(0f));
+    }
+
+    [Test]
+    public void FocusDelta_TargetStraightAhead_NoYawOrPitch_DollyForward()
+    {
+        // 타겟이 홈 forward 정면 — lookat 각 0, dolly 는 로컬 +z.
+        var target = HomePos + HomeRot * (Vector3.forward * 12f);
+        var d = CameraComposeMath.FocusDelta(HomePos, HomeRot, target,
+            Vector3.zero, 1f, 2f, -2f, 0.25f, 0.35f, 2.5f);
+        Assert.That(d.yawDeg, Is.EqualTo(0f).Within(1e-4f));
+        Assert.That(d.pitchDeg, Is.EqualTo(0f).Within(1e-4f));
+        Assert.That(d.localPos.z, Is.EqualTo(2f).Within(1e-5f));
+        Assert.That(d.localPos.x, Is.EqualTo(0f).Within(1e-5f));
+        Assert.That(d.fovDelta, Is.EqualTo(-2f).Within(1e-6f));
+    }
+
+    [Test]
+    public void FocusDelta_TargetToTheRight_YieldsPositiveYaw_ScaledByLookWeight()
+    {
+        // 타겟이 로컬 x=+z 대각(45°) — yaw 풀각 45 × lookWeight 0.25 = 11.25.
+        var target = HomePos + HomeRot * (new Vector3(1f, 0f, 1f).normalized * 10f);
+        var d = CameraComposeMath.FocusDelta(HomePos, HomeRot, target,
+            Vector3.zero, 1f, 2f, -2f, 0.25f, 0.35f, 2.5f);
+        Assert.That(d.yawDeg, Is.EqualTo(45f * 0.25f).Within(1e-3f));
+    }
+
+    [Test]
+    public void FocusDelta_SwipeLead_ClampedToMax()
+    {
+        // 매우 빠른 우측 스와이프 — 리드 yaw 가 max(2.5°)로 클램프.
+        var target = HomePos + HomeRot * (Vector3.forward * 10f);
+        var vel = HomeRot * (Vector3.right * 100f);
+        var d = CameraComposeMath.FocusDelta(HomePos, HomeRot, target,
+            vel, 1f, 2f, -2f, 0f, 0.35f, 2.5f); // lookWeight 0 — 리드만 관측
+        Assert.That(d.yawDeg, Is.EqualTo(2.5f).Within(1e-4f));
     }
 
     [Test]

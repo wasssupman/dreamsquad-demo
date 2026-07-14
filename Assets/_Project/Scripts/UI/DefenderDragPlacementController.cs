@@ -104,6 +104,10 @@ namespace Wassup.UI
             KeyringSim.SpringStep(ref _unitPosWorld, ref _unitVelWorld, _unitTargetWorld,
                 s.spring, s.damping, s.maxSpeed, dt);
 
+            // camera-direction unit 5 — 드래그 포커스 피드(유닛 위치 + 스와이프 속도). 매 프레임
+            // 피드가 계약 — 끊기면(오프보드/세션 종료/파괴) Director 가 staleness 로 자동 해제.
+            EnsureCameraDirector()?.SetDragFocus(_unitPosWorld, _unitVelWorld);
+
             // 배치: 고리(공중) · 유닛 머리(발+높이) · 줄(고리→머리).
             if (_session.ring != null) _session.ring.position = _ringWorld;
             Vector3 headPos = _unitPosWorld + camT.up * _session.unitHeight;
@@ -128,6 +132,24 @@ namespace Wassup.UI
             // 하이라이트 = 마우스 바로 아래(안정) 칸. 흔들리는 유닛 위치가 아니라 마우스가 클램프 →
             // 유닛은 좌우로 흔들려도 배치 대상 칸은 고정(게임 배치 정확도). 유닛은 그 칸 위에서 흔들린다.
             UpdateHoverAtTarget();
+        }
+
+        // camera-direction unit 5 — Director 캐시 (miss 캐시 + 1회 경고, 기존 패턴).
+        private Wassup.Presentation.CameraDirector _cameraDirector;
+        private bool _cameraDirectorMissWarned;
+
+        private Wassup.Presentation.CameraDirector EnsureCameraDirector()
+        {
+            if (_cameraDirector != null) return _cameraDirector;
+            if (_cameraDirectorMissWarned) return null;
+            if (mainCamera == null) return null;
+            _cameraDirector = mainCamera.GetComponent<Wassup.Presentation.CameraDirector>();
+            if (_cameraDirector == null)
+            {
+                Debug.LogWarning("[DefenderDragPlacementController] CameraDirector 미배선 — 드래그 포커스 생략.", this);
+                _cameraDirectorMissWarned = true;
+            }
+            return _cameraDirector;
         }
 
         public void UpdateDrag(Vector2 screenPosition)
