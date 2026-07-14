@@ -72,7 +72,7 @@ crashlytics-build.properties
 .DS_Store
 .AppleDouble
 .LSOverride
-Icon
+Icon
 ._*
 
 # Windows
@@ -83,6 +83,9 @@ $RECYCLE.BIN/
 
 # OMC (oh-my-claudecode)
 .omc/
+
+# dryforge 로컬 워크트리/오케스트레이션 상태 (세션별 — 커밋 대상 아님)
+.dryforge/
 
 # Claude Code — share project config (settings.json, skills, agents, hooks) so a
 # fresh clone reproduces the workflow; ignore only personal/local state.
