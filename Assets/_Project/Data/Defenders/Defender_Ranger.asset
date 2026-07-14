@@ -73,6 +73,41 @@ MonoBehaviour:
   deployAnimation: Hit
   placementVfxPrefab: {fileID: 4060967071236614201, guid: c91958420bcc8d647ae19c0e7caeafa6, type: 3}
   attackVfxPrefab: {fileID: 0}
+  deployCutsceneFrames:
+  - {fileID: 21300000, guid: 0aca005e783b89b46973c42de194e701, type: 3}
+  - {fileID: 21300000, guid: a9d86b5d9052b634fbf1b903d68ca52b, type: 3}
+  - {fileID: 21300000, guid: f22470310ecb6b243a422d9840973fed, type: 3}
+  - {fileID: 21300000, guid: eeca2e2e8ae4e7c4fb22c06786d4ccf0, type: 3}
+  - {fileID: 21300000, guid: ee704e8305cb4ca408e2cb3304e246df, type: 3}
+  - {fileID: 21300000, guid: fb616a4e9d3b06b41a2fe6e869b7def6, type: 3}
+  - {fileID: 21300000, guid: f128127999bdc8e4c82e8e07da45d956, type: 3}
+  - {fileID: 21300000, guid: d1db8a4c4096650448bdbd3954462ef6, type: 3}
+  - {fileID: 21300000, guid: 9b7b9bc4e52c86042adb8c43961c5b5b, type: 3}
+  - {fileID: 21300000, guid: e4c4f5cb159f42b46a550c9d31696915, type: 3}
+  - {fileID: 21300000, guid: ed8084b8dc0b71a42b968f64de4fed09, type: 3}
+  - {fileID: 21300000, guid: 0b973b1adc6991743ab04e138c3d52ef, type: 3}
+  - {fileID: 21300000, guid: 133dfa7bcdb0c5e409a8c1c2786f1922, type: 3}
+  - {fileID: 21300000, guid: c3025a99bac7eb845a284029e2b7309d, type: 3}
+  - {fileID: 21300000, guid: 59cc582e38f01894bb3bb33beb681f68, type: 3}
+  - {fileID: 21300000, guid: 9932b8d0f252b0444a700ce8cd380a90, type: 3}
+  - {fileID: 21300000, guid: 1894155f19feda646b64e5d879c0d705, type: 3}
+  - {fileID: 21300000, guid: 9cb98d5073ba33a45a4faf9a38d7b473, type: 3}
+  - {fileID: 21300000, guid: a3845ac977cb28d42879fa665f3d7889, type: 3}
+  - {fileID: 21300000, guid: 9506f8e61b9ba2a41b25729cf60a3c7c, type: 3}
+  - {fileID: 21300000, guid: 36c7372d50957a94aa7d7ef568ea54be, type: 3}
+  - {fileID: 21300000, guid: 214a5070d3aaa804cac67527e3eb2159, type: 3}
+  - {fileID: 21300000, guid: 3a0c95cf769e5e54ba884d35d6a7578e, type: 3}
+  - {fileID: 21300000, guid: ccfc5c94c99a8ff4688b096a5a78f035, type: 3}
+  - {fileID: 21300000, guid: d210e3b03b2b5ca43a316bc84110e85a, type: 3}
+  - {fileID: 21300000, guid: 5232d0f8ac3bc00418af2676411c7458, type: 3}
+  - {fileID: 21300000, guid: 379abbf6eb3ddc544916f92132249a58, type: 3}
+  - {fileID: 21300000, guid: 14475dbc6bc5d5140b56708ebea85791, type: 3}
+  - {fileID: 21300000, guid: bc24761cfe9805848bad9beee1d74242, type: 3}
+  - {fileID: 21300000, guid: b101a41e099410b45af11dff67be725c, type: 3}
+  - {fileID: 21300000, guid: 4e9af2efe9f2f4047b3b0f2e187652ae, type: 3}
+  - {fileID: 21300000, guid: dafbe23886cdb274e9df9051e80dacb3, type: 3}
+  - {fileID: 21300000, guid: e0cc76acf46806d4996ce67031702d12, type: 3}
+  deployCutsceneFps: 24
   knockbackDistance: 0
   knockbackDuration: 0
   onPlacePushDistance: 0

@@ -34,5 +34,9 @@ namespace Wassup.Data
         [Header("스타일 (keyring-unify 3)")]
         [Tooltip("키링 스타일 — 월드 슬롯(ringSprite/worldCord·RingMaterial) 사용. 비우면 절차적 폴백(원 루프 + cordColor 단색 줄).")]
         public KeyringStyle style;
+
+        [Header("배치 컷신 (defender-deploy-cutscene)")]
+        [Tooltip("드래그 배치 시작 시 좌상단 유닛 컷신 재생 여부. 끄면 컷신 프레임이 있어도 재생하지 않는다.")]
+        public bool enableDeployCutscene = true;
     }
 }

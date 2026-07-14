@@ -29,6 +29,10 @@ namespace Wassup.UI
 
         private const int RingSegments = 14;
 
+        // defender-deploy-cutscene unit 3 — 드래그 시작 시 좌상단 컷신 재생기(옵셔널 주입).
+        // null 이면 컷신 없이 기존 흐름. 재생은 드래그 세션과 독립(CleanupSession 이 건드리지 않음).
+        private DeployCutscenePlayer _cutscenePlayer;
+
         private DragSession _session;
         private TimeLease _slowmoLease; // time-manager Unit 5 — 드래그 중 Battle 슬로우모 lease
         private Material _previewMaterial; // 폴백 capsule 용
@@ -67,13 +71,15 @@ namespace Wassup.UI
         }
 
         public void Configure(BattleBridge battleBridge, Camera camera, PlacementInput input,
-            DragSwaySettings swaySettings = null, TMP_FontAsset uiFont = null)
+            DragSwaySettings swaySettings = null, TMP_FontAsset uiFont = null,
+            DeployCutscenePlayer cutscenePlayer = null)
         {
             bridge = battleBridge;
             mainCamera = camera != null ? camera : Camera.main;
             placementInput = input;
             if (swaySettings != null) _cfg = swaySettings;
             if (uiFont != null) _uiFont = uiFont;
+            if (cutscenePlayer != null) _cutscenePlayer = cutscenePlayer;
         }
 
         public void BeginDrag(DefenderUnitData unitData, Vector2 screenPosition)
@@ -85,6 +91,12 @@ namespace Wassup.UI
             if (mainCamera == null) mainCamera = Camera.main;
 
             _session = BuildSession(unitData);
+            // defender-deploy-cutscene unit 3 — 프레임이 있으면 좌상단 컷신 1회 재생(독립).
+            // 기능 온/오프는 DragSwaySettings.enableDeployCutscene 로 게이트.
+            if (Cfg.enableDeployCutscene && _cutscenePlayer != null &&
+                unitData.deployCutsceneFrames != null && unitData.deployCutsceneFrames.Length > 0)
+                _cutscenePlayer.Play(unitData.deployCutsceneFrames, unitData.deployCutsceneFps,
+                    unitData.deployCutsceneScale, unitData.deployCutsceneOffset);
             bridge?.SetEnemiesDimmed(true); // placement-enemy-see-through — 적 반투명 on
             bridge?.SetPlacementHighlightAboveUnits(true); // unit 6 — 배치 하이라이트를 적 위로
             if (placementInput != null) placementInput.SetClickPlacementEnabled(false);

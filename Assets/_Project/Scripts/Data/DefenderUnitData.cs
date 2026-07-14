@@ -113,6 +113,18 @@ namespace Wassup.Data
         public GameObject placementVfxPrefab;
         public GameObject attackVfxPrefab;
 
+        // defender-deploy-cutscene unit 1 — 드래그 배치 스와이프 시 좌상단에 재생하는
+        // 원샷 스프라이트 플립북. 비어 있으면 컷신 없음(유닛별 옵트인). 순수 프레젠테이션.
+        [Header("Deploy Cutscene")]
+        public Sprite[] deployCutsceneFrames;
+        public float deployCutsceneFps = 24f;
+        // 유닛별 표시 배율(재생기 displayScale 에 곱). 프레임 원본 크기가 유닛마다 달라도
+        // 화면 노출 크기를 맞추거나 특정 유닛만 키울 때 사용. 1 = 재생기 기본 크기.
+        public float deployCutsceneScale = 1f;
+        // 유닛별 도착 위치 오프셋(px). 재생기 공유 baseline(cornerMarginPx)에 더해진다.
+        // 프레임마다 캐릭터 위치/크기가 달라 컷신별로 안착 지점을 미세조정. (0,0)=baseline.
+        public Vector2 deployCutsceneOffset;
+
         [Header("Knockback (per attack)")]
         public float knockbackDistance;   // world units. 0 = disabled
         public float knockbackDuration;   // seconds. velocity = direction * distance / duration
