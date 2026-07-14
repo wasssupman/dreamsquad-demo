@@ -27,3 +27,12 @@
 - 사용자 육안 승인 (Lucid·Rim·재시작 각 1회).
 - 콘솔 에러/워닝 0, PrimeTween ignored callback 0.
 - 튜닝 확정값 기록 + `GiftConfig_Default.asset` 커밋.
+
+확인: 2026-07-14 — 사용자 포커스 Play 승인("괜찮다"). 커밋 `f8b6d9a3`.
+
+### 튜닝 확정 기록
+
+- 사용자 피드백 1건 반영: **리빌 읽기 홀드 +1s**(`revealHoldSec: 1`) + **근접감 확대**(`revealScale` 1.6→2.1, `revealSpreadX` 130→210 겹침 방지) + **축소를 스택 편입 비행으로 이동**(원근 서사). 커밋 `f8b6d9a3`.
+- 리뷰 단계 실측으로 확정된 타이밍 기본값은 README 계약 8 참조 (홀드 제외 5.95s / 포함 ~6.9s).
+- Lucid/Rim 강제 확인법: `GiftConfig_Default.asset` 의 `rimWeight`/`lucidWeight` 를 0 으로 (확인 후 1/1 복원).
+- 잔여: Lucid 분기·재시작 재생은 스크립트 스모크(상태 검증)로만 확인 — 육안 재확인은 다음 플레이에서 자연 커버.

@@ -23,3 +23,5 @@
 
 - EditMode 테스트: 그리드 중앙 대칭·행 전환, 부채꼴 좌우 대칭·회전 부호, RiffleOrder 순열 검증(n=12 전원소 1회), AbsorbDelay 단조성·min 클램프, StackJitter 결정론(같은 k → 같은 값).
 - Unity 컴파일 클린. 기존 테스트 무회귀.
+
+확인: 2026-07-14 — EditMode 12/12 (총 755 무회귀). 커밋 `cb3d99d9`.

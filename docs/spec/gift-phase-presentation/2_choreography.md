@@ -31,3 +31,5 @@
 - 비포커스 execute_code 스모크: Gift 진입 → 시퀀스 완주 → `ProceedToPlacement` 도달, finalOrder==부채꼴 순서 로그 일치, 런타임 에러/PrimeTween ignored callback 0.
 - `GiftConfig_Default.asset` 기본값 합산 총 시간 ≤ 6.0s (수치 명시 검증).
 - 재시작/페이즈 강제 이탈 시 leak 없음(이펙트 잔존/NRE 0).
+
+확인: 2026-07-14 — 스모크 완주(Rim·재진입·중단경로 leak 0), 콘솔 0, 실측 5.95s(홀드 제외). 커밋 `d52523ff` + `35fc78a7` + 리뷰 rev1 `c9571fc0`.
