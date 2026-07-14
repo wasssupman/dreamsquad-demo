@@ -331,7 +331,7 @@ namespace Wassup.UI
             _popupArtFallback.enabled = card.art == null;
 
             _popupTitle.text = string.IsNullOrEmpty(card.displayName) ? card.id : card.displayName;
-            _popupEffect.text = PopupBody(card);
+            _popupEffect.text = DreamcatcherCardText.Body(card);
 
             _popupActionBtn.onClick.RemoveAllListeners();
             if (fromDeck)
@@ -482,44 +482,6 @@ namespace Wassup.UI
             tmp.fontStyle = style;
             if (font != null) tmp.font = font;
             return tmp;
-        }
-
-        // Rich effect body for the popup: gold axis header + one line per buff.
-        private static string PopupBody(DreamcatcherCard card)
-        {
-            string axis = card.axis == CardTargetAxis.ClassRanger ? "RANGER"
-                        : card.axis == CardTargetAxis.ClassGuardian ? "GUARDIAN"
-                        : card.axis == CardTargetAxis.Cost1 ? "COST-1 UNITS"
-                        : "ALL UNITS";
-            var lines = new List<string>();
-            if (card.effects != null)
-            {
-                foreach (var e in card.effects)
-                {
-                    string k = e.kind == CardBuffKind.AttackDamage ? "Attack"
-                             : e.kind == CardBuffKind.AttackSpeed ? "Attack Speed"
-                             : e.kind == CardBuffKind.EffectiveHealth ? "Health"
-                             : e.kind == CardBuffKind.MoveSpeed ? "Move Speed"
-                             : "Cost Rate";
-                    string sign = e.percent >= 0 ? "+" : "";
-                    string col = e.percent >= 0 ? "#8BE28B" : "#E28B8B";
-                    lines.Add($"{k}  <color={col}>{sign}{e.percent:0}%</color>");
-                }
-            }
-            // dreamcatcher-card-taxonomy — label shows TYPE (Squad/Unit), retired grade.
-            string typeLabel = card.type == CardType.Unit ? "<color=#F0B44E>UNIT</color>" : "<color=#9AA6C0>SQUAD</color>";
-            // dreamcatcher-card-description Unit 1 — header(축·타입) + 자동 수치라인
-            // (effects[], 있을 때만) + authored description(있을 때만). Unit 카드는
-            // effects 가 비어 description 이 유일한 본문이 된다.
-            // axis 칩은 Squad 전용: axis(CardTargetAxis)는 축 스탯 버프의 대상 필터라
-            // Unit 카드(개별 부착, MatchesDcAxis 미소비)에는 의미가 없다 → 타입 라벨만.
-            string header = card.type == CardType.Squad
-                ? $"<color=#F5D480><b>{axis}</b></color>  ·  {typeLabel}"
-                : typeLabel;
-            string body = $"<size=22>{header}</size>";
-            if (lines.Count > 0) body += "\n\n" + string.Join("\n", lines);
-            if (!string.IsNullOrEmpty(card.description)) body += $"\n\n<color=#D4DAE8>{card.description}</color>";
-            return body;
         }
 
         // --- layout helpers --------------------------------------------------
