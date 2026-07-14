@@ -22,4 +22,18 @@ MonoBehaviour:
   shuffleSec: 2
   holdSec: 2
   flyOutSec: 0.6
+  cardSize: {x: 180, y: 252}
+  frameRadius: 18
+  frameBorder: 10
+  artInset: 10
+  nameFontSize: 22
+  facePlateColor: {r: 0.1, g: 0.13, b: 0.22, a: 1}
+  fallbackNormalColor: {r: 0.22, g: 0.28, b: 0.44, a: 1}
+  fallbackSubconsciousColor: {r: 0.46, g: 0.28, b: 0.62, a: 1}
+  lucidFrameColor: {r: 1, g: 0.84, b: 0.35, a: 1}
+  rimFrameColor: {r: 0.92, g: 0.22, b: 0.2, a: 1}
+  backDarken: 0.55
+  foilIntensity: 0.35
+  foilSpeed: 1.2
+  foilHueShift: 0.06
   fastForwardInTestMode: 1
