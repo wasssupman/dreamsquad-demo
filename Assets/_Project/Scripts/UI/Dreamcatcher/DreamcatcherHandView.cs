@@ -391,6 +391,18 @@ namespace Wassup.UI
             return slot.entryId >= 0 && slot.usable;
         }
 
+        // hand-drag-tooltip rev 4 — press 툴팁 노출 판정(usable 무관, dim 카드 포함):
+        // CanStartDrag 에서 usable 요구만 뺀 것. 타 인터랙션 중이면 불가(드래그
+        // 중인 카드의 툴팁을 덮어쓰면 안 된다).
+        public bool CanPeek(int index)
+        {
+            if (State != HandState.Hand || Transitioning) return false;
+            if (AnyInteractionActive()) return false;
+            if (index < 0 || index >= _slots.Count) return false;
+            var slot = _slots[index];
+            return slot.entryId >= 0 && slot.card != null;
+        }
+
         public void RestoreSlotHome(int index)
         {
             if (index < 0 || index >= _slots.Count) return;

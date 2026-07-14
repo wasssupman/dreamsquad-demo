@@ -40,7 +40,14 @@
 
 ### 훅 (DreamcatcherCardDragSlot)
 
-- `OnBeginDrag` 성공 경로(AimMode 확정 후, L88 이후)에서 `_view.ShowDragTooltip(_index)`.
+- **rev 4 (rev 3 대체)**: `OnPointerDown`(SetFocus 와 같은 지점)에서 `CanPeek` 통과 시
+  `ShowDragTooltip(_index)` — press 중 상시 노출, usable 무관. `OnPointerUp` 에서
+  이 슬롯이 드래그/포탈 조준 중이 아니면 `HideDragTooltip()` (드래그로 이어진 경우는
+  `EndInteraction` 깔때기, 포탈은 조준 종료가 걷는다 — Unity 이벤트 순서상 PointerUp 이
+  EndDrag 보다 먼저 오고 그 시점 `_dragging` 이 아직 true 라 이 분기가 안전).
+  `OnBeginDrag` 성공 경로의 `ShowDragTooltip` 은 안전망으로 유지(멱등).
+  `CanPeek(index)` = CanStartDrag 에서 usable 요구만 뺀 판정(타 인터랙션 중 불가).
+  rev 3 의 `_peeking` 플래그/OnEndDrag peek 분기는 제거(press 모델로 흡수).
 - `EndInteraction()` 에서 `_view.HideDragTooltip()`. 검증됨(2026-07-14 코드 확인):
   커밋(`CommitNow` L234)/취소(`CancelDrag` L243)/패널 비활성(`OnDisable` L355)이 전부
   이 깔때기로 수렴하고, 포탈 첫 탭(L185-188)은 호출하지 않아 "포탈 조준 중 유지" 계약과

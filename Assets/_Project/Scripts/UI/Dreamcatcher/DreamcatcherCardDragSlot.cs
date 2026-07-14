@@ -58,8 +58,22 @@ namespace Wassup.UI
 
         // hand-deal-in unit 1 — 눌러서 들기(press-to-lift, 모바일): press=focus, release=clear.
         // 뷰가 슬롯 target 을 조작(스프링이 해석). PointerDown 은 BeginDrag 보다 먼저 발화한다.
-        public void OnPointerDown(PointerEventData eventData) { if (_view != null && !_dragging) _view.SetFocus(_index); }
-        public void OnPointerUp(PointerEventData eventData) { if (_view != null) _view.ClearFocus(_index); }
+        // hand-drag-tooltip rev 4 — press 중 성능 툴팁 상시 노출(usable 무관).
+        public void OnPointerDown(PointerEventData eventData)
+        {
+            if (_view == null || _dragging) return;
+            _view.SetFocus(_index);
+            if (_view.CanPeek(_index)) _view.ShowDragTooltip(_index);
+        }
+
+        // 해제 시 숨김 — 단 드래그로 이어졌으면 EndInteraction 깔때기가, 포탈 조준은
+        // 조준 종료가 걷는다. (PointerUp 은 EndDrag 보다 먼저 → 그 시점 _dragging 유지)
+        public void OnPointerUp(PointerEventData eventData)
+        {
+            if (_view == null) return;
+            _view.ClearFocus(_index);
+            if (!_dragging && !IsPortalAiming) _view.HideDragTooltip();
+        }
 
         private static AimMode Classify(DreamcatcherCard card)
         {

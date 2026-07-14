@@ -24,8 +24,13 @@
 
 ## Feature-wide 계약
 
-- **트리거**: `DreamcatcherCardDragSlot.OnBeginDrag` 성공 경로(AimMode 확정 후)에서 표시.
-  press-to-lift(OnPointerDown/SetFocus)만으로는 뜨지 않는다.
+- **트리거 (rev 4, 사용자 결정 2026-07-14 — rev 3 스와이프-only peek 을 대체)**:
+  **press 기반** — `OnPointerDown`(press-to-lift 와 같은 순간)에 표시하고, 터치/클릭이
+  눌려 있는 동안 상시 유지. usable 여부 무관(dim 카드도 press 로 정보 확인).
+  해제(`OnPointerUp`) 시 숨김 — 단 드래그로 이어졌으면 `EndInteraction` 깔때기가,
+  포탈 조준으로 이어졌으면 조준 종료가 걷는다(조준 중 유지 계약 그대로).
+  다른 카드 인터랙션 중이면 표시하지 않는다(툴팁 소유권 침범 금지).
+  rev 3 이력: 스와이프 시작 트리거는 UX 어색 + 재시도 미표시 버그로 press 로 대체.
 - **숨김**: 드래그 상호작용의 실질 종료 시점(`EndInteraction` 깔때기)에서 숨긴다.
   `EndInteraction` 은 모든 *종료*(커밋/취소/비활성)의 공통 teardown 이고, 포탈 첫 탭은
   종료가 아닌 조준 상태 전환이라 호출되지 않는다 — 조준이 이어지는 동안 툴팁 유지.
