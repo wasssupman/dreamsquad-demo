@@ -18,6 +18,9 @@ namespace Wassup.UI
         [SerializeField] private BattleBridge bridge;
         [SerializeField] private DraftController draftController;
         [SerializeField] private DefenderDragPlacementController dragPlacementController;
+        // defender-deploy-cutscene unit 3 — 드래그 시작 시 좌상단 컷신 재생기. 씬에 배치해
+        // 할당하면 인스펙터 튜닝(hold/scale/margin)이 반영된다. 미할당이면 AddComponent 폴백.
+        [SerializeField] private DeployCutscenePlayer deployCutscenePlayer;
         // 드래그 프리뷰 sway 튜닝값(SO). 컨트롤러가 런타임 부착이라 여기서 할당해 주입한다.
         // 미할당이면 컨트롤러가 클래스 기본값으로 폴백. 에셋 편집이 런타임에 반영된다.
         [SerializeField] private DragSwaySettings swaySettings;
@@ -445,8 +448,13 @@ namespace Wassup.UI
                 dragPlacementController = GetComponent<DefenderDragPlacementController>();
             if (dragPlacementController == null)
                 dragPlacementController = gameObject.AddComponent<DefenderDragPlacementController>();
+            if (deployCutscenePlayer == null)
+                deployCutscenePlayer = GetComponent<DeployCutscenePlayer>();
+            if (deployCutscenePlayer == null)
+                deployCutscenePlayer = gameObject.AddComponent<DeployCutscenePlayer>();
             if (bridge != null)
-                dragPlacementController.Configure(bridge, Camera.main, bridge.PlacementInput, swaySettings, nameFont);
+                dragPlacementController.Configure(bridge, Camera.main, bridge.PlacementInput,
+                    swaySettings, nameFont, deployCutscenePlayer);
         }
     }
 }
