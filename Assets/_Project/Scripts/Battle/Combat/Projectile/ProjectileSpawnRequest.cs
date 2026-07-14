@@ -72,6 +72,13 @@ namespace Wassup.Battle.Combat.Projectile
         // (priorityDamageMul > 0 ? priorityDamageMul : 1). Wired in unit 3.
         public Entity priorityTarget;
         public float priorityDamageMul;
+
+        // ── Heavy strike all-victim mul (dreamcatcher-heavy-strike 응축된 일격) ──
+        // Copied verbatim onto ProjectileState by the drain. priorityDamageMul
+        // multiplies only the priority victim; this one multiplies EVERY Damage
+        // victim of the shot (근접 cleave/splash/bounce 포함 — 강공은 한 방 통째).
+        // Default 0 = inert (실적용 mul>0?mul:1). Wired in unit 1, applied unit 2.
+        public float heavyDamageMul;
     }
 
     public struct ProjectileSpawnOutputElement : IBufferElementData

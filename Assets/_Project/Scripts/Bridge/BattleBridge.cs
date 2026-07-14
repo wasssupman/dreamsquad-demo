@@ -2331,6 +2331,8 @@ namespace Wassup.Bridge
                 // copy. Defaults Null/0 = inert, so every existing spawn keeps base damage.
                 priorityTarget = req.priorityTarget,
                 priorityDamageMul = req.priorityDamageMul,
+                // dreamcatcher-heavy-strike unit 0 — 강공 전-victim 배율 verbatim 복사(기본 0=inert).
+                heavyDamageMul = req.heavyDamageMul,
             };
             if (req.movement == MovementKind.BallisticArcToPoint)
             {

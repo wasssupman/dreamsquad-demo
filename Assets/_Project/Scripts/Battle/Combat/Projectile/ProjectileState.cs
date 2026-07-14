@@ -92,5 +92,12 @@ namespace Wassup.Battle.Combat.Projectile
         // bounce re-homing but only fires while the direct victim == priorityTarget.
         public Entity priorityTarget;
         public float priorityDamageMul;
+
+        // ── Heavy strike all-victim mul (dreamcatcher-heavy-strike 응축된 일격) ──
+        // Filled at launch from ProjectileSpawnRequest. Unlike priorityDamageMul
+        // (one victim), this multiplies EVERY Damage-kind victim of this shot, to
+        // both IncomingDamage and ThreatTable.TryCredit (no desync). Default 0 =
+        // inert. Survives bounce re-homing. Applied in unit 2 (ProjectileHitSystem).
+        public float heavyDamageMul;
     }
 }

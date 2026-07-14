@@ -48,6 +48,12 @@ namespace Wassup.Data
         // dreamcatcher-kill-and-threshold unit 0 — 발동 시 시전 유닛 자신에게 StatModifier
         // 부여(buffStat 선택자). last_stand(HealthThreshold×공격력) / devouring(OnKill×공속).
         SelfStatBuff = 12,
+        // dreamcatcher-heavy-strike unit 0 — 응축된 일격. AttackN(period=N) 으로 발동하는
+        // 강공: 추가 캐리어를 발사하는 다른 payload 와 달리 그 발동 공격 자신의 출력
+        // 데미지를 magnitude 배(2.0=×2)로 만든다. 전 victim(근접 cleave/splash/bounce)
+        // 에 적용 — primary 한정인 끝을 보는 눈과 다르다. 발동은 unit 1(AttackSystem),
+        // 적용은 unit 2(melee + ProjectileHitSystem, hit-site 배율).
+        HeavyStrike = 13,
     }
 
     // dreamcatcher-new-abilities unit 0 — 데이터 계층 CC 선택자(공격 온-히트용). 정의
@@ -87,6 +93,7 @@ namespace Wassup.Data
         // nightmare-whip-aura — AllyMoveSpeedAura: 이속 증가 %(20 = +20%,
         // placement-aura 의 magnitude=% 컨벤션). 음수 = 아군 슬로우(허용,
         // aggregator floor 클램프).
+        // dreamcatcher-heavy-strike — HeavyStrike: 강공 데미지 배율(2.0 = ×2).
         public float magnitude;
         // ProjectileToTarget: trajectory/view definition. nightmare-catcher
         // unit 0 — AreaBarrage: SkyFall 낙하 비주얼. 나머지 kind 는 null 유지
