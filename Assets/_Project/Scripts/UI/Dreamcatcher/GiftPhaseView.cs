@@ -273,7 +273,7 @@ namespace Wassup.UI
             {
                 for (int g = baseN; g < n; g++) _cardWidgets[g].SetFace(true);
 #if UNITY_ANDROID || UNITY_IOS
-                if (cfg.vibrateOnReveal) Handheld.Vibrate();
+                if (cfg.vibrateOnReveal && !Application.isEditor) Handheld.Vibrate();
 #endif
             });
             for (int g = 0; g < n - baseN; g++)
