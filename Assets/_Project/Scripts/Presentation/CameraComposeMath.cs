@@ -28,6 +28,19 @@ namespace Wassup.Presentation
             };
         }
 
+        // unit 1 — 비행 보간: 컴포넌트별 unclamped lerp. 진행도(0~1)는 호출부가 클램프하고,
+        // 이징 커브의 오버슈트(>1)는 그대로 통과시킨다(백-이즈 연출 허용).
+        public static CameraPoseDelta Lerp(in CameraPoseDelta a, in CameraPoseDelta b, float t)
+        {
+            return new CameraPoseDelta
+            {
+                localPos = Vector3.LerpUnclamped(a.localPos, b.localPos, t),
+                pitchDeg = Mathf.LerpUnclamped(a.pitchDeg, b.pitchDeg, t),
+                rollDeg = Mathf.LerpUnclamped(a.rollDeg, b.rollDeg, t),
+                fovDelta = Mathf.LerpUnclamped(a.fovDelta, b.fovDelta, t),
+            };
+        }
+
         // 킥 감쇠 envelope: 남은시간 비율 k 의 k² (빠른 decay). 구 CameraImpactKick 이식.
         public static float KickEnvelope(float remaining, float duration)
         {

@@ -61,6 +61,37 @@ public class CameraComposeMathTests
     }
 
     [Test]
+    public void Lerp_Boundaries_ReturnEndpoints()
+    {
+        var a = new CameraPoseDelta { localPos = Vector3.up, pitchDeg = 2f, rollDeg = 3f, fovDelta = 4f };
+        var b = new CameraPoseDelta { localPos = Vector3.right * 5f, pitchDeg = -8f, rollDeg = 0f, fovDelta = -2f };
+        var at0 = CameraComposeMath.Lerp(a, b, 0f);
+        var at1 = CameraComposeMath.Lerp(a, b, 1f);
+        Assert.That(at0.localPos, Is.EqualTo(a.localPos));
+        Assert.That(at0.pitchDeg, Is.EqualTo(a.pitchDeg));
+        Assert.That(at1.localPos, Is.EqualTo(b.localPos));
+        Assert.That(at1.fovDelta, Is.EqualTo(b.fovDelta));
+    }
+
+    [Test]
+    public void Lerp_Midpoint_IsComponentwiseAverage()
+    {
+        var a = new CameraPoseDelta { pitchDeg = -8f, fovDelta = 0f };
+        var b = new CameraPoseDelta { pitchDeg = 0f, fovDelta = -4f };
+        var mid = CameraComposeMath.Lerp(a, b, 0.5f);
+        Assert.That(mid.pitchDeg, Is.EqualTo(-4f).Within(1e-5f));
+        Assert.That(mid.fovDelta, Is.EqualTo(-2f).Within(1e-5f));
+    }
+
+    [Test]
+    public void Lerp_OvershootT_PassesThroughUnclamped()
+    {
+        var a = new CameraPoseDelta { pitchDeg = 0f };
+        var b = new CameraPoseDelta { pitchDeg = 10f };
+        Assert.That(CameraComposeMath.Lerp(a, b, 1.2f).pitchDeg, Is.EqualTo(12f).Within(1e-5f));
+    }
+
+    [Test]
     public void KickEnvelope_FullRemaining_IsOne_AndDecaysToZero()
     {
         Assert.That(CameraComposeMath.KickEnvelope(0.16f, 0.16f), Is.EqualTo(1f).Within(1e-5f));

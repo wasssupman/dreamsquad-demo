@@ -23,7 +23,7 @@
 
 ## 완료 기준
 
-- EditMode: `EvaluateFlight` 보간 경계(t=0/1), 비행 중 재타겟 연속성 테스트.
+- EditMode: 보간 순수 함수(`CameraComposeMath.Lerp`) 경계(t=0/1)·중점·오버슈트 통과 테스트. (재타겟 연속성은 MonoBehaviour 상태(`_flightFrom = 현재 평가 델타`)에 있어 순수 함수 테스트 대상이 아님 — Play 검증으로 대체, 리뷰 합의)
 - Play(스크립트 배틀 e2e): Draft→Battle→Result 전환에서 스냅 없이 비행, 전환 총시간이 `flightSec`과 일치, 비행 후 포즈 = 홈⊕델타 정확.
 - 매치 재시작 시에도 비행이 자연스럽게 이어짐(포즈 점프/잔상 없음), 콘솔 클린.
 - 사용자 Play 체감 확인 (속도감/멀미 없음).

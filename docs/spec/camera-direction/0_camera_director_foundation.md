@@ -16,7 +16,7 @@
 ## 구현
 
 - `CameraDirector : MonoBehaviour` (Main Camera 부착, 씬 배선):
-  - `[DefaultExecutionOrder(-100)]` — **카메라 포즈 소비자(빌보드/데미지넘버/드래그 프리뷰 등 LateUpdate에서 카메라를 읽는 모든 컴포넌트)보다 먼저 실행**되는 것이 계약. 소비자들은 항상 이번 프레임 최종 포즈를 읽는다.
+  - `[DefaultExecutionOrder(-90)]` — **카메라 포즈 소비자(빌보드/데미지넘버/드래그 프리뷰 등 LateUpdate에서 카메라를 읽는 모든 컴포넌트, 전부 order 0)보다 먼저 실행**되는 것이 계약. 단 GameManager(-100)보다는 뒤 — Start 순서가 결정적이 되어 씬 시작 페이즈 스냅이 항상 성립(unit 1 리뷰 반영).
   - `Awake`에서 씬 authored 포즈(position/rotation/FOV)를 홈 포즈로 캡처. 캡처/config 준비 전에 들어온 `Kick()` 등 채널 호출은 안전 no-op.
   - `LateUpdate`에서 절대 합성: `최종 = 홈 ⊕ flightDelta ⊕ punctuationOffset ⊕ ambientOffset ⊕ kickOffset`. 이번 유닛에서는 flight/punctuation/ambient 채널은 항등값(구조만 존재), 킥 채널만 실동작.
   - 킥 채널: 기존 `CameraImpactKick`의 envelope(k², 하향 dir + roll)와 기본값(0.08/0.35°/0.16s)을 그대로 이식하되 수치는 config SO로 이동. `public void Kick(float strength = 1f)` 유지.

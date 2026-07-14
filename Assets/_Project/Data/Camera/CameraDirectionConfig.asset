@@ -15,3 +15,48 @@ MonoBehaviour:
   kickPosAmp: 0.08
   kickRotAmp: 0.35
   kickDuration: 0.16
+  phasePoses:
+  - phase: 1
+    localPosOffset: {x: 0, y: 0, z: -1.5}
+    pitchOffset: -8
+    fovOffset: 0
+    flightSec: 0.7
+    ease:
+      serializedVersion: 2
+      m_Curve: []
+      m_PreInfinity: 0
+      m_PostInfinity: 0
+      m_RotationOrder: 0
+  - phase: 3
+    localPosOffset: {x: 0, y: 0, z: -0.8}
+    pitchOffset: -5
+    fovOffset: 0
+    flightSec: 0.6
+    ease:
+      serializedVersion: 2
+      m_Curve: []
+      m_PreInfinity: 0
+      m_PostInfinity: 0
+      m_RotationOrder: 0
+  - phase: 4
+    localPosOffset: {x: 0, y: 0, z: 0}
+    pitchOffset: 0
+    fovOffset: 0
+    flightSec: 0.6
+    ease:
+      serializedVersion: 2
+      m_Curve: []
+      m_PreInfinity: 0
+      m_PostInfinity: 0
+      m_RotationOrder: 0
+  - phase: 5
+    localPosOffset: {x: 0, y: 0, z: 1}
+    pitchOffset: 0
+    fovOffset: -2
+    flightSec: 0.5
+    ease:
+      serializedVersion: 2
+      m_Curve: []
+      m_PreInfinity: 0
+      m_PostInfinity: 0
+      m_RotationOrder: 0
