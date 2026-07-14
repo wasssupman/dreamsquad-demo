@@ -14,10 +14,11 @@
 ## 구현
 
 - 다주기 sin 합성(주기 6~12s 2~3개 중첩) 기반 위치/미세 pitch 오프셋. config: `breathPosAmp`(권장 시작 0.02~0.05 월드유닛), `breathRotAmp`(0.1° 이하), `breathWaves[]`(주기+위상+축가중 — 위상도 SO에 둔다, "모든 수치는 SO" 계약 준수).
-- 시계는 `Time.unscaledTime` 절대값이 아니라 **Director 로컬 누적 클록**(unscaledDeltaTime 누적, 주기 공배수로 wrap) — 장세션 float 정밀도 저하로 저주기 sin이 양자화되는 것 방지. 같은 클록값 → 같은 오프셋(결정론 유지).
+- 시계는 `Time.unscaledTime` 절대값이 아니라 **파동별 위상 누적기**(`phase += dt/period`, 각자 [0,1) wrap — 구현이 "주기 공배수 wrap"보다 강함) — 장세션 float 정밀도 저하로 저주기 sin이 양자화되는 것 방지. 같은 위상 → 같은 오프셋(결정론 유지).
+- **합성 피크 주의**: 파동은 합산되므로 실제 피크 = `amp × Σ|축가중|` (현 에셋 x≈0.036, y≈0.047). 호버 셀 검증은 합성 피크 기준으로 본다. Play 중 SO에 파동을 **추가**해도 위상 누적기는 Awake 크기 고정이라 무시됨(축소/값 수정은 라이브 반영) — 튜닝 시 주의.
 - 페이즈 비행 중 가중치 0으로 크로스페이드(README 계약), 비행 종료 후 수 초에 걸쳐 복귀 — 급격한 on/off 없음.
 - 페이즈별 on/off 플래그(config) — 기본 Draft/Placement/Battle on, Gift/Result off(각 페이즈 자체 연출과 간섭 방지).
-- unscaledTime 기반이되 절대 시각은 `Time.unscaledTime` 사용(누적 오차 없음).
+- 시간 진행은 unscaledDeltaTime(타임스케일 비의존). 절대 시각 미사용 — 위 위상 누적기 항목 참조.
 
 ## 완료 기준
 

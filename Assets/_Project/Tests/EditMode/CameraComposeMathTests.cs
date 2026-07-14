@@ -153,6 +153,37 @@ public class CameraComposeMathTests
     }
 
     [Test]
+    public void BreathWaveDelta_Deterministic_SameInputsSameOutput()
+    {
+        var a = CameraComposeMath.BreathWaveDelta(0.42f, new Vector2(1f, 0.3f), 0.5f, 0.8f, 0.03f, 0.06f);
+        var b = CameraComposeMath.BreathWaveDelta(0.42f, new Vector2(1f, 0.3f), 0.5f, 0.8f, 0.03f, 0.06f);
+        Assert.That(a.localPos, Is.EqualTo(b.localPos));
+        Assert.That(a.pitchDeg, Is.EqualTo(b.pitchDeg));
+    }
+
+    [Test]
+    public void BreathWaveDelta_AmplitudeBounded_ByAmpTimesWeights()
+    {
+        // sin ∈ [-1,1] 이므로 어떤 위상에서도 |offset| ≤ amp × |axisWeight| × weight.
+        for (int i = 0; i <= 20; i++)
+        {
+            var d = CameraComposeMath.BreathWaveDelta(i / 20f, new Vector2(1f, 0.5f), 1f, 1f, 0.03f, 0.06f);
+            Assert.That(Mathf.Abs(d.localPos.x), Is.LessThanOrEqualTo(0.03f + 1e-6f));
+            Assert.That(Mathf.Abs(d.localPos.y), Is.LessThanOrEqualTo(0.015f + 1e-6f));
+            Assert.That(Mathf.Abs(d.pitchDeg), Is.LessThanOrEqualTo(0.06f + 1e-6f));
+        }
+    }
+
+    [Test]
+    public void BreathWaveDelta_ZeroWeight_IsIdentity()
+    {
+        var d = CameraComposeMath.BreathWaveDelta(0.3f, Vector2.one, 1f, 0f, 0.03f, 0.06f);
+        Assert.That(d.localPos, Is.EqualTo(Vector3.zero));
+        Assert.That(d.pitchDeg, Is.EqualTo(0f));
+        Assert.That(d.fovDelta, Is.EqualTo(0f));
+    }
+
+    [Test]
     public void KickDelta_ScalesWithMagnitude_DownwardAndNoFov()
     {
         var d = CameraComposeMath.KickDelta(0.5f, 0.08f, 0.35f);

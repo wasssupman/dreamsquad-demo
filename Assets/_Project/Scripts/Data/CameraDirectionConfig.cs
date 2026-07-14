@@ -56,5 +56,36 @@ namespace Wassup.Data
         [Header("최종 FOV 클램프 (spec README 계약 — SO 튜닝만으로 위험 FOV 차단)")]
         public float fovMin = 30f;
         public float fovMax = 60f;
+
+        [Header("앰비언트 브리딩 (unit 3) — 인지 임계 이하 상시 생명감")]
+        [Tooltip("브리딩 위치 진폭(월드 유닛). 0 = 끔. 호버 셀 플립이 상한(spec).")]
+        public float breathPosAmp = 0.03f;
+        [Tooltip("브리딩 pitch 진폭(도).")]
+        public float breathRotAmp = 0.06f;
+        [Tooltip("합성 파동(주기+시작위상+축 가중). 비우면 브리딩 끔. 주기를 비정수비로 두면 반복이 덜 보인다.")]
+        public CameraBreathWave[] breathWaves = System.Array.Empty<CameraBreathWave>();
+        [Tooltip("브리딩이 켜지는 페이즈 (기본 Draft/Placement/Battle — Gift/Result 는 자체 연출과 간섭 방지).")]
+        public Wassup.Core.GamePhase[] breathPhases =
+        {
+            Wassup.Core.GamePhase.Draft,
+            Wassup.Core.GamePhase.Placement,
+            Wassup.Core.GamePhase.Battle,
+        };
+        [Tooltip("브리딩 가중치 크로스페이드 시간(초) — 비행 중 0, 종료 후 서서히 복귀. 급격한 on/off 금지(spec).")]
+        public float breathFadeSec = 1.5f;
+    }
+
+    // camera-direction unit 3 — 브리딩 파동 1개. 위상은 SO 소유("모든 수치는 SO" 계약).
+    [System.Serializable]
+    public class CameraBreathWave
+    {
+        [Tooltip("주기(초).")]
+        public float periodSec = 8f;
+        [Tooltip("시작 위상(0~1).")]
+        public float phase01;
+        [Tooltip("카메라 로컬 X/Y 위치 축 가중치(-1~1 권장).")]
+        public Vector2 posWeight = new Vector2(1f, 1f);
+        [Tooltip("pitch 축 가중치(-1~1 권장).")]
+        public float pitchWeight;
     }
 }

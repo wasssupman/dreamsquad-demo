@@ -69,3 +69,20 @@ MonoBehaviour:
   punctuationFadeSec: 0.15
   fovMin: 30
   fovMax: 60
+  breathPosAmp: 0.03
+  breathRotAmp: 0.06
+  breathWaves:
+  - periodSec: 7.3
+    phase01: 0
+    posWeight: {x: 1, y: 0.25}
+    pitchWeight: 0
+  - periodSec: 9.7
+    phase01: 0.33
+    posWeight: {x: 0.2, y: 1}
+    pitchWeight: 0.3
+  - periodSec: 12.1
+    phase01: 0.67
+    posWeight: {x: 0, y: 0.3}
+    pitchWeight: 1
+  breathPhases: 010000000300000004000000
+  breathFadeSec: 1.5

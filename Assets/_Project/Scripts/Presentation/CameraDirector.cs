@@ -40,6 +40,12 @@ namespace Wassup.Presentation
         private float _shakePhaseY;
         private float _punctWeight = 1f;
 
+        // unit 3 — 앰비언트 브리딩 채널. 파동 위상 누적(절대 시각 비사용 — 장세션 float 정밀도),
+        // 켜진 페이즈에서만, 비행 중 가중치 0 크로스페이드 후 서서히 복귀.
+        private float[] _breathPhases = System.Array.Empty<float>();
+        private float _breathWeight;
+        private Wassup.Core.GamePhase _currentPhase = Wassup.Core.GamePhase.None;
+
         // unit 1 — 페이즈 비행 채널. _flightDelta 가 현재(정착 또는 보간 중) 페이즈 델타.
         // 미등록 페이즈 = hold(현재 델타 유지), 최초 적용만 스냅 (spec 계약).
         private CameraPoseDelta _flightDelta;
@@ -58,6 +64,13 @@ namespace Wassup.Presentation
             _homeFov = _cam.fieldOfView;
             if (config == null)
                 Debug.LogWarning("[CameraDirector] config 미배선 — 모든 연출 채널 비활성(홈 포즈 고정).", this);
+            else if (config.breathWaves != null && config.breathWaves.Length > 0)
+            {
+                // 파동별 위상 누적기 — SO 의 시작 위상으로 시드.
+                _breathPhases = new float[config.breathWaves.Length];
+                for (int i = 0; i < _breathPhases.Length; i++)
+                    _breathPhases[i] = config.breathWaves[i] != null ? config.breathWaves[i].phase01 : 0f;
+            }
         }
 
         private Wassup.Core.GameManager _gm; // 구독 대상 캐시 — 언구독이 teardown 순서 무관하도록
@@ -84,6 +97,7 @@ namespace Wassup.Presentation
         private void OnPhaseChanged(Wassup.Core.GamePhase phase)
         {
             if (config == null) return;
+            _currentPhase = phase; // 브리딩 on/off 판정용 — 포즈 등록 여부와 무관하게 기록
             var pose = FindPhasePose(phase);
             if (pose == null) return; // 미등록 페이즈 = hold
 
@@ -153,14 +167,22 @@ namespace Wassup.Presentation
         {
             if (config == null) return;
 
-            // 채널 활성 판정. ambient 채널은 unit 3 에서 이 지점에 OR 된다.
+            // 채널 활성 판정.
             bool flying = _flightDuration > 0f && _flightElapsed < _flightDuration;
             bool punctInput = _pulseRemaining > 0f || _shakeHeat > 0.0001f;
             // 비행 중 구두점 가중치 0 페이드 (비행이 최우선). 페이드 진행 자체도 활성으로 취급.
             float punctTarget = flying ? 0f : 1f;
             bool punctFading = !Mathf.Approximately(_punctWeight, punctTarget);
             bool punctActive = punctInput && (_punctWeight > 0f || punctFading);
-            bool anyActive = _kickRemaining > 0f || flying || punctActive;
+            // 브리딩: 켜진 페이즈 + 비행 아님 + 유효 파동 존재 → 목표 1. 가중치가 0 에 닿을
+            // 때까지는 활성(크로스페이드). 유효 파동 검사로 퇴화 config(전 파동 주기 0 등)가
+            // 모션 0 인 채 settle 최적화를 영구 무효화하는 것 방지(리뷰 반영).
+            bool breathOn = IsBreathPhase(_currentPhase)
+                && (config.breathPosAmp > 0f || config.breathRotAmp > 0f)
+                && HasUsableBreathWave();
+            float breathTarget = (breathOn && !flying) ? 1f : 0f;
+            bool breathActive = breathTarget > 0f || _breathWeight > 0f;
+            bool anyActive = _kickRemaining > 0f || flying || punctActive || breathActive;
 
             // 아이들: 정착 포즈(홈⊕현재 페이즈 델타)를 1회만 쓰고 이후 프레임은 no-op —
             // 매 프레임 transform/FOV 재기입(하이어라키 dirty + 네이티브 세터)을 모바일에서
@@ -226,6 +248,26 @@ namespace Wassup.Presentation
                 }
             }
 
+            // 브리딩 채널 — 가중치 크로스페이드 + 파동 위상 누적·합산.
+            _breathWeight = config.breathFadeSec <= 0f
+                ? breathTarget
+                : Mathf.MoveTowards(_breathWeight, breathTarget,
+                    Time.unscaledDeltaTime / config.breathFadeSec);
+            if (_breathWeight > 0f)
+            {
+                float dt = Time.unscaledDeltaTime;
+                int n = Mathf.Min(_breathPhases.Length, config.breathWaves.Length);
+                for (int i = 0; i < n; i++)
+                {
+                    var wave = config.breathWaves[i];
+                    if (wave == null || wave.periodSec <= 0f) continue;
+                    _breathPhases[i] = Mathf.Repeat(_breathPhases[i] + dt / wave.periodSec, 1f);
+                    delta = CameraComposeMath.Add(delta, CameraComposeMath.BreathWaveDelta(
+                        _breathPhases[i], wave.posWeight, wave.pitchWeight, _breathWeight,
+                        config.breathPosAmp, config.breathRotAmp));
+                }
+            }
+
             // 킥 채널.
             if (_kickRemaining > 0f)
             {
@@ -236,6 +278,28 @@ namespace Wassup.Presentation
             }
 
             ComposeAndWrite(delta);
+        }
+
+        private bool IsBreathPhase(Wassup.Core.GamePhase phase)
+        {
+            var phases = config.breathPhases;
+            if (phases == null) return false;
+            for (int i = 0; i < phases.Length; i++)
+                if (phases[i] == phase) return true;
+            return false;
+        }
+
+        private bool HasUsableBreathWave()
+        {
+            int n = Mathf.Min(_breathPhases.Length, config.breathWaves != null ? config.breathWaves.Length : 0);
+            for (int i = 0; i < n; i++)
+            {
+                var w = config.breathWaves[i];
+                if (w != null && w.periodSec > 0f
+                    && (w.posWeight.x != 0f || w.posWeight.y != 0f || w.pitchWeight != 0f))
+                    return true;
+            }
+            return false;
         }
 
         private void ComposeAndWrite(in CameraPoseDelta delta)
@@ -256,6 +320,7 @@ namespace Wassup.Presentation
             _kickRemaining = 0f;
             _pulseRemaining = 0f;
             _shakeHeat = 0f;
+            _breathWeight = 0f;
             _settled = false;
         }
     }

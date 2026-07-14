@@ -76,6 +76,20 @@ namespace Wassup.Presentation
             };
         }
 
+        // unit 3 — 브리딩 파동 1개의 델타: 위상(0~1) 기반 sin. 같은 위상 → 같은 값(결정론).
+        // 절대 시각이 아니라 호출부가 누적·wrap 한 위상을 받는다(장세션 float 정밀도 — spec).
+        public static CameraPoseDelta BreathWaveDelta(
+            float phase01, Vector2 posWeight, float pitchWeight, float weight,
+            float posAmp, float rotAmp)
+        {
+            float s = Mathf.Sin(phase01 * 2f * Mathf.PI) * weight;
+            return new CameraPoseDelta
+            {
+                localPos = new Vector3(s * posWeight.x * posAmp, s * posWeight.y * posAmp, 0f),
+                pitchDeg = s * pitchWeight * rotAmp,
+            };
+        }
+
         // 홈 포즈 ⊕ 델타 → 절대 포즈. 델타 항등이면 홈 그대로.
         // FOV 는 [fovMin, fovMax] 클램프 — 페이즈 델타+펄스가 SO 튜닝만으로 위험 FOV 가
         // 되지 않도록 코드 계약으로 차단 (spec README).
