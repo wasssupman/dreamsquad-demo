@@ -12,6 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 874aef58f424040b6b29ff81aac64a00, type: 3}
   m_Name: CameraDirectionConfig
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.CameraDirectionConfig
+  enableNonDragEffects: 0
   kickPosAmp: 0.08
   kickRotAmp: 0.35
   kickDuration: 0.16
@@ -74,10 +75,10 @@ MonoBehaviour:
   focusLookWeight: 0.25
   focusLeanPerSpeed: 1.2
   focusLeanMaxDeg: 2.5
-  focusSpring: 60
-  focusDamping: 14
+  focusSpring: 12
+  focusDamping: 10
   focusFadeInSec: 0.25
-  focusFadeOutSec: 0.35
+  focusFadeOutSec: 0.24
   breathPosAmp: 0.07
   breathRotAmp: -0.6
   breathWaves:

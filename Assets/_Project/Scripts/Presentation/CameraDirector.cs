@@ -50,6 +50,9 @@ namespace Wassup.Presentation
         private bool _focusSpringInit;
         private int _focusFedFrame = -10;
         private float _focusWeight;
+        private float _focusReleaseFrom;
+        private float _focusReleaseElapsed;
+        private bool _focusReleasing;
 
         // unit 3 — 앰비언트 브리딩 채널. 파동 위상 누적(절대 시각 비사용 — 장세션 float 정밀도),
         // 켜진 페이즈에서만, 비행 중 가중치 0 크로스페이드 후 서서히 복귀.
@@ -109,6 +112,7 @@ namespace Wassup.Presentation
         {
             if (config == null) return;
             _currentPhase = phase; // 브리딩 on/off 판정용 — 포즈 등록 여부와 무관하게 기록
+            if (!config.enableNonDragEffects) return;
             var pose = FindPhasePose(phase);
             if (pose == null) return; // 미등록 페이즈 = hold
 
@@ -151,7 +155,7 @@ namespace Wassup.Presentation
         // (envelope 의 duration<=0 가드가 단일 소유 — 별도 최소치 클램프를 두지 않는다).
         public void Kick(float strength = 1f)
         {
-            if (config == null) return;
+            if (config == null || !config.enableNonDragEffects) return;
             _kickStrength = Mathf.Clamp01(strength);
             _kickDuration = config.kickDuration;
             _kickRemaining = _kickDuration;
@@ -161,7 +165,7 @@ namespace Wassup.Presentation
         // 진폭은 현재 유효값과 새 값의 max, 타이머는 재시작. pulseSec 0 = 펄스 끔.
         public void ZoomPulse(float strength = 1f)
         {
-            if (config == null) return;
+            if (config == null || !config.enableNonDragEffects) return;
             float current = _pulseRemaining > 0f ? _pulseStrength : 0f;
             _pulseStrength = Mathf.Max(current, Mathf.Clamp01(strength));
             _pulseDuration = config.pulseSec;
@@ -171,6 +175,7 @@ namespace Wassup.Presentation
         // unit 2 — 킬 스트릭 heat(0~1). 소유는 ScoreHudView(산정·감쇠) — 여기는 미러만.
         public void SetShakeHeat(float heat01)
         {
+            if (config == null || !config.enableNonDragEffects) return;
             _shakeHeat = Mathf.Clamp01(heat01);
         }
 
@@ -190,9 +195,21 @@ namespace Wassup.Presentation
         {
             if (config == null) return;
 
+            // 현재 제품 설정: 스와이프 드래그 포커스만 사용한다. 토글을 런타임에 끄는 경우에도
+            // 이미 진행 중이던 다른 채널이 한 프레임도 남지 않도록 즉시 비운다.
+            if (!config.enableNonDragEffects)
+            {
+                _kickRemaining = 0f;
+                _pulseRemaining = 0f;
+                _shakeHeat = 0f;
+                _breathWeight = 0f;
+                _flightDelta = default;
+                _flightDuration = 0f;
+            }
+
             // 채널 활성 판정.
-            bool flying = _flightDuration > 0f && _flightElapsed < _flightDuration;
-            bool punctInput = _pulseRemaining > 0f || _shakeHeat > 0.0001f;
+            bool flying = config.enableNonDragEffects && _flightDuration > 0f && _flightElapsed < _flightDuration;
+            bool punctInput = config.enableNonDragEffects && (_pulseRemaining > 0f || _shakeHeat > 0.0001f);
             // 비행 중 구두점 가중치 0 페이드 (비행이 최우선). 페이드 진행 자체도 활성으로 취급.
             float punctTarget = flying ? 0f : 1f;
             bool punctFading = !Mathf.Approximately(_punctWeight, punctTarget);
@@ -200,7 +217,7 @@ namespace Wassup.Presentation
             // 브리딩: 켜진 페이즈 + 비행 아님 + 유효 파동 존재 → 목표 1. 가중치가 0 에 닿을
             // 때까지는 활성(크로스페이드). 유효 파동 검사로 퇴화 config(전 파동 주기 0 등)가
             // 모션 0 인 채 settle 최적화를 영구 무효화하는 것 방지(리뷰 반영).
-            bool breathOn = IsBreathPhase(_currentPhase)
+            bool breathOn = config.enableNonDragEffects && IsBreathPhase(_currentPhase)
                 && (config.breathPosAmp != 0f || config.breathRotAmp != 0f) // 음수 진폭 = 위상 반전(유효)
                 && HasUsableBreathWave();
             float breathTarget = (breathOn && !flying) ? 1f : 0f;
@@ -244,9 +261,26 @@ namespace Wassup.Presentation
 
             // 드래그 포커스 채널 — 유닛 방향 dolly + 부분 lookat + 스와이프 리드.
             // base 위치 = 홈⊕비행 localPos (회전은 홈 기준 — FocusDelta 주석 참조).
-            _focusWeight = Mathf.MoveTowards(_focusWeight, focusTarget,
-                Time.unscaledDeltaTime / Mathf.Max(0.01f,
-                    focusTarget > _focusWeight ? config.focusFadeInSec : config.focusFadeOutSec));
+            if (focusTarget > 0f)
+            {
+                _focusReleasing = false;
+                _focusWeight = Mathf.MoveTowards(_focusWeight, 1f,
+                    Time.unscaledDeltaTime / Mathf.Max(0.01f, config.focusFadeInSec));
+            }
+            else if (_focusWeight > 0f)
+            {
+                // 복귀는 선형 MoveTowards 대신 초반이 빠른 cubic ease-out. 드래그 해제 직후
+                // 즉시 반응하되, 홈 포즈에는 부드럽게 착지한다.
+                if (!_focusReleasing)
+                {
+                    _focusReleasing = true;
+                    _focusReleaseFrom = _focusWeight;
+                    _focusReleaseElapsed = 0f;
+                }
+                _focusReleaseElapsed += Time.unscaledDeltaTime;
+                float t01 = _focusReleaseElapsed / Mathf.Max(0.01f, config.focusFadeOutSec);
+                _focusWeight = _focusReleaseFrom * (1f - CameraComposeMath.EaseOutCubic01(t01));
+            }
             if (_focusWeight > 0f)
             {
                 // 스프링-댐핑 추종 — 타겟(NDC)으로 스무스하게 수렴, 스프링 속도 = 리드 속도.
@@ -379,6 +413,8 @@ namespace Wassup.Presentation
             _shakeHeat = 0f;
             _breathWeight = 0f;
             _focusWeight = 0f;
+            _focusReleasing = false;
+            _focusReleaseElapsed = 0f;
             _focusFedFrame = -10;
             _settled = false;
         }

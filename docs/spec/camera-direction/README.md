@@ -1,6 +1,6 @@
 # camera-direction — 연출 카메라 시스템
 
-상태: 완료 2026-07-14 (unit 0~3: d769bac3/c86eff33/fb078a3f/2fe2e000, unit 5 rev3: 71e2e8d7; 사용자 Play 확인 완료)
+상태: 완료 2026-07-14 (unit 0~3: d769bac3/c86eff33/fb078a3f/2fe2e000, unit 5 rev3: 71e2e8d7, unit 6~7: 이번 마무리 커밋; 사용자 Play 확인 완료)
 
 ## 목표
 
@@ -22,6 +22,8 @@
 | 2 | 연출 | `2_battle_punctuation.md` | 배틀 이벤트 구두점 — 줌 펄스 + 킬 스트릭 셰이크 (additive만) |
 | 3 | 연출 | `3_ambient_breathing.md` | 앰비언트 브리딩 (저진폭 상시 무빙, 비행 중 감쇠) |
 | 5 | 연출 | `5_drag_focus.md` | 드래그 포커스 — 스와이프 중 유닛 줌인 + 방향 lookat 리드 |
+| 6 | 설정 | `6_drag_focus_only.md` | 드래그 포커스를 제외한 모든 카메라 연출 비활성화 |
+| 7 | 튜닝 | `7_drag_focus_return_tuning.md` | 포커스 복귀 이징·드래그 추종 감속 |
 
 ## Feature-wide 계약
 
@@ -36,6 +38,7 @@
 - **모든 수치는 SO에서** (제약 6): 페이즈 포즈 델타, 비행 시간/커브, 펄스/셰이크/브리딩 진폭 전부 `CameraDirectionConfig` (+ 페이즈 포즈 테이블).
 - **아키텍처 중립 계산은 순수 함수로** (제약 10): envelope 평가, 포즈 델타 합성, 이징 보간은 plain in/out static 함수 + EditMode 테스트.
 - **스크린→월드 의존 코드는 이미 라이브 카메라 기준** (`TryScreenToCell` 등) — 카메라 이동과 자동 정합. 단 페이즈 비행 중 배치 입력은 짧은 전환 구간이라 별도 잠금을 두지 않는다(문제 관측 시 후속).
+- **현재 제품 설정은 드래그 포커스만 활성화**: `CameraDirectionConfig.enableNonDragEffects = false`일 때 페이즈 비행·구두점·브리딩·임팩트 킥은 즉시 비활성화되고 홈 포즈를 유지한다. 기존 수치는 삭제하지 않아 토글만으로 재활성화할 수 있다.
 
 ## 검증 방향
 

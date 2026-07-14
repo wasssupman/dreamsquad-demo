@@ -129,6 +129,16 @@ public class CameraComposeMathTests
     }
 
     [Test]
+    public void EaseOutCubic01_BoundariesAndMidpoint_AreFastThenSettled()
+    {
+        Assert.That(CameraComposeMath.EaseOutCubic01(0f), Is.EqualTo(0f));
+        Assert.That(CameraComposeMath.EaseOutCubic01(1f), Is.EqualTo(1f));
+        Assert.That(CameraComposeMath.EaseOutCubic01(0.5f), Is.EqualTo(0.875f).Within(1e-5f));
+        Assert.That(CameraComposeMath.EaseOutCubic01(-1f), Is.EqualTo(0f));
+        Assert.That(CameraComposeMath.EaseOutCubic01(2f), Is.EqualTo(1f));
+    }
+
+    [Test]
     public void KickEnvelope_FullRemaining_IsOne_AndDecaysToZero()
     {
         Assert.That(CameraComposeMath.KickEnvelope(0.16f, 0.16f), Is.EqualTo(1f).Within(1e-5f));

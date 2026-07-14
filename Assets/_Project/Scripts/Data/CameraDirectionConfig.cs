@@ -25,6 +25,10 @@ namespace Wassup.Data
     [CreateAssetMenu(menuName = "Wassup/Camera Direction Config", fileName = "CameraDirectionConfig")]
     public class CameraDirectionConfig : ScriptableObject
     {
+        [Header("연출 채널 전역 제어")]
+        [Tooltip("끄면 드래그 포커스를 제외한 페이즈 비행·구두점·브리딩·임팩트 킥을 모두 비활성화한다.")]
+        public bool enableNonDragEffects;
+
         [Header("임팩트 킥 (구 CameraImpactKick 이식 — card-fly-to-target-absorb)")]
         [Tooltip("킥 위치 진폭(월드 유닛, 카메라 로컬 축).")]
         public float kickPosAmp = 0.08f;

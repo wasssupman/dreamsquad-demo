@@ -44,6 +44,14 @@ namespace Wassup.Presentation
             };
         }
 
+        // 드래그 포커스 복귀 진행도. 초반을 빠르게 빼고 착지 직전에는 감속해, 선형 fade보다
+        // 반응성·정착감을 함께 준다. 입력 범위 밖은 항등/완료로 고정한다.
+        public static float EaseOutCubic01(float t01)
+        {
+            float t = Mathf.Clamp01(t01) - 1f;
+            return t * t * t + 1f;
+        }
+
         // 킥 감쇠 envelope: 남은시간 비율 k 의 k² (빠른 decay). 구 CameraImpactKick 이식.
         public static float KickEnvelope(float remaining, float duration)
         {
