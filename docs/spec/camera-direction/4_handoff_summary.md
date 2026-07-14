@@ -9,7 +9,7 @@
 - `2fe2e000` unit 3: 앰비언트 브리딩
 - `aaa13668` unit 5: 드래그 포커스 (스와이프 줌인 + 방향 lookat 리드)
 - `b2d9ac57` unit 5 rev1: 룩앳 타겟 포인터화 + 줌 강도 하향
-- 이번 마무리 커밋: unit 5 rev3 — 스크린 입력 기반 포커스와 사용자 Play 확인
+- `71e2e8d7` unit 5 rev3: 스크린 입력 기반 포커스와 사용자 Play 확인
 
 ## Implemented
 
