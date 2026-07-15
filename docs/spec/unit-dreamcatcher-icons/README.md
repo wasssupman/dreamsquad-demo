@@ -59,7 +59,7 @@
 - **아이콘 탭 → 카드 상세** [S] · 부착 카드 확인 UX.
 - **모디파이어 인디케이터** — 별도 spec (backlog `unit-modifier-indicators` 유지).
 - **아이콘 타입 다형화 시 seam** [S] · 2026-07-15 사용자 결정 = **지금 추상화하지 않는다**(제약 8 — 구현체 1개). 확장이 필요해지는 시점의 변경점은 딱 둘: (1) `DcIconStripView.Show(...)` 가 `List<DreamcatcherCard>` 로 하드 타입, (2) `card.type == CardType.Squad ? squadFrame : unitFrame` 2분기가 N 타입으로 안 늘어남. 2번째 타입이 실제로 오면 값 struct(`{ Sprite art; Sprite frame; }`) 추출 + 카드→struct 해석을 스포너로 이동 → 뷰가 `Wassup.Data` 의존을 잃는다(~15줄, 뷰 국소). 추측으로 미리 만들지 말 것.
-- **풀링 뷰의 stale anchor** [S] · 앵커가 `AttachmentsChanged` 리빌드 시점에만 해석된다(`DcIconStripSpawner.Rebuild`). `SpineUnitPool`/`QuadUnitViewPool` 이 Transform 을 다른 엔티티에 재할당하면 다음 리빌드까지 스트립이 **엉뚱한 유닛을 따라간다**. `EnemyHitBar` 는 매 피격 재해석 + 단명이라 회피 중. 재현 조건(풀 재사용 타이밍) 확인 필요.
+- ~~**풀링 뷰의 stale anchor**~~ — **2026-07-15 조사 결과 존재하지 않는 버그**(후보에서 제외). "앵커가 리빌드 시점에만 해석되므로 풀이 Transform 을 재할당하면 스트립이 엉뚱한 유닛을 따라간다"는 우려였으나, `SpineUnitPool`/`QuadUnitViewPool` 은 **이름만 Pool 이고 뷰를 재사용하지 않는다** — 저장소가 `Dictionary<Entity, View>` 뿐이고 free-list 가 없으며 `TrySpawn` 이 매번 `new GameObject`, `Dispose` 는 `Destroy`. **Transform 이 다른 엔티티에게 넘어갈 경로가 없다.** `Rebuild` 의 `if (!TryGetUnitViewAnchor(...)) continue;` 로 기존 스트립이 옛 anchor 를 유지하는 경로도, 호스트 사망 시 회수가 `_attachedTo.Remove` → `AttachmentsChanged`(`DreamcatcherHandController.cs:248`)를 먼저 쏘아 `_toHide` 로 정상 회수되므로 안전하다. `continue` 가 실제로 타는 건 "부착은 있는데 뷰 미스폰"인 배치 레이스뿐이고 그땐 스트립이 아직 없다. (풀 구현이 실제 재사용으로 바뀌면 이 결론은 무효 — 그때 재검토할 것.)
 
 ## 사후 수정 이력
 
