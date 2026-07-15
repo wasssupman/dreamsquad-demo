@@ -144,19 +144,27 @@ namespace Wassup.UI
         {
             bridge?.SpawnCardAbsorbVfx(worldViewPos);
             if (SoundManager.Instance != null) SoundManager.Instance.PlayCardAbsorb();
-            EnsureCameraKick()?.Kick();
+            EnsureCameraDirector()?.Kick();
         }
 
-        private Wassup.Presentation.CameraImpactKick _cameraKick;
+        // camera-direction unit 0 — 킥은 CameraDirector 채널로 승계. Director 는 config 씬 배선이
+        // 필수라 런타임 AddComponent fallback 이 성립하지 않는다 — 미배선이면 1회 경고 + 킥 생략.
+        private Wassup.Presentation.CameraDirector _cameraDirector;
+        private bool _cameraDirectorWarned;
 
-        private Wassup.Presentation.CameraImpactKick EnsureCameraKick()
+        private Wassup.Presentation.CameraDirector EnsureCameraDirector()
         {
-            if (_cameraKick != null) return _cameraKick;
+            if (_cameraDirector != null) return _cameraDirector;
+            if (_cameraDirectorWarned) return null; // miss 캐시 — 미배선 씬에서 임팩트마다 재탐색 방지
             var cam = MainCamera;
             if (cam == null) return null;
-            _cameraKick = cam.GetComponent<Wassup.Presentation.CameraImpactKick>();
-            if (_cameraKick == null) _cameraKick = cam.gameObject.AddComponent<Wassup.Presentation.CameraImpactKick>();
-            return _cameraKick;
+            _cameraDirector = cam.GetComponent<Wassup.Presentation.CameraDirector>();
+            if (_cameraDirector == null)
+            {
+                Debug.LogWarning("[DreamcatcherHandView] CameraDirector 미배선 — 카메라 킥 생략.", this);
+                _cameraDirectorWarned = true;
+            }
+            return _cameraDirector;
         }
 
         private void EnsureFlightPresenter()

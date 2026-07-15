@@ -2556,6 +2556,7 @@ GameObject:
   - component: {fileID: 1420088185}
   - component: {fileID: 1420088184}
   - component: {fileID: 1420088187}
+  - component: {fileID: 1420088188}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -2681,6 +2682,19 @@ MonoBehaviour:
     m_VarianceClampScale: 0.9
     m_ContrastAdaptiveSharpening: 0
   m_Version: 2
+--- !u!114 &1420088188
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1420088183}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e4e88b48aa588437bad5cad6bbbeed2e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Presentation.CameraDirector
+  config: {fileID: 11400000, guid: 7643de17742f54f4296f83b72a792c37, type: 2}
 --- !u!1 &1455149133
 GameObject:
   m_ObjectHideFlags: 0

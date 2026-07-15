@@ -126,6 +126,9 @@ namespace Wassup.Bridge
         [SerializeField] private GameObject[] tilemapHiddenEnvironment;
         [Header("Stack Modifier Registry")]
         [SerializeField] private Wassup.Data.StackModifierSO[] stackModifierAuthoring;
+        [Header("Battle Rules")]
+        [Tooltip("같은 방어 유닛을 인접 배치했을 때의 공격력 시너지. 기본 비활성.")]
+        [SerializeField] private bool enableAdjacencySynergy;
 
         [Header("Season Gimmick — Pickup View (season-gimmick-overwork unit 6)")]
         [Tooltip("레드불 픽업 뷰 모델/프리팹(FBX 가능). 비우면 절차적 플레이스홀더 큐브.")]
@@ -871,6 +874,9 @@ namespace Wassup.Bridge
 
             // tilted-billboard — 런타임 카메라 자동 조정 비활성. 씬에 수동 배치한 카메라를 그대로 사용한다.
             // (퍼스펙티브 전환 튜닝 중: 카메라 pos/rot/fov 를 씬에서 직접 잡고 덮어쓰지 않도록 주석 처리)
+            // camera-direction unit 0 이후 재활성 금지: 카메라 포즈는 CameraDirector 가 매 프레임
+            // 절대값으로 소유한다 — 이 호출을 되살려도 다음 LateUpdate 에 홈 포즈로 되돌려져 무효.
+            // 페이즈별 카메라가 필요하면 CameraDirector 의 페이즈 포즈 델타(spec unit 1)로 구현한다.
             // ApplyTilemapCameraPreset(); // 매 빌드 idempotent 재적용
 
             BuildFlowField();
@@ -2316,6 +2322,26 @@ namespace Wassup.Bridge
             _projectileViewPool.PlayCast(data.castPrefab, anchor, dir, data.castVfxLifetime);
         }
 
+        // camera-direction unit 2 — 구두점 호출용 Director 캐시 (DreamcatcherHandView 패턴).
+        // 미배선이면 1회 경고 + 이후 no-op (miss 캐시). 씬 참조 추가 없이 런타임 조회.
+        private Wassup.Presentation.CameraDirector _cameraDirector;
+        private bool _cameraDirectorMissWarned;
+
+        private Wassup.Presentation.CameraDirector EnsureCameraDirector()
+        {
+            if (_cameraDirector != null) return _cameraDirector;
+            if (_cameraDirectorMissWarned) return null;
+            var cam = Camera.main;
+            if (cam == null) return null;
+            _cameraDirector = cam.GetComponent<Wassup.Presentation.CameraDirector>();
+            if (_cameraDirector == null)
+            {
+                Debug.LogWarning("[BattleBridge] CameraDirector 미배선 — 구두점 연출 생략.", this);
+                _cameraDirectorMissWarned = true;
+            }
+            return _cameraDirector;
+        }
+
         // Combat→Presentation hit-VFX channel drain. ProjectileHitSystem enqueues
         // one event per direct-target impact. Task 0 keeps this as a no-op
         // dequeue so the queue does not back up; task 3 connects it to the
@@ -2334,6 +2360,11 @@ namespace Wassup.Bridge
                         data.visualHeightOffset, data.hitVfxScale);
                 else if (evt.payload == PayloadKind.TileAoe && evt.radiusWorld > 0f && vfxSpawner != null)
                     vfxSpawner.SpawnMeteorBurst(new Vector3(evt.position.x, 0f, evt.position.z), evt.radiusWorld);
+
+                // camera-direction unit 2 — 헤비(광역) 착탄 구두점: 줌 펄스. 시각 라우팅
+                // (hitPrefab 유무)과 무관하게 TileAoe 착탄이면 발동. additive 전용 — 카메라 탈취 없음.
+                if (evt.payload == PayloadKind.TileAoe && evt.radiusWorld > 0f)
+                    EnsureCameraDirector()?.ZoomPulse();
 
                 // 텔레그래프 해제는 visual 라우팅과 분리 — source 엔티티 정확 판별
                 // (unit 9: meteor 에 hitPrefab 이 생겨도, artillery 착탄이 남의
@@ -2749,6 +2780,12 @@ namespace Wassup.Bridge
         // write gateway stays a single code path (Phase 2 decision #9).
         private void RecomputeSynergyFor(Vector2Int cell)
         {
+            if (!enableAdjacencySynergy)
+            {
+                NeutralizeActiveSynergy();
+                return;
+            }
+
             var cells = new Vector2Int[]
             {
                 cell,
@@ -2798,6 +2835,19 @@ namespace Wassup.Bridge
             // Peak tracking: count entities that have received a non-trivial synergy enqueue this session
             int currentCount = _synergyActivatedEntities.Count;
             if (currentCount > _synergyPeakCount) _synergyPeakCount = currentCount;
+        }
+
+        // 시너지 토글을 끈 뒤에도 이전 stackId=1 슬롯이 남지 않도록 중립값(+0)으로 refresh 한다.
+        // Effects 소유 ModifierStats 는 직접 쓰지 않고 기존 StatModifierApplyEvents 채널만 사용한다.
+        private void NeutralizeActiveSynergy()
+        {
+            if (_synergyActivatedEntities.Count == 0) return;
+            foreach (var binding in _defenderByTile.Values)
+            {
+                if (_em.Exists(binding.entity) && !_em.HasComponent<PendingDeployment>(binding.entity))
+                    EnqueueSynergyMul(binding.entity, 1f);
+            }
+            _synergyActivatedEntities.Clear();
         }
 
         // Unit 8: channel enqueue helpers — route legacy effect produces through StatModifier channel.
@@ -3236,6 +3286,8 @@ namespace Wassup.Bridge
 
         // tilemap-view-backend unit 4 — 모드별 ortho 카메라 프리셋 적용. gridSize+tileSize 로 orthographicSize 계산.
         // 매 맵 빌드마다 호출 — 프리셋+gridSize 에서 결정론적이라 RebuildDraftMap 재진입에도 idempotent.
+        // [은퇴 — camera-direction unit 0] 호출부 없음. 카메라 포즈는 CameraDirector 가 유일 소유 —
+        // 재호출해도 다음 LateUpdate 에 덮여 무효. framing 산식(보드 fit) 참고용으로만 보존.
         private void ApplyTilemapCameraPreset()
         {
             var preset = boardViewMode == Wassup.Core.BoardViewMode.TilemapIso

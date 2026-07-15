@@ -159,7 +159,11 @@ namespace Wassup.UI
         {
             EnsureSubscribed();
 
-            if (_panel == null || !_panel.activeSelf) return;
+            if (_panel == null || !_panel.activeSelf)
+            {
+                PushShakeHeat(0f); // 패널 꺼짐(비배틀) — 카메라 셰이크 잔류 방지
+                return;
+            }
 
             // Count-up roll: ease the shown number toward the target (unscaled so it
             // keeps climbing during the timeScale=0 drag-catcher modal).
@@ -171,6 +175,34 @@ namespace Wassup.UI
             UpdateGlowShine(Time.unscaledDeltaTime);
             if (_soundHeat > 0f)
                 _soundHeat = Mathf.Max(0f, _soundHeat - soundHeatDecay * Time.unscaledDeltaTime);
+
+            // camera-direction unit 2 — 킬 스트릭 heat 를 카메라 셰이크로 미러(소유·산정은 여기,
+            // Director 는 소비만). heat 상승은 본 컴포넌트 LateUpdate(킬 flush, order 0)에서
+            // 일어나 Director(-90) LateUpdate 이후이므로, 다음 프레임 Update 푸시 → 같은 프레임
+            // Director 소비 = 지연 정확히 1프레임(허용 계약). 감쇠분은 같은 프레임 반영.
+            PushShakeHeat(_soundHeat);
+        }
+
+        private Wassup.Presentation.CameraDirector _cameraDirector;
+        private bool _cameraDirectorMissWarned;
+
+        private void PushShakeHeat(float heat)
+        {
+            if (_cameraDirector == null)
+            {
+                if (_cameraDirectorMissWarned) return;
+                var cam = Camera.main;
+                if (cam == null) return;
+                _cameraDirector = cam.GetComponent<Wassup.Presentation.CameraDirector>();
+                if (_cameraDirector == null)
+                {
+                    Debug.LogWarning("[ScoreHudView] CameraDirector 미배선 — 킬 스트릭 셰이크 생략.", this);
+                    _cameraDirectorMissWarned = true;
+                    return;
+                }
+            }
+            float range = Mathf.Max(0.0001f, soundPitchMax - soundPitchBase);
+            _cameraDirector.SetShakeHeat(heat / range);
         }
 
         // Flush accumulated kills once per frame (after all Update() drains), so an

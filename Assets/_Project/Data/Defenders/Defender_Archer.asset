@@ -126,6 +126,9 @@ MonoBehaviour:
   deployCutsceneFps: 24
   deployCutsceneScale: 1.5
   deployCutsceneOffset: {x: -150, y: 0}
+  deployCutsceneDepth:
+  - {fileID: 2800000, guid: d0df50777d1614e849e649050a656aab, type: 3}
+  deployCutsceneTiltGain: 1
   knockbackDistance: 2
   knockbackDuration: 0.2
   onPlacePushDistance: 0

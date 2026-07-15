@@ -29,7 +29,7 @@
   - 코루틴(`Time.unscaledDeltaTime` 기준, 슬로우모/일시정지 영향 배제):
     - Phase A: `totalAnim = frames.Length/fps` 동안 프레임 진행 + 왼쪽 밖→목표 슬라이드-인
       (EaseOut) 동시. 슬라이드는 `slideInSeconds` 에 완료(애니보다 빠름).
-    - Phase B: `holdSecondsAfter` 유지.
+    - Phase B: `holdSecondsAfter`(사실상 무한) 유지 — 단 `_endRequested`(스와이프 종료, EndCutscene) 시 즉시 탈출.
     - Phase C: 목표→왼쪽 밖 슬라이드-아웃(EaseIn) → Image 숨김
       (canvas GO 는 재사용 위해 SetActive(false), Destroy 안 함).
 - OnDisable/OnDestroy 에서 코루틴 정지 + 캔버스 정리.

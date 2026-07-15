@@ -38,5 +38,11 @@ namespace Wassup.Data
         [Header("배치 컷신 (defender-deploy-cutscene)")]
         [Tooltip("드래그 배치 시작 시 좌상단 유닛 컷신 재생 여부. 끄면 컷신 프레임이 있어도 재생하지 않는다.")]
         public bool enableDeployCutscene = true;
+
+        [Header("배치 컷신 틸트 (depth-parallax)")]
+        [Tooltip("이 화면px/s 스와이프에서 틸트 |1| 포화. ↓=작은 스와이프도 크게 기욺.")]
+        public float deployCutsceneSwipeRefSpeed = 1400f;
+        [Tooltip("스와이프 속도 exp-lerp 계수(0..1). ↑=빠릿(즉각), ↓=부드럽게 지연.")]
+        public float deployCutsceneSwipeSmoothing = 0.5f;
     }
 }

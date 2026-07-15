@@ -74,6 +74,62 @@ MonoBehaviour:
   deployAnimation: Hit
   placementVfxPrefab: {fileID: 8719263370430895187, guid: c7ebe9341e13e2e448481a1a5b7a89bf, type: 3}
   attackVfxPrefab: {fileID: 3398366222349601506, guid: 8a96702a3dfb5af449dca32388593992, type: 3}
+  deployCutsceneFrames:
+  - {fileID: 21300000, guid: 26e13c72ad8f411fb26e5f8c36baea82, type: 3}
+  - {fileID: 21300000, guid: 67bda0f959cd44cf8ef90c2117ef5206, type: 3}
+  - {fileID: 21300000, guid: 9ab216947e9d4beb8246ea33656c3ee5, type: 3}
+  - {fileID: 21300000, guid: 5ccdff24ef1342ddbfdd0abfbe8e3190, type: 3}
+  - {fileID: 21300000, guid: be329ceb493941cf8438a65e2bf7fcfb, type: 3}
+  - {fileID: 21300000, guid: 01561c1c7e97494b85d6e31415e2afe3, type: 3}
+  - {fileID: 21300000, guid: db507e7eeb844a58aae9f857d0299819, type: 3}
+  - {fileID: 21300000, guid: 5c63c01135ca4a27b3268f51b7b55794, type: 3}
+  - {fileID: 21300000, guid: 468df266b24342a0b810165199e7f1ef, type: 3}
+  - {fileID: 21300000, guid: f692f9df1c604f59a6537be2dacfb6e9, type: 3}
+  - {fileID: 21300000, guid: 4cb98499b4e3456582402d65537d4a20, type: 3}
+  - {fileID: 21300000, guid: 38f87cb8e68a4b4e9fd076059b2f8aba, type: 3}
+  - {fileID: 21300000, guid: 4af8f74f77594ff6b92e1e0acda799bb, type: 3}
+  - {fileID: 21300000, guid: 20e59e70f2f94f2cadcb6d06ba8c3fb8, type: 3}
+  - {fileID: 21300000, guid: b5b63af6aa764a569a87fce353bd1fcd, type: 3}
+  - {fileID: 21300000, guid: 265551c08f584b0f8d1592a4cad6798d, type: 3}
+  - {fileID: 21300000, guid: fa6640e17e9e4f8abc9d40af0deb0ee0, type: 3}
+  - {fileID: 21300000, guid: 5a92e0d3978340368deedb6bfbd66206, type: 3}
+  - {fileID: 21300000, guid: 42002fdcad3d438dab1d4668a4f49a6a, type: 3}
+  - {fileID: 21300000, guid: 04cb4902e18146608c460b9e25e2804a, type: 3}
+  - {fileID: 21300000, guid: c2a7eb1f74624454a27b959c3c4dedb8, type: 3}
+  - {fileID: 21300000, guid: e8c3c9cf7fcb44cb86362672ee88c215, type: 3}
+  - {fileID: 21300000, guid: 9b85e9b421ed4f1882d152376a47f2c1, type: 3}
+  - {fileID: 21300000, guid: 485ece0cf3af44deb7b2805da844ab6d, type: 3}
+  - {fileID: 21300000, guid: 26b7156d73264ebe98657f13260101fc, type: 3}
+  - {fileID: 21300000, guid: 1d217268a91642e88e6a0ccb84762922, type: 3}
+  - {fileID: 21300000, guid: ceb13c5b9c62447aa57876ead8782ba8, type: 3}
+  - {fileID: 21300000, guid: c347b233b10b40b4b3417cb59dd91542, type: 3}
+  - {fileID: 21300000, guid: 21bb61e06ca64e0c9af18a1ea06d371c, type: 3}
+  - {fileID: 21300000, guid: 916ed12000e74219b08016f016ae9a8c, type: 3}
+  - {fileID: 21300000, guid: d53566b035bd420390c5dd908ffb4773, type: 3}
+  - {fileID: 21300000, guid: cf7cf8a677c246f89dc430b9176b0dfa, type: 3}
+  - {fileID: 21300000, guid: 3b5cfdfa2b9e42cfa8ff1b8b58965af8, type: 3}
+  - {fileID: 21300000, guid: 875949e081ee4b41a6a7e5ce497456c1, type: 3}
+  - {fileID: 21300000, guid: 116512bd1728432e98fe95cf9f30fe04, type: 3}
+  - {fileID: 21300000, guid: 623103c03b744469b4d56f74ed7c6893, type: 3}
+  - {fileID: 21300000, guid: c9b88325871647e489a2218503ea3b84, type: 3}
+  - {fileID: 21300000, guid: c1ead6db3f884c1981b6b7aa607cdb7b, type: 3}
+  - {fileID: 21300000, guid: 188b64fda1de4a8e8e0ea062106d98a5, type: 3}
+  - {fileID: 21300000, guid: 7381f545c1ff4315aaed68cecc5d3a39, type: 3}
+  - {fileID: 21300000, guid: a94d48c2097f438b8c117a6954b9fe03, type: 3}
+  - {fileID: 21300000, guid: 98c070aaa0c24c848df92f782a5b4762, type: 3}
+  - {fileID: 21300000, guid: 73cccf54e1304f2393a56b0eb81cc838, type: 3}
+  - {fileID: 21300000, guid: 66ea6ea8a554457bb154f05f1d60849f, type: 3}
+  - {fileID: 21300000, guid: da2950a76aa840d096fa3a173ff2b79d, type: 3}
+  - {fileID: 21300000, guid: 76576930fdfb434aa4ebc4d9fc57c357, type: 3}
+  - {fileID: 21300000, guid: 3f288ac451e845319c15e74050bc840e, type: 3}
+  - {fileID: 21300000, guid: 54b21be2db6048ddb574f01efe238362, type: 3}
+  - {fileID: 21300000, guid: 8e9353395775438781c0578d94a96f6b, type: 3}
+  deployCutsceneFps: 24
+  deployCutsceneScale: 3
+  deployCutsceneOffset: {x: 100, y: 0}
+  deployCutsceneDepth:
+  - {fileID: 2800000, guid: fa4e2b95ff3a24fa1b84e0ab1a91c142, type: 3}
+  deployCutsceneTiltGain: 1
   knockbackDistance: 0
   knockbackDuration: 0
   onPlacePushDistance: 0
