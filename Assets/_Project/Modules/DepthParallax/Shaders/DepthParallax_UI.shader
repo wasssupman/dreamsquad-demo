@@ -64,6 +64,8 @@ Shader "Wassup/UI/DepthParallax"
             #pragma fragment frag
             #include "UnityCG.cginc"
             #include "UnityUI.cginc"
+            // lobby-background-parallax unit 0 — 3중 큐 산식은 모듈 .cginc 가 단일 소유(BackgroundDissolve 와 공유).
+            #include "DepthParallax.cginc"
 
             struct appdata_t
             {
@@ -101,12 +103,8 @@ Shader "Wassup/UI/DepthParallax"
                 o.uv = v.texcoord;
                 o.color = v.color * _Color;
 
-                // Cue B — 클립공간 사다리꼴. 코너 부호를 UV0 에서 유도(per-vertex 채널 X → additionalShaderChannels 스트립 회피).
-                float2 orig = v.texcoord * 2 - 1;
-                float2 p = orig;
-                p.y *= 1 - _Persp * _Tilt.x * orig.x;
-                p.x *= 1 - _Persp * _Tilt.y * p.y;
-                o.vertex.xy += (p - orig) * o.vertex.w; // (p-orig)이 이미 _Persp·_Tilt 스케일 — 재곱 금지. _Tilt=0 → p=orig → delta 0.
+                // Cue B — 클립공간 사다리꼴. delta 는 이미 _Persp·_Tilt 스케일 — 재곱 금지. _Tilt=0 → delta 0.
+                o.vertex.xy += DepthParallaxTrapezoid(v.texcoord, _Tilt.xy, _Persp) * o.vertex.w;
 
                 return o;
             }
@@ -114,17 +112,12 @@ Shader "Wassup/UI/DepthParallax"
             fixed4 frag(v2f i) : SV_Target
             {
                 // Cue A — 뎁스 UV 패럴랙스(코어). dependent texture read 는 아래 _MainTex 샘플 1회뿐.
-                float depth = tex2D(_DepthTex, i.uv).r;                                    // raw [0,1], 부호 미적용
-                float2 off  = _Tilt.xy * (depth - _DepthCenter) * _Amplitude * _DepthSign; // 힌지 항 전체에 부호(뺄셈 후)
+                float depth = tex2D(_DepthTex, i.uv).r;        // raw [0,1], 부호는 산식 안에서 힌지 뺄셈 후 적용
+                float2 off  = DepthParallaxOffset(_Tilt.xy, depth, _DepthCenter, _Amplitude, _DepthSign);
                 fixed4 col  = tex2D(_MainTex, i.uv + off) * i.color;                        // dependent read 1회
 
-                // Cue C — 하이라이트 스윕. length(_Tilt) 게이트로 rest 에서 spec=0(*mag). _Time 항 없음.
-                float mag  = length(_Tilt.xy);
-                float2 dir = _Tilt.xy / max(mag, 1e-5);        // mag=0 이어도 NaN 방지, 어차피 *mag=0
-                float band = dot(i.uv - 0.5, dir) + 0.5;       // 틸트축 방향 [0,1] 밴드 좌표
-                float t    = (band - mag) / _HiWidth;
-                float spec = exp(-t * t) * _HiStrength * mag;  // sqr((band-mag)/_HiWidth) = t*t
-                col.rgb += spec;
+                // Cue C — 하이라이트 스윕. length(_Tilt) 게이트로 rest 에서 0. _Time 항 없음.
+                col.rgb += DepthParallaxHighlight(i.uv, _Tilt.xy, _HiWidth, _HiStrength);
 
                 col.a *= UnityGet2DClipping(i.worldPosition.xy, _ClipRect);
                 return col;
