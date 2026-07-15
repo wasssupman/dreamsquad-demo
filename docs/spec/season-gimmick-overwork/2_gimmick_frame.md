@@ -26,3 +26,5 @@
 - compile 통과 + 콘솔 클린.
 - 현 시즌(gimmick=null) BattleScene Play smoke — 기존 플레이 무변화, config 엔티티 미생성.
 - Gimmick_Overwork.asset 생성 확인 (시즌 연결은 unit 3 검증에서 임시, 정식은 unit 7).
+
+확인 2026-07-15 · 커밋 `de6068e5`
