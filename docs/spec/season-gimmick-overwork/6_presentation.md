@@ -33,3 +33,6 @@
 확인 2026-07-15 · 커밋 `c5040abc` — Play 스크린샷: 보드 이동/배치 타일에 레드불 플레이스홀더(파란 발광 큐브) 렌더 확인. 스폰/소비/crash 로그 정상, 에러 0. 상태 연출은 Buffed/Debuffed 오라 위임(문서 참조).
 
 **수정 `57495fb3`**: 뷰가 셀→월드 배치 시 sim 좌표를 직접 써서 반 타일 어긋난 **모서리**에 놓이던 문제 → `GridToWorldCenter(sim) → BoardSpace.ToView` 경유로 **타일 중심** 안착. ⚠ **MonoBehaviour 뷰는 셀 배치 시 반드시 `BoardSpace.ToView` 를 거친다** (sim≠view; ToView 가 +0.5 로 Tilemap 셀 중심 보정, sim 높이는 무시 → hover 는 view world-up 으로).
+
+**FBX 뷰 `03c56805`** (플레이스홀더 큐브 → 실제 모델): `Models/Meshy_..._레드불_캔...fbx`. 두 함정 해결 —
+① Meshy 임베디드 머티리얼이 텍스처 미바인딩(흰색) → `Redbull_Mat`(URP/Lit, _BaseMap=텍스처) 만들어 `PickupPresenter` 가 렌더러에 override. ② 네이티브 스케일 미지수(너무 작음) → **auto-fit**: 렌더러 바운드 최대 변을 0.6 월드로 정규화(`localScale` 절대 덮어쓰기 금지 — import 보정 스케일에 곱). `pickupModelScale` 은 미세배율. 사용자 Play 확인 완료. ⚠ 미추적이던 Models/ 에셋을 이 커밋에서 최초 등록(이전 guid 참조 dangling 해소).
