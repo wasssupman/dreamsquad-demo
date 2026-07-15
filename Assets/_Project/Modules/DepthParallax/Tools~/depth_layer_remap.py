@@ -173,12 +173,13 @@ def main() -> None:
     p.add_argument("--levels", type=int, default=4, help="몸통 계단 수 (기본 4)")
     p.add_argument("--near-keep", dest="near_keep", type=float, default=0.80,
                    help="이 위 = 손(근경), 아래 = 몸통 (정규화 후 기준, 기본 0.80)")
-    p.add_argument("--near-lo", dest="near_lo", type=float, default=0.52,
-                   help="손 대역 하한(>0.5). body_hi 와의 간극 <=0.05 — 크면 접힘(잔상)")
+    p.add_argument("--near-lo", dest="near_lo", type=float, default=0.40,
+                   help="손 대역 하한 = 손 뿌리. body_hi 와 같아야 한다(간극 0) — 점프가 있으면 접힘(잔상)")
     p.add_argument("--near-hi", dest="near_hi", type=float, default=1.00,
                    help="손 대역 상한 = 손끝. **극적임은 여기서 나온다**(near_lo 가 아니라)")
     p.add_argument("--body-lo", dest="body_lo", type=float, default=0.02, help="몸 대역 하한")
-    p.add_argument("--body-hi", dest="body_hi", type=float, default=0.48, help="몸 대역 상한(<0.5)")
+    p.add_argument("--body-hi", dest="body_hi", type=float, default=0.40,
+                   help="몸 대역 상한. near_lo 와 같아야 하고 <=0.42(힌지에 붙이면 주차 재발)")
     p.add_argument("--blur-sigma", dest="blur_sigma", type=float, default=1.2,
                    help="계단 경계 완화. **색 텍스처 px 기준**(기본 1.2). 뎁스/색 배율로 환산된다 "
                         "— 뎁스 텍셀 기준으로 두면 full-res 뎁스(Ranger)와 half-res(Cannon)의 "

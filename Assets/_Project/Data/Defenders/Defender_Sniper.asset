@@ -73,6 +73,62 @@ MonoBehaviour:
   deployAnimation: Hit
   placementVfxPrefab: {fileID: 4060967071236614201, guid: c91958420bcc8d647ae19c0e7caeafa6, type: 3}
   attackVfxPrefab: {fileID: 0}
+  deployCutsceneFrames:
+  - {fileID: 21300000, guid: c6a646873c21a478683119b5fd9c1920, type: 3}
+  - {fileID: 21300000, guid: 0bcb850b66af448a48e8b169b710e072, type: 3}
+  - {fileID: 21300000, guid: 9a0b5c0e97d81453e96f781bb229f55f, type: 3}
+  - {fileID: 21300000, guid: 1855714960b4240dd886d6d862241505, type: 3}
+  - {fileID: 21300000, guid: 0cab04631e8e7425fa0cda90651c7555, type: 3}
+  - {fileID: 21300000, guid: 19774497da8f44bc69ca2a199dd181d1, type: 3}
+  - {fileID: 21300000, guid: 299a85b6387dd4cbca96bc12ab930ba9, type: 3}
+  - {fileID: 21300000, guid: 951cc5240c88a43b2a4871f15209ca83, type: 3}
+  - {fileID: 21300000, guid: eedfff8b7651342bea80cb2dda5c67c7, type: 3}
+  - {fileID: 21300000, guid: ff90a5d70ce2c40729a5c4005f35ba8a, type: 3}
+  - {fileID: 21300000, guid: cffe9abbef90946ff88a31fbcefa5e55, type: 3}
+  - {fileID: 21300000, guid: 0ccfec93735cd4582bcb2cd419018cea, type: 3}
+  - {fileID: 21300000, guid: 31f754c77e6644a5e8a1bc70f2bdb6fb, type: 3}
+  - {fileID: 21300000, guid: 4fe03e9bc38e94948ae67156d491f1ca, type: 3}
+  - {fileID: 21300000, guid: 6bd608b7fe77849c89fdd655de41f9c3, type: 3}
+  - {fileID: 21300000, guid: 0761f02ecb63b467e8e03a5318d20122, type: 3}
+  - {fileID: 21300000, guid: be75864c561d84e64bc2e04b08911657, type: 3}
+  - {fileID: 21300000, guid: f2e4a4b198eea4e51a5fb7ee2abe9fe8, type: 3}
+  - {fileID: 21300000, guid: 0fcd7d61cf17246c9b9f00c3053c984b, type: 3}
+  - {fileID: 21300000, guid: 09435b5a497ee4db18add4174d688976, type: 3}
+  - {fileID: 21300000, guid: 71f3797b2c55b4b8a814c877ead88c70, type: 3}
+  - {fileID: 21300000, guid: 68cde0b087a7545d4bec67a4028902a5, type: 3}
+  - {fileID: 21300000, guid: 7d1d64367575a4b59aa244aa5b6b7fd1, type: 3}
+  - {fileID: 21300000, guid: bdfde6838db674590a2e525661901940, type: 3}
+  - {fileID: 21300000, guid: 00de471d70f594925816af03e17a0b5c, type: 3}
+  - {fileID: 21300000, guid: e7d63f4674c8345eeaee3af8752b4a88, type: 3}
+  - {fileID: 21300000, guid: 78df309613542402bb92c5a0f81b1a3d, type: 3}
+  - {fileID: 21300000, guid: 3841970d93e4146b79d8433ace64833a, type: 3}
+  - {fileID: 21300000, guid: 1403046ac946a447dbee3fb74259874d, type: 3}
+  - {fileID: 21300000, guid: b13c1578922de4c3b93a13246e5a4f98, type: 3}
+  - {fileID: 21300000, guid: ec0e9cf29add348cf9b1d1b56ac1bcfa, type: 3}
+  - {fileID: 21300000, guid: 840ebdce0d728419c8bc81c0a792e96f, type: 3}
+  - {fileID: 21300000, guid: 9e00f2f57d1f34bd48d153fce8a5c991, type: 3}
+  - {fileID: 21300000, guid: ac733c57627e247cebc0a3711c528782, type: 3}
+  - {fileID: 21300000, guid: efeece2bf120241d689ef1bf8d5ac07c, type: 3}
+  - {fileID: 21300000, guid: a9465857703804e4bb02cc706e6b700a, type: 3}
+  - {fileID: 21300000, guid: c78675df3fd9d4da0b62b46e7daccffb, type: 3}
+  - {fileID: 21300000, guid: 8b8664b8e6f644729bed85f82c9444d4, type: 3}
+  - {fileID: 21300000, guid: 591caf1b0245f4cc2aec9340226bbada, type: 3}
+  - {fileID: 21300000, guid: b8d31c59c8f684cb28df9f26d82090cf, type: 3}
+  - {fileID: 21300000, guid: a91252bb371b14e2e99563fce04fab80, type: 3}
+  - {fileID: 21300000, guid: 7708ce3a1c1414356a0191114d2e0a9c, type: 3}
+  - {fileID: 21300000, guid: 90fb88e4351c9413b8a71bc751364a27, type: 3}
+  - {fileID: 21300000, guid: 6a826303d46e64c468f2037f4ee9d1c0, type: 3}
+  - {fileID: 21300000, guid: dcd964057061c4565b158394c67cd197, type: 3}
+  - {fileID: 21300000, guid: 09fec130d5e564293b431d03b7004e28, type: 3}
+  - {fileID: 21300000, guid: 6e523d75279bb4f08bb345958f6964e1, type: 3}
+  - {fileID: 21300000, guid: 7cba8b8322fa84848bfdf1007ad44ecb, type: 3}
+  - {fileID: 21300000, guid: 303c28cab01634ace896a16fd559c930, type: 3}
+  deployCutsceneFps: 24
+  deployCutsceneScale: 2.6
+  deployCutsceneOffset: {x: 0, y: 0}
+  deployCutsceneDepth:
+  - {fileID: 2800000, guid: c2ac5ef096bcc49718b7a2dd24808bb5, type: 3}
+  deployCutsceneTiltGain: 1
   knockbackDistance: 0
   knockbackDuration: 0
   onPlacePushDistance: 0
