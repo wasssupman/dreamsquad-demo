@@ -83,24 +83,28 @@ namespace Wassup.Presentation
             }
         }
 
-        private void Update()
-        {
-            if (_active) Follow();
-        }
-
         private void Follow()
         {
             if (_anchor != null) _lastBasePos = _anchor.position; // 파괴되면 마지막 위치 유지
-            transform.position = _lastBasePos + _offset;
+            // billboard=true = 화면을 보는 머리 위 뱃지 → 오프셋도 카메라 평면(HeadAnchor 함정 참조).
+            // billboard=false = 월드에 앉는 연출(지면 링 등) 의도 → 월드 오프셋 유지.
+            transform.position = _billboard
+                ? HeadAnchor.Lift(_lastBasePos, _offset, _camera)
+                : _lastBasePos + _offset;
             // 폴백 "!"만 약한 펄스(현 어그로 외형 보존). 프리팹은 자체 애니메이션.
             float s = _scale;
             if (_usesFallback) s *= 1f + 0.12f * Mathf.Sin(Time.time * 3f);
             transform.localScale = new Vector3(s, s, s);
         }
 
+        // 위치/회전 모두 LateUpdate — 카메라 포즈는 CameraDirector(-90)가 LateUpdate 에서 확정한다.
+        // Update 에서 Follow 하면 billboard 엔트리의 HeadAnchor 리프트가 지난 프레임 회전을 읽어
+        // 카메라 이동 중 위치만 1프레임 뒤처진다.
         private void LateUpdate()
         {
-            if (_active && _billboard && _camera != null)
+            if (!_active) return;
+            Follow();
+            if (_billboard && _camera != null)
                 transform.rotation = _camera.transform.rotation;
         }
 

@@ -1725,7 +1725,7 @@ MonoBehaviour:
   hand: {fileID: 2054561897}
   bridge: {fileID: 1939688408}
   billboardCamera: {fileID: 0}
-  offset: {x: 0, y: 2.6, z: 0}
+  offset: {x: 0, y: 1.64, z: 0}
   cardHeight: 0.42
   spacing: 0.05
   plateFill: {r: 0.09, g: 0.11, b: 0.2, a: 0.9}
@@ -3606,7 +3606,7 @@ MonoBehaviour:
   popupPrefab: {fileID: 8575853805804975632, guid: 42d63c3da04cf4e7d902a8e4909ce16c, type: 3}
   style:
     lifetime: 0.8
-    driftUp: 0.7
+    driftUp: 0.41
     lowDamage: 1
     highDamage: 50
     minFontSize: 5.2
@@ -3717,7 +3717,7 @@ MonoBehaviour:
       m_PreInfinity: 2
       m_PostInfinity: 2
       m_RotationOrder: 4
-    headViewOffset: 1.4
+    headViewOffset: 0.85
     cellSize: {x: 0.45, y: 0.32}
     maxSearchRings: 4
     topBoost: 1.35
@@ -4069,6 +4069,7 @@ MonoBehaviour:
   enemyHitBarSpawner: {fileID: 543066563}
   statusFxSpawner: {fileID: 1737790243}
   tileHealthGaugeLayer: {fileID: 1218224327}
+  dcIconStripSpawner: {fileID: 956177014}
   scoreHud: {fileID: 1279129162}
   _projectileViewPool: {fileID: 808760338}
   placementInput: {fileID: 1495062452}

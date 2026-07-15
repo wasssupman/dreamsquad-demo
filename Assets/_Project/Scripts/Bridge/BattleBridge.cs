@@ -89,6 +89,10 @@ namespace Wassup.Bridge
         [SerializeField] private Wassup.Presentation.StatusFxSpawner statusFxSpawner;
         // unit-health-display unit 3 — 방어유닛 타일 테두리 게이지 레이어.
         [SerializeField] private Wassup.Presentation.TileHealthGaugeLayer tileHealthGaugeLayer;
+        // unit-dreamcatcher-icons — 부착 카드 아이콘 스트립 스포너. teardown 회수 대칭용
+        // (spec 계약 6). 스트립은 이벤트 구동이라 Placement 진입 전까지 리빌드가 없다 —
+        // teardown 이 앵커를 파괴해도 뷰는 마지막 위치를 유지하므로 여기서 명시 회수한다.
+        [SerializeField] private Wassup.Presentation.DcIconStripSpawner dcIconStripSpawner;
         [SerializeField] private Wassup.UI.ScoreHudView scoreHud;
         [SerializeField] private Wassup.Presentation.ProjectileViewPool _projectileViewPool;
         // Phase 9 P9-07 — tileSize 단일 소스화. Awake 에서 PlacementInput 으로 주입.
@@ -366,6 +370,7 @@ namespace Wassup.Bridge
             if (tileHealthGaugeLayer != null) tileHealthGaugeLayer.Clear(); // unit 3 — 게이지 전체 정리
             if (enemyHitBarSpawner != null) enemyHitBarSpawner.Clear(); // unit 2 — 잔여 마이크로바 정리(생명주기 대칭)
             if (statusFxSpawner != null) statusFxSpawner.Clear(); // unit-status-fx unit 2 — 잔여 상태 연출 정리
+            if (dcIconStripSpawner != null) dcIconStripSpawner.Clear(); // unit-dreamcatcher-icons — 잔여 아이콘 스트립 정리(생명주기 대칭)
             _dcAuraPool?.Clear(); _dcAuraPool = null; // nightmare-whip-aura rev 2 — 드림캐쳐 부착 오라 정리(생명주기 대칭)
             ClearBlockingHazardVisuals();
 

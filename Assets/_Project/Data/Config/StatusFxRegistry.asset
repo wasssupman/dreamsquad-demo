@@ -15,14 +15,14 @@ MonoBehaviour:
   entries:
   - kind: 0
     prefab: {fileID: 0}
-    localOffset: {x: 0, y: 1.5, z: 0}
+    localOffset: {x: 0, y: 0.91, z: 0}
     scale: 0.5
     billboard: 1
     fallbackTint: {r: 1, g: 0.28, b: 0.12, a: 1}
     fallbackGlyph: 0
   - kind: 1
     prefab: {fileID: 0}
-    localOffset: {x: 0.35, y: 2.2, z: 0}
+    localOffset: {x: 0.35, y: 1.37, z: 0}
     scale: 0.65
     billboard: 1
     fallbackTint: {r: 0.38, g: 0.52, b: 1, a: 1}

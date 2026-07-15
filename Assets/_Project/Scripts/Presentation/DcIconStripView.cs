@@ -50,21 +50,22 @@ namespace Wassup.Presentation
                 var card = cards[i];
                 slot.root.transform.localPosition = new Vector3(originX + stepX * i, 0f, 0f);
 
-                var frameSprite = card.type == CardType.Squad ? squadFrame : unitFrame;
-                slot.frame.sprite = frameSprite;
+                slot.frame.sprite = card.type == CardType.Squad ? squadFrame : unitFrame;
                 // 프레임은 카드보다 살짝 크게 — 테두리가 아트 밖으로 보이는 링이 된다.
-                ApplyWorldSize(slot.frame, frameSprite, cardWidth * 1.12f, cardHeight * 1.08f);
+                ApplyWorldSize(slot.frame, cardWidth * 1.12f, cardHeight * 1.08f);
 
                 bool hasArt = card.art != null;
                 slot.art.gameObject.SetActive(hasArt);
                 if (hasArt)
                 {
                     slot.art.sprite = card.art;
-                    ApplyWorldSize(slot.art, card.art, cardWidth, cardHeight);
+                    ApplyWorldSize(slot.art, cardWidth, cardHeight);
                 }
             }
 
-            _lastBasePos = anchor != null ? anchor.position : _lastBasePos;
+            // 스포너가 TryGetUnitViewAnchor 성공 시에만 Show 하므로 anchor 는 non-null.
+            // (Follow 쪽 null 검사는 별개 — 배치 후 앵커가 파괴되는 경우를 잡는다.)
+            _lastBasePos = anchor.position;
             _active = true;
             gameObject.SetActive(true);
             Follow();
@@ -77,26 +78,27 @@ namespace Wassup.Presentation
             gameObject.SetActive(false);
         }
 
-        private void Update()
-        {
-            if (_active) Follow();
-        }
-
+        // 위치/회전 모두 LateUpdate — 카메라 포즈는 CameraDirector(-90)가 LateUpdate 에서 확정한다.
+        // Update 에서 Follow 하면 HeadAnchor 가 지난 프레임 카메라 회전을 읽어, 카메라가 움직이는
+        // 동안(킥/브리딩/페이즈 pitch 전환) 위치만 1프레임 뒤처져 스트립이 유닛에서 미끄러진다.
         private void LateUpdate()
         {
-            if (_active && _camera != null)
-                transform.rotation = _camera.transform.rotation;
+            if (!_active) return;
+            Follow();
+            if (_camera != null) transform.rotation = _camera.transform.rotation;
         }
 
         private void Follow()
         {
             if (_anchor != null) _lastBasePos = _anchor.position;
-            transform.position = _lastBasePos + _offset;
+            transform.position = HeadAnchor.Lift(_lastBasePos, _offset, _camera);
         }
 
-        // 스프라이트 PPU/텍스처 크기와 무관하게 목표 월드 크기로 정규화.
-        private static void ApplyWorldSize(SpriteRenderer sr, Sprite sprite, float width, float height)
+        // 스프라이트 PPU/텍스처 크기와 무관하게 목표 월드 크기로 정규화. 대상 스프라이트는
+        // sr.sprite 에서 읽는다 — 호출측이 방금 대입한 값을 다시 넘길 이유가 없다.
+        private static void ApplyWorldSize(SpriteRenderer sr, float width, float height)
         {
+            var sprite = sr.sprite;
             if (sprite == null) return;
             var b = sprite.bounds.size;
             sr.transform.localScale = new Vector3(

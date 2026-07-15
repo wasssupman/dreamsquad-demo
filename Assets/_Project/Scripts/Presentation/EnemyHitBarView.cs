@@ -43,7 +43,7 @@ namespace Wassup.Presentation
             _anchor = anchor;
             _lastBase = anchor != null ? anchor.position : fallbackBase;
             SetRatio(hpRatio);
-            transform.position = _lastBase + Vector3.up * _style.HitBarHeadYOffset;
+            transform.position = HeadAnchor.Lift(_lastBase, Vector3.up * _style.HitBarHeadYOffset, _camera);
             gameObject.SetActive(true);
             _elapsed = 0f;
             _playing = true;
@@ -74,11 +74,15 @@ namespace Wassup.Presentation
             _fillT.localScale = new Vector3(maxFillW * r, Mathf.Max(0f, size.y - 2f * pad), 1f);
         }
 
-        private void Update()
+        // 위치/회전 모두 LateUpdate — 카메라 포즈는 CameraDirector(-90)가 LateUpdate 에서 확정한다.
+        // Update 에서 위치를 잡으면 HeadAnchor 가 지난 프레임 카메라 회전을 읽어 카메라 이동 중
+        // 바만 1프레임 뒤처진다(회전은 LateUpdate 라 최신 → 위치/회전 불일치).
+        private void LateUpdate()
         {
             if (!_playing) return;
             if (_anchor != null) _lastBase = _anchor.position; // 파괴 시 마지막 위치 유지
-            transform.position = _lastBase + Vector3.up * _style.HitBarHeadYOffset;
+            transform.position = HeadAnchor.Lift(_lastBase, Vector3.up * _style.HitBarHeadYOffset, _camera);
+            if (_camera != null) transform.rotation = _camera.transform.rotation; // full billboard
 
             _elapsed += Time.deltaTime;
             float hold = _style.HitBarHoldSec;
@@ -86,12 +90,6 @@ namespace Wassup.Presentation
             float f = (_elapsed - hold) / _style.HitBarFadeSec;
             if (f >= 1f) { Finish(); return; }
             ApplyAlpha(1f - f);
-        }
-
-        private void LateUpdate()
-        {
-            if (!_playing || _camera == null) return;
-            transform.rotation = _camera.transform.rotation; // full billboard
         }
 
         private void ApplyAlpha(float a)

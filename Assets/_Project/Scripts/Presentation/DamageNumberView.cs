@@ -71,7 +71,10 @@ namespace Wassup.Presentation
             ApplyFrame(0f);
         }
 
-        private void Update()
+        // 위치/회전 모두 LateUpdate — 카메라 포즈는 CameraDirector(-90)가 LateUpdate 에서 확정한다.
+        // ApplyFrame 은 카메라 right/up(셰이크·driftUp)을 읽으므로 Update 에서 돌리면 지난 프레임
+        // 회전을 쓰게 되고, 회전은 최신이라 위치/회전이 어긋난다.
+        private void LateUpdate()
         {
             if (!_playing) return;
             // 글로벌 Time.timeScale 은 1 고정 → Time.deltaTime 은 TimeManager 정지에 안 멈춘다.
@@ -81,12 +84,17 @@ namespace Wassup.Presentation
             float n = _elapsed / _lifetime;
             if (n >= 1f) { Finish(); return; }
             ApplyFrame(n);
+            if (_camera != null)
+            {
+                // 빌보드(카메라 정렬) + index 결정론 미세 roll — 격자의 딱딱함 완화.
+                transform.rotation = _camera.transform.rotation * Quaternion.Euler(0f, 0f, _tiltDeg);
+            }
         }
 
         private void ApplyFrame(float n)
         {
-            // driftUp: view 공간 world-up 상승 (앵커와 동일 축).
-            Vector3 pos = _startPos + Vector3.up * (_style.driftUp * n);
+            // driftUp: 카메라 평면 상승 (앵커와 동일 축 — HeadAnchor 함정 참조). 아래 셰이크와도 같은 평면.
+            Vector3 pos = _startPos + (_camera != null ? _camera.transform.up : Vector3.up) * (_style.driftUp * n);
             // 대형 히트 셰이크: 방향 시드는 index(구조적), 진동은 수명 클럭 n, 초반 감쇠. 화면 평면에서 흔든다.
             if (_style.shakeAmp > 0f && _punchT > 0f && _camera != null)
             {
@@ -114,13 +122,6 @@ namespace Wassup.Presentation
             Color bot = _faceColor; bot.a = a;
             Color top = _gradTopRGB; top.a = a;
             _tmp.colorGradient = new VertexGradient(top, top, bot, bot);
-        }
-
-        private void LateUpdate()
-        {
-            if (!_playing || _camera == null) return;
-            // 빌보드(카메라 정렬) + index 결정론 미세 roll — 격자의 딱딱함 완화.
-            transform.rotation = _camera.transform.rotation * Quaternion.Euler(0f, 0f, _tiltDeg);
         }
 
         private void Finish()
