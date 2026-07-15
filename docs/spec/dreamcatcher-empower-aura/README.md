@@ -63,8 +63,9 @@
 
 ## 후속 후보
 
-- **오라 아트 폴리싱** — `EmpowerAura_SKELETON` 은 프리뷰 스켈레톤(느낌 OK 판정, 폴리싱 유보). 소프트 텍스처
-  교체·강도/밀도/색 튜닝·발광 후 사용자 승인 시 `_SKELETON` 정식화(unity-vfx-integration). 전부 프리팹/mat/SO.
+- **오라 아트 폴리싱** — rev5(5요소: 오라 쉘·에너지 창끝·백라이트·충격파 링·크래클 스파크, **파랑/주황 이중톤**)
+  까지 사용자 OK("이게 최선"). 남은 것: 전용 flame/energy 텍스처 교체(현 Default-Particle 소프트) + `_SKELETON`
+  정식화(unity-vfx-integration). 전부 프리팹/mat/SO 데이터.
 - **강도별 단계 오라** — net 배율 세기에 따라 scale/emission. 현재 on/off.
 - **출처 태그 재사용** — dispel(출처별 해제)·모디파이어 UI(출처 아이콘)·밸런스 로깅이 `origin` 소비. (framework 파생)
 - **드림캐쳐 카드별 오라 차등** — 카드/effect kind 별 색·강도. 현재 단일 금빛.
