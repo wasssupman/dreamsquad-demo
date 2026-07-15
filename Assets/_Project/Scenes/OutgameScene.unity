@@ -4016,8 +4016,8 @@ MonoBehaviour:
   ambientAmplitude: 0.25
   ambientSpeedX: 0.19
   ambientSpeedY: 0.13
-  dragRefSpeed: 800
-  dragGain: 1
+  pointerGain: 1
+  mouseHoverFollows: 1
 --- !u!1 &1258292359
 GameObject:
   m_ObjectHideFlags: 0

@@ -50,11 +50,6 @@ namespace Wassup.UI
             _floorY = _rt.anchoredPosition.y;
         }
 
-        // lobby-background-parallax unit 3 — 로비 배경 패럴랙스가 드래그 방향을 구독한다.
-        // 코드베이스의 LobbyReactionLock.ReactionStarted 와 같은 static 이벤트 패턴.
-        // 발행값 = 손가락 프레임 델타(로컬 px). 놓으면 발행이 끊기고, 구독자의 staleness watchdog 이 0 복귀시킨다.
-        public static event System.Action<Vector2> DragMoved;
-
         public void OnBeginDrag(PointerEventData eventData)
         {
             if (settings == null || _phase == Phase.Dragging) return; // 세션 1개 — 두 번째 포인터 무시
@@ -74,12 +69,7 @@ namespace Wassup.UI
         public void OnDrag(PointerEventData eventData)
         {
             if (_phase != Phase.Dragging || eventData.pointerId != _pointerId) return;
-            if (TryScreenToLocal(eventData, out var local))
-            {
-                // lobby-background-parallax unit 3 — 프레임 델타 발행(구독자 없으면 no-op).
-                DragMoved?.Invoke(local - _fingerLocal);
-                _fingerLocal = local;
-            }
+            if (TryScreenToLocal(eventData, out var local)) _fingerLocal = local;
         }
 
         public void OnEndDrag(PointerEventData eventData)
