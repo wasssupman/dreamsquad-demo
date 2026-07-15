@@ -2030,7 +2030,11 @@ namespace Wassup.Bridge
                     var e = entities[i];
                     if (_pickupVisualMap.ContainsKey(e)) continue;
                     var pickup = _em.GetComponentData<Wassup.Battle.Effects.Pickup>(e);
-                    Vector3 pos = GridMath.CellToWorldCenter(pickup.cell, tileSize, pickupViewHeight, _boardOrigin);
+                    // sim(셀 중심) → view 변환. 다른 모든 뷰와 동일하게 BoardSpace.ToView 경유 —
+                    // ToView 가 +0.5 로 Tilemap 셀 중심을 맞춘다(생략 시 반 타일 어긋나 모서리에 놓임).
+                    // 시각 hover 는 view 세로(world-up)로만 — ToView 는 sim 높이를 무시한다.
+                    float3 simCenter = GridToWorldCenter(new Vector2Int(pickup.cell.x, pickup.cell.y));
+                    Vector3 pos = (Vector3)Wassup.Core.BoardSpace.ToView(simCenter) + Vector3.up * pickupViewHeight;
                     var go = new GameObject($"Pickup_{pickup.kind}_{pickup.cell.x}_{pickup.cell.y}");
                     go.transform.SetParent(transform, worldPositionStays: false);
                     go.transform.position = pos;
