@@ -181,9 +181,19 @@ namespace Wassup.UI
             _image.preserveAspect = true;
 
             // depth-parallax unit 6 — per-instance 패럴랙스 머티리얼 주입(선례 = UiCardFaceMesh).
-            // 셰이더 없으면(모듈 미존재/미빌드) 기본 머티리얼 유지 = 색만(그레이스풀). 정적 파라미터는
+            // 셰이더 없으면 기본 머티리얼 유지 = 색만(그레이스풀). 정적 파라미터는
             // 생성 시 1회 push, 이후 틸트/뎁스만 SetVector/SetTexture(런타임 머티리얼 스왑 금지).
+            //
+            // ⚠️ Shader.Find 는 **빌드에 포함된 셰이더만** 찾는다. 이 셰이더는 씬의 머티리얼이 참조하지
+            // 않으므로(런타임 생성) GraphicsSettings 의 Always Included Shaders 에 등록돼 있어야 한다.
+            // 빠지면 기기에서만 null → 아래 폴백이 조용히 삼켜 "에디터는 되는데 빌드만 효과 없음"이 된다.
+            // 실제로 그렇게 한 번 출시됐다(2026-07-15). 그래서 폴백은 반드시 경고를 남긴다.
             var sh = Shader.Find("Wassup/UI/DepthParallax");
+            if (sh == null)
+            {
+                Debug.LogWarning("DeployCutscenePlayer: 'Wassup/UI/DepthParallax' 셰이더를 못 찾음 — 패럴랙스 없이 색만 재생. " +
+                                 "빌드라면 GraphicsSettings > Always Included Shaders 에 등록됐는지 확인할 것(스트리핑).", this);
+            }
             if (sh != null)
             {
                 _parallaxMat = new Material(sh) { hideFlags = HideFlags.HideAndDontSave };
