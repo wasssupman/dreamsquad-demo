@@ -11,6 +11,9 @@ namespace Wassup.Data
         // dreamcatcher-empower-aura — 드림캐쳐가 스탯 모디파이어를 적용한 유닛의 강화 오라.
         // 소스 = StatModifierSlot 중 header.origin==ModifierOrigin.Dreamcatcher. 온-바디 지속 VFX.
         Empowered = 2,
+        // gimmick-match-integration — 번아웃(워라벨 기믹). 소스 = StatModifierSlot 중
+        // header.origin==ModifierOrigin.Stack (Fatigue 임계가 유일한 Stack 출처 → 번아웃 창과 일치).
+        Burnout = 3,
         // Stun, Freeze, Poison … 나중에 끝에 추가 + registry 항목 + reconcile 소스 훅.
     }
 }

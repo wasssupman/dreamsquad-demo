@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a57c278c9a7850a48995f88611f12d70, type: 3}
+  m_Name: Gimmick_RedBull
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.RedBullGimmickData
+  gimmickId: G2_RedBull
+  displayName: "\uAD1C\uCC2E\uC544. \uBA39\uACE0 \uB2EC\uB9AC\uC790!"
+  description: "\uC774\uB3D9\xB7\uBC30\uCE58 \uD0C0\uC77C\uC5D0 \uC8FC\uAE30\uC801\uC73C\uB85C
+    \uB808\uB4DC\uBD88\uC774 \uB4F1\uC7A5\uD569\uB2C8\uB2E4. \uC720\uB2DB\uC774 \uBC1F\uC73C\uBA74
+    \uC7A0\uC2DC \uD3ED\uC8FC\uD574 \uACF5\uACA9 \uC18D\uB3C4\uAC00 \uC624\uB974\uC9C0\uB9CC,
+    5\uCD08 \uB4A4 \uCD5C\uB300 \uCCB4\uB825\uC758 \uC808\uBC18\uB9CC\uD07C \uD53C\uD574\uB97C
+    \uC785\uC2B5\uB2C8\uB2E4."
+  redbullSpawnInterval: 3
+  redbullLifetime: 20
+  maxActivePickups: 6
+  lastRunAttackSpeedMul: 1.5
+  lastRunDuration: 5
+  lastRunDamageFraction: 0.5

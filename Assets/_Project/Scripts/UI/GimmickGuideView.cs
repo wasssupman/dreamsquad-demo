@@ -82,8 +82,9 @@ namespace Wassup.UI
             rt.sizeDelta = new Vector2(cardWidth, 0f); // 높이는 ContentSizeFitter 가 결정
 
             var bg = _card.GetComponent<Image>();
+            // 시인성: 뒷 배경(맵)이 비쳐 텍스트가 안 읽히던 문제 → 거의 불투명한 다크 플레이트로.
             bg.sprite = UiRoundedSprite.Make(18f, 3f,
-                new Color(0.05f, 0.06f, 0.12f, 0.82f), new Color(1f, 0.82f, 0.35f, 0.9f));
+                new Color(0.03f, 0.04f, 0.09f, 0.97f), new Color(1f, 0.82f, 0.35f, 1f));
             bg.type = Image.Type.Sliced;
             bg.raycastTarget = false; // 배치 입력 비차단
 
@@ -120,6 +121,14 @@ namespace Wassup.UI
             tmp.alignment = TextAlignmentOptions.Center;
             tmp.textWrappingMode = TextWrappingModes.Normal;
             tmp.raycastTarget = false;
+            // 시인성: 다크 아웃라인(인스턴스 머티리얼) — 배경 겹침에도 글자 경계가 살아있게.
+            if (tmp.fontMaterial != null)
+            {
+                var mat = tmp.fontMaterial; // instance (공유 아틀라스 불변)
+                mat.EnableKeyword(ShaderUtilities.Keyword_Outline);
+                mat.SetColor(ShaderUtilities.ID_OutlineColor, new Color(0f, 0f, 0f, 1f));
+                mat.SetFloat(ShaderUtilities.ID_OutlineWidth, 0.18f);
+            }
             return tmp;
         }
     }

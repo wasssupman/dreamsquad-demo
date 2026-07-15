@@ -1,6 +1,6 @@
 // season-gimmick-overwork unit 5 — 야근 룰 2(후반): 유닛(적 통과 / defender 배치)이 레드불과
 // 같은 셀에 있으면 소비 → 라스트런 부여 (공속 버프 즉시 + LastRun crash 타이머).
-// 매 프레임 전체 defender+enemy 순회 hot-path → Burst. OverworkGimmickConfig 부재 시 미가동(self-gate).
+// 매 프레임 전체 defender+enemy 순회 hot-path → Burst. RedBullGimmickConfig 부재 시 미가동(self-gate).
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -19,7 +19,7 @@ namespace Wassup.Battle.Effects
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            state.RequireForUpdate<OverworkGimmickConfig>();
+            state.RequireForUpdate<RedBullGimmickConfig>();
             state.RequireForUpdate<FlowFieldSingleton>();
             state.RequireForUpdate<StatModifierApplyEventsSingleton>();
         }
@@ -40,7 +40,7 @@ namespace Wassup.Battle.Effects
                 return;
             }
 
-            var config = SystemAPI.GetSingleton<OverworkGimmickConfig>();
+            var config = SystemAPI.GetSingleton<RedBullGimmickConfig>();
             var flow = SystemAPI.GetSingleton<FlowFieldSingleton>();
             var statQ = SystemAPI.GetSingleton<StatModifierApplyEventsSingleton>().queue;
             var em = state.EntityManager;
@@ -79,7 +79,7 @@ namespace Wassup.Battle.Effects
             ref NativeHashMap<int2, Entity> byCell,
             ref EntityCommandBuffer ecb,
             NativeQueue<StatModifierApplyEvent> statQ,
-            in OverworkGimmickConfig config,
+            in RedBullGimmickConfig config,
             EntityManager em)
         {
             if (!byCell.TryGetValue(cell, out var pickup))

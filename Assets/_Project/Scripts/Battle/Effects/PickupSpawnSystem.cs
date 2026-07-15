@@ -1,7 +1,7 @@
 // season-gimmick-overwork unit 4 — 야근 룰 2 (전반): redbullSpawnInterval 마다 이동/배치
 // 타일영역(PickupSpawnState.candidateCells)의 임의 셀에 레드불 픽업 생성 + 미소비 만료 despawn.
 // 소비 판정/라스트런 효과는 unit 5 (PickupConsumeSystem).
-// OverworkGimmickConfig + PickupSpawnState 부재(기믹 비활성/맵 미빌드) 시 시스템 미가동 (self-gate).
+// RedBullGimmickConfig + PickupSpawnState 부재(기믹 비활성/맵 미빌드) 시 시스템 미가동 (self-gate).
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -21,14 +21,14 @@ namespace Wassup.Battle.Effects
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            state.RequireForUpdate<OverworkGimmickConfig>();
+            state.RequireForUpdate<RedBullGimmickConfig>();
             state.RequireForUpdate<PickupSpawnState>();
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            var config = SystemAPI.GetSingleton<OverworkGimmickConfig>();
+            var config = SystemAPI.GetSingleton<RedBullGimmickConfig>();
             if (config.redbullSpawnInterval <= 0f)
                 return; // 잘못 저작된 SO 방어 (무한 루프 회피)
 

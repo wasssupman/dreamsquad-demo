@@ -1,6 +1,7 @@
 # Season Gimmick — 야근 (Overwork) Spec
 
 **상태**: 완료 2026-07-15 — 야근 기믹 두 룰(피로도→번아웃, 레드불→라스트런) end-to-end 구현·Play 검증. 야근 시즌(`season_overwork`) 정식 default. 상세 인계는 [8_handoff_summary.md](8_handoff_summary.md).
+**후속 (2026-07-15)**: [9_gimmick_split_and_burnout_vfx.md](9_gimmick_split_and_burnout_vfx.md) — 야근 기믹을 Burnout/RedBull 2개로 분할(매치당 랜덤 배정, gimmick-match-integration 계약 9 초과) + 레드불 빈도 5→3s + 번아웃 전용 VFX(먹구름+번개). 남은 육안: 실 유닛 번아웃 end-to-end 플레이테스트.
 
 ## 목표
 
@@ -38,6 +39,7 @@
 | 6 | `6_presentation.md` | 레드불 뷰 presenter + 번아웃 StatusFx 등록 + 소비 순간 연출 (플레이스홀더 아트 허용) |
 | 7 | `7_scene_wiring_play_verify.md` | 야근 시즌 SO 생성 + 씬 wiring + Play 통합 검증 (검증 질문 4개 전부) |
 | 8 | `8_handoff_summary.md` | 인계 지도 |
+| 9 | `9_gimmick_split_and_burnout_vfx.md` | (후속) 기믹 2분할 + 레드불 빈도↑ + 번아웃 전용 VFX(먹구름+번개) |
 
 ## Feature-Wide 계약
 
