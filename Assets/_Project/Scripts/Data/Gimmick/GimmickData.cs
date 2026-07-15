@@ -9,5 +9,8 @@ namespace Wassup.Data
     {
         public string gimmickId = "G0";
         public string displayName = "";
+        // gimmick-match-integration unit 0 — 배치 페이즈 안내 카드 본문 (플레이어용 룰 설명).
+        [TextArea(2, 4)]
+        public string description = "";
     }
 }
