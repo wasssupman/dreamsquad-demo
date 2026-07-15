@@ -70,3 +70,11 @@ ndc = new Vector2(local.x / (local.z * tanH), local.y / (local.z * tanV));
 - 카메라 최종 FOV 가 `[fovMin, fovMax]` 안에 유지.
 - 다른 카메라 채널(드래그 포커스)과 동시 발생해도 발산/진동 없음.
 - **`CameraDirector` 가 카메라 포즈의 유일한 쓰기 주체라는 계약 불변** — 컨트롤러는 카메라를 직접 만지지 않는다.
+
+확인 2026-07-15 — **사용자 Play 통과 확인** ("느낌은 괜찮다"). 커밋 `71fc4679`.
+실측: 부착 0장 유닛도 선택됨(`cards=0` 인데 `selected` 세팅) · dolly 4.00(SO 값 일치) ·
+fov 43→41(클램프 경계) · 유닛 중앙거리 589px→297px · 줌 중 패널 추종 · 닫힘 시 홈 완전복귀
+(weight 0/camDist 0/fov 43) · 컨트롤러 강제 비활성화 시 줌 자동해제(staleness).
+
+**튜닝값은 전부 `CameraDirectionConfig.asset`** — Play 중 실시간 조정 가능(dolly 4 / fovDelta -2 /
+lookWeight 0.5). FOV 여유가 2도뿐인 이유는 위 "3. 튜닝 필드" 참조.

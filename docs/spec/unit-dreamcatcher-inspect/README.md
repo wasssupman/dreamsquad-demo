@@ -1,8 +1,10 @@
 # Unit Dreamcatcher Inspect — 배치 유닛 탭 → 부착 드림캐쳐 상세
 
-> 상태: **구현 완료 · 사용자 Play 확인 대기 2026-07-15** (units 0~4, 미커밋)
+> 상태: **완료 2026-07-15** (units 0~5, 사용자 Play 확인 통과)
 >
-> 설계 critic 1회(REVISE→반영) + 코드리뷰 1회(APPROVE-WITH-CHANGES→전건 반영). 에이전트 자율 Play 검증 통과. 실기기 체감/포탈·부착 제스처 확인만 남음 — `3_wiring_play_validation.md` 하단 참조.
+> 커밋: `71fc4679`(기능 units 0~4) · `f54909de`(origin/main merge) · `5d7a2585`(탭 입력 잠복 결함 수정 — 이 spec 이 첫 보드 raw 탭 소비자라 드러남).
+> 설계 critic 1회(REVISE→반영) + 코드리뷰 1회(APPROVE-WITH-CHANGES→전건 반영) + 사용자 Play 확인.
+> 잔여: 실기기(Android) 터치 체감 · 포탈 2탭/카드 부착 touchup 직후 미개방(실제 포인터 입력 필요) — `3_wiring_play_validation.md` 하단.
 >
 > 배경: `docs/spec/unit-dreamcatcher-icons/` 후속 후보 "**아이콘 탭 → 카드 상세** [S] · 부착 카드 확인 UX" 의 승격.
 
@@ -81,6 +83,9 @@
 **역할 분담**: 스트립 = 무엇이 붙었나(어포던스), 패널 = 그게 뭘 하나(상세). 패널이 열려도 스트립은 유지한다.
 
 ## 스코프 밖 / 후속 후보
+
+- **겹친 유닛 픽킹이 "렉트 중심 최근접" 이라 엉뚱한 유닛을 고를 수 있다** [S] · `BattleBridge.TryPickDefenderAtScreen` 은 점을 포함하는 렉트들 중 **중심이 가장 가까운** 것을 고른다 — 깊이(카메라 거리)를 안 본다. 실측(2026-07-15, 유닛 8기): 21케이스 중 1건에서 옆 유닛이 잡혔다(발 부분). 스크린 렉트가 loose AABB(무기까지 포함)라 인접 유닛끼리 겹친다. 정답은 **깊이 순 우선**(화면에 앞에 그려진 것) 또는 픽셀/콜라이더 정밀 판정. 현재 체감엔 안 걸리고, **카드 드래그 호버(`DreamcatcherCardDragSlot`)와 공유하는 계약**이라 바꾸면 그쪽도 같이 바뀐다.
+- **배치 직후 1프레임 렉트가 작게 잡힌다** [S] · Spine 스켈레톤이 포즈 잡기 전 `MeshRenderer.bounds` 가 작다(실측 96x57 → 정착 후 161x101). 정착 후에는 안정적(meshY 0.737~0.739). 배치 직후 즉시 탭하는 경로에서만 문제.
 
 - **트리거 진행도 뱃지** [S/M] · "4/5" 라이브 카운터. `DcTriggerSlot.counter`(Combat) 읽기에 BattleBridge 스냅샷 경로 신설 필요 + 같은 카드 2장 부착 시 entryId↔슬롯 매핑 부재(`instanceId` 는 ECS 쪽만). icons spec 후속 후보와 동일 항목.
 - **이미 배치된 유닛 선택/탭 시 범위 표시** [S] · `docs/spec/README.md` Follow-up Backlog(range-preview 출처). 같은 탭 제스처 — 계약 11 로 확장 경로를 열어둠.

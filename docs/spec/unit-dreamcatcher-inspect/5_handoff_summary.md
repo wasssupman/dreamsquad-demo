@@ -2,7 +2,13 @@
 
 ## Commit
 
-미커밋 (사용자 확인 대기). 변경 표면: 기존 파일 **+125줄 / 삭제 0** + 신규 2파일 + spec 폴더.
+- `71fc4679` feat(unit-dreamcatcher-inspect) — 기능 units 0~4 (신규 2파일 + seam 2점 + 카메라 채널 + 씬 배선 + spec)
+- `4621a62e` docs(lessons) — TMP 비활성 초기화 · IsPointerOverGameObject 실행순서 · MCP 검증 컨텍스트
+- `f54909de` Merge origin/main (season-gimmick-overwork) — 씬 충돌 수동 해소(StackModifier_Fatigue 유실 방지)
+- `5d7a2585` fix(wave-strip) — **탭 입력 잠복 결함**. 이 spec 이 첫 보드 raw 탭 소비자라 드러남
+- `2c52d659` docs(lessons) — CanvasGroup.alpha=0 은 입력을 안 막는다
+
+사용자 Play 확인 통과 (2026-07-15).
 
 ## Implemented
 
@@ -49,7 +55,8 @@
 
 ## Follow-up
 
-- **사용자 Play 확인 필요**(에이전트 판정 불가): 실기기 탭 체감·슬로우 0.3 체감·포탈 2탭 직후 미개방(계약 4)·카드 부착 touchup 직후 미개방(계약 3)·카메라 킥 중 미끄러짐. 상세는 `3_wiring_play_validation.md`.
+- **실기기(Android) 확인만 남음**: 손가락 탭 체감 · 포탈 2탭 직후 미개방(계약 4) · 카드 부착 touchup 직후 미개방(계약 3). 앞의 둘은 실제 포인터 입력이 필요해 자율 검증 불가. 에디터 Play 는 사용자 확인 통과.
+- **픽킹 잔여 결함 2건**(별개, 미수정) — README "스코프 밖 / 후속 후보" 참조: 겹친 유닛의 "렉트 중심 최근접" 오귀속(21케이스 중 1건) · 배치 직후 1프레임 렉트 축소. 둘 다 현 체감엔 안 걸린다.
 - **Jua SDF 폰트 아틀라스 글리프 누락** — Play 스크린샷에서 "요새처럼 버**□**다"(`틴` 없음). 이 spec 과 무관한 기존 폰트 커버리지 문제지만 이 패널에서 드러났다. 별도 처리 필요.
 - 해상도/노치는 손계산으로 위험 낮음 확인(unit 3) — 실기기 육안 확인으로 갈음.
 - 나머지 후속(트리거 진행도 뱃지 · 배치 유닛 범위 표시 · 유닛 스탯 병기 · 세로 오버플로 고도화)은 README "스코프 밖 / 후속 후보".
