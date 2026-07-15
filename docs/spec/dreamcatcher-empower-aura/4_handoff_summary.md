@@ -18,7 +18,7 @@
 - `Battle/Effects/Modifiers/ModifierAuraClassifier.cs`(순수 판정) + `Tests/EditMode/ModifierAuraClassifierTests.cs`(14)
 - `Bridge/BattleBridge.cs`(EnqueueStatModifier[Raw]·ReconcileStatusFx·생산자) · `BattleBridge.Dreamcatcher.cs`(ActiveDcEffect.origin·revoke)
 - `Data/StatusFxKind.cs`(Empowered) · `Data/Config/StatusFxRegistry.asset`(kind 2 배선)
-- `VFX/EmpowerAura_SKELETON.prefab` + `VFX/Materials/EmpowerAura_Mat.mat`
+- `VFX/EmpowerAura.prefab`(정식, 5요소) + `VFX/Materials/EmpowerAura_{Glow,Streak}_Mat.mat` + `VFX/Textures/EmpowerAura_{Glow,Streak}.png`
 - `Tests/PlayMode/DreamcatcherEffectTest.cs`(revoke 회귀 추가)
 
 ## Verified
