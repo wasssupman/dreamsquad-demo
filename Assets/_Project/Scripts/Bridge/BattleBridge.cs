@@ -127,6 +127,12 @@ namespace Wassup.Bridge
         [Header("Stack Modifier Registry")]
         [SerializeField] private Wassup.Data.StackModifierSO[] stackModifierAuthoring;
 
+        [Header("Season Gimmick — Pickup View (season-gimmick-overwork unit 6)")]
+        [Tooltip("레드불 픽업 뷰 프리팹. 비우면 절차적 플레이스홀더(PickupPresenter) 사용.")]
+        [SerializeField] private GameObject pickupViewPrefab;
+        [Tooltip("픽업 뷰의 셀 중심 위 높이(월드).")]
+        [SerializeField] private float pickupViewHeight = 0.3f;
+
         private ManualMapInput? _manualMapInput;
         private GeneratedMap _generatedMap;
         private int2? _mapGridGridSizeOverride;
@@ -148,6 +154,9 @@ namespace Wassup.Bridge
         // 임시(유한 지속) 슬롯만 판정 — 영구 baseline(로드아웃/시너지/드림캐쳐)은 classifier 가 제외.
         private EntityQuery _modifierSlotQuery;
         private bool _modifierSlotQueryCreated;
+        // season-gimmick-overwork unit 6 — 레드불 픽업 뷰 조정용 쿼리 (Pickup 은 Effects 소유, 읽기만).
+        private EntityQuery _pickupViewQuery;
+        private bool _pickupViewQueryCreated;
         private readonly List<PendingSpawnEntry> _pending = new();
         private readonly List<Material> _ownedRuntimeMaterials = new();
         private readonly HashSet<Vector2Int> _occupiedTiles = new();
@@ -164,6 +173,10 @@ namespace Wassup.Bridge
         private static readonly Dictionary<Wassup.Battle.Effects.StackKind, Wassup.Data.ThresholdRule[]> _stackThresholds = new();
         private readonly Dictionary<Entity, GameObject> _blockingHazardVisualMap = new();
         private Transform _blockingHazardVisualRoot;
+        // season-gimmick-overwork unit 6 — 레드불 픽업 엔티티↔뷰 GameObject 매핑.
+        private readonly Dictionary<Entity, GameObject> _pickupVisualMap = new();
+        // 조정 시 제거 대상 임시 버퍼 (반복 중 수정 회피, 매 프레임 재사용).
+        private readonly List<Entity> _pickupReapBuffer = new();
         private EntityQuery _projectileSpawnRequestQuery;
         private bool _projectileSpawnRequestQueryCreated;
         private EntityQuery _projectileQuery;
@@ -370,6 +383,7 @@ namespace Wassup.Bridge
             if (tileHealthGaugeLayer != null) tileHealthGaugeLayer.Clear(); // unit 3 — 게이지 전체 정리
             if (enemyHitBarSpawner != null) enemyHitBarSpawner.Clear(); // unit 2 — 잔여 마이크로바 정리(생명주기 대칭)
             if (statusFxSpawner != null) statusFxSpawner.Clear(); // unit-status-fx unit 2 — 잔여 상태 연출 정리
+            ClearPickupVisuals(); // season-gimmick-overwork unit 6 — 잔여 레드불 뷰 정리
             _dcAuraPool?.Clear(); _dcAuraPool = null; // nightmare-whip-aura rev 2 — 드림캐쳐 부착 오라 정리(생명주기 대칭)
             ClearBlockingHazardVisuals();
 
@@ -504,6 +518,11 @@ namespace Wassup.Bridge
             {
                 _modifierSlotQuery.Dispose();
                 _modifierSlotQueryCreated = false;
+            }
+            if (_pickupViewQueryCreated)
+            {
+                _pickupViewQuery.Dispose();
+                _pickupViewQueryCreated = false;
             }
             if (_projectileSpawnRequestQueryCreated)
             {
@@ -1076,6 +1095,12 @@ namespace Wassup.Bridge
             {
                 _projectileSpawnRequestQuery = _em.CreateEntityQuery(ComponentType.ReadOnly<ProjectileSpawnRequest>());
                 _projectileSpawnRequestQueryCreated = true;
+            }
+            // season-gimmick-overwork unit 6 — 픽업 뷰 조정용.
+            if (!_pickupViewQueryCreated)
+            {
+                _pickupViewQuery = _em.CreateEntityQuery(ComponentType.ReadOnly<Wassup.Battle.Effects.Pickup>());
+                _pickupViewQueryCreated = true;
             }
 
             if (!_projectileQueryCreated)
@@ -1903,6 +1928,7 @@ namespace Wassup.Bridge
         {
             SyncMonoUnitViews();
             ReconcileStatusFx();
+            ReconcilePickupViews();
             if (_em != null) _dcAuraPool?.Sync(_em); // 드림캐쳐 부착 오라 — 뷰 좌표 갱신 뒤 추종
             if (_em != null) _projectileViewPool?.SyncTransforms(_em);
         }
@@ -1985,6 +2011,63 @@ namespace Wassup.Bridge
             }
 
             statusFxSpawner.EndFrame();
+        }
+
+        // season-gimmick-overwork unit 6 — 픽업 엔티티↔뷰 poll-reconcile. Pickup 은 순수 ECS
+        // 스폰이라 이벤트가 없어 매 프레임 조정: 새 엔티티엔 뷰 생성, 사라진 엔티티(소비/만료) 뷰 파괴.
+        // _running 무관(placement 중에도 스폰됨). 셀 월드중심에 배치, idle 연출은 PickupPresenter.
+        private void ReconcilePickupViews()
+        {
+            if (_em == null || !_pickupViewQueryCreated) return;
+
+            // 살아있는 픽업 수집.
+            var entities = _pickupViewQuery.ToEntityArray(Allocator.Temp);
+            try
+            {
+                // 신규 엔티티 → 뷰 생성.
+                for (int i = 0; i < entities.Length; i++)
+                {
+                    var e = entities[i];
+                    if (_pickupVisualMap.ContainsKey(e)) continue;
+                    var pickup = _em.GetComponentData<Wassup.Battle.Effects.Pickup>(e);
+                    Vector3 pos = GridMath.CellToWorldCenter(pickup.cell, tileSize, pickupViewHeight, _boardOrigin);
+                    var go = new GameObject($"Pickup_{pickup.kind}_{pickup.cell.x}_{pickup.cell.y}");
+                    go.transform.SetParent(transform, worldPositionStays: false);
+                    go.transform.position = pos;
+                    if (pickupViewPrefab != null)
+                        Instantiate(pickupViewPrefab, go.transform, worldPositionStays: false);
+                    else
+                        go.AddComponent<Wassup.Battle.Effects.PickupPresenter>();
+                    _pickupVisualMap[e] = go;
+                }
+
+                // 사라진 엔티티 → 뷰 파괴. (_em.Exists 로 판정 — 소비/만료로 DestroyEntity 됨)
+                if (_pickupVisualMap.Count > 0)
+                {
+                    _pickupReapBuffer.Clear();
+                    foreach (var kv in _pickupVisualMap)
+                        if (!_em.Exists(kv.Key)) _pickupReapBuffer.Add(kv.Key);
+                    for (int i = 0; i < _pickupReapBuffer.Count; i++)
+                    {
+                        var key = _pickupReapBuffer[i];
+                        if (_pickupVisualMap.TryGetValue(key, out var go) && go != null)
+                            Destroy(go);
+                        _pickupVisualMap.Remove(key);
+                    }
+                }
+            }
+            finally
+            {
+                entities.Dispose();
+            }
+        }
+
+        // season-gimmick-overwork unit 6 — 픽업 뷰 전체 정리 (매치 teardown).
+        private void ClearPickupVisuals()
+        {
+            foreach (var kv in _pickupVisualMap)
+                if (kv.Value != null) Destroy(kv.Value);
+            _pickupVisualMap.Clear();
         }
 
         // time-manager Unit 3 — TimeManager.ScaleOf(Battle) 을 ECS singleton 으로 write 해
