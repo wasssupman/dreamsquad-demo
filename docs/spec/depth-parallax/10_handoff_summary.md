@@ -4,9 +4,11 @@
 
 ## Commit
 
-**아직 미커밋.** 두 덩어리로 분리 커밋 권장: (1) depth-parallax feature 전체, (2) 그 전 Guardian 컷신
-리소스 정리(리사이즈·리네임·크롭·offset). hunk 격리로 스테이징([[project_git_needs_sandbox_disabled]]:
-쓰기 git 은 `dangerouslyDisableSandbox:true`).
+- `5cbee1b4` feat(defender-deploy-cutscene): Guardian 컷신 프레임 49장 추가
+- `de2275ee` feat(depth-parallax): 뎁스맵 패럴랙스 모듈 + 배치 컷신 통합
+
+main 로컬 커밋(push 안 함). 사전 존재 dirty(Mobile_RPAsset/fonts/probuilder/LiberationSans)는 의도적으로
+미포함 — 파일 단위 격리 스테이징([[project_git_needs_sandbox_disabled]]: 쓰기 git 은 `dangerouslyDisableSandbox:true`).
 
 ## Implemented
 
@@ -21,9 +23,13 @@
   공유/N=프레임별)+`deployCutsceneTiltGain`.
 - **배선**: `Wassup.Runtime.asmdef` → 모듈 참조(단방향). `DefenderSelector` 가 `DepthParallaxSettings`
   를 플레이어에 주입(null-safe; 미할당이면 플레이어 fallback 기본값).
-- **자산**: 컷신 3유닛 전부 정적 뎁스 1장(DA-V2 Small, `DepthMapBaker` R8 임포트) → 각 SO `deployCutsceneDepth`
-  할당. Guardian(90×90), Ranger(320×180), Archer(320×180). `DepthParallaxSettings.asset` 생성.
-- **튜닝**: 기본값 amp 0.035 / persp 0.05 / highlight 0.12(육안 검증한 자연스러운 회전감).
+- **자산**: 컷신 3유닛 전부 정적 뎁스 1장(`DepthMapBaker` R8 임포트) → 각 SO `deployCutsceneDepth` 할당.
+  Guardian(90×90 자동 bake), Archer(320×180 자동 bake), **Ranger(640×360, 사용자 제공 `Ranger_003-depth`)**.
+  `DepthParallaxSettings.asset` 생성.
+- **튜닝**: 기본값 amp 0.035 / persp 0.05 / highlight 0.12 / **tiltDamping 19(임계감쇠 — 낮으면 이미지 출렁)**.
+  스와이프 정규화는 `DragSwaySettings.deployCutsceneSwipeRefSpeed(1400)/Smoothing(0.5)`.
+- **뎁스 후처리**: `depth_bake.py --contrast`(0.5 힌지 기준 near/far 벌림). Ranger 는 사용자 뎁스에
+  threshold-pivot 톤다운(thresh 0.4·contrast 2.2 → 배경 억제·실루엣 선명) 적용. 원본 백업은 scratchpad.
 
 ## Key Files
 
