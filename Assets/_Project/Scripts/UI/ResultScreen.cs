@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -9,9 +8,11 @@ using Wassup.UI.Layout;
 
 namespace Wassup.UI
 {
-    // Battle result overlay (DEFEAT / VICTORY) + tournament leaderboard + Restart.
-    // Disabled on Awake. Emits RestartRequested when the player taps Restart;
-    // BattleBridge subscribes to tear down and restart the match.
+    // Battle result overlay (DEFEAT / VICTORY) + tournament leaderboard + Lobby exit.
+    // Disabled on Awake. The match is terminal here: the footer button leaves for
+    // OutgameScene, so the next run re-enters through the lobby's loadout gate.
+    // Navigating from the view itself mirrors MenuPopup.OnExit, the neighbouring
+    // exit in this scene.
     //
     // result-screen-visual-upgrade — reskinned to the in-game HUD language
     // (navy plate + gold border/tab, ScoreHudView palette) over a dimmed season
@@ -43,13 +44,11 @@ namespace Wassup.UI
         private const float FooterH = 128f;
         private const float RowH = 48f;
 
-        public event Action RestartRequested;
-
         private TextMeshProUGUI resultLabel;
         private TextMeshProUGUI scoreSubLabel;
         private TextMeshProUGUI statsLabel;
         private Image tabImage;
-        private Button restartButton;
+        private Button lobbyButton;
         private RectTransform _listContent;
         private bool _built;
 
@@ -68,12 +67,12 @@ namespace Wassup.UI
         {
             BuildCanvas();
             gameObject.SetActive(false);
-            if (restartButton != null) restartButton.onClick.AddListener(OnRestartClicked);
+            if (lobbyButton != null) lobbyButton.onClick.AddListener(OnLobbyClicked);
         }
 
         private void OnDestroy()
         {
-            if (restartButton != null) restartButton.onClick.RemoveListener(OnRestartClicked);
+            if (lobbyButton != null) lobbyButton.onClick.RemoveListener(OnLobbyClicked);
         }
 
         // End-of-match summary stats shown on the result popup (null → hidden).
@@ -116,7 +115,9 @@ namespace Wassup.UI
 
         public void Hide() => gameObject.SetActive(false);
 
-        private void OnRestartClicked() => RestartRequested?.Invoke();
+        // No teardown first: the scene unloads wholesale. (MenuPopup.OnExit releases a
+        // pause lease before leaving; the result screen holds none.)
+        private void OnLobbyClicked() => SceneTransition.Go(SceneNames.Outgame);
 
         // tournament-play-report Unit 4 — swap the bot leaderboard for the real
         // tournament ranking once it arrives (popup shows the bot list first;
@@ -431,7 +432,7 @@ namespace Wassup.UI
             fr.sizeDelta = new Vector2(-2f * Pad, FooterH);
             fr.anchoredPosition = new Vector2(0f, Pad);
 
-            var btn = new GameObject("RestartButton", typeof(RectTransform), typeof(Image), typeof(Button));
+            var btn = new GameObject("LobbyButton", typeof(RectTransform), typeof(Image), typeof(Button));
             btn.transform.SetParent(fr, false);
             var btnImg = btn.GetComponent<Image>();
             btnImg.sprite = _buttonSprite;
@@ -441,9 +442,9 @@ namespace Wassup.UI
             btnRt.anchorMin = btnRt.anchorMax = btnRt.pivot = new Vector2(0.5f, 0.5f);
             btnRt.sizeDelta = new Vector2(320f, 88f);
             btnRt.anchoredPosition = Vector2.zero;
-            restartButton = btn.GetComponent<Button>();
+            lobbyButton = btn.GetComponent<Button>();
 
-            var label = CreateLabel(btn.transform, "Label", "다시하기", 34, TextAlignmentOptions.Center, BadgeTextDark);
+            var label = CreateLabel(btn.transform, "Label", "로비로", 34, TextAlignmentOptions.Center, BadgeTextDark);
             label.fontStyle = FontStyles.Bold | FontStyles.SmallCaps;
             label.characterSpacing = 6f;
             StretchFull((RectTransform)label.transform);

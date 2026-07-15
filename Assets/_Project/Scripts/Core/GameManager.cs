@@ -140,7 +140,8 @@ namespace Wassup.Core
         {
             if (logger != null) logger.StartSession();
             // tournament-play-report Unit 3 — one tournament attempt per battle
-            // entry; restarts issue their own via BattleBridge.OnRestartRequested.
+            // entry. result-screen-lobby-exit unit 0 made this the sole issuer: the
+            // result screen now exits to the lobby, so every attempt re-enters here.
             Wassup.Core.Api.TournamentMatchReporter.BeginMatch();
         }
 

@@ -326,14 +326,6 @@ namespace Wassup.Bridge
             CharacterBillboardTilt = tilemapBillboardTilt;
         }
 
-        private void Start()
-        {
-            if (resultScreen != null)
-            {
-                resultScreen.RestartRequested += OnRestartRequested;
-            }
-        }
-
         // gift-phase unit 3 — 재시작 진입은 선물 페이즈를 거친다(배선 시). 미배선이면
         // 기존처럼 곧장 배치로(HandController 가 Placement 에서 폴백 구성).
         private void EnterPlacementOrGift()
@@ -342,6 +334,10 @@ namespace Wassup.Bridge
             else _placementPhaseView?.BeginPlacementPhase();
         }
 
+        // result-screen-lobby-exit unit 0 — 결과창 버튼이 "로비로" 가 되면서 호출처가
+        // 없다(끊긴 배선이 아니라 의도). 재시작을 되살릴 때 다시 구독하면 되도록
+        // 로직은 남겨둔다. EnterPlacementOrGift / ReLogSkillLoadoutForNewSession 도
+        // 이 경로 전용이라 함께 대기 상태다.
         private void OnRestartRequested()
         {
             if (_world == null)
@@ -4312,11 +4308,6 @@ namespace Wassup.Bridge
 
         private void OnDestroy()
         {
-            if (resultScreen != null)
-            {
-                resultScreen.RestartRequested -= OnRestartRequested;
-            }
-
             TeardownCurrentBattle();
 
             for (int i = 0; i < _ownedRuntimeMaterials.Count; i++)

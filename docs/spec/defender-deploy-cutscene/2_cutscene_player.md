@@ -1,4 +1,13 @@
-# 2 — DeployCutscenePlayer (좌상단 플립북 재생기)
+# 2 — DeployCutscenePlayer (플립북 재생기)
+
+> **rev 2026-07-16 — 아래 본문의 다음 기술은 초기 계약이며 폐지됐다:**
+> - 앵커 "좌상단 / top-left (0,1)" → 실제 **좌하단** `anchorMin/Max=(0,0)`, `pivot=(0,0)`
+> - "1초 hold 후 자동 소멸 / 드래그 세션과 독립" → **스와이프 종료 연동**(rev 2026-07-15,
+>   `CleanupSession` → `EndCutscene()`)
+> - SerializeField 기본값도 튜닝으로 변경됨: `holdSecondsAfter` 1f → 사실상 무한,
+>   `displayScale` 1f → **1.2f**, `cornerMarginPx` (24,24) → **(-100, 24)**
+>
+> 최신 계약은 README 공통 원칙, 구현 상세는 코드가 source of truth.
 
 ## 목적
 
