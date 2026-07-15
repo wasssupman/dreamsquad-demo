@@ -3591,6 +3591,49 @@ namespace Wassup.Bridge
             return SpawnBlockingHazardWithVisual(so, cell);
         }
 
+        // season-gimmick-overwork unit 3 — 피로도/번아웃 검증용 디버그 로그.
+        // FatigueDebugMenu(에디터 메뉴)의 유일 창구 (절대 제약 1: ECS 접근은 BattleBridge 경유).
+        public void DebugLogFatigueStacks()
+        {
+            if (!Application.isPlaying || !HasLiveEntityManager())
+            {
+                Debug.LogWarning("[FatigueDebug] Enter Play Mode with a live battle first.");
+                return;
+            }
+
+            // 기믹 config 주입 여부 — 미주입이면 FatigueAccrualSystem 이 self-gate 로 안 돈다.
+            var configQuery = _em.CreateEntityQuery(
+                Unity.Entities.ComponentType.ReadOnly<Wassup.Battle.Effects.OverworkGimmickConfig>());
+            Debug.Log($"[FatigueDebug] OverworkGimmickConfig 주입={!configQuery.IsEmpty} (SeasonRuntime.Active={SeasonRuntime.Active?.seasonId ?? "null"}, gimmick={SeasonRuntime.Active?.gimmick?.gimmickId ?? "null"})");
+            configQuery.Dispose();
+
+            var query = _em.CreateEntityQuery(
+                Unity.Entities.ComponentType.ReadOnly<Wassup.Battle.Units.DefenderUnitTag>());
+            using var entities = query.ToEntityArray(Unity.Collections.Allocator.Temp);
+            int logged = 0;
+            foreach (var entity in entities)
+            {
+                byte fatigue = 0;
+                if (_em.HasBuffer<Wassup.Battle.Effects.StackModifierSlot>(entity))
+                {
+                    var slots = _em.GetBuffer<Wassup.Battle.Effects.StackModifierSlot>(entity);
+                    for (int i = 0; i < slots.Length; i++)
+                        if (slots[i].kind == Wassup.Battle.Effects.StackKind.Fatigue)
+                            fatigue = slots[i].stackCount;
+                }
+                var stats = _em.HasComponent<Wassup.Battle.Effects.ModifierStats>(entity)
+                    ? _em.GetComponentData<Wassup.Battle.Effects.ModifierStats>(entity)
+                    : default;
+                var hp = _em.HasComponent<Wassup.Battle.Units.Health>(entity)
+                    ? _em.GetComponentData<Wassup.Battle.Units.Health>(entity)
+                    : default;
+                Debug.Log($"[FatigueDebug] {entity} 피로도={fatigue} 공속x{stats.attackSpeedMul:F2} 공격x{stats.damageMul:F2} 최대체력x{stats.maxHealthMul:F2} HP={hp.value:F0}/{hp.max:F0}");
+                logged++;
+            }
+            if (logged == 0) Debug.Log("[FatigueDebug] 배치된 defender 없음.");
+            query.Dispose();
+        }
+
         private int RegisterBlockingHazardSO(BlockingHazardSO so)
         {
             if (so == null) return -1;
@@ -3811,8 +3854,13 @@ namespace Wassup.Bridge
         // gimmick == null 이면 아무것도 만들지 않는다 = 기믹 시스템 전체 비활성.
         private void CreateGimmickConfigIfActive()
         {
-            if (SeasonRuntime.Active?.gimmick is Wassup.Data.OverworkGimmickData od)
+            // SeasonRuntime.Active 가 아니라 serialized seasonRegistry 를 직접 읽는다 —
+            // PrepareDraftMap(→EnsureQueriesAndQueues)이 Awake(Bind)보다 먼저 외부에서 불릴 수
+            // 있어(스크립트 실행 순서), static 바인딩에 기대면 주입이 조용히 누락된다 (unit 3 실측).
+            var season = seasonRegistry != null ? seasonRegistry.activeSeason : null;
+            if (season?.gimmick is Wassup.Data.OverworkGimmickData od)
             {
+                Debug.Log($"[GimmickConfig] OverworkGimmickConfig 주입 (season={season.seasonId}, gimmick={od.gimmickId})");
                 var gimmickEntity = _em.CreateEntity();
                 _em.AddComponentData(gimmickEntity, new Wassup.Battle.Effects.OverworkGimmickConfig
                 {
