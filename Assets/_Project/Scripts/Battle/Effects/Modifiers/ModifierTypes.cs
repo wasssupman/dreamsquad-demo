@@ -4,7 +4,9 @@ namespace Wassup.Battle.Effects
 {
     // dreamcatcher-new-abilities unit 0 — DamageVsCcMul: 활성 CcEffect(기절/수면/DoT/넉백)
     // 걸린 적 대상 데미지 배율 (base 1). Slow(이동감속)은 CcEffect 아니라 미포함. append-only.
-    public enum StatKind : byte { DamageMul, AttackSpeedMul, DmgTakenMul, RegenPerSec, MoveSpeedMul, DamageVsCcMul }
+    // season-gimmick-overwork unit 1 — MaxHealthMul: 최대체력 배율 (base 1). Effects 가 배율 결정,
+    // Health 쓰기는 Units 의 MaxHealthScaleSystem 만 수행.
+    public enum StatKind : byte { DamageMul, AttackSpeedMul, DmgTakenMul, RegenPerSec, MoveSpeedMul, DamageVsCcMul, MaxHealthMul }
 
     // season-gimmick-overwork unit 0 — Fatigue: 야근 기믹 피로도 스택. append-only.
     public enum StackKind : byte { None, Fire, Ice, Bleed, Poison, Fatigue }

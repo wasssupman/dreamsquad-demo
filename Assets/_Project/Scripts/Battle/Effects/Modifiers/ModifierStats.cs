@@ -13,6 +13,9 @@ namespace Wassup.Battle.Effects
         // base 1 init(ModifierStatsAggregateSystem) + AttackSystem 소비는 unit 2.
         // unit 0 단계엔 reader 없음(선언만).
         public float damageVsCcMul;
+        // season-gimmick-overwork unit 1 — 최대체력 배율. 디폴트 1.0.
+        // 소비는 Units 의 MaxHealthScaleSystem (Health 쓰기는 Units 소유).
+        public float maxHealthMul;
     }
 
     // IEnableableComponent — Add 시 기본 disabled.
