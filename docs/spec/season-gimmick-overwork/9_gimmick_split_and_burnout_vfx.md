@@ -53,6 +53,14 @@
 size 1.2~2.2, 다크 퍼플그레이). `Burnout_Spark_Mat.mat` 고아 제거. registry 엔트리는 동일 프리팹 참조라 무변경.
 사용자 룩 승인 완료.
 
+**rev2 2026-07-15 — 라스트런 전용 VFX 추가**: 레드불 라스트런(공속×1.5, 5s) 상태도 전용 연출 신설.
+- `StatusFxKind.LastRun=4` + reconcile 에 `origin==Gimmick`(라스트런 공속버프가 유일한 Gimmick 파생 →
+  라스트런 창 5s 와 일치) 판정 추가 — Empowered/Burnout 과 같은 `_modifierSlotQuery` 버퍼 스캔에 합류.
+- VFX = **번아웃 먹구름 프리팹을 복제해 빨강으로만 변경**(사용자 지시). `LastRun_SKELETON.prefab`
+  (Burnout 복제, startColor→빨강 `(0.75,0.1,0.08,0.9)`, 머티리얼은 `Burnout_Cloud_Mat` 공유).
+  registry kind 4 엔트리(빨강 fallbackTint). ⚠ 초기 "빨간 맥박 글로우" 별도 저작 시도는 폐기(복제가 단순·확실).
+- ⚠ 남은 육안: 실 유닛 라스트런 발현(레드불 소비→빨간 먹구름) 사용자 플레이테스트. reconcile 는 코드 검증.
+
 ## 주의점
 
 - **먹구름 밀도/스케일은 초기값**(registry scale 0.5, offset y2, cloud rate 10·maxParticles 24). 실 유닛에서

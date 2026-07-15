@@ -14,6 +14,9 @@ namespace Wassup.Data
         // gimmick-match-integration — 번아웃(워라벨 기믹). 소스 = StatModifierSlot 중
         // header.origin==ModifierOrigin.Stack (Fatigue 임계가 유일한 Stack 출처 → 번아웃 창과 일치).
         Burnout = 3,
+        // season-gimmick-overwork — 라스트런(레드불 기믹). 소스 = StatModifierSlot 중
+        // header.origin==ModifierOrigin.Gimmick (라스트런 공속버프가 유일한 Gimmick 출처 → 라스트런 창 5s 와 일치).
+        LastRun = 4,
         // Stun, Freeze, Poison … 나중에 끝에 추가 + registry 항목 + reconcile 소스 훅.
     }
 }
