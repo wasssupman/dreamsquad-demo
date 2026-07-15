@@ -1,6 +1,6 @@
 # Outgame Login Gate — 데모 사용자 구분용 로그인
 
-상태: **unit 4 진행 중 2026-07-07** (units 0~3 구현 완료 — critic 리뷰 반영 + 에디터 Play 4케이스 검증). 잔여: 실기기 Development Build 1회. 인계는 `2_handoff_summary.md`
+상태: **unit 4 진행 중 2026-07-07** (units 0~3 구현 완료 — critic 리뷰 반영 + 에디터 Play 4케이스 검증) · **dev 트레이 확장 완료 2026-07-15** (units 5~6 — 트레이 토글 + DEFAULT LOADOUT, 에디터 Play 검증). 잔여: 실기기 Development Build 1회. 인계는 `2_handoff_summary.md`
 
 ## 목표
 
