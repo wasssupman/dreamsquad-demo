@@ -1,7 +1,11 @@
 # Spec — Lobby Background Parallax
 
-> 상태: 초안 (2026-07-15) — 사용자 승인 대기.
-> **격리 브랜치 `feat/lobby-background-parallax`**. 이상하면 `git checkout main` 으로 통째 폐기.
+> 상태: 구현 완료 (2026-07-15) — u0~u4 구현·무회귀 검증. 사용자 Play 체감 확인 후 main 머지.
+> **격리 브랜치 `feat/lobby-background-parallax`** (main 미머지). 이상하면 `git checkout main` 으로 통째 폐기.
+> 인계 지도는 `5_handoff_summary.md`.
+>
+> **구현 중 변경된 계약** (초안 대비): 입력이 "앰비언트 상시 + 캐릭터 드래그" → **"키링 스와이프 중에만 +
+> 포인터 화면 위치"** 로 바뀌었다(사용자 결정). 평상시 배경은 정지한다.
 
 ## 상위 목표
 
