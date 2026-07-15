@@ -81,6 +81,23 @@ namespace Wassup.Data
         [Tooltip("포커스 해제 페이드(초).")]
         public float focusFadeOutSec = 0.35f;
 
+        [Header("인스펙트 포커스 (unit-dreamcatcher-inspect unit 4) — 유닛 탭 시 들여다보기 줌")]
+        // 드래그 포커스(dolly 1 / fov -1)보다 강하다: 그건 스와이프 중 미묘한 리드고,
+        // 이건 의도적으로 멈춰서 들여다보는 연출이다. enableNonDragEffects 에 묶이지 않는다.
+        // 줌의 실질은 dolly 가 담당한다. FOV 여유가 거의 없기 때문 — 현 에셋은 fovMin 41,
+        // 홈 FOV ≈43 이라 Compose 의 클램프가 남기는 여유가 **2도뿐**이다(실측 2026-07-15).
+        // fovDelta 에 -6 같은 큰 값을 적어도 조용히 -2 로 깎이므로, 실제 효과와 같은 수를 적는다.
+        [Tooltip("선택 유닛 방향 전진 거리(월드 유닛). 줌의 주 레버. 0 + fovDelta 0 + lookWeight 0 = 인스펙트 줌 끔.")]
+        public float inspectDolly = 4f;
+        [Tooltip("인스펙트 중 FOV 델타(도). 음수 = 줌인. 최종 FOV 는 fovMin/fovMax 로 클램프 — 현 에셋(fovMin 41, 홈 43)에선 -2 가 실효 상한이다.")]
+        public float inspectFovDelta = -2f;
+        [Tooltip("선택 유닛 방향 lookat 블렌드. FocusDelta 가 0~0.5 로 클램프(풀 lookat 은 보드 좌표감 파괴). 인스펙트는 고정 월드 타겟이라 되먹임 없음 — 상한은 취향. 0.5 = 허용 최대(유닛이 중앙에 가장 가까움).")]
+        [Range(0f, 0.5f)] public float inspectLookWeight = 0.5f;
+        [Tooltip("인스펙트 진입 페이드(초).")]
+        public float inspectFadeInSec = 0.22f;
+        [Tooltip("인스펙트 해제 페이드(초).")]
+        public float inspectFadeOutSec = 0.3f;
+
         [Header("앰비언트 브리딩 (unit 3) — 인지 임계 이하 상시 생명감")]
         [Tooltip("브리딩 위치 진폭(월드 유닛). 0 = 끔. 호버 셀 플립이 상한(spec).")]
         public float breathPosAmp = 0.03f;

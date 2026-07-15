@@ -98,3 +98,80 @@ BattleScene Tilemap 모드 Main Camera 는 **런타임 정적이 아니다**. �
 
 - **함정**: 투사체 arc·유닛 높이를 sim-Y(`LocalTransform.Position.y`)에 실으면 화면 반영 0(곡사포가 arc 없이 미끄러짐).
 - **정답**: 높이는 **presentation 층**에서 — `ProjectileViewPool.SyncTransforms` 가 `view.y` 에 `heightOffset`/arc 를 더하는 패턴. sim(ArcPosition)/AOE(셀 XZ)/타이밍은 sim-Y 무관이라 그대로. (프랍 "90°root라 +Y가 깊이로 샘"과 같은 뿌리.)
+
+## 머리 위 뱃지를 월드 +Y 로 띄우면 외곽 타일에서 바깥으로 밀린다
+
+배틀 카메라는 **원근**(`CameraPreset_TilemapRect`: `orthographic: 0`, FOV 40)에 pitch 55°다. 이때 월드 up 은 카메라 공간에서 `(0, cosθ, -sinθ)` 로 분해된다 — 즉 뱃지를 `basePos + Vector3.up * h` 로 띄우면 **위로만 가는 게 아니라 카메라 쪽으로 당겨진다**. `view_z` 가 `h·sinθ` 만큼 줄고 `screen_x = f·view_x/view_z` 이므로 화면 x 가 그만큼 **확대**된다.
+
+- **증상**: 유닛 머리 위 아이콘이 화면 중앙에서 멀수록 좌우로 밀려 보인다. 오프셋 2.6 · 보드 끝에서 **≈57px@1080w**(화면 폭의 5%). 중앙 유닛은 `view_x≈0` 이라 멀쩡해서 "UI 레이어 문제인가?" 로 오진하기 쉽다 — **레이어와 무관하다**(문제의 뷰들은 이미 월드 SpriteRenderer 였다). 오프셋에 비례하므로 작은 값(히트바 1.0)은 티가 안 나 수년 잠복 가능.
+- **정답**: 오프셋을 **카메라 평면**에서 적용 — `HeadAnchor.Lift(basePos, offset, cam)`(`Scripts/Presentation/HeadAnchor.cs`). 카메라 up 은 시선축과 직교라 `view_z` 가 안 변해 어느 타일이든 같은 화면 거리를 유지하고, 페이즈별 pitch 변화(Draft 40°↔Battle 55°)에도 높이가 `cosθ` 로 안 흔들린다.
+- **값 이전 시 등가식**: `k = h·cosθ·view_z/(view_z − h·sinθ)` (55°/23u 기준 ≈ **0.63배**). 월드 기준으로 눈 튜닝한 값을 그대로 옮기면 뱃지가 너무 높이 뜬다. 실적용: DcIconStrip 2.6→1.64 · StatusFx 1.5→0.91/2.2→1.37 · HitBar 1.0→0.60 · DmgNum 1.4→0.85/driftUp 0.7→0.41.
+- **경계**: **billboard 여부가 기준**이다. 화면을 보는 뱃지 → 카메라 평면. 바닥에 눕힌 데칼(`TileHealthGaugeView`, Euler 90 BlobShadow 규약)의 z-fighting 리프트 → **월드 up 유지**(카메라 평면 적용하면 바닥에서 들림).
+- **동반 함정**: 위치를 카메라 회전에 묶는 순간 **실행 순서가 정답의 일부가 된다**. `CameraDirector`(`[DefaultExecutionOrder(-90)]`)가 **LateUpdate** 에서 포즈를 확정하므로, `Update` 에서 위치를 잡으면 지난 프레임 회전을 읽어 **위치만 1프레임 뒤처진다**(회전은 LateUpdate 라 최신 → 카메라 이동 중 뱃지가 유닛에서 미끄러짐). 위치·회전 **둘 다 LateUpdate** 로.
+- **검증법**: Play 없이 프리셋대로 카메라를 재구성(`Quaternion.Euler(55,0,0)`, `dist = radius/sin(fov/2)*1.12`)해 `WorldToScreenPoint` 로 발밑 대비 뱃지 dx 를 x=-5~+5 스윕하면 즉시 드러난다. 수정 후 전 구간 0.00px. (커밋 `d815bf59`)
+
+## 런타임 `Shader.Find` 는 빌드에서 스트리핑된다 (에디터만 정상)
+
+`Shader.Find` 는 **빌드에 포함된 셰이더만** 찾는다. 셰이더가 빌드에 들어가는 경로는 셋뿐이다:
+
+1. **씬/프리팹의 머티리얼**이 참조 (전이 참조 포함 — SO 경유도 OK)
+2. **`Assets/Resources/` 아래** 에셋이 참조 (무조건 포함)
+3. **GraphicsSettings > Always Included Shaders** 등록
+
+런타임에 `new Material(Shader.Find("..."))` 로만 쓰는 커스텀 셰이더는 **1·2 경로가 없어서 통째로 제거**된다.
+에디터는 모든 셰이더가 살아있어 정상 → **"에디터는 되는데 빌드만 효과 없음"** 이 된다.
+
+- **더 나쁜 건 조용하다는 것**: 대개 `if (sh == null) return;` 식 graceful 폴백이라 **에러도 로그도 없이 연출만 사라진다**. 실제로 이 상태로 출시됐다(2026-07-15: 배치 컷신 뎁스 패럴랙스). 카드 구김(`CardCrumple`)·포일(`DraftCardFoil`)도 같은 이유로 죽어 있었고 아무도 몰랐다. **Always Included 등록 후 모바일 재빌드로 해결 확인됨.**
+- **`Tile_Unlit`**: `RuntimeMaterialFactory` 의 폴백 체인(`?? URP/Unlit ?? ...`)이 있어 맵은 그려졌지만 **의도한 셰이더가 아닌 내장으로 대체** — 에디터와 모바일이 다르게 렌더되고 있었다. 폴백이 있으면 더 안 들킨다.
+- **정답**: 런타임 `Shader.Find` 대상은 **Always Included Shaders 에 등록**. 고아 머티리얼을 씬에 매달아두는 방식은 누가 떼면 재발해서 취약하다.
+- **폴백엔 반드시 경고를 남길 것**. 조용한 폴백이 이 버그를 출시까지 보낸 원인이다.
+- **진단 팁**: 컷신 프레임은 나오는데 셰이더 효과만 없다 → 같은 SO 가 참조하는 텍스처/프레임은 빌드에 있다는 뜻 → **셰이더만 없는 것** = 스트리핑 확정.
+- **감사 방법**(오진 주의): 셰이더 GUID 를 `Assets` **전 타입**에서 grep. `.unity`/`.prefab` 만 보면 오진한다 — `Solid_Unlit` 은 `Assets/Resources/RuntimeMaterials/SolidOpaque.mat`(Resources 경유)로 이미 안전한데 씬만 보면 위험으로 잘못 잡힌다.
+
+## 비활성 계층에서 만든 TMP 는 Awake 가 안 돌아 줄바꿈·측정이 깨진다
+
+UGUI 위젯을 **비활성 루트 밑에** lazy 생성하면(`root.SetActive(false)` 상태에서 `AddComponent<TextMeshProUGUI>()`), 비활성 오브젝트는 **Awake 가 호출되지 않는다**. TMP 는 Awake 에서 `TMP_Settings` 기본값을 로드하므로, 그 전 상태의 TMP 는 **두 가지가 동시에 깨진다**:
+
+1. **`textWrappingMode` 가 enum 기본값 `0`(=`NoWrap`) 으로 남는다.** 정상 기본값은 `Normal`(TMP_Settings 로부터). → 본문이 rect 폭을 무시하고 **패널 밖으로 흘러나간다**.
+2. **폰트 스케일이 서기 전이라 `GetPreferredValues` 가 정답의 ≈1/10 을 답한다.** 실측(2026-07-15): 헤더 `2.21` vs 정답 `22.0`, 본문 `6.96` vs `69.5`, `14.56` vs `145.6`. → 그 높이로 다음 요소를 배치하면 **텍스트가 서로 겹치고**, 행 높이가 내용에 반응하지 않고 고정값처럼 보인다.
+
+- **왜 안 걸렸나**: 손패 드래그 툴팁(`DreamcatcherHandView.BuildTooltip`)은 `BuildCanvas()` 에서 **활성 상태로 미리** 만들어 두고 `ShowDragTooltip` 에서 재사용하므로 이 함정을 우회한다. **lazy 생성으로 바꾸는 순간 밟는다.**
+- **처방 2점**: (a) `textWrappingMode = TextWrappingModes.Normal` 을 **명시**한다(기본값에 의존 금지). (b) 측정 전에 루트를 `SetActive(true)` 하고, 텍스트 대입 후 `ForceMeshUpdate()` 로 레이아웃을 확정한 뒤 측정한다.
+- `enableWordWrapping` 은 **Obsolete** — `textWrappingMode`(`NoWrap`/`Normal`/…) 를 쓴다.
+- 활성화를 앞당기면 `if (!_root.activeSelf)` 로 "처음 뜨는가"를 판정하던 코드가 무너진다 → `wasHidden` 같은 플래그로 분리.
+
+## `EventSystem.IsPointerOverGameObject()` 는 지난 프레임 상태다 — 실행 순서가 −면 터치에서 무너진다
+
+`InputSystemUIInputModule` 의 이 API 는 **`EventSystem.Update` 가 세운 pointer 상태**를 읽는다(음수 id → `m_PointerStates[..].eventData.pointerEnter`). 패키지 주석이 명시한다: *"calling this method earlier than that in the frame will make it poll state from **last frame**"*.
+
+`EventSystem` 은 `[DefaultExecutionOrder]` 가 **없어 순서 0** 이다(`ProjectSettings/MonoManager.asset` 에 커스텀 오버라이드도 없음). 따라서 **음수 실행 순서의 입력 핸들러는 항상 EventSystem 보다 먼저 돌아 지난 프레임 상태를 본다.**
+
+- **증상**: **마우스는 멀쩡, 터치만 깨진다.** 마우스는 hover 로 pointer 상태가 상시 유지돼 지난 프레임 값이 맞지만, **터치는 hover 가 없어 press 프레임에 pointer 상태 자체가 없다** → `stateIndex = -1` → `false`. 즉 손가락이 버튼/트레이 위에 있어도 **가드가 통과해 그 뒤 보드가 눌린다**. 에디터에선 **절대 재현되지 않는 Android 전용 결함**이다.
+- **`PlacementInput.cs:63~65` 를 선례로 삼지 말 것**: 같은 패턴을 쓰지만 클릭 배치가 은퇴(`clickPlacementEnabled=false`)해 실전 검증된 적이 없다. "기존 코드가 그러니 괜찮다"가 성립하지 않는 자리다.
+- **처방**: 실행 순서와 무관한 **즉석 UI 레이캐스트**로 대체한다. press 때만 도는 경로라 비용도 무시할 만하다.
+  ```csharp
+  var es = EventSystem.current;
+  _uiHits.Clear();
+  es.RaycastAll(new PointerEventData(es) { position = screenPos }, _uiHits);
+  bool overUi = _uiHits.Count > 0;
+  ```
+- **딸림 효과**: `raycastTarget=false` 인 위젯은 이 레이캐스트에 안 걸린다 → 그 위젯 위 탭은 "빈 보드"로 취급된다. 패널을 탭해서 닫는 동작을 원하면 의도대로지만, 원치 않으면 배경만 `raycastTarget=true` 로 둬야 한다.
+- **음수 순서를 포기할 수 없는 이유가 보통 있다**(예: aim-mode race 를 이기려고 −50). 그러니 "순서를 0으로 되돌린다"가 아니라 **가드를 순서-무관하게 만드는 게** 정답이다.
+
+## `CanvasGroup.alpha = 0` 은 숨기지 않는다 — 보이지 않는 채로 입력을 계속 먹는다
+
+`alpha = 0` 은 **화면에서만** 지운다. `blocksRaycasts` 는 그대로라 그 위젯이 덮는 화면 영역이 통째로 **투명한 입력 벽**이 된다. 눈에 안 보이므로 "왜 여기만 안 눌리지?" 로만 나타난다.
+
+- **실제 사례(2026-07-15)**: `WavePatternStripView.SnapHidden` 이 header/cardGrid 를 알파로만 숨겨, Draft 가 끝난 뒤에도 카드 그리드가 화면 **x[24~1624] y[430~590]** 를 계속 막았다. 증상은 "배치 유닛을 탭할 때 **머리는 눌리는데 몸통은 실패**" — 유닛이 띠 경계(y=590)에 걸치면 위는 통과, 아래는 차단이기 때문. **유닛 픽킹 버그로 오진하기 딱 좋다**(픽킹은 정상이었다: 렉트 161x101px 가 스프라이트를 정확히 덮었다).
+- **왜 오래 안 걸렸나**: 보드 raw 탭 소비자가 없었다(클릭 배치 은퇴, 카드 드래그는 자체 픽킹). 첫 소비자(`DcInspectController`)가 생기고서야 드러났다. **입력 소비자가 없는 동안 이런 벽은 조용히 쌓인다.**
+- **처방**: 숨김/표시와 raycast 를 **한 메서드에 묶는다**. 알파만 되돌리고 플래그를 잊으면 반대 방향 버그(끈 채 표시 → 안 눌림)가 난다. 또는 `SetActive(false)`(같은 파일의 `_overlayGroup` 이 이미 그렇게 한다).
+- **진단법**: 의심 지점에서 `EventSystem.RaycastAll` 을 찍어 무엇이 잡히는지 본다. 화면을 격자로 훑어 차단 지도를 그리면 띠가 즉시 보인다.
+  ```csharp
+  // 알파 0 인데 입력 먹는 그래픽 전수 조사
+  foreach (var g in FindObjectsByType<Graphic>(FindObjectsSortMode.None))
+      if (g.raycastTarget && g.gameObject.activeInHierarchy && g.color.a < 0.05f) Debug.Log(g);
+  // CanvasGroup 쪽
+  foreach (var cg in FindObjectsByType<CanvasGroup>(FindObjectsSortMode.None))
+      if (cg.alpha < 0.05f && cg.blocksRaycasts) Debug.Log(cg);
+  ```
+- **주의**: 알파 0 + raycastTarget 이 **의도적인** 경우도 있다(투명 히트 영역). `DefenderSelector` 의 `Slot_*` 이 그렇다 — 일괄로 끄지 말 것.

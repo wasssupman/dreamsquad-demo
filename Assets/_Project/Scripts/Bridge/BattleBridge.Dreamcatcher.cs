@@ -210,6 +210,23 @@ namespace Wassup.Bridge
                 return -1;
             }
 
+            // subconscious-cursed-relics unit 0 — reject before any mechanic writes.
+            // AddComponentData sets component data even when LethalTimer already exists,
+            // which would reset the original death deadline and partially apply a
+            // multi-mechanic card.
+            int preflightMechanicsLen = hasMechanics ? card.mechanics.Length : 0;
+            if (_em.HasComponent<LethalTimer>(defender))
+            {
+                for (int i = 0; i < preflightMechanicsLen; i++)
+                {
+                    if (card.mechanics[i].payload.kind != Wassup.Data.DcPayloadKind.SelfBuffLethal)
+                        continue;
+
+                    Debug.LogWarning($"[BattleBridge] ApplyDreamcatcherCardToUnit('{card.id}'): target already has LethalTimer — card not attached.");
+                    return -1;
+                }
+            }
+
             int attached = 0;
             int auraHandle = 0; // >0 if a revocable placement-aura was registered
             int mechanicsLen = hasMechanics ? card.mechanics.Length : 0;

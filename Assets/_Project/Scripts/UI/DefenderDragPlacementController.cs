@@ -75,6 +75,13 @@ namespace Wassup.UI
             public PlacementRejectReason rejectReason;
         }
 
+        // unit-dreamcatcher-inspect unit 0 — 배치 드래그 중임을 프레젠테이션이 관측하기 위한
+        // 읽기 seam. DcInspectController 가 드래그 중 유닛 탭 인스펙트를 양보하는 데 쓴다.
+        // 이 컨트롤러는 GameManager.IsAiming 을 쓰지 않고 Battle 페이즈에서도 활성이라
+        // (DefenderSelector 가 Battle 에서 슬림 리사이즈만 함) 다른 관측 수단이 없다.
+        // 새 상태를 만들지 않고 기존 _session.active 를 그대로 읽는다 — 진실 소스는 하나.
+        public bool IsDragging => _session.active;
+
         public void Configure(BattleBridge battleBridge, Camera camera, PlacementInput input,
             DragSwaySettings swaySettings = null, TMP_FontAsset uiFont = null,
             DeployCutscenePlayer cutscenePlayer = null)

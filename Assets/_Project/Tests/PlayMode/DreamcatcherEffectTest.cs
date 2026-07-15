@@ -136,11 +136,59 @@ namespace Wassup.Tests.PlayMode
                 "revoke restores dmgTakenMul to 1.0 (Multiplicative slot neutralized → net identity → no aura)");
         }
 
+        [UnityTest]
+        public IEnumerator CrackedGrail_RevokeNeutralizesBothAdditiveEffects()
+        {
+            LogAssert.ignoreFailingMessages = true;
+            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            for (int i = 0; i < 6; i++) yield return null;
+
+            var bridge = Object.FindObjectOfType<BattleBridge>();
+            var cat = FindCatalog();
+            var guardian = cat.ById("guardian");
+            bridge.SetDefenderPool(new[] { guardian });
+            bridge.BeginPlacement();
+            var gm = Object.FindObjectOfType<GameManager>();
+            gm.CostRuntime.ResetToStart();
+            gm.CostRuntime.AddCost(1000);
+            yield return null;
+            Assert.IsTrue(PlaceFirstValid(bridge, guardian), "place guardian");
+
+            yield return null; yield return null; yield return null;
+            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+            var baseline = GetStat(bridge, em, "guardian");
+
+            int handle = bridge.ApplyDreamcatcherCardHosted(MakeCard(CardTargetAxis.All,
+                new CardEffect { kind = CardBuffKind.AttackDamage, percent = 70f },
+                new CardEffect { kind = CardBuffKind.EffectiveHealth, percent = -40f }));
+            Assert.Greater(handle, 0, "cracked grail returns revocable handle");
+            yield return null; yield return null; yield return null;
+
+            var applied = GetStat(bridge, em, "guardian");
+            Assert.AreEqual(baseline.damageMul + 0.7f, applied.damageMul, 0.01f, "AttackDamage +70%");
+            Assert.AreEqual(baseline.dmgTakenMul + 0.667f, applied.dmgTakenMul, 0.01f, "EffectiveHealth -40%");
+
+            bridge.RevokeDreamcatcherEffects(handle);
+            yield return null; yield return null; yield return null;
+
+            var revoked = GetStat(bridge, em, "guardian");
+            Assert.AreEqual(baseline.damageMul, revoked.damageMul, 0.01f, "damage reward revoked");
+            Assert.AreEqual(baseline.dmgTakenMul, revoked.dmgTakenMul, 0.01f, "health curse revoked");
+        }
+
         private static DreamcatcherCard MakeCard(CardTargetAxis axis, CardBuffKind kind, float pct)
         {
             var c = ScriptableObject.CreateInstance<DreamcatcherCard>();
             c.axis = axis;
             c.effects = new[] { new CardEffect { kind = kind, percent = pct } };
+            return c;
+        }
+
+        private static DreamcatcherCard MakeCard(CardTargetAxis axis, params CardEffect[] effects)
+        {
+            var c = ScriptableObject.CreateInstance<DreamcatcherCard>();
+            c.axis = axis;
+            c.effects = effects;
             return c;
         }
 

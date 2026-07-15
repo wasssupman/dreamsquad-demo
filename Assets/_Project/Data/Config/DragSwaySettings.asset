@@ -12,13 +12,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29b8b73016fd4433dbba47a28c176c11, type: 3}
   m_Name: DragSwaySettings
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DragSwaySettings
-  ropeLength: 2
+  ropeLength: 4
   maxAngle: 8
-  spring: 100
-  damping: 2.5
+  spring: 150
+  damping: 7.26
   maxSpeed: 26.7
   cordWidth: 0.3
   cordColor: {r: 0.45, g: 0.38, b: 0.28, a: 1}
   ringRadius: 0.24
   charmDrop: 0
   style: {fileID: 11400000, guid: 8ddb116cb88747dabf6a8881495f1815, type: 2}
+  enableDeployCutscene: 1
+  deployCutsceneSwipeRefSpeed: 1400
+  deployCutsceneSwipeSmoothing: 0.5

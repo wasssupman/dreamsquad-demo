@@ -38,6 +38,13 @@ namespace Wassup.UI
         // 드래그/낙하 중 — 캐릭터 클릭 리액션 차단 가드용(unit 2 에서 Falling 포함).
         public bool IsBusy => _phase != Phase.Idle;
 
+        // lobby-background-parallax — 배경 패럴랙스가 "키링 스와이프 중" 만 구동되도록 구독하는 신호.
+        // 세션 1개(두 번째 포인터 무시)라 static 참조 하나로 충분. 별도 정리 로직이 필요 없다:
+        // phase 가 Dragging 을 벗어나면 자동 false, 오브젝트가 파괴되면 Unity 의 null 비교가 잡는다.
+        // Falling(놓은 뒤 낙하)은 제외 — 스와이프 중이 아니다.
+        private static LobbyKeyringDrag _active;
+        public static bool AnyDragging => _active != null && _active._phase == Phase.Dragging;
+
         // 피벗→머리(상단 중앙) 세로 오프셋. 회전 0 기준.
         private float HeadOffsetY => _rt.rect.height * (1f - _rt.pivot.y) * Mathf.Abs(_rt.localScale.y);
 
@@ -64,6 +71,7 @@ namespace Wassup.UI
             if (!regrab) _target?.SuspendForKeyring();
             BuildRig();
             _phase = Phase.Dragging;
+            _active = this; // 배경 패럴랙스 게이트(AnyDragging)
         }
 
         public void OnDrag(PointerEventData eventData)

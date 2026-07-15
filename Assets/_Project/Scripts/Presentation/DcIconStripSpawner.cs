@@ -21,8 +21,10 @@ namespace Wassup.Presentation
         [SerializeField] private Camera billboardCamera;
 
         [Header("Layout")]
-        [Tooltip("유닛 앵커 기준 스트립 오프셋. Sleep Zz(StatusFx) 와 y 분리")]
-        [SerializeField] private Vector3 offset = new Vector3(0f, 2.6f, 0f); // Play 튜닝 2026-07-12 — 2.1은 머리 겹침
+        [Tooltip("유닛 앵커 기준 스트립 오프셋. 카메라 평면 기준(월드 아님) — HeadAnchor 참조. Sleep Zz(StatusFx) 와 y 분리")]
+        // 1.64 = 구 월드기준 2.6 과 화면상 같은 높이(HeadAnchor 등가식). 월드 기준일 때
+        // 외곽 타일 아이콘이 바깥으로 밀리던 문제로 카메라 평면 전환 — 값 옮길 때 등가식 필수.
+        [SerializeField] private Vector3 offset = new Vector3(0f, 1.64f, 0f);
         [SerializeField] private float cardHeight = 0.42f;
         [SerializeField] private float spacing = 0.05f;
 

@@ -1207,6 +1207,58 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &603193523
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 603193525}
+  - component: {fileID: 603193524}
+  m_Layer: 0
+  m_Name: DcInspect
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &603193524
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 603193523}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 89dd806b3af2e4ad8b74ab8f1098f577, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.DcInspectController
+  bridge: {fileID: 1939688408}
+  mainCamera: {fileID: 1420088185}
+  hand: {fileID: 2054561897}
+  handView: {fileID: 1558370269}
+  defenderSelector: {fileID: 915292524}
+  config: {fileID: 11400000, guid: b1ff068a6a1b7a44b8fd4ea85f159ff6, type: 2}
+  panel: {fileID: 751645447}
+  cameraDirector: {fileID: 1420088188}
+--- !u!4 &603193525
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 603193523}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &673419655
 GameObject:
   m_ObjectHideFlags: 0
@@ -1453,6 +1505,62 @@ Transform:
   - {fileID: 2039038640}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &751645446
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 751645448}
+  - component: {fileID: 751645447}
+  m_Layer: 0
+  m_Name: DcInspectPanel
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &751645447
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 751645446}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6be80501a3bcf41c7af1407efc9e66e1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.DcInspectPanelView
+  labelFont: {fileID: 11400000, guid: 218cce73e3172a04a8c536a4d368d90f, type: 2}
+  panelWidth: 460
+  pad: 14
+  rowGap: 8
+  artHeight: 84
+  headerBodyGap: 6
+  gapFromUnit: 46
+  edgeMargin: 10
+  fill: {r: 0.07, g: 0.06, b: 0.13, a: 1}
+  squadBorder: {r: 1, g: 0.82, b: 0.35, a: 1}
+  unitBorder: {r: 0.45, g: 0.85, b: 1, a: 1}
+  costColor: {r: 0.79, g: 0.65, b: 1, a: 1}
+--- !u!4 &751645448
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 751645446}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &780954126
 GameObject:
   m_ObjectHideFlags: 0
@@ -1625,6 +1733,7 @@ MonoBehaviour:
   dragPlacementController: {fileID: 0}
   deployCutscenePlayer: {fileID: 0}
   swaySettings: {fileID: 11400000, guid: 680d35e2ba6a44815bf731006e75eddf, type: 2}
+  depthParallaxSettings: {fileID: 0}
   nameFont: {fileID: 11400000, guid: 218cce73e3172a04a8c536a4d368d90f, type: 2}
   trayConfig: {fileID: 11400000, guid: 903c6fe71bf7844489939928774546b6, type: 2}
   costDisplay: {fileID: 1075095674}
@@ -1726,7 +1835,7 @@ MonoBehaviour:
   hand: {fileID: 2054561897}
   bridge: {fileID: 1939688408}
   billboardCamera: {fileID: 0}
-  offset: {x: 0, y: 2.6, z: 0}
+  offset: {x: 0, y: 1.64, z: 0}
   cardHeight: 0.42
   spacing: 0.05
   plateFill: {r: 0.09, g: 0.11, b: 0.2, a: 0.9}
@@ -3608,7 +3717,7 @@ MonoBehaviour:
   popupPrefab: {fileID: 8575853805804975632, guid: 42d63c3da04cf4e7d902a8e4909ce16c, type: 3}
   style:
     lifetime: 0.8
-    driftUp: 0.7
+    driftUp: 0.41
     lowDamage: 1
     highDamage: 50
     minFontSize: 5.2
@@ -3719,7 +3828,7 @@ MonoBehaviour:
       m_PreInfinity: 2
       m_PostInfinity: 2
       m_RotationOrder: 4
-    headViewOffset: 1.4
+    headViewOffset: 0.85
     cellSize: {x: 0.45, y: 0.32}
     maxSearchRings: 4
     topBoost: 1.35
@@ -4117,6 +4226,7 @@ MonoBehaviour:
   enemyHitBarSpawner: {fileID: 543066563}
   statusFxSpawner: {fileID: 1737790243}
   tileHealthGaugeLayer: {fileID: 1218224327}
+  dcIconStripSpawner: {fileID: 956177014}
   scoreHud: {fileID: 1279129162}
   _projectileViewPool: {fileID: 808760338}
   placementInput: {fileID: 1495062452}
@@ -4140,6 +4250,7 @@ MonoBehaviour:
   stackModifierAuthoring:
   - {fileID: 11400000, guid: 9ef2f1f251f1c48ca88ace43e01b0a12, type: 2}
   - {fileID: 11400000, guid: 8509b6127629ddd4893dfa78d7f4ea96, type: 2}
+  enableAdjacencySynergy: 0
   pickupViewPrefab: {fileID: 919132149155446097, guid: 5e4c5f9eddda4e94ea888e9beff38d4c, type: 3}
   pickupViewHeight: 0.3
   pickupModelScale: 1
@@ -4411,3 +4522,5 @@ SceneRoots:
   - {fileID: 956177015}
   - {fileID: 1586207282}
   - {fileID: 1916999831}
+  - {fileID: 751645448}
+  - {fileID: 603193525}

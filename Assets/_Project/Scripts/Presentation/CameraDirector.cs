@@ -54,6 +54,18 @@ namespace Wassup.Presentation
         private float _focusReleaseElapsed;
         private bool _focusReleasing;
 
+        // unit-dreamcatcher-inspect unit 4 — 인스펙트 포커스 채널. 선택 유닛 쪽으로 당겨온다.
+        // 드래그 포커스와 같은 형태(NDC → FocusDelta, staleness 자동 해제)지만 입력이 다르다:
+        // 손가락이 아니라 **고정 월드 좌표**라, NDC 를 홈 포즈 기준으로 산출한다(SetInspectFocus).
+        // 스프링 없음 — 타겟이 안 움직여 스텝 변화가 없다. 부드러움은 가중치 페이드가 담당.
+        private Vector2 _inspectNdc;
+        private bool _inspectHasNdc;
+        private int _inspectFedFrame = -10;
+        private float _inspectWeight;
+        private float _inspectReleaseFrom;
+        private float _inspectReleaseElapsed;
+        private bool _inspectReleasing;
+
         // unit 3 — 앰비언트 브리딩 채널. 파동 위상 누적(절대 시각 비사용 — 장세션 float 정밀도),
         // 켜진 페이즈에서만, 비행 중 가중치 0 크로스페이드 후 서서히 복귀.
         private float[] _breathPhases = System.Array.Empty<float>();
@@ -191,6 +203,27 @@ namespace Wassup.Presentation
             _focusFedFrame = Time.frameCount;
         }
 
+        // unit-dreamcatcher-inspect unit 4 — 인스펙트 포커스 피드: 선택 유닛의 **월드 좌표**.
+        // 선택 중 매 프레임 호출 — 피드가 끊기면(2프레임 초과) 자동 해제된다(붙박이 줌 방지).
+        //
+        // SetDragFocus 와 달리 월드 좌표를 받는 게 계약이다. 되먹임은 여기서 NDC 를 **홈 포즈
+        // 기준**으로 뽑아 차단한다 — 현재 포즈로 뽑으면 카메라가 다가갈수록 NDC 가 0 으로 줄어
+        // 오프셋이 사라지고 다시 벌어지는 진동이 된다. 홈 포즈는 고정이라 그 루프가 없다.
+        // (FocusDelta 의 dirLocal = (ndc.x·tanH, ndc.y·tanV, 1) 복원식의 정확한 역변환.)
+        public void SetInspectFocus(Vector3 worldPos)
+        {
+            if (config == null || _cam == null) return;
+            var local = Quaternion.Inverse(_homeRot) * (worldPos - _homePos);
+            if (local.z <= 0.001f) return; // 홈 카메라 뒤/평면 — 이번 프레임 피드 스킵(= 자연 해제)
+            float tanV = Mathf.Tan(_homeFov * 0.5f * Mathf.Deg2Rad);
+            float tanH = tanV * Mathf.Max(0.01f, _cam.aspect);
+            _inspectNdc = new Vector2(
+                local.x / (local.z * Mathf.Max(1e-4f, tanH)),
+                local.y / (local.z * Mathf.Max(1e-4f, tanV)));
+            _inspectHasNdc = true;
+            _inspectFedFrame = Time.frameCount;
+        }
+
         private void LateUpdate()
         {
             if (config == null) return;
@@ -228,7 +261,17 @@ namespace Wassup.Presentation
             bool focusFed = Time.frameCount - _focusFedFrame <= 2 && focusConfigured;
             float focusTarget = (focusFed && !flying) ? 1f : 0f;
             bool focusActive = focusTarget > 0f || _focusWeight > 0f;
-            bool anyActive = _kickRemaining > 0f || flying || punctActive || breathActive || focusActive;
+            // 인스펙트 포커스 — 드래그 포커스와 같은 staleness 규약. enableNonDragEffects 로
+            // 게이팅하지 않는다: 그 토글은 앰비언트 연출(킥/펄스/브리딩/비행) 억제용이고 현재
+            // 에셋에서 꺼져 있다. 인스펙트 줌은 명시적 제품 기능이라 묶으면 조용히 죽는다.
+            bool inspectConfigured = config.inspectDolly != 0f || config.inspectFovDelta != 0f
+                || config.inspectLookWeight > 0f;
+            bool inspectFed = _inspectHasNdc && Time.frameCount - _inspectFedFrame <= 2 && inspectConfigured;
+            float inspectTarget = (inspectFed && !flying) ? 1f : 0f;
+            bool inspectActive = inspectTarget > 0f || _inspectWeight > 0f;
+            // inspectActive 를 빠뜨리면 아래 idle 최적화(_settled)가 줌을 한 프레임 만에 덮어쓴다.
+            bool anyActive = _kickRemaining > 0f || flying || punctActive || breathActive
+                || focusActive || inspectActive;
 
             // 아이들: 정착 포즈(홈⊕현재 페이즈 델타)를 1회만 쓰고 이후 프레임은 no-op —
             // 매 프레임 transform/FOV 재기입(하이어라키 dirty + 네이티브 세터)을 모바일에서
@@ -302,6 +345,39 @@ namespace Wassup.Presentation
             else
             {
                 _focusSpringInit = false; // 다음 드래그는 새 포인터 위치에서 시작
+            }
+
+            // 인스펙트 포커스 채널 — 선택 유닛 방향 dolly + 부분 lookat + 줌.
+            // 드래그 포커스와 같은 페이드 규약(진입 MoveTowards / 해제 cubic ease-out).
+            // 리드/린은 0 — 스와이프가 아니라 고정 타겟이다.
+            if (inspectTarget > 0f)
+            {
+                _inspectReleasing = false;
+                _inspectWeight = Mathf.MoveTowards(_inspectWeight, 1f,
+                    Time.unscaledDeltaTime / Mathf.Max(0.01f, config.inspectFadeInSec));
+            }
+            else if (_inspectWeight > 0f)
+            {
+                if (!_inspectReleasing)
+                {
+                    _inspectReleasing = true;
+                    _inspectReleaseFrom = _inspectWeight;
+                    _inspectReleaseElapsed = 0f;
+                }
+                _inspectReleaseElapsed += Time.unscaledDeltaTime;
+                float t01 = _inspectReleaseElapsed / Mathf.Max(0.01f, config.inspectFadeOutSec);
+                _inspectWeight = _inspectReleaseFrom * (1f - CameraComposeMath.EaseOutCubic01(t01));
+            }
+            if (_inspectWeight > 0f)
+            {
+                delta = CameraComposeMath.Add(delta, CameraComposeMath.FocusDelta(
+                    _inspectNdc, Vector2.zero, _homeFov, _cam.aspect, _inspectWeight,
+                    config.inspectDolly, config.inspectFovDelta, config.inspectLookWeight,
+                    0f, 0f));
+            }
+            else
+            {
+                _inspectHasNdc = false; // 다음 선택은 새 타겟에서 시작(스테일 NDC 방지)
             }
 
             // 구두점 채널 — 가중치 페이드 갱신 후 펄스/셰이크 합산.

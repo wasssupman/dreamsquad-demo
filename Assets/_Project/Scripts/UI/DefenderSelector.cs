@@ -446,6 +446,12 @@ namespace Wassup.UI
             }
         }
 
+        // unit-dreamcatcher-inspect unit 0 — 드래그 컨트롤러 도달 경로. 컨트롤러는
+        // EnsureDragController 가 런타임에 AddComponent 하므로 씬에서 배선할 수 없다
+        // (이 SerializeField 도 씬에선 비어 있다). 수명 소유자인 여기서 노출한다.
+        // 아직 생성 전이면 null — 호출측은 null == "드래그 안 함" 으로 읽으면 된다.
+        public DefenderDragPlacementController DragController => dragPlacementController;
+
         private void EnsureDragController()
         {
             if (dragPlacementController == null)

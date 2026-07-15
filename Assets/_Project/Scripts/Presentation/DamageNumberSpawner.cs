@@ -87,8 +87,9 @@ namespace Wassup.Presentation
 
             // sim → view: ToView applied here ONLY (View.Play receives view-space, no re-transform).
             Vector3 viewPos = (Vector3)Wassup.Core.BoardSpace.ToView(worldPos);
-            // Head anchor: lift along world-up, post-ToView (sim-Y is dropped by ToView), matching driftUp's axis.
-            Vector3 anchor = viewPos + Vector3.up * style.headViewOffset;
+            // Head anchor: lift in the camera plane (HeadAnchor 함정 참조 — world-up 은 외곽 타일에서
+            // 팝업을 화면 바깥으로 민다), post-ToView (sim-Y is dropped by ToView), matching driftUp's axis.
+            Vector3 anchor = HeadAnchor.Lift(viewPos, Vector3.up * style.headViewOffset, cam);
 
             // Occupancy grid in the camera billboard basis → screen-aligned non-overlap under any pitch.
             Vector3 camRight = cam.transform.right;

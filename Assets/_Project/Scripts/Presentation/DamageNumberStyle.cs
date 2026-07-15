@@ -11,8 +11,9 @@ namespace Wassup.Presentation
         [Header("Lifetime / motion")]
         [Tooltip("팝업 총 수명(초)")]
         public float lifetime = 0.8f;
-        [Tooltip("수명 동안 위로 이동하는 월드 거리")]
-        public float driftUp = 0.7f;
+        [Tooltip("수명 동안 위로 이동하는 거리. 카메라 평면 기준(월드 아님) — HeadAnchor 참조")]
+        // 0.41 = 구 월드기준 0.7 과 화면상 같은 상승량(HeadAnchor 등가식).
+        public float driftUp = 0.41f;
 
         [Header("Magnitude → size")]
         [Tooltip("정규화 하한: 이 데미지 이하는 최소 크기/색")]
@@ -36,8 +37,9 @@ namespace Wassup.Presentation
         public AnimationCurve alphaCurve = new AnimationCurve();
 
         [Header("Placement (grid stagger)")]
-        [Tooltip("발치 view 위치에서 머리 위로 올릴 world-up 오프셋. ToView 이후 적용 — sim-Y 가 아니다(BoardSpace 가 sim 높이를 버림).")]
-        public float headViewOffset = 1.4f;
+        [Tooltip("발치 view 위치에서 머리 위로 올릴 오프셋. 카메라 평면 기준(월드 아님) — HeadAnchor 참조. ToView 이후 적용 — sim-Y 가 아니다(BoardSpace 가 sim 높이를 버림).")]
+        // 0.85 = 구 월드기준 1.4 와 화면상 같은 높이(HeadAnchor 등가식).
+        public float headViewOffset = 0.85f;
         [Tooltip("겹침 방지 격자 셀 크기 (카메라축 투영 world 단위; x=화면 가로, y=화면 세로). Play 에서 4자리 숫자 비겹침으로 튜닝.")]
         public Vector2 cellSize = new Vector2(0.85f, 0.55f);
         [Tooltip("점유 시 빈 셀을 찾는 최대 링 수")]

@@ -89,3 +89,24 @@ Codex 에도 unityMCP 가 붙어 있어(`~/.codex/config.toml`) 에디터 작업
   - 멜리 경로(직접 데미지·온-히트 CC/스택)는 합성 더미로 검증 가능.
   - 투사체 고유 경로(bake 데미지·splash·bounce·homing impact)를 실기로 검증하려면 **실 enemy 를 웨이브로 스폰**(`StartBattle()` + `bridge.ForceNextWave()`, `MovementIntegritySmokeTest` 참고)해야 한다. 단 실 적은 이동하므로 데미지-윈도 비교가 지저분함.
   - 검증 대상이 **"데미지 산식"**(예: shatter DamageVsCc 배율)이면 melee 경로 통합 테스트로 산식을 고정하고, 투사체 bake 지점(`AttackSystem` 의 projectile 분기)은 동일 곱을 쓰는지 **코드/리뷰로 확인** — melee 테스트가 산식을 증명하면 bake 지점은 같은 `attackerVsCc` 곱 한 줄이라 회귀 위험이 낮다.
+
+## `execute_code` 안의 `Screen.*` 는 게임뷰가 아니라 에디터 창이다
+
+`execute_code` 는 플레이어 루프 **밖**(에디터 콜백)에서 돈다. 이때 `Screen.width/height/safeArea` 는 **현재 에디터 뷰**의 크기를 답한다 — 게임뷰가 아니다.
+
+- **실측(2026-07-15)**: `Screen`=519x830 인데 `Camera.main.pixelRect`=1920x1080. 즉 `Screen` 이 완전히 다른 값을 준다.
+- **증상**: 스크린 좌표를 쓰는 UI 로직(safe area 클램프·좌우 플립)을 execute_code 에서 검사하면 **없는 버그를 만들어낸다**. 실제로 "패널 좌측 플립이 안 먹는다"고 오진했다가, 플레이어 루프의 `LateUpdate` 는 올바른 값을 본다는 걸 확인하고 철회했다.
+- **처방**: 게임뷰 해상도는 **`cam.pixelRect`** 로 읽는다. `Screen.*` 에 의존하는 코드를 execute_code 에서 **직접 호출**하면(예: `view.Show(...)`) 그 안의 계산도 오염된다 — 다음 프레임 `LateUpdate` 가 교정하므로 **한 프레임 기다렸다가** 값을 읽을 것.
+
+## `ScreenSpaceOverlay` 는 카메라 스크린샷에 안 잡힌다
+
+`manage_camera screenshot` 은 카메라 렌더 경로다. **Overlay 캔버스는 카메라가 아니라 화면이 합성**하므로 UI 가 통째로 빠진다(HUD 전부 사라짐 → "패널이 안 뜬다"로 오진).
+
+- **처방**: UI 를 포함한 최종 프레임은 `UnityEngine.ScreenCapture.CaptureScreenshot(path)`. 프레임 끝에 기록되므로 **다음 execute_code 호출에서** 파일을 읽는다.
+
+## 스크립트 배틀은 캡처하는 사이 끝난다 → 배틀 클럭을 스톨
+
+Play e2e 중 스크린샷을 몇 번 찍으면 매치가 `Result` 로 넘어가 버린다. 페이즈 이탈 로직이 정상 동작해 UI 가 닫히면 **"내 기능이 깨졌다"로 오진**한다.
+
+- **처방**: `TimeManager.Instance.Request(TimeDomain.Battle, 0.02f, priority: 1000)` 로 배틀 클럭만 늦춘다. `Time.timeScale` 은 건드리지 않는다(프로젝트 계약). 높은 priority 로 다른 lease 를 눌러 두면 캡처 시간이 넉넉해진다.
+- **주의**: 그 스톨 lease 가 승자가 되므로 `ScaleOf(Battle)` 로는 피검증 lease 를 못 본다. lease 검증은 `TimeManager._requests` 를 reflection 으로 열어 **priority 로 세는 게** 정확하다.

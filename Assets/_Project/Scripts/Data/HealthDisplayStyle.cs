@@ -15,8 +15,9 @@ namespace Wassup.Data
         [Header("Enemy Hit Micro-Bar (unit 2)")]
         [Tooltip("바 월드 크기 (가로, 세로)")]
         [SerializeField] private Vector2 hitBarSize = new Vector2(0.9f, 0.14f);
-        [Tooltip("적 발치(sim y) 위로 바를 올리는 월드 높이")]
-        [SerializeField] private float hitBarHeadYOffset = 1.0f;
+        [Tooltip("적 발치(sim y) 위로 바를 올리는 높이. 카메라 평면 기준(월드 아님) — HeadAnchor 참조")]
+        // 0.6 = 구 월드기준 1.0 과 화면상 같은 높이(HeadAnchor 등가식).
+        [SerializeField] private float hitBarHeadYOffset = 0.6f;
         [Tooltip("피격 후 완전 표시 유지 시간(초)")]
         [SerializeField] private float hitBarHoldSec = 0.8f;
         [Tooltip("유지 종료 후 페이드 시간(초)")]

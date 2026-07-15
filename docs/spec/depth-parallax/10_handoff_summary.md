@@ -51,6 +51,12 @@ main 로컬 커밋(push 안 함). 사전 존재 dirty(Mobile_RPAsset/fonts/probu
 
 ## Notes (되돌리면 안 되는 의도)
 
+- **`Wassup/UI/DepthParallax` 는 GraphicsSettings > Always Included Shaders 에 반드시 남아야 한다.**
+  런타임 `Shader.Find` 전용이라 씬/프리팹/Resources 참조가 없어 빼면 **빌드에서 스트리핑**된다 →
+  기기에서만 `Shader.Find` null → 폴백이 조용히 삼켜 "에디터는 되는데 빌드만 효과 없음". 실제로 그렇게
+  한 번 출시됐다(2026-07-15, `9e0ba869` 로 수정 · 모바일 재빌드로 확인 완료). 상세는
+  `docs/reference/lessons/03-rendering-assets.md`.
+
 - `_DepthSign` 은 `(depth-_DepthCenter)` 뺄셈 **후** 전체 항에 곱(raw 에 먼저 곱하면 힌지 범위밖→극성 깨짐).
 - Cue B 클립공간 delta 에 `_Persp` 재곱 금지((p-orig)이 이미 스케일).
 - rest no-op 불변식: 모든 큐 `_Tilt` 게이트, `_Time` sheen 금지, 최종 UV 클램프 금지.

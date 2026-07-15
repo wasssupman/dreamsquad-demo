@@ -10,21 +10,20 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: cdcd617d396824acd8882a45466b4886, type: 3}
-  m_Name: Card_SubDeepSleep
+  m_Name: Card_CrackedGrail
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
-  id: sub_deepsleep
-  displayName: "\uAE4A\uC740 \uC7A0"
+  id: cracked_grail
+  displayName: "금이 간 성배"
   axis: 3
   category: 2
   effects:
+  - kind: 0
+    percent: 70
   - kind: 2
-    percent: 12
-  art: {fileID: 21300000, guid: 2d66a9df6822423db4e9a0a4acb612f8, type: 3}
-  binding: 0
+    percent: -40
+  art: {fileID: 21300000, guid: 6c5f35b0f41df4696a21c90cbfc74474, type: 3}
   mechanics: []
   attackMods: []
   type: 0
-  placementWarmupSec: 0
   skill: {fileID: 0}
-  description: "\uBB34\uC758\uC2DD \uAE4A\uC740 \uACF3\uC758 \uC548\uC815 \u2014
-    \uBAA8\uB4E0 \uC544\uAD70\uC758 \uC720\uD6A8 \uCCB4\uB825 +12%"
+  description: "호스트가 살아있는 동안 모든 아군의 공격력이 70% 증가하지만 체력이 40% 감소한다."
