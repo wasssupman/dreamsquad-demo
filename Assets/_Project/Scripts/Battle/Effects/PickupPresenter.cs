@@ -17,7 +17,7 @@ namespace Wassup.Battle.Effects
         private float _phase;
 
         // 모델을 정규화할 목표 월드 크기(최대 변) — FBX 네이티브 스케일 미지수를 auto-fit 으로 흡수.
-        private const float TargetWorldSize = 0.6f;
+        private const float TargetWorldSize = 0.8f;
 
         // BattleBridge 가 뷰 생성 직후 1회 호출. modelPrefab null → 절차적 큐브.
         // modelScale: auto-fit 결과에 곱하는 미세 배율(기본 1). baseLocalY: 지면 위 hover 기준.
