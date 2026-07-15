@@ -127,3 +127,33 @@ BattleScene Tilemap 모드 Main Camera 는 **런타임 정적이 아니다**. �
 - **폴백엔 반드시 경고를 남길 것**. 조용한 폴백이 이 버그를 출시까지 보낸 원인이다.
 - **진단 팁**: 컷신 프레임은 나오는데 셰이더 효과만 없다 → 같은 SO 가 참조하는 텍스처/프레임은 빌드에 있다는 뜻 → **셰이더만 없는 것** = 스트리핑 확정.
 - **감사 방법**(오진 주의): 셰이더 GUID 를 `Assets` **전 타입**에서 grep. `.unity`/`.prefab` 만 보면 오진한다 — `Solid_Unlit` 은 `Assets/Resources/RuntimeMaterials/SolidOpaque.mat`(Resources 경유)로 이미 안전한데 씬만 보면 위험으로 잘못 잡힌다.
+
+## 비활성 계층에서 만든 TMP 는 Awake 가 안 돌아 줄바꿈·측정이 깨진다
+
+UGUI 위젯을 **비활성 루트 밑에** lazy 생성하면(`root.SetActive(false)` 상태에서 `AddComponent<TextMeshProUGUI>()`), 비활성 오브젝트는 **Awake 가 호출되지 않는다**. TMP 는 Awake 에서 `TMP_Settings` 기본값을 로드하므로, 그 전 상태의 TMP 는 **두 가지가 동시에 깨진다**:
+
+1. **`textWrappingMode` 가 enum 기본값 `0`(=`NoWrap`) 으로 남는다.** 정상 기본값은 `Normal`(TMP_Settings 로부터). → 본문이 rect 폭을 무시하고 **패널 밖으로 흘러나간다**.
+2. **폰트 스케일이 서기 전이라 `GetPreferredValues` 가 정답의 ≈1/10 을 답한다.** 실측(2026-07-15): 헤더 `2.21` vs 정답 `22.0`, 본문 `6.96` vs `69.5`, `14.56` vs `145.6`. → 그 높이로 다음 요소를 배치하면 **텍스트가 서로 겹치고**, 행 높이가 내용에 반응하지 않고 고정값처럼 보인다.
+
+- **왜 안 걸렸나**: 손패 드래그 툴팁(`DreamcatcherHandView.BuildTooltip`)은 `BuildCanvas()` 에서 **활성 상태로 미리** 만들어 두고 `ShowDragTooltip` 에서 재사용하므로 이 함정을 우회한다. **lazy 생성으로 바꾸는 순간 밟는다.**
+- **처방 2점**: (a) `textWrappingMode = TextWrappingModes.Normal` 을 **명시**한다(기본값에 의존 금지). (b) 측정 전에 루트를 `SetActive(true)` 하고, 텍스트 대입 후 `ForceMeshUpdate()` 로 레이아웃을 확정한 뒤 측정한다.
+- `enableWordWrapping` 은 **Obsolete** — `textWrappingMode`(`NoWrap`/`Normal`/…) 를 쓴다.
+- 활성화를 앞당기면 `if (!_root.activeSelf)` 로 "처음 뜨는가"를 판정하던 코드가 무너진다 → `wasHidden` 같은 플래그로 분리.
+
+## `EventSystem.IsPointerOverGameObject()` 는 지난 프레임 상태다 — 실행 순서가 −면 터치에서 무너진다
+
+`InputSystemUIInputModule` 의 이 API 는 **`EventSystem.Update` 가 세운 pointer 상태**를 읽는다(음수 id → `m_PointerStates[..].eventData.pointerEnter`). 패키지 주석이 명시한다: *"calling this method earlier than that in the frame will make it poll state from **last frame**"*.
+
+`EventSystem` 은 `[DefaultExecutionOrder]` 가 **없어 순서 0** 이다(`ProjectSettings/MonoManager.asset` 에 커스텀 오버라이드도 없음). 따라서 **음수 실행 순서의 입력 핸들러는 항상 EventSystem 보다 먼저 돌아 지난 프레임 상태를 본다.**
+
+- **증상**: **마우스는 멀쩡, 터치만 깨진다.** 마우스는 hover 로 pointer 상태가 상시 유지돼 지난 프레임 값이 맞지만, **터치는 hover 가 없어 press 프레임에 pointer 상태 자체가 없다** → `stateIndex = -1` → `false`. 즉 손가락이 버튼/트레이 위에 있어도 **가드가 통과해 그 뒤 보드가 눌린다**. 에디터에선 **절대 재현되지 않는 Android 전용 결함**이다.
+- **`PlacementInput.cs:63~65` 를 선례로 삼지 말 것**: 같은 패턴을 쓰지만 클릭 배치가 은퇴(`clickPlacementEnabled=false`)해 실전 검증된 적이 없다. "기존 코드가 그러니 괜찮다"가 성립하지 않는 자리다.
+- **처방**: 실행 순서와 무관한 **즉석 UI 레이캐스트**로 대체한다. press 때만 도는 경로라 비용도 무시할 만하다.
+  ```csharp
+  var es = EventSystem.current;
+  _uiHits.Clear();
+  es.RaycastAll(new PointerEventData(es) { position = screenPos }, _uiHits);
+  bool overUi = _uiHits.Count > 0;
+  ```
+- **딸림 효과**: `raycastTarget=false` 인 위젯은 이 레이캐스트에 안 걸린다 → 그 위젯 위 탭은 "빈 보드"로 취급된다. 패널을 탭해서 닫는 동작을 원하면 의도대로지만, 원치 않으면 배경만 `raycastTarget=true` 로 둬야 한다.
+- **음수 순서를 포기할 수 없는 이유가 보통 있다**(예: aim-mode race 를 이기려고 −50). 그러니 "순서를 0으로 되돌린다"가 아니라 **가드를 순서-무관하게 만드는 게** 정답이다.
