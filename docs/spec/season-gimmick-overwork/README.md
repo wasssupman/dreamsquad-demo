@@ -75,9 +75,9 @@
 
 - 감정효과 (희노애락) 상태별 구현체 설계 — 별도 spec (분류만 인지, 범위 밖)
 - 두 번째 시즌 기믹 + 기믹 룰 모듈 일반화 (반복 추출 시점)
-- **PickupConsumeSystem/LastRunSystem Burst화** + 소비/crash telemetry 로그를 에디터 gate/이벤트로 분리 (현재 로그 위해 non-Burst)
-- **전용 `ModifierOrigin.Gimmick`** 값 추가 (라스트런 origin=Unspecified 임시 — enum 소유 unit-buff-debuff-aura 세션과 조율)
 - **피로도/픽업 placement-phase 게이팅** (running-only) 튜닝 — 현재 배치 페이즈에도 누적/스폰
+
+(완료 이관: PickupConsume/LastRun Burst화 + 검증 로그 제거 `19c690ee`, `ModifierOrigin.Gimmick` 추가 `19c690ee`.)
 - 레드불 정식 아트 + 소비/스폰 VFX + 뷰 지면 grounding (원근 부유 완화)
 - 피격 시 피로도 +1 누적 소스 (야근 변형 룰 — 누적 소스 2종화)
 - 매치 시작 UI 기믹 배지/설명 노출 (seasonal-map-backdrop 후속 "시즌 배지" 와 합류 가능)

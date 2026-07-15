@@ -13,14 +13,14 @@
 ## 구현
 
 1. **LastRun** (Effects): `{ float remaining }`. 소비 시 부착/refresh. AS 버프는 소비 즉시 StatModifier 로 별도 인큐(자체 만료) — 이 컴포넌트는 **지연 crash** 만 담당.
-2. **PickupConsumeSystem** (Effects, `UpdateAfter(PickupSpawnSystem)`, **non-Burst** — 소비 telemetry 로그용, StackModifierTickSystem 전례). self-gate: `OverworkGimmickConfig`+`FlowFieldSingleton`+`StatModifierApplyEventsSingleton`.
+2. **PickupConsumeSystem** (Effects, `UpdateAfter(PickupSpawnSystem)`, **Burst** — 매 프레임 전체 유닛 순회 hot-path; 소비 로직은 static `TryConsume` 로 추출). self-gate: `OverworkGimmickConfig`+`FlowFieldSingleton`+`StatModifierApplyEventsSingleton`.
    - Pickup 들을 `NativeHashMap<int2,Entity>`(cell→pickup) 로 수집. 비면 early-return.
    - **Defender**: `DefenderTile.cell` (배치 셀, 권위값). **Enemy**: `GridMath.WorldToCell(LocalTransform, flow.*)`. 둘 다 `WithNone<PendingDeployment,DeadTag>`.
    - 셀이 맵에 있으면 소비: 맵에서 제거(첫 소비자 승) → pickup ecb.DestroyEntity → AS 버프 인큐(`AttackSpeedMul ×lastRunAttackSpeedMul`, dur=`lastRunDuration`, source=unit) → `LastRun{remaining=lastRunDuration}` add/refresh.
    - Defender·Enemy 통합 로직은 local function `Consume(cell, unit)`.
 3. **LastRunSystem** (Effects): `LastRun.remaining -= dt`; ≤0 → **최대체력의 `lastRunDamageFraction`(0.5) 만큼을 데미지로** — 정식 데미지 인박스 `IncomingDamage`(Units 소유, TRD 2.5.2 cross-context 채널)에 `{ amount = Health.max × 0.5, source = Null(자해·킬 미귀속) }` append + `RemoveComponent<LastRun>`. DamageApplicationSystem(Units)이 소비해 Health 감산·사망 처리 (Health 쓰기는 Units 소유 — 맥락 경계 유지).
    - **주의**: DamageApplicationSystem 이 `dmgTakenMul` 을 곱한다. 야근 기믹엔 dmgTakenMul 모디파이어가 없어 실질 정확히 50%지만, 무관한 방어버프가 있으면 경감된다(정상 데미지 파이프라인 일관). "true damage" 필요 시 후속.
-4. **origin**: 라스트런 StatModifier 는 `ModifierOrigin.Unspecified` (그 enum 은 unit-buff-debuff-aura 세션 소유 — 전용 `Gimmick` origin 은 조율 후 follow-up). 현 소비자(HasActiveDreamcatcherModifier)는 Dreamcatcher 출처만 봄 → 오분류 없음.
+4. **origin**: 라스트런 공속 버프 StatModifier 는 `ModifierOrigin.Gimmick` (시즌 기믹 출처 태그). 현재 이 값을 읽는 소비자는 없음(미래 dispel/UI/로깅 대비). 기존 HasActiveDreamcatcherModifier 는 Dreamcatcher 출처만 봄 → 무관.
 
 ## 계약 노트
 

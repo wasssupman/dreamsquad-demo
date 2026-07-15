@@ -36,8 +36,8 @@
 
 ## Notes
 
-- **소비/crash telemetry 로그** 위해 `PickupConsumeSystem`/`LastRunSystem` 은 non-Burst. 저빈도라 무해하나 PickupConsumeSystem 은 매 프레임 유닛 순회 → 후속서 Burst화 + 로그 gate 검토.
-- 라스트런 StatModifier `origin=Unspecified` — `ModifierOrigin` enum 은 unit-buff-debuff-aura 세션 소유라 전용 `Gimmick` 값은 조율 후 추가.
+- `PickupConsumeSystem`/`LastRunSystem` 은 Burst (`19c690ee`). 검증용 Debug.Log 제거 — 관측은 Log Redbull Pickups / Log Fatigue Stacks 디버그 메뉴로. 소비 로직은 static `TryConsume`.
+- 라스트런 공속 버프 `origin=ModifierOrigin.Gimmick` (`19c690ee`, append). 현재 소비자 없음(미래 dispel/UI/로깅 대비).
 - 번아웃/라스트런 상태 아이콘은 별도 제작 안 함 — 임시 버프/디버프라 그 세션의 Buffed/Debuffed 오라가 자동 분류.
 - 피로도/픽업은 placement 페이즈에도 누적/스폰(sim 진행 시). running-only 게이팅은 후속 튜닝.
 - BattleBridge 는 다른 세션과 공유 — 커밋 시 hunk 선별 스테이징 필요. season_S1_forest 는 클린(기믹 null).
@@ -45,7 +45,7 @@
 ## Follow-up
 
 - 감정효과(희·노·애·락) 상태별 구현체 설계 — 별도 spec (본 spec 범위 밖, 분류만 인지).
-- PickupConsume/LastRun Burst화 + telemetry 로그를 에디터 gate/이벤트로 분리.
+- (완료 `19c690ee`: PickupConsume/LastRun Burst화 + 로그 제거, ModifierOrigin.Gimmick 추가.)
 - 전용 `ModifierOrigin.Gimmick` (그 enum 소유 세션과 조율).
 - 피로도/픽업 placement-phase 게이팅 (running-only) 튜닝.
 - 레드불 정식 아트 + 소비/스폰 VFX + 뷰 지면 grounding(원근 부유 완화).
