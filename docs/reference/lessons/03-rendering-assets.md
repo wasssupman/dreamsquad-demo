@@ -157,3 +157,21 @@ UGUI 위젯을 **비활성 루트 밑에** lazy 생성하면(`root.SetActive(fal
   ```
 - **딸림 효과**: `raycastTarget=false` 인 위젯은 이 레이캐스트에 안 걸린다 → 그 위젯 위 탭은 "빈 보드"로 취급된다. 패널을 탭해서 닫는 동작을 원하면 의도대로지만, 원치 않으면 배경만 `raycastTarget=true` 로 둬야 한다.
 - **음수 순서를 포기할 수 없는 이유가 보통 있다**(예: aim-mode race 를 이기려고 −50). 그러니 "순서를 0으로 되돌린다"가 아니라 **가드를 순서-무관하게 만드는 게** 정답이다.
+
+## `CanvasGroup.alpha = 0` 은 숨기지 않는다 — 보이지 않는 채로 입력을 계속 먹는다
+
+`alpha = 0` 은 **화면에서만** 지운다. `blocksRaycasts` 는 그대로라 그 위젯이 덮는 화면 영역이 통째로 **투명한 입력 벽**이 된다. 눈에 안 보이므로 "왜 여기만 안 눌리지?" 로만 나타난다.
+
+- **실제 사례(2026-07-15)**: `WavePatternStripView.SnapHidden` 이 header/cardGrid 를 알파로만 숨겨, Draft 가 끝난 뒤에도 카드 그리드가 화면 **x[24~1624] y[430~590]** 를 계속 막았다. 증상은 "배치 유닛을 탭할 때 **머리는 눌리는데 몸통은 실패**" — 유닛이 띠 경계(y=590)에 걸치면 위는 통과, 아래는 차단이기 때문. **유닛 픽킹 버그로 오진하기 딱 좋다**(픽킹은 정상이었다: 렉트 161x101px 가 스프라이트를 정확히 덮었다).
+- **왜 오래 안 걸렸나**: 보드 raw 탭 소비자가 없었다(클릭 배치 은퇴, 카드 드래그는 자체 픽킹). 첫 소비자(`DcInspectController`)가 생기고서야 드러났다. **입력 소비자가 없는 동안 이런 벽은 조용히 쌓인다.**
+- **처방**: 숨김/표시와 raycast 를 **한 메서드에 묶는다**. 알파만 되돌리고 플래그를 잊으면 반대 방향 버그(끈 채 표시 → 안 눌림)가 난다. 또는 `SetActive(false)`(같은 파일의 `_overlayGroup` 이 이미 그렇게 한다).
+- **진단법**: 의심 지점에서 `EventSystem.RaycastAll` 을 찍어 무엇이 잡히는지 본다. 화면을 격자로 훑어 차단 지도를 그리면 띠가 즉시 보인다.
+  ```csharp
+  // 알파 0 인데 입력 먹는 그래픽 전수 조사
+  foreach (var g in FindObjectsByType<Graphic>(FindObjectsSortMode.None))
+      if (g.raycastTarget && g.gameObject.activeInHierarchy && g.color.a < 0.05f) Debug.Log(g);
+  // CanvasGroup 쪽
+  foreach (var cg in FindObjectsByType<CanvasGroup>(FindObjectsSortMode.None))
+      if (cg.alpha < 0.05f && cg.blocksRaycasts) Debug.Log(cg);
+  ```
+- **주의**: 알파 0 + raycastTarget 이 **의도적인** 경우도 있다(투명 히트 영역). `DefenderSelector` 의 `Slot_*` 이 그렇다 — 일괄로 끄지 말 것.
