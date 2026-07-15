@@ -31,3 +31,5 @@
 - defender 를 레드불 셀에 배치 → 소비되며 `Log Fatigue Stacks` 로 공속 ×1.5 → 최대체력 ×0.1 (라스트런 full 체인 시각+로그 동시 확인).
 
 확인 2026-07-15 · 커밋 `c5040abc` — Play 스크린샷: 보드 이동/배치 타일에 레드불 플레이스홀더(파란 발광 큐브) 렌더 확인. 스폰/소비/crash 로그 정상, 에러 0. 상태 연출은 Buffed/Debuffed 오라 위임(문서 참조).
+
+**수정 `57495fb3`**: 뷰가 셀→월드 배치 시 sim 좌표를 직접 써서 반 타일 어긋난 **모서리**에 놓이던 문제 → `GridToWorldCenter(sim) → BoardSpace.ToView` 경유로 **타일 중심** 안착. ⚠ **MonoBehaviour 뷰는 셀 배치 시 반드시 `BoardSpace.ToView` 를 거친다** (sim≠view; ToView 가 +0.5 로 Tilemap 셀 중심 보정, sim 높이는 무시 → hover 는 view world-up 으로).
