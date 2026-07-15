@@ -98,5 +98,20 @@ namespace Wassup.Tests.EditMode
                 + "\n\nCost Rate  <color=#8BE28B>+30%</color>",
                 DreamcatcherCardText.Body(card));
         }
+
+        [Test]
+        public void CrackedGrail_ShowsRewardRiskAndDescription()
+        {
+            var card = Card(CardType.Squad, CardTargetAxis.All, new[]
+            {
+                new CardEffect { kind = CardBuffKind.AttackDamage, percent = 70f },
+                new CardEffect { kind = CardBuffKind.EffectiveHealth, percent = -40f },
+            }, "호스트가 살아있는 동안 모든 아군의 공격력이 70% 증가하지만 체력이 40% 감소한다.");
+
+            string body = DreamcatcherCardText.Body(card);
+            StringAssert.Contains("Attack  <color=#8BE28B>+70%</color>", body);
+            StringAssert.Contains("Health  <color=#E28B8B>-40%</color>", body);
+            StringAssert.Contains("호스트가 살아있는 동안 모든 아군의 공격력이 70% 증가하지만 체력이 40% 감소한다.", body);
+        }
     }
 }
