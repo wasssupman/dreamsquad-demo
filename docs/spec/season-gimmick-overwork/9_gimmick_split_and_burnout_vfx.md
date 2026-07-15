@@ -9,7 +9,8 @@
    **`BurnoutGimmickData`(G1)** 와 **`RedBullGimmickData`(G2)** 두 독립 기믹으로 분리.
    `BattleConfig.gimmickPool = [Burnout, RedBull]` → 매치당 하나만 랜덤 배정(상호배타).
 2. **레드불 등장 빈도↑**: `Gimmick_RedBull.asset` `redbullSpawnInterval` 5→3.
-3. **번아웃 전용 VFX**: 번아웃 상태(피로 5스택 임계) 유닛 머리 위에 **먹구름+번개** 지속 연출.
+3. **번아웃 전용 VFX**: 번아웃 상태(피로 5스택 임계) 유닛 머리 위에 **먹구름** 지속 연출.
+   (초기엔 먹구름+번개였으나 2026-07-15 사용자 피드백으로 **번개 제거 + 먹구름 강화** — 아래 rev 참조.)
 
 ## 변경 대상
 
@@ -20,7 +21,7 @@
   픽업 스폰 게이트(`_assignedGimmick is RedBullGimmickData`), 디버그 로그. 파괴는 두 config 모두.
 - 소비 시스템 self-gate 타입: `FatigueAccrualSystem`→`BurnoutGimmickConfig`, `Pickup*/LastRunSystem`→`RedBullGimmickConfig`.
 - VFX: `Data/StatusFxKind.cs`(`Burnout=3` append), `Data/Config/StatusFxRegistry.asset`(kind 3 엔트리),
-  `VFX/Burnout_SKELETON.prefab` + `VFX/Materials/Burnout_{Cloud,Spark}_Mat.mat` (신규),
+  `VFX/Burnout_SKELETON.prefab` + `VFX/Materials/Burnout_Cloud_Mat.mat` (신규; 번개용 Spark_Mat 은 rev 에서 제거),
   `Bridge/BattleBridge.cs` `ReconcileStatusFx`(Burnout 블록).
 
 ## 구현 계약
@@ -46,6 +47,11 @@
 확인 2026-07-15 · 커밋 `82558caa` — Play: 컴파일 클린, 콘솔 0. VFX 룩 game-view 실측: 먹구름 알파(다크) + 번개
 애디티브(블루) 정상 렌더(머티리얼 transparent 수정 후). ⚠ 남은 육안: 실 유닛 번아웃(50s 누적) end-to-end 트리거
 + 스케일/offset/밀도 미세 튜닝은 사용자 플레이테스트. reconcile 트리거는 검증된 Empowered 패턴 미러로 코드 검증.
+
+**rev 2026-07-15 (사용자 피드백)** — 실 유닛 번아웃 트리거 정상 확인(피로 5스택→먹구름 발현). 사용자 지시로
+**번개(Lightning 자식 PS) 완전 제거 + 먹구름 강화**(emission 10→16, maxParticles 24→40, 알파 0.72→0.9,
+size 1.2~2.2, 다크 퍼플그레이). `Burnout_Spark_Mat.mat` 고아 제거. registry 엔트리는 동일 프리팹 참조라 무변경.
+사용자 룩 승인 완료.
 
 ## 주의점
 
