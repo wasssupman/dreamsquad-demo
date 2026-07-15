@@ -29,6 +29,12 @@ namespace Wassup.UI
         private static readonly int TintStrengthId = Shader.PropertyToID("_TintStrength");
         private static readonly int TintColorId = Shader.PropertyToID("_TintColor");
         private static readonly int EdgeColorId = Shader.PropertyToID("_EdgeColor");
+        // lobby-background-parallax unit 3 — 패럴랙스 유니폼(셰이더가 모듈 .cginc 의 Cue A 만 include).
+        private static readonly int TiltId = Shader.PropertyToID("_Tilt");
+        private static readonly int DepthTexId = Shader.PropertyToID("_DepthTex");
+        private static readonly int AmplitudeId = Shader.PropertyToID("_Amplitude");
+        private static readonly int DepthCenterId = Shader.PropertyToID("_DepthCenter");
+        private static readonly int DepthSignId = Shader.PropertyToID("_DepthSign");
 
         [SerializeField] private Material dissolveMaterial;
         [SerializeField] private Image underImage;
@@ -126,6 +132,25 @@ namespace Wassup.UI
         public void SetDissolve(float value)
         {
             _runtimeMat.SetFloat(DissolveId, Mathf.Clamp01(value));
+        }
+
+        // lobby-background-parallax unit 3 — 배경 패럴랙스 주입. 런타임 머티리얼 소유는 계속 디졸브가 갖고,
+        // 외부(LobbyBackgroundParallax)는 값만 밀어넣는다. 앞(이 Image)과 뒤(underImage)가 같은
+        // _Tilt/_DepthTex 를 받아야 낮/밤 전환 중에도 두 레이어가 어긋나지 않는다.
+        // 정적 파라미터는 1회, 틸트는 매 프레임.
+        public void SetParallaxParams(Texture depth, float amplitude, float depthCenter, float depthSign)
+        {
+            if (_runtimeMat == null) return;
+            if (depth != null) _runtimeMat.SetTexture(DepthTexId, depth);
+            _runtimeMat.SetFloat(AmplitudeId, amplitude);
+            _runtimeMat.SetFloat(DepthCenterId, depthCenter);
+            _runtimeMat.SetFloat(DepthSignId, depthSign);
+        }
+
+        public void SetParallaxTilt(Vector2 tilt)
+        {
+            if (_runtimeMat == null) return;
+            _runtimeMat.SetVector(TiltId, tilt);
         }
 
         private void ApplyStyleUniforms()
