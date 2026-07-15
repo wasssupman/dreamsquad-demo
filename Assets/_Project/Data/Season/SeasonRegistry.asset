@@ -15,4 +15,5 @@ MonoBehaviour:
   allSeasons:
   - {fileID: 11400000, guid: c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7, type: 2}
   - {fileID: 11400000, guid: c4d15a44c083b46019bd401e8dc9a926, type: 2}
-  defaultSeason: {fileID: 11400000, guid: c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7, type: 2}
+  - {fileID: 11400000, guid: cc011f9a446a0a941a8701e491fa6f10, type: 2}
+  defaultSeason: {fileID: 11400000, guid: cc011f9a446a0a941a8701e491fa6f10, type: 2}

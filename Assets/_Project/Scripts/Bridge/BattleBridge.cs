@@ -3863,8 +3863,17 @@ namespace Wassup.Bridge
                 Unity.Entities.ComponentType.ReadOnly<Wassup.Battle.Effects.Pickup>());
             using var pickups = query.ToComponentDataArray<Wassup.Battle.Effects.Pickup>(Unity.Collections.Allocator.Temp);
             Debug.Log($"[PickupDebug] 활성 픽업 {pickups.Length}개");
+            int nonPlayable = 0;
             for (int i = 0; i < pickups.Length; i++)
-                Debug.Log($"[PickupDebug]   {pickups[i].kind} cell=({pickups[i].cell.x},{pickups[i].cell.y}) 남은수명={pickups[i].remainingLife:F1}s");
+            {
+                var cell = pickups[i].cell;
+                var tile = _generatedMap.IsCreated && IsInGeneratedMapBounds(cell)
+                    ? _generatedMap.TileAt(cell).ToString() : "OOB";
+                bool ok = tile == "Walk" || tile == "Place";
+                if (!ok) nonPlayable++;
+                Debug.Log($"[PickupDebug]   {pickups[i].kind} cell=({cell.x},{cell.y}) tile={tile}{(ok ? "" : " ⚠비이동/배치")} 남은수명={pickups[i].remainingLife:F1}s");
+            }
+            Debug.Log($"[PickupDebug] 이동/배치 외 타일 스폰 = {nonPlayable}개 (0 이어야 정상)");
             query.Dispose();
         }
 
@@ -4104,6 +4113,7 @@ namespace Wassup.Bridge
                     fatiguePerAppDuration = od.fatigueStack != null ? od.fatigueStack.perAppDuration : 25f,
                     redbullSpawnInterval  = od.redbullSpawnInterval,
                     redbullLifetime       = od.redbullLifetime,
+                    redbullMaxActive      = od.maxActivePickups,
                     lastRunAttackSpeedMul = od.lastRunAttackSpeedMul,
                     lastRunDuration       = od.lastRunDuration,
                     lastRunMaxHealthMul   = od.lastRunMaxHealthMul,

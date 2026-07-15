@@ -62,6 +62,13 @@ namespace Wassup.Battle.Effects
                 while (spawnState.ValueRO.elapsed >= config.redbullSpawnInterval
                        && spawned < MaxSpawnsPerFrame)
                 {
+                    // 명시적 동시개수 상한 — occupied = 현재 살아있는(만료 예정 제외) 픽업 + 이번 프레임 스폰분.
+                    // 상한 도달 시 debt(elapsed)를 interval 로 clamp 하고 중단 → 슬롯이 비면 다음 프레임 1개만 즉시 스폰.
+                    if (occupied.Count >= config.redbullMaxActive)
+                    {
+                        spawnState.ValueRW.elapsed = math.min(spawnState.ValueRO.elapsed, config.redbullSpawnInterval);
+                        break;
+                    }
                     spawnState.ValueRW.elapsed -= config.redbullSpawnInterval;
 
                     // rng 로 미점유 후보 셀 탐색 (최대 MaxPickAttempts 회).

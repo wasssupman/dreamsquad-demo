@@ -19,6 +19,7 @@ MonoBehaviour:
   fatigueAmount: 1
   redbullSpawnInterval: 5
   redbullLifetime: 20
+  maxActivePickups: 6
   lastRunAttackSpeedMul: 1.5
   lastRunDuration: 5
   lastRunMaxHealthMul: 0.1
