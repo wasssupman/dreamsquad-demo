@@ -1,9 +1,11 @@
 # 4 — Handoff Summary (dreamcatcher-empower-aura)
 
 ## Commit
-- `ca20eedb` feat: unit 0 초기(구 buff/debuff — StatusFxKind + classifier)
-- `34c99cf3` feat: ModifierOrigin 프레임워크 + 드림캐쳐 강화 오라 판정(개념 전환 + 버그 2건 + fallbackDeck)
-- (본 커밋) feat: unit 3 — EmpowerAura_SKELETON 저작 + registry 배선
+- `ca20eedb` unit 0 초기(구 buff/debuff — StatusFxKind + classifier)
+- `34c99cf3` ModifierOrigin 프레임워크(생산자 19곳) + 오라 판정/reconcile + 버그 2건 + fallbackDeck 제거
+- `10370f6e` unit 3 — EmpowerAura 스켈레톤 저작 + registry 배선
+- `b7d58720` 폴리싱 — 5요소 파랑/주황 파워업 오라
+- `33d3b90f` 정식화 — 전용 텍스처 2종 + `_SKELETON`→`EmpowerAura.prefab` 승격 + 뭉툭화·scale 0.7
 
 ## Implemented
 - 모디파이어 출처 1급 태깅(`ModifierOrigin`) — 생산자 19곳, 같은 크기 버프도 출처 구분(슬롯 단위).
