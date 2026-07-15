@@ -1,6 +1,6 @@
 # Spec — Dreamcatcher Empower Aura (드림캐쳐 강화 온-바디 오라)
 
-> 상태: **구현 중** — 2026-07-15. (구 슬러그 `unit-buff-debuff-aura` — 개념 전환으로 개명)
+> 상태: **완료 2026-07-15** (units 0~3, 프리뷰 육안 통과 — 폴리싱은 후속). (구 슬러그 `unit-buff-debuff-aura` — 개념 전환으로 개명)
 > 출처: unit-status-fx 후속. 개념이 "제네릭 버프/디버프 오라" → **"드림캐쳐가 강화한 유닛 오라"** 로 전환됨(아래 이력).
 
 ## 목표
@@ -48,7 +48,7 @@
 | 0 | ModifierOrigin 프레임워크 (enum + header/event 필드 + apply 전파 + 생산자 19곳 태깅) | 구현됨 |
 | 1 | `StatusFxKind.Empowered` + 순수 `ModifierAuraClassifier` + EditMode | 구현됨 |
 | 2 | `ReconcileStatusFx` origin 필터 소스 훅 + `ActiveDcEffect.origin` 상속 수정 + fallbackDeck 제거 | 구현됨 |
-| 3 | Empowered 오라 `_SKELETON` 저작(unity-vfx-authoring) + registry 프리팹 배선 + Play | **다음** |
+| 3 | Empowered 오라 `_SKELETON` 저작(unity-vfx-authoring) + registry 프리팹 배선 + Play | 구현됨(프리뷰 통과) |
 
 ## 파이프라인 커버리지 (상태 연출 = 온-바디 View, unit-status-fx 아키타입 재사용)
 
@@ -63,6 +63,8 @@
 
 ## 후속 후보
 
+- **오라 아트 폴리싱** — `EmpowerAura_SKELETON` 은 프리뷰 스켈레톤(느낌 OK 판정, 폴리싱 유보). 소프트 텍스처
+  교체·강도/밀도/색 튜닝·발광 후 사용자 승인 시 `_SKELETON` 정식화(unity-vfx-integration). 전부 프리팹/mat/SO.
 - **강도별 단계 오라** — net 배율 세기에 따라 scale/emission. 현재 on/off.
 - **출처 태그 재사용** — dispel(출처별 해제)·모디파이어 UI(출처 아이콘)·밸런스 로깅이 `origin` 소비. (framework 파생)
 - **드림캐쳐 카드별 오라 차등** — 카드/effect kind 별 색·강도. 현재 단일 금빛.
