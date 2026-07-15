@@ -4081,8 +4081,9 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 8509b6127629ddd4893dfa78d7f4ea96, type: 2}
   pickupViewPrefab: {fileID: 919132149155446097, guid: 5e4c5f9eddda4e94ea888e9beff38d4c, type: 3}
   pickupViewHeight: 0.3
-  pickupModelScale: 0.5
+  pickupModelScale: 1
   pickupModelBaseY: 0
+  pickupOverrideMaterial: {fileID: 2100000, guid: b671d65788615a142a9cd6aa0e69066d, type: 2}
 --- !u!4 &1939688409
 Transform:
   m_ObjectHideFlags: 0

@@ -136,6 +136,8 @@ namespace Wassup.Bridge
         [SerializeField] private float pickupModelScale = 1f;
         [Tooltip("모델 로컬 기준 Y(피벗 보정용 추가 오프셋).")]
         [SerializeField] private float pickupModelBaseY = 0f;
+        [Tooltip("픽업 모델 머티리얼 override(FBX 임베디드 머티리얼 텍스처 미바인딩 우회). 비우면 원본.")]
+        [SerializeField] private Material pickupOverrideMaterial;
 
         private ManualMapInput? _manualMapInput;
         private GeneratedMap _generatedMap;
@@ -2043,7 +2045,7 @@ namespace Wassup.Bridge
                     go.transform.SetParent(transform, worldPositionStays: false);
                     go.transform.position = pos;
                     go.AddComponent<Wassup.Battle.Effects.PickupPresenter>()
-                        .Init(pickupViewPrefab, pickupModelScale, pickupModelBaseY);
+                        .Init(pickupViewPrefab, pickupModelScale, pickupModelBaseY, pickupOverrideMaterial);
                     _pickupVisualMap[e] = go;
                 }
 

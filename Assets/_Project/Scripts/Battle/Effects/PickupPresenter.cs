@@ -16,19 +16,28 @@ namespace Wassup.Battle.Effects
         private float _baseLocalY;
         private float _phase;
 
+        // 모델을 정규화할 목표 월드 크기(최대 변) — FBX 네이티브 스케일 미지수를 auto-fit 으로 흡수.
+        private const float TargetWorldSize = 0.6f;
+
         // BattleBridge 가 뷰 생성 직후 1회 호출. modelPrefab null → 절차적 큐브.
-        // modelScale: 모델 로컬 스케일(FBX 크기 미지수 → 인스펙터 튜닝). baseLocalY: 지면 위 hover 기준.
-        public void Init(GameObject modelPrefab, float modelScale, float baseLocalY)
+        // modelScale: auto-fit 결과에 곱하는 미세 배율(기본 1). baseLocalY: 지면 위 hover 기준.
+        // overrideMaterial: FBX 임베디드 머티리얼(텍스처 미바인딩)을 덮어쓸 머티리얼(null=원본 유지).
+        public void Init(GameObject modelPrefab, float modelScale, float baseLocalY, Material overrideMaterial)
         {
             if (_visual != null) return;
+            float mul = modelScale > 0f ? modelScale : 1f;
 
             if (modelPrefab != null)
             {
                 var m = Instantiate(modelPrefab, transform);
                 m.transform.localPosition = Vector3.zero;
                 m.transform.localRotation = Quaternion.identity;
-                m.transform.localScale = Vector3.one * (modelScale > 0f ? modelScale : 1f);
                 StripPhysicsAndShadows(m);
+                if (overrideMaterial != null) ApplyMaterial(m, overrideMaterial);
+                // auto-fit: 렌더러 바운드 최대 변을 TargetWorldSize 로 정규화(네이티브 스케일 무관).
+                // localScale 을 절대값으로 덮어쓰지 않는다 — import 보정 스케일을 곱으로 유지.
+                float fit = ComputeFitScale(m, TargetWorldSize);
+                m.transform.localScale = m.transform.localScale * (fit * mul);
                 _visual = m.transform;
             }
             else
@@ -41,6 +50,17 @@ namespace Wassup.Battle.Effects
             _visual.localPosition = new Vector3(lp.x, _baseLocalY, lp.z);
         }
 
+        // 인스턴스의 결합 렌더러 바운드 최대 변 → target 배율. 바운드 0 이면 1(폴백).
+        private static float ComputeFitScale(GameObject instance, float target)
+        {
+            var rends = instance.GetComponentsInChildren<Renderer>();
+            if (rends.Length == 0) return 1f;
+            Bounds b = rends[0].bounds;
+            for (int i = 1; i < rends.Length; i++) b.Encapsulate(rends[i].bounds);
+            float maxDim = Mathf.Max(b.size.x, Mathf.Max(b.size.y, b.size.z));
+            return maxDim > 1e-4f ? target / maxDim : 1f;
+        }
+
         private void Update()
         {
             if (_visual == null) return;
@@ -50,6 +70,17 @@ namespace Wassup.Battle.Effects
             var lp = _visual.localPosition;
             _visual.localPosition = new Vector3(lp.x, y, lp.z);
             _visual.Rotate(Vector3.up, spinDegPerSec * Time.unscaledDeltaTime, Space.Self);
+        }
+
+        // 모든 렌더러 슬롯을 override 머티리얼로 교체 (텍스처 바인딩된 URP 머티리얼).
+        private static void ApplyMaterial(GameObject root, Material mat)
+        {
+            foreach (var r in root.GetComponentsInChildren<Renderer>())
+            {
+                var mats = new Material[r.sharedMaterials.Length == 0 ? 1 : r.sharedMaterials.Length];
+                for (int i = 0; i < mats.Length; i++) mats[i] = mat;
+                r.sharedMaterials = mats;
+            }
         }
 
         private static void StripPhysicsAndShadows(GameObject root)
