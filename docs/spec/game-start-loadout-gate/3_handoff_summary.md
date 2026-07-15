@@ -26,7 +26,8 @@
 
 ## Verified
 
-- EditMode 854 중 852 passed / **0 failed** / 2 skipped(기존부터 문서화된 Ignore, 무관). 단 이 실행은 **unit 1 시점**이다 — unit 2 상태에서는 에디터 Play 중이라 러너가 거부해 재실행하지 못했다. unit 2 는 테스트 추가 없이 MonoBehaviour 배선만 바꿨고 compile 은 clean 이다. **Play 종료 후 전체 1회 재실행 권장** (Follow-up).
+- EditMode 854 중 852 passed / **0 failed** / 2 skipped(기존부터 문서화된 Ignore, 무관) — unit 2 최종 코드 상태에서 실행.
+- fail-loud 실측: `gatePopup`/`catalog`/`cardCatalog` 를 각각 null 로 만들고 `OnStartGame()` → 세 경우 모두 씬 전환 차단. 참조 복원 일치 + 씬 파일 무오염 확인.
 - 실제 에셋으로 신규 설치 재현(임시 경로, 라이브 `profile.json` 무접촉): squad 7 + deck 8 + `LoadoutGate.Check = True`. unit 1 이전이면 `deck=NULL, GATE=False`.
 - 팝업 구조 프로브: `MenuCanvas` 마지막 sibling, 미충족 2건 → 2줄 + 버튼 3개, 한글 정상.
 - 유효 로드아웃에서 START → BattleScene 정상 진입. Play 육안 확인 = 사용자 2026-07-16.
@@ -44,7 +45,7 @@
 
 ## Follow-up
 
-- **실측 안 한 것 2건**: (a) 참조를 일부러 비웠을 때의 fail-loud, (b) 테스트 모드 무게이트 통과. 둘 다 코드 경로가 자명해 사용자 세션 중 실행하지 않았다.
-- `DEFAULT LOADOUT` 클릭 결과가 종전과 동일한지 실측하지 않았다 — 프로필을 통째로 덮는 버튼이라 사용자 프로필로 실행하지 않았다. 이관 후에도 `CreateDefault` 가 같은 정의를 쓰므로 동작은 같아야 한다.
+- **실측 안 한 것**: 테스트 모드 무게이트 통과 — `TestModePanelView.StartPlan` 이 `OnStartGame` 을 거치지 않고 직접 `SceneTransition.Go` 를 부르므로 구조적으로 보장되지만 실행하지는 않았다.
+- `DEFAULT LOADOUT` 클릭 결과가 종전과 동일한지 실측하지 않았다 — 프로필을 통째로 덮는(스쿼드·드림스톤 포함) 버튼이라 사용자 프로필로 실행하지 않았다. 이관 후에도 `CreateDefault` 가 같은 정의를 쓰므로 동작은 같아야 한다. QA 가 한 번 눌러 확인하면 닫힌다.
 - `UiOverlay.Dim`(alpha 0.92) 을 그대로 썼다. 안내 팝업치고 무겁게 읽히면 별도 결정 — 공유 상수라 이 spec 에서 바꾸지 않았다. README 후속 후보 참조.
 - 나머지 후속 후보(스쿼드 저장 게이트, `PlayerProfile.cs:112` 낡은 주석, `DeckColumns=10` 불일치, 7 이중 하드코딩)는 README 하단 참조.
