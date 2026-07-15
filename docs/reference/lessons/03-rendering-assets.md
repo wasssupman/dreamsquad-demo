@@ -98,3 +98,21 @@ BattleScene Tilemap 모드 Main Camera 는 **런타임 정적이 아니다**. �
 
 - **함정**: 투사체 arc·유닛 높이를 sim-Y(`LocalTransform.Position.y`)에 실으면 화면 반영 0(곡사포가 arc 없이 미끄러짐).
 - **정답**: 높이는 **presentation 층**에서 — `ProjectileViewPool.SyncTransforms` 가 `view.y` 에 `heightOffset`/arc 를 더하는 패턴. sim(ArcPosition)/AOE(셀 XZ)/타이밍은 sim-Y 무관이라 그대로. (프랍 "90°root라 +Y가 깊이로 샘"과 같은 뿌리.)
+
+## 런타임 `Shader.Find` 는 빌드에서 스트리핑된다 (에디터만 정상)
+
+`Shader.Find` 는 **빌드에 포함된 셰이더만** 찾는다. 셰이더가 빌드에 들어가는 경로는 셋뿐이다:
+
+1. **씬/프리팹의 머티리얼**이 참조 (전이 참조 포함 — SO 경유도 OK)
+2. **`Assets/Resources/` 아래** 에셋이 참조 (무조건 포함)
+3. **GraphicsSettings > Always Included Shaders** 등록
+
+런타임에 `new Material(Shader.Find("..."))` 로만 쓰는 커스텀 셰이더는 **1·2 경로가 없어서 통째로 제거**된다.
+에디터는 모든 셰이더가 살아있어 정상 → **"에디터는 되는데 빌드만 효과 없음"** 이 된다.
+
+- **더 나쁜 건 조용하다는 것**: 대개 `if (sh == null) return;` 식 graceful 폴백이라 **에러도 로그도 없이 연출만 사라진다**. 실제로 이 상태로 출시됐다(2026-07-15: 배치 컷신 뎁스 패럴랙스). 카드 구김(`CardCrumple`)·포일(`DraftCardFoil`)도 같은 이유로 죽어 있었고 아무도 몰랐다.
+- **`Tile_Unlit`**: `RuntimeMaterialFactory` 의 폴백 체인(`?? URP/Unlit ?? ...`)이 있어 맵은 그려졌지만 **의도한 셰이더가 아닌 내장으로 대체** — 에디터와 모바일이 다르게 렌더되고 있었다. 폴백이 있으면 더 안 들킨다.
+- **정답**: 런타임 `Shader.Find` 대상은 **Always Included Shaders 에 등록**. 고아 머티리얼을 씬에 매달아두는 방식은 누가 떼면 재발해서 취약하다.
+- **폴백엔 반드시 경고를 남길 것**. 조용한 폴백이 이 버그를 출시까지 보낸 원인이다.
+- **진단 팁**: 컷신 프레임은 나오는데 셰이더 효과만 없다 → 같은 SO 가 참조하는 텍스처/프레임은 빌드에 있다는 뜻 → **셰이더만 없는 것** = 스트리핑 확정.
+- **감사 방법**(오진 주의): 셰이더 GUID 를 `Assets` **전 타입**에서 grep. `.unity`/`.prefab` 만 보면 오진한다 — `Solid_Unlit` 은 `Assets/Resources/RuntimeMaterials/SolidOpaque.mat`(Resources 경유)로 이미 안전한데 씬만 보면 위험으로 잘못 잡힌다.
