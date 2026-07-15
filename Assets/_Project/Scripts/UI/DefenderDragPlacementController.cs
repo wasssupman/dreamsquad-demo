@@ -29,8 +29,8 @@ namespace Wassup.UI
 
         private const int RingSegments = 14;
 
-        // defender-deploy-cutscene unit 3 — 드래그 시작 시 좌상단 컷신 재생기(옵셔널 주입).
-        // null 이면 컷신 없이 기존 흐름. 재생은 드래그 세션과 독립(CleanupSession 이 건드리지 않음).
+        // defender-deploy-cutscene unit 3 — 드래그 시작 시 좌하단 컷신 재생기(옵셔널 주입).
+        // null 이면 컷신 없이 기존 흐름. rev — 컷신 수명은 드래그 세션에 묶인다(CleanupSession 이 EndCutscene 호출).
         private DeployCutscenePlayer _cutscenePlayer;
 
         private DragSession _session;
@@ -561,6 +561,7 @@ namespace Wassup.UI
 
         private void CleanupSession()
         {
+            _cutscenePlayer?.EndCutscene(); // depth-parallax rev — 스와이프(드래그) 종료 → 컷신 슬라이드-아웃(1초 hold 폐지)
             _slowmoLease.Dispose(); // time-manager Unit 5 — 슬로우모 해제(멱등)
             bridge?.SetEnemiesDimmed(false); // placement-enemy-see-through — 적 반투명 off(드롭·거부·비활성 모든 종료 경유)
             bridge?.SetPlacementHighlightAboveUnits(false); // unit 6 — 하이라이트 소팅 원복

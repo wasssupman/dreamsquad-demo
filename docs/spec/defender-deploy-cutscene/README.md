@@ -30,8 +30,10 @@ Defender_Ranger 를 드래그로 집으면 좌상단에 Ranger 컷신 플립북�
 
 - **트리거**: `DefenderDragPlacementController.BeginDrag` 진입 시 유닛에 컷신 프레임이
   있으면 1회 재생. 프레임 비어 있으면 no-op(다른 유닛은 조용히 skip).
-- **독립 재생**: 컷신 재생은 드래그 세션 수명과 분리된다. `CleanupSession`(드롭/취소)이
-  컷신을 중단하지 않는다. 컷신은 자체 코루틴으로 완주 → 1초 hold → 소멸.
+- **수명 = 스와이프 연동** (rev 2026-07-15): 컷신은 등장 후 드래그하는 동안 계속 유지되고,
+  스와이프(드래그)가 끝나면 소멸한다. `CleanupSession`(드롭/취소/비활성)이 `EndCutscene()` 로
+  슬라이드-아웃을 트리거. (구현: `holdSecondsAfter`=사실상 무한 + hold 루프 `_endRequested` 탈출.)
+  구 계약("독립 재생: 자체 코루틴 완주 → 1초 hold 후 자동 소멸")은 폐지.
 - **렌더**: ScreenSpaceOverlay 캔버스의 UI `Image` 1장. 프레임을 `Image.sprite` 로 교체하는
   스크립트 플립북(fps = 데이터 값). Animator/.anim 미사용.
 - **배치/연출**: 좌상단 앵커(anchor/pivot = top-left) + 인스펙터 마진. 표시 크기는 스프라이트

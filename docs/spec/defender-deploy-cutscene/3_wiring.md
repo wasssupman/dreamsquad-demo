@@ -19,7 +19,7 @@
   - `BeginDrag` 내부, 세션 구성 후 (기능 토글 `Cfg.enableDeployCutscene` 게이트):
     `if (Cfg.enableDeployCutscene && _cutscenePlayer != null && unitData.deployCutsceneFrames != null && unitData.deployCutsceneFrames.Length > 0) _cutscenePlayer.Play(unitData.deployCutsceneFrames, unitData.deployCutsceneFps);`
   - 온/오프는 `DragSwaySettings.enableDeployCutscene`(이미 주입된 SO 재사용).
-  - **CleanupSession 은 컷신을 건드리지 않는다**(독립 재생 계약).
+  - **CleanupSession 이 `EndCutscene()` 를 호출한다**(rev 2026-07-15: 스와이프 종료 시 컷신 슬라이드-아웃). 구 "독립 재생" 계약 폐지.
 - `DefenderSelector`:
   - SerializeField `DeployCutscenePlayer deployCutscenePlayer;` 추가.
   - 미할당 시 GetComponent→AddComponent 폴백(dragPlacementController 패턴과 동일).
