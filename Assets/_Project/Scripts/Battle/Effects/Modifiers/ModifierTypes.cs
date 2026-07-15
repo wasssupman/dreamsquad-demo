@@ -6,7 +6,8 @@ namespace Wassup.Battle.Effects
     // 걸린 적 대상 데미지 배율 (base 1). Slow(이동감속)은 CcEffect 아니라 미포함. append-only.
     public enum StatKind : byte { DamageMul, AttackSpeedMul, DmgTakenMul, RegenPerSec, MoveSpeedMul, DamageVsCcMul }
 
-    public enum StackKind : byte { None, Fire, Ice, Bleed, Poison }
+    // season-gimmick-overwork unit 0 — Fatigue: 야근 기믹 피로도 스택. append-only.
+    public enum StackKind : byte { None, Fire, Ice, Bleed, Poison, Fatigue }
 
     public enum CombineOp : byte { Multiplicative, Additive, Override }
 

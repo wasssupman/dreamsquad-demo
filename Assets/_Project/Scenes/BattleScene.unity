@@ -4049,6 +4049,7 @@ MonoBehaviour:
   tilemapHiddenEnvironment: []
   stackModifierAuthoring:
   - {fileID: 11400000, guid: 9ef2f1f251f1c48ca88ace43e01b0a12, type: 2}
+  - {fileID: 11400000, guid: 8509b6127629ddd4893dfa78d7f4ea96, type: 2}
 --- !u!4 &1939688409
 Transform:
   m_ObjectHideFlags: 0
