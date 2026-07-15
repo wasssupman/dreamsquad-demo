@@ -56,7 +56,10 @@ namespace Wassup.Core
             File.WriteAllText(path, JsonUtility.ToJson(profile, true));
         }
 
-        static PlayerProfile CreateDefault(DefenderCatalog catalog)
+        // outgame-login-gate unit 6 — public so the dev "DEFAULT LOADOUT" button can
+        // rebuild the same starter profile a fresh install gets, instead of defining
+        // a second notion of "default" next to this one.
+        public static PlayerProfile CreateDefault(DefenderCatalog catalog)
         {
             var p = new PlayerProfile { schemaVersion = CurrentSchemaVersion };
             EnsureDefaultSquad(p, catalog);

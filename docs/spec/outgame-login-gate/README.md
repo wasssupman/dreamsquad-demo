@@ -25,6 +25,7 @@
 | 3 | 구현+wiring | `3_e2e_and_dev_buttons.md` | 실 엔드포인트 E2E 테스트 + DevButtons 그룹(계정 리셋 → 로그인 화면 복귀) |
 | 4 | 구현+wiring | `4_skip_login_button.md` | 로그인 스킵 버튼(우하단) — 인증 없이 게스트 세션으로 진입, 로그인 실패가 진행을 잠그지 않게 |
 | 5 | 구현+wiring | `5_dev_tray_toggle.md` | (2026-07-15) dev 버튼 트레이 토글 — 로비엔 `DEV +` 하나만 상시 노출, 나머지 5개는 접힘 기본 |
+| 6 | 구현+wiring | `6_default_loadout_button.md` | (2026-07-15) `DEFAULT LOADOUT` — 스쿼드·드림캐쳐 덱을 신규 프로필과 같은 기본값으로 세팅 |
 
 ## Feature-wide 계약
 
