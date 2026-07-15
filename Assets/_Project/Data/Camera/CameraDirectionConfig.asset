@@ -70,8 +70,8 @@ MonoBehaviour:
   punctuationFadeSec: 0.15
   fovMin: 41
   fovMax: 60
-  focusDolly: 1
-  focusFovDelta: -1
+  focusDolly: 0
+  focusFovDelta: 6
   focusLookWeight: 0.25
   focusLeanPerSpeed: 1.2
   focusLeanMaxDeg: 2.5
