@@ -17,7 +17,7 @@
 
 - 시즌→기믹 프레임: `SeasonData.gimmick`(null=무변화), `OverworkGimmickData`(SO) → `OverworkGimmickConfig`(blittable) 를 BattleBridge 가 주입. 룰 시스템은 `RequireForUpdate` self-gate.
 - 룰 1 (피로도→번아웃): 배치 유닛 10초마다 `StackKind.Fatigue` +1 → 5스택 시 기존 StackModifier 임계 파이프라인이 공속/공격력/최대체력 ×0.8 (15s) 발동, Consume 로 스택 리셋 후 재누적.
-- 룰 2 (레드불→라스트런): 5초마다 Walk∪Place 셀에 레드불 스폰(결정론 rng, 동시상한 6·수명 20s), 유닛(적 통과/defender 배치) co-location 소비 → 공속 ×1.5(5s) → 5초 후 최대체력 ×0.1(영구).
+- 룰 2 (레드불→라스트런): 5초마다 Walk∪Place 셀에 레드불 스폰(결정론 rng, 동시상한 6·수명 20s), 유닛(적 통과/defender 배치) co-location 소비 → 공속 ×1.5(5s) → 5초 후 최대체력의 50% 피해(IncomingDamage). 뷰 = Meshy 레드불캔 FBX(scale 튜닝).
 - `StatKind.MaxHealthMul` 신설: Effects 가 배율 결정, Units 의 `MaxHealthScaleSystem` 이 Health.max 소비/클램프 (맥락 경계 유지).
 - 야근 시즌(`season_overwork`, forest 테마) = 정식 defaultSeason. forest 시즌은 클린 baseline.
 - 레드불 뷰: BattleBridge poll-reconcile + `PickupPresenter` 절차적 플레이스홀더.

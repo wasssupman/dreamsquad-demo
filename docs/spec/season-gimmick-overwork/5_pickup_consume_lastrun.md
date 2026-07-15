@@ -31,7 +31,7 @@
 ## 완료 기준
 
 - compile 통과 + 콘솔 클린.
-- Play(기믹 연결): 적이 Walk 셀 레드불 통과 시 소비 telemetry 로그 → 5초 후 해당 유닛 최대체력 ×0.1. defender 를 레드불 셀에 배치 시 동일. (`Log Fatigue Stacks` 로 defender 공속 ×1.5→최대체력 ×0.1 확인 가능.)
+- Play(기믹 연결): 적이 Walk 셀 레드불 통과 시 소비 telemetry 로그 → 5초 후 해당 유닛이 최대체력의 50% 피해. defender 를 레드불 셀에 배치 시 동일.
 - gimmick=null → 소비/라스트런 미발생.
 
 확인 2026-07-15 · 커밋 `30d70b4e` — Editor.log 실측: consumed→(5s)→crash 페어 다수(예: Entity 105:1 소비 후 5초 뒤 crash), 최대체력 ×0.10 인큐 확인, 에러 0. MaxHealthMul 적용 경로는 unit 3 번아웃에서 직접 실증(진영 무관). 소비 유닛이 전부 적(transient)이라 최종 Health.max 값은 unit 6/7 defender 배치로 재확인.
