@@ -31,6 +31,7 @@ namespace Wassup.Battle.Effects
         HealthThreshold,  // 체력 임계 자가버프
         OnHit,            // 공격 산출물 ApplyStat(공격 시 대상에 부여)
         Stack,            // 스택(Fire/Ice/Bleed/Poison/Fatigue) 파생 스탯
+        Gimmick,          // 시즌 기믹 효과(season-gimmick-overwork 야근 라스트런 등)
     }
 
     // 임베딩 컨벤션 — IComponentData/IBufferElementData 아님. 두 Slot struct 에 직접 임베딩.

@@ -3,21 +3,24 @@
 // 데미지 인박스 IncomingDamage(TRD 2.5.2 cross-context 채널)에 append → DamageApplicationSystem
 // (Units)이 감산·사망 처리. source=Null(자해, 킬 미귀속 — DoT/환경 컨벤션).
 // OverworkGimmickConfig 부재(기믹 비활성) 시 미가동.
-// non-Burst: crash telemetry 로그(저빈도, PickupConsumeSystem 소비 로그와 대칭).
+using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Wassup.Battle.Units;
 
 namespace Wassup.Battle.Effects
 {
+    [BurstCompile]
     [UpdateInGroup(typeof(BattleSimGroup))]
     public partial struct LastRunSystem : ISystem
     {
+        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<OverworkGimmickConfig>();
         }
 
+        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             var config = SystemAPI.GetSingleton<OverworkGimmickConfig>();
@@ -38,7 +41,6 @@ namespace Wassup.Battle.Effects
                     float maxHp = SystemAPI.GetComponent<Health>(entity).max;
                     float dmg = maxHp * config.lastRunDamageFraction;
                     SystemAPI.GetBuffer<IncomingDamage>(entity).Add(new IncomingDamage { amount = dmg });
-                    UnityEngine.Debug.Log($"[Redbull] {entity} crash → 최대체력({maxHp:F0})의 {config.lastRunDamageFraction * 100f:F0}% = {dmg:F0} 피해");
                 }
                 ecb.RemoveComponent<LastRun>(entity);
             }

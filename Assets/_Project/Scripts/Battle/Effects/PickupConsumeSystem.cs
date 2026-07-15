@@ -1,7 +1,7 @@
 // season-gimmick-overwork unit 5 — 야근 룰 2(후반): 유닛(적 통과 / defender 배치)이 레드불과
 // 같은 셀에 있으면 소비 → 라스트런 부여 (공속 버프 즉시 + LastRun crash 타이머).
-// non-Burst: 소비 telemetry 로그(저빈도) 용 — StackModifierTickSystem 전례. 소비 판정 자체는
-// 유닛 수 순회로 가볍다. OverworkGimmickConfig 부재 시 미가동 (self-gate).
+// 매 프레임 전체 defender+enemy 순회 hot-path → Burst. OverworkGimmickConfig 부재 시 미가동(self-gate).
+using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -11,10 +11,12 @@ using Wassup.Battle.Units;
 
 namespace Wassup.Battle.Effects
 {
+    [BurstCompile]
     [UpdateInGroup(typeof(BattleSimGroup))]
     [UpdateAfter(typeof(PickupSpawnSystem))]
     public partial struct PickupConsumeSystem : ISystem
     {
+        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<OverworkGimmickConfig>();
@@ -22,6 +24,7 @@ namespace Wassup.Battle.Effects
             state.RequireForUpdate<StatModifierApplyEventsSingleton>();
         }
 
+        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             // 현 픽업들을 cell→entity 로 색인. 없으면 early-return.
@@ -43,33 +46,6 @@ namespace Wassup.Battle.Effects
             var em = state.EntityManager;
             var ecb = new EntityCommandBuffer(Allocator.Temp);
 
-            // 통합 소비: 첫 소비자 승(맵에서 제거), 픽업 파괴, 공속 버프 인큐, LastRun add/refresh.
-            void Consume(int2 cell, Entity unit)
-            {
-                if (!byCell.TryGetValue(cell, out var pickup))
-                    return;
-                byCell.Remove(cell);
-                ecb.DestroyEntity(pickup);
-
-                statQ.Enqueue(new StatModifierApplyEvent
-                {
-                    target    = unit,
-                    stat      = StatKind.AttackSpeedMul,
-                    op        = CombineOp.Multiplicative,
-                    magnitude = config.lastRunAttackSpeedMul,
-                    duration  = config.lastRunDuration,
-                    source    = unit,
-                    stackId   = 0,
-                    origin    = ModifierOrigin.Unspecified,
-                });
-
-                var lastRun = new LastRun { remaining = config.lastRunDuration };
-                if (em.HasComponent<LastRun>(unit)) ecb.SetComponent(unit, lastRun);
-                else ecb.AddComponent(unit, lastRun);
-
-                UnityEngine.Debug.Log($"[Redbull] {unit} consumed at cell ({cell.x},{cell.y}) → 라스트런 (공속 x{config.lastRunAttackSpeedMul:F2} {config.lastRunDuration:F0}s, 종료 시 최대체력의 {config.lastRunDamageFraction * 100f:F0}% 피해)");
-            }
-
             // Defender: 배치 셀(권위값).
             foreach (var (tile, entity) in
                      SystemAPI.Query<RefRO<DefenderTile>>()
@@ -77,7 +53,7 @@ namespace Wassup.Battle.Effects
                               .WithNone<PendingDeployment, DeadTag>()
                               .WithEntityAccess())
             {
-                Consume(tile.ValueRO.cell, entity);
+                TryConsume(tile.ValueRO.cell, entity, ref byCell, ref ecb, statQ, config, em);
             }
 
             // Enemy: 현재 위치 → 셀.
@@ -88,12 +64,44 @@ namespace Wassup.Battle.Effects
                               .WithEntityAccess())
             {
                 int2 cell = GridMath.WorldToCell(xform.ValueRO.Position, flow.tileSize, flow.gridSize, flow.origin);
-                Consume(cell, entity);
+                TryConsume(cell, entity, ref byCell, ref ecb, statQ, config, em);
             }
 
             ecb.Playback(em);
             ecb.Dispose();
             byCell.Dispose();
+        }
+
+        // 첫 소비자 승(맵에서 제거) → 픽업 파괴 + 공속 버프 인큐 + LastRun add/refresh.
+        // 공속 버프 origin=Gimmick (시즌 기믹 출처 태그). crash 데미지는 LastRunSystem.
+        private static void TryConsume(
+            int2 cell, Entity unit,
+            ref NativeHashMap<int2, Entity> byCell,
+            ref EntityCommandBuffer ecb,
+            NativeQueue<StatModifierApplyEvent> statQ,
+            in OverworkGimmickConfig config,
+            EntityManager em)
+        {
+            if (!byCell.TryGetValue(cell, out var pickup))
+                return;
+            byCell.Remove(cell);
+            ecb.DestroyEntity(pickup);
+
+            statQ.Enqueue(new StatModifierApplyEvent
+            {
+                target    = unit,
+                stat      = StatKind.AttackSpeedMul,
+                op        = CombineOp.Multiplicative,
+                magnitude = config.lastRunAttackSpeedMul,
+                duration  = config.lastRunDuration,
+                source    = unit,
+                stackId   = 0,
+                origin    = ModifierOrigin.Gimmick,
+            });
+
+            var lastRun = new LastRun { remaining = config.lastRunDuration };
+            if (em.HasComponent<LastRun>(unit)) ecb.SetComponent(unit, lastRun);
+            else ecb.AddComponent(unit, lastRun);
         }
     }
 }
