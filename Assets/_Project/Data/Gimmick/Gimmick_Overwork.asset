@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 14e3f5d68a649674d80bd7d2b744ffb2, type: 3}
+  m_Name: Gimmick_Overwork
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.OverworkGimmickData
+  gimmickId: G1_Overwork
+  displayName: "\uC57C\uADFC"
+  fatigueStack: {fileID: 11400000, guid: 8509b6127629ddd4893dfa78d7f4ea96, type: 2}
+  fatigueInterval: 10
+  fatigueAmount: 1
+  redbullSpawnInterval: 5
+  redbullLifetime: 20
+  maxActivePickups: 6
+  lastRunAttackSpeedMul: 1.5
+  lastRunDuration: 5
+  lastRunDamageFraction: 0.5

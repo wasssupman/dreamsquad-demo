@@ -26,6 +26,9 @@ namespace Wassup.Battle.Effects
         private const float MulStatCeil = 5f;      //   … max +400%
         private const float MoveMulFloor = 0.15f;
         private const float MoveMulCeil = 3f;
+        // season-gimmick-overwork unit 1 — maxHealth 전용 floor: 라스트런 ×0.1(-90%) 이
+        // 일반 floor(0.2) 에 걸리면 안 된다. 1 HP 바닥은 Units 의 ScaleMax 가 보장.
+        private const float MaxHealthMulFloor = 0.05f;
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
@@ -44,6 +47,8 @@ namespace Wassup.Battle.Effects
                 float mMul = 1f, mAdd = 0f, mOver = 0f; bool mHasOver = false;
                 // dreamcatcher-new-abilities unit 2 — DamageVsCcMul (base 1, 부재→1).
                 float vMul = 1f, vAdd = 0f, vOver = 0f; bool vHasOver = false;
+                // season-gimmick-overwork unit 1 — MaxHealthMul (base 1, 부재→1).
+                float hMul = 1f, hAdd = 0f, hOver = 0f; bool hHasOver = false;
 
                 // ── New-framework modifier slots (may be absent) ──────────────────
                 if (SystemAPI.HasBuffer<StatModifierSlot>(entity))
@@ -90,6 +95,12 @@ namespace Wassup.Battle.Effects
                             else if (s.op == CombineOp.Additive)       vAdd += s.magnitude;
                             else { vOver = math.max(vOver, s.magnitude); vHasOver = true; }
                         }
+                        else if (s.stat == StatKind.MaxHealthMul)
+                        {
+                            if      (s.op == CombineOp.Multiplicative) hMul *= s.magnitude;
+                            else if (s.op == CombineOp.Additive)       hAdd += s.magnitude;
+                            else { hOver = math.max(hOver, s.magnitude); hHasOver = true; }
+                        }
                     }
                 }
 
@@ -106,6 +117,8 @@ namespace Wassup.Battle.Effects
                 stats.ValueRW.moveSpeedMul   = ModifierMath.CombineMul(mHasOver, mOver, mAdd, mMul, MoveMulFloor, MoveMulCeil);
                 // dreamcatcher-new-abilities unit 2 — base 1, 부재→1 (슬롯 없으면 vMul=1).
                 stats.ValueRW.damageVsCcMul  = ModifierMath.CombineMul(vHasOver, vOver, vAdd, vMul, MulStatFloor, MulStatCeil);
+                // season-gimmick-overwork unit 1 — 전용 floor (라스트런 ×0.1 통과).
+                stats.ValueRW.maxHealthMul   = ModifierMath.CombineMul(hHasOver, hOver, hAdd, hMul, MaxHealthMulFloor, MulStatCeil);
 
                 dirty.ValueRW = false;
             }

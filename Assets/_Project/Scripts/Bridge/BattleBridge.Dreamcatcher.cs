@@ -30,6 +30,10 @@ namespace Wassup.Bridge
             // (드림스톤 로드아웃, ApplyPendingDreamstones — 설계상 영구). 드림캐쳐의
             // hostless 영속 apply 는 subconscious-unit unit 3 에서 은퇴.
             public int handle;
+            // dreamcatcher-empower-aura unit 1 — 이 효과의 출처. _activeDcEffects 는 드림캐쳐
+            // 카드와 드림스톤을 함께 담으므로, 신규 배치 유닛 상속(ApplyActiveDcEffectsTo)이
+            // 각 효과를 올바른 origin 으로 재적용하려면 항목마다 출처를 기억해야 한다.
+            public Wassup.Battle.Effects.ModifierOrigin origin;
         }
         private readonly System.Collections.Generic.List<ActiveDcEffect> _activeDcEffects =
             new System.Collections.Generic.List<ActiveDcEffect>();
@@ -91,13 +95,13 @@ namespace Wassup.Bridge
                 {
                     if (!MapDcEffect(eff, out var stat, out var mult)) continue;
                     ushort sid = _dcStackCounter++;
-                    _activeDcEffects.Add(new ActiveDcEffect { axis = card.axis, stat = stat, mult = mult, stackId = sid, handle = handle });
+                    _activeDcEffects.Add(new ActiveDcEffect { axis = card.axis, stat = stat, mult = mult, stackId = sid, handle = handle, origin = Wassup.Battle.Effects.ModifierOrigin.Dreamcatcher });
                     foreach (var kv in _defenderByTile)
                     {
                         var data = kv.Value.data;
                         var entity = kv.Value.entity;
                         if (data != null && _em.Exists(entity) && MatchesDcAxis(data, card.axis))
-                            EnqueueStatModifier(entity, stat, mult, DcDuration, sid);
+                            EnqueueStatModifier(entity, stat, mult, DcDuration, sid, Wassup.Battle.Effects.ModifierOrigin.Dreamcatcher);
                     }
                 }
             }
@@ -128,7 +132,15 @@ namespace Wassup.Bridge
                         var data = kv.Value.data;
                         var entity = kv.Value.entity;
                         if (data != null && _em.Exists(entity) && MatchesDcAxis(data, e.axis))
-                            EnqueueStatModifier(entity, e.stat, 1f, DcDuration, e.stackId);
+                        {
+                            // 원본 op 와 동일한 identity 로 중립화해야 머지 키(source,stat,op,stackId)가 일치해
+                            // 기존 슬롯이 갱신된다. 1f 를 EnqueueStatModifier 로 보내면 FromMultiplier 가 Additive+0
+                            // 으로 분류 → 원본이 Multiplicative(감소형 버프, 예 DmgTakenMul 0.87)면 op 불일치로
+                            // 중립화 실패(버프 잔존 + 오라 잔존). 원본 op 를 재도출해 그 op 의 항등을 emit.
+                            Wassup.Battle.Effects.ModifierAuthoring.FromMultiplier(e.mult, out var op, out _);
+                            float idMag = op == Wassup.Battle.Effects.CombineOp.Multiplicative ? 1f : 0f;
+                            EnqueueStatModifierRaw(entity, e.stat, op, idMag, DcDuration, e.stackId, e.origin);
+                        }
                     }
                 }
                 _activeDcEffects.RemoveAt(i);
@@ -144,7 +156,7 @@ namespace Wassup.Bridge
             {
                 var e = _activeDcEffects[i];
                 if (MatchesDcAxis(data, e.axis))
-                    EnqueueStatModifier(entity, e.stat, e.mult, DcDuration, e.stackId);
+                    EnqueueStatModifier(entity, e.stat, e.mult, DcDuration, e.stackId, e.origin);
             }
             // combat-action-lock — 신규 배치 유닛이 활성 placement-aura Sleep 을 상속.
             for (int i = 0; i < _activePlacementSleeps.Count; i++)
@@ -215,7 +227,7 @@ namespace Wassup.Bridge
                         continue;
                     }
                     // 공속 +magnitude% for `duration` 초 (기존 StatModifier) + 만료 시 자폭.
-                    EnqueueAttackSpeedMul(defender, 1f + m.payload.magnitude / 100f, m.payload.duration);
+                    EnqueueAttackSpeedMul(defender, 1f + m.payload.magnitude / 100f, m.payload.duration, Wassup.Battle.Effects.ModifierOrigin.Dreamcatcher);
                     _em.AddComponentData(defender, new Wassup.Battle.Units.LethalTimer { remaining = m.payload.duration });
                     attached++; // 즉발 branch 도 성공 시 카운트 (critic M2)
                     continue;
@@ -522,6 +534,7 @@ namespace Wassup.Bridge
                     mult = 1f + asPercent / 100f,
                     stackId = sid,
                     handle = handle,
+                    origin = Wassup.Battle.Effects.ModifierOrigin.Dreamcatcher,
                 });
             }
             if (warmupSec > 0f) _activePlacementSleeps.Add((handle, axis, warmupSec));

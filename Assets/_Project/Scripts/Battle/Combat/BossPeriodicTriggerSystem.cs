@@ -137,6 +137,7 @@ namespace Wassup.Battle.Combat
                                             duration = slot.duration,
                                             source = entity,
                                             stackId = 0,
+                                            origin = ModifierOrigin.Boss,
                                         });
                                         buffed++;
                                     }

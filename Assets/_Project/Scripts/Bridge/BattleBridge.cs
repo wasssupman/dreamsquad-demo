@@ -134,6 +134,18 @@ namespace Wassup.Bridge
         [Tooltip("같은 방어 유닛을 인접 배치했을 때의 공격력 시너지. 기본 비활성.")]
         [SerializeField] private bool enableAdjacencySynergy;
 
+        [Header("Season Gimmick — Pickup View (season-gimmick-overwork unit 6)")]
+        [Tooltip("레드불 픽업 뷰 모델/프리팹(FBX 가능). 비우면 절차적 플레이스홀더 큐브.")]
+        [SerializeField] private GameObject pickupViewPrefab;
+        [Tooltip("픽업 뷰의 셀 중심 위 높이(월드, 지면 hover).")]
+        [SerializeField] private float pickupViewHeight = 0.3f;
+        [Tooltip("모델 로컬 스케일(FBX 크기 보정).")]
+        [SerializeField] private float pickupModelScale = 1f;
+        [Tooltip("모델 로컬 기준 Y(피벗 보정용 추가 오프셋).")]
+        [SerializeField] private float pickupModelBaseY = 0f;
+        [Tooltip("픽업 모델 머티리얼 override(FBX 임베디드 머티리얼 텍스처 미바인딩 우회). 비우면 원본.")]
+        [SerializeField] private Material pickupOverrideMaterial;
+
         private ManualMapInput? _manualMapInput;
         private GeneratedMap _generatedMap;
         private int2? _mapGridGridSizeOverride;
@@ -151,6 +163,13 @@ namespace Wassup.Bridge
         // unit-status-fx 5 — Sleep 연출 소스. CcEffect(Effects 소유)는 읽기만 한다.
         private EntityQuery _ccEffectQuery;
         private bool _ccEffectQueryCreated;
+        // unit-buff-debuff-aura 1 — 버프/디버프 오라 소스. StatModifierSlot 버퍼(Effects 소유)는 읽기만.
+        // 임시(유한 지속) 슬롯만 판정 — 영구 baseline(로드아웃/시너지/드림캐쳐)은 classifier 가 제외.
+        private EntityQuery _modifierSlotQuery;
+        private bool _modifierSlotQueryCreated;
+        // season-gimmick-overwork unit 6 — 레드불 픽업 뷰 조정용 쿼리 (Pickup 은 Effects 소유, 읽기만).
+        private EntityQuery _pickupViewQuery;
+        private bool _pickupViewQueryCreated;
         private readonly List<PendingSpawnEntry> _pending = new();
         private readonly List<Material> _ownedRuntimeMaterials = new();
         private readonly HashSet<Vector2Int> _occupiedTiles = new();
@@ -167,6 +186,10 @@ namespace Wassup.Bridge
         private static readonly Dictionary<Wassup.Battle.Effects.StackKind, Wassup.Data.ThresholdRule[]> _stackThresholds = new();
         private readonly Dictionary<Entity, GameObject> _blockingHazardVisualMap = new();
         private Transform _blockingHazardVisualRoot;
+        // season-gimmick-overwork unit 6 — 레드불 픽업 엔티티↔뷰 GameObject 매핑.
+        private readonly Dictionary<Entity, GameObject> _pickupVisualMap = new();
+        // 조정 시 제거 대상 임시 버퍼 (반복 중 수정 회피, 매 프레임 재사용).
+        private readonly List<Entity> _pickupReapBuffer = new();
         private EntityQuery _projectileSpawnRequestQuery;
         private bool _projectileSpawnRequestQueryCreated;
         private EntityQuery _projectileQuery;
@@ -250,6 +273,9 @@ namespace Wassup.Bridge
         // boss-defender-field unit 1 — 방어유닛-지향 필드. goal field 와 라이프사이클 동일
         // (BuildFlowField 생성 / TeardownFlowField 정리). 내용 갱신은 DefenderFieldSystem.
         private Entity _defenderFieldSingleton = Entity.Null;
+        // season-gimmick-overwork unit 4 — 레드불 픽업 스폰 상태(후보 셀 배열 소유).
+        // goal/defender field 와 동일 lifecycle (BuildPickupSpawnState / TeardownFlowField).
+        private Entity _pickupSpawnStateSingleton = Entity.Null;
 
         // enemy-tile-movement-integrity unit 0 — 스폰 측면 분산 순번(맵 빌드마다 0 리셋). 결정론 수열 인덱스.
         private int _spawnSpreadCounter;
@@ -371,6 +397,7 @@ namespace Wassup.Bridge
             if (enemyHitBarSpawner != null) enemyHitBarSpawner.Clear(); // unit 2 — 잔여 마이크로바 정리(생명주기 대칭)
             if (statusFxSpawner != null) statusFxSpawner.Clear(); // unit-status-fx unit 2 — 잔여 상태 연출 정리
             if (dcIconStripSpawner != null) dcIconStripSpawner.Clear(); // unit-dreamcatcher-icons — 잔여 아이콘 스트립 정리(생명주기 대칭)
+            ClearPickupVisuals(); // season-gimmick-overwork unit 6 — 잔여 레드불 뷰 정리
             _dcAuraPool?.Clear(); _dcAuraPool = null; // nightmare-whip-aura rev 2 — 드림캐쳐 부착 오라 정리(생명주기 대칭)
             ClearBlockingHazardVisuals();
 
@@ -416,6 +443,8 @@ namespace Wassup.Bridge
             DestroyEntitiesByType<Wassup.Battle.Effects.Hazard>();
             DestroyEntitiesByType<Wassup.Battle.Effects.BlockingHazard>();
             DestroyEntitiesByType<Wassup.Battle.Effects.Obstacle>();
+            // season-gimmick-overwork unit 4 — 레드불 픽업 엔티티 정리.
+            DestroyEntitiesByType<Wassup.Battle.Effects.Pickup>();
         }
 
         private void DestroyEcsInfrastructureEntities()
@@ -444,6 +473,8 @@ namespace Wassup.Bridge
             // 누락 시 StopBattle 후 orphan 이 남고 다음 프레임 새 엔티티가 생겨 2개 → TryGetSingleton
             // 실패 → 이후 모든 전투에서 시간 제어(정지/슬로우모)가 영구 무력화된다.
             DestroyEntitiesByType<BattleTimeScale>();
+            // season-gimmick-overwork unit 2 — 기믹 config 도 대칭 파괴 (BattleTimeScale 교훈 준수).
+            DestroyEntitiesByType<Wassup.Battle.Effects.OverworkGimmickConfig>();
         }
 
         private void DisposeEcsInfrastructureNativeContainers()
@@ -496,6 +527,16 @@ namespace Wassup.Bridge
             {
                 _ccEffectQuery.Dispose();
                 _ccEffectQueryCreated = false;
+            }
+            if (_modifierSlotQueryCreated)
+            {
+                _modifierSlotQuery.Dispose();
+                _modifierSlotQueryCreated = false;
+            }
+            if (_pickupViewQueryCreated)
+            {
+                _pickupViewQuery.Dispose();
+                _pickupViewQueryCreated = false;
             }
             if (_projectileSpawnRequestQueryCreated)
             {
@@ -597,6 +638,58 @@ namespace Wassup.Bridge
             {
                 if (walk.IsCreated) walk.Dispose();
             }
+        }
+
+        // season-gimmick-overwork unit 4 — 픽업 스폰 후보 셀(Walk∪Place) 싱글턴 구축.
+        // FlowFieldSingleton 동형: Persistent NativeArray 소유, TeardownFlowField 가 dispose.
+        // gimmick 비활성이면 no-op. 멱등 (재빌드/redraft 시 기존 dispose 후 재생성).
+        private void BuildPickupSpawnState()
+        {
+            TeardownPickupSpawnState();
+
+            if (!_generatedMap.IsCreated || _em == null) return;
+            var season = seasonRegistry != null ? seasonRegistry.activeSeason : null;
+            if (!(season?.gimmick is Wassup.Data.OverworkGimmickData)) return;
+
+            int2 gridSize = _generatedMap.gridSize;
+            int n = gridSize.x * gridSize.y;
+
+            // 이동/배치 타일영역 = Walk∪Place 셀 수집.
+            var cells = new System.Collections.Generic.List<int2>(n);
+            for (int i = 0; i < n; i++)
+            {
+                var t = _generatedMap.tiles[i];
+                if (t == MapTileType.Walk || t == MapTileType.Place)
+                    cells.Add(new int2(i % gridSize.x, i / gridSize.x));
+            }
+            if (cells.Count == 0) return;
+
+            var candidateCells = new NativeArray<int2>(cells.Count, Allocator.Persistent);
+            for (int i = 0; i < cells.Count; i++) candidateCells[i] = cells[i];
+
+            uint pickupSeed = (uint)Wassup.Core.MatchSeed.DerivePickupSeed(_matchSeed);
+            _pickupSpawnStateSingleton = _em.CreateEntity();
+            _em.AddComponentData(_pickupSpawnStateSingleton, new Wassup.Battle.Effects.PickupSpawnState
+            {
+                candidateCells = candidateCells,
+                elapsed = 0f,
+                rng = new Unity.Mathematics.Random(pickupSeed),
+            });
+            Debug.Log($"[BattleBridge] PickupSpawnState built — 후보 셀 {candidateCells.Length}개 (Walk∪Place), seed={pickupSeed}");
+        }
+
+        private void TeardownPickupSpawnState()
+        {
+            if (_pickupSpawnStateSingleton != Entity.Null && _em != null && _em.Exists(_pickupSpawnStateSingleton))
+            {
+                if (_em.HasComponent<Wassup.Battle.Effects.PickupSpawnState>(_pickupSpawnStateSingleton))
+                {
+                    var data = _em.GetComponentData<Wassup.Battle.Effects.PickupSpawnState>(_pickupSpawnStateSingleton);
+                    data.Dispose();
+                }
+                _em.DestroyEntity(_pickupSpawnStateSingleton);
+            }
+            _pickupSpawnStateSingleton = Entity.Null;
         }
 
         // enemy-spawn-positioning / tile-movement-integrity u0(rev) — 스폰 셀 flow 수직으로 중앙 기준 이산 N-레인 오프셋 계산.
@@ -792,6 +885,9 @@ namespace Wassup.Bridge
             // ApplyTilemapCameraPreset(); // 매 빌드 idempotent 재적용
 
             BuildFlowField();
+            // season-gimmick-overwork unit 4 — 픽업 스폰 후보 셀(Walk∪Place)은 goal field 와
+            // 같은 맵-빌드 시점에 구축. gimmick 비활성이면 no-op.
+            BuildPickupSpawnState();
 
             // enemy-tile-movement-integrity unit 0 — 스폰 분산 순번 리셋(결정론 수열은 시드 불필요).
             _spawnSpreadCounter = 0;
@@ -860,6 +956,7 @@ namespace Wassup.Bridge
             {
                 _flowFieldSingleton = Entity.Null;
                 _defenderFieldSingleton = Entity.Null;
+                _pickupSpawnStateSingleton = Entity.Null;
                 return;
             }
             if (_flowFieldSingleton != Entity.Null && _em != null && _em.Exists(_flowFieldSingleton))
@@ -884,6 +981,9 @@ namespace Wassup.Bridge
                 _em.DestroyEntity(_defenderFieldSingleton);
             }
             _defenderFieldSingleton = Entity.Null;
+
+            // season-gimmick-overwork unit 4 — 픽업 스폰 상태도 맵 field 와 동일 lifecycle.
+            TeardownPickupSpawnState();
         }
 
         // Phase 6: placement phase enters this path — ECS state is initialized so
@@ -998,11 +1098,26 @@ namespace Wassup.Bridge
                 _ccEffectQuery = _em.CreateEntityQuery(ComponentType.ReadOnly<CcEffect>());
                 _ccEffectQueryCreated = true;
             }
+            if (!_modifierSlotQueryCreated)
+            {
+                // 드림캐쳐 강화는 방어유닛에만 부여되므로 defender 로 한정 — 적/기타 아키타입 순회 낭비 방지
+                // (ecs-review H2). 적이 드림캐쳐 origin 슬롯을 가질 일은 없지만 구조적으로도 차단.
+                _modifierSlotQuery = _em.CreateEntityQuery(
+                    ComponentType.ReadOnly<Wassup.Battle.Effects.StatModifierSlot>(),
+                    ComponentType.ReadOnly<Wassup.Battle.Units.DefenderUnitTag>());
+                _modifierSlotQueryCreated = true;
+            }
 
             if (!_projectileSpawnRequestQueryCreated)
             {
                 _projectileSpawnRequestQuery = _em.CreateEntityQuery(ComponentType.ReadOnly<ProjectileSpawnRequest>());
                 _projectileSpawnRequestQueryCreated = true;
+            }
+            // season-gimmick-overwork unit 6 — 픽업 뷰 조정용.
+            if (!_pickupViewQueryCreated)
+            {
+                _pickupViewQuery = _em.CreateEntityQuery(ComponentType.ReadOnly<Wassup.Battle.Effects.Pickup>());
+                _pickupViewQueryCreated = true;
             }
 
             if (!_projectileQueryCreated)
@@ -1159,6 +1274,9 @@ namespace Wassup.Bridge
             // Build StackModifier threshold registry for StackModifierTickSystem lookups.
             BuildStackThresholdRegistry();
 
+            // season-gimmick-overwork unit 2 — 활성 시즌 기믹 config 주입 (null = 미생성, 무변화).
+            CreateGimmickConfigIfActive();
+
             // draft-stage-map-prebuild Unit 0 — BuildMapForBattle removed from here; called explicitly
             // by PrepareDraftMap / RebuildDraftMap / BeginPlacement fallback.
             _ecsInfrastructureReady = true;
@@ -1228,6 +1346,8 @@ namespace Wassup.Bridge
                 DestroyEntitiesByType<Wassup.Battle.Effects.Hazard>();
                 DestroyEntitiesByType<Wassup.Battle.Effects.BlockingHazard>();
                 DestroyEntitiesByType<Wassup.Battle.Effects.Obstacle>();
+                // season-gimmick-overwork unit 4 — redraft 시 잔존 픽업 정리.
+                DestroyEntitiesByType<Wassup.Battle.Effects.Pickup>();
             }
 
             ClearBlockingHazardVisuals();
@@ -1499,11 +1619,11 @@ namespace Wassup.Bridge
             switch (skill.effect)
             {
                 case SkillEffectType.PowerSurge:
-                    EnqueueDamageMul(entity, skill.magnitude, skill.durationSec);
+                    EnqueueDamageMul(entity, skill.magnitude, skill.durationSec, Wassup.Battle.Effects.ModifierOrigin.Skill);
                     affectedCount = 1;
                     break;
                 case SkillEffectType.RapidFire:
-                    EnqueueAttackSpeedMul(entity, skill.magnitude, skill.durationSec);
+                    EnqueueAttackSpeedMul(entity, skill.magnitude, skill.durationSec, Wassup.Battle.Effects.ModifierOrigin.Skill);
                     affectedCount = 1;
                     break;
                 default:
@@ -1655,7 +1775,7 @@ namespace Wassup.Bridge
                 if (!_em.HasComponent<LocalTransform>(e)) continue;
                 var pos = _em.GetComponentData<LocalTransform>(e).Position;
                 if (!InTileRange(pos, tile, tileRange)) continue;
-                EnqueueMoveSpeedMul(e, skill.magnitude, skill.durationSec);
+                EnqueueMoveSpeedMul(e, skill.magnitude, skill.durationSec, Wassup.Battle.Effects.ModifierOrigin.Skill);
                 affected++;
             }
 
@@ -1825,6 +1945,7 @@ namespace Wassup.Bridge
         {
             SyncMonoUnitViews();
             ReconcileStatusFx();
+            ReconcilePickupViews();
             if (_em != null) _dcAuraPool?.Sync(_em); // 드림캐쳐 부착 오라 — 뷰 좌표 갱신 뒤 추종
             if (_em != null) _projectileViewPool?.SyncTransforms(_em);
         }
@@ -1882,7 +2003,90 @@ namespace Wassup.Bridge
                 }
             }
 
+            // Empowered: 드림캐쳐 출처(ModifierOrigin.Dreamcatcher) 스탯 모디파이어가 활성인 유닛에
+            // 강화 오라 (dreamcatcher-empower-aura). revoke(mult=1.0 중립화)면 net=identity 라 자동 해제.
+            // 로드아웃(Dreamstone)/시너지/on-place/slow 등 다른 출처는 제외. 버퍼는 읽기만.
+            if (_modifierSlotQueryCreated)
+            {
+                var slotEntities = _modifierSlotQuery.ToEntityArray(Allocator.Temp);
+                try
+                {
+                    for (int i = 0; i < slotEntities.Length; i++)
+                    {
+                        var slots = _em.GetBuffer<Wassup.Battle.Effects.StatModifierSlot>(slotEntities[i], isReadOnly: true);
+                        if (!Wassup.Battle.Effects.ModifierAuraClassifier.HasActiveDreamcatcherModifier(slots.AsNativeArray()))
+                            continue;
+                        var anchor = ResolveUnitViewTransform(slotEntities[i]);
+                        if (anchor == null) continue;
+                        statusFxSpawner.Ensure(slotEntities[i], Wassup.Data.StatusFxKind.Empowered, anchor);
+                    }
+                }
+                finally
+                {
+                    slotEntities.Dispose();
+                }
+            }
+
             statusFxSpawner.EndFrame();
+        }
+
+        // season-gimmick-overwork unit 6 — 픽업 엔티티↔뷰 poll-reconcile. Pickup 은 순수 ECS
+        // 스폰이라 이벤트가 없어 매 프레임 조정: 새 엔티티엔 뷰 생성, 사라진 엔티티(소비/만료) 뷰 파괴.
+        // _running 무관(placement 중에도 스폰됨). 셀 월드중심에 배치, idle 연출은 PickupPresenter.
+        private void ReconcilePickupViews()
+        {
+            if (_em == null || !_pickupViewQueryCreated) return;
+
+            // 살아있는 픽업 수집.
+            var entities = _pickupViewQuery.ToEntityArray(Allocator.Temp);
+            try
+            {
+                // 신규 엔티티 → 뷰 생성.
+                for (int i = 0; i < entities.Length; i++)
+                {
+                    var e = entities[i];
+                    if (_pickupVisualMap.ContainsKey(e)) continue;
+                    var pickup = _em.GetComponentData<Wassup.Battle.Effects.Pickup>(e);
+                    // sim(셀 중심) → view 변환. 다른 모든 뷰와 동일하게 BoardSpace.ToView 경유 —
+                    // ToView 가 +0.5 로 Tilemap 셀 중심을 맞춘다(생략 시 반 타일 어긋나 모서리에 놓임).
+                    // 시각 hover 는 view 세로(world-up)로만 — ToView 는 sim 높이를 무시한다.
+                    float3 simCenter = GridToWorldCenter(new Vector2Int(pickup.cell.x, pickup.cell.y));
+                    Vector3 pos = (Vector3)Wassup.Core.BoardSpace.ToView(simCenter) + Vector3.up * pickupViewHeight;
+                    var go = new GameObject($"Pickup_{pickup.kind}_{pickup.cell.x}_{pickup.cell.y}");
+                    go.transform.SetParent(transform, worldPositionStays: false);
+                    go.transform.position = pos;
+                    go.AddComponent<Wassup.Battle.Effects.PickupPresenter>()
+                        .Init(pickupViewPrefab, pickupModelScale, pickupModelBaseY, pickupOverrideMaterial);
+                    _pickupVisualMap[e] = go;
+                }
+
+                // 사라진 엔티티 → 뷰 파괴. (_em.Exists 로 판정 — 소비/만료로 DestroyEntity 됨)
+                if (_pickupVisualMap.Count > 0)
+                {
+                    _pickupReapBuffer.Clear();
+                    foreach (var kv in _pickupVisualMap)
+                        if (!_em.Exists(kv.Key)) _pickupReapBuffer.Add(kv.Key);
+                    for (int i = 0; i < _pickupReapBuffer.Count; i++)
+                    {
+                        var key = _pickupReapBuffer[i];
+                        if (_pickupVisualMap.TryGetValue(key, out var go) && go != null)
+                            Destroy(go);
+                        _pickupVisualMap.Remove(key);
+                    }
+                }
+            }
+            finally
+            {
+                entities.Dispose();
+            }
+        }
+
+        // season-gimmick-overwork unit 6 — 픽업 뷰 전체 정리 (매치 teardown).
+        private void ClearPickupVisuals()
+        {
+            foreach (var kv in _pickupVisualMap)
+                if (kv.Value != null) Destroy(kv.Value);
+            _pickupVisualMap.Clear();
         }
 
         // time-manager Unit 3 — TimeManager.ScaleOf(Battle) 을 ECS singleton 으로 write 해
@@ -2444,7 +2648,7 @@ namespace Wassup.Bridge
                     if (!_em.HasComponent<LocalTransform>(e)) continue;
                     var pos = _em.GetComponentData<LocalTransform>(e).Position;
                     if (!InTileRange(pos, placedCell, tileRange)) continue;
-                    EnqueueMoveSpeedMul(e, unitData.onPlaceMagnitude, unitData.onPlaceDuration);
+                    EnqueueMoveSpeedMul(e, unitData.onPlaceMagnitude, unitData.onPlaceDuration, Wassup.Battle.Effects.ModifierOrigin.OnPlace);
                     affected++;
                 }
                 entities.Dispose();
@@ -2461,7 +2665,7 @@ namespace Wassup.Bridge
                     if (!_em.HasComponent<LocalTransform>(e)) continue;
                     var pos = _em.GetComponentData<LocalTransform>(e).Position;
                     if (!InTileRange(pos, placedCell, tileRange)) continue;
-                    EnqueueMoveSpeedMul(e, unitData.onPlaceMagnitude, unitData.onPlaceDuration);
+                    EnqueueMoveSpeedMul(e, unitData.onPlaceMagnitude, unitData.onPlaceDuration, Wassup.Battle.Effects.ModifierOrigin.OnPlace);
                     affected++;
                 }
                 entities.Dispose();
@@ -2514,7 +2718,7 @@ namespace Wassup.Bridge
                     var tileInt = new int2(tileCell.x, tileCell.y);
                     var originInt = new int2(placedCell.x, placedCell.y);
                     if (GridMath.ChebyshevDistance(tileInt, originInt) > tileRange) continue;
-                    EnqueueDamageMul(d.entity, unitData.onPlaceMagnitude, unitData.onPlaceDuration);
+                    EnqueueDamageMul(d.entity, unitData.onPlaceMagnitude, unitData.onPlaceDuration, Wassup.Battle.Effects.ModifierOrigin.OnPlace);
                     affected++;
                 }
             }
@@ -2662,7 +2866,7 @@ namespace Wassup.Bridge
         // Multiplicative slot coexisting instead of refreshing (slot accumulation). All
         // current channels are one-directional; keep new ones so (e.g. don't route both
         // haste and slow through EnqueueMoveSpeedMul's stackId=0).
-        private void EnqueueStatModifier(Entity target, Wassup.Battle.Effects.StatKind stat, float multiplier, float duration, ushort stackId)
+        private void EnqueueStatModifier(Entity target, Wassup.Battle.Effects.StatKind stat, float multiplier, float duration, ushort stackId, Wassup.Battle.Effects.ModifierOrigin origin)
         {
             if (!_statModifierQueue.IsCreated) return;
             Wassup.Battle.Effects.ModifierAuthoring.FromMultiplier(multiplier, out var op, out var magnitude);
@@ -2675,26 +2879,45 @@ namespace Wassup.Bridge
                 duration  = duration,
                 source    = target,
                 stackId   = stackId,
+                origin    = origin,
             });
         }
 
-        public void EnqueueDamageMul(Entity target, float multiplier, float duration)
-            => EnqueueStatModifier(target, Wassup.Battle.Effects.StatKind.DamageMul, multiplier, duration, 0);
+        // 명시적 op+magnitude enqueue. FromMultiplier 로는 표현 못 하는 값(예: Multiplicative 항등 1.0)이
+        // 필요한 revoke 중립화 전용. (일반 경로는 EnqueueStatModifier — 배율→op 자동 분류)
+        private void EnqueueStatModifierRaw(Entity target, Wassup.Battle.Effects.StatKind stat, Wassup.Battle.Effects.CombineOp op, float magnitude, float duration, ushort stackId, Wassup.Battle.Effects.ModifierOrigin origin)
+        {
+            if (!_statModifierQueue.IsCreated) return;
+            _statModifierQueue.Enqueue(new Wassup.Battle.Effects.StatModifierApplyEvent
+            {
+                target    = target,
+                stat      = stat,
+                op        = op,
+                magnitude = magnitude,
+                duration  = duration,
+                source    = target,
+                stackId   = stackId,
+                origin    = origin,
+            });
+        }
+
+        public void EnqueueDamageMul(Entity target, float multiplier, float duration, Wassup.Battle.Effects.ModifierOrigin origin)
+            => EnqueueStatModifier(target, Wassup.Battle.Effects.StatKind.DamageMul, multiplier, duration, 0, origin);
 
         // RapidFire / CooldownReduction: multiplier here means "attack speed factor" (how much faster to fire).
         // AttackSpeedMul > 1 = faster attacks. Legacy ApplyCooldownReduction stored 1/multiplier as a cooldown divisor;
         // the new channel stores the speed multiplier directly (ModifierStatsAggregateSystem applies it to attackSpeedMul).
-        public void EnqueueAttackSpeedMul(Entity target, float multiplier, float duration)
-            => EnqueueStatModifier(target, Wassup.Battle.Effects.StatKind.AttackSpeedMul, multiplier, duration, 0);
+        public void EnqueueAttackSpeedMul(Entity target, float multiplier, float duration, Wassup.Battle.Effects.ModifierOrigin origin)
+            => EnqueueStatModifier(target, Wassup.Battle.Effects.StatKind.AttackSpeedMul, multiplier, duration, 0, origin);
 
-        public void EnqueueMoveSpeedMul(Entity target, float multiplier, float duration)
-            => EnqueueStatModifier(target, Wassup.Battle.Effects.StatKind.MoveSpeedMul, multiplier, duration, 0);
+        public void EnqueueMoveSpeedMul(Entity target, float multiplier, float duration, Wassup.Battle.Effects.ModifierOrigin origin)
+            => EnqueueStatModifier(target, Wassup.Battle.Effects.StatKind.MoveSpeedMul, multiplier, duration, 0, origin);
 
         // Synergy: infinite duration, magnitude refreshed each recompute.
         // multiplier=1.0 (neighbors==0) authors as the additive identity (+0.0).
         // stackId=1 distinguishes synergy slot from onplace/skill DamageMul (stackId=0).
         private void EnqueueSynergyMul(Entity target, float multiplier)
-            => EnqueueStatModifier(target, Wassup.Battle.Effects.StatKind.DamageMul, multiplier, float.PositiveInfinity, 1);
+            => EnqueueStatModifier(target, Wassup.Battle.Effects.StatKind.DamageMul, multiplier, float.PositiveInfinity, 1, Wassup.Battle.Effects.ModifierOrigin.Synergy);
 
         // dreamcatcher-bridge-partial-cleanup unit 0 — 드림캐쳐 카드 번역자
         // (레지스트리·apply/revoke·부착 베이크·axis/effect 매핑)는
@@ -2799,7 +3022,7 @@ namespace Wassup.Bridge
                 if (stone == null) continue;
                 if (!MapDcEffect(stone.effect, out var stat, out var mult)) continue;
                 ushort sid = _dcStackCounter++;
-                _activeDcEffects.Add(new ActiveDcEffect { axis = Wassup.Data.CardTargetAxis.All, stat = stat, mult = mult, stackId = sid });
+                _activeDcEffects.Add(new ActiveDcEffect { axis = Wassup.Data.CardTargetAxis.All, stat = stat, mult = mult, stackId = sid, origin = Wassup.Battle.Effects.ModifierOrigin.Dreamstone });
                 // No defenders are placed yet at this point in BeginPlacement (_defenderByTile
                 // was just cleared above) — this loop is a no-op today, but sharing it with
                 // ApplyDreamcatcherCardInternal's identical loop is harmless and keeps both call sites
@@ -2813,7 +3036,7 @@ namespace Wassup.Bridge
                     var data = kv.Value.data;
                     var entity = kv.Value.entity;
                     if (data != null && _em.Exists(entity) && MatchesDcAxis(data, Wassup.Data.CardTargetAxis.All))
-                        EnqueueStatModifier(entity, stat, mult, DcDuration, sid);
+                        EnqueueStatModifier(entity, stat, mult, DcDuration, sid, Wassup.Battle.Effects.ModifierOrigin.Dreamstone);
                 }
             }
         }
@@ -3457,6 +3680,7 @@ namespace Wassup.Bridge
                 regenPerSec    = 0f,
                 moveSpeedMul   = 1f,
                 damageVsCcMul  = 1f, // dreamcatcher-new-abilities unit 2 — base 1 (dirty 는 disabled 로 추가돼 무-모디파이어 유닛은 집계가 안 돌므로 여기서 필수)
+                maxHealthMul   = 1f, // season-gimmick-overwork unit 1 — base 1 (동일 사유)
             });
             _em.AddComponent<Wassup.Battle.Effects.ModifierStatsDirty>(entity);
             _em.SetComponentEnabled<Wassup.Battle.Effects.ModifierStatsDirty>(entity, false);
@@ -3508,6 +3732,7 @@ namespace Wassup.Bridge
                     duration  = float.PositiveInfinity,
                     source    = entity,
                     stackId   = EffectTileStackId,
+                    origin    = Wassup.Battle.Effects.ModifierOrigin.Tile,
                 });
             }
         }
@@ -3640,6 +3865,81 @@ namespace Wassup.Bridge
                 return Unity.Entities.Entity.Null;
             }
             return SpawnBlockingHazardWithVisual(so, cell);
+        }
+
+        // season-gimmick-overwork unit 3 — 피로도/번아웃 검증용 디버그 로그.
+        // FatigueDebugMenu(에디터 메뉴)의 유일 창구 (절대 제약 1: ECS 접근은 BattleBridge 경유).
+        public void DebugLogFatigueStacks()
+        {
+            if (!Application.isPlaying || !HasLiveEntityManager())
+            {
+                Debug.LogWarning("[FatigueDebug] Enter Play Mode with a live battle first.");
+                return;
+            }
+
+            // 기믹 config 주입 여부 — 미주입이면 FatigueAccrualSystem 이 self-gate 로 안 돈다.
+            var configQuery = _em.CreateEntityQuery(
+                Unity.Entities.ComponentType.ReadOnly<Wassup.Battle.Effects.OverworkGimmickConfig>());
+            Debug.Log($"[FatigueDebug] OverworkGimmickConfig 주입={!configQuery.IsEmpty} (SeasonRuntime.Active={SeasonRuntime.Active?.seasonId ?? "null"}, gimmick={SeasonRuntime.Active?.gimmick?.gimmickId ?? "null"})");
+            configQuery.Dispose();
+
+            var query = _em.CreateEntityQuery(
+                Unity.Entities.ComponentType.ReadOnly<Wassup.Battle.Units.DefenderUnitTag>());
+            using var entities = query.ToEntityArray(Unity.Collections.Allocator.Temp);
+            int logged = 0;
+            foreach (var entity in entities)
+            {
+                byte fatigue = 0;
+                if (_em.HasBuffer<Wassup.Battle.Effects.StackModifierSlot>(entity))
+                {
+                    var slots = _em.GetBuffer<Wassup.Battle.Effects.StackModifierSlot>(entity);
+                    for (int i = 0; i < slots.Length; i++)
+                        if (slots[i].kind == Wassup.Battle.Effects.StackKind.Fatigue)
+                            fatigue = slots[i].stackCount;
+                }
+                var stats = _em.HasComponent<Wassup.Battle.Effects.ModifierStats>(entity)
+                    ? _em.GetComponentData<Wassup.Battle.Effects.ModifierStats>(entity)
+                    : default;
+                var hp = _em.HasComponent<Wassup.Battle.Units.Health>(entity)
+                    ? _em.GetComponentData<Wassup.Battle.Units.Health>(entity)
+                    : default;
+                Debug.Log($"[FatigueDebug] {entity} 피로도={fatigue} 공속x{stats.attackSpeedMul:F2} 공격x{stats.damageMul:F2} 최대체력x{stats.maxHealthMul:F2} HP={hp.value:F0}/{hp.max:F0}");
+                logged++;
+            }
+            if (logged == 0) Debug.Log("[FatigueDebug] 배치된 defender 없음.");
+            query.Dispose();
+        }
+
+        // season-gimmick-overwork unit 4 — 레드불 픽업 검증용 디버그 로그.
+        public void DebugLogPickups()
+        {
+            if (!Application.isPlaying || !HasLiveEntityManager())
+            {
+                Debug.LogWarning("[PickupDebug] Enter Play Mode with a live battle first.");
+                return;
+            }
+
+            var stateQuery = _em.CreateEntityQuery(
+                Unity.Entities.ComponentType.ReadOnly<Wassup.Battle.Effects.PickupSpawnState>());
+            Debug.Log($"[PickupDebug] PickupSpawnState 주입={!stateQuery.IsEmpty}");
+            stateQuery.Dispose();
+
+            var query = _em.CreateEntityQuery(
+                Unity.Entities.ComponentType.ReadOnly<Wassup.Battle.Effects.Pickup>());
+            using var pickups = query.ToComponentDataArray<Wassup.Battle.Effects.Pickup>(Unity.Collections.Allocator.Temp);
+            Debug.Log($"[PickupDebug] 활성 픽업 {pickups.Length}개");
+            int nonPlayable = 0;
+            for (int i = 0; i < pickups.Length; i++)
+            {
+                var cell = pickups[i].cell;
+                var tile = _generatedMap.IsCreated && IsInGeneratedMapBounds(cell)
+                    ? _generatedMap.TileAt(cell).ToString() : "OOB";
+                bool ok = tile == "Walk" || tile == "Place";
+                if (!ok) nonPlayable++;
+                Debug.Log($"[PickupDebug]   {pickups[i].kind} cell=({cell.x},{cell.y}) tile={tile}{(ok ? "" : " ⚠비이동/배치")} 남은수명={pickups[i].remainingLife:F1}s");
+            }
+            Debug.Log($"[PickupDebug] 이동/배치 외 타일 스폰 = {nonPlayable}개 (0 이어야 정상)");
+            query.Dispose();
         }
 
         private int RegisterBlockingHazardSO(BlockingHazardSO so)
@@ -3854,6 +4154,35 @@ namespace Wassup.Bridge
             {
                 if (so == null) continue;
                 _stackThresholds[so.kind] = so.thresholds ?? System.Array.Empty<Wassup.Data.ThresholdRule>();
+            }
+        }
+
+        // season-gimmick-overwork unit 2 — 활성 시즌의 기믹을 ECS config 싱글턴으로 주입.
+        // SO 수치를 blittable 로 복사 (Burst 시스템이 SO 를 직접 만지지 않는다).
+        // gimmick == null 이면 아무것도 만들지 않는다 = 기믹 시스템 전체 비활성.
+        private void CreateGimmickConfigIfActive()
+        {
+            // SeasonRuntime.Active 가 아니라 serialized seasonRegistry 를 직접 읽는다 —
+            // PrepareDraftMap(→EnsureQueriesAndQueues)이 Awake(Bind)보다 먼저 외부에서 불릴 수
+            // 있어(스크립트 실행 순서), static 바인딩에 기대면 주입이 조용히 누락된다 (unit 3 실측).
+            var season = seasonRegistry != null ? seasonRegistry.activeSeason : null;
+            if (season?.gimmick is Wassup.Data.OverworkGimmickData od)
+            {
+                Debug.Log($"[GimmickConfig] OverworkGimmickConfig 주입 (season={season.seasonId}, gimmick={od.gimmickId})");
+                var gimmickEntity = _em.CreateEntity();
+                _em.AddComponentData(gimmickEntity, new Wassup.Battle.Effects.OverworkGimmickConfig
+                {
+                    fatigueInterval       = od.fatigueInterval,
+                    fatigueAmount         = od.fatigueAmount,
+                    fatigueMaxStack       = od.fatigueStack != null ? od.fatigueStack.maxStack : (byte)5,
+                    fatiguePerAppDuration = od.fatigueStack != null ? od.fatigueStack.perAppDuration : 25f,
+                    redbullSpawnInterval  = od.redbullSpawnInterval,
+                    redbullLifetime       = od.redbullLifetime,
+                    redbullMaxActive      = od.maxActivePickups,
+                    lastRunAttackSpeedMul = od.lastRunAttackSpeedMul,
+                    lastRunDuration       = od.lastRunDuration,
+                    lastRunDamageFraction = od.lastRunDamageFraction,
+                });
             }
         }
 
@@ -4267,6 +4596,7 @@ namespace Wassup.Bridge
                 regenPerSec    = 0f,
                 moveSpeedMul   = 1f,
                 damageVsCcMul  = 1f, // dreamcatcher-new-abilities unit 2 — base 1 (dirty 는 disabled 로 추가돼 무-모디파이어 유닛은 집계가 안 돌므로 여기서 필수)
+                maxHealthMul   = 1f, // season-gimmick-overwork unit 1 — base 1 (동일 사유)
             });
             _em.AddComponent<Wassup.Battle.Effects.ModifierStatsDirty>(entity);
             _em.SetComponentEnabled<Wassup.Battle.Effects.ModifierStatsDirty>(entity, false);

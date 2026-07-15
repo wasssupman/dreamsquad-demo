@@ -8,6 +8,17 @@ namespace Wassup.Battle.Units
         public float value;
         public float max;
 
+        // season-gimmick-overwork unit 1 — 최대체력 배율 적용의 순수 계산.
+        // newMax 는 1 HP 바닥 (max<=0 방지), 축소 시 value 를 클램프,
+        // 배율 복원 시 value 를 올리지 않는다 (무료 힐 없음). Pure + Burst-safe.
+        // 소비자: MaxHealthScaleSystem (Units — Health.max 의 유일한 런타임 writer).
+        // 반환: x = newValue, y = newMax.
+        public static float2 ScaleMax(float value, float baseMax, float mul)
+        {
+            float newMax = math.max(1f, baseMax * mul);
+            return new float2(math.min(value, newMax), newMax);
+        }
+
         // Normalized HP in [0,1]. max<=0 → 0 (avoids NaN/Inf from div-by-zero).
         // Single definition shared by DamageApplicationSystem (event hpRatio payload)
         // and BattleBridge tint poll. Pure + Burst-safe.

@@ -11,6 +11,7 @@ namespace Wassup.Core
         const uint MapSalt    = 0x9E3779B1u; // map stream
         const uint WaveSalt   = 0x85EBCA77u; // wave stream
         const uint VisualSalt = 0xC2B2AE3Du; // projectile jitter stream
+        const uint PickupSalt = 0x27D4EB2Fu; // season-gimmick-overwork — 픽업 스폰 셀 stream
 
         /// <summary>
         /// 미지정(0) 시 매 판 새 시드. 시간 + Unity RNG 혼합으로 같은 tick 충돌 회피.
@@ -22,6 +23,7 @@ namespace Wassup.Core
         public static int DeriveMapSeed(int matchSeed)    => Mix((uint)matchSeed, MapSalt);
         public static int DeriveWaveSeed(int matchSeed)   => Mix((uint)matchSeed, WaveSalt);
         public static int DeriveVisualSeed(int matchSeed) => Mix((uint)matchSeed, VisualSalt);
+        public static int DerivePickupSeed(int matchSeed) => Mix((uint)matchSeed, PickupSalt);
 
         // 결정론적 32-bit 믹스(xorshift-multiply 류). 0 입력도 0 아닌 출력 보장.
         static int Mix(uint seed, uint salt)

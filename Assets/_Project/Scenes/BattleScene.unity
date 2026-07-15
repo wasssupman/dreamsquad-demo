@@ -4202,7 +4202,13 @@ MonoBehaviour:
   tilemapHiddenEnvironment: []
   stackModifierAuthoring:
   - {fileID: 11400000, guid: 9ef2f1f251f1c48ca88ace43e01b0a12, type: 2}
+  - {fileID: 11400000, guid: 8509b6127629ddd4893dfa78d7f4ea96, type: 2}
   enableAdjacencySynergy: 0
+  pickupViewPrefab: {fileID: 919132149155446097, guid: 5e4c5f9eddda4e94ea888e9beff38d4c, type: 3}
+  pickupViewHeight: 0.3
+  pickupModelScale: 1
+  pickupModelBaseY: 0
+  pickupOverrideMaterial: {fileID: 2100000, guid: b671d65788615a142a9cd6aa0e69066d, type: 2}
 --- !u!4 &1939688409
 Transform:
   m_ObjectHideFlags: 0
@@ -4298,7 +4304,6 @@ MonoBehaviour:
   config: {fileID: 11400000, guid: b1ff068a6a1b7a44b8fd4ea85f159ff6, type: 2}
   profileSO: {fileID: 11400000, guid: e610b4c0bbbeb4becb09188e400e6a55, type: 2}
   cardCatalog: {fileID: 11400000, guid: 7e41a0cd1ffdc4b6c872ef0ac3d8df0e, type: 2}
-  fallbackDeck: {fileID: 11400000, guid: d3a884355714e4262a953d61fa97e2af, type: 2}
   skillLoadout: {fileID: 1495062453}
   activeCards:
   - {fileID: 11400000, guid: c2156bc97318c334c90169a18c55dc80, type: 2}
