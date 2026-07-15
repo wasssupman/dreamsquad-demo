@@ -1,6 +1,6 @@
 # gimmick-match-integration
 
-> 상태: 계획 — 승인 대기. 구현 착수 전. (2026-07-15, review 반영 rev1)
+> 상태: 완료 2026-07-15 — unit 0~2 구현·검증(EditMode 813 pass, Play on/off 로그 확인). 커밋 `4484b729`·`113c2abf`·`c9b5f3d5`. handoff: `4_handoff_summary.md`. 미확인: 배치 페이즈 카드 육안(Notes 참조).
 
 ## 상위 목표
 
