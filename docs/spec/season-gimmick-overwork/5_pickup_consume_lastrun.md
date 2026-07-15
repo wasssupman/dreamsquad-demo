@@ -2,7 +2,7 @@
 
 ## 목적
 
-야근 룰 2 완성. 유닛(적 통과 / defender 배치)이 레드불과 같은 셀에 있으면 소비되고 **라스트런** 발동 — 공격속도 ×1.5 (5s) → 5초 후 최대체력 ×0.1 (판 끝까지). 적도 동일 (2026-07-15 사용자 결정).
+야근 룰 2 완성. 유닛(적 통과 / defender 배치)이 레드불과 같은 셀에 있으면 소비되고 **라스트런** 발동 — **5초간 공격속도 50% 증가하고, 종료되면 최대 체력의 50% 피해를 입는다** (2026-07-15 사용자 재정의: 기존 "최대체력 ×0.1 배율" → "최대체력의 50% 데미지"로 변경, 직관성). 적도 동일.
 
 ## 변경 대상
 
@@ -18,7 +18,8 @@
    - **Defender**: `DefenderTile.cell` (배치 셀, 권위값). **Enemy**: `GridMath.WorldToCell(LocalTransform, flow.*)`. 둘 다 `WithNone<PendingDeployment,DeadTag>`.
    - 셀이 맵에 있으면 소비: 맵에서 제거(첫 소비자 승) → pickup ecb.DestroyEntity → AS 버프 인큐(`AttackSpeedMul ×lastRunAttackSpeedMul`, dur=`lastRunDuration`, source=unit) → `LastRun{remaining=lastRunDuration}` add/refresh.
    - Defender·Enemy 통합 로직은 local function `Consume(cell, unit)`.
-3. **LastRunSystem** (Effects, Burst): `LastRun.remaining -= dt`; ≤0 → `MaxHealthMul ×lastRunMaxHealthMul` (duration=+∞, source=unit) 인큐 + `RemoveComponent<LastRun>`. MaxHealthScaleSystem(Units)가 소비해 최대체력/HP 클램프.
+3. **LastRunSystem** (Effects): `LastRun.remaining -= dt`; ≤0 → **최대체력의 `lastRunDamageFraction`(0.5) 만큼을 데미지로** — 정식 데미지 인박스 `IncomingDamage`(Units 소유, TRD 2.5.2 cross-context 채널)에 `{ amount = Health.max × 0.5, source = Null(자해·킬 미귀속) }` append + `RemoveComponent<LastRun>`. DamageApplicationSystem(Units)이 소비해 Health 감산·사망 처리 (Health 쓰기는 Units 소유 — 맥락 경계 유지).
+   - **주의**: DamageApplicationSystem 이 `dmgTakenMul` 을 곱한다. 야근 기믹엔 dmgTakenMul 모디파이어가 없어 실질 정확히 50%지만, 무관한 방어버프가 있으면 경감된다(정상 데미지 파이프라인 일관). "true damage" 필요 시 후속.
 4. **origin**: 라스트런 StatModifier 는 `ModifierOrigin.Unspecified` (그 enum 은 unit-buff-debuff-aura 세션 소유 — 전용 `Gimmick` origin 은 조율 후 follow-up). 현 소비자(HasActiveDreamcatcherModifier)는 Dreamcatcher 출처만 봄 → 오분류 없음.
 
 ## 계약 노트

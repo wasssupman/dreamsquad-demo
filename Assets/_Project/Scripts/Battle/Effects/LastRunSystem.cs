@@ -1,10 +1,12 @@
-// season-gimmick-overwork unit 5 — 라스트런 crash: LastRun.remaining 만료 시 최대체력
-// ×lastRunMaxHealthMul 을 영구(duration=+∞) 인큐하고 컴포넌트 제거. MaxHealthScaleSystem(Units)이
-// 소비해 실제 Health.max/현재값 클램프 (Health 쓰기는 Units 소유 — 맥락 경계 유지).
+// season-gimmick-overwork unit 5 — 라스트런 crash: LastRun.remaining 만료 시 **최대체력의
+// lastRunDamageFraction(0.5) 만큼을 데미지로** 입힌다. Health 쓰기는 Units 소유이므로 정식
+// 데미지 인박스 IncomingDamage(TRD 2.5.2 cross-context 채널)에 append → DamageApplicationSystem
+// (Units)이 감산·사망 처리. source=Null(자해, 킬 미귀속 — DoT/환경 컨벤션).
 // OverworkGimmickConfig 부재(기믹 비활성) 시 미가동.
 // non-Burst: crash telemetry 로그(저빈도, PickupConsumeSystem 소비 로그와 대칭).
 using Unity.Collections;
 using Unity.Entities;
+using Wassup.Battle.Units;
 
 namespace Wassup.Battle.Effects
 {
@@ -14,14 +16,12 @@ namespace Wassup.Battle.Effects
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<OverworkGimmickConfig>();
-            state.RequireForUpdate<StatModifierApplyEventsSingleton>();
         }
 
         public void OnUpdate(ref SystemState state)
         {
             var config = SystemAPI.GetSingleton<OverworkGimmickConfig>();
             float dt = SystemAPI.Time.DeltaTime;
-            var statQ = SystemAPI.GetSingleton<StatModifierApplyEventsSingleton>().queue;
             var ecb = new EntityCommandBuffer(Allocator.Temp);
 
             foreach (var (lastRun, entity) in
@@ -31,20 +31,16 @@ namespace Wassup.Battle.Effects
                 if (lastRun.ValueRO.remaining > 0f)
                     continue;
 
-                // crash: 최대체력 영구 컷 (source=자기, +∞ 지속 → 판 끝까지).
-                statQ.Enqueue(new StatModifierApplyEvent
+                // crash: 최대체력 × fraction 데미지 → IncomingDamage 인박스(버퍼 append = 비구조 변경).
+                // DamageApplicationSystem 이 dmgTakenMul 곱 후 감산 — 야근 기믹엔 dmgTakenMul 없어 실질 정확.
+                if (SystemAPI.HasComponent<Health>(entity) && SystemAPI.HasBuffer<IncomingDamage>(entity))
                 {
-                    target    = entity,
-                    stat      = StatKind.MaxHealthMul,
-                    op        = CombineOp.Multiplicative,
-                    magnitude = config.lastRunMaxHealthMul,
-                    duration  = float.PositiveInfinity,
-                    source    = entity,
-                    stackId   = 0,
-                    origin    = ModifierOrigin.Unspecified,
-                });
+                    float maxHp = SystemAPI.GetComponent<Health>(entity).max;
+                    float dmg = maxHp * config.lastRunDamageFraction;
+                    SystemAPI.GetBuffer<IncomingDamage>(entity).Add(new IncomingDamage { amount = dmg });
+                    UnityEngine.Debug.Log($"[Redbull] {entity} crash → 최대체력({maxHp:F0})의 {config.lastRunDamageFraction * 100f:F0}% = {dmg:F0} 피해");
+                }
                 ecb.RemoveComponent<LastRun>(entity);
-                UnityEngine.Debug.Log($"[Redbull] {entity} crash → 최대체력 x{config.lastRunMaxHealthMul:F2} (영구)");
             }
 
             ecb.Playback(state.EntityManager);

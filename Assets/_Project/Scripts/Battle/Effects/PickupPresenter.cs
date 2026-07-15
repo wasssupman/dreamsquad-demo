@@ -3,9 +3,9 @@ using UnityEngine;
 namespace Wassup.Battle.Effects
 {
     // season-gimmick-overwork unit 6 — 레드불 픽업 뷰 (BattleBridge 가 엔티티↔GameObject 조정).
-    // BlockingHazardPresenter 동형이되, pickup 은 순수 ECS 스폰이라 BattleBridge 가 매 프레임
-    // poll-reconcile 로 생성/파괴한다(이벤트 아님). 좌표는 BattleBridge 가 셀 월드중심으로 세팅.
-    // 아트는 플레이스홀더(절차적 발광 큐브 + bob/spin) — 정식 프리팹은 후속.
+    // BattleBridge 가 AddComponent 직후 Init 호출: modelPrefab(FBX 등) 있으면 그걸, 없으면
+    // 절차적 발광 큐브 플레이스홀더. 둘 다 동일하게 bob/spin idle 연출.
+    // 좌표는 BattleBridge 가 셀 월드중심(BoardSpace.ToView)으로 세팅.
     public class PickupPresenter : MonoBehaviour
     {
         [SerializeField] private float bobAmplitude = 0.12f;
@@ -16,10 +16,29 @@ namespace Wassup.Battle.Effects
         private float _baseLocalY;
         private float _phase;
 
-        private void Awake()
+        // BattleBridge 가 뷰 생성 직후 1회 호출. modelPrefab null → 절차적 큐브.
+        // modelScale: 모델 로컬 스케일(FBX 크기 미지수 → 인스펙터 튜닝). baseLocalY: 지면 위 hover 기준.
+        public void Init(GameObject modelPrefab, float modelScale, float baseLocalY)
         {
-            if (_visual == null)
-                BuildPlaceholder();
+            if (_visual != null) return;
+
+            if (modelPrefab != null)
+            {
+                var m = Instantiate(modelPrefab, transform);
+                m.transform.localPosition = Vector3.zero;
+                m.transform.localRotation = Quaternion.identity;
+                m.transform.localScale = Vector3.one * (modelScale > 0f ? modelScale : 1f);
+                StripPhysicsAndShadows(m);
+                _visual = m.transform;
+            }
+            else
+            {
+                _visual = BuildPlaceholderCube();
+            }
+
+            _baseLocalY = baseLocalY;
+            var lp = _visual.localPosition;
+            _visual.localPosition = new Vector3(lp.x, _baseLocalY, lp.z);
         }
 
         private void Update()
@@ -33,23 +52,31 @@ namespace Wassup.Battle.Effects
             _visual.Rotate(Vector3.up, spinDegPerSec * Time.unscaledDeltaTime, Space.Self);
         }
 
-        private void BuildPlaceholder()
+        private static void StripPhysicsAndShadows(GameObject root)
         {
-            // Red Bull 캔 느낌의 플레이스홀더: 살짝 세로로 긴 발광 큐브.
+            foreach (var col in root.GetComponentsInChildren<Collider>()) Destroy(col);
+            foreach (var r in root.GetComponentsInChildren<Renderer>())
+            {
+                r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                r.receiveShadows = false;
+            }
+        }
+
+        private Transform BuildPlaceholderCube()
+        {
             var cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
             cube.name = "Redbull_Placeholder";
             var col = cube.GetComponent<Collider>();
-            if (col != null) Destroy(col); // 물리 불필요
+            if (col != null) Destroy(col);
             cube.transform.SetParent(transform, false);
             cube.transform.localScale = new Vector3(0.28f, 0.5f, 0.28f);
-            _baseLocalY = 0.25f;
-            cube.transform.localPosition = new Vector3(0f, _baseLocalY, 0f);
-            _visual = cube.transform;
+            cube.transform.localPosition = Vector3.zero;
 
             var renderer = cube.GetComponent<MeshRenderer>();
             renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             renderer.receiveShadows = false;
             renderer.sharedMaterial = CreateEmissiveMaterial(new Color(0.05f, 0.35f, 0.9f)); // Red Bull 블루
+            return cube.transform;
         }
 
         private static Material CreateEmissiveMaterial(Color color)

@@ -128,10 +128,14 @@ namespace Wassup.Bridge
         [SerializeField] private Wassup.Data.StackModifierSO[] stackModifierAuthoring;
 
         [Header("Season Gimmick — Pickup View (season-gimmick-overwork unit 6)")]
-        [Tooltip("레드불 픽업 뷰 프리팹. 비우면 절차적 플레이스홀더(PickupPresenter) 사용.")]
+        [Tooltip("레드불 픽업 뷰 모델/프리팹(FBX 가능). 비우면 절차적 플레이스홀더 큐브.")]
         [SerializeField] private GameObject pickupViewPrefab;
-        [Tooltip("픽업 뷰의 셀 중심 위 높이(월드).")]
+        [Tooltip("픽업 뷰의 셀 중심 위 높이(월드, 지면 hover).")]
         [SerializeField] private float pickupViewHeight = 0.3f;
+        [Tooltip("모델 로컬 스케일(FBX 크기 보정).")]
+        [SerializeField] private float pickupModelScale = 1f;
+        [Tooltip("모델 로컬 기준 Y(피벗 보정용 추가 오프셋).")]
+        [SerializeField] private float pickupModelBaseY = 0f;
 
         private ManualMapInput? _manualMapInput;
         private GeneratedMap _generatedMap;
@@ -2038,10 +2042,8 @@ namespace Wassup.Bridge
                     var go = new GameObject($"Pickup_{pickup.kind}_{pickup.cell.x}_{pickup.cell.y}");
                     go.transform.SetParent(transform, worldPositionStays: false);
                     go.transform.position = pos;
-                    if (pickupViewPrefab != null)
-                        Instantiate(pickupViewPrefab, go.transform, worldPositionStays: false);
-                    else
-                        go.AddComponent<Wassup.Battle.Effects.PickupPresenter>();
+                    go.AddComponent<Wassup.Battle.Effects.PickupPresenter>()
+                        .Init(pickupViewPrefab, pickupModelScale, pickupModelBaseY);
                     _pickupVisualMap[e] = go;
                 }
 
@@ -4120,7 +4122,7 @@ namespace Wassup.Bridge
                     redbullMaxActive      = od.maxActivePickups,
                     lastRunAttackSpeedMul = od.lastRunAttackSpeedMul,
                     lastRunDuration       = od.lastRunDuration,
-                    lastRunMaxHealthMul   = od.lastRunMaxHealthMul,
+                    lastRunDamageFraction = od.lastRunDamageFraction,
                 });
             }
         }

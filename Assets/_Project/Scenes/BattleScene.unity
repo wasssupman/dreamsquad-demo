@@ -1623,6 +1623,7 @@ MonoBehaviour:
   bridge: {fileID: 1939688408}
   draftController: {fileID: 20521825}
   dragPlacementController: {fileID: 0}
+  deployCutscenePlayer: {fileID: 0}
   swaySettings: {fileID: 11400000, guid: 680d35e2ba6a44815bf731006e75eddf, type: 2}
   nameFont: {fileID: 11400000, guid: 218cce73e3172a04a8c536a4d368d90f, type: 2}
   trayConfig: {fileID: 11400000, guid: 903c6fe71bf7844489939928774546b6, type: 2}
@@ -3114,8 +3115,37 @@ MonoBehaviour:
   numberFont: {fileID: 11400000, guid: 7f50de03946cd4d229e8920dd91dbd1a, type: 2}
   trayConfig: {fileID: 11400000, guid: 903c6fe71bf7844489939928774546b6, type: 2}
   flipHalfDuration: 0.14
-  fanAngle: 4
+  cardOverlap: 54
+  arcHeight: 46
+  rotMax: 10
+  handBaseY: 16
+  springK: 14
+  dealStaggerSec: 0.05
+  dealDurationSec: 0.34
+  dealStartScale: 0.62
+  trayFadeSec: 0.12
+  dealRise: 220
+  dealTiltX: 50
+  clusterK: 0.3
+  crumpleUnfoldSec: 0.6
+  textFadeSec: 0.18
+  sinkDurationSec: 0.26
+  sinkStaggerSec: 0.04
+  focusRaise: 100
+  focusScale: 1.28
+  scatter: 42
+  scatterNeighbors: 2
+  idleBobY: 5
+  idleSwayX: 3
+  idleFreq: 1.6
+  idlePhase: 0.7
   unitHoverTint: {r: 1, g: 0.28, b: 0.22, a: 1}
+  tooltipWidth: 480
+  tooltipGap: 18
+  tooltipRise: 90
+  tooltipBobY: 6
+  tooltipBobX: 3
+  tooltipBobFreq: 1.2
 --- !u!4 &1558370270
 Transform:
   m_ObjectHideFlags: 0
@@ -3373,7 +3403,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.PlacementPhaseView
   bridge: {fileID: 1939688408}
-  draftController: {fileID: 20521825}
   gameManager: {fileID: 1495062450}
   startButtonBackground: {fileID: 21300000, guid: 28f2212786468bd48bd8ef2496cde2b7, type: 3}
   startFillColor: {r: 0.96, g: 0.58, b: 0.14, a: 1}
@@ -4050,6 +4079,10 @@ MonoBehaviour:
   stackModifierAuthoring:
   - {fileID: 11400000, guid: 9ef2f1f251f1c48ca88ace43e01b0a12, type: 2}
   - {fileID: 11400000, guid: 8509b6127629ddd4893dfa78d7f4ea96, type: 2}
+  pickupViewPrefab: {fileID: 919132149155446097, guid: 5e4c5f9eddda4e94ea888e9beff38d4c, type: 3}
+  pickupViewHeight: 0.3
+  pickupModelScale: 0.5
+  pickupModelBaseY: 0
 --- !u!4 &1939688409
 Transform:
   m_ObjectHideFlags: 0
@@ -4145,7 +4178,6 @@ MonoBehaviour:
   config: {fileID: 11400000, guid: b1ff068a6a1b7a44b8fd4ea85f159ff6, type: 2}
   profileSO: {fileID: 11400000, guid: e610b4c0bbbeb4becb09188e400e6a55, type: 2}
   cardCatalog: {fileID: 11400000, guid: 7e41a0cd1ffdc4b6c872ef0ac3d8df0e, type: 2}
-  fallbackDeck: {fileID: 11400000, guid: d3a884355714e4262a953d61fa97e2af, type: 2}
   skillLoadout: {fileID: 1495062453}
   activeCards:
   - {fileID: 11400000, guid: c2156bc97318c334c90169a18c55dc80, type: 2}

@@ -67,7 +67,7 @@ namespace Wassup.Battle.Effects
                 if (em.HasComponent<LastRun>(unit)) ecb.SetComponent(unit, lastRun);
                 else ecb.AddComponent(unit, lastRun);
 
-                UnityEngine.Debug.Log($"[Redbull] {unit} consumed at cell ({cell.x},{cell.y}) → 라스트런 (공속 x{config.lastRunAttackSpeedMul:F2}, {config.lastRunDuration:F0}s 후 최대체력 x{config.lastRunMaxHealthMul:F2})");
+                UnityEngine.Debug.Log($"[Redbull] {unit} consumed at cell ({cell.x},{cell.y}) → 라스트런 (공속 x{config.lastRunAttackSpeedMul:F2} {config.lastRunDuration:F0}s, 종료 시 최대체력의 {config.lastRunDamageFraction * 100f:F0}% 피해)");
             }
 
             // Defender: 배치 셀(권위값).

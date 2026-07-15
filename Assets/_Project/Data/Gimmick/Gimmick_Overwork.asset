@@ -22,4 +22,4 @@ MonoBehaviour:
   maxActivePickups: 6
   lastRunAttackSpeedMul: 1.5
   lastRunDuration: 5
-  lastRunMaxHealthMul: 0.1
+  lastRunDamageFraction: 0.5

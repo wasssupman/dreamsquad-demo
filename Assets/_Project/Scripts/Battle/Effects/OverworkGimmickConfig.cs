@@ -18,6 +18,6 @@ namespace Wassup.Battle.Effects
         public int redbullMaxActive;
         public float lastRunAttackSpeedMul;
         public float lastRunDuration;
-        public float lastRunMaxHealthMul;
+        public float lastRunDamageFraction; // crash 데미지 = 최대체력 × 이 비율
     }
 }
