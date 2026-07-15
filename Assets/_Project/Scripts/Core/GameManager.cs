@@ -21,6 +21,8 @@ namespace Wassup.Core
         [SerializeField] private DraftController draftController;
         [SerializeField] private CostRuntime costRuntime;
         [SerializeField] private CostConfig costConfig;
+        // gimmick-match-integration unit 1 — 매치 기믹 게이팅/목록 소스(시즌 대체). 미할당이면 기믹 없음.
+        [SerializeField] private BattleConfig battleConfig;
         [SerializeField] private SkillLoadoutController skillLoadout;
         // squad-loadout Unit 3 — squad carry-in source (drives the squad branch
         // in Start; null/empty → existing draft path).
@@ -43,6 +45,8 @@ namespace Wassup.Core
         public SkillLoadoutController SkillLoadout => skillLoadout;
         public bool IsAiming { get; set; }
         public DefenderUnitData SelectedDefender { get; set; }
+        // gimmick-match-integration unit 1 — 매치당 배정된 기믹(없으면 null). GimmickGuideView 가 읽는다.
+        public GimmickData AssignedGimmick { get; private set; }
 
         public GamePhase CurrentPhase { get; private set; } = GamePhase.None;
         public event System.Action<GamePhase> PhaseChanged;
@@ -150,6 +154,30 @@ namespace Wassup.Core
             Debug.Log($"[GameManager] matchSeed={MatchSeed} (fixed={debugFixedMatchSeed != 0})");
         }
 
+        // gimmick-match-integration unit 1 — 매치당 1회 기믹 배정(모든 진입 경로 공통, 모든
+        // PrepareDraftMap/StartBattle 이전). BattleConfig 게이트: 비활성/빈 pool → null(클린 플레이).
+        // 결정론: 같은 matchSeed → 같은 기믹. Restart(씬 리로드 없음)는 초기 배정 유지(재호출 없음).
+        private void AssignGimmick()
+        {
+            AssignedGimmick = null;
+            if (battleConfig != null && battleConfig.gimmickEnabled)
+            {
+                var pool = battleConfig.gimmickPool;
+                if (pool != null && pool.Length > 0)
+                {
+                    int idx = Wassup.Core.GimmickSelection.PickIndex(
+                        pool.Length, (uint)Wassup.Core.MatchSeed.DeriveGimmickSeed(MatchSeed));
+                    if (idx >= 0) AssignedGimmick = pool[idx];
+                }
+                else
+                {
+                    Debug.LogWarning("[GameManager] gimmickEnabled=true 이지만 gimmickPool 이 비어 있다 — 기믹 없이 진행.");
+                }
+            }
+            if (battleBridge != null) battleBridge.SetAssignedGimmick(AssignedGimmick);
+            Debug.Log($"[GameManager] gimmick={(AssignedGimmick != null ? AssignedGimmick.gimmickId : "none")}");
+        }
+
         // Start runs after all Awake/OnEnable of peers, so DraftView has subscribed
         // to DraftController events before we emit DraftStarted.
         private void Start()
@@ -157,6 +185,7 @@ namespace Wassup.Core
             // match-seed-unification — 맵을 빌드하는 PrepareDraftMap 보다 먼저 매치 시드를
             // 확정·주입한다. Draft·Squad 양 경로 공통으로 여기서 1회 보장.
             EnsureMatchSeed();
+            AssignGimmick();
 
             // wave-authoring-test-mode unit 3 — 테스트 모드 최상위 분기. 작성 플랜 +
             // 디펜더 프리셋으로 드래프트/스쿼드를 모두 건너뛴다. 비활성이면 무변경.

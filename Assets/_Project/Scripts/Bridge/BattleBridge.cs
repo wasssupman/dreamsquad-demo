@@ -285,6 +285,11 @@ namespace Wassup.Bridge
         private int _matchSeed;
         public void SetMatchSeed(int seed) => _matchSeed = seed;
 
+        // gimmick-match-integration unit 1 — GameManager 가 배정한 매치 기믹(없으면 null).
+        // 3개 소비 지점(config 주입·픽업 스폰 게이트·디버그 로그)의 단일 소스. 시즌 결합 대체.
+        private Wassup.Data.GimmickData _assignedGimmick;
+        public void SetAssignedGimmick(Wassup.Data.GimmickData g) => _assignedGimmick = g;
+
         private struct PendingSpawnEntry
         {
             public SpawnEntry entry;
@@ -643,8 +648,8 @@ namespace Wassup.Bridge
             TeardownPickupSpawnState();
 
             if (!_generatedMap.IsCreated || _em == null) return;
-            var season = seasonRegistry != null ? seasonRegistry.activeSeason : null;
-            if (!(season?.gimmick is Wassup.Data.OverworkGimmickData)) return;
+            // gimmick-match-integration unit 1 — 소스가 시즌이 아니라 GameManager 배정 기믹.
+            if (!(_assignedGimmick is Wassup.Data.OverworkGimmickData)) return;
 
             int2 gridSize = _generatedMap.gridSize;
             int n = gridSize.x * gridSize.y;
@@ -3875,7 +3880,7 @@ namespace Wassup.Bridge
             // 기믹 config 주입 여부 — 미주입이면 FatigueAccrualSystem 이 self-gate 로 안 돈다.
             var configQuery = _em.CreateEntityQuery(
                 Unity.Entities.ComponentType.ReadOnly<Wassup.Battle.Effects.OverworkGimmickConfig>());
-            Debug.Log($"[FatigueDebug] OverworkGimmickConfig 주입={!configQuery.IsEmpty} (SeasonRuntime.Active={SeasonRuntime.Active?.seasonId ?? "null"}, gimmick={SeasonRuntime.Active?.gimmick?.gimmickId ?? "null"})");
+            Debug.Log($"[FatigueDebug] OverworkGimmickConfig 주입={!configQuery.IsEmpty} (season={SeasonRuntime.Active?.seasonId ?? "null"}, gimmick={_assignedGimmick?.gimmickId ?? "null"})");
             configQuery.Dispose();
 
             var query = _em.CreateEntityQuery(
@@ -4157,13 +4162,12 @@ namespace Wassup.Bridge
         // gimmick == null 이면 아무것도 만들지 않는다 = 기믹 시스템 전체 비활성.
         private void CreateGimmickConfigIfActive()
         {
-            // SeasonRuntime.Active 가 아니라 serialized seasonRegistry 를 직접 읽는다 —
-            // PrepareDraftMap(→EnsureQueriesAndQueues)이 Awake(Bind)보다 먼저 외부에서 불릴 수
-            // 있어(스크립트 실행 순서), static 바인딩에 기대면 주입이 조용히 누락된다 (unit 3 실측).
-            var season = seasonRegistry != null ? seasonRegistry.activeSeason : null;
-            if (season?.gimmick is Wassup.Data.OverworkGimmickData od)
+            // gimmick-match-integration unit 1 — 소스가 시즌이 아니라 GameManager 가 배정한
+            // _assignedGimmick(BattleConfig.gimmickPool 에서 시드 기반 선택). GameManager.Start 가
+            // 모든 PrepareDraftMap/StartBattle 이전에 SetAssignedGimmick 을 호출해 세팅 보장.
+            if (_assignedGimmick is Wassup.Data.OverworkGimmickData od)
             {
-                Debug.Log($"[GimmickConfig] OverworkGimmickConfig 주입 (season={season.seasonId}, gimmick={od.gimmickId})");
+                Debug.Log($"[GimmickConfig] OverworkGimmickConfig 주입 (gimmick={od.gimmickId})");
                 var gimmickEntity = _em.CreateEntity();
                 _em.AddComponentData(gimmickEntity, new Wassup.Battle.Effects.OverworkGimmickConfig
                 {
