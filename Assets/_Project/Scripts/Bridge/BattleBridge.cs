@@ -436,6 +436,8 @@ namespace Wassup.Bridge
             // 누락 시 StopBattle 후 orphan 이 남고 다음 프레임 새 엔티티가 생겨 2개 → TryGetSingleton
             // 실패 → 이후 모든 전투에서 시간 제어(정지/슬로우모)가 영구 무력화된다.
             DestroyEntitiesByType<BattleTimeScale>();
+            // season-gimmick-overwork unit 2 — 기믹 config 도 대칭 파괴 (BattleTimeScale 교훈 준수).
+            DestroyEntitiesByType<Wassup.Battle.Effects.OverworkGimmickConfig>();
         }
 
         private void DisposeEcsInfrastructureNativeContainers()
@@ -1147,6 +1149,9 @@ namespace Wassup.Bridge
 
             // Build StackModifier threshold registry for StackModifierTickSystem lookups.
             BuildStackThresholdRegistry();
+
+            // season-gimmick-overwork unit 2 — 활성 시즌 기믹 config 주입 (null = 미생성, 무변화).
+            CreateGimmickConfigIfActive();
 
             // draft-stage-map-prebuild Unit 0 — BuildMapForBattle removed from here; called explicitly
             // by PrepareDraftMap / RebuildDraftMap / BeginPlacement fallback.
@@ -3798,6 +3803,28 @@ namespace Wassup.Bridge
             {
                 if (so == null) continue;
                 _stackThresholds[so.kind] = so.thresholds ?? System.Array.Empty<Wassup.Data.ThresholdRule>();
+            }
+        }
+
+        // season-gimmick-overwork unit 2 — 활성 시즌의 기믹을 ECS config 싱글턴으로 주입.
+        // SO 수치를 blittable 로 복사 (Burst 시스템이 SO 를 직접 만지지 않는다).
+        // gimmick == null 이면 아무것도 만들지 않는다 = 기믹 시스템 전체 비활성.
+        private void CreateGimmickConfigIfActive()
+        {
+            if (SeasonRuntime.Active?.gimmick is Wassup.Data.OverworkGimmickData od)
+            {
+                var gimmickEntity = _em.CreateEntity();
+                _em.AddComponentData(gimmickEntity, new Wassup.Battle.Effects.OverworkGimmickConfig
+                {
+                    fatigueInterval       = od.fatigueInterval,
+                    fatigueAmount         = od.fatigueAmount,
+                    fatigueMaxStack       = od.fatigueStack != null ? od.fatigueStack.maxStack : (byte)5,
+                    fatiguePerAppDuration = od.fatigueStack != null ? od.fatigueStack.perAppDuration : 25f,
+                    redbullSpawnInterval  = od.redbullSpawnInterval,
+                    lastRunAttackSpeedMul = od.lastRunAttackSpeedMul,
+                    lastRunDuration       = od.lastRunDuration,
+                    lastRunMaxHealthMul   = od.lastRunMaxHealthMul,
+                });
             }
         }
 
