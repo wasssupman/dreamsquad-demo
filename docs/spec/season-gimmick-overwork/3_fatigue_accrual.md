@@ -27,3 +27,5 @@
 - compile 통과 + 콘솔 클린.
 - 활성 시즌에 Gimmick_Overwork **임시 연결** 후 Play: 유닛 배치 → 10초마다 피로도 누적 (디버그 메뉴로 스택 확인) → 50초에 번아웃 발동: ModifierStats 공속/공격력/최대체력 ×0.8 확인, 15초 후 복원 + 스택 0 부터 재누적.
 - 임시 연결 해제 후 (gimmick=null) 무변화 재확인. 정식 시즌 연결은 unit 7.
+
+확인 2026-07-15 · 커밋 `4ded63e1` — Play 실측(2s 인터벌): 누적→번아웃(3스탯 ×0.8 + HP 클램프)→Consume 리셋→재누적, 재입장 재주입. 주의: PrepareDraftMap 이 Awake 보다 먼저 불려 static SeasonRuntime 의존 주입이 누락되던 버그를 seam 에서 seasonRegistry 직독으로 수정.
