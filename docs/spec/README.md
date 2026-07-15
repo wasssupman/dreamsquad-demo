@@ -124,6 +124,14 @@ code + git history        구현 상세
 
 - **트리거→효과 엔진 도메인 중립화** [M] · 드림캐쳐의 `DcMechanic`(이미 데이터주도 trigger→payload 중립계약)을 `Dc*` 명칭·`Data/Dreamcatcher/` 위치에서 떼어내 공용 `TriggerEffect*` 로 승격 + `EffectDomain{Dreamcatcher,Gimmick,...}` 태그로 소비처(오라/UI/dispel/밸런스) 구분. 기믹 Fatigue/Pickup/LastRun 을 그 위 rule 로 이관. **당장 안 함** — 논의·설계는 `docs/plans/2026-07-15-effect-trigger-unification-design.md` 에 기록. 권고: 0~1단계(태그+rename)만 저위험 선행, 시스템 이관은 2번째 기믹 생길 때(제약 8). rename 은 공유파일 광범위 → 세션 조율 필수.
 
+#### 로드아웃 규칙 위생 (game-start-loadout-gate 종료 이관, 2026-07-16)
+
+- **스쿼드 저장 게이트** [S] · `SquadBuilderView.OnSave` 는 규칙 검사 없이 무조건 저장한다 — 덱 빌더는 유효할 때만 저장 버튼을 활성화하는데 정반대 정책이다. 무효 스쿼드가 애초에 저장되지 않게 막는 안. 판정은 `LoadoutGate` 를 재사용하면 된다. (game-start-loadout-gate)
+- **낡은 주석 정정** [S] · `PlayerProfile.cs:112` 가 "exactly 10, unique<=2" 라고 적어놨지만 라이브 규칙은 8장/타입캡 없음. **`DeckRules.cs:5-10` 은 건드리지 말 것** — 정확할 뿐 아니라 카탈로그 null → 폴백 10 함정을 경고하는 유일한 문서다. (game-start-loadout-gate)
+- **`7` 이중 하드코딩** [S] · `SquadSave.SlotCount` 와 `SquadDraw.FieldCount` 가 독립 상수다. 한쪽만 바꾸면 조용히 어긋나고 요구치가 도달 불가능해질 수 있다 — `LoadoutGate` 는 `min()` 으로 방어만 해뒀다. (game-start-loadout-gate)
+- **`DreamcatcherDeckBuilderView.cs:45 DeckColumns = 10`** [S] · `deckSize=8` 과 어긋나 셀 폭이 10열 기준으로 잡히고 프레임이 행보다 넓게 남는다. 기능 버그는 아니지만 규칙 변경이 UI 에 자동 반영되지 않는 지점. (game-start-loadout-gate)
+- **`UiOverlay.Dim` 톤** [S] · alpha 0.92 는 전체화면 takeover 용이라 "유닛 2명 부족" 안내 팝업엔 무거울 수 있다. 공유 상수라 단독 spec 에서 바꾸지 않았다 — 조정하려면 전 팝업 영향 확인 필요. (game-start-loadout-gate)
+
 #### 나이트매어 보스 스킬 (nightmare-whip-aura 종료 이관, 2026-07-12)
 
 - **defender-side 오라 카드** [S] · `AllyMoveSpeedAura` 는 arm·오라 연출 모두 진영/kind 중립 — 카드 데이터 선언만으로 성립. 카드 taxonomy/밸런스는 product 결정. (nightmare-whip-aura)

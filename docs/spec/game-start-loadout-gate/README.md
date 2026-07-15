@@ -50,9 +50,8 @@
 
 ## 후속 후보 (본 spec 범위 밖)
 
-- **스쿼드 저장 게이트**: `SquadBuilderView.OnSave()` 는 규칙 검사 없이 무조건 저장한다(덱 빌더는 유효할 때만 저장 버튼 활성 — 정반대 정책). 애초에 무효 스쿼드가 저장되지 않게 막는 안.
-- **낡은 주석 정정**: `PlayerProfile.cs:112` 가 "exactly 10, unique<=2" 라고 적어놨지만 라이브 에셋은 8장/타입캡 없음. **`DeckRules.cs:5-10` 은 건드리지 말 것** — 그 주석은 정확하고("숫자는 카탈로그의 `DeckRuleConfig` 에서 오고 const 는 미배선 시 폴백"), 위 카탈로그-null 함정을 경고하는 유일한 문서다.
-- **`DreamcatcherDeckBuilderView.cs:45 DeckColumns = 10`** 하드코딩이 `deckSize=8` 과 어긋난다. `Refresh()` 는 `_working.Count` 개만 생성하므로 빈 슬롯이 남는 건 아니고, 셀 폭이 10열 기준으로 계산돼 8장이 중앙 정렬되며 프레임이 행보다 넓게 남는다. 기능 버그는 아니지만 규칙 변경이 UI 에 자동 반영되지 않는 지점.
-- **7 이 두 군데 독립 하드코딩**: `SquadSave.SlotCount` 와 `SquadDraw.FieldCount`. 공유 상수가 아니라 한쪽만 바꾸면 조용히 어긋난다. (게이트는 `min()` 으로 방어하지만 근본 해소는 아니다.)
-- **`UiOverlay.Dim` 톤**: alpha 0.92 는 전체화면 takeover 용이라 "유닛 2명 부족" 안내 팝업엔 과할 수 있다. 공유 상수라 이 spec 에서 바꾸지 않고 Play 육안 확인에 맡긴다 — 무겁게 읽히면 별도 결정.
-- 게이트 미충족 시 START 버튼 자체를 딤 처리 (현재는 눌러야 사유를 안다)
+종료 시 `docs/spec/README.md` 하단 **Follow-up Backlog → 로드아웃 규칙 위생** 으로 이관됨 (스쿼드 저장 게이트 · `PlayerProfile.cs:112` 낡은 주석 · `7` 이중 하드코딩 · `DeckColumns=10` 불일치 · `UiOverlay.Dim` 톤).
+
+여기 남기는 것:
+
+- 게이트 미충족 시 START 버튼 자체를 딤 처리 — 현재는 눌러야 사유를 안다. 이 spec 의 UX 를 직접 잇는 후보라 백로그로 보내지 않는다.
