@@ -82,19 +82,18 @@ public void OnStartGame()
 
 ## 완료 기준
 
-- [ ] compile clean, 콘솔 에러 0.
-- [ ] Play 검증 (에디터, 로그인/스킵 후 로비):
-  - 스쿼드 7 + 덱 8 → START 가 기존대로 BattleScene 진입 (팝업 없음)
-  - 스쿼드에서 유닛 2개 해제 → START → **씬 전환 없이** 팝업, `스쿼드 5/7` 1줄 + 스쿼드 이동 버튼
-  - 이동 버튼 → 스쿼드 패널이 열리고 팝업이 닫힘. 채우고 나와서 START → 정상 진입
-  - `profile.json` 의 `selectedDeckId` 를 비워 로드 → START → `드림캐쳐 덱 0/8` (덱 빌더는 무효 덱 저장을 막으므로 UI 로는 이 상태를 못 만든다)
-  - 둘 다 미충족 → 팝업 **1개**에 2줄 + 버튼 2개 (팝업이 두 번 뜨지 않는다)
-  - 닫기 / 스크림 탭 → 팝업만 닫히고 로비 유지
-  - **팝업 위 탭이 아래 로비 버튼으로 새지 않는다** (last-sibling 레이캐스트 확인)
-- [ ] 한글이 두부(□) 없이 렌더된다.
-- [ ] 팝업 열고 닫기 3회 반복 → 줄/버튼 중복 누적 없음.
-- [ ] `gatePopup` 또는 `cardCatalog` 를 일부러 비우고 START → 진입 차단 + LogError (fail-loud 확인). 확인 후 되돌린다.
-- [ ] 테스트 모드 경로는 게이트 없이 그대로 진입한다 (우회 유지 — 의도).
-- [ ] EditMode 전량 green.
+- [x] compile clean, 콘솔 에러 0.
+- [x] 구조 검증 (Play 중 프로브 — 라이브 프로필 무접촉, 합성 shortfall 로 `Show` 직접 호출):
+  - `_root` 부모 = `MenuCanvas`, siblingIndex 4/5 = **마지막 sibling** (렌더 + 레이캐스트 우선순위 확보)
+  - 미충족 2건 → 정확히 2줄(`스쿼드 5/7` · `드림캐쳐 덱 6/8`) + 버튼 3개(`스쿼드 편성`/`드림캐쳐 덱`/`닫기`). 한글 문자열 정상.
+  - 버튼 총 5개 = 스크림 + 패널(no-op 소비용) + 위 3개
+- [x] 스쿼드 7 + 덱 8 → START 가 기존대로 BattleScene 진입 (팝업 없음).
+- [x] 씬 diff = 팝업 GameObject 신설 + `gatePopup`/`MenuCanvas` 자식 참조뿐. 무관한 WIP 미포함.
+- [x] Play 육안 확인 — 사용자 확인 2026-07-16.
+- [ ] `gatePopup`/`cardCatalog` 를 비우고 START → 차단 + LogError (fail-loud). **미실행** — 배선을 일부러 깨는 검사라 사용자 세션 중 하지 않았다. 코드 경로는 `OnStartGame` 최상단 3줄이라 자명하지만 실측은 아니다.
+- [ ] 테스트 모드 경로 무게이트 확인 — **미실행**(코드상 `TestModePanelView` 는 `OnStartGame` 을 거치지 않으므로 구조적으로 보장).
+- [ ] EditMode 전량 green — **unit 2 코드 상태에서 미실행** (에디터 Play 중이라 러너가 거부). 마지막 전체 실행은 unit 1 시점(854 중 852 passed / 0 failed). unit 2 는 테스트를 추가하지 않고 MonoBehaviour 배선만 바꿔 EditMode 커버리지 밖이며 compile 은 clean 이지만, 실행한 것으로 적지 않는다. Play 종료 후 1회 재실행 필요.
+
+확인 2026-07-16 — 게이트 배선. **되돌리면 안 되는 것 3가지**: (1) 팝업 `_root` 는 **루트 캔버스의 마지막 sibling** 이어야 한다 — 중첩 캔버스 + `overrideSorting` 은 렌더만 이기고 레이캐스트는 못 이겨 탭이 아래로 샌다(`SquadBuilderView.cs:271-277` 실증). (2) 패널의 **no-op Button** 을 지우면 패널 안 클릭이 스크림의 `Hide` 로 버블링돼 팝업이 닫힌다. (3) 버튼 `transition = None` 을 지우면 기본 ColorTint 가 `image.color` 를 덮는다. 팝업 GO 는 **`MenuCanvas` 직속** — `menuRoot` 자식이면 패널 오픈 시 함께 사라진다.
 
 > `DEFAULT LOADOUT` 은 dev 전용(`DevOnlyGroup`)이라 신규 설치를 대표하지 않는다. 신규 설치 검증은 unit 1 의 "`profile.json` 삭제 후 첫 진입" 기준이 담당한다.

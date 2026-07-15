@@ -29,10 +29,16 @@ namespace Wassup.UI
         [SerializeField] private LoginPanelView loginPanel;
         // 로비 캐릭터(Hello/World) 그룹 — 로그인 전에는 노출하지 않는다.
         [SerializeField] private GameObject lobbyCharactersRoot;
+        // game-start-loadout-gate unit 2 — START 전 로드아웃 충족 안내.
+        [SerializeField] private LoadoutGatePopup gatePopup;
         // dreamcatcher-card-art — 개발용 버튼 묶음(TestMode/RefreshStats/ResetAccount).
         // 로비 레이어 전용: 패널이 열리면 숨긴다. GameObject.active 대신 CanvasGroup 을
         // 토글해 DevOnlyGroup 의 빌드 게이트(비-dev 빌드에서 GO 비활성화)와 충돌하지 않는다.
         [SerializeField] private CanvasGroup devButtonsGroup;
+
+        // Reused across clicks; LoadoutGate.Check clears it on entry.
+        private readonly System.Collections.Generic.List<LoadoutShortfall> _shortfalls =
+            new System.Collections.Generic.List<LoadoutShortfall>();
 
         private void Awake()
         {
@@ -71,12 +77,31 @@ namespace Wassup.UI
             ApplyAuthGate();
         }
 
-        // A-stage: load BattleScene as-is (draft fallback runs while
-        // PlayerProfileSO has no selected squad). C wires the squad/dreamcatcher
-        // carry-in. Scene names live in SceneNames to keep the two LoadScene
-        // call sites in sync.
+        // A-stage: load BattleScene as-is. C wires the squad/dreamcatcher carry-in.
+        // Scene names live in SceneNames to keep the two LoadScene call sites in sync.
+        //
+        // game-start-loadout-gate unit 2 — an unmet loadout used to surface only
+        // after the scene loaded, as silent degradation (an invalid deck attaches
+        // zero cards; a short squad just deploys fewer units). Check here and say so
+        // instead.
         public void OnStartGame()
         {
+            // Unassigned refs are a wiring bug, and must not be disguised as a
+            // shortfall the player could fix: a null cardCatalog drops DeckRules to
+            // its fallback size of 10, so the popup would demand a 10-card deck that
+            // the builder caps at 8 — an unwinnable loop.
+            if (gatePopup == null || catalog == null || cardCatalog == null)
+            {
+                Debug.LogError("[OutgameMenuController] loadout gate refs unassigned — start blocked.", this);
+                return;
+            }
+
+            var p = profileSO != null ? profileSO.profile : null;
+            if (!LoadoutGate.Check(p, catalog, cardCatalog, _shortfalls))
+            {
+                gatePopup.Show(_shortfalls, OnOpenSquad, OnOpenDreamcatcher);
+                return;
+            }
             SceneTransition.Go(SceneNames.Battle);
         }
 
