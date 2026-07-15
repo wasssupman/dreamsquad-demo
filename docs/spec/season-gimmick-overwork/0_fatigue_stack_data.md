@@ -29,3 +29,5 @@
 - compile 통과 (console 에러 0).
 - BattleScene Play 진입 후 registry 확인: `BattleBridge.GetStackThresholds(StackKind.Fatigue)` 가 2룰 반환 (디버그 로그 또는 에디터 검사).
 - 기존 Bleed 등록/동작에 회귀 없음 (registry 는 kind 별 독립 — Play smoke 로 확인).
+
+확인 2026-07-15 · 커밋 `dfae1cd2`
