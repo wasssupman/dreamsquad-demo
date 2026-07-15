@@ -34,3 +34,5 @@
 - 기존 `ModifierMathTests` 회귀 없음.
 - BattleScene Play smoke 콘솔 클린.
 - (실동작 검증은 unit 3 에서 번아웃 end-to-end 로 — 최대체력 감소가 HP 바에 반영되는지 확인.)
+
+확인 2026-07-15 · 커밋 `c465c6a7` · EditMode 775 passed / 0 failed
