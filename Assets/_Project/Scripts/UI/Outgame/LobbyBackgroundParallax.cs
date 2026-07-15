@@ -45,8 +45,6 @@ namespace Wassup.UI
         [Header("포인터 (터치/마우스 위치)")]
         [Tooltip("포인터 틸트 배율. 화면 중심=0, 가장자리=±1 에 이 값을 곱함. 음수면 방향 반전(튜닝 노브).")]
         [SerializeField] private float pointerGain = 1f;
-        [Tooltip("에디터/데스크톱 마우스는 누르지 않아도(hover) 추종. 모바일은 hover 가 없어 터치 중에만 동작.")]
-        [SerializeField] private bool mouseHoverFollows = true;
 
         private Material _underMat;
         private DepthParallaxSettings _cfgFallback;
@@ -101,8 +99,7 @@ namespace Wassup.UI
             tilt = Vector2.zero;
             var p = Pointer.current;
             if (p == null || Screen.width <= 0 || Screen.height <= 0) return false;
-            bool active = p.press.isPressed || (mouseHoverFollows && p is Mouse);
-            if (!active) return false;
+            if (!p.press.isPressed) return false; // 키링 스와이프 중이면 항상 눌린 상태 — 방어적 확인
 
             Vector2 pos = p.position.ReadValue();
             tilt = new Vector2(pos.x / Screen.width, pos.y / Screen.height) * 2f - Vector2.one; // 중심=0, 가장자리=±1
@@ -114,14 +111,18 @@ namespace Wassup.UI
         {
             var s = Cfg;
 
-            // 앰비언트: 서로 다른 주기의 sin 두 개 → 반복 티가 안 나는 상시 드리프트.
-            float t = Time.unscaledTime;
-            Vector2 ambient = new Vector2(Mathf.Sin(t * ambientSpeedX), Mathf.Sin(t * ambientSpeedY + 1.7f)) * ambientAmplitude;
-
-            // 포인터가 없거나(모바일 무터치) 비활성이면 0 → 스프링이 앰비언트만 남게 부드럽게 되돌린다.
-            // 폴링이라 push 기반 staleness watchdog 불필요(활성 여부를 직접 안다).
-            Vector2 pointerTilt = TryGetPointerTilt(out var pt) ? pt * pointerGain : Vector2.zero;
-            Vector2 target = Vector2.ClampMagnitude(ambient + pointerTilt, 1f);
+            // 배경은 **키링 스와이프 중에만** 움직인다. 그 외에는 target=0 → 스프링이 정지 상태로 되돌린다.
+            // (평상시 상시 드리프트는 사용자 결정으로 폐기 — 움직임을 스와이프 인터랙션에 묶는다.)
+            Vector2 target = Vector2.zero;
+            if (LobbyKeyringDrag.AnyDragging)
+            {
+                // 앰비언트: 서로 다른 주기의 sin 두 개 → 스와이프 중 미세한 생동감(반복 티 없음).
+                float t = Time.unscaledTime;
+                Vector2 ambient = new Vector2(Mathf.Sin(t * ambientSpeedX), Mathf.Sin(t * ambientSpeedY + 1.7f)) * ambientAmplitude;
+                // 포인터 위치(중심=0, 가장자리=±1). 폴링이라 staleness watchdog 불필요.
+                Vector2 pointerTilt = TryGetPointerTilt(out var pt) ? pt * pointerGain : Vector2.zero;
+                target = Vector2.ClampMagnitude(ambient + pointerTilt, 1f);
+            }
 
             DepthParallaxMath.SpringStep(ref _tilt, ref _tiltVel, target,
                 s.tiltSpring, s.tiltDamping, s.tiltMaxSpeed, Time.unscaledDeltaTime);
