@@ -1,6 +1,6 @@
 # Runtime Stat Refresh — 로비 시트→SO 갱신 버튼
 
-상태: **구현 완료 2026-07-06** (units 0~2) · **드림캐쳐 확장 완료 2026-07-13** (units 3~4). 인계 `5_handoff_summary.md`. 잔여: 실기기 Development Build 1회 확인 + 릴리즈 빌드 버튼 미노출 확인 (unit 2 완료 기준 참조)
+상태: **구현 완료 2026-07-06** (units 0~2) · **드림캐쳐 확장 완료 2026-07-13** (units 3~4) · **전체 임포트 확장 완료 2026-07-15** (units 6~7). 인계 `5_handoff_summary.md`(0~4) · `8_handoff_summary.md`(6~7). 잔여: 실기기 Development Build 1회 확인 + 릴리즈 빌드 버튼 미노출 확인 (unit 2 완료 기준 참조)
 
 ## 목표
 
@@ -17,6 +17,9 @@
 | 2 | 구현+wiring | `2_lobby_button_wiring.md` | 로비(Outgame) 버튼 + 결과 표시 + 씬 배선 + Play/실기기 검증 |
 | 3 | 구현 | `3_dreamcatcher_runtime_refresher.md` | (2026-07-13) 드림캐쳐 확장 — `DcSheetRuntimeRefresher` (6탭 fetch→in-memory apply, 카탈로그+Active/스킬/config 참조) + EditMode 테스트 |
 | 4 | 구현+wiring | `4_dreamcatcher_lobby_button.md` | (2026-07-13) `IRuntimeRefresher` 인터페이스로 버튼 일반화 + "IMPORT UNIT"/"IMPORT DREAMCATCHER" 2버튼 씬 배선 |
+| 6 | 구현+wiring | `6_import_all_button.md` | (2026-07-15) `AllRuntimeRefresher` composite (8탭 fan-out+조인) + "IMPORT ALL" 3번째 버튼 |
+| 7 | 구현+wiring | `7_login_auto_import.md` | (2026-07-15) 로그인 성공(`onSignedIn`) 시 전체 임포트 1회 자동 실행. 선행 unit 6 |
+| 8 | 인계 | `8_handoff_summary.md` | (2026-07-15) units 6~7 인계 — 계약·함정·잔여 |
 
 ## Feature-wide 계약
 
@@ -29,7 +32,7 @@
 
 ## 후속 후보
 
-- 앱 시작 시 자동 fetch (버튼 없이 항상 최신) — QA 워크플로우 안정화 후 판단
+- ~~앱 시작 시 자동 fetch (버튼 없이 항상 최신)~~ → unit 7 로 승격 (2026-07-15). 트리거는 "앱 시작" 이 아니라 로그인 성공 seam (`LoginPanelView.onSignedIn`) — `outgame-login-gate` 가 로비 진입 앞에 인증을 두고 있어 그 지점이 "부팅 직후 1회" 의 실제 표현이다.
 - 갱신 결과 상세(변경 diff) UI 표시 — unit-stat spec 백로그의 dry-run 프리뷰와 통합 가능
 - 릴리즈용 밸런스 배포 채널 (버전 관리/서명) — 라이브 기능으로 승격 시 별도 spec
 - **제네릭 `ScriptableCatalog<T>` 베이스** [S] · Defender/Enemy/Dreamstone/DreamcatcherCard 카탈로그 4곳이 units/ById 패턴 중복 (simplify 리뷰 2026-07-06). id 접근 인터페이스가 필요해 현 규칙(과도한 추상화 금지)상 보류 — 5번째 카탈로그가 생기거나 카탈로그 공통 기능이 늘면 승격

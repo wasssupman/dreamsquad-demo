@@ -1,6 +1,6 @@
 # Outgame Login Gate — 데모 사용자 구분용 로그인
 
-상태: **unit 4 진행 중 2026-07-07** (units 0~3 구현 완료 — critic 리뷰 반영 + 에디터 Play 4케이스 검증). 잔여: 실기기 Development Build 1회. 인계는 `2_handoff_summary.md`
+상태: **unit 4 진행 중 2026-07-07** (units 0~3 구현 완료 — critic 리뷰 반영 + 에디터 Play 4케이스 검증) · **dev 트레이 확장 완료 2026-07-15** (units 5~6 — 트레이 토글 + DEFAULT LOADOUT, 에디터 Play 검증). 잔여: 실기기 Development Build 1회. 인계는 `2_handoff_summary.md`
 
 ## 목표
 
@@ -24,6 +24,8 @@
 | 1 | 구현+wiring | `1_login_gate_ui_wiring.md` | 로그인 패널(이름 입력+버튼+상태) + 로비 메뉴 게이팅 + 씬 배선 + Play 검증 |
 | 3 | 구현+wiring | `3_e2e_and_dev_buttons.md` | 실 엔드포인트 E2E 테스트 + DevButtons 그룹(계정 리셋 → 로그인 화면 복귀) |
 | 4 | 구현+wiring | `4_skip_login_button.md` | 로그인 스킵 버튼(우하단) — 인증 없이 게스트 세션으로 진입, 로그인 실패가 진행을 잠그지 않게 |
+| 5 | 구현+wiring | `5_dev_tray_toggle.md` | (2026-07-15) dev 버튼 트레이 토글 — 로비엔 `DEV +` 하나만 상시 노출, 나머지 5개는 접힘 기본 |
+| 6 | 구현+wiring | `6_default_loadout_button.md` | (2026-07-15) `DEFAULT LOADOUT` — 스쿼드·드림캐쳐 덱을 신규 프로필과 같은 기본값으로 세팅 |
 
 ## Feature-wide 계약
 
