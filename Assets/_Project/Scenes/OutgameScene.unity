@@ -1244,6 +1244,7 @@ GameObject:
   - component: {fileID: 247752173}
   - component: {fileID: 247752175}
   - component: {fileID: 247752176}
+  - component: {fileID: 247752177}
   m_Layer: 0
   m_Name: UnitStatRefresher
   m_TagString: Untagged
@@ -1320,6 +1321,20 @@ MonoBehaviour:
   refresherSources:
   - {fileID: 247752173}
   - {fileID: 247752175}
+--- !u!114 &247752177
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 247752172}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cd0350b78bf0d40a082eb981dacb6d7f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.LoginAutoImport
+  loginPanel: {fileID: 803765617}
+  refresherSource: {fileID: 247752176}
 --- !u!1 &295664196 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 5806972590797065247, guid: 729fc567d06d1a04585ba125ac6bf1ce, type: 3}
