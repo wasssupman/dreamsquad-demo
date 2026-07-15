@@ -34,3 +34,10 @@ MonoBehaviour:
     billboard: 0
     fallbackTint: {r: 1, g: 0.85, b: 0.2, a: 1}
     fallbackGlyph: 0
+  - kind: 3
+    prefab: {fileID: 8061970993024084810, guid: 1391ff2b6806e6243b755eadb0454281, type: 3}
+    localOffset: {x: 0, y: 2, z: 0}
+    scale: 0.5
+    billboard: 0
+    fallbackTint: {r: 0.35, g: 0.3, b: 0.5, a: 1}
+    fallbackGlyph: 0

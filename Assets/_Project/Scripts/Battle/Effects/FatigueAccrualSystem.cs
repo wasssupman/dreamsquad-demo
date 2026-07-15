@@ -1,7 +1,7 @@
 // season-gimmick-overwork unit 3 — 야근 룰 1: 배치된 방어 유닛이 fatigueInterval 마다
 // 피로도 +fatigueAmount. 임계 도달 시 번아웃은 StackModifierTickSystem + ThresholdRule
 // (unit 0/1 데이터)이 처리 — 이 시스템은 누적 소스일 뿐이다.
-// OverworkGimmickConfig 부재(기믹 비활성) 시 시스템 자체가 돌지 않는다 (self-gate).
+// BurnoutGimmickConfig 부재(기믹 비활성) 시 시스템 자체가 돌지 않는다 (self-gate).
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -16,14 +16,14 @@ namespace Wassup.Battle.Effects
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            state.RequireForUpdate<OverworkGimmickConfig>();
+            state.RequireForUpdate<BurnoutGimmickConfig>();
             state.RequireForUpdate<StackModifierApplyEventsSingleton>();
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            var config = SystemAPI.GetSingleton<OverworkGimmickConfig>();
+            var config = SystemAPI.GetSingleton<BurnoutGimmickConfig>();
             if (config.fatigueInterval <= 0f)
                 return; // 무한 루프 방어 (잘못 저작된 SO)
 

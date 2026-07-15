@@ -289,6 +289,11 @@ namespace Wassup.Bridge
         private int _matchSeed;
         public void SetMatchSeed(int seed) => _matchSeed = seed;
 
+        // gimmick-match-integration unit 1 — GameManager 가 배정한 매치 기믹(없으면 null).
+        // 3개 소비 지점(config 주입·픽업 스폰 게이트·디버그 로그)의 단일 소스. 시즌 결합 대체.
+        private Wassup.Data.GimmickData _assignedGimmick;
+        public void SetAssignedGimmick(Wassup.Data.GimmickData g) => _assignedGimmick = g;
+
         private struct PendingSpawnEntry
         {
             public SpawnEntry entry;
@@ -474,7 +479,8 @@ namespace Wassup.Bridge
             // 실패 → 이후 모든 전투에서 시간 제어(정지/슬로우모)가 영구 무력화된다.
             DestroyEntitiesByType<BattleTimeScale>();
             // season-gimmick-overwork unit 2 — 기믹 config 도 대칭 파괴 (BattleTimeScale 교훈 준수).
-            DestroyEntitiesByType<Wassup.Battle.Effects.OverworkGimmickConfig>();
+            DestroyEntitiesByType<Wassup.Battle.Effects.BurnoutGimmickConfig>();
+            DestroyEntitiesByType<Wassup.Battle.Effects.RedBullGimmickConfig>();
         }
 
         private void DisposeEcsInfrastructureNativeContainers()
@@ -648,8 +654,8 @@ namespace Wassup.Bridge
             TeardownPickupSpawnState();
 
             if (!_generatedMap.IsCreated || _em == null) return;
-            var season = seasonRegistry != null ? seasonRegistry.activeSeason : null;
-            if (!(season?.gimmick is Wassup.Data.OverworkGimmickData)) return;
+            // gimmick-match-integration — 레드불 기믹 배정 시에만 픽업 스폰 후보 구축.
+            if (!(_assignedGimmick is Wassup.Data.RedBullGimmickData)) return;
 
             int2 gridSize = _generatedMap.gridSize;
             int n = gridSize.x * gridSize.y;
@@ -888,6 +894,9 @@ namespace Wassup.Bridge
             // season-gimmick-overwork unit 4 — 픽업 스폰 후보 셀(Walk∪Place)은 goal field 와
             // 같은 맵-빌드 시점에 구축. gimmick 비활성이면 no-op.
             BuildPickupSpawnState();
+            // gimmick-match-integration — 기믹 config 주입도 맵-빌드 시점(배정된 _assignedGimmick
+            // 확정 이후)에 함께. guarded EnsureQueriesAndQueues 로는 배정 전에 1회 돌아 누락됐었다.
+            CreateGimmickConfigIfActive();
 
             // enemy-tile-movement-integrity unit 0 — 스폰 분산 순번 리셋(결정론 수열은 시드 불필요).
             _spawnSpreadCounter = 0;
@@ -1274,8 +1283,10 @@ namespace Wassup.Bridge
             // Build StackModifier threshold registry for StackModifierTickSystem lookups.
             BuildStackThresholdRegistry();
 
-            // season-gimmick-overwork unit 2 — 활성 시즌 기믹 config 주입 (null = 미생성, 무변화).
-            CreateGimmickConfigIfActive();
+            // gimmick-match-integration — 기믹 config 주입은 여기(guarded EnsureQueriesAndQueues)가
+            // 아니라 BuildMapForBattle 로 이동했다. 이 메서드는 _ecsInfrastructureReady 가드로 매치당
+            // 1회만 도는데, 그 1회가 GameManager 의 _assignedGimmick 세팅보다 먼저라 config 가 조용히
+            // 누락됐다(픽업 0개 버그). BuildMapForBattle 은 매 맵빌드마다(배정 이후) 돌아 안전.
 
             // draft-stage-map-prebuild Unit 0 — BuildMapForBattle removed from here; called explicitly
             // by PrepareDraftMap / RebuildDraftMap / BeginPlacement fallback.
@@ -2003,9 +2014,13 @@ namespace Wassup.Bridge
                 }
             }
 
-            // Empowered: 드림캐쳐 출처(ModifierOrigin.Dreamcatcher) 스탯 모디파이어가 활성인 유닛에
-            // 강화 오라 (dreamcatcher-empower-aura). revoke(mult=1.0 중립화)면 net=identity 라 자동 해제.
-            // 로드아웃(Dreamstone)/시너지/on-place/slow 등 다른 출처는 제외. 버퍼는 읽기만.
+            // 스탯 모디파이어 슬롯 기반 오라 두 종을 같은 버퍼 스캔에서 판정(중복 순회 회피):
+            //   Empowered = 드림캐쳐 출처(ModifierOrigin.Dreamcatcher) 활성 — dreamcatcher-empower-aura.
+            //     revoke(mult=1.0 중립화)면 net=identity 라 자동 해제(net-편차 판정). Dreamstone/시너지 등 제외.
+            //   Burnout   = 스택 출처(ModifierOrigin.Stack) 활성 — season-gimmick-overwork 번아웃.
+            //     Fatigue 임계(ThresholdRule ApplyStat, ×0.8/15s)가 유일한 Stack 파생이라 origin==Stack
+            //     = 번아웃 창과 일치. 스택 모디파이어는 duration 만료로 제거(in-place revoke 없음)라 단순
+            //     존재 판정(remaining>0)으로 충분. 버퍼는 읽기만.
             if (_modifierSlotQueryCreated)
             {
                 var slotEntities = _modifierSlotQuery.ToEntityArray(Allocator.Temp);
@@ -2014,11 +2029,16 @@ namespace Wassup.Bridge
                     for (int i = 0; i < slotEntities.Length; i++)
                     {
                         var slots = _em.GetBuffer<Wassup.Battle.Effects.StatModifierSlot>(slotEntities[i], isReadOnly: true);
-                        if (!Wassup.Battle.Effects.ModifierAuraClassifier.HasActiveDreamcatcherModifier(slots.AsNativeArray()))
-                            continue;
+                        bool empowered = Wassup.Battle.Effects.ModifierAuraClassifier.HasActiveDreamcatcherModifier(slots.AsNativeArray());
+                        bool burnout = false;
+                        for (int j = 0; j < slots.Length; j++)
+                            if (slots[j].header.origin == Wassup.Battle.Effects.ModifierOrigin.Stack && slots[j].header.remaining > 0f)
+                            { burnout = true; break; }
+                        if (!empowered && !burnout) continue;
                         var anchor = ResolveUnitViewTransform(slotEntities[i]);
                         if (anchor == null) continue;
-                        statusFxSpawner.Ensure(slotEntities[i], Wassup.Data.StatusFxKind.Empowered, anchor);
+                        if (empowered) statusFxSpawner.Ensure(slotEntities[i], Wassup.Data.StatusFxKind.Empowered, anchor);
+                        if (burnout) statusFxSpawner.Ensure(slotEntities[i], Wassup.Data.StatusFxKind.Burnout, anchor);
                     }
                 }
                 finally
@@ -3879,8 +3899,8 @@ namespace Wassup.Bridge
 
             // 기믹 config 주입 여부 — 미주입이면 FatigueAccrualSystem 이 self-gate 로 안 돈다.
             var configQuery = _em.CreateEntityQuery(
-                Unity.Entities.ComponentType.ReadOnly<Wassup.Battle.Effects.OverworkGimmickConfig>());
-            Debug.Log($"[FatigueDebug] OverworkGimmickConfig 주입={!configQuery.IsEmpty} (SeasonRuntime.Active={SeasonRuntime.Active?.seasonId ?? "null"}, gimmick={SeasonRuntime.Active?.gimmick?.gimmickId ?? "null"})");
+                Unity.Entities.ComponentType.ReadOnly<Wassup.Battle.Effects.BurnoutGimmickConfig>());
+            Debug.Log($"[FatigueDebug] BurnoutGimmickConfig 주입={!configQuery.IsEmpty} (season={SeasonRuntime.Active?.seasonId ?? "null"}, gimmick={_assignedGimmick?.gimmickId ?? "null"})");
             configQuery.Dispose();
 
             var query = _em.CreateEntityQuery(
@@ -4162,26 +4182,37 @@ namespace Wassup.Bridge
         // gimmick == null 이면 아무것도 만들지 않는다 = 기믹 시스템 전체 비활성.
         private void CreateGimmickConfigIfActive()
         {
-            // SeasonRuntime.Active 가 아니라 serialized seasonRegistry 를 직접 읽는다 —
-            // PrepareDraftMap(→EnsureQueriesAndQueues)이 Awake(Bind)보다 먼저 외부에서 불릴 수
-            // 있어(스크립트 실행 순서), static 바인딩에 기대면 주입이 조용히 누락된다 (unit 3 실측).
-            var season = seasonRegistry != null ? seasonRegistry.activeSeason : null;
-            if (season?.gimmick is Wassup.Data.OverworkGimmickData od)
+            // gimmick-match-integration — 배정된 기믹 타입에 맞는 config 만 주입(둘은 상호배타).
+            // 소스 = GameManager 배정 _assignedGimmick(BattleConfig.gimmickPool).
+            // BuildMapForBattle 에서 매 맵빌드마다 호출되므로 재빌드/재진입 대비 기존 config 선제거
+            // (idempotent — BuildPickupSpawnState 의 Teardown-first 와 동일 패턴).
+            DestroyEntitiesByType<Wassup.Battle.Effects.BurnoutGimmickConfig>();
+            DestroyEntitiesByType<Wassup.Battle.Effects.RedBullGimmickConfig>();
+
+            if (_assignedGimmick is Wassup.Data.BurnoutGimmickData bd)
             {
-                Debug.Log($"[GimmickConfig] OverworkGimmickConfig 주입 (season={season.seasonId}, gimmick={od.gimmickId})");
-                var gimmickEntity = _em.CreateEntity();
-                _em.AddComponentData(gimmickEntity, new Wassup.Battle.Effects.OverworkGimmickConfig
+                Debug.Log($"[GimmickConfig] BurnoutGimmickConfig 주입 (gimmick={bd.gimmickId})");
+                var e = _em.CreateEntity();
+                _em.AddComponentData(e, new Wassup.Battle.Effects.BurnoutGimmickConfig
                 {
-                    fatigueInterval       = od.fatigueInterval,
-                    fatigueAmount         = od.fatigueAmount,
-                    fatigueMaxStack       = od.fatigueStack != null ? od.fatigueStack.maxStack : (byte)5,
-                    fatiguePerAppDuration = od.fatigueStack != null ? od.fatigueStack.perAppDuration : 25f,
-                    redbullSpawnInterval  = od.redbullSpawnInterval,
-                    redbullLifetime       = od.redbullLifetime,
-                    redbullMaxActive      = od.maxActivePickups,
-                    lastRunAttackSpeedMul = od.lastRunAttackSpeedMul,
-                    lastRunDuration       = od.lastRunDuration,
-                    lastRunDamageFraction = od.lastRunDamageFraction,
+                    fatigueInterval       = bd.fatigueInterval,
+                    fatigueAmount         = bd.fatigueAmount,
+                    fatigueMaxStack       = bd.fatigueStack != null ? bd.fatigueStack.maxStack : (byte)5,
+                    fatiguePerAppDuration = bd.fatigueStack != null ? bd.fatigueStack.perAppDuration : 25f,
+                });
+            }
+            else if (_assignedGimmick is Wassup.Data.RedBullGimmickData rd)
+            {
+                Debug.Log($"[GimmickConfig] RedBullGimmickConfig 주입 (gimmick={rd.gimmickId})");
+                var e = _em.CreateEntity();
+                _em.AddComponentData(e, new Wassup.Battle.Effects.RedBullGimmickConfig
+                {
+                    redbullSpawnInterval  = rd.redbullSpawnInterval,
+                    redbullLifetime       = rd.redbullLifetime,
+                    redbullMaxActive      = rd.maxActivePickups,
+                    lastRunAttackSpeedMul = rd.lastRunAttackSpeedMul,
+                    lastRunDuration       = rd.lastRunDuration,
+                    lastRunDamageFraction = rd.lastRunDamageFraction,
                 });
             }
         }

@@ -9,7 +9,7 @@ namespace Wassup.Data.Season
         public string seasonId = "S1_Forest";
         public string displayName = "Verdant Bloom";
         public MapThemeData mapTheme;
-        // season-gimmick-overwork unit 2 — 시즌 기믹 (null 허용 = 기믹 없음, 기존 플레이 무변화).
-        public GimmickData gimmick;
+        // gimmick-match-integration unit 1 — 기믹은 시즌에서 분리되어 BattleConfig.gimmickPool 로
+        // 이관됨(매치 시작 시 GameManager 가 배정). 시즌은 맵 테마 전담.
     }
 }
