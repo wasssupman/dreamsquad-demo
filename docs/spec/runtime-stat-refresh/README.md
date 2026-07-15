@@ -1,6 +1,6 @@
 # Runtime Stat Refresh — 로비 시트→SO 갱신 버튼
 
-상태: **구현 완료 2026-07-06** (units 0~2) · **드림캐쳐 확장 완료 2026-07-13** (units 3~4) · **전체 임포트 확장 완료 2026-07-15** (units 6~7). 인계 `5_handoff_summary.md`. 잔여: 실기기 Development Build 1회 확인 + 릴리즈 빌드 버튼 미노출 확인 (unit 2 완료 기준 참조)
+상태: **구현 완료 2026-07-06** (units 0~2) · **드림캐쳐 확장 완료 2026-07-13** (units 3~4) · **전체 임포트 확장 완료 2026-07-15** (units 6~7). 인계 `5_handoff_summary.md`(0~4) · `8_handoff_summary.md`(6~7). 잔여: 실기기 Development Build 1회 확인 + 릴리즈 빌드 버튼 미노출 확인 (unit 2 완료 기준 참조)
 
 ## 목표
 
@@ -19,6 +19,7 @@
 | 4 | 구현+wiring | `4_dreamcatcher_lobby_button.md` | (2026-07-13) `IRuntimeRefresher` 인터페이스로 버튼 일반화 + "IMPORT UNIT"/"IMPORT DREAMCATCHER" 2버튼 씬 배선 |
 | 6 | 구현+wiring | `6_import_all_button.md` | (2026-07-15) `AllRuntimeRefresher` composite (8탭 fan-out+조인) + "IMPORT ALL" 3번째 버튼 |
 | 7 | 구현+wiring | `7_login_auto_import.md` | (2026-07-15) 로그인 성공(`onSignedIn`) 시 전체 임포트 1회 자동 실행. 선행 unit 6 |
+| 8 | 인계 | `8_handoff_summary.md` | (2026-07-15) units 6~7 인계 — 계약·함정·잔여 |
 
 ## Feature-wide 계약
 
