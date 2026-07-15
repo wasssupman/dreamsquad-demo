@@ -85,6 +85,7 @@ namespace Wassup.UI.Draft
             // Reset to start positions.
             _overlayGroup.alpha = 0f;
             _overlayGroup.gameObject.SetActive(true);
+            SetHiddenRaycasts(true); // SnapHidden 이 껐던 것 복원 — 카드가 다시 스와이프 가능해야 한다
             _headerGroup.alpha = 0f;
             _headerRect.anchoredPosition = new Vector2(0f, HeaderStartY);
             _headerRect.localScale = Vector3.one;
@@ -148,6 +149,7 @@ namespace Wassup.UI.Draft
             _state = State.Unrolling;
 
             _overlayGroup.gameObject.SetActive(true);
+            SetHiddenRaycasts(true); // SnapHidden 이 껐던 것 복원 (일시정지 메뉴 재오픈 경로)
 
             var seq = Sequence.Create();
             seq.Group(Tween.Alpha(_overlayGroup, OverlayAlpha, 0.25f, Ease.OutQuad));
@@ -177,12 +179,20 @@ namespace Wassup.UI.Draft
 
         // Instant hide; positions stay at rest so FadeIn() only needs to tween alpha.
         // Overlay is deactivated to prevent input blocking during the draft phase.
+        //
+        // unit-dreamcatcher-inspect fix — header/cardGrid 도 같은 이유로 raycast 를 꺼야 한다.
+        // CanvasGroup.alpha=0 은 **화면에서만** 숨긴다. blocksRaycasts 를 안 끄면 보이지 않는
+        // 채로 입력을 계속 먹는다. 카드 그리드는 화면 x[24~1624] y[430~590] 를 덮으므로
+        // (실측) 전투 중 보드 왼쪽 가로 띠가 통째로 탭 불가가 된다 — 유닛이 이 띠 경계에
+        // 걸치면 "머리는 눌리는데 몸통은 안 눌리는" 증상이 된다. 오랫동안 안 걸린 이유는
+        // 보드 raw 탭 소비자가 없었기 때문(클릭 배치 은퇴). DcInspectController 가 첫 소비자다.
         public void SnapHidden()
         {
             if (!_built) Build();
             _activeTween.Stop();
             _overlayGroup.gameObject.SetActive(false);
             _overlayGroup.alpha = 0f;
+            SetHiddenRaycasts(false);
             _headerGroup.alpha = 0f;
             _headerRect.anchoredPosition = new Vector2(0f, HeaderRestY);
             _headerRect.localScale = Vector3.one;
@@ -190,6 +200,14 @@ namespace Wassup.UI.Draft
             _cardGrid.anchoredPosition = new Vector2(CardGridRestX, CardGridRestY);
             if (_cardContent != null) _cardContent.anchoredPosition = Vector2.zero;
             _state = State.Hidden;
+        }
+
+        // 숨김/표시와 raycast 차단을 한 곳에서 묶는다 — 알파만 되돌리고 이걸 잊으면
+        // 카드가 안 눌리거나(끈 채 표시) 보드가 막힌다(켠 채 숨김).
+        private void SetHiddenRaycasts(bool on)
+        {
+            if (_headerGroup != null) _headerGroup.blocksRaycasts = on;
+            if (_cardGridGroup != null) _cardGridGroup.blocksRaycasts = on;
         }
 
         // battle-hud-score-timer-menu Unit 3 — lift the whole strip above another
