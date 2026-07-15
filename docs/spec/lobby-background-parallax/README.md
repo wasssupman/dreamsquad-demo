@@ -1,7 +1,7 @@
 # Spec — Lobby Background Parallax
 
-> 상태: 구현 완료 (2026-07-15) — u0~u4 구현·무회귀 검증. 사용자 Play 체감 확인 후 main 머지.
-> **격리 브랜치 `feat/lobby-background-parallax`** (main 미머지). 이상하면 `git checkout main` 으로 통째 폐기.
+> 상태: **완료 (2026-07-15)** — u0~u4 구현·무회귀 검증·사용자 Play 체감 확인. **main 머지됨(`89815cf9`)**.
+> 격리 브랜치 `feat/lobby-background-parallax` 에서 개발 후 `--no-ff` 머지(문제 시 머지 커밋 1개 revert 로 통째 회수).
 > 인계 지도는 `5_handoff_summary.md`.
 >
 > **구현 중 변경된 계약** (초안 대비): 입력이 "앰비언트 상시 + 캐릭터 드래그" → **"키링 스와이프 중에만 +

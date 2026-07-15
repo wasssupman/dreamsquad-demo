@@ -32,3 +32,7 @@ UV 시프트가 가장자리를 드러내지 않게 오버스캔하고, 씬을 �
 - 사용자 Play 체감 승인 + Android 실기기 프레임 확인.
 - 통과 시: README 상태 완료 + `5_handoff_summary.md` 작성 → **main 머지**.
   실패 시: 브랜치 폐기(`git checkout main`) — 이 spec 의 격리 목적.
+
+_확인: 2026-07-15 — 사용자 Play 체감 확인("체감 괜찮음"). 무회귀 바이트 동일 증명(배틀 컷신 6틸트
+maxDiff=0 / 로비 디졸브 4모드×5진행도 maxDiff=0), EditMode 6/6, 머지 후 재검증 콘솔 클린.
+main 머지 `89815cf9`. 최종 튜닝: amplitude 0.04 / pointerGain 1 / 오버스캔 1.05._

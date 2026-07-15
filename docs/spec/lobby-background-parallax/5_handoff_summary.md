@@ -1,6 +1,7 @@
 # 5 — Handoff Summary (lobby-background-parallax)
 
-> u0~u4 구현·검증 완료. 브랜치 `feat/lobby-background-parallax` (main 미머지). 사용자 Play 체감 확인 후 머지.
+> **완료 (2026-07-15)** — u0~u4 구현·무회귀 검증·사용자 Play 체감 확인. **main 머지됨 `89815cf9`**
+> (`feat/lobby-background-parallax` 에서 `--no-ff` 머지 — 문제 시 머지 커밋 1개 revert 로 통째 회수).
 
 ## Commit
 
@@ -59,7 +60,7 @@
 
 ## Follow-up
 
-- **사용자 Play 체감** → 진폭/방향 확정 후 main 머지. 방향 반대면 `pointerGain` 음수.
-- 더 강하게 원하면: amp 0.05+ 는 오버스캔도 같이 올려야(현재 1.3배 헤드룸).
+- 더 강하게 원하면: amp 0.05+ 는 **오버스캔도 같이 올려야** 한다(현재 amp 0.04 에서 1.3배 헤드룸뿐).
+  방향 반전은 `pointerGain` 음수.
 - **B안(레이어 분리)**: 난간이 실제로 튀어나오는 진짜 깊이감 — A안 체감이 약하면 승격(인페인팅 필요).
 - Android 실기기 확인.
