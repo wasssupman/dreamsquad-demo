@@ -11,7 +11,7 @@ namespace Wassup.DepthParallax
     {
         [Header("Parallax")]
         [Tooltip("peak UV 오프셋(0..~0.04). 셰이더 _Amplitude. 너무 크면 외곽 늘어짐(rubber-sheet).")]
-        public float amplitude = 0.035f;
+        public float amplitude = 0.022f;
         [Tooltip("힌지 평면(0..1). 셰이더 _DepthCenter. 이 값 기준 near/far 가 반대로 움직여 회전감.")]
         public float depthCenter = 0.5f;
         [Tooltip("뎁스 극성(±1). 셰이더 _DepthSign. near/far 가 뒤집혀 보이면 -1.")]
@@ -19,7 +19,7 @@ namespace Wassup.DepthParallax
 
         [Header("Perspective / Highlight")]
         [Tooltip("클립공간 사다리꼴 세기(0.03~0.08). 셰이더 _Persp. ortho 에서 회전감의 핵심.")]
-        public float perspective = 0.05f;
+        public float perspective = 0.03f;
         [Tooltip("하이라이트 스윕 세기. 셰이더 _HiStrength.")]
         public float highlightStrength = 0.12f;
         [Tooltip("하이라이트 밴드 폭. 셰이더 _HiWidth.")]

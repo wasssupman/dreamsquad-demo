@@ -26,8 +26,9 @@ main 로컬 커밋(push 안 함). 사전 존재 dirty(Mobile_RPAsset/fonts/probu
 - **자산**: 컷신 3유닛 전부 정적 뎁스 1장(`DepthMapBaker` R8 임포트) → 각 SO `deployCutsceneDepth` 할당.
   Guardian(90×90 자동 bake), Archer(320×180 자동 bake), **Ranger(640×360, 사용자 제공 `Ranger_003-depth`)**.
   `DepthParallaxSettings.asset` 생성.
-- **튜닝**: 기본값 amp 0.035 / persp 0.05 / highlight 0.12 / **tiltDamping 19(임계감쇠 — 낮으면 이미지 출렁)**.
-  스와이프 정규화는 `DragSwaySettings.deployCutsceneSwipeRefSpeed(1400)/Smoothing(0.5)`.
+- **튜닝**: 기본값 amp 0.022 / persp 0.03 / highlight 0.12 / **tiltDamping 19(임계감쇠 — 낮으면 이미지 출렁)**.
+  (틸트 세기 하향: amp 0.035→0.022, persp 0.05→0.03.) 스와이프 정규화는
+  `DragSwaySettings.deployCutsceneSwipeRefSpeed(1400)/Smoothing(0.5)`.
 - **뎁스 후처리**: `depth_bake.py --contrast`(0.5 힌지 기준 near/far 벌림). Ranger 는 사용자 뎁스에
   threshold-pivot 톤다운(thresh 0.4·contrast 2.2 → 배경 억제·실루엣 선명) 적용. 원본 백업은 scratchpad.
 

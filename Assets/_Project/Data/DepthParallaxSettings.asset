@@ -12,10 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e9ed2b25f9f4642599aebda9c09c6bbc, type: 3}
   m_Name: DepthParallaxSettings
   m_EditorClassIdentifier: Wassup.DepthParallax::Wassup.DepthParallax.DepthParallaxSettings
-  amplitude: 0.035
+  amplitude: 0.022
   depthCenter: 0.5
   depthSign: 1
-  perspective: 0.05
+  perspective: 0.03
   highlightStrength: 0.12
   highlightWidth: 0.25
   tiltSpring: 90
