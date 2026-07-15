@@ -22,6 +22,8 @@ namespace Wassup.Data
         [Header("룰 2 — 레드불 → 라스트런")]
         [Tooltip("레드불 스폰 주기 (초)")]
         public float redbullSpawnInterval = 5f;
+        [Tooltip("레드불 미소비 시 만료 시간 (초) — 보드 누적 상한")]
+        public float redbullLifetime = 20f;
         [Tooltip("라스트런 공격속도 배율")]
         public float lastRunAttackSpeedMul = 1.5f;
         [Tooltip("라스트런 지속시간 (초) — 종료 시 최대체력 컷 발동")]

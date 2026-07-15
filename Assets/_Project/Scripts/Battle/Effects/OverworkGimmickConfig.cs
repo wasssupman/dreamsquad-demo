@@ -14,6 +14,7 @@ namespace Wassup.Battle.Effects
         public byte fatigueMaxStack;
         public float fatiguePerAppDuration;
         public float redbullSpawnInterval;
+        public float redbullLifetime;
         public float lastRunAttackSpeedMul;
         public float lastRunDuration;
         public float lastRunMaxHealthMul;

@@ -247,6 +247,9 @@ namespace Wassup.Bridge
         // boss-defender-field unit 1 — 방어유닛-지향 필드. goal field 와 라이프사이클 동일
         // (BuildFlowField 생성 / TeardownFlowField 정리). 내용 갱신은 DefenderFieldSystem.
         private Entity _defenderFieldSingleton = Entity.Null;
+        // season-gimmick-overwork unit 4 — 레드불 픽업 스폰 상태(후보 셀 배열 소유).
+        // goal/defender field 와 동일 lifecycle (BuildPickupSpawnState / TeardownFlowField).
+        private Entity _pickupSpawnStateSingleton = Entity.Null;
 
         // enemy-tile-movement-integrity unit 0 — 스폰 측면 분산 순번(맵 빌드마다 0 리셋). 결정론 수열 인덱스.
         private int _spawnSpreadCounter;
@@ -412,6 +415,8 @@ namespace Wassup.Bridge
             DestroyEntitiesByType<Wassup.Battle.Effects.Hazard>();
             DestroyEntitiesByType<Wassup.Battle.Effects.BlockingHazard>();
             DestroyEntitiesByType<Wassup.Battle.Effects.Obstacle>();
+            // season-gimmick-overwork unit 4 — 레드불 픽업 엔티티 정리.
+            DestroyEntitiesByType<Wassup.Battle.Effects.Pickup>();
         }
 
         private void DestroyEcsInfrastructureEntities()
@@ -600,6 +605,58 @@ namespace Wassup.Bridge
             {
                 if (walk.IsCreated) walk.Dispose();
             }
+        }
+
+        // season-gimmick-overwork unit 4 — 픽업 스폰 후보 셀(Walk∪Place) 싱글턴 구축.
+        // FlowFieldSingleton 동형: Persistent NativeArray 소유, TeardownFlowField 가 dispose.
+        // gimmick 비활성이면 no-op. 멱등 (재빌드/redraft 시 기존 dispose 후 재생성).
+        private void BuildPickupSpawnState()
+        {
+            TeardownPickupSpawnState();
+
+            if (!_generatedMap.IsCreated || _em == null) return;
+            var season = seasonRegistry != null ? seasonRegistry.activeSeason : null;
+            if (!(season?.gimmick is Wassup.Data.OverworkGimmickData)) return;
+
+            int2 gridSize = _generatedMap.gridSize;
+            int n = gridSize.x * gridSize.y;
+
+            // 이동/배치 타일영역 = Walk∪Place 셀 수집.
+            var cells = new System.Collections.Generic.List<int2>(n);
+            for (int i = 0; i < n; i++)
+            {
+                var t = _generatedMap.tiles[i];
+                if (t == MapTileType.Walk || t == MapTileType.Place)
+                    cells.Add(new int2(i % gridSize.x, i / gridSize.x));
+            }
+            if (cells.Count == 0) return;
+
+            var candidateCells = new NativeArray<int2>(cells.Count, Allocator.Persistent);
+            for (int i = 0; i < cells.Count; i++) candidateCells[i] = cells[i];
+
+            uint pickupSeed = (uint)Wassup.Core.MatchSeed.DerivePickupSeed(_matchSeed);
+            _pickupSpawnStateSingleton = _em.CreateEntity();
+            _em.AddComponentData(_pickupSpawnStateSingleton, new Wassup.Battle.Effects.PickupSpawnState
+            {
+                candidateCells = candidateCells,
+                elapsed = 0f,
+                rng = new Unity.Mathematics.Random(pickupSeed),
+            });
+            Debug.Log($"[BattleBridge] PickupSpawnState built — 후보 셀 {candidateCells.Length}개 (Walk∪Place), seed={pickupSeed}");
+        }
+
+        private void TeardownPickupSpawnState()
+        {
+            if (_pickupSpawnStateSingleton != Entity.Null && _em != null && _em.Exists(_pickupSpawnStateSingleton))
+            {
+                if (_em.HasComponent<Wassup.Battle.Effects.PickupSpawnState>(_pickupSpawnStateSingleton))
+                {
+                    var data = _em.GetComponentData<Wassup.Battle.Effects.PickupSpawnState>(_pickupSpawnStateSingleton);
+                    data.Dispose();
+                }
+                _em.DestroyEntity(_pickupSpawnStateSingleton);
+            }
+            _pickupSpawnStateSingleton = Entity.Null;
         }
 
         // enemy-spawn-positioning / tile-movement-integrity u0(rev) — 스폰 셀 flow 수직으로 중앙 기준 이산 N-레인 오프셋 계산.
@@ -792,6 +849,9 @@ namespace Wassup.Bridge
             // ApplyTilemapCameraPreset(); // 매 빌드 idempotent 재적용
 
             BuildFlowField();
+            // season-gimmick-overwork unit 4 — 픽업 스폰 후보 셀(Walk∪Place)은 goal field 와
+            // 같은 맵-빌드 시점에 구축. gimmick 비활성이면 no-op.
+            BuildPickupSpawnState();
 
             // enemy-tile-movement-integrity unit 0 — 스폰 분산 순번 리셋(결정론 수열은 시드 불필요).
             _spawnSpreadCounter = 0;
@@ -860,6 +920,7 @@ namespace Wassup.Bridge
             {
                 _flowFieldSingleton = Entity.Null;
                 _defenderFieldSingleton = Entity.Null;
+                _pickupSpawnStateSingleton = Entity.Null;
                 return;
             }
             if (_flowFieldSingleton != Entity.Null && _em != null && _em.Exists(_flowFieldSingleton))
@@ -884,6 +945,9 @@ namespace Wassup.Bridge
                 _em.DestroyEntity(_defenderFieldSingleton);
             }
             _defenderFieldSingleton = Entity.Null;
+
+            // season-gimmick-overwork unit 4 — 픽업 스폰 상태도 맵 field 와 동일 lifecycle.
+            TeardownPickupSpawnState();
         }
 
         // Phase 6: placement phase enters this path — ECS state is initialized so
@@ -1240,6 +1304,8 @@ namespace Wassup.Bridge
                 DestroyEntitiesByType<Wassup.Battle.Effects.Hazard>();
                 DestroyEntitiesByType<Wassup.Battle.Effects.BlockingHazard>();
                 DestroyEntitiesByType<Wassup.Battle.Effects.Obstacle>();
+                // season-gimmick-overwork unit 4 — redraft 시 잔존 픽업 정리.
+                DestroyEntitiesByType<Wassup.Battle.Effects.Pickup>();
             }
 
             ClearBlockingHazardVisuals();
@@ -3696,6 +3762,29 @@ namespace Wassup.Bridge
             query.Dispose();
         }
 
+        // season-gimmick-overwork unit 4 — 레드불 픽업 검증용 디버그 로그.
+        public void DebugLogPickups()
+        {
+            if (!Application.isPlaying || !HasLiveEntityManager())
+            {
+                Debug.LogWarning("[PickupDebug] Enter Play Mode with a live battle first.");
+                return;
+            }
+
+            var stateQuery = _em.CreateEntityQuery(
+                Unity.Entities.ComponentType.ReadOnly<Wassup.Battle.Effects.PickupSpawnState>());
+            Debug.Log($"[PickupDebug] PickupSpawnState 주입={!stateQuery.IsEmpty}");
+            stateQuery.Dispose();
+
+            var query = _em.CreateEntityQuery(
+                Unity.Entities.ComponentType.ReadOnly<Wassup.Battle.Effects.Pickup>());
+            using var pickups = query.ToComponentDataArray<Wassup.Battle.Effects.Pickup>(Unity.Collections.Allocator.Temp);
+            Debug.Log($"[PickupDebug] 활성 픽업 {pickups.Length}개");
+            for (int i = 0; i < pickups.Length; i++)
+                Debug.Log($"[PickupDebug]   {pickups[i].kind} cell=({pickups[i].cell.x},{pickups[i].cell.y}) 남은수명={pickups[i].remainingLife:F1}s");
+            query.Dispose();
+        }
+
         private int RegisterBlockingHazardSO(BlockingHazardSO so)
         {
             if (so == null) return -1;
@@ -3931,6 +4020,7 @@ namespace Wassup.Bridge
                     fatigueMaxStack       = od.fatigueStack != null ? od.fatigueStack.maxStack : (byte)5,
                     fatiguePerAppDuration = od.fatigueStack != null ? od.fatigueStack.perAppDuration : 25f,
                     redbullSpawnInterval  = od.redbullSpawnInterval,
+                    redbullLifetime       = od.redbullLifetime,
                     lastRunAttackSpeedMul = od.lastRunAttackSpeedMul,
                     lastRunDuration       = od.lastRunDuration,
                     lastRunMaxHealthMul   = od.lastRunMaxHealthMul,

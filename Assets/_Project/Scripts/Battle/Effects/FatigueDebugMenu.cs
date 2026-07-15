@@ -26,6 +26,25 @@ namespace Wassup.Battle.Effects
 
             bridge.DebugLogFatigueStacks();
         }
+
+        [MenuItem("Wassup/Battle/Debug/Log Redbull Pickups")]
+        static void LogRedbullPickups()
+        {
+            if (!Application.isPlaying)
+            {
+                Debug.LogWarning("[PickupDebug] Enter Play Mode first.");
+                return;
+            }
+
+            var bridge = Object.FindAnyObjectByType<BattleBridge>();
+            if (bridge == null)
+            {
+                Debug.LogWarning("[PickupDebug] BattleBridge not found in scene.");
+                return;
+            }
+
+            bridge.DebugLogPickups();
+        }
     }
 }
 #endif
