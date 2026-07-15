@@ -1,6 +1,6 @@
 # Season Gimmick — 야근 (Overwork) Spec
 
-**상태**: 진행 중 (2026-07-15 승인, unit 0 완료)
+**상태**: 완료 2026-07-15 — 야근 기믹 두 룰(피로도→번아웃, 레드불→라스트런) end-to-end 구현·Play 검증. 야근 시즌(`season_overwork`) 정식 default. 상세 인계는 [8_handoff_summary.md](8_handoff_summary.md).
 
 ## 목표
 
@@ -57,11 +57,11 @@
 |---|---|
 | 데이터 SO | `OverworkGimmickData` (스폰 주기·효과 수치·뷰 프리팹/스프라이트) |
 | 스폰 진입점 | `PickupSpawnSystem` (Effects) — 기믹 config self-gate, 주기 스폰. 해저드의 staged-request 와 달리 ECS 내부 ECB 생성 (Mono 개입 불필요 시) |
-| ECS 컴포넌트 (Effects) | `Pickup { cell, kind }` + 수명(미소비 시 잔존/만료 — unit 4 에서 결정) |
-| 시뮬 시스템 | `PickupSpawnSystem` · `PickupConsumeSystem` (Effects) |
-| 이벤트 큐 | 최소화 원칙 — 엔티티 추적 뷰가 성립하면 N/A, 아니면 소비 이벤트 큐 1개 (unit 4 확정) |
-| View | `PickupPresenter` (BlockingHazardPresenter 동형 엔티티 추적) + 소비 순간 원샷 연출 |
-| 상태 연출 | 번아웃 → 기존 `StatusFxRegistry` 등록 (unit-status-fx 인프라 재사용) |
+| ECS 컴포넌트 (Effects) | `Pickup { cell, kind, remainingLife }` + `PickupSpawnState`(후보 셀·rng·cadence 싱글턴, BattleBridge 소유). **수명=만료 확정** |
+| 시뮬 시스템 | `PickupSpawnSystem`(스폰+만료) · `PickupConsumeSystem`(소비) · `LastRunSystem`(지연 crash) (Effects) |
+| 이벤트 큐 | **N/A** — 엔티티 추적 뷰(poll-reconcile)로 성립, 신규 NativeQueue 채널 0. 라스트런은 기존 `StatModifierApplyEvents` 재사용 |
+| View | `PickupPresenter`(절차적 플레이스홀더) + BattleBridge `ReconcilePickupViews` poll-reconcile. 소비 원샷 VFX·정식 아트는 후속 |
+| 상태 연출 | **위임** — 번아웃/라스트런은 임시 버프/디버프 모디파이어 → unit-buff-debuff-aura 의 Buffed/Debuffed 오라가 자동 분류 (별도 `Burnout` StatusFx 미제작 = 중복 회피) |
 
 ## 비목표
 
@@ -73,8 +73,11 @@
 
 ## 후속 후보
 
-- 감정효과 (희노애락) 상태별 구현체 설계 — 별도 spec
+- 감정효과 (희노애락) 상태별 구현체 설계 — 별도 spec (분류만 인지, 범위 밖)
 - 두 번째 시즌 기믹 + 기믹 룰 모듈 일반화 (반복 추출 시점)
+- **PickupConsumeSystem/LastRunSystem Burst화** + 소비/crash telemetry 로그를 에디터 gate/이벤트로 분리 (현재 로그 위해 non-Burst)
+- **전용 `ModifierOrigin.Gimmick`** 값 추가 (라스트런 origin=Unspecified 임시 — enum 소유 unit-buff-debuff-aura 세션과 조율)
+- **피로도/픽업 placement-phase 게이팅** (running-only) 튜닝 — 현재 배치 페이즈에도 누적/스폰
+- 레드불 정식 아트 + 소비/스폰 VFX + 뷰 지면 grounding (원근 부유 완화)
 - 피격 시 피로도 +1 누적 소스 (야근 변형 룰 — 누적 소스 2종화)
-- 레드불 정식 아트 + 스폰/소비 VFX 고도화
 - 매치 시작 UI 기믹 배지/설명 노출 (seasonal-map-backdrop 후속 "시즌 배지" 와 합류 가능)

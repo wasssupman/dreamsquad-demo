@@ -72,6 +72,18 @@
 | View | `Presentation/VfxSpawner.cs` (SpawnTornado/SpawnMeteorFall/SpawnPortal/SpawnMeteorBurst) + `MeteorFall.cs` | 경고링은 BattleBridge 인라인 쿼드 |
 | 씬 wiring | BattleBridge.vfxSpawner + VfxSpawner 프리팹 슬롯 | |
 
+## 픽업 — 레드불 (season-gimmick-overwork, 시즌 기믹)
+
+| 정거장 | 앵커 | 확인 포인트 |
+|---|---|---|
+| 데이터 SO | `Data/Gimmick/OverworkGimmickData.cs` (스폰 주기·수명·동시상한·효과 수치) | 시즌 SO `SeasonData.gimmick` 로 활성. gimmick=null=전면 비활성 |
+| 스폰 진입점 | `Battle/Effects/PickupSpawnSystem.cs` (Effects 내부 ECB) | ★staged-request 아님 — 순수 ECS 스폰. `OverworkGimmickConfig`+`PickupSpawnState` self-gate |
+| ECS 컴포넌트 (Effects) | `Battle/Effects/` Pickup(cell·kind·remainingLife) + PickupSpawnState 싱글턴(후보 셀 Walk∪Place·rng·cadence, **BattleBridge 소유**) | 후보 셀은 `BuildPickupSpawnState`(FlowField 동형 lifecycle)가 `_generatedMap` 에서 구축 |
+| 시뮬 시스템 | `PickupSpawnSystem`(스폰+만료) · `PickupConsumeSystem`(co-location 소비) · `LastRunSystem`(지연 crash) | Consume/LastRun 은 telemetry 로그 위해 non-Burst |
+| 이벤트 큐 | N/A — 신규 채널 0. 라스트런 효과는 기존 `StatModifierApplyEvents` 재사용(AS 버프 + MaxHealthMul 컷) | |
+| View | `Battle/Effects/PickupPresenter.cs`(절차적 플레이스홀더) + `BattleBridge.ReconcilePickupViews` poll-reconcile(엔티티↔GameObject) | ★이벤트 아님 — 매 프레임 poll. 정식 아트/소비 VFX 후속 |
+| 씬 wiring | BattleBridge.pickupViewPrefab(옵션)·pickupViewHeight + SeasonRegistry.defaultSeason=season_overwork | 상태 아이콘은 unit-buff-debuff-aura 오라에 위임 |
+
 ## 힐 (Heal)
 
 | 정거장 | 앵커 | 확인 포인트 |

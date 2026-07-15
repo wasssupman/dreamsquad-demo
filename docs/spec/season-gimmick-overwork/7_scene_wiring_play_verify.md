@@ -32,4 +32,4 @@
 - season_overwork 활성 상태로 Play 시 기믹 두 룰 모두 동작, 테마/뷰 정상, 에러 0.
 - defaultSeason 을 forest 로 바꾸면 기믹 완전 비활성(무변화).
 
-확인 2026-07-15 · Play 실측: `season=S_Overwork` 주입 + 레드불 소비 로그 + forest 렌더 + 에러 0.
+확인 2026-07-15 · 커밋 `529b9d09` · Play 실측: `season=S_Overwork` 주입 + 레드불 소비 로그 + 활성 픽업 4개 안정(스폰 셀 전부 Walk/Place, 이동/배치 외 0개) + forest 렌더 + 에러 0.
