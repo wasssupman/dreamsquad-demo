@@ -21,6 +21,15 @@ Shader "Wassup/UI/BackgroundDissolve"
         _TintColor ("Golden Tint Color", Color) = (1, 0.72, 0.38, 1)
         _TintStrength ("Golden Tint Strength", Range(0, 1)) = 0
 
+        // lobby-background-parallax unit 1 — 뎁스 패럴랙스 Cue A 만.
+        // Cue B(사다리꼴)/C(하이라이트)는 의도적으로 없음: 전체화면 배경은 여백이 없어 사다리꼴로
+        // 왜곡하면 가장자리가 안쪽으로 당겨져 캔버스가 드러난다(README 계약).
+        _DepthTex ("Depth", 2D) = "gray" {}
+        _Tilt ("Tilt", Vector) = (0,0,0,0)
+        _Amplitude ("Parallax Amplitude", Float) = 0.015
+        _DepthCenter ("Depth Center", Float) = 0.5
+        _DepthSign ("Depth Sign", Float) = 1
+
         _StencilComp ("Stencil Comparison", Float) = 8
         _Stencil ("Stencil ID", Float) = 0
         _StencilOp ("Stencil Operation", Float) = 0
@@ -64,6 +73,8 @@ Shader "Wassup/UI/BackgroundDissolve"
             #pragma fragment frag
             #include "UnityCG.cginc"
             #include "UnityUI.cginc"
+            // 패럴랙스 산식은 모듈이 단일 소유 — DepthParallax_UI 와 같은 .cginc 를 공유(복붙 금지).
+            #include "../Modules/DepthParallax/Shaders/DepthParallax.cginc"
 
             struct appdata_t
             {
@@ -97,6 +108,11 @@ Shader "Wassup/UI/BackgroundDissolve"
             fixed4 _TintColor;
             float _TintStrength;
             float4 _ClipRect;
+            sampler2D _DepthTex;
+            float4 _Tilt;
+            float _Amplitude;
+            float _DepthCenter;
+            float _DepthSign;
 
             v2f vert(appdata_t v)
             {
@@ -110,8 +126,16 @@ Shader "Wassup/UI/BackgroundDissolve"
 
             fixed4 frag(v2f i) : SV_Target
             {
-                fixed4 color = tex2D(_MainTex, i.uv) * i.color;
-                float noise = tex2D(_NoiseTex, i.uv * _NoiseScale).r;
+                // Cue A — 뎁스 패럴랙스. 이미지에 붙은 것(배경 색·디졸브 노이즈 패턴)만 시프트한다.
+                // 아래 필드 계산(_Center 원형 확산 / 수평 스윕)과 _ClipRect 는 원본 i.uv 를 쓴다:
+                // 확산 중심은 캐릭터(패럴랙스 안 하는 별도 UI)에 앵커돼야 하고, 마스킹은 논리 rect 기준이라
+                // 시프트하면 전환 중심이 캐릭터에서 어긋나고 마스크가 흔들린다.
+                // rest(_Tilt=0) → off=0 → uv==i.uv → 기존 디졸브와 픽셀 동일(무회귀).
+                float depth = tex2D(_DepthTex, i.uv).r;
+                float2 uv = i.uv + DepthParallaxOffset(_Tilt.xy, depth, _DepthCenter, _Amplitude, _DepthSign);
+
+                fixed4 color = tex2D(_MainTex, uv) * i.color;
+                float noise = tex2D(_NoiseTex, uv * _NoiseScale).r;
                 float progress = _Dissolve;
 
                 float frontDist; // 파면으로부터의 거리 (>0 = 아직 보이는 쪽)
