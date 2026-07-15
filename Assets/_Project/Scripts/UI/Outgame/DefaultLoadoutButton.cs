@@ -21,9 +21,10 @@ namespace Wassup.UI
         [SerializeField] private PlayerProfileSO profileSO;
         [SerializeField] private DefenderCatalog defenderCatalog;
         [SerializeField] private DreamcatcherCardCatalog cardCatalog;
-        // The authored default deck. Dead data since the fallback deck was removed
-        // (DreamcatcherHandController.cs:192) — this button revives it as the one
-        // place the default deck is authored.
+        // The authored default deck, handed to ProfileStore. game-start-loadout-gate
+        // unit 1 moved ownership there so the fresh-install path seeds the same deck
+        // this button restores; a dev-only component must not be the only code that
+        // knows what "default" means.
         [SerializeField] private DreamcatcherDeck defaultDeck;
 
         private void Awake()
@@ -44,13 +45,9 @@ namespace Wassup.UI
                 return;
             }
 
-            // Squad defaults come from the same path a fresh install takes; this
-            // button must not invent a second definition of "default squad".
-            var profile = ProfileStore.CreateDefault(defenderCatalog);
-
-            var deck = BuildDefaultDeck(defaultDeck, DeckRules.EffectiveDeckSize(cardCatalog));
-            profile.dreamcatcherDecks = new List<DeckSave> { deck };
-            profile.selectedDeckId = deck.id;
+            // Squad and deck defaults both come from the path a fresh install takes;
+            // this button must not invent a second definition of "default".
+            var profile = ProfileStore.CreateDefault(defenderCatalog, defaultDeck, cardCatalog);
 
             // Replace the in-memory profile before saving: saving while the SO still
             // holds the old (or an empty) profile is how the squad gets wiped.
@@ -58,21 +55,7 @@ namespace Wassup.UI
             ProfileStore.Save(profile);
 
             Debug.Log($"[DefaultLoadout] squad={profile.SelectedSquad()?.unitIds.Count ?? 0} units, "
-                + $"deck={deck.cardIds.Count} cards → {ProfileStore.Path}", this);
-        }
-
-        // Take the authored deck in order, up to the current rule size, so a
-        // deckSize change is followed automatically instead of re-authoring the asset.
-        internal static DeckSave BuildDefaultDeck(DreamcatcherDeck source, int deckSize)
-        {
-            var save = new DeckSave { id = "deck_1", name = "Deck 1", cardIds = new List<string>() };
-            if (source == null || source.cards == null) return save;
-            for (int i = 0; i < source.cards.Length && save.cardIds.Count < deckSize; i++)
-            {
-                var card = source.cards[i];
-                if (card != null && !string.IsNullOrEmpty(card.id)) save.cardIds.Add(card.id);
-            }
-            return save;
+                + $"deck={profile.SelectedDeck()?.cardIds.Count ?? 0} cards → {ProfileStore.Path}", this);
         }
     }
 }

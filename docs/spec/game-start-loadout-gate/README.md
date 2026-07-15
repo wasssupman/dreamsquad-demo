@@ -1,6 +1,6 @@
 # game-start-loadout-gate — 게임 시작 전 로드아웃 충족 게이트
 
-> 상태: **unit 0 구현 완료(미커밋) 2026-07-16 · units 1~2 미구현**
+> 상태: **units 0~1 완료 2026-07-16 · unit 2 미구현** (커밋: 0 `986efa09`)
 > 선행: `squad-loadout`(완료) · `dreamcatcher-deck-builder`(완료) · `outgame-login-gate`(units 0~6)
 > 브레인스토밍 결정 2026-07-16: 스쿼드 기준 = 정확히 7명 · 팝업 = 미충족 나열 + 해당 패널 이동 버튼 · 테스트 모드는 게이트 없음
 > 설계 critic 반영 2026-07-16: C1(카탈로그 null → 해결 불가 팝업) · M1(스쿼드 판정을 `SquadDraw.Resolve` 에 위임) · M3(신규 유저 차단 → 기본 덱 시딩으로 해소, unit 1 신설)

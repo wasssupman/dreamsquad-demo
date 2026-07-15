@@ -1784,6 +1784,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.OutgameMenuController
   catalog: {fileID: 11400000, guid: 346c00d9daf72429d94ddd29337c7d23, type: 2}
   profileSO: {fileID: 11400000, guid: e610b4c0bbbeb4becb09188e400e6a55, type: 2}
+  cardCatalog: {fileID: 11400000, guid: 7e41a0cd1ffdc4b6c872ef0ac3d8df0e, type: 2}
+  defaultDeck: {fileID: 11400000, guid: d3a884355714e4262a953d61fa97e2af, type: 2}
   squadPanel: {fileID: 37122196}
   dreamcatcherPanel: {fileID: 98252861}
   testModePanel: {fileID: 692049510}

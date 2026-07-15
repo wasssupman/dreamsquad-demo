@@ -13,6 +13,11 @@ namespace Wassup.UI
     {
         [SerializeField] private DefenderCatalog catalog;
         [SerializeField] private PlayerProfileSO profileSO;
+        // game-start-loadout-gate unit 1 — handed to ProfileStore so a fresh install
+        // gets a starter deck, not just a starter squad. unit 2's start gate reads
+        // cardCatalog too (deck rule numbers live on its DeckRuleConfig).
+        [SerializeField] private DreamcatcherCardCatalog cardCatalog;
+        [SerializeField] private DreamcatcherDeck defaultDeck;
         [SerializeField] private GameObject squadPanel;
         [SerializeField] private GameObject dreamcatcherPanel;
         // wave-authoring-test-mode unit 4 — 테스트 모드 플랜 피커 패널.
@@ -39,7 +44,7 @@ namespace Wassup.UI
                 Debug.LogError("[OutgameMenuController] PlayerProfileSO unassigned.", this);
                 return;
             }
-            profileSO.profile = ProfileStore.LoadOrCreate(catalog);
+            profileSO.profile = ProfileStore.LoadOrCreate(catalog, defaultDeck, cardCatalog);
             Debug.Log($"[OutgameMenuController] Profile loaded: {(catalog != null ? catalog.units.Length : 0)} catalog units. path={ProfileStore.Path}");
             ClosePanels();
         }

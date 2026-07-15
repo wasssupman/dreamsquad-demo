@@ -54,14 +54,20 @@ public static PlayerProfile CreateDefault(DefenderCatalog catalog,
 
 ## 완료 기준
 
-- [ ] compile clean, 콘솔 에러 0.
-- [ ] EditMode green:
-  - `LoadOrCreateAt(path, cat, deck, cards)` on missing file → `SelectedDeck()` 이 non-null, `DeckRules.Validate` 통과
-  - `LoadOrCreateAt(path, cat)` (덱 인자 없음) → 덱 0개, **기존 테스트 전부 그대로 통과** (회귀 없음)
-  - 이미 선택 덱이 있는 프로필 로드 → 덱 **변경 없음** (덮어쓰기 금지)
-  - 덱 리스트는 있는데 `selectedDeckId` 가 깨진 프로필 → 첫 덱으로 선택 복구, 새 덱 추가 안 함
-  - `defaultDeck` 이 0장짜리 → 빈 덱을 추가하지 않는다
-  - `DefaultLoadoutButtonTests` 가 `ProfileStore.BuildDefaultDeck` 대상으로 green (잘라내기/null 건너뛰기/부족 시 있는 만큼)
-- [ ] 기존 EditMode 전량 green.
-- [ ] Play: `profile.json` **삭제 후** 첫 로비 진입 → 덱 빌더에 8장 덱이 이미 있고 `Validate` 통과 상태.
-- [ ] `DEFAULT LOADOUT` 클릭 → 종전과 동일 결과 (스쿼드 7 + 덱 8, `deck_1`/`squad_1`).
+- [x] compile clean, 콘솔 에러 0.
+- [x] EditMode green (`ProfileStoreDefaultDeckTests` 10/10):
+  - `LoadOrCreateAt(path, cat, deck, cards)` on missing file → `SelectedDeck()` non-null + `Validate` 통과 — `FreshInstall_SeedsSelectableValidDeck`
+  - `LoadOrCreateAt(path, cat)` (덱 인자 없음) → 덱 0개 — `WithoutDeckArgs_SeedsNothing`
+  - 이미 선택 덱이 있으면 **변경 없음** (무효 덱이어도) — `ExistingSelectedDeck_IsNeverOverwritten`
+  - `selectedDeckId` 깨진 프로필 → 첫 덱으로 복구, 새 덱 추가 안 함 — `BrokenSelection_RepairsToFirstDeckWithoutAddingOne`
+  - `defaultDeck` 0장 → 빈 덱 추가 안 함 — `AuthoredDeckEmpty_SeedsNothing`
+  - 덱 없는 **기존** 프로필도 로드 시 구제 — `ExistingDecklessProfile_GetsSeededOnLoad`
+  - `BuildDefaultDeck` 4케이스가 `ProfileStore` 대상으로 이동 후 green
+- [x] 기존 EditMode 전량 green — 854 중 852 passed / **0 failed** / 2 skipped(기존 Ignore). `ProfileStoreTests` 는 덱 인자 없이 호출하는 기존 코드 그대로 통과(선택 인자 = 무회귀 증거).
+- [x] 실제 에셋으로 신규 설치 재현 (임시 경로, 라이브 `profile.json` 무접촉):
+  `deckSize=8` · squad = `archer,bastion,blocking_caster,bruiser,cannon,fire_caster,guardian` · deck = `ranger_atk,poke_needle,ranger_as,bouncy_bead,cost1_as,thornmail,cost1_hp,guardian_hp` · `selectedDeckId=deck_1` · **`LoadoutGate.Check = True`**. 이 커밋 전이면 `deck=NULL, GATE=False`.
+- [x] 라이브 `profile.json` 무손상 확인 — squad 7 / decks 1 / `deck_1`.
+- [x] 씬 diff 가 `cardCatalog`/`defaultDeck` 2줄뿐 — 무관한 WIP 미포함.
+- [ ] `DEFAULT LOADOUT` 클릭 → 종전과 동일 결과 (스쿼드 7 + 덱 8). **사용자 Play 확인 대기** — 이 버튼은 프로필을 통째로 덮으므로 자동 검증하지 않았다.
+
+확인 2026-07-16 — 기본 덱 시딩. 기본 덱 소유권을 `DefaultLoadoutButton`(dev 전용) → `ProfileStore` 로 이관해 신규 설치와 dev 버튼이 같은 정의를 쓴다. 시딩은 **덮어쓰기가 아니다** — 선택된 덱이 있으면 무효여도 보존하고 게이트가 알리게 둔다(리셋은 `DEFAULT LOADOUT` 의 역할). 테스트 파일은 `git mv` 로 이름만 바꿔 meta guid 를 보존했다.
