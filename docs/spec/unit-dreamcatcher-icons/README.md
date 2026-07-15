@@ -58,3 +58,9 @@
 - **부착/회수 연출** [S] · 팝 스케일 인, 회수 시 페이드/손패 방향 플라이.
 - **아이콘 탭 → 카드 상세** [S] · 부착 카드 확인 UX.
 - **모디파이어 인디케이터** — 별도 spec (backlog `unit-modifier-indicators` 유지).
+- **아이콘 타입 다형화 시 seam** [S] · 2026-07-15 사용자 결정 = **지금 추상화하지 않는다**(제약 8 — 구현체 1개). 확장이 필요해지는 시점의 변경점은 딱 둘: (1) `DcIconStripView.Show(...)` 가 `List<DreamcatcherCard>` 로 하드 타입, (2) `card.type == CardType.Squad ? squadFrame : unitFrame` 2분기가 N 타입으로 안 늘어남. 2번째 타입이 실제로 오면 값 struct(`{ Sprite art; Sprite frame; }`) 추출 + 카드→struct 해석을 스포너로 이동 → 뷰가 `Wassup.Data` 의존을 잃는다(~15줄, 뷰 국소). 추측으로 미리 만들지 말 것.
+- **풀링 뷰의 stale anchor** [S] · 앵커가 `AttachmentsChanged` 리빌드 시점에만 해석된다(`DcIconStripSpawner.Rebuild`). `SpineUnitPool`/`QuadUnitViewPool` 이 Transform 을 다른 엔티티에 재할당하면 다음 리빌드까지 스트립이 **엉뚱한 유닛을 따라간다**. `EnemyHitBar` 는 매 피격 재해석 + 단명이라 회피 중. 재현 조건(풀 재사용 타이밍) 확인 필요.
+
+## 사후 수정 이력
+
+- **2026-07-15 `d815bf59`** — 머리 위 뱃지 좌표계 버그. 오프셋이 월드 +Y 라 원근 카메라(pitch 55°)에서 외곽 타일 아이콘이 화면 바깥으로 밀렸다(보드 끝 ≈57px@1080w). `HeadAnchor.Lift` 로 카메라 평면 전환 + 오프셋 2.6→1.64 등가 이전. 같은 결함이던 StatusFx/EnemyHitBar/DamageNumber 도 동반 수정. 함정 상세는 `docs/reference/lessons/03-rendering-assets.md` "머리 위 뱃지를 월드 +Y 로 띄우면" 참조 — **오프셋 값을 만질 땐 그 등가식을 먼저 읽을 것**. 같은 커밋에서 `DcIconStripSpawner` 를 `BattleBridge.TeardownCurrentBattle` 회수에 배선(계약 6 누락분).

@@ -99,6 +99,17 @@ BattleScene Tilemap 모드 Main Camera 는 **런타임 정적이 아니다**. �
 - **함정**: 투사체 arc·유닛 높이를 sim-Y(`LocalTransform.Position.y`)에 실으면 화면 반영 0(곡사포가 arc 없이 미끄러짐).
 - **정답**: 높이는 **presentation 층**에서 — `ProjectileViewPool.SyncTransforms` 가 `view.y` 에 `heightOffset`/arc 를 더하는 패턴. sim(ArcPosition)/AOE(셀 XZ)/타이밍은 sim-Y 무관이라 그대로. (프랍 "90°root라 +Y가 깊이로 샘"과 같은 뿌리.)
 
+## 머리 위 뱃지를 월드 +Y 로 띄우면 외곽 타일에서 바깥으로 밀린다
+
+배틀 카메라는 **원근**(`CameraPreset_TilemapRect`: `orthographic: 0`, FOV 40)에 pitch 55°다. 이때 월드 up 은 카메라 공간에서 `(0, cosθ, -sinθ)` 로 분해된다 — 즉 뱃지를 `basePos + Vector3.up * h` 로 띄우면 **위로만 가는 게 아니라 카메라 쪽으로 당겨진다**. `view_z` 가 `h·sinθ` 만큼 줄고 `screen_x = f·view_x/view_z` 이므로 화면 x 가 그만큼 **확대**된다.
+
+- **증상**: 유닛 머리 위 아이콘이 화면 중앙에서 멀수록 좌우로 밀려 보인다. 오프셋 2.6 · 보드 끝에서 **≈57px@1080w**(화면 폭의 5%). 중앙 유닛은 `view_x≈0` 이라 멀쩡해서 "UI 레이어 문제인가?" 로 오진하기 쉽다 — **레이어와 무관하다**(문제의 뷰들은 이미 월드 SpriteRenderer 였다). 오프셋에 비례하므로 작은 값(히트바 1.0)은 티가 안 나 수년 잠복 가능.
+- **정답**: 오프셋을 **카메라 평면**에서 적용 — `HeadAnchor.Lift(basePos, offset, cam)`(`Scripts/Presentation/HeadAnchor.cs`). 카메라 up 은 시선축과 직교라 `view_z` 가 안 변해 어느 타일이든 같은 화면 거리를 유지하고, 페이즈별 pitch 변화(Draft 40°↔Battle 55°)에도 높이가 `cosθ` 로 안 흔들린다.
+- **값 이전 시 등가식**: `k = h·cosθ·view_z/(view_z − h·sinθ)` (55°/23u 기준 ≈ **0.63배**). 월드 기준으로 눈 튜닝한 값을 그대로 옮기면 뱃지가 너무 높이 뜬다. 실적용: DcIconStrip 2.6→1.64 · StatusFx 1.5→0.91/2.2→1.37 · HitBar 1.0→0.60 · DmgNum 1.4→0.85/driftUp 0.7→0.41.
+- **경계**: **billboard 여부가 기준**이다. 화면을 보는 뱃지 → 카메라 평면. 바닥에 눕힌 데칼(`TileHealthGaugeView`, Euler 90 BlobShadow 규약)의 z-fighting 리프트 → **월드 up 유지**(카메라 평면 적용하면 바닥에서 들림).
+- **동반 함정**: 위치를 카메라 회전에 묶는 순간 **실행 순서가 정답의 일부가 된다**. `CameraDirector`(`[DefaultExecutionOrder(-90)]`)가 **LateUpdate** 에서 포즈를 확정하므로, `Update` 에서 위치를 잡으면 지난 프레임 회전을 읽어 **위치만 1프레임 뒤처진다**(회전은 LateUpdate 라 최신 → 카메라 이동 중 뱃지가 유닛에서 미끄러짐). 위치·회전 **둘 다 LateUpdate** 로.
+- **검증법**: Play 없이 프리셋대로 카메라를 재구성(`Quaternion.Euler(55,0,0)`, `dist = radius/sin(fov/2)*1.12`)해 `WorldToScreenPoint` 로 발밑 대비 뱃지 dx 를 x=-5~+5 스윕하면 즉시 드러난다. 수정 후 전 구간 0.00px. (커밋 `d815bf59`)
+
 ## 런타임 `Shader.Find` 는 빌드에서 스트리핑된다 (에디터만 정상)
 
 `Shader.Find` 는 **빌드에 포함된 셰이더만** 찾는다. 셰이더가 빌드에 들어가는 경로는 셋뿐이다:
