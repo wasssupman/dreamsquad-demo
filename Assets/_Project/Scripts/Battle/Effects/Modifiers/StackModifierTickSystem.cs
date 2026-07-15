@@ -130,6 +130,7 @@ namespace Wassup.Battle.Effects
                             duration  = rule.duration,
                             source    = entity,
                             stackId   = 0,
+                            origin    = ModifierOrigin.Stack,
                         });
                         break;
                 }

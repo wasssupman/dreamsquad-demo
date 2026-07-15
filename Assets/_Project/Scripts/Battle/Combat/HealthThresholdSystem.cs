@@ -116,6 +116,7 @@ namespace Wassup.Battle.Combat
                                     duration = ttl,
                                     source = entity,
                                     stackId = slot.statBuffStackId,
+                                    origin = ModifierOrigin.HealthThreshold,
                                 });
                             }
                         }

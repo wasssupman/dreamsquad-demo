@@ -64,6 +64,7 @@ namespace Wassup.Battle.Effects
                                 remaining = math.max(slot.header.remaining, ev.duration),
                                 source    = ev.source,
                                 stackId   = ev.stackId,
+                                origin    = ev.origin,
                             },
                             stat      = ev.stat,
                             op        = ev.op,
@@ -81,6 +82,7 @@ namespace Wassup.Battle.Effects
                         remaining = ev.duration,
                         source    = ev.source,
                         stackId   = ev.stackId,
+                        origin    = ev.origin,
                     },
                     stat      = ev.stat,
                     op        = ev.op,
@@ -103,6 +105,7 @@ namespace Wassup.Battle.Effects
                         remaining = ev.duration,
                         source    = ev.source,
                         stackId   = ev.stackId,
+                        origin    = ev.origin,
                     },
                     stat      = ev.stat,
                     op        = ev.op,
@@ -116,6 +119,8 @@ namespace Wassup.Battle.Effects
         // merge key: (source, kind)
         // refresh: stackCount = min(maxStack, stackCount + countDelta), remaining = perAppDuration
         // new slot when no match
+        // NOTE(dreamcatcher-empower-aura): StackModifierApplyEvent 에는 origin 이 없어 stack 슬롯의
+        // header.origin 은 Unspecified 로 둔다(의도). 스택은 스탯 오라 판정 대상이 아니다.
         private static void ApplyStack(EntityManager em, EntityCommandBuffer ecb, StackModifierApplyEvent ev)
         {
             var target = ev.target;

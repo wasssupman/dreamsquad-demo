@@ -239,6 +239,7 @@ namespace Wassup.Battle.Units
                                 duration = ttl,
                                 source = killerSource,
                                 stackId = ks.statBuffStackId,
+                                origin = Wassup.Battle.Effects.ModifierOrigin.Dreamcatcher,
                             });
                         }
                     }

@@ -144,6 +144,10 @@ namespace Wassup.Bridge
         // unit-status-fx 5 — Sleep 연출 소스. CcEffect(Effects 소유)는 읽기만 한다.
         private EntityQuery _ccEffectQuery;
         private bool _ccEffectQueryCreated;
+        // unit-buff-debuff-aura 1 — 버프/디버프 오라 소스. StatModifierSlot 버퍼(Effects 소유)는 읽기만.
+        // 임시(유한 지속) 슬롯만 판정 — 영구 baseline(로드아웃/시너지/드림캐쳐)은 classifier 가 제외.
+        private EntityQuery _modifierSlotQuery;
+        private bool _modifierSlotQueryCreated;
         private readonly List<PendingSpawnEntry> _pending = new();
         private readonly List<Material> _ownedRuntimeMaterials = new();
         private readonly HashSet<Vector2Int> _occupiedTiles = new();
@@ -490,6 +494,11 @@ namespace Wassup.Bridge
             {
                 _ccEffectQuery.Dispose();
                 _ccEffectQueryCreated = false;
+            }
+            if (_modifierSlotQueryCreated)
+            {
+                _modifierSlotQuery.Dispose();
+                _modifierSlotQueryCreated = false;
             }
             if (_projectileSpawnRequestQueryCreated)
             {
@@ -988,6 +997,15 @@ namespace Wassup.Bridge
             {
                 _ccEffectQuery = _em.CreateEntityQuery(ComponentType.ReadOnly<CcEffect>());
                 _ccEffectQueryCreated = true;
+            }
+            if (!_modifierSlotQueryCreated)
+            {
+                // 드림캐쳐 강화는 방어유닛에만 부여되므로 defender 로 한정 — 적/기타 아키타입 순회 낭비 방지
+                // (ecs-review H2). 적이 드림캐쳐 origin 슬롯을 가질 일은 없지만 구조적으로도 차단.
+                _modifierSlotQuery = _em.CreateEntityQuery(
+                    ComponentType.ReadOnly<Wassup.Battle.Effects.StatModifierSlot>(),
+                    ComponentType.ReadOnly<Wassup.Battle.Units.DefenderUnitTag>());
+                _modifierSlotQueryCreated = true;
             }
 
             if (!_projectileSpawnRequestQueryCreated)
@@ -1493,11 +1511,11 @@ namespace Wassup.Bridge
             switch (skill.effect)
             {
                 case SkillEffectType.PowerSurge:
-                    EnqueueDamageMul(entity, skill.magnitude, skill.durationSec);
+                    EnqueueDamageMul(entity, skill.magnitude, skill.durationSec, Wassup.Battle.Effects.ModifierOrigin.Skill);
                     affectedCount = 1;
                     break;
                 case SkillEffectType.RapidFire:
-                    EnqueueAttackSpeedMul(entity, skill.magnitude, skill.durationSec);
+                    EnqueueAttackSpeedMul(entity, skill.magnitude, skill.durationSec, Wassup.Battle.Effects.ModifierOrigin.Skill);
                     affectedCount = 1;
                     break;
                 default:
@@ -1649,7 +1667,7 @@ namespace Wassup.Bridge
                 if (!_em.HasComponent<LocalTransform>(e)) continue;
                 var pos = _em.GetComponentData<LocalTransform>(e).Position;
                 if (!InTileRange(pos, tile, tileRange)) continue;
-                EnqueueMoveSpeedMul(e, skill.magnitude, skill.durationSec);
+                EnqueueMoveSpeedMul(e, skill.magnitude, skill.durationSec, Wassup.Battle.Effects.ModifierOrigin.Skill);
                 affected++;
             }
 
@@ -1873,6 +1891,30 @@ namespace Wassup.Bridge
                 finally
                 {
                     ccEntities.Dispose();
+                }
+            }
+
+            // Empowered: 드림캐쳐 출처(ModifierOrigin.Dreamcatcher) 스탯 모디파이어가 활성인 유닛에
+            // 강화 오라 (dreamcatcher-empower-aura). revoke(mult=1.0 중립화)면 net=identity 라 자동 해제.
+            // 로드아웃(Dreamstone)/시너지/on-place/slow 등 다른 출처는 제외. 버퍼는 읽기만.
+            if (_modifierSlotQueryCreated)
+            {
+                var slotEntities = _modifierSlotQuery.ToEntityArray(Allocator.Temp);
+                try
+                {
+                    for (int i = 0; i < slotEntities.Length; i++)
+                    {
+                        var slots = _em.GetBuffer<Wassup.Battle.Effects.StatModifierSlot>(slotEntities[i], isReadOnly: true);
+                        if (!Wassup.Battle.Effects.ModifierAuraClassifier.HasActiveDreamcatcherModifier(slots.AsNativeArray()))
+                            continue;
+                        var anchor = ResolveUnitViewTransform(slotEntities[i]);
+                        if (anchor == null) continue;
+                        statusFxSpawner.Ensure(slotEntities[i], Wassup.Data.StatusFxKind.Empowered, anchor);
+                    }
+                }
+                finally
+                {
+                    slotEntities.Dispose();
                 }
             }
 
@@ -2413,7 +2455,7 @@ namespace Wassup.Bridge
                     if (!_em.HasComponent<LocalTransform>(e)) continue;
                     var pos = _em.GetComponentData<LocalTransform>(e).Position;
                     if (!InTileRange(pos, placedCell, tileRange)) continue;
-                    EnqueueMoveSpeedMul(e, unitData.onPlaceMagnitude, unitData.onPlaceDuration);
+                    EnqueueMoveSpeedMul(e, unitData.onPlaceMagnitude, unitData.onPlaceDuration, Wassup.Battle.Effects.ModifierOrigin.OnPlace);
                     affected++;
                 }
                 entities.Dispose();
@@ -2430,7 +2472,7 @@ namespace Wassup.Bridge
                     if (!_em.HasComponent<LocalTransform>(e)) continue;
                     var pos = _em.GetComponentData<LocalTransform>(e).Position;
                     if (!InTileRange(pos, placedCell, tileRange)) continue;
-                    EnqueueMoveSpeedMul(e, unitData.onPlaceMagnitude, unitData.onPlaceDuration);
+                    EnqueueMoveSpeedMul(e, unitData.onPlaceMagnitude, unitData.onPlaceDuration, Wassup.Battle.Effects.ModifierOrigin.OnPlace);
                     affected++;
                 }
                 entities.Dispose();
@@ -2483,7 +2525,7 @@ namespace Wassup.Bridge
                     var tileInt = new int2(tileCell.x, tileCell.y);
                     var originInt = new int2(placedCell.x, placedCell.y);
                     if (GridMath.ChebyshevDistance(tileInt, originInt) > tileRange) continue;
-                    EnqueueDamageMul(d.entity, unitData.onPlaceMagnitude, unitData.onPlaceDuration);
+                    EnqueueDamageMul(d.entity, unitData.onPlaceMagnitude, unitData.onPlaceDuration, Wassup.Battle.Effects.ModifierOrigin.OnPlace);
                     affected++;
                 }
             }
@@ -2612,7 +2654,7 @@ namespace Wassup.Bridge
         // Multiplicative slot coexisting instead of refreshing (slot accumulation). All
         // current channels are one-directional; keep new ones so (e.g. don't route both
         // haste and slow through EnqueueMoveSpeedMul's stackId=0).
-        private void EnqueueStatModifier(Entity target, Wassup.Battle.Effects.StatKind stat, float multiplier, float duration, ushort stackId)
+        private void EnqueueStatModifier(Entity target, Wassup.Battle.Effects.StatKind stat, float multiplier, float duration, ushort stackId, Wassup.Battle.Effects.ModifierOrigin origin)
         {
             if (!_statModifierQueue.IsCreated) return;
             Wassup.Battle.Effects.ModifierAuthoring.FromMultiplier(multiplier, out var op, out var magnitude);
@@ -2625,26 +2667,45 @@ namespace Wassup.Bridge
                 duration  = duration,
                 source    = target,
                 stackId   = stackId,
+                origin    = origin,
             });
         }
 
-        public void EnqueueDamageMul(Entity target, float multiplier, float duration)
-            => EnqueueStatModifier(target, Wassup.Battle.Effects.StatKind.DamageMul, multiplier, duration, 0);
+        // 명시적 op+magnitude enqueue. FromMultiplier 로는 표현 못 하는 값(예: Multiplicative 항등 1.0)이
+        // 필요한 revoke 중립화 전용. (일반 경로는 EnqueueStatModifier — 배율→op 자동 분류)
+        private void EnqueueStatModifierRaw(Entity target, Wassup.Battle.Effects.StatKind stat, Wassup.Battle.Effects.CombineOp op, float magnitude, float duration, ushort stackId, Wassup.Battle.Effects.ModifierOrigin origin)
+        {
+            if (!_statModifierQueue.IsCreated) return;
+            _statModifierQueue.Enqueue(new Wassup.Battle.Effects.StatModifierApplyEvent
+            {
+                target    = target,
+                stat      = stat,
+                op        = op,
+                magnitude = magnitude,
+                duration  = duration,
+                source    = target,
+                stackId   = stackId,
+                origin    = origin,
+            });
+        }
+
+        public void EnqueueDamageMul(Entity target, float multiplier, float duration, Wassup.Battle.Effects.ModifierOrigin origin)
+            => EnqueueStatModifier(target, Wassup.Battle.Effects.StatKind.DamageMul, multiplier, duration, 0, origin);
 
         // RapidFire / CooldownReduction: multiplier here means "attack speed factor" (how much faster to fire).
         // AttackSpeedMul > 1 = faster attacks. Legacy ApplyCooldownReduction stored 1/multiplier as a cooldown divisor;
         // the new channel stores the speed multiplier directly (ModifierStatsAggregateSystem applies it to attackSpeedMul).
-        public void EnqueueAttackSpeedMul(Entity target, float multiplier, float duration)
-            => EnqueueStatModifier(target, Wassup.Battle.Effects.StatKind.AttackSpeedMul, multiplier, duration, 0);
+        public void EnqueueAttackSpeedMul(Entity target, float multiplier, float duration, Wassup.Battle.Effects.ModifierOrigin origin)
+            => EnqueueStatModifier(target, Wassup.Battle.Effects.StatKind.AttackSpeedMul, multiplier, duration, 0, origin);
 
-        public void EnqueueMoveSpeedMul(Entity target, float multiplier, float duration)
-            => EnqueueStatModifier(target, Wassup.Battle.Effects.StatKind.MoveSpeedMul, multiplier, duration, 0);
+        public void EnqueueMoveSpeedMul(Entity target, float multiplier, float duration, Wassup.Battle.Effects.ModifierOrigin origin)
+            => EnqueueStatModifier(target, Wassup.Battle.Effects.StatKind.MoveSpeedMul, multiplier, duration, 0, origin);
 
         // Synergy: infinite duration, magnitude refreshed each recompute.
         // multiplier=1.0 (neighbors==0) authors as the additive identity (+0.0).
         // stackId=1 distinguishes synergy slot from onplace/skill DamageMul (stackId=0).
         private void EnqueueSynergyMul(Entity target, float multiplier)
-            => EnqueueStatModifier(target, Wassup.Battle.Effects.StatKind.DamageMul, multiplier, float.PositiveInfinity, 1);
+            => EnqueueStatModifier(target, Wassup.Battle.Effects.StatKind.DamageMul, multiplier, float.PositiveInfinity, 1, Wassup.Battle.Effects.ModifierOrigin.Synergy);
 
         // dreamcatcher-bridge-partial-cleanup unit 0 — 드림캐쳐 카드 번역자
         // (레지스트리·apply/revoke·부착 베이크·axis/effect 매핑)는
@@ -2749,7 +2810,7 @@ namespace Wassup.Bridge
                 if (stone == null) continue;
                 if (!MapDcEffect(stone.effect, out var stat, out var mult)) continue;
                 ushort sid = _dcStackCounter++;
-                _activeDcEffects.Add(new ActiveDcEffect { axis = Wassup.Data.CardTargetAxis.All, stat = stat, mult = mult, stackId = sid });
+                _activeDcEffects.Add(new ActiveDcEffect { axis = Wassup.Data.CardTargetAxis.All, stat = stat, mult = mult, stackId = sid, origin = Wassup.Battle.Effects.ModifierOrigin.Dreamstone });
                 // No defenders are placed yet at this point in BeginPlacement (_defenderByTile
                 // was just cleared above) — this loop is a no-op today, but sharing it with
                 // ApplyDreamcatcherCardInternal's identical loop is harmless and keeps both call sites
@@ -2763,7 +2824,7 @@ namespace Wassup.Bridge
                     var data = kv.Value.data;
                     var entity = kv.Value.entity;
                     if (data != null && _em.Exists(entity) && MatchesDcAxis(data, Wassup.Data.CardTargetAxis.All))
-                        EnqueueStatModifier(entity, stat, mult, DcDuration, sid);
+                        EnqueueStatModifier(entity, stat, mult, DcDuration, sid, Wassup.Battle.Effects.ModifierOrigin.Dreamstone);
                 }
             }
         }
@@ -3457,6 +3518,7 @@ namespace Wassup.Bridge
                     duration  = float.PositiveInfinity,
                     source    = entity,
                     stackId   = EffectTileStackId,
+                    origin    = Wassup.Battle.Effects.ModifierOrigin.Tile,
                 });
             }
         }

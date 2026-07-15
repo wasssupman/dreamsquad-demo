@@ -22,11 +22,10 @@ namespace Wassup.Core
     {
         [SerializeField] private BattleBridge bridge;
         [SerializeField] private AwakeningConfig config;
-        // Attach-deck resolve chain (same pattern as the dormant controller):
-        // validated saved deck via catalog → serialized fallback deck.
+        // Attach-deck resolve: validated saved deck via catalog only. 기본(fallback)
+        // 덱은 제거됨 (사용자 결정 2026-07-15) — 저장 덱이 없으면 부착 덱은 비어 있다.
         [SerializeField] private PlayerProfileSO profileSO;
         [SerializeField] private DreamcatcherCardCatalog cardCatalog;
-        [SerializeField] private DreamcatcherDeck fallbackDeck;
         // Active(common) wiring: the existing per-match skill roll stays the
         // source of truth (seed + logging untouched); each rolled SkillData is
         // translated to its wrapping Active card via this serialized list.
@@ -190,9 +189,9 @@ namespace Wassup.Core
                 }
                 if (result.Count > 0) return result;
             }
-            if (fallbackDeck != null && fallbackDeck.cards != null)
-                foreach (var c in fallbackDeck.cards)
-                    if (c != null) result.Add(c);
+            // 기본(fallback) 덱 제거 (사용자 결정 2026-07-15): 저장/선택 덱이 없으면 부착 덱은
+            // 빈 목록. 기본 덱이 모든 배치 유닛을 상시 버프하던 미의도 동작 차단(→ 강화 오라 오작동
+            // 근본 원인). 각성 손패는 롤된 Active 카드만으로 구성된다.
             return result;
         }
 

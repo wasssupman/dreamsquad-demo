@@ -13,6 +13,7 @@ namespace Wassup.Battle.Effects
         public float duration;
         public Entity source;
         public ushort stackId;       // producer 가 부여, 디폴트 0
+        public ModifierOrigin origin; // dreamcatcher-empower-aura unit 1 — 출처 태그(디폴트 Unspecified)
     }
 
     public struct StatModifierApplyEventsSingleton : IComponentData

@@ -168,6 +168,7 @@ namespace Wassup.Battle.Combat.Projectile
                                                     duration = output.duration,
                                                     source = entity,
                                                     stackId = 0,
+                                                    origin = ModifierOrigin.OnHit,
                                                 });
                                             break;
 

@@ -54,6 +54,7 @@ namespace Wassup.Battle.Effects
                                 duration = effect.restDuration,
                                 source = Entity.Null,
                                 stackId = 0,
+                                origin = ModifierOrigin.Zone,
                             });
                     }
                     else

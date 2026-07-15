@@ -755,6 +755,7 @@ namespace Wassup.Battle.Combat
                                                     duration  = o.duration,
                                                     source    = attackerEntity,
                                                     stackId   = 0,
+                                                    origin    = Wassup.Battle.Effects.ModifierOrigin.OnHit,
                                                 });
                                             if (attackOutputLogWriter.HasValue)
                                                 attackOutputLogWriter.Value.Enqueue(new AttackOutputLogEvent

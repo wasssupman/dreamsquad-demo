@@ -101,6 +101,41 @@ namespace Wassup.Tests.PlayMode
             Assert.AreEqual(1.21f, GetStat(bridge, em, "scout").attackSpeedMul, 0.01f, "future ranger inherits stacked AS");
         }
 
+        // dreamcatcher-empower-aura — revoke 가 감소형(Multiplicative, mult<1) 버프를 실제로 중립화하는지.
+        // 회귀 가드: 예전엔 revoke 가 1f→FromMultiplier→Additive+0 을 보내 원본 Multiplicative 슬롯과
+        // op 불일치 → 미머지 → 버프 잔존(+강화 오라 잔존). 이제 원본 op 로 identity 를 emit해 중립화.
+        [UnityTest]
+        public IEnumerator RevokeNeutralizesReductionShapedBuff()
+        {
+            LogAssert.ignoreFailingMessages = true;
+            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            for (int i = 0; i < 6; i++) yield return null;
+
+            var bridge = Object.FindObjectOfType<BattleBridge>();
+            Assert.IsNotNull(bridge, "BattleBridge present");
+            var cat = FindCatalog();
+            var guardian = cat.ById("guardian");
+            bridge.SetDefenderPool(new[] { guardian });
+            bridge.BeginPlacement();
+            var gm = Object.FindObjectOfType<GameManager>();
+            gm.CostRuntime.ResetToStart();
+            gm.CostRuntime.AddCost(1000);
+            yield return null;
+            Assert.IsTrue(PlaceFirstValid(bridge, guardian), "place guardian");
+
+            // EffectiveHealth → DmgTakenMul ≈ 0.87 (Multiplicative). hosted = revocable handle>0.
+            int handle = bridge.ApplyDreamcatcherCardHosted(MakeCard(CardTargetAxis.ClassGuardian, CardBuffKind.EffectiveHealth, 15f));
+            Assert.Greater(handle, 0, "hosted card returns revocable handle");
+            yield return null; yield return null; yield return null;
+            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+            Assert.AreEqual(0.87f, GetStat(bridge, em, "guardian").dmgTakenMul, 0.01f, "eHP applied (0.87)");
+
+            bridge.RevokeDreamcatcherEffects(handle);
+            yield return null; yield return null; yield return null;
+            Assert.AreEqual(1.0f, GetStat(bridge, em, "guardian").dmgTakenMul, 0.01f,
+                "revoke restores dmgTakenMul to 1.0 (Multiplicative slot neutralized → net identity → no aura)");
+        }
+
         private static DreamcatcherCard MakeCard(CardTargetAxis axis, CardBuffKind kind, float pct)
         {
             var c = ScriptableObject.CreateInstance<DreamcatcherCard>();
