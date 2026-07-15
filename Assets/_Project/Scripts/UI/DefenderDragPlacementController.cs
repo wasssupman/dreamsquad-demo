@@ -44,6 +44,11 @@ namespace Wassup.UI
         private TextMeshProUGUI _rejectLabel;
         private Vector2 _lastScreenPos;
 
+        // depth-parallax unit 7 — 스와이프→틸트 피드 상태. _prevScreenPos = 직전 프레임 포인터(속도 델타용),
+        // _swipeVelSmoothed = exp-lerp 스무딩 스와이프 속도, _tiltGain = 유닛별 게인(BeginDrag 에서 주입, 컨트롤러 단독 소유).
+        private Vector2 _prevScreenPos, _swipeVelSmoothed;
+        private float _tiltGain = 1f;
+
         // 키링 배치 상태: 고리 = 손가락(공중). 유닛 = 보드에 서서 무게추처럼 스프링 지연으로 뒤따라옴.
         private Vector3 _ringWorld;        // 고리(손가락, 공중)
         private Vector3 _unitTargetWorld;  // 유닛 발 목표(고리 바로 아래 보드) — 손가락 즉시 추종
@@ -95,8 +100,16 @@ namespace Wassup.UI
             // 기능 온/오프는 DragSwaySettings.enableDeployCutscene 로 게이트.
             if (Cfg.enableDeployCutscene && _cutscenePlayer != null &&
                 unitData.deployCutsceneFrames != null && unitData.deployCutsceneFrames.Length > 0)
-                _cutscenePlayer.Play(unitData.deployCutsceneFrames, unitData.deployCutsceneFps,
-                    unitData.deployCutsceneScale, unitData.deployCutsceneOffset);
+            {
+                // depth-parallax unit 7 — 색+뎁스 lockstep 재생(5-arg). 뎁스 미할당이면 null 전달=색만(패럴랙스 없음).
+                _cutscenePlayer.Play(unitData.deployCutsceneFrames, unitData.deployCutsceneDepth,
+                    unitData.deployCutsceneFps, unitData.deployCutsceneScale, unitData.deployCutsceneOffset);
+                // 유닛별 틸트 게인은 Play 로 넘기지 않고 컨트롤러가 보관 → 스와이프 블록에서 곱함(게인 단독 소유).
+                _tiltGain = unitData.deployCutsceneTiltGain;
+                // 첫 프레임 속도 스파이크 방지: prev 를 시작점으로 seed, 스무딩 속도 0 리셋.
+                _prevScreenPos = screenPosition;
+                _swipeVelSmoothed = Vector2.zero;
+            }
             bridge?.SetEnemiesDimmed(true); // placement-enemy-see-through — 적 반투명 on
             bridge?.SetPlacementHighlightAboveUnits(true); // unit 6 — 배치 하이라이트를 적 위로
             if (placementInput != null) placementInput.SetClickPlacementEnabled(false);
@@ -105,6 +118,20 @@ namespace Wassup.UI
 
         private void Update()
         {
+            // depth-parallax unit 7 — 스와이프 속도 → 정규화 틸트를 매 프레임 컷신 플레이어에 피드.
+            // 컷신은 보드 독립(오프보드에서도 재생) 이라 보드 early-return 위에서 실행. 블록 로컬 dt
+            // (아래 dt 는 early-return 밑이라 스코프 밖 + CS0136 회피 위해 이름 분리). 게인은 컨트롤러가 단독 소유.
+            if (_session.active)
+            {
+                float swipeDt = Mathf.Max(Time.unscaledDeltaTime, 1e-4f);
+                Vector2 rawVel = (_lastScreenPos - _prevScreenPos) / swipeDt;
+                _swipeVelSmoothed = Vector2.Lerp(_swipeVelSmoothed, rawVel, Cfg.deployCutsceneSwipeSmoothing);
+                Vector2 tilt = _swipeVelSmoothed / Mathf.Max(Cfg.deployCutsceneSwipeRefSpeed, 1f);
+                tilt = Vector2.ClampMagnitude(tilt, 1f) * _tiltGain; // 게인 곱은 컨트롤러가 단독 소유(플레이어는 게인 모름)
+                _cutscenePlayer?.SetTilt(tilt);
+                _prevScreenPos = _lastScreenPos;
+            }
+
             if (!_session.active || _session.preview == null || _session.endNode == null || mainCamera == null) return;
             if (!_onBoard || !_posInit) return;
             var s = Cfg;

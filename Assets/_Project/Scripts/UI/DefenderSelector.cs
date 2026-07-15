@@ -5,6 +5,7 @@ using UnityEngine.UI;
 using Wassup.Bridge;
 using Wassup.Core;
 using Wassup.Data;
+using Wassup.DepthParallax;
 using Wassup.UI.Layout;
 
 namespace Wassup.UI
@@ -24,6 +25,9 @@ namespace Wassup.UI
         // 드래그 프리뷰 sway 튜닝값(SO). 컨트롤러가 런타임 부착이라 여기서 할당해 주입한다.
         // 미할당이면 컨트롤러가 클래스 기본값으로 폴백. 에셋 편집이 런타임에 반영된다.
         [SerializeField] private DragSwaySettings swaySettings;
+        // depth-parallax u9 — 배치 컷신 틸트 패럴랙스 튜닝 SO(선택). 플레이어가 런타임 부착이라
+        // 여기서 할당해 주입한다. 미할당이면 플레이어가 클래스 기본값으로 폴백(라이브 튜닝 불가).
+        [SerializeField] private DepthParallaxSettings depthParallaxSettings;
         // ui-tweak 2026-07-09 — 슬롯 이름은 한글(음차). 기본 TMP 폰트는 한글 글리프가
         // 없어 네모로 깨지므로 한글 SDF(Jua)를 주입한다. 미할당이면 라틴 폴백.
         [SerializeField] private TMP_FontAsset nameFont;
@@ -452,6 +456,8 @@ namespace Wassup.UI
                 deployCutscenePlayer = GetComponent<DeployCutscenePlayer>();
             if (deployCutscenePlayer == null)
                 deployCutscenePlayer = gameObject.AddComponent<DeployCutscenePlayer>();
+            if (depthParallaxSettings != null)
+                deployCutscenePlayer.SetSettings(depthParallaxSettings);
             if (bridge != null)
                 dragPlacementController.Configure(bridge, Camera.main, bridge.PlacementInput,
                     swaySettings, nameFont, deployCutscenePlayer);

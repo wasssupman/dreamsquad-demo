@@ -12,7 +12,8 @@
         "Unity.InputSystem",
         "spine-unity",
         "spine-csharp",
-        "PrimeTween.Runtime"
+        "PrimeTween.Runtime",
+        "Wassup.DepthParallax"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

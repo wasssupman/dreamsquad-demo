@@ -124,6 +124,10 @@ namespace Wassup.Data
         // 유닛별 도착 위치 오프셋(px). 재생기 공유 baseline(cornerMarginPx)에 더해진다.
         // 프레임마다 캐릭터 위치/크기가 달라 컷신별로 안착 지점을 미세조정. (0,0)=baseline.
         public Vector2 deployCutsceneOffset;
+        // depth-parallax unit 7 — 뎁스맵 프레임(패럴랙스용). 길이 1=정적 공유(기본), N=프레임별, 빈=색만(패럴랙스 없음).
+        public Texture2D[] deployCutsceneDepth;
+        // 유닛별 틸트 세기(컨트롤러가 SetTilt 전에 곱함). 게인은 컨트롤러가 단독 소유.
+        public float deployCutsceneTiltGain = 1f;
 
         [Header("Knockback (per attack)")]
         public float knockbackDistance;   // world units. 0 = disabled
