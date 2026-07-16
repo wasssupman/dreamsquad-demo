@@ -2,6 +2,7 @@
 
 **상태**: 완료 2026-07-15 — 야근 기믹 두 룰(피로도→번아웃, 레드불→라스트런) end-to-end 구현·Play 검증. 야근 시즌(`season_overwork`) 정식 default. 상세 인계는 [8_handoff_summary.md](8_handoff_summary.md).
 **후속 (2026-07-15)**: [9_gimmick_split_and_burnout_vfx.md](9_gimmick_split_and_burnout_vfx.md) — 야근 기믹을 Burnout/RedBull 2개로 분할(매치당 랜덤 배정, gimmick-match-integration 계약 9 초과) + 레드불 빈도 5→3s + 번아웃 전용 VFX(먹구름 — 번개는 사용자 피드백으로 제거, 먹구름 강화). 실 유닛 번아웃 발현 + 룩 사용자 승인 완료. rev2: 라스트런 전용 VFX(먹구름 복제 → 빨강) 추가.
+**리뷰 (2026-07-16)**: [10_review_hardening.md](10_review_hardening.md) — 리뷰 findings #1(crash 문서 drift 정정)·#2(라스트런 소비 락 — crash 무한 회피 차단)·#3(상태FX 분류 origin 단일 의존 → `ModifierOrigin.Burnout` 태그 + `LastRun` 컴포넌트로 견고화).
 
 ## 목표
 
@@ -10,14 +11,14 @@
 야근 기믹의 두 룰:
 
 1. **피로도 → 번아웃**: 배치된 유닛은 10초마다 피로도 +1. 5스택 도달 시 **번아웃** (최대체력·공격력·공격속도 -20%, N초 지속 후 해제 + 스택 소모, 이후 다시 누적 시작).
-2. **레드불 → 라스트런**: 매 5초마다 이동/배치 가능 타일에 레드불 아이템 스폰. 유닛(배치 시) 또는 적(이동 통과 시)이 같은 타일에 있으면 소비되고 **라스트런** 발동 — 공격속도 +50% (5초), 종료 시 최대체력 -90% (판 끝까지). **적도 동일하게 라스트런을 받는다** (2026-07-15 사용자 결정).
+2. **레드불 → 라스트런**: 이동/배치 가능 타일에 레드불 아이템 주기 스폰. 유닛(배치 시) 또는 적(이동 통과 시)이 같은 타일에 있으면 소비되고 **라스트런** 발동 — 공격속도 +50% (5초), 종료 시 **현재 최대체력의 50% 를 데미지로 입음**(1회성, IncomingDamage 경유 — unit 5 재정의로 "최대체력 -90% 영구컷"에서 변경). **적도 동일하게 라스트런을 받는다** (2026-07-15 사용자 결정). 라스트런 진행 중엔 재소비 락 — crash 후에야 다시 소비(review #2).
 
 ## 검증 질문 (이 spec 이 답해야 할 것)
 
 - 야근 시즌 SO 를 활성화하고 매치를 시작하면, 다른 코드 수정 없이 두 룰이 모두 동작하는가?
 - 기믹이 없는 시즌(gimmick = null)에서는 기존 플레이가 완전히 무변화인가?
 - 배치 50초 후 유닛이 번아웃에 빠지고, 지속시간 뒤 회복해 다시 누적을 시작하는가?
-- 레드불이 유닛/적 양쪽에 소비되며, 5초 뒤 최대체력 컷이 실제로 들어가는가?
+- 레드불이 유닛/적 양쪽에 소비되며, 5초 뒤 최대체력의 50% 데미지가 실제로 들어가는가?
 
 ## 효과 분류 배경 (2026-07-15 사용자 정의)
 
@@ -40,6 +41,7 @@
 | 7 | `7_scene_wiring_play_verify.md` | 야근 시즌 SO 생성 + 씬 wiring + Play 통합 검증 (검증 질문 4개 전부) |
 | 8 | `8_handoff_summary.md` | 인계 지도 |
 | 9 | `9_gimmick_split_and_burnout_vfx.md` | (후속) 기믹 2분할 + 레드불 빈도↑ + 번아웃 전용 VFX(먹구름) |
+| 10 | `10_review_hardening.md` | (리뷰) crash 문서 정정 + 라스트런 소비 락 + 상태FX origin 견고화 (findings #1·#2·#3) |
 
 ## Feature-Wide 계약
 
@@ -63,7 +65,7 @@
 | 시뮬 시스템 | `PickupSpawnSystem`(스폰+만료) · `PickupConsumeSystem`(소비) · `LastRunSystem`(지연 crash) (Effects) |
 | 이벤트 큐 | **N/A** — 엔티티 추적 뷰(poll-reconcile)로 성립, 신규 NativeQueue 채널 0. 라스트런은 기존 `StatModifierApplyEvents` 재사용 |
 | View | `PickupPresenter`(절차적 플레이스홀더) + BattleBridge `ReconcilePickupViews` poll-reconcile. 소비 원샷 VFX·정식 아트는 후속 |
-| 상태 연출 | **위임** — 번아웃/라스트런은 임시 버프/디버프 모디파이어 → unit-buff-debuff-aura 의 Buffed/Debuffed 오라가 자동 분류 (별도 `Burnout` StatusFx 미제작 = 중복 회피) |
+| 상태 연출 | 전용 `StatusFxKind.Burnout`/`LastRun` (gimmick-match-integration 에서 추가). BattleBridge 분류: 번아웃=`ModifierOrigin.Burnout`, 라스트런=`LastRun` 컴포넌트 보유 (review #3 견고화 — origin 태그 단일 의존 제거) |
 
 ## 비목표
 

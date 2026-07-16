@@ -2013,13 +2013,13 @@ namespace Wassup.Bridge
             // 스탯 모디파이어 슬롯 기반 오라 두 종을 같은 버퍼 스캔에서 판정(중복 순회 회피):
             //   Empowered = 드림캐쳐 출처(ModifierOrigin.Dreamcatcher) 활성 — dreamcatcher-empower-aura.
             //     revoke(mult=1.0 중립화)면 net=identity 라 자동 해제(net-편차 판정). Dreamstone/시너지 등 제외.
-            //   Burnout   = 스택 출처(ModifierOrigin.Stack) 활성 — season-gimmick-overwork 번아웃.
-            //     Fatigue 임계(ThresholdRule ApplyStat, ×0.8/15s)가 유일한 Stack 파생이라 origin==Stack
-            //     = 번아웃 창과 일치.
-            //   LastRun   = 기믹 출처(ModifierOrigin.Gimmick) 활성 — season-gimmick-overwork 라스트런.
-            //     레드불 소비 공속버프(×1.5/5s)가 유일한 Gimmick 파생이라 origin==Gimmick = 라스트런 창과 일치.
-            //   Burnout/LastRun 모디파이어는 duration 만료로 제거(in-place revoke 없음)라 단순 존재
-            //     판정(remaining>0)으로 충분. 버퍼는 읽기만.
+            //   Burnout   = 번아웃 출처(ModifierOrigin.Burnout) 활성 — Fatigue 임계 파생 디버프.
+            //     StackModifierTickSystem 이 kind==Fatigue 파생에만 Burnout origin 을 심는다 →
+            //     다른 Stack 파생(Fire/Ice/…)이 생겨도 번아웃 아이콘과 안 섞임(review #3).
+            //   LastRun   = LastRun 컴포넌트 보유 = 라스트런 창(레드불 소비~crash). 컴포넌트가 창을
+            //     권위적으로 정의하므로 origin 추론 대신 직접 조회(review #3).
+            //   Burnout 모디파이어는 duration 만료로 제거(in-place revoke 없음)라 존재 판정(remaining>0)
+            //     으로 충분. 버퍼는 읽기만.
             if (_modifierSlotQueryCreated)
             {
                 var slotEntities = _modifierSlotQuery.ToEntityArray(Allocator.Temp);
@@ -2027,22 +2027,22 @@ namespace Wassup.Bridge
                 {
                     for (int i = 0; i < slotEntities.Length; i++)
                     {
-                        var slots = _em.GetBuffer<Wassup.Battle.Effects.StatModifierSlot>(slotEntities[i], isReadOnly: true);
+                        var e = slotEntities[i];
+                        var slots = _em.GetBuffer<Wassup.Battle.Effects.StatModifierSlot>(e, isReadOnly: true);
                         bool empowered = Wassup.Battle.Effects.ModifierAuraClassifier.HasActiveDreamcatcherModifier(slots.AsNativeArray());
-                        bool burnout = false, lastRun = false;
+                        bool burnout = false;
                         for (int j = 0; j < slots.Length; j++)
                         {
                             if (slots[j].header.remaining <= 0f) continue;
-                            var o = slots[j].header.origin;
-                            if (o == Wassup.Battle.Effects.ModifierOrigin.Stack) burnout = true;
-                            else if (o == Wassup.Battle.Effects.ModifierOrigin.Gimmick) lastRun = true;
+                            if (slots[j].header.origin == Wassup.Battle.Effects.ModifierOrigin.Burnout) { burnout = true; break; }
                         }
+                        bool lastRun = _em.HasComponent<Wassup.Battle.Effects.LastRun>(e);
                         if (!empowered && !burnout && !lastRun) continue;
-                        var anchor = ResolveUnitViewTransform(slotEntities[i]);
+                        var anchor = ResolveUnitViewTransform(e);
                         if (anchor == null) continue;
-                        if (empowered) statusFxSpawner.Ensure(slotEntities[i], Wassup.Data.StatusFxKind.Empowered, anchor);
-                        if (burnout) statusFxSpawner.Ensure(slotEntities[i], Wassup.Data.StatusFxKind.Burnout, anchor);
-                        if (lastRun) statusFxSpawner.Ensure(slotEntities[i], Wassup.Data.StatusFxKind.LastRun, anchor);
+                        if (empowered) statusFxSpawner.Ensure(e, Wassup.Data.StatusFxKind.Empowered, anchor);
+                        if (burnout) statusFxSpawner.Ensure(e, Wassup.Data.StatusFxKind.Burnout, anchor);
+                        if (lastRun) statusFxSpawner.Ensure(e, Wassup.Data.StatusFxKind.LastRun, anchor);
                     }
                 }
                 finally

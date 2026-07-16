@@ -72,8 +72,11 @@ namespace Wassup.Battle.Effects
             byCell.Dispose();
         }
 
-        // 첫 소비자 승(맵에서 제거) → 픽업 파괴 + 공속 버프 인큐 + LastRun add/refresh.
+        // 첫 소비자 승(맵에서 제거) → 픽업 파괴 + 공속 버프 인큐 + LastRun 부착.
         // 공속 버프 origin=Gimmick (시즌 기믹 출처 태그). crash 데미지는 LastRunSystem.
+        // 소비 락(review #2): 라스트런 진행 중(LastRun 보유)인 유닛은 소비하지 않는다 — 밟아도
+        // 픽업은 보드에 남아 만료되거나 다른 유닛이 먹는다. crash 로 비용을 치른 뒤에야 재버프
+        // 가능(재소비로 타이머 리셋 → crash 무한 회피하던 문제 차단).
         private static void TryConsume(
             int2 cell, Entity unit,
             ref NativeHashMap<int2, Entity> byCell,
@@ -82,6 +85,8 @@ namespace Wassup.Battle.Effects
             in RedBullGimmickConfig config,
             EntityManager em)
         {
+            if (em.HasComponent<LastRun>(unit))
+                return; // 라스트런 중 — 재소비 락(픽업 잔존)
             if (!byCell.TryGetValue(cell, out var pickup))
                 return;
             byCell.Remove(cell);
@@ -99,9 +104,8 @@ namespace Wassup.Battle.Effects
                 origin    = ModifierOrigin.Gimmick,
             });
 
-            var lastRun = new LastRun { remaining = config.lastRunDuration };
-            if (em.HasComponent<LastRun>(unit)) ecb.SetComponent(unit, lastRun);
-            else ecb.AddComponent(unit, lastRun);
+            // 소비 락 통과 = LastRun 미보유 → 단순 부착(refresh 분기 불요).
+            ecb.AddComponent(unit, new LastRun { remaining = config.lastRunDuration });
         }
     }
 }

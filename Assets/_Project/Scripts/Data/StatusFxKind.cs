@@ -12,10 +12,10 @@ namespace Wassup.Data
         // 소스 = StatModifierSlot 중 header.origin==ModifierOrigin.Dreamcatcher. 온-바디 지속 VFX.
         Empowered = 2,
         // gimmick-match-integration — 번아웃(워라벨 기믹). 소스 = StatModifierSlot 중
-        // header.origin==ModifierOrigin.Stack (Fatigue 임계가 유일한 Stack 출처 → 번아웃 창과 일치).
+        // header.origin==ModifierOrigin.Burnout (Fatigue 임계 파생 전용 origin, review #3).
         Burnout = 3,
-        // season-gimmick-overwork — 라스트런(레드불 기믹). 소스 = StatModifierSlot 중
-        // header.origin==ModifierOrigin.Gimmick (라스트런 공속버프가 유일한 Gimmick 출처 → 라스트런 창 5s 와 일치).
+        // season-gimmick-overwork — 라스트런(레드불 기믹). 소스 = LastRun 컴포넌트 보유
+        // (레드불 소비~crash 창을 권위적으로 정의, review #3).
         LastRun = 4,
         // Stun, Freeze, Poison … 나중에 끝에 추가 + registry 항목 + reconcile 소스 훅.
     }
