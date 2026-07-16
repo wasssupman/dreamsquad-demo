@@ -1,11 +1,13 @@
 # Spec — Defender Deploy Cutscene
 
 > 상태: **완료** (2026-07-14) — 재생기·트리거·배선 전부 종료.
-> 확장 이력: Guardian 프레임 (2026-07-15, `5cbee1b4`) · 뎁스 패럴랙스 통합 (2026-07-15, `de2275ee`).
-> **진행 중**: unit 5 Cannon 프레임+뎁스 (2026-07-16) — 자산·할당 완료, **Play 검증 대기**.
+> 확장 이력: Guardian 프레임 (2026-07-15, `5cbee1b4`) · 뎁스 패럴랙스 통합 (2026-07-15, `de2275ee`)
+> · Cannon (2026-07-16, unit 5 — `bc452d78`) · Sniper (`459e2d80`) · FireCaster·Healer (`5849e370`).
 >
-> 인계 지도: `4_handoff_summary.md`(Ranger/Archer 시점). Cannon 시점 handoff 는 Play 검증·커밋
-> 후 `6_handoff_summary.md` 로 작성 예정(아직 없음).
+> **컷신 보유 7종**: Ranger · Archer · Guardian · Cannon · Sniper · FireCaster · Healer.
+> 전부 자산·할당 완료, **Play 검증 대기**(scale/offset 은 계산 시작값).
+>
+> 인계 지도: `4_handoff_summary.md`(Ranger/Archer) → `6_handoff_summary.md`(Cannon~Healer).
 
 ## 상위 목표
 
@@ -35,6 +37,7 @@ Defender_Ranger 를 드래그로 집으면 좌하단에 Ranger 컷신 플립북�
 | 2 | `2_cutscene_player.md` | `DeployCutscenePlayer` — 좌하단 오버레이 플립북 재생기 | 슬라이드 인/아웃 + 스와이프 연동 소멸 |
 | 3 | `3_wiring.md` | BeginDrag 트리거 + DefenderSelector 주입 + Play 검증 | 드래그 스와이프에 연결 |
 | 5 | `5_cannon_frames.md` | Cannon 49프레임(체커보드 누끼 · **정방향**) + 정적 뎁스 | 4번째 컷신 유닛 |
+| 7 | `7_sniper_firecaster_healer.md` | Sniper·FireCaster·Healer 49프레임+뎁스 · **배경색 원리** | 5~7번째 컷신 유닛 |
 
 > 4·6 번은 handoff summary(작업 단위 아님). Guardian(49장)은 `5cbee1b4` 로 스펙 파일 없이
 > 프레임만 추가됐다 — 소스 성질이 이 스펙에 미기록이다(후속 후보 참조).
@@ -64,8 +67,18 @@ Defender_Ranger 를 드래그로 집으면 좌하단에 Ranger 컷신 플립북�
   **배경 제거 기법과 소스 넘버링 방향은 계약이 아니다** — 소스마다 다르며 각 작업 단위
   파일이 소유한다. 여기 있는 값을 새 유닛에 복사하지 말고 소스를 먼저 실측할 것.
   - Ranger/Archer: 검정 배경 → luma 매트 + **역순** 리넘버(소스가 줌-아웃) → `0_sprite_pipeline.md`
-  - Cannon: 체커보드가 RGB 에 베이크된 **가짜 투명** → flood-fill + **정방향** → `5_cannon_frames.md`
+  - Cannon/Sniper: 체커보드가 RGB 에 베이크된 **가짜 투명** → flood-fill + **정방향** → `5`·`7`
+  - FireCaster: 순백 배경(재수급) → flood-fill + 정방향 → `7_sniper_firecaster_healer.md`
+  - Healer: 체커 → 정방향. **격자 잔존 감수**(사용자 결정) → `7_sniper_firecaster_healer.md`
   - Guardian: 정방향(`depth-parallax` unit 8 교차기록). 스펙 파일 없음 → 후속 후보 참조.
+- **소스 수급 요청 (하드, 2026-07-16 실측)**: 신규 유닛은 **배경 검정(#000000) 또는 알파 채널
+  유지**로 받는다. 전 컷신이 알파 평탄화 소스에서 왔고(반투명 중간알파 Ranger 18.0% /
+  Archer 1.5% / Cannon 1.3% / Sniper 1.9%), **Ranger/Archer 가 무사했던 건 배경이 검정이었기
+  때문이지 운이 아니다** — 글로우 VFX 를 검정에 합성하면 `P = a×F`(premultiplied)라 밝기에서
+  알파를 되살릴 수 있다(unit 0 절차가 정확히 이것). 다른 배경은 반드시 뭔가를 삼킨다:
+  **체커** → 반투명 VFX 에 격자가 배어듦(복원 불가) · **순백** → 흰 셔츠·색종이를 삼킴
+  (MarginValue 스윕으로도 온전한 구간 없음) · **검정** → 검은 정장도 캐릭터 *안쪽*이라
+  flood-fill 이 보호. 이 아트에 안전한 배경은 검정뿐이다.
 - **하드코딩 금지**: 유닛별 값 **6종**은 `DefenderUnitData` — `deployCutsceneFrames` ·
   `deployCutsceneFps` · `deployCutsceneScale`(표시배율) · `deployCutsceneOffset`(도착 오프셋) ·
   `deployCutsceneDepth`(뎁스) · `deployCutsceneTiltGain`(틸트 배율).
@@ -74,8 +87,10 @@ Defender_Ranger 를 드래그로 집으면 좌하단에 Ranger 컷신 플립북�
   - 최종 크기 = 네이티브 × displayScale(공유, 현 1.2) × deployCutsceneScale(유닛별).
   - 도착 위치 = cornerMarginPx(공유 baseline, x=-100) + deployCutsceneOffset(유닛별).
     컷씬마다 캐릭터 위치/크기가 달라 유닛별 미세조정. **scale/offset 은 Play 튜닝으로 수렴시킨다.**
-    (Ranger scale 1 / offset 0 → -100 · Archer 1.5 / -150 → -250 · Guardian 3 / +100 → 0 ·
-    Cannon 2.6 / 0 → -100, **Play 미검증 시작값**)
+    - Play 튜닝 완료: Ranger 1 / 0 → -100 · Archer 1.5 / -150 → -250 · Guardian 3 / +100 → 0
+    - **Play 미검증 계산 시작값**: Cannon 2.6 · Sniper 2.6 (204 네이티브) ·
+      FireCaster 3.0 · Healer 3.0 (180 네이티브) — 전부 offset (0,0).
+      계산식 = 목표 648px ÷ (네이티브 높이 × displayScale 1.2).
 - **기능 온/오프**: `DragSwaySettings.enableDeployCutscene`(bool). 이 SO 는 이미 드래그 배치
   프리뷰 연출 튜닝 허브로 컨트롤러에 주입돼 있어 재사용. 끄면 프레임이 있어도 재생 안 함.
 - **뎁스 패럴랙스**: 별도 스펙 소유(`docs/spec/depth-parallax/`, 완료 2026-07-15, `de2275ee`).
@@ -92,8 +107,11 @@ N/A — 전투 플레이 오브젝트(유닛/적/투사체/해저드)가 아닌 
 
 ## 후속 후보 (이번 스코프 밖)
 
-- 나머지 유닛 컷신 프레임 제작/할당. **완료: Ranger 33장 · Archer 49장 · Guardian 49장
-  (`5cbee1b4`) · Cannon 49장 (`5_cannon_frames.md`)** — 남은 12 디펜더는 미착수.
+- 나머지 유닛 컷신 프레임 제작/할당. **완료 7종**: Ranger 33 · Archer 49 · Guardian 49
+  (`5cbee1b4`) · Cannon 49 (`bc452d78`) · Sniper 49 (`459e2d80`) · FireCaster·Healer 49
+  (`5849e370`). **남은 9 디펜더 미착수** — 수급 시 위 "소스 수급 요청" 계약(배경 검정) 적용.
+- **Healer 재수급**: 구 체커 소스라 `_025` 부근 파스텔 워시에 격자가 보인다. FireCaster 처럼
+  배경을 바꿔 다시 받으면 해소된다. **프레임만 덮으면 GUID 유지라 재할당 불필요.**
 - **Guardian 스펙 파일 부재** (`5cbee1b4` — 프레임만 커밋): 소스 성질이 이 스펙에 한 줄도
   없다(180×180 · **정방향** — `depth-parallax` unit 8 교차기록 · 배경 종류/누끼 기법 미기록).
   Cannon 으로 겪은 함정의 선례일 수 있는데 기록이 없다. 5번째 유닛 추가 시 선례는 unit 0/5
