@@ -283,6 +283,8 @@ namespace Wassup.Bridge
         private NativeQueue<Wassup.Battle.Effects.HazardDestroyedEvent> _hazardDestroyedQueue;
         private NativeQueue<Wassup.Battle.Effects.HazardSpawnRequest> _hazardSpawnRequestQueue;
         private NativeQueue<Wassup.Battle.Combat.AttackOutputLogEvent> _attackOutputLogQueue;
+        // season-gimmick-clockout unit 3 — 메테오 barrage 요청 채널(Effects→Bridge).
+        private NativeQueue<Wassup.Battle.Effects.MeteorBarrageRequest> _meteorBarrageRequestQueue;
         private Unity.Collections.NativeHashSet<Unity.Mathematics.int2> _blockedCells;
         private Unity.Collections.NativeParallelMultiHashMap<Unity.Mathematics.int2, Wassup.Battle.Effects.HazardEffect> _hazardCellToEffects;
 
@@ -483,6 +485,7 @@ namespace Wassup.Bridge
             DestroyEntitiesByType<Wassup.Battle.Effects.HazardRuntimeEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.HazardDestroyedEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.HazardSpawnRequestsSingleton>();
+            DestroyEntitiesByType<Wassup.Battle.Effects.MeteorBarrageRequestsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Combat.AttackOutputLogEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.AggroHitEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Combat.ThreatHitEventsSingleton>();
@@ -519,6 +522,7 @@ namespace Wassup.Bridge
             if (_hazardRuntimeEventQueue.IsCreated) _hazardRuntimeEventQueue.Dispose();
             if (_hazardDestroyedQueue.IsCreated) _hazardDestroyedQueue.Dispose();
             if (_hazardSpawnRequestQueue.IsCreated) _hazardSpawnRequestQueue.Dispose();
+            if (_meteorBarrageRequestQueue.IsCreated) _meteorBarrageRequestQueue.Dispose();
             if (_blockedCells.IsCreated) _blockedCells.Dispose();
             if (_hazardCellToEffects.IsCreated) _hazardCellToEffects.Dispose();
         }
@@ -1286,6 +1290,13 @@ namespace Wassup.Bridge
             _hazardSpawnRequestQueue = new NativeQueue<Wassup.Battle.Effects.HazardSpawnRequest>(Allocator.Persistent);
             var hazardSpawnRequestSingleton = _em.CreateEntity();
             _em.AddComponentData(hazardSpawnRequestSingleton, new Wassup.Battle.Effects.HazardSpawnRequestsSingleton { queue = _hazardSpawnRequestQueue });
+
+            // season-gimmick-clockout unit 3 — 메테오 barrage 요청 채널(Effects→Bridge).
+            // ResignationThresholdSystem enqueue → DrainMeteorBarrageRequests(unit 4)이 cast.
+            if (_meteorBarrageRequestQueue.IsCreated) _meteorBarrageRequestQueue.Dispose();
+            _meteorBarrageRequestQueue = new NativeQueue<Wassup.Battle.Effects.MeteorBarrageRequest>(Allocator.Persistent);
+            var meteorBarrageSingleton = _em.CreateEntity();
+            _em.AddComponentData(meteorBarrageSingleton, new Wassup.Battle.Effects.MeteorBarrageRequestsSingleton { queue = _meteorBarrageRequestQueue });
 
             // Attack-output log channel. AttackSystem enqueues one event per output fired;
             // BattleBridge drains each frame and forwards to BattleLogger.RecordAttackOutput.
