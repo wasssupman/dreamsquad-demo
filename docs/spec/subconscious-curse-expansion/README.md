@@ -1,6 +1,7 @@
 # 무의식 저주 확장 3종 (subconscious-curse-expansion)
 
-> 상태: 초안 — critic 리뷰(REVISE) 반영 완료, 사용자 승인 대기 (2026-07-16)
+> 상태: units 0~4 구현 완료 2026-07-16 (`f5ef3b2d`~`05163533`) — 잔여: unit 5 카드 아트(외부 이미지 저작 필요) + 드래그/Gift 연출 육안 Play 검증(사용자)
+> critic 리뷰(REVISE→반영) 2026-07-16 · 상세 인계는 `6_handoff_summary.md`
 > 선행: `subconscious-cursed-relics`, `gift-phase`, `dreamcatcher-awakening-hand`, `unit-status-fx`
 
 ## 목표
