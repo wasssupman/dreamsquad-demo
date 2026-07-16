@@ -482,6 +482,7 @@ namespace Wassup.Bridge
             // season-gimmick-overwork unit 2 — 기믹 config 도 대칭 파괴 (BattleTimeScale 교훈 준수).
             DestroyEntitiesByType<Wassup.Battle.Effects.BurnoutGimmickConfig>();
             DestroyEntitiesByType<Wassup.Battle.Effects.RedBullGimmickConfig>();
+            DestroyEntitiesByType<Wassup.Battle.Effects.ClockOutGimmickConfig>();
         }
 
         private void DisposeEcsInfrastructureNativeContainers()
@@ -4280,6 +4281,7 @@ namespace Wassup.Bridge
             // (idempotent — BuildPickupSpawnState 의 Teardown-first 와 동일 패턴).
             DestroyEntitiesByType<Wassup.Battle.Effects.BurnoutGimmickConfig>();
             DestroyEntitiesByType<Wassup.Battle.Effects.RedBullGimmickConfig>();
+            DestroyEntitiesByType<Wassup.Battle.Effects.ClockOutGimmickConfig>();
 
             if (_assignedGimmick is Wassup.Data.BurnoutGimmickData bd)
             {
@@ -4305,6 +4307,21 @@ namespace Wassup.Bridge
                     lastRunAttackSpeedMul = rd.lastRunAttackSpeedMul,
                     lastRunDuration       = rd.lastRunDuration,
                     lastRunDamageFraction = rd.lastRunDamageFraction,
+                });
+            }
+            else if (_assignedGimmick is Wassup.Data.ClockOutGimmickData cd)
+            {
+                Debug.Log($"[GimmickConfig] ClockOutGimmickConfig 주입 (gimmick={cd.gimmickId})");
+                var e = _em.CreateEntity();
+                _em.AddComponentData(e, new Wassup.Battle.Effects.ClockOutGimmickConfig
+                {
+                    clockOutSeconds      = cd.clockOutSeconds,
+                    resignationThreshold = cd.resignationThreshold,
+                    meteorCount          = cd.meteorCount,
+                    meteorDamage         = cd.meteorDamage,
+                    meteorTileRange      = cd.meteorTileRange,
+                    meteorWarningSec     = cd.meteorWarningSec,
+                    meteorStaggerSec     = cd.meteorStaggerSec,
                 });
             }
         }
