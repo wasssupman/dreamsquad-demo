@@ -84,12 +84,14 @@ namespace Wassup.Tests.EditMode
                 if (card.category == CardCategory.Subconscious)
                     actual.Add(card.id);
 
-            // subconscious-curse-expansion — 풀은 unit 단위로 성장한다(최종 6장 계획).
-            // unit 0: 호접몽 / unit 1: 몽마의 계약 합류. 림의 선물은 이 풀에서 2장 추출.
+            // subconscious-curse-expansion — 무의식 풀 6장 확정(기존 3 + 신규 3).
+            // unit 0: 호접몽 / unit 1: 몽마의 계약 / unit 2: 살찌운 제물.
+            // 림의 선물은 이 풀에서 서로 다른 2장 추출.
             CollectionAssert.AreEquivalent(
-                new[] { "slow_awakening", "calamity_heart", "cracked_grail", "sub_butterfly_dream", "sub_incubus_pact" },
+                new[] { "slow_awakening", "calamity_heart", "cracked_grail",
+                        "sub_butterfly_dream", "sub_incubus_pact", "sub_fattened_offering" },
                 actual);
-            Assert.AreEqual(5, actual.Count, "Subconscious pool size changed");
+            Assert.AreEqual(6, actual.Count, "Subconscious pool size changed");
         }
 
         [Test]
@@ -136,6 +138,29 @@ namespace Wassup.Tests.EditMode
             Assert.IsEmpty(pact.mechanics);
             Assert.IsEmpty(pact.attackMods);
             Assert.AreEqual(1, pact.leakAllowanceCost, "유출 허용치 선불 1");
+        }
+
+        [Test]
+        public void FattenedOfferingAsset_MatchesAuthoredContract()
+        {
+            // subconscious-curse-expansion unit 2 — 살찌운 제물: BountyMark 단일
+            // mechanic (각성 배율 ×3, 받는 피해 −30%). 수치는 SO 소유 — 에셋 계약 잠금.
+            var byId = new Dictionary<string, DreamcatcherCard>();
+            foreach (var card in LoadAllCards()) byId[card.id] = card;
+
+            Assert.IsTrue(byId.ContainsKey("sub_fattened_offering"), "sub_fattened_offering in catalog");
+            var offering = byId["sub_fattened_offering"];
+            Assert.AreEqual(CardType.Unit, offering.type);
+            Assert.AreEqual(CardCategory.Subconscious, offering.category);
+            Assert.AreEqual(CardTargetAxis.All, offering.axis);
+            Assert.IsEmpty(offering.effects);
+            Assert.IsEmpty(offering.attackMods);
+            Assert.AreEqual(1, offering.mechanics.Length);
+            var m = offering.mechanics[0];
+            Assert.AreEqual(DcTriggerKind.None, m.trigger.kind);
+            Assert.AreEqual(DcPayloadKind.BountyMark, m.payload.kind);
+            Assert.AreEqual(3f, m.payload.magnitude, 0.001f, "각성 배율 ×3");
+            Assert.AreEqual(30, m.payload.tileRange, "받는 피해 감소 %");
         }
 
         [Test]

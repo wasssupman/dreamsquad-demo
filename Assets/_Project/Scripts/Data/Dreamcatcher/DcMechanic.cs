@@ -60,6 +60,13 @@ namespace Wassup.Data
         // 파탄(버프 없음). magnitude=버프 %(35=+35%), duration=잠 초(> 0.05 필수),
         // buffStat 재사용(SelfStatBuff 선례). append-only.
         DreamCocoon = 14,
+        // subconscious-curse-expansion unit 2 — 살찌운 제물. 적을 겨냥하는 최초의
+        // 드림캐쳐(ApplyBountyMark 전용 — CommitAttach/defender 경로 유입 시 아래
+        // trigger=None 가드로 무차감 거절). 표식 즉시: AwakeningReward ×magnitude
+        // (각성 배율, >1 필수) 베이크 덮어쓰기 + 받는 피해 −tileRange %(0~99,
+        // ApplyStackToTarget 의 tileRange 재사용 선례). 처치=배율 보상+회수,
+        // 유출=무보상 회수(EnemyGone). append-only.
+        BountyMark = 15,
     }
 
     // dreamcatcher-new-abilities unit 0 — 데이터 계층 CC 선택자(공격 온-히트용). 정의

@@ -1019,6 +1019,7 @@ namespace Wassup.Bridge
             // ingame-dreamcatcher Unit 2/3 — reset card registry + triggers for a new match.
             _activeDcEffects.Clear();
             _activePlacementSleeps.Clear(); // combat-action-lock — 매치별 placement-aura Sleep 등록 초기화
+            _bountyMarked.Clear(); // 살찌운 제물 — 표식 등록부도 매치 경계에서 초기화
             _dcStackCounter = 100;
             _dcInstanceCounter = 0; // dreamcatcher-unit-trigger Unit 1 — per-match instance ids
             // dreamstone-loadout Unit 3 — set-then-apply: reapply the pending stone
@@ -1112,7 +1113,9 @@ namespace Wassup.Bridge
             if (!_modifierSlotQueryCreated)
             {
                 // 드림캐쳐 강화는 방어유닛에만 부여되므로 defender 로 한정 — 적/기타 아키타입 순회 낭비 방지
-                // (ecs-review H2). 적이 드림캐쳐 origin 슬롯을 가질 일은 없지만 구조적으로도 차단.
+                // (ecs-review H2). ⚠ subconscious-curse-expansion unit 2 부터 적도 드림캐쳐
+                // origin 슬롯을 가질 수 있다(살찌운 제물 DmgTakenMul) — 이 DefenderUnitTag
+                // 게이트가 적 오라 점등을 막는 유일한 장벽이므로 제거 금지.
                 _modifierSlotQuery = _em.CreateEntityQuery(
                     ComponentType.ReadOnly<Wassup.Battle.Effects.StatModifierSlot>(),
                     ComponentType.ReadOnly<Wassup.Battle.Units.DefenderUnitTag>());
@@ -2496,6 +2499,9 @@ namespace Wassup.Bridge
                 scoreHud?.OnEnemyKilled(EnemyKillScoreDelta);
                 // dreamcatcher-awakening-hand unit 1 — awakening economy relay.
                 EnemyKilledAwakening?.Invoke(evt.awakeningReward);
+                // 살찌운 제물 — 표식 악몽 처치: 카드 회수 알림(보상은 위 relay 가
+                // 표식 시점에 배율된 baked 값으로 이미 지급).
+                NotifyEnemyGoneIfMarked(evt.entity);
                 int2 grid = _generatedMap.IsCreated ? _generatedMap.gridSize : GridSize;
                 var cell = GridMath.WorldToCell(evt.position, tileSize, grid, origin: _boardOrigin);
                 float time = LogElapsedTime;
@@ -3110,6 +3116,10 @@ namespace Wassup.Bridge
             {
                 enemyViewPool?.Despawn(evt.entity);
                 spineUnitPool?.Despawn(evt.entity);
+                // 살찌운 제물 — 표식 악몽 유출: 무보상 회수. 패배 트리거의 조기 return 시
+                // 같은 프레임 잔여 이벤트의 EnemyGone 은 미발화 — 매치 종료 직후라 무해
+                // (BeginPlacement clear 가 등록부/컨트롤러 양쪽을 정리).
+                NotifyEnemyGoneIfMarked(evt.entity);
                 _goalReachedCount++;
                 // 몽마의 계약 — 패배 판정은 선불 차감을 반영한 유효 허용치 기준.
                 Debug.Log($"[BattleBridge] Goal reached! Count: {_goalReachedCount}/{deck.defeatGoalReachedCount - _leakAllowancePenalty}");

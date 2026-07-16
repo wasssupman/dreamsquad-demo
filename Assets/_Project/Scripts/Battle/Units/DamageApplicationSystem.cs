@@ -207,6 +207,8 @@ namespace Wassup.Battle.Units
                             // grant now; the entity is gone before the bridge drains.
                             awakeningReward = _awakeningRewardLookup.HasComponent(entity)
                                 ? _awakeningRewardLookup[entity].value : 0,
+                            // subconscious-curse-expansion unit 2 — 표식 회수 귀속 키.
+                            entity = entity,
                         });
                     }
 

@@ -42,6 +42,8 @@
 
 ## 완료 기준
 
-- [ ] compile 0 에러
-- [ ] PlayMode: ① 표식 → 처치 시 각성치 ×3 지급 + 카드 큐 맨 뒤 복귀 ② 표식 → 유출 시 보상 없음 + 카드 복귀 ③ 이중 표식 거절(무차감) ④ 표식 적의 실수령 피해 30% 감소 실측
-- [ ] `EnemyKilledEvent` entity append 로 인한 기존 드레인(점수/로그/각성) 무회귀
+- [x] compile 0 에러
+- [x] PlayMode: ① 표식 → 처치 시 각성치 ×3 지급 + `EnemyGone`(회수 키) 발화 ② 표식 → 유출 시 보상 없음 + `EnemyGone` ③ 이중 표식 거절(무차감) ④ 표식 적의 실수령 피해 30% 감소 실측(10→7)
+- [x] `EnemyKilledEvent` entity append 로 인한 기존 드레인(점수/로그/각성) 무회귀 — KillThreshold(devouring 킬 경로) 회귀 green
+
+확인 2026-07-16 — compile 0 에러 · PlayMode 7/7(BountyMarkTest 2 신규 + KillThreshold·DreamCocoon 회귀; 드레인은 `_running` 게이트 안이라 리플렉션 직접 호출) · EditMode 카탈로그 suite 9/9(풀 6장 확정 + offering 에셋 계약). 컨트롤러 `CommitMarkEnemy`→`Recover` 큐 복귀는 `OnDefenderDied` 회수와 코드 동형 — 드래그 UX 와 함께 unit 3 Play 에서 e2e 확인. 테스트 유의: 수동 적 엔티티는 `ModifierStats`(identity)+`ModifierStatsDirty` 를 미러해야 집계가 돈다(`SpawnUnit:4654` 선례 — 누락 시 스탯 모디파이어 무효).

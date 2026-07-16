@@ -88,6 +88,7 @@ namespace Wassup.Core
             {
                 bridge.EnemyKilledAwakening += OnEnemyKilledAwakening;
                 bridge.DefenderDied += OnDefenderDied;
+                bridge.EnemyGone += OnEnemyGone; // 살찌운 제물 — 표식 소멸(처치/유출) 회수
             }
         }
 
@@ -99,6 +100,7 @@ namespace Wassup.Core
             {
                 bridge.EnemyKilledAwakening -= OnEnemyKilledAwakening;
                 bridge.DefenderDied -= OnDefenderDied;
+                bridge.EnemyGone -= OnEnemyGone;
             }
         }
 
@@ -247,6 +249,26 @@ namespace Wassup.Core
             AttachmentsChanged?.Invoke(); // 위 early-return 들을 지나면 회수가 1건 이상
         }
 
+        // subconscious-curse-expansion unit 2 — 표식 악몽 소멸(처치/유출) 회수.
+        // OnDefenderDied 의 회수 절반과 대칭(각성 지급 없음 — 처치 보상은 배율된
+        // EnemyKilledAwakening 가, 유출은 무보상이 각각 자연 처리). 표식은 handle 0
+        // (무회수) 이라 revoke 호출도 없다 — 큐 복귀만.
+        private void OnEnemyGone(Entity entity)
+        {
+            if (_deck == null || _attachedTo.Count == 0) return;
+            _recoverScratch.Clear();
+            foreach (var kv in _attachedTo)
+                if (kv.Value.host == entity) _recoverScratch.Add(kv.Key);
+            if (_recoverScratch.Count == 0) return;
+            foreach (var entryId in _recoverScratch)
+            {
+                _attachedTo.Remove(entryId);
+                _deck.Recover(entryId);
+            }
+            HandChanged?.Invoke(HandChangeReason.Recovered);
+            AttachmentsChanged?.Invoke();
+        }
+
         private void GainAwakening(int reward)
         {
             if (reward <= 0) return;
@@ -327,6 +349,20 @@ namespace Wassup.Core
             if (CountAttachedTo(host) < (config != null ? config.maxAttachPerUnit : 3)) return false;
             Debug.Log($"[DreamcatcherHandController] '{card.id}' rejected — host at attach cap.");
             return true;
+        }
+
+        // subconscious-curse-expansion unit 2 (살찌운 제물) — 적 표식 커밋. Unit 부착과
+        // 같은 수명주기(UseUnit 풀 이탈 + _attachedTo 등록 + spend)를 적 host 로 재사용.
+        // AtAttachCap 은 **의도적 미적용** — 표식 상한은 bridge 의 이중 표식 preflight
+        // (적당 1개)가 강제하고, 부착 캡은 defender 슬롯 개념이다(spec critic m4).
+        // BountyMark 카드가 실수로 CommitAttach(defender 경로)에 유입돼도 bake 의
+        // trigger=None 가드가 무차감 거절한다 — 정식 라우팅은 unit 3 드래그 판별.
+        public bool CommitMarkEnemy(int entryId, Entity enemy)
+        {
+            if (!TryGetUsableAttach(entryId, out var card)) return false;
+            int handle = bridge.ApplyBountyMark(enemy, card);
+            if (handle < 0) return false; // not marked — no spend
+            return AttachAndSpend(entryId, card, enemy, handle);
         }
 
         public bool CommitActiveTile(int entryId, Vector2Int cell)
