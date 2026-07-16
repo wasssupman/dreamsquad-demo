@@ -164,6 +164,33 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
+        public void RimGift_LiveCatalogPool_PicksTwoDistinctSubconscious()
+        {
+            // subconscious-curse-expansion unit 4 — 실 카탈로그 풀(6장) 림 추출 통합:
+            // 여러 시드에 걸쳐 항상 서로 다른 2장 + 전부 무의식 + 폴백 미발동, 그리고
+            // 신규 3장이 실제로 추출 가능한지(시드 유니온) 확인.
+            var pool = new List<DreamcatcherCard>();
+            foreach (var card in LoadAllCards())
+                if (card.category == CardCategory.Subconscious) pool.Add(card);
+            Assert.AreEqual(6, pool.Count, "무의식 풀 6장");
+
+            var seenIds = new HashSet<string>();
+            for (int seed = 0; seed < 64; seed++)
+            {
+                var picked = Wassup.Core.GiftDeckComposer.PickRim(pool, null, 2, seed);
+                Assert.AreEqual(2, picked.Count, $"seed {seed}: 2장");
+                Assert.AreNotSame(picked[0], picked[1], $"seed {seed}: 서로 다른 카드");
+                Assert.AreEqual(CardCategory.Subconscious, picked[0].category);
+                Assert.AreEqual(CardCategory.Subconscious, picked[1].category);
+                seenIds.Add(picked[0].id);
+                seenIds.Add(picked[1].id);
+            }
+            Assert.IsTrue(seenIds.Contains("sub_butterfly_dream"), "호접몽 추출 가능");
+            Assert.IsTrue(seenIds.Contains("sub_incubus_pact"), "몽마의 계약 추출 가능");
+            Assert.IsTrue(seenIds.Contains("sub_fattened_offering"), "살찌운 제물 추출 가능");
+        }
+
+        [Test]
         public void CursedRelicAssets_MatchAuthoredContracts()
         {
             var byId = new Dictionary<string, DreamcatcherCard>();

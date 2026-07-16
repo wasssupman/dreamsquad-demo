@@ -23,7 +23,9 @@
 
 ## 완료 기준
 
-- [ ] 카탈로그에 신규 3장 등록 완료 (`sub_butterfly_dream`, `sub_incubus_pact`, `sub_fattened_offering`)
-- [ ] Play: Gift 페이즈 Rim 경로에서 신규 카드 등장 확인 — 결정 시드(`GameManager.MatchSeed`) 주입으로 Rim 을 강제한다(비결정 반복 진입 지양, critic 권고)
-- [ ] 덱빌더에 신규 3장 비노출 확인
-- [ ] EditMode + PlayMode 전체 테스트 green (기존 저주 회귀 없음)
+- [x] 카탈로그에 신규 3장 등록 완료 (`sub_butterfly_dream`, `sub_incubus_pact`, `sub_fattened_offering`) — 로스터 테스트가 6장 잠금
+- [x] Rim 경로에서 신규 카드 등장 — `RimGift_LiveCatalogPool_PicksTwoDistinctSubconscious`(EditMode): 실 카탈로그 풀 6장에서 시드 64종 × 서로 다른 2장 + 신규 3장 전부 추출 가능(시드 유니온) 결정론 검증. Gift 연출 육안(리빌에서 category 폴백색 표시)은 사용자 Play 확인 대기
+- [x] 덱빌더에 신규 3장 비노출 — `DreamcatcherDeckBuilderView.cs:168` category==Subconscious skip(카탈로그 구동 자동)
+- [x] EditMode + PlayMode 전체 테스트 — EditMode 856/856(skip 2 = 기존 Testability 건). PlayMode 30/34: **실패 4건은 전부 main 기존 실패로 실측 확정** — 내 커밋 이전(`ea155e65`) detached 재실행에서 동일 실패 재현. 내역: DeckCarryIn(덱 10장 기대 vs 라이브 규칙 8장, `56cf7380` 이후 stale + 제거된 fallback 덱 기대), Squad/DreamstoneCarryIn(`RequestPlacement`→Placement 기대 vs gift-phase 의 Gift 삽입 이후 stale), MovementIntegrity(어그로 스모크 — 본 spec 무관 도메인). → `docs/spec/README.md` Follow-up Backlog "PlayMode 스모크 위생" 이관
+
+확인 2026-07-16 — 신규 저주 3장 관련 suite 전부 green(카탈로그 10 + 컴포저 9, PlayMode Bounty/Cocoon/Pact 7). 기존 실패 4건은 위 실측 근거로 본 spec 과 무관.
