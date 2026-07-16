@@ -243,6 +243,10 @@ namespace Wassup.Tests.EditMode
                 { "heavy_strike", "dreamcatcher_card_23" },
                 { "calamity_heart", "dreamcatcher_card_24" },
                 { "cracked_grail", "dreamcatcher_card_25" },
+                // subconscious-curse-expansion unit 5 — 신규 저주 3장 실아트.
+                { "sub_butterfly_dream", "dreamcatcher_card_26" },
+                { "sub_incubus_pact", "dreamcatcher_card_27" },
+                { "sub_fattened_offering", "dreamcatcher_card_28" },
             };
 
             foreach (var pair in expected)

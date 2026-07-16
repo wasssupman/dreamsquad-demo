@@ -8,6 +8,8 @@
 - `18ddc39f` feat unit 2 — 살찌운 제물(적 표식 현상금 메커니즘)
 - `9bb2ca2d` feat unit 3 — 적 타겟 드래그 + Marked 인디케이터
 - `05163533` test unit 4 — 림 풀 통합 검증 + stale 스모크 실측 이관
+- (후속 커밋) art unit 5 — 카드 아트 3종 배정(card_26/27/28, 코덱스 생성) + 아트 계약 테스트 확장
+- 실플레이 검증 2026-07-16: 호접몽 — 림 편입 + Sleep FX 실증(세션 로그·씬 오브젝트). 재앙의 심장 — attack_outputs 실측: 부착 시 발사 간격 2.76s→0.72s, +~6s 출력 영구 중단(시한부 사망). HeavyStrike ×2 는 hit-site 적용이라 출력 로그 비표시(설계 정상).
 
 ## Implemented
 

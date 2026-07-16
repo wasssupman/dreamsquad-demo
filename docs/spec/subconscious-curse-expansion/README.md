@@ -1,6 +1,6 @@
 # 무의식 저주 확장 3종 (subconscious-curse-expansion)
 
-> 상태: units 0~4 구현 완료 2026-07-16 (`f5ef3b2d`~`05163533`) — 잔여: unit 5 카드 아트(외부 이미지 저작 필요) + 드래그/Gift 연출 육안 Play 검증(사용자)
+> 상태: 완료 2026-07-16 (units 0~5, `f5ef3b2d`~) — 잔여 육안 항목: 살찌운 제물 드래그 e2e·Gift 리빌 실아트(사용자 Play). 호접몽·재앙의 심장은 실플레이 로그로 검증 완료(6_handoff 참조)
 > critic 리뷰(REVISE→반영) 2026-07-16 · 상세 인계는 `6_handoff_summary.md`
 > 선행: `subconscious-cursed-relics`, `gift-phase`, `dreamcatcher-awakening-hand`, `unit-status-fx`
 

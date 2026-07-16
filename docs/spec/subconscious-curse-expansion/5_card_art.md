@@ -24,6 +24,8 @@
 
 ## 완료 기준
 
-- [ ] 3장 모두 `art` 배정, category 색 폴백이 아닌 실아트 렌더
-- [ ] 확인 지점: 손패(HandView) · Gift 리빌 연출 · 유닛 인스펙트 패널 · (덱빌더는 Subconscious 제외라 비대상)
-- [ ] 임포트 세팅이 기존 카드 아트와 동일(압축/맥스사이즈), 모바일 메모리 이상 없음
+- [x] 3장 모두 `art` 배정, category 색 폴백이 아닌 실아트 렌더 — `dreamcatcher_card_26/27/28.png` (코덱스 생성, 시리즈 프레임 일치 확인)
+- [ ] 확인 지점: 손패(HandView) · Gift 리빌 연출 · 유닛 인스펙트 패널 — 사용자 Play 육안 대기
+- [x] 임포트 세팅이 기존 카드 아트와 동일 — card_25 meta 복제(Sprite/Single/mipmap off, guid 보존), `CompletedCardArt_HasExpectedSpriteImportContract` 에 3항목 확장으로 잠금(1024×1536 실측 포함)
+
+확인 2026-07-16 — EditMode 카탈로그 suite 10/10 (아트 계약 테스트 신규 3항목 포함). 아트 소싱: 세션에서 작성한 코덱스 프롬프트(스타일 레퍼런스 card_24/25 첨부)로 사용자가 생성.

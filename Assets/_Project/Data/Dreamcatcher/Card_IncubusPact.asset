@@ -19,7 +19,7 @@ MonoBehaviour:
   effects:
   - kind: 0
     percent: 25
-  art: {fileID: 0}
+  art: {fileID: 21300000, guid: 53380911cad825e46912a5bb0d0df660, type: 3}
   mechanics: []
   attackMods: []
   type: 0
