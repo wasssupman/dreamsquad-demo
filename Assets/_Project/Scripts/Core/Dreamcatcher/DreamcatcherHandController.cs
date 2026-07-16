@@ -286,9 +286,27 @@ namespace Wassup.Core
         public bool CommitAttach(int entryId, Entity host)
         {
             if (!TryGetUsableAttach(entryId, out var card)) return false;
+            // subconscious-curse-expansion unit 1 (몽마의 계약) — 유출 허용치 선불 게이트.
+            // 지불 가능성(잔여 − cost ≥ 1)을 apply 전에 확인하고, 실제 지불은 apply 성공
+            // 후에만 한다(실패한 부착이 지불하는 일 없음 — contract 9). 지불은 비가역:
+            // host 사망 revoke 는 hosted 버프만 회수하고 허용치는 돌아오지 않는다.
+            if (card.leakAllowanceCost > 0 &&
+                bridge.RemainingLeakAllowance() - card.leakAllowanceCost < 1)
+            {
+                Debug.Log($"[DreamcatcherHandController] '{card.id}' rejected — 잔여 유출 허용치 부족(지불 시 즉시 패배 금지).");
+                return false;
+            }
             if (AtAttachCap(host, card)) return false;
             int handle = bridge.ApplyDreamcatcherCard(host, card);
             if (handle < 0) return false; // contributed nothing — no spend
+            if (card.leakAllowanceCost > 0 && !bridge.TryPayLeakAllowance(card.leakAllowanceCost))
+            {
+                // 게이트 통과 직후라 단일 스레드 흐름에서 실패할 수 없는 경로 — 방어적
+                // 처리: 이미 성립한 부착을 회수하고 커밋 전체를 거절(무차감·카드 잔류).
+                if (handle > 0) bridge.RevokeDreamcatcherEffects(handle);
+                Debug.LogWarning($"[DreamcatcherHandController] '{card.id}' — 지불 단계 실패, 커밋 롤백.");
+                return false;
+            }
             return AttachAndSpend(entryId, card, host, handle);
         }
 

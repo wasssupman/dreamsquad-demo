@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cdcd617d396824acd8882a45466b4886, type: 3}
+  m_Name: Card_IncubusPact
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
+  id: sub_incubus_pact
+  displayName: "몽마의 계약"
+  axis: 3
+  category: 2
+  effects:
+  - kind: 0
+    percent: 25
+  art: {fileID: 0}
+  mechanics: []
+  attackMods: []
+  type: 0
+  skill: {fileID: 0}
+  description: "부착하는 순간 본진의 유출 허용치 1을 몽마에게 지불한다 — 되돌릴 수 없다. 계약자가 살아 있는 동안 모든 아군의 공격력이 25% 증가한다. 계약자가 죽으면 힘은 사라지지만, 지불한 것은 돌아오지 않는다."
+  leakAllowanceCost: 1

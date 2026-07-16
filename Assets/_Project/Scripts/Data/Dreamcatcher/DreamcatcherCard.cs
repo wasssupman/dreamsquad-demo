@@ -90,5 +90,10 @@ namespace Wassup.Data
         // 유일한 읽을 수 있는 설명 소스. 순수 데이터(문자열) — 정의 계층 ECS-free 유지.
         // 끝에 추가 → 기존 카드 에셋은 빈 문자열로 역직렬화(inert).
         [TextArea] public string description;
+        // subconscious-curse-expansion unit 1 (몽마의 계약) — 부착 커밋 시 선불로
+        // 지불하는 유출 허용치(0 = 없음). SO 는 불변 — 지불은 BattleBridge 런타임
+        // 오프셋(_leakAllowancePenalty)으로만 반영되고 환불되지 않는다(§6 리스크
+        // 선불·세탁 차단). 끝에 추가 → 기존 카드 에셋은 0 으로 역직렬화(inert).
+        public int leakAllowanceCost;
     }
 }

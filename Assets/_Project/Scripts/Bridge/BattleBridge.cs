@@ -243,6 +243,11 @@ namespace Wassup.Bridge
         private bool _usingAuthoredPlan;
         private int _nextWaveIndex;
         private int _goalReachedCount;
+        // subconscious-curse-expansion unit 1 (몽마의 계약) — 유출 허용치 선불 지불의
+        // 런타임 오프셋. SO(deck.defeatGoalReachedCount)는 절대 불변 — 직접 감소시키면
+        // 에디터 자산 영구 오염 + 기기에서 매치 간 누적된다(spec critic M1). 매치 리셋
+        // (BeginPlacement)에서 0 초기화. 환불 경로 없음(§6 세탁 차단).
+        private int _leakAllowancePenalty;
         private NativeQueue<GoalReachedEvent> _goalEventQueue;
         private NativeQueue<DefenderDeathEvent> _defenderDeathQueue;
         private NativeQueue<Wassup.Battle.Combat.UnitAttackVisualEvent> _unitAttackVisualQueue;
@@ -1024,6 +1029,7 @@ namespace Wassup.Bridge
             _synergyActivations = 0;
             _synergyPeakCount = 0;
             _goalReachedCount = 0;
+            _leakAllowancePenalty = 0; // 몽마의 계약 선불 — 매치 경계에서 소멸(이월 금지)
             _running = false;
             _placementAllowed = true;
             _resultShown = false;
@@ -3081,6 +3087,22 @@ namespace Wassup.Bridge
             return idx;
         }
 
+        // subconscious-curse-expansion unit 1 (몽마의 계약) — 잔여 유출 허용치.
+        // = SO 기준치 − 선불 차감 − 이미 유출된 수. 컨트롤러 게이트/HUD 조회용.
+        public int RemainingLeakAllowance()
+            => deck != null ? deck.defeatGoalReachedCount - _leakAllowancePenalty - _goalReachedCount : 0;
+
+        // 몽마의 계약 선불 지불. 지불 후 잔여가 1 미만이면 거절 — "지불로 즉시 패배"
+        // 상태를 구조적으로 금지(spec 게이트 조건: 잔여 − cost ≥ 1). 성공 시 비가역:
+        // host 사망 revoke 는 hosted 버프만 회수하고 이 오프셋은 되돌리지 않는다.
+        public bool TryPayLeakAllowance(int cost)
+        {
+            if (cost <= 0) return false;
+            if (RemainingLeakAllowance() - cost < 1) return false;
+            _leakAllowancePenalty += cost;
+            return true;
+        }
+
         private void DrainGoalEvents()
         {
             if (!_goalEventQueue.IsCreated) return;
@@ -3089,8 +3111,9 @@ namespace Wassup.Bridge
                 enemyViewPool?.Despawn(evt.entity);
                 spineUnitPool?.Despawn(evt.entity);
                 _goalReachedCount++;
-                Debug.Log($"[BattleBridge] Goal reached! Count: {_goalReachedCount}/{deck.defeatGoalReachedCount}");
-                if (!_resultShown && _goalReachedCount >= deck.defeatGoalReachedCount)
+                // 몽마의 계약 — 패배 판정은 선불 차감을 반영한 유효 허용치 기준.
+                Debug.Log($"[BattleBridge] Goal reached! Count: {_goalReachedCount}/{deck.defeatGoalReachedCount - _leakAllowancePenalty}");
+                if (!_resultShown && _goalReachedCount >= deck.defeatGoalReachedCount - _leakAllowancePenalty)
                 {
                     _resultShown = true;
                     _running = false;

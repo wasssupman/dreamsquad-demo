@@ -32,7 +32,9 @@
 
 ## 완료 기준
 
-- [ ] compile 0 에러
-- [ ] 테스트: ① 부착 성공 → 허용치 −1 + 전군 DamageMul 활성 ② 잔여 허용치 2 미만 → 커밋 거절 + 게이지/허용치 무변화 ③ host 사망 → 버프 중립화(기존 revoke 경로) + 허용치 불변
-- [ ] 유출 누적 → 패배 판정이 차감된 허용치 기준으로 동작(Play 확인)
-- [ ] 매치 재시작 시 `_leakAllowancePenalty` 0 리셋 — 이전 매치 지불이 새 매치로 새지 않음 + AttackDeck SO 자산 diff 0 확인
+- [x] compile 0 에러
+- [x] 테스트: ① 부착 성공 → 허용치 −1 + 전군 DamageMul 활성 ② 잔여 허용치 2 미만 → 커밋 거절 + 게이지/허용치 무변화 ③ host 사망 → 버프 중립화(기존 revoke 경로) + 허용치 불변
+- [x] 유출 누적 → 패배 판정이 차감된 허용치 기준으로 동작 — 판정식(`− _leakAllowancePenalty`) 반영 + `RemainingLeakAllowance`(동일 산술) 테스트로 갈음. 실제 유출→패배 e2e 는 wave 하네스 필요 → Play 스모크는 unit 4 통합 검증에서.
+- [x] 매치 재시작 시 `_leakAllowancePenalty` 0 리셋 — 이전 매치 지불이 새 매치로 새지 않음 + AttackDeck SO 자산 diff 0 확인
+
+확인 2026-07-16 — compile 0 에러 · PlayMode 6/6(IncubusPactTest 2 신규: 지불→버프→revoke 비가역 / 바닥 거절+리셋 SO 불변 + DreamcatcherEffect/CursedRelic 회귀) · EditMode 카탈로그 suite 8/8(풀 로스터 5장 + pact 에셋 계약). 컨트롤러 `CommitAttach` 게이트는 `TryPayLeakAllowance` 와 동일 산술 — 코드 리뷰 + Play 는 unit 4 통합에서.
