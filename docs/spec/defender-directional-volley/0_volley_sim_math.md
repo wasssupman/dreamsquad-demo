@@ -28,5 +28,7 @@
 
 ## 완료 기준
 
-- [ ] compile 통과, 신규 EditMode 테스트 전부 green (기존 테스트 회귀 없음)
-- [ ] 테스트 커버: 레인 경계(0/1/range/range+1·수직 오프셋), TickBurst 다중 interval 프레임/잔여 0, 스프레드 홀짝 발수·0각도, 스윕 접선/무이동 프레임
+- [x] compile 통과, 신규 EditMode 테스트 전부 green (기존 테스트 회귀 없음)
+- [x] 테스트 커버: 레인 경계(0/1/range/range+1·수직 오프셋), TickBurst 다중 interval 프레임/잔여 0, 스프레드 홀짝 발수·0각도, 스윕 접선/무이동 프레임
+
+확인 2026-07-16 — EditMode 879/877 green(실패 0, skip 2건은 기존 Ignored) · 리뷰 통과(LOW 3, 규약 1건은 4번 문서에 반영) · 커밋 78f5c38a

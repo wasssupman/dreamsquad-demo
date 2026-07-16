@@ -18,7 +18,7 @@
 
 **RESOLVE 변경** (facing 발사 경로 — unit 3 의 방향 캐리어 스폰 지점):
 - `shotIntervalSec == 0`: 같은 프레임에 shotCount 개 캐리어 스폰. 발마다 `VolleyMath.SpreadDirection(facing, i, shotCount, spreadAngleDeg)` 방향.
-- `shotIntervalSec > 0`(버스트): 첫 발 즉시 스폰 + `burstRemaining = shotCount − 1`, `burstShotTimer = shotIntervalSec` 세팅.
+- `shotIntervalSec > 0`(버스트): 첫 발 즉시 스폰 + `burstRemaining = shotCount − 1`, `burstShotTimer = shotIntervalSec` 세팅. **규약**: 첫 발이 t=0 이어야 버스트 span 이 (shotCount−1)×interval 이 되어 `CooldownAfterVolley` 모델과 정합한다 — RESOLVE 가 첫 발을 직접 스폰하고 틱은 2번째 발부터 담당(리뷰 LOW-1 고정).
 - 쿨다운은 `VolleyMath.CooldownAfterVolley` 로 세팅 — 버스트 완주 후 기산(계약 8).
 
 **버스트 틱** (AttackSystem 기존 프레임 업데이트 내, 새 시스템 없음):
