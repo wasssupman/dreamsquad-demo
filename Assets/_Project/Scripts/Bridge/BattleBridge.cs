@@ -146,6 +146,12 @@ namespace Wassup.Bridge
         [Tooltip("픽업 모델 머티리얼 override(FBX 임베디드 머티리얼 텍스처 미바인딩 우회). 비우면 원본.")]
         [SerializeField] private Material pickupOverrideMaterial;
 
+        [Header("Season Gimmick — Resignation View (season-gimmick-clockout unit 1)")]
+        [Tooltip("사직서 뷰 프리팹. 비우면 절차적 플레이스홀더(흰 종이).")]
+        [SerializeField] private GameObject resignationViewPrefab;
+        [Tooltip("사직서 뷰의 셀 중심 위 높이(월드).")]
+        [SerializeField] private float resignationViewHeight = 0.2f;
+
         private ManualMapInput? _manualMapInput;
         private GeneratedMap _generatedMap;
         private int2? _mapGridGridSizeOverride;
@@ -190,6 +196,11 @@ namespace Wassup.Bridge
         private readonly Dictionary<Entity, GameObject> _pickupVisualMap = new();
         // 조정 시 제거 대상 임시 버퍼 (반복 중 수정 회피, 매 프레임 재사용).
         private readonly List<Entity> _pickupReapBuffer = new();
+        // season-gimmick-clockout unit 1 — 사직서 엔티티↔뷰 매핑 (Pickup 뷰 동형).
+        private EntityQuery _resignationViewQuery;
+        private bool _resignationViewQueryCreated;
+        private readonly Dictionary<Entity, GameObject> _resignationVisualMap = new();
+        private readonly List<Entity> _resignationReapBuffer = new();
         private EntityQuery _projectileSpawnRequestQuery;
         private bool _projectileSpawnRequestQueryCreated;
         private EntityQuery _projectileQuery;
@@ -404,6 +415,7 @@ namespace Wassup.Bridge
             if (statusFxSpawner != null) statusFxSpawner.Clear(); // unit-status-fx unit 2 — 잔여 상태 연출 정리
             if (dcIconStripSpawner != null) dcIconStripSpawner.Clear(); // unit-dreamcatcher-icons — 잔여 아이콘 스트립 정리(생명주기 대칭)
             ClearPickupVisuals(); // season-gimmick-overwork unit 6 — 잔여 레드불 뷰 정리
+            ClearResignationVisuals(); // season-gimmick-clockout unit 1 — 잔여 사직서 뷰 정리
             _dcAuraPool?.Clear(); _dcAuraPool = null; // nightmare-whip-aura rev 2 — 드림캐쳐 부착 오라 정리(생명주기 대칭)
             ClearBlockingHazardVisuals();
 
@@ -545,6 +557,11 @@ namespace Wassup.Bridge
             {
                 _pickupViewQuery.Dispose();
                 _pickupViewQueryCreated = false;
+            }
+            if (_resignationViewQueryCreated)
+            {
+                _resignationViewQuery.Dispose();
+                _resignationViewQueryCreated = false;
             }
             if (_projectileSpawnRequestQueryCreated)
             {
@@ -1133,6 +1150,12 @@ namespace Wassup.Bridge
             {
                 _pickupViewQuery = _em.CreateEntityQuery(ComponentType.ReadOnly<Wassup.Battle.Effects.Pickup>());
                 _pickupViewQueryCreated = true;
+            }
+            // season-gimmick-clockout unit 1 — 사직서 뷰 조정용.
+            if (!_resignationViewQueryCreated)
+            {
+                _resignationViewQuery = _em.CreateEntityQuery(ComponentType.ReadOnly<Wassup.Battle.Effects.Resignation>());
+                _resignationViewQueryCreated = true;
             }
 
             if (!_projectileQueryCreated)
@@ -1963,6 +1986,7 @@ namespace Wassup.Bridge
             SyncMonoUnitViews();
             ReconcileStatusFx();
             ReconcilePickupViews();
+            ReconcileResignationViews();
             if (_em != null) _dcAuraPool?.Sync(_em); // 드림캐쳐 부착 오라 — 뷰 좌표 갱신 뒤 추종
             if (_em != null) _projectileViewPool?.SyncTransforms(_em);
         }
@@ -2132,6 +2156,59 @@ namespace Wassup.Bridge
             foreach (var kv in _pickupVisualMap)
                 if (kv.Value != null) Destroy(kv.Value);
             _pickupVisualMap.Clear();
+        }
+
+        // season-gimmick-clockout unit 1 — 사직서 엔티티↔뷰 poll-reconcile (ReconcilePickupViews 동형).
+        // 순수 ECS 스폰이라 이벤트 없이 매 프레임 조정. _running 무관.
+        private void ReconcileResignationViews()
+        {
+            if (_em == null || !_resignationViewQueryCreated) return;
+
+            var entities = _resignationViewQuery.ToEntityArray(Allocator.Temp);
+            try
+            {
+                for (int i = 0; i < entities.Length; i++)
+                {
+                    var e = entities[i];
+                    if (_resignationVisualMap.ContainsKey(e)) continue;
+                    var r = _em.GetComponentData<Wassup.Battle.Effects.Resignation>(e);
+                    // 셀 중심 → view. Pickup 과 동일하게 BoardSpace.ToView 경유(+0.5 Tilemap 중심 보정).
+                    float3 simCenter = GridToWorldCenter(new Vector2Int(r.cell.x, r.cell.y));
+                    Vector3 pos = (Vector3)Wassup.Core.BoardSpace.ToView(simCenter) + Vector3.up * resignationViewHeight;
+                    var go = new GameObject($"Resignation_{r.cell.x}_{r.cell.y}");
+                    go.transform.SetParent(transform, worldPositionStays: false);
+                    go.transform.position = pos;
+                    go.AddComponent<Wassup.Battle.Effects.ResignationPresenter>().Init(resignationViewPrefab, 0f);
+                    _resignationVisualMap[e] = go;
+                }
+
+                // 사라진 엔티티(임계 소모) → 뷰 파괴.
+                if (_resignationVisualMap.Count > 0)
+                {
+                    _resignationReapBuffer.Clear();
+                    foreach (var kv in _resignationVisualMap)
+                        if (!_em.Exists(kv.Key)) _resignationReapBuffer.Add(kv.Key);
+                    for (int i = 0; i < _resignationReapBuffer.Count; i++)
+                    {
+                        var key = _resignationReapBuffer[i];
+                        if (_resignationVisualMap.TryGetValue(key, out var go) && go != null)
+                            Destroy(go);
+                        _resignationVisualMap.Remove(key);
+                    }
+                }
+            }
+            finally
+            {
+                entities.Dispose();
+            }
+        }
+
+        // season-gimmick-clockout unit 1 — 사직서 뷰 전체 정리 (매치 teardown).
+        private void ClearResignationVisuals()
+        {
+            foreach (var kv in _resignationVisualMap)
+                if (kv.Value != null) Destroy(kv.Value);
+            _resignationVisualMap.Clear();
         }
 
         // time-manager Unit 3 — TimeManager.ScaleOf(Battle) 을 ECS singleton 으로 write 해
