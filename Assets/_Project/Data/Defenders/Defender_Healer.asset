@@ -85,6 +85,62 @@ MonoBehaviour:
   onPlacePushRadius: 0
   castAnchorBone: WEAPON
   castAnchorLocalOffset: {x: 0.5, y: 1, z: 0}
+  deployCutsceneFrames:
+  - {fileID: 21300000, guid: 3b707298d274b42968fbd140e855e34f, type: 3}
+  - {fileID: 21300000, guid: 2eec225a57bf54bfc9f2d08e94c0cc14, type: 3}
+  - {fileID: 21300000, guid: ea63ed9cee4a04827b83c846db6b4efc, type: 3}
+  - {fileID: 21300000, guid: eba32e219cb01429bb35e1b9c38f4d2b, type: 3}
+  - {fileID: 21300000, guid: 32113e2f7d0d14022873966b84b71b2a, type: 3}
+  - {fileID: 21300000, guid: b3b081454c7014b1d8e8bbc85d0bc2bd, type: 3}
+  - {fileID: 21300000, guid: 04f21248201674442b6c173465d035e6, type: 3}
+  - {fileID: 21300000, guid: 3d99a7f789aae437190f722417122b90, type: 3}
+  - {fileID: 21300000, guid: 4901fb77d70554a23a4194bd1ee0685a, type: 3}
+  - {fileID: 21300000, guid: 14dde9bd12db54eaa81ea7cb2ee0cfb2, type: 3}
+  - {fileID: 21300000, guid: cd8f6c0ceba5648cca98671a77ddd3bf, type: 3}
+  - {fileID: 21300000, guid: 9f6b86b9874dd4b41a5b4698d4d8bce5, type: 3}
+  - {fileID: 21300000, guid: 78924d13654e245368deb8d3cf0962bf, type: 3}
+  - {fileID: 21300000, guid: a3709bf92ce464a9c82da2d91908004f, type: 3}
+  - {fileID: 21300000, guid: ec48ca8066cf44bf2958937a391fa3f8, type: 3}
+  - {fileID: 21300000, guid: 1f6cd6c0b0db045038465e657f48cf70, type: 3}
+  - {fileID: 21300000, guid: a95976cb57ecb443bba39ec46013a1af, type: 3}
+  - {fileID: 21300000, guid: 900d44cd3514144f2b181b8e9026b225, type: 3}
+  - {fileID: 21300000, guid: 2c4b68c52c7ff4a30938412a9db28744, type: 3}
+  - {fileID: 21300000, guid: e3c890e1deb0c446b81adbc726e89103, type: 3}
+  - {fileID: 21300000, guid: d9c85ed76586e4f15981f46297af10fe, type: 3}
+  - {fileID: 21300000, guid: f1c9bf1c8583041bca5a3648ef08e445, type: 3}
+  - {fileID: 21300000, guid: 8bcc234059eaa4325b24429131b12a2a, type: 3}
+  - {fileID: 21300000, guid: b3fb6e0593a1341929ebe59341a6ad5e, type: 3}
+  - {fileID: 21300000, guid: dfc9d097105954f828a9187e99e31e1d, type: 3}
+  - {fileID: 21300000, guid: 6e4e5bce9a4e141ae82fe5324c52ff3b, type: 3}
+  - {fileID: 21300000, guid: a69025050ad044f2b82b4d12d861fc86, type: 3}
+  - {fileID: 21300000, guid: 62ef9646bba6a48d0b144ec001f0ce14, type: 3}
+  - {fileID: 21300000, guid: 45a94fbd80bc1438bb2af24851bd25ad, type: 3}
+  - {fileID: 21300000, guid: 0b3745b6efef64e29bcf50a61560ce60, type: 3}
+  - {fileID: 21300000, guid: dd8d9d83cafa74a3081304309824e27d, type: 3}
+  - {fileID: 21300000, guid: 6d3d40aa564d84aca8f45f3867984fd9, type: 3}
+  - {fileID: 21300000, guid: 092fbc1368e64483091418031269054a, type: 3}
+  - {fileID: 21300000, guid: a4e21643de64844d09c0222c84728134, type: 3}
+  - {fileID: 21300000, guid: 60cdd001d337d429493fbe3c43d37a2c, type: 3}
+  - {fileID: 21300000, guid: 523dd7471043e4927bf0c720892f91d5, type: 3}
+  - {fileID: 21300000, guid: a6062bc86d2aa46f0abb3fe3dd96927b, type: 3}
+  - {fileID: 21300000, guid: c351d5d17013a48e2895627c368ba324, type: 3}
+  - {fileID: 21300000, guid: b859f68ee2d9644198b6c6a4fdf2681a, type: 3}
+  - {fileID: 21300000, guid: 4699b2520f60a419a884f10251bdfdef, type: 3}
+  - {fileID: 21300000, guid: 22029ea0ff2494ca89de771afe967bd7, type: 3}
+  - {fileID: 21300000, guid: d40b86585d9214f95a488ea2214c7780, type: 3}
+  - {fileID: 21300000, guid: f61decd7f9fc24ba89f5352ed0271173, type: 3}
+  - {fileID: 21300000, guid: 3405454ab1f1245da85e4e3e93eeae04, type: 3}
+  - {fileID: 21300000, guid: 6d09a30e5aa17418eaf7602c033a3128, type: 3}
+  - {fileID: 21300000, guid: eb32f43894e074fbda55d471e99c031f, type: 3}
+  - {fileID: 21300000, guid: 5927eb758204747819eeb469da100984, type: 3}
+  - {fileID: 21300000, guid: dc3b3ac2cc2f84f058d8352461653499, type: 3}
+  - {fileID: 21300000, guid: 69e367d9ad58444ad94678f1788432da, type: 3}
+  deployCutsceneFps: 24
+  deployCutsceneScale: 3
+  deployCutsceneOffset: {x: 0, y: 0}
+  deployCutsceneDepth:
+  - {fileID: 2800000, guid: b7692292d564948de82fe21d20554c65, type: 3}
+  deployCutsceneTiltGain: 1
   deploymentDuration: 0.45
   placementSkillDelay: 0
   awakeningReward: 4
