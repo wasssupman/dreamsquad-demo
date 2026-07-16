@@ -227,6 +227,21 @@ namespace Wassup.Bridge
                 }
             }
 
+            // subconscious-curse-expansion unit 0 — 이중 코쿤 사전검증(LethalTimer 선례):
+            // AddComponentData 는 기존 DreamCocoon 을 덮어써 완주 타이머/버프를 리셋하고
+            // 멀티-mechanic 카드를 부분 적용시키므로, 어떤 쓰기도 하기 전에 거절한다.
+            if (_em.HasComponent<Wassup.Battle.Effects.DreamCocoon>(defender))
+            {
+                for (int i = 0; i < preflightMechanicsLen; i++)
+                {
+                    if (card.mechanics[i].payload.kind != Wassup.Data.DcPayloadKind.DreamCocoon)
+                        continue;
+
+                    Debug.LogWarning($"[BattleBridge] ApplyDreamcatcherCardToUnit('{card.id}'): target already has DreamCocoon — card not attached.");
+                    return -1;
+                }
+            }
+
             int attached = 0;
             int auraHandle = 0; // >0 if a revocable placement-aura was registered
             int mechanicsLen = hasMechanics ? card.mechanics.Length : 0;
@@ -268,6 +283,45 @@ namespace Wassup.Bridge
                         continue;
                     }
                     auraHandle = RegisterPlacementAura(card.axis, m.payload.magnitude, m.payload.duration);
+                    attached++;
+                    continue;
+                }
+
+                // subconscious-curse-expansion unit 0 (호접몽) — instant DreamCocoon
+                // (trigger=None, no slot). 부착 즉시 Sleep(duration) + 완주 감시 컴포넌트.
+                // 완주(무피격) 시 DreamCocoonSystem 이 self 영구 버프 부여, 피격 wake 시
+                // 파탄(버프 없음) — 리스크는 기존 wake-on-hit 그 자체(신규 잠 변종 없음).
+                if (m.payload.kind == Wassup.Data.DcPayloadKind.DreamCocoon)
+                {
+                    // Epsilon 가드: duration−Epsilon 이 0 이하면 무수면 즉시 완주 foot-gun
+                    // (spec critic m3). Epsilon 은 내부 상수 — 튜닝 노브 아님.
+                    if (m.payload.magnitude <= 0f || m.payload.duration <= Wassup.Battle.Effects.DreamCocoon.Epsilon)
+                    {
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: DreamCocoon non-positive magnitude or duration <= epsilon — skipped.");
+                        continue;
+                    }
+                    if (!MapDcBuff(m.payload.buffStat, m.payload.magnitude, out var cocoonStat, out var cocoonMult))
+                    {
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: DreamCocoon unmappable buffStat ({m.payload.buffStat}) — skipped.");
+                        continue;
+                    }
+                    if (!_em.HasBuffer<Wassup.Battle.Effects.CcEffect>(defender))
+                    {
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: DreamCocoon target has no CcEffect buffer — skipped.");
+                        continue;
+                    }
+                    Wassup.Battle.Effects.EffectSpawner.ApplyCc(_em, defender, new Wassup.Battle.Effects.CcEffect
+                    {
+                        kind = Wassup.Battle.Effects.CcKind.Sleep,
+                        remainingTime = m.payload.duration,
+                    });
+                    _em.AddComponentData(defender, new Wassup.Battle.Effects.DreamCocoon
+                    {
+                        remaining = m.payload.duration - Wassup.Battle.Effects.DreamCocoon.Epsilon,
+                        stat = cocoonStat,
+                        mult = cocoonMult,
+                        stackId = _dcStackCounter++,
+                    });
                     attached++;
                     continue;
                 }

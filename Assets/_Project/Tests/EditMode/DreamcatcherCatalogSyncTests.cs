@@ -77,17 +77,44 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
-        public void SubconsciousPool_IsExactlyThreeCursedGiftCards()
+        public void SubconsciousPool_MatchesCursedGiftRoster()
         {
             var actual = new List<string>();
             foreach (var card in LoadAllCards())
                 if (card.category == CardCategory.Subconscious)
                     actual.Add(card.id);
 
+            // subconscious-curse-expansion — 풀은 unit 단위로 성장한다(최종 6장 계획).
+            // unit 0: 호접몽(sub_butterfly_dream) 합류. 림의 선물은 이 풀에서 2장 추출.
             CollectionAssert.AreEquivalent(
-                new[] { "slow_awakening", "calamity_heart", "cracked_grail" },
+                new[] { "slow_awakening", "calamity_heart", "cracked_grail", "sub_butterfly_dream" },
                 actual);
-            Assert.AreEqual(3, actual.Count, "Subconscious pool size changed");
+            Assert.AreEqual(4, actual.Count, "Subconscious pool size changed");
+        }
+
+        [Test]
+        public void ButterflyDreamAsset_MatchesAuthoredContract()
+        {
+            // subconscious-curse-expansion unit 0 — 호접몽: 즉발 DreamCocoon 단일
+            // mechanic (잠 4초, 완주 시 공격력 +35%). 수치는 SO 소유 — 이 테스트는
+            // 에셋이 계약대로 저작돼 있음을 잠근다.
+            var byId = new Dictionary<string, DreamcatcherCard>();
+            foreach (var card in LoadAllCards()) byId[card.id] = card;
+
+            Assert.IsTrue(byId.ContainsKey("sub_butterfly_dream"), "sub_butterfly_dream in catalog");
+            var butterfly = byId["sub_butterfly_dream"];
+            Assert.AreEqual(CardType.Unit, butterfly.type);
+            Assert.AreEqual(CardCategory.Subconscious, butterfly.category);
+            Assert.AreEqual(CardTargetAxis.All, butterfly.axis);
+            Assert.IsEmpty(butterfly.effects);
+            Assert.IsEmpty(butterfly.attackMods);
+            Assert.AreEqual(1, butterfly.mechanics.Length);
+            var m = butterfly.mechanics[0];
+            Assert.AreEqual(DcTriggerKind.None, m.trigger.kind);
+            Assert.AreEqual(DcPayloadKind.DreamCocoon, m.payload.kind);
+            Assert.AreEqual(35f, m.payload.magnitude, 0.001f, "완주 버프 %");
+            Assert.AreEqual(4f, m.payload.duration, 0.001f, "잠 초");
+            Assert.AreEqual(CardBuffKind.AttackDamage, m.payload.buffStat);
         }
 
         [Test]
