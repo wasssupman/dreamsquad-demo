@@ -240,6 +240,8 @@ namespace Wassup.Bridge
         // _startTime(실시간)은 cosmetic 이벤트/로그 타임스탬프 전용으로 남긴다.
         private double _battleClock;
         private Entity _battleTimeScaleEntity = Entity.Null;
+        // season-gimmick-clockout unit 2 — running 신호 싱글턴 엔티티(BattleTimeScale 동형).
+        private Entity _battleRunningEntity = Entity.Null;
         private float _timerDuration;
         private bool _running;
         public float LogElapsedTime => Mathf.Max(0f, (float)_battleClock);
@@ -1329,6 +1331,7 @@ namespace Wassup.Bridge
             // time-manager Unit 3 — 시간 상태도 매치와 함께 리셋.
             _battleClock = 0.0;
             _battleTimeScaleEntity = Entity.Null;
+            _battleRunningEntity = Entity.Null;
             // range-preview unit 3 — 매치 종료 시 격자 표시 무조건 해제(비행 중
             // 종료로 impact drain 이 못 지운 텔레그래프 잔상 방지).
             _rangeOwner = RangeDisplayOwner.None;
@@ -1943,6 +1946,8 @@ namespace Wassup.Bridge
         {
             // time-manager Unit 3 — 매 프레임 Battle 스케일을 ECS 로 흘린다(placement 슬로우모 포함).
             PushBattleTimeScaleToEcs();
+            // season-gimmick-clockout unit 2 — running 여부도 매 프레임 ECS 로(running-only 시스템용).
+            PushBattleRunningToEcs();
 
             // placement-enemy-see-through unit 3 — 적 dim 알파 페이드. unscaled 라 드래그 슬로우모와 무관.
             // _running 이전에 둬서 페이즈 무관하게 항상 원복/페이드가 진행되게 한다.
@@ -2223,6 +2228,16 @@ namespace Wassup.Bridge
             {
                 Value = TimeManager.Instance.ScaleOf(TimeDomain.Battle)
             });
+        }
+
+        // season-gimmick-clockout unit 2 — 전투 running 여부를 ECS 로 흘린다(BattleTimeScale 동형).
+        // running-only 시스템(ClockOutSystem 등)이 배치 페이즈와 전투를 구분하는 신호.
+        private void PushBattleRunningToEcs()
+        {
+            if (_world == null || !_world.IsCreated || _em == default) return;
+            if (_battleRunningEntity == Entity.Null || !_em.Exists(_battleRunningEntity))
+                _battleRunningEntity = _em.CreateEntity(typeof(Wassup.Battle.BattleRunning));
+            _em.SetComponentData(_battleRunningEntity, new Wassup.Battle.BattleRunning { Value = _running });
         }
 
         private void SyncMonoUnitViews()
