@@ -2060,6 +2060,17 @@ namespace Wassup.Bridge
                 }
             }
 
+            // subconscious-curse-expansion unit 3 — 살찌운 제물 표식. 소스 = bridge 표식
+            // 등록부(_bountyMarked): 처치/유출 드레인이 제거하므로 잔존 키 = 활성 표식
+            // (ECS 쿼리 불요 — 등록부가 이미 권위. Exists 가드는 파괴~드레인 사이 1프레임 창).
+            foreach (var marked in _bountyMarked)
+            {
+                if (!_em.Exists(marked)) continue;
+                var anchor = ResolveUnitViewTransform(marked);
+                if (anchor != null)
+                    statusFxSpawner.Ensure(marked, Wassup.Data.StatusFxKind.Marked, anchor);
+            }
+
             statusFxSpawner.EndFrame();
         }
 
@@ -2976,6 +2987,50 @@ namespace Wassup.Bridge
             var hit = DebugWorldToCell(world);
             cell = new Vector2Int(hit.x, hit.y);
             return true;
+        }
+
+        // subconscious-curse-expansion unit 3 (살찌운 제물) — 드롭 지점 최근접 적 픽.
+        // 반경 = radiusTiles × tileSize(유클리드 xz, 셀 양자화 없이 평면 히트 그대로).
+        // 픽은 커밋 순간의 스냅샷 — 이후 이동은 무관. 동거리 동점은 entity index
+        // 오름차순(결정론, HealthThreshold 폴백 선례). 반경 내 없음 = false(무차감).
+        public bool TryPickNearestEnemy(Camera cam, Vector2 screenPos, float radiusTiles, out Entity enemy)
+        {
+            enemy = Entity.Null;
+            if (cam == null || !HasLiveEntityManager()) return false;
+            var ray = cam.ScreenPointToRay(screenPos);
+            var plane = Wassup.Core.BoardSpace.RaycastPlane();
+            if (!plane.Raycast(ray, out float enter)) return false;
+            var world = (Vector3)Wassup.Core.BoardSpace.ToSim(ray.GetPoint(enter));
+
+            float maxSq = radiusTiles * tileSize;
+            maxSq *= maxSq;
+            using var query = _em.CreateEntityQuery(
+                ComponentType.ReadOnly<Wassup.Battle.Units.AttackUnitTag>(),
+                ComponentType.ReadOnly<Unity.Transforms.LocalTransform>());
+            var entities = query.ToEntityArray(Allocator.Temp);
+            var transforms = query.ToComponentDataArray<Unity.Transforms.LocalTransform>(Allocator.Temp);
+            try
+            {
+                float bestSq = maxSq;
+                for (int i = 0; i < entities.Length; i++)
+                {
+                    Vector3 d = (Vector3)transforms[i].Position - world;
+                    d.y = 0f;
+                    float sq = d.sqrMagnitude;
+                    if (sq < bestSq ||
+                        (sq == bestSq && enemy != Entity.Null && entities[i].Index < enemy.Index))
+                    {
+                        bestSq = sq;
+                        enemy = entities[i];
+                    }
+                }
+            }
+            finally
+            {
+                entities.Dispose();
+                transforms.Dispose();
+            }
+            return enemy != Entity.Null;
         }
 
         // dreamcatcher-awakening-hand unit 7 — defender lookup for card-drag

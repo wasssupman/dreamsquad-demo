@@ -17,6 +17,10 @@ namespace Wassup.Data
         // season-gimmick-overwork — 라스트런(레드불 기믹). 소스 = LastRun 컴포넌트 보유
         // (레드불 소비~crash 창을 권위적으로 정의, review #3).
         LastRun = 4,
+        // subconscious-curse-expansion unit 3 — 살찌운 제물 표식(적 전용). 소스 =
+        // BattleBridge 표식 등록부(_bountyMarked) — 처치/유출 드레인이 제거하므로
+        // 잔존 키 = 활성 표식(ECS 쿼리 불요).
+        Marked = 5,
         // Stun, Freeze, Poison … 나중에 끝에 추가 + registry 항목 + reconcile 소스 훅.
     }
 }

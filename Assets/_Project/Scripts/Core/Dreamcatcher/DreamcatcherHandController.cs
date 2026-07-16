@@ -58,6 +58,8 @@ namespace Wassup.Core
         public int Gauge { get; private set; }
         public int GaugeMax => config != null ? config.gaugeMax : 100;
         public int HandSize => config != null ? config.handSize : 5;
+        // subconscious-curse-expansion unit 3 — 표식 드롭 픽 반경(타일, SO 노브).
+        public float EnemyPickRadiusTiles => config != null ? config.enemyPickRadiusTiles : 1.5f;
 
         private DreamcatcherCycleDeck _deck;
         // gift-phase unit 1 — 선물 페이즈에서 확정한 조합 캐시. 배치 진입 시 _deck 재사용

@@ -26,10 +26,12 @@ namespace Wassup.UI
     {
         private enum AimMode
         {
-            None,        // unclassifiable (Active without a skill) — drag blocked
-            Defender,    // arrow + unit tint + unit drop
-            ActiveTile,  // card-follow + range preview + tile drop
-            ActivePortal // card-follow + entry drop → two-tap exit
+            None,         // unclassifiable (Active without a skill) — drag blocked
+            Defender,     // arrow + unit tint + unit drop
+            ActiveTile,   // card-follow + range preview + tile drop
+            ActivePortal, // card-follow + entry drop → two-tap exit
+            // subconscious-curse-expansion unit 3 — 살찌운 제물: arrow + 최근접 적 픽 드롭
+            EnemyMark
         }
 
         private DreamcatcherHandView _view;
@@ -80,6 +82,11 @@ namespace Wassup.UI
             if (card == null) return AimMode.None;
             switch (card.type)
             {
+                // subconscious-curse-expansion unit 3 — BountyMark 카드는 적 타겟.
+                // 정식 라우팅은 이 판별 하나 — CommitAttach 로 새어도 bake 의
+                // trigger=None 가드가 무차감 거절한다(unit 2 계약).
+                case CardType.Unit when HasBountyMark(card):
+                    return AimMode.EnemyMark;
                 case CardType.Unit:
                 case CardType.Squad: // unit 9 — host-bound, aims like Unit
                     return AimMode.Defender;
@@ -90,6 +97,15 @@ namespace Wassup.UI
                 default:
                     return AimMode.None;
             }
+        }
+
+        // 순수 데이터 판독 — mechanics 에 BountyMark payload 포함 여부(신규 필드 없음).
+        private static bool HasBountyMark(DreamcatcherCard card)
+        {
+            if (card.mechanics == null) return false;
+            for (int i = 0; i < card.mechanics.Length; i++)
+                if (card.mechanics[i].payload.kind == DcPayloadKind.BountyMark) return true;
+            return false;
         }
 
         // ── drag ─────────────────────────────────────────────────────────────
@@ -104,7 +120,7 @@ namespace Wassup.UI
             _dragging = true;
             _view.SetFocus(-1); // hand-deal-in — 드래그 시작 시 focus 해제(이웃 scatter 복귀)
             slot.rect.SetAsLastSibling(); // float above sibling cards
-            if (_mode == AimMode.Defender)
+            if (_mode == AimMode.Defender || _mode == AimMode.EnemyMark)
                 slot.rect.localScale = Vector3.one * 1.08f; // 선택 카드 강조(카드는 손패 고정)
 
             if (slot.card.type == CardType.Active && GameManager.Instance != null)
@@ -124,6 +140,7 @@ namespace Wassup.UI
             switch (_mode)
             {
                 case AimMode.Defender: UpdateUnitHover(eventData.position); break;
+                case AimMode.EnemyMark: UpdateEnemyHover(eventData.position); break;
                 case AimMode.ActiveTile: UpdateAimRange(eventData.position, Slot.card.skill); break;
             }
             UpdateDragVisual(eventData.position);
@@ -176,6 +193,23 @@ namespace Wassup.UI
                         CommitNow(() => _view.Controller.CommitAttach(entryId, host),
                             () => _view.FlyCardToUnit(startUiWorld, ghostSize, face, host2));
                     }
+                    return;
+                }
+
+                case AimMode.EnemyMark:
+                {
+                    // 픽 = 커밋 순간 스냅샷(최근접 적, 반경 SO 노브). 반경 내 적 없음 =
+                    // 취소(무차감·카드 잔류 — contract 9).
+                    UpdateEnemyHover(eventData.position);
+                    if (_hoverEntity == Entity.Null) { CancelDrag(); return; }
+                    var enemy = _hoverEntity;
+                    int markEntryId = slot.entryId;
+                    Vector3 mStart = slot.rect.position;
+                    Vector2 mSize = slot.rect.rect.size;
+                    Sprite mFace = slot.art != null ? slot.art.sprite : null;
+                    var enemy2 = enemy;
+                    CommitNow(() => _view.Controller.CommitMarkEnemy(markEntryId, enemy),
+                        () => _view.FlyCardToUnit(mStart, mSize, mFace, enemy2));
                     return;
                 }
 
@@ -266,7 +300,7 @@ namespace Wassup.UI
         // arrow, hover tint, aim preview/IsAiming, portal state, mode.
         private void EndInteraction()
         {
-            if (_mode == AimMode.Defender)
+            if (_mode == AimMode.Defender || _mode == AimMode.EnemyMark)
             {
                 _view.TargetArrow?.Hide();
                 _view.RestoreSlotHome(_index); // 확대 복원(성공 시 Refresh 가 재정렬)
@@ -289,7 +323,7 @@ namespace Wassup.UI
 
         private void UpdateDragVisual(Vector2 screenPos)
         {
-            if (_mode == AimMode.Defender)
+            if (_mode == AimMode.Defender || _mode == AimMode.EnemyMark)
             {
                 // 카드는 손패에 고정 — 화살표만 포인터를 따른다(붉음=유효 타겟).
                 var slot = Slot;
@@ -331,6 +365,16 @@ namespace Wassup.UI
 
             _hoverCell = cell;
             _hoverEntity = found;
+        }
+
+        // subconscious-curse-expansion unit 3 — 최근접 적 픽(반경 = AwakeningConfig 노브).
+        // 하이라이트 없음(화살표 유효색이 피드백) — 적 스파인 틴트는 health-tint 와의
+        // 합성 문제가 있어 비목표. ClearHover 의 un-highlight 는 무해(틴트 원복 방향).
+        private void UpdateEnemyHover(Vector2 screenPos)
+        {
+            _hoverCell = null;
+            _hoverEntity = _view.Bridge.TryPickNearestEnemy(_view.MainCamera, screenPos,
+                _view.Controller.EnemyPickRadiusTiles, out var enemy) ? enemy : Entity.Null;
         }
 
         private void ClearHover()

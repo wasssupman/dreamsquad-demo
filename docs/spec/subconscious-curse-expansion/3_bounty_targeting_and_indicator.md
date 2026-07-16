@@ -31,7 +31,9 @@ unit 2 의 메커니즘을 실제 조작으로 연결한다: 손패에서 카드
 
 ## 완료 기준
 
-- [ ] compile 0 에러
-- [ ] 에디터 Play: ① 드래그→적 드롭→표식 커밋 + 게이지 차감 + 인디케이터 표시 ② 처치/유출 시 인디케이터 소멸 + 카드 큐 복귀 ③ 반경 내 적 없는 드롭 → 무차감 + 카드 잔류
-- [ ] 기존 카드(부착/Active) 드래그 경로 전부 무회귀 (Play 확인)
-- [ ] 씬 wiring 완료 상태로 커밋 (registry 슬롯 미배정 금지)
+- [x] compile 0 에러
+- [ ] 에디터 Play: ① 드래그→적 드롭→표식 커밋 + 게이지 차감 + 인디케이터 표시 ② 처치/유출 시 인디케이터 소멸 + 카드 큐 복귀 ③ 반경 내 적 없는 드롭 → 무차감 + 카드 잔류 — **사용자 육안 확인 대기**
+- [ ] 기존 카드(부착/Active) 드래그 경로 전부 무회귀 (Play 확인) — **사용자 육안 확인 대기** (코드 경로는 PlayMode 9/9 무회귀)
+- [x] 씬 wiring 완료 상태로 커밋 — 신규 씬 배선 0: `statusFxSpawner` 는 기존 배선 재사용, 인디케이터는 registry SO 항목(kind 5, 골드 "!" 폴백 글리프)만 추가
+
+확인(부분) 2026-07-16 — compile 0 에러 · PlayMode 9/9(Bounty/Cocoon/Pact/ActionLock — Marked reconcile 블록이 테스트 씬 LateUpdate 에서 무에러 구동). 구현 요점: `AimMode.EnemyMark`(Classify 가 mechanics 판독으로 라우팅), `TryPickNearestEnemy`(평면 히트 그대로 — 셀 양자화 없음, 동점=entity index 결정론), 픽 반경 `AwakeningConfig.enemyPickRadiusTiles=1.5`(기존 에셋은 초기값 역직렬화). 드래그 육안 검증(위 2항목)은 사용자 Play 후 체크.
