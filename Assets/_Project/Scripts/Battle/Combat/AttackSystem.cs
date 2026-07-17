@@ -360,6 +360,10 @@ namespace Wassup.Battle.Combat
                 {
                     bestTarget = laneWitness;
                     bestTargetPos = laneWitnessPos;
+                    // witness 는 "최전방"이 아니라 "최근접"이다 — frontmost 보너스를 여기에
+                    // 실으면 카드가 약속한 대상(최전방)이 아닌 적이 +20% 를 받는다. 방향
+                    // 유닛은 레인이 타겟팅 규칙 전부이므로 보너스를 포기한다(ecs-review L1).
+                    fmChosenIsPriority = false;
                 }
 
                 // ── BURST TICK ── defender-directional-volley unit 4.

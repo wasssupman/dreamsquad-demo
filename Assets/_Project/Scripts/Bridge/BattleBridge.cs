@@ -2654,10 +2654,13 @@ namespace Wassup.Bridge
                 // 없어 origin + direction + maxDistance 가 궤적 전부. 방향은 여기서
                 // 한 번 정규화해 sim 이 매 프레임 normalize 하지 않게 한다(퇴화 벡터는
                 // 스폰을 버림 — 정지한 투사체가 사거리 끝까지 안 죽고 남는 것 방지).
+                // 정지 조건 둘 다 여기서 막는다: 방향이 0 이거나 속도가 0 이면 traveled 가
+                // 영원히 0 → impactReached 가 서지 않아 PathHit 이 소멸 조건을 못 만난다
+                // (사거리 소진도 예산 소진도 없는 불멸 투사체 — ecs-review M1).
                 float2 dir = req.direction;
-                if (math.lengthsq(dir) < 1e-6f)
+                if (math.lengthsq(dir) < 1e-6f || req.speed <= 0f)
                 {
-                    Debug.LogWarning("[BattleBridge] Directional projectile with zero direction; dropping.");
+                    Debug.LogWarning($"[BattleBridge] Directional projectile cannot travel (dir={dir}, speed={req.speed}); dropping.");
                     _em.DestroyEntity(entity);
                     if (hasSnapshot) outputSnapshot.Dispose();
                     return Entity.Null;

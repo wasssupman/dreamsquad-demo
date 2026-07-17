@@ -46,9 +46,12 @@ namespace Wassup.Battle.Combat
             return new float2(baseDir.x * c - baseDir.y * s, baseDir.x * s + baseDir.y * c);
         }
 
-        // Next-trigger cooldown set at burst START so the wait is felt after the
-        // volley completes (feature contract 8 — cooldown counts from burst end).
-        public static float CooldownAfterVolley(float cooldownDuration, int shotCount, float intervalSec)
-            => cooldownDuration + math.max(0, shotCount - 1) * math.max(0f, intervalSec);
+        // Extends a cooldown by the time the volley will spend firing, so the wait is
+        // felt after the last shot rather than overlapping it (feature contract 8 —
+        // cooldown counts from burst end). Takes what is left on the clock, not the
+        // authored duration: the caller applies this at RESOLVE, by which point a
+        // hit-delay attack has already burned part of its cooldown.
+        public static float CooldownAfterVolley(float cooldownRemaining, int shotCount, float intervalSec)
+            => cooldownRemaining + math.max(0, shotCount - 1) * math.max(0f, intervalSec);
     }
 }
