@@ -30,8 +30,10 @@ namespace Wassup.Battle.Effects
         Boss,             // 보스 주기 트리거(AllyMoveSpeedAura)
         HealthThreshold,  // 체력 임계 자가버프
         OnHit,            // 공격 산출물 ApplyStat(공격 시 대상에 부여)
-        Stack,            // 스택(Fire/Ice/Bleed/Poison/Fatigue) 파생 스탯
+        Stack,            // 스택(Fire/Ice/Bleed/Poison) 파생 스탯
         Gimmick,          // 시즌 기믹 효과(season-gimmick-overwork 야근 라스트런 등)
+        Burnout,          // 야근 번아웃 — Fatigue 임계 파생 디버프(공속/공격/최대체력 ×0.8). Stack 서브셋을
+                          // 전용 origin 으로 승격해 상태FX가 다른 Stack 파생과 안 섞이게(review #3).
     }
 
     // 임베딩 컨벤션 — IComponentData/IBufferElementData 아님. 두 Slot struct 에 직접 임베딩.

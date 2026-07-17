@@ -54,6 +54,19 @@ namespace Wassup.Data
         // 에 적용 — primary 한정인 끝을 보는 눈과 다르다. 발동은 unit 1(AttackSystem),
         // 적용은 unit 2(melee + ProjectileHitSystem, hit-site 배율).
         HeavyStrike = 13,
+        // subconscious-curse-expansion unit 0 — 호접몽. 즉발(trigger=None, no slot):
+        // 부착 즉시 Sleep(duration 초, 기존 wake-on-hit 이 곧 리스크) + 완주 감시
+        // (DreamCocoon 컴포넌트). 무피격 완주 시 self 영구 스탯버프, 피격 wake 시
+        // 파탄(버프 없음). magnitude=버프 %(35=+35%), duration=잠 초(> 0.05 필수),
+        // buffStat 재사용(SelfStatBuff 선례). append-only.
+        DreamCocoon = 14,
+        // subconscious-curse-expansion unit 2 — 살찌운 제물. 적을 겨냥하는 최초의
+        // 드림캐쳐(ApplyBountyMark 전용 — CommitAttach/defender 경로 유입 시 아래
+        // trigger=None 가드로 무차감 거절). 표식 즉시: AwakeningReward ×magnitude
+        // (각성 배율, >1 필수) 베이크 덮어쓰기 + 받는 피해 −tileRange %(0~99,
+        // ApplyStackToTarget 의 tileRange 재사용 선례). 처치=배율 보상+회수,
+        // 유출=무보상 회수(EnemyGone). append-only.
+        BountyMark = 15,
     }
 
     // dreamcatcher-new-abilities unit 0 — 데이터 계층 CC 선택자(공격 온-히트용). 정의
@@ -130,6 +143,7 @@ namespace Wassup.Data
         // 부여할지(CardBuffKind — 정의 계층이 Battle.StatKind 를 모르게 유지, bake 가
         // MapDcBuff 로 번역). magnitude=%(30=+30%), duration=TTL초(<=0 = 영구, arm 이 해석).
         // last_stand=AttackDamage / devouring=AttackSpeed. 다른 kind 는 무시.
+        // subconscious-curse-expansion unit 0 — DreamCocoon 도 재사용(완주 버프 스탯).
         public CardBuffKind buffStat;
     }
 

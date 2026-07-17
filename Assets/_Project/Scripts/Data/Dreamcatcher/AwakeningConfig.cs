@@ -37,6 +37,11 @@ namespace Wassup.Data
         // (confirmDelaySec removed 2026-07-10 — 오부착 방어 확정 지연 폐기, touchup 즉시 커밋.)
         public float slomoTimeScale = 0.3f;
 
+        [Header("Bounty Mark")]
+        // subconscious-curse-expansion unit 3 — 살찌운 제물 드롭 픽 반경(타일 단위,
+        // 유클리드 xz). 기존 에셋은 필드 초기값으로 역직렬화(끝에 추가).
+        public float enemyPickRadiusTiles = 1.5f;
+
         public int CostFor(CardType type)
         {
             switch (type)

@@ -243,6 +243,11 @@ namespace Wassup.Bridge
         private bool _usingAuthoredPlan;
         private int _nextWaveIndex;
         private int _goalReachedCount;
+        // subconscious-curse-expansion unit 1 (몽마의 계약) — 유출 허용치 선불 지불의
+        // 런타임 오프셋. SO(deck.defeatGoalReachedCount)는 절대 불변 — 직접 감소시키면
+        // 에디터 자산 영구 오염 + 기기에서 매치 간 누적된다(spec critic M1). 매치 리셋
+        // (BeginPlacement)에서 0 초기화. 환불 경로 없음(§6 세탁 차단).
+        private int _leakAllowancePenalty;
         private NativeQueue<GoalReachedEvent> _goalEventQueue;
         private NativeQueue<DefenderDeathEvent> _defenderDeathQueue;
         private NativeQueue<Wassup.Battle.Combat.UnitAttackVisualEvent> _unitAttackVisualQueue;
@@ -1014,6 +1019,7 @@ namespace Wassup.Bridge
             // ingame-dreamcatcher Unit 2/3 — reset card registry + triggers for a new match.
             _activeDcEffects.Clear();
             _activePlacementSleeps.Clear(); // combat-action-lock — 매치별 placement-aura Sleep 등록 초기화
+            _bountyMarked.Clear(); // 살찌운 제물 — 표식 등록부도 매치 경계에서 초기화
             _dcStackCounter = 100;
             _dcInstanceCounter = 0; // dreamcatcher-unit-trigger Unit 1 — per-match instance ids
             // dreamstone-loadout Unit 3 — set-then-apply: reapply the pending stone
@@ -1024,6 +1030,7 @@ namespace Wassup.Bridge
             _synergyActivations = 0;
             _synergyPeakCount = 0;
             _goalReachedCount = 0;
+            _leakAllowancePenalty = 0; // 몽마의 계약 선불 — 매치 경계에서 소멸(이월 금지)
             _running = false;
             _placementAllowed = true;
             _resultShown = false;
@@ -1106,7 +1113,9 @@ namespace Wassup.Bridge
             if (!_modifierSlotQueryCreated)
             {
                 // 드림캐쳐 강화는 방어유닛에만 부여되므로 defender 로 한정 — 적/기타 아키타입 순회 낭비 방지
-                // (ecs-review H2). 적이 드림캐쳐 origin 슬롯을 가질 일은 없지만 구조적으로도 차단.
+                // (ecs-review H2). ⚠ subconscious-curse-expansion unit 2 부터 적도 드림캐쳐
+                // origin 슬롯을 가질 수 있다(살찌운 제물 DmgTakenMul) — 이 DefenderUnitTag
+                // 게이트가 적 오라 점등을 막는 유일한 장벽이므로 제거 금지.
                 _modifierSlotQuery = _em.CreateEntityQuery(
                     ComponentType.ReadOnly<Wassup.Battle.Effects.StatModifierSlot>(),
                     ComponentType.ReadOnly<Wassup.Battle.Units.DefenderUnitTag>());
@@ -2029,13 +2038,13 @@ namespace Wassup.Bridge
             // 스탯 모디파이어 슬롯 기반 오라 두 종을 같은 버퍼 스캔에서 판정(중복 순회 회피):
             //   Empowered = 드림캐쳐 출처(ModifierOrigin.Dreamcatcher) 활성 — dreamcatcher-empower-aura.
             //     revoke(mult=1.0 중립화)면 net=identity 라 자동 해제(net-편차 판정). Dreamstone/시너지 등 제외.
-            //   Burnout   = 스택 출처(ModifierOrigin.Stack) 활성 — season-gimmick-overwork 번아웃.
-            //     Fatigue 임계(ThresholdRule ApplyStat, ×0.8/15s)가 유일한 Stack 파생이라 origin==Stack
-            //     = 번아웃 창과 일치.
-            //   LastRun   = 기믹 출처(ModifierOrigin.Gimmick) 활성 — season-gimmick-overwork 라스트런.
-            //     레드불 소비 공속버프(×1.5/5s)가 유일한 Gimmick 파생이라 origin==Gimmick = 라스트런 창과 일치.
-            //   Burnout/LastRun 모디파이어는 duration 만료로 제거(in-place revoke 없음)라 단순 존재
-            //     판정(remaining>0)으로 충분. 버퍼는 읽기만.
+            //   Burnout   = 번아웃 출처(ModifierOrigin.Burnout) 활성 — Fatigue 임계 파생 디버프.
+            //     StackModifierTickSystem 이 kind==Fatigue 파생에만 Burnout origin 을 심는다 →
+            //     다른 Stack 파생(Fire/Ice/…)이 생겨도 번아웃 아이콘과 안 섞임(review #3).
+            //   LastRun   = LastRun 컴포넌트 보유 = 라스트런 창(레드불 소비~crash). 컴포넌트가 창을
+            //     권위적으로 정의하므로 origin 추론 대신 직접 조회(review #3).
+            //   Burnout 모디파이어는 duration 만료로 제거(in-place revoke 없음)라 존재 판정(remaining>0)
+            //     으로 충분. 버퍼는 읽기만.
             if (_modifierSlotQueryCreated)
             {
                 var slotEntities = _modifierSlotQuery.ToEntityArray(Allocator.Temp);
@@ -2043,28 +2052,39 @@ namespace Wassup.Bridge
                 {
                     for (int i = 0; i < slotEntities.Length; i++)
                     {
-                        var slots = _em.GetBuffer<Wassup.Battle.Effects.StatModifierSlot>(slotEntities[i], isReadOnly: true);
+                        var e = slotEntities[i];
+                        var slots = _em.GetBuffer<Wassup.Battle.Effects.StatModifierSlot>(e, isReadOnly: true);
                         bool empowered = Wassup.Battle.Effects.ModifierAuraClassifier.HasActiveDreamcatcherModifier(slots.AsNativeArray());
-                        bool burnout = false, lastRun = false;
+                        bool burnout = false;
                         for (int j = 0; j < slots.Length; j++)
                         {
                             if (slots[j].header.remaining <= 0f) continue;
-                            var o = slots[j].header.origin;
-                            if (o == Wassup.Battle.Effects.ModifierOrigin.Stack) burnout = true;
-                            else if (o == Wassup.Battle.Effects.ModifierOrigin.Gimmick) lastRun = true;
+                            if (slots[j].header.origin == Wassup.Battle.Effects.ModifierOrigin.Burnout) { burnout = true; break; }
                         }
+                        bool lastRun = _em.HasComponent<Wassup.Battle.Effects.LastRun>(e);
                         if (!empowered && !burnout && !lastRun) continue;
-                        var anchor = ResolveUnitViewTransform(slotEntities[i]);
+                        var anchor = ResolveUnitViewTransform(e);
                         if (anchor == null) continue;
-                        if (empowered) statusFxSpawner.Ensure(slotEntities[i], Wassup.Data.StatusFxKind.Empowered, anchor);
-                        if (burnout) statusFxSpawner.Ensure(slotEntities[i], Wassup.Data.StatusFxKind.Burnout, anchor);
-                        if (lastRun) statusFxSpawner.Ensure(slotEntities[i], Wassup.Data.StatusFxKind.LastRun, anchor);
+                        if (empowered) statusFxSpawner.Ensure(e, Wassup.Data.StatusFxKind.Empowered, anchor);
+                        if (burnout) statusFxSpawner.Ensure(e, Wassup.Data.StatusFxKind.Burnout, anchor);
+                        if (lastRun) statusFxSpawner.Ensure(e, Wassup.Data.StatusFxKind.LastRun, anchor);
                     }
                 }
                 finally
                 {
                     slotEntities.Dispose();
                 }
+            }
+
+            // subconscious-curse-expansion unit 3 — 살찌운 제물 표식. 소스 = bridge 표식
+            // 등록부(_bountyMarked): 처치/유출 드레인이 제거하므로 잔존 키 = 활성 표식
+            // (ECS 쿼리 불요 — 등록부가 이미 권위. Exists 가드는 파괴~드레인 사이 1프레임 창).
+            foreach (var marked in _bountyMarked)
+            {
+                if (!_em.Exists(marked)) continue;
+                var anchor = ResolveUnitViewTransform(marked);
+                if (anchor != null)
+                    statusFxSpawner.Ensure(marked, Wassup.Data.StatusFxKind.Marked, anchor);
             }
 
             statusFxSpawner.EndFrame();
@@ -2506,6 +2526,9 @@ namespace Wassup.Bridge
                 scoreHud?.OnEnemyKilled(EnemyKillScoreDelta);
                 // dreamcatcher-awakening-hand unit 1 — awakening economy relay.
                 EnemyKilledAwakening?.Invoke(evt.awakeningReward);
+                // 살찌운 제물 — 표식 악몽 처치: 카드 회수 알림(보상은 위 relay 가
+                // 표식 시점에 배율된 baked 값으로 이미 지급).
+                NotifyEnemyGoneIfMarked(evt.entity);
                 int2 grid = _generatedMap.IsCreated ? _generatedMap.gridSize : GridSize;
                 var cell = GridMath.WorldToCell(evt.position, tileSize, grid, origin: _boardOrigin);
                 float time = LogElapsedTime;
@@ -2982,6 +3005,50 @@ namespace Wassup.Bridge
             return true;
         }
 
+        // subconscious-curse-expansion unit 3 (살찌운 제물) — 드롭 지점 최근접 적 픽.
+        // 반경 = radiusTiles × tileSize(유클리드 xz, 셀 양자화 없이 평면 히트 그대로).
+        // 픽은 커밋 순간의 스냅샷 — 이후 이동은 무관. 동거리 동점은 entity index
+        // 오름차순(결정론, HealthThreshold 폴백 선례). 반경 내 없음 = false(무차감).
+        public bool TryPickNearestEnemy(Camera cam, Vector2 screenPos, float radiusTiles, out Entity enemy)
+        {
+            enemy = Entity.Null;
+            if (cam == null || !HasLiveEntityManager()) return false;
+            var ray = cam.ScreenPointToRay(screenPos);
+            var plane = Wassup.Core.BoardSpace.RaycastPlane();
+            if (!plane.Raycast(ray, out float enter)) return false;
+            var world = (Vector3)Wassup.Core.BoardSpace.ToSim(ray.GetPoint(enter));
+
+            float maxSq = radiusTiles * tileSize;
+            maxSq *= maxSq;
+            using var query = _em.CreateEntityQuery(
+                ComponentType.ReadOnly<Wassup.Battle.Units.AttackUnitTag>(),
+                ComponentType.ReadOnly<Unity.Transforms.LocalTransform>());
+            var entities = query.ToEntityArray(Allocator.Temp);
+            var transforms = query.ToComponentDataArray<Unity.Transforms.LocalTransform>(Allocator.Temp);
+            try
+            {
+                float bestSq = maxSq;
+                for (int i = 0; i < entities.Length; i++)
+                {
+                    Vector3 d = (Vector3)transforms[i].Position - world;
+                    d.y = 0f;
+                    float sq = d.sqrMagnitude;
+                    if (sq < bestSq ||
+                        (sq == bestSq && enemy != Entity.Null && entities[i].Index < enemy.Index))
+                    {
+                        bestSq = sq;
+                        enemy = entities[i];
+                    }
+                }
+            }
+            finally
+            {
+                entities.Dispose();
+                transforms.Dispose();
+            }
+            return enemy != Entity.Null;
+        }
+
         // dreamcatcher-awakening-hand unit 7 — defender lookup for card-drag
         // targeting (hover highlight + Unit-card attach target). Read-only view
         // over the tile→binding registry; Entity is a key for the attach APIs.
@@ -3097,6 +3164,22 @@ namespace Wassup.Bridge
             return idx;
         }
 
+        // subconscious-curse-expansion unit 1 (몽마의 계약) — 잔여 유출 허용치.
+        // = SO 기준치 − 선불 차감 − 이미 유출된 수. 컨트롤러 게이트/HUD 조회용.
+        public int RemainingLeakAllowance()
+            => deck != null ? deck.defeatGoalReachedCount - _leakAllowancePenalty - _goalReachedCount : 0;
+
+        // 몽마의 계약 선불 지불. 지불 후 잔여가 1 미만이면 거절 — "지불로 즉시 패배"
+        // 상태를 구조적으로 금지(spec 게이트 조건: 잔여 − cost ≥ 1). 성공 시 비가역:
+        // host 사망 revoke 는 hosted 버프만 회수하고 이 오프셋은 되돌리지 않는다.
+        public bool TryPayLeakAllowance(int cost)
+        {
+            if (cost <= 0) return false;
+            if (RemainingLeakAllowance() - cost < 1) return false;
+            _leakAllowancePenalty += cost;
+            return true;
+        }
+
         private void DrainGoalEvents()
         {
             if (!_goalEventQueue.IsCreated) return;
@@ -3104,9 +3187,14 @@ namespace Wassup.Bridge
             {
                 enemyViewPool?.Despawn(evt.entity);
                 spineUnitPool?.Despawn(evt.entity);
+                // 살찌운 제물 — 표식 악몽 유출: 무보상 회수. 패배 트리거의 조기 return 시
+                // 같은 프레임 잔여 이벤트의 EnemyGone 은 미발화 — 매치 종료 직후라 무해
+                // (BeginPlacement clear 가 등록부/컨트롤러 양쪽을 정리).
+                NotifyEnemyGoneIfMarked(evt.entity);
                 _goalReachedCount++;
-                Debug.Log($"[BattleBridge] Goal reached! Count: {_goalReachedCount}/{deck.defeatGoalReachedCount}");
-                if (!_resultShown && _goalReachedCount >= deck.defeatGoalReachedCount)
+                // 몽마의 계약 — 패배 판정은 선불 차감을 반영한 유효 허용치 기준.
+                Debug.Log($"[BattleBridge] Goal reached! Count: {_goalReachedCount}/{deck.defeatGoalReachedCount - _leakAllowancePenalty}");
+                if (!_resultShown && _goalReachedCount >= deck.defeatGoalReachedCount - _leakAllowancePenalty)
                 {
                     _resultShown = true;
                     _running = false;

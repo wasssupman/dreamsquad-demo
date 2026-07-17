@@ -51,6 +51,24 @@ namespace Wassup.Bridge
         // (subscriber reads data.awakeningReward).
         public event System.Action<int> EnemyKilledAwakening;
         public event System.Action<Entity, Wassup.Data.DefenderUnitData> DefenderDied;
+        // subconscious-curse-expansion unit 2 (살찌운 제물) — 표식 악몽 소멸(처치 또는
+        // 유출) 알림. 컨트롤러가 카드 회수(큐 복귀)에 구독한다. 처치/유출의 보상 차이는
+        // 이 이벤트가 아니라 표식 시점의 AwakeningReward 베이크가 만든다(처치=배율 보상
+        // 자동 지급, 유출=지급 없음 — 두 드레인 모두 보상 경로 무수정).
+        public event System.Action<Entity> EnemyGone;
+
+        // 표식 등록부(적 entity 키). 처치/유출 드레인에서 제거+EnemyGone 발화,
+        // BeginPlacement 에서 clear. 이 mark 는 적에 Dreamcatcher-origin 모디파이어를
+        // 얹는 **최초 사례** — 향후 origin 기반 판정(오라/dispel/UI)을 추가할 때는
+        // 반드시 진영/태그 게이트를 유지할 것 (spec critic m6).
+        private readonly System.Collections.Generic.HashSet<Entity> _bountyMarked =
+            new System.Collections.Generic.HashSet<Entity>();
+
+        // 드레인 훅(BattleBridge.cs 처치/유출 드레인에서 호출) — 표식이면 회수 알림.
+        internal void NotifyEnemyGoneIfMarked(Entity enemy)
+        {
+            if (_bountyMarked.Remove(enemy)) EnemyGone?.Invoke(enemy);
+        }
 
         // Applies one card to all currently-placed matching defenders and records
         // it so future placements (ApplyActiveDcEffectsTo) inherit it.
@@ -227,6 +245,21 @@ namespace Wassup.Bridge
                 }
             }
 
+            // subconscious-curse-expansion unit 0 — 이중 코쿤 사전검증(LethalTimer 선례):
+            // AddComponentData 는 기존 DreamCocoon 을 덮어써 완주 타이머/버프를 리셋하고
+            // 멀티-mechanic 카드를 부분 적용시키므로, 어떤 쓰기도 하기 전에 거절한다.
+            if (_em.HasComponent<Wassup.Battle.Effects.DreamCocoon>(defender))
+            {
+                for (int i = 0; i < preflightMechanicsLen; i++)
+                {
+                    if (card.mechanics[i].payload.kind != Wassup.Data.DcPayloadKind.DreamCocoon)
+                        continue;
+
+                    Debug.LogWarning($"[BattleBridge] ApplyDreamcatcherCardToUnit('{card.id}'): target already has DreamCocoon — card not attached.");
+                    return -1;
+                }
+            }
+
             int attached = 0;
             int auraHandle = 0; // >0 if a revocable placement-aura was registered
             int mechanicsLen = hasMechanics ? card.mechanics.Length : 0;
@@ -268,6 +301,45 @@ namespace Wassup.Bridge
                         continue;
                     }
                     auraHandle = RegisterPlacementAura(card.axis, m.payload.magnitude, m.payload.duration);
+                    attached++;
+                    continue;
+                }
+
+                // subconscious-curse-expansion unit 0 (호접몽) — instant DreamCocoon
+                // (trigger=None, no slot). 부착 즉시 Sleep(duration) + 완주 감시 컴포넌트.
+                // 완주(무피격) 시 DreamCocoonSystem 이 self 영구 버프 부여, 피격 wake 시
+                // 파탄(버프 없음) — 리스크는 기존 wake-on-hit 그 자체(신규 잠 변종 없음).
+                if (m.payload.kind == Wassup.Data.DcPayloadKind.DreamCocoon)
+                {
+                    // Epsilon 가드: duration−Epsilon 이 0 이하면 무수면 즉시 완주 foot-gun
+                    // (spec critic m3). Epsilon 은 내부 상수 — 튜닝 노브 아님.
+                    if (m.payload.magnitude <= 0f || m.payload.duration <= Wassup.Battle.Effects.DreamCocoon.Epsilon)
+                    {
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: DreamCocoon non-positive magnitude or duration <= epsilon — skipped.");
+                        continue;
+                    }
+                    if (!MapDcBuff(m.payload.buffStat, m.payload.magnitude, out var cocoonStat, out var cocoonMult))
+                    {
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: DreamCocoon unmappable buffStat ({m.payload.buffStat}) — skipped.");
+                        continue;
+                    }
+                    if (!_em.HasBuffer<Wassup.Battle.Effects.CcEffect>(defender))
+                    {
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: DreamCocoon target has no CcEffect buffer — skipped.");
+                        continue;
+                    }
+                    Wassup.Battle.Effects.EffectSpawner.ApplyCc(_em, defender, new Wassup.Battle.Effects.CcEffect
+                    {
+                        kind = Wassup.Battle.Effects.CcKind.Sleep,
+                        remainingTime = m.payload.duration,
+                    });
+                    _em.AddComponentData(defender, new Wassup.Battle.Effects.DreamCocoon
+                    {
+                        remaining = m.payload.duration - Wassup.Battle.Effects.DreamCocoon.Epsilon,
+                        stat = cocoonStat,
+                        mult = cocoonMult,
+                        stackId = _dcStackCounter++,
+                    });
                     attached++;
                     continue;
                 }
@@ -520,6 +592,65 @@ namespace Wassup.Bridge
             }
             if (attached == 0) return -1;
             return auraHandle;
+        }
+
+        // subconscious-curse-expansion unit 2 (살찌운 제물) — 적 표식. 반환 규약은
+        // ApplyDreamcatcherCardToUnit 과 동일: <0 실패(무차감) / 0 성공·회수불필요
+        // (표식은 엔티티 수명과 함께 소멸 — 처치/유출이 곧 회수 트리거, revoke 없음).
+        // 스탯 적용은 기존 StatModifier 채널(TTL=DcDuration 영구, revoke 레지스트리
+        // 비등록 — 소멸은 엔티티 수명). empower aura 는 defender 한정 쿼리라 적엔 안 켜짐.
+        public int ApplyBountyMark(Entity enemy, Wassup.Data.DreamcatcherCard card)
+        {
+            if (card == null || card.mechanics == null) return -1;
+            // BountyMark 메커닉 추출. magnitude=각성 배율(>1 필수), tileRange=받는 피해
+            // 감소 %(0~99 — ApplyStackToTarget 의 tileRange 재사용 선례).
+            int mi = -1;
+            for (int i = 0; i < card.mechanics.Length; i++)
+                if (card.mechanics[i].payload.kind == Wassup.Data.DcPayloadKind.BountyMark) { mi = i; break; }
+            if (mi < 0) return -1;
+            var payload = card.mechanics[mi].payload;
+            if (payload.magnitude <= 1f)
+            {
+                Debug.LogWarning($"[BattleBridge] ApplyBountyMark('{card.id}'): magnitude<=1 (현상금 없음) — not marked.");
+                return -1;
+            }
+            if (payload.tileRange < 0 || payload.tileRange >= 100)
+            {
+                Debug.LogWarning($"[BattleBridge] ApplyBountyMark('{card.id}'): tileRange(피해감소%) [0,100) 밖 — not marked.");
+                return -1;
+            }
+            if (!HasLiveEntityManager() || !_em.Exists(enemy))
+            {
+                Debug.LogWarning($"[BattleBridge] ApplyBountyMark('{card.id}'): ECS not ready or enemy gone — not marked.");
+                return -1;
+            }
+            // 적 판별 — 표식은 악몽 전용(방어유닛/해저드 부착 방지).
+            if (!_em.HasComponent<Wassup.Battle.Units.AttackUnitTag>(enemy))
+            {
+                Debug.LogWarning($"[BattleBridge] ApplyBountyMark('{card.id}'): target is not an enemy — not marked.");
+                return -1;
+            }
+            // 이중 표식 사전검증 — AwakeningReward 이중 배율 방지(LethalTimer preflight 선례).
+            if (_bountyMarked.Contains(enemy))
+            {
+                Debug.LogWarning($"[BattleBridge] ApplyBountyMark('{card.id}'): enemy already marked — not marked.");
+                return -1;
+            }
+
+            // 보상 배율 — 표식 시점 베이크 덮어쓰기(bridge 부착 시점 쓰기 선례: LethalTimer).
+            // EnemyKilledEvent 가 enqueue 시점에 이 값을 복사하므로 처치 경로 무수정.
+            if (_em.HasComponent<Wassup.Battle.Units.AwakeningReward>(enemy))
+            {
+                var reward = _em.GetComponentData<Wassup.Battle.Units.AwakeningReward>(enemy);
+                reward.value = Mathf.Max(1, Mathf.RoundToInt(reward.value * payload.magnitude));
+                _em.SetComponentData(enemy, reward);
+            }
+            if (payload.tileRange > 0)
+                EnqueueStatModifier(enemy, Wassup.Battle.Effects.StatKind.DmgTakenMul,
+                    1f - payload.tileRange / 100f, DcDuration, _dcStackCounter++,
+                    Wassup.Battle.Effects.ModifierOrigin.Dreamcatcher);
+            _bountyMarked.Add(enemy);
+            return 0;
         }
 
         // dreamcatcher-content-2 unit 1 — does this defender emit at least one positive

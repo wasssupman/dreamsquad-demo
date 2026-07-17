@@ -130,7 +130,11 @@ namespace Wassup.Battle.Effects
                             duration  = rule.duration,
                             source    = entity,
                             stackId   = 0,
-                            origin    = ModifierOrigin.Stack,
+                            // 야근 번아웃만 전용 origin 승격 — 상태FX(BattleBridge)가 다른 Stack
+                            // 파생과 안 섞이게(review #3). 범용 trigger→domain 통합은 파킹 문서.
+                            origin    = kind == StackKind.Fatigue
+                                        ? ModifierOrigin.Burnout
+                                        : ModifierOrigin.Stack,
                         });
                         break;
                 }

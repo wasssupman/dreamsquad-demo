@@ -280,6 +280,14 @@ board-visualization spec 자체는 ROI 부족으로 wrap 종료. 진단/실험�
 - **Battle HUD Safe Action Tray** → `docs/spec/battle-hud-action-tray/` [L, 선행 spec 대기]. 비용·role·affordability 슬롯 정보, compact energy rail, tray↔hand 시각 정합, 배치 거부 원인 피드백.
 - **남은 허용 유출 HUD** [S/M] · `defeatGoalReachedCount` 대비 현재 유출/잔여 허용치를 전투 중 상시 표시해 패배 원인 예측성을 높인다. Action Tray와 다른 상단 생존 정보 scope로 별도 승격.
 
+#### PlayMode 스모크 위생 (subconscious-curse-expansion unit 4 실측, 2026-07-16)
+
+전체 PlayMode 34 중 4건이 main 에서 이미 실패 — 내 커밋 이전(`ea155e65`) detached 재실행으로 재현 확정. 신규 회귀 아님, 테스트가 낡음:
+
+- **DreamcatcherDeckCarryInTest** [S] · 10장 덱 저장을 기대하나 라이브 덱 규칙은 8장(`56cf7380` 덱 사이즈 10→8) → Validate 실패로 resolve 0. 제거된 기본(fallback) 덱 10장 기대도 잔존(2026-07-15 사용자 결정으로 폐기됨). 테스트를 8장 + 무폴백 계약으로 재작성.
+- **SquadCarryInSmokeTest · DreamstoneCarryInSmokeTest** [S] · `RequestPlacement()` 직후 `Placement` 기대 — gift-phase(2026-07-13)가 `Gift` 를 삽입한 뒤 stale. Gift 통과(또는 우회 경로) 반영 필요. Dreamstone 쪽은 PrimeTween OnComplete 에러 표출도 동반.
+- **MovementIntegritySmokeTest** [M] · "guardian aggro ≥1" 실패 — 원인 미조사(오늘 pull 의 gimmick 랜덤 배정 주입이 용의선상). 별도 조사.
+
 #### 기타
 
 - **Healer 전용 Spine asset** [S] · 현재 Archer Spine reuse. 전용 rig + idle/heal-cast/death 애니메이션. 시각 식별성, 기능 영향 없음. (modifier-framework-and-healer)

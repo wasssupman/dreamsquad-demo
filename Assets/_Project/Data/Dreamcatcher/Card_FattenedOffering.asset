@@ -1,0 +1,42 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cdcd617d396824acd8882a45466b4886, type: 3}
+  m_Name: Card_FattenedOffering
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
+  id: sub_fattened_offering
+  displayName: "살찌운 제물"
+  axis: 3
+  category: 2
+  effects: []
+  art: {fileID: 21300000, guid: d5ede3598eba5ee4480aba82e30566eb, type: 3}
+  mechanics:
+  - trigger:
+      kind: 0
+      period: 0
+      periodSeconds: 0
+      fraction: 0
+    payload:
+      kind: 15
+      magnitude: 3
+      projectile: {fileID: 0}
+      tileRange: 30
+      duration: 0
+      auraPrefab: {fileID: 0}
+      auraScale: 0
+      ccKind: 0
+      stackKind: 0
+      buffStat: 0
+  attackMods: []
+  type: 1
+  skill: {fileID: 0}
+  description: "필드의 악몽 하나에 제물 표식을 새긴다. 표식된 악몽은 받는 피해가 30% 줄어들지만, 처치하면 각성치를 3배로 내놓는다. 놓치면 아무것도 얻지 못한다 — 가장 큰 악몽이 가장 달다."
+  leakAllowanceCost: 0

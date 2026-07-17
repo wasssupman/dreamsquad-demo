@@ -77,17 +77,117 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
-        public void SubconsciousPool_IsExactlyThreeCursedGiftCards()
+        public void SubconsciousPool_MatchesCursedGiftRoster()
         {
             var actual = new List<string>();
             foreach (var card in LoadAllCards())
                 if (card.category == CardCategory.Subconscious)
                     actual.Add(card.id);
 
+            // subconscious-curse-expansion — 무의식 풀 6장 확정(기존 3 + 신규 3).
+            // unit 0: 호접몽 / unit 1: 몽마의 계약 / unit 2: 살찌운 제물.
+            // 림의 선물은 이 풀에서 서로 다른 2장 추출.
             CollectionAssert.AreEquivalent(
-                new[] { "slow_awakening", "calamity_heart", "cracked_grail" },
+                new[] { "slow_awakening", "calamity_heart", "cracked_grail",
+                        "sub_butterfly_dream", "sub_incubus_pact", "sub_fattened_offering" },
                 actual);
-            Assert.AreEqual(3, actual.Count, "Subconscious pool size changed");
+            Assert.AreEqual(6, actual.Count, "Subconscious pool size changed");
+        }
+
+        [Test]
+        public void ButterflyDreamAsset_MatchesAuthoredContract()
+        {
+            // subconscious-curse-expansion unit 0 — 호접몽: 즉발 DreamCocoon 단일
+            // mechanic (잠 4초, 완주 시 공격력 +35%). 수치는 SO 소유 — 이 테스트는
+            // 에셋이 계약대로 저작돼 있음을 잠근다.
+            var byId = new Dictionary<string, DreamcatcherCard>();
+            foreach (var card in LoadAllCards()) byId[card.id] = card;
+
+            Assert.IsTrue(byId.ContainsKey("sub_butterfly_dream"), "sub_butterfly_dream in catalog");
+            var butterfly = byId["sub_butterfly_dream"];
+            Assert.AreEqual(CardType.Unit, butterfly.type);
+            Assert.AreEqual(CardCategory.Subconscious, butterfly.category);
+            Assert.AreEqual(CardTargetAxis.All, butterfly.axis);
+            Assert.IsEmpty(butterfly.effects);
+            Assert.IsEmpty(butterfly.attackMods);
+            Assert.AreEqual(1, butterfly.mechanics.Length);
+            var m = butterfly.mechanics[0];
+            Assert.AreEqual(DcTriggerKind.None, m.trigger.kind);
+            Assert.AreEqual(DcPayloadKind.DreamCocoon, m.payload.kind);
+            Assert.AreEqual(35f, m.payload.magnitude, 0.001f, "완주 버프 %");
+            Assert.AreEqual(4f, m.payload.duration, 0.001f, "잠 초");
+            Assert.AreEqual(CardBuffKind.AttackDamage, m.payload.buffStat);
+        }
+
+        [Test]
+        public void IncubusPactAsset_MatchesAuthoredContract()
+        {
+            // subconscious-curse-expansion unit 1 — 몽마의 계약: hosted Squad 버프
+            // (전군 공격력 +25%) + 유출 허용치 1 선불. 수치는 SO 소유 — 에셋 계약 잠금.
+            var byId = new Dictionary<string, DreamcatcherCard>();
+            foreach (var card in LoadAllCards()) byId[card.id] = card;
+
+            Assert.IsTrue(byId.ContainsKey("sub_incubus_pact"), "sub_incubus_pact in catalog");
+            var pact = byId["sub_incubus_pact"];
+            Assert.AreEqual(CardType.Squad, pact.type);
+            Assert.AreEqual(CardCategory.Subconscious, pact.category);
+            Assert.AreEqual(CardTargetAxis.All, pact.axis);
+            Assert.AreEqual(1, pact.effects.Length);
+            Assert.AreEqual(CardBuffKind.AttackDamage, pact.effects[0].kind);
+            Assert.AreEqual(25f, pact.effects[0].percent, 0.001f, "전군 공격력 +25%");
+            Assert.IsEmpty(pact.mechanics);
+            Assert.IsEmpty(pact.attackMods);
+            Assert.AreEqual(1, pact.leakAllowanceCost, "유출 허용치 선불 1");
+        }
+
+        [Test]
+        public void FattenedOfferingAsset_MatchesAuthoredContract()
+        {
+            // subconscious-curse-expansion unit 2 — 살찌운 제물: BountyMark 단일
+            // mechanic (각성 배율 ×3, 받는 피해 −30%). 수치는 SO 소유 — 에셋 계약 잠금.
+            var byId = new Dictionary<string, DreamcatcherCard>();
+            foreach (var card in LoadAllCards()) byId[card.id] = card;
+
+            Assert.IsTrue(byId.ContainsKey("sub_fattened_offering"), "sub_fattened_offering in catalog");
+            var offering = byId["sub_fattened_offering"];
+            Assert.AreEqual(CardType.Unit, offering.type);
+            Assert.AreEqual(CardCategory.Subconscious, offering.category);
+            Assert.AreEqual(CardTargetAxis.All, offering.axis);
+            Assert.IsEmpty(offering.effects);
+            Assert.IsEmpty(offering.attackMods);
+            Assert.AreEqual(1, offering.mechanics.Length);
+            var m = offering.mechanics[0];
+            Assert.AreEqual(DcTriggerKind.None, m.trigger.kind);
+            Assert.AreEqual(DcPayloadKind.BountyMark, m.payload.kind);
+            Assert.AreEqual(3f, m.payload.magnitude, 0.001f, "각성 배율 ×3");
+            Assert.AreEqual(30, m.payload.tileRange, "받는 피해 감소 %");
+        }
+
+        [Test]
+        public void RimGift_LiveCatalogPool_PicksTwoDistinctSubconscious()
+        {
+            // subconscious-curse-expansion unit 4 — 실 카탈로그 풀(6장) 림 추출 통합:
+            // 여러 시드에 걸쳐 항상 서로 다른 2장 + 전부 무의식 + 폴백 미발동, 그리고
+            // 신규 3장이 실제로 추출 가능한지(시드 유니온) 확인.
+            var pool = new List<DreamcatcherCard>();
+            foreach (var card in LoadAllCards())
+                if (card.category == CardCategory.Subconscious) pool.Add(card);
+            Assert.AreEqual(6, pool.Count, "무의식 풀 6장");
+
+            var seenIds = new HashSet<string>();
+            for (int seed = 0; seed < 64; seed++)
+            {
+                var picked = Wassup.Core.GiftDeckComposer.PickRim(pool, null, 2, seed);
+                Assert.AreEqual(2, picked.Count, $"seed {seed}: 2장");
+                Assert.AreNotSame(picked[0], picked[1], $"seed {seed}: 서로 다른 카드");
+                Assert.AreEqual(CardCategory.Subconscious, picked[0].category);
+                Assert.AreEqual(CardCategory.Subconscious, picked[1].category);
+                seenIds.Add(picked[0].id);
+                seenIds.Add(picked[1].id);
+            }
+            Assert.IsTrue(seenIds.Contains("sub_butterfly_dream"), "호접몽 추출 가능");
+            Assert.IsTrue(seenIds.Contains("sub_incubus_pact"), "몽마의 계약 추출 가능");
+            Assert.IsTrue(seenIds.Contains("sub_fattened_offering"), "살찌운 제물 추출 가능");
         }
 
         [Test]
@@ -143,6 +243,10 @@ namespace Wassup.Tests.EditMode
                 { "heavy_strike", "dreamcatcher_card_23" },
                 { "calamity_heart", "dreamcatcher_card_24" },
                 { "cracked_grail", "dreamcatcher_card_25" },
+                // subconscious-curse-expansion unit 5 — 신규 저주 3장 실아트.
+                { "sub_butterfly_dream", "dreamcatcher_card_26" },
+                { "sub_incubus_pact", "dreamcatcher_card_27" },
+                { "sub_fattened_offering", "dreamcatcher_card_28" },
             };
 
             foreach (var pair in expected)
