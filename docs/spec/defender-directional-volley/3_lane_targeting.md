@@ -20,6 +20,8 @@
 
 ## 완료 기준
 
-- [ ] compile + 기존 테스트 회귀 없음 (특히 aggro/frontmost/prio 타겟팅 EditMode)
-- [ ] execute_code 스모크: DeployedFacing 을 수동 부여한 유닛이 (a) 레인 안 적 존재 시에만 발사 (b) 레인 밖(수직 오프셋 1타일·사거리+1) 적은 무시 (c) 발사 방향이 facing 과 일치
-- [ ] 레인 판정 자체는 unit 0 LaneMathTests 가 커버
+- [x] compile + 기존 테스트 회귀 없음 (특히 aggro/frontmost/prio 타겟팅 EditMode)
+- [x] (a)(b)(c) 전부 `DirectionalVolleyIntegrationTests` 가 실제 시스템 world 로 검증 — `LaneGate_FiresOnlyWhenEnemyStandsInTheFacingLane`(레인 안 적일 때만 발사·방향=facing·타겟 null) · `LaneGate_IgnoresEnemyOneTileOffTheLane`(수직 오프셋 무시). one-off execute_code 대신 재현 가능한 통합 테스트로 대체(더 강함).
+- [x] 레인 판정 자체는 unit 0 `LaneMathTests` 커버
+
+확인 2026-07-18 — EditMode green · ecs-review 통과 · 커밋 980b3d43 (+ af8965d5 L1 픽스)

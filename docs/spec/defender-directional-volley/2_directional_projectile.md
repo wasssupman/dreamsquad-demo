@@ -34,6 +34,8 @@
 
 ## 완료 기준
 
-- [ ] compile 통과, 기존 Homing/Ballistic/SkyFall 경로 회귀 없음 (기존 테스트 green)
-- [ ] execute_code 로 방향 request 1건 스테이징 스모크: 직선 비행 + 경로상 적 히트 + pierceCount=1 소멸 / pierceCount=3 관통을 콘솔·데미지 넘버로 확인
-- [ ] 스윕/pierce 순수 판정은 unit 0 테스트가 커버 — 시스템 쪽은 통합 스모크로 충분
+- [x] compile 통과, 기존 Homing/Ballistic/SkyFall 경로 회귀 없음 (기존 테스트 green)
+- [x] 스윕/pierce 순수 판정은 unit 0 `SweepHitMathTests` 커버
+- [~] 라이브 투사체 비행+히트+pierce 스모크: **미완주** — execute_code 격리 world 시도가 ISystem 제네릭을 CodeDom(C# 6)에서 못 띄우고 Roslyn 미설치라 막힘(중단). 대체 근거: ecs-review 가 arm 로직 정독 통과 + 사용자 Play 세션에서 머신건 배치·발사 관측. **정식 e2e 는 unit 7 사용자 Play 로 이관.**
+
+확인 2026-07-18 — EditMode green · ecs-review 통과 · 커밋 8bd50350 (+ af8965d5 M1 픽스). 투사체 라이브 e2e 는 unit 7 로 이관(위 [~]).

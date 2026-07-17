@@ -43,7 +43,11 @@
 
 ## 완료 기준
 
-- [ ] compile + 기존 유닛 D&D 배치 무변화 (non-directional 경로 회귀 없음)
-- [ ] Play 검증(에디터): directionalAttack 유닛 드롭 → 슬로우모션 유지 + 줌인 + 4방향 가이드 노출 → 스와이프에 방향 하이라이트 추종 → 릴리즈로 확정 → 배치 연출 후 지정 방향 발사. 게임뷰 스크린샷 첨부
-- [ ] 데드존 릴리즈 시 가이드가 유지되고 재스와이프로 확정 가능
-- [ ] 확정 후 슬로우모션·줌이 정상 복귀(잔류 lease 없음 — TimeManager 상태 확인)
+> **rev(unit 9)**: 스와이프 → **셀 탭**으로 조작 변경, 가이드는 화면 글리프 → 보드 오버레이(레인+화살표). 아래 기준의 "스와이프"는 "방향 탭"으로 읽는다.
+
+- [x] compile + 기존 유닛 D&D 배치 무변화 (non-directional 경로 회귀 없음) — EditMode green, 최종 리뷰 확인
+- [x] Play 검증(사용자 2026-07-18): directionalAttack 유닛 드롭 → 슬로우모션 유지 + 줌인 + 보드 가이드 노출 → 방향 탭에 그 레인만 또렷 → 릴리즈로 확정 → 배치 연출 후 지정 방향 발사. 화살표 자글거림 픽스도 확인
+- [x] 레인 밖 릴리즈 시 가이드 유지·재탭으로 확정 가능 (계약 9 — DirectionAimLogic `OnRelease` 미확정 경로, `DirectionAimLogicTests.Release_OffLane_DoesNotConfirm`)
+- [x] 확정/취소 후 lease 정상 복귀 — 최종 리뷰가 lease 수명(Begin 선점 → Confirm/Cancel/teardown dispose) 통과 판정, 사용자 Play 에서 슬로우모/줌 복귀 확인
+
+확인 2026-07-18 — 커밋 f85a3ca8(unit 6) · c6437876(배선) · e36bd51e(리뷰 반영) · 044b639a(SO 병합)

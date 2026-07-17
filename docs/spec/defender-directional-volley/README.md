@@ -1,6 +1,6 @@
 # defender-directional-volley — 방향 지정 배치 + 다연발 투사체
 
-상태: 구현 완료 2026-07-17 (units 0~7 · EditMode 905 green) — **잔여 2건**: (1) unit 6 배선(드래그 컨트롤러 핸드오프 + Selector 주입)이 워크트리에만 있고 미커밋 — 병행 세션의 `defender-tap-to-place` WIP 와 같은 파일이라 격리 불가, 그쪽 커밋 후 이어붙일 것. (2) Play e2e + 실기기 조작감(사용자 확인). 상세는 `8_handoff_summary.md`
+상태: **완료 2026-07-18** (units 0~9 전 코드 커밋 · EditMode green · ecs-review·최종 리뷰 통과). UI rev(unit 9): 스와이프 → 셀 탭, 화면 글리프 → 보드 오버레이(레인 점등 + 화살표). 튜닝 SO 는 `DragSwaySettings` 로 병합. **남은 것 1건 = 사용자 몫**: 실기기 조작감 + "10연발이 적을 맞혀 사망까지" 전 구간 1패스(시뮬 계약은 통합 테스트가 덮음). 상세·후속 후보는 `8_handoff_summary.md`
 
 ## 상위 목표
 

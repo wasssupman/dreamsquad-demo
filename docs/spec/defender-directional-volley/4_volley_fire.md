@@ -35,6 +35,8 @@
 
 ## 완료 기준
 
-- [ ] compile + 기존 테스트 회귀 없음. TickBurst/CooldownAfterVolley/SpreadDirection 은 unit 0 테스트가 커버
-- [ ] execute_code 스모크: shotIntervalSec 0.1·shotCount 10 유닛이 트리거당 10발을 0.1s 간격으로 발사(슬로우모션 중 간격도 함께 늘어짐 확인), spreadAngleDeg 30·shotCount 3 유닛이 동프레임 부채꼴 3발
-- [ ] 쿨다운이 버스트 종료 후 기산됨을 로그로 확인
+- [x] compile + 기존 테스트 회귀 없음. TickBurst/CooldownAfterVolley/SpreadDirection 은 unit 0 `VolleyMathTests` 커버
+- [x] 발사 동작 전부 `DirectionalVolleyIntegrationTests` 가 실제 시스템 world 로 검증 — `Burst_FiresEveryShotAtTheAuthoredInterval`(0.1s×10발) · `Burst_CompletesEvenAfterTheLaneEmpties`(계약 8) · `Spread_FiresEveryShotInOneFrame_FannedAroundFacing`(30도 3발 동프레임) · `BurstAndSpread_Combined_FanEachTimedShotByItsIndex`(조합)
+- [x] 쿨다운 버스트 종료 후 기산 — `Burst_NextTriggerWaitsForTheVolleyToFinish`(사이클 2.5s = 쿨다운 1.6 + 버스트 0.9, 발사 시각 직접 기록으로 검증)
+
+확인 2026-07-18 — EditMode green · ecs-review 통과 · 커밋 980b3d43
