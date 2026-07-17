@@ -93,6 +93,9 @@ namespace Wassup.Core
 
         // 평면 빌보드 프랍이 바닥 타일과 z-fight 나지 않도록 살짝 띄우는 world +Y 오프셋.
         private const float PropGroundLift = 0.02f;
+        // defender-directional-volley unit 9 — 조준 화살표도 같은 이유로 띄운다. 프랍보다
+        // 조금 더(범위 타일 위에도 얹혀야) — 여전히 시각적으로 무시 가능한 높이.
+        private const float ArrowGroundLift = 0.05f;
 
         // BattleBridge 맵 빌드 시 호출 (unit 2). Grid cellLayout/cellSize 를 모드에 맞춰 설정한 뒤
         // 전체 셀을 일괄 페인트한다. 재진입(RebuildDraftMap) 안전 — Clear 선행.
@@ -474,6 +477,11 @@ namespace Wassup.Core
                 var local = grid.CellToLocalInterpolated(new Vector3(cells[i].x + 0.5f, cells[i].y + 0.5f, 0f));
                 sr.transform.localPosition = local;
                 sr.transform.localRotation = Quaternion.Euler(0f, 0f, anglesDeg[i]);
+                // 셀 평면에 그대로 눕히면 불투명 바닥 타일과 코플레이너라 z-acne(자글거림)가
+                // 난다 — 밉맵으로도 안 사라지는 렌더 단계 문제. 프랍이 PropGroundLift 로
+                // 푸는 바로 그 함정. world +Y 로 살짝 띄워 항상 타일 앞에 오게 한다(부모
+                // 회전/스케일 무관하게 정확히 +Y 만큼 — localPosition 뒤 world 로 보정).
+                sr.transform.position += Vector3.up * ArrowGroundLift;
 
                 bool on = i == selectedIndex;
                 // 선택된 화살표만 또렷하고 살짝 크다. 색은 범위 타일과 같은 rangeColor —
