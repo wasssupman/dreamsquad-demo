@@ -34,7 +34,17 @@
 - **수직 보드공간 오프셋 전환 금지 결정**: 스큐 미미(0.25셀) + 가림 여유 손해(화면 상단 80→69%). 현행 camUp 오프셋 유지.
 - **모델 이력**: 셀-거리 게이트 → 속도 게이트 → settle(정지후) → **throttle(주기)** 로 수렴. `3_settle_to_commit.md` "해석 이력" 참조.
 
+## Unit 7 rev (2026-07-18, 커밋 `dedde0f6`)
+
+- **끈적함 액체 하이라이트** 추가 — 히스테리시스 시각화. 오버레이 블롭(1차)은 신호 겹침으로 폐기,
+  최종 = 하이라이트 자체가 액체(SDF 셰이더: 고정 테두리 + smin 번짐 + 점액 관성 스프링). 상세/함정
+  (Mathf.SmoothStep ≠ HLSL smoothstep · z-fight 리프트 · 쿼드 캔버스 · Shader.Find 스트리핑)은
+  `7_stickiness_blob.md` 가 source of truth. 사용자 Play 체감 통과("느낌 좋네").
+- EditMode 20 (snap 15 + debounce 5). 튜닝: 모양=`PlacementLiquidTile.mat`, 팔레트/관성=TilemapMapView,
+  토글=`stickyBlobEnabled`, 끈적함=`placementStickMargin`(에셋 0.81, interval 0 — 사용자 라이브 튜닝값).
+
 ## Follow-up
-- **`defender-tap-to-place`**: 유닛 탭 선택 → 타일 탭 → D&D 시뮬레이션 배치. **구현 완료·critic 리뷰 반영**(해당 spec README 참조), Play 최종 확인·커밋 대기.
+- **`defender-tap-to-place`**: 커밋 `dedde0f6` 에 units 0~2 포함(같은 커밋). `3_handoff_summary.md` 참조.
+- 확정 팝(솔리드 사각)이 액체 톤과 어울리는지 — 필요 시 팝을 액체 이완 모양으로 교체 후보.
 - 절대 오프셋(유닛이 손가락보다 ~3셀 아래)이 거슬리면 별도 논의(줄 길이 or 조준 습관). 스큐 아님.
 - 후속 후보: 드래그 유닛 반투명, 릴리즈 실패 복귀 애니+햅틱(README 참조).
