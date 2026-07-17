@@ -1,6 +1,6 @@
 # unit-overhead-ui — 방어/적 공통 머리 위 UI
 
-> 상태: 구현 완료, Play 시각 검증 대기 2026-07-18. 기존 `unit-health-display` / `unit-dreamcatcher-icons`는 Legacy 경로로 보존한다.
+> 상태: 완료 2026-07-18 · 구현 커밋 `780810a1`. 기존 `unit-health-display` / `unit-dreamcatcher-icons`는 Legacy 경로로 보존한다.
 
 ## 목표
 
@@ -20,6 +20,7 @@
 | 2 | `2_bridge_legacy_switch.md` | BattleBridge Legacy/Unified 상호배타 라우팅 |
 | 3 | `3_dreamcatcher_row.md` | 방어유닛 전용 최대 3장 행, 기존 부착 registry 재사용 |
 | 4 | `4_wiring_validation.md` | 씬/SO 배선, EditMode·Play·Android 검증 |
+| 5 | `5_handoff_summary.md` | 구현 커밋·검증·잔여 실기기 확인 인계 |
 
 ## Feature-wide 계약
 

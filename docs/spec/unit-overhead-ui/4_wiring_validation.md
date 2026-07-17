@@ -42,3 +42,10 @@
 - dark drop shadow + faction frame + track + fill + top highlight의 5층 구조로 변경했다.
 - 무기/방패 Renderer Bounds에 끌려가던 X 중심을 visual pivot 기준으로 분리했다. Y는 renderer top을 유지한다.
 - Unity domain reload 완료, C# compile error 0. 변경 후 실제 BattleScene 캡처 재검증은 대기 중이다.
+
+## 종료 기록
+
+- 사용자 마무리 확인: 2026-07-18
+- 구현 커밋: `780810a1 feat: unify unit overhead health UI`
+- 최종 카드 튜닝: 높이 28.8 reference px, 간격 4px.
+- Unity compile 및 `git diff --check` 통과. 자동 Test Runner와 Android 실기기 확인은 후속 검증 항목으로 남긴다.

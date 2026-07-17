@@ -20,8 +20,8 @@
 | 시뮬 시스템 | `Battle/Combat/AttackSystem.cs` · `Battle/Units/DamageApplicationSystem.cs`·`HealthDeathSystem.cs` | 이동 없음(고정) — PathFollowState 미부여 |
 | 이벤트 큐 | `Battle/Units/DefenderDeathEventsSingleton.cs` + 공유 UnitAttackVisual/DamageNumber/HealApplied | drain = `BattleBridge.DrainDefenderDeathEvents` |
 | View/Pool | `Presentation/SpineUnitPool.cs`+`SpineUnitView.cs`, 폴백 `QuadUnitViewPool.cs` | 위치/틴트 sync = `BattleBridge.SyncMonoUnitViews` 매 프레임 |
-| 체력 표시 | `Presentation/TileHealthGaugeLayer.cs`+`TileHealthGaugeView.cs` | ★큐 아님 — 매 프레임 Health **폴링** |
-| 씬 wiring | BattleBridge SerializeField: spineUnitPool·defenderFallbackViewPool·tileHealthGaugeLayer | Spine 실패 시 Quad 폴백 |
+| 체력 표시 | 기본: `Presentation/UnitOverheadUiLayer.cs`+`UnitOverheadView.cs` / Legacy: `TileHealthGaugeLayer.cs`+`TileHealthGaugeView.cs` | ★큐 아님 — `BattleBridge.SyncMonoUnitViews`가 매 프레임 Health read-only 폴링 |
+| 씬 wiring | BattleBridge SerializeField: spineUnitPool·defenderFallbackViewPool·unitOverheadUiLayer·tileHealthGaugeLayer | Unified/Legacy 상호배타, Spine 실패 시 Quad 폴백 |
 
 ## 적 (Enemy)
 
@@ -33,8 +33,8 @@
 | 시뮬 시스템 | `Battle/Movement/MovementSystem.cs`(flow-field) · `Battle/Combat/AttackSystem.cs`·`EnemyAiStateSystem.cs` | |
 | 이벤트 큐 | `Battle/Units/EnemyKilledEventsSingleton.cs`·`GoalReachedEventsSingleton.cs` · `Battle/Effects/EnemyCcEvents.cs` | + 공유 UnitAttackVisual/DamageNumber |
 | View/Pool | `Presentation/SpineUnitPool.cs`(공유) / `QuadUnitViewPool.cs`(enemyViewPool 인스턴스) | 저체력 틴트 = SyncMonoUnitViews 내 |
-| 피격바 | `Presentation/EnemyHitBarSpawner.cs`+`EnemyHitBarView.cs` | ★전용 큐 아님 — **DamageNumberEventsSingleton 공유** drain |
-| 씬 wiring | BattleBridge SerializeField: spineUnitPool·enemyViewPool·enemyHitBarSpawner·deck | |
+| 체력 표시 | 기본: `Presentation/UnitOverheadUiLayer.cs`+`UnitOverheadView.cs` / Legacy: `EnemyHitBarSpawner.cs`+`EnemyHitBarView.cs` | Unified는 매 프레임 Health read-only 폴링, Legacy 피격바는 **DamageNumberEventsSingleton 공유** drain |
+| 씬 wiring | BattleBridge SerializeField: spineUnitPool·enemyViewPool·unitOverheadUiLayer·enemyHitBarSpawner·deck | Unified/Legacy 상호배타 |
 
 ## 투사체 (Projectile)
 
