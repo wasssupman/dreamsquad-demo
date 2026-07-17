@@ -227,7 +227,7 @@ namespace Wassup.Tests.EditMode
                 }
             }
 
-            Assert.AreEqual(9, math.min(seen, 9), "첫 볼리는 10발(트리거 발 + 9)");
+            Assert.AreEqual(10, seen, "첫 볼리 9발 + 두 번째 볼리의 0번 발. 이 창에서 더 나오면 과다 발사다");
             Assert.AreEqual(0.9f, lastBurstShotAt, 0.03f, "마지막 발은 (10-1)×0.1 = 0.9s 지점");
             Assert.AreEqual(2.5f, nextVolleyAt, 0.03f, "다음 볼리는 쿨다운 1.6 + 버스트 0.9 = 2.5s 뒤 — 버스트와 겹치지 않는다");
         }
@@ -254,6 +254,40 @@ namespace Wassup.Tests.EditMode
             }
             Assert.IsTrue(hasStraight, "3발 중 가운데는 facing 직진");
             Assert.AreEqual(15f, maxAngle, 1e-3f, "바깥 발은 총 확산각의 절반");
+        }
+
+        [Test]
+        public void BurstAndSpread_Combined_FanEachTimedShotByItsIndex()
+        {
+            // 버스트 틱의 발 인덱스 산식(shotCount − 남은수)은 **오직 이 조합에서만** 의미를
+            // 갖는다 — spread 0 이면 SpreadDirection 이 baseDir 를 그대로 돌려주기 때문에
+            // 인덱스가 틀려도 버스트 단독 테스트로는 절대 드러나지 않는다.
+            const float dt = 0.016f;
+            CreateVolleyDefender(float3.zero, new int2(1, 0), shotCount: 3, intervalSec: 0.1f, spreadDeg: 30f);
+            CreateEnemy(new float3(3f, 0f, 0f));
+
+            var angles = new System.Collections.Generic.List<float>();
+            void Harvest()
+            {
+                foreach (var r in CollectRequests())
+                {
+                    // facing(+X) 기준 부호 있는 각 — 좌/우를 구분해야 인덱스 순서가 보인다.
+                    angles.Add(math.degrees(math.atan2(r.direction.y, r.direction.x)));
+                }
+                ClearRequests();
+            }
+
+            Tick(dt);
+            Harvest();
+            Assert.AreEqual(1, angles.Count, "트리거 프레임엔 0번 발만");
+
+            for (int i = 0; i < 20 && angles.Count < 3; i++) { Tick(dt); Harvest(); }
+
+            Assert.AreEqual(3, angles.Count, "시간차로 3발 전부");
+            // 0/1/2 번 발이 각각 −15°/0°/+15° — 인덱스가 어긋나면 각이 뒤섞이거나 중복된다.
+            Assert.AreEqual(-15f, angles[0], 1e-2f, "0번 발");
+            Assert.AreEqual(0f, angles[1], 1e-2f, "1번 발 = 가운데");
+            Assert.AreEqual(15f, angles[2], 1e-2f, "2번 발");
         }
 
         [Test]
