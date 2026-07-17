@@ -132,9 +132,10 @@ code + git history        구현 상세
 - **확산형 실증 유닛(샷건)** [S] · 엔진(`spreadAngleDeg`)은 완성·테스트됨, 유닛 에셋만 없다. 30도 3발은 SO 저작만으로 성립. (defender-directional-volley)
 - **버스트/스프레드 × Homing·Ballistic 조합** [S] · 볼리는 전 궤적에 열려 있으나 e2e 는 Directional 에서만 했다. Homing×버스트는 발마다 타겟이 재평가되지 않고 템플릿 스냅샷을 쓴다는 점 확인 필요. (defender-directional-volley)
 - **머신건 연사음** [S] · 버스트 캐리어 발은 `DefenderUnitTag` 가 없어 drain 의 발사 SFX 게이트 밖 → 볼리당 1회. rat-tat-tat 을 원하면 battle-audio 쪽 게이트 재설계. (defender-directional-volley)
-- **방향 가이드 정식 아트 + 머신건 아트** [S] · 가이드는 절차적 TMP 글리프(▲ 회전), 유닛은 Marksman Spine + Sniper 파츠 플레이스홀더(guid 유지 교체 전제). (defender-directional-volley)
+- **방향 가이드 정식 아트 + 머신건 아트** [S] · 가이드는 절차적 보드 스프라이트(레인 점등 + 삼각 화살표, unit 9), 유닛은 Marksman Spine + Sniper 파츠 플레이스홀더(guid 유지 교체 전제). (defender-directional-volley)
 - **곡사 방향 발사** [S] · `DirectionalLinear` + arc 시각. 현재 방향탄은 평면 직선(sim-Y 없음). (defender-directional-volley)
 - **tap-to-place 경로 연동** [S] · 공격방향 페이즈 진입점이 D&D `CommitPlacementAt` 하나뿐 — tap 확정 경로에도 같은 핸드오프가 필요하다. (defender-directional-volley × defender-tap-to-place)
+- **bounce(통통구슬)×방향 유닛** [S] · 현재 통통구슬(`ProjectileBounce`)이 방향 유닛에 붙어도 inert(부착 가드는 ProjectileRef 만 보고 movement 무시 → 슬롯은 붙지만 Directional arm·PathHit 이 bounce 를 안 탐). **사용자 결정: 차단이 아니라 트리거당 N발(버스트/스프레드 캐리어 포함)이 각각 bounce 를 받아 진행**(각 방향탄이 경로 히트 후 다음 적으로 튕김). 과제 = 볼리 arm 이 bounce 필드를 template/캐리어에 싣기 + PathHit 이 pierce 소진 후 bounce 재조준을 지원(또는 bounce×pierce 합성 규칙 정의). 집계(count 합/range max/mul 곱)는 기존 재사용. (defender-directional-volley × dreamcatcher-attack-mod-bounce)
 
 #### 로드아웃 규칙 위생 (game-start-loadout-gate 종료 이관, 2026-07-16)
 

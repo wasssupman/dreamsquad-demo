@@ -76,3 +76,4 @@
 - 곡사 방향 발사 (DirectionalLinear + arc 시각)
 - 머신건 연사음 (버스트 캐리어 발은 발사 SFX 게이트 밖 — 볼리당 1회. battle-audio 스코프)
 - tap-to-place 배치 경로 연동 — `defender-tap-to-place` spec(승인 대기)이 도입되면 공격방향 페이즈 진입점을 D&D EndDrag 외에 tap 확정 시점에도 연결
+- **bounce(통통구슬)×방향 유닛** — 현재는 통통구슬(`bouncy_bead`, `DcAttackModKind.ProjectileBounce`)이 방향 유닛에 붙어도 조용히 무시된다: 부착 가드(`BattleBridge.Dreamcatcher.cs:553`)는 ProjectileRef 유무만 보고 movement 를 안 봐서 `DcAttackModSlot` 슬롯은 붙지만, 발사는 Directional arm(bounce 필드 미주입)을 타고 착탄은 PathHit(bounce 후처리는 SingleSplash case 전용)라 로직을 아예 안 탄다. 크래시·미정의 동작은 아니나 "붙는데 효과 없음"이라 UX 함정. **방향(사용자 결정): 차단이 아니라, 트리거당 발사되는 N발(버스트/스프레드 캐리어 포함)이 각각 bounce 속성을 받아 진행하게 한다** — 즉 각 방향탄이 경로 히트 후 다음 적으로 튕긴다. 설계 과제: (a) 볼리 arm 이 `bounceRemaining/tileRange/damageMul` 을 `VolleyFireState.template` 과 각 캐리어 request 에 실어야 하고, (b) PathHit payload 가 pierce 소진 후 bounce 재조준을 지원하거나 bounce 를 pierce 와 합성하는 규칙을 정해야 한다(현 bounce 는 Homing×SingleSplash 후처리 전용). count 합/range max/mul 곱 집계 규칙은 기존 것 재사용.
