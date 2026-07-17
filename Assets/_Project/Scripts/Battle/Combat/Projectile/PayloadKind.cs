@@ -13,5 +13,11 @@ namespace Wassup.Battle.Combat.Projectile
         // impact cell — no direct target, no falloff. Shares the tile-membership
         // primitive the legacy Meteor resolver used (removed unit 8).
         TileAoe = 1,
+
+        // Sweep the prev→current segment every frame and damage targets on the
+        // path, each at most once (hit-set buffer), until the pierce budget runs
+        // out. No point-arrival resolution (defender-directional-volley unit 1;
+        // hit arm lands in unit 2).
+        PathHit = 2,
     }
 }

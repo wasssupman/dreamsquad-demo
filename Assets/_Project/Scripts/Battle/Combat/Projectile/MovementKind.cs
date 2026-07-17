@@ -23,5 +23,11 @@ namespace Wassup.Battle.Combat.Projectile
         // presentation layer. flightTime is request-carried, not speed-derived
         // (zero travel distance).
         SkyFall = 2,
+
+        // Fly a straight line along a fire-time direction for maxDistance, then
+        // despawn. No target entity and no point arrival — hits happen in flight
+        // via the PathHit payload sweep (defender-directional-volley unit 1;
+        // move arm lands in unit 2).
+        DirectionalLinear = 3,
     }
 }

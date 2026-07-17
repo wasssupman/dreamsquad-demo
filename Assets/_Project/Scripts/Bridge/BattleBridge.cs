@@ -3149,11 +3149,15 @@ namespace Wassup.Bridge
         }
 
         // Maps the authoring-side ProjectileFlightMode onto the ECS trajectory/payload
-        // axes. v1 pairs the two coherent combos; other combinations are follow-ups.
+        // axes. Coherent pairs only; other combinations are follow-ups.
         private static (MovementKind movement, PayloadKind payload) ResolveProjectileAxes(ProjectileFlightMode mode)
-            => mode == ProjectileFlightMode.BallisticToCell
-                ? (MovementKind.BallisticArcToPoint, PayloadKind.TileAoe)
-                : (MovementKind.HomingToEntity, PayloadKind.SingleSplash);
+            => mode switch
+            {
+                ProjectileFlightMode.BallisticToCell => (MovementKind.BallisticArcToPoint, PayloadKind.TileAoe),
+                // defender-directional-volley unit 1 — 방향 직선 비행 × 경로 스윕 페어.
+                ProjectileFlightMode.Directional => (MovementKind.DirectionalLinear, PayloadKind.PathHit),
+                _ => (MovementKind.HomingToEntity, PayloadKind.SingleSplash),
+            };
 
         private int GetOrCreateProjectileDataIndex(ProjectileData projectile)
         {
@@ -3385,6 +3389,16 @@ namespace Wassup.Bridge
             Wassup.Core.SoundManager.Instance?.PlayDeployVoice(unitData.deployVoiceClip);
             Debug.Log($"[BattleBridge] Began pending deployment for {unitData.displayName} at ({tileX},{tileY}).");
             return true;
+        }
+
+        // defender-directional-volley unit 1 — aim-phase 확정 방향을 기록하고 활성화.
+        // DeployedFacing 은 Units 소유, 배치 확정 시 이 1회 기록 후 불변(공통 계약 2).
+        // 컴포넌트를 먼저 붙여 on-place 스킬이 활성화 시점에 방향을 읽을 수 있게 한다.
+        public void ActivateDeployedDefender(Vector2Int cell, Entity entity, Vector2Int facing)
+        {
+            if (_em != null && entity != Entity.Null && _em.Exists(entity) && facing != Vector2Int.zero)
+                _em.AddComponentData(entity, new DeployedFacing { value = new int2(facing.x, facing.y) });
+            ActivateDeployedDefender(cell, entity);
         }
 
         public void ActivateDeployedDefender(Vector2Int cell, Entity entity)
