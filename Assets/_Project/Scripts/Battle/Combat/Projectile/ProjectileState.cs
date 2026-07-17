@@ -55,6 +55,22 @@ namespace Wassup.Battle.Combat.Projectile
         public float elapsed;
         public float arcHeight;
 
+        // ── Directional trajectory (MovementKind.DirectionalLinear) ──────────
+        // direction: normalized fire vector on the sim plane, locked at launch
+        // (facing is immutable, so it never changes in flight). maxDistance:
+        // world-space range; reaching it sets impactReached — for this arm that
+        // flag means "flight ended", the cue for PathHit to despawn after its
+        // final sweep. prevPos: last frame's position, written by the move arm
+        // so the payload can sweep the segment it just crossed.
+        public float2 direction;
+        public float maxDistance;
+        public float3 prevPos;
+
+        // ── Path-hit payload (PayloadKind.PathHit) ───────────────────────────
+        // Remaining victims this shot may damage before despawning (1 = stop at
+        // the first). Owned write after launch: ProjectileHitSystem only.
+        public int pierceRemaining;
+
         // ── Single-splash payload (PayloadKind.SingleSplash) ─────────────────
         public OnHitEffectType onHitEffect;
         public float splashRadius;

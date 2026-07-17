@@ -2648,6 +2648,27 @@ namespace Wassup.Bridge
                 state.impactTileRange = req.impactTileRange;
                 state.flightTime = BallisticArc.FlightTime(spawnPos, ballisticImpact, req.speed, projData.minFlightTime);
             }
+            else if (req.movement == MovementKind.DirectionalLinear)
+            {
+                // defender-directional-volley unit 2 — 방향 직선 비행. 타겟/착탄 셀이
+                // 없어 origin + direction + maxDistance 가 궤적 전부. 방향은 여기서
+                // 한 번 정규화해 sim 이 매 프레임 normalize 하지 않게 한다(퇴화 벡터는
+                // 스폰을 버림 — 정지한 투사체가 사거리 끝까지 안 죽고 남는 것 방지).
+                float2 dir = req.direction;
+                if (math.lengthsq(dir) < 1e-6f)
+                {
+                    Debug.LogWarning("[BattleBridge] Directional projectile with zero direction; dropping.");
+                    _em.DestroyEntity(entity);
+                    if (hasSnapshot) outputSnapshot.Dispose();
+                    return Entity.Null;
+                }
+                state.origin = spawnPos;
+                state.prevPos = spawnPos;
+                state.direction = math.normalize(dir);
+                state.maxDistance = req.maxDistance;
+                // pierceCount 는 SO 소유 — SkyFall 의 dropHeight 보충과 같은 번역자 역할.
+                state.pierceRemaining = projData != null ? math.max(1, projData.pierceCount) : 1;
+            }
             else if (req.movement == MovementKind.SkyFall)
             {
                 // Sky-fall (unit 7): sim holds at the cell-locked impact; flightTime
@@ -2666,6 +2687,12 @@ namespace Wassup.Bridge
                     : (projData != null ? projData.dropHeight : 0f);
             }
             _em.AddComponentData(entity, state);
+
+            // defender-directional-volley unit 2 — 경로 스윕은 이미 맞힌 대상을
+            // 기억해야 프레임마다 같은 적을 재타격하지 않는다(IncomingHeal 사전
+            // 부착 선례 — 시스템이 구조 변경 없이 append 만 하게).
+            if (req.payload == PayloadKind.PathHit)
+                _em.AddBuffer<PathHitRecord>(entity);
 
             if (hasSnapshot)
             {

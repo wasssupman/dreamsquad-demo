@@ -42,6 +42,10 @@ namespace Wassup.Battle.Combat.Projectile
             // place (that buffer is the damage source when present) — bounce unit 2.
             var outputLookup = SystemAPI.GetBufferLookup<AttackOutputElement>(isReadOnly: false);
             var hitFlashLookup = SystemAPI.GetComponentLookup<HitFlashTag>(isReadOnly: true);
+            // defender-directional-volley unit 2 — per-projectile victim record so a
+            // path sweep damages each target once (read-only: appends go through the
+            // ECB alongside the damage that earned them).
+            var pathHitRecordLookup = SystemAPI.GetBufferLookup<PathHitRecord>(isReadOnly: true);
             bool hasStatQ = SystemAPI.TryGetSingleton<StatModifierApplyEventsSingleton>(out var statEvents);
             bool hasStackQ = SystemAPI.TryGetSingleton<StackModifierApplyEventsSingleton>(out var stackEvents);
             // nightmare-catcher unit 1 — 보스 위협 귀속: 피격자가 ThreatEntry 버퍼
@@ -94,11 +98,16 @@ namespace Wassup.Battle.Combat.Projectile
                               .WithAll<ProjectileTag>()
                               .WithEntityAccess())
             {
-                if (!projectile.ValueRO.impactReached) continue;
+                // defender-directional-volley unit 2 — PathHit has no point arrival:
+                // it resolves in flight, every frame, so it must pass this gate. When
+                // its move arm does set impactReached it means "reached max range" —
+                // the cue to despawn after this last sweep, handled in the arm below.
+                if (!projectile.ValueRO.impactReached && projectile.ValueRO.payload != PayloadKind.PathHit) continue;
 
-                // bounce unit 2 — set true only when a SingleSplash projectile
-                // re-targets; the unconditional destroy below is then skipped.
-                bool bounced = false;
+                // Projectiles that live past this frame's resolution: a SingleSplash
+                // that re-targeted (bounce unit 2), or a PathHit still in flight with
+                // pierce budget left. Everything else is consumed below.
+                bool survives = false;
 
                 // nightmare-catcher unit 1 — per-projectile threat gate (N2).
                 // A shooter that died mid-flight fails the defender-tag check
@@ -289,10 +298,99 @@ namespace Wassup.Battle.Combat.Projectile
                                             }
                                         }
                                     }
-                                    bounced = true;
+                                    survives = true;
                                 }
                             }
                         }
+                        break;
+                    }
+
+                    case PayloadKind.PathHit:
+                    {
+                        // defender-directional-volley unit 2 — in-flight sweep: damage
+                        // every victim the prevPos→Position segment crossed this frame,
+                        // each at most once (PathHitRecord), until the pierce budget is
+                        // spent. Enemy pool only (splash/bounce precedent); damage is
+                        // the pre-summed Damage total on state, so non-Damage outputs
+                        // are a follow-up exactly as with TileAoe (v1 is Damage-only).
+                        if (!transformLookup.HasComponent(entity)) break;
+
+                        float2 prev = projectile.ValueRO.prevPos.xz;
+                        float2 curr = transformLookup[entity].Position.xz;
+                        float2 dir = projectile.ValueRO.direction;
+                        float radius = projectile.ValueRO.hitThreshold;
+                        int budget = projectile.ValueRO.pierceRemaining;
+                        float dmg = projectile.ValueRO.damage;
+
+                        var sweptIdx = new NativeList<int>(Allocator.Temp);
+                        var sweptDist = new NativeList<float>(Allocator.Temp);
+                        for (int i = 0; i < aoeEntities.Length; i++)
+                        {
+                            float2 victimPos = aoePositions[i].xz;
+                            if (!SweepHitMath.SegmentHits(prev, curr, victimPos, radius)) continue;
+                            if (pathHitRecordLookup.HasBuffer(entity) &&
+                                PathHitRecord.Contains(pathHitRecordLookup[entity], aoeEntities[i])) continue;
+                            sweptIdx.Add(i);
+                            sweptDist.Add(math.dot(victimPos - prev, dir));
+                        }
+
+                        // Front-most first: a 1-pierce shot must stop at the nearest
+                        // enemy it crossed, and snapshot order carries no meaning.
+                        while (budget > 0 && sweptIdx.Length > 0)
+                        {
+                            int nearest = 0;
+                            for (int k = 1; k < sweptIdx.Length; k++)
+                                if (sweptDist[k] < sweptDist[nearest]) nearest = k;
+
+                            var victim = aoeEntities[sweptIdx[nearest]];
+                            float3 victimPos = aoePositions[sweptIdx[nearest]];
+                            if (damageBufferLookup.HasBuffer(victim))
+                            {
+                                float vdmg = (victim == prioTarget ? dmg * prioMul : dmg) * heavyMul;
+                                ecb.AppendToBuffer(victim, new IncomingDamage { amount = vdmg, source = threatOwner });
+                                ThreatTable.TryCredit(threatQueue, creditThreat, threatLookup, victim, threatOwner, vdmg);
+                            }
+                            ecb.AppendToBuffer(entity, new PathHitRecord { value = victim });
+
+                            if (hasHitChannel)
+                                hitQueue.Enqueue(new ProjectileHitEvent
+                                {
+                                    position = victimPos,
+                                    dataIndex = projectile.ValueRO.dataIndex,
+                                    payload = PayloadKind.PathHit,
+                                    source = entity,
+                                });
+
+                            if (hitFlashLookup.HasComponent(victim))
+                                ecb.SetComponent(victim, new HitFlashTag
+                                {
+                                    remaining = HitFlashDuration,
+                                    duration = HitFlashDuration,
+                                    originalScale = hitFlashLookup[victim].originalScale,
+                                });
+                            else if (transformLookup.HasComponent(victim))
+                                ecb.AddComponent(victim, new HitFlashTag
+                                {
+                                    remaining = HitFlashDuration,
+                                    duration = HitFlashDuration,
+                                    originalScale = transformLookup[victim].Scale,
+                                });
+
+                            budget--;
+                            sweptIdx.RemoveAtSwapBack(nearest);
+                            sweptDist.RemoveAtSwapBack(nearest);
+                        }
+                        sweptIdx.Dispose();
+                        sweptDist.Dispose();
+
+                        if (budget != projectile.ValueRO.pierceRemaining)
+                        {
+                            var next = projectile.ValueRO;
+                            next.pierceRemaining = budget;
+                            ecb.SetComponent(entity, next);
+                        }
+                        // Out of budget = spent; impactReached = flew its full range.
+                        survives = budget > 0 && !projectile.ValueRO.impactReached;
                         break;
                     }
 
@@ -355,9 +453,9 @@ namespace Wassup.Battle.Combat.Projectile
                         break;
                 }
 
-                // bounce unit 2 — a re-targeted projectile survives; the destroy
+                // A re-targeted bounce or an in-flight PathHit survives; the destroy
                 // stays unconditional for TileAoe/default and non-bouncing hits.
-                if (!bounced)
+                if (!survives)
                     ecb.DestroyEntity(entity);
             }
 
