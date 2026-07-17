@@ -369,6 +369,10 @@ namespace Wassup.Battle.Combat
                 // ── BURST TICK ── defender-directional-volley unit 4.
                 // 시작된 버스트는 완주한다(계약 8): 레인이 비어도, 쿨다운/타겟 게이트와
                 // 무관하게 남은 발을 쏜다. 공격자가 죽으면 컴포넌트째 사라져 자연 중단.
+                // **CC 게이트(actionLocked)보다 위인 것도 의도다** — 볼리는 한 번의 공격이고,
+                // combat-action-lock 계약("CC 는 START 를 막지만 시작된 스윙의 RESOLVE 는
+                // 완료")과 같은 결이다. 잠든 유닛이 남은 발을 쏘는 건 버그가 아니다
+                // (2026-07-17 사용자 결정). 아래로 내리지 말 것.
                 // START/RESOLVE 앞에 두는 이유 — 트리거 프레임엔 burstRemaining 이 아직
                 // 0 이라 no-op 이고, 그래야 1번 발과 2번 발 간격이 정확히 interval 이다.
                 if (volleyLookup.HasComponent(attackerEntity))

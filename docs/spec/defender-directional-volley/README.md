@@ -35,7 +35,7 @@
 5. **투사체 확장은 enum arm 추가로만**: `MovementKind.DirectionalLinear` + `PayloadKind.PathHit`. projectile-trajectory-payload 스펙 계약 준수.
 6. **하드코딩 금지**: 발수/간격/확산각/관통수/데드존 등 전 수치는 SO 에서.
 7. **슬로우모션은 TimeManager lease 이관**(Battle 도메인), **카메라는 CameraDirector 포커스 피드만**(직접 조작 금지). 버스트 발사 간격은 sim 시간이므로 슬로우모션이 자동 적용된다.
-8. **버스트는 시작되면 완주**(도중 레인에서 적이 사라져도). 쿨다운은 버스트 종료 시점부터 기산.
+8. **버스트는 시작되면 완주**. 도중 레인에서 적이 사라져도, **CC(Sleep/Stun)에 걸려도** 남은 발은 나간다 — 볼리는 "한 번의 공격"이고, `combat-action-lock` 의 계약(CC 는 공격 START 를 막지만 이미 시작된 스윙의 RESOLVE 는 완료)과 같은 결이다. 그래서 버스트 틱은 `actionLocked` 게이트보다 **위**에 있다(2026-07-17 사용자 결정 — 되돌리지 말 것). 쿨다운은 버스트 종료 시점부터 기산.
 9. **데드존 릴리즈 = 가이드 유지·재스와이프 대기**. 방향 확정 없이는 활성화되지 않는다. 배치 취소/환불은 스코프 밖(후속 후보). **유일한 예외 = 조준 세션 재진입**(`Cancel(activatePending: true)`) — 코스트를 낸 유닛이 PendingDeployment 로 굳는 것을 막는 안전망이며, 조준 중 트레이 잠금 덕에 정상 흐름에선 도달하지 않는다. teardown 경로는 ECS 를 건드리지 않는다.
 
 ## 파이프라인 커버리지
