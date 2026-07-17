@@ -55,7 +55,7 @@
 ## Follow-up
 
 - ~~unit 6 배선 커밋 미완~~ → **완료(`c6437876`)**. 병행 tap-to-place/액체타일(`dedde0f6`) 커밋 후 볼리 hunk 만 격리 스테이징(BattleBridge 는 overhead-ui hunk 제외하고 hash-object 로 볼리 hunk 만 인덱스 적용, 워크트리 overhead diff 보존). 커밋 트리 overhead 심볼 0 검증됨.
-- **씬 배선 미완(최종 리뷰 HIGH-2, 여전히 열림)**: `Data/Config/DirectionAimSettings.asset` 이 어느 씬에서도 참조되지 않아 `DefenderSelector.aimSettings` = null → 컨트롤러가 클래스 기본값 폴백. 값이 같아 **동작은 동일하지만 에셋을 편집해도 반영되지 않는다**. `BattleScene` 의 DefenderSelector 에 할당 필요(`DragSwaySettings.asset` 선례). **BattleScene.unity 는 overhead 세션도 만지는 중이라 배선 커밋 보류** — dirty 정리 후 별도 진행.
+- ~~씬 배선 미완(HIGH-2)~~ → **해소(`044b639a`)**. 튜닝값이 `slowmoScale` 하나뿐이라 전용 SO(DirectionAimSettings)를 폐기하고 이미 씬 배선된 `DragSwaySettings.directionAimSlowmoScale` 로 합침. 별도 에셋·배선 불필요. 라이브 에셋 참조라 Play 중 편집 반영 유지.
 - ~~설계 질문: CC 중 버스트 완주 여부~~ → **결정됨(2026-07-17 사용자)**: 완주가 맞다. 볼리 = 한 번의 공격, combat-action-lock 의 "시작된 스윙은 RESOLVE 완료"와 같은 결. 버스트 틱이 `actionLocked` 게이트 위인 것은 의도 — 계약 8·코드 주석에 명문화. 되돌리지 말 것.
 - **`shotIndex` 산식 추출 후보**: 버스트 발 인덱스(`shotCount − 남은수`)가 AttackSystem 인라인. 샷건 spec 착수 시 `VolleyMath` 로 추출 + EditMode 고정 검토(현재는 통합 테스트가 커버).
 - **코루틴 중단 시 PendingDeployment 잔류**: `Confirm` 후 배치 연출 대기 중 컨트롤러가 파괴되면 유닛이 굳는다. 단 드래그 컨트롤러 `RunDeployment` 도 동일 노출 — 신규 회귀 아닌 기존 패턴 parity.
