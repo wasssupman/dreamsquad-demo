@@ -31,6 +31,8 @@ unit 0 의 `PlacementCellSnap.Resolve` 를 실제 hover 결정에 배선해 경�
 - **bridge read 접근자 신설**: `DebugWorldToCellFractional(Vector3)→Vector2`(unclamped frac, DebugWorldToCell 과 동일 공간),
   `DebugGridSize→Vector2Int`(결과 clamp 용). `GridSize` 가 private 이라 후자를 공개.
 
+**완료: 2026-07-17 · `a3812079` — Play 검증(경계 안정화).**
+
 ## 완료 기준
 
 - 컴파일 통과(`read_console` clean), EditMode 회귀 없음.

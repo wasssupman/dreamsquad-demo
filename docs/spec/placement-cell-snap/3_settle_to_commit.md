@@ -34,3 +34,5 @@
 - 컴파일 클린. EditMode: `PlacementSnapDebounceTests`(tick사이유지/tick커밋/커밋후재대기/이동중5Hz스텝/interval0실시간) 5케 통과.
 - Play: 활발히 스와이프하는 중에도 0.2초마다 타일이 현재 칸으로 스텝 갱신(실시간 휙휙 아님, freeze 아님). 정지하면 현재 칸에 안착.
 - 사용자 Play 체감 확인 일자 + 커밋 해시 추가 후 커밋.
+
+**완료: 2026-07-17 · `a3812079` — 최종 `placementCommitInterval=0.5`(2Hz). settle→throttle 반전 이력은 위 "해석 이력" 참조.**
