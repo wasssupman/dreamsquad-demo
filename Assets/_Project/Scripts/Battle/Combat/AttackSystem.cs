@@ -50,6 +50,11 @@ namespace Wassup.Battle.Combat
             var projectileRefLookup = SystemAPI.GetComponentLookup<ProjectileRef>(isReadOnly: true);
             var defenderCcLookup = SystemAPI.GetComponentLookup<DefenderCcData>(isReadOnly: true);
             var defenderTagLookup = SystemAPI.GetComponentLookup<DefenderUnitTag>(isReadOnly: true);
+            // defender-directional-volley unit 3 — 배치 시 확정된 영구 공격 방향(Units
+            // 소유, 읽기 전용). 보유 유닛은 최근접 타겟 선택 대신 방향 레인 게이트로 발사.
+            var facingLookup = SystemAPI.GetComponentLookup<Wassup.Battle.Units.DeployedFacing>(isReadOnly: true);
+            // defender-directional-volley unit 4 — 다연발 설정/진행 상태(Combat 소유 RW).
+            var volleyLookup = SystemAPI.GetComponentLookup<VolleyFireState>(isReadOnly: false);
             var blockingHazardCellsLookup = SystemAPI.GetBufferLookup<BlockingHazardCellsBuffer>(isReadOnly: true);
             var modifierStatsLookup = SystemAPI.GetComponentLookup<Wassup.Battle.Effects.ModifierStats>(isReadOnly: true);
             var outputBufferLookup = SystemAPI.GetBufferLookup<AttackOutputElement>(isReadOnly: true);
@@ -180,6 +185,17 @@ namespace Wassup.Battle.Combat
                     }
                     wantFrontmost = hasSlot;
                 }
+                // defender-directional-volley unit 3 — facing 유닛은 "레인에 적이 있으면
+                // 쏜다"가 타겟팅 규칙 전부다. 후보 루프를 공유해 레인 최근접 1기를
+                // witness 로 잡는다(단일 패스 — frontmost 선례). witness 는 데미지 대상이
+                // 아니라 발사 게이트/조준 시각의 근거 — 레인은 facing 축 직선이라 그
+                // 위치를 바라보면 곧 facing 방향을 바라보는 것과 같다.
+                bool hasFacing = facingLookup.HasComponent(attackerEntity);
+                int2 facing = hasFacing ? facingLookup[attackerEntity].value : default;
+                Entity laneWitness = Entity.Null;
+                float3 laneWitnessPos = default;
+                float laneBestSq = float.MaxValue;
+
                 bool fmHasBest = false;
                 bool fmChosenIsPriority = false;
                 FrontmostTargeting.Candidate fmBest = default;
@@ -208,6 +224,14 @@ namespace Wassup.Battle.Combat
                         bestSqPrio = d2;
                         bestTargetPrio = targetEntities[i];
                         bestTargetPosPrio = nearestPos;
+                    }
+                    // 레인 witness — facing 축 1타일 폭 × [1..tileRange]. 위 Chebyshev
+                    // 사거리 필터를 이미 통과했으므로 레인은 그 부분집합이다.
+                    if (hasFacing && LaneMath.IsInLane(atkCell, facing, tileRange, tgtCell) && d2 < laneBestSq)
+                    {
+                        laneBestSq = d2;
+                        laneWitness = targetEntities[i];
+                        laneWitnessPos = nearestPos;
                     }
                     // frontmost tracking — rank in-range candidates by FlowField remaining
                     // distance, excluding PastGoal (leak-pending) and unreachable cells.
@@ -324,6 +348,51 @@ namespace Wassup.Battle.Combat
                         // No reachable frontmost → keep the nearest fallback (non-priority, contract 3).
                         if (fmHasBest) { bestTarget = fmBestEntity; bestTargetPos = fmBestPos; fmChosenIsPriority = true; }
                         else fmChosenIsPriority = false;
+                    }
+                }
+
+                // defender-directional-volley unit 3 — facing 최종 오버라이드. 방향 고정
+                // 유닛에게는 레인 밖 적이 존재하지 않는 것과 같다 — 최근접/우선순위/
+                // frontmost/aggro 가 무엇을 골랐든 레인 witness 로 덮는다(레인이 곧
+                // 타겟팅 규칙 전부). 레인이 비었으면 발사하지 않는다(탄 낭비 방지):
+                // Null 이면 아래 START/RESOLVE 게이트가 그대로 hold-fire.
+                if (hasFacing)
+                {
+                    bestTarget = laneWitness;
+                    bestTargetPos = laneWitnessPos;
+                }
+
+                // ── BURST TICK ── defender-directional-volley unit 4.
+                // 시작된 버스트는 완주한다(계약 8): 레인이 비어도, 쿨다운/타겟 게이트와
+                // 무관하게 남은 발을 쏜다. 공격자가 죽으면 컴포넌트째 사라져 자연 중단.
+                // START/RESOLVE 앞에 두는 이유 — 트리거 프레임엔 burstRemaining 이 아직
+                // 0 이라 no-op 이고, 그래야 1번 발과 2번 발 간격이 정확히 interval 이다.
+                if (volleyLookup.HasComponent(attackerEntity))
+                {
+                    var volley = volleyLookup[attackerEntity];
+                    if (volley.burstRemaining > 0)
+                    {
+                        int owed = volley.burstRemaining;
+                        int remaining = owed;
+                        float timer = volley.burstTimer;
+                        int fired = VolleyMath.TickBurst(dt, ref remaining, ref timer, volley.shotIntervalSec);
+                        volley.burstRemaining = remaining;
+                        volley.burstTimer = timer;
+                        volleyLookup[attackerEntity] = volley;
+
+                        int volleyShots = math.max(1, volley.shotCount);
+                        for (int f = 0; f < fired; f++)
+                        {
+                            // 발 인덱스 = 이미 쏜 수. 0 번은 트리거 프레임이 쐈으므로
+                            // 여기서는 항상 1 이상 — 확산각 분배가 트리거 발과 이어진다.
+                            int shotIndex = volleyShots - owed + f;
+                            var req = volley.template;
+                            req.direction = VolleyMath.SpreadDirection(
+                                volley.template.direction, shotIndex, volleyShots, volley.spreadAngleDeg);
+                            var burstCarrier = ecb.CreateEntity();
+                            ecb.AddComponent(burstCarrier, req);
+                            ecb.AddComponent<ProjectileRequestCarrier>(burstCarrier);
+                        }
                     }
                 }
 
@@ -521,6 +590,83 @@ namespace Wassup.Battle.Combat
                                     // 응축된 일격 (unit 1) — 강공 전-victim 배율(unit 2 hit-site 소비, 기본 1=inert).
                                     heavyDamageMul = heavyMul,
                                 });
+                            }
+                            else if (projRef.movement == MovementKind.DirectionalLinear)
+                            {
+                                // defender-directional-volley unit 3 — 방향 발사. 타겟
+                                // 엔티티를 싣지 않는다: 경로에 있는 것을 맞히는 탄이라
+                                // 발사 후 대상이 죽거나 비켜도 궤적은 그대로다.
+                                // 방향은 facing 이 원칙이고, facing 없는 유닛이 이 SO 를
+                                // 쓰면 조준 대상 쪽으로 쏜다(퇴화 벡터는 drain 이 폐기).
+                                float2 fireDir = facing;
+                                if (!hasFacing)
+                                {
+                                    float2 toTarget = (bestTargetPos - atkPos).xz;
+                                    fireDir = math.lengthsq(toTarget) > 1e-6f ? math.normalize(toTarget) : new float2(0f, 1f);
+                                }
+                                // 사거리는 레인 게이트와 같은 타일 단위로 환산 — 그래야
+                                // 탄이 "게이트가 인정한 마지막 칸"까지 정확히 닿는다.
+                                // direction 은 확산 전 기준 방향(템플릿 원본).
+                                var template = new ProjectileSpawnRequest
+                                {
+                                    movement = MovementKind.DirectionalLinear,
+                                    payload = projRef.payload,
+                                    origin = atkPos,
+                                    direction = fireDir,
+                                    maxDistance = tileRange * tileSize,
+                                    damage = projectileDamage,
+                                    speed = projRef.speed,
+                                    hitThreshold = projRef.hitThreshold,
+                                    visualScale = projRef.visualScale,
+                                    dataIndex = projRef.dataIndex,
+                                    owner = attackerEntity, // nightmare-catcher unit 1 — threat attribution
+                                    priorityTarget = fmPrioTarget,
+                                    priorityDamageMul = fmPrioMul,
+                                    heavyDamageMul = heavyMul,
+                                };
+
+                                // defender-directional-volley unit 4 — 발수/확산/간격.
+                                // VolleyFireState 가 없으면(적·단발 유닛) 현행 그대로 1발.
+                                bool hasVolley = volleyLookup.HasComponent(attackerEntity);
+                                var volleyCfg = hasVolley ? volleyLookup[attackerEntity] : default;
+                                int shots = hasVolley ? math.max(1, volleyCfg.shotCount) : 1;
+                                float spreadDeg = hasVolley ? volleyCfg.spreadAngleDeg : 0f;
+                                float interval = hasVolley ? volleyCfg.shotIntervalSec : 0f;
+
+                                // 0 번 발은 언제나 지금, 공격자 본인 request 로. 1발 유닛의
+                                // 경로가 다연발 도입 전과 바이트 동일하게 남는다.
+                                var firstShot = template;
+                                firstShot.direction = VolleyMath.SpreadDirection(fireDir, 0, shots, spreadDeg);
+                                ecb.AddComponent(attackerEntity, firstShot);
+
+                                if (shots > 1)
+                                {
+                                    if (interval <= 0f)
+                                    {
+                                        // 확산형: 나머지 발도 같은 프레임에. request 는
+                                        // 엔티티당 1개뿐이라 발마다 캐리어가 필요하다.
+                                        for (int s = 1; s < shots; s++)
+                                        {
+                                            var spreadReq = template;
+                                            spreadReq.direction = VolleyMath.SpreadDirection(fireDir, s, shots, spreadDeg);
+                                            var spreadCarrier = ecb.CreateEntity();
+                                            ecb.AddComponent(spreadCarrier, spreadReq);
+                                            ecb.AddComponent<ProjectileRequestCarrier>(spreadCarrier);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        // 버스트형: 나머지는 틱이 쏜다. 템플릿을 통째로
+                                        // 스냅샷해 남은 발이 0 번 발과 동일한 payload 를 갖게.
+                                        volleyCfg.burstRemaining = shots - 1;
+                                        volleyCfg.burstTimer = interval;
+                                        volleyCfg.template = template;
+                                        volleyLookup[attackerEntity] = volleyCfg;
+                                        // 다음 트리거는 버스트가 끝난 뒤부터 기다린다(계약 8).
+                                        attack.ValueRW.cooldownRemaining = VolleyMath.CooldownAfterVolley(
+                                            attack.ValueRO.cooldownRemaining, shots, interval);
+                                    }
+                                }
                             }
                             else
                             {

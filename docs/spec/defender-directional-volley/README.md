@@ -74,4 +74,5 @@
 - 버스트/스프레드 × Homing·Ballistic 궤적 조합 검증 (이번엔 Directional 에서만 e2e)
 - 방향 가이드 UI 정식 아트 (이번엔 절차적/임시)
 - 곡사 방향 발사 (DirectionalLinear + arc 시각)
+- 머신건 연사음 (버스트 캐리어 발은 발사 SFX 게이트 밖 — 볼리당 1회. battle-audio 스코프)
 - tap-to-place 배치 경로 연동 — `defender-tap-to-place` spec(승인 대기)이 도입되면 공격방향 페이즈 진입점을 D&D EndDrag 외에 tap 확정 시점에도 연결

@@ -11,13 +11,12 @@
 
 ## 구현
 
-**AttackSystem 분기**:
-- 공격자에게 `DeployedFacing` 이 있으면(lookup): 후보 스냅샷 순회에서 최근접/우선순위/aggro 오버라이드 대신 `LaneMath.IsInLane(attackerTile, facing, rangeTiles, candidateTile)` 존재 검사만 수행. 하나라도 있으면 발사 준비 완료.
-- 기존 START/RESOLVE 2단(쿨다운 리셋·hitDelay·애니 트리거)은 그대로 타되, `bestTarget` 없이 진행하는 경로를 연다 — RESOLVE 에서 `ProjectileSpawnRequest` 에 `direction = facing`, `maxDistance = range(월드 환산)` 를 실어 캐리어 1개 스폰(unit 2 의 Directional 투사체).
-- 게이트 실패(레인에 적 없음) 시 발사하지 않고 쿨다운도 태우지 않는다(기존 "타겟 없음" 동작과 동형).
+**AttackSystem 분기** (rev1 — 구현 시 확정):
+- **레인 witness 모델**: `bestTarget` 을 Null 로 두고 게이트를 바꾸는 대신, 후보 루프에서 **레인 내 최근접 1기를 witness 로 선정**해 `bestTarget` 에 넣는다. 이유 — (a) START/RESOLVE·hitDelay·로그·CC 게이트가 모두 `bestTarget != Null` 을 공유하므로 Null 허용은 공유 게이트를 광범위하게 건드린다, (b) 레인은 facing 축 직선이라 witness 를 바라보는 것이 곧 facing 을 바라보는 것 → **프레젠테이션 facing 이 자동으로 맞는다**(View 무수정, 이벤트 기입 변경도 불필요). witness 는 발사 근거일 뿐 데미지 대상이 아니다 — 데미지는 경로 스윕(unit 2)이 결정.
+- 레인 판정은 **기존 후보 루프에 한 줄 합류**(frontmost 선례의 단일 패스). Chebyshev 사거리 필터를 이미 통과한 뒤라 레인은 그 부분집합.
+- **facing 은 최종 오버라이드**: 최근접/우선순위/frontmost/aggro 가 무엇을 골랐든 마지막에 witness 로 덮는다(레인이 타겟팅 규칙 전부). 레인이 비면 Null → 기존 hold-fire 경로 그대로(쿨다운 미소모).
+- RESOLVE 에 `projRef.movement == DirectionalLinear` arm 추가: `direction = facing`, `maxDistance = tileRange × tileSize`(레인 게이트와 같은 타일 환산 — 탄이 인정된 마지막 칸까지 정확히 닿게). facing 없는 유닛이 Directional SO 를 쓰면 조준 대상 방향으로 발사(퇴화 벡터는 drain 이 폐기).
 - non-facing 유닛 경로는 바이트 단위로 무변경 — 분기는 facing lookup 유무로만.
-
-**프레젠테이션 facing**: 방향 유닛의 공격 visual event 는 타겟 위치 대신 facing 방향 지점을 향하도록 — `SpineUnitView.FaceToward` 가 받는 지점을 이벤트에 실린 좌표로 유지하되, 발사 시 이벤트에 facing 지점을 기입(Combat 쪽 기입 값 변경이라 View 는 무수정이 이상적).
 
 ## 완료 기준
 

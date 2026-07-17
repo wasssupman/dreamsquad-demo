@@ -3738,6 +3738,18 @@ namespace Wassup.Bridge
                 targetMask = unitData.targetAllies ? (int)Faction.Defender : (int)Faction.Enemy,
                 hitDelaySec = unitData.hitDelaySec,
             });
+            // defender-directional-volley unit 4 — 다연발 유닛만 볼리 상태를 진다.
+            // 스폰 시 사전 부착 = 발사 때마다 구조 변경이 없다(IncomingHeal 선례).
+            // shotCount <= 1 이면 미부착 → AttackSystem 이 현행 단발 경로 그대로.
+            if (unitData.shotCount > 1)
+            {
+                _em.AddComponentData(entity, new Wassup.Battle.Combat.VolleyFireState
+                {
+                    shotCount = unitData.shotCount,
+                    shotIntervalSec = unitData.shotIntervalSec,
+                    spreadAngleDeg = unitData.spreadAngleDeg,
+                });
+            }
             // aggro-targeting Unit 4 — expose defender class so enemies can filter/prioritize.
             _em.AddComponentData(entity, new Wassup.Battle.Units.DefenderClassTag { value = unitData.role });
             // aggro-targeting Unit 10 — guardians (aggroCapacity > 0) carry AggroCapacity
