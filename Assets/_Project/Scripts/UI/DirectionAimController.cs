@@ -32,13 +32,14 @@ namespace Wassup.UI
     {
         private const int SlowmoPriority = 60; // 드래그 lease(기본)보다 뒤에 잡혀도 이기게
 
+        private const float DefaultSlowmoScale = 0.2f; // sway 미주입 시 폴백
+
         private BattleBridge _bridge;
         private Camera _camera;
         private CameraDirector _director;
-        private DirectionAimSettings _cfg;
-
-        private DirectionAimSettings Cfg =>
-            _cfg != null ? _cfg : (_cfg = ScriptableObject.CreateInstance<DirectionAimSettings>());
+        // 튜닝값(slowmoScale)은 드래그 프리뷰와 공유하는 DragSwaySettings 에 있다 — 전용
+        // SO 를 두기엔 필드가 하나뿐이라. 라이브 에셋 참조라 Play 중 편집도 반영된다.
+        private DragSwaySettings _sway;
 
         private bool _active;
         private DefenderUnitData _unit;
@@ -54,11 +55,11 @@ namespace Wassup.UI
 
         public bool IsActive => _active;
 
-        public void Configure(BattleBridge bridge, Camera camera, DirectionAimSettings settings)
+        public void Configure(BattleBridge bridge, Camera camera, DragSwaySettings sway)
         {
             _bridge = bridge;
             _camera = camera;
-            if (settings != null) _cfg = settings;
+            if (sway != null) _sway = sway;
         }
 
         // 드롭 성공 직후 호출. 엔티티는 이미 PendingDeployment 로 스폰돼 있고(전투 미참여),
@@ -78,8 +79,9 @@ namespace Wassup.UI
             // 드래그 lease 가 해제되기 전에 먼저 잡는다 — 사이에 틈이 생기면 전투가
             // 한 프레임 정속으로 튄다(드롭 순간 슬로우모션 유지가 이 페이즈의 전제).
             _slowmoLease.Dispose();
+            float scale = _sway != null ? _sway.directionAimSlowmoScale : DefaultSlowmoScale;
             _slowmoLease = TimeManager.Instance.Request(
-                TimeDomain.Battle, Mathf.Max(0.01f, Cfg.slowmoScale), SlowmoPriority);
+                TimeDomain.Battle, Mathf.Max(0.01f, scale), SlowmoPriority);
 
             // 4레인 십자 + 화살표를 지금 띄운다. 이 호출로 범위 표시 소유가 PlacementAim 이
             // 되어, 바로 뒤따르는 드래그 세션의 CleanupSession→ClearPlacementRange(Placement

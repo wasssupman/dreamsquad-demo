@@ -103,7 +103,7 @@ namespace Wassup.UI
 
         public void Configure(BattleBridge battleBridge, Camera camera, PlacementInput input,
             DragSwaySettings swaySettings = null, TMP_FontAsset uiFont = null,
-            DeployCutscenePlayer cutscenePlayer = null, DirectionAimSettings aimSettings = null)
+            DeployCutscenePlayer cutscenePlayer = null)
         {
             bridge = battleBridge;
             mainCamera = camera != null ? camera : Camera.main;
@@ -113,10 +113,11 @@ namespace Wassup.UI
             if (cutscenePlayer != null) _cutscenePlayer = cutscenePlayer;
 
             // unit 6 — 방향 페이즈 컨트롤러. 드롭 성공 시 핸드오프(CommitPlacementAt).
+            // 튜닝값(slowmoScale)은 드래그와 공유하는 DragSwaySettings 로 주입 — 전용 SO 폐기.
             if (_aimController == null)
                 _aimController = gameObject.GetComponent<DirectionAimController>()
                                  ?? gameObject.AddComponent<DirectionAimController>();
-            _aimController.Configure(bridge, mainCamera, aimSettings);
+            _aimController.Configure(bridge, mainCamera, swaySettings);
         }
 
         public void BeginDrag(DefenderUnitData unitData, Vector2 screenPosition, bool simulated = false)

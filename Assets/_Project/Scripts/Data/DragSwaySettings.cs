@@ -71,5 +71,12 @@ namespace Wassup.Data
         public float tapTravelScaleMax = 1.5f;
         [Tooltip("트레이 슬롯 arm(탭 선택) 하이라이트 색. 확정 팝 valid 색과 톤 맞춤.")]
         public Color armHighlightColor = new Color(0.35f, 1f, 0.9f, 0.28f);
+
+        [Header("공격방향 페이즈 (defender-directional-volley)")]
+        // 방향 지정 컨트롤러는 런타임 AddComponent 라 자체 인스펙터가 없다. 튜닝값이
+        // 이 하나뿐이라 전용 SO(구 DirectionAimSettings) 대신 이미 씬에 배선된 여기로 합쳤다.
+        [Tooltip("방향 지정 중 전투 시간 배율. 드래그 슬로우모를 이어받는 값 — 0 아님(전투가 멈추면 안 된다).")]
+        [Range(0.01f, 1f)]
+        public float directionAimSlowmoScale = 0.2f;
     }
 }
