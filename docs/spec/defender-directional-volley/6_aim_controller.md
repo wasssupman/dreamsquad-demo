@@ -7,7 +7,7 @@
 ## 변경 대상
 
 - `Assets/_Project/Scripts/UI/DirectionAimController.cs` (신규)
-- `Assets/_Project/Scripts/Data/DirectionAimSettings.cs` + `Assets/_Project/Data/Config/DirectionAimSettings.asset` (신규 SO — 데드존 px·가이드 크기/색·하이라이트 색)
+- ~~신규 SO(DirectionAimSettings)~~ → **폐기(rev, `044b639a`)**. 튜닝값이 slowmoScale 하나로 줄어 `DragSwaySettings.directionAimSlowmoScale`(이미 씬 배선)로 합침. 별도 에셋·배선 없음.
 - `Assets/_Project/Scripts/UI/DefenderDragPlacementController.cs` (`CommitPlacementAt` 핸드오프 · `BeginDrag` 잠금 · `Configure` 주입)
 - `Assets/_Project/Scripts/UI/DefenderSelector.cs` (`aimSettings` 직렬화 필드 → Configure 주입, DragSwaySettings 선례)
 

@@ -20,7 +20,7 @@
 - `Assets/_Project/Scripts/Bridge/BattleBridge.cs` — `SetAimGuide`/`ClearAimGuide` + `PlacementAim` 소유자
 - `Assets/_Project/Scripts/UI/DirectionAimLogic.cs` — 스와이프 해석 → **셀 → 레인** 판정
 - `Assets/_Project/Scripts/UI/DirectionAimController.cs` — 글리프 캔버스 제거 → 보드 가이드 + 탭 입력
-- `Assets/_Project/Scripts/Data/DirectionAimSettings.cs` — 글리프/데드존 파라미터 제거(slowmoScale 만 남음)
+- `Assets/_Project/Scripts/Data/DirectionAimSettings.cs` — 글리프/데드존 파라미터 제거(slowmoScale 만 남음). **이후 rev(`044b639a`)에서 SO 자체 폐기 → `DragSwaySettings` 로 병합.**
 - `Assets/_Project/Scripts/Presentation/BoardSortOrder.cs` — `AimArrowOrder`
 
 ## 구현
@@ -48,7 +48,7 @@
 
 **리페인트**: 레인은 방향이 바뀔 때만 다시 칠한다(매 프레임 `SetTile` 로 타일맵을 갈아엎지 않는다).
 
-**화면 글리프 전면 제거**: 보드 게임 위에 뜬 화면 UI 의 이물감이 사용자 지적의 정체였다. `DirectionAimSettings` 의 색/크기/반경/데드존도 함께 제거 — 색·펄스는 `TileSetData`, 판정 규칙은 `LaneMath` 가 소유하므로 이 SO 에 남는 튜닝값은 `slowmoScale` 뿐이다.
+**화면 글리프 전면 제거**: 보드 게임 위에 뜬 화면 UI 의 이물감이 사용자 지적의 정체였다. 글리프 SO 의 색/크기/반경/데드존도 함께 제거 — 색·펄스는 `TileSetData`, 판정 규칙은 `LaneMath` 가 소유하므로 남는 튜닝값은 `slowmoScale` 뿐이었고, 그마저 이후 rev(`044b639a`)에서 `DragSwaySettings` 로 흡수해 전용 SO 를 없앴다.
 
 ## 완료 기준
 
