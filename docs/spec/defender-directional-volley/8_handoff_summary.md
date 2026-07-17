@@ -45,7 +45,7 @@
 - **DirectionAimLogic 은 축 투영 모델**(unit 5 rev1). 화면 cardinal 스냅으로 되돌리면 iso 보드에서 "화면 위"가 +Y/−X 동률이라 레인 판정이 불가능해진다.
 - **방향 정규화·퇴화 폐기는 drain 담당**: dir=0 또는 speed=0 이면 traveled 가 영영 0 → 불멸 투사체(ecs-review M1).
 - **facing 유닛은 frontmost 보너스 포기**(`fmChosenIsPriority = false`): witness 는 최근접이지 최전방이 아니라, 카드가 약속한 대상과 다른 적에게 +20% 가 실린다.
-- **조준 중 UI press 는 조준이 아니다 + 트레이 잠금**: 둘 중 하나만 빼도 트레이 재드래그 한 번이 배치와 조준 양쪽에서 소비된다(최종 리뷰 HIGH-1). UI 판정은 반드시 `RaycastAll` — `IsPointerOverGameObject()` 는 터치 press 프레임에 UI 를 놓쳐 실기기에서만 터진다.
+- **조준 페이즈는 모달 — 보드 탭 소비자 3곳을 전부 막아야 한다**: (1) UI press 는 조준이 아니다(`RaycastAll` 즉석 판정 — `IsPointerOverGameObject()` 는 터치 press 프레임에 UI 를 놓쳐 실기기에서만 터진다), (2) 조준 중 트레이 드래그 잠금(`BeginDrag` 가드 — tap-to-place 시뮬 경로도 여기 걸린다), (3) `DcInspectController.Blocked()` 에 `IsAiming`. 하나라도 빠지면 한 제스처가 두 곳에서 소비된다 — (1)(2)는 엉뚱한 방향 고정(리뷰 HIGH-1), (3)은 확정 후에도 slomo/줌이 남아 클릭이 한 번 더 필요(사용자 Play 실측).
 - **`Cancel(activatePending: false)` on teardown**: World 파괴 순서가 비결정적이라 ECS 접근이 던진다.
 
 ## Follow-up

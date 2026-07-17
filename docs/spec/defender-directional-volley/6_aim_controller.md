@@ -29,6 +29,12 @@
 
 **멱등/정리**: 컨트롤러 세션 종료(확정) 시 캔버스·피드·lease 를 전부 해제. 매치 종료 등 외부 정리 경로에서 세션이 살아 있으면 안전 dispose(드래그 컨트롤러 CleanupSession 멱등 선례).
 
+**조준 페이즈는 모달이다 — 보드 탭 소비자 전원을 막아야 한다**: 이 화면은 "드래그 세션은 끝났지만 여전히 배치 조작 중"이라는 어중간한 상태라, 기존 게이트(`IsDragging`)에 걸리지 않는다. 전역 포인터를 폴링하는 컨트롤러가 조준 스와이프를 자기 제스처로 오해하면 **한 제스처가 두 곳에서 소비**된다. 실측된 사례:
+- `DcInspectController` — 가이드 중앙이 곧 유닛이라 스와이프 시작점이 유닛을 맞고, 인스펙트가 선택돼 slomo(우선도 50)와 줌을 계속 붙잡는다. **방향 확정 후에도 남아 닫는 클릭이 한 번 더 필요**해진다(사용자 Play 실측 2026-07-17). → `Blocked()` 에 `drag.IsAiming` 추가.
+- 트레이 드래그 / tap-to-place 보드 탭 → `DefenderDragPlacementController.BeginDrag` 잠금이 차단(시뮬 경로도 BeginDrag 를 타므로 함께 막힘).
+
+신규 보드 탭 소비자를 추가할 때 `DefenderDragPlacementController.IsAiming` 을 게이트에 포함할 것.
+
 **Cancel 의 두 얼굴** (`activatePending`): 조준을 못 끝낸 채 세션이 무너질 때 —
 - **재진입**(다음 배치가 조준을 덮음, 트레이 잠금 이후 정상 흐름에선 미도달): 코스트를 이미 낸 유닛이므로 기본 방향(+Y)으로 활성화. **계약 9 의 명시적 예외** — "방향 확정 없이는 활성화 없음"의 유일한 구멍이고, PendingDeployment 로 굳는 것보다 낫다는 판단.
 - **teardown**(OnDisable/OnDestroy): ECS 를 건드리지 않는다. 파괴 순서가 비결정적이라 World 가 먼저 사라졌으면 EntityManager 접근이 던진다.
