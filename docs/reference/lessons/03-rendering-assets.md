@@ -41,6 +41,17 @@ Tilemap(rect) 채움 타일이 큰 영역으로 반복될 때 셀 경계마다 �
 - **정답**: `FilterMode.Bilinear` + `TextureImporterCompression.Uncompressed` + mipmap off.
 - 1칸 폭 도로는 채움 반복이 없어 안 보여 오진하기 쉽다 — 큰 dirt/grass 에서만 드러남.
 
+## `Mathf.SmoothStep(from, to, t)` 는 HLSL `smoothstep` 이 아니다 — 절차적 스프라이트가 유령이 된다
+
+Unity `Mathf.SmoothStep(from, to, t)` 는 **결과를 `from..to` 로 보간**한다(t 를 0..1 로 clamp 후 smooth). HLSL `smoothstep(edge0, edge1, x)`(x 가 두 엣지 사이 어디냐로 0..1 반환)와 인자 의미가 정반대다.
+
+절차적 텍스처에서 가장자리 페더로 `SmoothStep(0f, 0.06f, dist)` 를 쓰면 **알파가 0.06 에 캡핑**돼(두 축을 곱하면 ~0.004) 스프라이트가 거의 투명 — "유령"이 된다. Play 에서만 드러나고 EditMode/컴파일은 통과한다.
+
+- **오답**: `Mathf.SmoothStep(0f, band, dist)` — band(페더 폭)를 출력 범위로 넣음.
+- **정답**: `Mathf.SmoothStep(0f, 1f, dist / band)` — band 를 **입력** 정규화에 쓰고 출력은 0..1.
+- 이 프로젝트에서 두 세션이 독립적으로 같은 실수(블롭·조준 화살표) — 절차적 스프라이트(`TilemapMapView` 의 Blob/Arrow/Pop 계열) 만들 때 반복되는 지뢰.
+- **static 스프라이트 캐시 주의**: `_arrowSprite` 등이 static 이라 산식을 고쳐도 이전 텍스처가 남는다. 실측하려면 리플렉션으로 필드를 null 로 밀고 재생성.
+
 ## dirt 오토타일 유기적 경계
 
 박스형 원인 = 깨끗한 기하학적 타일(직선변/호가 격자 정렬). 자연스럽게:
