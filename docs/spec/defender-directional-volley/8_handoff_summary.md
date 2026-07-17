@@ -10,7 +10,8 @@
 - `980b3d43` unit 3·4 — 레인 게이트 방향 발사 + 다연발(VolleyFireState)
 - `f85a3ca8` unit 6 — DirectionAimController + 설정 SO
 - `af8965d5` ecs-review 반영(불멸 투사체 · frontmost 오적용 · 파라미터명)
-- `e027fe00` unit 7 — 머신건 유닛 + 통합 테스트 7건
+- `e027fe00` unit 7 — 머신건 유닛 + 통합 테스트 7건 · `537bfce3` handoff/맵/backlog
+- `e36bd51e` 최종 리뷰 반영(조준 중 UI press 차단 · teardown ECS 미접촉 · 버스트×스프레드 테스트)
 
 ## Implemented
 
@@ -44,10 +45,16 @@
 - **DirectionAimLogic 은 축 투영 모델**(unit 5 rev1). 화면 cardinal 스냅으로 되돌리면 iso 보드에서 "화면 위"가 +Y/−X 동률이라 레인 판정이 불가능해진다.
 - **방향 정규화·퇴화 폐기는 drain 담당**: dir=0 또는 speed=0 이면 traveled 가 영영 0 → 불멸 투사체(ecs-review M1).
 - **facing 유닛은 frontmost 보너스 포기**(`fmChosenIsPriority = false`): witness 는 최근접이지 최전방이 아니라, 카드가 약속한 대상과 다른 적에게 +20% 가 실린다.
+- **조준 중 UI press 는 조준이 아니다 + 트레이 잠금**: 둘 중 하나만 빼도 트레이 재드래그 한 번이 배치와 조준 양쪽에서 소비된다(최종 리뷰 HIGH-1). UI 판정은 반드시 `RaycastAll` — `IsPointerOverGameObject()` 는 터치 press 프레임에 UI 를 놓쳐 실기기에서만 터진다.
+- **`Cancel(activatePending: false)` on teardown**: World 파괴 순서가 비결정적이라 ECS 접근이 던진다.
 
 ## Follow-up
 
-- **unit 6 배선 커밋 미완**: `DefenderDragPlacementController`(핸드오프 3 hunk) + `DefenderSelector`(aimSettings 주입)가 **워크트리에 구현돼 있으나 미커밋** — 병행 세션의 `defender-tap-to-place` WIP 와 같은 파일이라 격리 불가. 그쪽이 커밋되면 즉시 이어서 커밋할 것. 그 전까지 방향 페이즈는 Play 에서 동작하지만 커밋 트리에는 없다.
+- **unit 6 배선 커밋 미완**: `DefenderDragPlacementController`(핸드오프 + `BeginDrag` 잠금 + `Configure` 주입, 4 hunk) + `DefenderSelector`(aimSettings 주입)가 **워크트리에 구현돼 있으나 미커밋** — 병행 세션의 `defender-tap-to-place` WIP 와 같은 파일이라 격리 불가(`CommitPlacementAt` 자체가 그쪽 신규 메서드). 그쪽이 커밋되면 즉시 이어서 커밋할 것. 그 전까지 방향 페이즈는 Play 에서 동작하지만 커밋 트리에는 없다.
+- **씬 배선 미완(최종 리뷰 HIGH-2)**: `Data/Config/DirectionAimSettings.asset` 이 어느 씬에서도 참조되지 않아 `DefenderSelector.aimSettings` = null → 컨트롤러가 클래스 기본값 폴백. 값이 같아 **동작은 동일하지만 에셋을 편집해도 반영되지 않는다**. 배선 커밋 때 `BattleScene` 의 DefenderSelector 에 할당할 것(`DragSwaySettings.asset` 이 같은 방식으로 물려 있음). 씬 저장은 병행 세션의 미저장 WIP 를 베이크할 수 있으니 dirty 상태 확인 후.
+- **설계 질문(사용자 결정)**: CC(Sleep/Stun) 중 버스트 완주 여부. 현재 버스트 틱이 `actionLocked` 게이트보다 위라 **잠든 머신건이 남은 9발을 쏜다**. combat-action-lock 의 "이미 시작된 스윙은 RESOLVE 완료" 선례와는 정합하지만, 1초짜리 버스트는 스윙보다 훨씬 길다. 계약 8 은 CC 를 언급하지 않는다.
+- **`shotIndex` 산식 추출 후보**: 버스트 발 인덱스(`shotCount − 남은수`)가 AttackSystem 인라인. 샷건 spec 착수 시 `VolleyMath` 로 추출 + EditMode 고정 검토(현재는 통합 테스트가 커버).
+- **코루틴 중단 시 PendingDeployment 잔류**: `Confirm` 후 배치 연출 대기 중 컨트롤러가 파괴되면 유닛이 굳는다. 단 드래그 컨트롤러 `RunDeployment` 도 동일 노출 — 신규 회귀 아닌 기존 패턴 parity.
 - **Play e2e + 실기기 스모크(사용자)**: 드래그→드롭→방향 지정→활성화→10연발→피해. 시뮬 계약은 통합 테스트가 덮으므로 남은 건 Mono 배선과 시각/조작감.
 - 아트 플레이스홀더(Marksman Spine + Sniper 파츠) — guid 유지 교체 전제.
 - 후속 후보는 README 참조(배치 취소, 방향 재지정, 레인 폭 파라미터화, 샷건 유닛, 머신건 연사음 등).
