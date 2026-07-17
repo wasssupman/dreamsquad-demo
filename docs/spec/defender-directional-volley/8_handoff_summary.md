@@ -12,6 +12,10 @@
 - `af8965d5` ecs-review 반영(불멸 투사체 · frontmost 오적용 · 파라미터명)
 - `e027fe00` unit 7 — 머신건 유닛 + 통합 테스트 7건 · `537bfce3` handoff/맵/backlog
 - `e36bd51e` 최종 리뷰 반영(조준 중 UI press 차단 · teardown ECS 미접촉 · 버스트×스프레드 테스트)
+- `c659b61b` handoff · `e1b82b96` CC 중 버스트 완주=의도 명문화
+- `c0d0f29c` unit 9 스펙(보드 조준 가이드 — 레인 점등 + 화살표 탭)
+- `c6437876` **unit 6·9 배선** — 공격방향 페이즈 + 보드 가이드(hash-object 로 overhead-ui hunk 격리). DirectionAimLogicTests 7/7 green
+- `1bb12070` 조준 화살표 z-acne 픽스(바닥 코플레이너 → world +Y 리프트)
 
 ## Implemented
 
@@ -50,8 +54,8 @@
 
 ## Follow-up
 
-- **unit 6 배선 커밋 미완**: `DefenderDragPlacementController`(핸드오프 + `BeginDrag` 잠금 + `Configure` 주입, 4 hunk) + `DefenderSelector`(aimSettings 주입)가 **워크트리에 구현돼 있으나 미커밋** — 병행 세션의 `defender-tap-to-place` WIP 와 같은 파일이라 격리 불가(`CommitPlacementAt` 자체가 그쪽 신규 메서드). 그쪽이 커밋되면 즉시 이어서 커밋할 것. 그 전까지 방향 페이즈는 Play 에서 동작하지만 커밋 트리에는 없다.
-- **씬 배선 미완(최종 리뷰 HIGH-2)**: `Data/Config/DirectionAimSettings.asset` 이 어느 씬에서도 참조되지 않아 `DefenderSelector.aimSettings` = null → 컨트롤러가 클래스 기본값 폴백. 값이 같아 **동작은 동일하지만 에셋을 편집해도 반영되지 않는다**. 배선 커밋 때 `BattleScene` 의 DefenderSelector 에 할당할 것(`DragSwaySettings.asset` 이 같은 방식으로 물려 있음). 씬 저장은 병행 세션의 미저장 WIP 를 베이크할 수 있으니 dirty 상태 확인 후.
+- ~~unit 6 배선 커밋 미완~~ → **완료(`c6437876`)**. 병행 tap-to-place/액체타일(`dedde0f6`) 커밋 후 볼리 hunk 만 격리 스테이징(BattleBridge 는 overhead-ui hunk 제외하고 hash-object 로 볼리 hunk 만 인덱스 적용, 워크트리 overhead diff 보존). 커밋 트리 overhead 심볼 0 검증됨.
+- **씬 배선 미완(최종 리뷰 HIGH-2, 여전히 열림)**: `Data/Config/DirectionAimSettings.asset` 이 어느 씬에서도 참조되지 않아 `DefenderSelector.aimSettings` = null → 컨트롤러가 클래스 기본값 폴백. 값이 같아 **동작은 동일하지만 에셋을 편집해도 반영되지 않는다**. `BattleScene` 의 DefenderSelector 에 할당 필요(`DragSwaySettings.asset` 선례). **BattleScene.unity 는 overhead 세션도 만지는 중이라 배선 커밋 보류** — dirty 정리 후 별도 진행.
 - ~~설계 질문: CC 중 버스트 완주 여부~~ → **결정됨(2026-07-17 사용자)**: 완주가 맞다. 볼리 = 한 번의 공격, combat-action-lock 의 "시작된 스윙은 RESOLVE 완료"와 같은 결. 버스트 틱이 `actionLocked` 게이트 위인 것은 의도 — 계약 8·코드 주석에 명문화. 되돌리지 말 것.
 - **`shotIndex` 산식 추출 후보**: 버스트 발 인덱스(`shotCount − 남은수`)가 AttackSystem 인라인. 샷건 spec 착수 시 `VolleyMath` 로 추출 + EditMode 고정 검토(현재는 통합 테스트가 커버).
 - **코루틴 중단 시 PendingDeployment 잔류**: `Confirm` 후 배치 연출 대기 중 컨트롤러가 파괴되면 유닛이 굳는다. 단 드래그 컨트롤러 `RunDeployment` 도 동일 노출 — 신규 회귀 아닌 기존 패턴 parity.
