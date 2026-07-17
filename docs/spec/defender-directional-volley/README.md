@@ -1,6 +1,6 @@
 # defender-directional-volley — 방향 지정 배치 + 다연발 투사체
 
-상태: 구현 중 2026-07-17 — unit 0·5 완료(78f5c38a·80b26662). origin merge(0cc77e44) + placement-cell-snap units 0~5 커밋(a3812079)으로 **BattleBridge 클린 → unit 1 착수 가능**. 접점 앵커 생존 확인: ActivateDeployedDefender·PlayDeploymentPresentation·SpawnProjectile·ResolveProjectileAxes·TryBeginDefenderDeployment. AttackSystem·DefenderUnitData·ProjectileData 는 merge 무변경. 단 드래그 컨트롤러 계열(DefenderDragPlacementController·DefenderDragSlot·DragSwaySettings)은 병행 수정 계속 중 — unit 6 착수 전 재독 필수
+상태: 구현 완료 2026-07-17 (units 0~7 · EditMode 905 green) — **잔여 2건**: (1) unit 6 배선(드래그 컨트롤러 핸드오프 + Selector 주입)이 워크트리에만 있고 미커밋 — 병행 세션의 `defender-tap-to-place` WIP 와 같은 파일이라 격리 불가, 그쪽 커밋 후 이어붙일 것. (2) Play e2e + 실기기 조작감(사용자 확인). 상세는 `8_handoff_summary.md`
 
 ## 상위 목표
 

@@ -124,6 +124,18 @@ code + git history        구현 상세
 
 - **트리거→효과 엔진 도메인 중립화** [M] · 드림캐쳐의 `DcMechanic`(이미 데이터주도 trigger→payload 중립계약)을 `Dc*` 명칭·`Data/Dreamcatcher/` 위치에서 떼어내 공용 `TriggerEffect*` 로 승격 + `EffectDomain{Dreamcatcher,Gimmick,...}` 태그로 소비처(오라/UI/dispel/밸런스) 구분. 기믹 Fatigue/Pickup/LastRun 을 그 위 rule 로 이관. **당장 안 함** — 논의·설계는 `docs/plans/2026-07-15-effect-trigger-unification-design.md` 에 기록. 권고: 0~1단계(태그+rename)만 저위험 선행, 시스템 이관은 2번째 기믹 생길 때(제약 8). rename 은 공유파일 광범위 → 세션 조율 필수.
 
+#### 방향 지정 배치 · 다연발 (defender-directional-volley 종료 이관, 2026-07-17)
+
+- **배치 취소/코스트 환불** [S] · 공격방향 페이즈엔 취소 제스처가 없다 — 드롭 = 코스트 확정. 데드존 릴리즈는 가이드를 유지하고 재스와이프를 기다린다. 취소를 넣으려면 `TryBeginDefenderDeployment` 의 spend 를 되감는 경로가 먼저 필요. (defender-directional-volley)
+- **배치 후 방향 재지정** [S] · 유닛 탭 → 가이드 재오픈. `DeployedFacing` 은 현재 1회 기록 후 불변 계약이라 쓰기 소유권부터 재정의해야 한다. (defender-directional-volley)
+- **레인 폭 파라미터화** [S] · 현재 1타일 고정(`LaneMath.IsInLane` 의 `side == 0`). 폭 2+ 는 side 허용치를 SO 로. (defender-directional-volley)
+- **확산형 실증 유닛(샷건)** [S] · 엔진(`spreadAngleDeg`)은 완성·테스트됨, 유닛 에셋만 없다. 30도 3발은 SO 저작만으로 성립. (defender-directional-volley)
+- **버스트/스프레드 × Homing·Ballistic 조합** [S] · 볼리는 전 궤적에 열려 있으나 e2e 는 Directional 에서만 했다. Homing×버스트는 발마다 타겟이 재평가되지 않고 템플릿 스냅샷을 쓴다는 점 확인 필요. (defender-directional-volley)
+- **머신건 연사음** [S] · 버스트 캐리어 발은 `DefenderUnitTag` 가 없어 drain 의 발사 SFX 게이트 밖 → 볼리당 1회. rat-tat-tat 을 원하면 battle-audio 쪽 게이트 재설계. (defender-directional-volley)
+- **방향 가이드 정식 아트 + 머신건 아트** [S] · 가이드는 절차적 TMP 글리프(▲ 회전), 유닛은 Marksman Spine + Sniper 파츠 플레이스홀더(guid 유지 교체 전제). (defender-directional-volley)
+- **곡사 방향 발사** [S] · `DirectionalLinear` + arc 시각. 현재 방향탄은 평면 직선(sim-Y 없음). (defender-directional-volley)
+- **tap-to-place 경로 연동** [S] · 공격방향 페이즈 진입점이 D&D `CommitPlacementAt` 하나뿐 — tap 확정 경로에도 같은 핸드오프가 필요하다. (defender-directional-volley × defender-tap-to-place)
+
 #### 로드아웃 규칙 위생 (game-start-loadout-gate 종료 이관, 2026-07-16)
 
 - **스쿼드 저장 게이트** [S] · `SquadBuilderView.OnSave` 는 규칙 검사 없이 무조건 저장한다 — 덱 빌더는 유효할 때만 저장 버튼을 활성화하는데 정반대 정책이다. 무효 스쿼드가 애초에 저장되지 않게 막는 안. 판정은 `LoadoutGate` 를 재사용하면 된다. (game-start-loadout-gate)
