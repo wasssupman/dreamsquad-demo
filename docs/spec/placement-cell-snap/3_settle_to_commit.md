@@ -16,18 +16,24 @@
 
 - New: `Assets/_Project/Scripts/UI/PlacementSnapDebounce.cs` (순수 `Step` + `State`)
 - New: `Assets/_Project/Tests/EditMode/PlacementSnapDebounceTests.cs`
-- Modify: `Assets/_Project/Scripts/UI/DefenderDragPlacementController.cs` (`ResolveFocusAndTarget(dt)` 에 Step 합성, `_debounce` 상태, ClearHover 리셋)
-- Modify: `Assets/_Project/Scripts/Data/DragSwaySettings.cs` (`placementCommitDelay`, `commitImmediateDistance`; `placementStickMargin` 기본 0.18→0.3)
+- Modify: `Assets/_Project/Scripts/UI/DefenderDragPlacementController.cs` (`ResolveFocusAndTarget(dt, forceCommit)` 에 Step 합성, `_debounce` 상태, ClearHover 리셋, EndDrag 릴리즈 우회)
+- Modify: `Assets/_Project/Scripts/Data/DragSwaySettings.cs` (`placementCommitInterval`; `placementStickMargin` 기본 0.18→0.3)
 
 ## 구현
 
 - **순수 함수** `Step(ref State, committed, target, dt, interval) → 확정 셀`:
   - `interval ≤ 0`: target 즉시(매 프레임 실시간, throttle off).
   - `elapsed += dt`. `elapsed ≥ interval` 이면 `elapsed=0` + target 반환(tick), 아니면 committed 유지.
-- **컨트롤러**: `hoverTile` 있으면 `cell = Step(ref _debounce, hoverTile.Value, target, dt, Cfg.placementCommitInterval)`.
-  없으면(첫 프레임) `cell = target` + `_debounce` 리셋. `dt = Time.unscaledDeltaTime`(배치 슬로우모 무관).
+- **컨트롤러** `ResolveFocusAndTarget(float dt, bool forceCommit = false)`:
+  `hoverTile` 있으면 `cell = Step(ref _debounce, hoverTile.Value, target, dt, Cfg.placementCommitInterval)`.
+  첫 프레임(hoverTile 없음) **또는 `forceCommit`** 이면 `cell = target` + `_debounce` 리셋. `dt = Time.unscaledDeltaTime`.
+- **릴리즈 우회 (리뷰 수정 2026-07-17)**: `EndDrag` 는 `UpdateDrag(최종 포인터)` 후
+  `if (_onBoard) ResolveFocusAndTarget(0f, forceCommit:true)` 로 throttle 을 우회, 손가락 최종 칸(히스테리시스만
+  통과)으로 확정한다. throttle 은 드래그 **중 표시** 안정화 장치지 릴리즈 정확도를 희생하지 않는다 —
+  없으면 빠른 드롭이 최대 interval 전 stale 칸에 배치되는 회귀(리뷰 확정). 하이라이트·팝이 같은 호출에서
+  갱신되므로 "표시 칸 == 배치 칸" 계약 유지.
 - `ClearHover` 에서 `_debounce = default`.
-- **SO**: `placementCommitInterval`(기본 **0.2**, `[0,1]`), `placementStickMargin` 기본 0.3.
+- **SO**: `placementCommitInterval`(기본 **0.5**, `[0,1]`), `placementStickMargin` 기본 0.3.
 
 ## 완료 기준
 

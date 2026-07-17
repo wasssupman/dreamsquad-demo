@@ -3560,6 +3560,18 @@ namespace Wassup.Bridge
             if (tilemapMapView != null) tilemapMapView.PulsePlacementHover(cell, valid);
         }
 
+        // placement-cell-snap unit 7 rev — 끈적 액체 하이라이트(hover 대체). dir=당김 방향, t=0(중심)~1(파열),
+        // valid=배치 가능 팔레트. cell+값만 받는다(오브젝트 불가지).
+        public void SetPlacementStretch(Vector2Int cell, Vector2 dir, float t, bool valid)
+        {
+            if (tilemapMapView != null) tilemapMapView.SetPlacementStretch(cell, dir, t, valid);
+        }
+
+        public void ClearPlacementStretch()
+        {
+            if (tilemapMapView != null) tilemapMapView.ClearPlacementStretch();
+        }
+
         public void ClearPlacementHover(Vector2Int cell)
         {
             if (tilemapMapView != null) tilemapMapView.ClearPlacementHover(cell);

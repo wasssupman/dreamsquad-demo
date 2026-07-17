@@ -20,6 +20,12 @@ MonoBehaviour:
   spawnTile: {fileID: 11400000, guid: 07262bdc2f17e4d4e848d0111fe0e3aa, type: 2}
   hoverTile: {fileID: 11400000, guid: b5aa087a910fa45d480c0bd1fcef682d, type: 2}
   rejectTile: {fileID: 11400000, guid: 4c4f79cd82642494ea257c47a155261e, type: 2}
+  placementLiquidMaterial: {fileID: 2100000, guid: 4e0cc541ac45f48ddbd551ff034d3c11, type: 2}
+  rangeTile: {fileID: 0}
+  rangeColor: {r: 1, g: 0.85, b: 0.1, a: 1}
+  rangePulseMinAlpha: 0.35
+  rangePulseMaxAlpha: 0.85
+  rangePulseSpeed: 3
   terrainTile: {fileID: 11400000, guid: a2e47f7164742432988f40087fe3f542, type: 2}
   ringRadius: 6
   surroundFarColor: {r: 0.5, g: 0.39, b: 0.24, a: 1}

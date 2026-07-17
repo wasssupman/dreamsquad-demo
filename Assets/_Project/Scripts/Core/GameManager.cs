@@ -181,14 +181,28 @@ namespace Wassup.Core
 
         // Start runs after all Awake/OnEnable of peers, so DraftView has subscribed
         // to DraftController events before we emit DraftStarted.
+        // 탭↔드래그 임계 DPI 보정 (1회, 부팅). EventSystem 기본값은 10px 고정이라 고DPI 기기에서
+        // 물리적으로 ~0.6mm 밖에 안 된다 → 탭 중 손가락 미세 흔들림이 드래그로 오인식되고,
+        // OnPointerClick 이 발화하지 않는다(탭 배치 arm·카드 탭 등이 통째로 안 먹음). DPI 기준 ~4mm 로 보정.
+        // Max 로 적용해 임계를 절대 낮추지 않는다. Screen.dpi 는 미지원 플랫폼에서 0 → 그 경우 기본값 유지.
+        private static void CalibrateDragThreshold()
+        {
+            var es = UnityEngine.EventSystems.EventSystem.current;
+            if (es == null || Screen.dpi <= 0f) return;
+            es.pixelDragThreshold = Mathf.Max(es.pixelDragThreshold, Mathf.RoundToInt(Screen.dpi / 6f));
+        }
+
         private void Start()
         {
+            CalibrateDragThreshold();
+
             // match-seed-unification — 맵을 빌드하는 PrepareDraftMap 보다 먼저 매치 시드를
             // 확정·주입한다. Draft·Squad 양 경로 공통으로 여기서 1회 보장.
             EnsureMatchSeed();
             AssignGimmick();
 
             // wave-authoring-test-mode unit 3 — 테스트 모드 최상위 분기. 작성 플랜 +
+            // (아래 분기는 return 하므로 DPI 보정은 반드시 그 앞에서 1회 수행 — 위 CalibrateDragThreshold)
             // 디펜더 프리셋으로 드래프트/스쿼드를 모두 건너뛴다. 비활성이면 무변경.
             if (TestModeContext.Active && battleBridge != null)
             {

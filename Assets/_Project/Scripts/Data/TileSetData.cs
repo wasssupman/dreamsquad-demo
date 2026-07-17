@@ -21,6 +21,11 @@ namespace Wassup.Data
         public TileBase hoverTile;
         public TileBase rejectTile;
 
+        [Header("배치 액체 하이라이트 (placement-cell-snap unit 7 rev)")]
+        [Tooltip("포커스 셀 하이라이트 쿼드 머티리얼(Wassup/PlacementLiquidTile). 모양 튜닝은 이 .mat 인스펙터에서.\n" +
+                 "런타임 생성 쿼드가 쓰므로 반드시 에셋 참조 — Shader.Find 는 빌드 스트리핑에 걸린다.")]
+        public Material placementLiquidMaterial;
+
         [Header("Attack range highlight (placement-attack-range-preview)")]
         // 중립(흰색 계열) solid 타일. 색은 rangeColor 가 tint 로 입힌다.
         public TileBase rangeTile;

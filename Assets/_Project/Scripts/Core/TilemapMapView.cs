@@ -32,6 +32,18 @@ namespace Wassup.Core
         [SerializeField] private Color commitPopValidColor = new Color(0.35f, 1f, 0.9f, 1f);
         [SerializeField] private Color commitPopInvalidColor = new Color(1f, 0.4f, 0.32f, 1f);
 
+        [Header("끈적 액체 타일 (placement-cell-snap unit 7 rev)")]
+        // 포커스 셀 하이라이트 자체가 액체 — 테두리(셀 고정) + 내부 번짐(손가락 방향).
+        // 모양 튜닝(테두리 폭/도달/목 등)은 PlacementLiquidTile.mat 인스펙터. 여기는 팔레트 + 관성만.
+        [SerializeField] private Color liquidValidBorder = new Color(0.45f, 1f, 0.55f, 0.95f);
+        [SerializeField] private Color liquidValidFill = new Color(0.35f, 0.95f, 0.45f, 0.45f);
+        [SerializeField] private Color liquidInvalidBorder = new Color(1f, 0.45f, 0.35f, 0.95f);
+        [SerializeField] private Color liquidInvalidFill = new Color(1f, 0.35f, 0.28f, 0.4f);
+        [Tooltip("점액 관성 스프링 강성 — 당김 신호를 늦게 따라오게. ↑=빠릿, ↓=더 걸쭉하게 늘어짐.")]
+        [SerializeField] private float liquidSpring = 90f;
+        [Tooltip("감쇠 — ↓=멈출 때 출렁임(오버슈트) 큼, ↑=바로 멎음. 셀 전환 직후 되돌아오는 출렁도 이 값.")]
+        [SerializeField] private float liquidDamping = 9f;
+
         private TileSetData _tileSet;
         private Tilemap _rangeTilemap;
         // placement-enemy-see-through unit 6 — 하이라이트 상승 상태(sticky). range 타일맵 lazy 생성 시 반영.
@@ -44,6 +56,21 @@ namespace Wassup.Core
         private SpriteRenderer _commitPop;
         private Coroutine _commitPopCo;
         private static Sprite _popSprite;
+        // placement-cell-snap unit 7 — 끈적함 블롭: 상주형 SpriteRenderer(팝과 동일 시드).
+        // 렌더 = PopSprite 쿼드 + PlacementLiquidTile 셰이더 인스턴스 머티리얼(원본 .mat 비오염).
+        private SpriteRenderer _blob;
+        private Material _blobMat;
+        private bool _blobMatMissing; // 미배선 경고 1회 게이트
+        // 점액 관성 — 표시용 당김 벡터(dir×t)를 스프링으로 지연/출렁. 신호(정책)는 그대로, 시각만 늦는다.
+        private Vector2 _pullSmoothed;
+        private Vector2 _pullVel;
+        // 쿼드 한 변(셀 배수). 혀 최대 도달 = reach×t^pow + 방울반지름×신장 ≈ 오버슈트(1.2)에서 1.9셀 —
+        // 캔버스(±절반)가 이보다 좁으면 옆 타일 위에서 칼로 잘린다. 셰이더 _QuadCells 와 동기(여기가 단일 소스).
+        private const float BlobQuadCells = 4f;
+        private static readonly int PullId = Shader.PropertyToID("_Pull");
+        private static readonly int BorderColorId = Shader.PropertyToID("_BorderColor");
+        private static readonly int FillColorId = Shader.PropertyToID("_FillColor");
+        private static readonly int QuadCellsId = Shader.PropertyToID("_QuadCells");
         // tilemap-world-surround unit 2 — 배경 프랍 호스트(Deco) 판정용 셀/리전 메타 + 프랍 인스턴스 루트.
         private BoardVisualPlan _visualPlan;
         private Transform _backgroundPropsRoot;
@@ -96,6 +123,9 @@ namespace Wassup.Core
             StopAllFlashes();
             if (_commitPopCo != null) { StopCoroutine(_commitPopCo); _commitPopCo = null; }
             if (_commitPop != null) { SafeDestroy(_commitPop.gameObject); _commitPop = null; } // grid 자식 → 맵 리빌드 시 함께 정리
+            if (_blob != null) { SafeDestroy(_blob.gameObject); _blob = null; } // unit 7 — 액체 하이라이트도 동일
+            if (_blobMat != null) { SafeDestroy(_blobMat); _blobMat = null; }
+            _blobMatMissing = false; // 맵 리빌드 시 tileSet 이 바뀔 수 있으니 재시도 허용
             _hoverCells.Clear();
             if (groundTilemap != null) groundTilemap.ClearAllTiles();
             if (overlayTilemap != null) overlayTilemap.ClearAllTiles();
@@ -326,7 +356,10 @@ namespace Wassup.Core
         {
             if (grid == null) return;
             var sr = EnsureCommitPop();
-            sr.transform.localPosition = grid.CellToLocalInterpolated(new Vector3(cell.x + 0.5f, cell.y + 0.5f, 0f));
+            // 액체 하이라이트와 동일 — Ground(ZWrite On) 코플레이너 z-fight 방지 리프트.
+            var popLocal = grid.CellToLocalInterpolated(new Vector3(cell.x + 0.5f, cell.y + 0.5f, 0f));
+            popLocal.z = -PropGroundLift;
+            sr.transform.localPosition = popLocal;
             Color c = valid ? commitPopValidColor : commitPopInvalidColor;
             if (_commitPopCo != null) StopCoroutine(_commitPopCo);
             _commitPopCo = StartCoroutine(CommitPopCoroutine(sr, c));
@@ -345,6 +378,80 @@ namespace Wassup.Core
             if (overlayR != null) _commitPop.sortingLayerID = overlayR.sortingLayerID; // overlay 와 같은 sorting layer
             go.SetActive(false);
             return _commitPop;
+        }
+
+        // placement-cell-snap unit 7 rev — 포커스 셀 하이라이트 자체가 끈적한 액체(오버레이 아님).
+        // dir = 당김 방향(셀 공간), t = 0(중심)~1(파열). 신호는 PlacementCellSnap.EvaluateStretch 가 Resolve 와
+        // 같은 밴드로 계산 → t=1 이 실제 전환점과 일치(하이라이트가 거짓말 안 함).
+        // 렌더 = 셀 2배 쿼드 1장 + Wassup/PlacementLiquidTile 셰이더(SDF): 테두리(둥근사각)는 셀에 고정 =
+        // "릴리즈하면 여기" 계약, 내부 fill 은 손가락 방향 액적과 smin 블렌드로 번지다 테두리를 넘는다.
+        // 모양 튜닝은 .mat 인스펙터(라이브 반영). 쿼드는 회전하지 않는다 — 테두리는 축 정렬, 방향은 셰이더 uniform.
+        public void SetPlacementStretch(Vector2Int cell, Vector2 dir, float t, bool valid)
+        {
+            if (grid == null) return;
+            var sr = EnsureBlob();
+            if (sr == null) return; // 머티리얼 미배선 — EnsureBlob 이 1회 경고
+            t = Mathf.Clamp01(t);
+            float cs = grid.cellSize.x; // rect 보드·균일 cellSize 전제(ConfigureGrid)
+
+            // 점액 관성 — 목표 당김(dir×t)을 스프링 추종. 늦게 따라오고, 멈추면/셀이 넘어가면 출렁하며 이완.
+            // 표시가 숨겨져 있었으면 스냅 리셋(이전 세션 잔여 스윙 금지). 드래프트 일시정지에도 살아야 하니 unscaled.
+            Vector2 targetPull = dir * t;
+            if (!sr.gameObject.activeSelf) { _pullSmoothed = targetPull; _pullVel = Vector2.zero; }
+            else
+            {
+                float dt = Mathf.Min(Time.unscaledDeltaTime, 1f / 30f); // 히치 스파이크 시 폭주 방지
+                _pullVel += (targetPull - _pullSmoothed) * (liquidSpring * dt);
+                _pullVel /= 1f + liquidDamping * dt;
+                _pullSmoothed += _pullVel * dt;
+            }
+            float tS = _pullSmoothed.magnitude;
+            Vector2 dirS = tS > 1e-4f ? _pullSmoothed / tS : Vector2.zero;
+            tS = Mathf.Min(tS, 1.2f); // 셰이더 허용 오버슈트 한계와 동기
+
+            // local -Z = world +Y(부모 90°X 회전). Ground 가 ZWrite On 이라 코플레이너면 z-fight 로 깜빡인다 —
+            // 프랍과 같은 해법(PropGroundLift)으로 띄운다. 타일맵끼리는 같은 메쉬라 안 겪는 문제.
+            var local = grid.CellToLocalInterpolated(new Vector3(cell.x + 0.5f, cell.y + 0.5f, 0f));
+            local.z = -PropGroundLift;
+            sr.transform.localPosition = local;
+            sr.transform.localScale = new Vector3(BlobQuadCells * cs, BlobQuadCells * cs, 1f);
+            _blobMat.SetVector(PullId, new Vector4(dirS.x, dirS.y, tS, 0f));
+            _blobMat.SetColor(BorderColorId, valid ? liquidValidBorder : liquidInvalidBorder);
+            _blobMat.SetColor(FillColorId, valid ? liquidValidFill : liquidInvalidFill);
+            if (!sr.gameObject.activeSelf) sr.gameObject.SetActive(true);
+        }
+
+        public void ClearPlacementStretch()
+        {
+            if (_blob != null) _blob.gameObject.SetActive(false);
+        }
+
+        private SpriteRenderer EnsureBlob()
+        {
+            if (_blob != null) return _blob;
+            if (_blobMatMissing) return null;
+            var srcMat = _tileSet != null ? _tileSet.placementLiquidMaterial : null;
+            if (srcMat == null)
+            {
+                // 에디터 한정 폴백 없이 명시 실패 — Shader.Find 폴백은 기기 빌드에서만 조용히 죽는다(2026-07-15 사고).
+                Debug.LogWarning("TilemapMapView: TileSetData.placementLiquidMaterial 미할당 — 액체 하이라이트 생략. " +
+                                 "PlacementLiquidTile.mat 을 tileSet 에 배선할 것.", this);
+                _blobMatMissing = true;
+                return null;
+            }
+            _blobMat = new Material(srcMat); // 인스턴스 — 에셋 원본을 런타임 파라미터로 오염시키지 않는다
+            _blobMat.SetFloat(QuadCellsId, BlobQuadCells); // 쿼드 크기 ↔ 셰이더 매핑 단일 소스 동기
+            var go = new GameObject("PlacementLiquidTile");
+            go.transform.SetParent(grid.transform, false); // grid 자식 → 타일과 코플레이너. 회전 없음(테두리 축 정렬).
+            go.transform.localRotation = Quaternion.identity;
+            _blob = go.AddComponent<SpriteRenderer>();
+            _blob.sprite = PopSprite(); // 1×1 흰 full-rect — 모양은 전부 셰이더 SDF
+            _blob.sharedMaterial = _blobMat;
+            _blob.sortingOrder = BoardSortOrder.PlacementBlobOrder;
+            var overlayR = overlayTilemap != null ? overlayTilemap.GetComponent<TilemapRenderer>() : null;
+            if (overlayR != null) _blob.sortingLayerID = overlayR.sortingLayerID;
+            go.SetActive(false);
+            return _blob;
         }
 
         private static Sprite PopSprite()
@@ -535,6 +642,7 @@ namespace Wassup.Core
             }
             var c = _tileSet.rangeColor; c.a = _rangeTilemap.color.a; _rangeTilemap.color = c;
         }
+
 
         public void ClearPlacementRange()
         {

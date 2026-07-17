@@ -46,11 +46,30 @@ namespace Wassup.Data
         public float deployCutsceneSwipeSmoothing = 0.5f;
 
         [Header("배치 셀 스냅 (placement-cell-snap)")]
-        [Tooltip("타일 경계 sticky 여유(타일 분수). ↑=경계 지터에 덜 민감/더 끈끈. 0=순수 반올림.")]
-        [Range(0f, 0.49f)]
+        [Tooltip("타일 경계 sticky 여유(타일 분수) = 자석 세기. 떨림 면역 = 2×margin 타일, 대가로 전환이 margin 만큼 늦음.\n" +
+                 "0=순수 반올림(면역 0). 0.2~0.3 권장. 0.5↑ = 손가락이 이웃 칸에 깊이 들어가도 안 넘어감(끈적).\n" +
+                 "상한 0.95 — 1.0 이상이면 이웃 셀을 건너뛴다(코드에서 clamp).")]
+        [Range(0f, 0.95f)]
         public float placementStickMargin = 0.3f;
         [Tooltip("타일 판정 갱신 주기(초). 이동 중에도 이 간격마다 현재 칸으로 스텝 갱신. ↓=더 자주(실시간에 가까움). 0=매 프레임.")]
         [Range(0f, 1f)]
         public float placementCommitInterval = 0.5f;
+        [Tooltip("끈적 액체 하이라이트 — 포커스 셀 하이라이트를 '고정 테두리 + 손가락 쪽으로 번지는 내부 액체'로 대체.\n" +
+                 "히스테리시스(margin)의 시각화: 번짐이 테두리를 넘으면 곧 옆 칸으로 전환된다는 예고.\n" +
+                 "끄면 기존 타일 하이라이트. 모양 튜닝 = PlacementLiquidTile.mat, 색 = TilemapMapView(liquid*).")]
+        public bool stickyBlobEnabled = true;
+
+        [Header("탭 배치 시뮬레이션 (defender-tap-to-place)")]
+        [Tooltip("탭 배치 D&D 시뮬 비행 기준 시간(초) — 화면 세로 1개만큼 이동 시 이 값. 실제는 tray→타일 화면거리(카메라 투영)에 비례(min~max 배 clamp).")]
+        [Range(0.2f, 5f)]
+        public float tapTravelDuration = 3f;
+        [Tooltip("거리 비례 비행시간 하한 배수(가까운 타일).")]
+        [Range(0.05f, 1f)]
+        public float tapTravelScaleMin = 0.25f;
+        [Tooltip("거리 비례 비행시간 상한 배수(먼 타일).")]
+        [Range(1f, 3f)]
+        public float tapTravelScaleMax = 1.5f;
+        [Tooltip("트레이 슬롯 arm(탭 선택) 하이라이트 색. 확정 팝 valid 색과 톤 맞춤.")]
+        public Color armHighlightColor = new Color(0.35f, 1f, 0.9f, 0.28f);
     }
 }

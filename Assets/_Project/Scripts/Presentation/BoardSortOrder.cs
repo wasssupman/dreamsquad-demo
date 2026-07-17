@@ -21,6 +21,9 @@ namespace Wassup.Presentation
         public const int DragPreviewOrder = 20000;
         // placement-cell-snap unit 4 — 배치 확정 팝: 상승한 overlay 하이라이트(10002) 위, 드래그 프리뷰(20000) 아래.
         public const int PlacementCommitPopOrder = 12000;
+        // placement-cell-snap unit 7 — 끈적함 블롭: overlay 하이라이트(10002) 위, 확정 팝(12000) 아래.
+        // 팝은 파열 순간의 이완이라 블롭보다 앞에 터져야 한다.
+        public const int PlacementBlobOrder = 11000;
 
         public static int Compute(int2 gridSize, int cellX, int cellY, int offset = 0)
             => (gridSize.y - cellY) * 10 + cellX + offset;

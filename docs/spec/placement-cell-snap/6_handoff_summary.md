@@ -21,6 +21,13 @@
 - EditMode 13/13 (`PlacementCellSnapTests` 8 + `PlacementSnapDebounceTests` 5). 컴파일 클린.
 - Play 검증(사용자): throttle 스텝·확정 팝·키링 스윙 복원·스큐 해소. 실측: 수평 스큐 0.4→0셀, 수직 스큐 0.25셀(현행 유지).
 
+## 사후 수정 (2026-07-17 critic 리뷰)
+
+- **릴리즈 우회**: `EndDrag` 가 `ResolveFocusAndTarget(0f, forceCommit:true)` 로 throttle 을 우회해 손가락 최종
+  칸(히스테리시스 통과)에 배치 — 빠른 드롭이 stale 칸에 배치되던 회귀 수정. throttle 은 드래그 중 표시 전용.
+- 커밋 꼬리 `CommitPlacementAt` 로 통일(EndDrag/탭 시뮬 공용), unit 5 의 시뮬 제외 분기 제거(dead code).
+  상세: `docs/spec/defender-tap-to-place/README.md` 리뷰 반영 기록.
+
 ## Notes (되돌리면 안 되는 의도)
 - **unit 2 재도입 금지**: 고스트를 셀에 스냅하면 키링 스윙이 사라진다. 스프링 타깃은 raw feet(손가락) 유지.
 - **판정 기준 = 손가락 위치**(`_unitTargetWorld`, 마우스 바로 아래), 흔들리는 유닛 위치 아님.
@@ -28,6 +35,6 @@
 - **모델 이력**: 셀-거리 게이트 → 속도 게이트 → settle(정지후) → **throttle(주기)** 로 수렴. `3_settle_to_commit.md` "해석 이력" 참조.
 
 ## Follow-up
-- **`defender-tap-to-place`**: 유닛 탭 선택 → 타일 탭 → D&D 시뮬레이션 배치. **spec README 작성됨(승인 대기), 미구현.** 본 spec(드래그 파이프라인)이 선행이었고 이제 커밋됨 → 착수 가능.
+- **`defender-tap-to-place`**: 유닛 탭 선택 → 타일 탭 → D&D 시뮬레이션 배치. **구현 완료·critic 리뷰 반영**(해당 spec README 참조), Play 최종 확인·커밋 대기.
 - 절대 오프셋(유닛이 손가락보다 ~3셀 아래)이 거슬리면 별도 논의(줄 길이 or 조준 습관). 스큐 아님.
 - 후속 후보: 드래그 유닛 반투명, 릴리즈 실패 복귀 애니+햅틱(README 참조).
