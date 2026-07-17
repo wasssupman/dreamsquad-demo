@@ -8,7 +8,7 @@ using Wassup.UI.Layout;
 
 namespace Wassup.UI
 {
-    // battle-hud-score-timer-menu Unit 1 — bottom-right combo dock. Top row shows the
+    // battle-hud-score-timer-menu Unit 1 — bottom-left combo dock. Top row shows the
     // match countdown (moved off the top-center, which the score now owns); bottom row
     // is the "NEXT WAVE {n}" / "NO WAVES" control that early-summons the next wave.
     //
@@ -147,14 +147,15 @@ namespace Wassup.UI
 
             var roots = UiCanvasSetup.Ensure(gameObject, sortingOrder: 7);
 
-            // Bottom-right container (inherits the old NextWave button anchor).
+            // Bottom-left container. The bottom-right safe corner belongs to the
+            // Dreamcatcher awakening talisman.
             _panel = new GameObject("DockPanel", typeof(RectTransform));
             _panel.transform.SetParent(roots.SafeAreaRoot, false);
             var prt = (RectTransform)_panel.transform;
-            prt.anchorMin = new Vector2(1f, 0f);
-            prt.anchorMax = new Vector2(1f, 0f);
-            prt.pivot = new Vector2(1f, 0f);
-            prt.anchoredPosition = new Vector2(-40f, 40f);
+            prt.anchorMin = new Vector2(0f, 0f);
+            prt.anchorMax = new Vector2(0f, 0f);
+            prt.pivot = new Vector2(0f, 0f);
+            prt.anchoredPosition = new Vector2(40f, 40f);
             prt.sizeDelta = new Vector2(250f, 150f);
 
             // Dimmed backing plate behind the timer + button rows (first child → behind).

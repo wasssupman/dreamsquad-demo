@@ -474,6 +474,7 @@ namespace Wassup.UI
         {
             if (State == HandState.Hand) return;
             State = HandState.Hand;
+            if (gaugeView != null) gaugeView.SetOpen(true);
             Refresh();
             // Battle slows while shopping; UI/interaction stay realtime.
             _slomoLease.Dispose();
@@ -490,6 +491,7 @@ namespace Wassup.UI
         {
             if (State == HandState.UnitStrip) return;
             State = HandState.UnitStrip;
+            if (gaugeView != null) gaugeView.SetOpen(false);
             StopDeal();
             CancelAllCardInteraction(); // drop any in-flight drag (no spend)
             // hand-drag-tooltip unit 1 — 닫힘 계열은 즉시 숨김(침강 중 형제 잔류 방지).
@@ -511,6 +513,7 @@ namespace Wassup.UI
             _slomoLease.Dispose();
             if (_flip != null) { StopCoroutine(_flip); _flip = null; }
             State = HandState.UnitStrip;
+            if (gaugeView != null) gaugeView.SetOpen(false);
             // 억제 해제는 무조건 — 표시 여부는 CostDisplay 가 페이즈와 결합해 결정.
             if (costDisplay != null) costDisplay.SetSuppressed(false);
             if (_panel != null)

@@ -1828,8 +1828,12 @@ MonoBehaviour:
   handController: {fileID: 2054561897}
   labelFont: {fileID: 11400000, guid: 218cce73e3172a04a8c536a4d368d90f, type: 2}
   numberFont: {fileID: 11400000, guid: 7f50de03946cd4d229e8920dd91dbd1a, type: 2}
-  backingColor: {r: 0.07, g: 0.05, b: 0.14, a: 0.88}
-  fillColor: {r: 0.62, g: 0.4, b: 1, a: 0.95}
+  dreamOrbFrameSprite: {fileID: 21300000, guid: c7b317b798a348499d23dfe3086b0aef, type: 3}
+  backingColor: {r: 0.07, g: 0.05, b: 0.14, a: 0.94}
+  fillColor: {r: 0.7, g: 0.43, b: 1, a: 1}
+  chargedColor: {r: 0.43, g: 0.92, b: 1, a: 1}
+  haloColor: {r: 0.56, g: 0.28, b: 1, a: 0.5}
+  dormantFrameColor: {r: 0.68, g: 0.65, b: 0.76, a: 0.78}
   valuePunchScale: 1.18
 --- !u!4 &1012444855
 Transform:

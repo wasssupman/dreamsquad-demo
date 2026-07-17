@@ -1,34 +1,49 @@
+using System.Collections;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using Wassup.Core;
 using Wassup.UI.Layout;
 
 namespace Wassup.UI
 {
-    // dreamcatcher-awakening-hand unit 5 — bottom-right awakening gauge: a
-    // button-shaped readout of the current awakening value. Clicking it emits
-    // Toggled; the hand view (unit 6) owns the actual strip↔hand flip state —
-    // this view holds no toggle state of its own.
-    //
-    // Runtime-built canvas (DefenderSelector/NextWaveDock pattern, zero prefabs).
-    // Sits directly ABOVE the NextWaveDock block (dock: -40,40 size 250x150).
-    // Shown alongside the placement strip (Placement entry → Result), matching
-    // spec unit 5 §6 — visible in Placement too; gaugeStart is the natural gate.
-    public class AwakeningGaugeView : MonoBehaviour
+    // awakening-hud-resource-button — bottom-right Dreamcatcher resource action.
+    // The exact reserve is the primary read; a continuous ring is only the ratio cue.
+    // Tapping emits Toggled while DreamcatcherHandView owns the actual hand state.
+    public class AwakeningGaugeView : MonoBehaviour, IPointerDownHandler, IPointerUpHandler
     {
         [SerializeField] private DreamcatcherHandController handController;
-        // In-battle Korean label font (Jua) + number font (Anton) — battle-ui-korean convention.
         [SerializeField] private TMP_FontAsset labelFont;
         [SerializeField] private TMP_FontAsset numberFont;
-        [SerializeField] private Color backingColor = new Color(0.07f, 0.05f, 0.14f, 0.88f);
-        [SerializeField] private Color fillColor = new Color(0.62f, 0.4f, 1f, 0.95f);
+
+        [Header("Casual Dream Orb")]
+        [SerializeField] private Sprite dreamOrbFrameSprite;
+        [SerializeField] private Color backingColor = new Color(0.07f, 0.05f, 0.14f, 0.94f);
+        [SerializeField] private Color fillColor = new Color(0.7f, 0.43f, 1f, 1f);
+        [SerializeField] private Color chargedColor = new Color(0.43f, 0.92f, 1f, 1f);
+        [SerializeField] private Color haloColor = new Color(0.56f, 0.28f, 1f, 0.5f);
+        [SerializeField] private Color dormantFrameColor = new Color(0.68f, 0.65f, 0.76f, 0.78f);
         [SerializeField] private float valuePunchScale = 1.18f;
 
         public event System.Action Toggled;
 
-        // hand-deal-in unit 2 — 손패 오픈 시 버튼이 반응(패널 punch + fill 발광). 덱-드로우
-        // 딜의 인과 힌트. unscaled(전투 슬로모에 안 눌림).
+        private GameObject _panel;
+        private TextMeshProUGUI _valueLabel;
+        private TextMeshProUGUI _actionLabel;
+        private TextMeshProUGUI _gainLabel;
+        private Image _halo;
+        private Image _frame;
+        private Image _chargeArc;
+        private bool _built;
+        private bool _open;
+        private int _lastShown = -1;
+        private float _normalized;
+        private Coroutine _punch;
+        private Coroutine _pulse;
+        private Coroutine _gain;
+        private Coroutine _pressRelease;
+
         public void Pulse()
         {
             if (_panel == null || !_panel.activeInHierarchy) return;
@@ -36,13 +51,26 @@ namespace Wassup.UI
             _pulse = StartCoroutine(PulseRoutine());
         }
 
-        private GameObject _panel;
-        private TextMeshProUGUI _valueLabel;
-        private Image _fill;
-        private bool _built;
-        private int _lastShown = -1;
-        private Coroutine _punch;
-        private Coroutine _pulse;
+        // HandView calls this at the same state boundary that owns slomo/strip switching.
+        public void SetOpen(bool open)
+        {
+            _open = open;
+            UpdateVisualState();
+        }
+
+        public void OnPointerDown(PointerEventData eventData)
+        {
+            if (_panel == null) return;
+            if (_pressRelease != null) StopCoroutine(_pressRelease);
+            _panel.transform.localScale = Vector3.one * 0.95f;
+        }
+
+        public void OnPointerUp(PointerEventData eventData)
+        {
+            if (_panel == null) return;
+            if (_pressRelease != null) StopCoroutine(_pressRelease);
+            _pressRelease = StartCoroutine(PressReleaseRoutine());
+        }
 
         private void Awake()
         {
@@ -54,8 +82,6 @@ namespace Wassup.UI
         {
             if (handController != null)
                 handController.GaugeChanged += OnGaugeChanged;
-            // gift-phase unit 3 — 노출을 PhaseChanged(Placement) 로 이관. 예전 PlacementRequested
-            // 는 이제 선물 페이즈 시작점이라 게이지가 선물 도중 튀어나온다.
             if (GameManager.Instance != null)
                 GameManager.Instance.PhaseChanged += OnPhaseChanged;
         }
@@ -66,20 +92,19 @@ namespace Wassup.UI
                 handController.GaugeChanged -= OnGaugeChanged;
             if (GameManager.Instance != null)
                 GameManager.Instance.PhaseChanged -= OnPhaseChanged;
+            if (_panel != null) _panel.transform.localScale = Vector3.one;
         }
 
         private void OnPhaseChanged(GamePhase phase)
         {
             if (_panel == null) return;
-            if (phase == GamePhase.Placement)
+            if (phase == GamePhase.Battle)
             {
-                // 선물 종료 후 배치 진입에서 노출.
                 _panel.SetActive(true);
                 Refresh(handController != null ? handController.Gauge : 0, punch: false);
             }
-            else if (phase != GamePhase.Battle)
+            else
             {
-                // Battle 은 유지(배치에서 켜진 상태), 그 외(None/Draft/Gift/Result)는 숨김.
                 _panel.SetActive(false);
             }
         }
@@ -91,24 +116,54 @@ namespace Wassup.UI
             if (_valueLabel == null) return;
             int max = handController != null ? handController.GaugeMax : 100;
             _valueLabel.text = value.ToString();
-            if (_fill != null) _fill.fillAmount = max > 0 ? (float)value / max : 0f;
+            _normalized = max > 0 ? Mathf.Clamp01((float)value / max) : 0f;
+            if (_chargeArc != null)
+            {
+                _chargeArc.fillAmount = _normalized;
+                _chargeArc.color = Color.Lerp(fillColor, chargedColor, _normalized);
+            }
+
+            int delta = _lastShown >= 0 ? value - _lastShown : 0;
             if (punch && value != _lastShown && _panel != null && _panel.activeInHierarchy)
             {
                 if (_punch != null) StopCoroutine(_punch);
                 _punch = StartCoroutine(PunchValue());
+                if (delta > 0)
+                {
+                    if (_gain != null) StopCoroutine(_gain);
+                    _gain = StartCoroutine(ShowGain(delta));
+                }
             }
             _lastShown = value;
+            UpdateVisualState();
         }
 
-        private System.Collections.IEnumerator PunchValue()
+        private void UpdateVisualState()
+        {
+            bool dormant = _normalized <= 0.001f && !_open;
+            if (_frame != null)
+                _frame.color = dormant ? dormantFrameColor : Color.white;
+            if (_halo != null)
+            {
+                var c = haloColor;
+                c.a *= dormant ? 0f : (_open ? 1f : Mathf.Lerp(0.2f, 0.72f, _normalized));
+                _halo.color = c;
+            }
+            if (_actionLabel != null)
+                _actionLabel.color = dormant
+                    ? new Color(0.67f, 0.64f, 0.75f, 0.9f)
+                    : (_open ? chargedColor : Color.white);
+        }
+
+        private IEnumerator PunchValue()
         {
             var rt = _valueLabel.rectTransform;
-            const float dur = 0.16f;
-            float t = 0f;
-            while (t < dur)
+            const float duration = 0.16f;
+            float time = 0f;
+            while (time < duration)
             {
-                t += Time.unscaledDeltaTime; // UI must not slow under battle slomo
-                float k = 1f - Mathf.Abs(2f * Mathf.Clamp01(t / dur) - 1f); // up then down
+                time += Time.unscaledDeltaTime;
+                float k = 1f - Mathf.Abs(2f * Mathf.Clamp01(time / duration) - 1f);
                 rt.localScale = Vector3.one * Mathf.Lerp(1f, valuePunchScale, k);
                 yield return null;
             }
@@ -116,23 +171,66 @@ namespace Wassup.UI
             _punch = null;
         }
 
-        private System.Collections.IEnumerator PulseRoutine()
+        private IEnumerator ShowGain(int delta)
+        {
+            if (_gainLabel == null) yield break;
+            const float duration = 0.58f;
+            var rt = _gainLabel.rectTransform;
+            Vector2 start = new Vector2(63f, 26f);
+            Vector2 end = new Vector2(63f, 66f);
+            _gainLabel.text = $"+{delta}";
+            _gainLabel.gameObject.SetActive(true);
+            float time = 0f;
+            while (time < duration)
+            {
+                time += Time.unscaledDeltaTime;
+                float k = Mathf.Clamp01(time / duration);
+                rt.anchoredPosition = Vector2.Lerp(start, end, 1f - (1f - k) * (1f - k));
+                var c = chargedColor;
+                c.a = 1f - Mathf.Clamp01((k - 0.5f) * 2f);
+                _gainLabel.color = c;
+                yield return null;
+            }
+            _gainLabel.gameObject.SetActive(false);
+            _gain = null;
+        }
+
+        private IEnumerator PulseRoutine()
         {
             var rt = (RectTransform)_panel.transform;
-            const float dur = 0.22f;
-            float t = 0f;
-            Color baseFill = _fill != null ? _fill.color : default;
-            while (t < dur)
+            const float duration = 0.22f;
+            float time = 0f;
+            Color baseHalo = _halo != null ? _halo.color : default;
+            while (time < duration)
             {
-                t += Time.unscaledDeltaTime; // UI must not slow under battle slomo
-                float k = 1f - Mathf.Abs(2f * Mathf.Clamp01(t / dur) - 1f); // up then down
-                rt.localScale = Vector3.one * Mathf.Lerp(1f, 1.12f, k);
-                if (_fill != null) _fill.color = Color.Lerp(baseFill, Color.white, k * 0.6f);
+                time += Time.unscaledDeltaTime;
+                float k = 1f - Mathf.Abs(2f * Mathf.Clamp01(time / duration) - 1f);
+                rt.localScale = Vector3.one * Mathf.Lerp(1f, 1.08f, k);
+                if (_halo != null) _halo.color = Color.Lerp(baseHalo, Color.white, k * 0.45f);
                 yield return null;
             }
             rt.localScale = Vector3.one;
-            if (_fill != null) _fill.color = baseFill;
+            if (_halo != null) _halo.color = baseHalo;
             _pulse = null;
+        }
+
+        private IEnumerator PressReleaseRoutine()
+        {
+            var rt = (RectTransform)_panel.transform;
+            const float duration = 0.13f;
+            float time = 0f;
+            while (time < duration)
+            {
+                time += Time.unscaledDeltaTime;
+                float k = Mathf.Clamp01(time / duration);
+                float scale = k < 0.6f
+                    ? Mathf.Lerp(0.95f, 1.035f, k / 0.6f)
+                    : Mathf.Lerp(1.035f, 1f, (k - 0.6f) / 0.4f);
+                rt.localScale = Vector3.one * scale;
+                yield return null;
+            }
+            rt.localScale = Vector3.one;
+            _pressRelease = null;
         }
 
         private void BuildCanvas()
@@ -142,86 +240,130 @@ namespace Wassup.UI
 
             var roots = UiCanvasSetup.Ensure(gameObject, sortingOrder: 7);
 
-            // Bottom-right, stacked above the NextWaveDock block (dock top ≈ y 200).
+            // The 244px hit area stays inside the safe corner; visible art is 220px.
             _panel = new GameObject("AwakeningPanel", typeof(RectTransform), typeof(Image), typeof(Button));
             _panel.transform.SetParent(roots.SafeAreaRoot, false);
-            var prt = (RectTransform)_panel.transform;
-            prt.anchorMin = new Vector2(1f, 0f);
-            prt.anchorMax = new Vector2(1f, 0f);
-            prt.pivot = new Vector2(1f, 0f);
-            prt.anchoredPosition = new Vector2(-40f, 220f);
-            prt.sizeDelta = new Vector2(250f, 96f);
+            var panelRect = (RectTransform)_panel.transform;
+            panelRect.anchorMin = panelRect.anchorMax = new Vector2(1f, 0f);
+            panelRect.pivot = new Vector2(1f, 0f);
+            panelRect.anchoredPosition = new Vector2(-24f, 20f);
+            panelRect.sizeDelta = new Vector2(244f, 244f);
 
-            var backing = _panel.GetComponent<Image>();
-            backing.color = backingColor;
+            var hitGraphic = _panel.GetComponent<Image>();
+            hitGraphic.color = new Color(1f, 1f, 1f, 0.001f);
             var button = _panel.GetComponent<Button>();
+            button.transition = Selectable.Transition.None;
             button.onClick.AddListener(() =>
             {
-                Wassup.Core.SoundManager.Instance?.PlayUiTick(); // deck-sfx — 게이지 버튼 틱
+                SoundManager.Instance?.PlayUiTick();
                 Toggled?.Invoke();
             });
 
-            // Radial-less horizontal fill bar along the bottom edge.
-            var fillBg = new GameObject("FillBg", typeof(RectTransform), typeof(Image));
-            fillBg.transform.SetParent(_panel.transform, false);
-            var fbrt = (RectTransform)fillBg.transform;
-            fbrt.anchorMin = new Vector2(0f, 0f);
-            fbrt.anchorMax = new Vector2(1f, 0f);
-            fbrt.pivot = new Vector2(0.5f, 0f);
-            fbrt.offsetMin = new Vector2(8f, 8f);
-            fbrt.offsetMax = new Vector2(-8f, 20f);
-            var fbimg = fillBg.GetComponent<Image>();
-            fbimg.color = new Color(1f, 1f, 1f, 0.12f);
-            fbimg.raycastTarget = false;
+            var haloGO = CreateImage("DreamGlow", _panel.transform, new Vector2(0f, 3f), new Vector2(190f, 190f));
+            _halo = haloGO.GetComponent<Image>();
+            _halo.sprite = UiRoundedSprite.MakeCircle(96, Color.white);
+            _halo.color = Color.clear;
 
-            var fillGO = new GameObject("Fill", typeof(RectTransform), typeof(Image));
-            fillGO.transform.SetParent(fillBg.transform, false);
-            var frt = (RectTransform)fillGO.transform;
-            frt.anchorMin = Vector2.zero;
-            frt.anchorMax = Vector2.one;
-            frt.offsetMin = Vector2.zero;
-            frt.offsetMax = Vector2.zero;
-            _fill = fillGO.GetComponent<Image>();
-            _fill.color = fillColor;
-            _fill.raycastTarget = false;
-            _fill.type = Image.Type.Filled;
-            _fill.fillMethod = Image.FillMethod.Horizontal;
-            _fill.fillAmount = 0f;
+            var frameGO = CreateImage("DreamOrbFrame", _panel.transform, Vector2.zero, new Vector2(220f, 220f));
+            _frame = frameGO.GetComponent<Image>();
+            _frame.sprite = dreamOrbFrameSprite != null
+                ? dreamOrbFrameSprite
+                : UiRoundedSprite.MakeCircle(128, backingColor, 7f, new Color(1f, 0.72f, 0.25f, 1f));
+            _frame.preserveAspect = true;
+            button.targetGraphic = _frame;
 
-            // "각성" label (top-left) — in-match vocabulary, no "카드/코스트" terms.
-            var labelGO = new GameObject("Label", typeof(RectTransform));
-            labelGO.transform.SetParent(_panel.transform, false);
-            var lrt = (RectTransform)labelGO.transform;
-            lrt.anchorMin = new Vector2(0f, 1f);
-            lrt.anchorMax = new Vector2(0f, 1f);
-            lrt.pivot = new Vector2(0f, 1f);
-            lrt.anchoredPosition = new Vector2(12f, -8f);
-            lrt.sizeDelta = new Vector2(110f, 34f);
-            var label = labelGO.AddComponent<TextMeshProUGUI>();
-            if (labelFont != null) label.font = labelFont;
-            label.text = "각성";
-            label.fontSize = 26;
-            label.color = new Color(1f, 1f, 1f, 0.85f);
-            label.alignment = TextAlignmentOptions.TopLeft;
-            label.raycastTarget = false;
+            // A filled disc plus opaque inner cover forms a continuous radial ring.
+            var trackGO = CreateImage("ChargeTrack", _panel.transform, new Vector2(0f, 3f), new Vector2(144f, 144f));
+            var track = trackGO.GetComponent<Image>();
+            track.sprite = UiRoundedSprite.MakeCircle(112, Color.white);
+            track.color = new Color(0.21f, 0.16f, 0.35f, 0.8f);
 
-            // Big number (right side).
+            var arcGO = CreateImage("ChargeArc", _panel.transform, new Vector2(0f, 3f), new Vector2(144f, 144f));
+            _chargeArc = arcGO.GetComponent<Image>();
+            _chargeArc.sprite = track.sprite;
+            _chargeArc.type = Image.Type.Filled;
+            _chargeArc.fillMethod = Image.FillMethod.Radial360;
+            _chargeArc.fillOrigin = (int)Image.Origin360.Bottom;
+            _chargeArc.fillClockwise = true;
+            _chargeArc.fillAmount = 0f;
+            _chargeArc.color = fillColor;
+
+            var coreGO = CreateImage("NumberCore", _panel.transform, new Vector2(0f, 3f), new Vector2(124f, 124f));
+            var core = coreGO.GetComponent<Image>();
+            core.sprite = UiRoundedSprite.MakeCircle(112, Color.white);
+            core.color = backingColor;
+
             var valueGO = new GameObject("Value", typeof(RectTransform));
             valueGO.transform.SetParent(_panel.transform, false);
-            var vrt = (RectTransform)valueGO.transform;
-            vrt.anchorMin = new Vector2(0f, 0f);
-            vrt.anchorMax = new Vector2(1f, 1f);
-            vrt.offsetMin = new Vector2(8f, 20f);
-            vrt.offsetMax = new Vector2(-12f, -6f);
+            var valueRect = (RectTransform)valueGO.transform;
+            valueRect.anchorMin = valueRect.anchorMax = new Vector2(0.5f, 0.5f);
+            valueRect.anchoredPosition = new Vector2(0f, 13f);
+            valueRect.sizeDelta = new Vector2(144f, 82f);
             _valueLabel = valueGO.AddComponent<TextMeshProUGUI>();
             if (numberFont != null) _valueLabel.font = numberFont;
             _valueLabel.text = "0";
-            _valueLabel.fontSize = 46;
+            _valueLabel.fontSize = 72f;
+            _valueLabel.fontStyle = FontStyles.Bold;
             _valueLabel.color = Color.white;
-            _valueLabel.alignment = TextAlignmentOptions.MidlineRight;
+            _valueLabel.alignment = TextAlignmentOptions.Center;
             _valueLabel.raycastTarget = false;
+            ApplyNumberOutline(_valueLabel);
+
+            var actionGO = new GameObject("Action", typeof(RectTransform));
+            actionGO.transform.SetParent(_panel.transform, false);
+            var actionRect = (RectTransform)actionGO.transform;
+            actionRect.anchorMin = actionRect.anchorMax = new Vector2(0.5f, 0.5f);
+            actionRect.anchoredPosition = new Vector2(0f, -42f);
+            actionRect.sizeDelta = new Vector2(132f, 28f);
+            _actionLabel = actionGO.AddComponent<TextMeshProUGUI>();
+            if (labelFont != null) _actionLabel.font = labelFont;
+            _actionLabel.text = "드림캐쳐";
+            _actionLabel.fontSize = 19f;
+            _actionLabel.fontStyle = FontStyles.Bold;
+            _actionLabel.color = Color.white;
+            _actionLabel.alignment = TextAlignmentOptions.Center;
+            _actionLabel.raycastTarget = false;
+
+            var gainGO = new GameObject("GainDelta", typeof(RectTransform));
+            gainGO.transform.SetParent(_panel.transform, false);
+            var gainRect = (RectTransform)gainGO.transform;
+            gainRect.anchorMin = gainRect.anchorMax = new Vector2(0.5f, 0.5f);
+            gainRect.anchoredPosition = new Vector2(63f, 26f);
+            gainRect.sizeDelta = new Vector2(90f, 44f);
+            _gainLabel = gainGO.AddComponent<TextMeshProUGUI>();
+            if (numberFont != null) _gainLabel.font = numberFont;
+            _gainLabel.fontSize = 28f;
+            _gainLabel.fontStyle = FontStyles.Bold;
+            _gainLabel.alignment = TextAlignmentOptions.Center;
+            _gainLabel.raycastTarget = false;
+            ApplyNumberOutline(_gainLabel);
+            gainGO.SetActive(false);
 
             UiLayer.Apply(gameObject);
+            UpdateVisualState();
+        }
+
+        private static GameObject CreateImage(string name, Transform parent, Vector2 position, Vector2 size)
+        {
+            var go = new GameObject(name, typeof(RectTransform), typeof(Image));
+            go.transform.SetParent(parent, false);
+            var rect = (RectTransform)go.transform;
+            rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = position;
+            rect.sizeDelta = size;
+            go.GetComponent<Image>().raycastTarget = false;
+            return go;
+        }
+
+        private static void ApplyNumberOutline(TextMeshProUGUI label)
+        {
+            if (label.font == null) return;
+            var material = label.fontMaterial;
+            material.SetColor(ShaderUtilities.ID_OutlineColor, new Color(0.11f, 0.04f, 0.22f, 1f));
+            material.SetFloat(ShaderUtilities.ID_OutlineWidth, 0.2f);
+            material.SetFloat(ShaderUtilities.ID_UnderlayOffsetX, 0.35f);
+            material.SetFloat(ShaderUtilities.ID_UnderlayOffsetY, -0.35f);
+            material.SetColor(ShaderUtilities.ID_UnderlayColor, new Color(0.04f, 0.01f, 0.1f, 0.8f));
         }
     }
 }

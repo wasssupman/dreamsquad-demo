@@ -18,7 +18,7 @@ namespace Wassup.UI
         // 필드 제거.
         [SerializeField] private GameManager gameManager;
 
-        // ingame-ui-upgrade unit 0 — START 버튼을 우하단(dock 코너)으로 이동 + 캐주얼
+        // ingame-ui-upgrade unit 0 — START 버튼을 우하단(dock 코너)에 배치 + 캐주얼
         // 배경 그래픽 슬롯. startButtonBackground 할당 시 그 스프라이트, 비면 UiRoundedSprite
         // 절차 플레이트(다크 네이비 + 골드 테두리) 폴백. 실제 그래픽은 unit 1(Codex).
         [Header("Start button (casual bg image + TMP label)")]
@@ -165,9 +165,9 @@ namespace Wassup.UI
             _countdownLabel.color = Color.yellow;
             _countdownLabel.alignment = TextAlignmentOptions.Center;
 
-            // Bottom-right START BATTLE button — sits in the same corner the battle-phase
-            // NextWaveDock later occupies (placement/battle are exclusive phases, so no
-            // visual clash). A pulsing gold aura + idle breathing pull the eye to the
+            // Bottom-right START BATTLE button. Awakening stays hidden during Placement,
+            // so this remains the phase's only primary corner action. A pulsing gold aura
+            // + idle breathing pull the eye to the
             // corner; background is the casual graphic if assigned, else a procedural
             // amber+gold plate fallback.
             const float btnW = 280f, btnH = 104f;
@@ -180,7 +180,7 @@ namespace Wassup.UI
             wrapRt.anchorMin = new Vector2(1f, 0f);
             wrapRt.anchorMax = new Vector2(1f, 0f);
             wrapRt.pivot = new Vector2(1f, 0f);
-            wrapRt.anchoredPosition = new Vector2(-40f, 40f); // aligns with NextWaveDock corner
+            wrapRt.anchoredPosition = new Vector2(-40f, 40f);
             wrapRt.sizeDelta = new Vector2(btnW, btnH);
 
             // Pulsing gold aura behind the button (centered, larger; scale/alpha animate).
