@@ -42,5 +42,7 @@ public struct DeployedFacing : IComponentData { public int2 value; } // cardinal
 
 ## 완료 기준
 
-- [ ] compile 통과, 기존 EditMode/PlayMode 테스트 회귀 없음
-- [ ] 기존 유닛(비 directional) 배치·전투 Play 스모크 무변화 — 신규 필드 기본값이 현행 동작과 동일함을 확인
+- [x] compile 통과, 기존 EditMode/PlayMode 테스트 회귀 없음
+- [x] 기존 유닛(비 directional) 배치·전투 Play 스모크 무변화 — 신규 필드 기본값이 현행 동작과 동일함을 확인
+
+확인 2026-07-17 — compile 클린 · EditMode 896/894 green(실패 0) · 신규 필드/enum/오버로드 소비처 0 으로 기존 경로 구조적 무변화(Play 스모크 대체 근거, 리뷰어 grep 교차 확인) · 리뷰 통과(MED 1 = 커밋 격리, 준수) · 커밋 98cf377b
