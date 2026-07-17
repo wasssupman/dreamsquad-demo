@@ -1,0 +1,95 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7d6648c9dfafd44cb8ce28bc0507242b, type: 3}
+  m_Name: Defender_MachineGunner
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DefenderUnitData
+  id: machine_gunner
+  role: 1
+  displayName: "\uBA38\uC2E0\uAC70\uB108"
+  health: 420
+  attackRange: 5
+  attackCooldown: 1.6
+  hitDelaySec: 0
+  deployDelaySec: 0
+  attackTargetCount: 1
+  visualMesh: {fileID: 0}
+  visualMaterial: {fileID: 2100000, guid: a1b2c3d4e5f601234567890abcdef105, type: 2}
+  deployVoiceClip: {fileID: 8300000, guid: 031ffe29fcaab4982b6e3a97bf3e53d6, type: 3}
+  projectile: {fileID: 11400000, guid: 751ce360577b748b7985cb3e375a2cd1, type: 2}
+  outputs:
+  - kind: 0
+    magnitude: 8
+    duration: 0
+    stat: 0
+    op: 0
+    stackKind: 0
+    stackMaxStack: 0
+  onPlaceEffect: 5
+  onPlaceRange: 6
+  onPlaceMagnitude: 70
+  onPlaceDuration: 0
+  cost: 3
+  targetAllies: 0
+  directionalAttack: 1
+  shotCount: 10
+  shotIntervalSec: 0.1
+  spreadAngleDeg: 0
+  hazardCastEnabled: 0
+  hazardCastRange: 0
+  hazardCastCooldown: 0
+  hazardCastKind: 0
+  zoneHazard: {fileID: 0}
+  blockingHazard: {fileID: 0}
+  hazardFootprintWidth: 1
+  hazardFootprintHeight: 1
+  rarity: 0
+  portrait: {fileID: 21300000, guid: 0880bdc87b652064296dca36cb7638e3, type: 3}
+  aggroCapacity: 0
+  skeletonDataAsset: {fileID: 11400000, guid: ee98f82138b60430f97c6863317c3a2f, type: 2}
+  spineSkinName: full_skins
+  idleAnimation: Idle
+  attackAnimation: Attack3
+  deathAnimation: Die
+  spineVisualScale: 1.3
+  partSkins:
+  - boots/boots_c_16
+  - bottom/bottom_c_50
+  - brow/brow_c_7
+  - eyes/eyes_c_17
+  - gloves/gloves_c_13
+  - hair_hat/hair_hat_c_15
+  - helmet/helmet_c_55
+  - mouth/mouth_c_6
+  - gear_right/gear_right_c_38
+  - top/top_c_18
+  - skin/skin_1
+  slotColors: []
+  dragAnimation: Attack1
+  deployAnimation: Hit
+  placementVfxPrefab: {fileID: 4060967071236614201, guid: c91958420bcc8d647ae19c0e7caeafa6, type: 3}
+  attackVfxPrefab: {fileID: 0}
+  deployCutsceneFrames: []
+  deployCutsceneFps: 24
+  deployCutsceneScale: 1
+  deployCutsceneOffset: {x: 0, y: 0}
+  deployCutsceneDepth: []
+  deployCutsceneTiltGain: 1
+  knockbackDistance: 0
+  knockbackDuration: 0
+  onPlacePushDistance: 0
+  onPlacePushDuration: 0
+  onPlacePushRadius: 0
+  castAnchorBone: WEAPON
+  castAnchorLocalOffset: {x: 0.5, y: 1, z: 0}
+  deploymentDuration: 0.45
+  placementSkillDelay: 0
+  awakeningReward: 4
