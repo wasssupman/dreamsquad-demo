@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Wassup.Data
 {
@@ -57,7 +58,8 @@ namespace Wassup.Data
         [Tooltip("끈적 액체 하이라이트 — 포커스 셀 하이라이트를 '고정 테두리 + 손가락 쪽으로 번지는 내부 액체'로 대체.\n" +
                  "히스테리시스(margin)의 시각화: 번짐이 테두리를 넘으면 곧 옆 칸으로 전환된다는 예고.\n" +
                  "끄면 기존 타일 하이라이트. 모양 튜닝 = PlacementLiquidTile.mat, 색 = TilemapMapView(liquid*).")]
-        public bool stickyBlobEnabled = true;
+        [FormerlySerializedAs("stickyBlobEnabled")]
+        public bool stickyLiquidEnabled = true;
 
         [Header("탭 배치 시뮬레이션 (defender-tap-to-place)")]
         [Tooltip("탭 배치 D&D 시뮬 비행 기준 시간(초) — 화면 세로 1개만큼 이동 시 이 값. 실제는 tray→타일 화면거리(카메라 투영)에 비례(min~max 배 clamp).")]

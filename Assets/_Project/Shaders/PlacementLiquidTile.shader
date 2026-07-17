@@ -79,7 +79,7 @@ Shader "Wassup/PlacementLiquidTile"
 
             half4 frag (Varyings IN) : SV_Target
             {
-                float2 p = (IN.uv - 0.5) * _QuadCells;    // 1 단위 = 1 셀. 쿼드 크기는 C#(BlobQuadCells)과 동기 —
+                float2 p = (IN.uv - 0.5) * _QuadCells;    // 1 단위 = 1 셀. 쿼드 크기는 C#(LiquidQuadCells)과 동기 —
                                                           // 캔버스가 좁으면 혀가 쿼드 가장자리에서 칼로 잘린다.
                 float t = clamp(_Pull.z, 0.0, 1.2);       // 1.2 까지 허용 — 스프링 오버슈트(출렁)가 보이게
                 float2 dir = _Pull.xy;

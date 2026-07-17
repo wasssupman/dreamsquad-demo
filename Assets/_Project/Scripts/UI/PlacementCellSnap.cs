@@ -41,8 +41,8 @@ namespace Wassup.UI
                 Mathf.Clamp(cy, 0, Mathf.Max(0, gridSize.y - 1)));
         }
 
-        // unit 7 — 끈적함 블롭용 신호. **Resolve 와 같은 파일·같은 밴드·같은 clamp** 를 쓰는 게 load-bearing:
-        // 분모가 드리프트하면 "블롭은 안 끊긴 척인데 이미 넘어감"(프리뷰가 거짓말)이 된다.
+        // unit 7 — 끈적 액체 하이라이트용 신호. **Resolve 와 같은 파일·같은 밴드·같은 clamp** 를 쓰는 게 load-bearing:
+        // 분모가 드리프트하면 "액체는 안 끊긴 척인데 이미 넘어감"(프리뷰가 거짓말)이 된다.
         //   dir = 당기는 방향(정규화), t = 0(중심) ~ 1(파열 직전)
         // ★ t 는 **체비쇼프**(축별 max)다 — Resolve 의 밴드가 축별 독립(박스)이라 파열은
         //   max(|dx|,|dy|) ≥ 0.5+margin 에서 일어난다. 유클리드로 재면 대각선에서 t 가 1 에 못 미친 채

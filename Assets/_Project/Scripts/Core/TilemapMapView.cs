@@ -61,17 +61,17 @@ namespace Wassup.Core
         private SpriteRenderer _commitPop;
         private Coroutine _commitPopCo;
         private static Sprite _popSprite;
-        // placement-cell-snap unit 7 — 끈적함 블롭: 상주형 SpriteRenderer(팝과 동일 시드).
+        // placement-cell-snap unit 7 rev — 끈적 액체 하이라이트: 상주형 SpriteRenderer(확정 팝과 동일 PopSprite 쿼드 시드).
         // 렌더 = PopSprite 쿼드 + PlacementLiquidTile 셰이더 인스턴스 머티리얼(원본 .mat 비오염).
-        private SpriteRenderer _blob;
-        private Material _blobMat;
-        private bool _blobMatMissing; // 미배선 경고 1회 게이트
+        private SpriteRenderer _liquidTile;
+        private Material _liquidTileMat;
+        private bool _liquidTileMatMissing; // 미배선 경고 1회 게이트
         // 점액 관성 — 표시용 당김 벡터(dir×t)를 스프링으로 지연/출렁. 신호(정책)는 그대로, 시각만 늦는다.
         private Vector2 _pullSmoothed;
         private Vector2 _pullVel;
         // 쿼드 한 변(셀 배수). 혀 최대 도달 = reach×t^pow + 방울반지름×신장 ≈ 오버슈트(1.2)에서 1.9셀 —
         // 캔버스(±절반)가 이보다 좁으면 옆 타일 위에서 칼로 잘린다. 셰이더 _QuadCells 와 동기(여기가 단일 소스).
-        private const float BlobQuadCells = 4f;
+        private const float LiquidQuadCells = 4f;
         private static readonly int PullId = Shader.PropertyToID("_Pull");
         private static readonly int BorderColorId = Shader.PropertyToID("_BorderColor");
         private static readonly int FillColorId = Shader.PropertyToID("_FillColor");
@@ -131,9 +131,9 @@ namespace Wassup.Core
             StopAllFlashes();
             if (_commitPopCo != null) { StopCoroutine(_commitPopCo); _commitPopCo = null; }
             if (_commitPop != null) { SafeDestroy(_commitPop.gameObject); _commitPop = null; } // grid 자식 → 맵 리빌드 시 함께 정리
-            if (_blob != null) { SafeDestroy(_blob.gameObject); _blob = null; } // unit 7 — 액체 하이라이트도 동일
-            if (_blobMat != null) { SafeDestroy(_blobMat); _blobMat = null; }
-            _blobMatMissing = false; // 맵 리빌드 시 tileSet 이 바뀔 수 있으니 재시도 허용
+            if (_liquidTile != null) { SafeDestroy(_liquidTile.gameObject); _liquidTile = null; } // unit 7 — 액체 하이라이트도 동일
+            if (_liquidTileMat != null) { SafeDestroy(_liquidTileMat); _liquidTileMat = null; }
+            _liquidTileMatMissing = false; // 맵 리빌드 시 tileSet 이 바뀔 수 있으니 재시도 허용
             _hoverCells.Clear();
             if (groundTilemap != null) groundTilemap.ClearAllTiles();
             if (overlayTilemap != null) overlayTilemap.ClearAllTiles();
@@ -399,8 +399,8 @@ namespace Wassup.Core
         public void SetPlacementStretch(Vector2Int cell, Vector2 dir, float t, bool valid)
         {
             if (grid == null) return;
-            var sr = EnsureBlob();
-            if (sr == null) return; // 머티리얼 미배선 — EnsureBlob 이 1회 경고
+            var sr = EnsureLiquidTile();
+            if (sr == null) return; // 머티리얼 미배선 — EnsureLiquidTile 이 1회 경고
             t = Mathf.Clamp01(t);
             float cs = grid.cellSize.x; // rect 보드·균일 cellSize 전제(ConfigureGrid)
 
@@ -424,44 +424,44 @@ namespace Wassup.Core
             var local = grid.CellToLocalInterpolated(new Vector3(cell.x + 0.5f, cell.y + 0.5f, 0f));
             local.z = -PropGroundLift;
             sr.transform.localPosition = local;
-            sr.transform.localScale = new Vector3(BlobQuadCells * cs, BlobQuadCells * cs, 1f);
-            _blobMat.SetVector(PullId, new Vector4(dirS.x, dirS.y, tS, 0f));
-            _blobMat.SetColor(BorderColorId, valid ? liquidValidBorder : liquidInvalidBorder);
-            _blobMat.SetColor(FillColorId, valid ? liquidValidFill : liquidInvalidFill);
+            sr.transform.localScale = new Vector3(LiquidQuadCells * cs, LiquidQuadCells * cs, 1f);
+            _liquidTileMat.SetVector(PullId, new Vector4(dirS.x, dirS.y, tS, 0f));
+            _liquidTileMat.SetColor(BorderColorId, valid ? liquidValidBorder : liquidInvalidBorder);
+            _liquidTileMat.SetColor(FillColorId, valid ? liquidValidFill : liquidInvalidFill);
             if (!sr.gameObject.activeSelf) sr.gameObject.SetActive(true);
         }
 
         public void ClearPlacementStretch()
         {
-            if (_blob != null) _blob.gameObject.SetActive(false);
+            if (_liquidTile != null) _liquidTile.gameObject.SetActive(false);
         }
 
-        private SpriteRenderer EnsureBlob()
+        private SpriteRenderer EnsureLiquidTile()
         {
-            if (_blob != null) return _blob;
-            if (_blobMatMissing) return null;
+            if (_liquidTile != null) return _liquidTile;
+            if (_liquidTileMatMissing) return null;
             var srcMat = _tileSet != null ? _tileSet.placementLiquidMaterial : null;
             if (srcMat == null)
             {
                 // 에디터 한정 폴백 없이 명시 실패 — Shader.Find 폴백은 기기 빌드에서만 조용히 죽는다(2026-07-15 사고).
                 Debug.LogWarning("TilemapMapView: TileSetData.placementLiquidMaterial 미할당 — 액체 하이라이트 생략. " +
                                  "PlacementLiquidTile.mat 을 tileSet 에 배선할 것.", this);
-                _blobMatMissing = true;
+                _liquidTileMatMissing = true;
                 return null;
             }
-            _blobMat = new Material(srcMat); // 인스턴스 — 에셋 원본을 런타임 파라미터로 오염시키지 않는다
-            _blobMat.SetFloat(QuadCellsId, BlobQuadCells); // 쿼드 크기 ↔ 셰이더 매핑 단일 소스 동기
+            _liquidTileMat = new Material(srcMat); // 인스턴스 — 에셋 원본을 런타임 파라미터로 오염시키지 않는다
+            _liquidTileMat.SetFloat(QuadCellsId, LiquidQuadCells); // 쿼드 크기 ↔ 셰이더 매핑 단일 소스 동기
             var go = new GameObject("PlacementLiquidTile");
             go.transform.SetParent(grid.transform, false); // grid 자식 → 타일과 코플레이너. 회전 없음(테두리 축 정렬).
             go.transform.localRotation = Quaternion.identity;
-            _blob = go.AddComponent<SpriteRenderer>();
-            _blob.sprite = PopSprite(); // 1×1 흰 full-rect — 모양은 전부 셰이더 SDF
-            _blob.sharedMaterial = _blobMat;
-            _blob.sortingOrder = BoardSortOrder.PlacementBlobOrder;
+            _liquidTile = go.AddComponent<SpriteRenderer>();
+            _liquidTile.sprite = PopSprite(); // 1×1 흰 full-rect — 모양은 전부 셰이더 SDF
+            _liquidTile.sharedMaterial = _liquidTileMat;
+            _liquidTile.sortingOrder = BoardSortOrder.PlacementLiquidOrder;
             var overlayR = overlayTilemap != null ? overlayTilemap.GetComponent<TilemapRenderer>() : null;
-            if (overlayR != null) _blob.sortingLayerID = overlayR.sortingLayerID;
+            if (overlayR != null) _liquidTile.sortingLayerID = overlayR.sortingLayerID;
             go.SetActive(false);
-            return _blob;
+            return _liquidTile;
         }
 
         // defender-directional-volley unit 9 — 방향 지정 화살표. 보드에 눕는 탭 어포던스라

@@ -43,19 +43,16 @@
 - EditMode 20 (snap 15 + debounce 5). 튜닝: 모양=`PlacementLiquidTile.mat`, 팔레트/관성=TilemapMapView,
   토글=`stickyBlobEnabled`, 끈적함=`placementStickMargin`(에셋 0.81, interval 0 — 사용자 라이브 튜닝값).
 
-## 네이밍 정리 대기 (2026-07-18 리뷰 — 볼리 세션 착지 후 1회 clean 커밋)
+## 네이밍 정리 완료 (2026-07-18, 볼리 착지 후 1회 clean 커밋)
 
-리뷰 결과 죽은 코드·고아·불필요한 통로는 **없음**(베이크 프레임 전량 삭제·자산 고아 0·API 전부 호출됨·
-수명 누수 0·셰이더 미사용 프로퍼티 0). 유일한 부채 = blob→liquid **네이밍 드리프트**(cosmetic).
-지금 미실행 이유: 대상 파일들(`DragSwaySettings.cs`·`TilemapMapView.cs`·`BoardSortOrder.cs`)을 병행 볼리
-세션이 편집 중 → rename 하면 hunk 재엉킴. **볼리 착지로 워크트리 클린 확인 후** 아래를 한 커밋으로:
+리뷰 결과 죽은 코드·고아·불필요한 통로는 **없었음**(베이크 프레임 전량 삭제·자산 고아 0·API 전부 호출됨·
+수명 누수 0·셰이더 미사용 프로퍼티 0). 유일한 부채였던 blob→liquid 네이밍 드리프트를 볼리 착지 후 정리:
 
-- `_blob`→`_liquidTile` · `_blobMat`→`_liquidMat` · `_blobMatMissing`→`_liquidMatMissing` (TilemapMapView)
-- `EnsureBlob`→`EnsureLiquidTile` · `BlobQuadCells`→`LiquidQuadCells` (TilemapMapView, 셰이더 주석의 "BlobQuadCells"도)
-- `PlacementBlobOrder`→`PlacementLiquidOrder` (BoardSortOrder 선언 + TilemapMapView 참조 1곳)
-- `stickyBlobEnabled`→`stickyLiquidEnabled` (DragSwaySettings + Controller 2곳 + .asset 키 + `[FormerlySerializedAs("stickyBlobEnabled")]`)
-- 주석 "끈적함 블롭"→"끈적 액체", "블롭 신호/수명"→"액체 신호/수명" (Controller·PlacementCellSnap·TilemapMapView)
-- (선택, unit 1 유산) `DebugWorldToCellFractional`/`DebugGridSize` 는 이제 매 프레임 프로덕션 hot-path — "Debug" 접두 오해소지. 별도로 판단.
+- `_blob`→`_liquidTile` · `_blobMat`→`_liquidTileMat` · `_blobMatMissing`→`_liquidTileMatMissing`
+- `EnsureBlob`→`EnsureLiquidTile` · `BlobQuadCells`→`LiquidQuadCells`(+셰이더 주석) · `PlacementBlobOrder`→`PlacementLiquidOrder`
+- `stickyBlobEnabled`→`stickyLiquidEnabled` (`[FormerlySerializedAs]` + .asset 키 갱신 — 자산 값 보존 확인됨)
+- 스테일 주석 "블롭"→"액체" 정리. 볼리 소유 주석(아임애로우)·무관한 BlobShadow(그림자)는 미접촉.
+- 미실행(스코프 밖): `DebugWorldToCellFractional`/`DebugGridSize` "Debug" 접두 — 이제 hot-path지만 unit 1 유산, 별도 판단.
 
 ## Follow-up
 - **`defender-tap-to-place`**: 커밋 `dedde0f6` 에 units 0~2 포함(같은 커밋). `3_handoff_summary.md` 참조.

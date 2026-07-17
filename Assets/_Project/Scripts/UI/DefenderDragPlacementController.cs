@@ -306,7 +306,7 @@ namespace Wassup.UI
             // 스윙하는 _unitPosWorld 가 아니라 손가락 바로 아래 발점으로 칸을 정한다 → 흔들림 없이 안정.
             var sim = BoardSpace.ToSim(_unitTargetWorld);
             Vector2Int cell;
-            Vector2 frac = default; // unit 7 — SetHover 뒤 블롭 신호 산출에 재사용
+            Vector2 frac = default; // unit 7 — SetHover 뒤 액체 하이라이트 신호 산출에 재사용
             if (bridge != null)
             {
                 // unit 1 — 매 프레임 반올림 대신 히스테리시스. 이전 포커스 셀(_session.hoverTile — 이미 sticky
@@ -331,7 +331,7 @@ namespace Wassup.UI
             SetHover(cell, valid);
             // unit 7 rev — 끈적 액체 하이라이트: 확정 칸 테두리는 고정, 내부 액체가 손가락 쪽으로 번진다.
             // 신호(dir,t)는 Resolve 와 같은 밴드로 산출 → t=1 이 실제 파열점과 일치.
-            if (bridge != null && Cfg.stickyBlobEnabled)
+            if (bridge != null && Cfg.stickyLiquidEnabled)
             {
                 PlacementCellSnap.EvaluateStretch(cell, frac, Cfg.placementStickMargin, out var bDir, out var bT);
                 bridge.SetPlacementStretch(cell, bDir, bT, valid);
@@ -769,7 +769,7 @@ namespace Wassup.UI
                 _session.preview.SetActive(true);
             // unit 7 rev — 액체 하이라이트가 hover 타일을 **대체**(고정 테두리 + 내부 번짐, 같은 셀에 개체 2개 금지).
             // 끄면 기존 타일 하이라이트로 폴백.
-            if (!Cfg.stickyBlobEnabled)
+            if (!Cfg.stickyLiquidEnabled)
                 bridge?.SetPlacementHover(cell, valid);
             if (changed)
             {
@@ -784,7 +784,7 @@ namespace Wassup.UI
             if (_session.hoverTile.HasValue)
                 bridge?.ClearPlacementHover(_session.hoverTile.Value);
             bridge?.ClearPlacementRange();
-            bridge?.ClearPlacementStretch(); // unit 7 — 블롭 수명은 hover 와 동일
+            bridge?.ClearPlacementStretch(); // unit 7 — 액체 하이라이트 수명은 hover 와 동일
             _session.hoverTile = null;
             _session.isValidTile = false;
             _debounce = default; // unit 3 — 포커스 해제 시 settle 대기 상태도 리셋(재진입 첫 셀 즉시 확정)

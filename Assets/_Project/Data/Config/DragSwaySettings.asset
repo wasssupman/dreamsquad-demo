@@ -27,7 +27,7 @@ MonoBehaviour:
   deployCutsceneSwipeSmoothing: 13.81
   placementStickMargin: 0.81
   placementCommitInterval: 0
-  stickyBlobEnabled: 1
+  stickyLiquidEnabled: 1
   tapTravelDuration: 2.4
   tapTravelScaleMin: 0.25
   tapTravelScaleMax: 1.5
