@@ -20,6 +20,18 @@ namespace Wassup.Core
         // tilemap-real-shadows unit 0 — 그림자 receive 머티리얼(Wassup/Tile_ShadowReceive). 비면 기존 머티리얼 유지.
         [SerializeField] private Material groundShadowMaterial;
 
+        [Header("배치 확정 팝 (placement-cell-snap unit 4)")]
+        [Tooltip("포커스 타일이 확정(변경)될 때 셀 위에 뜨는 스케일-페이드 팝의 지속(초).")]
+        [SerializeField] private float commitPopDuration = 0.16f;
+        [Tooltip("팝 시작 스케일(타일 기준). >1 = 타일보다 크게 시작해 안착.")]
+        [SerializeField] private float commitPopStartScale = 1.3f;
+        [Tooltip("팝 끝 스케일(타일 기준).")]
+        [SerializeField] private float commitPopEndScale = 1.0f;
+        [Tooltip("팝 시작 알파(0 으로 페이드).")]
+        [SerializeField, Range(0f, 1f)] private float commitPopStartAlpha = 0.85f;
+        [SerializeField] private Color commitPopValidColor = new Color(0.35f, 1f, 0.9f, 1f);
+        [SerializeField] private Color commitPopInvalidColor = new Color(1f, 0.4f, 0.32f, 1f);
+
         private TileSetData _tileSet;
         private Tilemap _rangeTilemap;
         // placement-enemy-see-through unit 6 — 하이라이트 상승 상태(sticky). range 타일맵 lazy 생성 시 반영.
@@ -28,6 +40,10 @@ namespace Wassup.Core
         private int2 _gridSize;
         private readonly Dictionary<Vector2Int, Coroutine> _activeFlashes = new();
         private readonly HashSet<Vector2Int> _hoverCells = new();
+        // placement-cell-snap unit 4 — 확정 팝: 재사용 SpriteRenderer(grid 자식, 코플레이너) + 절차적 흰 스프라이트.
+        private SpriteRenderer _commitPop;
+        private Coroutine _commitPopCo;
+        private static Sprite _popSprite;
         // tilemap-world-surround unit 2 — 배경 프랍 호스트(Deco) 판정용 셀/리전 메타 + 프랍 인스턴스 루트.
         private BoardVisualPlan _visualPlan;
         private Transform _backgroundPropsRoot;
@@ -78,6 +94,8 @@ namespace Wassup.Core
         public void Clear()
         {
             StopAllFlashes();
+            if (_commitPopCo != null) { StopCoroutine(_commitPopCo); _commitPopCo = null; }
+            if (_commitPop != null) { SafeDestroy(_commitPop.gameObject); _commitPop = null; } // grid 자식 → 맵 리빌드 시 함께 정리
             _hoverCells.Clear();
             if (groundTilemap != null) groundTilemap.ClearAllTiles();
             if (overlayTilemap != null) overlayTilemap.ClearAllTiles();
@@ -300,6 +318,65 @@ namespace Wassup.Core
             foreach (var c in _activeFlashes.Values)
                 if (c != null) StopCoroutine(c);
             _activeFlashes.Clear();
+        }
+
+        // placement-cell-snap unit 4 — 포커스 타일 확정(변경) 시 셀 위에 스케일 오버슈트+알파 페이드 팝.
+        // 하이라이트 타일(overlay)은 그대로 남고, 이 팝이 "여기로 확정됨"을 한 번 punctuate 한다.
+        public void PulsePlacementHover(Vector2Int cell, bool valid)
+        {
+            if (grid == null) return;
+            var sr = EnsureCommitPop();
+            sr.transform.localPosition = grid.CellToLocalInterpolated(new Vector3(cell.x + 0.5f, cell.y + 0.5f, 0f));
+            Color c = valid ? commitPopValidColor : commitPopInvalidColor;
+            if (_commitPopCo != null) StopCoroutine(_commitPopCo);
+            _commitPopCo = StartCoroutine(CommitPopCoroutine(sr, c));
+        }
+
+        private SpriteRenderer EnsureCommitPop()
+        {
+            if (_commitPop != null) return _commitPop;
+            var go = new GameObject("PlacementCommitPop");
+            go.transform.SetParent(grid.transform, false); // grid 자식 → 타일과 코플레이너
+            go.transform.localRotation = Quaternion.identity;
+            _commitPop = go.AddComponent<SpriteRenderer>();
+            _commitPop.sprite = PopSprite();
+            _commitPop.sortingOrder = BoardSortOrder.PlacementCommitPopOrder;
+            var overlayR = overlayTilemap != null ? overlayTilemap.GetComponent<TilemapRenderer>() : null;
+            if (overlayR != null) _commitPop.sortingLayerID = overlayR.sortingLayerID; // overlay 와 같은 sorting layer
+            go.SetActive(false);
+            return _commitPop;
+        }
+
+        private static Sprite PopSprite()
+        {
+            if (_popSprite == null)
+            {
+                var tex = Texture2D.whiteTexture;
+                _popSprite = Sprite.Create(tex, new Rect(0f, 0f, tex.width, tex.height),
+                    new Vector2(0.5f, 0.5f), tex.width); // pivot 중심, 1 world unit → localScale 로 타일 크기 맞춤
+            }
+            return _popSprite;
+        }
+
+        private IEnumerator CommitPopCoroutine(SpriteRenderer sr, Color color)
+        {
+            float cellWorld = grid != null ? grid.cellSize.x : 1f; // 로컬 1셀 크기
+            sr.gameObject.SetActive(true);
+            float t = 0f;
+            float dur = Mathf.Max(commitPopDuration, 0.01f);
+            while (t < dur)
+            {
+                float u = t / dur;
+                float ease = 1f - (1f - u) * (1f - u); // OutQuad — 빠르게 커졌다 감속 안착
+                float s = Mathf.Lerp(commitPopStartScale, commitPopEndScale, ease) * cellWorld;
+                sr.transform.localScale = new Vector3(s, s, 1f);
+                color.a = Mathf.Lerp(commitPopStartAlpha, 0f, ease);
+                sr.color = color;
+                t += Time.unscaledDeltaTime; // 배치 슬로우모 무관 실시간
+                yield return null;
+            }
+            sr.gameObject.SetActive(false);
+            _commitPopCo = null;
         }
 
         // --- 배경 프랍 (tilemap-world-surround unit 2) ---

@@ -19,6 +19,8 @@ namespace Wassup.Presentation
         // placement-drag-preview-polish — 드래그 프리뷰 실루엣: 배치 중 배경 프랍/유닛/투사체 위로.
         // 프랍(prop.sortingOrder + Compute)·유닛(Compute+1)·투사체(+1000) 위, UI(Canvas) 아래.
         public const int DragPreviewOrder = 20000;
+        // placement-cell-snap unit 4 — 배치 확정 팝: 상승한 overlay 하이라이트(10002) 위, 드래그 프리뷰(20000) 아래.
+        public const int PlacementCommitPopOrder = 12000;
 
         public static int Compute(int2 gridSize, int cellX, int cellY, int offset = 0)
             => (gridSize.y - cellY) * 10 + cellX + offset;

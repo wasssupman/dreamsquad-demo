@@ -44,5 +44,13 @@ namespace Wassup.Data
         public float deployCutsceneSwipeRefSpeed = 1400f;
         [Tooltip("스와이프 속도 exp-lerp 계수(0..1). ↑=빠릿(즉각), ↓=부드럽게 지연.")]
         public float deployCutsceneSwipeSmoothing = 0.5f;
+
+        [Header("배치 셀 스냅 (placement-cell-snap)")]
+        [Tooltip("타일 경계 sticky 여유(타일 분수). ↑=경계 지터에 덜 민감/더 끈끈. 0=순수 반올림.")]
+        [Range(0f, 0.49f)]
+        public float placementStickMargin = 0.3f;
+        [Tooltip("타일 판정 갱신 주기(초). 이동 중에도 이 간격마다 현재 칸으로 스텝 갱신. ↓=더 자주(실시간에 가까움). 0=매 프레임.")]
+        [Range(0f, 1f)]
+        public float placementCommitInterval = 0.5f;
     }
 }

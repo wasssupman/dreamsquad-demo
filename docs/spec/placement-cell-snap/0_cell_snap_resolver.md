@@ -43,3 +43,5 @@ public static class PlacementCellSnap
   - margin=0 → 순수 round 와 동일. margin 0.5+ clamp.
   - grid 경계 clamp.
 - 전체 EditMode 스위트가 이 파일로 새 실패를 만들지 않음(무관 사전 실패는 제외).
+
+**완료: 2026-07-16 · `922db9b9` — EditMode 8/8 통과(컴파일 클린).**

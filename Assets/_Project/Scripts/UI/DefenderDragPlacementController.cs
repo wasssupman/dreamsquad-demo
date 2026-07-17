@@ -51,7 +51,8 @@ namespace Wassup.UI
 
         // 키링 배치 상태: 고리 = 손가락(공중). 유닛 = 보드에 서서 무게추처럼 스프링 지연으로 뒤따라옴.
         private Vector3 _ringWorld;        // 고리(손가락, 공중)
-        private Vector3 _unitTargetWorld;  // 유닛 발 목표(고리 바로 아래 보드) — 손가락 즉시 추종
+        private Vector3 _unitTargetWorld;  // 유닛 발 스프링 목표 = 손가락 바로 아래 발점(연속 추종 → 키링 스윙). 셀 판정 기준도 이 점.
+        private PlacementSnapDebounce.State _debounce; // unit 3: throttle 경과 상태(hoverTile 과 수명 동일)
         private Vector3 _unitPosWorld;     // 유닛 발 실제(스프링 지연)
         private Vector3 _unitVelWorld;
         private bool _posInit;
@@ -145,6 +146,10 @@ namespace Wassup.UI
             float dt = Mathf.Max(Time.unscaledDeltaTime, 1e-4f);
             var camT = mainCamera.transform;
 
+            // unit 2·3 — 스프링 스텝 전에 포커스 셀 확정(+디바운스)하고 스프링 타깃을 그 셀 중심으로 스냅.
+            // dt = unscaled(슬로우모 무관 실시간) — 디바운스 타이밍이 배치 슬로우모에 안 끌리게.
+            ResolveFocusAndTarget(dt);
+
             // 무게추 스프링(탄성) + 속도 상한: spring/damping 으로 지연·탄성을 유지하고, maxSpeed 로 빠른
             // 스와이프 시 속도만 제한 → 초기 튀어나감만 방지(탄성 자체는 spring/damping 으로 조절).
             KeyringSim.SpringStep(ref _unitPosWorld, ref _unitVelWorld, _unitTargetWorld,
@@ -176,9 +181,6 @@ namespace Wassup.UI
                 _session.cordLine.SetPosition(1, headPos);
             }
 
-            // 하이라이트 = 마우스 바로 아래(안정) 칸. 흔들리는 유닛 위치가 아니라 마우스가 클램프 →
-            // 유닛은 좌우로 흔들려도 배치 대상 칸은 고정(게임 배치 정확도). 유닛은 그 칸 위에서 흔들린다.
-            UpdateHoverAtTarget();
         }
 
         // camera-direction unit 5 — Director 캐시 (miss 캐시 + 1회 경고, 기존 패턴).
@@ -209,7 +211,7 @@ namespace Wassup.UI
             if (TryComputeRingUnit(screenPosition, totalDrop, out Vector3 ringW, out Vector3 unitTargetW))
             {
                 _ringWorld = ringW;
-                _unitTargetWorld = unitTargetW;
+                _unitTargetWorld = unitTargetW; // 스프링 목표 = 손가락 바로 아래 발점(연속 추종 → 키링 스윙). 셀 판정도 이 점 기준.
                 if (!_posInit) { _unitPosWorld = unitTargetW; _unitVelWorld = Vector3.zero; _posInit = true; }
                 _onBoard = true;
                 if (_session.preview != null && !_session.preview.activeSelf) _session.preview.SetActive(true);
@@ -240,21 +242,46 @@ namespace Wassup.UI
             if (s <= 0f) return false;
             ringW = camT.position + ray.direction * s;
             Vector3 feet = ringW - camT.up * totalDrop;
+            // placement-cell-snap unit 5 — 퍼스펙티브 수평 스큐 제거: camUp 오프셋을 보드에 투영하면
+            // 수평(카메라 right 투영) 성분이 화면 x 에 따라 달라져 좌우 판정이 카메라 위치에 의존했다(좌 0.89↔우 0.50셀).
+            // feet 의 보드-수평 성분을 손가락 직접 히트와 정렬 → 손가락이 가리키는 열에 정확히 판정(깊이 오프셋은 유지).
+            float sf = -(Vector3.Dot(N, camT.position) + boardPlane.distance) / nd;
+            if (sf > 0f)
+            {
+                Vector3 pFinger = camT.position + ray.direction * sf;
+                Vector3 boardRight = Vector3.ProjectOnPlane(camT.right, N);
+                if (boardRight.sqrMagnitude > 1e-8f)
+                {
+                    boardRight.Normalize();
+                    feet -= boardRight * Vector3.Dot(feet - pFinger, boardRight);
+                }
+            }
             Vector3 nUp = N.normalized;
             if (Vector3.Dot(nUp, camT.position - feet) < 0f) nUp = -nUp;
             unitTargetW = feet + nUp * previewHeight; // 발 = 보드 표면 + 살짝 띄움
             return true;
         }
 
-        private void UpdateHoverAtTarget()
+        // placement-cell-snap — 손가락 바로 아래 발점(_unitTargetWorld)에서 포커스 셀을 확정한다. unit 1 히스테리시스 + unit 3
+        // settle-to-commit 으로 판정을 안정화하되, 고스트 자체는 이 발점을 스프링 추종(키링 스윙 유지) —
+        // **스냅하지 않는다**(스냅하면 유닛이 셀 중심에 얼어붙어 줄/스윙이 사라짐 — unit 2 회귀). "어느 칸"은 하이라이트가 보여준다.
+        private void ResolveFocusAndTarget(float dt)
         {
-            // 스윙하는 _unitPosWorld 가 아니라 마우스 바로 아래 목표(_unitTargetWorld) 로 칸을 정한다 → 흔들림 없이 안정.
+            // 스윙하는 _unitPosWorld 가 아니라 손가락 바로 아래 발점으로 칸을 정한다 → 흔들림 없이 안정.
             var sim = BoardSpace.ToSim(_unitTargetWorld);
             Vector2Int cell;
             if (bridge != null)
             {
-                var c = bridge.DebugWorldToCell((Vector3)sim);
-                cell = new Vector2Int(c.x, c.y);
+                // unit 1 — 매 프레임 반올림 대신 히스테리시스. 이전 포커스 셀(_session.hoverTile — 이미 sticky
+                // 상태, 진실 소스 하나)을 밴드 안에서 유지해 경계 지터를 흡수. frac/gridSize 는 DebugWorldToCell 과 동일 공간.
+                Vector2 frac = bridge.DebugWorldToCellFractional((Vector3)sim);
+                Vector2Int target = PlacementCellSnap.Resolve(_session.hoverTile, frac, Cfg.placementStickMargin, bridge.DebugGridSize);
+                // unit 3 — throttle(주기적 커밋): 이동 중에도 interval 마다 현재 칸으로 스텝 갱신, 사이엔 유지.
+                // 첫 프레임(hoverTile 없음)은 즉시 확정 + 상태 리셋.
+                if (_session.hoverTile.HasValue)
+                    cell = PlacementSnapDebounce.Step(ref _debounce, _session.hoverTile.Value, target,
+                        dt, Cfg.placementCommitInterval);
+                else { cell = target; _debounce = default; }
             }
             else
             {
@@ -551,7 +578,11 @@ namespace Wassup.UI
             if (_session.preview != null && !_session.preview.activeSelf)
                 _session.preview.SetActive(true);
             bridge?.SetPlacementHover(cell, valid);
-            if (changed) bridge?.SetPlacementRange(cell, _session.unit);
+            if (changed)
+            {
+                bridge?.SetPlacementRange(cell, _session.unit);
+                bridge?.PulsePlacementHover(cell, valid); // unit 4 — 확정(셀 변경) 팝. 디바운스로 게이팅돼 스팸 아님.
+            }
         }
 
         private void ClearHover()
@@ -561,6 +592,7 @@ namespace Wassup.UI
             bridge?.ClearPlacementRange();
             _session.hoverTile = null;
             _session.isValidTile = false;
+            _debounce = default; // unit 3 — 포커스 해제 시 settle 대기 상태도 리셋(재진입 첫 셀 즉시 확정)
             _session.rejectReason = PlacementRejectReason.None; // unit 4
             if (_rejectLabel != null && _rejectLabel.gameObject.activeSelf)
                 _rejectLabel.gameObject.SetActive(false);

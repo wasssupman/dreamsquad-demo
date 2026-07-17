@@ -31,8 +31,20 @@
 | 0 | `0_cell_snap_resolver.md` | foundation | 순수 함수 `PlacementCellSnap.Resolve`(frac-cell→int cell, 히스테리시스) + EditMode 테스트 |
 | 1 | `1_hysteresis_hover.md` | feature (A) | Resolve 를 `UpdateHoverAtTarget` 에 배선 + bridge frac-cell read 헬퍼 + margin SO |
 | 2 | `2_ghost_tile_snap.md` | feature (C) | 유닛 스프링 타깃을 포커스 셀 중심으로 스냅, 링/줄 유지, Update 순서 정리 |
+| 3 | `3_settle_to_commit.md` | feature | 인접 칸 이동에 commitDelay(디바운스) + 큰 점프 즉시확정. 실시간 추종 끊기 |
+| 4 | `4_commit_pop.md` | feature | 확정 셀 변경 시 하이라이트에 스케일-페이드 팝. 고스트 안 얼리고 스냅 느낌 |
+| 5 | `5_touch_skew_fix.md` | bugfix | 손가락→판정 타일 좌우 오프셋의 카메라(퍼스펙티브) 의존 제거. 보드-수평을 손가락 열에 정렬 |
 
-의존: `0 → 1 → 2`. 각 단위는 독립 컴파일·Play 검증 가능.
+의존: `0 → 1 → (2 되돌림) → 3 → 4`. `5` 는 독립. 각 단위는 독립 컴파일·Play 검증 가능.
+
+**설계 반전 기록(unit 2)**: unit 2(고스트를 셀 중심으로 스냅)는 **되돌렸다** — 고스트가 셀에 얼어붙으면
+키링 줄/스윙(스프링·댐핑·길이)이 사라지기 때문. 대신 고스트는 손가락을 연속 추종(키링 유지)하고,
+"타일 판정 안정화"는 논리 레이어(unit 1 히스테리시스 + unit 3 디바운스)가, "스냅 느낌"은 하이라이트
+확정 팝(unit 4)이 담당한다. 코드에는 `ResolveFocusAndTarget` 이 셀만 확정하고 스프링 타깃은 raw feet 로 남는다.
+
+**D&D UX 정합**: 이 조합(오프셋 고스트=키링 + 스냅/양자화 + 하이라이트-릴리즈 계약 + 히스테리시스)은
+Clash Royale / iOS 네이티브 드래그의 표준 정답과 동일하다. unit 3(settle-to-commit)은 그 위에 모바일
+정밀 배치를 위한 시간 레이어를 더한 확장.
 
 ## Feature-wide 계약
 
@@ -51,10 +63,15 @@
 (`placement-drag-preview-polish` / `keyring-cord-preview`)이고, 생성→렌더 경로를 바꾸지 않는다.
 본 spec 은 포커스 셀 **선택 정책**과 고스트 **목표 위치**만 바꾼다.
 
-## 비목표 / 후속 후보
+## 후속 후보 (D&D UX 폴리시 — 별도 unit/spec)
 
-- 시간 기반 디바운스 / 위치 저역통과(체감 뭉개짐 — 기각).
-- 드래그 후 별도 탭/홀드 확정 제스처(키링 감각과 충돌 — 기각).
-- 배치 완료 유닛의 상시 스냅/흔들림.
-- 드롭 시 bounce / 착지 반동.
+- **드래그 유닛 반투명**: 고스트 자체를 60~70% 알파로 → 발밑 지형/셀 비침(현재는 적만 `SetEnemiesDimmed`). 오프셋과 병행 시 가림 완화.
+- **릴리즈 실패 복귀**: 무효 드롭 시 현재 `FlashPlacementReject`(빨강 플래시)에 더해 고스트가 트레이로 되돌아가는 애니 + 햅틱((a) 계열, 오배치=자원소모라 안전).
+
+## 비목표 (기각/스코프 밖)
+
+- ~~시간 기반 디바운스~~ → unit 3 에서 "인접만 delay + 큰 점프 즉시" 형태로 편입(뭉개짐 회피).
+- 드래그 후 별도 탭/홀드 확정 제스처, 타깃팅 화살표, 탭-탭(키링 오프셋-프록시로 이미 구조적 해결 — 불필요/스코프 밖).
+- 방향 제스처화(Candy Crush): 목적지가 자유 그리드라 인접-스왑 제약이 없어 **적용 불가**.
+- 배치 완료 유닛의 상시 스냅/흔들림, 드롭 bounce/착지 반동.
 - fallback capsule 프리뷰(3D 프리미티브 — 각도/스냅 어색함 없음, 스킵).

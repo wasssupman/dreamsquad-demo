@@ -19,15 +19,17 @@ unit 0 의 `PlacementCellSnap.Resolve` 를 실제 hover 결정에 배선해 경�
   `public Vector2 DebugWorldToCellFractional(Vector3 sim)` →
   `((sim.x - _boardOrigin.x)/tileSize, (sim.z - _boardOrigin.z)/tileSize)`.
   `DebugWorldToCell = round(frac)` 과 동일 공간(드리프트 방지). tileSize/gridSize 는 기존 접근 재사용.
-- **컨트롤러**:
-  - 필드 `private Vector2Int? _focusedCell;` 추가.
-  - `UpdateHoverAtTarget()` 에서: `sim = ToSim(_unitTargetWorld)` → `frac = bridge.DebugWorldToCellFractional(sim)`
-    → `cell = PlacementCellSnap.Resolve(_focusedCell, frac, Cfg.placementStickMargin, gridSize)` → `_focusedCell = cell`.
+- **컨트롤러** (`UpdateHoverAtTarget()`):
+  - sticky 상태 = **기존 `_session.hoverTile`** 재사용(별도 `_focusedCell` 신설 안 함 — hoverTile 이 이미
+    직전 프레임 포커스 셀이자 진실 소스, `SetHover`/`ClearHover` 만 갱신). 별도 리셋 코드 불필요:
+    세션 시작(`CleanupSession→ClearHover`)·오프보드(`UpdateDrag` else→`ClearHover`)에서 이미 null 로 리셋됨
+    → 재진입 첫 셀은 `Resolve(null,…)=round`.
+  - bridge 경로만 교체: `frac = bridge.DebugWorldToCellFractional((Vector3)sim)`
+    → `cell = PlacementCellSnap.Resolve(_session.hoverTile, frac, Cfg.placementStickMargin, bridge.DebugGridSize)`.
     이후 기존대로 `CanPlaceDefenderAt(cell)` → `SetHover`. (bridge null 폴백은 기존 `FloorToInt(sim+0.5)` 유지.)
-  - 리셋: `ClearHover()` / 오프보드(`_onBoard=false`) / 세션 시작(`BeginSession` 계열)에서 `_focusedCell = null`.
-    off-board 후 재진입 시 첫 셀은 round(frac) 이어야 함.
-- **SO**: `DragSwaySettings.placementStickMargin` (기본 0.18f, 툴팁="타일 경계 sticky 여유(타일 분수). ↑=덜 민감/더 끈끈"). `Cfg` 접근자로 노출.
-- gridSize 는 bridge 에서 얻는다(기존 hover 경로가 이미 map 을 참조). 접근자 없으면 최소 read 헬퍼 추가.
+- **SO**: `DragSwaySettings.placementStickMargin` (기본 0.18f, `[Range(0,0.49)]`). `Cfg` 접근자로 노출.
+- **bridge read 접근자 신설**: `DebugWorldToCellFractional(Vector3)→Vector2`(unclamped frac, DebugWorldToCell 과 동일 공간),
+  `DebugGridSize→Vector2Int`(결과 clamp 용). `GridSize` 가 private 이라 후자를 공개.
 
 ## 완료 기준
 

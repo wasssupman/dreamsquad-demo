@@ -1676,6 +1676,22 @@ namespace Wassup.Bridge
             return GridMath.WorldToCell(new float3(worldPosition.x, worldPosition.y, worldPosition.z), tileSize, gridSize, origin: _boardOrigin);
         }
 
+        // placement-cell-snap unit 1 — 히스테리시스 정책(PlacementCellSnap)이 소비할 소수 셀 좌표(unclamped).
+        // GridMath.WorldToCell = floor(이 값 + 0.5) 와 같은 공간(셀 중심=정수, 경계=±0.5) → 커밋 셀과 드리프트 없음.
+        public Vector2 DebugWorldToCellFractional(Vector3 worldPosition)
+        {
+            float ts = tileSize > 0f ? tileSize : 1f;
+            return new Vector2(
+                (worldPosition.x - _boardOrigin.x) / ts,
+                (worldPosition.z - _boardOrigin.z) / ts);
+        }
+
+        // placement-cell-snap unit 1 — DebugWorldToCell 이 clamp 에 쓰는 grid 크기(정책의 결과 clamp 용).
+        public Vector2Int DebugGridSize
+        {
+            get { int2 g = _generatedMap.IsCreated ? _generatedMap.gridSize : GridSize; return new Vector2Int(g.x, g.y); }
+        }
+
         public bool TryGetNearestWalkCell(Unity.Mathematics.int2 requestedCell, out Unity.Mathematics.int2 walkCell)
         {
             walkCell = requestedCell;
@@ -3404,6 +3420,12 @@ namespace Wassup.Bridge
         public void SetPlacementHover(Vector2Int cell, bool valid)
         {
             if (tilemapMapView != null) tilemapMapView.SetPlacementHover(cell, valid);
+        }
+
+        // placement-cell-snap unit 4 — 포커스 타일 확정(변경) 시 1회 팝.
+        public void PulsePlacementHover(Vector2Int cell, bool valid)
+        {
+            if (tilemapMapView != null) tilemapMapView.PulsePlacementHover(cell, valid);
         }
 
         public void ClearPlacementHover(Vector2Int cell)
