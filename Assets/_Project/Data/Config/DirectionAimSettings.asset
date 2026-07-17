@@ -14,8 +14,3 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DirectionAimSettings
   deadZonePx: 48
   slowmoScale: 0.2
-  guideRadiusPx: 130
-  guideFontSize: 64
-  idleColor: {r: 1, g: 1, b: 1, a: 0.45}
-  highlightColor: {r: 1, g: 0.85, b: 0.2, a: 1}
-  highlightScale: 1.35

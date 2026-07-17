@@ -49,6 +49,11 @@ namespace Wassup.Core
         // placement-enemy-see-through unit 6 — 하이라이트 상승 상태(sticky). range 타일맵 lazy 생성 시 반영.
         private bool _highlightAbove;
         private readonly HashSet<Vector2Int> _rangeCells = new();
+        // 범위 타일 세기 배율(펄스 알파에 곱). 1 = 기존 사각 범위. unit 9.
+        private float _rangeAlphaMul = 1f;
+        // defender-directional-volley unit 9 — 방향 지정 화살표(재사용 풀, 최대 4).
+        private readonly List<SpriteRenderer> _aimArrows = new();
+        private static Sprite _arrowSprite;
         private int2 _gridSize;
         private readonly Dictionary<Vector2Int, Coroutine> _activeFlashes = new();
         private readonly HashSet<Vector2Int> _hoverCells = new();
@@ -142,7 +147,9 @@ namespace Wassup.Core
             if (_rangeTilemap == null || _rangeCells.Count == 0 || _tileSet == null) return;
             float t = 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * _tileSet.rangePulseSpeed);
             float a = Mathf.Lerp(_tileSet.rangePulseMinAlpha, _tileSet.rangePulseMaxAlpha, t);
-            var c = _tileSet.rangeColor; c.a = a;
+            // 알파는 이 펄스가 소유한다 — 호출부가 색을 직접 박으면 다음 프레임에 덮인다.
+            // 세기 차이(방향 미정 십자 vs 선택된 레인)는 배율로만 낸다.
+            var c = _tileSet.rangeColor; c.a = a * _rangeAlphaMul;
             _rangeTilemap.color = c;
         }
 
@@ -454,6 +461,105 @@ namespace Wassup.Core
             return _blob;
         }
 
+        // defender-directional-volley unit 9 — 방향 지정 화살표. 보드에 눕는 탭 어포던스라
+        // 블롭/팝과 같은 방식(grid 자식 절차적 스프라이트)으로 그린다. 이 뷰는 write-only —
+        // 어느 칸에 어느 각도로 무엇이 선택됐는지는 전부 호출부가 정해 넘긴다.
+        public void SetAimArrows(IReadOnlyList<Vector2Int> cells, IReadOnlyList<float> anglesDeg, int selectedIndex)
+        {
+            if (grid == null || cells == null || anglesDeg == null || _tileSet == null) return;
+            float cellWorld = grid.cellSize.x;
+            for (int i = 0; i < cells.Count && i < anglesDeg.Count; i++)
+            {
+                var sr = EnsureAimArrow(i);
+                var local = grid.CellToLocalInterpolated(new Vector3(cells[i].x + 0.5f, cells[i].y + 0.5f, 0f));
+                sr.transform.localPosition = local;
+                sr.transform.localRotation = Quaternion.Euler(0f, 0f, anglesDeg[i]);
+
+                bool on = i == selectedIndex;
+                // 선택된 화살표만 또렷하고 살짝 크다. 색은 범위 타일과 같은 rangeColor —
+                // 배치/스킬 범위와 같은 언어를 쓴다(새 색을 만들지 않는다).
+                var c = _tileSet.rangeColor;
+                c.a = on ? 1f : 0.5f;
+                sr.color = c;
+                float s = cellWorld * (on ? 0.92f : 0.7f);
+                sr.transform.localScale = new Vector3(s, s, 1f);
+                sr.gameObject.SetActive(true);
+            }
+            for (int i = cells.Count; i < _aimArrows.Count; i++) _aimArrows[i].gameObject.SetActive(false);
+        }
+
+        public void ClearAimArrows()
+        {
+            for (int i = 0; i < _aimArrows.Count; i++)
+                if (_aimArrows[i] != null) _aimArrows[i].gameObject.SetActive(false);
+        }
+
+        private SpriteRenderer EnsureAimArrow(int index)
+        {
+            while (_aimArrows.Count <= index)
+            {
+                var go = new GameObject($"AimArrow{_aimArrows.Count}");
+                go.transform.SetParent(grid.transform, false); // grid 자식 → 타일과 코플레이너
+                var sr = go.AddComponent<SpriteRenderer>();
+                sr.sprite = ArrowSprite();
+                sr.sortingOrder = BoardSortOrder.AimArrowOrder;
+                var overlayR = overlayTilemap != null ? overlayTilemap.GetComponent<TilemapRenderer>() : null;
+                if (overlayR != null) sr.sortingLayerID = overlayR.sortingLayerID;
+                go.SetActive(false);
+                _aimArrows.Add(sr);
+            }
+            return _aimArrows[index];
+        }
+
+        // +Y 를 향하는 삼각형(호출부가 Z 회전으로 방향을 만든다). 가장자리를 살짝 흐려
+        // 계단을 없앤다 — 타일 위에 눕는 작은 도형이라 에일리어싱이 그대로 보인다.
+        // 꼭짓점 (0, 0.9) / 밑변 (±0.75, -0.7). 한 점이 삼각형 안이면 true(하드 테스트).
+        private static bool InArrowTriangle(float u, float v)
+        {
+            if (v < -0.7f || v > 0.9f) return false;
+            float halfWidth = Mathf.Lerp(0f, 0.75f, Mathf.InverseLerp(0.9f, -0.7f, v));
+            return Mathf.Abs(u) <= halfWidth;
+        }
+
+        private static Sprite ArrowSprite()
+        {
+            if (_arrowSprite != null) return _arrowSprite;
+            // 자글거림은 두 층이다:
+            // (1) 소스 텍스처 앨리어싱 — 저해상도 + 대각 빗변에 수직이 아닌 페더. 해법 =
+            //     커버리지 슈퍼샘플링(텍셀당 SS×SS 하드 테스트 → 통과 비율을 알파로).
+            // (2) 렌더 minification — 보드가 40~58° 기울어 화살표가 비스듬히 눕는다.
+            //     밉맵이 없으면 축소 방향에서 계단이 그대로 샌다(둥근 블롭은 저주파라
+            //     안 보이지만 화살표는 대각 샤프 엣지라 두드러진다). 해법 = 밉체인 +
+            //     Trilinear + aniso. 소팅(11500)은 레인 타일 위라 z-fight 는 아니다.
+            const int R = 128;
+            const int SS = 4;
+            var tex = new Texture2D(R, R, TextureFormat.RGBA32, mipChain: true)
+            {
+                wrapMode = TextureWrapMode.Clamp,
+                filterMode = FilterMode.Trilinear,
+                anisoLevel = 4,
+            };
+            var px = new Color[R * R];
+            float inv = 1f / (SS * SS);
+            for (int y = 0; y < R; y++)
+                for (int x = 0; x < R; x++)
+                {
+                    int hits = 0;
+                    for (int sy = 0; sy < SS; sy++)
+                        for (int sx = 0; sx < SS; sx++)
+                        {
+                            float u = (x + (sx + 0.5f) / SS) / R * 2f - 1f;
+                            float v = (y + (sy + 0.5f) / SS) / R * 2f - 1f;
+                            if (InArrowTriangle(u, v)) hits++;
+                        }
+                    px[y * R + x] = new Color(1f, 1f, 1f, hits * inv);
+                }
+            tex.SetPixels(px);
+            tex.Apply();
+            _arrowSprite = Sprite.Create(tex, new Rect(0f, 0f, R, R), new Vector2(0.5f, 0.5f), R);
+            return _arrowSprite;
+        }
+
         private static Sprite PopSprite()
         {
             if (_popSprite == null)
@@ -631,6 +737,7 @@ namespace Wassup.Core
             if (grid == null || _tileSet == null || _tileSet.rangeTile == null || tileRange <= 0) return;
             ClearPlacementRange();
             EnsureRangeTilemap();
+            _rangeAlphaMul = 1f;
             for (int dx = -tileRange; dx <= tileRange; dx++)
             for (int dz = -tileRange; dz <= tileRange; dz++)
             {
@@ -643,6 +750,23 @@ namespace Wassup.Core
             var c = _tileSet.rangeColor; c.a = _rangeTilemap.color.a; _rangeTilemap.color = c;
         }
 
+        // defender-directional-volley unit 9 — 임의 셀 집합 점등(방향 레인). 사각 범위와
+        // 같은 타일맵·수명·펄스를 공유하고 셀 목록만 호출부가 정한다. alphaMul = 세기
+        // (방향 미정 십자는 흐리게, 선택된 레인은 또렷하게).
+        public void SetPlacementCells(IReadOnlyList<Vector2Int> cells, float alphaMul = 1f)
+        {
+            if (grid == null || _tileSet == null || _tileSet.rangeTile == null || cells == null) return;
+            ClearPlacementRange();
+            EnsureRangeTilemap();
+            _rangeAlphaMul = Mathf.Clamp01(alphaMul);
+            for (int i = 0; i < cells.Count; i++)
+            {
+                var cell = cells[i];
+                if (cell.x < 0 || cell.x >= _gridSize.x || cell.y < 0 || cell.y >= _gridSize.y) continue;
+                _rangeTilemap.SetTile(ToCell(cell), _tileSet.rangeTile);
+                _rangeCells.Add(cell);
+            }
+        }
 
         public void ClearPlacementRange()
         {

@@ -34,6 +34,10 @@ namespace Wassup.UI
         // null 이면 컷신 없이 기존 흐름. rev — 컷신 수명은 드래그 세션에 묶인다(CleanupSession 이 EndCutscene 호출).
         private DeployCutscenePlayer _cutscenePlayer;
 
+        // defender-directional-volley unit 6 — 방향 지정 유닛의 두 번째 배치 페이즈.
+        // 이 컨트롤러 자체가 런타임 AddComponent 라 씬 배선이 없으므로 같은 방식으로 붙인다.
+        private DirectionAimController _aimController;
+
         private DragSession _session;
         private TimeLease _slowmoLease; // time-manager Unit 5 — 드래그 중 Battle 슬로우모 lease
         private Material _previewMaterial; // 폴백 capsule 용
@@ -92,9 +96,14 @@ namespace Wassup.UI
         // 새 상태를 만들지 않고 기존 _session.active 를 그대로 읽는다 — 진실 소스는 하나.
         public bool IsDragging => _session.active;
 
+        // defender-directional-volley unit 6 — 방향 지정 페이즈 진행 중. 드래그 세션은 이미
+        // 끝났지만(드롭 완료) 화면은 여전히 배치 조작 중이다 — 보드 탭을 소비하는 다른
+        // 컨트롤러(DcInspect 등)가 이 스와이프를 자기 제스처로 오해하지 않게 알린다.
+        public bool IsAiming => _aimController != null && _aimController.IsActive;
+
         public void Configure(BattleBridge battleBridge, Camera camera, PlacementInput input,
             DragSwaySettings swaySettings = null, TMP_FontAsset uiFont = null,
-            DeployCutscenePlayer cutscenePlayer = null)
+            DeployCutscenePlayer cutscenePlayer = null, DirectionAimSettings aimSettings = null)
         {
             bridge = battleBridge;
             mainCamera = camera != null ? camera : Camera.main;
@@ -102,11 +111,21 @@ namespace Wassup.UI
             if (swaySettings != null) _cfg = swaySettings;
             if (uiFont != null) _uiFont = uiFont;
             if (cutscenePlayer != null) _cutscenePlayer = cutscenePlayer;
+
+            // unit 6 — 방향 페이즈 컨트롤러. 드롭 성공 시 핸드오프(CommitPlacementAt).
+            if (_aimController == null)
+                _aimController = gameObject.GetComponent<DirectionAimController>()
+                                 ?? gameObject.AddComponent<DirectionAimController>();
+            _aimController.Configure(bridge, mainCamera, aimSettings);
         }
 
         public void BeginDrag(DefenderUnitData unitData, Vector2 screenPosition, bool simulated = false)
         {
             if (unitData == null || bridge == null) return;
+            // defender-directional-volley unit 6 — 방향 지정 중엔 트레이가 잠긴다. 허용하면
+            // 그 드래그 제스처가 조준 스와이프로도 해석되고(두 곳에서 소비), 앞 유닛이
+            // 기본 방향으로 강제 활성화된다. 방향을 정해야 다음 배치로 넘어간다(계약 9).
+            if (_aimController != null && _aimController.IsActive) return;
             Disarm(); // defender-tap-to-place — 드래그가 arm 을 대체
             CleanupSession();
             _simulatedDrag = simulated; // defender-tap-to-place — 시뮬 경로는 첫 UpdateDrag 부터 범위 억제(CleanupSession 이 false 로 리셋한 뒤 재설정)
@@ -524,6 +543,17 @@ namespace Wassup.UI
             var session = _session;
             if (bridge != null && bridge.TryBeginDefenderDeployment(cell.x, cell.y, session.unit, out var entity))
             {
+                // defender-directional-volley unit 6 — 방향 지정 유닛은 여기서 배치가
+                // 끝나지 않는다: 엔티티는 PendingDeployment(전투 미참여)로 스폰된 채
+                // 공격방향 페이즈로 넘어가고, 방향이 확정돼야 활성화된다.
+                // Begin 이 먼저 슬로우모 lease 를 잡은 뒤 CleanupSession 이 드래그 lease 를
+                // 놓으므로 드롭 순간 전투가 정속으로 튀지 않는다(순서 의존).
+                if (session.unit != null && session.unit.directionalAttack && _aimController != null)
+                {
+                    _aimController.Begin(session.unit, cell, entity);
+                    CleanupSession();
+                    return;
+                }
                 CleanupSession();
                 StartCoroutine(RunDeployment(session.unit, cell, entity));
                 return;

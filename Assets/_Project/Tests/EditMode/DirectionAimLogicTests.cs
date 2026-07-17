@@ -4,97 +4,69 @@ using Wassup.UI;
 
 namespace Wassup.Tests.EditMode
 {
-    // Aim-phase gesture contract (defender-directional-volley unit 5): dead zone,
-    // board-axis match, the tie rule, and the release transitions — a dead-zone
-    // release must keep the phase open (contract 9), never confirm.
+    // Aim-phase pick contract (defender-directional-volley unit 5/9): tapping a cell
+    // selects the lane it belongs to. The tap target is the whole lane — a one-tile
+    // arrow hides under a finger — and anything off the lanes selects nothing, which
+    // keeps the phase open (contract 9) rather than confirming something unintended.
     public class DirectionAimLogicTests
     {
-        static readonly float2 Origin = new float2(100f, 100f);
-        const float DeadZone = 24f;
+        static readonly int2 Center = new int2(5, 5);
+        const int Range = 3;
 
-        // Battle camera (pitch only, no yaw): board axes land on screen right/up.
-        static readonly float2 FlatRight = new float2(1f, 0f);
-        static readonly float2 FlatUp = new float2(0f, 1f);
-
-        // Isometric board: both axes project to screen diagonals.
-        static readonly float2 IsoRight = math.normalize(new float2(1f, -1f));
-        static readonly float2 IsoUp = math.normalize(new float2(1f, 1f));
+        static int2 Pick(int x, int y) => DirectionAimLogic.Evaluate(Center, new int2(x, y), Range).cardinal;
+        static bool Hit(int x, int y) => DirectionAimLogic.Evaluate(Center, new int2(x, y), Range).hasDirection;
 
         [Test]
-        public void InsideDeadZone_NoDirection()
+        public void ArrowCell_SelectsItsLane()
         {
-            var s = DirectionAimLogic.Evaluate(Origin, Origin + new float2(10f, 10f), DeadZone, FlatRight, FlatUp);
-            Assert.IsFalse(s.hasDirection);
+            // 화살표가 앉는 칸 = 각 레인의 첫 칸.
+            Assert.AreEqual(new int2(1, 0), Pick(6, 5), "right");
+            Assert.AreEqual(new int2(-1, 0), Pick(4, 5), "left");
+            Assert.AreEqual(new int2(0, 1), Pick(5, 6), "up");
+            Assert.AreEqual(new int2(0, -1), Pick(5, 4), "down");
         }
 
         [Test]
-        public void AtDeadZoneBoundary_HasDirection()
+        public void AnyCellDownTheLane_SelectsSameLane()
         {
-            var s = DirectionAimLogic.Evaluate(Origin, Origin + new float2(DeadZone, 0f), DeadZone, FlatRight, FlatUp);
-            Assert.IsTrue(s.hasDirection);
-            Assert.AreEqual(new int2(1, 0), s.cardinal);
+            Assert.AreEqual(new int2(1, 0), Pick(7, 5), "레인 중간");
+            Assert.AreEqual(new int2(1, 0), Pick(8, 5), "레인 끝(사거리)");
         }
 
         [Test]
-        public void FlatBoard_FourCardinals_SnapToDominantAxis()
+        public void OwnCell_SelectsNothing()
         {
-            Assert.AreEqual(new int2(1, 0), DirectionAimLogic.Evaluate(Origin, Origin + new float2(50f, 10f), DeadZone, FlatRight, FlatUp).cardinal, "right");
-            Assert.AreEqual(new int2(-1, 0), DirectionAimLogic.Evaluate(Origin, Origin + new float2(-50f, 10f), DeadZone, FlatRight, FlatUp).cardinal, "left");
-            Assert.AreEqual(new int2(0, 1), DirectionAimLogic.Evaluate(Origin, Origin + new float2(10f, 50f), DeadZone, FlatRight, FlatUp).cardinal, "up");
-            Assert.AreEqual(new int2(0, -1), DirectionAimLogic.Evaluate(Origin, Origin + new float2(10f, -50f), DeadZone, FlatRight, FlatUp).cardinal, "down");
+            Assert.IsFalse(Hit(5, 5));
         }
 
         [Test]
-        public void DiagonalTie_ResolvesToBoardX()
+        public void PastRange_SelectsNothing()
         {
-            var s = DirectionAimLogic.Evaluate(Origin, Origin + new float2(40f, 40f), DeadZone, FlatRight, FlatUp);
-            Assert.AreEqual(new int2(1, 0), s.cardinal);
-            var s2 = DirectionAimLogic.Evaluate(Origin, Origin + new float2(-40f, 40f), DeadZone, FlatRight, FlatUp);
-            Assert.AreEqual(new int2(-1, 0), s2.cardinal);
+            Assert.IsTrue(Hit(8, 5), "사거리 끝은 유효");
+            Assert.IsFalse(Hit(9, 5), "한 칸 더 = 레인 밖");
         }
 
         [Test]
-        public void IsoBoard_SwipeAlongProjectedAxis_PicksThatLane()
+        public void OffLaneCell_SelectsNothing()
         {
-            // On an iso board the lanes run diagonally on screen, so a swipe must be
-            // matched against the projected axes. A screen-cardinal snap would call
-            // all four of these "up/right/down/left" and pick the wrong lane.
-            var upRight = DirectionAimLogic.Evaluate(Origin, Origin + new float2(50f, 50f), DeadZone, IsoRight, IsoUp);
-            Assert.AreEqual(new int2(0, 1), upRight.cardinal, "along projected +Y");
-
-            var downRight = DirectionAimLogic.Evaluate(Origin, Origin + new float2(50f, -50f), DeadZone, IsoRight, IsoUp);
-            Assert.AreEqual(new int2(1, 0), downRight.cardinal, "along projected +X");
-
-            var downLeft = DirectionAimLogic.Evaluate(Origin, Origin + new float2(-50f, -50f), DeadZone, IsoRight, IsoUp);
-            Assert.AreEqual(new int2(0, -1), downLeft.cardinal, "along projected -Y");
-
-            var upLeft = DirectionAimLogic.Evaluate(Origin, Origin + new float2(-50f, 50f), DeadZone, IsoRight, IsoUp);
-            Assert.AreEqual(new int2(-1, 0), upLeft.cardinal, "along projected -X");
+            Assert.IsFalse(Hit(6, 6), "대각");
+            Assert.IsFalse(Hit(7, 6), "레인에서 한 칸 옆 — 폭 1타일");
         }
 
         [Test]
-        public void IsoBoard_SwipeBetweenTwoLanes_ResolvesByTieRule()
+        public void Release_OverLane_Confirms()
         {
-            // Straight up the screen sits exactly between +Y and -X here — there is no
-            // "correct" lane, only a deterministic one. Pinned so the choice can't drift.
-            var up = DirectionAimLogic.Evaluate(Origin, Origin + new float2(0f, 50f), DeadZone, IsoRight, IsoUp);
-            Assert.AreEqual(new int2(-1, 0), up.cardinal, "tie → board X axis");
-        }
-
-        [Test]
-        public void Release_WithDirection_Confirms()
-        {
-            var s = DirectionAimLogic.Evaluate(Origin, Origin + new float2(50f, 0f), DeadZone, FlatRight, FlatUp);
+            var s = DirectionAimLogic.Evaluate(Center, new int2(7, 5), Range);
             var r = DirectionAimLogic.OnRelease(s);
             Assert.IsTrue(r.confirmed);
             Assert.AreEqual(new int2(1, 0), r.cardinal);
         }
 
         [Test]
-        public void Release_InDeadZone_DoesNotConfirm()
+        public void Release_OffLane_DoesNotConfirm()
         {
-            var s = DirectionAimLogic.Evaluate(Origin, Origin + new float2(5f, 5f), DeadZone, FlatRight, FlatUp);
-            Assert.IsFalse(DirectionAimLogic.OnRelease(s).confirmed, "phase stays open for another swipe");
+            var s = DirectionAimLogic.Evaluate(Center, new int2(7, 7), Range);
+            Assert.IsFalse(DirectionAimLogic.OnRelease(s).confirmed, "phase stays open for another try");
         }
     }
 }

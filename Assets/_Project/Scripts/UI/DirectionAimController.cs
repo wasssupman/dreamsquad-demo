@@ -1,11 +1,11 @@
 using System.Collections;
 using System.Collections.Generic;
-using TMPro;
 using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
+using Wassup.Battle.Movement;
 using Wassup.Bridge;
 using Wassup.Core;
 using Wassup.Core.TimeControl;
@@ -16,20 +16,26 @@ namespace Wassup.UI
 {
     // defender-directional-volley unit 6 — 배치 2페이즈 중 두 번째: "공격방향 페이즈".
     // 드롭으로 유닛이 PendingDeployment 상태로 이미 스폰된 뒤, 슬로우모션과 줌을 유지한 채
-    // 상하좌우 가이드를 띄우고 스와이프로 방향을 받는다. 확정되면 배치 연출 → 활성화.
+    // 방향 탭을 받는다. 확정되면 배치 연출 → 활성화.
     //
-    // 제스처 해석은 전부 DirectionAimLogic(순수)에 있다 — 여기서는 카메라/입력/UI 만 맡는다.
+    // 가이드는 화면이 아니라 **보드**에 있다(unit 9): 고를 수 있는 4레인이 십자로 흐리게
+    // 켜지고(사거리가 즉시 읽힌다), 유닛을 둘러싼 4개 화살표가 방향을 말한다. 누른 레인만
+    // 또렷해진다. 플레이어가 판단하는 건 "어느 쪽을 보나"가 아니라 "어느 칸을 커버하나"이고,
+    // 그 답은 타일에만 있다(명일방주/워쳐오브헬름 선례).
+    //
+    // 방향은 **셀 탭**으로 고른다 — 화면 스와이프는 iso 보드에서 "화면 위"가 두 레인 사이에
+    // 걸려 모호해지지만, 셀은 카메라가 어떻게 서 있든 하나로 정해진다.
+    //
+    // 제스처 해석은 전부 DirectionAimLogic(순수)에 있다 — 여기서는 카메라/입력만 맡는다.
     // 런타임 AddComponent 라 인스펙터 배선이 없다(DefenderDragPlacementController 선례).
     public class DirectionAimController : MonoBehaviour
     {
-        private const int GuideSortingOrder = 20002; // 드래그 오버레이(20001) 위
-        private const int SlowmoPriority = 60;       // 드래그 lease(기본)보다 뒤에 잡혀도 이기게
+        private const int SlowmoPriority = 60; // 드래그 lease(기본)보다 뒤에 잡혀도 이기게
 
         private BattleBridge _bridge;
         private Camera _camera;
         private CameraDirector _director;
         private DirectionAimSettings _cfg;
-        private TMP_FontAsset _uiFont;
 
         private DirectionAimSettings Cfg =>
             _cfg != null ? _cfg : (_cfg = ScriptableObject.CreateInstance<DirectionAimSettings>());
@@ -41,25 +47,18 @@ namespace Wassup.UI
         private TimeLease _slowmoLease;
 
         private bool _pressing;
-        private float2 _pressOrigin;
         private DirectionAimLogic.AimSample _sample;
+        private DirectionAimLogic.AimSample _painted; // 마지막으로 그린 상태(바뀔 때만 다시 그린다)
 
-        private GameObject _canvasGO;
-        private TextMeshProUGUI[] _glyphs;              // 0:+X 1:-X 2:+Y 3:-Y
         private readonly List<RaycastResult> _uiHits = new List<RaycastResult>();
-        private static readonly int2[] Cardinals =
-        {
-            new int2(1, 0), new int2(-1, 0), new int2(0, 1), new int2(0, -1),
-        };
 
         public bool IsActive => _active;
 
-        public void Configure(BattleBridge bridge, Camera camera, DirectionAimSettings settings, TMP_FontAsset font)
+        public void Configure(BattleBridge bridge, Camera camera, DirectionAimSettings settings)
         {
             _bridge = bridge;
             _camera = camera;
             if (settings != null) _cfg = settings;
-            if (font != null) _uiFont = font;
         }
 
         // 드롭 성공 직후 호출. 엔티티는 이미 PendingDeployment 로 스폰돼 있고(전투 미참여),
@@ -82,8 +81,11 @@ namespace Wassup.UI
             _slowmoLease = TimeManager.Instance.Request(
                 TimeDomain.Battle, Mathf.Max(0.01f, Cfg.slowmoScale), SlowmoPriority);
 
-            EnsureGuide();
-            _canvasGO.SetActive(true);
+            // 4레인 십자 + 화살표를 지금 띄운다. 이 호출로 범위 표시 소유가 PlacementAim 이
+            // 되어, 바로 뒤따르는 드래그 세션의 CleanupSession→ClearPlacementRange(Placement
+            // 소유)가 이 가이드를 지우지 못한다 — 드롭과 조준 사이에 보드가 비지 않는다.
+            _painted = default;
+            _bridge?.SetAimGuide(_cell, _unit, null);
         }
 
         private void Update()
@@ -96,42 +98,49 @@ namespace Wassup.UI
             if (_director != null && _bridge != null)
                 _director.SetInspectFocus(_bridge.GridCellToViewCenter(_cell));
 
-            ProjectBoardAxes(out float2 axisRight, out float2 axisUp);
-
             var pointer = Pointer.current;
             if (pointer == null) return;
-            float2 pos = (float2)(Vector2)pointer.position.ReadValue();
+            Vector2 pos = pointer.position.ReadValue();
 
             if (pointer.press.wasPressedThisFrame)
             {
-                // UI 위에서 시작한 press 는 조준 제스처가 아니다. 이 가드가 없으면 조준 중
-                // 트레이의 다른 유닛을 집어 드래그하는 한 번의 제스처가 두 곳에서 소비되어
-                // (배치 + 조준), 플레이어가 고른 적 없는 방향으로 유닛이 영구 고정된다.
-                _pressing = !IsOverUi((Vector2)pos);
-                _pressOrigin = pos;
+                // UI 위에서 시작한 press 는 조준이 아니다. 이 가드가 없으면 조준 중 트레이의
+                // 다른 유닛을 집어 드래그하는 한 번의 제스처가 두 곳에서 소비되어(배치 + 조준),
+                // 플레이어가 고른 적 없는 방향으로 유닛이 영구 고정된다.
+                _pressing = !IsOverUi(pos);
                 _sample = default;
             }
 
-            if (_pressing)
-                _sample = DirectionAimLogic.Evaluate(_pressOrigin, pos, Cfg.deadZonePx, axisRight, axisUp);
+            // 누른 채 손가락을 옮기면 선택이 따라온다(모바일엔 hover 가 없으니 press 가
+            // 프리뷰다 — 각성 손패의 press-to-lift 와 같은 결). 그 자리서 떼면 = 단순 탭.
+            if (_pressing) _sample = Resolve(pos);
 
-            UpdateGuide(axisRight, axisUp);
+            RepaintGuideIfChanged();
 
             if (_pressing && pointer.press.wasReleasedThisFrame)
             {
                 _pressing = false;
                 var result = DirectionAimLogic.OnRelease(_sample);
                 if (result.confirmed) Confirm(result.cardinal);
-                else _sample = default; // 데드존 릴리즈 = 가이드 유지, 재스와이프 대기(계약 9)
+                else _sample = default; // 레인 밖에서 뗌 = 가이드 유지, 재시도 대기(계약 9)
             }
+        }
+
+        // 화면 → 셀 → 레인. 셀로 고르므로 카메라 각도가 판정을 흔들지 못한다.
+        private DirectionAimLogic.AimSample Resolve(Vector2 screenPos)
+        {
+            if (_bridge == null || _unit == null) return default;
+            if (!_bridge.TryScreenToCell(_camera, screenPos, out var cell)) return default;
+            return DirectionAimLogic.Evaluate(
+                new int2(_cell.x, _cell.y), new int2(cell.x, cell.y),
+                GridMath.RangeToTiles(_unit.attackRange));
         }
 
         // EventSystem.IsPointerOverGameObject() 를 쓰지 않는다: 그 API 는 지난 프레임의
         // pointer 상태를 읽는데, 터치는 hover 가 없어 press 프레임에 상태 자체가 없다 →
         // 손가락이 UI 위에 있어도 false. 마우스는 hover 잔상이 이 결함을 가려 에디터에선
         // 안 잡힌다(DcInspectController 가 같은 이유로 즉석 레이캐스트를 쓴다).
-        // 가이드 글리프는 raycastTarget=false 라 이 판정에 걸리지 않는다 — 가이드 위를
-        // 눌러도 정상 조준.
+        // 가이드는 보드 스프라이트라 UI 레이캐스트에 걸리지 않는다 — 화살표를 눌러도 통과.
         private bool IsOverUi(Vector2 screenPos)
         {
             var es = EventSystem.current;
@@ -141,38 +150,11 @@ namespace Wassup.UI
             return _uiHits.Count > 0;
         }
 
-        // 보드 +X / +Y 축이 화면에서 어느 방향인지. 카메라 pitch 는 페이즈마다 바뀌므로
-        // 매 프레임 실측한다(고정 상수로 두면 카메라가 움직이는 순간 어긋난다).
-        private void ProjectBoardAxes(out float2 axisRight, out float2 axisUp)
-        {
-            axisRight = new float2(1f, 0f);
-            axisUp = new float2(0f, 1f);
-            if (_camera == null || _bridge == null) return;
-
-            // z <= 0 = 카메라 뒤/평면. WorldToScreenPoint 가 x/y 를 뒤집어 축이 반대로
-            // 나오므로 항등 폴백을 유지한다(CameraDirector.SetInspectFocus 와 같은 방어).
-            Vector3 sc3 = _camera.WorldToScreenPoint(_bridge.GridCellToViewCenter(_cell));
-            if (sc3.z <= 0.001f) return;
-            Vector2 sc = sc3;
-            Vector3 sx3 = _camera.WorldToScreenPoint(_bridge.GridCellToViewCenter(_cell + Vector2Int.right));
-            Vector3 sy3 = _camera.WorldToScreenPoint(_bridge.GridCellToViewCenter(_cell + Vector2Int.up));
-            if (sx3.z > 0.001f)
-            {
-                Vector2 sx = (Vector2)sx3 - sc;
-                if (sx.sqrMagnitude > 1e-4f) axisRight = (float2)sx.normalized;
-            }
-            if (sy3.z > 0.001f)
-            {
-                Vector2 sy = (Vector2)sy3 - sc;
-                if (sy.sqrMagnitude > 1e-4f) axisUp = (float2)sy.normalized;
-            }
-        }
-
         private void Confirm(int2 cardinal)
         {
             _active = false;
             _pressing = false;
-            if (_canvasGO != null) _canvasGO.SetActive(false);
+            _bridge?.ClearAimGuide();
             _slowmoLease.Dispose(); // 확정 = 슬로우모션 종료(배치 연출은 정속 — 기존 경로와 동일)
             StartCoroutine(RunDeployment(_unit, _cell, _entity, new Vector2Int(cardinal.x, cardinal.y)));
         }
@@ -210,61 +192,21 @@ namespace Wassup.UI
             if (!_active) return;
             _active = false;
             _pressing = false;
-            if (_canvasGO != null) _canvasGO.SetActive(false);
+            _bridge?.ClearAimGuide();
             _slowmoLease.Dispose();
             if (activatePending) _bridge?.ActivateDeployedDefender(_cell, _entity, new Vector2Int(0, 1));
         }
 
-        private void UpdateGuide(float2 axisRight, float2 axisUp)
+        // 가이드는 선택이 바뀔 때만 다시 그린다 — 매 프레임 SetTile 로 타일맵을 갈아엎지 않는다.
+        private void RepaintGuideIfChanged()
         {
-            if (_glyphs == null || _camera == null || _bridge == null) return;
+            if (_bridge == null) return;
+            if (_sample.hasDirection == _painted.hasDirection &&
+                (!_sample.hasDirection || _sample.cardinal.Equals(_painted.cardinal))) return;
 
-            Vector3 center = _bridge.GridCellToViewCenter(_cell);
-            Vector2 sc = _camera.WorldToScreenPoint(center);
-
-            for (int i = 0; i < _glyphs.Length; i++)
-            {
-                var c = Cardinals[i];
-                float2 dir = axisRight * c.x + axisUp * c.y;
-                var t = _glyphs[i].rectTransform;
-                t.position = new Vector3(sc.x + dir.x * Cfg.guideRadiusPx, sc.y + dir.y * Cfg.guideRadiusPx, 0f);
-                // 글리프가 가리키는 쪽 = 그 방향 레인. 화살표를 축 투영에 맞춰 회전.
-                t.rotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg - 90f);
-
-                bool on = _sample.hasDirection && _sample.cardinal.Equals(c);
-                _glyphs[i].color = on ? Cfg.highlightColor : Cfg.idleColor;
-                t.localScale = Vector3.one * (on ? Cfg.highlightScale : 1f);
-            }
-        }
-
-        private void EnsureGuide()
-        {
-            if (_glyphs != null) return;
-            _canvasGO = new GameObject("DirectionAimCanvas", typeof(Canvas));
-            _canvasGO.transform.SetParent(transform, false);
-            var canvas = _canvasGO.GetComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = GuideSortingOrder;
-
-            _glyphs = new TextMeshProUGUI[Cardinals.Length];
-            for (int i = 0; i < _glyphs.Length; i++)
-            {
-                var go = new GameObject($"AimGlyph{i}", typeof(RectTransform));
-                go.transform.SetParent(_canvasGO.transform, false);
-                var rt = (RectTransform)go.transform;
-                rt.sizeDelta = new Vector2(120f, 120f);
-                var label = go.AddComponent<TextMeshProUGUI>();
-                if (_uiFont != null) label.font = _uiFont;
-                label.text = "▲"; // 회전으로 방향을 만든다 — 글리프 4종을 두지 않는다
-                label.fontSize = Cfg.guideFontSize;
-                label.alignment = TextAlignmentOptions.Center;
-                label.raycastTarget = false;
-                var mat = label.fontMaterial;
-                mat.EnableKeyword(ShaderUtilities.Keyword_Outline);
-                mat.SetColor(ShaderUtilities.ID_OutlineColor, new Color(0f, 0f, 0f, 0.9f));
-                mat.SetFloat(ShaderUtilities.ID_OutlineWidth, 0.18f);
-                _glyphs[i] = label;
-            }
+            _painted = _sample;
+            _bridge.SetAimGuide(_cell, _unit,
+                _sample.hasDirection ? new Vector2Int(_sample.cardinal.x, _sample.cardinal.y) : (Vector2Int?)null);
         }
 
         private void OnDisable() => Cancel(activatePending: false);

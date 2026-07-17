@@ -25,6 +25,11 @@ namespace Wassup.Presentation
         // 팝은 파열 순간의 이완이라 블롭보다 앞에 터져야 한다.
         public const int PlacementBlobOrder = 11000;
 
+        // defender-directional-volley unit 9 — 방향 지정 화살표: 레인 타일 위에 얹히는
+        // 탭 어포던스라 범위/하이라이트보다 앞. 확정 팝(12000)보다는 뒤 — 조준은 이미
+        // 끝난 뒤에 팝이 뜬다.
+        public const int AimArrowOrder = 11500;
+
         public static int Compute(int2 gridSize, int cellX, int cellY, int offset = 0)
             => (gridSize.y - cellY) * 10 + cellX + offset;
 
