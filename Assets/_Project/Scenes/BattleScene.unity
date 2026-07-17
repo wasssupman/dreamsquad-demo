@@ -1673,6 +1673,7 @@ GameObject:
   m_Component:
   - component: {fileID: 956177015}
   - component: {fileID: 956177014}
+  - component: {fileID: 956177016}
   m_Layer: 0
   m_Name: DcIconStripSpawner
   m_TagString: Untagged
@@ -1701,6 +1702,21 @@ MonoBehaviour:
   plateFill: {r: 0.09, g: 0.11, b: 0.2, a: 0.9}
   squadBorder: {r: 1, g: 0.82, b: 0.35, a: 1}
   unitBorder: {r: 0.45, g: 0.85, b: 1, a: 1}
+--- !u!114 &956177016
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 956177013}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 074ade6da03c4d7a8b041d09b55b716c, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Presentation.UnitOverheadUiLayer
+  style: {fileID: 11400000, guid: 7a6b5c4d3e2f10988776655443322110, type: 2}
+  hand: {fileID: 2054561897}
+  sortingOrder: 3
 --- !u!4 &956177015
 Transform:
   m_ObjectHideFlags: 0
@@ -3692,6 +3708,8 @@ MonoBehaviour:
   statusFxSpawner: {fileID: 1737790243}
   tileHealthGaugeLayer: {fileID: 1218224327}
   dcIconStripSpawner: {fileID: 956177014}
+  unitHealthPresentationMode: 1
+  unitOverheadUiLayer: {fileID: 956177016}
   scoreHud: {fileID: 1279129162}
   _projectileViewPool: {fileID: 808760338}
   placementInput: {fileID: 1495062452}

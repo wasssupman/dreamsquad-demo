@@ -40,6 +40,7 @@ namespace Wassup.Presentation
         private readonly List<Entity> _toHide = new();
         private Sprite _squadFrame;
         private Sprite _unitFrame;
+        private bool _presentationEnabled = true;
 
         private void OnEnable()
         {
@@ -55,6 +56,7 @@ namespace Wassup.Presentation
 
         private void Rebuild()
         {
+            if (!_presentationEnabled) { Clear(); return; }
             if (hand == null || bridge == null) return;
             var cam = billboardCamera != null ? billboardCamera : Camera.main;
             if (cam == null) return;
@@ -97,6 +99,15 @@ namespace Wassup.Presentation
                 }
                 view.Show(anchor, offset, cam, kv.Value, _squadFrame, _unitFrame, cardHeight, spacing);
             }
+        }
+
+        // unit-overhead-ui — 신규 통합 행과 레거시 스트립의 중복 표시 방지.
+        public void SetPresentationEnabled(bool enabled)
+        {
+            if (_presentationEnabled == enabled) return;
+            _presentationEnabled = enabled;
+            if (enabled) Rebuild();
+            else Clear();
         }
 
         // 전투 teardown/비활성화 시 전량 파괴 (StatusFxSpawner.Clear 선례).

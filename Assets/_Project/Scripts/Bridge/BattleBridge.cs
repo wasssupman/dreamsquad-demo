@@ -93,6 +93,10 @@ namespace Wassup.Bridge
         // (spec 계약 6). 스트립은 이벤트 구동이라 Placement 진입 전까지 리빌드가 없다 —
         // teardown 이 앵커를 파괴해도 뷰는 마지막 위치를 유지하므로 여기서 명시 회수한다.
         [SerializeField] private Wassup.Presentation.DcIconStripSpawner dcIconStripSpawner;
+        // unit-overhead-ui — 레거시 체력/드림캐쳐 표현과 신규 공통 오버헤드 경로 전환.
+        [SerializeField] private Wassup.Data.UnitHealthPresentationMode unitHealthPresentationMode =
+            Wassup.Data.UnitHealthPresentationMode.Legacy;
+        [SerializeField] private Wassup.Presentation.UnitOverheadUiLayer unitOverheadUiLayer;
         [SerializeField] private Wassup.UI.ScoreHudView scoreHud;
         [SerializeField] private Wassup.Presentation.ProjectileViewPool _projectileViewPool;
         // Phase 9 P9-07 — tileSize 단일 소스화. Awake 에서 PlacementInput 으로 주입.
@@ -323,12 +327,34 @@ namespace Wassup.Bridge
             CharacterBillboardTilt = tilemapBillboardTilt;
 
             EnsureMonoViewPools();
+            ApplyUnitHealthPresentationMode();
         }
 
         private void OnValidate()
         {
             // Keep the static mirror in sync while tuning in the inspector (edit/play).
             CharacterBillboardTilt = tilemapBillboardTilt;
+            if (Application.isPlaying) ApplyUnitHealthPresentationMode();
+        }
+
+        private bool UnifiedOverheadActive =>
+            unitHealthPresentationMode == Wassup.Data.UnitHealthPresentationMode.UnifiedOverhead
+            && unitOverheadUiLayer != null;
+
+        private void ApplyUnitHealthPresentationMode()
+        {
+            bool unified = UnifiedOverheadActive;
+            if (unitHealthPresentationMode == Wassup.Data.UnitHealthPresentationMode.UnifiedOverhead
+                && unitOverheadUiLayer == null)
+                Debug.LogError("[BattleBridge] UnifiedOverhead mode인데 UnitOverheadUiLayer가 미할당 — Legacy로 폴백.", this);
+            dcIconStripSpawner?.SetPresentationEnabled(!unified);
+            if (!unified) unitOverheadUiLayer?.Clear();
+            if (unified)
+            {
+                enemyHitBarSpawner?.Clear();
+                tileHealthGaugeLayer?.Clear();
+                unitOverheadUiLayer.RefreshAttachments();
+            }
         }
 
         // gift-phase unit 3 — 재시작 진입은 선물 페이즈를 거친다(배선 시). 미배선이면
@@ -403,6 +429,7 @@ namespace Wassup.Bridge
             if (enemyHitBarSpawner != null) enemyHitBarSpawner.Clear(); // unit 2 — 잔여 마이크로바 정리(생명주기 대칭)
             if (statusFxSpawner != null) statusFxSpawner.Clear(); // unit-status-fx unit 2 — 잔여 상태 연출 정리
             if (dcIconStripSpawner != null) dcIconStripSpawner.Clear(); // unit-dreamcatcher-icons — 잔여 아이콘 스트립 정리(생명주기 대칭)
+            unitOverheadUiLayer?.Clear(); // unit-overhead-ui — 공통 health/card view 정리
             ClearPickupVisuals(); // season-gimmick-overwork unit 6 — 잔여 레드불 뷰 정리
             _dcAuraPool?.Clear(); _dcAuraPool = null; // nightmare-whip-aura rev 2 — 드림캐쳐 부착 오라 정리(생명주기 대칭)
             ClearBlockingHazardVisuals();
@@ -1016,6 +1043,7 @@ namespace Wassup.Bridge
             _occupiedTiles.Clear();
             _defenderByTile.Clear();
             tileHealthGaugeLayer?.Clear(); // unit 3 — 게이지 정리를 _defenderByTile 리셋과 co-locate(불변식)
+            unitOverheadUiLayer?.Clear();
             // ingame-dreamcatcher Unit 2/3 — reset card registry + triggers for a new match.
             _activeDcEffects.Clear();
             _activePlacementSleeps.Clear(); // combat-action-lock — 매치별 placement-aura Sleep 등록 초기화
@@ -2166,6 +2194,8 @@ namespace Wassup.Bridge
         private void SyncMonoUnitViews()
         {
             if (_em == null) return;
+            bool unifiedOverhead = UnifiedOverheadActive;
+            if (unifiedOverhead) unitOverheadUiLayer.BeginFrame();
             bool canSort = _generatedMap.IsCreated;
             int2 gridSize = canSort ? _generatedMap.gridSize : default;
             if (enemyViewPool != null)
@@ -2195,7 +2225,7 @@ namespace Wassup.Bridge
                             var world = new Vector3(p.x, p.y, p.z);
                             // unit-health-display unit 1 — 적 저체력 틴트. HP read-only 평가는
                             // BattleBridge 소관(ECS 창구), 뷰는 Color 만 받아 적용.
-                            Color tint = EvaluateEnemyHealthTint(entity);
+                            Color tint = unifiedOverhead ? Color.white : EvaluateEnemyHealthTint(entity);
                             // placement-enemy-see-through unit 3 — 적만 dim(디펜더 루프는 미적용).
                             // SetDimmed 를 SetHealthTint 앞에 — quad 는 SetHealthTint 가 알파를 반영한다.
                             bool dimmed = _enemyDimAlpha < 0.999f;
@@ -2212,6 +2242,13 @@ namespace Wassup.Bridge
                                 if (canSort) view.UpdateSortingOrder(gridSize, tileSize);
                                 view.SetDimmed(dimmed, _enemyDimAlpha);
                                 view.SetHealthTint(tint);
+                            }
+                            if (unifiedOverhead && _em.HasComponent<Health>(entity)
+                                && TryGetUnitScreenAnchor(entity, out var enemyScreenAnchor, out var enemyAnchor))
+                            {
+                                var h = _em.GetComponentData<Health>(entity);
+                                unitOverheadUiLayer.SetUnit(entity, false, Health.ComputeRatio(h.value, h.max),
+                                    enemyScreenAnchor, ProjectTileScreenWidth(enemyAnchor));
                             }
                         }
                     }
@@ -2233,7 +2270,7 @@ namespace Wassup.Bridge
                 var world = new Vector3(p.x, p.y + spineDefenderYOffset, p.z);
                 // unit-health-display unit 3 — 타일 게이지: defender HP read-only → 타일 중심(바닥)
                 // view 좌표로 Set. 만피 숨김은 레이어가 처리.
-                if (tileHealthGaugeLayer != null && _em.HasComponent<Health>(entity))
+                if (!unifiedOverhead && tileHealthGaugeLayer != null && _em.HasComponent<Health>(entity))
                 {
                     var dh = _em.GetComponentData<Health>(entity);
                     var tileCenterView = (Vector3)Wassup.Core.BoardSpace.ToView(new Vector3(p.x, 0f, p.z));
@@ -2250,7 +2287,15 @@ namespace Wassup.Bridge
                     fallbackView.UpdatePosition(world);
                     if (canSort) fallbackView.UpdateSortingOrder(gridSize, tileSize);
                 }
+                if (unifiedOverhead && _em.HasComponent<Health>(entity)
+                    && TryGetUnitScreenAnchor(entity, out var defenderScreenAnchor, out var defenderAnchor))
+                {
+                    var h = _em.GetComponentData<Health>(entity);
+                    unitOverheadUiLayer.SetUnit(entity, true, Health.ComputeRatio(h.value, h.max),
+                        defenderScreenAnchor, ProjectTileScreenWidth(defenderAnchor));
+                }
             }
+            if (unifiedOverhead) unitOverheadUiLayer.EndFrame();
         }
 
         // unit-health-display unit 1 — 적 HP read-only 조회 → HealthDisplayStyle 로 ratio→Color.
@@ -2459,7 +2504,7 @@ namespace Wassup.Bridge
         {
             if (!_damageNumberEventQueue.IsCreated) return;
             bool hasNumbers = damageNumberSpawner != null;
-            bool hasBars = enemyHitBarSpawner != null;
+            bool hasBars = !UnifiedOverheadActive && enemyHitBarSpawner != null;
             if (!hasNumbers && !hasBars) { _damageNumberEventQueue.Clear(); return; }
             while (_damageNumberEventQueue.TryDequeue(out var evt))
             {
@@ -2487,6 +2532,51 @@ namespace Wassup.Bridge
             if (enemyViewPool != null && enemyViewPool.TryGet(entity, out var qv) && qv != null) return qv.transform;
             if (defenderFallbackViewPool != null && defenderFallbackViewPool.TryGet(entity, out var fv) && fv != null) return fv.transform;
             return null;
+        }
+
+        // unit-overhead-ui — Y는 실제 renderer top, X는 무기 bounds에 끌려가지 않는 visual pivot.
+        // 이 조합이 포즈/키별 5px 높이와 머리 중앙 정렬을 동시에 지킨다.
+        private bool TryGetUnitScreenAnchor(Entity entity, out Vector2 screenAnchor, out Transform anchor)
+        {
+            screenAnchor = default;
+            anchor = null;
+            var cam = Camera.main;
+            if (cam == null) return false;
+            if (spineUnitPool != null && spineUnitPool.TryGet(entity, out var sv) && sv != null
+                && sv.TryGetScreenRect(cam, out var rect))
+            {
+                anchor = sv.transform;
+                screenAnchor = Wassup.Presentation.UnitOverheadLayout.ScreenAnchor(
+                    cam.WorldToScreenPoint(anchor.position).x, rect);
+                return true;
+            }
+            if (enemyViewPool != null && enemyViewPool.TryGet(entity, out var qv) && qv != null
+                && qv.TryGetScreenRect(cam, out rect))
+            {
+                anchor = qv.transform;
+                screenAnchor = Wassup.Presentation.UnitOverheadLayout.ScreenAnchor(
+                    cam.WorldToScreenPoint(anchor.position).x, rect);
+                return true;
+            }
+            if (defenderFallbackViewPool != null && defenderFallbackViewPool.TryGet(entity, out var fv) && fv != null
+                && fv.TryGetScreenRect(cam, out rect))
+            {
+                anchor = fv.transform;
+                screenAnchor = Wassup.Presentation.UnitOverheadLayout.ScreenAnchor(
+                    cam.WorldToScreenPoint(anchor.position).x, rect);
+                return true;
+            }
+            return false;
+        }
+
+        private float ProjectTileScreenWidth(Transform anchor)
+        {
+            var cam = Camera.main;
+            if (cam == null || anchor == null) return 1f;
+            Vector3 half = Vector3.right * (tileSize * 0.5f);
+            Vector3 a = cam.WorldToScreenPoint(anchor.position - half);
+            Vector3 b = cam.WorldToScreenPoint(anchor.position + half);
+            return Vector2.Distance(new Vector2(a.x, a.y), new Vector2(b.x, b.y));
         }
 
         // unit-dreamcatcher-icons unit 1 — 부착 아이콘 스트립 앵커 조회. 게이트웨이 경유
