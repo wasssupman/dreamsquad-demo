@@ -22,6 +22,8 @@ feature 전체를 관통하는 실증 유닛 1종을 만든다: 방향 지정 �
 
 **e2e**: scripted battle 패턴(TestModeContext.Set + StartBattle + update 콜백 모니터)으로 — 배치 → 방향 확정(리플렉션으로 aim 확정 강제 가능) → 버스트 발사 → 레인 내 적 피해를 조건 기반 스크린샷/로그로 확인.
 
+**주의**: PlayMode 스모크 4건(DreamcatcherDeckCarryIn·SquadCarryIn·DreamstoneCarryIn·MovementIntegrity)은 main 에서 이미 실패 상태로 문서화됨(`docs/spec/README.md` "PlayMode 스모크 위생" 2026-07-16) — e2e 추가 시 신규 회귀와 혼동하지 말 것.
+
 ## 완료 기준
 
 - [ ] 스쿼드 빌더/손패에 머신건 노출(카탈로그 등록만으로 — 별도 카드 에셋 없음 확인)

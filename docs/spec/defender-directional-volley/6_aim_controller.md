@@ -26,6 +26,8 @@
 
 **멱등/정리**: 컨트롤러 세션 종료(확정) 시 캔버스·피드·lease 를 전부 해제. 매치 종료 등 외부 정리 경로에서 세션이 살아 있으면 안전 dispose(드래그 컨트롤러 CleanupSession 멱등 선례).
 
+**병행 변경 주의 (2026-07-17 placement-cell-snap units 0~5 반영)**: 드래그 컨트롤러에 히스테리시스+throttle 셀 확정(`ResolveFocusAndTarget`)·확정 팝(`SetHover`)이 들어갔다 — EndDrag 의 확정 셀은 이 산출물을 그대로 쓰면 되고 aim 페이즈는 드롭 후라 스냅 로직과 무관. 단 **고스트 셀 스냅 재도입 금지**(키링 스윙 파괴, placement-cell-snap handoff Notes) 결정과 충돌하는 UI 를 만들지 말 것. 착수 시점에 DefenderDragPlacementController·DefenderDragSlot·DragSwaySettings 는 병행 수정 이력이 있으므로 반드시 재독.
+
 ## 완료 기준
 
 - [ ] compile + 기존 유닛 D&D 배치 무변화 (non-directional 경로 회귀 없음)

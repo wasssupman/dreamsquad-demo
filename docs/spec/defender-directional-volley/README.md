@@ -1,6 +1,6 @@
 # defender-directional-volley — 방향 지정 배치 + 다연발 투사체
 
-상태: 구현 중 2026-07-16 — unit 0·5 완료(78f5c38a·80b26662). BattleBridge 접점(unit 1·2·4)·드래그 컨트롤러 접점(unit 6)은 병행 세션의 bridge 작업 커밋 후 진행(충돌 회피 순서)
+상태: 구현 중 2026-07-17 — unit 0·5 완료(78f5c38a·80b26662). origin merge(0cc77e44) + placement-cell-snap units 0~5 커밋(a3812079)으로 **BattleBridge 클린 → unit 1 착수 가능**. 접점 앵커 생존 확인: ActivateDeployedDefender·PlayDeploymentPresentation·SpawnProjectile·ResolveProjectileAxes·TryBeginDefenderDeployment. AttackSystem·DefenderUnitData·ProjectileData 는 merge 무변경. 단 드래그 컨트롤러 계열(DefenderDragPlacementController·DefenderDragSlot·DragSwaySettings)은 병행 수정 계속 중 — unit 6 착수 전 재독 필수
 
 ## 상위 목표
 
@@ -74,3 +74,4 @@
 - 버스트/스프레드 × Homing·Ballistic 궤적 조합 검증 (이번엔 Directional 에서만 e2e)
 - 방향 가이드 UI 정식 아트 (이번엔 절차적/임시)
 - 곡사 방향 발사 (DirectionalLinear + arc 시각)
+- tap-to-place 배치 경로 연동 — `defender-tap-to-place` spec(승인 대기)이 도입되면 공격방향 페이즈 진입점을 D&D EndDrag 외에 tap 확정 시점에도 연결
