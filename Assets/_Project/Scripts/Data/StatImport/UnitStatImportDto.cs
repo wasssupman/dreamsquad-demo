@@ -18,6 +18,9 @@ namespace Wassup.Data.StatImport
     {
         public string id;
         public string displayName;
+        // squad-character-page unit 7 — unit description. Plain string field like
+        // displayName: reflection-mapped both ways (no projection, no skip-list).
+        public string desc;
         public DefenderClass? role;
         public DefenderRarity? rarity;
         public float? health;

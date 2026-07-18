@@ -20,6 +20,8 @@
 
 ## 완료 기준
 
-- [ ] 컴파일 클린. `UnitKitSummaryTests` (기존 10 + Describe 신규) 통과.
-- [ ] 18개 Defender asset `desc`에 현재 요약문 시드됨(예: archer `desc` = "레인저 · 원거리형. 배치 시 주변 속박."). 상세뷰가 desc를 표시.
-- [ ] `desc` 편집 시(Inspector/이후 시트) 상세뷰에 반영. 하드코딩 수치 0.
+- [x] 컴파일 클린. `UnitKitSummaryTests` 13/13(기존 10 + Describe 3).
+- [x] 17개 Defender asset `desc`에 현재 요약문 시드됨(archer = "레인저 · 원거리형. 배치 시 주변 속박." 등). 상세뷰가 `Describe`(desc) 표시.
+- [x] `desc` 편집 시 상세뷰 반영(Describe 경유). 하드코딩 수치 0.
+
+> 구현 2026-07-18 · 커밋 `c1eb407b` (EditMode 13/13, 17 자산 시드).
