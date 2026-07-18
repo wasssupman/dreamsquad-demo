@@ -1,6 +1,6 @@
 # defender-tap-to-place
 
-상태: **진행 중 — unit 8 구현 완료, 사용자 Play 확인 대기** · units 0~6 사용자 Play 확인 2026-07-18
+상태: **완료 2026-07-18 (units 0~8 사용자 Play 확인)** · 작성 2026-07-17
 
 ## 목표
 
@@ -59,6 +59,7 @@
 | 6 | `6_throw_arrival_settle.md` | feature | 3차 던지기 궤적 + 실제 프리뷰 정착 후 배치 확정 |
 | 7 | `7_handoff_summary.md` | doc | Unit 6 구현·검증·튜닝 지점 인계 |
 | 8 | `8_throw_flight_refactor.md` | refactor | 죽은 상태 제거 + 좌표/설정 흐름 명료화 |
+| 9 | `9_refactor_handoff_summary.md` | doc | Unit 8 리팩토링·검증 인계 |
 
 의존: `0 → 1 → 2`, `5 → 6`. `4` 는 비행 포커스 정제. 선행: `docs/spec/placement-cell-snap/`(드래그 파이프라인 — 히스테리시스/throttle/팝, 완료).
 
