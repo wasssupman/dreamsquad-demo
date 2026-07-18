@@ -20,3 +20,5 @@
 - Sprite importer: UI Sprite, alpha transparency, mipmap off.
 - disabled 상태에서도 `웨이브 없음`을 읽을 수 있고 버튼이 눌릴 수 없음을 명확히 보인다.
 - 컴파일/Console error 0.
+
+확인: 2026-07-18 · 사용자 마감 확인 · 구현 `27224339`

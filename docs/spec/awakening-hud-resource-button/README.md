@@ -1,6 +1,7 @@
 # awakening-hud-resource-button
 
-> 상태: 캐주얼 버스트 개정 완료 2026-07-18
+> 상태: **완료 2026-07-18** — 초기 UI/레이아웃 `9acd4e37`, 캐주얼 버스트 개정
+> `20eec6af`, 사용자 마감 확인 완료. 인계: `4_handoff_summary.md`
 
 ## 목표
 
@@ -22,6 +23,7 @@
 | 1 | `1_casual_resource_button.md` | 젤리 버스트 에셋, 큰 수치, 액체 충전면, 버튼 피드백 구현 |
 | 2 | `2_action_corner_layout.md` | Placement Start 우하단 유지, Battle 좌 NextWave/우 각성 분리 |
 | 3 | `3_visual_verification.md` | 16:9/20:9 Play 캡처, 손패 토글, 콘솔·회귀 확인 |
+| 4 | `4_handoff_summary.md` | 최종 구현·검증·비목표 인계 |
 
 ## Feature-wide 계약
 

@@ -36,3 +36,5 @@
 - 기존 `Button.onClick → Toggled → DreamcatcherHandView` 구독 경로 유지. Unity Console error 0.
 - wide aspect는 모두 `SafeAreaRoot` 좌/우 bottom anchor를 사용하며, Android 실기 cutout 검증은
   feature-wide 비목표의 기존 모바일 QA 항목으로 유지한다.
+
+확인: 2026-07-18 · 사용자 마감 확인 · 최종 개정 `20eec6af`

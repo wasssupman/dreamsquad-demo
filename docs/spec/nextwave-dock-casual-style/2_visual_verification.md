@@ -23,3 +23,5 @@
 - Button listener는 기존 `OnWaveButtonClicked → bridge.ForceNextWave()` 1회 경로를 유지하고
   View 계층의 SFX/punch만 추가했다.
 - Unity Console error 0.
+
+확인: 2026-07-18 · 사용자 마감 확인 · 구현 `27224339`

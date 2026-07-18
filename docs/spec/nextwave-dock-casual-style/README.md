@@ -1,6 +1,7 @@
 # nextwave-dock-casual-style
 
-> 상태: 완료 2026-07-18
+> 상태: **완료 2026-07-18** — 구현 `27224339`, 사용자 마감 확인 완료.
+> 인계: `3_handoff_summary.md`
 
 ## 목표
 
@@ -15,6 +16,7 @@ Battle 좌하단의 `NextWaveDock`을 각성 버스트 버튼과 같은 캐주�
 | 0 | `0_style_contract.md` | 정보 위계와 무회귀 계약 |
 | 1 | `1_assets_and_motion.md` | 심볼 없는 젤리 프레임·버튼 에셋과 눌림 반응 구현 |
 | 2 | `2_visual_verification.md` | Battle Play 캡처, 경고/disabled/클릭 검증 |
+| 3 | `3_handoff_summary.md` | 최종 구현·검증·비목표 인계 |
 
 ## Feature-wide 계약
 
