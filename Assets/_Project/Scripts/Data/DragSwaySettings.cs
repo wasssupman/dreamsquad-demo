@@ -73,6 +73,12 @@ namespace Wassup.Data
         public float tapTravelScaleMax = 1.5f;
         [Tooltip("트레이 슬롯 arm(탭 선택) 하이라이트 색. 확정 팝 valid 색과 톤 맞춤.")]
         public Color armHighlightColor = new Color(0.35f, 1f, 0.9f, 0.28f);
+        [Tooltip("탭 비행 아치 높이(직선거리 배수). 제어점을 카메라-up 으로 이만큼 띄워 유닛이 위로 솟았다 내려온다. 0=직선.")]
+        [Range(0f, 1f)]
+        public float tapArcHeightFactor = 0.32f;
+        [Tooltip("탭 비행 좌우 흔들림 최대폭(직선거리 배수). 매 탭 부호·크기가 달라져 경로가 매번 다르다. 0=좌우 없음.")]
+        [Range(0f, 1f)]
+        public float tapArcLateralFactor = 0.22f;
 
         [Header("공격방향 페이즈 (defender-directional-volley)")]
         // 방향 지정 컨트롤러는 런타임 AddComponent 라 자체 인스펙터가 없다. 튜닝값이

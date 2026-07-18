@@ -63,6 +63,9 @@ namespace Wassup.UI
         private DefenderUnitData _armedUnit;
         private Vector2 _armedFromScreen;
         private bool _simulatedDrag; // defender-tap-to-place — 시뮬(탭) 경로 표시. 공격 범위 프리뷰 억제.
+        // defender-tap-to-place unit 4 — 탭 비행 중 고정할 선택 타일(발밑 추종 대신). unit 5 — 곡선 좌우 변주 인덱스(결정론).
+        private Vector2Int? _simFocusCell;
+        private int _tapFlightSeq;
         // review fix — 세션 세대 토큰. CleanupSession 마다 증가. 시뮬 코루틴이 자기 세대를 캡처해
         // 비행 중 새 드래그(BeginDrag→CleanupSession→새 세션)가 시작되면 즉시 물러난다(세션 하이재킹 방지).
         private int _sessionGen;
@@ -183,7 +186,8 @@ namespace Wassup.UI
 
             // unit 2·3 — 스프링 스텝 전에 포커스 셀 확정(+디바운스)하고 스프링 타깃을 그 셀 중심으로 스냅.
             // dt = unscaled(슬로우모 무관 실시간) — 디바운스 타이밍이 배치 슬로우모에 안 끌리게.
-            ResolveFocusAndTarget(dt);
+            // unit 4 — 탭 비행 중엔 선택 타일에 포커스 고정(실시간 발밑 추종 제거). 스와이프는 발밑 추종 유지.
+            ResolveFocusAndTarget(dt, lockCell: _simulatedDrag ? _simFocusCell : null);
 
             // 무게추 스프링(탄성) + 속도 상한: spring/damping 으로 지연·탄성을 유지하고, maxSpeed 로 빠른
             // 스와이프 시 속도만 제한 → 초기 튀어나감만 방지(탄성 자체는 spring/damping 으로 조절).
@@ -301,28 +305,36 @@ namespace Wassup.UI
         // placement-cell-snap — 손가락 바로 아래 발점(_unitTargetWorld)에서 포커스 셀을 확정한다. unit 1 히스테리시스 + unit 3
         // settle-to-commit 으로 판정을 안정화하되, 고스트 자체는 이 발점을 스프링 추종(키링 스윙 유지) —
         // **스냅하지 않는다**(스냅하면 유닛이 셀 중심에 얼어붙어 줄/스윙이 사라짐 — unit 2 회귀). "어느 칸"은 하이라이트가 보여준다.
-        private void ResolveFocusAndTarget(float dt, bool forceCommit = false)
+        private void ResolveFocusAndTarget(float dt, bool forceCommit = false, Vector2Int? lockCell = null)
         {
-            // 스윙하는 _unitPosWorld 가 아니라 손가락 바로 아래 발점으로 칸을 정한다 → 흔들림 없이 안정.
-            var sim = BoardSpace.ToSim(_unitTargetWorld);
             Vector2Int cell;
             Vector2 frac = default; // unit 7 — SetHover 뒤 액체 하이라이트 신호 산출에 재사용
-            if (bridge != null)
+            if (lockCell.HasValue)
             {
-                // unit 1 — 매 프레임 반올림 대신 히스테리시스. 이전 포커스 셀(_session.hoverTile — 이미 sticky
-                // 상태, 진실 소스 하나)을 밴드 안에서 유지해 경계 지터를 흡수. frac/gridSize 는 DebugWorldToCell 과 동일 공간.
-                frac = bridge.DebugWorldToCellFractional((Vector3)sim);
-                Vector2Int target = PlacementCellSnap.Resolve(_session.hoverTile, frac, Cfg.placementStickMargin, bridge.DebugGridSize);
-                // unit 3 — throttle(주기적 커밋): 이동 중에도 interval 마다 현재 칸으로 스텝 갱신, 사이엔 유지.
-                // 첫 프레임(hoverTile 없음)과 forceCommit(릴리즈 최종 해석)은 즉시 확정 + 상태 리셋.
-                if (forceCommit || !_session.hoverTile.HasValue) { cell = target; _debounce = default; }
-                else
-                    cell = PlacementSnapDebounce.Step(ref _debounce, _session.hoverTile.Value, target,
-                        dt, Cfg.placementCommitInterval);
+                // unit 4 — 탭 비행: 발밑 추종/히스테리시스/디바운스 없이 선택 타일에 포커스 고정.
+                cell = lockCell.Value;
             }
             else
             {
-                cell = new Vector2Int(Mathf.FloorToInt(sim.x + 0.5f), Mathf.FloorToInt(sim.z + 0.5f));
+                // 스윙하는 _unitPosWorld 가 아니라 손가락 바로 아래 발점으로 칸을 정한다 → 흔들림 없이 안정.
+                var sim = BoardSpace.ToSim(_unitTargetWorld);
+                if (bridge != null)
+                {
+                    // unit 1 — 매 프레임 반올림 대신 히스테리시스. 이전 포커스 셀(_session.hoverTile — 이미 sticky
+                    // 상태, 진실 소스 하나)을 밴드 안에서 유지해 경계 지터를 흡수. frac/gridSize 는 DebugWorldToCell 과 동일 공간.
+                    frac = bridge.DebugWorldToCellFractional((Vector3)sim);
+                    Vector2Int target = PlacementCellSnap.Resolve(_session.hoverTile, frac, Cfg.placementStickMargin, bridge.DebugGridSize);
+                    // unit 3 — throttle(주기적 커밋): 이동 중에도 interval 마다 현재 칸으로 스텝 갱신, 사이엔 유지.
+                    // 첫 프레임(hoverTile 없음)과 forceCommit(릴리즈 최종 해석)은 즉시 확정 + 상태 리셋.
+                    if (forceCommit || !_session.hoverTile.HasValue) { cell = target; _debounce = default; }
+                    else
+                        cell = PlacementSnapDebounce.Step(ref _debounce, _session.hoverTile.Value, target,
+                            dt, Cfg.placementCommitInterval);
+                }
+                else
+                {
+                    cell = new Vector2Int(Mathf.FloorToInt(sim.x + 0.5f), Mathf.FloorToInt(sim.z + 0.5f));
+                }
             }
             // action-tray unit 4 — reason 을 버리지 않고 세션에 보관, 라벨로 구분 표기.
             var reason = PlacementRejectReason.None;
@@ -333,8 +345,16 @@ namespace Wassup.UI
             // 신호(dir,t)는 Resolve 와 같은 밴드로 산출 → t=1 이 실제 파열점과 일치.
             if (bridge != null && Cfg.stickyLiquidEnabled)
             {
-                PlacementCellSnap.EvaluateStretch(cell, frac, Cfg.placementStickMargin, out var bDir, out var bT);
-                bridge.SetPlacementStretch(cell, bDir, bT, valid);
+                if (lockCell.HasValue)
+                {
+                    // unit 4 — 탭 비행: 손가락 방향 번짐 없이 정적 하이라이트(스트레치 0).
+                    bridge.SetPlacementStretch(cell, Vector2.zero, 0f, valid);
+                }
+                else
+                {
+                    PlacementCellSnap.EvaluateStretch(cell, frac, Cfg.placementStickMargin, out var bDir, out var bT);
+                    bridge.SetPlacementStretch(cell, bDir, bT, valid);
+                }
             }
             UpdateRejectLabel();
         }
@@ -502,16 +522,28 @@ namespace Wassup.UI
 
             // 렌더 활성 + 스프링 시작점.
             _onBoard = true; _posInit = true;
+            _simFocusCell = targetCell; // unit 4 — 비행 내내 선택 타일에 포커스 고정
             _unitPosWorld = startFeet + boardN * previewHeight;
             _unitVelWorld = Vector3.zero;
             if (_session.preview != null && !_session.preview.activeSelf) _session.preview.SetActive(true);
+
+            // unit 5 — 곡선 비행: 직선 대신 2차 베지어. 제어점 = 중점 + 카메라-up 아치 + 보드 좌우 변주.
+            // 좌우 변주는 결정론 저불일치 수열(황금비) — 매 탭 다른 경로, RNG 없이(프레젠테이션이라 sim 결정론 규칙 밖이나 관례 준수).
+            float flightDist = Vector3.Distance(startFeet, endFeet);
+            Vector3 mid = (startFeet + endFeet) * 0.5f;
+            float g = (_tapFlightSeq++ + 0.5f) * 0.61803398875f;
+            float lateralUnit = (g - Mathf.Floor(g)) * 2f - 1f; // -1..1
+            Vector3 control = mid + camT.up * (flightDist * Cfg.tapArcHeightFactor);
+            Vector3 boardRight = Vector3.ProjectOnPlane(camT.right, boardN);
+            if (boardRight.sqrMagnitude > 1e-6f)
+                control += boardRight.normalized * (flightDist * Cfg.tapArcLateralFactor * lateralUnit);
 
             float t = 0f;
             while (t < 1f && _session.active && _sessionGen == gen)
             {
                 t += Time.unscaledDeltaTime / dur;
                 float e = 1f - Mathf.Pow(1f - Mathf.Clamp01(t), 3f); // OutCubic
-                Vector3 feet = Vector3.Lerp(startFeet, endFeet, e);
+                Vector3 feet = KeyringSim.QuadraticBezier(startFeet, control, endFeet, e);
                 _unitTargetWorld = feet + boardN * previewHeight;                   // 유닛 스프링 타깃
                 _ringWorld = feet + camT.up * totalDrop;                            // 고리 = 발 위 totalDrop(camUp)
                 _lastScreenPos = (Vector2)mainCamera.WorldToScreenPoint(_ringWorld); // 카메라 포커스 피드
@@ -807,6 +839,7 @@ namespace Wassup.UI
             _posInit = false;
             _onBoard = false;
             _simulatedDrag = false; // defender-tap-to-place — 시뮬 표시 해제
+            _simFocusCell = null;   // unit 4 — 탭 비행 포커스 고정 해제
             _unitVelWorld = Vector3.zero;
             // ui-tweak 2026-07-08 — 클릭 배치 은퇴. 드래그 종료 후 재활성화하지 않는다.
         }
