@@ -61,7 +61,7 @@
 - `Assets/_Project/Scripts/Data/DragSwaySettings.cs` — `tapArcHeightFactor`/`tapArcLateralFactor`
 - spec: `4_flight_focus_pin.md`, `5_bezier_flight_path.md`
 
-**Verified**: 컴파일 클린 · EditMode 927(925 pass/0 fail, 베지어 케이스 포함) · 코드리뷰 clean(0 critical/major). Play 체감은 사용자 확인 대기.
+**Verified**: 컴파일 클린 · EditMode 927(925 pass/0 fail, 베지어 케이스 포함) · 코드리뷰 clean(0 critical/major) · **사용자 Play 통과 확인(2026-07-18)**. 비행시간 튜닝 2.4s→1.5s(커밋 `ceb7bfd5`).
 
 **Notes (되돌리면 안 되는 의도)**
 - `_simFocusCell` 은 코루틴 첫 `yield` **전**(동기)에 세팅돼야 첫 프레임부터 lock — 발밑 포커스 누수 방지. 사후 세팅은 리그레션.
