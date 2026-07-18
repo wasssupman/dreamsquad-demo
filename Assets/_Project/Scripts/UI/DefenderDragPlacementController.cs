@@ -31,7 +31,7 @@ namespace Wassup.UI
         private const int RingSegments = 14;
 
         // defender-deploy-cutscene unit 3 — 드래그 시작 시 좌하단 컷신 재생기(옵셔널 주입).
-        // null 이면 컷신 없이 기존 흐름. rev — 컷신 수명은 드래그 세션에 묶인다(CleanupSession 이 EndCutscene 호출).
+        // null 이면 컷신 없이 기존 흐름. 컷신은 자동 종료하되 배치 성공 시 즉시 강제 초기화한다.
         private DeployCutscenePlayer _cutscenePlayer;
 
         // defender-directional-volley unit 6 — 방향 지정 유닛의 두 번째 배치 페이즈.
@@ -132,13 +132,16 @@ namespace Wassup.UI
             if (_aimController != null && _aimController.IsActive) return;
             Disarm(); // defender-tap-to-place — 드래그가 arm 을 대체
             CleanupSession();
+            // defender-deploy-cutscene unit 8 review — 직전 실패/취소 컷씬이 자동 퇴장 중이어도
+            // 새 배치 세션에는 이전 유닛 연출을 넘기지 않는다. 프레임 없는 유닛도 동일하게 원복.
+            if (_cutscenePlayer != null) _cutscenePlayer.ForceStopAndReset();
             _simulatedDrag = simulated; // defender-tap-to-place — 시뮬 경로는 첫 UpdateDrag 부터 범위 억제(CleanupSession 이 false 로 리셋한 뒤 재설정)
             // time-manager Unit 5 — 드래그 시작 시 전투만 슬로우모. 드롭/취소 시 CleanupSession 에서 해제.
             _slowmoLease = TimeManager.Instance.Request(TimeDomain.Battle, dragSlowmoScale);
             if (mainCamera == null) mainCamera = Camera.main;
 
             _session = BuildSession(unitData);
-            // defender-deploy-cutscene unit 3 — 프레임이 있으면 좌상단 컷신 1회 재생(독립).
+            // defender-deploy-cutscene unit 3/8 — 프레임이 있으면 좌하단 컷신 1회 재생(자동 종료).
             // 기능 온/오프는 DragSwaySettings.enableDeployCutscene 로 게이트.
             if (Cfg.enableDeployCutscene && _cutscenePlayer != null &&
                 unitData.deployCutsceneFrames != null && unitData.deployCutsceneFrames.Length > 0)
@@ -576,6 +579,9 @@ namespace Wassup.UI
             var session = _session;
             if (bridge != null && bridge.TryBeginDefenderDeployment(cell.x, cell.y, session.unit, out var entity))
             {
+                // defender-deploy-cutscene unit 8 — 배치 완료는 컷씬보다 절대 우선.
+                // 플립북/hold/slide-out 어느 단계든 즉시 숨기고 다음 배치를 위해 틸트까지 원복한다.
+                _cutscenePlayer?.ForceStopAndReset();
                 // defender-directional-volley unit 6 — 방향 지정 유닛은 여기서 배치가
                 // 끝나지 않는다: 엔티티는 PendingDeployment(전투 미참여)로 스폰된 채
                 // 공격방향 페이즈로 넘어가고, 방향이 확정돼야 활성화된다.
@@ -827,7 +833,6 @@ namespace Wassup.UI
 
         private void CleanupSession()
         {
-            _cutscenePlayer?.EndCutscene(); // depth-parallax rev — 스와이프(드래그) 종료 → 컷신 슬라이드-아웃(1초 hold 폐지)
             _slowmoLease.Dispose(); // time-manager Unit 5 — 슬로우모 해제(멱등)
             bridge?.SetEnemiesDimmed(false); // placement-enemy-see-through — 적 반투명 off(드롭·거부·비활성 모든 종료 경유)
             bridge?.SetPlacementHighlightAboveUnits(false); // unit 6 — 하이라이트 소팅 원복
@@ -846,11 +851,14 @@ namespace Wassup.UI
 
         private void OnDisable()
         {
+            if (_cutscenePlayer != null)
+                _cutscenePlayer.ForceStopAndReset(); // 비활성화는 고아 root Canvas 잔류 금지
             CleanupSession();
         }
 
         private void OnDestroy()
         {
+            if (_cutscenePlayer != null) _cutscenePlayer.ForceStopAndReset();
             CleanupSession();
             if (_previewMaterial != null) Destroy(_previewMaterial);
             if (_cordMaterial != null) Destroy(_cordMaterial);

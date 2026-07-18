@@ -9,14 +9,14 @@ namespace Wassup.UI
     // 원샷 스프라이트 플립북으로 재생한다. 로비 캐릭터의 스프라이트 애니메이션 개념(프레임을
     // UI Image 에 순차 표시)을 참고하되, 원샷이라 Animator 없이 코루틴으로 프레임을 넘긴다.
     //
-    // 연출: 화면 왼쪽 '바깥'에서 빠르게 슬라이드-인하며 동시에 플립북 재생 → 스와이프(드래그)가
-    // 끝날 때까지 계속 유지 → 왼쪽으로 슬라이드-아웃 후 숨김. 세로는 좌하단 고정.
-    // 수명: 컷신은 드래그 세션에 묶인다 — CleanupSession(드롭/취소)이 EndCutscene() 로 슬라이드-아웃 트리거.
-    //       (rev — 기존 "1초 hold 후 독립 소멸"에서 "스와이프 종료 시 소멸"로 변경.)
+    // 연출: 화면 왼쪽 '바깥'에서 빠르게 슬라이드-인하며 동시에 플립북 재생 → 마지막 유효 프레임을
+    // 명시 고정하고 잠깐 유지 → 왼쪽으로 슬라이드-아웃 후 숨김. 세로는 좌하단 고정.
+    // 수명: 일반 재생은 플립북 완주 후 자동 종료한다. 단 배치 성공은 절대 우선이라
+    //       ForceStopAndReset() 으로 어느 Phase 에서든 즉시 숨기고 틸트 상태까지 원복한다.
     // 시간은 Time.unscaledDeltaTime — 드래그 배틀 슬로우모/일시정지 영향 배제.
     public class DeployCutscenePlayer : MonoBehaviour
     {
-        [SerializeField] private float holdSecondsAfter = 100000000f; // 사실상 무한 유지 — 스와이프 종료 시 EndCutscene 로 탈출
+        [SerializeField] private float holdSecondsAfter = 0.5f; // 플립북 완주 후 마지막 프레임 유지 시간
         [SerializeField] private float displayScale = 1.2f;     // 스프라이트 네이티브 대비 공유 배율
         [SerializeField] private Vector2 cornerMarginPx = new Vector2(-100f, 24f); // 좌하단 공유 baseline 여백(px). 유닛별 offset 이 더해짐. x=이미지 왼쪽끝 위치, y=하단에서 위로
         [SerializeField] private float slideInSeconds = 0.18f;  // 왼쪽 밖→목표 진입(빠르게)
@@ -33,7 +33,6 @@ namespace Wassup.UI
         private Image _image;
         private RectTransform _rt;
         private Coroutine _routine;
-        private bool _endRequested;   // 스와이프(드래그) 종료 시 컨트롤러가 세팅 → hold 탈출 → 슬라이드-아웃
 
         // depth-parallax unit 6 — per-instance 패럴랙스 머티리얼 + 틸트 스프링 상태(플레이어 소유).
         private Material _parallaxMat;
@@ -58,7 +57,6 @@ namespace Wassup.UI
             EnsureCanvas();
             if (_routine != null) StopCoroutine(_routine); // 재생 중 재트리거 = 처음부터 재시작
             _canvasGO.SetActive(true);
-            _endRequested = false; // 새 드래그 시작 — 스와이프 끝날 때까지 유지
             _routine = StartCoroutine(PlayRoutine(color, depth, fps, unitScale, unitOffset));
         }
 
@@ -74,14 +72,19 @@ namespace Wassup.UI
         // null 이면 무시(Cfg 폴백 유지). 라이브 튜닝하려면 DefenderSelector 에 .asset 할당.
         public void SetSettings(DepthParallaxSettings s) { if (s != null) depthParallaxSettings = s; }
 
-        // 스와이프(드래그) 종료 시 컨트롤러의 CleanupSession 이 호출 → hold 종료하고 슬라이드-아웃.
-        // 재생/슬라이드-인 도중 호출돼도 안전(다음 yield 에서 현재 위치부터 퇴장).
-        public void EndCutscene() { _endRequested = true; }
+        // 배치 성공은 컷씬보다 절대 우선한다. 재생/hold/slide-out 어느 단계든 즉시 중단하고
+        // 별도 루트 Canvas 와 틸트 스프링을 초기 상태로 되돌린다.
+        public void ForceStopAndReset()
+        {
+            StopAndHide();
+            ResetTilt();
+        }
 
         private IEnumerator PlayRoutine(Sprite[] frames, Texture2D[] depth, float fps, float unitScale, Vector2 unitOffset)
         {
             int first = FirstNonNull(frames, 0);
-            if (first < 0) { Hide(); yield break; }
+            if (first < 0) { _routine = null; Hide(); yield break; }
+            int last = LastNonNull(frames);
 
             // 첫 프레임으로 크기 확정(슬라이드 오프셋 계산에 폭이 필요).
             _image.sprite = frames[first];
@@ -127,10 +130,19 @@ namespace Wassup.UI
             }
             _rt.anchoredPosition = target;
 
-            // Phase B: 유지 — holdSecondsAfter(사실상 무한)까지, 단 스와이프 종료(EndCutscene)면 즉시 탈출.
-            // 유지 중에도 SetTilt/틸트 스프링은 계속 동작(스와이프 방향 틸트).
+            // 루프 종료 시 프레임 인덱스가 경계에서 누락되거나 외부 상태가 첫 프레임을 다시 적용해도
+            // 최종 포즈가 흔들리지 않도록 마지막 유효 컬러/뎁스를 명시적으로 다시 고정한다.
+            _image.sprite = frames[last];
+            if (depth != null && depth.Length > 0 && _parallaxMat != null)
+            {
+                int di = Mathf.Min(last, depth.Length - 1);
+                if (depth[di] != null) _parallaxMat.SetTexture("_DepthTex", depth[di]);
+            }
+
+            // Phase B: 마지막 포즈를 정해진 시간만큼 유지한 뒤 드래그 수명과 무관하게 자동 퇴장.
             float hold = 0f;
-            while (hold < holdSecondsAfter && !_endRequested) { hold += Time.unscaledDeltaTime; yield return null; }
+            float holdDuration = Mathf.Max(0f, holdSecondsAfter);
+            while (hold < holdDuration) { hold += Time.unscaledDeltaTime; yield return null; }
 
             // Phase C: 왼쪽으로 슬라이드-아웃.
             float o = 0f;
@@ -143,12 +155,20 @@ namespace Wassup.UI
             }
 
             _routine = null;
+            ResetTilt();
             Hide();
         }
 
         private static int FirstNonNull(Sprite[] frames, int from)
         {
             for (int i = from; i < frames.Length; i++)
+                if (frames[i] != null) return i;
+            return -1;
+        }
+
+        private static int LastNonNull(Sprite[] frames)
+        {
+            for (int i = frames.Length - 1; i >= 0; i--)
                 if (frames[i] != null) return i;
             return -1;
         }
@@ -237,7 +257,16 @@ namespace Wassup.UI
             Hide();
         }
 
-        private void OnDisable() => StopAndHide();
+        private void ResetTilt()
+        {
+            _tiltTarget = Vector2.zero;
+            _tilt = Vector2.zero;
+            _tiltVel = Vector2.zero;
+            _lastFeedUnscaled = 0f;
+            if (_parallaxMat != null) _parallaxMat.SetVector("_Tilt", Vector2.zero);
+        }
+
+        private void OnDisable() => ForceStopAndReset();
 
         private void OnDestroy()
         {

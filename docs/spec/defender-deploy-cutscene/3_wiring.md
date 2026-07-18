@@ -19,7 +19,8 @@
   - `BeginDrag` 내부, 세션 구성 후 (기능 토글 `Cfg.enableDeployCutscene` 게이트):
     `if (Cfg.enableDeployCutscene && _cutscenePlayer != null && unitData.deployCutsceneFrames != null && unitData.deployCutsceneFrames.Length > 0) _cutscenePlayer.Play(unitData.deployCutsceneFrames, unitData.deployCutsceneFps);`
   - 온/오프는 `DragSwaySettings.enableDeployCutscene`(이미 주입된 SO 재사용).
-  - **CleanupSession 이 `EndCutscene()` 를 호출한다**(rev 2026-07-15: 스와이프 종료 시 컷신 슬라이드-아웃). 구 "독립 재생" 계약 폐지.
+  - 일반 Cleanup(실패·취소)은 컷씬을 종료하지 않는다. `TryBeginDefenderDeployment` 성공 직후에만
+    `ForceStopAndReset()`을 호출한다(unit 8: 배치 완료 절대 우선).
 - `DefenderSelector`:
   - SerializeField `DeployCutscenePlayer deployCutscenePlayer;` 추가.
   - 미할당 시 GetComponent→AddComponent 폴백(dragPlacementController 패턴과 동일).
@@ -30,13 +31,11 @@
 ## 완료 기준
 
 - 컴파일 통과(`read_console` clean).
-- Play: Ranger 슬롯을 드래그하면 **좌하단**에 컷신이 뜨고, 드래그하는 동안 유지되다가
-  드롭/취소 시 왼쪽으로 슬라이드-아웃하며 사라짐.
+- Play: Ranger 슬롯을 드래그하면 **좌하단**에 컷신이 뜨고, 완주 후 최종 포즈를 0.5초
+  유지한 뒤 왼쪽으로 자동 퇴장한다. 배치 성공 시에는 진행 중이어도 즉시 숨는다.
 - 컷신 프레임 없는 다른 유닛 드래그 시 컷신 미출현, 기존 배치 흐름 정상.
 - 확인 일자 + 커밋 해시 기록.
 
 _확인: 2026-07-14 — BeginDrag 트리거 + DefenderSelector AddComponent 폴백 주입, 컴파일 클린, 사용자 Play 확인._
 
-_rev 2026-07-16: 완료 기준의 "좌상단 / 33프레임+1초 후 사라짐 / 드롭·취소해도 끝까지 재생(독립)"
-을 현행 계약(좌하단 · 스와이프 종료 연동)으로 정정. 위 구현 섹션은 rev 2026-07-15 에 이미
-`EndCutscene()` 로 고쳤으나 완료 기준이 옛 계약으로 남아 파일 내부가 모순이었다._
+_rev 2026-07-18: 수명 계약을 unit 8 기준(0.5초 자동 퇴장, 배치 성공 즉시 초기화)으로 정정._
