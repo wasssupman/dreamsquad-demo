@@ -5,6 +5,7 @@
 최종 룩: 배치영역 = `Tile_PlaceableSlab`(시안 림 슬랩) + `placeableColor` 시안 α0.5, **정적**. 사거리 = **주황 `(1,0.55,0.12)`**, 아웃라인 3px+1px soft, **펄스 제거(정적)**.
 전 오버레이는 z-fight 방지 위해 카메라 쪽 미세 오프셋(ground depth 평면 분리). Play 검증: 배치가능 82/200셀(41%) 정확·경로/Deco 제외·사거리 공존·Hide 소거.
 남은 것: 사용자 실드래그 체감 + main 머지(하단 handoff Follow-up).
+**커스터마이징(색·투명도·아웃라인 두께·슬랩 모양·페이드 직접 조정): [`tuning-guide.md`](./tuning-guide.md).**
 
 ## 목표
 
