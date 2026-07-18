@@ -162,8 +162,24 @@ namespace Wassup.UI
             UpdateDrag(screenPosition);
         }
 
+        // placement-eligible-tile-highlight unit 2 — 배치 판단 상태(실드래그 또는 탭 arm) 파생 → 하이라이트 토글.
+        // 지점마다 show/hide 산탄 대신 원하는 상태를 파생해 idempotent 호출. 탭 비행(_simulatedDrag)은 OFF
+        // (range 억제와 일관). 이 파생이 BeginDrag 의 Disarm→재Show 순서의존·_sessionGen 하이재킹을 무관하게 만든다.
+        private bool _placeableHlDesired;
+
+        private void UpdatePlacementHighlightState()
+        {
+            if (bridge == null) return;
+            bool desired = (_session.active && !_simulatedDrag) || _armedUnit != null;
+            if (desired == _placeableHlDesired) return;
+            _placeableHlDesired = desired;
+            if (desired) bridge.ShowPlacementHighlight(); else bridge.HidePlacementHighlight();
+        }
+
         private void Update()
         {
+            UpdatePlacementHighlightState(); // placement-eligible-tile-highlight unit 2 — early-return 위에서 매 프레임 파생 토글
+
             // defender-tap-to-place unit 2 — arm 된 상태 + 드래그 아님일 때 보드 탭 → 시뮬 배치.
             if (_armedUnit != null && !_session.active) HandleArmedBoardTap();
 
@@ -880,6 +896,8 @@ namespace Wassup.UI
             _slowmoLease.Dispose(); // time-manager Unit 5 — 슬로우모 해제(멱등)
             bridge?.SetEnemiesDimmed(false); // placement-enemy-see-through — 적 반투명 off(드롭·거부·비활성 모든 종료 경유)
             bridge?.SetPlacementHighlightAboveUnits(false); // unit 6 — 하이라이트 소팅 원복
+            bridge?.HidePlacementHighlight(); // placement-eligible-tile-highlight unit 2 — 종료 시 확실히 소거(OnDisable/OnDestroy 포함)
+            _placeableHlDesired = false;
             ClearHover();
             bridge?.ClearPlacementRange();
             if (_session.preview != null) Destroy(_session.preview);

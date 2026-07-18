@@ -1044,6 +1044,7 @@ namespace Wassup.Bridge
             _em = _world.EntityManager;
             _pending.Clear();
             _occupiedTiles.Clear();
+            RefreshPlacementHighlightIfShown(); // placement-eligible-tile-highlight unit 2
             _defenderByTile.Clear();
             tileHealthGaugeLayer?.Clear(); // unit 3 — 게이지 정리를 _defenderByTile 리셋과 co-locate(불변식)
             unitOverheadUiLayer?.Clear();
@@ -2338,6 +2339,7 @@ namespace Wassup.Bridge
                 }
                 _defenderByTile.Remove(cell);
                 _occupiedTiles.Remove(cell);
+                RefreshPlacementHighlightIfShown(); // placement-eligible-tile-highlight unit 2
                 tileHealthGaugeLayer?.Hide(cell); // unit 3 — 사망 시 게이지 제거
                 RecomputeSynergyFor(cell);
                 Debug.Log($"[BattleBridge] Defender died @ {cell}; tile freed, synergy recomputed.");
@@ -3464,6 +3466,20 @@ namespace Wassup.Bridge
             return PlaceDefenderAs(tileX, tileY, unitData);
         }
 
+        // placement-eligible-tile-highlight unit 2 — 공간 배치 조건만(IsCreated/bounds/Place/점유).
+        // 순수 static(값 in → reason out): 판정(CanPlaceDefenderAt)과 하이라이트 셀 수집이 공유해
+        // 어긋나지 않게 한다(PaintLanes 가 시뮬 발사 게이트를 공유하는 것과 동형). EditMode 테스트 대상.
+        // 비용/풀/유닛/running 은 CanPlaceDefenderAt 이 별도로 본다.
+        public static PlacementRejectReason SpatialPlacementCheck(GeneratedMap map, HashSet<Vector2Int> occupied, int2 cell)
+        {
+            if (!map.IsCreated) return PlacementRejectReason.MissingMap;
+            if (cell.x < 0 || cell.x >= map.gridSize.x || cell.y < 0 || cell.y >= map.gridSize.y)
+                return PlacementRejectReason.OutOfBounds;
+            if (map.TileAt(cell) != MapTileType.Place) return PlacementRejectReason.NotBuildable;
+            if (occupied != null && occupied.Contains(new Vector2Int(cell.x, cell.y))) return PlacementRejectReason.Occupied;
+            return PlacementRejectReason.None;
+        }
+
         public bool CanPlaceDefenderAt(int tileX, int tileY, DefenderUnitData unitData, out PlacementRejectReason reason)
         {
             if (!_running && !_placementAllowed)
@@ -3471,26 +3487,10 @@ namespace Wassup.Bridge
                 reason = PlacementRejectReason.NotRunningOrPlacementClosed;
                 return false;
             }
-            if (!_generatedMap.IsCreated)
+            var spatial = SpatialPlacementCheck(_generatedMap, _occupiedTiles, new int2(tileX, tileY));
+            if (spatial != PlacementRejectReason.None)
             {
-                reason = PlacementRejectReason.MissingMap;
-                return false;
-            }
-            if (tileX < 0 || tileX >= _generatedMap.gridSize.x || tileY < 0 || tileY >= _generatedMap.gridSize.y)
-            {
-                reason = PlacementRejectReason.OutOfBounds;
-                return false;
-            }
-            if (_generatedMap.TileAt(new int2(tileX, tileY)) != MapTileType.Place)
-            {
-                reason = PlacementRejectReason.NotBuildable;
-                return false;
-            }
-
-            var cell = new Vector2Int(tileX, tileY);
-            if (_occupiedTiles.Contains(cell))
-            {
-                reason = PlacementRejectReason.Occupied;
+                reason = spatial;
                 return false;
             }
 
@@ -3517,6 +3517,33 @@ namespace Wassup.Bridge
             return true;
         }
 
+        // placement-eligible-tile-highlight unit 2 — 배치 가능 셀 하이라이트 게이트웨이(뷰 포워딩, ECS 쓰기 0).
+        // 공간 술어로 밝힐 셀을 수집 → TilemapMapView. 비용/풀은 안 본다(계약: 하이라이트=공간, hover=전체 판정).
+        private bool _placeableHlShown;
+        private readonly List<Vector2Int> _placeableHlScratch = new();
+
+        public void ShowPlacementHighlight() { _placeableHlShown = true; RepaintPlacementHighlight(); }
+
+        public void HidePlacementHighlight()
+        {
+            _placeableHlShown = false;
+            if (tilemapMapView != null) tilemapMapView.ClearPlacementHighlight();
+        }
+
+        public void RefreshPlacementHighlightIfShown() { if (_placeableHlShown) RepaintPlacementHighlight(); }
+
+        private void RepaintPlacementHighlight()
+        {
+            if (!_placeableHlShown || tilemapMapView == null || !_generatedMap.IsCreated) return;
+            _placeableHlScratch.Clear();
+            int w = _generatedMap.gridSize.x, h = _generatedMap.gridSize.y;
+            for (int y = 0; y < h; y++)
+            for (int x = 0; x < w; x++)
+                if (SpatialPlacementCheck(_generatedMap, _occupiedTiles, new int2(x, y)) == PlacementRejectReason.None)
+                    _placeableHlScratch.Add(new Vector2Int(x, y));
+            tilemapMapView.SetPlacementHighlight(_placeableHlScratch);
+        }
+
         // Explicit-type placement (Phase 4). Used by DefenderSelector after the
         // player chooses which picked defender they want on the tile.
         public bool PlaceDefenderAs(int tileX, int tileY, DefenderUnitData unitData)
@@ -3529,6 +3556,7 @@ namespace Wassup.Bridge
             }
 
             _occupiedTiles.Add(cell);
+            RefreshPlacementHighlightIfShown(); // placement-eligible-tile-highlight unit 2
             GameManager.Instance?.Logger?.RecordPlacement(unitData.displayName, cell, Time.time - _startTime, unitData.cost);
 
             var entity = CreateDefenderEntity(cell, unitData, pendingDeployment: false, spawnPlacementVfx: true);
@@ -3556,6 +3584,7 @@ namespace Wassup.Bridge
             }
 
             _occupiedTiles.Add(cell);
+            RefreshPlacementHighlightIfShown(); // placement-eligible-tile-highlight unit 2
             GameManager.Instance?.Logger?.RecordPlacement(unitData.displayName, cell, Time.time - _startTime, unitData.cost);
             entity = CreateDefenderEntity(cell, unitData, pendingDeployment: true, spawnPlacementVfx: false);
             ApplyOnPlacePush(unitData, cell);

@@ -88,3 +88,6 @@ if (desired != _maskDesiredPrev)   // 필드명은 _highlightDesiredPrev 등 자
   탭 후 비행 중 OFF. 드롭/취소/커밋 시 확실히 소거.
 - 슬로우모 중 수비 사망 → 그 칸이 즉시 밝아짐(리프레시).
 - 비용 부족 유닛 arm 시: 칸은 밝은데 hover 는 invalid(빨강) — 하이라이트가 비용 안 봄(계약).
+
+- [x] 2026-07-18 · 컴파일 0 err/0 warn · EditMode `SpatialPlacementCheckTests` 5/5 pass (MCP) · (이 커밋).
+  `SpatialPlacementCheck` 는 순수 static(값 in→reason out)으로 확정 — CellClassifier 선례. 시각 e2e 는 스프라이트 후.
