@@ -12,7 +12,7 @@
 ## 구현
 
 - 1920×1080 기준 Placement/Battle을 각각 캡처한다.
-- 각성치 0/14/15/29/30/99/100을 주입해 숫자·연속형 링·발광 상태를 비교한다.
+- 각성치 0/14/15/29/30/99/100을 주입해 숫자·액체면·발광·MAX 상태를 비교한다.
 - 버튼 탭으로 손패 open/close, 전이 중 mash guard, 페이즈 이탈 hide/close를 확인한다.
 - critic BLOCKER/HIGH 재검수 후 필요한 시각 튜닝만 반영한다.
 - Unity 컴파일과 Console error 0을 확인한다. 대상 스크립트 정적 검증을 실행한다.
@@ -30,6 +30,9 @@
 - Unity 6000.4.3f1 Play, 1920×1080: Placement 우하단 전투 시작 노출 및 각성 hidden 확인.
 - Battle: 좌하단 NextWave/중앙 트레이/우하단 각성 분리 확인.
 - 실제 `Button.onClick → Toggled → DreamcatcherHandView` 경로로 Hand 상태 진입, 선택 톤 확인.
-- 값 7/12/30에서 중앙 수치와 연속형 링 갱신 확인. Unity Console error 0.
+- 1차 revision 값 7/12/30의 연속형 링 검증 후, 2차 캐주얼 버스트 revision에서 링을 제거했다.
+- 2차 revision 값 30: 중앙 하단 액체면, `30 /100`, 상징 없는 젤리 프레임 확인.
+- 2차 revision 값 100: 중앙 전체 청록 충전, `100 MAX!`, gold ready halo와 burst 진입 확인.
+- 기존 `Button.onClick → Toggled → DreamcatcherHandView` 구독 경로 유지. Unity Console error 0.
 - wide aspect는 모두 `SafeAreaRoot` 좌/우 bottom anchor를 사용하며, Android 실기 cutout 검증은
   feature-wide 비목표의 기존 모바일 QA 항목으로 유지한다.
