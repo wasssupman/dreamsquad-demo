@@ -1059,6 +1059,7 @@ namespace Wassup.Bridge
             _synergyPeakCount = 0;
             _goalReachedCount = 0;
             _leakAllowancePenalty = 0; // 몽마의 계약 선불 — 매치 경계에서 소멸(이월 금지)
+            RefreshLeakHud();
             _running = false;
             _placementAllowed = true;
             _resultShown = false;
@@ -3288,10 +3289,17 @@ namespace Wassup.Bridge
             return idx;
         }
 
+        // battle-leak-limit-hud unit 0 — 패배 비교/HUD/저주 지불이 공유하는 유효 한계.
+        private int EffectiveLeakLimit()
+            => deck != null ? deck.defeatGoalReachedCount - _leakAllowancePenalty : 0;
+
+        private void RefreshLeakHud()
+            => scoreHud?.SetLeakStatus(_goalReachedCount, EffectiveLeakLimit());
+
         // subconscious-curse-expansion unit 1 (몽마의 계약) — 잔여 유출 허용치.
         // = SO 기준치 − 선불 차감 − 이미 유출된 수. 컨트롤러 게이트/HUD 조회용.
         public int RemainingLeakAllowance()
-            => deck != null ? deck.defeatGoalReachedCount - _leakAllowancePenalty - _goalReachedCount : 0;
+            => EffectiveLeakLimit() - _goalReachedCount;
 
         // 몽마의 계약 선불 지불. 지불 후 잔여가 1 미만이면 거절 — "지불로 즉시 패배"
         // 상태를 구조적으로 금지(spec 게이트 조건: 잔여 − cost ≥ 1). 성공 시 비가역:
@@ -3301,6 +3309,7 @@ namespace Wassup.Bridge
             if (cost <= 0) return false;
             if (RemainingLeakAllowance() - cost < 1) return false;
             _leakAllowancePenalty += cost;
+            RefreshLeakHud();
             return true;
         }
 
@@ -3316,9 +3325,11 @@ namespace Wassup.Bridge
                 // (BeginPlacement clear 가 등록부/컨트롤러 양쪽을 정리).
                 NotifyEnemyGoneIfMarked(evt.entity);
                 _goalReachedCount++;
+                RefreshLeakHud();
                 // 몽마의 계약 — 패배 판정은 선불 차감을 반영한 유효 허용치 기준.
-                Debug.Log($"[BattleBridge] Goal reached! Count: {_goalReachedCount}/{deck.defeatGoalReachedCount - _leakAllowancePenalty}");
-                if (!_resultShown && _goalReachedCount >= deck.defeatGoalReachedCount - _leakAllowancePenalty)
+                int leakLimit = EffectiveLeakLimit();
+                Debug.Log($"[BattleBridge] Goal reached! Count: {_goalReachedCount}/{leakLimit}");
+                if (!_resultShown && _goalReachedCount >= leakLimit)
                 {
                     _resultShown = true;
                     _running = false;

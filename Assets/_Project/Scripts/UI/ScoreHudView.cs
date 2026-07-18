@@ -114,20 +114,41 @@ namespace Wassup.UI
         [SerializeField] private Color tabTextColor = new Color(0.1f, 0.08f, 0.04f, 1f);
         [SerializeField] private Vector2 tabSize = new Vector2(196f, 46f);
 
+        [Header("Leak limit badge (score companion)")]
+        [SerializeField] private Vector2 leakPlateSize = new Vector2(360f, 64f);
+        [SerializeField] private float leakPlateGap = 10f;
+        [SerializeField] private Vector2 leakTabSize = new Vector2(112f, 42f);
+        [SerializeField] private float leakValueFontSize = 38f;
+        [SerializeField] private Color leakNormalColor = new Color(1f, 0.9f, 0.66f, 1f);
+        [SerializeField] private Color leakWarningColor = new Color(1f, 0.58f, 0.2f, 1f);
+        [SerializeField] private Color leakCriticalColor = new Color(1f, 0.25f, 0.2f, 1f);
+        [SerializeField] private Color leakFlashColor = Color.white;
+        [Min(1), SerializeField] private int leakWarningRemaining = 3;
+        [Min(0), SerializeField] private int leakCriticalRemaining = 1;
+        [SerializeField] private float leakPunchScale = 1.18f;
+        [SerializeField] private float leakPunchDuration = 0.22f;
+
         private GameObject _panel;
         private Vector2 _panelBasePos;
         private Image _plateImage;
         private TextMeshProUGUI _caption;
         private TextMeshProUGUI _value;
         private RectTransform _valueRect;
+        private TextMeshProUGUI _leakValue;
+        private RectTransform _leakValueRect;
         private bool _built;
         private bool _subscribed;
 
         private int _targetScore;
         private float _shownScore;
         private int _pendingKills;
+        private int _leakCurrent;
+        private int _leakLimit;
+        private bool _hasLeakSnapshot;
         private Tween _punchTween;
         private Tween _colorTween;
+        private Tween _leakPunchTween;
+        private Tween _leakColorTween;
         private ScoreBurstPool _burstPool;
         private Image _glowImage;
         private RectTransform _glowRect;
@@ -232,6 +253,49 @@ namespace Wassup.UI
             _pendingKills++;
         }
 
+        // battle-leak-limit-hud unit 0 — BattleBridge owns the authoritative
+        // GoalReached count and effective defeat limit. Store the snapshot even while
+        // the Battle-only panel is hidden; unit 1 renders it without duplicating math.
+        public void SetLeakStatus(int current, int limit)
+        {
+            int nextCurrent = Mathf.Max(0, current);
+            int nextLimit = Mathf.Max(0, limit);
+            bool worsened = _hasLeakSnapshot &&
+                (nextCurrent > _leakCurrent || nextLimit < _leakLimit);
+            _leakCurrent = nextCurrent;
+            _leakLimit = nextLimit;
+            _hasLeakSnapshot = true;
+            RefreshLeakDisplay(worsened);
+        }
+
+        private void RefreshLeakDisplay(bool punch)
+        {
+            if (_leakValue == null) return;
+
+            _leakValue.text = $"{_leakCurrent} / {_leakLimit}";
+            int remaining = _leakLimit - _leakCurrent;
+            Color targetColor = remaining <= leakCriticalRemaining
+                ? leakCriticalColor
+                : remaining <= leakWarningRemaining ? leakWarningColor : leakNormalColor;
+
+            if (!punch || _panel == null || !_panel.activeSelf)
+            {
+                _leakValue.color = targetColor;
+                if (_leakValueRect != null) _leakValueRect.localScale = Vector3.one;
+                return;
+            }
+
+            if (_leakPunchTween.isAlive) _leakPunchTween.Stop();
+            if (_leakColorTween.isAlive) _leakColorTween.Stop();
+            _leakValueRect.localScale = Vector3.one;
+            _leakValue.color = leakFlashColor;
+            float strength = Mathf.Max(0f, leakPunchScale - 1f);
+            _leakPunchTween = Tween.PunchScale(_leakValueRect, Vector3.one * strength,
+                leakPunchDuration, useUnscaledTime: true);
+            _leakColorTween = Tween.Color(_leakValue, leakFlashColor, targetColor,
+                leakPunchDuration, Ease.OutQuad, useUnscaledTime: true);
+        }
+
         private void TriggerHit(int killCount)
         {
             if (_valueRect == null || _value == null) return;
@@ -328,8 +392,11 @@ namespace Wassup.UI
         {
             if (_punchTween.isAlive) _punchTween.Stop();
             if (_colorTween.isAlive) _colorTween.Stop();
+            if (_leakPunchTween.isAlive) _leakPunchTween.Stop();
+            if (_leakColorTween.isAlive) _leakColorTween.Stop();
             if (_valueRect != null) _valueRect.localScale = Vector3.one;
             if (_value != null) _value.color = baseColor;
+            if (_leakValueRect != null) _leakValueRect.localScale = Vector3.one;
             _burstPool?.ClearAll();
 
             _glowFlash = 0f;
@@ -379,6 +446,7 @@ namespace Wassup.UI
                 StopFeedbackTweens();
                 if (_value != null) { _value.text = "0"; _value.color = baseColor; }
                 if (_valueRect != null) _valueRect.localScale = Vector3.one;
+                RefreshLeakDisplay(false);
                 if (_panel != null) _panel.SetActive(true);
             }
             else if (_panel != null)
@@ -406,7 +474,8 @@ namespace Wassup.UI
             prt.pivot = new Vector2(1f, 1f);
             _panelBasePos = new Vector2(-cornerPadding, -cornerPadding);
             prt.anchoredPosition = _panelBasePos;
-            prt.sizeDelta = new Vector2(plateSize.x, 170f);
+            prt.sizeDelta = new Vector2(plateSize.x,
+                plateTopInset + plateSize.y + leakPlateGap + leakPlateSize.y);
 
             // Caption ("SCORE") is built later inside the badge tab (see below).
 
@@ -487,6 +556,55 @@ namespace Wassup.UI
             _caption.fontStyle = FontStyles.Bold | FontStyles.SmallCaps;
             _caption.characterSpacing = 6f;
             _caption.color = tabTextColor;
+
+            // Leak companion badge: same navy/gold material language as the score,
+            // but a compact horizontal hierarchy so the score remains dominant.
+            var leakPlate = MakeSolidImage("LeakPlate", _panel.transform);
+            leakPlate.sprite = MakeRoundedRectSprite(plateCornerRadius * 0.72f,
+                plateBorderWidth, plateColor, plateBorderColor);
+            leakPlate.type = Image.Type.Sliced;
+            var leakPlateRt = leakPlate.rectTransform;
+            leakPlateRt.anchorMin = new Vector2(0.5f, 1f);
+            leakPlateRt.anchorMax = new Vector2(0.5f, 1f);
+            leakPlateRt.pivot = new Vector2(0.5f, 1f);
+            leakPlateRt.anchoredPosition = new Vector2(0f,
+                -plateTopInset - plateSize.y - leakPlateGap);
+            leakPlateRt.sizeDelta = leakPlateSize;
+
+            var leakTab = MakeSolidImage("LeakTab", _panel.transform);
+            leakTab.sprite = MakeRoundedRectSprite(leakTabSize.y * 0.5f, 0f, tabColor, tabColor);
+            leakTab.type = Image.Type.Sliced;
+            var leakTabRt = leakTab.rectTransform;
+            leakTabRt.anchorMin = new Vector2(0.5f, 1f);
+            leakTabRt.anchorMax = new Vector2(0.5f, 1f);
+            leakTabRt.pivot = new Vector2(0f, 1f);
+            leakTabRt.anchoredPosition = new Vector2(-leakPlateSize.x * 0.5f + 10f,
+                -plateTopInset - plateSize.y - leakPlateGap - (leakPlateSize.y - leakTabSize.y) * 0.5f);
+            leakTabRt.sizeDelta = leakTabSize;
+
+            var leakCaption = MakeText("LeakCaption", leakTab.transform, captionFontSize * 0.72f,
+                new Vector2(0.5f, 0.5f));
+            var leakCaptionRt = leakCaption.rectTransform;
+            leakCaptionRt.anchorMin = Vector2.zero;
+            leakCaptionRt.anchorMax = Vector2.one;
+            leakCaptionRt.offsetMin = Vector2.zero;
+            leakCaptionRt.offsetMax = Vector2.zero;
+            leakCaption.text = "누수";
+            leakCaption.fontStyle = FontStyles.Bold;
+            leakCaption.color = tabTextColor;
+
+            _leakValue = MakeText("LeakValue", _panel.transform, leakValueFontSize,
+                new Vector2(0.5f, 0.5f));
+            _leakValueRect = _leakValue.rectTransform;
+            _leakValueRect.anchorMin = new Vector2(0.5f, 1f);
+            _leakValueRect.anchorMax = new Vector2(0.5f, 1f);
+            _leakValueRect.pivot = new Vector2(0.5f, 0.5f);
+            _leakValueRect.anchoredPosition = new Vector2(leakTabSize.x * 0.5f,
+                -plateTopInset - plateSize.y - leakPlateGap - leakPlateSize.y * 0.5f);
+            _leakValueRect.sizeDelta = new Vector2(leakPlateSize.x - leakTabSize.x - 32f,
+                leakPlateSize.y);
+            _leakValue.fontStyle = FontStyles.Bold;
+            RefreshLeakDisplay(false);
 
             // Fullscreen milestone edge-flash vignette (on the canvas, behind the panel).
             _vignetteImage = MakeImage("MilestoneVignette", transform, vignetteSprite);
