@@ -22,8 +22,7 @@ namespace Wassup.UI
 
         private readonly List<string> _working = new List<string>();
         private readonly List<DreamcatcherCard> _pool = new List<DreamcatcherCard>(); // addable (non-Subconscious)
-        private string _selectedCardId;
-        private int _selectedDeckIndex = -1; // >=0 = a deck slot is selected (remove mode)
+        private string _selectedCardId; // grid/deck 어느 쪽을 눌러도 이 카드가 상세 대상
         private bool _wired;
 
         private void OnEnable()
@@ -33,7 +32,6 @@ namespace Wassup.UI
             LoadWorking();
             if (browser != null) browser.ShowCards(_pool);
             _selectedCardId = _pool.Count > 0 ? _pool[0].id : null;
-            _selectedDeckIndex = -1;
             RefreshAll();
         }
 
@@ -43,7 +41,7 @@ namespace Wassup.UI
             _wired = true;
             if (browser != null) browser.CardSelected += OnCardSelected;
             if (deckStrip != null) { deckStrip.SlotTapped += OnSlotTapped; deckStrip.SaveClicked += OnSave; }
-            if (detailView != null) detailView.ActionClicked += OnAction;
+            if (detailView != null) { detailView.AddClicked += OnAdd; detailView.RemoveClicked += OnRemove; }
         }
 
         private void BuildPool()
@@ -72,7 +70,7 @@ namespace Wassup.UI
         private void RefreshAll()
         {
             if (deckStrip != null) deckStrip.Refresh(_working);
-            if (browser != null) { browser.SetCounts(CountMap()); browser.SetSelected(_selectedDeckIndex < 0 ? _selectedCardId : null); }
+            if (browser != null) { browser.SetCounts(CountMap()); browser.SetSelected(_selectedCardId); }
             ShowSelectedDetail();
         }
 
@@ -81,15 +79,18 @@ namespace Wassup.UI
             if (detailView == null) return;
             var card = catalog != null ? catalog.ById(_selectedCardId) : null;
             if (card == null) { detailView.Clear(); return; }
-            if (_selectedDeckIndex >= 0)
-            {
-                detailView.ShowCard(card, deckSlotMode: true, canAdd: false, hint: "");
-            }
-            else
-            {
-                bool canAdd = CanAdd(card, out string hint);
-                detailView.ShowCard(card, deckSlotMode: false, canAdd: canAdd, hint: hint);
-            }
+            bool canAdd = CanAdd(card, out string hint);
+            int count = CountOf(_selectedCardId);
+            // count>0 → 상세에 [덱에서 제거] 노출(그리드/덱 어느 쪽에서 눌러도). 추가는 캡 여유 시 병행.
+            detailView.ShowCard(card, canAdd, hint, count);
+        }
+
+        private int CountOf(string id)
+        {
+            if (string.IsNullOrEmpty(id)) return 0;
+            int n = 0;
+            for (int i = 0; i < _working.Count; i++) if (_working[i] == id) n++;
+            return n;
         }
 
         private Dictionary<string, int> CountMap()
@@ -130,37 +131,36 @@ namespace Wassup.UI
             RefreshAll(); // in-memory edit; persists only via Save button (parity)
         }
 
-        private void RemoveAt(int index)
+        // 카드 id 기준으로 덱에서 한 장 제거(마지막 occurrence). 중복(Normal ×N)이면
+        // 한 번에 한 장씩 줄어든다.
+        private void RemoveOccurrence(string id)
         {
-            if (index < 0 || index >= _working.Count) return;
-            _working.RemoveAt(index);
-            // after removing a deck slot, return to collection view of that card
-            _selectedDeckIndex = -1;
+            if (string.IsNullOrEmpty(id)) return;
+            int idx = _working.LastIndexOf(id);
+            if (idx < 0) return;
+            _working.RemoveAt(idx);
             RefreshAll(); // in-memory edit; persists only via Save button (parity)
         }
 
         // ---- events -------------------------------------------------------
 
+        // 그리드 셀 탭 = 그 카드를 상세 대상으로. 덱 슬롯 탭도 같은 카드를 상세 대상으로
+        // (두 경로 통일 — 편성된 카드면 상세에 [덱에서 제거]가 뜬다).
         private void OnCardSelected(string id)
         {
             _selectedCardId = id;
-            _selectedDeckIndex = -1;
             RefreshAll();
         }
 
         private void OnSlotTapped(int index)
         {
             if (index < 0 || index >= _working.Count) return;
-            _selectedDeckIndex = index;
             _selectedCardId = _working[index];
             RefreshAll();
         }
 
-        private void OnAction()
-        {
-            if (_selectedDeckIndex >= 0) RemoveAt(_selectedDeckIndex);
-            else AddCard(_selectedCardId);
-        }
+        private void OnAdd() => AddCard(_selectedCardId);
+        private void OnRemove() => RemoveOccurrence(_selectedCardId);
 
         // Explicit Save (deck strip button), gated on validity — parity with the old
         // view. Edits are in-memory until this runs; an invalid deck (e.g. 8/10)
