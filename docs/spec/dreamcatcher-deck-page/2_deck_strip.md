@@ -10,7 +10,7 @@
 
 ## 구현
 
-- `Refresh(List<string> cardIds)`: 슬롯 도장 + status `{count}/{deckSize} · squad {n}/{max} · {reason}`(`DeckRules.Validate`/`SquadCount`) + Save `interactable=valid`(색 전환).
+- `Refresh(List<string> cardIds)`: 슬롯 도장 + status `{count}/{deckSize} · {reason}`(`DeckRules.Validate`; 레거시 squad 카운트 제거) + Save `interactable=valid`(색 전환).
 - `event SlotTapped(int)` / `event SaveClicked`. HorizontalLayoutGroup: 슬롯들 + flexible status + Save 버튼.
 
 ## 완료 기준

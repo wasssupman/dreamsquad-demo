@@ -11,9 +11,9 @@
 
 - 옛 `DreamcatcherDeckBuilderView`(슬롯+보유그리드+모달) → **squad-character-page와 동일 레이아웃**(좌 카드 art 백드롭+정보카드 / 우 덱 10슬롯+그리드)로 재설계. 모달 카드 상세 → 좌측 상시 패널.
 - 좌 상세: 타로 art + 이름 + 카테고리 배지 + `DreamcatcherCardText.Body` 효과/설명 + [덱 추가/제거] + 추가 불가 hint.
-- 우 덱 스트립: `EffectiveDeckSize` 슬롯 + status(`{n}/{size}·squad·reason`) + Save(Validate 게이트).
-- 우 그리드: 전 카드 art + 프레임색 + **덱 내 장수 카운트 ×N**. 무의식 제외.
-- 편집: 추가(deckSize 상한 + type 캡) / 슬롯 탭 제거 / 중복 허용. **편집 in-memory, Save 버튼만 영속**(정확히-N 덱 → auto-save 부적합, 스쿼드와 상이).
+- 우 덱 스트립: `EffectiveDeckSize` 슬롯 + status(`{n}/{size} · reason`) + Save(Validate 게이트).
+- 우 그리드: 전 카드 art + 프레임색 + **"편성중" 불리언 뱃지**(유니크). 무의식 제외.
+- 편집: 추가(deckSize 상한 + type 캡 + **dedup, 유니크**) / 제거. 편성됨→[덱에서 제거]만·미편성→[덱에 추가]만. **편집 in-memory, Save 버튼만 영속**(정확히-N 덱 → auto-save 부적합).
 
 ## Key Files
 
@@ -23,8 +23,8 @@
 
 ## Verified
 
-- 컴파일 클린(에러 0). Play e2e: 로비 드림캐쳐 열기 → 실화면 렌더(타로 art 상세 + 카테고리 배지 + Body 효과 + 카운트 뱃지 + 덱 스트립 + 유효성 + Save), 콘솔 에러 0, 브라우즈→상세 비파괴('guardian_fortress'→가디언 풀존버).
-- 기능 패리티(README 체크리스트): 프레임색·무의식 제외·추가 캡/중복·명시적 Save+게이트·deck_1 생성·status 포맷 — 전부 커버.
+- 컴파일 클린(에러 0). Play e2e: 로비 드림캐쳐 열기 → 실화면 렌더(타로 art 상세 + 카테고리 배지 + Body 효과 + 편성중 뱃지 + 덱 스트립 + 유효성 + Save), 콘솔 에러 0, 브라우즈→상세 비파괴('guardian_fortress'→가디언 풀존버).
+- 기능 패리티(README 체크리스트): 프레임색·무의식 제외·추가 캡/dedup·명시적 Save+게이트·deck_1 생성·status 포맷 — 전부 커버.
 
 ## Notes (되돌리면 안 됨)
 

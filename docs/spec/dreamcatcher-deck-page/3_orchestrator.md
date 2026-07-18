@@ -13,7 +13,7 @@
 - `OnEnable`: 배선 1회 + 풀 빌드(무의식 제외) + `SelectedDeck()` 로드 + `browser.ShowCards(pool)` + 첫 카드 선택 + refresh.
 - 브라우저 `CardSelected` → 컬렉션 모드 상세(canAdd/hint 계산). 덱스트립 `SlotTapped` → 제거 모드 상세. 상세 `ActionClicked` → `_selectedDeckIndex>=0` ? RemoveAt : AddCard.
 - `AddCard`: `EffectiveDeckSize` 상한 + `EffectiveMax(type)` 캡 준수. **편집은 in-memory** — Save 버튼만 영속(`Validate` 통과 시, deck_1 없으면 생성, `ProfileStore.Save`). auto-save 아님(패리티, 정확히-N 덱).
-- `SetCounts`(덱 내 장수) / `SetSelected`.
+- `SetBadged`(편성중 집합) / `SetSelected`. (rev 2026-07-18: 유니크 전제 — 카운트/중복 제거, dedup 추가)
 
 ## 완료 기준
 
