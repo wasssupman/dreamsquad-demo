@@ -29,6 +29,7 @@
 
 - [x] 컴파일 클린(신규 .cs 2개 → scope=all refresh, 에러 0). `UnitKitSummaryTests` 여전히 10/10(ClassLabel 이관 무해).
 - [x] `Show(u, inSquad)` 바인딩 코드 완성 — spine(있으면)/포트레이트 폴백(없으면) + 카드 전 필드 + 버튼 상태. null-safe.
-- [ ] 시각 검증(라이브 Spine 렌더·카드 가독성·등급색)은 **unit 5**(씬 저작 + Play)로 이월 — 본 unit은 바인딩 코드 + 컴파일까지.
+- [x] 시각 검증 — Play 오버레이 프리뷰(런타임 in-memory, 씬 무저장)로 라이브 Spine 풀바디 렌더 + 카드 가독성 확인(사용자 요청, 2026-07-18). SkeletonGraphic 머티리얼 = `SkeletonGraphicDefault-Straight.mat`, Canvas `additionalShaderChannels`(TexCoord1/2·Normal·Tangent) 필요.
+- **검증된 튜닝값(unit 5 씬 저작 시 적용)**: spine `localScale ≈ 2.2`, feet 앵커 `y ≈ 0.42`(pivot bottom), cardRoot 앵커 `y 0~0.40`. 버튼 라벨 심볼(⊕/⊖) 제거 — Jua 폰트 미지원(□ 깨짐).
 
-> 구현 2026-07-18 · 커밋 대기 (컴파일 클린, unit 0 회귀 10/10). 시각 검증 unit 5 이월.
+> 구현 2026-07-18 · 커밋 `82df4182` + 버튼 글리프 fix(미커밋). Play 프리뷰 시각 검증 통과.

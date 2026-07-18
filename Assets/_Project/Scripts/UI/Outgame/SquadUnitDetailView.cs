@@ -34,10 +34,6 @@ namespace Wassup.UI
         private static readonly Color CardBg = new Color(0.06f, 0.07f, 0.10f, 0.82f);
         private static readonly Color DeployColor = new Color(0.20f, 0.52f, 0.32f, 1f);
         private static readonly Color UnequipColor = new Color(0.52f, 0.24f, 0.24f, 1f);
-        private static readonly Color CommonColor = new Color(0.50f, 0.52f, 0.55f, 1f);
-        private static readonly Color RareColor = new Color(0.24f, 0.48f, 0.85f, 1f);
-        private static readonly Color EpicColor = new Color(0.60f, 0.30f, 0.82f, 1f);
-        private static readonly Color EgoColor = new Color(0.92f, 0.62f, 0.16f, 1f);
         private static readonly Color ClassBadgeColor = new Color(0.20f, 0.24f, 0.34f, 1f);
         private static readonly Color CostBadgeColor = new Color(0.16f, 0.34f, 0.52f, 1f);
 
@@ -68,7 +64,7 @@ namespace Wassup.UI
 
         public void SetDeployState(bool inSquad)
         {
-            if (_deployLabel != null) _deployLabel.text = inSquad ? "편성 해제 ⊖" : "출전 ⊕";
+            if (_deployLabel != null) _deployLabel.text = inSquad ? "편성 해제" : "출전";
             if (_deployBg != null) _deployBg.color = inSquad ? UnequipColor : DeployColor;
         }
 
@@ -104,7 +100,7 @@ namespace Wassup.UI
             }
 
             if (rarityFrame != null)
-                rarityFrame.color = u != null ? RarityColor(u.rarity) : Color.clear;
+                rarityFrame.color = u != null ? UnitRarityStyle.Frame(u.rarity) : Color.clear;
         }
 
         private void PlayIdle()
@@ -145,7 +141,7 @@ namespace Wassup.UI
             if (_nameText != null)
                 _nameText.text = string.IsNullOrEmpty(u.displayName) ? u.name : u.displayName;
 
-            if (_rarityBadgeBg != null) _rarityBadgeBg.color = RarityColor(u.rarity);
+            if (_rarityBadgeBg != null) _rarityBadgeBg.color = UnitRarityStyle.Frame(u.rarity);
             if (_rarityBadgeText != null) _rarityBadgeText.text = UnitLabels.RarityLabel(u.rarity);
             if (_classBadgeText != null) _classBadgeText.text = UnitLabels.ClassLabel(u.role);
             if (_costBadgeText != null) _costBadgeText.text = $"코스트 {u.cost}";
@@ -172,17 +168,6 @@ namespace Wassup.UI
                 : "—";
         }
 
-        private static Color RarityColor(DefenderRarity rarity)
-        {
-            switch (rarity)
-            {
-                case DefenderRarity.Rare: return RareColor;
-                case DefenderRarity.Epic: return EpicColor;
-                case DefenderRarity.Ego: return EgoColor;
-                default: return CommonColor;
-            }
-        }
-
         private void EnsureCardBuilt()
         {
             if (_cardBuilt || cardRoot == null) return;
@@ -206,7 +191,7 @@ namespace Wassup.UI
 
             var badgeRow = MakeRow(cardRoot, 34, 8);
             _rarityBadgeBg = null;
-            _rarityBadgeText = MakeBadge(badgeRow.transform, out _rarityBadgeBg, CommonColor);
+            _rarityBadgeText = MakeBadge(badgeRow.transform, out _rarityBadgeBg, UnitRarityStyle.Frame(DefenderRarity.Common));
             MakeBadge(badgeRow.transform, out var classBg, ClassBadgeColor);
             _classBadgeText = classBg.GetComponentInChildren<TMP_Text>();
             MakeBadge(badgeRow.transform, out var costBg, CostBadgeColor);
@@ -229,7 +214,7 @@ namespace Wassup.UI
             var btnLe = btnGo.AddComponent<LayoutElement>();
             btnLe.minHeight = 52; btnLe.preferredHeight = 52;
             btnGo.GetComponent<Button>().onClick.AddListener(() => DeployClicked?.Invoke());
-            _deployLabel = MakeText(btnGo.transform, "출전 ⊕", 24, TextAlignmentOptions.Center, 0);
+            _deployLabel = MakeText(btnGo.transform, "출전", 24, TextAlignmentOptions.Center, 0);
             var lblRt = _deployLabel.rectTransform;
             lblRt.anchorMin = Vector2.zero; lblRt.anchorMax = Vector2.one;
             lblRt.offsetMin = Vector2.zero; lblRt.offsetMax = Vector2.zero;
