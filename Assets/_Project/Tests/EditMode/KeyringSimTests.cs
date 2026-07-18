@@ -158,21 +158,22 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
-        public void QuadraticBezier_Endpoints_Exact_And_Midpoint()
+        public void CubicBezier_Endpoints_Exact_And_Midpoint()
         {
-            // defender-tap-to-place unit 5 — 탭 비행 곡선. endpoints 정확(착지 오차 0) + 중점 = 0.25a+0.5c+0.25b.
+            // defender-tap-to-place unit 6 — 3차 던지기 곡선. endpoints 정확 + 중점 가중치 회귀.
             var a = new Vector3(1f, 0f, -2f);
-            var c = new Vector3(0f, 3f, 0.5f);
+            var c1 = new Vector3(0.5f, 3f, -1f);
+            var c2 = new Vector3(-0.5f, 1f, 1f);
             var b = new Vector3(-1f, 0f, 2f);
 
-            var at0 = KeyringSim.QuadraticBezier(a, c, b, 0f);
+            var at0 = KeyringSim.CubicBezier(a, c1, c2, b, 0f);
             Assert.AreEqual(a.x, at0.x, 0f, "t=0 x"); Assert.AreEqual(a.y, at0.y, 0f, "t=0 y"); Assert.AreEqual(a.z, at0.z, 0f, "t=0 z");
 
-            var at1 = KeyringSim.QuadraticBezier(a, c, b, 1f);
+            var at1 = KeyringSim.CubicBezier(a, c1, c2, b, 1f);
             Assert.AreEqual(b.x, at1.x, 0f, "t=1 x"); Assert.AreEqual(b.y, at1.y, 0f, "t=1 y"); Assert.AreEqual(b.z, at1.z, 0f, "t=1 z");
 
-            var mid = 0.25f * a + 0.5f * c + 0.25f * b;
-            var atH = KeyringSim.QuadraticBezier(a, c, b, 0.5f);
+            var mid = 0.125f * a + 0.375f * c1 + 0.375f * c2 + 0.125f * b;
+            var atH = KeyringSim.CubicBezier(a, c1, c2, b, 0.5f);
             Assert.AreEqual(mid.x, atH.x, 1e-5f, "t=0.5 x");
             Assert.AreEqual(mid.y, atH.y, 1e-5f, "t=0.5 y");
             Assert.AreEqual(mid.z, atH.z, 1e-5f, "t=0.5 z");

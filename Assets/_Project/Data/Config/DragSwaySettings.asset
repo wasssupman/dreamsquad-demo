@@ -32,3 +32,11 @@ MonoBehaviour:
   tapTravelScaleMin: 0.25
   tapTravelScaleMax: 1.5
   armHighlightColor: {r: 0.35, g: 1, b: 0.9, a: 0.28}
+  tapArcHeightFactor: 0.34
+  tapArcLateralFactor: 0.12
+  tapThrowLaunchControl: {x: 0.18, y: 1}
+  tapThrowLandingControl: {x: 0.72, y: 0.22}
+  tapSettleDistance: 0.06
+  tapSettleSpeed: 0.4
+  tapFollowSmoothTime: 0.06
+  tapSettleMaxDuration: 0.28

@@ -32,12 +32,15 @@ namespace Wassup.UI
             vel = v;
         }
 
-        // defender-tap-to-place unit 5 — 2차 베지어(제어점 1개) 점 평가. 탭 배치 비행의 곡선 경로.
-        // 좌표계 비의존(월드 발점). t 는 호출측이 clamp/ease 한 값 그대로. endpoints 정확(t=0→a, t=1→b) → 착지 오차 0.
-        public static Vector3 QuadraticBezier(Vector3 a, Vector3 control, Vector3 b, float t)
+        // defender-tap-to-place unit 6 — 3차 베지어(제어점 2개) 점 평가.
+        // 시작 상승/도착 하강 접선을 독립 튜닝한다. 좌표계 비의존, endpoints 정확 → 착지 오차 0.
+        public static Vector3 CubicBezier(Vector3 a, Vector3 controlA, Vector3 controlB, Vector3 b, float t)
         {
             float u = 1f - t;
-            return u * u * a + 2f * u * t * control + t * t * b;
+            return u * u * u * a
+                   + 3f * u * u * t * controlA
+                   + 3f * u * t * t * controlB
+                   + t * t * t * b;
         }
 
         // 줄(→고리) 방향 → 기울임각(deg, ±maxAngle 클램프). 내부 정규화 금지 —

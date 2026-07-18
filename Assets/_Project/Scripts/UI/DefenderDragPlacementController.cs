@@ -63,6 +63,7 @@ namespace Wassup.UI
         private DefenderUnitData _armedUnit;
         private Vector2 _armedFromScreen;
         private bool _simulatedDrag; // defender-tap-to-place — 시뮬(탭) 경로 표시. 공격 범위 프리뷰 억제.
+        private bool _simulatedSettling; // unit 6 — 비행 후 실제 프리뷰가 최종 발점에 임계 감쇠로 정착 중.
         // defender-tap-to-place unit 4 — 탭 비행 중 고정할 선택 타일(발밑 추종 대신). unit 5 — 곡선 좌우 변주 인덱스(결정론).
         private Vector2Int? _simFocusCell;
         private int _tapFlightSeq;
@@ -192,10 +193,19 @@ namespace Wassup.UI
             // unit 4 — 탭 비행 중엔 선택 타일에 포커스 고정(실시간 발밑 추종 제거). 스와이프는 발밑 추종 유지.
             ResolveFocusAndTarget(dt, lockCell: _simulatedDrag ? _simFocusCell : null);
 
-            // 무게추 스프링(탄성) + 속도 상한: spring/damping 으로 지연·탄성을 유지하고, maxSpeed 로 빠른
-            // 스와이프 시 속도만 제한 → 초기 튀어나감만 방지(탄성 자체는 spring/damping 으로 조절).
-            KeyringSim.SpringStep(ref _unitPosWorld, ref _unitVelWorld, _unitTargetWorld,
-                s.spring, s.damping, s.maxSpeed, dt);
+            // 실드래그는 무게추 스프링(탄성)+속도 상한으로 지연·스윙을 유지한다.
+            // unit 6 rev — 탭 시뮬은 비행부터 정착까지 같은 비진동 추종을 쓴다. 비행 중 고감쇠 스프링에
+            // 누적된 오차를 정착 진입 시 갑자기 따라잡던 후반 가속을 제거하고, 최종 정착은 잔여 오차만 닫는다.
+            if (_simulatedDrag)
+            {
+                _unitPosWorld = Vector3.SmoothDamp(_unitPosWorld, _unitTargetWorld, ref _unitVelWorld,
+                    Mathf.Max(s.tapFollowSmoothTime, 0.01f), Mathf.Infinity, dt);
+            }
+            else
+            {
+                KeyringSim.SpringStep(ref _unitPosWorld, ref _unitVelWorld, _unitTargetWorld,
+                    s.spring, s.damping, s.maxSpeed, dt);
+            }
 
             // camera-direction unit 5 rev 3 — 드래그 포커스 피드 = **터치/포인터 스크린 좌표 그대로**
             // (고리/유닛 월드 좌표 아님 — 카메라 되먹임·스프링 출렁임 원천 차단, 스무딩은 Director
@@ -515,6 +525,9 @@ namespace Wassup.UI
             Vector3 boardN = BoardSpace.RaycastPlane().normal.normalized;
             if (Vector3.Dot(boardN, camT.position - endFeet) < 0f) boardN = -boardN; // 카메라 쪽
             Vector3 startFeet = ScreenToBoardFeet(fromScreen, endFeet);     // 트레이 슬롯 → 보드 발점(폴백=endFeet)
+            // unit 6 — 선택 타일 발 위치가 불변 기준. 유닛/고리 최종점은 여기서 한 번만 파생한다.
+            Vector3 finalUnitTarget = endFeet + boardN * previewHeight;
+            Vector3 finalRing = endFeet + camT.up * totalDrop;
 
             // 비행 시간 = 기준 × (start→end 화면거리 / 화면세로), 0.25~1.5배.
             Vector2 sScr = (Vector2)mainCamera.WorldToScreenPoint(startFeet);
@@ -530,23 +543,32 @@ namespace Wassup.UI
             _unitVelWorld = Vector3.zero;
             if (_session.preview != null && !_session.preview.activeSelf) _session.preview.SetActive(true);
 
-            // unit 5 — 곡선 비행: 직선 대신 2차 베지어. 제어점 = 중점 + 카메라-up 아치 + 보드 좌우 변주.
-            // 좌우 변주는 결정론 저불일치 수열(황금비) — 매 탭 다른 경로, RNG 없이(프레젠테이션이라 sim 결정론 규칙 밖이나 관례 준수).
+            // unit 6 — 3차 던지기: 시작은 앞·위, 도착은 낮게 두어 상승/하강 접선을 분리한다.
+            // unit 5 의 결정론 좌우 변주는 두 제어점에 같은 오프셋으로 유지 → 중간에만 휘고 endpoint 는 정확.
             float flightDist = Vector3.Distance(startFeet, endFeet);
-            Vector3 mid = (startFeet + endFeet) * 0.5f;
             float g = (_tapFlightSeq++ + 0.5f) * 0.61803398875f;
             float lateralUnit = (g - Mathf.Floor(g)) * 2f - 1f; // -1..1
-            Vector3 control = mid + camT.up * (flightDist * Cfg.tapArcHeightFactor);
             Vector3 boardRight = Vector3.ProjectOnPlane(camT.right, boardN);
+            Vector3 lateralOffset = Vector3.zero;
             if (boardRight.sqrMagnitude > 1e-6f)
-                control += boardRight.normalized * (flightDist * Cfg.tapArcLateralFactor * lateralUnit);
+                lateralOffset = boardRight.normalized * (flightDist * Cfg.tapArcLateralFactor * lateralUnit);
+            float arcHeight = flightDist * Cfg.tapArcHeightFactor;
+            Vector2 launch = Cfg.tapThrowLaunchControl;
+            Vector2 landing = Cfg.tapThrowLandingControl;
+            Vector3 controlA = Vector3.Lerp(startFeet, endFeet, launch.x)
+                               + camT.up * (arcHeight * launch.y) + lateralOffset;
+            Vector3 controlB = Vector3.Lerp(startFeet, endFeet, landing.x)
+                               + camT.up * (arcHeight * landing.y) + lateralOffset;
 
             float t = 0f;
             while (t < 1f && _session.active && _sessionGen == gen)
             {
                 t += Time.unscaledDeltaTime / dur;
-                float e = 1f - Mathf.Pow(1f - Mathf.Clamp01(t), 3f); // OutCubic
-                Vector3 feet = KeyringSim.QuadraticBezier(startFeet, control, endFeet, e);
+                float linearT = Mathf.Clamp01(t);
+                // unit 6 rev — 곡선의 중후반 공간 속도 증가를 시간 이징으로 상쇄한다.
+                // 빠르게 던져지고 도착할수록 감속하며, CubicBezier endpoint 는 그대로 정확하다.
+                float flightT = 1f - Mathf.Pow(1f - linearT, 3f); // OutCubic
+                Vector3 feet = KeyringSim.CubicBezier(startFeet, controlA, controlB, endFeet, flightT);
                 _unitTargetWorld = feet + boardN * previewHeight;                   // 유닛 스프링 타깃
                 _ringWorld = feet + camT.up * totalDrop;                            // 고리 = 발 위 totalDrop(camUp)
                 _lastScreenPos = (Vector2)mainCamera.WorldToScreenPoint(_ringWorld); // 카메라 포커스 피드
@@ -554,10 +576,31 @@ namespace Wassup.UI
             }
             if (!_session.active || _sessionGen != gen) yield break; // 세션이 바뀜(새 드래그/정리) → 커밋 없이 물러남
 
-            // 정확히 셀 중심에 안착 후 확정.
-            _unitTargetWorld = endFeet + boardN * previewHeight;
-            _ringWorld = endFeet + camT.up * totalDrop;
+            // unit 6 — 고리는 선택 타일 기준 최종점에 고정. 비행부터 이어진 비진동 추종으로 실제 프리뷰가
+            // 거리+속도 조건을 만족할 때까지 짧게 정착한다. 제한시간은 실패 안전망.
+            _unitTargetWorld = finalUnitTarget;
+            _ringWorld = finalRing;
+            _lastScreenPos = (Vector2)mainCamera.WorldToScreenPoint(finalRing);
+            _simulatedSettling = true;
+            float settleElapsed = 0f;
+            while (_session.active && _sessionGen == gen)
+            {
+                bool closeEnough = Vector3.Distance(_unitPosWorld, finalUnitTarget) <= Cfg.tapSettleDistance;
+                bool slowEnough = _unitVelWorld.magnitude <= Cfg.tapSettleSpeed;
+                if ((closeEnough && slowEnough) || settleElapsed >= Cfg.tapSettleMaxDuration)
+                    break;
+
+                settleElapsed += Time.unscaledDeltaTime;
+                yield return null;
+            }
+            if (!_session.active || _sessionGen != gen) yield break;
+
+            // 정상/타임아웃 모두 보정 프레임을 노출하지 않는다. 착지 팝과 공용 커밋 꼬리를 같은 프레임에 실행.
+            _unitPosWorld = finalUnitTarget;
+            _unitVelWorld = Vector3.zero;
+            _simulatedSettling = false;
             _debounce = default;
+            bridge?.PulsePlacementHover(targetCell, _session.isValidTile);
             CommitPlacementAt(targetCell);
         }
 
@@ -844,6 +887,7 @@ namespace Wassup.UI
             _posInit = false;
             _onBoard = false;
             _simulatedDrag = false; // defender-tap-to-place — 시뮬 표시 해제
+            _simulatedSettling = false; // unit 6 — 정착 감쇠가 다음 실드래그로 새지 않게 수명 종료
             _simFocusCell = null;   // unit 4 — 탭 비행 포커스 고정 해제
             _unitVelWorld = Vector3.zero;
             // ui-tweak 2026-07-08 — 클릭 배치 은퇴. 드래그 종료 후 재활성화하지 않는다.

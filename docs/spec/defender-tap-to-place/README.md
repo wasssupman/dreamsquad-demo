@@ -1,6 +1,6 @@
 # defender-tap-to-place
 
-상태: **완료 2026-07-18 (units 0~5 사용자 Play 확인)** · 작성 2026-07-17 · 비행 연출 정제 units 4·5 추가·확인 2026-07-18
+상태: **진행 중 — unit 6 구현 완료, 사용자 Play 확인 대기** · 작성 2026-07-17 · units 0~5 사용자 Play 확인 2026-07-18
 
 ## 목표
 
@@ -32,12 +32,19 @@
   CleanupSession 이 해제)가 `SetHover` 의 `SetPlacementRange` 만 스킵. hover/팝/키링은 유지. 실제 D&D 는 범위 노출.
 - **비용 사전 피드백 대칭**: 비용 부족 유닛은 arm 자체를 거부 + `PulseInsufficient`(드래그 OnBeginDrag 와 동일).
   단 이미 armed 슬롯의 재탭(=해제)은 비용 무관 허용.
-- **데이터 주도**: `tapTravelDuration`(기준 3s) / `tapTravelScaleMin·Max`(거리 비례 0.25~1.5) / `armHighlightColor` /
-  `tapArcHeightFactor·tapArcLateralFactor`(비행 곡선) 전부 `DragSwaySettings` SO. 비행 시간 = 기준 × clamp(화면거리/화면세로, min, max).
+- **데이터 주도**: 비행 시간·거리 clamp, arm 색, 3차 곡선 제어점/아치/좌우, 탭 추종 smooth time·정착 임계값·상한은
+  전부 `DragSwaySettings` SO. 비행 시간 = 기준 × clamp(화면거리/화면세로, min, max).
 - **탭 비행 포커스는 목표 고정 (unit 4)**: 비행 중 타일 포커스는 날아가는 발밑이 아니라 **탭한 목표셀**에 정적으로 붙는다.
   `ResolveFocusAndTarget(lockCell)` 로 히스테리시스/디바운스/액체 번짐을 우회. 스와이프는 발밑 실시간 추종 유지(분기: `_simulatedDrag`).
-- **곡선 비행은 결정론 변주 (unit 5)**: 경로는 `KeyringSim.QuadraticBezier`(순수, 착지 오차 0). 좌우 변주는 RNG 가 아니라
-  황금비 저불일치 수열(`_tapFlightSeq`) — 매 탭 다른 곡선이되 결정론적(프로젝트 index 기반 관례). 이징(OutCubic)은 속도 프로파일로 분리.
+- **곡선 비행은 결정론 변주 (unit 5→6)**: unit 5의 황금비 저불일치 수열(`_tapFlightSeq`)을 유지하되,
+  unit 6에서 `KeyringSim.CubicBezier`로 교체한다. 좌우 오프셋은 두 제어점에 동일 적용해 endpoint 오차 없이 매 탭 변주한다.
+- **도착 기준은 선택 타일의 발 위치 (unit 6)**: `endFeet = GridCellToViewCenter(targetCell)` 를 불변 기준으로 두고,
+  유닛 목표와 고리 목표를 여기서 각각 계산한다. 비행 종료는 곧 배치 확정이 아니며, 실제 프리뷰의 거리·속도 오차가
+  모두 기준 이하가 될 때까지 짧게 정착한 뒤 공용 `CommitPlacementAt` 으로 넘어간다.
+- **던지기 궤적과 정착의 역할 분리 (unit 6)**: 비행은 시작 상승·전진과 착지 하강 접선을 가진 3차 베지어에
+  `OutCubic` 시간 진행률을 적용해 빠르게 출발하고 도착할수록 감속한다. 탭 시뮬 프리뷰는 비행부터 정착까지 같은
+  비진동 `SmoothDamp`로 추종해 후반 따라잡기 가속을 만들지 않는다. 제한 시간 초과 시 프리뷰를 최종 자세로
+  강제 정렬하고 같은 프레임에 확정해 보정 순간을 노출하지 않는다. 착지 시 기존 타일 팝을 재사용한다.
 
 ## 작업 단위 목록
 
@@ -49,8 +56,9 @@
 | 3 | `3_handoff_summary.md` | doc | 인계 요약 (Play 확인 후 작성) |
 | 4 | `4_flight_focus_pin.md` | feature | 탭 비행 중 타일 포커스를 발밑 추종 대신 선택 타일에 정적 고정 |
 | 5 | `5_bezier_flight_path.md` | feature | 직선 비행 → 2차 베지어(매 탭 다른 곡선 아치) |
+| 6 | `6_throw_arrival_settle.md` | feature | 3차 던지기 궤적 + 실제 프리뷰 정착 후 배치 확정 |
 
-의존: `0 → 1 → 2`. `4·5` 는 비행 연출 정제(독립적, 순서 무관). 선행: `docs/spec/placement-cell-snap/`(드래그 파이프라인 — 히스테리시스/throttle/팝, 완료).
+의존: `0 → 1 → 2`, `5 → 6`. `4` 는 비행 포커스 정제. 선행: `docs/spec/placement-cell-snap/`(드래그 파이프라인 — 히스테리시스/throttle/팝, 완료).
 
 ## 파이프라인 커버리지
 

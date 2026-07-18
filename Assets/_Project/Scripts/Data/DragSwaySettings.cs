@@ -64,7 +64,7 @@ namespace Wassup.Data
         [FormerlySerializedAs("stickyBlobEnabled")]
         public bool stickyLiquidEnabled = true;
 
-        [Header("⑦ 탭 배치 시뮬 — 탭→타일 비행(시간·거리·arm·곡선)")]
+        [Header("⑦ 탭 배치 시뮬 — 탭→타일 던지기(시간·거리·곡선·정착)")]
         [Tooltip("비행 기준 시간(초) — 화면 세로 1개 이동 시 이 값. 실제=tray→타일 화면거리 비례(min~max 배 clamp).")]
         [Range(0.2f, 5f)]
         public float tapTravelDuration = 3f;
@@ -82,6 +82,23 @@ namespace Wassup.Data
         [Tooltip("곡선 좌우 폭(직선거리 배수) — 매 탭 부호·크기가 달라 경로가 매번 다름. 0=좌우 없음.")]
         [Range(0f, 1f)]
         public float tapArcLateralFactor = 0.22f;
+        [Tooltip("던지기 시작 제어점 — x=목표까지 전진 비율, y=아치 높이 배수. 앞·위로 튀어나가는 출발 접선.")]
+        public Vector2 tapThrowLaunchControl = new Vector2(0.18f, 1f);
+        [Tooltip("던지기 도착 제어점 — x=목표까지 전진 비율, y=아치 높이 배수. 낮게 내려오는 착지 접선.")]
+        public Vector2 tapThrowLandingControl = new Vector2(0.72f, 0.22f);
+        [Tooltip("탭 비행 후 실제 프리뷰가 최종 발 위치에 정착했다고 보는 거리 오차(월드).")]
+        [Range(0f, 1f)]
+        public float tapSettleDistance = 0.06f;
+        [Tooltip("탭 비행 후 정착했다고 보는 프리뷰 속도 상한(월드/s).")]
+        [Range(0f, 5f)]
+        public float tapSettleSpeed = 0.4f;
+        [Tooltip("탭 비행·정착 중 곡선 목표를 비진동으로 추종하는 SmoothDamp 시간(초). 낮을수록 빠르게 붙음.")]
+        [Range(0.01f, 0.3f)]
+        [FormerlySerializedAs("tapSettleSmoothTime")]
+        public float tapFollowSmoothTime = 0.06f;
+        [Tooltip("정착 대기 최대시간(초, unscaled). 초과하면 최종 위치로 정렬 후 즉시 배치.")]
+        [Range(0.05f, 1f)]
+        public float tapSettleMaxDuration = 0.28f;
 
         [Header("⑧ 방향 페이즈 — 방향 지정 중 전투 슬로우모")]
         // 방향 지정 컨트롤러는 런타임 AddComponent 라 자체 인스펙터가 없다. 튜닝값이
