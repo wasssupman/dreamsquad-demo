@@ -1,7 +1,8 @@
 # placement-eligible-tile-highlight
 
-상태: **설계 승인(전략 B) · 구현 대기** · 작성 2026-07-18 · 브랜치 `feat/placeable-tile-highlight`
-비판 리뷰 2건(구조/시각) + 사용자 방향 결정(밝게+표준 문법) 반영.
+상태: **units 0~2 구현·검증 완료 · 실아트(placeableTile 스프라이트/RGBA) 대기** · 작성 2026-07-18 ·
+브랜치 `feat/placeable-tile-highlight`(main 미반영) · 커밋 `df75b984`~`3f45fd83`. 인계는 `4_handoff_summary.md`.
+비판 리뷰 2건(구조/시각) + 사용자 방향 결정(밝게+표준 문법) 반영. Play 배선 검증(임시 타일): 배치가능 82/200셀 정확·사거리 공존·Hide 소거.
 
 ## 목표
 
