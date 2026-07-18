@@ -51,6 +51,18 @@
   사거리도 같이 주황). `placement-attack-range-preview` 의 rangeColor 계약을 갱신 — 코드 기본값(TileSetData.cs)은
   아직 노랑(신규 tileset 만 영향, 실사용 무관). 사용자 색 선택 렌더 비교로 확정(주황 vs 보라 vs 코랄).
 
+## z-fight 픽스 + 사거리 아웃라인 두께 (2026-07-18)
+
+- **증상**: 사거리 아웃라인을 두껍게 하니 카메라 이동 중 "자글자글"(z-fighting). **원인**: ground 머티리얼
+  `TileShadowReceive`(불투명·depth write)와 투명 오버레이 타일맵들이 전부 **coplanar(local z=0)** → 깊이 정밀도
+  다툼. 두꺼운 라인이 coplanar 면적을 키워 악화. (코드 주석의 "타일맵끼리는 z-fight 안 함"은 **불투명 depth-writer
+  ground 앞에선 틀림**.)
+- **해결**: `TilemapMapView.EnsurePlaceableTilemap`/`EnsureRangeTilemap` 에서 타일맵을 카메라 쪽으로 미세하게 띄움
+  (`localPosition.z = -0.04`/`-0.05`; grid 90°X 회전이라 local −Z = world +Y = 카메라 쪽). 깊이 평면 분리로 자글거림
+  제거, 셀 정렬 영향 없음(0.04는 셀의 4%). 신규 오버레이 타일맵 추가 시 동일 오프셋 필요.
+- **아웃라인 두께**: `tile_grid_outline.png` 2px → **5px solid + 2px soft inner**(사용자 요청 "더 크게"). soft edge 로
+  tilted 평면 aliasing crawl 감소. 형태 조정은 이 png 교체로만(range-preview 계약, 코드 무관).
+
 ## Follow-up
 
 - 실드래그(포인터) 중 상승(9998)+적 dim 상태에서의 체감은 미검증(정적 render+로직으로 확인) — 사용자 실드래그 Play 체감 1회 권장.

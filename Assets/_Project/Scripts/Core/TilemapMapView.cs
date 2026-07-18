@@ -746,6 +746,7 @@ namespace Wassup.Core
             if (grid == null) return;
             var go = new GameObject("PlacementRangeTiles");
             go.transform.SetParent(grid.transform, false);
+            go.transform.localPosition = new Vector3(0f, 0f, -0.05f); // z-fight 방지(ground depth 평면 분리). placeable(-0.04)보다 카메라 쪽.
             _rangeTilemap = go.AddComponent<Tilemap>();
             var r = go.AddComponent<TilemapRenderer>();
             _rangeTilemap.tileAnchor = new Vector3(0.5f, 0.5f, 0f);
@@ -811,6 +812,9 @@ namespace Wassup.Core
             if (grid == null) return;
             var go = new GameObject("PlacementHighlightTiles");
             go.transform.SetParent(grid.transform, false);
+            // z-fight 방지: ground(TileShadowReceive = depth write)와 coplanar 면 카메라 이동 중 자글거림.
+            // grid 는 90°X 회전 → local -Z 가 카메라 쪽(world +Y). 살짝 띄워 깊이 평면 분리(셀 정렬 영향 없음).
+            go.transform.localPosition = new Vector3(0f, 0f, -0.04f);
             _placeableTilemap = go.AddComponent<Tilemap>();
             var r = go.AddComponent<TilemapRenderer>();
             _placeableTilemap.tileAnchor = new Vector3(0.5f, 0.5f, 0f);
