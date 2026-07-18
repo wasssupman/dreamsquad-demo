@@ -748,6 +748,68 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 0}
+--- !u!1 &322840703
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 322840705}
+  - component: {fileID: 322840704}
+  m_Layer: 0
+  m_Name: BossWarningView
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &322840704
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 322840703}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c4e8b5968583f428894b65a11b76229f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.BossWarningView
+  warningFont: {fileID: 11400000, guid: 3e875d8f3088f4559af897fb924f19a5, type: 2}
+  warningMaterial: {fileID: 2100000, guid: 52e1410b5122a4e3b980294f42e9eb02, type: 2}
+  vignetteSprite: {fileID: 21300000, guid: 81dc17ec18fd24896ba17ce06c640d0f, type: 3}
+  warningText: "\uAFC8\uACB0 \uC704\uAE30!!"
+  fontSize: 150
+  crimsonColor: {r: 0.86, g: 0.12, b: 0.14, a: 1}
+  whiteHotFlash: {r: 1, g: 0.95, b: 0.92, a: 1}
+  plateSize: {x: 900, y: 240}
+  plateColor: {r: 0.05, g: 0.03, b: 0.06, a: 0.82}
+  plateBorderColor: {r: 0.86, g: 0.12, b: 0.14, a: 0.95}
+  plateCornerRadius: 24
+  plateBorderWidth: 3
+  vignetteColor: {r: 0.7, g: 0.05, b: 0.06, a: 0.55}
+  slamFromScale: 1.6
+  slamInDuration: 0.35
+  holdDuration: 1.4
+  fadeOutDuration: 0.5
+  sortingOrder: 8
+--- !u!4 &322840705
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 322840703}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &441089444
 GameObject:
   m_ObjectHideFlags: 0
@@ -1702,21 +1764,6 @@ MonoBehaviour:
   plateFill: {r: 0.09, g: 0.11, b: 0.2, a: 0.9}
   squadBorder: {r: 1, g: 0.82, b: 0.35, a: 1}
   unitBorder: {r: 0.45, g: 0.85, b: 1, a: 1}
---- !u!114 &956177016
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 956177013}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 074ade6da03c4d7a8b041d09b55b716c, type: 3}
-  m_Name:
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Presentation.UnitOverheadUiLayer
-  style: {fileID: 11400000, guid: 7a6b5c4d3e2f10988776655443322110, type: 2}
-  hand: {fileID: 2054561897}
-  sortingOrder: 3
 --- !u!4 &956177015
 Transform:
   m_ObjectHideFlags: 0
@@ -1732,6 +1779,21 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &956177016
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 956177013}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 074ade6da03c4d7a8b041d09b55b716c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Presentation.UnitOverheadUiLayer
+  style: {fileID: 11400000, guid: 7a6b5c4d3e2f10988776655443322110, type: 2}
+  hand: {fileID: 2054561897}
+  sortingOrder: 3
 --- !u!1 &1004191865
 GameObject:
   m_ObjectHideFlags: 0
@@ -1828,13 +1890,24 @@ MonoBehaviour:
   handController: {fileID: 2054561897}
   labelFont: {fileID: 11400000, guid: 218cce73e3172a04a8c536a4d368d90f, type: 2}
   numberFont: {fileID: 11400000, guid: 7f50de03946cd4d229e8920dd91dbd1a, type: 2}
-  dreamOrbFrameSprite: {fileID: 21300000, guid: c7b317b798a348499d23dfe3086b0aef, type: 3}
+  burstFrameSprite: {fileID: 21300000, guid: c7b317b798a348499d23dfe3086b0aef, type: 3}
   backingColor: {r: 0.07, g: 0.05, b: 0.14, a: 0.94}
   fillColor: {r: 0.7, g: 0.43, b: 1, a: 1}
   chargedColor: {r: 0.43, g: 0.92, b: 1, a: 1}
   haloColor: {r: 0.56, g: 0.28, b: 1, a: 0.5}
+  maxColor: {r: 1, g: 0.77, b: 0.12, a: 1}
   dormantFrameColor: {r: 0.68, g: 0.65, b: 0.76, a: 0.78}
   valuePunchScale: 1.18
+  ambientCycleSeconds: 3.2
+  ambientScale: 1.018
+  ambientTiltDegrees: 0.6
+  dormantAmbientMultiplier: 0.45
+  sheenIntervalSeconds: 3.8
+  sheenSweepSeconds: 0.68
+  sheenSize: {x: 30, y: 154}
+  sheenTravel: 86
+  sheenTiltDegrees: -16
+  sheenColor: {r: 0.82, g: 0.98, b: 1, a: 0.18}
 --- !u!4 &1012444855
 Transform:
   m_ObjectHideFlags: 0
@@ -2383,6 +2456,18 @@ MonoBehaviour:
   tabColor: {r: 1, g: 0.78, b: 0.28, a: 1}
   tabTextColor: {r: 0.1, g: 0.08, b: 0.04, a: 1}
   tabSize: {x: 196, y: 46}
+  leakPlateSize: {x: 360, y: 64}
+  leakPlateGap: 10
+  leakTabSize: {x: 112, y: 42}
+  leakValueFontSize: 38
+  leakNormalColor: {r: 1, g: 0.9, b: 0.66, a: 1}
+  leakWarningColor: {r: 1, g: 0.58, b: 0.2, a: 1}
+  leakCriticalColor: {r: 1, g: 0.25, b: 0.2, a: 1}
+  leakFlashColor: {r: 1, g: 1, b: 1, a: 1}
+  leakWarningRemaining: 3
+  leakCriticalRemaining: 1
+  leakPunchScale: 1.18
+  leakPunchDuration: 0.22
 --- !u!4 &1279129163
 Transform:
   m_ObjectHideFlags: 0
@@ -3718,6 +3803,7 @@ MonoBehaviour:
   unitHealthPresentationMode: 1
   unitOverheadUiLayer: {fileID: 956177016}
   scoreHud: {fileID: 1279129162}
+  _bossWarning: {fileID: 322840704}
   _projectileViewPool: {fileID: 808760338}
   placementInput: {fileID: 1495062452}
   boardViewMode: 1
@@ -3893,3 +3979,4 @@ SceneRoots:
   - {fileID: 1916999831}
   - {fileID: 751645448}
   - {fileID: 603193525}
+  - {fileID: 322840705}
