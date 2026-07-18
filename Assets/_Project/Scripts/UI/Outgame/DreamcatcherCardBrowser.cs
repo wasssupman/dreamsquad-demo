@@ -106,15 +106,15 @@ namespace Wassup.UI
             var art = CreateImage(root.transform, Color.white, false);
             var art_rt = art.rectTransform;
             art_rt.anchorMin = Vector2.zero; art_rt.anchorMax = Vector2.one;
-            art_rt.offsetMin = new Vector2(6, 30); art_rt.offsetMax = new Vector2(-6, -6);
+            art_rt.offsetMin = new Vector2(6, 42); art_rt.offsetMax = new Vector2(-6, -6);
             art.preserveAspect = true;
             if (card.art != null) { art.sprite = card.art; art.color = Color.white; }
             else { art.sprite = null; art.color = CardCategoryStyle.ArtFallback(card); }
 
-            var label = CreateText(root.transform, string.IsNullOrEmpty(card.displayName) ? card.id : card.displayName, 15, TextAlignmentOptions.Center);
+            var label = CreateText(root.transform, string.IsNullOrEmpty(card.displayName) ? card.id : card.displayName, 20, TextAlignmentOptions.Center);
             var lrt = label.rectTransform;
             lrt.anchorMin = new Vector2(0, 0); lrt.anchorMax = new Vector2(1, 0); lrt.pivot = new Vector2(0.5f, 0);
-            lrt.sizeDelta = new Vector2(0, 28); lrt.anchoredPosition = new Vector2(0, 4);
+            lrt.sizeDelta = new Vector2(0, 36); lrt.anchoredPosition = new Vector2(0, 4);
 
             // deck-count badge — top-right, "×N", shown when N>0.
             var badge = new GameObject("Count", typeof(RectTransform), typeof(Image));
@@ -122,8 +122,8 @@ namespace Wassup.UI
             badge.GetComponent<Image>().color = CountColor;
             var brt = (RectTransform)badge.transform;
             brt.anchorMin = new Vector2(1, 1); brt.anchorMax = new Vector2(1, 1); brt.pivot = new Vector2(1, 1);
-            brt.sizeDelta = new Vector2(48, 30); brt.anchoredPosition = new Vector2(-6, -6);
-            var countText = CreateText(badge.transform, "×0", 18, TextAlignmentOptions.Center);
+            brt.sizeDelta = new Vector2(56, 36); brt.anchoredPosition = new Vector2(-6, -6);
+            var countText = CreateText(badge.transform, "×0", 22, TextAlignmentOptions.Center);
             countText.fontStyle = FontStyles.Bold;
             var ctrt = countText.rectTransform;
             ctrt.anchorMin = Vector2.zero; ctrt.anchorMax = Vector2.one; ctrt.offsetMin = Vector2.zero; ctrt.offsetMax = Vector2.zero;

@@ -219,17 +219,18 @@ namespace Wassup.UI
 
             var vlg = cardRoot.gameObject.GetComponent<VerticalLayoutGroup>();
             if (vlg == null) vlg = cardRoot.gameObject.AddComponent<VerticalLayoutGroup>();
-            vlg.padding = new RectOffset(20, 20, 16, 16);
-            vlg.spacing = 10;
+            // ui-polish 2026-07-18 — 하단 패딩 크게(모바일 바닥 여백) + 항목 간격.
+            vlg.padding = new RectOffset(22, 22, 18, 40);
+            vlg.spacing = 12;
             vlg.childAlignment = TextAnchor.UpperLeft;
             vlg.childControlWidth = true;
             vlg.childControlHeight = true;
             vlg.childForceExpandWidth = true;
             vlg.childForceExpandHeight = false;
 
-            _nameText = MakeText(cardRoot, "", 34, TextAlignmentOptions.Left, 44);
+            _nameText = MakeText(cardRoot, "", 44, TextAlignmentOptions.Left, 54);
 
-            var badgeRow = MakeRow(cardRoot, 34, 8);
+            var badgeRow = MakeRow(cardRoot, 42, 8);
             _badgeRowGo = badgeRow.gameObject;
             _rarityBadgeBg = null;
             _rarityBadgeText = MakeBadge(badgeRow.transform, out _rarityBadgeBg, UnitRarityStyle.Frame(DefenderRarity.Common));
@@ -240,23 +241,24 @@ namespace Wassup.UI
 
             for (int i = 0; i < StatLabels.Length; i++)
             {
-                var row = MakeRow(cardRoot, 30, 0);
+                var row = MakeRow(cardRoot, 38, 0);
                 _statRowGos[i] = row.gameObject;
-                MakeText(row.transform, StatLabels[i], 20, TextAlignmentOptions.Left, 30);
-                _statValues[i] = MakeText(row.transform, "", 20, TextAlignmentOptions.Right, 30);
+                MakeText(row.transform, StatLabels[i], 26, TextAlignmentOptions.Left, 38);
+                _statValues[i] = MakeText(row.transform, "", 26, TextAlignmentOptions.Right, 38);
             }
 
-            _summaryText = MakeText(cardRoot, "", 18, TextAlignmentOptions.TopLeft, 60);
+            _summaryText = MakeText(cardRoot, "", 24, TextAlignmentOptions.TopLeft, 76);
             _summaryText.enableWordWrapping = true;
 
+            // ui-polish 2026-07-18 — 편성/출전 버튼 크게(모바일 탭 타겟).
             var btnGo = new GameObject("DeployButton", typeof(RectTransform), typeof(Image), typeof(Button));
             btnGo.transform.SetParent(cardRoot, false);
             _deployBg = btnGo.GetComponent<Image>();
             _deployBg.color = DeployColor;
             var btnLe = btnGo.AddComponent<LayoutElement>();
-            btnLe.minHeight = 52; btnLe.preferredHeight = 52;
+            btnLe.minHeight = 84; btnLe.preferredHeight = 84;
             btnGo.GetComponent<Button>().onClick.AddListener(() => DeployClicked?.Invoke());
-            _deployLabel = MakeText(btnGo.transform, "출전", 24, TextAlignmentOptions.Center, 0);
+            _deployLabel = MakeText(btnGo.transform, "출전", 34, TextAlignmentOptions.Center, 0);
             var lblRt = _deployLabel.rectTransform;
             lblRt.anchorMin = Vector2.zero; lblRt.anchorMax = Vector2.one;
             lblRt.offsetMin = Vector2.zero; lblRt.offsetMax = Vector2.zero;
@@ -301,8 +303,8 @@ namespace Wassup.UI
             bg = go.GetComponent<Image>();
             bg.color = color;
             var le = go.AddComponent<LayoutElement>();
-            le.minWidth = 88; le.preferredWidth = 88; le.minHeight = 30; le.preferredHeight = 30;
-            var label = MakeText(go.transform, "", 18, TextAlignmentOptions.Center, 0);
+            le.minWidth = 108; le.preferredWidth = 108; le.minHeight = 40; le.preferredHeight = 40;
+            var label = MakeText(go.transform, "", 24, TextAlignmentOptions.Center, 0);
             var rt = label.rectTransform;
             rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one;
             rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;

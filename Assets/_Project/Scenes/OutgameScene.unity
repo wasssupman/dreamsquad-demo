@@ -1135,11 +1135,11 @@ RectTransform:
   - {fileID: 131829622}
   m_Father: {fileID: 37122197}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0}
-  m_AnchorMax: {x: 0.5, y: 0}
-  m_AnchoredPosition: {x: 200, y: 70}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 30, y: -30}
   m_SizeDelta: {x: 260, y: 72}
-  m_Pivot: {x: 0.5, y: 0}
+  m_Pivot: {x: 0, y: 1}
 --- !u!114 &241823548
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5049,11 +5049,11 @@ RectTransform:
   - {fileID: 1274166032}
   m_Father: {fileID: 98252864}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0}
-  m_AnchorMax: {x: 0.5, y: 0}
-  m_AnchoredPosition: {x: 200, y: 80}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 30, y: -30}
   m_SizeDelta: {x: 260, y: 72}
-  m_Pivot: {x: 0.5, y: 0}
+  m_Pivot: {x: 0, y: 1}
 --- !u!114 &1353000532
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7360,7 +7360,9 @@ MonoBehaviour:
   font: {fileID: 11400000, guid: 218cce73e3172a04a8c536a4d368d90f, type: 2}
   detailWidth: 0.34
   headerHeight: 0.16
-  cardHeight: 0.4
+  cardHeight: 0.5
+  cardBottomMargin: 0.03
+  artFeet: 0.52
 --- !u!1 &1956174789
 GameObject:
   m_ObjectHideFlags: 0
@@ -7680,9 +7682,10 @@ MonoBehaviour:
   font: {fileID: 11400000, guid: 218cce73e3172a04a8c536a4d368d90f, type: 2}
   detailWidth: 0.34
   headerHeight: 0.14
-  spineScale: 2.2
-  spineFeet: 0.42
-  cardHeight: 0.4
+  spineScale: 1.9
+  spineFeet: 0.57
+  cardHeight: 0.56
+  cardBottomMargin: 0.03
 --- !u!1 &2039894583
 GameObject:
   m_ObjectHideFlags: 0

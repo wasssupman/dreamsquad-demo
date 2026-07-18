@@ -147,10 +147,10 @@ namespace Wassup.UI
             portrait.sprite = e.sprite;
             portrait.enabled = e.sprite != null;
 
-            var label = CreateText(inner.transform, e.label, 18, TextAlignmentOptions.Center);
+            var label = CreateText(inner.transform, e.label, 23, TextAlignmentOptions.Center);
             var lrt = label.rectTransform;
             lrt.anchorMin = new Vector2(0, 0); lrt.anchorMax = new Vector2(1, 0); lrt.pivot = new Vector2(0.5f, 0);
-            lrt.sizeDelta = new Vector2(0, 34); lrt.anchoredPosition = new Vector2(0, 6);
+            lrt.sizeDelta = new Vector2(0, 42); lrt.anchoredPosition = new Vector2(0, 6);
 
             // "편성중" badge — top-right pill, toggled by membership.
             var badge = new GameObject("Badge", typeof(RectTransform), typeof(Image));
@@ -158,8 +158,8 @@ namespace Wassup.UI
             badge.GetComponent<Image>().color = BadgeColor;
             var brt = (RectTransform)badge.transform;
             brt.anchorMin = new Vector2(1, 1); brt.anchorMax = new Vector2(1, 1); brt.pivot = new Vector2(1, 1);
-            brt.sizeDelta = new Vector2(72, 26); brt.anchoredPosition = new Vector2(-6, -6);
-            var btext = CreateText(badge.transform, "편성중", 15, TextAlignmentOptions.Center);
+            brt.sizeDelta = new Vector2(88, 34); brt.anchoredPosition = new Vector2(-6, -6);
+            var btext = CreateText(badge.transform, "편성중", 19, TextAlignmentOptions.Center);
             var btrt = btext.rectTransform;
             btrt.anchorMin = Vector2.zero; btrt.anchorMax = Vector2.one; btrt.offsetMin = Vector2.zero; btrt.offsetMax = Vector2.zero;
             badge.SetActive(false);

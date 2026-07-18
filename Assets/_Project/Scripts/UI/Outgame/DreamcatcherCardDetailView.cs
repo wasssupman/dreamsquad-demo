@@ -106,27 +106,28 @@ namespace Wassup.UI
 
             var vlg = cardRoot.gameObject.GetComponent<VerticalLayoutGroup>();
             if (vlg == null) vlg = cardRoot.gameObject.AddComponent<VerticalLayoutGroup>();
-            vlg.padding = new RectOffset(20, 20, 16, 16);
-            vlg.spacing = 10;
+            // ui-polish 2026-07-18 — 하단 패딩 크게 + 폰트/버튼 확대(모바일 시인성·탭).
+            vlg.padding = new RectOffset(22, 22, 18, 40);
+            vlg.spacing = 12;
             vlg.childAlignment = TextAnchor.UpperLeft;
             vlg.childControlWidth = true; vlg.childControlHeight = true;
             vlg.childForceExpandWidth = true; vlg.childForceExpandHeight = false;
 
-            _nameText = MakeText(cardRoot, "", 32, TextAlignmentOptions.Left, 42);
+            _nameText = MakeText(cardRoot, "", 42, TextAlignmentOptions.Left, 52);
 
             var badge = new GameObject("CatBadge", typeof(RectTransform), typeof(Image));
             badge.transform.SetParent(cardRoot, false);
             _catBadgeBg = badge.GetComponent<Image>();
             var ble = badge.AddComponent<LayoutElement>();
-            ble.minWidth = 120; ble.preferredWidth = 120; ble.minHeight = 30; ble.preferredHeight = 30;
-            _catBadgeText = MakeText(badge.transform, "", 18, TextAlignmentOptions.Center, 0);
+            ble.minWidth = 150; ble.preferredWidth = 150; ble.minHeight = 40; ble.preferredHeight = 40;
+            _catBadgeText = MakeText(badge.transform, "", 24, TextAlignmentOptions.Center, 0);
             var brt = _catBadgeText.rectTransform;
             brt.anchorMin = Vector2.zero; brt.anchorMax = Vector2.one; brt.offsetMin = Vector2.zero; brt.offsetMax = Vector2.zero;
 
-            _effectText = MakeText(cardRoot, "", 20, TextAlignmentOptions.TopLeft, 120);
+            _effectText = MakeText(cardRoot, "", 26, TextAlignmentOptions.TopLeft, 150);
             _effectText.enableWordWrapping = true;
 
-            _hintText = MakeText(cardRoot, "", 16, TextAlignmentOptions.Left, 24);
+            _hintText = MakeText(cardRoot, "", 20, TextAlignmentOptions.Left, 28);
             _hintText.color = HintColor;
             _hintText.fontStyle = FontStyles.Italic;
 
@@ -137,9 +138,9 @@ namespace Wassup.UI
             _actionButton = btnGo.GetComponent<Button>();
             _actionButton.transition = Selectable.Transition.None;
             var le = btnGo.AddComponent<LayoutElement>();
-            le.minHeight = 52; le.preferredHeight = 52;
+            le.minHeight = 84; le.preferredHeight = 84;
             _actionButton.onClick.AddListener(() => ActionClicked?.Invoke());
-            _actionLabel = MakeText(btnGo.transform, "덱에 추가", 24, TextAlignmentOptions.Center, 0);
+            _actionLabel = MakeText(btnGo.transform, "덱에 추가", 34, TextAlignmentOptions.Center, 0);
             _actionLabel.raycastTarget = false;
             var lrt = _actionLabel.rectTransform;
             lrt.anchorMin = Vector2.zero; lrt.anchorMax = Vector2.one; lrt.offsetMin = Vector2.zero; lrt.offsetMax = Vector2.zero;

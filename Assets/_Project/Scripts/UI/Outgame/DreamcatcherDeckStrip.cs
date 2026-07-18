@@ -82,7 +82,7 @@ namespace Wassup.UI
             var statusGo = new GameObject("Status", typeof(RectTransform), typeof(TextMeshProUGUI));
             statusGo.transform.SetParent(transform, false);
             _statusText = statusGo.GetComponent<TextMeshProUGUI>();
-            _statusText.alignment = TextAlignmentOptions.MidlineLeft; _statusText.fontSize = 20; _statusText.color = Color.white;
+            _statusText.alignment = TextAlignmentOptions.MidlineLeft; _statusText.fontSize = 26; _statusText.color = Color.white;
             _statusText.enableWordWrapping = false;
             if (font != null) _statusText.font = font;
             var sle = statusGo.AddComponent<LayoutElement>();
@@ -97,8 +97,8 @@ namespace Wassup.UI
             _saveButton.transition = Selectable.Transition.None;
             _saveButton.onClick.AddListener(() => SaveClicked?.Invoke());
             var svle = saveGo.AddComponent<LayoutElement>();
-            svle.minWidth = 140; svle.preferredWidth = 140; svle.minHeight = 56; svle.preferredHeight = 56;
-            var saveLabel = MakeText(saveGo.transform, "저장", 24, TextAlignmentOptions.Center);
+            svle.minWidth = 168; svle.preferredWidth = 168; svle.minHeight = 66; svle.preferredHeight = 66;
+            var saveLabel = MakeText(saveGo.transform, "저장", 32, TextAlignmentOptions.Center);
             saveLabel.raycastTarget = false;
             var srt = saveLabel.rectTransform;
             srt.anchorMin = Vector2.zero; srt.anchorMax = Vector2.one; srt.offsetMin = Vector2.zero; srt.offsetMax = Vector2.zero;
@@ -128,7 +128,7 @@ namespace Wassup.UI
             var prt = (RectTransform)plusGo.transform;
             prt.anchorMin = Vector2.zero; prt.anchorMax = Vector2.one; prt.offsetMin = Vector2.zero; prt.offsetMax = Vector2.zero;
             var plus = plusGo.GetComponent<TextMeshProUGUI>();
-            plus.text = "+"; plus.alignment = TextAlignmentOptions.Center; plus.fontSize = 28; plus.color = new Color(1, 1, 1, 0.55f);
+            plus.text = "+"; plus.alignment = TextAlignmentOptions.Center; plus.fontSize = 34; plus.color = new Color(1, 1, 1, 0.55f);
             plus.raycastTarget = false;
             if (font != null) plus.font = font;
 

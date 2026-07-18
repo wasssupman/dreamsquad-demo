@@ -20,7 +20,10 @@ namespace Wassup.UI
         [Header("Layout")]
         [SerializeField] private float detailWidth = 0.34f;
         [SerializeField] private float headerHeight = 0.16f;
-        [SerializeField] private float cardHeight = 0.40f;
+        // ui-polish 2026-07-18 — 큰 폰트 수용 위해 카드 영역 확대 + 하단 여백.
+        [SerializeField] private float cardHeight = 0.50f;
+        [SerializeField] private float cardBottomMargin = 0.03f;
+        [SerializeField] private float artFeet = 0.52f;
 
         private static readonly Color DetailBg = new Color(0.08f, 0.09f, 0.13f, 1f);
         private static readonly Color HeaderBg = new Color(0.10f, 0.11f, 0.15f, 1f);
@@ -47,12 +50,12 @@ namespace Wassup.UI
             var artGo = new GameObject("Art", typeof(RectTransform), typeof(Image));
             artGo.transform.SetParent(detail, false);
             var artRt = (RectTransform)artGo.transform;
-            artRt.anchorMin = new Vector2(0.5f, 0.40f); artRt.anchorMax = new Vector2(0.5f, 0.40f);
-            artRt.pivot = new Vector2(0.5f, 0f); artRt.sizeDelta = new Vector2(300f, 450f);
+            artRt.anchorMin = new Vector2(0.5f, artFeet); artRt.anchorMax = new Vector2(0.5f, artFeet);
+            artRt.pivot = new Vector2(0.5f, 0f); artRt.sizeDelta = new Vector2(300f, 420f);
             var artImg = artGo.GetComponent<Image>();
             artImg.preserveAspect = true; artImg.raycastTarget = false;
 
-            var cardRoot = Rect("CardRoot", detail, new Vector2(0f, 0f), new Vector2(1f, cardHeight));
+            var cardRoot = Rect("CardRoot", detail, new Vector2(0f, cardBottomMargin), new Vector2(1f, cardHeight));
 
             var detailView = detail.gameObject.AddComponent<DreamcatcherCardDetailView>();
             SetField(detailView, "artImage", artImg);
