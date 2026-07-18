@@ -22,4 +22,4 @@
 - [x] export: SO.desc → `ReadFieldsToDto` DTO.desc / JSON 왕복 보존.
 - [x] 기존 export 통합 테스트 회귀 없음(desc 흡수, 매퍼/윈도우/익스포터 코드 무변경).
 
-> 구현 2026-07-18 · 커밋 대기.
+> 구현 2026-07-18 · 커밋 `42215dd7` (EditMode 44/44).

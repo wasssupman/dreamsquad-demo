@@ -1,6 +1,6 @@
 # squad-character-page — 스쿼드 페이지를 캐릭터 열람+편성 화면으로 재설계
 
-> 상태: **초안 2026-07-18** (브레인스토밍 승인, 작업 착수 대기)
+> 상태: **완료 2026-07-18** (units 0~7 구현·테스트·커밋·Play e2e·시트 왕복 검증. handoff `8_handoff_summary.md`. 사용자 hands-on 체감만 잔여)
 > 선행: `squad-loadout`(B, 완료 — SquadSave/편성 반입) · `dreamstone-loadout`(스톤 4 전역 슬롯) · `defender-portraits`(포트레이트) · `unit-stat-projection`(AttackOutputStats) · `spine-runtime-4-2-upgrade`(SkeletonGraphic 4.2)
 > 성격: **아웃게임 UI/UX 재설계** (MonoBehaviour 프레젠테이션 전용). ECS/BattleBridge 무관 — 플레이 오브젝트 spec 아님 → 파이프라인 커버리지 섹션 N/A.
 

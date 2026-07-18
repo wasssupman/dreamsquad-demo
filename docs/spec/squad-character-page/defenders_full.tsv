@@ -1,0 +1,18 @@
+id	displayName	desc	role	rarity	health	attackRange	atk	heal	attackCooldown	hitDelaySec	deployDelaySec	attackTargetCount	cost	aggroCapacity	awakeningReward
+archer	아처	레인저 · 원거리형. 배치 시 주변 속박.	Ranger	Rare	500	4	15		1.5	0.3	0	1	2	0	4
+artillery	아틸러리	레인저 · 원거리형.	Ranger	Common	350	7	60		3.5	0.3	0	1	5	0	4
+bastion	배스티온	가디언 · 근접형. 최대 3체 동시 타격, 최대 2체 도발 유지, 배치 즉시 광역 폭발.	Guardian	Rare	1500	2	25		0.5	0.3	0	3	3	2	4
+blocking_caster	블로킹캐스터	캐스터 · 근접형. 지속 해저드 설치.	Caster	Epic	450	0			5	0.3	0	1	4	0	4
+bruiser	해적	파이터 · 근접형. 최대 3체 동시 타격, 배치 즉시 광역 폭발.	Fighter	Epic	1000	2	30		1.2	0.3	0	3	3	0	4
+cannon	캐논	레인저 · 원거리형. 배치 즉시 광역 폭발.	Ranger	Common	400	5	60		2.5	0.3	0	1	4	0	4
+fire_caster	파이어캐스터	캐스터 · 근접형. 지속 해저드 설치.	Caster	Epic	450	0			3.5	0.3	0	1	3	0	4
+guardian	가디언	가디언 · 근접형. 최대 2체 동시 타격, 최대 2체 도발 유지, 배치 시 주변 아군 강화, 지속 해저드 설치.	Guardian	Common	800	2	15		2	0.3	0	2	2	2	4
+healer	힐러	서포트 · 아군 치유형. 최대 3체 동시 타격.	Support	Rare	500	3		15	3	0.3	0	3	2	0	4
+ice_caster	아이스캐스터	캐스터 · 근접형. 지속 해저드 설치.	Caster	Epic	450	0			4	0.3	0	1	3	0	4
+machine_gunner	머신거너	레인저 · 원거리형. 지정 방향으로 10연발 사격, 배치 시 전방 발사.	Ranger	Common	420	5	8		1.6	0	0	1	3	0	4
+marksman	마크스맨	레인저 · 원거리형. 배치 시 전방 발사.	Ranger	Common	450	6	40		1	0.3	0	1	3	0	4
+piercer	피어서	레인저 · 원거리형. 배치 시 전방 발사.	Ranger	Common	550	3	45		1.5	0.3	0	1	3	0	4
+poison_caster	포이즌캐스터	캐스터 · 근접형. 지속 해저드 설치.	Caster	Epic	450	0			4	0.3	0	1	3	0	4
+ranger	레인저	레인저 · 원거리형. 배치 시 스킬 쿨다운 감소.	Ranger	Common	400	5	10		0.4	0.3	0	1	2	0	4
+scout	스카우트	레인저 · 원거리형. 배치 시 코스트 획득.	Ranger	Common	300	2	8		2	0.3	0	1	1	0	4
+sniper	스나이퍼	레인저 · 원거리형. 배치 시 전방 발사.	Ranger	Rare	250	7	80		3	0.3	0	1	4	0	4
