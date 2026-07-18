@@ -36,3 +36,5 @@ public float placeableFadeInDuration = 0.2f;
 - 인스펙터에 하이라이트 헤더 3필드 노출, 기본값 = 연한 시안 α0.28 / 페이드 0.2s.
 - 라이브 TileSet 에셋에 `placeableTile` 할당(SaveAssets). 미할당 시 unit 1 이 no-op 로 방어.
 - (임시 스프라이트라도 무방 — 시안 확정 후 GUID 유지 교체로 실아트 반영.)
+
+- [x] 2026-07-18 · 컴파일 0 err/0 warn (MCP 리컴파일 검증) · (이 커밋). `placeableTile` 스프라이트 할당은 시안 확정 후 보류.
