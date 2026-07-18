@@ -54,23 +54,22 @@ namespace Wassup.UI
         private Vector2 _prevScreenPos, _swipeVelSmoothed;
         private float _tiltGain = 1f;
 
-        // 키링 배치 상태: 고리 = 손가락(공중). 유닛 = 보드에 서서 무게추처럼 스프링 지연으로 뒤따라옴.
+        // 키링 배치 상태: 고리 = 손가락(공중). 유닛 = 보드에 서서 무게추처럼 지연 추종.
         private Vector3 _ringWorld;        // 고리(손가락, 공중)
-        private Vector3 _unitTargetWorld;  // 유닛 발 스프링 목표 = 손가락 바로 아래 발점(연속 추종 → 키링 스윙). 셀 판정 기준도 이 점.
+        private Vector3 _unitTargetWorld;  // 유닛 발 추종 목표. 실제 drag=포인터 발점, tap=곡선 발점. 셀 판정 기준도 이 점.
         private PlacementSnapDebounce.State _debounce; // unit 3: throttle 경과 상태(hoverTile 과 수명 동일)
         // defender-tap-to-place — arm(탭 선택) 상태(단일). 보드 탭 시 이 유닛을 슬롯에서 시뮬 배치.
         private DefenderDragSlot _armedSlot;
         private DefenderUnitData _armedUnit;
         private Vector2 _armedFromScreen;
         private bool _simulatedDrag; // defender-tap-to-place — 시뮬(탭) 경로 표시. 공격 범위 프리뷰 억제.
-        private bool _simulatedSettling; // unit 6 — 비행 후 실제 프리뷰가 최종 발점에 임계 감쇠로 정착 중.
         // defender-tap-to-place unit 4 — 탭 비행 중 고정할 선택 타일(발밑 추종 대신). unit 5 — 곡선 좌우 변주 인덱스(결정론).
         private Vector2Int? _simFocusCell;
         private int _tapFlightSeq;
         // review fix — 세션 세대 토큰. CleanupSession 마다 증가. 시뮬 코루틴이 자기 세대를 캡처해
         // 비행 중 새 드래그(BeginDrag→CleanupSession→새 세션)가 시작되면 즉시 물러난다(세션 하이재킹 방지).
         private int _sessionGen;
-        private Vector3 _unitPosWorld;     // 유닛 발 실제(스프링 지연)
+        private Vector3 _unitPosWorld;     // 유닛 발 실제(지연 추종)
         private Vector3 _unitVelWorld;
         private bool _posInit;
         private bool _onBoard;
@@ -188,7 +187,7 @@ namespace Wassup.UI
             float dt = Mathf.Max(Time.unscaledDeltaTime, 1e-4f);
             var camT = mainCamera.transform;
 
-            // unit 2·3 — 스프링 스텝 전에 포커스 셀 확정(+디바운스)하고 스프링 타깃을 그 셀 중심으로 스냅.
+            // unit 2·3 — 추종 스텝 전에 포커스 셀을 확정(+디바운스)한다.
             // dt = unscaled(슬로우모 무관 실시간) — 디바운스 타이밍이 배치 슬로우모에 안 끌리게.
             // unit 4 — 탭 비행 중엔 선택 타일에 포커스 고정(실시간 발밑 추종 제거). 스와이프는 발밑 추종 유지.
             ResolveFocusAndTarget(dt, lockCell: _simulatedDrag ? _simFocusCell : null);
@@ -263,7 +262,7 @@ namespace Wassup.UI
             if (TryComputeRingUnit(screenPosition, totalDrop, out Vector3 ringW, out Vector3 unitTargetW))
             {
                 _ringWorld = ringW;
-                _unitTargetWorld = unitTargetW; // 스프링 목표 = 손가락 바로 아래 발점(연속 추종 → 키링 스윙). 셀 판정도 이 점 기준.
+                _unitTargetWorld = unitTargetW; // 추종 목표 = 손가락 바로 아래 발점. 셀 판정도 이 점 기준.
                 if (!_posInit) { _unitPosWorld = unitTargetW; _unitVelWorld = Vector3.zero; _posInit = true; }
                 _onBoard = true;
                 if (_session.preview != null && !_session.preview.activeSelf) _session.preview.SetActive(true);
@@ -516,49 +515,53 @@ namespace Wassup.UI
             if (!_session.active) yield break;
             int gen = _sessionGen; // review fix — 이 코루틴이 소유한 세션 세대. 새 드래그가 시작되면 불일치 → 물러남.
             if (mainCamera == null) mainCamera = Camera.main;
+            var cfg = Cfg;
             var camT = mainCamera.transform;
 
-            // 월드 공간 비행: 유닛 발점을 tray→타일 로 월드에서 직접 트윈하고, 키링(고리/줄/스프링)은 config 대로
+            // 월드 공간 비행: 유닛 발점을 tray→타일 로 월드에서 직접 트윈하고, 키링(고리/줄/유닛 추종)은 config 대로
             // 따라오게 한다. 스크린 역산·스큐·비행 중 카메라 dolly 에 흔들리지 않는다(이전 스크린 역산 방식의 오배치 원인).
-            float totalDrop = _session.unitHeight + Cfg.ropeLength * _session.visualScale;
+            float totalDrop = _session.unitHeight + cfg.ropeLength * _session.visualScale;
             Vector3 endFeet = bridge.GridCellToViewCenter(targetCell);      // 보드 평면 위 셀 중심(월드)
             Vector3 boardN = BoardSpace.RaycastPlane().normal.normalized;
             if (Vector3.Dot(boardN, camT.position - endFeet) < 0f) boardN = -boardN; // 카메라 쪽
             Vector3 startFeet = ScreenToBoardFeet(fromScreen, endFeet);     // 트레이 슬롯 → 보드 발점(폴백=endFeet)
             // unit 6 — 선택 타일 발 위치가 불변 기준. 유닛/고리 최종점은 여기서 한 번만 파생한다.
-            Vector3 finalUnitTarget = endFeet + boardN * previewHeight;
-            Vector3 finalRing = endFeet + camT.up * totalDrop;
+            Vector3 unitLift = boardN * previewHeight;
+            Vector3 ringLift = camT.up * totalDrop;
+            Vector3 finalUnitTarget = endFeet + unitLift;
+            Vector3 finalRing = endFeet + ringLift;
 
             // 비행 시간 = 기준 × (start→end 화면거리 / 화면세로), 0.25~1.5배.
             Vector2 sScr = (Vector2)mainCamera.WorldToScreenPoint(startFeet);
             Vector2 eScr = (Vector2)mainCamera.WorldToScreenPoint(endFeet);
             float distScale = Mathf.Clamp(Vector2.Distance(sScr, eScr) / Mathf.Max(Screen.height, 1f),
-                Cfg.tapTravelScaleMin, Cfg.tapTravelScaleMax);
-            float dur = Mathf.Max(Cfg.tapTravelDuration * distScale, 0.05f);
+                cfg.tapTravelScaleMin, cfg.tapTravelScaleMax);
+            float dur = Mathf.Max(cfg.tapTravelDuration * distScale, 0.05f);
 
-            // 렌더 활성 + 스프링 시작점.
+            // 렌더 활성 + 추종 시작점.
             _onBoard = true; _posInit = true;
             _simFocusCell = targetCell; // unit 4 — 비행 내내 선택 타일에 포커스 고정
-            _unitPosWorld = startFeet + boardN * previewHeight;
+            _unitPosWorld = startFeet + unitLift;
             _unitVelWorld = Vector3.zero;
             if (_session.preview != null && !_session.preview.activeSelf) _session.preview.SetActive(true);
 
             // unit 6 — 3차 던지기: 시작은 앞·위, 도착은 낮게 두어 상승/하강 접선을 분리한다.
             // unit 5 의 결정론 좌우 변주는 두 제어점에 같은 오프셋으로 유지 → 중간에만 휘고 endpoint 는 정확.
-            float flightDist = Vector3.Distance(startFeet, endFeet);
-            float g = (_tapFlightSeq++ + 0.5f) * 0.61803398875f;
-            float lateralUnit = (g - Mathf.Floor(g)) * 2f - 1f; // -1..1
+            float throwDistance = Vector3.Distance(startFeet, endFeet);
+            const float GoldenRatioConjugate = 0.61803398875f;
+            float sequencePhase = (_tapFlightSeq++ + 0.5f) * GoldenRatioConjugate;
+            float lateralUnit = (sequencePhase - Mathf.Floor(sequencePhase)) * 2f - 1f; // -1..1
             Vector3 boardRight = Vector3.ProjectOnPlane(camT.right, boardN);
             Vector3 lateralOffset = Vector3.zero;
             if (boardRight.sqrMagnitude > 1e-6f)
-                lateralOffset = boardRight.normalized * (flightDist * Cfg.tapArcLateralFactor * lateralUnit);
-            float arcHeight = flightDist * Cfg.tapArcHeightFactor;
-            Vector2 launch = Cfg.tapThrowLaunchControl;
-            Vector2 landing = Cfg.tapThrowLandingControl;
-            Vector3 controlA = Vector3.Lerp(startFeet, endFeet, launch.x)
-                               + camT.up * (arcHeight * launch.y) + lateralOffset;
-            Vector3 controlB = Vector3.Lerp(startFeet, endFeet, landing.x)
-                               + camT.up * (arcHeight * landing.y) + lateralOffset;
+                lateralOffset = boardRight.normalized * (throwDistance * cfg.tapArcLateralFactor * lateralUnit);
+            float arcHeight = throwDistance * cfg.tapArcHeightFactor;
+            Vector2 launchControl = cfg.tapThrowLaunchControl;
+            Vector2 landingControl = cfg.tapThrowLandingControl;
+            Vector3 controlA = Vector3.Lerp(startFeet, endFeet, launchControl.x)
+                               + camT.up * (arcHeight * launchControl.y) + lateralOffset;
+            Vector3 controlB = Vector3.Lerp(startFeet, endFeet, landingControl.x)
+                               + camT.up * (arcHeight * landingControl.y) + lateralOffset;
 
             float t = 0f;
             while (t < 1f && _session.active && _sessionGen == gen)
@@ -569,8 +572,8 @@ namespace Wassup.UI
                 // 빠르게 던져지고 도착할수록 감속하며, CubicBezier endpoint 는 그대로 정확하다.
                 float flightT = 1f - Mathf.Pow(1f - linearT, 3f); // OutCubic
                 Vector3 feet = KeyringSim.CubicBezier(startFeet, controlA, controlB, endFeet, flightT);
-                _unitTargetWorld = feet + boardN * previewHeight;                   // 유닛 스프링 타깃
-                _ringWorld = feet + camT.up * totalDrop;                            // 고리 = 발 위 totalDrop(camUp)
+                _unitTargetWorld = feet + unitLift;                                 // 유닛 추종 목표
+                _ringWorld = feet + ringLift;                                       // 고리 = 발 위 totalDrop(camUp)
                 _lastScreenPos = (Vector2)mainCamera.WorldToScreenPoint(_ringWorld); // 카메라 포커스 피드
                 yield return null;
             }
@@ -581,13 +584,12 @@ namespace Wassup.UI
             _unitTargetWorld = finalUnitTarget;
             _ringWorld = finalRing;
             _lastScreenPos = (Vector2)mainCamera.WorldToScreenPoint(finalRing);
-            _simulatedSettling = true;
             float settleElapsed = 0f;
             while (_session.active && _sessionGen == gen)
             {
-                bool closeEnough = Vector3.Distance(_unitPosWorld, finalUnitTarget) <= Cfg.tapSettleDistance;
-                bool slowEnough = _unitVelWorld.magnitude <= Cfg.tapSettleSpeed;
-                if ((closeEnough && slowEnough) || settleElapsed >= Cfg.tapSettleMaxDuration)
+                bool closeEnough = Vector3.Distance(_unitPosWorld, finalUnitTarget) <= cfg.tapSettleDistance;
+                bool slowEnough = _unitVelWorld.magnitude <= cfg.tapSettleSpeed;
+                if ((closeEnough && slowEnough) || settleElapsed >= cfg.tapSettleMaxDuration)
                     break;
 
                 settleElapsed += Time.unscaledDeltaTime;
@@ -598,7 +600,6 @@ namespace Wassup.UI
             // 정상/타임아웃 모두 보정 프레임을 노출하지 않는다. 착지 팝과 공용 커밋 꼬리를 같은 프레임에 실행.
             _unitPosWorld = finalUnitTarget;
             _unitVelWorld = Vector3.zero;
-            _simulatedSettling = false;
             _debounce = default;
             bridge?.PulsePlacementHover(targetCell, _session.isValidTile);
             CommitPlacementAt(targetCell);
@@ -887,7 +888,6 @@ namespace Wassup.UI
             _posInit = false;
             _onBoard = false;
             _simulatedDrag = false; // defender-tap-to-place — 시뮬 표시 해제
-            _simulatedSettling = false; // unit 6 — 정착 감쇠가 다음 실드래그로 새지 않게 수명 종료
             _simFocusCell = null;   // unit 4 — 탭 비행 포커스 고정 해제
             _unitVelWorld = Vector3.zero;
             // ui-tweak 2026-07-08 — 클릭 배치 은퇴. 드래그 종료 후 재활성화하지 않는다.

@@ -31,7 +31,7 @@
 
 ### 도착 정착·확정
 
-- 비행 완료 후 `finalRing/finalUnitTarget`을 고정하고 `_simulatedSettling=true`; 즉시 커밋하지 않는다.
+- 비행 완료 후 `finalRing/finalUnitTarget`을 고정하고 즉시 커밋하지 않는다.
 - 탭 시뮬은 비행부터 정착까지 `SmoothDamp(..., tapFollowSmoothTime)` 하나로 연속 추종해
   도착 직전 따라잡기 가속을 막는다. 실제 드래그 스프링은 불변이다.
 - 매 프레임 직접 판정한다.
@@ -39,7 +39,7 @@
   - `_unitVelWorld.magnitude <= tapSettleSpeed`
 - 충족/시간초과 시 최종값으로 정렬하고 착지 팝→`CommitPlacementAt`을 같은 프레임에 호출한다.
 - 시작값: 거리 `0.06`, 속도 `0.4`, follow smooth time `0.06s`, 최대 `0.28s`. 네 값만 SO에 추가한다.
-- 전체에 `_sessionGen`/active 가드 적용. `_simulatedSettling`은 `CleanupSession`에서 해제한다.
+- 전체에 `_sessionGen`/active 가드를 적용한다.
 
 ## 완료 기준
 
