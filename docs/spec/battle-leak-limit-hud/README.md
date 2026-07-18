@@ -1,6 +1,7 @@
 # battle-leak-limit-hud
 
-> 상태: **구현·에디터 검증 완료 2026-07-18** — 사용자 Play 확인 대기
+> 상태: **완료 2026-07-18** — 구현 `f4cc4371`, 용어 개정 `d4cd9f0f`, 사용자 마감 확인 완료.
+> 인계: `3_handoff_summary.md`
 > 선행: `score-hud`, `subconscious-curse-expansion` 완료
 
 ## 목표

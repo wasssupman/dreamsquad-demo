@@ -27,3 +27,5 @@
 - 누수 증가와 limit 감소에만 1회 반응하며 상시 pulse하지 않는다.
 - Battle 이탈과 OnDisable에서 트윈과 transform이 정상 복원된다.
 - Unity 컴파일/Console 오류 0.
+
+확인: 2026-07-18 · 사용자 마감 확인 · 구현 `f4cc4371`, 용어 개정 `d4cd9f0f`
