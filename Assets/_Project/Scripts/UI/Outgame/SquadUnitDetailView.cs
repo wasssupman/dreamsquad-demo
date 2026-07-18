@@ -42,11 +42,13 @@ namespace Wassup.UI
 
         private bool _cardBuilt;
         private TMP_Text _nameText;
+        private GameObject _badgeRowGo;
         private Image _rarityBadgeBg;
         private TMP_Text _rarityBadgeText;
         private TMP_Text _classBadgeText;
         private TMP_Text _costBadgeText;
         private readonly TMP_Text[] _statValues = new TMP_Text[5];
+        private readonly GameObject[] _statRowGos = new GameObject[5];
         private TMP_Text _summaryText;
         private Image _deployBg;
         private TMP_Text _deployLabel;
@@ -66,6 +68,41 @@ namespace Wassup.UI
         {
             if (_deployLabel != null) _deployLabel.text = inSquad ? "편성 해제" : "출전";
             if (_deployBg != null) _deployBg.color = inSquad ? UnequipColor : DeployColor;
+        }
+
+        // Unit 3 — stone mode reuses this panel: spine off, big stone icon in the
+        // portrait slot, grade+effect line, "장착/해제" button. Unit-only rows (badges,
+        // 5 stats) hide and are restored by the next ShowUnit. The shared DeployClicked
+        // event is interpreted by the orchestrator's current mode (unit vs stone).
+        public void ShowStone(DreamstoneData stone, bool equipped)
+        {
+            EnsureCardBuilt();
+            _current = null;
+            if (spineView != null) spineView.gameObject.SetActive(false);
+            if (portraitFallback != null)
+            {
+                Sprite icon = stone != null ? stone.icon : null;
+                portraitFallback.sprite = icon;
+                portraitFallback.enabled = icon != null;
+            }
+            if (rarityFrame != null)
+                rarityFrame.color = stone != null ? DreamstoneStyle.Frame(stone.grade) : Color.clear;
+
+            SetUnitPartsActive(false);
+            if (_nameText != null)
+                _nameText.text = stone == null ? "" : (string.IsNullOrEmpty(stone.displayName) ? stone.id : stone.displayName);
+            if (_summaryText != null)
+                _summaryText.text = stone == null ? "" : DreamstoneStyle.GradeLabel(stone.grade) + " · " + DreamstoneStyle.Summary(stone);
+
+            if (_deployLabel != null) _deployLabel.text = equipped ? "해제" : "장착";
+            if (_deployBg != null) _deployBg.color = equipped ? UnequipColor : DeployColor;
+        }
+
+        private void SetUnitPartsActive(bool active)
+        {
+            if (_badgeRowGo != null) _badgeRowGo.SetActive(active);
+            for (int i = 0; i < _statRowGos.Length; i++)
+                if (_statRowGos[i] != null) _statRowGos[i].SetActive(active);
         }
 
         // -- Spine backdrop -------------------------------------------------
@@ -138,6 +175,9 @@ namespace Wassup.UI
                 return;
             }
 
+            // Restore unit-only rows in case we came back from stone mode.
+            SetUnitPartsActive(true);
+
             if (_nameText != null)
                 _nameText.text = string.IsNullOrEmpty(u.displayName) ? u.name : u.displayName;
 
@@ -190,6 +230,7 @@ namespace Wassup.UI
             _nameText = MakeText(cardRoot, "", 34, TextAlignmentOptions.Left, 44);
 
             var badgeRow = MakeRow(cardRoot, 34, 8);
+            _badgeRowGo = badgeRow.gameObject;
             _rarityBadgeBg = null;
             _rarityBadgeText = MakeBadge(badgeRow.transform, out _rarityBadgeBg, UnitRarityStyle.Frame(DefenderRarity.Common));
             MakeBadge(badgeRow.transform, out var classBg, ClassBadgeColor);
@@ -200,6 +241,7 @@ namespace Wassup.UI
             for (int i = 0; i < StatLabels.Length; i++)
             {
                 var row = MakeRow(cardRoot, 30, 0);
+                _statRowGos[i] = row.gameObject;
                 MakeText(row.transform, StatLabels[i], 20, TextAlignmentOptions.Left, 30);
                 _statValues[i] = MakeText(row.transform, "", 20, TextAlignmentOptions.Right, 30);
             }

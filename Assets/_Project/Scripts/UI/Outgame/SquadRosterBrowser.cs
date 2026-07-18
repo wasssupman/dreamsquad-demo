@@ -64,6 +64,29 @@ namespace Wassup.UI
             ApplySelection();
         }
 
+        // Unit 3 — stone mode reuses the same cell machinery; only the entry
+        // mapping differs (icon + grade frame + effect summary).
+        public void ShowStones(IReadOnlyList<DreamstoneData> stones)
+        {
+            EnsureGridBuilt();
+            ClearCells();
+            if (stones == null) return;
+            for (int i = 0; i < stones.Count; i++)
+            {
+                var s = stones[i];
+                if (s == null) continue;
+                AddCell(new Entry
+                {
+                    id = s.id,
+                    sprite = s.icon,
+                    frame = DreamstoneStyle.Frame(s.grade),
+                    label = DreamstoneStyle.Summary(s),
+                });
+            }
+            ApplyBadges();
+            ApplySelection();
+        }
+
         public void SetSelected(string id)
         {
             _selectedId = id;
