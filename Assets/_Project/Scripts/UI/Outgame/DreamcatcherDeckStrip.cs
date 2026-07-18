@@ -48,12 +48,16 @@ namespace Wassup.UI
                 _slots[i].plus.enabled = !filled;
             }
 
+            // ui-polish 2026-07-18 — 레거시 "squad {n}/{max}" 표기 제거(Squad 타입 캡 은퇴,
+            // EffectiveMax(Squad)=-1 로 의미 없던 잔재). 수량 = 총 장수/덱크기 + 유효성 사유만.
             int count = cardIds != null ? cardIds.Count : 0;
             bool valid = DeckRules.Validate(cardIds ?? new List<string>(), catalog, out string reason);
-            int sq = DeckRules.SquadCount(cardIds ?? new List<string>(), catalog);
-            int sqMax = DeckRules.EffectiveMax(catalog, CardType.Squad);
             if (_statusText != null)
-                _statusText.text = count + "/" + deckSize + "  ·  squad " + sq + "/" + sqMax + "  ·  " + reason;
+            {
+                string status = count + "/" + deckSize;
+                if (!string.IsNullOrEmpty(reason)) status += "  ·  " + reason;
+                _statusText.text = status;
+            }
             if (_saveButton != null) _saveButton.interactable = valid;
             if (_saveBg != null) _saveBg.color = valid ? SaveOn : SaveOff;
         }
