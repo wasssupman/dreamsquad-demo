@@ -1,6 +1,6 @@
 # defender-tap-to-place
 
-상태: **진행 중 — unit 6 구현 완료, 사용자 Play 확인 대기** · 작성 2026-07-17 · units 0~5 사용자 Play 확인 2026-07-18
+상태: **완료 2026-07-18 (units 0~6 사용자 Play 확인)** · 작성 2026-07-17
 
 ## 목표
 
@@ -57,6 +57,7 @@
 | 4 | `4_flight_focus_pin.md` | feature | 탭 비행 중 타일 포커스를 발밑 추종 대신 선택 타일에 정적 고정 |
 | 5 | `5_bezier_flight_path.md` | feature | 직선 비행 → 2차 베지어(매 탭 다른 곡선 아치) |
 | 6 | `6_throw_arrival_settle.md` | feature | 3차 던지기 궤적 + 실제 프리뷰 정착 후 배치 확정 |
+| 7 | `7_handoff_summary.md` | doc | Unit 6 구현·검증·튜닝 지점 인계 |
 
 의존: `0 → 1 → 2`, `5 → 6`. `4` 는 비행 포커스 정제. 선행: `docs/spec/placement-cell-snap/`(드래그 파이프라인 — 히스테리시스/throttle/팝, 완료).
 
