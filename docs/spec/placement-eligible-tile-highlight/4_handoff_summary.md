@@ -41,9 +41,14 @@
 - **하이라이트=공간 조건만**(bounds/Place/점유). 비용/풀 안 봄 → 코스트 부족이면 "밝은데 hover invalid"가 정상. 비용 끼우지 말 것(보드 전체 깜빡임).
 - 점유 3번째 명도 상태 만들지 말 것. `SpatialPlacementCheck` 는 순수 static 유지(EditMode 테스트 앵커).
 
+## 실아트·튜닝 (완료 2026-07-18)
+
+- 스프라이트 `Assets/_Project/Data/TileSets/placeable_slab.png`(64px, 흰색 베이스, 알파=림 불투명+베벨 falloff+옅은 내부) → `Tile_PlaceableSlab.asset`. 형태 조정은 이 png 교체로만(코드 무관).
+- 4개 라이브 TileSet(`TileSet_AutoTileTest`(씬 활성)/`Desert`/`Placeholder`/`PlaceholderIso`)에 `placeableTile` 할당 + `placeableColor` = **시안 α0.5**(Play 비교로 α0.7 대비 채택 — 배치영역 ambient·사거리 focal 위계). C# 기본값도 동기화.
+- **unit 3 다크라이너 = skip**(불필요, 위 검증). 밝은 신규 테마에서 사거리 약하면 그때 스프라이트 교체.
+
 ## Follow-up
 
-- **실아트(핵심 미완)**: `placeableTile` = 슬랩+밝은 림 스프라이트, `placeableColor` = 옅은 시안 계열 RGBA(시안 확정값) → 라이브 TileSet(`TileSet_AutoTileTest`/`TileSet_Desert` 등)에 할당 + SaveAssets. **현재 미할당이라 `SetPlacementHighlight` no-op** — 붙여야 실제로 보임.
-- **unit 3 다크라이너**: 실아트(옅은 시안) 붙였을 때 밝은 칸 위 노란 사거리가 약하면 `tile_grid_outline.png` 스프라이트 교체(코드 0). 불투명 마젠타에서도 읽혔으니 optional 가능성.
-- 최종 Play 튜닝(실아트, `placeableColor` 알파/림), 그 뒤 main 머지 판단.
+- 실드래그(포인터) 중 상승(9998)+적 dim 상태에서의 체감은 미검증(정적 render+로직으로 확인) — 사용자 실드래그 Play 체감 1회 권장.
+- 그 뒤 main 머지 판단.
 - README 후속 후보: arm 중 스킬조준 진입 시 억제, 연속배치 시 유지, 배치비율 seed·프리셋별 정밀 측정.

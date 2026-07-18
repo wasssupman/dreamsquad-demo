@@ -1,8 +1,10 @@
 # placement-eligible-tile-highlight
 
-상태: **units 0~2 구현·검증 완료 · 실아트(placeableTile 스프라이트/RGBA) 대기** · 작성 2026-07-18 ·
-브랜치 `feat/placeable-tile-highlight`(main 미반영) · 커밋 `df75b984`~`3f45fd83`. 인계는 `4_handoff_summary.md`.
-비판 리뷰 2건(구조/시각) + 사용자 방향 결정(밝게+표준 문법) 반영. Play 배선 검증(임시 타일): 배치가능 82/200셀 정확·사거리 공존·Hide 소거.
+상태: **units 0~2 + 실아트 완료 · Play 튜닝 완료 · main 머지 대기** · 작성 2026-07-18 ·
+브랜치 `feat/placeable-tile-highlight`(main 미반영). 인계는 `4_handoff_summary.md`.
+비판 리뷰 2건(구조/시각) + 사용자 방향 결정(밝게+표준 문법) 반영.
+실아트 = `Tile_PlaceableSlab`(시안 림 슬랩, 64px) + `placeableColor` 시안 α0.5(배치영역 ambient, 사거리 focal).
+Play 검증: 배치가능 82/200셀(41%) 정확·경로/Deco 제외·노란 사거리 공존·Hide 소거. **unit 3 다크라이너 = 불필요**(α0.5 옅은 시안 위 사거리 또렷).
 
 ## 목표
 

@@ -26,6 +26,9 @@ MonoBehaviour:
   rangePulseMinAlpha: 0.35
   rangePulseMaxAlpha: 0.85
   rangePulseSpeed: 3
+  placeableTile: {fileID: 11400000, guid: f2d5f2261bda44f6a823d13dcece09fe, type: 2}
+  placeableColor: {r: 0.5, g: 0.88, b: 1, a: 0.5}
+  placeableFadeInDuration: 0.2
   terrainTile: {fileID: 11400000, guid: a2e47f7164742432988f40087fe3f542, type: 2}
   ringRadius: 6
   surroundFarColor: {r: 0.5, g: 0.39, b: 0.24, a: 1}
