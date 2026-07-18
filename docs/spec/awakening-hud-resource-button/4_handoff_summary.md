@@ -4,7 +4,8 @@
 
 - `9acd4e37` — Redesign awakening HUD as resource button
 - `20eec6af` — Rework awakening button as casual burst gauge
-- 사용자 마감 확인: 2026-07-18
+- `72619a57` — 젤리 face 호흡+간헐 광택 상시 affordance (unit 5)
+- 사용자 마감 확인: 2026-07-18 · unit 5 Play 확인: 2026-07-19
 
 ## Implemented
 
@@ -16,6 +17,8 @@
 - 버튼 탭은 기존 `Toggled → DreamcatcherHandView` 경로를 유지한다.
 - Placement에서는 각성을 숨기고 전투 시작 버튼을 우하단에 유지한다.
 - Battle에서는 NextWave 좌하단, 각성 버튼 우하단으로 코너 소유권을 분리한다.
+- Battle 무입력 시 숫자는 고정한 채 젤리 face만 3초대 호흡·간헐 광택으로 살아 있다
+  (unit 5). 반응 연출 중에는 ambient 가 쉬고 끝나면 자동 재개한다.
 
 ## Key Files
 

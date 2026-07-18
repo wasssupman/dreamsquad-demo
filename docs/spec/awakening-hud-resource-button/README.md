@@ -1,7 +1,7 @@
 # awakening-hud-resource-button
 
-> 상태: **unit 5 구현 완료 · Unity 컴파일 clean · Play 확인 대기 (2026-07-18)**. 초기 UI/레이아웃 `9acd4e37`,
-> 캐주얼 버스트 개정 `20eec6af`, 사용자 마감 확인 완료. 인계: `4_handoff_summary.md`
+> 상태: **완료 2026-07-19** — 초기 UI/레이아웃 `9acd4e37`, 캐주얼 버스트 개정 `20eec6af`,
+> 상시 affordance `72619a57`(unit 5, 사용자 Play 확인). 인계: `4_handoff_summary.md`
 
 ## 목표
 

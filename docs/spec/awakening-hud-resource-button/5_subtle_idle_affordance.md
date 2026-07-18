@@ -35,5 +35,4 @@
 - 1920×1080 Play에서 “누를 수 있는 버튼”으로 인지되며 과한 주의 유도가 없다.
 - Unity 컴파일 및 Console error 0.
 
-_구현 확인 2026-07-18: Unity 6000.4.3f1 script refresh/recompile 완료, Console error 0.
-Battle 1920×1080 체감 Play 확인 대기._
+확인: 2026-07-19 · 사용자 Play 확인 · 구현 `72619a57`
