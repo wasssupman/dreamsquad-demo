@@ -46,6 +46,10 @@
 - 스프라이트 `Assets/_Project/Data/TileSets/placeable_slab.png`(64px, 흰색 베이스, 알파=림 불투명+베벨 falloff+옅은 내부) → `Tile_PlaceableSlab.asset`. 형태 조정은 이 png 교체로만(코드 무관).
 - 4개 라이브 TileSet(`TileSet_AutoTileTest`(씬 활성)/`Desert`/`Placeholder`/`PlaceholderIso`)에 `placeableTile` 할당 + `placeableColor` = **시안 α0.5**(Play 비교로 α0.7 대비 채택 — 배치영역 ambient·사거리 focal 위계). C# 기본값도 동기화.
 - **unit 3 다크라이너 = skip**(불필요, 위 검증). 밝은 신규 테마에서 사거리 약하면 그때 스프라이트 교체.
+- **사거리 색 변경(교차-스펙)**: 배치영역(쿨 시안)과 공존 위해 `rangeColor` 를 **노랑→주황 `(1, 0.55, 0.12)`** 으로.
+  쿨/웜 보색 대비 최대 + "공격=웜" 의미 + invalid-hover 빨강과 구분. 4개 라이브 TileSet 에셋에 반영(스킬 조준
+  사거리도 같이 주황). `placement-attack-range-preview` 의 rangeColor 계약을 갱신 — 코드 기본값(TileSetData.cs)은
+  아직 노랑(신규 tileset 만 영향, 실사용 무관). 사용자 색 선택 렌더 비교로 확정(주황 vs 보라 vs 코랄).
 
 ## Follow-up
 
