@@ -27,7 +27,11 @@ namespace Wassup.Data
                 deck.minUnitsPerWave,
                 deck.maxUnitsPerWave,
                 deck.intraWaveSpacingSec,
-                deck.ResolveAttackUnitPool());
+                deck.ResolveAttackUnitPool(),
+                deck.bossUnit,
+                deck.bossWaveInterval,
+                deck.bossEscortMin,
+                deck.bossEscortMax);
         }
 
         public static GeneratedWavePlan Generate(
@@ -39,11 +43,20 @@ namespace Wassup.Data
             int minUnitsPerWave,
             int maxUnitsPerWave,
             float intraWaveSpacingSec,
-            IReadOnlyList<AttackUnitData> attackUnitPool)
+            IReadOnlyList<AttackUnitData> attackUnitPool,
+            AttackUnitData bossUnit = null,
+            int bossWaveInterval = 0,
+            int bossEscortMin = 0,
+            int bossEscortMax = 0)
         {
             if (attackUnitPool == null) throw new ArgumentNullException(nameof(attackUnitPool));
 
             var pool = BuildDistinctPool(attackUnitPool);
+            // boss-wave-cadence unit 0 — 보스는 잡몹 pool 과 분리가 계약. 실수로 pool 에 섞여도
+            // 방어적으로 제외해 비-보스 웨이브 보스 오발화·escort 보스 중복(보스 2기)을 원천 차단.
+            // 없으면 no-op → 비-보스 웨이브는 현행 생성기와 불변.
+            if (bossUnit != null && pool.Remove(bossUnit))
+                Debug.LogWarning($"[WavePatternGenerator] bossUnit '{bossUnit.id}' 가 attackUnitPool 에 포함돼 있어 생성 pool 에서 제외했습니다. 덱에서 pool 과 bossUnit 을 분리하세요.");
             if (pool.Count < 2)
                 throw new ArgumentException("Wave generation requires at least two distinct AttackUnitData entries.", nameof(attackUnitPool));
 
@@ -81,6 +94,26 @@ namespace Wassup.Data
                     countA,
                     pool[bIndex],
                     countB));
+            }
+
+            // boss-wave-cadence unit 0 — 매 bossWaveInterval 번째 웨이브를 보스×1(선봉) + 잡몹×[min,max]
+            // 로 치환. 랜덤 루프 뒤 후처리라 비-보스 웨이브의 rng 소비는 현행과 byte-identical.
+            if (bossUnit != null && bossWaveInterval > 0)
+            {
+                int escortMin = math.max(1, math.min(bossEscortMin, bossEscortMax));
+                int escortMax = math.max(escortMin, math.max(bossEscortMin, bossEscortMax));
+                for (int i = 0; i < waves.Count; i++)
+                {
+                    if ((i + 1) % bossWaveInterval != 0) continue;
+                    int escortCount = rng.NextInt(escortMin, escortMax + 1);
+                    var escortType = pool[rng.NextInt(0, pool.Count)]; // pool 은 boss-free
+                    var groups = new List<WaveSpawnGroup>
+                    {
+                        new WaveSpawnGroup(bossUnit, 1),      // 선봉: RoundRobin round 0 = 보스 먼저
+                        new WaveSpawnGroup(escortType, escortCount),
+                    };
+                    waves[i] = new GeneratedWave(i, i * interval, groups, 0f, WaveExpandMode.RoundRobin);
+                }
             }
 
             return new GeneratedWavePlan(resolvedSeed, generatorVersion, duration, interval, spacing, waves);
