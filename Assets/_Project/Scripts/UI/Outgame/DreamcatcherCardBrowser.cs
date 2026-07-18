@@ -21,7 +21,7 @@ namespace Wassup.UI
         public event Action<string> CardSelected;
 
         private static readonly Color SelOverlayColor = new Color(1f, 0.95f, 0.6f, 0.20f);
-        private static readonly Color CountColor = new Color(0.90f, 0.72f, 0.34f, 0.96f);
+        private static readonly Color BadgeColor = new Color(0.20f, 0.55f, 0.32f, 0.96f);
 
         private bool _built;
         private RectTransform _grid;
@@ -31,13 +31,12 @@ namespace Wassup.UI
             public string id;
             public GameObject root;
             public GameObject selOverlay;
-            public GameObject countBadge;
-            public TMP_Text countText;
+            public GameObject badge; // "편성중" (덱에 있으면 노출)
         }
 
         private readonly List<Cell> _cells = new List<Cell>();
         private string _selectedId;
-        private readonly Dictionary<string, int> _counts = new Dictionary<string, int>();
+        private readonly HashSet<string> _badged = new HashSet<string>();
 
         public void ShowCards(IReadOnlyList<DreamcatcherCard> cards)
         {
@@ -50,7 +49,7 @@ namespace Wassup.UI
                 if (c == null) continue;
                 AddCell(c);
             }
-            ApplyCounts();
+            ApplyBadges();
             ApplySelection();
         }
 
@@ -60,12 +59,12 @@ namespace Wassup.UI
             ApplySelection();
         }
 
-        public void SetCounts(Dictionary<string, int> counts)
+        public void SetBadged(ISet<string> ids)
         {
-            _counts.Clear();
-            if (counts != null)
-                foreach (var kv in counts) if (kv.Value > 0) _counts[kv.Key] = kv.Value;
-            ApplyCounts();
+            _badged.Clear();
+            if (ids != null)
+                foreach (var id in ids) if (!string.IsNullOrEmpty(id)) _badged.Add(id);
+            ApplyBadges();
         }
 
         private void ApplySelection()
@@ -79,14 +78,10 @@ namespace Wassup.UI
             }
         }
 
-        private void ApplyCounts()
+        private void ApplyBadges()
         {
             for (int i = 0; i < _cells.Count; i++)
-            {
-                int n = _counts.TryGetValue(_cells[i].id, out int c) ? c : 0;
-                if (_cells[i].countBadge != null) _cells[i].countBadge.SetActive(n > 0);
-                if (_cells[i].countText != null) _cells[i].countText.text = "×" + n;
-            }
+                if (_cells[i].badge != null) _cells[i].badge.SetActive(_badged.Contains(_cells[i].id));
         }
 
         private void ClearCells()
@@ -116,16 +111,16 @@ namespace Wassup.UI
             lrt.anchorMin = new Vector2(0, 0); lrt.anchorMax = new Vector2(1, 0); lrt.pivot = new Vector2(0.5f, 0);
             lrt.sizeDelta = new Vector2(0, 36); lrt.anchoredPosition = new Vector2(0, 4);
 
-            // deck-count badge — top-right, "×N", shown when N>0.
-            var badge = new GameObject("Count", typeof(RectTransform), typeof(Image));
+            // "편성중" 뱃지 — top-right, 덱에 있으면 노출(유니크: 있음/없음 불리언).
+            var badge = new GameObject("InDeck", typeof(RectTransform), typeof(Image));
             badge.transform.SetParent(root.transform, false);
-            badge.GetComponent<Image>().color = CountColor;
+            badge.GetComponent<Image>().color = BadgeColor;
             var brt = (RectTransform)badge.transform;
             brt.anchorMin = new Vector2(1, 1); brt.anchorMax = new Vector2(1, 1); brt.pivot = new Vector2(1, 1);
-            brt.sizeDelta = new Vector2(56, 36); brt.anchoredPosition = new Vector2(-6, -6);
-            var countText = CreateText(badge.transform, "×0", 22, TextAlignmentOptions.Center);
-            countText.fontStyle = FontStyles.Bold;
-            var ctrt = countText.rectTransform;
+            brt.sizeDelta = new Vector2(88, 34); brt.anchoredPosition = new Vector2(-6, -6);
+            var btext = CreateText(badge.transform, "편성중", 19, TextAlignmentOptions.Center);
+            btext.fontStyle = FontStyles.Bold;
+            var ctrt = btext.rectTransform;
             ctrt.anchorMin = Vector2.zero; ctrt.anchorMax = Vector2.one; ctrt.offsetMin = Vector2.zero; ctrt.offsetMax = Vector2.zero;
             badge.SetActive(false);
 
@@ -137,7 +132,7 @@ namespace Wassup.UI
             string captured = card.id;
             root.GetComponent<Button>().onClick.AddListener(() => CardSelected?.Invoke(captured));
 
-            _cells.Add(new Cell { id = card.id, root = root, selOverlay = sel.gameObject, countBadge = badge, countText = countText });
+            _cells.Add(new Cell { id = card.id, root = root, selOverlay = sel.gameObject, badge = badge });
         }
 
         private void EnsureGridBuilt()

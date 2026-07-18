@@ -34,16 +34,16 @@ namespace Wassup.UI
         private Image _catBadgeBg;
         private TMP_Text _catBadgeText;
         private TMP_Text _effectText;
+        private GameObject _addGo;
         private Image _addBg;
         private Button _addButton;
         private TMP_Text _addLabel;
         private TMP_Text _hintText;
         private GameObject _removeGo;
-        private TMP_Text _removeLabel;
 
-        // count = how many copies are in the deck (0 = not equipped). canAdd/addHint
-        // drive the add button; count>0 reveals the remove button.
-        public void ShowCard(DreamcatcherCard card, bool canAdd, string addHint, int count)
+        // 드림캐쳐는 유니크(덱에 0/1장). inDeck 이면 [덱에서 제거]만, 아니면 [덱에 추가]만
+        // (상호배타). canAdd/addHint 는 미편성일 때 추가 버튼 활성/사유 구동.
+        public void ShowCard(DreamcatcherCard card, bool canAdd, string addHint, bool inDeck)
         {
             EnsureBuilt();
             BindArt(card);
@@ -54,13 +54,16 @@ namespace Wassup.UI
             if (_catBadgeText != null) _catBadgeText.text = CardCategoryStyle.Label(card);
             if (_effectText != null) _effectText.text = card == null ? "" : DreamcatcherCardText.Body(card);
 
-            if (_addLabel != null) _addLabel.text = count > 0 ? "덱에 추가 (현재 ×" + count + ")" : "덱에 추가";
-            if (_addBg != null) _addBg.color = canAdd ? AddColor : DisabledColor;
-            if (_addButton != null) _addButton.interactable = canAdd;
-            if (_hintText != null) _hintText.text = canAdd ? "" : (addHint ?? "");
+            if (_addGo != null) _addGo.SetActive(!inDeck);
+            if (!inDeck)
+            {
+                if (_addBg != null) _addBg.color = canAdd ? AddColor : DisabledColor;
+                if (_addButton != null) _addButton.interactable = canAdd;
+                if (_hintText != null) _hintText.text = canAdd ? "" : (addHint ?? "");
+            }
+            else if (_hintText != null) _hintText.text = "";
 
-            if (_removeGo != null) _removeGo.SetActive(count > 0);
-            if (_removeLabel != null) _removeLabel.text = "덱에서 제거";
+            if (_removeGo != null) _removeGo.SetActive(inDeck);
         }
 
         public void Clear()
@@ -129,8 +132,9 @@ namespace Wassup.UI
 
             _addButton = MakeButton(cardRoot, "덱에 추가", AddColor, out _addBg, out _addLabel);
             _addButton.onClick.AddListener(() => AddClicked?.Invoke());
+            _addGo = _addButton.gameObject;
 
-            var removeBtn = MakeButton(cardRoot, "덱에서 제거", RemoveColor, out _, out _removeLabel);
+            var removeBtn = MakeButton(cardRoot, "덱에서 제거", RemoveColor, out _, out _);
             removeBtn.onClick.AddListener(() => RemoveClicked?.Invoke());
             _removeGo = removeBtn.gameObject;
             _removeGo.SetActive(false);

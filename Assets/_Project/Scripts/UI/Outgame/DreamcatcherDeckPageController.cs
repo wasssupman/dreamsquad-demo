@@ -70,7 +70,7 @@ namespace Wassup.UI
         private void RefreshAll()
         {
             if (deckStrip != null) deckStrip.Refresh(_working);
-            if (browser != null) { browser.SetCounts(CountMap()); browser.SetSelected(_selectedCardId); }
+            if (browser != null) { browser.SetBadged(BadgedSet()); browser.SetSelected(_selectedCardId); }
             ShowSelectedDetail();
         }
 
@@ -79,36 +79,27 @@ namespace Wassup.UI
             if (detailView == null) return;
             var card = catalog != null ? catalog.ById(_selectedCardId) : null;
             if (card == null) { detailView.Clear(); return; }
+            // 유니크: 편성됨이면 [덱에서 제거]만, 아니면 [덱에 추가]만.
+            bool inDeck = _working.Contains(_selectedCardId);
             bool canAdd = CanAdd(card, out string hint);
-            int count = CountOf(_selectedCardId);
-            // count>0 → 상세에 [덱에서 제거] 노출(그리드/덱 어느 쪽에서 눌러도). 추가는 캡 여유 시 병행.
-            detailView.ShowCard(card, canAdd, hint, count);
+            detailView.ShowCard(card, canAdd, hint, inDeck);
         }
 
-        private int CountOf(string id)
+        // 편성된 카드 id 집합(그리드 "편성중" 뱃지).
+        private HashSet<string> BadgedSet()
         {
-            if (string.IsNullOrEmpty(id)) return 0;
-            int n = 0;
-            for (int i = 0; i < _working.Count; i++) if (_working[i] == id) n++;
-            return n;
-        }
-
-        private Dictionary<string, int> CountMap()
-        {
-            var map = new Dictionary<string, int>();
+            var set = new HashSet<string>();
             for (int i = 0; i < _working.Count; i++)
-            {
-                if (string.IsNullOrEmpty(_working[i])) continue;
-                map.TryGetValue(_working[i], out int n);
-                map[_working[i]] = n + 1;
-            }
-            return map;
+                if (!string.IsNullOrEmpty(_working[i])) set.Add(_working[i]);
+            return set;
         }
 
         private bool CanAdd(DreamcatcherCard card, out string hint)
         {
             hint = "";
             if (card == null || catalog == null) return false;
+            // 유니크: 이미 덱에 있으면 추가 불가(중복 금지).
+            if (_working.Contains(card.id)) return false;
             int deckSize = DeckRules.EffectiveDeckSize(catalog);
             if (_working.Count >= deckSize) { hint = "덱이 가득 참 (" + deckSize + "/" + deckSize + ")"; return false; }
             int typeMax = DeckRules.EffectiveMax(catalog, card.type);
@@ -126,7 +117,7 @@ namespace Wassup.UI
         {
             var card = catalog != null ? catalog.ById(id) : null;
             if (card == null) return;
-            if (!CanAdd(card, out _)) return;
+            if (!CanAdd(card, out _)) return; // dedup(이미 있으면 CanAdd=false)
             _working.Add(id);
             RefreshAll(); // in-memory edit; persists only via Save button (parity)
         }
