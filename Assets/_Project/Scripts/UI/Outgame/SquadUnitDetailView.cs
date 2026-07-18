@@ -1,0 +1,285 @@
+using System;
+using System.Collections.Generic;
+using Spine.Unity;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+using Wassup.Data;
+using Wassup.Presentation;
+
+namespace Wassup.UI
+{
+    // squad-character-page Unit 1 — the left 1/3 detail panel: a live Spine
+    // backdrop (SkeletonGraphic) with a unified translucent card overlaid at the
+    // bottom (name / rarity+class+cost badges / 5 stats / kit summary / deploy
+    // button). Show(unit, inSquad) binds everything; the deploy button raises
+    // DeployClicked and the squad logic (unit 4) drives SetDeployState back.
+    //
+    // Spine binding mirrors SceneTransition's proven runtime path: the
+    // SkeletonGraphic is authored in the scene (material + canvas channels set up
+    // there, unit 5), and here we only swap skeletonDataAsset + Initialize + apply
+    // the combined skin (SpineCombinedSkinCache) + loop idle. Units without a
+    // skeleton fall back to their portrait sprite.
+    public class SquadUnitDetailView : MonoBehaviour
+    {
+        [SerializeField] private SkeletonGraphic spineView;   // scene-authored (unit 5)
+        [SerializeField] private Image portraitFallback;      // shown when no skeleton
+        [SerializeField] private Image rarityFrame;           // panel-edge glow tinted by rarity
+        [SerializeField] private RectTransform cardRoot;      // procedural card children go here
+        [SerializeField] private TMP_FontAsset font;
+        [SerializeField] private string idleAnimation = "idle";
+
+        public event Action DeployClicked;
+
+        private static readonly Color CardBg = new Color(0.06f, 0.07f, 0.10f, 0.82f);
+        private static readonly Color DeployColor = new Color(0.20f, 0.52f, 0.32f, 1f);
+        private static readonly Color UnequipColor = new Color(0.52f, 0.24f, 0.24f, 1f);
+        private static readonly Color CommonColor = new Color(0.50f, 0.52f, 0.55f, 1f);
+        private static readonly Color RareColor = new Color(0.24f, 0.48f, 0.85f, 1f);
+        private static readonly Color EpicColor = new Color(0.60f, 0.30f, 0.82f, 1f);
+        private static readonly Color EgoColor = new Color(0.92f, 0.62f, 0.16f, 1f);
+        private static readonly Color ClassBadgeColor = new Color(0.20f, 0.24f, 0.34f, 1f);
+        private static readonly Color CostBadgeColor = new Color(0.16f, 0.34f, 0.52f, 1f);
+
+        private static readonly string[] StatLabels =
+            { "데미지", "체력", "사거리", "공격주기", "각성보상" };
+
+        private bool _cardBuilt;
+        private TMP_Text _nameText;
+        private Image _rarityBadgeBg;
+        private TMP_Text _rarityBadgeText;
+        private TMP_Text _classBadgeText;
+        private TMP_Text _costBadgeText;
+        private readonly TMP_Text[] _statValues = new TMP_Text[5];
+        private TMP_Text _summaryText;
+        private Image _deployBg;
+        private TMP_Text _deployLabel;
+
+        private DefenderUnitData _current;
+
+        public void Show(DefenderUnitData u, bool inSquad)
+        {
+            _current = u;
+            EnsureCardBuilt();
+            BindSpine(u);
+            FillCard(u);
+            SetDeployState(inSquad);
+        }
+
+        public void SetDeployState(bool inSquad)
+        {
+            if (_deployLabel != null) _deployLabel.text = inSquad ? "편성 해제 ⊖" : "출전 ⊕";
+            if (_deployBg != null) _deployBg.color = inSquad ? UnequipColor : DeployColor;
+        }
+
+        // -- Spine backdrop -------------------------------------------------
+
+        private void BindSpine(DefenderUnitData u)
+        {
+            var dataAsset = u != null ? u.SpineSkeletonDataAsset : null;
+            bool hasSkeleton = spineView != null && dataAsset != null;
+
+            if (spineView != null) spineView.gameObject.SetActive(hasSkeleton);
+            if (hasSkeleton)
+            {
+                if (spineView.skeletonDataAsset != dataAsset)
+                {
+                    spineView.skeletonDataAsset = dataAsset;
+                    spineView.Initialize(true);
+                }
+                else if (spineView.Skeleton == null)
+                {
+                    spineView.Initialize(false);
+                }
+                if (spineView.Skeleton != null)
+                    SpineCombinedSkinCache.Apply(spineView.Skeleton, u);
+                PlayIdle();
+            }
+
+            if (portraitFallback != null)
+            {
+                Sprite p = (!hasSkeleton && u != null) ? u.portrait : null;
+                portraitFallback.sprite = p;
+                portraitFallback.enabled = p != null;
+            }
+
+            if (rarityFrame != null)
+                rarityFrame.color = u != null ? RarityColor(u.rarity) : Color.clear;
+        }
+
+        private void PlayIdle()
+        {
+            if (spineView == null || spineView.AnimationState == null) return;
+            var data = spineView.Skeleton != null ? spineView.Skeleton.Data : null;
+            if (data == null) return;
+            string anim = FirstAnimation(data, idleAnimation, "idle", "Idle", "walk", "Walk");
+            if (!string.IsNullOrEmpty(anim))
+                spineView.AnimationState.SetAnimation(0, anim, true);
+        }
+
+        private static string FirstAnimation(Spine.SkeletonData data, params string[] candidates)
+        {
+            for (int i = 0; i < candidates.Length; i++)
+            {
+                string c = candidates[i];
+                if (!string.IsNullOrEmpty(c) && data.FindAnimation(c) != null) return c;
+            }
+            return null;
+        }
+
+        // -- Unified card ---------------------------------------------------
+
+        private void FillCard(DefenderUnitData u)
+        {
+            if (!_cardBuilt) return;
+
+            if (u == null)
+            {
+                if (_nameText != null) _nameText.text = "";
+                if (_summaryText != null) _summaryText.text = "";
+                for (int i = 0; i < _statValues.Length; i++)
+                    if (_statValues[i] != null) _statValues[i].text = "";
+                return;
+            }
+
+            if (_nameText != null)
+                _nameText.text = string.IsNullOrEmpty(u.displayName) ? u.name : u.displayName;
+
+            if (_rarityBadgeBg != null) _rarityBadgeBg.color = RarityColor(u.rarity);
+            if (_rarityBadgeText != null) _rarityBadgeText.text = UnitLabels.RarityLabel(u.rarity);
+            if (_classBadgeText != null) _classBadgeText.text = UnitLabels.ClassLabel(u.role);
+            if (_costBadgeText != null) _costBadgeText.text = $"코스트 {u.cost}";
+
+            SetStat(0, DamageText(u));
+            SetStat(1, u.health.ToString("0"));
+            SetStat(2, u.attackRange.ToString("0.#"));
+            SetStat(3, u.attackCooldown.ToString("0.0") + "s");
+            SetStat(4, u.awakeningReward.ToString());
+
+            if (_summaryText != null) _summaryText.text = UnitKitSummary.Build(u);
+        }
+
+        private void SetStat(int index, string value)
+        {
+            if (index >= 0 && index < _statValues.Length && _statValues[index] != null)
+                _statValues[index].text = value;
+        }
+
+        private static string DamageText(DefenderUnitData u)
+        {
+            return AttackOutputStats.TryGetUniqueMagnitude(u.outputs, AttackOutputKind.Damage, out float dmg)
+                ? dmg.ToString("0.#")
+                : "—";
+        }
+
+        private static Color RarityColor(DefenderRarity rarity)
+        {
+            switch (rarity)
+            {
+                case DefenderRarity.Rare: return RareColor;
+                case DefenderRarity.Epic: return EpicColor;
+                case DefenderRarity.Ego: return EgoColor;
+                default: return CommonColor;
+            }
+        }
+
+        private void EnsureCardBuilt()
+        {
+            if (_cardBuilt || cardRoot == null) return;
+            _cardBuilt = true;
+
+            var bg = cardRoot.gameObject.GetComponent<Image>();
+            if (bg == null) bg = cardRoot.gameObject.AddComponent<Image>();
+            bg.color = CardBg;
+
+            var vlg = cardRoot.gameObject.GetComponent<VerticalLayoutGroup>();
+            if (vlg == null) vlg = cardRoot.gameObject.AddComponent<VerticalLayoutGroup>();
+            vlg.padding = new RectOffset(20, 20, 16, 16);
+            vlg.spacing = 10;
+            vlg.childAlignment = TextAnchor.UpperLeft;
+            vlg.childControlWidth = true;
+            vlg.childControlHeight = true;
+            vlg.childForceExpandWidth = true;
+            vlg.childForceExpandHeight = false;
+
+            _nameText = MakeText(cardRoot, "", 34, TextAlignmentOptions.Left, 44);
+
+            var badgeRow = MakeRow(cardRoot, 34, 8);
+            _rarityBadgeBg = null;
+            _rarityBadgeText = MakeBadge(badgeRow.transform, out _rarityBadgeBg, CommonColor);
+            MakeBadge(badgeRow.transform, out var classBg, ClassBadgeColor);
+            _classBadgeText = classBg.GetComponentInChildren<TMP_Text>();
+            MakeBadge(badgeRow.transform, out var costBg, CostBadgeColor);
+            _costBadgeText = costBg.GetComponentInChildren<TMP_Text>();
+
+            for (int i = 0; i < StatLabels.Length; i++)
+            {
+                var row = MakeRow(cardRoot, 30, 0);
+                MakeText(row.transform, StatLabels[i], 20, TextAlignmentOptions.Left, 30);
+                _statValues[i] = MakeText(row.transform, "", 20, TextAlignmentOptions.Right, 30);
+            }
+
+            _summaryText = MakeText(cardRoot, "", 18, TextAlignmentOptions.TopLeft, 60);
+            _summaryText.enableWordWrapping = true;
+
+            var btnGo = new GameObject("DeployButton", typeof(RectTransform), typeof(Image), typeof(Button));
+            btnGo.transform.SetParent(cardRoot, false);
+            _deployBg = btnGo.GetComponent<Image>();
+            _deployBg.color = DeployColor;
+            var btnLe = btnGo.AddComponent<LayoutElement>();
+            btnLe.minHeight = 52; btnLe.preferredHeight = 52;
+            btnGo.GetComponent<Button>().onClick.AddListener(() => DeployClicked?.Invoke());
+            _deployLabel = MakeText(btnGo.transform, "출전 ⊕", 24, TextAlignmentOptions.Center, 0);
+            var lblRt = _deployLabel.rectTransform;
+            lblRt.anchorMin = Vector2.zero; lblRt.anchorMax = Vector2.one;
+            lblRt.offsetMin = Vector2.zero; lblRt.offsetMax = Vector2.zero;
+        }
+
+        private RectTransform MakeRow(Transform parent, float height, float spacing)
+        {
+            var go = new GameObject("Row", typeof(RectTransform));
+            go.transform.SetParent(parent, false);
+            var hlg = go.AddComponent<HorizontalLayoutGroup>();
+            hlg.spacing = spacing;
+            hlg.childAlignment = TextAnchor.MiddleLeft;
+            hlg.childControlWidth = true;
+            hlg.childControlHeight = true;
+            hlg.childForceExpandWidth = true;
+            hlg.childForceExpandHeight = false;
+            var le = go.AddComponent<LayoutElement>();
+            le.minHeight = height; le.preferredHeight = height;
+            return go.GetComponent<RectTransform>();
+        }
+
+        private TMP_Text MakeText(Transform parent, string text, int size, TextAlignmentOptions align, float preferredHeight)
+        {
+            var go = new GameObject("Text", typeof(RectTransform), typeof(TextMeshProUGUI));
+            go.transform.SetParent(parent, false);
+            var t = go.GetComponent<TextMeshProUGUI>();
+            t.text = text; t.fontSize = size; t.alignment = align; t.color = Color.white;
+            t.enableWordWrapping = false;
+            if (font != null) t.font = font;
+            if (preferredHeight > 0f)
+            {
+                var le = go.AddComponent<LayoutElement>();
+                le.minHeight = preferredHeight; le.preferredHeight = preferredHeight;
+            }
+            return t;
+        }
+
+        private TMP_Text MakeBadge(Transform parent, out Image bg, Color color)
+        {
+            var go = new GameObject("Badge", typeof(RectTransform), typeof(Image));
+            go.transform.SetParent(parent, false);
+            bg = go.GetComponent<Image>();
+            bg.color = color;
+            var le = go.AddComponent<LayoutElement>();
+            le.minWidth = 88; le.preferredWidth = 88; le.minHeight = 30; le.preferredHeight = 30;
+            var label = MakeText(go.transform, "", 18, TextAlignmentOptions.Center, 0);
+            var rt = label.rectTransform;
+            rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one;
+            rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
+            return label;
+        }
+    }
+}

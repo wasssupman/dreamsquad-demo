@@ -35,3 +35,5 @@
 - [x] `UnitKitSummaryTests` 전부 통과(EditMode 10/10, 1.1s): null / 근접·원거리 / role None 접두 생략 / 지원 힐·버프 분기 / 특성 순서·문구 / 방향 단·다연발 / 결정론.
 - [x] 컴파일 클린(신규 .cs → scope=all refresh, cascading CS0246 없음).
 - [x] 하드코딩 수치 0 — 모든 숫자는 `DefenderUnitData` 필드에서 파생.
+
+> 완료 2026-07-18 · 커밋 `576df8da` (EditMode 10/10)

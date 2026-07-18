@@ -15,7 +15,7 @@ namespace Wassup.Data
         {
             if (u == null) return "";
 
-            string cls = ClassLabel(u.role);
+            string cls = UnitLabels.ClassLabel(u.role);
             string archetype = Archetype(u);
             string head = string.IsNullOrEmpty(cls) ? archetype : $"{cls} · {archetype}";
 
@@ -49,19 +49,6 @@ namespace Wassup.Data
             for (int i = 0; i < outputs.Length; i++)
                 if (outputs[i].kind == kind) return true;
             return false;
-        }
-
-        private static string ClassLabel(DefenderClass role)
-        {
-            switch (role)
-            {
-                case DefenderClass.Ranger: return "레인저";
-                case DefenderClass.Guardian: return "가디언";
-                case DefenderClass.Fighter: return "파이터";
-                case DefenderClass.Caster: return "캐스터";
-                case DefenderClass.Support: return "서포트";
-                default: return "";
-            }
         }
 
         private static string OnPlaceClause(OnPlaceEffectType effect)
