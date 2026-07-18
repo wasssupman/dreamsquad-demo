@@ -2841,6 +2841,7 @@ MonoBehaviour:
   defenderSelector: {fileID: 915292524}
   costDisplay: {fileID: 1075095674}
   config: {fileID: 11400000, guid: b1ff068a6a1b7a44b8fd4ea85f159ff6, type: 2}
+  focusConfig: {fileID: 11400000, guid: 4c0ee75552ae74daabf68d5c0c14058a, type: 2}
   bridge: {fileID: 1939688408}
   mainCamera: {fileID: 1420088185}
   labelFont: {fileID: 11400000, guid: 218cce73e3172a04a8c536a4d368d90f, type: 2}

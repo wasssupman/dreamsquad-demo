@@ -3223,6 +3223,46 @@ namespace Wassup.Bridge
             return defender != Entity.Null;
         }
 
+        // dreamcatcher-attach-lockon unit 5 — base-ring 열거(순수 공간 read). 배치
+        // defender 각각의 화면 스프라이트 렉트를 outBuf 에 채운다. component write 0,
+        // 신규 EntityQuery/Temp 할당 0. outBuf 는 호출부가 재사용(매프레임 new 금지).
+        public void EnumerateDefenderScreenRects(Camera cam,
+            System.Collections.Generic.List<(Entity entity, Rect rect)> outBuf)
+        {
+            outBuf.Clear();
+            if (cam == null || spineUnitPool == null) return;
+            foreach (var kv in _defenderByTile)
+            {
+                if (!spineUnitPool.TryGet(kv.Value.entity, out var view) || view == null) continue;
+                if (!view.TryGetScreenRect(cam, out var rect)) continue;
+                outBuf.Add((kv.Value.entity, rect));
+            }
+        }
+
+        // dreamcatcher-attach-lockon unit 2/3/4 — 락온 유닛(방어수/적 공용)의 화면 렉트
+        // (리티클·콜아웃·화살표 끝점). spineUnitPool 기반이라 적 entity 에도 동작.
+        // 스프라이트 렉트 없으면 false(폴백 quad·화면 밖).
+        public bool TryGetUnitScreenRect(Entity entity, Camera cam, out Rect rect)
+        {
+            rect = default;
+            if (cam == null || spineUnitPool == null) return false;
+            return spineUnitPool.TryGet(entity, out var view) && view != null
+                && view.TryGetScreenRect(cam, out rect);
+        }
+
+        // dreamcatcher-attach-lockon unit 3 — 콜아웃 정체(아이콘/이름) 소스. 셀
+        // 바인딩의 DefenderUnitData 직독(읽기 전용).
+        public bool TryGetDefenderData(Vector2Int cell, out DefenderUnitData data)
+        {
+            if (_defenderByTile.TryGetValue(cell, out var binding))
+            {
+                data = binding.data;
+                return true;
+            }
+            data = null;
+            return false;
+        }
+
 
         // dreamstone-loadout Unit 3 — squad-equipped stones, set-then-apply (mirrors
         // SetDefenderPool). GameManager calls this BEFORE BeginPlacement; storing here

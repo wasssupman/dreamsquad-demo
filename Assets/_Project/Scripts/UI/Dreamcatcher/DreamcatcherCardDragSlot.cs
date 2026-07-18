@@ -46,6 +46,9 @@ namespace Wassup.UI
         private bool _activeAiming;
         private Vector2Int? _portalEntryCell;          // Portal two-tap: entry captured
         private Vector2Int _lastRangeCell = new(-1, -1); // aim range preview cache
+        // dreamcatcher-attach-lockon — 조준 시작 attachable 스냅샷(부착수는 드래그 중 불변).
+        private readonly System.Collections.Generic.List<(Entity entity, Rect rect)> _defRectBuf = new();
+        private readonly System.Collections.Generic.HashSet<Entity> _attachable = new();
 
         public bool IsDragging => _dragging;
         public bool IsPortalAiming => _portalEntryCell.HasValue;
@@ -130,7 +133,44 @@ namespace Wassup.UI
                 GameManager.Instance.SelectedDefender = null; // last-pressed-wins
             }
             _view.ShowDragTooltip(_index); // hand-drag-tooltip unit 1 — 성능 툴팁
+            BeginFocus(slot); // dreamcatcher-attach-lockon — dim/링/리티클/콜아웃 시작
             UpdateDragVisual(eventData.position);
+        }
+
+        // dreamcatcher-attach-lockon — 조준 종류별 포커스 연출 개시. Defender 부착
+        // (Unit/Squad)만 attachable 스냅샷 + base-ring, Active-DefenderUnit 은 캐스트
+        // 리티클(캡 무관), EnemyMark 는 dim 만(적 타겟은 별도 스코프).
+        private void BeginFocus(DreamcatcherHandView.CardSlot slot)
+        {
+            if (_view.Focus == null) return;
+            if (_mode == AimMode.Defender)
+            {
+                bool attach = slot.card != null &&
+                    (slot.card.type == CardType.Unit || slot.card.type == CardType.Squad);
+                if (attach)
+                {
+                    _view.Bridge.EnumerateDefenderScreenRects(_view.MainCamera, _defRectBuf);
+                    _attachable.Clear();
+                    for (int i = 0; i < _defRectBuf.Count; i++)
+                    {
+                        // 유효 = 부착 여유(캡) AND 이 카드가 이 유닛에 실제로 기여(통통구슬은
+                        // 투사체 유닛만 등). 커밋 거절과 UI 를 일치시킨다.
+                        var e = _defRectBuf[i].entity;
+                        if (_view.Controller.CanAttachMore(e) && _view.Bridge.WouldDreamcatcherCardApply(e, slot.card))
+                            _attachable.Add(e);
+                    }
+                    _view.Focus.Begin(DreamcatcherFocusPresenter.AimKind.AttachAim, _attachable);
+                }
+                else
+                    _view.Focus.Begin(DreamcatcherFocusPresenter.AimKind.DefenderCast, null);
+            }
+            else if (_mode == AimMode.EnemyMark)
+            {
+                // 적은 portrait 가 없어 콜아웃 정체를 카드 아트+이름으로 표기.
+                Sprite cardIcon = slot.art != null ? slot.art.sprite : null;
+                string cardName = slot.nameLabel != null ? slot.nameLabel.text : "";
+                _view.Focus.BeginEnemyMark(cardIcon, cardName);
+            }
         }
 
         public void OnDrag(PointerEventData eventData)
@@ -280,6 +320,9 @@ namespace Wassup.UI
         private void CommitNow(System.Func<bool> commit, System.Action onSuccess = null)
         {
             bool ok = commit();
+            // dreamcatcher-attach-lockon 계약 #7/E — 성공 시 확정 비트(손끝 밖 펄스+햅틱)를
+            // teardown(End) 전에 캡처. 펄스는 독립 타이머라 End 후에도 완주한다.
+            if (ok) _view.Focus?.Confirm();
             EndInteraction();
             if (!ok) _view.RestoreSlotHome(_index);
             else onSuccess?.Invoke();
@@ -305,6 +348,7 @@ namespace Wassup.UI
                 _view.TargetArrow?.Hide();
                 _view.RestoreSlotHome(_index); // 확대 복원(성공 시 Refresh 가 재정렬)
             }
+            _view.Focus?.End(); // dreamcatcher-attach-lockon — dim/링/리티클/콜아웃 정리
             ClearHover();
             ClearAimRange();
             _portalEntryCell = null;
@@ -325,16 +369,38 @@ namespace Wassup.UI
         {
             if (_mode == AimMode.Defender || _mode == AimMode.EnemyMark)
             {
-                // 카드는 손패에 고정 — 화살표만 포인터를 따른다(붉음=유효 타겟).
+                // 카드는 손패에 고정 — 화살표만 포인터를 따른다.
                 var slot = Slot;
                 Vector2 cardTop = (Vector2)slot.rect.position
                                   + new Vector2(0f, slot.rect.rect.height * 0.5f * slot.rect.localScale.y);
-                _view.TargetArrow?.SetPath(cardTop, screenPos,
-                    _hoverEntity != Entity.Null, _view.UnitHoverTint);
+                // dreamcatcher-attach-lockon — 락온(Defender 부착/적 표식) 시 끝점을 대상
+                // 중심으로 당겨 선이 대상에서 끝나게. 색은 3-상태(기본/가능/불가)로 화살표가 소유.
+                Vector2? lockCenter = null;
+                if (_hoverEntity != Entity.Null &&
+                    _view.Bridge.TryGetUnitScreenRect(_hoverEntity, _view.MainCamera, out var hr))
+                    lockCenter = hr.center;
+                var state = _hoverEntity == Entity.Null
+                    ? DreamcatcherTargetArrow.ArrowState.None
+                    : (IsHoverAttachable() ? DreamcatcherTargetArrow.ArrowState.Valid
+                                           : DreamcatcherTargetArrow.ArrowState.Invalid);
+                _view.TargetArrow?.SetPath(cardTop, screenPos, state, lockCenter);
                 return;
             }
             // ScreenSpaceOverlay canvas: RectTransform.position is in screen pixels.
             Slot.rect.position = screenPos;
+        }
+
+        // dreamcatcher-attach-lockon — 화살표/리티클 공유 유효성. 부착 가능(Unit/Squad=
+        // 부착 여유 있음 / Active-Defender=항상 / EnemyMark=미표식)이면 true.
+        private bool IsHoverAttachable()
+        {
+            if (_hoverEntity == Entity.Null) return false;
+            if (_mode == AimMode.EnemyMark)
+                return _view.Bridge != null && !_view.Bridge.IsEnemyMarked(_hoverEntity);
+            var t = Slot.card != null ? Slot.card.type : CardType.Unit;
+            if (t == CardType.Unit || t == CardType.Squad)
+                return _attachable.Contains(_hoverEntity);
+            return true; // Active-DefenderUnit (셀 캐스트) — 항상 유효 타겟
         }
 
         private void UpdateUnitHover(Vector2 screenPos)
@@ -354,17 +420,27 @@ namespace Wassup.UI
                 found = entity;
             }
 
-            // rev 4-4 — 포커스 표시는 호버 유닛 스파인 틴트 단일(타일 하이라이트 없음).
-            if (found != _hoverEntity)
+            // dreamcatcher-attach-lockon 계약 #4 — 정체 히스테리시스: 현재 락온이 아직
+            // 손가락 밑이면, 새 후보가 마진 이상 더 가깝지 않는 한 유지(밀집 플리커 차단).
+            if (found != _hoverEntity && _hoverEntity != Entity.Null && found != Entity.Null)
             {
-                if (_hoverEntity != Entity.Null)
-                    _view.Bridge.SetDefenderHoverHighlight(_hoverEntity, false, default);
-                if (found != Entity.Null)
-                    _view.Bridge.SetDefenderHoverHighlight(found, true, _view.UnitHoverTint);
+                float hyst = _view.FocusConfig != null ? _view.FocusConfig.lockSwitchHysteresisPx : 0f;
+                if (hyst > 0f
+                    && _view.Bridge.TryGetUnitScreenRect(_hoverEntity, _view.MainCamera, out var curRect)
+                    && curRect.Contains(screenPos)
+                    && _view.Bridge.TryGetUnitScreenRect(found, _view.MainCamera, out var newRect)
+                    && Vector2.Distance(curRect.center, screenPos)
+                       - Vector2.Distance(newRect.center, screenPos) < hyst)
+                {
+                    found = _hoverEntity;   // keep current lock
+                    cell = _hoverCell;
+                }
             }
 
+            // 계약 #6 — 전체 빨강 틴트 제거. 정체 신호는 리티클(위치)+콜아웃(정체).
             _hoverCell = cell;
             _hoverEntity = found;
+            _view.Focus?.SetAim(screenPos, _hoverEntity, _hoverCell ?? default);
         }
 
         // subconscious-curse-expansion unit 3 — 최근접 적 픽(반경 = AwakeningConfig 노브).
@@ -375,12 +451,13 @@ namespace Wassup.UI
             _hoverCell = null;
             _hoverEntity = _view.Bridge.TryPickNearestEnemy(_view.MainCamera, screenPos,
                 _view.Controller.EnemyPickRadiusTiles, out var enemy) ? enemy : Entity.Null;
+            // 적 표식도 리티클/콜아웃 대상 — 픽된 적을 락온 엔티티로 전달(셀은 무의미).
+            _view.Focus?.SetAim(screenPos, _hoverEntity, default);
         }
 
         private void ClearHover()
         {
-            if (_hoverEntity != Entity.Null && _view != null && _view.Bridge != null)
-                _view.Bridge.SetDefenderHoverHighlight(_hoverEntity, false, default);
+            // 계약 #6 — 빨강 틴트 set 경로 제거로 un-highlight 는 no-op → 삭제.
             _hoverCell = null;
             _hoverEntity = Entity.Null;
         }
