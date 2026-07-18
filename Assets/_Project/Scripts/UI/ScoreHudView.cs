@@ -589,7 +589,7 @@ namespace Wassup.UI
             leakCaptionRt.anchorMax = Vector2.one;
             leakCaptionRt.offsetMin = Vector2.zero;
             leakCaptionRt.offsetMax = Vector2.zero;
-            leakCaption.text = "누수";
+            leakCaption.text = "스트레스";
             leakCaption.fontStyle = FontStyles.Bold;
             leakCaption.color = tabTextColor;
 
