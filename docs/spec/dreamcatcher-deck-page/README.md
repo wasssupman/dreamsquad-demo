@@ -1,6 +1,6 @@
 # dreamcatcher-deck-page — 드림캐쳐 덱을 캐릭터 페이지 레이아웃으로
 
-> 상태: **초안 2026-07-18** (브레인스토밍 승인 — 완전 덱 편집)
+> 상태: **완료 2026-07-18** (units 0~4 구현·커밋·Play e2e·기능 패리티. handoff `5_handoff_summary.md`. 사용자 hands-on 잔여)
 > 선행: `squad-character-page`(레이아웃/패턴 원본, 완료) · `dreamcatcher-deck-builder`(DeckSave/DeckRules/카탈로그) · `dreamcatcher-card-art`(카드 art)
 > 성격: 아웃게임 UI/UX 재설계 (MonoBehaviour 프레젠테이션). ECS 무관 — 플레이 오브젝트 아님, 파이프라인 커버리지 N/A.
 
