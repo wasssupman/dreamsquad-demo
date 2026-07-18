@@ -25,5 +25,6 @@ Guardian 전용 컷씬 대신 기존 Sniper 컷씬을 임시 공용한다. 전�
 - Guardian의 전투 모델·스탯·배치/공격 애니메이션에는 변경이 없다.
 - Unity 컴파일 및 Console error 0.
 
-_구현 확인 2026-07-18: Guardian/Sniper 프레임 49개·뎁스·scale·offset 동일성 확인,
-열린 Unity 6000.4.3f1 Editor 스크립트 리컴파일 완료, Console error 0._
+_구현 확인 2026-07-18 (`e3632167`): Guardian/Sniper 프레임 49개·뎁스·scale·offset
+동일성 확인, 열린 Unity 6000.4.3f1 Editor 스크립트 리컴파일 완료, Console error 0.
+실제 Guardian 배치 Play smoke는 후속 확인._

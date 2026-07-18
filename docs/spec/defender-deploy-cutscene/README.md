@@ -1,13 +1,15 @@
 # Spec — Defender Deploy Cutscene
 
-> 상태: **units 8·9 구현 완료 · Unity 컴파일 clean · Play 확인 대기 (2026-07-18)**.
+> 상태: **units 8·9 구현 완료 · Unity 컴파일 clean · Play 확인 대기 (2026-07-18)**
+> — unit 8 `e29300eb`, unit 9 `e3632167`.
 > 확장 이력: Guardian 프레임 (2026-07-15, `5cbee1b4`) · 뎁스 패럴랙스 통합 (2026-07-15, `de2275ee`)
 > · Cannon (2026-07-16, unit 5 — `bc452d78`) · Sniper (`459e2d80`) · FireCaster·Healer (`5849e370`).
 >
 > **컷신 보유 7종**: Ranger · Archer · Guardian · Cannon · Sniper · FireCaster · Healer.
 > 전부 자산·할당 완료, **Play 검증 대기**(scale/offset 은 계산 시작값).
 >
-> 인계 지도: `4_handoff_summary.md`(Ranger/Archer) → `6_handoff_summary.md`(Cannon~Healer).
+> 인계 지도: `4_handoff_summary.md`(Ranger/Archer) → `6_handoff_summary.md`(Cannon~Healer)
+> → `10_handoff_summary.md`(수명 정정·Guardian 공용 배선).
 
 ## 상위 목표
 

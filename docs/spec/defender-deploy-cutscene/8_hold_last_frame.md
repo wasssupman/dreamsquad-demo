@@ -36,4 +36,5 @@
 - 배치 성공 시 컷씬 단계와 관계없이 같은 프레임에 숨고 다음 재생에 틸트가 남지 않는다.
 - Unity 컴파일 및 Console error 0.
 
-_구현 확인 2026-07-18: 열린 Unity 6000.4.3f1 Editor에서 스크립트 리컴파일 완료, Console error 0._
+_구현 확인 2026-07-18 (`e29300eb`): 열린 Unity 6000.4.3f1 Editor에서 스크립트
+리컴파일 완료, Console error 0. 실제 배치 Play smoke는 후속 확인._
