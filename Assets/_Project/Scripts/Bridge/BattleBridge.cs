@@ -98,6 +98,9 @@ namespace Wassup.Bridge
             Wassup.Data.UnitHealthPresentationMode.Legacy;
         [SerializeField] private Wassup.Presentation.UnitOverheadUiLayer unitOverheadUiLayer;
         [SerializeField] private Wassup.UI.ScoreHudView scoreHud;
+        // boss-wave-cadence unit 2 — 보스 스폰 순간 "꿈결 위기!!" 경보. BakeNightmareMechanics
+        // 의 보스 확정(BossTag 부착) 단일 지점에서 구동. 미배선(null)이면 무동작.
+        [SerializeField] private Wassup.UI.BossWarningView _bossWarning;
         [SerializeField] private Wassup.Presentation.ProjectileViewPool _projectileViewPool;
         // Phase 9 P9-07 — tileSize 단일 소스화. Awake 에서 PlacementInput 으로 주입.
         [SerializeField] private Wassup.Core.PlacementInput placementInput;
@@ -4756,6 +4759,9 @@ namespace Wassup.Bridge
             if (mechanics == null || mechanics.Length == 0) return;
 
             _em.AddComponent<BossTag>(entity);
+            // boss-wave-cadence unit 2 — 보스 판별의 단일 진실 지점. 여기서만 경보를 구동해
+            // SpawnUnit 재판정(로직 이중화·이중 발화)을 피한다. 재진입 코얼레스는 뷰가 담당.
+            _bossWarning?.Show();
             // 위협 테이블은 보스와 항상 동행 — 텔레포트 arm 의 타겟 소스.
             // defender 히트가 쌓기 전까지 빈 버퍼(ThreatHitEvent 드레인이 채움).
             _em.AddBuffer<ThreatEntry>(entity);
