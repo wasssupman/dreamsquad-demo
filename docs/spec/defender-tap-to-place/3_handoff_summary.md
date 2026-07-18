@@ -41,3 +41,29 @@
 
 - Android 실기기에서 DPI 보정·touchId UI 가드 체감 확인(에디터에선 검증 불가).
 - arm 상태 시각(테두리 하이라이트)의 최종 아트 패스.
+
+---
+
+## 추가 — 비행 연출 정제 (units 4·5, 2026-07-18)
+
+**Commit**: `95b08252` feat(tap-to-place): 탭 비행 포커스 목표 고정 + 베지어 곡선 경로 (units 4·5)
+
+**Implemented**
+- unit 4 — 탭 시뮬 비행 중 타일 포커스가 **날아가는 발밑을 실시간 추종**하던 것을 멈추고 **탭한 목표셀에만 정적 고정**.
+  `ResolveFocusAndTarget(dt, lockCell)` 로 히스테리시스/디바운스/액체 번짐을 우회, `_simFocusCell`(RunSimulatedDrag 세팅).
+  스와이프(`_simulatedDrag==false`)는 `lockCell:null` → 발밑 추종 유지(무회귀).
+- unit 5 — 직선 비행(`Vector3.Lerp`) → **2차 베지어**(`KeyringSim.QuadraticBezier`, 순수·EditMode 테스트).
+  제어점 = 중점 + 카메라-up 아치 + 보드 좌우 변주(황금비 저불일치 수열 `_tapFlightSeq`, **결정론** — RNG 아님).
+  아치/좌우 폭 = `DragSwaySettings.tapArcHeightFactor(0.32)/tapArcLateralFactor(0.22)` SO.
+
+**Key Files (추가)**
+- `Assets/_Project/Scripts/UI/KeyringSim.cs` — `QuadraticBezier`
+- `Assets/_Project/Scripts/Data/DragSwaySettings.cs` — `tapArcHeightFactor`/`tapArcLateralFactor`
+- spec: `4_flight_focus_pin.md`, `5_bezier_flight_path.md`
+
+**Verified**: 컴파일 클린 · EditMode 927(925 pass/0 fail, 베지어 케이스 포함) · 코드리뷰 clean(0 critical/major). Play 체감은 사용자 확인 대기.
+
+**Notes (되돌리면 안 되는 의도)**
+- `_simFocusCell` 은 코루틴 첫 `yield` **전**(동기)에 세팅돼야 첫 프레임부터 lock — 발밑 포커스 누수 방지. 사후 세팅은 리그레션.
+- 베지어 endpoints 정확(착지 오차 0)이 계약 — 이징(OutCubic)은 경로가 아니라 **속도 프로파일**로 분리 유지.
+- 좌우 변주는 결정론 수열(index 기반) 유지 — RNG 도입 금지(프로젝트 관례).
