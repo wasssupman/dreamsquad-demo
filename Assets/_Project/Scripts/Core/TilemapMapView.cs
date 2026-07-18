@@ -155,13 +155,11 @@ namespace Wassup.Core
         private void Update()
         {
             if (_tileSet == null) return;
-            // 사거리 펄스 — 알파는 이 펄스가 소유한다(호출부가 색을 직접 박으면 다음 프레임에 덮임).
-            // 세기 차이(방향 미정 십자 vs 선택된 레인)는 배율로만 낸다.
+            // 사거리 알파 — 펄스 제거(사용자 요청): 정적 레벨(rangePulseMaxAlpha)만 적용.
+            // 세기 차이(방향 미정 십자 vs 선택된 레인)는 _rangeAlphaMul 배율로만.
             if (_rangeTilemap != null && _rangeCells.Count > 0)
             {
-                float t = 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * _tileSet.rangePulseSpeed);
-                float a = Mathf.Lerp(_tileSet.rangePulseMinAlpha, _tileSet.rangePulseMaxAlpha, t);
-                var c = _tileSet.rangeColor; c.a = a * _rangeAlphaMul;
+                var c = _tileSet.rangeColor; c.a = _tileSet.rangePulseMaxAlpha * _rangeAlphaMul;
                 _rangeTilemap.color = c;
             }
             // placement-eligible-tile-highlight unit 1 — 배치 하이라이트 페이드인(정적, 펄스 없음).

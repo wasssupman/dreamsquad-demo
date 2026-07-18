@@ -60,8 +60,10 @@
 - **해결**: `TilemapMapView.EnsurePlaceableTilemap`/`EnsureRangeTilemap` 에서 타일맵을 카메라 쪽으로 미세하게 띄움
   (`localPosition.z = -0.04`/`-0.05`; grid 90°X 회전이라 local −Z = world +Y = 카메라 쪽). 깊이 평면 분리로 자글거림
   제거, 셀 정렬 영향 없음(0.04는 셀의 4%). 신규 오버레이 타일맵 추가 시 동일 오프셋 필요.
-- **아웃라인 두께**: `tile_grid_outline.png` 2px → **5px solid + 2px soft inner**(사용자 요청 "더 크게"). soft edge 로
-  tilted 평면 aliasing crawl 감소. 형태 조정은 이 png 교체로만(range-preview 계약, 코드 무관).
+- **아웃라인 두께**: `tile_grid_outline.png` 2px → 튜닝 반복(6px→) → **3px solid + 1px soft inner** 안착(사용자 "더 크게"
+  후 "좀 얇게"). soft edge 로 tilted 평면 aliasing crawl 감소. 형태 조정은 이 png 교체로만(range-preview 계약, 코드 무관).
+- **사거리 알파 펄스 제거(사용자 요청)**: `Update()` sin 펄스 삭제 → **정적 알파**(`rangePulseMaxAlpha` 레벨). 화면 알파
+  연출(맥동) 없음. `rangePulseMin/Speed` 는 vestigial(제거 안 함 — range-preview 데이터 최소 변경). 이제 전 오버레이 정적.
 
 ## Follow-up
 
