@@ -9,7 +9,8 @@ boss-wave-cadence: 라이브 웨이브에 매 5번째 보스 편성 + 보스 스
 - `8604015d` unit 2 — 스폰 워닝 훅
 - `a6e95c67` unit 3(데이터) — WaveA 덱 보스 값
 - `1ece58e0` fix — 10웨이브 미노출(스티키 가드 제거)
-- **BattleScene 배선: 미커밋** (사용자 WIP 동거 — 아래 Notes)
+- `f1e7877d` BattleScene 배선(BossWarningView GO + `_bossWarning`)
+- `010acd18` 보스 F2 외형(별도 스코프)
 
 ## Implemented
 - `WavePatternGenerator.Generate`(seed 경로)가 매 `bossWaveInterval`(=5)번째 웨이브를 **보스×1(선봉) + 잡몹×[3,4]**로 후처리 치환. optional 파라미터라 기존 호출부 무변경.
@@ -32,14 +33,13 @@ boss-wave-cadence: 라이브 웨이브에 매 5번째 보스 편성 + 보스 스
 - 사용자 Play 확인: **5·10웨이브 둘 다** "꿈결 위기!!" 배너 정상(2026-07-18, 스티키 가드 픽스 후).
 
 ## Notes (되돌리면 안 됨)
-- **BattleScene.unity 미커밋**: 이 파일엔 사용자의 드래그-프리뷰 WIP(`commitPop*`/`liquid*`)가 동거. 내 배선(BossWarningView GO + `_bossWarning`)만 저장돼 있고 커밋은 사용자 결정 대기. BattleScene 저장의 sparkColorBoost 재유입은 이미 해결됨(코드 기본값).
+- **BattleScene 배선 커밋됨(f1e7877d)**: BossWarningView GO + `_bossWarning` 만 스테이징(commitPop hunk 역적용으로 제외). 사용자 드래그-프리뷰 WIP(`commitPop*`/`liquid*`)는 여전히 **unstaged 보존**(사용자 소유). BattleScene 저장의 sparkColorBoost 재유입은 이미 해결됨(코드 기본값).
 - `Show()` **재시작 > 코얼레스**: 코얼레스+스티키 가드가 10웨이브 미노출의 원인이었다. 되돌리지 말 것.
 - 워닝 판별은 `nightmareMechanics` 단일 진실 — SpawnUnit 재판정 금지.
 - 보스는 wave 그룹 **선봉(group[0])** — RoundRobin round 0 스폰.
 - `waveGeneratorVersion` 2 는 **로그 라벨**(런타임 enforce 없음).
 
 ## Follow-up
-- **BattleScene 배선 커밋 방식 결정**(사용자 WIP 동거 — 같이 vs 배선 hunk 분리).
-- **보스 비주얼 "더 무섭게"**(별도 스코프): `visualMaterial` 틴트/`spineVisualScale`/스킨 — 스크린샷 비교 튜닝.
+- **보스 비주얼 F2 완료**(별도 스코프, 010acd18): scale 3.2 + partSkins(해골반다나/보라눈/코트) + 백팩제거. 최종 체감은 사용자 Play.
 - 한글 글리프 렌더는 Kanit fallback 의존(스코어 "점수"와 동일). 이상 시 Jua SDF 교체.
 - 후속 후보: 보스 로테이션(bossPool), 엄밀한 2초 프리-텔레그래프(스폰 지연).
