@@ -89,6 +89,9 @@ namespace Wassup.Battle.Effects
                 scalar = hazardEffect.param1,
                 vector = float3.zero,
                 remainingTime = hazardEffect.restDuration,
+                // dot-tick-cadence unit 0 — 존 → CC 로 주기 전달. tickTimer 는 미설정(0);
+                // CcApplySystem add-path 가 첫 tick 즉발용으로 tickInterval 로 초기화한다.
+                tickInterval = hazardEffect.tickInterval,
             };
         }
     }
