@@ -51,6 +51,11 @@ namespace Wassup.Core
         private readonly HashSet<Vector2Int> _rangeCells = new();
         // 범위 타일 세기 배율(펄스 알파에 곱). 1 = 기존 사각 범위. unit 9.
         private float _rangeAlphaMul = 1f;
+        // placement-eligible-tile-highlight unit 1 — 배치 가능 셀 밝은 하이라이트(정적, 펄스 없음).
+        // range 와 분리된 전용 타일맵. 드래그 중엔 range 처럼 유닛 위로 상승(9998).
+        private Tilemap _placeableTilemap;
+        private bool _placeableActive;
+        private float _placeableShowTime; // unscaledTime 캡처(페이드인 기준)
         // defender-directional-volley unit 9 — 방향 지정 화살표(재사용 풀, 최대 4).
         private readonly List<SpriteRenderer> _aimArrows = new();
         private static Sprite _arrowSprite;
@@ -140,6 +145,8 @@ namespace Wassup.Core
             if (_effectTilemap != null) _effectTilemap.ClearAllTiles();
             if (_rangeTilemap != null) _rangeTilemap.ClearAllTiles();
             _rangeCells.Clear();
+            if (_placeableTilemap != null) _placeableTilemap.ClearAllTiles(); // placement-eligible-tile-highlight unit 1
+            _placeableActive = false;
             if (_backgroundPropsRoot != null) { SafeDestroy(_backgroundPropsRoot.gameObject); _backgroundPropsRoot = null; }
             if (_ringPropsRoot != null) { SafeDestroy(_ringPropsRoot.gameObject); _ringPropsRoot = null; }
             if (_structurePropsRoot != null) { SafeDestroy(_structurePropsRoot.gameObject); _structurePropsRoot = null; }
@@ -147,13 +154,25 @@ namespace Wassup.Core
 
         private void Update()
         {
-            if (_rangeTilemap == null || _rangeCells.Count == 0 || _tileSet == null) return;
-            float t = 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * _tileSet.rangePulseSpeed);
-            float a = Mathf.Lerp(_tileSet.rangePulseMinAlpha, _tileSet.rangePulseMaxAlpha, t);
-            // 알파는 이 펄스가 소유한다 — 호출부가 색을 직접 박으면 다음 프레임에 덮인다.
+            if (_tileSet == null) return;
+            // 사거리 펄스 — 알파는 이 펄스가 소유한다(호출부가 색을 직접 박으면 다음 프레임에 덮임).
             // 세기 차이(방향 미정 십자 vs 선택된 레인)는 배율로만 낸다.
-            var c = _tileSet.rangeColor; c.a = a * _rangeAlphaMul;
-            _rangeTilemap.color = c;
+            if (_rangeTilemap != null && _rangeCells.Count > 0)
+            {
+                float t = 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * _tileSet.rangePulseSpeed);
+                float a = Mathf.Lerp(_tileSet.rangePulseMinAlpha, _tileSet.rangePulseMaxAlpha, t);
+                var c = _tileSet.rangeColor; c.a = a * _rangeAlphaMul;
+                _rangeTilemap.color = c;
+            }
+            // placement-eligible-tile-highlight unit 1 — 배치 하이라이트 페이드인(정적, 펄스 없음).
+            // range 와 독립: 탭 arm 처럼 range 가 없어도 페이드가 돌아야 한다.
+            if (_placeableActive && _placeableTilemap != null)
+            {
+                float pt = _tileSet.placeableFadeInDuration > 0f
+                    ? Mathf.Clamp01((Time.unscaledTime - _placeableShowTime) / _tileSet.placeableFadeInDuration) : 1f;
+                var pc = _tileSet.placeableColor; pc.a *= pt;
+                _placeableTilemap.color = pc;
+            }
         }
 
         private void ConfigureGrid(float tileSize, TileSetData tileSet, BoardViewMode mode, bool realShadows)
@@ -222,9 +241,10 @@ namespace Wassup.Core
         // 드래그 종료 시 기본값(overlay -10 / range -12) 복원. "보드<유닛" 기본 규칙은 드래그 밖에서 불변.
         public void SetPlacementHighlightAboveUnits(bool above)
         {
-            _highlightAbove = above; // range 타일맵이 아직 없으면 EnsureRangeTilemap 이 생성 시 이 값을 반영.
+            _highlightAbove = above; // range/placeable 타일맵이 아직 없으면 Ensure 시 이 값을 반영.
             SetRendererSorting(overlayTilemap, above ? 10002 : -10);
             SetRendererSorting(_rangeTilemap, above ? 10000 : -12);
+            SetRendererSorting(_placeableTilemap, above ? 9998 : -13); // placement-eligible-tile-highlight unit 1
         }
 
         // tilemap-real-shadows — 타일/맵은 그림자를 드리우지 않는다(유닛·프랍만 cast).
@@ -782,6 +802,53 @@ namespace Wassup.Core
             if (_rangeTilemap != null)
                 foreach (var cell in _rangeCells) _rangeTilemap.SetTile(ToCell(cell), null);
             _rangeCells.Clear();
+        }
+
+        // placement-eligible-tile-highlight unit 1 — 배치 가능 셀 밝은 하이라이트(전용 타일맵, range 와 분리).
+        private void EnsurePlaceableTilemap()
+        {
+            if (_placeableTilemap != null) return;
+            if (grid == null) return;
+            var go = new GameObject("PlacementHighlightTiles");
+            go.transform.SetParent(grid.transform, false);
+            _placeableTilemap = go.AddComponent<Tilemap>();
+            var r = go.AddComponent<TilemapRenderer>();
+            _placeableTilemap.tileAnchor = new Vector3(0.5f, 0.5f, 0f);
+            r.sortingOrder = _highlightAbove ? 9998 : -13; // 정적 −13(effect −15 위·range −12 아래) / 드래그 상승 9998.
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            if (overlayTilemap != null) // 검증된 반투명 tint 경로 재사용(range 와 동일).
+            {
+                var or = overlayTilemap.GetComponent<TilemapRenderer>();
+                if (or != null) r.sharedMaterial = or.sharedMaterial;
+            }
+        }
+
+        // 배치 가능 셀 집합을 은은한 fill+림으로 밝힌다. 균일 tint(per-cell 색 없음). 색/알파는 Update() 소유.
+        public void SetPlacementHighlight(IReadOnlyList<Vector2Int> placeable)
+        {
+            if (grid == null || _tileSet == null || _tileSet.placeableTile == null || placeable == null) return;
+            EnsurePlaceableTilemap();
+            if (!_placeableActive)
+            {
+                _placeableActive = true;
+                _placeableShowTime = Time.unscaledTime;
+                var c0 = _tileSet.placeableColor; c0.a = 0f;
+                _placeableTilemap.color = c0; // 첫 프레임 흰 불투명 번쩍 방지(Update 가 알파 세팅 전)
+            }
+            _placeableTilemap.ClearAllTiles();
+            for (int i = 0; i < placeable.Count; i++)
+            {
+                var cell = placeable[i];
+                if (cell.x < 0 || cell.x >= _gridSize.x || cell.y < 0 || cell.y >= _gridSize.y) continue;
+                _placeableTilemap.SetTile(ToCell(cell), _tileSet.placeableTile);
+            }
+            // 리프레시(_placeableActive 유지)면 showTime 안 리셋 → 재페이드 없음.
+        }
+
+        public void ClearPlacementHighlight()
+        {
+            if (_placeableTilemap != null) _placeableTilemap.ClearAllTiles();
+            _placeableActive = false;
         }
 
         // tilemap-world-surround unit 4 — 외곽 터레인 링 셀에 원경 프랍을 저밀도로 흩뿌린다.

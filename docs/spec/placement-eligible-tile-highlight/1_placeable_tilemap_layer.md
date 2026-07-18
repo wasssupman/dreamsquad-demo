@@ -90,3 +90,5 @@ if (_placeableActive && _placeableTilemap != null && _tileSet != null)
 - 드래그 시작 시 `SetPlacementHighlightAboveUnits(true)` → 하이라이트가 9998 로 상승해 밀집 전투 중 적
   빌보드 위로 보임(range 10000 아래 유지).
 - `placeableTile` 미할당 시 no-op. `Clear()` 재진입 후 잔류/누수 없음.
+
+- [x] 2026-07-18 · 컴파일 0 err/0 warn (MCP 검증) · (이 커밋). 시각 검증은 unit 2 배선 + placeableTile 스프라이트 후 일괄.
