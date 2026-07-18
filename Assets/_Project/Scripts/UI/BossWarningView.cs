@@ -52,7 +52,6 @@ namespace Wassup.UI
         private Image _vignette;
         private bool _built;
         private bool _subscribed;
-        private bool _showing;
         private Sequence _seq;
 
         private void Awake()
@@ -72,13 +71,15 @@ namespace Wassup.UI
             HideNow();
         }
 
-        // BattleBridge 가 보스 스폰 순간 호출. 재진입은 코얼레스(무시) — 보스 웨이브 간격 ≫ 배너.
+        // BattleBridge 가 보스 스폰 순간 호출. 재진입 = 재시작(진행 중 배너를 끊고 새로 연다).
+        // 스티키 가드(_showing) 없음 — 첫 배너 후 콜백이 실패해 가드가 굳으면 이후 보스(예:
+        // 10웨이브)가 삼켜지던 문제를 원천 제거. 보스 웨이브 간격 ≫ 배너라 실제 재시작은 드묾.
         public void Show()
         {
             if (!_built) BuildCanvas();
             if (_panel == null) return;
-            if (_showing) return;
-            _showing = true;
+
+            if (_seq.isAlive) _seq.Stop();
 
             _panel.SetActive(true);
             _canvasGroup.alpha = 1f;
@@ -86,7 +87,6 @@ namespace Wassup.UI
             _text.color = whiteHotFlash;
             if (_vignette != null) _vignette.color = WithAlpha(vignetteColor, 0f);
 
-            if (_seq.isAlive) _seq.Stop();
             _seq = Sequence.Create(useUnscaledTime: true)
                 .Group(Tween.Scale(_panelRect, Vector3.one, slamInDuration, Ease.OutBack))
                 .Group(Tween.Color(_text, crimsonColor, slamInDuration, Ease.OutQuad));
@@ -96,14 +96,20 @@ namespace Wassup.UI
                 .Chain(Tween.Alpha(_canvasGroup, 0f, fadeOutDuration, Ease.InQuad));
             if (_vignette != null)
                 _seq.Group(Tween.Color(_vignette, WithAlpha(vignetteColor, 0f), fadeOutDuration, Ease.InQuad));
-            _seq.ChainCallback(HideNow);
+            // 페이드 완료 → 패널만 비활성. 시퀀스를 자기 콜백 안에서 Stop 하지 않는다(자기-Stop 예외로
+            // 이후 리셋이 막히던 것이 10웨이브 미노출의 근본 원인이었다).
+            _seq.ChainCallback(DeactivatePanel);
         }
 
-        // _showing 누수 봉인: 페이드 완료 / OnDisable / PhaseChanged 세 경로 모두에서 호출.
+        private void DeactivatePanel()
+        {
+            if (_panel != null) _panel.SetActive(false);
+        }
+
+        // teardown 전용(OnDisable / PhaseChanged): 진행 중 시퀀스를 끊고 상태를 원복.
         private void HideNow()
         {
             if (_seq.isAlive) _seq.Stop();
-            _showing = false;
             if (_panel != null)
             {
                 _panel.SetActive(false);

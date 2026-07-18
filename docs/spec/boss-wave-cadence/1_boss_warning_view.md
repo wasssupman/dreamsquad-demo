@@ -23,17 +23,17 @@
   화면 중앙 앵커. `UiRoundedSprite.Make`로 다크 네이비 플레이트, 그 위 TMP `warningText`(크림슨, Kanit).
   풀스크린 붉은 비네트(`vignetteSprite`, 캔버스 뒤, alpha 0 시작).
 - `Show()`:
-  - 재진입 = **코얼레스(무시)로 확정**: `if (_showing) return;` 이후 `_showing = true`. (보스 웨이브 간격 ≫ 배너 2.5s
-    라 진행-중-재시작은 불필요 — 하나로 못박음.)
+  - 재진입 = **재시작(restart)으로 확정**: 스티키 가드(`_showing`) 없음. 진입 시 진행 중 시퀀스가 있으면
+    `_seq.Stop()` 후 처음부터 다시 연다. (보스 웨이브 간격 ≫ 배너 2.5s 라 실제 재시작은 드물지만, 가드-굳음
+    실패 모드를 원천 차단.)
   - 패널 SetActive(true). PrimeTween(전부 `useUnscaledTime: true`): 슬램인(`slamFromScale → 1`, Ease.OutBack,
     `slamInDuration`) → 텍스트 `whiteHotFlash → crimsonColor` → 비네트 alpha 펄스(0→peak→0) → `holdDuration` 유지
-    → CanvasGroup alpha 페이드(`fadeOutDuration`) → **onComplete: `HideNow()`**.
-- **`_showing` 누수 봉인 (필수)**: `_showing=false` + 패널 비활성 + tween Stop 을 모으는 `HideNow()` 헬퍼를 두고,
-  **세 경로 모두**에서 호출한다:
-  1. 페이드 tween onComplete (정상 종료)
-  2. `OnDisable` (teardown/씬 전환 — tween 을 Stop 하면 onComplete 가 **안 불리므로** 여기서 직접 리셋 필수)
-  3. `GameManager.PhaseChanged` Battle 이탈
-  → 어느 경로로 GameObject 가 비활성돼도 `_showing`이 true 로 굳어 이후 `Show()`를 삼키는 일이 없다.
+    → CanvasGroup alpha 페이드(`fadeOutDuration`) → **ChainCallback: 패널만 SetActive(false)**.
+- **콜백 안에서 자기 시퀀스를 Stop 하지 않는다 (필수)**: 페이드 완료 콜백은 `_panel.SetActive(false)` 만 한다.
+  콜백이 `_seq.Stop()`(자기-Stop)을 호출하면 PrimeTween 이 예외를 삼켜 이후 상태 리셋이 막혔고, 그 결과 첫 배너
+  뒤 가드가 굳어 **10웨이브 보스 배너가 삼켜지던 것이 근본 원인**이었다(2026-07-18 실측·수정).
+- **teardown 리셋**: `HideNow()`(시퀀스 Stop + 패널 비활성 + 상태 원복)는 `OnDisable` 과 `GameManager.PhaseChanged`
+  Battle 이탈에서만 호출(시퀀스 콜백에서는 호출하지 않음 — 자기-Stop 회피).
 - `GameManager.PhaseChanged` 구독/해제는 ScoreHudView 선례를 따른다(`OnDisable` 에서 해제).
 
 ## 완료 기준
