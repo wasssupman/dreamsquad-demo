@@ -192,7 +192,7 @@ namespace Wassup.UI
             SetStat(3, u.attackCooldown.ToString("0.0") + "s");
             SetStat(4, u.awakeningReward.ToString());
 
-            if (_summaryText != null) _summaryText.text = UnitKitSummary.Build(u);
+            if (_summaryText != null) _summaryText.text = UnitKitSummary.Describe(u);
         }
 
         private void SetStat(int index, string value)

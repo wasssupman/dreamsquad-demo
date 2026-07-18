@@ -14,6 +14,9 @@ namespace Wassup.Data
         // ingame-dreamcatcher Unit 0 — class/role for buff targeting axes.
         public DefenderClass role = DefenderClass.None;
         public string displayName;
+        // squad-character-page unit 6 — 유닛 설명(시트-동기 plain 필드, 체력 등과 동형).
+        // 비어 있으면 UnitKitSummary.Describe 가 자동 요약문으로 폴백. 시드값 = 자동 요약문.
+        [TextArea] public string desc;
         public float health = 50f;
         public float attackRange = 3f;
         public float attackCooldown = 1f; // seconds between attacks

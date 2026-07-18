@@ -15,6 +15,8 @@ MonoBehaviour:
   id: scout
   role: 1
   displayName: "\uC2A4\uCE74\uC6B0\uD2B8"
+  desc: "\uB808\uC778\uC800 \xB7 \uC6D0\uAC70\uB9AC\uD615. \uBC30\uCE58 \uC2DC \uCF54\uC2A4\uD2B8
+    \uD68D\uB4DD."
   health: 300
   attackRange: 2
   attackCooldown: 2
@@ -39,6 +41,10 @@ MonoBehaviour:
   onPlaceDuration: 0
   cost: 1
   targetAllies: 0
+  directionalAttack: 0
+  shotCount: 1
+  shotIntervalSec: 0
+  spreadAngleDeg: 0
   hazardCastEnabled: 0
   hazardCastRange: 0
   hazardCastCooldown: 0
@@ -72,6 +78,12 @@ MonoBehaviour:
   deployAnimation: Hit
   placementVfxPrefab: {fileID: 8719263370430895187, guid: c7ebe9341e13e2e448481a1a5b7a89bf, type: 3}
   attackVfxPrefab: {fileID: 0}
+  deployCutsceneFrames: []
+  deployCutsceneFps: 24
+  deployCutsceneScale: 1
+  deployCutsceneOffset: {x: 0, y: 0}
+  deployCutsceneDepth: []
+  deployCutsceneTiltGain: 1
   knockbackDistance: 0
   knockbackDuration: 0
   onPlacePushDistance: 0

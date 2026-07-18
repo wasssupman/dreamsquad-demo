@@ -15,6 +15,9 @@ MonoBehaviour:
   id: bastion
   role: 2
   displayName: "\uBC30\uC2A4\uD2F0\uC628"
+  desc: "\uAC00\uB514\uC5B8 \xB7 \uADFC\uC811\uD615. \uCD5C\uB300 3\uCCB4 \uB3D9\uC2DC
+    \uD0C0\uACA9, \uCD5C\uB300 2\uCCB4 \uB3C4\uBC1C \uC720\uC9C0, \uBC30\uCE58 \uC989\uC2DC
+    \uAD11\uC5ED \uD3ED\uBC1C."
   health: 1500
   attackRange: 2
   attackCooldown: 0.5
@@ -39,6 +42,10 @@ MonoBehaviour:
   onPlaceDuration: 0
   cost: 3
   targetAllies: 0
+  directionalAttack: 0
+  shotCount: 1
+  shotIntervalSec: 0
+  spreadAngleDeg: 0
   hazardCastEnabled: 0
   hazardCastRange: 0
   hazardCastCooldown: 0
@@ -74,6 +81,12 @@ MonoBehaviour:
   deployAnimation: Hit
   placementVfxPrefab: {fileID: 2427901435903505602, guid: 971aa18e6a15c0d48bf889c9d9df4fce, type: 3}
   attackVfxPrefab: {fileID: 6426699771996326788, guid: d2bf7f11edac4e8459d42fb4ce84890b, type: 3}
+  deployCutsceneFrames: []
+  deployCutsceneFps: 24
+  deployCutsceneScale: 1
+  deployCutsceneOffset: {x: 0, y: 0}
+  deployCutsceneDepth: []
+  deployCutsceneTiltGain: 1
   knockbackDistance: 0
   knockbackDuration: 0
   onPlacePushDistance: 2

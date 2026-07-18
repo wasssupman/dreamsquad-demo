@@ -39,11 +39,13 @@ OutgameScene 스쿼드 화면에서, **선택 유닛의 라이브 Spine + 스탯
 | 1 | UI | `1_unit_detail_view.md` | 상세 패널 뷰 — SkeletonGraphic 라이브 Spine + 통합 스탯/설명 카드 + [출전] |
 | 2 | UI | `2_roster_browser.md` | 리스트 브라우저 그리드 — 셀(포트레이트+등급프레임+클래스) + 선택 하이라이트 + "편성중" 뱃지 |
 | 3 | UI | `3_header_strip_stone_mode.md` | 헤더 편성 7 + 스톤 4 스트립 + 스톤 슬롯 탭 → 브라우저 스톤 모드 전환 |
-| 4 | 통합 | `4_squad_builder_rewrite.md` | SquadBuilderView 재작성 — 출전 토글/편성해제/dedup/append, 모달 피커 제거, 저장 |
-| 5 | 배선 | `5_wiring_play_e2e.md` | squadPanel 계층 재구성 + SerializeField 배선 + Play e2e |
-| 6 | 인계 | `6_handoff_summary.md` | handoff |
+| 4 | 통합 | `4_orchestrator.md` | `SquadCharacterPageController` — 출전 토글/편성해제/dedup/append, 스톤 모드, 저장 (모달 폐기) |
+| 5 | 배선 | `5_wiring_play_e2e.md` | `SquadCharacterPage` 런타임 빌더 + 실제 squadPanel 배선 + Play e2e |
+| 6 | 데이터 | `6_unit_desc_field.md` | `desc` SO 필드(시트-동기 plain) + `UnitKitSummary.Describe` 폴백 + 현재 요약문 시드 |
+| 7 | 시트 | `7_desc_sheet_sync.md` | `DefenderStatDto.desc` + import/export 왕복(체력 등과 동형 리플렉션) + 테스트 |
+| 8 | 인계 | `8_handoff_summary.md` | handoff |
 
-순서: 0 → 1 → 2 → 3 → 4 → 5 → 6. 핵심 로직 유닛(0, 4) 종료 시 code-review, 나머지는 feature 종료 시 일괄.
+순서: 0 → 1 → 2 → 3 → 4 → 5 → (6 → 7) → 8. 핵심 로직 유닛(0, 4) 종료 시 code-review, 나머지는 feature 종료 시 일괄. 6·7 은 "lore 문장 저작" 후속의 시트-동기 실현.
 
 ## Feature-wide 계약
 

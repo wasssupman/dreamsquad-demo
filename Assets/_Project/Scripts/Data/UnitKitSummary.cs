@@ -11,6 +11,15 @@ namespace Wassup.Data
     // the sentence is read from the SO, never literalised here.
     public static class UnitKitSummary
     {
+        // squad-character-page unit 6 — display accessor. Authored `desc` (sheet-synced)
+        // wins; empty falls back to the generated summary so new/unauthored units are
+        // never blank. Build stays the generator (also used to seed desc).
+        public static string Describe(DefenderUnitData u)
+        {
+            if (u == null) return "";
+            return string.IsNullOrEmpty(u.desc) ? Build(u) : u.desc;
+        }
+
         public static string Build(DefenderUnitData u)
         {
             if (u == null) return "";

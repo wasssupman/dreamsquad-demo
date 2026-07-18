@@ -114,5 +114,32 @@ namespace Wassup.Tests.EditMode
             u.onPlaceEffect = OnPlaceEffectType.SlowPulse;
             Assert.AreEqual(UnitKitSummary.Build(u), UnitKitSummary.Build(u));
         }
+
+        // unit 6 — Describe: authored desc wins, empty falls back to Build.
+        [Test]
+        public void Describe_Null_ReturnsEmpty()
+        {
+            Assert.AreEqual("", UnitKitSummary.Describe(null));
+        }
+
+        [Test]
+        public void Describe_AuthoredDesc_ReturnsDesc()
+        {
+            var u = Unit();
+            u.role = DefenderClass.Ranger;
+            u.desc = "직접 쓴 설명";
+            Assert.AreEqual("직접 쓴 설명", UnitKitSummary.Describe(u));
+        }
+
+        [Test]
+        public void Describe_EmptyDesc_FallsBackToBuild()
+        {
+            var u = Unit();
+            u.role = DefenderClass.Fighter;
+            u.projectile = null;
+            u.desc = "";
+            Assert.AreEqual(UnitKitSummary.Build(u), UnitKitSummary.Describe(u));
+            Assert.AreEqual("파이터 · 근접형.", UnitKitSummary.Describe(u));
+        }
     }
 }

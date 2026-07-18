@@ -15,6 +15,7 @@ MonoBehaviour:
   id: artillery
   role: 1
   displayName: "\uC544\uD2F8\uB7EC\uB9AC"
+  desc: "\uB808\uC778\uC800 \xB7 \uC6D0\uAC70\uB9AC\uD615."
   health: 350
   attackRange: 7
   attackCooldown: 3.5
@@ -39,6 +40,10 @@ MonoBehaviour:
   onPlaceDuration: 0
   cost: 5
   targetAllies: 0
+  directionalAttack: 0
+  shotCount: 1
+  shotIntervalSec: 0
+  spreadAngleDeg: 0
   hazardCastEnabled: 0
   hazardCastRange: 0
   hazardCastCooldown: 0
@@ -73,6 +78,12 @@ MonoBehaviour:
   deployAnimation: Hit
   placementVfxPrefab: {fileID: 2427901435903505602, guid: 971aa18e6a15c0d48bf889c9d9df4fce, type: 3}
   attackVfxPrefab: {fileID: 0}
+  deployCutsceneFrames: []
+  deployCutsceneFps: 24
+  deployCutsceneScale: 1
+  deployCutsceneOffset: {x: 0, y: 0}
+  deployCutsceneDepth: []
+  deployCutsceneTiltGain: 1
   knockbackDistance: 0
   knockbackDuration: 0
   onPlacePushDistance: 0
