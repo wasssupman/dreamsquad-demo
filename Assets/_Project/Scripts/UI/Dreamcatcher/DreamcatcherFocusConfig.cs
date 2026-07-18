@@ -65,5 +65,14 @@ namespace Wassup.UI
         public float confirmPulseSec = 0.28f;
         public float confirmPulseMinRadius = 120f; // 손끝 반경 초과 보장
         public bool enableHaptic = true;
+
+        [Header("F · 포커스 유닛 틴트")]
+        // 락온된 defender 몸체(Spine)에 상태색 틴트 — 리티클/화살표와 같은 언어를
+        // 유닛 자체에도 얹는다. Spine 은 곱셈 틴트(0~1)라 '밝힘' 불가·색조/어둠만
+        // 가능 → dim 된 전장 위 색조 대비로 pop(리티클이 1차, 틴트는 2차 보강).
+        // 적(EnemyMark)은 health-tint 합성 문제로 비적용.
+        public bool enableFocusTint = true;
+        public Color focusTintValid = new Color(0.60f, 1f, 1f);   // 부착 가능 — 시안 캐스트
+        public Color focusTintInvalid = new Color(1f, 0.52f, 0.56f); // 부착 불가 — 붉은 캐스트
     }
 }

@@ -80,6 +80,7 @@ namespace Wassup.UI
         private Entity _countEntity = Entity.Null;   // L4 — 콜아웃 카운트 문자열 캐시
         private string _countText = "";
         private readonly List<(Entity entity, Rect rect)> _rectBuf = new List<(Entity, Rect)>();
+        private Entity _tintedUnit = Entity.Null;     // F — 현재 Spine 틴트 적용 유닛(clean 토글)
 
         // 화살표 끝점 당김용 — 락온 유닛 화면 중심(없으면 null).
         public Vector2? LockedCenter => _active && _hasLockRect ? (Vector2?)_lockRect.center : null;
@@ -244,7 +245,11 @@ namespace Wassup.UI
             _locked = Entity.Null;
             _hasLockRect = false;
             _attachable.Clear();
+            ClearFocusTint(); // F — 락온 유닛 몸체 틴트 원복(누수 차단)
         }
+
+        // 패널 비활성/도메인 리로드로 End 를 못 걷고 꺼질 때의 안전 원복.
+        private void OnDisable() => ClearFocusTint();
 
         // ── per-frame ────────────────────────────────────────────────────────
 
@@ -276,10 +281,43 @@ namespace Wassup.UI
             // L6 — 정체가 바뀌면 리티클을 새 대상 위에서 pop(화면 가로질러 날아오지 않게).
             if (_locked != _lastLocked) { _reticleInit = false; _lastLocked = _locked; }
 
+            UpdateFocusTint();
             UpdateReticle(dt);
             UpdateCallout(dt);
             UpdateRings(dt);
             UpdatePulse(dt);
+        }
+
+        // F · 포커스 유닛 틴트 — 락온된 defender 몸체(Spine)에 상태색을 얹는다(리티클/
+        // 화살표와 같은 언어를 유닛 자체에도). AttachAim/DefenderCast 만(EnemyMark 는
+        // health-tint 합성 문제로, DimOnly 는 대상 없음으로 제외). 곱셈 틴트라 '밝힘'
+        // 불가 — dim 위 색조 대비로 pop. 락온 유닛의 valid 는 드래그 중 불변(_attachable
+        // 스냅샷 / DefenderCast=true)이라 색은 유닛 전환 때만 바뀐다 → 전환 시에만 on/off.
+        private void UpdateFocusTint()
+        {
+            bool want = _active && _hasLockRect && _locked != Entity.Null && _bridge != null
+                        && _cfg.enableFocusTint
+                        && (_kind == AimKind.AttachAim || _kind == AimKind.DefenderCast);
+            SetFocusTint(want ? _locked : Entity.Null);
+        }
+
+        private void ClearFocusTint() => SetFocusTint(Entity.Null);
+
+        // 락온 유닛 몸체 틴트를 target 으로 전환(같으면 no-op). 이전 유닛 원복 후 새 대상
+        // 틴트 — 유닛당 on 1회/off 1회로 SetHoverHighlight 저장·복원 균형. _bridge 없으면
+        // 추적만 갱신(Bind 후 _bridge 는 불변이라 실경로엔 도달 안 함 — 방어적 대칭 가드).
+        private void SetFocusTint(Entity target)
+        {
+            if (target == _tintedUnit) return;
+            if (_bridge != null)
+            {
+                if (_tintedUnit != Entity.Null)
+                    _bridge.SetDefenderHoverHighlight(_tintedUnit, false, default);
+                if (target != Entity.Null)
+                    _bridge.SetDefenderHoverHighlight(target, true,
+                        _lockValid ? _cfg.focusTintValid : _cfg.focusTintInvalid);
+            }
+            _tintedUnit = target;
         }
 
         private void UpdateReticle(float dt)

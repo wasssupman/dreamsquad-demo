@@ -5,6 +5,7 @@
 - **`b487ac42`** feat(dreamcatcher-attach-lockon): 부착 조준 포커스 락온 + 오프셋 콜아웃
 - 후속 docs 커밋: README 상태 라인 + 이 handoff.
 - **rev(커밋 후 사용자 Play 피드백 2건)**: ① 살찌운 제물(적 표식)을 **유닛 위**로 가리키면 "유닛 불가" 빨강 무효(기존엔 적만 픽해서 유닛 위=무반응) — `SetAimEnemyMark` 로 슬롯이 유효성 결정, 화살표/리티클/콜아웃 공유. ② 화살표(`DreamcatcherTargetArrow`)가 config 를 `Configure` 스냅샷 대신 **매 SetPath 라이브 읽기**(arrowHeadSize·색 Play 중 반영, 드래그 프레임당 1회·무할당).
+- **rev(포커스 유닛 틴트 · F 블록)**: 락온 defender **몸체(Spine)에 상태색 곱셈 틴트**(valid=시안/invalid=붉음) 재도입 — 계약 #6 진화(제거→dim 맥락서 상태색 복귀). `DreamcatcherFocusPresenter.UpdateFocusTint`/`SetFocusTint` 소유, 유닛 전환 시에만 on/off(락온 유닛 valid 불변), End/OnDisable 원복. AttachAim/DefenderCast 만(EnemyMark 제외). 노브=`DreamcatcherFocusConfig` F. **`SpineUnitView.FlashRoutine` 1줄 가드**(hover 활성 시 `_savedTint` 복귀)로 flash×hover stray-tint 레이스 차단(잠재 버그 동반 수정). 코드리뷰 APPROVE(회귀 위험 낮음).
 
 ## Implemented
 
