@@ -8,8 +8,9 @@ namespace Wassup.UI
     // stays seated in the hand and a dotted bezier arc runs from it to the
     // pointer. Runtime-built, asset-free, all raycastTarget=false.
     //
-    // dreamcatcher-attach-lockon — 파스텔 붉은색 3-상태(기본/부착가능/부착불가) +
-    // 삼각 화살촉(확대·아웃라인). Defender/적 락온 시 끝점을 대상 중심으로 blend.
+    // dreamcatcher-attach-lockon — 파스텔 3-상태(기본/부착가능/부착불가) + 삼각 화살촉.
+    // 색·크기·아웃라인·끝점 블렌드는 SO(DreamcatcherFocusConfig)를 **매 SetPath 마다
+    // 직접 읽어** 라이브 반영한다(Configure 는 참조만 저장 — 스냅샷 아님).
     public class DreamcatcherTargetArrow : MonoBehaviour
     {
         public enum ArrowState { None, Valid, Invalid }
@@ -26,15 +27,16 @@ namespace Wassup.UI
         private Image _headImage, _outlineHeadImage;
         private Sprite _headSprite;
 
-        // SO 노브(미할당 시 기본값).
-        private float _minAlpha = 0.7f;
-        private float _lockBlend = 0.7f;
-        private float _headSize = 54f;
-        private Color _outlineColor = new Color(0.24f, 0.05f, 0.08f, 0.85f);
-        private float _outlinePad = 3f;
-        private Color _neutral = new Color(1f, 0.72f, 0.74f, 0.62f);
-        private Color _valid = new Color(1f, 0.5f, 0.52f, 1f);
-        private Color _invalid = new Color(0.64f, 0.5f, 0.55f, 0.6f);
+        // SO 노브(참조 — 매 SetPath 라이브 읽기). 미할당 시 기본값 폴백.
+        private DreamcatcherFocusConfig _cfg;
+        private float MinAlpha => _cfg != null ? _cfg.arrowMinAlpha : 0.7f;
+        private float LockBlend => _cfg != null ? _cfg.arrowLockBlend : 0.7f;
+        private float HeadSize => _cfg != null ? _cfg.arrowHeadSize : 54f;
+        private float OutlinePad => _cfg != null ? _cfg.arrowOutlinePad : 3f;
+        private Color OutlineColor => _cfg != null ? _cfg.arrowOutlineColor : new Color(0.05f, 0.05f, 0.08f, 0.85f);
+        private Color NeutralCol => _cfg != null ? _cfg.arrowNeutralColor : new Color(1f, 1f, 1f, 0.7f);
+        private Color ValidCol => _cfg != null ? _cfg.arrowValidColor : new Color(0.42f, 0.95f, 1f, 1f);
+        private Color InvalidCol => _cfg != null ? _cfg.arrowInvalidColor : new Color(1f, 0.42f, 0.46f, 1f);
 
         public static DreamcatcherTargetArrow Create(Transform canvasRoot)
         {
@@ -46,18 +48,8 @@ namespace Wassup.UI
             return arrow;
         }
 
-        public void Configure(DreamcatcherFocusConfig cfg)
-        {
-            if (cfg == null) return;
-            _minAlpha = cfg.arrowMinAlpha;
-            _lockBlend = cfg.arrowLockBlend;
-            _headSize = cfg.arrowHeadSize;
-            _outlineColor = cfg.arrowOutlineColor;
-            _outlinePad = cfg.arrowOutlinePad;
-            _neutral = cfg.arrowNeutralColor;
-            _valid = cfg.arrowValidColor;
-            _invalid = cfg.arrowInvalidColor;
-        }
+        // 참조만 저장 — SetPath 가 매 호출 읽으므로 SO 에셋 편집이 Play 중 즉시 반영.
+        public void Configure(DreamcatcherFocusConfig cfg) => _cfg = cfg;
 
         private void Build()
         {
@@ -103,13 +95,16 @@ namespace Wassup.UI
         {
             if (!gameObject.activeSelf) gameObject.SetActive(true);
             if (lockCenter.HasValue)
-                endScreen = Vector2.Lerp(endScreen, lockCenter.Value, _lockBlend);
+                endScreen = Vector2.Lerp(endScreen, lockCenter.Value, LockBlend);
 
             float dist = Vector2.Distance(startScreen, endScreen);
             Vector2 control = (startScreen + endScreen) * 0.5f
                               + Vector2.up * Mathf.Clamp(dist * 0.35f, 60f, 240f);
-            Color color = state == ArrowState.Valid ? _valid
-                        : state == ArrowState.Invalid ? _invalid : _neutral;
+            Color color = state == ArrowState.Valid ? ValidCol
+                        : state == ArrowState.Invalid ? InvalidCol : NeutralCol;
+            Color outline = OutlineColor;
+            float minAlpha = MinAlpha;
+            float outlinePad = OutlinePad;
 
             for (int i = 0; i < _dots.Count; i++)
             {
@@ -118,7 +113,7 @@ namespace Wassup.UI
                 Vector2 tangent = BezierTangent(startScreen, control, endScreen, t);
                 float size = Mathf.Lerp(DotMinSize, DotMaxSize, t);
                 float rot = Mathf.Atan2(tangent.y, tangent.x) * Mathf.Rad2Deg;
-                float a = color.a * Mathf.Lerp(_minAlpha, 1f, t);
+                float a = color.a * Mathf.Lerp(minAlpha, 1f, t);
 
                 var dot = _dots[i];
                 dot.position = pos;
@@ -128,22 +123,23 @@ namespace Wassup.UI
 
                 var od = _outlineDots[i];
                 od.position = pos;
-                od.sizeDelta = new Vector2(size + _outlinePad, size * 0.62f + _outlinePad);
+                od.sizeDelta = new Vector2(size + outlinePad, size * 0.62f + outlinePad);
                 od.localEulerAngles = new Vector3(0f, 0f, rot);
-                _outlineImages[i].color = new Color(_outlineColor.r, _outlineColor.g, _outlineColor.b,
-                    _outlineColor.a * Mathf.Lerp(_minAlpha, 1f, t));
+                _outlineImages[i].color = new Color(outline.r, outline.g, outline.b,
+                    outline.a * Mathf.Lerp(minAlpha, 1f, t));
             }
 
+            float headSize = HeadSize;
             Vector2 headTangent = BezierTangent(startScreen, control, endScreen, 1f);
             float headRot = Mathf.Atan2(headTangent.y, headTangent.x) * Mathf.Rad2Deg;
 
             _outlineHead.position = endScreen;
-            _outlineHead.sizeDelta = new Vector2(_headSize + _outlinePad * 2f, _headSize + _outlinePad * 2f);
+            _outlineHead.sizeDelta = new Vector2(headSize + outlinePad * 2f, headSize + outlinePad * 2f);
             _outlineHead.localEulerAngles = new Vector3(0f, 0f, headRot);
-            _outlineHeadImage.color = _outlineColor;
+            _outlineHeadImage.color = outline;
 
             _head.position = endScreen;
-            _head.sizeDelta = new Vector2(_headSize, _headSize);
+            _head.sizeDelta = new Vector2(headSize, headSize);
             _head.localEulerAngles = new Vector3(0f, 0f, headRot);
             _headImage.color = color;
         }

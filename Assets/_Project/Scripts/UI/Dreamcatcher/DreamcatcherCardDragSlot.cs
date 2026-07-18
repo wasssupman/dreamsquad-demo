@@ -49,6 +49,7 @@ namespace Wassup.UI
         // dreamcatcher-attach-lockon — 조준 시작 attachable 스냅샷(부착수는 드래그 중 불변).
         private readonly System.Collections.Generic.List<(Entity entity, Rect rect)> _defRectBuf = new();
         private readonly System.Collections.Generic.HashSet<Entity> _attachable = new();
+        private bool _enemyMarkHoverValid; // 적 표식: 현재 호버가 유효(미표식 적)인가
 
         public bool IsDragging => _dragging;
         public bool IsPortalAiming => _portalEntryCell.HasValue;
@@ -396,7 +397,7 @@ namespace Wassup.UI
         {
             if (_hoverEntity == Entity.Null) return false;
             if (_mode == AimMode.EnemyMark)
-                return _view.Bridge != null && !_view.Bridge.IsEnemyMarked(_hoverEntity);
+                return _enemyMarkHoverValid; // UpdateEnemyHover 가 결정(유닛=false, 미표식 적=true)
             var t = Slot.card != null ? Slot.card.type : CardType.Unit;
             if (t == CardType.Unit || t == CardType.Squad)
                 return _attachable.Contains(_hoverEntity);
@@ -449,10 +450,19 @@ namespace Wassup.UI
         private void UpdateEnemyHover(Vector2 screenPos)
         {
             _hoverCell = null;
+            // 손가락이 유닛 위면 잘못된 대상 → "유닛 불가" 빨강(적 표식은 유닛에 못 씀).
+            // 유닛 위가 아니면 최근접 적(미표식=유효 / 이미 표식=무효).
+            if (_view.Bridge.TryPickDefenderAtScreen(_view.MainCamera, screenPos, out var defender, out _))
+            {
+                _hoverEntity = defender;
+                _enemyMarkHoverValid = false;
+                _view.Focus?.SetAimEnemyMark(screenPos, defender, valid: false, onUnit: true);
+                return;
+            }
             _hoverEntity = _view.Bridge.TryPickNearestEnemy(_view.MainCamera, screenPos,
                 _view.Controller.EnemyPickRadiusTiles, out var enemy) ? enemy : Entity.Null;
-            // 적 표식도 리티클/콜아웃 대상 — 픽된 적을 락온 엔티티로 전달(셀은 무의미).
-            _view.Focus?.SetAim(screenPos, _hoverEntity, default);
+            _enemyMarkHoverValid = _hoverEntity != Entity.Null && !_view.Bridge.IsEnemyMarked(_hoverEntity);
+            _view.Focus?.SetAimEnemyMark(screenPos, _hoverEntity, _enemyMarkHoverValid, onUnit: false);
         }
 
         private void ClearHover()

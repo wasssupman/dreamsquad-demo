@@ -67,6 +67,8 @@ namespace Wassup.UI
         private AimKind _kind;
         private Sprite _cardIcon;   // EnemyMark — 적은 portrait 없어 카드 아트로 정체 표기
         private string _cardName;
+        private bool _enemyMarkValid;   // EnemyMark 유효성(슬롯이 결정 — 적 미표식=유효 / 유닛=무효)
+        private bool _enemyMarkOnUnit;  // 손가락이 유닛 위(적 표식 카드를 유닛에 = 무효) → "유닛 불가"
         private readonly HashSet<Entity> _attachable = new HashSet<Entity>();
         private Vector2 _pointer;
         private Entity _locked = Entity.Null;
@@ -208,6 +210,16 @@ namespace Wassup.UI
             _lockedCell = lockedCell;
         }
 
+        // EnemyMark 전용 — 유효성/유닛여부를 슬롯이 결정해 전달(적=미표식 유효, 유닛=무효).
+        public void SetAimEnemyMark(Vector2 pointer, Entity locked, bool valid, bool onUnit)
+        {
+            _pointer = pointer;
+            _locked = locked;
+            _lockedCell = default;
+            _enemyMarkValid = valid;
+            _enemyMarkOnUnit = onUnit;
+        }
+
         public void Confirm()
         {
             Vector2 center;
@@ -258,7 +270,7 @@ namespace Wassup.UI
                 _hasLockRect = true;
                 _lockRect = lr;
                 if (_kind == AimKind.AttachAim) _lockValid = _attachable.Contains(_locked);
-                else if (_kind == AimKind.EnemyMark) _lockValid = !_bridge.IsEnemyMarked(_locked);
+                else if (_kind == AimKind.EnemyMark) _lockValid = _enemyMarkValid; // 슬롯이 결정
                 else _lockValid = true;
             }
             // L6 — 정체가 바뀌면 리티클을 새 대상 위에서 pop(화면 가로질러 날아오지 않게).
@@ -357,7 +369,7 @@ namespace Wassup.UI
                     _calloutCount.text = _countText;
                 }
                 else if (_kind == AimKind.EnemyMark)
-                    _calloutCount.text = _lockValid ? "표식 가능" : "이미 표식됨";
+                    _calloutCount.text = _enemyMarkOnUnit ? "유닛 불가" : (_lockValid ? "표식 가능" : "이미 표식됨");
                 else _calloutCount.text = "";
 
                 var tcol = _lockValid ? _cfg.calloutValidTextColor : _cfg.calloutFullTextColor;

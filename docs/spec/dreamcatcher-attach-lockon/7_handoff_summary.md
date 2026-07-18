@@ -4,6 +4,7 @@
 
 - **`b487ac42`** feat(dreamcatcher-attach-lockon): 부착 조준 포커스 락온 + 오프셋 콜아웃
 - 후속 docs 커밋: README 상태 라인 + 이 handoff.
+- **rev(커밋 후 사용자 Play 피드백 2건)**: ① 살찌운 제물(적 표식)을 **유닛 위**로 가리키면 "유닛 불가" 빨강 무효(기존엔 적만 픽해서 유닛 위=무반응) — `SetAimEnemyMark` 로 슬롯이 유효성 결정, 화살표/리티클/콜아웃 공유. ② 화살표(`DreamcatcherTargetArrow`)가 config 를 `Configure` 스냅샷 대신 **매 SetPath 라이브 읽기**(arrowHeadSize·색 Play 중 반영, 드래그 프레임당 1회·무할당).
 
 ## Implemented
 
