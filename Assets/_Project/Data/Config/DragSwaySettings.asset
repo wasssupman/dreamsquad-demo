@@ -28,7 +28,7 @@ MonoBehaviour:
   placementStickMargin: 0.81
   placementCommitInterval: 0
   stickyLiquidEnabled: 1
-  tapTravelDuration: 2.4
+  tapTravelDuration: 1.5
   tapTravelScaleMin: 0.25
   tapTravelScaleMax: 1.5
   armHighlightColor: {r: 0.35, g: 1, b: 0.9, a: 0.28}
