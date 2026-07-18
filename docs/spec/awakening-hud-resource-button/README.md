@@ -1,7 +1,7 @@
 # awakening-hud-resource-button
 
-> 상태: **완료 2026-07-18** — 초기 UI/레이아웃 `9acd4e37`, 캐주얼 버스트 개정
-> `20eec6af`, 사용자 마감 확인 완료. 인계: `4_handoff_summary.md`
+> 상태: **unit 5 구현 완료 · Unity 컴파일 clean · Play 확인 대기 (2026-07-18)**. 초기 UI/레이아웃 `9acd4e37`,
+> 캐주얼 버스트 개정 `20eec6af`, 사용자 마감 확인 완료. 인계: `4_handoff_summary.md`
 
 ## 목표
 
@@ -24,6 +24,7 @@
 | 2 | `2_action_corner_layout.md` | Placement Start 우하단 유지, Battle 좌 NextWave/우 각성 분리 |
 | 3 | `3_visual_verification.md` | 16:9/20:9 Play 캡처, 손패 토글, 콘솔·회귀 확인 |
 | 4 | `4_handoff_summary.md` | 최종 구현·검증·비목표 인계 |
+| 5 | `5_subtle_idle_affordance.md` | 숫자는 고정하고 젤리 면 호흡·간헐 광택으로 상호작용 affordance 추가 |
 
 ## Feature-wide 계약
 
@@ -45,7 +46,8 @@
 - BLOCKER: `덱 열기`를 제품 용어 `드림캐쳐`로 교체했다.
 - BLOCKER: 실제 15/30 소비 단위와 충돌하는 5칸 구슬 표현을 제거하고 연속형 링으로 교체했다.
 - HIGH: 244px hit target/220px 버튼, 76px 숫자, 0값 휴면 상태, 획득 `+N`, 손패 open 선택 톤을 적용한다.
-- HIGH: 상시 pulse는 사용하지 않고 획득·탭·open 전이에만 짧은 피드백을 사용한다.
+- HIGH (rev unit 5): 시선을 뺏는 상시 전체 pulse는 금지한다. 숫자는 고정하고 젤리 면에만
+  낮은 진폭의 호흡·간헐 광택을 허용하며, 획득·탭·MAX 반응은 기존처럼 더 강한 위계를 갖는다.
 
 ## 2026-07-18 캐주얼 버스트 개정
 
@@ -53,6 +55,14 @@
 - 방사형 링을 제거하고 버튼 중앙 면이 아래에서 위로 차오르는 액체 게이지로 변경한다.
 - 획득 시 숫자 punch와 젤리 squash, 100 도달 시 1회 burst와 느린 ready bounce를 사용한다.
 - 100 이전에도 기존처럼 손패를 열 수 있다. 이번 개정은 경제/사용 가능 조건을 변경하지 않는다.
+
+## 2026-07-18 상시 affordance 개정 (unit 5)
+
+- 중앙 숫자와 `/100`은 움직이지 않는다.
+- 뒤쪽 젤리 face만 3초대 주기로 약 1~2% 호흡하고 1도 미만으로 미세 기울어진다.
+- 낮은 알파의 젤리 광택이 간헐적으로 face 안을 통과한다.
+- open·press·획득 squash·MAX burst/bounce 중에는 상시 루프를 쉬어 반응 연출과 경쟁하지 않는다.
+- 0에서도 매우 약하게 살아 있어 “표시 전용 HUD”가 아니라 누를 수 있는 버튼임을 전달한다.
 
 ## 기존 계약 대체
 

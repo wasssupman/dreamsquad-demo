@@ -29,10 +29,23 @@ namespace Wassup.UI
         [SerializeField] private Color dormantFrameColor = new Color(0.68f, 0.65f, 0.76f, 0.78f);
         [SerializeField] private float valuePunchScale = 1.18f;
 
+        [Header("Idle Affordance")]
+        [SerializeField] private float ambientCycleSeconds = 3.2f;
+        [SerializeField] private float ambientScale = 1.018f;
+        [SerializeField] private float ambientTiltDegrees = 0.6f;
+        [SerializeField, Range(0f, 1f)] private float dormantAmbientMultiplier = 0.45f;
+        [SerializeField] private float sheenIntervalSeconds = 3.8f;
+        [SerializeField] private float sheenSweepSeconds = 0.68f;
+        [SerializeField] private Vector2 sheenSize = new Vector2(30f, 154f);
+        [SerializeField] private float sheenTravel = 86f;
+        [SerializeField] private float sheenTiltDegrees = -16f;
+        [SerializeField] private Color sheenColor = new Color(0.82f, 0.98f, 1f, 0.18f);
+
         public event System.Action Toggled;
 
         private GameObject _panel;
         private RectTransform _visualRoot;
+        private RectTransform _faceRoot;
         private TextMeshProUGUI _valueLabel;
         private TextMeshProUGUI _actionLabel;
         private TextMeshProUGUI _gainLabel;
@@ -40,8 +53,10 @@ namespace Wassup.UI
         private Image _frame;
         private Image _chargeLiquid;
         private Image _liquidSurface;
+        private Image _sheen;
         private bool _built;
         private bool _open;
+        private bool _pressed;
         private bool _maxReady;
         private int _lastShown = -1;
         private float _normalized;
@@ -52,6 +67,7 @@ namespace Wassup.UI
         private Coroutine _maxBurst;
         private Coroutine _maxIdle;
         private Coroutine _pressRelease;
+        private Coroutine _ambient;
 
         public void Pulse()
         {
@@ -64,12 +80,15 @@ namespace Wassup.UI
         public void SetOpen(bool open)
         {
             _open = open;
+            if (open) ResetAmbientVisuals();
             UpdateVisualState();
         }
 
         public void OnPointerDown(PointerEventData eventData)
         {
             if (_panel == null) return;
+            _pressed = true;
+            ResetAmbientVisuals();
             if (_pressRelease != null) StopCoroutine(_pressRelease);
             _panel.transform.localScale = Vector3.one * 0.95f;
         }
@@ -77,6 +96,7 @@ namespace Wassup.UI
         public void OnPointerUp(PointerEventData eventData)
         {
             if (_panel == null) return;
+            _pressed = false;
             if (_pressRelease != null) StopCoroutine(_pressRelease);
             _pressRelease = StartCoroutine(PressReleaseRoutine());
         }
@@ -92,7 +112,10 @@ namespace Wassup.UI
             if (handController != null)
                 handController.GaugeChanged += OnGaugeChanged;
             if (GameManager.Instance != null)
+            {
                 GameManager.Instance.PhaseChanged += OnPhaseChanged;
+                OnPhaseChanged(GameManager.Instance.CurrentPhase);
+            }
         }
 
         private void OnDisable()
@@ -101,8 +124,10 @@ namespace Wassup.UI
                 handController.GaugeChanged -= OnGaugeChanged;
             if (GameManager.Instance != null)
                 GameManager.Instance.PhaseChanged -= OnPhaseChanged;
+            _pressed = false;
             if (_panel != null) _panel.transform.localScale = Vector3.one;
             StopMaxIdle();
+            StopAmbient();
         }
 
         private void OnPhaseChanged(GamePhase phase)
@@ -114,10 +139,12 @@ namespace Wassup.UI
                 Refresh(handController != null ? handController.Gauge : 0, punch: false);
                 if (_maxReady && _maxBurst == null && _maxIdle == null)
                     _maxIdle = StartCoroutine(MaxIdleRoutine());
+                StartAmbient();
             }
             else
             {
                 StopMaxIdle();
+                StopAmbient();
                 _panel.SetActive(false);
             }
         }
@@ -313,6 +340,106 @@ namespace Wassup.UI
             if (_visualRoot != null) _visualRoot.localScale = Vector3.one;
         }
 
+        private void StartAmbient()
+        {
+            if (_ambient == null && _panel != null && _panel.activeInHierarchy)
+                _ambient = StartCoroutine(AmbientRoutine());
+        }
+
+        private void StopAmbient()
+        {
+            if (_ambient != null)
+            {
+                StopCoroutine(_ambient);
+                _ambient = null;
+            }
+            ResetAmbientVisuals();
+        }
+
+        private bool AmbientBlocked()
+        {
+            return _open || _pressed || _maxReady || _gainBounce != null || _pulse != null ||
+                   _maxBurst != null || _maxIdle != null || _pressRelease != null;
+        }
+
+        private IEnumerator AmbientRoutine()
+        {
+            float breatheTime = 0f;
+            float sheenWait = 0f;
+            float sheenTime = -1f;
+            while (_panel != null && _panel.activeInHierarchy)
+            {
+                if (AmbientBlocked())
+                {
+                    breatheTime = 0f;
+                    sheenWait = 0f;
+                    sheenTime = -1f;
+                    ResetAmbientVisuals();
+                    yield return null;
+                    continue;
+                }
+
+                float dt = Time.unscaledDeltaTime;
+                float dormantMul = _normalized <= 0.001f ? dormantAmbientMultiplier : 1f;
+                breatheTime += dt;
+                float cycle = Mathf.Max(0.1f, ambientCycleSeconds);
+                float phase = Mathf.Repeat(breatheTime / cycle, 1f);
+                float breath = 0.5f - 0.5f * Mathf.Cos(phase * Mathf.PI * 2f);
+                float scale = Mathf.Lerp(1f, Mathf.Max(1f, ambientScale), breath * dormantMul);
+                if (_faceRoot != null)
+                {
+                    _faceRoot.localScale = Vector3.one * scale;
+                    _faceRoot.localRotation = Quaternion.Euler(0f, 0f,
+                        Mathf.Sin(phase * Mathf.PI * 2f) * ambientTiltDegrees * dormantMul);
+                }
+
+                if (sheenTime < 0f)
+                {
+                    sheenWait += dt;
+                    if (sheenWait >= Mathf.Max(0.1f, sheenIntervalSeconds))
+                    {
+                        sheenWait = 0f;
+                        sheenTime = 0f;
+                    }
+                }
+                else
+                {
+                    sheenTime += dt;
+                    float duration = Mathf.Max(0.05f, sheenSweepSeconds);
+                    float k = Mathf.Clamp01(sheenTime / duration);
+                    if (_sheen != null)
+                    {
+                        _sheen.rectTransform.anchoredPosition = new Vector2(Mathf.Lerp(-sheenTravel, sheenTravel, k), 0f);
+                        Color c = sheenColor;
+                        c.a *= Mathf.Sin(k * Mathf.PI) * dormantMul;
+                        _sheen.color = c;
+                    }
+                    if (k >= 1f)
+                    {
+                        sheenTime = -1f;
+                        if (_sheen != null) _sheen.color = Color.clear;
+                    }
+                }
+                yield return null;
+            }
+            ResetAmbientVisuals();
+            _ambient = null;
+        }
+
+        private void ResetAmbientVisuals()
+        {
+            if (_faceRoot != null)
+            {
+                _faceRoot.localScale = Vector3.one;
+                _faceRoot.localRotation = Quaternion.identity;
+            }
+            if (_sheen != null)
+            {
+                _sheen.rectTransform.anchoredPosition = new Vector2(-sheenTravel, 0f);
+                _sheen.color = Color.clear;
+            }
+        }
+
         private IEnumerator PulseRoutine()
         {
             var rt = (RectTransform)_panel.transform;
@@ -383,14 +510,20 @@ namespace Wassup.UI
             _visualRoot.anchorMin = _visualRoot.anchorMax = new Vector2(0.5f, 0.5f);
             _visualRoot.sizeDelta = new Vector2(220f, 220f);
 
-            var haloGO = CreateImage("ChargeGlow", _visualRoot, Vector2.zero, new Vector2(196f, 196f));
+            var faceGO = new GameObject("AmbientFace", typeof(RectTransform));
+            faceGO.transform.SetParent(_visualRoot, false);
+            _faceRoot = (RectTransform)faceGO.transform;
+            _faceRoot.anchorMin = _faceRoot.anchorMax = new Vector2(0.5f, 0.5f);
+            _faceRoot.sizeDelta = new Vector2(220f, 220f);
+
+            var haloGO = CreateImage("ChargeGlow", _faceRoot, Vector2.zero, new Vector2(196f, 196f));
             _halo = haloGO.GetComponent<Image>();
             _halo.sprite = UiRoundedSprite.MakeCircle(96, Color.white);
             _halo.color = Color.clear;
 
             // The center face is the gauge: a clipped liquid disc rises from 0 to 100.
             var wellGO = new GameObject("ChargeWell", typeof(RectTransform), typeof(Image), typeof(Mask));
-            wellGO.transform.SetParent(_visualRoot, false);
+            wellGO.transform.SetParent(_faceRoot, false);
             var wellRect = (RectTransform)wellGO.transform;
             wellRect.anchorMin = wellRect.anchorMax = new Vector2(0.5f, 0.5f);
             wellRect.anchoredPosition = Vector2.zero;
@@ -416,8 +549,14 @@ namespace Wassup.UI
             _liquidSurface.color = new Color(0.7f, 0.96f, 1f, 0.82f);
             surfaceGO.SetActive(false);
 
+            var sheenGO = CreateImage("JellySheen", wellGO.transform, new Vector2(-sheenTravel, 0f), sheenSize);
+            _sheen = sheenGO.GetComponent<Image>();
+            _sheen.sprite = UiRoundedSprite.MakeCircle(64, Color.white);
+            _sheen.color = Color.clear;
+            _sheen.rectTransform.localRotation = Quaternion.Euler(0f, 0f, sheenTiltDegrees);
+
             // Generated frame is intentionally symbol-free: only chunky jelly color blocks.
-            var frameGO = CreateImage("BurstFrame", _visualRoot, Vector2.zero, new Vector2(220f, 220f));
+            var frameGO = CreateImage("BurstFrame", _faceRoot, Vector2.zero, new Vector2(220f, 220f));
             _frame = frameGO.GetComponent<Image>();
             _frame.sprite = burstFrameSprite != null
                 ? burstFrameSprite
