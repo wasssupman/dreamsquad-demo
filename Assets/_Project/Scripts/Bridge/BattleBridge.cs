@@ -1125,7 +1125,7 @@ namespace Wassup.Bridge
                 Debug.Log($"[BattleBridge] Battle started with AUTHORED plan '{_authoredPlan.displayName}' waves={_wavePlan.waves.Count} endless={(_timerDuration <= 0f)}.");
             else
                 Debug.Log(_usingGeneratedWaves
-                    ? $"[BattleBridge] Battle started with generated deck '{deck.deckId}' seed={_wavePlan.seed} waves={_wavePlan.waves.Count}."
+                    ? $"[BattleBridge] Battle started with generated deck '{deck.deckId}' seed={_wavePlan.seed} (source={(deck.waveSeed != 0 ? "deck-fixed" : "derived")}) waves={_wavePlan.waves.Count}."
                     : $"[BattleBridge] Battle started with legacy deck '{deck.deckId}' ({deck.spawns.Count} spawns queued).");
         }
 
@@ -1481,8 +1481,11 @@ namespace Wassup.Bridge
 
             try
             {
-                // match-seed-unification — 웨이브 시드도 matchSeed 에서 파생(맵과 decorrelated).
-                int waveSeed = Wassup.Core.MatchSeed.DeriveWaveSeed(_matchSeed != 0 ? _matchSeed : 1);
+                // wave-pattern unit 6 — 덱 waveSeed 비0 = 고정(테스트 버전, 브리핑 스트립과 동일 플랜).
+                // 0 = matchSeed 파생(매판 랜덤, match-seed-unification — 맵과 decorrelated).
+                int waveSeed = deck.waveSeed != 0
+                    ? deck.waveSeed
+                    : Wassup.Core.MatchSeed.DeriveWaveSeed(_matchSeed != 0 ? _matchSeed : 1);
                 _wavePlan = WavePatternGenerator.Generate(deck, waveSeed);
                 GameManager.Instance?.Logger?.SetWavePattern(_wavePlan);
                 return _wavePlan.waves != null && _wavePlan.waves.Count > 0;

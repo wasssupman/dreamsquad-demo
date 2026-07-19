@@ -15,6 +15,7 @@
 | Phase 3 | `3_briefing_wave_ui.md` | 공격 패턴 확인 UI 를 wave summary 스크롤로 전환 |
 | Phase 4 | `4_logging_tests_validation.md` | 로그, 테스트, Play 검증 기준 |
 | Phase 5 | `5_handoff_summary.md` | 구현 결과와 다음 작업 인계 요약 |
+| 추가 6 (2026-07-20) | `6_fixed_wave_seed.md` | 테스트 버전용 고정 웨이브 시드 — `deck.waveSeed` 라이브 오버라이드 재활성 (승인 대기) |
 
 ## 공통 원칙
 

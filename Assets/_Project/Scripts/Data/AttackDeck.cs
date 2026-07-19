@@ -10,9 +10,11 @@ namespace Wassup.Data
         public string deckId = "WaveA";
         [Header("Generated Waves")]
         public bool useGeneratedWaves = true;
-        // match-seed-unification(2026-06-10) DEPRECATED(라이브): 라이브 웨이브 시드는
-        // GameManager.matchSeed 에서 파생(MatchSeed.DeriveWaveSeed). waveSeed/ResolveWaveSeed 는
-        // 레거시 Generate(deck) 오버로드(테스트 등)에서만 쓰임. 재현 고정은 GameManager.debugFixedMatchSeed.
+        // wave-pattern unit 6(2026-07-20): 비0 = 라이브 고정 오버라이드 — 매판 동일 공격 패턴
+        // (테스트 버전). 브리핑 스트립(Generate(deck))과 런타임이 같은 플랜을 공유하게 된다.
+        // 0 = GameManager.matchSeed 파생(MatchSeed.DeriveWaveSeed, 매판 랜덤).
+        // ResolveWaveSeed 의 0→1 폴백은 레거시 Generate(deck) 오버로드(프리뷰/테스트) 전용 —
+        // 라이브 분기는 0 판별이 필요하므로 waveSeed 필드를 직접 본다(BattleBridge).
         public int waveSeed = 0;
         public int waveGeneratorVersion = 1;
         public AttackUnitData[] attackUnitPool;
