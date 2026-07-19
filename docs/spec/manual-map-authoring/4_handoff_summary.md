@@ -9,7 +9,7 @@
 ## Implemented
 
 - 맵 소스 우선순위 확립: mapDocument > fixedMapSeed > matchSeed 랜덤 (README 계약 참조)
-- `MapDocument_ArkFunnel` 15×10 스위치백 실전 배선 (위 ㄹ자 레인 + 아래 독립 레인, 골 (2,5))
+- `MapDocument_ArkFunnel` 15×10 실전 배선 — 현행 레이아웃은 unit 5 (3스폰 · 골 (0,0) 모서리 · 스폰별 25/33/20칸)
 - 패널 초기화 = bridge 값 hydrate 만 (push 는 사용자 조작 시에만)
 - 수동 document 런타임 연결성 가드 + 로그 mapSeed 실시드 기록
 - 튜닝: ringRadius 10 · tilemapCharacterScale 0.504 · focusFovDelta +4°

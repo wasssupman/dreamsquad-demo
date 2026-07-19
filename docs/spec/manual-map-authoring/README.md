@@ -17,6 +17,7 @@
 | 2 | Review-fix | `2_review_followup_fixes.md` | document 연결성 가드 · 로거 실시드 · 패널 무푸시 hydrate |
 | 3 | Tuning | `3_switchback_15x10_tuning.md` | 15×10 스위치백 리레이아웃 + 원경/유닛 스케일/드래그 줌아웃 |
 | 4 | Handoff | `4_handoff_summary.md` | 인계 요약 |
+| 5 | Tuning | `5_three_spawn_corner_goal.md` | 3스폰 + 모서리 골 + 스폰별 최소 이동거리(≥20칸) |
 
 ## Feature-wide 계약
 
