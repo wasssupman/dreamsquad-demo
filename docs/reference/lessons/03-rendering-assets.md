@@ -48,6 +48,7 @@ Tile `.asset` 의 Sprite 필드를 Inspector 에서 교체하면 디스크/`.spr
 - **원인**: Unity 6 `Tile` 은 `m_Sprite` 옆에 `m_SpriteEntityId` 캐시 필드를 갖고 `GetTileData()` 가 이 캐시를 쓴다. Inspector(SerializedProperty) 쓰기는 `m_Sprite` 만 갱신하고 캐시를 무효화하지 않는다. 같은 객체에서 `.sprite` = 새것 / `GetTileData()` = 옛것이 동시에 나오는 걸 실측(6000.4.3f1).
 - Enter Play Mode Options = **DisableDomainReload** 라 stale 관리 객체가 Play 사이클을 넘어 생존한다. 도메인 리로드가 있었다면 재역직렬화로 풀렸을 문제.
 - **처방**: 프로퍼티 세터로 재할당하면 캐시가 재구축된다 — execute_code 로 `tile.sprite = null; tile.sprite = newSprite;` 두 줄. 아니면 에디터 재시작.
+- `GameObject to Instantiate` 필드도 동일하다(`m_InstancedGameObjectEntityId`) — Inspector 로 끼우면 `GetTileData().gameObject` 가 null 로 남아 "동작 안 함"으로 보인다. 처방 동일: `tile.gameObject` 세터 재할당.
 - **진단 시그니처**: `tile.sprite.name` ≠ `tilemap.GetSprite(cell).name` 이면 이 캐시다. 소비 경로(코드) 의심 전에 이것부터 확인.
 - 부가 함정: 그 전에 교체가 아예 증발하는 경우도 있다 — Inspector 의 .asset 편집은 **Save Project 전까지 메모리에만** 있어서 에디터 재시작/크래시로 날아간다. 디스크 YAML(`m_Sprite` guid)로 저장 여부부터 확인.
 
