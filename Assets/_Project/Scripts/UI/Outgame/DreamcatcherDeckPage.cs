@@ -24,6 +24,9 @@ namespace Wassup.UI
         [SerializeField] private float cardHeight = 0.50f;
         [SerializeField] private float cardBottomMargin = 0.03f;
         [SerializeField] private float artFeet = 0.52f;
+        // unit 7 — floating save button over the grid's bottom-right corner.
+        [SerializeField] private Vector2 saveButtonSize = new Vector2(280f, 96f);
+        [SerializeField] private float saveButtonMargin = 28f;
 
         private static readonly Color DetailBg = new Color(0.08f, 0.09f, 0.13f, 1f);
         private static readonly Color HeaderBg = new Color(0.10f, 0.11f, 0.15f, 1f);
@@ -72,6 +75,18 @@ namespace Wassup.UI
             var browserRt = Panel("BrowserPanel", self, new Vector2(detailWidth, 0f), new Vector2(1f, 1f - headerHeight), BrowserBg);
             var browser = browserRt.gameObject.AddComponent<DreamcatcherCardBrowser>();
             SetField(browser, "font", font);
+
+            // ---- Save button host (unit 7) — floats over the grid's bottom-right;
+            // created after the browser so it renders on top. The strip still owns
+            // the button/gating and builds it into this host.
+            var saveHostGo = new GameObject("SaveHost", typeof(RectTransform));
+            saveHostGo.transform.SetParent(self, false);
+            var saveHost = (RectTransform)saveHostGo.transform;
+            saveHost.anchorMin = new Vector2(1f, 0f); saveHost.anchorMax = new Vector2(1f, 0f);
+            saveHost.pivot = new Vector2(1f, 0f);
+            saveHost.sizeDelta = saveButtonSize;
+            saveHost.anchoredPosition = new Vector2(-saveButtonMargin, saveButtonMargin);
+            SetField(deckStrip, "saveHost", saveHost);
 
             // ---- Controller (inactive → inject → activate) ----
             var ctrlGo = new GameObject("Controller");

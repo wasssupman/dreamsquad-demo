@@ -165,7 +165,9 @@ namespace Wassup.UI
             _grid.anchoredPosition = Vector2.zero; _grid.sizeDelta = new Vector2(0, cellSize.y);
             var gridLayout = gridGo.GetComponent<GridLayoutGroup>();
             gridLayout.cellSize = cellSize; gridLayout.spacing = spacing;
-            gridLayout.padding = new RectOffset(12, 12, 12, 12);
+            // unit 7 — bottom padding clears the floating save button so the last
+            // row can scroll above it.
+            gridLayout.padding = new RectOffset(12, 12, 12, 120);
             gridLayout.childAlignment = TextAnchor.UpperLeft;
             var fitter = gridGo.GetComponent<ContentSizeFitter>();
             fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;

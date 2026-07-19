@@ -16,6 +16,9 @@ namespace Wassup.UI
         [SerializeField] private DreamcatcherCardCatalog catalog;
         [SerializeField] private TMP_FontAsset font;
         [SerializeField] private Vector2 slotSize = new Vector2(70, 100);
+        // unit 7 — injected by the page builder; the save button fills this host
+        // (grid bottom-right) instead of squeezing into the strip's layout row.
+        [SerializeField] private RectTransform saveHost;
 
         public event Action<int> SlotTapped;
         public event Action SaveClicked;
@@ -112,22 +115,25 @@ namespace Wassup.UI
             var sle = statusGo.AddComponent<LayoutElement>();
             sle.flexibleWidth = 1f; sle.minWidth = 200; sle.minHeight = slotSize.y;
 
-            // Save button
+            // Save button — unit 7: fills the injected host (floating over the grid's
+            // bottom-right). Gating/ownership stay here; only the placement moved.
             var saveGo = new GameObject("Save", typeof(RectTransform), typeof(Image), typeof(Button));
-            saveGo.transform.SetParent(transform, false);
+            saveGo.transform.SetParent(saveHost != null ? (Transform)saveHost : transform, false);
+            var saveRt = (RectTransform)saveGo.transform;
+            saveRt.anchorMin = Vector2.zero; saveRt.anchorMax = Vector2.one;
+            saveRt.offsetMin = Vector2.zero; saveRt.offsetMax = Vector2.zero;
             _saveBg = saveGo.GetComponent<Image>();
             _saveBg.color = SaveOff;
             _saveButton = saveGo.GetComponent<Button>();
             _saveButton.transition = Selectable.Transition.None;
             _saveButton.onClick.AddListener(() => SaveClicked?.Invoke());
-            var svle = saveGo.AddComponent<LayoutElement>();
-            svle.minWidth = 168; svle.preferredWidth = 168; svle.minHeight = 66; svle.preferredHeight = 66;
-            var saveLabel = MakeText(saveGo.transform, "저장", 32, TextAlignmentOptions.Center);
+            var saveLabel = MakeText(saveGo.transform, "저장", 44, TextAlignmentOptions.Center);
             saveLabel.raycastTarget = false;
             var srt = saveLabel.rectTransform;
             srt.anchorMin = Vector2.zero; srt.anchorMax = Vector2.one; srt.offsetMin = Vector2.zero; srt.offsetMax = Vector2.zero;
 
             UiLayer.Apply(gameObject);
+            UiLayer.Apply(saveGo);
         }
 
         private SlotW MakeSlot(Action onTap)
