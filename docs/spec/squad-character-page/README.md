@@ -1,6 +1,6 @@
 # squad-character-page — 스쿼드 페이지를 캐릭터 열람+편성 화면으로 재설계
 
-> 상태: **완료 2026-07-18** (units 0~7 구현·테스트·커밋·Play e2e·시트 왕복 검증. handoff `8_handoff_summary.md`. 사용자 hands-on 체감만 잔여)
+> 상태: **완료 2026-07-18 · rev 2026-07-19 units 9~10 완료** (units 0~10 구현·커밋·Play 확인. handoff `8_handoff_summary.md`. unit 9 = 슬롯 탭 제거→선택, unit 10 = 편성-먼저 정렬 + 헤더 선택 표시 — ebfa923a)
 > 선행: `squad-loadout`(B, 완료 — SquadSave/편성 반입) · `dreamstone-loadout`(스톤 4 전역 슬롯) · `defender-portraits`(포트레이트) · `unit-stat-projection`(AttackOutputStats) · `spine-runtime-4-2-upgrade`(SkeletonGraphic 4.2)
 > 성격: **아웃게임 UI/UX 재설계** (MonoBehaviour 프레젠테이션 전용). ECS/BattleBridge 무관 — 플레이 오브젝트 spec 아님 → 파이프라인 커버리지 섹션 N/A.
 
@@ -44,16 +44,18 @@ OutgameScene 스쿼드 화면에서, **선택 유닛의 라이브 Spine + 스탯
 | 6 | 데이터 | `6_unit_desc_field.md` | `desc` SO 필드(시트-동기 plain) + `UnitKitSummary.Describe` 폴백 + 현재 요약문 시드 |
 | 7 | 시트 | `7_desc_sheet_sync.md` | `DefenderStatDto.desc` + import/export 왕복(체력 등과 동형 리플렉션) + 테스트 |
 | 8 | 인계 | `8_handoff_summary.md` | handoff |
+| 9 | UX | `9_slot_tap_selects.md` | 헤더 찬 유닛 슬롯 탭 = 즉시 제거 → 선택(상세 보기)로 변경. 제거는 [편성 해제] 버튼으로 일원화 |
+| 10 | UX | `10_roster_sort_and_slot_selected.md` | 컬렉션 그리드 편성-먼저 정렬(라이브) + 헤더 슬롯 선택 outline (드림캐쳐 unit 6과 쌍) |
 
 순서: 0 → 1 → 2 → 3 → 4 → 5 → (6 → 7) → 8. 핵심 로직 유닛(0, 4) 종료 시 code-review, 나머지는 feature 종료 시 일괄. 6·7 은 "lore 문장 저작" 후속의 시트-동기 실현.
 
 ## Feature-wide 계약
 
 - **모달 폐기**: 유닛·스톤 편성 모두 이 split-view 단일 면에서 처리. 기존 전체화면 `StonePickerPanel`(유닛/스톤 겸용) 제거.
-- **상세 = 선택 대상**: 리스트 셀 탭이 상세를 결정한다. 편성 상태와 **독립**(순수 열람). 편성 변경은 오직 [출전]/[편성해제]/헤더 슬롯 탭.
+- **상세 = 선택 대상**: 리스트 셀 탭·헤더 찬 유닛 슬롯 탭이 상세를 결정한다. 편성 상태와 **독립**(순수 열람). 편성 변경은 오직 [출전]/[편성해제] 버튼 (unit 9 개정 — 헤더 슬롯 탭은 더 이상 편성을 바꾸지 않음).
 - **라이브 Spine**: `SkeletonGraphic`(UGUI)로 렌더, 전투와 동일 파츠/색(`SpineCombinedSkinCache` 재사용). `skeletonDataAsset` 없으면 `portrait` 폴백. idle 루프. 유닛 전환 시 리바인드.
 - **설명문 자동 생성**: 신규 SO 필드/콘텐츠 저작 **0**. 클래스 + on-place 효과 + 방향공격/어그로/해저드 플래그 + 데미지 타입을 템플릿으로 조립하는 순수 함수. EditMode 테스트 대상. 진짜 lore 문장은 후속.
-- **편성 규칙**: [출전]=첫 빈 슬롯 append, dedup(한 유닛 1슬롯, 기존 가드 유지), [편성해제]/헤더 찬 슬롯 탭=제거. 슬롯 순서 = 추가 순서(드래그 재정렬 후속). `SquadSave` 계약·반입 규칙 불변.
+- **편성 규칙**: [출전]=첫 빈 슬롯 append, dedup(한 유닛 1슬롯, 기존 가드 유지), 제거=[편성해제] 버튼만(헤더 찬 슬롯 탭=선택, unit 9 개정). 슬롯 순서 = 추가 순서(드래그 재정렬 후속). `SquadSave` 계약·반입 규칙 불변.
 - **스톤 전역**: 스톤 4는 스쿼드 전역 장비 — 유닛 리스트와 별개. 스톤 모드에서 `SquadSave.SetStoneSlot` 경유(dreamstone-loadout 계약 유지). 유닛별 장비 아님.
 - **스탯 SoT**: 데미지는 `AttackOutputStats`(outputs 파생), 나머지는 SO 필드. 하드코딩 수치 0. 등급색은 기존 상수 재사용.
 - **아키텍처**: 전부 MonoBehaviour 프레젠테이션(Outgame). ECS 맥락·BattleBridge 변경 없음. 아키텍처 중립 계산(요약문)만 static 순수 함수로 분리(제약 10).

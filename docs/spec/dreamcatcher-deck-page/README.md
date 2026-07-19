@@ -1,6 +1,6 @@
 # dreamcatcher-deck-page — 드림캐쳐 덱을 캐릭터 페이지 레이아웃으로
 
-> 상태: **완료 2026-07-18** (units 0~4 구현·커밋·Play e2e·기능 패리티. handoff `5_handoff_summary.md`. 사용자 hands-on 잔여)
+> 상태: **완료 2026-07-18 · rev 2026-07-19 unit 6 완료** (units 0~6 구현·커밋·Play 확인. handoff `5_handoff_summary.md`. unit 6 = 덱-먼저 정렬 + 슬롯 선택 표시 — b86545ea)
 > 선행: `squad-character-page`(레이아웃/패턴 원본, 완료) · `dreamcatcher-deck-builder`(DeckSave/DeckRules/카탈로그) · `dreamcatcher-card-art`(카드 art)
 > 성격: 아웃게임 UI/UX 재설계 (MonoBehaviour 프레젠테이션). ECS 무관 — 플레이 오브젝트 아님, 파이프라인 커버리지 N/A.
 
@@ -36,6 +36,7 @@ OutgameScene 드림캐쳐 패널에서, **선택 카드의 art + 설명이 좌�
 | 3 | 통합 | `3_orchestrator.md` | `DreamcatcherDeckPageController` — 추가(dedup·캡)/제거/무의식필터/저장(deck_1 생성·유효성 게이트), 브라우즈→상세 |
 | 4 | 배선 | `4_builder_wiring_e2e.md` | 런타임 빌더 + dreamcatcherPanel 배선(옛 뷰 비활성) + Play e2e |
 | 5 | 인계 | `5_handoff_summary.md` | handoff |
+| 6 | UX | `6_pool_sort_and_slot_selected.md` | 카드 그리드 덱-먼저 정렬(라이브) + 덱 슬롯 선택 outline (스쿼드 unit 10과 쌍) |
 
 순서: 0 → 1 → 2 → 3 → 4 → 5. 핵심 로직(3) 종료 시 code-review, 나머지는 feature 종료 시.
 
