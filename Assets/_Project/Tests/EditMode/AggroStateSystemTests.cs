@@ -58,6 +58,9 @@ namespace Wassup.Tests.EditMode
             _em.AddComponentData(e, new Health { value = 100f, max = 100f });
             _em.AddComponentData(e, new FactionTag { value = Faction.Enemy });
             _em.AddComponentData(e, LocalTransform.FromPosition(pos));
+            // aggro-tile-chase unit 1 — 전투수단 없는 적은 획득 거부되므로, 실데이터처럼
+            // 도발 프로파일을 기본 부여(모든 적 에셋이 aggroAttackDamage>0 로 베이크됨).
+            _em.AddComponentData(e, new AggroAttackProfile { damage = 5f, cooldown = 1f, range = 1f });
             return e;
         }
 
@@ -165,12 +168,85 @@ namespace Wassup.Tests.EditMode
             Assert.IsFalse(_em.HasComponent<Aggroed>(e), "orphan 어그로 해제");
         }
 
+        // ── aggro-tile-chase unit 1 — 획득 게이트 + chase field ──────────────
+
+        [Test]
+        public void NoAttackNoProfile_Refused()
+        {
+            var g = MakeGuardian(4, float3.zero);
+            var e = _em.CreateEntity(); // MakeEnemy 미사용 — 전투수단 없음
+            _em.AddComponentData(e, new Health { value = 100f, max = 100f });
+            _em.AddComponentData(e, new FactionTag { value = Faction.Enemy });
+            _em.AddComponentData(e, LocalTransform.FromPosition(new float3(1, 0, 0)));
+            Hit(g, e);
+            _simGroup.Update();
+            Assert.IsFalse(_em.HasComponent<Aggroed>(e), "전투수단 없는 적은 획득 거부");
+        }
+
+        // 4×3 flow field: y1 행만 walk (goal (0,1)). 나머지 벽(zero-flow).
+        private FlowFieldSingleton MakeFlowField()
+        {
+            int2 gridSize = new int2(4, 3);
+            var flow = new NativeArray<float2>(12, Allocator.Persistent);
+            var dist = new NativeArray<int>(12, Allocator.Persistent);
+            for (int i = 0; i < 12; i++) { flow[i] = float2.zero; dist[i] = int.MaxValue; }
+            for (int x = 0; x < 4; x++)
+            {
+                int idx = 1 * 4 + x;
+                dist[idx] = x;
+                flow[idx] = x == 0 ? float2.zero : new float2(-1f, 0f); // goal (0,1) 는 zero(특례)
+            }
+            var f = new FlowFieldSingleton
+            {
+                flow = flow, dist = dist, gridSize = gridSize,
+                goalCell = new int2(0, 1), tileSize = 1f, origin = float3.zero,
+            };
+            var s = _em.CreateEntity();
+            _em.AddComponentData(s, f);
+            return f;
+        }
+
+        [Test]
+        public void ChaseField_AttachedWhenReachable_RemovedOnRelease()
+        {
+            var f = MakeFlowField();
+            var g = MakeGuardian(2, new float3(2f, 0f, 0f));   // 셀 (2,0) — 통로 y1 인접 (range1 소스 존재)
+            var e = MakeEnemy(new float3(3f, 0f, 1f));          // 셀 (3,1) — 통로 위
+            Hit(g, e);
+            _simGroup.Update();
+            Assert.IsTrue(_em.HasComponent<Aggroed>(e), "도달 가능 — 획득");
+            Assert.IsTrue(_em.HasBuffer<AggroChaseCell>(e), "chase field 부착");
+            var buf = _em.GetBuffer<AggroChaseCell>(e);
+            Assert.AreEqual(12, buf.Length);
+            Assert.AreNotEqual(int.MaxValue, buf[1 * 4 + 3].dist, "적 셀 도달 가능");
+
+            _em.SetComponentData(g, new Health { value = 0f, max = 100f });
+            _simGroup.Update();
+            Assert.IsFalse(_em.HasComponent<Aggroed>(e), "가디언 사망 해제");
+            Assert.IsFalse(_em.HasBuffer<AggroChaseCell>(e), "해제 시 chase field 도 제거");
+            f.Dispose();
+        }
+
+        [Test]
+        public void ChaseField_UnreachableEnemy_Refused()
+        {
+            var f = MakeFlowField();
+            var g = MakeGuardian(2, new float3(2f, 0f, 0f));    // 통로 인접 — 목적지 후보는 있음
+            var e = MakeEnemy(new float3(3f, 0f, 2f));          // 셀 (3,2) — 벽 위(BFS 도달 불가)
+            Hit(g, e);
+            _simGroup.Update();
+            Assert.IsFalse(_em.HasComponent<Aggroed>(e), "도달 불가(벽/고립 셀) — 거부");
+            f.Dispose();
+        }
+
+        // (무후보 거부 srcCount==0 경로는 순수함수 테스트 PerpendicularPin_Range1_NoSources 가 커버 —
+        //  3행 합성 필드에선 range1 무후보 가디언 배치가 기하적으로 성립하지 않는다.)
+
         [Test]
         public void TauntAttack_GrantedOnAggro_StrippedOnRelease()
         {
             var g = MakeGuardian(2, float3.zero);
-            var runner = MakeEnemy(new float3(1, 0, 0)); // AttackState/outputs 없음
-            _em.AddComponentData(runner, new AggroAttackProfile { damage = 5f, cooldown = 1f, range = 1f });
+            var runner = MakeEnemy(new float3(1, 0, 0)); // AttackState/outputs 없음 (프로파일은 MakeEnemy 기본)
             Hit(g, runner);
 
             _simGroup.Update();
