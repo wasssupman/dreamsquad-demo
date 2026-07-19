@@ -172,6 +172,7 @@ code + git history        구현 상세
 - **slow-곡사포 / 임팩트 CC / arcHeight 거리비례 / 전용 Spine rig** [S/M] · artillery-defender 후속.
 - ~~**Meteor→TileAoe 수렴 + GA 낙하 비주얼**~~ → `docs/spec/projectile-trajectory-payload/` units 7~9 **완료(2026-07-06)** — 레거시 3파일+큐 삭제(채널 15→14), Rock02 낙하+Hit_Rock03 파편, 스킬 aim/텔레그래프 격자 통일은 `placement-attack-range-preview/3_skill_aim_range.md`.
 - **Bezier 궤적 / non-Damage payload / Homing+TileAoe** [S/M] · projectile-trajectory-payload 엔진 확장 후속.
+- **적별 피격 반경(per-target hit radius)** [S] · 투사체 충돌은 현재 `투사체.hitThreshold` vs 적 **중심점 하나** 판정(`SweepHitMath.SegmentHits` / `ProjectileMoveSystem` HomingToEntity 도달). 적 SO엔 자기 hurtbox 필드가 없어(있는 건 `attackRange`=자기 공격 사거리뿐), `spineVisualScale 3.2` 보스처럼 몸 큰 유닛은 큰 몸통을 눈으로 관통해도 무판정 → 머신거너 등 직선 탄이 시각적으로 안 걸림. **제안**: `AttackUnitData.hitRadius` 필드(기본 0=현행 점 판정) + 스폰 시 `HitRadius` 컴포넌트 bake(1줄) + 충돌 2곳에서 `유효반경 = hitThreshold + target.hitRadius` 합산 + EditMode 1. 보스만 크게(≈1.2), 일반 적은 0으로 바이트 무회귀. **임시 완화**: `Projectile_MachineGunBullet.hitThreshold` 0.4→0.7(전 적 대상 균일 확대라 3.2배 보스는 여전히 부분 관통 — feature 착수 시 0.4 복귀 검토). projectile-trajectory-payload 엔진 확장. (nightmare-catcher 보스 피격 체감 관련)
 
 #### 적 스폰/이동 비주얼 (enemy-spawn-positioning)
 

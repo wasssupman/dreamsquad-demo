@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.ProjectileData
   id: machinegun_bullet
   speed: 22
-  hitThreshold: 0.4
+  hitThreshold: 0.7
   visualScale: 0.9
   visualHeightOffset: 0.7
   projectilePrefab: {fileID: 5712219488875869251, guid: fe6bed1057f6045dca92246bef9a8d2b, type: 3}
