@@ -30,7 +30,7 @@ MonoBehaviour:
   placeableColor: {r: 0.5, g: 0.88, b: 1, a: 0.5}
   placeableFadeInDuration: 0.2
   terrainTile: {fileID: 0}
-  ringRadius: 6
+  ringRadius: 10
   surroundFarColor: {r: 0.06, g: 0.07, b: 0.06, a: 1}
   surroundNoiseScale: 0.25
   surroundNoiseAmount: 0.5

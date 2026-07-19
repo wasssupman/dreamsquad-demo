@@ -3824,7 +3824,7 @@ MonoBehaviour:
   tileSet: {fileID: 11400000, guid: d780c834df42b40c18b728204ba621fb, type: 2}
   tilemapCameraPresetRect: {fileID: 11400000, guid: 73ae958cfa7504f9c9fcdec440db387e, type: 2}
   tilemapCameraPresetIso: {fileID: 11400000, guid: 3d42947ee5b244f2dbf7438570a204a8, type: 2}
-  tilemapCharacterScale: 0.42
+  tilemapCharacterScale: 0.504
   tilemapBillboardTilt: 45
   propDistanceTiltFactor: 0.78
   propDistanceTiltMin: 28
