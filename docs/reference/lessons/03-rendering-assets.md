@@ -41,6 +41,16 @@ Tilemap(rect) 채움 타일이 큰 영역으로 반복될 때 셀 경계마다 �
 - **정답**: `FilterMode.Bilinear` + `TextureImporterCompression.Uncompressed` + mipmap off.
 - 1칸 폭 도로는 채움 반복이 없어 안 보여 오진하기 쉽다 — 큰 dirt/grass 에서만 드러남.
 
+## Tile 에셋 sprite 를 Inspector 로 바꿔도 tilemap 이 옛 sprite 를 찍는다 = Unity 6 EntityId 캐시
+
+Tile `.asset` 의 Sprite 필드를 Inspector 에서 교체하면 디스크/`.sprite` 프로퍼티는 새 sprite 인데, tilemap `SetTile` 스탬프는 계속 옛 sprite 가 나온다. `RefreshAllTiles()` 도, **Play 재시작도 무효** — "교체가 적용 안 된다"로 보인다.
+
+- **원인**: Unity 6 `Tile` 은 `m_Sprite` 옆에 `m_SpriteEntityId` 캐시 필드를 갖고 `GetTileData()` 가 이 캐시를 쓴다. Inspector(SerializedProperty) 쓰기는 `m_Sprite` 만 갱신하고 캐시를 무효화하지 않는다. 같은 객체에서 `.sprite` = 새것 / `GetTileData()` = 옛것이 동시에 나오는 걸 실측(6000.4.3f1).
+- Enter Play Mode Options = **DisableDomainReload** 라 stale 관리 객체가 Play 사이클을 넘어 생존한다. 도메인 리로드가 있었다면 재역직렬화로 풀렸을 문제.
+- **처방**: 프로퍼티 세터로 재할당하면 캐시가 재구축된다 — execute_code 로 `tile.sprite = null; tile.sprite = newSprite;` 두 줄. 아니면 에디터 재시작.
+- **진단 시그니처**: `tile.sprite.name` ≠ `tilemap.GetSprite(cell).name` 이면 이 캐시다. 소비 경로(코드) 의심 전에 이것부터 확인.
+- 부가 함정: 그 전에 교체가 아예 증발하는 경우도 있다 — Inspector 의 .asset 편집은 **Save Project 전까지 메모리에만** 있어서 에디터 재시작/크래시로 날아간다. 디스크 YAML(`m_Sprite` guid)로 저장 여부부터 확인.
+
 ## `Mathf.SmoothStep(from, to, t)` 는 HLSL `smoothstep` 이 아니다 — 절차적 스프라이트가 유령이 된다
 
 Unity `Mathf.SmoothStep(from, to, t)` 는 **결과를 `from..to` 로 보간**한다(t 를 0..1 로 clamp 후 smooth). HLSL `smoothstep(edge0, edge1, x)`(x 가 두 엣지 사이 어디냐로 0..1 반환)와 인자 의미가 정반대다.
