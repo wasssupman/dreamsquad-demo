@@ -258,10 +258,10 @@ namespace Wassup.Tests.EditMode
             });
 
             var e = CreateEnemy(new float3(0f, 0f, 0f), speed: 2f, AiState.Engaging, EngageMovement.Halt);
-            Tick(1f);
+            TickSplit(1f);
 
             Assert.AreEqual(2f, _em.GetComponentData<LocalTransform>(e).Position.x, 1e-4f,
-                "Engaging-Halt 라도 tornado pull 적용(pullSpeed 2 × 1s = 2)");
+                "Engaging-Halt 라도 tornado pull 적용(pullSpeed 2 × 1s = 2, unit 3 — 가산 변위+trim)");
         }
 
         // enemy-ai-fsm Unit 7 — Pulse 진동: Engaging 에서 타격 진행 중(hitDelayRemaining>0)이면

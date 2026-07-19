@@ -130,32 +130,30 @@ namespace Wassup.Battle.Movement
                     continue;
                 }
 
-                // 3. Tornado field: pull override (Phase 8 §17 유지).
-                bool pulled = false;
+                // 3. Tornado pull — aggro-tile-chase unit 3 (계약 7): 이동을 대체하지 않는
+                //    **후처리 가산 변위**. trim 을 거치므로 벽/장애물에서 막힌다(C4 해소).
+                float3 pullDisplacement = float3.zero;
                 for (int t = 0; t < tornadoFields.Length; t++)
                 {
                     var fieldT = tornadoFields[t];
-                    int2 entityCell = GridMath.WorldToCell(current, field.tileSize, field.gridSize, origin: field.origin);
                     int2 centerCell = GridMath.WorldToCell(fieldT.centerWorld, field.tileSize, field.gridSize, origin: field.origin);
-                    int tileDist = math.max(math.abs(entityCell.x - centerCell.x), math.abs(entityCell.y - centerCell.y));
+                    int tileDist = math.max(math.abs(cell.x - centerCell.x), math.abs(cell.y - centerCell.y));
                     if (tileDist > fieldT.tileRange) continue;
                     float3 toCenter = fieldT.centerWorld - current;
                     toCenter.y = 0f;
                     float centerDist = math.length(toCenter);
                     float pullStep = fieldT.pullSpeed * dt;
-                    transform.ValueRW.Position = (centerDist <= pullStep || centerDist < 1e-4f)
-                        ? new float3(fieldT.centerWorld.x, current.y, fieldT.centerWorld.z)
-                        : current + math.normalize(toCenter) * pullStep;
-                    pulled = true;
+                    pullDisplacement = (centerDist <= pullStep || centerDist < 1e-4f)
+                        ? toCenter                                   // 중심까지 남은 변위 전부
+                        : math.normalize(toCenter) * pullStep;
                     break;
                 }
-                if (pulled) continue;
+                bool hasPull = math.lengthsq(pullDisplacement) > 1e-8f;
 
                 // enemy-ai-fsm Unit 2/7 — Engaging 이동정책. Halt=정지, Advance=flow 전진,
                 // Pulse=타격 진행중(hitDelayRemaining>0) 정지·아니면 전진(진동). 정지여도 공격은 AttackSystem.
                 if (ai == AiState.Engaging)
                 {
-                    if (locked) continue; // 잠/스턴: advance 정지
                     var engage = behaviorLookup.HasComponent(entity)
                         ? behaviorLookup[entity].engageMovement
                         : Wassup.Data.EngageMovement.Halt;
@@ -167,7 +165,16 @@ namespace Wassup.Battle.Movement
                                     && attackStateLookup[entity].hitDelayRemaining > 0f);
                     else
                         advance = false; // Halt
-                    if (!advance) continue; // 정지
+                    if (locked || !advance)
+                    {
+                        // 정지(halt/잠금) 중에도 외력(pull)은 적용 — 기존 "Halt 도 당겨짐" 거동 보존.
+                        if (hasPull)
+                        {
+                            float3 desiredPull = MovementCellTrim.ClampDisplacement(current, current + pullDisplacement, field.tileSize);
+                            transform.ValueRW.Position = MovementCellTrim.Apply(desiredPull, cell, in field, hasObstacles, in obstacleSingleton);
+                        }
+                        continue;
+                    }
                 }
 
                 // 4. Flow field step — hunting 이면 defender field, 아니면 goal field.
@@ -181,7 +188,16 @@ namespace Wassup.Battle.Movement
                     // hunting 이면 recovery 도 defender field 의 dist 기준(같은 그리드).
                     // 계산은 FlowRecovery.RecoveryDir 순수함수 (ecs-review M3, EditMode 테스트).
                     float2 recovDir = FlowRecovery.RecoveryDir(cell, hunting ? huntField.dist : field.dist, field.gridSize);
-                    if (math.lengthsq(recovDir) < 1e-6f) continue; // truly isolated cell
+                    if (math.lengthsq(recovDir) < 1e-6f)
+                    {
+                        // truly isolated cell — 자기주도 이동은 없지만 외력(pull)은 적용 (unit 3).
+                        if (hasPull)
+                        {
+                            float3 desiredPull = MovementCellTrim.ClampDisplacement(current, current + pullDisplacement, field.tileSize);
+                            transform.ValueRW.Position = MovementCellTrim.Apply(desiredPull, cell, in field, hasObstacles, in obstacleSingleton);
+                        }
+                        continue;
+                    }
                     dir = recovDir;
                 }
 
@@ -214,6 +230,9 @@ namespace Wassup.Battle.Movement
                 if (!zeroFlowRecovery && !locked)
                     desired += LateralRecenter.Compute(current, cell, stepDir,
                         follow.ValueRO.speed * speedMul, dt, field.tileSize, field.origin);
+
+                // aggro-tile-chase unit 3 — tornado pull 가산 (flow/impulse/recenter 와 합성).
+                desired += pullDisplacement;
 
                 // aggro-tile-chase unit 2 — 프레임 변위 상한(터널링 차단), trim 전제 보존.
                 desired = MovementCellTrim.ClampDisplacement(current, desired, field.tileSize);
