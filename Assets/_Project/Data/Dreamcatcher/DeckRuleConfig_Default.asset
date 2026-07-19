@@ -13,6 +13,6 @@ MonoBehaviour:
   m_Name: DeckRuleConfig_Default
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DeckRuleConfig
   id: deck_rule_default
-  deckSize: 8
+  deckSize: 10
   maxSquad: -1
   maxUnit: -1
