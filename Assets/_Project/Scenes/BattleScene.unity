@@ -1671,6 +1671,7 @@ MonoBehaviour:
   nameFont: {fileID: 11400000, guid: 218cce73e3172a04a8c536a4d368d90f, type: 2}
   trayConfig: {fileID: 11400000, guid: 903c6fe71bf7844489939928774546b6, type: 2}
   costDisplay: {fileID: 1075095674}
+  gimmickGuide: {fileID: 1916999830}
   placementSize: {x: 912, y: 120}
   battleSize: {x: 912, y: 88}
 --- !u!4 &915292525

@@ -14,6 +14,11 @@ namespace Wassup.UI
 {
     public class DefenderDragPlacementController : MonoBehaviour
     {
+        public event System.Action<DefenderUnitData> Armed;
+        // gimmick-match-integration unit 5 — 배치 드래그 세션이 실제로 시작될 때(가드 통과 후) 발화.
+        // 기믹 안내 카드가 "첫 배치 상호작용" 접힘 트리거로 구독한다. arm 경로는 Armed 가 담당.
+        public event System.Action DragBegan;
+
         [SerializeField] private BattleBridge bridge;
         [SerializeField] private Camera mainCamera;
         [SerializeField] private PlacementInput placementInput;
@@ -130,6 +135,7 @@ namespace Wassup.UI
             // 그 드래그 제스처가 조준 스와이프로도 해석되고(두 곳에서 소비), 앞 유닛이
             // 기본 방향으로 강제 활성화된다. 방향을 정해야 다음 배치로 넘어간다(계약 9).
             if (_aimController != null && _aimController.IsActive) return;
+            DragBegan?.Invoke(); // unit 5 — 가드 통과 = 세션 확정. 이 아래론 early-return 없음.
             Disarm(); // defender-tap-to-place — 드래그가 arm 을 대체
             CleanupSession();
             // defender-deploy-cutscene unit 8 review — 직전 실패/취소 컷씬이 자동 퇴장 중이어도
@@ -469,6 +475,7 @@ namespace Wassup.UI
             Disarm();
             _armedSlot = slot; _armedUnit = unit; _armedFromScreen = fromScreen;
             slot?.SetArmed(true);
+            Armed?.Invoke(unit);
         }
 
         public void Disarm()
