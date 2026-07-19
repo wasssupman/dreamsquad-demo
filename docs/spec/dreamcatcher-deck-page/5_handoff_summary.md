@@ -40,3 +40,13 @@
 - 관찰: 기존 저장 덱 10장 vs 현재 deckSize 8 → 초과 무효 표시(데이터 상황). 사용자 정리 필요.
 - 덱 스트립 상단 status/Save 여백 튜닝, 상세 art 크기 미세조정 여지.
 - (후속 후보) 카드 보유/언락·정렬/필터·여러 덱 전환.
+
+---
+
+## Rev 2026-07-19 — units 6~7 (UX)
+
+- **Commit**: `b86545ea`(unit 6) · `41c8a6ff`(unit 7) · docs `3f30af33`
+- 카드 그리드 **덱-먼저 정렬**(덱 순서 = 스트립과 일치, Subconscious 비노출 유지, legacy 중복 id는 seen-set 으로 1셀) — `SortedPool()`, 추가/제거 시 라이브 재-Show.
+- 덱 슬롯 **선택 outline** 신설 — `DreamcatcherDeckStrip.SetSelected(id)`, in-memory 편집 기준(Save 여부 무관).
+- **저장 버튼 이동**: 스트립 내부(168×66) → 그리드 우하단 플로팅 확정 버튼. 빌더가 `SaveHost` 주입(`DreamcatcherDeckPage.saveButtonSize`/`saveButtonMargin` 으로 튜닝), 버튼 소유·Validate 게이트·상태 라벨은 스트립 잔류. 그리드 하단 패딩 12→120.
+- Verified: 컴파일 클린. unit 6 사용자 Play 확인(2026-07-19). unit 7 은 사용자 마무리 지시로 종결 — Play 세부 확인(게이트 색/저장/스크롤)은 hands-on 잔여.

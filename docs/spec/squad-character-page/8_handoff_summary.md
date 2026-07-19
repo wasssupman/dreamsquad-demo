@@ -50,3 +50,13 @@
 - 캐스터 4종 desc는 이름 테마로 속성 분리 필요 시 저작 킷 프롬프트로 개선(자동 요약문은 "해저드 설치"로 동일).
 - 시트 POST 엔드포인트 생기면 `defenders_full.json` 직접 전송(스키마 후속 후보).
 - (무관) `Defender_Guardian.asset` sprite 참조 dirty — 이 feature와 별개.
+
+---
+
+## Rev 2026-07-19 — units 9~10 (UX)
+
+- **Commit**: `ebfa923a` ux(squad-page) · docs `3f30af33`
+- 헤더 찬 유닛 슬롯 탭 = 즉시 제거+저장 → **선택(상세 표시)** 로 변경. 제거는 [편성 해제] 버튼만 (`SquadCharacterPageController.OnUnitSlotTapped`).
+- 컬렉션 그리드 **편성-먼저 정렬**(슬롯 순서 = 헤더와 일치, 미편성 = 카탈로그 순) — `SortedUnits()`, 출전/해제 시 라이브 재-Show(스크롤 톱 리셋은 의도).
+- 헤더 슬롯 **선택 outline** — `SquadHeaderStrip.SetSelectedUnit(id)`, 기존 ActiveOutline 재사용, 유닛 모드 전용(스톤 모드는 null 전달로 소등).
+- Verified: 컴파일 클린 + 사용자 Play 확인(2026-07-19).
