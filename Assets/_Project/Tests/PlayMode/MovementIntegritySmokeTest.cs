@@ -61,6 +61,23 @@ namespace Wassup.Tests.PlayMode
             em.AddComponentData(guardian, new Health { value = 100000f, max = 100000f });
             em.AddComponentData(guardian, new FactionTag { value = Faction.Defender });
             em.AddBuffer<IncomingDamage>(guardian);
+            // aggro-tile-chase unit 4 — 히트 구동(b84b6887) 이후 어그로는 "가디언이 때려야"
+            // 발생한다. 무장 없는 더미는 AggroHitEvent 를 못 내 sawAggro 가 구조적으로 false
+            // 였다(스모크 부채). 광역 공격을 부여해 히트→어그로→추격 체인을 실제로 돌린다.
+            em.AddComponentData(guardian, new Wassup.Battle.Combat.AttackState
+            {
+                range = 8f, cooldownDuration = 0.5f, cooldownRemaining = 0f,
+                attackTargetCount = 4, targetMask = (int)Faction.Enemy,
+            });
+            var gOut = em.AddBuffer<Wassup.Battle.Combat.AttackOutputElement>(guardian);
+            gOut.Add(new Wassup.Battle.Combat.AttackOutputElement
+            {
+                value = new Wassup.Data.AttackOutput
+                {
+                    kind = Wassup.Data.AttackOutputKind.Damage,
+                    magnitude = 1f,
+                },
+            });
 
             // run window: every frame assert tile invariant; track aggro + guardian damage.
             float t = 0f; int worstOffWalk = 0; bool sawAggro = false;
