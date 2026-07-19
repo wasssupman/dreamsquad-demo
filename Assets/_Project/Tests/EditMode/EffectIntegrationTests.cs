@@ -44,11 +44,12 @@ namespace Wassup.Tests.EditMode
             em.AddComponentData(e, new PathFollowState { speed = 2f });
             em.AddComponentData(e, new ModifierStats { moveSpeedMul = 0.5f });
 
-            world.SetTime(new TimeData(world.Time.ElapsedTime + 1f, 1f));
+            // aggro-tile-chase unit 2 — 프레임 변위 상한(<0.9타일) 아래의 dt 로 검증(0.5s → step 0.5).
+            world.SetTime(new TimeData(world.Time.ElapsedTime + 0.5f, 0.5f));
             simGroup.Update();
 
             var pos = em.GetComponentData<LocalTransform>(e).Position;
-            Assert.AreEqual(1f, pos.x, 1e-4f, "MoveSpeedMul 0.5 should halve this frame's step.");
+            Assert.AreEqual(0.5f, pos.x, 1e-4f, "MoveSpeedMul 0.5 should halve this frame's step.");
             Assert.AreEqual(2f, em.GetComponentData<PathFollowState>(e).speed, 1e-5f,
                 "Base speed field stays unchanged — Movement still owns it.");
 

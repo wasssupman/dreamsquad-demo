@@ -140,5 +140,28 @@ namespace Wassup.Tests.EditMode
             Assert.IsFalse(MovementCellTrim.IsWallCell(new int2(2, 0), in field),
                 "goal cell must not be treated as wall by IsWallCell");
         }
+
+        // ── aggro-tile-chase unit 2 — ClampDisplacement (터널링 차단 상한) ──
+
+        [Test]
+        public void ClampDisplacement_SmallStep_Unchanged()
+        {
+            var current = new float3(1f, 0.5f, 1f);
+            var desired = new float3(1.3f, 0.5f, 1.2f);
+            var r = MovementCellTrim.ClampDisplacement(current, desired, tileSize: 1f);
+            Assert.AreEqual(desired, r, "0.9타일 미만 변위는 무변경");
+        }
+
+        [Test]
+        public void ClampDisplacement_LargeStep_CappedToUnderOneTile()
+        {
+            var current = new float3(0f, 0.5f, 0f);
+            var desired = new float3(3f, 0.5f, 4f); // XZ 변위 5.0
+            var r = MovementCellTrim.ClampDisplacement(current, desired, tileSize: 1f);
+            float dx = r.x - current.x, dz = r.z - current.z;
+            Assert.AreEqual(0.9f, math.sqrt(dx * dx + dz * dz), 1e-4f, "0.9타일로 상한");
+            Assert.AreEqual(0.6f * 0.9f, dx, 1e-4f, "방향 보존 (3/5 비율)");
+            Assert.AreEqual(0.5f, r.y, 1e-6f, "y 는 변형하지 않음");
+        }
     }
 }

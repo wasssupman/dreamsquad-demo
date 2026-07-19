@@ -11,7 +11,9 @@ namespace Wassup.Tests.EditMode
 {
     // Verifies the movement composition math in MovementSystem:
     //   final_pos = current + flowStep * speedMul + impulseDisplacement
-    // Uses speed=2, dt=1s, +x unit flow so expected deltas are easy to assert.
+    // Uses speed=2, +x unit flow so expected deltas are easy to assert.
+    // aggro-tile-chase unit 2 — 프레임 변위 상한(<0.9타일, 터널링 차단)이 생겨 dt=0.2s
+    // 단일 틱으로 검증한다(2셀 그리드라 서브틱 분할은 goal 셀 조기 도달로 부적합).
     public class MovementCompositionTests
     {
         private World _world;
@@ -68,9 +70,9 @@ namespace Wassup.Tests.EditMode
         public void No_CC_Moves_By_FlowStep()
         {
             var e = CreateUnit();
-            Tick();
+            Tick(0.2f);
             var pos = _em.GetComponentData<LocalTransform>(e).Position;
-            Assert.AreEqual(2f, pos.x, 1e-4f, "speed 2 × dt 1 × no modifier = 2");
+            Assert.AreEqual(0.4f, pos.x, 1e-4f, "speed 2 × dt 0.2 × no modifier = 0.4");
             Assert.AreEqual(0f, pos.z, 1e-4f);
         }
 
@@ -80,10 +82,10 @@ namespace Wassup.Tests.EditMode
             var e = CreateUnit();
             _em.AddComponentData(e, new ModifierStats { moveSpeedMul = 0.5f });
 
-            Tick();
+            Tick(0.2f);
 
             var pos = _em.GetComponentData<LocalTransform>(e).Position;
-            Assert.AreEqual(1f, pos.x, 1e-4f, "speed 2 × 0.5 moveSpeedMul × dt 1 = 1");
+            Assert.AreEqual(0.2f, pos.x, 1e-4f, "speed 2 × 0.5 moveSpeedMul × dt 0.2 = 0.2");
             Assert.AreEqual(0f, pos.z, 1e-4f);
         }
 
@@ -94,11 +96,11 @@ namespace Wassup.Tests.EditMode
             var buf = _em.AddBuffer<CcEffect>(e);
             buf.Add(new CcEffect { kind = CcKind.Impulse, vector = new float3(0, 0, 3f), remainingTime = 5f });
 
-            Tick();
+            Tick(0.2f);
 
             var pos = _em.GetComponentData<LocalTransform>(e).Position;
-            Assert.AreEqual(2f, pos.x, 1e-4f, "flow step unaffected");
-            Assert.AreEqual(3f, pos.z, 1e-4f, "impulse 3 u/s × dt 1 = 3");
+            Assert.AreEqual(0.4f, pos.x, 1e-4f, "flow step unaffected");
+            Assert.AreEqual(0.6f, pos.z, 1e-4f, "impulse 3 u/s × dt 0.2 = 0.6");
         }
 
         [Test]
@@ -109,11 +111,11 @@ namespace Wassup.Tests.EditMode
             var buf = _em.AddBuffer<CcEffect>(e);
             buf.Add(new CcEffect { kind = CcKind.Impulse, vector = new float3(0, 0, 3f), remainingTime = 5f });
 
-            Tick();
+            Tick(0.2f);
 
             var pos = _em.GetComponentData<LocalTransform>(e).Position;
-            Assert.AreEqual(1f, pos.x, 1e-4f, "flow step halved by moveSpeedMul");
-            Assert.AreEqual(3f, pos.z, 1e-4f, "impulse adds z displacement");
+            Assert.AreEqual(0.2f, pos.x, 1e-4f, "flow step halved by moveSpeedMul");
+            Assert.AreEqual(0.6f, pos.z, 1e-4f, "impulse adds z displacement");
         }
     }
 }
