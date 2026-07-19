@@ -30,7 +30,7 @@ namespace Wassup.UI
             WireOnce();
             BuildPool();
             LoadWorking();
-            if (browser != null) browser.ShowCards(_pool);
+            if (browser != null) browser.ShowCards(SortedPool());
             _selectedCardId = _pool.Count > 0 ? _pool[0].id : null;
             RefreshAll();
         }
@@ -57,6 +57,26 @@ namespace Wassup.UI
             }
         }
 
+        // unit 6 — deck cards first (deck order, matching the strip; pool members
+        // only, so Subconscious stays out of the grid), the rest in catalog order.
+        // Re-shown on every deck edit so the invariant holds live. The seen set
+        // collapses duplicate ids from legacy saved decks to one cell.
+        private List<DreamcatcherCard> SortedPool()
+        {
+            var sorted = new List<DreamcatcherCard>(_pool.Count);
+            var seen = new HashSet<string>();
+            for (int i = 0; i < _working.Count; i++)
+            {
+                string id = _working[i];
+                if (string.IsNullOrEmpty(id) || !seen.Add(id)) continue;
+                for (int p = 0; p < _pool.Count; p++)
+                    if (_pool[p].id == id) { sorted.Add(_pool[p]); break; }
+            }
+            for (int i = 0; i < _pool.Count; i++)
+                if (!seen.Contains(_pool[i].id)) sorted.Add(_pool[i]);
+            return sorted;
+        }
+
         private void LoadWorking()
         {
             _working.Clear();
@@ -69,7 +89,7 @@ namespace Wassup.UI
 
         private void RefreshAll()
         {
-            if (deckStrip != null) deckStrip.Refresh(_working);
+            if (deckStrip != null) { deckStrip.Refresh(_working); deckStrip.SetSelected(_selectedCardId); }
             if (browser != null) { browser.SetBadged(BadgedSet()); browser.SetSelected(_selectedCardId); }
             ShowSelectedDetail();
         }
@@ -119,6 +139,7 @@ namespace Wassup.UI
             if (card == null) return;
             if (!CanAdd(card, out _)) return; // dedup(이미 있으면 CanAdd=false)
             _working.Add(id);
+            if (browser != null) browser.ShowCards(SortedPool()); // unit 6 — live re-sort
             RefreshAll(); // in-memory edit; persists only via Save button (parity)
         }
 
@@ -130,6 +151,7 @@ namespace Wassup.UI
             int idx = _working.LastIndexOf(id);
             if (idx < 0) return;
             _working.RemoveAt(idx);
+            if (browser != null) browser.ShowCards(SortedPool()); // unit 6 — live re-sort
             RefreshAll(); // in-memory edit; persists only via Save button (parity)
         }
 

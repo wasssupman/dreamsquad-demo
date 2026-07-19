@@ -23,10 +23,12 @@ namespace Wassup.UI
         private static readonly Color EmptySlot = new Color(0.16f, 0.18f, 0.24f, 1f);
         private static readonly Color SaveOn = new Color(0.20f, 0.55f, 0.28f, 1f);
         private static readonly Color SaveOff = new Color(0.28f, 0.30f, 0.36f, 1f);
+        private static readonly Color SelectedOutline = new Color(1f, 0.9f, 0.45f, 1f); // same yellow as SquadHeaderStrip
 
-        private class SlotW { public Image bg; public Image art; public TMP_Text plus; }
+        private class SlotW { public string id; public Image bg; public Image art; public TMP_Text plus; public GameObject outline; }
 
         private bool _built;
+        private string _selectedCardId;
         private readonly List<SlotW> _slots = new List<SlotW>();
         private TMP_Text _statusText;
         private Image _saveBg;
@@ -41,6 +43,7 @@ namespace Wassup.UI
                 string id = (cardIds != null && i < cardIds.Count) ? cardIds[i] : "";
                 var card = (!string.IsNullOrEmpty(id) && catalog != null) ? catalog.ById(id) : null;
                 bool filled = card != null;
+                _slots[i].id = id;
                 _slots[i].bg.color = filled ? CardCategoryStyle.Frame(card) : EmptySlot;
                 if (filled && card.art != null) { _slots[i].art.sprite = card.art; _slots[i].art.color = Color.white; _slots[i].art.enabled = true; }
                 else if (filled) { _slots[i].art.sprite = null; _slots[i].art.color = CardCategoryStyle.ArtFallback(card); _slots[i].art.enabled = true; }
@@ -60,6 +63,23 @@ namespace Wassup.UI
             }
             if (_saveButton != null) _saveButton.interactable = valid;
             if (_saveBg != null) _saveBg.color = valid ? SaveOn : SaveOff;
+            ApplySelection();
+        }
+
+        // unit 6 — outlines the deck slot holding the card shown in the detail
+        // panel. null/undecked id clears (driven by the orchestrator).
+        public void SetSelected(string cardId)
+        {
+            _selectedCardId = cardId;
+            if (_built) ApplySelection();
+        }
+
+        private void ApplySelection()
+        {
+            for (int i = 0; i < _slots.Count; i++)
+                if (_slots[i].outline != null)
+                    _slots[i].outline.SetActive(
+                        !string.IsNullOrEmpty(_selectedCardId) && _slots[i].id == _selectedCardId);
         }
 
         private void EnsureBuilt()
@@ -119,6 +139,15 @@ namespace Wassup.UI
             bg.color = EmptySlot;
             root.GetComponent<Button>().onClick.AddListener(() => onTap());
 
+            var outlineGo = new GameObject("Outline", typeof(RectTransform), typeof(Image));
+            outlineGo.transform.SetParent(root.transform, false);
+            var ort = (RectTransform)outlineGo.transform;
+            ort.anchorMin = Vector2.zero; ort.anchorMax = Vector2.one;
+            ort.offsetMin = new Vector2(-4, -4); ort.offsetMax = new Vector2(4, 4);
+            var oimg = outlineGo.GetComponent<Image>();
+            oimg.color = SelectedOutline; oimg.raycastTarget = false;
+            outlineGo.SetActive(false);
+
             var artGo = new GameObject("Art", typeof(RectTransform), typeof(Image));
             artGo.transform.SetParent(root.transform, false);
             var art_rt = (RectTransform)artGo.transform;
@@ -136,7 +165,7 @@ namespace Wassup.UI
             plus.raycastTarget = false;
             if (font != null) plus.font = font;
 
-            return new SlotW { bg = bg, art = art, plus = plus };
+            return new SlotW { bg = bg, art = art, plus = plus, outline = outlineGo };
         }
 
         private TMP_Text MakeText(Transform parent, string text, int size, TextAlignmentOptions align)
