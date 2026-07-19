@@ -855,8 +855,10 @@ namespace Wassup.Bridge
                     break;
             }
 
-            // MapGrid 케이스는 Validator 가 이미 connectivity 보장 — fallback skip.
-            if (mapSource != MapSource.MapGrid && !MapConnectivity.AllSpawnsReachGoal(_generatedMap))
+            // MapGrid 절차 생성만 Validator 가 connectivity 를 보장한다. 수동 MapDocument 는
+            // Validator 를 거치지 않으므로 (adapter 가 문서를 그대로 반환) 다른 소스처럼 검사한다.
+            bool validatorBacked = mapSource == MapSource.MapGrid && !MapGridBattleAdapter.IsUsableDocument(mapDocument);
+            if (!validatorBacked && !MapConnectivity.AllSpawnsReachGoal(_generatedMap))
             {
                 Debug.LogWarning("[BattleBridge] GeneratedMap connectivity failed; using fallback linear map.", this);
                 TeardownGeneratedMap();
@@ -990,6 +992,8 @@ namespace Wassup.Bridge
                 _generatedMap.spawns.Length,
                 options.pathShape.ToString());
             Debug.Log($"[BattleBridge] Map: seed={_generatedMap.seed} ver={_generatedMap.generatorVersion} shape={options.pathShape} density={options.obstacleDensity} size={_generatedMap.gridSize} spawns={_generatedMap.spawns.Length}");
+            // 로그의 mapSeed 를 실제 빌드에 쓰인 시드로 갱신 (fixedMapSeed 오버라이드/수동 document(-1) 반영).
+            GameManager.Instance?.Logger?.SetActualMapSeed(_generatedMap.seed);
         }
 
         private void TeardownFlowField()
@@ -1570,6 +1574,8 @@ namespace Wassup.Bridge
             mapGenerationOptions = options.Normalized();
             mapPathShape = mapGenerationOptions.pathShape;
         }
+
+        public MapGenerationOptions CurrentMapGenerationOptions => mapGenerationOptions;
 
         public DefenderUnitData[] DefenderPool => defenderPool;
         public float TileSize => tileSize;

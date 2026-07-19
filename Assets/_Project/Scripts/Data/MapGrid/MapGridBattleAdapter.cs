@@ -18,8 +18,7 @@ namespace Wassup.Data.MapGrid
                 throw new InvalidOperationException(
                     "[MapGridBattleAdapter] MapGridGenerationSettings 가 null — BattleBridge inspector 에 할당하라.");
 
-            if (cacheDocOrNull != null && cacheDocOrNull.Width > 0
-                && cacheDocOrNull.Tiles != null && cacheDocOrNull.Tiles.Count > 0)
+            if (IsUsableDocument(cacheDocOrNull))
             {
                 return MapDocumentBuilder.ToGeneratedMap(cacheDocOrNull, Allocator.Persistent);
             }
@@ -29,6 +28,10 @@ namespace Wassup.Data.MapGrid
                 : PickGridSize(settings, seed);
             return MapGridGenerator.Generate(seed, gridSize, settings, Allocator.Persistent);
         }
+
+        // Build 의 문서 소비 조건과 BattleBridge 의 connectivity-guard 판단을 한 곳으로 묶는다.
+        public static bool IsUsableDocument(MapDocument doc) =>
+            doc != null && doc.Width > 0 && doc.Tiles != null && doc.Tiles.Count > 0;
 
         public static int2 ClampGridSize(int2 gridSize) =>
             new int2(math.max(MinGridDimension, gridSize.x), math.max(MinGridDimension, gridSize.y));
