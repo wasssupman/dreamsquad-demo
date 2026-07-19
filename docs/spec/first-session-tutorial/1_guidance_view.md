@@ -45,3 +45,5 @@ Canvas sortingOrder는 10으로 고정해 Placement/Gimmick/손패 HUD 위, 메�
 - [ ] 한글 문구가 누락 글리프 없이 표시되고 안내 Canvas가 HUD 위·메뉴 팝업 아래다.
 - [ ] 반복 Show/Hide와 OnDisable에서 코루틴·동적 오브젝트가 남지 않는다.
 - [ ] 외부 이미지 없이 절차적 플레이트/링 폴백으로 완전 동작한다.
+
+확인: 2026-07-19 · 구현 커밋 `da398417`

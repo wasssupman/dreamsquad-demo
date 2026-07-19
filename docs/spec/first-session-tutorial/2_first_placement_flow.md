@@ -64,3 +64,5 @@ GimmickGuide suppress를 반드시 원복한다. Skip은 핵심 안내를 완료
 - [x] affordable 슬롯이 없으면 안내/hold 없이 정상 Placement로 fail-open한다.
 - [ ] Skip·컴포넌트 disable·씬 이탈에서 hold/버튼 상태가 원복된다.
 - [ ] 완료 프로필과 profile null/direct Play에서는 기존 흐름이 픽셀·타이밍 회귀 없이 유지된다.
+
+확인: 2026-07-19 · 구현 커밋 `da398417`

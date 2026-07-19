@@ -41,4 +41,6 @@ BattleScene에 단일 `FirstSessionTutorial` GameObject를 만들고 아래 실�
 - [ ] Gift 연출, 배치 reject, 전투 시작, 손패 슬로모/드래그에 회귀가 없다.
 - [x] 콘솔 오류 0, 관련 EditMode/PlayMode 테스트 green.
 - [ ] Android 실기기에서 탭→탭 배치, Skip, 각성 버튼 터치 1회 확인.
-- [ ] 사용자 Play 확인 전 feature 완료 처리/커밋하지 않는다.
+- [x] Editor 사용자 Play 조정 및 마무리 승인 완료(2026-07-19). Android 실기기 QA는 후속 후보로 이관한다.
+
+확인: 2026-07-19 · 구현 커밋 `da398417`

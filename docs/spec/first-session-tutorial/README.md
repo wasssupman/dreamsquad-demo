@@ -1,6 +1,6 @@
 # first-session-tutorial — 첫 판 행동형 온보딩
 
-> 상태: **구현·자동 검증 완료 2026-07-19 · 사용자 Play/Android 확인 대기**
+> 상태: **완료 2026-07-19 · Editor 사용자 Play 승인 · Android 실기기 QA 후속**
 > 선행: `defender-tap-to-place` · `mobile-ui-safe-area` · `awakening-hud-resource-button` (완료)
 
 ## 검증 질문
@@ -50,6 +50,7 @@ N/A — 신규 플레이 오브젝트나 생성→렌더 경로가 아니다. Sc
 
 ## 비목표 / 후속 후보
 
+- Android 가로 실기기에서 탭 배치·D&D·Skip·각성 힌트 최종 터치 QA
 - 카드 타입별 종합 설명 이미지, 도움말 도감, 튜토리얼 다시 보기 메뉴
 - 첫 판 전용 고정 맵·웨이브·난이도·보상 조정
 - 로비 버튼 투어, 스쿼드/덱 편집 강제, 단계 해금

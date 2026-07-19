@@ -1,7 +1,11 @@
 # 5 — Handoff Summary — first-session-tutorial
 
-상세 계약은 README와 unit 0~4 문서가 우선한다. 현재 구현과 자동 검증은 끝났고, 실제 모바일 터치 및
-완료 저장을 포함한 사용자 Play 확인 전까지 feature 완료/커밋으로 처리하지 않는다.
+상세 계약은 README와 unit 0~4 문서가 우선한다. 구현·자동 검증과 Editor 사용자 Play 조정은 완료했다.
+Android 가로 실기기 터치 QA는 후속 확인으로 남긴다.
+
+## Commit
+
+- `da398417` — `feat(tutorial): 첫 세션 행동형 온보딩 추가`
 
 ## 구현 결과
 
@@ -48,8 +52,9 @@
 - 검증 중 Start/Skip은 누르지 않았고 기존 `profile.json`에는 신규 버전 필드가 추가되지 않아 디스크 저장이
   발생하지 않았음을 확인했다.
 - BattleScene 직접 Play: `loaded=false`, `ShouldRunCore=false`, overlay/hold 비활성, console error 0.
+- 사용자 Play 피드백으로 Step 1 구조물 중심 앵커와 기본 5초 템포까지 조정한 뒤 2026-07-19 마무리 승인.
 
-## 사용자 Play에서 남은 확인
+## 후속 확인
 
 - Android 가로 실기기에서 실제 탭→탭 배치, 드래그 배치, 방향 유닛 조준 후 Start 노출.
 - Skip 시 즉시 일반 Placement 복구 및 다음 판 미노출, 실제 Start 시 핵심 완료 저장.
@@ -66,4 +71,4 @@ OutgameScene에서 Play해야 하며 BattleScene 직접 Play는 안내가 꺼진
 
 - 작업 트리는 다른 기능 WIP와 함께 dirty다. `BattleScene.unity`의 기존 `mapDocument` 변경과
   `GimmickGuideView` 접힘 작업을 되돌리지 말 것.
-- 커밋은 아직 만들지 않았다. 사용자 Play 확인 뒤 튜토리얼 관련 hunk만 선별한다.
+- 구현 커밋 `da398417`에는 튜토리얼 관련 hunk만 선별했다. 씬의 카메라·맵·기타 UI WIP는 제외했다.
