@@ -63,6 +63,10 @@ namespace Wassup.UI.Draft
         {
             controller = draftController;
             if (!_built) Build();
+            // 초기 소스는 씬 BattleBridge 값에서 sync — 패널 코드 기본값(Legacy)이 씬 의도를 덮어쓰지 않게.
+            _selectedMapSource = controller.BridgeMapSource;
+            RefreshSectionVisibility();
+            RefreshButtonHighlights();
             PushAllToController();
         }
 

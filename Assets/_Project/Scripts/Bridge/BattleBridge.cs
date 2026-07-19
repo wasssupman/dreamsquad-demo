@@ -37,6 +37,8 @@ namespace Wassup.Bridge
         [SerializeField] private MapSource mapSource = MapSource.Legacy;
         [SerializeField] private MapGridGenerationSettings mapGridSettings;
         [SerializeField] private MapDocument mapDocument;
+        // 비0 = 맵 시드 고정(매판 동일 맵). 0 = matchSeed 파생 매판 랜덤. 웨이브/기믹 등 다른 시드 스트림은 영향 없음.
+        [SerializeField] private int fixedMapSeed = 20260719;
         [Header("Season")]
         [SerializeField] private SeasonRegistry seasonRegistry;
         [SerializeField] private MapPathShape mapPathShape = MapPathShape.Free;
@@ -783,7 +785,7 @@ namespace Wassup.Bridge
             // match-seed-unification — 맵 시드는 GameManager 주입 matchSeed 에서 파생.
             // 미주입(0, 예: 테스트 직접 호출) 시 즉석 random matchSeed 로 폴백해 항상 유효.
             int matchSeed = _matchSeed != 0 ? _matchSeed : Wassup.Core.MatchSeed.GenerateRandom();
-            int seed = Wassup.Core.MatchSeed.DeriveMapSeed(matchSeed);
+            int seed = fixedMapSeed != 0 ? fixedMapSeed : Wassup.Core.MatchSeed.DeriveMapSeed(matchSeed);
             int version = GeneratorVersion;
             var options = mapGenerationOptions.Normalized();
             mapPathShape = options.pathShape;

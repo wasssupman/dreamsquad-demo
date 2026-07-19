@@ -44,6 +44,8 @@ namespace Wassup.Core
         public MapGenerationOptions SelectedMapGenerationOptions { get; private set; } = MapGenerationOptions.Default;
         public MapPathShape SelectedMapPathShape => SelectedMapGenerationOptions.pathShape;
         public MapSource SelectedMapSource { get; private set; } = MapSource.Legacy;
+        // 씬 BattleBridge 에 저장된 mapSource. 설정 패널 초기값 sync 용 — 씬 authoring 이 source of truth.
+        public MapSource BridgeMapSource => battleBridge != null ? battleBridge.CurrentMapSource : SelectedMapSource;
         public int2? SelectedMapGridGridSize { get; private set; }
 
         public event Action DraftStarted;
