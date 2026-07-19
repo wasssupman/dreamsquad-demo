@@ -120,6 +120,14 @@ code + git history        구현 상세
 
 > 출처 spec 이 섞여 있다. 그룹 헤더 또는 항목 끝의 `(spec-slug)` 라벨로 출처 표기.
 
+#### 수동 맵 authoring (manual-map-authoring 종료 이관, 2026-07-19)
+
+- **맵 authoring 에디터 툴화 + 분류값 재계산** [M] · 현재 레시피는 execute_code 로 road 배열→검증→WriteToDocument. 툴로 승격하면서 mergeDegree/chokepoint 를 저장값이 아니라 **로드/임포트 시 CellClassifier 로 재계산** — 수작업 값과 분류 정의의 조용한 드리프트 차단. (manual-map-authoring)
+- **스테이지별 맵 운영** [M] · MapDocument 여러 장 + 스테이지→document 매핑. 현재는 ArkFunnel 1장 고정 배선. (manual-map-authoring)
+- **시드 권한 일원화** [S] · fixedMapSeed(BattleBridge, 비0 코드 기본값)와 GameManager.debugFixedMatchSeed 이원화 정리. 비0 코드 기본값은 씬 저장 시 베이크되는 함정 + document 배선 중엔 무효인 유령 노브. 맵 빌드 로그에 시드 provenance(document/fixed/derived) 1줄 추가. (manual-map-authoring)
+- **MapDocument 로드 방어** [S] · ToGeneratedMap 이 보조 배열(mergeDegree/chokepoint/propLayerId) 길이를 미검증 — 손상 에셋이 IndexOutOfRange 로 배틀 init 중단. PickGridSize 의 `math.abs(int.MinValue)` 음수 인덱스 경로도 동반 수리. (manual-map-authoring)
+- **맵 설정 패널 잔여 위생** [S] · 패널이 표현 못 하는 mapSource(Manual/Fixture/Procedural_Legacy) 시 하이라이트/섹션 오표시, document 배선 중 크기/goalEdge 컨트롤 무피드백 no-op, SetGoalEdgeOnly 의 공유 SO 에셋 쓰기(Play 정지로 안 되돌아감). (manual-map-authoring)
+
 #### 효과 트리거 통합 — 드림캐쳐↔기믹 (아키텍처, 파킹 2026-07-15)
 
 - **트리거→효과 엔진 도메인 중립화** [M] · 드림캐쳐의 `DcMechanic`(이미 데이터주도 trigger→payload 중립계약)을 `Dc*` 명칭·`Data/Dreamcatcher/` 위치에서 떼어내 공용 `TriggerEffect*` 로 승격 + `EffectDomain{Dreamcatcher,Gimmick,...}` 태그로 소비처(오라/UI/dispel/밸런스) 구분. 기믹 Fatigue/Pickup/LastRun 을 그 위 rule 로 이관. **당장 안 함** — 논의·설계는 `docs/plans/2026-07-15-effect-trigger-unification-design.md` 에 기록. 권고: 0~1단계(태그+rename)만 저위험 선행, 시스템 이관은 2번째 기믹 생길 때(제약 8). rename 은 공유파일 광범위 → 세션 조율 필수.
