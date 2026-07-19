@@ -30,6 +30,12 @@ namespace Wassup.Presentation
         // 끝난 뒤에 팝이 뜬다.
         public const int AimArrowOrder = 11500;
 
+        // spawn-point-alert unit 1(rev) — 스폰 예고 라인은 **바닥에 그려진 것**이다.
+        // "보드 레이어 < 유닛 레이어" 규칙(TilemapMapView)에 따라 음수 대역에 둔다:
+        // overlay 타일맵(−10) 위 · 블롭 그림자(−5)/타일 게이지(−4)/유닛(양수) 아래.
+        // 레이어 4개(광휘/스트릭/코어/링)가 +0~+3 을 쓰므로 −9 부터 −6 까지 정확히 채운다.
+        public const int SpawnAlertOrder = -9;
+
         public static int Compute(int2 gridSize, int cellX, int cellY, int offset = 0)
             => (gridSize.y - cellY) * 10 + cellX + offset;
 
