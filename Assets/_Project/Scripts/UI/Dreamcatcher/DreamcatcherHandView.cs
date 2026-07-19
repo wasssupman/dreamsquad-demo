@@ -22,6 +22,8 @@ namespace Wassup.UI
     // drops any pending drag state, and releases the lease.
     public class DreamcatcherHandView : MonoBehaviour
     {
+        public event System.Action HandOpened;
+
         [SerializeField] private DreamcatcherHandController handController;
         [SerializeField] private AwakeningGaugeView gaugeView;
         [SerializeField] private DefenderSelector defenderSelector;
@@ -580,6 +582,7 @@ namespace Wassup.UI
             prt.localEulerAngles = Vector3.zero;
             _panel.SetActive(true);
             StartDeal();
+            HandOpened?.Invoke();
             _flip = null;
         }
 

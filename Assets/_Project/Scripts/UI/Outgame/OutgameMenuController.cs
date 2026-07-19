@@ -31,7 +31,7 @@ namespace Wassup.UI
         [SerializeField] private GameObject lobbyCharactersRoot;
         // game-start-loadout-gate unit 2 — START 전 로드아웃 충족 안내.
         [SerializeField] private LoadoutGatePopup gatePopup;
-        // dreamcatcher-card-art — 개발용 버튼 묶음(TestMode/RefreshStats/ResetAccount).
+        // dreamcatcher-card-art — 개발용 버튼 묶음(TestMode/RefreshStats/ResetAccount/TutorialReset).
         // 로비 레이어 전용: 패널이 열리면 숨긴다. GameObject.active 대신 CanvasGroup 을
         // 토글해 DevOnlyGroup 의 빌드 게이트(비-dev 빌드에서 GO 비활성화)와 충돌하지 않는다.
         [SerializeField] private CanvasGroup devButtonsGroup;
@@ -50,7 +50,7 @@ namespace Wassup.UI
                 Debug.LogError("[OutgameMenuController] PlayerProfileSO unassigned.", this);
                 return;
             }
-            profileSO.profile = ProfileStore.LoadOrCreate(catalog, defaultDeck, cardCatalog);
+            profileSO.SetLoadedProfile(ProfileStore.LoadOrCreate(catalog, defaultDeck, cardCatalog));
             Debug.Log($"[OutgameMenuController] Profile loaded: {(catalog != null ? catalog.units.Length : 0)} catalog units. path={ProfileStore.Path}");
             ClosePanels();
         }
@@ -75,6 +75,33 @@ namespace Wassup.UI
             ClosePanels();
             if (loginPanel != null) loginPanel.ResetAccount();
             ApplyAuthGate();
+        }
+
+        // first-session-tutorial replay — dev tray button. This is intentionally
+        // immediate (no confirmation popup) and resets only tutorial progress.
+        // Keep the already-loaded profile synchronized so the next BattleScene
+        // transition in this Play session sees the reset without reloading lobby.
+        public void OnResetTutorial()
+        {
+            if (profileSO == null || !profileSO.IsLoadedThisSession || profileSO.profile == null)
+            {
+                Debug.LogError("[OutgameMenuController] Cannot reset tutorial before the profile is loaded.", this);
+                return;
+            }
+
+            try
+            {
+                bool changed = ProfileStore.ResetTutorialProgressAt(
+                    ProfileStore.Path, profileSO.profile, out string backupPath);
+                if (changed)
+                    Debug.Log($"[OutgameMenuController] Tutorial progress reset. backup={backupPath}", this);
+                else
+                    Debug.Log("[OutgameMenuController] Tutorial progress was already reset.", this);
+            }
+            catch (System.Exception exception)
+            {
+                Debug.LogException(exception, this);
+            }
         }
 
         // A-stage: load BattleScene as-is. C wires the squad/dreamcatcher carry-in.

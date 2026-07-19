@@ -62,6 +62,53 @@ namespace Wassup.Core
             File.WriteAllText(path, JsonUtility.ToJson(profile, true));
         }
 
+        // first-session-tutorial replay support — patch only the two tutorial
+        // tokens in the original JSON. Re-serializing PlayerProfile here could
+        // discard account fields written by a newer client or an external system.
+        // The loaded instance is synchronized only after the disk replacement
+        // succeeds, so a failed write cannot leave memory and disk disagreeing.
+        public static bool ResetTutorialProgressAt(string path, PlayerProfile loadedProfile,
+            out string backupPath)
+        {
+            if (!File.Exists(path))
+                throw new FileNotFoundException("Profile file was not found.", path);
+
+            string patchedJson = TutorialProgress.ResetAllInJson(
+                File.ReadAllText(path), out bool diskChanged);
+            backupPath = null;
+
+            if (diskChanged)
+            {
+                backupPath = path + $".tutorial-reset.{System.DateTime.Now:yyyyMMdd-HHmmssfff}.bak";
+                ReplaceWithBackup(path, patchedJson, backupPath);
+            }
+
+            bool memoryChanged = TutorialProgress.ResetAll(loadedProfile);
+            return diskChanged || memoryChanged;
+        }
+
+        static void ReplaceWithBackup(string path, string contents, string backupPath)
+        {
+            string tempPath = path + ".tutorial-reset.tmp";
+            try
+            {
+                File.WriteAllText(tempPath, contents);
+                try
+                {
+                    File.Replace(tempPath, path, backupPath);
+                }
+                catch (System.PlatformNotSupportedException)
+                {
+                    File.Copy(path, backupPath, false);
+                    File.Copy(tempPath, path, true);
+                }
+            }
+            finally
+            {
+                if (File.Exists(tempPath)) File.Delete(tempPath);
+            }
+        }
+
         // outgame-login-gate unit 6 — public so the dev "DEFAULT LOADOUT" button can
         // rebuild the same starter profile a fresh install gets, instead of defining
         // a second notion of "default" next to this one.

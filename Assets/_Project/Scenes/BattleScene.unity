@@ -2992,6 +2992,75 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1572896085
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1572896088}
+  - component: {fileID: 1572896087}
+  - component: {fileID: 1572896086}
+  m_Layer: 0
+  m_Name: FirstSessionTutorial
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1572896086
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1572896085}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 51e3e73f1575f4fdba65d717ba8ca3bb, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.Tutorial.FirstSessionTutorialController
+  profileSO: {fileID: 11400000, guid: e610b4c0bbbeb4becb09188e400e6a55, type: 2}
+  gameManager: {fileID: 1495062450}
+  placementView: {fileID: 1628485822}
+  defenderSelector: {fileID: 915292524}
+  mapView: {fileID: 172395674}
+  mainCamera: {fileID: 1420088185}
+  gimmickGuide: {fileID: 1916999830}
+  guidance: {fileID: 1572896087}
+  handController: {fileID: 2054561897}
+  gaugeView: {fileID: 1012444854}
+  handView: {fileID: 1558370269}
+--- !u!114 &1572896087
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1572896085}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 624fc3e5194df4ebc90d62a448ea7311, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.Tutorial.TutorialGuidanceView
+  style: {fileID: 11400000, guid: ff4463a1c695b43b4b9d517be3eaac64, type: 2}
+--- !u!4 &1572896088
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1572896085}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1586207280
 GameObject:
   m_ObjectHideFlags: 0
@@ -3235,6 +3304,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.PlacementPhaseView
   bridge: {fileID: 1939688408}
   gameManager: {fileID: 1495062450}
+  defenderSelector: {fileID: 915292524}
   startButtonBackground: {fileID: 21300000, guid: 28f2212786468bd48bd8ef2496cde2b7, type: 3}
   startFillColor: {r: 0.96, g: 0.58, b: 0.14, a: 1}
   startBorderColor: {r: 1, g: 0.9, b: 0.55, a: 1}
@@ -3993,3 +4063,4 @@ SceneRoots:
   - {fileID: 751645448}
   - {fileID: 603193525}
   - {fileID: 322840705}
+  - {fileID: 1572896088}

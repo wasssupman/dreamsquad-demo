@@ -88,6 +88,11 @@ namespace Wassup.Core
         private Transform _ringPropsRoot;
         // prop-placement-layer unit 1 — goal/spawn 구조물 프랍 루트. 부모(90°X)를 역회전 상쇄해 메쉬가 똑바로 선다.
         private Transform _structurePropsRoot;
+        // first-session-tutorial unit 2 — 셀 중심이 아니라 실제 구조물 renderer 중심을 노출한다.
+        // 구조물 미사용 테마에서는 같은 API가 셀 중심으로 폴백한다.
+        private bool _hasGoalVisualAnchor;
+        private Vector3 _goalVisualAnchorWorld;
+        private readonly List<Vector3> _spawnVisualAnchorsWorld = new();
         // effect-tiles unit 1 — 효과 타일 전용 런타임 타일맵. overlayTilemap 은 hover/reject 가
         // SetTile/null 로 덮어쓰므로 공유 금지. sorting -15 = ground(-20) 위 / overlay·hover(-10) 아래.
         // 런타임 생성 → 씬 SerializeField/저장 불필요.
@@ -95,6 +100,24 @@ namespace Wassup.Core
 
         public Grid Grid => grid;
         public BoardVisualPlan VisualPlan => _visualPlan;
+
+        public bool TryGetGoalVisualAnchor(out Vector3 worldPosition)
+        {
+            worldPosition = _goalVisualAnchorWorld;
+            return _hasGoalVisualAnchor;
+        }
+
+        public bool TryGetSpawnVisualAnchor(int index, out Vector3 worldPosition)
+        {
+            if (index >= 0 && index < _spawnVisualAnchorsWorld.Count)
+            {
+                worldPosition = _spawnVisualAnchorsWorld[index];
+                return true;
+            }
+
+            worldPosition = default;
+            return false;
+        }
 
         // 평면 빌보드 프랍이 바닥 타일과 z-fight 나지 않도록 살짝 띄우는 world +Y 오프셋.
         private const float PropGroundLift = 0.02f;
@@ -116,6 +139,7 @@ namespace Wassup.Core
             CenterBoardAtWorldOrigin(in map);
             // 배경 프랍 배치(Deco/Env 호스트) 판정에 쓰는 셀/리전/anchor 메타.
             _visualPlan = map.IsCreated ? BoardVisualPlanBuilder.Build(map, map.seed) : null;
+            ResetStructureVisualAnchors(in map);
         }
 
         // tilted-billboard unit 1 — 보드 중앙을 월드 원점(X·Z=0)에 맞춘다. XZ 바닥이라 수평면(X,Z)만 정렬,
@@ -150,6 +174,8 @@ namespace Wassup.Core
             if (_backgroundPropsRoot != null) { SafeDestroy(_backgroundPropsRoot.gameObject); _backgroundPropsRoot = null; }
             if (_ringPropsRoot != null) { SafeDestroy(_ringPropsRoot.gameObject); _ringPropsRoot = null; }
             if (_structurePropsRoot != null) { SafeDestroy(_structurePropsRoot.gameObject); _structurePropsRoot = null; }
+            _hasGoalVisualAnchor = false;
+            _spawnVisualAnchorsWorld.Clear();
         }
 
         private void Update()
@@ -655,8 +681,8 @@ namespace Wassup.Core
         // (구조물 프랍은 playAreaProps 밖이라 이게 필수 계약).
         // rotation 은 부모(BackgroundProps/그 외 root, XZ 바닥 90°) 상속 — Euler(0,yaw,0) 강제 시
         // 부모 90° 를 무시해 visualOffset 이 월드 +y 로 적용되는 공중부양 버그. yaw 는 PropBillboard 가 override.
-        private void InstantiateProp(PropData prop, PropPlacement placement,
-                                     BoardVisualPlan plan, MapThemeData theme, Transform root)
+        private GameObject InstantiateProp(PropData prop, PropPlacement placement,
+                                           BoardVisualPlan plan, MapThemeData theme, Transform root)
         {
             float centerX = placement.x + (placement.width - 1) * 0.5f;
             float centerY = placement.y + (placement.height - 1) * 0.5f;
@@ -669,6 +695,7 @@ namespace Wassup.Core
             // 프랍 그림자 = 프리팹 authored 블롭 (shadow-polish unit 6). 런타임 부착 없음 — 프리팹이 source of truth.
             if (theme.propGlobalTint != Color.white)
                 PropInstanceUtil.ApplyPropGlobalTint(instance, theme.propGlobalTint);
+            return instance;
         }
 
         // prop-placement-layer unit 1 — goal/spawn 셀에 3D 메쉬 구조물 프랍을 세운다.
@@ -677,6 +704,7 @@ namespace Wassup.Core
         public void InstantiateStructureProps(in GeneratedMap map, MapThemeData theme, BoardVisualPlan plan)
         {
             if (_structurePropsRoot != null) { SafeDestroy(_structurePropsRoot.gameObject); _structurePropsRoot = null; }
+            ResetStructureVisualAnchors(in map);
             if (grid == null || theme == null || !map.IsCreated) return;
             if (theme.goalStructureProp == null && theme.spawnStructureProp == null) return;
 
@@ -688,24 +716,76 @@ namespace Wassup.Core
 
             if (theme.goalStructureProp != null && theme.goalStructureProp.prefab != null)
             {
-                PlaceStructure(theme.goalStructureProp, map.goal, plan, theme);
+                var instance = PlaceStructure(theme.goalStructureProp, map.goal, plan, theme);
+                _goalVisualAnchorWorld = ResolveVisualAnchor(instance, _goalVisualAnchorWorld);
                 if (overlayTilemap != null) overlayTilemap.SetTile(ToCell(map.goal), null);
             }
             if (theme.spawnStructureProp != null && theme.spawnStructureProp.prefab != null && map.spawns.IsCreated)
             {
                 for (int i = 0; i < map.spawns.Length; i++)
                 {
-                    PlaceStructure(theme.spawnStructureProp, map.spawns[i], plan, theme);
+                    var instance = PlaceStructure(theme.spawnStructureProp, map.spawns[i], plan, theme);
+                    _spawnVisualAnchorsWorld[i] = ResolveVisualAnchor(
+                        instance, _spawnVisualAnchorsWorld[i]);
                     if (overlayTilemap != null) overlayTilemap.SetTile(ToCell(map.spawns[i]), null);
                 }
             }
         }
 
-        private void PlaceStructure(PropData prop, int2 cell, BoardVisualPlan plan, MapThemeData theme)
+        private GameObject PlaceStructure(PropData prop, int2 cell, BoardVisualPlan plan, MapThemeData theme)
         {
             var footprint = prop.Footprint;
             var placement = new PropPlacement(0, cell.x, cell.y, footprint.x, footprint.y, 0u, 0f, prop.visualScale, -1);
-            InstantiateProp(prop, placement, plan, theme, _structurePropsRoot);
+            return InstantiateProp(prop, placement, plan, theme, _structurePropsRoot);
+        }
+
+        private void ResetStructureVisualAnchors(in GeneratedMap map)
+        {
+            _hasGoalVisualAnchor = map.IsCreated;
+            _goalVisualAnchorWorld = map.IsCreated
+                ? CellCenterToWorld(map.goal.x, map.goal.y)
+                : default;
+            _spawnVisualAnchorsWorld.Clear();
+            if (!map.IsCreated) return;
+
+            for (int i = 0; i < map.spawns.Length; i++)
+            {
+                int2 spawn = map.spawns[i];
+                _spawnVisualAnchorsWorld.Add(CellCenterToWorld(spawn.x, spawn.y));
+            }
+        }
+
+        private static Vector3 ResolveVisualAnchor(GameObject instance, Vector3 fallback)
+        {
+            if (instance == null) return fallback;
+
+            bool hasBounds = false;
+            Bounds visualBounds = default;
+            var renderers = instance.GetComponentsInChildren<Renderer>(false);
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                var renderer = renderers[i];
+                if (renderer == null || !renderer.enabled || IsNonVisualAnchorRenderer(renderer)) continue;
+                if (!hasBounds)
+                {
+                    visualBounds = renderer.bounds;
+                    hasBounds = true;
+                }
+                else
+                {
+                    visualBounds.Encapsulate(renderer.bounds);
+                }
+            }
+
+            return hasBounds ? visualBounds.center : fallback;
+        }
+
+        private static bool IsNonVisualAnchorRenderer(Renderer renderer)
+        {
+            string objectName = renderer.gameObject.name.ToLowerInvariant();
+            return objectName.Contains("shadow") || objectName.Contains("marker") ||
+                   objectName.Contains("footprint") || objectName.Contains("debug") ||
+                   objectName.Contains("bounds");
         }
 
         // effect-tiles unit 1 — 효과 타일 페인트. Initialize(Clear 포함) 이후 호출 계약 (아니면 지워짐).

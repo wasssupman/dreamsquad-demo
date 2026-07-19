@@ -15,6 +15,11 @@ namespace Wassup.UI
     public class DefenderDragPlacementController : MonoBehaviour
     {
         public event System.Action<DefenderUnitData> Armed;
+        public event System.Action Disarmed;
+        public event System.Action<DefenderUnitData> PlacementCommitted;
+        // first-session-tutorial — physical slot D&D only. Tap-to-place's
+        // simulated flight does not fire this, so guidance can use distinct copy.
+        public event System.Action UserDragStarted;
         // gimmick-match-integration unit 5 — 배치 드래그 세션이 실제로 시작될 때(가드 통과 후) 발화.
         // 기믹 안내 카드가 "첫 배치 상호작용" 접힘 트리거로 구독한다. arm 경로는 Armed 가 담당.
         public event System.Action DragBegan;
@@ -136,12 +141,15 @@ namespace Wassup.UI
             // 기본 방향으로 강제 활성화된다. 방향을 정해야 다음 배치로 넘어간다(계약 9).
             if (_aimController != null && _aimController.IsActive) return;
             DragBegan?.Invoke(); // unit 5 — 가드 통과 = 세션 확정. 이 아래론 early-return 없음.
-            Disarm(); // defender-tap-to-place — 드래그가 arm 을 대체
+            // Tap-to-place의 보드 탭은 내부적으로 simulated drag를 쓰지만 사용자
+            // 선택 취소가 아니다. Disarmed를 내보내면 튜토리얼 문구가 Pick으로 되감긴다.
+            Disarm(notify: !simulated);
             CleanupSession();
             // defender-deploy-cutscene unit 8 review — 직전 실패/취소 컷씬이 자동 퇴장 중이어도
             // 새 배치 세션에는 이전 유닛 연출을 넘기지 않는다. 프레임 없는 유닛도 동일하게 원복.
             if (_cutscenePlayer != null) _cutscenePlayer.ForceStopAndReset();
             _simulatedDrag = simulated; // defender-tap-to-place — 시뮬 경로는 첫 UpdateDrag 부터 범위 억제(CleanupSession 이 false 로 리셋한 뒤 재설정)
+            if (!simulated) UserDragStarted?.Invoke();
             // time-manager Unit 5 — 드래그 시작 시 전투만 슬로우모. 드롭/취소 시 CleanupSession 에서 해제.
             _slowmoLease = TimeManager.Instance.Request(TimeDomain.Battle, dragSlowmoScale);
             if (mainCamera == null) mainCamera = Camera.main;
@@ -478,11 +486,13 @@ namespace Wassup.UI
             Armed?.Invoke(unit);
         }
 
-        public void Disarm()
+        public void Disarm(bool notify = true)
         {
+            bool hadArmedUnit = _armedUnit != null;
             // review fix — `?.` 는 Unity destroyed fake-null 을 못 거르므로 Unity `!=` 로 가드(트레이 리빌드 후 MissingReference 방지).
             if (_armedSlot != null) _armedSlot.SetArmed(false);
             _armedSlot = null; _armedUnit = null;
+            if (hadArmedUnit && notify) Disarmed?.Invoke();
         }
 
         // defender-tap-to-place unit 1 — 이 슬롯이 현재 armed 인가(슬롯의 disarm-토글 판정용).
@@ -658,9 +668,11 @@ namespace Wassup.UI
                 {
                     _aimController.Begin(session.unit, cell, entity);
                     CleanupSession();
+                    PlacementCommitted?.Invoke(session.unit);
                     return;
                 }
                 CleanupSession();
+                PlacementCommitted?.Invoke(session.unit);
                 StartCoroutine(RunDeployment(session.unit, cell, entity));
                 return;
             }

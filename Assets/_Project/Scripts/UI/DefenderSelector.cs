@@ -55,6 +55,8 @@ namespace Wassup.UI
         // 재빌드/재진입 시 stale 참조 없음.
         private struct SlotVisual
         {
+            public DefenderUnitData data;
+            public RectTransform rect;
             public int cost;
             public Image portrait;   // 포트레이트 없으면 null (폴백 bg 틴트)
             public Image slotBg;
@@ -287,6 +289,8 @@ namespace Wassup.UI
                 BuildRoleBadge(go.transform, data.role);
                 _slotVisuals.Add(new SlotVisual
                 {
+                    data = data,
+                    rect = (RectTransform)go.transform,
                     cost = data.cost,
                     portrait = data.portrait != null ? portraitImg : null,
                     slotBg = bg,
@@ -297,6 +301,35 @@ namespace Wassup.UI
             }
 
             UiLayer.Apply(gameObject);
+        }
+
+        // first-session-tutorial unit 2 — soft recommendation only. Input stays
+        // available on every slot; this never changes affordability or selection.
+        public bool TryGetAffordableTutorialSlot(out RectTransform target)
+        {
+            target = null;
+            var runtime = GameManager.Instance != null ? GameManager.Instance.CostRuntime : null;
+            int available = runtime != null ? runtime.CurrentInt : int.MinValue;
+            int bestCost = int.MaxValue;
+            bool foundNonDirectional = false;
+
+            for (int i = 0; i < _slotVisuals.Count; i++)
+            {
+                var slot = _slotVisuals[i];
+                if (slot.data == null || slot.rect == null || slot.cost > available) continue;
+                bool nonDirectional = !slot.data.directionalAttack;
+                if (foundNonDirectional && !nonDirectional) continue;
+                if (nonDirectional && !foundNonDirectional)
+                {
+                    foundNonDirectional = true;
+                    bestCost = int.MaxValue;
+                    target = null;
+                }
+                if (slot.cost >= bestCost) continue;
+                bestCost = slot.cost;
+                target = slot.rect;
+            }
+            return target != null;
         }
 
         // action-tray unit 1 — 좌상단 비용 플레이트 (시안: 다크 코너 플레이트에

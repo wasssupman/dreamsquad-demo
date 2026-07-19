@@ -42,6 +42,7 @@ namespace Wassup.UI
         [SerializeField] private Color sheenColor = new Color(0.82f, 0.98f, 1f, 0.18f);
 
         public event System.Action Toggled;
+        public RectTransform HitRect => _panel != null ? (RectTransform)_panel.transform : null;
 
         private GameObject _panel;
         private RectTransform _visualRoot;

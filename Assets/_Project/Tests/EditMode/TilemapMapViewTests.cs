@@ -155,5 +155,52 @@ namespace Wassup.Tests.EditMode
                 Object.DestroyImmediate(tileSet);
             }
         }
+
+        [Test]
+        public void StructureVisualAnchors_UseRendererCenter_AndResetToCellFallback()
+        {
+            var view = CreateView(GridLayout.CellLayout.Rectangle, out _, Vector3.zero);
+            var tileSet = ScriptableObject.CreateInstance<TileSetData>();
+            var theme = ScriptableObject.CreateInstance<MapThemeData>();
+            var prop = ScriptableObject.CreateInstance<PropData>();
+            var prefab = new GameObject("StructureVisual");
+            prefab.transform.SetParent(_root.transform, false);
+            var mesh = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            mesh.name = "VisibleMesh";
+            mesh.transform.SetParent(prefab.transform, false);
+            mesh.transform.localPosition = Vector3.up;
+            prop.prefab = prefab;
+            prop.visualScale = 1f;
+            theme.goalStructureProp = prop;
+            theme.spawnStructureProp = prop;
+
+            var map = BuildMap(4, 4);
+            try
+            {
+                view.Initialize(map, 1f, tileSet, BoardViewMode.TilemapRect);
+                Assert.That(view.TryGetGoalVisualAnchor(out var fallbackGoal), Is.True);
+                Assert.That(Vector3.Distance(fallbackGoal,
+                    view.CellCenterToWorld(map.goal.x, map.goal.y)), Is.LessThan(1e-4f));
+
+                view.InstantiateStructureProps(map, theme, view.VisualPlan);
+
+                Assert.That(view.TryGetGoalVisualAnchor(out var goalAnchor), Is.True);
+                Assert.That(view.TryGetSpawnVisualAnchor(0, out var spawnAnchor), Is.True);
+                Assert.That(goalAnchor.y - fallbackGoal.y, Is.EqualTo(1f).Within(1e-4f));
+                Assert.That(spawnAnchor.y - view.CellCenterToWorld(
+                    map.spawns[0].x, map.spawns[0].y).y, Is.EqualTo(1f).Within(1e-4f));
+
+                view.Clear();
+                Assert.That(view.TryGetGoalVisualAnchor(out _), Is.False);
+                Assert.That(view.TryGetSpawnVisualAnchor(0, out _), Is.False);
+            }
+            finally
+            {
+                map.Dispose();
+                Object.DestroyImmediate(prop);
+                Object.DestroyImmediate(theme);
+                Object.DestroyImmediate(tileSet);
+            }
+        }
     }
 }

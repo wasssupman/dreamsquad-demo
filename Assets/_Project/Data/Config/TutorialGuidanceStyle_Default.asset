@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 70635c54f848d483e91faf5b286d2dd3, type: 3}
+  m_Name: TutorialGuidanceStyle_Default
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.Tutorial.TutorialGuidanceStyle
+  koreanFont: {fileID: 11400000, guid: 218cce73e3172a04a8c536a4d368d90f, type: 2}
+  messageFontSize: 42
+  skipFontSize: 28
+  messageSize: {x: 880, y: 116}
+  messageTopOffset: 184
+  messageFill: {r: 0.025, g: 0.045, b: 0.09, a: 0.96}
+  messageBorder: {r: 1, g: 0.78, b: 0.24, a: 1}
+  messageText: {r: 1, g: 0.97, b: 0.88, a: 1}
+  focusColor: {r: 1, g: 0.82, b: 0.25, a: 0.95}
+  focusPadding: 14
+  focusBorder: 5
+  pulsePeriod: 0.78
+  pulseScale: 1.1
+  pointerBob: 10
+  spawnMarkerColor: {r: 1, g: 0.34, b: 0.24, a: 1}
+  goalMarkerColor: {r: 1, g: 0.82, b: 0.25, a: 1}
+  worldMarkerFontSize: 24
+  goalBeatSeconds: 5
+  awakeningPromptSeconds: 3.5
+  cardInstructionSeconds: 3
