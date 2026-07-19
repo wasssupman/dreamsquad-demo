@@ -3769,8 +3769,9 @@ namespace Wassup.Bridge
         private readonly List<Vector2Int> _laneCellScratch = new List<Vector2Int>();
         private readonly List<Vector2Int> _arrowCells = new List<Vector2Int>();
         private readonly List<float> _arrowAngles = new List<float>();
-        // 방향 미정(4레인 십자) 세기. 선택된 레인은 1.
-        private const float AimLaneDimAlpha = 0.45f;
+        // 방향 미정(4레인 십자) 세기. 선택된 레인은 1. 0.45 는 시안 하이라이트가
+        // 비쳐 다른 색으로 오독됨(2026-07-19 사용자) — 같은 주황으로 읽히는 0.7.
+        private const float AimLaneDimAlpha = 0.7f;
         // 조준 화살표/레인이 쓰는 4방향. 순서 = 화살표 인덱스.
         private static readonly Vector2Int[] AimCardinals =
         {
