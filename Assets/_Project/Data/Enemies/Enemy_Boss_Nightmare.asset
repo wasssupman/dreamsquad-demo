@@ -68,7 +68,7 @@ MonoBehaviour:
       fraction: 0
     payload:
       kind: 5
-      magnitude: 10
+      magnitude: 150
       projectile: {fileID: 11400000, guid: 1705ed345dda4014bc5b6019f1a84e77, type: 2}
       tileRange: 3
       duration: 1.5
