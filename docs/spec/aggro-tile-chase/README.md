@@ -1,6 +1,6 @@
 # aggro-tile-chase — 어그로 추격을 타일 목적지 경로 이동으로 재작성
 
-> 상태: 구현 완료 2026-07-20 (units 0~4 커밋, EditMode 1016·PlayMode 스모크 green — 사용자 Play 체감 확인 대기). 인계는 `5_handoff_summary.md`.
+> 상태: **완료 2026-07-20** (units 0~4 커밋, EditMode 1016·PlayMode 스모크 green, 사용자 Play 확인 PASS). 인계는 `5_handoff_summary.md`.
 > 연결 문서: `docs/reference/arknights-defense-mechanics.md` (리서치 + 2026-07-20 결정 기록), `docs/spec/aggro-standoff/` (정지⟺발사 metric 통일 — 유지됨), `docs/spec/aggro-targeting/` (히트 구동 어그로 — 유지됨)
 
 ## 배경 / 문제

@@ -26,7 +26,7 @@
 
 - EditMode 1016 전부 green 매 unit (신규 11 포함) · PlayMode `MovementIntegritySmokeTest` green — 히트→어그로→추격→도달→응전+타일 불변식 실전 체인
 - PlayMode 잔여 실패 3(Gift 페이즈 2·덱 캐리인 1)은 본 spec 무관(병행 세션 영역) — 이전부터 실패, 보고만
-- 사용자 Play 체감 확인(원버그 재현 배치) 남음
+- **사용자 Play 확인 PASS (2026-07-20)** — 고착/이상 거동 없음
 
 ## Notes (되돌리면 안 되는 것)
 

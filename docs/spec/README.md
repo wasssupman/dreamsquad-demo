@@ -120,6 +120,13 @@ code + git history        구현 상세
 
 > 출처 spec 이 섞여 있다. 그룹 헤더 또는 항목 끝의 `(spec-slug)` 라벨로 출처 표기.
 
+#### 어그로 이동/클램프 (aggro-tile-chase 종료 이관, 2026-07-20)
+
+- **cell-trim wall-slide** [S] · `ClampToBoundary` 가 양 축을 함께 clamp 해, 대각 desired 의 목적 셀이 벽이면 합법인 축 진행까지 취소된다(코너에서 넉백/외력이 흡수됨). 축 분해(x-only → z-only) 슬라이드로 완화. 어그로 경로는 cardinal 이라 무영향 — 잔여 노출은 impulse/tornado 품질. (aggro-tile-chase C1)
+- **대각 코너 슬립 차단** [S] · 직교 이웃 둘이 벽이고 대각만 walk 면 모서리 틈으로 새어나간다. 신맵처럼 코너 많은 지형에서 시각적 노출 가능. (aggro-tile-chase C3)
+- **동적 해저드의 chase 경로 무효화** [S] · chase field 는 획득 시 1회 계산이라, blocking hazard 가 나중에 경로를 막아도 재판정하지 않는다(해저드는 일시적이라 현 scope 밖으로 뒀음). 재빌드 트리거 또는 하강 실패 시 해제 규칙 필요. (aggro-tile-chase)
+- **`aggroAttackRange` 데이터 결정** [S] · 현재 전 적 1 고정이라 "통로에서 2칸 밖 가디언"은 어그로가 안 걸린다(사양). 탱커를 더 멀리서도 끌려면 2로 올리거나 유닛별 분화 — 밸런스 결정. (aggro-tile-chase × aggro-standoff 승계)
+
 #### 수동 맵 authoring (manual-map-authoring 종료 이관, 2026-07-19)
 
 - **맵 authoring 에디터 툴화 + 분류값 재계산** [M] · 현재 레시피는 execute_code 로 road 배열→검증→WriteToDocument. 툴로 승격하면서 mergeDegree/chokepoint 를 저장값이 아니라 **로드/임포트 시 CellClassifier 로 재계산** — 수작업 값과 분류 정의의 조용한 드리프트 차단. (manual-map-authoring)
