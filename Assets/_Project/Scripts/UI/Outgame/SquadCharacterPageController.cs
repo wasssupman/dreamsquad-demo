@@ -74,11 +74,29 @@ namespace Wassup.UI
             _mode = Mode.Unit;
             _activeStoneSlot = -1;
             if (header != null) header.SetActiveStoneSlot(-1);
-            if (browser != null) browser.ShowUnits(_units);
+            if (browser != null) browser.ShowUnits(SortedUnits());
             if (initial || string.IsNullOrEmpty(_selectedUnitId) ||
                 (catalog != null && catalog.ById(_selectedUnitId) == null))
                 _selectedUnitId = FirstSquadUnitOrDefault();
             RefreshUnitMode();
+        }
+
+        // Unit 10 — squad members first (slot order, matching the header strip),
+        // the rest in catalog order. Re-shown on every membership change so the
+        // invariant holds live.
+        private List<DefenderUnitData> SortedUnits()
+        {
+            var squad = Squad;
+            if (squad == null || squad.unitIds == null) return _units;
+            var sorted = new List<DefenderUnitData>(_units.Count);
+            for (int i = 0; i < squad.unitIds.Count; i++)
+            {
+                var u = (!string.IsNullOrEmpty(squad.unitIds[i]) && catalog != null) ? catalog.ById(squad.unitIds[i]) : null;
+                if (u != null) sorted.Add(u);
+            }
+            for (int i = 0; i < _units.Count; i++)
+                if (!Contains(squad.unitIds, _units[i].id)) sorted.Add(_units[i]);
+            return sorted;
         }
 
         private string FirstSquadUnitOrDefault()
@@ -93,7 +111,7 @@ namespace Wassup.UI
         private void RefreshUnitMode()
         {
             var squad = Squad;
-            if (header != null) header.Refresh(squad);
+            if (header != null) { header.Refresh(squad); header.SetSelectedUnit(_selectedUnitId); }
             if (browser != null)
             {
                 browser.SetBadged(IdSet(squad != null ? squad.unitIds : null));
@@ -123,6 +141,7 @@ namespace Wassup.UI
                 squad.unitIds[empty] = id;
             }
             Save();
+            if (browser != null) browser.ShowUnits(SortedUnits());
             RefreshUnitMode();
         }
 
@@ -142,7 +161,12 @@ namespace Wassup.UI
         private void RefreshStoneMode()
         {
             var squad = Squad;
-            if (header != null) { header.Refresh(squad); header.SetActiveStoneSlot(_activeStoneSlot); }
+            if (header != null)
+            {
+                header.Refresh(squad);
+                header.SetActiveStoneSlot(_activeStoneSlot);
+                header.SetSelectedUnit(null); // unit outline is unit-mode only (unit 10)
+            }
             if (browser != null)
             {
                 browser.SetBadged(IdSet(squad != null ? squad.stoneIds : null));
@@ -192,18 +216,16 @@ namespace Wassup.UI
             else ToggleStone(_selectedStoneId);
         }
 
+        // Unit 9 — a filled-slot tap selects the unit for the detail panel (removal
+        // moved to the [편성 해제] button); an empty-slot tap is a no-op.
         private void OnUnitSlotTapped(int i)
         {
-            // In stone mode, a unit-slot tap just returns to unit browsing.
-            if (_mode == Mode.Stone) { EnterUnitMode(); return; }
             var squad = Squad;
-            if (squad == null) return;
+            if (squad == null) { if (_mode == Mode.Stone) EnterUnitMode(); return; }
             squad.NormalizeSlots();
-            if (i >= 0 && i < squad.unitIds.Count && !string.IsNullOrEmpty(squad.unitIds[i]))
-            {
-                squad.unitIds[i] = "";
-                Save();
-            }
+            string id = (i >= 0 && i < squad.unitIds.Count) ? squad.unitIds[i] : "";
+            if (!string.IsNullOrEmpty(id)) _selectedUnitId = id;
+            if (_mode == Mode.Stone) { EnterUnitMode(); return; }
             RefreshUnitMode();
         }
 

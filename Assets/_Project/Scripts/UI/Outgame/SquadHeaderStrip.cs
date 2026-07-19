@@ -10,9 +10,10 @@ namespace Wassup.UI
 {
     // squad-character-page Unit 3 — the always-visible "편성 현황" header above the
     // roster: 7 unit slots + 4 stone slots. Slots repaint from the squad save.
-    // Tapping a unit slot removes it (quick de-select, handled by the orchestrator);
-    // tapping a stone slot enters stone mode. Pure view — the orchestrator (unit 4)
-    // owns the squad state and reacts to the tap events.
+    // Tapping a filled unit slot selects it for the detail panel (unit 9 — removal
+    // is the detail panel's [편성 해제] button); tapping a stone slot enters stone
+    // mode. Pure view — the orchestrator (unit 4) owns the squad state and reacts
+    // to the tap events.
     public class SquadHeaderStrip : MonoBehaviour
     {
         [SerializeField] private DefenderCatalog catalog;
@@ -30,6 +31,7 @@ namespace Wassup.UI
 
         private class SlotW
         {
+            public string id; // unit/stone id currently painted into the slot
             public Image bg;
             public Image icon;
             public TMP_Text label;
@@ -37,6 +39,7 @@ namespace Wassup.UI
         }
 
         private bool _built;
+        private string _selectedUnitId;
         private readonly List<SlotW> _unitSlots = new List<SlotW>();
         private readonly List<SlotW> _stoneSlots = new List<SlotW>();
 
@@ -47,14 +50,17 @@ namespace Wassup.UI
             {
                 string id = (squad != null && squad.unitIds != null && i < squad.unitIds.Count) ? squad.unitIds[i] : "";
                 var unit = (!string.IsNullOrEmpty(id) && catalog != null) ? catalog.ById(id) : null;
+                _unitSlots[i].id = id;
                 PaintSlot(_unitSlots[i], unit != null ? unit.portrait : null, unit != null ? FilledUnit : EmptySlot, string.IsNullOrEmpty(id));
             }
             for (int i = 0; i < _stoneSlots.Count; i++)
             {
                 string id = (squad != null && squad.stoneIds != null && i < squad.stoneIds.Count) ? squad.stoneIds[i] : "";
                 var stone = (!string.IsNullOrEmpty(id) && stoneCatalog != null) ? stoneCatalog.ById(id) : null;
+                _stoneSlots[i].id = id;
                 PaintSlot(_stoneSlots[i], stone != null ? stone.icon : null, stone != null ? DreamstoneStyle.Frame(stone.grade) : EmptySlot, string.IsNullOrEmpty(id));
             }
+            ApplyUnitSelection();
         }
 
         // -1 = none. Highlights the stone slot currently being edited in stone mode.
@@ -62,6 +68,22 @@ namespace Wassup.UI
         {
             for (int i = 0; i < _stoneSlots.Count; i++)
                 if (_stoneSlots[i].outline != null) _stoneSlots[i].outline.SetActive(i == index);
+        }
+
+        // Unit 10 — outlines the unit slot holding the unit shown in the detail
+        // panel. null/unequipped id clears (unit-mode only, driven by the orchestrator).
+        public void SetSelectedUnit(string unitId)
+        {
+            _selectedUnitId = unitId;
+            if (_built) ApplyUnitSelection();
+        }
+
+        private void ApplyUnitSelection()
+        {
+            for (int i = 0; i < _unitSlots.Count; i++)
+                if (_unitSlots[i].outline != null)
+                    _unitSlots[i].outline.SetActive(
+                        !string.IsNullOrEmpty(_selectedUnitId) && _unitSlots[i].id == _selectedUnitId);
         }
 
         private static void PaintSlot(SlotW slot, Sprite sprite, Color bg, bool empty)
