@@ -1533,7 +1533,7 @@ namespace Wassup.Bridge
         {
             int laneCount = _generatedMap.IsCreated ? _generatedMap.spawns.Length : 1;
             var entries = WavePatternGenerator.ExpandWave(wave, baseTriggerTimeSec, laneCount, _wavePlan.intraWaveSpacingSec);
-            int baseDeckIndex = wave.waveIndex * 1000;
+            int baseDeckIndex = wave.waveIndex * WavePatternGenerator.DeckIndexStride;
             for (int i = 0; i < entries.Count; i++)
                 _pending.Add(new PendingSpawnEntry { entry = entries[i], deckIndex = baseDeckIndex + i });
 
@@ -4781,14 +4781,6 @@ namespace Wassup.Bridge
             return material;
         }
 
-        private static int EffectiveSpawnIndex(int authoredIndex, int deckIndex, int laneCount)
-        {
-            if (laneCount <= 0) return 0;
-            if (laneCount <= 2)
-                return math.clamp(authoredIndex, 0, laneCount - 1);
-            return math.abs(deckIndex) % laneCount;
-        }
-
         // nightmare-catcher unit 5 — boss spawn bake (병렬 경로): nightmareMechanics
         // 를 선언한 적이 곧 보스. BossTag + ThreatEntry(위협 테이블, unit 1) +
         // DcTriggerSlot 을 부착한다. defender 부착 API(ApplyDreamcatcherCardToUnit —
@@ -4911,7 +4903,8 @@ namespace Wassup.Bridge
             _em.SetName(entity, $"Enemy_{entry.unitType.displayName}");
 #endif
 
-            int spawnIndex = EffectiveSpawnIndex(entry.spawnIndex, pending.deckIndex, _generatedMap.spawns.Length);
+            // spawn-point-alert unit 0 — lane 산식은 WavePatternGenerator 로 이관(예보와 공유).
+            int spawnIndex = WavePatternGenerator.EffectiveSpawnIndex(entry.spawnIndex, pending.deckIndex, _generatedMap.spawns.Length);
             if (spawnIndex < 0 || spawnIndex >= _generatedMap.spawns.Length)
             {
                 Debug.LogWarning($"[BattleBridge] SpawnEntry.spawnIndex={spawnIndex} out of range (spawns={_generatedMap.spawns.Length}). Fallback to 0.");
