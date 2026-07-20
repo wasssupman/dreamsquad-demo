@@ -43,11 +43,16 @@ public int killScore = 100;
 
 ## 완료 기준
 
-- [ ] compile 통과. `refresh_unity` 후 `read_console` 에 에러 없음
-- [ ] `ScoreRules.asset` 이 Project 창에 보이고 인스펙터에서 두 값이 편집 가능
-- [ ] `Enemy_Boss_Nightmare.asset` 의 `killScore` = 2000, 나머지 9종 = 100
-- [ ] 기존 EditMode 테스트 전부 통과 (필드 추가라 회귀가 없어야 정상)
-- [ ] 어떤 코드도 아직 이 값들을 읽지 않는다 (다음 단위에서 연결)
+- [x] compile 통과. `refresh_unity` 후 `read_console` 에 에러 없음
+- [x] `ScoreRules.asset` 이 Project 창에 보이고 인스펙터에서 두 값이 편집 가능
+- [x] `Enemy_Boss_Nightmare.asset` 의 `killScore` = 2000, 나머지 9종 = 100
+- [x] 기존 EditMode 테스트 전부 통과 (1070 / 0 실패)
+- [x] 어떤 코드도 아직 이 값들을 읽지 않는다 (다음 단위에서 연결)
+
+확인: 2026-07-20 · `d82d4cdb`
+
+> 부수 확인: 실제 에셋으로 킬 예산을 재계산해 **65기 = 잡몹 63 + 보스 2 → 10,300** 을 얻었다.
+> README 예산 표의 값이 코드가 아니라 실물 데이터로도 재현된다.
 
 > 유닛별 값을 갈라 쓰면 킬 예산이 마리수가 아니라 **타입 분포**에 의존하게 된다.
 > README 의 10,300 은 "잡몹 전부 100" 을 전제한 값이므로, 잡몹 값을 갈라 쓰려면 README 예산 표를 함께 고쳐야 한다.
