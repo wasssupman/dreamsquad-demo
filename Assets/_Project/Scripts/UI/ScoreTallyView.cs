@@ -21,13 +21,22 @@ namespace Wassup.UI
     {
         private const int SortingOrder = 5;
 
+        // 시선은 마지막 적이 죽은 자리(보드 중앙)에 있는데 점수는 우상단이다. 바로 합산하면
+        // 첫 축을 통째로 놓친다. 그래서 "전투 끝 → 화면 전환 → 여기를 봐라 → 숫자" 순으로
+        // 인지 단계를 쪼갠다. 전부 스킵 가능하므로 반복 플레이의 부담은 없다.
         [Header("Timing (unscaled)")]
-        [Tooltip("딤이 차오르는 시간")]
-        [SerializeField] private float dimFadeSec = 0.25f;
-        [Tooltip("축 하나가 더해지고 다음 축까지의 간격")]
-        [SerializeField] private float perAxisSec = 0.8f;
+        [Tooltip("마지막 적이 죽은 뒤 전투 화면 그대로 두는 여운. 킬을 인지할 시간.")]
+        [SerializeField] private float preRollSec = 0.6f;
+        [Tooltip("딤이 차오르는 시간 — 상태가 바뀌었다는 신호")]
+        [SerializeField] private float dimFadeSec = 0.4f;
+        [Tooltip("딤이 다 찬 뒤 첫 축까지의 쉼")]
+        [SerializeField] private float postDimHoldSec = 0.3f;
+        [Tooltip("라벨이 먼저 뜨고 숫자가 움직이기까지의 리드타임 — 시선 유도")]
+        [SerializeField] private float labelLeadSec = 0.25f;
+        [Tooltip("축 하나의 롤업 상한")]
+        [SerializeField] private float perAxisSec = 0.7f;
         [Tooltip("축 사이 쉼")]
-        [SerializeField] private float betweenAxisSec = 0.3f;
+        [SerializeField] private float betweenAxisSec = 0.35f;
         [Tooltip("마지막 축 이후 결과 화면까지의 여운")]
         [SerializeField] private float tailSec = 0.5f;
 
@@ -67,10 +76,24 @@ namespace Wassup.UI
         private IEnumerator Sequence(ScoreMath.BattleScore score, ScoreHudView hud, System.Action onDone)
         {
             SetLabel(null);
-            yield return FadeDim(0f, dimColor.a, dimFadeSec);
 
-            // 0점 축은 건너뛴다 — 패배 시 시간·스트레스가 0이라 "0을 굴리는" 민망한
-            // 장면이 남는다. 그 경우 연출은 딤만 스치고 곧장 결과로 간다.
+            // 1) 전투 여운 — 딤도 안 깐다. 마지막 킬을 눈으로 마무리할 시간.
+            yield return WaitUnscaled(preRollSec);
+
+            // 2) 딤 — "전투는 끝났다"는 상태 전환 신호.
+            yield return FadeDim(0f, dimColor.a, dimFadeSec);
+            yield return WaitUnscaled(postDimHoldSec);
+
+            // 3) 시선 유도 — 숫자가 움직이기 전에 배지를 한 번 때린다.
+            bool hasAny = score.Time > 0 || score.Stress > 0;
+            if (hasAny && !_skipRequested)
+            {
+                hud?.PulseAttention();
+                yield return WaitUnscaled(labelLeadSec);
+            }
+
+            // 4) 축 순차 합산. 0점 축은 건너뛴다 — 패배 시 시간·스트레스가 0이라
+            //    "0을 굴리는" 민망한 장면이 남는다.
             yield return AddAxis("시간", score.Time, hud);
             yield return AddAxis("스트레스", score.Stress, hud);
 
@@ -86,9 +109,13 @@ namespace Wassup.UI
         {
             if (points <= 0) yield break;
 
+            // 라벨을 먼저 띄우고 한 박자 뒤에 숫자를 움직인다. 동시에 하면 어디를 봐야
+            // 할지 모르는 사이에 롤업이 끝나버린다.
             SetLabel($"{name}  +{points:N0}");
+            yield return WaitUnscaled(labelLeadSec);
+            if (_skipRequested) { hud?.AddScore(points); yield break; }
+
             hud?.AddScore(points);
-            if (_skipRequested) yield break;
 
             // 롤업이 끝나면 바로 다음으로 — 고정 대기보다 리듬이 산다. 다만 상한을 둬서
             // 보간이 오래 끌어도 연출이 늘어지지 않게 한다.

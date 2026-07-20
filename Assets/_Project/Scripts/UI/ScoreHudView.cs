@@ -272,6 +272,11 @@ namespace Wassup.UI
         // 연출이 롤업 완료를 기다릴 때 쓴다(표시 숫자가 목표에 붙었는가).
         public bool RollSettled => Mathf.Abs(_targetScore - _shownScore) < 0.5f;
 
+        // score-tally-sequence unit 2 rev — 값 변화 없는 시선 유도 펄스.
+        // 마지막 적이 죽은 자리(보드 중앙)에 시선이 있는 상태로 합산이 시작되면 첫 축을
+        // 놓친다. 숫자가 움직이기 전에 배지를 한 번 때려 "여기를 봐라"를 만든다.
+        public void PulseAttention() => TriggerHit(1);
+
         // 최근 burstWindowSec 안에 번 점수가 임계 이상이면 가장자리 플래시.
         // 지속 사격 중 매 프레임 터지지 않도록 플래시 지속시간만큼 쿨다운을 둔다.
         private void TryBurstFlash()
