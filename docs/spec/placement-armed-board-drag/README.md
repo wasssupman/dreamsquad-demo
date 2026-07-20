@@ -1,6 +1,6 @@
 # placement-armed-board-drag
 
-상태: **초안 2026-07-20** (README 승인 대기 · 미착수)
+상태: **완료 2026-07-20** (units 0~2 사용자 Play 확인 · `bc30446d`/`e88fb071`/`5b1c575f`)
 
 ## 목표
 
