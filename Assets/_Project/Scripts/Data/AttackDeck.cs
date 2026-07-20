@@ -22,6 +22,10 @@ namespace Wassup.Data
         public int maxWaveCount = 15;
         public int minUnitsPerWave = 10;
         public int maxUnitsPerWave = 15;
+        // wave-pattern unit 7 — 수량 램프: minUnitsPerWave(첫 웨이브)→maxUnitsPerWave(마지막)
+        // 선형 증가값에 ±waveCountJitter 정수 지터를 더한 뒤 [min,max] 클램프. 0 = 순수 선형.
+        [Tooltip("웨이브 진행 수량 램프의 지터 폭(±정수). 0 = 순수 선형. min→max 선형값을 이만큼 흔든 뒤 [min,max] 클램프.")]
+        public int waveCountJitter = 1;
         public float intraWaveSpacingSec = 0.35f;
 
         [Header("Boss Waves")]

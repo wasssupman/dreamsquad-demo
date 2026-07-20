@@ -17,6 +17,7 @@
 | Phase 4 | `4_logging_tests_validation.md` | 로그, 테스트, Play 검증 기준 |
 | Phase 5 | `5_handoff_summary.md` | 구현 결과와 다음 작업 인계 요약 |
 | 추가 6 (2026-07-20) | `6_fixed_wave_seed.md` | 테스트 버전용 고정 웨이브 시드 — `deck.waveSeed` 라이브 오버라이드 재활성 (**완료 `2d8c843e`**) |
+| 추가 7 (2026-07-20) | `7_wave_difficulty_ramp.md` | 웨이브 진행 수량 램프 — min→max 선형 증가 + `waveCountJitter` 지터 |
 
 ## 공통 원칙
 
@@ -24,7 +25,7 @@
 - **시드 권한(unit 6 갱신)**: 라이브는 `deck.waveSeed` 비0 = 고정, 0 = `MatchSeed.DeriveWaveSeed(matchSeed)` 파생. `ResolveWaveSeed()` 의 `0→1` 폴백은 레거시 `Generate(deck)` 오버로드(프리뷰/테스트) 전용 — 0 판별이 필요한 라이브 분기는 필드를 직접 본다.
 - briefing preview 와 battle runtime 은 같은 `WavePatternGenerator.Generate(deck)` 경로를 사용한다.
 - 한 wave 는 정확히 2종의 공격 유닛 타입을 포함한다.
-- `unitsPerWave` 는 5~8마리다. (2026-07-20 밸런스: 기존 10~15 → 체감 과다로 −50%. `WaveA.asset` 값)
+- `unitsPerWave` 총량은 웨이브 진행에 따라 `minUnitsPerWave`(6, 첫 웨이브)→`maxUnitsPerWave`(10, 마지막)로 **선형 증가** + `±waveCountJitter`(1) 지터, `[min,max]` 클램프 (unit 7). min/max 는 이제 "균등 랜덤 범위"가 아니라 "램프 양끝"이다. (2026-07-20: 10~15 → −50% → +20% → 램프. `WaveA.asset` 값)
 - `wavesPerRun` 은 10~15개다.
 - 자동 wave 시간은 `timerDurationSec / wavesPerRun` 으로 배정한다.
 - Wave 1 은 0초에 호출하고, 마지막 wave 는 `timerDurationSec` 보다 앞에 예약한다.
@@ -35,6 +36,7 @@
 - unit pool 이 2종 미만이면 generated wave 생성은 실패하고 legacy `spawns` fallback 을 사용한다.
 - generated wave 의 lane 배정은 `localIndex % laneCount` 다.
 - wave 내부 스폰 순서는 deterministic interleave 다. `A,B,A,B...` 순서로 펼치고 한쪽 수량이 먼저 끝나면 남은 타입을 이어서 스폰한다.
+- `intraWaveSpacingSec` 는 round-robin 펼침에서 스폰지점 간 첫 적 간격(= 지점별 텀)이자 같은 지점 내 간격은 `spacing × laneCount` 다. 값이 작으면 모든 스폰지점이 거의 동시에 활성화된다. (2026-07-20 밸런스: 0.35 → 1.0, 스폰지점 순차 출현. `WaveA.asset` 값)
 
 ## 시간 배정
 
