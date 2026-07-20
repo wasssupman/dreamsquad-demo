@@ -1,6 +1,6 @@
 # Tournament History — 로비 토너먼트 히스토리 + 상세 랭킹
 
-상태: **완료 2026-07-20** — units 0~3 구현 + 컴파일(오류 0) + EditMode 1020 통과 + 코드리뷰 APPROVE + OutgameScene 씬 배선 + **실서버 e2e 확인**(로그인 상태에서 히스토리 버튼 → 패널 → `unclaimed` 실데이터 3건 로드/렌더 육안 확인, 사용자 스샷). 배선 후 버그 2건 수정(버튼 화면밖·라벨) + 패널 세로 잘림 수정. 잔여(저위험): 행 클릭 → 상세 팝업 e2e 육안(리스트 e2e·공용 LeaderboardList·기존 GetResult API 재사용으로 사실상 검증됨). 인계는 `4_handoff_summary.md`. tournament-play-report 후속 후보 "미수령 목록 조회" 승격.
+상태: **완료 2026-07-20** — units 0~3 구현 + 컴파일(오류 0) + EditMode 1020 통과 + 코드리뷰 APPROVE + OutgameScene 씬 배선 + **실서버 e2e 확인**(로그인 상태에서 히스토리 버튼 → 패널 → `unclaimed` 실데이터 3건 로드/렌더 육안 확인, 사용자 스샷). 배선 후 버그 3건 수정(버튼 화면밖·라벨·패널 세로 잘림). **상세 랭킹 팝업까지 e2e 확인**(행 클릭 → `GetResult` 랭킹, 사용자 확인 2026-07-20). 인계는 `4_handoff_summary.md`. tournament-play-report 후속 후보 "미수령 목록 조회" 승격.
 
 ## 목표
 

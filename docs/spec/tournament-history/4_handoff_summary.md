@@ -44,9 +44,9 @@
 - 게스트(`IdToken==""`)는 API 스킵·빈 상태. `IsSignedIn` 아님에 주의.
 - 씬 배선은 `execute_code` 불가(CodeDom/mono 경로 깨짐, Roslyn 부재)로 **일회용 Editor `[MenuItem]` 스크립트**(reflection 기반)로 수행 후 삭제. 향후 유사 배선 시 동일 우회 필요.
 
-## Follow-up (저위험 육안 1건)
+## Follow-up
 
-- 리스트 e2e 는 실서버로 확인 완료. 남은 육안 1건: **행 클릭 → 상세 랭킹 팝업**(`GetResult` 왕복,
-  점수 내림차순·본인 강조). 공용 `LeaderboardList`+기존 `GetResult` 재사용이라 저위험.
-- 관찰: dev `unclaimed` 응답의 `rank` 가 0이라 목록 순위는 "-" 로 표기(상세 팝업은 score 순 계산).
-  목록에도 순위를 매기려면 별도 결정 필요.
+- 리스트 + 상세 팝업 e2e 모두 실서버로 확인 완료 (2026-07-20). 기능 잔여 없음.
+- 관찰(선택): dev `unclaimed` 응답의 `rank` 가 0이라 **목록** 순위는 "-" 로 표기(상세 팝업은
+  score 내림차순으로 순위 직접 계산 → 정상). 목록에도 순위를 매기려면 클라 계산 추가 — 제품 결정 대기.
+- 후속 후보(별도): 보상 수령(`claim`/`claimAll`), 상세 프로필 이미지, 완료 토너먼트 개념 생기면 `claimed` 목록.
