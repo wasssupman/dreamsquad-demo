@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace Wassup.Core.Api
@@ -28,7 +30,15 @@ namespace Wassup.Core.Api
             JObject root;
             try
             {
-                root = JObject.Parse(body);
+                // DateParseHandling.None: keep ISO date strings verbatim. Newtonsoft's
+                // default coerces date-like strings to DateTime, which then reads back
+                // as a locale-dependent string (e.g. createdTime). Every field we bind
+                // is plain string/number — none wants auto-DateTime.
+                using (var reader = new JsonTextReader(new StringReader(body))
+                       { DateParseHandling = DateParseHandling.None })
+                {
+                    root = JObject.Load(reader);
+                }
             }
             catch (Exception e)
             {
