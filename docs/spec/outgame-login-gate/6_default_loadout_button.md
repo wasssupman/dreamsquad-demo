@@ -24,7 +24,7 @@ dev 트레이에 버튼 하나를 추가해 **선택 스쿼드와 드림캐쳐 �
 
 ### 기본 덱의 출처
 
-`DreamcatcherDeck_Default.asset`(10장)을 **기본 덱 저작처로 되살린다**. 이 에셋은 fallback 덱 폐기(2026-07-15, `DreamcatcherHandController.cs:192`) 이후 아무도 안 읽는 죽은 데이터였다. 현재 `deckSize=8` 이므로 앞 8장만 담기고 `farewell`/`guardian_fortress` 는 잘린다(사용자 결정 2026-07-15). 규칙이 바뀌면 자동으로 따라간다 — 에셋을 8장으로 편집하지 않는 이유다.
+`DreamcatcherDeck_Default.asset`(10장)을 **기본 덱 저작처로 되살린다**. 이 에셋은 fallback 덱 폐기(2026-07-15, `DreamcatcherHandController.cs:192`) 이후 아무도 안 읽는 죽은 데이터였다. 현재 `deckSize=10` 이므로 10장 모두 담긴다(8장 시절엔 앞 8장만 담기고 `farewell`/`guardian_fortress` 가 잘렸다). 규칙이 바뀌면 자동으로 따라간다 — 에셋을 규칙 크기에 맞춰 하드편집하지 않는 이유다. (2026-07-20 덱=10 확정 정정)
 
 ### 주의
 

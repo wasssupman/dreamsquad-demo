@@ -7,7 +7,7 @@
 
 ## 검증 질문
 
-로비에서 START 를 눌렀을 때, **스쿼드 7명과 드림캐쳐 덱 8장이 모두 충족되면 게임이 시작되고**, 하나라도 모자라면 **씬 전환 없이 팝업이 떠서 무엇이 몇 개 모자란지 알려주고 해당 편성 화면으로 보내주는가?**
+로비에서 START 를 눌렀을 때, **스쿼드 7명과 드림캐쳐 덱 10장이 모두 충족되면 게임이 시작되고**, 하나라도 모자라면 **씬 전환 없이 팝업이 떠서 무엇이 몇 개 모자란지 알려주고 해당 편성 화면으로 보내주는가?**
 
 ## 상위 목표
 
@@ -31,7 +31,7 @@
 
 - **게이트 지점은 `OnStartGame()` 하나**. 미충족이면 팝업을 띄우고 **`SceneTransition.Go` 를 부르지 않는다**. 충족이면 기존 동작 그대로.
 - **게이트는 규칙을 재정의하지 않는다. 기존 소유자에게 위임하고 그 위에 판정만 얹는다.**
-  - 덱: `DeckRules.Validate(cardIds, catalog, out reason)`. 실사용 규칙은 `DeckRuleConfig_Default.asset` 기준 **정확히 8장 · 타입 캡 없음**.
+  - 덱: `DeckRules.Validate(cardIds, catalog, out reason)`. 실사용 규칙은 `DeckRuleConfig_Default.asset` 기준 **정확히 10장 · 타입 캡 없음**(2026-07-20 실측 `deckSize=10`/`maxSquad=-1`).
   - 스쿼드: **배치 대상은 `SquadDraw.Resolve`**(빈칸 제거 → dedup → `FieldCount` 컷)가 소유한다 — `GameManager` 가 매치 시작 시 부르는 바로 그 함수다. 게이트는 Resolve 결과를 `DefenderCatalog.ById` 로 해석해 개수만 센다. 로직을 복제하면 게이트와 실제 배치가 어긋난다 (critic M1: 복제본은 이미 "슬라이스 후 dedup" 으로 드리프트해 있었다).
   - 개수 기준은 `min(SquadSave.SlotCount, SquadDraw.FieldCount)`. 둘 다 독립 하드코딩된 7이라, 한쪽만 바뀌어도 요구치가 도달 불가능해지지 않게 낮은 쪽을 쓴다.
 - **`FilledCount()` 를 쓰지 않는다** — 빈 문자열이 아닌 슬롯을 셀 뿐이라 **stale 유닛 id(리네임 후)나 중복도 "충족"으로 통과**시키고, 그러면 `GameManager` 가 약속보다 적게 배치하거나 유닛 0개로 resolve 해서 draft 로 조용히 폴백한다. 게이트가 잡아야 할 바로 그 실패다.
