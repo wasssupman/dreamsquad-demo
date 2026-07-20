@@ -24,7 +24,7 @@
 - **시드 권한(unit 6 갱신)**: 라이브는 `deck.waveSeed` 비0 = 고정, 0 = `MatchSeed.DeriveWaveSeed(matchSeed)` 파생. `ResolveWaveSeed()` 의 `0→1` 폴백은 레거시 `Generate(deck)` 오버로드(프리뷰/테스트) 전용 — 0 판별이 필요한 라이브 분기는 필드를 직접 본다.
 - briefing preview 와 battle runtime 은 같은 `WavePatternGenerator.Generate(deck)` 경로를 사용한다.
 - 한 wave 는 정확히 2종의 공격 유닛 타입을 포함한다.
-- `unitsPerWave` 는 10~15마리다.
+- `unitsPerWave` 는 5~8마리다. (2026-07-20 밸런스: 기존 10~15 → 체감 과다로 −50%. `WaveA.asset` 값)
 - `wavesPerRun` 은 10~15개다.
 - 자동 wave 시간은 `timerDurationSec / wavesPerRun` 으로 배정한다.
 - Wave 1 은 0초에 호출하고, 마지막 wave 는 `timerDurationSec` 보다 앞에 예약한다.
