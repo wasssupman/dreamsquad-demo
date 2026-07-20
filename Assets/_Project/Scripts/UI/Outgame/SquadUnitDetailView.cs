@@ -36,6 +36,8 @@ namespace Wassup.UI
         private static readonly Color UnequipColor = new Color(0.52f, 0.24f, 0.24f, 1f);
         private static readonly Color ClassBadgeColor = new Color(0.20f, 0.24f, 0.34f, 1f);
         private static readonly Color CostBadgeColor = new Color(0.16f, 0.34f, 0.52f, 1f);
+        // unit 15 — 스탯 라벨은 부차 정보라 한 단 낮춘다(수치는 흰색 볼드로 대비).
+        private static readonly Color StatLabelColor = new Color(0.60f, 0.64f, 0.72f, 1f);
 
         private static readonly string[] StatLabels =
             { "데미지", "체력", "사거리", "공격주기", "각성보상" };
@@ -286,8 +288,12 @@ namespace Wassup.UI
             hlg.childControlHeight = true;
             hlg.childForceExpandWidth = true;
             hlg.childForceExpandHeight = false;
-            MakeText(go.transform, StatLabels[index], 26, TextAlignmentOptions.Left, 38);
-            _statValues[index] = MakeText(go.transform, "", 26, TextAlignmentOptions.Right, 38);
+            // unit 15 — 라벨/수치를 크기·굵기·명도 세 축으로 갈라 2열에서도 짝이 읽히게.
+            var label = MakeText(go.transform, StatLabels[index], 24, TextAlignmentOptions.Left, 38);
+            label.color = StatLabelColor;
+            var value = MakeText(go.transform, "", 30, TextAlignmentOptions.Right, 38);
+            value.fontStyle = FontStyles.Bold;
+            _statValues[index] = value;
         }
 
         // 홀수 번째 마지막 스탯이 좌측 절반에 머물도록 우측을 비워두는 자리채움.
