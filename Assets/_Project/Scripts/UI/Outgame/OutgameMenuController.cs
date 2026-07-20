@@ -80,6 +80,16 @@ namespace Wassup.UI
             if (menuRoot != null) menuRoot.SetActive(signedIn);
             if (lobbyCharactersRoot != null) lobbyCharactersRoot.SetActive(signedIn);
             if (loginPanel != null) loginPanel.gameObject.SetActive(!signedIn);
+
+            // tournament-history — 히스토리는 실계정 전용. 게스트는 sign-in 게이트는
+            // 통과하지만 IdToken 이 비어 서버 조회를 못 하므로 버튼 자체를 숨긴다
+            // (버튼은 menuRoot 직속 자식). 미배선/미발견이면 그대로 노출(무회귀).
+            if (menuRoot != null)
+            {
+                var historyBtn = menuRoot.transform.Find("HistoryButton");
+                if (historyBtn != null)
+                    historyBtn.gameObject.SetActive(signedIn && !string.IsNullOrEmpty(UserSession.IdToken));
+            }
         }
 
         // outgame-login-gate unit 3 — dev button: forget the account and fall
