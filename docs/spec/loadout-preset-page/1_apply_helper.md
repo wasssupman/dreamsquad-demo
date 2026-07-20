@@ -25,18 +25,16 @@ public static class PresetApply
 로직:
 
 1. `profile == null` → false.
-2. `squad = profile.SelectedSquad()`; null → false (정상 로드 후엔 항상 non-null이나 가드 유지).
-   `squad.NormalizeSlots()` 후 `squad.unitIds[i]` = `unitIds[i]`(없으면 `""`), i = 0..`SquadSave.SlotCount-1`.
+2. `squad = SelectedSquad()`, `deck = SelectedDeck()` 를 먼저 얻고 **둘 중 하나라도 null 이면 false**
+   (가드가 쓰기보다 앞 = 원자성, 부분 적용 없음). **기본값을 생성하지 않는다** — 신규유저 기본 로드아웃
+   (squad_1/deck_1)은 `ProfileStore.EnsureDefaultSquad/EnsureDefaultDeck`(load 시점, `DreamcatcherDeck_Default`
+   시드)가 단독 주입하므로, 적용 시점엔 이미 존재한다. 여기서 deck_1 을 재생성하면 그 책임을 중복 소유하게 됨.
+3. `squad.NormalizeSlots()` 후 `squad.unitIds[i]` = `unitIds[i]`(없으면 `""`), i = 0..`SquadSave.SlotCount-1`.
    → **스톤 슬롯은 미변경**(계약 3).
-3. `deck = profile.SelectedDeck()`; null 이면 `dreamcatcherDecks` 에서 `id=="deck_1"` 을 찾고 없으면
-   `new DeckSave{ id="deck_1", name="Deck 1" }` 생성·추가, `profile.selectedDeckId = "deck_1"`.
-   (`DreamcatcherDeckPageController.OnSave`(`DreamcatcherDeckPageController.cs:187-197`)의 **null-branch 와 동형**
-   — 상수 `"deck_1"`/`"Deck 1"` 재현. 단 OnSave 는 선택 덱이 deck_1 이 아니면 강제 캐노니컬라이즈해 선택을
-   이동시키지만, 여기선 선택 덱이 **있으면 그대로 덮어쓰고** `selectedDeckId` 를 유지한다 — 계약 2 준수.)
-4. `deck.cardIds = new List<string>(cardIds ?? empty)` — 제공된 카드 **그대로** 기록. 카드는 슬롯 배열이 아닌
-   가변 길이 리스트라 유닛(7슬롯 캡)과 달리 캡하지 않는다(구조 차이). 덱 규칙 검증도 없음(계약 4) — authoring
-   책임이며, 라이브 `EffectiveDeckSize`(현 10, 데이터 주도값) 와 다른 장수면 START 게이트가 잡는다.
-5. return true.
+4. `deck.cardIds` = 제공된 카드 **그대로** 기록(null 항목만 제외). 카드는 슬롯 배열이 아닌 가변 길이 리스트라
+   유닛(7슬롯 캡)과 달리 캡하지 않는다(구조 차이). 덱 규칙 검증도 없음(계약 4) — authoring 책임이며,
+   라이브 `EffectiveDeckSize`(현 10, 데이터 주도값)와 다른 장수면 START 게이트가 잡는다.
+5. return true. `selectedDeckId`/`selectedSquadId` 는 건드리지 않는다(선택 대상 불변).
 
 원칙:
 
@@ -53,7 +51,7 @@ public static class PresetApply
   - 카드 10개 기록 → `cardIds` 정확히 반영.
   - 카드 **초과(예: 12장) 기록 → 캡 없이 12장 그대로** 반영(유닛과 비대칭, 의도된 동작). 부족(예: 8장) → 8장.
   - 기존 `stoneIds` 4슬롯이 적용 후에도 **불변**.
-  - `SelectedDeck()==null` 프로필 → `deck_1` 생성 + `selectedDeckId` 설정.
+  - `SelectedDeck()==null` 프로필 → **false + 덱 미생성 + 스쿼드 미변경**(원자성; 기본값 생성은 ProfileStore 소유).
   - `profile==null` / 선택 스쿼드 null → false, 예외 없음.
 - [ ] `ProfileStore.Save` 는 호출하지 않음(테스트가 디스크에 의존하지 않음).
 - 확인 2026-07-20 (커밋 05c7c7b8): EditMode 9/9 통과(7슬롯 캡·초과무시·부족패딩·카드 verbatim·초과무캡·스톤 보존·deck_1 생성·null 가드 2). Save 미호출.

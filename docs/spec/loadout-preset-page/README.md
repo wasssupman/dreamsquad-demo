@@ -36,10 +36,12 @@
 1. **프리셋 = authored SO 데이터.** `SquadPresetCollection` 하나가 `List<SquadPreset>` 를 보유하고,
    개별 `SquadPreset` 는 `DefenderUnitData[]`(≤7)·`DreamcatcherCard[]`(≤10) 를 **SO 직접 참조**로 담는다.
    id 는 저장하지 않으며 적용 시점에만 `.id` 를 읽는다.
-2. **적용 = 제자리 덮어쓰기.** 적용은 프로필의 **선택된** `SquadSave.unitIds`(7슬롯)와 **선택된**
-   `DeckSave.cardIds` 내용을 교체할 뿐, 새 스쿼드/덱 엔트리를 만들거나 선택 대상(`selectedSquadId`/
-   `selectedDeckId`)을 바꾸지 않는다. 선택 덱이 없으면 `deck_1` 을 찾거나 생성해 선택한다
-   (기존 `DreamcatcherDeckPageController.OnSave` 동작과 동형).
+2. **적용 = 제자리 덮어쓰기 (기본값 미생성).** 적용은 프로필의 **선택된** `SquadSave.unitIds`(7슬롯)와
+   **선택된** `DeckSave.cardIds` 내용을 교체할 뿐, 새 스쿼드/덱 엔트리를 만들거나 선택 대상
+   (`selectedSquadId`/`selectedDeckId`)을 바꾸지 않는다. 선택 스쿼드·덱은 **이미 존재한다는 전제**다 —
+   신규유저 기본 로드아웃(squad_1/deck_1) 주입은 `ProfileStore.EnsureDefaultSquad/EnsureDefaultDeck`
+   (load 시점, `DreamcatcherDeck_Default` 시드) **단독 소유**. 프리셋은 기본값을 생성하지 않고, 둘 중
+   하나라도 없으면 부분 적용 없이 no-op(false).
 3. **드림스톤 제외.** 프리셋은 유닛·드림캐쳐만 관리한다. 적용 시 `SquadSave.stoneIds`(4슬롯)는 건드리지 않는다.
 4. **적용 시 덱 규칙 검증 없음(v1).** 프리셋은 유효하게 authoring 된다는 전제. 잘못된 덱은 기존 START
    로드아웃 게이트(`LoadoutGate.Check`)가 여전히 잡는다. 런타임 검증은 후속 후보.

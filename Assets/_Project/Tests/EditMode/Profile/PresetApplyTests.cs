@@ -108,18 +108,18 @@ namespace Wassup.Tests.EditMode.Profile
         }
 
         [Test]
-        public void WriteToProfile_NoSelectedDeck_CreatesAndSelectsDeck1()
+        public void WriteToProfile_NoSelectedDeck_ReturnsFalse_NoDefaultCreated_NoSquadChange()
         {
             var p = MakeProfile(withSelectedDeck: false);
             Assert.IsNull(p.SelectedDeck());
+            p.SelectedSquad().unitIds[0] = "KEEP"; // 원자성 검증용 센티넬
 
             bool ok = PresetApply.WriteToProfile(p, Ids("u", 7), Ids("c", 10));
 
-            Assert.IsTrue(ok);
-            Assert.AreEqual("deck_1", p.selectedDeckId);
-            var deck = p.SelectedDeck();
-            Assert.IsNotNull(deck);
-            Assert.AreEqual(10, deck.cardIds.Count);
+            Assert.IsFalse(ok);
+            Assert.IsNull(p.SelectedDeck());                 // 기본 덱 생성 안 함(ProfileStore 소유)
+            Assert.AreEqual(0, p.dreamcatcherDecks.Count);
+            Assert.AreEqual("KEEP", p.SelectedSquad().unitIds[0]); // 덱 없으면 스쿼드도 미변경(부분 적용 없음)
         }
 
         [Test]
