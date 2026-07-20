@@ -26,15 +26,8 @@ namespace Wassup.UI
         private static readonly Color navyFill = new Color(0.05f, 0.06f, 0.10f, 0.98f);
         private static readonly Color defeatColor = new Color(1f, 0.42f, 0.42f, 1f);
 
-        // Row palette — kept private; these are visual constants, not tuning knobs.
-        private static readonly Color RowFill = new Color(1f, 1f, 1f, 0.05f);
-        private static readonly Color OwnFill = new Color(1f, 0.83f, 0.35f, 0.20f);
-        private static readonly Color WaitingFill = new Color(1f, 1f, 1f, 0.03f);
-        private static readonly Color WaitingText = new Color(0.60f, 0.63f, 0.65f, 1f); // #9AA0A6
-        private static readonly Color BadgeGold = new Color(1f, 0.82f, 0.29f, 1f);
-        private static readonly Color BadgeSilver = new Color(0.84f, 0.86f, 0.88f, 1f);
-        private static readonly Color BadgeBronze = new Color(0.78f, 0.54f, 0.30f, 1f);
-        private static readonly Color BadgeNavy = new Color(0.16f, 0.19f, 0.26f, 1f);
+        // Dark text over the gold tab/footer/badge fills. (Row-scoped palette moved
+        // to LeaderboardList — tournament-history Unit 1.)
         private static readonly Color BadgeTextDark = new Color(0.10f, 0.09f, 0.06f, 1f);
 
         private const float PanelW = 760f;
@@ -42,7 +35,6 @@ namespace Wassup.UI
         private const float Pad = 34f;
         private const float HeaderH = 168f;
         private const float FooterH = 128f;
-        private const float RowH = 48f;
 
         private TextMeshProUGUI resultLabel;
         private TextMeshProUGUI scoreSubLabel;
@@ -52,16 +44,12 @@ namespace Wassup.UI
         private RectTransform _listContent;
         private bool _built;
 
-        // Cached procedural sprites (baked once, reused across rows).
+        // Cached procedural sprites (baked once, reused).
         private Sprite _tabSprite;
         private Sprite _buttonSprite;
-        private Sprite _rowNormal;
-        private Sprite _rowOwn;
-        private Sprite _rowWaiting;
-        private Sprite _badgeGold;
-        private Sprite _badgeSilver;
-        private Sprite _badgeBronze;
-        private Sprite _badgeNavy;
+
+        // Shared ranked-row renderer (result popup + history detail popup).
+        private LeaderboardList _leaderboard;
 
         private void Awake()
         {
@@ -109,7 +97,7 @@ namespace Wassup.UI
                 }
                 else statsLabel.gameObject.SetActive(false);
             }
-            RenderRows(BuildBotRows(playerScore));
+            _leaderboard.Render(_listContent, BuildBotRows(playerScore));
             gameObject.SetActive(true);
         }
 
@@ -128,68 +116,13 @@ namespace Wassup.UI
             if (!gameObject.activeSelf) return;
             if (data == null || _listContent == null) return;
 
-            var rows = BuildRows(data.entries, data.maxEntryCount, ownUserId);
+            var rows = LeaderboardList.BuildRows(data.entries, data.maxEntryCount, ownUserId);
             if (rows.Count == 0) return; // nothing meaningful to draw — keep the bot list
-            RenderRows(rows);
-        }
-
-        // ── Pure row model ─────────────────────────────────────────────────────
-        // Display row for one leaderboard slot. Both the bot fallback and the real
-        // tournament ranking funnel through RenderRows via these rows.
-        internal readonly struct Row
-        {
-            public readonly int Rank;
-            public readonly string Name;
-            public readonly int Score;
-            public readonly bool IsPlayer;
-            public readonly bool IsWaiting;
-
-            public Row(int rank, string name, int score, bool isPlayer, bool isWaiting)
-            {
-                Rank = rank;
-                Name = name;
-                Score = score;
-                IsPlayer = isPlayer;
-                IsWaiting = isWaiting;
-            }
-        }
-
-        // Tournament slots are pre-assigned (maxEntryCount, currently 10): every slot
-        // is rendered, and slots no opponent has taken yet read WAITING... The dev
-        // server omits the schema's `rank` field, so order by score and derive the
-        // rank from position; a server-provided rank (>0) wins when it appears.
-        internal static List<Row> BuildRows(IReadOnlyList<TournamentApi.ResultEntry> entries,
-            int maxEntryCount, string ownUserId)
-        {
-            var sorted = new List<TournamentApi.ResultEntry>();
-            if (entries != null)
-            {
-                for (int i = 0; i < entries.Count; i++)
-                    if (entries[i] != null) sorted.Add(entries[i]);
-            }
-            sorted.Sort((a, b) => b.score.CompareTo(a.score));
-
-            int totalSlots = Mathf.Max(maxEntryCount, sorted.Count);
-            var rows = new List<Row>(Mathf.Max(0, totalSlots));
-            for (int i = 0; i < totalSlots; i++)
-            {
-                if (i < sorted.Count)
-                {
-                    var e = sorted[i];
-                    int rank = e.rank > 0 ? e.rank : i + 1;
-                    bool isPlayer = !string.IsNullOrEmpty(ownUserId) && e.userId == ownUserId;
-                    rows.Add(new Row(rank, DisplayName(e.userName), e.score, isPlayer, false));
-                }
-                else
-                {
-                    rows.Add(new Row(i + 1, "대기 중...", 0, false, true));
-                }
-            }
-            return rows;
+            _leaderboard.Render(_listContent, rows);
         }
 
         // Offline/guest fallback: bots around the player's score + a YOU row.
-        private static List<Row> BuildBotRows(int playerScore)
+        private static List<LeaderboardList.Row> BuildBotRows(int playerScore)
         {
             var botScores = BotScoreGenerator.GenerateBotScores(5, playerScore, playerScore);
             var seed = new List<(string name, int score, bool isPlayer)>(botScores.Length + 1);
@@ -197,91 +130,10 @@ namespace Wassup.UI
             seed.Add(("나", playerScore, true));
             seed.Sort((a, b) => b.score.CompareTo(a.score));
 
-            var rows = new List<Row>(seed.Count);
+            var rows = new List<LeaderboardList.Row>(seed.Count);
             for (int i = 0; i < seed.Count; i++)
-                rows.Add(new Row(i + 1, seed[i].name, seed[i].score, seed[i].isPlayer, false));
+                rows.Add(new LeaderboardList.Row(i + 1, seed[i].name, seed[i].score, seed[i].isPlayer, false));
             return rows;
-        }
-
-        // empty names would collapse the row; long ones would overrun the score column.
-        private static string DisplayName(string userName)
-        {
-            if (string.IsNullOrEmpty(userName)) return "?";
-            return userName.Length <= 10 ? userName : userName.Substring(0, 10);
-        }
-
-        // ── Rendering ────────────────────────────────────────────────────────
-        private void RenderRows(List<Row> rows)
-        {
-            if (_listContent == null) return;
-            // Detach-then-destroy so old rows leave the layout this frame (Destroy is
-            // deferred) — avoids a one-frame double list when bots swap for real data.
-            for (int i = _listContent.childCount - 1; i >= 0; i--)
-            {
-                var child = _listContent.GetChild(i);
-                child.SetParent(null, false);
-                Destroy(child.gameObject);
-            }
-            for (int i = 0; i < rows.Count; i++) CreateRow(rows[i]);
-        }
-
-        private void CreateRow(Row row)
-        {
-            var go = new GameObject("Row", typeof(RectTransform), typeof(Image), typeof(LayoutElement));
-            go.transform.SetParent(_listContent, false);
-            go.GetComponent<LayoutElement>().preferredHeight = RowH;
-
-            var plate = go.GetComponent<Image>();
-            plate.sprite = row.IsWaiting ? _rowWaiting : row.IsPlayer ? _rowOwn : _rowNormal;
-            plate.type = Image.Type.Sliced;
-            plate.color = Color.white; // fill is baked into the sprite
-
-            // Rank badge (left).
-            Sprite badgeSprite = _badgeNavy;
-            Color badgeText = WaitingText;
-            if (!row.IsWaiting)
-            {
-                switch (row.Rank)
-                {
-                    case 1: badgeSprite = _badgeGold; badgeText = BadgeTextDark; break;
-                    case 2: badgeSprite = _badgeSilver; badgeText = BadgeTextDark; break;
-                    case 3: badgeSprite = _badgeBronze; badgeText = BadgeTextDark; break;
-                    default: badgeSprite = _badgeNavy; badgeText = Color.white; break;
-                }
-            }
-            var badge = new GameObject("Badge", typeof(RectTransform), typeof(Image));
-            badge.transform.SetParent(go.transform, false);
-            var badgeImg = badge.GetComponent<Image>();
-            badgeImg.sprite = badgeSprite;
-            badgeImg.raycastTarget = false;
-            var badgeRt = (RectTransform)badge.transform;
-            badgeRt.anchorMin = badgeRt.anchorMax = new Vector2(0f, 0.5f);
-            badgeRt.pivot = new Vector2(0f, 0.5f);
-            badgeRt.anchoredPosition = new Vector2(14f, 0f);
-            badgeRt.sizeDelta = new Vector2(38f, 38f);
-            var badgeLabel = CreateLabel(badge.transform, "Num", row.Rank.ToString(), 22,
-                TextAlignmentOptions.Center, badgeText);
-            StretchFull((RectTransform)badgeLabel.transform);
-
-            Color textColor = row.IsWaiting ? WaitingText : row.IsPlayer ? goldColor : Color.white;
-
-            // Name (left, after badge).
-            var name = CreateLabel(go.transform, "Name", row.Name, 30, TextAlignmentOptions.MidlineLeft, textColor);
-            var nameRt = (RectTransform)name.transform;
-            nameRt.anchorMin = new Vector2(0f, 0f);
-            nameRt.anchorMax = new Vector2(1f, 1f);
-            nameRt.offsetMin = new Vector2(66f, 0f);
-            nameRt.offsetMax = new Vector2(-150f, 0f);
-
-            // Score (right).
-            string scoreText = row.IsWaiting ? "-" : row.Score.ToString("N0");
-            var score = CreateLabel(go.transform, "Score", scoreText, 30, TextAlignmentOptions.MidlineRight, textColor);
-            var scoreRt = (RectTransform)score.transform;
-            scoreRt.anchorMin = new Vector2(1f, 0f);
-            scoreRt.anchorMax = new Vector2(1f, 1f);
-            scoreRt.pivot = new Vector2(1f, 0.5f);
-            scoreRt.sizeDelta = new Vector2(140f, 0f);
-            scoreRt.anchoredPosition = new Vector2(-22f, 0f);
         }
 
         // ── Build ────────────────────────────────────────────────────────────
@@ -291,6 +143,7 @@ namespace Wassup.UI
             _built = true;
 
             BakeSprites();
+            _leaderboard = new LeaderboardList();
 
             var roots = UiCanvasSetup.Ensure(gameObject, sortingOrder: 2000);
             var canvas = roots.Canvas;
@@ -334,13 +187,6 @@ namespace Wassup.UI
         {
             _tabSprite = UiRoundedSprite.Make(30f, 0f, Color.white, Color.white);
             _buttonSprite = UiRoundedSprite.Make(30f, 0f, Color.white, Color.white);
-            _rowNormal = UiRoundedSprite.Make(14f, 0f, RowFill, RowFill);
-            _rowOwn = UiRoundedSprite.Make(14f, 3f, OwnFill, goldColor);
-            _rowWaiting = UiRoundedSprite.Make(14f, 0f, WaitingFill, WaitingFill);
-            _badgeGold = UiRoundedSprite.MakeCircle(40, BadgeGold);
-            _badgeSilver = UiRoundedSprite.MakeCircle(40, BadgeSilver);
-            _badgeBronze = UiRoundedSprite.MakeCircle(40, BadgeBronze);
-            _badgeNavy = UiRoundedSprite.MakeCircle(40, BadgeNavy, 2f, new Color(goldColor.r, goldColor.g, goldColor.b, 0.6f));
         }
 
         private void BuildHeader(RectTransform panel)
