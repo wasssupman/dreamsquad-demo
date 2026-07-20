@@ -3688,8 +3688,7 @@ namespace Wassup.Bridge
                     int playerScore = score.Total;
                     GameManager.Instance?.Logger?.SetResult("defeat", _goalReachedCount);
                     GameManager.Instance?.Logger?.SetScore(playerScore, score.Time, score.Stress, score.Kill);
-                    resultScreen?.ShowDefeat(score, RemainingBattleSeconds(), _goalReachedCount, timeBudget, stressBudget);
-                    ReportMatchResult(playerScore);
+                    BeginTally(win: false, score, RemainingBattleSeconds(), timeBudget, stressBudget);
                     Debug.Log("[BattleBridge] DEFEAT triggered.");
                     return;
                 }
@@ -3716,8 +3715,7 @@ namespace Wassup.Bridge
             int playerScore = score.Total;
             GameManager.Instance?.Logger?.SetResult("victory_timeout", _goalReachedCount);
             GameManager.Instance?.Logger?.SetScore(playerScore, score.Time, score.Stress, score.Kill);
-            resultScreen?.ShowVictory(score, 0f, _goalReachedCount, timeBudget, stressBudget); // timer expired → 0 left
-            ReportMatchResult(playerScore);
+            BeginTally(win: true, score, 0f, timeBudget, stressBudget); // timer expired → 0 left
             Debug.Log("[BattleBridge] VICTORY — timer expired, player survived.");
         }
 
@@ -3736,8 +3734,7 @@ namespace Wassup.Bridge
             int playerScore = score.Total;
             GameManager.Instance?.Logger?.SetResult("victory", _goalReachedCount);
             GameManager.Instance?.Logger?.SetScore(playerScore, score.Time, score.Stress, score.Kill);
-            resultScreen?.ShowVictory(score, RemainingBattleSeconds(), _goalReachedCount, timeBudget, stressBudget);
-            ReportMatchResult(playerScore);
+            BeginTally(win: true, score, RemainingBattleSeconds(), timeBudget, stressBudget);
             Debug.Log("[BattleBridge] VICTORY — all attack units defeated.");
         }
 
@@ -3748,13 +3745,38 @@ namespace Wassup.Bridge
         // list stays.
         private void ReportMatchResult(int playerScore)
         {
-            // Match is over — enter the Result phase so battle-only HUD (NextWaveDock,
-            // ScoreHud, CostDisplay) deactivates. RESTART goes Result →
-            // Placement → Battle (BeginPlacementPhase), which re-shows them.
-            GameManager.Instance?.SetPhase(GamePhase.Result);
             var logger = GameManager.Instance?.Logger;
             Wassup.Core.Api.TournamentMatchReporter.ReportResult(playerScore, logger?.SnapshotJson(),
                 ranking => resultScreen?.UpdateLeaderboard(ranking, Wassup.Core.Api.UserSession.Current?.userId));
+        }
+
+        // score-tally-sequence unit 1 — 전투 종료 → 결과 연출 → 결과 화면의 단일 관문.
+        // 종료 3종(패배/버팀승리/전멸승리)이 전부 여기로 들어온다.
+        //
+        // **서버 제출은 여기서(연출 시작 시점) 한다** — 연출이 끝나길 기다리면 그 사이
+        // 앱이 죽었을 때 기록이 통째로 사라진다. 화면 연출과 기록 전송은 독립이다(계약 3).
+        //
+        // Tally 동안 전투 HUD 중 ScoreHud 만 살아남는다(연출의 주인공). NextWaveDock·
+        // CostDisplay 등은 `== GamePhase.Battle` 을 보므로 자동으로 꺼진다.
+        private void BeginTally(bool win, ScoreMath.BattleScore score, float remainingSec,
+            int timeBudget, int stressBudget)
+        {
+            GameManager.Instance?.SetPhase(GamePhase.Tally);
+            ReportMatchResult(score.Total);
+
+            // unit 2 가 여기에 순차 합산 연출을 넣는다. 지금은 즉시 완료해
+            // 기존 동작(종료 → 결과 화면)을 그대로 유지한다.
+            FinishTally(win, score, remainingSec, timeBudget, stressBudget);
+        }
+
+        // 연출 종료 → 결과 화면. Result 페이즈로 넘어가며 남은 전투 HUD 가 정리된다.
+        // RESTART 는 Result → Placement → Battle 로 되돌아간다(BeginPlacementPhase).
+        private void FinishTally(bool win, ScoreMath.BattleScore score, float remainingSec,
+            int timeBudget, int stressBudget)
+        {
+            GameManager.Instance?.SetPhase(GamePhase.Result);
+            if (win) resultScreen?.ShowVictory(score, remainingSec, _goalReachedCount, timeBudget, stressBudget);
+            else resultScreen?.ShowDefeat(score, remainingSec, _goalReachedCount, timeBudget, stressBudget);
         }
 
         // battle-score-formula unit 3 — 예산 소모 모델. 계산 자체는 ScoreMath 순수 함수가

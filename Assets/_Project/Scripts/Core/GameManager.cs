@@ -9,7 +9,12 @@ namespace Wassup.Core
 {
     // gift-phase unit 0 — Gift 를 Placement 앞에 삽입(선물 페이즈=배치 직전).
     // 직렬화 필드/순서비교 없음(전부 == 비교)이라 정수 시프트 무해.
-    public enum GamePhase { None, Draft, Gift, Placement, Battle, Result }
+    // score-tally-sequence unit 1 — Tally 는 Battle 과 Result 사이의 결과 연출 구간이다.
+    // 흐름상으론 Battle 다음이지만 **값은 반드시 맨 뒤**에 둔다: CameraDirectionConfig 의
+    // CameraPhasePose.phase / breathPhases 가 이 enum 을 int 로 직렬화하고 있어
+    // (Assets/_Project/Data/Camera/CameraDirectionConfig.asset — phase: 1/3/4/5),
+    // 중간에 끼우면 Result 가 5→6 으로 밀려 카메라 설정이 통째로 어긋난다.
+    public enum GamePhase { None, Draft, Gift, Placement, Battle, Result, Tally }
 
     [DefaultExecutionOrder(-100)]
     public class GameManager : MonoBehaviour

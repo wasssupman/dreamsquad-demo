@@ -481,6 +481,14 @@ namespace Wassup.UI
                 RefreshLeakDisplay(false);
                 if (_panel != null) _panel.SetActive(true);
             }
+            // score-tally-sequence unit 1 — Tally(결과 연출)에서는 패널을 유지한다.
+            // 이 숫자가 연출의 주인공이다: 킬점수에서 시작해 시간·스트레스가 더해진다.
+            // 리셋도 하지 않는다 — 전투에서 쌓인 값을 그대로 이어받아야 한다.
+            else if (phase == GamePhase.Tally)
+            {
+                _pendingKills = 0;
+                if (_panel != null) _panel.SetActive(true);
+            }
             else if (_panel != null)
             {
                 _pendingKills = 0;
