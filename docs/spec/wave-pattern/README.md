@@ -4,6 +4,7 @@
 **연결 문서**: `docs/spec/map-system/20_claude_handoff_summary.md`  
 **목표**: 기존 정적 `AttackDeck.SpawnEntry` 타임라인을 seed 기반 wave 생성 구조로 전환한다. 3분 플레이 기준 10~15개 wave 를 생성하고, 각 wave 는 현재 구현된 공격 유닛 타입 중 2종을 골라 10~15마리를 스폰한다.
 **상태**: 1차 구현 완료. 구현 커밋 `0ec5f71`; 리뷰 보정 완료. 인계 요약은 `5_handoff_summary.md` 를 기준으로 한다.
+2026-07-20 추가: unit 6 고정 시드(`2d8c843e`) — `deck.waveSeed` 비0 이면 매판 동일 패턴.
 
 ## 구현 문서 목록
 
@@ -15,11 +16,12 @@
 | Phase 3 | `3_briefing_wave_ui.md` | 공격 패턴 확인 UI 를 wave summary 스크롤로 전환 |
 | Phase 4 | `4_logging_tests_validation.md` | 로그, 테스트, Play 검증 기준 |
 | Phase 5 | `5_handoff_summary.md` | 구현 결과와 다음 작업 인계 요약 |
+| 추가 6 (2026-07-20) | `6_fixed_wave_seed.md` | 테스트 버전용 고정 웨이브 시드 — `deck.waveSeed` 라이브 오버라이드 재활성 (**완료 `2d8c843e`**) |
 
 ## 공통 원칙
 
 - 공격 패턴은 같은 seed 에서 항상 같은 wave 목록을 만든다.
-- `waveSeed == 0` 은 현재 `1` 로 resolve 한다. session seed 파생은 아직 도입하지 않는다.
+- **시드 권한(unit 6 갱신)**: 라이브는 `deck.waveSeed` 비0 = 고정, 0 = `MatchSeed.DeriveWaveSeed(matchSeed)` 파생. `ResolveWaveSeed()` 의 `0→1` 폴백은 레거시 `Generate(deck)` 오버로드(프리뷰/테스트) 전용 — 0 판별이 필요한 라이브 분기는 필드를 직접 본다.
 - briefing preview 와 battle runtime 은 같은 `WavePatternGenerator.Generate(deck)` 경로를 사용한다.
 - 한 wave 는 정확히 2종의 공격 유닛 타입을 포함한다.
 - `unitsPerWave` 는 10~15마리다.

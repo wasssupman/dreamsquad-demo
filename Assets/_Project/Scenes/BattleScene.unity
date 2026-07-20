@@ -3110,6 +3110,65 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1606569294
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1606569296}
+  - component: {fileID: 1606569295}
+  m_Layer: 0
+  m_Name: SpawnAlertPresenter
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1606569295
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1606569294}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0ed18bd51d5d44f33af9897889ed352e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Presentation.SpawnAlertPresenter
+  bridge: {fileID: 1939688408}
+  leadSec: 2.5
+  drawSec: 0.55
+  retractSec: 1
+  lineColor: {r: 1, g: 0.17, b: 0.13, a: 1}
+  lineWidth: 0.14
+  tailAlpha: 0.55
+  glowWidthScale: 5
+  glowStrength: 0.5
+  streakStrength: 1
+  streakSpeed: 0.7
+  streakWidthScale: 2.6
+  ringSize: 1.1
+  ringPeriod: 0.9
+  surfaceOffset: 0.012
+--- !u!4 &1606569296
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1606569294}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1627119919
 GameObject:
   m_ObjectHideFlags: 0
@@ -4064,3 +4123,4 @@ SceneRoots:
   - {fileID: 603193525}
   - {fileID: 322840705}
   - {fileID: 1572896088}
+  - {fileID: 1606569296}

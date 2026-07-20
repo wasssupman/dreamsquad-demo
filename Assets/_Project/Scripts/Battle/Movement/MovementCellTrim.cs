@@ -36,6 +36,20 @@ namespace Wassup.Battle.Movement
                 math.clamp(desired.z, centerZ - half, centerZ + half));
         }
 
+        // aggro-tile-chase unit 2 — 프레임당 XZ 변위 상한(0.9×tile). Apply 의 단일 목적 셀
+        // 검사는 "한 프레임에 최대 인접 셀"을 전제한다 — dt 스파이크/강한 임펄스가 이 전제를
+        // 깨고 벽을 건너뛰는 터널링을 상한으로 차단한다. trim(Apply) 직전에 호출.
+        public static float3 ClampDisplacement(float3 current, float3 desired, float tileSize)
+        {
+            float dx = desired.x - current.x;
+            float dz = desired.z - current.z;
+            float maxD = tileSize * 0.9f;
+            float lsq = dx * dx + dz * dz;
+            if (lsq <= maxD * maxD) return desired;
+            float scale = maxD / math.sqrt(lsq);
+            return new float3(current.x + dx * scale, desired.y, current.z + dz * scale);
+        }
+
         // enemy-tile-movement-integrity unit 2 — flow 분기와 aggro 분기가 공유하는 cell-trim.
         // desired 가 wall(zero-flow) 또는 obstacle 셀로 넘어가면 currentCell 경계로 clamp.
         // 모든 이동 모드(flow follow, aggro target chase)를 walk 타일 위에 묶는 단일 지점.

@@ -82,13 +82,20 @@ namespace Wassup.Tests.EditMode
             _simGroup.Update();
         }
 
+        // aggro-tile-chase unit 2 — 프레임 변위 상한(<0.9타일) 하에서 총 시간을 서브틱으로
+        // 나눠 "speed×시간" 기대값을 유지한다(실프레임 조건과 동일).
+        private void TickSplit(float total = 1f, int parts = 8)
+        {
+            for (int i = 0; i < parts; i++) Tick(total / parts);
+        }
+
         [Test]
         public void Moves_Along_Flow_At_Configured_Speed()
         {
             CreateLinearFlowField();
             var e = CreateUnit(new float3(0f, 0f, 0f), speed: 2f);
 
-            Tick(1f);
+            TickSplit(1f);
 
             var pos = _em.GetComponentData<LocalTransform>(e).Position;
             Assert.AreEqual(2f, pos.x, 1e-4f, "2 units at speed 2 in 1s along +x flow");
@@ -139,7 +146,7 @@ namespace Wassup.Tests.EditMode
             var e = CreateUnit(new float3(0f, 0f, 0f), speed: 2f);
             _em.AddComponentData(e, new ModifierStats { moveSpeedMul = 0.5f });
 
-            Tick(1f);
+            TickSplit(1f);
 
             var pos = _em.GetComponentData<LocalTransform>(e).Position;
             Assert.AreEqual(1f, pos.x, 1e-4f, "MoveSpeedMul 0.5 × speed 2 × 1s = 1.0");
@@ -152,7 +159,7 @@ namespace Wassup.Tests.EditMode
         {
             CreateLinearFlowField();
             var e = CreateEnemy(new float3(0f, 0f, 0f), speed: 2f, AiState.Marching);
-            Tick(1f);
+            TickSplit(1f);
             Assert.AreEqual(2f, _em.GetComponentData<LocalTransform>(e).Position.x, 1e-4f,
                 "Marching → flow 이동");
         }
@@ -172,7 +179,7 @@ namespace Wassup.Tests.EditMode
         {
             CreateLinearFlowField();
             var e = CreateEnemy(new float3(0f, 0f, 0f), speed: 2f, AiState.Engaging, EngageMovement.Advance);
-            Tick(1f);
+            TickSplit(1f);
             Assert.AreEqual(2f, _em.GetComponentData<LocalTransform>(e).Position.x, 1e-4f,
                 "Engaging-Advance → 이동하며 공격");
         }
@@ -187,25 +194,36 @@ namespace Wassup.Tests.EditMode
                 "Standoff → 정지(engageMovement 무관)");
         }
 
-        // enemy-ai-fsm Unit 5 (unit 2 에서 이관) — Chasing self-walk: aggro 적은 flow(+x) 가 아니라
-        // 가디언 anchor 로 이동. 가디언을 enemy 뒤(-x)에 둬 flow 와 반대 방향 이동으로 분기 구분.
+        // aggro-tile-chase unit 2 — Chasing 은 chase field(dist) 하강. flow(+x)와 반대인
+        // -x 목적지(dist 0 = 셀 2)로 하강해 분기를 구분하고, 목적지 셀 도달 시 자연 정지한다.
         [Test]
-        public void Chasing_SelfWalksTowardGuardian_NotFlow()
+        public void Chasing_DescendsChaseField_NotFlow_AndStopsAtDestination()
         {
-            CreateLinearFlowField();
-            var guardian = _em.CreateEntity();
-            _em.AddComponentData(guardian, LocalTransform.FromPosition(new float3(2f, 0f, 0f)));
-            _em.AddComponentData(guardian, new AggroCapacity { max = 8, held = 0 });
-
+            CreateLinearFlowField(); // flow 는 전부 +x — chase 는 이걸 무시해야 한다
             var e = CreateEnemy(new float3(3f, 0f, 0f), speed: 2f, AiState.Chasing, EngageMovement.Halt);
-            _em.AddComponentData(e, new Aggroed { guardian = guardian });
+            // chase field: 셀 2 가 목적지(dist 0), 좌우로 증가 — 적(셀 3)은 -x 로 하강.
+            var chase = _em.AddBuffer<AggroChaseCell>(e);
+            int[] dists = { 2, 1, 0, 1, 2 };
+            for (int i = 0; i < dists.Length; i++) chase.Add(new AggroChaseCell { dist = dists[i] });
 
-            Tick(1f);
+            TickSplit(1f);
 
             var pos = _em.GetComponentData<LocalTransform>(e).Position;
-            // step(2) >= dist(1) → guardian 위치로 snap. flow(+x)였다면 x>3. self-walk(-x)는 정확히 2.0.
-            Assert.AreEqual(2f, pos.x, 1e-4f, "Chasing → 가디언(x=2)으로 self-walk, flow(+x) 무시");
+            Assert.Less(pos.x, 3f, "flow(+x) 무시하고 chase field 하강(-x)");
+            var cell = GridMath.WorldToCell(pos, 1f, new int2(5, 1));
+            Assert.AreEqual(2, cell.x, "목적지(dist 0) 셀 도달 후 정지");
             Assert.AreEqual(0f, pos.z, 1e-4f, "z 드리프트 없음");
+        }
+
+        // aggro-tile-chase unit 2 — chase field 없는 Chasing(합성 월드/부착 실패)은 정지.
+        [Test]
+        public void Chasing_WithoutChaseField_StaysPut()
+        {
+            CreateLinearFlowField();
+            var e = CreateEnemy(new float3(3f, 0f, 0f), speed: 2f, AiState.Chasing, EngageMovement.Halt);
+            TickSplit(1f);
+            Assert.AreEqual(3f, _em.GetComponentData<LocalTransform>(e).Position.x, 1e-4f,
+                "필드 없으면 제자리(직선 추격 폐지)");
         }
 
         // enemy-ai-fsm Unit 5 — Halt 직교성: Engaging-Halt 정지는 flow 만 막는다.
@@ -240,10 +258,10 @@ namespace Wassup.Tests.EditMode
             });
 
             var e = CreateEnemy(new float3(0f, 0f, 0f), speed: 2f, AiState.Engaging, EngageMovement.Halt);
-            Tick(1f);
+            TickSplit(1f);
 
             Assert.AreEqual(2f, _em.GetComponentData<LocalTransform>(e).Position.x, 1e-4f,
-                "Engaging-Halt 라도 tornado pull 적용(pullSpeed 2 × 1s = 2)");
+                "Engaging-Halt 라도 tornado pull 적용(pullSpeed 2 × 1s = 2, unit 3 — 가산 변위+trim)");
         }
 
         // enemy-ai-fsm Unit 7 — Pulse 진동: Engaging 에서 타격 진행 중(hitDelayRemaining>0)이면
@@ -265,7 +283,7 @@ namespace Wassup.Tests.EditMode
             CreateLinearFlowField();
             var e = CreateEnemy(new float3(0f, 0f, 0f), speed: 2f, AiState.Engaging, EngageMovement.Pulse);
             _em.AddComponentData(e, new AttackState { hitDelaySec = 0.3f, hitDelayRemaining = 0f });
-            Tick(1f);
+            TickSplit(1f);
             Assert.AreEqual(2f, _em.GetComponentData<LocalTransform>(e).Position.x, 1e-4f,
                 "Pulse + 타격 회복(hitDelayRemaining==0) → flow 전진");
         }
@@ -289,7 +307,7 @@ namespace Wassup.Tests.EditMode
         {
             CreateLinearFlowField();
             var e = CreateEnemy(new float3(0f, 0f, 0f), speed: 2f, AiState.Engaging, EngageMovement.Pulse);
-            Tick(1f);
+            TickSplit(1f);
             Assert.AreEqual(2f, _em.GetComponentData<LocalTransform>(e).Position.x, 1e-4f,
                 "Pulse + AttackState 없음 → flow 전진(fallback)");
         }

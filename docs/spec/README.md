@@ -100,6 +100,7 @@ code + git history        구현 상세
 - `docs/spec/defender-drag-drop-deployment/`
 - `docs/spec/defender-on-place-skills/`
 - `docs/spec/wave-pattern/`
+- `docs/spec/spawn-point-alert/`
 
 ---
 
@@ -119,6 +120,13 @@ code + git history        구현 상세
 ### Active
 
 > 출처 spec 이 섞여 있다. 그룹 헤더 또는 항목 끝의 `(spec-slug)` 라벨로 출처 표기.
+
+#### 어그로 이동/클램프 (aggro-tile-chase 종료 이관, 2026-07-20)
+
+- **cell-trim wall-slide** [S] · `ClampToBoundary` 가 양 축을 함께 clamp 해, 대각 desired 의 목적 셀이 벽이면 합법인 축 진행까지 취소된다(코너에서 넉백/외력이 흡수됨). 축 분해(x-only → z-only) 슬라이드로 완화. 어그로 경로는 cardinal 이라 무영향 — 잔여 노출은 impulse/tornado 품질. (aggro-tile-chase C1)
+- **대각 코너 슬립 차단** [S] · 직교 이웃 둘이 벽이고 대각만 walk 면 모서리 틈으로 새어나간다. 신맵처럼 코너 많은 지형에서 시각적 노출 가능. (aggro-tile-chase C3)
+- **동적 해저드의 chase 경로 무효화** [S] · chase field 는 획득 시 1회 계산이라, blocking hazard 가 나중에 경로를 막아도 재판정하지 않는다(해저드는 일시적이라 현 scope 밖으로 뒀음). 재빌드 트리거 또는 하강 실패 시 해제 규칙 필요. (aggro-tile-chase)
+- **`aggroAttackRange` 데이터 결정** [S] · 현재 전 적 1 고정이라 "통로에서 2칸 밖 가디언"은 어그로가 안 걸린다(사양). 탱커를 더 멀리서도 끌려면 2로 올리거나 유닛별 분화 — 밸런스 결정. (aggro-tile-chase × aggro-standoff 승계)
 
 #### 수동 맵 authoring (manual-map-authoring 종료 이관, 2026-07-19)
 
@@ -318,6 +326,13 @@ board-visualization spec 자체는 ROI 부족으로 wrap 종료. 진단/실험�
 - **Heal VFX amount scaling** [S] · `HealAppliedEvent.amount` 를 `VfxSpawner.SpawnHealApplied` 에서 ParticleSystem main.startSize/startColor 에 매핑. 큰 힐 = 큰 펄스. 시그니처는 이미 amount 파라미터 확보됨. (heal-vfx)
 - **GA 투사체 최종화** [S] · 디펜더별 최종 변종 선택(50종 중) + 스케일/높이 취향 미세조정 + 안 쓰는 변종 SO/프리팹 정리. (projectile-ga-reskin)
 - **GA 투사체 모바일 최적화** [M] · 라이트/트레일 감축 · soft particle 토글 · 실기기 프로파일. tint 데이터-드리븐 recolor 는 별도(preserveVfxColors 우회 필요). (projectile-ga-reskin)
+
+#### 스폰 예고 라인 — 후속 (spawn-point-alert, 2026-07-20 종료 이관)
+
+- **예고선 실기기 성능** [S] · lane 당 LineRenderer 3 + SpriteRenderer 1(3레인 = 12개), 매 프레임 폴리라인 재구축. Android 미측정. 부담되면 코너 정점만 유지하는 현 구조에서 갱신 주기를 낮추는 선택지. (spawn-point-alert)
+- **보스 웨이브 예고 차별화** [S] · 보스 웨이브 lane 만 색/굵기를 달리해 구분. 현재는 크림슨 워닝 배너(boss-wave-cadence)가 별도로 존재해 중복 여부 판단 필요. (spawn-point-alert)
+- **Wave 1 사전 예고** [S] · Wave 1 은 0초 트리거라 리드 타임 확보 불가 → 현재 자연 스킵. 배치 페이즈에 미리 노출하려면 "배틀 시작 시점 예지"가 필요해 별도 결정. (spawn-point-alert)
+- **예고 SFX** [S] · 라인이 그어질 때 저음 경고음. ElevenLabs 파이프라인 활용. (spawn-point-alert)
 
 #### 파이프라인 커버리지 — 후속 (object-pipeline-map)
 

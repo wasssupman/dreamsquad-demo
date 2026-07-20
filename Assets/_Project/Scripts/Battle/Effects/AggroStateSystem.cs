@@ -1,7 +1,8 @@
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
-using Wassup.Battle.Combat;   // AggroPolicy (정의 계층 순수함수)
+using Unity.Mathematics;
+using Wassup.Battle.Combat;   // AggroPolicy·AggroChaseMath (정의 계층 순수함수)
 using Wassup.Battle.Movement;
 using Wassup.Battle.Units;
 
@@ -35,6 +36,13 @@ namespace Wassup.Battle.Effects
             var deadLookup = SystemAPI.GetComponentLookup<DeadTag>(isReadOnly: true);
             var aggroedLookup = SystemAPI.GetComponentLookup<Aggroed>(isReadOnly: true);
             var capacityLookup = SystemAPI.GetComponentLookup<AggroCapacity>(isReadOnly: true);
+            // aggro-tile-chase unit 1 — 획득 게이트/필드용 RO lookup (Combat 컴포넌트는 읽기만).
+            var attackLookup = SystemAPI.GetComponentLookup<Wassup.Battle.Combat.AttackState>(isReadOnly: true);
+            var profileLookup = SystemAPI.GetComponentLookup<Wassup.Battle.Combat.AggroAttackProfile>(isReadOnly: true);
+            var transformLookup = SystemAPI.GetComponentLookup<Unity.Transforms.LocalTransform>(isReadOnly: true);
+            var chaseLookup = SystemAPI.GetBufferLookup<AggroChaseCell>(isReadOnly: true);
+            bool hasFlow = SystemAPI.TryGetSingleton<FlowFieldSingleton>(out var flowField) && flowField.IsCreated;
+            bool hasObstacles = SystemAPI.TryGetSingleton<ObstacleSingleton>(out var obstacleSingleton);
             var ecb = new EntityCommandBuffer(Allocator.Temp);
 
             // ── Pass 1: 링크 가디언 사망/소멸 시 해제 ──
@@ -53,6 +61,9 @@ namespace Wassup.Battle.Effects
                     // 해제 → 기본 거동 복귀. TauntAttackGrantSystem(Combat)이 부여했던
                     // 도발 AttackState 를 Aggroed 소멸 후 strip.
                     ecb.RemoveComponent<Aggroed>(enemyEntity);
+                    // aggro-tile-chase unit 1 — chase field 는 Aggroed 와 수명 동기.
+                    if (chaseLookup.HasBuffer(enemyEntity))
+                        ecb.RemoveComponent<AggroChaseCell>(enemyEntity);
                     continue;
                 }
                 if (deadLookup.HasComponent(enemyEntity)) continue; // dying enemy, ignore
@@ -80,6 +91,11 @@ namespace Wassup.Battle.Effects
                 var e = countByGuardian.GetEnumerator();
                 while (e.MoveNext()) runningHeld[e.Current.Key] = e.Current.Value;
 
+                // aggro-tile-chase unit 1 — 기하 게이트용 mask/tmp. 첫 필요 시 1회 lazy 할당.
+                NativeArray<byte> walkMask = default;
+                NativeArray<Unity.Mathematics.float2> tmpFlow = default;
+                NativeArray<int> tmpDist = default;
+
                 while (queue.TryDequeue(out var ev))
                 {
                     // 가디언이 사라졌거나 비-가디언이면 무시.
@@ -90,13 +106,63 @@ namespace Wassup.Battle.Effects
                     if (claimed.Contains(ev.enemy) || aggroedLookup.HasComponent(ev.enemy)) continue;
                     // 죽는 중인 적은 무시.
                     if (deadLookup.HasComponent(ev.enemy)) continue;
+
+                    // aggro-tile-chase unit 1 — 전투수단(AttackState/도발 프로파일) 없는 적은
+                    // 가디언을 때릴 수 없으므로 거부 (구 M5 "Chasing 고착"의 원천 차단).
+                    bool hasAtk = attackLookup.HasComponent(ev.enemy);
+                    bool hasProf = profileLookup.HasComponent(ev.enemy);
+                    int tileRange = Wassup.Battle.Combat.AggroChaseMath.ResolveTileRange(
+                        hasAtk, hasAtk ? attackLookup[ev.enemy].range : 0f,
+                        hasProf, hasProf ? profileLookup[ev.enemy].range : 0f);
+                    if (tileRange == Wassup.Battle.Combat.AggroChaseMath.NoAttack) continue;
+
                     runningHeld.TryGetValue(ev.guardian, out int held);
                     int cap = capacityLookup[ev.guardian].max;
                     if (!AggroPolicy.CanAcquire(held, cap, alreadyAggroed: false)) continue;
+
+                    // aggro-tile-chase unit 1 — 목적지 후보/도달가능 기하 게이트 + chase field.
+                    // flow field 부재(합성 테스트 월드)면 기하 생략하고 부착만(README 계약).
+                    bool attachField = false;
+                    if (hasFlow && transformLookup.HasComponent(ev.guardian) && transformLookup.HasComponent(ev.enemy))
+                    {
+                        if (!walkMask.IsCreated)
+                        {
+                            int n = flowField.gridSize.x * flowField.gridSize.y;
+                            walkMask = new NativeArray<byte>(n, Allocator.Temp);
+                            tmpFlow = new NativeArray<Unity.Mathematics.float2>(n, Allocator.Temp);
+                            tmpDist = new NativeArray<int>(n, Allocator.Temp);
+                            for (int y = 0; y < flowField.gridSize.y; y++)
+                                for (int x = 0; x < flowField.gridSize.x; x++)
+                                {
+                                    var cell = new int2(x, y);
+                                    bool wall = MovementCellTrim.IsWallCell(cell, in flowField)
+                                        || (hasObstacles && obstacleSingleton.blockedCells.Contains(cell));
+                                    walkMask[GridMath.CellIndex(cell, flowField.gridSize)] = wall ? (byte)0 : (byte)1;
+                                }
+                        }
+                        int2 gCell = GridMath.WorldToCell(transformLookup[ev.guardian].Position,
+                            flowField.tileSize, flowField.gridSize, origin: flowField.origin);
+                        int2 eCell = GridMath.WorldToCell(transformLookup[ev.enemy].Position,
+                            flowField.tileSize, flowField.gridSize, origin: flowField.origin);
+                        int srcCount = Wassup.Battle.Combat.AggroChaseMath.BuildChaseField(
+                            walkMask, flowField.gridSize, gCell, tileRange, tmpFlow, tmpDist);
+                        if (srcCount == 0) continue;                                   // 목적지 후보 없음
+                        if (tmpDist[GridMath.CellIndex(eCell, flowField.gridSize)] == int.MaxValue)
+                            continue;                                                  // 도달 불가 — 좀비 금지
+                        attachField = true;
+                    }
+
                     ecb.AddComponent(ev.enemy, new Aggroed { guardian = ev.guardian });
+                    if (attachField)
+                    {
+                        var chase = ecb.AddBuffer<AggroChaseCell>(ev.enemy);
+                        for (int i = 0; i < tmpDist.Length; i++)
+                            chase.Add(new AggroChaseCell { dist = tmpDist[i] });
+                    }
                     claimed.Add(ev.enemy);
                     runningHeld[ev.guardian] = held + 1;
                 }
+                if (walkMask.IsCreated) { walkMask.Dispose(); tmpFlow.Dispose(); tmpDist.Dispose(); }
                 claimed.Dispose();
                 runningHeld.Dispose();
             }

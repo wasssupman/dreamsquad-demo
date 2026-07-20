@@ -151,6 +151,39 @@ namespace Wassup.Data
             return new GeneratedWavePlan(0, 0, plan.timerDurationSec, 0f, 0f, waves);
         }
 
+        // spawn-point-alert unit 0 — QueueWave 의 deckIndex 부여(waveIndex*Stride + 엔트리 순번)
+        // 규약을 예보와 실스폰이 공유한다. 이 상수·아래 두 함수의 공유가 "예보 = 실스폰" 보증.
+        public const int DeckIndexStride = 1000;
+
+        // BattleBridge.SpawnUnit 에서 이관(spawn-point-alert unit 0). laneCount<=2 는 authored
+        // spawnIndex 존중, 3+ lane 은 deckIndex 기반 결정론 round-robin.
+        public static int EffectiveSpawnIndex(int authoredIndex, int deckIndex, int laneCount)
+        {
+            if (laneCount <= 0) return 0;
+            if (laneCount <= 2)
+                return math.clamp(authoredIndex, 0, laneCount - 1);
+            return math.abs(deckIndex) % laneCount;
+        }
+
+        // 웨이브가 lane 별로 첫 적을 내보내는 절대 시각(스폰 없는 lane 은 -1).
+        // ExpandWave + EffectiveSpawnIndex 를 실스폰 경로(QueueWave→SpawnUnit)와 동일 규약으로 호출.
+        public static float[] FirstSpawnTimesPerLane(
+            GeneratedWave wave, float baseTriggerTimeSec, int laneCount, float intraWaveSpacingSec)
+        {
+            int lanes = math.max(1, laneCount);
+            var result = new float[lanes];
+            for (int i = 0; i < lanes; i++) result[i] = -1f;
+
+            var entries = ExpandWave(wave, baseTriggerTimeSec, laneCount, intraWaveSpacingSec);
+            for (int i = 0; i < entries.Count; i++)
+            {
+                int lane = EffectiveSpawnIndex(entries[i].spawnIndex, wave.waveIndex * DeckIndexStride + i, lanes);
+                if (result[lane] < 0f || entries[i].triggerTimeSec < result[lane])
+                    result[lane] = entries[i].triggerTimeSec;
+            }
+            return result;
+        }
+
         // RoundRobin(seed): round 0,1,2... 마다 그룹 순서대로 1마리씩 emit, intraWaveSpacing 간격
         //   (2그룹이면 기존 A,B,A,B... 인터리브와 byte-identical).
         // PerGroupTimeline(작성): 그룹마다 triggerOffsetSec 부터 count 마리를 spawnIntervalSec 간격.

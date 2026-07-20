@@ -1159,7 +1159,7 @@ namespace Wassup.Bridge
                 Debug.Log($"[BattleBridge] Battle started with AUTHORED plan '{_authoredPlan.displayName}' waves={_wavePlan.waves.Count} endless={(_timerDuration <= 0f)}.");
             else
                 Debug.Log(_usingGeneratedWaves
-                    ? $"[BattleBridge] Battle started with generated deck '{deck.deckId}' seed={_wavePlan.seed} waves={_wavePlan.waves.Count}."
+                    ? $"[BattleBridge] Battle started with generated deck '{deck.deckId}' seed={_wavePlan.seed} (source={(deck.waveSeed != 0 ? "deck-fixed" : "derived")}) waves={_wavePlan.waves.Count}."
                     : $"[BattleBridge] Battle started with legacy deck '{deck.deckId}' ({deck.spawns.Count} spawns queued).");
         }
 
@@ -1508,6 +1508,8 @@ namespace Wassup.Bridge
             _wavePlan = default;
             _nextWaveIndex = 0;
             _usingAuthoredPlan = false;
+            _spawnAlertForecast = null;
+            _spawnAlertForecastWaveIndex = -1;
 
             // 작성 플랜 우선. 변환 실패 시 아래 seed 경로로 fall-through.
             if (_authoredPlan != null)
@@ -1536,8 +1538,11 @@ namespace Wassup.Bridge
 
             try
             {
-                // match-seed-unification — 웨이브 시드도 matchSeed 에서 파생(맵과 decorrelated).
-                int waveSeed = Wassup.Core.MatchSeed.DeriveWaveSeed(_matchSeed != 0 ? _matchSeed : 1);
+                // wave-pattern unit 6 — 덱 waveSeed 비0 = 고정(테스트 버전, 브리핑 스트립과 동일 플랜).
+                // 0 = matchSeed 파생(매판 랜덤, match-seed-unification — 맵과 decorrelated).
+                int waveSeed = deck.waveSeed != 0
+                    ? deck.waveSeed
+                    : Wassup.Core.MatchSeed.DeriveWaveSeed(_matchSeed != 0 ? _matchSeed : 1);
                 _wavePlan = WavePatternGenerator.Generate(deck, waveSeed);
                 GameManager.Instance?.Logger?.SetWavePattern(_wavePlan);
                 return _wavePlan.waves != null && _wavePlan.waves.Count > 0;
@@ -1566,6 +1571,78 @@ namespace Wassup.Bridge
         public bool NextWaveHasNext => NextWaveAvailable && _nextWaveIndex < _wavePlan.waves.Count;
         public int NextWaveNumber => _nextWaveIndex + 1;
 
+        // spawn-point-alert unit 1 — 다음 예정 웨이브의 lane 별 첫 스폰 절대 시각 예보(read-only).
+        // SpawnAlertPresenter 폴링 전용. _nextWaveIndex 가 바뀔 때만 재계산(캐시) —
+        // ForceNextWave 의 인덱스 증가로 캐시가 자연 무효화된다. 반환 배열은 캐시 참조라 수정 금지.
+        private float[] _spawnAlertForecast;
+        private int _spawnAlertForecastWaveIndex = -1;
+
+        public bool TryGetSpawnAlertForecast(out float battleClockSec, out float[] laneFirstSpawnSec)
+        {
+            battleClockSec = (float)_battleClock;
+            laneFirstSpawnSec = null;
+            if (!_running || !_usingGeneratedWaves || _wavePlan.waves == null) return false;
+            if (!_generatedMap.IsCreated || _generatedMap.spawns.Length == 0) return false;
+
+            // 웨이브가 큐잉되는 순간 _nextWaveIndex 가 넘어가지만, 그 웨이브의 뒷 lane 들은 아직
+            // 나오지 않았다(레인 간 intraWaveSpacing 간격). 인덱스를 그대로 따르면 뒷 lane 예고가
+            // 자기 유닛보다 먼저 사라지므로, 캐시된 예보에 미래 스폰이 남아 있으면 계속 서빙한다.
+            if (_spawnAlertForecast != null && LastSpawnSec(_spawnAlertForecast) > battleClockSec)
+            {
+                laneFirstSpawnSec = _spawnAlertForecast;
+                return true;
+            }
+
+            if (_nextWaveIndex >= _wavePlan.waves.Count) return false;
+
+            if (_spawnAlertForecastWaveIndex != _nextWaveIndex)
+            {
+                var wave = _wavePlan.waves[_nextWaveIndex];
+                _spawnAlertForecast = WavePatternGenerator.FirstSpawnTimesPerLane(
+                    wave, wave.triggerTimeSec, _generatedMap.spawns.Length, _wavePlan.intraWaveSpacingSec);
+                _spawnAlertForecastWaveIndex = _nextWaveIndex;
+            }
+            laneFirstSpawnSec = _spawnAlertForecast;
+            return true;
+        }
+
+        private static float LastSpawnSec(float[] laneFirstSpawnSec)
+        {
+            float last = -1f;
+            for (int i = 0; i < laneFirstSpawnSec.Length; i++)
+                if (laneFirstSpawnSec[i] > last) last = laneFirstSpawnSec[i];
+            return last;
+        }
+
+        // spawn-point-alert unit 1(rev) — 스폰→골 대표 경로(sim, 셀 중심 나열. [0]=스폰).
+        // 유닛 이동과 같은 goal flow field 의 flow 를 셀 단위로 따라간다(타이브레이크 동일).
+        // 트레일 표시 시작 시에만 호출되므로(웨이브당 lane 수 회) 캐시 불요. 뷰 변환은 호출측.
+        public bool TryGetSpawnPathSim(int laneIndex, List<Vector3> outPath)
+        {
+            if (outPath == null) return false;
+            outPath.Clear();
+            if (!_generatedMap.IsCreated || laneIndex < 0 || laneIndex >= _generatedMap.spawns.Length)
+                return false;
+            if (_flowFieldSingleton == Entity.Null || !_em.Exists(_flowFieldSingleton) ||
+                !_em.HasComponent<Wassup.Battle.Effects.FlowFieldSingleton>(_flowFieldSingleton))
+                return false;
+
+            var field = _em.GetComponentData<Wassup.Battle.Effects.FlowFieldSingleton>(_flowFieldSingleton);
+            int2 cell = _generatedMap.spawns[laneIndex];
+            int guard = field.gridSize.x * field.gridSize.y + 1; // 순환 방어(BFS 필드라 실제론 불가)
+            for (int step = 0; step < guard; step++)
+            {
+                outPath.Add(GridToWorldCenter(new Vector2Int(cell.x, cell.y), spawnHeight));
+                int idx = Wassup.Battle.Movement.GridMath.CellIndex(cell, field.gridSize);
+                if (idx < 0 || idx >= field.flow.Length) break;
+                if (field.dist[idx] == 0) break; // goal 도달
+                var f = field.flow[idx];
+                if (f.x == 0f && f.y == 0f) break; // 빈 필드(미도달 셀) 방어
+                cell = new int2(cell.x + (int)f.x, cell.y + (int)f.y); // flow 는 4-이웃 단위벡터
+            }
+            return outPath.Count >= 2;
+        }
+
         public void ForceNextWave()
         {
             if (!_running || !_usingGeneratedWaves || _wavePlan.waves == null) return;
@@ -1579,13 +1656,17 @@ namespace Wassup.Bridge
             GameManager.Instance?.Logger?.RecordWaveEvent("wave_forced", wave.waveIndex, elapsedSec, true);
             QueueWave(wave, elapsedSec, true, elapsedSec);
             _nextWaveIndex++;
+            // spawn-point-alert unit 1 — 강제 호출은 예정 시각을 무효화한다(스폰이 지금 일어남).
+            // 캐시를 비워야 "예고 없이 즉시 스폰" 계약이 유지된다.
+            _spawnAlertForecast = null;
+            _spawnAlertForecastWaveIndex = -1;
         }
 
         private void QueueWave(GeneratedWave wave, float baseTriggerTimeSec, bool forced, float elapsedSec)
         {
             int laneCount = _generatedMap.IsCreated ? _generatedMap.spawns.Length : 1;
             var entries = WavePatternGenerator.ExpandWave(wave, baseTriggerTimeSec, laneCount, _wavePlan.intraWaveSpacingSec);
-            int baseDeckIndex = wave.waveIndex * 1000;
+            int baseDeckIndex = wave.waveIndex * WavePatternGenerator.DeckIndexStride;
             for (int i = 0; i < entries.Count; i++)
                 _pending.Add(new PendingSpawnEntry { entry = entries[i], deckIndex = baseDeckIndex + i });
 
@@ -5001,14 +5082,6 @@ namespace Wassup.Bridge
             return material;
         }
 
-        private static int EffectiveSpawnIndex(int authoredIndex, int deckIndex, int laneCount)
-        {
-            if (laneCount <= 0) return 0;
-            if (laneCount <= 2)
-                return math.clamp(authoredIndex, 0, laneCount - 1);
-            return math.abs(deckIndex) % laneCount;
-        }
-
         // nightmare-catcher unit 5 — boss spawn bake (병렬 경로): nightmareMechanics
         // 를 선언한 적이 곧 보스. BossTag + ThreatEntry(위협 테이블, unit 1) +
         // DcTriggerSlot 을 부착한다. defender 부착 API(ApplyDreamcatcherCardToUnit —
@@ -5131,7 +5204,8 @@ namespace Wassup.Bridge
             _em.SetName(entity, $"Enemy_{entry.unitType.displayName}");
 #endif
 
-            int spawnIndex = EffectiveSpawnIndex(entry.spawnIndex, pending.deckIndex, _generatedMap.spawns.Length);
+            // spawn-point-alert unit 0 — lane 산식은 WavePatternGenerator 로 이관(예보와 공유).
+            int spawnIndex = WavePatternGenerator.EffectiveSpawnIndex(entry.spawnIndex, pending.deckIndex, _generatedMap.spawns.Length);
             if (spawnIndex < 0 || spawnIndex >= _generatedMap.spawns.Length)
             {
                 Debug.LogWarning($"[BattleBridge] SpawnEntry.spawnIndex={spawnIndex} out of range (spawns={_generatedMap.spawns.Length}). Fallback to 0.");
