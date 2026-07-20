@@ -78,7 +78,9 @@ public void SetHoles(IReadOnlyList<RectTransform> targets);  // null/빈 목록 
 - `LateUpdate` 는 대상들의 **4개 world corner 캐시**와 비교해 달라졌을 때만 재계산한다(화면 회전·safe area 변동 추종).
 - `Hide()` 는 진행 중 페이드 트윈 중단 + 홀 목록 비우기 + 모든 조각 풀 반환까지 수행한다.
 - dim 등장은 `UiOverlay.Dim` 까지 페이드 인한다(PrimeTween). `Hide` 는 즉시.
-- `padding` 은 `[SerializeField] float holePadding = 12f` 로 노출한다(제약 6 — 하드코딩 금지).
+- `padding` 은 `[SerializeField] float holePadding = 6f` 로 노출한다(제약 6 — 하드코딩 금지).
+  **두 포커스 버튼 사이 최소 간격의 절반 미만이어야 한다** — 로비 세로 열은 Squad/Dreamcatcher
+  사이가 24px 이므로 12 가 상한이고, 12 를 쓰면 두 홀이 정확히 맞닿아 사이 dim 조각이 사라진다.
 
 ## 완료 기준
 
