@@ -60,7 +60,8 @@ namespace Wassup.UI
             content.anchorMin = new Vector2(0f, 1f); content.anchorMax = new Vector2(1f, 1f); content.pivot = new Vector2(0.5f, 1f);
             content.anchoredPosition = Vector2.zero; content.sizeDelta = Vector2.zero;
             var vlg = contentGo.GetComponent<VerticalLayoutGroup>();
-            vlg.padding = new RectOffset(20, 20, 20, 20); vlg.spacing = 16;
+            // 상단 여백은 좌상단 CloseButton(높이 ~102px) 아래로 첫 아이템을 내리기 위해 크게.
+            vlg.padding = new RectOffset(20, 20, 110, 20); vlg.spacing = 16;
             vlg.childAlignment = TextAnchor.UpperCenter;
             vlg.childControlWidth = true; vlg.childControlHeight = true;
             vlg.childForceExpandWidth = true; vlg.childForceExpandHeight = false;
@@ -85,6 +86,10 @@ namespace Wassup.UI
             SetField(controller, "content", content);
             SetField(controller, "confirmPopup", popup);
             ctrlGo.SetActive(true);
+
+            // 좌상단 CloseButton(스쿼드/드캐와 동일, 씬에 authored)을 스크롤 위로 올려 클릭 가능하게.
+            var closeTf = transform.Find("CloseButton");
+            if (closeTf != null) closeTf.SetAsLastSibling();
         }
 
         private static void SetField(object target, string name, object value)
