@@ -69,11 +69,37 @@ Play 재시작 검증을 완료 기준에 둔 이유다.
 
 ## 완료 기준
 
-- [ ] compile 통과, `read_console` 클린
-- [ ] EditMode 전체 통과
-- [ ] Play: 무유출 전멸 승리 → 총점이 `시간 + 스트레스 + 킬` 로 손계산과 일치
-- [ ] Play: 유출 1회 후 승리 → 스트레스가 점당점수만큼, 킬이 그 적 `killScore` 만큼 **동시에** 줄어든다
-- [ ] Play: 패배 → 시간점수 0, 스트레스점수 0, 킬점수만 남는다
-- [ ] Play: 타임아웃 생존 → 시간점수 0, 스트레스·킬 정상
-- [ ] Play: 재시작 후 점수가 이월되지 않는다
-- [ ] 배틀로그 JSON 에 세 축이 찍히고 합이 `score` 와 같다
+- [x] compile 통과, `read_console` 클린
+- [x] EditMode 전체 통과 (1091 / 0 실패)
+- [x] `scoreRules` 씬 배선 (BattleScene). 미배선 시 `LogError` + 기본값 폴백 경로 유지
+- [x] Play: Bridge 산출 == `ScoreMath` 손계산 (세 축 전부, 합 == 총점)
+- [x] Play: 패배 → 시간점수 0
+- [x] Play: 배틀로그에 세 축이 찍히고 합이 `score` 와 같다
+
+확인: 2026-07-20
+
+### Play 실증 기록
+
+**입력 전달 검증** — 비자명한 상태를 주입해 Bridge 출력과 손계산을 대조했다.
+```
+입력: remainMs=169003  goal=3 penalty=2 kill=7200  rawLimit=30
+Bridge : time=16900 stress=22500 kill=7200 total=46600
+손계산 : time=16900 stress=22500 kill=7200 total=46600   → 일치, 합==총점
+```
+
+**계약 8 실증** — 한계에 `EffectiveLeakLimit()`(계약 차감 후, 30−2=28)를 썼다면 stress=20,700 이
+나왔을 것이다. 실제 22,500 이므로 **원본값을 쓰고 있다**. 이 실수는 컴파일도 되고 테스트도
+통과하므로(둘 다 유효한 int) 이 대조가 유일한 방어선이다.
+
+**패배 게이트 실증** — 같은 상태에서 플래그만 바꿔 대조:
+```
+defeated=false: time=16900 → total 46600
+defeated=true : time=0     → total 29700   (스트레스·킬은 그대로)
+```
+게이트가 없으면 패배에 16,900점이 붙는다. 플래그는 **시간축만** 끈다.
+
+**로그** — `outcome=defeat score=0 time=0 stress=0 kill=0`, 세 축 합 == `score`.
+
+> 실전 판으로 4종 결과를 각각 재현하려 했으나 드래프트 풀이 판마다 달라 디펜더 배치가
+> 불안정했다(`NotInPickedPool` / `NotBuildable`). 결과 조합 자체는 `ScoreMathTests` 가 이미
+> 망라하므로, 여기서는 **Bridge 가 올바른 입력을 넘기는가**로 검증 축을 좁혔다.

@@ -114,6 +114,13 @@ namespace Wassup.Logging
         public float duration_sec;
         public int enemies_reached_goal;
         public int score;
+
+        // battle-score-formula unit 3 — 점수 3축 분해. `score` 는 총점으로 유지한다
+        // (서버·기존 분석이 읽는 필드). 나중에 서버가 재계산으로 대조하려면 입력값이
+        // 필요한데, 그 1차 자료가 이 셋이다.
+        public int time_score;
+        public int stress_score;
+        public int kill_score;
     }
 
     // Phase 1 draft audit trail: the full 10-unit pool the player saw, the 7 units

@@ -46,6 +46,9 @@ namespace Wassup.Bridge
         [SerializeField] private float tileSize = 1f;
         [SerializeField] private float spawnHeight = 0.5f;
         [SerializeField] private ResultScreen resultScreen;
+        // battle-score-formula unit 3 — 최종 점수 배점. 미배선이면 기본값(100/900)으로
+        // 진행하되 LogError 를 남긴다 — 조용히 0점이 되는 게 최악이다.
+        [SerializeField] private ScoreRulesData scoreRules;
         [SerializeField] private DefenderUnitData[] defenderPool;
         [SerializeField] private DraftController draftController;
         [SerializeField] private SkillRuntime skillRuntime;
@@ -3682,9 +3685,10 @@ namespace Wassup.Bridge
                 {
                     _resultShown = true;
                     _running = false;
-                    int playerScore = CalculatePlayerScore();
+                    var score = CalculateBattleScore(defeated: true);
+                    int playerScore = score.Total;
                     GameManager.Instance?.Logger?.SetResult("defeat", _goalReachedCount);
-                    GameManager.Instance?.Logger?.SetScore(playerScore);
+                    GameManager.Instance?.Logger?.SetScore(playerScore, score.Time, score.Stress, score.Kill);
                     resultScreen?.ShowDefeat(playerScore, RemainingBattleSeconds(), _goalReachedCount);
                     ReportMatchResult(playerScore);
                     Debug.Log("[BattleBridge] DEFEAT triggered.");
@@ -3707,9 +3711,12 @@ namespace Wassup.Bridge
 
             _resultShown = true;
             _running = false;
-            int playerScore = CalculatePlayerScore();
+            // 버팀 승리는 패배가 아니다. defeated:true 를 넘기면 스트레스점수까지 죽는다 —
+            // 남은 시간이 0 이라 시간점수는 이미 자동으로 0 이다.
+            var score = CalculateBattleScore(defeated: false);
+            int playerScore = score.Total;
             GameManager.Instance?.Logger?.SetResult("victory_timeout", _goalReachedCount);
-            GameManager.Instance?.Logger?.SetScore(playerScore);
+            GameManager.Instance?.Logger?.SetScore(playerScore, score.Time, score.Stress, score.Kill);
             resultScreen?.ShowVictory(playerScore, 0f, _goalReachedCount); // timer expired → 0 left
             ReportMatchResult(playerScore);
             Debug.Log("[BattleBridge] VICTORY — timer expired, player survived.");
@@ -3726,9 +3733,10 @@ namespace Wassup.Bridge
 
             _resultShown = true;
             _running = false;
-            int playerScore = CalculatePlayerScore();
+            var score = CalculateBattleScore(defeated: false);
+            int playerScore = score.Total;
             GameManager.Instance?.Logger?.SetResult("victory", _goalReachedCount);
-            GameManager.Instance?.Logger?.SetScore(playerScore);
+            GameManager.Instance?.Logger?.SetScore(playerScore, score.Time, score.Stress, score.Kill);
             resultScreen?.ShowVictory(playerScore, RemainingBattleSeconds(), _goalReachedCount);
             ReportMatchResult(playerScore);
             Debug.Log("[BattleBridge] VICTORY — all attack units defeated.");
@@ -3750,10 +3758,31 @@ namespace Wassup.Bridge
                 ranking => resultScreen?.UpdateLeaderboard(ranking, Wassup.Core.Api.UserSession.Current?.userId));
         }
 
-        private int CalculatePlayerScore()
+        // battle-score-formula unit 3 — 예산 소모 모델. 계산 자체는 ScoreMath 순수 함수가
+        // 하고 여기서는 입력을 모아 넘기기만 한다.
+        //
+        // stressLimit 은 deck.defeatGoalReachedCount **원본값**이다(계약 8).
+        // EffectiveLeakLimit()(계약 차감 후)이 아니다 — 차감분은 누적 쪽에 들어간다.
+        private ScoreMath.BattleScore CalculateBattleScore(bool defeated)
         {
-            float durationSec = Mathf.Max(0f, (float)_battleClock);
-            return Math.Max(0, (int)(durationSec * 10f - _goalReachedCount * 50));
+            int perSec = 100, perStress = 900;
+            if (scoreRules != null)
+            {
+                perSec = scoreRules.timeScorePerSecond;
+                perStress = scoreRules.stressScorePerPoint;
+            }
+            else
+            {
+                Debug.LogError("[BattleBridge] scoreRules 미배선 — 기본값(100/900)으로 점수를 계산한다. "
+                    + "ScoreRules.asset 을 인스펙터에 물릴 것.");
+            }
+
+            int remainingMs = Mathf.RoundToInt(RemainingBattleSeconds() * 1000f);
+            int stressLimit = deck != null ? deck.defeatGoalReachedCount : 0;
+            int stressAccrued = _goalReachedCount + _leakAllowancePenalty;
+
+            return ScoreMath.Evaluate(remainingMs, stressAccrued, stressLimit, _killScoreTotal,
+                defeated, perSec, perStress);
         }
 
         // Random-pick legacy entry (Phase 0-3 behavior). Phase 4 prefers
