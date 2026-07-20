@@ -23,6 +23,7 @@
   - 1패스 = `squad.stoneIds` 슬롯 순서(헤더 스트립과 동일 순서)
   - 2패스 = 미편성 스톤을 카탈로그 순서 그대로
   - `squad` 가 null 이면 `_stones` 를 그대로 반환(`SortedUnits` 의 90행 가드와 동형)
+  - **중복 가드 추가**(`SortedUnits` 와의 유일한 차이): `PlayerProfile.SetStoneSlot` 은 슬롯 중복을 **허용**하고 유일성은 UI(197-198행)만 강제한다. 외부 편집/구 세이브로 같은 id 가 2슬롯에 있으면 1패스가 같은 스톤을 두 번 담아 **동일 id 셀이 2개** 생긴다(선택 하이라이트가 양쪽에 걸림). `HashSet<string> seen` 으로 1패스 중복을 막고 2패스 제외 판정에 재사용한다 — 드림캐쳐 형제 `SortedPool()` 이 쓰는 패턴과 동일.
 - **호출 지점 2곳**:
   - `EnterStoneMode` **154행** — `ShowStones(_stones)` → `ShowStones(SortedStones())`
   - `ToggleStone` **201행** `Save()` 뒤 — `browser.ShowStones(SortedStones())` 추가 후 `RefreshStoneMode()`. 유닛 모드 144행과 동형으로 장착/해제 즉시 라이브 재정렬(셀 이동 자체가 편성 피드백).

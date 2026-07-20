@@ -151,11 +151,34 @@ namespace Wassup.UI
         {
             _mode = Mode.Stone;
             _activeStoneSlot = Mathf.Clamp(slotIndex, 0, SquadSave.StoneSlotCount - 1);
-            if (browser != null) browser.ShowStones(_stones);
+            if (browser != null) browser.ShowStones(SortedStones());
             var squad = Squad;
             string cur = (squad != null && _activeStoneSlot < squad.stoneIds.Count) ? squad.stoneIds[_activeStoneSlot] : "";
             _selectedStoneId = !string.IsNullOrEmpty(cur) ? cur : (_stones.Count > 0 ? _stones[0].id : null);
             RefreshStoneMode();
+        }
+
+        // Unit 13 — 장착 스톤 먼저(슬롯 순서, 헤더 스트립과 동일), 나머지는 카탈로그
+        // 순서. unit 10 의 SortedUnits 와 동형이되, 저장 계층이 슬롯 중복을 허용하므로
+        // (PlayerProfile.SetStoneSlot — 유일성은 UI 가 강제) 1패스에 중복 가드를 둔다.
+        // _stones 를 in-place 정렬하면 안 된다 — EnterStoneMode 의 _stones[0] 폴백이
+        // 카탈로그 순서에 의존한다.
+        private List<DreamstoneData> SortedStones()
+        {
+            var squad = Squad;
+            if (squad == null || squad.stoneIds == null) return _stones;
+            var sorted = new List<DreamstoneData>(_stones.Count);
+            var seen = new HashSet<string>();
+            for (int i = 0; i < squad.stoneIds.Count; i++)
+            {
+                var id = squad.stoneIds[i];
+                if (string.IsNullOrEmpty(id) || stoneCatalog == null || !seen.Add(id)) continue;
+                var s = stoneCatalog.ById(id);
+                if (s != null) sorted.Add(s);
+            }
+            for (int i = 0; i < _stones.Count; i++)
+                if (!seen.Contains(_stones[i].id)) sorted.Add(_stones[i]);
+            return sorted;
         }
 
         private void RefreshStoneMode()
@@ -199,6 +222,8 @@ namespace Wassup.UI
                 squad.SetStoneSlot(_activeStoneSlot, id);
             }
             Save();
+            // Unit 13 — 유닛 모드(ToggleUnit)와 동형 라이브 재정렬. 셀 이동 자체가 편성 피드백.
+            if (browser != null) browser.ShowStones(SortedStones());
             RefreshStoneMode();
         }
 
