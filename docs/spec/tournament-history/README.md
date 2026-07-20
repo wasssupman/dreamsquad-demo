@@ -27,7 +27,7 @@
 - **unclaimed 응답**: `data` 는 `UserTournamentResultEntry` 의 **bare 배열**(객체 래핑 아님). 소비 필드: `tournamentEntryId`(상세 키·필수), `tournamentName`, `score`, `rank`, `createdTime`, `claimed`. `rewardData`/`userId`/`tournamentTypeId` 는 파싱하지 않는다("소비 필드만" 선례).
 - **상세 응답**: 기존 `ResultData`/`ResultEntry` 재사용. 팝업 제목용으로 `ResultData.name`(토너먼트 이름) 만 추가 파싱. 랭킹 행 산식(score 내림차순, 서버 `rank>0` 우선)은 기존 `BuildRows` 그대로.
 - **랭킹 렌더링 공유**: `ResultScreen` 에 private 로 묻힌 리더보드 렌더링을 공용 `LeaderboardList`(plain 클래스, `Row` 모델 + `BuildRows` 순수 + 스프라이트 베이킹 + `Render(content, rows)`)로 추출한다. 결과창과 상세 팝업이 **동일 룩**을 공유하고 중복 0 (2 호출처 = 제약 8/10 부합).
-- **게스트/미로그인**: `UserSession.IdToken` 이 비면 API 호출 없이 목록 패널에 "기록 없음(로그인 필요)" 빈 상태를 표시. `IsSignedIn` 이 아니라 `IdToken` 공백으로 판정(게스트 = `idToken=""`).
+- **게스트/미로그인**: 실계정(IdToken 비어있지 않음)에게만 로비 "히스토리" 버튼을 노출한다(`OutgameMenuController.ApplyAuthGate` 가 `menuRoot` 직속 자식 `HistoryButton` 을 `signedIn && IdToken 비어있지 않음` 으로 토글). 미로그인은 로그인 게이트로 버튼 자체 미노출. 게스트가 버튼에 도달하는 경로(수동 활성 등)에서도 `LoadEntries` 가 `IdToken` 공백이면 API 없이 "로그인이 필요합니다" 빈 상태만 표시(방어). `IsSignedIn` 이 아니라 `IdToken` 공백으로 판정(게스트 = `idToken=""`).
 - **실패/로딩**: 목록/상세 조회 실패는 게임을 막지 않는다 — 패널/팝업에 실패 문구 + 재시도 여지만. 로딩 중에는 스피너/문구, 완료 시 교체.
 - **진입점**: 로비 정식 메뉴 버튼(Squad/Dreamcatcher 와 동급, dev 트레이 아님). `OutgameMenuController.RaiseExclusive(historyPanel)` 패턴에 얹는다. 상세 팝업은 히스토리 패널 위 모달.
 - **스코프**: `unclaimed` 목록을 **히스토리 전체 목록**으로 사용한다. 현재 "완료된 토너먼트" 개념이 없어 `claimed` 엔드포인트(완료/cursor 페이징)는 **미사용**(사용자 결정 2026-07-20). 보상 수령(`claim`/`claimAll`)도 범위 밖.
