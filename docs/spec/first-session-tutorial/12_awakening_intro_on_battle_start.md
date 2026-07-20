@@ -58,6 +58,11 @@ private IEnumerator AwakeningIntroRoutine()
     if (guidance == null || gaugeView == null) yield break;
     if (!TutorialProgress.ShouldRunAwakeningHint(profileSO)) yield break;
 
+    // 지연의 목적이 패널 활성화 대기이므로 실제로 활성인지 확인한다. 아직 비활성이면
+    // Pulse 가 no-op 되고 링도 안 뜨는데 플래그만 소모돼 0단계가 조용히 사라진다.
+    var hit = gaugeView.HitRect;
+    if (hit == null || !hit.gameObject.activeInHierarchy) yield break;
+
     _awakeningIntroShownThisBattle = true;
     gaugeView.Pulse();
     guidance.ShowMessage("여기서 드림캐쳐 덱을 열어보세요", showSkip: false);

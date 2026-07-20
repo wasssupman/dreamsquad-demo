@@ -48,13 +48,18 @@ ambient/maxIdle 정지 규칙은 유지한다.
 
 `FirstSessionTutorialController` 가 소유한다. **Placement 진입 시점**에 결정한다.
 
-- `OnPlacementReady` 초입(기존 early return 들보다 **앞**)에서
+- `OnPlacementReady` 의 `ShouldRunCore`/`HasCoreReferences`/affordable 슬롯 가드보다 **앞**에서
+  (페이즈·중복 가드 뒤). 이 세 개가 fail-open return 이라 그것들을 앞지르는 것이 요점이다.
   `_awakeningLockedThisMatch = TutorialProgress.ShouldRunCore(profileSO)` 로 판정하고
   `gaugeView?.SetSuppressed(_awakeningLockedThisMatch)`.
 - `ShouldRunCore` 를 쓰는 이유: `IsCorePending` 은 Placement 동안 아직 true 다. 참조 누락이나
   affordable 슬롯 부재로 **core 튜토리얼이 fail-open 으로 발동하지 못한 경우에도** 첫 판을 올바르게
   잡는다(`_coreActive` 로 판정하면 그 경로에서 버튼이 보인다).
-- 해제: **`OnDisable` 에서만** `_awakeningLockedThisMatch = false` + `SetSuppressed(false)`.
+- 해제: **`OnDisable` 에서만**, 그리고 **Battle 중이 아닐 때만** `SetSuppressed(false)` 를 적용한다.
+  `OnDisable` 은 Battle 도중에도 발화할 수 있고(씬 언로드·컴포넌트 비활성·플레이 종료), 그때
+  캐시된 `_phase`(Battle)로 패널이 켜졌다 꺼지는 왕복이 생겨 앰비언트 코루틴이 되살아날 수 있다.
+  Battle 중 비활성화는 여전히 첫 판이므로 봉인 유지가 의미상으로도 맞다.
+  플래그(`_awakeningLockedThisMatch`)는 조건 없이 되돌린다.
   다음 매치는 `OnPlacementReady` 가 lock 을 매번 다시 판정해 덮으므로 그것으로 충분하다.
   페이즈 이탈에서 `SetSuppressed(false)` 를 부르면, 튜토리얼 핸들러가 gaugeView 보다 먼저 도는 경우
   캐시된 `_phase`(아직 Battle)로 패널을 한 번 켰다 끄는 왕복(`StartAmbient`→`StopAmbient`)이 생긴다.

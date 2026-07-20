@@ -240,6 +240,9 @@ namespace Wassup.UI.Tutorial
             image.raycastTarget = true;
 
             _tapCatcher.GetComponent<OutgameTutorialTapZone>().Pressed = () => ContinueTapped?.Invoke();
+            // BuildCanvas 의 UiLayer.Apply 이후에 lazy 생성되므로 여기서 직접 적용한다
+            // (CreateWorldPulse 와 같은 이유).
+            UiLayer.Apply(_tapCatcher);
             _tapCatcher.SetActive(false);
         }
 

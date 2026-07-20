@@ -126,9 +126,13 @@ namespace Wassup.UI.Tutorial
             EndCore(restoreNormalPlacement: true);
             ResetAwakeningSession(hide: true);
             guidance?.SetElevated(false);
-            // unit 10 — 봉인은 이 컴포넌트가 살아있는 동안만 유효하다.
+            // unit 10 — 봉인은 이 컴포넌트가 살아있는 동안만 유효하다. 단 Battle 도중
+            // 해제하면 캐시된 _phase(Battle)로 패널이 켜졌다 꺼지는 왕복이 생기고,
+            // 씬 파괴 순서에 따라 앰비언트 코루틴이 되살아난다. Battle 중 비활성화는
+            // 여전히 첫 판이므로 봉인을 유지하는 것이 의미상으로도 맞다.
             _awakeningLockedThisMatch = false;
-            gaugeView?.SetSuppressed(false);
+            if (gameManager == null || gameManager.CurrentPhase != GamePhase.Battle)
+                gaugeView?.SetSuppressed(false);
         }
 
         private void OnPlacementReady()
@@ -445,6 +449,12 @@ namespace Wassup.UI.Tutorial
             if (gameManager == null || gameManager.CurrentPhase != GamePhase.Battle) yield break;
             if (guidance == null || gaugeView == null) yield break;
             if (!TutorialProgress.ShouldRunAwakeningHint(profileSO)) yield break;
+
+            // 지연의 목적이 패널 활성화를 기다리는 것이므로 실제로 활성인지 확인한다.
+            // 아직 비활성이면 Pulse 가 조용히 no-op 되고 링도 안 뜨는데, 플래그만 소모돼
+            // 0단계가 펄스 없이 사라진다. 소모하지 말고 다음 기회에 다시 시도한다.
+            RectTransform hit = gaugeView.HitRect;
+            if (hit == null || !hit.gameObject.activeInHierarchy) yield break;
 
             _awakeningIntroShownThisBattle = true;
             // arm 하지 않는다. 카드 사용법(B단계)은 A단계가 실제로 뜬 뒤에만 의미가 있고,

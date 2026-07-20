@@ -1,7 +1,7 @@
 # first-session-tutorial — 첫 판 행동형 온보딩
 
 > 상태: **핵심(0~4) 완료 2026-07-19 · 선물 튜토리얼 확장(6~8) 커밋 `9e75c0ae` 2026-07-20 ·
-> 아웃게임 튜토리얼 연계 개선(10~12) 작성 2026-07-21 · 미구현**
+> 아웃게임 튜토리얼 연계 개선(10~12) 구현 커밋 `7a704a20` 2026-07-21 · 사용자 Play 확인 대기**
 > 선행: `defender-tap-to-place` · `mobile-ui-safe-area` · `awakening-hud-resource-button` (완료)
 
 ## 검증 질문
@@ -64,8 +64,9 @@
   절대 위치라 자리가 빈 채로 남고 다른 HUD 는 움직이지 않는다. 게이지 충전·덱 회수 로직은 그대로
   두고 **표시만** 막는다(손패를 여는 유일한 경로가 그 버튼이므로 카드 사용은 자연히 봉인된다).
 - 봉인 판정은 `_awakeningLockedThisMatch` **하나**가 버튼 숨김과 힌트 억제를 함께 구동한다.
-  Placement 진입 시 `ShouldRunCore(profileSO)` 로 결정하고, Battle/Placement 를 벗어날 때 해제한다.
-  `EndCore` 에서 풀지 않는다 — Skip 해도 첫 판인 것은 변함없다.
+  Placement 진입 시 `ShouldRunCore(profileSO)` 로 결정하고, 해제는 `OnDisable` 에서 **Battle 중이
+  아닐 때만** 적용한다(Battle 중 해제는 패널이 켜졌다 꺼지는 왕복을 만든다). 다음 매치는
+  `OnPlacementReady` 가 매번 재판정한다. `EndCore` 에서 풀지 않는다 — Skip 해도 첫 판은 첫 판이다.
 - **`ShouldRunAwakeningHint` 에 `!IsCorePending` 을 걸어 첫 판을 막으려 하지 말 것.**
   `OnPhaseChanged(Battle)` 가 `CompleteCoreProgress()` 를 먼저 실행하므로 그 시점엔 이미 pending 이
   false 다. 첫 판 억제는 위 `_awakeningLockedThisMatch` 로만 한다.
