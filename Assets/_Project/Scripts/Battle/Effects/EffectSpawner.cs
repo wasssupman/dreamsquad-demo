@@ -21,28 +21,15 @@ namespace Wassup.Battle.Effects
     public static class EffectSpawner
     {
         // Adds or merges a CcEffect into the target's DynamicBuffer<CcEffect>.
-        // Same merge policy as CcApplySystem: max(remainingTime) + new vector/scalar.
+        // 병합 정책은 CcEffectMerge 단일 소스(CcApplySystem 과 공유) — tickInterval/tickTimer
+        // 포함 동일 규칙. 여기 Impulse/Sleep 은 tickInterval=0 이라 이산 tick 필드는 무영향.
         public static void ApplyCc(EntityManager em, Entity target, CcEffect effect)
         {
             if (!em.Exists(target))
                 return;
 
             var buffer = em.GetBuffer<CcEffect>(target);
-            for (int i = 0; i < buffer.Length; i++)
-            {
-                if (buffer[i].kind == effect.kind)
-                {
-                    buffer[i] = new CcEffect
-                    {
-                        kind = effect.kind,
-                        vector = effect.vector,
-                        scalar = effect.scalar,
-                        remainingTime = math.max(buffer[i].remainingTime, effect.remainingTime),
-                    };
-                    return;
-                }
-            }
-            buffer.Add(effect);
+            CcEffectMerge.Apply(ref buffer, effect);
         }
 
         // Phase 8 §17 — Tornado: carrier entity with area data. MovementSystem
