@@ -152,7 +152,7 @@ return Math.Max(0, (int)(durationSec * 10f - _goalReachedCount * 50));
 - 절삭 손실은 초당 100 기준 10ms 미만이다 (`ms × 100 / 1000` = `ms / 10`).
 - 남은 시간의 출처는 기존 `RemainingBattleSeconds()` 다 (`:3688`, 이미 `ResultScreen` 으로 넘어가는 값).
 - 새 asmdef 를 만들지 않는다. `Wassup.Runtime` 안에서 기존 pure static 컨벤션(`ModifierMath`)을 따른다.
-- 총점 규모가 1,800 → 20,000~35,000 대로 바뀐다. `BotScoreGenerator` 는 플레이어 점수를 시드·기준으로 쓰므로 자동 추종한다.
+- 총점 규모가 1,800 → 20,000~35,000 대로 바뀐다. 리더보드 폴백은 점수에 비례한 더미를 만들지 않으므로(대기 상태 표시) 영향받지 않는다.
 
 ## 결정 기록
 

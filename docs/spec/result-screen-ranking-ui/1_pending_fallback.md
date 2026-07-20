@@ -45,8 +45,8 @@
 
 ## 부수 효과
 
-`Assets/_Project/Scripts/Core/BotScoreGenerator.cs` 가 **미사용이 된다.** 이 spec 범위 밖이라
-삭제하지 않았다. 존치/삭제는 별도 판단.
+`Assets/_Project/Scripts/Core/BotScoreGenerator.cs` 가 미사용이 되고, **2026-07-21 삭제했다.**
+Phase 5(`c785ce6b`)에서 가설 검증용으로 넣은 더미 리더보드였다. 복원은 그 커밋에서.
 
 ## 완료 기준
 

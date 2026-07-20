@@ -28,7 +28,8 @@
 - **인증 헤더**: `Authorization: Bearer {UserSession.IdToken}` + `X-SERVICE-APP-VERSION` — `UserSignApi` 와 동일 패턴. 응답은 공통 envelope → `ApiEnvelope.Parse<T>` 재사용.
 - **play 응답에서 소비하는 필드**: `tournamentEntryAttemptId` (complete 경로 파라미터), `tournamentEntryId` (결과 조회 경로 파라미터), `status` — 나머지는 파싱하지 않는다 (`UserSignApi.SignedInUser` 선례).
 - **결과 조회**: complete 성공 시에만 `GET /tournament/result/tournament/{tournamentEntryId}` 호출. 응답 `TournamentResult.entries[]` 에서 `userName`/`score` 를, 루트에서 `maxEntryCount` 를 소비한다 (dev 서버는 `rank` 미제공 — 클라가 score 내림차순 위치로 산출, 2026-07-08 실측). 랭킹은 항상 `maxEntryCount` 슬롯(현재 10)을 그리고 미배정 슬롯은 `WAITING...` 표기. 본인 행은 `UserSession.Current.userId` 매칭으로 강조. complete 응답 `data` 도 동일한 `TournamentResult` 스키마 — 파싱 DTO 를 공유한다.
-- **랭킹 fallback**: 게스트·API 실패·조회 전 로딩 중에는 기존 봇 점수 목록(`BotScoreGenerator`)을 그대로 사용한다. 실데이터는 도착하면 교체.
+- **랭킹 fallback**: 게스트·API 실패·조회 전 로딩 중에는 대기 상태 목록("참가자 찾는 중", 점수 `-`)을 보여준다. 실데이터는 도착하면 교체.
+  (당초 `BotScoreGenerator` 더미 점수를 썼으나 없는 순위를 지어내는 문제로 `result-screen-ranking-ui` unit 1 에서 교체·삭제했다.)
 - **호출 시점**: play = 배틀 씬 진입 1회 + RESTART 로 새 판이 시작될 때마다. complete = 결과 팝업(승/패) 확정 시 1회. 판당 attemptId 1개, complete 는 attemptId 당 최대 1회.
 - **미완료 판**: 결과 팝업 없이 끝난 판(결과 전 재시작·앱 종료)은 complete 를 보내지 않는다. 서버에 미완료 attempt 가 남는 것은 서버 정책에 위임 (사용자 결정 2026-07-08).
 - **게스트 스킵**: `UserSession.IdToken` 이 비어 있으면 (게스트 = `idToken=""`) play/complete 호출 자체를 스킵. `IsSignedIn` 만으로는 게스트를 걸러낼 수 없음에 주의.
