@@ -41,3 +41,5 @@
 - 카드가 `cardRoot` 경계를 넘지 않는다(하단 [출전] 버튼이 잘리지 않음).
 
 > 검증 시 주의: 이 캔버스는 `ScreenSpaceOverlay` 라 `manage_camera` 게임뷰 스크린샷에 안 잡힌다. Play 중 잠깐 `ScreenSpaceCamera` 로 플립(저장 금지).
+
+2026-07-20 사용자 Play 확인 · 커밋 4af6bd81

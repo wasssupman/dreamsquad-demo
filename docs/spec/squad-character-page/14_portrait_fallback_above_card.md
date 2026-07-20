@@ -39,6 +39,8 @@ float fallbackY = (cardHeight + 1f) * 0.5f;   // 카드 위 자유 영역의 중
 - Play(스톤 모드): 아이콘 y `692 → 992`, 카드 상단 `605` → **겹침 0px**, 카드 위 여유 88px. 아이콘 전체가 드러난다.
 - 유닛 모드 무영향: 현재 유닛 17종 전부 `SpineSkeletonDataAsset` 을 가져 폴백 경로를 타지 않는다(`BindSpine` 이 Spine 을 쓰고 폴백은 비활성). 스켈레톤 없는 유닛이 생기면 같은 자유 영역에 뜬다.
 
+2026-07-20 사용자 Play 확인 · 커밋 5c183228
+
 ## 후속 후보 (범위 밖)
 
 - **드림스톤 아이콘 PNG 에 알파가 없다.** `Assets/_Project/Art/Dreamstones/Icons/*.png` 는 PNG **colortype 2 (RGB, 알파 채널 없음)** 이라 검은 배경이 소스에 구워져 있다. 그리드 셀에서는 셀 배경이 어두워 묻히지만, 상세 패널에서는 아이콘 뒤 검은 사각형으로 보인다. 임포터는 `alphaIsTransparency=True / alphaSource=FromInput` 이지만 입력에 알파가 없어 무의미하다. 아트 재출력(투명 배경) 또는 임포터 알파 생성이 필요 — **아트 에셋 이슈라 이 spec 밖**.

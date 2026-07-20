@@ -1,6 +1,6 @@
 # squad-character-page — 스쿼드 페이지를 캐릭터 열람+편성 화면으로 재설계
 
-> 상태: **완료 2026-07-18 · rev 2026-07-19 units 9~10 완료 · rev 2026-07-20 units 11~13 진행 중** (units 0~10 구현·커밋·Play 확인. handoff `8_handoff_summary.md`. unit 9 = 슬롯 탭 제거→선택, unit 10 = 편성-먼저 정렬 + 헤더 선택 표시 — ebfa923a. units 11~13 = 가독성 패스: 설명문 확대·셀 라벨 밴드·스톤 정렬)
+> 상태: **완료 2026-07-18 · rev 2026-07-19 units 9~10 · rev 2026-07-20 units 11~16 완료** (전 units 구현·커밋·사용자 Play 확인. handoff `8_handoff_summary.md`(0~10) + `17_handoff_summary.md`(11~16). unit 9 = 슬롯 탭 제거→선택, unit 10 = 편성-먼저 정렬 + 헤더 선택 표시 — ebfa923a. units 11~16 = 가독성 패스: 설명문 확대·스탯 2열·셀 라벨 밴드·스톤 정렬 + 픽스 2건)
 > 선행: `squad-loadout`(B, 완료 — SquadSave/편성 반입) · `dreamstone-loadout`(스톤 4 전역 슬롯) · `defender-portraits`(포트레이트) · `unit-stat-projection`(AttackOutputStats) · `spine-runtime-4-2-upgrade`(SkeletonGraphic 4.2)
 > 성격: **아웃게임 UI/UX 재설계** (MonoBehaviour 프레젠테이션 전용). ECS/BattleBridge 무관 — 플레이 오브젝트 spec 아님 → 파이프라인 커버리지 섹션 N/A.
 
