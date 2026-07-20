@@ -94,6 +94,34 @@ namespace Wassup.UI
             Rebuild();
         }
 
+        /// 포커스 링용 합집합 RectTransform 을 매달 부모. 좌표계는 홀 rect 와 같다.
+        public RectTransform EnsureHostRoot()
+        {
+            EnsureBuilt();
+            return _fullBleedRoot;
+        }
+
+        /// 마지막 SetHoles 로 계산된 홀들의 합집합(오버레이 로컬, padding 제외).
+        /// TutorialGuidanceView.FocusUi 가 대상 하나만 받으므로, 버튼 여러 개를
+        /// 링 하나로 감싸려면 호출자가 이 값으로 임시 RectTransform 을 만든다.
+        public bool TryGetHoleBounds(out Rect bounds)
+        {
+            bounds = default;
+            if (_holeRects.Count == 0) return false;
+
+            bounds = _holeRects[0];
+            for (int i = 1; i < _holeRects.Count; i++)
+            {
+                Rect r = _holeRects[i];
+                float xMin = Mathf.Min(bounds.xMin, r.xMin);
+                float yMin = Mathf.Min(bounds.yMin, r.yMin);
+                float xMax = Mathf.Max(bounds.xMax, r.xMax);
+                float yMax = Mathf.Max(bounds.yMax, r.yMax);
+                bounds = new Rect(xMin, yMin, xMax - xMin, yMax - yMin);
+            }
+            return true;
+        }
+
         private void LateUpdate()
         {
             if (!_built || !_root.activeSelf || _targets.Count == 0) return;

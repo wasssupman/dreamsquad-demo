@@ -2119,6 +2119,7 @@ MonoBehaviour:
   lobbyCharactersRoot: {fileID: 959132312}
   gatePopup: {fileID: 382824359}
   devButtonsGroup: {fileID: 84156796}
+  outgameTutorial: {fileID: 1320334836}
 --- !u!4 &401263284
 Transform:
   m_ObjectHideFlags: 0
@@ -4350,6 +4351,52 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a3dd7678ed1494bdaa97a4e66be43106, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.Layout.UiSafeAreaFitter
+--- !u!1 &1149938025
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1149938027}
+  - component: {fileID: 1149938026}
+  m_Layer: 0
+  m_Name: Dim
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1149938026
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1149938025}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0498815edee8a463e964eeb0c012387c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.OutgameTutorialOverlay
+  holePadding: 6
+  fadeSeconds: 0.22
+--- !u!4 &1149938027
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1149938025}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1320334837}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1159444242
 GameObject:
   m_ObjectHideFlags: 0
@@ -5663,6 +5710,60 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1315817064}
   m_CullTransparentMesh: 1
+--- !u!1 &1320334835
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1320334837}
+  - component: {fileID: 1320334836}
+  m_Layer: 0
+  m_Name: OutgameTutorial
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1320334836
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1320334835}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 75d9704edc729459581012a14f08e082, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.OutgameTutorialController
+  profileSO: {fileID: 11400000, guid: e610b4c0bbbeb4becb09188e400e6a55, type: 2}
+  overlay: {fileID: 1149938026}
+  guidance: {fileID: 1811690501}
+  startButton: {fileID: 2039894584}
+  squadButton: {fileID: 2118375148}
+  dreamcatcherButton: {fileID: 1210731817}
+  minStepSeconds: 0.5
+  escapeDelaySeconds: 8
+--- !u!4 &1320334837
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1320334835}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 1149938027}
+  - {fileID: 1811690502}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1326910239
 GameObject:
   m_ObjectHideFlags: 0
@@ -8374,6 +8475,51 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!1 &1811690500
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1811690502}
+  - component: {fileID: 1811690501}
+  m_Layer: 0
+  m_Name: Guidance
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1811690501
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1811690500}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 624fc3e5194df4ebc90d62a448ea7311, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.Tutorial.TutorialGuidanceView
+  style: {fileID: 11400000, guid: ff4463a1c695b43b4b9d517be3eaac64, type: 2}
+--- !u!4 &1811690502
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1811690500}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1320334837}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1861138003
 GameObject:
   m_ObjectHideFlags: 0
@@ -10493,3 +10639,4 @@ SceneRoots:
   - {fileID: 1480984991}
   - {fileID: 401263284}
   - {fileID: 247752174}
+  - {fileID: 1320334837}

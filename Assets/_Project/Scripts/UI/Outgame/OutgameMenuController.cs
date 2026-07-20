@@ -39,6 +39,9 @@ namespace Wassup.UI
         // 로비 레이어 전용: 패널이 열리면 숨긴다. GameObject.active 대신 CanvasGroup 을
         // 토글해 DevOnlyGroup 의 빌드 게이트(비-dev 빌드에서 GO 비활성화)와 충돌하지 않는다.
         [SerializeField] private CanvasGroup devButtonsGroup;
+        // outgame-tutorial unit 4 — 로비 차단형 온보딩. 호출 위치가 계약의 일부다:
+        // Awake 말미(프로필 로드 이후)와 ApplyAuthGate 양쪽에서 부른다.
+        [SerializeField] private OutgameTutorialController outgameTutorial;
 
         // Reused across clicks; LoadoutGate.Check clears it on entry.
         private readonly System.Collections.Generic.List<LoadoutShortfall> _shortfalls =
@@ -68,6 +71,12 @@ namespace Wassup.UI
             profileSO.SetLoadedProfile(ProfileStore.LoadOrCreate(catalog, defaultDeck, cardCatalog));
             Debug.Log($"[OutgameMenuController] Profile loaded: {(catalog != null ? catalog.units.Length : 0)} catalog units. path={ProfileStore.Path}");
             ClosePanels();
+
+            // outgame-tutorial unit 4 — 프로필 로드 이후여야 한다. ApplyAuthGate 는
+            // 이 메서드의 첫 줄이라 그 시점 profileSO.profile 은 곧 교체될 인스턴스이고,
+            // 전투 복귀 경로에서는 UserSession 이 이미 signed-in 이라 onSignedIn 이
+            // 재발화하지 않아 이 호출이 챕터 B 의 유일한 진입점이 된다.
+            if (outgameTutorial != null) outgameTutorial.OnLobbyShown(UserSession.IsSignedIn);
         }
 
         private void OnDestroy()
@@ -92,6 +101,11 @@ namespace Wassup.UI
                 if (historyBtn != null)
                     historyBtn.gameObject.SetActive(signedIn && !string.IsNullOrEmpty(UserSession.IdToken));
             }
+
+            // 로그인 완료(onSignedIn)와 로그아웃(OnResetAccount) 전이를 받는다.
+            // Awake 경로에서는 아직 프로필이 로드되기 전이라 컨트롤러가 요청만
+            // 래치하고, 실제 시작은 Awake 말미 호출과 자신의 Start 에서 일어난다.
+            if (outgameTutorial != null) outgameTutorial.OnLobbyShown(signedIn);
         }
 
         // outgame-login-gate unit 3 — dev button: forget the account and fall
