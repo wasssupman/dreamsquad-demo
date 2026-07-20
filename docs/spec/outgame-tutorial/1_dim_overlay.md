@@ -100,3 +100,7 @@ public void SetHoles(IReadOnlyList<RectTransform> targets);  // null/빈 목록 
 - [ ] Play 에서 홀을 지정하면 **그 버튼만 실제로 눌린다** (다른 버튼은 여전히 무반응)
 - [ ] 홀 위치가 포커스 대상 버튼과 육안 일치 (스크린샷 확인)
 - [ ] dim 톤 확인 — `UiOverlay.Dim` 알파 0.92 가 로비 배경·캐릭터 위에서 과한지 Play 스크린샷으로 판단하고, 과하면 온보딩 전용 알파를 별도 상수로 분리
+
+> 검증 2026-07-21 · 커밋 `3dc303c8` — EditMode `OutgameTutorialDimLayoutTests` 13/13.
+> 에디터 실측 홀 좌표가 테스트 계산값과 일치(`-912,12` / `-912,-240`, 7조각, 사이 12px).
+> dim 톤 육안 판단은 사용자 Play 대기.

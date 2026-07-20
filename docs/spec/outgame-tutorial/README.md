@@ -1,6 +1,6 @@
 # outgame-tutorial — 로비 통과구멍 2챕터 온보딩
 
-> 상태: **작성 2026-07-21 · critic 리뷰 3종 반영 개정 · 미구현**
+> 상태: **구현 완료 2026-07-21 (units 0~4) · 사용자 Play 체감 + Android 실기기 QA 대기**
 > 선행: `first-session-tutorial` (완료) · `outgame-lobby-layout` (완료)
 
 ## 검증 질문
@@ -30,6 +30,7 @@ dim 은 주의를 좁히는 수단일 뿐이고, 진행시키는 것은 언제�
 | 2 | `2_intro_chapter.md` | 챕터 A | 로비 최초 노출 → StartButton 실제 클릭 |
 | 3 | `3_loadout_chapter.md` | 챕터 B | 첫 판 복귀 → 스쿼드/드림캐쳐 실제 클릭 |
 | 4 | `4_scene_wiring_and_qa.md` | 통합/검증 | OutgameScene 배선 + 진입 훅 + Play QA |
+| 5 | `5_handoff_summary.md` | 인계 | 커밋·검증·되돌림 금지 항목 |
 
 ## Feature-wide 계약
 

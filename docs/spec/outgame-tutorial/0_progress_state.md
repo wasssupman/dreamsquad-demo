@@ -62,3 +62,5 @@ in-memory `ResetAll`의 `changed`도 동일하다.
   - `IsLoadedThisSession == false` → `ShouldRun*` 전부 false
 - [ ] **두 필드가 `1`인 상태에서** 로비 dev 트레이 `RESET TUTORIAL` 실행 → `profile.json`에서 `0`으로 바뀜
       (사전 조건 없이 확인하면 `ResetAllInJson`이 없던 키를 새로 써넣는 것과 구분되지 않아 항상 통과한다)
+
+> 검증 2026-07-21 · 커밋 `251705d8` — EditMode `TutorialProgressTests` 16/16, 전체 1133 중 0 실패.

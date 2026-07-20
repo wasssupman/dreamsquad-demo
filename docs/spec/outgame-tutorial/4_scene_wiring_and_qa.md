@@ -87,3 +87,6 @@ OutgameTutorial          [OutgameTutorialController]   ← Canvas 없음
 - [ ] Android 가로 실기기: dim 이 노치·safe area 까지 덮는지, **포커스 링과 홀이 어긋나지 않는지**
       스크린샷으로 확인 (unit 3 의 알려진 한계)
 - [ ] EditMode 전체 통과 (기존 테스트 회귀 없음)
+
+> 검증 2026-07-21 · 커밋 `815b38c4`·`1dfc22a3` — 씬 diff 147줄 추가·삭제 0, `OutgameTutorial` 씬 루트 확인,
+> EditMode 전체 회귀 없음. 사용자 Play 체감·Android 실기기 QA 대기.
