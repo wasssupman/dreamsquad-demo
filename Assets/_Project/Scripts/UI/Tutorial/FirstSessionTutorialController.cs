@@ -28,6 +28,9 @@ namespace Wassup.UI.Tutorial
         [SerializeField] private AwakeningGaugeView gaugeView;
         [SerializeField] private DreamcatcherHandView handView;
 
+        [Header("Gift walkthrough")]
+        [SerializeField] private GiftPhaseView giftView;
+
         private DefenderDragPlacementController _drag;
         private RectTransform _recommendedSlot;
         private CoreStep _coreStep;
@@ -58,6 +61,12 @@ namespace Wassup.UI.Tutorial
                 handController.HandChanged += OnHandChanged;
             }
             if (handView != null) handView.HandOpened += OnHandOpened;
+            if (giftView != null)
+            {
+                giftView.TutorialHoldEntered += OnGiftHoldEntered;
+                giftView.TutorialHoldReleased += OnGiftHoldReleased;
+            }
+            else Debug.LogWarning("[FirstSessionTutorial] giftView 미배선 — 선물 튜토리얼 문구를 생략합니다(연출 홀드는 유지).", this);
         }
 
         private void Start()
@@ -79,9 +88,15 @@ namespace Wassup.UI.Tutorial
                 handController.HandChanged -= OnHandChanged;
             }
             if (handView != null) handView.HandOpened -= OnHandOpened;
+            if (giftView != null)
+            {
+                giftView.TutorialHoldEntered -= OnGiftHoldEntered;
+                giftView.TutorialHoldReleased -= OnGiftHoldReleased;
+            }
             UnsubscribeDrag();
             EndCore(restoreNormalPlacement: true);
             ResetAwakeningSession(hide: true);
+            guidance?.SetElevated(false);
         }
 
         private void OnPlacementReady()
@@ -388,6 +403,54 @@ namespace Wassup.UI.Tutorial
             yield return WaitUnscaled(guidance.CardInstructionSeconds);
             _awakeningRoutine = null;
             guidance.Hide();
+        }
+
+        // ── Gift walkthrough (second battle, core done) ─────────────────────
+        // GiftPhaseView owns the hold/tap seam; this only supplies the copy, the
+        // elevated bubble, and the completion save. Card kind/counts come straight
+        // from the composed deck so the text never drifts from the actual gift.
+
+        private void OnGiftHoldEntered(GiftPhaseView.GiftTutorialHold hold)
+        {
+            if (guidance == null) return;
+            guidance.SetElevated(true);
+            int baseN = handController != null ? handController.GiftBaseCards.Count : 10;
+            int added = handController != null ? handController.GiftAddedCards.Count : 2;
+            if (hold == GiftPhaseView.GiftTutorialHold.Reveal)
+            {
+                string kind = handController != null && handController.GiftKind == GiftKind.Rim ? "림" : "루시드";
+                guidance.ShowMessage(
+                    $"{kind}의 선물은 내 덱 {baseN}장에 더해 꿈결의 집행자들이 {added}장의 추가 드림캐쳐를 제공합니다.",
+                    showSkip: false);
+            }
+            else
+            {
+                guidance.ShowMessage(
+                    $"{baseN}장 + {added}장의 카드가 무작위로 섞여서 덱 순서가 배정됩니다.",
+                    showSkip: false);
+            }
+        }
+
+        private void OnGiftHoldReleased(GiftPhaseView.GiftTutorialHold hold)
+        {
+            if (guidance == null) return;
+            if (hold == GiftPhaseView.GiftTutorialHold.Reveal)
+            {
+                // 스택 수렴은 짧다 — 문구만 접고 elevated 는 셔플 홀드까지 유지.
+                guidance.ShowMessage(null, showSkip: false);
+                return;
+            }
+            // 셔플 홀드 해제 = 완료 저장 지점(사용자 결정 2026-07-20).
+            CompleteGiftProgress();
+            guidance.Hide();
+            guidance.SetElevated(false);
+        }
+
+        private void CompleteGiftProgress()
+        {
+            if (profileSO == null || !profileSO.IsLoadedThisSession || profileSO.profile == null) return;
+            if (!TutorialProgress.CompleteGiftTutorial(profileSO.profile)) return;
+            TrySaveProfile();
         }
 
         private void ResetAwakeningSession(bool hide)

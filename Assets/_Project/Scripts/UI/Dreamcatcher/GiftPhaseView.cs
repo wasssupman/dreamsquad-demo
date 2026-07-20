@@ -28,6 +28,9 @@ namespace Wassup.UI
         [SerializeField] private DreamcatcherHandController handController;
         [SerializeField] private PlacementPhaseView placementPhaseView;
         [SerializeField] private GiftConfig giftConfig;
+        // first-session-tutorial unit 7 — 첫 판 연출 억제 / 선물 튜토리얼 판정.
+        // 미배선·미로드 세션이면 항상 일반 연출(fail-open).
+        [SerializeField] private PlayerProfileSO profileSO;
 
         private const int SortingOrder = 30; // 배치 HUD(7)/각성(7) 위
         // 각성 버튼(우하단 dock)에 대응하는 cardsRoot(중앙) 로컬 근사 좌표(고정).
@@ -50,6 +53,16 @@ namespace Wassup.UI
         private Sequence _seq;
         private float _seqStartTime;
         private bool _built;
+
+        // first-session-tutorial unit 7 — 선물 튜토리얼 홀드 seam. 문구는 구독자
+        // (FirstSessionTutorialController) 소관 — view 는 홀드 진입/해제와 탭 진행만 소유하고,
+        // 구독자가 없어도 탭만으로 진행된다. 튜토리얼 판에선 기존 탭 스킵을 비활성한다.
+        public enum GiftTutorialHold { Reveal, Shuffle }
+        public event System.Action<GiftTutorialHold> TutorialHoldEntered;
+        public event System.Action<GiftTutorialHold> TutorialHoldReleased;
+        private bool _tutorialMode;
+        private bool _holding;
+        private GiftTutorialHold _hold;
 
         // 탭 스킵(unit 5 rev1) — 전/후반부 판정과 후반부 시퀀스가 쓰는 판 컨텍스트.
         private int _stage; // 0 = 리빌 포커스 전(인트로~플립), 1 = 리빌 이후(홀드~흡수)
@@ -118,6 +131,15 @@ namespace Wassup.UI
 
         private void OnGiftDeckReady()
         {
+            // first-session-tutorial unit 7 — 첫 판(핵심 안내 pending)은 선물 연출을 통째로
+            // 생략한다. BuildGiftDeck 은 이미 끝났으므로 덱 데이터(12장·순서)는 동일하다.
+            if (TutorialProgress.ShouldRunCore(profileSO))
+            {
+                ProceedToPlacement();
+                return;
+            }
+            _tutorialMode = TutorialProgress.ShouldRunGiftTutorial(profileSO);
+
             if (!_built) BuildCanvas();
             _panel.SetActive(true);
 
@@ -158,6 +180,7 @@ namespace Wassup.UI
 
         private void StopSequence()
         {
+            _holding = false; // 홀드 중 이탈 — 잔여 이벤트 발행 없이 종료(unit 7)
             if (_seq.isAlive) _seq.Stop();
             foreach (var t in _fxTweens)
                 if (t.isAlive) t.Stop();
@@ -171,12 +194,25 @@ namespace Wassup.UI
 
         // 탭 스킵 (unit 5 rev1) — 2단: 리빌 전 탭은 리빌 포커스로 점프(받은 카드 확인은
         // 건너뛰지 않는다), 리빌 이후 탭은 배치로. 덱 순서는 데이터 확정 선행이라 연출만 끊는다.
+        // 튜토리얼 모드(unit 7)는 홀드 탭 = 진행이 유일한 입력 — 스킵은 비활성.
         private void OnPanelTapped()
         {
-            if (!_seq.isAlive) return;
             var cfg = giftConfig;
-            if (cfg == null || !cfg.tapSkipEnabled) return;
+            if (cfg == null) return;
             if (Time.unscaledTime - _seqStartTime < cfg.tapSkipGraceSec) return;
+
+            if (_tutorialMode)
+            {
+                if (!_holding) return;
+                _holding = false;
+                var hold = _hold;
+                TutorialHoldReleased?.Invoke(hold);
+                if (hold == GiftTutorialHold.Reveal) PlayStackConverge();
+                else PlayShuffleToAbsorb();
+                return;
+            }
+
+            if (!_seq.isAlive || !cfg.tapSkipEnabled) return;
             if (_stage == 0)
             {
                 SkipToRevealFocus();
@@ -397,18 +433,38 @@ namespace Wassup.UI
         }
 
         // 후반부: 리빌 포커스 상태에서 시작 — 읽기 홀드 → 스택 수렴 → 리플 → 부채꼴 → 흡수.
+        // 튜토리얼 모드(unit 7)는 여기서 홀드 1(리빌 문구) — 탭이 스택 수렴을 재개한다.
         private void PlayFromRevealFocus()
         {
             _stage = 1;
+            if (_tutorialMode)
+            {
+                EnterHold(GiftTutorialHold.Reveal);
+                return;
+            }
+            PlayStackConverge();
+        }
+
+        // 홀드 진입 — 시퀀스는 이미 끝난 상태(연출 정지). 해제는 OnPanelTapped 만이 한다.
+        private void EnterHold(GiftTutorialHold hold)
+        {
+            _holding = true;
+            _hold = hold;
+            _seqStartTime = Time.unscaledTime; // 홀드 진입 직후 오탭 방지 — grace 재사용
+            TutorialHoldEntered?.Invoke(hold);
+        }
+
+        // ④-a 스택 수렴 구간. 일반 모드는 읽기 홀드 후 자동 시작해 셔플로 이어지고,
+        // 튜토리얼 모드는 리빌 홀드 해제(탭)로 시작해 셔플 직전 홀드 2 에서 멈춘다.
+        private void PlayStackConverge()
+        {
             var cfg = giftConfig;
             int n = _n, baseN = _baseN;
-            Color kindColor = _kindColor;
-            var finalPos = _finalPos;
-            var keyByF = _keyByF;
 
             _seq = Sequence.Create();
             // 읽기 홀드 — 어떤 카드를 받았는지 확인하는 여유(사용자 결정 2026-07-14, +1s).
-            _seq.ChainDelay(cfg.revealHoldSec);
+            // 튜토리얼 모드는 무기한 리빌 홀드가 이 역할을 대신하므로 생략.
+            if (!_tutorialMode) _seq.ChainDelay(cfg.revealHoldSec);
 
             // ④-a 스택 수렴 = 융합 시작 (선물 2장이 마지막에 파고듦 → 출렁)
             float stackMove = cfg.stackSec * 0.7f;
@@ -435,6 +491,23 @@ namespace Wassup.UI
             });
             _seq.Chain(Tween.PunchScale(_cardsRoot,
                 new Vector3(cfg.stackSquashScale * 0.5f, -cfg.stackSquashScale, 0f), 0.12f));
+
+            // 수렴 완료 경계 — 튜토리얼은 셔플 직전 홀드 2, 일반은 곧장 셔플로(타임라인 동일).
+            if (_tutorialMode) _seq.ChainCallback(() => EnterHold(GiftTutorialHold.Shuffle));
+            else _seq.ChainCallback(PlayShuffleToAbsorb);
+        }
+
+        // ④-b 리플 셔플 → ⑤ 부채꼴 → ⑥ 흡수 → 배치 진입. 수렴 직후 콜백(일반) 또는
+        // 셔플 홀드 해제 탭(튜토리얼)으로 시작한다.
+        private void PlayShuffleToAbsorb()
+        {
+            var cfg = giftConfig;
+            int n = _n, baseN = _baseN;
+            Color kindColor = _kindColor;
+            var finalPos = _finalPos;
+            var keyByF = _keyByF;
+
+            _seq = Sequence.Create();
 
             // ④-b 리플 셔플 = 융합 (좌/우 분리 → 지퍼 재적층 + 잔상 트레일 + 글로우 리플)
             float split = cfg.riffleSec * 0.25f;

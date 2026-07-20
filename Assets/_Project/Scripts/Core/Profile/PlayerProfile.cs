@@ -16,6 +16,9 @@ namespace Wassup.Core
         // written before the tutorial existed; schemaVersion stays unchanged.
         public int firstBattleTutorialVersion;
         public int awakeningHintVersion;
+        // first-session-tutorial unit 6 — gift-phase walkthrough, shown once on
+        // the first battle where the gift presentation is visible (core done).
+        public int giftTutorialVersion;
 
         // Units are not profile-owned — all catalog units are always available
         // (SquadBuilderView lists the catalog directly). No ownedUnitIds by design.
