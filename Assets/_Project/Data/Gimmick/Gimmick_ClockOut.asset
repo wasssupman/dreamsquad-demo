@@ -23,7 +23,7 @@ MonoBehaviour:
   clockOutCostRefund: 1
   resignationThreshold: 5
   meteorCount: 3
-  meteorDamage: 40
+  meteorDamage: 150
   meteorTileRange: 1
   meteorWarningSec: 1.2
   meteorStaggerSec: 0.4
