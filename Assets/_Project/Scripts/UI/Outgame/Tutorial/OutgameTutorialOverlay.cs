@@ -32,6 +32,7 @@ namespace Wassup.UI
         private CanvasGroup _group;
         private bool _built;
         private Tween _fade;
+        private Rect _areaRect;
 
         private readonly List<Image> _pieces = new List<Image>();
         private readonly List<Rect> _holeRects = new List<Rect>();
@@ -124,7 +125,17 @@ namespace Wassup.UI
 
         private void LateUpdate()
         {
-            if (!_built || !_root.activeSelf || _targets.Count == 0) return;
+            if (!_built || !_root.activeSelf) return;
+
+            // 화면 크기·safe area 는 모바일에서 시작 직후 몇 프레임에 걸쳐 확정된다.
+            // 홀이 없는 단계(풀 dim)는 추종할 대상이 없으므로, 영역 자체의 변화를
+            // 따로 감시하지 않으면 조각이 옛 크기로 남아 화면을 덜 덮는다.
+            if (_fullBleedRoot.rect != _areaRect)
+            {
+                Rebuild();
+                return;
+            }
+            if (_targets.Count == 0) return;
             if (!TargetCornersChanged()) return;
             Rebuild();
         }
@@ -148,6 +159,7 @@ namespace Wassup.UI
 
         private void Rebuild()
         {
+            _areaRect = _fullBleedRoot.rect;
             _holeRects.Clear();
             _cornerCache.Clear();
 
@@ -158,7 +170,7 @@ namespace Wassup.UI
                 if (TryLocalRect(target, out Rect local)) _holeRects.Add(local);
             }
 
-            OutgameTutorialDimLayout.Subtract(_fullBleedRoot.rect, _holeRects, holePadding, _pieceRects);
+            OutgameTutorialDimLayout.Subtract(_areaRect, _holeRects, holePadding, _pieceRects);
             ApplyPieces();
         }
 

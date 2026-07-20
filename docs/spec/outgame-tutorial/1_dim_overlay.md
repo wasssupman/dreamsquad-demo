@@ -75,7 +75,11 @@ public void SetHoles(IReadOnlyList<RectTransform> targets);  // null/빈 목록 
 - `SetHoles` 는 대상의 `GetWorldCorners` 를 오버레이 로컬로 변환한다. **`activeInHierarchy == false`
   인 대상은 건너뛴다** — 포커스 대상 3개는 모두 `menuRoot` 하위이고 `menuRoot` 는 `ApplyAuthGate`/
   `RaiseExclusive` 에서 토글된다. 첫 홀 계산은 `Canvas.ForceUpdateCanvases()` 이후에 수행한다.
-- `LateUpdate` 는 대상들의 **4개 world corner 캐시**와 비교해 달라졌을 때만 재계산한다(화면 회전·safe area 변동 추종).
+- `LateUpdate` 는 두 가지를 감시해 달라졌을 때만 재계산한다:
+  1. **`FullBleedRoot.rect` 캐시(`_areaRect`)** — 홀이 없는 단계(풀 dim)는 추종할 대상이 없으므로
+     이걸 따로 보지 않으면 조각이 옛 크기로 남는다. 모바일은 시작 직후 몇 프레임에 걸쳐 화면 크기와
+     safe area 가 확정되므로 **실제로 발현하는 결함**이다(초안은 `_targets.Count == 0` 에서 조기 반환했다).
+  2. 대상들의 **4개 world corner 캐시** — 버튼 이동·화면 회전 추종.
 - `Hide()` 는 진행 중 페이드 트윈 중단 + 홀 목록 비우기 + 모든 조각 풀 반환까지 수행한다.
 - dim 등장은 `UiOverlay.Dim` 까지 페이드 인한다(PrimeTween). `Hide` 는 즉시.
 - `padding` 은 `[SerializeField] float holePadding = 6f` 로 노출한다(제약 6 — 하드코딩 금지).

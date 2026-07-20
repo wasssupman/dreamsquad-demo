@@ -67,12 +67,22 @@ Battle 페이즈에 도달했다"**이다. `FirstSessionTutorialController` 는 
 둘 중 하나만 유효하면 그 하나만 뚫고 링도 그 하나에 건다. 둘 다 null 이면 구멍 없이 표시하고
 dim 탭으로 종료한다(fail-open).
 
-### 알려진 한계 — 링/홀 정렬
+### 링/홀 정렬 — 측정 결과 문제 없음
 
-`FocusUi` 는 대상을 `_safeRoot` 로컬로 변환한 뒤 safe rect 안쪽 20px 로 클램프한다
-(`TutorialGuidanceView.cs:272-289`, `SafeEdgePadding = 20f`). dim 홀은 `FullBleedRoot` 기준이라
-클램프가 없다. 노치 기기 가로 모드에서 x=48 인 왼쪽 열 버튼은 safe inset 에 걸려 **링이 안쪽으로
-밀려 홀과 어긋날 수 있다.** unit 4 의 실기기 QA 에서 정렬을 별도 항목으로 확인한다.
+`FocusUi` 는 대상을 `_safeRoot` 로컬로 변환한 뒤 safe rect 안쪽 20px 로 클램프하고(`SafeEdgePadding`),
+dim 홀은 `FullBleedRoot` 기준이라 클램프가 없다. 두 좌표계가 다르므로 노치에서 어긋날 것처럼 보이지만
+**실제로는 어긋나지 않는다** — 포커스 대상 3개가 모두 `SafeAreaRoot` **자식**이라, 노치가 커지면
+버튼도 함께 안으로 들어와 safe rect 기준 상대 위치가 불변이기 때문이다.
+
+실측(`TutorialSafeAreaLayout.FitSize`/`ClampCenter` 에 실제 Style 값 `focusPadding=14`,
+`pulseScale=1.1`, `SafeEdgePadding=20` 적용):
+
+| 화면 | 챕터 A 링 편차 | 챕터 B 링 편차 |
+|---|---|---|
+| 16:9 · 20:9 · 21:9 · 4:3, 노치 0~150 | `(0, +2)` | `(0, 0)` |
+
+챕터 A 의 Y +2 는 `StartButton`(292 높이 + focusPadding + pulseScale)이 하단 클램프 경계를 2유닛
+넘어서 생기는 값으로, 1080 대비 0.19% 라 육안 식별 불가다. 화면비·노치 크기와 무관하게 일정하다.
 
 ### 종료
 
