@@ -38,16 +38,31 @@ namespace Wassup.UI
             _rt = (RectTransform)transform;
             _animator = GetComponent<Animator>();
             _idleRemaining = Random.Range(idleDurationRange.x, idleDurationRange.y);
-            foreach (var clip in _animator.runtimeAnimatorController.animationClips)
+            var controller = _animator != null ? _animator.runtimeAnimatorController : null;
+            if (controller == null)
+            {
+                Debug.LogError("HelloLobbyRoamer: Animator/RuntimeAnimatorController 미할당 — 리액션 비활성.", this);
+                return;
+            }
+            foreach (var clip in controller.animationClips)
             {
                 for (int i = 0; i < ReactionStates.Length; i++)
                     if (clip.name == ReactionStates[i])
                         _reactionLengths[i] = clip.length;
             }
+            for (int i = 0; i < ReactionStates.Length; i++)
+                if (_reactionLengths[i] <= 0f)
+                    Debug.LogError($"HelloLobbyRoamer: 리액션 클립 '{ReactionStates[i]}' 을 컨트롤러에서 못 찾음 — " +
+                                   "해당 리액션 비활성. 클립 이름을 바꿨다면 상수도 같이 고칠 것.", this);
         }
 
-        private void OnDestroy()
+        // 리액션 중 비활성화되면 Update 가 멈춰 카운트다운이 끝나지 않는다. 파괴와 달리
+        // 컴포넌트는 살아 있어 락이 자동 해제되지 않으므로(TryAcquire 의 fake-null 회수 불발)
+        // 여기서 명시적으로 놓는다. 실제 경로: 로그아웃 시 lobbyCharactersRoot.SetActive(false).
+        // 파괴 시에도 활성 오브젝트면 OnDisable 이 먼저 불리므로 OnDestroy 해제는 불필요.
+        private void OnDisable()
         {
+            _reactionRemaining = 0f;
             LobbyReactionLock.Release(this);
         }
 
@@ -65,8 +80,13 @@ namespace Wassup.UI
         // 단발 클릭만 리액션 — 키링 드래그/낙하 중(suspended)에는 진입 불가(스와이프와 구분).
         public void TriggerReaction()
         {
-            if (_keyringSuspended || IsReacting || !LobbyReactionLock.TryAcquire(this)) return;
+            if (_animator == null || _keyringSuspended || IsReacting) return;
             int pick = Random.Range(0, ReactionStates.Length);
+            // 수명(=클립 길이)을 확보하지 못한 리액션은 진입 금지. 길이 0 으로 진입하면 락을 잡은
+            // 직후 Tick 이 카운트다운 없이 빠져나가 전역 락이 영구 고착되고, 로비 전체 캐릭터가
+            // 조용히 반응을 멈춘다. 그래서 판정을 TryAcquire 앞에 둔다(락을 잡고 새지 않게).
+            if (_reactionLengths[pick] <= 0f) return;
+            if (!LobbyReactionLock.TryAcquire(this)) return;
             _walking = false;
             _animator.SetBool(IsWalkingHash, false);
             _animator.Play(ReactionStates[pick], 0, 0f);
@@ -83,8 +103,11 @@ namespace Wassup.UI
                 LobbyReactionLock.Release(this);
             }
             _walking = false;
-            _animator.SetBool(IsWalkingHash, false);
-            _animator.Play(IdleState, 0, 0f);
+            if (_animator != null)
+            {
+                _animator.SetBool(IsWalkingHash, false);
+                _animator.Play(IdleState, 0, 0f);
+            }
             _keyringSuspended = true;
         }
 
@@ -120,7 +143,7 @@ namespace Wassup.UI
                 {
                     _walking = false;
                     _idleRemaining = Random.Range(idleDurationRange.x, idleDurationRange.y);
-                    _animator.SetBool(IsWalkingHash, false);
+                    if (_animator != null) _animator.SetBool(IsWalkingHash, false);
                 }
                 return;
             }
@@ -133,7 +156,7 @@ namespace Wassup.UI
                 return; // 현재 위치와 사실상 같으면 다음 tick 에 재추첨
 
             _walking = true;
-            _animator.SetBool(IsWalkingHash, true);
+            if (_animator != null) _animator.SetBool(IsWalkingHash, true);
             Vector3 s = _rt.localScale;
             s.x = Mathf.Abs(s.x) * (_targetX > _rt.anchoredPosition.x ? 1f : -1f);
             _rt.localScale = s;

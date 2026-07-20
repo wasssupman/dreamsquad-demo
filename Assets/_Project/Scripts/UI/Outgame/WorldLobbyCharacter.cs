@@ -20,16 +20,35 @@ namespace Wassup.UI
 
         public bool IsReacting => _reactionRemaining > 0f;
 
+        // 리액션 수명(=클립 길이)을 확보하지 못하면 리액션에 아예 진입하지 않는다.
+        // 길이 0 으로 진입하면 락을 잡은 직후 Tick 이 !IsReacting 으로 빠져나가 카운트다운이
+        // 한 번도 돌지 않고, 전역 락이 영구 고착돼 로비 전체 캐릭터가 조용히 반응을 멈춘다.
+        private bool CanReact => _animator != null && _reactionLength > 0f;
+
         private void Awake()
         {
             _animator = GetComponent<Animator>();
-            foreach (var clip in _animator.runtimeAnimatorController.animationClips)
+            var controller = _animator != null ? _animator.runtimeAnimatorController : null;
+            if (controller == null)
+            {
+                Debug.LogError("WorldLobbyCharacter: Animator/RuntimeAnimatorController 미할당 — 리액션 비활성.", this);
+                return;
+            }
+            foreach (var clip in controller.animationClips)
                 if (clip.name == ReactionState)
                     _reactionLength = clip.length;
+            if (_reactionLength <= 0f)
+                Debug.LogError($"WorldLobbyCharacter: 리액션 클립 '{ReactionState}' 을 컨트롤러에서 못 찾음 — 리액션 비활성. " +
+                               "클립 이름을 바꿨다면 상수도 같이 고칠 것.", this);
         }
 
-        private void OnDestroy()
+        // 리액션 중 비활성화되면 Update 가 멈춰 카운트다운이 끝나지 않는다. 파괴와 달리
+        // 컴포넌트는 살아 있어 락이 자동 해제되지 않으므로(TryAcquire 의 fake-null 회수 불발)
+        // 여기서 명시적으로 놓는다. 실제 경로: 로그아웃 시 lobbyCharactersRoot.SetActive(false).
+        // 파괴 시에도 활성 오브젝트면 OnDisable 이 먼저 불리므로 OnDestroy 해제는 불필요.
+        private void OnDisable()
         {
+            _reactionRemaining = 0f;
             LobbyReactionLock.Release(this);
         }
 
@@ -47,7 +66,7 @@ namespace Wassup.UI
         // 단발 클릭만 리액션 — 키링 드래그/낙하 중(suspended)에는 진입 불가(스와이프와 구분).
         public void TriggerReaction()
         {
-            if (_keyringSuspended || IsReacting || !LobbyReactionLock.TryAcquire(this)) return;
+            if (!CanReact || _keyringSuspended || IsReacting || !LobbyReactionLock.TryAcquire(this)) return;
             _animator.Play(ReactionState, 0, 0f);
             _reactionRemaining = _reactionLength;
         }
@@ -61,7 +80,7 @@ namespace Wassup.UI
                 _reactionRemaining = 0f;
                 LobbyReactionLock.Release(this);
             }
-            _animator.Play(IdleState, 0, 0f);
+            if (_animator != null) _animator.Play(IdleState, 0, 0f);
             _keyringSuspended = true;
         }
 
