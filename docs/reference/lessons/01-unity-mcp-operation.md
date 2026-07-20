@@ -110,3 +110,26 @@ Play e2e 중 스크린샷을 몇 번 찍으면 매치가 `Result` 로 넘어가 
 
 - **처방**: `TimeManager.Instance.Request(TimeDomain.Battle, 0.02f, priority: 1000)` 로 배틀 클럭만 늦춘다. `Time.timeScale` 은 건드리지 않는다(프로젝트 계약). 높은 priority 로 다른 lease 를 눌러 두면 캡처 시간이 넉넉해진다.
 - **주의**: 그 스톨 lease 가 승자가 되므로 `ScaleOf(Battle)` 로는 피검증 lease 를 못 본다. lease 검증은 `TimeManager._requests` 를 reflection 으로 열어 **priority 로 세는 게** 정확하다.
+
+## 도메인 리로드는 런타임 생성 UI 를 "고아 자식"으로 남긴다
+
+Play 중 스크립트를 고치면 도메인 리로드가 일어나는데, 리로드는 필드를 **선택적으로만** 복원한다. 절차적으로 UI 를 짓는 컴포넌트(`SquadRosterBrowser`, `SquadUnitDetailView` 등)에서 이 비대칭이 함정이 된다:
+
+- `_grid` / `cardRoot` 같은 **`UnityEngine.Object` 참조 → 살아남는다**
+- `_built` / `_cardBuilt` 같은 **bool → 살아남는다** (그래서 `EnsureGridBuilt()` 가 no-op 로 넘어간다)
+- `List<Cell>` 처럼 **`[Serializable]` 아닌 클래스의 컬렉션 → 비워진다**
+
+결과: `ClearCells()` 가 빈 `_cells` 를 돌며 **아무것도 못 지우고**, 새 셀만 덧붙는다. 그리드에 64 고아 + 64 신규 = **128 자식**이 쌓이고, 레이아웃상 **옛 셀이 앞에 오므로** 스크린샷은 변경 전 모습 그대로다 → "내 정렬/레이아웃 코드가 안 먹었다"로 오진하기 딱 좋다(실제로 `_cells` 안의 순서는 정상이었다).
+
+`_cardBuilt` 쪽은 반대 방향으로 샌다 — true 로 복원되니 `EnsureCardBuilt()` 가 통째로 스킵되어 **옛 레이아웃이 그대로 서 있는다**.
+
+- **진단**: `_cells.Count` 와 `grid.childCount` 를 **같이** 찍는다. 어긋나면 고아다. 자식 수가 기대치의 정확히 2배면 거의 확정.
+- **처방**: 컨테이너를 통째로 날리고 플래그를 되돌린 뒤 정상 경로로 재진입한다.
+  ```csharp
+  for (int i = host.transform.childCount - 1; i >= 0; i--)
+      UnityEngine.Object.DestroyImmediate(host.transform.GetChild(i).gameObject);
+  // _built=false, _grid=null, _cells.Clear()  (reflection)
+  // 그 다음 EnterUnitMode/EnterStoneMode 같은 실제 진입점을 Invoke
+  ```
+- **빌드에는 없는 문제다.** 도메인 리로드는 에디터 전용이라 실기기/빌드에서는 재현되지 않는다. 고치려 들지 말고 **검증 절차로만 우회**한다.
+- 곁가지: `ClearCells` 는 `Destroy`(지연) 를 쓴다. 같은 `execute_code` 안에서 파괴 직후 `childCount` 를 읽으면 아직 옛 자식이 잡힌다(17+64=81 같은 수치). **프레임을 넘겨 다시 읽어야** 진짜 상태다 — 위의 고아 문제와 증상이 비슷하니 혼동하지 말 것.
