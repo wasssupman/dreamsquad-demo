@@ -35,6 +35,10 @@ namespace Wassup.UI
         // action-tray unit 4 — 비용 부족 차단 시 rail pulse 피드백 대상. 슬롯이
         // 런타임 생성이라 전역 이벤트 대신 Bind 로 직접 참조를 넘긴다.
         [SerializeField] private CostDisplay costDisplay;
+        // gimmick-match-integration unit 5 — 기믹 안내 카드의 "첫 배치 상호작용" 접힘 트리거.
+        // 컨트롤러가 런타임 부착이라 뷰가 직접 참조할 수 없어, 수명 소유자인 여기서 Bind 로
+        // 넘긴다(costDisplay 패턴). 미할당이면 카드는 타이머 접힘만으로 동작한다.
+        [SerializeField] private GimmickGuideView gimmickGuide;
         // battle-hud-layout 2 — 페이즈별 스트립 크기. Battle 은 관전이 주 활동이라
         // 슬림 축소로 중앙 하단 보드 가림을 상쇄한다. 슬롯은 childForceExpand 라
         // 패널 크기만 바꾸면 균등 축소된다.
@@ -51,6 +55,8 @@ namespace Wassup.UI
         // 재빌드/재진입 시 stale 참조 없음.
         private struct SlotVisual
         {
+            public DefenderUnitData data;
+            public RectTransform rect;
             public int cost;
             public Image portrait;   // 포트레이트 없으면 null (폴백 bg 틴트)
             public Image slotBg;
@@ -283,6 +289,8 @@ namespace Wassup.UI
                 BuildRoleBadge(go.transform, data.role);
                 _slotVisuals.Add(new SlotVisual
                 {
+                    data = data,
+                    rect = (RectTransform)go.transform,
                     cost = data.cost,
                     portrait = data.portrait != null ? portraitImg : null,
                     slotBg = bg,
@@ -293,6 +301,35 @@ namespace Wassup.UI
             }
 
             UiLayer.Apply(gameObject);
+        }
+
+        // first-session-tutorial unit 2 — soft recommendation only. Input stays
+        // available on every slot; this never changes affordability or selection.
+        public bool TryGetAffordableTutorialSlot(out RectTransform target)
+        {
+            target = null;
+            var runtime = GameManager.Instance != null ? GameManager.Instance.CostRuntime : null;
+            int available = runtime != null ? runtime.CurrentInt : int.MinValue;
+            int bestCost = int.MaxValue;
+            bool foundNonDirectional = false;
+
+            for (int i = 0; i < _slotVisuals.Count; i++)
+            {
+                var slot = _slotVisuals[i];
+                if (slot.data == null || slot.rect == null || slot.cost > available) continue;
+                bool nonDirectional = !slot.data.directionalAttack;
+                if (foundNonDirectional && !nonDirectional) continue;
+                if (nonDirectional && !foundNonDirectional)
+                {
+                    foundNonDirectional = true;
+                    bestCost = int.MaxValue;
+                    target = null;
+                }
+                if (slot.cost >= bestCost) continue;
+                bestCost = slot.cost;
+                target = slot.rect;
+            }
+            return target != null;
         }
 
         // action-tray unit 1 — 좌상단 비용 플레이트 (시안: 다크 코너 플레이트에
@@ -467,6 +504,8 @@ namespace Wassup.UI
             if (bridge != null)
                 dragPlacementController.Configure(bridge, Camera.main, bridge.PlacementInput,
                     swaySettings, nameFont, deployCutscenePlayer);
+            if (gimmickGuide != null)
+                gimmickGuide.BindPlacementActivity(dragPlacementController);
         }
     }
 }

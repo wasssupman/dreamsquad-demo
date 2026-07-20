@@ -1,6 +1,5 @@
 using Unity.Burst;
 using Unity.Entities;
-using Unity.Mathematics;
 using Wassup.Battle.Movement;
 
 namespace Wassup.Battle.Effects
@@ -28,27 +27,9 @@ namespace Wassup.Battle.Effects
                     continue;
 
                 var buffer = state.EntityManager.GetBuffer<CcEffect>(evt.target);
-                MergeOrAdd(ref buffer, evt.effect);
+                // 병합 정책은 CcEffectMerge 단일 소스(EffectSpawner 와 공유).
+                CcEffectMerge.Apply(ref buffer, evt.effect);
             }
-        }
-
-        private static void MergeOrAdd(ref DynamicBuffer<CcEffect> buffer, CcEffect incoming)
-        {
-            for (int i = 0; i < buffer.Length; i++)
-            {
-                if (buffer[i].kind == incoming.kind)
-                {
-                    buffer[i] = new CcEffect
-                    {
-                        kind = incoming.kind,
-                        vector = incoming.vector,
-                        scalar = incoming.scalar,
-                        remainingTime = math.max(buffer[i].remainingTime, incoming.remainingTime),
-                    };
-                    return;
-                }
-            }
-            buffer.Add(incoming);
         }
     }
 }

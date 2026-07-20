@@ -41,6 +41,37 @@ Tilemap(rect) 채움 타일이 큰 영역으로 반복될 때 셀 경계마다 �
 - **정답**: `FilterMode.Bilinear` + `TextureImporterCompression.Uncompressed` + mipmap off.
 - 1칸 폭 도로는 채움 반복이 없어 안 보여 오진하기 쉽다 — 큰 dirt/grass 에서만 드러남.
 
+## Tile 에셋 sprite 를 Inspector 로 바꿔도 tilemap 이 옛 sprite 를 찍는다 = Unity 6 EntityId 캐시
+
+Tile `.asset` 의 Sprite 필드를 Inspector 에서 교체하면 디스크/`.sprite` 프로퍼티는 새 sprite 인데, tilemap `SetTile` 스탬프는 계속 옛 sprite 가 나온다. `RefreshAllTiles()` 도, **Play 재시작도 무효** — "교체가 적용 안 된다"로 보인다.
+
+- **원인**: Unity 6 `Tile` 은 `m_Sprite` 옆에 `m_SpriteEntityId` 캐시 필드를 갖고 `GetTileData()` 가 이 캐시를 쓴다. Inspector(SerializedProperty) 쓰기는 `m_Sprite` 만 갱신하고 캐시를 무효화하지 않는다. 같은 객체에서 `.sprite` = 새것 / `GetTileData()` = 옛것이 동시에 나오는 걸 실측(6000.4.3f1).
+- Enter Play Mode Options = **DisableDomainReload** 라 stale 관리 객체가 Play 사이클을 넘어 생존한다. 도메인 리로드가 있었다면 재역직렬화로 풀렸을 문제.
+- **처방**: 프로퍼티 세터로 재할당하면 캐시가 재구축된다 — execute_code 로 `tile.sprite = null; tile.sprite = newSprite;` 두 줄. 아니면 에디터 재시작.
+- `GameObject to Instantiate` 필드도 동일하다(`m_InstancedGameObjectEntityId`) — Inspector 로 끼우면 `GetTileData().gameObject` 가 null 로 남아 "동작 안 함"으로 보인다. 처방 동일: `tile.gameObject` 세터 재할당.
+- **진단 시그니처**: `tile.sprite.name` ≠ `tilemap.GetSprite(cell).name` 이면 이 캐시다. 소비 경로(코드) 의심 전에 이것부터 확인.
+- 부가 함정: 그 전에 교체가 아예 증발하는 경우도 있다 — Inspector 의 .asset 편집은 **Save Project 전까지 메모리에만** 있어서 에디터 재시작/크래시로 날아간다. 디스크 YAML(`m_Sprite` guid)로 저장 여부부터 확인.
+
+## `Mathf.SmoothStep(from, to, t)` 는 HLSL `smoothstep` 이 아니다 — 절차적 스프라이트가 유령이 된다
+
+Unity `Mathf.SmoothStep(from, to, t)` 는 **결과를 `from..to` 로 보간**한다(t 를 0..1 로 clamp 후 smooth). HLSL `smoothstep(edge0, edge1, x)`(x 가 두 엣지 사이 어디냐로 0..1 반환)와 인자 의미가 정반대다.
+
+절차적 텍스처에서 가장자리 페더로 `SmoothStep(0f, 0.06f, dist)` 를 쓰면 **알파가 0.06 에 캡핑**돼(두 축을 곱하면 ~0.004) 스프라이트가 거의 투명 — "유령"이 된다. Play 에서만 드러나고 EditMode/컴파일은 통과한다.
+
+- **오답**: `Mathf.SmoothStep(0f, band, dist)` — band(페더 폭)를 출력 범위로 넣음.
+- **정답**: `Mathf.SmoothStep(0f, 1f, dist / band)` — band 를 **입력** 정규화에 쓰고 출력은 0..1.
+- 이 프로젝트에서 두 세션이 독립적으로 같은 실수(블롭·조준 화살표) — 절차적 스프라이트(`TilemapMapView` 의 Blob/Arrow/Pop 계열) 만들 때 반복되는 지뢰.
+- **static 스프라이트 캐시 주의**: `_arrowSprite` 등이 static 이라 산식을 고쳐도 이전 텍스처가 남는다. 실측하려면 리플렉션으로 필드를 null 로 밀고 재생성.
+
+## 보드에 눕는 스프라이트가 자글거리면 = 바닥과 코플레이너 z-acne (밉맵으로 안 풀린다)
+
+기울어진 XZ 보드에 평면 스프라이트(조준 화살표·프랍·오버레이)를 셀 평면(local z=0)에 그대로 눕히면 불투명 바닥 타일과 **코플레이너**가 되어 z-acne(픽셀 단위로 깊이 앞뒤가 뒤집혀 가장자리가 자글거림)가 난다. 대각 샤프 엣지(화살표)에서 특히 두드러지고, 축정렬 사각(타일)에서는 덜 보여 오진하기 쉽다.
+
+- **밉맵/슈퍼샘플은 소스 텍스처 AA일 뿐** — z-acne 는 렌더 깊이 문제라 안 사라진다. "밉맵 넣었는데 여전히 자글거림" = z-fighting 신호.
+- **정답 = world +Y 로 살짝 띄운다**(`PropGroundLift = 0.02`, 화살표는 `ArrowGroundLift = 0.05`). 이 코드베이스는 프랍에서 이미 이 패턴을 쓴다 — 새 보드 오버레이도 반드시 리프트.
+- 부모(grid)가 90° 회전이라 localPosition 으로는 +Y 를 못 맞춘다 → `transform.localPosition` 설정 후 `transform.position += Vector3.up * lift` 로 world 보정.
+- ZTest Always 로 강제로 앞에 그리는 건 오답 — 유닛이 앞에 서도 화살표가 위로 뚫고 나온다. 리프트가 occlusion 을 보존한다.
+
 ## dirt 오토타일 유기적 경계
 
 박스형 원인 = 깨끗한 기하학적 타일(직선변/호가 격자 정렬). 자연스럽게:

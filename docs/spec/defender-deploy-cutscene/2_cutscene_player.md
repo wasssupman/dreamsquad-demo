@@ -1,19 +1,18 @@
 # 2 — DeployCutscenePlayer (플립북 재생기)
 
-> **rev 2026-07-16 — 아래 본문의 다음 기술은 초기 계약이며 폐지됐다:**
+> **rev 2026-07-18 — 아래 본문의 다음 기술은 초기 계약이며 폐지됐다:**
 > - 앵커 "좌상단 / top-left (0,1)" → 실제 **좌하단** `anchorMin/Max=(0,0)`, `pivot=(0,0)`
-> - "1초 hold 후 자동 소멸 / 드래그 세션과 독립" → **스와이프 종료 연동**(rev 2026-07-15,
->   `CleanupSession` → `EndCutscene()`)
-> - SerializeField 기본값도 튜닝으로 변경됨: `holdSecondsAfter` 1f → 사실상 무한,
+> - 수명 → **플립북 완주 + 최종 프레임 0.5초 + 자동 퇴장**. 단 배치 성공은 즉시 강제 초기화(unit 8).
+> - SerializeField 기본값도 튜닝으로 변경됨: `holdSecondsAfter` 1f → **0.5f**,
 >   `displayScale` 1f → **1.2f**, `cornerMarginPx` (24,24) → **(-100, 24)**
 >
 > 최신 계약은 README 공통 원칙, 구현 상세는 코드가 source of truth.
 
 ## 목적
 
-프레임 배열을 좌상단 오버레이에 원샷 플립북으로 재생한다. 화면 왼쪽 '바깥'에서
-빠르게 슬라이드-인하며 동시에 플립북을 재생 → 1초 hold → 왼쪽으로 슬라이드-아웃 후
-소멸. 세로는 좌상단 고정. 드래그 세션과 독립.
+프레임 배열을 좌하단 오버레이에 원샷 플립북으로 재생한다. 화면 왼쪽 바깥에서
+빠르게 슬라이드-인하며 동시에 플립북을 재생 → 최종 프레임 0.5초 hold → 왼쪽으로
+슬라이드-아웃 후 소멸한다. 배치 성공 시에는 즉시 강제 초기화한다.
 
 ## 변경 대상
 
@@ -38,9 +37,11 @@
   - 코루틴(`Time.unscaledDeltaTime` 기준, 슬로우모/일시정지 영향 배제):
     - Phase A: `totalAnim = frames.Length/fps` 동안 프레임 진행 + 왼쪽 밖→목표 슬라이드-인
       (EaseOut) 동시. 슬라이드는 `slideInSeconds` 에 완료(애니보다 빠름).
-    - Phase B: `holdSecondsAfter`(사실상 무한) 유지 — 단 `_endRequested`(스와이프 종료, EndCutscene) 시 즉시 탈출.
+    - Phase B: 마지막 non-null 컬러/뎁스를 명시 적용하고 `holdSecondsAfter`(0.5초) 유지.
     - Phase C: 목표→왼쪽 밖 슬라이드-아웃(EaseIn) → Image 숨김
       (canvas GO 는 재사용 위해 SetActive(false), Destroy 안 함).
+  - 배치 성공 시 `ForceStopAndReset()`으로 어느 Phase 에서든 코루틴을 즉시 중단하고
+    Canvas·틸트 상태를 초기화한다.
 - OnDisable/OnDestroy 에서 코루틴 정지 + 캔버스 정리.
 
 ## 완료 기준

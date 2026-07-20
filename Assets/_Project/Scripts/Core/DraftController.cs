@@ -44,6 +44,7 @@ namespace Wassup.Core
         public MapGenerationOptions SelectedMapGenerationOptions { get; private set; } = MapGenerationOptions.Default;
         public MapPathShape SelectedMapPathShape => SelectedMapGenerationOptions.pathShape;
         public MapSource SelectedMapSource { get; private set; } = MapSource.Legacy;
+        public bool BridgeGoalEdgeOnly => battleBridge != null && battleBridge.CurrentGoalEdgeOnly;
         public int2? SelectedMapGridGridSize { get; private set; }
 
         public event Action DraftStarted;
@@ -193,6 +194,16 @@ namespace Wassup.Core
                 battleBridge.SetMapGenerationOptions(SelectedMapGenerationOptions);
                 battleBridge.RebuildDraftMap();
             }
+        }
+
+        // 씬 BattleBridge authoring 값을 컨트롤러 상태로 흡수한다 (bridge 로의 push 없음 — 씬이 source of truth).
+        // 패널 초기화가 호출. 이후 TryConfirm 등이 push 하는 값이 씬 값과 일치하게 된다.
+        public void SyncMapStateFromBridge()
+        {
+            if (battleBridge == null) return;
+            SelectedMapSource = battleBridge.CurrentMapSource;
+            SelectedMapGridGridSize = battleBridge.CurrentMapGridGridSizeOverride;
+            SelectedMapGenerationOptions = battleBridge.CurrentMapGenerationOptions.Normalized();
         }
 
         public void SetMapSource(MapSource src)

@@ -70,6 +70,11 @@ namespace Wassup.Bridge
             if (_bountyMarked.Remove(enemy)) EnemyGone?.Invoke(enemy);
         }
 
+        // dreamcatcher-attach-lockon — 살찌운 제물(EnemyMark) 리티클/콜아웃 유효성.
+        // 이미 표식된 적은 재표식 불가(ApplyBountyMark 의 '이미 표식됨' 프리플라이트와
+        // 동일 게이트). 읽기 전용.
+        public bool IsEnemyMarked(Entity enemy) => _bountyMarked.Contains(enemy);
+
         // Applies one card to all currently-placed matching defenders and records
         // it so future placements (ApplyActiveDcEffectsTo) inherit it.
         // combat-action-lock — placement-aura 가 신규 배치 유닛에 걸 Sleep(초) 등록부.
@@ -592,6 +597,29 @@ namespace Wassup.Bridge
             }
             if (attached == 0) return -1;
             return auraHandle;
+        }
+
+        // dreamcatcher-attach-lockon — 부착 조준 유효성 preflight(읽기 전용). "이 카드가
+        // 이 유닛에 기여하는가"(= 위 apply 가 -1 이 아닌가)를 유닛-종속 게이트로 판정 →
+        // base-ring/리티클/화살표 색이 커밋과 일치(통통구슬↔가디언처럼). 판정 로직은 순수
+        // DreamcatcherAttachEval(EditMode 테스트)이고, 여기선 ECS 능력만 조회한다.
+        // ★ 동기화: 위 apply 의 유닛-종속 skip(ProjectileBounce→ProjectileRef,
+        //   FrontmostTarget·HeavyStrike→HasPositiveDamageOutput, 이중 LethalTimer/DreamCocoon)과
+        //   같이 유지 — 새 유닛-게이트 kind 추가 시 eval 갱신.
+        public bool WouldDreamcatcherCardApply(Entity defender, Wassup.Data.DreamcatcherCard card)
+        {
+            if (card == null) return false;
+            // Squad·비-Unit 은 유닛 종속 게이트 없음(축 버프 host 무제약) → eval 이 판단.
+            if (card.type != Wassup.Data.CardType.Unit)
+                return Wassup.Core.DreamcatcherAttachEval.WouldApply(card, false, false, false, false);
+            if (!HasLiveEntityManager() || !_em.Exists(defender) || !_em.HasComponent<DefenderUnitTag>(defender))
+                return false;
+            bool hasProjectile = _em.HasComponent<ProjectileRef>(defender);
+            bool hasDamageOutput = HasPositiveDamageOutput(defender);
+            bool hasLethalTimer = _em.HasComponent<Wassup.Battle.Units.LethalTimer>(defender);
+            bool hasDreamCocoon = _em.HasComponent<Wassup.Battle.Effects.DreamCocoon>(defender);
+            return Wassup.Core.DreamcatcherAttachEval.WouldApply(
+                card, hasProjectile, hasDamageOutput, hasLethalTimer, hasDreamCocoon);
         }
 
         // subconscious-curse-expansion unit 2 (살찌운 제물) — 적 표식. 반환 규약은

@@ -33,6 +33,9 @@ namespace Wassup.Data
     {
         Homing,
         BallisticToCell,
+        // defender-directional-volley unit 1 — 방향 벡터 직선 비행 + 경로 스윕 히트.
+        // 타겟 엔티티/착탄 셀 없음. BattleBridge 가 (DirectionalLinear, PathHit) 로 매핑.
+        Directional,
     }
 
     [CreateAssetMenu(fileName = "Projectile", menuName = "Wassup/Projectile", order = 13)]
@@ -95,6 +98,10 @@ namespace Wassup.Data
         public int impactTileRange = 1;
         [Tooltip("최소 비행 시간(초). 근거리에서도 arc 가 보이게 하한. BallisticToCell 전용.")]
         public float minFlightTime = 0.3f;
+
+        [Header("Directional (flightMode = Directional)")]
+        [Tooltip("관통 예산. 1 = 첫 피격 대상에서 소멸, N = N기 히트 후 소멸. Directional 전용.")]
+        public int pierceCount = 1;
 
         [Header("SkyFall (스킬 낙하 투사체 — Meteor)")]
         [Tooltip("낙하 시작 높이(월드 유닛, view 공간 Y). flightTime(warningSec) 동안 이 높이에서 착탄 셀로 떨어진다. 내부적으로 state 의 arcHeight 슬롯을 재사용.")]

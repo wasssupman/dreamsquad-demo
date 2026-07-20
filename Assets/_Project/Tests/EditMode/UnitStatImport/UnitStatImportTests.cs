@@ -598,5 +598,70 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             Object.DestroyImmediate(source);
             Object.DestroyImmediate(target);
         }
+
+        // ── squad-character-page unit 7: desc sheet round-trip ───────────────────
+
+        [Test]
+        public void ApplyNonNullFields_Desc_OverwritesWhenProvided()
+        {
+            var so = ScriptableObject.CreateInstance<DefenderUnitData>();
+            so.desc = "old";
+
+            var dto = new DefenderStatDto { id = "archer", desc = "새 설명" };
+            UnitStatFieldMapper.ApplyNonNullFields(dto, so);
+
+            Assert.AreEqual("새 설명", so.desc);
+
+            Object.DestroyImmediate(so);
+        }
+
+        [Test]
+        public void ApplyNonNullFields_DescOmitted_KeepsExisting()
+        {
+            var so = ScriptableObject.CreateInstance<DefenderUnitData>();
+            so.desc = "기존 설명";
+
+            var dto = new DefenderStatDto { id = "archer", health = 10f }; // desc omitted (null)
+            UnitStatFieldMapper.ApplyNonNullFields(dto, so);
+
+            Assert.AreEqual("기존 설명", so.desc, "omitted desc cell must keep the existing SO value");
+
+            Object.DestroyImmediate(so);
+        }
+
+        [Test]
+        public void ReadFieldsToDto_ReadsDesc()
+        {
+            var so = ScriptableObject.CreateInstance<DefenderUnitData>();
+            so.id = "archer";
+            so.desc = "레인저 · 원거리형.";
+
+            var dto = new DefenderStatDto();
+            UnitStatFieldMapper.ReadFieldsToDto(so, dto);
+
+            Assert.AreEqual("레인저 · 원거리형.", dto.desc);
+
+            Object.DestroyImmediate(so);
+        }
+
+        [Test]
+        public void ExportImport_Desc_Roundtrip()
+        {
+            var source = ScriptableObject.CreateInstance<DefenderUnitData>();
+            source.id = "archer";
+            source.desc = "직접 쓴 설명 · 특수";
+
+            string json = UnitStatExporter.ToRowsJson(new[] { UnitStatExporter.ToDto(source) });
+            var parsed = JsonConvert.DeserializeObject<DefenderStatDto[]>(json)[0];
+
+            var target = ScriptableObject.CreateInstance<DefenderUnitData>();
+            target.id = "archer";
+            UnitStatFieldMapper.ApplyNonNullFields(parsed, target);
+
+            Assert.AreEqual("직접 쓴 설명 · 특수", target.desc);
+
+            Object.DestroyImmediate(source);
+            Object.DestroyImmediate(target);
+        }
     }
 }

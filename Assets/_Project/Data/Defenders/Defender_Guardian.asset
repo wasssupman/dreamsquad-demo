@@ -15,6 +15,9 @@ MonoBehaviour:
   id: guardian
   role: 2
   displayName: "\uAC00\uB514\uC5B8"
+  desc: "\uAC00\uB514\uC5B8 \xB7 \uADFC\uC811\uD615. \uCD5C\uB300 2\uCCB4 \uB3D9\uC2DC
+    \uD0C0\uACA9, \uCD5C\uB300 2\uCCB4 \uB3C4\uBC1C \uC720\uC9C0, \uBC30\uCE58 \uC2DC
+    \uC8FC\uBCC0 \uC544\uAD70 \uAC15\uD654, \uC9C0\uC18D \uD574\uC800\uB4DC \uC124\uCE58."
   health: 800
   attackRange: 2
   attackCooldown: 2
@@ -39,6 +42,10 @@ MonoBehaviour:
   onPlaceDuration: 6
   cost: 2
   targetAllies: 0
+  directionalAttack: 0
+  shotCount: 1
+  shotIntervalSec: 0
+  spreadAngleDeg: 0
   hazardCastEnabled: 1
   hazardCastRange: 0
   hazardCastCooldown: 0
@@ -75,60 +82,60 @@ MonoBehaviour:
   placementVfxPrefab: {fileID: 8719263370430895187, guid: c7ebe9341e13e2e448481a1a5b7a89bf, type: 3}
   attackVfxPrefab: {fileID: 3398366222349601506, guid: 8a96702a3dfb5af449dca32388593992, type: 3}
   deployCutsceneFrames:
-  - {fileID: 21300000, guid: 26e13c72ad8f411fb26e5f8c36baea82, type: 3}
-  - {fileID: 21300000, guid: 67bda0f959cd44cf8ef90c2117ef5206, type: 3}
-  - {fileID: 21300000, guid: 9ab216947e9d4beb8246ea33656c3ee5, type: 3}
-  - {fileID: 21300000, guid: 5ccdff24ef1342ddbfdd0abfbe8e3190, type: 3}
-  - {fileID: 21300000, guid: be329ceb493941cf8438a65e2bf7fcfb, type: 3}
-  - {fileID: 21300000, guid: 01561c1c7e97494b85d6e31415e2afe3, type: 3}
-  - {fileID: 21300000, guid: db507e7eeb844a58aae9f857d0299819, type: 3}
-  - {fileID: 21300000, guid: 5c63c01135ca4a27b3268f51b7b55794, type: 3}
-  - {fileID: 21300000, guid: 468df266b24342a0b810165199e7f1ef, type: 3}
-  - {fileID: 21300000, guid: f692f9df1c604f59a6537be2dacfb6e9, type: 3}
-  - {fileID: 21300000, guid: 4cb98499b4e3456582402d65537d4a20, type: 3}
-  - {fileID: 21300000, guid: 38f87cb8e68a4b4e9fd076059b2f8aba, type: 3}
-  - {fileID: 21300000, guid: 4af8f74f77594ff6b92e1e0acda799bb, type: 3}
-  - {fileID: 21300000, guid: 20e59e70f2f94f2cadcb6d06ba8c3fb8, type: 3}
-  - {fileID: 21300000, guid: b5b63af6aa764a569a87fce353bd1fcd, type: 3}
-  - {fileID: 21300000, guid: 265551c08f584b0f8d1592a4cad6798d, type: 3}
-  - {fileID: 21300000, guid: fa6640e17e9e4f8abc9d40af0deb0ee0, type: 3}
-  - {fileID: 21300000, guid: 5a92e0d3978340368deedb6bfbd66206, type: 3}
-  - {fileID: 21300000, guid: 42002fdcad3d438dab1d4668a4f49a6a, type: 3}
-  - {fileID: 21300000, guid: 04cb4902e18146608c460b9e25e2804a, type: 3}
-  - {fileID: 21300000, guid: c2a7eb1f74624454a27b959c3c4dedb8, type: 3}
-  - {fileID: 21300000, guid: e8c3c9cf7fcb44cb86362672ee88c215, type: 3}
-  - {fileID: 21300000, guid: 9b85e9b421ed4f1882d152376a47f2c1, type: 3}
-  - {fileID: 21300000, guid: 485ece0cf3af44deb7b2805da844ab6d, type: 3}
-  - {fileID: 21300000, guid: 26b7156d73264ebe98657f13260101fc, type: 3}
-  - {fileID: 21300000, guid: 1d217268a91642e88e6a0ccb84762922, type: 3}
-  - {fileID: 21300000, guid: ceb13c5b9c62447aa57876ead8782ba8, type: 3}
-  - {fileID: 21300000, guid: c347b233b10b40b4b3417cb59dd91542, type: 3}
-  - {fileID: 21300000, guid: 21bb61e06ca64e0c9af18a1ea06d371c, type: 3}
-  - {fileID: 21300000, guid: 916ed12000e74219b08016f016ae9a8c, type: 3}
-  - {fileID: 21300000, guid: d53566b035bd420390c5dd908ffb4773, type: 3}
-  - {fileID: 21300000, guid: cf7cf8a677c246f89dc430b9176b0dfa, type: 3}
-  - {fileID: 21300000, guid: 3b5cfdfa2b9e42cfa8ff1b8b58965af8, type: 3}
-  - {fileID: 21300000, guid: 875949e081ee4b41a6a7e5ce497456c1, type: 3}
-  - {fileID: 21300000, guid: 116512bd1728432e98fe95cf9f30fe04, type: 3}
-  - {fileID: 21300000, guid: 623103c03b744469b4d56f74ed7c6893, type: 3}
-  - {fileID: 21300000, guid: c9b88325871647e489a2218503ea3b84, type: 3}
-  - {fileID: 21300000, guid: c1ead6db3f884c1981b6b7aa607cdb7b, type: 3}
-  - {fileID: 21300000, guid: 188b64fda1de4a8e8e0ea062106d98a5, type: 3}
-  - {fileID: 21300000, guid: 7381f545c1ff4315aaed68cecc5d3a39, type: 3}
-  - {fileID: 21300000, guid: a94d48c2097f438b8c117a6954b9fe03, type: 3}
-  - {fileID: 21300000, guid: 98c070aaa0c24c848df92f782a5b4762, type: 3}
-  - {fileID: 21300000, guid: 73cccf54e1304f2393a56b0eb81cc838, type: 3}
-  - {fileID: 21300000, guid: 66ea6ea8a554457bb154f05f1d60849f, type: 3}
-  - {fileID: 21300000, guid: da2950a76aa840d096fa3a173ff2b79d, type: 3}
-  - {fileID: 21300000, guid: 76576930fdfb434aa4ebc4d9fc57c357, type: 3}
-  - {fileID: 21300000, guid: 3f288ac451e845319c15e74050bc840e, type: 3}
-  - {fileID: 21300000, guid: 54b21be2db6048ddb574f01efe238362, type: 3}
-  - {fileID: 21300000, guid: 8e9353395775438781c0578d94a96f6b, type: 3}
+  - {fileID: 21300000, guid: c6a646873c21a478683119b5fd9c1920, type: 3}
+  - {fileID: 21300000, guid: 0bcb850b66af448a48e8b169b710e072, type: 3}
+  - {fileID: 21300000, guid: 9a0b5c0e97d81453e96f781bb229f55f, type: 3}
+  - {fileID: 21300000, guid: 1855714960b4240dd886d6d862241505, type: 3}
+  - {fileID: 21300000, guid: 0cab04631e8e7425fa0cda90651c7555, type: 3}
+  - {fileID: 21300000, guid: 19774497da8f44bc69ca2a199dd181d1, type: 3}
+  - {fileID: 21300000, guid: 299a85b6387dd4cbca96bc12ab930ba9, type: 3}
+  - {fileID: 21300000, guid: 951cc5240c88a43b2a4871f15209ca83, type: 3}
+  - {fileID: 21300000, guid: eedfff8b7651342bea80cb2dda5c67c7, type: 3}
+  - {fileID: 21300000, guid: ff90a5d70ce2c40729a5c4005f35ba8a, type: 3}
+  - {fileID: 21300000, guid: cffe9abbef90946ff88a31fbcefa5e55, type: 3}
+  - {fileID: 21300000, guid: 0ccfec93735cd4582bcb2cd419018cea, type: 3}
+  - {fileID: 21300000, guid: 31f754c77e6644a5e8a1bc70f2bdb6fb, type: 3}
+  - {fileID: 21300000, guid: 4fe03e9bc38e94948ae67156d491f1ca, type: 3}
+  - {fileID: 21300000, guid: 6bd608b7fe77849c89fdd655de41f9c3, type: 3}
+  - {fileID: 21300000, guid: 0761f02ecb63b467e8e03a5318d20122, type: 3}
+  - {fileID: 21300000, guid: be75864c561d84e64bc2e04b08911657, type: 3}
+  - {fileID: 21300000, guid: f2e4a4b198eea4e51a5fb7ee2abe9fe8, type: 3}
+  - {fileID: 21300000, guid: 0fcd7d61cf17246c9b9f00c3053c984b, type: 3}
+  - {fileID: 21300000, guid: 09435b5a497ee4db18add4174d688976, type: 3}
+  - {fileID: 21300000, guid: 71f3797b2c55b4b8a814c877ead88c70, type: 3}
+  - {fileID: 21300000, guid: 68cde0b087a7545d4bec67a4028902a5, type: 3}
+  - {fileID: 21300000, guid: 7d1d64367575a4b59aa244aa5b6b7fd1, type: 3}
+  - {fileID: 21300000, guid: bdfde6838db674590a2e525661901940, type: 3}
+  - {fileID: 21300000, guid: 00de471d70f594925816af03e17a0b5c, type: 3}
+  - {fileID: 21300000, guid: e7d63f4674c8345eeaee3af8752b4a88, type: 3}
+  - {fileID: 21300000, guid: 78df309613542402bb92c5a0f81b1a3d, type: 3}
+  - {fileID: 21300000, guid: 3841970d93e4146b79d8433ace64833a, type: 3}
+  - {fileID: 21300000, guid: 1403046ac946a447dbee3fb74259874d, type: 3}
+  - {fileID: 21300000, guid: b13c1578922de4c3b93a13246e5a4f98, type: 3}
+  - {fileID: 21300000, guid: ec0e9cf29add348cf9b1d1b56ac1bcfa, type: 3}
+  - {fileID: 21300000, guid: 840ebdce0d728419c8bc81c0a792e96f, type: 3}
+  - {fileID: 21300000, guid: 9e00f2f57d1f34bd48d153fce8a5c991, type: 3}
+  - {fileID: 21300000, guid: ac733c57627e247cebc0a3711c528782, type: 3}
+  - {fileID: 21300000, guid: efeece2bf120241d689ef1bf8d5ac07c, type: 3}
+  - {fileID: 21300000, guid: a9465857703804e4bb02cc706e6b700a, type: 3}
+  - {fileID: 21300000, guid: c78675df3fd9d4da0b62b46e7daccffb, type: 3}
+  - {fileID: 21300000, guid: 8b8664b8e6f644729bed85f82c9444d4, type: 3}
+  - {fileID: 21300000, guid: 591caf1b0245f4cc2aec9340226bbada, type: 3}
+  - {fileID: 21300000, guid: b8d31c59c8f684cb28df9f26d82090cf, type: 3}
+  - {fileID: 21300000, guid: a91252bb371b14e2e99563fce04fab80, type: 3}
+  - {fileID: 21300000, guid: 7708ce3a1c1414356a0191114d2e0a9c, type: 3}
+  - {fileID: 21300000, guid: 90fb88e4351c9413b8a71bc751364a27, type: 3}
+  - {fileID: 21300000, guid: 6a826303d46e64c468f2037f4ee9d1c0, type: 3}
+  - {fileID: 21300000, guid: dcd964057061c4565b158394c67cd197, type: 3}
+  - {fileID: 21300000, guid: 09fec130d5e564293b431d03b7004e28, type: 3}
+  - {fileID: 21300000, guid: 6e523d75279bb4f08bb345958f6964e1, type: 3}
+  - {fileID: 21300000, guid: 7cba8b8322fa84848bfdf1007ad44ecb, type: 3}
+  - {fileID: 21300000, guid: 303c28cab01634ace896a16fd559c930, type: 3}
   deployCutsceneFps: 24
-  deployCutsceneScale: 3
-  deployCutsceneOffset: {x: 100, y: 0}
+  deployCutsceneScale: 2.6
+  deployCutsceneOffset: {x: 0, y: 0}
   deployCutsceneDepth:
-  - {fileID: 2800000, guid: fa4e2b95ff3a24fa1b84e0ab1a91c142, type: 3}
+  - {fileID: 2800000, guid: c2ac5ef096bcc49718b7a2dd24808bb5, type: 3}
   deployCutsceneTiltGain: 1
   knockbackDistance: 0
   knockbackDuration: 0

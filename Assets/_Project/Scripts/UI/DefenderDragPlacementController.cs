@@ -2,6 +2,7 @@ using System.Collections;
 using Spine.Unity;
 using TMPro;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using Wassup.Bridge;
 using Wassup.Core;
 using Wassup.Core.TimeControl;
@@ -13,6 +14,16 @@ namespace Wassup.UI
 {
     public class DefenderDragPlacementController : MonoBehaviour
     {
+        public event System.Action<DefenderUnitData> Armed;
+        public event System.Action Disarmed;
+        public event System.Action<DefenderUnitData> PlacementCommitted;
+        // first-session-tutorial — physical slot D&D only. Tap-to-place's
+        // simulated flight does not fire this, so guidance can use distinct copy.
+        public event System.Action UserDragStarted;
+        // gimmick-match-integration unit 5 — 배치 드래그 세션이 실제로 시작될 때(가드 통과 후) 발화.
+        // 기믹 안내 카드가 "첫 배치 상호작용" 접힘 트리거로 구독한다. arm 경로는 Armed 가 담당.
+        public event System.Action DragBegan;
+
         [SerializeField] private BattleBridge bridge;
         [SerializeField] private Camera mainCamera;
         [SerializeField] private PlacementInput placementInput;
@@ -30,8 +41,12 @@ namespace Wassup.UI
         private const int RingSegments = 14;
 
         // defender-deploy-cutscene unit 3 — 드래그 시작 시 좌하단 컷신 재생기(옵셔널 주입).
-        // null 이면 컷신 없이 기존 흐름. rev — 컷신 수명은 드래그 세션에 묶인다(CleanupSession 이 EndCutscene 호출).
+        // null 이면 컷신 없이 기존 흐름. 컷신은 자동 종료하되 배치 성공 시 즉시 강제 초기화한다.
         private DeployCutscenePlayer _cutscenePlayer;
+
+        // defender-directional-volley unit 6 — 방향 지정 유닛의 두 번째 배치 페이즈.
+        // 이 컨트롤러 자체가 런타임 AddComponent 라 씬 배선이 없으므로 같은 방식으로 붙인다.
+        private DirectionAimController _aimController;
 
         private DragSession _session;
         private TimeLease _slowmoLease; // time-manager Unit 5 — 드래그 중 Battle 슬로우모 lease
@@ -49,10 +64,22 @@ namespace Wassup.UI
         private Vector2 _prevScreenPos, _swipeVelSmoothed;
         private float _tiltGain = 1f;
 
-        // 키링 배치 상태: 고리 = 손가락(공중). 유닛 = 보드에 서서 무게추처럼 스프링 지연으로 뒤따라옴.
+        // 키링 배치 상태: 고리 = 손가락(공중). 유닛 = 보드에 서서 무게추처럼 지연 추종.
         private Vector3 _ringWorld;        // 고리(손가락, 공중)
-        private Vector3 _unitTargetWorld;  // 유닛 발 목표(고리 바로 아래 보드) — 손가락 즉시 추종
-        private Vector3 _unitPosWorld;     // 유닛 발 실제(스프링 지연)
+        private Vector3 _unitTargetWorld;  // 유닛 발 추종 목표. 실제 drag=포인터 발점, tap=곡선 발점. 셀 판정 기준도 이 점.
+        private PlacementSnapDebounce.State _debounce; // unit 3: throttle 경과 상태(hoverTile 과 수명 동일)
+        // defender-tap-to-place — arm(탭 선택) 상태(단일). 보드 탭 시 이 유닛을 슬롯에서 시뮬 배치.
+        private DefenderDragSlot _armedSlot;
+        private DefenderUnitData _armedUnit;
+        private Vector2 _armedFromScreen;
+        private bool _simulatedDrag; // defender-tap-to-place — 시뮬(탭) 경로 표시. 공격 범위 프리뷰 억제.
+        // defender-tap-to-place unit 4 — 탭 비행 중 고정할 선택 타일(발밑 추종 대신). unit 5 — 곡선 좌우 변주 인덱스(결정론).
+        private Vector2Int? _simFocusCell;
+        private int _tapFlightSeq;
+        // review fix — 세션 세대 토큰. CleanupSession 마다 증가. 시뮬 코루틴이 자기 세대를 캡처해
+        // 비행 중 새 드래그(BeginDrag→CleanupSession→새 세션)가 시작되면 즉시 물러난다(세션 하이재킹 방지).
+        private int _sessionGen;
+        private Vector3 _unitPosWorld;     // 유닛 발 실제(지연 추종)
         private Vector3 _unitVelWorld;
         private bool _posInit;
         private bool _onBoard;
@@ -82,6 +109,11 @@ namespace Wassup.UI
         // 새 상태를 만들지 않고 기존 _session.active 를 그대로 읽는다 — 진실 소스는 하나.
         public bool IsDragging => _session.active;
 
+        // defender-directional-volley unit 6 — 방향 지정 페이즈 진행 중. 드래그 세션은 이미
+        // 끝났지만(드롭 완료) 화면은 여전히 배치 조작 중이다 — 보드 탭을 소비하는 다른
+        // 컨트롤러(DcInspect 등)가 이 스와이프를 자기 제스처로 오해하지 않게 알린다.
+        public bool IsAiming => _aimController != null && _aimController.IsActive;
+
         public void Configure(BattleBridge battleBridge, Camera camera, PlacementInput input,
             DragSwaySettings swaySettings = null, TMP_FontAsset uiFont = null,
             DeployCutscenePlayer cutscenePlayer = null)
@@ -92,18 +124,38 @@ namespace Wassup.UI
             if (swaySettings != null) _cfg = swaySettings;
             if (uiFont != null) _uiFont = uiFont;
             if (cutscenePlayer != null) _cutscenePlayer = cutscenePlayer;
+
+            // unit 6 — 방향 페이즈 컨트롤러. 드롭 성공 시 핸드오프(CommitPlacementAt).
+            // 튜닝값(slowmoScale)은 드래그와 공유하는 DragSwaySettings 로 주입 — 전용 SO 폐기.
+            if (_aimController == null)
+                _aimController = gameObject.GetComponent<DirectionAimController>()
+                                 ?? gameObject.AddComponent<DirectionAimController>();
+            _aimController.Configure(bridge, mainCamera, swaySettings);
         }
 
-        public void BeginDrag(DefenderUnitData unitData, Vector2 screenPosition)
+        public void BeginDrag(DefenderUnitData unitData, Vector2 screenPosition, bool simulated = false)
         {
             if (unitData == null || bridge == null) return;
+            // defender-directional-volley unit 6 — 방향 지정 중엔 트레이가 잠긴다. 허용하면
+            // 그 드래그 제스처가 조준 스와이프로도 해석되고(두 곳에서 소비), 앞 유닛이
+            // 기본 방향으로 강제 활성화된다. 방향을 정해야 다음 배치로 넘어간다(계약 9).
+            if (_aimController != null && _aimController.IsActive) return;
+            DragBegan?.Invoke(); // unit 5 — 가드 통과 = 세션 확정. 이 아래론 early-return 없음.
+            // Tap-to-place의 보드 탭은 내부적으로 simulated drag를 쓰지만 사용자
+            // 선택 취소가 아니다. Disarmed를 내보내면 튜토리얼 문구가 Pick으로 되감긴다.
+            Disarm(notify: !simulated);
             CleanupSession();
+            // defender-deploy-cutscene unit 8 review — 직전 실패/취소 컷씬이 자동 퇴장 중이어도
+            // 새 배치 세션에는 이전 유닛 연출을 넘기지 않는다. 프레임 없는 유닛도 동일하게 원복.
+            if (_cutscenePlayer != null) _cutscenePlayer.ForceStopAndReset();
+            _simulatedDrag = simulated; // defender-tap-to-place — 시뮬 경로는 첫 UpdateDrag 부터 범위 억제(CleanupSession 이 false 로 리셋한 뒤 재설정)
+            if (!simulated) UserDragStarted?.Invoke();
             // time-manager Unit 5 — 드래그 시작 시 전투만 슬로우모. 드롭/취소 시 CleanupSession 에서 해제.
             _slowmoLease = TimeManager.Instance.Request(TimeDomain.Battle, dragSlowmoScale);
             if (mainCamera == null) mainCamera = Camera.main;
 
             _session = BuildSession(unitData);
-            // defender-deploy-cutscene unit 3 — 프레임이 있으면 좌상단 컷신 1회 재생(독립).
+            // defender-deploy-cutscene unit 3/8 — 프레임이 있으면 좌하단 컷신 1회 재생(자동 종료).
             // 기능 온/오프는 DragSwaySettings.enableDeployCutscene 로 게이트.
             if (Cfg.enableDeployCutscene && _cutscenePlayer != null &&
                 unitData.deployCutsceneFrames != null && unitData.deployCutsceneFrames.Length > 0)
@@ -113,18 +165,38 @@ namespace Wassup.UI
                     unitData.deployCutsceneFps, unitData.deployCutsceneScale, unitData.deployCutsceneOffset);
                 // 유닛별 틸트 게인은 Play 로 넘기지 않고 컨트롤러가 보관 → 스와이프 블록에서 곱함(게인 단독 소유).
                 _tiltGain = unitData.deployCutsceneTiltGain;
-                // 첫 프레임 속도 스파이크 방지: prev 를 시작점으로 seed, 스무딩 속도 0 리셋.
-                _prevScreenPos = screenPosition;
-                _swipeVelSmoothed = Vector2.zero;
             }
+            // review fix — 스와이프→틸트 블록은 컷신 여부와 무관하게 매 프레임 돌므로, seed 를 컷신 분기 밖에서
+            // 무조건 수행(비컷신/시뮬 드래그의 첫 프레임 stale-prev 속도 스파이크 방지).
+            _prevScreenPos = screenPosition;
+            _swipeVelSmoothed = Vector2.zero;
             bridge?.SetEnemiesDimmed(true); // placement-enemy-see-through — 적 반투명 on
             bridge?.SetPlacementHighlightAboveUnits(true); // unit 6 — 배치 하이라이트를 적 위로
             if (placementInput != null) placementInput.SetClickPlacementEnabled(false);
             UpdateDrag(screenPosition);
         }
 
+        // placement-eligible-tile-highlight unit 2 — 배치 판단 상태(실드래그 또는 탭 arm) 파생 → 하이라이트 토글.
+        // 지점마다 show/hide 산탄 대신 원하는 상태를 파생해 idempotent 호출. 탭 비행(_simulatedDrag)은 OFF
+        // (range 억제와 일관). 이 파생이 BeginDrag 의 Disarm→재Show 순서의존·_sessionGen 하이재킹을 무관하게 만든다.
+        private bool _placeableHlDesired;
+
+        private void UpdatePlacementHighlightState()
+        {
+            if (bridge == null) return;
+            bool desired = (_session.active && !_simulatedDrag) || _armedUnit != null;
+            if (desired == _placeableHlDesired) return;
+            _placeableHlDesired = desired;
+            if (desired) bridge.ShowPlacementHighlight(); else bridge.HidePlacementHighlight();
+        }
+
         private void Update()
         {
+            UpdatePlacementHighlightState(); // placement-eligible-tile-highlight unit 2 — early-return 위에서 매 프레임 파생 토글
+
+            // defender-tap-to-place unit 2 — arm 된 상태 + 드래그 아님일 때 보드 탭 → 시뮬 배치.
+            if (_armedUnit != null && !_session.active) HandleArmedBoardTap();
+
             // depth-parallax unit 7 — 스와이프 속도 → 정규화 틸트를 매 프레임 컷신 플레이어에 피드.
             // 컷신은 보드 독립(오프보드에서도 재생) 이라 보드 early-return 위에서 실행. 블록 로컬 dt
             // (아래 dt 는 early-return 밑이라 스코프 밖 + CS0136 회피 위해 이름 분리). 게인은 컨트롤러가 단독 소유.
@@ -145,10 +217,24 @@ namespace Wassup.UI
             float dt = Mathf.Max(Time.unscaledDeltaTime, 1e-4f);
             var camT = mainCamera.transform;
 
-            // 무게추 스프링(탄성) + 속도 상한: spring/damping 으로 지연·탄성을 유지하고, maxSpeed 로 빠른
-            // 스와이프 시 속도만 제한 → 초기 튀어나감만 방지(탄성 자체는 spring/damping 으로 조절).
-            KeyringSim.SpringStep(ref _unitPosWorld, ref _unitVelWorld, _unitTargetWorld,
-                s.spring, s.damping, s.maxSpeed, dt);
+            // unit 2·3 — 추종 스텝 전에 포커스 셀을 확정(+디바운스)한다.
+            // dt = unscaled(슬로우모 무관 실시간) — 디바운스 타이밍이 배치 슬로우모에 안 끌리게.
+            // unit 4 — 탭 비행 중엔 선택 타일에 포커스 고정(실시간 발밑 추종 제거). 스와이프는 발밑 추종 유지.
+            ResolveFocusAndTarget(dt, lockCell: _simulatedDrag ? _simFocusCell : null);
+
+            // 실드래그는 무게추 스프링(탄성)+속도 상한으로 지연·스윙을 유지한다.
+            // unit 6 rev — 탭 시뮬은 비행부터 정착까지 같은 비진동 추종을 쓴다. 비행 중 고감쇠 스프링에
+            // 누적된 오차를 정착 진입 시 갑자기 따라잡던 후반 가속을 제거하고, 최종 정착은 잔여 오차만 닫는다.
+            if (_simulatedDrag)
+            {
+                _unitPosWorld = Vector3.SmoothDamp(_unitPosWorld, _unitTargetWorld, ref _unitVelWorld,
+                    Mathf.Max(s.tapFollowSmoothTime, 0.01f), Mathf.Infinity, dt);
+            }
+            else
+            {
+                KeyringSim.SpringStep(ref _unitPosWorld, ref _unitVelWorld, _unitTargetWorld,
+                    s.spring, s.damping, s.maxSpeed, dt);
+            }
 
             // camera-direction unit 5 rev 3 — 드래그 포커스 피드 = **터치/포인터 스크린 좌표 그대로**
             // (고리/유닛 월드 좌표 아님 — 카메라 되먹임·스프링 출렁임 원천 차단, 스무딩은 Director
@@ -176,9 +262,6 @@ namespace Wassup.UI
                 _session.cordLine.SetPosition(1, headPos);
             }
 
-            // 하이라이트 = 마우스 바로 아래(안정) 칸. 흔들리는 유닛 위치가 아니라 마우스가 클램프 →
-            // 유닛은 좌우로 흔들려도 배치 대상 칸은 고정(게임 배치 정확도). 유닛은 그 칸 위에서 흔들린다.
-            UpdateHoverAtTarget();
         }
 
         // camera-direction unit 5 — Director 캐시 (miss 캐시 + 1회 경고, 기존 패턴).
@@ -209,7 +292,7 @@ namespace Wassup.UI
             if (TryComputeRingUnit(screenPosition, totalDrop, out Vector3 ringW, out Vector3 unitTargetW))
             {
                 _ringWorld = ringW;
-                _unitTargetWorld = unitTargetW;
+                _unitTargetWorld = unitTargetW; // 추종 목표 = 손가락 바로 아래 발점. 셀 판정도 이 점 기준.
                 if (!_posInit) { _unitPosWorld = unitTargetW; _unitVelWorld = Vector3.zero; _posInit = true; }
                 _onBoard = true;
                 if (_session.preview != null && !_session.preview.activeSelf) _session.preview.SetActive(true);
@@ -240,31 +323,81 @@ namespace Wassup.UI
             if (s <= 0f) return false;
             ringW = camT.position + ray.direction * s;
             Vector3 feet = ringW - camT.up * totalDrop;
+            // placement-cell-snap unit 5 — 퍼스펙티브 수평 스큐 제거: camUp 오프셋을 보드에 투영하면
+            // 수평(카메라 right 투영) 성분이 화면 x 에 따라 달라져 좌우 판정이 카메라 위치에 의존했다(좌 0.89↔우 0.50셀).
+            // feet 의 보드-수평 성분을 손가락 직접 히트와 정렬 → 손가락이 가리키는 열에 정확히 판정(깊이 오프셋은 유지).
+            // (시뮬 탭 경로는 이 함수를 소비하지 않는다 — RunSimulatedDrag 가 월드 좌표를 직접 구동. review fix 로 시뮬 분기 제거.)
+            float sf = -(Vector3.Dot(N, camT.position) + boardPlane.distance) / nd;
+            if (sf > 0f)
+            {
+                Vector3 pFinger = camT.position + ray.direction * sf;
+                Vector3 boardRight = Vector3.ProjectOnPlane(camT.right, N);
+                if (boardRight.sqrMagnitude > 1e-8f)
+                {
+                    boardRight.Normalize();
+                    feet -= boardRight * Vector3.Dot(feet - pFinger, boardRight);
+                }
+            }
             Vector3 nUp = N.normalized;
             if (Vector3.Dot(nUp, camT.position - feet) < 0f) nUp = -nUp;
             unitTargetW = feet + nUp * previewHeight; // 발 = 보드 표면 + 살짝 띄움
             return true;
         }
 
-        private void UpdateHoverAtTarget()
+        // placement-cell-snap — 손가락 바로 아래 발점(_unitTargetWorld)에서 포커스 셀을 확정한다. unit 1 히스테리시스 + unit 3
+        // settle-to-commit 으로 판정을 안정화하되, 고스트 자체는 이 발점을 스프링 추종(키링 스윙 유지) —
+        // **스냅하지 않는다**(스냅하면 유닛이 셀 중심에 얼어붙어 줄/스윙이 사라짐 — unit 2 회귀). "어느 칸"은 하이라이트가 보여준다.
+        private void ResolveFocusAndTarget(float dt, bool forceCommit = false, Vector2Int? lockCell = null)
         {
-            // 스윙하는 _unitPosWorld 가 아니라 마우스 바로 아래 목표(_unitTargetWorld) 로 칸을 정한다 → 흔들림 없이 안정.
-            var sim = BoardSpace.ToSim(_unitTargetWorld);
             Vector2Int cell;
-            if (bridge != null)
+            Vector2 frac = default; // unit 7 — SetHover 뒤 액체 하이라이트 신호 산출에 재사용
+            if (lockCell.HasValue)
             {
-                var c = bridge.DebugWorldToCell((Vector3)sim);
-                cell = new Vector2Int(c.x, c.y);
+                // unit 4 — 탭 비행: 발밑 추종/히스테리시스/디바운스 없이 선택 타일에 포커스 고정.
+                cell = lockCell.Value;
             }
             else
             {
-                cell = new Vector2Int(Mathf.FloorToInt(sim.x + 0.5f), Mathf.FloorToInt(sim.z + 0.5f));
+                // 스윙하는 _unitPosWorld 가 아니라 손가락 바로 아래 발점으로 칸을 정한다 → 흔들림 없이 안정.
+                var sim = BoardSpace.ToSim(_unitTargetWorld);
+                if (bridge != null)
+                {
+                    // unit 1 — 매 프레임 반올림 대신 히스테리시스. 이전 포커스 셀(_session.hoverTile — 이미 sticky
+                    // 상태, 진실 소스 하나)을 밴드 안에서 유지해 경계 지터를 흡수. frac/gridSize 는 DebugWorldToCell 과 동일 공간.
+                    frac = bridge.DebugWorldToCellFractional((Vector3)sim);
+                    Vector2Int target = PlacementCellSnap.Resolve(_session.hoverTile, frac, Cfg.placementStickMargin, bridge.DebugGridSize);
+                    // unit 3 — throttle(주기적 커밋): 이동 중에도 interval 마다 현재 칸으로 스텝 갱신, 사이엔 유지.
+                    // 첫 프레임(hoverTile 없음)과 forceCommit(릴리즈 최종 해석)은 즉시 확정 + 상태 리셋.
+                    if (forceCommit || !_session.hoverTile.HasValue) { cell = target; _debounce = default; }
+                    else
+                        cell = PlacementSnapDebounce.Step(ref _debounce, _session.hoverTile.Value, target,
+                            dt, Cfg.placementCommitInterval);
+                }
+                else
+                {
+                    cell = new Vector2Int(Mathf.FloorToInt(sim.x + 0.5f), Mathf.FloorToInt(sim.z + 0.5f));
+                }
             }
             // action-tray unit 4 — reason 을 버리지 않고 세션에 보관, 라벨로 구분 표기.
             var reason = PlacementRejectReason.None;
             bool valid = bridge != null && bridge.CanPlaceDefenderAt(cell.x, cell.y, _session.unit, out reason);
             _session.rejectReason = valid ? PlacementRejectReason.None : reason;
             SetHover(cell, valid);
+            // unit 7 rev — 끈적 액체 하이라이트: 확정 칸 테두리는 고정, 내부 액체가 손가락 쪽으로 번진다.
+            // 신호(dir,t)는 Resolve 와 같은 밴드로 산출 → t=1 이 실제 파열점과 일치.
+            if (bridge != null && Cfg.stickyLiquidEnabled)
+            {
+                if (lockCell.HasValue)
+                {
+                    // unit 4 — 탭 비행: 손가락 방향 번짐 없이 정적 하이라이트(스트레치 0).
+                    bridge.SetPlacementStretch(cell, Vector2.zero, 0f, valid);
+                }
+                else
+                {
+                    PlacementCellSnap.EvaluateStretch(cell, frac, Cfg.placementStickMargin, out var bDir, out var bT);
+                    bridge.SetPlacementStretch(cell, bDir, bT, valid);
+                }
+            }
             UpdateRejectLabel();
         }
 
@@ -328,21 +461,222 @@ namespace Wassup.UI
         {
             if (!_session.active) return;
             UpdateDrag(screenPosition);
+            // review fix — 릴리즈 확정은 throttle tick 을 기다리지 않는다. 손가락 최종 위치를 히스테리시스로만
+            // 거른 칸으로 즉시 재해석(하이라이트·팝도 같은 호출에서 갱신 → 표시 칸 == 배치 칸 유지).
+            // 없으면 빠른 드롭이 최대 interval(0.5s) 전 stale 칸에 배치되는 회귀.
+            if (_onBoard) ResolveFocusAndTarget(0f, forceCommit: true);
 
-            var session = _session;
-            if (session.hoverTile.HasValue && session.isValidTile)
+            if (_session.hoverTile.HasValue && _session.isValidTile)
             {
-                var cell = session.hoverTile.Value;
-                if (bridge.TryBeginDefenderDeployment(cell.x, cell.y, session.unit, out var entity))
+                CommitPlacementAt(_session.hoverTile.Value);
+                return;
+            }
+            if (_session.hoverTile.HasValue)
+                bridge?.FlashPlacementReject(_session.hoverTile.Value);
+            CleanupSession();
+        }
+
+        // defender-tap-to-place unit 1 — 트레이 슬롯 탭으로 arm 토글(단일 armed). 보드 탭 시 이 유닛을 배치.
+        public void ToggleArm(DefenderDragSlot slot, DefenderUnitData unit, Vector2 fromScreen)
+        {
+            if (_armedSlot == slot) { Disarm(); return; } // 같은 슬롯 재탭 = 해제
+            Disarm();
+            _armedSlot = slot; _armedUnit = unit; _armedFromScreen = fromScreen;
+            slot?.SetArmed(true);
+            Armed?.Invoke(unit);
+        }
+
+        public void Disarm(bool notify = true)
+        {
+            bool hadArmedUnit = _armedUnit != null;
+            // review fix — `?.` 는 Unity destroyed fake-null 을 못 거르므로 Unity `!=` 로 가드(트레이 리빌드 후 MissingReference 방지).
+            if (_armedSlot != null) _armedSlot.SetArmed(false);
+            _armedSlot = null; _armedUnit = null;
+            if (hadArmedUnit && notify) Disarmed?.Invoke();
+        }
+
+        // defender-tap-to-place unit 1 — 이 슬롯이 현재 armed 인가(슬롯의 disarm-토글 판정용).
+        public bool IsArmed(DefenderDragSlot slot) => _armedSlot == slot;
+
+        // review fix — arm 하이라이트 색은 SO(하드코딩 금지, TilemapMapView 확정 팝 색과 함께 튜닝).
+        public Color ArmHighlightColor => Cfg.armHighlightColor;
+
+        // defender-tap-to-place unit 2 — arm 상태에서 보드 타일 탭 → 그 칸으로 시뮬 배치(무효면 reject).
+        private void HandleArmedBoardTap()
+        {
+            if (_armedSlot == null) { Disarm(); return; } // review fix — 슬롯 파괴(트레이 리빌드) 시 자가 해제(Unity ==)
+            var pointer = Pointer.current;
+            if (pointer == null || !pointer.press.wasPressedThisFrame) return;
+            if (mainCamera == null) mainCamera = Camera.main;
+            if (mainCamera == null || bridge == null) return;
+            // review fix — 스킬 조준 탭과 이중 소비 방지(PlacementInput 의 aim-mode race 가드와 동일 이유).
+            if (GameManager.Instance != null && GameManager.Instance.IsAiming) return;
+            if (PointerOverUi()) return; // UI 탭(슬롯 arm 등) 제외 — 터치는 touchId 로 판정
+
+            // review fix — 셀 변환은 bridge.TryScreenToCell 단일 소스 재사용(수동 레이캐스트 복제 금지 주석 준수).
+            if (!bridge.TryScreenToCell(mainCamera, pointer.position.ReadValue(), out var cell)) return;
+
+            if (bridge.CanPlaceDefenderAt(cell.x, cell.y, _armedUnit, out _))
+                SimulateDragTo(_armedUnit, _armedFromScreen, cell); // 내부 BeginDrag 가 Disarm
+            else
+                bridge.FlashPlacementReject(cell); // arm 유지(재시도)
+        }
+
+        // review fix — no-arg IsPointerOverGameObject 는 마우스 pointerId 만 조회해 터치에서 UI 를 못 거른다
+        // (Android 실기기에서 UI 위 탭이 보드로 관통). 터치 중이면 primaryTouch.touchId 로 판정.
+        private static bool PointerOverUi()
+        {
+            var es = UnityEngine.EventSystems.EventSystem.current;
+            if (es == null) return false;
+            var ts = Touchscreen.current;
+            if (ts != null && ts.primaryTouch.press.isPressed)
+                return es.IsPointerOverGameObject(ts.primaryTouch.touchId.ReadValue());
+            return es.IsPointerOverGameObject();
+        }
+
+        // defender-tap-to-place unit 0 — 탭 배치: 트레이(fromScreen)에서 targetCell 로 드래그를 스크립트로 재생.
+        // 진짜 드래그처럼 BeginDrag→UpdateDrag(트윈)→확정 을 구동 → 키링/hover/throttle/팝/deploy 전부 재사용.
+        public void SimulateDragTo(DefenderUnitData unit, Vector2 fromScreen, Vector2Int targetCell)
+        {
+            if (unit == null || bridge == null || _session.active) return;
+            StartCoroutine(RunSimulatedDrag(unit, fromScreen, targetCell));
+        }
+
+        private IEnumerator RunSimulatedDrag(DefenderUnitData unit, Vector2 fromScreen, Vector2Int targetCell)
+        {
+            BeginDrag(unit, fromScreen, simulated: true); // 시뮬 경로(범위 억제)
+            if (!_session.active) yield break;
+            int gen = _sessionGen; // review fix — 이 코루틴이 소유한 세션 세대. 새 드래그가 시작되면 불일치 → 물러남.
+            if (mainCamera == null) mainCamera = Camera.main;
+            var cfg = Cfg;
+            var camT = mainCamera.transform;
+
+            // 월드 공간 비행: 유닛 발점을 tray→타일 로 월드에서 직접 트윈하고, 키링(고리/줄/유닛 추종)은 config 대로
+            // 따라오게 한다. 스크린 역산·스큐·비행 중 카메라 dolly 에 흔들리지 않는다(이전 스크린 역산 방식의 오배치 원인).
+            float totalDrop = _session.unitHeight + cfg.ropeLength * _session.visualScale;
+            Vector3 endFeet = bridge.GridCellToViewCenter(targetCell);      // 보드 평면 위 셀 중심(월드)
+            Vector3 boardN = BoardSpace.RaycastPlane().normal.normalized;
+            if (Vector3.Dot(boardN, camT.position - endFeet) < 0f) boardN = -boardN; // 카메라 쪽
+            Vector3 startFeet = ScreenToBoardFeet(fromScreen, endFeet);     // 트레이 슬롯 → 보드 발점(폴백=endFeet)
+            // unit 6 — 선택 타일 발 위치가 불변 기준. 유닛/고리 최종점은 여기서 한 번만 파생한다.
+            Vector3 unitLift = boardN * previewHeight;
+            Vector3 ringLift = camT.up * totalDrop;
+            Vector3 finalUnitTarget = endFeet + unitLift;
+            Vector3 finalRing = endFeet + ringLift;
+
+            // 비행 시간 = 기준 × (start→end 화면거리 / 화면세로), 0.25~1.5배.
+            Vector2 sScr = (Vector2)mainCamera.WorldToScreenPoint(startFeet);
+            Vector2 eScr = (Vector2)mainCamera.WorldToScreenPoint(endFeet);
+            float distScale = Mathf.Clamp(Vector2.Distance(sScr, eScr) / Mathf.Max(Screen.height, 1f),
+                cfg.tapTravelScaleMin, cfg.tapTravelScaleMax);
+            float dur = Mathf.Max(cfg.tapTravelDuration * distScale, 0.05f);
+
+            // 렌더 활성 + 추종 시작점.
+            _onBoard = true; _posInit = true;
+            _simFocusCell = targetCell; // unit 4 — 비행 내내 선택 타일에 포커스 고정
+            _unitPosWorld = startFeet + unitLift;
+            _unitVelWorld = Vector3.zero;
+            if (_session.preview != null && !_session.preview.activeSelf) _session.preview.SetActive(true);
+
+            // unit 6 — 3차 던지기: 시작은 앞·위, 도착은 낮게 두어 상승/하강 접선을 분리한다.
+            // unit 5 의 결정론 좌우 변주는 두 제어점에 같은 오프셋으로 유지 → 중간에만 휘고 endpoint 는 정확.
+            float throwDistance = Vector3.Distance(startFeet, endFeet);
+            const float GoldenRatioConjugate = 0.61803398875f;
+            float sequencePhase = (_tapFlightSeq++ + 0.5f) * GoldenRatioConjugate;
+            float lateralUnit = (sequencePhase - Mathf.Floor(sequencePhase)) * 2f - 1f; // -1..1
+            Vector3 boardRight = Vector3.ProjectOnPlane(camT.right, boardN);
+            Vector3 lateralOffset = Vector3.zero;
+            if (boardRight.sqrMagnitude > 1e-6f)
+                lateralOffset = boardRight.normalized * (throwDistance * cfg.tapArcLateralFactor * lateralUnit);
+            float arcHeight = throwDistance * cfg.tapArcHeightFactor;
+            Vector2 launchControl = cfg.tapThrowLaunchControl;
+            Vector2 landingControl = cfg.tapThrowLandingControl;
+            Vector3 controlA = Vector3.Lerp(startFeet, endFeet, launchControl.x)
+                               + camT.up * (arcHeight * launchControl.y) + lateralOffset;
+            Vector3 controlB = Vector3.Lerp(startFeet, endFeet, landingControl.x)
+                               + camT.up * (arcHeight * landingControl.y) + lateralOffset;
+
+            float t = 0f;
+            while (t < 1f && _session.active && _sessionGen == gen)
+            {
+                t += Time.unscaledDeltaTime / dur;
+                float linearT = Mathf.Clamp01(t);
+                // unit 6 rev — 곡선의 중후반 공간 속도 증가를 시간 이징으로 상쇄한다.
+                // 빠르게 던져지고 도착할수록 감속하며, CubicBezier endpoint 는 그대로 정확하다.
+                float flightT = 1f - Mathf.Pow(1f - linearT, 3f); // OutCubic
+                Vector3 feet = KeyringSim.CubicBezier(startFeet, controlA, controlB, endFeet, flightT);
+                _unitTargetWorld = feet + unitLift;                                 // 유닛 추종 목표
+                _ringWorld = feet + ringLift;                                       // 고리 = 발 위 totalDrop(camUp)
+                _lastScreenPos = (Vector2)mainCamera.WorldToScreenPoint(_ringWorld); // 카메라 포커스 피드
+                yield return null;
+            }
+            if (!_session.active || _sessionGen != gen) yield break; // 세션이 바뀜(새 드래그/정리) → 커밋 없이 물러남
+
+            // unit 6 — 고리는 선택 타일 기준 최종점에 고정. 비행부터 이어진 비진동 추종으로 실제 프리뷰가
+            // 거리+속도 조건을 만족할 때까지 짧게 정착한다. 제한시간은 실패 안전망.
+            _unitTargetWorld = finalUnitTarget;
+            _ringWorld = finalRing;
+            _lastScreenPos = (Vector2)mainCamera.WorldToScreenPoint(finalRing);
+            float settleElapsed = 0f;
+            while (_session.active && _sessionGen == gen)
+            {
+                bool closeEnough = Vector3.Distance(_unitPosWorld, finalUnitTarget) <= cfg.tapSettleDistance;
+                bool slowEnough = _unitVelWorld.magnitude <= cfg.tapSettleSpeed;
+                if ((closeEnough && slowEnough) || settleElapsed >= cfg.tapSettleMaxDuration)
+                    break;
+
+                settleElapsed += Time.unscaledDeltaTime;
+                yield return null;
+            }
+            if (!_session.active || _sessionGen != gen) yield break;
+
+            // 정상/타임아웃 모두 보정 프레임을 노출하지 않는다. 착지 팝과 공용 커밋 꼬리를 같은 프레임에 실행.
+            _unitPosWorld = finalUnitTarget;
+            _unitVelWorld = Vector3.zero;
+            _debounce = default;
+            bridge?.PulsePlacementHover(targetCell, _session.isValidTile);
+            CommitPlacementAt(targetCell);
+        }
+
+        // 화면좌표 → 보드 평면 위 발점(월드). 실패 시 폴백(보통 endFeet).
+        private Vector3 ScreenToBoardFeet(Vector2 screen, Vector3 fallback)
+        {
+            if (mainCamera == null) return fallback;
+            var ray = mainCamera.ScreenPointToRay(screen);
+            var plane = BoardSpace.RaycastPlane();
+            if (plane.Raycast(ray, out float enter) && enter > 0f) return ray.GetPoint(enter);
+            return fallback;
+        }
+
+        // review fix — 드롭/시뮬 공용 커밋 꼬리. 검증은 TryBeginDefenderDeployment 내부(CanPlaceDefenderAt)가
+        // 단일 담당(사전 중복 검증 제거). 성공=deploy 코루틴, 실패=reject 플래시. 양 경로 동작 단일화.
+        private void CommitPlacementAt(Vector2Int cell)
+        {
+            if (!_session.active) return;
+            var session = _session;
+            if (bridge != null && bridge.TryBeginDefenderDeployment(cell.x, cell.y, session.unit, out var entity))
+            {
+                // defender-deploy-cutscene unit 8 — 배치 완료는 컷씬보다 절대 우선.
+                // 플립북/hold/slide-out 어느 단계든 즉시 숨기고 다음 배치를 위해 틸트까지 원복한다.
+                _cutscenePlayer?.ForceStopAndReset();
+                // defender-directional-volley unit 6 — 방향 지정 유닛은 여기서 배치가
+                // 끝나지 않는다: 엔티티는 PendingDeployment(전투 미참여)로 스폰된 채
+                // 공격방향 페이즈로 넘어가고, 방향이 확정돼야 활성화된다.
+                // Begin 이 먼저 슬로우모 lease 를 잡은 뒤 CleanupSession 이 드래그 lease 를
+                // 놓으므로 드롭 순간 전투가 정속으로 튀지 않는다(순서 의존).
+                if (session.unit != null && session.unit.directionalAttack && _aimController != null)
                 {
+                    _aimController.Begin(session.unit, cell, entity);
                     CleanupSession();
-                    StartCoroutine(RunDeployment(session.unit, cell, entity));
+                    PlacementCommitted?.Invoke(session.unit);
                     return;
                 }
+                CleanupSession();
+                PlacementCommitted?.Invoke(session.unit);
+                StartCoroutine(RunDeployment(session.unit, cell, entity));
+                return;
             }
-
-            if (session.hoverTile.HasValue)
-                bridge?.FlashPlacementReject(session.hoverTile.Value);
+            bridge?.FlashPlacementReject(cell);
             CleanupSession();
         }
 
@@ -550,8 +884,16 @@ namespace Wassup.UI
             _session.isValidTile = valid;
             if (_session.preview != null && !_session.preview.activeSelf)
                 _session.preview.SetActive(true);
-            bridge?.SetPlacementHover(cell, valid);
-            if (changed) bridge?.SetPlacementRange(cell, _session.unit);
+            // unit 7 rev — 액체 하이라이트가 hover 타일을 **대체**(고정 테두리 + 내부 번짐, 같은 셀에 개체 2개 금지).
+            // 끄면 기존 타일 하이라이트로 폴백.
+            if (!Cfg.stickyLiquidEnabled)
+                bridge?.SetPlacementHover(cell, valid);
+            if (changed)
+            {
+                // defender-tap-to-place — 탭 시뮬 경로에서는 공격 범위 프리뷰 억제(실제 D&D 만 노출).
+                if (!_simulatedDrag) bridge?.SetPlacementRange(cell, _session.unit);
+                bridge?.PulsePlacementHover(cell, valid); // unit 4 — 확정(셀 변경) 팝. 디바운스로 게이팅돼 스팸 아님.
+            }
         }
 
         private void ClearHover()
@@ -559,8 +901,10 @@ namespace Wassup.UI
             if (_session.hoverTile.HasValue)
                 bridge?.ClearPlacementHover(_session.hoverTile.Value);
             bridge?.ClearPlacementRange();
+            bridge?.ClearPlacementStretch(); // unit 7 — 액체 하이라이트 수명은 hover 와 동일
             _session.hoverTile = null;
             _session.isValidTile = false;
+            _debounce = default; // unit 3 — 포커스 해제 시 settle 대기 상태도 리셋(재진입 첫 셀 즉시 확정)
             _session.rejectReason = PlacementRejectReason.None; // unit 4
             if (_rejectLabel != null && _rejectLabel.gameObject.activeSelf)
                 _rejectLabel.gameObject.SetActive(false);
@@ -568,27 +912,34 @@ namespace Wassup.UI
 
         private void CleanupSession()
         {
-            _cutscenePlayer?.EndCutscene(); // depth-parallax rev — 스와이프(드래그) 종료 → 컷신 슬라이드-아웃(1초 hold 폐지)
             _slowmoLease.Dispose(); // time-manager Unit 5 — 슬로우모 해제(멱등)
             bridge?.SetEnemiesDimmed(false); // placement-enemy-see-through — 적 반투명 off(드롭·거부·비활성 모든 종료 경유)
             bridge?.SetPlacementHighlightAboveUnits(false); // unit 6 — 하이라이트 소팅 원복
+            bridge?.HidePlacementHighlight(); // placement-eligible-tile-highlight unit 2 — 종료 시 확실히 소거(OnDisable/OnDestroy 포함)
+            _placeableHlDesired = false;
             ClearHover();
             bridge?.ClearPlacementRange();
             if (_session.preview != null) Destroy(_session.preview);
             _session = default;
+            _sessionGen++; // review fix — 진행 중인 시뮬 코루틴 무효화(세대 불일치 → 자진 종료)
             _posInit = false;
             _onBoard = false;
+            _simulatedDrag = false; // defender-tap-to-place — 시뮬 표시 해제
+            _simFocusCell = null;   // unit 4 — 탭 비행 포커스 고정 해제
             _unitVelWorld = Vector3.zero;
             // ui-tweak 2026-07-08 — 클릭 배치 은퇴. 드래그 종료 후 재활성화하지 않는다.
         }
 
         private void OnDisable()
         {
+            if (_cutscenePlayer != null)
+                _cutscenePlayer.ForceStopAndReset(); // 비활성화는 고아 root Canvas 잔류 금지
             CleanupSession();
         }
 
         private void OnDestroy()
         {
+            if (_cutscenePlayer != null) _cutscenePlayer.ForceStopAndReset();
             CleanupSession();
             if (_previewMaterial != null) Destroy(_previewMaterial);
             if (_cordMaterial != null) Destroy(_cordMaterial);

@@ -37,6 +37,8 @@ namespace Wassup.Bridge
         [SerializeField] private MapSource mapSource = MapSource.Legacy;
         [SerializeField] private MapGridGenerationSettings mapGridSettings;
         [SerializeField] private MapDocument mapDocument;
+        // 비0 = 맵 시드 고정(매판 동일 맵). 0 = matchSeed 파생 매판 랜덤. 웨이브/기믹 등 다른 시드 스트림은 영향 없음.
+        [SerializeField] private int fixedMapSeed = 20260719;
         [Header("Season")]
         [SerializeField] private SeasonRegistry seasonRegistry;
         [SerializeField] private MapPathShape mapPathShape = MapPathShape.Free;
@@ -93,7 +95,14 @@ namespace Wassup.Bridge
         // (spec 계약 6). 스트립은 이벤트 구동이라 Placement 진입 전까지 리빌드가 없다 —
         // teardown 이 앵커를 파괴해도 뷰는 마지막 위치를 유지하므로 여기서 명시 회수한다.
         [SerializeField] private Wassup.Presentation.DcIconStripSpawner dcIconStripSpawner;
+        // unit-overhead-ui — 레거시 체력/드림캐쳐 표현과 신규 공통 오버헤드 경로 전환.
+        [SerializeField] private Wassup.Data.UnitHealthPresentationMode unitHealthPresentationMode =
+            Wassup.Data.UnitHealthPresentationMode.Legacy;
+        [SerializeField] private Wassup.Presentation.UnitOverheadUiLayer unitOverheadUiLayer;
         [SerializeField] private Wassup.UI.ScoreHudView scoreHud;
+        // boss-wave-cadence unit 2 — 보스 스폰 순간 "꿈결 위기!!" 경보. BakeNightmareMechanics
+        // 의 보스 확정(BossTag 부착) 단일 지점에서 구동. 미배선(null)이면 무동작.
+        [SerializeField] private Wassup.UI.BossWarningView _bossWarning;
         [SerializeField] private Wassup.Presentation.ProjectileViewPool _projectileViewPool;
         // Phase 9 P9-07 — tileSize 단일 소스화. Awake 에서 PlacementInput 으로 주입.
         [SerializeField] private Wassup.Core.PlacementInput placementInput;
@@ -338,12 +347,34 @@ namespace Wassup.Bridge
             CharacterBillboardTilt = tilemapBillboardTilt;
 
             EnsureMonoViewPools();
+            ApplyUnitHealthPresentationMode();
         }
 
         private void OnValidate()
         {
             // Keep the static mirror in sync while tuning in the inspector (edit/play).
             CharacterBillboardTilt = tilemapBillboardTilt;
+            if (Application.isPlaying) ApplyUnitHealthPresentationMode();
+        }
+
+        private bool UnifiedOverheadActive =>
+            unitHealthPresentationMode == Wassup.Data.UnitHealthPresentationMode.UnifiedOverhead
+            && unitOverheadUiLayer != null;
+
+        private void ApplyUnitHealthPresentationMode()
+        {
+            bool unified = UnifiedOverheadActive;
+            if (unitHealthPresentationMode == Wassup.Data.UnitHealthPresentationMode.UnifiedOverhead
+                && unitOverheadUiLayer == null)
+                Debug.LogError("[BattleBridge] UnifiedOverhead mode인데 UnitOverheadUiLayer가 미할당 — Legacy로 폴백.", this);
+            dcIconStripSpawner?.SetPresentationEnabled(!unified);
+            if (!unified) unitOverheadUiLayer?.Clear();
+            if (unified)
+            {
+                enemyHitBarSpawner?.Clear();
+                tileHealthGaugeLayer?.Clear();
+                unitOverheadUiLayer.RefreshAttachments();
+            }
         }
 
         // gift-phase unit 3 — 재시작 진입은 선물 페이즈를 거친다(배선 시). 미배선이면
@@ -418,6 +449,7 @@ namespace Wassup.Bridge
             if (enemyHitBarSpawner != null) enemyHitBarSpawner.Clear(); // unit 2 — 잔여 마이크로바 정리(생명주기 대칭)
             if (statusFxSpawner != null) statusFxSpawner.Clear(); // unit-status-fx unit 2 — 잔여 상태 연출 정리
             if (dcIconStripSpawner != null) dcIconStripSpawner.Clear(); // unit-dreamcatcher-icons — 잔여 아이콘 스트립 정리(생명주기 대칭)
+            unitOverheadUiLayer?.Clear(); // unit-overhead-ui — 공통 health/card view 정리
             ClearPickupVisuals(); // season-gimmick-overwork unit 6 — 잔여 레드불 뷰 정리
             ClearResignationVisuals(); // season-gimmick-clockout unit 1 — 잔여 사직서 뷰 정리
             _dcAuraPool?.Clear(); _dcAuraPool = null; // nightmare-whip-aura rev 2 — 드림캐쳐 부착 오라 정리(생명주기 대칭)
@@ -777,7 +809,7 @@ namespace Wassup.Bridge
             // match-seed-unification — 맵 시드는 GameManager 주입 matchSeed 에서 파생.
             // 미주입(0, 예: 테스트 직접 호출) 시 즉석 random matchSeed 로 폴백해 항상 유효.
             int matchSeed = _matchSeed != 0 ? _matchSeed : Wassup.Core.MatchSeed.GenerateRandom();
-            int seed = Wassup.Core.MatchSeed.DeriveMapSeed(matchSeed);
+            int seed = fixedMapSeed != 0 ? fixedMapSeed : Wassup.Core.MatchSeed.DeriveMapSeed(matchSeed);
             int version = GeneratorVersion;
             var options = mapGenerationOptions.Normalized();
             mapPathShape = options.pathShape;
@@ -847,8 +879,10 @@ namespace Wassup.Bridge
                     break;
             }
 
-            // MapGrid 케이스는 Validator 가 이미 connectivity 보장 — fallback skip.
-            if (mapSource != MapSource.MapGrid && !MapConnectivity.AllSpawnsReachGoal(_generatedMap))
+            // MapGrid 절차 생성만 Validator 가 connectivity 를 보장한다. 수동 MapDocument 는
+            // Validator 를 거치지 않으므로 (adapter 가 문서를 그대로 반환) 다른 소스처럼 검사한다.
+            bool validatorBacked = mapSource == MapSource.MapGrid && !MapGridBattleAdapter.IsUsableDocument(mapDocument);
+            if (!validatorBacked && !MapConnectivity.AllSpawnsReachGoal(_generatedMap))
             {
                 Debug.LogWarning("[BattleBridge] GeneratedMap connectivity failed; using fallback linear map.", this);
                 TeardownGeneratedMap();
@@ -982,6 +1016,8 @@ namespace Wassup.Bridge
                 _generatedMap.spawns.Length,
                 options.pathShape.ToString());
             Debug.Log($"[BattleBridge] Map: seed={_generatedMap.seed} ver={_generatedMap.generatorVersion} shape={options.pathShape} density={options.obstacleDensity} size={_generatedMap.gridSize} spawns={_generatedMap.spawns.Length}");
+            // 로그의 mapSeed 를 실제 빌드에 쓰인 시드로 갱신 (fixedMapSeed 오버라이드/수동 document(-1) 반영).
+            GameManager.Instance?.Logger?.SetActualMapSeed(_generatedMap.seed);
         }
 
         private void TeardownFlowField()
@@ -1038,8 +1074,10 @@ namespace Wassup.Bridge
             _em = _world.EntityManager;
             _pending.Clear();
             _occupiedTiles.Clear();
+            RefreshPlacementHighlightIfShown(); // placement-eligible-tile-highlight unit 2
             _defenderByTile.Clear();
             tileHealthGaugeLayer?.Clear(); // unit 3 — 게이지 정리를 _defenderByTile 리셋과 co-locate(불변식)
+            unitOverheadUiLayer?.Clear();
             // ingame-dreamcatcher Unit 2/3 — reset card registry + triggers for a new match.
             _activeDcEffects.Clear();
             _activePlacementSleeps.Clear(); // combat-action-lock — 매치별 placement-aura Sleep 등록 초기화
@@ -1055,6 +1093,7 @@ namespace Wassup.Bridge
             _synergyPeakCount = 0;
             _goalReachedCount = 0;
             _leakAllowancePenalty = 0; // 몽마의 계약 선불 — 매치 경계에서 소멸(이월 금지)
+            RefreshLeakHud();
             _running = false;
             _placementAllowed = true;
             _resultShown = false;
@@ -1574,6 +1613,8 @@ namespace Wassup.Bridge
             mapPathShape = mapGenerationOptions.pathShape;
         }
 
+        public MapGenerationOptions CurrentMapGenerationOptions => mapGenerationOptions;
+
         public DefenderUnitData[] DefenderPool => defenderPool;
         public float TileSize => tileSize;
         // map-origin-placement: 입력(레이캐스트 평면)이 board 원점을 읽는 단일 창구.
@@ -1721,6 +1762,22 @@ namespace Wassup.Bridge
         {
             int2 gridSize = _generatedMap.IsCreated ? _generatedMap.gridSize : GridSize;
             return GridMath.WorldToCell(new float3(worldPosition.x, worldPosition.y, worldPosition.z), tileSize, gridSize, origin: _boardOrigin);
+        }
+
+        // placement-cell-snap unit 1 — 히스테리시스 정책(PlacementCellSnap)이 소비할 소수 셀 좌표(unclamped).
+        // GridMath.WorldToCell = floor(이 값 + 0.5) 와 같은 공간(셀 중심=정수, 경계=±0.5) → 커밋 셀과 드리프트 없음.
+        public Vector2 DebugWorldToCellFractional(Vector3 worldPosition)
+        {
+            float ts = tileSize > 0f ? tileSize : 1f;
+            return new Vector2(
+                (worldPosition.x - _boardOrigin.x) / ts,
+                (worldPosition.z - _boardOrigin.z) / ts);
+        }
+
+        // placement-cell-snap unit 1 — DebugWorldToCell 이 clamp 에 쓰는 grid 크기(정책의 결과 clamp 용).
+        public Vector2Int DebugGridSize
+        {
+            get { int2 g = _generatedMap.IsCreated ? _generatedMap.gridSize : GridSize; return new Vector2Int(g.x, g.y); }
         }
 
         public bool TryGetNearestWalkCell(Unity.Mathematics.int2 requestedCell, out Unity.Mathematics.int2 walkCell)
@@ -2254,6 +2311,8 @@ namespace Wassup.Bridge
         private void SyncMonoUnitViews()
         {
             if (_em == null) return;
+            bool unifiedOverhead = UnifiedOverheadActive;
+            if (unifiedOverhead) unitOverheadUiLayer.BeginFrame();
             bool canSort = _generatedMap.IsCreated;
             int2 gridSize = canSort ? _generatedMap.gridSize : default;
             if (enemyViewPool != null)
@@ -2283,7 +2342,7 @@ namespace Wassup.Bridge
                             var world = new Vector3(p.x, p.y, p.z);
                             // unit-health-display unit 1 — 적 저체력 틴트. HP read-only 평가는
                             // BattleBridge 소관(ECS 창구), 뷰는 Color 만 받아 적용.
-                            Color tint = EvaluateEnemyHealthTint(entity);
+                            Color tint = unifiedOverhead ? Color.white : EvaluateEnemyHealthTint(entity);
                             // placement-enemy-see-through unit 3 — 적만 dim(디펜더 루프는 미적용).
                             // SetDimmed 를 SetHealthTint 앞에 — quad 는 SetHealthTint 가 알파를 반영한다.
                             bool dimmed = _enemyDimAlpha < 0.999f;
@@ -2300,6 +2359,13 @@ namespace Wassup.Bridge
                                 if (canSort) view.UpdateSortingOrder(gridSize, tileSize);
                                 view.SetDimmed(dimmed, _enemyDimAlpha);
                                 view.SetHealthTint(tint);
+                            }
+                            if (unifiedOverhead && _em.HasComponent<Health>(entity)
+                                && TryGetUnitScreenAnchor(entity, out var enemyScreenAnchor, out var enemyAnchor))
+                            {
+                                var h = _em.GetComponentData<Health>(entity);
+                                unitOverheadUiLayer.SetUnit(entity, false, Health.ComputeRatio(h.value, h.max),
+                                    enemyScreenAnchor, ProjectTileScreenWidth(enemyAnchor));
                             }
                         }
                     }
@@ -2321,7 +2387,7 @@ namespace Wassup.Bridge
                 var world = new Vector3(p.x, p.y + spineDefenderYOffset, p.z);
                 // unit-health-display unit 3 — 타일 게이지: defender HP read-only → 타일 중심(바닥)
                 // view 좌표로 Set. 만피 숨김은 레이어가 처리.
-                if (tileHealthGaugeLayer != null && _em.HasComponent<Health>(entity))
+                if (!unifiedOverhead && tileHealthGaugeLayer != null && _em.HasComponent<Health>(entity))
                 {
                     var dh = _em.GetComponentData<Health>(entity);
                     var tileCenterView = (Vector3)Wassup.Core.BoardSpace.ToView(new Vector3(p.x, 0f, p.z));
@@ -2338,7 +2404,15 @@ namespace Wassup.Bridge
                     fallbackView.UpdatePosition(world);
                     if (canSort) fallbackView.UpdateSortingOrder(gridSize, tileSize);
                 }
+                if (unifiedOverhead && _em.HasComponent<Health>(entity)
+                    && TryGetUnitScreenAnchor(entity, out var defenderScreenAnchor, out var defenderAnchor))
+                {
+                    var h = _em.GetComponentData<Health>(entity);
+                    unitOverheadUiLayer.SetUnit(entity, true, Health.ComputeRatio(h.value, h.max),
+                        defenderScreenAnchor, ProjectTileScreenWidth(defenderAnchor));
+                }
             }
+            if (unifiedOverhead) unitOverheadUiLayer.EndFrame();
         }
 
         // unit-health-display unit 1 — 적 HP read-only 조회 → HealthDisplayStyle 로 ratio→Color.
@@ -2377,6 +2451,7 @@ namespace Wassup.Bridge
                 }
                 _defenderByTile.Remove(cell);
                 _occupiedTiles.Remove(cell);
+                RefreshPlacementHighlightIfShown(); // placement-eligible-tile-highlight unit 2
                 tileHealthGaugeLayer?.Hide(cell); // unit 3 — 사망 시 게이지 제거
                 RecomputeSynergyFor(cell);
                 Debug.Log($"[BattleBridge] Defender died @ {cell}; tile freed, synergy recomputed.");
@@ -2547,7 +2622,7 @@ namespace Wassup.Bridge
         {
             if (!_damageNumberEventQueue.IsCreated) return;
             bool hasNumbers = damageNumberSpawner != null;
-            bool hasBars = enemyHitBarSpawner != null;
+            bool hasBars = !UnifiedOverheadActive && enemyHitBarSpawner != null;
             if (!hasNumbers && !hasBars) { _damageNumberEventQueue.Clear(); return; }
             while (_damageNumberEventQueue.TryDequeue(out var evt))
             {
@@ -2575,6 +2650,51 @@ namespace Wassup.Bridge
             if (enemyViewPool != null && enemyViewPool.TryGet(entity, out var qv) && qv != null) return qv.transform;
             if (defenderFallbackViewPool != null && defenderFallbackViewPool.TryGet(entity, out var fv) && fv != null) return fv.transform;
             return null;
+        }
+
+        // unit-overhead-ui — Y는 실제 renderer top, X는 무기 bounds에 끌려가지 않는 visual pivot.
+        // 이 조합이 포즈/키별 5px 높이와 머리 중앙 정렬을 동시에 지킨다.
+        private bool TryGetUnitScreenAnchor(Entity entity, out Vector2 screenAnchor, out Transform anchor)
+        {
+            screenAnchor = default;
+            anchor = null;
+            var cam = Camera.main;
+            if (cam == null) return false;
+            if (spineUnitPool != null && spineUnitPool.TryGet(entity, out var sv) && sv != null
+                && sv.TryGetScreenRect(cam, out var rect))
+            {
+                anchor = sv.transform;
+                screenAnchor = Wassup.Presentation.UnitOverheadLayout.ScreenAnchor(
+                    cam.WorldToScreenPoint(anchor.position).x, rect);
+                return true;
+            }
+            if (enemyViewPool != null && enemyViewPool.TryGet(entity, out var qv) && qv != null
+                && qv.TryGetScreenRect(cam, out rect))
+            {
+                anchor = qv.transform;
+                screenAnchor = Wassup.Presentation.UnitOverheadLayout.ScreenAnchor(
+                    cam.WorldToScreenPoint(anchor.position).x, rect);
+                return true;
+            }
+            if (defenderFallbackViewPool != null && defenderFallbackViewPool.TryGet(entity, out var fv) && fv != null
+                && fv.TryGetScreenRect(cam, out rect))
+            {
+                anchor = fv.transform;
+                screenAnchor = Wassup.Presentation.UnitOverheadLayout.ScreenAnchor(
+                    cam.WorldToScreenPoint(anchor.position).x, rect);
+                return true;
+            }
+            return false;
+        }
+
+        private float ProjectTileScreenWidth(Transform anchor)
+        {
+            var cam = Camera.main;
+            if (cam == null || anchor == null) return 1f;
+            Vector3 half = Vector3.right * (tileSize * 0.5f);
+            Vector3 a = cam.WorldToScreenPoint(anchor.position - half);
+            Vector3 b = cam.WorldToScreenPoint(anchor.position + half);
+            return Vector2.Distance(new Vector2(a.x, a.y), new Vector2(b.x, b.y));
         }
 
         // unit-dreamcatcher-icons unit 1 — 부착 아이콘 스트립 앵커 조회. 게이트웨이 경유
@@ -2736,6 +2856,30 @@ namespace Wassup.Bridge
                 state.impactTileRange = req.impactTileRange;
                 state.flightTime = BallisticArc.FlightTime(spawnPos, ballisticImpact, req.speed, projData.minFlightTime);
             }
+            else if (req.movement == MovementKind.DirectionalLinear)
+            {
+                // defender-directional-volley unit 2 — 방향 직선 비행. 타겟/착탄 셀이
+                // 없어 origin + direction + maxDistance 가 궤적 전부. 방향은 여기서
+                // 한 번 정규화해 sim 이 매 프레임 normalize 하지 않게 한다(퇴화 벡터는
+                // 스폰을 버림 — 정지한 투사체가 사거리 끝까지 안 죽고 남는 것 방지).
+                // 정지 조건 둘 다 여기서 막는다: 방향이 0 이거나 속도가 0 이면 traveled 가
+                // 영원히 0 → impactReached 가 서지 않아 PathHit 이 소멸 조건을 못 만난다
+                // (사거리 소진도 예산 소진도 없는 불멸 투사체 — ecs-review M1).
+                float2 dir = req.direction;
+                if (math.lengthsq(dir) < 1e-6f || req.speed <= 0f)
+                {
+                    Debug.LogWarning($"[BattleBridge] Directional projectile cannot travel (dir={dir}, speed={req.speed}); dropping.");
+                    _em.DestroyEntity(entity);
+                    if (hasSnapshot) outputSnapshot.Dispose();
+                    return Entity.Null;
+                }
+                state.origin = spawnPos;
+                state.prevPos = spawnPos;
+                state.direction = math.normalize(dir);
+                state.maxDistance = req.maxDistance;
+                // pierceCount 는 SO 소유 — SkyFall 의 dropHeight 보충과 같은 번역자 역할.
+                state.pierceRemaining = projData != null ? math.max(1, projData.pierceCount) : 1;
+            }
             else if (req.movement == MovementKind.SkyFall)
             {
                 // Sky-fall (unit 7): sim holds at the cell-locked impact; flightTime
@@ -2754,6 +2898,12 @@ namespace Wassup.Bridge
                     : (projData != null ? projData.dropHeight : 0f);
             }
             _em.AddComponentData(entity, state);
+
+            // defender-directional-volley unit 2 — 경로 스윕은 이미 맞힌 대상을
+            // 기억해야 프레임마다 같은 적을 재타격하지 않는다(IncomingHeal 사전
+            // 부착 선례 — 시스템이 구조 변경 없이 append 만 하게).
+            if (req.payload == PayloadKind.PathHit)
+                _em.AddBuffer<PathHitRecord>(entity);
 
             if (hasSnapshot)
             {
@@ -3190,6 +3340,46 @@ namespace Wassup.Bridge
             return defender != Entity.Null;
         }
 
+        // dreamcatcher-attach-lockon unit 5 — base-ring 열거(순수 공간 read). 배치
+        // defender 각각의 화면 스프라이트 렉트를 outBuf 에 채운다. component write 0,
+        // 신규 EntityQuery/Temp 할당 0. outBuf 는 호출부가 재사용(매프레임 new 금지).
+        public void EnumerateDefenderScreenRects(Camera cam,
+            System.Collections.Generic.List<(Entity entity, Rect rect)> outBuf)
+        {
+            outBuf.Clear();
+            if (cam == null || spineUnitPool == null) return;
+            foreach (var kv in _defenderByTile)
+            {
+                if (!spineUnitPool.TryGet(kv.Value.entity, out var view) || view == null) continue;
+                if (!view.TryGetScreenRect(cam, out var rect)) continue;
+                outBuf.Add((kv.Value.entity, rect));
+            }
+        }
+
+        // dreamcatcher-attach-lockon unit 2/3/4 — 락온 유닛(방어수/적 공용)의 화면 렉트
+        // (리티클·콜아웃·화살표 끝점). spineUnitPool 기반이라 적 entity 에도 동작.
+        // 스프라이트 렉트 없으면 false(폴백 quad·화면 밖).
+        public bool TryGetUnitScreenRect(Entity entity, Camera cam, out Rect rect)
+        {
+            rect = default;
+            if (cam == null || spineUnitPool == null) return false;
+            return spineUnitPool.TryGet(entity, out var view) && view != null
+                && view.TryGetScreenRect(cam, out rect);
+        }
+
+        // dreamcatcher-attach-lockon unit 3 — 콜아웃 정체(아이콘/이름) 소스. 셀
+        // 바인딩의 DefenderUnitData 직독(읽기 전용).
+        public bool TryGetDefenderData(Vector2Int cell, out DefenderUnitData data)
+        {
+            if (_defenderByTile.TryGetValue(cell, out var binding))
+            {
+                data = binding.data;
+                return true;
+            }
+            data = null;
+            return false;
+        }
+
 
         // dreamstone-loadout Unit 3 — squad-equipped stones, set-then-apply (mirrors
         // SetDefenderPool). GameManager calls this BEFORE BeginPlacement; storing here
@@ -3237,11 +3427,15 @@ namespace Wassup.Bridge
         }
 
         // Maps the authoring-side ProjectileFlightMode onto the ECS trajectory/payload
-        // axes. v1 pairs the two coherent combos; other combinations are follow-ups.
+        // axes. Coherent pairs only; other combinations are follow-ups.
         private static (MovementKind movement, PayloadKind payload) ResolveProjectileAxes(ProjectileFlightMode mode)
-            => mode == ProjectileFlightMode.BallisticToCell
-                ? (MovementKind.BallisticArcToPoint, PayloadKind.TileAoe)
-                : (MovementKind.HomingToEntity, PayloadKind.SingleSplash);
+            => mode switch
+            {
+                ProjectileFlightMode.BallisticToCell => (MovementKind.BallisticArcToPoint, PayloadKind.TileAoe),
+                // defender-directional-volley unit 1 — 방향 직선 비행 × 경로 스윕 페어.
+                ProjectileFlightMode.Directional => (MovementKind.DirectionalLinear, PayloadKind.PathHit),
+                _ => (MovementKind.HomingToEntity, PayloadKind.SingleSplash),
+            };
 
         private int GetOrCreateProjectileDataIndex(ProjectileData projectile)
         {
@@ -3252,10 +3446,17 @@ namespace Wassup.Bridge
             return idx;
         }
 
+        // battle-leak-limit-hud unit 0 — 패배 비교/HUD/저주 지불이 공유하는 유효 한계.
+        private int EffectiveLeakLimit()
+            => deck != null ? deck.defeatGoalReachedCount - _leakAllowancePenalty : 0;
+
+        private void RefreshLeakHud()
+            => scoreHud?.SetLeakStatus(_goalReachedCount, EffectiveLeakLimit());
+
         // subconscious-curse-expansion unit 1 (몽마의 계약) — 잔여 유출 허용치.
         // = SO 기준치 − 선불 차감 − 이미 유출된 수. 컨트롤러 게이트/HUD 조회용.
         public int RemainingLeakAllowance()
-            => deck != null ? deck.defeatGoalReachedCount - _leakAllowancePenalty - _goalReachedCount : 0;
+            => EffectiveLeakLimit() - _goalReachedCount;
 
         // 몽마의 계약 선불 지불. 지불 후 잔여가 1 미만이면 거절 — "지불로 즉시 패배"
         // 상태를 구조적으로 금지(spec 게이트 조건: 잔여 − cost ≥ 1). 성공 시 비가역:
@@ -3265,6 +3466,7 @@ namespace Wassup.Bridge
             if (cost <= 0) return false;
             if (RemainingLeakAllowance() - cost < 1) return false;
             _leakAllowancePenalty += cost;
+            RefreshLeakHud();
             return true;
         }
 
@@ -3280,9 +3482,11 @@ namespace Wassup.Bridge
                 // (BeginPlacement clear 가 등록부/컨트롤러 양쪽을 정리).
                 NotifyEnemyGoneIfMarked(evt.entity);
                 _goalReachedCount++;
+                RefreshLeakHud();
                 // 몽마의 계약 — 패배 판정은 선불 차감을 반영한 유효 허용치 기준.
-                Debug.Log($"[BattleBridge] Goal reached! Count: {_goalReachedCount}/{deck.defeatGoalReachedCount - _leakAllowancePenalty}");
-                if (!_resultShown && _goalReachedCount >= deck.defeatGoalReachedCount - _leakAllowancePenalty)
+                int leakLimit = EffectiveLeakLimit();
+                Debug.Log($"[BattleBridge] Goal reached! Count: {_goalReachedCount}/{leakLimit}");
+                if (!_resultShown && _goalReachedCount >= leakLimit)
                 {
                     _resultShown = true;
                     _running = false;
@@ -3374,6 +3578,20 @@ namespace Wassup.Bridge
             return PlaceDefenderAs(tileX, tileY, unitData);
         }
 
+        // placement-eligible-tile-highlight unit 2 — 공간 배치 조건만(IsCreated/bounds/Place/점유).
+        // 순수 static(값 in → reason out): 판정(CanPlaceDefenderAt)과 하이라이트 셀 수집이 공유해
+        // 어긋나지 않게 한다(PaintLanes 가 시뮬 발사 게이트를 공유하는 것과 동형). EditMode 테스트 대상.
+        // 비용/풀/유닛/running 은 CanPlaceDefenderAt 이 별도로 본다.
+        public static PlacementRejectReason SpatialPlacementCheck(GeneratedMap map, HashSet<Vector2Int> occupied, int2 cell)
+        {
+            if (!map.IsCreated) return PlacementRejectReason.MissingMap;
+            if (cell.x < 0 || cell.x >= map.gridSize.x || cell.y < 0 || cell.y >= map.gridSize.y)
+                return PlacementRejectReason.OutOfBounds;
+            if (map.TileAt(cell) != MapTileType.Place) return PlacementRejectReason.NotBuildable;
+            if (occupied != null && occupied.Contains(new Vector2Int(cell.x, cell.y))) return PlacementRejectReason.Occupied;
+            return PlacementRejectReason.None;
+        }
+
         public bool CanPlaceDefenderAt(int tileX, int tileY, DefenderUnitData unitData, out PlacementRejectReason reason)
         {
             if (!_running && !_placementAllowed)
@@ -3381,26 +3599,10 @@ namespace Wassup.Bridge
                 reason = PlacementRejectReason.NotRunningOrPlacementClosed;
                 return false;
             }
-            if (!_generatedMap.IsCreated)
+            var spatial = SpatialPlacementCheck(_generatedMap, _occupiedTiles, new int2(tileX, tileY));
+            if (spatial != PlacementRejectReason.None)
             {
-                reason = PlacementRejectReason.MissingMap;
-                return false;
-            }
-            if (tileX < 0 || tileX >= _generatedMap.gridSize.x || tileY < 0 || tileY >= _generatedMap.gridSize.y)
-            {
-                reason = PlacementRejectReason.OutOfBounds;
-                return false;
-            }
-            if (_generatedMap.TileAt(new int2(tileX, tileY)) != MapTileType.Place)
-            {
-                reason = PlacementRejectReason.NotBuildable;
-                return false;
-            }
-
-            var cell = new Vector2Int(tileX, tileY);
-            if (_occupiedTiles.Contains(cell))
-            {
-                reason = PlacementRejectReason.Occupied;
+                reason = spatial;
                 return false;
             }
 
@@ -3427,6 +3629,33 @@ namespace Wassup.Bridge
             return true;
         }
 
+        // placement-eligible-tile-highlight unit 2 — 배치 가능 셀 하이라이트 게이트웨이(뷰 포워딩, ECS 쓰기 0).
+        // 공간 술어로 밝힐 셀을 수집 → TilemapMapView. 비용/풀은 안 본다(계약: 하이라이트=공간, hover=전체 판정).
+        private bool _placeableHlShown;
+        private readonly List<Vector2Int> _placeableHlScratch = new();
+
+        public void ShowPlacementHighlight() { _placeableHlShown = true; RepaintPlacementHighlight(); }
+
+        public void HidePlacementHighlight()
+        {
+            _placeableHlShown = false;
+            if (tilemapMapView != null) tilemapMapView.ClearPlacementHighlight();
+        }
+
+        public void RefreshPlacementHighlightIfShown() { if (_placeableHlShown) RepaintPlacementHighlight(); }
+
+        private void RepaintPlacementHighlight()
+        {
+            if (!_placeableHlShown || tilemapMapView == null || !_generatedMap.IsCreated) return;
+            _placeableHlScratch.Clear();
+            int w = _generatedMap.gridSize.x, h = _generatedMap.gridSize.y;
+            for (int y = 0; y < h; y++)
+            for (int x = 0; x < w; x++)
+                if (SpatialPlacementCheck(_generatedMap, _occupiedTiles, new int2(x, y)) == PlacementRejectReason.None)
+                    _placeableHlScratch.Add(new Vector2Int(x, y));
+            tilemapMapView.SetPlacementHighlight(_placeableHlScratch);
+        }
+
         // Explicit-type placement (Phase 4). Used by DefenderSelector after the
         // player chooses which picked defender they want on the tile.
         public bool PlaceDefenderAs(int tileX, int tileY, DefenderUnitData unitData)
@@ -3439,6 +3668,7 @@ namespace Wassup.Bridge
             }
 
             _occupiedTiles.Add(cell);
+            RefreshPlacementHighlightIfShown(); // placement-eligible-tile-highlight unit 2
             GameManager.Instance?.Logger?.RecordPlacement(unitData.displayName, cell, Time.time - _startTime, unitData.cost);
 
             var entity = CreateDefenderEntity(cell, unitData, pendingDeployment: false, spawnPlacementVfx: true);
@@ -3466,6 +3696,7 @@ namespace Wassup.Bridge
             }
 
             _occupiedTiles.Add(cell);
+            RefreshPlacementHighlightIfShown(); // placement-eligible-tile-highlight unit 2
             GameManager.Instance?.Logger?.RecordPlacement(unitData.displayName, cell, Time.time - _startTime, unitData.cost);
             entity = CreateDefenderEntity(cell, unitData, pendingDeployment: true, spawnPlacementVfx: false);
             ApplyOnPlacePush(unitData, cell);
@@ -3473,6 +3704,16 @@ namespace Wassup.Bridge
             Wassup.Core.SoundManager.Instance?.PlayDeployVoice(unitData.deployVoiceClip);
             Debug.Log($"[BattleBridge] Began pending deployment for {unitData.displayName} at ({tileX},{tileY}).");
             return true;
+        }
+
+        // defender-directional-volley unit 1 — aim-phase 확정 방향을 기록하고 활성화.
+        // DeployedFacing 은 Units 소유, 배치 확정 시 이 1회 기록 후 불변(공통 계약 2).
+        // 컴포넌트를 먼저 붙여 on-place 스킬이 활성화 시점에 방향을 읽을 수 있게 한다.
+        public void ActivateDeployedDefender(Vector2Int cell, Entity entity, Vector2Int facing)
+        {
+            if (_em != null && entity != Entity.Null && _em.Exists(entity) && facing != Vector2Int.zero)
+                _em.AddComponentData(entity, new DeployedFacing { value = new int2(facing.x, facing.y) });
+            ActivateDeployedDefender(cell, entity);
         }
 
         public void ActivateDeployedDefender(Vector2Int cell, Entity entity)
@@ -3598,6 +3839,24 @@ namespace Wassup.Bridge
             if (tilemapMapView != null) tilemapMapView.SetPlacementHover(cell, valid);
         }
 
+        // placement-cell-snap unit 4 — 포커스 타일 확정(변경) 시 1회 팝.
+        public void PulsePlacementHover(Vector2Int cell, bool valid)
+        {
+            if (tilemapMapView != null) tilemapMapView.PulsePlacementHover(cell, valid);
+        }
+
+        // placement-cell-snap unit 7 rev — 끈적 액체 하이라이트(hover 대체). dir=당김 방향, t=0(중심)~1(파열),
+        // valid=배치 가능 팔레트. cell+값만 받는다(오브젝트 불가지).
+        public void SetPlacementStretch(Vector2Int cell, Vector2 dir, float t, bool valid)
+        {
+            if (tilemapMapView != null) tilemapMapView.SetPlacementStretch(cell, dir, t, valid);
+        }
+
+        public void ClearPlacementStretch()
+        {
+            if (tilemapMapView != null) tilemapMapView.ClearPlacementStretch();
+        }
+
         public void ClearPlacementHover(Vector2Int cell)
         {
             if (tilemapMapView != null) tilemapMapView.ClearPlacementHover(cell);
@@ -3614,8 +3873,22 @@ namespace Wassup.Bridge
         // 일치할 때만 동작 — aim 종료(캐스트 직후)가 방금 고정된 텔레그래프를
         // 지우거나, 텔레그래프 해제가 진행 중인 드래그 표시를 지우는 간섭 방지.
         // (aim 진입이 배치를 취소하는 기존 규칙 덕에 동시 set 경쟁은 없다.)
-        private enum RangeDisplayOwner { None, Placement, SkillAim, SkillTelegraph }
+        // PlacementAim = defender-directional-volley unit 9 (방향 지정 페이즈 레인 프리뷰).
+        // 드롭 직후 드래그 세션의 CleanupSession 이 ClearPlacementRange 를 부르는데, 소유가
+        // 이미 PlacementAim 이면 그 호출이 내 레인을 지우지 않는다 — 별도 소유자인 이유.
+        private enum RangeDisplayOwner { None, Placement, SkillAim, SkillTelegraph, PlacementAim }
         private RangeDisplayOwner _rangeOwner = RangeDisplayOwner.None;
+        private readonly List<Vector2Int> _laneCellScratch = new List<Vector2Int>();
+        private readonly List<Vector2Int> _arrowCells = new List<Vector2Int>();
+        private readonly List<float> _arrowAngles = new List<float>();
+        // 방향 미정(4레인 십자) 세기. 선택된 레인은 1. 0.45 는 시안 하이라이트가
+        // 비쳐 다른 색으로 오독됨(2026-07-19 사용자) — 같은 주황으로 읽히는 0.7.
+        private const float AimLaneDimAlpha = 0.7f;
+        // 조준 화살표/레인이 쓰는 4방향. 순서 = 화살표 인덱스.
+        private static readonly Vector2Int[] AimCardinals =
+        {
+            Vector2Int.right, Vector2Int.left, Vector2Int.up, Vector2Int.down,
+        };
         // unit 9 — 현재 텔레그래프가 추적 중인 스킬 투사체. 그 착탄 이벤트에서만 해제.
         private Entity _skillTelegraphProjectile = Entity.Null;
 
@@ -3623,11 +3896,69 @@ namespace Wassup.Bridge
         {
             if (tilemapMapView == null || unit == null) return;
             int tileRange = GridMath.RangeToTiles(unit.attackRange);
-            tilemapMapView.SetPlacementRange(center, tileRange);
+            // unit 9 — 방향 유닛에게 네모 사거리는 거짓말이다(레인만 때린다). 방향은 아직
+            // 안 정해졌으므로 고를 수 있는 4레인을 십자로 흐리게 — 조준 페이즈와 같은 언어.
+            if (unit.directionalAttack) PaintLanes(center, tileRange, null, AimLaneDimAlpha);
+            else tilemapMapView.SetPlacementRange(center, tileRange);
             _rangeOwner = RangeDisplayOwner.Placement;
         }
 
         public void ClearPlacementRange() => ClearRange(RangeDisplayOwner.Placement);
+
+        // unit 9 — 조준 페이즈 가이드(레인 + 화살표를 한 상태로). 선택 전이면 4레인 십자를
+        // 흐리게 = "이 중 하나를 커버한다"(사거리가 즉시 읽힌다), 선택되면 그 레인만 또렷 =
+        // "여기를 때린다". 방향을 말해주는 건 레인이 아니라 화살표다 — 레인은 대칭이라
+        // "위로 쏜다"와 "위에서 쏜다"가 같아 보인다.
+        public void SetAimGuide(Vector2Int center, DefenderUnitData unit, Vector2Int? selected)
+        {
+            if (tilemapMapView == null || unit == null) return;
+            int tileRange = GridMath.RangeToTiles(unit.attackRange);
+            PaintLanes(center, tileRange, selected, selected.HasValue ? 1f : AimLaneDimAlpha);
+            _rangeOwner = RangeDisplayOwner.PlacementAim;
+
+            // 화살표는 각 레인의 첫 칸에 — 유닛을 둘러싼 D-pad 라 엄지로 닿고, 레인이
+            // 어디서 출발하는지도 같은 자리에서 말한다.
+            _arrowCells.Clear();
+            _arrowAngles.Clear();
+            int selectedIndex = -1;
+            for (int i = 0; i < AimCardinals.Length; i++)
+            {
+                var c = AimCardinals[i];
+                if (selected.HasValue && selected.Value == c) selectedIndex = i;
+                _arrowCells.Add(center + c);
+                // 스프라이트는 +Y 를 향한다 → 그 방향으로 눕힌다.
+                _arrowAngles.Add(Mathf.Atan2(c.y, c.x) * Mathf.Rad2Deg - 90f);
+            }
+            tilemapMapView.SetAimArrows(_arrowCells, _arrowAngles, selectedIndex);
+        }
+
+        public void ClearAimGuide()
+        {
+            ClearRange(RangeDisplayOwner.PlacementAim);
+            if (tilemapMapView != null) tilemapMapView.ClearAimArrows();
+        }
+
+        // 칠할 셀을 시뮬의 발사 게이트와 **같은 함수**로 고른다 — 보이는 칸과 실제로 맞는
+        // 칸이 구조적으로 일치한다(따로 계산하면 언젠가 어긋난다).
+        private void PaintLanes(Vector2Int center, int tileRange, Vector2Int? facing, float alphaMul)
+        {
+            if (tileRange <= 0) return;
+            _laneCellScratch.Clear();
+            var c = new int2(center.x, center.y);
+            for (int dx = -tileRange; dx <= tileRange; dx++)
+            for (int dz = -tileRange; dz <= tileRange; dz++)
+            {
+                var cell = new int2(center.x + dx, center.y + dz);
+                bool lit = facing.HasValue
+                    ? LaneMath.IsInLane(c, new int2(facing.Value.x, facing.Value.y), tileRange, cell)
+                    : LaneMath.IsInLane(c, new int2(1, 0), tileRange, cell)
+                      || LaneMath.IsInLane(c, new int2(-1, 0), tileRange, cell)
+                      || LaneMath.IsInLane(c, new int2(0, 1), tileRange, cell)
+                      || LaneMath.IsInLane(c, new int2(0, -1), tileRange, cell);
+                if (lit) _laneCellScratch.Add(new Vector2Int(cell.x, cell.y));
+            }
+            tilemapMapView.SetPlacementCells(_laneCellScratch, alphaMul);
+        }
 
         // 스킬 조준 범위 — 배치와 달리 중심 셀 포함(AOE 는 중심도 피해 범위).
         public void SetSkillAimRange(Vector2Int center, SkillData skill)
@@ -3779,6 +4110,18 @@ namespace Wassup.Bridge
                 targetMask = unitData.targetAllies ? (int)Faction.Defender : (int)Faction.Enemy,
                 hitDelaySec = unitData.hitDelaySec,
             });
+            // defender-directional-volley unit 4 — 다연발 유닛만 볼리 상태를 진다.
+            // 스폰 시 사전 부착 = 발사 때마다 구조 변경이 없다(IncomingHeal 선례).
+            // shotCount <= 1 이면 미부착 → AttackSystem 이 현행 단발 경로 그대로.
+            if (unitData.shotCount > 1)
+            {
+                _em.AddComponentData(entity, new Wassup.Battle.Combat.VolleyFireState
+                {
+                    shotCount = unitData.shotCount,
+                    shotIntervalSec = unitData.shotIntervalSec,
+                    spreadAngleDeg = unitData.spreadAngleDeg,
+                });
+            }
             // aggro-targeting Unit 4 — expose defender class so enemies can filter/prioritize.
             _em.AddComponentData(entity, new Wassup.Battle.Units.DefenderClassTag { value = unitData.role });
             // aggro-targeting Unit 10 — guardians (aggroCapacity > 0) carry AggroCapacity
@@ -4574,6 +4917,9 @@ namespace Wassup.Bridge
             if (mechanics == null || mechanics.Length == 0) return;
 
             _em.AddComponent<BossTag>(entity);
+            // boss-wave-cadence unit 2 — 보스 판별의 단일 진실 지점. 여기서만 경보를 구동해
+            // SpawnUnit 재판정(로직 이중화·이중 발화)을 피한다. 재진입 코얼레스는 뷰가 담당.
+            _bossWarning?.Show();
             // 위협 테이블은 보스와 항상 동행 — 텔레포트 arm 의 타겟 소스.
             // defender 히트가 쌓기 전까지 빈 버퍼(ThreatHitEvent 드레인이 채움).
             _em.AddBuffer<ThreatEntry>(entity);

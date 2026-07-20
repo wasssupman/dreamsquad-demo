@@ -15,6 +15,8 @@ MonoBehaviour:
   id: cannon
   role: 1
   displayName: "\uCE90\uB17C"
+  desc: "\uB808\uC778\uC800 \xB7 \uC6D0\uAC70\uB9AC\uD615. \uBC30\uCE58 \uC989\uC2DC
+    \uAD11\uC5ED \uD3ED\uBC1C."
   health: 400
   attackRange: 5
   attackCooldown: 2.5
@@ -39,6 +41,10 @@ MonoBehaviour:
   onPlaceDuration: 0
   cost: 4
   targetAllies: 0
+  directionalAttack: 0
+  shotCount: 1
+  shotIntervalSec: 0
+  spreadAngleDeg: 0
   hazardCastEnabled: 0
   hazardCastRange: 0
   hazardCastCooldown: 0

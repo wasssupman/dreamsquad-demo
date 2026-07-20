@@ -9,6 +9,7 @@
 - `113c2abf` unit 1 — 시즌 분리 + 랜덤 배정 + BattleBridge 3곳 스왑 + GM 배선 + 결정론 테스트
 - `c9b5f3d5` unit 2 — GimmickGuideView 배치 안내 카드 + 씬 배선
 - (unit 3 = 검증 매트릭스, 코드 커밋 없음. 이 docs 커밋에 포함)
+- `2d267bc0` unit 5 — 카드 우상단 슬라이드인 + 칩 접힘 (2026-07-19)
 
 ## Implemented
 
@@ -38,6 +39,13 @@
 - 공유 파일: `BattleBridge.cs`(내 hunk만), `BattleScene.unity`(battleConfig·GimmickGuideView GO만 선별 스테이징 — 타 세션 default-fill `depthParallaxSettings`/`enableAdjacencySynergy` 2줄은 미스테이지로 남김).
 - 전투 시작 `OverworkGimmickConfig 주입`(L4164)은 픽업 게이트와 동일 `_assignedGimmick` 소스라 by-construction 보장(ON 경로 픽업 로그가 소스 정상 세팅 증명).
 - 현재 pool = Overwork 1개. 비-Overwork pick 은 `is OverworkGimmickData` 로 no-op(설계상, 제약 9).
+
+## unit 5 추가분 (2026-07-19)
+
+- 카드가 **우상단 도킹**으로 이동(상단 중앙 폐기): 오른쪽 화면 밖 → 코너 슬라이드-인, 첫 배치 상호작용(DragBegan/Armed)·"가즈아" 버튼·3초 타이머로 같은 코너 **칩** 접힘, 칩 탭 재확장. 전환은 PrimeTween unscaled(BossWarningView 선례) — 수제 코루틴 금지.
+- seam: 컨트롤러 `DragBegan`+`Armed`(선언·arm invoke 는 first-session-tutorial 과 공용), `DefenderSelector.gimmickGuide` Bind(costDisplay 패턴), 씬 1줄. 뷰의 `SetTutorialSuppressed` 는 튜토리얼 spec 훅(동커밋).
+- 주의: 접힘 트리거는 전부 `CollapseIfExpanded()` 단일 진입점. `Disarm(notify)` 등 튜토리얼 전용 컨트롤러 변경은 이 커밋에서 의도적으로 제외(그쪽 spec 커밋 담당).
+- 검증: 컴파일 에러 0, 사용자 Play 확인(슬라이드인·3초/가즈아/드래그 접힘·칩 재확장·Battle 숨김).
 
 ## Follow-up
 

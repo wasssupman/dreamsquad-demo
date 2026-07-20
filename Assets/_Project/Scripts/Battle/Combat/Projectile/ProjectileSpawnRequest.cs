@@ -40,6 +40,13 @@ namespace Wassup.Battle.Combat.Projectile
         // so the drain cannot derive it from speed; Meteor maps warningSec here.
         public float flightTime;
 
+        // ── Directional trajectory (defender-directional-volley unit 1) ──────
+        // Fire direction (unit vector on the sim plane) + max flight distance
+        // (world units). Zero on homing/ballistic requests — ignored there. The
+        // drain copies these onto ProjectileState for DirectionalLinear.
+        public float2 direction;
+        public float maxDistance;
+
         // ── Single-splash payload ────────────────────────────────────────────
         public OnHitEffectType onHitEffect;
         public float splashRadius;

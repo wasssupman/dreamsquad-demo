@@ -120,9 +120,30 @@ code + git history        구현 상세
 
 > 출처 spec 이 섞여 있다. 그룹 헤더 또는 항목 끝의 `(spec-slug)` 라벨로 출처 표기.
 
+#### 수동 맵 authoring (manual-map-authoring 종료 이관, 2026-07-19)
+
+- **맵 authoring 에디터 툴화 + 분류값 재계산** [M] · 현재 레시피는 execute_code 로 road 배열→검증→WriteToDocument. 툴로 승격하면서 mergeDegree/chokepoint 를 저장값이 아니라 **로드/임포트 시 CellClassifier 로 재계산** — 수작업 값과 분류 정의의 조용한 드리프트 차단. (manual-map-authoring)
+- **스테이지별 맵 운영** [M] · MapDocument 여러 장 + 스테이지→document 매핑. 현재는 ArkFunnel 1장 고정 배선. (manual-map-authoring)
+- **시드 권한 일원화** [S] · fixedMapSeed(BattleBridge, 비0 코드 기본값)와 GameManager.debugFixedMatchSeed 이원화 정리. 비0 코드 기본값은 씬 저장 시 베이크되는 함정 + document 배선 중엔 무효인 유령 노브. 맵 빌드 로그에 시드 provenance(document/fixed/derived) 1줄 추가. (manual-map-authoring)
+- **MapDocument 로드 방어** [S] · ToGeneratedMap 이 보조 배열(mergeDegree/chokepoint/propLayerId) 길이를 미검증 — 손상 에셋이 IndexOutOfRange 로 배틀 init 중단. PickGridSize 의 `math.abs(int.MinValue)` 음수 인덱스 경로도 동반 수리. (manual-map-authoring)
+- **맵 설정 패널 잔여 위생** [S] · 패널이 표현 못 하는 mapSource(Manual/Fixture/Procedural_Legacy) 시 하이라이트/섹션 오표시, document 배선 중 크기/goalEdge 컨트롤 무피드백 no-op, SetGoalEdgeOnly 의 공유 SO 에셋 쓰기(Play 정지로 안 되돌아감). (manual-map-authoring)
+
 #### 효과 트리거 통합 — 드림캐쳐↔기믹 (아키텍처, 파킹 2026-07-15)
 
 - **트리거→효과 엔진 도메인 중립화** [M] · 드림캐쳐의 `DcMechanic`(이미 데이터주도 trigger→payload 중립계약)을 `Dc*` 명칭·`Data/Dreamcatcher/` 위치에서 떼어내 공용 `TriggerEffect*` 로 승격 + `EffectDomain{Dreamcatcher,Gimmick,...}` 태그로 소비처(오라/UI/dispel/밸런스) 구분. 기믹 Fatigue/Pickup/LastRun 을 그 위 rule 로 이관. **당장 안 함** — 논의·설계는 `docs/plans/2026-07-15-effect-trigger-unification-design.md` 에 기록. 권고: 0~1단계(태그+rename)만 저위험 선행, 시스템 이관은 2번째 기믹 생길 때(제약 8). rename 은 공유파일 광범위 → 세션 조율 필수.
+
+#### 방향 지정 배치 · 다연발 (defender-directional-volley 종료 이관, 2026-07-17)
+
+- **배치 취소/코스트 환불** [S] · 공격방향 페이즈엔 취소 제스처가 없다 — 드롭 = 코스트 확정. 데드존 릴리즈는 가이드를 유지하고 재스와이프를 기다린다. 취소를 넣으려면 `TryBeginDefenderDeployment` 의 spend 를 되감는 경로가 먼저 필요. (defender-directional-volley)
+- **배치 후 방향 재지정** [S] · 유닛 탭 → 가이드 재오픈. `DeployedFacing` 은 현재 1회 기록 후 불변 계약이라 쓰기 소유권부터 재정의해야 한다. (defender-directional-volley)
+- **레인 폭 파라미터화** [S] · 현재 1타일 고정(`LaneMath.IsInLane` 의 `side == 0`). 폭 2+ 는 side 허용치를 SO 로. (defender-directional-volley)
+- **확산형 실증 유닛(샷건)** [S] · 엔진(`spreadAngleDeg`)은 완성·테스트됨, 유닛 에셋만 없다. 30도 3발은 SO 저작만으로 성립. (defender-directional-volley)
+- **버스트/스프레드 × Homing·Ballistic 조합** [S] · 볼리는 전 궤적에 열려 있으나 e2e 는 Directional 에서만 했다. Homing×버스트는 발마다 타겟이 재평가되지 않고 템플릿 스냅샷을 쓴다는 점 확인 필요. (defender-directional-volley)
+- **머신건 연사음** [S] · 버스트 캐리어 발은 `DefenderUnitTag` 가 없어 drain 의 발사 SFX 게이트 밖 → 볼리당 1회. rat-tat-tat 을 원하면 battle-audio 쪽 게이트 재설계. (defender-directional-volley)
+- **방향 가이드 정식 아트 + 머신건 아트** [S] · 가이드는 절차적 보드 스프라이트(레인 점등 + 삼각 화살표, unit 9), 유닛은 Marksman Spine + Sniper 파츠 플레이스홀더(guid 유지 교체 전제). (defender-directional-volley)
+- **곡사 방향 발사** [S] · `DirectionalLinear` + arc 시각. 현재 방향탄은 평면 직선(sim-Y 없음). (defender-directional-volley)
+- **tap-to-place 경로 연동** [S] · 공격방향 페이즈 진입점이 D&D `CommitPlacementAt` 하나뿐 — tap 확정 경로에도 같은 핸드오프가 필요하다. (defender-directional-volley × defender-tap-to-place)
+- **bounce(통통구슬)×방향 유닛** [S] · 현재 통통구슬(`ProjectileBounce`)이 방향 유닛에 붙어도 inert(부착 가드는 ProjectileRef 만 보고 movement 무시 → 슬롯은 붙지만 Directional arm·PathHit 이 bounce 를 안 탐). **사용자 결정: 차단이 아니라 트리거당 N발(버스트/스프레드 캐리어 포함)이 각각 bounce 를 받아 진행**(각 방향탄이 경로 히트 후 다음 적으로 튕김). 과제 = 볼리 arm 이 bounce 필드를 template/캐리어에 싣기 + PathHit 이 pierce 소진 후 bounce 재조준을 지원(또는 bounce×pierce 합성 규칙 정의). 집계(count 합/range max/mul 곱)는 기존 재사용. (defender-directional-volley × dreamcatcher-attack-mod-bounce)
 
 #### 로드아웃 규칙 위생 (game-start-loadout-gate 종료 이관, 2026-07-16)
 
@@ -159,6 +180,7 @@ code + git history        구현 상세
 - **slow-곡사포 / 임팩트 CC / arcHeight 거리비례 / 전용 Spine rig** [S/M] · artillery-defender 후속.
 - ~~**Meteor→TileAoe 수렴 + GA 낙하 비주얼**~~ → `docs/spec/projectile-trajectory-payload/` units 7~9 **완료(2026-07-06)** — 레거시 3파일+큐 삭제(채널 15→14), Rock02 낙하+Hit_Rock03 파편, 스킬 aim/텔레그래프 격자 통일은 `placement-attack-range-preview/3_skill_aim_range.md`.
 - **Bezier 궤적 / non-Damage payload / Homing+TileAoe** [S/M] · projectile-trajectory-payload 엔진 확장 후속.
+- **적별 피격 반경(per-target hit radius)** [S] · 투사체 충돌은 현재 `투사체.hitThreshold` vs 적 **중심점 하나** 판정(`SweepHitMath.SegmentHits` / `ProjectileMoveSystem` HomingToEntity 도달). 적 SO엔 자기 hurtbox 필드가 없어(있는 건 `attackRange`=자기 공격 사거리뿐), `spineVisualScale 3.2` 보스처럼 몸 큰 유닛은 큰 몸통을 눈으로 관통해도 무판정 → 머신거너 등 직선 탄이 시각적으로 안 걸림. **제안**: `AttackUnitData.hitRadius` 필드(기본 0=현행 점 판정) + 스폰 시 `HitRadius` 컴포넌트 bake(1줄) + 충돌 2곳에서 `유효반경 = hitThreshold + target.hitRadius` 합산 + EditMode 1. 보스만 크게(≈1.2), 일반 적은 0으로 바이트 무회귀. **임시 완화**: `Projectile_MachineGunBullet.hitThreshold` 0.4→0.7(전 적 대상 균일 확대라 3.2배 보스는 여전히 부분 관통 — feature 착수 시 0.4 복귀 검토). projectile-trajectory-payload 엔진 확장. (nightmare-catcher 보스 피격 체감 관련)
 
 #### 적 스폰/이동 비주얼 (enemy-spawn-positioning)
 

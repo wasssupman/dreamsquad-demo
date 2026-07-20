@@ -18,6 +18,7 @@ MonoBehaviour:
   visualPrefab: {fileID: 5621389565848966519, guid: b63f23cad08cb45cf98a02a647d8e2de, type: 3}
   effects:
   - kind: 2
-    param1: 10
+    param1: 20
     param2: 0
     restDuration: 0.2
+    tickInterval: 1.0

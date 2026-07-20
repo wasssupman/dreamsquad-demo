@@ -124,8 +124,11 @@ namespace Wassup.UI
             if (GameManager.Instance != null && GameManager.Instance.IsAiming) return true;
             if (handView != null && handView.State == DreamcatcherHandView.HandState.Hand) return true;
             // 컨트롤러가 아직 AddComponent 되기 전이면 null — 드래그 중일 수 없으므로 통과.
+            // IsAiming(defender-directional-volley unit 6): 드롭은 끝났지만 방향 지정
+            // 스와이프가 진행 중이다. 막지 않으면 그 스와이프가 유닛 탭으로도 읽혀 인스펙트가
+            // 열리고, 방향 확정 뒤에도 이쪽 slomo/줌이 남아 닫는 클릭이 한 번 더 필요해진다.
             var drag = defenderSelector != null ? defenderSelector.DragController : null;
-            if (drag != null && drag.IsDragging) return true;
+            if (drag != null && (drag.IsDragging || drag.IsAiming)) return true;
             return false;
         }
 

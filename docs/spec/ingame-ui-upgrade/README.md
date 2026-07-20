@@ -2,6 +2,9 @@
 
 > 상태: 완료 2026-07-09 (커밋 e25fb553)
 
+> 위치 계약 후속 변경: `docs/spec/awakening-hud-resource-button/`에서 Placement Start 우하단은
+> 유지하고, Battle의 NextWaveDock만 좌하단으로 이동하며 각성은 Battle 우하단에 배치한다.
+
 ## 목표
 
 전투 화면의 두 UI 를 시각 업그레이드한다.

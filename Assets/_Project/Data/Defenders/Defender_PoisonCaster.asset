@@ -15,6 +15,8 @@ MonoBehaviour:
   id: poison_caster
   role: 4
   displayName: "\uD3EC\uC774\uC98C\uCE90\uC2A4\uD130"
+  desc: "\uCE90\uC2A4\uD130 \xB7 \uADFC\uC811\uD615. \uC9C0\uC18D \uD574\uC800\uB4DC
+    \uC124\uCE58."
   health: 450
   attackRange: 0
   attackCooldown: 4
@@ -32,6 +34,10 @@ MonoBehaviour:
   onPlaceDuration: 0
   cost: 3
   targetAllies: 0
+  directionalAttack: 0
+  shotCount: 1
+  shotIntervalSec: 0
+  spreadAngleDeg: 0
   hazardCastEnabled: 1
   hazardCastRange: 4
   hazardCastCooldown: 4
@@ -71,6 +77,12 @@ MonoBehaviour:
   deployAnimation: Hit
   placementVfxPrefab: {fileID: 0}
   attackVfxPrefab: {fileID: 0}
+  deployCutsceneFrames: []
+  deployCutsceneFps: 24
+  deployCutsceneScale: 1
+  deployCutsceneOffset: {x: 0, y: 0}
+  deployCutsceneDepth: []
+  deployCutsceneTiltGain: 1
   knockbackDistance: 0
   knockbackDuration: 0
   onPlacePushDistance: 0

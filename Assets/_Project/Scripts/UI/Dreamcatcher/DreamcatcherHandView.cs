@@ -22,6 +22,8 @@ namespace Wassup.UI
     // drops any pending drag state, and releases the lease.
     public class DreamcatcherHandView : MonoBehaviour
     {
+        public event System.Action HandOpened;
+
         [SerializeField] private DreamcatcherHandController handController;
         [SerializeField] private AwakeningGaugeView gaugeView;
         [SerializeField] private DefenderSelector defenderSelector;
@@ -29,6 +31,9 @@ namespace Wassup.UI
         // 스트립과 함께 배지도 퇴장시킨다. 표시 결정은 CostDisplay 가 소유.
         [SerializeField] private CostDisplay costDisplay;
         [SerializeField] private AwakeningConfig config;
+        // dreamcatcher-attach-lockon unit 0 — 부착 조준 포커스 연출 노브(dim/리티클/
+        // 콜아웃/base-ring/확정비트). 미할당 시 프레젠터 미생성(무회귀).
+        [SerializeField] private DreamcatcherFocusConfig focusConfig;
         // unit 7 — card drag targeting (screen ray → board cell → defender).
         [SerializeField] private Wassup.Bridge.BattleBridge bridge;
         [SerializeField] private Camera mainCamera;
@@ -98,6 +103,9 @@ namespace Wassup.UI
         public Color UnitHoverTint => unitHoverTint;
         // rev 4-6 — StS식 유닛 타겟팅 화살표(카드 고정 + 카드→포인터 점선 아크).
         public DreamcatcherTargetArrow TargetArrow => _targetArrow;
+        // dreamcatcher-attach-lockon — 부착 조준 포커스 연출 facade(dim/링/리티클/콜아웃).
+        public DreamcatcherFocusPresenter Focus => _focus;
+        public DreamcatcherFocusConfig FocusConfig => focusConfig;
 
         // card-fly-to-target-absorb unit 0 — 커밋 성공 시 손패 카드가 유닛으로
         // 날아가 찰싹 흡수. 발사점/스프라이트는 소비 전 호출부에서 캡처된 값.
@@ -215,6 +223,7 @@ namespace Wassup.UI
         private int _focusIndex = -1;  // hand-deal-in unit 1 — press-lift 대상 슬롯
         private TimeLease _slomoLease;
         private DreamcatcherTargetArrow _targetArrow;
+        private DreamcatcherFocusPresenter _focus; // dreamcatcher-attach-lockon
         private CardAbsorbFlightPresenter _flightPresenter; // card-fly unit 0 — lazy, 캔버스 루트 하위
         // Recovered-refresh deferral: rebinding slots mid-drag would snap the
         // floating card home and swap its entryId under the pointer.
@@ -474,6 +483,7 @@ namespace Wassup.UI
         {
             if (State == HandState.Hand) return;
             State = HandState.Hand;
+            if (gaugeView != null) gaugeView.SetOpen(true);
             Refresh();
             // Battle slows while shopping; UI/interaction stay realtime.
             _slomoLease.Dispose();
@@ -490,8 +500,10 @@ namespace Wassup.UI
         {
             if (State == HandState.UnitStrip) return;
             State = HandState.UnitStrip;
+            if (gaugeView != null) gaugeView.SetOpen(false);
             StopDeal();
             CancelAllCardInteraction(); // drop any in-flight drag (no spend)
+            _focus?.End(); // dreamcatcher-attach-lockon 계약 #10 — 포커스 오버레이 하드 클리어
             // hand-drag-tooltip unit 1 — 닫힘 계열은 즉시 숨김(침강 중 형제 잔류 방지).
             HideDragTooltip(immediate: true);
             _focusIndex = -1;
@@ -506,11 +518,13 @@ namespace Wassup.UI
         {
             // critic H2 — drop any in-flight drag/pending first (no spend).
             CancelAllCardInteraction();
+            _focus?.End(); // dreamcatcher-attach-lockon 계약 #10 — 포커스 오버레이 하드 클리어
             HideDragTooltip(immediate: true); // hand-drag-tooltip unit 1
             StopDeal(); // hand-deal-in — 잔류 트윈/late-land 방지
             _slomoLease.Dispose();
             if (_flip != null) { StopCoroutine(_flip); _flip = null; }
             State = HandState.UnitStrip;
+            if (gaugeView != null) gaugeView.SetOpen(false);
             // 억제 해제는 무조건 — 표시 여부는 CostDisplay 가 페이즈와 결합해 결정.
             if (costDisplay != null) costDisplay.SetSuppressed(false);
             if (_panel != null)
@@ -568,6 +582,7 @@ namespace Wassup.UI
             prt.localEulerAngles = Vector3.zero;
             _panel.SetActive(true);
             StartDeal();
+            HandOpened?.Invoke();
             _flip = null;
         }
 
@@ -787,6 +802,16 @@ namespace Wassup.UI
 
             // rev 4-6 — 타겟팅 화살표는 패널 뒤 sibling 으로 붙여 카드 위에 그려진다.
             _targetArrow = DreamcatcherTargetArrow.Create(transform);
+            _targetArrow.Configure(focusConfig);
+
+            // dreamcatcher-attach-lockon — 포커스 연출 프레젠터(dim/링/리티클/콜아웃/확정).
+            // 요소는 캔버스 루트 직속으로 만들고 sibling index 로 레이어를 강제한다(계약 #3).
+            if (focusConfig != null)
+            {
+                _focus = DreamcatcherFocusPresenter.Create(transform, focusConfig, labelFont);
+                _focus.Bind(bridge, handController, MainCamera);
+                _focus.EnforceSiblingOrder(_targetArrow.transform);
+            }
 
             BuildTooltip(roots.SafeAreaRoot);
         }

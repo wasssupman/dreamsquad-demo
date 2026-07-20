@@ -101,6 +101,37 @@ namespace Wassup.Battle.Combat.Projectile
                         break;
                     }
 
+                    case MovementKind.DirectionalLinear:
+                    {
+                        // defender-directional-volley unit 2 — straight flight along
+                        // the launch direction. No target entity: the shot resolves
+                        // in flight (PathHit sweeps prevPos→Position), so the only
+                        // endpoint is max range. prevPos is recorded before the step
+                        // so the payload gets the exact segment crossed this frame.
+                        float3 currentPos = transform.ValueRO.Position;
+                        projectile.ValueRW.prevPos = currentPos;
+
+                        float2 dir = projectile.ValueRO.direction;
+                        float3 newPos = currentPos + new float3(dir.x, 0f, dir.y) * (projectile.ValueRO.speed * dt);
+
+                        float3 origin = projectile.ValueRO.origin;
+                        float maxDistance = projectile.ValueRO.maxDistance;
+                        float traveled = math.distance(newPos.xz, origin.xz);
+                        if (traveled >= maxDistance)
+                        {
+                            // Land exactly on the range limit so the final sweep
+                            // covers the last tile and no further — overshoot would
+                            // hit past the defender's authored range.
+                            float2 end = origin.xz + dir * maxDistance;
+                            newPos = new float3(end.x, newPos.y, end.y);
+                            // Arrival here = "flight ended", not "hit something":
+                            // ProjectileHitSystem despawns after resolving this frame.
+                            projectile.ValueRW.impactReached = true;
+                        }
+                        transform.ValueRW.Position = newPos;
+                        break;
+                    }
+
                     default:
                         // Unhandled movement kind: destroy rather than leak an
                         // immortal entity (no position, no arrival, no resolve). A

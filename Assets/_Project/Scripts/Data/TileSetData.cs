@@ -21,6 +21,11 @@ namespace Wassup.Data
         public TileBase hoverTile;
         public TileBase rejectTile;
 
+        [Header("배치 액체 하이라이트 (placement-cell-snap unit 7 rev)")]
+        [Tooltip("포커스 셀 하이라이트 쿼드 머티리얼(Wassup/PlacementLiquidTile). 모양 튜닝은 이 .mat 인스펙터에서.\n" +
+                 "런타임 생성 쿼드가 쓰므로 반드시 에셋 참조 — Shader.Find 는 빌드 스트리핑에 걸린다.")]
+        public Material placementLiquidMaterial;
+
         [Header("Attack range highlight (placement-attack-range-preview)")]
         // 중립(흰색 계열) solid 타일. 색은 rangeColor 가 tint 로 입힌다.
         public TileBase rangeTile;
@@ -28,6 +33,18 @@ namespace Wassup.Data
         [Range(0f, 1f)] public float rangePulseMinAlpha = 0.35f;
         [Range(0f, 1f)] public float rangePulseMaxAlpha = 0.85f;
         [Min(0.05f)] public float rangePulseSpeed = 3f; // sin(unscaledTime * speed) 각속도
+
+        [Header("Placement highlight (placement-eligible-tile-highlight)")]
+        // 배치 가능 칸을 덮는 타일. 안쪽 은은한 fill + 가장자리 밝은 림이 한 스프라이트에 구워져
+        // "플랫폼(슬랩)" 느낌을 준다(3D 융기 없음). 색은 placeableColor 가 tint. 형태 조정(림/베벨)은
+        // 이 스프라이트 교체로만 — 페인트 코드는 스프라이트-agnostic. 미할당 시 뷰가 no-op.
+        public TileBase placeableTile;
+        [Tooltip("배치 하이라이트 tint. 차갑고 낮은 채도(초록 금지 — hover 전용, 노랑 금지 — 사거리와 충돌). " +
+                 "밝은 벌판이 안 되게 알파는 은은하게. 정확한 값은 시안 확정 후 덮어씀.")]
+        public Color placeableColor = new Color(0.5f, 0.88f, 1f, 0.5f); // 시안 림(Play 튜닝값). 배치영역=ambient, 사거리=focal
+        [Min(0f)]
+        [Tooltip("드래그/arm 시작 시 하이라이트가 0→placeableColor.a 로 차오르는 시간(초). unscaledTime 기준. 정적(펄스 없음).")]
+        public float placeableFadeInDuration = 0.2f;
 
         [Header("Surround terrain ring (tilemap-world-surround)")]
         [Tooltip("플레이 보드 밖 외곽 링에 칠할 터레인 타일. 비면 decoTile(grass) 폴백.")]

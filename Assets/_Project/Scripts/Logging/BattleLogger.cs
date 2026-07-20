@@ -69,6 +69,14 @@ namespace Wassup.Logging
             currentEntry.match.fixedSeed = fixedSeed;
         }
 
+        // 실제 맵 빌드에 사용된 시드로 덮어쓴다 (BattleBridge.fixedMapSeed 오버라이드,
+        // 수동 MapDocument(-1) 포함). SetMatchSeeds 의 파생값은 빌드 전 추정치다.
+        public void SetActualMapSeed(int seed)
+        {
+            if (currentEntry == null) return;
+            currentEntry.match.mapSeed = seed;
+        }
+
         public void SetEntryMode(string mode, bool testMode = false)
         {
             if (currentEntry == null) return;

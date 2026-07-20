@@ -15,6 +15,8 @@ MonoBehaviour:
   id: healer
   role: 5
   displayName: "\uD790\uB7EC"
+  desc: "\uC11C\uD3EC\uD2B8 \xB7 \uC544\uAD70 \uCE58\uC720\uD615. \uCD5C\uB300 3\uCCB4
+    \uB3D9\uC2DC \uD0C0\uACA9."
   health: 500
   attackRange: 3
   attackCooldown: 3
@@ -39,6 +41,10 @@ MonoBehaviour:
   onPlaceDuration: 0
   cost: 2
   targetAllies: 1
+  directionalAttack: 0
+  shotCount: 1
+  shotIntervalSec: 0
+  spreadAngleDeg: 0
   hazardCastEnabled: 0
   hazardCastRange: 0
   hazardCastCooldown: 0
@@ -78,13 +84,6 @@ MonoBehaviour:
   deployAnimation: Hit
   placementVfxPrefab: {fileID: 0}
   attackVfxPrefab: {fileID: 0}
-  knockbackDistance: 0
-  knockbackDuration: 0
-  onPlacePushDistance: 0
-  onPlacePushDuration: 0
-  onPlacePushRadius: 0
-  castAnchorBone: WEAPON
-  castAnchorLocalOffset: {x: 0.5, y: 1, z: 0}
   deployCutsceneFrames:
   - {fileID: 21300000, guid: 3b707298d274b42968fbd140e855e34f, type: 3}
   - {fileID: 21300000, guid: 2eec225a57bf54bfc9f2d08e94c0cc14, type: 3}
@@ -141,6 +140,13 @@ MonoBehaviour:
   deployCutsceneDepth:
   - {fileID: 2800000, guid: b7692292d564948de82fe21d20554c65, type: 3}
   deployCutsceneTiltGain: 1
+  knockbackDistance: 0
+  knockbackDuration: 0
+  onPlacePushDistance: 0
+  onPlacePushDuration: 0
+  onPlacePushRadius: 0
+  castAnchorBone: WEAPON
+  castAnchorLocalOffset: {x: 0.5, y: 1, z: 0}
   deploymentDuration: 0.45
   placementSkillDelay: 0
   awakeningReward: 4

@@ -13,12 +13,19 @@ namespace Wassup.UI
     // player either wait for the timer to elapse or tap START BATTLE to begin.
     public class PlacementPhaseView : MonoBehaviour
     {
+        public event System.Action PlacementReady;
+
         [SerializeField] private BattleBridge bridge;
         // gift-phase (review m2) — draftController 구독은 GiftPhaseView 로 이관되어 미사용,
         // 필드 제거.
         [SerializeField] private GameManager gameManager;
+        // DirectionAimController is created at runtime by DefenderSelector, so the
+        // phase owner observes it through the selector's read-only seam. This is a
+        // gameplay safety gate, not tutorial state: normal placement, Skip and the
+        // countdown must all wait until a drag/directional aim has settled.
+        [SerializeField] private DefenderSelector defenderSelector;
 
-        // ingame-ui-upgrade unit 0 — START 버튼을 우하단(dock 코너)으로 이동 + 캐주얼
+        // ingame-ui-upgrade unit 0 — START 버튼을 우하단(dock 코너)에 배치 + 캐주얼
         // 배경 그래픽 슬롯. startButtonBackground 할당 시 그 스프라이트, 비면 UiRoundedSprite
         // 절차 플레이트(다크 네이비 + 골드 테두리) 폴백. 실제 그래픽은 unit 1(Codex).
         [Header("Start button (casual bg image + TMP label)")]
@@ -48,12 +55,19 @@ namespace Wassup.UI
         private TextMeshProUGUI _countdownLabel;
         private Button _startButton;
         private RectTransform _startButtonRt;
+        private GameObject _startButtonWrap;
         private RectTransform _startAuraRt;
         private Tween _startPulse;
         private Tween _startAuraPulse;
         private float _remaining;
         private bool _active;
         private bool _built;
+        private bool _tutorialHold;
+        private bool _tutorialStartUnlocked;
+        private bool _startAvailable;
+
+        public RectTransform StartButtonRect => _startButtonRt;
+        public bool IsPlacementActive => _active;
 
         private void Awake()
         {
@@ -67,6 +81,9 @@ namespace Wassup.UI
         private void OnDisable()
         {
             SetStartJuice(false);
+            _tutorialHold = false;
+            _tutorialStartUnlocked = false;
+            _startAvailable = false;
         }
 
         public void BeginPlacementPhase()
@@ -82,27 +99,113 @@ namespace Wassup.UI
             _remaining = duration;
             _active = true;
             _panel.SetActive(true);
-            SetStartJuice(true);
+            _startAvailable = false;
+            RefreshStartAvailability();
+            PlacementReady?.Invoke();
         }
 
         private void Update()
         {
             if (!_active) return;
+            bool interactionBlocked = IsPlacementInteractionBlocked(out bool aiming);
+            RefreshStartAvailability(interactionBlocked);
+            if (interactionBlocked)
+            {
+                _countdownLabel.text = aiming ? "공격 방향을 정해주세요" : "배치 중";
+                return;
+            }
+            if (_tutorialHold)
+            {
+                _countdownLabel.text = "배치 연습";
+                return;
+            }
             _remaining -= Time.deltaTime;
             if (_remaining <= 0f) { _remaining = 0f; FinishPlacement(); return; }
             _countdownLabel.text = $"배치 단계  ·  {Mathf.CeilToInt(_remaining)}초";
         }
 
-        private void OnStartClicked() => FinishPlacement();
+        private void OnStartClicked()
+        {
+            if (!CanFinishPlacement())
+            {
+                RefreshStartAvailability();
+                return;
+            }
+            FinishPlacement();
+        }
+
+        // first-session-tutorial unit 2 — countdown ownership stays here. The
+        // tutorial only requests/revokes a gate; it never writes _remaining.
+        public void BeginTutorialGate()
+        {
+            if (!_active) return;
+            _tutorialHold = true;
+            _tutorialStartUnlocked = false;
+            if (_countdownLabel != null) _countdownLabel.text = "배치 연습";
+            RefreshStartAvailability();
+        }
+
+        public void UnlockTutorialStart()
+        {
+            if (!_active || !_tutorialHold) return;
+            _tutorialStartUnlocked = true;
+            RefreshStartAvailability();
+        }
+
+        public void EndTutorialGate(bool restoreNormalPlacement)
+        {
+            _tutorialHold = false;
+            _tutorialStartUnlocked = false;
+            if (!_active) return;
+            RefreshStartAvailability(animateWhenAvailable: restoreNormalPlacement);
+        }
 
         private void FinishPlacement()
         {
+            // All callers converge here so a same-frame Skip/Start click or countdown
+            // expiry cannot bypass the runtime interaction guard.
+            if (!CanFinishPlacement()) return;
             _active = false;
+            _tutorialHold = false;
+            _tutorialStartUnlocked = false;
+            _startAvailable = false;
             SetStartJuice(false);
             _panel.SetActive(false);
             if (gameManager != null) gameManager.SetPhase(GamePhase.Battle);
             if (gameManager != null && gameManager.CostRuntime != null) gameManager.CostRuntime.BeginRegen();
             if (bridge != null) bridge.StartBattle();
+        }
+
+        private bool CanFinishPlacement()
+        {
+            if (!_active) return false;
+            bool interactionBlocked = IsPlacementInteractionBlocked(out _);
+            return PlacementPhasePolicy.CanFinish(
+                _tutorialHold, _tutorialStartUnlocked, interactionBlocked);
+        }
+
+        private bool IsPlacementInteractionBlocked(out bool aiming)
+        {
+            var drag = defenderSelector != null ? defenderSelector.DragController : null;
+            aiming = drag != null && drag.IsAiming;
+            return aiming || (drag != null && drag.IsDragging);
+        }
+
+        private void RefreshStartAvailability(bool? interactionBlocked = null,
+            bool animateWhenAvailable = true)
+        {
+            if (!_active) return;
+            bool blocked = interactionBlocked ?? IsPlacementInteractionBlocked(out _);
+            bool available = PlacementPhasePolicy.CanFinish(
+                _tutorialHold, _tutorialStartUnlocked, blocked);
+            if (_startAvailable == available &&
+                (_startButtonWrap == null || _startButtonWrap.activeSelf == available) &&
+                (_startButton == null || _startButton.interactable == available)) return;
+
+            _startAvailable = available;
+            if (_startButtonWrap != null) _startButtonWrap.SetActive(available);
+            if (_startButton != null) _startButton.interactable = available;
+            SetStartJuice(available && animateWhenAvailable);
         }
 
         // Idle "look here" juice: breathing button scale + a larger, faster gold aura
@@ -165,27 +268,27 @@ namespace Wassup.UI
             _countdownLabel.color = Color.yellow;
             _countdownLabel.alignment = TextAlignmentOptions.Center;
 
-            // Bottom-right START BATTLE button — sits in the same corner the battle-phase
-            // NextWaveDock later occupies (placement/battle are exclusive phases, so no
-            // visual clash). A pulsing gold aura + idle breathing pull the eye to the
+            // Bottom-right START BATTLE button. Awakening stays hidden during Placement,
+            // so this remains the phase's only primary corner action. A pulsing gold aura
+            // + idle breathing pull the eye to the
             // corner; background is the casual graphic if assigned, else a procedural
             // amber+gold plate fallback.
             const float btnW = 280f, btnH = 104f;
 
             // Corner wrapper: places the whole widget at the dock corner. Aura + button
             // are centered siblings under it so each animates its own scale independently.
-            var wrapGO = new GameObject("StartButtonWrap", typeof(RectTransform));
-            wrapGO.transform.SetParent(_panel.transform, false);
-            var wrapRt = (RectTransform)wrapGO.transform;
+            _startButtonWrap = new GameObject("StartButtonWrap", typeof(RectTransform));
+            _startButtonWrap.transform.SetParent(_panel.transform, false);
+            var wrapRt = (RectTransform)_startButtonWrap.transform;
             wrapRt.anchorMin = new Vector2(1f, 0f);
             wrapRt.anchorMax = new Vector2(1f, 0f);
             wrapRt.pivot = new Vector2(1f, 0f);
-            wrapRt.anchoredPosition = new Vector2(-40f, 40f); // aligns with NextWaveDock corner
+            wrapRt.anchoredPosition = new Vector2(-40f, 40f);
             wrapRt.sizeDelta = new Vector2(btnW, btnH);
 
             // Pulsing gold aura behind the button (centered, larger; scale/alpha animate).
             var auraGO = new GameObject("Aura", typeof(RectTransform), typeof(Image));
-            auraGO.transform.SetParent(wrapGO.transform, false);
+            auraGO.transform.SetParent(_startButtonWrap.transform, false);
             _startAuraRt = (RectTransform)auraGO.transform;
             _startAuraRt.anchorMin = new Vector2(0.5f, 0.5f);
             _startAuraRt.anchorMax = new Vector2(0.5f, 0.5f);
@@ -199,7 +302,7 @@ namespace Wassup.UI
             // Button (centered). Color lives in the sprite (white Image tint) so the
             // Button's default ColorTint still multiplies white for hover/press feedback.
             var btnGO = new GameObject("StartButton", typeof(RectTransform), typeof(Image), typeof(Button));
-            btnGO.transform.SetParent(wrapGO.transform, false);
+            btnGO.transform.SetParent(_startButtonWrap.transform, false);
             _startButtonRt = (RectTransform)btnGO.transform;
             _startButtonRt.anchorMin = new Vector2(0.5f, 0.5f);
             _startButtonRt.anchorMax = new Vector2(0.5f, 0.5f);
@@ -249,5 +352,12 @@ namespace Wassup.UI
 
             UiLayer.Apply(gameObject);
         }
+    }
+
+    internal static class PlacementPhasePolicy
+    {
+        public static bool CanFinish(bool tutorialHold, bool tutorialStartUnlocked,
+            bool placementInteractionBlocked) =>
+            (!tutorialHold || tutorialStartUnlocked) && !placementInteractionBlocked;
     }
 }

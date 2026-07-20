@@ -1,5 +1,8 @@
 # 4 — Handoff Summary
 
+> rev 2026-07-18: 아래는 당시 인계 기록이다. 최신 수명 계약은 README/unit 8의
+> "최종 프레임 0.5초 자동 퇴장 + 배치 성공 즉시 강제 초기화"가 대체한다.
+
 ## Commit
 
 `8be9cc5c` — feat(defender-deploy-cutscene): 드래그 배치 시 좌상단 유닛 컷신 (Ranger·Archer)

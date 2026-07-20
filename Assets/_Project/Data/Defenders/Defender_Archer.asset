@@ -15,6 +15,8 @@ MonoBehaviour:
   id: archer
   role: 1
   displayName: "\uC544\uCC98"
+  desc: "\uB808\uC778\uC800 \xB7 \uC6D0\uAC70\uB9AC\uD615. \uBC30\uCE58 \uC2DC \uC8FC\uBCC0
+    \uC18D\uBC15."
   health: 500
   attackRange: 4
   attackCooldown: 6.02
@@ -39,6 +41,10 @@ MonoBehaviour:
   onPlaceDuration: 1.5
   cost: 2
   targetAllies: 0
+  directionalAttack: 0
+  shotCount: 1
+  shotIntervalSec: 0
+  spreadAngleDeg: 0
   hazardCastEnabled: 0
   hazardCastRange: 0
   hazardCastCooldown: 0

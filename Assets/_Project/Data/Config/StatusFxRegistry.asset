@@ -35,16 +35,16 @@ MonoBehaviour:
     fallbackTint: {r: 1, g: 0.85, b: 0.2, a: 1}
     fallbackGlyph: 0
   - kind: 3
-    prefab: {fileID: 8061970993024084810, guid: 1391ff2b6806e6243b755eadb0454281, type: 3}
-    localOffset: {x: 0, y: 2, z: 0}
-    scale: 0.5
+    prefab: {fileID: 2263400886593003554, guid: eaeccbed9ac864e3fa18edc8cff93c0b, type: 3}
+    localOffset: {x: 0, y: 0.05, z: 0.2}
+    scale: 0.85
     billboard: 0
     fallbackTint: {r: 0.35, g: 0.3, b: 0.5, a: 1}
     fallbackGlyph: 0
   - kind: 4
-    prefab: {fileID: 8061970993024084810, guid: 4e1d17e80066ad164fac2cd7ae36a121, type: 3}
-    localOffset: {x: 0, y: 0.1, z: 0}
-    scale: 0.35
+    prefab: {fileID: 3599447086356864173, guid: 03f63f5e4bf4440bf95776e236eeda75, type: 3}
+    localOffset: {x: 0, y: 0, z: 0.2}
+    scale: 0.7
     billboard: 0
     fallbackTint: {r: 0.8, g: 0.1, b: 0.08, a: 1}
     fallbackGlyph: 0

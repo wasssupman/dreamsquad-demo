@@ -71,7 +71,7 @@ MonoBehaviour:
   fovMin: 41
   fovMax: 60
   focusDolly: 0
-  focusFovDelta: 6
+  focusFovDelta: 4
   focusLookWeight: 0.25
   focusLeanPerSpeed: 1.2
   focusLeanMaxDeg: 2.5

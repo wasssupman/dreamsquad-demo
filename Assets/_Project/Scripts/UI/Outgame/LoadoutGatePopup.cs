@@ -81,11 +81,15 @@ namespace Wassup.UI
 
         // Counts explain the usual case; a reason covers what counts cannot — a
         // full-size deck holding an unknown id would otherwise read "8/8" and send
-        // the player in circles.
+        // the player in circles. Over-size gets its own line: a bare "10/8" after a
+        // deck-size shrink reads as "10 of 8 needed — fine" and hides that the fix
+        // is to remove cards, not add them.
         private static string Describe(LoadoutShortfall s)
         {
             string label = s.target == LoadoutTarget.Squad ? "스쿼드" : "드림캐쳐 덱";
-            if (s.have != s.need) return $"{label}   {s.have}/{s.need}";
+            string unit = s.target == LoadoutTarget.Squad ? "명" : "장";
+            if (s.have > s.need) return $"{label}   {s.have}/{s.need} — {s.have - s.need}{unit} 줄여야 해요";
+            if (s.have < s.need) return $"{label}   {s.have}/{s.need}";
             return string.IsNullOrEmpty(s.reason) ? label : $"{label}   {s.reason}";
         }
 
@@ -131,7 +135,7 @@ namespace Wassup.UI
             title.text = "출전 준비가 덜 됐어요";
 
             var hint = MakeText(_panel, new Vector2(0f, -84f), new Vector2(700f, 32f), 24f, SectionMuted, FontStyles.Normal);
-            hint.text = "아래 항목을 채워야 시작할 수 있어요.";
+            hint.text = "아래 항목을 맞춰야 시작할 수 있어요.";
 
             var lineGo = new GameObject("Lines", typeof(RectTransform), typeof(VerticalLayoutGroup));
             lineGo.transform.SetParent(_panel, false);

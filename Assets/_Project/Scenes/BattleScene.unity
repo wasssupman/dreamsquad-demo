@@ -403,6 +403,18 @@ MonoBehaviour:
   groundTilemap: {fileID: 1520756905}
   overlayTilemap: {fileID: 673419656}
   groundShadowMaterial: {fileID: 2100000, guid: 20a4b8f99a0fb460a82db3f52850cdd0, type: 2}
+  commitPopDuration: 0.16
+  commitPopStartScale: 1.3
+  commitPopEndScale: 1
+  commitPopStartAlpha: 0.85
+  commitPopValidColor: {r: 0.35, g: 1, b: 0.9, a: 1}
+  commitPopInvalidColor: {r: 1, g: 0.4, b: 0.32, a: 1}
+  liquidValidBorder: {r: 0.45, g: 1, b: 0.55, a: 0.95}
+  liquidValidFill: {r: 0.35, g: 0.95, b: 0.45, a: 0.45}
+  liquidInvalidBorder: {r: 1, g: 0.45, b: 0.35, a: 0.95}
+  liquidInvalidFill: {r: 1, g: 0.35, b: 0.28, a: 0.4}
+  liquidSpring: 90
+  liquidDamping: 9
 --- !u!156049354 &172395675
 Grid:
   m_ObjectHideFlags: 0
@@ -748,6 +760,68 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 0}
+--- !u!1 &322840703
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 322840705}
+  - component: {fileID: 322840704}
+  m_Layer: 0
+  m_Name: BossWarningView
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &322840704
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 322840703}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c4e8b5968583f428894b65a11b76229f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.BossWarningView
+  warningFont: {fileID: 11400000, guid: 3e875d8f3088f4559af897fb924f19a5, type: 2}
+  warningMaterial: {fileID: 2100000, guid: 52e1410b5122a4e3b980294f42e9eb02, type: 2}
+  vignetteSprite: {fileID: 21300000, guid: 81dc17ec18fd24896ba17ce06c640d0f, type: 3}
+  warningText: "\uAFC8\uACB0 \uC704\uAE30!!"
+  fontSize: 150
+  crimsonColor: {r: 0.86, g: 0.12, b: 0.14, a: 1}
+  whiteHotFlash: {r: 1, g: 0.95, b: 0.92, a: 1}
+  plateSize: {x: 900, y: 240}
+  plateColor: {r: 0.05, g: 0.03, b: 0.06, a: 0.82}
+  plateBorderColor: {r: 0.86, g: 0.12, b: 0.14, a: 0.95}
+  plateCornerRadius: 24
+  plateBorderWidth: 3
+  vignetteColor: {r: 0.7, g: 0.05, b: 0.06, a: 0.55}
+  slamFromScale: 1.6
+  slamInDuration: 0.35
+  holdDuration: 1.4
+  fadeOutDuration: 0.5
+  sortingOrder: 8
+--- !u!4 &322840705
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 322840703}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &441089444
 GameObject:
   m_ObjectHideFlags: 0
@@ -1597,6 +1671,7 @@ MonoBehaviour:
   nameFont: {fileID: 11400000, guid: 218cce73e3172a04a8c536a4d368d90f, type: 2}
   trayConfig: {fileID: 11400000, guid: 903c6fe71bf7844489939928774546b6, type: 2}
   costDisplay: {fileID: 1075095674}
+  gimmickGuide: {fileID: 1916999830}
   placementSize: {x: 912, y: 120}
   battleSize: {x: 912, y: 88}
 --- !u!4 &915292525
@@ -1673,6 +1748,7 @@ GameObject:
   m_Component:
   - component: {fileID: 956177015}
   - component: {fileID: 956177014}
+  - component: {fileID: 956177016}
   m_Layer: 0
   m_Name: DcIconStripSpawner
   m_TagString: Untagged
@@ -1716,6 +1792,21 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &956177016
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 956177013}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 074ade6da03c4d7a8b041d09b55b716c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Presentation.UnitOverheadUiLayer
+  style: {fileID: 11400000, guid: 7a6b5c4d3e2f10988776655443322110, type: 2}
+  hand: {fileID: 2054561897}
+  sortingOrder: 3
 --- !u!1 &1004191865
 GameObject:
   m_ObjectHideFlags: 0
@@ -1812,9 +1903,24 @@ MonoBehaviour:
   handController: {fileID: 2054561897}
   labelFont: {fileID: 11400000, guid: 218cce73e3172a04a8c536a4d368d90f, type: 2}
   numberFont: {fileID: 11400000, guid: 7f50de03946cd4d229e8920dd91dbd1a, type: 2}
-  backingColor: {r: 0.07, g: 0.05, b: 0.14, a: 0.88}
-  fillColor: {r: 0.62, g: 0.4, b: 1, a: 0.95}
+  burstFrameSprite: {fileID: 21300000, guid: c7b317b798a348499d23dfe3086b0aef, type: 3}
+  backingColor: {r: 0.07, g: 0.05, b: 0.14, a: 0.94}
+  fillColor: {r: 0.7, g: 0.43, b: 1, a: 1}
+  chargedColor: {r: 0.43, g: 0.92, b: 1, a: 1}
+  haloColor: {r: 0.56, g: 0.28, b: 1, a: 0.5}
+  maxColor: {r: 1, g: 0.77, b: 0.12, a: 1}
+  dormantFrameColor: {r: 0.68, g: 0.65, b: 0.76, a: 0.78}
   valuePunchScale: 1.18
+  ambientCycleSeconds: 3.2
+  ambientScale: 1.018
+  ambientTiltDegrees: 0.6
+  dormantAmbientMultiplier: 0.45
+  sheenIntervalSeconds: 3.8
+  sheenSweepSeconds: 0.68
+  sheenSize: {x: 30, y: 154}
+  sheenTravel: 86
+  sheenTiltDegrees: -16
+  sheenColor: {r: 0.82, g: 0.98, b: 1, a: 0.18}
 --- !u!4 &1012444855
 Transform:
   m_ObjectHideFlags: 0
@@ -2118,6 +2224,8 @@ MonoBehaviour:
   warnSeconds: 30
   tickPunch: 0.16
   tickPunchWarn: 0.36
+  dockFrameSprite: {fileID: 21300000, guid: 238188419280461bb3401c9dc5644aec, type: 3}
+  buttonFaceSprite: {fileID: 21300000, guid: 4bf3b1cb9224409fb02949fdd0e7bb8a, type: 3}
   buttonColor: {r: 0.12, g: 0.42, b: 0.82, a: 0.95}
   buttonFontSize: 28
   backingColor: {r: 0, g: 0, b: 0, a: 0.45}
@@ -2361,6 +2469,18 @@ MonoBehaviour:
   tabColor: {r: 1, g: 0.78, b: 0.28, a: 1}
   tabTextColor: {r: 0.1, g: 0.08, b: 0.04, a: 1}
   tabSize: {x: 196, y: 46}
+  leakPlateSize: {x: 360, y: 64}
+  leakPlateGap: 10
+  leakTabSize: {x: 112, y: 42}
+  leakValueFontSize: 38
+  leakNormalColor: {r: 1, g: 0.9, b: 0.66, a: 1}
+  leakWarningColor: {r: 1, g: 0.58, b: 0.2, a: 1}
+  leakCriticalColor: {r: 1, g: 0.25, b: 0.2, a: 1}
+  leakFlashColor: {r: 1, g: 1, b: 1, a: 1}
+  leakWarningRemaining: 3
+  leakCriticalRemaining: 1
+  leakPunchScale: 1.18
+  leakPunchDuration: 0.22
 --- !u!4 &1279129163
 Transform:
   m_ObjectHideFlags: 0
@@ -2819,6 +2939,7 @@ MonoBehaviour:
   defenderSelector: {fileID: 915292524}
   costDisplay: {fileID: 1075095674}
   config: {fileID: 11400000, guid: b1ff068a6a1b7a44b8fd4ea85f159ff6, type: 2}
+  focusConfig: {fileID: 11400000, guid: 4c0ee75552ae74daabf68d5c0c14058a, type: 2}
   bridge: {fileID: 1939688408}
   mainCamera: {fileID: 1420088185}
   labelFont: {fileID: 11400000, guid: 218cce73e3172a04a8c536a4d368d90f, type: 2}
@@ -2863,6 +2984,75 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1558370268}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1572896085
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1572896088}
+  - component: {fileID: 1572896087}
+  - component: {fileID: 1572896086}
+  m_Layer: 0
+  m_Name: FirstSessionTutorial
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1572896086
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1572896085}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 51e3e73f1575f4fdba65d717ba8ca3bb, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.Tutorial.FirstSessionTutorialController
+  profileSO: {fileID: 11400000, guid: e610b4c0bbbeb4becb09188e400e6a55, type: 2}
+  gameManager: {fileID: 1495062450}
+  placementView: {fileID: 1628485822}
+  defenderSelector: {fileID: 915292524}
+  mapView: {fileID: 172395674}
+  mainCamera: {fileID: 1420088185}
+  gimmickGuide: {fileID: 1916999830}
+  guidance: {fileID: 1572896087}
+  handController: {fileID: 2054561897}
+  gaugeView: {fileID: 1012444854}
+  handView: {fileID: 1558370269}
+--- !u!114 &1572896087
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1572896085}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 624fc3e5194df4ebc90d62a448ea7311, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.Tutorial.TutorialGuidanceView
+  style: {fileID: 11400000, guid: ff4463a1c695b43b4b9d517be3eaac64, type: 2}
+--- !u!4 &1572896088
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1572896085}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -3114,6 +3304,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.PlacementPhaseView
   bridge: {fileID: 1939688408}
   gameManager: {fileID: 1495062450}
+  defenderSelector: {fileID: 915292524}
   startButtonBackground: {fileID: 21300000, guid: 28f2212786468bd48bd8ef2496cde2b7, type: 3}
   startFillColor: {r: 0.96, g: 0.58, b: 0.14, a: 1}
   startBorderColor: {r: 1, g: 0.9, b: 0.55, a: 1}
@@ -3648,7 +3839,7 @@ MonoBehaviour:
   useProcedural: 1
   mapSource: 4
   mapGridSettings: {fileID: 11400000, guid: 1f2599c24bec64c26941cf5e9b0137e1, type: 2}
-  mapDocument: {fileID: 0}
+  mapDocument: {fileID: 11400000, guid: 1a25446142d844b5eb449719c8b67cee, type: 2}
   seasonRegistry: {fileID: 11400000, guid: d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8, type: 2}
   mapPathShape: 1
   mapGenerationOptions:
@@ -3692,7 +3883,10 @@ MonoBehaviour:
   statusFxSpawner: {fileID: 1737790243}
   tileHealthGaugeLayer: {fileID: 1218224327}
   dcIconStripSpawner: {fileID: 956177014}
+  unitHealthPresentationMode: 1
+  unitOverheadUiLayer: {fileID: 956177016}
   scoreHud: {fileID: 1279129162}
+  _bossWarning: {fileID: 322840704}
   _projectileViewPool: {fileID: 808760338}
   placementInput: {fileID: 1495062452}
   boardViewMode: 1
@@ -3700,7 +3894,7 @@ MonoBehaviour:
   tileSet: {fileID: 11400000, guid: d780c834df42b40c18b728204ba621fb, type: 2}
   tilemapCameraPresetRect: {fileID: 11400000, guid: 73ae958cfa7504f9c9fcdec440db387e, type: 2}
   tilemapCameraPresetIso: {fileID: 11400000, guid: 3d42947ee5b244f2dbf7438570a204a8, type: 2}
-  tilemapCharacterScale: 0.42
+  tilemapCharacterScale: 0.504
   tilemapBillboardTilt: 45
   propDistanceTiltFactor: 0.78
   propDistanceTiltMin: 28
@@ -3868,3 +4062,5 @@ SceneRoots:
   - {fileID: 1916999831}
   - {fileID: 751645448}
   - {fileID: 603193525}
+  - {fileID: 322840705}
+  - {fileID: 1572896088}

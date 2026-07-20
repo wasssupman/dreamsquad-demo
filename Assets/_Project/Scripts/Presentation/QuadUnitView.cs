@@ -22,6 +22,29 @@ namespace Wassup.Presentation
 
         public Entity Entity => _entity;
 
+        // unit-overhead-ui — SpineUnitView와 동일한 실제 실루엣 screen bounds 계약.
+        public bool TryGetScreenRect(Camera cam, out Rect rect)
+        {
+            rect = default;
+            if (cam == null || _renderer == null) return false;
+            var b = _renderer.bounds;
+            Vector2 lo = new Vector2(float.MaxValue, float.MaxValue);
+            Vector2 hi = new Vector2(float.MinValue, float.MinValue);
+            for (int i = 0; i < 8; i++)
+            {
+                var corner = new Vector3(
+                    (i & 1) == 0 ? b.min.x : b.max.x,
+                    (i & 2) == 0 ? b.min.y : b.max.y,
+                    (i & 4) == 0 ? b.min.z : b.max.z);
+                var sp = cam.WorldToScreenPoint(corner);
+                if (sp.z <= 0f) return false;
+                lo = Vector2.Min(lo, new Vector2(sp.x, sp.y));
+                hi = Vector2.Max(hi, new Vector2(sp.x, sp.y));
+            }
+            rect = Rect.MinMaxRect(lo.x, lo.y, hi.x, hi.y);
+            return rect.width > 0f && rect.height > 0f;
+        }
+
         public void Configure(Entity entity, Mesh mesh, Material material, float visualScale)
         {
             _entity = entity;

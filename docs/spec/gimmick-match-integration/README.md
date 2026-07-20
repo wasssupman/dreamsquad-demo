@@ -1,6 +1,6 @@
 # gimmick-match-integration
 
-> 상태: 완료 2026-07-15 — unit 0~2 구현·검증(EditMode 813 pass, Play on/off 로그 확인). 커밋 `4484b729`·`113c2abf`·`c9b5f3d5`. handoff: `4_handoff_summary.md`. 미확인: 배치 페이즈 카드 육안(Notes 참조).
+> 상태: 완료 2026-07-19 — unit 5(카드 우상단 슬라이드인+칩 접힘, 커밋 `2d267bc0`)까지 종료. unit 0~2 는 완료 2026-07-15(EditMode 813 pass, Play on/off 로그 확인, 커밋 `4484b729`·`113c2abf`·`c9b5f3d5`). handoff: `4_handoff_summary.md`.
 
 ## 상위 목표
 
@@ -28,7 +28,7 @@
 3. **배정 결과 노출/주입**: `GameManager.AssignedGimmick`(읽기 전용) + `bridge.SetAssignedGimmick(g)`. BattleBridge 의 **3개 소비 지점**(config 주입·픽업 스폰 게이트·디버그 로그)이 모두 `_assignedGimmick` 을 읽는다(시즌 안 읽음). ECS 게이트웨이 경계 유지 — 배정은 Mono 측 결정, BattleBridge 가 blittable 로 복사.
 4. **결정론**: 같은 matchSeed → 같은 기믹. 순수 `GimmickSelection.PickIndex(count, seed)` + EditMode 테스트로 고정. `MatchSeed.DeriveGimmickSeed` 신설(기존 salt 패턴 미러). `_assignedGimmick` 은 두 소비 지점(맵 빌드 L647·StartBattle L4164)보다 먼저 세팅됨이 보장(계약 2).
 5. **안내 UI = `GimmickGuideView`**(MonoBehaviour, 자체 캔버스). `GameManager.PhaseChanged` 구독 — `Placement` 진입 시 `AssignedGimmick`(displayName+description) 카드 표시, 다른 페이즈 전이 시 숨김. `AssignedGimmick==null` 이면 표시 안 함. enable 시 현재 페이즈에 동기(재시작/late-enable 대비).
-6. **UI 위치**: 좌상단 메뉴버튼 회피 — 상단 중앙 카운트다운 배너 **아래**. sortingOrder < 1000(메뉴 버튼이 위에 남음), `raycastTarget=false`(배치 입력 비차단).
+6. **UI 위치** (unit 5 rev): 카드/칩 모두 **우상단 코너 도킹** — 카드는 오른쪽 화면 밖에서 슬라이드-인으로 등장, 첫 배치 상호작용(드래그/arm), "가즈아" 확인 버튼, 또는 수 초 경과 시 같은 코너의 **칩으로 접힌다**(칩 탭으로 재확장, 접힘이 배치 중 기본). 상단 중앙 배너·좌상단 메뉴버튼과 비겹침, sortingOrder < 1000, 카드 몸체 `raycastTarget=false`(배치 입력 비차단 — 가즈아/칩 버튼만 예외).
 7. **하드코딩 금지 유지**: 기믹 수치는 concrete SO(OverworkGimmickData), 표시 텍스트도 SO(displayName/description). `BattleConfig` 는 순수 데이터 컨테이너 — **추후 시트 임포트 대상**.
 8. **무회귀 커밋 규율**: 각 유닛은 독립 검증 가능, `main` 을 깨거나 기믹을 조용히 dormant 로 두지 않는다. → BattleConfig **에셋은 unit 0**, `GameManager.battleConfig` **배선은 unit 1**(스왑과 동시). 각 뷰의 씬 배선은 그 코드 유닛과 같이.
 9. **범위**: 새 기믹 종류 신설 금지(제약 9). pool 은 현재 Overwork 1개 엔트리. 메커니즘만 세운다.
@@ -42,6 +42,7 @@
 | 2 | 신규 UI | `2_placement_guide_view.md` | `GimmickGuideView` 안내 카드 + **씬 배선** |
 | 3 | 통합 검증 | `3_verify_matrix.md` | on/off·재시작 통합 Play 검증 매트릭스 |
 | 4 | handoff | `4_handoff_summary.md` | 종료/인계 요약 (구현 후 작성) |
+| 5 | UI 개선 | `5_guide_collapse_chip.md` | 안내 카드 접힘 — 읽힌 뒤 우상단 칩으로 전환(맵 시야 확보) |
 
 ## 파이프라인 커버리지
 
@@ -51,6 +52,6 @@ N/A — 이 spec 은 데이터 SO(`BattleConfig`) + 매치 셋업 로직 + MonoB
 
 - 기믹 종류 확장(2번째 기믹) — 생길 때 `effect-trigger-unification`(파킹 문서) 착수 트리거.
 - `BattleConfig` 시트 임포터(구글시트→SO). 지금은 수기 편집.
-- 안내 카드 아이콘/일러스트, 등장 연출(현재는 정적 카드).
+- 안내 카드 아이콘/일러스트(GimmickData 아이콘 필드 포함), 등장 연출.
 - 기믹 배정 결과 `BattleLogger`/토너먼트 리포트 기록.
-- 배틀 중 상시 기믹 배지(placement 이후에도 요약 표시).
+- 배틀 중 상시 기믹 배지(placement 이후에도 요약 표시 — unit 5 칩은 Placement 전용).

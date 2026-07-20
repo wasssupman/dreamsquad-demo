@@ -301,8 +301,10 @@ namespace Wassup.Presentation
         private System.Collections.IEnumerator FlashRoutine(float dur)
         {
             var skel = _skeleton.Skeleton;
-            // flash 시작 시 현재 색 캡처 → 흰색으로 튀었다가 그 색으로 복귀(health/hover 상태 무관).
-            Color restore = new Color(skel.R, skel.G, skel.B);
+            // flash 복귀 목표 = resting 색. hover 틴트 활성 중이면 _savedTint(=진짜 base)를
+            // 잡는다 — skel 현재값은 우리 틴트라 그걸 restore 로 캡처하면 hover 가 flash 도중
+            // 해제될 때 flash 종료가 틴트색으로 굳는다(stray tint). 저장값 기준으로 닫는다.
+            Color restore = _hoverHighlightActive ? _savedTint : new Color(skel.R, skel.G, skel.B);
             skel.R = 1f; skel.G = 1f; skel.B = 1f;
             float e = 0f;
             while (e < dur)

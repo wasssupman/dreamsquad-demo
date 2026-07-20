@@ -1,30 +1,33 @@
 # Spec — Defender Deploy Cutscene
 
-> 상태: **완료** (2026-07-14) — 재생기·트리거·배선 전부 종료.
+> 상태: **units 8·9 구현 완료 · Unity 컴파일 clean · Play 확인 대기 (2026-07-18)**
+> — unit 8 `e29300eb`, unit 9 `e3632167`.
 > 확장 이력: Guardian 프레임 (2026-07-15, `5cbee1b4`) · 뎁스 패럴랙스 통합 (2026-07-15, `de2275ee`)
 > · Cannon (2026-07-16, unit 5 — `bc452d78`) · Sniper (`459e2d80`) · FireCaster·Healer (`5849e370`).
 >
 > **컷신 보유 7종**: Ranger · Archer · Guardian · Cannon · Sniper · FireCaster · Healer.
 > 전부 자산·할당 완료, **Play 검증 대기**(scale/offset 은 계산 시작값).
 >
-> 인계 지도: `4_handoff_summary.md`(Ranger/Archer) → `6_handoff_summary.md`(Cannon~Healer).
+> 인계 지도: `4_handoff_summary.md`(Ranger/Archer) → `6_handoff_summary.md`(Cannon~Healer)
+> → `10_handoff_summary.md`(수명 정정·Guardian 공용 배선).
 
 ## 상위 목표
 
 유닛을 드래그로 배치하는 스와이프 동안, 해당 유닛의 짧은 컷신(스프라이트 플립북)이
 화면 **좌하단 모서리**에 등장한다. 컷신은 로비 캐릭터의 스프라이트 애니메이션 개념을
 참고하되(프레임을 UI Image 에 순차 표시), 원샷 플립북이므로 Animator 없이 스크립트로
-재생한다. 화면 왼쪽 **바깥에서 빠르게 슬라이드-인**하며 애니를 재생하고, **스와이프가
-끝나면** 왼쪽으로 슬라이드-아웃하며 사라진다.
+재생한다. 화면 왼쪽 **바깥에서 빠르게 슬라이드-인**하며 애니를 재생하고, 마지막 포즈를
+0.5초 유지한 뒤 왼쪽으로 자동 퇴장한다. 배치 성공 시에는 연출 중이어도 즉시 사라진다.
 
-> 이 문단은 rev 2026-07-15(수명=스와이프 연동)·rev 2026-07-16(앵커=좌하단) 반영본이다.
-> 초기 계약은 "좌상단 + 애니 완주 후 1초 hold 후 자동 소멸 + 드래그와 독립"이었고 **폐지**됐다.
+> 이 문단은 rev 2026-07-18(unit 8 수명)·rev 2026-07-16(앵커=좌하단) 반영본이다.
+> 과거 "스와이프 종료 연동" 계약은 폐지됐다.
 > 상세는 아래 공통 원칙의 `수명`·`배치/연출` bullet 참조.
 
 ## 검증 질문
 
-Defender_Ranger 를 드래그로 집으면 좌하단에 Ranger 컷신 플립북이 뜨고, 드래그하는 동안
-유지되다가 드롭/취소하면 왼쪽으로 슬라이드-아웃하며 사라지는가? 스와이프 방향으로
+Defender_Ranger 를 드래그로 집으면 좌하단에 Ranger 컷신 플립북이 뜨고, 완주 후
+마지막 포즈를 0.5초 유지한 뒤 왼쪽으로 슬라이드-아웃하며 사라지는가? 단, 배치가 성공하면
+연출 단계와 무관하게 즉시 숨고 초기 상태로 돌아가는가? 스와이프 방향으로
 컷신 아트가 3D 회전하듯 기울고 손을 떼면 0 으로 복귀하는가(뎁스 패럴랙스)? 컷신 프레임이
 없는 유닛은 아무 일도 일어나지 않는가?
 
@@ -34,10 +37,12 @@ Defender_Ranger 를 드래그로 집으면 좌하단에 Ranger 컷신 플립북�
 |---|---|---|---|
 | 0 | `0_sprite_pipeline.md` | Ranger 프레임 전처리(역순 리넘버 + 검정 누끼 + 50% 축소 + 임포트) | 33장 Ranger 스프라이트 확보 |
 | 1 | `1_data_field.md` | DefenderUnitData 에 컷신 프레임/fps 필드 + Ranger/Archer 에셋 할당 | 유닛→프레임 매핑 |
-| 2 | `2_cutscene_player.md` | `DeployCutscenePlayer` — 좌하단 오버레이 플립북 재생기 | 슬라이드 인/아웃 + 스와이프 연동 소멸 |
+| 2 | `2_cutscene_player.md` | `DeployCutscenePlayer` — 좌하단 오버레이 플립북 재생기 | 슬라이드 인/아웃 + 자동 소멸 |
 | 3 | `3_wiring.md` | BeginDrag 트리거 + DefenderSelector 주입 + Play 검증 | 드래그 스와이프에 연결 |
 | 5 | `5_cannon_frames.md` | Cannon 49프레임(체커보드 누끼 · **정방향**) + 정적 뎁스 | 4번째 컷신 유닛 |
 | 7 | `7_sniper_firecaster_healer.md` | Sniper·FireCaster·Healer 49프레임+뎁스 · **배경색 원리** | 5~7번째 컷신 유닛 |
+| 8 | `8_hold_last_frame.md` | 최종 프레임 0.5초 유지 + 자동 퇴장 + 배치 성공 강제 초기화 | 컷씬 수명 확정 |
+| 9 | `9_guardian_uses_sniper_cutscene.md` | Guardian 컷씬 참조를 Sniper 컷씬으로 교체 | 임시 공용 컷씬 배선 |
 
 > 4·6 번은 handoff summary(작업 단위 아님). Guardian(49장)은 `5cbee1b4` 로 스펙 파일 없이
 > 프레임만 추가됐다 — 소스 성질이 이 스펙에 미기록이다(후속 후보 참조).
@@ -49,10 +54,12 @@ Defender_Ranger 를 드래그로 집으면 좌하단에 Ranger 컷신 플립북�
 
 - **트리거**: `DefenderDragPlacementController.BeginDrag` 진입 시 유닛에 컷신 프레임이
   있으면 1회 재생. 프레임 비어 있으면 no-op(다른 유닛은 조용히 skip).
-- **수명 = 스와이프 연동** (rev 2026-07-15): 컷신은 등장 후 드래그하는 동안 계속 유지되고,
-  스와이프(드래그)가 끝나면 소멸한다. `CleanupSession`(드롭/취소/비활성)이 `EndCutscene()` 로
-  슬라이드-아웃을 트리거. (구현: `holdSecondsAfter`=사실상 무한 + hold 루프 `_endRequested` 탈출.)
-  구 계약("독립 재생: 자체 코루틴 완주 → 1초 hold 후 자동 소멸")은 폐지.
+- **수명 = 자동 종료 + 배치 성공 절대 우선** (unit 8, rev 2026-07-18): 플립북 Phase A가
+  끝나면 마지막 non-null 컬러 프레임과 대응 뎁스를 명시 적용해 0.5초 유지한 뒤 왼쪽으로
+  slide-out하고 숨는다. 드래그 실패·취소는 이 자동 종료를 방해하지 않는다. 단,
+  `TryBeginDefenderDeployment` 성공은 절대 룰이라 재생/hold/slide-out 어느 단계든 즉시 중단하고
+  Canvas·코루틴·틸트 상태를 초기화한다. 첫 프레임 또는 setup pose로 복귀해 노출되지 않는다.
+  새 배치 세션을 시작할 때도 직전 실패·취소 컷씬을 먼저 초기화해 이전 유닛 연출이 넘어오지 않는다.
 - **렌더**: ScreenSpaceOverlay 캔버스의 UI `Image` 1장. 프레임을 `Image.sprite` 로 교체하는
   스크립트 플립북(fps = 데이터 값). Animator/.anim 미사용.
 - **배치/연출** (rev 2026-07-16: 앵커 정정): 앵커/피벗 = **좌하단** `(0,0)` + 인스펙터 마진.
@@ -87,10 +94,12 @@ Defender_Ranger 를 드래그로 집으면 좌하단에 Ranger 컷신 플립북�
   - 최종 크기 = 네이티브 × displayScale(공유, 현 1.2) × deployCutsceneScale(유닛별).
   - 도착 위치 = cornerMarginPx(공유 baseline, x=-100) + deployCutsceneOffset(유닛별).
     컷씬마다 캐릭터 위치/크기가 달라 유닛별 미세조정. **scale/offset 은 Play 튜닝으로 수렴시킨다.**
-    - Play 튜닝 완료: Ranger 1 / 0 → -100 · Archer 1.5 / -150 → -250 · Guardian 3 / +100 → 0
-    - **Play 미검증 계산 시작값**: Cannon 2.6 · Sniper 2.6 (204 네이티브) ·
+    - Play 튜닝 완료: Ranger 1 / 0 → -100 · Archer 1.5 / -150 → -250
+    - **Play 미검증 계산 시작값**: Cannon 2.6 · Sniper/Guardian(unit 9 공유) 2.6 (204 네이티브) ·
       FireCaster 3.0 · Healer 3.0 (180 네이티브) — 전부 offset (0,0).
       계산식 = 목표 648px ÷ (네이티브 높이 × displayScale 1.2).
+- **Guardian 임시 배선** (unit 9): Guardian은 자체 전투 데이터는 유지하되 컷씬 4필드
+  (`frames/depth/scale/offset`)만 Sniper와 같은 자산·값을 참조한다. PNG를 복제하지 않는다.
 - **기능 온/오프**: `DragSwaySettings.enableDeployCutscene`(bool). 이 SO 는 이미 드래그 배치
   프리뷰 연출 튜닝 허브로 컨트롤러에 주입돼 있어 재사용. 끄면 프레임이 있어도 재생 안 함.
 - **뎁스 패럴랙스**: 별도 스펙 소유(`docs/spec/depth-parallax/`, 완료 2026-07-15, `de2275ee`).
@@ -107,7 +116,8 @@ N/A — 전투 플레이 오브젝트(유닛/적/투사체/해저드)가 아닌 
 
 ## 후속 후보 (이번 스코프 밖)
 
-- 나머지 유닛 컷신 프레임 제작/할당. **완료 7종**: Ranger 33 · Archer 49 · Guardian 49
+- 나머지 유닛 컷신 프레임 제작/할당. **완료 7종**: Ranger 33 · Archer 49 · Guardian 자체 49
+  (현재 unit 9에서 Sniper 참조 사용)
   (`5cbee1b4`) · Cannon 49 (`bc452d78`) · Sniper 49 (`459e2d80`) · FireCaster·Healer 49
   (`5849e370`). **남은 9 디펜더 미착수** — 수급 시 위 "소스 수급 요청" 계약(배경 검정) 적용.
 - **Healer 재수급**: 구 체커 소스라 `_025` 부근 파스텔 워시에 격자가 보인다. FireCaster 처럼

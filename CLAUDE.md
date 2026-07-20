@@ -220,3 +220,21 @@ critic/review 지적은 문서 계층을 깨지 않게 반영한다.
 - **코드 품질은 타협 대상이 아니다.** 프로토타이핑 단계는 끝났다. 만든 코드는 본 게임에서 계속 쓰인다.
 - **각 spec 은 고유의 검증 질문이 있다.** 그 질문에 답하는 데 필요하지 않은 모든 것은 제외된다. 작업 단위 파일의 "완료 기준" 을 그 질문의 구체 표현으로 삼는다.
 - **"가벼운 설계"와 "재사용 가능"은 양립 가능하다.** 방법은 맥락 분리 + 추상화 규칙 준수 + 현재 spec 범위 유지.
+
+## Visual Direction
+
+This project is a casual defense game.
+
+When generating or requesting images for this game, do not default to RPG concept art,
+tarot-card illustration, dark high-fantasy key art, realistic character splash art, or
+heavy collectible-card painting styles.
+
+Use casual defense game art direction instead:
+- readable at small in-game sizes
+- bright, approachable, playful, and clean
+- simple silhouettes and clear gameplay affordances
+- mobile-game friendly colors and contrast
+- asset-focused game art, not lore-heavy RPG illustration
+
+For Dreamcatcher content specifically, do not draw a physical dreamcatcher object unless
+the user explicitly asks for one.

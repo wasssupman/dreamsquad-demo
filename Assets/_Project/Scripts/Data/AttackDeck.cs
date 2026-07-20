@@ -22,6 +22,16 @@ namespace Wassup.Data
         public int maxUnitsPerWave = 15;
         public float intraWaveSpacingSec = 0.35f;
 
+        [Header("Boss Waves")]
+        [Tooltip("보스 웨이브에 스폰할 보스 유닛. null이면 보스 웨이브 없음. attackUnitPool에 넣지 말 것 — 생성기가 방어적으로 제외한다.")]
+        public AttackUnitData bossUnit;
+        [Tooltip("매 N번째 웨이브가 보스 웨이브(보스 1기 + 잡몹 호위). <=0 이면 보스 웨이브 없음.")]
+        public int bossWaveInterval = 5;
+        [Tooltip("보스 웨이브의 잡몹 호위 최소 수")]
+        public int bossEscortMin = 3;
+        [Tooltip("보스 웨이브의 잡몹 호위 최대 수")]
+        public int bossEscortMax = 4;
+
         [Header("Legacy Spawns")]
         public List<SpawnEntry> spawns = new();
         public int defeatGoalReachedCount = 5;

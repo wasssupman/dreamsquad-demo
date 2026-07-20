@@ -11,6 +11,12 @@ namespace Wassup.Core
     {
         public int schemaVersion = 1;
 
+        // first-session-tutorial unit 0 — independent, versioned onboarding
+        // progress. Additive JSON fields intentionally default to 0 for profiles
+        // written before the tutorial existed; schemaVersion stays unchanged.
+        public int firstBattleTutorialVersion;
+        public int awakeningHintVersion;
+
         // Units are not profile-owned — all catalog units are always available
         // (SquadBuilderView lists the catalog directly). No ownedUnitIds by design.
 

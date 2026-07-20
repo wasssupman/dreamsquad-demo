@@ -63,7 +63,22 @@ namespace Wassup.UI.Draft
         {
             controller = draftController;
             if (!_built) Build();
-            PushAllToController();
+            if (controller == null) return;
+            // 씬 BattleBridge authoring 값을 흡수해 패널 표시를 맞춘다. 초기화는 push 하지 않는다 —
+            // bridge 반영은 사용자가 패널을 조작한 순간에만 (패널 기본값이 씬 의도를 덮던 버그의 일반화 픽스).
+            controller.SyncMapStateFromBridge();
+            _selectedMapSource = controller.SelectedMapSource;
+            _selectedMapGridSize = controller.SelectedMapGridGridSize;
+            _selectedGoalEdgeOnly = controller.BridgeGoalEdgeOnly;
+            var opts = controller.SelectedMapGenerationOptions;
+            _selectedPathShape = opts.pathShape;
+            _selectedDensity = opts.obstacleDensity;
+            if (_widthInput != null) _widthInput.text = opts.gridSize.x.ToString();
+            if (_heightInput != null) _heightInput.text = opts.gridSize.y.ToString();
+            if (_spawnLaneInput != null) _spawnLaneInput.text = opts.spawnLaneCount.ToString();
+            UpdateSizeInputsFromSelection();
+            RefreshSectionVisibility();
+            RefreshButtonHighlights();
         }
 
         private void Awake()

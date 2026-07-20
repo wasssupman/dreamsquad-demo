@@ -15,6 +15,8 @@ MonoBehaviour:
   id: marksman
   role: 1
   displayName: "\uB9C8\uD06C\uC2A4\uB9E8"
+  desc: "\uB808\uC778\uC800 \xB7 \uC6D0\uAC70\uB9AC\uD615. \uBC30\uCE58 \uC2DC \uC804\uBC29
+    \uBC1C\uC0AC."
   health: 450
   attackRange: 6
   attackCooldown: 1
@@ -39,6 +41,10 @@ MonoBehaviour:
   onPlaceDuration: 0
   cost: 3
   targetAllies: 0
+  directionalAttack: 0
+  shotCount: 1
+  shotIntervalSec: 0
+  spreadAngleDeg: 0
   hazardCastEnabled: 0
   hazardCastRange: 0
   hazardCastCooldown: 0
@@ -73,6 +79,12 @@ MonoBehaviour:
   deployAnimation: Hit
   placementVfxPrefab: {fileID: 4060967071236614201, guid: c91958420bcc8d647ae19c0e7caeafa6, type: 3}
   attackVfxPrefab: {fileID: 0}
+  deployCutsceneFrames: []
+  deployCutsceneFps: 24
+  deployCutsceneScale: 1
+  deployCutsceneOffset: {x: 0, y: 0}
+  deployCutsceneDepth: []
+  deployCutsceneTiltGain: 1
   knockbackDistance: 0
   knockbackDuration: 0
   onPlacePushDistance: 0

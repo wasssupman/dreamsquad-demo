@@ -20,5 +20,10 @@ namespace Wassup.Battle.Effects
         public float3 vector;
         public float scalar;
         public float remainingTime;
+        // dot-tick-cadence unit 0 — DoT 이산 tick. tickInterval>0 이면 tickTimer 누적,
+        // 주기 도달 시 scalar(=tick당 데미지) 청크 지급. 0 이면 연속(scalar=DPS).
+        // tickTimer 는 슬롯 지속 상태 — CcApply 병합(매 프레임 존 refresh)에도 보존.
+        public float tickInterval;
+        public float tickTimer;
     }
 }

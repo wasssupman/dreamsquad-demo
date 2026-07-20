@@ -19,6 +19,16 @@ namespace Wassup.Presentation
         // placement-drag-preview-polish — 드래그 프리뷰 실루엣: 배치 중 배경 프랍/유닛/투사체 위로.
         // 프랍(prop.sortingOrder + Compute)·유닛(Compute+1)·투사체(+1000) 위, UI(Canvas) 아래.
         public const int DragPreviewOrder = 20000;
+        // placement-cell-snap unit 4 — 배치 확정 팝: 상승한 overlay 하이라이트(10002) 위, 드래그 프리뷰(20000) 아래.
+        public const int PlacementCommitPopOrder = 12000;
+        // placement-cell-snap unit 7 rev — 끈적 액체 하이라이트: 바닥 타일 하이라이트 위, 확정 팝(12000) 아래.
+        // 팝은 확정 순간의 이완이라 액체보다 앞에 터져야 한다.
+        public const int PlacementLiquidOrder = 11000;
+
+        // defender-directional-volley unit 9 — 방향 지정 화살표: 레인 타일 위에 얹히는
+        // 탭 어포던스라 범위/하이라이트보다 앞. 확정 팝(12000)보다는 뒤 — 조준은 이미
+        // 끝난 뒤에 팝이 뜬다.
+        public const int AimArrowOrder = 11500;
 
         public static int Compute(int2 gridSize, int cellX, int cellY, int offset = 0)
             => (gridSize.y - cellY) * 10 + cellX + offset;

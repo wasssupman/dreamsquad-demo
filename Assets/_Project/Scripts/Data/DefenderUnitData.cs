@@ -14,6 +14,9 @@ namespace Wassup.Data
         // ingame-dreamcatcher Unit 0 — class/role for buff targeting axes.
         public DefenderClass role = DefenderClass.None;
         public string displayName;
+        // squad-character-page unit 6 — 유닛 설명(시트-동기 plain 필드, 체력 등과 동형).
+        // 비어 있으면 UnitKitSummary.Describe 가 자동 요약문으로 폴백. 시드값 = 자동 요약문.
+        [TextArea] public string desc;
         public float health = 50f;
         public float attackRange = 3f;
         public float attackCooldown = 1f; // seconds between attacks
@@ -57,6 +60,17 @@ namespace Wassup.Data
         // When true, AttackState.targetMask is set to Faction.Defender (ally targeting).
         // Use for healers and buff-appliers that target friendly units instead of enemies.
         public bool targetAllies;
+
+        // defender-directional-volley unit 1 — 방향 지정 배치 + 다연발 발사.
+        // directionalAttack: 배치 시 공격방향 페이즈 진입, 확정 방향 영구 고정(레인 발사).
+        // shotCount 발을 트리거당 발사 — shotIntervalSec > 0 이면 시간차 버스트,
+        // spreadAngleDeg > 0 이면 총 확산각을 발 인덱스에 균등 분배(부채꼴).
+        // 기본값(false/1/0/0) = 현행 단발 동작 그대로.
+        [Header("Directional Volley")]
+        public bool directionalAttack;
+        public int shotCount = 1;
+        public float shotIntervalSec = 0f;
+        public float spreadAngleDeg = 0f;
 
         [Header("Hazard Cast")]
         public bool hazardCastEnabled;

@@ -1,15 +1,18 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
 using Wassup.Core;
 using Wassup.Data;
 
 namespace Wassup.UI
 {
-    public class DefenderDragSlot : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler
+    public class DefenderDragSlot : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler, IPointerClickHandler
     {
         private DefenderUnitData _unitData;
         private DefenderDragPlacementController _controller;
         private CostDisplay _costDisplay;
+        // defender-tap-to-place unit 1 — arm 하이라이트 오버레이(lazy).
+        private GameObject _armOverlay;
         // action-tray unit 4 — 비용 부족으로 차단된 드래그 제스처. 이후 OnDrag/OnEndDrag
         // 를 무시해 controller 세션이 시작되지 않는다(다음 제스처에서 리셋).
         private bool _suppressedDrag;
@@ -51,6 +54,46 @@ namespace Wassup.UI
             if (_controller == null) return;
             if (_suppressedDrag) { _suppressedDrag = false; return; }
             _controller.EndDrag(eventData.position);
+        }
+
+        // defender-tap-to-place unit 1 — 탭(드래그 임계 미만)=arm 토글. 끌기면 Unity 가 OnBeginDrag 를 부르고 이건 안 옴.
+        public void OnPointerClick(PointerEventData eventData)
+        {
+            if (_unitData == null || _controller == null) return;
+            // review fix — 드래그 경로(OnBeginDrag)와 동일한 비용 사전 피드백: 부족하면 arm 하지 않고 pulse.
+            // 단 이미 armed 인 슬롯의 재탭(=해제)은 비용과 무관하게 허용.
+            if (!_controller.IsArmed(this))
+            {
+                var costRuntime = GameManager.Instance != null ? GameManager.Instance.CostRuntime : null;
+                if (costRuntime != null && !costRuntime.CanAfford(_unitData.cost))
+                {
+                    if (_costDisplay != null)
+                        _costDisplay.PulseInsufficient(_unitData.cost - costRuntime.CurrentInt);
+                    return;
+                }
+            }
+            _controller.ToggleArm(this, _unitData, eventData.position);
+        }
+
+        public void SetArmed(bool armed)
+        {
+            if (armed && _armOverlay == null)
+            {
+                _armOverlay = new GameObject("ArmHighlight", typeof(RectTransform), typeof(Image));
+                var rt = (RectTransform)_armOverlay.transform;
+                rt.SetParent(transform, false);
+                rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one;
+                rt.offsetMin = new Vector2(-4f, -4f); rt.offsetMax = new Vector2(4f, 4f);
+                rt.SetAsLastSibling();
+                _armOverlay.GetComponent<Image>().raycastTarget = false;
+            }
+            if (_armOverlay != null)
+            {
+                if (armed) // review fix — 색은 SO(DragSwaySettings.armHighlightColor), 켤 때마다 재적용(라이브 튜닝)
+                    _armOverlay.GetComponent<Image>().color = _controller != null
+                        ? _controller.ArmHighlightColor : new Color(0.35f, 1f, 0.9f, 0.28f);
+                _armOverlay.SetActive(armed);
+            }
         }
     }
 }

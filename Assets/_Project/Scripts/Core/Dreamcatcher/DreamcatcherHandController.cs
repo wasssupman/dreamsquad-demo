@@ -461,6 +461,12 @@ namespace Wassup.Core
             return count;
         }
 
+        // dreamcatcher-attach-lockon unit 5 — base-ring/리티클/콜아웃 유효성용 공개 조회.
+        // 부착수는 드래그 중 불변이라 조준 시작 스냅샷에 쓴다(매프레임 dict 전수 금지).
+        public int MaxAttachPerUnit => config != null ? config.maxAttachPerUnit : 3;
+        public int AttachCountOf(Entity host) => CountAttachedTo(host);
+        public bool CanAttachMore(Entity host) => CountAttachedTo(host) < MaxAttachPerUnit;
+
         private void LogDeck(List<DreamcatcherCard> cards)
         {
             var logger = GameManager.Instance?.Logger;

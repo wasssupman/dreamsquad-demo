@@ -46,9 +46,18 @@ MonoBehaviour:
   walkAnimation: Walk
   attackAnimation: Attack1
   deathAnimation: Die
-  spineVisualScale: 2.1
-  partSkins: []
-  slotColors: []
+  spineVisualScale: 3.2
+  partSkins:
+  - full_skins
+  - helmet/helmet_c_26
+  - brow/brow_c_5
+  - eyes/eyes_c_7
+  - top/top_c_57
+  slotColors:
+  - slotName: Back
+    color: {r: 1, g: 1, b: 1, a: 0}
+  - slotName: helmet_back
+    color: {r: 1, g: 1, b: 1, a: 0}
   visualOffset: {x: 0, y: 0, z: 0}
   awakeningReward: 5
   nightmareMechanics:
@@ -59,12 +68,15 @@ MonoBehaviour:
       fraction: 0
     payload:
       kind: 5
-      magnitude: 10
+      magnitude: 150
       projectile: {fileID: 11400000, guid: 1705ed345dda4014bc5b6019f1a84e77, type: 2}
       tileRange: 3
       duration: 1.5
       auraPrefab: {fileID: 0}
       auraScale: 0
+      ccKind: 0
+      stackKind: 0
+      buffStat: 0
   - trigger:
       kind: 5
       period: 0
@@ -78,6 +90,9 @@ MonoBehaviour:
       duration: 0
       auraPrefab: {fileID: 0}
       auraScale: 0
+      ccKind: 0
+      stackKind: 0
+      buffStat: 0
   - trigger:
       kind: 4
       period: 0
@@ -91,3 +106,6 @@ MonoBehaviour:
       duration: 0.6
       auraPrefab: {fileID: 207745087118991948, guid: ae85f8af7e5c6c44c91e2f6966a4354b, type: 3}
       auraScale: 1.2
+      ccKind: 0
+      stackKind: 0
+      buffStat: 0
