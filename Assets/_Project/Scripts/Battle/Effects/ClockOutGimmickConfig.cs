@@ -16,5 +16,6 @@ namespace Wassup.Battle.Effects
         public int   meteorTileRange;      // 메테오 AoE 반경 (Chebyshev 타일)
         public float meteorWarningSec;     // SkyFall 텔레그래프(flightTime) 기준
         public float meteorStaggerSec;     // 순차 메테오 간 착탄 시차
+        public int   costRefund;           // 퇴근 1회당 코스트 환급량 (unit 6)
     }
 }

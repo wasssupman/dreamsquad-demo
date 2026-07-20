@@ -12,6 +12,8 @@ namespace Wassup.Data
         [Header("룰1 — 퇴근 → 사직서")]
         [Tooltip("전투 시작(running) 후 배치 유닛이 퇴근(사망)하기까지 (초)")]
         public float clockOutSeconds = 10f;
+        [Tooltip("퇴근 1회당 플레이어에게 환급되는 코스트 (unit 6)")]
+        public int clockOutCostRefund = 1;
 
         [Header("룰2 — 사직서 → 메테오")]
         [Tooltip("메테오를 발동시키는 사직서 누적 수 (도달 시 그만큼 소모)")]

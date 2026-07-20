@@ -20,6 +20,7 @@ MonoBehaviour:
     \uC774\uB3D9 \uD0C0\uC77C 3\uACF3\uC5D0 \uBA54\uD14C\uC624\uAC00 \uC21C\uCC28\uB85C
     \uB5A8\uC5B4\uC9C4\uB2E4."
   clockOutSeconds: 10
+  clockOutCostRefund: 1
   resignationThreshold: 5
   meteorCount: 3
   meteorDamage: 40

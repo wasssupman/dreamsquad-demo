@@ -296,6 +296,8 @@ namespace Wassup.Bridge
         private NativeQueue<Wassup.Battle.Effects.MeteorBarrageRequest> _meteorBarrageRequestQueue;
         // season-gimmick-clockout unit 4 — 메테오 착탄 Walk 셀 선택 결정론 rng(matchSeed 파생, 매치당 seed).
         private Unity.Mathematics.Random _meteorRng;
+        // season-gimmick-clockout unit 6 — 퇴근 코스트 환급 채널(Effects→Bridge).
+        private NativeQueue<Wassup.Battle.Effects.ClockOutRefundEvent> _clockOutRefundEventQueue;
         private Unity.Collections.NativeHashSet<Unity.Mathematics.int2> _blockedCells;
         private Unity.Collections.NativeParallelMultiHashMap<Unity.Mathematics.int2, Wassup.Battle.Effects.HazardEffect> _hazardCellToEffects;
 
@@ -520,6 +522,7 @@ namespace Wassup.Bridge
             DestroyEntitiesByType<Wassup.Battle.Effects.HazardDestroyedEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.HazardSpawnRequestsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.MeteorBarrageRequestsSingleton>();
+            DestroyEntitiesByType<Wassup.Battle.Effects.ClockOutRefundEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Combat.AttackOutputLogEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.AggroHitEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Combat.ThreatHitEventsSingleton>();
@@ -530,6 +533,10 @@ namespace Wassup.Bridge
             // 누락 시 StopBattle 후 orphan 이 남고 다음 프레임 새 엔티티가 생겨 2개 → TryGetSingleton
             // 실패 → 이후 모든 전투에서 시간 제어(정지/슬로우모)가 영구 무력화된다.
             DestroyEntitiesByType<BattleTimeScale>();
+            // season-gimmick-clockout unit 2 후속 — BattleRunning 도 동형이므로 대칭 파괴.
+            // 누락 시 전투→로비→전투 재진입에서 2개가 되어 TryGetSingleton 소비자
+            // (ClockOutSystem 등)가 매 프레임 InvalidOperationException 을 던진다.
+            DestroyEntitiesByType<Wassup.Battle.BattleRunning>();
             // season-gimmick-overwork unit 2 — 기믹 config 도 대칭 파괴 (BattleTimeScale 교훈 준수).
             DestroyEntitiesByType<Wassup.Battle.Effects.BurnoutGimmickConfig>();
             DestroyEntitiesByType<Wassup.Battle.Effects.RedBullGimmickConfig>();
@@ -557,6 +564,7 @@ namespace Wassup.Bridge
             if (_hazardDestroyedQueue.IsCreated) _hazardDestroyedQueue.Dispose();
             if (_hazardSpawnRequestQueue.IsCreated) _hazardSpawnRequestQueue.Dispose();
             if (_meteorBarrageRequestQueue.IsCreated) _meteorBarrageRequestQueue.Dispose();
+            if (_clockOutRefundEventQueue.IsCreated) _clockOutRefundEventQueue.Dispose();
             if (_blockedCells.IsCreated) _blockedCells.Dispose();
             if (_hazardCellToEffects.IsCreated) _hazardCellToEffects.Dispose();
         }
@@ -1339,6 +1347,13 @@ namespace Wassup.Bridge
             var meteorBarrageSingleton = _em.CreateEntity();
             _em.AddComponentData(meteorBarrageSingleton, new Wassup.Battle.Effects.MeteorBarrageRequestsSingleton { queue = _meteorBarrageRequestQueue });
 
+            // season-gimmick-clockout unit 6 — 퇴근 코스트 환급 채널(Effects→Bridge).
+            // ClockOutSystem enqueue → DrainClockOutRefundEvents 가 CostRuntime.AddCost 로 지급.
+            if (_clockOutRefundEventQueue.IsCreated) _clockOutRefundEventQueue.Dispose();
+            _clockOutRefundEventQueue = new NativeQueue<Wassup.Battle.Effects.ClockOutRefundEvent>(Allocator.Persistent);
+            var clockOutRefundSingleton = _em.CreateEntity();
+            _em.AddComponentData(clockOutRefundSingleton, new Wassup.Battle.Effects.ClockOutRefundEventsSingleton { queue = _clockOutRefundEventQueue });
+
             // Attack-output log channel. AttackSystem enqueues one event per output fired;
             // BattleBridge drains each frame and forwards to BattleLogger.RecordAttackOutput.
             if (_attackOutputLogQueue.IsCreated) _attackOutputLogQueue.Dispose();
@@ -2050,6 +2065,7 @@ namespace Wassup.Bridge
             DrainAttackOutputLogEvents();
             DrainHazardSpawnRequests();
             DrainMeteorBarrageRequests(); // season-gimmick-clockout unit 4 — 사직서 임계 메테오 barrage
+            DrainClockOutRefundEvents();  // season-gimmick-clockout unit 6 — 퇴근 코스트 환급
             DrainHazardRuntimeEvents();
             DrainHazardDestroyedEvents();
             DrainGoalEvents();
@@ -2788,6 +2804,16 @@ namespace Wassup.Bridge
         // season-gimmick-clockout unit 4 — 사직서 임계 barrage 요청을 drain 해 Walk 타일 임의
         // meteorCount 곳에 SkyFall×TileAoe 메테오를 순차 낙하(적 피해). content-1 OnDeath 폭발
         // (SpawnProjectile(...,Entity.Null))과 동형 cast — Combat 투사체 코드 불변, cast 프리미티브만 재사용.
+        // season-gimmick-clockout unit 6 — 퇴근 코스트 환급 drain. 기존 지급 패스(CostRuntime.AddCost)로.
+        private void DrainClockOutRefundEvents()
+        {
+            if (!_clockOutRefundEventQueue.IsCreated || _clockOutRefundEventQueue.Count == 0) return;
+            var cost = GameManager.Instance != null ? GameManager.Instance.CostRuntime : null;
+            if (cost == null) { while (_clockOutRefundEventQueue.TryDequeue(out _)) { } return; }
+            while (_clockOutRefundEventQueue.TryDequeue(out var evt))
+                cost.AddCost(evt.amount);
+        }
+
         private void DrainMeteorBarrageRequests()
         {
             if (!_meteorBarrageRequestQueue.IsCreated || _meteorBarrageRequestQueue.Count == 0) return;
@@ -4841,6 +4867,7 @@ namespace Wassup.Bridge
                     meteorTileRange      = cd.meteorTileRange,
                     meteorWarningSec     = cd.meteorWarningSec,
                     meteorStaggerSec     = cd.meteorStaggerSec,
+                    costRefund           = cd.clockOutCostRefund,
                 });
                 // unit 4 — 메테오 셀 선택 rng seed(매치당·matchSeed 파생 → 결정론). 요청은 config
                 // 주입 이후에만 발생하므로 seed 선행 보장.

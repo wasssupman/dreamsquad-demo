@@ -19,6 +19,7 @@ namespace Wassup.Battle.Effects
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<ClockOutGimmickConfig>();
+            state.RequireForUpdate<ClockOutRefundEventsSingleton>();
         }
 
         [BurstCompile]
@@ -33,6 +34,7 @@ namespace Wassup.Battle.Effects
                 return;
 
             float dt = SystemAPI.Time.DeltaTime;
+            var refundQ = SystemAPI.GetSingleton<ClockOutRefundEventsSingleton>().queue;
 
             // Pass 1 — lazy attach: running 중 활성 defender 에 카운트다운 부착(스폰 경로 무수정).
             var attachEcb = new EntityCommandBuffer(Allocator.Temp);
@@ -66,6 +68,9 @@ namespace Wassup.Battle.Effects
                 // 퇴근 = 치명 IncomingDamage(Effects→Units 정식 채널, LastRun crash 전례). 킬 미귀속.
                 if (SystemAPI.HasBuffer<IncomingDamage>(entity))
                     SystemAPI.GetBuffer<IncomingDamage>(entity).Add(new IncomingDamage { amount = LethalDamage });
+
+                // unit 6 — 퇴근 시 코스트 환급(Effects→Bridge). BattleBridge 가 CostRuntime.AddCost 로 지급.
+                refundQ.Enqueue(new ClockOutRefundEvent { amount = config.costRefund });
 
                 // 재발화 방지 — 사망 태그가 붙기 전 재부착돼도 elapsed 가 dt 남짓이라 무해.
                 ecb.RemoveComponent<ClockOutTimer>(entity);
