@@ -1,6 +1,10 @@
 # Sprite Character Preview
 
-상태: 구현 완료 2026-07-20 (Play 육안 확인 미완 — `2_handoff_summary.md` 참조)
+상태: **홀드 2026-07-20** (사용자 지시). 구현·커밋은 완료, Play 육안 확인 미완.
+
+> 재개 전에 `attack.png`·`death.png` 를 온전한 파일로 다시 받아야 한다 —
+> 현재 파일은 IDAT 중간에서 잘려 각각 29% · 41% 의 픽셀 데이터가 없다.
+> 상세와 남은 작업은 `2_handoff_summary.md`. **지시 없이 재개하지 말 것.**
 
 ## 상위 목표
 
