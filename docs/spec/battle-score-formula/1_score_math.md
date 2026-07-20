@@ -61,7 +61,9 @@ public static BattleScore Evaluate(
 ### 테스트 — WaveKillBudgetPinTests
 
 README 가 적은 고정 시드 스케줄을 실행으로 pin 한다. `WavePatternGenerator.Generate(deck, 20260720)` 을
-호출해 아래를 검증한다 (오프라인 재현으로 산출된 기대값 — `scratchpad/wavesim.py` 에 생성기가 있다):
+호출해 아래를 검증한다. 기대값은 `Unity.Mathematics.Random` (xorshift, `random.cs:670` `NextState`)
+을 오프라인 재현해 산출했고 독립 검증도 일치했다. **테스트가 실제 생성기를 호출하므로 재현 스크립트는
+필요 없다** — 아래 값이 안 맞으면 생성기나 덱 파라미터가 바뀐 것이다:
 
 - `waves.Count == 10`
 - 웨이브별 `totalCount` = `[5, 5, 8, 8, 5, 7, 6, 8, 8, 5]`
