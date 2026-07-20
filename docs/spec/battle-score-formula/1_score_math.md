@@ -76,11 +76,18 @@ README 가 적은 고정 시드 스케줄을 실행으로 pin 한다. `WavePatte
 
 ## 완료 기준
 
-- [ ] compile 통과
-- [ ] `ScoreMathTests` 전 케이스 통과
-- [ ] `WaveKillBudgetPinTests` 통과 — 실패하면 README 실측 절이 틀린 것이므로 **테스트가 아니라 README 를 고친다**
-- [ ] `ScoreMath.cs` 에 `UnityEngine` / `Unity.Entities` using 이 없다 (`MatchSeed.cs` 와 동일 수준)
-- [ ] 기존 EditMode 전체 통과
+- [x] compile 통과
+- [x] `ScoreMathTests` 전 케이스 통과 (14건)
+- [x] `WaveKillBudgetPinTests` 통과 (5건) — 실패하면 README 실측 절이 틀린 것이므로 **테스트가 아니라 README 를 고친다**
+- [x] `ScoreMath.cs` 에 `using` 이 하나도 없다. `float`/`Mathf` 미사용 (`MatchSeed.cs` 와 동일 수준)
+- [x] 기존 EditMode 전체 통과 — **1091 / 0 실패** (1072 + 신규 19)
+
+확인: 2026-07-20
+
+> 시간 계산은 `usableMs / 1000 * 초당점수 + usableMs % 1000 * 초당점수 / 1000` 로 쪼갰다.
+> `ms × 초당점수 / 1000` 과 결과가 같되(`TimeScore_MatchesDirectFormula` 로 고정) 곱하기 전에
+> 초 단위를 떼어내 오버플로 여지를 없앤다. 현행 180초면 직접 곱해도 int 에 들어가지만,
+> 제한시간이 길어지면 그 여유가 사라진다.
 
 > `ObstaclePlacerTests` 는 이 스펙과 무관하게 사전 실패 중일 수 있다. 실패 목록에 있으면 무시하고,
 > 다회 Play 후 거짓 실패가 의심되면 `RequestScriptReload` 후 재실행한다.
