@@ -254,14 +254,23 @@ namespace Wassup.UI
         // 다(잡몹 100 / 보스 2,000). 예전엔 처치당 고정 10 이었고, 그래서 이 HUD 숫자가
         // 최종 점수의 킬축과 15배 어긋나 있었다. 이제 같은 값이라 결과 연출이 여기서
         // 이어서 시간·스트레스를 더할 수 있다.
-        public void OnEnemyKilled(int points)
+        public void OnEnemyKilled(int points) => AddScore(points);
+
+        // score-tally-sequence unit 2 — 처치가 아닌 가산(결과 연출의 축 합산).
+        // 펀치·플래시·버스트 판정을 처치와 똑같이 태운다: 큰 값이 한 번에 들어오면
+        // 버스트 임계를 넘겨 가장자리 플래시가 터지는데, 합산 순간의 타격감으로 알맞다.
+        public void AddScore(int points)
         {
             int p = Mathf.Max(0, points);
+            if (p <= 0) return;
             _targetScore += p;
             _pendingKills++;
             // 유입 시점에 기록한다 — 판정은 프레임당 1회 flush(TriggerHit)에서.
-            if (p > 0) _burstWindow.Add((Time.unscaledTime, p));
+            _burstWindow.Add((Time.unscaledTime, p));
         }
+
+        // 연출이 롤업 완료를 기다릴 때 쓴다(표시 숫자가 목표에 붙었는가).
+        public bool RollSettled => Mathf.Abs(_targetScore - _shownScore) < 0.5f;
 
         // 최근 burstWindowSec 안에 번 점수가 임계 이상이면 가장자리 플래시.
         // 지속 사격 중 매 프레임 터지지 않도록 플래시 지속시간만큼 쿨다운을 둔다.

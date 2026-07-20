@@ -103,6 +103,9 @@ namespace Wassup.Bridge
             Wassup.Data.UnitHealthPresentationMode.Legacy;
         [SerializeField] private Wassup.Presentation.UnitOverheadUiLayer unitOverheadUiLayer;
         [SerializeField] private Wassup.UI.ScoreHudView scoreHud;
+        // score-tally-sequence unit 2 — 결과 연출(점수 합산). 미배선이면 연출을 건너뛰고
+        // 곧장 결과 화면으로 간다 — 연출은 곁가지, 결과 화면은 필수다.
+        [SerializeField] private Wassup.UI.ScoreTallyView scoreTallyView;
         // boss-wave-cadence unit 2 — 보스 스폰 순간 "꿈결 위기!!" 경보. BakeNightmareMechanics
         // 의 보스 확정(BossTag 부착) 단일 지점에서 구동. 미배선(null)이면 무동작.
         [SerializeField] private Wassup.UI.BossWarningView _bossWarning;
@@ -3764,9 +3767,15 @@ namespace Wassup.Bridge
             GameManager.Instance?.SetPhase(GamePhase.Tally);
             ReportMatchResult(score.Total);
 
-            // unit 2 가 여기에 순차 합산 연출을 넣는다. 지금은 즉시 완료해
-            // 기존 동작(종료 → 결과 화면)을 그대로 유지한다.
-            FinishTally(win, score, remainingSec, timeBudget, stressBudget);
+            // 미배선이면 즉시 결과 화면으로. 연출은 곁가지이고 결과 화면은 필수라,
+            // 뷰가 없다고 게임이 멈춰서는 안 된다.
+            if (scoreTallyView == null)
+            {
+                FinishTally(win, score, remainingSec, timeBudget, stressBudget);
+                return;
+            }
+            scoreTallyView.Play(score, scoreHud,
+                () => FinishTally(win, score, remainingSec, timeBudget, stressBudget));
         }
 
         // 연출 종료 → 결과 화면. Result 페이즈로 넘어가며 남은 전투 HUD 가 정리된다.
