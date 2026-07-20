@@ -294,6 +294,8 @@ namespace Wassup.Bridge
         private NativeQueue<Wassup.Battle.Combat.AttackOutputLogEvent> _attackOutputLogQueue;
         // season-gimmick-clockout unit 3 — 메테오 barrage 요청 채널(Effects→Bridge).
         private NativeQueue<Wassup.Battle.Effects.MeteorBarrageRequest> _meteorBarrageRequestQueue;
+        // season-gimmick-clockout unit 4 — 메테오 착탄 Walk 셀 선택 결정론 rng(matchSeed 파생, 매치당 seed).
+        private Unity.Mathematics.Random _meteorRng;
         private Unity.Collections.NativeHashSet<Unity.Mathematics.int2> _blockedCells;
         private Unity.Collections.NativeParallelMultiHashMap<Unity.Mathematics.int2, Wassup.Battle.Effects.HazardEffect> _hazardCellToEffects;
 
@@ -2047,6 +2049,7 @@ namespace Wassup.Bridge
             DrainEnemyKilledEvents();
             DrainAttackOutputLogEvents();
             DrainHazardSpawnRequests();
+            DrainMeteorBarrageRequests(); // season-gimmick-clockout unit 4 — 사직서 임계 메테오 barrage
             DrainHazardRuntimeEvents();
             DrainHazardDestroyedEvents();
             DrainGoalEvents();
@@ -2780,6 +2783,76 @@ namespace Wassup.Bridge
             }
             requestEntities.Dispose();
             requestData.Dispose();
+        }
+
+        // season-gimmick-clockout unit 4 — 사직서 임계 barrage 요청을 drain 해 Walk 타일 임의
+        // meteorCount 곳에 SkyFall×TileAoe 메테오를 순차 낙하(적 피해). content-1 OnDeath 폭발
+        // (SpawnProjectile(...,Entity.Null))과 동형 cast — Combat 투사체 코드 불변, cast 프리미티브만 재사용.
+        private void DrainMeteorBarrageRequests()
+        {
+            if (!_meteorBarrageRequestQueue.IsCreated || _meteorBarrageRequestQueue.Count == 0) return;
+
+            // 요청 존재하나 ClockOut 아님/맵 미빌드 → 비우고 드롭(비정상).
+            if (!(_assignedGimmick is Wassup.Data.ClockOutGimmickData cd) || !_generatedMap.IsCreated)
+            {
+                while (_meteorBarrageRequestQueue.TryDequeue(out _)) { }
+                return;
+            }
+            if (cd.meteorProjectile == null)
+            {
+                Debug.LogWarning("[BattleBridge] ClockOut meteorProjectile 미지정 — 메테오 barrage 드롭.");
+                while (_meteorBarrageRequestQueue.TryDequeue(out _)) { }
+                return;
+            }
+
+            // 이동(Walk) 타일 수집.
+            int2 gridSize = _generatedMap.gridSize;
+            int n = gridSize.x * gridSize.y;
+            var walk = new System.Collections.Generic.List<int2>(n);
+            for (int i = 0; i < n; i++)
+                if (_generatedMap.tiles[i] == MapTileType.Walk)
+                    walk.Add(new int2(i % gridSize.x, i / gridSize.x));
+
+            int dataIndex = GetOrCreateProjectileDataIndex(cd.meteorProjectile);
+            var chosen = new System.Collections.Generic.HashSet<int2>();
+
+            while (_meteorBarrageRequestQueue.TryDequeue(out var req))
+            {
+                if (walk.Count == 0) continue;
+                int shots = math.min(req.meteorCount, walk.Count);
+                chosen.Clear();
+                int landed = 0;
+                for (int s = 0; s < shots; s++)
+                {
+                    // rng 로 미중복 Walk 셀 선택(재시도 상한).
+                    int2 cell = default; bool found = false;
+                    for (int attempt = 0; attempt < 8; attempt++)
+                    {
+                        var c = walk[_meteorRng.NextInt(0, walk.Count)];
+                        if (chosen.Contains(c)) continue;
+                        cell = c; found = true; break;
+                    }
+                    if (!found) continue;
+                    chosen.Add(cell);
+
+                    float3 impactWorld = GridToWorldCenter(new Vector2Int(cell.x, cell.y));
+                    SpawnProjectile(new ProjectileSpawnRequest
+                    {
+                        movement        = MovementKind.SkyFall,
+                        payload         = PayloadKind.TileAoe,
+                        origin          = impactWorld,
+                        impact          = impactWorld,
+                        damage          = cd.meteorDamage,
+                        visualScale     = cd.meteorProjectile.visualScale,
+                        dataIndex       = dataIndex,
+                        impactTileRange = cd.meteorTileRange,
+                        flightTime      = cd.meteorWarningSec + landed * cd.meteorStaggerSec, // 순차 착탄
+                        arcHeight       = cd.meteorProjectile.dropHeight,                     // SkyFall 낙하 시작 높이
+                        targetFaction   = ProjectileTargetFaction.Enemy,                     // clockout=적(보스만 Defender)
+                    }, Entity.Null);
+                    landed++;
+                }
+            }
         }
 
         // Returns the spawned projectile entity (Entity.Null when dropped) so
@@ -4769,6 +4842,9 @@ namespace Wassup.Bridge
                     meteorWarningSec     = cd.meteorWarningSec,
                     meteorStaggerSec     = cd.meteorStaggerSec,
                 });
+                // unit 4 — 메테오 셀 선택 rng seed(매치당·matchSeed 파생 → 결정론). 요청은 config
+                // 주입 이후에만 발생하므로 seed 선행 보장.
+                _meteorRng = new Unity.Mathematics.Random((uint)Wassup.Core.MatchSeed.DeriveMeteorSeed(_matchSeed));
             }
         }
 
