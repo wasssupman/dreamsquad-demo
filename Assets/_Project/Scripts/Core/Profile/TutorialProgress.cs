@@ -10,6 +10,8 @@ namespace Wassup.Core
         public const int CoreVersion = 1;
         public const int AwakeningHintVersion = 1;
         public const int GiftTutorialVersion = 1;
+        public const int LobbyIntroVersion = 1;
+        public const int LobbyLoadoutHintVersion = 1;
 
         public static bool ShouldRunCore(PlayerProfileSO holder) =>
             holder != null && holder.IsLoadedThisSession && IsCorePending(holder.profile);
@@ -25,6 +27,19 @@ namespace Wassup.Core
             holder != null && holder.IsLoadedThisSession && holder.profile != null &&
             !IsCorePending(holder.profile) && IsGiftTutorialPending(holder.profile);
 
+        // outgame-tutorial unit 0 — chapter A greets the first lobby reveal.
+        public static bool ShouldRunLobbyIntro(PlayerProfileSO holder) =>
+            holder != null && holder.IsLoadedThisSession && IsLobbyIntroPending(holder.profile);
+
+        // unit 0 — chapter B requires the in-game core tutorial to be complete, so
+        // A and B can never be pending at the same time and the order needs no extra
+        // state (same shape as ShouldRunGiftTutorial). Note the real meaning of that
+        // flag is "the core tutorial ran and reached the Battle phase" — a player who
+        // took its fail-open path never sees chapter B. See spec unit 3.
+        public static bool ShouldRunLobbyLoadoutHint(PlayerProfileSO holder) =>
+            holder != null && holder.IsLoadedThisSession && holder.profile != null &&
+            !IsCorePending(holder.profile) && IsLobbyLoadoutHintPending(holder.profile);
+
         public static bool IsCorePending(PlayerProfile profile) =>
             profile != null && profile.firstBattleTutorialVersion < CoreVersion;
 
@@ -33,6 +48,12 @@ namespace Wassup.Core
 
         public static bool IsGiftTutorialPending(PlayerProfile profile) =>
             profile != null && profile.giftTutorialVersion < GiftTutorialVersion;
+
+        public static bool IsLobbyIntroPending(PlayerProfile profile) =>
+            profile != null && profile.lobbyIntroVersion < LobbyIntroVersion;
+
+        public static bool IsLobbyLoadoutHintPending(PlayerProfile profile) =>
+            profile != null && profile.lobbyLoadoutHintVersion < LobbyLoadoutHintVersion;
 
         public static bool CompleteCore(PlayerProfile profile)
         {
@@ -55,16 +76,33 @@ namespace Wassup.Core
             return true;
         }
 
+        public static bool CompleteLobbyIntro(PlayerProfile profile)
+        {
+            if (profile == null || profile.lobbyIntroVersion >= LobbyIntroVersion) return false;
+            profile.lobbyIntroVersion = LobbyIntroVersion;
+            return true;
+        }
+
+        public static bool CompleteLobbyLoadoutHint(PlayerProfile profile)
+        {
+            if (profile == null || profile.lobbyLoadoutHintVersion >= LobbyLoadoutHintVersion) return false;
+            profile.lobbyLoadoutHintVersion = LobbyLoadoutHintVersion;
+            return true;
+        }
+
         // Tutorial replay support. This deliberately touches only tutorial
         // progress; squad, deck, account, and every other profile field remain.
         public static bool ResetAll(PlayerProfile profile)
         {
             if (profile == null) return false;
             bool changed = profile.firstBattleTutorialVersion != 0 || profile.awakeningHintVersion != 0 ||
-                           profile.giftTutorialVersion != 0;
+                           profile.giftTutorialVersion != 0 || profile.lobbyIntroVersion != 0 ||
+                           profile.lobbyLoadoutHintVersion != 0;
             profile.firstBattleTutorialVersion = 0;
             profile.awakeningHintVersion = 0;
             profile.giftTutorialVersion = 0;
+            profile.lobbyIntroVersion = 0;
+            profile.lobbyLoadoutHintVersion = 0;
             return changed;
         }
 
@@ -78,10 +116,17 @@ namespace Wassup.Core
             int core = root.Value<int?>(nameof(PlayerProfile.firstBattleTutorialVersion)) ?? 0;
             int awakening = root.Value<int?>(nameof(PlayerProfile.awakeningHintVersion)) ?? 0;
             int gift = root.Value<int?>(nameof(PlayerProfile.giftTutorialVersion)) ?? 0;
-            changed = core != 0 || awakening != 0 || gift != 0;
+            int lobbyIntro = root.Value<int?>(nameof(PlayerProfile.lobbyIntroVersion)) ?? 0;
+            int lobbyHint = root.Value<int?>(nameof(PlayerProfile.lobbyLoadoutHintVersion)) ?? 0;
+            // Every token must be in this expression: ProfileStore.ResetTutorialProgressAt
+            // gates the backup and the file replacement on it, so a token that is only
+            // written below would never reach disk when it is the sole difference.
+            changed = core != 0 || awakening != 0 || gift != 0 || lobbyIntro != 0 || lobbyHint != 0;
             root[nameof(PlayerProfile.firstBattleTutorialVersion)] = 0;
             root[nameof(PlayerProfile.awakeningHintVersion)] = 0;
             root[nameof(PlayerProfile.giftTutorialVersion)] = 0;
+            root[nameof(PlayerProfile.lobbyIntroVersion)] = 0;
+            root[nameof(PlayerProfile.lobbyLoadoutHintVersion)] = 0;
             return root.ToString(Formatting.Indented);
         }
     }

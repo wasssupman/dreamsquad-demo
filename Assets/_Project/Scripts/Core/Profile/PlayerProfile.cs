@@ -19,6 +19,11 @@ namespace Wassup.Core
         // first-session-tutorial unit 6 — gift-phase walkthrough, shown once on
         // the first battle where the gift presentation is visible (core done).
         public int giftTutorialVersion;
+        // outgame-tutorial unit 0 — blocking lobby onboarding. A runs on the first
+        // lobby reveal, B once the in-game core tutorial is done and the player is
+        // back in the lobby. Same additive-field rule as the three above.
+        public int lobbyIntroVersion;
+        public int lobbyLoadoutHintVersion;
 
         // Units are not profile-owned — all catalog units are always available
         // (SquadBuilderView lists the catalog directly). No ownedUnitIds by design.
