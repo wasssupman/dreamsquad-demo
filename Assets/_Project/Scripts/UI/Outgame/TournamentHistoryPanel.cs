@@ -26,7 +26,9 @@ namespace Wassup.UI
         private static readonly Color RowFill = new Color(1f, 1f, 1f, 0.05f);
 
         private const float PanelW = 820f;
-        private const float PanelH = 1240f;
+        // Fits within the 1080-tall reference safe area (ResultScreen precedent);
+        // the row list scrolls, so height need not grow with entry count.
+        private const float PanelH = 960f;
         private const float Pad = 34f;
         private const float HeaderH = 150f;
         private const float RowH = 96f;
