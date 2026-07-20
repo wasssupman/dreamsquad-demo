@@ -58,6 +58,8 @@ namespace Wassup.Tests.EditMode.Api
                 TournamentApi.BuildCompleteUrl(baseUrl, "a-1", 420));
             Assert.AreEqual("https://dev-api-somnia.cashroyale.games/tournament/result/tournament/e-1",
                 TournamentApi.BuildResultUrl(baseUrl, "e-1"));
+            Assert.AreEqual("https://dev-api-somnia.cashroyale.games/tournament/result/entry/unclaimed",
+                TournamentApi.BuildUnclaimedUrl(baseUrl));
         }
 
         // ── complete body ────────────────────────────────────────────────────────
@@ -88,6 +90,7 @@ namespace Wassup.Tests.EditMode.Api
         public void TryParseResult_Success_BindsEntries()
         {
             const string body = @"{ ""success"": true, ""data"": {
+                ""name"": ""Weekly Cup"",
                 ""entryCount"": 2,
                 ""maxEntryCount"": 10,
                 ""entries"": [
@@ -97,6 +100,7 @@ namespace Wassup.Tests.EditMode.Api
             var result = TournamentApi.TryParseResult(body, out string error);
 
             Assert.IsNull(error);
+            Assert.AreEqual("Weekly Cup", result.name);
             Assert.AreEqual(2, result.entryCount);
             Assert.AreEqual(10, result.maxEntryCount);
             Assert.AreEqual(2, result.entries.Count);
@@ -104,6 +108,67 @@ namespace Wassup.Tests.EditMode.Api
             Assert.AreEqual(900, result.entries[0].score);
             Assert.AreEqual(1, result.entries[0].rank);
             Assert.AreEqual("u-2", result.entries[1].userId);
+        }
+
+        // ── unclaimed list ─────────────────────────────────────────────────────────
+
+        [Test]
+        public void TryParseUnclaimed_Success_BindsList()
+        {
+            // envelope data is a bare array of UserTournamentResultEntry.
+            const string body = @"{ ""success"": true, ""data"": [
+                { ""tournamentEntryId"": ""e-1"", ""userId"": ""u-1"", ""tournamentTypeId"": 1,
+                  ""tournamentName"": ""Weekly Cup"", ""score"": 900, ""rank"": 3,
+                  ""claimed"": false, ""createdTime"": ""2026-07-20T04:05:06Z"" },
+                { ""tournamentEntryId"": ""e-2"", ""tournamentName"": ""Daily Rush"",
+                  ""score"": 120, ""rank"": 7, ""claimed"": true } ] }";
+
+            var list = TournamentApi.TryParseUnclaimed(body, out string error);
+
+            Assert.IsNull(error);
+            Assert.AreEqual(2, list.Count);
+            Assert.AreEqual("e-1", list[0].tournamentEntryId);
+            Assert.AreEqual("Weekly Cup", list[0].tournamentName);
+            Assert.AreEqual(900, list[0].score);
+            Assert.AreEqual(3, list[0].rank);
+            Assert.IsFalse(list[0].claimed);
+            Assert.AreEqual("2026-07-20T04:05:06Z", list[0].createdTime);
+            Assert.AreEqual("e-2", list[1].tournamentEntryId);
+            Assert.IsTrue(list[1].claimed);
+        }
+
+        [Test]
+        public void TryParseUnclaimed_EmptyArray_ReturnsEmpty()
+        {
+            var list = TournamentApi.TryParseUnclaimed(@"{ ""success"": true, ""data"": [] }", out string error);
+
+            Assert.IsNull(error);
+            Assert.IsNotNull(list);
+            Assert.AreEqual(0, list.Count);
+        }
+
+        [Test]
+        public void TryParseUnclaimed_NullData_ReturnsEmpty()
+        {
+            // some servers omit [] and send null for an empty list — a success
+            // envelope with null data must read as empty, not as a fetch failure.
+            var list = TournamentApi.TryParseUnclaimed(@"{ ""success"": true, ""data"": null }", out string error);
+
+            Assert.IsNull(error);
+            Assert.IsNotNull(list);
+            Assert.AreEqual(0, list.Count);
+        }
+
+        [Test]
+        public void TryParseUnclaimed_ErrorDetail_ReportsCode()
+        {
+            const string body = @"{ ""success"": false, ""errorDetail"": {
+                ""errorCode"": ""UNAUTHORIZED"", ""errorMessage"": ""토큰 만료"" } }";
+
+            var list = TournamentApi.TryParseUnclaimed(body, out string error);
+
+            Assert.IsNull(list);
+            StringAssert.Contains("UNAUTHORIZED", error);
         }
 
         // ── UserSession baseUrl carry ────────────────────────────────────────────
