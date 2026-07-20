@@ -3143,7 +3143,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Presentation.SpawnAlertPresenter
   bridge: {fileID: 1939688408}
   leadSec: 2.5
-  drawSec: 0.55
+  drawSec: 1
   retractSec: 1
   lineColor: {r: 1, g: 0.17, b: 0.13, a: 1}
   lineWidth: 0.14
