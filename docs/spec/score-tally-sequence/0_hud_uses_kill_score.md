@@ -38,24 +38,36 @@ logger?.AddScoreEvent("enemy_killed", evt.killScore, time);
 `ScoreHudView.OnEnemyKilled()` (무인자)와 그것만 쓰던 `pointsPerKill` 필드를 삭제한다.
 호출처가 없다 — Bridge 는 int 오버로드만 쓴다.
 
-### 마일스톤 재조정 (필수)
+### 가장자리 플래시 — 누계 → 순간 화력 (필수)
 
-`milestoneInterval` 이 **100 이라 잡몹 하나 잡을 때마다 플래시가 터진다.** 축척이 15배 커지면
-연출이 무의미해진다.
+원래는 `milestoneInterval` 누계 N 점마다 터졌다. 축척이 15배 커지면서 두 번 흔들렸다:
 
-**100 → 2,000.** 근거 두 가지:
+1. 간격 100 그대로 → **잡몹 하나마다** 터짐
+2. 간격 2,000 으로 키움 → **보스에서만** 터져 거의 안 보임
 
-- 매치당 플래시 횟수가 기존 감각과 비슷해진다 (740/100 ≈ 7회 → 11,200/2,000 ≈ 6회)
-- **보스 killScore 가 정확히 2,000** 이라 보스 처치 = 마일스톤 1개가 보장된다. 의도한 정렬이다
+누계 기준 자체가 킬점수 축척과 안 맞는다. **순간 화력 기준으로 바꾼다** — 최근
+`burstWindowSec`(1초) 안에 번 점수가 `burstScoreThreshold`(300) 이상이면 터진다.
+잡몹 3기 동시처치나 보스 1기가 같은 무게로 터진다.
 
-> `pointsPerKill` / `milestoneInterval` 은 **씬에 직렬화돼 있다**(`BattleScene.unity:2413, 2451`).
-> 코드 기본값만 고치면 안 먹는다 — 씬 값도 같이 바꿔야 한다.
+**쿨다운이 필요하다.** "1초에 300점" 조건만 그대로 두면 몰아치는 동안 매 프레임 참이라
+60fps 로 터진다. 한 번 터지면 플래시 지속시간(`milestoneDuration` 0.55초)만큼 재무장을
+막아 지속 사격 중 초당 ~2회로 정리한다.
+
+기록은 `OnEnemyKilled` 유입 시점, 판정은 프레임당 1회 flush(`TriggerHit`)에서 한다 —
+AoE 동시처치가 한 번의 판정으로 합쳐진다.
+
+> `milestoneInterval` 은 삭제되고 `burstWindowSec` / `burstScoreThreshold` 로 대체된다.
+> 셋 다 **씬에 직렬화**되므로(`BattleScene.unity`) 코드만 고치면 안 먹는다.
 
 ## 완료 기준
 
-- [ ] compile 통과, `read_console` 클린
-- [ ] EditMode 전체 통과
-- [ ] Play: 잡몹 처치 시 HUD 가 **+100**, 보스 처치 시 **+2,000** 오른다
-- [ ] Play: 전투 종료 시 HUD 점수 == `ScoreMath` 의 킬축 값
-- [ ] Play: 마일스톤 플래시가 잡몹마다 터지지 않는다 (2,000 단위)
-- [ ] 배틀로그 `score_events[]` 의 `enemy_killed` 값이 유닛별 실제 킬점수
+- [x] compile 통과, `read_console` 클린
+- [x] EditMode 전체 통과 (1125 / 0 실패)
+- [x] Play: 잡몹 처치 시 HUD 가 **+100** (2,400 샘플 전부 `HUD == _killScoreTotal`, 불일치 0)
+- [x] 플래시 발화 조건 격리 검증 — 잡몹 2기(200) 안 터짐 / 3기(300) 터짐 / 보스 1기 터짐 /
+      1초 밖 만료분 안 터짐 / 터진 직후 쿨다운 억제
+- [ ] **보스 처치 +2,000 은 미확인** — 5웨이브째 등장이라 검증 구간에 안 나왔다. 같은 채널이라
+      구조상 성립하지만 눈으로는 못 봤다
+- [ ] 배틀로그 `score_events[]` 값 확인 미실시
+
+확인: 2026-07-21

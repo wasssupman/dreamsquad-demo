@@ -2447,7 +2447,8 @@ MonoBehaviour:
   kickStrength: 11
   kickRotation: 3
   kickDuration: 0.3
-  milestoneInterval: 2000
+  burstWindowSec: 1
+  burstScoreThreshold: 300
   vignetteSprite: {fileID: 21300000, guid: 81dc17ec18fd24896ba17ce06c640d0f, type: 3}
   milestoneColor: {r: 1, g: 0.8, b: 0.35, a: 1}
   milestoneFlashAlpha: 0.5

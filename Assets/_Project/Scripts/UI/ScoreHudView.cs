@@ -73,11 +73,14 @@ namespace Wassup.UI
         [Tooltip("처치 시 패널 회전 펀치(도)")]
         [SerializeField] private float kickRotation = 3f;
         [SerializeField] private float kickDuration = 0.3f;
-        [Tooltip("마일스톤 간격(점). 통과 시 화면 가장자리 플래시.")]
-        // score-tally-sequence unit 0 — 킬점수 축척(잡몹 100)에 맞춘 값. 100 이던 시절엔
-        // 잡몹 하나마다 플래시가 터졌다. 보스 killScore 가 정확히 2,000 이라 보스 처치 =
-        // 마일스톤 1개가 보장된다.
-        [SerializeField] private int milestoneInterval = 2000;
+        // score-tally-sequence unit 0 — 가장자리 플래시는 **순간 화력** 기준이다.
+        // 원래는 누계 N 점마다(milestoneInterval) 터졌는데, 킬점수 축척으로 바뀐 뒤
+        // 간격을 키우니 보스에서만 터져 거의 안 보였다. 잡몹 3기(300)나 보스 1기(2,000)
+        // 처럼 "몰아친 순간"에 터지는 게 타격감에 맞다.
+        [Tooltip("이 시간 안에 번 점수를 합산한다(초)")]
+        [SerializeField] private float burstWindowSec = 1f;
+        [Tooltip("윈도우 합계가 이 값 이상이면 가장자리 플래시. 잡몹 100 / 보스 2,000 기준.")]
+        [SerializeField] private int burstScoreThreshold = 300;
         [Tooltip("풀스크린 비네트 스프라이트(가장자리 밝음). Null → 플래시 생략.")]
         [SerializeField] private Sprite vignetteSprite;
         [SerializeField] private Color milestoneColor = new Color(1f, 0.8f, 0.35f, 1f);
@@ -162,7 +165,10 @@ namespace Wassup.UI
         private float _shineBaseY;
         private Image _vignetteImage;
         private float _milestoneFlash;
-        private int _lastMilestone;
+        // 최근 획득 이력 (시각, 점수). burstWindowSec 을 지난 항목은 버린다.
+        private readonly System.Collections.Generic.List<(float time, int points)> _burstWindow = new();
+        // 한 번 터진 뒤 재무장까지의 쿨다운 — 지속 사격 중 매 프레임 터지는 걸 막는다.
+        private float _burstCooldownUntil;
         private Tween _kickPosTween;
         private Tween _kickRotTween;
         private float _soundHeat;
@@ -250,8 +256,33 @@ namespace Wassup.UI
         // 이어서 시간·스트레스를 더할 수 있다.
         public void OnEnemyKilled(int points)
         {
-            _targetScore += Mathf.Max(0, points);
+            int p = Mathf.Max(0, points);
+            _targetScore += p;
             _pendingKills++;
+            // 유입 시점에 기록한다 — 판정은 프레임당 1회 flush(TriggerHit)에서.
+            if (p > 0) _burstWindow.Add((Time.unscaledTime, p));
+        }
+
+        // 최근 burstWindowSec 안에 번 점수가 임계 이상이면 가장자리 플래시.
+        // 지속 사격 중 매 프레임 터지지 않도록 플래시 지속시간만큼 쿨다운을 둔다.
+        private void TryBurstFlash()
+        {
+            if (burstScoreThreshold <= 0 || burstWindowSec <= 0f) return;
+
+            float now = Time.unscaledTime;
+            float cutoff = now - burstWindowSec;
+            int i = 0;
+            while (i < _burstWindow.Count && _burstWindow[i].time < cutoff) i++;
+            if (i > 0) _burstWindow.RemoveRange(0, i);
+
+            if (now < _burstCooldownUntil) return;
+
+            int sum = 0;
+            for (int k = 0; k < _burstWindow.Count; k++) sum += _burstWindow[k].points;
+            if (sum < burstScoreThreshold) return;
+
+            _milestoneFlash = 1f;
+            _burstCooldownUntil = now + Mathf.Max(0.05f, milestoneDuration);
         }
 
         // battle-leak-limit-hud unit 0 — BattleBridge owns the authoritative
@@ -339,12 +370,11 @@ namespace Wassup.UI
                     new Vector3(0f, 0f, kickRotation * intensity), kickDuration, useUnscaledTime: true);
             }
 
-            // Milestone edge-flash on crossing each interval (display-only trigger).
-            if (milestoneInterval > 0)
-            {
-                int m = _targetScore / milestoneInterval;
-                if (m > _lastMilestone) { _lastMilestone = m; _milestoneFlash = 1f; }
-            }
+            // Burst edge-flash — 최근 burstWindowSec 안에 번 점수가 임계를 넘으면 터진다.
+            // 누계 마일스톤(총점 N 단위)이 아니라 **순간 화력** 기준이다: 누계 기준은 킬점수
+            // 축척으로 바뀐 뒤 보스에서만 터져서 거의 안 보였다. 잡몹 3기 동시처치나 보스
+            // 1기가 같은 무게로 터진다.
+            TryBurstFlash();
 
             // Score tick — pitch climbs on rapid consecutive kills (heat), decays over time.
             _soundHeat = Mathf.Min(_soundHeat + killCount * soundPitchPerKill,
@@ -442,7 +472,8 @@ namespace Wassup.UI
                 _targetScore = 0;
                 _shownScore = 0f;
                 _pendingKills = 0;
-                _lastMilestone = 0;
+                _burstWindow.Clear();
+                _burstCooldownUntil = 0f;
                 _soundHeat = 0f;
                 StopFeedbackTweens();
                 if (_value != null) { _value.text = "0"; _value.color = baseColor; }
