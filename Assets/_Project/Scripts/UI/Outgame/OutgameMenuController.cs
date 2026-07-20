@@ -22,6 +22,8 @@ namespace Wassup.UI
         [SerializeField] private GameObject dreamcatcherPanel;
         // wave-authoring-test-mode unit 4 — 테스트 모드 플랜 피커 패널.
         [SerializeField] private GameObject testModePanel;
+        // loadout-preset-page unit 5 — 프리셋 페이지 패널(PresetPage 호스트).
+        [SerializeField] private GameObject presetPanel;
         // tournament-history unit 2 — 토너먼트 히스토리 패널(TournamentHistoryPanel 소유).
         [SerializeField] private GameObject historyPanel;
         // outgame-login-gate unit 1 — auth gate. menuRoot wraps every lobby button;
@@ -162,6 +164,9 @@ namespace Wassup.UI
 
         public void OnOpenTestMode() => RaiseExclusive(testModePanel);
 
+        // loadout-preset-page unit 5 — 로비 "프리셋" 버튼 → 프리셋 페이지.
+        public void OnOpenPreset() => RaiseExclusive(presetPanel);
+
         // tournament-history unit 2 — 로비 "히스토리" 버튼 → 히스토리 페이지.
         public void OnOpenHistory() => RaiseExclusive(historyPanel);
 
@@ -185,6 +190,7 @@ namespace Wassup.UI
             if (dreamcatcherPanel != null) dreamcatcherPanel.SetActive(false);
             if (testModePanel != null) testModePanel.SetActive(false);
             if (historyPanel != null) historyPanel.SetActive(false);
+            if (presetPanel != null) presetPanel.SetActive(false);
             // 패널을 닫으면 로비 버튼을 되살린다. 단 로그인 게이트를 존중 — 미로그인
             // 상태에서는 계속 숨겨야 하므로 signedIn 을 반영한다(Awake 진입 시에도 안전).
             if (menuRoot != null) menuRoot.SetActive(UserSession.IsSignedIn);
