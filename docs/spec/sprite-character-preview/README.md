@@ -1,6 +1,6 @@
 # Sprite Character Preview
 
-상태: 진행 중 (2026-07-20 시작)
+상태: 구현 완료 2026-07-20 (Play 육안 확인 미완 — `2_handoff_summary.md` 참조)
 
 ## 상위 목표
 
@@ -29,6 +29,7 @@
 |---|---|---|---|
 | 0 | 컴포넌트 | `0_character_view.md` | `FlipbookCharacterView` — 상태별 플립북 재생 + EditMode 테스트 |
 | 1 | 오소링 | `1_preview_prefab.md` | 인스펙터 상태 버튼 + 템플릿 프리팹 + 맵 배치 확인 |
+| 2 | 인계 | `2_handoff_summary.md` | 구현 종료 요약 (커밋 해시 · 시트 오소링 함정) |
 
 ## Feature-wide 계약
 

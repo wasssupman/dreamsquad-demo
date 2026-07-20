@@ -59,3 +59,16 @@ SpriteCharacter
 
 **시각 검증은 사용자가 시트를 넣고 신호할 때 수행한다** (README 계약).
 그전까지는 슬롯이 빈 상태로 compile/배치/버튼 동작까지만 확인한다.
+
+---
+
+확인 2026-07-20 · 커밋 `4fb2c020`(프리팹/인스펙터) · `34c4deae`(테스트 시트).
+
+검증됨:
+- compile clean. 프리팹 YAML 의 컴포넌트 GUID 3개와 직렬화 값 대조
+  (`playOnEnable:0` · `disableRendererWhenFinished:0` · `Billboard mode:Tilted/45°`).
+- 오프스크린 렌더로 `idle` 49프레임 재생 확인 — `idle_0 → 4 → 8 → … → 44` 순서 전진,
+  프레임 간 발 높이 일정(피벗 BottomCenter 정상).
+
+미확인 (MCP 브리지 단절로 Play 모드 자율 검증 불가):
+- Play 중 인스펙터 버튼 동작, 맵 위 `Billboard` 틸트 육안, 프리팹 스케일 적정성.

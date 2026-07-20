@@ -101,3 +101,9 @@ public void PollPlayback()
   - `Idle` 재생 중 `PollPlayback()` 을 여러 번 불러도 재시작하지 않는다(경과 시간 보존).
   - 원샷 상태에 루프 데이터를 넣으면 에러 로그가 나고 상태가 갇힌다(현재 동작을 고정).
 - 기존 테스트 무회귀 — 특히 `SpriteFlipbookPlayerTests` · `FlipbookMathTests`.
+
+---
+
+확인 2026-07-20 · 커밋 `6af72181`.
+격리 리그 배치 실행에서 EditMode **1078건 중 1076 통과 · 0 실패 · 2 스킵**(기존 스킵 그대로), 신규 14건.
+`ValidLoopPolicy_LogsNothing` 이 구현 중 폴백 상태 갇힘 버그를 잡아내 계약을 고쳤다(위 "슬롯과 폴백" 참조).
