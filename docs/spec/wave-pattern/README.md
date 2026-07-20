@@ -3,8 +3,8 @@
 **작성일**: 2026-04-21  
 **연결 문서**: `docs/spec/map-system/20_claude_handoff_summary.md`  
 **목표**: 기존 정적 `AttackDeck.SpawnEntry` 타임라인을 seed 기반 wave 생성 구조로 전환한다. 3분 플레이 기준 10~15개 wave 를 생성하고, 각 wave 는 현재 구현된 공격 유닛 타입 중 2종을 골라 10~15마리를 스폰한다.
-**상태**: 1차 구현 완료. 구현 커밋 `0ec5f71`; 리뷰 보정 완료. 인계 요약은 `5_handoff_summary.md` 를 기준으로 한다.
-2026-07-20 추가: unit 6 고정 시드(`2d8c843e`) — `deck.waveSeed` 비0 이면 매판 동일 패턴.
+**상태**: **완료 2026-07-20** (units 0~7). 1차 구현 `0ec5f71`(리뷰 보정 완료). units 6~7 최신 인계는 `8_handoff_summary.md`, 1차 인계는 `5_handoff_summary.md`.
+2026-07-20 추가: unit 6 고정 시드(`2d8c843e`, `deck.waveSeed` 비0 = 매판 동일 패턴) · unit 7 진행 수량 램프(`2c2ecacd`, min→max 선형 + `waveCountJitter` 지터).
 
 ## 구현 문서 목록
 
@@ -17,7 +17,8 @@
 | Phase 4 | `4_logging_tests_validation.md` | 로그, 테스트, Play 검증 기준 |
 | Phase 5 | `5_handoff_summary.md` | 구현 결과와 다음 작업 인계 요약 |
 | 추가 6 (2026-07-20) | `6_fixed_wave_seed.md` | 테스트 버전용 고정 웨이브 시드 — `deck.waveSeed` 라이브 오버라이드 재활성 (**완료 `2d8c843e`**) |
-| 추가 7 (2026-07-20) | `7_wave_difficulty_ramp.md` | 웨이브 진행 수량 램프 — min→max 선형 증가 + `waveCountJitter` 지터 |
+| 추가 7 (2026-07-20) | `7_wave_difficulty_ramp.md` | 웨이브 진행 수량 램프 — min→max 선형 증가 + `waveCountJitter` 지터 (**완료 `2c2ecacd`**) |
+| 추가 8 (2026-07-20) | `8_handoff_summary.md` | units 6~7 인계 요약 (고정 시드 + 수량 램프 + 밸런스 값) |
 
 ## 공통 원칙
 
