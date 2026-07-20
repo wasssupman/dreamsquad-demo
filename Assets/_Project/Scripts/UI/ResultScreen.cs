@@ -98,11 +98,34 @@ namespace Wassup.UI
         }
 
         // End-of-match summary stats shown on the result popup (null → hidden).
+        //
+        // battle-score-formula unit 4 — HasBreakdown 이면 점수 3축을, 아니면 기존
+        // 남은 시간/유출을 보여준다. 옛 오버로드 호출부가 남아 있어 둘 다 지원한다.
         public readonly struct MatchStats
         {
             public readonly float RemainingSec;
             public readonly int Leaks;
-            public MatchStats(float remainingSec, int leaks) { RemainingSec = remainingSec; Leaks = leaks; }
+            public readonly bool HasBreakdown;
+            public readonly int TimeScore, StressScore, KillScore;
+            // 예산 만점(분모). 킬은 스폰 구성 의존이라 상수가 아니므로 분모가 없다(계약 7).
+            public readonly int TimeBudget, StressBudget;
+
+            public MatchStats(float remainingSec, int leaks)
+            {
+                RemainingSec = remainingSec; Leaks = leaks;
+                HasBreakdown = false;
+                TimeScore = StressScore = KillScore = 0;
+                TimeBudget = StressBudget = 0;
+            }
+
+            public MatchStats(float remainingSec, int leaks, ScoreMath.BattleScore score,
+                int timeBudget, int stressBudget)
+            {
+                RemainingSec = remainingSec; Leaks = leaks;
+                HasBreakdown = true;
+                TimeScore = score.Time; StressScore = score.Stress; KillScore = score.Kill;
+                TimeBudget = timeBudget; StressBudget = stressBudget;
+            }
         }
 
         public void ShowDefeat() => ShowResult("패배", 0, null);
@@ -113,6 +136,18 @@ namespace Wassup.UI
         public void ShowVictory(int playerScore) => ShowResult("승리", playerScore, null);
         public void ShowVictory(int playerScore, float remainingSec, int leaks)
             => ShowResult("승리", playerScore, new MatchStats(remainingSec, leaks));
+
+        // battle-score-formula unit 4 — 점수 3축 분해를 실은 경로. 총점은 score.Total 이라
+        // 따로 받지 않는다.
+        public void ShowDefeat(ScoreMath.BattleScore score, float remainingSec, int leaks,
+            int timeBudget, int stressBudget)
+            => ShowResult("패배", score.Total,
+                new MatchStats(remainingSec, leaks, score, timeBudget, stressBudget));
+
+        public void ShowVictory(ScoreMath.BattleScore score, float remainingSec, int leaks,
+            int timeBudget, int stressBudget)
+            => ShowResult("승리", score.Total,
+                new MatchStats(remainingSec, leaks, score, timeBudget, stressBudget));
 
         private void ShowResult(string resultText, int playerScore, MatchStats? stats)
         {
@@ -130,7 +165,19 @@ namespace Wassup.UI
             // The stat rows take generic (label, value) pairs so battle-score-formula
             // unit 4 can swap these two for the three score axes without touching
             // any layout code here.
-            if (stats.HasValue)
+            if (stats.HasValue && stats.Value.HasBreakdown)
+            {
+                // 예산 소모 모델이라 "얻은 점수 / 예산" 이 그대로 피드백이 된다.
+                // 처치만 분모가 없다 — 킬 만점은 스폰 구성에 의존해 상수가 아니다(계약 7).
+                var s = stats.Value;
+                SetChips(new[]
+                {
+                    ("시간", $"{s.TimeScore:N0} / {s.TimeBudget:N0}"),
+                    ("스트레스", $"{s.StressScore:N0} / {s.StressBudget:N0}"),
+                    ("처치", $"{s.KillScore:N0}"),
+                });
+            }
+            else if (stats.HasValue)
             {
                 int t = Mathf.Max(0, Mathf.CeilToInt(stats.Value.RemainingSec));
                 SetChips(new[]
