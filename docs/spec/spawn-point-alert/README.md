@@ -1,8 +1,9 @@
 # spawn-point-alert — 스폰 지점 사전 얼럿
 
 **작성일**: 2026-07-20
-**상태**: **완료 2026-07-20** — units 0~1 구현·커밋 (`5d996eb0`, `44f06965`). handoff: `2_handoff_summary.md`.
-선행 `wave-pattern` unit 6(고정 시드, `2d8c843e`)과 함께 작업했다. 사용자 Play 체감 확인만 남음.
+**상태**: **완료 2026-07-20 (사용자 Play 확인)** — units 0~1 구현·커밋 (`5d996eb0`, `44f06965`),
+z-fighting 보정 `086507e1`. handoff: `2_handoff_summary.md`.
+선행 `wave-pattern` unit 6(고정 시드, `2d8c843e`)과 함께 작업했다. 실기기 성능만 미측정.
 **선행 spec**: `docs/spec/wave-pattern/` (GeneratedWavePlan — 예보의 소스), `wave-pattern/6_fixed_wave_seed.md` (검증 재현성 확보, 선행 권장)
 
 ## 목표 (검증 질문)

@@ -327,7 +327,7 @@ board-visualization spec 자체는 ROI 부족으로 wrap 종료. 진단/실험�
 - **GA 투사체 최종화** [S] · 디펜더별 최종 변종 선택(50종 중) + 스케일/높이 취향 미세조정 + 안 쓰는 변종 SO/프리팹 정리. (projectile-ga-reskin)
 - **GA 투사체 모바일 최적화** [M] · 라이트/트레일 감축 · soft particle 토글 · 실기기 프로파일. tint 데이터-드리븐 recolor 는 별도(preserveVfxColors 우회 필요). (projectile-ga-reskin)
 
-#### 스폰 예고 라인 — 후속 (spawn-point-alert, 2026-07-20 종료 이관)
+#### 스폰 예고 라인 — 후속 (spawn-point-alert, 2026-07-20 종료 이관 · 사용자 Play 확인 완료)
 
 - **예고선 실기기 성능** [S] · lane 당 LineRenderer 3 + SpriteRenderer 1(3레인 = 12개), 매 프레임 폴리라인 재구축. Android 미측정. 부담되면 코너 정점만 유지하는 현 구조에서 갱신 주기를 낮추는 선택지. (spawn-point-alert)
 - **보스 웨이브 예고 차별화** [S] · 보스 웨이브 lane 만 색/굵기를 달리해 구분. 현재는 크림슨 워닝 배너(boss-wave-cadence)가 별도로 존재해 중복 여부 판단 필요. (spawn-point-alert)

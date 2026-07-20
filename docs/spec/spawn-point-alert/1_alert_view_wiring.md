@@ -131,4 +131,7 @@ public bool TryGetSpawnPathSim(int laneIndex, List<Vector3> outPath)
 - `ForceNextWave`: 트레일 없이 즉시 스폰(`forced=True`), 예보는 다음 웨이브로 이동.
 - 전투 종료·다음 웨이브(33.5초~) 재개 정상, 콘솔 에러/경고 0.
 
-**미확인**: 사용자 Play 체감(굵기·색·수렴 속도·광휘 세기)과 실기기 성능. Follow-up 참조.
+**사용자 Play 확인 2026-07-20** — 체감(굵기·색·수렴 속도·광휘 세기) 및 z-fighting
+해소 통과. 최종 값: `lineWidth 0.14` · `retractSec 1` · `surfaceOffset 0.06`.
+
+**미확인**: 실기기(Android) 성능. Follow-up 참조.

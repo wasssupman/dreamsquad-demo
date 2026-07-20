@@ -7,6 +7,8 @@
 - `2d8c843e` feat(wave-pattern): 고정 웨이브 시드 — 테스트 버전 매판 동일 공격 패턴 (unit 6)
 - `5d996eb0` feat(spawn-point-alert): lane 별 첫 스폰 시각 예보 순수 함수 (unit 0)
 - `44f06965` feat(spawn-point-alert): 스폰→골 에너지 라인 예고 + 씬 배선 (unit 1)
+- `2e951698` docs(spec): 완료 기록 + 파이프라인 맵에 예고 오버레이 아키타입 추가
+- `086507e1` fix: Ground 타일맵 z-fighting 해소 (surfaceOffset 0.012 → 0.06)
 
 ## Implemented
 
@@ -34,6 +36,7 @@
 - lane 별 ON/OFF 실측이 `첫 스폰 − lead` / `첫 스폰 + 수렴` 과 한 프레임 내 일치.
 - 정렬 실측: 예고선 −9~−7, 유닛 +11~+75 → 타일 위·유닛 아래.
 - 수렴·강제 호출·웨이브 재개·전투 종료 정리 전부 스크립트 e2e 확인. 콘솔 클린.
+- **사용자 Play 확인 2026-07-20** — 체감·z-fighting 해소 통과. 최종 값 `lineWidth 0.14` / `retractSec 1` / `surfaceOffset 0.06`.
 
 ## Notes (되돌리면 안 되는 판단)
 
@@ -48,6 +51,5 @@
 
 ## Follow-up
 
-- **사용자 Play 체감 확인** — 굵기(0.14)·색·수렴 속도(1초)·광휘 세기(0.5). 전부 인스펙터 실시간 조정 가능.
-- **실기기 성능** — lane 당 LineRenderer 3개 + SpriteRenderer 1개(3레인 = 12개). Android 미측정.
+- **실기기 성능** — lane 당 LineRenderer 3개 + SpriteRenderer 1개(3레인 = 12개), 매 프레임 폴리라인 재구축. Android 미측정. (유일한 미확인 항목)
 - 상세 후속 후보는 README "후속 후보" 섹션 참조(보스 웨이브 얼럿 차별화 · Wave 1 사전 얼럿 · 얼럿 SFX).
