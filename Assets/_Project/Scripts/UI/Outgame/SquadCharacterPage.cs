@@ -72,7 +72,11 @@ namespace Wassup.UI
             sgRt.pivot = new Vector2(0.5f, 0f); sgRt.sizeDelta = new Vector2(400f, 600f);
             spineGo.transform.localScale = Vector3.one * spineScale;
 
-            var pf = Image("PortraitFallback", detail, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Color.white);
+            // 카드 위 자유 영역의 중앙에 앉힌다. 패널 중앙(0.5)에 두면 카드(0.03~cardHeight)
+            // 에 잠긴다 — SpineView 가 spineFeet(0.57)로 카드 위에 서는 것과 같은 규칙이고,
+            // cardHeight 에서 파생시켜 카드를 더 키워도 다시 삼켜지지 않게 한다.
+            float fallbackY = (cardHeight + 1f) * 0.5f;
+            var pf = Image("PortraitFallback", detail, new Vector2(0.5f, fallbackY), new Vector2(0.5f, fallbackY), Color.white);
             pf.rectTransform.sizeDelta = new Vector2(300f, 300f);
             pf.preserveAspect = true; pf.raycastTarget = false; pf.enabled = false;
 
