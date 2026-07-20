@@ -2584,7 +2584,7 @@ Transform:
   m_GameObject: {fileID: 1420088183}
   serializedVersion: 2
   m_LocalRotation: {x: 0.5, y: 0, z: 0, w: 0.8660254}
-  m_LocalPosition: {x: -0.97, y: 11.907, z: -7.121}
+  m_LocalPosition: {x: 0.86, y: 13.44, z: -8.75}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -3020,7 +3020,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 51e3e73f1575f4fdba65d717ba8ca3bb, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.Tutorial.FirstSessionTutorialController
   profileSO: {fileID: 11400000, guid: e610b4c0bbbeb4becb09188e400e6a55, type: 2}
   gameManager: {fileID: 1495062450}
@@ -3043,7 +3043,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 624fc3e5194df4ebc90d62a448ea7311, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.Tutorial.TutorialGuidanceView
   style: {fileID: 11400000, guid: ff4463a1c695b43b4b9d517be3eaac64, type: 2}
 --- !u!4 &1572896088
@@ -3797,8 +3797,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8b8f8ce6a0ad30a48bbb4f05804813cd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.GimmickGuideView
-  topOffset: 176
   cardWidth: 640
+  cardCornerOffset: {x: -40, y: -40}
+  introAnimSeconds: 0.3
+  introOffscreenMargin: 60
+  autoCollapseSeconds: 3
+  collapseAnimSeconds: 0.18
+  chipCornerOffset: {x: -40, y: -40}
 --- !u!4 &1916999831
 Transform:
   m_ObjectHideFlags: 0
@@ -3899,6 +3904,7 @@ MonoBehaviour:
   mapSource: 4
   mapGridSettings: {fileID: 11400000, guid: 1f2599c24bec64c26941cf5e9b0137e1, type: 2}
   mapDocument: {fileID: 11400000, guid: 1a25446142d844b5eb449719c8b67cee, type: 2}
+  fixedMapSeed: 20260719
   seasonRegistry: {fileID: 11400000, guid: d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8, type: 2}
   mapPathShape: 1
   mapGenerationOptions:
