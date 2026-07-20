@@ -1,12 +1,15 @@
 # first-session-tutorial — 첫 판 행동형 온보딩
 
-> 상태: **완료 2026-07-19 · Editor 사용자 Play 승인 · Android 실기기 QA 후속**
+> 상태: **핵심(0~4) 완료 2026-07-19 · 선물 튜토리얼 확장(6~8) 커밋 `9e75c0ae` 2026-07-20 · Android 실기기 QA 후속**
 > 선행: `defender-tap-to-place` · `mobile-ui-safe-area` · `awakening-hud-resource-button` (완료)
 
 ## 검증 질문
 
 신규 플레이어가 긴 설명이나 기능 투어 없이 첫 판에서 **유닛 1회 배치 → 전투 시작**을 직접 수행하고,
 각성이 실제로 사용 가능해진 순간에만 한 줄 힌트를 받아 드림캐쳐 손패의 존재를 이해하는가?
+
+확장(units 6~9): 두 번째 판에서 처음 노출되는 선물 단계를, 연출 홀드 2회 + 한 줄 문구만으로
+**덱 10장 + 선물 2장 → 셔플로 순서 배정**이라는 구조로 이해하는가?
 
 ## 상위 목표
 
@@ -26,7 +29,11 @@
 | 2 | `2_first_placement_flow.md` | 핵심 플로우 | 목표 제시 → 탭 배치 1회 → 전투 시작 |
 | 3 | `3_awakening_context_hint.md` | 상황별 힌트 | 사용 가능한 손패가 생긴 순간에만 각성 안내 |
 | 4 | `4_scene_wiring_and_qa.md` | 통합/검증 | BattleScene 배선과 모바일 가로화면 QA |
-| 5 | `5_handoff_summary.md` | 인계 | 구현 종료 후 작성 |
+| 5 | `5_handoff_summary.md` | 인계 | 핵심(0~4) 구현 종료 인계 |
+| 6 | `6_gift_tutorial_progress.md` | 프로필 상태 | 선물 튜토리얼 버전 + 두 번째 판 판정 |
+| 7 | `7_gift_phase_holds.md` | 연출 seam | GiftPhaseView 홀드 2지점 분할 + 첫 판 연출 억제 |
+| 8 | `8_gift_tutorial_orchestration.md` | 오케스트레이션 | 홀드 문구 표시 + guidance elevated + 완료 저장 |
+| 9 | `9_gift_wiring_and_qa.md` | 통합/검증 | 씬 배선 + 판 전이 smoke/Play QA |
 
 ## Feature-wide 계약
 
@@ -43,6 +50,12 @@
 - UI는 `UiCanvasSetup`/`SafeAreaRoot`를 따르며, 상태 저장 불가 시 플레이를 잠그지 않고 안내를 생략한다.
 - ECS 변경 없이 UI·입력·프로필 MonoBehaviour 계층의 기존 성공 신호만 관찰한다.
 - 핵심 안내 중 기존 `GimmickGuideView`는 숨겨 한 화면에 한 지시만 남기며, 종료·Skip·이탈에서 즉시 원복한다.
+- **선물 튜토리얼(units 6~9)**: 첫 판(core pending)엔 선물 **연출만** 억제한다 — 덱 구성은 동일
+  (12장, `BuildGiftDeck` 불변). 두 번째 판(core 완료 · gift pending · loaded 세션)에만 리빌
+  포커스·셔플 직전 2회 무기한 홀드 + 탭 진행으로 안내하고, 그 판에선 기존 탭 스킵을 비활성한다.
+- 선물 튜토리얼 문구의 kind(루시드/림)·카드 수는 하드코딩이 아니라 실제 구성 덱에서 읽는다.
+  완료 저장은 셔플 홀드 통과(셔플 연출 시작) 시점. 말풍선은 elevated sortingOrder(40)로 선물
+  패널(30) 위에 표시하고 종료 경로에서 원복한다.
 
 ## 파이프라인 커버리지
 

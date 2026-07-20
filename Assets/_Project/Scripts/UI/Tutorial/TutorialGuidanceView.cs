@@ -12,6 +12,8 @@ namespace Wassup.UI.Tutorial
     public sealed class TutorialGuidanceView : MonoBehaviour
     {
         private const int SortingOrder = 10;
+        // unit 8 — 선물 튜토리얼 문구는 GiftPanel(sortingOrder 30) 위에 떠야 한다.
+        private const int ElevatedSortingOrder = 40;
         private const float SafeEdgePadding = 20f;
         private const float PointerGap = 30f;
         private const float MessageHorizontalPadding = 56f;
@@ -28,6 +30,7 @@ namespace Wassup.UI.Tutorial
         public Color GoalMarkerColor => Style.goalMarkerColor;
 
         private GameObject _overlay;
+        private Canvas _canvas;
         private RectTransform _safeRoot;
         private GameObject _messagePanel;
         private TextMeshProUGUI _message;
@@ -193,6 +196,14 @@ namespace Wassup.UI.Tutorial
             if (_overlay != null) _overlay.SetActive(false);
         }
 
+        // unit 8 — 선물 튜토리얼 동안만 GiftPanel 위로 올린다. Hide 는 정렬을 건드리지
+        // 않으므로 원복은 호출자(FirstSessionTutorialController)의 종료 경로가 명시 수행한다.
+        public void SetElevated(bool elevated)
+        {
+            if (!_built) BuildCanvas();
+            if (_canvas != null) _canvas.sortingOrder = elevated ? ElevatedSortingOrder : SortingOrder;
+        }
+
         private void Update()
         {
             if (_overlay == null || !_overlay.activeSelf) return;
@@ -342,6 +353,7 @@ namespace Wassup.UI.Tutorial
             if (_built) return;
             _built = true;
             var roots = UiCanvasSetup.Ensure(gameObject, SortingOrder);
+            _canvas = roots.Canvas;
             _safeRoot = roots.SafeAreaRoot;
 
             if (style == null)

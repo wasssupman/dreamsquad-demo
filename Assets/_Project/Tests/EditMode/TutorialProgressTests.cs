@@ -20,11 +20,12 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
-        public void NewProfile_BothTutorialsPending()
+        public void NewProfile_AllTutorialsPending()
         {
             var profile = new PlayerProfile();
             Assert.IsTrue(TutorialProgress.IsCorePending(profile));
             Assert.IsTrue(TutorialProgress.IsAwakeningHintPending(profile));
+            Assert.IsTrue(TutorialProgress.IsGiftTutorialPending(profile));
         }
 
         [Test]
@@ -34,10 +35,24 @@ namespace Wassup.Tests.EditMode
             Assert.IsTrue(TutorialProgress.CompleteCore(profile));
             Assert.IsFalse(TutorialProgress.IsCorePending(profile));
             Assert.IsTrue(TutorialProgress.IsAwakeningHintPending(profile));
+            Assert.IsTrue(TutorialProgress.IsGiftTutorialPending(profile));
             Assert.IsFalse(TutorialProgress.CompleteCore(profile));
 
             Assert.IsTrue(TutorialProgress.CompleteAwakeningHint(profile));
             Assert.IsFalse(TutorialProgress.IsAwakeningHintPending(profile));
+
+            Assert.IsTrue(TutorialProgress.CompleteGiftTutorial(profile));
+            Assert.IsFalse(TutorialProgress.IsGiftTutorialPending(profile));
+            Assert.IsFalse(TutorialProgress.CompleteGiftTutorial(profile));
+        }
+
+        [Test]
+        public void GiftCompletion_DoesNotTouchOtherVersions()
+        {
+            var profile = new PlayerProfile();
+            Assert.IsTrue(TutorialProgress.CompleteGiftTutorial(profile));
+            Assert.IsTrue(TutorialProgress.IsCorePending(profile));
+            Assert.IsTrue(TutorialProgress.IsAwakeningHintPending(profile));
         }
 
         [Test]
@@ -47,9 +62,31 @@ namespace Wassup.Tests.EditMode
             {
                 firstBattleTutorialVersion = TutorialProgress.CoreVersion + 1,
                 awakeningHintVersion = TutorialProgress.AwakeningHintVersion + 1,
+                giftTutorialVersion = TutorialProgress.GiftTutorialVersion + 1,
             };
             Assert.IsFalse(TutorialProgress.IsCorePending(profile));
             Assert.IsFalse(TutorialProgress.IsAwakeningHintPending(profile));
+            Assert.IsFalse(TutorialProgress.IsGiftTutorialPending(profile));
+        }
+
+        [Test]
+        public void GiftTutorial_RunsOnlyAfterCoreComplete_NeverAlongsideCore()
+        {
+            var profile = new PlayerProfile();
+            _holder.SetLoadedProfile(profile);
+
+            // First run: core pending → the gift walkthrough must not fire.
+            Assert.IsTrue(TutorialProgress.ShouldRunCore(_holder));
+            Assert.IsFalse(TutorialProgress.ShouldRunGiftTutorial(_holder));
+
+            // Second run: core complete, gift pending → walkthrough fires exactly here.
+            TutorialProgress.CompleteCore(profile);
+            Assert.IsFalse(TutorialProgress.ShouldRunCore(_holder));
+            Assert.IsTrue(TutorialProgress.ShouldRunGiftTutorial(_holder));
+
+            // Third run: gift complete → normal presentation.
+            TutorialProgress.CompleteGiftTutorial(profile);
+            Assert.IsFalse(TutorialProgress.ShouldRunGiftTutorial(_holder));
         }
 
         [Test]
@@ -58,6 +95,9 @@ namespace Wassup.Tests.EditMode
             Assert.IsNotNull(_holder.profile, "asset default profile is intentionally non-null");
             Assert.IsFalse(TutorialProgress.ShouldRunCore(_holder));
             Assert.IsFalse(TutorialProgress.ShouldRunAwakeningHint(_holder));
+            // Even with core complete on the asset default, not-loaded blocks gift too.
+            TutorialProgress.CompleteCore(_holder.profile);
+            Assert.IsFalse(TutorialProgress.ShouldRunGiftTutorial(_holder));
 
             _holder.SetLoadedProfile(new PlayerProfile());
             Assert.IsTrue(_holder.IsLoadedThisSession);
@@ -71,8 +111,10 @@ namespace Wassup.Tests.EditMode
             _holder.SetLoadedProfile(null);
             Assert.IsFalse(TutorialProgress.ShouldRunCore(_holder));
             Assert.IsFalse(TutorialProgress.ShouldRunAwakeningHint(_holder));
+            Assert.IsFalse(TutorialProgress.ShouldRunGiftTutorial(_holder));
             Assert.IsFalse(TutorialProgress.CompleteCore(null));
             Assert.IsFalse(TutorialProgress.CompleteAwakeningHint(null));
+            Assert.IsFalse(TutorialProgress.CompleteGiftTutorial(null));
         }
 
         [Test]
@@ -82,10 +124,12 @@ namespace Wassup.Tests.EditMode
             {
                 firstBattleTutorialVersion = TutorialProgress.CoreVersion,
                 awakeningHintVersion = TutorialProgress.AwakeningHintVersion,
+                giftTutorialVersion = TutorialProgress.GiftTutorialVersion,
             };
             var loaded = JsonUtility.FromJson<PlayerProfile>(JsonUtility.ToJson(source));
             Assert.AreEqual(TutorialProgress.CoreVersion, loaded.firstBattleTutorialVersion);
             Assert.AreEqual(TutorialProgress.AwakeningHintVersion, loaded.awakeningHintVersion);
+            Assert.AreEqual(TutorialProgress.GiftTutorialVersion, loaded.giftTutorialVersion);
         }
 
         [Test]
@@ -94,8 +138,10 @@ namespace Wassup.Tests.EditMode
             var loaded = JsonUtility.FromJson<PlayerProfile>("{\"schemaVersion\":1}");
             Assert.AreEqual(0, loaded.firstBattleTutorialVersion);
             Assert.AreEqual(0, loaded.awakeningHintVersion);
+            Assert.AreEqual(0, loaded.giftTutorialVersion);
             Assert.IsTrue(TutorialProgress.IsCorePending(loaded));
             Assert.IsTrue(TutorialProgress.IsAwakeningHintPending(loaded));
+            Assert.IsTrue(TutorialProgress.IsGiftTutorialPending(loaded));
         }
 
         [Test]
@@ -106,14 +152,20 @@ namespace Wassup.Tests.EditMode
                 selectedSquadId = "keep_squad",
                 firstBattleTutorialVersion = TutorialProgress.CoreVersion,
                 awakeningHintVersion = TutorialProgress.AwakeningHintVersion,
+                giftTutorialVersion = TutorialProgress.GiftTutorialVersion,
             };
 
             Assert.IsTrue(TutorialProgress.ResetAll(profile));
             Assert.AreEqual(0, profile.firstBattleTutorialVersion);
             Assert.AreEqual(0, profile.awakeningHintVersion);
+            Assert.AreEqual(0, profile.giftTutorialVersion);
             Assert.AreEqual("keep_squad", profile.selectedSquadId);
             Assert.IsFalse(TutorialProgress.ResetAll(profile));
             Assert.IsFalse(TutorialProgress.ResetAll(null));
+
+            // A gift-only stamp must still count as a change.
+            profile.giftTutorialVersion = TutorialProgress.GiftTutorialVersion;
+            Assert.IsTrue(TutorialProgress.ResetAll(profile));
         }
 
         [Test]
@@ -123,6 +175,7 @@ namespace Wassup.Tests.EditMode
                 'schemaVersion': 99,
                 'firstBattleTutorialVersion': 7,
                 'awakeningHintVersion': 3,
+                'giftTutorialVersion': 5,
                 'selectedSquadId': 'keep_squad',
                 'futureAccountData': {
                     'currency': 12345,
@@ -133,12 +186,13 @@ namespace Wassup.Tests.EditMode
             var expected = JObject.Parse(source);
             expected[nameof(PlayerProfile.firstBattleTutorialVersion)] = 0;
             expected[nameof(PlayerProfile.awakeningHintVersion)] = 0;
+            expected[nameof(PlayerProfile.giftTutorialVersion)] = 0;
 
             string result = TutorialProgress.ResetAllInJson(source, out bool changed);
 
             Assert.IsTrue(changed);
             Assert.IsTrue(JToken.DeepEquals(expected, JObject.Parse(result)),
-                "Tutorial reset must change only the two tutorial version tokens.");
+                "Tutorial reset must change only the tutorial version tokens.");
         }
 
         [Test]
@@ -150,6 +204,7 @@ namespace Wassup.Tests.EditMode
             const string source = @"{
                 'firstBattleTutorialVersion': 1,
                 'awakeningHintVersion': 1,
+                'giftTutorialVersion': 1,
                 'selectedSquadId': 'keep_squad',
                 'futureAccountData': { 'currency': 12345 }
             }";
@@ -157,6 +212,7 @@ namespace Wassup.Tests.EditMode
             {
                 firstBattleTutorialVersion = 1,
                 awakeningHintVersion = 1,
+                giftTutorialVersion = 1,
                 selectedSquadId = "keep_squad",
             };
 
@@ -170,10 +226,12 @@ namespace Wassup.Tests.EditMode
                 var stored = JObject.Parse(File.ReadAllText(path));
                 Assert.AreEqual(0, stored.Value<int>(nameof(PlayerProfile.firstBattleTutorialVersion)));
                 Assert.AreEqual(0, stored.Value<int>(nameof(PlayerProfile.awakeningHintVersion)));
+                Assert.AreEqual(0, stored.Value<int>(nameof(PlayerProfile.giftTutorialVersion)));
                 Assert.AreEqual("keep_squad", stored.Value<string>(nameof(PlayerProfile.selectedSquadId)));
                 Assert.AreEqual(12345, stored["futureAccountData"]?["currency"]?.Value<int>());
                 Assert.AreEqual(0, loaded.firstBattleTutorialVersion);
                 Assert.AreEqual(0, loaded.awakeningHintVersion);
+                Assert.AreEqual(0, loaded.giftTutorialVersion);
                 Assert.AreEqual("keep_squad", loaded.selectedSquadId);
                 Assert.IsTrue(File.Exists(backupPath));
                 Assert.AreEqual(source, File.ReadAllText(backupPath));

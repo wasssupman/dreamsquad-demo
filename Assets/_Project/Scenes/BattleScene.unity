@@ -3033,6 +3033,7 @@ MonoBehaviour:
   handController: {fileID: 2054561897}
   gaugeView: {fileID: 1012444854}
   handView: {fileID: 1558370269}
+  giftView: {fileID: 1586207281}
 --- !u!114 &1572896087
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3095,6 +3096,7 @@ MonoBehaviour:
   handController: {fileID: 2054561897}
   placementPhaseView: {fileID: 1628485822}
   giftConfig: {fileID: 11400000, guid: 1859c4cd9e9fa442a8efc392bfc5d292, type: 2}
+  profileSO: {fileID: 11400000, guid: e610b4c0bbbeb4becb09188e400e6a55, type: 2}
 --- !u!4 &1586207282
 Transform:
   m_ObjectHideFlags: 0
