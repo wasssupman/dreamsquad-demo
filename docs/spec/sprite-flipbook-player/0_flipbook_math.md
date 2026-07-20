@@ -49,3 +49,7 @@
 - **`FrameAt` × `IsFinished` 결합 불변식** 을 별도 테스트로 고정한다: dt 를 쪼개 누적했을 때
   "완료로 판정되는 시점의 프레임 == `frameCount-1`". 재생기의 "반영 후 판정" 순서가 의미를 갖는 근거다.
 - `FlipbookMath` 가 `UnityEngine.Mathf` 외의 Unity 타입을 참조하지 않는다 (아키텍처 무지 검증).
+
+---
+
+2026-07-20 확인 · `11932992` — EditMode 23건 통과

@@ -1,6 +1,6 @@
 # Sprite Flipbook Player
 
-상태: 진행 중 · 2026-07-20
+상태: 완료 2026-07-20
 
 ## 상위 목표
 
@@ -23,7 +23,7 @@
 | 1 | 데이터 | `1_flipbook_data.md` | `SpriteFlipbookData` SO — 컷/통 2모드를 단일 프레임 배열로 확정 |
 | 2 | 재생기 | `2_flipbook_player.md` | `SpriteFlipbookPlayer` MonoBehaviour — `SpriteRenderer` 구동 |
 | 3 | 오소링 | `3_sheet_authoring.md` | 통 시트 슬라이스 오소링 경로 + 검증 |
-| 4 | 인계 | `4_handoff_summary.md` | 구현 종료 요약 |
+| 4 | 인계 | `4_handoff_summary.md` | 구현 종료 요약 (커밋 해시 포함) |
 
 ## Feature-wide 계약
 

@@ -56,3 +56,15 @@ SO 에 `loop` 를 켜는 것만으로 컴파일도 경고도 없이 누수가 �
 - 씬에서 `SpriteRenderer` + 이 컴포넌트 + 프레임이 든 SO 로 원샷/루프가 육안 확인된다.
 - 원샷 완주 후 `IsPlaying == false` 이고 마지막 프레임이 화면에 남는다(`disableRendererWhenFinished` 해제 시).
 - 전투 슬로우모 중 재생 속도가 같이 느려진다(`timeDomain = Battle`).
+
+---
+
+2026-07-20 확인 · `ff9ef18e`
+
+- EditMode 13건 통과. mutation("반영 → 판정" 순서 뒤집기)으로 순서 계약이 실제로 지켜짐을 확인.
+- 오프스크린 렌더 육안 확인 — Archer 컷씬 24프레임 원샷이 `001→005→010→015→020→024` 로
+  전진하고, 완주 시 `IsPlaying=false` + 마지막 프레임 유지.
+- 슬로우모 연동은 **부분 검증**: 클럭 소스(`TimeManager`)의 스케일링·도메인 격리·`Time.timeScale=1`
+  고정은 실측했으나(lease 0.25 → `ScaleOf(Battle)=0.25`, `Interaction` 은 1 유지),
+  재생기의 `Update` 가 그 dt 를 소비하는 경로는 코드 검토만 했다(Play 모드 실측 아님).
+  첫 실사용 소비자가 붙을 때 판 위에서 확인할 것.
