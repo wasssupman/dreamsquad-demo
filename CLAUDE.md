@@ -42,7 +42,7 @@
 **맥락 간 통신 규칙**:
 - Component는 소유 맥락이 있다. 다른 맥락은 **읽기만** 가능, 쓰기는 소유 맥락만.
 - 맥락 간 이벤트는 Buffer 또는 NativeQueue 싱글턴을 통한다. 직접 Component 수정 금지.
-- 현재 운영 중인 NativeQueue 채널 (18개): `GoalReachedEventsSingleton`, `DefenderDeathEventsSingleton`, `UnitAttackVisualEventsSingleton`, `ProjectileHitEventsSingleton`, `HealAppliedEventsSingleton`, `DamageNumberEventsSingleton`, `EnemyKilledEventsSingleton`, `EnemyCcEventsSingleton`, `StatModifierApplyEventsSingleton`, `StackModifierApplyEventsSingleton`, `HazardRuntimeEventsSingleton`, `HazardDestroyedEventsSingleton`, `HazardSpawnRequestsSingleton`, `AttackOutputLogEventsSingleton`, `AggroHitEventsSingleton`, `ThreatHitEventsSingleton`, `BlinkRequestEventsSingleton`, `CcClearRequestsSingleton`. (`MeteorBurstEventsSingleton` 은 Meteor 의 투사체 수렴으로 은퇴 — projectile-trajectory-payload unit 8. `AggroHitEventsSingleton` 은 Combat→Effects 히트 구동 어그로 — aggro-targeting unit 11. `ThreatHitEventsSingleton` 은 Combat→Combat 보스 위협 귀속, `BlinkRequestEventsSingleton` 은 Combat→Movement 텔레포트 seam — nightmare-catcher unit 1·3. `CcClearRequestsSingleton` 은 Units→Effects wake-on-hit(Sleep 해제) — combat-action-lock unit 3)
+- 현재 운영 중인 NativeQueue 채널 (20개): `GoalReachedEventsSingleton`, `DefenderDeathEventsSingleton`, `UnitAttackVisualEventsSingleton`, `ProjectileHitEventsSingleton`, `HealAppliedEventsSingleton`, `DamageNumberEventsSingleton`, `EnemyKilledEventsSingleton`, `EnemyCcEventsSingleton`, `StatModifierApplyEventsSingleton`, `StackModifierApplyEventsSingleton`, `HazardRuntimeEventsSingleton`, `HazardDestroyedEventsSingleton`, `HazardSpawnRequestsSingleton`, `AttackOutputLogEventsSingleton`, `AggroHitEventsSingleton`, `ThreatHitEventsSingleton`, `BlinkRequestEventsSingleton`, `CcClearRequestsSingleton`, `MeteorBarrageRequestsSingleton`, `ClockOutRefundEventsSingleton`. (`MeteorBurstEventsSingleton` 은 Meteor 의 투사체 수렴으로 은퇴 — projectile-trajectory-payload unit 8. `AggroHitEventsSingleton` 은 Combat→Effects 히트 구동 어그로 — aggro-targeting unit 11. `ThreatHitEventsSingleton` 은 Combat→Combat 보스 위협 귀속, `BlinkRequestEventsSingleton` 은 Combat→Movement 텔레포트 seam — nightmare-catcher unit 1·3. `CcClearRequestsSingleton` 은 Units→Effects wake-on-hit(Sleep 해제) — combat-action-lock unit 3. `MeteorBarrageRequestsSingleton` 은 Effects→Bridge 사직서 임계 메테오 barrage cast — season-gimmick-clockout unit 3·4. `ClockOutRefundEventsSingleton` 은 Effects→Bridge 퇴근 코스트 환급 — season-gimmick-clockout unit 6)
 
 폴더 구조: `Assets/_Project/Scripts/Battle/{Units,Movement,Combat,Effects}/`. 상세는 TRD 섹션 2.5 참조.
 
@@ -102,6 +102,8 @@ docs/spec/{feature-slug}/
 - **코드 + 커밋 히스토리**: 구현 상세의 source of truth.
 
 계약이 바뀌면 문서를 갱신한다. 단, diff 설명이나 구현 내부 흐름을 문서에 장황하게 복제하지 않는다.
+
+**스펙 문서의 성격 = 현재 구현 + 미래 길찾기.** 넣는 것: 이 feature 를 구현·탐색하는 데 필요한 것 — 계약, 작업 단위, **재사용할 기존 코드·시스템 포인터**(이름·위치로 가리키는 길찾기). 넣지 않는 것: 타 세션/스펙과의 **조율 로그**(누가 뭘 편집 중·index.lock·커밋 해시 추적), 완료된 **타 스펙의 구현 내역** 서술, 이 feature 밖 콘텐츠와의 **emergent 상호작용**. 이런 transient 맥락은 금세 stale 해지고 "이 feature 를 어떻게 구현/탐색하나"라는 문서의 핵심 신호를 흐린다 — 세션 조율·충돌 판단은 대화에서 답하고 필요하면 메모리에 남긴다. (재사용 대상 시스템을 가리키는 것과 타 스펙의 진행/조율을 서술하는 것은 다르다 — 전자만 스펙에 둔다.)
 
 ### 구성 원칙
 

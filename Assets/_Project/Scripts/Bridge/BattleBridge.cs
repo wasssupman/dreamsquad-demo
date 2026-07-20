@@ -155,6 +155,12 @@ namespace Wassup.Bridge
         [Tooltip("픽업 모델 머티리얼 override(FBX 임베디드 머티리얼 텍스처 미바인딩 우회). 비우면 원본.")]
         [SerializeField] private Material pickupOverrideMaterial;
 
+        [Header("Season Gimmick — Resignation View (season-gimmick-clockout unit 1)")]
+        [Tooltip("사직서 뷰 프리팹. 비우면 절차적 플레이스홀더(흰 종이).")]
+        [SerializeField] private GameObject resignationViewPrefab;
+        [Tooltip("사직서 뷰의 셀 중심 위 높이(월드).")]
+        [SerializeField] private float resignationViewHeight = 0.2f;
+
         private ManualMapInput? _manualMapInput;
         private GeneratedMap _generatedMap;
         private int2? _mapGridGridSizeOverride;
@@ -199,6 +205,11 @@ namespace Wassup.Bridge
         private readonly Dictionary<Entity, GameObject> _pickupVisualMap = new();
         // 조정 시 제거 대상 임시 버퍼 (반복 중 수정 회피, 매 프레임 재사용).
         private readonly List<Entity> _pickupReapBuffer = new();
+        // season-gimmick-clockout unit 1 — 사직서 엔티티↔뷰 매핑 (Pickup 뷰 동형).
+        private EntityQuery _resignationViewQuery;
+        private bool _resignationViewQueryCreated;
+        private readonly Dictionary<Entity, GameObject> _resignationVisualMap = new();
+        private readonly List<Entity> _resignationReapBuffer = new();
         private EntityQuery _projectileSpawnRequestQuery;
         private bool _projectileSpawnRequestQueryCreated;
         private EntityQuery _projectileQuery;
@@ -238,6 +249,8 @@ namespace Wassup.Bridge
         // _startTime(실시간)은 cosmetic 이벤트/로그 타임스탬프 전용으로 남긴다.
         private double _battleClock;
         private Entity _battleTimeScaleEntity = Entity.Null;
+        // season-gimmick-clockout unit 2 — running 신호 싱글턴 엔티티(BattleTimeScale 동형).
+        private Entity _battleRunningEntity = Entity.Null;
         private float _timerDuration;
         private bool _running;
         public float LogElapsedTime => Mathf.Max(0f, (float)_battleClock);
@@ -279,6 +292,12 @@ namespace Wassup.Bridge
         private NativeQueue<Wassup.Battle.Effects.HazardDestroyedEvent> _hazardDestroyedQueue;
         private NativeQueue<Wassup.Battle.Effects.HazardSpawnRequest> _hazardSpawnRequestQueue;
         private NativeQueue<Wassup.Battle.Combat.AttackOutputLogEvent> _attackOutputLogQueue;
+        // season-gimmick-clockout unit 3 — 메테오 barrage 요청 채널(Effects→Bridge).
+        private NativeQueue<Wassup.Battle.Effects.MeteorBarrageRequest> _meteorBarrageRequestQueue;
+        // season-gimmick-clockout unit 4 — 메테오 착탄 Walk 셀 선택 결정론 rng(matchSeed 파생, 매치당 seed).
+        private Unity.Mathematics.Random _meteorRng;
+        // season-gimmick-clockout unit 6 — 퇴근 코스트 환급 채널(Effects→Bridge).
+        private NativeQueue<Wassup.Battle.Effects.ClockOutRefundEvent> _clockOutRefundEventQueue;
         private Unity.Collections.NativeHashSet<Unity.Mathematics.int2> _blockedCells;
         private Unity.Collections.NativeParallelMultiHashMap<Unity.Mathematics.int2, Wassup.Battle.Effects.HazardEffect> _hazardCellToEffects;
 
@@ -436,6 +455,7 @@ namespace Wassup.Bridge
             if (dcIconStripSpawner != null) dcIconStripSpawner.Clear(); // unit-dreamcatcher-icons — 잔여 아이콘 스트립 정리(생명주기 대칭)
             unitOverheadUiLayer?.Clear(); // unit-overhead-ui — 공통 health/card view 정리
             ClearPickupVisuals(); // season-gimmick-overwork unit 6 — 잔여 레드불 뷰 정리
+            ClearResignationVisuals(); // season-gimmick-clockout unit 1 — 잔여 사직서 뷰 정리
             _dcAuraPool?.Clear(); _dcAuraPool = null; // nightmare-whip-aura rev 2 — 드림캐쳐 부착 오라 정리(생명주기 대칭)
             ClearBlockingHazardVisuals();
 
@@ -501,6 +521,8 @@ namespace Wassup.Bridge
             DestroyEntitiesByType<Wassup.Battle.Effects.HazardRuntimeEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.HazardDestroyedEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.HazardSpawnRequestsSingleton>();
+            DestroyEntitiesByType<Wassup.Battle.Effects.MeteorBarrageRequestsSingleton>();
+            DestroyEntitiesByType<Wassup.Battle.Effects.ClockOutRefundEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Combat.AttackOutputLogEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.AggroHitEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Combat.ThreatHitEventsSingleton>();
@@ -511,9 +533,14 @@ namespace Wassup.Bridge
             // 누락 시 StopBattle 후 orphan 이 남고 다음 프레임 새 엔티티가 생겨 2개 → TryGetSingleton
             // 실패 → 이후 모든 전투에서 시간 제어(정지/슬로우모)가 영구 무력화된다.
             DestroyEntitiesByType<BattleTimeScale>();
+            // season-gimmick-clockout unit 2 후속 — BattleRunning 도 동형이므로 대칭 파괴.
+            // 누락 시 전투→로비→전투 재진입에서 2개가 되어 TryGetSingleton 소비자
+            // (ClockOutSystem 등)가 매 프레임 InvalidOperationException 을 던진다.
+            DestroyEntitiesByType<Wassup.Battle.BattleRunning>();
             // season-gimmick-overwork unit 2 — 기믹 config 도 대칭 파괴 (BattleTimeScale 교훈 준수).
             DestroyEntitiesByType<Wassup.Battle.Effects.BurnoutGimmickConfig>();
             DestroyEntitiesByType<Wassup.Battle.Effects.RedBullGimmickConfig>();
+            DestroyEntitiesByType<Wassup.Battle.Effects.ClockOutGimmickConfig>();
         }
 
         private void DisposeEcsInfrastructureNativeContainers()
@@ -536,6 +563,8 @@ namespace Wassup.Bridge
             if (_hazardRuntimeEventQueue.IsCreated) _hazardRuntimeEventQueue.Dispose();
             if (_hazardDestroyedQueue.IsCreated) _hazardDestroyedQueue.Dispose();
             if (_hazardSpawnRequestQueue.IsCreated) _hazardSpawnRequestQueue.Dispose();
+            if (_meteorBarrageRequestQueue.IsCreated) _meteorBarrageRequestQueue.Dispose();
+            if (_clockOutRefundEventQueue.IsCreated) _clockOutRefundEventQueue.Dispose();
             if (_blockedCells.IsCreated) _blockedCells.Dispose();
             if (_hazardCellToEffects.IsCreated) _hazardCellToEffects.Dispose();
         }
@@ -576,6 +605,11 @@ namespace Wassup.Bridge
             {
                 _pickupViewQuery.Dispose();
                 _pickupViewQueryCreated = false;
+            }
+            if (_resignationViewQueryCreated)
+            {
+                _resignationViewQuery.Dispose();
+                _resignationViewQueryCreated = false;
             }
             if (_projectileSpawnRequestQueryCreated)
             {
@@ -1172,6 +1206,12 @@ namespace Wassup.Bridge
                 _pickupViewQuery = _em.CreateEntityQuery(ComponentType.ReadOnly<Wassup.Battle.Effects.Pickup>());
                 _pickupViewQueryCreated = true;
             }
+            // season-gimmick-clockout unit 1 — 사직서 뷰 조정용.
+            if (!_resignationViewQueryCreated)
+            {
+                _resignationViewQuery = _em.CreateEntityQuery(ComponentType.ReadOnly<Wassup.Battle.Effects.Resignation>());
+                _resignationViewQueryCreated = true;
+            }
 
             if (!_projectileQueryCreated)
             {
@@ -1300,6 +1340,20 @@ namespace Wassup.Bridge
             var hazardSpawnRequestSingleton = _em.CreateEntity();
             _em.AddComponentData(hazardSpawnRequestSingleton, new Wassup.Battle.Effects.HazardSpawnRequestsSingleton { queue = _hazardSpawnRequestQueue });
 
+            // season-gimmick-clockout unit 3 — 메테오 barrage 요청 채널(Effects→Bridge).
+            // ResignationThresholdSystem enqueue → DrainMeteorBarrageRequests(unit 4)이 cast.
+            if (_meteorBarrageRequestQueue.IsCreated) _meteorBarrageRequestQueue.Dispose();
+            _meteorBarrageRequestQueue = new NativeQueue<Wassup.Battle.Effects.MeteorBarrageRequest>(Allocator.Persistent);
+            var meteorBarrageSingleton = _em.CreateEntity();
+            _em.AddComponentData(meteorBarrageSingleton, new Wassup.Battle.Effects.MeteorBarrageRequestsSingleton { queue = _meteorBarrageRequestQueue });
+
+            // season-gimmick-clockout unit 6 — 퇴근 코스트 환급 채널(Effects→Bridge).
+            // ClockOutSystem enqueue → DrainClockOutRefundEvents 가 CostRuntime.AddCost 로 지급.
+            if (_clockOutRefundEventQueue.IsCreated) _clockOutRefundEventQueue.Dispose();
+            _clockOutRefundEventQueue = new NativeQueue<Wassup.Battle.Effects.ClockOutRefundEvent>(Allocator.Persistent);
+            var clockOutRefundSingleton = _em.CreateEntity();
+            _em.AddComponentData(clockOutRefundSingleton, new Wassup.Battle.Effects.ClockOutRefundEventsSingleton { queue = _clockOutRefundEventQueue });
+
             // Attack-output log channel. AttackSystem enqueues one event per output fired;
             // BattleBridge drains each frame and forwards to BattleLogger.RecordAttackOutput.
             if (_attackOutputLogQueue.IsCreated) _attackOutputLogQueue.Dispose();
@@ -1344,6 +1398,7 @@ namespace Wassup.Bridge
             // time-manager Unit 3 — 시간 상태도 매치와 함께 리셋.
             _battleClock = 0.0;
             _battleTimeScaleEntity = Entity.Null;
+            _battleRunningEntity = Entity.Null;
             // range-preview unit 3 — 매치 종료 시 격자 표시 무조건 해제(비행 중
             // 종료로 impact drain 이 못 지운 텔레그래프 잔상 방지).
             _rangeOwner = RangeDisplayOwner.None;
@@ -2057,6 +2112,8 @@ namespace Wassup.Bridge
         {
             // time-manager Unit 3 — 매 프레임 Battle 스케일을 ECS 로 흘린다(placement 슬로우모 포함).
             PushBattleTimeScaleToEcs();
+            // season-gimmick-clockout unit 2 — running 여부도 매 프레임 ECS 로(running-only 시스템용).
+            PushBattleRunningToEcs();
 
             // placement-enemy-see-through unit 3 — 적 dim 알파 페이드. unscaled 라 드래그 슬로우모와 무관.
             // _running 이전에 둬서 페이즈 무관하게 항상 원복/페이드가 진행되게 한다.
@@ -2088,6 +2145,8 @@ namespace Wassup.Bridge
             DrainEnemyKilledEvents();
             DrainAttackOutputLogEvents();
             DrainHazardSpawnRequests();
+            DrainMeteorBarrageRequests(); // season-gimmick-clockout unit 4 — 사직서 임계 메테오 barrage
+            DrainClockOutRefundEvents();  // season-gimmick-clockout unit 6 — 퇴근 코스트 환급
             DrainHazardRuntimeEvents();
             DrainHazardDestroyedEvents();
             DrainGoalEvents();
@@ -2100,6 +2159,7 @@ namespace Wassup.Bridge
             SyncMonoUnitViews();
             ReconcileStatusFx();
             ReconcilePickupViews();
+            ReconcileResignationViews();
             if (_em != null) _dcAuraPool?.Sync(_em); // 드림캐쳐 부착 오라 — 뷰 좌표 갱신 뒤 추종
             if (_em != null) _projectileViewPool?.SyncTransforms(_em);
         }
@@ -2271,6 +2331,59 @@ namespace Wassup.Bridge
             _pickupVisualMap.Clear();
         }
 
+        // season-gimmick-clockout unit 1 — 사직서 엔티티↔뷰 poll-reconcile (ReconcilePickupViews 동형).
+        // 순수 ECS 스폰이라 이벤트 없이 매 프레임 조정. _running 무관.
+        private void ReconcileResignationViews()
+        {
+            if (_em == null || !_resignationViewQueryCreated) return;
+
+            var entities = _resignationViewQuery.ToEntityArray(Allocator.Temp);
+            try
+            {
+                for (int i = 0; i < entities.Length; i++)
+                {
+                    var e = entities[i];
+                    if (_resignationVisualMap.ContainsKey(e)) continue;
+                    var r = _em.GetComponentData<Wassup.Battle.Effects.Resignation>(e);
+                    // 셀 중심 → view. Pickup 과 동일하게 BoardSpace.ToView 경유(+0.5 Tilemap 중심 보정).
+                    float3 simCenter = GridToWorldCenter(new Vector2Int(r.cell.x, r.cell.y));
+                    Vector3 pos = (Vector3)Wassup.Core.BoardSpace.ToView(simCenter) + Vector3.up * resignationViewHeight;
+                    var go = new GameObject($"Resignation_{r.cell.x}_{r.cell.y}");
+                    go.transform.SetParent(transform, worldPositionStays: false);
+                    go.transform.position = pos;
+                    go.AddComponent<Wassup.Battle.Effects.ResignationPresenter>().Init(resignationViewPrefab, 0f);
+                    _resignationVisualMap[e] = go;
+                }
+
+                // 사라진 엔티티(임계 소모) → 뷰 파괴.
+                if (_resignationVisualMap.Count > 0)
+                {
+                    _resignationReapBuffer.Clear();
+                    foreach (var kv in _resignationVisualMap)
+                        if (!_em.Exists(kv.Key)) _resignationReapBuffer.Add(kv.Key);
+                    for (int i = 0; i < _resignationReapBuffer.Count; i++)
+                    {
+                        var key = _resignationReapBuffer[i];
+                        if (_resignationVisualMap.TryGetValue(key, out var go) && go != null)
+                            Destroy(go);
+                        _resignationVisualMap.Remove(key);
+                    }
+                }
+            }
+            finally
+            {
+                entities.Dispose();
+            }
+        }
+
+        // season-gimmick-clockout unit 1 — 사직서 뷰 전체 정리 (매치 teardown).
+        private void ClearResignationVisuals()
+        {
+            foreach (var kv in _resignationVisualMap)
+                if (kv.Value != null) Destroy(kv.Value);
+            _resignationVisualMap.Clear();
+        }
+
         // time-manager Unit 3 — TimeManager.ScaleOf(Battle) 을 ECS singleton 으로 write 해
         // BattleScaledRateManager 가 읽게 한다. _running 무관하게 매 프레임 호출(placement 중
         // 드래그 슬로우모도 반영). ECS 경계: BattleBridge 만 EntityManager 에 접근한다.
@@ -2283,6 +2396,16 @@ namespace Wassup.Bridge
             {
                 Value = TimeManager.Instance.ScaleOf(TimeDomain.Battle)
             });
+        }
+
+        // season-gimmick-clockout unit 2 — 전투 running 여부를 ECS 로 흘린다(BattleTimeScale 동형).
+        // running-only 시스템(ClockOutSystem 등)이 배치 페이즈와 전투를 구분하는 신호.
+        private void PushBattleRunningToEcs()
+        {
+            if (_world == null || !_world.IsCreated || _em == default) return;
+            if (_battleRunningEntity == Entity.Null || !_em.Exists(_battleRunningEntity))
+                _battleRunningEntity = _em.CreateEntity(typeof(Wassup.Battle.BattleRunning));
+            _em.SetComponentData(_battleRunningEntity, new Wassup.Battle.BattleRunning { Value = _running });
         }
 
         private void SyncMonoUnitViews()
@@ -2757,6 +2880,86 @@ namespace Wassup.Bridge
             }
             requestEntities.Dispose();
             requestData.Dispose();
+        }
+
+        // season-gimmick-clockout unit 4 — 사직서 임계 barrage 요청을 drain 해 Walk 타일 임의
+        // meteorCount 곳에 SkyFall×TileAoe 메테오를 순차 낙하(적 피해). content-1 OnDeath 폭발
+        // (SpawnProjectile(...,Entity.Null))과 동형 cast — Combat 투사체 코드 불변, cast 프리미티브만 재사용.
+        // season-gimmick-clockout unit 6 — 퇴근 코스트 환급 drain. 기존 지급 패스(CostRuntime.AddCost)로.
+        private void DrainClockOutRefundEvents()
+        {
+            if (!_clockOutRefundEventQueue.IsCreated || _clockOutRefundEventQueue.Count == 0) return;
+            var cost = GameManager.Instance != null ? GameManager.Instance.CostRuntime : null;
+            if (cost == null) { while (_clockOutRefundEventQueue.TryDequeue(out _)) { } return; }
+            while (_clockOutRefundEventQueue.TryDequeue(out var evt))
+                cost.AddCost(evt.amount);
+        }
+
+        private void DrainMeteorBarrageRequests()
+        {
+            if (!_meteorBarrageRequestQueue.IsCreated || _meteorBarrageRequestQueue.Count == 0) return;
+
+            // 요청 존재하나 ClockOut 아님/맵 미빌드 → 비우고 드롭(비정상).
+            if (!(_assignedGimmick is Wassup.Data.ClockOutGimmickData cd) || !_generatedMap.IsCreated)
+            {
+                while (_meteorBarrageRequestQueue.TryDequeue(out _)) { }
+                return;
+            }
+            if (cd.meteorProjectile == null)
+            {
+                Debug.LogWarning("[BattleBridge] ClockOut meteorProjectile 미지정 — 메테오 barrage 드롭.");
+                while (_meteorBarrageRequestQueue.TryDequeue(out _)) { }
+                return;
+            }
+
+            // 이동(Walk) 타일 수집.
+            int2 gridSize = _generatedMap.gridSize;
+            int n = gridSize.x * gridSize.y;
+            var walk = new System.Collections.Generic.List<int2>(n);
+            for (int i = 0; i < n; i++)
+                if (_generatedMap.tiles[i] == MapTileType.Walk)
+                    walk.Add(new int2(i % gridSize.x, i / gridSize.x));
+
+            int dataIndex = GetOrCreateProjectileDataIndex(cd.meteorProjectile);
+            var chosen = new System.Collections.Generic.HashSet<int2>();
+
+            while (_meteorBarrageRequestQueue.TryDequeue(out var req))
+            {
+                if (walk.Count == 0) continue;
+                int shots = math.min(req.meteorCount, walk.Count);
+                chosen.Clear();
+                int landed = 0;
+                for (int s = 0; s < shots; s++)
+                {
+                    // rng 로 미중복 Walk 셀 선택(재시도 상한).
+                    int2 cell = default; bool found = false;
+                    for (int attempt = 0; attempt < 8; attempt++)
+                    {
+                        var c = walk[_meteorRng.NextInt(0, walk.Count)];
+                        if (chosen.Contains(c)) continue;
+                        cell = c; found = true; break;
+                    }
+                    if (!found) continue;
+                    chosen.Add(cell);
+
+                    float3 impactWorld = GridToWorldCenter(new Vector2Int(cell.x, cell.y));
+                    SpawnProjectile(new ProjectileSpawnRequest
+                    {
+                        movement        = MovementKind.SkyFall,
+                        payload         = PayloadKind.TileAoe,
+                        origin          = impactWorld,
+                        impact          = impactWorld,
+                        damage          = cd.meteorDamage,
+                        visualScale     = cd.meteorProjectile.visualScale,
+                        dataIndex       = dataIndex,
+                        impactTileRange = cd.meteorTileRange,
+                        flightTime      = cd.meteorWarningSec + landed * cd.meteorStaggerSec, // 순차 착탄
+                        arcHeight       = cd.meteorProjectile.dropHeight,                     // SkyFall 낙하 시작 높이
+                        targetFaction   = ProjectileTargetFaction.Enemy,                     // clockout=적(보스만 Defender)
+                    }, Entity.Null);
+                    landed++;
+                }
+            }
         }
 
         // Returns the spawned projectile entity (Entity.Null when dropped) so
@@ -4704,6 +4907,7 @@ namespace Wassup.Bridge
             // (idempotent — BuildPickupSpawnState 의 Teardown-first 와 동일 패턴).
             DestroyEntitiesByType<Wassup.Battle.Effects.BurnoutGimmickConfig>();
             DestroyEntitiesByType<Wassup.Battle.Effects.RedBullGimmickConfig>();
+            DestroyEntitiesByType<Wassup.Battle.Effects.ClockOutGimmickConfig>();
 
             if (_assignedGimmick is Wassup.Data.BurnoutGimmickData bd)
             {
@@ -4730,6 +4934,25 @@ namespace Wassup.Bridge
                     lastRunDuration       = rd.lastRunDuration,
                     lastRunDamageFraction = rd.lastRunDamageFraction,
                 });
+            }
+            else if (_assignedGimmick is Wassup.Data.ClockOutGimmickData cd)
+            {
+                Debug.Log($"[GimmickConfig] ClockOutGimmickConfig 주입 (gimmick={cd.gimmickId})");
+                var e = _em.CreateEntity();
+                _em.AddComponentData(e, new Wassup.Battle.Effects.ClockOutGimmickConfig
+                {
+                    clockOutSeconds      = cd.clockOutSeconds,
+                    resignationThreshold = cd.resignationThreshold,
+                    meteorCount          = cd.meteorCount,
+                    meteorDamage         = cd.meteorDamage,
+                    meteorTileRange      = cd.meteorTileRange,
+                    meteorWarningSec     = cd.meteorWarningSec,
+                    meteorStaggerSec     = cd.meteorStaggerSec,
+                    costRefund           = cd.clockOutCostRefund,
+                });
+                // unit 4 — 메테오 셀 선택 rng seed(매치당·matchSeed 파생 → 결정론). 요청은 config
+                // 주입 이후에만 발생하므로 seed 선행 보장.
+                _meteorRng = new Unity.Mathematics.Random((uint)Wassup.Core.MatchSeed.DeriveMeteorSeed(_matchSeed));
             }
         }
 
