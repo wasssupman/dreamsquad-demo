@@ -21,6 +21,7 @@
 
 ## 완료 기준
 
-- [x] compile: 오류 0.
-- [ ] 씬 배선: "히스토리" Button.onClick → `OutgameMenuController.OnOpenHistory`; HistoryPanel GameObject(+`TournamentHistoryPanel`) → `historyPanel` 필드 할당; 초기 비활성.
-- [ ] Play: 로그인 상태에서 히스토리 열기 → 목록 로드(또는 빈/실패 문구), 뒤로 → 로비 복원. 실서버 왕복 로그 확인.
+- [x] compile: Unity 콘솔 무에러 (2026-07-20).
+- [x] 씬 배선 (`9717b460`, 2026-07-20): HistoryButton.onClick → `OnOpenHistory`(persistent 확인), HistoryPanel(+`TournamentHistoryPanel`) → `historyPanel` 할당, 초기 비활성. OutgameScene 저장.
+- [x] Play 스모크: 패널 강제 활성 진입 시 `OnEnable→BuildCanvas→LoadEntries` 무예외(Canvas/타이틀/스크롤/상태 빌드), 미로그인=게스트 브랜치, `ClosePanels` 로 정상 비활성.
+- [ ] Play e2e(잔여): **로그인 상태**에서 버튼 클릭 → 실서버 목록 로드 → 뒤로 로비 복원 (MCP 가 Play 중 클릭/로그인 구동 불가 → 수동).

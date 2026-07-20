@@ -2,7 +2,12 @@
 
 ## Commit
 
-- (커밋 후 해시 기입) `feat/refactor(tournament-history): units 0~3` — API + LeaderboardList 추출 + 히스토리 패널 + 상세 랭킹 팝업.
+- `69163f8a` feat: unclaimed API + ParseList (unit 0)
+- `fedb357e` refactor: 리더보드 → 공용 LeaderboardList (unit 1)
+- `605543c7` feat: 히스토리 패널 + 상세 팝업 (units 2~3, 코드)
+- `c0e5cfc2` docs: README + units 0~4 + handoff
+- `40a612d2` fix: ISO 날짜 문자열 보존 (DateParseHandling.None, 리뷰/테스트 반영)
+- `9717b460` feat: OutgameScene 씬 배선 — 히스토리 버튼 + 패널 (units 2~3)
 
 ## Implemented
 
@@ -23,9 +28,12 @@
 
 ## Verified
 
-- compile: `dotnet build Wassup.Tests.EditMode.csproj` 오류 0 (경고 13, 기존).
-- 코드리뷰(oh-my-claudecode:code-reviewer): **APPROVE**, BLOCKER/HIGH 0. MEDIUM(빈 응답 null 형태) → `ParseList` 로 해소. LOW(팝업 가드 parity) → `isActiveAndEnabled` 로 수정. 나머지 LOW 2건은 accepted 패턴(아래 Notes).
-- Play/Test Runner 실행: **미실행**(이 세션 UnityMCP 부재 + 에디터 락으로 배치모드 불가).
+- compile: Unity 콘솔 무에러(전 어셈블리).
+- **EditMode 전 스위트 1020/1020 통과**(2 skip=기존 [Ignore]). unclaimed 배열/빈배열/null/에러 + BuildRows + 무회귀.
+- 코드리뷰(oh-my-claudecode:code-reviewer): **APPROVE**, BLOCKER/HIGH 0. MEDIUM(빈 응답 null) → `ParseList` 해소. LOW(팝업 가드) → `isActiveAndEnabled`. 테스트가 잡은 날짜 mangling → `DateParseHandling.None` 로 별도 수리.
+- 씬 배선(UnityMCP): HistoryButton onClick→OnOpenHistory(persistent) + historyPanel 할당 확인, OutgameScene 저장.
+- Play 스모크: 패널 강제활성 진입 시 `OnEnable→BuildCanvas→LoadEntries` 무예외, 미로그인 게스트 브랜치, `ClosePanels` 정상 비활성.
+- **잔여 e2e(수동)**: 로그인 상태에서 버튼 클릭→실서버 목록→행 클릭→상세 팝업. MCP 가 Play 중 클릭/로그인을 구동 못 함.
 
 ## Notes
 
@@ -33,11 +41,11 @@
 - **뒤로 버튼**은 `onClose` 이벤트만 발화(자기 비활성 안 함). `OutgameMenuController` 가 구독해 `ClosePanels`(메뉴 복원)하는 구조(LoginPanelView 선례). 배선 누락 시 뒤로가 no-op + dim 이 클릭 흡수 → 반드시 배선 확인.
 - 팝업은 히스토리 패널 위 sorting 3000, 패널 2500. dim 클릭=닫기.
 - 게스트(`IdToken==""`)는 API 스킵·빈 상태. `IsSignedIn` 아님에 주의.
-- `Wassup.Runtime.csproj` 에 새 3파일 `<Compile Include>` 를 검증용으로 임시 추가(gitignore 대상, 커밋 안 함). Unity refresh 시 재생성됨.
+- 씬 배선은 `execute_code` 불가(CodeDom/mono 경로 깨짐, Roslyn 부재)로 **일회용 Editor `[MenuItem]` 스크립트**(reflection 기반)로 수행 후 삭제. 향후 유사 배선 시 동일 우회 필요.
 
-## Follow-up (씬 배선 + Play — 다음 세션 필수)
+## Follow-up (수동 e2e 1건만 잔여)
 
-1. `OutgameScene` 로비 메뉴에 "히스토리" Button 추가 → `OnClick` = `OutgameMenuController.OnOpenHistory`.
-2. HistoryPanel GameObject 생성(+`TournamentHistoryPanel` 컴포넌트) → `OutgameMenuController.historyPanel` 필드 할당, 초기 비활성.
-3. Play: 로그인 상태에서 히스토리 열기 → 목록 로드 로그 확인(실서버 `unclaimed` 왕복, 빈 응답 형태 `[]`/null 실측) → 행 클릭 → 상세 랭킹(`GetResult` 왕복) → 닫기/뒤로 복원. 결과창 리더보드 시각 무회귀도 확인.
-4. Unity Test Runner EditMode: `TournamentApiTests`, `ResultLeaderboardModelTests` 그린 확인.
+- 씬 배선 + EditMode 실행은 이번 세션 완료(위 Verified). 남은 것은 **로그인 상태 수동 e2e**:
+  로비 → "히스토리" 클릭 → 실서버 `unclaimed` 목록 로드(빈 응답 형태 `[]`/null 실측) →
+  행 클릭 → 상세 랭킹(`GetResult`) → 닫기/뒤로 복원. 결과창 리더보드 시각 무회귀도 겸사 확인.
+  (MCP 가 Play 중 UI 클릭/로그인을 구동 못 해 자동화 불가.)

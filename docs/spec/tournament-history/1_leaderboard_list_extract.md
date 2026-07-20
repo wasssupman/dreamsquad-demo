@@ -21,6 +21,6 @@
 
 ## 완료 기준
 
-- [x] compile: `dotnet build Wassup.Tests.EditMode.csproj` 오류 0.
-- [ ] EditMode: `ResultLeaderboardModelTests`(6종, `LeaderboardList.BuildRows` 대상) 그린 — Unity Test Runner.
-- [ ] Play: 결과창(승/패) 리더보드가 추출 전과 동일하게 보이는지 시각 무회귀 확인.
+- [x] compile: Unity 콘솔 무에러 (2026-07-20).
+- [x] EditMode: `ResultLeaderboardModelTests` 6종 그린 (전 스위트 1020/1020, `fedb357e`, 2026-07-20).
+- [ ] Play: 결과창(승/패) 리더보드 시각 무회귀 — 모델/테스트 무회귀로 저위험, 배틀 결과창 육안 확인은 잔여.

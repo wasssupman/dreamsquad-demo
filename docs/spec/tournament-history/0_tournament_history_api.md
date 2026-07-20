@@ -48,8 +48,8 @@ public static void GetUnclaimedEntries(string baseUrl, string idToken,
 
 ## 완료 기준
 
-- [ ] compile: `dotnet build` (Unity 다운 시 asm csproj) 또는 Unity 콘솔 무에러.
-- [ ] EditMode 테스트 추가/통과:
+- [x] compile: Unity 콘솔 무에러 (2026-07-20).
+- [x] EditMode 테스트 추가/통과 (전 스위트 1020/1020, `69163f8a`+`40a612d2`, 2026-07-20):
   - `TryParseUnclaimed_Success_BindsList` — 2건 배열 → 필드 바인딩(tournamentEntryId/tournamentName/score/rank/claimed).
   - `TryParseUnclaimed_EmptyArray_ReturnsEmpty` — `data: []` → count 0, error null.
   - `TryParseUnclaimed_NullData_ReturnsEmpty` — `data: null` → count 0, error null.

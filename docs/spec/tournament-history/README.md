@@ -1,6 +1,6 @@
 # Tournament History — 로비 토너먼트 히스토리 + 상세 랭킹
 
-상태: **코드 구현 완료 · 씬 배선/Play 검증 대기** — 2026-07-20. units 0~3 코드 + 컴파일(오류 0) + EditMode 테스트 작성 + 코드리뷰 APPROVE. 잔여: UnityMCP 부재로 씬 배선(히스토리 버튼·패널 GameObject)과 Play/Test Runner 실행은 다음 세션. 인계는 `4_handoff_summary.md`. tournament-play-report 후속 후보 "미수령 목록 조회" 승격.
+상태: **구현·배선·검증 완료 (서명 e2e 1건 잔여)** — 2026-07-20. units 0~3 구현 + 컴파일(오류 0) + EditMode 1020 통과 + 코드리뷰 APPROVE + OutgameScene 씬 배선(히스토리 버튼·패널) + Play 스모크(패널 빌드/로드/닫기 무예외). 잔여 1건: **로그인 상태에서 버튼 클릭 e2e**(실서버 목록 → 행 클릭 → 상세 팝업) — MCP 가 Play 중 클릭/로그인을 구동 못 해 수동 확인 필요. 인계는 `4_handoff_summary.md`. tournament-play-report 후속 후보 "미수령 목록 조회" 승격.
 
 ## 목표
 
