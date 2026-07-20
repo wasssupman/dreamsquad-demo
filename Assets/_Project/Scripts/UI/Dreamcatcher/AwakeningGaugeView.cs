@@ -58,6 +58,10 @@ namespace Wassup.UI
         private bool _built;
         private bool _open;
         private bool _pressed;
+        // unit 10 — 표시 판정의 두 입력. _phase 는 PhaseChanged 가 갱신하고
+        // _suppressed 는 튜토리얼이 SetSuppressed 로 갱신한다.
+        private GamePhase _phase;
+        private bool _suppressed;
         private bool _maxReady;
         private int _lastShown = -1;
         private float _normalized;
@@ -133,8 +137,27 @@ namespace Wassup.UI
 
         private void OnPhaseChanged(GamePhase phase)
         {
+            _phase = phase;
+            ApplyPanelVisibility();
+        }
+
+        // first-session-tutorial unit 10 — 첫 판은 배치만으로 승부를 보게 하려고 버튼을
+        // 통째로 감춘다. 표시 소유자는 여전히 이 뷰이므로, 튜토리얼이 SetActive 를 직접
+        // 부르면 다음 페이즈 전이에서 되살아난다. GimmickGuideView.SetTutorialSuppressed
+        // 와 같은 형태의 명시 seam 을 둔다.
+        public void SetSuppressed(bool suppressed)
+        {
+            if (_suppressed == suppressed) return;
+            _suppressed = suppressed;
+            ApplyPanelVisibility();
+        }
+
+        private void ApplyPanelVisibility()
+        {
             if (_panel == null) return;
-            if (phase == GamePhase.Battle)
+            // 캐시한 _phase 를 읽는다. GameManager.Instance.CurrentPhase 직독은 금지 —
+            // 같은 PhaseChanged 이벤트 안에서 구독자 순서에 따라 값이 갈린다.
+            if (!_suppressed && _phase == GamePhase.Battle)
             {
                 _panel.SetActive(true);
                 Refresh(handController != null ? handController.Gauge : 0, punch: false);

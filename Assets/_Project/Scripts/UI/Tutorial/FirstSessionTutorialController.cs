@@ -11,7 +11,21 @@ namespace Wassup.UI.Tutorial
     // battle outcomes and always fails open when a required presentation seam is missing.
     public sealed class FirstSessionTutorialController : MonoBehaviour
     {
-        private enum CoreStep { None, Goal, Pick, Place, WaitingAim, Start }
+        private enum CoreStep { None, Goal, Pick, Place, WaitingAim, ClassHint, Start }
+
+        // unit 11 — 배지 글리프를 앵커로 박는다. 트레이 배지는 `원/수/근/술/보` 단일
+        // 글자라(BattleHudTrayConfig.roles) 클래스 이름만으로는 읽어도 트레이에서 못 찾는다.
+        // 캐스터는 4종 중 BlockingCaster 만 경로를 막고 나머지는 장판이라 둘 다 적는다.
+        private const string ClassHintText =
+            "수 가디언 · 적을 붙잡아 두는 방패\n" +
+            "근 파이터 · 붙어서 때리는 주먹\n" +
+            "원 레인저 · 멀리서 쏘는 사수\n" +
+            "술 캐스터 · 바닥에 장판·바리케이드 설치\n" +
+            "보 서포터 · 치유와 강화로 아군 보조\n" +
+            "상황에 맞게 골라서 배치해보세요.";
+
+        // 탭 수신이 실패하면 Start 잠금이 영영 안 풀려 첫 판이 Skip 외 탈출 불가가 된다.
+        private const float ClassHintFallbackSeconds = 12f;
 
         [Header("Core")]
         [SerializeField] private PlayerProfileSO profileSO;
@@ -39,6 +53,13 @@ namespace Wassup.UI.Tutorial
         private Coroutine _awakeningRoutine;
         private bool _awakeningOfferedThisBattle;
         private bool _awakeningArmedThisBattle;
+        // unit 12 — 배틀 시작 인트로(0단계). _awakeningOfferedThisBattle 을 쓰면
+        // A 단계("드림캐쳐 사용 준비 완료!")가 영영 안 뜨므로 전용 플래그를 둔다.
+        private bool _awakeningIntroShownThisBattle;
+        // unit 10 — 첫 판 각성 봉인. 버튼 숨김과 힌트 억제를 함께 구동하는 단일 상태.
+        private bool _awakeningLockedThisMatch;
+        private Coroutine _classHintRoutine;
+        private Coroutine _awakeningIntroRoutine;
 
         // Persistence is a small replaceable seam so the orchestration can be
         // integration-tested without touching the developer's real profile file.
@@ -54,7 +75,11 @@ namespace Wassup.UI.Tutorial
         {
             if (placementView != null) placementView.PlacementReady += OnPlacementReady;
             if (gameManager != null) gameManager.PhaseChanged += OnPhaseChanged;
-            if (guidance != null) guidance.SkipRequested += OnSkipRequested;
+            if (guidance != null)
+            {
+                guidance.SkipRequested += OnSkipRequested;
+                guidance.ContinueTapped += OnContinueTapped;
+            }
             if (handController != null)
             {
                 handController.GaugeChanged += OnGaugeChanged;
@@ -81,7 +106,11 @@ namespace Wassup.UI.Tutorial
         {
             if (placementView != null) placementView.PlacementReady -= OnPlacementReady;
             if (gameManager != null) gameManager.PhaseChanged -= OnPhaseChanged;
-            if (guidance != null) guidance.SkipRequested -= OnSkipRequested;
+            if (guidance != null)
+            {
+                guidance.SkipRequested -= OnSkipRequested;
+                guidance.ContinueTapped -= OnContinueTapped;
+            }
             if (handController != null)
             {
                 handController.GaugeChanged -= OnGaugeChanged;
@@ -97,11 +126,21 @@ namespace Wassup.UI.Tutorial
             EndCore(restoreNormalPlacement: true);
             ResetAwakeningSession(hide: true);
             guidance?.SetElevated(false);
+            // unit 10 — 봉인은 이 컴포넌트가 살아있는 동안만 유효하다.
+            _awakeningLockedThisMatch = false;
+            gaugeView?.SetSuppressed(false);
         }
 
         private void OnPlacementReady()
         {
             if (_coreActive || gameManager == null || gameManager.CurrentPhase != GamePhase.Placement) return;
+
+            // unit 10 — 첫 판 판정은 core 안내가 실제로 발동하는지와 무관하게 여기서 내린다.
+            // 아래 fail-open return 들(참조 누락 · affordable 슬롯 없음)보다 앞이어야
+            // 그 경로에서도 버튼이 숨겨진다. Placement 진입 시점이라 core 는 아직 pending 이다.
+            _awakeningLockedThisMatch = TutorialProgress.ShouldRunCore(profileSO);
+            gaugeView?.SetSuppressed(_awakeningLockedThisMatch);
+
             if (!TutorialProgress.ShouldRunCore(profileSO)) return;
             if (!HasCoreReferences())
             {
@@ -207,9 +246,46 @@ namespace Wassup.UI.Tutorial
             guidance.ClearFocus();
         }
 
+        // unit 11 — 첫 배치 직후 클래스 안내. 탭으로 넘긴다.
+        private void BeginClassHint()
+        {
+            if (!_coreActive || _coreStep == CoreStep.ClassHint) return;
+            StopClassHintRoutine();
+            _coreStep = CoreStep.ClassHint;
+            guidance.ClearWorldMarkers();
+            guidance.ClearFocus();
+            guidance.ShowMessage(ClassHintText, showSkip: true);
+            guidance.SetTapToContinue(true);
+            _classHintRoutine = StartCoroutine(ClassHintFallbackRoutine());
+        }
+
+        // 탭이 유실되면 UnlockTutorialStart 가 영영 안 불려 카운트다운이 무기한 hold 되고
+        // 캐처가 배치까지 막아 첫 판이 플레이 불가가 된다. 시간 만료로 자동 진행한다.
+        private IEnumerator ClassHintFallbackRoutine()
+        {
+            yield return WaitUnscaled(ClassHintFallbackSeconds);
+            _classHintRoutine = null;
+            if (_coreActive && _coreStep == CoreStep.ClassHint) BeginStart();
+        }
+
+        private void StopClassHintRoutine()
+        {
+            if (_classHintRoutine == null) return;
+            StopCoroutine(_classHintRoutine);
+            _classHintRoutine = null;
+        }
+
+        private void OnContinueTapped()
+        {
+            if (!_coreActive || _coreStep != CoreStep.ClassHint) return;
+            BeginStart();
+        }
+
         private void BeginStart()
         {
             if (!_coreActive || _coreStep == CoreStep.Start) return;
+            StopClassHintRoutine();
+            guidance.SetTapToContinue(false);
             _coreStep = CoreStep.Start;
             guidance.ClearWorldMarkers();
             placementView.UnlockTutorialStart();
@@ -230,13 +306,14 @@ namespace Wassup.UI.Tutorial
 
         private void OnUserDragStarted()
         {
-            if (!_coreActive || _coreStep == CoreStep.Start || _coreStep == CoreStep.WaitingAim) return;
+            if (!_coreActive || _coreStep == CoreStep.Start || _coreStep == CoreStep.WaitingAim ||
+                _coreStep == CoreStep.ClassHint) return;
             BeginDragPlace();
         }
 
         private void OnPlacementCommitted(DefenderUnitData unit)
         {
-            if (!_coreActive || _coreStep == CoreStep.Start) return;
+            if (!_coreActive || _coreStep == CoreStep.Start || _coreStep == CoreStep.ClassHint) return;
             StopGoalRoutine();
             if (unit != null && unit.directionalAttack && _drag != null && _drag.IsAiming)
             {
@@ -244,13 +321,13 @@ namespace Wassup.UI.Tutorial
                 guidance.ClearFocus();
                 return;
             }
-            BeginStart();
+            BeginClassHint();
         }
 
         private void Update()
         {
             if (_coreActive && _coreStep == CoreStep.WaitingAim && (_drag == null || !_drag.IsAiming))
-                BeginStart();
+                BeginClassHint();
         }
 
         private void OnSkipRequested()
@@ -266,11 +343,17 @@ namespace Wassup.UI.Tutorial
             {
                 _awakeningOfferedThisBattle = false;
                 _awakeningArmedThisBattle = false;
-                if (_coreActive)
-                {
-                    CompleteCoreProgress();
-                    EndCore(restoreNormalPlacement: false);
-                }
+                _awakeningIntroShownThisBattle = false;
+
+                // unit 10 — _coreActive 와 무관하게 완료 처리한다. 참조 누락이나 affordable
+                // 슬롯 부재로 안내가 fail-open 된 계정도 "첫 판"은 소비된 것으로 본다.
+                // 그러지 않으면 firstBattleTutorialVersion 이 영원히 0 으로 남아
+                // ShouldRunCore 가 항상 참이 되고, 각성 버튼이 매 판 영구 봉인된다.
+                // (같은 이유로 선물 튜토리얼·로비 챕터 B 도 영영 발동하지 못했다.)
+                CompleteCoreProgress();
+                if (_coreActive) EndCore(restoreNormalPlacement: false);
+
+                StartAwakeningIntro();
                 EvaluateAwakeningHint();
                 return;
             }
@@ -292,9 +375,11 @@ namespace Wassup.UI.Tutorial
         private void EndCore(bool restoreNormalPlacement)
         {
             StopGoalRoutine();
+            StopClassHintRoutine();
             if (!_coreActive) return;
             _coreActive = false;
             _coreStep = CoreStep.None;
+            // Hide() 가 탭 캐처도 함께 끈다. 잔류하면 화면 전체가 먹통이 된다.
             guidance?.Hide();
             placementView?.EndTutorialGate(restoreNormalPlacement);
             gimmickGuide?.SetTutorialSuppressed(false);
@@ -338,8 +423,47 @@ namespace Wassup.UI.Tutorial
 
         private void OnHandChanged(DreamcatcherHandController.HandChangeReason _) => EvaluateAwakeningHint();
 
+        // unit 12 — 0단계. gaugeView.OnPhaseChanged 가 같은 PhaseChanged 의 다른 구독자라
+        // 패널 활성화 순서가 보장되지 않는다. Pulse() 는 비활성 패널에서 조용히 소실되므로
+        // (포커스 링과 달리 다음 프레임에 복구되지 않는다) 한 프레임 미룬다.
+        private void StartAwakeningIntro()
+        {
+            if (_awakeningLockedThisMatch || _awakeningIntroShownThisBattle) return;
+            if (guidance == null || gaugeView == null) return;
+            if (!TutorialProgress.ShouldRunAwakeningHint(profileSO)) return;
+
+            if (_awakeningIntroRoutine != null) StopCoroutine(_awakeningIntroRoutine);
+            _awakeningIntroRoutine = StartCoroutine(AwakeningIntroRoutine());
+        }
+
+        private IEnumerator AwakeningIntroRoutine()
+        {
+            yield return null;
+            _awakeningIntroRoutine = null;
+
+            if (_awakeningLockedThisMatch || _awakeningIntroShownThisBattle) yield break;
+            if (gameManager == null || gameManager.CurrentPhase != GamePhase.Battle) yield break;
+            if (guidance == null || gaugeView == null) yield break;
+            if (!TutorialProgress.ShouldRunAwakeningHint(profileSO)) yield break;
+
+            _awakeningIntroShownThisBattle = true;
+            // arm 하지 않는다. 카드 사용법(B단계)은 A단계가 실제로 뜬 뒤에만 의미가 있고,
+            // gaugeStart 는 SO/시트 튜너블이라 "전투 시작 게이지 0" 은 불변식이 아니다.
+            // 0단계가 arm 하면 gaugeStart > 0 인 순간 B 가 앞당겨 발화해 완료가 저장되고
+            // A 문구가 그 계정에서 영영 안 뜬다.
+            gaugeView.Pulse();
+            guidance.ShowMessage("여기서 드림캐쳐 덱을 열어보세요", showSkip: false);
+            guidance.FocusUi(gaugeView.HitRect);
+            if (_awakeningRoutine != null) StopCoroutine(_awakeningRoutine);
+            _awakeningRoutine = StartCoroutine(HideAwakeningPromptRoutine());
+        }
+
         private void EvaluateAwakeningHint()
         {
+            // unit 10 — 첫 판은 버튼이 없으므로 힌트도 뜨면 안 된다. 이 가드가 없으면
+            // 없는 버튼을 가리키고, _awakeningOfferedThisBattle 이 Pulse 보다 먼저 세팅돼
+            // 힌트가 조용히 소모된다.
+            if (_awakeningLockedThisMatch) return;
             if (_coreActive || _awakeningOfferedThisBattle || gameManager == null ||
                 gameManager.CurrentPhase != GamePhase.Battle || guidance == null || gaugeView == null ||
                 handController == null || !TutorialProgress.ShouldRunAwakeningHint(profileSO)) return;
@@ -372,7 +496,9 @@ namespace Wassup.UI.Tutorial
 
         private void OnHandOpened()
         {
-            if (!_awakeningArmedThisBattle || gameManager == null || gameManager.CurrentPhase != GamePhase.Battle ||
+            // A단계가 실제로 뜬 뒤에만 진행한다(0단계 단독 arm 으로는 발화하지 않는다).
+            if (!_awakeningOfferedThisBattle || !_awakeningArmedThisBattle ||
+                gameManager == null || gameManager.CurrentPhase != GamePhase.Battle ||
                 handView == null || handView.State != DreamcatcherHandView.HandState.Hand || guidance == null ||
                 !TutorialProgress.ShouldRunAwakeningHint(profileSO)) return;
 
@@ -460,8 +586,14 @@ namespace Wassup.UI.Tutorial
                 StopCoroutine(_awakeningRoutine);
                 _awakeningRoutine = null;
             }
+            if (_awakeningIntroRoutine != null)
+            {
+                StopCoroutine(_awakeningIntroRoutine);
+                _awakeningIntroRoutine = null;
+            }
             _awakeningOfferedThisBattle = false;
             _awakeningArmedThisBattle = false;
+            _awakeningIntroShownThisBattle = false;
             if (hide && !_coreActive) guidance?.Hide();
         }
 

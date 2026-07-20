@@ -18,10 +18,13 @@ namespace Wassup.UI.Tutorial
         private const float PointerGap = 30f;
         private const float MessageHorizontalPadding = 56f;
         private const float MessageVerticalPadding = 24f;
+        private const float TapCatcherDimAlpha = 0.35f;
 
         [SerializeField] private TutorialGuidanceStyle style;
 
         public event Action SkipRequested;
+        // unit 11 — 읽고 넘기는 스텝에서만 쓰는 진행 신호.
+        public event Action ContinueTapped;
 
         public float GoalBeatSeconds => Style.goalBeatSeconds;
         public float AwakeningPromptSeconds => Style.awakeningPromptSeconds;
@@ -32,6 +35,8 @@ namespace Wassup.UI.Tutorial
         private GameObject _overlay;
         private Canvas _canvas;
         private RectTransform _safeRoot;
+        private RectTransform _fullBleedRoot;
+        private GameObject _tapCatcher;
         private GameObject _messagePanel;
         private TextMeshProUGUI _message;
         private GameObject _skipObject;
@@ -193,7 +198,49 @@ namespace Wassup.UI.Tutorial
         {
             ClearFocus();
             ClearWorldPulses();
+            SetTapToContinue(false);
             if (_overlay != null) _overlay.SetActive(false);
+        }
+
+        // unit 11 — 읽고 넘기는 스텝 전용 탭 수신. 이 뷰의 다른 요소는 전부
+        // raycastTarget=false 라 탭을 받을 지점이 없다.
+        //
+        // 캐처는 반드시 FullBleedRoot 아래에 둔다. UiCanvasSetup 은 FullBleedRoot →
+        // SafeAreaRoot 순으로 자식을 만들고 같은 캔버스에서는 나중 sibling 이 렌더와
+        // 레이캐스트를 둘 다 이기므로, SafeAreaRoot 하위인 Skip 버튼이 캐처 위에 남는다.
+        // 캐처를 SafeAreaRoot 쪽에 두면 유일한 이탈구가 사라진다.
+        //
+        // _overlay 와는 생명주기가 분리된 두 번째 상태다. ShowMessage 의
+        // _overlay.SetActive(true) 는 캐처를 켜지 않고, 끄는 책임은 Hide() 에만 있다.
+        // 잔류하면 화면 전체가 먹통이 되므로 종료 경로를 늘릴 때 함께 확인할 것.
+        public void SetTapToContinue(bool active)
+        {
+            if (!active && _tapCatcher == null) return;
+            if (!_built) BuildCanvas();
+            EnsureTapCatcher();
+            _tapCatcher.SetActive(active);
+        }
+
+        private void EnsureTapCatcher()
+        {
+            if (_tapCatcher != null) return;
+
+            _tapCatcher = new GameObject("TapToContinue", typeof(RectTransform), typeof(Image),
+                typeof(OutgameTutorialTapZone));
+            var rect = (RectTransform)_tapCatcher.transform;
+            rect.SetParent(_fullBleedRoot, false);
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+
+            var image = _tapCatcher.GetComponent<Image>();
+            // 완전 투명이면 "왜 안 눌리지"가 된다. 약한 dim 으로 읽는 시간임을 보인다.
+            image.color = new Color(0f, 0f, 0f, TapCatcherDimAlpha);
+            image.raycastTarget = true;
+
+            _tapCatcher.GetComponent<OutgameTutorialTapZone>().Pressed = () => ContinueTapped?.Invoke();
+            _tapCatcher.SetActive(false);
         }
 
         // unit 8 — 선물 튜토리얼 동안만 GiftPanel 위로 올린다. Hide 는 정렬을 건드리지
@@ -355,6 +402,7 @@ namespace Wassup.UI.Tutorial
             var roots = UiCanvasSetup.Ensure(gameObject, SortingOrder);
             _canvas = roots.Canvas;
             _safeRoot = roots.SafeAreaRoot;
+            _fullBleedRoot = roots.FullBleedRoot;
 
             if (style == null)
                 Debug.LogWarning("[TutorialGuidanceView] style 미할당 — 런타임 기본값으로 폴백합니다.", this);
