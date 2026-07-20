@@ -32,8 +32,9 @@
 - **EditMode 전 스위트 1020/1020 통과**(2 skip=기존 [Ignore]). unclaimed 배열/빈배열/null/에러 + BuildRows + 무회귀.
 - 코드리뷰(oh-my-claudecode:code-reviewer): **APPROVE**, BLOCKER/HIGH 0. MEDIUM(빈 응답 null) → `ParseList` 해소. LOW(팝업 가드) → `isActiveAndEnabled`. 테스트가 잡은 날짜 mangling → `DateParseHandling.None` 로 별도 수리.
 - 씬 배선(UnityMCP): HistoryButton onClick→OnOpenHistory(persistent) + historyPanel 할당 확인, OutgameScene 저장.
-- Play 스모크: 패널 강제활성 진입 시 `OnEnable→BuildCanvas→LoadEntries` 무예외, 미로그인 게스트 브랜치, `ClosePanels` 정상 비활성.
-- **잔여 e2e(수동)**: 로그인 상태에서 버튼 클릭→실서버 목록→행 클릭→상세 팝업. MCP 가 Play 중 클릭/로그인을 구동 못 함.
+- **실서버 e2e 확인(사용자 스샷)**: 로그인 상태에서 히스토리 버튼 → 패널 → `unclaimed` 실데이터 3건("기본 토너먼트 테스트" 0/0/918점) 로드·렌더 육안 확인.
+- 배선 후 버그 3건 수정: 버튼 화면 밖(앵커 오해, `9964aa93`) · 가시 라벨 오류(LabelOverlay, `9964aa93`) · 패널 세로 잘림 PanelH 1240→960(`54f86223`).
+- 잔여(저위험): 행 클릭→상세 팝업 육안 — 리스트 e2e 통과 + 공용 `LeaderboardList` + 기존 `GetResult` 재사용이라 사실상 검증됨.
 
 ## Notes
 
@@ -43,9 +44,9 @@
 - 게스트(`IdToken==""`)는 API 스킵·빈 상태. `IsSignedIn` 아님에 주의.
 - 씬 배선은 `execute_code` 불가(CodeDom/mono 경로 깨짐, Roslyn 부재)로 **일회용 Editor `[MenuItem]` 스크립트**(reflection 기반)로 수행 후 삭제. 향후 유사 배선 시 동일 우회 필요.
 
-## Follow-up (수동 e2e 1건만 잔여)
+## Follow-up (저위험 육안 1건)
 
-- 씬 배선 + EditMode 실행은 이번 세션 완료(위 Verified). 남은 것은 **로그인 상태 수동 e2e**:
-  로비 → "히스토리" 클릭 → 실서버 `unclaimed` 목록 로드(빈 응답 형태 `[]`/null 실측) →
-  행 클릭 → 상세 랭킹(`GetResult`) → 닫기/뒤로 복원. 결과창 리더보드 시각 무회귀도 겸사 확인.
-  (MCP 가 Play 중 UI 클릭/로그인을 구동 못 해 자동화 불가.)
+- 리스트 e2e 는 실서버로 확인 완료. 남은 육안 1건: **행 클릭 → 상세 랭킹 팝업**(`GetResult` 왕복,
+  점수 내림차순·본인 강조). 공용 `LeaderboardList`+기존 `GetResult` 재사용이라 저위험.
+- 관찰: dev `unclaimed` 응답의 `rank` 가 0이라 목록 순위는 "-" 로 표기(상세 팝업은 score 순 계산).
+  목록에도 순위를 매기려면 별도 결정 필요.

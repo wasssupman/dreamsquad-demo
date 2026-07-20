@@ -24,4 +24,4 @@
 - [x] compile: Unity 콘솔 무에러 (2026-07-20).
 - [x] 씬 배선 (`9717b460`, 2026-07-20): HistoryButton.onClick → `OnOpenHistory`(persistent 확인), HistoryPanel(+`TournamentHistoryPanel`) → `historyPanel` 할당, 초기 비활성. OutgameScene 저장.
 - [x] Play 스모크: 패널 강제 활성 진입 시 `OnEnable→BuildCanvas→LoadEntries` 무예외(Canvas/타이틀/스크롤/상태 빌드), 미로그인=게스트 브랜치, `ClosePanels` 로 정상 비활성.
-- [ ] Play e2e(잔여): **로그인 상태**에서 버튼 클릭 → 실서버 목록 로드 → 뒤로 로비 복원 (MCP 가 Play 중 클릭/로그인 구동 불가 → 수동).
+- [x] Play e2e (2026-07-20, 사용자 스샷): 로그인 상태에서 히스토리 버튼 클릭 → 실서버 `unclaimed` 3건 로드·렌더 확인. 버튼 화면밖/라벨/패널높이 버그 수정(`9964aa93`,`54f86223`).
