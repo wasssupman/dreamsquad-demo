@@ -1,6 +1,6 @@
 # first-session-tutorial — 첫 판 행동형 온보딩
 
-> 상태: **핵심(0~4) 완료 2026-07-19 · 선물 튜토리얼 확장(6~9) 진행 중 2026-07-20 · Android 실기기 QA 후속**
+> 상태: **핵심(0~4) 완료 2026-07-19 · 선물 튜토리얼 확장(6~8) 커밋 `9e75c0ae` 2026-07-20 · Android 실기기 QA 후속**
 > 선행: `defender-tap-to-place` · `mobile-ui-safe-area` · `awakening-hud-resource-button` (완료)
 
 ## 검증 질문

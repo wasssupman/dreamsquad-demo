@@ -39,4 +39,4 @@
 - [x] `ResetAll`/`ResetAllInJson`이 세 필드를 모두 0으로 만들고 다른 토큰은 보존한다.
 - [x] JSON round-trip 후 세 버전 값이 유지되고, 필드 없는 구 JSON 은 0으로 로드된다.
 
-구현: 2026-07-20 · 런타임 로그로 판정 확정(run1 ShouldRunGift=False / run2 True). 커밋 대기.
+구현: 2026-07-20 · 커밋 `9e75c0ae` · 런타임 로그로 판정 확정(run1 ShouldRunGift=False / run2 True).
