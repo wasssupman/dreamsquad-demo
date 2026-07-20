@@ -256,10 +256,18 @@ PlacementHighlightTiles  order=-13  queue=3000  Sprites/Default
 
 `SpriteFlipbookData` 용 시트를 코드로 자를 때 연달아 밟은 것들.
 
-**1. `com.unity.2d.sprite` 가 이 프로젝트에 없다.** `UnityEditor.U2D.Sprites`
-(`SpriteDataProviderFactories` / `SetSpriteRects`) 를 쓰면 `CS0234` 로 컴파일이 깨진다.
-패키지 추가는 프로젝트 의존성 변경이라 임의로 할 일이 아니므로, 레거시
-`TextureImporter.spritesheet = SpriteMetaData[]` 경로를 쓴다(`#pragma warning disable CS0618`).
+**1. `com.unity.2d.sprite` 가 없으면 Sprite Editor 자체가 없다.** (2026-07-20 `ca1d3629` 로 추가됨 —
+이제는 있다. 재클론/manifest 정리 중 빠뜨렸을 때를 위해 남긴다.)
+
+증상이 두 갈래로 나타나는데 **같은 원인**이다:
+- 스크립트: `UnityEditor.U2D.Sprites`(`SpriteDataProviderFactories`)가 `CS0234` 로 안 잡힌다
+- GUI: Inspector 에서 Sprite Mode 를 Multiple 로 바꿔도 **격자로 자를 UI 가 없다**
+  (Sprite Editor 버튼이 동작하지 않는다) → 서브스프라이트를 아예 만들 수 없다
+
+에디터 동봉본(`source: builtin`)이라 manifest 에 `"com.unity.2d.sprite": "1.0.0"` 한 줄이면
+다운로드 없이 붙는다. 패키지 없이 스크립트로만 우회하려면 레거시
+`TextureImporter.spritesheet = SpriteMetaData[]`(`#pragma warning disable CS0618`)를 쓸 수 있지만,
+손으로 슬라이스를 미세조정할 수단이 없어지므로 패키지를 넣는 쪽이 맞다.
 
 **2. 첫 임포트 직후 `LoadAllAssetRepresentationsAtPath` 는 덜 정착한 상태를 돌려준다.**
 `SaveAndReimport()` 가 끝난 뒤에도 그렇다. 실측: 49개를 요청했는데 **42개만** 반환됐고
@@ -281,3 +289,9 @@ bleed 두께와 비교. inset 이 성립하지 않으면 슬라이스를 더 만
 
 **부수 확인법**: 잘린 PNG 는 `tail -c 12 | xxd -p` 에 `49454e44ae426082`(IEND)가 없다.
 Unity 는 이런 파일에도 `.meta` 를 만들어 두므로 meta 존재만으로 정상 임포트를 단정하면 안 된다.
+
+**GUI(Sprite Editor)로 자를 때 놓치기 쉬운 것**:
+- **Pivot 을 Bottom Center 로.** 기본값 Center 로 두면 `Billboard`(피벗=발 전제) 아래에서
+  캐릭터가 땅에 반쯤 묻힌다. 프랍의 `visualOffset` 으로 덮으려 들지 말 것 — 같은 계열의 오답이다.
+- **Grid by Cell Count 는 셀 크기를 내림으로 잡고 우/하단 나머지를 버린다.**
+  시트 크기가 열·행 수로 나뉘지 않으면 위 3번의 bleed 가 그대로 재현된다.
