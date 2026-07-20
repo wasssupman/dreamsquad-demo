@@ -23,6 +23,9 @@ namespace Wassup.UI
     public class DreamcatcherHandView : MonoBehaviour
     {
         public event System.Action HandOpened;
+        // 카드 press 로 툴팁이 실제로 뜬 순간. 첫 세션 튜토리얼이 "끌어보세요" 배너를
+        // 걷는 신호로 쓴다(지시 이행 = 정보 소진, 배너가 상단 중앙 툴팁을 덮는 것도 방지).
+        public event System.Action CardPeeked;
 
         [SerializeField] private DreamcatcherHandController handController;
         [SerializeField] private AwakeningGaugeView gaugeView;
@@ -917,6 +920,7 @@ namespace Wassup.UI
                 _tooltipRect.localScale = new Vector3(TooltipHiddenScale, TooltipHiddenScale, 1f);
                 _tooltipRoot.SetActive(true);
             }
+            CardPeeked?.Invoke();
         }
 
         // 멱등 — EndInteraction 은 비드래그 상황(OnDisable 등)에서도 불린다.

@@ -58,6 +58,10 @@ namespace Wassup.UI.Tutorial
         private bool _awakeningIntroShownThisBattle;
         // unit 10 — 첫 판 각성 봉인. 버튼 숨김과 힌트 억제를 함께 구동하는 단일 상태.
         private bool _awakeningLockedThisMatch;
+        // hand-drag-tooltip unit 3 — "끌어보세요" 배너가 떠 있는 동안만 참. 카드 press 로
+        // 조기 해제할 때 A 단계 프롬프트(다른 단계지만 _awakeningRoutine 을 공유)를
+        // 잘못 걷지 않도록 단계를 명시적으로 구분한다.
+        private bool _cardInstructionShowing;
         private Coroutine _classHintRoutine;
         private Coroutine _awakeningIntroRoutine;
 
@@ -85,7 +89,11 @@ namespace Wassup.UI.Tutorial
                 handController.GaugeChanged += OnGaugeChanged;
                 handController.HandChanged += OnHandChanged;
             }
-            if (handView != null) handView.HandOpened += OnHandOpened;
+            if (handView != null)
+            {
+                handView.HandOpened += OnHandOpened;
+                handView.CardPeeked += OnCardPeeked;
+            }
             if (giftView != null)
             {
                 giftView.TutorialHoldEntered += OnGiftHoldEntered;
@@ -116,7 +124,11 @@ namespace Wassup.UI.Tutorial
                 handController.GaugeChanged -= OnGaugeChanged;
                 handController.HandChanged -= OnHandChanged;
             }
-            if (handView != null) handView.HandOpened -= OnHandOpened;
+            if (handView != null)
+            {
+                handView.HandOpened -= OnHandOpened;
+                handView.CardPeeked -= OnCardPeeked;
+            }
             if (giftView != null)
             {
                 giftView.TutorialHoldEntered -= OnGiftHoldEntered;
@@ -531,6 +543,7 @@ namespace Wassup.UI.Tutorial
             TutorialProgress.CompleteAwakeningHint(profileSO.profile);
             TrySaveProfile();
             _awakeningArmedThisBattle = false;
+            _cardInstructionShowing = true;
             _awakeningRoutine = StartCoroutine(HideCardInstructionRoutine());
         }
 
@@ -538,6 +551,22 @@ namespace Wassup.UI.Tutorial
         {
             yield return WaitUnscaled(guidance.CardInstructionSeconds);
             _awakeningRoutine = null;
+            _cardInstructionShowing = false;
+            guidance.Hide();
+        }
+
+        // hand-drag-tooltip unit 3 — 카드를 누른 순간 "끌어보세요" 지시는 이행됐다.
+        // 정보 가치가 소진됐고, 배너(상단 중앙 880x116, 거의 불투명)를 그대로 두면
+        // 같은 대역에 뜨는 드래그 툴팁 본문을 덮는다. 남은 대기 시간을 버리고 걷는다.
+        private void OnCardPeeked()
+        {
+            if (!_cardInstructionShowing) return;
+            _cardInstructionShowing = false;
+            if (_awakeningRoutine != null)
+            {
+                StopCoroutine(_awakeningRoutine);
+                _awakeningRoutine = null;
+            }
             guidance.Hide();
         }
 
@@ -591,6 +620,7 @@ namespace Wassup.UI.Tutorial
 
         private void ResetAwakeningSession(bool hide)
         {
+            _cardInstructionShowing = false;
             if (_awakeningRoutine != null)
             {
                 StopCoroutine(_awakeningRoutine);
