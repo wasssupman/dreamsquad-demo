@@ -22,6 +22,8 @@ namespace Wassup.UI
         [SerializeField] private GameObject dreamcatcherPanel;
         // wave-authoring-test-mode unit 4 — 테스트 모드 플랜 피커 패널.
         [SerializeField] private GameObject testModePanel;
+        // tournament-history unit 2 — 토너먼트 히스토리 패널(TournamentHistoryPanel 소유).
+        [SerializeField] private GameObject historyPanel;
         // outgame-login-gate unit 1 — auth gate. menuRoot wraps every lobby button;
         // this controller solely owns menuRoot/loginPanel visibility (the view only
         // runs the sign-in flow).
@@ -40,10 +42,21 @@ namespace Wassup.UI
         private readonly System.Collections.Generic.List<LoadoutShortfall> _shortfalls =
             new System.Collections.Generic.List<LoadoutShortfall>();
 
+        // tournament-history unit 2 — cached to (un)subscribe its back-out event.
+        private TournamentHistoryPanel _historyPanelView;
+
         private void Awake()
         {
             ApplyAuthGate();
             if (loginPanel != null) loginPanel.onSignedIn += ApplyAuthGate;
+
+            // History page reports its back button via onClose → re-show the lobby
+            // menu that RaiseExclusive hid (ClosePanels).
+            if (historyPanel != null)
+            {
+                _historyPanelView = historyPanel.GetComponent<TournamentHistoryPanel>();
+                if (_historyPanelView != null) _historyPanelView.onClose += OnClosePanels;
+            }
 
             if (profileSO == null)
             {
@@ -58,6 +71,7 @@ namespace Wassup.UI
         private void OnDestroy()
         {
             if (loginPanel != null) loginPanel.onSignedIn -= ApplyAuthGate;
+            if (_historyPanelView != null) _historyPanelView.onClose -= OnClosePanels;
         }
 
         private void ApplyAuthGate()
@@ -138,6 +152,9 @@ namespace Wassup.UI
 
         public void OnOpenTestMode() => RaiseExclusive(testModePanel);
 
+        // tournament-history unit 2 — 로비 "히스토리" 버튼 → 히스토리 페이지.
+        public void OnOpenHistory() => RaiseExclusive(historyPanel);
+
         public void OnClosePanels() => ClosePanels();
 
         private void RaiseExclusive(GameObject panel)
@@ -157,6 +174,7 @@ namespace Wassup.UI
             if (squadPanel != null) squadPanel.SetActive(false);
             if (dreamcatcherPanel != null) dreamcatcherPanel.SetActive(false);
             if (testModePanel != null) testModePanel.SetActive(false);
+            if (historyPanel != null) historyPanel.SetActive(false);
             // 패널을 닫으면 로비 버튼을 되살린다. 단 로그인 게이트를 존중 — 미로그인
             // 상태에서는 계속 숨겨야 하므로 signedIn 을 반영한다(Awake 진입 시에도 안전).
             if (menuRoot != null) menuRoot.SetActive(UserSession.IsSignedIn);
