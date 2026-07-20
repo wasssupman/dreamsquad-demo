@@ -51,6 +51,7 @@ OutgameScene 스쿼드 화면에서, **선택 유닛의 라이브 Spine + 스탯
 | 13 | UX | `13_stone_roster_sort.md` | 스톤 그리드 편성-먼저 정렬 (unit 10 의 스톤 후속 후보 소진) |
 | 14 | 픽스 | `14_portrait_fallback_above_card.md` | 폴백 아이콘이 카드에 72% 잠기던 버그 — 앵커를 cardHeight 파생으로 |
 | 15 | UI | `15_stat_label_value_hierarchy.md` | 스탯 라벨/수치 타이포 위계 (24 뮤트 / 30 볼드) — 2열 짝 가독성 |
+| 16 | 픽스 | `16_stat_column_alignment.md` | 스탯 컬럼 폭 고정 — HLG 의 content-dependent preferred 를 덮어 수치 우측 정렬 |
 
 순서: 0 → 1 → 2 → 3 → 4 → 5 → (6 → 7) → 8. 핵심 로직 유닛(0, 4) 종료 시 code-review, 나머지는 feature 종료 시 일괄. 6·7 은 "lore 문장 저작" 후속의 시트-동기 실현.
 

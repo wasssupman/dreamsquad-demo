@@ -281,6 +281,11 @@ namespace Wassup.UI
         {
             var go = new GameObject("StatCell", typeof(RectTransform));
             go.transform.SetParent(row, false);
+            // unit 16 — 칸을 내용과 무관하게 반씩 가른다. HorizontalLayoutGroup 은
+            // ILayoutElement 이기도 해서 preferredWidth 를 "자식 텍스트 폭의 합"으로
+            // 보고한다 → 이걸 덮지 않으면 글자 수에 따라 컬럼 경계가 행마다 움직이고
+            // 값의 우측 끝이 어긋난다(실측 300/271/431).
+            MakeHalfWidth(go);
             var hlg = go.AddComponent<HorizontalLayoutGroup>();
             hlg.spacing = 0;
             hlg.childAlignment = TextAnchor.MiddleLeft;
@@ -301,6 +306,15 @@ namespace Wassup.UI
         {
             var go = new GameObject("Spacer", typeof(RectTransform));
             go.transform.SetParent(row, false);
+            MakeHalfWidth(go);   // unit 16 — 안 주면 preferred 0 이라 짝 셀이 남은 폭을 다 먹는다
+        }
+
+        // unit 16 — 행 HLG 가 균등 분할하도록 강제(preferred 0 + flexible 1).
+        private static void MakeHalfWidth(GameObject go)
+        {
+            var le = go.AddComponent<LayoutElement>();
+            le.preferredWidth = 0f;
+            le.flexibleWidth = 1f;
         }
 
         private RectTransform MakeRow(Transform parent, float height, float spacing)
