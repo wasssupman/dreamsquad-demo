@@ -16,7 +16,9 @@ namespace Wassup.UI
     public class SquadRosterBrowser : MonoBehaviour
     {
         [SerializeField] private TMP_FontAsset font;
-        [SerializeField] private Vector2 cellSize = new Vector2(150, 178);
+        // unit 12 — 178→200: 라벨을 초상화 아래 독립 밴드로 내리기 위한 세로 여유.
+        // 런타임 AddComponent 생성이라 씬 직렬화 값이 없다 → 이 기본값이 곧 실제 값.
+        [SerializeField] private Vector2 cellSize = new Vector2(150, 200);
         [SerializeField] private Vector2 spacing = new Vector2(14, 14);
 
         public event Action<string> EntrySelected;
@@ -26,6 +28,9 @@ namespace Wassup.UI
         private static readonly Color CellBg = new Color(0.12f, 0.13f, 0.17f, 1f);
         private static readonly Color SelOverlayColor = new Color(1f, 0.95f, 0.6f, 0.20f);
         private static readonly Color BadgeColor = new Color(0.20f, 0.55f, 0.32f, 0.96f);
+        // unit 12 — 라벨 밴드. 밝은 포트레이트 위에서도 흰 글씨가 읽히도록 깔아주는 바닥.
+        private static readonly Color LabelBandColor = new Color(0f, 0f, 0f, 0.72f);
+        private const float LabelBandHeight = 46f;
 
         private bool _built;
         private RectTransform _grid;
@@ -143,14 +148,21 @@ namespace Wassup.UI
             var prt = portrait.rectTransform;
             prt.anchorMin = new Vector2(0.5f, 1f); prt.anchorMax = new Vector2(0.5f, 1f); prt.pivot = new Vector2(0.5f, 1f);
             prt.sizeDelta = new Vector2(cellSize.x - 24, cellSize.x - 24);
-            prt.anchoredPosition = new Vector2(0, -8);
+            prt.anchoredPosition = new Vector2(0, -6);
             portrait.sprite = e.sprite;
             portrait.enabled = e.sprite != null;
 
-            var label = CreateText(inner.transform, e.label, 23, TextAlignmentOptions.Center);
+            // unit 12 — 라벨은 초상화와 겹치지 않는 독립 밴드. 예전에는 텍스트가 배경
+            // 없이 초상화 하단 16px 위에 얹혀 밝은 아트에서 묻혔다.
+            var band = CreateImage(inner.transform, LabelBandColor, false);
+            var bandRt = band.rectTransform;
+            bandRt.anchorMin = new Vector2(0, 0); bandRt.anchorMax = new Vector2(1, 0); bandRt.pivot = new Vector2(0.5f, 0);
+            bandRt.sizeDelta = new Vector2(0, LabelBandHeight); bandRt.anchoredPosition = Vector2.zero;
+
+            var label = CreateText(band.transform, e.label, 24, TextAlignmentOptions.Center);
             var lrt = label.rectTransform;
-            lrt.anchorMin = new Vector2(0, 0); lrt.anchorMax = new Vector2(1, 0); lrt.pivot = new Vector2(0.5f, 0);
-            lrt.sizeDelta = new Vector2(0, 42); lrt.anchoredPosition = new Vector2(0, 6);
+            lrt.anchorMin = Vector2.zero; lrt.anchorMax = Vector2.one;
+            lrt.offsetMin = new Vector2(4, 0); lrt.offsetMax = new Vector2(-4, 0);
 
             // "편성중" badge — top-right pill, toggled by membership.
             var badge = new GameObject("Badge", typeof(RectTransform), typeof(Image));
