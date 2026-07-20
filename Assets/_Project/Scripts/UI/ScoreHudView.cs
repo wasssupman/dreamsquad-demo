@@ -275,7 +275,15 @@ namespace Wassup.UI
         // score-tally-sequence unit 2 rev — 값 변화 없는 시선 유도 펄스.
         // 마지막 적이 죽은 자리(보드 중앙)에 시선이 있는 상태로 합산이 시작되면 첫 축을
         // 놓친다. 숫자가 움직이기 전에 배지를 한 번 때려 "여기를 봐라"를 만든다.
-        public void PulseAttention() => TriggerHit(1);
+        //
+        // 버스트 창을 먼저 비운다: 안 그러면 직전 킬들이 남긴 점수를 읽어 **값이 하나도
+        // 안 늘었는데 가장자리 플래시가 오발한다.** 지금은 펄스 시점이 창(1초)을 겨우
+        // 넘겨 우연히 안 터지지만, preRollSec 를 조금만 줄여도 드러난다.
+        public void PulseAttention()
+        {
+            _burstWindow.Clear();
+            TriggerHit(1);
+        }
 
         // 최근 burstWindowSec 안에 번 점수가 임계 이상이면 가장자리 플래시.
         // 지속 사격 중 매 프레임 터지지 않도록 플래시 지속시간만큼 쿨다운을 둔다.
@@ -500,7 +508,11 @@ namespace Wassup.UI
             // 리셋도 하지 않는다 — 전투에서 쌓인 값을 그대로 이어받아야 한다.
             else if (phase == GamePhase.Tally)
             {
-                _pendingKills = 0;
+                // **_pendingKills 를 비우지 않는다.** 같은 Update 안에서
+                // DrainEnemyKilledEvents → CheckVictory → SetPhase(Tally) 가 돌기 때문에,
+                // 여기서 비우면 LateUpdate 게이트에 걸려 **판을 끝낸 그 킬만** 펀치·플래시·
+                // 스파크·틱 사운드를 통째로 못 받는다. 하필 preRollSec("마지막 킬을 눈으로
+                // 마무리할 시간") 동안 그게 그대로 노출된다.
                 if (_panel != null) _panel.SetActive(true);
             }
             else if (_panel != null)

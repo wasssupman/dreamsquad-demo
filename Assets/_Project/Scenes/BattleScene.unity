@@ -2973,8 +2973,7 @@ MonoBehaviour:
   idlePhase: 0.7
   unitHoverTint: {r: 1, g: 0.28, b: 0.22, a: 1}
   tooltipWidth: 480
-  tooltipGap: 18
-  tooltipRise: 90
+  tooltipTopOffset: 40
   tooltipBobY: 6
   tooltipBobX: 3
   tooltipBobFreq: 1.2
@@ -3472,14 +3471,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: afe1695af21b44879a4591f62a3f03c2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.ScoreTallyView
-  dimFadeSec: 0.25
-  perAxisSec: 0.8
-  betweenAxisSec: 0.3
+  preRollSec: 0.6
+  dimFadeSec: 0.4
+  postDimHoldSec: 0.3
+  labelLeadSec: 0.25
+  perAxisSec: 0.7
+  betweenAxisSec: 0.35
   tailSec: 0.5
+  labelFont: {fileID: 11400000, guid: 3e875d8f3088f4559af897fb924f19a5, type: 2}
+  labelMaterial: {fileID: 2100000, guid: 52e1410b5122a4e3b980294f42e9eb02, type: 2}
   dimColor: {r: 0, g: 0, b: 0, a: 0.55}
   labelColor: {r: 1, g: 0.78, b: 0.28, a: 1}
   labelFontSize: 56
-  labelTopOffset: 250
+  labelTopOffset: 296
 --- !u!4 &1664107287
 Transform:
   m_ObjectHideFlags: 0

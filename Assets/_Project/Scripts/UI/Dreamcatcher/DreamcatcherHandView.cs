@@ -77,10 +77,10 @@ namespace Wassup.UI
         // rev 4-4 — 붉은색 계열로 시인성 상향(사용자 확정). 유일한 포커스 표시(타일 하이라이트 제거).
         [SerializeField] private Color unitHoverTint = new Color(1f, 0.28f, 0.22f, 1f);
         // hand-drag-tooltip unit 1 — 드래그 시작 시 성능 툴팁.
-        // rev 1 (사용자 결정) — 선택 카드 우측에 붙고 카드처럼 둥실거리는 플로팅.
+        // rev 5 (사용자 결정 2026-07-21) — 화면 상단 중앙 고정. rev 1 의 카드 우측 배치는
+        // 손패와 같은 하단 대역이라 모바일 오른손 그립에서 손에 가렸다(실기기 확인).
         [SerializeField] private float tooltipWidth = 480f;
-        [SerializeField] private float tooltipGap = 18f;   // 카드 우측 모서리와의 간격
-        [SerializeField] private float tooltipRise = 90f;  // 카드 밑단 대비 띄우는 높이 (rev 2-1 사용자 +50)
+        [SerializeField] private float tooltipTopOffset = 40f; // 세이프에어리어 상단 모서리 여백
         [SerializeField] private float tooltipBobY = 6f;   // 플로팅 bob 진폭(카드 idle 문법)
         [SerializeField] private float tooltipBobX = 3f;
         [SerializeField] private float tooltipBobFreq = 1.2f;
@@ -816,20 +816,22 @@ namespace Wassup.UI
             BuildTooltip(roots.SafeAreaRoot);
         }
 
-        // ── drag tooltip (hand-drag-tooltip unit 1, rev 1) ───────────────────
-        // 선택 카드 우측에 붙는 플로팅 성능 툴팁. 패널 뒤 sibling → 이웃 카드
-        // 위로 그려진다(우측 배치라 카드와 겹침이 정상). 위치는 Show 시 슬롯
-        // 기준으로 계산, 우측 공간 부족이면 좌측 플립. 전 Graphic
-        // raycastTarget=false (드래그/조준 판정 비간섭).
+        // ── drag tooltip (hand-drag-tooltip unit 1, 위치 rev 5) ──────────────
+        // 화면 상단 중앙에 고정으로 뜨는 플로팅 성능 툴팁. 손패는 하단 앵커라
+        // 상단 대역에는 손이 닿지 않는다 — 손잡이 무관하게 가림이 해소된다.
+        // 슬롯은 내용(카드/코스트/본문)에만 관여하고 위치와 무관하다.
+        // 전 Graphic raycastTarget=false (드래그/조준 판정 비간섭).
 
         private void BuildTooltip(Transform parent)
         {
             _tooltipRoot = new GameObject("DragTooltip", typeof(RectTransform), typeof(Image), typeof(CanvasGroup));
             _tooltipRoot.transform.SetParent(parent, false);
             _tooltipRect = (RectTransform)_tooltipRoot.transform;
-            _tooltipRect.anchorMin = new Vector2(0.5f, 0f);
-            _tooltipRect.anchorMax = new Vector2(0.5f, 0f);
-            _tooltipRect.pivot = new Vector2(0f, 0f); // 좌하단 — 카드 우측 모서리에 붙임
+            // rev 5 — 상단 중앙 앵커 + 상단 피벗. 피벗이 상단이라 패널은 아래로
+            // 자라고, 카드마다 설명 길이가 달라도 읽기 시작점(상단 모서리)이 고정된다.
+            _tooltipRect.anchorMin = new Vector2(0.5f, 1f);
+            _tooltipRect.anchorMax = new Vector2(0.5f, 1f);
+            _tooltipRect.pivot = new Vector2(0.5f, 1f);
 
             var bg = _tooltipRoot.GetComponent<Image>();
             // rev 2 (사용자 피드백) — 카드 위에 뜨는 패널이라 불투명 필수(반투명은
@@ -904,17 +906,8 @@ namespace Wassup.UI
             brt.sizeDelta = new Vector2(brt.sizeDelta.x, bodyH);
             _tooltipRect.sizeDelta = new Vector2(tooltipWidth, bodyTop + bodyH + TooltipPad);
 
-            // rev 1 — 선택 카드 우측 모서리에 붙임(seated 1.08 확대 여유 포함).
-            // 우측이 safe area 를 넘으면 좌측 플립. 슬롯 좌표는 패널 기준(중앙축
-            // 동일), 높이는 카드 밑단 + rise.
-            var slot = _slots[slotIndex];
-            float halfCard = 172f * 0.54f + tooltipGap; // cardW/2 * 1.08
-            float x = slot.homePos.x + halfCard;
-            float safeHalf = ((RectTransform)_tooltipRect.parent).rect.width * 0.5f;
-            if (x + tooltipWidth > safeHalf - 8f)
-                x = slot.homePos.x - halfCard - tooltipWidth;
-            float panelY = trayConfig != null ? trayConfig.anchoredY : 32f;
-            _tooltipBasePos = new Vector2(x, panelY + slot.homePos.y + tooltipRise);
+            // rev 5 — 슬롯과 무관한 상단 중앙 고정. 좌우 플립 없음.
+            _tooltipBasePos = new Vector2(0f, -tooltipTopOffset);
             _tooltipRect.anchoredPosition = _tooltipBasePos;
 
             _tooltipVisible = true;

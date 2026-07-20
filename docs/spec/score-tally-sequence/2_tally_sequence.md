@@ -82,7 +82,25 @@ public bool RollSettled            // 표시 숫자가 목표에 붙었는가
       `BeginTally` → `Play` 배선은 패배 경로로 확인됐으므로 조합은 성립하지만, 승리로 끝나는
       실제 판을 끝까지 본 적은 없다
 - [ ] 스킵(탭) 미확인 — 코드 경로는 있으나 실제 입력으로 눌러보지 않았다
+- [x] 라벨이 스트레스 배지에 안 가린다 (배지 하단 278 → `labelTopOffset` 296)
+- [x] 딤이 전장을 덮고 HUD·라벨은 그 위에 뜬다 (스크린샷)
 - [ ] 타이밍·딤 농도 체감 미확인
+
+## 코드 리뷰 반영 (2026-07-21)
+
+| 심각도 | 발견 | 조치 |
+|---|---|---|
+| 심각 | **판을 끝낸 마지막 킬의 연출이 통째로 사라짐.** 같은 Update 안에서 `DrainEnemyKilledEvents → CheckVictory → SetPhase(Tally)` 가 도는데, Tally 분기의 `_pendingKills = 0` 이 `LateUpdate` 게이트를 막았다. 하필 `preRollSec`("마지막 킬을 눈으로 마무리할 시간") 동안 그게 노출된다 | 그 줄 삭제. 실측 `_pendingKills` 보존 확인 |
+| 중간 | **축 라벨이 스트레스 배지에 가림.** 배지 하단 278(= 36+20+148+10+64) 인데 `labelTopOffset` 250 이었고, Tally(5)가 ScoreHud(6) 아래라 배지가 위에 그려진다 | 296 으로. 코드·씬 동시 수정 |
+| 중간 | order 5 에 `CostDisplay`·`DreamcatcherHandView`·`DraftView` 가 공존 — 동순위라 그리기 순서가 계층 의존 | `overrideSorting` 으로 독립 단위 확정 |
+| 낮음 | `onDone` → `SetActive(false)` 순서 취약. 지금은 사이에 `yield` 가 없어 동작하지만 훗날 한 줄 끼면 결과 화면이 영영 안 뜬다 | 순서 교체 |
+| 낮음 | `PulseAttention` 이 직전 킬의 버스트 창을 읽어 **값 변화 없이 플래시 오발** 가능(여유 0.15초뿐) | 펄스 전 창 비우기. 실측 억제 확인 |
+| 낮음 | 라벨이 TMP 기본 폰트 — 옆 HUD 는 Kanit | `labelFont`/`labelMaterial` 추가 + HUD 와 동일 배선 |
+| 낮음 | 씬 직렬화값이 코드 기본값과 불일치(`dimFadeSec` 0.25 vs 0.4 등) | 씬 재저장으로 동기화 |
+
+**리뷰가 "확인됨"으로 판정한 것**: `onDone` 유실 경로 없음 · 스킵 시 총점 보존(계약 2) · Tally 도입으로 BGM/카메라 회귀 없음 · 씬 배선 정상 · `StopFeedbackTweens` 미호출은 의도대로.
+
+**미조치 (제품 판단 필요)**: Tally 진입 즉시 전투 HUD(손패·코스트·다음웨이브)가 전부 사라져, `preRollSec` 의 "전투 화면 그대로"가 실제로는 "HUD 걷힌 화면"이다. 코드를 고칠지(SetPhase 를 preRoll 뒤로) 문서를 고칠지 결정 필요.
 
 확인: 2026-07-21
 

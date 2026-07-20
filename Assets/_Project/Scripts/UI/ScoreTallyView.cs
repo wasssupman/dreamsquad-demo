@@ -41,11 +41,19 @@ namespace Wassup.UI
         [SerializeField] private float tailSec = 0.5f;
 
         [Header("Look")]
+        // HUD 점수와 같은 서체를 써야 "같은 숫자가 자란다"로 읽힌다. 비우면 TMP 기본
+        // (LiberationSans)이라 바로 옆 Kanit 숫자와 서체가 갈린다.
+        [Tooltip("ScoreHudView 와 동일한 폰트/머티리얼. Null → TMP 기본.")]
+        [SerializeField] private TMP_FontAsset labelFont;
+        [SerializeField] private Material labelMaterial;
         [SerializeField] private Color dimColor = new Color(0f, 0f, 0f, 0.55f);
         [SerializeField] private Color labelColor = new Color(1f, 0.78f, 0.28f, 1f);
         [SerializeField] private float labelFontSize = 56f;
-        [Tooltip("라벨이 HUD 점수 배지 아래로 내려오는 정도(px)")]
-        [SerializeField] private float labelTopOffset = 250f;
+        // HUD 배지 블록 하단은 cornerPadding 36 + plateTopInset 20 + plateSize.y 148
+        // + leakPlateGap 10 + leakPlateSize.y 64 = **278**. 이 값이 그보다 작으면 라벨이
+        // 배지에 가린다 — Tally 캔버스(5)가 ScoreHud(6) **아래**라 배지가 위에 그려진다.
+        [Tooltip("라벨이 HUD 점수 배지 아래로 내려오는 정도(px). 배지 하단 278 보다 커야 한다.")]
+        [SerializeField] private float labelTopOffset = 296f;
 
         private Image _dim;
         private TextMeshProUGUI _label;
@@ -101,8 +109,11 @@ namespace Wassup.UI
             if (!_skipRequested) yield return WaitUnscaled(tailSec);
 
             _running = null;
-            gameObject.SetActive(false);
+            // onDone 을 SetActive(false) **앞**에 둔다. 지금은 두 줄 사이에 yield 가 없어
+            // 어느 순서든 동작하지만, 훗날 사이에 yield 한 줄이 끼면 비활성화가 코루틴을
+            // 스케줄에서 빼버려 **결과 화면이 영영 안 뜬다.** 순서로 그 함정을 없앤다.
             onDone?.Invoke();
+            gameObject.SetActive(false);
         }
 
         private IEnumerator AddAxis(string name, int points, ScoreHudView hud)
@@ -169,6 +180,12 @@ namespace Wassup.UI
             _built = true;
 
             var roots = UiCanvasSetup.Ensure(gameObject, sortingOrder: SortingOrder);
+            // order 5 에는 CostDisplay·DreamcatcherHandView·DraftView 도 있다. 동순위면
+            // 그리기 순서가 계층 정렬에 의존해 불안정하고, 딤이 손패 위/아래 어디에 깔릴지
+            // 보장되지 않는다(Tally 진입 프레임엔 아직 겹쳐 있다). overrideSorting 으로
+            // 이 캔버스를 독립 단위로 확정한다 — ScoreHud(6) 아래는 그대로 유지된다.
+            roots.Canvas.overrideSorting = true;
+            roots.Canvas.sortingOrder = SortingOrder;
 
             // 전체 화면 딤 + 스킵 입력. 딤 자체를 버튼으로 써서 어디를 눌러도 넘어간다.
             var dimGo = new GameObject("Dim", typeof(RectTransform), typeof(Image), typeof(Button));
@@ -195,6 +212,8 @@ namespace Wassup.UI
             _labelGroup.alpha = 0f;
 
             _label = labelGo.AddComponent<TextMeshProUGUI>();
+            if (labelFont != null) _label.font = labelFont;
+            if (labelMaterial != null) _label.fontSharedMaterial = labelMaterial;
             _label.fontSize = labelFontSize;
             _label.color = labelColor;
             _label.alignment = TextAlignmentOptions.MidlineRight;
