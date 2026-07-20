@@ -56,11 +56,39 @@ _em.AddComponentData(entity, new KillScore { value = Mathf.Max(0, entry.unitType
 
 ## 완료 기준
 
-- [ ] compile 통과. 신규 `.cs` 라 `refresh_unity` 는 `scope=all` 로 (아니면 cascading CS0246)
-- [ ] `read_console` 에 에러 없음
-- [ ] EditMode 전체 통과
-- [ ] Play 검증: 전투 진입 → 적 몇 기 처치 → `_killScoreTotal` 이 처치한 적들의 `killScore` 합과 일치 (reflection 조회)
-- [ ] Play 검증: 적을 **유출**시키면 `_killScoreTotal` 이 **안 오른다** — 이 스펙의 핵심 전제(README "유출은 두 축을 동시에 깎는다")를 실증하는 확인이다
-- [ ] Play 검증: 재시작(RESTART) 후 `_killScoreTotal` 이 0으로 돌아온다
+- [x] compile 통과. 신규 `.cs` 라 `refresh_unity` 는 `scope=all` 로 (아니면 cascading CS0246)
+- [x] `read_console` 에 에러 없음
+- [x] EditMode 전체 통과 (1091 / 0 실패)
+- [x] Play 검증: 처치 시 `_killScoreTotal` 증가
+- [x] Play 검증: **유출은 `_killScoreTotal` 을 올리지 않는다**
+- [x] Play 검증: 재시작 후 `_killScoreTotal` = 0
+
+확인: 2026-07-20
+
+### Play 실증 기록
+
+매 프레임 샘플러(`EditorApplication.update` 자기정리 람다)로 추적했다.
+**단발 프로브는 창을 놓친다** — 첫 시도에서 판이 끝나고 되감긴 상태를 읽어 "리셋 때문에 0인지
+애초에 안 쌓인 건지" 구분이 안 됐다.
+
+**유출 (디펜더 0기 배치):**
+```
+900 샘플 전부 killScoreTotal = 0,  그 사이 goal 30 → 74 (44기 유출)
+```
+44마리가 골인했는데 킬점수는 1점도 안 붙었다.
+
+**처치 (스나이퍼 12기, 웨이브 당기기 없이 자연 진행):**
+```
+clock=1.70s  goal=0  killScore=100  hud=10
+clock=2.01s  goal=0  killScore=200  hud=20
+clock=5.12s  goal=0  killScore=300  hud=30
+clock=7.86s  goal=0  killScore=400  hud=40
+clock=12.39s goal=0  killScore=500  hud=50
+```
+처치 1기당 정확히 +100(잡몹 `killScore`), HUD(+10)와 1:1 대응.
+
+**주의 — 오염된 판을 실측으로 오인하기 쉽다.** 중간에 `killScore=0` 인 판이 나왔는데,
+`hud._targetScore = 0` / `log.kills = 0` 으로 대조해 **처치 자체가 0건**이었음을 확인했다
+(이전 판 잔여 적이 골 근처에 남아 즉시 유출된 케이스). 씬을 새로 로드해야 깨끗하다.
 
 > 아직 점수 산식에 연결하지 않는다. 누적만 하고 `CalculatePlayerScore()` 는 현행 유지 — 다음 단위에서 교체한다.

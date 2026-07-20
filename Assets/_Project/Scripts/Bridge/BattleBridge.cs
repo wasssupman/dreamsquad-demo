@@ -270,6 +270,11 @@ namespace Wassup.Bridge
         // 에디터 자산 영구 오염 + 기기에서 매치 간 누적된다(spec critic M1). 매치 리셋
         // (BeginPlacement)에서 0 초기화. 환불 경로 없음(§6 세탁 차단).
         private int _leakAllowancePenalty;
+        // battle-score-formula unit 2 — 실제 처치분 누적(유출된 적은 포함되지 않는다).
+        // **계약 9: _battleClock 이 0 이 되는 모든 지점에서 함께 0 이 되어야 한다.**
+        // _goalReachedCount 처럼 BeginPlacement 에만 두면, teardown 없는 StartBattle
+        // 재호출에서 시계만 리셋되고 이 값은 이월돼 이전 판 점수가 얹힌다.
+        private int _killScoreTotal;
         private NativeQueue<GoalReachedEvent> _goalEventQueue;
         private NativeQueue<DefenderDeathEvent> _defenderDeathQueue;
         private NativeQueue<Wassup.Battle.Combat.UnitAttackVisualEvent> _unitAttackVisualQueue;
@@ -1103,6 +1108,7 @@ namespace Wassup.Bridge
             _synergyPeakCount = 0;
             _goalReachedCount = 0;
             _leakAllowancePenalty = 0; // 몽마의 계약 선불 — 매치 경계에서 소멸(이월 금지)
+            _killScoreTotal = 0;       // battle-score-formula unit 2 — 계약 9
             RefreshLeakHud();
             _running = false;
             _placementAllowed = true;
@@ -1149,6 +1155,7 @@ namespace Wassup.Bridge
             }
             _startTime = Time.time;
             _battleClock = 0.0;
+            _killScoreTotal = 0; // battle-score-formula unit 2 — 계약 9 (시계와 짝)
             // wave-authoring-test-mode unit 2 — 작성 모드는 plan.timerDurationSec(0=endless).
             // seed/legacy 경로는 deck.timerDurationSec 그대로(무변경).
             _timerDuration = _usingAuthoredPlan ? _wavePlan.timerDurationSec : deck.timerDurationSec;
@@ -1397,6 +1404,7 @@ namespace Wassup.Bridge
             _pendingDreamstones = null;
             // time-manager Unit 3 — 시간 상태도 매치와 함께 리셋.
             _battleClock = 0.0;
+            _killScoreTotal = 0; // battle-score-formula unit 2 — 계약 9 (시계와 짝)
             _battleTimeScaleEntity = Entity.Null;
             _battleRunningEntity = Entity.Null;
             // range-preview unit 3 — 매치 종료 시 격자 표시 무조건 해제(비행 중
@@ -2832,6 +2840,10 @@ namespace Wassup.Bridge
             while (_enemyKilledEventQueue.TryDequeue(out var evt))
             {
                 scoreHud?.OnEnemyKilled(EnemyKillScoreDelta);
+                // battle-score-formula unit 2 — 최종 점수용 누적. HUD 점수(처치당 +10)와
+                // 별개 값이다: HUD 는 표시 전용으로 존치하고(계약 12), 최종 산식은
+                // AttackUnitData.killScore 합을 쓴다.
+                _killScoreTotal += evt.killScore;
                 // dreamcatcher-awakening-hand unit 1 — awakening economy relay.
                 EnemyKilledAwakening?.Invoke(evt.awakeningReward);
                 // 살찌운 제물 — 표식 악몽 처치: 카드 회수 알림(보상은 위 relay 가
@@ -5228,6 +5240,13 @@ namespace Wassup.Bridge
             _em.AddComponentData(entity, new AwakeningReward
             {
                 value = Mathf.Max(0, entry.unitType.awakeningReward),
+            });
+            // battle-score-formula unit 2 — bake the kill score so
+            // DamageApplicationSystem can stamp it into EnemyKilledEvent.
+            // Unconditional attach (0 allowed) keeps the lookup branch-free.
+            _em.AddComponentData(entity, new KillScore
+            {
+                value = Mathf.Max(0, entry.unitType.killScore),
             });
             // Pre-attach empty buffers so downstream systems never need structural AddBuffer on hot paths.
             _em.AddBuffer<IncomingDamage>(entity);
