@@ -251,3 +251,33 @@ PlacementHighlightTiles  order=-13  queue=3000  Sprites/Default
       Debug.Log($"{tr.name} order={tr.sortingOrder} queue={tr.sharedMaterial?.renderQueue} shader={tr.sharedMaterial?.shader.name}");
   ```
 - **덤(2026-07-20 실사례)**: 정렬을 양수(유닛 위) → 음수(바닥)로 고친 뒤에도 "오프셋을 키우면 유닛을 덮는다"는 옛 제약 메모가 남아 오프셋을 0.012로 조인 채 z-fighting 을 방치했다. **선행 수정이 후행 제약을 무효화했는지 되짚지 않으면 유령 제약이 남는다.**
+
+## 스프라이트 시트를 스크립트로 슬라이스할 때 (실측 3건)
+
+`SpriteFlipbookData` 용 시트를 코드로 자를 때 연달아 밟은 것들.
+
+**1. `com.unity.2d.sprite` 가 이 프로젝트에 없다.** `UnityEditor.U2D.Sprites`
+(`SpriteDataProviderFactories` / `SetSpriteRects`) 를 쓰면 `CS0234` 로 컴파일이 깨진다.
+패키지 추가는 프로젝트 의존성 변경이라 임의로 할 일이 아니므로, 레거시
+`TextureImporter.spritesheet = SpriteMetaData[]` 경로를 쓴다(`#pragma warning disable CS0618`).
+
+**2. 첫 임포트 직후 `LoadAllAssetRepresentationsAtPath` 는 덜 정착한 상태를 돌려준다.**
+`SaveAndReimport()` 가 끝난 뒤에도 그렇다. 실측: 49개를 요청했는데 **42개만** 반환됐고
+`.meta` 에는 49개가 다 들어 있었다. 개수를 기대값과 대조하지 않으면 **프레임 몇 개가
+조용히 빠진 채 애니메이션만 이상해진다** — 컴파일도 경고도 통과한다.
+→ `sprites.Count != rows*cols` 를 에러로 막고, 스크립트를 한 번 더 실행하면 정상화된다.
+
+**3. 시트 크기가 격자 수로 안 나뉘면 슬라이스로는 못 고친다.**
+1920×1080 을 7×7 로 자르면 셀이 274.2857 × 154.2857 로 정수가 아니다. 경계가 최대 2px
+어긋나 **인접 칸 내용이 1~5px 비쳐 들어온다**(위 칸 캐릭터의 신발이 머리 위에 줄로 보인다).
+
+알파로 "내용 있는 열이 가장 적은 y"를 골라 경계를 최적화해도 해결되지 않는다 —
+캐릭터가 셀을 꽉 채워 그려져 있으면 **전 열이 비는 y 자체가 존재하지 않는다.**
+실측에서 bleed 최대 5px > 깨끗한 셀의 머리 여백 최소 1px 이라 **안전한 inset 이 없었다.**
+
+→ 진단 순서: ① 셀 크기가 정수인지 ② 알파로 셀별 상단 여백 분포를 재서
+bleed 두께와 비교. inset 이 성립하지 않으면 슬라이스를 더 만지지 말고 **내보내기를 고친다**
+— 격자 수의 배수 크기(예: 1918×1078)로 내보내거나 셀 사이에 투명 여백 2~4px.
+
+**부수 확인법**: 잘린 PNG 는 `tail -c 12 | xxd -p` 에 `49454e44ae426082`(IEND)가 없다.
+Unity 는 이런 파일에도 `.meta` 를 만들어 두므로 meta 존재만으로 정상 임포트를 단정하면 안 된다.
