@@ -1,6 +1,6 @@
 # Season Gimmick — "집에 가도 되나요?" (Clock-Out) Spec
 
-**상태**: 진행 중 — units 0~5 구현·커밋(`c99c432f`~`eed855f8`) + unit 6(퇴근 코스트 환급) 추가. **Play 통합검증만 남음**. 세 번째 시즌 기믹. 기존 프레임(`BattleConfig.gimmickPool` + `GimmickData`)과 기존 시스템(사망 경로, SkyFall×TileAoe 투사체 메테오, Pickup 아키타입, FatigueAccrual lazy-attach) 위에 조립한다.
+**상태**: 완료 2026-07-20 — units 0~6 + 메테오 데미지 150. Play 통합검증 사용자 통과(퇴근→사직서→메테오 + 코스트 환급). 인계: [7_handoff_summary.md](7_handoff_summary.md). 세 번째 시즌 기믹. 기존 프레임(`BattleConfig.gimmickPool` + `GimmickData`)과 기존 시스템(사망 경로, SkyFall×TileAoe 투사체 메테오, Pickup 아키타입, FatigueAccrual lazy-attach) 위에 조립한다.
 **재리뷰 2026-07-20**: 현 HEAD(투사체/공격 리워크 병합 후) 기준 재검증 — units 0~3 병합 후 compile 클린(CS 에러 0), 메테오 cast(unit 4) 계획 유지. 리워크는 **가법적**이라 SkyFall×TileAoe·death 경로·IncomingDamage 불변(DirectionalLinear/PathHit 는 별도 trajectory/payload 축).
 
 ## 목표

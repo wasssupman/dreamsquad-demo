@@ -84,6 +84,18 @@
 | View | `Battle/Effects/PickupPresenter.cs`(절차적 플레이스홀더) + `BattleBridge.ReconcilePickupViews` poll-reconcile(엔티티↔GameObject) | ★이벤트 아님 — 매 프레임 poll. 정식 아트/소비 VFX 후속 |
 | 씬 wiring | BattleBridge.pickupViewPrefab(옵션)·pickupViewHeight + SeasonRegistry.defaultSeason=season_overwork | 상태 아이콘은 unit-buff-debuff-aura 오라에 위임 |
 
+## 사직서 → 메테오 — 집에 가도 되나요 (season-gimmick-clockout, 시즌 기믹)
+
+| 정거장 | 앵커 | 확인 포인트 |
+|---|---|---|
+| 데이터 SO | `Data/Gimmick/ClockOutGimmickData.cs` (퇴근 시간·코스트 환급·사직서 임계·메테오 수치) | `BattleConfig.gimmickPool` 배정(GameManager). 픽업과 달리 **death-스폰·비소비** |
+| 스폰 진입점 | `Battle/Effects/ClockOutSystem.cs` — **death-트리거**: running defender 가 clockOutSeconds 만료 시 배치 타일에 Resignation 스폰 | 주기 스폰 아님. `ClockOutGimmickConfig`+`BattleRunning` self-gate(running-only) |
+| ECS 컴포넌트 (Effects) | `Resignation(cell)` · `ClockOutTimer(elapsed)` + `Battle/BattleRunning.cs` 싱글턴(Mono `_running`→ECS, BattleTimeScale 동형) | 사직서는 유닛이 안 줍는다 — 전역 임계로만 소멸 |
+| 시뮬 시스템 | `ClockOutSystem`(타이머→사직서 스폰 + 치명 IncomingDamage 퇴근 + 환급 enqueue) · `ResignationThresholdSystem`(사직서 ≥ threshold 소모 → barrage 요청) | 퇴근 = 기존 death 경로(DeadTag→UnitLifecycle→DefenderDeathEvent) 재사용 |
+| 이벤트 큐 | **신규 2**: `MeteorBarrageRequestsSingleton` · `ClockOutRefundEventsSingleton` (Effects→Bridge). 메테오 자체는 기존 `ProjectileSpawnRequest`(SkyFall×TileAoe) 재사용 | 메테오 cast = `BattleBridge.SpawnProjectile(...,Entity.Null)`(bridge-cast, targetFaction=Enemy). 환급 = `CostRuntime.AddCost` |
+| View | `Battle/Effects/ResignationPresenter.cs`(절차적 흰 종이) + `BattleBridge.ReconcileResignationViews` poll-reconcile. 메테오 뷰는 기존 투사체 파이프라인 | ★poll-reconcile(Pickup 동형). 정식 아트/VFX 후속 |
+| 씬 wiring | BattleBridge.resignationViewPrefab(옵션)·resignationViewHeight + `BattleConfig.gimmickPool` 에 `Gimmick_ClockOut` 등록 | 코스트 환급은 GameManager.CostRuntime 경유(BattleBridge drain) |
+
 ## 힐 (Heal)
 
 | 정거장 | 앵커 | 확인 포인트 |
