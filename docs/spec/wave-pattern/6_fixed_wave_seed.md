@@ -47,3 +47,8 @@ int waveSeed = deck.waveSeed != 0
 - 아웃게임 웨이브 브리핑 스트립의 웨이브 목록이 인게임 실제 웨이브와 일치.
 - `waveSeed` 를 0으로 되돌리면 매판 랜덤(derived) 복귀 — 로그 source 표기로 확인.
 - 기존 EditMode 테스트(WavePatternGeneratorTests·BossTests) 그린 유지.
+
+**확인 2026-07-20 · 커밋 `2d8c843e`** — 스크립트 Play 재진입 2회에서 시작 로그
+`seed=20260720 (source=deck-fixed) waves=10` 및 웨이브 요약 동일. 브리핑 스트립
+경로(`Generate(deck)`)와 라이브 경로가 같은 플랜을 내는 것을 에디터에서 대조 확인.
+EditMode 1016건 통과(실패 0, 스킵 2 = 기존 known-ignore).

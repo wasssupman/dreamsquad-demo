@@ -42,3 +42,7 @@ intraWaveSpacingSec)` 로 엔트리를 펼친 뒤, 엔트리 i 의 lane 을
 - PerGroupTimeline(작성 플랜) 웨이브: 그룹 오프셋 반영된 lane 별 최소 시각.
 - 스폰 없는 lane → `-1` (엔트리 수 < laneCount 케이스).
 - 기존 `WavePatternGeneratorTests`·`BossTests` 그린 유지 (ExpandWave 동작 무변경).
+
+**확인 2026-07-20 · 커밋 `5d996eb0`** — `WaveSpawnForecastTests` 8건 신규 전부 통과,
+EditMode 전체 1016건 통과(실패 0). 라이브 예보값 `[18.70, 18.00, 18.35]` 이 unit 1
+런타임 관측 스폰 시각과 일치해 산식이 실스폰과 어긋나지 않음을 교차 확인.

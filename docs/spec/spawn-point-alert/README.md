@@ -1,7 +1,8 @@
 # spawn-point-alert — 스폰 지점 사전 얼럿
 
 **작성일**: 2026-07-20
-**상태**: 초안 (사용자 승인 대기)
+**상태**: **완료 2026-07-20** — units 0~1 구현·커밋 (`5d996eb0`, `44f06965`). handoff: `2_handoff_summary.md`.
+선행 `wave-pattern` unit 6(고정 시드, `2d8c843e`)과 함께 작업했다. 사용자 Play 체감 확인만 남음.
 **선행 spec**: `docs/spec/wave-pattern/` (GeneratedWavePlan — 예보의 소스), `wave-pattern/6_fixed_wave_seed.md` (검증 재현성 확보, 선행 권장)
 
 ## 목표 (검증 질문)
@@ -25,6 +26,7 @@
 |---|---|---|
 | `0_spawn_forecast_math.md` | 순수 함수 | lane 산식 공유 추출 + per-lane 첫 스폰 시각 예보 + EditMode 테스트 |
 | `1_alert_view_wiring.md` | 프레젠테이션/배선 | BattleBridge read-only 예보/경로 API + 경로 라인 트레일 뷰 + 씬 배선 + Play 검증 |
+| `2_handoff_summary.md` | 인계 | 구현 결과·되돌리면 안 되는 판단·다음 후보 |
 
 ## 공통 원칙
 
