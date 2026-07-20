@@ -10,6 +10,10 @@
 >
 > 인계 지도: `4_handoff_summary.md`(Ranger/Archer) → `6_handoff_summary.md`(Cannon~Healer)
 > → `10_handoff_summary.md`(수명 정정·Guardian 공용 배선).
+>
+> **rev 2026-07-20 — unit 11**: 컷신 캔버스가 `CanvasScaler` 없이 constant-pixel 로 동작해
+> 기기 해상도마다 크기·여백이 달라지던 문제 수정. 공용 규약 `UiCanvasSetup`(1920×1080) 경로로 통일.
+> 튜닝값 단위가 디바이스 px → **1920×1080 레퍼런스 단위**로 바뀌었다(1080 높이에서는 동일, 재튜닝 불필요).
 
 ## 상위 목표
 
