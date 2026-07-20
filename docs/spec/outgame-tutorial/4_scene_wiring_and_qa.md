@@ -84,11 +84,17 @@ OutgameTutorial          [OutgameTutorialController]   ← Canvas 없음
       `RESET ACCOUNT` 가 아니라 `RESET TUTORIAL` 을 쓴다)
 - [ ] 챕터 B 종료 후 스쿼드 편집·저장 → 로비 재진입 시 재출현 없음
 - [ ] 화면 회전/해상도 변경 후 홀이 대상 버튼을 계속 따라간다
-- [ ] Android 가로 실기기: dim 이 노치·safe area 까지 덮는지 스크린샷으로 확인.
-      링/홀 정렬은 실측상 편차 최대 2유닛(0.19%)이라 별도 확인 불필요 — `3_loadout_chapter.md` 참조
-- [ ] Android 백키로 안내가 닫히는지. `Keyboard.current` 가 null 인 기기에서는 동작하지 않을 수 있고
-      (기존 `DreamcatcherHandView.cs:289-290` 과 같은 패턴·같은 제약), 그 경우 8초 Skip 이 주 탈출구다
 - [ ] EditMode 전체 통과 (기존 테스트 회귀 없음)
+
+### 보류 — Android 실기기 QA (2026-07-21 사용자 결정)
+
+동작 확인이 끝나 spec 은 종료한다. 아래는 실기기를 잡을 때 한 번에 처리한다.
+
+- dim 이 노치·safe area 까지 덮는지 스크린샷 확인.
+  링/홀 정렬은 실측상 편차 최대 2유닛(0.19%)이라 확인 불필요 — `3_loadout_chapter.md` 참조
+- Android 백키로 안내가 닫히는지. `Keyboard.current` 가 null 인 기기에서는 동작하지 않을 수 있다
+  (기존 `DreamcatcherHandView.cs:289-290` 과 같은 패턴·같은 제약). 그 경우 8초 Skip 이 주 탈출구다
+- dim 톤(`UiOverlay.Dim` 알파 0.92)이 로비 배경 위에서 과한지, 12px 스트립의 분리감
 
 > 검증 2026-07-21 · 커밋 `815b38c4`·`1dfc22a3` — 씬 diff 147줄 추가·삭제 0, `OutgameTutorial` 씬 루트 확인,
 > EditMode 전체 회귀 없음. 사용자 Play 체감·Android 실기기 QA 대기.
