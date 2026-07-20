@@ -82,6 +82,8 @@ namespace Wassup.UI
         private bool _boardGestureActive;
         private bool _boardDragging;
         private Vector2 _boardDownScreen;
+        // placement-armed-board-drag unit 1 — 스카우트가 현재 표시 중인 셀(변경 감지·소거용). 세션 없는 range-only 경로.
+        private Vector2Int? _boardScoutCell;
         // review fix — 세션 세대 토큰. CleanupSession 마다 증가. 시뮬 코루틴이 자기 세대를 캡처해
         // 비행 중 새 드래그(BeginDrag→CleanupSession→새 세션)가 시작되면 즉시 물러난다(세션 하이재킹 방지).
         private int _sessionGen;
@@ -548,7 +550,46 @@ namespace Wassup.UI
                 if (_boardDragging) CommitBoardDrag(cur);
                 // else: 탭 — 범위 피크(unit 2). 현재는 no-op(배치 안 함, arm 유지).
                 ResetBoardGesture();
+                return;
             }
+
+            // placement-armed-board-drag unit 1 — 프레스부터 릴리즈 직전까지 range-only 스카우트(손가락 셀 추종).
+            UpdateBoardScout(cur);
+        }
+
+        // placement-armed-board-drag unit 1 — 세션 없는 range-only 스카우트. 드래그 세션 SetHover 의 표시 계약을
+        // 미러하되(범위·팝은 셀 변경 시만, hover 는 매 프레임), 키링 유닛은 띄우지 않는다. 유닛은 트레이에 남는다.
+        private void UpdateBoardScout(Vector2 screen)
+        {
+            if (bridge == null || _armedUnit == null) return;
+            if (!bridge.TryScreenToCell(mainCamera, screen, out var cell)) { ClearBoardScout(); return; }
+
+            bool valid = bridge.CanPlaceDefenderAt(cell.x, cell.y, _armedUnit, out _);
+            bool changed = !_boardScoutCell.HasValue || _boardScoutCell.Value != cell;
+            if (changed && _boardScoutCell.HasValue)
+                bridge.ClearPlacementHover(_boardScoutCell.Value); // 이전 셀 hover 정리(액체 비활성 경로)
+            _boardScoutCell = cell;
+
+            if (changed)
+            {
+                bridge.SetPlacementRange(cell, _armedUnit);       // 범위 격자 — 셀 변경 시만 재페인트
+                bridge.PulsePlacementHover(cell, valid);          // 확정 팝
+            }
+            if (Cfg.stickyLiquidEnabled)
+                bridge.SetPlacementStretch(cell, Vector2.zero, 0f, valid); // 정적(손가락 방향 번짐 없음 — 탭 비행 unit 4 와 동일)
+            else
+                bridge.SetPlacementHover(cell, valid);
+        }
+
+        private void ClearBoardScout()
+        {
+            if (bridge != null)
+            {
+                if (_boardScoutCell.HasValue) bridge.ClearPlacementHover(_boardScoutCell.Value);
+                bridge.ClearPlacementRange();
+                bridge.ClearPlacementStretch();
+            }
+            _boardScoutCell = null;
         }
 
         // placement-armed-board-drag unit 0 — 드래그 릴리즈 커밋: 유효셀이면 기존 tray→cell 시뮬 비행 재사용.
@@ -561,11 +602,12 @@ namespace Wassup.UI
                 bridge.FlashPlacementReject(cell); // arm 유지(재시도)
         }
 
-        // placement-armed-board-drag unit 0 — 제스처 상태 리셋(릴리즈·arm 해제 경유). unit 1 이 범위/hover 소거를 얹는다.
+        // placement-armed-board-drag unit 0 — 제스처 상태 리셋(릴리즈·arm 해제 경유).
         private void ResetBoardGesture()
         {
             _boardGestureActive = false;
             _boardDragging = false;
+            ClearBoardScout(); // unit 1 — 스카우트 범위/hover 소거
         }
 
         // review fix — no-arg IsPointerOverGameObject 는 마우스 pointerId 만 조회해 터치에서 UI 를 못 거른다
