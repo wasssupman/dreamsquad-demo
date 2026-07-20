@@ -106,5 +106,14 @@ namespace Wassup.Data
         [Tooltip("전투 시간 배율 — 방향 지정 중. 드래그 슬로우모를 이어받음. 0 금지(전투가 멈추면 안 된다).")]
         [Range(0.01f, 1f)]
         public float directionAimSlowmoScale = 0.2f;
+
+        [Header("⑨ 보드 제스처 — armed 유닛 보드 프레스-드래그-릴리즈 배치")]
+        // placement-armed-board-drag — arm 후 보드 press 를 tap/drag 로 가르는 이동 임계.
+        // 시간이 아니라 이동량으로 판정(사용자 결정 2026-07-20). Unity EventSystem.pixelDragThreshold(기본 10)
+        // 와 동류의 화면 px 값이나, 터치에서 조금 여유를 줘 의도치 않은 드래그 승격을 줄인다.
+        [Tooltip("보드 탭/드래그 임계(스크린 px) — press 후 이 거리 이상 움직이면 드래그(범위 스카우트→릴리즈 배치), " +
+                 "미만이면 탭(범위 피크). ↑=드래그로 잘 안 넘어감(탭이 관대), ↓=조금만 움직여도 드래그.")]
+        [Range(1f, 64f)]
+        public float boardDragThreshold = 16f;
     }
 }

@@ -128,7 +128,11 @@ namespace Wassup.UI
             // 스와이프가 진행 중이다. 막지 않으면 그 스와이프가 유닛 탭으로도 읽혀 인스펙트가
             // 열리고, 방향 확정 뒤에도 이쪽 slomo/줌이 남아 닫는 클릭이 한 번 더 필요해진다.
             var drag = defenderSelector != null ? defenderSelector.DragController : null;
-            if (drag != null && (drag.IsDragging || drag.IsAiming)) return true;
+            // placement-armed-board-drag unit 0: HasArmedUnit — 유닛이 arm 되면 보드 press 는 배치
+            // 제스처(프레스-드래그-릴리즈)가 소유한다. 막지 않으면 armed 상태의 보드 탭이 인스펙트로도
+            // 읽혀 두 소비자가 같은 press 를 노리는 aim-mode race 를 재생산한다(계약 11). arm 은 직전
+            // 프레임에 확정돼 이 -50 실행순서와 무관하게 안정적으로 읽힌다.
+            if (drag != null && (drag.IsDragging || drag.IsAiming || drag.HasArmedUnit)) return true;
             return false;
         }
 

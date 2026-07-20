@@ -35,9 +35,25 @@ namespace Wassup.Core.Api
         [Serializable]
         public class ResultData
         {
+            // tournament-history Unit 0 — 상세 팝업 제목용 토너먼트 이름.
+            public string name;
             public int entryCount;
             public int maxEntryCount;
             public List<ResultEntry> entries;
+        }
+
+        // tournament-history Unit 0 — 내 (진행 중) 토너먼트 참가 1건. unclaimed
+        // 목록 응답의 bare 배열 원소. 소비 필드만 — userId/tournamentTypeId/
+        // rewardData 는 파싱하지 않는다 (ResultEntry 선례).
+        [Serializable]
+        public class UserTournamentResultEntry
+        {
+            public string tournamentEntryId;  // 상세 조회 경로 파라미터
+            public string tournamentName;
+            public int score;
+            public int rank;
+            public string createdTime;         // ISO-8601, 파싱은 뷰에서
+            public bool claimed;
         }
 
         [Serializable]
@@ -85,6 +101,20 @@ namespace Wassup.Core.Api
             });
         }
 
+        // tournament-history Unit 0 — 내 (진행 중) 토너먼트 참가 목록. 응답 data 는
+        // UserTournamentResultEntry 의 bare 배열. onDone(list, error) — 정확히 한쪽만 유효.
+        public static void GetUnclaimedEntries(string baseUrl, string idToken,
+            Action<List<UserTournamentResultEntry>, string> onDone)
+        {
+            var request = new UnityWebRequest(BuildUnclaimedUrl(baseUrl), UnityWebRequest.kHttpVerbGET);
+            Send(request, idToken, (body, transportError) =>
+            {
+                var list = TryParseUnclaimed(body, out string error);
+                if (list == null && transportError != null) error = $"{error} (HTTP: {transportError})";
+                onDone(list, list != null ? null : error);
+            });
+        }
+
         private static void Send(UnityWebRequest request, string idToken, Action<string, string> onResponse)
         {
             request.downloadHandler = new DownloadHandlerBuffer();
@@ -112,6 +142,9 @@ namespace Wassup.Core.Api
         internal static string BuildResultUrl(string baseUrl, string entryId)
             => $"{TrimBase(baseUrl)}/tournament/result/tournament/{entryId}";
 
+        internal static string BuildUnclaimedUrl(string baseUrl)
+            => $"{TrimBase(baseUrl)}/tournament/result/entry/unclaimed";
+
         // TournamentResultExtraData — Newtonsoft handles the escaping of the
         // embedded battle-log JSON string.
         internal static string BuildCompleteBody(string debugJson)
@@ -122,6 +155,9 @@ namespace Wassup.Core.Api
 
         internal static ResultData TryParseResult(string body, out string error)
             => ApiEnvelope.Parse<ResultData>(body, out error);
+
+        internal static List<UserTournamentResultEntry> TryParseUnclaimed(string body, out string error)
+            => ApiEnvelope.ParseList<UserTournamentResultEntry>(body, out error);
 
         private static string TrimBase(string baseUrl) => baseUrl.Trim().TrimEnd('/');
     }

@@ -209,7 +209,7 @@ namespace Wassup.UI
             if (!gameObject.activeSelf) return;
             if (data == null || _listContent == null) return;
 
-            var rows = BuildRows(data.entries, data.maxEntryCount, ownUserId);
+            var rows = LeaderboardList.BuildRows(data.entries, data.maxEntryCount, ownUserId);
             if (rows.Count == 0) return; // nothing meaningful to draw — keep the pending list
             RenderRows(rows);
             UpdateCaption(rows); // real ranking almost always moves the player off the pending state
@@ -218,7 +218,7 @@ namespace Wassup.UI
         // "순위 3 / 10" under the hero score. The rank comes out of the rendered rows,
         // so this has to be refreshed on every list change (pending → real ranking).
         // Rank 0 = unknown → no rank claim at all.
-        private void UpdateCaption(List<Row> rows)
+        private void UpdateCaption(List<LeaderboardList.Row> rows)
         {
             if (captionLabel == null) return;
             int rank = 0;
@@ -232,60 +232,11 @@ namespace Wassup.UI
                 : "내 점수";
         }
 
-        // ── Pure row model ─────────────────────────────────────────────────────
-        // Display row for one leaderboard slot. Both the pending fallback and the real
-        // tournament ranking funnel through RenderRows via these rows.
-        internal readonly struct Row
-        {
-            public readonly int Rank;
-            public readonly string Name;
-            public readonly int Score;
-            public readonly bool IsPlayer;
-            public readonly bool IsWaiting;
-
-            public Row(int rank, string name, int score, bool isPlayer, bool isWaiting)
-            {
-                Rank = rank;
-                Name = name;
-                Score = score;
-                IsPlayer = isPlayer;
-                IsWaiting = isWaiting;
-            }
-        }
-
-        // Tournament slots are pre-assigned (maxEntryCount, currently 10): every slot
-        // is rendered, and slots no opponent has taken yet read WAITING... The dev
-        // server omits the schema's `rank` field, so order by score and derive the
-        // rank from position; a server-provided rank (>0) wins when it appears.
-        internal static List<Row> BuildRows(IReadOnlyList<TournamentApi.ResultEntry> entries,
-            int maxEntryCount, string ownUserId)
-        {
-            var sorted = new List<TournamentApi.ResultEntry>();
-            if (entries != null)
-            {
-                for (int i = 0; i < entries.Count; i++)
-                    if (entries[i] != null) sorted.Add(entries[i]);
-            }
-            sorted.Sort((a, b) => b.score.CompareTo(a.score));
-
-            int totalSlots = Mathf.Max(maxEntryCount, sorted.Count);
-            var rows = new List<Row>(Mathf.Max(0, totalSlots));
-            for (int i = 0; i < totalSlots; i++)
-            {
-                if (i < sorted.Count)
-                {
-                    var e = sorted[i];
-                    int rank = e.rank > 0 ? e.rank : i + 1;
-                    bool isPlayer = !string.IsNullOrEmpty(ownUserId) && e.userId == ownUserId;
-                    rows.Add(new Row(rank, DisplayName(e.userName), e.score, isPlayer, false));
-                }
-                else
-                {
-                    rows.Add(new Row(i + 1, "대기 중...", 0, false, true));
-                }
-            }
-            return rows;
-        }
+        // 행 모델은 LeaderboardList 것을 쓴다 — tournament-history unit 1 에서
+        // 히스토리 상세 팝업과 공유하려고 추출된 것이다. 여기서 사본을 들고 있으면
+        // 서버 계약(rank 필드·WAITING 슬롯)이 바뀔 때 두 곳을 고쳐야 하고, 테스트는
+        // LeaderboardList 쪽만 덮는다. **렌더링은 공유하지 않는다** — 이 화면은 2컬럼
+        // 스케일(RowH 56·이름 36·점수 38)이고 LeaderboardList.Render 는 48/30 하드코딩이다.
 
         // Offline/guest fallback, or the moment before the real ranking lands.
         //
@@ -315,27 +266,20 @@ namespace Wassup.UI
         private static int PendingSlotCount =>
             string.IsNullOrEmpty(UserSession.IdToken) ? TerminalPendingSlots : AwaitingPendingSlots;
 
-        private static List<Row> BuildPendingRows(int playerScore)
+        private static List<LeaderboardList.Row> BuildPendingRows(int playerScore)
         {
             int slots = PendingSlotCount;
-            var rows = new List<Row>(slots)
+            var rows = new List<LeaderboardList.Row>(slots)
             {
-                new Row(0, "나", playerScore, true, false),
+                new LeaderboardList.Row(0, "나", playerScore, true, false),
             };
             for (int i = 1; i < slots; i++)
-                rows.Add(new Row(0, "참가자 찾는 중", 0, false, true));
+                rows.Add(new LeaderboardList.Row(0, "참가자 찾는 중", 0, false, true));
             return rows;
         }
 
-        // empty names would collapse the row; long ones would overrun the score column.
-        private static string DisplayName(string userName)
-        {
-            if (string.IsNullOrEmpty(userName)) return "?";
-            return userName.Length <= 10 ? userName : userName.Substring(0, 10);
-        }
-
         // ── Rendering ────────────────────────────────────────────────────────
-        private void RenderRows(List<Row> rows)
+        private void RenderRows(List<LeaderboardList.Row> rows)
         {
             if (_listContent == null) return;
             // Detach-then-destroy so old rows leave the layout this frame (Destroy is
@@ -403,7 +347,7 @@ namespace Wassup.UI
             vr.offsetMax = new Vector2(-26f, 0f);
         }
 
-        private void CreateRow(Row row)
+        private void CreateRow(LeaderboardList.Row row)
         {
             var go = new GameObject("Row", typeof(RectTransform), typeof(Image), typeof(LayoutElement));
             go.transform.SetParent(_listContent, false);

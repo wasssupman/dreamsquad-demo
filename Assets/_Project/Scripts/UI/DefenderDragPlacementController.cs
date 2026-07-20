@@ -76,6 +76,17 @@ namespace Wassup.UI
         // defender-tap-to-place unit 4 — 탭 비행 중 고정할 선택 타일(발밑 추종 대신). unit 5 — 곡선 좌우 변주 인덱스(결정론).
         private Vector2Int? _simFocusCell;
         private int _tapFlightSeq;
+        // placement-armed-board-drag unit 0 — armed 유닛의 보드 프레스-드래그-릴리즈 제스처 상태.
+        // press 가 보드에서 시작(가드 통과)되면 active, 이동 임계 초과 시 dragging 승격. release 에서
+        // dragging=커밋(시뮬 비행) / 아니면 탭(범위 피크는 unit 2). 시간 delta 로 판정하지 않는다(이동량만).
+        private bool _boardGestureActive;
+        private bool _boardDragging;
+        private Vector2 _boardDownScreen;
+        // placement-armed-board-drag unit 1 — 스카우트가 현재 표시 중인 셀(변경 감지·소거용). 세션 없는 range-only 경로.
+        private Vector2Int? _boardScoutCell;
+        // placement-armed-board-drag unit 2 — 유효셀 탭: 배치 비행과 병렬로 착지 셀에 범위를 유지(비행 clear 를
+        // 덮어씀). 배치(착지)되면 소거. 자기 flight 의 Disarm/ResetBoardGesture 에 취소되면 안 돼 별도 소유.
+        private Coroutine _tapPlaceRangeRoutine;
         // review fix — 세션 세대 토큰. CleanupSession 마다 증가. 시뮬 코루틴이 자기 세대를 캡처해
         // 비행 중 새 드래그(BeginDrag→CleanupSession→새 세션)가 시작되면 즉시 물러난다(세션 하이재킹 방지).
         private int _sessionGen;
@@ -114,6 +125,11 @@ namespace Wassup.UI
         // 컨트롤러(DcInspect 등)가 이 스와이프를 자기 제스처로 오해하지 않게 알린다.
         public bool IsAiming => _aimController != null && _aimController.IsActive;
 
+        // placement-armed-board-drag unit 0 — arm 된 동안 보드 press 는 배치 제스처가 단독 소유한다.
+        // DcInspectController 가 같은 press 를 인스펙트로 이중 소비하지 않게 양보하는 읽기 seam
+        // (계약 11 aim-mode race 재생산 방지). arm 은 직전 프레임에 확정돼 press 프레임 실행순서와 무관.
+        public bool HasArmedUnit => _armedUnit != null;
+
         public void Configure(BattleBridge battleBridge, Camera camera, PlacementInput input,
             DragSwaySettings swaySettings = null, TMP_FontAsset uiFont = null,
             DeployCutscenePlayer cutscenePlayer = null)
@@ -141,6 +157,9 @@ namespace Wassup.UI
             // 기본 방향으로 강제 활성화된다. 방향을 정해야 다음 배치로 넘어간다(계약 9).
             if (_aimController != null && _aimController.IsActive) return;
             DragBegan?.Invoke(); // unit 5 — 가드 통과 = 세션 확정. 이 아래론 early-return 없음.
+            // placement-armed-board-drag unit 2 — 새 트레이 드래그(실드래그)는 직전 탭 배치의 range flourish 를 정지.
+            // 시뮬 경로(탭/드래그 릴리즈의 자기 flight)는 자기 flourish 를 죽이면 안 되므로 제외.
+            if (!simulated) CancelTapPlaceRangePeek();
             // Tap-to-place의 보드 탭은 내부적으로 simulated drag를 쓰지만 사용자
             // 선택 취소가 아니다. Disarmed를 내보내면 튜토리얼 문구가 Pick으로 되감긴다.
             Disarm(notify: !simulated);
@@ -194,8 +213,8 @@ namespace Wassup.UI
         {
             UpdatePlacementHighlightState(); // placement-eligible-tile-highlight unit 2 — early-return 위에서 매 프레임 파생 토글
 
-            // defender-tap-to-place unit 2 — arm 된 상태 + 드래그 아님일 때 보드 탭 → 시뮬 배치.
-            if (_armedUnit != null && !_session.active) HandleArmedBoardTap();
+            // placement-armed-board-drag unit 0 — arm 된 상태 + 드래그 아님일 때 보드 프레스-드래그-릴리즈 제스처.
+            if (_armedUnit != null && !_session.active) UpdateBoardGesture();
 
             // depth-parallax unit 7 — 스와이프 속도 → 정규화 틸트를 매 프레임 컷신 플레이어에 피드.
             // 컷신은 보드 독립(오프보드에서도 재생) 이라 보드 early-return 위에서 실행. 블록 로컬 dt
@@ -492,6 +511,7 @@ namespace Wassup.UI
             // review fix — `?.` 는 Unity destroyed fake-null 을 못 거르므로 Unity `!=` 로 가드(트레이 리빌드 후 MissingReference 방지).
             if (_armedSlot != null) _armedSlot.SetArmed(false);
             _armedSlot = null; _armedUnit = null;
+            ResetBoardGesture(); // placement-armed-board-drag unit 0 — arm 해제 시 진행 중 보드 제스처도 정리
             if (hadArmedUnit && notify) Disarmed?.Invoke();
         }
 
@@ -501,25 +521,152 @@ namespace Wassup.UI
         // review fix — arm 하이라이트 색은 SO(하드코딩 금지, TilemapMapView 확정 팝 색과 함께 튜닝).
         public Color ArmHighlightColor => Cfg.armHighlightColor;
 
-        // defender-tap-to-place unit 2 — arm 상태에서 보드 타일 탭 → 그 칸으로 시뮬 배치(무효면 reject).
-        private void HandleArmedBoardTap()
+        // placement-armed-board-drag unit 0 — arm 상태에서 보드 프레스 → 이동량 기반 tap/drag 판정 → release 분기.
+        // press 프레임에 이어서 같은 프레임의 이동/릴리즈도 평가한다(early-return 금지 — 순간 탭이 stuck 되는 회귀 방지).
+        private void UpdateBoardGesture()
         {
-            if (_armedSlot == null) { Disarm(); return; } // review fix — 슬롯 파괴(트레이 리빌드) 시 자가 해제(Unity ==)
+            if (_armedSlot == null) { Disarm(); return; } // 슬롯 파괴(트레이 리빌드) 시 자가 해제(Unity ==)
             var pointer = Pointer.current;
-            if (pointer == null || !pointer.press.wasPressedThisFrame) return;
+            if (pointer == null) return;
             if (mainCamera == null) mainCamera = Camera.main;
             if (mainCamera == null || bridge == null) return;
-            // review fix — 스킬 조준 탭과 이중 소비 방지(PlacementInput 의 aim-mode race 가드와 동일 이유).
-            if (GameManager.Instance != null && GameManager.Instance.IsAiming) return;
-            if (PointerOverUi()) return; // UI 탭(슬롯 arm 등) 제외 — 터치는 touchId 로 판정
 
-            // review fix — 셀 변환은 bridge.TryScreenToCell 단일 소스 재사용(수동 레이캐스트 복제 금지 주석 준수).
-            if (!bridge.TryScreenToCell(mainCamera, pointer.position.ReadValue(), out var cell)) return;
+            // press 다운: 가드 3종 통과 시 제스처 개시.
+            if (!_boardGestureActive && pointer.press.wasPressedThisFrame)
+            {
+                // 스킬 조준 탭과 이중 소비 방지(PlacementInput aim-mode race 가드와 동일 이유).
+                if (GameManager.Instance != null && GameManager.Instance.IsAiming) return;
+                if (PointerOverUi()) return; // UI 탭(슬롯 arm 등) 제외 — 터치는 touchId 로 판정
+                _boardDownScreen = pointer.position.ReadValue();
+                // 셀 변환은 bridge.TryScreenToCell 단일 소스(수동 레이캐스트 복제 금지). 보드 밖 프레스는 제스처 개시 안 함.
+                if (!bridge.TryScreenToCell(mainCamera, _boardDownScreen, out _)) return;
+                _boardGestureActive = true;
+                _boardDragging = false;
+                CancelTapPlaceRangePeek();   // unit 2 — 직전 탭 배치 range flourish 정지(새 제스처 우선)
+            }
 
+            if (!_boardGestureActive) return;
+
+            var cur = pointer.position.ReadValue();
+            // 이동량 승격 — 시간이 아니라 거리로 탭/드래그를 가른다(사용자 결정 2026-07-20).
+            if (!_boardDragging && Vector2.Distance(cur, _boardDownScreen) >= Mathf.Max(1f, Cfg.boardDragThreshold))
+                _boardDragging = true;
+
+            if (pointer.press.wasReleasedThisFrame)
+            {
+                if (_boardDragging) { CommitBoardDrag(cur); ResetBoardGesture(); }
+                // 탭(무이동): 기존 클릭 배치와 동일 액션 — 즉시 배치하되(HandleBoardTap) 공격범위를 착지 셀에 잠깐 노출.
+                else { _boardGestureActive = false; _boardDragging = false; HandleBoardTap(cur); }
+                return;
+            }
+
+            // placement-armed-board-drag unit 1 — 프레스부터 릴리즈 직전까지 range-only 스카우트(손가락 셀 추종).
+            UpdateBoardScout(cur);
+        }
+
+        // placement-armed-board-drag unit 1 — 세션 없는 range-only 스카우트. 드래그 세션 SetHover 의 표시 계약을
+        // 미러하되(범위·팝은 셀 변경 시만, hover 는 매 프레임), 키링 유닛은 띄우지 않는다. 유닛은 트레이에 남는다.
+        private void UpdateBoardScout(Vector2 screen)
+        {
+            if (bridge == null || _armedUnit == null) return;
+            if (!bridge.TryScreenToCell(mainCamera, screen, out var cell)) { ClearBoardScout(); return; }
+
+            bool valid = bridge.CanPlaceDefenderAt(cell.x, cell.y, _armedUnit, out _);
+            bool changed = !_boardScoutCell.HasValue || _boardScoutCell.Value != cell;
+            if (changed && _boardScoutCell.HasValue)
+                bridge.ClearPlacementHover(_boardScoutCell.Value); // 이전 셀 hover 정리(액체 비활성 경로)
+            _boardScoutCell = cell;
+
+            if (changed)
+            {
+                bridge.SetPlacementRange(cell, _armedUnit);       // 범위 격자 — 셀 변경 시만 재페인트
+                bridge.PulsePlacementHover(cell, valid);          // 확정 팝
+            }
+            if (Cfg.stickyLiquidEnabled)
+                bridge.SetPlacementStretch(cell, Vector2.zero, 0f, valid); // 정적(손가락 방향 번짐 없음 — 탭 비행 unit 4 와 동일)
+            else
+                bridge.SetPlacementHover(cell, valid);
+        }
+
+        private void ClearBoardScout()
+        {
+            if (bridge != null)
+            {
+                if (_boardScoutCell.HasValue) bridge.ClearPlacementHover(_boardScoutCell.Value);
+                bridge.ClearPlacementRange();
+                bridge.ClearPlacementStretch();
+            }
+            _boardScoutCell = null;
+        }
+
+        // placement-armed-board-drag unit 0 — 드래그 릴리즈 커밋: 유효셀이면 기존 tray→cell 시뮬 비행 재사용.
+        private void CommitBoardDrag(Vector2 screen)
+        {
+            if (!bridge.TryScreenToCell(mainCamera, screen, out var cell)) return; // 보드 밖 릴리즈 = 취소(arm 유지)
             if (bridge.CanPlaceDefenderAt(cell.x, cell.y, _armedUnit, out _))
-                SimulateDragTo(_armedUnit, _armedFromScreen, cell); // 내부 BeginDrag 가 Disarm
+                SimulateDragTo(_armedUnit, _armedFromScreen, cell); // 내부 BeginDrag 가 Disarm(=arm 해제=배치 확정)
             else
                 bridge.FlashPlacementReject(cell); // arm 유지(재시도)
+        }
+
+        // placement-armed-board-drag unit 0 — 제스처 상태 리셋(드래그 커밋·무효셀 탭·arm 해제 경유).
+        private void ResetBoardGesture()
+        {
+            _boardGestureActive = false;
+            _boardDragging = false;
+            ClearBoardScout();  // unit 1 — 스카우트 범위/hover 소거
+        }
+
+        // placement-armed-board-drag unit 2 — 탭(무이동 릴리즈) = 기존 클릭 배치와 동일 액션 + 범위 노출.
+        // 유효셀: 즉시 비행 배치 + 착지 셀에 범위 flourish. 무효셀: reject + 스카우트 범위 짧게 유지 후 소거(arm 유지).
+        private void HandleBoardTap(Vector2 screen)
+        {
+            if (!bridge.TryScreenToCell(mainCamera, screen, out var cell)) { ResetBoardGesture(); return; } // 보드 밖 = 취소
+            var unit = _armedUnit; // SimulateDragTo 내부 BeginDrag→Disarm 이 비우기 전에 캡처
+            if (bridge.CanPlaceDefenderAt(cell.x, cell.y, unit, out _))
+            {
+                SimulateDragTo(unit, _armedFromScreen, cell); // 즉시 비행 배치(내부 BeginDrag 가 스카우트/arm 정리)
+                StartTapPlaceRangePeek(cell, unit);           // 비행 시작 후 범위 재노출(재확인 flourish)
+            }
+            else
+            {
+                bridge.FlashPlacementReject(cell); // 배치 없이 거부 — arm 유지(재시도)
+                ResetBoardGesture();               // 스카우트 범위 즉시 소거(비행 안 하므로 범위 안 남김)
+            }
+        }
+
+        // placement-armed-board-drag unit 2 — 유효셀 탭 배치의 범위 flourish. 비행이 CleanupSession 으로 범위를
+        // 지우는 것과 안 싸우게 매 프레임 범위를 재확인한다. 비행 세션이 사는 동안(=_session.active && _simulatedDrag)
+        // 만 유지하고 배치(착지)되면 소거 — 다른 배치 동작과 동일(linger 없음). 자기 flight 의 Disarm 에는 안 죽고
+        // (별도 코루틴), 새 press·트레이 드래그에서만 취소된다.
+        private void StartTapPlaceRangePeek(Vector2Int cell, DefenderUnitData unit)
+        {
+            CancelTapPlaceRangePeek();
+            if (bridge == null || unit == null) return;
+            _tapPlaceRangeRoutine = StartCoroutine(RunTapPlaceRangePeek(cell, unit));
+        }
+
+        private IEnumerator RunTapPlaceRangePeek(Vector2Int cell, DefenderUnitData unit)
+        {
+            // 비행 중에만 범위 표시(sim 경로라 비행이 스스로 안 그리고 CleanupSession clear 만 하므로 매 프레임 재확인).
+            // 배치(착지=커밋)로 비행 세션이 끝나면 곧바로 소거 — linger 없음(다른 배치 동작과 동일).
+            while (_session.active && _simulatedDrag)
+            {
+                bridge.SetPlacementRange(cell, unit);
+                yield return null;
+            }
+            _tapPlaceRangeRoutine = null;
+            bridge.ClearPlacementRange();
+        }
+
+        private void CancelTapPlaceRangePeek()
+        {
+            if (_tapPlaceRangeRoutine != null)
+            {
+                StopCoroutine(_tapPlaceRangeRoutine);
+                _tapPlaceRangeRoutine = null;
+                bridge?.ClearPlacementRange();
+            }
         }
 
         // review fix — no-arg IsPointerOverGameObject 는 마우스 pointerId 만 조회해 터치에서 UI 를 못 거른다

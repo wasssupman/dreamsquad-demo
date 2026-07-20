@@ -32,7 +32,7 @@
 - **무의식(Subconscious)**: 컬렉션 풀 제외(gift 전용). 덱에 이미 있으면 슬롯에서 제거만 가능.
 - **옛 DreamcatcherDeckBuilderView 비파괴 보존**(enabled=false + 옛 자식 비활성). 되돌리기 = 역순.
 - 컨트롤러 GO inactive 생성→주입→활성. 정적 art라 SkeletonGraphic/머티리얼 불요.
-- deckSize/type캡은 `DeckRules`(ruleConfig, 현재 deckSize=8) 라이브 — 하드코딩 금지.
+- deckSize/type캡은 `DeckRules`(ruleConfig, 현재 deckSize=10) 라이브 — 하드코딩 금지.
 
 ## Follow-up
 

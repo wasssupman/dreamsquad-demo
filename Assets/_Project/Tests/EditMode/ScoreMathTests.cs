@@ -11,7 +11,8 @@ namespace Wassup.Tests.EditMode
         private const int PerSec = 100;
         private const int PerStress = 900;
         private const int Limit = 10;      // deck.defeatGoalReachedCount (unit 5 적용 후)
-        private const int KillFull = 10300; // 고정 시드 65기 전멸 (잡몹 63×100 + 보스 2×2000)
+        // 킬 합계는 밸런스 산물이라 아무 값이나 써도 된다 — 산식은 이 값을 그대로 더할 뿐이다.
+        private const int KillFull = 10300;
 
         private static ScoreMath.BattleScore Eval(int remainingMs, int accrued, int kill, bool defeated,
             int limit = Limit)

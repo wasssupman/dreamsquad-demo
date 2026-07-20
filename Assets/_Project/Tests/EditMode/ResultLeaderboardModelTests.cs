@@ -23,7 +23,7 @@ namespace Wassup.Tests.EditMode
                 Entry("u3", "Carol", 900),
             };
 
-            var rows = ResultScreen.BuildRows(entries, maxEntryCount: 3, ownUserId: "u1");
+            var rows = LeaderboardList.BuildRows(entries, maxEntryCount: 3, ownUserId: "u1");
 
             Assert.AreEqual(3, rows.Count);
             Assert.AreEqual("Bob", rows[0].Name);
@@ -39,7 +39,7 @@ namespace Wassup.Tests.EditMode
         {
             var entries = new List<TournamentApi.ResultEntry> { Entry("u1", "Alice", 500) };
 
-            var rows = ResultScreen.BuildRows(entries, maxEntryCount: 10, ownUserId: "u1");
+            var rows = LeaderboardList.BuildRows(entries, maxEntryCount: 10, ownUserId: "u1");
 
             Assert.AreEqual(10, rows.Count);
             Assert.IsFalse(rows[0].IsWaiting);
@@ -60,7 +60,7 @@ namespace Wassup.Tests.EditMode
                 Entry("other", "Rival", 1000),
             };
 
-            var rows = ResultScreen.BuildRows(entries, maxEntryCount: 2, ownUserId: "me");
+            var rows = LeaderboardList.BuildRows(entries, maxEntryCount: 2, ownUserId: "me");
 
             Assert.IsFalse(rows[0].IsPlayer); // Rival (1000)
             Assert.IsTrue(rows[1].IsPlayer);  // Player (800)
@@ -75,7 +75,7 @@ namespace Wassup.Tests.EditMode
                 Entry("u2", "Bob", 1200, rank: 2),
             };
 
-            var rows = ResultScreen.BuildRows(entries, maxEntryCount: 2, ownUserId: "");
+            var rows = LeaderboardList.BuildRows(entries, maxEntryCount: 2, ownUserId: "");
 
             Assert.AreEqual(2, rows[0].Rank); // server rank, not position 1
             Assert.AreEqual(5, rows[1].Rank);
@@ -90,7 +90,7 @@ namespace Wassup.Tests.EditMode
                 Entry("u2", "", 800),
             };
 
-            var rows = ResultScreen.BuildRows(entries, maxEntryCount: 2, ownUserId: "");
+            var rows = LeaderboardList.BuildRows(entries, maxEntryCount: 2, ownUserId: "");
 
             Assert.AreEqual("ABCDEFGHIJ", rows[0].Name);
             Assert.AreEqual("?", rows[1].Name);
@@ -99,7 +99,7 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void BuildRows_NullEntries_ReturnsAllWaiting()
         {
-            var rows = ResultScreen.BuildRows(null, maxEntryCount: 10, ownUserId: "me");
+            var rows = LeaderboardList.BuildRows(null, maxEntryCount: 10, ownUserId: "me");
 
             Assert.AreEqual(10, rows.Count);
             foreach (var row in rows) Assert.IsTrue(row.IsWaiting);

@@ -156,9 +156,9 @@ code + git history        구현 상세
 #### 로드아웃 규칙 위생 (game-start-loadout-gate 종료 이관, 2026-07-16)
 
 - **스쿼드 저장 게이트** [S] · `SquadBuilderView.OnSave` 는 규칙 검사 없이 무조건 저장한다 — 덱 빌더는 유효할 때만 저장 버튼을 활성화하는데 정반대 정책이다. 무효 스쿼드가 애초에 저장되지 않게 막는 안. 판정은 `LoadoutGate` 를 재사용하면 된다. (game-start-loadout-gate)
-- **낡은 주석 정정** [S] · `PlayerProfile.cs:112` 가 "exactly 10, unique<=2" 라고 적어놨지만 라이브 규칙은 8장/타입캡 없음. **`DeckRules.cs:5-10` 은 건드리지 말 것** — 정확할 뿐 아니라 카탈로그 null → 폴백 10 함정을 경고하는 유일한 문서다. (game-start-loadout-gate)
+- **낡은 주석 정정** [S] · `PlayerProfile.cs:112` 의 "exactly 10, unique<=2" 중 **덱 크기 10 은 라이브와 일치**(현 `DeckRuleConfig_Default.asset` `deckSize=10` — 8→10 복귀), **"unique<=2" 만 stale**(라이브 `maxSquad=-1` → 타입캡 없음). **`DeckRules.cs:5-10` 은 건드리지 말 것** — 정확할 뿐 아니라 카탈로그 null → 폴백 10 함정을 경고하는 유일한 문서다. (game-start-loadout-gate · 2026-07-20 덱=10 확정 정정)
 - **`7` 이중 하드코딩** [S] · `SquadSave.SlotCount` 와 `SquadDraw.FieldCount` 가 독립 상수다. 한쪽만 바꾸면 조용히 어긋나고 요구치가 도달 불가능해질 수 있다 — `LoadoutGate` 는 `min()` 으로 방어만 해뒀다. (game-start-loadout-gate)
-- **`DreamcatcherDeckBuilderView.cs:45 DeckColumns = 10`** [S] · `deckSize=8` 과 어긋나 셀 폭이 10열 기준으로 잡히고 프레임이 행보다 넓게 남는다. 기능 버그는 아니지만 규칙 변경이 UI 에 자동 반영되지 않는 지점. (game-start-loadout-gate)
+- **`DreamcatcherDeckBuilderView.cs:45 DeckColumns = 10`** [S] · 현재는 라이브 `deckSize=10` 과 일치해 증상 없음(8장 시절의 셀 폭 불일치는 해소). 다만 `DeckColumns` 가 `EffectiveDeckSize` 를 읽지 않는 하드코딩이라 다음 deckSize flip 때 재발한다. (game-start-loadout-gate · 2026-07-20 덱=10 확정 정정)
 - **`UiOverlay.Dim` 톤** [S] · alpha 0.92 는 전체화면 takeover 용이라 "유닛 2명 부족" 안내 팝업엔 무거울 수 있다. 공유 상수라 단독 spec 에서 바꾸지 않았다 — 조정하려면 전 팝업 영향 확인 필요. (game-start-loadout-gate)
 
 #### 나이트매어 보스 스킬 (nightmare-whip-aura 종료 이관, 2026-07-12)
@@ -314,7 +314,7 @@ board-visualization spec 자체는 ROI 부족으로 wrap 종료. 진단/실험�
 
 전체 PlayMode 34 중 4건이 main 에서 이미 실패 — 내 커밋 이전(`ea155e65`) detached 재실행으로 재현 확정. 신규 회귀 아님, 테스트가 낡음:
 
-- **DreamcatcherDeckCarryInTest** [S] · 10장 덱 저장을 기대하나 라이브 덱 규칙은 8장(`56cf7380` 덱 사이즈 10→8) → Validate 실패로 resolve 0. 제거된 기본(fallback) 덱 10장 기대도 잔존(2026-07-15 사용자 결정으로 폐기됨). 테스트를 8장 + 무폴백 계약으로 재작성.
+- **DreamcatcherDeckCarryInTest** [S] · 8장 시절 mismatch 는 해소(라이브 `deckSize=10` 복귀 → 테스트의 10장 저장 기대와 일치). 잔여 과제는 제거된 기본(fallback) 덱 10장 기대(2026-07-15 사용자 결정으로 폐기됨) → **무폴백 계약**으로 재작성. (2026-07-20 덱=10 확정 정정)
 - **SquadCarryInSmokeTest · DreamstoneCarryInSmokeTest** [S] · `RequestPlacement()` 직후 `Placement` 기대 — gift-phase(2026-07-13)가 `Gift` 를 삽입한 뒤 stale. Gift 통과(또는 우회 경로) 반영 필요. Dreamstone 쪽은 PrimeTween OnComplete 에러 표출도 동반.
 - **MovementIntegritySmokeTest** [M] · "guardian aggro ≥1" 실패 — 원인 미조사(오늘 pull 의 gimmick 랜덤 배정 주입이 용의선상). 별도 조사.
 

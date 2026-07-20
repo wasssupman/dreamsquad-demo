@@ -4,20 +4,18 @@ using Wassup.Data;
 
 namespace Wassup.Tests.EditMode
 {
-    // battle-score-formula unit 1 — README 가 기재한 고정 시드 스케줄과 킬 예산의 회귀 고정.
+    // battle-score-formula unit 1 — 점수 산식이 웨이브 구성에 대해 기대하는 **구조 불변식**.
     //
-    // 산식이 아니라 **문서값**을 지키는 테스트다. 킬 만점은 런타임 누적이므로(spec 계약 7)
-    // 이 값이 바뀐다고 점수 계산이 깨지지는 않는다. 다만 바뀌면 README 예산 표를 고쳐야 하고,
-    // 이 테스트가 그 신호다.
+    // 처음에는 고정 시드 스케줄의 실측값(웨이브별 수량 배열 / 킬 예산 10,300 / 마지막 스폰
+    // 163.40s)을 그대로 못박았다. 그게 틀렸다 — 그 값들은 순수 밸런스 산물이고, 계약 7이
+    // 이미 "킬 만점을 상수로 박지 않는다(런타임 누적)"고 정하고 있다. 밸런스가 바뀌어도
+    // 점수 시스템은 아무것도 깨지지 않는데 테스트만 빨개져서, 방어 가치 없이 마찰만 남았다.
+    // (실제로 wave-pattern 밸런싱 머지에서 즉시 깨졌다: 63 → 72기)
     //
-    // 실패하면 **테스트가 아니라 README 를 고친다** — 덱 파라미터/생성기가 바뀐 것이다.
+    // 그래서 밸런스에 무관한 것만 남긴다. 수량·간격·타이밍은 **자유롭게 튜닝해도 된다.**
     public class WaveKillBudgetPinTests
     {
         private const string DeckPath = "Assets/_Project/Scripts/Data/Decks/WaveA.asset";
-        private const float Spacing = 0.35f;
-
-        // README "웨이브 스케줄 실측" 절.
-        private static readonly int[] ExpectedTotals = { 5, 5, 8, 8, 5, 7, 6, 8, 8, 5 };
 
         private static AttackDeck LoadDeck()
         {
@@ -30,28 +28,33 @@ namespace Wassup.Tests.EditMode
             => u != null && u.nightmareMechanics != null && u.nightmareMechanics.Length > 0;
 
         // waveSeed 가 비0 = 고정 오버라이드 → 모든 플레이어가 같은 스케줄을 받는다
-        // (BattleBridge.cs:1543). 0 이 되면 매판 랜덤이 되고 킬 예산이 흔들린다.
+        // (BattleBridge.cs:1543). 0 이 되면 매판 랜덤이라 같은 점수라도 난이도가 달라져
+        // 비동기 토너먼트의 비교 가능성이 무너진다.
         [Test]
-        public void DeckSeed_IsPinned_SoTheScheduleIsDeterministic()
+        public void DeckSeed_IsPinned_SoEveryPlayerGetsTheSameSchedule()
         {
             Assert.AreNotEqual(0, LoadDeck().waveSeed,
-                "waveSeed 가 0 이면 매치마다 스케줄이 달라져 킬 예산이 8,700~16,200 으로 흔들린다");
+                "waveSeed 가 0 이면 매치마다 스케줄이 달라져 점수를 서로 비교할 수 없다");
         }
 
+        // 같은 시드로 두 번 생성하면 같은 결과가 나와야 한다. 생성기에 비결정 요소가
+        // 끼어들면(시간·전역 RNG) 여기서 잡힌다.
         [Test]
-        public void FixedSeedSchedule_MatchesDocumentedWaveTotals()
+        public void Generation_IsDeterministic_ForTheSameSeed()
         {
             var deck = LoadDeck();
-            var plan = WavePatternGenerator.Generate(deck, deck.waveSeed);
+            var a = WavePatternGenerator.Generate(deck, deck.waveSeed);
+            var b = WavePatternGenerator.Generate(deck, deck.waveSeed);
 
-            Assert.AreEqual(ExpectedTotals.Length, plan.waves.Count, "웨이브 수");
-            for (int i = 0; i < plan.waves.Count; i++)
-                Assert.AreEqual(ExpectedTotals[i], plan.waves[i].totalCount, $"웨이브 {i + 1} 스폰 수");
+            Assert.AreEqual(a.waves.Count, b.waves.Count, "웨이브 수");
+            for (int i = 0; i < a.waves.Count; i++)
+                Assert.AreEqual(a.waves[i].totalCount, b.waves[i].totalCount, $"웨이브 {i + 1} 스폰 수");
         }
 
-        // bossWaveInterval=5 → 0-index 4·9 (5·10번째 웨이브)가 보스 웨이브.
+        // 보스는 bossWaveInterval 주기에만 온다. 킬 가치가 잡몹의 20배라 이 편성 계약이
+        // 깨지면 점수 분포가 통째로 달라진다 — 수량 튜닝과 달리 이건 구조다.
         [Test]
-        public void BossWaves_LandOnTheDocumentedIndices()
+        public void BossWaves_LandOnTheConfiguredInterval()
         {
             var deck = LoadDeck();
             var plan = WavePatternGenerator.Generate(deck, deck.waveSeed);
@@ -68,14 +71,15 @@ namespace Wassup.Tests.EditMode
             }
         }
 
-        // README 예산 표의 근거: 65기 = 잡몹 63 + 보스 2 → 10,300.
+        // 킬 예산은 **스폰 구성에서 나온다**(계약 7). 상수로 박으면 안 되고, 유닛별
+        // killScore 가 0 으로 비어 있어도 안 된다 — 그러면 킬축이 통째로 죽는다.
         [Test]
-        public void KillBudget_MatchesReadmeTable()
+        public void KillBudget_ComesFromActualSpawns_AndEveryUnitCarriesValue()
         {
             var deck = LoadDeck();
             var plan = WavePatternGenerator.Generate(deck, deck.waveSeed);
 
-            int mobs = 0, bosses = 0, budget = 0;
+            int spawns = 0, budget = 0, bosses = 0;
             for (int i = 0; i < plan.waves.Count; i++)
             {
                 var groups = plan.waves[i].groups;
@@ -83,21 +87,25 @@ namespace Wassup.Tests.EditMode
                 {
                     var u = groups[g].unit;
                     if (u == null) continue;
+                    Assert.Greater(u.killScore, 0, $"'{u.id}' 의 killScore 가 0 — 처치해도 점수가 안 붙는다");
                     int count = groups[g].count;
+                    spawns += count;
                     budget += u.killScore * count;
-                    if (IsBoss(u)) bosses += count; else mobs += count;
+                    if (IsBoss(u)) bosses += count;
                 }
             }
 
-            Assert.AreEqual(63, mobs, "잡몹 수");
-            Assert.AreEqual(2, bosses, "보스 수");
-            Assert.AreEqual(65, mobs + bosses, "총 스폰");
-            Assert.AreEqual(10_300, budget, "킬 예산 — 바뀌었으면 README 예산 표를 갱신할 것");
+            Assert.Greater(spawns, 0, "스폰이 하나도 없다");
+            Assert.Greater(budget, 0, "킬 예산이 0");
+            Assert.Greater(bosses, 0, "보스가 하나도 없다 — 보스 편성 계약 확인");
+            // 보스가 잡몹보다 확실히 비싸야 한다는 것만 확인한다(구체 배율은 밸런스).
+            Assert.Greater(deck.bossUnit.killScore, 100, "보스 killScore 가 잡몹 기본값 이하");
         }
 
-        // 당기기 없이 도달 가능한 마지막 스폰. 시간점수 상한(약 1,660)의 근거값이다.
+        // 당기기 없이도 제한시간 안에 마지막 적이 나온다. 이게 깨지면 정상 플레이로
+        // 전멸 승리가 불가능해져 시간축이 영구히 0 이 된다.
         [Test]
-        public void LastSpawnTime_MatchesReadme()
+        public void LastSpawn_FitsInsideTheTimeLimit()
         {
             var deck = LoadDeck();
             var plan = WavePatternGenerator.Generate(deck, deck.waveSeed);
@@ -106,12 +114,14 @@ namespace Wassup.Tests.EditMode
             for (int i = 0; i < plan.waves.Count; i++)
             {
                 var wave = plan.waves[i];
-                var entries = WavePatternGenerator.ExpandWave(wave, wave.triggerTimeSec, 4, Spacing);
+                var entries = WavePatternGenerator.ExpandWave(
+                    wave, wave.triggerTimeSec, 4, deck.intraWaveSpacingSec);
                 for (int e = 0; e < entries.Count; e++)
                     if (entries[e].triggerTimeSec > last) last = entries[e].triggerTimeSec;
             }
 
-            Assert.AreEqual(163.40f, last, 0.01f, "마지막 스폰 시각");
+            Assert.Less(last, deck.timerDurationSec,
+                $"마지막 스폰 {last:F2}s 가 제한시간 {deck.timerDurationSec}s 를 넘는다 — 정상 클리어 불가");
         }
     }
 }

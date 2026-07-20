@@ -1,4 +1,7 @@
 using System;
+using System.Collections.Generic;
+using System.IO;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace Wassup.Core.Api
@@ -11,7 +14,10 @@ namespace Wassup.Core.Api
     {
         // Validates the envelope and hands back the raw data token. Shared seam:
         // SheetEnvelopeParser binds it as a row array, Parse<T> as a single object.
-        public static bool TryGetData(string body, out JToken data, out string error)
+        // allowNullData: list endpoints pass true so a success envelope whose data
+        // is null/missing (some servers omit []) is a valid empty result, not an
+        // error. Default false keeps the single-object/sheet callers strict.
+        public static bool TryGetData(string body, out JToken data, out string error, bool allowNullData = false)
         {
             data = null;
             error = null;
@@ -24,7 +30,15 @@ namespace Wassup.Core.Api
             JObject root;
             try
             {
-                root = JObject.Parse(body);
+                // DateParseHandling.None: keep ISO date strings verbatim. Newtonsoft's
+                // default coerces date-like strings to DateTime, which then reads back
+                // as a locale-dependent string (e.g. createdTime). Every field we bind
+                // is plain string/number — none wants auto-DateTime.
+                using (var reader = new JsonTextReader(new StringReader(body))
+                       { DateParseHandling = DateParseHandling.None })
+                {
+                    root = JObject.Load(reader);
+                }
             }
             catch (Exception e)
             {
@@ -44,8 +58,9 @@ namespace Wassup.Core.Api
             data = root["data"];
             if (data == null || data.Type == JTokenType.Null)
             {
-                error = "success=true but 'data' is missing";
                 data = null;
+                if (allowNullData) return true; // empty list case
+                error = "success=true but 'data' is missing";
                 return false;
             }
             return true;
@@ -57,6 +72,24 @@ namespace Wassup.Core.Api
             try
             {
                 return data.ToObject<T>();
+            }
+            catch (Exception e)
+            {
+                error = $"data binding failed: {e.Message}";
+                return null;
+            }
+        }
+
+        // List endpoints: a success envelope with null/missing data binds to an
+        // empty list rather than an error (see allowNullData). Real failures
+        // (success=false, parse errors) still return null with a message.
+        public static List<T> ParseList<T>(string body, out string error)
+        {
+            if (!TryGetData(body, out var data, out error, allowNullData: true)) return null;
+            if (data == null) return new List<T>();
+            try
+            {
+                return data.ToObject<List<T>>();
             }
             catch (Exception e)
             {

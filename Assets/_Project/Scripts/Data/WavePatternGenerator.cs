@@ -31,7 +31,8 @@ namespace Wassup.Data
                 deck.bossUnit,
                 deck.bossWaveInterval,
                 deck.bossEscortMin,
-                deck.bossEscortMax);
+                deck.bossEscortMax,
+                deck.waveCountJitter);
         }
 
         public static GeneratedWavePlan Generate(
@@ -47,7 +48,8 @@ namespace Wassup.Data
             AttackUnitData bossUnit = null,
             int bossWaveInterval = 0,
             int bossEscortMin = 0,
-            int bossEscortMax = 0)
+            int bossEscortMax = 0,
+            int waveCountJitter = 1)
         {
             if (attackUnitPool == null) throw new ArgumentNullException(nameof(attackUnitPool));
 
@@ -83,7 +85,10 @@ namespace Wassup.Data
                 int bIndex = rng.NextInt(0, pool.Count - 1);
                 if (bIndex >= aIndex) bIndex++;
 
-                int total = rng.NextInt(minUnits, maxUnits + 1);
+                // wave-pattern unit 7 — 수량 램프. NextFloat 1콜은 기존 NextInt 1콜과 rng
+                // 소비 수가 같아 아래 countA·보스 후처리의 rng 정렬이 불변이다.
+                float jitter01 = rng.NextFloat();
+                int total = RampedWaveTotal(i, waveCount, minUnits, maxUnits, waveCountJitter, jitter01);
                 int countA = rng.NextInt(1, total);
                 int countB = total - countA;
 
@@ -163,6 +168,20 @@ namespace Wassup.Data
             if (laneCount <= 2)
                 return math.clamp(authoredIndex, 0, laneCount - 1);
             return math.abs(deckIndex) % laneCount;
+        }
+
+        // wave-pattern unit 7 — 웨이브 수량 램프(순수). total 을 웨이브 인덱스에 따라
+        // minUnits(첫 웨이브)→maxUnits(마지막 웨이브) 선형 보간하고 ±jitterBand 정수 지터를
+        // 더한 뒤 [minUnits,maxUnits] 로 클램프한다. jitter01∈[0,1) 는 호출측이 뽑아 넘기는
+        // plain 입력(rng 를 함수에 넣지 않아 EditMode 로 결정론 검증 가능 — 제약 10).
+        public static int RampedWaveTotal(
+            int waveIndex, int waveCount, int minUnits, int maxUnits, int jitterBand, float jitter01)
+        {
+            if (maxUnits < minUnits) { int t = minUnits; minUnits = maxUnits; maxUnits = t; }
+            float ramp = waveCount > 1 ? (float)waveIndex / (waveCount - 1) : 1f;
+            float center = math.lerp(minUnits, maxUnits, math.saturate(ramp));
+            float jitter = jitterBand > 0 ? (jitter01 * 2f - 1f) * jitterBand : 0f;
+            return math.clamp((int)math.round(center + jitter), minUnits, maxUnits);
         }
 
         // 웨이브가 lane 별로 첫 적을 내보내는 절대 시각(스폰 없는 lane 은 -1).
