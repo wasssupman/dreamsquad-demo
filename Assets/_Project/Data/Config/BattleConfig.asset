@@ -16,3 +16,4 @@ MonoBehaviour:
   gimmickPool:
   - {fileID: 11400000, guid: 0356a9ea312ae944396422653318f410, type: 2}
   - {fileID: 11400000, guid: cca8f90535af4a348b1105ec76cd9d6f, type: 2}
+  - {fileID: 11400000, guid: 86e4b7298c8358740a39ebdda2b762e3, type: 2}
