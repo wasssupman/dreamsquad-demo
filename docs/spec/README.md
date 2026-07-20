@@ -121,6 +121,13 @@ code + git history        구현 상세
 
 > 출처 spec 이 섞여 있다. 그룹 헤더 또는 항목 끝의 `(spec-slug)` 라벨로 출처 표기.
 
+#### 아웃게임 튜토리얼 (outgame-tutorial 종료 이관, 2026-07-21)
+
+- **Android 실기기 QA** [S] · 노치·safe area dim 커버리지, Android 백키로 안내가 닫히는지(`Keyboard.current` 가 null 인 기기에서 미동작 가능 — 기존 `DreamcatcherHandView` 와 같은 제약), dim 톤 `UiOverlay.Dim` 알파 0.92 가 로비 배경 위에서 과한지. 링/홀 정렬은 실측 완료라 제외. (outgame-tutorial)
+- **챕터 B 게이트를 독립 신호로 교체** [S] · 현재는 인게임 core 튜토리얼 완료 플래그를 재사용하는데, 그 실제 의미는 "core 튜토리얼이 발동하고 Battle 페이즈에 도달했다"다. `FirstSessionTutorialController` 의 fail-open 경로(참조 누락·affordable 슬롯 부재)를 탄 플레이어는 전투를 몇 판 하든 **챕터 B 를 영원히 못 본다**. 매치 카운트 같은 독립 신호가 의미에 맞다. (outgame-tutorial)
+- **`SQUAD`/`DREAMCATCHER` 버튼 라벨 한글 통일** [S] · 좌측 열 4개 중 둘만 영문이라, 한국어 안내 문구("스쿼드와 드림캐쳐")를 읽고 라틴 라벨로 대응시켜야 한다. 같은 줄의 `프리셋`/`히스토리` 는 한글이라 잘못된 그룹핑도 유발한다. 로비 레이아웃 스펙 범위. (outgame-tutorial)
+- **온보딩 인지 지표 관측** [M] · 현 spec 은 노출과 실행만 보장하고 인지는 검증하지 않는다. `2번째 판 시작 시 안내 없이 START 도달`, `첫 복귀 이후 세션에서 스쿼드/덱 패널 1회 이상 열기` 같은 사후 관측 지표가 필요. (outgame-tutorial)
+
 #### 어그로 이동/클램프 (aggro-tile-chase 종료 이관, 2026-07-20)
 
 - **cell-trim wall-slide** [S] · `ClampToBoundary` 가 양 축을 함께 clamp 해, 대각 desired 의 목적 셀이 벽이면 합법인 축 진행까지 취소된다(코너에서 넉백/외력이 흡수됨). 축 분해(x-only → z-only) 슬라이드로 완화. 어그로 경로는 cardinal 이라 무영향 — 잔여 노출은 impulse/tornado 품질. (aggro-tile-chase C1)
