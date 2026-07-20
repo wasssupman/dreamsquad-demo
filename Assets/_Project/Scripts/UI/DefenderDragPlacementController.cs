@@ -84,6 +84,9 @@ namespace Wassup.UI
         private Vector2 _boardDownScreen;
         // placement-armed-board-drag unit 1 — 스카우트가 현재 표시 중인 셀(변경 감지·소거용). 세션 없는 range-only 경로.
         private Vector2Int? _boardScoutCell;
+        // placement-armed-board-drag unit 2 — 유효셀 탭: 배치 비행과 병렬로 착지 셀에 범위를 유지(비행 clear 를
+        // 덮어씀). 배치(착지)되면 소거. 자기 flight 의 Disarm/ResetBoardGesture 에 취소되면 안 돼 별도 소유.
+        private Coroutine _tapPlaceRangeRoutine;
         // review fix — 세션 세대 토큰. CleanupSession 마다 증가. 시뮬 코루틴이 자기 세대를 캡처해
         // 비행 중 새 드래그(BeginDrag→CleanupSession→새 세션)가 시작되면 즉시 물러난다(세션 하이재킹 방지).
         private int _sessionGen;
@@ -154,6 +157,9 @@ namespace Wassup.UI
             // 기본 방향으로 강제 활성화된다. 방향을 정해야 다음 배치로 넘어간다(계약 9).
             if (_aimController != null && _aimController.IsActive) return;
             DragBegan?.Invoke(); // unit 5 — 가드 통과 = 세션 확정. 이 아래론 early-return 없음.
+            // placement-armed-board-drag unit 2 — 새 트레이 드래그(실드래그)는 직전 탭 배치의 range flourish 를 정지.
+            // 시뮬 경로(탭/드래그 릴리즈의 자기 flight)는 자기 flourish 를 죽이면 안 되므로 제외.
+            if (!simulated) CancelTapPlaceRangePeek();
             // Tap-to-place의 보드 탭은 내부적으로 simulated drag를 쓰지만 사용자
             // 선택 취소가 아니다. Disarmed를 내보내면 튜토리얼 문구가 Pick으로 되감긴다.
             Disarm(notify: !simulated);
@@ -536,6 +542,7 @@ namespace Wassup.UI
                 if (!bridge.TryScreenToCell(mainCamera, _boardDownScreen, out _)) return;
                 _boardGestureActive = true;
                 _boardDragging = false;
+                CancelTapPlaceRangePeek();   // unit 2 — 직전 탭 배치 range flourish 정지(새 제스처 우선)
             }
 
             if (!_boardGestureActive) return;
@@ -547,9 +554,9 @@ namespace Wassup.UI
 
             if (pointer.press.wasReleasedThisFrame)
             {
-                if (_boardDragging) CommitBoardDrag(cur);
-                // else: 탭 — 범위 피크(unit 2). 현재는 no-op(배치 안 함, arm 유지).
-                ResetBoardGesture();
+                if (_boardDragging) { CommitBoardDrag(cur); ResetBoardGesture(); }
+                // 탭(무이동): 기존 클릭 배치와 동일 액션 — 즉시 배치하되(HandleBoardTap) 공격범위를 착지 셀에 잠깐 노출.
+                else { _boardGestureActive = false; _boardDragging = false; HandleBoardTap(cur); }
                 return;
             }
 
@@ -602,12 +609,64 @@ namespace Wassup.UI
                 bridge.FlashPlacementReject(cell); // arm 유지(재시도)
         }
 
-        // placement-armed-board-drag unit 0 — 제스처 상태 리셋(릴리즈·arm 해제 경유).
+        // placement-armed-board-drag unit 0 — 제스처 상태 리셋(드래그 커밋·무효셀 탭·arm 해제 경유).
         private void ResetBoardGesture()
         {
             _boardGestureActive = false;
             _boardDragging = false;
-            ClearBoardScout(); // unit 1 — 스카우트 범위/hover 소거
+            ClearBoardScout();  // unit 1 — 스카우트 범위/hover 소거
+        }
+
+        // placement-armed-board-drag unit 2 — 탭(무이동 릴리즈) = 기존 클릭 배치와 동일 액션 + 범위 노출.
+        // 유효셀: 즉시 비행 배치 + 착지 셀에 범위 flourish. 무효셀: reject + 스카우트 범위 짧게 유지 후 소거(arm 유지).
+        private void HandleBoardTap(Vector2 screen)
+        {
+            if (!bridge.TryScreenToCell(mainCamera, screen, out var cell)) { ResetBoardGesture(); return; } // 보드 밖 = 취소
+            var unit = _armedUnit; // SimulateDragTo 내부 BeginDrag→Disarm 이 비우기 전에 캡처
+            if (bridge.CanPlaceDefenderAt(cell.x, cell.y, unit, out _))
+            {
+                SimulateDragTo(unit, _armedFromScreen, cell); // 즉시 비행 배치(내부 BeginDrag 가 스카우트/arm 정리)
+                StartTapPlaceRangePeek(cell, unit);           // 비행 시작 후 범위 재노출(재확인 flourish)
+            }
+            else
+            {
+                bridge.FlashPlacementReject(cell); // 배치 없이 거부 — arm 유지(재시도)
+                ResetBoardGesture();               // 스카우트 범위 즉시 소거(비행 안 하므로 범위 안 남김)
+            }
+        }
+
+        // placement-armed-board-drag unit 2 — 유효셀 탭 배치의 범위 flourish. 비행이 CleanupSession 으로 범위를
+        // 지우는 것과 안 싸우게 매 프레임 범위를 재확인한다. 비행 세션이 사는 동안(=_session.active && _simulatedDrag)
+        // 만 유지하고 배치(착지)되면 소거 — 다른 배치 동작과 동일(linger 없음). 자기 flight 의 Disarm 에는 안 죽고
+        // (별도 코루틴), 새 press·트레이 드래그에서만 취소된다.
+        private void StartTapPlaceRangePeek(Vector2Int cell, DefenderUnitData unit)
+        {
+            CancelTapPlaceRangePeek();
+            if (bridge == null || unit == null) return;
+            _tapPlaceRangeRoutine = StartCoroutine(RunTapPlaceRangePeek(cell, unit));
+        }
+
+        private IEnumerator RunTapPlaceRangePeek(Vector2Int cell, DefenderUnitData unit)
+        {
+            // 비행 중에만 범위 표시(sim 경로라 비행이 스스로 안 그리고 CleanupSession clear 만 하므로 매 프레임 재확인).
+            // 배치(착지=커밋)로 비행 세션이 끝나면 곧바로 소거 — linger 없음(다른 배치 동작과 동일).
+            while (_session.active && _simulatedDrag)
+            {
+                bridge.SetPlacementRange(cell, unit);
+                yield return null;
+            }
+            _tapPlaceRangeRoutine = null;
+            bridge.ClearPlacementRange();
+        }
+
+        private void CancelTapPlaceRangePeek()
+        {
+            if (_tapPlaceRangeRoutine != null)
+            {
+                StopCoroutine(_tapPlaceRangeRoutine);
+                _tapPlaceRangeRoutine = null;
+                bridge?.ClearPlacementRange();
+            }
         }
 
         // review fix — no-arg IsPointerOverGameObject 는 마우스 pointerId 만 조회해 터치에서 UI 를 못 거른다

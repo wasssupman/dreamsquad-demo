@@ -9,14 +9,18 @@
 
 - armed 유닛으로 보드 **프레스다운** → 그 칸의 **공격범위 노출** 시작(arm 유지).
 - 이동 임계(드래그 threshold) 초과 → **드래그** 승격 → 손가락 셀을 따라 공격범위 실시간 추종(arm 유지).
-- **릴리즈**(이동 있었고 유효셀) → 그 칸에 배치(기존 시뮬 비행 재사용).
-- **탭**(이동 없이 다운→업) → 공격범위가 짧게 반짝였다 사라짐(**배치 안 함**, arm 유지 → 재시도).
+- **드래그 릴리즈**(유효셀) → 그 칸에 배치(기존 시뮬 비행 재사용).
+- **탭**(이동 없이 다운→업) → **기존 클릭 배치와 동일하게 그 칸에 즉시 배치** + 공격범위를 **비행 중에만**
+  노출(배치=착지 시 소거, linger 없음 — 다른 배치 동작과 동일). 무효셀 탭/드래그는 reject + arm 유지.
+
+즉 **탭·드래그 모두 배치**한다(탭=빠른 즉시 배치+범위 flourish, 드래그=범위 스카우트 후 릴리즈 배치).
+차이는 배치 여부가 아니라 **상호작용 느낌과 범위 표시 방식**이다.
 
 ## 검증 질문
 
 arm 한 유닛으로 보드를 눌러 드래그하면 손가락을 따라 공격범위가 실시간으로 보이고, 손을 떼면 그 칸에
-배치되는가? 그냥 짧게 탭하면 범위만 잠깐 보였다 사라지고 유닛은 배치되지 않는가? — 탭/드래그 구분이
-**누른 시간이 아니라 움직인 거리**로 판정되는가?
+배치되는가? 짧게 탭하면 기존 클릭처럼 그 칸에 즉시 배치되면서 공격범위가 잠깐 노출되는가? — 탭/드래그
+구분이 **누른 시간이 아니라 움직인 거리**로 판정되는가?
 
 ## 작업 단위 목록
 
@@ -24,7 +28,7 @@ arm 한 유닛으로 보드를 눌러 드래그하면 손가락을 따라 공격
 |---|---|---|---|
 | 0 | `0_board_gesture.md` | feature | 보드 포인터 제스처 상태기계(press/move/release) + 이동량 기반 탭/드래그 판정 + 가드 3종 + DcInspect 양보 seam 확장 + **드래그-릴리즈 커밋**(`SimulateDragTo` 재사용). 기존 `HandleArmedBoardTap` 대체. (탭=no-op, 스카우트 비주얼 없음 — 각각 unit 2·1) |
 | 1 | `1_range_scout.md` | feature | 프레스·드래그 중 범위-only 프리뷰가 손가락 셀 추종(`SetPlacementRange`+hover, 키링 없음). 릴리즈/오프보드 시 소거 |
-| 2 | `2_tap_peek.md` | feature | 무이동 릴리즈=탭 → 공격범위 짧게 표시 후 페이드, arm 유지(배치 X) |
+| 2 | `2_tap_peek.md` | feature | 무이동 릴리즈=탭 → 기존 클릭 배치와 동일하게 즉시 비행 배치 + 공격범위를 비행 중에만 노출(배치 시 소거, linger 없음). 무효셀=reject+범위 즉시 소거, arm 유지 |
 | 3 | `3_handoff_summary.md` | doc | 인계 요약 (Play 확인 후 작성) |
 
 의존: `0 → {1, 2}`. 커밋을 unit 0 에 포함해 **매 커밋마다 보드 배치가 동작**하고 이후 unit 이 스카우트 비주얼(1)·탭 피크(2)를 얹는다. 선행(완료): `defender-tap-to-place`(arm·`SimulateDragTo` 비행), `placement-attack-range-preview`(`SetPlacementRange`), `placement-cell-snap`(셀 판정·팝).
@@ -35,8 +39,13 @@ arm 한 유닛으로 보드를 눌러 드래그하면 손가락을 따라 공격
   (`_armedSlot/_armedUnit`, `GameManager.SelectedDefender` 격리) — 기존 tap-to-place 계약 유지.
 - **탭/드래그 구분 = 이동량**: 프레스 후 임계 픽셀 이상 이동하면 드래그, 아니면 탭.
   **다운→업 시간 delta 로 판정하지 않는다**(사용자 결정 2026-07-20). 임계값은 SO(하드코딩 금지).
-- **릴리즈=배치 / 탭=피크**: 이동 있었고 유효셀에서 릴리즈 → 배치. 이동 없는 탭 → 범위 피크만(배치 X).
-  무효셀 릴리즈 → `FlashPlacementReject` + arm 유지(재시도).
+- **탭·드래그 모두 배치**: 이동 있는 드래그 릴리즈 → 유효셀 배치. 이동 없는 탭 → 기존 클릭과 동일하게
+  즉시 배치 + 착지 셀에 범위 flourish(**비행 중에만** 유지, 배치=착지 시 소거 — linger 없음, 다른 배치 동작과 동일).
+  무효셀은 양쪽 다 `FlashPlacementReject` + arm 유지(재시도). 성공 배치는 arm 해제(연속 배치는 후속).
+- **탭 범위 flourish 는 비행과 안 싸우게 별도 소유**: 유효셀 탭의 range 표시는 `_tapPlaceRangeRoutine` 이
+  비행 세션이 사는 동안(`_session.active && _simulatedDrag`) 매 프레임 `SetPlacementRange` 로 재확인해
+  비행(sim 경로)의 `CleanupSession` clear 를 덮어쓴다. 배치되면 세션 종료 → 소거. 자기 flight 의
+  `Disarm`/`ResetBoardGesture` 에는 죽지 않고, **새 press·트레이 드래그**(`BeginDrag(!simulated)`)에서만 취소.
 - **보드 드래그는 범위-only 스카우트**(키링 유닛 없음): 유닛은 트레이에 남고, 손가락은 범위/hover만 끈다.
   **커밋은 기존 시뮬 비행**(`SimulateDragTo`, tray→cell) 재사용 → tap-to-place 비행 자산 보존, 로직 중복 0.
   (스카우트 중 키링 유닛 프리뷰는 후속 후보.)
@@ -51,8 +60,9 @@ arm 한 유닛으로 보드를 눌러 드래그하면 손가락을 따라 공격
 - **트레이 D&D 불변**: 트레이 슬롯에서 끌어 보드로 놓는 실드래그(`DefenderDragSlot` D&D)는 그대로.
   이 spec 은 **armed→보드** 진입만 바꾼다.
 - **슬로우모 대칭**: 커밋 비행 중에만 Battle 슬로우모(기존 `SimulateDragTo`→`BeginDrag` 경로).
-  범위 스카우트/탭 피크는 슬로우모 없이 unscaled 실시간(Interaction 도메인).
-- **데이터 주도**: 드래그 threshold, 탭 피크 표시시간·페이드는 `DragSwaySettings` SO.
+  범위 스카우트/탭 flourish 는 슬로우모 없이 unscaled 실시간(Interaction 도메인).
+- **데이터 주도**: 드래그 threshold(`boardDragThreshold`)는 `DragSwaySettings` SO. 탭 범위는 비행 수명에
+  묶여(별도 표시시간 상수 없음) — 비행 시간 튜닝(그룹 ⑦)이 노출 길이를 결정한다.
 
 ## 파이프라인 커버리지
 
