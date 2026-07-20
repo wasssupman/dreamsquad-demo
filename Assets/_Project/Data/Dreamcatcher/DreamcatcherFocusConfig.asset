@@ -17,17 +17,17 @@ MonoBehaviour:
   dimFadeInSec: 0.12
   dimFadeOutSec: 0.1
   arrowOutlineColor: {r: 0.05, g: 0.05, b: 0.08, a: 0.85}
-  arrowOutlinePad: 3
+  arrowOutlinePad: 4.82
   arrowMinAlpha: 0.7
   arrowLockBlend: 0.7
-  arrowHeadSize: 54
+  arrowHeadSize: 88.2
   arrowNeutralColor: {r: 1, g: 1, b: 1, a: 0.7}
   arrowValidColor: {r: 0.42, g: 0.95, b: 1, a: 1}
   arrowInvalidColor: {r: 1, g: 0.42, b: 0.46, a: 1}
   reticleColor: {r: 0.42, g: 0.95, b: 1, a: 1}
   reticleInvalidColor: {r: 0.62, g: 0.64, b: 0.7, a: 0.9}
-  reticleCornerLen: 22
-  reticleThickness: 4
+  reticleCornerLen: 34.35
+  reticleThickness: 8.05
   reticlePadding: 14
   reticleMinScreenSize: 132
   reticleSnapSpring: 22
@@ -49,9 +49,7 @@ MonoBehaviour:
   baseRingLockedFade: 0.15
   baseRingRevealRadius: 420
   baseRingDistanceFade: 0.35
-  confirmConvergeSec: 0.14
   confirmPulseColor: {r: 0.7, g: 1, b: 1, a: 0.9}
   confirmPulseSec: 0.28
   confirmPulseMinRadius: 120
-  confirmFlashSec: 0.08
   enableHaptic: 1

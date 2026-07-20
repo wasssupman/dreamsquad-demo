@@ -1,6 +1,6 @@
 # squad-character-page — 스쿼드 페이지를 캐릭터 열람+편성 화면으로 재설계
 
-> 상태: **완료 2026-07-18 · rev 2026-07-19 units 9~10 완료** (units 0~10 구현·커밋·Play 확인. handoff `8_handoff_summary.md`. unit 9 = 슬롯 탭 제거→선택, unit 10 = 편성-먼저 정렬 + 헤더 선택 표시 — ebfa923a)
+> 상태: **완료 2026-07-18 · rev 2026-07-19 units 9~10 · rev 2026-07-20 units 11~16 완료** (전 units 구현·커밋·사용자 Play 확인. handoff `8_handoff_summary.md`(0~10) + `17_handoff_summary.md`(11~16). unit 9 = 슬롯 탭 제거→선택, unit 10 = 편성-먼저 정렬 + 헤더 선택 표시 — ebfa923a. units 11~16 = 가독성 패스: 설명문 확대·스탯 2열·셀 라벨 밴드·스톤 정렬 + 픽스 2건)
 > 선행: `squad-loadout`(B, 완료 — SquadSave/편성 반입) · `dreamstone-loadout`(스톤 4 전역 슬롯) · `defender-portraits`(포트레이트) · `unit-stat-projection`(AttackOutputStats) · `spine-runtime-4-2-upgrade`(SkeletonGraphic 4.2)
 > 성격: **아웃게임 UI/UX 재설계** (MonoBehaviour 프레젠테이션 전용). ECS/BattleBridge 무관 — 플레이 오브젝트 spec 아님 → 파이프라인 커버리지 섹션 N/A.
 
@@ -46,8 +46,16 @@ OutgameScene 스쿼드 화면에서, **선택 유닛의 라이브 Spine + 스탯
 | 8 | 인계 | `8_handoff_summary.md` | handoff |
 | 9 | UX | `9_slot_tap_selects.md` | 헤더 찬 유닛 슬롯 탭 = 즉시 제거 → 선택(상세 보기)로 변경. 제거는 [편성 해제] 버튼으로 일원화 |
 | 10 | UX | `10_roster_sort_and_slot_selected.md` | 컬렉션 그리드 편성-먼저 정렬(라이브) + 헤더 슬롯 선택 outline (드림캐쳐 unit 6과 쌍) |
+| 11 | UI | `11_detail_card_typography.md` | 상세 카드 설명문 24→30 확대 + 스탯 5행→2열 3행 압축(높이 예산 회수) |
+| 12 | UI | `12_grid_cell_label_band.md` | 그리드 셀 아이콘/라벨 겹침 제거 → 2밴드 컬럼 + 라벨 어두운 배경 밴드 |
+| 13 | UX | `13_stone_roster_sort.md` | 스톤 그리드 편성-먼저 정렬 (unit 10 의 스톤 후속 후보 소진) |
+| 14 | 픽스 | `14_portrait_fallback_above_card.md` | 폴백 아이콘이 카드에 72% 잠기던 버그 — 앵커를 cardHeight 파생으로 |
+| 15 | UI | `15_stat_label_value_hierarchy.md` | 스탯 라벨/수치 타이포 위계 (24 뮤트 / 30 볼드) — 2열 짝 가독성 |
+| 16 | 픽스 | `16_stat_column_alignment.md` | 스탯 컬럼 폭 고정 — HLG 의 content-dependent preferred 를 덮어 수치 우측 정렬 |
 
 순서: 0 → 1 → 2 → 3 → 4 → 5 → (6 → 7) → 8. 핵심 로직 유닛(0, 4) 종료 시 code-review, 나머지는 feature 종료 시 일괄. 6·7 은 "lore 문장 저작" 후속의 시트-동기 실현.
+
+units 11~13 = **가독성 패스**(2026-07-20). 서로 독립적인 3파일 3커밋 — 11 `SquadUnitDetailView.cs`, 12 `SquadRosterBrowser.cs`, 13 `SquadCharacterPageController.cs`. 전부 프레젠테이션 전용이라 ECS 리뷰 대상 아님.
 
 ## Feature-wide 계약
 

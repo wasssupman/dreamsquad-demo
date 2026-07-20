@@ -104,5 +104,13 @@ namespace Wassup.Data
         // 일반 적 무변경. Appended last (직렬화 back-compat).
         [Header("Nightmare Catcher")]
         public DcMechanic[] nightmareMechanics;
+
+        // battle-score-formula unit 0 — 이 적을 **처치**했을 때 얻는 점수.
+        // 유출당하면 얻지 못한다(EnemyKilledEvent 는 goal-reach 경로에서 발화하지
+        // 않는다 — EnemyKilledEvent.cs 주석). 티어 enum 을 만들지 않고 이 필드의
+        // 값 구간으로만 잡몹/보스를 구분한다(제약 8). Appended last (직렬화 back-compat).
+        [Header("Score")]
+        [Tooltip("처치 시 획득 점수. 유출당하면 얻지 못한다. 잡몹 100 / 보스 2000 기준.")]
+        public int killScore = 100;
     }
 }

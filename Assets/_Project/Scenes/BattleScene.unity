@@ -3919,6 +3919,7 @@ MonoBehaviour:
   tileSize: 1
   spawnHeight: 0.5
   resultScreen: {fileID: 441089446}
+  scoreRules: {fileID: 11400000, guid: ea92938112fe1419293896ad962aa1c6, type: 2}
   defenderPool:
   - {fileID: 11400000, guid: 1b476721523af4fd68b6d3d6e1dd265a, type: 2}
   - {fileID: 11400000, guid: f60cd7372f634487c90afc428f71e237, type: 2}
@@ -3982,6 +3983,8 @@ MonoBehaviour:
   pickupModelScale: 1
   pickupModelBaseY: 0
   pickupOverrideMaterial: {fileID: 2100000, guid: b671d65788615a142a9cd6aa0e69066d, type: 2}
+  resignationViewPrefab: {fileID: 0}
+  resignationViewHeight: 0.2
 --- !u!4 &1939688409
 Transform:
   m_ObjectHideFlags: 0

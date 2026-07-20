@@ -12,11 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29b8b73016fd4433dbba47a28c176c11, type: 3}
   m_Name: DragSwaySettings
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DragSwaySettings
-  ropeLength: 4
+  ropeLength: 4.45
   maxAngle: 8
   spring: 91
   damping: 60.2
-  maxSpeed: 112.3
+  maxSpeed: 787.7
   cordWidth: 0.3
   cordColor: {r: 0.45, g: 0.38, b: 0.28, a: 1}
   ringRadius: 0.24
@@ -25,18 +25,19 @@ MonoBehaviour:
   enableDeployCutscene: 1
   deployCutsceneSwipeRefSpeed: 925
   deployCutsceneSwipeSmoothing: 13.81
-  placementStickMargin: 0.81
-  placementCommitInterval: 0
+  placementStickMargin: 0.607
+  placementCommitInterval: 0.093
   stickyLiquidEnabled: 1
   tapTravelDuration: 1.5
-  tapTravelScaleMin: 0.25
-  tapTravelScaleMax: 1.5
+  tapTravelScaleMin: 0.3
+  tapTravelScaleMax: 1
   armHighlightColor: {r: 0.35, g: 1, b: 0.9, a: 0.28}
-  tapArcHeightFactor: 0.34
-  tapArcLateralFactor: 0.12
+  tapArcHeightFactor: 0.99
+  tapArcLateralFactor: 0.503
   tapThrowLaunchControl: {x: 0.18, y: 1}
   tapThrowLandingControl: {x: 0.72, y: 0.22}
   tapSettleDistance: 0.06
   tapSettleSpeed: 0.4
   tapFollowSmoothTime: 0.06
   tapSettleMaxDuration: 0.28
+  directionAimSlowmoScale: 0.2

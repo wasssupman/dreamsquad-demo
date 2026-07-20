@@ -356,6 +356,21 @@ namespace Wassup.Logging
             currentEntry.result.score = score;
         }
 
+        // battle-score-formula unit 3 — 총점 + 3축 분해. 기존 SetScore(int) 는 지우지
+        // 않는다: AddScoreEvent 경로가 여전히 result.score 를 갱신한다.
+        //
+        // 알려진 불일치 — score_events[] 는 처치당 +10 의 라이브 HUD 누적이고
+        // result.score 는 최종 산식이라 같은 로그 안에서 두 값이 다르다.
+        // 계약 12(HUD 표시 전용 존치)의 귀결이며 의도된 상태다.
+        public void SetScore(int total, int timeScore, int stressScore, int killScore)
+        {
+            if (currentEntry == null) return;
+            SetScore(total);
+            currentEntry.result.time_score = Math.Max(0, timeScore);
+            currentEntry.result.stress_score = Math.Max(0, stressScore);
+            currentEntry.result.kill_score = Math.Max(0, killScore);
+        }
+
         // Set the final battle outcome. Caller should invoke this before EndSession
         // (typically on VICTORY / DEFEAT trigger inside BattleBridge).
         public void SetResult(string outcome, int enemiesReachedGoal)

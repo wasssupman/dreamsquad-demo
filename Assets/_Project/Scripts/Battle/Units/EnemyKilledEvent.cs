@@ -21,5 +21,10 @@ namespace Wassup.Battle.Units
         // Entity 값 비교는 파괴 후에도 유효). 표식(bounty mark) 카드 회수 귀속용.
         // Appended last.
         public Entity entity;
+
+        // battle-score-formula unit 2 — final-score contribution of this kill,
+        // copied from the enemy's baked KillScore at enqueue time (same reason as
+        // awakeningReward above). Appended last; 0 when the component was absent.
+        public int killScore;
     }
 }

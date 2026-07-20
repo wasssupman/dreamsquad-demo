@@ -46,6 +46,9 @@ namespace Wassup.Bridge
         [SerializeField] private float tileSize = 1f;
         [SerializeField] private float spawnHeight = 0.5f;
         [SerializeField] private ResultScreen resultScreen;
+        // battle-score-formula unit 3 — 최종 점수 배점. 미배선이면 기본값(100/900)으로
+        // 진행하되 LogError 를 남긴다 — 조용히 0점이 되는 게 최악이다.
+        [SerializeField] private ScoreRulesData scoreRules;
         [SerializeField] private DefenderUnitData[] defenderPool;
         [SerializeField] private DraftController draftController;
         [SerializeField] private SkillRuntime skillRuntime;
@@ -270,6 +273,11 @@ namespace Wassup.Bridge
         // 에디터 자산 영구 오염 + 기기에서 매치 간 누적된다(spec critic M1). 매치 리셋
         // (BeginPlacement)에서 0 초기화. 환불 경로 없음(§6 세탁 차단).
         private int _leakAllowancePenalty;
+        // battle-score-formula unit 2 — 실제 처치분 누적(유출된 적은 포함되지 않는다).
+        // **계약 9: _battleClock 이 0 이 되는 모든 지점에서 함께 0 이 되어야 한다.**
+        // _goalReachedCount 처럼 BeginPlacement 에만 두면, teardown 없는 StartBattle
+        // 재호출에서 시계만 리셋되고 이 값은 이월돼 이전 판 점수가 얹힌다.
+        private int _killScoreTotal;
         private NativeQueue<GoalReachedEvent> _goalEventQueue;
         private NativeQueue<DefenderDeathEvent> _defenderDeathQueue;
         private NativeQueue<Wassup.Battle.Combat.UnitAttackVisualEvent> _unitAttackVisualQueue;
@@ -1103,6 +1111,7 @@ namespace Wassup.Bridge
             _synergyPeakCount = 0;
             _goalReachedCount = 0;
             _leakAllowancePenalty = 0; // 몽마의 계약 선불 — 매치 경계에서 소멸(이월 금지)
+            _killScoreTotal = 0;       // battle-score-formula unit 2 — 계약 9
             RefreshLeakHud();
             _running = false;
             _placementAllowed = true;
@@ -1149,6 +1158,7 @@ namespace Wassup.Bridge
             }
             _startTime = Time.time;
             _battleClock = 0.0;
+            _killScoreTotal = 0; // battle-score-formula unit 2 — 계약 9 (시계와 짝)
             // wave-authoring-test-mode unit 2 — 작성 모드는 plan.timerDurationSec(0=endless).
             // seed/legacy 경로는 deck.timerDurationSec 그대로(무변경).
             _timerDuration = _usingAuthoredPlan ? _wavePlan.timerDurationSec : deck.timerDurationSec;
@@ -1397,6 +1407,7 @@ namespace Wassup.Bridge
             _pendingDreamstones = null;
             // time-manager Unit 3 — 시간 상태도 매치와 함께 리셋.
             _battleClock = 0.0;
+            _killScoreTotal = 0; // battle-score-formula unit 2 — 계약 9 (시계와 짝)
             _battleTimeScaleEntity = Entity.Null;
             _battleRunningEntity = Entity.Null;
             // range-preview unit 3 — 매치 종료 시 격자 표시 무조건 해제(비행 중
@@ -2832,6 +2843,10 @@ namespace Wassup.Bridge
             while (_enemyKilledEventQueue.TryDequeue(out var evt))
             {
                 scoreHud?.OnEnemyKilled(EnemyKillScoreDelta);
+                // battle-score-formula unit 2 — 최종 점수용 누적. HUD 점수(처치당 +10)와
+                // 별개 값이다: HUD 는 표시 전용으로 존치하고(계약 12), 최종 산식은
+                // AttackUnitData.killScore 합을 쓴다.
+                _killScoreTotal += evt.killScore;
                 // dreamcatcher-awakening-hand unit 1 — awakening economy relay.
                 EnemyKilledAwakening?.Invoke(evt.awakeningReward);
                 // 살찌운 제물 — 표식 악몽 처치: 카드 회수 알림(보상은 위 relay 가
@@ -3670,10 +3685,11 @@ namespace Wassup.Bridge
                 {
                     _resultShown = true;
                     _running = false;
-                    int playerScore = CalculatePlayerScore();
+                    var score = CalculateBattleScore(defeated: true, out int timeBudget, out int stressBudget);
+                    int playerScore = score.Total;
                     GameManager.Instance?.Logger?.SetResult("defeat", _goalReachedCount);
-                    GameManager.Instance?.Logger?.SetScore(playerScore);
-                    resultScreen?.ShowDefeat(playerScore, RemainingBattleSeconds(), _goalReachedCount);
+                    GameManager.Instance?.Logger?.SetScore(playerScore, score.Time, score.Stress, score.Kill);
+                    resultScreen?.ShowDefeat(score, RemainingBattleSeconds(), _goalReachedCount, timeBudget, stressBudget);
                     ReportMatchResult(playerScore);
                     Debug.Log("[BattleBridge] DEFEAT triggered.");
                     return;
@@ -3695,10 +3711,13 @@ namespace Wassup.Bridge
 
             _resultShown = true;
             _running = false;
-            int playerScore = CalculatePlayerScore();
+            // 버팀 승리는 패배가 아니다. defeated:true 를 넘기면 스트레스점수까지 죽는다 —
+            // 남은 시간이 0 이라 시간점수는 이미 자동으로 0 이다.
+            var score = CalculateBattleScore(defeated: false, out int timeBudget, out int stressBudget);
+            int playerScore = score.Total;
             GameManager.Instance?.Logger?.SetResult("victory_timeout", _goalReachedCount);
-            GameManager.Instance?.Logger?.SetScore(playerScore);
-            resultScreen?.ShowVictory(playerScore, 0f, _goalReachedCount); // timer expired → 0 left
+            GameManager.Instance?.Logger?.SetScore(playerScore, score.Time, score.Stress, score.Kill);
+            resultScreen?.ShowVictory(score, 0f, _goalReachedCount, timeBudget, stressBudget); // timer expired → 0 left
             ReportMatchResult(playerScore);
             Debug.Log("[BattleBridge] VICTORY — timer expired, player survived.");
         }
@@ -3714,10 +3733,11 @@ namespace Wassup.Bridge
 
             _resultShown = true;
             _running = false;
-            int playerScore = CalculatePlayerScore();
+            var score = CalculateBattleScore(defeated: false, out int timeBudget, out int stressBudget);
+            int playerScore = score.Total;
             GameManager.Instance?.Logger?.SetResult("victory", _goalReachedCount);
-            GameManager.Instance?.Logger?.SetScore(playerScore);
-            resultScreen?.ShowVictory(playerScore, RemainingBattleSeconds(), _goalReachedCount);
+            GameManager.Instance?.Logger?.SetScore(playerScore, score.Time, score.Stress, score.Kill);
+            resultScreen?.ShowVictory(score, RemainingBattleSeconds(), _goalReachedCount, timeBudget, stressBudget);
             ReportMatchResult(playerScore);
             Debug.Log("[BattleBridge] VICTORY — all attack units defeated.");
         }
@@ -3738,10 +3758,39 @@ namespace Wassup.Bridge
                 ranking => resultScreen?.UpdateLeaderboard(ranking, Wassup.Core.Api.UserSession.Current?.userId));
         }
 
-        private int CalculatePlayerScore()
+        // battle-score-formula unit 3 — 예산 소모 모델. 계산 자체는 ScoreMath 순수 함수가
+        // 하고 여기서는 입력을 모아 넘기기만 한다.
+        //
+        // stressLimit 은 deck.defeatGoalReachedCount **원본값**이다(계약 8).
+        // EffectiveLeakLimit()(계약 차감 후)이 아니다 — 차감분은 누적 쪽에 들어간다.
+        //
+        // unit 4 — 예산 만점도 함께 돌려준다. 결과 화면이 "얻은 점수 / 예산" 으로 보여주려면
+        // 분모가 필요한데, 그 값을 아는 건 여기(SO + 덱)뿐이다. **킬 예산은 돌려주지 않는다** —
+        // 스폰 구성에 의존해 상수가 아니다(계약 7).
+        private ScoreMath.BattleScore CalculateBattleScore(bool defeated,
+            out int timeBudget, out int stressBudget)
         {
-            float durationSec = Mathf.Max(0f, (float)_battleClock);
-            return Math.Max(0, (int)(durationSec * 10f - _goalReachedCount * 50));
+            int perSec = 100, perStress = 900;
+            if (scoreRules != null)
+            {
+                perSec = scoreRules.timeScorePerSecond;
+                perStress = scoreRules.stressScorePerPoint;
+            }
+            else
+            {
+                Debug.LogError("[BattleBridge] scoreRules 미배선 — 기본값(100/900)으로 점수를 계산한다. "
+                    + "ScoreRules.asset 을 인스펙터에 물릴 것.");
+            }
+
+            int remainingMs = Mathf.RoundToInt(RemainingBattleSeconds() * 1000f);
+            int stressLimit = deck != null ? deck.defeatGoalReachedCount : 0;
+            int stressAccrued = _goalReachedCount + _leakAllowancePenalty;
+
+            timeBudget = Mathf.RoundToInt(_timerDuration) * perSec;
+            stressBudget = stressLimit * perStress;
+
+            return ScoreMath.Evaluate(remainingMs, stressAccrued, stressLimit, _killScoreTotal,
+                defeated, perSec, perStress);
         }
 
         // Random-pick legacy entry (Phase 0-3 behavior). Phase 4 prefers
@@ -5228,6 +5277,13 @@ namespace Wassup.Bridge
             _em.AddComponentData(entity, new AwakeningReward
             {
                 value = Mathf.Max(0, entry.unitType.awakeningReward),
+            });
+            // battle-score-formula unit 2 — bake the kill score so
+            // DamageApplicationSystem can stamp it into EnemyKilledEvent.
+            // Unconditional attach (0 allowed) keeps the lookup branch-free.
+            _em.AddComponentData(entity, new KillScore
+            {
+                value = Mathf.Max(0, entry.unitType.killScore),
             });
             // Pre-attach empty buffers so downstream systems never need structural AddBuffer on hot paths.
             _em.AddBuffer<IncomingDamage>(entity);

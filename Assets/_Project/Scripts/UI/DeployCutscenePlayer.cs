@@ -2,6 +2,7 @@ using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 using Wassup.DepthParallax;
+using Wassup.UI.Layout;
 
 namespace Wassup.UI
 {
@@ -18,7 +19,10 @@ namespace Wassup.UI
     {
         [SerializeField] private float holdSecondsAfter = 0.5f; // 플립북 완주 후 마지막 프레임 유지 시간
         [SerializeField] private float displayScale = 1.2f;     // 스프라이트 네이티브 대비 공유 배율
-        [SerializeField] private Vector2 cornerMarginPx = new Vector2(-100f, 24f); // 좌하단 공유 baseline 여백(px). 유닛별 offset 이 더해짐. x=이미지 왼쪽끝 위치, y=하단에서 위로
+        // 아래 *Px 값의 단위는 **1920x1080 레퍼런스 기준 단위**다(디바이스 실제 픽셀 아님).
+        // 캔버스가 UiCanvasSetup 의 ScaleWithScreenSize(match height)를 쓰므로, 화면 높이 1080 에서만
+        // 1:1 이고 그 외 해상도에서는 같은 비율로 스케일된다 — 기기가 달라도 보이는 크기가 같다.
+        [SerializeField] private Vector2 cornerMarginPx = new Vector2(-100f, 24f); // 좌하단 공유 baseline 여백. 유닛별 offset 이 더해짐. x=이미지 왼쪽끝 위치, y=하단에서 위로
         [SerializeField] private float slideInSeconds = 0.18f;  // 왼쪽 밖→목표 진입(빠르게)
         [SerializeField] private float slideOutSeconds = 0.18f; // 목표→왼쪽 밖 퇴장
         [SerializeField] private float offscreenMarginPx = 48f; // 화면 밖 여분(완전히 가려지도록)
@@ -28,7 +32,6 @@ namespace Wassup.UI
         // 유닛별 틸트 게인은 컨트롤러(unit 7)가 SetTilt 전에 곱하므로 플레이어는 게인을 모른다.
         [SerializeField] private DepthParallaxSettings depthParallaxSettings;
 
-        private Canvas _canvas;
         private GameObject _canvasGO;
         private Image _image;
         private RectTransform _rt;
@@ -184,13 +187,19 @@ namespace Wassup.UI
             // 루트 오브젝트로 생성(부모 없음). nested Canvas 는 루트 Canvas 의 renderMode/
             // 좌표계를 상속하므로, DefenderSelector(자체 Canvas) 아래에 두면 화면이 아니라
             // 그 rect 기준으로 렌더된다 → 반드시 root ScreenSpaceOverlay 로 둔다.
-            _canvasGO = new GameObject("DeployCutsceneCanvas", typeof(Canvas));
-            _canvas = _canvasGO.GetComponent<Canvas>();
-            _canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            _canvas.sortingOrder = sortingOrder;
+            _canvasGO = new GameObject("DeployCutsceneCanvas");
+
+            // 캔버스는 반드시 공용 규약(UiCanvasSetup — 1920x1080 ScaleWithScreenSize, match height)으로 세운다.
+            // Canvas 만 손수 붙이면 constant-pixel 이 되어 SetNativeSize 결과도 cornerMarginPx/offscreenMarginPx 도
+            // **디바이스 실제 픽셀**이 된다 → 1080p 와 1440p 기기에서 컷씬이 차지하는 화면 비율과 좌하단 여백이
+            // 달라진다. 에디터 Game 뷰 한 해상도로만 튜닝하면 드러나지 않는 종류라 실기기에서만 어긋난다.
+            // (아래 튜닝값 단위도 그래서 "디바이스 px" 가 아니라 "1920x1080 기준 단위" 다.)
+            var roots = UiCanvasSetup.Ensure(_canvasGO, sortingOrder);
 
             var imgGO = new GameObject("CutsceneImage", typeof(RectTransform));
-            imgGO.transform.SetParent(_canvasGO.transform, false);
+            // FullBleedRoot 는 캔버스 rect 와 동일하게 stretch 되므로 기존 배치가 그대로 유지된다.
+            // SafeAreaRoot 로 옮기면 노치 회피는 되지만 좌하단 여백 튜닝이 전부 밀린다 — 별건으로 둔다.
+            imgGO.transform.SetParent(roots.FullBleedRoot, false);
             _rt = (RectTransform)imgGO.transform;
             // 좌하단 앵커/피벗.
             _rt.anchorMin = _rt.anchorMax = new Vector2(0f, 0f);

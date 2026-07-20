@@ -25,6 +25,8 @@ namespace Wassup.Battle.Units
         private BufferLookup<DamagedCounter> _damagedCounterLookup;
         // dreamcatcher-awakening-hand unit 1 — per-enemy awakening grant baked at spawn.
         private ComponentLookup<AwakeningReward> _awakeningRewardLookup;
+        // battle-score-formula unit 2 — final-score value stamped into EnemyKilledEvent.
+        private ComponentLookup<KillScore> _killScoreLookup;
         // combat-action-lock unit 3 — wake-on-hit: 피격 시 Sleep 보유 여부 RO 판정용.
         private BufferLookup<CcEffect> _ccLookup;
         // dreamcatcher-kill-and-threshold unit 2 — killer 의 OnKill×SelfStatBuff 슬롯 RO 판정용.
@@ -41,6 +43,7 @@ namespace Wassup.Battle.Units
             _defenderTagLookup     = state.GetComponentLookup<DefenderUnitTag>(isReadOnly: true);
             _damagedCounterLookup  = state.GetBufferLookup<DamagedCounter>(isReadOnly: false);
             _awakeningRewardLookup = state.GetComponentLookup<AwakeningReward>(isReadOnly: true);
+            _killScoreLookup = state.GetComponentLookup<KillScore>(isReadOnly: true);
             _ccLookup = state.GetBufferLookup<CcEffect>(isReadOnly: true);
             _dcTriggerSlotLookup = state.GetBufferLookup<DcTriggerSlot>(isReadOnly: true);
         }
@@ -56,6 +59,7 @@ namespace Wassup.Battle.Units
             _defenderTagLookup.Update(ref state);
             _damagedCounterLookup.Update(ref state);
             _awakeningRewardLookup.Update(ref state);
+            _killScoreLookup.Update(ref state);
             bool hasHealAppliedQueue = SystemAPI.TryGetSingletonRW<HealAppliedEventsSingleton>(out var healAppliedSingleton);
             bool hasDamageNumberQueue = SystemAPI.TryGetSingletonRW<DamageNumberEventsSingleton>(out var damageNumberSingleton);
             bool hasEnemyKilledQueue = SystemAPI.TryGetSingletonRW<EnemyKilledEventsSingleton>(out var enemyKilledSingleton);
@@ -209,6 +213,10 @@ namespace Wassup.Battle.Units
                                 ? _awakeningRewardLookup[entity].value : 0,
                             // subconscious-curse-expansion unit 2 — 표식 회수 귀속 키.
                             entity = entity,
+                            // battle-score-formula unit 2 — 최종 점수 기여분. 유출 경로는
+                            // 이 분기에 오지 않으므로 유출된 적은 점수를 남기지 않는다.
+                            killScore = _killScoreLookup.HasComponent(entity)
+                                ? _killScoreLookup[entity].value : 0,
                         });
                     }
 

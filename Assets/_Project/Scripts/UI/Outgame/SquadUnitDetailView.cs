@@ -36,6 +36,8 @@ namespace Wassup.UI
         private static readonly Color UnequipColor = new Color(0.52f, 0.24f, 0.24f, 1f);
         private static readonly Color ClassBadgeColor = new Color(0.20f, 0.24f, 0.34f, 1f);
         private static readonly Color CostBadgeColor = new Color(0.16f, 0.34f, 0.52f, 1f);
+        // unit 15 — 스탯 라벨은 부차 정보라 한 단 낮춘다(수치는 흰색 볼드로 대비).
+        private static readonly Color StatLabelColor = new Color(0.60f, 0.64f, 0.72f, 1f);
 
         private static readonly string[] StatLabels =
             { "데미지", "체력", "사거리", "공격주기", "각성보상" };
@@ -48,7 +50,8 @@ namespace Wassup.UI
         private TMP_Text _classBadgeText;
         private TMP_Text _costBadgeText;
         private readonly TMP_Text[] _statValues = new TMP_Text[5];
-        private readonly GameObject[] _statRowGos = new GameObject[5];
+        // unit 11 — 스탯은 2열 3행. 값은 셀 단위(5), 가시성 토글은 행 단위(3).
+        private readonly GameObject[] _statRowGos = new GameObject[3];
         private TMP_Text _summaryText;
         private Image _deployBg;
         private TMP_Text _deployLabel;
@@ -239,15 +242,24 @@ namespace Wassup.UI
             MakeBadge(badgeRow.transform, out var costBg, CostBadgeColor);
             _costBadgeText = costBg.GetComponentInChildren<TMP_Text>();
 
-            for (int i = 0; i < StatLabels.Length; i++)
+            // unit 11 — 스탯 2열 3행(190→114px). 5개는 홀수라 마지막 행은 셀 1 + 빈 스페이서.
+            // 회수한 76px 는 아래 설명란으로 넘어간다.
+            for (int row = 0; row < _statRowGos.Length; row++)
             {
-                var row = MakeRow(cardRoot, 38, 0);
-                _statRowGos[i] = row.gameObject;
-                MakeText(row.transform, StatLabels[i], 26, TextAlignmentOptions.Left, 38);
-                _statValues[i] = MakeText(row.transform, "", 26, TextAlignmentOptions.Right, 38);
+                // 간격 44 — 좌측 칸의 값과 우측 칸의 라벨이 붙어 읽히지 않도록(Play 튜닝값).
+                var rowRt = MakeRow(cardRoot, 38, 44);
+                _statRowGos[row] = rowRt.gameObject;
+                for (int col = 0; col < 2; col++)
+                {
+                    int i = row * 2 + col;
+                    if (i < StatLabels.Length) MakeStatCell(rowRt.transform, i);
+                    else MakeSpacer(rowRt.transform);
+                }
             }
 
-            _summaryText = MakeText(cardRoot, "", 24, TextAlignmentOptions.TopLeft, 76);
+            // unit 11 — 설명란 확대: 76px/24 → 148px/34. 최장 desc(가디언 62자)가
+            // 폭 609px에서 3줄 123px — 슬롯 148px 안에 여유를 남긴다(Play 실측).
+            _summaryText = MakeText(cardRoot, "", 34, TextAlignmentOptions.TopLeft, 148);
             _summaryText.enableWordWrapping = true;
 
             // ui-polish 2026-07-18 — 편성/출전 버튼 크게(모바일 탭 타겟).
@@ -262,6 +274,47 @@ namespace Wassup.UI
             var lblRt = _deployLabel.rectTransform;
             lblRt.anchorMin = Vector2.zero; lblRt.anchorMax = Vector2.one;
             lblRt.offsetMin = Vector2.zero; lblRt.offsetMax = Vector2.zero;
+        }
+
+        // unit 11 — 스탯 한 칸: 라벨 left + 값 right. 행 HLG 가 칸을 절반씩 나눈다.
+        private void MakeStatCell(Transform row, int index)
+        {
+            var go = new GameObject("StatCell", typeof(RectTransform));
+            go.transform.SetParent(row, false);
+            // unit 16 — 칸을 내용과 무관하게 반씩 가른다. HorizontalLayoutGroup 은
+            // ILayoutElement 이기도 해서 preferredWidth 를 "자식 텍스트 폭의 합"으로
+            // 보고한다 → 이걸 덮지 않으면 글자 수에 따라 컬럼 경계가 행마다 움직이고
+            // 값의 우측 끝이 어긋난다(실측 300/271/431).
+            MakeHalfWidth(go);
+            var hlg = go.AddComponent<HorizontalLayoutGroup>();
+            hlg.spacing = 0;
+            hlg.childAlignment = TextAnchor.MiddleLeft;
+            hlg.childControlWidth = true;
+            hlg.childControlHeight = true;
+            hlg.childForceExpandWidth = true;
+            hlg.childForceExpandHeight = false;
+            // unit 15 — 라벨/수치를 크기·굵기·명도 세 축으로 갈라 2열에서도 짝이 읽히게.
+            var label = MakeText(go.transform, StatLabels[index], 24, TextAlignmentOptions.Left, 38);
+            label.color = StatLabelColor;
+            var value = MakeText(go.transform, "", 30, TextAlignmentOptions.Right, 38);
+            value.fontStyle = FontStyles.Bold;
+            _statValues[index] = value;
+        }
+
+        // 홀수 번째 마지막 스탯이 좌측 절반에 머물도록 우측을 비워두는 자리채움.
+        private void MakeSpacer(Transform row)
+        {
+            var go = new GameObject("Spacer", typeof(RectTransform));
+            go.transform.SetParent(row, false);
+            MakeHalfWidth(go);   // unit 16 — 안 주면 preferred 0 이라 짝 셀이 남은 폭을 다 먹는다
+        }
+
+        // unit 16 — 행 HLG 가 균등 분할하도록 강제(preferred 0 + flexible 1).
+        private static void MakeHalfWidth(GameObject go)
+        {
+            var le = go.AddComponent<LayoutElement>();
+            le.preferredWidth = 0f;
+            le.flexibleWidth = 1f;
         }
 
         private RectTransform MakeRow(Transform parent, float height, float spacing)
