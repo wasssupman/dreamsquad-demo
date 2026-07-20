@@ -228,3 +228,26 @@ Mathf.SmoothStep(0f, 1f, t)       // → 이건 의도대로 동작 (a=0,b=1 이
   // 잘못:    0.150 0.075  0.009  0.000   ← 시작부터 무너짐
   // 올바름:  1.000 1.000  1.000  0.000   ← 끝에서만 떨어짐
   ```
+
+## 바닥 오버레이 z-fighting 은 "어느 타일맵이 불투명 큐인가"부터 찍는다
+
+이 프로젝트의 타일맵은 큐가 섞여 있다. **`Ground` 만 queue 2000(불투명)** 이고 나머지는 3000(투명)이다. 즉 바닥에 뭘 깔든 깊이 경합 상대는 사실상 `Ground` **하나**다.
+
+```
+Ground                   order=-20  queue=2000  Wassup/Tile_ShadowReceive   ← 유일한 불투명
+Overlay                  order=-10  queue=3000  Sprites/Default
+PropsTilemap             order= -5  queue=3000  URP/2D/Sprite-Unlit-Default
+EffectTiles              order=-15  queue=3000  Wassup/EffectTilePulse
+PlacementHighlightTiles  order=-13  queue=3000  Sprites/Default
+유닛(Spine/Quad)          order=+11~+75 queue=3000
+```
+
+- **읽는 법**: queue 3000끼리는 ZWrite 가 꺼져 있어 깊이가 무의미하고 `sortingOrder` 로만 앞뒤가 갈린다. 그러니 **정렬 순서가 아래인 오버레이는 오프셋을 아무리 키워도 위 레이어를 덮지 못한다.** 반대로 `Ground` 와는 깊이로 싸우므로 오프셋이 필요하다.
+- **처방**: 오프셋은 "정밀도를 넉넉히 이길 만큼" 준다(스폰 예고 라인 = 0.06). 아끼면 보드 위치에 따라 정밀도가 달라 **일부 구간만** z-fighting 하는 형태로 남아 "가끔 그런다"로 오진하기 쉽다.
+- **띄우는 축 주의**: `BoardSpace` 는 평면 뷰라 view +Y 는 높이가 아니라 **화면 위쪽**이다. +Y 로 띄우면 가로 구간에서 오버레이가 길 중앙을 벗어난다. `BoardSpace.RaycastPlane().normal` 을 카메라 쪽으로 정렬해 그 축으로 띄운다 — 화면 위치는 그대로, 깊이만 분리된다.
+- **진단 스니펫**: 추측하지 말고 찍는다.
+  ```csharp
+  foreach (var tr in FindObjectsByType<TilemapRenderer>(FindObjectsSortMode.None))
+      Debug.Log($"{tr.name} order={tr.sortingOrder} queue={tr.sharedMaterial?.renderQueue} shader={tr.sharedMaterial?.shader.name}");
+  ```
+- **덤(2026-07-20 실사례)**: 정렬을 양수(유닛 위) → 음수(바닥)로 고친 뒤에도 "오프셋을 키우면 유닛을 덮는다"는 옛 제약 메모가 남아 오프셋을 0.012로 조인 채 z-fighting 을 방치했다. **선행 수정이 후행 제약을 무효화했는지 되짚지 않으면 유령 제약이 남는다.**

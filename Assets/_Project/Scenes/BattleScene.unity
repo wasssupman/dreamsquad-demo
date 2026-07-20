@@ -3153,7 +3153,7 @@ MonoBehaviour:
   streakWidthScale: 2.6
   ringSize: 1.1
   ringPeriod: 0.9
-  surfaceOffset: 0.012
+  surfaceOffset: 0.06
 --- !u!4 &1606569296
 Transform:
   m_ObjectHideFlags: 0

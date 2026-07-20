@@ -52,12 +52,15 @@ namespace Wassup.Presentation
         // 가로 구간에서 선이 길 중앙을 벗어난다. 대신 보드 평면의 법선(카메라 쪽)으로 띄워
         // 화면상 위치는 유지하면서 깊이만 분리한다 — 타일과의 z-fighting 해소.
         //
-        // 크게 주면 유닛을 덮는다. 바닥 타일과 유닛은 둘 다 깊이를 쓰고(타일=불투명,
-        // 유닛=AlphaTest) 라인은 투명 큐라, 라인의 가시성은 ZTest 로 갈린다. 즉 이 값은
-        // "깊이 정밀도는 이기되 유닛 두께는 넘지 않을 만큼"만 줘야 한다. 틸트 빌보드라
-        // 유닛의 깊이 두께가 눌려 있어 여유가 작다.
-        [Tooltip("보드 평면 법선(카메라 쪽) 띄움. z-fight 회피 최소치만 — 크면 유닛을 덮는다.")]
-        [SerializeField] private float surfaceOffset = 0.012f;
+        // 이 값은 **Ground 타일맵과의 z-fighting 전용**이다. 유닛 가림과는 무관하다:
+        //   Ground 만 queue 2000(불투명, `Wassup/Tile_ShadowReceive`)이라 깊이를 쓰고,
+        //   나머지 타일맵·유닛·라인은 전부 queue 3000(ZWrite Off)이라 sortingOrder 로만 갈린다.
+        //   라인(−9~−6)은 유닛(+11~+75)보다 **먼저** 그려지고 깊이를 안 쓰므로, 이 값을
+        //   키워도 유닛을 덮을 수 없다. (정렬이 양수였던 시절엔 덮었다 — 그건 정렬 버그였다.)
+        // 따라서 "깊이 정밀도를 이길 만큼" 넉넉히 주면 된다. 너무 작으면 보드 위치에 따라
+        // 정밀도가 달라 일부 구간만 z-fighting 한다.
+        [Tooltip("보드 평면 법선(카메라 쪽) 띄움. Ground 타일맵과의 z-fight 회피 전용 — 유닛 가림과 무관.")]
+        [SerializeField] private float surfaceOffset = 0.06f;
 
         private class Lane
         {
