@@ -11,17 +11,17 @@ namespace Wassup.UI
     // per enemy kill (BattleBridge.DrainEnemyKilledEvents -> OnEnemyKilled). Stylish
     // increase driven by PrimeTween: an elastic punch + white-hot->gold flash, using
     // the Kanit Bold Italic SDF font (dynamic sporty oblique, deliberately distinct
-    // from the Bangers SDF damage popups). Display-only — does not feed ResultScreen.
+    // from the Bangers SDF damage popups).
     // Same-frame kills (AoE wipes) coalesce into one intensity-scaled hit.
+    //
+    // score-tally-sequence unit 0 — 더 이상 표시 전용이 아니다. 이 숫자는 최종 점수의
+    // **킬축과 같은 값**이고(적별 AttackUnitData.killScore 합), 결과 연출이 여기서
+    // 이어서 시간·스트레스를 더한다.
     public class ScoreHudView : MonoBehaviour
     {
         [Header("Style font (Kanit Bold Italic SDF + outline). Null -> TMP default.")]
         [SerializeField] private TMP_FontAsset scoreFont;
         [SerializeField] private Material scoreMaterial;
-
-        [Header("Scoring")]
-        [Tooltip("적 1처치당 가점")]
-        [SerializeField] private int pointsPerKill = 10;
 
         [Header("Increase feel")]
         [Tooltip("표시 숫자가 목표로 따라붙는 속도(클수록 빠름)")]
@@ -74,7 +74,10 @@ namespace Wassup.UI
         [SerializeField] private float kickRotation = 3f;
         [SerializeField] private float kickDuration = 0.3f;
         [Tooltip("마일스톤 간격(점). 통과 시 화면 가장자리 플래시.")]
-        [SerializeField] private int milestoneInterval = 100;
+        // score-tally-sequence unit 0 — 킬점수 축척(잡몹 100)에 맞춘 값. 100 이던 시절엔
+        // 잡몹 하나마다 플래시가 터졌다. 보스 killScore 가 정확히 2,000 이라 보스 처치 =
+        // 마일스톤 1개가 보장된다.
+        [SerializeField] private int milestoneInterval = 2000;
         [Tooltip("풀스크린 비네트 스프라이트(가장자리 밝음). Null → 플래시 생략.")]
         [SerializeField] private Sprite vignetteSprite;
         [SerializeField] private Color milestoneColor = new Color(1f, 0.8f, 0.35f, 1f);
@@ -240,13 +243,11 @@ namespace Wassup.UI
 
         // Called by BattleBridge once per enemy kill drained from EnemyKilledEvents.
         // Accumulates only; the visual hit is flushed in LateUpdate (see above).
-        public void OnEnemyKilled()
-        {
-            OnEnemyKilled(pointsPerKill);
-        }
-
-        // Overload: 가변 per-kill 점수 (origin 3751a612 — battle-log/가변 스코어링 보존).
-        // 병합 유지: 누적만, 연출 트리거는 LateUpdate flush.
+        //
+        // score-tally-sequence unit 0 — points 는 이제 그 적의 AttackUnitData.killScore
+        // 다(잡몹 100 / 보스 2,000). 예전엔 처치당 고정 10 이었고, 그래서 이 HUD 숫자가
+        // 최종 점수의 킬축과 15배 어긋나 있었다. 이제 같은 값이라 결과 연출이 여기서
+        // 이어서 시간·스트레스를 더할 수 있다.
         public void OnEnemyKilled(int points)
         {
             _targetScore += Mathf.Max(0, points);

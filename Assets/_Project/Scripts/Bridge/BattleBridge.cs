@@ -246,7 +246,6 @@ namespace Wassup.Bridge
         private readonly HashSet<Entity> _synergyActivatedEntities = new();
         private int _synergyActivations;
         private int _synergyPeakCount;
-        private const int EnemyKillScoreDelta = 10;
         private float _startTime;
         // time-manager Unit 3 — 전투 도메인 스케일이 반영된 경과 클럭(웨이브/타이머 load-bearing).
         // _startTime(실시간)은 cosmetic 이벤트/로그 타임스탬프 전용으로 남긴다.
@@ -2842,7 +2841,7 @@ namespace Wassup.Bridge
             if (!_enemyKilledEventQueue.IsCreated) return;
             while (_enemyKilledEventQueue.TryDequeue(out var evt))
             {
-                scoreHud?.OnEnemyKilled(EnemyKillScoreDelta);
+                scoreHud?.OnEnemyKilled(evt.killScore);
                 // battle-score-formula unit 2 — 최종 점수용 누적. HUD 점수(처치당 +10)와
                 // 별개 값이다: HUD 는 표시 전용으로 존치하고(계약 12), 최종 산식은
                 // AttackUnitData.killScore 합을 쓴다.
@@ -2857,7 +2856,7 @@ namespace Wassup.Bridge
                 float time = LogElapsedTime;
                 var logger = GameManager.Instance?.Logger;
                 logger?.RecordKill(string.Empty, new Vector2Int(cell.x, cell.y), time);
-                logger?.AddScoreEvent("enemy_killed", EnemyKillScoreDelta, time);
+                logger?.AddScoreEvent("enemy_killed", evt.killScore, time);
             }
         }
 
