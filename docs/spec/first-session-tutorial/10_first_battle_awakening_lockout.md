@@ -104,3 +104,6 @@ ambient/maxIdle 정지 규칙은 유지한다.
 - [ ] BattleScene 직접 Play 는 `IsLoadedThisSession == false` 라 lock 이 안 걸린다(정상) —
       이 경로로 검수하면 안 된다
 - [ ] PlayMode `FirstSessionTutorialSmokeTest` 회귀 없음
+
+> 확인 2026-07-21 · 커밋 `7a704a20`·`aa940f08` — 사용자 Play 확인 완료.
+> fail-open 영구 봉인 차단 포함(리뷰 CRITICAL). 자동 테스트 커버리지 없음 — backlog 이관.

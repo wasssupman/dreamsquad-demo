@@ -121,6 +121,37 @@ code + git history        구현 상세
 
 > 출처 spec 이 섞여 있다. 그룹 헤더 또는 항목 끝의 `(spec-slug)` 라벨로 출처 표기.
 
+#### PlayMode 사전 실패 14건 (2026-07-21 관측)
+
+- **PlayMode 40개 중 14개가 NRE 로 실패한다** [M] · `BountyMarkTest`·`DreamCocoonTest`·
+  `DreamstoneCarryInSmokeTest`·`IncubusPactTest`·`DreamcatcherCursedRelicTest` 등 ECS 전투 테스트.
+  대부분 `Unhandled log message: '[Exception] NullReferenceException'`, 하나는
+  `DreamcatcherDeckCarryInTest.SelectedSavedDeck_DrivesDraws` 가 `fallback default deck has 10`.
+  `596191c5` 와 `649991bb` 양쪽에서 동일하게 재현되므로 특정 최근 커밋 탓은 아니고, 언제부터인지
+  이분 탐색이 필요하다. EditMode 는 전부 통과하므로 PlayMode 하네스 쪽 회귀일 가능성도 있다.
+
+#### 첫 판 튜토리얼 개선 (first-session-tutorial units 10~12 이관, 2026-07-21)
+
+- **신규 동작의 테스트 커버리지** [S] · `ClassHint` 전이(`OnPlacementCommitted → ClassHint →
+  ContinueTapped → Start` + 12초 폴백)와 `AwakeningGaugeView.SetSuppressed`(=`SetActive` 직접 호출로는
+  못 잡는 회귀)에 자동 테스트가 없다. `TutorialDragGuidanceTests` 는 레이아웃 헬퍼만, PlayMode 스모크는
+  `UnlockTutorialStart()` 를 스스로 불러 ClassHint 를 통과하지 않는다. (first-session-tutorial units 10~12)
+- **클래스 안내 문구 정합성 3건** [S] · 전부 사실 확인 완료, 문구는 사용자 작성본이라 보류.
+  ① 배치 트레이 role 배지가 `원/수/근/술/보` 단일 글자라 안내문 클래스 이름과 겹치는 글자가 0개 —
+  읽어도 트레이에서 대응시킬 앵커가 없다. ② `적 이동경로에 방해물을 설치` 는 캐스터 4종 중
+  `BlockingCaster` 하나에만 맞다(나머지는 장판, 기본 스쿼드에 Blocking·Fire 둘 다 포함).
+  ③ 표기 4중 드리프트 — 배지 `보` / `UnitLabels.ClassLabel` `서포트` / 유닛 desc `서포트` / 안내문
+  `서포터`. 게임 desc 는 `어그로` 대신 `도발` 을 쓴다. (first-session-tutorial unit 11)
+- **서포터가 첫 판 스쿼드에 없다** [S] · 기본 스쿼드는 카탈로그 앞 7개(Archer·Bastion·BlockingCaster·
+  Bruiser·Cannon·FireCaster·Guardian)이고 유일한 Support 인 Healer 는 8번째다. 첫 판 트레이에 `보` 배지가
+  한 칸도 없는데 안내문은 서포터를 설명한다. 안내문에서 빼거나 기본 스쿼드를 바꾸는 두 방향. (unit 11)
+- **온보딩 총량** [M] · 로비 챕터A(2탭) → 첫 판(목표·배치·클래스 6줄·시작) → 선물 홀드 2회 →
+  로비 챕터B(2탭) → 2판 각성 3단계 = 안내 14비트·22줄. 게임플레이를 만들지 않는 순수 해제 탭이 5회다.
+  체감 후 뺄 것을 정한다(후보: 클래스 안내, 각성 0단계, 선물 2번째 홀드). (units 10~12 리뷰)
+- **첫 판 각성 봉인의 첫인상 리스크** [S] · 첫 세션 전체(로비 A → 첫 판 → 결과)에서 "드림캐쳐" 라는
+  단어가 한 번도 등장하지 않는다. 첫 판 이탈자는 게임의 차별점을 영영 못 본다. 대안은 "숨김" 대신
+  "보이되 침묵"(버튼·게이지는 노출, 힌트만 억제) — 채택 시 unit 12 의 0단계가 불필요해진다. (units 10·12 리뷰)
+
 #### 아웃게임 튜토리얼 (outgame-tutorial 종료 이관, 2026-07-21)
 
 - **Android 실기기 QA** [S] · 노치·safe area dim 커버리지, Android 백키로 안내가 닫히는지(`Keyboard.current` 가 null 인 기기에서 미동작 가능 — 기존 `DreamcatcherHandView` 와 같은 제약), dim 톤 `UiOverlay.Dim` 알파 0.92 가 로비 배경 위에서 과한지. 링/홀 정렬은 실측 완료라 제외. (outgame-tutorial)

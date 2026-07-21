@@ -120,3 +120,6 @@ private void BeginClassHint()
 - [ ] 차단 중임이 화면에 보인다(약한 dim) — 무반응이 버그로 읽히지 않는다
 - [ ] 말풍선이 safe area 안에 들어오고 상단 HUD 를 가리지 않는다(스크린샷)
 - [ ] EditMode `TutorialDragGuidanceTests` 회귀 없음
+
+> 확인 2026-07-21 · 커밋 `7a704a20`·`aa940f08`·`649991bb` — 사용자 Play 확인 완료.
+> 문구는 사용자 작성본으로 복원(`649991bb`). 표현 정합성 지적 3건은 backlog 이관.
