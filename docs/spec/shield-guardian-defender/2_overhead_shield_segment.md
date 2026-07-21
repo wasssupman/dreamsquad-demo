@@ -19,5 +19,7 @@
 
 ## 완료 기준
 
-- [ ] compile 클린 + 기존 EditMode 그린.
+- [x] compile 클린 + 기존 EditMode 그린.
 - [ ] 시각 확인은 unit 3 Play 검증에서 통합 수행(실드 보유 시 세그먼트 표시 / 소진 시 소멸 / 재부여 시 복원).
+
+확인 2026-07-21 · 커밋 `a485a9b7` (compile+EditMode 1151/1153 · 시각 확인은 unit 3 Play 로 이관)

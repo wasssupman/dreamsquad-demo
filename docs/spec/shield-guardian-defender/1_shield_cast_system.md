@@ -25,6 +25,8 @@ A초마다 공격범위 내 아군 C명을 필터로 골라 실드 B를 부여�
 
 ## 완료 기준
 
-- [ ] compile 클린.
-- [ ] `ShieldTargetingTests` 그린: Self / All 거리정렬+C컷 / MinHealth 유효HP정렬+C컷 / **실드 만충 대상이 무실드 저HP 대상에 밀림** / 후보<C / 자신 포함 / 결정론 동률.
-- [ ] 기존 EditMode 전체 그린.
+- [x] compile 클린.
+- [x] `ShieldTargetingTests` 그린: Self / All 거리정렬+C컷 / MinHealth 유효HP정렬+C컷 / **실드 만충 대상이 무실드 저HP 대상에 밀림** / 후보<C / 자신 포함 / 결정론 동률.
+- [x] 기존 EditMode 전체 그린.
+
+확인 2026-07-21 · 커밋 `8fbf487d` (EditMode 1151/1153 · skip 2 = 기존 known-skip)
