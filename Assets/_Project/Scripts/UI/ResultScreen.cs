@@ -107,24 +107,19 @@ namespace Wassup.UI
             public readonly int Leaks;
             public readonly bool HasBreakdown;
             public readonly int TimeScore, StressScore, KillScore;
-            // 예산 만점(분모). 킬은 스폰 구성 의존이라 상수가 아니므로 분모가 없다(계약 7).
-            public readonly int TimeBudget, StressBudget;
 
             public MatchStats(float remainingSec, int leaks)
             {
                 RemainingSec = remainingSec; Leaks = leaks;
                 HasBreakdown = false;
                 TimeScore = StressScore = KillScore = 0;
-                TimeBudget = StressBudget = 0;
             }
 
-            public MatchStats(float remainingSec, int leaks, ScoreMath.BattleScore score,
-                int timeBudget, int stressBudget)
+            public MatchStats(float remainingSec, int leaks, ScoreMath.BattleScore score)
             {
                 RemainingSec = remainingSec; Leaks = leaks;
                 HasBreakdown = true;
                 TimeScore = score.Time; StressScore = score.Stress; KillScore = score.Kill;
-                TimeBudget = timeBudget; StressBudget = stressBudget;
             }
         }
 
@@ -139,15 +134,11 @@ namespace Wassup.UI
 
         // battle-score-formula unit 4 — 점수 3축 분해를 실은 경로. 총점은 score.Total 이라
         // 따로 받지 않는다.
-        public void ShowDefeat(ScoreMath.BattleScore score, float remainingSec, int leaks,
-            int timeBudget, int stressBudget)
-            => ShowResult("패배", score.Total,
-                new MatchStats(remainingSec, leaks, score, timeBudget, stressBudget));
+        public void ShowDefeat(ScoreMath.BattleScore score, float remainingSec, int leaks)
+            => ShowResult("패배", score.Total, new MatchStats(remainingSec, leaks, score));
 
-        public void ShowVictory(ScoreMath.BattleScore score, float remainingSec, int leaks,
-            int timeBudget, int stressBudget)
-            => ShowResult("승리", score.Total,
-                new MatchStats(remainingSec, leaks, score, timeBudget, stressBudget));
+        public void ShowVictory(ScoreMath.BattleScore score, float remainingSec, int leaks)
+            => ShowResult("승리", score.Total, new MatchStats(remainingSec, leaks, score));
 
         private void ShowResult(string resultText, int playerScore, MatchStats? stats)
         {
@@ -167,13 +158,14 @@ namespace Wassup.UI
             // any layout code here.
             if (stats.HasValue && stats.Value.HasBreakdown)
             {
-                // 예산 소모 모델이라 "얻은 점수 / 예산" 이 그대로 피드백이 된다.
-                // 처치만 분모가 없다 — 킬 만점은 스폰 구성에 의존해 상수가 아니다(계약 7).
+                // 분모(예산 만점)를 붙이지 않는다. 시간 만점은 t=0 클리어를 전제한 값이라
+                // **현실적으로 도달 불가**인데, 그런 수치를 옆에 세우면 항상 한참 못 미친
+                // 것처럼 보인다. 축 사이 상대 비교는 세 줄이 나란히 있는 것으로 충분하다.
                 var s = stats.Value;
                 SetChips(new[]
                 {
-                    ("시간", $"{s.TimeScore:N0} / {s.TimeBudget:N0}"),
-                    ("스트레스", $"{s.StressScore:N0} / {s.StressBudget:N0}"),
+                    ("시간", $"{s.TimeScore:N0}"),
+                    ("스트레스", $"{s.StressScore:N0}"),
                     ("처치", $"{s.KillScore:N0}"),
                 });
             }

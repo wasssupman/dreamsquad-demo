@@ -3653,11 +3653,11 @@ namespace Wassup.Bridge
                 {
                     _resultShown = true;
                     _running = false;
-                    var score = CalculateBattleScore(defeated: true, out int timeBudget, out int stressBudget);
+                    var score = CalculateBattleScore(defeated: true);
                     int playerScore = score.Total;
                     GameManager.Instance?.Logger?.SetResult("defeat", _goalReachedCount);
                     GameManager.Instance?.Logger?.SetScore(playerScore, score.Time, score.Stress, score.Kill);
-                    BeginTally(win: false, score, RemainingBattleSeconds(), timeBudget, stressBudget);
+                    BeginTally(win: false, score, RemainingBattleSeconds());
                     Debug.Log("[BattleBridge] DEFEAT triggered.");
                     return;
                 }
@@ -3680,11 +3680,11 @@ namespace Wassup.Bridge
             _running = false;
             // 버팀 승리는 패배가 아니다. defeated:true 를 넘기면 스트레스점수까지 죽는다 —
             // 남은 시간이 0 이라 시간점수는 이미 자동으로 0 이다.
-            var score = CalculateBattleScore(defeated: false, out int timeBudget, out int stressBudget);
+            var score = CalculateBattleScore(defeated: false);
             int playerScore = score.Total;
             GameManager.Instance?.Logger?.SetResult("victory_timeout", _goalReachedCount);
             GameManager.Instance?.Logger?.SetScore(playerScore, score.Time, score.Stress, score.Kill);
-            BeginTally(win: true, score, 0f, timeBudget, stressBudget); // timer expired → 0 left
+            BeginTally(win: true, score, 0f); // timer expired → 0 left
             Debug.Log("[BattleBridge] VICTORY — timer expired, player survived.");
         }
 
@@ -3699,11 +3699,11 @@ namespace Wassup.Bridge
 
             _resultShown = true;
             _running = false;
-            var score = CalculateBattleScore(defeated: false, out int timeBudget, out int stressBudget);
+            var score = CalculateBattleScore(defeated: false);
             int playerScore = score.Total;
             GameManager.Instance?.Logger?.SetResult("victory", _goalReachedCount);
             GameManager.Instance?.Logger?.SetScore(playerScore, score.Time, score.Stress, score.Kill);
-            BeginTally(win: true, score, RemainingBattleSeconds(), timeBudget, stressBudget);
+            BeginTally(win: true, score, RemainingBattleSeconds());
             Debug.Log("[BattleBridge] VICTORY — all attack units defeated.");
         }
 
@@ -3727,8 +3727,7 @@ namespace Wassup.Bridge
         //
         // Tally 동안 전투 HUD 중 ScoreHud 만 살아남는다(연출의 주인공). NextWaveDock·
         // CostDisplay 등은 `== GamePhase.Battle` 을 보므로 자동으로 꺼진다.
-        private void BeginTally(bool win, ScoreMath.BattleScore score, float remainingSec,
-            int timeBudget, int stressBudget)
+        private void BeginTally(bool win, ScoreMath.BattleScore score, float remainingSec)
         {
             GameManager.Instance?.SetPhase(GamePhase.Tally);
             ReportMatchResult(score.Total);
@@ -3737,21 +3736,20 @@ namespace Wassup.Bridge
             // 뷰가 없다고 게임이 멈춰서는 안 된다.
             if (scoreTallyView == null)
             {
-                FinishTally(win, score, remainingSec, timeBudget, stressBudget);
+                FinishTally(win, score, remainingSec);
                 return;
             }
             scoreTallyView.Play(score, scoreHud,
-                () => FinishTally(win, score, remainingSec, timeBudget, stressBudget));
+                () => FinishTally(win, score, remainingSec));
         }
 
         // 연출 종료 → 결과 화면. Result 페이즈로 넘어가며 남은 전투 HUD 가 정리된다.
         // RESTART 는 Result → Placement → Battle 로 되돌아간다(BeginPlacementPhase).
-        private void FinishTally(bool win, ScoreMath.BattleScore score, float remainingSec,
-            int timeBudget, int stressBudget)
+        private void FinishTally(bool win, ScoreMath.BattleScore score, float remainingSec)
         {
             GameManager.Instance?.SetPhase(GamePhase.Result);
-            if (win) resultScreen?.ShowVictory(score, remainingSec, _goalReachedCount, timeBudget, stressBudget);
-            else resultScreen?.ShowDefeat(score, remainingSec, _goalReachedCount, timeBudget, stressBudget);
+            if (win) resultScreen?.ShowVictory(score, remainingSec, _goalReachedCount);
+            else resultScreen?.ShowDefeat(score, remainingSec, _goalReachedCount);
         }
 
         // battle-score-formula unit 3 — 예산 소모 모델. 계산 자체는 ScoreMath 순수 함수가
@@ -3759,12 +3757,7 @@ namespace Wassup.Bridge
         //
         // stressLimit 은 deck.defeatGoalReachedCount **원본값**이다(계약 8).
         // EffectiveLeakLimit()(계약 차감 후)이 아니다 — 차감분은 누적 쪽에 들어간다.
-        //
-        // unit 4 — 예산 만점도 함께 돌려준다. 결과 화면이 "얻은 점수 / 예산" 으로 보여주려면
-        // 분모가 필요한데, 그 값을 아는 건 여기(SO + 덱)뿐이다. **킬 예산은 돌려주지 않는다** —
-        // 스폰 구성에 의존해 상수가 아니다(계약 7).
-        private ScoreMath.BattleScore CalculateBattleScore(bool defeated,
-            out int timeBudget, out int stressBudget)
+        private ScoreMath.BattleScore CalculateBattleScore(bool defeated)
         {
             int perSec = 100, perStress = 900;
             if (scoreRules != null)
@@ -3782,8 +3775,6 @@ namespace Wassup.Bridge
             int stressLimit = deck != null ? deck.defeatGoalReachedCount : 0;
             int stressAccrued = _goalReachedCount + _leakAllowancePenalty;
 
-            timeBudget = Mathf.RoundToInt(_timerDuration) * perSec;
-            stressBudget = stressLimit * perStress;
 
             return ScoreMath.Evaluate(remainingMs, stressAccrued, stressLimit, _killScoreTotal,
                 defeated, perSec, perStress);
