@@ -13,16 +13,15 @@ namespace Wassup.UI.Tutorial
     {
         private enum CoreStep { None, Goal, Pick, Place, WaitingAim, ClassHint, Start }
 
-        // unit 11 — 배지 글리프를 앵커로 박는다. 트레이 배지는 `원/수/근/술/보` 단일
-        // 글자라(BattleHudTrayConfig.roles) 클래스 이름만으로는 읽어도 트레이에서 못 찾는다.
-        // 캐스터는 4종 중 BlockingCaster 만 경로를 막고 나머지는 장판이라 둘 다 적는다.
+        // unit 11 — 사용자 작성 문구. 임의로 고치지 말 것(2026-07-21 되돌림 지시).
+        // 파이터 줄만 사용자 승인 하에 추가했다.
         private const string ClassHintText =
-            "수 가디언 · 적을 붙잡아 두는 방패\n" +
-            "근 파이터 · 붙어서 때리는 주먹\n" +
-            "원 레인저 · 멀리서 쏘는 사수\n" +
-            "술 캐스터 · 바닥에 장판·바리케이드 설치\n" +
-            "보 서포터 · 치유와 강화로 아군 보조\n" +
-            "상황에 맞게 골라서 배치해보세요.";
+            "가디언: 공격 시 적을 어그로 하는 탱커\n" +
+            "파이터: 근접에서 싸우는 공격수\n" +
+            "레인저: 원거리에서 강한 공격\n" +
+            "캐스터: 적 이동경로에 방해물을 설치\n" +
+            "서포터: 힐러, 버퍼 등 전투 보조\n" +
+            "상황에 맞게 유닛을 골라서 배치해보세요.";
 
         // 탭 수신이 실패하면 Start 잠금이 영영 안 풀려 첫 판이 Skip 외 탈출 불가가 된다.
         private const float ClassHintFallbackSeconds = 12f;
