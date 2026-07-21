@@ -2,19 +2,14 @@ using UnityEngine;
 
 namespace Wassup.Data
 {
-    // season-gimmick-clockout — "집에 가도 되나요?" 기믹 (퇴근 → 사직서 → 메테오).
-    // 룰1: 전투 시작 후 배치 유닛이 clockOutSeconds 지나면 배치 타일에 사직서 스폰 + 퇴근(사망).
+    // season-gimmick-clockout — "집에 가도 되나요?" 기믹 (사망 → 사직서 → 메테오).
+    // 룰1: 배치 유닛이 (원인 불문) 사망하면 그 배치 타일에 사직서를 드랍한다. (unit 8 재설계 —
+    //      강제 퇴근 10초 타이머는 폐기; 배치 유닛이 강제로 사라지는 감성 문제 해소.)
     // 룰2: 사직서 resignationThreshold 장 모이면 소모 + Walk 타일 meteorCount 곳에 메테오 순차 낙하(적만).
     // ECS 소비는 ClockOutGimmickConfig 로 복사돼 들어간다 (BattleBridge 주입 seam).
     [CreateAssetMenu(fileName = "Gimmick_ClockOut", menuName = "Wassup/Gimmick/ClockOut", order = 42)]
     public sealed class ClockOutGimmickData : GimmickData
     {
-        [Header("룰1 — 퇴근 → 사직서")]
-        [Tooltip("전투 시작(running) 후 배치 유닛이 퇴근(사망)하기까지 (초)")]
-        public float clockOutSeconds = 10f;
-        [Tooltip("퇴근 1회당 플레이어에게 환급되는 코스트 (unit 6)")]
-        public int clockOutCostRefund = 1;
-
         [Header("룰2 — 사직서 → 메테오")]
         [Tooltip("메테오를 발동시키는 사직서 누적 수 (도달 시 그만큼 소모)")]
         public byte resignationThreshold = 5;

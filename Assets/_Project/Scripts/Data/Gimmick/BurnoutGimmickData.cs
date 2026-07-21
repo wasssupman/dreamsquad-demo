@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace Wassup.Data
 {
-    // gimmick-match-integration — "워라벨 지켜주시죠?" 기믹 (번아웃).
+    // gimmick-match-integration — "불금은 없습니다!" 기믹 (번아웃).
     // 룰: 배치 유닛이 fatigueInterval 마다 피로도 +fatigueAmount, 임계 도달 시 번아웃
     //     (임계/번아웃 효과는 fatigueStack SO 의 ThresholdRule 이 보유).
     // ECS 소비는 BurnoutGimmickConfig 로 복사돼 들어간다 (BattleBridge 주입 seam).
