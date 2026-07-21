@@ -132,6 +132,29 @@ namespace Wassup.Battle.Combat.Projectile
                         break;
                     }
 
+                    case MovementKind.GrenadeToCell:
+                    {
+                        // bomb-thrower-defender unit 1 — roll to the cell-locked
+                        // impact over flightTime (request-carried, fixed), then hold
+                        // through fuseSec, arriving at flightTime + fuseSec. The roll
+                        // reuses BallisticArc.ArcPosition (arcHeight≈0 = ground roll);
+                        // at t=1 (fuse) ArcPosition returns impact, so position stays
+                        // pinned at the cell while the fuse burns.
+                        float elapsed = projectile.ValueRO.elapsed + dt;
+                        float flightTime = projectile.ValueRO.flightTime;
+                        float t = flightTime > 0f ? math.saturate(elapsed / flightTime) : 1f;
+                        transform.ValueRW.Position = BallisticArc.ArcPosition(
+                            projectile.ValueRO.origin, projectile.ValueRO.impact,
+                            projectile.ValueRO.arcHeight, t);
+                        projectile.ValueRW.elapsed = elapsed;
+                        // Arrival = travel + fuse both elapsed. HitSystem resolves the
+                        // TileAoe payload only once impactReached — it never sees the
+                        // fuse (Movement owns the timing, contract 3).
+                        if (elapsed >= flightTime + projectile.ValueRO.fuseSec)
+                            projectile.ValueRW.impactReached = true;
+                        break;
+                    }
+
                     default:
                         // Unhandled movement kind: destroy rather than leak an
                         // immortal entity (no position, no arrival, no resolve). A

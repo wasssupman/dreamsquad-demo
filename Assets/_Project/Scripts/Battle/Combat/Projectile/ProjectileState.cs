@@ -55,6 +55,13 @@ namespace Wassup.Battle.Combat.Projectile
         public float elapsed;
         public float arcHeight;
 
+        // ── Grenade fuse (MovementKind.GrenadeToCell, bomb-thrower-defender) ──
+        // Extra hold at the cell after travel completes (elapsed >= flightTime)
+        // before arrival fires at elapsed >= flightTime + fuseSec. Default 0 = no
+        // fuse (every non-grenade arm arrives exactly at flightTime). Movement owns
+        // this timing; ProjectileHitSystem never sees it (contract 3).
+        public float fuseSec;
+
         // ── Directional trajectory (MovementKind.DirectionalLinear) ──────────
         // direction: normalized fire vector on the sim plane, locked at launch
         // (facing is immutable, so it never changes in flight). maxDistance:

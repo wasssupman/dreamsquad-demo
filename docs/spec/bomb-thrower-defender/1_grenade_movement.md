@@ -26,6 +26,8 @@ travel(n) 동안 셀로 구르고, fuse(m) 동안 착지 정지, `n+m` 에서 �
 
 ## 완료 기준
 
-- [ ] compile 0 에러.
+- [x] compile 0 에러.
 - [ ] (unit 4 발사 배선 후 통합 Play) 폭탄이 n초 구른 뒤 착지, m초 후 도착 플래그 → 폭발. 거리 N 달라도 travel 은 n초 고정.
-- [ ] 기존 투사체(Homing/Ballistic/SkyFall/Directional) 회귀 없음 — `fuseSec` 기본 0, GrenadeToCell 외 경로 무영향.
+- [x] 기존 투사체(Homing/Ballistic/SkyFall/Directional) 회귀 없음 — `fuseSec` 기본 0, GrenadeToCell 외 경로 무영향.
+
+확인 2026-07-21 · compile 0 + 투사체 파이프라인 34/34 green(ProjectileSystem·TileAoe·SkyFall, 회귀 없음). Play 는 unit 6 통합.

@@ -40,6 +40,11 @@ namespace Wassup.Battle.Combat.Projectile
         // so the drain cannot derive it from speed; Meteor maps warningSec here.
         public float flightTime;
 
+        // ── Grenade fuse (bomb-thrower-defender unit 1) ──────────────────────
+        // Extra hold after travel before the GrenadeToCell arm arrives. Copied
+        // verbatim onto ProjectileState. Default 0 = no fuse (non-grenade arms).
+        public float fuseSec;
+
         // ── Directional trajectory (defender-directional-volley unit 1) ──────
         // Fire direction (unit vector on the sim plane) + max flight distance
         // (world units). Zero on homing/ballistic requests — ignored there. The

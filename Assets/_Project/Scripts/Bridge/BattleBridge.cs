@@ -3089,6 +3089,20 @@ namespace Wassup.Bridge
                 state.arcHeight = req.arcHeight > 0f ? req.arcHeight
                     : (projData != null ? projData.dropHeight : 0f);
             }
+            else if (req.movement == MovementKind.GrenadeToCell)
+            {
+                // bomb-thrower-defender unit 1 — roll to a fixed cell then fuse.
+                // flightTime (travelSec) is request-carried & fixed (SkyFall 관례,
+                // 거리 무관) — NOT BallisticArc.FlightTime(속도 유도)이다(계약 2).
+                // arcHeight≈0 keeps it on the ground (rolling look). Same spawn-
+                // height plane as ballistic so the arc's linear Y stays flat.
+                state.origin = spawnPos;
+                state.impact = new float3(req.impact.x, spawnHeight, req.impact.z);
+                state.impactTileRange = req.impactTileRange;
+                state.flightTime = math.max(req.flightTime, 0f);
+                state.fuseSec = math.max(req.fuseSec, 0f);
+                state.arcHeight = req.arcHeight;
+            }
             _em.AddComponentData(entity, state);
 
             // defender-directional-volley unit 2 — 경로 스윕은 이미 맞힌 대상을
