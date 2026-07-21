@@ -26,6 +26,9 @@ namespace Wassup.Data
             public Color highlight;
             public float highlightHeight;
             public Color damageTrail;
+            // shield-guardian-defender unit 2 — 실드 세그먼트 색(HP fill 끝에 이어붙는
+            // 오버레이). struct 라 asset 에 값 필수 — 미기재 시 (0,0,0,0)=투명 함정.
+            public Color shield;
             [Range(0f, 1f)] public float fullHealthAlpha;
             public bool clippedEnds;
         }

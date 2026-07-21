@@ -13,9 +13,12 @@ namespace Wassup.Presentation
         private RectTransform _shadow;
         private RectTransform _trail;
         private RectTransform _fill;
+        // shield-guardian-defender unit 2 — HP fill 끝에 이어붙는 실드 세그먼트.
+        private RectTransform _shield;
         private Image _trailImage;
         private Image _shadowImage;
         private Image _fillImage;
+        private Image _shieldImage;
         private Image _highlightImage;
         private CanvasGroup _barCanvasGroup;
         private readonly List<(RectTransform root, Image frame, Image art)> _cards = new();
@@ -24,13 +27,16 @@ namespace Wassup.Presentation
         private bool _defender;
         private float _ratio = 1f;
         private float _trailRatio = 1f;
+        // 계약 8 동적 정규화 — HP+실드 > 100% 면 두 세그먼트를 함께 압축(분모 =
+        // max(1, hp+shield)). 풀피+실드도 실드가 항상 보인다.
+        private float _displayScale = 1f;
         private float _barInnerWidth;
         private UnitOverheadUiStyle _style;
         private UnitOverheadUiStyle.BarSkin _skin;
 
         public void Show(Vector2 anchorLocal, float tileWidthReference, bool defender, float ratio,
             IReadOnlyList<DreamcatcherCard> cards, UnitOverheadUiStyle style,
-            UnitOverheadSpriteSet sprites, bool resetHealth)
+            UnitOverheadSpriteSet sprites, bool resetHealth, float shieldRatio = 0f)
         {
             if (style == null || sprites == null) return;
             if (!_built || _defender != defender || _sprites != sprites) Rebuild(defender, style, sprites);
@@ -39,6 +45,9 @@ namespace Wassup.Presentation
             _root.anchoredPosition = anchorLocal;
 
             ratio = Mathf.Clamp01(ratio);
+            shieldRatio = Mathf.Max(0f, shieldRatio);
+            float displayTotal = ratio + shieldRatio;
+            _displayScale = displayTotal > 1f ? 1f / displayTotal : 1f;
             if (resetHealth)
             {
                 _ratio = ratio;
@@ -55,14 +64,26 @@ namespace Wassup.Presentation
             _shadowImage.color = _skin.shadow;
             _barInnerWidth = Mathf.Max(1f, width - 2f * _skin.inset);
             float innerHeight = Mathf.Max(1f, _skin.height - 2f * _skin.inset);
-            SetInnerRect(_trail, _barInnerWidth * _trailRatio, innerHeight, _skin.inset);
-            SetInnerRect(_fill, _barInnerWidth * ratio, innerHeight, _skin.inset);
+            SetInnerRect(_trail, _barInnerWidth * _trailRatio * _displayScale, innerHeight, _skin.inset);
+            SetInnerRect(_fill, _barInnerWidth * ratio * _displayScale, innerHeight, _skin.inset);
+            // 실드 세그먼트 — HP fill 끝에서 시작(가림 없음), 폭은 같은 스케일.
+            bool hasShield = shieldRatio > 0.0001f;
+            _shield.gameObject.SetActive(hasShield);
+            if (hasShield)
+            {
+                _shield.sizeDelta = new Vector2(
+                    Mathf.Max(0f, _barInnerWidth * shieldRatio * _displayScale), innerHeight);
+                _shield.anchoredPosition = new Vector2(
+                    _skin.inset + _barInnerWidth * ratio * _displayScale, 0f);
+                _shieldImage.color = _skin.shield;
+            }
             _highlightImage.rectTransform.sizeDelta = new Vector2(_barInnerWidth, _skin.highlightHeight);
             _highlightImage.rectTransform.anchoredPosition = new Vector2(_skin.inset, -_skin.inset);
             _fillImage.color = UnitOverheadUiStyle.EvaluateFill(_skin, ratio);
             _trailImage.color = _skin.damageTrail;
             _highlightImage.color = _skin.highlight;
-            _barCanvasGroup.alpha = ratio >= 0.999f ? _skin.fullHealthAlpha : 1f;
+            // 실드 보유 중엔 만피 감쇠를 끈다 — 실드가 있는 유닛은 바가 정보를 담는다.
+            _barCanvasGroup.alpha = (ratio >= 0.999f && !hasShield) ? _skin.fullHealthAlpha : 1f;
             if (ratio < _ratio) _trailRatio = Mathf.Max(_trailRatio, _ratio);
             else if (ratio > _trailRatio) _trailRatio = ratio;
             _ratio = ratio;
@@ -81,7 +102,7 @@ namespace Wassup.Presentation
             if (!_built || _style == null || _trailRatio <= _ratio) return;
             _trailRatio = Mathf.MoveTowards(_trailRatio, _ratio,
                 _style.DamageTrailCatchup * Time.unscaledDeltaTime);
-            SetInnerRect(_trail, _barInnerWidth * _trailRatio,
+            SetInnerRect(_trail, _barInnerWidth * _trailRatio * _displayScale,
                 Mathf.Max(1f, _skin.height - 2f * _skin.inset), _skin.inset);
         }
 
@@ -125,6 +146,11 @@ namespace Wassup.Presentation
             _fill.anchorMin = _fill.anchorMax = new Vector2(0f, 0.5f);
             _fill.pivot = new Vector2(0f, 0.5f);
             _fillImage = AddImage(_fill.gameObject, fillSprite, Image.Type.Sliced);
+            _shield = MakeRect("Shield", _bar);
+            _shield.anchorMin = _shield.anchorMax = new Vector2(0f, 0.5f);
+            _shield.pivot = new Vector2(0f, 0.5f);
+            _shieldImage = AddImage(_shield.gameObject, fillSprite, Image.Type.Sliced);
+            _shield.gameObject.SetActive(false);
 
             var hi = MakeRect("Highlight", _bar);
             hi.anchorMin = hi.anchorMax = new Vector2(0f, 1f);

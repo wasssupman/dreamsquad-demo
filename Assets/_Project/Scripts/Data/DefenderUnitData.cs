@@ -82,6 +82,14 @@ namespace Wassup.Data
         public int hazardFootprintWidth = 1;
         public int hazardFootprintHeight = 1;
 
+        // shield-guardian-defender unit 1 — A초마다 공격범위(attackRange 재사용,
+        // 계약 5) 내 아군 defender C명에게 실드 B. cooldown 0 = 비활성.
+        [Header("Shield Cast")]
+        public float shieldCastCooldown;    // A. 0 = disabled
+        public float shieldAmount;          // B. 출처당 상한(같은 출처 max 갱신)
+        public int shieldTargetCount = 1;   // C
+        public ShieldTargetFilter shieldTargetFilter;
+
         [Header("Rarity")]
         public DefenderRarity rarity = DefenderRarity.Common;
 
