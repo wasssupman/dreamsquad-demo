@@ -54,8 +54,11 @@ namespace Wassup.Battle.Effects
             ecb.Playback(state.EntityManager);
             ecb.Dispose();
 
-            // pass 1 이 만든 IncomingHeal 버퍼를 이 프레임에서 append 하려면 lookup 갱신.
+            // pass 1 의 구조 변경(HeatAccrual/IncomingHeal 부착)은 기존 BufferLookup 을 무효화한다.
+            // 두 lookup 모두 갱신 — 특히 같은 프레임에 새 유닛(웨이브) 스폰 + 기존 과열 유닛의
+            // 데미지 append 가 겹치면 stale _damageLookup 이 잘못된 버퍼를 건드릴 수 있다.
             _healLookup.Update(ref state);
+            _damageLookup.Update(ref state);
 
             // Pass 2 — 주기마다 열기 +1 → HeatMath.Delta → 부호별 채널 append.
             float dt = SystemAPI.Time.DeltaTime;
