@@ -11,9 +11,9 @@
 
 ## 전제 정정 — HUD 점수는 킬점수가 아니었다
 
-| | 현재 값 |
+| | **착수 시점** 값 (지금은 통일됨) |
 |---|---|
-| HUD 점수 | 처치 1기당 **+10** (`ScoreHudView.pointsPerKill`) |
+| HUD 점수 | 처치 1기당 **+10** (`ScoreHudView.pointsPerKill` — 지금은 삭제) |
 | 킬점수 | 잡몹 **100** / 보스 **2,000** (`AttackUnitData.killScore`) |
 
 74기 전멸 시 HUD 는 740, 킬점수는 11,200 — **15배 차이**다. 이대로 연출을 붙이면
@@ -92,6 +92,8 @@
 마지막 킬의 여운"** 이다.
 
 ## 후속 후보 (범위 밖)
+
+**`docs/spec/README.md` 의 Follow-up Backlog → "점수 시스템" 그룹으로 이관됨** (2026-07-21).
 
 - 카메라 연출(줌인·킥) 동반 — `CameraDirector` 가 있어 가능하지만 별도 튜닝이 필요하다
 - 축별 사운드 (`SoundManager` 틱 상승음 존재)

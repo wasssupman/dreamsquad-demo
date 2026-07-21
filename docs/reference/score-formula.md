@@ -84,8 +84,8 @@
 | 값 | 위치 |
 |---|---|
 | 초당 100 · 스트레스 점당 900 | `Data/Config/ScoreRules.asset` |
-| 적별 킬 값 | `Data/Enemies/*.asset` → `killScore` |
-| 스트레스 한계 10 | `Data/Decks/WaveA.asset` → `defeatGoalReachedCount` |
+| 적별 킬 값 | `Data/Enemies/*.asset` → `killScore`. **잡몹 100 은 코드 기본값**(`AttackUnitData.cs`)이라 에셋엔 안 적혀 있다 — 보스만 2,000 으로 명시돼 있다 |
+| 스트레스 한계 10 | `Scripts/Data/Decks/WaveA.asset` → `defeatGoalReachedCount` |
 | 제한시간 180초 | 같은 파일 → `timerDurationSec` |
 
 > **한계와 점당 점수는 같이 움직여야 한다.** 둘을 곱한 게 예산이라, 한계만 30으로 되돌리면
