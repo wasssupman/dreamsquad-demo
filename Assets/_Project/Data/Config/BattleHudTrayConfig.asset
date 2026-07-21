@@ -36,9 +36,9 @@ MonoBehaviour:
   cellRowGap: 2
   wellPadding: {x: 9, y: 8}
   wellBackColor: {r: 0.04, g: 0.06, b: 0.11, a: 0.92}
-  wellLiquidColor: {r: 0.74, g: 0.34, b: 0.04, a: 1}
-  wellLiquidFullColor: {r: 1, g: 0.85, b: 0.25, a: 1}
-  wellSurfaceColor: {r: 1, g: 0.95, b: 0.7, a: 0.85}
+  wellLiquidColor: {r: 0.08, g: 0.42, b: 0.68, a: 1}
+  wellLiquidFullColor: {r: 0.45, g: 0.84, b: 1, a: 1}
+  wellSurfaceColor: {r: 0.88, g: 0.98, b: 1, a: 0.95}
   wellLiquidMaterial: {fileID: 2100000, guid: 5ecd1f6ebf5b243268c5db1f265a6847, type: 2}
   cellNumberFontSize: 64
   nameBandHeight: 36

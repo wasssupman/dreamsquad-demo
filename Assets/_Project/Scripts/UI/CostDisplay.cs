@@ -52,6 +52,11 @@ namespace Wassup.UI
         private static readonly int LiquidTopId = Shader.PropertyToID("_LiquidTop");
         private static readonly int SurfaceId = Shader.PropertyToID("_SurfaceColor");
         private static readonly int AspectId = Shader.PropertyToID("_Aspect");
+        private static readonly int RadiusId = Shader.PropertyToID("_Radius");
+
+        // 용기 배경·테두리·액체 클립이 공유하는 코너 반경(px). 세 곳이 어긋나면
+        // 모서리에 어두운 틈이 생긴다.
+        private const float WellCornerRadius = 8f;
         private TextMeshProUGUI _pulseLabel;
         private Coroutine _pulse;
 
@@ -103,6 +108,10 @@ namespace Wassup.UI
             float h = _wellRect.rect.height;
             if (w <= 1f || h <= 1f) return;
             _liquidMaterial.SetFloat(AspectId, w / h);
+            // 액체의 라운드 반경을 용기 배경/테두리와 정확히 일치시킨다. 어긋나면
+            // 그 차이만큼 어두운 배경이 모서리에 드러난다(액체가 덜 채워진 것처럼 보임).
+            // 셰이더의 _Radius 는 높이 기준 정규화값이라 픽셀 반경을 높이로 나눈다.
+            _liquidMaterial.SetFloat(RadiusId, WellCornerRadius / h);
         }
 
         // ── 표시 상태 ────────────────────────────────────────────────
@@ -563,7 +572,7 @@ namespace Wassup.UI
             _wellRect.offsetMax = new Vector2(-wellPad.x, -wellPad.y);
 
             var wellBack = wellGO.GetComponent<Image>();
-            wellBack.sprite = UiRoundedSprite.Make(8f, 0f, Color.white, Color.clear);
+            wellBack.sprite = UiRoundedSprite.Make(WellCornerRadius, 0f, Color.white, Color.clear);
             wellBack.type = Image.Type.Sliced;
             wellBack.color = trayConfig != null ? trayConfig.wellBackColor : WellBackFallback;
             wellBack.raycastTarget = false;
@@ -622,7 +631,7 @@ namespace Wassup.UI
             frt.offsetMin = _wellRect.offsetMin;
             frt.offsetMax = _wellRect.offsetMax;
             var frameImg = frameGO.GetComponent<Image>();
-            frameImg.sprite = UiRoundedSprite.Make(8f, 2f, Color.clear,
+            frameImg.sprite = UiRoundedSprite.Make(WellCornerRadius, 2f, Color.clear,
                 trayConfig != null ? trayConfig.fallbackBorder : new Color(0.94f, 0.72f, 0.24f, 1f));
             frameImg.type = Image.Type.Sliced;
             frameImg.raycastTarget = false;

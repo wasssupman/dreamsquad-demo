@@ -402,6 +402,11 @@ namespace Wassup.UI
             return target != null;
         }
 
+        // 구매 가능한 슬롯 가격의 색 = 코스트 셀 물통의 밝은 쪽 색(사용자 결정
+        // 2026-07-21). 두 숫자가 같은 자원을 가리킨다는 신호를 색으로 준다.
+        private Color AffordableCostColor =>
+            trayConfig != null ? trayConfig.wellLiquidFullColor : Color.white;
+
         // tray-cost-well unit 3 — 이름 밴드 클래스 틴트. role 배지가 사라지면서
         // 클래스를 가리키는 화면 앵커가 여기로 옮겨왔다(first-session-tutorial unit 11
         // 이 첫 배치 직후 5개 클래스 설명을 강제로 읽히는데, 대응물이 없으면 순수
@@ -450,7 +455,8 @@ namespace Wassup.UI
             numTmp.text = cost.ToString();
             numTmp.fontSize = trayConfig != null ? trayConfig.costFontSize : 18f;
             numTmp.fontStyle = FontStyles.Bold;
-            numTmp.color = Color.white;
+            // 코스트 셀 물통과 같은 색 — "이 숫자는 그 자원이다"를 색으로 잇는다.
+            numTmp.color = AffordableCostColor;
             numTmp.alignment = TextAlignmentOptions.Center; // 볼트가 빠져 좌측 여백이 불필요
             numTmp.textWrappingMode = TextWrappingModes.NoWrap;
             numTmp.raycastTarget = false;
@@ -504,7 +510,7 @@ namespace Wassup.UI
                 else if (v.slotBg != null)
                     v.slotBg.color = affordable ? v.slotBgBase : dim;
                 if (v.costText != null)
-                    v.costText.color = affordable ? Color.white : warn;
+                    v.costText.color = affordable ? AffordableCostColor : warn;
                 if (v.warnGlyph != null && v.warnGlyph.activeSelf != !affordable)
                     v.warnGlyph.SetActive(!affordable);
             }
