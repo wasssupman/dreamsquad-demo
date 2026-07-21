@@ -45,11 +45,13 @@ namespace Wassup.UI
         private RectTransform _wellRect;
         private Image _wellLiquid;
         private Material _liquidMaterial;
+        private bool _geometryPushed;
 
         private static readonly int FillId = Shader.PropertyToID("_Fill");
         private static readonly int LiquidBottomId = Shader.PropertyToID("_LiquidBottom");
         private static readonly int LiquidTopId = Shader.PropertyToID("_LiquidTop");
         private static readonly int SurfaceId = Shader.PropertyToID("_SurfaceColor");
+        private static readonly int AspectId = Shader.PropertyToID("_Aspect");
         private TextMeshProUGUI _pulseLabel;
         private Coroutine _pulse;
 
@@ -89,6 +91,18 @@ namespace Wassup.UI
             if (_cellLayout == null) return;
             _cellLayout.preferredWidth = width;
             _cellLayout.minWidth = width;
+            PushWellGeometry(); // 폭이 바뀌면 라운드 코너 종횡비도 다시 잡아야 한다
+        }
+
+        // 셰이더가 라운드 코너를 그리므로 종횡비를 알아야 한다 — 안 넘기면 코너가
+        // 타원으로 찌그러진다. 레이아웃이 아직 안 잡혔으면 다음 호출로 미룬다.
+        private void PushWellGeometry()
+        {
+            if (_liquidMaterial == null || _wellRect == null) return;
+            float w = _wellRect.rect.width;
+            float h = _wellRect.rect.height;
+            if (w <= 1f || h <= 1f) return;
+            _liquidMaterial.SetFloat(AspectId, w / h);
         }
 
         // ── 표시 상태 ────────────────────────────────────────────────
@@ -168,6 +182,7 @@ namespace Wassup.UI
 
             ApplyFill(fill);
             ApplyValue(curInt, runtime.Max);
+            if (!_geometryPushed) { _geometryPushed = true; PushWellGeometry(); }
 
             // sentinel — 첫 프레임/재동기화는 값만 흡수하고 연출 없이 지나간다.
             if (_prevInt < 0)
@@ -533,7 +548,11 @@ namespace Wassup.UI
         // 각성 게이지(AwakeningGaugeView)의 ChargeWell 구성을 세로 직사각으로 옮긴 것.
         private void BuildWell(Vector2 wellPad)
         {
-            var wellGO = new GameObject("Well", typeof(RectTransform), typeof(Image), typeof(Mask));
+            // Mask 를 쓰지 않는다. Mask 는 IMaterialModifier 라 스텐실 프로퍼티를 넣은
+            // 별도 머티리얼 인스턴스를 만들고, 그러면 원본에 쓴 _Fill 이 렌더에
+            // 전파되지 않아 물통이 굳는다(움직임 없는 단색 한 장이 된다).
+            // 라운드 코너는 셰이더가 SDF 로 직접 그린다.
+            var wellGO = new GameObject("Well", typeof(RectTransform), typeof(Image));
             wellGO.transform.SetParent(_cell.transform, false);
             _wellRect = (RectTransform)wellGO.transform;
             _wellRect.anchorMin = new Vector2(0f, 0f);
@@ -548,7 +567,6 @@ namespace Wassup.UI
             wellBack.type = Image.Type.Sliced;
             wellBack.color = trayConfig != null ? trayConfig.wellBackColor : WellBackFallback;
             wellBack.raycastTarget = false;
-            wellGO.GetComponent<Mask>().showMaskGraphic = true;
 
             var liquidGO = new GameObject("WellLiquid", typeof(RectTransform), typeof(Image));
             liquidGO.transform.SetParent(wellGO.transform, false);
@@ -582,6 +600,7 @@ namespace Wassup.UI
                 }
                 _liquidMaterial.SetFloat(FillId, 0f);
                 _wellLiquid.material = _liquidMaterial;
+                PushWellGeometry();
             }
             else
             {

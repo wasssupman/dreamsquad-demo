@@ -25,6 +25,12 @@ Shader "Wassup/UI/CostWell"
         _GlassStrength ("Glass Highlight", Range(0, 1)) = 0.22
         _DepthShade ("Depth Shading", Range(0, 1)) = 0.55
 
+        // 라운드 코너를 셰이더가 직접 그린다 — Mask 컴포넌트를 쓰면 안 되기 때문.
+        // Mask 는 IMaterialModifier 라 스텐실 프로퍼티를 넣은 별도 머티리얼 인스턴스를
+        // 만들고, 그러면 원본에 쓴 _Fill 이 렌더에 전파되지 않아 물통이 굳는다.
+        _Radius ("Corner Radius (0..0.5, 높이 기준)", Range(0, 0.5)) = 0.12
+        _Aspect ("Aspect (width/height)", Float) = 1
+
         _StencilComp ("Stencil Comparison", Float) = 8
         _Stencil ("Stencil ID", Float) = 0
         _StencilOp ("Stencil Operation", Float) = 0
@@ -106,6 +112,17 @@ Shader "Wassup/UI/CostWell"
             float _WaveSpeed;
             float _GlassStrength;
             float _DepthShade;
+            float _Radius;
+            float _Aspect;
+
+            // 라운드 사각 SDF. 종횡비를 보정해 코너가 타원으로 찌그러지지 않게 한다.
+            float RoundRectSDF(float2 uv, float aspect, float radius)
+            {
+                float2 half2 = float2(aspect, 1.0) * 0.5;
+                float2 p = (uv - 0.5) * float2(aspect, 1.0);
+                float2 q = abs(p) - half2 + radius;
+                return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - radius;
+            }
 
             v2f vert(appdata_t v)
             {
@@ -150,6 +167,10 @@ Shader "Wassup/UI/CostWell"
 
                 col.rgb = body;
                 col.a *= liquid;
+
+                // 라운드 코너 클립 (Mask 대체). fwidth 로 픽셀 폭 AA.
+                float sd = RoundRectSDF(uv, _Aspect, _Radius);
+                col.a *= saturate(0.5 - sd / max(fwidth(sd), 1e-5));
 
                 #ifdef UNITY_UI_CLIP_RECT
                 col.a *= UnityGet2DClipping(IN.worldPosition.xy, _ClipRect);
