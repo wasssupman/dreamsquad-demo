@@ -38,18 +38,24 @@ if (childForceExpand)
 DefenderPanel  (HLG: childForceExpandWidth = false, childControlWidth = true)
 ├─ CostCell        LayoutElement { preferredWidth = costCellWidth, flexibleWidth = 0 }
 │  ├─ CanvasGroup  (억제용 — SetActive 대신)
-│  ├─ Value        "4<size=52%>/10</size>", cellNumberFontSize
-│  ├─ EnergyIcon   ⚡ 1개 (HUD 전체에서 유일한 에너지 기호 — unit 3 이 슬롯 볼트를 지운다)
-│  └─ Well
-│     ├─ WellBack     Mask 용기 (라운드 사각)
-│     ├─ WellLiquid   Image.Type.Filled / Vertical / Bottom
-│     └─ WellSurface  액체 표면 하이라이트
+│  ├─ Well         셀 전체 (숫자 영역을 따로 떼지 않는다)
+│  │  ├─ WellBack     Mask 용기 (라운드 사각)
+│  │  ├─ WellLiquid   Image.Type.Filled / Vertical / Bottom — 반드시 각진 단색
+│  │  ├─ WellSurface  액체 표면 하이라이트
+│  │  └─ IdleGlyph    "대기" (하단)
+│  ├─ WellFrame    용기 윤곽 (Mask 밖 — 잘리면 안 됨)
+│  ├─ Value        셀 중앙, 액체 위에 겹침, 아웃라인+언더레이
+│  └─ GainDelta    "+N"
 └─ SlotContainer   LayoutElement { flexibleWidth = 1 }
    └─ (HLG: childForceExpandWidth = true — 자식이 동질이므로 유지)
       └─ Slot_* ×n
 ```
 
 바깥 HLG 는 force-expand 를 끄고 flexible 을 명시 부여, 안쪽 슬롯 컨테이너는 기존처럼 force-expand 로 슬롯을 균등 분할한다. `RebuildSlots` 의 파괴 범위가 `SlotContainer` 로 격리된다.
+
+**값은 물통 위에 겹쳐 중앙에 놓인다** (사용자 결정 2026-07-21). 셀이 154×134 로 좁아 상단 숫자 / 하단 물통으로 나누면 둘 다 작아지고 "차오르는" 실루엣이 사라진다 — 각성 게이지가 액체로 공간을 다 쓰고 값을 그 위에 얹는 것과 같은 구성이다. 겹치는 대가로 **아웃라인 + 언더레이가 필수**다(배경이 어두운 물통 ↔ 밝은 금색 액체로 극단을 오간다). ⚡ 아이콘은 두지 않는다 — 좁은 셀에서 중앙 정렬을 방해하고 물통 자체가 자원을 상징한다(사용자 결정).
+
+**액체 스프라이트는 반드시 각진 단색**이어야 한다. `Image.Type.Filled` 는 9-slice 를 무시하고 스프라이트를 rect 에 맞춰 통째로 늘린 뒤 자르므로, 라운드 스프라이트를 쓰면 코너 반경이 비례 확대돼 "늘어난 이미지"로 보인다. 둥근 모양은 `WellBack` 의 Mask 가 만든다.
 
 ### 부착 seam
 

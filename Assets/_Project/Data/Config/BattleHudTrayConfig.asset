@@ -39,7 +39,7 @@ MonoBehaviour:
   wellLiquidColor: {r: 0.95, g: 0.62, b: 0.15, a: 1}
   wellLiquidFullColor: {r: 1, g: 0.85, b: 0.25, a: 1}
   wellSurfaceColor: {r: 1, g: 0.95, b: 0.7, a: 0.85}
-  cellNumberFontSize: 52
+  cellNumberFontSize: 64
   nameBandHeight: 36
   nameTextHeight: 38
   unaffordableDim: {r: 0.42, g: 0.42, b: 0.45, a: 1}

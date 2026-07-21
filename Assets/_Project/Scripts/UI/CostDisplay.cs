@@ -209,7 +209,7 @@ namespace Wassup.UI
         private void ApplyValue(int shown, float max)
         {
             if (_valueText == null) return;
-            _valueText.text = $"{shown}<size=52%>/{Mathf.RoundToInt(max)}</size>";
+            _valueText.text = $"{shown}<size=58%>/{Mathf.RoundToInt(max)}</size>";
         }
 
         // 리젠이 멈춘 채 물통이 덜 찬 상태 = "충전 대기". 배치 페이즈에서 실제로
@@ -480,34 +480,18 @@ namespace Wassup.UI
             UiLayer.Apply(_cell);
         }
 
-        // 상단 행: ⚡ 아이콘 + "현재/최대".
+        // 값은 물통 위에 겹쳐 셀 중앙에 놓인다(각성 게이지와 같은 구성).
+        // ⚡ 아이콘은 두지 않는다 — 셀이 154px 로 좁아 중앙 정렬을 방해하고,
+        // 물통 자체가 자원을 상징한다(사용자 결정 2026-07-21).
         private void BuildValueRow(float numberH, float numberSize)
         {
-            float iconSize = Mathf.Min(28f, numberH - 12f);
-
-            var iconGO = new GameObject("EnergyIcon", typeof(RectTransform), typeof(Image));
-            iconGO.transform.SetParent(_cell.transform, false);
-            var irt = (RectTransform)iconGO.transform;
-            irt.anchorMin = new Vector2(0f, 1f);
-            irt.anchorMax = new Vector2(0f, 1f);
-            irt.pivot = new Vector2(0f, 1f);
-            irt.anchoredPosition = new Vector2(8f, -(numberH - iconSize) * 0.5f);
-            irt.sizeDelta = new Vector2(iconSize, iconSize);
-            var iconImg = iconGO.GetComponent<Image>();
-            iconImg.sprite = costEnergyIcon != null
-                ? costEnergyIcon
-                : UiRoundedSprite.Make(6f, 0f, WellLiquidFallback, WellLiquidFallback);
-            iconImg.preserveAspect = true;
-            iconImg.raycastTarget = false;
-
             var valueGO = new GameObject("Value", typeof(RectTransform));
             valueGO.transform.SetParent(_cell.transform, false);
             var vrt = (RectTransform)valueGO.transform;
-            vrt.anchorMin = new Vector2(0f, 1f);
-            vrt.anchorMax = new Vector2(1f, 1f);
-            vrt.pivot = new Vector2(0.5f, 1f);
-            vrt.offsetMin = new Vector2(8f + iconSize + 4f, -numberH);
-            vrt.offsetMax = new Vector2(-6f, 0f);
+            vrt.anchorMin = Vector2.zero;
+            vrt.anchorMax = Vector2.one;
+            vrt.offsetMin = new Vector2(6f, 6f);
+            vrt.offsetMax = new Vector2(-6f, -6f);
             _valueText = valueGO.AddComponent<TextMeshProUGUI>();
             if (numberFont != null) _valueText.font = numberFont;
             _valueText.richText = true;
@@ -518,19 +502,22 @@ namespace Wassup.UI
             _valueText.fontSizeMax = numberSize;
             _valueText.fontStyle = FontStyles.Bold;
             _valueText.color = ValueColor;
-            _valueText.alignment = TextAlignmentOptions.MidlineLeft;
+            _valueText.alignment = TextAlignmentOptions.Center;
             _valueText.textWrappingMode = TextWrappingModes.NoWrap;
             _valueText.raycastTarget = false;
             // 액체 위에 겹치므로 아웃라인 + 언더레이가 필수다. 물통이 가득 차면
             // 밝은 금색 위에 흰 글자가 놓여 아웃라인 없이는 안 읽힌다
             // (각성 게이지가 ApplyNumberOutline 을 두는 이유와 같다).
+            // 배경이 어두운 물통 ↔ 밝은 금색 액체로 극단을 오가므로 두껍게 간다.
             var mat = _valueText.fontMaterial;
             mat.EnableKeyword(ShaderUtilities.Keyword_Outline);
-            mat.SetColor(ShaderUtilities.ID_OutlineColor, new Color(0.05f, 0.07f, 0.12f, 1f));
-            mat.SetFloat(ShaderUtilities.ID_OutlineWidth, 0.2f);
-            mat.SetFloat(ShaderUtilities.ID_UnderlayOffsetX, 0.3f);
-            mat.SetFloat(ShaderUtilities.ID_UnderlayOffsetY, -0.3f);
-            mat.SetColor(ShaderUtilities.ID_UnderlayColor, new Color(0.02f, 0.03f, 0.06f, 0.85f));
+            mat.EnableKeyword(ShaderUtilities.Keyword_Underlay);
+            mat.SetColor(ShaderUtilities.ID_OutlineColor, new Color(0.04f, 0.05f, 0.09f, 1f));
+            mat.SetFloat(ShaderUtilities.ID_OutlineWidth, 0.3f);
+            mat.SetFloat(ShaderUtilities.ID_UnderlayOffsetX, 0.45f);
+            mat.SetFloat(ShaderUtilities.ID_UnderlayOffsetY, -0.45f);
+            mat.SetFloat(ShaderUtilities.ID_UnderlaySoftness, 0.3f);
+            mat.SetColor(ShaderUtilities.ID_UnderlayColor, new Color(0.01f, 0.02f, 0.04f, 0.95f));
         }
 
         // 외부 획득(AddCost) 시 숫자 위로 떠오르는 "+N".
@@ -563,10 +550,12 @@ namespace Wassup.UI
             var go = new GameObject("IdleGlyph", typeof(RectTransform));
             go.transform.SetParent(_wellRect, false);
             var rt = (RectTransform)go.transform;
-            rt.anchorMin = Vector2.zero;
-            rt.anchorMax = Vector2.one;
-            rt.offsetMin = Vector2.zero;
-            rt.offsetMax = Vector2.zero;
+            // 값이 셀 중앙을 쓰므로 글리프는 하단으로 비켜난다.
+            rt.anchorMin = new Vector2(0f, 0f);
+            rt.anchorMax = new Vector2(1f, 0f);
+            rt.pivot = new Vector2(0.5f, 0f);
+            rt.sizeDelta = new Vector2(0f, 20f);
+            rt.anchoredPosition = new Vector2(0f, 5f);
             var tmp = go.AddComponent<TextMeshProUGUI>();
             if (numberFont != null) tmp.font = numberFont;
             tmp.text = "대기";
