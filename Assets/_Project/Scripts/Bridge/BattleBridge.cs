@@ -267,6 +267,11 @@ namespace Wassup.Bridge
         private WavePlanAsset _authoredPlan;
         private bool _usingAuthoredPlan;
         private int _nextWaveIndex;
+        // wave-pattern unit 9 — Next Wave 강제 호출로 앞당긴 누적 시간(앞당김이므로 음수).
+        // 플랜의 triggerTimeSec 자체는 불변(브리핑 스트립·로그의 source of truth)이고,
+        // 런타임 스케줄만 이 오프셋으로 민다. 남은 웨이브 전체가 같은 값만큼 이동하므로
+        // 웨이브 간 간격이 보존되고, 강제 호출 뒤 다음 웨이브는 "호출 시점 + 원래 간격"에 나온다.
+        private float _waveTimeShift;
         private int _goalReachedCount;
         // subconscious-curse-expansion unit 1 (몽마의 계약) — 유출 허용치 선불 지불의
         // 런타임 오프셋. SO(deck.defeatGoalReachedCount)는 절대 불변 — 직접 감소시키면
@@ -1408,6 +1413,7 @@ namespace Wassup.Bridge
             // time-manager Unit 3 — 시간 상태도 매치와 함께 리셋.
             _battleClock = 0.0;
             _killScoreTotal = 0; // battle-score-formula unit 2 — 계약 9 (시계와 짝)
+            _waveTimeShift = 0f; // wave-pattern unit 9 — 계약 9 (시계와 짝)
             _battleTimeScaleEntity = Entity.Null;
             // range-preview unit 3 — 매치 종료 시 격자 표시 무조건 해제(비행 중
             // 종료로 impact drain 이 못 지운 텔레그래프 잔상 방지).
@@ -1517,6 +1523,7 @@ namespace Wassup.Bridge
         {
             _wavePlan = default;
             _nextWaveIndex = 0;
+            _waveTimeShift = 0f; // wave-pattern unit 9 — 강제 호출 오프셋은 매치 경계에서 초기화
             _usingAuthoredPlan = false;
             _spawnAlertForecast = null;
             _spawnAlertForecastWaveIndex = -1;
@@ -1564,13 +1571,18 @@ namespace Wassup.Bridge
             }
         }
 
+        // wave-pattern unit 9 — 런타임 예정 시각 = 플랜 시각 + 강제 호출 누적 오프셋.
+        // 스케줄을 읽는 모든 지점(자동 큐잉·강제 호출·스폰 예고)이 이 창구를 쓴다.
+        private float ScheduledWaveTime(int waveIndex) =>
+            _wavePlan.waves[waveIndex].triggerTimeSec + _waveTimeShift;
+
         private void QueueDueWaves(float elapsedSec)
         {
             if (!_usingGeneratedWaves || _wavePlan.waves == null) return;
             while (_nextWaveIndex < _wavePlan.waves.Count &&
-                   elapsedSec + 0.0001f >= _wavePlan.waves[_nextWaveIndex].triggerTimeSec)
+                   elapsedSec + 0.0001f >= ScheduledWaveTime(_nextWaveIndex))
             {
-                QueueWave(_wavePlan.waves[_nextWaveIndex], _wavePlan.waves[_nextWaveIndex].triggerTimeSec, false, elapsedSec);
+                QueueWave(_wavePlan.waves[_nextWaveIndex], ScheduledWaveTime(_nextWaveIndex), false, elapsedSec);
                 _nextWaveIndex++;
             }
         }
@@ -1608,8 +1620,9 @@ namespace Wassup.Bridge
             if (_spawnAlertForecastWaveIndex != _nextWaveIndex)
             {
                 var wave = _wavePlan.waves[_nextWaveIndex];
+                // wave-pattern unit 9 — 예고도 강제 호출로 밀린 실제 예정 시각을 따라야 한다.
                 _spawnAlertForecast = WavePatternGenerator.FirstSpawnTimesPerLane(
-                    wave, wave.triggerTimeSec, _generatedMap.spawns.Length, _wavePlan.intraWaveSpacingSec);
+                    wave, ScheduledWaveTime(_nextWaveIndex), _generatedMap.spawns.Length, _wavePlan.intraWaveSpacingSec);
                 _spawnAlertForecastWaveIndex = _nextWaveIndex;
             }
             laneFirstSpawnSec = _spawnAlertForecast;
@@ -1663,6 +1676,13 @@ namespace Wassup.Bridge
             // Update 의 스폰 게이트가 _battleClock 을 쓰므로 실시간을 쓰면 정지/슬로우모 시 갈라진다.
             float elapsedSec = (float)_battleClock;
             var wave = _wavePlan.waves[_nextWaveIndex];
+
+            // wave-pattern unit 9 — 앞당긴 만큼 남은 웨이브 전체를 같이 민다(README "연타는 남은
+            // wave 들을 순서대로 앞당긴다" 계약). 오프셋이 균일해 웨이브 간 간격이 보존되므로
+            // 다음 웨이브는 "지금 + 그 웨이브의 원래 간격"에 나온다 — 연타해도 매번 재기준된다.
+            // 인덱스 증가 전에 계산해야 한다(밀 대상 = 지금 강제 호출하는 웨이브).
+            _waveTimeShift -= ScheduledWaveTime(_nextWaveIndex) - elapsedSec;
+
             GameManager.Instance?.Logger?.RecordWaveEvent("wave_forced", wave.waveIndex, elapsedSec, true);
             QueueWave(wave, elapsedSec, true, elapsedSec);
             _nextWaveIndex++;

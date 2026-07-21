@@ -5,6 +5,7 @@
 **목표**: 기존 정적 `AttackDeck.SpawnEntry` 타임라인을 seed 기반 wave 생성 구조로 전환한다. 3분 플레이 기준 10~15개 wave 를 생성하고, 각 wave 는 현재 구현된 공격 유닛 타입 중 2종을 골라 10~15마리를 스폰한다.
 **상태**: **완료 2026-07-20** (units 0~7). 1차 구현 `0ec5f71`(리뷰 보정 완료). units 6~7 최신 인계는 `8_handoff_summary.md`, 1차 인계는 `5_handoff_summary.md`.
 2026-07-20 추가: unit 6 고정 시드(`2d8c843e`, `deck.waveSeed` 비0 = 매판 동일 패턴) · unit 7 진행 수량 램프(`2c2ecacd`, min→max 선형 + `waveCountJitter` 지터).
+2026-07-21 추가: unit 9 강제 호출 리스케줄 — `Next Wave` 가 남은 웨이브 전체를 함께 앞당긴다(아래 "시간 배정" 참조).
 
 ## 구현 문서 목록
 
@@ -19,6 +20,7 @@
 | 추가 6 (2026-07-20) | `6_fixed_wave_seed.md` | 테스트 버전용 고정 웨이브 시드 — `deck.waveSeed` 라이브 오버라이드 재활성 (**완료 `2d8c843e`**) |
 | 추가 7 (2026-07-20) | `7_wave_difficulty_ramp.md` | 웨이브 진행 수량 램프 — min→max 선형 증가 + `waveCountJitter` 지터 (**완료 `2c2ecacd`**) |
 | 추가 8 (2026-07-20) | `8_handoff_summary.md` | units 6~7 인계 요약 (고정 시드 + 수량 램프 + 밸런스 값) |
+| 추가 9 (2026-07-21) | `9_force_wave_reschedule.md` | `Next Wave` 강제 호출이 남은 웨이브 스케줄을 함께 앞당기도록 수정 (계약-구현 불일치) |
 
 ## 공통 원칙
 
@@ -49,6 +51,10 @@
 - 마지막 wave 는 `timerDurationSec - waveIntervalSec` 에 예약된다.
 - 예: 10 wave 는 18초 간격으로 0~162초, 15 wave 는 12초 간격으로 0~168초에 호출된다.
 - `Next Wave` 는 다음 예정 wave 를 현재 시점으로 앞당긴다.
+- **앞당긴 만큼 남은 wave 전체가 함께 이동한다** (unit 9). 웨이브 간 간격이 보존되므로
+  강제 호출 뒤 다음 wave 는 `호출 시점 + 원래 간격` 에 나온다. 플랜의 `triggerTimeSec` 은
+  불변이고(브리핑·로그의 source of truth) 런타임 오프셋 `_waveTimeShift` 만 이동한다.
+- 전투 타이머(`timerDurationSec`)는 함께 당기지 않는다. 몰아 부르면 그만큼 일찍 끝난다.
 
 ## 비목표
 

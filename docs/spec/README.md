@@ -134,6 +134,18 @@ code + git history        구현 상세
 - **Tally 구간 무음** [S] — `SoundManager` 가 `phase == Battle` 에서만 BGM 유지라 4초 연출이 완전 무음. 축별 사운드와 함께 볼 것 (score-tally-sequence)
 - **연출 카메라 동반 · 축별 사운드 · 신기록 갱신 강조** [S~M] — 상세는 spec README "후속 후보" (score-tally-sequence)
 
+#### Next Wave 조기 호출의 시간점수 보상 (wave-pattern unit 9 이관, 2026-07-21)
+
+unit 9 로 `Next Wave` 가 남은 웨이브 전체를 앞당기게 되면서 "빨리 불러 빨리 끝내기"가 실제로
+성립한다. 사용자 인지 완료 — **밸런싱 영역이라 unit 9 스코프 밖으로 둔다.**
+
+- **조기 클리어의 시간점수 보상 과다** [M] · `timeScorePerSecond: 100` × 180초 = 시간점수 예산
+  18,000 으로 총 예산 37,300 의 약 48%. `ForceNextWave` 는 예정 시각 도달 여부를 검사하지 않아
+  시작 직후 연타로 전 웨이브를 한꺼번에 쏟을 수 있다(연타 허용은 README 계약, unit 9 이전부터의
+  동작). 조기 클리어가 지배 전략이 될 개연성이 높다. 제동 후보: 호출 쿨다운, "예정 시각 −N초부터만
+  호출 가능" 게이트, 시간점수 상한 또는 곡선화. 어느 쪽이든 `stressScorePerPoint`·킬점수와의
+  예산 균형을 함께 봐야 한다. (wave-pattern)
+
 #### PlayMode 사전 실패 3건 (2026-07-21 관측)
 
 에디터 실행 기준 PlayMode 40개 중 **3개** 실패. `596191c5` 와 `649991bb` 양쪽에서 동일해
