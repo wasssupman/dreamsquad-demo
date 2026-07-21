@@ -18,7 +18,6 @@ namespace Wassup.UI.Tutorial
         private const float PointerGap = 30f;
         private const float MessageHorizontalPadding = 56f;
         private const float MessageVerticalPadding = 24f;
-        private const float TapCatcherDimAlpha = 0.35f;
 
         [SerializeField] private TutorialGuidanceStyle style;
 
@@ -29,6 +28,7 @@ namespace Wassup.UI.Tutorial
         public float GoalBeatSeconds => Style.goalBeatSeconds;
         public float AwakeningPromptSeconds => Style.awakeningPromptSeconds;
         public float CardInstructionSeconds => Style.cardInstructionSeconds;
+        public float ClassHintFallbackSeconds => Style.classHintFallbackSeconds;
         public Color SpawnMarkerColor => Style.spawnMarkerColor;
         public Color GoalMarkerColor => Style.goalMarkerColor;
 
@@ -236,7 +236,7 @@ namespace Wassup.UI.Tutorial
 
             var image = _tapCatcher.GetComponent<Image>();
             // 완전 투명이면 "왜 안 눌리지"가 된다. 약한 dim 으로 읽는 시간임을 보인다.
-            image.color = new Color(0f, 0f, 0f, TapCatcherDimAlpha);
+            image.color = new Color(0f, 0f, 0f, Style.tapCatcherDimAlpha);
             image.raycastTarget = true;
 
             _tapCatcher.GetComponent<OutgameTutorialTapZone>().Pressed = () => ContinueTapped?.Invoke();

@@ -23,9 +23,6 @@ namespace Wassup.UI.Tutorial
             "서포터: 힐러, 버퍼 등 전투 보조\n" +
             "상황에 맞게 유닛을 골라서 배치해보세요.";
 
-        // 탭 수신이 실패하면 Start 잠금이 영영 안 풀려 첫 판이 Skip 외 탈출 불가가 된다.
-        private const float ClassHintFallbackSeconds = 12f;
-
         [Header("Core")]
         [SerializeField] private PlayerProfileSO profileSO;
         [SerializeField] private GameManager gameManager;
@@ -278,7 +275,7 @@ namespace Wassup.UI.Tutorial
         // 캐처가 배치까지 막아 첫 판이 플레이 불가가 된다. 시간 만료로 자동 진행한다.
         private IEnumerator ClassHintFallbackRoutine()
         {
-            yield return WaitUnscaled(ClassHintFallbackSeconds);
+            yield return WaitUnscaled(guidance.ClassHintFallbackSeconds);
             _classHintRoutine = null;
             if (_coreActive && _coreStep == CoreStep.ClassHint) BeginStart();
         }

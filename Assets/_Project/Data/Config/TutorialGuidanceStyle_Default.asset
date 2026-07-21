@@ -29,6 +29,8 @@ MonoBehaviour:
   spawnMarkerColor: {r: 1, g: 0.34, b: 0.24, a: 1}
   goalMarkerColor: {r: 1, g: 0.82, b: 0.25, a: 1}
   worldMarkerFontSize: 24
+  tapCatcherDimAlpha: 0.35
   goalBeatSeconds: 5
   awakeningPromptSeconds: 3.5
   cardInstructionSeconds: 3
+  classHintFallbackSeconds: 12

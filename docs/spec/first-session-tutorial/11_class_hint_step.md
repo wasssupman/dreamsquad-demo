@@ -23,7 +23,8 @@ public void SetTapToContinue(bool active);
 ```
 
 - `SafeAreaRoot` 가 아니라 `FullBleedRoot` 아래에 풀스크린 `Image`
-  (`color = (0,0,0,0.35)`, `raycastTarget = true`) 하나를 lazy 생성하고 `SetActive` 로 토글한다.
+  (`raycastTarget = true`) 하나를 lazy 생성하고 `SetActive` 로 토글한다. 알파는
+  `TutorialGuidanceStyle.tapCatcherDimAlpha`(기본 0.35).
   **완전 투명으로 두지 않는다** — 차단 중이라는 시각 신호가 없으면 유닛을 탭했을 때 무반응이
   버그로 읽힌다. 약한 dim 이 "지금은 읽는 시간"을 알린다.
 - 탭 수신은 `Button` 이 아니라 **`IPointerDownHandler`** 로 한다(`OutgameTutorialTapZone` 재사용).
@@ -64,13 +65,14 @@ private void BeginClassHint()
     guidance.ClearFocus();
     guidance.ShowMessage(ClassHintText, showSkip: true);
     guidance.SetTapToContinue(true);
-    _classHintRoutine = StartCoroutine(ClassHintFallbackRoutine());   // 12초
+    _classHintRoutine = StartCoroutine(ClassHintFallbackRoutine());   // Style 값
 }
 ```
 
 **시간 만료 안전장치가 필수다.** 이 교체로 `BeginStart()` 호출처가 `ContinueTapped` 하나만 남는데,
 탭 수신이 실패하면 `UnlockTutorialStart()` 가 영영 안 불려 카운트다운이 무기한 hold 되고 캐처가
-배치까지 막아 **첫 판이 Skip 외 탈출 불가**가 된다. 12초 만료 시 `BeginStart()` 로 자동 진행한다.
+배치까지 막아 **첫 판이 Skip 외 탈출 불가**가 된다. 만료 시 `BeginStart()` 로 자동 진행한다. 만료 시간은
+`TutorialGuidanceStyle.classHintFallbackSeconds`(기본 12초) — 기존 튜토리얼 타이밍과 같은 자리다.
 
 `BeginStart()` 초입과 `EndCore()` 에서 `guidance.SetTapToContinue(false)`. Skip 은 그대로 노출한다
 (`showSkip: true`) — 탭 캐처가 화면을 덮으므로 Skip 이 유일한 이탈구다.
@@ -116,7 +118,7 @@ private void BeginClassHint()
 - [ ] 안내 중 Start 버튼은 계속 숨겨져 있고 카운트다운은 `배치 연습` 으로 hold 된다
 - [ ] 방향 지정 유닛(조준 필요)을 배치한 경우에도 조준 종료 후 이 스텝을 거친다
 - [ ] 안내 중 Skip → 정상 종료되고 탭 캐처가 남지 않는다(로비 복귀 후 배치 입력 정상)
-- [ ] 탭 없이 12초 방치 → 자동으로 Start 안내로 넘어가고 카운트다운이 재개된다
+- [ ] 탭 없이 `classHintFallbackSeconds`(기본 12초) 방치 → 자동으로 Start 안내로 넘어가고 카운트다운 재개
 - [ ] 차단 중임이 화면에 보인다(약한 dim) — 무반응이 버그로 읽히지 않는다
 - [ ] 말풍선이 safe area 안에 들어오고 상단 HUD 를 가리지 않는다(스크린샷)
 - [ ] EditMode `TutorialDragGuidanceTests` 회귀 없음

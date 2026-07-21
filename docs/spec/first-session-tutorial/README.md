@@ -78,8 +78,11 @@
   이 수정이 셋을 함께 고친다. **되돌리지 말 것.**
 - **클래스 안내 문구는 사용자 작성본이다. 임의로 고치지 않는다**(2026-07-21). 리뷰가 제기한
   표현 정합성 지적(배지 글리프 앵커·캐스터 설명 범위·`어그로`/`서포터` 어휘)은 후속 후보로 둔다.
-- 클래스 안내 스텝은 **12초 만료 안전장치**를 함께 건다. 이 스텝이 `BeginStart()` 의 유일한 호출처가
+- 클래스 안내 스텝은 **만료 안전장치**를 함께 건다. 이 스텝이 `BeginStart()` 의 유일한 호출처가
   되므로, 탭이 유실되면 Start 잠금이 안 풀려 첫 판이 Skip 외 탈출 불가가 된다.
+- **units 10~12 가 추가한 수치는 전부 SO/SerializeField 로 뺀다.** 튜토리얼 타이밍·색은
+  `TutorialGuidanceStyle`(`classHintFallbackSeconds`·`tapCatcherDimAlpha`), 로비 오버레이 값은
+  `OutgameTutorialOverlay`/`OutgameTutorialController` 의 SerializeField. 코드 const 로 두지 말 것.
 - **각성 0단계는 arm 하지 않는다.** `AwakeningConfig.gaugeStart` 는 SO·시트 튜너블이라 "전투 시작
   게이지 0" 은 불변식이 아니다. B 단계는 `_awakeningOfferedThisBattle`(=A 가 실제로 떴다)를 요구한다.
 - **0단계는 한 프레임 미뤄 표시한다.** `AwakeningGaugeView` 가 같은 `PhaseChanged` 의 다른 구독자라

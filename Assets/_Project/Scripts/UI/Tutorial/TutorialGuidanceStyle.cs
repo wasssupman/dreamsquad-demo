@@ -31,9 +31,14 @@ namespace Wassup.UI.Tutorial
         public Color goalMarkerColor = new Color(1f, 0.82f, 0.25f, 1f);
         public float worldMarkerFontSize = 24f;
 
+        // unit 11 — 읽고 넘기는 스텝의 차단 dim. 완전 투명이면 무반응이 버그로 읽힌다.
+        [Range(0f, 1f)] public float tapCatcherDimAlpha = 0.35f;
+
         [Header("Timing (unscaled)")]
         [Range(4f, 6f)] public float goalBeatSeconds = 5f;
         [Range(3f, 4f)] public float awakeningPromptSeconds = 3.5f;
         public float cardInstructionSeconds = 3f;
+        // unit 11 — 탭이 유실되면 Start 잠금이 안 풀려 첫 판이 Skip 외 탈출 불가가 된다.
+        [Range(6f, 30f)] public float classHintFallbackSeconds = 12f;
     }
 }
