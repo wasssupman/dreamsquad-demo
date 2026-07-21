@@ -280,6 +280,8 @@ namespace Wassup.Bridge
         private int _killScoreTotal;
         private NativeQueue<GoalReachedEvent> _goalEventQueue;
         private NativeQueue<DefenderDeathEvent> _defenderDeathQueue;
+        // dreamcatcher-shield-break unit 0 — 실드 피격 파열 이벤트 채널(Units→Bridge).
+        private NativeQueue<ShieldBreakEvent> _shieldBreakQueue;
         private NativeQueue<Wassup.Battle.Combat.UnitAttackVisualEvent> _unitAttackVisualQueue;
         private NativeQueue<Wassup.Battle.Combat.Projectile.ProjectileHitEvent> _projectileHitEventQueue;
         // aggro-targeting Unit 11 — Combat(AttackSystem)→Effects(AggroStateSystem) 히트 채널.
@@ -521,6 +523,7 @@ namespace Wassup.Bridge
         {
             DestroyEntitiesByType<GoalReachedEventsSingleton>();
             DestroyEntitiesByType<DefenderDeathEventsSingleton>();
+            DestroyEntitiesByType<ShieldBreakEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Combat.UnitAttackVisualEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Combat.Projectile.ProjectileHitEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Units.HealAppliedEventsSingleton>();
@@ -556,6 +559,7 @@ namespace Wassup.Bridge
         {
             if (_goalEventQueue.IsCreated) _goalEventQueue.Dispose();
             if (_defenderDeathQueue.IsCreated) _defenderDeathQueue.Dispose();
+            if (_shieldBreakQueue.IsCreated) _shieldBreakQueue.Dispose();
             if (_unitAttackVisualQueue.IsCreated) _unitAttackVisualQueue.Dispose();
             if (_projectileHitEventQueue.IsCreated) _projectileHitEventQueue.Dispose();
             if (_aggroHitEventQueue.IsCreated) _aggroHitEventQueue.Dispose();
@@ -1241,6 +1245,12 @@ namespace Wassup.Bridge
             _defenderDeathQueue = new NativeQueue<DefenderDeathEvent>(Allocator.Persistent);
             var deathSingleton = _em.CreateEntity();
             _em.AddComponentData(deathSingleton, new DefenderDeathEventsSingleton { queue = _defenderDeathQueue });
+
+            // dreamcatcher-shield-break unit 0 — 실드 피격 파열 이벤트 채널.
+            if (_shieldBreakQueue.IsCreated) _shieldBreakQueue.Dispose();
+            _shieldBreakQueue = new NativeQueue<ShieldBreakEvent>(Allocator.Persistent);
+            var shieldBreakSingleton = _em.CreateEntity();
+            _em.AddComponentData(shieldBreakSingleton, new ShieldBreakEventsSingleton { queue = _shieldBreakQueue });
 
             // Unified attack visual trigger channel — every attacker (defender
             // or enemy) enqueues one event per fire so SpineUnitPool can play
@@ -2147,6 +2157,7 @@ namespace Wassup.Bridge
 
             DrainProjectileSpawnRequests();
             DrainDefenderDeathEvents();
+            DrainShieldBreakEvents();
             DrainUnitAttackVisualEvents();
             DrainProjectileHitEvents();
             DrainHealAppliedEvents();
@@ -2586,6 +2597,17 @@ namespace Wassup.Bridge
                 // already destroyed in ECS; it is passed as a registry KEY only.
                 if (hasBinding)
                     DefenderDied?.Invoke(binding.entity, binding.data);
+            }
+        }
+
+        // dreamcatcher-shield-break unit 0 — 실드 피격 파열 이벤트 드레인. 유닛 0 은 로그 stub
+        // (트리거 발동 검증). 유닛 2 가 payload 분기 실행(SelfTileAoe 폭발 / AreaSleep)으로 교체.
+        private void DrainShieldBreakEvents()
+        {
+            if (!_shieldBreakQueue.IsCreated) return;
+            while (_shieldBreakQueue.TryDequeue(out var evt))
+            {
+                Debug.Log($"[ShieldBreak] host={evt.host.Index} payload={evt.payload} mag={evt.magnitude} range={evt.tileRange} dur={evt.duration}");
             }
         }
 

@@ -71,6 +71,8 @@ namespace Wassup.Battle.Units
             bool hasCcClearQueue = SystemAPI.TryGetSingletonRW<CcClearRequestsSingleton>(out var ccClearSingleton);
             // dreamcatcher-kill-and-threshold unit 2 — OnKill(devouring) self-buff 채널.
             bool hasStatModQueue = SystemAPI.TryGetSingletonRW<StatModifierApplyEventsSingleton>(out var statModSingleton);
+            // dreamcatcher-shield-break unit 0 — 실드 피격 파열 이벤트 채널(Units→Bridge).
+            bool hasShieldBreakQueue = SystemAPI.TryGetSingletonRW<ShieldBreakEventsSingleton>(out var shieldBreakSingleton);
             _ccLookup.Update(ref state);
             _dcTriggerSlotLookup.Update(ref state);
             _shieldSlotLookup.Update(ref state);
@@ -113,6 +115,7 @@ namespace Wassup.Battle.Units
                 // 이후 분기 전부가 관통분(totalDamage 갱신값)을 판정하므로
                 // "완전 흡수 히트 = 피격 아님"(계약 3)은 조건식 무변경으로 성립.
                 float preShieldDamage = totalDamage;
+                bool shieldBrokeByHit = false;
                 if (_shieldSlotLookup.HasBuffer(entity))
                 {
                     var shieldSlots = _shieldSlotLookup[entity];
@@ -124,7 +127,14 @@ namespace Wassup.Battle.Units
                         grants.Clear();
                     }
                     if (totalDamage > 0f)
+                    {
+                        // dreamcatcher-shield-break unit 0 — 피격으로 실드 풀이 완전 소진되는
+                        // 순간(Sum>0→0) 감지. Absorb 전용이라 시간만료는 구조적 배제.
+                        float preShieldSum = ShieldMath.Sum(shieldSlots);
                         totalDamage = ShieldMath.Absorb(ref shieldSlots, totalDamage);
+                        if (preShieldSum > 0f && ShieldMath.Sum(shieldSlots) <= 0f)
+                            shieldBrokeByHit = true;
+                    }
                 }
 
                 // ── IncomingHeal drain (pulse channel — must Clear each frame) ───
@@ -222,6 +232,34 @@ namespace Wassup.Battle.Units
                         counters[c] = slot;
                     }
                     if (fired) ecb.AddComponent(entity, new NextAttackDoubleFire { charges = 1 });
+                }
+
+                // dreamcatcher-shield-break unit 0 — 실드가 피격으로 파열된 프레임: host 의
+                // OnShieldBreak DcTriggerSlot(Combat, RO — OnKill 선례)를 읽어 페이로드
+                // 파라미터를 emit. 실행(SelfTileAoe 폭발 / AreaSleep)은 BattleBridge drain.
+                // death 분기와 독립 — 관통 킬 프레임에도 파열은 발동.
+                if (shieldBrokeByHit && hasShieldBreakQueue
+                    && _dcTriggerSlotLookup.HasBuffer(entity)
+                    && _transformLookup.HasComponent(entity))
+                {
+                    var sbSlots = _dcTriggerSlotLookup[entity];
+                    float3 sbPos = _transformLookup[entity].Position;
+                    for (int s = 0; s < sbSlots.Length; s++)
+                    {
+                        var sbSlot = sbSlots[s];
+                        if (sbSlot.trigger != Wassup.Data.DcTriggerKind.OnShieldBreak) continue;
+                        shieldBreakSingleton.ValueRW.queue.Enqueue(new ShieldBreakEvent
+                        {
+                            host = entity,
+                            position = sbPos,
+                            payload = sbSlot.payload,
+                            magnitude = sbSlot.magnitude,
+                            tileRange = sbSlot.tileRange,
+                            duration = sbSlot.duration,
+                            aoeDataIndex = sbSlot.payload == Wassup.Data.DcPayloadKind.SelfTileAoe
+                                ? sbSlot.projectileDataIndex : -1,
+                        });
+                    }
                 }
 
                 if (newHp <= 0f)
