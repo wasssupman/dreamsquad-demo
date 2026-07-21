@@ -46,14 +46,19 @@ public float nameTextHeight = 38f;
 - `costPlateSize` → `52 × 44`, `costFontSize` → `40`
 - `nameBandColor` 알파 `0.72` → `0.88`
 
-### config 제거
+### config 제거 — 소비처가 사라지는 unit 으로 이관
 
-- `railSize` · `railOverlap` — unit 1 에서 레일이 사라진다
-- `slotCostBolt` — unit 3 에서 **슬롯의** 볼트가 사라진다. 단 코스트 셀에는 볼트를 1개 남기므로(unit 2 H6) 스프라이트 참조 자체는 `cellEnergyIcon` 으로 **이름을 바꿔 유지**한다. 필드를 지우면 authored 스프라이트 링크가 끊긴다.
+이 unit 에서는 **제거하지 않는다**. 필드를 먼저 지우면 소비처(`CostDisplay.cs` · `DefenderSelector.cs`)가 컴파일 에러를 내고, "컴파일 통과"라는 완료 기준을 스스로 깨기 때문이다. 제거는 각 소비 코드가 사라지는 unit 에서 같은 커밋으로 처리한다.
+
+| 필드 | 제거 시점 | 비고 |
+|---|---|---|
+| `railSize` · `railOverlap` | **unit 1** | 레일 코드와 함께 |
+| `roleBadgeSize` · `roleFontSize` | **unit 3** | `BuildRoleBadge` 와 함께 |
+| `slotCostBolt` | **unit 3** | 슬롯 볼트가 사라질 때. 단 코스트 셀에 볼트를 1개 남기므로(unit 2) 스프라이트 참조는 `cellEnergyIcon` 으로 **이름만 바꿔 유지**한다 — 지우면 authored 링크가 끊긴다 |
 
 ### config 유지 (제거 취소)
 
-`roles` · `RolePresentation` · `TryGetRole()` 은 **남긴다**. 배지 렌더링은 사라지지만 `entry.color` 가 이름 밴드 틴트의 입력이 된다(unit 3). `roleBadgeSize` / `roleFontSize` 만 제거한다.
+`roles` · `RolePresentation` · `TryGetRole()` 은 **남긴다**. 배지 렌더링은 사라지지만 `entry.color` 가 이름 밴드 틴트의 입력이 된다(unit 3).
 
 ### 순수 함수
 
@@ -94,6 +99,11 @@ namespace Wassup.UI
   - `WellFill(x, 0) == 0` (0 나눗셈 방어)
   - `DisplayInt(3.9) == 3`, `DisplayInt(10) == 10`
   - `DisplayInt(v)` 가 임의 `v ∈ [0, max]` 에서 `CostRuntime.CurrentInt` 와 일치 (등가 계약)
-- [ ] 컴파일 통과. rail/roleBadge 참조가 남아 CS 에러가 나면 unit 1·3 에서 함께 걷어낸다(같은 커밋에 묶어도 된다).
-- [ ] 에셋 YAML 에 `railSize` / `roleBadgeSize` / `roleFontSize` 키가 남아 있지 않고, `roles` 5엔트리는 **살아 있다**.
+- [ ] 컴파일 통과 (필드 제거를 하지 않으므로 소비처 무영향)
+- [ ] 새 필드가 에셋에 직렬화됐다 (`slotWidth` / `cornerReservedWidth` / `costCellWidth` / `well*` / `cellNumberFontSize` / `nameBand*`)
+- [ ] 기존 필드 갱신이 에셋에 반영됐다 (`costPlateSize 52×44` / `costFontSize 40` / `nameBandColor` α 0.88)
 - [ ] `costCellWidth <= slotWidth` 가 성립한다.
+
+---
+
+**완료 확인 2026-07-21** — EditMode `CostWellMathTests` 14/14 통과(전체 1151 중 실패 0), 컴파일 에러 0, 에셋 직렬화 확인. 커밋: (아래 참조)
