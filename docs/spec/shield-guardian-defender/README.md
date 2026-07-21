@@ -7,7 +7,8 @@
 **실드(피해 흡수막)** 신규 메커니즘과 그 첫 소비 유닛 **실드셔틀**(id `shield_shuttle`)을 추가한다.
 어그로 탱커(가디언 클래스)가 A초마다 공격범위 내 아군 C명에게 실드 B량을 부여해 "받는 피해를 미리 막아주는" 서포트 탱커 정체성을 만든다.
 
-- 실드 = Health 차감 전에 먼저 소모되는 흡수 풀. TTL 없음(깨질 때까지 유지), 재부여는 max(잔량, B).
+- 실드 = Health 차감 전에 먼저 소모되는 흡수 풀. TTL 없음(깨질 때까지 유지).
+- **출처별 슬롯** (사용자 결정 2026-07-21): 같은 출처(캐스터 개체)의 재부여는 max(잔량, B)로 중첩 불가, **서로 다른 출처의 실드는 합산**(셔틀 a 100 + 셔틀 b 100 = 200). 유효 실드 = 슬롯 합.
 - 필터 3종: `SELF`(자신만) / `ALL`(가까운 순 C개) / `MINHEALTH`(HP 비율 오름차순 C개). 전부 SO 데이터.
 - 공격 채널 불변 — 실드는 공격과 독립된 두 번째 쿨다운(HazardCast 선례). 어그로(공격 명중 트리거)는 그대로 산다.
 
@@ -24,10 +25,10 @@
 
 ## Feature-wide 계약
 
-1. **실드 상태 소유 = Units.** `ShieldPool`(Health 옆 컴포넌트) 쓰기는 `DamageApplicationSystem` 단독. 생산자(Effects)는 `IncomingShield` 버퍼에만 append — `IncomingHeal` 선례의 맥락 간 Buffer 통신. **신규 NativeQueue 채널 0** (CLAUDE.md 채널 목록 갱신 불필요).
-2. **흡수 계약**: `dmgTakenMul` 적용 **후** 실드 흡수(표시 데미지 = 흡수량). 산식은 순수 `ShieldMath.Absorb(shield, damage) → (잔여실드, 관통데미지)` — sim-critical, EditMode 필수(제약 10).
+1. **실드 상태 소유 = Units.** `ShieldSlot` 버퍼(출처별 슬롯, Health 옆) 쓰기는 `DamageApplicationSystem` 단독. 생산자(Effects)는 `IncomingShield` 버퍼에만 append — `IncomingHeal` 선례의 맥락 간 Buffer 통신. **신규 NativeQueue 채널 0** (CLAUDE.md 채널 목록 갱신 불필요).
+2. **흡수 계약**: `dmgTakenMul` 적용 **후** 실드 흡수(표시 데미지 = 흡수량). 소모는 **오래된 슬롯부터**(삽입 순, 결정론), 소진 슬롯은 제거. 산식은 순수 `ShieldMath`(슬롯 병합·흡수) — sim-critical, EditMode 필수(제약 10).
 3. **완전 흡수 히트 = 피격 아님** (사용자 결정 2026-07-21). 흡수 후 `totalDamage` 값으로 기존 분기(wake-on-hit·가시갑옷 카운트·데미지 넘버·킬 귀속)를 전부 판정 — **기존 분기 조건 무변경**이 곧 이 계약의 구현.
-4. **재부여 = max(잔량, B) · TTL 없음** (사용자 결정 2026-07-21). 상한 = B 내장, 만료 타이머 없음.
+4. **출처별 max · 교차 출처 합산 · TTL 없음** (사용자 결정 2026-07-21). 같은 출처 재부여 = 해당 슬롯 max(잔량, B) — 상한은 출처당 B 내장. 다른 출처 = 새 슬롯(합산). 만료 타이머 없음. **출처는 중첩 키일 뿐 수명 링크 아님** — 부여자가 죽어도 잔여 실드 유지(Entity 는 version 포함이라 재활용 id 와 충돌 없음).
 5. **실드 범위 = `attackRange` 재사용.** 별도 range 필드 금지 (사용자 스펙 "자신의 공격범위 이내"). 베이크 시 `ShieldCastState` 에 attackRange 값 복사.
 6. **타겟 선별**: 후보 = 범위 내 생존 아군 defender, **자신 포함**. `ALL`=거리 오름차순 C개 · `MINHEALTH`=HP **비율** 오름차순 C개 · `SELF`=C/범위 무시. 선별은 순수 함수 + EditMode.
 7. **공격/어그로 채널 불변**: 실드 캐스트는 `HazardCastState` 선례의 독립 쿨다운. action-lock(Sleep/Stun)은 기존과 동일하게 공격/이동만 게이트 — 실드 캐스트는 HazardCast 와 같은 급으로 게이트 밖(일관성).
@@ -39,8 +40,8 @@
 | 정거장 | 이 spec 에서 |
 |---|---|
 | 데이터 SO | `Defender_ShieldShuttle.asset` 신규 + `DefenderUnitData` 실드 필드 4종(A/B/C/필터) + **DefenderCatalog 등록**(unit 3) |
-| 스폰 진입점 | 기존 `PlaceDefenderAs`→`CreateDefenderEntity`. `ShieldPool`+`IncomingShield` 전 defender 사전 부착(unit 0) + `ShieldCastState` 조건부 베이크(unit 1) |
-| ECS 컴포넌트 | **신규 3**: `ShieldPool`·`IncomingShield` 버퍼(Units) + `ShieldCastState`(Effects). Hazard/DeployedFacing/VolleyFireState N/A — 능력 비활성 |
+| 스폰 진입점 | 기존 `PlaceDefenderAs`→`CreateDefenderEntity`. `ShieldSlot`+`IncomingShield` 버퍼 전 defender 사전 부착(unit 0) + `ShieldCastState` 조건부 베이크(unit 1) |
+| ECS 컴포넌트 | **신규 3**: `ShieldSlot`·`IncomingShield` 버퍼(Units) + `ShieldCastState`(Effects). Hazard/DeployedFacing/VolleyFireState N/A — 능력 비활성 |
 | 시뮬 시스템 | **신규 1**: `ShieldCastSystem`(Effects). `DamageApplicationSystem` 흡수 훅(unit 0). AttackSystem 무변경 |
 | 이벤트 큐 | **신규 채널 0** — 버퍼 통신만(계약 1) |
 | View/Pool | 기존 `SpineUnitPool`(파츠 재조합). 체력바 실드 세그먼트 = `UnitOverheadView` 확장(unit 2) |
@@ -53,5 +54,6 @@
 - **SELF/ALL 변종 유닛** [S] · 엔진은 완성 — SO 저작만으로 성립(필터 enum 데이터).
 - **실드 TTL/붕괴 변종** [S/M] · 만료 타이머 도입 시 CcDecay 유사 시스템 필요 — 계약 4 변경이라 별도 결정.
 - **Aura producer 이관** [M] · 백로그 `AuraApplySystem` 신설 시 ShieldCast 를 aura payload 로 흡수 검토(소비자 2개 시점).
-- **적측 실드** [M] · ShieldPool 을 적 스폰에도 부착 + 표기 확장. 현재는 defender 전용.
+- **적측 실드** [M] · `ShieldSlot` 버퍼를 적 스폰에도 부착 + 표기 확장. 현재는 defender 전용.
+- **부여자 사망 시 실드 회수** [S] · 출처 키가 이미 있어 성립 가능 — 계약 4("수명 링크 아님") 변경이라 별도 결정.
 - **흡수 데미지 넘버 변형** [S] · 흡수량을 회색/하늘색 폰트로 표시(현재는 미표시).

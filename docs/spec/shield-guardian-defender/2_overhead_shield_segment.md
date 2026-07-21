@@ -6,7 +6,7 @@
 
 ## 변경 대상
 
-- `Assets/_Project/Scripts/Bridge/BattleBridge.cs` — `SyncMonoUnitViews` 의 defender Health 폴링에 `ShieldPool` 동승(read-only), 실드 비율 전달
+- `Assets/_Project/Scripts/Bridge/BattleBridge.cs` — `SyncMonoUnitViews` 의 defender Health 폴링에 `ShieldSlot` 버퍼 동승(read-only, 슬롯 합산), 실드 비율 전달
 - `Assets/_Project/Scripts/Presentation/UnitOverheadView.cs` — 실드 세그먼트 Image 1개 추가 + `Show(...)` 실드 비율 파라미터
 
 ## 구현
