@@ -1,0 +1,58 @@
+# 3 — 슬롯 가독성 정리
+
+## 목적
+
+모바일 실기에서 안 읽히는 세 가지를 고친다. 클래스 배지는 자리 값이 커서 제거하되, **정보는 이름 밴드 틴트로 옮긴다**(신규 픽셀 0).
+
+## 변경 대상
+
+- `Assets/_Project/Scripts/UI/DefenderSelector.cs`
+
+## 구현
+
+### 클래스 배지 제거 + 밴드 틴트로 이관
+
+`BuildRoleBadge()` 메서드와 `RebuildSlots` 의 호출부(`DefenderSelector.cs:289`)를 삭제한다.
+
+**대신 이름 밴드를 클래스 색으로 틴트한다.** `trayConfig.TryGetRole(data.role, out var entry)` 로 `entry.color` 를 받아 밴드 색에 섞는다 — 밴드는 이미 존재하고 색값도 이미 authored 돼 있어 **새로 차지하는 픽셀이 0** 이다. 틴트는 `nameBandColor`(어두운 base)에 `entry.color` 를 낮은 비율로 섞어 흰 텍스트 대비를 해치지 않는 선에서 한다. 룩업 실패 시 base 색 그대로(NRE 없이 성립).
+
+> **이 대체가 필요한 이유.** `first-session-tutorial` unit 11(2026-07-21 커밋)은 첫 배치 직후 화면을 멈추고 5개 클래스 설명 6줄을 강제로 읽힌다. 배지를 완전히 지우면 **그 설명에 대응하는 것이 화면에 하나도 안 남아** 순수 텍스트가 된다. 클래스 → 배치 위치는 이 게임에서 실재하는 판단이고(가디언=경로 어그로, 캐스터=방해, 레인저=후방), 포트레이트는 캐릭터 아트지 클래스 코드가 아니라 대체하지 못한다.
+
+`DefenderUnitData.role` 필드와 config 의 `roles` 데이터는 **건드리지 않는다**(unit 0 참조).
+
+### 코스트 칩
+
+`BuildCostChip()` 수정:
+
+- ⚡볼트 아이콘 제거 — `Bolt` 자식 생성과 `numX` 오프셋 계산이 사라진다. **단 볼트 스프라이트 자체는 코스트 셀에서 1개 살아 있다**(unit 1 계층의 `EnergyIcon`). 슬롯마다 반복할 필요는 없지만 HUD 전체에서 0개가 되면 "이 숫자가 무슨 자원인가"를 말하는 기호가 사라진다 — 앵커 1개면 나머지 숫자가 의미를 상속한다.
+- 숫자 `18pt → 40pt` (config `costFontSize`)
+- 플레이트 `56×26 → 52×44` (config `costPlateSize`)
+- 숫자 정렬 `MidlineLeft → Center` (볼트가 빠져 좌측 여백이 필요 없다)
+- 부족 glyph `X` 는 유지 — 색 단독 판별 금지 계약(action-tray unit 1)
+
+**위계**: 코스트 셀 숫자(`cellNumberFontSize` 52)가 슬롯 가격(40)보다 크다. 같은 크기면 "내 잔량"과 "유닛 가격" 숫자가 한 줄에 동급으로 늘어서 구분이 안 된다.
+
+### 유닛명
+
+`RebuildSlots` 의 이름 블록(`DefenderSelector.cs:227-285`) 수정:
+
+- `NameBand` 알파 `0.72 → 0.88` + 클래스 색 틴트(위)
+- 텍스트 색 `Color.black → Color.white`
+- **아웃라인 제거** — `fontMaterial` 의 `Keyword_Outline` / `ID_OutlineColor` / `ID_OutlineWidth` 조작 3줄 삭제. 어두운 밴드가 대비를 만드므로 아웃라인은 글자를 뒤덮는 손해만 남는다. `fontMaterial` 접근이 사라지면 per-instance 머티리얼 복사본도 안 생긴다(슬롯당 1개 절약).
+- 밴드/텍스트 높이를 슬롯 확대에 맞춰 조정. **하드코딩 금지** — `sizeDelta` 의 `30f`(`:237`) / `32f`(`:255`)를 config `nameBandHeight` / `nameTextHeight` 로 뺀다(unit 0).
+
+### 폴백 경로 통일
+
+포트레이트가 없는 슬롯은 지금 밴드 없이 중앙 검정 텍스트를 쓴다. 여기도 밴드 + 흰 텍스트 + 클래스 틴트로 통일한다. 현재 디펜더 17종은 전부 포트레이트가 있어 실사용 경로는 아니지만, 두 갈래가 반대 색을 쓰면 나중에 아트가 빠졌을 때 안 읽힌다.
+
+## 완료 기준
+
+- [ ] 컴파일 통과, role **배지** 참조 잔존 없음 (config `roles` 데이터는 살아 있음)
+- [ ] Play — 슬롯 우상단에 배지가 없고, 이름 밴드가 클래스별로 다른 색을 띤다
+- [ ] Play — 5개 클래스가 밴드 색으로 서로 구별된다 (튜토리얼 설명과 대응 가능)
+- [ ] 밴드 틴트 후에도 흰 텍스트가 읽힌다 (틴트가 대비를 해치지 않음)
+- [ ] Play — 코스트 숫자가 이전보다 확연히 크고, 플레이트가 포트레이트를 과하게 가리지 않는다
+- [ ] Play — 코스트 셀 숫자가 슬롯 가격보다 명확히 크다 (위계)
+- [ ] 코스트 부족 시 포트레이트 dim + 숫자 warn + `X` glyph 가 이전과 동일하게 동작
+- [ ] 긴 이름(가장 긴 `displayName`)이 한 줄 auto-size 안에서 잘리지 않는다
+- [ ] `nameBandHeight` / `nameTextHeight` 가 config 에서 나온다 (매직 넘버 없음)
