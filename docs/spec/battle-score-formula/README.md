@@ -143,7 +143,9 @@ return Math.Max(0, (int)(durationSec * 10f - _goalReachedCount * 50));
 9. **킬 누적 변수는 `_battleClock` 이 0이 되는 모든 지점에서 함께 0이 된다.** 현재 `_goalReachedCount`/`_leakAllowancePenalty` 는 `BeginPlacement()`(`:1104-1105`) 1곳, `_battleClock` 은 `StartBattle()`(`:1151`)·`StopBattle()`(`:1399`) 2곳으로 **비대칭**이다. 킬 누적을 `BeginPlacement` 에만 두면 같은 방식으로 발산한다.
 10. 당기기 자체에 점수를 주지 않는다. 무결점 보너스·콤보 배율을 만들지 않는다.
 11. 동점 타이브레이커는 **제출 시각 선착순** 단일 기준이다.
-12. 라이브 HUD 점수(`ScoreHudView`, 처치당 +10)는 **표시 전용으로 존치**한다. 이번 스펙에서 통합하지 않는다.
+12. ~~라이브 HUD 점수는 표시 전용으로 존치~~ → **`score-tally-sequence` 가 통합했다** (2026-07-21).
+    HUD 는 이제 처치당 +10 이 아니라 유닛별 `killScore` 를 쌓아 **최종 점수의 킬축과 같은 값**이고,
+    결과 연출이 그 숫자에서 이어 시간·스트레스를 더한다.
 
 ## 구현 메모
 
@@ -167,6 +169,6 @@ return Math.Max(0, (int)(durationSec * 10f - _goalReachedCount * 50));
 ## 후속 후보 (범위 밖)
 
 - **점수 재검증 / 무효 플래그** — 서버가 배틀로그의 점수 입력값으로 재계산해 클라이언트 제출값과 대조. 결정론적 재시뮬은 고정 타임스텝 도입이 선결이라 별도 대형 spec.
-- **라이브 HUD 점수 ↔ 최종 점수 통합** — `docs/spec/score-hud/4_handoff_summary.md:40` 에서 이관된 기존 후보.
+- ~~라이브 HUD 점수 ↔ 최종 점수 통합~~ → **완료** (`score-tally-sequence` unit 0).
 - **정예 등급 도입** — 현재 잡몹 9종 + 보스 1종뿐이라 중간 등급이 없다. 밸런스 변경이라 별도 spec.
 - **계약 지불의 점수 손실 HUD 경고** — 위 열린 항목.
