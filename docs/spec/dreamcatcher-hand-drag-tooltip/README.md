@@ -1,6 +1,7 @@
 # dreamcatcher-hand-drag-tooltip — 손패 드래그 시작 시 카드 성능 툴팁
 
-상태: units 0~1 완료 2026-07-14 (커밋 · 사용자 Play 확인) · unit 3 위치 재배치 진행 중 2026-07-21
+상태: **완료 2026-07-21** — units 0~1(2026-07-14) + units 3·4·6(2026-07-21) 전부 커밋 ·
+사용자 Play/실기기 확인 완료. 인계는 `7_handoff_summary.md`.
 
 ## 목표
 
@@ -29,6 +30,7 @@
 | `3_tooltip_top_center.md` | UI 배치 (rev 5) | 모바일 손 가림 해소 — 카드 우측/손패 위 → 화면 상단 중앙 고정 |
 | `4_tooltip_compact.md` | UI 압축 | 보드 상단 가림 축소 — compact 본문 + 패딩/간격/offset 조임 |
 | `6_camera_headroom.md` | 가독성 + 카메라 | 폰트 확대(19→23) + 손패 연동 카메라 헤드룸(pitch·dolly, 스프링). 5 는 철회된 배너형 |
+| `7_handoff_summary.md` | 인계 | units 3·4·6 인계 지도 + 되돌리면 안 되는 것 + 틀렸던 판단 |
 
 ## Feature-wide 계약
 
