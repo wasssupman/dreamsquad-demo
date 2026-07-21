@@ -24,7 +24,10 @@
 
 ## 완료 기준
 
-- [ ] compile 0 에러.
+- [x] compile 0 에러.
+- [x] 전체 EditMode 회귀 없음 — 1189 passed / 0 failed / 2 skipped(기존 known-skip). 분기가 `BombLauncherState` 게이트라 기존 유닛 무영향.
 - [ ] (통합 Play, unit 6) 폭탄맨 배치 → 쿨다운마다 방향×N 칸으로 폭탄 발사(적 없어도) → n초 구르기 → m초 → 폭발.
 - [ ] 3종이 랜덤하게 섞여 나옴(데미지/수면/스턴). 같은 seed 재현.
 - [ ] 엣지에 바깥 방향 배치 시 크래시 없이 발사 스킵.
+
+확인 2026-07-21 · compile 0 + 전체 EditMode 1189/0/2(회귀 없음). Play 는 unit 6 통합.

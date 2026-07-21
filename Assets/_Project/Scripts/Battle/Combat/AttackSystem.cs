@@ -55,6 +55,8 @@ namespace Wassup.Battle.Combat
             var facingLookup = SystemAPI.GetComponentLookup<Wassup.Battle.Units.DeployedFacing>(isReadOnly: true);
             // defender-directional-volley unit 4 — 다연발 설정/진행 상태(Combat 소유 RW).
             var volleyLookup = SystemAPI.GetComponentLookup<VolleyFireState>(isReadOnly: false);
+            // bomb-thrower-defender unit 4 — 폭탄맨 발사 상태(RW: rng advance). volleyLookup 선례.
+            var bombLauncherLookup = SystemAPI.GetComponentLookup<BombLauncherState>(isReadOnly: false);
             var blockingHazardCellsLookup = SystemAPI.GetBufferLookup<BlockingHazardCellsBuffer>(isReadOnly: true);
             var modifierStatsLookup = SystemAPI.GetComponentLookup<Wassup.Battle.Effects.ModifierStats>(isReadOnly: true);
             var outputBufferLookup = SystemAPI.GetBufferLookup<AttackOutputElement>(isReadOnly: true);
@@ -146,6 +148,62 @@ namespace Wassup.Battle.Combat
                 // wake 시 즉시 공격). 이미 시작된 스윙(hitDelayRemaining>0)의 RESOLVE 는 완료.
                 bool actionLocked = ccActionLookup.HasBuffer(attackerEntity)
                     && Wassup.Battle.Effects.CcActionLock.IsLocked(ccActionLookup[attackerEntity]);
+
+                // bomb-thrower-defender unit 4 — 폭탄맨은 타겟 없이 쿨다운마다 방향×N 칸에
+                // 폭탄을 굴려 발사(blind bombardment, 계약 2). 타겟팅/일반 공격 경로를 타지
+                // 않으므로 여기서 처리하고 continue. CC(action-lock)는 일반 공격과 동일하게
+                // 발사 START 를 막는다(폭탄 = 이 유닛의 공격, shield/hazard 급 예외 아님).
+                if (bombLauncherLookup.HasComponent(attackerEntity))
+                {
+                    if (!actionLocked && attack.ValueRO.cooldownRemaining <= 0f
+                        && facingLookup.HasComponent(attackerEntity)
+                        && projectileRefLookup.HasComponent(attackerEntity))
+                    {
+                        var bomb = bombLauncherLookup[attackerEntity];
+                        var bProjRef = projectileRefLookup[attackerEntity];
+                        float3 bPos = transform.ValueRO.Position;
+                        float bTileSize = hasFlowField ? flowField.tileSize : 1f;
+                        int2 bGridSize = hasFlowField ? flowField.gridSize : new int2(128, 128);
+                        float3 bOrigin = hasFlowField ? flowField.origin : float3.zero;
+                        int2 bCasterCell = GridMath.WorldToCell(bPos, bTileSize, bGridSize, origin: bOrigin);
+                        BombLanding.ResolveCell(bCasterCell, facingLookup[attackerEntity].value,
+                            bomb.landingTiles, bGridSize, out int2 landCell, out bool landValid);
+                        if (landValid)
+                        {
+                            float3 landWorld = GridMath.CellToWorldCenter(landCell, bTileSize, 0f, origin: bOrigin);
+                            // 3종 랜덤(균등 1/3): 0 데미지 / 1 수면 / 2 스턴. 캐스터별 rng advance.
+                            int bombType = bomb.rng.NextInt(0, 3);
+                            bombLauncherLookup[attackerEntity] = bomb; // rng 상태 저장
+                            float bDamage = 0f; byte bCcKind = 0; float bCcDur = 0f;
+                            if (bombType == 0) bDamage = bomb.dmgBombDamage;
+                            else if (bombType == 1) { bCcKind = (byte)Wassup.Battle.Effects.CcKind.Sleep; bCcDur = bomb.sleepSec; }
+                            else { bCcKind = (byte)Wassup.Battle.Effects.CcKind.Stun; bCcDur = bomb.stunSec; }
+                            ecb.AddComponent(attackerEntity, new ProjectileSpawnRequest
+                            {
+                                movement = MovementKind.GrenadeToCell,
+                                payload = PayloadKind.TileAoe,
+                                origin = bPos,
+                                impact = landWorld,
+                                impactTileRange = bomb.aoeTileRange,
+                                aoeTargetCap = bomb.aoeTargetCap,
+                                flightTime = bomb.travelSec,   // travel n (request-carried 고정)
+                                fuseSec = bomb.fuseSec,         // fuse m
+                                arcHeight = bomb.arcHeight,
+                                damage = bDamage,
+                                ccKind = bCcKind,
+                                ccDuration = bCcDur,
+                                bombType = (byte)bombType,
+                                dataIndex = bProjRef.dataIndex,
+                                visualScale = bProjRef.visualScale,
+                                owner = attackerEntity,
+                                targetFaction = ProjectileTargetFaction.Enemy,
+                            });
+                        }
+                        // 발사 성사/off-grid 무관 쿨다운 리셋(blind bombardment, 재스캔 스팸 방지).
+                        attack.ValueRW.cooldownRemaining = attack.ValueRO.cooldownDuration;
+                    }
+                    continue;
+                }
 
                 // Find nearest in-range target allowed by this attacker's mask.
                 float3 atkPos = transform.ValueRO.Position;
