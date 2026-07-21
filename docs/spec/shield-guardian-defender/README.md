@@ -22,6 +22,7 @@
 | 1 | code | `1_shield_cast_system.md` | SO 필드(A/B/C/필터) + `ShieldCastState`/`ShieldCastSystem`(Effects) + 필터 선별 순수 함수 + EditMode |
 | 2 | code | `2_overhead_shield_segment.md` | 체력바 실드 오버레이 세그먼트 (프레젠테이션 폴링 확장) |
 | 3 | asset | `3_unit_asset_and_catalog.md` | `Defender_ShieldShuttle.asset` 저작 + 카탈로그 등록 + Play 검증 |
+| 4 | code | `4_shield_granted_vfx.md` | 실드 부여 원샷 VFX (신규 채널 + VfxSpawner 슬롯 + 씬 배선) |
 
 ## Feature-wide 계약
 
@@ -50,7 +51,7 @@
 
 ## 후속 후보
 
-- **실드 부여 순간 연출** [S] · 대상 유닛 링 펄스 + SFX. VfxSpawner 원샷 또는 StatusFx.
+- ~~**실드 부여 순간 연출**~~ [완료 2026-07-21, unit 4] · `ShieldGrantedEventsSingleton` → `VfxSpawner.SpawnShieldGranted`(VFX_Fire_Green 단발화). 잔여: 전용 실드 아트(초록 화염은 placeholder, guid 스왑), 부여 SFX.
 - **SELF/ALL 변종 유닛** [S] · 엔진은 완성 — SO 저작만으로 성립(필터 enum 데이터).
 - **실드 TTL/붕괴 변종** [S/M] · 만료 타이머 도입 시 CcDecay 유사 시스템 필요 — 계약 4 변경이라 별도 결정.
 - **Aura producer 이관** [M] · 백로그 `AuraApplySystem` 신설 시 ShieldCast 를 aura payload 로 흡수 검토(소비자 2개 시점).
