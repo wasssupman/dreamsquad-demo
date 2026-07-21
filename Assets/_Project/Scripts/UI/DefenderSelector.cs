@@ -310,45 +310,34 @@ namespace Wassup.UI
                 portraitImg.sprite = data.portrait;
                 portraitImg.enabled = data.portrait != null;
 
-                // action-tray unit 1 — 이름 하단 반투명 밴드 (텍스트보다 먼저 추가해
-                // 아래에 깔림). 포트레이트 슬롯에만 — 폴백 중앙 텍스트는 기존 유지.
-                if (data.portrait != null)
-                {
-                    var bandGO = new GameObject("NameBand", typeof(RectTransform), typeof(Image));
-                    bandGO.transform.SetParent(go.transform, false);
-                    var brt = (RectTransform)bandGO.transform;
-                    brt.anchorMin = new Vector2(0f, 0f);
-                    brt.anchorMax = new Vector2(1f, 0f);
-                    brt.pivot = new Vector2(0.5f, 0f);
-                    brt.sizeDelta = new Vector2(-8f, 30f);
-                    brt.anchoredPosition = new Vector2(0f, 4f);
-                    var bandImg = bandGO.GetComponent<Image>();
-                    bandImg.sprite = UiRoundedSprite.Make(10f, 0f, Color.white, Color.clear);
-                    bandImg.type = Image.Type.Sliced;
-                    bandImg.color = trayConfig != null ? trayConfig.nameBandColor : new Color(0f, 0f, 0f, 0.35f);
-                    bandImg.raycastTarget = false;
-                }
+                // tray-cost-well unit 3 — 이름 하단 밴드. 포트레이트 유무와 무관하게
+                // 항상 깔고 텍스트도 항상 하단 오버레이로 통일한다(예전엔 폴백만 중앙
+                // 검정 텍스트라, 아트가 빠지면 반대 색이 되어 안 읽혔다).
+                float bandH = trayConfig != null ? trayConfig.nameBandHeight : 36f;
+                var bandGO = new GameObject("NameBand", typeof(RectTransform), typeof(Image));
+                bandGO.transform.SetParent(go.transform, false);
+                var brt = (RectTransform)bandGO.transform;
+                brt.anchorMin = new Vector2(0f, 0f);
+                brt.anchorMax = new Vector2(1f, 0f);
+                brt.pivot = new Vector2(0.5f, 0f);
+                brt.sizeDelta = new Vector2(-8f, bandH);
+                brt.anchoredPosition = new Vector2(0f, 4f);
+                var bandImg = bandGO.GetComponent<Image>();
+                bandImg.sprite = UiRoundedSprite.Make(10f, 0f, Color.white, Color.clear);
+                bandImg.type = Image.Type.Sliced;
+                bandImg.color = NameBandColorFor(data.role);
+                bandImg.raycastTarget = false;
 
                 var nameGO = new GameObject("Name", typeof(RectTransform));
                 nameGO.transform.SetParent(go.transform, false);
                 var nrt = (RectTransform)nameGO.transform;
-                if (data.portrait != null)
-                {
-                    // 포트레이트가 있으면 이름은 하단 소형 오버레이.
-                    nrt.anchorMin = new Vector2(0f, 0f);
-                    nrt.anchorMax = new Vector2(1f, 0f);
-                    nrt.pivot = new Vector2(0.5f, 0f);
-                    nrt.sizeDelta = new Vector2(0f, 32f);
-                    nrt.anchoredPosition = new Vector2(0f, 2f);
-                }
-                else
-                {
-                    // 폴백: 기존 중앙 텍스트.
-                    nrt.anchorMin = Vector2.zero;
-                    nrt.anchorMax = Vector2.one;
-                    nrt.offsetMin = new Vector2(4f, 4f);
-                    nrt.offsetMax = new Vector2(-4f, -4f);
-                }
+                nrt.anchorMin = new Vector2(0f, 0f);
+                nrt.anchorMax = new Vector2(1f, 0f);
+                nrt.pivot = new Vector2(0.5f, 0f);
+                // 텍스트 폭을 밴드(-8)보다 안쪽으로 가둔다. 슬롯 폭 전체를 주면 긴 이름
+                // ("파이어캐스터" 등)이 밴드 밖으로 삐져나와 흰 글자가 배경 없이 뜬다.
+                nrt.sizeDelta = new Vector2(-14f, trayConfig != null ? trayConfig.nameTextHeight : 38f);
+                nrt.anchoredPosition = new Vector2(0f, 2f);
                 var tmp = nameGO.AddComponent<TextMeshProUGUI>();
                 if (nameFont != null) tmp.font = nameFont;
                 tmp.text = data.displayName;
@@ -357,22 +346,17 @@ namespace Wassup.UI
                 tmp.enableAutoSizing = true;
                 tmp.fontSizeMin = trayConfig != null ? trayConfig.nameFontMin : 16f;
                 tmp.fontSizeMax = trayConfig != null ? trayConfig.nameFontMax : 26f;
-                if (data.portrait == null) tmp.fontSizeMax = 30f;
-                // ui-tweak 2026-07-09 — 흰색은 밝은 크림/골드 포트레이트 위에서 안 읽힌다.
-                // 아웃라인은 글자를 뒤덮어 오히려 가독성을 해쳐 제거. 검정 볼드로 단순 대비.
-                tmp.color = Color.black;
+                // tray-cost-well unit 3 — 어두운 밴드 위 흰 텍스트. 예전 검정 볼드 +
+                // 흰 아웃라인은 실기에서 거의 안 읽혔다. 밴드가 대비를 만드니
+                // 아웃라인은 글자를 뒤덮는 손해만 남는다 — 제거하면 per-instance
+                // fontMaterial 복사본도 안 생긴다(슬롯당 머티리얼 1개 절약).
+                tmp.color = Color.white;
                 tmp.fontStyle = FontStyles.Bold;
                 tmp.alignment = TextAlignmentOptions.Center;
-                // ui-tweak 2026-07-09 — 검정 글자에 얇은 흰색 아웃라인(할로). 두꺼우면
-                // 글자를 뒤덮으므로 0.12 로 얇게 — 밝은/어두운 포트레이트 양쪽에서 테두리 확보.
-                var nameMat = tmp.fontMaterial; // per-instance 복사본(슬롯 Destroy 시 정리됨)
-                nameMat.EnableKeyword(ShaderUtilities.Keyword_Outline);
-                nameMat.SetColor(ShaderUtilities.ID_OutlineColor, new Color(1f, 1f, 1f, 1f));
-                nameMat.SetFloat(ShaderUtilities.ID_OutlineWidth, 0.12f);
 
-                // action-tray unit 1 — 좌상단 비용 chip + 우상단 role 배지 + 시각 캐시.
+                // action-tray unit 1 — 좌상단 비용 chip + 시각 캐시.
+                // role 배지는 unit 3 에서 제거됐다 — 클래스 정보는 밴드 틴트가 옮겨 받는다.
                 var costText = BuildCostChip(go.transform, data.cost, out var warnGlyph);
-                BuildRoleBadge(go.transform, data.role);
                 _slotVisuals.Add(new SlotVisual
                 {
                     data = data,
@@ -418,8 +402,24 @@ namespace Wassup.UI
             return target != null;
         }
 
-        // action-tray unit 1 — 좌상단 비용 플레이트 (시안: 다크 코너 플레이트에
-        // ⚡볼트 + 숫자). 볼트 스프라이트 누락 시 숫자만. 부족 glyph 는 기본 비활성.
+        // tray-cost-well unit 3 — 이름 밴드 클래스 틴트. role 배지가 사라지면서
+        // 클래스를 가리키는 화면 앵커가 여기로 옮겨왔다(first-session-tutorial unit 11
+        // 이 첫 배치 직후 5개 클래스 설명을 강제로 읽히는데, 대응물이 없으면 순수
+        // 텍스트가 된다). 어두운 base 에 낮은 비율로 섞어 흰 텍스트 대비를 지킨다.
+        private Color NameBandColorFor(DefenderClass role)
+        {
+            var baseColor = trayConfig != null
+                ? trayConfig.nameBandColor
+                : new Color(0.02f, 0.04f, 0.09f, 0.88f);
+            if (trayConfig == null || !trayConfig.TryGetRole(role, out var entry))
+                return baseColor;
+            var tinted = Color.Lerp(new Color(baseColor.r, baseColor.g, baseColor.b, 1f), entry.color, 0.45f);
+            return new Color(tinted.r, tinted.g, tinted.b, baseColor.a);
+        }
+
+        // action-tray unit 1 — 좌상단 비용 플레이트. tray-cost-well unit 3 에서
+        // ⚡볼트를 뺐다 — 에너지 기호는 코스트 셀에 1개만 두고(HUD 전체 앵커) 나머지
+        // 숫자가 의미를 상속한다. 부족 glyph 는 기본 비활성.
         private TextMeshProUGUI BuildCostChip(Transform slot, int cost, out GameObject warnGlyph)
         {
             var plateSize = trayConfig != null ? trayConfig.costPlateSize : new Vector2(56f, 26f);
@@ -438,40 +438,20 @@ namespace Wassup.UI
             chipImg.color = plateColor;
             chipImg.raycastTarget = false;
 
-            float numX = 6f;
-            var bolt = trayConfig != null ? trayConfig.slotCostBolt : null;
-            if (bolt != null)
-            {
-                float boltSize = plateSize.y - 8f;
-                var boltGO = new GameObject("Bolt", typeof(RectTransform), typeof(Image));
-                boltGO.transform.SetParent(chipGO.transform, false);
-                var brt2 = (RectTransform)boltGO.transform;
-                brt2.anchorMin = new Vector2(0f, 0.5f);
-                brt2.anchorMax = new Vector2(0f, 0.5f);
-                brt2.pivot = new Vector2(0f, 0.5f);
-                brt2.anchoredPosition = new Vector2(5f, 0f);
-                brt2.sizeDelta = new Vector2(boltSize, boltSize);
-                var boltImg = boltGO.GetComponent<Image>();
-                boltImg.sprite = bolt;
-                boltImg.preserveAspect = true;
-                boltImg.raycastTarget = false;
-                numX = 5f + boltSize + 3f;
-            }
-
             var numGO = new GameObject("Cost", typeof(RectTransform));
             numGO.transform.SetParent(chipGO.transform, false);
             var numRt = (RectTransform)numGO.transform;
             numRt.anchorMin = Vector2.zero;
             numRt.anchorMax = Vector2.one;
-            numRt.offsetMin = new Vector2(numX, 0f);
-            numRt.offsetMax = new Vector2(-4f, 0f);
+            numRt.offsetMin = new Vector2(3f, 0f);
+            numRt.offsetMax = new Vector2(-3f, 0f);
             var numTmp = numGO.AddComponent<TextMeshProUGUI>();
             if (nameFont != null) numTmp.font = nameFont;
             numTmp.text = cost.ToString();
             numTmp.fontSize = trayConfig != null ? trayConfig.costFontSize : 18f;
             numTmp.fontStyle = FontStyles.Bold;
             numTmp.color = Color.white;
-            numTmp.alignment = TextAlignmentOptions.MidlineLeft;
+            numTmp.alignment = TextAlignmentOptions.Center; // 볼트가 빠져 좌측 여백이 불필요
             numTmp.textWrappingMode = TextWrappingModes.NoWrap;
             numTmp.raycastTarget = false;
 
@@ -498,48 +478,9 @@ namespace Wassup.UI
             return numTmp;
         }
 
-        // action-tray unit 1 — 우상단 role 배지. config entry 누락/미할당 시 neutral
-        // 폴백(회색 "?") — NRE 없이 성립(unit 0 완료 기준 이월분).
-        private void BuildRoleBadge(Transform slot, DefenderClass role)
-        {
-            string glyph = "?";
-            Color color = new Color(0.45f, 0.45f, 0.5f, 0.95f);
-            if (trayConfig != null && trayConfig.TryGetRole(role, out var entry) && !string.IsNullOrEmpty(entry.glyph))
-            {
-                glyph = entry.glyph;
-                color = entry.color;
-            }
-
-            var badgeSize = trayConfig != null ? trayConfig.roleBadgeSize : new Vector2(26f, 26f);
-            var badgeGO = new GameObject("RoleBadge", typeof(RectTransform), typeof(Image));
-            badgeGO.transform.SetParent(slot, false);
-            var brt = (RectTransform)badgeGO.transform;
-            brt.anchorMin = new Vector2(1f, 1f);
-            brt.anchorMax = new Vector2(1f, 1f);
-            brt.pivot = new Vector2(1f, 1f);
-            brt.anchoredPosition = new Vector2(-2f, -2f);
-            brt.sizeDelta = badgeSize;
-            var badgeImg = badgeGO.GetComponent<Image>();
-            badgeImg.sprite = UiRoundedSprite.MakeCircle(26, color, 1.5f, new Color(0f, 0f, 0f, 0.55f));
-            badgeImg.raycastTarget = false;
-
-            var glyphGO = new GameObject("Glyph", typeof(RectTransform));
-            glyphGO.transform.SetParent(badgeGO.transform, false);
-            var grt = (RectTransform)glyphGO.transform;
-            grt.anchorMin = Vector2.zero;
-            grt.anchorMax = Vector2.one;
-            grt.offsetMin = Vector2.zero;
-            grt.offsetMax = Vector2.zero;
-            var glyphTmp = glyphGO.AddComponent<TextMeshProUGUI>();
-            if (nameFont != null) glyphTmp.font = nameFont;
-            glyphTmp.text = glyph;
-            glyphTmp.fontSize = trayConfig != null ? trayConfig.roleFontSize : 14f;
-            glyphTmp.fontStyle = FontStyles.Bold;
-            glyphTmp.color = Color.white;
-            glyphTmp.alignment = TextAlignmentOptions.Center;
-            glyphTmp.textWrappingMode = TextWrappingModes.NoWrap;
-            glyphTmp.raycastTarget = false;
-        }
+        // tray-cost-well unit 3 — 우상단 role 배지 제거. 자리 값이 커서 포트레이트를
+        // 가리는데 정보량이 그만 못했다. 클래스 정보는 NameBandColorFor 의 밴드
+        // 틴트로 옮겼다(신규 픽셀 0). config 의 roles 데이터는 그 틴트 입력이라 유지.
 
         // action-tray unit 1 — affordability 갱신. CostRuntime.CurrentInt 가 바뀐
         // 프레임에만 슬롯 순회(값 diff — 매 프레임 할당/검색 없음). 런타임 미초기화는

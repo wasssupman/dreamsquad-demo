@@ -37,13 +37,13 @@ namespace Wassup.Data
         // action-tray unit 1 — 슬롯 정보 계층(비용 ⚡플레이트·role badge·이름 밴드).
         // 값은 전부 여기서(컴포넌트 매직 넘버 금지 계약). 시안(battle-hud-safe-
         // action-tray-proposal.jpg): 비용 = 좌상단 다크 코너 플레이트에 볼트+숫자.
+        // tray-cost-well unit 3 — slotCostBolt / roleBadgeSize / roleFontSize 제거.
+        // 슬롯 ⚡볼트는 코스트 셀의 아이콘 1개로 통합됐고(CostDisplay.costEnergyIcon),
+        // role 배지는 이름 밴드 틴트로 대체됐다. roles 데이터는 그 틴트 입력이라 유지.
         [Header("Slot Info (unit 1)")]
-        public Sprite slotCostBolt; // 좌상단 비용 ⚡ 아이콘 (null = 볼트 생략, 숫자만)
         public Vector2 costPlateSize = new Vector2(52f, 44f);
         public float costFontSize = 40f;
         public Color costPlateColor = new Color(0.03f, 0.06f, 0.12f, 0.88f);
-        public Vector2 roleBadgeSize = new Vector2(26f, 26f);
-        public float roleFontSize = 14f;
         public float nameFontMin = 16f;
         public float nameFontMax = 26f;
         public Color nameBandColor = new Color(0.02f, 0.04f, 0.09f, 0.88f);
