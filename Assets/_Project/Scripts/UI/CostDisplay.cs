@@ -470,10 +470,12 @@ namespace Wassup.UI
             _cellLayout.minWidth = cellW;
             _cellLayout.flexibleWidth = 0f; // 고정폭. 바깥 HLG 는 childForceExpandWidth=false 여야 유효.
 
-            BuildValueRow(numberH, numberSize);
-            BuildWell(numberH, rowGap, wellPad);
-            BuildGainLabel(numberH);
+            // 순서 = 그리기 순서. 물통이 셀 전체를 쓰고 숫자가 그 위에 겹친다
+            // (각성 게이지와 같은 구성 — 액체가 공간을 다 쓰고 값은 그 위에 얹힘).
+            BuildWell(wellPad);
             BuildIdleGlyph();
+            BuildValueRow(numberH, numberSize);
+            BuildGainLabel(numberH);
 
             UiLayer.Apply(_cell);
         }
@@ -519,6 +521,16 @@ namespace Wassup.UI
             _valueText.alignment = TextAlignmentOptions.MidlineLeft;
             _valueText.textWrappingMode = TextWrappingModes.NoWrap;
             _valueText.raycastTarget = false;
+            // 액체 위에 겹치므로 아웃라인 + 언더레이가 필수다. 물통이 가득 차면
+            // 밝은 금색 위에 흰 글자가 놓여 아웃라인 없이는 안 읽힌다
+            // (각성 게이지가 ApplyNumberOutline 을 두는 이유와 같다).
+            var mat = _valueText.fontMaterial;
+            mat.EnableKeyword(ShaderUtilities.Keyword_Outline);
+            mat.SetColor(ShaderUtilities.ID_OutlineColor, new Color(0.05f, 0.07f, 0.12f, 1f));
+            mat.SetFloat(ShaderUtilities.ID_OutlineWidth, 0.2f);
+            mat.SetFloat(ShaderUtilities.ID_UnderlayOffsetX, 0.3f);
+            mat.SetFloat(ShaderUtilities.ID_UnderlayOffsetY, -0.3f);
+            mat.SetColor(ShaderUtilities.ID_UnderlayColor, new Color(0.02f, 0.03f, 0.06f, 0.85f));
         }
 
         // 외부 획득(AddCost) 시 숫자 위로 떠오르는 "+N".
@@ -558,7 +570,7 @@ namespace Wassup.UI
             var tmp = go.AddComponent<TextMeshProUGUI>();
             if (numberFont != null) tmp.font = numberFont;
             tmp.text = "대기";
-            tmp.fontSize = 20f;
+            tmp.fontSize = 15f; // 물통이 좁아져 2글자가 겨우 들어간다
             tmp.fontStyle = FontStyles.Bold;
             tmp.color = new Color(1f, 1f, 1f, 0.62f);
             tmp.alignment = TextAlignmentOptions.Center;
@@ -570,7 +582,7 @@ namespace Wassup.UI
 
         // 하단: Mask 용기 + 아래→위로 차오르는 액체 + 표면 하이라이트.
         // 각성 게이지(AwakeningGaugeView)의 ChargeWell 구성을 세로 직사각으로 옮긴 것.
-        private void BuildWell(float numberH, float rowGap, Vector2 wellPad)
+        private void BuildWell(Vector2 wellPad)
         {
             var wellGO = new GameObject("Well", typeof(RectTransform), typeof(Image), typeof(Mask));
             wellGO.transform.SetParent(_cell.transform, false);
@@ -578,8 +590,9 @@ namespace Wassup.UI
             _wellRect.anchorMin = new Vector2(0f, 0f);
             _wellRect.anchorMax = new Vector2(1f, 1f);
             _wellRect.pivot = new Vector2(0.5f, 0.5f);
+            // 셀 거의 전체. 숫자 영역을 따로 떼지 않는다 — 값은 물통 위에 겹친다.
             _wellRect.offsetMin = new Vector2(wellPad.x, wellPad.y);
-            _wellRect.offsetMax = new Vector2(-wellPad.x, -(numberH + rowGap));
+            _wellRect.offsetMax = new Vector2(-wellPad.x, -wellPad.y);
 
             var wellBack = wellGO.GetComponent<Image>();
             wellBack.sprite = UiRoundedSprite.Make(8f, 0f, Color.white, Color.clear);
@@ -596,7 +609,11 @@ namespace Wassup.UI
             lrt.offsetMin = Vector2.zero;
             lrt.offsetMax = Vector2.zero;
             _wellLiquid = liquidGO.GetComponent<Image>();
-            _wellLiquid.sprite = UiRoundedSprite.Make(8f, 0f, Color.white, Color.clear);
+            // 액체는 반드시 각진 단색이어야 한다. Image.Type.Filled 는 9-slice 를
+            // 무시하고 스프라이트를 rect 에 맞춰 통째로 늘린 뒤 자르므로, 라운드
+            // 스프라이트를 쓰면 코너 반경이 비례 확대돼 "늘어난 이미지"로 보인다.
+            // 용기의 둥근 모양은 WellBack 의 Mask 가 만든다.
+            _wellLiquid.sprite = UiRoundedSprite.Make(0f, 0f, Color.white, Color.clear);
             _wellLiquid.type = Image.Type.Filled;
             _wellLiquid.fillMethod = Image.FillMethod.Vertical;
             _wellLiquid.fillOrigin = (int)Image.OriginVertical.Bottom;
@@ -604,20 +621,36 @@ namespace Wassup.UI
             _wellLiquid.color = trayConfig != null ? trayConfig.wellLiquidColor : WellLiquidFallback;
             _wellLiquid.raycastTarget = false;
 
+            // 수면 하이라이트. 액체 표면을 따라 오르내리는 밝은 띠 — 이게 "차오른다"는
+            // 인상의 대부분을 만든다(각성 게이지의 LiquidSurface 와 같은 역할).
             var surfaceGO = new GameObject("WellSurface", typeof(RectTransform), typeof(Image));
             surfaceGO.transform.SetParent(wellGO.transform, false);
             _surfaceRect = (RectTransform)surfaceGO.transform;
             _surfaceRect.anchorMin = new Vector2(0f, 0.5f);
             _surfaceRect.anchorMax = new Vector2(1f, 0.5f);
             _surfaceRect.pivot = new Vector2(0.5f, 0.5f);
-            _surfaceRect.sizeDelta = new Vector2(0f, 4f);
+            _surfaceRect.sizeDelta = new Vector2(0f, 7f);
             _surfaceRect.anchoredPosition = Vector2.zero;
             _surfaceImage = surfaceGO.GetComponent<Image>();
-            _surfaceImage.sprite = UiRoundedSprite.Make(2f, 0f, Color.white, Color.clear);
-            _surfaceImage.type = Image.Type.Sliced;
+            _surfaceImage.sprite = UiRoundedSprite.Make(0f, 0f, Color.white, Color.clear);
             _surfaceImage.color = trayConfig != null ? trayConfig.wellSurfaceColor : WellSurfaceFallback;
             _surfaceImage.raycastTarget = false;
             _surfaceImage.enabled = false;
+
+            // 용기 윤곽. Mask 밖(Well 의 형제)에 둬야 잘리지 않는다. 액체가 가득
+            // 차도 물통의 경계가 남아 "채워진 그릇"으로 읽힌다.
+            var frameGO = new GameObject("WellFrame", typeof(RectTransform), typeof(Image));
+            frameGO.transform.SetParent(_cell.transform, false);
+            var frt = (RectTransform)frameGO.transform;
+            frt.anchorMin = _wellRect.anchorMin;
+            frt.anchorMax = _wellRect.anchorMax;
+            frt.offsetMin = _wellRect.offsetMin;
+            frt.offsetMax = _wellRect.offsetMax;
+            var frameImg = frameGO.GetComponent<Image>();
+            frameImg.sprite = UiRoundedSprite.Make(8f, 2f, Color.clear,
+                trayConfig != null ? trayConfig.fallbackBorder : new Color(0.94f, 0.72f, 0.24f, 1f));
+            frameImg.type = Image.Type.Sliced;
+            frameImg.raycastTarget = false;
         }
     }
 }

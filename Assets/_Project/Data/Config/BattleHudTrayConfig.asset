@@ -32,9 +32,9 @@ MonoBehaviour:
   nameFontMax: 26
   nameBandColor: {r: 0.02, g: 0.04, b: 0.09, a: 0.94}
   costCellWidth: 154
-  cellNumberHeight: 48
-  cellRowGap: 4
-  wellPadding: {x: 8, y: 6}
+  cellNumberHeight: 44
+  cellRowGap: 2
+  wellPadding: {x: 9, y: 8}
   wellBackColor: {r: 0.04, g: 0.06, b: 0.11, a: 0.92}
   wellLiquidColor: {r: 0.95, g: 0.62, b: 0.15, a: 1}
   wellLiquidFullColor: {r: 1, g: 0.85, b: 0.25, a: 1}
