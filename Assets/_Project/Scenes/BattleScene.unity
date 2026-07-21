@@ -3579,6 +3579,8 @@ MonoBehaviour:
   tornadoPrefab: {fileID: 207745087118991948, guid: ae85f8af7e5c6c44c91e2f6966a4354b, type: 3}
   portalPrefab: {fileID: 6817788139784616374, guid: 8a018bf2f3cb64a26b5a382a6bfc6d73, type: 3}
   healAppliedPrefab: {fileID: 6736404335509753307, guid: c73c83b92a33347efa457dcb948b2ba7, type: 3}
+  shieldGrantedPrefab: {fileID: 8330006320348072208, guid: 6e4b6c99591848e4ca95111a6f384e71, type: 3}
+  shieldGrantedScale: 0.7
   cardAbsorbPrefab: {fileID: 1190586612074608, guid: 37f1dda35c3982a428263da65fbd3888, type: 3}
   cardAbsorbScale: 0.6
 --- !u!4 &1795146347

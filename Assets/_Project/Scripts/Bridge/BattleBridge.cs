@@ -289,6 +289,8 @@ namespace Wassup.Bridge
         // nightmare-catcher unit 3 — Combat→Movement 텔레포트(SelfBlink) 요청 채널.
         private NativeQueue<Wassup.Battle.Movement.BlinkRequestEvent> _blinkRequestQueue;
         private NativeQueue<Wassup.Battle.Units.HealAppliedEvent> _healAppliedEventQueue;
+        // shield-guardian-defender unit 4 — Effects→Presentation 실드 부여 원샷 VFX 채널.
+        private NativeQueue<Wassup.Battle.Effects.ShieldGrantedEvent> _shieldGrantedEventQueue;
         private NativeQueue<Wassup.Battle.Units.DamageNumberEvent> _damageNumberEventQueue;
         private NativeQueue<Wassup.Battle.Units.EnemyKilledEvent> _enemyKilledEventQueue;
         private NativeQueue<Wassup.Battle.Effects.EnemyCcEvent> _enemyCcQueue;
@@ -522,6 +524,7 @@ namespace Wassup.Bridge
             DestroyEntitiesByType<Wassup.Battle.Combat.UnitAttackVisualEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Combat.Projectile.ProjectileHitEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Units.HealAppliedEventsSingleton>();
+            DestroyEntitiesByType<Wassup.Battle.Effects.ShieldGrantedEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Units.DamageNumberEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Units.EnemyKilledEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.EnemyCcEventsSingleton>();
@@ -558,6 +561,7 @@ namespace Wassup.Bridge
             if (_threatHitEventQueue.IsCreated) _threatHitEventQueue.Dispose();
             if (_blinkRequestQueue.IsCreated) _blinkRequestQueue.Dispose();
             if (_healAppliedEventQueue.IsCreated) _healAppliedEventQueue.Dispose();
+            if (_shieldGrantedEventQueue.IsCreated) _shieldGrantedEventQueue.Dispose();
             if (_damageNumberEventQueue.IsCreated) _damageNumberEventQueue.Dispose();
             if (_enemyKilledEventQueue.IsCreated) _enemyKilledEventQueue.Dispose();
             if (_enemyCcQueue.IsCreated) _enemyCcQueue.Dispose();
@@ -1284,6 +1288,13 @@ namespace Wassup.Bridge
             _healAppliedEventQueue = new NativeQueue<Wassup.Battle.Units.HealAppliedEvent>(Allocator.Persistent);
             var healAppliedSingleton = _em.CreateEntity();
             _em.AddComponentData(healAppliedSingleton, new Wassup.Battle.Units.HealAppliedEventsSingleton { queue = _healAppliedEventQueue });
+
+            // shield-guardian-defender unit 4 — Effects→Presentation 실드 부여 원샷 VFX 채널.
+            // ShieldCastSystem 이 부여 대상 위치마다 1건 enqueue.
+            if (_shieldGrantedEventQueue.IsCreated) _shieldGrantedEventQueue.Dispose();
+            _shieldGrantedEventQueue = new NativeQueue<Wassup.Battle.Effects.ShieldGrantedEvent>(Allocator.Persistent);
+            var shieldGrantedSingleton = _em.CreateEntity();
+            _em.AddComponentData(shieldGrantedSingleton, new Wassup.Battle.Effects.ShieldGrantedEventsSingleton { queue = _shieldGrantedEventQueue });
 
             // Units->Presentation damage-number channel. DamageApplicationSystem enqueues
             // one event per enemy (AttackUnitTag) whose IncomingDamage was applied.
@@ -2138,6 +2149,7 @@ namespace Wassup.Bridge
             DrainUnitAttackVisualEvents();
             DrainProjectileHitEvents();
             DrainHealAppliedEvents();
+            DrainShieldGrantedEvents();
             DrainDamageNumberEvents();
             DrainEnemyKilledEvents();
             DrainAttackOutputLogEvents();
@@ -2707,6 +2719,16 @@ namespace Wassup.Bridge
                 if (evt.amount <= 0f) continue;
                 vfxSpawner.SpawnHealApplied(new Vector3(evt.position.x, evt.position.y, evt.position.z), evt.amount);
             }
+        }
+
+        // shield-guardian-defender unit 4 — 실드 부여 원샷 VFX. ShieldCastSystem 이
+        // 부여 대상 위치마다 enqueue → 대상 위치에 단발 이펙트.
+        private void DrainShieldGrantedEvents()
+        {
+            if (!_shieldGrantedEventQueue.IsCreated) return;
+            if (vfxSpawner == null) { _shieldGrantedEventQueue.Clear(); return; }
+            while (_shieldGrantedEventQueue.TryDequeue(out var evt))
+                vfxSpawner.SpawnShieldGranted(new Vector3(evt.position.x, evt.position.y, evt.position.z));
         }
 
         // Enemy-only floating damage numbers. DamageApplicationSystem enqueues one

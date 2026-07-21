@@ -38,6 +38,9 @@ namespace Wassup.Battle.Effects
             var flowField = SystemAPI.GetSingleton<FlowFieldSingleton>();
             _incomingShieldLookup.Update(ref state);
             _shieldSlotLookup.Update(ref state);
+            // shield-guardian-defender unit 4 — 부여 원샷 VFX 채널(Effects→Bridge).
+            // 테스트 월드엔 없을 수 있어 옵셔널.
+            bool hasGrantQ = SystemAPI.TryGetSingletonRW<ShieldGrantedEventsSingleton>(out var grantSingleton);
 
             // 후보 스냅샷: 생존·배치완료 아군 defender (자신 포함 — 계약 6).
             var candidateQuery = SystemAPI.QueryBuilder()
@@ -68,6 +71,7 @@ namespace Wassup.Battle.Effects
 
                 var candidates = new NativeList<ShieldCandidate>(candEntities.Length, Allocator.Temp);
                 var candidateTargets = new NativeList<Entity>(candEntities.Length, Allocator.Temp);
+                var candidatePositions = new NativeList<float3>(candEntities.Length, Allocator.Temp);
                 int selfIndex = -1;
 
                 for (int i = 0; i < candEntities.Length; i++)
@@ -87,6 +91,7 @@ namespace Wassup.Battle.Effects
                         effectiveHpRatio = (candHealths[i].value + shieldSum) / maxHp,
                     });
                     candidateTargets.Add(candEntities[i]);
+                    candidatePositions.Add(targetPos);
                     if (candEntities[i] == casterEntity) selfIndex = candidateTargets.Length - 1;
                 }
 
@@ -103,6 +108,12 @@ namespace Wassup.Battle.Effects
                         source = casterEntity,
                         amount = cast.ValueRO.amount,
                     });
+                    // 부여 성사 시에만 원샷 VFX enqueue(대상 위치). 버퍼 없는 대상은 스킵됨.
+                    if (hasGrantQ)
+                        grantSingleton.ValueRW.queue.Enqueue(new ShieldGrantedEvent
+                        {
+                            position = candidatePositions[selected[s]],
+                        });
                 }
 
                 // 자신이 항상 후보라 매 주기 발화 — 대상 유무와 무관하게 쿨다운 리셋
@@ -112,6 +123,7 @@ namespace Wassup.Battle.Effects
                 selected.Dispose();
                 candidates.Dispose();
                 candidateTargets.Dispose();
+                candidatePositions.Dispose();
             }
 
             candEntities.Dispose();

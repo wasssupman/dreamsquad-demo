@@ -20,6 +20,11 @@ namespace Wassup.Presentation
         [SerializeField] private GameObject tornadoPrefab;
         [SerializeField] private GameObject portalPrefab;
         [SerializeField] private GameObject healAppliedPrefab;
+        // shield-guardian-defender unit 4 — 실드 부여 원샷. 벤더 프리팹(VFX_Fire_Green)이
+        // 루프형이라 SpawnShieldGranted 가 스폰 인스턴스에서 loop off + burst 로 단발화한다.
+        [SerializeField] private GameObject shieldGrantedPrefab;
+        [Tooltip("실드 부여 이펙트 스케일(타일 1 유닛 기준)")]
+        [SerializeField] private float shieldGrantedScale = 0.7f;
 
         [Header("card-fly-to-target-absorb — 카드 흡수 임팩트")]
         [Tooltip("카드가 유닛/타일에 내리찍힐 때 터지는 이펙트(GA vfx_Hit_Rock03: 코어 플래시+충격파 링+파편). Null → ring+burst 폴백.")]
@@ -154,6 +159,48 @@ namespace Wassup.Presentation
             var pos = new Vector3(worldPos.x, worldPos.y + 0.08f, worldPos.z);
             var go = Instantiate(healAppliedPrefab, pos, Quaternion.identity, transform);
             Destroy(go, 1.1f);
+        }
+
+        // shield-guardian-defender unit 4 — 실드 부여 원샷. 벤더 프리팹은 루프형이라
+        // 스폰 인스턴스에서만 loop off + t0 burst 로 단발화(공유 에셋 무접촉, lessons 규칙).
+        public void SpawnShieldGranted(Vector3 worldPos)
+        {
+            if (shieldGrantedPrefab == null)
+            {
+                Debug.LogError("[VfxSpawner] shieldGrantedPrefab 미할당 — Inspector에서 prefab을 연결해주세요.");
+                return;
+            }
+            worldPos = Wassup.Core.BoardSpace.ToView(worldPos); // sim→view 1회
+            var pos = new Vector3(worldPos.x, worldPos.y + 0.08f, worldPos.z);
+            var go = Instantiate(shieldGrantedPrefab, pos, Quaternion.identity, transform);
+            go.transform.localScale = Vector3.one * Mathf.Max(0.1f, shieldGrantedScale);
+            float lifetime = ConfigureOneShot(go);
+            Destroy(go, lifetime);
+        }
+
+        // 루프형 파티클 프리팹을 스폰 인스턴스 단위로 단발화한다. 각 ParticleSystem 의
+        // loop 를 끄고 rateOverTime→t0 burst 로 치환해 "펑 터지고 페이드"로 만든 뒤,
+        // 자가 파괴 시점(최대 duration+startLifetime)을 반환한다. 공유 에셋은 건드리지 않는다.
+        private static float ConfigureOneShot(GameObject root)
+        {
+            var systems = root.GetComponentsInChildren<ParticleSystem>(includeInactive: true);
+            float maxLife = 0f;
+            for (int i = 0; i < systems.Length; i++)
+            {
+                var ps = systems[i];
+                var main = ps.main;
+                main.loop = false;
+                main.playOnAwake = true;
+                float burst = Mathf.Max(1f, main.duration) * Mathf.Max(1f, ps.emission.rateOverTime.constant);
+                var emission = ps.emission;
+                emission.rateOverTime = 0f;
+                emission.SetBursts(new[] { new ParticleSystem.Burst(0f, (short)Mathf.Clamp(Mathf.RoundToInt(burst), 4, 24)) });
+                float life = main.duration + main.startLifetime.constantMax;
+                if (life > maxLife) maxLife = life;
+                ps.Clear(true);
+                ps.Play(true);
+            }
+            return maxLife > 0f ? maxLife + 0.2f : 1.5f;
         }
 
         private static void PlayPixPlaysVfx(GameObject root, Vector3 source, Vector3 target, float durationSec, float radiusWorld)
