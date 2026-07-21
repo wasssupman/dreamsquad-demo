@@ -44,8 +44,12 @@ namespace Wassup.UI
         private TextMeshProUGUI _valueText;
         private RectTransform _wellRect;
         private Image _wellLiquid;
-        private RectTransform _surfaceRect;
-        private Image _surfaceImage;
+        private Material _liquidMaterial;
+
+        private static readonly int FillId = Shader.PropertyToID("_Fill");
+        private static readonly int LiquidBottomId = Shader.PropertyToID("_LiquidBottom");
+        private static readonly int LiquidTopId = Shader.PropertyToID("_LiquidTop");
+        private static readonly int SurfaceId = Shader.PropertyToID("_SurfaceColor");
         private TextMeshProUGUI _pulseLabel;
         private Coroutine _pulse;
 
@@ -60,13 +64,11 @@ namespace Wassup.UI
         private int _prevInt = -1;
         private float _prevFill;
         private TextMeshProUGUI _gainLabel;
-        private GameObject _idleGlyph;
         private Coroutine _wellTick;
         private Coroutine _maxBurst;
         private Coroutine _valuePunch;
         private Coroutine _spendFlash;
         private Coroutine _gain;
-        private bool _wasIdle;
 
         // ── 트레이 부착 ──────────────────────────────────────────────
 
@@ -99,6 +101,16 @@ namespace Wassup.UI
         private void OnDisable()
         {
             if (gameManager != null) gameManager.PhaseChanged -= OnPhaseChanged;
+        }
+
+        // 런타임 머티리얼 인스턴스는 직접 정리한다(프로젝트 관례 —
+        // DepthParallaxView / DraftCardVfxDriver 와 같은 패턴).
+        private void OnDestroy()
+        {
+            if (_liquidMaterial == null) return;
+            if (Application.isPlaying) Destroy(_liquidMaterial);
+            else DestroyImmediate(_liquidMaterial);
+            _liquidMaterial = null;
         }
 
         private void OnPhaseChanged(GamePhase phase)
@@ -154,15 +166,7 @@ namespace Wassup.UI
             float fill = CostWellMath.WellFill(runtime.Current, runtime.Max);
             bool atMax = runtime.Current >= runtime.Max;
 
-            // 순서 주의: idle 상태를 먼저 갱신해야 같은 프레임의 액체 색에 반영된다.
-            // (색은 매 프레임 새로 쓰이므로 idle dim 을 색 계산 안에 넣어야 유지된다)
-            ApplyIdleState(runtime.RegenActive, fill);
-            if (_wellLiquid != null)
-            {
-                _wellLiquid.fillAmount = fill;
-                _wellLiquid.color = LiquidColorFor(fill);
-            }
-            ApplySurface(fill);
+            ApplyFill(fill);
             ApplyValue(curInt, runtime.Max);
 
             // sentinel — 첫 프레임/재동기화는 값만 흡수하고 연출 없이 지나간다.
@@ -212,41 +216,25 @@ namespace Wassup.UI
             _valueText.text = $"{shown}<size=58%>/{Mathf.RoundToInt(max)}</size>";
         }
 
-        // 리젠이 멈춘 채 물통이 덜 찬 상태 = "충전 대기". 배치 페이즈에서 실제로
-        // 발생한다 — BeginRegen 은 Battle 진입에서 불리고 유닛 비용은 전부 정수라,
-        // 첫 배치 직후부터 전투 시작까지 소수부 0 인 채로 30초간 정지한다.
-        // 표시가 없으면 고장으로 읽힌다. 밝기 단독으로 구분하지 않고 글리프를 동반한다.
-        private void ApplyIdleState(bool regenActive, float fill)
-        {
-            bool idle = !regenActive && fill < 0.999f;
-            if (idle == _wasIdle) return;
-            _wasIdle = idle; // 액체 dim 은 LiquidColorFor 가 이 값을 읽어 매 프레임 적용한다
-            if (_idleGlyph != null) _idleGlyph.SetActive(idle);
-        }
+        // 리젠 정지(배치 페이즈) 표현은 두지 않는다 — 물통이 그냥 비어 있으면 된다
+        // (사용자 결정 2026-07-21). 리뷰는 "30초간 멈춘 위젯이 고장으로 읽힌다"며
+        // dim + 글리프를 요구했으나, 실제로는 배치 단계 화면이 더 지저분해졌다.
 
-        private Color LiquidColorFor(float fill)
+        // 셰이더 모드면 수위를 uniform 으로 넘긴다 — 표면 파형·깊이 음영·수면
+        // 하이라이트를 프래그먼트가 만든다(별도 Surface Image 불필요).
+        // 폴백(머티리얼 미할당)이면 예전처럼 Image.Type.Filled 로 자른다.
+        private void ApplyFill(float fill)
         {
+            if (_liquidMaterial != null)
+            {
+                _liquidMaterial.SetFloat(FillId, fill);
+                return;
+            }
+            if (_wellLiquid == null) return;
+            _wellLiquid.fillAmount = fill;
             var baseColor = trayConfig != null ? trayConfig.wellLiquidColor : WellLiquidFallback;
             var fullColor = trayConfig != null ? trayConfig.wellLiquidFullColor : WellLiquidFallback;
-            var c = Color.Lerp(baseColor, fullColor, fill);
-            // 충전 대기(리젠 정지) 중에는 액체를 죽인다. 색은 매 프레임 새로 쓰이므로
-            // dim 을 여기 넣지 않으면 상태 전환 프레임에만 반영되고 곧 덮인다.
-            if (_wasIdle) c.a *= 0.45f;
-            return c;
-        }
-
-        // 액체 표면은 fill 을 따라 오르내리고, 바닥/천장에 붙으면 숨긴다
-        // (각성 게이지 LiquidSurface 와 같은 규칙).
-        private void ApplySurface(float fill)
-        {
-            if (_surfaceRect == null || _wellRect == null) return;
-            bool visible = fill > 0.01f && fill < 0.99f;
-            if (_surfaceImage != null && _surfaceImage.enabled != visible)
-                _surfaceImage.enabled = visible;
-            if (!visible) return;
-
-            float h = _wellRect.rect.height;
-            _surfaceRect.anchoredPosition = new Vector2(0f, Mathf.Lerp(-h * 0.5f, h * 0.5f, fill));
+            _wellLiquid.color = Color.Lerp(baseColor, fullColor, fill);
         }
 
         // ── 연출 (unit 2) ────────────────────────────────────────────
@@ -473,7 +461,6 @@ namespace Wassup.UI
             // 순서 = 그리기 순서. 물통이 셀 전체를 쓰고 숫자가 그 위에 겹친다
             // (각성 게이지와 같은 구성 — 액체가 공간을 다 쓰고 값은 그 위에 얹힘).
             BuildWell(wellPad);
-            BuildIdleGlyph();
             BuildValueRow(numberH, numberSize);
             BuildGainLabel(numberH);
 
@@ -542,33 +529,6 @@ namespace Wassup.UI
             go.SetActive(false);
         }
 
-        // 리젠 정지 표시. 밝기(dim) 단독으로 구분하지 않는다 — 이 spec 계열의
-        // "색·밝기 단독 판별 금지" 계약(action-tray unit 1 의 X glyph 근거)을
-        // 물통에도 적용한다. 정지 / max / 거의-가득이 각각 글리프 · 액체 높이로 갈린다.
-        private void BuildIdleGlyph()
-        {
-            var go = new GameObject("IdleGlyph", typeof(RectTransform));
-            go.transform.SetParent(_wellRect, false);
-            var rt = (RectTransform)go.transform;
-            // 값이 셀 중앙을 쓰므로 글리프는 하단으로 비켜난다.
-            rt.anchorMin = new Vector2(0f, 0f);
-            rt.anchorMax = new Vector2(1f, 0f);
-            rt.pivot = new Vector2(0.5f, 0f);
-            rt.sizeDelta = new Vector2(0f, 20f);
-            rt.anchoredPosition = new Vector2(0f, 5f);
-            var tmp = go.AddComponent<TextMeshProUGUI>();
-            if (numberFont != null) tmp.font = numberFont;
-            tmp.text = "대기";
-            tmp.fontSize = 15f; // 물통이 좁아져 2글자가 겨우 들어간다
-            tmp.fontStyle = FontStyles.Bold;
-            tmp.color = new Color(1f, 1f, 1f, 0.62f);
-            tmp.alignment = TextAlignmentOptions.Center;
-            tmp.textWrappingMode = TextWrappingModes.NoWrap;
-            tmp.raycastTarget = false;
-            _idleGlyph = go;
-            go.SetActive(false);
-        }
-
         // 하단: Mask 용기 + 아래→위로 차오르는 액체 + 표면 하이라이트.
         // 각성 게이지(AwakeningGaugeView)의 ChargeWell 구성을 세로 직사각으로 옮긴 것.
         private void BuildWell(Vector2 wellPad)
@@ -598,33 +558,40 @@ namespace Wassup.UI
             lrt.offsetMin = Vector2.zero;
             lrt.offsetMax = Vector2.zero;
             _wellLiquid = liquidGO.GetComponent<Image>();
-            // 액체는 반드시 각진 단색이어야 한다. Image.Type.Filled 는 9-slice 를
-            // 무시하고 스프라이트를 rect 에 맞춰 통째로 늘린 뒤 자르므로, 라운드
-            // 스프라이트를 쓰면 코너 반경이 비례 확대돼 "늘어난 이미지"로 보인다.
-            // 용기의 둥근 모양은 WellBack 의 Mask 가 만든다.
             _wellLiquid.sprite = UiRoundedSprite.Make(0f, 0f, Color.white, Color.clear);
-            _wellLiquid.type = Image.Type.Filled;
-            _wellLiquid.fillMethod = Image.FillMethod.Vertical;
-            _wellLiquid.fillOrigin = (int)Image.OriginVertical.Bottom;
-            _wellLiquid.fillAmount = 0f;
-            _wellLiquid.color = trayConfig != null ? trayConfig.wellLiquidColor : WellLiquidFallback;
             _wellLiquid.raycastTarget = false;
 
-            // 수면 하이라이트. 액체 표면을 따라 오르내리는 밝은 띠 — 이게 "차오른다"는
-            // 인상의 대부분을 만든다(각성 게이지의 LiquidSurface 와 같은 역할).
-            var surfaceGO = new GameObject("WellSurface", typeof(RectTransform), typeof(Image));
-            surfaceGO.transform.SetParent(wellGO.transform, false);
-            _surfaceRect = (RectTransform)surfaceGO.transform;
-            _surfaceRect.anchorMin = new Vector2(0f, 0.5f);
-            _surfaceRect.anchorMax = new Vector2(1f, 0.5f);
-            _surfaceRect.pivot = new Vector2(0.5f, 0.5f);
-            _surfaceRect.sizeDelta = new Vector2(0f, 7f);
-            _surfaceRect.anchoredPosition = Vector2.zero;
-            _surfaceImage = surfaceGO.GetComponent<Image>();
-            _surfaceImage.sprite = UiRoundedSprite.Make(0f, 0f, Color.white, Color.clear);
-            _surfaceImage.color = trayConfig != null ? trayConfig.wellSurfaceColor : WellSurfaceFallback;
-            _surfaceImage.raycastTarget = false;
-            _surfaceImage.enabled = false;
+            var liquidMat = trayConfig != null ? trayConfig.wellLiquidMaterial : null;
+            if (liquidMat != null)
+            {
+                // 셰이더 모드: 풀 rect(Simple)를 그대로 두고 수위를 프래그먼트가
+                // 자른다. Filled 는 지오메트리를 잘라 셰이더가 수면을 모르므로
+                // 출렁임을 만들 수 없다.
+                _wellLiquid.type = Image.Type.Simple;
+                _wellLiquid.color = Color.white;
+                _liquidMaterial = new Material(liquidMat)
+                {
+                    name = "CostWellLiquid (Instance)",
+                    hideFlags = HideFlags.HideAndDontSave,
+                };
+                if (trayConfig != null)
+                {
+                    _liquidMaterial.SetColor(LiquidBottomId, trayConfig.wellLiquidColor);
+                    _liquidMaterial.SetColor(LiquidTopId, trayConfig.wellLiquidFullColor);
+                    _liquidMaterial.SetColor(SurfaceId, trayConfig.wellSurfaceColor);
+                }
+                _liquidMaterial.SetFloat(FillId, 0f);
+                _wellLiquid.material = _liquidMaterial;
+            }
+            else
+            {
+                // 폴백: 머티리얼 미할당이면 예전 방식(출렁임 없는 단색 채움).
+                _wellLiquid.type = Image.Type.Filled;
+                _wellLiquid.fillMethod = Image.FillMethod.Vertical;
+                _wellLiquid.fillOrigin = (int)Image.OriginVertical.Bottom;
+                _wellLiquid.fillAmount = 0f;
+                _wellLiquid.color = trayConfig != null ? trayConfig.wellLiquidColor : WellLiquidFallback;
+            }
 
             // 용기 윤곽. Mask 밖(Well 의 형제)에 둬야 잘리지 않는다. 액체가 가득
             // 차도 물통의 경계가 남아 "채워진 그릇"으로 읽힌다.

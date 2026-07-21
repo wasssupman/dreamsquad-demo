@@ -64,6 +64,12 @@ namespace Wassup.Data
         [Tooltip("가득 찼을 때 액체색 — wellLiquidColor 와 명도차를 유지한다(색 단독 판별 금지)")]
         public Color wellLiquidFullColor = new Color(1f, 0.85f, 0.25f, 1f);
         public Color wellSurfaceColor = new Color(1f, 0.95f, 0.7f, 0.85f);
+        // tray-cost-well 5 — 액체 셰이더 머티리얼(Wassup/UI/CostWell). 표면 파형·
+        // 깊이 음영·유리 반사를 프래그먼트가 만든다. 미할당이면 절차 스프라이트
+        // 폴백(출렁임 없는 단색 채움).
+        // 씬이 아니라 여기 두는 이유: 씬 저장은 미저장 WIP 까지 함께 베이크한다.
+        // Shader.Find 를 안 쓰는 이유: 빌드 스트리핑 사고 이력(2026-07-15).
+        public Material wellLiquidMaterial;
         [Tooltip("코스트 셀 숫자. 슬롯 가격(costFontSize)보다 커야 '내 잔량'과 '유닛 가격'이 구분된다")]
         public float cellNumberFontSize = 52f;
 
