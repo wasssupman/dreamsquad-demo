@@ -8,12 +8,12 @@
 시즌 기믹 "집에 가도 되나요?" 를 end-to-end 플레이 가능하게 한다. 두 룰:
 
 1. **사망 → 사직서**(unit 8 재설계): 배치된 아군 유닛이 (원인 불문) **사망**하면 그 배치 타일에 **사직서**를 드랍한다. (강제 퇴근 10초 타이머는 폐기 — 배치 유닛이 강제로 사라지는 감성 문제.)
-2. **사직서 5장 → 메테오 3발**: 맵에 사직서가 `resignationThreshold`(5)장 모이면 **5장을 소모**하고, 맵의 이동(Walk) 타일 임의 3곳에 **메테오를 순차 낙하**시킨다(적에게만 피해). (사용자 결정: 5장 소모·재누적 / 적으로만.)
+2. **사직서 5장 → 메테오 10발**: 맵에 사직서가 `resignationThreshold`(5)장 모이면 **5장을 소모**하고, 맵의 이동(Walk) 타일 임의 `meteorCount`(10)곳에 **메테오를 순차 낙하**시킨다(적에게만 피해). (사용자 결정: 5장 소모·재누적 / 적으로만 / 강화 3→10.)
 
 ## 검증 질문 (이 spec 이 답해야 할 것)
 
 - ClockOut 기믹 매치에서, 배치 유닛이 **전투 중 사망**하면 그 타일에 사직서가 남는가? (가만히 둔 유닛은 사라지지 않는가?)
-- 사직서가 5장 되면 5장이 사라지고 Walk 타일 3곳에 메테오가 순차 낙하해 **적만** 때리는가?
+- 사직서가 5장 되면 5장이 사라지고 Walk 타일 여러 곳(`meteorCount` 10)에 메테오가 순차 낙하해 **적만** 때리는가?
 - gimmick=null / 다른 기믹 매치에서 이 시스템들이 완전히 비활성(무변화)인가?
 - 결정론: 같은 matchSeed → 같은 메테오 착탄 셀 시퀀스인가?
 
@@ -49,7 +49,7 @@
 - **사직서 임계 = 번아웃 Consume 전례**. 살아있는 사직서 ≥ `resignationThreshold` 시 그 수만큼(5장) destroy + barrage 요청 enqueue 후 재누적.
 - **메테오 = 기존 투사체 재사용**. Effects→Bridge 신규 NativeQueue `MeteorBarrageRequestsSingleton`. BattleBridge drain → 결정론 rng 로 Walk 셀 3개(중복 회피) → `SpawnProjectile`(SkyFall×TileAoe, `targetFaction=Enemy`, owner=Null) 3발. "순차"는 `flightTime`(warning) 스태거로 착탄 시차. **Combat 투사체 시스템 코드 불변**(cast 프리미티브만 호출).
 - **결정론**: 사직서/메테오 셀 선택은 seed 파생 `Unity.Mathematics.Random` (`MatchSeed.Derive*` 미러). Date/UnityEngine.Random 금지.
-- **모든 수치 SO**: `resignationThreshold`(5)/`meteorCount`(3)/메테오 damage·tileRange·warningSec·stagger·ProjectileData ref — 전부 `ClockOutGimmickData`. 하드코딩 금지. (unit 8 로 `clockOutSeconds`/`clockOutCostRefund` 는 제거됨.)
+- **모든 수치 SO**: `resignationThreshold`(5)/`meteorCount`(10)/메테오 damage·tileRange·warningSec·stagger·ProjectileData ref — 전부 `ClockOutGimmickData`. 하드코딩 금지. (unit 8 로 `clockOutSeconds`/`clockOutCostRefund` 는 제거됨. 메테오 발수는 3→10 강화.)
 - **맥락 경계**: 사직서 드랍·카운터·barrage요청 = Effects 소유. 사망 관측은 `DeadTag`/`DefenderTile`(Units 소유) **읽기만**. 메테오 cast = BattleBridge(Mono gateway, bridge-cast). **새 ModifierOrigin/StatusFxKind 불필요**(사직서는 월드 오브젝트, 버프 아님).
 
 ## 파이프라인 커버리지 — 사직서 (신규 아키타입, Pickup 표 대조)
