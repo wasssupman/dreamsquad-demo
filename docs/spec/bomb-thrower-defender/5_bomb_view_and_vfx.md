@@ -19,12 +19,14 @@
   - 회전율은 시각 파라미터(SO `spinSpeed` 또는 신규) — 하드코딩 금지.
 - **낮은 arc**: `bombArcHeight≈0` 이라 지면 구르기로 읽힘(높이 lob 아님). travel 중 살짝 통통(선택).
 - **착지+퓨즈 블링크**: `elapsed >= flightTime`(착지) 이후 `fuseSec` 동안 폭탄 정지 + **점멸/스케일 펄스**(폭발 예고). 블링크 강도 = f(남은 fuse) — 뷰-side 자명 매핑(인라인). `elapsed >= flightTime+fuseSec` 에서 엔티티 소멸(폭발) → 회전/블링크 자동 종료.
-- **타입별 색**(계약 8): request 의 `bombType`(0/1/2)을 뷰가 tint 로 해석 — 데미지=적/주황, 수면=청, 스턴=황 등. `ProjectileData` recolor 경로 또는 스폰 시 tint 주입. sim 은 무관.
+- **타입별 색**(계약 8) — **후속 이관**: `bombType`(0/1/2)이 request/state 에 이미 실려 있으나(뷰가 읽을 준비 완료), 3종 색은 하드코딩 금지라 SO 색 데이터 홈이 선결. 3종 구분은 v1 에서 효과(데미지/수면/스턴)로 체감되므로 색은 폴리시로 분리. README 후속 후보.
 - **폭발 VFX**: `ProjectileHitEvent`(TileAoe, impact 중심 크레이터) **기존 재사용** — 신규 VfxSpawner 슬롯 없음. 전용 폭발 아트는 후속 후보.
 
 ## 완료 기준
 
-- [ ] compile 0 에러.
-- [ ] Play 시각: 폭탄이 착지 셀까지 **굴러가는 느낌**(tumbling, 지면) · 착지 후 fuse 동안 점멸 · 폭발 시 크레이터 1회 · 콘솔 0.
-- [ ] 3종 색 구분 체감(데미지/수면/스턴).
-- [ ] 기존 투사체 뷰(불릿/메테오/볼리) 회귀 없음.
+- [x] compile 0 에러 (`RollAlongPath` facing + GrenadeToCell view-arc + 퓨즈 스케일 점멸).
+- [ ] Play 시각: 폭탄이 착지 셀까지 **굴러가는 느낌**(tumbling, 지면) · 착지 후 fuse 동안 점멸 · 폭발 시 크레이터 1회 · 콘솔 0. (unit 6 통합 Play)
+- [ ] 기존 투사체 뷰(불릿/메테오/볼리) 회귀 없음. (unit 6 Play + EditMode 로 확인)
+- (이관) 타입별 색 = README 후속 후보. 3종 구분은 효과로 체감.
+
+확인 2026-07-21 · compile 0. Play 시각(데굴데굴/점멸)은 unit 6 통합 Play(에셋 배선 후).
