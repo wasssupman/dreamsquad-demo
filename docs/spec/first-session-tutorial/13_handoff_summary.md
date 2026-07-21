@@ -37,10 +37,13 @@
 - 코드 리뷰 1회 — CRITICAL·HIGH 없음. 탭 캐처 누수·상태머신 도달성·`_phase` 기본값·
   `CompleteCoreProgress` 파급은 안전 확인됨. MEDIUM 2건·LOW 3건 반영.
 
-> **무관한 사전 실패 14건**: PlayMode 40개 중 14개가 NRE 로 실패한다(`BountyMark`·`DreamCocoon`·
-> `DreamstoneCarryIn`·`IncubusPact`·`DreamcatcherCursedRelic` 등 전부 ECS 전투 테스트).
-> 이 커밋 직전(`596191c5`)에서 같은 테스트를 돌려 **동일한 14개**임을 확인했다 — 새로 실패한 것도
-> 복구된 것도 0건이므로 units 10~12 와 무관하다. 다만 별도 조사가 필요한 상태다.
+> **무관한 사전 실패 3건**: 에디터 PlayMode 40개 중 3개 실패 —
+> `SelectedSavedDeck_DrivesDraws`(폴백 덱 0장), `FilledSquad_SkipsDraft_EntersPlacement` ·
+> `EquippedSquad_StartSquadMatch_EndToEnd`(Placement 기대인데 Gift). 이 커밋 직전(`596191c5`)에서도
+> 동일하게 실패하므로 units 10~12 와 무관하다. backlog 이관.
+>
+> **배치(`-nographics`)로 재면 14건으로 보인다** — 나머지 11건은 `EntitiesAssetGC` GC 타이밍에
+> 터지는 Unity 패키지 내부 NRE 가 임의 테스트에 귀속된 것이다. PlayMode 판정은 에디터로 할 것.
 
 > **테스트 커버리지 gap**: 이 변경의 신규 동작(`ClassHint` 전이·탭 캐처 수명·`SetSuppressed`)은
 > 자동 테스트가 **없다.** `TutorialDragGuidanceTests` 는 레이아웃 헬퍼만 보고,

@@ -121,14 +121,23 @@ code + git history        구현 상세
 
 > 출처 spec 이 섞여 있다. 그룹 헤더 또는 항목 끝의 `(spec-slug)` 라벨로 출처 표기.
 
-#### PlayMode 사전 실패 14건 (2026-07-21 관측)
+#### PlayMode 사전 실패 3건 (2026-07-21 관측)
 
-- **PlayMode 40개 중 14개가 NRE 로 실패한다** [M] · `BountyMarkTest`·`DreamCocoonTest`·
-  `DreamstoneCarryInSmokeTest`·`IncubusPactTest`·`DreamcatcherCursedRelicTest` 등 ECS 전투 테스트.
-  대부분 `Unhandled log message: '[Exception] NullReferenceException'`, 하나는
-  `DreamcatcherDeckCarryInTest.SelectedSavedDeck_DrivesDraws` 가 `fallback default deck has 10`.
-  `596191c5` 와 `649991bb` 양쪽에서 동일하게 재현되므로 특정 최근 커밋 탓은 아니고, 언제부터인지
-  이분 탐색이 필요하다. EditMode 는 전부 통과하므로 PlayMode 하네스 쪽 회귀일 가능성도 있다.
+에디터 실행 기준 PlayMode 40개 중 **3개** 실패. `596191c5` 와 `649991bb` 양쪽에서 동일해
+first-session-tutorial units 10~12 와 무관하다.
+
+- **`DreamcatcherDeckCarryInTest.SelectedSavedDeck_DrivesDraws`** [S] · `selectedDeckId = null` 일 때
+  `ResolveAttachDeck()` 폴백이 **0장**을 돌려준다(기대 10). `DreamcatcherDeck_Default` 에셋 자체는
+  10장이므로 폴백 경로나 씬 배선 쪽 문제로 보인다.
+- **`SquadCarryInSmokeTest.FilledSquad_SkipsDraft_EntersPlacement`** ·
+  **`DreamstoneCarryInSmokeTest.EquippedSquad_StartSquadMatch_EndToEnd`** [S] · START 후 페이즈가
+  `Placement` 가 아니라 `Gift` 다. Gift 페이즈가 Placement 앞에 삽입된 뒤 테스트가 갱신되지 않은
+  **stale 테스트**일 가능성이 높다 — 제품 버그가 아니라 기대값 갱신 문제인지 먼저 확인할 것.
+
+> **배치 실행(`-batchmode -nographics`)으로 재면 14건으로 부풀어 보인다.** 나머지 11건은
+> `EntitiesAssetGC.GetAdditionalRoots` → `Unity.Rendering.EntitiesGraphicsSystemUtility.RootsHandlerDelegate`
+> 의 NRE 로, Unity 패키지 내부에서 GC 타이밍에 터져 그때 돌던 테스트에 임의 귀속된다.
+> **PlayMode 판정은 에디터 실행으로 한다.** 배치는 EditMode 전용으로 쓸 것.
 
 #### 첫 판 튜토리얼 개선 (first-session-tutorial units 10~12 이관, 2026-07-21)
 
