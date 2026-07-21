@@ -147,6 +147,11 @@ namespace Wassup.Data
         public float knockbackDistance;   // world units. 0 = disabled
         public float knockbackDuration;   // seconds. velocity = direction * distance / duration
 
+        [Header("Sleep on hit (per attack)")]
+        // sleep-fighter-defender — RESOLVE 주 타겟(bestTarget 1체)에게 Sleep N초.
+        // 근접(무투사체) 전제 — 투사체 유닛은 넉백과 동일하게 발사 시점 적용됨.
+        public float sleepOnHitSec;       // seconds. 0 = disabled
+
         [Header("On-place Push")]
         public float onPlacePushDistance; // world units. 0 = disabled
         public float onPlacePushDuration; // seconds

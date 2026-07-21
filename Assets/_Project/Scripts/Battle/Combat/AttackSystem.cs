@@ -1013,6 +1013,23 @@ namespace Wassup.Battle.Combat
                                 });
                             }
                         }
+
+                        // sleep-fighter-defender — Sleep on hit: 주 타겟(bestTarget 1체)만,
+                        // 넉백과 동일 스코프. 병합/해제(wake-on-hit)/게이트는 CcApply·
+                        // CcClear·CcActionLock 기존 계약이 처리. 자기 히트가 자기 Sleep 을
+                        // 깨우지 않는 것은 시스템 순서(damage 프레임 N, Sleep 적용 N+1)가 보장.
+                        if (ccData.sleepOnHitSec > 0f)
+                        {
+                            ccWriter.Value.Enqueue(new Wassup.Battle.Effects.EnemyCcEvent
+                            {
+                                target = bestTarget,
+                                effect = new Wassup.Battle.Effects.CcEffect
+                                {
+                                    kind = Wassup.Battle.Effects.CcKind.Sleep,
+                                    remainingTime = ccData.sleepOnHitSec,
+                                },
+                            });
+                        }
                     }
 
                     // [Defender only] dreamcatcher-unit-trigger unit 2 — triggered card

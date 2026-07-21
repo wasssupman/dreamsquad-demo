@@ -12,5 +12,7 @@ namespace Wassup.Battle.Combat
         public float onPlacePushDistance;
         public float onPlacePushDuration;
         public float onPlacePushRadius;
+        // sleep-fighter-defender — RESOLVE 주 타겟에게 Sleep N초. 0 = disabled.
+        public float sleepOnHitSec;
     }
 }
