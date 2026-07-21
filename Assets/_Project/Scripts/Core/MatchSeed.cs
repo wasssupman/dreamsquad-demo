@@ -14,6 +14,7 @@ namespace Wassup.Core
         const uint PickupSalt = 0x27D4EB2Fu; // season-gimmick-overwork — 픽업 스폰 셀 stream
         const uint GimmickSalt = 0x165667B1u; // gimmick-match-integration — 기믹 배정 stream
         const uint MeteorSalt = 0xD6E8FEB8u;  // season-gimmick-clockout — 메테오 착탄 셀 stream
+        const uint BombSalt   = 0xFF51AFD7u;  // bomb-thrower-defender — 폭탄 타입 랜덤 stream
 
         /// <summary>
         /// 미지정(0) 시 매 판 새 시드. 시간 + Unity RNG 혼합으로 같은 tick 충돌 회피.
@@ -28,6 +29,7 @@ namespace Wassup.Core
         public static int DerivePickupSeed(int matchSeed) => Mix((uint)matchSeed, PickupSalt);
         public static int DeriveGimmickSeed(int matchSeed) => Mix((uint)matchSeed, GimmickSalt);
         public static int DeriveMeteorSeed(int matchSeed)  => Mix((uint)matchSeed, MeteorSalt);
+        public static int DeriveBombSeed(int matchSeed)    => Mix((uint)matchSeed, BombSalt);
 
         // 결정론적 32-bit 믹스(xorshift-multiply 류). 0 입력도 0 아닌 출력 보장.
         static int Mix(uint seed, uint salt)

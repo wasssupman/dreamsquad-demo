@@ -90,6 +90,21 @@ namespace Wassup.Data
         public int shieldTargetCount = 1;   // C
         public ShieldTargetFilter shieldTargetFilter;
 
+        // bomb-thrower-defender unit 0 — 쿨다운마다 방향(DeployedFacing)×N 칸으로 폭탄을
+        // 굴려 보낸다(directionalAttack 조준 재사용). travel n초(고정, 거리 무관) 후 착지,
+        // fuse m초 후 착지 셀 기준 가까운 순 B명에게 폭발. 3종 랜덤(데미지/수면/스턴).
+        // bombLandingTiles>0 && bombTravelSec>0 = 활성. 기본 0 = 비활성.
+        [Header("Bomb Thrower")]
+        public int bombLandingTiles;         // N. 방향으로 몇 칸 앞에 착지 (0 = disabled)
+        public float bombTravelSec;          // n. 발사→착지 고정 시간(거리 무관). 0 = disabled
+        public float bombFuseSec;            // m. 착지→폭발 고정 시간
+        public int bombAoeTileRange = 1;     // 착지 셀 기준 폭발 반경(Chebyshev 타일)
+        public int bombAoeTargetCap = 3;     // B. 가까운 순 최대 타격 수
+        public float bombArcHeight = 0.15f;  // 구르기 arc(≈0 지면). 뷰 전용 높이
+        public float bombDamage;             // 데미지탄 피해 C (수면/스턴탄은 피해 0)
+        public float bombSleepSec;           // 수면탄 Sleep 지속(초)
+        public float bombStunSec;            // 스턴탄 Stun 지속(초)
+
         [Header("Rarity")]
         public DefenderRarity rarity = DefenderRarity.Common;
 
