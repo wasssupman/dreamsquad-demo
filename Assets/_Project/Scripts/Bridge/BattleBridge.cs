@@ -4442,6 +4442,27 @@ namespace Wassup.Bridge
                     filter = unitData.shieldTargetFilter,
                 });
             }
+            // bomb-thrower-defender unit 3 — 폭탄 발사 상태 베이크. bombLandingTiles>0 &&
+            // bombTravelSec>0 = 활성(directionalAttack 조준과 공존). RNG 는 캐스터별 독립
+            // stream(배치 셀 해시로 decorrelate → order-independent 결정론, 계약 6).
+            if (unitData.bombLandingTiles > 0 && unitData.bombTravelSec > 0f)
+            {
+                uint cellHash = (uint)(cell.x * 73856093) ^ (uint)(cell.y * 19349663);
+                uint bombSeed = math.max(1u, (uint)Wassup.Core.MatchSeed.DeriveBombSeed(_matchSeed) ^ cellHash);
+                _em.AddComponentData(entity, new Wassup.Battle.Combat.BombLauncherState
+                {
+                    landingTiles = unitData.bombLandingTiles,
+                    travelSec = unitData.bombTravelSec,
+                    fuseSec = unitData.bombFuseSec,
+                    aoeTileRange = unitData.bombAoeTileRange,
+                    aoeTargetCap = unitData.bombAoeTargetCap,
+                    arcHeight = unitData.bombArcHeight,
+                    dmgBombDamage = unitData.bombDamage,
+                    sleepSec = unitData.bombSleepSec,
+                    stunSec = unitData.bombStunSec,
+                    rng = new Unity.Mathematics.Random(bombSeed),
+                });
+            }
             if (pendingDeployment)
                 _em.AddComponent<PendingDeployment>(entity);
 

@@ -19,6 +19,8 @@
 
 ## 완료 기준
 
-- [ ] compile 0 에러.
+- [x] compile 0 에러.
 - [ ] (unit 6 에셋 배치 Play) 폭탄맨 배치 시 `BombLauncherState` 부착 확인(entity inspector / 로그). 기존 유닛(볼리/실드/일반)엔 미부착.
 - [ ] 같은 `_matchSeed` + 같은 배치 → 같은 폭탄 타입 시퀀스(결정론, unit 4 통합 시 관측).
+
+확인 2026-07-21 · compile 0. bake/결정론 관측은 unit 6 Play(에셋 배선 후).
