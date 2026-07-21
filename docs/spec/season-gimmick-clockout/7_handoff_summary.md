@@ -1,5 +1,7 @@
 # 7. Handoff Summary
 
+> ⚠️ **unit 8(2026-07-21) 이후 부분 폐기**: 아래는 unit 0~6 시점 지도다. 룰1 "10초 강제 퇴근"과 "퇴근 코스트 환급"은 unit 8 재설계로 제거됐다 — 이제 defender **사망 시** 사직서를 드랍한다(`ResignationDropSystem`). 최신 계약은 [README.md](README.md) + [8_death_drop_rework.md](8_death_drop_rework.md) 우선.
+
 ## Commit
 
 - `c99c432f` unit 0 — 기믹 데이터+config+주입 seam (`ClockOutGimmickData`/`ClockOutGimmickConfig`)
