@@ -4367,6 +4367,7 @@ namespace Wassup.Bridge
                 onPlacePushDistance = unitData.onPlacePushDistance,
                 onPlacePushDuration = unitData.onPlacePushDuration,
                 onPlacePushRadius   = unitData.onPlacePushRadius,
+                sleepOnHitSec       = unitData.sleepOnHitSec,
             });
             if (unitData.hazardCastEnabled)
             {

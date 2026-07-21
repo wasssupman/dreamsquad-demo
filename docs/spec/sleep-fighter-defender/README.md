@@ -1,6 +1,6 @@
 # sleep-fighter-defender — 투머치토커 (수면 근접 파이터)
 
-> 상태: 스펙 작성 2026-07-21 · 구현 대기
+> 상태: 완료 2026-07-21 (units 0~1 · 사용자 Play 검증 통과 · EditMode 1135/1135)
 
 ## 목표
 
@@ -19,6 +19,7 @@
 |---|---|---|---|
 | 0 | code | `0_sleep_on_hit_cc.md` | SO `sleepOnHitSec` → `DefenderCcData` 베이크 → AttackSystem RESOLVE Sleep enqueue |
 | 1 | asset | `1_unit_asset_and_catalog.md` | `Defender_TooMuchTalker.asset` 저작 + 카탈로그 등록 + Play 검증 |
+| 2 | docs | `2_handoff_summary.md` | 인계 요약 |
 
 ## Feature-wide 계약
 

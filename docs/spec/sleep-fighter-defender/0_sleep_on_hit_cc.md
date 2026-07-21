@@ -31,7 +31,9 @@
 
 ## 완료 기준
 
-- [ ] compile 클린 (Unity 콘솔 0 에러).
-- [ ] 기존 EditMode 전체 그린 (회귀 0 — 특히 CcEffectMerge/CcActionLock 계열).
-- [ ] `sleepOnHitSec=0` 인 기존 전 유닛 동작 불변 (분기 자체가 비활성).
+- [x] compile 클린 (Unity 콘솔 0 에러).
+- [x] 기존 EditMode 전체 그린 (회귀 0 — 특히 CcEffectMerge/CcActionLock 계열).
+- [x] `sleepOnHitSec=0` 인 기존 전 유닛 동작 불변 (분기 자체가 비활성).
 - 동작 Play 검증은 unit 1 에서 에셋과 함께 수행.
+
+확인 2026-07-21 · 커밋 `a679eb91` (EditMode 1135/1135 · skip 2 = 기존 known-skip)
