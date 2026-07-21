@@ -50,6 +50,38 @@ namespace Wassup.Tests.EditMode
                 DreamcatcherCardText.Body(card));
         }
 
+        // unit 4 — 인게임 툴팁 전용 compact 변형. 블록 구분만 빈 줄 → 단일 개행이고
+        // 내용/라벨/색은 Body() 와 동일해야 한다(같은 카드를 두 화면에서 볼 때 텍스트가
+        // 달라 보이면 안 된다).
+        [Test]
+        public void BodyCompact_DropsBlankLines_ButKeepsSameContent()
+        {
+            var card = Card(CardType.Squad, CardTargetAxis.ClassRanger, new[]
+            {
+                new CardEffect { kind = CardBuffKind.AttackDamage, percent = 20f },
+            }, "궁수의 사거리가 늘어난다.");
+
+            Assert.AreEqual(
+                "<size=22><color=#F5D480><b>RANGER</b></color>  ·  <color=#9AA6C0>SQUAD</color></size>"
+                + "\nAttack  <color=#8BE28B>+20%</color>"
+                + "\n<color=#D4DAE8>궁수의 사거리가 늘어난다.</color>",
+                DreamcatcherCardText.BodyCompact(card));
+
+            // 빈 줄만 빠졌는지 — 두 출력의 "\n\n" 제거본이 일치해야 한다.
+            Assert.AreEqual(
+                DreamcatcherCardText.Body(card).Replace("\n\n", "\n"),
+                DreamcatcherCardText.BodyCompact(card));
+        }
+
+        [Test]
+        public void BodyCompact_NoEffectsNoDescription_SameAsBody()
+        {
+            var card = Card(CardType.Active);
+
+            // 블록이 하나뿐이면 구분자가 안 쓰이므로 두 출력이 동일하다.
+            Assert.AreEqual(DreamcatcherCardText.Body(card), DreamcatcherCardText.BodyCompact(card));
+        }
+
         [Test]
         public void Unit_DescriptionOnly_NoAxisChip_NoEffectLines()
         {

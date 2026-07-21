@@ -27,6 +27,7 @@
 | `0_card_text_formatter.md` | 리팩터 + 테스트 | 덱빌더 `PopupBody()` 를 공용 static 포맷터로 추출, Active 카드 지원 추가, EditMode 테스트 |
 | `1_drag_tooltip_panel.md` | UI + 배선 | `DreamcatcherHandView` 에 툴팁 패널 신설, 드래그 시작/종료 훅 연결, Play 검증 |
 | `3_tooltip_top_center.md` | UI 배치 (rev 5) | 모바일 손 가림 해소 — 카드 우측/손패 위 → 화면 상단 중앙 고정 |
+| `4_tooltip_compact.md` | UI 압축 | 보드 상단 가림 축소 — compact 본문 + 패딩/간격/offset 조임 |
 
 ## Feature-wide 계약
 
@@ -52,8 +53,10 @@
   기각 — 손가락이 보드로 올라가면 상단 클램프로 결국 고정 위치가 되고, 다줄 본문이
   조준 중 흔들리며, 손가락 바로 위는 조준 대상이 있는 곳이다. 상세는 unit 3 참조.
 - **비간섭**: 툴팁 전체 `raycastTarget = false`. 터치/드래그 판정에 어떤 영향도 없다.
-- **텍스트 소스**: 카드 성능 텍스트는 공용 포맷터(unit 0) 단일 소스. 덱빌더 팝업과
-  인게임 툴팁이 같은 함수를 소비한다. Squad/Unit 출력은 기존 덱빌더와 동일해야 한다
+- **텍스트 소스**: 카드 성능 텍스트는 공용 포맷터(unit 0) 단일 소스. 소비처는 4곳
+  (덱빌더 팝업 / 덱 페이지 / 유닛 인스펙트 / 인게임 툴팁). unit 4 에서 인게임 툴팁만
+  `BodyCompact`(빈 줄 없는 변형)를 쓰지만, 두 함수는 private `Assemble` 하나로 수렴한다
+  — 라벨/색 정의를 복제하면 화면마다 텍스트가 갈린다. Squad/Unit 출력은 기존 덱빌더와 동일해야 한다
   (회귀 금지 — 단 `DamageVsCc` 오표기 수정 1건은 의도된 변경, unit 0 참조).
 - **코스트**: 카드에 없다. `DreamcatcherHandController.CostOf(card)` 로 조회해 헤더에 표시.
 - **런타임 구축**: 기존 `DreamcatcherHandView.BuildCanvas()` 관례를 따른다(프리팹 없음,

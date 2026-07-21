@@ -83,7 +83,9 @@ namespace Wassup.UI
         // rev 5 (사용자 결정 2026-07-21) — 화면 상단 중앙 고정. rev 1 의 카드 우측 배치는
         // 손패와 같은 하단 대역이라 모바일 오른손 그립에서 손에 가렸다(실기기 확인).
         [SerializeField] private float tooltipWidth = 480f;
-        [SerializeField] private float tooltipTopOffset = 40f; // 세이프에어리어 상단 모서리 여백
+        // unit 4 — 40→24. 상단 여백 1px 은 툴팁 세로 예산 1px 과 등가라(보드 침범이
+        // 그만큼 늘어난다), 가장자리 답답함을 감수하고 예산으로 돌렸다.
+        [SerializeField] private float tooltipTopOffset = 24f; // 세이프에어리어 상단 모서리 여백
         [SerializeField] private float tooltipBobY = 6f;   // 플로팅 bob 진폭(카드 idle 문법)
         [SerializeField] private float tooltipBobX = 3f;
         [SerializeField] private float tooltipBobFreq = 1.2f;
@@ -240,7 +242,10 @@ namespace Wassup.UI
         private bool _tooltipVisible;
         private Vector2 _tooltipBasePos; // rev 1 — bob 은 base 에 가산(누적 금지)
         private const float TooltipLerpK = 16f;   // 페이드/스케일 추종(스프링 감성)
-        private const float TooltipPad = 14f;
+        // unit 4 — 보드 가림을 줄이려 패딩/간격을 조였다(14→10, 8→4). 세로 예산이
+        // 빡빡한 위젯이라 여백보다 본문 줄 수가 우선이다.
+        private const float TooltipPad = 10f;
+        private const float TooltipHeaderGap = 4f;
         private const float TooltipHiddenScale = 0.92f;
 
         private void Awake()
@@ -894,7 +899,7 @@ namespace Wassup.UI
 
             string title = string.IsNullOrEmpty(card.displayName) ? card.id : card.displayName;
             _tooltipHeader.text = $"<b>{title}</b>  <color=#C9A6FF>{handController.CostOf(card)}</color>";
-            _tooltipBody.text = DreamcatcherCardText.Body(card);
+            _tooltipBody.text = DreamcatcherCardText.BodyCompact(card);
 
             // 내용 기반 세로 크기(TMP preferred). 폭은 고정, 라벨은 top-anchored 스택.
             float innerW = tooltipWidth - TooltipPad * 2f;
@@ -904,7 +909,7 @@ namespace Wassup.UI
             hrt.anchoredPosition = new Vector2(0f, -TooltipPad);
             hrt.sizeDelta = new Vector2(hrt.sizeDelta.x, headerH);
             var brt = (RectTransform)_tooltipBody.transform;
-            float bodyTop = TooltipPad + headerH + 8f;
+            float bodyTop = TooltipPad + headerH + TooltipHeaderGap;
             brt.anchoredPosition = new Vector2(0f, -bodyTop);
             brt.sizeDelta = new Vector2(brt.sizeDelta.x, bodyH);
             _tooltipRect.sizeDelta = new Vector2(tooltipWidth, bodyTop + bodyH + TooltipPad);

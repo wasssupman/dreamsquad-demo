@@ -10,7 +10,15 @@ namespace Wassup.UI
     {
         // Rich effect body: gold axis header (Squad only) + type label + one
         // line per buff + authored description block (omitted when empty).
-        public static string Body(DreamcatcherCard card)
+        public static string Body(DreamcatcherCard card) => Assemble(card, compact: false);
+
+        // hand-drag-tooltip unit 4 — 인게임 손패 툴팁 전용. 블록 사이 빈 줄을 뺀 것만
+        // 다르다(내용·라벨·색은 동일). 툴팁은 화면 상단에 떠서 보드를 가리므로 세로
+        // 예산이 빡빡한 반면, 덱빌더 팝업/덱 페이지는 넓어서 빈 줄이 가독성에 이롭다.
+        // 그래서 Body() 를 바꾸지 않고 변형을 둔다(unit 0 "덱빌더 회귀 금지" 계약).
+        public static string BodyCompact(DreamcatcherCard card) => Assemble(card, compact: true);
+
+        private static string Assemble(DreamcatcherCard card, bool compact)
         {
             string axis = card.axis == CardTargetAxis.ClassRanger ? "RANGER"
                         : card.axis == CardTargetAxis.ClassGuardian ? "GUARDIAN"
@@ -40,9 +48,10 @@ namespace Wassup.UI
             string header = card.type == CardType.Squad
                 ? $"<color=#F5D480><b>{axis}</b></color>  ·  {typeLabel}"
                 : typeLabel;
+            string gap = compact ? "\n" : "\n\n";
             string body = $"<size=22>{header}</size>";
-            if (lines.Count > 0) body += "\n\n" + string.Join("\n", lines);
-            if (!string.IsNullOrEmpty(card.description)) body += $"\n\n<color=#D4DAE8>{card.description}</color>";
+            if (lines.Count > 0) body += gap + string.Join("\n", lines);
+            if (!string.IsNullOrEmpty(card.description)) body += $"{gap}<color=#D4DAE8>{card.description}</color>";
             return body;
         }
 

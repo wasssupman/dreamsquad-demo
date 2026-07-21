@@ -2973,7 +2973,7 @@ MonoBehaviour:
   idlePhase: 0.7
   unitHoverTint: {r: 1, g: 0.28, b: 0.22, a: 1}
   tooltipWidth: 480
-  tooltipTopOffset: 40
+  tooltipTopOffset: 24
   tooltipBobY: 6
   tooltipBobX: 3
   tooltipBobFreq: 1.2
