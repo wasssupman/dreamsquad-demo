@@ -121,6 +121,19 @@ code + git history        구현 상세
 
 > 출처 spec 이 섞여 있다. 그룹 헤더 또는 항목 끝의 `(spec-slug)` 라벨로 출처 표기.
 
+#### 점수 시스템 (battle-score-formula · score-tally-sequence — 둘 다 완료 2026-07-21)
+
+최종 점수를 예산 소모 모델(시간+스트레스+킬)로 교체하고, 전투 종료 후 합산 연출을 붙였다.
+상세: `docs/spec/battle-score-formula/`, `docs/spec/score-tally-sequence/`.
+
+- **유출 한계 10 의 플레이 감각 미확인** [S] — 근거 없는 시작값. 조정 시 **한계×점당점수=예산**이라 `stressScorePerPoint` 를 짝으로 움직여야 한다 (battle-score-formula)
+- **점수 재검증 / 무효 플래그** [L] — 서버가 배틀로그 입력값으로 재계산해 클라 제출값과 대조. 결정론적 재시뮬은 고정 타임스텝 도입이 선결 (battle-score-formula)
+- **정예 등급 도입** [M] — 현재 잡몹 9종 + 보스 1종뿐이라 중간 등급이 없다. 밸런스 변경 (battle-score-formula)
+- **계약 지불의 점수 손실 HUD 경고** [S] — 몽마의 계약 1회 = 900점인데 유출 카운터만 보이고 점수 손실 표시가 없다 (battle-score-formula)
+- **Tally 흐름 PlayMode 테스트** [S] — 종료 3종을 새 페이즈로 재라우팅했는데 자동 검증이 없다. `onDone` 이 끊기면 **결과 화면이 영영 안 뜨는 하드락** (score-tally-sequence)
+- **Tally 구간 무음** [S] — `SoundManager` 가 `phase == Battle` 에서만 BGM 유지라 4초 연출이 완전 무음. 축별 사운드와 함께 볼 것 (score-tally-sequence)
+- **연출 카메라 동반 · 축별 사운드 · 신기록 갱신 강조** [S~M] — 상세는 spec README "후속 후보" (score-tally-sequence)
+
 #### PlayMode 사전 실패 3건 (2026-07-21 관측)
 
 에디터 실행 기준 PlayMode 40개 중 **3개** 실패. `596191c5` 와 `649991bb` 양쪽에서 동일해
@@ -250,7 +263,10 @@ first-session-tutorial units 10~12 와 무관하다.
 
 점수 HUD 임팩트 업그레이드 **완료(2026-07-07, units 0~4)** — 탄성 슬램/골드 아이덴티티/Kanit 폰트·골드 스파클 버스트·발광+샤인·패널 킥/마일스톤 플래시(Play 통과) + SoundManager 처치 틱(ElevenLabs `ScoreTick`, 피치 상승). 상세: `docs/spec/score-hud-impact-upgrade/`.
 
-- **연속처치 heat · 킬 위치 "+N" 플로팅 · 콤보 배수 스코어링 · 적별 차등 점수 · 진짜 URP Bloom · SFX 다양화(마일스톤 팡파레)** [S~M] · 상세는 spec README "후속 후보".
+- **연속처치 heat · 킬 위치 "+N" 플로팅 · 진짜 URP Bloom · SFX 다양화** [S~M] · 상세는 spec README "후속 후보".
+- ~~적별 차등 점수~~ → **완료** (`score-tally-sequence` unit 0 — HUD 가 유닛별 `killScore` 를 쓴다).
+  ~~콤보 배수 스코어링~~ → **기각** — `battle-score-formula` 계약 10 이 콤보 배율을 금지한다.
+  마일스톤 플래시는 누계 기준 → **1초 내 300점 순간 화력** 기준으로 교체됨.
 
 #### 체력 표기 (unit-health-display)
 

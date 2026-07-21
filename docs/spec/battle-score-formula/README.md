@@ -168,6 +168,8 @@ return Math.Max(0, (int)(durationSec * 10f - _goalReachedCount * 50));
 
 ## 후속 후보 (범위 밖)
 
+**`docs/spec/README.md` 의 Follow-up Backlog → "점수 시스템" 그룹으로 이관됨** (2026-07-21).
+
 - **점수 재검증 / 무효 플래그** — 서버가 배틀로그의 점수 입력값으로 재계산해 클라이언트 제출값과 대조. 결정론적 재시뮬은 고정 타임스텝 도입이 선결이라 별도 대형 spec.
 - ~~라이브 HUD 점수 ↔ 최종 점수 통합~~ → **완료** (`score-tally-sequence` unit 0).
 - **정예 등급 도입** — 현재 잡몹 9종 + 보스 1종뿐이라 중간 등급이 없다. 밸런스 변경이라 별도 spec.

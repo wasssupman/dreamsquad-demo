@@ -2819,9 +2819,10 @@ namespace Wassup.Bridge
             while (_enemyKilledEventQueue.TryDequeue(out var evt))
             {
                 scoreHud?.OnEnemyKilled(evt.killScore);
-                // battle-score-formula unit 2 — 최종 점수용 누적. HUD 점수(처치당 +10)와
-                // 별개 값이다: HUD 는 표시 전용으로 존치하고(계약 12), 최종 산식은
-                // AttackUnitData.killScore 합을 쓴다.
+                // battle-score-formula unit 2 — 최종 점수용 누적.
+                // score-tally-sequence unit 0 이후 바로 윗줄의 HUD 도 **같은 값**을 받는다
+                // (예전엔 처치당 고정 +10 이라 15배 어긋나 있었다). 두 경로가 같은
+                // evt.killScore 를 쓰므로 전투 중 HUD 숫자 == _killScoreTotal 이다.
                 _killScoreTotal += evt.killScore;
                 // dreamcatcher-awakening-hand unit 1 — awakening economy relay.
                 EnemyKilledAwakening?.Invoke(evt.awakeningReward);
