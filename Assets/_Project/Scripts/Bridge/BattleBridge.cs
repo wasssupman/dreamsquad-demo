@@ -549,6 +549,7 @@ namespace Wassup.Bridge
             DestroyEntitiesByType<Wassup.Battle.Effects.BurnoutGimmickConfig>();
             DestroyEntitiesByType<Wassup.Battle.Effects.RedBullGimmickConfig>();
             DestroyEntitiesByType<Wassup.Battle.Effects.ClockOutGimmickConfig>();
+            DestroyEntitiesByType<Wassup.Battle.Effects.OnsenGimmickConfig>();
         }
 
         private void DisposeEcsInfrastructureNativeContainers()
@@ -4991,6 +4992,7 @@ namespace Wassup.Bridge
             DestroyEntitiesByType<Wassup.Battle.Effects.BurnoutGimmickConfig>();
             DestroyEntitiesByType<Wassup.Battle.Effects.RedBullGimmickConfig>();
             DestroyEntitiesByType<Wassup.Battle.Effects.ClockOutGimmickConfig>();
+            DestroyEntitiesByType<Wassup.Battle.Effects.OnsenGimmickConfig>();
 
             if (_assignedGimmick is Wassup.Data.BurnoutGimmickData bd)
             {
@@ -5034,6 +5036,19 @@ namespace Wassup.Bridge
                 // unit 4 — 메테오 셀 선택 rng seed(매치당·matchSeed 파생 → 결정론). 요청은 config
                 // 주입 이후에만 발생하므로 seed 선행 보장.
                 _meteorRng = new Unity.Mathematics.Random((uint)Wassup.Core.MatchSeed.DeriveMeteorSeed(_matchSeed));
+            }
+            else if (_assignedGimmick is Wassup.Data.OnsenGimmickData od)
+            {
+                Debug.Log($"[GimmickConfig] OnsenGimmickConfig 주입 (gimmick={od.gimmickId})");
+                var e = _em.CreateEntity();
+                _em.AddComponentData(e, new Wassup.Battle.Effects.OnsenGimmickConfig
+                {
+                    heatInterval  = od.heatInterval,
+                    flipThreshold = od.flipThreshold,
+                    healPercent   = od.healPercent,
+                    lossPercent   = od.lossPercent,
+                    heatMaxStack  = od.heatMaxStack,
+                });
             }
         }
 
