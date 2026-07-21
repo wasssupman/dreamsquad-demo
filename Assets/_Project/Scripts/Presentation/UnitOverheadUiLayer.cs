@@ -46,7 +46,8 @@ namespace Wassup.Presentation
             _seen.Clear();
         }
 
-        public void SetUnit(Entity entity, bool defender, float healthRatio, Vector2 screenAnchor, float tileScreenWidth)
+        public void SetUnit(Entity entity, bool defender, float healthRatio, Vector2 screenAnchor, float tileScreenWidth,
+            float shieldRatio = 0f) // shield-guardian-defender unit 2 — 실드합/maxHP (0 = 무실드)
         {
             if (!EnsureCanvas() || entity == Entity.Null
                 || float.IsNaN(screenAnchor.x) || float.IsNaN(screenAnchor.y)) return;
@@ -62,7 +63,7 @@ namespace Wassup.Presentation
             float scale = Mathf.Max(0.001f, _canvas.scaleFactor);
             float tileRef = tileScreenWidth / scale;
             _cardsByHost.TryGetValue(entity, out var cards);
-            view.Show(local, tileRef, defender, healthRatio, cards, style, _sprites, resetHealth);
+            view.Show(local, tileRef, defender, healthRatio, cards, style, _sprites, resetHealth, shieldRatio);
         }
 
         public void EndFrame()

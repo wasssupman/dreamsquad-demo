@@ -39,6 +39,7 @@ MonoBehaviour:
     highlight: {r: 0.78, g: 1, b: 1, a: 0.86}
     highlightHeight: 1.5
     damageTrail: {r: 1, g: 0.78, b: 0.18, a: 0.95}
+    shield: {r: 0.92, g: 0.96, b: 1, a: 0.98}
     fullHealthAlpha: 0.94
     clippedEnds: 0
   enemy:
@@ -58,5 +59,6 @@ MonoBehaviour:
     highlight: {r: 1, g: 0.78, b: 0.58, a: 0.8}
     highlightHeight: 1.25
     damageTrail: {r: 1, g: 0.68, b: 0.15, a: 0.9}
+    shield: {r: 0.92, g: 0.96, b: 1, a: 0.98}
     fullHealthAlpha: 0.92
     clippedEnds: 1

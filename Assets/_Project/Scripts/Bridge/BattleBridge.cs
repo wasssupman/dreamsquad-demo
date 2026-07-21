@@ -2495,8 +2495,14 @@ namespace Wassup.Bridge
                     && TryGetUnitScreenAnchor(entity, out var defenderScreenAnchor, out var defenderAnchor))
                 {
                     var h = _em.GetComponentData<Health>(entity);
+                    // shield-guardian-defender unit 2 — 실드합 동승(read-only 폴링, 계약 8).
+                    // 정규화(HP+실드 > 100% 압축)는 뷰가 수행.
+                    float defShieldRatio = 0f;
+                    if (h.max > 0f && _em.HasBuffer<Wassup.Battle.Units.ShieldSlot>(entity))
+                        defShieldRatio = Wassup.Battle.Units.ShieldMath.Sum(
+                            _em.GetBuffer<Wassup.Battle.Units.ShieldSlot>(entity, isReadOnly: true)) / h.max;
                     unitOverheadUiLayer.SetUnit(entity, true, Health.ComputeRatio(h.value, h.max),
-                        defenderScreenAnchor, ProjectTileScreenWidth(defenderAnchor));
+                        defenderScreenAnchor, ProjectTileScreenWidth(defenderAnchor), defShieldRatio);
                 }
             }
             if (unifiedOverhead) unitOverheadUiLayer.EndFrame();
