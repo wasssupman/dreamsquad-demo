@@ -11,6 +11,8 @@
 | `596191c5` | 인지 단계 분리 (라벨 선행·시선 유도) |
 | `7a33ab7d` | 코드 리뷰 반영 7건 |
 | `bdc2cff7` | 전투 여운 1초 + 딤 동시 |
+| `7d74c559` | 사후 감사 — 거짓 주석·후속 후보 이관 |
+| (이 커밋) | unit 4 — Tally 흐름 PlayMode 테스트 |
 
 ## Implemented
 
@@ -29,7 +31,8 @@
 
 ## Verified
 
-- EditMode **1127 통과 / 0 실패**, 콘솔 클린
+- EditMode **1129 통과 / 0 실패**, 콘솔 클린
+- PlayMode `TallyFlowTest` 2건 (unit 4) — `onDone` 을 끊어 검출력 증명 완료
 - HUD == `_killScoreTotal` — 2,400 샘플 불일치 0
 - 합산 실측: 킬 6,400 → +11,500 → +7,200 → **25,100**, `onDone` 도달
 - 페이즈 전이 `Battle → Tally(HUD 보임) → Result(HUD 숨김)`

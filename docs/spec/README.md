@@ -130,7 +130,7 @@ code + git history        구현 상세
 - **점수 재검증 / 무효 플래그** [L] — 서버가 배틀로그 입력값으로 재계산해 클라 제출값과 대조. 결정론적 재시뮬은 고정 타임스텝 도입이 선결 (battle-score-formula)
 - **정예 등급 도입** [M] — 현재 잡몹 9종 + 보스 1종뿐이라 중간 등급이 없다. 밸런스 변경 (battle-score-formula)
 - **계약 지불의 점수 손실 HUD 경고** [S] — 몽마의 계약 1회 = 900점인데 유출 카운터만 보이고 점수 손실 표시가 없다 (battle-score-formula)
-- **Tally 흐름 PlayMode 테스트** [S] — 종료 3종을 새 페이즈로 재라우팅했는데 자동 검증이 없다. `onDone` 이 끊기면 **결과 화면이 영영 안 뜨는 하드락** (score-tally-sequence)
+- ~~Tally 흐름 PlayMode 테스트~~ → **완료** (`score-tally-sequence` unit 4). `TallyFlowTest` 2건. `onDone` 을 일부러 끊어 검출력까지 증명함
 - **Tally 구간 무음** [S] — `SoundManager` 가 `phase == Battle` 에서만 BGM 유지라 4초 연출이 완전 무음. 축별 사운드와 함께 볼 것 (score-tally-sequence)
 - **연출 카메라 동반 · 축별 사운드 · 신기록 갱신 강조** [S~M] — 상세는 spec README "후속 후보" (score-tally-sequence)
 
