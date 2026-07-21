@@ -60,6 +60,14 @@ namespace Wassup.Battle.Combat.Projectile
         // ── Tile-AOE payload ─────────────────────────────────────────────────
         public int impactTileRange;
 
+        // ── Bomb TileAoe extensions (bomb-thrower-defender unit 2) ───────────
+        // Copied verbatim onto ProjectileState by the drain. Defaults 0 = legacy
+        // TileAoe(uncapped, damage-only). Set by AttackSystem bomb branch(unit 4).
+        public int aoeTargetCap;
+        public byte ccKind;
+        public float ccDuration;
+        public byte bombType;
+
         // ── Bounce (dreamcatcher-attack-mod-bounce) ──────────────────────────
         // Copied verbatim onto ProjectileState by the drain. Defaults 0 = no-op.
         public int bounceRemaining;

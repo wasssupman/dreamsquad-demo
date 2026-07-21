@@ -86,6 +86,16 @@ namespace Wassup.Battle.Combat.Projectile
         // ── Tile-AOE payload (PayloadKind.TileAoe) ───────────────────────────
         public int impactTileRange;
 
+        // ── Bomb TileAoe extensions (bomb-thrower-defender unit 2) ───────────
+        // aoeTargetCap: nearest-B cap (0 = 무제한 = 레거시 메테오/스킬/보스 경로).
+        // ccKind/ccDuration: 수면/스턴탄 CC (0=None, Combat→Effects EnemyCcEvents).
+        // bombType: 뷰 변종 인덱스(0 데미지/1 수면/2 스턴) — sim 무해 캐리어,
+        // Presentation 이 색으로 해석(계약 8). 전부 기본 0 = 레거시 TileAoe.
+        public int aoeTargetCap;
+        public byte ccKind;
+        public float ccDuration;
+        public byte bombType;
+
         // ── Bounce (dreamcatcher-attack-mod-bounce) ──────────────────────────
         // Post-resolution survival for SingleSplash: while bounceRemaining > 0
         // and a retarget candidate exists, the impact system re-homes instead of

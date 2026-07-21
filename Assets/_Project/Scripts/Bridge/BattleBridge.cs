@@ -3036,6 +3036,11 @@ namespace Wassup.Bridge
                 priorityDamageMul = req.priorityDamageMul,
                 // dreamcatcher-heavy-strike unit 0 — 강공 전-victim 배율 verbatim 복사(기본 0=inert).
                 heavyDamageMul = req.heavyDamageMul,
+                // bomb-thrower-defender unit 2 — TileAoe cap/CC + 뷰 변종, verbatim(기본 0=레거시).
+                aoeTargetCap = req.aoeTargetCap,
+                ccKind = req.ccKind,
+                ccDuration = req.ccDuration,
+                bombType = req.bombType,
             };
             if (req.movement == MovementKind.BallisticArcToPoint)
             {

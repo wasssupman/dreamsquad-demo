@@ -26,7 +26,9 @@
 
 ## 완료 기준
 
-- [ ] compile 0 에러.
-- [ ] `AoeTargetCapTests` green: cap<=0 무제한 · cap<후보수 가까운 순 절단 · 동률 인덱스 tie-break · cap>=후보수 전원.
-- [ ] 기존 EditMode(`TileAoeTests`/meteor/skill) green — cap=0·ccKind=0 경로 바이트 무변경.
+- [x] compile 0 에러.
+- [x] `AoeTargetCapTests` green: cap<=0 무제한 · cap<후보수 가까운 순 절단 · 동률 인덱스 tie-break · cap>=후보수 전원.
+- [x] 기존 EditMode(`TileAoeTests`/`ProjectileSystemTests`/`SkyFallTests`) green — cap=0·ccKind=0 경로 바이트 무변경.
 - [ ] (통합 Play, unit 6) 데미지탄 최대 B명 피해 · 수면/스턴탄 최대 B명 CC(피해0).
+
+확인 2026-07-21 · compile 0 + 40/40 green(`AoeTargetCap` 6 + 투사체 파이프라인 회귀). Play 는 unit 6 통합.

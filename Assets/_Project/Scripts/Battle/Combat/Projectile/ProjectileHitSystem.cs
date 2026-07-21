@@ -56,6 +56,11 @@ namespace Wassup.Battle.Combat.Projectile
             NativeQueue<ThreatHitEvent> threatQueue = hasThreatQ ? threatEventsRW.ValueRW.queue : default;
             var threatLookup = SystemAPI.GetBufferLookup<ThreatEntry>(isReadOnly: true);
             var defenderTagLookup = SystemAPI.GetComponentLookup<DefenderUnitTag>(isReadOnly: true);
+            // bomb-thrower-defender unit 2 — Combat→Effects CC 채널(수면/스턴탄).
+            // 수면파이터/존 CC 와 공유하는 기존 EnemyCcEvents 큐. RW 접근 = 큐 변이 의도
+            // 명시(threat 큐 대칭). 테스트/초기 프레임엔 없을 수 있어 옵셔널 게이트.
+            bool hasCcQ = SystemAPI.TryGetSingletonRW<EnemyCcEventsSingleton>(out var ccEventsRW);
+            NativeQueue<EnemyCcEvent> ccQueue = hasCcQ ? ccEventsRW.ValueRW.queue : default;
 
             // Combat→Presentation: hit-VFX channel. May not exist before
             // BattleBridge.EnsureQueriesAndQueues runs (very first frames in
@@ -415,20 +420,50 @@ namespace Wassup.Battle.Combat.Projectile
                         bool hitsDefenders = projectile.ValueRO.targetFaction == ProjectileTargetFaction.Defender;
                         var victims = hitsDefenders ? defenderEntities : aoeEntities;
                         var victimTransforms = hitsDefenders ? defenderTransforms : aoeTransforms;
+
+                        // bomb-thrower-defender unit 2 — 범위 내 victim 인덱스 + impact
+                        // 중심 거리²를 모아 가까운 순 aoeTargetCap 개로 절단(0 = 무제한 =
+                        // 레거시 메테오/스킬/보스 경로, byte-identical). 데미지와 CC 를
+                        // 같은 capped 집합에 적용. 비폭탄 spawn 은 cap 0·ccKind 0 → 무회귀.
+                        var inRange = new NativeList<int>(Allocator.Temp);
+                        var inRangeDistSq = new NativeList<float>(Allocator.Temp);
                         for (int i = 0; i < victims.Length; i++)
                         {
                             int2 cell = GridMath.WorldToCell(victimTransforms[i].Position, tileSize, gridSize, origin: ffOrigin);
                             if (!TileAoe.IsInTileRange(cell, centerCell, tileRange)) continue;
-                            if (damageBufferLookup.HasBuffer(victims[i]))
-                            {
-                                // 끝을 보는 눈 — only the locked priority entity, if it is actually
-                                // inside the impact range, takes +20%; the rest stay base.
-                                // 응축된 일격 — × heavyMul on every victim in range (전 victim).
-                                float vdmg = (victims[i] == prioTarget ? dmg * prioMul : dmg) * heavyMul;
-                                ecb.AppendToBuffer(victims[i], new IncomingDamage { amount = vdmg, source = threatOwner });
-                                ThreatTable.TryCredit(threatQueue, creditThreat, threatLookup, victims[i], threatOwner, vdmg);
-                            }
+                            inRange.Add(i);
+                            float ddx = victimTransforms[i].Position.x - impactWorld.x;
+                            float ddz = victimTransforms[i].Position.z - impactWorld.z;
+                            inRangeDistSq.Add(ddx * ddx + ddz * ddz);
                         }
+                        var selectedAoe = new NativeList<int>(Allocator.Temp);
+                        AoeTargetCap.SelectNearest(inRangeDistSq.AsArray(), projectile.ValueRO.aoeTargetCap, ref selectedAoe);
+
+                        byte bombCc = projectile.ValueRO.ccKind;
+                        float bombCcDur = projectile.ValueRO.ccDuration;
+                        for (int s = 0; s < selectedAoe.Length; s++)
+                        {
+                            var victim = victims[inRange[selectedAoe[s]]];
+                            // 데미지탄만 dmg>0 — 수면/스턴탄(dmg 0)은 데미지 append 스킵.
+                            if (dmg > 0f && damageBufferLookup.HasBuffer(victim))
+                            {
+                                // 끝을 보는 눈 — priority victim +mul; 응축된 일격 — 전 victim ×heavyMul.
+                                float vdmg = (victim == prioTarget ? dmg * prioMul : dmg) * heavyMul;
+                                ecb.AppendToBuffer(victim, new IncomingDamage { amount = vdmg, source = threatOwner });
+                                ThreatTable.TryCredit(threatQueue, creditThreat, threatLookup, victim, threatOwner, vdmg);
+                            }
+                            // bomb-thrower-defender unit 2 — 수면/스턴탄 CC (Combat→Effects
+                            // 기존 채널). ccKind 0 = None(데미지탄) → enqueue 없음.
+                            if (bombCc != 0 && hasCcQ)
+                                ccQueue.Enqueue(new EnemyCcEvent
+                                {
+                                    target = victim,
+                                    effect = new CcEffect { kind = (CcKind)bombCc, remainingTime = bombCcDur },
+                                });
+                        }
+                        inRange.Dispose();
+                        inRangeDistSq.Dispose();
+                        selectedAoe.Dispose();
 
                         // Impact-crater VFX at the cell (not a target position). No
                         // per-target HitFlash: an AOE strike flashing N enemies is
