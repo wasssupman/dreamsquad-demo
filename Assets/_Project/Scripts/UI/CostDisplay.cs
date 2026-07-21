@@ -7,70 +7,165 @@ using Wassup.UI.Layout;
 
 namespace Wassup.UI
 {
-    // Bottom-left cost readout. Compact energy badge (ingame-ui-upgrade unit 2, rev
-    // 2026-07-09b): a casual HUD panel with an energy bolt icon, a big current value +
-    // small "/max", and a short bar gauge (one segment per integer of the pool; the
-    // leading segment fills bottom→top as regen approaches the next integer). Art kit
-    // (panel / bolt / bar filled+empty) is authored; each sprite has a procedural
-    // fallback so the badge never breaks when a slot is empty. Hidden outside
-    // Placement / Battle phases. Pure presentation — reads CostRuntime, never mutates.
+    // tray-cost-well unit 1 — 트레이 좌측 코스트 셀.
+    //
+    // 이전(action-tray unit 2)에는 트레이 상단에 겹쳐 얹힌 별도 캔버스 레일이었고
+    // 정수마다 1칸인 세그먼트 바를 그렸다. 지금은 트레이 패널의 첫 자식으로 들어가
+    // 상단 숫자 + 하단 물통 2단을 그린다. 물통은 CostRuntime.Current 의 소수부
+    // (= 다음 1코스트까지의 진행률)이고, 산식은 CostWellMath 가 소유한다.
+    //
+    // 이 unit 은 구조/배치/값 추종까지다. 충전 연출(wrap 팝·max 버스트·소비
+    // 플래시·획득 플로팅)과 리젠 정지 표현은 unit 2.
+    //
+    // 순수 프레젠테이션 — CostRuntime 을 읽기만 하고 절대 쓰지 않는다.
     public class CostDisplay : MonoBehaviour
     {
         [SerializeField] private GameManager gameManager;
 
         [Header("Cost art (미할당 시 절차 폴백)")]
-        [Tooltip("HUD 패널 배경")]
-        [SerializeField] private Sprite costPanelSprite;
-        [Tooltip("에너지 아이콘(라이트닝 볼트)")]
+        [Tooltip("에너지 아이콘(라이트닝 볼트). HUD 전체에서 유일한 에너지 기호 — unit 3 이 슬롯 볼트를 지운다")]
         [SerializeField] private Sprite costEnergyIcon;
-        [Tooltip("게이지 한 칸(채움) 바")]
-        [SerializeField] private Sprite costBarFilled;
-        [Tooltip("게이지 한 칸(빈칸) 바")]
-        [SerializeField] private Sprite costBarEmpty;
         [Tooltip("큰 숫자용 폰트(Jua/Anton 권장). 미지정 시 TMP 기본 볼드")]
         [SerializeField] private TMP_FontAsset numberFont;
-        // action-tray unit 2 — 트레이 공유 geometry(레일 치수·overlap·phase 높이).
-        // 미할당이면 기존 부유 배지(363×112, y164) 그대로 — 무회귀 폴백.
         [SerializeField] private BattleHudTrayConfig trayConfig;
 
-        // Fallback palette (used only when the matching sprite is missing).
-        private static readonly Color PlateColor = new(0.07f, 0.09f, 0.13f, 0.92f);
-        private static readonly Color PlateBorder = new(0.28f, 0.55f, 0.42f, 0.95f);
-        private static readonly Color BarFilled = new(1f, 0.82f, 0.22f, 1f);
-        private static readonly Color BarEmpty = new(0.20f, 0.21f, 0.26f, 1f);
-        private static readonly Color IconFallback = new(1f, 0.78f, 0.24f, 1f);
+        // 폴백 팔레트 (config 미할당 시에만 쓰인다)
+        private static readonly Color WellBackFallback = new(0.04f, 0.06f, 0.11f, 0.92f);
+        private static readonly Color WellLiquidFallback = new(0.95f, 0.62f, 0.15f, 1f);
+        private static readonly Color WellSurfaceFallback = new(1f, 0.95f, 0.7f, 0.85f);
         private static readonly Color ValueColor = Color.white;
+        private static readonly Color PulseWarn = new(1f, 0.34f, 0.28f, 1f);
 
-        private const float PlateW = 363f;
-        private const float PlateH = 112f;
-
-        private GameObject _panel;
-        private Transform _barRow;
+        private Transform _trayPanel;
+        private GameObject _cell;
+        private CanvasGroup _cellGroup;
+        private LayoutElement _cellLayout;
+        private Image _cellBg;
         private TextMeshProUGUI _valueText;
-        private Image[] _bars;      // per-integer leading-fill overlays (vertical)
-        private int _barCount;
-        private Sprite _barEmptyFallback;
-        private Sprite _barFilledFallback;
+        private RectTransform _wellRect;
+        private Image _wellLiquid;
+        private RectTransform _surfaceRect;
+        private Image _surfaceImage;
+        private TextMeshProUGUI _pulseLabel;
+        private Coroutine _pulse;
+
         private bool _built;
         private bool _phaseVisible;
-        private bool _suppressed; // 드림캐쳐 핸드 오픈 중 true (SetSuppressed)
-        // action-tray unit 4 — 비용 부족 rail pulse. 코루틴 핸들 1개로 연속 입력
-        // 누적 방지(재시작 전 강제 리셋).
-        private Image _plateImage;
-        private Coroutine _pulse;
-        private TextMeshProUGUI _pulseLabel;
-        private static readonly Color PulseWarn = new(1f, 0.34f, 0.28f, 1f);
-        // action-tray rail 연출 — 정수 경계 팝/플래시 + 풀 게이지 글로우 상태.
-        private RectTransform[] _barRoots;
-        private int _lastShownInt = -1;
-        private bool _fullGlow;
-        private readonly System.Collections.Generic.HashSet<int> _flashing = new();
+        private bool _suppressed;
 
-        // action-tray unit 4 — 비용 부족 슬롯 드래그 차단 피드백: 0.6초 rail pulse +
-        // "코스트 N 부족" 라벨. 표시 중 재호출은 리셋 후 재시작(상태 누적 없음).
+        // ── 트레이 부착 ──────────────────────────────────────────────
+
+        // DefenderSelector.BuildCanvas 말미에서 호출된다. 두 컴포넌트 모두 Awake 에서
+        // 캔버스를 짓기 때문에 실행 순서가 보장되지 않는다 — 그래서 여기서 짓는다.
+        public void AttachToTray(Transform trayPanel)
+        {
+            if (trayPanel == null) return;
+            _trayPanel = trayPanel;
+            BuildCell();
+            RefreshVisible();
+        }
+
+        // 트레이 폭이 화면비에 따라 클램프되므로 셀 폭도 소유자(DefenderSelector)가 정한다.
+        // 계약: 셀 폭 <= 슬롯 폭 (자원 표시가 행동 대상보다 넓으면 위계가 뒤집힌다).
+        public void SetCellWidth(float width)
+        {
+            if (_cellLayout == null) return;
+            _cellLayout.preferredWidth = width;
+            _cellLayout.minWidth = width;
+        }
+
+        // ── 표시 상태 ────────────────────────────────────────────────
+
+        private void OnEnable()
+        {
+            if (gameManager != null) gameManager.PhaseChanged += OnPhaseChanged;
+        }
+
+        private void OnDisable()
+        {
+            if (gameManager != null) gameManager.PhaseChanged -= OnPhaseChanged;
+        }
+
+        private void OnPhaseChanged(GamePhase phase)
+        {
+            // 위치/크기 계산 없음 — 레이아웃 그룹과 DefenderSelector 가 소유한다.
+            _phaseVisible = phase == GamePhase.Placement || phase == GamePhase.Battle;
+            RefreshVisible();
+        }
+
+        // battle-hud-layout 1 rev — 드림캐쳐 핸드 오픈 중엔 "유닛 손패 + 유닛 재화"가
+        // 한 세트로 퇴장한다. 셀이 트레이 자식이 된 뒤로는 트레이 플립이 가림을
+        // 소유하므로 이 경로는 사실상 중복이지만, 호출측(DreamcatcherHandView) 무변경을
+        // 위해 시그니처를 유지한다. alpha 로만 처리해 레이아웃은 건드리지 않는다.
+        public void SetSuppressed(bool value)
+        {
+            _suppressed = value;
+            RefreshVisible();
+        }
+
+        // SetActive 를 쓰지 않는 이유: 셀이 레이아웃 자식이라 비활성화하면 슬롯들이
+        // 남은 폭 전체로 재확장된다(154 → 176). 손패를 열 때마다 슬롯이 튀는
+        // 리플로우가 생긴다. alpha 로 숨기면 레이아웃이 유지되고, 부수적으로
+        // Update 가 계속 돌아 억제 구간에도 값이 최신으로 유지된다.
+        private void RefreshVisible()
+        {
+            if (_cellGroup == null) return;
+            bool show = _phaseVisible && !_suppressed;
+            _cellGroup.alpha = show ? 1f : 0f;
+            _cellGroup.blocksRaycasts = show;
+        }
+
+        // ── 값 추종 ──────────────────────────────────────────────────
+
+        private void Update()
+        {
+            // activeSelf 가 아니라 activeInHierarchy — 셀이 트레이 자식이라
+            // 부모만 꺼진 상태를 activeSelf 는 못 본다.
+            if (_cell == null || !_cell.activeInHierarchy) return;
+            var runtime = gameManager != null ? gameManager.CostRuntime : null;
+            if (runtime == null) return;
+
+            float fill = CostWellMath.WellFill(runtime.Current, runtime.Max);
+            if (_wellLiquid != null)
+            {
+                _wellLiquid.fillAmount = fill;
+                _wellLiquid.color = LiquidColorFor(fill);
+            }
+            ApplySurface(fill);
+
+            if (_valueText != null)
+            {
+                int shown = CostWellMath.DisplayInt(runtime.Current);
+                _valueText.text = $"{shown}<size=52%>/{Mathf.RoundToInt(runtime.Max)}</size>";
+            }
+        }
+
+        private Color LiquidColorFor(float fill)
+        {
+            var baseColor = trayConfig != null ? trayConfig.wellLiquidColor : WellLiquidFallback;
+            var fullColor = trayConfig != null ? trayConfig.wellLiquidFullColor : WellLiquidFallback;
+            return Color.Lerp(baseColor, fullColor, fill);
+        }
+
+        // 액체 표면은 fill 을 따라 오르내리고, 바닥/천장에 붙으면 숨긴다
+        // (각성 게이지 LiquidSurface 와 같은 규칙).
+        private void ApplySurface(float fill)
+        {
+            if (_surfaceRect == null || _wellRect == null) return;
+            bool visible = fill > 0.01f && fill < 0.99f;
+            if (_surfaceImage != null && _surfaceImage.enabled != visible)
+                _surfaceImage.enabled = visible;
+            if (!visible) return;
+
+            float h = _wellRect.rect.height;
+            _surfaceRect.anchoredPosition = new Vector2(0f, Mathf.Lerp(-h * 0.5f, h * 0.5f, fill));
+        }
+
+        // ── 비용 부족 피드백 (action-tray unit 4) ────────────────────
+
         public void PulseInsufficient(int missing)
         {
-            if (_panel == null || !_panel.activeSelf) return;
+            if (_cell == null || !_cell.activeInHierarchy) return;
             if (_pulse != null) { StopCoroutine(_pulse); ResetPulseVisual(); }
             _pulse = StartCoroutine(PulseRoutine(Mathf.Max(1, missing)));
         }
@@ -80,61 +175,30 @@ namespace Wassup.UI
             EnsurePulseLabel();
             _pulseLabel.text = $"코스트 {missing} 부족";
             _pulseLabel.gameObject.SetActive(true);
-            if (_plateImage != null) _plateImage.color = new Color(1f, 0.72f, 0.68f, 1f);
+            if (_cellBg != null) _cellBg.color = new Color(1f, 0.72f, 0.68f, 0.55f);
             if (_valueText != null) _valueText.color = PulseWarn;
             yield return new WaitForSecondsRealtime(0.6f); // UI 는 슬로모 무관 실시간
             ResetPulseVisual();
             _pulse = null;
         }
 
-        // 정수 도달 — 새로 채워진 칸 스케일 펀치(1.25→1, 0.18s 실시간).
-        private System.Collections.IEnumerator PopSegment(int index)
-        {
-            var root = _barRoots != null && index < _barRoots.Length ? _barRoots[index] : null;
-            if (root == null) yield break;
-            float t = 0f;
-            const float dur = 0.18f;
-            while (t < dur && root != null)
-            {
-                t += Time.unscaledDeltaTime;
-                float k = Mathf.Clamp01(t / dur);
-                float s = Mathf.Lerp(1.25f, 1f, k * k); // ease-out
-                root.localScale = new Vector3(s, s, 1f);
-                yield return null;
-            }
-            if (root != null) root.localScale = Vector3.one;
-        }
-
-        // 소비 — 잃은 칸이 warn 색으로 번쩍인 뒤 원복(0.3s 실시간).
-        private System.Collections.IEnumerator FlashLostSegment(int index)
-        {
-            var fill = _bars != null && index < _bars.Length ? _bars[index] : null;
-            if (fill == null) yield break;
-            _flashing.Add(index);
-            float t = 0f;
-            const float dur = 0.3f;
-            while (t < dur && fill != null)
-            {
-                t += Time.unscaledDeltaTime;
-                fill.color = Color.Lerp(PulseWarn, Color.white, Mathf.Clamp01(t / dur));
-                yield return null;
-            }
-            if (fill != null) fill.color = Color.white;
-            _flashing.Remove(index);
-        }
-
+        // 셀 배경 base 는 투명이다. 색을 스프라이트에 굽고 Image.color 를 흰색으로
+        // 되돌리는 예전 방식이면 pulse 1회 후 base 틴트가 파괴된다.
         private void ResetPulseVisual()
         {
             if (_pulseLabel != null) _pulseLabel.gameObject.SetActive(false);
-            if (_plateImage != null) _plateImage.color = Color.white;
+            if (_cellBg != null) _cellBg.color = Color.clear;
             if (_valueText != null) _valueText.color = ValueColor;
         }
 
+        // 라벨은 셀이 아니라 트레이 패널 기준으로 붙인다 — 260px 라벨을 154px 셀에
+        // 붙이면 좌우로 삐져나와 인접 슬롯을 덮는다.
         private void EnsurePulseLabel()
         {
             if (_pulseLabel != null) return;
+            var parent = _trayPanel != null ? _trayPanel : _cell.transform;
             var go = new GameObject("InsufficientLabel", typeof(RectTransform));
-            go.transform.SetParent(_panel.transform, false);
+            go.transform.SetParent(parent, false);
             var rt = (RectTransform)go.transform;
             rt.anchorMin = new Vector2(0.5f, 1f);
             rt.anchorMax = new Vector2(0.5f, 1f);
@@ -149,300 +213,143 @@ namespace Wassup.UI
             _pulseLabel.alignment = TextAlignmentOptions.Center;
             _pulseLabel.textWrappingMode = TextWrappingModes.NoWrap;
             _pulseLabel.raycastTarget = false;
+            // 라벨은 레이아웃 그룹 자식이 아니어야 한다(트레이 폭 배분에 끼어들면 안 됨).
+            var ignore = go.AddComponent<LayoutElement>();
+            ignore.ignoreLayout = true;
             go.SetActive(false);
         }
 
-        private void Awake()
-        {
-            BuildCanvas();
-            if (_panel != null) _panel.SetActive(false);
-        }
+        // ── 셀 구성 ──────────────────────────────────────────────────
 
-        private void OnEnable()
-        {
-            if (gameManager != null) gameManager.PhaseChanged += OnPhaseChanged;
-        }
-
-        private void OnDisable()
-        {
-            if (gameManager != null) gameManager.PhaseChanged -= OnPhaseChanged;
-        }
-
-        private void OnPhaseChanged(GamePhase phase)
-        {
-            _phaseVisible = phase == GamePhase.Placement || phase == GamePhase.Battle;
-            // action-tray unit 2 — 레일은 트레이 top edge 추종(같은 config geometry,
-            // snap 전환). DefenderSelector.OnPhaseChanged 의 트레이 리사이즈와 같은
-            // 프레임에 정합된다.
-            if (trayConfig != null && _panel != null && (phase == GamePhase.Placement || phase == GamePhase.Battle))
-                ((RectTransform)_panel.transform).anchoredPosition = new Vector2(0f, RailYFor(phase));
-            RefreshVisible();
-        }
-
-        // 레일 하단 y = 트레이 y + phase 트레이 높이 − overlap (트레이 상단 겹침).
-        private float RailYFor(GamePhase phase)
-        {
-            float trayH = phase == GamePhase.Battle ? trayConfig.battleSize.y : trayConfig.placementSize.y;
-            return trayConfig.anchoredY + trayH - trayConfig.railOverlap;
-        }
-
-        // battle-hud-layout 1 rev — 중앙 이동으로 배지(y164~276)가 드림캐쳐 핸드
-        // (y32~264)와 겹치게 됨. 핸드 오픈 중엔 스트립과 함께 배지도 퇴장한다
-        // ("유닛 손패 + 유닛 재화" 한 세트). HandView 는 신호만 보내고 표시 결정은
-        // 여기서 결합해 PhaseChanged 구독 순서 경합을 피한다.
-        public void SetSuppressed(bool value)
-        {
-            _suppressed = value;
-            RefreshVisible();
-        }
-
-        private void RefreshVisible()
-        {
-            if (_panel == null) return;
-            bool show = _phaseVisible && !_suppressed;
-            if (show) EnsureBars();
-            _panel.SetActive(show);
-        }
-
-        private void EnsureBars()
-        {
-            if (!_built) BuildCanvas();
-            if (_barRow == null) return;
-            if (gameManager == null || gameManager.CostRuntime == null) return;
-            int max = Mathf.RoundToInt(gameManager.CostRuntime.Max);
-            if (max <= 0) return;
-            if (max == _barCount && _bars != null) return;
-
-            for (int i = _barRow.childCount - 1; i >= 0; i--)
-                Destroy(_barRow.GetChild(i).gameObject);
-
-            var emptySprite = costBarEmpty != null ? costBarEmpty : _barEmptyFallback;
-            var filledSprite = costBarFilled != null ? costBarFilled : _barFilledFallback;
-            bool railMode = trayConfig != null;
-
-            _bars = new Image[max];
-            _barRoots = new RectTransform[max];
-            for (int i = 0; i < max; i++)
-            {
-                var bar = new GameObject($"Bar{i}", typeof(RectTransform), typeof(Image));
-                bar.transform.SetParent(_barRow, false);
-                var bg = bar.GetComponent<Image>();
-                bg.sprite = emptySprite;
-                // rail(가로 fill)은 세그먼트가 칸을 꽉 채워야 진행이 읽힌다 —
-                // preserveAspect 를 끄고 슬롯 폭 전체 사용. legacy 는 기존 유지.
-                bg.preserveAspect = !railMode;
-                bg.raycastTarget = false;
-
-                var fillGO = new GameObject("Fill", typeof(RectTransform), typeof(Image));
-                fillGO.transform.SetParent(bar.transform, false);
-                var frt = (RectTransform)fillGO.transform;
-                frt.anchorMin = Vector2.zero; frt.anchorMax = Vector2.one;
-                frt.offsetMin = Vector2.zero; frt.offsetMax = Vector2.zero;
-                var fill = fillGO.GetComponent<Image>();
-                fill.sprite = filledSprite;
-                fill.preserveAspect = !railMode;
-                fill.type = Image.Type.Filled;
-                // action-tray rail 연출 — 리젠 진행은 가로(좌→우) fill 이 직관적.
-                fill.fillMethod = railMode ? Image.FillMethod.Horizontal : Image.FillMethod.Vertical;
-                fill.fillOrigin = railMode ? (int)Image.OriginHorizontal.Left : (int)Image.OriginVertical.Bottom;
-                fill.fillAmount = 0f;
-                fill.raycastTarget = false;
-
-                _bars[i] = fill;
-                _barRoots[i] = (RectTransform)bar.transform;
-            }
-            _barCount = max;
-            _lastShownInt = -1; // 재구성 후 연출 기준점 리셋
-
-            UiLayer.Apply(gameObject);
-        }
-
-        private void Update()
-        {
-            if (_panel == null || !_panel.activeSelf) return;
-            if (gameManager == null || gameManager.CostRuntime == null) return;
-            var rt = gameManager.CostRuntime;
-            EnsureBars();
-
-            float current = rt.Current;
-            if (_bars != null)
-                for (int i = 0; i < _bars.Length; i++)
-                    _bars[i].fillAmount = Mathf.Clamp01(current - i);
-
-            // action-tray rail 연출 — 정수 경계 이벤트: 도달 칸 팝 / 소비 칸 warn 플래시.
-            // 풀 게이지(=max)는 은은한 글로우 펄스로 "쓸 준비 됨" 신호.
-            if (trayConfig != null && _bars != null)
-            {
-                int curInt = rt.CurrentInt;
-                if (_lastShownInt >= 0 && curInt != _lastShownInt)
-                {
-                    if (curInt > _lastShownInt)
-                        for (int i = _lastShownInt; i < curInt && i < _bars.Length; i++)
-                            StartCoroutine(PopSegment(i));
-                    else
-                        for (int i = curInt; i < _lastShownInt && i < _bars.Length; i++)
-                            StartCoroutine(FlashLostSegment(i));
-                }
-                _lastShownInt = curInt;
-
-                int maxInt = Mathf.RoundToInt(rt.Max);
-                bool full = curInt >= maxInt;
-                if (full != _fullGlow || full)
-                {
-                    _fullGlow = full;
-                    float glow = full ? 0.82f + 0.18f * Mathf.Sin(Time.unscaledTime * 4f) : 1f;
-                    var c = new Color(glow, glow, glow, 1f);
-                    for (int i = 0; i < _bars.Length; i++)
-                        if (!_flashing.Contains(i)) _bars[i].color = full ? c : Color.white;
-                }
-            }
-
-            if (_valueText != null)
-                _valueText.text = $"{rt.CurrentInt}<size=52%>/{Mathf.RoundToInt(rt.Max)}</size>";
-        }
-
-        private void BuildCanvas()
+        private void BuildCell()
         {
             if (_built) return;
             _built = true;
 
-            var roots = UiCanvasSetup.Ensure(gameObject, sortingOrder: 5);
+            float cellW = trayConfig != null ? trayConfig.costCellWidth : 154f;
+            float numberH = trayConfig != null ? trayConfig.cellNumberHeight : 48f;
+            float rowGap = trayConfig != null ? trayConfig.cellRowGap : 4f;
+            Vector2 wellPad = trayConfig != null ? trayConfig.wellPadding : new Vector2(8f, 6f);
+            float numberSize = trayConfig != null ? trayConfig.cellNumberFontSize : 52f;
 
-            _barEmptyFallback = UiRoundedSprite.Make(4f, 0f, BarEmpty, BarEmpty);
-            _barFilledFallback = UiRoundedSprite.Make(4f, 0f, BarFilled, BarFilled);
+            _cell = new GameObject("CostCell", typeof(RectTransform), typeof(Image),
+                typeof(CanvasGroup), typeof(LayoutElement));
+            _cell.transform.SetParent(_trayPanel, false);
+            _cell.transform.SetSiblingIndex(0); // 트레이 첫 자식 = 좌측
 
-            // Compact HUD panel, bottom-center above the DefenderSelector strip.
-            // battle-hud-layout 1 — 코스트-스트립 한 클러스터: "코스트 확인→슬롯
-            // 선택→드래그"가 한 시선 안에 돌도록 중앙 스트립 위에 밀착(CR 엘릭서 바 관례).
-            // action-tray unit 2 — trayConfig 있으면 compact rail(트레이 top 겹침),
-            // 없으면 기존 부유 배지 그대로(무회귀 폴백).
-            bool railMode = trayConfig != null;
-            float plateW = railMode ? trayConfig.railSize.x : PlateW;
-            float plateH = railMode ? trayConfig.railSize.y : PlateH;
-            _panel = new GameObject("CostPanel", typeof(RectTransform), typeof(Image));
-            _panel.transform.SetParent(roots.SafeAreaRoot, false);
-            var prt = (RectTransform)_panel.transform;
-            prt.anchorMin = new Vector2(0.5f, 0f);
-            prt.anchorMax = new Vector2(0.5f, 0f);
-            prt.pivot = new Vector2(0.5f, 0f);
-            // 레일: placement 트레이 top 겹침 / 레거시: 스트립 상단 위 12px 갭(y164).
-            prt.anchoredPosition = new Vector2(0f, railMode ? RailYFor(GamePhase.Placement) : 164f);
-            prt.sizeDelta = new Vector2(plateW, plateH);
-            // Landscape badge with even inner padding (Pad). 9-sliced panel so the
-            // rounded corners stay crisp when stretched wide. Top row = bolt + inline
-            // "N/Max"; bottom row = bar gauge. Compact height, no floating whitespace.
-            float Pad = railMode ? 12f : 18f;
-            float TopRowH = railMode ? 26f : 46f;
-            float BarRowH = railMode ? 26f : 24f;
-            var plate = _panel.GetComponent<Image>();
-            // 시안 정합 — 레일은 별도 캡슐이 아니라 트레이와 같은 fill/border 의
-            // 탭(overlap 으로 실루엣 연결). 레거시는 기존 스프라이트/팔레트.
-            plate.sprite = railMode
-                ? UiRoundedSprite.Make(12f, 2f, trayConfig.fallbackFill, trayConfig.fallbackBorder)
-                : (costPanelSprite != null
-                    ? costPanelSprite
-                    : UiRoundedSprite.Make(20f, 3f, PlateColor, PlateBorder));
-            plate.type = Image.Type.Sliced;
-            plate.raycastTarget = false;
-            _plateImage = plate; // unit 4 — pulse 틴트 대상
+            _cellBg = _cell.GetComponent<Image>();
+            _cellBg.sprite = UiRoundedSprite.Make(10f, 0f, Color.white, Color.clear);
+            _cellBg.type = Image.Type.Sliced;
+            _cellBg.color = Color.clear; // pulse 대상. base 가 투명이라 복원이 자명하다.
+            _cellBg.raycastTarget = false;
 
-            // Energy bolt — rail: 좌측 세로 중앙(한 줄 시안) / legacy: top-left.
-            float iconSize = railMode ? 26f : 44f;
+            _cellGroup = _cell.GetComponent<CanvasGroup>();
+            _cellGroup.alpha = 0f;
+
+            _cellLayout = _cell.GetComponent<LayoutElement>();
+            _cellLayout.preferredWidth = cellW;
+            _cellLayout.minWidth = cellW;
+            _cellLayout.flexibleWidth = 0f; // 고정폭. 바깥 HLG 는 childForceExpandWidth=false 여야 유효.
+
+            BuildValueRow(numberH, numberSize);
+            BuildWell(numberH, rowGap, wellPad);
+
+            UiLayer.Apply(_cell);
+        }
+
+        // 상단 행: ⚡ 아이콘 + "현재/최대".
+        private void BuildValueRow(float numberH, float numberSize)
+        {
+            float iconSize = Mathf.Min(28f, numberH - 12f);
+
             var iconGO = new GameObject("EnergyIcon", typeof(RectTransform), typeof(Image));
-            iconGO.transform.SetParent(_panel.transform, false);
+            iconGO.transform.SetParent(_cell.transform, false);
             var irt = (RectTransform)iconGO.transform;
-            if (railMode)
-            {
-                irt.anchorMin = new Vector2(0f, 0.5f);
-                irt.anchorMax = new Vector2(0f, 0.5f);
-                irt.pivot = new Vector2(0f, 0.5f);
-                irt.anchoredPosition = new Vector2(Pad + 2f, 0f);
-            }
-            else
-            {
-                irt.anchorMin = new Vector2(0f, 1f);
-                irt.anchorMax = new Vector2(0f, 1f);
-                irt.pivot = new Vector2(0f, 1f);
-                irt.anchoredPosition = new Vector2(Pad, -(Pad + (TopRowH - iconSize) * 0.5f));
-            }
+            irt.anchorMin = new Vector2(0f, 1f);
+            irt.anchorMax = new Vector2(0f, 1f);
+            irt.pivot = new Vector2(0f, 1f);
+            irt.anchoredPosition = new Vector2(8f, -(numberH - iconSize) * 0.5f);
             irt.sizeDelta = new Vector2(iconSize, iconSize);
             var iconImg = iconGO.GetComponent<Image>();
-            iconImg.sprite = costEnergyIcon != null ? costEnergyIcon
-                : UiRoundedSprite.Make(12f, 0f, IconFallback, IconFallback);
+            iconImg.sprite = costEnergyIcon != null
+                ? costEnergyIcon
+                : UiRoundedSprite.Make(6f, 0f, WellLiquidFallback, WellLiquidFallback);
             iconImg.preserveAspect = true;
             iconImg.raycastTarget = false;
 
-            // Big current value + inline "/max" — rail: 볼트 옆(한 줄) / legacy: top row.
-            float valueX = Pad + iconSize + (railMode ? 8f : 14f);
-            float valueW = railMode ? 104f : (plateW - valueX - Pad);
-            _valueText = MakeText("Value", railMode ? 30f : 40f, ValueColor, TextAlignmentOptions.MidlineLeft);
+            var valueGO = new GameObject("Value", typeof(RectTransform));
+            valueGO.transform.SetParent(_cell.transform, false);
+            var vrt = (RectTransform)valueGO.transform;
+            vrt.anchorMin = new Vector2(0f, 1f);
+            vrt.anchorMax = new Vector2(1f, 1f);
+            vrt.pivot = new Vector2(0.5f, 1f);
+            vrt.offsetMin = new Vector2(8f + iconSize + 4f, -numberH);
+            vrt.offsetMax = new Vector2(-6f, 0f);
+            _valueText = valueGO.AddComponent<TextMeshProUGUI>();
+            if (numberFont != null) _valueText.font = numberFont;
             _valueText.richText = true;
-            var vrt = _valueText.rectTransform;
-            if (railMode)
-            {
-                vrt.anchorMin = new Vector2(0f, 0f);
-                vrt.anchorMax = new Vector2(0f, 1f);
-                vrt.pivot = new Vector2(0f, 0.5f);
-                vrt.anchoredPosition = new Vector2(valueX, 0f);
-                vrt.sizeDelta = new Vector2(valueW, 0f);
-            }
-            else
-            {
-                vrt.anchorMin = new Vector2(0f, 1f);
-                vrt.anchorMax = new Vector2(0f, 1f);
-                vrt.pivot = new Vector2(0f, 1f);
-                vrt.anchoredPosition = new Vector2(valueX, -Pad);
-                vrt.sizeDelta = new Vector2(valueW, TopRowH);
-            }
-            _valueText.fontStyle = FontStyles.Bold;
             _valueText.text = "0";
-
-            // Bar gauge — rail: 숫자 오른쪽 세로 중앙(한 줄 시안) / legacy: 하단 행.
-            var rowGO = new GameObject("BarRow", typeof(RectTransform), typeof(HorizontalLayoutGroup));
-            rowGO.transform.SetParent(_panel.transform, false);
-            var rrt = (RectTransform)rowGO.transform;
-            if (railMode)
-            {
-                float barX = valueX + valueW + 6f;
-                float inset = (plateH - BarRowH) * 0.5f;
-                rrt.anchorMin = new Vector2(0f, 0f);
-                rrt.anchorMax = new Vector2(1f, 1f);
-                rrt.pivot = new Vector2(0.5f, 0.5f);
-                rrt.offsetMin = new Vector2(barX, inset);
-                rrt.offsetMax = new Vector2(-(Pad + 4f), -inset);
-            }
-            else
-            {
-                rrt.anchorMin = new Vector2(0f, 0f);
-                rrt.anchorMax = new Vector2(1f, 0f);
-                rrt.pivot = new Vector2(0.5f, 0f);
-                rrt.offsetMin = new Vector2(Pad, Pad);
-                rrt.offsetMax = new Vector2(-Pad, Pad + BarRowH);
-            }
-            var hlg = rowGO.GetComponent<HorizontalLayoutGroup>();
-            hlg.spacing = 4f;
-            hlg.childForceExpandWidth = true;
-            hlg.childForceExpandHeight = true;
-            hlg.childControlWidth = true;
-            hlg.childControlHeight = true;
-            hlg.childAlignment = TextAnchor.MiddleCenter;
-            _barRow = rowGO.transform;
-
-            UiLayer.Apply(gameObject);
+            _valueText.fontSize = numberSize;
+            _valueText.enableAutoSizing = true;
+            _valueText.fontSizeMin = numberSize * 0.6f;
+            _valueText.fontSizeMax = numberSize;
+            _valueText.fontStyle = FontStyles.Bold;
+            _valueText.color = ValueColor;
+            _valueText.alignment = TextAlignmentOptions.MidlineLeft;
+            _valueText.textWrappingMode = TextWrappingModes.NoWrap;
+            _valueText.raycastTarget = false;
         }
 
-        private TextMeshProUGUI MakeText(string name, float size, Color color, TextAlignmentOptions align)
+        // 하단: Mask 용기 + 아래→위로 차오르는 액체 + 표면 하이라이트.
+        // 각성 게이지(AwakeningGaugeView)의 ChargeWell 구성을 세로 직사각으로 옮긴 것.
+        private void BuildWell(float numberH, float rowGap, Vector2 wellPad)
         {
-            var go = new GameObject(name, typeof(RectTransform));
-            go.transform.SetParent(_panel.transform, false);
-            var tmp = go.AddComponent<TextMeshProUGUI>();
-            if (numberFont != null) tmp.font = numberFont;
-            tmp.fontSize = size;
-            tmp.color = color;
-            tmp.alignment = align;
-            tmp.textWrappingMode = TextWrappingModes.NoWrap;
-            tmp.raycastTarget = false;
-            return tmp;
+            var wellGO = new GameObject("Well", typeof(RectTransform), typeof(Image), typeof(Mask));
+            wellGO.transform.SetParent(_cell.transform, false);
+            _wellRect = (RectTransform)wellGO.transform;
+            _wellRect.anchorMin = new Vector2(0f, 0f);
+            _wellRect.anchorMax = new Vector2(1f, 1f);
+            _wellRect.pivot = new Vector2(0.5f, 0.5f);
+            _wellRect.offsetMin = new Vector2(wellPad.x, wellPad.y);
+            _wellRect.offsetMax = new Vector2(-wellPad.x, -(numberH + rowGap));
+
+            var wellBack = wellGO.GetComponent<Image>();
+            wellBack.sprite = UiRoundedSprite.Make(8f, 0f, Color.white, Color.clear);
+            wellBack.type = Image.Type.Sliced;
+            wellBack.color = trayConfig != null ? trayConfig.wellBackColor : WellBackFallback;
+            wellBack.raycastTarget = false;
+            wellGO.GetComponent<Mask>().showMaskGraphic = true;
+
+            var liquidGO = new GameObject("WellLiquid", typeof(RectTransform), typeof(Image));
+            liquidGO.transform.SetParent(wellGO.transform, false);
+            var lrt = (RectTransform)liquidGO.transform;
+            lrt.anchorMin = Vector2.zero;
+            lrt.anchorMax = Vector2.one;
+            lrt.offsetMin = Vector2.zero;
+            lrt.offsetMax = Vector2.zero;
+            _wellLiquid = liquidGO.GetComponent<Image>();
+            _wellLiquid.sprite = UiRoundedSprite.Make(8f, 0f, Color.white, Color.clear);
+            _wellLiquid.type = Image.Type.Filled;
+            _wellLiquid.fillMethod = Image.FillMethod.Vertical;
+            _wellLiquid.fillOrigin = (int)Image.OriginVertical.Bottom;
+            _wellLiquid.fillAmount = 0f;
+            _wellLiquid.color = trayConfig != null ? trayConfig.wellLiquidColor : WellLiquidFallback;
+            _wellLiquid.raycastTarget = false;
+
+            var surfaceGO = new GameObject("WellSurface", typeof(RectTransform), typeof(Image));
+            surfaceGO.transform.SetParent(wellGO.transform, false);
+            _surfaceRect = (RectTransform)surfaceGO.transform;
+            _surfaceRect.anchorMin = new Vector2(0f, 0.5f);
+            _surfaceRect.anchorMax = new Vector2(1f, 0.5f);
+            _surfaceRect.pivot = new Vector2(0.5f, 0.5f);
+            _surfaceRect.sizeDelta = new Vector2(0f, 4f);
+            _surfaceRect.anchoredPosition = Vector2.zero;
+            _surfaceImage = surfaceGO.GetComponent<Image>();
+            _surfaceImage.sprite = UiRoundedSprite.Make(2f, 0f, Color.white, Color.clear);
+            _surfaceImage.type = Image.Type.Sliced;
+            _surfaceImage.color = trayConfig != null ? trayConfig.wellSurfaceColor : WellSurfaceFallback;
+            _surfaceImage.raycastTarget = false;
+            _surfaceImage.enabled = false;
         }
     }
 }

@@ -45,8 +45,6 @@ MonoBehaviour:
   cellNumberFontSize: 52
   nameBandHeight: 36
   nameTextHeight: 38
-  railSize: {x: 980, y: 44}
-  railOverlap: 14
   unaffordableDim: {r: 0.42, g: 0.42, b: 0.45, a: 1}
   costWarnColor: {r: 1, g: 0.34, b: 0.28, a: 1}
   roles:

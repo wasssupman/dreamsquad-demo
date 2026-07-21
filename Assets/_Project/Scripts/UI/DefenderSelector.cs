@@ -48,6 +48,9 @@ namespace Wassup.UI
         private GameObject _panel;
         private Transform _slotContainer;
         private bool _built;
+        // tray-cost-well unit 1 — 트레이 폭 산출 입력. 페이즈 전환은 슬롯 수를
+        // 모르므로 마지막으로 빌드된 값을 재사용한다.
+        private int _lastSlotCount;
 
         // action-tray unit 1 — 슬롯별 시각 참조 캐시. RebuildSlots 에서만 재구성하고
         // Update 는 CostRuntime.CurrentInt 가 바뀐 프레임에만 순회한다(매 프레임
@@ -106,11 +109,12 @@ namespace Wassup.UI
         {
             if (_panel == null) return;
             if (phase == GamePhase.Battle)
-                ((RectTransform)_panel.transform).sizeDelta = BattleSize;
+                ApplyTraySize(0); // 마지막 슬롯 수 유지
             else if (phase == GamePhase.Placement)
             {
                 // gift-phase unit 3 — 배치 진입(선물 종료 후)에서 트레이 리사이즈 + 노출·구성.
-                ((RectTransform)_panel.transform).sizeDelta = PlacementSize;
+                // 실제 폭은 RebuildSlots 가 풀 길이로 다시 확정한다.
+                ApplyTraySize(0);
                 OnDraftConfirmed();
             }
             else
@@ -168,14 +172,41 @@ namespace Wassup.UI
             }
             panelImage.raycastTarget = false;
 
-            var hlg = _panel.AddComponent<HorizontalLayoutGroup>();
-            hlg.spacing = trayConfig != null ? trayConfig.slotSpacing : 8f;
+            float spacing = trayConfig != null ? trayConfig.slotSpacing : 8f;
             int horizontalPadding = trayConfig != null ? trayConfig.horizontalPadding : 18;
             int verticalPadding = trayConfig != null ? trayConfig.verticalPadding : 12;
+
+            // tray-cost-well unit 1 — 바깥 그룹은 [코스트 셀][슬롯 컨테이너] 2 자식.
+            // childForceExpandWidth 를 켜면 uGUI 가 per-child flexibleWidth 를
+            // Max(flexible, 1) 로 덮어써(HorizontalOrVerticalLayoutGroup.cs:237-238)
+            // 셀의 고정폭 계약이 무효화된다 — 반드시 false.
+            var hlg = _panel.AddComponent<HorizontalLayoutGroup>();
+            hlg.spacing = spacing;
             hlg.padding = new RectOffset(horizontalPadding, horizontalPadding, verticalPadding, verticalPadding);
-            hlg.childForceExpandWidth = true;
+            hlg.childControlWidth = true;
+            hlg.childControlHeight = true;
+            hlg.childForceExpandWidth = false;
             hlg.childForceExpandHeight = true;
-            _slotContainer = _panel.transform;
+
+            // 슬롯 전용 컨테이너. RebuildSlots 가 자식을 전부 Destroy 하므로
+            // 코스트 셀과 같은 부모에 둘 수 없다(예전엔 _slotContainer == _panel 이라
+            // 셀이 첫 배치 진입에서 조용히 파괴됐다).
+            var slotsGO = new GameObject("SlotContainer",
+                typeof(RectTransform), typeof(HorizontalLayoutGroup), typeof(LayoutElement));
+            slotsGO.transform.SetParent(_panel.transform, false);
+            var slotHlg = slotsGO.GetComponent<HorizontalLayoutGroup>();
+            slotHlg.spacing = spacing;
+            slotHlg.childControlWidth = true;
+            slotHlg.childControlHeight = true;
+            slotHlg.childForceExpandWidth = true;  // 슬롯끼리는 동질 — 균등 분할
+            slotHlg.childForceExpandHeight = true;
+            var slotsLayout = slotsGO.GetComponent<LayoutElement>();
+            slotsLayout.flexibleWidth = 1f;        // 남은 폭 전부
+            _slotContainer = slotsGO.transform;
+
+            // 셀은 자신을 sibling 0 으로 넣는다(좌측). 폭은 슬롯 수가 확정되는
+            // RebuildSlots 에서 SetCellWidth 로 주입된다.
+            if (costDisplay != null) costDisplay.AttachToTray(_panel.transform);
 
             UiLayer.Apply(gameObject);
         }
@@ -183,6 +214,58 @@ namespace Wassup.UI
         private Vector2 PlacementSize => trayConfig != null ? trayConfig.placementSize : placementSize;
         private Vector2 BattleSize => trayConfig != null ? trayConfig.battleSize : battleSize;
         private float AnchoredY => trayConfig != null ? trayConfig.anchoredY : 32f;
+
+        // tray-cost-well unit 1 — 트레이 폭은 상수가 아니라 슬롯 수에서 유도한 뒤
+        // 하단 코너 위젯(전투시작 버튼·각성 게이지·NextWaveDock) 예약폭으로 클램프한
+        // 값이다. 코너 위젯은 전부 canvas order 7 > 트레이 4 라, 겹치면 그 구간의
+        // 슬롯은 드래그가 아예 안 된다(각성 패널은 alpha 0.001 불가시 히트영역).
+        private void ApplyTraySize(int slotCount)
+        {
+            if (_panel == null) return;
+            if (slotCount > 0) _lastSlotCount = slotCount;
+            var rect = (RectTransform)_panel.transform;
+            rect.sizeDelta = ComputeTraySize(_lastSlotCount, out float cellWidth);
+            if (costDisplay != null && cellWidth > 0f) costDisplay.SetCellWidth(cellWidth);
+        }
+
+        private Vector2 ComputeTraySize(int slotCount, out float cellWidth)
+        {
+            cellWidth = 0f;
+            if (trayConfig == null || slotCount <= 0) return PlacementSize;
+
+            float cell = trayConfig.costCellWidth;
+            float slot = trayConfig.slotWidth;
+            float spacing = trayConfig.slotSpacing;
+            float hPad = trayConfig.horizontalPadding * 2f;
+            float vPad = trayConfig.verticalPadding * 2f;
+
+            // [pad] cell [gap] slot×n (gap×(n-1)) [pad] → gap 총 n개
+            float fixedPart = hPad + spacing * slotCount;
+            float flexPart = cell + slot * slotCount;
+            float want = fixedPart + flexPart;
+
+            float available = SafeAreaWidth() - trayConfig.cornerReservedWidth;
+            if (available > fixedPart && want > available)
+            {
+                // 축소분은 셀과 슬롯이 같은 비율로 나눈다 — 셀만 고정폭을 지키면
+                // 셀이 슬롯보다 넓어져 위계가 뒤집힌다(자원 표시 > 행동 대상).
+                float scale = Mathf.Max(0.1f, (available - fixedPart) / flexPart);
+                cell *= scale;
+                want = available;
+            }
+
+            cellWidth = cell;
+            return new Vector2(want, trayConfig.slotHeight + vPad);
+        }
+
+        // 트레이는 캔버스 직속이 아니라 SafeAreaRoot 자식이다 — 노치/컷아웃이
+        // 있는 기기에서 가용폭은 "화면비 × 1080" 이 아니다.
+        private float SafeAreaWidth()
+        {
+            var parent = _panel != null ? _panel.transform.parent as RectTransform : null;
+            float w = parent != null ? parent.rect.width : 0f;
+            return w > 1f ? w : UiCanvasSetup.ReferenceResolution.x;
+        }
 
         private void RebuildSlots(DefenderUnitData[] pool)
         {
@@ -192,6 +275,9 @@ namespace Wassup.UI
             _lastCostSeen = int.MinValue; // 재빌드 후 첫 Update 에서 강제 갱신
 
             if (pool == null || pool.Length == 0) return;
+
+            // 트레이 폭은 슬롯 수에서 유도된다 — 풀이 확정된 지금이 유일한 산출 시점.
+            ApplyTraySize(pool.Length);
 
             for (int i = 0; i < pool.Length; i++)
             {

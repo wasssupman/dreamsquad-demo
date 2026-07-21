@@ -71,13 +71,8 @@ namespace Wassup.Data
         public float nameBandHeight = 36f;
         public float nameTextHeight = 38f;
 
-        // action-tray unit 2 — 코스트 레일. 시안 정합: 별도 캡슐이 아니라 트레이와
-        // 같은 fill/border 로 상단 중앙에서 이어진 탭(overlap 으로 실루엣 연결).
-        // 위치 = (anchoredY + phase 트레이 높이 − railOverlap) — 두 컴포넌트가
-        // 같은 geometry 를 소비해 phase 전환이 한 프레임에 정합된다.
-        [Header("Energy Rail (unit 2)")]
-        public Vector2 railSize = new Vector2(440f, 54f);
-        public float railOverlap = 14f;
+        // tray-cost-well unit 1 — 코스트 레일(트레이 상단에 겹친 별도 캔버스 탭)은
+        // 트레이 안 좌측 셀로 흡수되면서 사라졌다. railSize/railOverlap 제거.
 
         [Header("Affordability (unit 1)")]
         [Tooltip("구매 불가 시 포트레이트/배경 곱색 (색 단독 금지 — chip 강조·glyph 동반)")]
