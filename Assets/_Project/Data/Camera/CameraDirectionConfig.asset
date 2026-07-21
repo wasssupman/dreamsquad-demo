@@ -84,6 +84,10 @@ MonoBehaviour:
   inspectLookWeight: 0.5
   inspectFadeInSec: 0.22
   inspectFadeOutSec: 0.3
+  handHeadroomPitchDeg: -2
+  handHeadroomDolly: -1.5
+  handHeadroomSpring: 90
+  handHeadroomDamping: 14
   breathPosAmp: 0.07
   breathRotAmp: -0.6
   breathWaves:

@@ -139,6 +139,44 @@ namespace Wassup.Tests.EditMode
             }
         }
 
+        // hand-drag-tooltip unit 6 — float 오버로드(카메라 헤드룸 가중치 0↔1 추종).
+        // Vector3 본체 경유가 bit-exact 이고 y/z 가 0 에 머무는지 고정한다.
+        [Test]
+        public void SpringStep_FloatOverload_BitExact_AgainstVector3Path()
+        {
+            // 헤드룸 기본 상수: spring 90 / damping 14 / maxSpeed 0(무제한).
+            float posF = 0f, velF = 0f;
+            Vector3 pos3 = Vector3.zero, vel3 = Vector3.zero;
+            for (int i = 0; i < 240; i++)
+            {
+                float target = (i / 60) % 2 == 0 ? 1f : 0f; // 1초마다 열림/닫힘 토글
+                KeyringSim.SpringStep(ref posF, ref velF, target, 90f, 14f, 0f, Dt);
+                KeyringSim.SpringStep(ref pos3, ref vel3, new Vector3(target, 0f, 0f),
+                    90f, 14f, 0f, Dt);
+                Assert.AreEqual(pos3.x, posF, 0f, $"pos step {i}");
+                Assert.AreEqual(vel3.x, velF, 0f, $"vel step {i}");
+                Assert.AreEqual(0f, pos3.y, 0f, $"y 잔류 step {i}");
+                Assert.AreEqual(0f, pos3.z, 0f, $"z 잔류 step {i}");
+            }
+        }
+
+        // 언더댐핑(damping < 2√spring ≈ 19)이라 목표를 넘어섰다가 안착해야 한다.
+        // 이 성질이 깨지면 헤드룸의 "스프링 맛"이 사라진다(사용자 요구사항).
+        [Test]
+        public void SpringStep_HeadroomDefaults_Overshoot_ThenSettle()
+        {
+            float pos = 0f, vel = 0f;
+            bool overshot = false;
+            for (int i = 0; i < 600; i++)
+            {
+                KeyringSim.SpringStep(ref pos, ref vel, 1f, 90f, 14f, 0f, Dt);
+                if (pos > 1f) overshot = true;
+            }
+            Assert.IsTrue(overshot, "damping 14 < 2*sqrt(90) 이므로 오버슈트해야 한다");
+            Assert.AreEqual(1f, pos, 1e-3f, "결국 목표에 안착해야 한다");
+            Assert.AreEqual(0f, vel, 1e-3f, "안착 후 속도는 0 에 수렴해야 한다");
+        }
+
         [Test]
         public void SpringStep_Vector2Overload_BitExact_AgainstOutgameInlineMath()
         {
