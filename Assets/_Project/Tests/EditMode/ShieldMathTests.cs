@@ -118,6 +118,15 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
+        public void ValueFromSource_ReturnsSlotValue_OrZeroForUnknown()
+        {
+            var buf = Buf();
+            ShieldMath.Merge(ref buf, _sourceA, 120f);
+            Assert.AreEqual(120f, ShieldMath.ValueFromSource(buf, _sourceA), "known source returns its slot value");
+            Assert.AreEqual(0f, ShieldMath.ValueFromSource(buf, _sourceB), "unknown source returns 0 (no-op grant guard)");
+        }
+
+        [Test]
         public void Merge_NonPositiveAmount_Ignored()
         {
             var buf = Buf();

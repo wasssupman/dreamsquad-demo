@@ -103,12 +103,19 @@ namespace Wassup.Battle.Effects
                 {
                     Entity target = candidateTargets[selected[s]];
                     if (!_incomingShieldLookup.HasBuffer(target)) continue;
+                    // 성사 판정(review MED): 이 출처의 기존 슬롯이 이미 amount 이상이면
+                    // DamageApplication 의 Merge(max) 가 no-op → append/VFX 를 스킵해야
+                    // 만충 아군에 매 주기 헛불꽃이 튀지 않는다. RO ShieldSlot 은 이미
+                    // effectiveHpRatio 계산에 쓰던 것으로 추가 조회 없음.
+                    if (_shieldSlotLookup.HasBuffer(target)
+                        && ShieldMath.ValueFromSource(_shieldSlotLookup[target], casterEntity) >= cast.ValueRO.amount)
+                        continue;
                     _incomingShieldLookup[target].Add(new IncomingShield
                     {
                         source = casterEntity,
                         amount = cast.ValueRO.amount,
                     });
-                    // 부여 성사 시에만 원샷 VFX enqueue(대상 위치). 버퍼 없는 대상은 스킵됨.
+                    // 실드가 실제로 오르는 경우에만 원샷 VFX enqueue(대상 위치).
                     if (hasGrantQ)
                         grantSingleton.ValueRW.queue.Enqueue(new ShieldGrantedEvent
                         {

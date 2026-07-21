@@ -26,7 +26,7 @@
 
 ## Feature-wide 계약
 
-1. **실드 상태 소유 = Units.** `ShieldSlot` 버퍼(출처별 슬롯, Health 옆) 쓰기는 `DamageApplicationSystem` 단독. 생산자(Effects)는 `IncomingShield` 버퍼에만 append — `IncomingHeal` 선례의 맥락 간 Buffer 통신. **신규 NativeQueue 채널 0** (CLAUDE.md 채널 목록 갱신 불필요).
+1. **실드 상태 소유 = Units.** `ShieldSlot` 버퍼(출처별 슬롯, Health 옆) 쓰기는 `DamageApplicationSystem` 단독. 생산자(Effects)는 `IncomingShield` 버퍼에만 append — `IncomingHeal` 선례의 맥락 간 Buffer 통신. 흡수/병합 경로는 **신규 NativeQueue 채널 0**(버퍼 통신만). **부여 VFX(unit 4)만 신규 채널 1개** `ShieldGrantedEventsSingleton`(Effects→Bridge, 채널 20번째 — CLAUDE.md 갱신됨).
 2. **흡수 계약**: `dmgTakenMul` 적용 **후** 실드 흡수(표시 데미지 = 흡수량). 소모는 **오래된 슬롯부터**(삽입 순, 결정론), 소진 슬롯은 제거. 산식은 순수 `ShieldMath`(슬롯 병합·흡수) — sim-critical, EditMode 필수(제약 10).
 3. **완전 흡수 히트 = 피격 아님** (사용자 결정 2026-07-21). 흡수 후 `totalDamage` 값으로 기존 분기(wake-on-hit·가시갑옷 카운트·데미지 넘버·킬 귀속)를 전부 판정 — **기존 분기 조건 무변경**이 곧 이 계약의 구현. **인지된 귀결**: 실드 낀 유닛은 피격 카운트가 안 쌓여 가시 갑옷류 "맞아야 강해지는" 빌드와 상성이 나쁨 — 의도된 전략적 트레이드오프(기획 판단 2026-07-21).
 4. **출처별 max · 교차 출처 합산 · TTL 없음** (사용자 결정 2026-07-21). 같은 출처 재부여 = 해당 슬롯 max(잔량, B) — 상한은 출처당 B 내장. 다른 출처 = 새 슬롯(합산). 만료 타이머 없음. **출처는 중첩 키일 뿐 수명 링크 아님** — 부여자가 죽어도 잔여 실드 유지(Entity 는 version 포함이라 재활용 id 와 충돌 없음).
@@ -44,7 +44,7 @@
 | 스폰 진입점 | 기존 `PlaceDefenderAs`→`CreateDefenderEntity`. `ShieldSlot`+`IncomingShield` 버퍼 전 defender 사전 부착(unit 0) + `ShieldCastState` 조건부 베이크(unit 1) |
 | ECS 컴포넌트 | **신규 3**: `ShieldSlot`·`IncomingShield` 버퍼(Units) + `ShieldCastState`(Effects). Hazard/DeployedFacing/VolleyFireState N/A — 능력 비활성 |
 | 시뮬 시스템 | **신규 1**: `ShieldCastSystem`(Effects). `DamageApplicationSystem` 흡수 훅(unit 0). AttackSystem 무변경 |
-| 이벤트 큐 | **신규 채널 0** — 버퍼 통신만(계약 1) |
+| 이벤트 큐 | 흡수/병합 = 채널 0(버퍼 통신). 부여 VFX(unit 4) = 신규 `ShieldGrantedEventsSingleton` 1개(Effects→Bridge) |
 | View/Pool | 기존 `SpineUnitPool`(파츠 재조합). 체력바 실드 세그먼트 = `UnitOverheadView` 확장(unit 2) |
 | 체력 표시 | `SyncMonoUnitViews` 폴링에 ShieldPool 동승(unit 2) — 기존 매 프레임 Health 폴링과 동형 |
 | 씬 wiring | **N/A — 신규 SerializeField 없음.** 카탈로그 등록만 |

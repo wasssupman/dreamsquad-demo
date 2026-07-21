@@ -58,5 +58,14 @@ namespace Wassup.Battle.Units
             for (int i = 0; i < slots.Length; i++) total += slots[i].value;
             return total;
         }
+
+        // 특정 출처가 이 대상에 이미 부여한 실드량(없으면 0). 부여 성사 판정용(unit 4):
+        // 기존값 >= amount 면 Merge 가 max 로 no-op → 재부여/VFX 를 스킵해야 헛발동이 없다.
+        public static float ValueFromSource(in DynamicBuffer<ShieldSlot> slots, Entity source)
+        {
+            for (int i = 0; i < slots.Length; i++)
+                if (slots[i].source == source) return slots[i].value;
+            return 0f;
+        }
     }
 }
