@@ -4470,6 +4470,10 @@ namespace Wassup.Bridge
             _em.AddComponent<Wassup.Battle.Effects.ModifierStatsDirty>(entity);
             _em.SetComponentEnabled<Wassup.Battle.Effects.ModifierStatsDirty>(entity, false);
             _em.AddBuffer<Wassup.Battle.Units.IncomingHeal>(entity);
+            // shield-guardian-defender unit 0 — 실드 슬롯/부여 버퍼 사전 부착
+            // (IncomingHeal 선례 — hot path 에서 구조변경 없이 append 하기 위함).
+            _em.AddBuffer<Wassup.Battle.Units.ShieldSlot>(entity);
+            _em.AddBuffer<Wassup.Battle.Units.IncomingShield>(entity);
 
             // ingame-dreamcatcher Unit 2 — inherit active match-long card effects.
             ApplyActiveDcEffectsTo(entity, unitData);

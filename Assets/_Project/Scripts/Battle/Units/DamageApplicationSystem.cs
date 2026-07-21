@@ -31,6 +31,9 @@ namespace Wassup.Battle.Units
         private BufferLookup<CcEffect> _ccLookup;
         // dreamcatcher-kill-and-threshold unit 2 — killer 의 OnKill×SelfStatBuff 슬롯 RO 판정용.
         private BufferLookup<DcTriggerSlot> _dcTriggerSlotLookup;
+        // shield-guardian-defender unit 0 — 실드 슬롯(쓰기 단독 소유) + 부여 drain.
+        private BufferLookup<ShieldSlot> _shieldSlotLookup;
+        private BufferLookup<IncomingShield> _incomingShieldLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -46,6 +49,8 @@ namespace Wassup.Battle.Units
             _killScoreLookup = state.GetComponentLookup<KillScore>(isReadOnly: true);
             _ccLookup = state.GetBufferLookup<CcEffect>(isReadOnly: true);
             _dcTriggerSlotLookup = state.GetBufferLookup<DcTriggerSlot>(isReadOnly: true);
+            _shieldSlotLookup = state.GetBufferLookup<ShieldSlot>(isReadOnly: false);
+            _incomingShieldLookup = state.GetBufferLookup<IncomingShield>(isReadOnly: false);
         }
 
         [BurstCompile]
@@ -68,6 +73,8 @@ namespace Wassup.Battle.Units
             bool hasStatModQueue = SystemAPI.TryGetSingletonRW<StatModifierApplyEventsSingleton>(out var statModSingleton);
             _ccLookup.Update(ref state);
             _dcTriggerSlotLookup.Update(ref state);
+            _shieldSlotLookup.Update(ref state);
+            _incomingShieldLookup.Update(ref state);
 
             var ecb = new EntityCommandBuffer(Allocator.Temp);
             foreach (var (health, damageBuffer, entity) in
@@ -99,6 +106,26 @@ namespace Wassup.Battle.Units
                     KillAttribution.Consider(entry.amount, entry.source, ref killerSource, ref killerAmount);
                 }
                 totalDamage *= dmgTakenMul;
+
+                // ── shield-guardian-defender unit 0 — 실드 병합·흡수 ─────────────
+                // 부여 drain(출처별 max / 교차 출처 합산)은 데미지 유무와 무관하게
+                // 매 프레임. 흡수는 dmgTakenMul 적용 후(계약 2 — 표시 데미지 = 흡수량).
+                // 이후 분기 전부가 관통분(totalDamage 갱신값)을 판정하므로
+                // "완전 흡수 히트 = 피격 아님"(계약 3)은 조건식 무변경으로 성립.
+                float preShieldDamage = totalDamage;
+                if (_shieldSlotLookup.HasBuffer(entity))
+                {
+                    var shieldSlots = _shieldSlotLookup[entity];
+                    if (_incomingShieldLookup.HasBuffer(entity))
+                    {
+                        var grants = _incomingShieldLookup[entity];
+                        for (int i = 0; i < grants.Length; i++)
+                            ShieldMath.Merge(ref shieldSlots, grants[i].source, grants[i].amount);
+                        grants.Clear();
+                    }
+                    if (totalDamage > 0f)
+                        totalDamage = ShieldMath.Absorb(ref shieldSlots, totalDamage);
+                }
 
                 // ── IncomingHeal drain (pulse channel — must Clear each frame) ───
                 float pulseHeal = 0f;
@@ -132,9 +159,13 @@ namespace Wassup.Battle.Units
                 {
                     float3 pos = _transformLookup[entity].Position;
                     float settledRatio = Health.ComputeRatio(newHp, maxHp);
+                    // 관통분 비례 배분(계약 3) — 완전 흡수 프레임은 전 폰트 스킵.
+                    // (현재 팝업=적 전용·실드=defender 전용이라 교차 없음이지만,
+                    // 적측 실드 후속이 와도 수치가 조용히 틀리지 않게 계약을 고정.)
+                    float pierceRatio = preShieldDamage > 0f ? totalDamage / preShieldDamage : 1f;
                     for (int i = 0; i < damageBuffer.Length; i++)
                     {
-                        float hitAmount = damageBuffer[i].amount * dmgTakenMul;
+                        float hitAmount = damageBuffer[i].amount * dmgTakenMul * pierceRatio;
                         if (hitAmount <= 0f) continue;
                         damageNumberSingleton.ValueRW.queue.Enqueue(new DamageNumberEvent
                         {
