@@ -81,3 +81,5 @@ _waveTimeShift -= ScheduledWaveTime(_nextWaveIndex) - elapsedSec;
 - 전체 EditMode 스위트 무회귀.
 - Play 검증: 전투 중 `Next Wave` 를 이른 시점에 눌렀을 때 다음 웨이브가 원래 간격 뒤에
   자연스럽게 이어지고, 스폰 예고선이 그 시각에 맞춰 뜬다.
+
+**완료 확인**: 2026-07-21 · 사용자 Play 확인 통과 · `dc80a3fc`
