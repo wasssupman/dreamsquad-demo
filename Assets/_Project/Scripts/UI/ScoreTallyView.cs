@@ -25,12 +25,10 @@ namespace Wassup.UI
         // 첫 축을 통째로 놓친다. 그래서 "전투 끝 → 화면 전환 → 여기를 봐라 → 숫자" 순으로
         // 인지 단계를 쪼갠다. 전부 스킵 가능하므로 반복 플레이의 부담은 없다.
         [Header("Timing (unscaled)")]
-        [Tooltip("마지막 적이 죽은 뒤 전투 화면 그대로 두는 여운. 킬을 인지할 시간.")]
-        [SerializeField] private float preRollSec = 0.6f;
-        [Tooltip("딤이 차오르는 시간 — 상태가 바뀌었다는 신호")]
-        [SerializeField] private float dimFadeSec = 0.4f;
-        [Tooltip("딤이 다 찬 뒤 첫 축까지의 쉼")]
-        [SerializeField] private float postDimHoldSec = 0.3f;
+        [Tooltip("마지막 적이 죽은 뒤의 여운. 이 시간 동안 딤이 서서히 깔린다.")]
+        [SerializeField] private float preRollSec = 1f;
+        [Tooltip("딤이 차오르는 시간. 여운과 **동시에** 진행된다 — 보통 여운과 같게 둔다.")]
+        [SerializeField] private float dimFadeSec = 1f;
         [Tooltip("라벨이 먼저 뜨고 숫자가 움직이기까지의 리드타임 — 시선 유도")]
         [SerializeField] private float labelLeadSec = 0.25f;
         [Tooltip("축 하나의 롤업 상한")]
@@ -85,14 +83,16 @@ namespace Wassup.UI
         {
             SetLabel(null);
 
-            // 1) 전투 여운 — 딤도 안 깐다. 마지막 킬을 눈으로 마무리할 시간.
+            // 1) 전투 여운 + 딤을 **동시에**. 따로 하면 "아무 일 없음 → 갑자기 어두워짐"
+            //    두 사건이 계단처럼 끊긴다. 겹치면 "전투가 잦아든다"는 하나의 제스처가 된다.
+            //    램프가 길어 초반엔 거의 투명하므로(1초 중 0.3초 시점에 0.17) 마지막 킬
+            //    VFX 를 가리지 않는다.
+            var dimFade = StartCoroutine(FadeDim(0f, dimColor.a, dimFadeSec));
             yield return WaitUnscaled(preRollSec);
+            if (dimFade != null) StopCoroutine(dimFade);
+            SetDimAlpha(dimColor.a); // 여운이 램프보다 짧게 끝나도 딤은 확정한다
 
-            // 2) 딤 — "전투는 끝났다"는 상태 전환 신호.
-            yield return FadeDim(0f, dimColor.a, dimFadeSec);
-            yield return WaitUnscaled(postDimHoldSec);
-
-            // 3) 시선 유도 — 숫자가 움직이기 전에 배지를 한 번 때린다.
+            // 2) 시선 유도 — 숫자가 움직이기 전에 배지를 한 번 때린다.
             bool hasAny = score.Time > 0 || score.Stress > 0;
             if (hasAny && !_skipRequested)
             {

@@ -3471,9 +3471,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: afe1695af21b44879a4591f62a3f03c2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.ScoreTallyView
-  preRollSec: 0.6
-  dimFadeSec: 0.4
-  postDimHoldSec: 0.3
+  preRollSec: 1
+  dimFadeSec: 1
   labelLeadSec: 0.25
   perAxisSec: 0.7
   betweenAxisSec: 0.35
