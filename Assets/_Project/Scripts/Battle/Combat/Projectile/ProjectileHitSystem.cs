@@ -429,12 +429,13 @@ namespace Wassup.Battle.Combat.Projectile
                         var inRangeDistSq = new NativeList<float>(Allocator.Temp);
                         for (int i = 0; i < victims.Length; i++)
                         {
-                            int2 cell = GridMath.WorldToCell(victimTransforms[i].Position, tileSize, gridSize, origin: ffOrigin);
+                            float3 vpos = victimTransforms[i].Position;
+                            int2 cell = GridMath.WorldToCell(vpos, tileSize, gridSize, origin: ffOrigin);
                             if (!TileAoe.IsInTileRange(cell, centerCell, tileRange)) continue;
                             inRange.Add(i);
-                            float ddx = victimTransforms[i].Position.x - impactWorld.x;
-                            float ddz = victimTransforms[i].Position.z - impactWorld.z;
-                            inRangeDistSq.Add(ddx * ddx + ddz * ddz);
+                            float dx = vpos.x - impactWorld.x;
+                            float dz = vpos.z - impactWorld.z;
+                            inRangeDistSq.Add(dx * dx + dz * dz);
                         }
                         var selectedAoe = new NativeList<int>(Allocator.Temp);
                         AoeTargetCap.SelectNearest(inRangeDistSq.AsArray(), projectile.ValueRO.aoeTargetCap, ref selectedAoe);
