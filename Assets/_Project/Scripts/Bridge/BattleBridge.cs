@@ -4389,6 +4389,20 @@ namespace Wassup.Bridge
                     footprintHeight = math.max(1, unitData.hazardFootprintHeight),
                 });
             }
+            // shield-guardian-defender unit 1 — 실드 캐스트 베이크. 범위 = attackRange
+            // 재사용(계약 5). 첫 캐스트는 배치 A초 후(cooldownRemaining = A).
+            if (unitData.shieldCastCooldown > 0f && unitData.shieldAmount > 0f)
+            {
+                _em.AddComponentData(entity, new Wassup.Battle.Effects.ShieldCastState
+                {
+                    range = unitData.attackRange,
+                    cooldownDuration = unitData.shieldCastCooldown,
+                    cooldownRemaining = unitData.shieldCastCooldown,
+                    amount = unitData.shieldAmount,
+                    targetCount = unitData.shieldTargetCount,
+                    filter = unitData.shieldTargetFilter,
+                });
+            }
             if (pendingDeployment)
                 _em.AddComponent<PendingDeployment>(entity);
 
