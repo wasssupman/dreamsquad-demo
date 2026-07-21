@@ -25,7 +25,7 @@
 
 ## 완료 기준 (feature 통합 Play)
 
-- [ ] compile 0 에러 · 전체 EditMode green(`BombLandingTests`/`AoeTargetCapTests` 포함).
+- [x] compile 0 에러 · 전체 EditMode 1189/0/2 · 에셋 import 클린(참조 GUID 전부 해석, 카탈로그 19번째 등록).
 - [ ] 로스터에 폭탄맨 노출 → 배치 시 머신거너식 방향 조준(4방향) → 확정.
 - [ ] 쿨다운마다 방향×N(=3)칸으로 폭탄 **굴러감**(n=1s) → 착지 → 퓨즈(m=1s) 점멸 → 폭발.
 - [ ] 폭발이 착지 셀 범위 내 **가까운 순 최대 B(=3)명** 타격. 데미지탄=피해 · 수면탄=Sleep(피해0) · 스턴탄=Stun(피해0), 3종 랜덤.
