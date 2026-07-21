@@ -49,7 +49,11 @@ namespace Wassup.UI
                 ? $"<color=#F5D480><b>{axis}</b></color>  ·  {typeLabel}"
                 : typeLabel;
             string gap = compact ? "\n" : "\n\n";
-            string body = $"<size=22>{header}</size>";
+            // 축·타입 줄 크기. Body() 는 절대 22 를 유지한다(덱빌더 회귀 금지).
+            // BodyCompact() 는 툴팁 전용이라 상대값을 쓴다 — 본문 폰트를 키워도
+            // 이 줄이 본문보다 작아지지 않는다(절대 22 면 역전된다).
+            string headSize = compact ? "115%" : "22";
+            string body = $"<size={headSize}>{header}</size>";
             if (lines.Count > 0) body += gap + string.Join("\n", lines);
             if (!string.IsNullOrEmpty(card.description)) body += $"{gap}<color=#D4DAE8>{card.description}</color>";
             return body;

@@ -65,6 +65,11 @@ namespace Wassup.Presentation
         private float _inspectReleaseFrom;
         private float _inspectReleaseElapsed;
         private bool _inspectReleasing;
+        // hand-drag-tooltip unit 6 — 손패 헤드룸. 피드 주도 채널(포커스/인스펙트와 같은
+        // staleness 규약)이라 손패 뷰가 죽거나 비활성돼도 자동으로 홈 pitch 로 복귀한다.
+        private int _headroomFedFrame = -10;
+        private float _headroomWeight;
+        private float _headroomVel;
 
         // unit 3 — 앰비언트 브리딩 채널. 파동 위상 누적(절대 시각 비사용 — 장세션 float 정밀도),
         // 켜진 페이즈에서만, 비행 중 가중치 0 크로스페이드 후 서서히 복귀.
@@ -224,6 +229,19 @@ namespace Wassup.Presentation
             _inspectFedFrame = Time.frameCount;
         }
 
+        // hand-drag-tooltip unit 6 — 손패 헤드룸 피드: 손패가 열려 있는 동안 매 프레임 호출.
+        // 피드가 끊기면(2프레임 초과) 자동 해제되어 홈 pitch 로 복귀한다 — 손패 닫힘/페이즈
+        // 이탈/씬 파괴 어느 경로든 별도 teardown 호출 없이 복귀가 보장된다(이 파일의
+        // 포커스/인스펙트 채널과 같은 계약).
+        //
+        // 좌표를 받지 않는 것이 계약이다. 이 채널은 "얼마나 눕힐지"만 config 에서 읽고
+        // 카메라 상태를 되먹임하지 않으므로 진동 루프가 원천적으로 없다.
+        public void SetHandHeadroom()
+        {
+            if (config == null) return;
+            _headroomFedFrame = Time.frameCount;
+        }
+
         private void LateUpdate()
         {
             if (config == null) return;
@@ -269,9 +287,21 @@ namespace Wassup.Presentation
             bool inspectFed = _inspectHasNdc && Time.frameCount - _inspectFedFrame <= 2 && inspectConfigured;
             float inspectTarget = (inspectFed && !flying) ? 1f : 0f;
             bool inspectActive = inspectTarget > 0f || _inspectWeight > 0f;
+            // 손패 헤드룸 — 인스펙트와 같은 staleness 규약이고 같은 이유로
+            // enableNonDragEffects 에 묶지 않는다. 비행 중에도 유지한다(페이즈 비행은
+            // 현재 꺼져 있고, 켜지더라도 손패가 열려 있으면 헤드룸은 계속 필요하다).
+            bool headroomConfigured = config.handHeadroomPitchDeg != 0f || config.handHeadroomDolly != 0f;
+            bool headroomFed = Time.frameCount - _headroomFedFrame <= 2 && headroomConfigured;
+            float headroomTarget = headroomFed ? 1f : 0f;
+            // 스프링이라 가중치가 0 을 스쳐 지나거나(언더댐핑) 미세 잔류할 수 있다.
+            // 절대값 + 속도까지 봐야 복귀 도중 idle 최적화에 얼어붙지 않는다.
+            bool headroomSettled = Mathf.Abs(_headroomWeight) < 0.0005f
+                && Mathf.Abs(_headroomVel) < 0.0005f;
+            bool headroomActive = headroomTarget > 0f || !headroomSettled;
             // inspectActive 를 빠뜨리면 아래 idle 최적화(_settled)가 줌을 한 프레임 만에 덮어쓴다.
+            // headroomActive 도 같다 — 빠뜨리면 손패를 열어도 pitch 가 즉시 홈으로 덮인다.
             bool anyActive = _kickRemaining > 0f || flying || punctActive || breathActive
-                || focusActive || inspectActive;
+                || focusActive || inspectActive || headroomActive;
 
             // 아이들: 정착 포즈(홈⊕현재 페이즈 델타)를 1회만 쓰고 이후 프레임은 no-op —
             // 매 프레임 transform/FOV 재기입(하이어라키 dirty + 네이티브 세터)을 모바일에서
@@ -380,6 +410,28 @@ namespace Wassup.Presentation
                 _inspectHasNdc = false; // 다음 선택은 새 타겟에서 시작(스테일 NDC 방지)
             }
 
+            // 손패 헤드룸 채널 — 가중치를 0↔1 로 스프링 추종시켜 pitch + dolly 에 곱한다.
+            // pitch 는 보드를 아래로 옮기고 dolly 는 줄인다(상단 여백 합산).
+            // 진입/복귀가 같은 스프링이라 여는 맛과 닫는 맛이 대칭이다.
+            if (headroomActive)
+            {
+                Wassup.UI.KeyringSim.SpringStep(ref _headroomWeight, ref _headroomVel,
+                    headroomTarget, config.handHeadroomSpring, config.handHeadroomDamping, 0f,
+                    Mathf.Max(Time.unscaledDeltaTime, 1e-4f));
+                // localPos 는 홈 회전 기준(+Z = 카메라 전방)이라 음수 z = 후퇴 = 줌아웃.
+                delta = CameraComposeMath.Add(delta, new CameraPoseDelta
+                {
+                    pitchDeg = config.handHeadroomPitchDeg * _headroomWeight,
+                    localPos = new Vector3(0f, 0f, config.handHeadroomDolly * _headroomWeight),
+                });
+            }
+            else
+            {
+                // 안착 — 잔류 속도를 털어 다음 개방이 깨끗한 정지에서 출발하게 한다.
+                _headroomWeight = 0f;
+                _headroomVel = 0f;
+            }
+
             // 구두점 채널 — 가중치 페이드 갱신 후 펄스/셰이크 합산.
             _punctWeight = config.punctuationFadeSec <= 0f
                 ? punctTarget
@@ -484,6 +536,10 @@ namespace Wassup.Presentation
             if (_cam == null) return; // Awake 전 비활성화 — 캡처된 홈 없음
             transform.SetPositionAndRotation(_homePos, _homeRot);
             _cam.fieldOfView = _homeFov;
+            // 헤드룸도 함께 턴다 — 재활성 시 스프링이 옛 속도로 튀는 것 방지.
+            _headroomWeight = 0f;
+            _headroomVel = 0f;
+            _headroomFedFrame = -10;
             _kickRemaining = 0f;
             _pulseRemaining = 0f;
             _shakeHeat = 0f;

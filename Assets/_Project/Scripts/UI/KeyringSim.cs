@@ -32,6 +32,18 @@ namespace Wassup.UI
             vel = v;
         }
 
+        // 스칼라 포워딩 오버로드(가중치·각도 등 1차원 추종) — Vector3 본체에 위임.
+        // camera-direction 손패 헤드룸이 첫 소비처: 0↔1 가중치를 스프링으로 밀어
+        // 진입·복귀 모두 살짝 오버슈트 후 안착시킨다(MoveTowards 는 그 맛이 안 난다).
+        public static void SpringStep(ref float pos, ref float vel, float target,
+            float spring, float damping, float maxSpeed, float dt)
+        {
+            Vector3 p = new Vector3(pos, 0f, 0f), v = new Vector3(vel, 0f, 0f);
+            SpringStep(ref p, ref v, new Vector3(target, 0f, 0f), spring, damping, maxSpeed, dt);
+            pos = p.x;
+            vel = v.x;
+        }
+
         // defender-tap-to-place unit 6 — 3차 베지어(제어점 2개) 점 평가.
         // 시작 상승/도착 하강 접선을 독립 튜닝한다. 좌표계 비의존, endpoints 정확 → 착지 오차 0.
         public static Vector3 CubicBezier(Vector3 a, Vector3 controlA, Vector3 controlB, Vector3 b, float t)

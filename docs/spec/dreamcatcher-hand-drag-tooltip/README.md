@@ -28,6 +28,7 @@
 | `1_drag_tooltip_panel.md` | UI + 배선 | `DreamcatcherHandView` 에 툴팁 패널 신설, 드래그 시작/종료 훅 연결, Play 검증 |
 | `3_tooltip_top_center.md` | UI 배치 (rev 5) | 모바일 손 가림 해소 — 카드 우측/손패 위 → 화면 상단 중앙 고정 |
 | `4_tooltip_compact.md` | UI 압축 | 보드 상단 가림 축소 — compact 본문 + 패딩/간격/offset 조임 |
+| `6_camera_headroom.md` | 가독성 + 카메라 | 폰트 확대(19→23) + 손패 연동 카메라 헤드룸(pitch·dolly, 스프링). 5 는 철회된 배너형 |
 
 ## Feature-wide 계약
 

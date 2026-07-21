@@ -86,6 +86,10 @@ namespace Wassup.UI
         // unit 4 — 40→24. 상단 여백 1px 은 툴팁 세로 예산 1px 과 등가라(보드 침범이
         // 그만큼 늘어난다), 가장자리 답답함을 감수하고 예산으로 돌렸다.
         [SerializeField] private float tooltipTopOffset = 24f; // 세이프에어리어 상단 모서리 여백
+        // unit 6 — 실기기에서 19pt 본문이 눈에 안 들어온다(사용자 2026-07-21). 폰트를
+        // 키우면 패널이 세로로 자라므로 카메라 pitch 로 상단 여백을 함께 확보한다.
+        [SerializeField] private float tooltipHeaderFont = 27f;
+        [SerializeField] private float tooltipBodyFont = 23f;
         [SerializeField] private float tooltipBobY = 6f;   // 플로팅 bob 진폭(카드 idle 문법)
         [SerializeField] private float tooltipBobX = 3f;
         [SerializeField] private float tooltipBobFreq = 1.2f;
@@ -292,6 +296,10 @@ namespace Wassup.UI
         {
             TickTooltip(); // hand-drag-tooltip unit 1 — 상태 무관(퇴장 페이드 완주)
             if (State != HandState.Hand) return;
+            // hand-drag-tooltip unit 6 — 손패가 열린 동안만 카메라 헤드룸을 요청한다.
+            // 피드 주도 채널이라 닫힘/페이즈 이탈/파괴 어느 경로든 별도 해제 호출 없이
+            // 홈 pitch 로 스프링 복귀한다(State 가 UnitStrip 이 되는 순간 피드가 끊긴다).
+            EnsureCameraDirector()?.SetHandHeadroom();
             SpringSlots(); // hand-deal-in unit 0 — 슬롯 target 으로 매프레임 추종
             // ESC = cancel rule (spec unit 7 §6): drop any drag/portal-aim, no spend.
             var kb = UnityEngine.InputSystem.Keyboard.current;
@@ -865,8 +873,8 @@ namespace Wassup.UI
             _tooltipGroup.blocksRaycasts = false;
             _tooltipGroup.interactable = false;
 
-            _tooltipHeader = BuildTooltipLabel("Header", 22f, TextAlignmentOptions.Left);
-            _tooltipBody = BuildTooltipLabel("Body", 19f, TextAlignmentOptions.TopLeft);
+            _tooltipHeader = BuildTooltipLabel("Header", tooltipHeaderFont, TextAlignmentOptions.Left);
+            _tooltipBody = BuildTooltipLabel("Body", tooltipBodyFont, TextAlignmentOptions.TopLeft);
             _tooltipRoot.SetActive(false);
         }
 

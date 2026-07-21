@@ -98,6 +98,29 @@ namespace Wassup.Data
         [Tooltip("인스펙트 해제 페이드(초).")]
         public float inspectFadeOutSec = 0.3f;
 
+        [Header("손패 헤드룸 (hand-drag-tooltip unit 6) — 손패 열림 중 상단 UI 여백 확보")]
+        // 손패가 열리면 상단 중앙에 카드 성능 툴팁이 떠서 보드 상단을 가린다. pitch 를
+        // 낮추면 보드가 화면 아래로 통째로 내려가(크기는 거의 불변) 상단이 비는데,
+        // 그 대가로 근경이 내려간다 — 그런데 손패가 열린 동안은 화면 하단을 카드가
+        // 이미 덮고 있어 실질 손해가 없다. 그래서 **상시가 아니라 손패 연동**이다.
+        // enableNonDragEffects 에 묶지 않는다(인스펙트와 같은 이유 — 명시적 제품 기능).
+        [Tooltip("손패 열림 중 pitch 델타(도). 음수 = 카메라를 눕혀 보드를 화면 아래로. 현 씬 포즈에서 1도당 약 25px.")]
+        // 홈 60° 기준 −2 = 손패 열림 58°(사용자 확정 2026-07-21). 카메라 이동이
+        // 눈에 띄는 것보다 약간의 보드 가림을 감수하는 쪽을 택했다.
+        public float handHeadroomPitchDeg = -2f;
+        // pitch 는 보드를 아래로 **옮기고**(크기 유지), dolly 는 보드를 **줄인다**.
+        // 둘을 같이 쓰면 상단 여백이 합산되고, 줄어든 만큼 하단 손실도 완화된다.
+        // 부호 규약은 focusDolly/inspectDolly 와 동일 — 양수 = 전진. 후퇴는 음수.
+        [Tooltip("손패 열림 중 dolly(월드 유닛). 음수 = 후퇴 = 줌아웃. 현 씬 포즈에서 -1.5 면 보드가 약 8.5% 축소된다. pitch 와 함께 0 이면 헤드룸 끔.")]
+        public float handHeadroomDolly = -1.5f;
+        // 진입/복귀 모두 스프링(사용자 결정 2026-07-21 — "스무스한 스프링 연출").
+        // MoveTowards/ease 는 기계적이라, 손패가 튀어오르는 카드 문법과 안 붙는다.
+        // damping 을 spring 의 2√k 아래로 두면 살짝 오버슈트 후 안착(under-damped).
+        [Tooltip("헤드룸 가중치 스프링 계수. 클수록 빠르게 도달.")]
+        public float handHeadroomSpring = 90f;
+        [Tooltip("헤드룸 가중치 감쇠. 2*sqrt(spring) 이 임계감쇠(오버슈트 없음) — 그보다 낮으면 오버슈트.")]
+        public float handHeadroomDamping = 14f;
+
         [Header("앰비언트 브리딩 (unit 3) — 인지 임계 이하 상시 생명감")]
         [Tooltip("브리딩 위치 진폭(월드 유닛). 0 = 끔. 호버 셀 플립이 상한(spec).")]
         public float breathPosAmp = 0.03f;

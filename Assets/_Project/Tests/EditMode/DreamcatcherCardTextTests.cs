@@ -61,15 +61,17 @@ namespace Wassup.Tests.EditMode
                 new CardEffect { kind = CardBuffKind.AttackDamage, percent = 20f },
             }, "궁수의 사거리가 늘어난다.");
 
+            // unit 6 — 축·타입 줄은 compact 에서만 상대 크기(115%). 본문 폰트를 키워도
+            // 이 줄이 본문보다 작아지지 않게 하기 위함이고, Body() 의 절대 22 는 유지된다.
             Assert.AreEqual(
-                "<size=22><color=#F5D480><b>RANGER</b></color>  ·  <color=#9AA6C0>SQUAD</color></size>"
+                "<size=115%><color=#F5D480><b>RANGER</b></color>  ·  <color=#9AA6C0>SQUAD</color></size>"
                 + "\nAttack  <color=#8BE28B>+20%</color>"
                 + "\n<color=#D4DAE8>궁수의 사거리가 늘어난다.</color>",
                 DreamcatcherCardText.BodyCompact(card));
 
-            // 빈 줄만 빠졌는지 — 두 출력의 "\n\n" 제거본이 일치해야 한다.
+            // 빈 줄과 축·타입 줄 크기만 다른지 — 나머지 내용은 완전히 같아야 한다.
             Assert.AreEqual(
-                DreamcatcherCardText.Body(card).Replace("\n\n", "\n"),
+                DreamcatcherCardText.Body(card).Replace("\n\n", "\n").Replace("<size=22>", "<size=115%>"),
                 DreamcatcherCardText.BodyCompact(card));
         }
 
@@ -78,8 +80,10 @@ namespace Wassup.Tests.EditMode
         {
             var card = Card(CardType.Active);
 
-            // 블록이 하나뿐이면 구분자가 안 쓰이므로 두 출력이 동일하다.
-            Assert.AreEqual(DreamcatcherCardText.Body(card), DreamcatcherCardText.BodyCompact(card));
+            // 블록이 하나뿐이면 구분자가 안 쓰이므로 축·타입 줄 크기만 다르다.
+            Assert.AreEqual(
+                DreamcatcherCardText.Body(card).Replace("<size=22>", "<size=115%>"),
+                DreamcatcherCardText.BodyCompact(card));
         }
 
         [Test]
