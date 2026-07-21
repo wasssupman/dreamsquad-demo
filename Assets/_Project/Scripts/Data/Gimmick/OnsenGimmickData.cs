@@ -13,12 +13,17 @@ namespace Wassup.Data
     {
         [Header("룰 — 열기(Heat) 누적 → 회복↔손실 반전")]
         [Tooltip("모든 유닛의 열기 누적 주기 (초)")]
+        [Min(0f)]
         public float heatInterval = 5f;
         [Tooltip("이 스택 이하 = 회복, 초과 = 손실로 반전")]
         public byte flipThreshold = 5;
+        // [Min] 가드: 음수 percent 는 HeatMath.Delta 에서 회복↔손실 부호를 뒤집는다
+        // (음수 heal = 데미지로 라우팅). authoring 레이어에서 차단 — 순수 함수는 안 건드림.
         [Tooltip("스택 획득 시 회복량 = 최대체력 × 이 비율 (0.1 = 10%)")]
+        [Min(0f)]
         public float healPercent = 0.1f;
         [Tooltip("과열(반전) 시 손실량 = 최대체력 × 이 비율. HP 1 미만으로는 안 내림.")]
+        [Min(0f)]
         public float lossPercent = 0.1f;
         [Tooltip("열기 스택 카운터 상한 (flipThreshold+1 이면 충분 — 이후 효과 동일)")]
         public byte heatMaxStack = 6;

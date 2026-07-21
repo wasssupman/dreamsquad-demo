@@ -74,5 +74,36 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(20f, HeatMath.Delta(1, 5, 200f, currentHp: 100f, Heal, Loss), 1e-5f);
             Assert.AreEqual(-20f, HeatMath.Delta(6, 5, 200f, currentHp: 200f, Heal, Loss), 1e-5f);
         }
+
+        [Test]
+        public void Heal_WhenCurrentAboveMax_IsNoOp()
+        {
+            // 초과회복 상태(현재>최대): 헤드룸 음수→0 클램프 → 회복 0.
+            Assert.AreEqual(0f, HeatMath.Delta(1, 5, MaxHp, currentHp: 150f, Heal, Loss), 1e-5f);
+        }
+
+        [Test]
+        public void Loss_LandsExactlyAtHp1_NonFlooredBoundary()
+        {
+            // currentHp 11, 손실 10%×100 = 10 = (11-1) → 정확히 -10 → HP 1 착지.
+            // floored 경로(Loss_FlooredAtHp1)와 다른, min 이 maxHp·loss 를 택하는 경계.
+            Assert.AreEqual(-10f, HeatMath.Delta(6, 5, MaxHp, currentHp: 11f, Heal, Loss), 1e-5f);
+        }
+
+        [Test]
+        public void MaxHpZero_IsNoOp_BothBands()
+        {
+            // 퇴화 입력(maxHp 0): 회복/손실 모두 0 (NaN·음수 없음).
+            Assert.AreEqual(0f, HeatMath.Delta(1, 5, 0f, currentHp: 0f, Heal, Loss), 1e-5f);
+            Assert.AreEqual(0f, HeatMath.Delta(6, 5, 0f, currentHp: 1f, Heal, Loss), 1e-5f);
+        }
+
+        [Test]
+        public void AsymmetricPercents_BandsUseOwnRate()
+        {
+            // heal 5% / loss 20% 비대칭 — 각 밴드가 자기 비율 사용.
+            Assert.AreEqual(5f, HeatMath.Delta(1, 5, MaxHp, currentHp: 50f, healPercent: 0.05f, lossPercent: 0.2f), 1e-5f);
+            Assert.AreEqual(-20f, HeatMath.Delta(6, 5, MaxHp, currentHp: 50f, healPercent: 0.05f, lossPercent: 0.2f), 1e-5f);
+        }
     }
 }
