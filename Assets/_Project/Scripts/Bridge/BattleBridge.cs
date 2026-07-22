@@ -2242,13 +2242,20 @@ namespace Wassup.Bridge
                     for (int i = 0; i < ccEntities.Length; i++)
                     {
                         var buf = _em.GetBuffer<CcEffect>(ccEntities[i], isReadOnly: true);
-                        bool asleep = false;
+                        // unit-status-fx 6 — Sleep(Zz)·Stun(별) 둘 다 CcEffect 소스. 한 버퍼
+                        // 패스로 각 kind 활성 판정(둘 다 action-lock, 공존 가능 — 키 (e,kind)).
+                        bool asleep = false, stunned = false;
                         for (int j = 0; j < buf.Length; j++)
-                            if (buf[j].kind == CcKind.Sleep && buf[j].remainingTime > 0f) { asleep = true; break; }
-                        if (!asleep) continue;
+                        {
+                            if (buf[j].remainingTime <= 0f) continue;
+                            if (buf[j].kind == CcKind.Sleep) asleep = true;
+                            else if (buf[j].kind == CcKind.Stun) stunned = true;
+                        }
+                        if (!asleep && !stunned) continue;
                         var anchor = ResolveUnitViewTransform(ccEntities[i]);
-                        if (anchor != null)
-                            statusFxSpawner.Ensure(ccEntities[i], Wassup.Data.StatusFxKind.Sleep, anchor);
+                        if (anchor == null) continue;
+                        if (asleep) statusFxSpawner.Ensure(ccEntities[i], Wassup.Data.StatusFxKind.Sleep, anchor);
+                        if (stunned) statusFxSpawner.Ensure(ccEntities[i], Wassup.Data.StatusFxKind.Stun, anchor);
                     }
                 }
                 finally
