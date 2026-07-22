@@ -17,14 +17,24 @@ namespace Wassup.UI
         [SerializeField] private RectTransform content;      // scroll content
         [SerializeField] private PresetConfirmPopup confirmPopup;
 
-        private bool _built;
+        private bool _popupInit;
 
+        // preset-sheet-import unit 3 — 매 OnEnable 재빌드. 런타임 refresher 가 collection.presets 를
+        // 메모리에서 바꾸므로 loadout-preset-page 의 "1회 빌드" 전제가 dev 빌드에선 성립하지 않는다.
+        // 기존 아이템 clear 후 재구성 → 재오픈 시 최신 반영 + 중복 방지. confirmPopup.Init 은 정적이라 1회만.
         private void OnEnable()
         {
-            if (_built) return;
             if (collection == null) { Debug.LogWarning("[PresetPageController] collection 미할당 — 목록 비움.", this); return; }
-            _built = true;
-            if (confirmPopup != null) confirmPopup.Init(font);
+            if (!_popupInit && confirmPopup != null) { confirmPopup.Init(font); _popupInit = true; }
+            RebuildItems();
+        }
+
+        private void RebuildItems()
+        {
+            if (content == null) return;
+            // Destroy 는 Update 루프 후 · 렌더 전에 처리되므로 old+new 겹침이 화면에 안 보인다.
+            for (int i = content.childCount - 1; i >= 0; i--)
+                Destroy(content.GetChild(i).gameObject);
             BuildItems();
         }
 
