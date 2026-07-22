@@ -22,12 +22,12 @@
 - `Assets/_Project/Scripts/Core/Api/PendingMatchPolicy.cs` — 순수 판정 + `DefaultTtlSeconds=600` 단일 소유
 - `Assets/_Project/Scripts/Core/Api/TournamentMatchReporter.cs` — save/clear-at-send/`AbandonMatch`/`ReconcilePending`
 - `Assets/_Project/Scripts/UI/MenuPopup.cs` (`OnExit`) · `Assets/_Project/Scripts/UI/Outgame/OutgameMenuController.cs` (`ApplyAuthGate`)
-- `Assets/_Project/Tests/EditMode/Api/PendingMatch*Tests.cs`
+- `Assets/_Project/Tests/EditMode/Api/PendingMatch*Tests.cs` · `TournamentMatchReporterTests.cs`(ReconcilePending 가드/폐기 분기)
 
 ## Verified
 
 - 컴파일 0에러(read_console).
-- EditMode **1213/1213**(신규 9 + 갱신된 TryParsePlay 포함), 스킵 2는 기존 known-ignored.
+- EditMode 전체 **1228 pass / 0 fail / 2 known-ignored skip**. 신규 13 = store 5 · policy 4 · `ReconcilePending` 가드 4(no-record/no-account/account-mismatch/over-window, 전부 네트워크 미도달) + 갱신 `TryParsePlay`.
 - PlayMode 스모크 **4/4**(OutgameFlow/SceneTransition/TallyFlow×2) — 로비 reconcile·결과 clear-at-send 런타임 무예외.
 - **실 dev 서버 왕복**(일회용 Editor 프로브, 익명 계정): reconcile→`reconcile complete ok score=0`, abandon→`abandon complete ok score=0`, over-window→`pending attempt discarded`(complete 없음). 모두 store 삭제 확인. 프로브는 삭제(미커밋).
 

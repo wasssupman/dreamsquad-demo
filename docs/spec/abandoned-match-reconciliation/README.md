@@ -1,6 +1,6 @@
 # Abandoned Match Reconciliation — 기권/중단 판의 서버 마감 보장
 
-상태: **완료 2026-07-22** — units 0~2 구현 + 자동 검증(EditMode 21/21 Api + 1213 전체 + PlayMode 스모크 4) + **실서버 왕복 검증 통과**(reconcile/abandon 둘 다 `complete score=0` 서버 수락, over-window discard 확인). 인계는 `3_handoff_summary.md`.
+상태: **완료 2026-07-22** — units 0~2 구현 + 자동 검증(EditMode 전체 1228 pass/2 known-skip, 신규 13 = store5·policy4·reconcile 가드4 + PlayMode 스모크 4) + **실서버 왕복 검증 통과**(reconcile/abandon 둘 다 `complete score=0` 서버 수락, over-window discard 확인). 인계는 `3_handoff_summary.md`.
 
 > **선행 의존**: Play 검증 중 `TournamentApi.Play` 응답 스키마가 서버측에서 바뀐 것(attempt 필드가 `data.userTournamentState` 로 중첩)을 발견해 함께 고쳤다(`tournament-play-report` 커밋). 이 수정 없이는 attemptId 를 못 받아 정상 complete·기권·복구 전부 무동작이다.
 
