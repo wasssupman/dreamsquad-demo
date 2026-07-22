@@ -35,3 +35,5 @@
 - Import: `Presets` 탭 seed 후 실행 → `SquadPresetCollection.asset` 이 시트대로 재구성 + `git diff` 로 확인. 미해결 id 는 로그에 unmatched 로 노출.
 - Export: 버튼 → JSON 파일 생성, 행이 `presetName/squad/dreamcatcher` 형식.
 - (실 왕복 e2e 는 unit 4.)
+- ✅ 완료 2026-07-22 · commit `06eb866d` — 컴파일 그린, export 실호출(추천 A/B 2개 seed), import 라운드트립(units 14/0/0·cards 20/0, asset byte-identical 무손실). 실 시트 왕복은 unit 4(`Presets` 탭 신설 후).
+- ⚠️ 함정: 신규 `.cs` 가 Unity AssetDatabase 엔트리 stuck 으로 어셈블리 소스셋에서 누락 → 창이 CS0103 로 못 찾음(파일·meta 정상인데도). `CompilationPipeline.GetAssemblies().sourceFiles` 로 누락 확인, **삭제→refresh→재생성**으로 해결. force reimport/RequestScriptCompilation 로는 안 풀림.
