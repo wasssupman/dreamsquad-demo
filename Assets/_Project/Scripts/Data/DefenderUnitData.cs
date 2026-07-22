@@ -56,6 +56,10 @@ namespace Wassup.Data
         // Phase 6: placement cost subtracted from CostRuntime on PlaceDefenderAs.
         public int cost = 1;
 
+        // defender-placement-cooldown 0 — 배치 성공 후 이 타입 재배치가 막히는 시간(초).
+        // 0 = 쿨타임 없음(기존 동작 유지, opt-in). 유닛 타입 단위.
+        public float placementCooldown = 0f;
+
         [Header("Targeting")]
         // When true, AttackState.targetMask is set to Faction.Defender (ally targeting).
         // Use for healers and buff-appliers that target friendly units instead of enemies.

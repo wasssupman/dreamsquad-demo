@@ -94,6 +94,8 @@ namespace Wassup.UI
 
             if (gameManager != null) gameManager.SetPhase(GamePhase.Placement);
             if (gameManager != null && gameManager.CostRuntime != null) gameManager.CostRuntime.ResetToStart();
+            // defender-placement-cooldown 0 — 배치 페이즈 진입마다 잔여 쿨타임 소거(매치 시작·재시작·리드로우 커버).
+            if (gameManager != null && gameManager.CooldownRuntime != null) gameManager.CooldownRuntime.ResetAll();
             if (bridge != null) bridge.BeginPlacement();
 
             _remaining = duration;

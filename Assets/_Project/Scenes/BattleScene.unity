@@ -1938,6 +1938,50 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1028792864
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1028792865}
+  - component: {fileID: 1028792866}
+  m_Layer: 0
+  m_Name: PlacementCooldownRuntime
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1028792865
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1028792864}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1495062451}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1028792866
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1028792864}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d235e802afed8684fa12f6d2d87d8fa5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Core.PlacementCooldownRuntime
 --- !u!1 &1072617483
 GameObject:
   m_ObjectHideFlags: 0
@@ -2719,6 +2763,7 @@ MonoBehaviour:
   battleBridge: {fileID: 1939688408}
   draftController: {fileID: 20521825}
   costRuntime: {fileID: 308428868}
+  cooldownRuntime: {fileID: 1028792866}
   costConfig: {fileID: 11400000, guid: 3ed67d5379b02406db1329b181fbee88, type: 2}
   battleConfig: {fileID: 11400000, guid: f918b11de1877d74f8cc5dd41ed85b4c, type: 2}
   skillLoadout: {fileID: 1495062453}
@@ -2743,6 +2788,7 @@ Transform:
   - {fileID: 1939688409}
   - {fileID: 229215107}
   - {fileID: 308428869}
+  - {fileID: 1028792865}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1495062452
