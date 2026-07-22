@@ -15,8 +15,17 @@ namespace Wassup.Core.Api
         private const int TimeoutSeconds = 10;
 
         // only the fields we consume — the server schemas are much larger.
+        // 서버가 2026-07 스키마 변경으로 attempt 필드를 data.userTournamentState 아래로
+        // 중첩했다(이전엔 data 직속). 그래서 PlayState 는 data 를, 소비 필드는
+        // userTournamentState 를 미러링한다.
         [Serializable]
         public class PlayState
+        {
+            public UserTournamentState userTournamentState;
+        }
+
+        [Serializable]
+        public class UserTournamentState
         {
             public string status;
             public string tournamentEntryId;

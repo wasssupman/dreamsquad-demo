@@ -88,6 +88,14 @@ namespace Wassup.UI
         private void ApplyAuthGate()
         {
             bool signedIn = UserSession.IsSignedIn;
+
+            // abandoned-match-reconciliation unit 2 — the lobby is the post-auth
+            // reconcile point for a match a hard kill / crash left open. Fires on
+            // Awake + onSignedIn (silent restore and explicit login); HasAccount-
+            // gated so guests and logout transitions are no-ops.
+            if (UserSession.HasAccount)
+                TournamentMatchReporter.ReconcilePending();
+
             if (menuRoot != null) menuRoot.SetActive(signedIn);
             if (lobbyCharactersRoot != null) lobbyCharactersRoot.SetActive(signedIn);
             if (loginPanel != null) loginPanel.gameObject.SetActive(!signedIn);

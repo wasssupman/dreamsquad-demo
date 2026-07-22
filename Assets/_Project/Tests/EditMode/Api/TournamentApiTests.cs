@@ -12,18 +12,22 @@ namespace Wassup.Tests.EditMode.Api
         [Test]
         public void TryParsePlay_Success_BindsConsumedFields()
         {
+            // server nests the attempt fields under data.userTournamentState (2026-07
+            // schema change); data.tournament is present but not consumed.
             const string body = @"{ ""success"": true, ""data"": {
-                ""status"": ""IN_PROGRESS"",
-                ""tournamentTypeId"": 1,
-                ""tournamentEntryId"": ""e-1"",
-                ""tournamentEntryAttemptId"": ""a-1"" } }";
+                ""tournament"": { ""status"": ""IN_PROGRESS"", ""typeId"": 1 },
+                ""userTournamentState"": {
+                    ""status"": ""IN_PROGRESS"",
+                    ""tournamentTypeId"": 1,
+                    ""tournamentEntryId"": ""e-1"",
+                    ""tournamentEntryAttemptId"": ""a-1"" } } }";
 
             var state = TournamentApi.TryParsePlay(body, out string error);
 
             Assert.IsNull(error);
-            Assert.AreEqual("IN_PROGRESS", state.status);
-            Assert.AreEqual("e-1", state.tournamentEntryId);
-            Assert.AreEqual("a-1", state.tournamentEntryAttemptId);
+            Assert.AreEqual("IN_PROGRESS", state.userTournamentState.status);
+            Assert.AreEqual("e-1", state.userTournamentState.tournamentEntryId);
+            Assert.AreEqual("a-1", state.userTournamentState.tournamentEntryAttemptId);
         }
 
         [Test]

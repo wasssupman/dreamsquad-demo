@@ -469,6 +469,9 @@ namespace Wassup.Bridge
             TimeManager.Instance.ResetAll();
             if (GameManager.Instance != null && GameManager.Instance.CostRuntime != null)
                 GameManager.Instance.CostRuntime.StopRegen();
+            // defender-placement-cooldown 0 — 매치 경계 방어적 리셋(정상 경로는 배치 페이즈 진입에서 처리).
+            if (GameManager.Instance != null && GameManager.Instance.CooldownRuntime != null)
+                GameManager.Instance.CooldownRuntime.ResetAll();
             if (spineUnitPool != null) spineUnitPool.DisposeAll();
             if (enemyViewPool != null) enemyViewPool.DisposeAll();
             if (defenderFallbackViewPool != null) defenderFallbackViewPool.DisposeAll();

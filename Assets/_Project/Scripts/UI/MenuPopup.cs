@@ -83,6 +83,9 @@ namespace Wassup.UI
             // Release the pause before leaving; the scene teardown + TimeManager.ResetAll
             // at the match boundary also clears it, so double-release is harmless.
             if (_open) { _pauseLease.Dispose(); _open = false; }
+            // abandoned-match-reconciliation unit 2 — exiting a live battle abandons
+            // the tournament attempt: submit a 0 now while the app is still alive.
+            Wassup.Core.Api.TournamentMatchReporter.AbandonMatch();
             SceneTransition.Go(SceneNames.Outgame);
         }
 

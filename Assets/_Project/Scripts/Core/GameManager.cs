@@ -25,6 +25,8 @@ namespace Wassup.Core
         [SerializeField] private BattleBridge battleBridge;
         [SerializeField] private DraftController draftController;
         [SerializeField] private CostRuntime costRuntime;
+        // defender-placement-cooldown 0 — 유닛 타입별 배치 쿨타임 소유(비싱글턴, CostRuntime 미러).
+        [SerializeField] private PlacementCooldownRuntime cooldownRuntime;
         [SerializeField] private CostConfig costConfig;
         // gimmick-match-integration unit 1 — 매치 기믹 게이팅/목록 소스(시즌 대체). 미할당이면 기믹 없음.
         [SerializeField] private BattleConfig battleConfig;
@@ -46,6 +48,7 @@ namespace Wassup.Core
         public BattleLogger Logger => logger;
         public DraftController DraftController => draftController;
         public CostRuntime CostRuntime => costRuntime;
+        public PlacementCooldownRuntime CooldownRuntime => cooldownRuntime;
         public CostConfig CostConfig => costConfig;
         public SkillLoadoutController SkillLoadout => skillLoadout;
         public bool IsAiming { get; set; }
@@ -129,6 +132,7 @@ namespace Wassup.Core
                 logger = GetComponentInChildren<BattleLogger>();
             }
             if (costRuntime == null) costRuntime = GetComponentInChildren<CostRuntime>();
+            if (cooldownRuntime == null) cooldownRuntime = GetComponentInChildren<PlacementCooldownRuntime>();
             if (costRuntime != null && costConfig != null)
             {
                 costRuntime.Configure(costConfig.startingCost, costConfig.maxCost, costConfig.regenPerSec);
