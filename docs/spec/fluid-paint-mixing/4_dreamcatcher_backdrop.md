@@ -28,9 +28,12 @@
 
 ## 완료 기준
 
-- [ ] `DreamcatcherFluidBackdrop` 컴파일 클린
-- [ ] Play 검증: AlwaysOn 모드로 스크래치에서 페이드-인 + 유체 표시 확인(컴포넌트 로직) — 렌더 경로는 unit 3 기증명
-- [ ] BattleScene 배선(Dreamcatcher 캔버스 아래, 핸드 뒤) + 핸드 오픈 시 카드 뒤 유체 확인 — **공유 씬 아트 배치라 사용자 확인 후 라이브 검증**
+- [x] `DreamcatcherFluidBackdrop` 컴파일 클린 (EditMode 8/8)
+- [x] Play 검증: AlwaysOn 프리뷰(목업 카드 핸드 + backdrop)에서 페이드-인 + 카드 뒤 유체 표시 확인 (스크린샷)
+- [ ] BattleScene 배선(Dreamcatcher 캔버스 아래, 핸드 뒤) + 핸드 오픈 시 실제 카드 뒤 유체 + 실기 perf — **공유 씬 아트 배치라 사용자 라이브 검증 대기**
+
+**완료 확인 2026-07-23**: AlwaysOn 프리뷰 씬(in-memory) Play → 하단 목업 카드 5장 아치 뒤로 물감 유체가 은은히
+피어오르는 구도 스크린샷 확인. 컴포넌트 게이트/페이드/바인딩 동작 검증. 실제 BattleScene 배치는 다음 단계.
 
 ## 후속
 
