@@ -2600,15 +2600,81 @@ namespace Wassup.Bridge
             }
         }
 
-        // dreamcatcher-shield-break unit 0 — 실드 피격 파열 이벤트 드레인. 유닛 0 은 로그 stub
-        // (트리거 발동 검증). 유닛 2 가 payload 분기 실행(SelfTileAoe 폭발 / AreaSleep)으로 교체.
+        // dreamcatcher-shield-break unit 2 — 실드 피격 파열 이벤트 드레인. payload 분기:
+        // SelfTileAoe(A) = SkyFall×TileAoe 폭발(OnDeath/메테오 동형), AreaSleep(B) = 근접 M명 수면.
         private void DrainShieldBreakEvents()
         {
             if (!_shieldBreakQueue.IsCreated) return;
             while (_shieldBreakQueue.TryDequeue(out var evt))
             {
-                Debug.Log($"[ShieldBreak] host={evt.host.Index} payload={evt.payload} mag={evt.magnitude} range={evt.tileRange} dur={evt.duration}");
+                if (evt.payload == Wassup.Data.DcPayloadKind.SelfTileAoe)
+                {
+                    // 실드 파열 폭발 — OnDeath 폭발/메테오와 동형. bake 가 AoE view 없으면
+                    // 슬롯 자체를 스킵하므로 aoeDataIndex 는 정상적으로 >=0.
+                    if (evt.aoeDataIndex < 0) continue;
+                    SpawnProjectile(new ProjectileSpawnRequest
+                    {
+                        movement = MovementKind.SkyFall,
+                        payload = PayloadKind.TileAoe,
+                        impact = evt.position,
+                        damage = evt.magnitude,
+                        impactTileRange = evt.tileRange,
+                        flightTime = 0f,
+                        dataIndex = evt.aoeDataIndex,
+                        visualScale = 1f,
+                    }, Entity.Null);
+                }
+                else if (evt.payload == Wassup.Data.DcPayloadKind.AreaSleep)
+                {
+                    ApplyShieldBreakAreaSleep(evt);
+                }
             }
+        }
+
+        // dreamcatcher-shield-break unit 2 — 실드 파열 시 N타일 내 가장 가까운 M명을 L초 수면.
+        // bomb-thrower AoE(ProjectileHitSystem) 패턴 미러: WorldToCell + TileAoe.IsInTileRange 로
+        // 범위 수집 → AoeTargetCap.SelectNearest(거리² M, 결정론) → EffectSpawner.ApplyCc(Sleep).
+        // 적 CC 적용은 Effects 외부 choke point(EffectSpawner)로만 — 맥락 경계 준수.
+        private void ApplyShieldBreakAreaSleep(ShieldBreakEvent evt)
+        {
+            int cap = (int)evt.magnitude;
+            if (cap < 1 || evt.tileRange < 1 || evt.duration <= 0f) return;
+
+            var centerCell = GridMath.WorldToCell(evt.position, tileSize, _generatedMap.gridSize, origin: _boardOrigin);
+            using var enemyQuery = _em.CreateEntityQuery(
+                ComponentType.ReadOnly<AttackUnitTag>(),
+                ComponentType.ReadOnly<LocalTransform>());
+            var enemies = enemyQuery.ToEntityArray(Allocator.Temp);
+            var xforms = enemyQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
+            var inRange = new NativeList<int>(Allocator.Temp);
+            var inRangeDistSq = new NativeList<float>(Allocator.Temp);
+            for (int i = 0; i < enemies.Length; i++)
+            {
+                float3 vpos = xforms[i].Position;
+                var cell = GridMath.WorldToCell(vpos, tileSize, _generatedMap.gridSize, origin: _boardOrigin);
+                if (!Wassup.Battle.Combat.TileAoe.IsInTileRange(cell, centerCell, evt.tileRange)) continue;
+                inRange.Add(i);
+                float dx = vpos.x - evt.position.x;
+                float dz = vpos.z - evt.position.z;
+                inRangeDistSq.Add(dx * dx + dz * dz);
+            }
+            var selected = new NativeList<int>(Allocator.Temp);
+            Wassup.Battle.Combat.AoeTargetCap.SelectNearest(inRangeDistSq.AsArray(), cap, ref selected);
+            for (int s = 0; s < selected.Length; s++)
+            {
+                var victim = enemies[inRange[selected[s]]];
+                Wassup.Battle.Effects.EffectSpawner.ApplyCc(_em, victim,
+                    new Wassup.Battle.Effects.CcEffect
+                    {
+                        kind = Wassup.Battle.Effects.CcKind.Sleep,
+                        remainingTime = evt.duration,
+                    });
+            }
+            enemies.Dispose();
+            xforms.Dispose();
+            inRange.Dispose();
+            inRangeDistSq.Dispose();
+            selected.Dispose();
         }
 
         // Unified attack visual drain. AttackSystem enqueues one event per
