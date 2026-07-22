@@ -49,6 +49,12 @@ namespace Wassup.Core.Api
                 }
                 _attemptId = state.tournamentEntryAttemptId;
                 _entryId = state.tournamentEntryId;
+                // abandoned-match-reconciliation unit 1 — persist the just-opened
+                // attempt so a hard kill can be reconciled (completed with 0) on the
+                // next lobby entry. Guarded by the epoch check above: AbandonMatch's
+                // _epoch++ drops this callback so it never Saves post-teardown.
+                PendingMatchStore.Save(_attemptId, UserSession.Current?.userId ?? string.Empty,
+                    DateTimeOffset.UtcNow.ToUnixTimeSeconds());
                 Debug.Log($"[TournamentReporter] play ok — status={state.status} attemptId={_attemptId} entryId={_entryId}");
             });
         }
@@ -72,6 +78,11 @@ namespace Wassup.Core.Api
                 return;
             }
             _completeSent = true;
+            // abandoned-match-reconciliation unit 1 — clear-at-send: the moment a
+            // terminal complete is initiated, drop the pending record so a later
+            // lobby reconcile can never overwrite this real score with a 0 (a slow
+            // complete + app kill would otherwise leave the record for reconcile).
+            PendingMatchStore.Clear();
 
             string baseUrl = UserSession.GameServerBaseUrl;
             AuthCredential credential = UserSession.Credential;
@@ -99,6 +110,70 @@ namespace Wassup.Core.Api
                     Debug.Log($"[TournamentReporter] ranking ok — {(result.entries != null ? result.entries.Count : 0)} entries");
                     onRanking(result);
                 });
+            });
+        }
+
+        // abandoned-match-reconciliation unit 1 — menu-exit abandon. The app is
+        // alive, so the in-memory attemptId is authoritative. Bump the epoch first
+        // so an in-flight play callback is dropped (it would otherwise Save a record
+        // from the lobby we're leaving to). Sends complete(0) and clears the record.
+        public static void AbandonMatch()
+        {
+            string attemptId = _attemptId;
+            string baseUrl = UserSession.GameServerBaseUrl;
+            AuthCredential credential = UserSession.Credential;
+
+            _epoch++; // drop any in-flight play callback (no post-teardown Save)
+
+            if (!UserSession.HasAccount) return;                          // guest
+            if (string.IsNullOrEmpty(attemptId) || _completeSent) return; // play not back yet / already sent
+            _completeSent = true;
+
+            PendingMatchStore.Clear(); // clear-at-send
+            TournamentApi.Complete(baseUrl, credential, attemptId, 0, "", (ok, error) =>
+            {
+                if (!ok) Debug.LogWarning($"[TournamentReporter] abandon complete failed: {error}");
+                else Debug.Log("[TournamentReporter] abandon complete ok — score=0");
+            });
+        }
+
+        // abandoned-match-reconciliation unit 1 — lobby recovery for a match the
+        // client never got to terminally complete (hard kill / crash). Operates
+        // purely on the persisted record + the CURRENT session (never the live
+        // in-memory _attemptId): account-guards, then within the grace window sends
+        // complete(0), otherwise discards and leaves the server's round cleanup to
+        // finalize it. Clears the record before sending (optimistic) so a double-
+        // fire (Awake + onSignedIn) can't double-complete.
+        public static void ReconcilePending()
+        {
+            if (!PendingMatchStore.TryLoad(out var rec)) return;
+            if (!UserSession.HasAccount) { PendingMatchStore.Clear(); return; }
+
+            string currentUserId = UserSession.Current?.userId ?? string.Empty;
+            if (currentUserId != rec.userId) { PendingMatchStore.Clear(); return; } // different account
+
+            long elapsed = DateTimeOffset.UtcNow.ToUnixTimeSeconds() - rec.startedAtUnix;
+            var action = PendingMatchPolicy.Decide(elapsed, PendingMatchPolicy.DefaultTtlSeconds);
+
+            PendingMatchStore.Clear(); // optimistic — before send, blocks re-entrant double-complete
+            if (action == PendingMatchAction.DiscardOnly)
+            {
+                Debug.Log($"[TournamentReporter] pending attempt discarded (elapsed={elapsed}s > TTL).");
+                return;
+            }
+
+            string baseUrl = UserSession.GameServerBaseUrl;
+            if (string.IsNullOrEmpty(baseUrl))
+            {
+                Debug.LogWarning("[TournamentReporter] pending reconcile skipped — no base URL.");
+                return;
+            }
+            AuthCredential credential = UserSession.Credential;
+            string attemptId = rec.attemptId;
+            TournamentApi.Complete(baseUrl, credential, attemptId, 0, "", (ok, error) =>
+            {
+                if (!ok) Debug.LogWarning($"[TournamentReporter] reconcile complete failed: {error}");
+                else Debug.Log($"[TournamentReporter] reconcile complete ok — attemptId={attemptId} score=0");
             });
         }
     }
