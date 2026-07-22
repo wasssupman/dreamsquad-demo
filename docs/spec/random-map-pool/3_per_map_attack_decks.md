@@ -35,8 +35,10 @@
 
 ## 완료 기준
 
-- [ ] WaveB 의 `defeatGoalReachedCount=10`·`timerDurationSec=180` + volume 범위 필드가 WaveA와 **동일**
-- [ ] `attackUnitPool`(≥2 distinct)·pacing 등 구성 필드는 WaveA와 **구별**됨, `bossUnit` pool 미포함
-- [ ] `WavePatternGenerator.Generate(WaveB, seed)` 예외 없이 플랜 생성
-- [ ] 신규 맵(2 스폰) 단독 Play — 매 웨이브가 2 레인 모두에 분배, 보스 웨이브 정상, 체감 패턴이 WaveA와 구별
-- [ ] 승리 시 스트레스 최소 900 보장·시간 예산 상한 동일 확인(간이: 같은 클리어 시점 → 같은 시간점수)
+- [x] WaveB 의 `defeatGoalReachedCount=10`·`timerDurationSec=180` + volume 범위(minW10/maxW15/minU6/maxU10/jitter1/boss every5/escort3-4) 가 WaveA와 **동일**
+- [x] `attackUnitPool` 구별됨(swift·runner·needler·debuffer·sniper 5종 vs WaveA 9종), spacing 0.6(≠1.0), `bossUnit`(nightmare) pool 미포함, waveSeed=0
+- [x] `WavePatternGenerator.Generate(WaveB, seed)` 예외 없이 플랜 생성 (seed 3종: 14/10/13 웨이브)
+- [x] **킬 예산 동일 확증**: seed 12345/777/-9999 에서 WaveA·WaveB 의 waveCount·총유닛·보스 수 완전 일치(킬값 type-무관) → 시간·스트레스·킬 3원천 예산 전 맵 동일
+- [ ] 신규 맵(2 스폰) 단독 Play — 2 레인 분배·보스 웨이브·체감 구별 → **unit 4 에서 실증**
+
+확인 2026-07-22 (unit 3 — WaveB 신설, 예산 동결·구성 차별화 검증). Play 체감 unit 4 이월.

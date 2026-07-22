@@ -1,0 +1,37 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 197504e8690a14af699cb02cb0fefa96, type: 3}
+  m_Name: WaveB
+  m_EditorClassIdentifier: Assembly-CSharp::Wassup.Data.AttackDeck
+  deckId: WaveB
+  useGeneratedWaves: 1
+  waveSeed: 0
+  waveGeneratorVersion: 2
+  attackUnitPool:
+  - {fileID: 11400000, guid: ed2bfe7dff71d415b84563f3ebc293b9, type: 2}
+  - {fileID: 11400000, guid: b2784981455b648589a8bd5d8c225424, type: 2}
+  - {fileID: 11400000, guid: c8c97e20c19b64742b73262253966903, type: 2}
+  - {fileID: 11400000, guid: 23687f8df52d940258a2e9f5e38c33bc, type: 2}
+  - {fileID: 11400000, guid: 7ab2d97d212554352a263b4acf8e02e3, type: 2}
+  minWaveCount: 10
+  maxWaveCount: 15
+  minUnitsPerWave: 6
+  maxUnitsPerWave: 10
+  waveCountJitter: 1
+  intraWaveSpacingSec: 0.6
+  bossUnit: {fileID: 11400000, guid: a2fc78633cb4410896cdd585f849ee39, type: 2}
+  bossWaveInterval: 5
+  bossEscortMin: 3
+  bossEscortMax: 4
+  spawns: []
+  defeatGoalReachedCount: 10
+  timerDurationSec: 180
