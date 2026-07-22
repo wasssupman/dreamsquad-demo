@@ -47,6 +47,10 @@ namespace Wassup.Core
 
         public BattleLogger Logger => logger;
         public DraftController DraftController => draftController;
+        // random-map-pool unit 7 — 일시정지 메뉴가 선택된 맵의 실전 웨이브 플랜을 프리뷰하는 통로.
+        // bridge 부재/비생성이면 default(waves==null) → MenuPopup 이 마지막 빌드 유지.
+        public GeneratedWavePlan BuildBriefingWavePlan()
+            => battleBridge != null ? battleBridge.BuildBriefingWavePlan() : default;
         public CostRuntime CostRuntime => costRuntime;
         public PlacementCooldownRuntime CooldownRuntime => cooldownRuntime;
         public CostConfig CostConfig => costConfig;
