@@ -25,8 +25,8 @@
 
 ## 완료 기준
 
-- [ ] `Code.gs` + 배포 README 커밋.
-- [ ] 실 시트(또는 사본)에 배포 → Unity Push 1회:
+- [x] `Code.gs` + 배포 README 작성·커밋(`apps-script/`).
+- [ ] **인계 대기 (사용자)** — 실 시트(또는 사본)에 배포 → Unity Push 1회:
   - [ ] 값 무변 push = 시트 **IDENTICAL**(업서트 no-op, blank=keep 실증).
   - [ ] SO 값 1개 변경 후 push = 해당 셀만 갱신, 나머지·시트전용 열 무변.
   - [ ] SO 행 1개 제거 후 push = 시트 행 **잔존** + 응답 orphans 에 그 키 리포트(비파괴 실증).
