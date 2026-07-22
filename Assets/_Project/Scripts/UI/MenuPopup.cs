@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using Wassup.Core;
 using Wassup.Core.TimeControl;
+using Wassup.Data;
 using Wassup.UI.Layout;
 
 namespace Wassup.UI
@@ -55,6 +56,13 @@ namespace Wassup.UI
             if (_root != null) _root.SetActive(true);
             if (wavePatternStrip != null)
             {
+                // random-map-pool unit 7 — 표시 직전에 이번 판(선택된 맵)의 실전 웨이브 플랜으로
+                // 재빌드한다. SquadPrepView 가 준비해 둔 정적 deck(WaveA) 카드를 덮어써, 랜덤으로
+                // 뽑힌 맵의 덱(예: TwinLane→WaveB)을 정확히 예고한다. bridge 부재면 기존 카드 유지.
+                GeneratedWavePlan plan = GameManager.Instance != null
+                    ? GameManager.Instance.BuildBriefingWavePlan()
+                    : default;
+                if (plan.waves != null) wavePatternStrip.RebuildFromPlan(plan);
                 // Lift the strip above this popup so its own dim overlay reads as the
                 // backdrop (no double-dim), then reveal it. Buttons sit on a higher
                 // canvas (see BuildCanvas) so they stay above the strip.

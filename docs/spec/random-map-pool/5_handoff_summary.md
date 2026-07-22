@@ -8,6 +8,8 @@
 - `bf197fb7` unit 2 — MapDocument_TwinLane (스폰 2개)
 - `0b390f51` unit 3 — WaveB 덱 (예산 동일·구성 차별화)
 - `7942bfba` unit 4 wiring — 풀 asset + BattleBridge 배선 + Play 실증
+- `e6721d81` unit 6 — 브리핑 스트립 per-map 동기화 (draft 경로 — no-squad 폴백 전용)
+- `8eb512e1` unit 7 — 일시정지 메뉴 웨이브 예고 라이브 경로 픽스 (실게임 경로)
 
 ## Implemented
 
@@ -17,6 +19,7 @@
 - **점수 예산 전 맵 동일**: 모든 덱 `defeatGoalReachedCount=10`·`timerDurationSec=180`·volume 범위 고정 → 시간·스트레스·킬 3원천 예산 동일(킬값 type-무관). 맵별 차이는 적 종류·레인·pacing 뿐.
 - 레인 분배는 기존 런타임 로직이 `_generatedMap.spawns.Length` 로 자동(3레인/2레인) — 코드 무변경.
 - Play 실증: `debugFixedMatchSeed=1`→ArkFunnel(3스폰)+WaveA, `=2`→TwinLane(2스폰)+WaveB. 렌더·reflection·콘솔 0에러 확인.
+- **웨이브 예고도 per-map 동기화**: 실게임(스쿼드)에서 웨이브는 **인배틀 일시정지 메뉴**(`MenuPopup`)로 본다. `MenuPopup.Open()` 이 표시 직전 `GameManager.BuildBriefingWavePlan()`(실전과 동일 ActiveDeck·wave seed)로 스트립을 재빌드 → 선택 맵의 덱을 정확히 예고(unit 7). draft 스트립(unit 6)은 no-squad 폴백 경로 전용.
 
 ## Key Files
 
@@ -42,9 +45,10 @@
 - 풀 비거나 엔트리 미완성 시 레거시 `mapDocument`/`deck` 폴백(무회귀) — 폴백 경로 삭제 금지.
 - 맵 authoring 은 execute_code 경로(전용 툴 없음). MapDocument 는 `road bool[,]` → BFS·2×2 검증 → `MapDocumentBuilder.WriteToDocument`. `in` 파라미터라 CodeDom 에선 `ref` 로 호출.
 - BattleScene 배선은 언로드 상태 disk YAML surgical edit 로 격리(로드 씬 WIP 베이크 회피).
+- **draft 플로우는 실게임에서 죽음**: `GameManager.Start` 는 스쿼드 있으면 `StartSquadMatch` 로 draft 를 건너뛴다(드림캐쳐 모드). DraftView/부채꼴은 no-squad 폴백 전용. 웨이브 예고를 보는 실 경로는 **인배틀 일시정지 메뉴**(`MenuPopup` → `SquadPrepView` 가 스트립 준비, 메뉴가 표시). UI 예고를 손댈 땐 draft 아니라 이 경로를 봐야 한다.
 
 ## Follow-up
 
-- **브리핑 스트립(`WavePatternStripView`) per-map 동기화** — 현재 draft 프리뷰가 정적 WaveA. TwinLane 선택 시 브리핑 불일치(시각만, 게임플레이 무관). draft-flow 플러밍 + 실전 wave seed 공유 필요.
 - 맵 3종 추가(풀 5종 완성) + 각 맵 덱.
 - 즉시-반복 방지, 시즌/테마별 풀, usable 엔트리 필터.
+- 아웃게임 SquadPrep 스트립 맵 프리뷰(아웃게임 시점 맵 pre-commit 필요 — 현재 정적 deck).

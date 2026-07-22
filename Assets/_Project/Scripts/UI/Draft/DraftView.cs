@@ -4,6 +4,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using Wassup.Core;
+using Wassup.Data;
 using Wassup.UI.Layout;
 
 namespace Wassup.UI.Draft
@@ -84,7 +85,11 @@ namespace Wassup.UI.Draft
             _state = State.Unrolling;
             if (strip != null)
             {
-                strip.RebuildFromDeck();
+                // random-map-pool unit 6 — 선택된 맵의 실전 덱·시드 플랜으로 브리핑(맵마다 정확).
+                // bridge 부재/비생성이면 정적 deck 폴백.
+                GeneratedWavePlan plan = controller != null ? controller.BuildBriefingWavePlan() : default;
+                if (plan.waves != null) strip.RebuildFromPlan(plan);
+                else strip.RebuildFromDeck();
             }
             // Fan stays hidden during the strip phase — cards must not peek
             // from below while the wave preview is on screen.
