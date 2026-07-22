@@ -8,6 +8,8 @@
 - `8a922165` feat unit 3 — 런타임 refresher + 페이지 재빌드
 - `0ae9a2c7` feat unit 4 — OutgameScene 런타임 refresher 배선
 - `fed036fa` feat unit 6 — 프리셋 push (list-replace 모드; Apps Script + payload 확장)
+- `0c624458` fix — F3(프리셋 컬렉션 결측이 8탭 push 안 막게)
+- `26eff5db` fix — replaceTab 리뷰 반영(clear 전 matrix + `_` 컬럼 보존; sheet-export-push 세션 findings)
 - (docs 스탬프: `34744718`·`4c1e1153` 등)
 
 ## Implemented
@@ -35,15 +37,16 @@
 - Export 실호출: 추천 A/B 2개 → seed JSON(squad 7 + dreamcatcher 10 id csv).
 - Import round-trip(에디터·런타임 양쪽): export 바디 되먹임 → units 14/0/0·cards 20/0, `SquadPresetCollection.asset` **byte-identical**(무손실, 실 asset 무변경).
 - 씬 배선 diff 18줄(배선 only, WIP 베이킹 0).
+- **라이브 왕복(2026-07-22)**: 재배포 후 "Push to Sheet" → `Presets: replaced 2`(unit 6). read-only 대조(SO export vs 시트 GET, 원본 무쓰기): SO 2프리셋 = 시트 Presets 2행 **IDENTICAL**(squad 7·dc 10 csv 일치, 프록시 stale 없음). 잔여=로그인 자동반영 Play 스모크(applier 양쪽·배선 검증됨).
 
 ## Notes
 
 - 읽기 transport = **레거시 `SheetFetcher`/`SheetEnvelopeParser`**(영구). `Wassup.SheetSync` 는 POST 전용이라 import 가 안 씀.
-- 프리셋은 **keyed-upsert 모델 밖**(계약 6) — sheet-export-push 의 Push(8탭 keyed)로는 못 넣음(`KEY_CONFIG` 에 `Presets` 없어 "unknown tab" throw). seed 는 export JSON 붙여넣기.
+- 프리셋은 **keyed-upsert 모델 밖**(계약 6) — 위치 기반 list-SoT라 8탭 keyed(`KEY_CONFIG`)엔 안 들어간다. push 는 **별개 list-replace 모드**(unit 6: `LIST_REPLACE_TABS`+`replaceTab`)로 "Push to Sheet" 가 Presets 를 전체 교체(탭 없으면 자동 생성). (구 "push 못 넣음·seed 붙여넣기" 서술은 unit 6 로 폐기.)
 - ⚠️ **신규 `.cs` stuck 함정**: `PresetSheetExporter.cs` 가 AssetDatabase 엔트리 stuck 으로 어셈블리 소스셋 누락 → CS0103(파일·meta 정상인데도). force reimport/RequestScriptCompilation 무효, **삭제→refresh→재생성**으로만 해결. 진단=`CompilationPipeline.GetAssemblies().sourceFiles`. (`docs/reference/lessons/` 승격 후보.)
 - 되돌리지 말 것: rows null/빈 = no-op(리스트 보존), 미해결 유닛=null 슬롯(순서), export 는 null 슬롯 drop(csv 미표현), 페이지 재빌드 Destroy(렌더 전 처리라 겹침 안 보임).
 
 ## Follow-up
 
-- **남은 유일 작업 = Code.gs 재배포 + 라이브 왕복**: (1) Apps Script 재배포("배포 관리→편집→새 버전", 저장만으론 `/exec` 안 바뀜) → (2) "Push to Sheet"(Presets 탭 자동 생성+채움) → (3) 에디터 Import Preset diff + 로그인 자동 import 로그 + 프리셋 페이지 반영 확인.
+- ~~Code.gs 재배포 + 라이브 왕복~~ → **완료**(unit 6 라이브: push `replaced 2` + 정합 IDENTICAL). **잔여(선택)**: 로그인 자동 import 로그 + 프리셋 페이지 반영 Play 스모크(applier·배선·LoginAutoImport 메커니즘은 검증됨, 실 login 화면 확인만).
 - README 후속 후보: import dry-run diff, 적용됨 하이라이트, 카드수≠deckSize 경고 강화.

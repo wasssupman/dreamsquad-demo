@@ -1,6 +1,6 @@
 # Preset Sheet Import — 스프레드시트 → SquadPresetCollection 임포트 매퍼
 
-> 상태: **구현 완료 2026-07-22 (units 0~4) · 라이브 시트 검증 대기** — 커밋 `e66be309`(1)·`06eb866d`(2)·`8a922165`(3)·`0ae9a2c7`(4). EditMode 8/8, export/import round-trip 구조 검증(units 14/0/0·cards 20/0). 남은 것: `Presets` 시트 탭 신설 후 라이브 왕복(에디터 import diff + 로그인 자동 import + 페이지 반영). 인계는 `5_handoff_summary.md`.
+> 상태: **완료 2026-07-22** — units 0~4 + 6(push). 커밋 `e66be309`(1)·`06eb866d`(2)·`8a922165`(3)·`0ae9a2c7`(4)·`fed036fa`(6)·`0c624458`(F3). EditMode 8/8, export/import round-trip 구조 검증(units 14/0/0·cards 20/0). **라이브 왕복 검증**: 재배포 후 push `Presets: replaced 2`(unit 6) + read-only 대조로 SO 2프리셋 = 시트 2행 IDENTICAL(squad 7·dc 10 csv, 원본 무쓰기). **잔여(선택)**: 로그인 자동반영 Play 스모크(applier·배선은 검증됨). 인계는 `5_handoff_summary.md`.
 > 선행/재사용: `unit-stat-spreadsheet-schema`(완료) · `dreamcatcher-sheet-sync`(완료) — 읽기 transport(`SheetFetcher`/`SheetEnvelopeParser`) · `UnitAssetScan` · `BuildIndex` 를 그대로 재사용.
 > 관계: `sheet-export-push`(진행 중; unit 0 `e17ab435` 착지) 와 **방향 반대** — 저건 SO→시트 push, 우리는 시트→SO import. `Wassup.SheetSync` 는 **POST 전용**이라(코어 주석: "GET 은 소비처 없음, import 는 레거시 SheetFetcher 유지") 우리 읽기 경로는 레거시 위에 짓고 SheetSync 는 건드리지 않는다.
 
@@ -42,7 +42,7 @@
 
 ## 후속 후보 (현 스코프 밖)
 
-- ~~프리셋 push (list-replace)~~ → **unit 6 에서 구현** (Code.gs `LIST_REPLACE_TABS`+`replaceTab`, payload 9탭). Code.gs 재배포 + 라이브 왕복만 남음.
+- ~~프리셋 push (list-replace)~~ → **unit 6 구현 + 라이브 검증 완료** (Code.gs `LIST_REPLACE_TABS`+`replaceTab`, payload 9탭; 재배포 후 push `replaced 2` + 정합 IDENTICAL).
 - **import dry-run diff 프리뷰** — 적용 전 "바뀔 프리셋/슬롯" 표시(sheet-sync 후속과 대칭).
 - **적용됨 하이라이트 · 런타임 덱 규칙 검증 · 드림스톤 4슬롯 포함** — loadout-preset-page 후속 승계.
 - **카드 수 ≠ 라이브 deckSize 경고 강화** — 현재는 리포트만, 게이트화는 후속.
