@@ -249,14 +249,15 @@ namespace Wassup.UI
         //    maxEntryCount so the panel doesn't resize when the real rows land.
         //
         // The predicate matches TournamentMatchReporter (:33, :61), which gates on
-        // IdToken. Do NOT switch this to UserSession.IsSignedIn — that is TRUE for
-        // guests (LoginPanelView SKIP sets a user with an empty token), and guests
-        // never get a tournament session.
+        // HasAccount — a firebase idToken OR a demo username-recovered session
+        // (demo-username-recovery). Do NOT switch this to UserSession.IsSignedIn —
+        // that is TRUE for guests (LoginPanelView SKIP sets a user with neither
+        // token nor name), and guests never get a tournament session.
         private const int TerminalPendingSlots = 5;
         private const int AwaitingPendingSlots = 10;
 
         private static int PendingSlotCount =>
-            string.IsNullOrEmpty(UserSession.IdToken) ? TerminalPendingSlots : AwaitingPendingSlots;
+            !UserSession.HasAccount ? TerminalPendingSlots : AwaitingPendingSlots;
 
         private static List<LeaderboardList.Row> BuildPendingRows(int playerScore)
         {

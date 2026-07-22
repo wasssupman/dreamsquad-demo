@@ -1,6 +1,6 @@
 # demo-username-recovery — 재설치 후 닉네임 기반 계정 복구 (데모 전용)
 
-> 상태: 계획 (승인 대기) · 2026-07-22
+> 상태: 완료 2026-07-22 (코드 units 0~4 · 라이브 e2e 검증)
 
 ## 문제
 
@@ -58,11 +58,14 @@ token 이 사라지고, 같은 닉네임으로 다시 로그인해도 서버는 
    막으면 이 경로만 죽고 firebase 는 무사해야 한다. 근본 해결은 서버측 custom token 또는
    구글 연동(`/user/sign/link`, 후속 후보).
 
-## 미검증 (런타임 확인 대상)
+## 라이브 검증 (2026-07-22)
 
-- `X-AUTH-USERNAME` 가 `/tournament/*` 등 다른 인증 엔드포인트에서도 동작하는지는
-  미검증 (`GET /user` 에서만 실증). 구조는 지원하나 서버가 그 필터에서 헤더를 존중하는지는
-  라이브 확인. 실패해도 firebase 경로는 영향 없음.
+- 로그인 e2e: 이름 "wassup" → `GET /user` Found → adopt. `UserSession` 이 username
+  모드(idToken 없음, `AuthUserName=wassup`)로 세팅되고 `Current.userId` 가 기존 서버
+  계정(`019f8019-…`)과 **동일** — 새 계정 생성 없음(중복 문제 해결 실증).
+- `X-AUTH-USERNAME` 가 `/tournament/*` 에서도 존중됨을 실증: username 모드에서
+  `/tournament/play` (IN_PROGRESS+attemptId) · `/tournament/complete` (score 제출) ·
+  `/tournament/result` (ranking) 3개 전부 성공, 서버가 wassup 계정으로 귀속.
 
 ## 파이프라인 커버리지
 

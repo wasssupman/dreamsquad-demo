@@ -93,13 +93,14 @@ namespace Wassup.UI
             if (loginPanel != null) loginPanel.gameObject.SetActive(!signedIn);
 
             // tournament-history — 히스토리는 실계정 전용. 게스트는 sign-in 게이트는
-            // 통과하지만 IdToken 이 비어 서버 조회를 못 하므로 버튼 자체를 숨긴다
-            // (버튼은 menuRoot 직속 자식). 미배선/미발견이면 그대로 노출(무회귀).
+            // 통과하지만 HasAccount=false(토큰도 복구이름도 없음)라 서버 조회를 못 하므로
+            // 버튼 자체를 숨긴다 (버튼은 menuRoot 직속 자식). username-복구 계정은
+            // HasAccount=true 라 노출. 미배선/미발견이면 그대로 노출(무회귀).
             if (menuRoot != null)
             {
                 var historyBtn = menuRoot.transform.Find("HistoryButton");
                 if (historyBtn != null)
-                    historyBtn.gameObject.SetActive(signedIn && !string.IsNullOrEmpty(UserSession.IdToken));
+                    historyBtn.gameObject.SetActive(UserSession.HasAccount);
             }
 
             // 로그인 완료(onSignedIn)와 로그아웃(OnResetAccount) 전이를 받는다.
