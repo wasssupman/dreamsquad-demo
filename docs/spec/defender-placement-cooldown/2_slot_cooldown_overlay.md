@@ -64,6 +64,8 @@ UpdateCooldownOverlays():
 - **(3) 숫자 틱 팝**: 카운트다운 정수가 바뀌는 프레임에만(=`cooldownText.text != 새값`, text 자체가 직전값 저장소라 struct write-back 불요) 스쿼시&스트레치 팝(`cooldownTickPopScale`, 가로↔세로 반대).
 - **(4) 종료 플러리시**: `ReadyFlourishRoutine` = 슬롯 스프링-아웃 탄성 팝(0.9→pop→EaseOutBack 1) + **잔물결 링**(임시 GO, 확장·페이드, `cooldownReadyRippleColor/Scale`) + **섬광**(임시 GO, 페이드, `cooldownReadyFlashColor`). 임시 GO 는 종료 후 Destroy, 슬롯 파괴 시 가드.
 - juice 튜닝값은 `BattleHudTrayConfig`(하드코딩 금지); 내부 sub-timing 은 CostDisplay 관례대로 인라인 const.
+- **림 글로우**(셀 테두리 호흡 펄스, `cooldownRimColor`) 추가 — 유닛 셀에 유지.
+- **기포는 코스트 물통으로 이관**(사용자 결정 2026-07-22): 유닛 셀엔 기포 없음. 코스트 물통(`CostDisplay`, 다른 spec `battle-tray-cost-well`)이 기포+림 글로우를 갖는다(`wellBubbleColor`/`wellRimColor`). 이 쿨타임 spec 범위 밖 터치라 코드 주석·handoff 에 명시.
 
 **머티리얼 수명**: `RebuildSlots` 시작에서 기존 `_slotVisuals` 순회하며 `cooldownMat` 있으면 `Destroy`; `_anyCooldownShown=false` 리셋. `OnDestroy` 에서도 순회 Destroy(CostDisplay.OnDestroy 패턴, 에디터는 DestroyImmediate).
 

@@ -46,6 +46,11 @@ namespace Wassup.UI
         private Image _wellLiquid;
         private Material _liquidMaterial;
         private bool _geometryPushed;
+        // defender-placement-cooldown 2 (사용자 결정 2026-07-22) — 쿨타임 셀에서 이관한 액체 juice.
+        // 기포(수면까지 떠오름) + 테두리 림 글로우(호흡). 시간 기반 stateless 구동(Update). 색은
+        // trayConfig.wellBubbleColor/wellRimColor. 플레인 UI 이미지라 별도 머티리얼 정리 불필요.
+        private Image[] _wellBubbles;
+        private Image _wellRim;
 
         private static readonly int FillId = Shader.PropertyToID("_Fill");
         private static readonly int LiquidBottomId = Shader.PropertyToID("_LiquidBottom");
@@ -192,6 +197,7 @@ namespace Wassup.UI
             ApplyFill(fill);
             ApplyValue(curInt, runtime.Max);
             if (!_geometryPushed) { _geometryPushed = true; PushWellGeometry(); }
+            UpdateWellFlair(fill); // 기포 + 림 글로우(시간 기반 stateless)
 
             // sentinel — 첫 프레임/재동기화는 값만 흡수하고 연출 없이 지나간다.
             if (_prevInt < 0)
@@ -259,6 +265,38 @@ namespace Wassup.UI
             var baseColor = trayConfig != null ? trayConfig.wellLiquidColor : WellLiquidFallback;
             var fullColor = trayConfig != null ? trayConfig.wellLiquidFullColor : WellLiquidFallback;
             _wellLiquid.color = Color.Lerp(baseColor, fullColor, fill);
+        }
+
+        // defender-placement-cooldown 2 — 물통 기포 + 테두리 림 글로우. 상태 저장 없이
+        // Time.unscaledTime 으로 계산(위치/알파만). 기포는 현재 수위(fill) 아래에서만 떠오른다.
+        private void UpdateWellFlair(float fill)
+        {
+            float time = Time.unscaledTime;
+
+            if (_wellBubbles != null && _wellRect != null)
+            {
+                float w = _wellRect.rect.width, h = _wellRect.rect.height;
+                float surfaceY = Mathf.Max(0f, fill * h);
+                float baseA = trayConfig != null ? trayConfig.wellBubbleColor.a : 0.4f;
+                for (int b = 0; b < _wellBubbles.Length; b++)
+                {
+                    var img = _wellBubbles[b];
+                    if (img == null) continue;
+                    float phase = Mathf.Repeat(time * (0.28f + 0.07f * b) + b * 0.5f, 1f); // 0→1 상승 루프
+                    float y = phase * surfaceY;                 // 바닥→수면까지만
+                    float x = w * 0.5f + Mathf.Sin(time * 1.6f + b * 2.3f) * (w * 0.16f);
+                    img.rectTransform.anchoredPosition = new Vector2(x, y);
+                    float a = Mathf.Sin(phase * Mathf.PI) * (surfaceY > 4f ? 1f : 0f);
+                    var c = img.color; c.a = baseA * a; img.color = c;
+                }
+            }
+
+            if (_wellRim != null)
+            {
+                float baseA = trayConfig != null ? trayConfig.wellRimColor.a : 0.5f;
+                float pulse = 0.55f + 0.45f * (0.5f + 0.5f * Mathf.Sin(time * 2.0f)); // 느린 호흡
+                var c = _wellRim.color; c.a = baseA * pulse; _wellRim.color = c;
+            }
         }
 
         // ── 연출 (unit 2) ────────────────────────────────────────────
@@ -635,6 +673,44 @@ namespace Wassup.UI
                 trayConfig != null ? trayConfig.fallbackBorder : new Color(0.94f, 0.72f, 0.24f, 1f));
             frameImg.type = Image.Type.Sliced;
             frameImg.raycastTarget = false;
+
+            // defender-placement-cooldown 2 — 물통 안 기포(wellGO 자식, 액체 위에 뜸). alpha 0 이면 생성 안 함.
+            var bubbleColor = trayConfig != null ? trayConfig.wellBubbleColor : new Color(0.85f, 0.95f, 1f, 0.4f);
+            if (bubbleColor.a > 0f)
+            {
+                _wellBubbles = new Image[2];
+                for (int b = 0; b < _wellBubbles.Length; b++)
+                {
+                    var bgo = new GameObject($"WellBubble{b}", typeof(RectTransform), typeof(Image));
+                    bgo.transform.SetParent(wellGO.transform, false);
+                    var brt = (RectTransform)bgo.transform;
+                    brt.anchorMin = brt.anchorMax = Vector2.zero; // 물통 좌하단 기준 좌표
+                    brt.pivot = new Vector2(0.5f, 0.5f);
+                    brt.sizeDelta = new Vector2(9f + 2f * b, 9f + 2f * b);
+                    var bi = bgo.GetComponent<Image>();
+                    bi.sprite = UiRoundedSprite.Make(6f, 0f, Color.white, Color.clear); // 라운드 채움 = 원형
+                    bi.type = Image.Type.Sliced;
+                    bi.color = bubbleColor;
+                    bi.raycastTarget = false;
+                    _wellBubbles[b] = bi;
+                }
+            }
+
+            // 테두리 림 글로우(호흡 펄스). WellFrame(정적 테두리) 위에 얹어 물통이 은은히 빛나게. alpha 0 이면 없음.
+            var rimColor = trayConfig != null ? trayConfig.wellRimColor : new Color(0.6f, 0.9f, 1f, 0.5f);
+            if (rimColor.a > 0f)
+            {
+                var rimGO = new GameObject("WellRim", typeof(RectTransform), typeof(Image));
+                rimGO.transform.SetParent(_cell.transform, false);
+                var rimRt = (RectTransform)rimGO.transform;
+                rimRt.anchorMin = _wellRect.anchorMin; rimRt.anchorMax = _wellRect.anchorMax;
+                rimRt.offsetMin = _wellRect.offsetMin; rimRt.offsetMax = _wellRect.offsetMax;
+                _wellRim = rimGO.GetComponent<Image>();
+                _wellRim.sprite = UiRoundedSprite.Make(WellCornerRadius, 3f, Color.clear, Color.white); // 테두리만
+                _wellRim.type = Image.Type.Sliced;
+                _wellRim.color = rimColor;
+                _wellRim.raycastTarget = false;
+            }
         }
     }
 }

@@ -73,6 +73,7 @@ namespace Wassup.UI
             public Image cooldownFill;
             public TextMeshProUGUI cooldownText;
             public Material cooldownMat; // 셰이더 인스턴스(수명 소유). 폴백(머티리얼 미할당)이면 null.
+            public Image cooldownRim;    // 테두리 림 글로우(호흡 펄스). 색 alpha 0 이면 미생성.
         }
 
         private readonly List<SlotVisual> _slotVisuals = new();
@@ -400,9 +401,9 @@ namespace Wassup.UI
 
                 // defender-placement-cooldown 2 — 쿨다운>0 유닛만 오버레이 생성("0 = inert",
                 // 머티리얼 인스턴스도 절약). 0 유닛은 전 필드 null → 리페인트가 건너뛴다.
-                GameObject cdRoot = null; Image cdFill = null; TextMeshProUGUI cdText = null; Material cdMat = null;
+                GameObject cdRoot = null; Image cdFill = null; TextMeshProUGUI cdText = null; Material cdMat = null; Image cdRim = null;
                 if (data.placementCooldown > 0f)
-                    BuildCooldownOverlay(go.transform, out cdRoot, out cdFill, out cdText, out cdMat);
+                    BuildCooldownOverlay(go.transform, out cdRoot, out cdFill, out cdText, out cdMat, out cdRim);
 
                 _slotVisuals.Add(new SlotVisual
                 {
@@ -418,6 +419,7 @@ namespace Wassup.UI
                     cooldownFill = cdFill,
                     cooldownText = cdText,
                     cooldownMat = cdMat,
+                    cooldownRim = cdRim,
                 });
             }
 
@@ -614,6 +616,7 @@ namespace Wassup.UI
                             StartCoroutine(NumberTickPopRoutine(v.cooldownText.rectTransform));
                         }
                     }
+                    UpdateCooldownRim(v); // 림 글로우 호흡 펄스(시간 기반 stateless)
                     anyShown = true;
                 }
                 else if (shown)
@@ -640,6 +643,16 @@ namespace Wassup.UI
             if (w <= 1f || h <= 1f) return;
             v.cooldownMat.SetFloat(CdAspectId, w / h);
             v.cooldownMat.SetFloat(CdRadiusId, CooldownCornerRadius / h);
+        }
+
+        // 림 글로우 호흡 펄스. 상태 저장 없이 Time.unscaledTime 으로 알파만 변조(struct value-copy
+        // 회피). 시각 플레어라 슬로모 무관 실시간(팝/플러리시와 일관). 기포는 CostDisplay 로 이관.
+        private void UpdateCooldownRim(SlotVisual v)
+        {
+            if (v.cooldownRim == null) return;
+            float baseA = trayConfig != null ? trayConfig.cooldownRimColor.a : 0.5f;
+            float pulse = 0.55f + 0.45f * (0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 2.2f)); // 느린 호흡
+            var c = v.cooldownRim.color; c.a = baseA * pulse; v.cooldownRim.color = c;
         }
 
         // 오버슛(back-out) 이징 — 1 을 살짝 넘겼다 정착하는 "보잉". 말랑 연출의 뼈대.
@@ -766,9 +779,10 @@ namespace Wassup.UI
         //  (2) 액체 — 포트레이트 영역만, 코스트 물통 셰이더 재사용, _Fill=남은비율로 아래로 빠짐
         //  (3) 카운트다운 숫자 — 포트레이트 영역 중앙
         private void BuildCooldownOverlay(Transform slot, out GameObject root, out Image fill,
-            out TextMeshProUGUI text, out Material mat)
+            out TextMeshProUGUI text, out Material mat, out Image rim)
         {
             float bandH = trayConfig != null ? trayConfig.nameBandHeight : 36f;
+            rim = null;
 
             root = new GameObject("CooldownOverlay", typeof(RectTransform));
             var rrt = (RectTransform)root.transform;
@@ -857,6 +871,24 @@ namespace Wassup.UI
             tmat.SetFloat(ShaderUtilities.ID_UnderlayOffsetY, -0.4f);
             tmat.SetFloat(ShaderUtilities.ID_UnderlaySoftness, 0.35f);
             tmat.SetColor(ShaderUtilities.ID_UnderlayColor, new Color(0f, 0f, 0f, 0.95f));
+
+            // (림 글로우) 테두리 안쪽 은은한 빛 — 색 alpha>0 일 때만. root 최상위 자식(테두리만이라
+            // 중앙 숫자와 겹치지 않는다). 알파 호흡 펄스는 UpdateCooldownRim.
+            // 기포는 코스트 물통(CostDisplay)으로 이관 — 유닛 셀은 림만(사용자 결정 2026-07-22).
+            var rimColor = trayConfig != null ? trayConfig.cooldownRimColor : new Color(0.55f, 0.85f, 1f, 0.5f);
+            if (rimColor.a > 0f)
+            {
+                var rimGO = new GameObject("CooldownRim", typeof(RectTransform), typeof(Image));
+                rimGO.transform.SetParent(root.transform, false);
+                var rimRt = (RectTransform)rimGO.transform;
+                rimRt.anchorMin = Vector2.zero; rimRt.anchorMax = Vector2.one;
+                rimRt.offsetMin = Vector2.zero; rimRt.offsetMax = Vector2.zero;
+                rim = rimGO.GetComponent<Image>();
+                rim.sprite = UiRoundedSprite.Make(CooldownCornerRadius, 3f, Color.clear, Color.white); // 테두리만
+                rim.type = Image.Type.Sliced;
+                rim.color = rimColor;
+                rim.raycastTarget = false;
+            }
 
             root.SetActive(false);
         }

@@ -72,6 +72,12 @@ namespace Wassup.Data
         public Material wellLiquidMaterial;
         [Tooltip("코스트 셀 숫자. 슬롯 가격(costFontSize)보다 커야 '내 잔량'과 '유닛 가격'이 구분된다")]
         public float cellNumberFontSize = 52f;
+        // defender-placement-cooldown 2 (사용자 결정 2026-07-22) — 액체 juice 를 코스트 물통으로 이관:
+        // 기포(수면까지 떠오름) + 테두리 림 글로우(호흡). CostDisplay 가 소비. alpha 0 이면 해당 효과 off.
+        [Tooltip("코스트 물통 안 기포 색(수면까지 떠오르며 페이드). alpha 0 이면 기포 없음")]
+        public Color wellBubbleColor = new Color(0.85f, 0.95f, 1f, 0.4f);
+        [Tooltip("코스트 물통 테두리 림 글로우 색(느린 호흡 펄스). alpha 0 이면 림 없음")]
+        public Color wellRimColor = new Color(0.6f, 0.9f, 1f, 0.5f);
 
         // defender-placement-cooldown 2 — 배치 쿨타임 오버레이. 코스트 물통과 같은
         // 액체 셰이더(wellLiquidMaterial)를 재사용하되 색/방향/위치/숫자로 구분한다:
@@ -103,6 +109,8 @@ namespace Wassup.Data
         public float cooldownReadyRippleScale = 1.7f;
         [Tooltip("종료 섬광 색(빠르게 페이드)")]
         public Color cooldownReadyFlashColor = new Color(1f, 1f, 1f, 0.5f);
+        [Tooltip("쿨타임 오버레이 테두리 림 글로우 색(느린 호흡 펄스). alpha 0 이면 림 없음. 기포는 코스트 물통으로 이관")]
+        public Color cooldownRimColor = new Color(0.55f, 0.85f, 1f, 0.5f);
 
         [Header("Slot Name Band (cost-well unit 0)")]
         public float nameBandHeight = 36f;

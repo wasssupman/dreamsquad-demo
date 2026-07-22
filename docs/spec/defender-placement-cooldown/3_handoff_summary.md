@@ -15,13 +15,15 @@
 - 배치 성공(`DefenderDragPlacementController.PlacementCommitted`) → `StartCooldown(unit, placementCooldown)`. 슬롯 게이트(`DefenderDragSlot` 드래그/탭)로 쿨타임 중 배치 차단 — **ECS 미개입**(순수 Mono/UI).
 - 트레이 셀 오버레이: 코스트 물통 셰이더(`Wassup/UI/CostWell`) **per-slot 재사용**, `_Fill=남은비율`로 탁한 슬레이트 액체가 아래로 빠지며 유닛이 떠오름 + **셀 전체 딤 스크림** + 중앙 카운트다운. 코스트와 **방향·색·위치·숫자** 4축 구분.
 - juice(사용자 선택 3·4): 숫자 틱 스쿼시&스트레치 팝 + 종료 플러리시(스프링-아웃 · 잔물결 링 · 섬광), `EaseOutBack` 공유.
+- 추가 플레어(사용자 결정 2026-07-22): **셀 테두리 림 글로우**(호흡 펄스) 유지. **기포는 코스트 물통으로 이관** — `CostDisplay`(다른 spec `battle-tray-cost-well`)가 기포+림 글로우를 갖는다. 유닛 셀엔 기포 없음.
 
 ## Key Files
 
 - `Assets/_Project/Scripts/Core/PlacementCooldownRuntime.cs` — 상태·tick
 - `Assets/_Project/Scripts/UI/DefenderSelector.cs` — 오버레이 빌드/리페인트/juice, `PlacementCommitted` 구독
 - `Assets/_Project/Scripts/UI/DefenderDragSlot.cs` — 배치 게이트
-- `Assets/_Project/Scripts/Data/DefenderUnitData.cs`(필드) · `BattleHudTrayConfig.cs`(오버레이 튜닝값)
+- `Assets/_Project/Scripts/Data/DefenderUnitData.cs`(필드) · `BattleHudTrayConfig.cs`(오버레이 튜닝값 + `wellBubbleColor`/`wellRimColor`)
+- `Assets/_Project/Scripts/UI/CostDisplay.cs` — 코스트 물통 기포+림 글로우(이 spec 이 교차로 터치한 `battle-tray-cost-well` 파일)
 - `Assets/_Project/Scripts/Core/GameManager.cs` · `UI/PlacementPhaseView.cs` · `Bridge/BattleBridge.cs` — 노출/리셋
 - `Assets/_Project/Tests/EditMode/PlacementCooldownRuntimeTests.cs`
 
