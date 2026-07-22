@@ -13,7 +13,7 @@ namespace Wassup.EditorTools
     // 좌표 규약: y=0 이 하단, 화면 위쪽이 y=H-1 (런타임 스폰 상단/골 하단 규약과 일치).
     public class MapPainterWindow : EditorWindow
     {
-        private enum Tool { Road, Buildable, Spawn, Goal }
+        private enum Tool { Road, Buildable, Deco, Spawn, Goal }
 
         private const float Cell = 26f;
 
@@ -115,7 +115,7 @@ namespace Wassup.EditorTools
 
                 GUILayout.FlexibleSpace();
                 _tool = (Tool)GUILayout.Toolbar((int)_tool,
-                    new[] { "Road", "Buildable", "Spawn", "Goal" }, EditorStyles.toolbarButton);
+                    new[] { "Road", "Buildable", "Deco", "Spawn", "Goal" }, EditorStyles.toolbarButton);
             }
         }
 
@@ -192,6 +192,11 @@ namespace Wassup.EditorTools
                     break;
                 case Tool.Buildable:
                     _tiles[idx] = MapTileType.Place;
+                    _spawns.Remove(cell);
+                    if (_goal == cell) _goal = new Vector2Int(-1, -1);
+                    break;
+                case Tool.Deco:
+                    _tiles[idx] = MapTileType.Deco; // 장식(배치·이동 불가)
                     _spawns.Remove(cell);
                     if (_goal == cell) _goal = new Vector2Int(-1, -1);
                     break;

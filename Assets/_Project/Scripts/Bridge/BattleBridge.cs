@@ -962,8 +962,14 @@ namespace Wassup.Bridge
             // random-map-pool — 커빙 시드는 맵 정체성(_generatedMap.seed)에서 뽑는다: 문서맵은 authoringSeed
             // (맵당 고정)라 배치칸이 매판 고정, 절차맵은 gen seed(matchSeed 파생)라 매판 변동 유지.
             // (matchSeed 파생 local seed 를 쓰면 fixedMapSeed=0 일 때 같은 문서맵도 배치칸이 매판 섞였다.)
+            // map-painter unit 3 — 맵에 authored Deco(페인터로 명시 지정)가 있으면 시드 커빙 완전 스킵:
+            // 지정한 Place/Deco 배치판을 그대로 존중한다. all-Place 문서/절차맵만 시드 커빙.
+            bool hasAuthoredDeco = false;
+            if (_generatedMap.IsCreated)
+                for (int i = 0; i < _generatedMap.tiles.Length; i++)
+                    if (_generatedMap.tiles[i] == MapTileType.Deco) { hasAuthoredDeco = true; break; }
             if (mapSource == MapSource.MapGrid && theme != null
-                && theme.mapGridBuildableKeepRatio < 1f && _generatedMap.IsCreated)
+                && theme.mapGridBuildableKeepRatio < 1f && _generatedMap.IsCreated && !hasAuthoredDeco)
             {
                 var decoRng = Unity.Mathematics.Random.CreateFromIndex((uint)(_generatedMap.seed ^ 0x5A5A5A) | 1u);
                 ObstaclePlacer.DesignateDeco(ref decoRng, _generatedMap.tiles,

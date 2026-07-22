@@ -9,7 +9,8 @@
 
 - **`Window/Wassup/Map Painter`** EditorWindow 로 MapDocument 를 격자에서 직접 편집.
 - 툴바: New(w/h) blank · MapDocument ObjectField + Load · 툴(Road/Buildable/Spawn/Goal).
-- 격자 페인팅: 클릭·드래그로 Walk/Place 칠, 스폰(최대 4·토글)·골 찍기. y=0 하단 규약.
+- 격자 페인팅: 클릭·드래그로 Walk/Place/**Deco** 칠, 스폰(최대 4·토글)·골 찍기. y=0 하단 규약.
+- **배치/데코 명시 지정(unit 3)**: Deco 툴로 장식 셀을 직접 칠하면, 런타임(`BattleBridge`)이 authored Deco 를 감지해 시드 커빙(`DesignateDeco`)을 스킵 → 지정한 배치판 그대로. all-Place 문서/절차맵만 기존 시드 커빙(per-map stable).
 - 실시간 검증: 스폰1~4, 골·스폰 Walk, BFS 연결성(각 스폰→골), 2×2 walk 금지. 실패 시 사유 표시 + Bake 비활성.
 - Bake: mergeDegree(4방향 인접 Walk)·chokepoint(deg≥3)·propLayerId=0 계산 → `MapDocumentBuilder.WriteToDocument` (기존=GUID 유지, 신규=SaveFilePanel). authoringSeed=-1.
 
