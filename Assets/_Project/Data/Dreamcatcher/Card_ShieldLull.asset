@@ -26,9 +26,9 @@ MonoBehaviour:
       fraction: 0
     payload:
       kind: 16
-      magnitude: 3
+      magnitude: 2
       projectile: {fileID: 0}
-      tileRange: 2
+      tileRange: 1
       duration: 2.5
       auraPrefab: {fileID: 0}
       auraScale: 0
