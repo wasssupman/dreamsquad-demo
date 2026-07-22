@@ -36,6 +36,20 @@ namespace Wassup.Tests.EditMode.UnitStatImport
         }
 
         [Test]
+        public void Report_TabError_FlaggedAsSkippedNotCounted()
+        {
+            // 서버가 키 컬럼 결측으로 그 탭을 스킵한 응답 — 중복 추가 대신 경고여야 한다.
+            const string body = @"{ ""success"": true, ""data"": { ""results"": {
+                ""Defenders"": { ""updated"": 0, ""added"": 0, ""orphans"": [],
+                ""error"": ""기존 17행이 있는데 키 컬럼(id)이 헤더에 없음"" } } } }";
+            string report = SheetPushClient.BuildReport(null, body);
+            StringAssert.Contains("SKIPPED", report);
+            StringAssert.Contains("스킵", report);
+            StringAssert.Contains("키 컬럼", report);
+            StringAssert.DoesNotContain("Push OK.", report);
+        }
+
+        [Test]
         public void Report_Orphans_ListedAndFlagged()
         {
             const string body = @"{ ""success"": true, ""data"": { ""results"": {

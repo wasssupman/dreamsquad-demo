@@ -36,19 +36,31 @@ namespace Wassup.Editor.UnitStatImport
             if (results == null)
                 return "Push OK. (응답에 results 없음)";
 
-            var sb = new StringBuilder();
-            sb.AppendLine("Push OK.");
-            int totalOrphans = 0;
+            var lines = new StringBuilder();
+            int totalOrphans = 0, tabErrors = 0;
             foreach (var prop in results.Properties())
             {
-                var r = prop.Value;
-                int updated = r["updated"]?.Value<int>() ?? 0;
-                int added = r["added"]?.Value<int>() ?? 0;
-                int orphanCount = (r["orphans"] as JArray)?.Count ?? 0;
+                // 서버가 그 탭을 스킵한 경우(키 컬럼 결측 등) — 카운트가 아니라 경고로.
+                var tabError = prop.Value["error"]?.ToString();
+                if (!string.IsNullOrEmpty(tabError))
+                {
+                    lines.AppendLine($"  ⚠ {prop.Name}: SKIPPED — {tabError}");
+                    tabErrors++;
+                    continue;
+                }
+                int updated = prop.Value["updated"]?.Value<int>() ?? 0;
+                int added = prop.Value["added"]?.Value<int>() ?? 0;
+                int orphanCount = (prop.Value["orphans"] as JArray)?.Count ?? 0;
                 totalOrphans += orphanCount;
-                sb.AppendLine($"  {prop.Name}: updated {updated}, added {added}"
+                lines.AppendLine($"  {prop.Name}: updated {updated}, added {added}"
                     + (orphanCount > 0 ? $", orphans {orphanCount}" : ""));
             }
+
+            var sb = new StringBuilder();
+            sb.AppendLine(tabErrors > 0
+                ? $"Push 완료 (⚠ {tabErrors}개 탭 스킵 — 확인 요망):"
+                : "Push OK.");
+            sb.Append(lines);
 
             if (totalOrphans > 0)
             {
