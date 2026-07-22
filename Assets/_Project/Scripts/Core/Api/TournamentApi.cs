@@ -73,8 +73,8 @@ namespace Wassup.Core.Api
 
         public static void Play(string baseUrl, AuthCredential credential, Action<PlayState, string> onDone)
         {
-            var request = new UnityWebRequest(BuildPlayUrl(baseUrl), UnityWebRequest.kHttpVerbPOST);
-            Send(request, credential, (body, transportError) =>
+            Send(() => new UnityWebRequest(BuildPlayUrl(baseUrl), UnityWebRequest.kHttpVerbPOST), credential,
+                (body, transportError) =>
             {
                 var state = TryParsePlay(body, out string error);
                 if (state == null && transportError != null) error = $"{error} (HTTP: {transportError})";
@@ -87,11 +87,14 @@ namespace Wassup.Core.Api
         public static void Complete(string baseUrl, AuthCredential credential, string attemptId, int score,
             string debugJson, Action<bool, string> onDone)
         {
-            var request = new UnityWebRequest(BuildCompleteUrl(baseUrl, attemptId, score), UnityWebRequest.kHttpVerbPOST);
-            request.uploadHandler = new UploadHandlerRaw(
-                System.Text.Encoding.UTF8.GetBytes(BuildCompleteBody(debugJson)));
-            request.SetRequestHeader("Content-Type", "application/json");
-            Send(request, credential, (body, transportError) =>
+            Send(() =>
+            {
+                var request = new UnityWebRequest(BuildCompleteUrl(baseUrl, attemptId, score), UnityWebRequest.kHttpVerbPOST);
+                request.uploadHandler = new UploadHandlerRaw(
+                    System.Text.Encoding.UTF8.GetBytes(BuildCompleteBody(debugJson)));
+                request.SetRequestHeader("Content-Type", "application/json");
+                return request;
+            }, credential, (body, transportError) =>
             {
                 bool ok = ApiEnvelope.TryGetData(body, out _, out string error);
                 if (!ok && transportError != null) error = $"{error} (HTTP: {transportError})";
@@ -101,8 +104,8 @@ namespace Wassup.Core.Api
 
         public static void GetResult(string baseUrl, AuthCredential credential, string entryId, Action<ResultData, string> onDone)
         {
-            var request = new UnityWebRequest(BuildResultUrl(baseUrl, entryId), UnityWebRequest.kHttpVerbGET);
-            Send(request, credential, (body, transportError) =>
+            Send(() => new UnityWebRequest(BuildResultUrl(baseUrl, entryId), UnityWebRequest.kHttpVerbGET), credential,
+                (body, transportError) =>
             {
                 var result = TryParseResult(body, out string error);
                 if (result == null && transportError != null) error = $"{error} (HTTP: {transportError})";
@@ -115,8 +118,8 @@ namespace Wassup.Core.Api
         public static void GetUnclaimedEntries(string baseUrl, AuthCredential credential,
             Action<List<UserTournamentResultEntry>, string> onDone)
         {
-            var request = new UnityWebRequest(BuildUnclaimedUrl(baseUrl), UnityWebRequest.kHttpVerbGET);
-            Send(request, credential, (body, transportError) =>
+            Send(() => new UnityWebRequest(BuildUnclaimedUrl(baseUrl), UnityWebRequest.kHttpVerbGET), credential,
+                (body, transportError) =>
             {
                 var list = TryParseUnclaimed(body, out string error);
                 if (list == null && transportError != null) error = $"{error} (HTTP: {transportError})";
@@ -124,10 +127,19 @@ namespace Wassup.Core.Api
             });
         }
 
-        // demo-username-recovery Unit 3 — the single auth seam. The credential
-        // decides Bearer vs X-AUTH-USERNAME; callers never branch on session mode.
-        private static void Send(UnityWebRequest request, AuthCredential credential, Action<string, string> onResponse)
+        // demo-username-recovery Unit 3 / session-token-refresh Unit 1 — the single
+        // auth seam. The credential decides Bearer vs X-AUTH-USERNAME; callers never
+        // branch on session mode. requestFactory builds a fresh UnityWebRequest per
+        // attempt because an expired firebase idToken (403/401) triggers a token
+        // refresh + one replay, and a UnityWebRequest is single-use.
+        private static void Send(Func<UnityWebRequest> requestFactory, AuthCredential credential,
+            Action<string, string> onResponse)
+            => Attempt(requestFactory, credential, allowRefresh: true, onResponse);
+
+        private static void Attempt(Func<UnityWebRequest> requestFactory, AuthCredential credential,
+            bool allowRefresh, Action<string, string> onResponse)
         {
+            var request = requestFactory();
             request.downloadHandler = new DownloadHandlerBuffer();
             credential.Apply(request);
             request.SetRequestHeader("X-SERVICE-APP-VERSION", Application.version);
@@ -137,9 +149,30 @@ namespace Wassup.Core.Api
             operation.completed += _ =>
             {
                 // keep the body even on HTTP failure — errorDetail lives there.
+                long code = request.responseCode;
                 string body = request.downloadHandler != null ? request.downloadHandler.text : null;
                 string transportError = request.result == UnityWebRequest.Result.Success ? null : request.error;
                 request.Dispose();
+
+                // Expired firebase idToken → this server rejects with 403
+                // HANDLE_ACCESS_DENIED (401 on standard servers). Re-mint the idToken
+                // once via the session's refresh token, then replay this request with
+                // the new Bearer. Only Bearer sessions refresh; username/guest have an
+                // empty idToken and fall through. A timeout is responseCode 0, so it
+                // never triggers here (refresh can't fix a network failure). Single
+                // replay (allowRefresh:false) — a second failure surfaces as-is.
+                if ((code == 403 || code == 401) && allowRefresh && !string.IsNullOrEmpty(credential.idToken))
+                {
+                    UserSession.TryRefreshBearer(refreshed =>
+                    {
+                        if (refreshed)
+                            Attempt(requestFactory, UserSession.Credential, allowRefresh: false, onResponse);
+                        else
+                            onResponse(body, transportError); // refresh unavailable/failed → surface original
+                    });
+                    return;
+                }
+
                 onResponse(body, transportError);
             };
         }

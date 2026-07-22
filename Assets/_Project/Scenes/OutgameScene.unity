@@ -1386,6 +1386,7 @@ GameObject:
   - component: {fileID: 247752175}
   - component: {fileID: 247752176}
   - component: {fileID: 247752177}
+  - component: {fileID: 247752178}
   m_Layer: 0
   m_Name: UnitStatRefresher
   m_TagString: Untagged
@@ -1462,6 +1463,7 @@ MonoBehaviour:
   refresherSources:
   - {fileID: 247752173}
   - {fileID: 247752175}
+  - {fileID: 247752178}
 --- !u!114 &247752177
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1476,6 +1478,22 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.LoginAutoImport
   loginPanel: {fileID: 803765617}
   refresherSource: {fileID: 247752176}
+--- !u!114 &247752178
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 247752172}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b776eddf509b44b598447c95142f2b97, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Core.PresetSheetRuntimeRefresher
+  collection: {fileID: 11400000, guid: e5b963c9ad627ce419de041ef1af6dbd, type: 2}
+  defenderCatalog: {fileID: 11400000, guid: 346c00d9daf72429d94ddd29337c7d23, type: 2}
+  cardCatalog: {fileID: 11400000, guid: 7e41a0cd1ffdc4b6c872ef0ac3d8df0e, type: 2}
+  baseUrl: https://dev-api-somnia.cashroyale.games/demo/google/sheet
 --- !u!1 &257474116
 GameObject:
   m_ObjectHideFlags: 0
