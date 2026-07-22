@@ -24,8 +24,8 @@ Unity SO → 구글 시트 **자동 push** 를 만든다. 현재 export 는 JSON
 | 번호 | 구분 | 문서 | 목적 |
 |---|---|---|---|
 | 0 | 구현 | `0_sheetsync_core_asmdef.md` | `Wassup.SheetSync` asmdef 신설 — 자체 envelope + POST transport (**신규 파일만, import 불변**) |
-| 1 | 구현 | `1_adapter_registry.md` | 8탭 adapter 등록 테이블 {탭명·키·DTO·소스} 한곳에 |
-| 2 | 구현 | `2_combined_payload_builder.md` | 8탭(유닛2+DC6) in-memory 병합 payload 빌더 — 기존 exporter 수집 로직 재사용·확장 |
+| 1 | (흡수→2) | `1_adapter_registry.md` | 별도 registry 는 과잉 추상화(소비자 1개, 제약 8) — 유닛 2 로 흡수. 탭명은 창에서 전달, 병합은 탭명 키 |
+| 2 | 구현 | `2_combined_payload_builder.md` | 8탭 병합 payload 빌더 — 검증된 exporter 를 임시 폴더에 돌려 재읽기·병합(**exporter 미변경**) |
 | 3 | 구현 | `3_push_client_and_response.md` | `SheetPushClient` — payload→POST→응답 파싱(탭별 updated/added/orphans) + EditMode |
 | 4 | 구현 | `4_editor_push_button.md` | Import 창에 Script URL 필드(EditorPrefs)+Push 버튼+확인 다이얼로그+결과 로그 |
 | 5 | 서버+검증 | `5_apps_script_dopost.md` | `apps-script/Code.gs` generic 업서트 엔진 커밋 + 배포 가이드 + 실 test 탭 1회 push 왕복 검증 |

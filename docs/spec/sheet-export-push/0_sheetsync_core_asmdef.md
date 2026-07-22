@@ -20,7 +20,7 @@
 
 ## 완료 기준
 
-- [ ] compile 성공 — 신규 asmdef 에서 Newtonsoft(`Newtonsoft.Json.Linq`) 해석됨. 안 되면 `precompiledReferences:["Newtonsoft.Json.dll"]`+`overrideReferences:true` 로 명시.
-- [ ] read_console 에 신규 파일발 CS 에러 0. import 관련 파일 무변경(`git status` 로 `Data/StatImport/`·`Core/Api/` 미변경 확인).
-- [ ] EditMode 기존 `UnitStatImport` 스위트 여전히 통과(회귀 없음 — 애초에 import 를 안 건드림).
-- [ ] 확인 일자 + 커밋 해시 기록.
+- [x] compile 성공 — 신규 asmdef 에서 Newtonsoft(`Newtonsoft.Json.Linq`) 자동 해석됨(precompiledReferences 불요).
+- [x] read_console CS 에러 0. `git status` 상 `Data/StatImport/`·`Core/Api/` 변경 0줄(import 불변 확인).
+- [x] EditMode 1208/1210 통과·0 실패(skip 2 = 기존 `[Ignore]`, 무관).
+- [x] 확인 완료 2026-07-22 · 커밋 `e17ab435`(코드) / `ad2028f8`(스펙).

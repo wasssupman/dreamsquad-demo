@@ -22,7 +22,7 @@
 
 ## 완료 기준
 
-- [ ] EditMode: 응답 파서가 (a) 정상(updated/added/빈 orphans), (b) 고아 있는 응답, (c) `success:false`+errorDetail, (d) transport 에러 4케이스를 올바른 요약/실패 문구로 처리.
-- [ ] compile + 확인 일자·커밋 해시 기록.
+- [x] EditMode: 응답 파서가 (a) 정상(updated/added/빈 orphans), (b) 고아 있는 응답, (c) `success:false`+errorDetail, (d) transport 에러 4케이스를 올바른 요약/실패 문구로 처리 — `SheetPushReportTests` 4/4 통과.
+- [x] compile + 확인 완료 2026-07-22 · 커밋 `6aede4e9`.
 
 > 참고: 실제 네트워크 왕복 검증은 유닛 5(Apps Script 배포 후). 이 유닛은 파서 단위 테스트까지.

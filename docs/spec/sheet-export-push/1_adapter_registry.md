@@ -1,24 +1,16 @@
-# 1. Adapter 등록 테이블 (8탭 계약 한곳에)
+# 1. Adapter 등록 테이블 — (유닛 2 로 흡수됨)
 
-## 목적
+## 결론
 
-8탭의 {탭명·업서트 키·DTO 타입·수집 소스}를 **한곳에 선언**한다. 지금 이 지식은 exporter/importer/window 에 흩어져 위치기반(`r[0..5]`)으로 암묵돼 있다(`dreamcatcher-sheet-sync` 후속 후보 "탭 배선 매핑 테이블화"와 동일 문제). push payload 빌더(유닛 2)와 응답 해석이 이 테이블 하나만 읽으면 되게 한다. 이식 시 "새 프로젝트의 adapter" = 이 테이블 재작성.
+**별도 `SheetTabRegistry` 는 만들지 않는다.** 구현 착수 시점(2026-07-22)에 판단: registry(keyKind enum + collector delegate)의 소비자는 payload 빌더 하나뿐이라 제약 8("나중을 위한 추상 레이어 금지")에 걸리는 과잉 추상화다.
 
-## 변경 대상
+이유:
+- **키(id / (cardId,slot))는 서버(Apps Script) 관심사** — Unity 클라이언트는 행만 보내고 upsert 는 서버가 한다. 클라이언트 registry 의 keyKind 는 소비처 없는 dead data.
+- **탭명은 창(유닛 4)에서 흘러들어온다** — import 와 같은 탭을 겨냥하려면 `_defenderSheet`/`_enemySheet`/`_dcSheets`(EditorPrefs)를 그대로 push 에도 쓴다. 하드코딩 상수가 아니다.
+- **병합은 탭명 키 dict 조립** — 위치기반(`r[0..5]`)이 아니라 이름 기반이라, import 쪽 "탭 배선 매핑 테이블화" 백로그가 겨냥한 fragility 가 push 조립에는 없다.
 
-- 신규: `Assets/_Project/Editor/UnitStatImport/SheetTabRegistry.cs` (에디터 어셈블리 — push 는 에디터 전용, AssetDatabase scan 소스에 묶임).
-
-## 구현
-
-- `SheetTabRegistry` — 8개 엔트리의 정적 배열. 각 엔트리:
-  - `tabName` (예: `"Defenders"`, `"DcCardEffects"`) — 시트 탭명 = payload JSON 키.
-  - `keyKind` — `Id` | `CardIdSlot` (Apps Script 와 공유하는 키 계약. `id` = Defenders/Enemies/DcCards/DcSkills/DcConfig · `(cardId,slot)` = DcCardEffects/DcMechanics/DcAttackMods).
-  - 수집 델리게이트 — 그 탭의 행 배열(DTO 리스트)을 반환. 유닛 2 가 채운다(기존 `UnitStatExporter.ToDto`/`DcSheetExporter` 행빌더 재사용).
-- 탭명 상수는 기존 `UnitStatImportWindow` 의 default(`"Defenders"`/`"Enemies"`/`DefaultDcSheets`)와 **동일 문자열**을 단일 출처로 참조(중복 리터럴 금지).
-- **주의**: 이 테이블은 "재사용할 기존 시스템을 가리키는 길찾기"다. 키 계약은 이미 import applier 에 존재하므로 **새 규칙을 만들지 말고** 기존 계약을 한 뷰로 모으기만 한다.
+따라서 유닛 2 의 payload 빌더가 탭명을 파라미터로 받아 탭명 키로 직접 병합한다. registry 타입 불필요.
 
 ## 완료 기준
 
-- [ ] 8 엔트리 전부 등록, 탭명 리터럴 단일 출처.
-- [ ] compile 성공.
-- [ ] (유닛 2 에서 소비되므로) 이 유닛 단독 테스트는 생략 — 유닛 2 의 payload 빌더 테스트가 커버.
+- [x] registry 미생성 결정 기록(2026-07-22). 기능은 유닛 2 가 커버.

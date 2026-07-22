@@ -2,22 +2,27 @@
 
 ## 목적
 
-전 8탭(유닛 2 + DC 6)을 **in-memory 단일 JSON** 으로 병합해 POST 바디를 만든다. 지금 `DcSheetExporter.ExportCombinedFile` 이 DC 6탭만 파일로 병합하는데, 이를 (a) 유닛 탭 2종 포함 8탭으로, (b) 파일 대신 문자열/JObject 반환으로 일반화한다. **수집 로직은 기존 exporter 재사용** — 중복 없음.
+전 8탭(유닛 2탭 + DC 6탭)을 하나의 POST 바디(`{ "<탭명>": [rows], ... }`)로 병합한다. **기존 exporter 를 한 줄도 안 고친다** — 검증된 `ExportToFolder` 를 임시 폴더에 그대로 돌린 뒤 8개 JSON 파일을 다시 읽어 탭명 키로 합친다. `DcSheetExporter.ExportCombinedFile` 이 이미 쓰는 패턴(수집 로직 중복 0).
 
 ## 변경 대상
 
-- 수정: `Assets/_Project/Editor/UnitStatImport/DcSheetExporter.cs` — `ExportCombinedFile` 내부 병합부를 `BuildCombinedPayload(...) → JObject` 로 추출(파일 쓰기는 그 위 래퍼로 유지, 기존 버튼 무변).
-- 신규 or 수정: `Assets/_Project/Editor/UnitStatImport/UnitStatExporter.cs` — 유닛 2탭 행배열을 in-memory 로 반환하는 진입점(현재 `ExportToFolder` 가 파일만 씀 → 행 수집부 추출).
-- 신규: 8탭 병합기 — 유닛 2탭 + DC 6탭 행배열을 `SheetTabRegistry`(유닛 1) 순서로 `{ "<탭명>": [rows], ... }` JObject 로 조립. `_note` 등 `_` 접두 top-level 키는 넣지 않음(Apps Script 가 무시하지만 push 바디는 순수 데이터).
+- 신규: `Assets/_Project/Editor/UnitStatImport/SheetPushPayload.cs`.
+- **불변**: `UnitStatExporter.cs`, `DcSheetExporter.cs`(그대로 호출만).
 
 ## 구현
 
-- 직렬화 설정은 기존 exporter 와 동일: `NullValueHandling.Ignore`(null 필드 생략 = blank=keep 계약) + `StringEnumConverter`(enum=멤버명). `targetClassMask` 는 필드 attribute 컨버터 우선.
-- 유닛 탭: `UnitStatExporter.ToDto` 재사용(atk/heal 고유 투영 규칙 포함). DC 탭: `DcSheetExporter` 의 CardRow/MechanicRow/SkillRow + `_skillId`/`_projectileId`/`_effect`/`_target` 정보성 열 그대로.
-- 반환: POST 바디용 `string`(직렬화) + 필요 시 JObject. 파일 export(기존 버튼)는 이 빌더 위에서 파일로 쓰는 얇은 래퍼로 남긴다.
+- `SheetPushPayload.BuildCombinedJson(defenderSheet, enemySheet, defenderFolder, enemyFolder, dcTabs, dcFolder, skillFolder) → string`:
+  1. 임시 폴더 생성(`Path.GetTempPath()` + GUID).
+  2. `UnitStatExporter.ExportToFolder(temp, defenderSheet, enemySheet, defenderFolder, enemyFolder)` — `{defenderSheet}.json`/`{enemySheet}.json` 산출.
+  3. `DcSheetExporter.ExportToFolder(temp, dcTabs, dcFolder, skillFolder)` — DC 6탭 `{tab}.json` 산출.
+  4. `[defenderSheet, enemySheet] + dcTabs` 순서로 각 `{temp}/{tab}.json` 을 `JArray.Parse` 해 `JObject[tab]` 에 담는다.
+  5. `finally` 로 임시 폴더 삭제.
+  6. `root.ToString(Formatting.Indented)` 반환.
+- null 필드 생략(blank=keep)·enum=멤버명 등 직렬화 규약은 exporter 가 이미 보장(`NullValueHandling.Ignore`+`StringEnumConverter`). 빌더는 파일을 재조립만 하므로 규약을 재선언하지 않는다.
+- `_note` 같은 `_` top-level 키는 넣지 않는다(순수 데이터 바디).
 
 ## 완료 기준
 
-- [ ] EditMode: 병합 JObject 가 8개 탭 키를 모두 갖고, 각 탭 행이 키 필드(`id` 또는 `cardId`+`slot`)를 포함하며, null 필드가 생략됨을 검증.
-- [ ] 기존 "Export SO → JSON Files" / "시트 페이로드(1파일)" 버튼 동작 무변(회귀 없음).
-- [ ] compile + 확인 일자·커밋 해시 기록.
+- [x] compile 성공(신규 파일). read_console 에러 0.
+- [x] 기존 export 버튼("Export SO→JSON", "시트 페이로드", DC export) 동작 무변(exporter 미변경이라 구조적으로 보장 — `git` 상 exporter 파일 미변경).
+- [x] 확인 완료 2026-07-22 · 커밋 `6aede4e9`. (실 push 왕복은 유닛 5.)

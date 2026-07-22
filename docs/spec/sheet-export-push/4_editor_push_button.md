@@ -21,7 +21,7 @@
 
 ## 완료 기준
 
-- [ ] 창에 URL 필드 + Push 버튼 노출, URL 없으면 비활성.
-- [ ] (유닛 5 배포 후) 실 test 탭에 push → Result 로그에 탭별 카운트·고아 표시.
-- [ ] `_requestInFlight` 가 성공/실패/예외 모두에서 해제됨(스티킹 없음).
-- [ ] compile + 확인 일자·커밋 해시 기록.
+- [x] 창에 URL 필드 + Push 버튼 노출, URL 없으면 비활성. 창 open 시 OnGUI 예외 0(콘솔 확인).
+- [ ] (유닛 5 배포 후) 실 test 탭에 push → Result 로그에 탭별 카운트·고아 표시. ← **인계 대기**
+- [x] `_requestInFlight` 가 성공/실패/예외 모두에서 해제됨(payload try/catch + Push 콜백 무조건 발화).
+- [x] compile + 확인 완료 2026-07-22 · 커밋 `6aede4e9`.
