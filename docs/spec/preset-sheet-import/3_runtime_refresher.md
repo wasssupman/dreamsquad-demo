@@ -31,3 +31,4 @@ dev/QA 빌드에서 로그인 후 `Presets` 탭을 fetch 해 `SquadPresetCollect
 - compile green.
 - (선택) EditMode: fake `Result` + in-test 카탈로그로 `ApplyBody` 가 collection 재구성.
 - 페이지 재오픈 시 최신 `collection.presets` 반영(중복 아이템 없음). unit 4 Play 에서 실증.
+- ✅ 완료 2026-07-22 · commit `8a922165` — 컴파일 그린, refresher 소스셋 포함. `ApplyBody`+실 카탈로그 통과 검증(units 14/0/0·cards 20/0, temp 컬렉션 2프리셋, 실 asset 무손). 페이지 재빌드는 unit 4 Play 실증.
