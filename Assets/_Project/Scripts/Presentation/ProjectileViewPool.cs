@@ -28,6 +28,8 @@ namespace Wassup.Presentation
             public GameObject prefab;
             public ProjectileFacing facing;
             public float spinSpeed;
+            // bomb-thrower-defender unit 5 — GrenadeToCell 퓨즈 점멸 스케일 펄스의 기준값.
+            public float baseScale;
             public float3 lastPosition;
             public float heightOffset;   // view 공간 Y 렌더 오프셋 (ECS/velocity 엔 미반영)
             // unit 9 — SkyFall 낙하 압축(뷰 전용): 낙하가 비행 후반 이 비율에 압축된다.
@@ -110,6 +112,7 @@ namespace Wassup.Presentation
                 prefab = data.projectilePrefab,
                 facing = data.facing,
                 spinSpeed = data.spinSpeed,
+                baseScale = data.visualScale * scaleMul,
                 // tilemap-view-backend unit 3 — lastPosition 은 view 좌표로 보존(velocity 를 view 공간에서 계산).
                 lastPosition = spawnView,   // Fix 1 (heightOffset 미포함 = 순수 위치, velocity 정확)
                 heightOffset = data.visualHeightOffset,
@@ -167,6 +170,22 @@ namespace Wassup.Presentation
                         }
                         pos.y += ps.arcHeight * (1f - SkyFall.FallProgress(p, fp));
                     }
+                    // bomb-thrower-defender unit 5 — 구르기 arc(travel 낮은 arc; 퓨즈엔 t=1
+                    // → ArcHeight 0 = 지면 정지) + 착지 후 폭발 예고 스케일 점멸.
+                    else if (ps.movement == MovementKind.GrenadeToCell)
+                    {
+                        float gt = ps.flightTime > 0f ? math.saturate(ps.elapsed / ps.flightTime) : 1f;
+                        // 통통 튀기며 굴러감: 감쇠하는 다중 바운스(착지점 gt=1 에서 0 → 지면).
+                        // arcHeight = 첫 바운스 최대 높이(SO), BounceHops = 이동 중 튀는 횟수.
+                        const float BounceHops = 3f;
+                        pos.y += ps.arcHeight * math.abs(math.sin(math.PI * gt * BounceHops)) * (1f - gt);
+                        if (ps.elapsed >= ps.flightTime)
+                        {
+                            float fuseT = ps.elapsed - ps.flightTime;
+                            float pulse = 1f + 0.18f * math.sin(fuseT * 18f);
+                            state.view.transform.localScale = Vector3.one * (state.baseScale * pulse);
+                        }
+                    }
                 }
 
                 var view = state.view;
@@ -183,6 +202,16 @@ namespace Wassup.Presentation
                     case ProjectileFacing.SpinAroundUp:
                         view.transform.Rotate(0f, state.spinSpeed * dt, 0f);
                         break;
+                    case ProjectileFacing.RollAlongPath:
+                    {
+                        // bomb-thrower-defender unit 5 — 데굴데굴: 진행방향 수직 수평축 기준
+                        // tumble. 이동 중일 때만(퓨즈/착지 시 vel≈0 → 정지). spinSpeed = 굴림 속도.
+                        var rvel = pos - state.lastPosition;
+                        var rflat = new Vector3(rvel.x, 0f, rvel.z);
+                        if (rflat.sqrMagnitude > 0.0001f)
+                            view.transform.Rotate(Vector3.Cross(Vector3.up, rflat.normalized), state.spinSpeed * dt, Space.World);
+                        break;
+                    }
                     case ProjectileFacing.FixedUp:
                     default:
                         break;
@@ -198,6 +227,7 @@ namespace Wassup.Presentation
                     {
                         view = s.view, prefab = s.prefab,
                         facing = s.facing, spinSpeed = s.spinSpeed,
+                        baseScale = s.baseScale,
                         lastPosition = pos,
                         heightOffset = s.heightOffset,
                         fallPortion = s.fallPortion,

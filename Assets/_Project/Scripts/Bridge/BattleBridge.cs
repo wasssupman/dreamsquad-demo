@@ -285,6 +285,8 @@ namespace Wassup.Bridge
         private int _killScoreTotal;
         private NativeQueue<GoalReachedEvent> _goalEventQueue;
         private NativeQueue<DefenderDeathEvent> _defenderDeathQueue;
+        // dreamcatcher-shield-break unit 0 — 실드 피격 파열 이벤트 채널(Units→Bridge).
+        private NativeQueue<ShieldBreakEvent> _shieldBreakQueue;
         private NativeQueue<Wassup.Battle.Combat.UnitAttackVisualEvent> _unitAttackVisualQueue;
         private NativeQueue<Wassup.Battle.Combat.Projectile.ProjectileHitEvent> _projectileHitEventQueue;
         // aggro-targeting Unit 11 — Combat(AttackSystem)→Effects(AggroStateSystem) 히트 채널.
@@ -526,6 +528,7 @@ namespace Wassup.Bridge
         {
             DestroyEntitiesByType<GoalReachedEventsSingleton>();
             DestroyEntitiesByType<DefenderDeathEventsSingleton>();
+            DestroyEntitiesByType<ShieldBreakEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Combat.UnitAttackVisualEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Combat.Projectile.ProjectileHitEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Units.HealAppliedEventsSingleton>();
@@ -554,12 +557,14 @@ namespace Wassup.Bridge
             DestroyEntitiesByType<Wassup.Battle.Effects.BurnoutGimmickConfig>();
             DestroyEntitiesByType<Wassup.Battle.Effects.RedBullGimmickConfig>();
             DestroyEntitiesByType<Wassup.Battle.Effects.ClockOutGimmickConfig>();
+            DestroyEntitiesByType<Wassup.Battle.Effects.OnsenGimmickConfig>();
         }
 
         private void DisposeEcsInfrastructureNativeContainers()
         {
             if (_goalEventQueue.IsCreated) _goalEventQueue.Dispose();
             if (_defenderDeathQueue.IsCreated) _defenderDeathQueue.Dispose();
+            if (_shieldBreakQueue.IsCreated) _shieldBreakQueue.Dispose();
             if (_unitAttackVisualQueue.IsCreated) _unitAttackVisualQueue.Dispose();
             if (_projectileHitEventQueue.IsCreated) _projectileHitEventQueue.Dispose();
             if (_aggroHitEventQueue.IsCreated) _aggroHitEventQueue.Dispose();
@@ -1245,6 +1250,12 @@ namespace Wassup.Bridge
             _defenderDeathQueue = new NativeQueue<DefenderDeathEvent>(Allocator.Persistent);
             var deathSingleton = _em.CreateEntity();
             _em.AddComponentData(deathSingleton, new DefenderDeathEventsSingleton { queue = _defenderDeathQueue });
+
+            // dreamcatcher-shield-break unit 0 — 실드 피격 파열 이벤트 채널.
+            if (_shieldBreakQueue.IsCreated) _shieldBreakQueue.Dispose();
+            _shieldBreakQueue = new NativeQueue<ShieldBreakEvent>(Allocator.Persistent);
+            var shieldBreakSingleton = _em.CreateEntity();
+            _em.AddComponentData(shieldBreakSingleton, new ShieldBreakEventsSingleton { queue = _shieldBreakQueue });
 
             // Unified attack visual trigger channel — every attacker (defender
             // or enemy) enqueues one event per fire so SpineUnitPool can play
@@ -2166,6 +2177,7 @@ namespace Wassup.Bridge
 
             DrainProjectileSpawnRequests();
             DrainDefenderDeathEvents();
+            DrainShieldBreakEvents();
             DrainUnitAttackVisualEvents();
             DrainProjectileHitEvents();
             DrainHealAppliedEvents();
@@ -2606,6 +2618,121 @@ namespace Wassup.Bridge
                 if (hasBinding)
                     DefenderDied?.Invoke(binding.entity, binding.data);
             }
+        }
+
+        // dreamcatcher-shield-break unit 2 — 실드 피격 파열 이벤트 드레인. payload 분기:
+        // SelfTileAoe(A) = SkyFall×TileAoe 폭발(OnDeath/메테오 동형), AreaSleep(B) = 근접 M명 수면.
+        private void DrainShieldBreakEvents()
+        {
+            if (!_shieldBreakQueue.IsCreated) return;
+            var targets = new System.Collections.Generic.List<(Entity entity, Vector2Int cell)>();
+            while (_shieldBreakQueue.TryDequeue(out var evt))
+            {
+                var logger = GameManager.Instance?.Logger;
+                int2 grid = _generatedMap.IsCreated ? _generatedMap.gridSize : GridSize;
+                var hostCell = GridMath.WorldToCell(evt.position, tileSize, grid, origin: _boardOrigin);
+                Logging.ShieldBreakLog log = logger != null
+                    ? new Logging.ShieldBreakLog
+                    {
+                        host_unit = FindDefenderData(evt.host)?.displayName ?? "<unknown>",
+                        tile = new Vector2Int(hostCell.x, hostCell.y),
+                        payload = evt.payload.ToString(),
+                    }
+                    : null;
+
+                if (evt.payload == Wassup.Data.DcPayloadKind.SelfTileAoe)
+                {
+                    // 실드 파열 폭발 — OnDeath 폭발/메테오와 동형. bake 가 AoE view 없으면 슬롯 자체를
+                    // 스킵하므로 aoeDataIndex 는 정상 >=0. 실제 데미지는 투사체(ProjectileHitSystem)가
+                    // 해결 — 로그의 대상은 cast 시점 범위 내 적 스냅샷(raw magnitude, cap 0 = 투사체 동일).
+                    if (evt.aoeDataIndex >= 0)
+                    {
+                        SpawnProjectile(new ProjectileSpawnRequest
+                        {
+                            movement = MovementKind.SkyFall,
+                            payload = PayloadKind.TileAoe,
+                            impact = evt.position,
+                            damage = evt.magnitude,
+                            impactTileRange = evt.tileRange,
+                            flightTime = 0f,
+                            dataIndex = evt.aoeDataIndex,
+                            visualScale = 1f,
+                        }, Entity.Null);
+                        if (log != null)
+                        {
+                            CollectShieldBreakTargets(evt.position, evt.tileRange, 0, targets);
+                            foreach (var t in targets)
+                                log.targets.Add(new Logging.ShieldBreakTargetLog
+                                { tile = t.cell, effect = "Damage", magnitude = evt.magnitude });
+                        }
+                    }
+                }
+                else if (evt.payload == Wassup.Data.DcPayloadKind.AreaSleep)
+                {
+                    int cap = (int)evt.magnitude;
+                    if (cap >= 1 && evt.tileRange >= 1 && evt.duration > 0f)
+                    {
+                        CollectShieldBreakTargets(evt.position, evt.tileRange, cap, targets);
+                        foreach (var t in targets)
+                        {
+                            Wassup.Battle.Effects.EffectSpawner.ApplyCc(_em, t.entity,
+                                new Wassup.Battle.Effects.CcEffect
+                                {
+                                    kind = Wassup.Battle.Effects.CcKind.Sleep,
+                                    remainingTime = evt.duration,
+                                });
+                            if (log != null)
+                                log.targets.Add(new Logging.ShieldBreakTargetLog
+                                { tile = t.cell, effect = "Sleep", magnitude = evt.duration });
+                        }
+                    }
+                }
+
+                if (logger != null) logger.RecordShieldBreak(log);
+            }
+        }
+
+        // dreamcatcher-shield-break unit 2/5 — 실드 파열 AoE 대상 수집(공유). bomb-thrower AoE
+        // (ProjectileHitSystem) 패턴 미러: WorldToCell + TileAoe.IsInTileRange 범위 필터 →
+        // AoeTargetCap.SelectNearest(거리² cap, 결정론). cap<=0 = 범위 전체(투사체 폭발과 동일).
+        // 호출측: 수면=결과에 ApplyCc(Sleep) + 로그, 데미지=투사체가 별도 해결(여기선 로그용 스냅샷).
+        private void CollectShieldBreakTargets(float3 center, int tileRange, int cap,
+            System.Collections.Generic.List<(Entity entity, Vector2Int cell)> results)
+        {
+            results.Clear();
+            int2 grid = _generatedMap.IsCreated ? _generatedMap.gridSize : GridSize;
+            var centerCell = GridMath.WorldToCell(center, tileSize, grid, origin: _boardOrigin);
+            using var enemyQuery = _em.CreateEntityQuery(
+                ComponentType.ReadOnly<AttackUnitTag>(),
+                ComponentType.ReadOnly<LocalTransform>());
+            var enemies = enemyQuery.ToEntityArray(Allocator.Temp);
+            var xforms = enemyQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
+            var inRange = new NativeList<int>(Allocator.Temp);
+            var inRangeDistSq = new NativeList<float>(Allocator.Temp);
+            for (int i = 0; i < enemies.Length; i++)
+            {
+                float3 vpos = xforms[i].Position;
+                var cell = GridMath.WorldToCell(vpos, tileSize, grid, origin: _boardOrigin);
+                if (!Wassup.Battle.Combat.TileAoe.IsInTileRange(cell, centerCell, tileRange)) continue;
+                inRange.Add(i);
+                float dx = vpos.x - center.x;
+                float dz = vpos.z - center.z;
+                inRangeDistSq.Add(dx * dx + dz * dz);
+            }
+            var selected = new NativeList<int>(Allocator.Temp);
+            Wassup.Battle.Combat.AoeTargetCap.SelectNearest(inRangeDistSq.AsArray(), cap, ref selected);
+            for (int s = 0; s < selected.Length; s++)
+            {
+                int idx = inRange[selected[s]];
+                var vpos = xforms[idx].Position;
+                var cell = GridMath.WorldToCell(vpos, tileSize, grid, origin: _boardOrigin);
+                results.Add((enemies[idx], new Vector2Int(cell.x, cell.y)));
+            }
+            enemies.Dispose();
+            xforms.Dispose();
+            inRange.Dispose();
+            inRangeDistSq.Dispose();
+            selected.Dispose();
         }
 
         // Unified attack visual drain. AttackSystem enqueues one event per
@@ -3055,6 +3182,11 @@ namespace Wassup.Bridge
                 priorityDamageMul = req.priorityDamageMul,
                 // dreamcatcher-heavy-strike unit 0 — 강공 전-victim 배율 verbatim 복사(기본 0=inert).
                 heavyDamageMul = req.heavyDamageMul,
+                // bomb-thrower-defender unit 2 — TileAoe cap/CC + 뷰 변종, verbatim(기본 0=레거시).
+                aoeTargetCap = req.aoeTargetCap,
+                ccKind = req.ccKind,
+                ccDuration = req.ccDuration,
+                bombType = req.bombType,
             };
             if (req.movement == MovementKind.BallisticArcToPoint)
             {
@@ -3107,6 +3239,20 @@ namespace Wassup.Bridge
                 // ProjectileData.dropHeight 로 보충(Meteor 는 캐스트 시 직접 기입).
                 state.arcHeight = req.arcHeight > 0f ? req.arcHeight
                     : (projData != null ? projData.dropHeight : 0f);
+            }
+            else if (req.movement == MovementKind.GrenadeToCell)
+            {
+                // bomb-thrower-defender unit 1 — roll to a fixed cell then fuse.
+                // flightTime (travelSec) is request-carried & fixed (SkyFall 관례,
+                // 거리 무관) — NOT BallisticArc.FlightTime(속도 유도)이다(계약 2).
+                // arcHeight≈0 keeps it on the ground (rolling look). Same spawn-
+                // height plane as ballistic so the arc's linear Y stays flat.
+                state.origin = spawnPos;
+                state.impact = new float3(req.impact.x, spawnHeight, req.impact.z);
+                state.impactTileRange = req.impactTileRange;
+                state.flightTime = math.max(req.flightTime, 0f);
+                state.fuseSec = math.max(req.fuseSec, 0f);
+                state.arcHeight = req.arcHeight;
             }
             _em.AddComponentData(entity, state);
 
@@ -4176,6 +4322,15 @@ namespace Wassup.Bridge
         public void SetAimGuide(Vector2Int center, DefenderUnitData unit, Vector2Int? selected)
         {
             if (tilemapMapView == null || unit == null) return;
+            if (unit.bombLandingTiles > 0)
+            {
+                // bomb-thrower-defender unit 8 — 착지 타일 조준: 상하좌우 N칸 착지 후보만
+                // 하이라이트(레인/화살표 없음 — 머신거너와 다른 모드). 선택되면 그 착지 셀만.
+                PaintLandingCells(center, unit.bombLandingTiles, selected, selected.HasValue ? 1f : AimLaneDimAlpha);
+                _rangeOwner = RangeDisplayOwner.PlacementAim;
+                tilemapMapView.ClearAimArrows();
+                return;
+            }
             int tileRange = GridMath.RangeToTiles(unit.attackRange);
             PaintLanes(center, tileRange, selected, selected.HasValue ? 1f : AimLaneDimAlpha);
             _rangeOwner = RangeDisplayOwner.PlacementAim;
@@ -4221,6 +4376,20 @@ namespace Wassup.Bridge
                       || LaneMath.IsInLane(c, new int2(0, -1), tileRange, cell);
                 if (lit) _laneCellScratch.Add(new Vector2Int(cell.x, cell.y));
             }
+            tilemapMapView.SetPlacementCells(_laneCellScratch, alphaMul);
+        }
+
+        // bomb-thrower-defender unit 8 — 폭탄 착지 후보 셀. 미선택이면 4 cardinal 착지 셀
+        // (center±N) 전부 dim, 선택되면 그 방향 착지 셀 1개만. PaintLanes 의 착지-셀 판.
+        private void PaintLandingCells(Vector2Int center, int landingTiles, Vector2Int? facing, float alphaMul)
+        {
+            if (landingTiles <= 0) return;
+            _laneCellScratch.Clear();
+            if (facing.HasValue)
+                _laneCellScratch.Add(center + facing.Value * landingTiles);
+            else
+                for (int i = 0; i < AimCardinals.Length; i++)
+                    _laneCellScratch.Add(center + AimCardinals[i] * landingTiles);
             tilemapMapView.SetPlacementCells(_laneCellScratch, alphaMul);
         }
 
@@ -4440,6 +4609,27 @@ namespace Wassup.Bridge
                     amount = unitData.shieldAmount,
                     targetCount = unitData.shieldTargetCount,
                     filter = unitData.shieldTargetFilter,
+                });
+            }
+            // bomb-thrower-defender unit 3 — 폭탄 발사 상태 베이크. bombLandingTiles>0 &&
+            // bombTravelSec>0 = 활성(directionalAttack 조준과 공존). RNG 는 캐스터별 독립
+            // stream(배치 셀 해시로 decorrelate → order-independent 결정론, 계약 6).
+            if (unitData.bombLandingTiles > 0 && unitData.bombTravelSec > 0f)
+            {
+                uint cellHash = (uint)(cell.x * 73856093) ^ (uint)(cell.y * 19349663);
+                uint bombSeed = math.max(1u, (uint)Wassup.Core.MatchSeed.DeriveBombSeed(_matchSeed) ^ cellHash);
+                _em.AddComponentData(entity, new Wassup.Battle.Combat.BombLauncherState
+                {
+                    landingTiles = unitData.bombLandingTiles,
+                    travelSec = unitData.bombTravelSec,
+                    fuseSec = unitData.bombFuseSec,
+                    aoeTileRange = unitData.bombAoeTileRange,
+                    aoeTargetCap = unitData.bombAoeTargetCap,
+                    arcHeight = unitData.bombArcHeight,
+                    dmgBombDamage = unitData.bombDamage,
+                    sleepSec = unitData.bombSleepSec,
+                    stunSec = unitData.bombStunSec,
+                    rng = new Unity.Mathematics.Random(bombSeed),
                 });
             }
             if (pendingDeployment)
@@ -5011,6 +5201,7 @@ namespace Wassup.Bridge
             DestroyEntitiesByType<Wassup.Battle.Effects.BurnoutGimmickConfig>();
             DestroyEntitiesByType<Wassup.Battle.Effects.RedBullGimmickConfig>();
             DestroyEntitiesByType<Wassup.Battle.Effects.ClockOutGimmickConfig>();
+            DestroyEntitiesByType<Wassup.Battle.Effects.OnsenGimmickConfig>();
 
             if (_assignedGimmick is Wassup.Data.BurnoutGimmickData bd)
             {
@@ -5054,6 +5245,19 @@ namespace Wassup.Bridge
                 // unit 4 — 메테오 셀 선택 rng seed(매치당·matchSeed 파생 → 결정론). 요청은 config
                 // 주입 이후에만 발생하므로 seed 선행 보장.
                 _meteorRng = new Unity.Mathematics.Random((uint)Wassup.Core.MatchSeed.DeriveMeteorSeed(_matchSeed));
+            }
+            else if (_assignedGimmick is Wassup.Data.OnsenGimmickData od)
+            {
+                Debug.Log($"[GimmickConfig] OnsenGimmickConfig 주입 (gimmick={od.gimmickId})");
+                var e = _em.CreateEntity();
+                _em.AddComponentData(e, new Wassup.Battle.Effects.OnsenGimmickConfig
+                {
+                    heatInterval  = od.heatInterval,
+                    flipThreshold = od.flipThreshold,
+                    healPercent   = od.healPercent,
+                    lossPercent   = od.lossPercent,
+                    heatMaxStack  = od.heatMaxStack,
+                });
             }
         }
 

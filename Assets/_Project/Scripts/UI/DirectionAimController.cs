@@ -133,9 +133,13 @@ namespace Wassup.UI
         {
             if (_bridge == null || _unit == null) return default;
             if (!_bridge.TryScreenToCell(_camera, screenPos, out var cell)) return default;
+            // bomb-thrower-defender unit 8 — 폭탄병은 사거리 레인이 아니라 착지 거리 N 이
+            // 조준 범위(그 방향 N칸 내 탭 = 확정, lenient). 머신거너는 attackRange 레인.
+            int rangeTiles = _unit.bombLandingTiles > 0
+                ? _unit.bombLandingTiles
+                : GridMath.RangeToTiles(_unit.attackRange);
             return DirectionAimLogic.Evaluate(
-                new int2(_cell.x, _cell.y), new int2(cell.x, cell.y),
-                GridMath.RangeToTiles(_unit.attackRange));
+                new int2(_cell.x, _cell.y), new int2(cell.x, cell.y), rangeTiles);
         }
 
         // EventSystem.IsPointerOverGameObject() 를 쓰지 않는다: 그 API 는 지난 프레임의

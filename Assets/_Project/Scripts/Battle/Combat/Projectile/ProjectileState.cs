@@ -55,6 +55,13 @@ namespace Wassup.Battle.Combat.Projectile
         public float elapsed;
         public float arcHeight;
 
+        // ── Grenade fuse (MovementKind.GrenadeToCell, bomb-thrower-defender) ──
+        // Extra hold at the cell after travel completes (elapsed >= flightTime)
+        // before arrival fires at elapsed >= flightTime + fuseSec. Default 0 = no
+        // fuse (every non-grenade arm arrives exactly at flightTime). Movement owns
+        // this timing; ProjectileHitSystem never sees it (contract 3).
+        public float fuseSec;
+
         // ── Directional trajectory (MovementKind.DirectionalLinear) ──────────
         // direction: normalized fire vector on the sim plane, locked at launch
         // (facing is immutable, so it never changes in flight). maxDistance:
@@ -78,6 +85,16 @@ namespace Wassup.Battle.Combat.Projectile
 
         // ── Tile-AOE payload (PayloadKind.TileAoe) ───────────────────────────
         public int impactTileRange;
+
+        // ── Bomb TileAoe extensions (bomb-thrower-defender unit 2) ───────────
+        // aoeTargetCap: nearest-B cap (0 = 무제한 = 레거시 메테오/스킬/보스 경로).
+        // ccKind/ccDuration: 수면/스턴탄 CC (0=None, Combat→Effects EnemyCcEvents).
+        // bombType: 뷰 변종 인덱스(0 데미지/1 수면/2 스턴) — sim 무해 캐리어,
+        // Presentation 이 색으로 해석(계약 8). 전부 기본 0 = 레거시 TileAoe.
+        public int aoeTargetCap;
+        public byte ccKind;
+        public float ccDuration;
+        public byte bombType;
 
         // ── Bounce (dreamcatcher-attack-mod-bounce) ──────────────────────────
         // Post-resolution survival for SingleSplash: while bounceRemaining > 0

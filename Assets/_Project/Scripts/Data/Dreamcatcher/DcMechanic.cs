@@ -19,7 +19,9 @@ namespace Wassup.Data
     // dreamcatcher-kill-and-threshold unit 0 — OnKill(이 유닛이 적을 처치할 때마다).
     // 발동 지점은 DamageApplicationSystem 킬 처리(주기/카운터 없음) — 다른 트리거처럼
     // AttackSystem RESOLVE 를 타지 않는다. append-only.
-    public enum DcTriggerKind { None, AttackN, OnDamagedN, OnDeath, PeriodicTimer, HealthThreshold, OnKill }
+    // dreamcatcher-shield-break unit 0 — OnShieldBreak(부여된 실드가 피격으로 완전 소진될 때).
+    // 발동 지점 = DamageApplicationSystem 실드 Absorb(시간만료 경로는 없음/배제). append-only.
+    public enum DcTriggerKind { None, AttackN, OnDamagedN, OnDeath, PeriodicTimer, HealthThreshold, OnKill, OnShieldBreak }
     // dreamcatcher-subconscious-unit — SelfWarmupBuff(7): reserved. 핸들러 미구현
     // (BattleBridge 분기 유실, spec-review H4) — 어떤 카드도 사용 안 함. append-only 로 잔존.
     // dreamcatcher-placement-aura — PlacementAura(8): host 부착 스폰 오라. host·기존 유닛
@@ -67,6 +69,10 @@ namespace Wassup.Data
         // ApplyStackToTarget 의 tileRange 재사용 선례). 처치=배율 보상+회수,
         // 유출=무보상 회수(EnemyGone). append-only.
         BountyMark = 15,
+        // dreamcatcher-shield-break unit 1 — 실드 파열(OnShieldBreak) 시 N타일 내 가장 가까운
+        // M명을 L초 수면. magnitude=M·tileRange=N·duration=L 재사용(신규 DcPayloadSpec 필드 0).
+        // 실행=BattleBridge.DrainShieldBreakEvents(적 쿼리+AoeTargetCap+EnemyCcEvent{Sleep}). append-only.
+        AreaSleep = 16,
     }
 
     // dreamcatcher-new-abilities unit 0 — 데이터 계층 CC 선택자(공격 온-히트용). 정의

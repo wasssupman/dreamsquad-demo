@@ -24,6 +24,9 @@ namespace Wassup.Data
         AlongVelocity,
         FixedUp,
         SpinAroundUp,
+        // bomb-thrower-defender unit 5 — 데굴데굴: 진행방향에 수직인 수평축 기준 tumble
+        // (이동 중일 때만 굴러 착지/퓨즈 시 정지). spinSpeed = 굴림 속도. 구르는 폭탄 뷰용.
+        RollAlongPath,
     }
 
     // Trajectory mode. Homing tracks the target entity (legacy). BallisticToCell

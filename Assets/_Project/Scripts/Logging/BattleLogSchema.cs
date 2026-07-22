@@ -29,6 +29,8 @@ namespace Wassup.Logging
         public List<AttackOutputUsageLog> attack_outputs = new();
         public List<KillLog> kills = new();
         public List<ScoreEventLog> score_events = new();
+        // dreamcatcher-shield-break unit 5 — 실드 파열(OnShieldBreak) 발동 + 대상별 효과.
+        public List<ShieldBreakLog> shield_break_events = new();
         public BattleResult result = new();
     }
 
@@ -295,5 +297,25 @@ namespace Wassup.Logging
         public int delta;
         public int score;
         public float time;
+    }
+
+    // dreamcatcher-shield-break unit 5 — 실드 파열 1건: host(실드 깨진 유닛) + payload + 대상별 효과.
+    [Serializable]
+    public class ShieldBreakLog
+    {
+        public string host_unit;   // 실드가 깨진 유닛(unit_type), "<unknown>" 가능
+        public Vector2Int tile;    // host 타일
+        public string payload;     // "SelfTileAoe" / "AreaSleep"
+        public int affected_count;
+        public float time;
+        public List<ShieldBreakTargetLog> targets = new();
+    }
+
+    [Serializable]
+    public class ShieldBreakTargetLog
+    {
+        public Vector2Int tile;    // 대상 적 타일
+        public string effect;      // "Damage"(cast 시점 범위 스냅샷) / "Sleep"
+        public float magnitude;    // 데미지량 / 수면 초
     }
 }

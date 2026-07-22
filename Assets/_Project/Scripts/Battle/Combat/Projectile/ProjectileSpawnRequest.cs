@@ -40,6 +40,11 @@ namespace Wassup.Battle.Combat.Projectile
         // so the drain cannot derive it from speed; Meteor maps warningSec here.
         public float flightTime;
 
+        // ── Grenade fuse (bomb-thrower-defender unit 1) ──────────────────────
+        // Extra hold after travel before the GrenadeToCell arm arrives. Copied
+        // verbatim onto ProjectileState. Default 0 = no fuse (non-grenade arms).
+        public float fuseSec;
+
         // ── Directional trajectory (defender-directional-volley unit 1) ──────
         // Fire direction (unit vector on the sim plane) + max flight distance
         // (world units). Zero on homing/ballistic requests — ignored there. The
@@ -54,6 +59,14 @@ namespace Wassup.Battle.Combat.Projectile
 
         // ── Tile-AOE payload ─────────────────────────────────────────────────
         public int impactTileRange;
+
+        // ── Bomb TileAoe extensions (bomb-thrower-defender unit 2) ───────────
+        // Copied verbatim onto ProjectileState by the drain. Defaults 0 = legacy
+        // TileAoe(uncapped, damage-only). Set by AttackSystem bomb branch(unit 4).
+        public int aoeTargetCap;
+        public byte ccKind;
+        public float ccDuration;
+        public byte bombType;
 
         // ── Bounce (dreamcatcher-attack-mod-bounce) ──────────────────────────
         // Copied verbatim onto ProjectileState by the drain. Defaults 0 = no-op.

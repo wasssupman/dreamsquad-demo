@@ -29,5 +29,12 @@ namespace Wassup.Battle.Combat.Projectile
         // via the PathHit payload sweep (defender-directional-volley unit 1;
         // move arm lands in unit 2).
         DirectionalLinear = 3,
+
+        // bomb-thrower-defender unit 1 — roll to a cell-locked impact over a
+        // request-carried travelSec (flightTime, fixed — not speed-derived), hold
+        // at the cell through fuseSec, then arrive (impactReached) at
+        // flightTime + fuseSec. Reuses BallisticArc.ArcPosition for the roll
+        // (arcHeight≈0 = ground roll); resolves as TileAoe at arrival.
+        GrenadeToCell = 4,
     }
 }
