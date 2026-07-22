@@ -289,6 +289,16 @@ namespace Wassup.Logging
             currentEntry.on_place_usages.Add(usage);
         }
 
+        // dreamcatcher-shield-break unit 5 — 실드 파열 발동 + 대상별 효과. time/affected_count 는
+        // 여기서 스탬프(caller 는 host/payload/targets 만 채운다). BattleLogger 가 유일 writer(계약).
+        public void RecordShieldBreak(ShieldBreakLog log)
+        {
+            if (currentEntry == null || log == null) return;
+            log.time = (float)(DateTime.UtcNow - startedAt).TotalSeconds;
+            log.affected_count = log.targets != null ? log.targets.Count : 0;
+            currentEntry.shield_break_events.Add(log);
+        }
+
         public void RecordAttackOutput(string sourceUnit, string kind, float magnitude, string detail, float duration, Vector2Int sourceTile, Vector2Int targetTile)
         {
             if (currentEntry == null) return;

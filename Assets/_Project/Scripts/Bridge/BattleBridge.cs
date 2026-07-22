@@ -2605,42 +2605,83 @@ namespace Wassup.Bridge
         private void DrainShieldBreakEvents()
         {
             if (!_shieldBreakQueue.IsCreated) return;
+            var targets = new System.Collections.Generic.List<(Entity entity, Vector2Int cell)>();
             while (_shieldBreakQueue.TryDequeue(out var evt))
             {
+                var logger = GameManager.Instance?.Logger;
+                int2 grid = _generatedMap.IsCreated ? _generatedMap.gridSize : GridSize;
+                var hostCell = GridMath.WorldToCell(evt.position, tileSize, grid, origin: _boardOrigin);
+                Logging.ShieldBreakLog log = logger != null
+                    ? new Logging.ShieldBreakLog
+                    {
+                        host_unit = FindDefenderData(evt.host)?.displayName ?? "<unknown>",
+                        tile = new Vector2Int(hostCell.x, hostCell.y),
+                        payload = evt.payload.ToString(),
+                    }
+                    : null;
+
                 if (evt.payload == Wassup.Data.DcPayloadKind.SelfTileAoe)
                 {
-                    // 실드 파열 폭발 — OnDeath 폭발/메테오와 동형. bake 가 AoE view 없으면
-                    // 슬롯 자체를 스킵하므로 aoeDataIndex 는 정상적으로 >=0.
-                    if (evt.aoeDataIndex < 0) continue;
-                    SpawnProjectile(new ProjectileSpawnRequest
+                    // 실드 파열 폭발 — OnDeath 폭발/메테오와 동형. bake 가 AoE view 없으면 슬롯 자체를
+                    // 스킵하므로 aoeDataIndex 는 정상 >=0. 실제 데미지는 투사체(ProjectileHitSystem)가
+                    // 해결 — 로그의 대상은 cast 시점 범위 내 적 스냅샷(raw magnitude, cap 0 = 투사체 동일).
+                    if (evt.aoeDataIndex >= 0)
                     {
-                        movement = MovementKind.SkyFall,
-                        payload = PayloadKind.TileAoe,
-                        impact = evt.position,
-                        damage = evt.magnitude,
-                        impactTileRange = evt.tileRange,
-                        flightTime = 0f,
-                        dataIndex = evt.aoeDataIndex,
-                        visualScale = 1f,
-                    }, Entity.Null);
+                        SpawnProjectile(new ProjectileSpawnRequest
+                        {
+                            movement = MovementKind.SkyFall,
+                            payload = PayloadKind.TileAoe,
+                            impact = evt.position,
+                            damage = evt.magnitude,
+                            impactTileRange = evt.tileRange,
+                            flightTime = 0f,
+                            dataIndex = evt.aoeDataIndex,
+                            visualScale = 1f,
+                        }, Entity.Null);
+                        if (log != null)
+                        {
+                            CollectShieldBreakTargets(evt.position, evt.tileRange, 0, targets);
+                            foreach (var t in targets)
+                                log.targets.Add(new Logging.ShieldBreakTargetLog
+                                { tile = t.cell, effect = "Damage", magnitude = evt.magnitude });
+                        }
+                    }
                 }
                 else if (evt.payload == Wassup.Data.DcPayloadKind.AreaSleep)
                 {
-                    ApplyShieldBreakAreaSleep(evt);
+                    int cap = (int)evt.magnitude;
+                    if (cap >= 1 && evt.tileRange >= 1 && evt.duration > 0f)
+                    {
+                        CollectShieldBreakTargets(evt.position, evt.tileRange, cap, targets);
+                        foreach (var t in targets)
+                        {
+                            Wassup.Battle.Effects.EffectSpawner.ApplyCc(_em, t.entity,
+                                new Wassup.Battle.Effects.CcEffect
+                                {
+                                    kind = Wassup.Battle.Effects.CcKind.Sleep,
+                                    remainingTime = evt.duration,
+                                });
+                            if (log != null)
+                                log.targets.Add(new Logging.ShieldBreakTargetLog
+                                { tile = t.cell, effect = "Sleep", magnitude = evt.duration });
+                        }
+                    }
                 }
+
+                if (logger != null) logger.RecordShieldBreak(log);
             }
         }
 
-        // dreamcatcher-shield-break unit 2 — 실드 파열 시 N타일 내 가장 가까운 M명을 L초 수면.
-        // bomb-thrower AoE(ProjectileHitSystem) 패턴 미러: WorldToCell + TileAoe.IsInTileRange 로
-        // 범위 수집 → AoeTargetCap.SelectNearest(거리² M, 결정론) → EffectSpawner.ApplyCc(Sleep).
-        // 적 CC 적용은 Effects 외부 choke point(EffectSpawner)로만 — 맥락 경계 준수.
-        private void ApplyShieldBreakAreaSleep(ShieldBreakEvent evt)
+        // dreamcatcher-shield-break unit 2/5 — 실드 파열 AoE 대상 수집(공유). bomb-thrower AoE
+        // (ProjectileHitSystem) 패턴 미러: WorldToCell + TileAoe.IsInTileRange 범위 필터 →
+        // AoeTargetCap.SelectNearest(거리² cap, 결정론). cap<=0 = 범위 전체(투사체 폭발과 동일).
+        // 호출측: 수면=결과에 ApplyCc(Sleep) + 로그, 데미지=투사체가 별도 해결(여기선 로그용 스냅샷).
+        private void CollectShieldBreakTargets(float3 center, int tileRange, int cap,
+            System.Collections.Generic.List<(Entity entity, Vector2Int cell)> results)
         {
-            int cap = (int)evt.magnitude;
-            if (cap < 1 || evt.tileRange < 1 || evt.duration <= 0f) return;
-
-            var centerCell = GridMath.WorldToCell(evt.position, tileSize, _generatedMap.gridSize, origin: _boardOrigin);
+            results.Clear();
+            int2 grid = _generatedMap.IsCreated ? _generatedMap.gridSize : GridSize;
+            var centerCell = GridMath.WorldToCell(center, tileSize, grid, origin: _boardOrigin);
             using var enemyQuery = _em.CreateEntityQuery(
                 ComponentType.ReadOnly<AttackUnitTag>(),
                 ComponentType.ReadOnly<LocalTransform>());
@@ -2651,24 +2692,21 @@ namespace Wassup.Bridge
             for (int i = 0; i < enemies.Length; i++)
             {
                 float3 vpos = xforms[i].Position;
-                var cell = GridMath.WorldToCell(vpos, tileSize, _generatedMap.gridSize, origin: _boardOrigin);
-                if (!Wassup.Battle.Combat.TileAoe.IsInTileRange(cell, centerCell, evt.tileRange)) continue;
+                var cell = GridMath.WorldToCell(vpos, tileSize, grid, origin: _boardOrigin);
+                if (!Wassup.Battle.Combat.TileAoe.IsInTileRange(cell, centerCell, tileRange)) continue;
                 inRange.Add(i);
-                float dx = vpos.x - evt.position.x;
-                float dz = vpos.z - evt.position.z;
+                float dx = vpos.x - center.x;
+                float dz = vpos.z - center.z;
                 inRangeDistSq.Add(dx * dx + dz * dz);
             }
             var selected = new NativeList<int>(Allocator.Temp);
             Wassup.Battle.Combat.AoeTargetCap.SelectNearest(inRangeDistSq.AsArray(), cap, ref selected);
             for (int s = 0; s < selected.Length; s++)
             {
-                var victim = enemies[inRange[selected[s]]];
-                Wassup.Battle.Effects.EffectSpawner.ApplyCc(_em, victim,
-                    new Wassup.Battle.Effects.CcEffect
-                    {
-                        kind = Wassup.Battle.Effects.CcKind.Sleep,
-                        remainingTime = evt.duration,
-                    });
+                int idx = inRange[selected[s]];
+                var vpos = xforms[idx].Position;
+                var cell = GridMath.WorldToCell(vpos, tileSize, grid, origin: _boardOrigin);
+                results.Add((enemies[idx], new Vector2Int(cell.x, cell.y)));
             }
             enemies.Dispose();
             xforms.Dispose();

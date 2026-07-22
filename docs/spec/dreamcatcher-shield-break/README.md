@@ -36,6 +36,7 @@
 | 2 | `DrainShieldBreakEvents` 실행 | [ECS] | BattleBridge drain, payload 분기 — SelfTileAoe→SpawnProjectile(SkyFall×TileAoe, host cell); AreaSleep→적 Chebyshev 쿼리+AoeTargetCap(M)+`EnemyCcEvent{Sleep,L}` enqueue. 드레인 호출 배선 |
 | 3 | 카드 2종 + 카탈로그 | [data] | 드림캐쳐 A(OnShieldBreak+SelfTileAoe)·B(OnShieldBreak+AreaSleep) 카드 SO + 카탈로그 등록. 수치 SO |
 | 4 | Play 통합 검증 | [ECS] | shield-guardian + 대상 유닛 + 적 → 피격 실드파괴 → A 폭발/B 수면 실측 |
+| 5 | 배틀로그 기록 | [logging] | 실드 파열 발동 + 대상별 효과(누구에게 뭐)를 `shield_break_events[]` 에 기록 (사용자 요청, unit 4 Play 관측용) |
 
 ## Feature-Wide 계약
 
