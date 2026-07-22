@@ -58,6 +58,9 @@ namespace Wassup.Core
         public int Gauge { get; private set; }
         public int GaugeMax => config != null ? config.gaugeMax : 100;
         public int HandSize => config != null ? config.handSize : 5;
+        // dreamcatcher-orb-dock unit 1 — 항아리 독이 코스트 눈금·ready 임계를 데이터에서
+        // 파생하기 위해 config 를 읽는다(뷰는 읽기 전용; DreamcatcherHandView.Config 미러).
+        public AwakeningConfig Config => config;
         // subconscious-curse-expansion unit 3 — 표식 드롭 픽 반경(타일, SO 노브).
         public float EnemyPickRadiusTiles => config != null ? config.enemyPickRadiusTiles : 1.5f;
 

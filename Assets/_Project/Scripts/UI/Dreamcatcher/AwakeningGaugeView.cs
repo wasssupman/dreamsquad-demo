@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -9,70 +10,68 @@ using Wassup.UI.Layout;
 
 namespace Wassup.UI
 {
-    // awakening-hud-resource-button — bottom-right Dreamcatcher resource action.
-    // The exact reserve is the primary read; a continuous ring is only the ratio cue.
-    // Tapping emits Toggled while DreamcatcherHandView owns the actual hand state.
+    // dreamcatcher-orb-dock unit 1 — 트레이 우측 분리 "드림캐쳐 항아리 독".
+    // 코너 버스트 버튼(retired)을 대체한다. 세로 항아리에 큰 숫자(1순위 판독) + 세로 채움
+    // + 코스트 눈금 + ready 림 + 발견성 라벨. 채움은 unit 2 피규어가 덮을 placeholder.
+    // 탭=Toggled(기존 계약), open/close 상태 소유자는 여전히 DreamcatcherHandView.
+    // 클래스명·public API·씬 배선(GameObject 1012444853, gaugeView 참조 2곳)은 유지.
     public class AwakeningGaugeView : MonoBehaviour, IPointerDownHandler, IPointerUpHandler
     {
         [SerializeField] private DreamcatcherHandController handController;
         [SerializeField] private TMP_FontAsset labelFont;
         [SerializeField] private TMP_FontAsset numberFont;
 
-        [Header("Casual Burst Button")]
-        [FormerlySerializedAs("dreamOrbFrameSprite")]
-        [SerializeField] private Sprite burstFrameSprite;
-        [SerializeField] private Color backingColor = new Color(0.07f, 0.05f, 0.14f, 0.94f);
-        [SerializeField] private Color fillColor = new Color(0.7f, 0.43f, 1f, 1f);
-        [SerializeField] private Color chargedColor = new Color(0.43f, 0.92f, 1f, 1f);
-        [SerializeField] private Color haloColor = new Color(0.56f, 0.28f, 1f, 0.5f);
+        [Header("Jar Colors")]
+        [SerializeField] private Color backingColor = new Color(0.09f, 0.08f, 0.15f, 0.95f);
+        [SerializeField] private Color fillColor = new Color(0.55f, 0.42f, 0.82f, 0.9f);
+        [SerializeField] private Color chargedColor = new Color(0.43f, 0.86f, 0.92f, 0.95f);
         [SerializeField] private Color maxColor = new Color(1f, 0.77f, 0.12f, 1f);
-        [SerializeField] private Color dormantFrameColor = new Color(0.68f, 0.65f, 0.76f, 0.78f);
+        // 기존 authored 값 보존: haloColor→rimColor, dormantFrameColor→dormantColor.
+        [FormerlySerializedAs("haloColor")]
+        [SerializeField] private Color rimColor = new Color(0.56f, 0.43f, 1f, 0.9f);
+        [FormerlySerializedAs("dormantFrameColor")]
+        [SerializeField] private Color dormantColor = new Color(0.62f, 0.58f, 0.7f, 0.7f);
+        [SerializeField] private Color tickColor = new Color(0.86f, 0.82f, 0.96f, 0.72f);
         [SerializeField] private float valuePunchScale = 1.18f;
 
-        [Header("Idle Affordance")]
-        [SerializeField] private float ambientCycleSeconds = 3.2f;
-        [SerializeField] private float ambientScale = 1.018f;
-        [SerializeField] private float ambientTiltDegrees = 0.6f;
-        [SerializeField, Range(0f, 1f)] private float dormantAmbientMultiplier = 0.45f;
-        [SerializeField] private float sheenIntervalSeconds = 3.8f;
-        [SerializeField] private float sheenSweepSeconds = 0.68f;
-        [SerializeField] private Vector2 sheenSize = new Vector2(30f, 154f);
-        [SerializeField] private float sheenTravel = 86f;
-        [SerializeField] private float sheenTiltDegrees = -16f;
-        [SerializeField] private Color sheenColor = new Color(0.82f, 0.98f, 1f, 0.18f);
+        [Header("Placement")]
+        [SerializeField] private float trayGap = 16f;      // 트레이 우측 엣지와의 간격
+        [SerializeField] private float baselineY = 18f;     // 하단 기준선
+        [SerializeField] private float fallbackTrayHalf = 490f; // 트레이 미bind 시 폴백 반폭
+
+        // Layout consts (authored 아님 — 항아리 기하).
+        const float DockWidth = 150f, DockHeight = 236f;
+        const float JarWidth = 134f, JarHeight = 208f, JarBottom = 24f;
+        const float JarBorder = 6f, InteriorPad = 9f;
 
         public event System.Action Toggled;
         public RectTransform HitRect => _panel != null ? (RectTransform)_panel.transform : null;
 
+        // dreamcatcher-orb-dock unit 1 — DreamcatcherHandView.Start 가 트레이 RectTransform 을
+        // 넘겨준다(씬 배선 없이 기존 참조로). LateUpdate 가 트레이 우측 엣지에 독을 정렬.
+        public void BindTray(RectTransform trayRect) => _trayRect = trayRect;
+
+        private RectTransform _trayRect;
         private GameObject _panel;
         private RectTransform _visualRoot;
-        private RectTransform _faceRoot;
+        private Image _jarFrame;
+        private Image _rim;
+        private Image _fill;
         private TextMeshProUGUI _valueLabel;
-        private TextMeshProUGUI _actionLabel;
         private TextMeshProUGUI _gainLabel;
-        private Image _halo;
-        private Image _frame;
-        private Image _chargeLiquid;
-        private Image _liquidSurface;
-        private Image _sheen;
         private bool _built;
         private bool _open;
-        private bool _pressed;
-        // unit 10 — 표시 판정의 두 입력. _phase 는 PhaseChanged 가 갱신하고
-        // _suppressed 는 튜토리얼이 SetSuppressed 로 갱신한다.
         private GamePhase _phase;
         private bool _suppressed;
-        private bool _maxReady;
         private int _lastShown = -1;
         private float _normalized;
+        private float _readyThreshold = 1f;
+        private bool _ready;
         private Coroutine _punch;
-        private Coroutine _pulse;
         private Coroutine _gain;
-        private Coroutine _gainBounce;
-        private Coroutine _maxBurst;
-        private Coroutine _maxIdle;
+        private Coroutine _pulse;
         private Coroutine _pressRelease;
-        private Coroutine _ambient;
+        private Coroutine _readyPulse;
 
         public void Pulse()
         {
@@ -85,23 +84,19 @@ namespace Wassup.UI
         public void SetOpen(bool open)
         {
             _open = open;
-            if (open) ResetAmbientVisuals();
             UpdateVisualState();
         }
 
         public void OnPointerDown(PointerEventData eventData)
         {
-            if (_panel == null) return;
-            _pressed = true;
-            ResetAmbientVisuals();
+            if (_visualRoot == null) return;
             if (_pressRelease != null) StopCoroutine(_pressRelease);
-            _panel.transform.localScale = Vector3.one * 0.95f;
+            _visualRoot.localScale = Vector3.one * 0.95f;
         }
 
         public void OnPointerUp(PointerEventData eventData)
         {
-            if (_panel == null) return;
-            _pressed = false;
+            if (_visualRoot == null) return;
             if (_pressRelease != null) StopCoroutine(_pressRelease);
             _pressRelease = StartCoroutine(PressReleaseRoutine());
         }
@@ -129,10 +124,24 @@ namespace Wassup.UI
                 handController.GaugeChanged -= OnGaugeChanged;
             if (GameManager.Instance != null)
                 GameManager.Instance.PhaseChanged -= OnPhaseChanged;
-            _pressed = false;
-            if (_panel != null) _panel.transform.localScale = Vector3.one;
-            StopMaxIdle();
-            StopAmbient();
+            if (_visualRoot != null) _visualRoot.localScale = Vector3.one;
+        }
+
+        // 트레이 우측 엣지에 독을 정렬. 트레이·독 SafeAreaRoot 는 congruent(UiSafeAreaFitter)라
+        // 트레이 폭 반값이 곧 우측 엣지 x. 폭은 매 프레임 갱신될 수 있어(슬롯 수 변화) 추종한다.
+        private void LateUpdate()
+        {
+            if (_panel == null || !_panel.activeInHierarchy) return;
+            float half = fallbackTrayHalf;
+            if (_trayRect != null)
+            {
+                float w = _trayRect.rect.width;
+                if (w > 1f) half = w * 0.5f;
+            }
+            var rt = (RectTransform)_panel.transform;
+            var target = new Vector2(half + trayGap, baselineY);
+            if ((rt.anchoredPosition - target).sqrMagnitude > 0.01f)
+                rt.anchoredPosition = target;
         }
 
         private void OnPhaseChanged(GamePhase phase)
@@ -141,10 +150,8 @@ namespace Wassup.UI
             ApplyPanelVisibility();
         }
 
-        // first-session-tutorial unit 10 — 첫 판은 배치만으로 승부를 보게 하려고 버튼을
-        // 통째로 감춘다. 표시 소유자는 여전히 이 뷰이므로, 튜토리얼이 SetActive 를 직접
-        // 부르면 다음 페이즈 전이에서 되살아난다. GimmickGuideView.SetTutorialSuppressed
-        // 와 같은 형태의 명시 seam 을 둔다.
+        // first-session-tutorial — 첫 판은 배치만으로 승부를 보게 각성 UI 를 감춘다.
+        // 표시 소유자는 여전히 이 뷰. FirstSessionTutorialController 가 SetSuppressed 로 갱신.
         public void SetSuppressed(bool suppressed)
         {
             if (_suppressed == suppressed) return;
@@ -155,20 +162,15 @@ namespace Wassup.UI
         private void ApplyPanelVisibility()
         {
             if (_panel == null) return;
-            // 캐시한 _phase 를 읽는다. GameManager.Instance.CurrentPhase 직독은 금지 —
-            // 같은 PhaseChanged 이벤트 안에서 구독자 순서에 따라 값이 갈린다.
+            // 캐시한 _phase 를 읽는다(GameManager.Instance.CurrentPhase 직독 금지 —
+            // 같은 PhaseChanged 이벤트 안에서 구독자 순서에 따라 값이 갈린다).
             if (!_suppressed && _phase == GamePhase.Battle)
             {
                 _panel.SetActive(true);
                 Refresh(handController != null ? handController.Gauge : 0, punch: false);
-                if (_maxReady && _maxBurst == null && _maxIdle == null)
-                    _maxIdle = StartCoroutine(MaxIdleRoutine());
-                StartAmbient();
             }
             else
             {
-                StopMaxIdle();
-                StopAmbient();
                 _panel.SetActive(false);
             }
         }
@@ -182,16 +184,10 @@ namespace Wassup.UI
             _valueLabel.text = value.ToString();
             float previousNormalized = _normalized;
             _normalized = max > 0 ? Mathf.Clamp01((float)value / max) : 0f;
-            if (_chargeLiquid != null)
+            if (_fill != null)
             {
-                _chargeLiquid.fillAmount = _normalized;
-                _chargeLiquid.color = Color.Lerp(fillColor, chargedColor, _normalized);
-            }
-            if (_liquidSurface != null)
-            {
-                var surfaceRect = _liquidSurface.rectTransform;
-                surfaceRect.anchoredPosition = new Vector2(0f, Mathf.Lerp(-58f, 58f, _normalized));
-                _liquidSurface.gameObject.SetActive(_normalized > 0.01f && _normalized < 0.99f);
+                _fill.fillAmount = _normalized;
+                _fill.color = Color.Lerp(fillColor, chargedColor, _normalized);
             }
 
             int delta = _lastShown >= 0 ? value - _lastShown : 0;
@@ -203,19 +199,19 @@ namespace Wassup.UI
                 {
                     if (_gain != null) StopCoroutine(_gain);
                     _gain = StartCoroutine(ShowGain(delta));
-                    if (_gainBounce != null) StopCoroutine(_gainBounce);
-                    _gainBounce = StartCoroutine(GainBounceRoutine());
                 }
             }
-            if (_normalized >= 0.999f && previousNormalized < 0.999f && _panel.activeInHierarchy)
+
+            bool wasReady = _normalized >= _readyThreshold;
+            bool nowReady = previousNormalized >= _readyThreshold;
+            // ready 로 갓 넘어간 순간 rim 한 번 강조(unit 4 가 정밀 affordability·오버플로우 확장).
+            if (_normalized >= _readyThreshold && previousNormalized < _readyThreshold
+                && _panel != null && _panel.activeInHierarchy)
             {
-                if (_maxBurst != null) StopCoroutine(_maxBurst);
-                _maxBurst = StartCoroutine(MaxReadyRoutine());
+                if (_readyPulse != null) StopCoroutine(_readyPulse);
+                _readyPulse = StartCoroutine(ReadyPulseRoutine());
             }
-            else if (_normalized < 0.999f && previousNormalized >= 0.999f)
-            {
-                StopMaxIdle();
-            }
+
             _lastShown = value;
             UpdateVisualState();
         }
@@ -223,22 +219,213 @@ namespace Wassup.UI
         private void UpdateVisualState()
         {
             bool dormant = _normalized <= 0.001f && !_open;
-            _maxReady = _normalized >= 0.999f;
-            if (_frame != null)
-                _frame.color = dormant ? dormantFrameColor : Color.white;
-            if (_halo != null)
+            _ready = _normalized >= _readyThreshold;
+            if (_rim != null)
             {
-                var c = _maxReady ? maxColor : haloColor;
-                c.a *= dormant ? 0f : (_maxReady || _open ? 1f : Mathf.Lerp(0.16f, 0.65f, _normalized));
-                _halo.color = c;
+                Color c = _ready ? (_normalized >= 0.999f ? maxColor : rimColor) : rimColor;
+                c.a = dormant ? 0f : (_ready || _open ? 1f : Mathf.Lerp(0.12f, 0.5f, _normalized));
+                _rim.color = c;
             }
-            if (_actionLabel != null)
+            if (_jarFrame != null)
+                _jarFrame.color = dormant ? dormantColor : Color.white;
+        }
+
+        private void BuildCanvas()
+        {
+            if (_built) return;
+            _built = true;
+
+            var roots = UiCanvasSetup.Ensure(gameObject, sortingOrder: 7);
+
+            // 트레이 우측 분리 독. anchor 하단중앙, pivot 하단좌 → LateUpdate 가 x 를 트레이
+            // 우측 엣지로 민다. 히트 영역 = 패널 전체(세로 항아리라 세로 히트 면적 충분).
+            _panel = new GameObject("DreamcatcherJarDock", typeof(RectTransform), typeof(Image), typeof(Button));
+            _panel.transform.SetParent(roots.SafeAreaRoot, false);
+            var panelRect = (RectTransform)_panel.transform;
+            panelRect.anchorMin = panelRect.anchorMax = new Vector2(0.5f, 0f);
+            panelRect.pivot = new Vector2(0f, 0f);
+            panelRect.anchoredPosition = new Vector2(fallbackTrayHalf + trayGap, baselineY);
+            panelRect.sizeDelta = new Vector2(DockWidth, DockHeight);
+
+            var hitGraphic = _panel.GetComponent<Image>();
+            hitGraphic.color = new Color(1f, 1f, 1f, 0.001f);
+            var button = _panel.GetComponent<Button>();
+            button.transition = Selectable.Transition.None;
+            button.targetGraphic = hitGraphic;
+            button.onClick.AddListener(() =>
             {
-                _actionLabel.text = _maxReady ? "MAX!" : "/100";
-                _actionLabel.color = dormant
-                    ? new Color(0.67f, 0.64f, 0.75f, 0.9f)
-                    : (_maxReady ? maxColor : (_open ? chargedColor : Color.white));
+                SoundManager.Instance?.PlayUiTick();
+                Toggled?.Invoke();
+            });
+
+            var visualGO = new GameObject("JarVisual", typeof(RectTransform));
+            visualGO.transform.SetParent(_panel.transform, false);
+            _visualRoot = (RectTransform)visualGO.transform;
+            _visualRoot.anchorMin = Vector2.zero;
+            _visualRoot.anchorMax = Vector2.one;
+            _visualRoot.offsetMin = Vector2.zero;
+            _visualRoot.offsetMax = Vector2.zero;
+
+            // 항아리 몸체(배킹+테두리). 9-slice rounded rect.
+            var jarGO = new GameObject("JarBody", typeof(RectTransform), typeof(Image));
+            jarGO.transform.SetParent(_visualRoot, false);
+            var jarRect = (RectTransform)jarGO.transform;
+            jarRect.anchorMin = jarRect.anchorMax = new Vector2(0.5f, 0f);
+            jarRect.pivot = new Vector2(0.5f, 0f);
+            jarRect.anchoredPosition = new Vector2(0f, JarBottom);
+            jarRect.sizeDelta = new Vector2(JarWidth, JarHeight);
+            _jarFrame = jarGO.GetComponent<Image>();
+            _jarFrame.sprite = UiRoundedSprite.Make(18f, JarBorder, backingColor, new Color(0.3f, 0.26f, 0.42f, 1f));
+            _jarFrame.type = Image.Type.Sliced;
+            _jarFrame.raycastTarget = false;
+
+            float interiorW = JarWidth - 2f * InteriorPad;
+            float interiorH = JarHeight - 2f * InteriorPad;
+
+            // 세로 채움(unit 2 피규어가 덮을 placeholder). 바닥→위 Filled.
+            var fillGO = new GameObject("Fill", typeof(RectTransform), typeof(Image));
+            fillGO.transform.SetParent(jarGO.transform, false);
+            var fillRect = (RectTransform)fillGO.transform;
+            fillRect.anchorMin = fillRect.anchorMax = new Vector2(0.5f, 0f);
+            fillRect.pivot = new Vector2(0.5f, 0f);
+            fillRect.anchoredPosition = new Vector2(0f, InteriorPad);
+            fillRect.sizeDelta = new Vector2(interiorW, interiorH);
+            _fill = fillGO.GetComponent<Image>();
+            _fill.sprite = UiRoundedSprite.Make(8f, 0f, Color.white, Color.clear);
+            _fill.type = Image.Type.Filled;
+            _fill.fillMethod = Image.FillMethod.Vertical;
+            _fill.fillOrigin = (int)Image.OriginVertical.Bottom;
+            _fill.fillAmount = 0f;
+            _fill.color = fillColor;
+            _fill.raycastTarget = false;
+
+            BuildCostTicks(jarGO.transform, interiorW, interiorH, InteriorPad);
+
+            // 큰 숫자(1순위). 채움/피규어 위에 아웃라인으로 항상 읽히게.
+            var valueGO = new GameObject("Value", typeof(RectTransform));
+            valueGO.transform.SetParent(jarGO.transform, false);
+            var valueRect = (RectTransform)valueGO.transform;
+            valueRect.anchorMin = valueRect.anchorMax = new Vector2(0.5f, 0f);
+            valueRect.pivot = new Vector2(0.5f, 0.5f);
+            valueRect.anchoredPosition = new Vector2(0f, JarHeight * 0.5f);
+            valueRect.sizeDelta = new Vector2(JarWidth - 8f, 78f);
+            _valueLabel = valueGO.AddComponent<TextMeshProUGUI>();
+            if (numberFont != null) _valueLabel.font = numberFont;
+            _valueLabel.text = "0";
+            _valueLabel.fontSize = 54f;
+            _valueLabel.fontStyle = FontStyles.Bold;
+            _valueLabel.color = Color.white;
+            _valueLabel.alignment = TextAlignmentOptions.Center;
+            _valueLabel.raycastTarget = false;
+            ApplyNumberOutline(_valueLabel);
+
+            // ready 림(테두리 발화 오버레이). 색·알파는 UpdateVisualState 가 구동.
+            var rimGO = new GameObject("Rim", typeof(RectTransform), typeof(Image));
+            rimGO.transform.SetParent(jarGO.transform, false);
+            var rimRect = (RectTransform)rimGO.transform;
+            rimRect.anchorMin = Vector2.zero;
+            rimRect.anchorMax = Vector2.one;
+            rimRect.offsetMin = Vector2.zero;
+            rimRect.offsetMax = Vector2.zero;
+            _rim = rimGO.GetComponent<Image>();
+            _rim.sprite = UiRoundedSprite.Make(18f, JarBorder, Color.clear, Color.white);
+            _rim.type = Image.Type.Sliced;
+            _rim.color = Color.clear;
+            _rim.raycastTarget = false;
+
+            // 획득 +N 플로팅.
+            var gainGO = new GameObject("GainDelta", typeof(RectTransform));
+            gainGO.transform.SetParent(jarGO.transform, false);
+            var gainRect = (RectTransform)gainGO.transform;
+            gainRect.anchorMin = gainRect.anchorMax = new Vector2(0.5f, 0f);
+            gainRect.pivot = new Vector2(0.5f, 0.5f);
+            gainRect.anchoredPosition = new Vector2(0f, JarHeight * 0.5f + 34f);
+            gainRect.sizeDelta = new Vector2(90f, 40f);
+            _gainLabel = gainGO.AddComponent<TextMeshProUGUI>();
+            if (numberFont != null) _gainLabel.font = numberFont;
+            _gainLabel.fontSize = 28f;
+            _gainLabel.fontStyle = FontStyles.Bold;
+            _gainLabel.alignment = TextAlignmentOptions.Center;
+            _gainLabel.raycastTarget = false;
+            ApplyNumberOutline(_gainLabel);
+            gainGO.SetActive(false);
+
+            // 발견성 라벨 — 항아리 아래(채움/피규어에 가리지 않게). 라벨 계약 계승.
+            var labelGO = new GameObject("DockLabel", typeof(RectTransform));
+            labelGO.transform.SetParent(_visualRoot, false);
+            var labelRect = (RectTransform)labelGO.transform;
+            labelRect.anchorMin = labelRect.anchorMax = new Vector2(0.5f, 0f);
+            labelRect.pivot = new Vector2(0.5f, 0f);
+            labelRect.anchoredPosition = new Vector2(0f, 2f);
+            labelRect.sizeDelta = new Vector2(DockWidth, 20f);
+            var dockLabel = labelGO.AddComponent<TextMeshProUGUI>();
+            if (labelFont != null) dockLabel.font = labelFont;
+            dockLabel.text = "드림캐쳐";
+            dockLabel.fontSize = 16f;
+            dockLabel.fontStyle = FontStyles.Bold;
+            dockLabel.color = new Color(0.86f, 0.82f, 0.96f, 0.92f);
+            dockLabel.alignment = TextAlignmentOptions.Center;
+            dockLabel.raycastTarget = false;
+
+            ResolveReadyThreshold();
+            UiLayer.Apply(gameObject);
+            UpdateVisualState();
+        }
+
+        // 코스트 눈금: config 의 distinct 코스트마다 y=cost/max*interiorH 에 얇은 틱 + 소형 숫자.
+        // 하드코딩 금지 — 데이터 파생. 현재 라이브 값은 3종 모두 20 → 틱 1개.
+        private void BuildCostTicks(Transform jar, float interiorW, float interiorH, float pad)
+        {
+            var cfg = handController != null ? handController.Config : null;
+            if (cfg == null) return;
+            int max = handController.GaugeMax;
+            if (max <= 0) return;
+
+            var distinct = new List<int>();
+            foreach (int c in new[] { cfg.costSquad, cfg.costUnit, cfg.costActive })
+                if (c > 0 && c < max && !distinct.Contains(c)) distinct.Add(c);
+            distinct.Sort();
+
+            foreach (int c in distinct)
+            {
+                float y = pad + (float)c / max * interiorH;
+                var tickGO = new GameObject("Tick" + c, typeof(RectTransform), typeof(Image));
+                tickGO.transform.SetParent(jar, false);
+                var tr = (RectTransform)tickGO.transform;
+                tr.anchorMin = tr.anchorMax = new Vector2(0.5f, 0f);
+                tr.pivot = new Vector2(0.5f, 0.5f);
+                tr.anchoredPosition = new Vector2(0f, y);
+                tr.sizeDelta = new Vector2(interiorW, 3f);
+                var img = tickGO.GetComponent<Image>();
+                img.color = tickColor;
+                img.raycastTarget = false;
+
+                var lblGO = new GameObject("TickLabel" + c, typeof(RectTransform));
+                lblGO.transform.SetParent(jar, false);
+                var lr = (RectTransform)lblGO.transform;
+                lr.anchorMin = lr.anchorMax = new Vector2(0.5f, 0f);
+                lr.pivot = new Vector2(1f, 0.5f);
+                lr.anchoredPosition = new Vector2(interiorW * 0.5f - 4f, y + 8f);
+                lr.sizeDelta = new Vector2(34f, 18f);
+                var lbl = lblGO.AddComponent<TextMeshProUGUI>();
+                if (labelFont != null) lbl.font = labelFont;
+                lbl.text = c.ToString();
+                lbl.fontSize = 13f;
+                lbl.color = tickColor;
+                lbl.alignment = TextAlignmentOptions.Right;
+                lbl.raycastTarget = false;
             }
+        }
+
+        private void ResolveReadyThreshold()
+        {
+            var cfg = handController != null ? handController.Config : null;
+            int max = handController != null ? handController.GaugeMax : 100;
+            if (cfg == null || max <= 0) { _readyThreshold = 1f; return; }
+            int minCost = int.MaxValue;
+            foreach (int c in new[] { cfg.costSquad, cfg.costUnit, cfg.costActive })
+                if (c > 0 && c < minCost) minCost = c;
+            _readyThreshold = minCost == int.MaxValue ? 1f : Mathf.Clamp01((float)minCost / max);
         }
 
         private IEnumerator PunchValue()
@@ -262,8 +449,8 @@ namespace Wassup.UI
             if (_gainLabel == null) yield break;
             const float duration = 0.58f;
             var rt = _gainLabel.rectTransform;
-            Vector2 start = new Vector2(63f, 26f);
-            Vector2 end = new Vector2(63f, 66f);
+            Vector2 start = new Vector2(0f, JarHeight * 0.5f + 34f);
+            Vector2 end = new Vector2(0f, JarHeight * 0.5f + 72f);
             _gainLabel.text = $"+{delta}";
             _gainLabel.gameObject.SetActive(true);
             float time = 0f;
@@ -281,32 +468,8 @@ namespace Wassup.UI
             _gain = null;
         }
 
-        private IEnumerator GainBounceRoutine()
+        private IEnumerator ReadyPulseRoutine()
         {
-            if (_visualRoot == null) yield break;
-            const float duration = 0.24f;
-            float time = 0f;
-            while (time < duration)
-            {
-                time += Time.unscaledDeltaTime;
-                float k = Mathf.Clamp01(time / duration);
-                Vector3 scale;
-                if (k < 0.38f)
-                    scale = Vector3.Lerp(Vector3.one, new Vector3(1.1f, 0.91f, 1f), k / 0.38f);
-                else if (k < 0.72f)
-                    scale = Vector3.Lerp(new Vector3(1.1f, 0.91f, 1f), new Vector3(0.96f, 1.07f, 1f), (k - 0.38f) / 0.34f);
-                else
-                    scale = Vector3.Lerp(new Vector3(0.96f, 1.07f, 1f), Vector3.one, (k - 0.72f) / 0.28f);
-                _visualRoot.localScale = scale;
-                yield return null;
-            }
-            _visualRoot.localScale = Vector3.one;
-            _gainBounce = null;
-        }
-
-        private IEnumerator MaxReadyRoutine()
-        {
-            StopMaxIdle();
             if (_visualRoot == null) yield break;
             const float duration = 0.42f;
             float time = 0f;
@@ -315,177 +478,36 @@ namespace Wassup.UI
                 time += Time.unscaledDeltaTime;
                 float k = Mathf.Clamp01(time / duration);
                 float scale = k < 0.34f
-                    ? Mathf.Lerp(1f, 1.2f, k / 0.34f)
+                    ? Mathf.Lerp(1f, 1.12f, k / 0.34f)
                     : (k < 0.68f
-                        ? Mathf.Lerp(1.2f, 0.94f, (k - 0.34f) / 0.34f)
-                        : Mathf.Lerp(0.94f, 1f, (k - 0.68f) / 0.32f));
+                        ? Mathf.Lerp(1.12f, 0.96f, (k - 0.34f) / 0.34f)
+                        : Mathf.Lerp(0.96f, 1f, (k - 0.68f) / 0.32f));
                 _visualRoot.localScale = Vector3.one * scale;
-                if (_halo != null) _halo.color = Color.Lerp(maxColor, Color.white, Mathf.Sin(k * Mathf.PI));
                 yield return null;
             }
             _visualRoot.localScale = Vector3.one;
-            UpdateVisualState();
-            _maxBurst = null;
-            if (_maxReady && _panel.activeInHierarchy)
-                _maxIdle = StartCoroutine(MaxIdleRoutine());
-        }
-
-        private IEnumerator MaxIdleRoutine()
-        {
-            while (_maxReady && _panel != null && _panel.activeInHierarchy)
-            {
-                float wait = 0f;
-                while (wait < 1.15f && _maxReady)
-                {
-                    wait += Time.unscaledDeltaTime;
-                    yield return null;
-                }
-                const float duration = 0.28f;
-                float time = 0f;
-                while (time < duration && _maxReady)
-                {
-                    time += Time.unscaledDeltaTime;
-                    float k = Mathf.Sin(Mathf.Clamp01(time / duration) * Mathf.PI);
-                    _visualRoot.localScale = Vector3.one * Mathf.Lerp(1f, 1.055f, k);
-                    yield return null;
-                }
-                _visualRoot.localScale = Vector3.one;
-            }
-            _maxIdle = null;
-        }
-
-        private void StopMaxIdle()
-        {
-            if (_maxIdle != null)
-            {
-                StopCoroutine(_maxIdle);
-                _maxIdle = null;
-            }
-            if (_visualRoot != null) _visualRoot.localScale = Vector3.one;
-        }
-
-        private void StartAmbient()
-        {
-            if (_ambient == null && _panel != null && _panel.activeInHierarchy)
-                _ambient = StartCoroutine(AmbientRoutine());
-        }
-
-        private void StopAmbient()
-        {
-            if (_ambient != null)
-            {
-                StopCoroutine(_ambient);
-                _ambient = null;
-            }
-            ResetAmbientVisuals();
-        }
-
-        private bool AmbientBlocked()
-        {
-            return _open || _pressed || _maxReady || _gainBounce != null || _pulse != null ||
-                   _maxBurst != null || _maxIdle != null || _pressRelease != null;
-        }
-
-        private IEnumerator AmbientRoutine()
-        {
-            float breatheTime = 0f;
-            float sheenWait = 0f;
-            float sheenTime = -1f;
-            while (_panel != null && _panel.activeInHierarchy)
-            {
-                if (AmbientBlocked())
-                {
-                    breatheTime = 0f;
-                    sheenWait = 0f;
-                    sheenTime = -1f;
-                    ResetAmbientVisuals();
-                    yield return null;
-                    continue;
-                }
-
-                float dt = Time.unscaledDeltaTime;
-                float dormantMul = _normalized <= 0.001f ? dormantAmbientMultiplier : 1f;
-                breatheTime += dt;
-                float cycle = Mathf.Max(0.1f, ambientCycleSeconds);
-                float phase = Mathf.Repeat(breatheTime / cycle, 1f);
-                float breath = 0.5f - 0.5f * Mathf.Cos(phase * Mathf.PI * 2f);
-                float scale = Mathf.Lerp(1f, Mathf.Max(1f, ambientScale), breath * dormantMul);
-                if (_faceRoot != null)
-                {
-                    _faceRoot.localScale = Vector3.one * scale;
-                    _faceRoot.localRotation = Quaternion.Euler(0f, 0f,
-                        Mathf.Sin(phase * Mathf.PI * 2f) * ambientTiltDegrees * dormantMul);
-                }
-
-                if (sheenTime < 0f)
-                {
-                    sheenWait += dt;
-                    if (sheenWait >= Mathf.Max(0.1f, sheenIntervalSeconds))
-                    {
-                        sheenWait = 0f;
-                        sheenTime = 0f;
-                    }
-                }
-                else
-                {
-                    sheenTime += dt;
-                    float duration = Mathf.Max(0.05f, sheenSweepSeconds);
-                    float k = Mathf.Clamp01(sheenTime / duration);
-                    if (_sheen != null)
-                    {
-                        _sheen.rectTransform.anchoredPosition = new Vector2(Mathf.Lerp(-sheenTravel, sheenTravel, k), 0f);
-                        Color c = sheenColor;
-                        c.a *= Mathf.Sin(k * Mathf.PI) * dormantMul;
-                        _sheen.color = c;
-                    }
-                    if (k >= 1f)
-                    {
-                        sheenTime = -1f;
-                        if (_sheen != null) _sheen.color = Color.clear;
-                    }
-                }
-                yield return null;
-            }
-            ResetAmbientVisuals();
-            _ambient = null;
-        }
-
-        private void ResetAmbientVisuals()
-        {
-            if (_faceRoot != null)
-            {
-                _faceRoot.localScale = Vector3.one;
-                _faceRoot.localRotation = Quaternion.identity;
-            }
-            if (_sheen != null)
-            {
-                _sheen.rectTransform.anchoredPosition = new Vector2(-sheenTravel, 0f);
-                _sheen.color = Color.clear;
-            }
+            _readyPulse = null;
         }
 
         private IEnumerator PulseRoutine()
         {
-            var rt = (RectTransform)_panel.transform;
+            var rt = _visualRoot;
             const float duration = 0.22f;
             float time = 0f;
-            Color baseHalo = _halo != null ? _halo.color : default;
             while (time < duration)
             {
                 time += Time.unscaledDeltaTime;
                 float k = 1f - Mathf.Abs(2f * Mathf.Clamp01(time / duration) - 1f);
                 rt.localScale = Vector3.one * Mathf.Lerp(1f, 1.08f, k);
-                if (_halo != null) _halo.color = Color.Lerp(baseHalo, Color.white, k * 0.45f);
                 yield return null;
             }
             rt.localScale = Vector3.one;
-            if (_halo != null) _halo.color = baseHalo;
             _pulse = null;
         }
 
         private IEnumerator PressReleaseRoutine()
         {
-            var rt = (RectTransform)_panel.transform;
+            var rt = _visualRoot;
             const float duration = 0.13f;
             float time = 0f;
             while (time < duration)
@@ -500,154 +522,6 @@ namespace Wassup.UI
             }
             rt.localScale = Vector3.one;
             _pressRelease = null;
-        }
-
-        private void BuildCanvas()
-        {
-            if (_built) return;
-            _built = true;
-
-            var roots = UiCanvasSetup.Ensure(gameObject, sortingOrder: 7);
-
-            // The 244px hit area stays inside the safe corner; visible art is 220px.
-            _panel = new GameObject("AwakeningPanel", typeof(RectTransform), typeof(Image), typeof(Button));
-            _panel.transform.SetParent(roots.SafeAreaRoot, false);
-            var panelRect = (RectTransform)_panel.transform;
-            panelRect.anchorMin = panelRect.anchorMax = new Vector2(1f, 0f);
-            panelRect.pivot = new Vector2(1f, 0f);
-            panelRect.anchoredPosition = new Vector2(-24f, 20f);
-            panelRect.sizeDelta = new Vector2(244f, 244f);
-
-            var hitGraphic = _panel.GetComponent<Image>();
-            hitGraphic.color = new Color(1f, 1f, 1f, 0.001f);
-            var button = _panel.GetComponent<Button>();
-            button.transition = Selectable.Transition.None;
-            button.onClick.AddListener(() =>
-            {
-                SoundManager.Instance?.PlayUiTick();
-                Toggled?.Invoke();
-            });
-
-            var visualGO = new GameObject("BurstVisual", typeof(RectTransform));
-            visualGO.transform.SetParent(_panel.transform, false);
-            _visualRoot = (RectTransform)visualGO.transform;
-            _visualRoot.anchorMin = _visualRoot.anchorMax = new Vector2(0.5f, 0.5f);
-            _visualRoot.sizeDelta = new Vector2(220f, 220f);
-
-            var faceGO = new GameObject("AmbientFace", typeof(RectTransform));
-            faceGO.transform.SetParent(_visualRoot, false);
-            _faceRoot = (RectTransform)faceGO.transform;
-            _faceRoot.anchorMin = _faceRoot.anchorMax = new Vector2(0.5f, 0.5f);
-            _faceRoot.sizeDelta = new Vector2(220f, 220f);
-
-            var haloGO = CreateImage("ChargeGlow", _faceRoot, Vector2.zero, new Vector2(196f, 196f));
-            _halo = haloGO.GetComponent<Image>();
-            _halo.sprite = UiRoundedSprite.MakeCircle(96, Color.white);
-            _halo.color = Color.clear;
-
-            // The center face is the gauge: a clipped liquid disc rises from 0 to 100.
-            var wellGO = new GameObject("ChargeWell", typeof(RectTransform), typeof(Image), typeof(Mask));
-            wellGO.transform.SetParent(_faceRoot, false);
-            var wellRect = (RectTransform)wellGO.transform;
-            wellRect.anchorMin = wellRect.anchorMax = new Vector2(0.5f, 0.5f);
-            wellRect.anchoredPosition = Vector2.zero;
-            wellRect.sizeDelta = new Vector2(132f, 132f);
-            var well = wellGO.GetComponent<Image>();
-            well.sprite = UiRoundedSprite.MakeCircle(112, Color.white);
-            well.color = backingColor;
-            well.raycastTarget = false;
-            wellGO.GetComponent<Mask>().showMaskGraphic = true;
-
-            var liquidGO = CreateImage("ChargeLiquid", wellGO.transform, Vector2.zero, new Vector2(132f, 132f));
-            _chargeLiquid = liquidGO.GetComponent<Image>();
-            _chargeLiquid.sprite = well.sprite;
-            _chargeLiquid.type = Image.Type.Filled;
-            _chargeLiquid.fillMethod = Image.FillMethod.Vertical;
-            _chargeLiquid.fillOrigin = (int)Image.OriginVertical.Bottom;
-            _chargeLiquid.fillAmount = 0f;
-            _chargeLiquid.color = fillColor;
-
-            var surfaceGO = CreateImage("LiquidSurface", wellGO.transform, new Vector2(0f, -58f), new Vector2(108f, 13f));
-            _liquidSurface = surfaceGO.GetComponent<Image>();
-            _liquidSurface.sprite = UiRoundedSprite.MakeCircle(64, Color.white);
-            _liquidSurface.color = new Color(0.7f, 0.96f, 1f, 0.82f);
-            surfaceGO.SetActive(false);
-
-            var sheenGO = CreateImage("JellySheen", wellGO.transform, new Vector2(-sheenTravel, 0f), sheenSize);
-            _sheen = sheenGO.GetComponent<Image>();
-            _sheen.sprite = UiRoundedSprite.MakeCircle(64, Color.white);
-            _sheen.color = Color.clear;
-            _sheen.rectTransform.localRotation = Quaternion.Euler(0f, 0f, sheenTiltDegrees);
-
-            // Generated frame is intentionally symbol-free: only chunky jelly color blocks.
-            var frameGO = CreateImage("BurstFrame", _faceRoot, Vector2.zero, new Vector2(220f, 220f));
-            _frame = frameGO.GetComponent<Image>();
-            _frame.sprite = burstFrameSprite != null
-                ? burstFrameSprite
-                : UiRoundedSprite.MakeCircle(128, backingColor, 7f, new Color(1f, 0.72f, 0.25f, 1f));
-            _frame.preserveAspect = true;
-            button.targetGraphic = _frame;
-
-            var valueGO = new GameObject("Value", typeof(RectTransform));
-            valueGO.transform.SetParent(_visualRoot, false);
-            var valueRect = (RectTransform)valueGO.transform;
-            valueRect.anchorMin = valueRect.anchorMax = new Vector2(0.5f, 0.5f);
-            valueRect.anchoredPosition = new Vector2(0f, 10f);
-            valueRect.sizeDelta = new Vector2(144f, 82f);
-            _valueLabel = valueGO.AddComponent<TextMeshProUGUI>();
-            if (numberFont != null) _valueLabel.font = numberFont;
-            _valueLabel.text = "0";
-            _valueLabel.fontSize = 76f;
-            _valueLabel.fontStyle = FontStyles.Bold;
-            _valueLabel.color = Color.white;
-            _valueLabel.alignment = TextAlignmentOptions.Center;
-            _valueLabel.raycastTarget = false;
-            ApplyNumberOutline(_valueLabel);
-
-            var actionGO = new GameObject("Action", typeof(RectTransform));
-            actionGO.transform.SetParent(_visualRoot, false);
-            var actionRect = (RectTransform)actionGO.transform;
-            actionRect.anchorMin = actionRect.anchorMax = new Vector2(0.5f, 0.5f);
-            actionRect.anchoredPosition = new Vector2(0f, -43f);
-            actionRect.sizeDelta = new Vector2(132f, 28f);
-            _actionLabel = actionGO.AddComponent<TextMeshProUGUI>();
-            if (labelFont != null) _actionLabel.font = labelFont;
-            _actionLabel.text = "/100";
-            _actionLabel.fontSize = 20f;
-            _actionLabel.fontStyle = FontStyles.Bold;
-            _actionLabel.color = Color.white;
-            _actionLabel.alignment = TextAlignmentOptions.Center;
-            _actionLabel.raycastTarget = false;
-
-            var gainGO = new GameObject("GainDelta", typeof(RectTransform));
-            gainGO.transform.SetParent(_visualRoot, false);
-            var gainRect = (RectTransform)gainGO.transform;
-            gainRect.anchorMin = gainRect.anchorMax = new Vector2(0.5f, 0.5f);
-            gainRect.anchoredPosition = new Vector2(63f, 26f);
-            gainRect.sizeDelta = new Vector2(90f, 44f);
-            _gainLabel = gainGO.AddComponent<TextMeshProUGUI>();
-            if (numberFont != null) _gainLabel.font = numberFont;
-            _gainLabel.fontSize = 28f;
-            _gainLabel.fontStyle = FontStyles.Bold;
-            _gainLabel.alignment = TextAlignmentOptions.Center;
-            _gainLabel.raycastTarget = false;
-            ApplyNumberOutline(_gainLabel);
-            gainGO.SetActive(false);
-
-            UiLayer.Apply(gameObject);
-            UpdateVisualState();
-        }
-
-        private static GameObject CreateImage(string name, Transform parent, Vector2 position, Vector2 size)
-        {
-            var go = new GameObject(name, typeof(RectTransform), typeof(Image));
-            go.transform.SetParent(parent, false);
-            var rect = (RectTransform)go.transform;
-            rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0.5f);
-            rect.anchoredPosition = position;
-            rect.sizeDelta = size;
-            go.GetComponent<Image>().raycastTarget = false;
-            return go;
         }
 
         private static void ApplyNumberOutline(TextMeshProUGUI label)

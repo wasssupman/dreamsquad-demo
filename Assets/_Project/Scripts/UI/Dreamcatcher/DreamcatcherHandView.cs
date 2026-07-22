@@ -258,6 +258,15 @@ namespace Wassup.UI
             if (_panel != null) _panel.SetActive(false);
         }
 
+        // dreamcatcher-orb-dock unit 1 — 항아리 독을 트레이 우측에 정렬시키기 위해 트레이
+        // RectTransform 을 넘긴다. Start 는 모든 Awake 이후라 DefenderSelector.PanelGO 존재 보장
+        // (씬 배선 없이 기존 gaugeView·defenderSelector 참조만으로 연결).
+        private void Start()
+        {
+            if (gaugeView != null && defenderSelector != null && defenderSelector.PanelGO != null)
+                gaugeView.BindTray(defenderSelector.PanelGO.transform as RectTransform);
+        }
+
         private void OnEnable()
         {
             if (gaugeView != null) gaugeView.Toggled += OnToggled;
