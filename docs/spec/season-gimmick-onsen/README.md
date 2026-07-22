@@ -1,6 +1,6 @@
 # Season Gimmick — "뜨끈하니 좋네요오오.. 뜨겁네?" (Onsen / Heat) Spec
 
-**상태**: 초안 2026-07-21 — 네 번째 시즌 기믹. gimmickId `G4_Onsen`, displayName `"뜨끈하니 좋네요오오.. 뜨겁네?"`. 유닛 0(데이터+config+주입) 컴파일 통과.
+**상태**: 구현 완료(unit 0~3) 2026-07-22 — 네 번째 시즌 기믹. gimmickId `G4_Onsen`, displayName `"뜨끈하니 좋네요오오.. 뜨겁네?"`. 코드(0~2)+HeatMath 테스트(13/13)+에셋/pool 등록(3) 커밋·컴파일 0. ⚠ 열기 반전(회복→손실) **육안 Play 검증은 사용자 명시 확인 미완**(shield-break 테스트 중 pool=Onsen 단독이라 동시 가동은 됐음). 인계: [4_handoff_summary.md](4_handoff_summary.md).
 
 **주제 전환**: 기존 시즌 3종(Burnout·RedBull·ClockOut)은 전부 **직장/회사** 주제였다. 이 시즌은 **온천(뜨끈한 계절)** — "개운하다가 너무 오래 담그면 앗뜨" 라는 회복↔손실 반전 곡선. 이름이 곧 곡선이다.
 
