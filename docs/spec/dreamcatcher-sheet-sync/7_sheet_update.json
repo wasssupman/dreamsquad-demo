@@ -1,11 +1,11 @@
 {
   "_note": "unit 7 — Spec A/B 신규 5카드를 구글 시트에 반영. 탭명 키 = 1_seed_dreamcatcher.json 과 동일 포맷. enum 은 C# 멤버명 문자열. 각 탭 배열을 해당 시트 탭에 append. DcMechanics 는 Unity-SoT overlay(SO 에 이미 존재하는 slot 0 값을 시트로 노출). 빈 셀/생략 = 부분갱신(기존값 유지). binding/placementWarmupSec 는 정보 컬럼(importer 무시)이지만 시트 정합 위해 채움.",
   "DcCards": [
-    { "id": "shatter_hymn", "displayName": "산산이 부수는 성가", "type": "Squad", "binding": "Axis", "axis": "All", "placementWarmupSec": 0, "description": "모든 아군이 CC(기절/수면/속박) 걸린 적에게 +25% 피해" },
-    { "id": "frost_arrow", "displayName": "서리의 화살", "type": "Unit", "binding": "Unit", "axis": "All", "placementWarmupSec": 0, "description": "3번째 공격마다 대상을 0.6초 얼림(기절)" },
-    { "id": "ember_bite", "displayName": "불씨 물기", "type": "Unit", "binding": "Unit", "axis": "All", "placementWarmupSec": 0, "description": "3번째 공격마다 대상에 출혈 스택 — 지속 피해" },
-    { "id": "last_stand", "displayName": "최후의 발악", "type": "Unit", "binding": "Unit", "axis": "All", "placementWarmupSec": 0, "description": "HP가 30% 이하로 떨어지면 공격력 +30% (남은 전투 내내, 1회)" },
-    { "id": "devouring_craving", "displayName": "포식의 갈망", "type": "Unit", "binding": "Unit", "axis": "All", "placementWarmupSec": 0, "description": "적을 처치할 때마다 공격 속도 +8% (4초, 처치할 때마다 지속 갱신)" }
+    { "id": "shatter_hymn", "displayName": "CC딜", "type": "Squad", "binding": "Axis", "axis": "All", "placementWarmupSec": 0, "description": "모든 아군이 CC(기절/수면/속박) 걸린 적에게 +25% 피해" },
+    { "id": "frost_arrow", "displayName": "빙결", "type": "Unit", "binding": "Unit", "axis": "All", "placementWarmupSec": 0, "description": "3번째 공격마다 대상을 0.6초 얼림(기절)" },
+    { "id": "ember_bite", "displayName": "출혈", "type": "Unit", "binding": "Unit", "axis": "All", "placementWarmupSec": 0, "description": "3번째 공격마다 대상에 출혈 스택 — 지속 피해" },
+    { "id": "last_stand", "displayName": "빈사폭주", "type": "Unit", "binding": "Unit", "axis": "All", "placementWarmupSec": 0, "description": "HP가 30% 이하로 떨어지면 공격력 +30% (남은 전투 내내, 1회)" },
+    { "id": "devouring_craving", "displayName": "킬속", "type": "Unit", "binding": "Unit", "axis": "All", "placementWarmupSec": 0, "description": "적을 처치할 때마다 공격 속도 +8% (4초, 처치할 때마다 지속 갱신)" }
   ],
   "DcCardEffects": [
     { "cardId": "shatter_hymn", "slot": 0, "kind": "DamageVsCc", "percent": 25 }

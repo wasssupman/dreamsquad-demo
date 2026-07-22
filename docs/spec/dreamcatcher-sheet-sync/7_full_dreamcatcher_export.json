@@ -1,10 +1,10 @@
 {
-  "_note": "전 드림캐쳐 SO 전량 export 스냅샷(2026-07-13, dreamcatcher-data-hygiene 반영 — 카드 id/이름 수치 제거 + DcMechanics 판별자 소비 kind 행만). Unity Export 산출물을 탭명 키로 병합. 구글 시트 각 탭에 이 배열을 그대로 반영. enum=C# 멤버명. DcCardEffects/DcAttackMods=시트-SoT(행=배열항목), DcMechanics=Unity-SoT(값 overlay), DcCards/DcSkills/DcConfig=id 매칭.",
+  "_note": "전 드림캐쳐 SO export 스냅샷. 각 탭명 키의 배열을 구글 시트 같은 이름 탭에 업서트(키=id 또는 (cardId,slot)). enum=C# 멤버명. DcCardEffects/DcAttackMods=시트-SoT(행=배열항목), DcMechanics=Unity-SoT(값 overlay).",
   "DcCards": [
     {
       "_skillId": "meteor",
       "id": "active_meteor",
-      "displayName": "Meteor",
+      "displayName": "운석",
       "type": "Active",
       "axis": "ClassRanger",
       "description": "지정한 지역에 운석을 떨어뜨려 광역 피해를 준다."
@@ -12,7 +12,7 @@
     {
       "_skillId": "portal",
       "id": "active_portal",
-      "displayName": "Portal",
+      "displayName": "포탈",
       "type": "Active",
       "axis": "ClassRanger",
       "description": "포탈을 열어 적을 경로 뒤쪽으로 되돌린다."
@@ -20,7 +20,7 @@
     {
       "_skillId": "power_surge",
       "id": "active_power_surge",
-      "displayName": "Power Surge",
+      "displayName": "공격폭증",
       "type": "Active",
       "axis": "ClassRanger",
       "description": "아군의 공격력을 일시적으로 크게 끕어올린다."
@@ -28,7 +28,7 @@
     {
       "_skillId": "rapid_fire",
       "id": "active_rapid_fire",
-      "displayName": "Rapid Fire",
+      "displayName": "속사",
       "type": "Active",
       "axis": "ClassRanger",
       "description": "아군의 공격 속도를 폭발적으로 높인다."
@@ -36,7 +36,7 @@
     {
       "_skillId": "slow_field",
       "id": "active_slow_field",
-      "displayName": "Slow Field",
+      "displayName": "감속장",
       "type": "Active",
       "axis": "ClassRanger",
       "description": "지정 지역에 감속 장판을 만들어 적을 느리게 한다."
@@ -44,168 +44,224 @@
     {
       "_skillId": "tornado",
       "id": "active_tornado",
-      "displayName": "Tornado",
+      "displayName": "회오리",
       "type": "Active",
       "axis": "ClassRanger",
       "description": "회오리를 일으켜 적을 끌어당기며 피해를 준다."
     },
     {
       "id": "all_atk",
-      "displayName": "올 핵딜",
+      "displayName": "올딜",
       "type": "Squad",
       "axis": "All",
       "description": "모든 아군의 공격력을 강화한다."
     },
     {
       "id": "all_move",
-      "displayName": "올 발업",
+      "displayName": "올이속",
       "type": "Squad",
       "axis": "All",
       "description": "모든 아군의 이동 속도를 높인다."
     },
     {
       "id": "bouncy_bead",
-      "displayName": "통통 구슬",
+      "displayName": "튕구슬",
       "type": "Unit",
       "axis": "All",
       "description": "상시: 공격 투사체가 3타일 내 2회 튕김 (감쇠 없음)"
     },
     {
+      "id": "calamity_heart",
+      "displayName": "시한폭탄",
+      "type": "Unit",
+      "axis": "All",
+      "description": "부착 즉시 공격속도가 100% 증가하고 세 번째 공격마다 피해가 2배가 된다. 6초 뒤 사망하며, 주변 2타일에 400 피해를 준다."
+    },
+    {
       "id": "cost1_as",
-      "displayName": "1코 폭타",
+      "displayName": "1코속",
       "type": "Squad",
       "axis": "Cost1",
       "description": "1코스트 유닛의 공격 속도를 높인다."
     },
     {
       "id": "cost1_hp",
-      "displayName": "1코 존버",
+      "displayName": "1코체",
       "type": "Squad",
       "axis": "Cost1",
       "description": "1코스트 유닛의 체력을 높인다."
     },
     {
+      "id": "cracked_grail",
+      "displayName": "피값딜",
+      "type": "Squad",
+      "axis": "All",
+      "description": "호스트가 살아있는 동안 모든 아군의 공격력이 70% 증가하지만 체력이 40% 감소한다."
+    },
+    {
       "id": "devouring_craving",
-      "displayName": "포식의 갈망",
+      "displayName": "킬속",
       "type": "Unit",
       "axis": "All",
       "description": "적을 처치할 때마다 공격 속도 +8% (4초, 처치할 때마다 지속 갱신)"
     },
     {
       "id": "ember_bite",
-      "displayName": "불씨 물기",
+      "displayName": "출혈",
       "type": "Unit",
       "axis": "All",
       "description": "3번째 공격마다 대상에 출혈 스택 — 지속 피해"
     },
     {
+      "id": "eye_on_the_end",
+      "displayName": "우선조준",
+      "type": "Unit",
+      "axis": "All",
+      "description": "기본 공격은 사거리 안에서 목표 지점에 가장 가까운 악몽을 우선 노린다. 그 주 대상에게 주는 직접 피해 +20%."
+    },
+    {
       "id": "farewell",
-      "displayName": "작별 선물",
+      "displayName": "사망폭발",
       "type": "Unit",
       "axis": "All",
       "description": "사망 시 2타일 범위 100 폭발"
     },
     {
       "id": "frost_arrow",
-      "displayName": "서리의 화살",
+      "displayName": "빙결",
       "type": "Unit",
       "axis": "All",
       "description": "3번째 공격마다 대상을 0.6초 얼림(기절)"
     },
     {
       "id": "guardian_as",
-      "displayName": "가디언 폭타",
+      "displayName": "가디언속",
       "type": "Squad",
       "axis": "ClassGuardian",
       "description": "가디언 계열 아군의 공격 속도를 높인다."
     },
     {
       "id": "guardian_fortress",
-      "displayName": "가디언 풀존버",
+      "displayName": "가디언벽",
       "type": "Squad",
       "axis": "ClassGuardian",
       "description": "요새처럼 버틼다. 체력이 크게 늘지만 공격 속도는 절반으로 떨어진다."
     },
     {
       "id": "guardian_hp",
-      "displayName": "가디언 존버",
+      "displayName": "가디언체",
       "type": "Squad",
       "axis": "ClassGuardian",
       "description": "가디언 계열 아군의 체력을 늘려 전선을 지탱한다."
     },
     {
+      "id": "heavy_strike",
+      "displayName": "강타",
+      "type": "Unit",
+      "axis": "All",
+      "description": "다섯 번째 공격마다 짓누르는 강공 — 그 일격의 피해가 2배가 된다."
+    },
+    {
       "id": "last_flame",
-      "displayName": "마지막 불꽃",
+      "displayName": "불꽃폭주",
       "type": "Unit",
       "axis": "All",
       "description": "즉발 공속버프(+90%, 5초) + 5초 후 자폭"
     },
     {
       "id": "last_stand",
-      "displayName": "최후의 발악",
+      "displayName": "빈사폭주",
       "type": "Unit",
       "axis": "All",
       "description": "HP가 30% 이하로 떨어지면 공격력 +30% (남은 전투 내내, 1회)"
     },
     {
+      "id": "nightmare_afterglow",
+      "displayName": "킬딜",
+      "type": "Unit",
+      "axis": "All",
+      "description": "이 유닛에게 처치가 귀속되면 5초 동안 공격력 +15%. 다시 처치하면 지속시간이 갱신된다."
+    },
+    {
       "id": "poke_needle",
-      "displayName": "콕콕 바늘",
+      "displayName": "관통침",
       "type": "Unit",
       "axis": "All",
       "description": "5회 공격마다 대상에 투사체 20 데미지"
     },
     {
       "id": "ranger_as",
-      "displayName": "레인저 폭타",
+      "displayName": "레인저속",
       "type": "Squad",
       "axis": "ClassRanger",
       "description": "레인저 계열 아군의 공격 속도를 끕어올린다."
     },
     {
       "id": "ranger_atk",
-      "displayName": "레인저 핵딜",
+      "displayName": "레인저딜",
       "type": "Squad",
       "axis": "ClassRanger",
       "description": "레인저 계열 아군의 공격력을 강화한다."
     },
     {
       "id": "ranger_hp",
-      "displayName": "레인저 존버",
+      "displayName": "레인저체",
       "type": "Squad",
       "axis": "ClassRanger",
       "description": "레인저 계열 아군의 생존력을 높인다."
     },
     {
       "id": "shatter_hymn",
-      "displayName": "산산이 부수는 성가",
+      "displayName": "CC딜",
       "type": "Squad",
       "axis": "All",
       "description": "모든 아군이 CC(기절/수면/속박) 걸린 적에게 +25% 피해"
     },
     {
+      "id": "shield_burst",
+      "displayName": "실드폭발",
+      "type": "Unit",
+      "axis": "All",
+      "description": "부여받은 실드가 피격으로 깨지는 순간, 파편이 주변으로 터져 적에게 피해를 준다."
+    },
+    {
+      "id": "shield_lull",
+      "displayName": "실드수면",
+      "type": "Unit",
+      "axis": "All",
+      "description": "부여받은 실드가 피격으로 깨지는 순간, 파문이 퍼져 주변 적들을 잠에 빠뜨린다."
+    },
+    {
       "id": "slow_awakening",
-      "displayName": "느린 각성",
+      "displayName": "공속각성",
       "type": "Unit",
       "axis": "All",
       "description": "부착한 유닛 생존 중, 새로 배치되는 유닛이 2초 뒤 깨어나 공속 +50%"
     },
     {
-      "id": "sub_deepsleep",
-      "displayName": "깊은 잠",
-      "type": "Squad",
+      "id": "sub_butterfly_dream",
+      "displayName": "나비꿈",
+      "type": "Unit",
       "axis": "All",
-      "description": "무의식 깊은 곳의 안정 — 모든 아군의 유효 체력 +12%"
+      "description": "부착한 유닛이 즉시 4초간 깊은 잠에 빠진다(공격 불가). 잠든 동안 피격당하면 꿈이 깨져 아무 일도 일어나지 않는다. 무사히 잠을 완주하면 나비의 꿈에서 깨어나 남은 전투 동안 공격력이 35% 증가한다."
     },
     {
-      "id": "sub_dreamhaste",
-      "displayName": "꿈결 가속",
+      "id": "sub_fattened_offering",
+      "displayName": "제물표식",
+      "type": "Unit",
+      "axis": "All",
+      "description": "필드의 악몽 하나에 제물 표식을 새긴다. 표식된 악몽은 받는 피해가 30% 줄어들지만, 처치하면 각성치를 3배로 내놓는다. 놓치면 아무것도 얻지 못한다 — 가장 큰 악몽이 가장 달다."
+    },
+    {
+      "id": "sub_incubus_pact",
+      "displayName": "희생계약",
       "type": "Squad",
       "axis": "All",
-      "description": "꿈결 같은 빠름 — 모든 아군의 공격 속도 +10%"
+      "description": "부착하는 순간 본진의 유출 허용치 1을 몽마에게 지불한다 — 되돌릴 수 없다. 계약자가 살아 있는 동안 모든 아군의 공격력이 25% 증가한다. 계약자가 죽으면 힘은 사라지지만, 지불한 것은 돌아오지 않는다."
     },
     {
       "id": "thornmail",
-      "displayName": "가시 갑옷",
+      "displayName": "가시반격",
       "type": "Unit",
       "axis": "All",
       "description": "5회 피격 시 다음 공격 2연발"
@@ -235,6 +291,18 @@
       "slot": 0,
       "kind": "EffectiveHealth",
       "percent": 10.0
+    },
+    {
+      "cardId": "cracked_grail",
+      "slot": 0,
+      "kind": "AttackDamage",
+      "percent": 70.0
+    },
+    {
+      "cardId": "cracked_grail",
+      "slot": 1,
+      "kind": "EffectiveHealth",
+      "percent": -40.0
     },
     {
       "cardId": "guardian_as",
@@ -285,19 +353,50 @@
       "percent": 25.0
     },
     {
-      "cardId": "sub_deepsleep",
+      "cardId": "sub_incubus_pact",
       "slot": 0,
-      "kind": "EffectiveHealth",
-      "percent": 12.0
-    },
-    {
-      "cardId": "sub_dreamhaste",
-      "slot": 0,
-      "kind": "AttackSpeed",
-      "percent": 10.0
+      "kind": "AttackDamage",
+      "percent": 25.0
     }
   ],
   "DcMechanics": [
+    {
+      "cardId": "calamity_heart",
+      "slot": 0,
+      "triggerKind": "None",
+      "triggerPeriod": 0,
+      "payloadKind": "SelfBuffLethal",
+      "magnitude": 100.0,
+      "tileRange": 0,
+      "duration": 6.0,
+      "triggerPeriodSeconds": 0.0,
+      "triggerFraction": 0.0
+    },
+    {
+      "cardId": "calamity_heart",
+      "slot": 1,
+      "triggerKind": "AttackN",
+      "triggerPeriod": 3,
+      "payloadKind": "HeavyStrike",
+      "magnitude": 2.0,
+      "tileRange": 0,
+      "duration": 0.0,
+      "triggerPeriodSeconds": 0.0,
+      "triggerFraction": 0.0
+    },
+    {
+      "_projectileId": "meteor",
+      "cardId": "calamity_heart",
+      "slot": 2,
+      "triggerKind": "OnDeath",
+      "triggerPeriod": 0,
+      "payloadKind": "SelfTileAoe",
+      "magnitude": 400.0,
+      "tileRange": 2,
+      "duration": 0.0,
+      "triggerPeriodSeconds": 0.0,
+      "triggerFraction": 0.0
+    },
     {
       "cardId": "devouring_craving",
       "slot": 0,
@@ -351,6 +450,18 @@
       "ccKind": "Stun"
     },
     {
+      "cardId": "heavy_strike",
+      "slot": 0,
+      "triggerKind": "AttackN",
+      "triggerPeriod": 5,
+      "payloadKind": "HeavyStrike",
+      "magnitude": 2.0,
+      "tileRange": 0,
+      "duration": 0.0,
+      "triggerPeriodSeconds": 0.0,
+      "triggerFraction": 0.0
+    },
+    {
       "cardId": "last_flame",
       "slot": 0,
       "triggerKind": "None",
@@ -376,6 +487,19 @@
       "buffStat": "AttackDamage"
     },
     {
+      "cardId": "nightmare_afterglow",
+      "slot": 0,
+      "triggerKind": "OnKill",
+      "triggerPeriod": 0,
+      "payloadKind": "SelfStatBuff",
+      "magnitude": 15.0,
+      "tileRange": 0,
+      "duration": 5.0,
+      "triggerPeriodSeconds": 0.0,
+      "triggerFraction": 0.0,
+      "buffStat": "AttackDamage"
+    },
+    {
       "_projectileId": "ga_shard02",
       "cardId": "poke_needle",
       "slot": 0,
@@ -389,6 +513,31 @@
       "triggerFraction": 0.0
     },
     {
+      "_projectileId": "meteor",
+      "cardId": "shield_burst",
+      "slot": 0,
+      "triggerKind": "OnShieldBreak",
+      "triggerPeriod": 0,
+      "payloadKind": "SelfTileAoe",
+      "magnitude": 80.0,
+      "tileRange": 1,
+      "duration": 0.0,
+      "triggerPeriodSeconds": 0.0,
+      "triggerFraction": 0.0
+    },
+    {
+      "cardId": "shield_lull",
+      "slot": 0,
+      "triggerKind": "OnShieldBreak",
+      "triggerPeriod": 0,
+      "payloadKind": "AreaSleep",
+      "magnitude": 2.0,
+      "tileRange": 1,
+      "duration": 2.5,
+      "triggerPeriodSeconds": 0.0,
+      "triggerFraction": 0.0
+    },
+    {
       "cardId": "slow_awakening",
       "slot": 0,
       "triggerKind": "None",
@@ -397,6 +546,30 @@
       "magnitude": 50.0,
       "tileRange": 0,
       "duration": 2.0,
+      "triggerPeriodSeconds": 0.0,
+      "triggerFraction": 0.0
+    },
+    {
+      "cardId": "sub_butterfly_dream",
+      "slot": 0,
+      "triggerKind": "None",
+      "triggerPeriod": 0,
+      "payloadKind": "DreamCocoon",
+      "magnitude": 35.0,
+      "tileRange": 0,
+      "duration": 4.0,
+      "triggerPeriodSeconds": 0.0,
+      "triggerFraction": 0.0
+    },
+    {
+      "cardId": "sub_fattened_offering",
+      "slot": 0,
+      "triggerKind": "None",
+      "triggerPeriod": 0,
+      "payloadKind": "BountyMark",
+      "magnitude": 3.0,
+      "tileRange": 30,
+      "duration": 0.0,
       "triggerPeriodSeconds": 0.0,
       "triggerFraction": 0.0
     },
@@ -421,6 +594,14 @@
       "count": 2,
       "tileRange": 3,
       "damageMul": 1.0
+    },
+    {
+      "cardId": "eye_on_the_end",
+      "slot": 0,
+      "kind": "FrontmostTarget",
+      "count": 0,
+      "tileRange": 0,
+      "damageMul": 1.2
     }
   ],
   "DcSkills": [
@@ -508,10 +689,10 @@
       "id": "awakening_default",
       "gaugeMax": 100,
       "gaugeStart": 0,
-      "costSquad": 30,
-      "costUnit": 15,
+      "costSquad": 20,
+      "costUnit": 20,
       "costActive": 20,
-      "handSize": 5,
+      "handSize": 4,
       "maxAttachPerUnit": 3,
       "slomoTimeScale": 0.3
     },

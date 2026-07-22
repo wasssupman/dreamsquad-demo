@@ -2,8 +2,8 @@
 
 ## 목적
 
-덱빌더 상세 팝업 본문에 authored `description` 을 표시한다. 기존 자동 수치라인은 유지하고
-그 아래에 description 블록을 추가한다.
+덱빌더 상세 팝업 본문에 공용 카드 formatter를 표시한다. 구조화 수치/메커니즘 라인이 우선하고,
+구조화 요약이 없는 카드만 authored `description` fallback을 추가한다.
 
 ## 변경 대상
 
@@ -12,18 +12,18 @@
 
 ## 구현
 
-`PopupBody()` 의 반환 문자열 끝에 description 블록을 append. 현재 구조:
+`PopupBody()` 는 공용 formatter를 호출한다. 현재 구조:
 
 ```
-<size=22>[AXIS · TYPE]</size>
+<size=22>[축 · 타입]</size>
 
-Attack Speed +10%   ← effects[] 자동 라인 (유지)
+항상 → 레인저 아군 공격 속도 +10%   ← 구조화 formatter 라인
 ```
 
-여기에 description 이 있으면 구분선 + 본문을 덧붙인다:
+구조화 summary가 없고 description 이 있으면 fallback 본문을 덧붙인다:
 
 ```
-... (기존 axis 헤더 + 효과 수치 라인) ...
+... (구조화 summary가 없는 카드의 헤더) ...
 
 <색상/구분>
 {card.description}
@@ -31,10 +31,8 @@ Attack Speed +10%   ← effects[] 자동 라인 (유지)
 
 - **graceful 빈 값**(계약 4): `string.IsNullOrEmpty(card.description)` 이면 아무것도 덧붙이지
   않는다 → 기존 레이아웃 그대로.
-- effects[] 가 비고 description 만 있는 카드(Unit 카드: 콕콕 바늘 등)는 수치 라인이 없고
-  description 만 본문에 뜬다 — 현재 빈칸 문제가 이걸로 해소된다.
-- description 은 muted/화이트 톤 별도 블록으로. 자동 수치 라인과 시각적으로 구분되게
-  앞에 한 줄 여백 또는 옅은 구분 컬러 적용. 새 SerializeField/에셋 참조 없이 rich-text 로 처리.
+- 구조화 데이터가 없고 description 만 있는 카드(Unit 카드 등)는 description만 본문에 뜬다.
+- description fallback은 별도 블록으로 구분한다. 새 SerializeField/에셋 참조 없이 rich-text로 처리.
 - 팝업 텍스트 영역(`_popupEffect`) 은 이미 존재(sizeDelta 620x150) — 긴 텍스트는
   `enableWordWrapping`(TMP 기본) 로 래핑. 넘치면 폰트/영역은 이번 범위 밖(후속에서 조정).
 - **axis 칩은 Squad 전용**: 헤더의 `[AXIS · TYPE]` 에서 축 부분은 `card.type == Squad`
@@ -46,6 +44,6 @@ Attack Speed +10%   ← effects[] 자동 라인 (유지)
 ## 완료 기준
 
 - [ ] 컴파일 성공.
-- [ ] 덱빌더에서 스탯 카드(예: Ranger ATK) 탭 → 기존 수치 라인 + (authoring 후) description.
-- [ ] Unit 카드(예: 콕콕 바늘) 탭 → 본문에 description 텍스트가 보인다(더 이상 빈칸 아님).
-- [ ] description 이 빈 카드는 기존과 동일하게 수치 라인만(레이아웃 깨짐 없음).
+- [ ] 덱빌더에서 스탯/메커니즘 카드 탭 → 현재 SO 값으로 구조화 summary가 보인다.
+- [ ] 구조화 데이터가 없는 카드만 description fallback이 보인다.
+- [ ] description이 있어도 구조화 summary에 같은 문장을 중복하지 않는다.

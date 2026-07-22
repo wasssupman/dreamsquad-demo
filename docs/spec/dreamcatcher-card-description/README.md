@@ -1,6 +1,9 @@
 # dreamcatcher-card-description
 
 > 상태: 구현 완료 2026-07-10 (compile 클린 · EditMode 15/15 · PlayMode 8/8; UI 육안 검증 후속)
+>
+> **현재 텍스트 계약:** 구조화 수치 formatter는 `docs/spec/dreamcatcher-card-effect-summary/`
+> 가 우선한다. 이 spec의 `description`은 구조화 요약을 만들 수 없는 카드의 이행기 fallback이다.
 
 ## 목표
 
@@ -41,8 +44,8 @@
 1. **append-only 직렬화**: `description` 은 SO 필드 끝에 추가한다(현재 마지막 `skill` 뒤).
    기존 22개 카드 에셋은 null/빈 문자열로 역직렬화 → inert.
 2. **하드코딩 금지**: 표시 텍스트는 전부 SO `description` 에서 온다. 뷰는 문자열을 렌더만.
-3. **자동 수치라인은 SoT 유지**: effects[] 수치 라인은 밸런스와 항상 동기. description 은
-   **보완**(메커니즘/액티브/플레이버) 이지 수치의 대체가 아니다.
+3. **구조화 formatter가 SoT**: effects[]·mechanics[]·attackMods[]·skill의 현재 값으로
+   수치와 메커니즘 라인을 생성한다. `description`은 구조화 요약이 없는 카드에서만 fallback이다.
 4. **graceful 빈 값**: `description` 이 비어있으면 팝업은 description 블록을 생략(기존 레이아웃 유지).
 5. **표시 표면은 덱빌더 팝업 1곳**: 인게임 손패·기타 표면 변경 없음(이번 spec 범위 밖).
 
@@ -52,5 +55,5 @@
   호버 감지·peek 패널 인터랙션 배선 필요 → 별도 spec.
 - **Active 카드 팝업 노출**: Active 는 카탈로그(덱빌더) 밖이라 현재 팝업 미노출. 손패 peek
   후속과 함께 고려.
-- **자동 메커니즘 텍스트 생성**: mechanics[]/attackMods[] → 규칙 텍스트 자동 생성(현재는
-  authored 로 대체). 카드 수가 크게 늘면 재검토.
+- ~~**자동 메커니즘 텍스트 생성**~~ → `docs/spec/dreamcatcher-card-effect-summary/` 로
+  승격. 지원 매핑이 없는 새 enum 조합은 새 spec의 후속 후보로 관리한다.

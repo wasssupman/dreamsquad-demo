@@ -2,8 +2,8 @@
 
 ## 목적
 
-`DreamcatcherCard` 에 authored 설명 텍스트 필드를 추가한다. 효과/메커니즘/플레이버를
-한 문자열로 담아 뷰가 렌더한다.
+`DreamcatcherCard` 에 authored 설명 텍스트 필드를 추가한다. 구조화 formatter가 지원하지
+않는 효과의 이행기 fallback과 플레이버를 담아 뷰가 렌더한다.
 
 ## 변경 대상
 
@@ -14,10 +14,10 @@
 `DreamcatcherCard` 클래스의 **가장 마지막 필드**(`skill` 뒤)에 append:
 
 ```csharp
-// dreamcatcher-card-description Unit 0 — authored 효과/메커니즘 설명.
-// 덱빌더 상세 팝업에서 자동 수치라인 아래에 렌더된다(빈 값이면 블록 생략).
-// effects[] 자동생성이 못 덮는 Unit(mechanics/attackMods)·Active(skill) 카드의
-// 유일한 읽을 수 있는 설명 소스. 순수 데이터(문자열) — SO 계층은 ECS-free 유지.
+// dreamcatcher-card-description Unit 0 — legacy authored fallback/플레이버 설명.
+// 구조화 요약이 없는 카드에서만 덱빌더/툴팁 본문에 fallback으로 렌더된다.
+// 구조화 formatter가 지원하지 않는 Unit(mechanics/attackMods)·Active(skill) 조합의
+// 임시 설명 소스. 순수 데이터(문자열) — SO 계층은 ECS-free 유지.
 // 끝에 추가 → 기존 22개 카드 에셋은 빈 문자열로 역직렬화(inert).
 [TextArea] public string description;
 ```

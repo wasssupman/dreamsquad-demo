@@ -2,15 +2,15 @@
 
 ## 목적
 
-카드 에셋의 `description` 필드에 설명 텍스트를 기입한다. 팝업에 노출되는 **카탈로그 16장**
-(Squad 11 + Unit 5)이 필수, Active 6장은 provisional(팝업 미노출, 손패 peek 후속용).
+카드 에셋의 `description` 필드에 이행기 fallback/플레이버 텍스트를 기입한다. 구조화
+formatter가 우선하므로 수치·트리거를 description에 중복 authoring하지 않는다.
 
 ## 변경 대상
 
 - `Assets/_Project/Data/Dreamcatcher/Card_*.asset` (16장) — 필수
 - `Assets/_Project/Data/Dreamcatcher/Active_*.asset` (6장) — provisional
 
-## 문안 (초안 — 사용자 검토)
+## 문안 (역사적 초안 — 현재 수치/효과의 source of truth 아님)
 
 ### Squad (11) — 수치는 자동 라인이 표시. description = 대상/플레이버 보완
 | 에셋 | description |
@@ -27,14 +27,14 @@
 | Card_AllMove10 | 모든 아군의 이동 속도를 높인다. |
 | Card_SlowAwakening | 배치 후 2초간 잠들어 있다가 깨어나 폭발적인 공격 속도를 얻는다. |
 
-### Unit (5) — effects 없음. description 이 유일한 설명 (현재 빈칸 해소 대상)
-> 사용자 지시: 메커니즘에 써둔 내용 그대로(수치 포함).
+### Unit (5) — 구조화 formatter가 우선하며 description은 fallback/플레이버용
+> 과거 authoring 초안. 현재 수치는 mechanics/attackMods에서 자동 생성한다.
 | 에셋 | description | 메커니즘 근거 |
 |---|---|---|
 | Card_PokeNeedle | 5회 공격마다 대상에 투사체 20 데미지 | AttackN(5) × ProjectileToTarget(20) |
 | Card_BouncyBead | 상시: 공격 투사체가 3타일 내 2회 튕김 (감쇠 없음) | ProjectileBounce count2/tile3/mul1 |
 | Card_Thornmail | 5회 피격 시 다음 공격 2연발 | OnDamagedN(5) × NextAttackDoubleFire |
-| Card_Farewell | 사망 시 2타일 범위 100 폭발 | OnDeath × SelfTileAoe(100, tile2) |
+| Card_Farewell | 사망 시 광역 폭발 | OnDeath × SelfTileAoe |
 | Card_LastFlame | 즉발 공속버프(+90%, 5초) + 5초 후 자폭 | SelfBuffLethal(mag90→+90% AS, dur5) |
 
 ### Active (6) — provisional (팝업 미노출, 손패 peek 후속에서 확정)
@@ -45,9 +45,10 @@
 | Active_PowerSurge | 아군의 공격력을 일시적으로 크게 끌어올린다. |
 | Active_RapidFire | 아군의 공격 속도를 폭발적으로 높인다. |
 | Active_SlowField | 지정 지역에 감속 장판을 만들어 적을 느리게 한다. |
-| Active_Tornado | 회오리를 일으켜 적을 끌어당기며 피해를 준다. |
+| Active_Tornado | 회오리를 일으켜 적을 끌어당긴다. |
 
-> Active 문안은 실제 `SkillData` 효과값과 대조 후 확정. 이번 spec 필수 아님.
+> Active 문안은 실제 `SkillData` 효과값과 대조 후 확정. 현재 수치/효과는
+> `docs/spec/dreamcatcher-card-effect-summary/` 계약을 따른다.
 
 ## 구현
 
@@ -58,6 +59,6 @@
 
 ## 완료 기준
 
-- [ ] 16장 카탈로그 카드 전부 `description` 채워짐.
-- [ ] 덱빌더에서 Unit 카드 탭 시 본문에 설명이 보인다(빈칸 해소).
+- [ ] fallback이 필요한 카드만 `description`을 채운다.
+- [ ] 구조화 데이터가 있는 카드의 수치/트리거는 `description`과 중복 authoring하지 않는다.
 - [ ] 에셋 재직렬화 후 다른 필드 손상 없음(`DreamcatcherCatalogSyncTests` 그린 유지).
