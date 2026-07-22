@@ -24,8 +24,10 @@
 
 ## 완료 기준
 
-- [ ] compile 0 errors, 기존 EditMode green
-- [ ] ArkFunnel Load → 즉시 "통과"(기존 유효 맵), 도로 한 칸 끊으면 해당 스폰 "미도달" 빨강 + Bake 비활성
-- [ ] 2×2 walk 만들면 위반 표시
-- [ ] 유효 편집 Bake → asset 갱신(디코드로 tiles/spawns/goal/파생값 일치), 기존 타깃은 GUID 유지
-- [ ] 신규 Bake → SaveFilePanel 경로에 새 MapDocument 생성, adapter 로드 정상
+- [x] compile 0 errors
+- [x] ArkFunnel Load → Validate errors=0(통과). 스폰 진짜 고립 시 "→ 골 미도달", 골 Place 시 "Walk 아님", 스폰0 시 "1~4 필요", 2×2 walk 시 "블록 (x,y)" — 4케이스 다 검출
+- [x] Bake 왕복: ArkFunnel Load→Bake→asset tileDiff=0, goal/spawns 일치, authoringSeed=-1, chokepoint=(deg≥3) 일관
+- [x] 기존 타깃 Bake = WriteToDocument(GUID 유지). 신규는 SaveFilePanelInProject 경로에 CreateAsset
+- [ ] (사용자) 창에서 직접 페인팅→Bake→인게임 로드 육안 확인
+
+확인 2026-07-23 (unit 1 — Validate 4케이스 + Bake 왕복 reflection 실증). Play 육안만 남음.

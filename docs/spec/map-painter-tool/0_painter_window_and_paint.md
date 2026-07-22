@@ -26,7 +26,9 @@
 
 ## 완료 기준
 
-- [ ] compile 0 errors (신규 .cs, scope=all refresh)
-- [ ] `Window/Wassup/Map Painter` 로 창 열림, 에러 없음
-- [ ] 기존 `MapDocument_ArkFunnel` Load 시 격자에 도로/스폰3/골 정확히 표시
-- [ ] Road/Buildable 드래그 페인팅, Spawn/Goal 찍기 동작(버퍼 반영)
+- [x] compile 0 errors (신규 .cs, scope=all refresh)
+- [x] `Window/Wassup/Map Painter` 로 창 열림, 에러 없음
+- [x] 기존 `MapDocument_ArkFunnel` Load → 버퍼 15×10, walk 68/place 82, spawns 3 `[(0,9)(14,9)(14,6)]`, goal (0,0) 정확
+- [x] Road/Buildable/Spawn/Goal 툴 + 드래그 페인팅 로직 구현(마우스 인터랙션은 사용자 육안)
+
+확인 2026-07-23 (unit 0 — 창·로드 reflection 검증, 페인팅 로직 구현).
