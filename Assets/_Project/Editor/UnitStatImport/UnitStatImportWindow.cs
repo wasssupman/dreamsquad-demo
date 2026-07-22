@@ -152,7 +152,7 @@ namespace Wassup.Editor.UnitStatImport
             }
 
             EditorGUILayout.Space();
-            EditorGUILayout.LabelField("Push to Sheet (전 8탭)", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField("Push to Sheet (유닛+DC+프리셋)", EditorStyles.boldLabel);
             EditorGUI.BeginChangeCheck();
             _scriptUrl = EditorGUILayout.TextField("Apps Script URL", _scriptUrl);
             if (EditorGUI.EndChangeCheck()) EditorPrefs.SetString(ScriptUrlPrefsKey, _scriptUrl);
@@ -163,13 +163,14 @@ namespace Wassup.Editor.UnitStatImport
             using (new EditorGUI.DisabledScope(_requestInFlight
                 || string.IsNullOrWhiteSpace(_scriptUrl)
                 || string.IsNullOrWhiteSpace(_defenderSheet) || string.IsNullOrWhiteSpace(_enemySheet)
+                || string.IsNullOrWhiteSpace(_presetTab)
                 || dcTabs == null))
             {
                 if (GUILayout.Button(_requestInFlight ? "..." : "Push to Sheet"))
                 {
                     if (EditorUtility.DisplayDialog("Push to Sheet",
-                        "전 8탭(Defenders/Enemies + DC 6)을 시트에 업서트합니다.\n"
-                        + "고아 행(시트엔 있고 SO 엔 없음)은 삭제하지 않고 리포트만 합니다.\n계속할까요?",
+                        "유닛 2탭 + DC 6탭은 업서트(고아 삭제 안 함, 리포트만).\n"
+                        + "Presets 탭은 list-SoT라 Unity 리스트로 전체 교체(삭제/재정렬 반영).\n계속할까요?",
                         "Push", "취소"))
                     {
                         StartPush(dcTabs);
@@ -395,7 +396,7 @@ namespace Wassup.Editor.UnitStatImport
             {
                 payload = SheetPushPayload.BuildCombinedJson(
                     _defenderSheet, _enemySheet, DefenderFolder, EnemyFolder,
-                    dcTabs, DcFolder, SkillFolder);
+                    dcTabs, DcFolder, SkillFolder, _presetTab);
             }
             catch (System.Exception e)
             {

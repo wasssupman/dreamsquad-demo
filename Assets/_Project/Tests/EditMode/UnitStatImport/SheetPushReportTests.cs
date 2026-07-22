@@ -60,5 +60,17 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             StringAssert.Contains("card_x:3", report);
             StringAssert.Contains("card_y:0", report);
         }
+
+        [Test]
+        public void Report_Replaced_ShowsListReplaceCount()
+        {
+            // preset-sheet-import unit 6 — list-replace 탭은 replaced 카운트로 보고(updated/added 아님).
+            const string body = @"{ ""success"": true, ""data"": { ""results"": {
+                ""Presets"": { ""replaced"": 2 } } } }";
+            string report = SheetPushClient.BuildReport(null, body);
+            StringAssert.Contains("Push OK", report);
+            StringAssert.Contains("Presets: replaced 2", report);
+            StringAssert.Contains("전체 교체", report);
+        }
     }
 }

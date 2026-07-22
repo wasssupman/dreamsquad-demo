@@ -48,6 +48,13 @@ namespace Wassup.Editor.UnitStatImport
                     tabErrors++;
                     continue;
                 }
+                // preset-sheet-import unit 6 — list-replace 탭은 updated/added 가 아니라 replaced.
+                int replaced = prop.Value["replaced"]?.Value<int>() ?? -1;
+                if (replaced >= 0)
+                {
+                    lines.AppendLine($"  {prop.Name}: replaced {replaced} (list-SoT 전체 교체)");
+                    continue;
+                }
                 int updated = prop.Value["updated"]?.Value<int>() ?? 0;
                 int added = prop.Value["added"]?.Value<int>() ?? 0;
                 int orphanCount = (prop.Value["orphans"] as JArray)?.Count ?? 0;

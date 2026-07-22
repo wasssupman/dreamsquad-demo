@@ -13,7 +13,8 @@ namespace Wassup.Editor.UnitStatImport
     {
         public static string BuildCombinedJson(
             string defenderSheet, string enemySheet, string defenderFolder, string enemyFolder,
-            string[] dcTabs, string dcFolder, string skillFolder)
+            string[] dcTabs, string dcFolder, string skillFolder,
+            string presetTab)
         {
             string tempDir = Path.Combine(Path.GetTempPath(),
                 "wassup_sheet_push_" + System.Guid.NewGuid().ToString("N"));
@@ -22,11 +23,14 @@ namespace Wassup.Editor.UnitStatImport
             {
                 UnitStatExporter.ExportToFolder(tempDir, defenderSheet, enemySheet, defenderFolder, enemyFolder);
                 DcSheetExporter.ExportToFolder(tempDir, dcTabs, dcFolder, skillFolder);
+                // preset-sheet-import unit 6 — Presets 탭(list-replace 모드, 서버가 라우팅).
+                PresetSheetExporter.ExportToFolder(tempDir, presetTab);
 
                 var root = new JObject();
                 AddTab(root, tempDir, defenderSheet);
                 AddTab(root, tempDir, enemySheet);
                 foreach (var tab in dcTabs) AddTab(root, tempDir, tab);
+                AddTab(root, tempDir, presetTab);
 
                 return root.ToString(Formatting.Indented);
             }

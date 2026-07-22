@@ -22,6 +22,7 @@
 | 3 | 구현 (런타임) | `3_runtime_refresher.md` | `PresetSheetRuntimeRefresher`(로그인 자동 반영) + 페이지 재빌드 |
 | 4 | 배선/검증 | `4_scene_wiring_and_verify.md` | `AllRuntimeRefresher` 배선 + Play 왕복 검증 |
 | 5 | 인계 | `5_handoff_summary.md` | (종료 시) |
+| 6 | 확장 (push) | `6_push_list_replace.md` | 프리셋 push = list-replace 모드 (Apps Script + payload 확장) |
 
 ## Feature-wide 계약
 
@@ -41,7 +42,7 @@
 
 ## 후속 후보 (현 스코프 밖)
 
-- **프리셋 push (list-replace)** — 컬렉션 → 시트 자동 반영. `SheetHttp.Post` 재사용하되 8탭의 keyed-upsert 가 아니라 리스트 통째 교체 방식. sheet-export-push 스코프 밖의 별도 어댑터.
+- ~~프리셋 push (list-replace)~~ → **unit 6 에서 구현** (Code.gs `LIST_REPLACE_TABS`+`replaceTab`, payload 9탭). Code.gs 재배포 + 라이브 왕복만 남음.
 - **import dry-run diff 프리뷰** — 적용 전 "바뀔 프리셋/슬롯" 표시(sheet-sync 후속과 대칭).
 - **적용됨 하이라이트 · 런타임 덱 규칙 검증 · 드림스톤 4슬롯 포함** — loadout-preset-page 후속 승계.
 - **카드 수 ≠ 라이브 deckSize 경고 강화** — 현재는 리포트만, 게이트화는 후속.
