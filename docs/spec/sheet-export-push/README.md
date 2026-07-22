@@ -53,3 +53,4 @@ Unity SO → 구글 시트 **자동 push** 를 만든다. 현재 export 는 JSON
 - **SoT=시트 제약 설계** [L] · 시트를 진실로 두고 Unity 편집을 어떻게 제약/병합할지. 별도 spec.
 - **push dry-run diff 프리뷰** [S] · POST 전 "바뀔 셀/추가될 행" 미리보기. import dry-run 후보와 대칭.
 - **고아 행 반자동 정리** [S] · 리포트된 고아를 사용자 확인 후 일괄 삭제하는 옵션(비파괴 기본 유지).
+- **[경계 메모] `Presets` 탭은 이 push 모델 밖** · 프리셋(`SquadPresetCollection`)은 위치 기반 list-SoT + id→SO 참조 해석이라 8탭의 keyed-upsert(`id`/`(cardId,slot)`·blank=keep·고아 리포트)와 본질적으로 다르다. 여기 9번째 adapter 로 끼워넣지 말 것. 프리셋 push 가 필요하면 list-replace 별도 어댑터 — `preset-sheet-import` spec 참조.
