@@ -47,3 +47,9 @@
   라벨이 보이며, 게이지 변화 시 숫자·채움·ready 림이 반응. 코너에 옛 버튼 잔존 없음.
 - **탭 토글**: 항아리 탭 → 손패 open/close (기존 `Toggled → DreamcatcherHandView` 경로 유지).
 - 회귀: 튜토리얼 `SetSuppressed`, `FirstSessionTutorialController.HitRect` 포커스 여전히 동작.
+
+완료 확인 2026-07-23 — compile 그린, EditMode 1269/0-fail(회귀 없음), 오프스크린 샷 15/60/100
+상태 구분(채움·틱 20·ready 림 dim/보라/골드·라벨) 확인. critic 리뷰 BLOCKER/HIGH 0, 죽은
+코드(press dead-path·미사용 로컬) 정리. 커밋 `8f70eaa6`(구현) · `ad61b06f`(critic 반영).
+**Pending**: 라이브 Play 에서 트레이 우측 실제 배치·탭 토글·실기기 16:9/20:9 육안(BattleScene
+미로딩이라 오프스크린은 독을 중앙에 놓고 렌더). unit 5(배선 검증)에서 확정.
