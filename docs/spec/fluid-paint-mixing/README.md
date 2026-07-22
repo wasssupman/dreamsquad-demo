@@ -1,6 +1,6 @@
 # Fluid Paint-Mixing (WebGL 유체 축소 이식)
 
-**상태: 계획 — 사용자 승인 대기 (2026-07-23)**
+**상태: 진행 중 (2026-07-23) — unit 0~3 완료·Play 검증됨(스크린샷). unit 4 컴포넌트 완료·컴파일 검증. unit 4 BattleScene 실배선만 사용자 라이브 검증 대기.**
 
 ## 상위 목표
 
@@ -55,6 +55,8 @@ bloom/sunrays/dithering/dat.gui/스크린샷 등 부가기능은 **전부 제외
 
 ## 후속 후보 (현 스코프 밖)
 
+- **[다음] unit 4 BattleScene 실배선**: Dreamcatcher 캔버스 아래 backdrop GO(RawImage+FluidPaintSim+DreamcatcherFluidBackdrop)
+  배치 + 핸드 오픈 시 카드 뒤 유체 라이브 확인 + 실기 perf. 공유 씬 아트 배치라 사용자와 함께.
 - **이벤트 구동 splat**: 코스트 획득/전투 히트 시 `BattleBridge` → `Splat()` 호출로 색 주입 (현재는 자율 앰비언트만).
 - **Bloom/글로우 패스**: 원본의 발광 룩. 모바일 비용 검증 후 별도.
 - **두 번째 표면 어댑터**: unit 4 가 택하지 않은 나머지(코스트 셀 ↔ Dreamcatcher BG).
