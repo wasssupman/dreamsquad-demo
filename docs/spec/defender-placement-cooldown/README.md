@@ -1,6 +1,6 @@
 # Spec — Defender Placement Cooldown (방어 유닛 배치 쿨타임)
 
-상태: 초안 — critic 리뷰 반영 완료, 착수 대기 (2026-07-22)
+상태: 진행 중 — unit 0 완료(commit `76067285`), unit 1 착수 (2026-07-22)
 
 ## 검증 질문
 

@@ -65,3 +65,5 @@ if (GameManager.Instance != null && GameManager.Instance.CooldownRuntime != null
   - `ResetAll()` → 전부 소거.
 - [ ] 씬: `GameManager` GO 에 `PlacementCooldownRuntime` 컴포넌트 존재 + `cooldownRuntime` SerializeField 할당됨(MCP 확인).
 - [ ] Play 진입 시 콘솔 에러 없음.
+
+✅ 확인: 2026-07-22 · commit `76067285` — EditMode 7/7 통과, 컴파일 클린, `GameManager/PlacementCooldownRuntime` GO + `cooldownRuntime` SerializeField 배선(BattleScene). Play 진입 검증은 시작 경로가 없어 unit 1·2로 이연.
