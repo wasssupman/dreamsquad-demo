@@ -959,10 +959,13 @@ namespace Wassup.Bridge
 
             // tilemap-world-surround unit 1 — MapGrid 내부에 장식 Deco 셀을 데이터로 designate (배경 프랍 호스트).
             // theme.keepRatio<1 일 때만. Walk 경로 불변·시드 결정적. 페인트/VisualPlan(아래) 전에 실행해야 반영된다.
+            // random-map-pool — 커빙 시드는 맵 정체성(_generatedMap.seed)에서 뽑는다: 문서맵은 authoringSeed
+            // (맵당 고정)라 배치칸이 매판 고정, 절차맵은 gen seed(matchSeed 파생)라 매판 변동 유지.
+            // (matchSeed 파생 local seed 를 쓰면 fixedMapSeed=0 일 때 같은 문서맵도 배치칸이 매판 섞였다.)
             if (mapSource == MapSource.MapGrid && theme != null
                 && theme.mapGridBuildableKeepRatio < 1f && _generatedMap.IsCreated)
             {
-                var decoRng = Unity.Mathematics.Random.CreateFromIndex((uint)(seed ^ 0x5A5A5A) | 1u);
+                var decoRng = Unity.Mathematics.Random.CreateFromIndex((uint)(_generatedMap.seed ^ 0x5A5A5A) | 1u);
                 ObstaclePlacer.DesignateDeco(ref decoRng, _generatedMap.tiles,
                     _generatedMap.gridSize, theme.mapGridBuildableKeepRatio);
             }
