@@ -1,4 +1,5 @@
 using NUnit.Framework;
+using UnityEngine.Networking;
 using Wassup.Core.Api;
 
 namespace Wassup.Tests.EditMode.Api
@@ -115,6 +116,81 @@ namespace Wassup.Tests.EditMode.Api
             UserSession.Clear();
             Assert.IsFalse(UserSession.IsSignedIn);
             Assert.IsNull(UserSession.IdToken);
+        }
+
+        // ── demo-username-recovery Unit 0: auth mode + credential ────────────────
+
+        [Test]
+        public void UserSession_FirebaseMode_HasAccountBearerCredential()
+        {
+            UserSession.Set(new UserSignApi.SignedInUser { userId = "u-1" }, "id-token");
+
+            Assert.IsTrue(UserSession.HasAccount);
+            Assert.IsNull(UserSession.AuthUserName);
+            var cred = UserSession.Credential;
+            Assert.IsTrue(cred.IsValid);
+            Assert.AreEqual("id-token", cred.idToken);
+            Assert.IsNull(cred.userName);
+            UserSession.Clear();
+        }
+
+        [Test]
+        public void UserSession_UsernameMode_HasAccountUsernameCredential()
+        {
+            UserSession.Set(new UserSignApi.SignedInUser { userId = "u-2", userName = "wassup" },
+                idToken: "", gameServerBaseUrl: null, authUserName: "wassup");
+
+            Assert.IsTrue(UserSession.HasAccount);
+            Assert.AreEqual("wassup", UserSession.AuthUserName);
+            var cred = UserSession.Credential;
+            Assert.IsTrue(cred.IsValid);
+            Assert.AreEqual("wassup", cred.userName);
+            Assert.IsNull(cred.idToken);
+            UserSession.Clear();
+        }
+
+        [Test]
+        public void UserSession_Guest_SignedInButNoAccount()
+        {
+            // LoginPanelView SKIP: Current set, empty token, no authUserName.
+            UserSession.Set(new UserSignApi.SignedInUser { userId = "", provider = "guest" }, idToken: "");
+
+            Assert.IsTrue(UserSession.IsSignedIn, "guest is signed in for gate purposes");
+            Assert.IsFalse(UserSession.HasAccount, "but guest is not a real account");
+            Assert.IsFalse(UserSession.Credential.IsValid);
+            UserSession.Clear();
+        }
+
+        [Test]
+        public void UserSession_Clear_ResetsAuthUserName()
+        {
+            UserSession.Set(new UserSignApi.SignedInUser { userName = "wassup" },
+                idToken: "", gameServerBaseUrl: null, authUserName: "wassup");
+            UserSession.Clear();
+
+            Assert.IsFalse(UserSession.HasAccount);
+            Assert.IsFalse(UserSession.IsSignedIn);
+            Assert.IsNull(UserSession.AuthUserName);
+        }
+
+        [Test]
+        public void AuthCredential_Apply_UsernameMode_SetsHeader()
+        {
+            using var req = UnityWebRequest.Get("http://localhost/user");
+            AuthCredential.Username("wassup").Apply(req);
+
+            Assert.AreEqual("wassup", req.GetRequestHeader("X-AUTH-USERNAME"));
+            Assert.IsNull(req.GetRequestHeader("Authorization"));
+        }
+
+        [Test]
+        public void AuthCredential_Apply_BearerMode_SetsHeader()
+        {
+            using var req = UnityWebRequest.Get("http://localhost/user");
+            AuthCredential.Bearer("id-token").Apply(req);
+
+            Assert.AreEqual("Bearer id-token", req.GetRequestHeader("Authorization"));
+            Assert.IsNull(req.GetRequestHeader("X-AUTH-USERNAME"));
         }
     }
 }
