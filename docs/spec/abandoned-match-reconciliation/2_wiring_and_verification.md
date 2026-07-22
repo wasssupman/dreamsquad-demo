@@ -45,4 +45,5 @@ if (UserSession.HasAccount)
 
 ## 완료 스탬프
 
-(구현·검증 후 커밋 해시 기재)
+- 배선 구현: 2026-07-22 `8b5fdaaf` — 컴파일 0에러. PlayMode 스모크 4건(OutgameFlow/SceneTransition/TallyFlow×2) 통과 → 로비 `ReconcilePending`·결과 `ReportResult` 런타임 무예외(guest 경로).
+- **대기: 실계정 + dev 서버 Play 검증 5종**(위). 서버 tournament 상태를 실제로 변경하므로(0점 complete 전송) 사용자 확인/주도 필요.

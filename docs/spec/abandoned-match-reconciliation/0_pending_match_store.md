@@ -38,3 +38,5 @@
   - Store: Save→TryLoad 라운드트립(필드 3개 일치), Clear 후 TryLoad=false, 미저장 상태 TryLoad=false, Save 덮어쓰기(단일 슬롯) 후 최신 레코드만.
   - Policy: `elapsed<ttl`=Complete0, `elapsed==ttl`=Complete0, `elapsed>ttl`=DiscardOnly, `elapsed<0`=Complete0.
 - 테스트는 시계에 의존하지 않는다(경과초를 직접 주입).
+
+완료: 2026-07-22 `b4ef4434` — 컴파일 0에러, EditMode 9/9 통과(Store 5 + Policy 4).

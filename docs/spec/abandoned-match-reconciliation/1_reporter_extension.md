@@ -51,3 +51,5 @@
 - 코드 리뷰로 계약 확인: clear-at-send 가 전송 개시 시점인지, `AbandonMatch` 가 `_epoch++` 하는지, `ReconcilePending` 이 라이브 `_attemptId`/`_completeSent` 를 안 건드리는지, 복구가 현재 세션 cred 를 쓰는지.
 - 기존 `TournamentApi`/reporter EditMode 테스트 무회귀.
 - 실제 서버 왕복은 unit 2 Play 검증에서 확인.
+
+완료: 2026-07-22 `c8178a1c` — 컴파일 0에러, 전체 EditMode 1213/1213 무회귀(guest 경로 inert 확인). 서버 왕복은 unit 2 수동 Play 대기.

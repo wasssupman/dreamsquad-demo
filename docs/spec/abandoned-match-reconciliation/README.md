@@ -1,6 +1,6 @@
 # Abandoned Match Reconciliation — 기권/중단 판의 서버 마감 보장
 
-상태: **작성 중 2026-07-22** — 설계 확정, 구현 전. units 0~2.
+상태: **구현 완료 2026-07-22** — units 0~2 커밋(`b4ef4434`·`c8178a1c`·`8b5fdaaf`). 자동 검증 통과(EditMode 1213 + PlayMode 스모크 4). **잔여: 실계정+dev 서버 Play 검증 5종**(unit 2). 인계는 `3_handoff_summary.md`.
 
 ## 목표
 
