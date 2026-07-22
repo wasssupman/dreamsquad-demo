@@ -22,6 +22,6 @@
 ## 완료 기준
 
 - [x] 창에 URL 필드 + Push 버튼 노출, URL 없으면 비활성. 창 open 시 OnGUI 예외 0(콘솔 확인).
-- [ ] (유닛 5 배포 후) 실 test 탭에 push → Result 로그에 탭별 카운트·고아 표시. ← **인계 대기**
+- [x] 실 push → Result 로그에 탭별 updated/added 표시 확인(라이브 8탭 push 로 실증, 2026-07-22). 고아/스킵 경로는 EditMode + `공` 헤더 사고로 실증.
 - [x] `_requestInFlight` 가 성공/실패/예외 모두에서 해제됨(payload try/catch + Push 콜백 무조건 발화).
 - [x] compile + 확인 완료 2026-07-22 · 커밋 `6aede4e9`.
