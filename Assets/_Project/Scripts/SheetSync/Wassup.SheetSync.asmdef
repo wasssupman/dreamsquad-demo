@@ -1,13 +1,8 @@
 {
-    "name": "Wassup.Editor.UnitStatImport",
-    "rootNamespace": "Wassup.Editor.UnitStatImport",
-    "references": [
-        "Wassup.Runtime",
-        "Wassup.SheetSync"
-    ],
-    "includePlatforms": [
-        "Editor"
-    ],
+    "name": "Wassup.SheetSync",
+    "rootNamespace": "Wassup.SheetSync",
+    "references": [],
+    "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
     "overrideReferences": false,
