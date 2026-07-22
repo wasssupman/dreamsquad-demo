@@ -31,3 +31,5 @@
 - 에디터 import 왕복 1회 성공(diff = 의도한 변경만).
 - 로그인 자동 import 로그에 Preset 포함 + 페이지 반영 스크린샷.
 - feature 종료 → README 상단 "완료" + `5_handoff_summary.md`.
+- ✅ 배선 완료 2026-07-22 · commit `0ae9a2c7` — `UnitStatRefresher` GO 에 PresetSheetRuntimeRefresher 추가, refs(collection/defenderCatalog/cardCatalog/baseUrl) non-zero, `refresherSources` 2→3. 씬 clean 상태에서 배선 delta 18줄만 저장(WIP 베이킹 0).
+- ⏳ **라이브 검증 대기**: 에디터 import 왕복 + 로그인 자동 import + 페이지 반영은 **`Presets` 시트 탭 신설 후**. (에디터/런타임 apply 는 unit 2·3 에서 export 바디 round-trip 으로 구조 검증됨 — units 14/0/0·cards 20/0.)

@@ -1,6 +1,6 @@
 # Preset Sheet Import — 스프레드시트 → SquadPresetCollection 임포트 매퍼
 
-> 상태: **초안 (승인 대기) 2026-07-22**
+> 상태: **구현 완료 2026-07-22 (units 0~4) · 라이브 시트 검증 대기** — 커밋 `e66be309`(1)·`06eb866d`(2)·`8a922165`(3)·`0ae9a2c7`(4). EditMode 8/8, export/import round-trip 구조 검증(units 14/0/0·cards 20/0). 남은 것: `Presets` 시트 탭 신설 후 라이브 왕복(에디터 import diff + 로그인 자동 import + 페이지 반영). 인계는 `5_handoff_summary.md`.
 > 선행/재사용: `unit-stat-spreadsheet-schema`(완료) · `dreamcatcher-sheet-sync`(완료) — 읽기 transport(`SheetFetcher`/`SheetEnvelopeParser`) · `UnitAssetScan` · `BuildIndex` 를 그대로 재사용.
 > 관계: `sheet-export-push`(진행 중; unit 0 `e17ab435` 착지) 와 **방향 반대** — 저건 SO→시트 push, 우리는 시트→SO import. `Wassup.SheetSync` 는 **POST 전용**이라(코어 주석: "GET 은 소비처 없음, import 는 레거시 SheetFetcher 유지") 우리 읽기 경로는 레거시 위에 짓고 SheetSync 는 건드리지 않는다.
 
