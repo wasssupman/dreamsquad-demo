@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Card_ShieldBurst
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: shield_burst
-  displayName: "\uC0B0\uC0B0\uC870\uAC01"
+  displayName: "\uC2E4\uB4DC\uD3ED\uBC1C"
   axis: 3
   category: 0
   effects: []
@@ -38,7 +38,6 @@ MonoBehaviour:
   attackMods: []
   type: 1
   skill: {fileID: 0}
-  description: "\uBD80\uC5EC\uBC1B\uC740 \uC2E4\uB4DC\uAC00 \uD53C\uACA9\uC73C\uB85C
-    \uAE68\uC9C0\uB294 \uC21C\uAC04, \uD30C\uD3B8\uC774 \uC8FC\uBCC0\uC73C\uB85C
-    \uD130\uC838 \uC801\uC5D0\uAC8C \uD53C\uD574\uB97C \uC900\uB2E4."
+  description: "\uC2E4\uB4DC \uD30C\uAD34 \uC2DC \u2192 \uBC18\uACBD 1\uCE78 \uD53C\uD574
+    80"
   leakAllowanceCost: 0

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Card_FattenedOffering
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: sub_fattened_offering
-  displayName: "살찌운 제물"
+  displayName: "\uC81C\uBB3C\uD45C\uC2DD"
   axis: 3
   category: 2
   effects: []
@@ -38,5 +38,7 @@ MonoBehaviour:
   attackMods: []
   type: 1
   skill: {fileID: 0}
-  description: "필드의 악몽 하나에 제물 표식을 새긴다. 표식된 악몽은 받는 피해가 30% 줄어들지만, 처치하면 각성치를 3배로 내놓는다. 놓치면 아무것도 얻지 못한다 — 가장 큰 악몽이 가장 달다."
+  description: "\uC801 \uC9C0\uC815 \u2192 \uB300\uC0C1 \uBC1B\uB294 \uD53C\uD574
+    -30%\n\uD45C\uC2DD \uB300\uC0C1 \uCC98\uCE58 \uC2DC \u2192 \uAC01\uC131\uCE58
+    x3\n\uD45C\uC2DD \uB300\uC0C1 \uC774\uD0C8 \uC2DC \u2192 \uBCF4\uC0C1 \uC5C6\uC74C"
   leakAllowanceCost: 0

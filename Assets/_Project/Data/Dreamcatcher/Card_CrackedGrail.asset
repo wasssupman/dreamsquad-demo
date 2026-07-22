@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Card_CrackedGrail
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: cracked_grail
-  displayName: "금이 간 성배"
+  displayName: "\uD53C\uAC12\uB51C"
   axis: 3
   category: 2
   effects:
@@ -26,4 +26,6 @@ MonoBehaviour:
   attackMods: []
   type: 0
   skill: {fileID: 0}
-  description: "호스트가 살아있는 동안 모든 아군의 공격력이 70% 증가하지만 체력이 40% 감소한다."
+  description: "\uD56D\uC0C1 \u2192 \uBAA8\uB4E0 \uC544\uAD70 \uACF5\uACA9\uB825
+    +70% \xB7 \uBAA8\uB4E0 \uC544\uAD70 \uCCB4\uB825 -40%"
+  leakAllowanceCost: 0

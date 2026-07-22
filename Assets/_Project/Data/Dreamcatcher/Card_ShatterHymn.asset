@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Card_ShatterHymn
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: shatter_hymn
-  displayName: "\uC0B0\uC0B0\uC774 \uBD80\uC218\uB294 \uC131\uAC00"
+  displayName: "CC\uB51C"
   axis: 3
   category: 1
   effects:
@@ -24,5 +24,6 @@ MonoBehaviour:
   attackMods: []
   type: 0
   skill: {fileID: 0}
-  description: "\uBAA8\uB4E0 \uC544\uAD70\uC774 CC(\uAE30\uC808/\uC218\uBA74/\uC18D\uBC15)
-    \uAC78\uB9B0 \uC801\uC5D0\uAC8C +25% \uD53C\uD574"
+  description: "\uD56D\uC0C1 \u2192 CC \uC0C1\uD0DC \uC801\uC5D0\uAC8C \uBAA8\uB4E0
+    \uC544\uAD70 \uD53C\uD574 +25%"
+  leakAllowanceCost: 0

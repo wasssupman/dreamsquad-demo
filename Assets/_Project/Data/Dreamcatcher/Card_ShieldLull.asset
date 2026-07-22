@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Card_ShieldLull
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: shield_lull
-  displayName: "\uACE0\uC694\uD55C \uD30C\uBB38"
+  displayName: "\uC2E4\uB4DC\uC218\uBA74"
   axis: 3
   category: 0
   effects: []
@@ -38,7 +38,6 @@ MonoBehaviour:
   attackMods: []
   type: 1
   skill: {fileID: 0}
-  description: "\uBD80\uC5EC\uBC1B\uC740 \uC2E4\uB4DC\uAC00 \uD53C\uACA9\uC73C\uB85C
-    \uAE68\uC9C0\uB294 \uC21C\uAC04, \uD30C\uBB38\uC774 \uD37C\uC838 \uC8FC\uBCC0
-    \uC801\uB4E4\uC744 \uC7A0\uC5D0 \uBE60\uB728\uB9B0\uB2E4."
+  description: "\uC2E4\uB4DC \uD30C\uAD34 \uC2DC \u2192 \uBC18\uACBD 1\uCE78 \uB0B4
+    \uC801 \uCD5C\uB300 2\uBA85 \uC218\uBA74 2.5\uCD08"
   leakAllowanceCost: 0

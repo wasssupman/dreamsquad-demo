@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Card_FrostArrow
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: frost_arrow
-  displayName: "\uC11C\uB9AC\uC758 \uD654\uC0B4"
+  displayName: "\uBE59\uACB0"
   axis: 3
   category: 1
   effects: []
@@ -38,5 +38,6 @@ MonoBehaviour:
   attackMods: []
   type: 1
   skill: {fileID: 0}
-  description: "3\uBC88\uC9F8 \uACF5\uACA9\uB9C8\uB2E4 \uB300\uC0C1\uC744 0.6\uCD08
-    \uC5BC\uB9BC(\uAE30\uC808)"
+  description: "3\uBC88\uC9F8 \uACF5\uACA9\uB9C8\uB2E4 \u2192 \uB300\uC0C1\uC5D0\uAC8C
+    \uAE30\uC808 0.6\uCD08"
+  leakAllowanceCost: 0

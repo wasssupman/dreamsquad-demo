@@ -13,12 +13,11 @@ MonoBehaviour:
   m_Name: Card_Thornmail
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: thornmail
-  displayName: "\uAC00\uC2DC \uAC11\uC637"
+  displayName: "\uAC00\uC2DC\uBC18\uACA9"
   axis: 3
   category: 1
   effects: []
   art: {fileID: 21300000, guid: 040a4dd9cafd4f9b8151713fafdf68eb, type: 3}
-  binding: 1
   mechanics:
   - trigger:
       kind: 2
@@ -31,8 +30,14 @@ MonoBehaviour:
       projectile: {fileID: 0}
       tileRange: 0
       duration: 0
+      auraPrefab: {fileID: 0}
+      auraScale: 0
+      ccKind: 0
+      stackKind: 0
+      buffStat: 0
   attackMods: []
   type: 1
-  placementWarmupSec: 0
   skill: {fileID: 0}
-  description: "5\uD68C \uD53C\uACA9 \uC2DC \uB2E4\uC74C \uACF5\uACA9 2\uC5F0\uBC1C"
+  description: "5\uBC88\uC9F8 \uD53C\uACA9\uB9C8\uB2E4 \u2192 \uB2E4\uC74C \uACF5\uACA9
+    2\uC5F0\uBC1C"
+  leakAllowanceCost: 0

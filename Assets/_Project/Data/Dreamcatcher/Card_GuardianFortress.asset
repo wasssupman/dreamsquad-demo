@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Card_GuardianFortress
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: guardian_fortress
-  displayName: "\uAC00\uB514\uC5B8 \uD480\uC874\uBC84"
+  displayName: "\uAC00\uB514\uC5B8\uBCBD"
   axis: 1
   category: 1
   effects:
@@ -26,5 +26,6 @@ MonoBehaviour:
   attackMods: []
   type: 0
   skill: {fileID: 0}
-  description: "\uC694\uC0C8\uCC98\uB7FC \uBC84\uD2FC\uB2E4. \uCCB4\uB825\uC774 \uD06C\uAC8C
-    \uB298\uC9C0\uB9CC \uACF5\uACA9 \uC18D\uB3C4\uB294 \uC808\uBC18\uC73C\uB85C \uB5A8\uC5B4\uC9C4\uB2E4."
+  description: "\uD56D\uC0C1 \u2192 \uAC00\uB514\uC5B8 \uC544\uAD70 \uCCB4\uB825
+    +50% \xB7 \uAC00\uB514\uC5B8 \uC544\uAD70 \uACF5\uACA9 \uC18D\uB3C4 -50%"
+  leakAllowanceCost: 0

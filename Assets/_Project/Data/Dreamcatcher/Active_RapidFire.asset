@@ -13,16 +13,15 @@ MonoBehaviour:
   m_Name: Active_RapidFire
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: active_rapid_fire
-  displayName: Rapid Fire
+  displayName: "\uC18D\uC0AC"
   axis: 0
   category: 0
   effects: []
   art: {fileID: 21300000, guid: 33c5c3b8aeaf4f13902742ad13f8efa3, type: 3}
-  binding: 0
   mechanics: []
   attackMods: []
   type: 2
-  placementWarmupSec: 0
   skill: {fileID: 11400000, guid: 617c2b597eefc4309bb176c2df4826ed, type: 2}
-  description: "\uC544\uAD70\uC758 \uACF5\uACA9 \uC18D\uB3C4\uB97C \uD3ED\uBC1C\uC801\uC73C\uB85C
-    \uB192\uC778\uB2E4."
+  description: "\uC544\uAD70 \uC720\uB2DB \uC9C0\uC815 \u2192 \uACF5\uACA9 \uC18D\uB3C4
+    x2 \xB7 6\uCD08 \xB7 \uBE44\uC6A9 2 \xB7 \uC7AC\uC0AC\uC6A9 25\uCD08"
+  leakAllowanceCost: 0

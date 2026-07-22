@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Card_DevouringCraving
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: devouring_craving
-  displayName: "\uD3EC\uC2DD\uC758 \uAC08\uB9DD"
+  displayName: "\uD0AC\uC18D"
   axis: 3
   category: 1
   effects: []
@@ -38,5 +38,6 @@ MonoBehaviour:
   attackMods: []
   type: 1
   skill: {fileID: 0}
-  description: "\uC801\uC744 \uCC98\uCE58\uD560 \uB54C\uB9C8\uB2E4 \uACF5\uACA9 \uC18D\uB3C4
-    +8% (4\uCD08, \uCC98\uCE58\uD560 \uB54C\uB9C8\uB2E4 \uC9C0\uC18D \uAC31\uC2E0)"
+  description: "\uC774 \uC720\uB2DB\uC774 \uC801\uC744 \uCC98\uCE58\uD558\uBA74 \u2192
+    \uACF5\uACA9 \uC18D\uB3C4 +8% \xB7 4\uCD08"
+  leakAllowanceCost: 0

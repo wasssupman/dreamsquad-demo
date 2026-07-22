@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Card_NightmareAfterglow
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: nightmare_afterglow
-  displayName: "\uC545\uBABD\uC758 \uC5EC\uC6B4"
+  displayName: "\uD0AC\uB51C"
   axis: 3
   category: 1
   effects: []
@@ -38,4 +38,6 @@ MonoBehaviour:
   attackMods: []
   type: 1
   skill: {fileID: 0}
-  description: "\uC774 \uC720\uB2DB\uC5D0\uAC8C \uCC98\uCE58\uAC00 \uADC0\uC18D\uB418\uBA74 5\uCD08 \uB3D9\uC548 \uACF5\uACA9\uB825 +15%. \uB2E4\uC2DC \uCC98\uCE58\uD558\uBA74 \uC9C0\uC18D\uC2DC\uAC04\uC774 \uAC31\uC2E0\uB41C\uB2E4."
+  description: "\uC774 \uC720\uB2DB\uC774 \uC801\uC744 \uCC98\uCE58\uD558\uBA74 \u2192
+    \uACF5\uACA9\uB825 +15% \xB7 5\uCD08"
+  leakAllowanceCost: 0

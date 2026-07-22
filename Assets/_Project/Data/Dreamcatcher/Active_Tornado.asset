@@ -13,16 +13,16 @@ MonoBehaviour:
   m_Name: Active_Tornado
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: active_tornado
-  displayName: Tornado
+  displayName: "\uD68C\uC624\uB9AC"
   axis: 0
   category: 0
   effects: []
   art: {fileID: 21300000, guid: dbded4ca405947698482275eede81008, type: 3}
-  binding: 0
   mechanics: []
   attackMods: []
   type: 2
-  placementWarmupSec: 0
   skill: {fileID: 11400000, guid: a1f7c4d2e85b4e6f9c3d7b8e2a1f5d60, type: 2}
-  description: "\uD68C\uC624\uB9AC\uB97C \uC77C\uC73C\uCF1C \uC801\uC744 \uB04C\uC5B4\uB2F9\uAE30\uBA70
-    \uD53C\uD574\uB97C \uC900\uB2E4."
+  description: "\uD0C0\uC77C \uC9C0\uC815 \u2192 \uBC18\uACBD 2\uCE78 \uC801\uC744
+    \uC911\uC2EC\uC73C\uB85C \uB04C\uC5B4\uB2F9\uAE40 \xB7 \uB04C\uC5B4\uB2F9\uAE40
+    \uC18D\uB3C4 6 \xB7 2\uCD08 \xB7 \uBE44\uC6A9 3 \xB7 \uC7AC\uC0AC\uC6A9 12\uCD08"
+  leakAllowanceCost: 0

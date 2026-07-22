@@ -13,12 +13,11 @@ MonoBehaviour:
   m_Name: Card_PokeNeedle
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: poke_needle
-  displayName: "\uCF55\uCF55 \uBC14\uB298"
+  displayName: "\uAD00\uD1B5\uCE68"
   axis: 3
   category: 1
   effects: []
   art: {fileID: 21300000, guid: 3e267a8703104cdbb1f2f2d8c767ea7a, type: 3}
-  binding: 1
   mechanics:
   - trigger:
       kind: 1
@@ -31,9 +30,14 @@ MonoBehaviour:
       projectile: {fileID: 11400000, guid: 9253ceedf772843b9a068339422e9082, type: 2}
       tileRange: 0
       duration: 0
+      auraPrefab: {fileID: 0}
+      auraScale: 0
+      ccKind: 0
+      stackKind: 0
+      buffStat: 0
   attackMods: []
   type: 1
-  placementWarmupSec: 0
   skill: {fileID: 0}
-  description: "5\uD68C \uACF5\uACA9\uB9C8\uB2E4 \uB300\uC0C1\uC5D0 \uD22C\uC0AC\uCCB4
-    20 \uB370\uBBF8\uC9C0"
+  description: "5\uBC88\uC9F8 \uACF5\uACA9\uB9C8\uB2E4 \u2192 \uB300\uC0C1\uC5D0\uAC8C
+    \uCD94\uAC00 \uD22C\uC0AC\uCCB4 \uD53C\uD574 20"
+  leakAllowanceCost: 0

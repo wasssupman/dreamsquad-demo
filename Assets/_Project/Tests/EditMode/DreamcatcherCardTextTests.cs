@@ -1,15 +1,12 @@
 using System.Collections.Generic;
 using NUnit.Framework;
+using UnityEditor;
 using UnityEngine;
 using Wassup.Data;
 using Wassup.UI;
 
 namespace Wassup.Tests.EditMode
 {
-    // dreamcatcher-hand-drag-tooltip unit 0 — shared card body formatter.
-    // The literal expected strings below double as the deck-builder regression
-    // guard: Squad/Unit output must match the legacy PopupBody byte-for-byte
-    // (the DamageVsCc label is the single intended fix — was "Cost Rate").
     public class DreamcatcherCardTextTests
     {
         private readonly List<Object> _cleanup = new List<Object>();
@@ -26,6 +23,19 @@ namespace Wassup.Tests.EditMode
             return card;
         }
 
+        private SkillData Skill(SkillEffectType effect, float magnitude, float duration,
+            float cooldown, int cost)
+        {
+            var skill = ScriptableObject.CreateInstance<SkillData>();
+            skill.effect = effect;
+            skill.magnitude = magnitude;
+            skill.durationSec = duration;
+            skill.cooldownSec = cooldown;
+            skill.cost = cost;
+            _cleanup.Add(skill);
+            return skill;
+        }
+
         [TearDown]
         public void TearDown()
         {
@@ -35,7 +45,7 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
-        public void Squad_MixedEffects_MatchesLegacyPopupBodyFormat()
+        public void SquadEffects_UseKoreanTargetAndStandardTerms()
         {
             var card = Card(CardType.Squad, CardTargetAxis.ClassRanger, new[]
             {
@@ -43,111 +53,245 @@ namespace Wassup.Tests.EditMode
                 new CardEffect { kind = CardBuffKind.MoveSpeed, percent = -10f },
             });
 
-            Assert.AreEqual(
-                "<size=22><color=#F5D480><b>RANGER</b></color>  ·  <color=#9AA6C0>SQUAD</color></size>"
-                + "\n\nAttack  <color=#8BE28B>+20%</color>"
-                + "\nMove Speed  <color=#E28B8B>-10%</color>",
+            StringAssert.Contains(
+                "항상 → 레인저 아군 공격력 +20% · 레인저 아군 이동 속도 -10%",
+                DreamcatcherCardText.Body(card));
+            StringAssert.DoesNotContain("Attack", DreamcatcherCardText.Body(card));
+            StringAssert.DoesNotContain("RANGER", DreamcatcherCardText.Body(card));
+        }
+
+        [Test]
+        public void SquadEffects_UseAlwaysTrigger()
+        {
+            var card = Card(CardType.Squad, CardTargetAxis.All, new[]
+            {
+                new CardEffect { kind = CardBuffKind.AttackDamage, percent = 70f },
+                new CardEffect { kind = CardBuffKind.EffectiveHealth, percent = -40f },
+            });
+            StringAssert.Contains(
+                "항상 → 모든 아군 공격력 +70% · 모든 아군 체력 -40%",
                 DreamcatcherCardText.Body(card));
         }
 
-        // unit 4 — 인게임 툴팁 전용 compact 변형. 블록 구분만 빈 줄 → 단일 개행이고
-        // 내용/라벨/색은 Body() 와 동일해야 한다(같은 카드를 두 화면에서 볼 때 텍스트가
-        // 달라 보이면 안 된다).
         [Test]
-        public void BodyCompact_DropsBlankLines_ButKeepsSameContent()
+        public void BodyCompact_ChangesOnlyBlockSpacing()
         {
             var card = Card(CardType.Squad, CardTargetAxis.ClassRanger, new[]
             {
                 new CardEffect { kind = CardBuffKind.AttackDamage, percent = 20f },
-            }, "궁수의 사거리가 늘어난다.");
+            });
 
-            // unit 6 — 축·타입 줄은 compact 에서만 상대 크기(115%). 본문 폰트를 키워도
-            // 이 줄이 본문보다 작아지지 않게 하기 위함이고, Body() 의 절대 22 는 유지된다.
-            Assert.AreEqual(
-                "<size=115%><color=#F5D480><b>RANGER</b></color>  ·  <color=#9AA6C0>SQUAD</color></size>"
-                + "\nAttack  <color=#8BE28B>+20%</color>"
-                + "\n<color=#D4DAE8>궁수의 사거리가 늘어난다.</color>",
-                DreamcatcherCardText.BodyCompact(card));
-
-            // 빈 줄과 축·타입 줄 크기만 다른지 — 나머지 내용은 완전히 같아야 한다.
             Assert.AreEqual(
                 DreamcatcherCardText.Body(card).Replace("\n\n", "\n").Replace("<size=22>", "<size=115%>"),
                 DreamcatcherCardText.BodyCompact(card));
         }
 
         [Test]
-        public void BodyCompact_NoEffectsNoDescription_SameAsBody()
+        public void UnitMechanic_FormatsTriggerPayloadAndNumbers()
+        {
+            var card = Card(CardType.Unit);
+            card.mechanics = new[]
+            {
+                new DcMechanic
+                {
+                    trigger = new DcTriggerSpec { kind = DcTriggerKind.AttackN, period = 3 },
+                    payload = new DcPayloadSpec
+                    {
+                        kind = DcPayloadKind.ApplyStackToTarget,
+                        magnitude = 1f,
+                        duration = 4f,
+                        stackKind = DcStackKind.Bleed,
+                    },
+                },
+            };
+
+            StringAssert.Contains(
+                "3번째 공격마다 → 대상에게 출혈 1스택 · 4초",
+                DreamcatcherCardText.Body(card));
+        }
+
+        [Test]
+        public void UnitMechanic_FormatsImpulseDuration()
+        {
+            var card = Card(CardType.Unit);
+            card.mechanics = new[]
+            {
+                new DcMechanic
+                {
+                    trigger = new DcTriggerSpec { kind = DcTriggerKind.AttackN, period = 3 },
+                    payload = new DcPayloadSpec
+                    {
+                        kind = DcPayloadKind.ApplyCcToTarget,
+                        ccKind = DcCcKind.Impulse,
+                        magnitude = 4f,
+                        duration = 0.5f,
+                    },
+                },
+            };
+
+            StringAssert.Contains(
+                "3번째 공격마다 → 대상에게 넉백 속도 4 · 0.5초",
+                DreamcatcherCardText.Body(card));
+        }
+
+        [Test]
+        public void UnitMechanic_FormatsThresholdAndPermanentEffect()
+        {
+            var card = Card(CardType.Unit);
+            card.mechanics = new[]
+            {
+                new DcMechanic
+                {
+                    trigger = new DcTriggerSpec
+                    {
+                        kind = DcTriggerKind.HealthThreshold,
+                        fraction = 0.7f,
+                    },
+                    payload = new DcPayloadSpec
+                    {
+                        kind = DcPayloadKind.SelfStatBuff,
+                        magnitude = 30f,
+                        buffStat = CardBuffKind.AttackDamage,
+                    },
+                },
+            };
+
+            StringAssert.Contains(
+                "HP 30% 이하 → 공격력 +30% · 전투 중 1회",
+                DreamcatcherCardText.Body(card));
+        }
+
+        [Test]
+        public void UnitAttackMod_FormatsBounceValues()
+        {
+            var card = Card(CardType.Unit);
+            card.attackMods = new[]
+            {
+                new DcAttackModSpec
+                {
+                    kind = DcAttackModKind.ProjectileBounce,
+                    count = 2,
+                    tileRange = 3,
+                    damageMul = 1f,
+                },
+            };
+
+            StringAssert.Contains(
+                "항상 → 공격 투사체가 최대 3칸 범위 내 2회 튕김 (감쇠 없음)",
+                DreamcatcherCardText.Body(card));
+        }
+
+        [Test]
+        public void ActiveSkill_FormatsMultiplierDurationCostAndCooldown()
+        {
+            var card = Card(CardType.Active, description: "레거시 설명");
+            card.skill = Skill(SkillEffectType.RapidFire, 2f, 6f, 25f, 2);
+
+            StringAssert.Contains(
+                "아군 유닛 지정 → 공격 속도 x2 · 6초 · 비용 2 · 재사용 25초",
+                DreamcatcherCardText.Body(card));
+            StringAssert.DoesNotContain("레거시 설명", DreamcatcherCardText.Body(card));
+        }
+
+        [Test]
+        public void ActiveSkill_FormatsTornadoPullSpeed()
         {
             var card = Card(CardType.Active);
+            card.skill = Skill(SkillEffectType.Tornado, 12.5f, 3f, 20f, 2);
+            card.skill.range = 2f;
 
-            // 블록이 하나뿐이면 구분자가 안 쓰이므로 축·타입 줄 크기만 다르다.
-            Assert.AreEqual(
-                DreamcatcherCardText.Body(card).Replace("<size=22>", "<size=115%>"),
-                DreamcatcherCardText.BodyCompact(card));
-        }
-
-        [Test]
-        public void Unit_DescriptionOnly_NoAxisChip_NoEffectLines()
-        {
-            var card = Card(CardType.Unit, CardTargetAxis.ClassGuardian, null, "적 처치 시 공격력이 오른다.");
-
-            Assert.AreEqual(
-                "<size=22><color=#F0B44E>UNIT</color></size>"
-                + "\n\n<color=#D4DAE8>적 처치 시 공격력이 오른다.</color>",
+            StringAssert.Contains(
+                "타일 지정 → 반경 2칸 적을 중심으로 끌어당김 · 끌어당김 속도 12.5 · 3초 · 비용 2 · 재사용 20초",
                 DreamcatcherCardText.Body(card));
         }
 
         [Test]
-        public void Active_GetsOwnLabel_NotSquadFallback()
-        {
-            var card = Card(CardType.Active, description: "지정 타일에 운석을 떨어뜨린다.");
-
-            string body = DreamcatcherCardText.Body(card);
-            StringAssert.Contains("ACTIVE", body);
-            StringAssert.DoesNotContain("SQUAD", body);
-            StringAssert.Contains("지정 타일에 운석을 떨어뜨린다.", body);
-        }
-
-        [Test]
-        public void DamageVsCc_LabeledExplicitly_NotCostRate()
+        public void DecimalNumbers_TrimTrailingZeros()
         {
             var card = Card(CardType.Squad, CardTargetAxis.All, new[]
             {
-                new CardEffect { kind = CardBuffKind.DamageVsCc, percent = 15f },
+                new CardEffect { kind = CardBuffKind.AttackDamage, percent = 7.5f },
             });
 
-            string body = DreamcatcherCardText.Body(card);
-            StringAssert.Contains("Damage vs CC  <color=#8BE28B>+15%</color>", body);
-            StringAssert.DoesNotContain("Cost Rate", body);
+            StringAssert.Contains("공격력 +7.5%", DreamcatcherCardText.Body(card));
+            StringAssert.DoesNotContain("+7.50%", DreamcatcherCardText.Body(card));
         }
 
         [Test]
-        public void EmptyDescription_OmitsDescriptionBlock()
+        public void LegacyDescription_RemainsFallbackWithoutStructuredData()
         {
-            var card = Card(CardType.Squad, CardTargetAxis.Cost1, new[]
-            {
-                new CardEffect { kind = CardBuffKind.CostRate, percent = 30f },
-            });
+            var card = Card(CardType.Unit, description: "레거시 설명");
 
-            Assert.AreEqual(
-                "<size=22><color=#F5D480><b>COST-1 UNITS</b></color>  ·  <color=#9AA6C0>SQUAD</color></size>"
-                + "\n\nCost Rate  <color=#8BE28B>+30%</color>",
-                DreamcatcherCardText.Body(card));
+            StringAssert.Contains("레거시 설명", DreamcatcherCardText.Body(card));
+            StringAssert.Contains("유닛 부착", DreamcatcherCardText.Body(card));
         }
 
         [Test]
-        public void CrackedGrail_ShowsRewardRiskAndDescription()
+        public void UnsupportedMechanic_UsesDescriptionFallbackInsteadOfPartialSummary()
         {
-            var card = Card(CardType.Squad, CardTargetAxis.All, new[]
+            var card = Card(CardType.Unit, description: "구형 설명 fallback");
+            card.mechanics = new[]
             {
-                new CardEffect { kind = CardBuffKind.AttackDamage, percent = 70f },
-                new CardEffect { kind = CardBuffKind.EffectiveHealth, percent = -40f },
-            }, "호스트가 살아있는 동안 모든 아군의 공격력이 70% 증가하지만 체력이 40% 감소한다.");
+                new DcMechanic
+                {
+                    trigger = new DcTriggerSpec { kind = DcTriggerKind.AttackN, period = 3 },
+                    payload = new DcPayloadSpec
+                    {
+                        kind = DcPayloadKind.ApplyStackToTarget,
+                        magnitude = 1f,
+                        duration = 4f,
+                        stackKind = DcStackKind.Bleed,
+                    },
+                },
+                new DcMechanic
+                {
+                    trigger = new DcTriggerSpec { kind = DcTriggerKind.None },
+                    payload = new DcPayloadSpec { kind = DcPayloadKind.SelfWarmupBuff },
+                },
+            };
 
             string body = DreamcatcherCardText.Body(card);
-            StringAssert.Contains("Attack  <color=#8BE28B>+70%</color>", body);
-            StringAssert.Contains("Health  <color=#E28B8B>-40%</color>", body);
-            StringAssert.Contains("호스트가 살아있는 동안 모든 아군의 공격력이 70% 증가하지만 체력이 40% 감소한다.", body);
+            StringAssert.Contains("구형 설명 fallback", body);
+            StringAssert.DoesNotContain("출혈 1스택", body);
         }
+
+        [Test]
+        public void CardAssets_UseStructuredSummaryWhenDataExists()
+        {
+            string[] guids = AssetDatabase.FindAssets(
+                "t:DreamcatcherCard", new[] { "Assets/_Project/Data/Dreamcatcher" });
+            Assert.IsNotEmpty(guids);
+
+            int structuredCount = 0;
+            foreach (var guid in guids)
+            {
+                var card = AssetDatabase.LoadAssetAtPath<DreamcatcherCard>(
+                    AssetDatabase.GUIDToAssetPath(guid));
+                if (card == null) continue;
+
+                bool hasStructuredData = card.type == CardType.Squad
+                    ? card.effects != null && card.effects.Length > 0
+                    : card.type == CardType.Unit
+                        ? (card.mechanics != null && card.mechanics.Length > 0)
+                          || (card.attackMods != null && card.attackMods.Length > 0)
+                        : card.skill != null;
+                if (!hasStructuredData) continue;
+
+                structuredCount++;
+                string body = DreamcatcherCardText.Body(card);
+                Assert.IsFalse(string.IsNullOrEmpty(body), $"empty body: {card.id}");
+                if (!string.IsNullOrEmpty(card.description))
+                {
+                    int first = body.IndexOf(card.description, System.StringComparison.Ordinal);
+                    int last = body.LastIndexOf(card.description, System.StringComparison.Ordinal);
+                    Assert.GreaterOrEqual(first, 0, card.id);
+                    Assert.AreEqual(first, last, card.id + " description must not be duplicated");
+                }
+
+            }
+
+            Assert.AreEqual(37, structuredCount, "all current Dreamcatcher cards should be data-formatted");
+        }
+
     }
 }

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Card_AllAtk8
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: all_atk
-  displayName: "\uC62C \uD575\uB51C"
+  displayName: "\uC62C\uB51C"
   axis: 3
   category: 0
   effects:
@@ -24,4 +24,6 @@ MonoBehaviour:
   attackMods: []
   type: 0
   skill: {fileID: 0}
-  description: "\uBAA8\uB4E0 \uC544\uAD70\uC758 \uACF5\uACA9\uB825\uC744 \uAC15\uD654\uD55C\uB2E4."
+  description: "\uD56D\uC0C1 \u2192 \uBAA8\uB4E0 \uC544\uAD70 \uACF5\uACA9\uB825
+    +8%"
+  leakAllowanceCost: 0

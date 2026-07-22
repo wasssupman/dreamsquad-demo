@@ -1,79 +1,369 @@
+using System;
 using System.Collections.Generic;
+using System.Globalization;
 using Wassup.Data;
 
 namespace Wassup.UI
 {
-    // dreamcatcher-hand-drag-tooltip unit 0 — shared card-performance body text
-    // for the deck-builder detail popup and the in-battle drag tooltip. Pure
-    // string assembly (card in → rich text out), EditMode-tested.
+    // Shared card body formatter for the deck builder, inspect panel and hand tooltip.
+    // Numbers come from the serialized effect/mechanic/skill data; authored prose is
+    // only a fallback for cards whose data has no supported summary rule yet.
     public static class DreamcatcherCardText
     {
-        // Rich effect body: gold axis header (Squad only) + type label + one
-        // line per buff + authored description block (omitted when empty).
         public static string Body(DreamcatcherCard card) => Assemble(card, compact: false);
 
-        // hand-drag-tooltip unit 4 — 인게임 손패 툴팁 전용. 블록 사이 빈 줄을 뺀 것만
-        // 다르다(내용·라벨·색은 동일). 툴팁은 화면 상단에 떠서 보드를 가리므로 세로
-        // 예산이 빡빡한 반면, 덱빌더 팝업/덱 페이지는 넓어서 빈 줄이 가독성에 이롭다.
-        // 그래서 Body() 를 바꾸지 않고 변형을 둔다(unit 0 "덱빌더 회귀 금지" 계약).
         public static string BodyCompact(DreamcatcherCard card) => Assemble(card, compact: true);
 
         private static string Assemble(DreamcatcherCard card, bool compact)
         {
-            string axis = card.axis == CardTargetAxis.ClassRanger ? "RANGER"
-                        : card.axis == CardTargetAxis.ClassGuardian ? "GUARDIAN"
-                        : card.axis == CardTargetAxis.Cost1 ? "COST-1 UNITS"
-                        : "ALL UNITS";
-            var lines = new List<string>();
-            if (card.effects != null)
+            bool hasUnsupportedData;
+            var lines = BuildSummaryLines(card, out hasUnsupportedData);
+            if ((lines.Count == 0 || hasUnsupportedData)
+                && card != null && !string.IsNullOrEmpty(card.description))
             {
-                foreach (var e in card.effects)
-                {
-                    string sign = e.percent >= 0 ? "+" : "";
-                    string col = e.percent >= 0 ? "#8BE28B" : "#E28B8B";
-                    lines.Add($"{KindLabel(e.kind)}  <color={col}>{sign}{e.percent:0}%</color>");
-                }
+                if (hasUnsupportedData) lines.Clear();
+                lines.Add(card.description);
             }
-            // dreamcatcher-card-taxonomy — label shows TYPE, retired grade.
-            // hand-drag-tooltip unit 0 — Active gets its own label (the old
-            // Unit/Squad split fell back to SQUAD; Active never reached the
-            // deck builder, but the in-battle hand does show Active cards).
-            string typeLabel = card.type == CardType.Unit ? "<color=#F0B44E>UNIT</color>"
-                             : card.type == CardType.Active ? "<color=#7ED0E8>ACTIVE</color>"
-                             : "<color=#9AA6C0>SQUAD</color>";
-            // dreamcatcher-card-description Unit 1 — header(축·타입) + 자동 수치라인
-            // (effects[], 있을 때만) + authored description(있을 때만). Unit/Active
-            // 카드는 effects 가 비어 description 이 유일한 본문이 된다. axis 칩은
-            // Squad 전용: axis 는 축 스탯 버프의 대상 필터라 다른 타입에는 무의미.
-            string header = card.type == CardType.Squad
+
+            string axis = AxisLabel(card == null ? CardTargetAxis.All : card.axis);
+            string typeLabel = TypeLabel(card == null ? CardType.Squad : card.type);
+            string header = card != null && card.type == CardType.Squad
                 ? $"<color=#F5D480><b>{axis}</b></color>  ·  {typeLabel}"
                 : typeLabel;
             string gap = compact ? "\n" : "\n\n";
-            // 축·타입 줄 크기. Body() 는 절대 22 를 유지한다(덱빌더 회귀 금지).
-            // BodyCompact() 는 툴팁 전용이라 상대값을 쓴다 — 본문 폰트를 키워도
-            // 이 줄이 본문보다 작아지지 않는다(절대 22 면 역전된다).
             string headSize = compact ? "115%" : "22";
             string body = $"<size={headSize}>{header}</size>";
             if (lines.Count > 0) body += gap + string.Join("\n", lines);
-            if (!string.IsNullOrEmpty(card.description)) body += $"{gap}<color=#D4DAE8>{card.description}</color>";
             return body;
         }
 
-        // Exhaustive kind→label map. The legacy ternary chain fell through to
-        // "Cost Rate" for DamageVsCc — keep every kind explicit so a future
-        // enum append fails loudly here instead of mislabeling.
-        private static string KindLabel(CardBuffKind kind)
+        private static List<string> BuildSummaryLines(DreamcatcherCard card, out bool hasUnsupportedData)
+        {
+            var lines = new List<string>();
+            hasUnsupportedData = false;
+            if (card == null) return lines;
+
+            switch (card.type)
+            {
+                case CardType.Squad:
+                    BuildSquadLines(card, lines);
+                    break;
+                case CardType.Unit:
+                    hasUnsupportedData = !BuildUnitLines(card, lines);
+                    break;
+                case CardType.Active:
+                    if (card.skill != null) hasUnsupportedData = !BuildSkillLine(card.skill, lines);
+                    break;
+            }
+
+            return lines;
+        }
+
+        private static void BuildSquadLines(DreamcatcherCard card, List<string> lines)
+        {
+            if (card.leakAllowanceCost > 0)
+            {
+                lines.Add($"부착 즉시 → 유출 허용치 -{card.leakAllowanceCost} (환불 없음)");
+            }
+
+            if (card.effects == null || card.effects.Length == 0) return;
+
+            var effects = new List<string>();
+            foreach (var effect in card.effects)
+                effects.Add(FormatSquadEffect(card.axis, effect));
+
+            lines.Add($"항상 → {string.Join(" · ", effects)}");
+        }
+
+        private static string FormatSquadEffect(CardTargetAxis axis, CardEffect effect)
+        {
+            string target = AxisTargetLabel(axis);
+            if (effect.kind == CardBuffKind.DamageVsCc)
+                return $"CC 상태 적에게 {target} 피해 {SignedPercent(effect.percent)}";
+
+            return $"{target} {BuffLabel(effect.kind)} {SignedPercent(effect.percent)}";
+        }
+
+        private static bool BuildUnitLines(DreamcatcherCard card, List<string> lines)
+        {
+            bool supported = true;
+            if (card.attackMods != null)
+            {
+                foreach (var mod in card.attackMods)
+                {
+                    string line;
+                    if (TryFormatAttackMod(mod, out line)) lines.Add(line);
+                    else supported = false;
+                }
+            }
+
+            if (card.mechanics != null)
+            {
+                foreach (var mechanic in card.mechanics)
+                    if (!TryAppendMechanic(lines, mechanic)) supported = false;
+            }
+
+            return supported;
+        }
+
+        private static bool TryFormatAttackMod(DcAttackModSpec mod, out string line)
+        {
+            line = null;
+            switch (mod.kind)
+            {
+                case DcAttackModKind.ProjectileBounce:
+                    string falloff = Approximately(mod.damageMul, 1f)
+                        ? "감쇠 없음"
+                        : $"튕길 때마다 피해 {Multiplier(mod.damageMul)}";
+                    line = $"항상 → 공격 투사체가 최대 {Count(mod.tileRange)}칸 범위 내 "
+                         + $"{Count(mod.count)}회 튕김 ({falloff})";
+                    return true;
+                case DcAttackModKind.FrontmostTarget:
+                    line = "항상 → 목표 지점에 가장 가까운 적 우선 공격"
+                         + $" · 해당 적 직접 피해 {SignedPercent((mod.damageMul - 1f) * 100f)}";
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        private static bool TryAppendMechanic(List<string> lines, DcMechanic mechanic)
+        {
+            DcPayloadSpec payload = mechanic.payload;
+            string trigger;
+
+            switch (payload.kind)
+            {
+                case DcPayloadKind.DreamCocoon:
+                    lines.Add($"부착 즉시 → 수면 {Duration(payload.duration)} (피격 시 종료)");
+                    lines.Add($"무피격 완주 시 → 남은 전투 동안 {BuffLabel(payload.buffStat)} "
+                           + $"{SignedPercent(payload.magnitude)}");
+                    return true;
+                case DcPayloadKind.BountyMark:
+                    lines.Add($"적 지정 → 대상 받는 피해 -{Count(payload.tileRange)}%");
+                    lines.Add($"표식 대상 처치 시 → 각성치 {Multiplier(payload.magnitude)}");
+                    lines.Add("표식 대상 이탈 시 → 보상 없음");
+                    return true;
+                case DcPayloadKind.SelfBuffLethal:
+                    lines.Add($"부착 즉시 → 공격 속도 {SignedPercent(payload.magnitude)}"
+                           + $" · {Duration(payload.duration)} 후 사망");
+                    return true;
+                case DcPayloadKind.PlacementAura:
+                    lines.Add($"호스트 생존 중 → 새 유닛 배치 {Duration(payload.duration)} 후 "
+                           + $"공격 속도 {SignedPercent(payload.magnitude)}");
+                    return true;
+            }
+
+            if (!TryFormatTrigger(mechanic.trigger, out trigger)) return false;
+
+            string effect;
+            switch (payload.kind)
+            {
+                case DcPayloadKind.ProjectileToTarget:
+                    effect = $"대상에게 추가 투사체 피해 {Count(payload.magnitude)}";
+                    break;
+                case DcPayloadKind.SelfTileAoe:
+                    effect = $"반경 {Count(payload.tileRange)}칸 피해 {Count(payload.magnitude)}";
+                    break;
+                case DcPayloadKind.NextAttackDoubleFire:
+                    effect = "다음 공격 2연발";
+                    break;
+                case DcPayloadKind.AreaBarrage:
+                    effect = $"반경 {Count(payload.tileRange)}칸 피해 {Count(payload.magnitude)}";
+                    break;
+                case DcPayloadKind.SelfBlink:
+                    effect = $"반경 {Count(payload.tileRange)}칸 내 위치로 이동";
+                    break;
+                case DcPayloadKind.AllyMoveSpeedAura:
+                    effect = $"반경 {Count(payload.tileRange)}칸 아군 이동 속도 "
+                           + $"{SignedPercent(payload.magnitude)} · {Duration(payload.duration)}";
+                    break;
+                case DcPayloadKind.ApplyCcToTarget:
+                    effect = payload.ccKind == DcCcKind.Impulse
+                        ? $"대상에게 넉백 속도 {Count(payload.magnitude)} · {Duration(payload.duration)}"
+                        : $"대상에게 {CcLabel(payload.ccKind)} {Duration(payload.duration)}";
+                    break;
+                case DcPayloadKind.ApplyStackToTarget:
+                    effect = $"대상에게 {StackLabel(payload.stackKind)} {Count(payload.magnitude)}스택"
+                           + $" · {Duration(payload.duration)}";
+                    break;
+                case DcPayloadKind.SelfStatBuff:
+                    effect = $"{BuffLabel(payload.buffStat)} {SignedPercent(payload.magnitude)}";
+                    if (payload.duration > 0f) effect += $" · {Duration(payload.duration)}";
+                    else if (mechanic.trigger.kind == DcTriggerKind.HealthThreshold)
+                        effect += " · 전투 중 1회";
+                    else effect += " · 남은 전투 동안";
+                    break;
+                case DcPayloadKind.HeavyStrike:
+                    effect = $"피해 {Multiplier(payload.magnitude)}";
+                    break;
+                case DcPayloadKind.AreaSleep:
+                    effect = $"반경 {Count(payload.tileRange)}칸 내 적 최대 "
+                           + $"{Count(payload.magnitude)}명 수면 {Duration(payload.duration)}";
+                    break;
+                default:
+                    return false;
+            }
+
+            lines.Add($"{trigger} → {effect}");
+            return true;
+        }
+
+        private static bool TryFormatTrigger(DcTriggerSpec trigger, out string text)
+        {
+            switch (trigger.kind)
+            {
+                case DcTriggerKind.AttackN:
+                    text = $"{Count(trigger.period)}번째 공격마다";
+                    return trigger.period > 0;
+                case DcTriggerKind.OnDamagedN:
+                    text = $"{Count(trigger.period)}번째 피격마다";
+                    return trigger.period > 0;
+                case DcTriggerKind.OnDeath:
+                    text = "이 유닛이 사망하면";
+                    return true;
+                case DcTriggerKind.PeriodicTimer:
+                    text = $"{Duration(trigger.periodSeconds)}마다";
+                    return trigger.periodSeconds > 0f;
+                case DcTriggerKind.HealthThreshold:
+                    text = $"HP {Number((1f - trigger.fraction) * 100f)}% 이하";
+                    return trigger.fraction > 0f;
+                case DcTriggerKind.OnKill:
+                    text = "이 유닛이 적을 처치하면";
+                    return true;
+                case DcTriggerKind.OnShieldBreak:
+                    text = "실드 파괴 시";
+                    return true;
+                default:
+                    text = null;
+                    return false;
+            }
+        }
+
+        private static bool BuildSkillLine(SkillData skill, List<string> lines)
+        {
+            string effect;
+            switch (skill.effect)
+            {
+                case SkillEffectType.Meteor:
+                    effect = "타일 지정 → ";
+                    if (skill.warningSec > 0f) effect += $"{Duration(skill.warningSec)} 후 ";
+                    effect += $"반경 {Count(skill.range)}칸 피해 {Count(skill.magnitude)}";
+                    break;
+                case SkillEffectType.Portal:
+                    effect = $"두 타일 지정 → 입구 진입 적을 출구로 이동 · {Duration(skill.durationSec)}";
+                    break;
+                case SkillEffectType.PowerSurge:
+                    effect = $"아군 유닛 지정 → 공격력 {Multiplier(skill.magnitude)} · {Duration(skill.durationSec)}";
+                    break;
+                case SkillEffectType.RapidFire:
+                    effect = $"아군 유닛 지정 → 공격 속도 {Multiplier(skill.magnitude)} · {Duration(skill.durationSec)}";
+                    break;
+                case SkillEffectType.SlowField:
+                    effect = $"타일 지정 → 반경 {Count(skill.range)}칸 적 이동 속도 "
+                           + $"{Multiplier(skill.magnitude)} · {Duration(skill.durationSec)}";
+                    break;
+                case SkillEffectType.Tornado:
+                    effect = $"타일 지정 → 반경 {Count(skill.range)}칸 적을 중심으로 끌어당김"
+                           + $" · 끌어당김 속도 {Count(skill.magnitude)} · {Duration(skill.durationSec)}";
+                    break;
+                default:
+                    return false;
+            }
+
+            lines.Add($"{effect} · 비용 {skill.cost} · 재사용 {Duration(skill.cooldownSec)}");
+            return true;
+        }
+
+        private static string AxisLabel(CardTargetAxis axis)
+        {
+            switch (axis)
+            {
+                case CardTargetAxis.ClassRanger: return "레인저";
+                case CardTargetAxis.ClassGuardian: return "가디언";
+                case CardTargetAxis.Cost1: return "1코스트";
+                default: return "전체";
+            }
+        }
+
+        private static string AxisTargetLabel(CardTargetAxis axis)
+        {
+            switch (axis)
+            {
+                case CardTargetAxis.ClassRanger: return "레인저 아군";
+                case CardTargetAxis.ClassGuardian: return "가디언 아군";
+                case CardTargetAxis.Cost1: return "1코스트 유닛";
+                default: return "모든 아군";
+            }
+        }
+
+        private static string TypeLabel(CardType type)
+        {
+            switch (type)
+            {
+                case CardType.Unit: return "유닛 부착";
+                case CardType.Active: return "액티브";
+                default: return "스쿼드 버프";
+            }
+        }
+
+        private static string BuffLabel(CardBuffKind kind)
         {
             switch (kind)
             {
-                case CardBuffKind.AttackDamage: return "Attack";
-                case CardBuffKind.AttackSpeed: return "Attack Speed";
-                case CardBuffKind.EffectiveHealth: return "Health";
-                case CardBuffKind.MoveSpeed: return "Move Speed";
-                case CardBuffKind.CostRate: return "Cost Rate";
-                case CardBuffKind.DamageVsCc: return "Damage vs CC";
+                case CardBuffKind.AttackDamage: return "공격력";
+                case CardBuffKind.AttackSpeed: return "공격 속도";
+                case CardBuffKind.EffectiveHealth: return "체력";
+                case CardBuffKind.MoveSpeed: return "이동 속도";
+                case CardBuffKind.CostRate: return "각성 회복 속도";
+                case CardBuffKind.DamageVsCc: return "피해";
                 default: return kind.ToString();
             }
+        }
+
+        private static string CcLabel(DcCcKind kind)
+        {
+            switch (kind)
+            {
+                case DcCcKind.Stun: return "기절";
+                case DcCcKind.Impulse: return "넉백";
+                default: return kind.ToString();
+            }
+        }
+
+        private static string StackLabel(DcStackKind kind)
+        {
+            switch (kind)
+            {
+                case DcStackKind.Fire: return "화상";
+                case DcStackKind.Ice: return "빙결";
+                case DcStackKind.Bleed: return "출혈";
+                case DcStackKind.Poison: return "중독";
+                default: return kind.ToString();
+            }
+        }
+
+        private static string SignedPercent(float value)
+        {
+            return value >= 0f ? $"+{Number(value)}%" : $"{Number(value)}%";
+        }
+
+        private static string Multiplier(float value) => $"x{Number(value)}";
+
+        private static string Duration(float value) => $"{Number(value)}초";
+
+        private static string Count(float value) => Number(value);
+
+        private static string Number(float value)
+        {
+            if (float.IsNaN(value) || float.IsInfinity(value)) return "0";
+            if (Math.Abs(value) < 0.005f) value = 0f;
+            return value.ToString("0.##", CultureInfo.InvariantCulture);
+        }
+
+        private static bool Approximately(float left, float right)
+        {
+            return Math.Abs(left - right) < 0.005f;
         }
     }
 }

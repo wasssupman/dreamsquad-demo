@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Card_GuardianHp15
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: guardian_hp
-  displayName: "\uAC00\uB514\uC5B8 \uC874\uBC84"
+  displayName: "\uAC00\uB514\uC5B8\uCCB4"
   axis: 1
   category: 0
   effects:
@@ -24,5 +24,6 @@ MonoBehaviour:
   attackMods: []
   type: 0
   skill: {fileID: 0}
-  description: "\uAC00\uB514\uC5B8 \uACC4\uC5F4 \uC544\uAD70\uC758 \uCCB4\uB825\uC744
-    \uB298\uB824 \uC804\uC120\uC744 \uC9C0\uD0F1\uD55C\uB2E4."
+  description: "\uD56D\uC0C1 \u2192 \uAC00\uB514\uC5B8 \uC544\uAD70 \uCCB4\uB825
+    +15%"
+  leakAllowanceCost: 0

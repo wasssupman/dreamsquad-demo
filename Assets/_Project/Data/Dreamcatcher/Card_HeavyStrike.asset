@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Card_HeavyStrike
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: heavy_strike
-  displayName: "\uC751\uCD95\uB41C \uC77C\uACA9"
+  displayName: "\uAC15\uD0C0"
   axis: 3
   category: 1
   effects: []
@@ -38,4 +38,5 @@ MonoBehaviour:
   attackMods: []
   type: 1
   skill: {fileID: 0}
-  description: "\uB2E4\uC12F \uBC88\uC9F8 \uACF5\uACA9\uB9C8\uB2E4 \uC9D3\uB204\uB974\uB294 \uAC15\uACF5 \u2014 \uADF8 \uC77C\uACA9\uC758 \uD53C\uD574\uAC00 2\uBC30\uAC00 \uB41C\uB2E4."
+  description: "5\uBC88\uC9F8 \uACF5\uACA9\uB9C8\uB2E4 \u2192 \uD53C\uD574 x2"
+  leakAllowanceCost: 0

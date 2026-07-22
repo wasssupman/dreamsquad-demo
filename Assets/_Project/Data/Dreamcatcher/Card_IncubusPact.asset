@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Card_IncubusPact
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: sub_incubus_pact
-  displayName: "몽마의 계약"
+  displayName: "\uD76C\uC0DD\uACC4\uC57D"
   axis: 3
   category: 2
   effects:
@@ -24,5 +24,7 @@ MonoBehaviour:
   attackMods: []
   type: 0
   skill: {fileID: 0}
-  description: "부착하는 순간 본진의 유출 허용치 1을 몽마에게 지불한다 — 되돌릴 수 없다. 계약자가 살아 있는 동안 모든 아군의 공격력이 25% 증가한다. 계약자가 죽으면 힘은 사라지지만, 지불한 것은 돌아오지 않는다."
+  description: "\uBD80\uCC29 \uC989\uC2DC \u2192 \uC720\uCD9C \uD5C8\uC6A9\uCE58
+    -1 (\uD658\uBD88 \uC5C6\uC74C)\n\uD56D\uC0C1 \u2192 \uBAA8\uB4E0 \uC544\uAD70
+    \uACF5\uACA9\uB825 +25%"
   leakAllowanceCost: 1

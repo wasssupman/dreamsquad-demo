@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Card_RangerAtk10
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: ranger_atk
-  displayName: "\uB808\uC778\uC800 \uD575\uB51C"
+  displayName: "\uB808\uC778\uC800\uB51C"
   axis: 0
   category: 0
   effects:
@@ -24,5 +24,6 @@ MonoBehaviour:
   attackMods: []
   type: 0
   skill: {fileID: 0}
-  description: "\uB808\uC778\uC800 \uACC4\uC5F4 \uC544\uAD70\uC758 \uACF5\uACA9\uB825\uC744
-    \uAC15\uD654\uD55C\uB2E4."
+  description: "\uD56D\uC0C1 \u2192 \uB808\uC778\uC800 \uC544\uAD70 \uACF5\uACA9\uB825
+    +10%"
+  leakAllowanceCost: 0

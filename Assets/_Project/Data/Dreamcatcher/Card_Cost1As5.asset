@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Card_Cost1As5
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: cost1_as
-  displayName: "1\uCF54 \uD3ED\uD0C0"
+  displayName: "1\uCF54\uC18D"
   axis: 2
   category: 0
   effects:
@@ -24,5 +24,6 @@ MonoBehaviour:
   attackMods: []
   type: 0
   skill: {fileID: 0}
-  description: "1\uCF54\uC2A4\uD2B8 \uC720\uB2DB\uC758 \uACF5\uACA9 \uC18D\uB3C4\uB97C
-    \uB192\uC778\uB2E4."
+  description: "\uD56D\uC0C1 \u2192 1\uCF54\uC2A4\uD2B8 \uC720\uB2DB \uACF5\uACA9
+    \uC18D\uB3C4 +5%"
+  leakAllowanceCost: 0

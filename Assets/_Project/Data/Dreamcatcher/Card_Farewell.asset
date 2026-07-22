@@ -13,12 +13,11 @@ MonoBehaviour:
   m_Name: Card_Farewell
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: farewell
-  displayName: "\uC791\uBCC4 \uC120\uBB3C"
+  displayName: "\uC0AC\uB9DD\uD3ED\uBC1C"
   axis: 3
   category: 1
   effects: []
   art: {fileID: 21300000, guid: 29657a8aa441416aa0e8c977d2f471f0, type: 3}
-  binding: 1
   mechanics:
   - trigger:
       kind: 3
@@ -31,8 +30,14 @@ MonoBehaviour:
       projectile: {fileID: 11400000, guid: 1705ed345dda4014bc5b6019f1a84e77, type: 2}
       tileRange: 2
       duration: 0
+      auraPrefab: {fileID: 0}
+      auraScale: 0
+      ccKind: 0
+      stackKind: 0
+      buffStat: 0
   attackMods: []
   type: 1
-  placementWarmupSec: 0
   skill: {fileID: 0}
-  description: "\uC0AC\uB9DD \uC2DC 2\uD0C0\uC77C \uBC94\uC704 100 \uD3ED\uBC1C"
+  description: "\uC774 \uC720\uB2DB\uC774 \uC0AC\uB9DD\uD558\uBA74 \u2192 \uBC18\uACBD
+    2\uCE78 \uD53C\uD574 500"
+  leakAllowanceCost: 0

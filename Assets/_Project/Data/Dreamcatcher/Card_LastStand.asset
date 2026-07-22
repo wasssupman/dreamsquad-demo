@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Card_LastStand
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: last_stand
-  displayName: "\uCD5C\uD6C4\uC758 \uBC1C\uC545"
+  displayName: "\uBE48\uC0AC\uD3ED\uC8FC"
   axis: 3
   category: 1
   effects: []
@@ -38,5 +38,6 @@ MonoBehaviour:
   attackMods: []
   type: 1
   skill: {fileID: 0}
-  description: "HP\uAC00 30% \uC774\uD558\uB85C \uB5A8\uC5B4\uC9C0\uBA74 \uACF5\uACA9\uB825
-    +30% (\uB0A8\uC740 \uC804\uD22C \uB0B4\uB0B4, 1\uD68C)"
+  description: "HP 30% \uC774\uD558 \u2192 \uACF5\uACA9\uB825 +30% \xB7 \uC804\uD22C
+    \uC911 1\uD68C"
+  leakAllowanceCost: 0
