@@ -2,7 +2,6 @@ using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
-using UnityEngine.EventSystems;
 using UnityEngine.Serialization;
 using UnityEngine.UI;
 using Wassup.Core;
@@ -15,7 +14,7 @@ namespace Wassup.UI
     // + 코스트 눈금 + ready 림 + 발견성 라벨. 채움은 unit 2 피규어가 덮을 placeholder.
     // 탭=Toggled(기존 계약), open/close 상태 소유자는 여전히 DreamcatcherHandView.
     // 클래스명·public API·씬 배선(GameObject 1012444853, gaugeView 참조 2곳)은 유지.
-    public class AwakeningGaugeView : MonoBehaviour, IPointerDownHandler, IPointerUpHandler
+    public class AwakeningGaugeView : MonoBehaviour
     {
         [SerializeField] private DreamcatcherHandController handController;
         [SerializeField] private TMP_FontAsset labelFont;
@@ -70,7 +69,6 @@ namespace Wassup.UI
         private Coroutine _punch;
         private Coroutine _gain;
         private Coroutine _pulse;
-        private Coroutine _pressRelease;
         private Coroutine _readyPulse;
 
         public void Pulse()
@@ -85,20 +83,6 @@ namespace Wassup.UI
         {
             _open = open;
             UpdateVisualState();
-        }
-
-        public void OnPointerDown(PointerEventData eventData)
-        {
-            if (_visualRoot == null) return;
-            if (_pressRelease != null) StopCoroutine(_pressRelease);
-            _visualRoot.localScale = Vector3.one * 0.95f;
-        }
-
-        public void OnPointerUp(PointerEventData eventData)
-        {
-            if (_visualRoot == null) return;
-            if (_pressRelease != null) StopCoroutine(_pressRelease);
-            _pressRelease = StartCoroutine(PressReleaseRoutine());
         }
 
         private void Awake()
@@ -202,8 +186,6 @@ namespace Wassup.UI
                 }
             }
 
-            bool wasReady = _normalized >= _readyThreshold;
-            bool nowReady = previousNormalized >= _readyThreshold;
             // ready 로 갓 넘어간 순간 rim 한 번 강조(unit 4 가 정밀 affordability·오버플로우 확장).
             if (_normalized >= _readyThreshold && previousNormalized < _readyThreshold
                 && _panel != null && _panel.activeInHierarchy)
@@ -222,7 +204,8 @@ namespace Wassup.UI
             _ready = _normalized >= _readyThreshold;
             if (_rim != null)
             {
-                Color c = _ready ? (_normalized >= 0.999f ? maxColor : rimColor) : rimColor;
+                // 색은 max 여부로만 갈린다(골드 vs 보라). ready/open 은 알파(발화 강도)로 표현.
+                Color c = _normalized >= 0.999f ? maxColor : rimColor;
                 c.a = dormant ? 0f : (_ready || _open ? 1f : Mathf.Lerp(0.12f, 0.5f, _normalized));
                 _rim.color = c;
             }
@@ -503,25 +486,6 @@ namespace Wassup.UI
             }
             rt.localScale = Vector3.one;
             _pulse = null;
-        }
-
-        private IEnumerator PressReleaseRoutine()
-        {
-            var rt = _visualRoot;
-            const float duration = 0.13f;
-            float time = 0f;
-            while (time < duration)
-            {
-                time += Time.unscaledDeltaTime;
-                float k = Mathf.Clamp01(time / duration);
-                float scale = k < 0.6f
-                    ? Mathf.Lerp(0.95f, 1.035f, k / 0.6f)
-                    : Mathf.Lerp(1.035f, 1f, (k - 0.6f) / 0.4f);
-                rt.localScale = Vector3.one * scale;
-                yield return null;
-            }
-            rt.localScale = Vector3.one;
-            _pressRelease = null;
         }
 
         private static void ApplyNumberOutline(TextMeshProUGUI label)
