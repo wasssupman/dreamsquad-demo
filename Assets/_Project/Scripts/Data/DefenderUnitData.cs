@@ -105,6 +105,32 @@ namespace Wassup.Data
         public float bombSleepSec;           // 수면탄 Sleep 지속(초)
         public float bombStunSec;            // 스턴탄 Stun 지속(초)
 
+        // defender-ability-assets unit 0 — 유닛 고유능력 서브에셋 리스트. 위 능력별 flat
+        // 필드 그룹(volley/hazard/shield/bomb)을 대체한다 — flat 필드 삭제는 unit 2(cut-over).
+        // 같은 구체 타입 중복 부착 금지(GetAbility = 첫 매치, 저작 규율 — spec 계약 1).
+        [Header("Abilities")]
+        public List<DefenderAbilityData> abilities = new List<DefenderAbilityData>();
+
+        // 첫 매치 or null. null 원소(리스트 빈 슬롯)는 스킵.
+        public T GetAbility<T>() where T : DefenderAbilityData
+        {
+            for (int i = 0; i < abilities.Count; i++)
+                if (abilities[i] is T match) return match;
+            return null;
+        }
+
+        // 배치 시 공격방향 지정(조준 페이즈) 필요 여부 — 능력이 선언(spec 계약 4).
+        // 구 directionalAttack flag 의 대체. cut-over(unit 2)에서 UX 소비처가 이걸 읽는다.
+        public bool RequiresFacing
+        {
+            get
+            {
+                for (int i = 0; i < abilities.Count; i++)
+                    if (abilities[i] != null && abilities[i].RequiresFacing) return true;
+                return false;
+            }
+        }
+
         [Header("Rarity")]
         public DefenderRarity rarity = DefenderRarity.Common;
 
