@@ -427,6 +427,30 @@ namespace Wassup.Bridge
                     slot.tileRange = math.max(0, m.payload.tileRange);
                     slot.visualScale = m.payload.projectile.visualScale;
                 }
+                else if (m.payload.kind == Wassup.Data.DcPayloadKind.AreaSleep)
+                {
+                    // dreamcatcher-shield-break unit 1 — 실드 파열 시 N타일 내 가장 가까운 M명을
+                    // L초 수면. 투사체 불요(연출은 기존 수면 표현). magnitude=M(적 수 cap, floor>=1)·
+                    // tileRange=N(Chebyshev 반경)·duration=L(수면 초). 실행=DrainShieldBreakEvents(unit 2).
+                    if (m.payload.magnitude < 1f)
+                    {
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: AreaSleep magnitude<1 (no targets) — skipped.");
+                        continue;
+                    }
+                    if (m.payload.tileRange < 1)
+                    {
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: AreaSleep tileRange<1 — skipped.");
+                        continue;
+                    }
+                    if (m.payload.duration <= 0f)
+                    {
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: AreaSleep non-positive duration — skipped.");
+                        continue;
+                    }
+                    slot.tileRange = m.payload.tileRange;
+                    slot.duration = m.payload.duration;
+                    // magnitude(M) 은 slot 초기화에서 이미 복사됨.
+                }
                 else if (m.payload.kind == Wassup.Data.DcPayloadKind.ApplyCcToTarget)
                 {
                     // dreamcatcher-new-abilities unit 1 — 온-히트 CC(frost_arrow=Stun).

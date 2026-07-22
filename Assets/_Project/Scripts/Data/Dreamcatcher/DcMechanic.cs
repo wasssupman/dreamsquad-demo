@@ -69,6 +69,10 @@ namespace Wassup.Data
         // ApplyStackToTarget 의 tileRange 재사용 선례). 처치=배율 보상+회수,
         // 유출=무보상 회수(EnemyGone). append-only.
         BountyMark = 15,
+        // dreamcatcher-shield-break unit 1 — 실드 파열(OnShieldBreak) 시 N타일 내 가장 가까운
+        // M명을 L초 수면. magnitude=M·tileRange=N·duration=L 재사용(신규 DcPayloadSpec 필드 0).
+        // 실행=BattleBridge.DrainShieldBreakEvents(적 쿼리+AoeTargetCap+EnemyCcEvent{Sleep}). append-only.
+        AreaSleep = 16,
     }
 
     // dreamcatcher-new-abilities unit 0 — 데이터 계층 CC 선택자(공격 온-히트용). 정의
