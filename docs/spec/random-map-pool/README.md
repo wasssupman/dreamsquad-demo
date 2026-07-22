@@ -1,6 +1,6 @@
 # Random Map Pool — 풀에서 매판 랜덤 맵 + 맵별 웨이브
 
-**상태: 완료 2026-07-22** (units 0~4 + unit 6 브리핑 동기화 구현·커밋·Play 실증)
+**상태: 완료 2026-07-22** (units 0~4 랜덤 맵+맵별 덱 + unit 7 메뉴 웨이브 예고 동기화. unit 6 은 죽은 draft 배선이라 철회, 헬퍼만 잔존)
 
 ## 목표
 
@@ -28,7 +28,7 @@
 - **웨이브 구성은 스폰 개수와 무관**, 레인 분배만 런타임 스폰 수(`_generatedMap.spawns.Length`)로 자동 round-robin(`ExpandWave`/`EffectiveSpawnIndex`, laneCount≤2 는 authored 존중, 3+ 는 deckIndex 결정론). **"어울림"은 코드가 아니라 데이터 튜닝** — 각 덱의 `minUnitsPerWave ≥ 스폰수`(이상적으로 배수), `bossEscort ≥ 스폰수−1`.
 - **document 소비 조건은 한 곳**: `MapGridBattleAdapter.IsUsableDocument`. adapter `Build` 와 BattleBridge connectivity-guard 가 **선택된 doc** 기준으로 같은 술어를 쓴다.
 - **덱 소비는 `ActiveDeck` 경유**. 풀이 비었거나 선택 엔트리가 미완성(doc unusable / deck null)이면 **레거시 serialized `deck`/`mapDocument` 폴백** → 무회귀.
-- **브리핑 웨이브 스트립도 per-map 동기화됨(unit 6)**. draft 스트립은 `DraftView`→`DraftController.BuildBriefingWavePlan`→`BattleBridge.BuildBriefingWavePlan()`(실전 생성경로와 동일 ActiveDeck·`DeriveWaveSeed(matchSeed)` 미러)으로 **실전과 결정론적 동일한 플랜**을 프리뷰한다. bridge 부재(아웃게임 SquadPrep)면 정적 `deck` 폴백.
+- **웨이브 예고도 per-map 동기화됨(unit 7)**. 실게임(스쿼드 모드)에서 웨이브는 **인배틀 일시정지 메뉴**(`MenuPopup`)로 본다. `MenuPopup.Open()` 이 표시 직전 `GameManager.BuildBriefingWavePlan()`→`BattleBridge.BuildBriefingWavePlan()`(실전 생성경로와 동일 ActiveDeck·`DeriveWaveSeed(matchSeed)` 미러)로 스트립을 `RebuildFromPlan` → 선택 맵의 덱을 정확히 예고. (unit 6 은 draft 스트립을 고쳤으나 draft 는 실게임에서 죽은 경로라 배선 철회 — 공용 헬퍼 `BuildBriefingWavePlan`·`RebuildFromPlan` 만 남겨 unit 7 이 재사용.)
 - **재현**: 같은 matchSeed → 같은 (맵, 덱). `GameManager.debugFixedMatchSeed` 로 특정 인코운터를 핀.
 - **점수 예산은 전 맵 동일** (토너먼트 공정, 2026-07-22 사용자 결정): 모든 맵 덱은 `defeatGoalReachedCount = 10`·`timerDurationSec = 180`(WaveA 값) **고정** → 시간(18,000)·스트레스(9,000) 예산 상한이 전 맵 동일. 킬 점수는 accumulator라 본질적으로 가변(웨이브 구성 의존 — 산식 계약, `score-formula.md`)이지만, 각 덱의 적 volume(waveCount·unitsPerWave 범위·보스 cadence)을 WaveA와 같게 둬 **킬 상한도 동급**으로 유지(킬 값은 유닛 종류와 무관 = 잡몹 일괄 100). **맵마다 다른 건 적 구성(유닛 종류·레인 분배·pacing)뿐** — 채점 기준·판 길이·패배 조건·점수 상한은 불변.
 

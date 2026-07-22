@@ -1,4 +1,9 @@
-# 6. 브리핑 웨이브 스트립 per-map 동기화
+# 6. 브리핑 웨이브 스트립 per-map 동기화 (draft 배선 철회 — unit 7 로 대체)
+
+> **철회 2026-07-22**: 이 unit 은 `DraftView` 경로를 고쳤으나, 실게임(스쿼드 모드)은 draft 를 건너뛰어 **DraftView 는 죽은 경로**였다. draft 배선(`DraftView.RunFlow` 주입 + `DraftController.BuildBriefingWavePlan`)은 되돌렸다. 살아남은 것은 재사용 헬퍼 **`BattleBridge.BuildBriefingWavePlan()` + `WavePatternStripView.RebuildFromPlan()`** 뿐이고, 실 라이브 픽스는 **unit 7**(`MenuPopup`)이 한다. 아래 원문은 이력 보존.
+
+---
+
 
 ## 목적
 
