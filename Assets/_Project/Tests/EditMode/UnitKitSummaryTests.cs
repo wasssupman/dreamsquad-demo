@@ -80,15 +80,22 @@ namespace Wassup.Tests.EditMode
                 UnitKitSummary.Build(u));
         }
 
+        // defender-ability-assets unit 2 — trait 소스가 능력 서브에셋으로 이동. 문구 불변.
+        private static DirectionalVolleyAbility Volley(int shots)
+        {
+            var a = ScriptableObject.CreateInstance<DirectionalVolleyAbility>();
+            a.shotCount = shots;
+            return a;
+        }
+
         [Test]
         public void DirectionalVolley_ShotCountPhrase_AndHazard()
         {
             var u = Unit();
             u.role = DefenderClass.Caster;
             u.projectile = Projectile();
-            u.directionalAttack = true;
-            u.shotCount = 10;
-            u.hazardCastEnabled = true;
+            u.abilities.Add(Volley(10));
+            u.abilities.Add(ScriptableObject.CreateInstance<HazardCastAbility>());
             Assert.AreEqual(
                 "캐스터 · 원거리형. 지정 방향으로 10연발 사격, 지속 해저드 설치.",
                 UnitKitSummary.Build(u));
@@ -100,8 +107,7 @@ namespace Wassup.Tests.EditMode
             var u = Unit();
             u.role = DefenderClass.Ranger;
             u.projectile = Projectile();
-            u.directionalAttack = true;
-            u.shotCount = 1;
+            u.abilities.Add(Volley(1));
             Assert.AreEqual("레인저 · 원거리형. 지정 방향 사격.", UnitKitSummary.Build(u));
         }
 

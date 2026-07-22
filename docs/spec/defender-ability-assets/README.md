@@ -1,6 +1,6 @@
 # defender-ability-assets — 유닛 고유능력 서브에셋 재구조화
 
-> 상태: 스펙 작성 2026-07-22 · 구현 대기
+> 상태: **완료 2026-07-22** (units 0~2 · compile 0 · EditMode 1193/0/2 · 사용자 Play 확인). 인계는 `3_handoff_summary.md`.
 
 ## 목표
 

@@ -14,7 +14,7 @@
 
 | 정거장 | 앵커 | 확인 포인트 |
 |---|---|---|
-| 데이터 SO | `Data/DefenderUnitData.cs` (+`DefenderCatalog.cs`) | 스탯/투사체/스킬 값 전부 SO 에서. 신규 유닛은 **DefenderCatalog 등록까지** (미등록 = 로스터 미노출) |
+| 데이터 SO | `Data/DefenderUnitData.cs` (+`DefenderCatalog.cs`) · 고유능력 = `Data/Abilities/`(`DefenderAbilityData` 서브에셋, 유닛 `abilities` 리스트로 참조) | 공통 스탯(체력/사거리/쿨다운/코스트)은 유닛 SO, **능력별 파라미터**(volley/hazard/shield/bomb)는 능력 서브에셋. bake = `CreateDefenderEntity` 가 `GetAbility<T>()` 로 해석(defender-ability-assets). 신규 유닛은 **DefenderCatalog 등록까지** (미등록 = 로스터 미노출) |
 | 스폰 진입점 | `Bridge/BattleBridge.cs` `PlaceDefenderAs`→`CreateDefenderEntity` | 플레이어 배치 기반 |
 | ECS 컴포넌트 (Units) | `Battle/Units/` DefenderUnitTag·Health·IncomingDamage·DefenderTile | 능력별 조건부: AttackState / HazardCastState / AggroProvider / DeployedFacing(방향 지정 배치 — 활성화 시 1회 기록) / VolleyFireState(Combat 소유, shotCount>1 만) |
 | 시뮬 시스템 | `Battle/Combat/AttackSystem.cs` · `Battle/Units/DamageApplicationSystem.cs`·`HealthDeathSystem.cs` | 이동 없음(고정) — PathFollowState 미부여 |

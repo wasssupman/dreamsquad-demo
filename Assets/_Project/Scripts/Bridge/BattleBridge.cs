@@ -4288,7 +4288,11 @@ namespace Wassup.Bridge
             int tileRange = GridMath.RangeToTiles(unit.attackRange);
             // unit 9 — 방향 유닛에게 네모 사거리는 거짓말이다(레인만 때린다). 방향은 아직
             // 안 정해졌으므로 고를 수 있는 4레인을 십자로 흐리게 — 조준 페이즈와 같은 언어.
-            if (unit.directionalAttack) PaintLanes(center, tileRange, null, AimLaneDimAlpha);
+            // defender-ability-assets unit 2 — 폭탄병은 레인도 거짓말(착지 셀만 때린다) →
+            // 조준 페이즈(SetAimGuide)와 같은 착지 후보 4셀. 나머지 facing 유닛은 레인 유지.
+            var bombPreview = unit.GetAbility<BombThrowAbility>();
+            if (bombPreview != null) PaintLandingCells(center, bombPreview.landingTiles, null, AimLaneDimAlpha);
+            else if (unit.RequiresFacing) PaintLanes(center, tileRange, null, AimLaneDimAlpha);
             else tilemapMapView.SetPlacementRange(center, tileRange);
             _rangeOwner = RangeDisplayOwner.Placement;
         }
@@ -4302,11 +4306,12 @@ namespace Wassup.Bridge
         public void SetAimGuide(Vector2Int center, DefenderUnitData unit, Vector2Int? selected)
         {
             if (tilemapMapView == null || unit == null) return;
-            if (unit.bombLandingTiles > 0)
+            var bombAim = unit.GetAbility<BombThrowAbility>();
+            if (bombAim != null)
             {
                 // bomb-thrower-defender unit 8 — 착지 타일 조준: 상하좌우 N칸 착지 후보만
                 // 하이라이트(레인/화살표 없음 — 머신거너와 다른 모드). 선택되면 그 착지 셀만.
-                PaintLandingCells(center, unit.bombLandingTiles, selected, selected.HasValue ? 1f : AimLaneDimAlpha);
+                PaintLandingCells(center, bombAim.landingTiles, selected, selected.HasValue ? 1f : AimLaneDimAlpha);
                 _rangeOwner = RangeDisplayOwner.PlacementAim;
                 tilemapMapView.ClearAimArrows();
                 return;
@@ -4526,13 +4531,15 @@ namespace Wassup.Bridge
             // defender-directional-volley unit 4 — 다연발 유닛만 볼리 상태를 진다.
             // 스폰 시 사전 부착 = 발사 때마다 구조 변경이 없다(IncomingHeal 선례).
             // shotCount <= 1 이면 미부착 → AttackSystem 이 현행 단발 경로 그대로.
-            if (unitData.shotCount > 1)
+            // defender-ability-assets unit 2 — 파라미터 소유가 능력 서브에셋으로 이동(flat 대체).
+            var volleyAbility = unitData.GetAbility<DirectionalVolleyAbility>();
+            if (volleyAbility != null && volleyAbility.shotCount > 1)
             {
                 _em.AddComponentData(entity, new Wassup.Battle.Combat.VolleyFireState
                 {
-                    shotCount = unitData.shotCount,
-                    shotIntervalSec = unitData.shotIntervalSec,
-                    spreadAngleDeg = unitData.spreadAngleDeg,
+                    shotCount = volleyAbility.shotCount,
+                    shotIntervalSec = volleyAbility.shotIntervalSec,
+                    spreadAngleDeg = volleyAbility.spreadAngleDeg,
                 });
             }
             // aggro-targeting Unit 4 — expose defender class so enemies can filter/prioritize.
@@ -4557,58 +4564,62 @@ namespace Wassup.Bridge
                 onPlacePushRadius   = unitData.onPlacePushRadius,
                 sleepOnHitSec       = unitData.sleepOnHitSec,
             });
-            if (unitData.hazardCastEnabled)
+            // defender-ability-assets unit 2 — 게이트 = 능력 에셋 존재(구 hazardCastEnabled).
+            var hazardAbility = unitData.GetAbility<HazardCastAbility>();
+            if (hazardAbility != null)
             {
                 int hazardDataIndex = -1;
-                if (unitData.hazardCastKind == HazardCastKind.Zone)
-                    hazardDataIndex = RegisterZoneHazardSO(unitData.zoneHazard);
-                else if (unitData.hazardCastKind == HazardCastKind.Blocking)
-                    hazardDataIndex = RegisterBlockingHazardSO(unitData.blockingHazard);
+                if (hazardAbility.kind == HazardCastKind.Zone)
+                    hazardDataIndex = RegisterZoneHazardSO(hazardAbility.zoneHazard);
+                else if (hazardAbility.kind == HazardCastKind.Blocking)
+                    hazardDataIndex = RegisterBlockingHazardSO(hazardAbility.blockingHazard);
 
                 _em.AddComponentData(entity, new HazardCastState
                 {
-                    range = unitData.hazardCastRange,
-                    cooldownDuration = unitData.hazardCastCooldown,
+                    range = hazardAbility.castRange,
+                    cooldownDuration = hazardAbility.cooldown,
                     cooldownRemaining = 0f,
                     targetMask = (int)Faction.Enemy,
                     dataIndex = hazardDataIndex,
-                    kind = unitData.hazardCastKind,
-                    footprintWidth = math.max(1, unitData.hazardFootprintWidth),
-                    footprintHeight = math.max(1, unitData.hazardFootprintHeight),
+                    kind = hazardAbility.kind,
+                    footprintWidth = math.max(1, hazardAbility.footprintWidth),
+                    footprintHeight = math.max(1, hazardAbility.footprintHeight),
                 });
             }
             // shield-guardian-defender unit 1 — 실드 캐스트 베이크. 범위 = attackRange
             // 재사용(계약 5). 첫 캐스트는 배치 A초 후(cooldownRemaining = A).
-            if (unitData.shieldCastCooldown > 0f && unitData.shieldAmount > 0f)
+            var shieldAbility = unitData.GetAbility<ShieldCastAbility>();
+            if (shieldAbility != null && shieldAbility.cooldown > 0f && shieldAbility.amount > 0f)
             {
                 _em.AddComponentData(entity, new Wassup.Battle.Effects.ShieldCastState
                 {
                     range = unitData.attackRange,
-                    cooldownDuration = unitData.shieldCastCooldown,
-                    cooldownRemaining = unitData.shieldCastCooldown,
-                    amount = unitData.shieldAmount,
-                    targetCount = unitData.shieldTargetCount,
-                    filter = unitData.shieldTargetFilter,
+                    cooldownDuration = shieldAbility.cooldown,
+                    cooldownRemaining = shieldAbility.cooldown,
+                    amount = shieldAbility.amount,
+                    targetCount = shieldAbility.targetCount,
+                    filter = shieldAbility.filter,
                 });
             }
-            // bomb-thrower-defender unit 3 — 폭탄 발사 상태 베이크. bombLandingTiles>0 &&
-            // bombTravelSec>0 = 활성(directionalAttack 조준과 공존). RNG 는 캐스터별 독립
+            // bomb-thrower-defender unit 3 — 폭탄 발사 상태 베이크. RNG 는 캐스터별 독립
             // stream(배치 셀 해시로 decorrelate → order-independent 결정론, 계약 6).
-            if (unitData.bombLandingTiles > 0 && unitData.bombTravelSec > 0f)
+            // defender-ability-assets unit 2 — 게이트 = 능력 에셋 존재 + 유효 수치.
+            var bombAbility = unitData.GetAbility<BombThrowAbility>();
+            if (bombAbility != null && bombAbility.landingTiles > 0 && bombAbility.travelSec > 0f)
             {
                 uint cellHash = (uint)(cell.x * 73856093) ^ (uint)(cell.y * 19349663);
                 uint bombSeed = math.max(1u, (uint)Wassup.Core.MatchSeed.DeriveBombSeed(_matchSeed) ^ cellHash);
                 _em.AddComponentData(entity, new Wassup.Battle.Combat.BombLauncherState
                 {
-                    landingTiles = unitData.bombLandingTiles,
-                    travelSec = unitData.bombTravelSec,
-                    fuseSec = unitData.bombFuseSec,
-                    aoeTileRange = unitData.bombAoeTileRange,
-                    aoeTargetCap = unitData.bombAoeTargetCap,
-                    arcHeight = unitData.bombArcHeight,
-                    dmgBombDamage = unitData.bombDamage,
-                    sleepSec = unitData.bombSleepSec,
-                    stunSec = unitData.bombStunSec,
+                    landingTiles = bombAbility.landingTiles,
+                    travelSec = bombAbility.travelSec,
+                    fuseSec = bombAbility.fuseSec,
+                    aoeTileRange = bombAbility.aoeTileRange,
+                    aoeTargetCap = bombAbility.aoeTargetCap,
+                    arcHeight = bombAbility.arcHeight,
+                    dmgBombDamage = bombAbility.damage,
+                    sleepSec = bombAbility.sleepSec,
+                    stunSec = bombAbility.stunSec,
                     rng = new Unity.Mathematics.Random(bombSeed),
                 });
             }

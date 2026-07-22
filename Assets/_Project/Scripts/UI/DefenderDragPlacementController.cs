@@ -811,7 +811,7 @@ namespace Wassup.UI
                 // 공격방향 페이즈로 넘어가고, 방향이 확정돼야 활성화된다.
                 // Begin 이 먼저 슬로우모 lease 를 잡은 뒤 CleanupSession 이 드래그 lease 를
                 // 놓으므로 드롭 순간 전투가 정속으로 튀지 않는다(순서 의존).
-                if (session.unit != null && session.unit.directionalAttack && _aimController != null)
+                if (session.unit != null && session.unit.RequiresFacing && _aimController != null)
                 {
                     _aimController.Begin(session.unit, cell, entity);
                     CleanupSession();
