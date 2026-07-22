@@ -20,7 +20,8 @@
 | 추가 6 (2026-07-20) | `6_fixed_wave_seed.md` | 테스트 버전용 고정 웨이브 시드 — `deck.waveSeed` 라이브 오버라이드 재활성 (**완료 `2d8c843e`**) |
 | 추가 7 (2026-07-20) | `7_wave_difficulty_ramp.md` | 웨이브 진행 수량 램프 — min→max 선형 증가 + `waveCountJitter` 지터 (**완료 `2c2ecacd`**) |
 | 추가 8 (2026-07-20) | `8_handoff_summary.md` | units 6~7 인계 요약 (고정 시드 + 수량 램프 + 밸런스 값) |
-| 추가 9 (2026-07-21) | `9_force_wave_reschedule.md` | `Next Wave` 강제 호출이 남은 웨이브 스케줄을 함께 앞당기도록 수정 (계약-구현 불일치) |
+| 추가 9 (2026-07-21) | `9_force_wave_reschedule.md` | `Next Wave` 강제 호출이 남은 웨이브 스케줄을 함께 앞당기도록 수정 (계약-구현 불일치) (**완료 `dc80a3fc`**) |
+| 추가 10 (2026-07-22) | `10_handoff_summary.md` | unit 9 인계 요약 |
 
 ## 공통 원칙
 
