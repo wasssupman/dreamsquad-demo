@@ -219,7 +219,10 @@ namespace Wassup.UI
                 PlayerPrefs.SetString(RefreshTokenPrefsKey, tokens.refreshToken);
                 PlayerPrefs.SetString(UserNamePrefsKey, userName);
                 PlayerPrefs.DeleteKey(UsernameModePrefsKey); // firebase mode, not username mode
-                UserSession.Set(user, tokens.idToken, gameApiBaseUrl);
+                // session-token-refresh unit 2 — carry the refresh material so the
+                // session can re-mint its own idToken on a mid-session 403/401.
+                UserSession.Set(user, tokens.idToken, gameApiBaseUrl,
+                    refreshToken: tokens.refreshToken, firebaseApiKey: firebaseApiKey);
                 SetBusy(false, $"SIGNED IN AS {user.userName}".ToUpperInvariant());
                 // panel may have been deactivated by a skip (unit 4) while this
                 // request was in flight — StartCoroutine would throw there, and
