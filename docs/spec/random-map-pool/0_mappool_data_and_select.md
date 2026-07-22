@@ -43,6 +43,8 @@ public static int SelectIndex(int seed, int count)
 
 ## 완료 기준
 
-- [ ] compile 0 errors (신규 .cs 는 scope=all refresh — CS0246 cascade 회피)
-- [ ] `MapPoolSelectTests` 전 케이스 green (EditMode 폴더는 `Assets/_Project/Tests/EditMode/`)
-- [ ] `MapDocumentPool` 이 인스펙터에서 `Entry` 리스트(document + deck)로 노출됨
+- [x] compile 0 errors (신규 .cs 는 scope=all refresh — CS0246 cascade 회피)
+- [x] `MapPoolSelectTests` 전 케이스 green (5/5, EditMode 폴더는 `Assets/_Project/Tests/EditMode/`)
+- [x] `MapDocumentPool` 이 인스펙터에서 `Entry` 리스트(document + deck)로 노출됨 (`[CreateAssetMenu]` + `[Serializable] Entry`)
+
+확인 2026-07-22 (unit 0 구현 — EditMode 5/5)
