@@ -6,6 +6,7 @@
 - `c8178a1c` unit 1 — reporter save / clear-at-send / AbandonMatch / ReconcilePending
 - `8b5fdaaf` unit 2 — MenuPopup + OutgameMenuController 배선
 - `58fd4014` docs — 스펙 4파일
+- `fd186884` fix(tournament-play-report) — **선행 의존**: play 응답 스키마 중첩 대응(아래 Notes)
 
 ## Implemented
 
@@ -26,8 +27,9 @@
 ## Verified
 
 - 컴파일 0에러(read_console).
-- EditMode **1213/1213**(신규 9 포함), 스킵 2는 기존 known-ignored.
+- EditMode **1213/1213**(신규 9 + 갱신된 TryParsePlay 포함), 스킵 2는 기존 known-ignored.
 - PlayMode 스모크 **4/4**(OutgameFlow/SceneTransition/TallyFlow×2) — 로비 reconcile·결과 clear-at-send 런타임 무예외.
+- **실 dev 서버 왕복**(일회용 Editor 프로브, 익명 계정): reconcile→`reconcile complete ok score=0`, abandon→`abandon complete ok score=0`, over-window→`pending attempt discarded`(complete 없음). 모두 store 삭제 확인. 프로브는 삭제(미커밋).
 
 ## Notes
 
@@ -39,5 +41,6 @@
 
 ## Follow-up
 
-- **실계정 + dev 서버 Play 검증 5종**(unit 2): 메뉴나가기-0 / kill-재실행 복구 / over-window discard / 정상종료 무회귀 / 게스트 무영향. 서버 tournament 상태를 실제 변경하므로 수동/사용자 주도.
+- **실기기 UI 경로 최종 확인**(수동): 실제 배틀 플레이→메뉴 나가기, 실제 앱 강제종료→재실행 로비 복구. 로직·서버 왕복은 프로브로 검증됨 — 남은 건 기기 UI 흐름뿐.
+- **`123` 계정 서버측 stuck attempt**: play 가 500 `cannot wait` 반환(미완료 attempt 잔존). attemptId 를 못 받아 클라가 못 닫는다 → 백엔드 정리 또는 RESET ACCOUNT 필요. **이 기능이 애초에 방지하려던 상태의 실사례** — 앞으로는 abandon/reconcile 이 attempt 를 닫아 이런 stuck 이 안 생긴다.
 - window 10분의 서버 라운드 실측 정합, 기권=0점 대신 실 획득 점수 제출 — README "후속 후보".

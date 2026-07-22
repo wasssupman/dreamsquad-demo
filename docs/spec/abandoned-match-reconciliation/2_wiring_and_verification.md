@@ -45,5 +45,11 @@ if (UserSession.HasAccount)
 
 ## 완료 스탬프
 
-- 배선 구현: 2026-07-22 `8b5fdaaf` — 컴파일 0에러. PlayMode 스모크 4건(OutgameFlow/SceneTransition/TallyFlow×2) 통과 → 로비 `ReconcilePending`·결과 `ReportResult` 런타임 무예외(guest 경로).
-- **대기: 실계정 + dev 서버 Play 검증 5종**(위). 서버 tournament 상태를 실제로 변경하므로(0점 complete 전송) 사용자 확인/주도 필요.
+- 배선 구현: 2026-07-22 `8b5fdaaf` — 컴파일 0에러. PlayMode 스모크 4건(OutgameFlow/SceneTransition/TallyFlow×2) 통과.
+- **실서버 왕복 검증 완료: 2026-07-22** — 일회용 Editor 프로브(익명 계정 발급 → 실 `TournamentApi.Play` → 기능 메서드)로 dev 서버 왕복:
+  - 복구: `play ok(IN_PROGRESS, attemptId)` → `ReconcilePending` → **`reconcile complete ok — score=0`** 서버 수락, store 삭제.
+  - 기권: `BeginMatch`→play 저장 → `AbandonMatch` → **`abandon complete ok — score=0`** 서버 수락, store 삭제.
+  - 초과 폐기: startedAt TTL+1h 과거 → `ReconcilePending` → **`pending attempt discarded`**, complete 없음, store 삭제.
+  - 프로브는 검증 후 삭제(미커밋).
+- **선행 발견/수정**: `TournamentApi.Play` 응답 스키마 중첩(`data.userTournamentState`) — `tournament-play-report` 커밋에서 수정. 이게 없으면 attemptId 미수신으로 전 경로 무동작.
+- 잔여(수동, 실기기): 실제 배틀 플레이→메뉴 나가기 UI 경로 / 실제 앱 강제종료→재실행 로비 복구는 기기에서 최종 확인 권장(로직·서버 왕복은 위에서 검증됨).
