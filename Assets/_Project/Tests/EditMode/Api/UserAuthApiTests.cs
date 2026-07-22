@@ -192,5 +192,50 @@ namespace Wassup.Tests.EditMode.Api
             Assert.AreEqual("Bearer id-token", req.GetRequestHeader("Authorization"));
             Assert.IsNull(req.GetRequestHeader("X-AUTH-USERNAME"));
         }
+
+        // ── demo-username-recovery Unit 1: GET /user classification ──────────────
+
+        [Test]
+        public void UserLookup_Classify_SuccessEnvelope_IsFound()
+        {
+            const string body = @"{ ""success"": true, ""data"": {
+                ""userId"": ""u-9"", ""userName"": ""wassup"", ""provider"": ""GUEST"" } }";
+
+            var result = UserLookupApi.Classify(body, null);
+
+            Assert.AreEqual(UserLookupApi.Outcome.Found, result.outcome);
+            Assert.AreEqual("u-9", result.user.userId);
+            Assert.AreEqual("wassup", result.user.userName);
+        }
+
+        [Test]
+        public void UserLookup_Classify_AccessDeniedBody_IsNotFound()
+        {
+            // absent name → 403 HANDLE_ACCESS_DENIED (failure WITH a body).
+            const string body = @"{ ""success"": false, ""errorDetail"": {
+                ""errorCode"": ""HANDLE_ACCESS_DENIED"", ""errorMessage"": ""권한이 없습니다."" } }";
+
+            var result = UserLookupApi.Classify(body, "HTTP/1.1 403 Forbidden");
+
+            Assert.AreEqual(UserLookupApi.Outcome.NotFound, result.outcome);
+            Assert.IsNull(result.user);
+        }
+
+        [Test]
+        public void UserLookup_Classify_EmptyBodyWithTransportError_IsNetwork()
+        {
+            var result = UserLookupApi.Classify("", "Cannot connect to destination host");
+
+            Assert.AreEqual(UserLookupApi.Outcome.NetworkError, result.outcome);
+            StringAssert.Contains("Cannot connect", result.error);
+        }
+
+        [Test]
+        public void UserLookup_Classify_NullBodyWithTransportError_IsNetwork()
+        {
+            var result = UserLookupApi.Classify(null, "Request timeout");
+
+            Assert.AreEqual(UserLookupApi.Outcome.NetworkError, result.outcome);
+        }
     }
 }
