@@ -37,7 +37,10 @@ namespace Wassup.Bridge
         [SerializeField] private MapSource mapSource = MapSource.Legacy;
         [SerializeField] private MapGridGenerationSettings mapGridSettings;
         [SerializeField] private MapDocument mapDocument;
-        // 비0 = 맵 시드 고정(매판 동일 맵). 0 = matchSeed 파생 매판 랜덤. 웨이브/기믹 등 다른 시드 스트림은 영향 없음.
+        // random-map-pool — (맵, 덱) 인코운터 풀. 비었으면 위 단일 mapDocument + deck 폴백.
+        // 배선되면 매판 seed 로 엔트리 하나를 골라 맵·덱을 함께 확정한다(맵마다 그 맵의 적 패턴).
+        [SerializeField] private MapDocumentPool mapPool;
+        // 비0 = 맵 시드 고정(매판 동일 맵/인덱스 핀). 0 = matchSeed 파생 매판 랜덤. 웨이브/기믹 등 다른 시드 스트림은 영향 없음.
         [SerializeField] private int fixedMapSeed = 20260719;
         [Header("Season")]
         [SerializeField] private SeasonRegistry seasonRegistry;
@@ -336,6 +339,11 @@ namespace Wassup.Bridge
         // 맵/웨이브/비주얼 시드가 여기서 파생된다(작업 2/3). 0 = 미주입(즉석 폴백).
         private int _matchSeed;
         public void SetMatchSeed(int seed) => _matchSeed = seed;
+
+        // random-map-pool unit 1 — BuildMapForBattle 이 풀에서 고른 덱. 미해결(빌드 전)이면 serialized deck 폴백.
+        // 모든 덱 소비는 ActiveDeck 경유. public = 브리핑 스트립이 선택된 덱을 읽어 브리핑=실전 일치(unit 4).
+        private AttackDeck _resolvedDeck;
+        public AttackDeck ActiveDeck => _resolvedDeck != null ? _resolvedDeck : deck;
 
         // gimmick-match-integration unit 1 — GameManager 가 배정한 매치 기믹(없으면 null).
         // 3개 소비 지점(config 주입·픽업 스폰 게이트·디버그 로그)의 단일 소스. 시즌 결합 대체.
@@ -838,6 +846,21 @@ namespace Wassup.Bridge
             // 미주입(0, 예: 테스트 직접 호출) 시 즉석 random matchSeed 로 폴백해 항상 유효.
             int matchSeed = _matchSeed != 0 ? _matchSeed : Wassup.Core.MatchSeed.GenerateRandom();
             int seed = fixedMapSeed != 0 ? fixedMapSeed : Wassup.Core.MatchSeed.DeriveMapSeed(matchSeed);
+
+            // random-map-pool unit 1 — 풀에서 (맵, 덱) 인코운터를 seed 로 한 번 resolve.
+            // 맵·덱은 같은 인덱스로 잠긴다(맵마다 그 맵의 적 패턴). 풀 비거나 엔트리 미완성이면 레거시 폴백.
+            MapDocument activeDoc = mapDocument;
+            _resolvedDeck = deck;
+            if (mapPool != null && mapPool.Count > 0)
+            {
+                var encounter = mapPool.Get(MapPoolSelect.SelectIndex(seed, mapPool.Count));
+                if (MapGridBattleAdapter.IsUsableDocument(encounter.document))
+                {
+                    activeDoc = encounter.document;
+                    if (encounter.deck != null) _resolvedDeck = encounter.deck;
+                }
+            }
+
             int version = GeneratorVersion;
             var options = mapGenerationOptions.Normalized();
             mapPathShape = options.pathShape;
@@ -873,7 +896,7 @@ namespace Wassup.Bridge
                 case MapSource.MapGrid:
                     try
                     {
-                        _generatedMap = MapGridBattleAdapter.Build(seed, mapGridSettings, mapDocument, _mapGridGridSizeOverride);
+                        _generatedMap = MapGridBattleAdapter.Build(seed, mapGridSettings, activeDoc, _mapGridGridSizeOverride);
                     }
                     catch (MapGenerationFailedException ex)
                     {
@@ -909,7 +932,7 @@ namespace Wassup.Bridge
 
             // MapGrid 절차 생성만 Validator 가 connectivity 를 보장한다. 수동 MapDocument 는
             // Validator 를 거치지 않으므로 (adapter 가 문서를 그대로 반환) 다른 소스처럼 검사한다.
-            bool validatorBacked = mapSource == MapSource.MapGrid && !MapGridBattleAdapter.IsUsableDocument(mapDocument);
+            bool validatorBacked = mapSource == MapSource.MapGrid && !MapGridBattleAdapter.IsUsableDocument(activeDoc);
             if (!validatorBacked && !MapConnectivity.AllSpawnsReachGoal(_generatedMap))
             {
                 Debug.LogWarning("[BattleBridge] GeneratedMap connectivity failed; using fallback linear map.", this);
@@ -1088,7 +1111,7 @@ namespace Wassup.Bridge
         // PlaceDefenderAs works immediately, but spawns / timer stay dormant.
         public void BeginPlacement()
         {
-            if (deck == null || map == null)
+            if (ActiveDeck == null || map == null)
             {
                 Debug.LogError("[BattleBridge] deck or map reference missing.", this);
                 return;
@@ -1145,14 +1168,14 @@ namespace Wassup.Bridge
                 BuildMapForBattle();
             }
 
-            GameManager.Instance?.Logger?.SetAttackDeckId(deck.deckId);
+            GameManager.Instance?.Logger?.SetAttackDeckId(ActiveDeck.deckId);
             Debug.Log("[BattleBridge] Placement phase ready.");
         }
 
 
         public void StartBattle()
         {
-            if (deck == null || map == null)
+            if (ActiveDeck == null || map == null)
             {
                 Debug.LogError("[BattleBridge] deck or map reference missing.", this);
                 return;
@@ -1163,15 +1186,15 @@ namespace Wassup.Bridge
             _usingGeneratedWaves = TryInitializeGeneratedWaves();
             if (!_usingGeneratedWaves)
             {
-                for (int i = 0; i < deck.spawns.Count; i++)
-                    _pending.Add(new PendingSpawnEntry { entry = deck.spawns[i], deckIndex = i });
+                for (int i = 0; i < ActiveDeck.spawns.Count; i++)
+                    _pending.Add(new PendingSpawnEntry { entry = ActiveDeck.spawns[i], deckIndex = i });
             }
             _startTime = Time.time;
             _battleClock = 0.0;
             _killScoreTotal = 0; // battle-score-formula unit 2 — 계약 9 (시계와 짝)
             // wave-authoring-test-mode unit 2 — 작성 모드는 plan.timerDurationSec(0=endless).
             // seed/legacy 경로는 deck.timerDurationSec 그대로(무변경).
-            _timerDuration = _usingAuthoredPlan ? _wavePlan.timerDurationSec : deck.timerDurationSec;
+            _timerDuration = _usingAuthoredPlan ? _wavePlan.timerDurationSec : ActiveDeck.timerDurationSec;
             _running = true;
             if (_usingGeneratedWaves)
                 QueueDueWaves(0f);
@@ -1179,8 +1202,8 @@ namespace Wassup.Bridge
                 Debug.Log($"[BattleBridge] Battle started with AUTHORED plan '{_authoredPlan.displayName}' waves={_wavePlan.waves.Count} endless={(_timerDuration <= 0f)}.");
             else
                 Debug.Log(_usingGeneratedWaves
-                    ? $"[BattleBridge] Battle started with generated deck '{deck.deckId}' seed={_wavePlan.seed} (source={(deck.waveSeed != 0 ? "deck-fixed" : "derived")}) waves={_wavePlan.waves.Count}."
-                    : $"[BattleBridge] Battle started with legacy deck '{deck.deckId}' ({deck.spawns.Count} spawns queued).");
+                    ? $"[BattleBridge] Battle started with generated deck '{ActiveDeck.deckId}' seed={_wavePlan.seed} (source={(ActiveDeck.waveSeed != 0 ? "deck-fixed" : "derived")}) waves={_wavePlan.waves.Count}."
+                    : $"[BattleBridge] Battle started with legacy deck '{ActiveDeck.deckId}' ({ActiveDeck.spawns.Count} spawns queued).");
         }
 
         private void EnsureQueriesAndQueues()
@@ -1450,7 +1473,7 @@ namespace Wassup.Bridge
         // Initialises ECS infrastructure and builds the map so it is visible during the draft stage.
         public void PrepareDraftMap()
         {
-            if (deck == null || map == null)
+            if (ActiveDeck == null || map == null)
             {
                 Debug.LogError("[BattleBridge] deck or map reference missing.", this);
                 return;
@@ -1561,17 +1584,17 @@ namespace Wassup.Bridge
                 _nextWaveIndex = 0;
             }
 
-            if (deck == null || !deck.useGeneratedWaves)
+            if (ActiveDeck == null || !ActiveDeck.useGeneratedWaves)
                 return false;
 
             try
             {
                 // wave-pattern unit 6 — 덱 waveSeed 비0 = 고정(테스트 버전, 브리핑 스트립과 동일 플랜).
                 // 0 = matchSeed 파생(매판 랜덤, match-seed-unification — 맵과 decorrelated).
-                int waveSeed = deck.waveSeed != 0
-                    ? deck.waveSeed
+                int waveSeed = ActiveDeck.waveSeed != 0
+                    ? ActiveDeck.waveSeed
                     : Wassup.Core.MatchSeed.DeriveWaveSeed(_matchSeed != 0 ? _matchSeed : 1);
-                _wavePlan = WavePatternGenerator.Generate(deck, waveSeed);
+                _wavePlan = WavePatternGenerator.Generate(ActiveDeck, waveSeed);
                 GameManager.Instance?.Logger?.SetWavePattern(_wavePlan);
                 return _wavePlan.waves != null && _wavePlan.waves.Count > 0;
             }
@@ -3854,7 +3877,7 @@ namespace Wassup.Bridge
 
         // battle-leak-limit-hud unit 0 — 패배 비교/HUD/저주 지불이 공유하는 유효 한계.
         private int EffectiveLeakLimit()
-            => deck != null ? deck.defeatGoalReachedCount - _leakAllowancePenalty : 0;
+            => ActiveDeck != null ? ActiveDeck.defeatGoalReachedCount - _leakAllowancePenalty : 0;
 
         private void RefreshLeakHud()
             => scoreHud?.SetLeakStatus(_goalReachedCount, EffectiveLeakLimit());
@@ -4015,7 +4038,7 @@ namespace Wassup.Bridge
             }
 
             int remainingMs = Mathf.RoundToInt(RemainingBattleSeconds() * 1000f);
-            int stressLimit = deck != null ? deck.defeatGoalReachedCount : 0;
+            int stressLimit = ActiveDeck != null ? ActiveDeck.defeatGoalReachedCount : 0;
             int stressAccrued = _goalReachedCount + _leakAllowancePenalty;
 
 

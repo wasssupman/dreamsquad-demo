@@ -31,7 +31,9 @@
 
 ## 완료 기준
 
-- [ ] compile 0 errors
-- [ ] 기존 EditMode green (deck 라우팅 회귀 없음)
-- [ ] Play: `debugFixedMatchSeed` 를 인덱스 0·1 로 매핑되는 두 값으로 각각 실행 → 각기 다른 맵 + 다른 덱 로드. 콘솔 `Battle started with generated deck '{id}'` 의 deckId 가 선택 맵과 일치
-- [ ] 풀 미배선(null) 시 기존 단일 `mapDocument`+`deck` 그대로 동작(폴백 무회귀)
+- [x] compile 0 errors
+- [x] 기존 EditMode green (deck 라우팅 회귀 없음) — 전체 1243 중 1241 pass / 0 fail / 2 기존 Ignore
+- [ ] Play: `debugFixedMatchSeed` 를 인덱스 0·1 로 매핑되는 두 값으로 각각 실행 → 각기 다른 맵 + 다른 덱 로드. 콘솔 `Battle started with generated deck '{id}'` 의 deckId 가 선택 맵과 일치 → **풀 asset 존재하는 unit 4 에서 실증**
+- [x] 풀 미배선(null) 시 기존 단일 `mapDocument`+`deck` 그대로 동작(폴백 무회귀) — `ActiveDeck` 이 `_resolvedDeck ?? deck`, `activeDoc` 이 `mapDocument` 폴백
+
+구현 2026-07-22 (unit 1 — BattleBridge resolve + ActiveDeck 라우팅, EditMode 1241/1243). Play 실증은 unit 4 로 이월.
