@@ -63,9 +63,9 @@ namespace Wassup.UI
             ClearRows();
             SetStatus("불러오는 중...");
 
-            string idToken = UserSession.IdToken;
+            AuthCredential credential = UserSession.Credential;
             string baseUrl = UserSession.GameServerBaseUrl;
-            if (string.IsNullOrEmpty(idToken)) // guest / not signed in
+            if (!UserSession.HasAccount) // guest / not signed in
             {
                 SetStatus("로그인이 필요합니다.");
                 return;
@@ -76,7 +76,7 @@ namespace Wassup.UI
                 return;
             }
 
-            TournamentApi.GetUnclaimedEntries(baseUrl, idToken, (list, error) =>
+            TournamentApi.GetUnclaimedEntries(baseUrl, credential, (list, error) =>
             {
                 if (this == null || epoch != _epoch || !isActiveAndEnabled) return;
                 if (list == null)

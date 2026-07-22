@@ -106,4 +106,4 @@ namespace Wassup.UI
 
 ---
 
-**완료 확인 2026-07-21** — EditMode `CostWellMathTests` 14/14 통과(전체 1151 중 실패 0), 컴파일 에러 0, 에셋 직렬화 확인. 커밋: (아래 참조)
+**완료 확인 2026-07-21** — EditMode `CostWellMathTests` 14/14 통과(전체 1151 중 실패 0), 컴파일 에러 0, 에셋 직렬화 확인. 커밋 `17a17bba`.

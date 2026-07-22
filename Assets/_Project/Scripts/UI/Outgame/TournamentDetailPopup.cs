@@ -50,14 +50,14 @@ namespace Wassup.UI
             SetStatus("불러오는 중...");
 
             string baseUrl = UserSession.GameServerBaseUrl;
-            string idToken = UserSession.IdToken;
-            if (string.IsNullOrEmpty(idToken) || string.IsNullOrEmpty(baseUrl) || string.IsNullOrEmpty(entryId))
+            AuthCredential credential = UserSession.Credential;
+            if (!UserSession.HasAccount || string.IsNullOrEmpty(baseUrl) || string.IsNullOrEmpty(entryId))
             {
                 SetStatus("결과를 불러올 수 없습니다.");
                 return;
             }
 
-            TournamentApi.GetResult(baseUrl, idToken, entryId, (data, error) =>
+            TournamentApi.GetResult(baseUrl, credential, entryId, (data, error) =>
             {
                 if (this == null || epoch != _epoch || !isActiveAndEnabled) return;
                 if (data == null)

@@ -1,6 +1,6 @@
 # 전투 트레이 통합 + 코스트 물통
 
-> 상태: 작성 2026-07-21 · 리뷰 3-lane 반영 (rev 2)
+> 상태: **완료 2026-07-21** — 전 unit 구현·사용자 확인. 인계: `6_handoff_summary.md`
 
 ## 목표
 
@@ -23,7 +23,8 @@
 | 1 | 구조 | `1_cost_cell_transplant.md` | 슬롯 컨테이너 분리 · 셀 부착 · 레이아웃 flex 재구성 · 레일 삭제 |
 | 2 | 연출 | `2_well_presentation.md` | 물통 충전/wrap/max/소비/획득 · 폴링 sentinel · 복합 변동 계약 |
 | 3 | 슬롯 | `3_slot_cleanup.md` | 배지 제거 + 밴드 클래스 틴트 · 코스트 숫자 확대 · 이름 흰 텍스트 |
-| 4 | 검증 | `4_wiring_verify.md` | 씬 배선 · 코너 위젯 겹침 단언 · 화면비 행렬 · Play 검증 |
+| 4 | 검증 | `4_wiring_verify.md` | 씬 배선 · 코너 위젯 겹침 단언 · 화면비 행렬 · **실기 QA (남음)** |
+| 5 | 셰이더 | `5_liquid_shader.md` | 액체 셰이더(`Wassup/UI/CostWell`) — 수면 파형 · 깊이 음영 · 유리 반사 · SDF 라운드 |
 
 ## Feature-wide 계약
 

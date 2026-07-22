@@ -62,10 +62,10 @@ namespace Wassup.Core.Api
             public string debug;
         }
 
-        public static void Play(string baseUrl, string idToken, Action<PlayState, string> onDone)
+        public static void Play(string baseUrl, AuthCredential credential, Action<PlayState, string> onDone)
         {
             var request = new UnityWebRequest(BuildPlayUrl(baseUrl), UnityWebRequest.kHttpVerbPOST);
-            Send(request, idToken, (body, transportError) =>
+            Send(request, credential, (body, transportError) =>
             {
                 var state = TryParsePlay(body, out string error);
                 if (state == null && transportError != null) error = $"{error} (HTTP: {transportError})";
@@ -75,14 +75,14 @@ namespace Wassup.Core.Api
 
         // onDone(success, error) — the TournamentResult payload is not consumed
         // here; ranking is fetched separately via GetResult (spec decision).
-        public static void Complete(string baseUrl, string idToken, string attemptId, int score,
+        public static void Complete(string baseUrl, AuthCredential credential, string attemptId, int score,
             string debugJson, Action<bool, string> onDone)
         {
             var request = new UnityWebRequest(BuildCompleteUrl(baseUrl, attemptId, score), UnityWebRequest.kHttpVerbPOST);
             request.uploadHandler = new UploadHandlerRaw(
                 System.Text.Encoding.UTF8.GetBytes(BuildCompleteBody(debugJson)));
             request.SetRequestHeader("Content-Type", "application/json");
-            Send(request, idToken, (body, transportError) =>
+            Send(request, credential, (body, transportError) =>
             {
                 bool ok = ApiEnvelope.TryGetData(body, out _, out string error);
                 if (!ok && transportError != null) error = $"{error} (HTTP: {transportError})";
@@ -90,10 +90,10 @@ namespace Wassup.Core.Api
             });
         }
 
-        public static void GetResult(string baseUrl, string idToken, string entryId, Action<ResultData, string> onDone)
+        public static void GetResult(string baseUrl, AuthCredential credential, string entryId, Action<ResultData, string> onDone)
         {
             var request = new UnityWebRequest(BuildResultUrl(baseUrl, entryId), UnityWebRequest.kHttpVerbGET);
-            Send(request, idToken, (body, transportError) =>
+            Send(request, credential, (body, transportError) =>
             {
                 var result = TryParseResult(body, out string error);
                 if (result == null && transportError != null) error = $"{error} (HTTP: {transportError})";
@@ -103,11 +103,11 @@ namespace Wassup.Core.Api
 
         // tournament-history Unit 0 — 내 (진행 중) 토너먼트 참가 목록. 응답 data 는
         // UserTournamentResultEntry 의 bare 배열. onDone(list, error) — 정확히 한쪽만 유효.
-        public static void GetUnclaimedEntries(string baseUrl, string idToken,
+        public static void GetUnclaimedEntries(string baseUrl, AuthCredential credential,
             Action<List<UserTournamentResultEntry>, string> onDone)
         {
             var request = new UnityWebRequest(BuildUnclaimedUrl(baseUrl), UnityWebRequest.kHttpVerbGET);
-            Send(request, idToken, (body, transportError) =>
+            Send(request, credential, (body, transportError) =>
             {
                 var list = TryParseUnclaimed(body, out string error);
                 if (list == null && transportError != null) error = $"{error} (HTTP: {transportError})";
@@ -115,10 +115,12 @@ namespace Wassup.Core.Api
             });
         }
 
-        private static void Send(UnityWebRequest request, string idToken, Action<string, string> onResponse)
+        // demo-username-recovery Unit 3 — the single auth seam. The credential
+        // decides Bearer vs X-AUTH-USERNAME; callers never branch on session mode.
+        private static void Send(UnityWebRequest request, AuthCredential credential, Action<string, string> onResponse)
         {
             request.downloadHandler = new DownloadHandlerBuffer();
-            request.SetRequestHeader("Authorization", $"Bearer {idToken}");
+            credential.Apply(request);
             request.SetRequestHeader("X-SERVICE-APP-VERSION", Application.version);
             request.timeout = TimeoutSeconds;
 

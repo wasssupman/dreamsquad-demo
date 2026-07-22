@@ -19,6 +19,11 @@ namespace Wassup.UI
     {
         private const string RefreshTokenPrefsKey = "Wassup.Auth.RefreshToken";
         private const string UserNamePrefsKey = "Wassup.Auth.UserName";
+        // demo-username-recovery Unit 2 — marks a session recovered by name
+        // (X-AUTH-USERNAME) rather than a firebase token. There is no refresh
+        // token to auto-sign-in with, so the next launch re-adopts by name.
+        // Mutually exclusive with a stored RefreshToken.
+        private const string UsernameModePrefsKey = "Wassup.Auth.UsernameMode";
         private const float SignedInLingerSec = 0.8f;
 
         [SerializeField] private TMP_InputField nameInput;
@@ -51,20 +56,42 @@ namespace Wassup.UI
         {
             if (UserSession.IsSignedIn) return; // scene revisit within the session
 
-            // auto sign-in: both pieces must exist (a stored name implies a
-            // completed first login).
             string storedToken = PlayerPrefs.GetString(RefreshTokenPrefsKey, "");
             string storedName = PlayerPrefs.GetString(UserNamePrefsKey, "");
-            if (string.IsNullOrEmpty(storedToken) || string.IsNullOrEmpty(storedName)) return;
 
-            SetBusy(true, "SIGNING IN...");
-            int epoch = _authEpoch;
-            FirebaseAuthRestClient.RefreshIdToken(firebaseApiKey, storedToken, (tokens, error) =>
+            // firebase silent sign-in (same device): a stored refresh token +
+            // name. A stored name implies a completed first login.
+            if (!string.IsNullOrEmpty(storedToken) && !string.IsNullOrEmpty(storedName))
             {
-                if (this == null || epoch != _authEpoch) return;
-                if (tokens == null) { HandleFailure(error, clearTokenIfDefinitive: true); return; }
-                SignInToGameServer(tokens.Value, storedName, epoch);
-            });
+                SetBusy(true, "SIGNING IN...");
+                int epoch = _authEpoch;
+                FirebaseAuthRestClient.RefreshIdToken(firebaseApiKey, storedToken, (tokens, error) =>
+                {
+                    if (this == null || epoch != _authEpoch) return;
+                    if (tokens == null) { HandleFailure(error, clearTokenIfDefinitive: true); return; }
+                    SignInToGameServer(tokens.Value, storedName, epoch);
+                });
+                return;
+            }
+
+            // demo-username-recovery Unit 2 — silent re-adopt: a prior name
+            // recovery left a marker but no firebase token. Look the name up
+            // again (X-AUTH-USERNAME) and re-adopt. Not found / network → drop
+            // to the login panel silently; the marker stays so a later manual
+            // login still attempts recovery. Never mints on this silent path.
+            if (PlayerPrefs.GetInt(UsernameModePrefsKey, 0) == 1 && !string.IsNullOrEmpty(storedName))
+            {
+                SetBusy(true, "SIGNING IN...");
+                int epoch = _authEpoch;
+                UserLookupApi.GetUser(gameApiBaseUrl, storedName, result =>
+                {
+                    if (this == null || epoch != _authEpoch) return;
+                    if (result.outcome == UserLookupApi.Outcome.Found)
+                        AdoptExistingUser(result.user, storedName, epoch);
+                    else
+                        SetBusy(false, "");
+                });
+            }
         }
 
         private void OnDestroy()
@@ -118,7 +145,7 @@ namespace Wassup.UI
                     if (FirebaseAuthRestClient.IsDefinitiveAuthError(error))
                     {
                         PlayerPrefs.DeleteKey(RefreshTokenPrefsKey);
-                        SignUpFresh(userName, epoch);
+                        MintOrAdopt(userName, epoch);
                         return;
                     }
                     HandleFailure(error, clearTokenIfDefinitive: false);
@@ -126,8 +153,50 @@ namespace Wassup.UI
             }
             else
             {
-                SignUpFresh(userName, epoch);
+                MintOrAdopt(userName, epoch);
             }
+        }
+
+        // demo-username-recovery Unit 2 — before minting a NEW firebase account,
+        // ask the server whether this name already exists. If so, adopt it
+        // (X-AUTH-USERNAME mode) instead of creating a duplicate. Only a
+        // definitive not-found mints; a network failure stops without minting so
+        // a blip can't spawn a second account (contract #3).
+        private void MintOrAdopt(string userName, int epoch)
+        {
+            UserLookupApi.GetUser(gameApiBaseUrl, userName, result =>
+            {
+                if (this == null || epoch != _authEpoch) return;
+                switch (result.outcome)
+                {
+                    case UserLookupApi.Outcome.Found:
+                        AdoptExistingUser(result.user, userName, epoch);
+                        break;
+                    case UserLookupApi.Outcome.NotFound:
+                        SignUpFresh(userName, epoch);
+                        break;
+                    default: // NetworkError — do not mint
+                        HandleFailure($"network: {result.error}", clearTokenIfDefinitive: false);
+                        break;
+                }
+            });
+        }
+
+        // demo-username-recovery Unit 2 — adopt an existing server account by
+        // name. No firebase token: the session authenticates via X-AUTH-USERNAME
+        // (UserSession.AuthUserName), and the marker lets the next launch
+        // re-adopt silently. The header value is the exact input that just
+        // produced a 200 (proven-good); Current holds the server user object.
+        private void AdoptExistingUser(UserSignApi.SignedInUser user, string userName, int epoch)
+        {
+            if (this == null || epoch != _authEpoch) return;
+            PlayerPrefs.SetString(UserNamePrefsKey, userName);
+            PlayerPrefs.SetInt(UsernameModePrefsKey, 1);
+            PlayerPrefs.DeleteKey(RefreshTokenPrefsKey); // no stale firebase token in username mode
+            PlayerPrefs.Save();
+            UserSession.Set(user, idToken: "", gameApiBaseUrl, authUserName: userName);
+            SetBusy(false, $"SIGNED IN AS {user.userName}".ToUpperInvariant());
+            if (isActiveAndEnabled) StartCoroutine(NotifySignedInAfterLinger());
         }
 
         private void SignUpFresh(string userName, int epoch)
@@ -149,6 +218,7 @@ namespace Wassup.UI
 
                 PlayerPrefs.SetString(RefreshTokenPrefsKey, tokens.refreshToken);
                 PlayerPrefs.SetString(UserNamePrefsKey, userName);
+                PlayerPrefs.DeleteKey(UsernameModePrefsKey); // firebase mode, not username mode
                 UserSession.Set(user, tokens.idToken, gameApiBaseUrl);
                 SetBusy(false, $"SIGNED IN AS {user.userName}".ToUpperInvariant());
                 // panel may have been deactivated by a skip (unit 4) while this
@@ -172,6 +242,7 @@ namespace Wassup.UI
             _authEpoch++; // abort in-flight sign-in chains (unit 4)
             PlayerPrefs.DeleteKey(RefreshTokenPrefsKey);
             PlayerPrefs.DeleteKey(UserNamePrefsKey);
+            PlayerPrefs.DeleteKey(UsernameModePrefsKey);
             PlayerPrefs.Save();
             UserSession.Clear();
             if (nameInput != null) nameInput.text = "";

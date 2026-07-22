@@ -30,7 +30,7 @@ namespace Wassup.Core.Api
             _entryId = null;
             _completeSent = false;
 
-            if (string.IsNullOrEmpty(UserSession.IdToken)) return; // guest / not signed in
+            if (!UserSession.HasAccount) return; // guest / not signed in (firebase or username account required)
             string baseUrl = UserSession.GameServerBaseUrl;
             if (string.IsNullOrEmpty(baseUrl))
             {
@@ -39,7 +39,7 @@ namespace Wassup.Core.Api
             }
 
             int epoch = _epoch;
-            TournamentApi.Play(baseUrl, UserSession.IdToken, (state, error) =>
+            TournamentApi.Play(baseUrl, UserSession.Credential, (state, error) =>
             {
                 if (epoch != _epoch) return;
                 if (state == null)
@@ -58,7 +58,7 @@ namespace Wassup.Core.Api
         public static void ReportResult(int score, string battleLogJson,
             Action<TournamentApi.ResultData> onRanking = null)
         {
-            if (string.IsNullOrEmpty(UserSession.IdToken)) return; // guest — nothing to report
+            if (!UserSession.HasAccount) return; // guest — nothing to report
             if (string.IsNullOrEmpty(_attemptId))
             {
                 // play failed, or its response is still in flight — a match that
@@ -74,10 +74,10 @@ namespace Wassup.Core.Api
             _completeSent = true;
 
             string baseUrl = UserSession.GameServerBaseUrl;
-            string idToken = UserSession.IdToken;
+            AuthCredential credential = UserSession.Credential;
             string entryId = _entryId;
             int epoch = _epoch;
-            TournamentApi.Complete(baseUrl, idToken, _attemptId, score, battleLogJson, (ok, error) =>
+            TournamentApi.Complete(baseUrl, credential, _attemptId, score, battleLogJson, (ok, error) =>
             {
                 if (epoch != _epoch) return;
                 if (!ok)
@@ -88,7 +88,7 @@ namespace Wassup.Core.Api
                 Debug.Log($"[TournamentReporter] complete ok — score={score}");
                 if (onRanking == null || string.IsNullOrEmpty(entryId)) return;
 
-                TournamentApi.GetResult(baseUrl, idToken, entryId, (result, resultError) =>
+                TournamentApi.GetResult(baseUrl, credential, entryId, (result, resultError) =>
                 {
                     if (epoch != _epoch) return;
                     if (result == null)
