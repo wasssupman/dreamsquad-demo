@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c9d403093230481295e7e153b0bd326, type: 3}
+  m_Name: MapDocumentPool
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.MapGrid.MapDocumentPool
+  entries:
+  - document: {fileID: 11400000, guid: 1a25446142d844b5eb449719c8b67cee, type: 2}
+    deck: {fileID: 11400000, guid: c971fe4b10aae4515a723d33e6e1731e, type: 2}
+  - document: {fileID: 11400000, guid: 51855b551f7b345d88e1e8e0e2042147, type: 2}
+    deck: {fileID: 11400000, guid: a07fb1b28afe349ee82becd0643389bd, type: 2}

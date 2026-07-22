@@ -28,7 +28,7 @@
 - **웨이브 구성은 스폰 개수와 무관**, 레인 분배만 런타임 스폰 수(`_generatedMap.spawns.Length`)로 자동 round-robin(`ExpandWave`/`EffectiveSpawnIndex`, laneCount≤2 는 authored 존중, 3+ 는 deckIndex 결정론). **"어울림"은 코드가 아니라 데이터 튜닝** — 각 덱의 `minUnitsPerWave ≥ 스폰수`(이상적으로 배수), `bossEscort ≥ 스폰수−1`.
 - **document 소비 조건은 한 곳**: `MapGridBattleAdapter.IsUsableDocument`. adapter `Build` 와 BattleBridge connectivity-guard 가 **선택된 doc** 기준으로 같은 술어를 쓴다.
 - **덱 소비는 `ActiveDeck` 경유**. 풀이 비었거나 선택 엔트리가 미완성(doc unusable / deck null)이면 **레거시 serialized `deck`/`mapDocument` 폴백** → 무회귀.
-- **브리핑 웨이브 스트립은 `ActiveDeck` 반영**. 맵/덱은 draft-stage prebuild(`BuildMapForBattle`)에서 확정되므로, 스트립도 선택된 덱을 읽어야 브리핑 = 실전 일치(안 하면 시각 불일치 버그).
+- **브리핑 웨이브 스트립 per-map 동기화는 후속으로 분리**. 스트립(`WavePatternStripView`)은 draft 에서 자기 serialized `deck`(WaveA)로 프리뷰를 만든다 → TwinLane(WaveB) 선택 시 브리핑이 WaveA 를 보이는 시각 불일치. 정확 동기화는 draft-flow 플러밍(`DraftView`→`ActiveDeck`)이 필요하고, exact-sequence 매칭은 `waveSeed=0` 덱에선 원래 근사(프리뷰 seed≠matchSeed 파생)라 부분 개선일 뿐. 핵심 인게임 기능(맵별 실전 웨이브)과 분리해 후속 후보로 이관.
 - **재현**: 같은 matchSeed → 같은 (맵, 덱). `GameManager.debugFixedMatchSeed` 로 특정 인코운터를 핀.
 - **점수 예산은 전 맵 동일** (토너먼트 공정, 2026-07-22 사용자 결정): 모든 맵 덱은 `defeatGoalReachedCount = 10`·`timerDurationSec = 180`(WaveA 값) **고정** → 시간(18,000)·스트레스(9,000) 예산 상한이 전 맵 동일. 킬 점수는 accumulator라 본질적으로 가변(웨이브 구성 의존 — 산식 계약, `score-formula.md`)이지만, 각 덱의 적 volume(waveCount·unitsPerWave 범위·보스 cadence)을 WaveA와 같게 둬 **킬 상한도 동급**으로 유지(킬 값은 유닛 종류와 무관 = 잡몹 일괄 100). **맵마다 다른 건 적 구성(유닛 종류·레인 분배·pacing)뿐** — 채점 기준·판 길이·패배 조건·점수 상한은 불변.
 
@@ -42,4 +42,5 @@ N/A — 플레이 오브젝트(유닛/적/투사체/해저드/VFX) 신설 없음
 - 즉시-반복 방지(연속 같은 맵/덱 회피).
 - 시즌/테마별 맵 풀(현재는 전역 단일 풀).
 - 풀에서 **usable 엔트리만** 필터해 선택(현재는 선택 후 unusable → 레거시 폴백).
+- **브리핑 스트립 per-map 동기화**: `WavePatternStripView` 가 선택된 `ActiveDeck` 를 프리뷰(draft-flow 플러밍 + 실전 wave seed 공유).
 - 전용 맵/덱 authoring 에디터 툴(현재 execute_code authoring).
