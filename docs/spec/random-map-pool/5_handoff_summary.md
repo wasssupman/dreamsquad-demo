@@ -8,8 +8,9 @@
 - `bf197fb7` unit 2 — MapDocument_TwinLane (스폰 2개)
 - `0b390f51` unit 3 — WaveB 덱 (예산 동일·구성 차별화)
 - `7942bfba` unit 4 wiring — 풀 asset + BattleBridge 배선 + Play 실증
-- `e6721d81` unit 6 — 브리핑 스트립 per-map 동기화 (draft 경로 — no-squad 폴백 전용)
+- `e6721d81` unit 6 — 브리핑 스트립 per-map 동기화 (draft 경로 — **이후 철회**, 헬퍼만 잔존)
 - `8eb512e1` unit 7 — 일시정지 메뉴 웨이브 예고 라이브 경로 픽스 (실게임 경로)
+- (unit 6 의 draft 배선 철회 커밋 — 죽은 DraftView/DraftController wiring 제거, `RebuildFromPlan`·`BuildBriefingWavePlan` 헬퍼 유지)
 
 ## Implemented
 
