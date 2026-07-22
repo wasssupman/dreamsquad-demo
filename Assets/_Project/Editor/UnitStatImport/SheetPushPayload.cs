@@ -24,13 +24,14 @@ namespace Wassup.Editor.UnitStatImport
                 UnitStatExporter.ExportToFolder(tempDir, defenderSheet, enemySheet, defenderFolder, enemyFolder);
                 DcSheetExporter.ExportToFolder(tempDir, dcTabs, dcFolder, skillFolder);
                 // preset-sheet-import unit 6 — Presets 탭(list-replace 모드, 서버가 라우팅).
-                PresetSheetExporter.ExportToFolder(tempDir, presetTab);
+                // F3: 컬렉션 결측이면 Presets 만 생략하고 8탭은 진행(false → AddTab 스킵).
+                bool hasPresets = PresetSheetExporter.ExportToFolder(tempDir, presetTab);
 
                 var root = new JObject();
                 AddTab(root, tempDir, defenderSheet);
                 AddTab(root, tempDir, enemySheet);
                 foreach (var tab in dcTabs) AddTab(root, tempDir, tab);
-                AddTab(root, tempDir, presetTab);
+                if (hasPresets) AddTab(root, tempDir, presetTab);
 
                 return root.ToString(Formatting.Indented);
             }

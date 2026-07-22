@@ -42,4 +42,11 @@ Export Preset(SO→JSON 파일 수동 붙여넣기) 대신 **버튼 한 번으�
 - payload 빌더가 `Presets` 탭 포함(execute_code 로 body 확인).
 - Code.gs 문법 검증 + 배포 README 에 list-replace 모드 한 줄.
 - ⚠️ **라이브 push 왕복은 사용자 재배포 후**(에디터 코드로는 재배포 불가).
-- ✅ 구현 완료 2026-07-22 — 컴파일 그린, `SheetPushReportTests` 6/6(`replaced` 포함), payload 빌더 9탭(Presets 2행) 확인. Code.gs list-replace 모드 작성(keyed 8탭 불변). **남은 것: Code.gs 재배포 + 라이브 push 왕복**.
+- ✅ 구현 완료 2026-07-22 — 컴파일 그린, `SheetPushReportTests` 6/6(`replaced` 포함), payload 빌더 9탭(Presets 2행) 확인. Code.gs list-replace 모드 작성(keyed 8탭 불변).
+- ✅ **라이브 왕복 검증** 2026-07-22 — 재배포 후 push: `Presets: replaced 2`, import 프록시 GET 즉시 2행 서빙(stale 없음). Unity→시트→읽기 전 경로 실증.
+
+## 리뷰 반영 (다른 세션 findings)
+
+- **F3 [커플링] 고침**: 프리셋 컬렉션 결측이 9탭 push 전체를 막던 문제 → `ExportToFolder` 를 throw 대신 **bool 반환**으로. false 면 빌더가 Presets 탭만 생략, 유닛·DC 8탭은 진행. (시트 wipe 보호는 server `replaceTab` 빈-payload 가드로 유지.) happy-path 9탭 무변 확인.
+- **F4 [한계] 노트**: null 스쿼드 슬롯은 export 시 압축돼 구멍 프리셋 위치가 소실 — csv 로 빈 슬롯 표현 불가한 구조적 한계. 스펙 "완성 프리셋 전제"로 문서화됨(unit 0·2). 변경 없음.
+- **F5 [수용] 노트**: list-replace 는 Presets 탭 디자이너 열/행을 wipe — list-SoT 계약상 의도된 동작. 3중 가드(빈 payload / 컬렉션 결측 / 다이얼로그 경고)로 완화, 수용.

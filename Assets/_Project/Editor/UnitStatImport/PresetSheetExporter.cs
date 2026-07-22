@@ -32,13 +32,16 @@ namespace Wassup.Editor.UnitStatImport
         }
 
         // unit 6 — sheet push payload 용: {folder}/{tabName}.json (UnitStat/DcSheetExporter 패턴).
-        // 컬렉션이 없으면 throw — 빈 파일을 써서 push 가 시트를 통째 비우는 사고를 막는다.
-        public static void ExportToFolder(string folder, string tabName)
+        // F3 디커플링: 컬렉션 없으면 throw 안 하고 false 반환 → 빌더가 Presets 탭만 생략하고
+        // 유닛·DC 8탭 push 는 진행한다(프리셋 결측이 전체 push 를 막지 않음). true=파일 기록됨.
+        // 빈 컬렉션(0 프리셋)은 []를 기록·true → server replaceTab 의 빈-payload 가드가 스킵 처리.
+        public static bool ExportToFolder(string folder, string tabName)
         {
             var log = new StringBuilder();
             var rows = BuildRows(log);
-            if (rows == null) throw new Exception("[preset] SquadPresetCollection 없음 — push 중단(시트 보호). " + log);
+            if (rows == null) return false;
             File.WriteAllText(Path.Combine(folder, tabName.Trim() + ".json"), ToJson(rows), new UTF8Encoding(false));
+            return true;
         }
 
         // 컬렉션 → PresetDto 행. 컬렉션 없으면 null(호출처가 처리).
