@@ -73,6 +73,37 @@ namespace Wassup.Data
         [Tooltip("코스트 셀 숫자. 슬롯 가격(costFontSize)보다 커야 '내 잔량'과 '유닛 가격'이 구분된다")]
         public float cellNumberFontSize = 52f;
 
+        // defender-placement-cooldown 2 — 배치 쿨타임 오버레이. 코스트 물통과 같은
+        // 액체 셰이더(wellLiquidMaterial)를 재사용하되 색/방향/위치/숫자로 구분한다:
+        // 여기 색은 탁한 슬레이트(코스트 하늘색/골드와 대비), _Fill=남은비율이라 액체가
+        // 아래로 빠지며(코스트는 차오름) 유닛이 떠오른다. 셰이더가 액체색 alpha 를
+        // 안 보므로 반투명은 cooldownLiquidOpacity(Image.color.a)로 준다.
+        [Header("Placement Cooldown Overlay (defender-placement-cooldown 2)")]
+        public Color cooldownLiquidBottom = new Color(0.04f, 0.05f, 0.08f, 1f);
+        public Color cooldownLiquidTop = new Color(0.09f, 0.11f, 0.16f, 1f);
+        [Tooltip("수면 하이라이트 — 어두운 body 위에서 파형이 읽히도록 약간 밝게")]
+        public Color cooldownLiquidSurface = new Color(0.42f, 0.50f, 0.66f, 0.6f);
+        [Range(0f, 1f)]
+        [Tooltip("오버레이 불투명도(Image.color.a). 높을수록 더 어둡게 덮는다(포트레이트 덜 비침)")]
+        public float cooldownLiquidOpacity = 0.92f;
+        public Color cooldownTextColor = Color.white;
+        public float cooldownFontSize = 38f;
+        [Tooltip("쿨타임 종료 시 슬롯 스케일 펀치 배율")]
+        public float cooldownReadyPopScale = 1.16f;
+        public float cooldownReadyPopDuration = 0.22f;
+        [Tooltip("쿨타임 중 셀 전체 딤 스크림(이름밴드/칩 포함). 빠지는 액체와 별개로 셀 전체를 상시 어둡게 = '이 셀 비활성'")]
+        public Color cooldownCellDim = new Color(0.02f, 0.03f, 0.06f, 0.55f);
+
+        // defender-placement-cooldown 2 juice — 말랑말랑 연출. (3) 숫자 틱 바운스 + (4) 종료 플러리시.
+        [Tooltip("카운트다운 정수 변화(3→2→1) 시 숫자 스쿼시&스트레치 팝 배율")]
+        public float cooldownTickPopScale = 1.35f;
+        [Tooltip("종료 잔물결 링 색")]
+        public Color cooldownReadyRippleColor = new Color(0.60f, 0.90f, 1f, 0.9f);
+        [Tooltip("종료 잔물결 링 최대 확장 배율(슬롯 크기 대비)")]
+        public float cooldownReadyRippleScale = 1.7f;
+        [Tooltip("종료 섬광 색(빠르게 페이드)")]
+        public Color cooldownReadyFlashColor = new Color(1f, 1f, 1f, 0.5f);
+
         [Header("Slot Name Band (cost-well unit 0)")]
         public float nameBandHeight = 36f;
         public float nameTextHeight = 38f;

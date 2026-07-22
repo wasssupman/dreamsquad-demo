@@ -17,7 +17,7 @@
 3. **시작 시점**: 배치 **성공** 시점(`DefenderDragPlacementController.PlacementCommitted` 이벤트, unit 을 실어 발화). 배치 거부/취소 시 시작하지 않는다. `RequiresFacing` 유닛은 조준 페이즈 진입 시점(=엔티티 스폰·코스트 소모가 이미 확정된 지점)에 시작한다.
 4. **상태 소유**: `PlacementCooldownRuntime`(MonoBehaviour, **비싱글턴**, `GameManager.CooldownRuntime` 로 도달) — `CostRuntime` 를 미러. 유닛→남은초 맵을 들고, 자체 `Update()` 가 Battle 델타로 tick.
 5. **차단 위치 = 슬롯 레벨**: `DefenderDragSlot.OnBeginDrag`/`OnPointerClick`, 기존 코스트 게이트와 같은 자리(`_suppressedDrag` 패턴). 쿨타임 중이면 드래그/arm 세션을 시작하지 않고 피드백만. **ECS/BattleBridge 에는 쿨타임 개념을 넣지 않는다** — 순수 Mono/UI 관심사이므로 맥락 경계를 지킨다.
-6. **표시 = 레이디얼 스윕 오버레이**: 셀 위 어두운 `Image`(Filled / Radial360) 가 시계방향으로 풀리며 중앙 카운트다운(정수 올림) + 종료 시 스케일 펀치 팝. `DefenderSelector` 가 프레임별로 `RemainingFor` 를 읽어 fillAmount/숫자 리페인트(활성 쿨타임이 하나라도 있을 때만 순회). **코스트 액체 물통과 시각적으로 분리**(시계 은유 ≠ 액체 은유).
+6. **표시 = 빠지는 액체 오버레이**(사용자 결정 2026-07-22, 액체 디벨롭): 코스트 물통 셰이더(`Wassup/UI/CostWell`)를 **재사용**하되, 포트레이트 위에서 `_Fill = 남은비율`로 액체가 **아래로 빠지며**(코스트는 차오름 — 반대) 유닛이 떠오른다. 색은 **탁한 슬레이트**(코스트 하늘색/골드와 구분), 위치는 유닛 포트레이트(코스트는 전용 셀), 중앙 **카운트다운 숫자**(코스트는 재화 수치), 종료 시 팝. `DefenderSelector` 가 프레임별로 `RemainingFor`/`Fraction` 을 읽어 리페인트(활성 쿨타임 있을 때만). 반투명은 셰이더가 액체색 alpha 를 안 보므로 `Image.color.a` 로 준다. **코스트와 방향·색·위치·숫자 4축으로 구분**(액체 구조 재사용 + 역할 구분 = 사용자의 "재사용 구조" 요구 충족).
 7. **리셋**: 배치 페이즈 진입(`PlacementPhaseView` 의 `CostRuntime.ResetToStart()` 자리)에서 `CooldownRuntime.ResetAll()` — 매치 시작·재시작·리드로우를 전부 커버. 추가로 `BattleBridge` teardown(`TimeManager.ResetAll()` 자리)에도 방어적 `ResetAll()`(critic m5).
 8. **순수 계산은 EditMode 테스트**: 시작/tick/만료, fill 비율(0..1), 표시 숫자(올림) 산출을 `CostRuntimeTests` 미러로 검증.
 9. **재사용 구조 · 비추상화**: 오버레이 위젯과 유닛-키드 런타임은 자체 완결·재사용 가능하게 짓되, 실제 2번째 소비처(스킬/드림캐쳐/기믹 쿨타임 등)가 생기기 전에는 인터페이스 추출/일반화하지 않는다(프로젝트 규칙 8). 이름은 현 스코프에 정직하게(`PlacementCooldownRuntime`).

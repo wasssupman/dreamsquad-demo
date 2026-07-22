@@ -28,6 +28,14 @@ namespace Wassup.UI
         public void OnBeginDrag(PointerEventData eventData)
         {
             if (_unitData == null || _controller == null) return;
+            // defender-placement-cooldown 1 — 쿨타임 중이면 세션 자체를 시작하지 않는다
+            // (코스트와 독립 사유, 코스트 체크보다 먼저). 남은시간 표시는 unit 2 오버레이.
+            var cdRuntime = GameManager.Instance != null ? GameManager.Instance.CooldownRuntime : null;
+            if (cdRuntime != null && cdRuntime.RemainingFor(_unitData) > 0f)
+            {
+                _suppressedDrag = true;
+                return;
+            }
             // action-tray unit 4 — 비용 부족은 슬롯에서 즉시 차단: preview/slomo/drag
             // session 자체를 시작하지 않는다. 최종 권한은 여전히 BattleBridge
             // (TryBeginDefenderDeployment)에 있다 — 여기는 사전 피드백만.
@@ -64,6 +72,10 @@ namespace Wassup.UI
             // 단 이미 armed 인 슬롯의 재탭(=해제)은 비용과 무관하게 허용.
             if (!_controller.IsArmed(this))
             {
+                // defender-placement-cooldown 1 — 쿨타임 중이면 arm 하지 않는다. 단 이미 armed
+                // 슬롯의 재탭(=해제)은 위 !IsArmed 가드 밖이라 쿨타임과 무관하게 허용된다.
+                var cdRuntime = GameManager.Instance != null ? GameManager.Instance.CooldownRuntime : null;
+                if (cdRuntime != null && cdRuntime.RemainingFor(_unitData) > 0f) return;
                 var costRuntime = GameManager.Instance != null ? GameManager.Instance.CostRuntime : null;
                 if (costRuntime != null && !costRuntime.CanAfford(_unitData.cost))
                 {

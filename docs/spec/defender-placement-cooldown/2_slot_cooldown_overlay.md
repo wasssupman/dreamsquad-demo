@@ -1,65 +1,79 @@
-# 2 — 셀 쿨타임 오버레이 (표현)
+# 2 — 셀 쿨타임 오버레이 (표현, 액체)
 
 ## 목적
 
-쿨타임 중인 슬롯 위에 **레이디얼 스윕(시계 와이프)** + 중앙 카운트다운을 그리고, 종료 시 밝은 팝으로 "재사용 가능"을 알린다. 코스트 액체 물통과 시각적으로 구분되는 시계 은유. tick 은 unit 0 런타임(Battle 도메인)이 이미 하므로 여기서는 **읽어서 그리기만** 한다 → 슬로모 감속/정지 동결이 자동으로 반영된다.
+쿨타임 중인 슬롯 포트레이트 위에 **빠지는 액체**(코스트 물통 셰이더 재사용) + 중앙 카운트다운을 그리고, 다 빠지면 밝은 팝으로 "재사용 가능"을 알린다. 코스트 물통과 **방향(빠짐↔차오름)·색(탁한 슬레이트↔밝은 재화)·위치(포트레이트↔전용 셀)·숫자(카운트다운↔재화)** 넷으로 구분한다. tick 은 unit 0 런타임(Battle 도메인)이 하므로 여기서는 **읽어서 그리기만** → 슬로모 감속/정지 동결 자동.
 
 ## 변경 대상
 
-- `Assets/_Project/Scripts/UI/DefenderSelector.cs` — `SlotVisual` 확장 + 오버레이 빌드 + 프레임 리페인트
-- `Assets/_Project/Scripts/Data/BattleHudTrayConfig.cs` — 오버레이 튜닝 필드(하드코딩 금지, 규칙 6)
+- `Assets/_Project/Scripts/UI/DefenderSelector.cs` — `SlotVisual` 확장 + 오버레이 빌드(쿨다운>0 슬롯만) + 프레임 리페인트 + 머티리얼 수명
+- `Assets/_Project/Scripts/Data/BattleHudTrayConfig.cs` — 쿨타임 액체 튜닝 필드(하드코딩 금지, 규칙 6)
 
 ## 구현
 
-**BattleHudTrayConfig** — 필드 추가(전부 오버레이 튜닝):
-- `Color cooldownOverlayColor` (기본 어두운 반투명, 예 `(0,0,0,0.62)`)
-- `Color cooldownTextColor` (기본 흰색)
-- `float cooldownFontSize` (기본 30)
-- `float cooldownReadyPopScale` (기본 1.18)
-- `float cooldownReadyPopDuration` (기본 0.22)
+**재사용 구조** = `trayConfig.wellLiquidMaterial`(`Wassup/UI/CostWell`). 셰이더는 `_Fill`(수위 0..1) 하나만 매 프레임, 색은 생성 시 1회(`_LiquidBottom/_LiquidTop/_SurfaceColor`). **⚠️ 셰이더는 액체색의 alpha 를 안 본다**(`col.a = Image.color.a × 수위 × 코너AA`) → 반투명(포트레이트 비침)은 **`Image.color.a`** 로 준다(액체색 alpha 로 하면 무시됨). `_Fill = 남은비율`(1→0)이라 액체가 **아래로 빠진다**(코스트는 차오름 — 반대).
 
-**SlotVisual 확장**: `GameObject cooldownRoot; Image cooldownFill; TextMeshProUGUI cooldownText;`
-- ⚠️ **shown 상태를 struct 필드로 두지 않는다** (critic M1). `SlotVisual` 은 `List<SlotVisual>` 안의 **value type** 이라 `var v = _slotVisuals[i]; v.xxx = ...` 는 **복사본**에 쓰여 소실된다(만료 전이가 영영 안 뜸). 기존 `Update` 가 무사한 건 참조형 멤버(`Image.color`)만 건드리기 때문. → shown 판정은 **`cooldownRoot.activeSelf`**(참조 읽기, write-back 불요)로 한다.
+**BattleHudTrayConfig 필드 추가:**
+- `Color cooldownLiquidBottom/Top/Surface` — **어두운 슬레이트**(bottom≈0.04, top≈0.09; surface 는 파형 가독용 약간 밝게). 코스트 하늘색·골드와 구분.
+- `float cooldownLiquidOpacity`(기본 0.92) — `Image.color.a`. 높을수록 어둡게 덮음.
+- `Color cooldownTextColor`(기본 흰색), `float cooldownFontSize`(기본 38)
+- `float cooldownReadyPopScale`(기본 1.16), `float cooldownReadyPopDuration`(기본 0.22)
+- `Color cooldownCellDim`(기본 어두운 반투명) — **셀 전체 딤 스크림**(이름밴드/칩 포함, 액체와 별개 상시 딤)
+- 숫자 가독: 아웃라인 + 언더레이(드롭섀도) — CostDisplay value 레시피 재사용.
 
-**오버레이 빌드 (RebuildSlots, 슬롯당 1회, 기본 비활성)**:
-- `cooldownRoot`: 슬롯 자식 RectTransform, 포트레이트 영역을 덮음(anchor 0..1, 이름밴드 위). `SetActive(false)`.
-- `cooldownFill`: `Image`, **`sprite = null`** (흰 quad 에 Radial360 이 그대로 먹는다 — 별도 원판 에셋 불요; 셀이 사각이라 사각 시계 와이프로 충분). `type = Filled`, `fillMethod = Radial360`, `fillOrigin = Top`, `clockwise = false`(시계방향으로 걷힘), `color = cooldownOverlayColor`, `raycastTarget = false`. fillAmount 는 **남은 비율**(1→0)이라 어둠이 시계방향으로 사라진다.
-- `cooldownText`: 중앙 정렬 TMP(nameFont 주입), `cooldownFontSize`, `cooldownTextColor`, Bold, `raycastTarget = false`.
-- 오버레이 `raycastTarget=false` → 슬롯 bg 가 계속 입력을 받는다(unit 1 게이트가 무반응 처리; 흔들림 팝은 아래 선택).
-- `RebuildSlots` 말미에 `_anyCooldownShown = false` 리셋(재빌드 후 stale 방지, critic m4).
+**오버레이 3층 구성** (cooldownRoot = 셀 전체 덮개, `SetActive` 토글 하나로 전부 제어):
+1. **딤 스크림**(전체) — `cooldownCellDim` 상시 딤 → 이름밴드·칩까지 셀 전체가 "비활성"으로. 액체가 빠져도 유지.
+2. **액체**(포트레이트 영역, 이름밴드 위) — `_Fill=남은비율`로 아래로 빠짐.
+3. **카운트다운 숫자**(포트레이트 영역 중앙).
+셰이더 SDF 종횡비는 **액체 quad(포트레이트 영역)** 기준으로 push.
 
-**프레임 리페인트 (Update)** — 위치: `if (_panel == null || !_panel.activeInHierarchy || _slotVisuals.Count == 0) return;`(현 496행) **아래**, 코스트 diff-gate(`if (current == _lastCostSeen) return;` 499행) **위**. 이러면 트레이가 보일 때만 돌고(핸드 오픈·비Battle/Placement 페이즈엔 skip), 코스트 조기반환에 삼켜지지 않는다(critic m4).
+**SlotVisual 확장**: `GameObject cooldownRoot; Image cooldownFill; TextMeshProUGUI cooldownText; Material cooldownMat;`
+- ⚠️ shown 상태를 **struct 필드로 두지 않는다**(critic M1: `List<SlotVisual>` value-copy 라 write-back 없으면 소실). shown 판정 = **`cooldownRoot.activeSelf`**(참조 읽기). 리페인트는 참조형 멤버만 건드리므로 write-back 불요.
+
+**오버레이 빌드 (RebuildSlots, `data.placementCooldown > 0f` 슬롯만)** — 쿨다운 0 유닛은 오버레이/머티리얼을 **아예 안 만든다**("0 = inert", 머티리얼 인스턴스도 절약):
+- `cooldownRoot`: 포트레이트 영역 덮는 자식 RectTransform(이름밴드 위), `SetActive(false)`
+- `cooldownFill`: `Image`, `sprite = UiRoundedSprite.Make(0,0,white,clear)`, `Type.Simple`, `material = new Material(wellLiquidMaterial){hideFlags=HideAndDontSave}`, 색 1회 push(config cooldown 색), `color = (1,1,1, cooldownLiquidOpacity)`, `raycastTarget=false`
+- `cooldownText`: 중앙 TMP(nameFont), outline(액체 위 가독, CostDisplay value 패턴), `raycastTarget=false`
+- 머티리얼 인스턴스는 `SlotVisual.cooldownMat` 에 보관. `Shader.PropertyToID` 캐시(`_Fill`/`_Aspect`/`_Radius`)
+
+**리페인트 (Update)** — 위치: 패널활성 가드(`!_panel.activeInHierarchy…` 496행) **아래**, 코스트 조기반환(`current == _lastCostSeen` 499행) **위**(critic m4):
 ```
 UpdateCooldownOverlays():
   rt = GameManager.Instance?.CooldownRuntime
-  if (rt == null) { if (_anyCooldownShown) hide all + _anyCooldownShown=false; return; }
-  if (!rt.AnyActive && !_anyCooldownShown) return;      // 활성/표시 둘 다 없으면 순회 skip (O(1))
+  if (rt == null) { if (_anyCooldownShown) hide all + _anyCooldownShown=false; return }
+  if (!rt.AnyActive && !_anyCooldownShown) return          // O(1) 스킵
   bool anyShown = false
   for each v in _slotVisuals:
-     float rem = rt.RemainingFor(v.data)
-     bool shown = v.cooldownRoot.activeSelf             // ← struct 필드 아님(M1). 참조 읽기.
-     if (rem > 0):
-         if (!shown) v.cooldownRoot.SetActive(true)
-         v.cooldownFill.fillAmount = rt.Fraction(v.data)
-         v.cooldownText.text = Mathf.CeilToInt(rem).ToString()
-         anyShown = true
-     else if (shown):
-         v.cooldownRoot.SetActive(false)               // activeSelf 가 곧 상태 — write-back 불요
-         StartCoroutine(ReadyPop(v.rect))               // 종료 팝(true→false 전이에서 1회)
+    if (v.cooldownRoot == null) continue                   // 쿨다운 없는 유닛
+    float rem = rt.RemainingFor(v.data)
+    bool shown = v.cooldownRoot.activeSelf                 // struct 아님(M1)
+    if (rem > 0):
+      if (!shown) v.cooldownRoot.SetActive(true)
+      v.cooldownMat.SetFloat(_FillId, rt.Fraction(v.data)) // 남은비율=수위 → 빠짐
+      push _Aspect(w/h)·_Radius(rect 기준, CostDisplay PushWellGeometry 미러)
+      v.cooldownText.text = Mathf.CeilToInt(rem).ToString()
+      anyShown = true
+    else if (shown):
+      v.cooldownRoot.SetActive(false)
+      StartCoroutine(ReadyPop(v.rect))                     // 종료 팝(전이 1회)
   _anyCooldownShown = anyShown
 ```
-- `ReadyPop(rect)`: 매 프레임 **`if (rect == null) yield break;`** 가드(pop 도중 `RebuildSlots` 가 슬롯을 Destroy 하면 MissingReference — critic m2). `rect.localScale` 을 `cooldownReadyPopScale` 로 튀겼다 `cooldownReadyPopDuration` 에 걸쳐 1 로 복귀(간단 lerp). 입력/레이아웃 영향 없게 scale 만.
-- 카운트다운 = `CeilToInt`(3→2→1). 슬로모 중엔 rem 이 배틀시간이라 숫자가 느리게 감소.
-- `fillOrigin=Top`/`clockwise=false`/`CeilToInt` 는 고정 시계 은유라 인라인 상수 허용(파일 전반의 레이아웃 리터럴과 일관, critic n2). 단 아래 선택 흔들림을 넣으면 그 진폭/시간은 `BattleHudTrayConfig` 에서 온다(규칙 6).
+- 카운트다운 `CeilToInt`. 슬로모 중 rem=배틀시간이라 느리게 감소.
 
-**선택 juice(가능하면 포함)**: unit 1 의 무반응 차단에 얹어, 쿨타임 중 슬롯 탭 시 짧은 흔들림. 별도 위젯 없이 `ReadyPop` 류 스케일 코루틴 재사용. 비용 크면 후속 후보로.
+**말랑말랑 juice (사용자 선택: 3·4)** — 전부 unscaled UI, `EaseOutBack` 오버슛 공유, rect 파괴 시 즉시 중단(critic m2):
+- **(3) 숫자 틱 팝**: 카운트다운 정수가 바뀌는 프레임에만(=`cooldownText.text != 새값`, text 자체가 직전값 저장소라 struct write-back 불요) 스쿼시&스트레치 팝(`cooldownTickPopScale`, 가로↔세로 반대).
+- **(4) 종료 플러리시**: `ReadyFlourishRoutine` = 슬롯 스프링-아웃 탄성 팝(0.9→pop→EaseOutBack 1) + **잔물결 링**(임시 GO, 확장·페이드, `cooldownReadyRippleColor/Scale`) + **섬광**(임시 GO, 페이드, `cooldownReadyFlashColor`). 임시 GO 는 종료 후 Destroy, 슬롯 파괴 시 가드.
+- juice 튜닝값은 `BattleHudTrayConfig`(하드코딩 금지); 내부 sub-timing 은 CostDisplay 관례대로 인라인 const.
+
+**머티리얼 수명**: `RebuildSlots` 시작에서 기존 `_slotVisuals` 순회하며 `cooldownMat` 있으면 `Destroy`; `_anyCooldownShown=false` 리셋. `OnDestroy` 에서도 순회 Destroy(CostDisplay.OnDestroy 패턴, 에디터는 DestroyImmediate).
 
 ## 완료 기준 (Play 시각 검증)
 
 - [ ] 컴파일 클린 + 콘솔 에러 없음.
-- [ ] `placementCooldown` 값 있는 유닛 배치 → 셀 위 어두운 부채꼴이 시계방향으로 걷히고 중앙 숫자가 `⌈초⌉`로 카운트다운.
-- [ ] 다른 유닛 드래그로 슬로모(0.2×) 발생 시 스윕/숫자가 눈에 띄게 느려짐. 메뉴 정지 시 동결.
-- [ ] 0 도달 시 오버레이 사라지고 밝은 팝 1회 → 슬롯 재배치 가능.
-- [ ] 코스트 액체 물통과 쿨타임 스윕이 시각적으로 구분됨.
-- [ ] `placementCooldown == 0` 유닛: 오버레이 전혀 안 뜸.
-- [ ] 쿨타임 전무일 때 매 프레임 슬롯 순회 없음(`AnyActive`/`_anyCooldownShown` 가드).
+- [ ] `placementCooldown` 값 유닛 배치 → 포트레이트가 탁한 액체에 잠겼다가 시간에 따라 **아래로 빠지며** 유닛이 떠오름 + 중앙 `⌈초⌉` 카운트다운.
+- [ ] 슬로모(0.2×) 중 수위/숫자 눈에 띄게 느려짐. 메뉴 정지 시 동결.
+- [ ] 0 도달 시 오버레이 사라지고 밝은 팝 → 재배치 가능.
+- [ ] 코스트 물통과 **방향·색·위치·숫자**로 구분됨(나란히 놓고 확인).
+- [ ] `placementCooldown == 0` 유닛: 오버레이/머티리얼 자체가 없음.
+- [ ] 쿨타임 전무 시 매 프레임 슬롯 순회 없음(`AnyActive`/`_anyCooldownShown` 가드).
+- [ ] 머티리얼 인스턴스 누수 없음(`RebuildSlots`/`OnDestroy` Destroy).

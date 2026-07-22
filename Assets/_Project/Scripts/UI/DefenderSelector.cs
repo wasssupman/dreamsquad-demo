@@ -66,10 +66,28 @@ namespace Wassup.UI
             public Color slotBgBase;
             public TextMeshProUGUI costText;
             public GameObject warnGlyph; // 구매 불가 시에만 활성 (색 단독 금지 계약)
+            // defender-placement-cooldown 2 — 쿨타임 오버레이(placementCooldown>0 슬롯만 생성,
+            // 아니면 전부 null). shown 상태는 여기 두지 않고 cooldownRoot.activeSelf 로 읽는다
+            // (struct value-copy 라 필드에 쓰면 소실 — critic M1).
+            public GameObject cooldownRoot;
+            public Image cooldownFill;
+            public TextMeshProUGUI cooldownText;
+            public Material cooldownMat; // 셰이더 인스턴스(수명 소유). 폴백(머티리얼 미할당)이면 null.
         }
 
         private readonly List<SlotVisual> _slotVisuals = new();
         private int _lastCostSeen = int.MinValue;
+        // defender-placement-cooldown 2 — 표시 중 오버레이 유무(만료 프레임에 AnyActive 가 이미
+        // false 여도 hide/pop 을 마치도록 순회를 한 프레임 더 돌리는 가드).
+        private bool _anyCooldownShown;
+        // 쿨타임 액체는 코스트 물통 셰이더(Wassup/UI/CostWell)를 재사용한다 — 같은 uniform.
+        private static readonly int CdFillId = Shader.PropertyToID("_Fill");
+        private static readonly int CdAspectId = Shader.PropertyToID("_Aspect");
+        private static readonly int CdRadiusId = Shader.PropertyToID("_Radius");
+        private static readonly int CdLiquidBottomId = Shader.PropertyToID("_LiquidBottom");
+        private static readonly int CdLiquidTopId = Shader.PropertyToID("_LiquidTop");
+        private static readonly int CdSurfaceId = Shader.PropertyToID("_SurfaceColor");
+        private const float CooldownCornerRadius = 12f;
 
         // dreamcatcher-awakening-hand unit 6 — flip-transition hook. The hand
         // view (DreamcatcherHandView) is the single owner of the strip↔hand
@@ -93,6 +111,13 @@ namespace Wassup.UI
             // 시작점이라 선물 도중 트레이가 튀어나온다. DraftStarted 는 숨김용으로 유지.
             if (GameManager.Instance != null)
                 GameManager.Instance.PhaseChanged += OnPhaseChanged;
+            // defender-placement-cooldown 1 — 배치 성공 시 쿨타임 시작. 컨트롤러는 Awake 의
+            // EnsureDragController 로 확정돼 있어 여기서 구독(OnDisable 해제와 대칭). 멱등.
+            if (dragPlacementController != null)
+            {
+                dragPlacementController.PlacementCommitted -= OnDefenderPlaced;
+                dragPlacementController.PlacementCommitted += OnDefenderPlaced;
+            }
         }
 
         private void OnDisable()
@@ -101,6 +126,16 @@ namespace Wassup.UI
                 draftController.DraftStarted -= OnDraftStarted;
             if (GameManager.Instance != null)
                 GameManager.Instance.PhaseChanged -= OnPhaseChanged;
+            if (dragPlacementController != null)
+                dragPlacementController.PlacementCommitted -= OnDefenderPlaced;
+        }
+
+        // defender-placement-cooldown 1 — 배치가 성공 확정된 유닛 타입을 쿨타임에 넣는다.
+        // placementCooldown==0 이면 StartCooldown 이 no-op(등록 안 함) → "0 = inert".
+        private void OnDefenderPlaced(DefenderUnitData unit)
+        {
+            var rt = GameManager.Instance != null ? GameManager.Instance.CooldownRuntime : null;
+            if (rt != null && unit != null) rt.StartCooldown(unit, unit.placementCooldown);
         }
 
         // battle-hud-layout 2 — Placement 풀 / Battle 슬림. 그 외 페이즈는 패널이
@@ -271,7 +306,12 @@ namespace Wassup.UI
         {
             for (int i = _slotContainer.childCount - 1; i >= 0; i--)
                 Destroy(_slotContainer.GetChild(i).gameObject);
+            // defender-placement-cooldown 2 — 슬롯 GO 는 위에서 Destroy 되지만 셰이더 머티리얼
+            // 인스턴스는 GC 되지 않는다(누수) → 명시적으로 정리.
+            for (int i = 0; i < _slotVisuals.Count; i++)
+                DestroyCooldownMat(_slotVisuals[i].cooldownMat);
             _slotVisuals.Clear();
+            _anyCooldownShown = false;
             _lastCostSeen = int.MinValue; // 재빌드 후 첫 Update 에서 강제 갱신
 
             if (pool == null || pool.Length == 0) return;
@@ -357,6 +397,13 @@ namespace Wassup.UI
                 // action-tray unit 1 — 좌상단 비용 chip + 시각 캐시.
                 // role 배지는 unit 3 에서 제거됐다 — 클래스 정보는 밴드 틴트가 옮겨 받는다.
                 var costText = BuildCostChip(go.transform, data.cost, out var warnGlyph);
+
+                // defender-placement-cooldown 2 — 쿨다운>0 유닛만 오버레이 생성("0 = inert",
+                // 머티리얼 인스턴스도 절약). 0 유닛은 전 필드 null → 리페인트가 건너뛴다.
+                GameObject cdRoot = null; Image cdFill = null; TextMeshProUGUI cdText = null; Material cdMat = null;
+                if (data.placementCooldown > 0f)
+                    BuildCooldownOverlay(go.transform, out cdRoot, out cdFill, out cdText, out cdMat);
+
                 _slotVisuals.Add(new SlotVisual
                 {
                     data = data,
@@ -367,6 +414,10 @@ namespace Wassup.UI
                     slotBgBase = bg.color,
                     costText = costText,
                     warnGlyph = warnGlyph,
+                    cooldownRoot = cdRoot,
+                    cooldownFill = cdFill,
+                    cooldownText = cdText,
+                    cooldownMat = cdMat,
                 });
             }
 
@@ -494,6 +545,9 @@ namespace Wassup.UI
         private void Update()
         {
             if (_panel == null || !_panel.activeInHierarchy || _slotVisuals.Count == 0) return;
+            // defender-placement-cooldown 2 — 쿨타임 오버레이는 매 프레임(코스트 diff-gate 위)에서
+            // 리페인트한다. fillAmount 가 연속 변하므로 diff-gate 에 삼켜지면 안 된다.
+            UpdateCooldownOverlays();
             var costRuntime = GameManager.Instance != null ? GameManager.Instance.CostRuntime : null;
             int current = costRuntime != null ? costRuntime.CurrentInt : int.MaxValue;
             if (current == _lastCostSeen) return;
@@ -514,6 +568,309 @@ namespace Wassup.UI
                 if (v.warnGlyph != null && v.warnGlyph.activeSelf != !affordable)
                     v.warnGlyph.SetActive(!affordable);
             }
+        }
+
+        // defender-placement-cooldown 2 — 매 프레임 쿨타임 오버레이 리페인트. 런타임이 Battle
+        // 도메인으로 tick 하므로 여기서는 RemainingFor/Fraction 을 읽어 그리기만 한다(슬로모
+        // 감속·정지 동결 자동). shown 상태는 cooldownRoot.activeSelf(참조)로 읽어 struct
+        // value-copy 함정을 피한다(critic M1).
+        private void UpdateCooldownOverlays()
+        {
+            var rt = GameManager.Instance != null ? GameManager.Instance.CooldownRuntime : null;
+            if (rt == null)
+            {
+                if (_anyCooldownShown) { HideAllCooldownOverlays(); _anyCooldownShown = false; }
+                return;
+            }
+            // 활성 쿨타임도 표시 중 오버레이도 없으면 순회 스킵(전 유닛 0 이면 O(1)).
+            if (!rt.AnyActive && !_anyCooldownShown) return;
+
+            bool anyShown = false;
+            for (int i = 0; i < _slotVisuals.Count; i++)
+            {
+                var v = _slotVisuals[i];
+                if (v.cooldownRoot == null) continue; // 쿨다운 없는 유닛(오버레이 미생성)
+                float rem = rt.RemainingFor(v.data);
+                bool shown = v.cooldownRoot.activeSelf;
+                if (rem > 0f)
+                {
+                    if (!shown)
+                    {
+                        v.cooldownRoot.SetActive(true);
+                        // 재표시 시 직전 쿨타임의 잔여 팝 스케일 초기화(안전).
+                        if (v.cooldownText != null) v.cooldownText.rectTransform.localScale = Vector3.one;
+                    }
+                    float frac = rt.Fraction(v.data); // 남은비율 = 수위 → 아래로 빠짐
+                    if (v.cooldownMat != null) { v.cooldownMat.SetFloat(CdFillId, frac); PushCooldownGeometry(v); }
+                    else if (v.cooldownFill != null) v.cooldownFill.fillAmount = frac;
+                    if (v.cooldownText != null)
+                    {
+                        // (juice 3) 정수 카운트다운이 바뀌는 프레임에만 스쿼시 팝. text 자체가
+                        // 직전 값 저장소라 struct write-back 없이 변화 감지(critic M1 회피).
+                        string s = Mathf.CeilToInt(rem).ToString();
+                        if (v.cooldownText.text != s)
+                        {
+                            v.cooldownText.text = s;
+                            StartCoroutine(NumberTickPopRoutine(v.cooldownText.rectTransform));
+                        }
+                    }
+                    anyShown = true;
+                }
+                else if (shown)
+                {
+                    v.cooldownRoot.SetActive(false);
+                    StartCoroutine(ReadyFlourishRoutine(v.rect)); // (juice 4) 종료 플러리시(전이 1회)
+                }
+            }
+            _anyCooldownShown = anyShown;
+        }
+
+        private void HideAllCooldownOverlays()
+        {
+            for (int i = 0; i < _slotVisuals.Count; i++)
+                if (_slotVisuals[i].cooldownRoot != null) _slotVisuals[i].cooldownRoot.SetActive(false);
+        }
+
+        // 셰이더 라운드코너는 종횡비를 알아야 타원으로 안 찌그러진다(CostDisplay.PushWellGeometry 미러).
+        private void PushCooldownGeometry(SlotVisual v)
+        {
+            if (v.cooldownMat == null || v.cooldownFill == null) return;
+            var rt = v.cooldownFill.rectTransform; // SDF 는 액체 quad(포트레이트 영역) 기준
+            float w = rt.rect.width, h = rt.rect.height;
+            if (w <= 1f || h <= 1f) return;
+            v.cooldownMat.SetFloat(CdAspectId, w / h);
+            v.cooldownMat.SetFloat(CdRadiusId, CooldownCornerRadius / h);
+        }
+
+        // 오버슛(back-out) 이징 — 1 을 살짝 넘겼다 정착하는 "보잉". 말랑 연출의 뼈대.
+        private static float EaseOutBack(float t)
+        {
+            const float c1 = 1.70158f;
+            const float c3 = c1 + 1f;
+            float p = t - 1f;
+            return 1f + c3 * p * p * p + c1 * p * p;
+        }
+
+        // (juice 3) 카운트다운 틱 스쿼시&스트레치 팝. 부피 보존 느낌으로 가로↔세로 반대로 눌렀다
+        // EaseOutBack 로 1,1 정착. UI 라 unscaled. rect 파괴 시 즉시 중단.
+        private System.Collections.IEnumerator NumberTickPopRoutine(RectTransform rect)
+        {
+            if (rect == null) yield break;
+            float pop = trayConfig != null ? trayConfig.cooldownTickPopScale : 1.35f;
+            const float dur = 0.22f;
+            float t = 0f;
+            while (t < dur)
+            {
+                if (rect == null) yield break;
+                t += Time.unscaledDeltaTime;
+                float e = EaseOutBack(Mathf.Clamp01(t / dur));
+                float sx = Mathf.LerpUnclamped(pop, 1f, e);
+                float sy = Mathf.LerpUnclamped(2f - pop, 1f, e); // 반대 축
+                rect.localScale = new Vector3(sx, sy, 1f);
+                yield return null;
+            }
+            if (rect != null) rect.localScale = Vector3.one;
+        }
+
+        // (juice 4) 종료 플러리시 — 유닛이 탱 튀어나오는 탄성 팝 + 잔물결 링 + 섬광(병렬).
+        // UI 연출이라 unscaled. slotRect 파괴(RebuildSlots) 시 즉시 물러남(critic m2).
+        private System.Collections.IEnumerator ReadyFlourishRoutine(RectTransform slotRect)
+        {
+            if (slotRect == null) yield break;
+            StartCoroutine(ReadyRippleRoutine(slotRect));
+            StartCoroutine(ReadyFlashRoutine(slotRect));
+
+            float pop = trayConfig != null ? trayConfig.cooldownReadyPopScale : 1.16f;
+            float dur = trayConfig != null ? Mathf.Max(0.01f, trayConfig.cooldownReadyPopDuration) : 0.22f;
+            float t = 0f;
+            while (t < dur)
+            {
+                if (slotRect == null) yield break;
+                t += Time.unscaledDeltaTime;
+                float k = Mathf.Clamp01(t / dur);
+                // 살짝 눌렀다(0.9) 팝(pop)까지 튄 뒤 EaseOutBack 로 1 에 정착(오버슛) = 스프링 아웃.
+                float s = k < 0.30f
+                    ? Mathf.Lerp(0.90f, pop, k / 0.30f)
+                    : pop + (1f - pop) * EaseOutBack((k - 0.30f) / 0.70f);
+                slotRect.localScale = new Vector3(s, s, 1f);
+                yield return null;
+            }
+            if (slotRect != null) slotRect.localScale = Vector3.one;
+        }
+
+        // 확장·페이드하는 잔물결 링(테두리만). 슬롯 자식 임시 GO — 끝나면 Destroy.
+        private System.Collections.IEnumerator ReadyRippleRoutine(RectTransform slotRect)
+        {
+            if (slotRect == null) yield break;
+            float w = slotRect.rect.width, h = slotRect.rect.height;
+            if (w <= 1f || h <= 1f) yield break;
+
+            var go = new GameObject("CooldownRipple", typeof(RectTransform), typeof(Image));
+            var rt = (RectTransform)go.transform;
+            rt.SetParent(slotRect, false);
+            rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.anchoredPosition = Vector2.zero;
+            rt.sizeDelta = new Vector2(w, h);
+            var img = go.GetComponent<Image>();
+            img.sprite = UiRoundedSprite.Make(Mathf.Min(w, h) * 0.5f, 6f, Color.clear, Color.white); // 링(테두리만)
+            img.type = Image.Type.Sliced;
+            img.raycastTarget = false;
+            var baseCol = trayConfig != null ? trayConfig.cooldownReadyRippleColor : new Color(0.60f, 0.90f, 1f, 0.9f);
+            float maxScale = trayConfig != null ? Mathf.Max(1f, trayConfig.cooldownReadyRippleScale) : 1.7f;
+            const float dur = 0.40f;
+            float t = 0f;
+            while (t < dur)
+            {
+                if (go == null) yield break;
+                if (slotRect == null) { Destroy(go); yield break; }
+                t += Time.unscaledDeltaTime;
+                float k = Mathf.Clamp01(t / dur);
+                float s = Mathf.Lerp(0.6f, maxScale, k);
+                rt.localScale = new Vector3(s, s, 1f);
+                var c = baseCol; c.a = baseCol.a * (1f - k); img.color = c;
+                yield return null;
+            }
+            if (go != null) Destroy(go);
+        }
+
+        // 셀 전체 짧은 밝은 섬광(페이드). 슬롯 자식 임시 GO — 끝나면 Destroy.
+        private System.Collections.IEnumerator ReadyFlashRoutine(RectTransform slotRect)
+        {
+            if (slotRect == null) yield break;
+            var go = new GameObject("CooldownFlash", typeof(RectTransform), typeof(Image));
+            var rt = (RectTransform)go.transform;
+            rt.SetParent(slotRect, false);
+            rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one;
+            rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
+            var img = go.GetComponent<Image>();
+            img.sprite = UiRoundedSprite.Make(12f, 0f, Color.white, Color.clear);
+            img.type = Image.Type.Sliced;
+            img.raycastTarget = false;
+            var baseCol = trayConfig != null ? trayConfig.cooldownReadyFlashColor : new Color(1f, 1f, 1f, 0.5f);
+            const float dur = 0.18f;
+            float t = 0f;
+            while (t < dur)
+            {
+                if (go == null) yield break;
+                if (slotRect == null) { Destroy(go); yield break; }
+                t += Time.unscaledDeltaTime;
+                float k = Mathf.Clamp01(t / dur);
+                var c = baseCol; c.a = baseCol.a * (1f - k); img.color = c;
+                yield return null;
+            }
+            if (go != null) Destroy(go);
+        }
+
+        // defender-placement-cooldown 2 — 쿨타임 오버레이. 루트는 셀 전체를 덮고 3층으로 구성:
+        //  (1) 딤 스크림 — 셀 전체 상시 어둡게(이름밴드/칩 포함, 액체가 빠져도 유지)
+        //  (2) 액체 — 포트레이트 영역만, 코스트 물통 셰이더 재사용, _Fill=남은비율로 아래로 빠짐
+        //  (3) 카운트다운 숫자 — 포트레이트 영역 중앙
+        private void BuildCooldownOverlay(Transform slot, out GameObject root, out Image fill,
+            out TextMeshProUGUI text, out Material mat)
+        {
+            float bandH = trayConfig != null ? trayConfig.nameBandHeight : 36f;
+
+            root = new GameObject("CooldownOverlay", typeof(RectTransform));
+            var rrt = (RectTransform)root.transform;
+            rrt.SetParent(slot, false);
+            rrt.anchorMin = Vector2.zero;
+            rrt.anchorMax = Vector2.one;
+            rrt.offsetMin = new Vector2(2f, 2f); // 셀 전체(이름밴드까지)
+            rrt.offsetMax = new Vector2(-2f, -2f);
+            rrt.SetAsLastSibling();
+
+            // (1) 셀 전체 딤 스크림 — 액체 아래(먼저 생성=아래 레이어). 상시 어둡게.
+            var dimGO = new GameObject("CooldownCellDim", typeof(RectTransform), typeof(Image));
+            dimGO.transform.SetParent(root.transform, false);
+            var drt = (RectTransform)dimGO.transform;
+            drt.anchorMin = Vector2.zero; drt.anchorMax = Vector2.one;
+            drt.offsetMin = Vector2.zero; drt.offsetMax = Vector2.zero;
+            var dimImg = dimGO.GetComponent<Image>();
+            dimImg.sprite = UiRoundedSprite.Make(CooldownCornerRadius, 0f, Color.white, Color.clear);
+            dimImg.type = Image.Type.Sliced;
+            dimImg.color = trayConfig != null ? trayConfig.cooldownCellDim : new Color(0.02f, 0.03f, 0.06f, 0.55f);
+            dimImg.raycastTarget = false;
+
+            // (2) 액체 — 포트레이트 영역(이름밴드 위)만.
+            var fillGO = new GameObject("CooldownLiquid", typeof(RectTransform), typeof(Image));
+            fillGO.transform.SetParent(root.transform, false);
+            var frt = (RectTransform)fillGO.transform;
+            frt.anchorMin = Vector2.zero; frt.anchorMax = Vector2.one;
+            frt.offsetMin = new Vector2(0f, bandH); frt.offsetMax = Vector2.zero; // 이름밴드 위
+            fill = fillGO.GetComponent<Image>();
+            fill.sprite = UiRoundedSprite.Make(0f, 0f, Color.white, Color.clear);
+            fill.raycastTarget = false;
+
+            float opacity = trayConfig != null ? trayConfig.cooldownLiquidOpacity : 0.85f;
+            var liquidMat = trayConfig != null ? trayConfig.wellLiquidMaterial : null;
+            mat = null;
+            if (liquidMat != null)
+            {
+                // 셰이더 모드: Type.Simple + _Fill 로 수위를 프래그먼트가 자른다. 셰이더는 액체색
+                // alpha 를 안 보므로 반투명은 Image.color.a 로 준다(포트레이트가 흐릿하게 비침).
+                fill.type = Image.Type.Simple;
+                fill.color = new Color(1f, 1f, 1f, opacity);
+                mat = new Material(liquidMat) { name = "CooldownLiquid (Instance)", hideFlags = HideFlags.HideAndDontSave };
+                if (trayConfig != null)
+                {
+                    mat.SetColor(CdLiquidBottomId, trayConfig.cooldownLiquidBottom);
+                    mat.SetColor(CdLiquidTopId, trayConfig.cooldownLiquidTop);
+                    mat.SetColor(CdSurfaceId, trayConfig.cooldownLiquidSurface);
+                }
+                mat.SetFloat(CdFillId, 0f);
+                fill.material = mat;
+            }
+            else
+            {
+                // 폴백(셰이더 미할당): Filled 세로 채움. fillAmount=남은비율=수위(아래에서 위로).
+                var top = trayConfig != null ? trayConfig.cooldownLiquidTop : new Color(0.24f, 0.27f, 0.35f, 1f);
+                fill.type = Image.Type.Filled;
+                fill.fillMethod = Image.FillMethod.Vertical;
+                fill.fillOrigin = (int)Image.OriginVertical.Bottom;
+                fill.fillAmount = 0f;
+                fill.color = new Color(top.r, top.g, top.b, opacity);
+            }
+
+            var numGO = new GameObject("CooldownNumber", typeof(RectTransform));
+            numGO.transform.SetParent(root.transform, false);
+            var nrt = (RectTransform)numGO.transform;
+            nrt.anchorMin = Vector2.zero; nrt.anchorMax = Vector2.one;
+            nrt.offsetMin = new Vector2(0f, bandH); nrt.offsetMax = Vector2.zero; // 포트레이트 영역 중앙
+            text = numGO.AddComponent<TextMeshProUGUI>();
+            if (nameFont != null) text.font = nameFont;
+            text.text = "";
+            text.fontSize = trayConfig != null ? trayConfig.cooldownFontSize : 30f;
+            text.fontStyle = FontStyles.Bold;
+            text.alignment = TextAlignmentOptions.Center;
+            text.color = trayConfig != null ? trayConfig.cooldownTextColor : Color.white;
+            text.textWrappingMode = TextWrappingModes.NoWrap;
+            text.raycastTarget = false;
+            // 액체 위 가독성 — 아웃라인 + 언더레이(드롭섀도). CostDisplay value 의 검증된 레시피
+            // (어두운 물통↔밝은 액체 극단에서도 흰 숫자가 읽히게). 쿨타임 액체가 어두워도
+            // 파형/하이라이트 위에서 또렷하게.
+            var tmat = text.fontMaterial;
+            tmat.EnableKeyword(ShaderUtilities.Keyword_Outline);
+            tmat.EnableKeyword(ShaderUtilities.Keyword_Underlay);
+            tmat.SetColor(ShaderUtilities.ID_OutlineColor, new Color(0.02f, 0.03f, 0.05f, 1f));
+            tmat.SetFloat(ShaderUtilities.ID_OutlineWidth, 0.3f);
+            tmat.SetFloat(ShaderUtilities.ID_UnderlayOffsetX, 0.4f);
+            tmat.SetFloat(ShaderUtilities.ID_UnderlayOffsetY, -0.4f);
+            tmat.SetFloat(ShaderUtilities.ID_UnderlaySoftness, 0.35f);
+            tmat.SetColor(ShaderUtilities.ID_UnderlayColor, new Color(0f, 0f, 0f, 0.95f));
+
+            root.SetActive(false);
+        }
+
+        private void DestroyCooldownMat(Material m)
+        {
+            if (m == null) return;
+            if (Application.isPlaying) Destroy(m); else DestroyImmediate(m);
+        }
+
+        private void OnDestroy()
+        {
+            for (int i = 0; i < _slotVisuals.Count; i++)
+                DestroyCooldownMat(_slotVisuals[i].cooldownMat);
         }
 
         // unit-dreamcatcher-inspect unit 0 — 드래그 컨트롤러 도달 경로. 컨트롤러는
