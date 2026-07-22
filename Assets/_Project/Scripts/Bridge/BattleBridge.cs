@@ -4264,6 +4264,15 @@ namespace Wassup.Bridge
         public void SetAimGuide(Vector2Int center, DefenderUnitData unit, Vector2Int? selected)
         {
             if (tilemapMapView == null || unit == null) return;
+            if (unit.bombLandingTiles > 0)
+            {
+                // bomb-thrower-defender unit 8 — 착지 타일 조준: 상하좌우 N칸 착지 후보만
+                // 하이라이트(레인/화살표 없음 — 머신거너와 다른 모드). 선택되면 그 착지 셀만.
+                PaintLandingCells(center, unit.bombLandingTiles, selected, selected.HasValue ? 1f : AimLaneDimAlpha);
+                _rangeOwner = RangeDisplayOwner.PlacementAim;
+                tilemapMapView.ClearAimArrows();
+                return;
+            }
             int tileRange = GridMath.RangeToTiles(unit.attackRange);
             PaintLanes(center, tileRange, selected, selected.HasValue ? 1f : AimLaneDimAlpha);
             _rangeOwner = RangeDisplayOwner.PlacementAim;
@@ -4309,6 +4318,20 @@ namespace Wassup.Bridge
                       || LaneMath.IsInLane(c, new int2(0, -1), tileRange, cell);
                 if (lit) _laneCellScratch.Add(new Vector2Int(cell.x, cell.y));
             }
+            tilemapMapView.SetPlacementCells(_laneCellScratch, alphaMul);
+        }
+
+        // bomb-thrower-defender unit 8 — 폭탄 착지 후보 셀. 미선택이면 4 cardinal 착지 셀
+        // (center±N) 전부 dim, 선택되면 그 방향 착지 셀 1개만. PaintLanes 의 착지-셀 판.
+        private void PaintLandingCells(Vector2Int center, int landingTiles, Vector2Int? facing, float alphaMul)
+        {
+            if (landingTiles <= 0) return;
+            _laneCellScratch.Clear();
+            if (facing.HasValue)
+                _laneCellScratch.Add(center + facing.Value * landingTiles);
+            else
+                for (int i = 0; i < AimCardinals.Length; i++)
+                    _laneCellScratch.Add(center + AimCardinals[i] * landingTiles);
             tilemapMapView.SetPlacementCells(_laneCellScratch, alphaMul);
         }
 

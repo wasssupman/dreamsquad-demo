@@ -198,6 +198,15 @@ namespace Wassup.Battle.Combat
                                 owner = attackerEntity,
                                 targetFaction = ProjectileTargetFaction.Enemy,
                             });
+                            // unit 7 — 던지기 공격 애니 + facing(착지셀 방향). 정상 경로와
+                            // 동형이나 폭탄 분기는 continue 라 여기서 별도 enqueue.
+                            if (attackWriter.HasValue)
+                                attackWriter.Value.Enqueue(new UnitAttackVisualEvent
+                                {
+                                    attacker = attackerEntity,
+                                    targetWorld = landWorld,
+                                    attackAnimPeriod = attack.ValueRO.cooldownDuration,
+                                });
                         }
                         // 발사 성사/off-grid 무관 쿨다운 리셋(blind bombardment, 재스캔 스팸 방지).
                         attack.ValueRW.cooldownRemaining = attack.ValueRO.cooldownDuration;
