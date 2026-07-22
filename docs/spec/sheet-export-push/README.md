@@ -1,6 +1,6 @@
 # Sheet Export Push — Unity→구글 시트 자동 반영 + 이식 가능한 SheetSync 코어
 
-> 상태: **초안 (승인 대기) 2026-07-22**
+> 상태: **완료 2026-07-22** — units 0~5 구현·커밋(`ad2028f8`~`0896e050`) + 라이브 push 동작 + 양방향 정합성 8탭 OK(SO==sheet, drift 0). Defenders `공` 헤더 사고 정리 포함. 인계는 `6_handoff_summary.md`.
 > 선행: `unit-stat-spreadsheet-schema` (완료) · `dreamcatcher-sheet-sync` (완료) — API 계약·DTO·exporter 를 그대로 재사용한다.
 > SoT 전환(시트=진실)은 **현 스코프 밖** — 별도 spec 초안으로 대기.
 
