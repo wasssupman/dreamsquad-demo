@@ -47,15 +47,18 @@ namespace Wassup.Core.Api
                     Debug.LogWarning($"[TournamentReporter] play failed: {error}");
                     return;
                 }
-                _attemptId = state.tournamentEntryAttemptId;
-                _entryId = state.tournamentEntryId;
+                var uts = state.userTournamentState;
+                _attemptId = uts?.tournamentEntryAttemptId;
+                _entryId = uts?.tournamentEntryId;
                 // abandoned-match-reconciliation unit 1 — persist the just-opened
                 // attempt so a hard kill can be reconciled (completed with 0) on the
                 // next lobby entry. Guarded by the epoch check above: AbandonMatch's
-                // _epoch++ drops this callback so it never Saves post-teardown.
-                PendingMatchStore.Save(_attemptId, UserSession.Current?.userId ?? string.Empty,
-                    DateTimeOffset.UtcNow.ToUnixTimeSeconds());
-                Debug.Log($"[TournamentReporter] play ok — status={state.status} attemptId={_attemptId} entryId={_entryId}");
+                // _epoch++ drops this callback so it never Saves post-teardown. Skip
+                // when the server returned no attemptId (nothing the client can complete).
+                if (!string.IsNullOrEmpty(_attemptId))
+                    PendingMatchStore.Save(_attemptId, UserSession.Current?.userId ?? string.Empty,
+                        DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+                Debug.Log($"[TournamentReporter] play ok — status={uts?.status} attemptId={_attemptId} entryId={_entryId}");
             });
         }
 

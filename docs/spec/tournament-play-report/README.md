@@ -26,7 +26,7 @@
 
 - **엔드포인트**: `POST {base}/tournament/play` (무파라미터 변형, body 없음) · `POST {base}/tournament/complete/{tournamentEntryAttemptId}/{score}` body `{ "debug": "<battle log JSON 문자열>" }`. base = `https://dev-api-somnia.cashroyale.games` (LoginPanelView 의 `gameApiBaseUrl` → sign-in 시 `UserSession` 에 보관).
 - **인증 헤더**: `Authorization: Bearer {UserSession.IdToken}` + `X-SERVICE-APP-VERSION` — `UserSignApi` 와 동일 패턴. 응답은 공통 envelope → `ApiEnvelope.Parse<T>` 재사용.
-- **play 응답에서 소비하는 필드**: `tournamentEntryAttemptId` (complete 경로 파라미터), `tournamentEntryId` (결과 조회 경로 파라미터), `status` — 나머지는 파싱하지 않는다 (`UserSignApi.SignedInUser` 선례).
+- **play 응답에서 소비하는 필드**: `tournamentEntryAttemptId` (complete 경로 파라미터), `tournamentEntryId` (결과 조회 경로 파라미터), `status` — 나머지는 파싱하지 않는다 (`UserSignApi.SignedInUser` 선례). **2026-07 서버 스키마 변경**: 이 세 필드는 `data` 직속이 아니라 `data.userTournamentState` 아래로 중첩됐다. `PlayState.userTournamentState` 로 바인딩한다(직속 파싱 시 전부 빈 값 → attemptId 없음 → complete/기권 전부 무동작). `abandoned-match-reconciliation` Play 검증 중 발견·수정(`019f899f…` 실서버 응답 실측).
 - **결과 조회**: complete 성공 시에만 `GET /tournament/result/tournament/{tournamentEntryId}` 호출. 응답 `TournamentResult.entries[]` 에서 `userName`/`score` 를, 루트에서 `maxEntryCount` 를 소비한다 (dev 서버는 `rank` 미제공 — 클라가 score 내림차순 위치로 산출, 2026-07-08 실측). 랭킹은 항상 `maxEntryCount` 슬롯(현재 10)을 그리고 미배정 슬롯은 `WAITING...` 표기. 본인 행은 `UserSession.Current.userId` 매칭으로 강조. complete 응답 `data` 도 동일한 `TournamentResult` 스키마 — 파싱 DTO 를 공유한다.
 - **랭킹 fallback**: 게스트·API 실패·조회 전 로딩 중에는 대기 상태 목록("참가자 찾는 중", 점수 `-`)을 보여준다. 실데이터는 도착하면 교체.
   (당초 `BotScoreGenerator` 더미 점수를 썼으나 없는 순위를 지어내는 문제로 `result-screen-ranking-ui` unit 1 에서 교체·삭제했다.)
