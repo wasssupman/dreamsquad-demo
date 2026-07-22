@@ -77,3 +77,5 @@ UpdateCooldownOverlays():
 - [ ] `placementCooldown == 0` 유닛: 오버레이/머티리얼 자체가 없음.
 - [ ] 쿨타임 전무 시 매 프레임 슬롯 순회 없음(`AnyActive`/`_anyCooldownShown` 가드).
 - [ ] 머티리얼 인스턴스 누수 없음(`RebuildSlots`/`OnDestroy` Destroy).
+
+✅ 확인: 2026-07-22 · commit `4b9caeeb` — 컴파일 클린. 사용자 시각 확인("일단 오케이"): 어두운 액체·셀 딤·카운트다운·juice(틱 팝/종료 플러리시) 외형. 슬로모/정지 동결·머티리얼 누수 등 동작 엣지 전체 Play 패스는 handoff Follow-up.

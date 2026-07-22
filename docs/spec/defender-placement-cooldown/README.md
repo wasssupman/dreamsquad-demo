@@ -1,6 +1,6 @@
 # Spec — Defender Placement Cooldown (방어 유닛 배치 쿨타임)
 
-상태: 진행 중 — unit 0 완료(commit `76067285`), unit 1 착수 (2026-07-22)
+상태: 완료 2026-07-22 (commit `4b9caeeb`) — unit 0·1·2 구현·커밋, 사용자 시각 확인. 동작 엣지 전체 Play 패스는 handoff Follow-up.
 
 ## 검증 질문
 
