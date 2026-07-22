@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 using Wassup.Data;
 
 namespace Wassup.Presentation
@@ -22,6 +23,9 @@ namespace Wassup.Presentation
         private Image _highlightImage;
         private CanvasGroup _barCanvasGroup;
         private readonly List<(RectTransform root, Image frame, Image art)> _cards = new();
+        // 확장(unit 7) — 스택 아이콘 행 슬롯(아이콘 + 카운트 배지) + 가시 항목 임시 버퍼.
+        private readonly List<(RectTransform root, Image icon, RectTransform badge, Image badgePlate, TMP_Text badgeText)> _stacks = new();
+        private readonly List<(Sprite sprite, int count)> _visibleStacks = new();
         private UnitOverheadSpriteSet _sprites;
         private bool _built;
         private bool _defender;
@@ -36,7 +40,8 @@ namespace Wassup.Presentation
 
         public void Show(Vector2 anchorLocal, float tileWidthReference, bool defender, float ratio,
             IReadOnlyList<DreamcatcherCard> cards, UnitOverheadUiStyle style,
-            UnitOverheadSpriteSet sprites, bool resetHealth, float shieldRatio = 0f)
+            UnitOverheadSpriteSet sprites, bool resetHealth, float shieldRatio = 0f,
+            IReadOnlyList<OverheadStackEntry> stacks = null, StackIconRegistry stackIcons = null)
         {
             if (style == null || sprites == null) return;
             if (!_built || _defender != defender || _sprites != sprites) Rebuild(defender, style, sprites);
@@ -88,7 +93,8 @@ namespace Wassup.Presentation
             else if (ratio > _trailRatio) _trailRatio = ratio;
             _ratio = ratio;
 
-            ShowCards(defender ? cards : null, tileWidthReference, width);
+            float cardRowHeight = ShowCards(defender ? cards : null, tileWidthReference, width);
+            ShowStacks(stacks, stackIcons, tileWidthReference, width, cardRowHeight);
             gameObject.SetActive(true);
         }
 
@@ -115,6 +121,7 @@ namespace Wassup.Presentation
                 Destroy(child);
             }
             _cards.Clear();
+            _stacks.Clear();
             _defender = defender;
             _style = style;
             _sprites = sprites;
@@ -159,13 +166,14 @@ namespace Wassup.Presentation
             _built = true;
         }
 
-        private void ShowCards(IReadOnlyList<DreamcatcherCard> source, float tileWidth, float barWidth)
+        // 확장(unit 7) — 카드행 높이를 반환(스택행이 그 위에 얹히도록). 카드 없으면 0.
+        private float ShowCards(IReadOnlyList<DreamcatcherCard> source, float tileWidth, float barWidth)
         {
             int count = source != null ? Mathf.Min(3, source.Count) : 0;
             if (count == 0)
             {
                 for (int i = 0; i < _cards.Count; i++) _cards[i].root.gameObject.SetActive(false);
-                return;
+                return 0f;
             }
             EnsureCardSlots(count);
             float maxRowWidth = Mathf.Min(tileWidth * _style.CardRowTileWidthFraction, barWidth);
@@ -187,6 +195,7 @@ namespace Wassup.Presentation
                 slot.art.sprite = card != null ? card.art : null;
                 slot.art.enabled = slot.art.sprite != null;
             }
+            return size.y;
         }
 
         private void EnsureCardSlots(int count)
@@ -205,6 +214,100 @@ namespace Wassup.Presentation
                 var art = AddImage(artRt.gameObject, null, Image.Type.Simple);
                 art.preserveAspect = false;
                 _cards.Add((rt, frame, art));
+            }
+        }
+
+        // 확장(unit 7) — 드림캐쳐 행 위 스택 이상효과 아이콘 행. 레지스트리에 아이콘 있는
+        // 스택(count>0)만, StackRowMax 개까지. 아이콘 부재 = 표시 생략(무크래시). ShowCards 미러.
+        private void ShowStacks(IReadOnlyList<OverheadStackEntry> stacks, StackIconRegistry registry,
+            float tileWidth, float barWidth, float cardRowHeight)
+        {
+            _visibleStacks.Clear();
+            int max = _style.StackRowMax;
+            if (stacks != null && registry != null && max > 0)
+            {
+                for (int i = 0; i < stacks.Count && _visibleStacks.Count < max; i++)
+                {
+                    var e = stacks[i];
+                    if (e.count <= 0) continue;
+                    var sprite = registry.IconFor(e.kind);
+                    if (sprite == null) continue; // 아이콘 미도착/미매핑 → 생략
+                    _visibleStacks.Add((sprite, e.count));
+                }
+            }
+
+            int count = _visibleStacks.Count;
+            if (count == 0)
+            {
+                for (int i = 0; i < _stacks.Count; i++) _stacks[i].root.gameObject.SetActive(false);
+                return;
+            }
+            EnsureStackSlots(count);
+
+            float iconH = _style.StackIconHeight;
+            float iconW = iconH; // 정사각
+            float spacing = _style.StackSpacing;
+            float maxRowWidth = Mathf.Min(tileWidth * _style.StackRowTileWidthFraction, barWidth);
+            float row = iconW * count + spacing * (count - 1);
+            if (row > maxRowWidth)
+            {
+                float available = Mathf.Max(0f, maxRowWidth - spacing * (count - 1));
+                iconW = available / count;
+                iconH = iconW;
+            }
+            float step = iconW + spacing;
+            float origin = -0.5f * step * (count - 1);
+            float cardRowBottom = UnitOverheadLayout.VerticalOffsets(_style.HeadGap, _skin.height, _style.CardGap).y;
+            float rowBottom = UnitOverheadLayout.StackRowBottom(cardRowBottom, cardRowHeight, _style.StackGap);
+            float badgeH = Mathf.Max(1f, iconH * _style.StackBadgeHeightFraction);
+
+            for (int i = 0; i < _stacks.Count; i++)
+            {
+                var slot = _stacks[i];
+                bool used = i < count;
+                slot.root.gameObject.SetActive(used);
+                if (!used) continue;
+                var (sprite, cnt) = _visibleStacks[i];
+                slot.root.sizeDelta = new Vector2(iconW, iconH);
+                slot.root.anchoredPosition = new Vector2(origin + step * i, rowBottom);
+                slot.icon.sprite = sprite;
+                slot.icon.enabled = true;
+
+                // 카운트 배지 — 아이콘 우상단. count>=1 항상 표기(계약).
+                slot.badge.sizeDelta = new Vector2(badgeH * 1.35f, badgeH);
+                slot.badgePlate.color = _style.StackBadgePlate;
+                slot.badgeText.text = cnt.ToString();
+                slot.badgeText.color = _style.StackBadgeColor;
+                slot.badgeText.fontSize = badgeH * 0.78f;
+            }
+        }
+
+        private void EnsureStackSlots(int count)
+        {
+            while (_stacks.Count < count)
+            {
+                var rt = MakeRect("Stack" + _stacks.Count, _root);
+                rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0f);
+                rt.pivot = new Vector2(0.5f, 0f);
+                var icon = AddImage(rt.gameObject, null, Image.Type.Simple);
+                icon.preserveAspect = true;
+
+                var badgeRt = MakeRect("Badge", rt);
+                badgeRt.anchorMin = badgeRt.anchorMax = new Vector2(1f, 1f); // 아이콘 우상단
+                badgeRt.pivot = new Vector2(1f, 1f);
+                var plate = AddImage(badgeRt.gameObject, null, Image.Type.Simple);
+
+                var textRt = MakeRect("Count", badgeRt);
+                textRt.anchorMin = Vector2.zero;
+                textRt.anchorMax = Vector2.one;
+                textRt.offsetMin = Vector2.zero;
+                textRt.offsetMax = Vector2.zero;
+                var tmp = textRt.gameObject.AddComponent<TextMeshProUGUI>();
+                tmp.alignment = TextAlignmentOptions.Center;
+                tmp.enableWordWrapping = false;
+                tmp.raycastTarget = false;
+
+                _stacks.Add((rt, icon, badgeRt, plate, tmp));
             }
         }
 

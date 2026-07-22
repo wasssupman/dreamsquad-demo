@@ -24,6 +24,11 @@ namespace Wassup.Presentation
             return new Vector2(head, head + NonNegative(barHeight) + NonNegative(cardGap));
         }
 
+        // 확장(unit 6) — 스택 아이콘 행 bottom. 드림캐쳐 행 위(카드행 bottom + 카드 높이 + gap).
+        // cardRowHeight 0(카드 없음/적)이면 스택행이 카드행 자리(바 위 gap)로 내려온다.
+        public static float StackRowBottom(float cardRowBottom, float cardRowHeight, float stackGap)
+            => NonNegative(cardRowBottom) + NonNegative(cardRowHeight) + NonNegative(stackGap);
+
         public static Vector2 ScreenAnchor(float visualPivotX, Rect rendererRect)
         {
             float x = IsFinite(visualPivotX) ? visualPivotX : rendererRect.center.x;

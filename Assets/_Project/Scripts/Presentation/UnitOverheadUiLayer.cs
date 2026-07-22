@@ -13,6 +13,8 @@ namespace Wassup.Presentation
     {
         [SerializeField] private UnitOverheadUiStyle style;
         [SerializeField] private DreamcatcherHandController hand;
+        // 확장(unit 8) — 스택 아이콘 레지스트리(kind→sprite). 미할당/미매핑 = 스택 아이콘 생략.
+        [SerializeField] private StackIconRegistry stackIcons;
         [SerializeField] private int sortingOrder = 3;
 
         private readonly Dictionary<Entity, UnitOverheadView> _active = new();
@@ -47,7 +49,8 @@ namespace Wassup.Presentation
         }
 
         public void SetUnit(Entity entity, bool defender, float healthRatio, Vector2 screenAnchor, float tileScreenWidth,
-            float shieldRatio = 0f) // shield-guardian-defender unit 2 — 실드합/maxHP (0 = 무실드)
+            float shieldRatio = 0f, // shield-guardian-defender unit 2 — 실드합/maxHP (0 = 무실드)
+            IReadOnlyList<OverheadStackEntry> stacks = null) // 확장(unit 8) — 스택 이상효과(피로도/열기)
         {
             if (!EnsureCanvas() || entity == Entity.Null
                 || float.IsNaN(screenAnchor.x) || float.IsNaN(screenAnchor.y)) return;
@@ -63,7 +66,7 @@ namespace Wassup.Presentation
             float scale = Mathf.Max(0.001f, _canvas.scaleFactor);
             float tileRef = tileScreenWidth / scale;
             _cardsByHost.TryGetValue(entity, out var cards);
-            view.Show(local, tileRef, defender, healthRatio, cards, style, _sprites, resetHealth, shieldRatio);
+            view.Show(local, tileRef, defender, healthRatio, cards, style, _sprites, resetHealth, shieldRatio, stacks, stackIcons);
         }
 
         public void EndFrame()

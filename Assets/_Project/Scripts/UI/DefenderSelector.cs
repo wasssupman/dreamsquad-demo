@@ -387,7 +387,7 @@ namespace Wassup.UI
             {
                 var slot = _slotVisuals[i];
                 if (slot.data == null || slot.rect == null || slot.cost > available) continue;
-                bool nonDirectional = !slot.data.directionalAttack;
+                bool nonDirectional = !slot.data.RequiresFacing;
                 if (foundNonDirectional && !nonDirectional) continue;
                 if (nonDirectional && !foundNonDirectional)
                 {

@@ -61,52 +61,9 @@ namespace Wassup.Data
         // Use for healers and buff-appliers that target friendly units instead of enemies.
         public bool targetAllies;
 
-        // defender-directional-volley unit 1 — 방향 지정 배치 + 다연발 발사.
-        // directionalAttack: 배치 시 공격방향 페이즈 진입, 확정 방향 영구 고정(레인 발사).
-        // shotCount 발을 트리거당 발사 — shotIntervalSec > 0 이면 시간차 버스트,
-        // spreadAngleDeg > 0 이면 총 확산각을 발 인덱스에 균등 분배(부채꼴).
-        // 기본값(false/1/0/0) = 현행 단발 동작 그대로.
-        [Header("Directional Volley")]
-        public bool directionalAttack;
-        public int shotCount = 1;
-        public float shotIntervalSec = 0f;
-        public float spreadAngleDeg = 0f;
-
-        [Header("Hazard Cast")]
-        public bool hazardCastEnabled;
-        public float hazardCastRange;
-        public float hazardCastCooldown;
-        public HazardCastKind hazardCastKind;
-        public HazardSO zoneHazard;
-        public BlockingHazardSO blockingHazard;
-        public int hazardFootprintWidth = 1;
-        public int hazardFootprintHeight = 1;
-
-        // shield-guardian-defender unit 1 — A초마다 공격범위(attackRange 재사용,
-        // 계약 5) 내 아군 defender C명에게 실드 B. cooldown 0 = 비활성.
-        [Header("Shield Cast")]
-        public float shieldCastCooldown;    // A. 0 = disabled
-        public float shieldAmount;          // B. 출처당 상한(같은 출처 max 갱신)
-        public int shieldTargetCount = 1;   // C
-        public ShieldTargetFilter shieldTargetFilter;
-
-        // bomb-thrower-defender unit 0 — 쿨다운마다 방향(DeployedFacing)×N 칸으로 폭탄을
-        // 굴려 보낸다(directionalAttack 조준 재사용). travel n초(고정, 거리 무관) 후 착지,
-        // fuse m초 후 착지 셀 기준 가까운 순 B명에게 폭발. 3종 랜덤(데미지/수면/스턴).
-        // bombLandingTiles>0 && bombTravelSec>0 = 활성. 기본 0 = 비활성.
-        [Header("Bomb Thrower")]
-        public int bombLandingTiles;         // N. 방향으로 몇 칸 앞에 착지 (0 = disabled)
-        public float bombTravelSec;          // n. 발사→착지 고정 시간(거리 무관). 0 = disabled
-        public float bombFuseSec;            // m. 착지→폭발 고정 시간
-        public int bombAoeTileRange = 1;     // 착지 셀 기준 폭발 반경(Chebyshev 타일)
-        public int bombAoeTargetCap = 3;     // B. 가까운 순 최대 타격 수
-        public float bombArcHeight = 0.15f;  // 구르기 arc(≈0 지면). 뷰 전용 높이
-        public float bombDamage;             // 데미지탄 피해 C (수면/스턴탄은 피해 0)
-        public float bombSleepSec;           // 수면탄 Sleep 지속(초)
-        public float bombStunSec;            // 스턴탄 Stun 지속(초)
-
-        // defender-ability-assets unit 0 — 유닛 고유능력 서브에셋 리스트. 위 능력별 flat
-        // 필드 그룹(volley/hazard/shield/bomb)을 대체한다 — flat 필드 삭제는 unit 2(cut-over).
+        // defender-ability-assets unit 2 — 능력별 flat 필드 그룹(volley 4·hazard 8·
+        // shield 4·bomb 9)은 능력 서브에셋(Data/Abilities/)으로 이관·삭제됨. 파라미터는
+        // DirectionalVolleyAbility/HazardCastAbility/ShieldCastAbility/BombThrowAbility 소유.
         // 같은 구체 타입 중복 부착 금지(GetAbility = 첫 매치, 저작 규율 — spec 계약 1).
         [Header("Abilities")]
         public List<DefenderAbilityData> abilities = new List<DefenderAbilityData>();

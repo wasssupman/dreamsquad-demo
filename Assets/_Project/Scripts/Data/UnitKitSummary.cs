@@ -31,14 +31,18 @@ namespace Wassup.Data
             var traits = new List<string>();
             if (u.attackTargetCount > 1)
                 traits.Add($"최대 {u.attackTargetCount}체 동시 타격");
-            if (u.directionalAttack)
-                traits.Add(u.shotCount > 1 ? $"지정 방향으로 {u.shotCount}연발 사격" : "지정 방향 사격");
+            // defender-ability-assets unit 2 — trait 문구의 소스가 능력 서브에셋으로 이동.
+            // 문구 텍스트/순서는 불변(테스트 고정). 사격 문구는 볼리 능력에 귀속 —
+            // 폭탄 등 다른 facing 능력의 문구는 후속(현재 해당 유닛은 authored desc 사용).
+            var volley = u.GetAbility<DirectionalVolleyAbility>();
+            if (volley != null)
+                traits.Add(volley.shotCount > 1 ? $"지정 방향으로 {volley.shotCount}연발 사격" : "지정 방향 사격");
             if (u.aggroCapacity > 0)
                 traits.Add($"최대 {u.aggroCapacity}체 도발 유지");
             string onPlace = OnPlaceClause(u.onPlaceEffect);
             if (!string.IsNullOrEmpty(onPlace))
                 traits.Add(onPlace);
-            if (u.hazardCastEnabled)
+            if (u.GetAbility<HazardCastAbility>() != null)
                 traits.Add("지속 해저드 설치");
 
             if (traits.Count == 0) return head + ".";

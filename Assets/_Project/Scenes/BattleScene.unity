@@ -1807,6 +1807,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Presentation.UnitOverheadUiLayer
   style: {fileID: 11400000, guid: 7a6b5c4d3e2f10988776655443322110, type: 2}
   hand: {fileID: 2054561897}
+  stackIcons: {fileID: 11400000, guid: 5aebe8659fb35cc46a4e07dd5bd20e7f, type: 2}
   sortingOrder: 3
 --- !u!1 &1004191865
 GameObject:

@@ -327,7 +327,7 @@ namespace Wassup.UI.Tutorial
         {
             if (!_coreActive || _coreStep == CoreStep.Start || _coreStep == CoreStep.ClassHint) return;
             StopGoalRoutine();
-            if (unit != null && unit.directionalAttack && _drag != null && _drag.IsAiming)
+            if (unit != null && unit.RequiresFacing && _drag != null && _drag.IsAiming)
             {
                 _coreStep = CoreStep.WaitingAim;
                 guidance.ClearFocus();

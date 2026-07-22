@@ -32,6 +32,10 @@ bake 결과는 전과 동일(계약 6).
 
 ## 완료 기준
 
-- [ ] compile 0 · 전체 EditMode green(갱신된 volley/summary 테스트 포함, 기존 skip 2 제외 0 fail).
-- [ ] Play 스모크(7유닛): 머신거너 방향 볼리 · 캐스터 4종 해저드 · 실드셔틀 실드 · 폭탄맨 조준/폭탄 — 전부 재구조화 전과 동일 동작, 콘솔 0.
-- [ ] `docs/reference/object-pipeline-map.md` Defender 데이터 SO 앵커 갱신(같은 커밋 또는 종료 커밋).
+- [x] compile 0 · 전체 EditMode green(갱신된 volley/summary 테스트 포함) — **1193 passed / 0 failed / 2 skipped**(기존 known-skip).
+- [x] Play 스모크(7유닛): 머신거너 방향 볼리 · 캐스터 4종 해저드 · 실드셔틀 실드 · 폭탄맨 조준/폭탄 — 사용자 Play 확인 후 마감 지시.
+- [x] `docs/reference/object-pipeline-map.md` Defender 데이터 SO 앵커 갱신(능력 서브에셋).
+- [x] flat 필드 참조 0 (grep 전수) — 잔여는 ability SO / ECS VolleyFireState 읽기로 정상.
+
+확인 2026-07-22 · compile 0 + EditMode 1193/0/2 + 사용자 Play 확인. cut-over 완료.
+주의: 유닛 `.asset` 의 orphan flat 키는 Unity 재저장 시 자연 소멸(무해) — 하드 정리 안 함.

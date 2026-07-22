@@ -45,6 +45,16 @@ namespace Wassup.Data
         [SerializeField] private Color squadCardBorder = new Color(1f, 0.72f, 0.12f, 1f);
         [SerializeField] private float damageTrailCatchup = 2.8f;
 
+        [Header("Stack indicator row (확장 unit 6)")]
+        [SerializeField] private float stackGap = 4f;            // 드림캐쳐 행(없으면 바) 위 간격
+        [SerializeField] private float stackIconHeight = 22f;    // 정사각 아이콘 높이(ref px)
+        [SerializeField] private float stackSpacing = 3f;
+        [SerializeField] private int stackRowMax = 4;            // 최대 표시 아이콘 수
+        [SerializeField, Range(0.5f, 1f)] private float stackRowTileWidthFraction = 0.92f;
+        [SerializeField] private Color stackBadgeColor = new Color(1f, 1f, 1f, 1f);
+        [SerializeField] private Color stackBadgePlate = new Color(0.05f, 0.06f, 0.09f, 0.9f);
+        [SerializeField, Range(0.2f, 1f)] private float stackBadgeHeightFraction = 0.5f; // 아이콘 대비 배지 높이
+
         [Header("Defender — rounded cyan")]
         [SerializeField] private BarSkin defender = new BarSkin
         {
@@ -81,6 +91,14 @@ namespace Wassup.Data
         public Color UnitCardBorder => unitCardBorder;
         public Color SquadCardBorder => squadCardBorder;
         public float DamageTrailCatchup => Mathf.Max(0.01f, damageTrailCatchup);
+        public float StackGap => Mathf.Max(0f, stackGap);
+        public float StackIconHeight => Mathf.Max(1f, stackIconHeight);
+        public float StackSpacing => Mathf.Max(0f, stackSpacing);
+        public int StackRowMax => Mathf.Max(0, stackRowMax);
+        public float StackRowTileWidthFraction => Mathf.Clamp01(stackRowTileWidthFraction);
+        public Color StackBadgeColor => stackBadgeColor;
+        public Color StackBadgePlate => stackBadgePlate;
+        public float StackBadgeHeightFraction => Mathf.Clamp(stackBadgeHeightFraction, 0.2f, 1f);
         public BarSkin Defender => defender;
         public BarSkin Enemy => enemy;
 
