@@ -1,6 +1,6 @@
 # Dreamcatcher — 실드 파괴(OnShieldBreak) 트리거 Spec
 
-**상태**: 초안 2026-07-22 — 새 드림캐쳐 트리거 `OnShieldBreak`(부여된 실드가 **피격으로 소멸**할 때, 시간만료 제외) + 이 트리거를 쓰는 드림캐쳐 2종. 기존 드림캐쳐 트리거 프레임 + 실드 시스템 + Sleep CC + SkyFall×TileAoe 위에 조립. **별 feature** (Onsen 과 무관).
+**상태**: 완료 2026-07-22 (unit 0~5) — 새 드림캐쳐 트리거 `OnShieldBreak`(부여된 실드가 **피격으로 소멸**할 때, 시간만료 제외) + 드림캐쳐 2종(산산조각·고요한 파문) + 배틀로그 기록. 사용자 Play + 로그(`shield_break_events`) 진단으로 검증(범위/개수 정상 확인) → 고요한 파문 튜닝(범위 2→1·대상 3→2). 인계: [6_handoff_summary.md](6_handoff_summary.md).
 
 ## 목표
 
