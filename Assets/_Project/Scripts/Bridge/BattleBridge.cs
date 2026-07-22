@@ -2496,7 +2496,7 @@ namespace Wassup.Bridge
                             {
                                 var h = _em.GetComponentData<Health>(entity);
                                 unitOverheadUiLayer.SetUnit(entity, false, Health.ComputeRatio(h.value, h.max),
-                                    enemyScreenAnchor, ProjectTileScreenWidth(enemyAnchor));
+                                    enemyScreenAnchor, ProjectTileScreenWidth(enemyAnchor), 0f, GatherOverheadStacks(entity));
                             }
                         }
                     }
@@ -2546,10 +2546,52 @@ namespace Wassup.Bridge
                         defShieldRatio = Wassup.Battle.Units.ShieldMath.Sum(
                             _em.GetBuffer<Wassup.Battle.Units.ShieldSlot>(entity, isReadOnly: true)) / h.max;
                     unitOverheadUiLayer.SetUnit(entity, true, Health.ComputeRatio(h.value, h.max),
-                        defenderScreenAnchor, ProjectTileScreenWidth(defenderAnchor), defShieldRatio);
+                        defenderScreenAnchor, ProjectTileScreenWidth(defenderAnchor), defShieldRatio, GatherOverheadStacks(entity));
                 }
             }
             if (unifiedOverhead) unitOverheadUiLayer.EndFrame();
+        }
+
+        // unit-overhead-ui 확장(unit 8) — 오버헤드 스택행 gather 재사용 버퍼(프레임 GC 회피).
+        private readonly System.Collections.Generic.List<Wassup.Data.OverheadStackEntry> _overheadStackScratch = new();
+
+        // 유닛별 활성 스택 수집(듀얼소스, RO): StackModifierSlot(피로도 등) + HeatAccrual(열기).
+        // 반환 = 재사용 버퍼 — SetUnit→view.Show 가 동프레임 동기 소비(슬롯 복사)하므로 안전.
+        private System.Collections.Generic.List<Wassup.Data.OverheadStackEntry> GatherOverheadStacks(Entity entity)
+        {
+            _overheadStackScratch.Clear();
+            if (_em.HasBuffer<Wassup.Battle.Effects.StackModifierSlot>(entity))
+            {
+                var buf = _em.GetBuffer<Wassup.Battle.Effects.StackModifierSlot>(entity, isReadOnly: true);
+                for (int i = 0; i < buf.Length; i++)
+                {
+                    var s = buf[i];
+                    if (s.stackCount <= 0) continue;
+                    if (TryMapOverheadStackKind(s.kind, out var okind))
+                        _overheadStackScratch.Add(new Wassup.Data.OverheadStackEntry { kind = okind, count = s.stackCount });
+                }
+            }
+            if (_em.HasComponent<Wassup.Battle.Effects.HeatAccrual>(entity))
+            {
+                var heat = _em.GetComponentData<Wassup.Battle.Effects.HeatAccrual>(entity);
+                if (heat.stacks > 0)
+                    _overheadStackScratch.Add(new Wassup.Data.OverheadStackEntry
+                    { kind = Wassup.Data.OverheadStackKind.Heat, count = heat.stacks });
+            }
+            return _overheadStackScratch;
+        }
+
+        // Battle.StackKind → OverheadStackKind. 현재 피로도만 아이콘화(나머지 후속). 미매핑 = false.
+        private static bool TryMapOverheadStackKind(Wassup.Battle.Effects.StackKind kind,
+            out Wassup.Data.OverheadStackKind result)
+        {
+            switch (kind)
+            {
+                case Wassup.Battle.Effects.StackKind.Fatigue:
+                    result = Wassup.Data.OverheadStackKind.Fatigue; return true;
+                default:
+                    result = default; return false;
+            }
         }
 
         // unit-health-display unit 1 — 적 HP read-only 조회 → HealthDisplayStyle 로 ratio→Color.
