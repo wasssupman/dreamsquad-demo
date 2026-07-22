@@ -22,7 +22,9 @@ ArkFunnel 과 동일 프로세스(에디터 execute_code authoring, `docs/spec/m
 
 ## 완료 기준
 
-- [ ] BFS 연결성(스폰 2개 모두 골 도달)·2×2 walk 금지 검증 통과
-- [ ] adapter(`ToGeneratedMap`) 경유 로드 실측 — goal/spawns(2)/walk 수 일치
-- [ ] 오버레이 없는 카메라 렌더로 맵 전경 육안 확인(도로 형태·스폰/골 위치)
-- [ ] Play 진입 시(임시로 이 맵 단독 배선) 적이 도로 준수·스폰 2지점에서 진입·골 완주
+- [x] BFS 연결성(스폰 2개 모두 골 도달)·2×2 walk 금지 검증 통과 — execute_code authoring 시 valid=True, 2x2=0, spawnA·B conn=True
+- [x] adapter(`ToGeneratedMap`) 경유 로드 실측 — goal(7,0)/spawns(2)/walk 29 일치 (asset 디코드 확인)
+- [x] ASCII 레이아웃 육안 확인(도로 형태·스폰/골 위치) — 사용자 승인 2026-07-22. 실제 타일맵 렌더는 unit 4 Play 로 이월
+- [ ] Play 진입 시 적이 도로 준수·스폰 2지점 진입·골 완주 → **unit 4 에서 실증**
+
+확인 2026-07-22 (unit 2 — MapDocument_TwinLane 베이크, GUID 51855b55…, 스폰 2개 15×10). Play 실증 unit 4 이월.
