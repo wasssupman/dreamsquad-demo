@@ -46,6 +46,8 @@ MonoBehaviour:
   blockingHazard: {fileID: 0}
   hazardFootprintWidth: 1
   hazardFootprintHeight: 1
+  abilities:
+  - {fileID: 11400000, guid: 2f3e4d5c6b7a49f8e1d0c9b8a7f6e5d4, type: 2}
   rarity: 2
   portrait: {fileID: 21300000, guid: c2010295f8e70e648993bf10cddb5405, type: 3}
   aggroCapacity: 0

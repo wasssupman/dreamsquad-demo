@@ -58,6 +58,8 @@ MonoBehaviour:
   bombDamage: 60
   bombSleepSec: 2.5
   bombStunSec: 1.5
+  abilities:
+  - {fileID: 11400000, guid: 5d6e7f8a9b0c41d2e3f4a5b6c7d8e9f0, type: 2}
   rarity: 2
   portrait: {fileID: 0}
   aggroCapacity: 0

@@ -57,6 +57,8 @@ MonoBehaviour:
   shieldAmount: 150
   shieldTargetCount: 2
   shieldTargetFilter: 2
+  abilities:
+  - {fileID: 11400000, guid: 8a9b0c1d2e3f44a5b6c7d8e9f0a1b2c3, type: 2}
   rarity: 2
   portrait: {fileID: 21300000, guid: 88c5ce5b1eab42640af5ccf4fbe142f1, type: 3}
   aggroCapacity: 2

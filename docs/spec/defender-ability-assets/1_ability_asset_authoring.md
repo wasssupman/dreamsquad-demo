@@ -32,6 +32,8 @@
 
 ## 완료 기준
 
-- [ ] import 클린(참조 guid 전부 해석, 콘솔 0).
-- [ ] 각 유닛 인스펙터에서 abilities[0] 이 해당 ability 에셋을 가리킴.
-- [ ] 동작 불변(코드 무변경) — Play 확인 불요, compile/import 만.
+- [x] import 클린(참조 guid 전부 해석, 콘솔 0). 타입 해석 샘플 확인(`get_info` → `Wassup.Data.BombThrowAbility`).
+- [x] 각 유닛 abilities[0] 이 해당 ability 에셋을 가리킴(YAML 직배선, guid 대조).
+- [x] 동작 불변(코드 무변경) — Play 확인 불요, compile/import 만.
+
+확인 2026-07-22 · import/콘솔 0. **발견**: `Defender_Guardian` 의 `hazardCastEnabled: 1` 은 kind 0·참조 null 의 유령 플래그(무능력 no-op HazardCastState 만 bake) — 실능력 아니므로 ability 에셋 미생성, cut-over(unit 2) 후 자연 소멸(의도된 정리로 기록).
