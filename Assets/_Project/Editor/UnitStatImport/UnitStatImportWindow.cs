@@ -29,10 +29,15 @@ namespace Wassup.Editor.UnitStatImport
         private const string DcFolder = "Assets/_Project/Data/Dreamcatcher";
         private const string SkillFolder = "Assets/_Project/Data/Skills";
 
+        // sheet-export-push unit 4 — Apps Script /exec URL. 쓰기 권한 secret 이라
+        // 프로젝트에 커밋하지 않고 에디터 로컬(EditorPrefs)에만 둔다.
+        private const string ScriptUrlPrefsKey = "Wassup.UnitStatImport.ScriptUrl";
+
         private string _baseUrl = "";
         private string _defenderSheet = "";
         private string _enemySheet = "";
         private string _dcSheets = "";
+        private string _scriptUrl = "";
         private string _statusLog = "";
         private bool _requestInFlight;
 
@@ -45,6 +50,7 @@ namespace Wassup.Editor.UnitStatImport
             _defenderSheet = EditorPrefs.GetString(DefenderSheetPrefsKey, "Defenders");
             _enemySheet = EditorPrefs.GetString(EnemySheetPrefsKey, "Enemies");
             _dcSheets = EditorPrefs.GetString(DcSheetsPrefsKey, DefaultDcSheets);
+            _scriptUrl = EditorPrefs.GetString(ScriptUrlPrefsKey, "");
             // hotfix ③ — serialized true survives a domain reload while the
             // completed callback does not; reset so the Import button never sticks.
             _requestInFlight = false;
@@ -133,6 +139,32 @@ namespace Wassup.Editor.UnitStatImport
                         "Export Dreamcatcher 시트 페이로드", "", "dreamcatcher_sheet_payload", "json");
                     if (!string.IsNullOrEmpty(path))
                         _statusLog = DcSheetExporter.ExportCombinedFile(path, dcTabs, DcFolder, SkillFolder);
+                }
+            }
+
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("Push to Sheet (전 8탭)", EditorStyles.boldLabel);
+            EditorGUI.BeginChangeCheck();
+            _scriptUrl = EditorGUILayout.TextField("Apps Script URL", _scriptUrl);
+            if (EditorGUI.EndChangeCheck()) EditorPrefs.SetString(ScriptUrlPrefsKey, _scriptUrl);
+            EditorGUILayout.LabelField("  쓰기 권한 secret — 커밋 금지", EditorStyles.miniLabel);
+
+            // 유닛 탭(Defenders/Enemies) + DC 6탭을 한 번에 시트로 push. dcTabs 는 위에서
+            // 계산된 것을 재사용. URL·탭 입력이 온전할 때만 활성.
+            using (new EditorGUI.DisabledScope(_requestInFlight
+                || string.IsNullOrWhiteSpace(_scriptUrl)
+                || string.IsNullOrWhiteSpace(_defenderSheet) || string.IsNullOrWhiteSpace(_enemySheet)
+                || dcTabs == null))
+            {
+                if (GUILayout.Button(_requestInFlight ? "..." : "Push to Sheet"))
+                {
+                    if (EditorUtility.DisplayDialog("Push to Sheet",
+                        "전 8탭(Defenders/Enemies + DC 6)을 시트에 업서트합니다.\n"
+                        + "고아 행(시트엔 있고 SO 엔 없음)은 삭제하지 않고 리포트만 합니다.\n계속할까요?",
+                        "Push", "취소"))
+                    {
+                        StartPush(dcTabs);
+                    }
                 }
             }
 
@@ -263,6 +295,39 @@ namespace Wassup.Editor.UnitStatImport
                 EditorUtility.SetDirty(so);
                 AssetDatabase.SaveAssetIfDirty(so);
             }, log);
+        }
+
+        // sheet-export-push unit 4 — 전 8탭 push. payload 조립(동기, 자체 try/catch) 후
+        // SheetPushClient.Push(비동기). 콜백은 성공/거부/전송오류/예외 모두에서 발화하므로
+        // _requestInFlight 가 물리지 않는다(import 버튼과 동일 보장).
+        private void StartPush(string[] dcTabs)
+        {
+            _requestInFlight = true;
+            _statusLog = "Building payload...";
+            Repaint();
+
+            string payload;
+            try
+            {
+                payload = SheetPushPayload.BuildCombinedJson(
+                    _defenderSheet, _enemySheet, DefenderFolder, EnemyFolder,
+                    dcTabs, DcFolder, SkillFolder);
+            }
+            catch (System.Exception e)
+            {
+                _statusLog = $"Payload build failed: {e}";
+                _requestInFlight = false;
+                Repaint();
+                return;
+            }
+
+            _statusLog = "Pushing...";
+            SheetPushClient.Push(_scriptUrl, payload, report =>
+            {
+                _statusLog = report;
+                _requestInFlight = false;
+                Repaint();
+            });
         }
     }
 }
