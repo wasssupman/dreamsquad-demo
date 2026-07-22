@@ -15,20 +15,21 @@ MonoBehaviour:
   id: bomb
   speed: 0
   hitThreshold: 0.3
-  visualScale: 4
-  visualHeightOffset: 0.2
-  projectilePrefab: {fileID: 6487987637173855206, guid: 29a9704bef55c3240bfe88bfc33c71cc, type: 3}
+  visualScale: 0.5
+  visualHeightOffset: 0.25
+  projectilePrefab: {fileID: 166067092680371605, guid: 0009974c05b615e4ea4368403ebdc0bf, type: 3}
   hitPrefab: {fileID: 1190586612074608, guid: 6eae0c3b49163d44c9f7970fbe47a4d9, type: 3}
   facing: 3
-  spinSpeed: 360
-  preserveVfxColors: 1
-  tintColor: {r: 1, g: 1, b: 1, a: 1}
+  spinSpeed: 540
+  preserveVfxColors: 0
+  tintColor: {r: 0.9, g: 0.9, b: 0.9, a: 1}
   emissionMultiplier: 1
   scaleJitter: 0
   hueJitter: 0
   rotationJitter: 0
-  textureVariants: []
-  selectMode: 0
+  textureVariants:
+  - {fileID: 2800000, guid: 40d49f0becacc814ab0163d9e3898ab4, type: 3}
+  selectMode: 2
   hitVfxLifetime: 0
   hitVfxScale: 2.5
   castPrefab: {fileID: 0}

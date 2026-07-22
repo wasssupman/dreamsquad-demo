@@ -175,7 +175,10 @@ namespace Wassup.Presentation
                     else if (ps.movement == MovementKind.GrenadeToCell)
                     {
                         float gt = ps.flightTime > 0f ? math.saturate(ps.elapsed / ps.flightTime) : 1f;
-                        pos.y += BallisticArc.ArcHeight(ps.arcHeight, gt);
+                        // 통통 튀기며 굴러감: 감쇠하는 다중 바운스(착지점 gt=1 에서 0 → 지면).
+                        // arcHeight = 첫 바운스 최대 높이(SO), BounceHops = 이동 중 튀는 횟수.
+                        const float BounceHops = 3f;
+                        pos.y += ps.arcHeight * math.abs(math.sin(math.PI * gt * BounceHops)) * (1f - gt);
                         if (ps.elapsed >= ps.flightTime)
                         {
                             float fuseT = ps.elapsed - ps.flightTime;
