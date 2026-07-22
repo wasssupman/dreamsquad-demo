@@ -7,6 +7,7 @@
 - `06eb866d` feat unit 2 — 에디터 Import 창 Preset 섹션 + seed export
 - `8a922165` feat unit 3 — 런타임 refresher + 페이지 재빌드
 - `0ae9a2c7` feat unit 4 — OutgameScene 런타임 refresher 배선
+- `fed036fa` feat unit 6 — 프리셋 push (list-replace 모드; Apps Script + payload 확장)
 - (docs 스탬프: `34744718`·`4c1e1153` 등)
 
 ## Implemented
@@ -17,6 +18,7 @@
 - 런타임: `PresetSheetRuntimeRefresher`(IRuntimeRefresher 3번째) — 로그인 후 `Presets` fetch → 카탈로그 `ById` 해석 → collection **in-memory** 갱신(재시작 원복). `AllRuntimeRefresher.refresherSources` 에 등록.
 - `PresetPageController` 매 OnEnable 재빌드(clear→build)로 런타임 refresh 반영.
 - `SquadPresetCollection.asset` **포맷 무변경** — 임포터는 인스펙터 대체 authoring 경로.
+- **프리셋 push**(unit 6): "Push to Sheet" 가 Presets 를 **list-replace**(전체 교체)로 반영. `replaceTab` 이 탭 없으면 자동 생성 → 수동 시드 불필요. keyed 8탭 업서트는 불변.
 
 ## Key Files
 
@@ -43,5 +45,5 @@
 
 ## Follow-up
 
-- **라이브 검증**(남은 유일 작업): `Presets` 시트 탭 신설(export seed 붙여넣기) → 프록시 서빙 → 에디터 import diff + 로그인 자동 import 로그 + 프리셋 페이지 반영 스크린샷.
-- README 후속 후보: 프리셋 push(list-replace 별도 어댑터), import dry-run diff, 적용됨 하이라이트, 카드수≠deckSize 경고 강화.
+- **남은 유일 작업 = Code.gs 재배포 + 라이브 왕복**: (1) Apps Script 재배포("배포 관리→편집→새 버전", 저장만으론 `/exec` 안 바뀜) → (2) "Push to Sheet"(Presets 탭 자동 생성+채움) → (3) 에디터 Import Preset diff + 로그인 자동 import 로그 + 프리셋 페이지 반영 확인.
+- README 후속 후보: import dry-run diff, 적용됨 하이라이트, 카드수≠deckSize 경고 강화.
