@@ -25,7 +25,7 @@
 - [x] `MapDocumentPool.asset` 생성 + 엔트리 2개 배선 — readback Count=2 [0]ArkFunnel/WaveA [1]TwinLane/WaveB
 - [x] `BattleBridge.mapPool` 배선 + `fixedMapSeed=0` (BattleScene YAML surgical diff 확인)
 - [x] 선택 분포 검증(Play-free): matchSeed 1..2000 → idx0 984 : idx1 1016 (~50/50, 둘 다 도달). 강제값 `debugFixedMatchSeed=1`→ArkFunnel, `=2`→TwinLane
-- [ ] **Play 실증(사용자 focus 필요)**: `debugFixedMatchSeed=1/2` 로 두 맵 각각 렌더 확인 + 콘솔 `Battle started with generated deck '{id}'` deckId 가 맵과 일치(WaveA/WaveB) + 각 맵 스폰 수만큼 레인 분배 + connectivity fallback 경고 없음 + 콘솔 에러 0
+- [x] **Play 실증**: `debugFixedMatchSeed=1` → ArkFunnel(spawns=3)+WaveA, `=2` → TwinLane(spawns=2)+WaveB. 둘 다 게임뷰 렌더 확인(ArkFunnel 미로형 3스폰 / TwinLane Y자 합류 2스폰) + `ActiveDeck`/`_generatedMap` reflection 일치 + 콘솔 에러 0 + connectivity fallback 경고 없음
 - [~] 브리핑 스트립 = 실전 덱 일치 → **후속 이관**(README follow-up)
 
-확인 2026-07-22 (unit 4 wiring — 풀 asset·씬 배선·선택 분포 검증). Play 렌더 실증 사용자 focus 대기.
+확인 2026-07-22 (unit 4 — 풀 asset·씬 배선·선택 분포·Play 렌더 실증 완료). 스크린샷 Assets/Screenshots/twinlane_verify_{ark,twin}.png.
