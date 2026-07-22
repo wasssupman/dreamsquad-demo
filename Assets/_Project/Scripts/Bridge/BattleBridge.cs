@@ -345,6 +345,20 @@ namespace Wassup.Bridge
         private AttackDeck _resolvedDeck;
         public AttackDeck ActiveDeck => _resolvedDeck != null ? _resolvedDeck : deck;
 
+        // random-map-pool unit 6 — draft 브리핑 스트립이 실전과 동일한 플랜을 프리뷰하도록.
+        // TryInitializeGeneratedWaves 의 생성 경로와 같은 ActiveDeck·seed 로직 미러(authored-plan 제외).
+        // draft 시점엔 _matchSeed·ActiveDeck 확정(PrepareDraftMap 선행) → 브리핑=실전 결정론적 동일.
+        // ActiveDeck null/비생성이면 default(waves==null) 반환 → 스트립이 정적 deck 폴백.
+        public GeneratedWavePlan BuildBriefingWavePlan()
+        {
+            var d = ActiveDeck;
+            if (d == null || !d.useGeneratedWaves) return default;
+            int waveSeed = d.waveSeed != 0
+                ? d.waveSeed
+                : Wassup.Core.MatchSeed.DeriveWaveSeed(_matchSeed != 0 ? _matchSeed : 1);
+            return WavePatternGenerator.Generate(d, waveSeed);
+        }
+
         // gimmick-match-integration unit 1 — GameManager 가 배정한 매치 기믹(없으면 null).
         // 3개 소비 지점(config 주입·픽업 스폰 게이트·디버그 로그)의 단일 소스. 시즌 결합 대체.
         private Wassup.Data.GimmickData _assignedGimmick;

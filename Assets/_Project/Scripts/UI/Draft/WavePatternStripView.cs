@@ -63,13 +63,23 @@ namespace Wassup.UI.Draft
 
         public void RebuildFromDeck()
         {
+            if (deck == null) { RebuildFromPlan(default); return; }
+            try { RebuildFromPlan(WavePatternGenerator.Generate(deck)); }
+            catch (Exception ex)
+            {
+                if (!_built) Build();
+                ClearCards();
+                AddMessageCard("웨이브 미리보기 불가", ex.Message);
+            }
+        }
+
+        // random-map-pool unit 6 — 외부(draft)에서 실전과 동일한 플랜을 넘겨 프리뷰를 만든다.
+        // plan.waves==null(default) 이면 build+clear 만(빈 프리뷰).
+        public void RebuildFromPlan(GeneratedWavePlan plan)
+        {
             if (!_built) Build();
             ClearCards();
-            if (deck == null) return;
-
-            GeneratedWavePlan plan;
-            try { plan = WavePatternGenerator.Generate(deck); }
-            catch (Exception ex) { AddMessageCard("웨이브 미리보기 불가", ex.Message); return; }
+            if (plan.waves == null) return;
 
             for (int i = 0; i < plan.waves.Count; i++) AddWaveCard(plan.waves[i]);
             UiLayer.Apply(gameObject);

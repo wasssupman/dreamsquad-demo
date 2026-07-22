@@ -45,6 +45,11 @@ namespace Wassup.Core
         public MapPathShape SelectedMapPathShape => SelectedMapGenerationOptions.pathShape;
         public MapSource SelectedMapSource { get; private set; } = MapSource.Legacy;
         public bool BridgeGoalEdgeOnly => battleBridge != null && battleBridge.CurrentGoalEdgeOnly;
+
+        // random-map-pool unit 6 — draft 스트립이 실전과 동일한 브리핑 플랜을 얻는 통로.
+        // bridge 부재/비생성이면 default(waves==null) → 뷰가 정적 deck 폴백.
+        public GeneratedWavePlan BuildBriefingWavePlan()
+            => battleBridge != null ? battleBridge.BuildBriefingWavePlan() : default;
         public int2? SelectedMapGridGridSize { get; private set; }
 
         public event Action DraftStarted;
