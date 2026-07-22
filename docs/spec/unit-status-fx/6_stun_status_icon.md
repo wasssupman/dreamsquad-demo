@@ -29,5 +29,7 @@ Stun 상태(CcKind.Stun — 적·아군 공통 action-lock)를 머리 위 별 �
 
 ## 완료 기준
 
-- [ ] compile 클린, 기존 Sleep(Zz)/Aggro 외형·동작 무손실(glyph 하위호환).
-- [ ] (Play) 스턴탄 맞은 적 머리 위 별 표시 · 스턴 만료 시 자동 회수 · 수면(Zz)과 시각 구분.
+- [x] compile 클린, 기존 Sleep(Zz)/Aggro 외형·동작 무손실(glyph 하위호환).
+- [x] (Play) 스턴탄 맞은 적 머리 위 별 표시 · 스턴 만료 시 자동 회수 · 수면(Zz)과 시각 구분.
+
+사용자 확인 2026-07-22 (Play "잘나옴") · 커밋 `2c66c462`.
