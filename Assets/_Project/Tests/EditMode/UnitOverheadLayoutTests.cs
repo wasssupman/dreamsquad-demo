@@ -30,6 +30,17 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
+        public void StackRowBottom_SitsAboveCardRow()
+        {
+            // 카드행 bottom 18, 카드 높이 24, gap 4 → 스택행 bottom 46.
+            Assert.That(UnitOverheadLayout.StackRowBottom(18f, 24f, 4f), Is.EqualTo(46f));
+            // 카드 없음(높이 0): 스택행이 카드행 자리(18) + gap(4) = 22 로 내려온다.
+            Assert.That(UnitOverheadLayout.StackRowBottom(18f, 0f, 4f), Is.EqualTo(22f));
+            // 음수/NaN 방어.
+            Assert.That(UnitOverheadLayout.StackRowBottom(18f, float.NaN, -3f), Is.EqualTo(18f));
+        }
+
+        [Test]
         public void ScreenAnchor_UsesVisualPivotX_NotWeaponBiasedBoundsCenter()
         {
             var weaponBiasedBounds = new Rect(100f, 50f, 160f, 80f);
