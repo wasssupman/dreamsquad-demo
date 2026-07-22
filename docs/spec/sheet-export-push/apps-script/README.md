@@ -21,7 +21,8 @@
 
 - 키: `id`(Defenders/Enemies/DcCards/DcSkills/DcConfig) · `(cardId,slot)`(DcCardEffects/DcMechanics/DcAttackMods) — `KEY_CONFIG` 상수.
 - 업서트 · blank=keep(없는 키 셀 안 건드림) · 헤더 순서 유지+새 열 우측 · 고아 삭제 안 함(리포트만).
-- 응답 `{success, data:{results:{"<탭>":{updated,added,orphans:[키]}}}, errorDetail}`.
+- 응답 `{success, data:{results:{"<탭>":{updated,added,orphans:[키]}}}, errorDetail}`. list-replace 탭은 `{replaced:N}`.
+- **list-replace 모드** (`LIST_REPLACE_TABS`, 현재 `Presets`): 키 없는 list-SoT 탭은 `clearContents`+전체 재작성(삭제·재정렬을 미러). 빈 payload 는 스킵(전체 비우기 사고 방지). keyed 8탭의 비파괴 업서트와 **별개** — Unity 가 리스트 전체를 소유하는 탭에만 등록.
 - **동기화 컬럼에 수식 금지** — 매트릭스 재기록 시 값으로 대체됨. 메모/수식은 계약 밖 별도 열.
 
 ## 실 왕복 검증 (유닛 5 완료 기준 — 실 시트 또는 사본에서)
