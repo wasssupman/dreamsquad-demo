@@ -14,6 +14,9 @@ namespace Wassup.Presentation
         private RenderTexture _pressureRead, _pressureWrite;
         // 단일 버퍼(같은 프레임 안에서 곧바로 소비되므로 핑퐁 불필요).
         private RenderTexture _divergence, _curl;
+        // 안정 출력 핸들: dye 는 핑퐁이라 DyeRead 가 매 프레임 다른 RT 를 가리킨다. 소비자(RawImage/머티리얼)가
+        // 고정 핸들을 한 번만 잡게 Display 로 매 스텝 복사한다(Display 패스).
+        private RenderTexture _display;
 
         public RenderTexture VelocityRead => _velRead;
         public RenderTexture VelocityWrite => _velWrite;
@@ -23,6 +26,7 @@ namespace Wassup.Presentation
         public RenderTexture PressureWrite => _pressureWrite;
         public RenderTexture Divergence => _divergence;
         public RenderTexture Curl => _curl;
+        public RenderTexture Display => _display;
 
         public Vector2Int SimResolution { get; private set; }
         public Vector2Int DyeResolution { get; private set; }
@@ -57,6 +61,28 @@ namespace Wassup.Presentation
             _pressureWrite = Create(SimResolution, scalarFmt, "Fluid_PressureB");
             _divergence = Create(SimResolution, scalarFmt, "Fluid_Divergence");
             _curl = Create(SimResolution, scalarFmt, "Fluid_Curl");
+            _display = Create(DyeResolution, dyeFmt, "Fluid_Display");
+
+            // 새 RenderTexture 의 초기 내용은 미보장 → 명시 clear. 안 하면 첫 프레임에 쓰레기 값이
+            // 이류·압력 반복으로 번져 NaN/무한 소용돌이가 될 수 있다.
+            ClearAll();
+        }
+
+        // 모든 RT 를 투명 검정으로 초기화. RenderTexture.active 를 복원해 호출측 렌더 상태를 건드리지 않는다.
+        private void ClearAll()
+        {
+            var prev = RenderTexture.active;
+            ClearOne(_velRead); ClearOne(_velWrite);
+            ClearOne(_dyeRead); ClearOne(_dyeWrite);
+            ClearOne(_pressureRead); ClearOne(_pressureWrite);
+            ClearOne(_divergence); ClearOne(_curl); ClearOne(_display);
+            RenderTexture.active = prev;
+        }
+
+        private static void ClearOne(RenderTexture rt)
+        {
+            Graphics.SetRenderTarget(rt);
+            GL.Clear(false, true, Color.clear);
         }
 
         public void SwapVelocity() { (_velRead, _velWrite) = (_velWrite, _velRead); }
@@ -65,6 +91,7 @@ namespace Wassup.Presentation
 
         public void Release()
         {
+            Destroy(ref _display);
             Destroy(ref _velRead); Destroy(ref _velWrite);
             Destroy(ref _dyeRead); Destroy(ref _dyeWrite);
             Destroy(ref _pressureRead); Destroy(ref _pressureWrite);
