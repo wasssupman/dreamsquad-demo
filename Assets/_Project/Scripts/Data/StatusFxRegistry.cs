@@ -15,6 +15,8 @@ namespace Wassup.Data
         {
             Exclamation = 0,
             Zz = 1,
+            // unit-status-fx 6 — Stun(별). 캐시 배열은 enum 길이에서 유도(자동 확장).
+            Stars = 2,
         }
 
         [Serializable]

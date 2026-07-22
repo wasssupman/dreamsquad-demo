@@ -150,10 +150,23 @@ namespace Wassup.Presentation
                 }
             }
 
+            // unit-status-fx 6 — +자 별 한 개: 세로바 + 가로바(스턴 "핑핑 도는 별").
+            void DrawStar(int cx, int cy, int arm, int halfW)
+            {
+                FillRect(cx - halfW, cx + halfW, cy - arm, cy + arm); // 세로
+                FillRect(cx - arm, cx + arm, cy - halfW, cy + halfW); // 가로
+            }
+
             if (glyph == StatusFxRegistry.FallbackGlyph.Zz)
             {
                 DrawZ(8, 40, 8, 50, 8, 4);   // 큰 Z
                 DrawZ(44, 60, 36, 60, 5, 3); // 우상단 작은 z
+            }
+            else if (glyph == StatusFxRegistry.FallbackGlyph.Stars)
+            {
+                DrawStar(32, 44, 13, 3); // 큰 별(위 중앙)
+                DrawStar(16, 22, 8, 2);  // 작은 별(좌하)
+                DrawStar(48, 26, 8, 2);  // 작은 별(우하)
             }
             else
             {
