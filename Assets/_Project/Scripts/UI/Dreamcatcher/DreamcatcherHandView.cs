@@ -223,6 +223,8 @@ namespace Wassup.UI
         }
 
         private GameObject _panel;
+        // dreamcatcher-orb-dock unit 4 — 손패 오픈 중 보드 영역 탭으로 물러나기(바깥 탭 dismiss).
+        private GameObject _dismissCatcher;
         private Image _backing;        // tray frame — deal 무대(카드와 별개로 페이드 인)
         private float _backingAlpha = 1f;
         private readonly List<CardSlot> _slots = new List<CardSlot>();
@@ -508,6 +510,7 @@ namespace Wassup.UI
         {
             if (State == HandState.Hand) return;
             State = HandState.Hand;
+            if (_dismissCatcher != null) _dismissCatcher.SetActive(true);
             if (gaugeView != null) gaugeView.SetOpen(true);
             Refresh();
             // Battle slows while shopping; UI/interaction stay realtime.
@@ -525,6 +528,7 @@ namespace Wassup.UI
         {
             if (State == HandState.UnitStrip) return;
             State = HandState.UnitStrip;
+            if (_dismissCatcher != null) _dismissCatcher.SetActive(false);
             if (gaugeView != null) gaugeView.SetOpen(false);
             StopDeal();
             CancelAllCardInteraction(); // drop any in-flight drag (no spend)
@@ -549,6 +553,7 @@ namespace Wassup.UI
             _slomoLease.Dispose();
             if (_flip != null) { StopCoroutine(_flip); _flip = null; }
             State = HandState.UnitStrip;
+            if (_dismissCatcher != null) _dismissCatcher.SetActive(false);
             if (gaugeView != null) gaugeView.SetOpen(false);
             // 억제 해제는 무조건 — 표시 여부는 CostDisplay 가 페이즈와 결합해 결정.
             if (costDisplay != null) costDisplay.SetSuppressed(false);
@@ -796,6 +801,23 @@ namespace Wassup.UI
             if (canvas != null)
                 canvas.additionalShaderChannels |=
                     AdditionalCanvasShaderChannels.TexCoord1 | AdditionalCanvasShaderChannels.TexCoord2;
+
+            // dreamcatcher-orb-dock unit 4 — 보드 영역 탭 dismiss 캐처. 카드(_panel) 뒤 sibling
+            // 이라 카드·backing(드래그취소) 입력은 안 가로채고, 손패 패널 바깥(보드) 탭만 Close.
+            // 항아리 독·NextWaveDock 은 order 7 캔버스라 이 order 5 캐처 위에서 정상 동작.
+            _dismissCatcher = new GameObject("HandDismissCatcher", typeof(RectTransform), typeof(Image), typeof(Button));
+            _dismissCatcher.transform.SetParent(roots.SafeAreaRoot, false);
+            var dcRt = (RectTransform)_dismissCatcher.transform;
+            dcRt.anchorMin = Vector2.zero; dcRt.anchorMax = Vector2.one;
+            dcRt.offsetMin = Vector2.zero; dcRt.offsetMax = Vector2.zero;
+            var dcImg = _dismissCatcher.GetComponent<Image>();
+            dcImg.color = new Color(0f, 0f, 0f, 0.001f); // 투명하지만 raycast 수신
+            var dcBtn = _dismissCatcher.GetComponent<Button>();
+            dcBtn.transition = Selectable.Transition.None;
+            dcBtn.targetGraphic = dcImg;
+            dcBtn.onClick.AddListener(() => { if (State == HandState.Hand) Close(); });
+            _dismissCatcher.transform.SetAsFirstSibling();
+            _dismissCatcher.SetActive(false);
 
             // Bottom-center hand panel.
             _panel = new GameObject("HandPanel", typeof(RectTransform), typeof(Image));
