@@ -17,5 +17,16 @@ namespace Wassup.Data.MapGrid
             if (count <= 1) return 0;
             return (int)((uint)seed % (uint)count);
         }
+
+        /// <summary>
+        /// 서버 토너먼트 시드(uint64, `/tournament/play` 응답의 tournament.seed)를
+        /// [0, count) 인덱스로 매핑한다(tournament-seed-map-select unit 2).
+        /// 같은 토너먼트 = 같은 시드 = 같은 인덱스 — 참가자 전원 같은 (맵, 덱).
+        /// </summary>
+        public static int SelectIndexFromTournamentSeed(ulong seed, int count)
+        {
+            if (count <= 1) return 0;
+            return (int)(seed % (ulong)count);
+        }
     }
 }

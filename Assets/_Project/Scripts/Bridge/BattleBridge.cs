@@ -881,13 +881,34 @@ namespace Wassup.Bridge
             int matchSeed = _matchSeed != 0 ? _matchSeed : Wassup.Core.MatchSeed.GenerateRandom();
             int seed = fixedMapSeed != 0 ? fixedMapSeed : Wassup.Core.MatchSeed.DeriveMapSeed(matchSeed);
 
-            // random-map-pool unit 1 — 풀에서 (맵, 덱) 인코운터를 seed 로 한 번 resolve.
+            // random-map-pool unit 1 — 풀에서 (맵, 덱) 인코운터를 한 번 resolve.
             // 맵·덱은 같은 인덱스로 잠긴다(맵마다 그 맵의 적 패턴). 풀 비거나 엔트리 미완성이면 레거시 폴백.
+            // tournament-seed-map-select unit 2 — 인덱스 소스: fixedMapSeed(디버그) >
+            // 서버 토너먼트 시드(같은 토너먼트 = 같은 맵) > 시드 부재 폴백 0번.
             MapDocument activeDoc = mapDocument;
             _resolvedDeck = deck;
             if (mapPool != null && mapPool.Count > 0)
             {
-                var encounter = mapPool.Get(MapPoolSelect.SelectIndex(seed, mapPool.Count));
+                int poolIndex;
+                string poolSource;
+                if (fixedMapSeed != 0)
+                {
+                    poolIndex = MapPoolSelect.SelectIndex(seed, mapPool.Count);
+                    poolSource = "debug";
+                }
+                else if (Wassup.Core.Api.TournamentMatchReporter.HasTournamentSeed)
+                {
+                    poolIndex = MapPoolSelect.SelectIndexFromTournamentSeed(
+                        Wassup.Core.Api.TournamentMatchReporter.TournamentSeed, mapPool.Count);
+                    poolSource = "tournament";
+                }
+                else
+                {
+                    poolIndex = 0; // 게스트/응답 미도착/직접 Play — 시드 부재는 전부 0번
+                    poolSource = "fallback0";
+                }
+                Debug.Log($"[BattleBridge] map pool index={poolIndex}/{mapPool.Count} (source={poolSource})");
+                var encounter = mapPool.Get(poolIndex);
                 if (MapGridBattleAdapter.IsUsableDocument(encounter.document))
                 {
                     activeDoc = encounter.document;

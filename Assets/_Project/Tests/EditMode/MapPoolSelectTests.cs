@@ -48,6 +48,47 @@ namespace Wassup.Tests.EditMode
                     MapPoolSelect.SelectIndex(seed, 4));
         }
 
+        // ── tournament-seed-map-select unit 2 — 서버 uint64 시드 → 인덱스 ────────
+
+        [Test]
+        public void TournamentSeed_LiveDevSeed_MapsToExpectedIndex()
+        {
+            // 실측 dev 서버 시드(2026-07-23). 끝자리 8 → % 5 == 3.
+            Assert.AreEqual(3, MapPoolSelect.SelectIndexFromTournamentSeed(9128566303723636648UL, 5));
+        }
+
+        [Test]
+        public void TournamentSeed_SingleOrEmptyCount_ReturnsZero()
+        {
+            Assert.AreEqual(0, MapPoolSelect.SelectIndexFromTournamentSeed(9128566303723636648UL, 1));
+            Assert.AreEqual(0, MapPoolSelect.SelectIndexFromTournamentSeed(9128566303723636648UL, 0));
+            Assert.AreEqual(0, MapPoolSelect.SelectIndexFromTournamentSeed(0UL, 1));
+        }
+
+        [Test]
+        public void TournamentSeed_MaxValue_NoOverflow_ValidIndex()
+        {
+            // ulong.MaxValue = 18446744073709551615 → % 5 == 0, % 7 == 1.
+            Assert.AreEqual(0, MapPoolSelect.SelectIndexFromTournamentSeed(ulong.MaxValue, 5));
+            Assert.AreEqual(1, MapPoolSelect.SelectIndexFromTournamentSeed(ulong.MaxValue, 7));
+        }
+
+        [Test]
+        public void TournamentSeed_Deterministic_AndInRange()
+        {
+            int[] counts = { 2, 3, 5, 8 };
+            ulong[] seeds = { 0UL, 1UL, 9128566303723636648UL, ulong.MaxValue, 1234567890123456789UL };
+            foreach (int count in counts)
+                foreach (ulong seed in seeds)
+                {
+                    int a = MapPoolSelect.SelectIndexFromTournamentSeed(seed, count);
+                    int b = MapPoolSelect.SelectIndexFromTournamentSeed(seed, count);
+                    Assert.AreEqual(a, b, $"seed={seed} count={count} 결정론 위반");
+                    Assert.GreaterOrEqual(a, 0, $"seed={seed} count={count}");
+                    Assert.Less(a, count, $"seed={seed} count={count}");
+                }
+        }
+
         [Test]
         public void BothIndicesReachable_ForCountTwo()
         {
