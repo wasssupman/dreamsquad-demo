@@ -14,20 +14,32 @@ namespace Wassup.Data
         {
             if (!map.IsCreated) return false;
             if (map.gridSize.x <= 0 || map.gridSize.y <= 0) return false;
-            if (!InBounds(map.goal, map.gridSize)) return false;
             if (map.spawns.Length < 2) return false;
 
             int n = map.gridSize.x * map.gridSize.y;
             if (map.tiles.Length != n) return false;
-            if (map.TileAt(map.goal) != MapTileType.Walk) return false;
+
+            // multi-goal-map — goals 전체를 BFS 시드(각 spawn 이 아무 골이든 도달하면 통과 →
+            // 분리 복도 각자 골 지원). goals 미설정 생산자(레거시/픽스처)는 primary [goal] 폴백.
+            bool hasGoals = map.goals.IsCreated && map.goals.Length > 0;
+            int goalCount = hasGoals ? map.goals.Length : 1;
 
             var reachable = new NativeArray<byte>(n, Allocator.Temp);
             var queue = new NativeQueue<int2>(Allocator.Temp);
             try
             {
-                int goalIndex = map.CellIndex(map.goal);
-                reachable[goalIndex] = 1;
-                queue.Enqueue(map.goal);
+                for (int g = 0; g < goalCount; g++)
+                {
+                    int2 goal = hasGoals ? map.goals[g] : map.goal;
+                    if (!InBounds(goal, map.gridSize)) return false;
+                    if (map.TileAt(goal) != MapTileType.Walk) return false;
+                    int gi = map.CellIndex(goal);
+                    if (reachable[gi] == 0)
+                    {
+                        reachable[gi] = 1;
+                        queue.Enqueue(goal);
+                    }
+                }
 
                 while (queue.TryDequeue(out var cell))
                 {

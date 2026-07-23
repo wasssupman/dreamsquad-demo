@@ -25,7 +25,9 @@ authoring/런타임 검증을 "각 스폰이 **아무 골이든** 도달"로 확
 
 ## 완료 기준
 
-- [ ] 멀티-소스 BFS 로 각 스폰 도달성 검증, 각 골 Walk 확인
-- [ ] 단일골 맵 판정 기존과 동일(회귀)
-- [ ] 2골 분리복도 맵 통과 / 고립 스폰 맵 실패(EditMode 4케이스)
-- [ ] compile 0 error, EditMode green
+- [x] 멀티-소스 BFS 로 각 스폰 도달성 검증, 각 골 Walk 확인 (goals 폴백 [goal])
+- [x] 단일골 맵 판정 기존과 동일(회귀 — 기존 2 테스트 통과)
+- [x] 2골 분리복도 맵 통과 / 고립 스폰 맵 실패(신규 EditMode 2케이스)
+- [x] compile 0 error, EditMode green
+
+확인 2026-07-23 — `AllSpawnsReachGoal` 시그니처 유지, 내부 멀티-소스 BFS(goals 전체 시드, 미설정 시 [goal] 폴백). 신규 테스트: 분리복도 각자 골=true(단일골이면 반대 복도 spawn 도달 불가라 false 였을 케이스), 고립 spawn=false. EditMode 1278 중 1276 green(신규 2 포함), 회귀 0.
