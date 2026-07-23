@@ -235,8 +235,8 @@ namespace Wassup.Core
             if (draftController != null)
             {
                 // draft-stage-map-prebuild Unit 2 — build the map before entering Draft
-                // so the playfield renders behind the card fan. Option toggles trigger
-                // RebuildDraftMap via DraftController (Unit 3).
+                // so the playfield renders behind the card fan. (map-pipeline-cleanup:
+                // 옵션 토글→RebuildDraftMap 경로는 디버그 패널과 함께 은퇴.)
                 logger?.SetEntryMode("draft");
                 if (battleBridge != null) battleBridge.PrepareDraftMap();
 

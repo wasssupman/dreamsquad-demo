@@ -1,6 +1,6 @@
 # Map Pipeline Cleanup — legacy 맵 생성 코드 정리
 
-**상태: 구현 완료 2026-07-23** (유닛 0~4 EditMode 1248 green — 사용자 Play 확인 대기)
+**상태: 완료 2026-07-23** (유닛 0~4 + feature-end 2인 리뷰 반영. EditMode 1251 green·PlayMode A/B 회귀 0·**사용자 Play 확인 완료**)
 
 > **재점검 2026-07-23 (multi-goal-map·tournament-seed-map-select 반영)**: 스펙 작성 후 두 feature 가 keep-set 주변을 수정했다. 앵커 재검증 결과 —
 > - **구조 유효**: `MapSettingsPanelView` 소비처(DraftView/SquadPrepView), legacy 스위치 arm, `ActiveDeck==null || map==null` 가드 3곳(라인 1140/1204/1502 → **1178/1242/1540** 이동) 전부 그대로. 각 유닛 구현 시 라인 앵커는 재확인하고 진행.

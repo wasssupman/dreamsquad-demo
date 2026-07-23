@@ -34,8 +34,19 @@
 - manual-map-authoring 의 "mapDocument 최우선" 노브는 이 정리로 물리적으로 소멸(이미 stale — 풀이 항상 이겼음). 맵 강제 = `fixedMapSeed`(밸런싱 레퍼런스).
 - `Assets/_Recovery/` 는 이 스펙이 안 건드림(미추적 사용자 영역) — 정리는 사용자 판단.
 
+## Review (feature-end, 2026-07-23)
+
+2인 코드리뷰 — 정합성(잔존 참조 0·GUID 41개 전수 잔존 0·keep-set 3종 본문 diff 동일·폴백 상수=라이브 값 검증·가드 파급 안전) **SOUND**, 엣지/테스트 0 BLOCKER. 반영:
+
+- **M1(테스트 공백)**: 리팩터가 중앙화한 안전망 계약 3종을 `BattleBridgeDraftMapTests` Case 6~8 로 신설 — connectivity 실패→FallbackLinear 대체 / unusable 엔트리→hard-fail(맵 없음, 크래시 없음) / 풀 미배선→실 PrepareDraftMap 가드 차단.
+- **m(주석)**: `GeneratedMap.cs` 생산자 목록에서 삭제된 MapGridGenerator 제거, `GameManager.cs` 의 옵션토글→RebuildDraftMap stale 주석 정정.
+- **미반영(스코프 밖 → Follow-up)**: 풀 전 엔트리 bake/load 검증(부분 오염 풀의 index-dependent 실패 조기화), unusable hard-fail 의 "빈 판 지속" vs FallbackLinear 비대칭(사양 재확인 시), LogMap pathShape="authored" 고정화(분석 대시보드 버킷 통지 — 클라 파서 없음 확인).
+
+**PlayMode A/B 판정**: 클린업 전(557346a4)/후 배치 42개 실패 **동일 4건**(Auth e2e 서버 중복키·덱 반입·스쿼드 진입 Gift 2건) — 전부 기존 실패, **클린업 회귀 0**. 에디터 실행에서만 실패한 드림캐쳐 데미지 2건은 배치 양쪽 통과 → 비포커스 프레임 정지 아티팩트. `MovementIntegritySmokeTest`(맵 직결) 전 환경 통과.
+
 ## Follow-up
 
-- 사용자 Play: 스쿼드 매치 수판 — 로테이션(토너먼트 시드 3번 맵)·배치·pathing·점수 무회귀.
+- 사용자 Play: 스쿼드 매치 수판 — 로테이션(토너먼트 시드 3번 맵)·배치·pathing·점수 무회귀. **(2026-07-23 사용자 "문제 없어보임" 확인)**
+- **기존 PlayMode 실패 4건**(클린업 무관, 베이스라인부터 실패): Auth e2e(서버 `e2e-test` 유저 잔존 — 서버 정리 필요), DreamcatcherDeckCarryIn(덱 0), Dreamstone/SquadCarryIn 2건(Gift 페이즈 도입 후 기대 페이즈 미갱신 추정) — 별도 스펙/세션에서 처리.
 - README 후속 후보 계승: `season_S2_desert` 시즌 폐기 판단(별도 product 결정), DesignateDeco 슬림 테스트 신설.
 - `MapPainterWindow` 는 체인 무의존이라 무영향(정밀 검증 완료) — bake 워크플로우 그대로.

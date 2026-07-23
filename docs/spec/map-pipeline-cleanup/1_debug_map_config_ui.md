@@ -33,6 +33,6 @@ legacy 맵 브랜치를 런타임에 살려두는 통로는 디버그 패널 `Ma
 - [x] DraftController 맵-config 표면(:45/:132/:174 포함) 제거, drafting 로직 무변화 (using Unity.Mathematics/Wassup.Data.MapGrid 도 무참조화로 제거)
 - [x] BattleScene 패널 와이어링 제거(다른 씬 참조 0 확인), missing-script/reference 경고 0 — **기존 잔해 2건(MapView·DraftView 의 사망 컴포넌트, 73a2efd1·e824ed4a 에서 스크립트만 삭제된 것)도 같은 저장에서 정리**
 - [x] compile 0 error, EditMode green(삭제한 draft-map 테스트 제외)
-- [ ] (사용자) 스쿼드 매치 Play — 맵/배치 정상, 디버그 패널 부재 무영향
+- [x] (사용자) 스쿼드 매치 Play — 맵/배치 정상, 디버그 패널 부재 무영향 (확인 2026-07-23)
 
 확인 2026-07-23 — EditMode 1298 중 1296 green(0 fail, DraftControllerMapRebuildTests 3케이스 삭제 반영). 씬 편집은 fresh-load(clean) 상태에서 수행·저장 델타 전수 검토 — 유일한 무관 델타는 AwakeningGaugeView 필드 마이그레이션 1줄 스왑(죽은 seedSplats 제거+attentionLean 기본값, 행동 무영향)으로 수용. `BattleBridgeDraftMapTests` 는 DraftController 표면이 아닌 legacy 필드(map/useProcedural) 픽스처라 **유닛 2로 이월**(현재 green 유지).

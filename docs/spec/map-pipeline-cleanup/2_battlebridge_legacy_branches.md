@@ -32,6 +32,6 @@
 - [x] `BattleBridgeDraftMapTests` 픽스처를 legacy MapData → **라이브 풀 경로**로 재작성(5케이스: 빌드/문서사용/무재빌드/재빌드/폴백. adapter settings-null 검사 탓 settings 인스턴스 주입 — 유닛 4 에서 제거)
 - [x] BattleScene 재저장으로 고아 직렬 필드 7종 드롭(diff 검증: ArkFunnel·PrototypeMap·MapGenerationSettings 씬 참조 소멸 — 유닛 3 에셋 삭제 사전 정리)
 - [x] compile 0 error, EditMode green(삭제 대상 테스트 제외)
-- [ ] (사용자) 스쿼드 Play — 매판 맵 로테이션·배치·pathing·점수 예산 정상(회귀 0)
+- [x] (사용자) 스쿼드 Play — 매판 맵 로테이션·배치·pathing·점수 예산 정상(회귀 0) (확인 2026-07-23)
 
 확인 2026-07-23 — EditMode 1299 중 1297 green(0 fail, 픽스처 재작성 +1케이스). deco-designate 게이트의 `mapSource==MapGrid` 조건도 함께 제거(상시 참). MapSource enum 파일은 무참조화 — 유닛 3 에서 삭제 판정.

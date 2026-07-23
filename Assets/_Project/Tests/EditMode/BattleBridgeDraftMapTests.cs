@@ -2,6 +2,7 @@ using System.Reflection;
 using NUnit.Framework;
 using Unity.Entities;
 using UnityEngine;
+using UnityEngine.TestTools;
 using Wassup.Bridge;
 using Wassup.Data;
 using Wassup.Data.MapGrid;
@@ -153,6 +154,95 @@ namespace Wassup.Tests.EditMode
             CallBeginPlacementInternal(_bridge);
             Assert.IsTrue(_bridge.HasGeneratedMap,
                 "BeginPlacement fallback must build map when none exists");
+        }
+
+        // ── map-pipeline-cleanup feature-end 리뷰 반영 — 리팩터가 중앙화한 안전망 계약 ──
+
+        // Case 6 — connectivity 실패 문서 → FallbackLinear 대체(절차 폴백 제거 후 유일한 런타임 안전망).
+        [Test]
+        public void BuildMap_UnconnectedDocument_FallsBackToLinear()
+        {
+            var badDoc = BuildUnconnectedDocument();
+            var badPool = ScriptableObject.CreateInstance<MapDocumentPool>();
+            AddPoolEntry(badPool, badDoc, deck: null);
+            SetField(_bridge, "mapPool", badPool);
+            try
+            {
+                LogAssert.Expect(LogType.Warning,
+                    "[BattleBridge] GeneratedMap connectivity failed; using fallback linear map.");
+                CallPrepareDraftMapInternal(_bridge);
+
+                Assert.IsTrue(_bridge.HasGeneratedMap, "fallback must still produce a map");
+                var gm = GetGeneratedMap(_bridge);
+                Assert.AreEqual(new Unity.Mathematics.int2(20, 10), gm.gridSize,
+                    "fallback linear must use FallbackGridSize (20x10)");
+                Assert.AreEqual(2, gm.spawns.Length, "fallback linear must use FallbackSpawnLaneCount (2)");
+                Assert.IsTrue(MapConnectivity.AllSpawnsReachGoal(gm), "fallback map must be playable");
+            }
+            finally
+            {
+                Object.DestroyImmediate(badDoc);
+                Object.DestroyImmediate(badPool);
+            }
+        }
+
+        // Case 7 — 선택된 풀 엔트리가 unusable → hard-fail: 크래시 없이 맵 없음(LogError + 정지).
+        [Test]
+        public void BuildMap_UnusableSelectedEntry_HardFails_NoMap()
+        {
+            var emptyDoc = ScriptableObject.CreateInstance<MapDocument>(); // Width 0 → unusable
+            var badPool = ScriptableObject.CreateInstance<MapDocumentPool>();
+            AddPoolEntry(badPool, emptyDoc, deck: null);
+            SetField(_bridge, "mapPool", badPool);
+            try
+            {
+                LogAssert.Expect(LogType.Error, new System.Text.RegularExpressions.Regex(
+                    "usable MapDocument"));
+                CallPrepareDraftMapInternal(_bridge);
+
+                Assert.IsFalse(_bridge.HasGeneratedMap,
+                    "unusable entry must hard-fail with no map (no silent fallback)");
+            }
+            finally
+            {
+                Object.DestroyImmediate(emptyDoc);
+                Object.DestroyImmediate(badPool);
+            }
+        }
+
+        // Case 8 — 풀 미배선 가드: 실제 PrepareDraftMap 이 world 접근 전에 명확히 거부.
+        [Test]
+        public void PrepareDraftMap_WithoutPool_GuardBlocks()
+        {
+            SetField(_bridge, "mapPool", null);
+
+            LogAssert.Expect(LogType.Error, "[BattleBridge] deck or map pool reference missing.");
+            _bridge.PrepareDraftMap(); // 가드가 world 참조보다 앞이라 EditMode 에서 안전
+
+            Assert.IsFalse(_bridge.HasGeneratedMap, "guard must block map build without a pool");
+        }
+
+        // 좌측 복도(스폰 2)와 골이 단절된 문서 — ToGeneratedMap 은 성공하지만 connectivity 실패.
+        private static MapDocument BuildUnconnectedDocument()
+        {
+            const int w = 6;
+            const int h = 4;
+            int n = w * h;
+
+            var tiles = new MapTileType[n];
+            for (int i = 0; i < n; i++) tiles[i] = MapTileType.Place;
+            for (int x = 0; x <= 2; x++) tiles[2 * w + x] = MapTileType.Walk; // 좌측 섬
+            tiles[2 * w + (w - 1)] = MapTileType.Walk;                        // 골 섬(단절)
+
+            var doc = ScriptableObject.CreateInstance<MapDocument>();
+            doc.SetFrom(
+                w, h,
+                tiles, new byte[n], new bool[n], new byte[n],
+                new[] { new Vector2Int(w - 1, 2) },
+                new[] { new Vector2Int(0, 2), new Vector2Int(1, 2) },
+                seed: 43,
+                version: 1);
+            return doc;
         }
 
         // -----------------------------------------------------------------------
