@@ -1,82 +1,64 @@
 using NUnit.Framework;
 using Unity.Collections;
-using Unity.Mathematics;
 using UnityEngine;
 using Wassup.Data;
 using Wassup.Data.MapGrid;
 
 namespace Wassup.Tests.EditMode.MapGrid
 {
+    // map-pipeline-cleanup unit 4 — 절차 폴백 제거 후 단순화된 adapter 계약 2가지:
+    // usable 문서 → ToGeneratedMap 과 동등 / unusable → hard-fail(MapGenerationFailedException).
     public class MapGridBattleAdapterTests
     {
-        [Test]
-        public void Build_NullSettings_Throws()
+        private static MapDocument BuildUsableDocument()
         {
-            Assert.Throws<System.InvalidOperationException>(
-                () => MapGridBattleAdapter.Build(0, null, null));
-        }
+            const int w = 6;
+            const int h = 4;
+            int n = w * h;
 
-        [Test]
-        public void Build_WithSettings_NoDocument_NoOverride_UsesSeedBasedPreset()
-        {
-            var s = ScriptableObject.CreateInstance<MapGridGenerationSettings>();
-            s.SetForTest();
-            using var map = MapGridBattleAdapter.Build(0, s, null);
-            Assert.IsTrue(map.IsCreated);
-            Assert.AreEqual(0, map.seed);
-            ScriptableObject.DestroyImmediate(s);
-        }
-
-        [Test]
-        public void Build_WithGridSizeOverride_UsesExactSize()
-        {
-            var s = ScriptableObject.CreateInstance<MapGridGenerationSettings>();
-            s.SetForTest();
-            using var map = MapGridBattleAdapter.Build(0, s, null, new int2(25, 12));
-            Assert.IsTrue(map.IsCreated);
-            Assert.AreEqual(25, map.gridSize.x);
-            Assert.AreEqual(12, map.gridSize.y);
-            ScriptableObject.DestroyImmediate(s);
-        }
-
-        [Test]
-        public void Build_GridSizeBelowMin_IsClampedToMin()
-        {
-            var s = ScriptableObject.CreateInstance<MapGridGenerationSettings>();
-            s.SetForTest();
-            using var map = MapGridBattleAdapter.Build(0, s, null, new int2(3, 3));
-            Assert.IsTrue(map.IsCreated);
-            Assert.AreEqual(MapGridBattleAdapter.MinGridDimension, map.gridSize.x);
-            Assert.AreEqual(MapGridBattleAdapter.MinGridDimension, map.gridSize.y);
-            ScriptableObject.DestroyImmediate(s);
-        }
-
-        [Test]
-        public void Build_WithDocument_UsesCacheNotGenerator()
-        {
-            var s = ScriptableObject.CreateInstance<MapGridGenerationSettings>();
-            s.SetForTest(minBranchCells: 1000); // impossible — generator 가 호출되면 throw 발생할 settings
-
-            // 손수 작성한 작은 doc
-            int w = 6, h = 4, n = w * h;
             var tiles = new MapTileType[n];
             for (int i = 0; i < n; i++) tiles[i] = MapTileType.Place;
             for (int x = 0; x < w; x++) tiles[2 * w + x] = MapTileType.Walk;
 
             var doc = ScriptableObject.CreateInstance<MapDocument>();
-            doc.SetFrom(w, h, tiles,
-                new byte[n], new bool[n], new byte[n],
-                new[] { new Vector2Int(w - 1, 2) }, new[] { new Vector2Int(0, 2) },
-                seed: -1, version: 0);
+            doc.SetFrom(
+                w, h,
+                tiles, new byte[n], new bool[n], new byte[n],
+                new[] { new Vector2Int(w - 1, 2) },
+                new[] { new Vector2Int(0, 2), new Vector2Int(1, 2) },
+                seed: 77,
+                version: 3);
+            return doc;
+        }
 
-            using var map = MapGridBattleAdapter.Build(0, s, doc);
-            Assert.IsTrue(map.IsCreated);
-            Assert.AreEqual(w, map.gridSize.x);
-            Assert.AreEqual(h, map.gridSize.y);
-            Assert.AreEqual(-1, map.seed); // doc 의 authoringSeed
+        [Test]
+        public void Build_UsableDocument_EquivalentToToGeneratedMap()
+        {
+            var doc = BuildUsableDocument();
+            using var built = MapGridBattleAdapter.Build(doc);
+            using var direct = MapDocumentBuilder.ToGeneratedMap(doc, Allocator.TempJob);
+
+            Assert.IsTrue(built.IsCreated);
+            Assert.AreEqual(direct.gridSize, built.gridSize);
+            Assert.AreEqual(direct.seed, built.seed);
+            Assert.AreEqual(direct.generatorVersion, built.generatorVersion);
+            Assert.AreEqual(direct.goal, built.goal);
+            Assert.AreEqual(direct.spawns.Length, built.spawns.Length);
+            for (int i = 0; i < direct.tiles.Length; i++)
+                Assert.AreEqual(direct.tiles[i], built.tiles[i], $"tiles[{i}]");
 
             ScriptableObject.DestroyImmediate(doc);
-            ScriptableObject.DestroyImmediate(s);
+        }
+
+        [Test]
+        public void Build_UnusableDocument_Throws()
+        {
+            // null / 빈 문서 모두 hard-fail — 조용한 절차 폴백은 은퇴했다.
+            Assert.Throws<MapGenerationFailedException>(() => MapGridBattleAdapter.Build(null));
+
+            var empty = ScriptableObject.CreateInstance<MapDocument>();
+            Assert.Throws<MapGenerationFailedException>(() => MapGridBattleAdapter.Build(empty));
+            ScriptableObject.DestroyImmediate(empty);
         }
     }
 }

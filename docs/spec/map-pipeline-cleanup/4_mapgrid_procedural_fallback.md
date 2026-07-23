@@ -34,8 +34,10 @@
 
 ## 완료 기준
 
-- [ ] adapter=doc 전용(폴백 제거, hard-fail), 체인 11종 + 디버그창 + MapGrid 테스트 7종 삭제
-- [ ] `MapDocumentRoundTripTests` 유지, `MapGridBattleAdapterTests` 신 시그니처로 재작성(2케이스 통과)
-- [ ] `mapGridSettings` 필드/에셋 + GoalEdgeOnly 쌍 제거, 씬 missing-reference 0, 빈 Editor/MapGrid 폴더 제거
-- [ ] compile 0 error, EditMode green
+- [x] adapter=doc 전용(`Build(MapDocument)`, unusable → `MapGenerationFailedException` hard-fail — 예외 타입도 메시지 ctor 로 단순화·재사용), 체인 11종 + 디버그창 + MapGrid 테스트 7종 삭제
+- [x] `MapDocumentRoundTripTests` 유지, `MapGridBattleAdapterTests` 신 시그니처로 재작성(usable=ToGeneratedMap 동등 / unusable=throw, 2케이스 통과)
+- [x] `mapGridSettings` 필드/에셋 + GoalEdgeOnly 쌍 제거, 씬 재저장 델타 1줄(mapGridSettings 고아 필드만) 검증, GUID 잔여 참조 0, 빈 Editor/MapGrid 폴더 제거. BattleBridgeDraftMapTests 의 유닛 2 임시 settings 주입도 제거
+- [x] compile 0 error, EditMode green — connectivity 가드도 무조건 검사로 단순화(usable 통과 후엔 validator-backed 경로가 존재하지 않음)
 - [ ] (사용자) 스쿼드 Play — 5장 풀 맵 로테이션·렌더·pathing 정상(usable 경로 무변화 실증)
+
+확인 2026-07-23 — EditMode 1250 중 1248 green(0 fail). 사용자 Play 확인 대기.

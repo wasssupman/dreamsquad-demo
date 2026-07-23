@@ -30,9 +30,6 @@ namespace Wassup.Tests.EditMode
         private AttackDeck _deck;
         private MapDocument _doc;
         private MapDocumentPool _pool;
-        // adapter 가 doc 경로 진입 전에 null 검사만 한다(usable doc 이면 내용은 안 읽음).
-        // 유닛 4 의 adapter 단순화(Build(doc))에서 이 주입은 제거된다.
-        private MapGridGenerationSettings _gridSettings;
 
         [SetUp]
         public void SetUp()
@@ -49,10 +46,8 @@ namespace Wassup.Tests.EditMode
             _go     = new GameObject("BattleBridge_Test");
             _bridge = _go.AddComponent<BattleBridge>();
 
-            _gridSettings = ScriptableObject.CreateInstance<MapGridGenerationSettings>();
-            SetField(_bridge, "deck",            _deck);
-            SetField(_bridge, "mapPool",         _pool);
-            SetField(_bridge, "mapGridSettings", _gridSettings);
+            SetField(_bridge, "deck",    _deck);
+            SetField(_bridge, "mapPool", _pool);
 
             // Inject the test World so ECS operations work.
             SetField(_bridge, "_world", _world);
@@ -66,7 +61,6 @@ namespace Wassup.Tests.EditMode
             if (_deck != null) Object.DestroyImmediate(_deck);
             if (_doc  != null) Object.DestroyImmediate(_doc);
             if (_pool != null) Object.DestroyImmediate(_pool);
-            if (_gridSettings != null) Object.DestroyImmediate(_gridSettings);
             // World owns NativeContainers — dispose last.
             _world?.Dispose();
         }

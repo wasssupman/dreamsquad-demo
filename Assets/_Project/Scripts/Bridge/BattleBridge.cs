@@ -30,7 +30,6 @@ namespace Wassup.Bridge
     {
         [SerializeField] private AttackDeck deck;
         [Header("Map Grid")]
-        [SerializeField] private MapGridGenerationSettings mapGridSettings;
         // random-map-pool — (맵, 덱) 인코운터 풀. 맵 생산의 유일 경로(map-pipeline-cleanup unit 2
         // 에서 legacy 소스 제거). 엔트리 하나를 골라 맵·덱을 함께 확정한다(맵마다 그 맵의 적 패턴).
         [SerializeField] private MapDocumentPool mapPool;
@@ -898,11 +897,11 @@ namespace Wassup.Bridge
                 }
             }
 
-            // map-pipeline-cleanup unit 2 — legacy 맵 소스(Manual/Fixture/Procedural/Legacy)
-            // 스위치 제거: authored 풀 문서 → ToGeneratedMap 이 유일 경로.
+            // map-pipeline-cleanup unit 2/4 — legacy 맵 소스 스위치·절차 폴백 제거:
+            // authored 풀 문서 → ToGeneratedMap 이 유일 경로. unusable 문서는 hard-fail.
             try
             {
-                _generatedMap = MapGridBattleAdapter.Build(seed, mapGridSettings, activeDoc, null);
+                _generatedMap = MapGridBattleAdapter.Build(activeDoc);
             }
             catch (MapGenerationFailedException ex)
             {
@@ -911,10 +910,8 @@ namespace Wassup.Bridge
                 return;
             }
 
-            // 절차 생성만 Validator 가 connectivity 를 보장한다. authored MapDocument 는
-            // Validator 를 거치지 않으므로 (adapter 가 문서를 그대로 반환) 여기서 검사한다.
-            bool validatorBacked = !MapGridBattleAdapter.IsUsableDocument(activeDoc);
-            if (!validatorBacked && !MapConnectivity.AllSpawnsReachGoal(_generatedMap))
+            // authored 문서는 Validator 없이 그대로 반환되므로 connectivity 를 여기서 검사한다.
+            if (!MapConnectivity.AllSpawnsReachGoal(_generatedMap))
             {
                 Debug.LogWarning("[BattleBridge] GeneratedMap connectivity failed; using fallback linear map.", this);
                 TeardownGeneratedMap();
@@ -1731,15 +1728,6 @@ namespace Wassup.Bridge
         {
             defenderPool = pool;
         }
-
-        // PlayMode-only mutation of the shared SO. Reverts on Stop.
-        // (map-pipeline-cleanup: mapGridSettings 와 함께 유닛 4 에서 제거 예정.)
-        public void SetGoalEdgeOnly(bool value)
-        {
-            if (mapGridSettings != null) mapGridSettings.SetGoalEdgeOnly(value);
-        }
-
-        public bool CurrentGoalEdgeOnly => mapGridSettings != null && mapGridSettings.GoalEdgeOnly;
 
         public DefenderUnitData[] DefenderPool => defenderPool;
         public float TileSize => tileSize;
