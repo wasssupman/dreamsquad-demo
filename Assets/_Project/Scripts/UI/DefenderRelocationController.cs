@@ -55,6 +55,11 @@ namespace Wassup.UI
         private bool _hasLease;
         private CameraDirector _cameraDirector;
         private bool _cameraDirectorMissWarned;
+        // unit 2 — 이동모드 배치 세션 (목적지 지정 제스처)
+        private bool _targetPressActive;  // 목적지 지정 press 진행 중
+        private bool _pressCarried;       // 홀드에서 이어진 press (임계 전 릴리즈 = 커밋 아닌 탭 대기 전환)
+        private Vector2 _targetDownScreen;
+        private Vector2Int? _scoutCell;   // hover 스카우트 중인 셀
 
         private void Update()
         {
@@ -70,7 +75,7 @@ namespace Wassup.UI
         {
             if (_entryCooldownRemaining > 0f) _entryCooldownRemaining -= unscaledDt;
 
-            if (_moveMode) { TickMoveMode(unscaledDt); return; }
+            if (_moveMode) { TickMoveMode(pressStarted, pressed, screen, unscaledDt); return; }
             if (_holding) { TickHolding(pressed, screen, unscaledDt); return; }
             if (pressStarted) TryBeginHold(screen);
         }
@@ -128,9 +133,15 @@ namespace Wassup.UI
             _hasLease = true;
             if (spineUnitPool != null && spineUnitPool.TryGet(_entity, out var view))
                 view.SetHoverHighlight(true, settings.highlightColor);
+            // unit 2 — 홀드에서 이어진 press 를 목적지 지정 제스처로 승계.
+            // 손 안 떼고 임계 초과 = 드래그(릴리즈 커밋), 임계 전 릴리즈 = 탭 대기 전환(README 제스처 트리).
+            _targetPressActive = true;
+            _pressCarried = true;
+            _targetDownScreen = _downScreen;
+            _scoutCell = null;
         }
 
-        private void TickMoveMode(float unscaledDt)
+        private void TickMoveMode(bool pressStarted, bool pressed, Vector2 screen, float unscaledDt)
         {
             _moveModeElapsed += unscaledDt;
             var gm = GameManager.Instance;
@@ -146,6 +157,84 @@ namespace Wassup.UI
             }
             // 인스펙트 포커스 — 매 프레임 피드(미피드 시 자동 해제되는 채널, DirectionAim 패턴).
             EnsureCameraDirector()?.SetInspectFocus(bridge.GridCellToViewCenter(_sourceCell));
+
+            // unit 2 — 목적지 지정 제스처. 탭과 드래그를 한 모델로: press 추적 → 릴리즈 지점에서 해석.
+            float threshold = DragController != null ? DragController.BoardDragThreshold : 12f;
+
+            if (_targetPressActive)
+            {
+                if (pressed)
+                {
+                    // 홀드 승계 press 가 임계를 넘으면 드래그 의도로 승격(릴리즈 = 커밋 시도).
+                    if (_pressCarried && Vector2.Distance(screen, _targetDownScreen) >= threshold)
+                        _pressCarried = false;
+                    UpdateScout(screen);
+                    return;
+                }
+                // 릴리즈 해석
+                bool carriedTap = _pressCarried && Vector2.Distance(screen, _targetDownScreen) < threshold;
+                _targetPressActive = false;
+                _pressCarried = false;
+                if (carriedTap) { ClearScout(); return; } // 홀드에서 손만 뗌 — 탭 대기 유지(커밋 아님)
+                ResolveRelease(screen);
+                return;
+            }
+
+            if (pressStarted)
+            {
+                if (PointerOverUi()) return; // UI press 는 목적지 지정이 아님
+                _targetPressActive = true;
+                _pressCarried = false;
+                _targetDownScreen = screen;
+                UpdateScout(screen);
+            }
+        }
+
+        // 릴리즈 지점 해석: 보드 밖/본인 = 취소, 무효 = reject+유지(unit 2 계약), 유효 = 커밋.
+        private void ResolveRelease(Vector2 screen)
+        {
+            if (!bridge.TryScreenToCell(mainCamera, screen, out var cell)) { CancelMoveMode(); return; }
+            if (cell == _sourceCell) { CancelMoveMode(); return; }
+            if (!bridge.CanRelocateDefender(_sourceCell, cell, out _))
+            {
+                bridge.FlashPlacementReject(cell); // 기존 reject 피드백 재사용, 이동모드 유지(재시도)
+                ClearScout();
+                return;
+            }
+            CommitRelocation(cell);
+        }
+
+        // 커밋: relocate API 만 지난다 — 코스트·on-place·컷신·PlacementCommitted 는 지나지 않는다(계약 1·4·8).
+        private void CommitRelocation(Vector2Int to)
+        {
+            if (!bridge.TryBeginDefenderRelocation(_sourceCell, to, out var entity, out _))
+            {
+                bridge.FlashPlacementReject(to);
+                ClearScout();
+                return;
+            }
+            CancelMoveMode(); // 확정 = 슬로모 해제(계약 7) + 하이라이트/스카우트 정리
+            // unit 3 전 임시 즉시형 꼬리 — 비행/재전개 연출(unit 3)이 이 두 줄을 코루틴으로 대체한다.
+            bridge.FinishDefenderRelocation(to, entity);
+            bridge.ActivateDeployedDefender(to, entity);
+        }
+
+        // hover 스카우트 — 기존 배치 hover/팝 표면 재사용(UpdateBoardScout 미러, 범위 격자는 제외).
+        private void UpdateScout(Vector2 screen)
+        {
+            if (!bridge.TryScreenToCell(mainCamera, screen, out var cell)) { ClearScout(); return; }
+            bool valid = bridge.CanRelocateDefender(_sourceCell, cell, out _);
+            bool changed = !_scoutCell.HasValue || _scoutCell.Value != cell;
+            if (changed && _scoutCell.HasValue) bridge.ClearPlacementHover(_scoutCell.Value);
+            _scoutCell = cell;
+            if (changed) bridge.PulsePlacementHover(cell, valid);
+            bridge.SetPlacementHover(cell, valid);
+        }
+
+        private void ClearScout()
+        {
+            if (_scoutCell.HasValue && bridge != null) bridge.ClearPlacementHover(_scoutCell.Value);
+            _scoutCell = null;
         }
 
         // 이동모드 종료 — unit 2 의 취소(무효/본인 탭)와 커밋 후 정리가 모두 이 경로를 쓴다.
@@ -154,8 +243,11 @@ namespace Wassup.UI
         {
             if (!_moveMode) { ResetHold(); return; }
             _moveMode = false;
+            _targetPressActive = false;
+            _pressCarried = false;
             ReleaseLease();
             ClearHighlight();
+            ClearScout();
         }
 
         private void ResetHold()
