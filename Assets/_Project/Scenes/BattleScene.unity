@@ -1912,6 +1912,7 @@ MonoBehaviour:
   dormantColor: {r: 0.68, g: 0.65, b: 0.76, a: 0.78}
   tickColor: {r: 0.86, g: 0.82, b: 0.96, a: 0.72}
   overflowColor: {r: 1, g: 0.35, b: 0.24, a: 1}
+  attentionPeriod: 1.5
   valuePunchScale: 1.18
   trayGap: 30
   baselineY: 18
@@ -2638,7 +2639,7 @@ Transform:
   m_GameObject: {fileID: 1420088183}
   serializedVersion: 2
   m_LocalRotation: {x: 0.5, y: 0, z: 0, w: 0.8660254}
-  m_LocalPosition: {x: 0.86, y: 13.44, z: -8.75}
+  m_LocalPosition: {x: 0.86, y: 13.44, z: -9.26}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
