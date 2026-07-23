@@ -76,6 +76,9 @@ namespace Wassup.UI
         private RectTransform _safeArea;
         private Sprite _figureSprite;
         private int _pendingFlights;
+        // 고스트 풀(재사용, GC 완화) + generation(전투 이탈/OnDisable 시 진행 비행 일괄 무효화).
+        private readonly System.Collections.Generic.List<Image> _ghostPool = new System.Collections.Generic.List<Image>();
+        private int _flightGen;
         // committed = 실제 pile 개수 + 비행 중. 게이지 목표와 이걸로 대사(desync 방지).
         private int FiguresCommitted => (_pile != null ? _pile.ActiveCount : 0) + _pendingFlights;
         private TextMeshProUGUI _valueLabel;
@@ -140,6 +143,7 @@ namespace Wassup.UI
             if (GameManager.Instance != null)
                 GameManager.Instance.PhaseChanged -= OnPhaseChanged;
             if (_visualRoot != null) _visualRoot.localScale = Vector3.one;
+            CancelFlights(); // 진행 중 비행 정리(pending 오염·고아 고스트 방지)
         }
 
         // unit 4 — 게이지 상한에서 획득분 소멸(넘침). 손실 회피를 위해 시끄러운 경고:
@@ -218,29 +222,61 @@ namespace Wassup.UI
 
         private Camera _figureCamera;
 
-        // 킬 위치 → 항아리 상단으로 아치 비행하는 고스트. 도착 시 pile.SpawnAtTop + 목표 보정.
+        // 고스트 풀에서 비활성 하나를 빌린다(GC 완화). 없으면 신설.
+        private Image GetGhost()
+        {
+            for (int i = 0; i < _ghostPool.Count; i++)
+                if (_ghostPool[i] != null && !_ghostPool[i].gameObject.activeSelf) return _ghostPool[i];
+            var go = new GameObject("AbsorbGhost", typeof(RectTransform), typeof(Image));
+            go.transform.SetParent(_safeArea, false);
+            var rt = (RectTransform)go.transform;
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = new Vector2(figureRadius * 2f, figureRadius * 2f);
+            var img = go.GetComponent<Image>();
+            img.sprite = _figureSprite;
+            img.raycastTarget = false;
+            go.SetActive(false);
+            _ghostPool.Add(img);
+            return img;
+        }
+
+        // 전투 이탈/OnDisable — 진행 중 비행을 일괄 무효화(pending 오염·전환 중 고아 고스트 방지).
+        // gen 을 올리면 실행 중 FlightRoutine 이 다음 프레임에 스스로 중단한다.
+        private void CancelFlights()
+        {
+            _flightGen++;
+            _pendingFlights = 0;
+            for (int i = 0; i < _ghostPool.Count; i++)
+                if (_ghostPool[i] != null) _ghostPool[i].gameObject.SetActive(false);
+        }
+
+        // 킬 위치 → 항아리 상단으로 아치 비행. 도착 시 pile.SpawnAtTop + 목표 보정.
+        // gen 이 바뀌면(전투 이탈) 즉시 중단(pending 은 CancelFlights 가 이미 0 으로 리셋).
         private IEnumerator FlightRoutine(Vector2 startLocal, Vector2 endLocal, float delay)
         {
-            var ghostGO = new GameObject("AbsorbGhost", typeof(RectTransform), typeof(Image));
-            ghostGO.transform.SetParent(_safeArea, false);
-            var grt = (RectTransform)ghostGO.transform;
-            grt.anchorMin = grt.anchorMax = new Vector2(0.5f, 0.5f);
-            grt.pivot = new Vector2(0.5f, 0.5f);
-            grt.sizeDelta = new Vector2(figureRadius * 2f, figureRadius * 2f);
+            int gen = _flightGen;
+            var ghost = GetGhost();
+            var grt = ghost.rectTransform;
             grt.anchoredPosition = startLocal;
-            var gimg = ghostGO.GetComponent<Image>();
-            gimg.sprite = _figureSprite;
-            gimg.color = (figureTints != null && figureTints.Length > 0)
+            grt.localScale = Vector3.one;
+            ghost.color = (figureTints != null && figureTints.Length > 0)
                 ? figureTints[Mathf.Abs(_pendingFlights) % figureTints.Length] : Color.white;
-            gimg.raycastTarget = false;
+            ghost.gameObject.SetActive(true);
 
             float wait = 0f;
-            while (wait < delay) { wait += Time.unscaledDeltaTime; yield return null; }
+            while (wait < delay)
+            {
+                if (_flightGen != gen) { ghost.gameObject.SetActive(false); yield break; }
+                wait += Time.unscaledDeltaTime;
+                yield return null;
+            }
 
             float dur = Mathf.Max(0.05f, figureFlightSeconds);
             float t = 0f;
             while (t < dur)
             {
+                if (_flightGen != gen) { ghost.gameObject.SetActive(false); yield break; }
                 t += Time.unscaledDeltaTime;
                 float k = Mathf.Clamp01(t / dur);
                 float ease = 1f - (1f - k) * (1f - k);
@@ -251,7 +287,7 @@ namespace Wassup.UI
                 yield return null;
             }
 
-            Destroy(ghostGO);
+            ghost.gameObject.SetActive(false);
             _pendingFlights = Mathf.Max(0, _pendingFlights - 1);
             if (_pile != null)
             {
@@ -304,6 +340,7 @@ namespace Wassup.UI
             }
             else
             {
+                CancelFlights(); // 전투 이탈 → 진행 비행 무효화(전환 중 고아 고스트 방지)
                 _panel.SetActive(false);
             }
         }

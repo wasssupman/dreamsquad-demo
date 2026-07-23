@@ -198,7 +198,9 @@ namespace Wassup.Tests.PlayMode
         private static void InvokeOnDefenderDied(DreamcatcherHandController ctrl, Entity host, DefenderUnitData data)
         {
             var m = typeof(DreamcatcherHandController).GetMethod("OnDefenderDied", BindingFlags.NonPublic | BindingFlags.Instance);
-            m.Invoke(ctrl, new object[] { host, data });
+            // unit 3 — OnDefenderDied(Entity, DefenderUnitData, Vector3 sourceWorldPos). 회수 로직만
+            // 검증하므로 위치는 더미.
+            m.Invoke(ctrl, new object[] { host, data, UnityEngine.Vector3.zero });
         }
 
         private static DreamcatcherCard MakeAuraCard(CardTargetAxis axis, float asPct, float warmupSec)
