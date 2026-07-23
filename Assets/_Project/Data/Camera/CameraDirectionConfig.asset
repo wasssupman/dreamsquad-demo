@@ -62,6 +62,8 @@ MonoBehaviour:
       m_PostInfinity: 0
       m_RotationOrder: 0
   boardFitMargin: 1.12
+  boardFramePullback: 4
+  boardFrameRaiseY: 2
   pulseFovDelta: 0
   pulseDolly: 1.14
   pulseSec: 0.22

@@ -45,6 +45,10 @@ namespace Wassup.Data
         // 1 = 보드 코너가 화면 가장자리에 딱 닿음. 크게 할수록 여백이 늘고 보드가 작아진다.
         [Tooltip("보드 fit 여유 배율. 1 = 보드 코너가 화면 가장자리에 딱 닿음. HUD 가 위아래를 가리므로 여유를 둔다.")]
         public float boardFitMargin = 1.12f;
+        [Tooltip("fit 거리에 더하는 추가 후퇴(월드 유닛). + = 뒤로 더 당김(줌아웃). 하단 HUD 가릴 때.")]
+        public float boardFramePullback = 4f;
+        [Tooltip("보드를 화면에서 위로 올리는 양(월드 유닛). + = 보드 상승(하단 HUD 클리어). 내부적으로 카메라 하강.")]
+        public float boardFrameRaiseY = 2f;
 
         [Header("배틀 구두점 (unit 2) — additive 전용, 카메라 탈취 없음")]
         [Tooltip("헤비 임팩트(광역 착탄) 줌 펄스 FOV 델타(도). 음수 = 줌인. [은퇴 — 줌은 pulseDolly 가 담당] 0 권장.")]

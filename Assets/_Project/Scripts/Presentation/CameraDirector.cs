@@ -187,7 +187,17 @@ namespace Wassup.Presentation
             CameraFramingMath.FrustumTangents(_homeFov, _cam.aspect, out float tanH, out float tanV);
             _cornerBuf = CameraFramingMath.LocalCorners(boardWorld, _homeRot, _cornerBuf);
             float dist = CameraFramingMath.FitDistance(_cornerBuf, tanH, tanV, margin);
-            _homePos = boardWorld.center - (_homeRot * Vector3.forward) * dist;
+            // 하단 HUD(트레이)에 보드가 가리지 않도록 추가 오프셋(margin 과 독립 노브):
+            //  - framePullback: forward 반대로 더 후퇴(줌아웃) → 보드 전체가 작아져 양 끝이
+            //    화면 중앙으로 모인다(하단·상단 여백 동시 확보).
+            //  - frameRaiseY: **보드를 화면에서 위로** 올린다(양수). 카메라를 pitch 로 내려다보므로
+            //    화면 상승 = 카메라 하강(월드 -Y)이다 — 부호는 보이는 결과 기준으로 잡았다
+            //    (카메라 Y 를 직접 올리면 시선이 밀려 보드가 오히려 내려간다). 하단이 HUD 에 물릴 때.
+            float pull = config != null ? config.boardFramePullback : 0f;
+            float raise = config != null ? config.boardFrameRaiseY : 0f;
+            _homePos = boardWorld.center
+                     - (_homeRot * Vector3.forward) * (dist + pull)
+                     - Vector3.up * raise;
         }
 
         private Vector3[] _cornerBuf;
