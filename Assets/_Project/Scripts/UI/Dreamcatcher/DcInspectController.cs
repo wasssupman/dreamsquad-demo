@@ -33,6 +33,9 @@ namespace Wassup.UI
         // 배치 드래그 중 인스펙트 양보. DefenderDragPlacementController 자체는 런타임
         // AddComponent 라 씬 배선이 불가능해, 수명 소유자인 DefenderSelector 를 경유한다.
         [SerializeField] private DefenderSelector defenderSelector;
+        // defender-relocation unit 4 — 이동모드 중 인스펙트 양보(모드 배타). 짧은 탭=인스펙트,
+        // 1초 홀드=이동모드는 그대로 공존한다(인스펙트는 press 다운 즉시, 홀드는 1초 뒤 발화).
+        [SerializeField] private DefenderRelocationController relocationController;
         // hand.config 는 [SerializeField] private 에 접근자가 없어 자체 참조를 둔다
         // (DreamcatcherHandView 도 같은 이유로 config 를 따로 들고 있다).
         [SerializeField] private AwakeningConfig config;
@@ -133,6 +136,8 @@ namespace Wassup.UI
             // 읽혀 두 소비자가 같은 press 를 노리는 aim-mode race 를 재생산한다(계약 11). arm 은 직전
             // 프레임에 확정돼 이 -50 실행순서와 무관하게 안정적으로 읽힌다.
             if (drag != null && (drag.IsDragging || drag.IsAiming || drag.HasArmedUnit)) return true;
+            // defender-relocation unit 4 — 이동모드가 보드 입력을 쥐면 인스펙트는 닫고 물러난다.
+            if (relocationController != null && relocationController.InMoveMode) return true;
             return false;
         }
 

@@ -1,6 +1,7 @@
 # Spec — Defender Relocation (배치 유닛 재배치)
 
-상태: 스펙 작성 2026-07-23 · 구현 대기 (unit 0 부터)
+상태: units 0~4 구현 완료 2026-07-24 (커밋별 자동 검증 통과) · **사용자 Play 확인(UX 수용 게이트) 대기**
+— 확인 절차는 `3_flight_redeploy_activation.md` 완료 기준 마지막 항목 참조
 
 ## 검증 질문
 

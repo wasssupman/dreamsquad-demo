@@ -1230,6 +1230,7 @@ MonoBehaviour:
   hand: {fileID: 2054561897}
   handView: {fileID: 1558370269}
   defenderSelector: {fileID: 915292524}
+  relocationController: {fileID: 1251145711}
   config: {fileID: 11400000, guid: b1ff068a6a1b7a44b8fd4ea85f159ff6, type: 2}
   panel: {fileID: 751645447}
   cameraDirector: {fileID: 1420088188}

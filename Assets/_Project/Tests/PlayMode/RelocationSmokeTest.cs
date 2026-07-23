@@ -142,8 +142,10 @@ namespace Wassup.Tests.PlayMode
             var entityA = EntityAt(bridge, em, a);
             var entityB = EntityAt(bridge, em, b);
             for (int i = 0; i < 3; i++) yield return null;
-            Assert.AreEqual(1.1f, Stat(em, entityA).damageMul, 0.01f, "A synergy 1.1");
-            Assert.AreEqual(1.1f, Stat(em, entityB).damageMul, 0.01f, "B synergy 1.1");
+            // 총합 damageMul 이 아니라 시너지 슬롯(origin=Synergy)만 직독 — 랜덤 기믹/드림스톤의
+            // 데미지 배율이 총합을 오염시켜도(관측: ×1.25 기믹 런) 무관하게 판정.
+            Assert.AreEqual(1.1f, SynergyMagnitude(em, entityA), 0.01f, "A synergy 1.1");
+            Assert.AreEqual(1.1f, SynergyMagnitude(em, entityB), 0.01f, "B synergy 1.1");
 
             // A 를 B 와 비인접인 셀로 이동
             Vector2Int to = default; bool foundTo = false;
@@ -158,21 +160,30 @@ namespace Wassup.Tests.PlayMode
 
             Assert.IsTrue(bridge.TryBeginDefenderRelocation(a, to, out var moved, out _), "begin relocation");
             for (int i = 0; i < 3; i++) yield return null;
-            Assert.AreEqual(1.0f, Stat(em, entityB).damageMul, 0.01f, "B recomputed at Begin (from-cell)");
+            Assert.AreEqual(1.0f, SynergyMagnitude(em, entityB), 0.01f, "B recomputed at Begin (from-cell)");
 
             bridge.FinishDefenderRelocation(to, moved);
             bridge.ActivateDeployedDefender(to, moved);
             for (int i = 0; i < 3; i++) yield return null;
-            Assert.AreEqual(1.0f, Stat(em, entityA).damageMul, 0.01f, "A recomputed at Activate (to-cell)");
+            Assert.AreEqual(1.0f, SynergyMagnitude(em, entityA), 0.01f, "A recomputed at Activate (to-cell)");
         }
 
         // ── helpers ──────────────────────────────────────────────────────────
 
-        private static Wassup.Battle.Effects.ModifierStats Stat(EntityManager em, Entity e)
+        // 시너지 기여만 격리 판정: StatModifierSlot 버퍼에서 origin=Synergy·DamageMul 슬롯의
+        // magnitude 를 직독(read-only). 슬롯 없음 = 중립 1.0.
+        private static float SynergyMagnitude(EntityManager em, Entity e)
         {
-            if (e != Entity.Null && em.HasComponent<Wassup.Battle.Effects.ModifierStats>(e))
-                return em.GetComponentData<Wassup.Battle.Effects.ModifierStats>(e);
-            return default;
+            if (e == Entity.Null || !em.HasBuffer<Wassup.Battle.Effects.StatModifierSlot>(e)) return 1f;
+            var buf = em.GetBuffer<Wassup.Battle.Effects.StatModifierSlot>(e);
+            for (int i = 0; i < buf.Length; i++)
+                if (buf[i].header.origin == Wassup.Battle.Effects.ModifierOrigin.Synergy
+                    && buf[i].stat == Wassup.Battle.Effects.StatKind.DamageMul)
+                    // ModifierAuthoring.FromMultiplier 역변환: ≥1 배율은 Additive(delta), <1 은 Multiplicative.
+                    return buf[i].op == Wassup.Battle.Effects.CombineOp.Additive
+                        ? 1f + buf[i].magnitude
+                        : buf[i].magnitude;
+            return 1f;
         }
 
         private static DefenderCatalog FindCatalog()
