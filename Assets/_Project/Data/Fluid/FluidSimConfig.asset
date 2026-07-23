@@ -16,15 +16,16 @@ MonoBehaviour:
   dyeResolution: 256
   pressureIterations: 20
   velocityDissipation: 0.15
-  densityDissipation: 0.4
+  densityDissipation: 1.1
   pressure: 0.8
-  curl: 22
-  splatRadius: 0.25
+  curl: 18
+  splatRadius: 0.55
   splatForce: 6000
-  ambientEmitters: 3
+  ambientEmitters: 4
   ambientDrift: 0.14
-  ambientFlow: 11
-  ambientColorAmount: 0.055
+  ambientFlow: 14
+  ambientColorAmount: 0.07
   ambientColorCycle: 0.05
   palette: []
+  seedSplats: 4
   preferHalfFloat: 1

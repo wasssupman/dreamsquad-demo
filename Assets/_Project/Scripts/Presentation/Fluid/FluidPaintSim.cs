@@ -14,8 +14,6 @@ namespace Wassup.Presentation
         [SerializeField] private Material solverMaterial;
         [Tooltip("RT 종횡비 산출용 기준 크기. 표면 어댑터가 SetSurfaceSize 로 갱신")]
         [SerializeField] private Vector2Int referenceSize = new(512, 512);
-        [Tooltip("활성화 시 즉시 뿌리는 씨앗 색 얼룩 수 — 배경이 검게 시작하지 않게(속도 없음). 0=없음")]
-        [SerializeField] private int seedSplats = 10;
 
         // 패스 인덱스 — FluidSolver.shader 의 SubShader 패스 순서와 반드시 일치.
         private const int PassAdvection = 0;
@@ -191,22 +189,28 @@ namespace Wassup.Presentation
         // 원본 correctRadius — 가로가 긴 화면에서 splat 이 세로로 눌리지 않게 aspect 보정.
         private static float CorrectRadius(float radius, float aspect) => aspect > 1f ? radius * aspect : radius;
 
-        // 연속 유동: 방출기 몇 개가 부드럽게 배회하며 매 프레임 은은한 색·힘을 흘려 넣는다.
-        // 무작위 위치·강한 임펄스(방울 터짐)가 아니라, 코히런트한 방향으로 이어지는 리본 → "흐르는 액체".
+        // 가장자리 유입: 각 방출기가 한 변에 붙어 천천히 미끄러지며 안쪽으로 색·힘을 흘려 넣는다.
+        // 중앙 배회가 아니라 "화면 밖에서 스며드는" 느낌 — 안쪽으로 갈수록 dye 감쇠로 옅어져 가장자리 위주로 남는다.
         private void EmitFlow()
         {
             int n = config.ambientEmitters;
             if (n <= 0) return;
             float t = Time.time;
+            const float inset = 0.14f; // 변 안쪽에서 주입 — 너무 붙으면 가우시안 절반이 화면 밖으로 샌다
             for (int e = 0; e < n; e++)
             {
-                // 위상이 다른 사인 합으로 화면 안쪽을 부드럽게 배회(가장자리 붙박이 방지).
-                float px = 0.5f + 0.30f * Mathf.Sin(t * config.ambientDrift * (0.70f + 0.13f * e) + e * 2.1f);
-                float py = 0.5f + 0.30f * Mathf.Sin(t * config.ambientDrift * (0.53f + 0.11f * e) * 1.3f + e * 4.2f);
-                // 진행 방향도 서서히 회전 → 흐름이 감기며 컬을 만든다.
-                float ang = t * config.ambientDrift * 1.7f + e * 2.0f + Mathf.Sin(t * 0.11f + e) * 1.4f;
-                var dir = new Vector2(Mathf.Cos(ang), Mathf.Sin(ang));
-                Splat(new Vector2(px, py), dir * config.ambientFlow, PickFlowColor(e, t));
+                int edge = e % 4; // 0=좌 1=우 2=하 3=상 — 방출기를 네 변에 분배
+                float slide = 0.5f + 0.42f * Mathf.Sin(t * config.ambientDrift * (0.6f + 0.09f * e) + e * 1.7f);
+                float wob = Mathf.Sin(t * config.ambientDrift * 2.3f + e) * 0.25f; // 접선 흔들림(직선 유입 방지)
+                Vector2 uv, dir;
+                switch (edge)
+                {
+                    case 0: uv = new Vector2(inset, slide);        dir = new Vector2(1f, wob); break;   // 좌 → 우
+                    case 1: uv = new Vector2(1f - inset, slide);   dir = new Vector2(-1f, wob); break;  // 우 → 좌
+                    case 2: uv = new Vector2(slide, inset);        dir = new Vector2(wob, 1f); break;   // 하 → 상
+                    default: uv = new Vector2(slide, 1f - inset);  dir = new Vector2(wob, -1f); break;  // 상 → 하
+                }
+                Splat(uv, dir.normalized * config.ambientFlow, PickFlowColor(e, t));
             }
         }
 
@@ -227,9 +231,10 @@ namespace Wassup.Presentation
         }
 
         // 씨앗 — 속도 없이 은은한 색 얼룩만(터지는 임펄스 아님). 유동이 이어받아 밀어 섞는다.
+        // config.seedSplats=0 이면 빈 화면에서 가장자리 유입으로만 서서히 채워진다(유입감).
         private void SeedField()
         {
-            int seeds = Mathf.Max(0, seedSplats);
+            int seeds = Mathf.Max(0, config.seedSplats);
             for (int i = 0; i < seeds; i++)
             {
                 var uv = new Vector2(Random.value, Random.value);
