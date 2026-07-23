@@ -78,10 +78,16 @@ namespace Wassup.Data.MapGrid
             if (spawns == null || spawns.Length < 1 || spawns.Length > 4)
                 Debug.LogError($"[MapDocument] spawns.Length 는 1~4 (현재 {spawns?.Length ?? 0})", this);
 
-            // goals 빈 배열/null = primary [goal] 폴백(레거시 asset·미authored) → 유효. 상한만 검증.
+            // goals 빈 배열/null = primary [goal] 폴백(레거시 asset·미authored) → 유효. 상한·범위만 검증.
             // (Unity 는 신규 배열 필드를 기존 asset 에 length-0 으로 직렬화하므로 length<1 은 에러 아님.)
-            if (goals != null && goals.Length > 4)
-                Debug.LogError($"[MapDocument] goals.Length 는 최대 4 (현재 {goals.Length})", this);
+            if (goals != null)
+            {
+                if (goals.Length > 4)
+                    Debug.LogError($"[MapDocument] goals.Length 는 최대 4 (현재 {goals.Length})", this);
+                foreach (var g in goals)
+                    if (g.x < 0 || g.x >= width || g.y < 0 || g.y >= height)
+                        Debug.LogError($"[MapDocument] goal {g} 이 격자 밖 ({width}×{height})", this);
+            }
         }
 #endif
     }

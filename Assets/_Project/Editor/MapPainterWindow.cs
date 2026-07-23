@@ -233,8 +233,9 @@ namespace Wassup.EditorTools
             var errs = new List<string>();
             if (_tiles == null) { errs.Add("격자 없음"); return errs; }
 
-            if (_spawns.Count < 1 || _spawns.Count > 4)
-                errs.Add($"스폰 {_spawns.Count}개 (1~4 필요)");
+            // 런타임 MapConnectivity 가 스폰 <2 를 거부(fallback linear 로 교체)하므로 authoring 에서 ≥2 강제.
+            if (_spawns.Count < 2 || _spawns.Count > 4)
+                errs.Add($"스폰 {_spawns.Count}개 (2~4 필요)");
             foreach (var s in _spawns)
                 if (!IsWalk(s.x, s.y)) errs.Add($"스폰 ({s.x},{s.y}) 이 Walk 아님");
             if (_goals.Count < 1 || _goals.Count > 4)

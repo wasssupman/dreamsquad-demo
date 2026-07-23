@@ -36,6 +36,15 @@
 - **예산 불변**: 누수=이벤트 카운트, 골 개수 무관. budget-equality·same-map-same-wave 승계.
 - 골 비주얼 앵커·튜토리얼은 primary(goals[0]) 만 지목(의도 — 골별 구분은 후속).
 
+## Review (feature-end, 2026-07-23)
+
+2인 코드리뷰 — 정합성/놓친 소비처 **SOUND**(0 BLOCKER/MAJOR, 놓친 게임플레이 골 소비처 0, 5맵 데이터 검증), 엣지/테스트 0 BLOCKER. 반영:
+
+- **m3(authoring 버그)**: 페인터가 1-스폰 허용했으나 런타임은 ≥2 요구 → 페인터 검증 `<2` 로 수정(MapPainterWindow).
+- **M2/M1(테스트 공백)**: `FlowFieldSingletonTests`(IsGoalCell 멤버십/폴백/중복) + `MultiGoalPoolSeparationTests`(풀 5맵 각 스폰=자기 골 basin 분리, throwaway akmaps_mg.py 를 영구 회귀로 승격) 신설. EditMode 1287.
+- **m6/m7**: OnValidate 골 in-bounds 검증 추가, goalCell 주석을 "픽스처 폴백 전용"으로 정정.
+- **미반영(취향/저가치)**: m4 폴백 관용구 공유헬퍼(컨테이너 타입 상이로 부분통합만), m5 스펙 파일명 `2_goal_reached_dist_zero.md`(내용에 pivot 명시돼 있어 유지), m8 goal==spawn degenerate assert.
+
 ## Follow-up
 
 - **사용자 Play**: 각 스폰 자기 골 독립 진행·모든 골 누수·N개 골 렌더 육안. PlayMode `MovementIntegritySmokeTest` 는 IsGoalCell proxy 로 전환됨(멀티골 풀 green).

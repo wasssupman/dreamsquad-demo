@@ -12,7 +12,8 @@ namespace Wassup.Battle.Effects
         public NativeArray<float2> flow;        // [width * height], 각 cell 의 단위 방향. goal = zero.
         public NativeArray<int>    dist;        // BFS cost from nearest goal. Unreachable = int.MaxValue.
         public int2                gridSize;    // (Width, Height)
-        public int2                goalCell;    // primary = goals[0]. goals 미설정 픽스처의 폴백 기준.
+        public int2                goalCell;    // 픽스처 폴백 전용 기준(goals 미설정 시 IsGoalCell 이 이걸 씀).
+                                                // 프로덕션 BuildFlowField 는 goals 를 항상 채우므로 여기선 읽히지 않음.
         public NativeArray<int2>   goals;       // multi-goal-map — 골 집합. 미설정 시 goalCell 폴백.
         public float               tileSize;
         public float3              origin;      // board 월드 원점 (Tilemap 모드 = zero 고정). map-origin-placement.
