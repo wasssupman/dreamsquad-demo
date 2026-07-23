@@ -19,6 +19,10 @@ namespace Wassup.Data.StatImport
         public CardType? type;
         public CardTargetAxis? axis;
         public string description;
+        // dreamcatcher-card-visibility unit 0 — 0 = 인벤토리 숨김. 이름이 SO 와 1:1 이라
+        // exporter/applier 변경 없이 reflection 이 양방향을 처리하고, 서버는 새 키를
+        // 오른쪽 새 열로 추가한다. 빈 셀은 null → 기존 값 유지(blank=keep).
+        public int? visible;
     }
 
     // Sheet-SoT child row (effects[] rebuild): slot is the ordering/identity key.

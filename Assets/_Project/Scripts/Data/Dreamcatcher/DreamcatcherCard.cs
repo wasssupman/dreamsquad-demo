@@ -51,6 +51,11 @@ namespace Wassup.Data
     {
         public string id;
         public string displayName;
+        // dreamcatcher-card-visibility unit 0 — 인벤토리 노출 스위치. 0 = 숨김(덱 페이지
+        // 컬렉션에서 제외 + 로그인 시 저장 덱에서 장착 해제), 그 외 = 노출. 시트 DcCards
+        // 탭의 같은 이름 컬럼과 1:1. 기존 에셋은 YAML 에 이 키가 없어 초기값 1 을 유지하므로
+        // 백필하지 않는다(id 처럼 비면 매칭이 깨지는 키가 아니라 기본값이 곧 정답).
+        public int visible = 1;
         public CardTargetAxis axis;
         // deck-builder no longer keys deck rules on this (that moved to CardType), but it
         // is load-bearing: DeckBuilderView reads category==Subconscious for the 무의식

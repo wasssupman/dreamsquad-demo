@@ -53,6 +53,11 @@ namespace Wassup.UI
                 var c = catalog.ById(id);
                 if (c == null) continue;
                 if (c.category == CardCategory.Subconscious) continue; // gift-phase only, not addable
+                // dreamcatcher-card-visibility unit 1 — 시트에서 숨긴 카드. _pool 이 곧
+                // 그리드 소스이자 추가 가능 목록이라 이 한 줄이 "보이지도, 넣을 수도 없다"를
+                // 동시에 만든다. 이미 덱에 있는 숨김 카드를 여기서 빼지는 않는다 — 이 페이지는
+                // 명시적 Save 계약이라 임의 편집을 만들면 안 되고, 장착 해제는 로그인 prune 담당.
+                if (c.visible == 0) continue;
                 _pool.Add(c);
             }
         }
