@@ -25,22 +25,25 @@
 
 ## 제작된 맵 (풀 5장, asset 파일명 유지 = GUID 안정)
 
-| asset (기존명) | 새 모양 | 스폰/골 | 실루엣 |
-|---|---|---|---|
-| Serpent | TwoRivers | 2/2 | 상하 평행 S 복도 |
-| Coil | Trident | 3/3 | 좌측 빗살 3 복도 |
-| Twin | Ladder | 2/2 | 수직 serpentine 2 |
-| Spiral | Zig3 | 3/3 | 밴드 지그재그 3 |
-| Zig | Corners | 2/2 | 반대코너 대형 L 2 |
+**골 1~2개**(2026-07-23 사용자: 목표지점 1~2개만). **혼합** 구조 — 분리 맵(2스폰/2골, 각자 출구)과 수렴 맵(3스폰/1골, 다중 입구→1 출구):
 
-전부 **분리 복도 = 각 스폰 자기 골**(서로 한 칸도 안 만남), 이동 ≥20, 2×2 없음, ≤20×12. (파일명↔모양 불일치는 GUID 유지 위한 것 — 배선/덱 페어링 불변.)
+| asset (기존명) | 새 모양 | 스폰/골 | 구조 | 실루엣 |
+|---|---|---|---|---|
+| Serpent | TwoRivers | 2s/2g | 분리 | 상하 평행 S, 각자 출구 |
+| Coil | Funnel3 | 3s/1g | 수렴 | 좌측 3입구 → 우측 1출구 |
+| Twin | Ladder | 2s/2g | 분리 | 수직 serpentine 2, 각자 출구 |
+| Spiral | Delta3 | 3s/1g | 수렴 | 상단 3입구 → 하단 1출구 |
+| Zig | Corners | 2s/2g | 분리 | 반대코너 대형 L 2, 각자 출구 |
+
+이동 ≥20, 2×2 없음, ≤20×12. **복도는 골 셀에서만 만난다**(분리 맵=완전 분리, 수렴 맵=골에서만 합류 — non-goal 병합 없음). 파일명↔모양 불일치는 GUID 유지 위한 것(배선/덱 페어링 불변).
 
 ## 완료 기준
 
-- [x] 분리복도 멀티골 맵 5장(검증기 통과: 복도 완전 분리·자기 골 도달·2×2 없음·≥20)
+- [x] 혼합 맵 5장(골 1~2, 검증기 통과: 복도 골에서만 합류·각 스폰 도달·2×2 없음·≥20)
 - [x] 풀 GUID 유지 덮어쓰기, 배선/덱 페어링 불변(execute_code WriteToDocument)
-- [x] 데이터 검증: 5맵 전부 docGoals=genGoals, connectivity=True. 실 sim: Coil 3골 flow field 각 골 dist=0·각 스폰 자기 복도로 dist=19 도달(최근접-골 라우팅 실증)
-- [ ] (사용자) Play — 각 스폰이 자기 골로 독립 진행, 모든 골 누수 작동, 골 마커/구조물 N개 렌더 정상
-- [x] EditMode green(1278), 콘솔 bake 에러 0
+- [x] 데이터 검증: 5맵 골 1~2·connectivity=True. 수렴 실 sim: Coil/Spiral 3스폰 전부 1골(dist=0) 도달
+- [x] 회귀 가드: `MultiGoalPoolSeparationTests` 재작성 — 골 ≤2·각 스폰 도달·복도 non-goal 병합 금지(분리/수렴 공통). EditMode 1287 green
+- [ ] (사용자) Play — 분리 맵 각자 출구·수렴 맵 다중입구→1출구, 누수 작동, 골 마커/구조물 렌더 정상
+- [x] 콘솔 bake 에러 0
 
-확인 2026-07-23 — 검증기(scratchpad/akmaps_mg.py)로 5맵 설계·검증 후 execute_code 로 풀 asset GUID 유지 덮어쓰기. 멀티골 데이터·connectivity·flow field 실증. 사용자 Play 육안만 남음.
+확인 2026-07-23 — 검증기(scratchpad/akmaps_mix.py, 수렴 허용)로 5맵 설계·검증 후 GUID 유지 덮어쓰기. 사용자 Play 육안만 남음.
