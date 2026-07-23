@@ -10,6 +10,10 @@ namespace Wassup.Bridge
         Occupied,
         InvalidUnit,
         NotInPickedPool,
-        InsufficientCost
+        InsufficientCost,
+        // defender-relocation unit 0 — 재배치 전용 사유 (뒤에 추가: 기존 직렬화 값 보존)
+        NoDefenderAtSource,
+        SourceBusy,
+        SameCell
     }
 }

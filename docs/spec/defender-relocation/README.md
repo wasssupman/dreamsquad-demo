@@ -72,3 +72,6 @@ UX 는 기존 배치와 대칭: 홀드로 이동모드 진입(슬로모) → 탭
 - **어그로 chase 재계산** — 가디언 이동 시 쫓던 적은 옛 목적지로 감(aggro-tile-chase 백로그와 합류).
 - **이동 가능 타일 프리하이라이트** — 이동모드 진입 시 유효 타일 표시(`placement-attack-range-preview` 재사용).
 - **재전개 시각 연출 고도화** — 현 스코프는 기존 PendingDeployment 표현 재사용.
+- **effect-tile × relocate 정책** — 현재 effect-tile 적용은 on-place 가드와 같은 exactly-once 라
+  이동해도 원 타일 효과가 유지되고 새 타일 효과는 미적용(계약 4 와 일관, unit 0 관측). 효과 타일 위/밖
+  이동이 잦아지면 "타일 이탈 시 해제 + 진입 시 적용" 재설계 후보.

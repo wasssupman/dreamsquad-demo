@@ -24,19 +24,27 @@ unit 2~3 은 이 API 를 호출만 한다.
    - `LocalTransform` 은 여기서 건드리지 않는다(착지 프레임 — Finish 담당).
 2. **`void FinishDefenderRelocation(Vector2Int to, Entity entity)`**
    - `LocalTransform` position = `GridToWorldCenter(to, spawnHeight)` (스폰 L4662 와 동일 y 규칙, rotation/scale 유지).
-3. **`ActivateDeployedDefender(cell, entity, facing, bool triggerOnPlace = true)`**
-   - relocate 는 `triggerOnPlace: false` + `facing: zero` 로 호출 → `TriggerDeploymentOnPlaceSkill`(L4259) 스킵,
-     기존 `DeployedFacing` 유지(zero 면 AddComponentData 하지 않는 기존 가드 그대로).
+3. **활성화 = 기존 `ActivateDeployedDefender(cell, entity)` 그대로 재사용 (플래그 불필요 — 구현서 정정)**
+   - `_onPlaceTriggeredEntities` 가드 셋이 이미 on-place·effect-tile 을 **entity 당 exactly-once** 로
+     만들므로(양 배치 경로 모두 등록 확인), relocate 재활성화는 자동으로 재발화하지 않는다.
+     BattleBridge.cs 시그니처 변경 0 — 공유 파일 접촉 최소화.
+   - 2-인자 오버로드 사용 → 기존 `DeployedFacing` 컴포넌트 유지(계약 3).
    - `RecomputeSynergyFor(to)` 는 기존 활성화 경로가 이미 수행(L4263) — 중복 호출 금지.
 4. **판정 순수 함수 분리**: relocate 가부(존재/진행중/동일셀/공간) 판정을 plain 입력 순수 static
    `RelocationCheck` 로 → EditMode 테스트 대상 (CLAUDE.md 제약 10 — 분기 다단계라 추출 요건 충족).
-5. **디버그 진입점**: 에디터 전용 컨텍스트 메뉴 또는 기존 디버그 메뉴에 "relocate (from,to)" 1개 —
-   unit 1~3 없이 이 unit 단독 검증용.
+5. **검증 진입점**: `RelocationDebugMenu`(에디터 메뉴, 사람용) + **PlayMode 스모크 테스트**
+   `RelocationSmokeTest`(자동 검증용 — 원격/unfocused 에디터에서 Play 중 메뉴 실행이 불가한 환경 제약).
 
 ## 완료 기준
 
-- [ ] 컴파일 클린 (`dotnet build` 또는 Unity 콘솔 에러 0)
-- [ ] EditMode: `RelocationCheck` 테스트 통과 (유효 / from 비어있음 / 진행중 / 동일셀 / to 무효·점유)
-- [ ] 에디터 Play: 디버그 진입점으로 Begin→Finish→Activate 즉시 연쇄 실행 시 유닛이 새 타일에서
-      정상 전투 재개, 시너지 배율이 양쪽 셀에서 갱신, 원래 타일에 새 유닛 배치 가능
-- [ ] 이동 직후 유닛 사망 시 점유 해제가 to 셀에서 일어남 (`DrainDefenderDeathEvents` 셀 일관성)
+- [x] 컴파일 클린 (Unity 콘솔 에러 0)
+- [x] EditMode: `RelocationCheck` 테스트 통과 (유효 / from 비어있음 / 진행중 / 동일셀 / to 무효·점유·경계밖) — 7/7
+- [x] Play 검증(PlayMode `RelocationSmokeTest` 2/2): Begin→Finish→Activate 연쇄에서 점유·바인딩·
+      `DefenderTile` 스왑, `PendingDeployment` 부착/해제, busy 재이동 `SourceBusy` 거부,
+      `LocalTransform` 타이밍(Begin 불변·Finish 이동), 시너지 양쪽 재계산(1.1↔1.0), 원 타일 재배치 성공
+- [x] 이동 직후 유닛 사망 시 점유 해제가 to 셀에서 일어남 — 코드 경로 확인(`DefenderTile`=to 를
+      `UnitLifecycleSystem` 이 death 이벤트에 적재, drain 이 그 셀로 해제). 실전 발화는 unit 3 Play 에서 재확인
+
+2026-07-23 자동 검증 통과 (EditMode 7 + PlayMode 2, 에디터 실행). **관측 노트**: 라이브 BattleScene 은
+`enableAdjacencySynergy: 0`(시너지 비활성) — relocate 의 재계산 호출은 플래그 무관하게 유지되며,
+스모크 테스트는 플래그를 테스트 스코프에서만 켜서 계약을 검증한다.
