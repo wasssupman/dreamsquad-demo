@@ -49,8 +49,10 @@ namespace Wassup.Bridge
         // subscribers no-op. EnemyKilledAwakening carries the kill's baked grant.
         // DefenderDied carries the dead entity (unit-card recovery key) + its SO
         // (subscriber reads data.awakeningReward).
-        public event System.Action<int> EnemyKilledAwakening;
-        public event System.Action<Entity, Wassup.Data.DefenderUnitData> DefenderDied;
+        // dreamcatcher-orb-dock unit 3 — 흡수 비행용으로 사망 view-space 위치를 함께 실어보낸다
+        // (기존 sim 데이터 surfacing; 새 ECS write 아님). 구독자는 컨트롤러 하나뿐이라 안전.
+        public event System.Action<int, Vector3> EnemyKilledAwakening;
+        public event System.Action<Entity, Wassup.Data.DefenderUnitData, Vector3> DefenderDied;
         // subconscious-curse-expansion unit 2 (살찌운 제물) — 표식 악몽 소멸(처치 또는
         // 유출) 알림. 컨트롤러가 카드 회수(큐 복귀)에 구독한다. 처치/유출의 보상 차이는
         // 이 이벤트가 아니라 표식 시점의 AwakeningReward 베이크가 만든다(처치=배율 보상

@@ -40,6 +40,9 @@ namespace Wassup.Core
         // dreamcatcher-orb-dock unit 4 — 게이지가 상한이라 획득분이 소멸(넘침)할 때 손실량을
         // 알린다. 뷰가 오버플로우 경고 연출을 구동(손실 회피 신호). Mono 전용.
         public event System.Action<int> AwakeningOverflowed;
+        // dreamcatcher-orb-dock unit 3 — 실제 적용된 획득량 + 사망 view-space 위치. 항아리 뷰가
+        // 킬 위치에서 피규어를 날려보내는 흡수 비행을 구동한다. Mono 전용(bridge→controller→view).
+        public event System.Action<int, Vector3> AwakeningGainedAt;
         public event System.Action<HandChangeReason> HandChanged;
         // unit-dreamcatcher-icons unit 0 — fires only when the attach registry
         // actually changes (attach / death recovery / placement reset).
@@ -231,11 +234,12 @@ namespace Wassup.Core
 
         // ── Gauge ────────────────────────────────────────────────────────────
 
-        private void OnEnemyKilledAwakening(int reward) => GainAwakening(reward);
+        private void OnEnemyKilledAwakening(int reward, Vector3 sourceWorldPos)
+            => GainAwakening(reward, sourceWorldPos);
 
-        private void OnDefenderDied(Entity entity, DefenderUnitData data)
+        private void OnDefenderDied(Entity entity, DefenderUnitData data, Vector3 sourceWorldPos)
         {
-            GainAwakening(data != null ? data.awakeningReward : 0);
+            GainAwakening(data != null ? data.awakeningReward : 0, sourceWorldPos);
 
             // Card recovery: every entry hosted by the dead defender rejoins the
             // queue at the back (death order = recovery order). Squad entries
@@ -277,7 +281,7 @@ namespace Wassup.Core
             AttachmentsChanged?.Invoke();
         }
 
-        private void GainAwakening(int reward)
+        private void GainAwakening(int reward, Vector3 sourceWorldPos)
         {
             if (reward <= 0) return;
             int next = Mathf.Min(Gauge + reward, GaugeMax); // overflow is lost
@@ -287,6 +291,9 @@ namespace Wassup.Core
             if (next == Gauge) return;
             Gauge = next;
             GaugeChanged?.Invoke(Gauge);
+            // unit 3 — 흡수 비행: 실제 적용된 획득량 + 사망 view-space 위치를 뷰로 흘려
+            // 킬 위치에서 피규어가 날아오게 한다(입자=피규어).
+            AwakeningGainedAt?.Invoke(applied, sourceWorldPos);
         }
 
         // ── Hand / use API (views call Commit* at pending-commit time) ───────

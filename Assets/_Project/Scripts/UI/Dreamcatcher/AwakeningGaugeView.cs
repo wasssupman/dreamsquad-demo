@@ -38,12 +38,14 @@ namespace Wassup.UI
         [SerializeField] private float baselineY = 18f;     // 하단 기준선
         [SerializeField] private float fallbackTrayHalf = 490f; // 트레이 미bind 시 폴백 반폭
 
-        [Header("Figure Pile (unit 2a)")]
+        [Header("Figure Pile (unit 2a) + Absorb Flight (unit 3)")]
         [SerializeField] private int maxFigures = 20;
         [SerializeField] private float figureRadius = 12f;
         [SerializeField] private float figureGravity = 1500f;
         [SerializeField] private float figureDamping = 0.9f;
-        [SerializeField] private float figureSpawnInterval = 0.06f;
+        [SerializeField] private float figureFlightSeconds = 0.44f; // 킬 위치→항아리 비행 시간
+        [SerializeField] private float figureFlightArc = 140f;      // 아치 솟음(px)
+        [SerializeField] private float figureFlightStagger = 0.05f; // 한 획득의 여러 피규어 간 지연
         [SerializeField] private Color[] figureTints =
         {
             new Color(0.62f, 0.5f, 0.9f, 1f),
@@ -70,6 +72,12 @@ namespace Wassup.UI
         private Image _rim;
         private Image _fill;
         private JarFigurePile _pile;
+        // unit 3 — 흡수 비행. 킬 위치에서 항아리로 날아가는 고스트 → 도착 시 pile.SpawnAtTop.
+        private RectTransform _safeArea;
+        private Sprite _figureSprite;
+        private int _pendingFlights;
+        // committed = 실제 pile 개수 + 비행 중. 게이지 목표와 이걸로 대사(desync 방지).
+        private int FiguresCommitted => (_pile != null ? _pile.ActiveCount : 0) + _pendingFlights;
         private TextMeshProUGUI _valueLabel;
         private TextMeshProUGUI _gainLabel;
         private bool _built;
@@ -112,6 +120,7 @@ namespace Wassup.UI
             {
                 handController.GaugeChanged += OnGaugeChanged;
                 handController.AwakeningOverflowed += OnOverflow;
+                handController.AwakeningGainedAt += OnAwakeningGainedAt;
             }
             if (GameManager.Instance != null)
             {
@@ -126,6 +135,7 @@ namespace Wassup.UI
             {
                 handController.GaugeChanged -= OnGaugeChanged;
                 handController.AwakeningOverflowed -= OnOverflow;
+                handController.AwakeningGainedAt -= OnAwakeningGainedAt;
             }
             if (GameManager.Instance != null)
                 GameManager.Instance.PhaseChanged -= OnPhaseChanged;
@@ -139,6 +149,115 @@ namespace Wassup.UI
             if (_panel == null || !_panel.activeInHierarchy) return;
             if (_overflow != null) StopCoroutine(_overflow);
             _overflow = StartCoroutine(OverflowFlashRoutine());
+        }
+
+        // ── 흡수 비행 (unit 3) ────────────────────────────────────────────────
+
+        // 게이지 → 목표 피규어 수(반올림). 피규어 판독의 이산 단위.
+        private int FiguresForGauge(int gauge)
+        {
+            int max = handController != null ? handController.GaugeMax : 100;
+            if (max <= 0 || _pile == null) return 0;
+            return Mathf.Clamp(Mathf.RoundToInt((float)gauge / max * _pile.Capacity), 0, _pile.Capacity);
+        }
+
+        // 정착 피규어를 목표까지 줄인다(소비/리셋/오버슈트 보정). 비행 중은 도착 시 재보정.
+        private void TrimToTarget(int gauge)
+        {
+            if (_pile == null) return;
+            int target = FiguresForGauge(gauge);
+            while (_pile.ActiveCount > target) _pile.RemoveTop();
+        }
+
+        // 킬/사망 위치에서 피규어가 날아온다(입자=피규어). 획득으로 늘어난 목표만큼 비행 발사.
+        private void OnAwakeningGainedAt(int applied, Vector3 worldPos)
+        {
+            if (_pile == null || handController == null) return;
+            int delta = FiguresForGauge(handController.Gauge) - FiguresCommitted;
+            if (delta <= 0) return;
+
+            bool canFly = _panel != null && _panel.activeInHierarchy && _safeArea != null && _figureSprite != null;
+            Vector2 endLocal = default, startLocal = default;
+            bool haveEnd = canFly && TryJarTopLocal(out endLocal);
+            bool haveStart = canFly && TryWorldToSafeAreaLocal(worldPos, out startLocal);
+
+            for (int i = 0; i < delta; i++)
+            {
+                if (haveStart && haveEnd)
+                {
+                    StartCoroutine(FlightRoutine(startLocal, endLocal, i * figureFlightStagger));
+                    _pendingFlights++;
+                }
+                else
+                {
+                    _pile.SpawnAtTop(); // 폴백(패널 비활성/무효 좌표)
+                }
+            }
+        }
+
+        // 항아리 상단중앙을 SafeAreaRoot 로컬로(피규어 착지 지점).
+        private bool TryJarTopLocal(out Vector2 local)
+        {
+            local = default;
+            if (_jarFrame == null || _safeArea == null) return false;
+            Vector3 worldTop = _jarFrame.rectTransform.TransformPoint(new Vector3(0f, JarHeight, 0f));
+            Vector2 screen = RectTransformUtility.WorldToScreenPoint(null, worldTop);
+            return RectTransformUtility.ScreenPointToLocalPointInRectangle(_safeArea, screen, null, out local);
+        }
+
+        private bool TryWorldToSafeAreaLocal(Vector3 world, out Vector2 local)
+        {
+            local = default;
+            if (_safeArea == null) return false;
+            if (_figureCamera == null) _figureCamera = Camera.main;
+            if (_figureCamera == null) return false;
+            Vector3 screen = _figureCamera.WorldToScreenPoint(world);
+            if (screen.z <= 0f) return false; // 카메라 뒤 → 무효(폴백 top 스폰)
+            return RectTransformUtility.ScreenPointToLocalPointInRectangle(_safeArea, screen, null, out local);
+        }
+
+        private Camera _figureCamera;
+
+        // 킬 위치 → 항아리 상단으로 아치 비행하는 고스트. 도착 시 pile.SpawnAtTop + 목표 보정.
+        private IEnumerator FlightRoutine(Vector2 startLocal, Vector2 endLocal, float delay)
+        {
+            var ghostGO = new GameObject("AbsorbGhost", typeof(RectTransform), typeof(Image));
+            ghostGO.transform.SetParent(_safeArea, false);
+            var grt = (RectTransform)ghostGO.transform;
+            grt.anchorMin = grt.anchorMax = new Vector2(0.5f, 0.5f);
+            grt.pivot = new Vector2(0.5f, 0.5f);
+            grt.sizeDelta = new Vector2(figureRadius * 2f, figureRadius * 2f);
+            grt.anchoredPosition = startLocal;
+            var gimg = ghostGO.GetComponent<Image>();
+            gimg.sprite = _figureSprite;
+            gimg.color = (figureTints != null && figureTints.Length > 0)
+                ? figureTints[Mathf.Abs(_pendingFlights) % figureTints.Length] : Color.white;
+            gimg.raycastTarget = false;
+
+            float wait = 0f;
+            while (wait < delay) { wait += Time.unscaledDeltaTime; yield return null; }
+
+            float dur = Mathf.Max(0.05f, figureFlightSeconds);
+            float t = 0f;
+            while (t < dur)
+            {
+                t += Time.unscaledDeltaTime;
+                float k = Mathf.Clamp01(t / dur);
+                float ease = 1f - (1f - k) * (1f - k);
+                Vector2 p = Vector2.Lerp(startLocal, endLocal, ease);
+                p.y += Mathf.Sin(k * Mathf.PI) * figureFlightArc; // 아치 솟음
+                grt.anchoredPosition = p;
+                grt.localScale = Vector3.one * Mathf.Lerp(1.1f, 0.85f, k);
+                yield return null;
+            }
+
+            Destroy(ghostGO);
+            _pendingFlights = Mathf.Max(0, _pendingFlights - 1);
+            if (_pile != null)
+            {
+                _pile.SpawnAtTop();
+                TrimToTarget(handController != null ? handController.Gauge : 0);
+            }
         }
 
         // 트레이 우측 엣지에 독을 정렬. 트레이·독 SafeAreaRoot 는 congruent(UiSafeAreaFitter)라
@@ -207,7 +326,9 @@ namespace Wassup.UI
                 fc.a *= 0.3f;
                 _fill.color = fc;
             }
-            if (_pile != null) _pile.SetTargetLevel(_normalized);
+            // unit 3 — 증가분은 흡수 비행(OnAwakeningGainedAt)이 채운다. 여기선 감소(소비/리셋)만
+            // 정착 피규어를 줄여 목표에 맞춘다(비행 중인 건 도착 시 self-correct).
+            TrimToTarget(value);
 
             int delta = _lastShown >= 0 ? value - _lastShown : 0;
             if (punch && value != _lastShown && _panel != null && _panel.activeInHierarchy)
@@ -254,6 +375,7 @@ namespace Wassup.UI
             _built = true;
 
             var roots = UiCanvasSetup.Ensure(gameObject, sortingOrder: 7);
+            _safeArea = roots.SafeAreaRoot; // unit 3 — 흡수 비행 고스트 부모(전체 화면)
 
             // 트레이 우측 분리 독. anchor 하단중앙, pivot 하단좌 → LateUpdate 가 x 를 트레이
             // 우측 엣지로 민다. 히트 영역 = 패널 전체(세로 항아리라 세로 히트 면적 충분).
@@ -329,14 +451,14 @@ namespace Wassup.UI
             pileRect.anchoredPosition = new Vector2(0f, InteriorPad);
             pileRect.sizeDelta = new Vector2(interiorW, interiorH);
             _pile = pileGO.AddComponent<JarFigurePile>();
-            var figureSprite = UiRoundedSprite.MakeCircle(48, Color.white, 5f, new Color(0.2f, 0.16f, 0.32f, 1f));
+            _figureSprite = UiRoundedSprite.MakeCircle(48, Color.white, 5f, new Color(0.2f, 0.16f, 0.32f, 1f));
             var pileParams = new JarSimParams
             {
                 gravity = figureGravity,
                 damping = figureDamping,
                 sleepMotionSq = 0.02f,
             };
-            _pile.Configure(maxFigures, figureRadius, pileParams, figureSprite, figureTints, figureSpawnInterval);
+            _pile.Configure(maxFigures, figureRadius, pileParams, _figureSprite, figureTints);
 
             // 큰 숫자(1순위). 채움/피규어 위에 아웃라인으로 항상 읽히게.
             var valueGO = new GameObject("Value", typeof(RectTransform));

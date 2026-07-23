@@ -2714,7 +2714,7 @@ namespace Wassup.Bridge
                 // tile/synergy state is consistent when subscribers run. Entity is
                 // already destroyed in ECS; it is passed as a registry KEY only.
                 if (hasBinding)
-                    DefenderDied?.Invoke(binding.entity, binding.data);
+                    DefenderDied?.Invoke(binding.entity, binding.data, GridCellToViewCenter(cell));
             }
         }
 
@@ -3098,7 +3098,9 @@ namespace Wassup.Bridge
                 // evt.killScore 를 쓰므로 전투 중 HUD 숫자 == _killScoreTotal 이다.
                 _killScoreTotal += evt.killScore;
                 // dreamcatcher-awakening-hand unit 1 — awakening economy relay.
-                EnemyKilledAwakening?.Invoke(evt.awakeningReward);
+                // unit 3 — 흡수 비행 시작점으로 사망 view-space 위치 동봉(sim→view).
+                EnemyKilledAwakening?.Invoke(evt.awakeningReward,
+                    Wassup.Core.BoardSpace.ToView((Vector3)evt.position));
                 // 살찌운 제물 — 표식 악몽 처치: 카드 회수 알림(보상은 위 relay 가
                 // 표식 시점에 배율된 baked 값으로 이미 지급).
                 NotifyEnemyGoneIfMarked(evt.entity);
