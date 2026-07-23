@@ -2,7 +2,8 @@
 
 ## Commit
 
-- unit 0 `65d7c7c0` orphan 에셋 4종 · unit 1 `8b41fd04` 디버그 맵설정 UI(-744줄) · unit 2 `83505375` BattleBridge legacy 소스 · unit 3 `eb0834c3` pre-MapGrid 생성기(-1,044줄) · unit 4 (이 커밋) MapGrid 절차 폴백 체인
+- unit 0 `65d7c7c0` orphan 에셋 4종 · unit 1 `8b41fd04` 디버그 맵설정 UI(-744줄) · unit 2 `83505375` BattleBridge legacy 소스 · unit 3 `78809293` pre-MapGrid 생성기(-1,044줄) · unit 4 `b7d570c6` MapGrid 절차 폴백 체인(-2,616줄)
+- 유닛 3·4 는 재커밋본(구 eb0834c3/5503a8c3 은 병행 세션 무관 파일이 스테이징에 쓸려 들어가 대체 — 내용 동일, 오염만 제거)
 
 ## Implemented
 
