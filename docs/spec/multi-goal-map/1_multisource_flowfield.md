@@ -35,9 +35,11 @@
 
 ## 완료 기준
 
-- [ ] BuildFlowField 가 goals(폴백 포함) 소스로 BuildFromSources 호출, temp 소스만 dispose(원본 goals 미dispose)
-- [ ] 단일골 맵 flow/dist 가 기존과 동일(회귀 스냅샷 비교)
-- [ ] goals 빈 생산자(폴백 경로)에서도 [goal]로 정상 필드(판 정지 없음)
-- [ ] 2골 임시 맵에서 각 셀 dist 가 최근접 골 기준(execute_code/EditMode 검증)
-- [ ] compile 0 error, EditMode green
-- [ ] **ecs-reviewer** 통과(flow field 굽기 경로 변경)
+- [x] BuildFlowField 가 goals(폴백 포함) 소스로 BuildFromSources 호출, temp 소스만 dispose(원본 goals 미dispose)
+- [x] 단일골 맵 flow/dist 가 기존과 동일(회귀 스냅샷 비교)
+- [x] goals 빈 생산자(폴백 경로)에서도 [goal]로 정상 필드(판 정지 없음)
+- [x] 2골 임시 맵에서 각 셀 dist 가 최근접 골 기준(execute_code/EditMode 검증)
+- [x] compile 0 error, EditMode green
+- [x] **ecs-reviewer** 통과(flow field 굽기 경로 변경)
+
+확인 2026-07-23 — compile 0, EditMode 1274 green(WaveForceReschedule 5건은 execute_code 잔류 실패였고 도메인 리로드 후 통과 재확인). 실증: (a) 단일 소스 BuildFromSources([goal]) == 기존 Build(goal) dist·flow 바이트 동일, (b) 양끝 2골에서 dist=최근접 골(중앙 x5=4=min(5,4), x3=3). ecs-reviewer: 소유권/double-dispose·allocator·게이트웨이 경계·예외안전 전부 SOUND, 지적 0.

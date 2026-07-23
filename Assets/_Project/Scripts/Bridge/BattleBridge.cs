@@ -693,9 +693,29 @@ namespace Wassup.Bridge
                 try
                 {
                     var gridSize = _generatedMap.gridSize;
-                    var goal = _generatedMap.goal;
+                    var goal = _generatedMap.goal;   // primary = goals[0] (FlowFieldSingleton.goalCell·폴백)
 
-                    FlowFieldBuilder.Build(walk, gridSize, goal, flow, dist);
+                    // multi-goal-map 유닛 1 — goals 전체를 소스로 N-소스 BFS(최근접-골 라우팅).
+                    // goals 미초기화/빈 생산자(라이브 폴백 BuildFallbackLinear·legacy)는 [goal] 로
+                    // 폴백(GeneratedMap-레벨). 원본 goals 는 GeneratedMap 소유 — dispose 금지.
+                    bool ownsSources;
+                    NativeArray<int2> sources;
+                    if (_generatedMap.goals.IsCreated && _generatedMap.goals.Length > 0)
+                    {
+                        sources = _generatedMap.goals; ownsSources = false;
+                    }
+                    else
+                    {
+                        sources = new NativeArray<int2>(1, Allocator.Temp); sources[0] = goal; ownsSources = true;
+                    }
+                    try
+                    {
+                        FlowFieldBuilder.BuildFromSources(walk, gridSize, sources, flow, dist);
+                    }
+                    finally
+                    {
+                        if (ownsSources) sources.Dispose();
+                    }
 
                     var data = new FlowFieldSingleton
                     {
