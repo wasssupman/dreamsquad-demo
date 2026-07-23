@@ -23,7 +23,7 @@
 
 - testrig 배치 EditMode **1293 중 1291 green**(0 fail, 2 skip=기존 Ignored). 신규 6 테스트: 파스 2(실측 body·구 스키마 방어) + 풀선택 4(실측 시드 %5==3·경계·ulong.MaxValue·결정론).
 - 실측 dev 서버 응답으로 스키마 확인(2026-07-23 curl): seed=9128566303723636648 → 5맵 풀에서 3번.
-- **사용자 Play 미확인**: 콘솔 `source=tournament` + 재입장 같은 인덱스, 중복 `play ok` 없음, 게스트/직접 Play `fallback0`.
+- **사용자 Play 확인 완료(2026-07-23)**: `source=tournament` 선택·재입장 동일 인덱스·중복 발행 없음·폴백 경로 정상.
 
 ## Notes (되돌리면 안 됨)
 

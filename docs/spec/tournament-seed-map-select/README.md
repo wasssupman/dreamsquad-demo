@@ -1,6 +1,6 @@
 # Tournament-Seed Map Select — 서버 시드 기반 맵 배정
 
-**상태: 구현 완료 2026-07-23 (유닛 0~2 EditMode 1291 green — 사용자 Play 확인 대기)**
+**상태: 완료 2026-07-23** (유닛 0~2 구현·EditMode 1291 green·**사용자 Play 확인 완료**)
 
 ## 목표
 

@@ -36,9 +36,9 @@
 ## 완료 기준
 
 - [x] EditMode: `SelectIndexFromTournamentSeed` — 실측 시드 9128566303723636648 % 5 == 3, count 1/0→0, ulong.MaxValue, 같은 입력=같은 출력 (4 테스트 green)
-- [ ] (사용자 Play) 로그인 상태 로비 입장 → 콘솔 `source=tournament`, 같은 토너먼트에서 재입장 시 같은 인덱스
-- [ ] (사용자 Play) 게스트/직접 Play → `source=fallback0`, 0번 맵
-- [ ] (사용자 Play) `fixedMapSeed != 0` → 기존 로컬 선택 유지(`source=debug`)
+- [x] (사용자 Play) 로그인 상태 로비 입장 → 콘솔 `source=tournament`, 같은 토너먼트에서 재입장 시 같은 인덱스
+- [x] (사용자 Play) 게스트/직접 Play → `source=fallback0`, 0번 맵
+- [x] (사용자 Play) `fixedMapSeed != 0` → 기존 로컬 선택 유지(`source=debug`)
 - [x] compile 0 error, EditMode green
 
-확인 2026-07-23 — testrig 배치 EditMode 1293 중 1291 green(신규 6 테스트 전부 포함). 라이브 분기 확인은 사용자 Play 대기.
+확인 2026-07-23 — testrig 배치 EditMode 1293 중 1291 green(신규 6 테스트 전부 포함). 사용자 Play 확인 완료 (커밋 d0bdb85d).

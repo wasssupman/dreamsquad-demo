@@ -23,10 +23,10 @@
 
 ## 완료 기준
 
-- [ ] (사용자 Play) 로비 입장 → BattleScene 도착 시점에 attempt 1개만 발행(콘솔 `play ok` 1회, 중복 발행 없음)
-- [ ] (사용자 Play) 시드 도착 시 `HasTournamentSeed == true`, 값 = 응답 `tournament.seed`
+- [x] (사용자 Play) 로비 입장 → BattleScene 도착 시점에 attempt 1개만 발행(콘솔 `play ok` 1회, 중복 발행 없음)
+- [x] (사용자 Play) 시드 도착 시 `HasTournamentSeed == true`, 값 = 응답 `tournament.seed`
 - [x] 새 발행 시작 시 이전 시드 클리어(BeginMatch 서두 무조건 클리어 — early return 앞)
-- [ ] (사용자 Play) 에디터 직접 Play(로비 미경유): 기존과 동일하게 OnEnable 발행, 회귀 없음
+- [x] (사용자 Play) 에디터 직접 Play(로비 미경유): 기존과 동일하게 OnEnable 발행, 회귀 없음
 - [x] compile 0 error, EditMode green
 
-확인 2026-07-23 — testrig 배치 EditMode 1293 중 1291 green. 라이브 항목은 사용자 Play 대기.
+확인 2026-07-23 — testrig 배치 EditMode 1293 중 1291 green. 사용자 Play 확인 완료 (커밋 90bb2fd3).
