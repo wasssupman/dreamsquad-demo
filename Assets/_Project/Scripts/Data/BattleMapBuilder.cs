@@ -83,12 +83,17 @@ namespace Wassup.Data
                 spawns[i] = new int2(0, laneYs[i]);
             laneYs.Dispose();
 
+            // multi-goal-map 유닛 0: 라이브 안전망이라 goals 를 명시 세팅([goal]).
+            var goals = new NativeArray<int2>(1, Allocator.Persistent);
+            goals[0] = new int2(w - 1, goalY);
+
             return new GeneratedMap
             {
                 tiles = tiles,
                 gridSize = new int2(w, h),
                 spawns = spawns,
                 goal = new int2(w - 1, goalY),
+                goals = goals,
                 seed = seed,
                 generatorVersion = generatorVersion,
             };

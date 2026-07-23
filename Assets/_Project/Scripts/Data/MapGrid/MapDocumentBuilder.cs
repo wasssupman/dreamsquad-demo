@@ -29,6 +29,15 @@ namespace Wassup.Data.MapGrid
             for (int i = 0; i < spawns.Length; i++)
                 spawns[i] = new int2(doc.Spawns[i].x, doc.Spawns[i].y);
 
+            // 멀티골: doc.Goals 있으면 그대로, 없으면 primary [doc.Goal] 폴백 (유닛 0 계약).
+            var docGoals = doc.Goals;
+            bool hasGoals = docGoals != null && docGoals.Count > 0;
+            var goals = new NativeArray<int2>(hasGoals ? docGoals.Count : 1, allocator);
+            if (hasGoals)
+                for (int i = 0; i < goals.Length; i++) goals[i] = new int2(docGoals[i].x, docGoals[i].y);
+            else
+                goals[0] = new int2(doc.Goal.x, doc.Goal.y);
+
             return new GeneratedMap
             {
                 tiles = tiles,
@@ -37,7 +46,8 @@ namespace Wassup.Data.MapGrid
                 propLayerId = propLayerId,
                 gridSize = new int2(w, h),
                 spawns = spawns,
-                goal = new int2(doc.Goal.x, doc.Goal.y),
+                goal = goals[0],
+                goals = goals,
                 seed = doc.AuthoringSeed,
                 generatorVersion = doc.GeneratorVersion,
             };
@@ -63,10 +73,23 @@ namespace Wassup.Data.MapGrid
             for (int i = 0; i < spawns.Length; i++)
                 spawns[i] = new Vector2Int(map.spawns[i].x, map.spawns[i].y);
 
+            // 멀티골: map.goals 있으면 그대로, 없으면 primary [map.goal] 폴백.
+            Vector2Int[] goals;
+            if (map.goals.IsCreated && map.goals.Length > 0)
+            {
+                goals = new Vector2Int[map.goals.Length];
+                for (int i = 0; i < goals.Length; i++)
+                    goals[i] = new Vector2Int(map.goals[i].x, map.goals[i].y);
+            }
+            else
+            {
+                goals = new[] { new Vector2Int(map.goal.x, map.goal.y) };
+            }
+
             doc.SetFrom(
                 map.gridSize.x, map.gridSize.y,
                 tiles, mergeDegree, chokepoint, propLayerId,
-                new Vector2Int(map.goal.x, map.goal.y),
+                goals,
                 spawns,
                 map.seed, map.generatorVersion);
         }

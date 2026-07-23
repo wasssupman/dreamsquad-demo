@@ -66,7 +66,7 @@ namespace Wassup.Tests.EditMode.MapGrid
             var doc = ScriptableObject.CreateInstance<MapDocument>();
             doc.SetFrom(w, h, tiles,
                 new byte[n], new bool[n], new byte[n],
-                new Vector2Int(w - 1, 2), new[] { new Vector2Int(0, 2) },
+                new[] { new Vector2Int(w - 1, 2) }, new[] { new Vector2Int(0, 2) },
                 seed: -1, version: 0);
 
             using var map = MapGridBattleAdapter.Build(0, s, doc);

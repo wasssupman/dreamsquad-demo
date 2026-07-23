@@ -12,7 +12,8 @@ namespace Wassup.Data.MapGrid
         [SerializeField] private byte[] mergeDegree;
         [SerializeField] private bool[] chokepoint;
         [SerializeField] private byte[] propLayerId;
-        [SerializeField] private Vector2Int goal;
+        [SerializeField] private Vector2Int goal;      // primary = goals[0]. 레거시 asset 폴백용(goals 비면 이 값).
+        [SerializeField] private Vector2Int[] goals;   // multi-goal 목록(1~4). 비면 [goal] 로 폴백.
         [SerializeField] private Vector2Int[] spawns;
 
         // -1 = 수동 입력, 그 외 값 = 절차적 결과 캐시.
@@ -27,7 +28,8 @@ namespace Wassup.Data.MapGrid
         public IReadOnlyList<byte> MergeDegree => mergeDegree;
         public IReadOnlyList<bool> Chokepoint => chokepoint;
         public IReadOnlyList<byte> PropLayerId => propLayerId;
-        public Vector2Int Goal => goal;
+        public Vector2Int Goal => (goals != null && goals.Length > 0) ? goals[0] : goal;   // primary
+        public IReadOnlyList<Vector2Int> Goals => goals;   // null/빈 가능 — 소비 시 [Goal] 폴백(ToGeneratedMap)
         public IReadOnlyList<Vector2Int> Spawns => spawns;
         public int AuthoringSeed => authoringSeed;
         public int GeneratorVersion => generatorVersion;
@@ -35,7 +37,7 @@ namespace Wassup.Data.MapGrid
         internal void SetFrom(
             int w, int h,
             MapTileType[] t, byte[] md, bool[] cp, byte[] pl,
-            Vector2Int g, Vector2Int[] s,
+            Vector2Int[] goalsArr, Vector2Int[] s,
             int seed, int version)
         {
             width = w;
@@ -44,7 +46,8 @@ namespace Wassup.Data.MapGrid
             mergeDegree = md;
             chokepoint = cp;
             propLayerId = pl;
-            goal = g;
+            goals = goalsArr;
+            goal = (goalsArr != null && goalsArr.Length > 0) ? goalsArr[0] : goal;   // primary 동기
             spawns = s;
             authoringSeed = seed;
             generatorVersion = version;
@@ -74,6 +77,11 @@ namespace Wassup.Data.MapGrid
 
             if (spawns == null || spawns.Length < 1 || spawns.Length > 4)
                 Debug.LogError($"[MapDocument] spawns.Length 는 1~4 (현재 {spawns?.Length ?? 0})", this);
+
+            // goals 빈 배열/null = primary [goal] 폴백(레거시 asset·미authored) → 유효. 상한만 검증.
+            // (Unity 는 신규 배열 필드를 기존 asset 에 length-0 으로 직렬화하므로 length<1 은 에러 아님.)
+            if (goals != null && goals.Length > 4)
+                Debug.LogError($"[MapDocument] goals.Length 는 최대 4 (현재 {goals.Length})", this);
         }
 #endif
     }
