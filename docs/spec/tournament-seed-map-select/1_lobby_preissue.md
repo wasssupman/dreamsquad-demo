@@ -29,4 +29,4 @@
 - [x] (사용자 Play) 에디터 직접 Play(로비 미경유): 기존과 동일하게 OnEnable 발행, 회귀 없음
 - [x] compile 0 error, EditMode green
 
-확인 2026-07-23 — testrig 배치 EditMode 1293 중 1291 green. 사용자 Play 확인 완료 (커밋 90bb2fd3).
+확인 2026-07-23 — testrig 배치 EditMode 1293 중 1291 green. 사용자 Play 확인 완료 (커밋 91a94ff6).

@@ -41,4 +41,4 @@
 - [x] (사용자 Play) `fixedMapSeed != 0` → 기존 로컬 선택 유지(`source=debug`)
 - [x] compile 0 error, EditMode green
 
-확인 2026-07-23 — testrig 배치 EditMode 1293 중 1291 green(신규 6 테스트 전부 포함). 사용자 Play 확인 완료 (커밋 d0bdb85d).
+확인 2026-07-23 — testrig 배치 EditMode 1293 중 1291 green(신규 6 테스트 전부 포함). 사용자 Play 확인 완료 (커밋 7ab854bc).

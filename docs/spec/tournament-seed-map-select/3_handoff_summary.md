@@ -2,7 +2,7 @@
 
 ## Commit
 
-- unit 0 `dcf3a204` tournament.seed 파싱 · unit 1 `90bb2fd3` 로비 선발행+시드 노출 · unit 2 `d0bdb85d` 맵풀 인덱스 교체
+- unit 0 `c937a9d7` tournament.seed 파싱 · unit 1 `91a94ff6` 로비 선발행+시드 노출 · unit 2 `7ab854bc` 맵풀 인덱스 교체 (원격 rebase 후 확정 해시)
 
 ## Implemented
 
