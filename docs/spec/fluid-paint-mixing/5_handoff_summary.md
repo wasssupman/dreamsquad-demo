@@ -33,7 +33,9 @@
 - 컴파일 클린(전체 EditMode 1275 passed / 0 failed / 2 skipped-기존Ignore).
 - FluidMath TDD RED(CS0103)→GREEN 8/8.
 - unit 3 스크래치 Play: 콘솔 에러 0 + 물감-혼합 룩 스크린샷.
-- unit 4 컴포넌트: 컴파일 클린. 렌더 경로는 unit 3 기증명. **BattleScene 실배선·라이브 look 검증은 미완**(아래).
+- unit 4 BattleScene 배선 완료(DreamcatcherFluidBackdropCanvas, sortingOrder 4, HandGated). AlwaysOn 으로 실 보드 위 유체 렌더 Play-스크린샷 검증 후 HandGated 확정.
+- 앰비언트를 연속 유동으로 전환(사용자 피드백: 터짐/깜빡임 → 흐르는 액체). FluidScratch Play 로 마블 유동 확인.
+- **미완**: 실제 핸드-오픈 상태에서의 gated look 라이브 확인(MCP 로 핸드 여는 게 어려움) + 실기 perf.
 
 ## Notes (되돌리면 안 됨)
 
