@@ -12,13 +12,14 @@
   — 구독 → `OverflowFlashRoutine`(골드 림 3회 감쇠 깜빡임 + 짧은 통 흔들림). 상시 pulse 금지
   계약과 달리 이벤트 반응이라 허용.
 - **ready (완료, unit 1)**: `Gauge ≥ 최저 코스트` 시 rim 발화. 이번 유닛의 신규 작업 아님.
-- **바깥 탭 닫기 (Play 세션으로 이월)**: 손패 뒤 전체화면 캐처 → 빈 영역 탭 시 `Close`.
-  손패 backing 은 이미 "cancel region"(드래그 취소, DreamcatcherHandView.cs:822)이라 카드 드래그
-  ·드래그취소와의 상호작용 판별이 **Play 검증 필수**. 델리케이트한 손패 시스템에 미검증 상호작용
-  코드를 넣지 않는다 — unit 5 Play 세션에서 구현+검증. (현재도 항아리 재탭 → Close 경로 존재.)
+- **바깥 탭 닫기 (완료)**: `DreamcatcherHandView._dismissCatcher` — 손패 뒤 전체화면 캐처를
+  카드(`_panel`)보다 낮은 sibling 으로 두어 카드·backing(드래그 취소) 입력은 안 가로채고 손패
+  패널 바깥(보드) 탭만 `Close`. Open/Close/ForceClose 에서 토글. 항아리 독·NextWaveDock(order7)은
+  이 order5 캐처 위에서 정상. 항아리 재탭 → Close 도 유지.
 
 ## 완료 기준
 
-- **오버플로우**: compile 그린, 상한에서 킬 지속 시 골드 림 플래시(Play/실기 육안).
-- **닫기**: unit 5 Play 세션 — 바깥 탭 닫기가 카드 드래그·드래그취소를 깨지 않고, gap 오발이
-  수용 가능한지 라이브 확인 후 구현.
+- **오버플로우**: compile 그린. 라이브 하네스 — 패널 활성 시 `GainAwakening@max` →
+  `OverflowFlashRoutine` 기동, 숨김(Result 등)엔 가드 억제. 실기 골드 림 플래시 육안만 남음.
+- **닫기**: 라이브 배틀 하네스 — State UnitStrip→Hand→(캐처클릭)→UnitStrip, 캐처 active
+  True→False. gap 오발/실기 그립 육안은 후속.
