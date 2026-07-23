@@ -14,8 +14,8 @@ namespace Wassup.Presentation
         [SerializeField] private Material solverMaterial;
         [Tooltip("RT 종횡비 산출용 기준 크기. 표면 어댑터가 SetSurfaceSize 로 갱신")]
         [SerializeField] private Vector2Int referenceSize = new(512, 512);
-        [Tooltip("활성화 시 즉시 뿌리는 씨앗 splat 수 — 배경이 검게 시작하지 않게. 0=없음")]
-        [SerializeField] private int seedSplats = 16;
+        [Tooltip("활성화 시 즉시 뿌리는 씨앗 색 얼룩 수 — 배경이 검게 시작하지 않게(속도 없음). 0=없음")]
+        [SerializeField] private int seedSplats = 10;
 
         // 패스 인덱스 — FluidSolver.shader 의 SubShader 패스 순서와 반드시 일치.
         private const int PassAdvection = 0;
@@ -47,7 +47,6 @@ namespace Wassup.Presentation
 
         private readonly FluidRenderTargets _targets = new();
         private Material _mat;
-        private float _ambientAccumulator;
 
         // 소비자가 한 번만 잡으면 되는 고정 dye 핸들(내부 핑퐁과 무관).
         public RenderTexture DyeTexture => _targets != null ? _targets.Display : null;
@@ -68,9 +67,9 @@ namespace Wassup.Presentation
             };
             _targets.Allocate(config, Mathf.Max(1, referenceSize.x), Mathf.Max(1, referenceSize.y));
 
-            // 씨앗 splat — 첫 프레임부터 색이 있게(검은 화면 방지). Step 전이라 아직 흐르지 않지만
-            // 이어지는 Update 의 이류·컬이 곧바로 섞기 시작한다.
-            for (int i = 0; i < seedSplats; i++) EmitRandomSplat();
+            // 씨앗 — 첫 프레임부터 색이 있게(검은 화면 방지). 속도 없이 은은한 색 얼룩만 뿌려
+            // 이어지는 유동이 밀어 섞게 한다(터지는 임펄스 아님).
+            SeedField();
         }
 
         private void OnDisable()
@@ -97,7 +96,7 @@ namespace Wassup.Presentation
             // 솔버가 발산하는 것을 막는다(저프레임에선 실시간보다 느리게 흐를 뿐).
             float dt = Mathf.Min(Time.deltaTime, 1f / 60f);
             Step(dt);
-            EmitAmbient();
+            EmitFlow();
         }
 
         private void Step(float dt)
@@ -192,32 +191,50 @@ namespace Wassup.Presentation
         // 원본 correctRadius — 가로가 긴 화면에서 splat 이 세로로 눌리지 않게 aspect 보정.
         private static float CorrectRadius(float radius, float aspect) => aspect > 1f ? radius * aspect : radius;
 
-        private void EmitAmbient()
+        // 연속 유동: 방출기 몇 개가 부드럽게 배회하며 매 프레임 은은한 색·힘을 흘려 넣는다.
+        // 무작위 위치·강한 임펄스(방울 터짐)가 아니라, 코히런트한 방향으로 이어지는 리본 → "흐르는 액체".
+        private void EmitFlow()
         {
-            if (config.ambientSplatsPerSecond <= 0f) return;
-            _ambientAccumulator += Time.deltaTime * config.ambientSplatsPerSecond;
-            while (_ambientAccumulator >= 1f)
+            int n = config.ambientEmitters;
+            if (n <= 0) return;
+            float t = Time.time;
+            for (int e = 0; e < n; e++)
             {
-                _ambientAccumulator -= 1f;
-                EmitRandomSplat();
+                // 위상이 다른 사인 합으로 화면 안쪽을 부드럽게 배회(가장자리 붙박이 방지).
+                float px = 0.5f + 0.30f * Mathf.Sin(t * config.ambientDrift * (0.70f + 0.13f * e) + e * 2.1f);
+                float py = 0.5f + 0.30f * Mathf.Sin(t * config.ambientDrift * (0.53f + 0.11f * e) * 1.3f + e * 4.2f);
+                // 진행 방향도 서서히 회전 → 흐름이 감기며 컬을 만든다.
+                float ang = t * config.ambientDrift * 1.7f + e * 2.0f + Mathf.Sin(t * 0.11f + e) * 1.4f;
+                var dir = new Vector2(Mathf.Cos(ang), Mathf.Sin(ang));
+                Splat(new Vector2(px, py), dir * config.ambientFlow, PickFlowColor(e, t));
             }
         }
 
-        // 무작위 위치·방향의 중간 세기 임펄스 + 색 (원본 multipleSplats 성격). 씨앗·앰비언트 공용.
-        private void EmitRandomSplat()
+        // 방출기별로 서서히 순환하는 색(리본마다 다른 색이 흐르며 섞임). per-frame 소량 가산이라 은은히 쌓인다.
+        private Color PickFlowColor(int emitter, float t)
         {
-            var uv = new Vector2(Random.value, Random.value);
-            float angle = Random.value * Mathf.PI * 2f;
-            var dir = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
-            var velocityDelta = dir * (config.splatForce * 0.1f);
-            Splat(uv, velocityDelta, PickAmbientColor());
+            float amt = config.ambientColorAmount;
+            var pal = config.palette;
+            if (pal != null && pal.Length > 0)
+            {
+                float f = Mathf.Repeat(t * config.ambientColorCycle + (float)emitter / pal.Length, 1f) * pal.Length;
+                int i0 = (int)f % pal.Length;
+                int i1 = (i0 + 1) % pal.Length;
+                return Color.Lerp(pal[i0], pal[i1], f - Mathf.Floor(f)) * amt;
+            }
+            float hue = Mathf.Repeat(t * config.ambientColorCycle + emitter * 0.37f, 1f);
+            return Color.HSVToRGB(hue, 0.8f, 1f) * amt;
         }
 
-        private Color PickAmbientColor()
+        // 씨앗 — 속도 없이 은은한 색 얼룩만(터지는 임펄스 아님). 유동이 이어받아 밀어 섞는다.
+        private void SeedField()
         {
-            if (config.palette != null && config.palette.Length > 0)
-                return config.palette[Random.Range(0, config.palette.Length)];
-            return Color.HSVToRGB(Random.value, 0.85f, 1f);
+            int seeds = Mathf.Max(0, seedSplats);
+            for (int i = 0; i < seeds; i++)
+            {
+                var uv = new Vector2(Random.value, Random.value);
+                Splat(uv, Vector2.zero, PickFlowColor(i, i * 1.7f) * 3f);
+            }
         }
     }
 }
