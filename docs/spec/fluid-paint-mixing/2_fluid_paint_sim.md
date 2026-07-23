@@ -18,7 +18,7 @@ step(dt) Blit 체인을 돌리고, `Splat()` API 와 자율 앰비언트 드라�
 - `RenderTexture DyeTexture => _targets.Display` (핑퐁 무관 고정 핸들)
 - `public void Splat(Vector2 uv, Vector2 velocityDelta, Color color)` — velocity/dye 각각 splat 패스 후 swap. 반경은 `splatRadius/100` × aspect 보정
 - `public void SetSurfaceSize(int w,int h)` — 크기 바뀌면 재할당(어댑터용)
-- Update: dt=min(realDt, 1/60) 로 Step; `ambientSplatsPerSecond>0` 이면 누산기로 랜덤 splat 방출(팔레트 없으면 랜덤 HSV)
+- Update: dt=min(realDt, 1/60) 로 Step; `EmitFlow` — 방출기 N개가 부드럽게 배회하며 매 프레임 은은한 색·힘을 흘려 넣는 연속 유동(방울 터짐/깜빡임 아님). seed 는 속도 없는 색 얼룩
 
 **Step(dt) 패스 순서** (원본 step 그대로): Curl → Vorticity(swap) → Divergence → Pressure init(Clear ×PRESSURE, swap) → Pressure Jacobi ×N(swap each) → GradientSubtract(swap) → Advect velocity(swap) → Advect dye(swap) → Display(dye→안정 출력).
 

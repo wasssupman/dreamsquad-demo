@@ -19,9 +19,10 @@
 `[CreateAssetMenu(menuName="Wassup/FluidSimConfig")]`. 필드(전부 인스펙터 튜닝, 하드코딩 금지):
 - 해상도: `simResolution`(짧은 변, 기본 128), `dyeResolution`(기본 256 — 원본 1024는 모바일 과함)
 - 솔버: `pressureIterations`(20), `velocityDissipation`(0.2), `densityDissipation`(1.0), `pressure`(0.8), `curl`(30)
-- splat: `splatRadius`(0.25, 정규화), `splatForce`(6000)
-- 앰비언트: `ambientSplatsPerSecond`(0=자동 없음), `palette`(Color[] — 비면 랜덤 HSV)
+- splat: `splatRadius`(0.25, 정규화), `splatForce`(6000, 외부 Splat 용)
+- 앰비언트 흐름(연속 유동): `ambientEmitters`(3), `ambientDrift`(배회 속도), `ambientFlow`(프레임당 velocity), `ambientColorAmount`(프레임당 색), `ambientColorCycle`(색 순환), `palette`(비면 순환 HSV)
 - 정밀도: `preferHalfFloat`(미지원 시 자동 폴백)
+- 감쇠 기본값은 흐름-지향(densityDissipation 0.4, velocityDissipation 0.15, curl 22) — 방울 터짐/깜빡임 대신 잔상이 흐른다
 
 ### FluidMath (Wassup.Presentation, 순수 static — EditMode 테스트 대상)
 - `Vector2Int CalcResolution(int target, float aspect)` — 원본 `getResolution` 이식. 짧은 변=target,
