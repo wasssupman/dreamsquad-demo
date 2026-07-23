@@ -38,8 +38,17 @@
 - [x] Export 산출물이 `[{"id":"cost_default","startingCost":10,"maxCost":10,"regenPerSec":0.35,"placementPhaseDuration":30.0}]` 형태
 - [x] `DefaultCostConfig.asset` 의 기존 4개 값이 id 추가 후에도 그대로(10/10/0.35/30)
 - [x] push payload 조립에 탭이 실림 — 10탭 각 행수 정상(`CostConfig 1`), 기존 9탭 회귀 없음
-- [ ] Push 후 시트에 `CostConfig` 탭이 생기고 1행 업서트 (**Apps Script 재배포 선행 필요**)
-- [ ] 로비 dev 트레이에 `IMPORT COST` 버튼이 뜨고, 눌러 시트값이 반영된 뒤 시작한 전투의 코스트가 달라짐
+- [x] Push 후 시트에 `CostConfig` 탭이 생기고 1행 업서트 — `added 1`, 기존 9탭 `added 0`(무회귀). 시트 재조회로 행 확인
+- [x] 로비 dev 트레이 `IMPORT COST` 버튼으로 시트값이 SO 에 반영됨 (사용자 확인)
+- [x] 로그인 자동 import 경로로도 반영됨 — 단 seam 이 울리지 않는 버그가 있어 `a4d15cdc` 로 수정(아래 참조)
+
+확인: 2026-07-23 · `bf68fb63` (구현) · `a4d15cdc` (자동 import 발화 수정)
+
+## 발견: 자동 import 가 에디터 2회차부터 죽어 있었다
+
+`IMPORT COST` 는 되는데 Play 로는 시트 변경이 반영되지 않는 증상에서 출발해, `LoginPanelView.Start()` 의 `if (UserSession.IsSignedIn) return;` 이 원인임을 확인했다. 이미 로그인된 채 로비에 들어오면 게이트만 닫고 `onSignedIn` 을 쏘지 않아, 구독만 하던 `LoginAutoImport` 가 발화하지 않는다. 에디터 `Enter Play Mode = DisableDomainReload` 로 static `UserSession` 이 Play 간에 살아남는 것이 상시 트리거였다.
+
+**범위는 코스트 밖이었다** — 같은 composite 를 쓰는 유닛/DC/프리셋 자동 import 도 함께 죽어 있었다. 수정은 `a4d15cdc` (두 훅 컴포넌트가 `Start()` 에서 `IsSignedIn` 이면 직접 트리거).
 
 ## 후속 후보
 

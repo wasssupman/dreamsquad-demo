@@ -1,6 +1,6 @@
 # Dreamcatcher Card Visibility — 카드 노출 스위치
 
-> 상태: 진행 중 2026-07-23
+> 상태: **구현 완료 2026-07-23** — units 0~2 커밋(`9e89c49b`) + 로그인 발화 수정(`a4d15cdc`). Play 육안 확인 3건 남음. 인계는 `3_handoff_summary.md`.
 
 ## 목표
 
@@ -13,6 +13,7 @@
 | 0 | 구현 | `0_visible_field_and_sheet.md` | `DreamcatcherCard.visible` 필드 + `DcCards` 탭 컬럼(양방향) |
 | 1 | 구현 | `1_inventory_filter.md` | 덱 페이지 컬렉션에서 숨김 카드 제외 |
 | 2 | 구현 | `2_login_deck_prune.md` | 로그인 시 저장 덱에서 숨김 카드 장착 해제 |
+| 3 | 인계 | `3_handoff_summary.md` | 인계 요약 |
 
 ## Feature-wide 계약
 

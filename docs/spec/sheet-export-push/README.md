@@ -1,7 +1,7 @@
 # Sheet Export Push — Unity→구글 시트 자동 반영 + 이식 가능한 SheetSync 코어
 
 > 상태: units 0~5 **완료 2026-07-22** — 구현·커밋(`ad2028f8`~`0896e050`) + 라이브 push 동작 + 양방향 정합성 8탭 OK(SO==sheet, drift 0). Defenders `공` 헤더 사고 정리 포함. 인계는 `6_handoff_summary.md`.
-> unit 7(`CostConfig` 탭) **진행 중 2026-07-23** — 코드·씬 배선·EditMode 완료, 시트 왕복 실증 대기.
+> unit 7(`CostConfig` 탭) **완료 2026-07-23** — 구현·커밋(`bf68fb63`) + 라이브 push 왕복 OK(탭 생성 `added 1`, 기존 9탭 무회귀) + 자동 import 발화 수정(`a4d15cdc`). 인계는 `8_handoff_costconfig.md`.
 > 선행: `unit-stat-spreadsheet-schema` (완료) · `dreamcatcher-sheet-sync` (완료) — API 계약·DTO·exporter 를 그대로 재사용한다.
 > SoT 전환(시트=진실)은 **현 스코프 밖** — 별도 spec 초안으로 대기.
 
@@ -32,6 +32,7 @@ Unity SO → 구글 시트 **자동 push** 를 만든다. 현재 export 는 JSON
 | 5 | 서버+검증 | `5_apps_script_dopost.md` | `apps-script/Code.gs` generic 업서트 엔진 커밋 + 배포 가이드 + 실 test 탭 1회 push 왕복 검증 |
 | 6 | 인계 | `6_handoff_summary.md` | (종료 시) |
 | 7 | 구현 | `7_costconfig_tab.md` | `CostConfig` 탭 신설 — 코스트 경제 SO push/import + 로비 dev 버튼 |
+| 8 | 인계 | `8_handoff_costconfig.md` | unit 7 인계 요약 |
 
 ## Feature-wide 계약
 
