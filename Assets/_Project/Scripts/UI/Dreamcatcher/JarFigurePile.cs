@@ -3,7 +3,6 @@ using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.UI;
 using Wassup.Data;
-using Wassup.Presentation;
 
 namespace Wassup.UI
 {
@@ -52,7 +51,7 @@ namespace Wassup.UI
             _figs = new JarFigure[_max];
             _views = new Graphic[_max];
 
-            bool useSpine = visualData != null && visualData.SpineSkeletonDataAsset != null && skeletonMaterial != null;
+            bool useSpine = SpineFigureBuilder.CanBuild(visualData, skeletonMaterial);
             for (int i = 0; i < _max; i++)
             {
                 _views[i] = useSpine
@@ -88,22 +87,7 @@ namespace Wassup.UI
             vr.pivot = new Vector2(0.5f, 0.5f);
 
             var sg = go.AddComponent<SkeletonGraphic>();
-            sg.material = mat;
-            sg.raycastTarget = false;
-            sg.skeletonDataAsset = data.SpineSkeletonDataAsset;
-            sg.Initialize(true);
-            if (sg.Skeleton != null)
-                SpineCombinedSkinCache.Apply(sg.Skeleton, data);
-            string anim = string.IsNullOrEmpty(animName) ? data.SpineDeathAnimation : animName;
-            if (sg.Skeleton != null && !string.IsNullOrEmpty(anim) && sg.Skeleton.Data.FindAnimation(anim) != null)
-            {
-                var te = sg.AnimationState.SetAnimation(0, anim, false);
-                te.TrackTime = te.AnimationEnd; // 마지막 프레임
-                sg.Update(0f);                  // 포즈 확정
-                sg.UpdateMesh();                // CanvasRenderer 메시 반영
-            }
-            sg.freeze = true; // 이후 정지(이동은 transform 만, 메시 재빌드 없음)
-            vr.sizeDelta = new Vector2(400f, 600f);
+            SpineFigureBuilder.Setup(sg, data, mat, animName);
             go.transform.localScale = Vector3.one * scale;
             return sg;
         }

@@ -4,6 +4,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.Serialization;
 using UnityEngine.UI;
+using Spine.Unity;
 using Wassup.Core;
 using Wassup.Data;
 using Wassup.UI.Layout;
@@ -40,16 +41,16 @@ namespace Wassup.UI
         [SerializeField] private float fallbackTrayHalf = 490f; // 트레이 미bind 시 폴백 반폭
 
         [Header("Figure Pile — Spine miniatures (unit 2b)")]
-        // 적게·크게(사용자 결정): Spine 미니어처가 읽히려면 6~8개 · ~44px.
-        [SerializeField] private int maxFigures = 8;
-        [SerializeField] private float figureRadius = 18f;
+        // 더 작게·더 많이(사용자 재조정): ~16개 · ~22px. 흡수 비행 = 회전 미니어처.
+        [SerializeField] private int maxFigures = 16;
+        [SerializeField] private float figureRadius = 11f;
         [SerializeField] private float figureGravity = 1500f;
         [SerializeField] private float figureDamping = 0.9f;
         // Spine 미니어처(대표 스켈레톤 + 머티리얼). 미배선 시 절차적 원 폴백(무회귀).
         [SerializeField] private AttackUnitData representativeUnit; // 대표 나이트메어(적 정체성 미제공)
         [SerializeField] private Material figureSkeletonMaterial;   // SkeletonGraphic 머티리얼
         [SerializeField] private string figureAnimation = "Idle";  // 동결 포즈(가독성=Idle; Die 도 가능)
-        [SerializeField] private float figureScale = 0.34f;        // localScale(~36px, 오프스크린 튜닝)
+        [SerializeField] private float figureScale = 0.22f;        // localScale(~22px, 더 작게)
         [SerializeField] private float figureFlightSeconds = 0.44f; // 킬 위치→항아리 비행 시간
         [SerializeField] private float figureFlightArc = 140f;      // 아치 솟음(px)
         [SerializeField] private float figureFlightStagger = 0.05f; // 한 획득의 여러 피규어 간 지연
@@ -86,7 +87,7 @@ namespace Wassup.UI
         private Sprite _figureSprite;
         private int _pendingFlights;
         // 고스트 풀(재사용, GC 완화) + generation(전투 이탈/OnDisable 시 진행 비행 일괄 무효화).
-        private readonly System.Collections.Generic.List<Image> _ghostPool = new System.Collections.Generic.List<Image>();
+        private readonly System.Collections.Generic.List<Graphic> _ghostPool = new System.Collections.Generic.List<Graphic>();
         private int _flightGen;
         // committed = 실제 pile 개수 + 비행 중. 게이지 목표와 이걸로 대사(desync 방지).
         private int FiguresCommitted => (_pile != null ? _pile.ActiveCount : 0) + _pendingFlights;
@@ -231,23 +232,36 @@ namespace Wassup.UI
 
         private Camera _figureCamera;
 
-        // 고스트 풀에서 비활성 하나를 빌린다(GC 완화). 없으면 신설.
-        private Image GetGhost()
+        // 고스트 풀에서 비활성 하나를 빌린다(GC 완화). 없으면 신설. Spine 미니어처 또는 Image 폴백.
+        private Graphic GetGhost()
         {
             for (int i = 0; i < _ghostPool.Count; i++)
                 if (_ghostPool[i] != null && !_ghostPool[i].gameObject.activeSelf) return _ghostPool[i];
-            var go = new GameObject("AbsorbGhost", typeof(RectTransform), typeof(Image));
+            var go = new GameObject("AbsorbGhost", typeof(RectTransform));
             go.transform.SetParent(_safeArea, false);
             var rt = (RectTransform)go.transform;
             rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
             rt.pivot = new Vector2(0.5f, 0.5f);
-            rt.sizeDelta = new Vector2(figureRadius * 2f, figureRadius * 2f);
-            var img = go.GetComponent<Image>();
-            img.sprite = _figureSprite;
-            img.raycastTarget = false;
+            Graphic g;
+            // 비행 고스트도 항아리 피규어와 같은 Spine 미니어처(사용자: 원 말고 피규어가 회전하며
+            // 빨려듦). 미배선 시 원 폴백.
+            if (SpineFigureBuilder.CanBuild(representativeUnit, figureSkeletonMaterial))
+            {
+                var sg = go.AddComponent<SkeletonGraphic>();
+                SpineFigureBuilder.Setup(sg, representativeUnit, figureSkeletonMaterial, figureAnimation);
+                g = sg;
+            }
+            else
+            {
+                rt.sizeDelta = new Vector2(figureRadius * 2f, figureRadius * 2f);
+                var img = go.AddComponent<Image>();
+                img.sprite = _figureSprite;
+                img.raycastTarget = false;
+                g = img;
+            }
             go.SetActive(false);
-            _ghostPool.Add(img);
-            return img;
+            _ghostPool.Add(g);
+            return g;
         }
 
         // 전투 이탈/OnDisable — 진행 중 비행을 일괄 무효화(pending 오염·전환 중 고아 고스트 방지).
@@ -267,10 +281,12 @@ namespace Wassup.UI
             int gen = _flightGen;
             var ghost = GetGhost();
             var grt = ghost.rectTransform;
+            // Spine 미니어처는 base 스케일 = figureScale(원본 rig 가 큼). Image 폴백은 1(sizeDelta).
+            float baseScale = ghost is SkeletonGraphic ? figureScale : 1f;
+            float spinDir = ((_pendingFlights & 1) == 0) ? 1f : -1f; // 좌우 교차 회전
             grt.anchoredPosition = startLocal;
-            grt.localScale = Vector3.one;
-            ghost.color = (figureTints != null && figureTints.Length > 0)
-                ? figureTints[Mathf.Abs(_pendingFlights) % figureTints.Length] : Color.white;
+            grt.localRotation = Quaternion.identity;
+            grt.localScale = Vector3.one * baseScale;
             ghost.gameObject.SetActive(true);
 
             float wait = 0f;
@@ -292,7 +308,9 @@ namespace Wassup.UI
                 Vector2 p = Vector2.Lerp(startLocal, endLocal, ease);
                 p.y += Mathf.Sin(k * Mathf.PI) * figureFlightArc; // 아치 솟음
                 grt.anchoredPosition = p;
-                grt.localScale = Vector3.one * Mathf.Lerp(1.1f, 0.85f, k);
+                // 뱅글뱅글 회전 + 빨려드는 축소(사용자 요청).
+                grt.localRotation = Quaternion.Euler(0f, 0f, spinDir * k * 720f);
+                grt.localScale = Vector3.one * baseScale * Mathf.Lerp(1.25f, 0.7f, k);
                 yield return null;
             }
 
