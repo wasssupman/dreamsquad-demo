@@ -8,6 +8,7 @@
 - unit 1: `8f70eaa6`(뷰)·`ad61b06f`(critic)·`22793f8b`(스탬프) — 항아리 독
 - unit 2a: `1d7b199b` — 게이지 구동 피규어 물리 더미
 - unit 4: `836aef63`(오버플로우 경고)·`1b7a21ff`(바깥 탭 닫기)
+- unit 3: `9c19eee8`(흡수 비행)·`837bc9c6`(투트랙 리뷰 반영)
 
 ## Implemented (검증 완료)
 
@@ -18,6 +19,9 @@
   **절차적이 최종**(24px 에서 Spine 미식별 → 2b 보류).
 - **unit 4** — 오버플로우 경고(컨트롤러 `AwakeningOverflowed` + 뷰 골드 림 플래시) +
   바깥 탭 닫기(`DreamcatcherHandView._dismissCatcher` 보드 영역 캐처).
+- **unit 3** — 흡수 비행(입자=피규어). 킬/사망 위치에서 피규어가 항아리로 아치 비행 → 도착 시
+  pile. bridge 이벤트에 사망 view-space 위치 위드닝(ecs-review CLEAN), 고스트 풀링 + 전투 이탈
+  CancelFlights. committed=active+pending 로 desync 방지.
 
 ## Key Files
 
@@ -52,9 +56,8 @@ Draft 는 레거시(사용자: 제거 가능) — 스킵 하네스가 지저분�
 ## 보류 (후속 후보)
 
 - **unit 2b Spine 스킨**: "6~8개·~44px" 재설계 시에만 가치. 절차적이 최종.
-- **unit 3 흡수 비행**: 항아리 가시라 위치학습 목적 약화 + clutter + ECS 경계(bridge 위드닝). 필요
-  시 가벼운(GaugeChanged generic-origin mote) 또는 풀 버전 별도 판단.
-- 라이브 랜드스케이프 스크린샷 / 실기 QA / 미니멀 HUD 토글 / 즉발 캐스트.
+- 다발 킬 clutter(흡수 비행 배칭/감쇠) / 라이브 랜드스케이프 스크린샷 / 실기 QA /
+  미니멀 HUD 토글 / 즉발 캐스트.
 
 ## Notes / 되돌리면 안 되는 것
 

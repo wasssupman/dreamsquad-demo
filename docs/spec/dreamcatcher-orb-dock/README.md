@@ -1,8 +1,8 @@
 # dreamcatcher-orb-dock
 
-> 상태: **핵심 완료 2026-07-23** — units 0/1/2a/4 구현·검증·커밋(main). unit 2b(Spine)·
-> unit 3(흡수 비행)은 후속 후보로 보류(사용자 결정). 인계: `5_handoff_summary.md`.
-> 배경: `docs/plans/2026-07-23-dreamcatcher-orb-dock-design.md`. 2-페르소나 리뷰 반영으로 항아리형.
+> 상태: **완료 2026-07-23** — units 0/1/2a/3/4 구현·검증·커밋(main). unit 2b(Spine)만 후속
+> 보류(24px 미식별, 사용자 결정). 인계: `5_handoff_summary.md`. 배경:
+> `docs/plans/2026-07-23-dreamcatcher-orb-dock-design.md`. 2-페르소나 리뷰 반영으로 항아리형.
 
 ## 목표
 
@@ -24,7 +24,7 @@
 | 0 | `0_figure_physics_core.md` | 정착 물리 순수 시뮬 + EditMode 테스트 | **완료** |
 | 1 | `1_jar_dock_view.md` | 항아리 독 뷰 — 트레이 우측, 큰 숫자, 코스트 눈금, ready 림, 라벨, 코너 은퇴 | **완료** |
 | 2 | `2_figure_fill_spawn.md` | 피규어 풀/스폰 — 게이지 구동 물리 더미(**절차적 최종**) | **완료(2a)** |
-| 3 | (흡수 비행) | 킬 위치→항아리 비행 | **보류**(항아리 가시라 목적 약화 + clutter + ECS 경계) |
+| 3 | `3_absorb_flight.md` | 흡수 비행 — 킬 위치에서 피규어가 항아리로 날아와 쌓임(입자=피규어) | **완료** |
 | 4 | `4_ready_overflow_close.md` | ready 신호 + 오버플로우 경고 + 바깥 탭 닫기 | **완료** |
 | 5 | `5_handoff_summary.md` | 라이브 배틀 하네스 검증 · 인계 | **완료** |
 
@@ -114,8 +114,9 @@ UX 디자이너·미드코어 게이머 두 리뷰가 독립적으로 수렴한 
 ## 파이프라인 커버리지
 
 N/A — ECS 플레이 오브젝트 생성→렌더 경로 변경 없음. 피규어·흡수 비행은 모두 UGUI/HUD
-프레젠테이션 계층이며, ECS 쪽은 기존 `EnemyKilledAwakening`/`DefenderDied` bridge 이벤트를
-구독만 한다.
+프레젠테이션 계층. ECS 쪽은 unit 3 에서 `EnemyKilledAwakening`/`DefenderDied` bridge C# 이벤트에
+사망 view-space 위치만 동봉(기존 `EnemyKilledEvent.position` surfacing — 새 Component/Buffer
+write 아님, ecs-review 경계 CLEAN). 시뮬/컨텍스트 경계 무변경.
 
 ## 기존 계약 대체
 
@@ -128,9 +129,7 @@ N/A — ECS 플레이 오브젝트 생성→렌더 경로 변경 없음. 피규�
 
 - **unit 2b — Spine 피규어 스킨** (보류): 20단계 granularity 피규어(~24px=실기 1.4mm)에선
   Spine 이 미식별 → "6~8개·~44px" 재설계 시에만 가치. 절차적이 현재 최종.
-- **unit 3 — 흡수 비행** (보류): 항아리가 트레이 우측으로 가시라 "숨은 위치 학습" 목적이
-  약화됐고 clutter 리스크 + 정확한 킬 위치엔 BattleBridge 이벤트 위드닝(ECS 경계) 필요. 필요 시
-  가벼운(GaugeChanged 구동 generic-origin mote) 또는 풀(bridge 위드닝) 버전으로 별도 판단.
+- **다발 킬 clutter / 실기 비행 육안**: 흡수 비행(unit 3)이 다발 킬에서 산만하면 배칭/감쇠 검토.
 - **라이브 랜드스케이프 스크린샷 / 실기 QA**: 오프스크린·reflection 하네스로 동작 확증했으나,
   게임뷰 aspect·overlay 캡처 제약으로 라이브 랜드스케이프 육안은 미완. 16:9/20:9 실기 그립 확인.
 - **미니멀 각성 HUD 토글** (게이머 요청): 물리·피규어 스폰 off, 숫자+눈금만 남기는 저사양
