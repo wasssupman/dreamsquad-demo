@@ -28,6 +28,7 @@
 | 4 | `4_ready_overflow_close.md` | ready 신호 + 오버플로우 경고 + 바깥 탭 닫기 | **완료** |
 | 5 | `5_handoff_summary.md` | 라이브 배틀 하네스 검증 · 인계 | **완료** |
 | 6 | `6_backing_full_skin.md` | backing 제거 + 100 가득(44) + 죽은 유닛 스킨(적별 re-skin) | **구현·기계검증(육안 대기)** |
+| 7 | `7_natural_pose_ready_attention.md` | 누운 자세 낙하 + 강조 20 + "이거 눌러봐" 어필 | **구현·기계검증(육안 대기)** |
 
 ## Feature-wide 계약
 

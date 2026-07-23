@@ -19,6 +19,9 @@ namespace Wassup.UI
         private RectTransform _rt;
         private JarFigure[] _figs;
         private Graphic[] _views; // SkeletonGraphic 또는 Image(폴백)
+        // unit 7 — 피규어 회전(누운 자세로도 낙하). 낙하 시 텀블 → rest 각으로 감쇠 스프링 정착.
+        private float[] _rot;    // 현재 각(deg)
+        private float[] _rotVel; // 각속도(deg/s)
         private int _max;
         private float _radius;
         private JarSimParams _params;
@@ -50,6 +53,8 @@ namespace Wassup.UI
             _params = p;
             _figs = new JarFigure[_max];
             _views = new Graphic[_max];
+            _rot = new float[_max];
+            _rotVel = new float[_max];
 
             bool useSpine = SpineFigureBuilder.CanBuild(visualData, skeletonMaterial);
             for (int i = 0; i < _max; i++)
@@ -112,10 +117,23 @@ namespace Wassup.UI
             float vx = (((idx * 37) % 100) / 100f - 0.5f) * b.halfWidth * 4f;
             float startY = b.height + _radius;
             _figs[idx] = JarFigurePhysics.Create(new float2(jitterX, startY), new float2(vx, -b.height), _radius, FixedDt);
+            // unit 7 — 낙하 텀블: 초기 각속도(인덱스 결정론)로 회전하며 떨어져 rest 각으로 정착.
+            _rot[idx] = 0f;
+            _rotVel[idx] = (((idx * 47) % 2) == 0 ? 1f : -1f) * (140f + (idx * 29) % 90);
             if (data != null && _views[idx] is SkeletonGraphic sg) SpineFigureBuilder.Reskin(sg, data);
             _views[idx].gameObject.SetActive(true);
             _views[idx].rectTransform.anchoredPosition = new Vector2(jitterX, startY);
+            _views[idx].rectTransform.localEulerAngles = Vector3.zero;
             _active++;
+        }
+
+        // unit 7 — 피규어별 rest 각(deg). 인덱스 결정론 변주: 다수 살짝 기울고, 일부는 눕는다.
+        private static float RestRot(int i)
+        {
+            float h = ((i * 61) % 100) / 100f; // 0..1 해시
+            if (h < 0.30f) return (h / 0.30f - 0.5f) * 36f;                 // -18..+18 (살짝 기욺)
+            if (h < 0.62f) return ((h - 0.30f) / 0.32f - 0.5f) * 100f;      // -50..+50 (기울어짐)
+            return (((i * 17) % 2) == 0 ? -1f : 1f) * Mathf.Lerp(70f, 93f, (h - 0.62f) / 0.38f); // ±70..93 (누움)
         }
 
         public void RemoveTop()
@@ -143,6 +161,8 @@ namespace Wassup.UI
                 f.prevPos.x -= dx;
                 f.prevPos.y -= dy; // 위로(양수 y = 상방)
                 _figs[i] = f;
+                // unit 7 — 튕길 때 살짝 흔들림(회전에도 생기 부여).
+                _rotVel[i] += Mathf.Sin(i * 3.1f + _jostlePhase) * _jostleStrength * 6f;
             }
         }
 
@@ -151,8 +171,17 @@ namespace Wassup.UI
             if (_rt == null || _figs == null || _active <= 0) return;
             var b = Bounds();
             JarFigurePhysics.Step(_figs, _active, b, _params, dt, 6);
+            // unit 7 — 각도 감쇠 스프링: 낙하 텀블 → rest 각 정착(누운 자세 포함).
+            const float rotK = 55f, rotDamp = 7.5f;
             for (int i = 0; i < _active; i++)
-                _views[i].rectTransform.anchoredPosition = new Vector2(_figs[i].pos.x, _figs[i].pos.y);
+            {
+                _rotVel[i] += (RestRot(i) - _rot[i]) * rotK * dt;
+                _rotVel[i] *= Mathf.Exp(-rotDamp * dt);
+                _rot[i] += _rotVel[i] * dt;
+                var vrt = _views[i].rectTransform;
+                vrt.anchoredPosition = new Vector2(_figs[i].pos.x, _figs[i].pos.y);
+                vrt.localEulerAngles = new Vector3(0f, 0f, _rot[i]);
+            }
         }
 
         private void Update()

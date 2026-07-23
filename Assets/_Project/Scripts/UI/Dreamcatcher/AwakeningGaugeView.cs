@@ -34,6 +34,9 @@ namespace Wassup.UI
         [SerializeField] private Color tickColor = new Color(0.86f, 0.82f, 0.96f, 0.72f);
         // 오버플로우(낭비) 전용 색 — MAX 골드와 분리해 "지금 버려지는 중"을 명확히(손실회피).
         [SerializeField] private Color overflowColor = new Color(1f, 0.35f, 0.24f, 1f);
+        // unit 7 — "이거 눌러봐!" 어필 튜닝.
+        [SerializeField] private float attentionPeriod = 1.5f; // 통통 바운스 주기(초)
+        [SerializeField] private string tapHintText = "눌러!";
         [SerializeField] private float valuePunchScale = 1.18f;
 
         [Header("Placement")]
@@ -107,6 +110,10 @@ namespace Wassup.UI
         private Coroutine _pulse;
         private Coroutine _readyPulse;
         private Coroutine _overflow;
+        // unit 7 — "이거 눌러봐!" 어필: ready(≥최소코스트) & 닫힘 동안 지속되는 주의 유도 루프.
+        private Coroutine _attention;
+        private CanvasGroup _tapHintGroup;
+        private float _tapHintBaseY;
 
         public void Pulse()
         {
@@ -154,6 +161,7 @@ namespace Wassup.UI
             if (GameManager.Instance != null)
                 GameManager.Instance.PhaseChanged -= OnPhaseChanged;
             if (_visualRoot != null) _visualRoot.localScale = Vector3.one;
+            if (_attention != null) { StopCoroutine(_attention); _attention = null; } // unit 7 — 어필 루프 정리
             CancelFlights(); // 진행 중 비행 정리(pending 오염·고아 고스트 방지)
         }
 
@@ -382,6 +390,7 @@ namespace Wassup.UI
             {
                 CancelFlights(); // 전투 이탈 → 진행 비행 무효화(전환 중 고아 고스트 방지)
                 _panel.SetActive(false);
+                UpdateAttention(); // unit 7 — 패널 꺼짐 → 어필 루프 정지·복원
             }
         }
 
@@ -429,13 +438,68 @@ namespace Wassup.UI
             _ready = _normalized >= _readyThreshold;
             if (_rim != null)
             {
-                // 색은 max 여부로만 갈린다(골드 vs 보라). ready/open 은 알파(발화 강도)로 표현.
-                Color c = _normalized >= 0.999f ? maxColor : rimColor;
+                // unit 7 — 강조 시점을 100(가득)이 아니라 ready(=최소 코스트 20)로. ready 면 골드,
+                // 아직 못 쓰면 보라. ready/open 은 알파(발화 강도)로 표현.
+                Color c = _ready ? maxColor : rimColor;
                 c.a = dormant ? 0f : (_ready || _open ? 1f : Mathf.Lerp(0.12f, 0.5f, _normalized));
                 _rim.color = c;
             }
             if (_jarFrame != null)
                 _jarFrame.color = dormant ? dormantColor : Color.white;
+            UpdateAttention(); // unit 7 — ready & 닫힘 상태 변화에 어필 루프 동기
+        }
+
+        // unit 7 — "이거 눌러봐!" 어필: 사용 가능(ready) 하고 아직 손패가 닫혀 있는 동안, 독이
+        // 주기적으로 통통 튀고 골드 림이 숨쉬며 "탭!" 칩이 까딱인다. 손패를 열거나(_open) ready
+        // 가 아니거나 패널이 꺼지면 즉시 정지·복원. (설계-리뷰 "상시 pulse 금지" 는 사용자 명시
+        // 요청으로 갱신 — 단 주기적/절제된 강조로 유지.)
+        private void UpdateAttention()
+        {
+            bool want = _ready && !_open && _panel != null && _panel.activeInHierarchy;
+            if (want && _attention == null)
+            {
+                if (_tapHintGroup != null) _tapHintGroup.gameObject.SetActive(true);
+                _attention = StartCoroutine(AttentionRoutine());
+            }
+            else if (!want && _attention != null)
+            {
+                StopCoroutine(_attention);
+                _attention = null;
+                if (_visualRoot != null && _readyPulse == null) _visualRoot.localScale = Vector3.one;
+                if (_tapHintGroup != null) _tapHintGroup.gameObject.SetActive(false);
+            }
+        }
+
+        private IEnumerator AttentionRoutine()
+        {
+            float t = 0f;
+            float period = Mathf.Max(0.4f, attentionPeriod);
+            while (true)
+            {
+                t += Time.unscaledDeltaTime;
+                // 주기적 통통 바운스(짧은 솟음). ReadyPulse 한방(임계 진입)과는 안 겹치게 양보.
+                if (_visualRoot != null && _readyPulse == null)
+                {
+                    float cycle = t % period;
+                    float bounce = cycle < 0.30f ? Mathf.Sin(cycle / 0.30f * Mathf.PI) * 0.11f : 0f;
+                    _visualRoot.localScale = Vector3.one * (1f + bounce);
+                }
+                // 골드 림 브리딩(숨쉬는 발화).
+                if (_rim != null)
+                {
+                    var c = maxColor;
+                    c.a = Mathf.Lerp(0.62f, 1f, 0.5f + 0.5f * Mathf.Sin(t * 3.4f));
+                    _rim.color = c;
+                }
+                // "탭!" 칩 까딱 + 알파 브리딩.
+                if (_tapHintGroup != null)
+                {
+                    var hrt = (RectTransform)_tapHintGroup.transform;
+                    hrt.anchoredPosition = new Vector2(0f, _tapHintBaseY + Mathf.Sin(t * 4.2f) * 4f);
+                    _tapHintGroup.alpha = Mathf.Lerp(0.7f, 1f, 0.5f + 0.5f * Mathf.Sin(t * 4.2f));
+                }
+                yield return null;
+            }
         }
 
         private void BuildCanvas()
@@ -552,6 +616,40 @@ namespace Wassup.UI
             _rim.type = Image.Type.Sliced;
             _rim.color = Color.clear;
             _rim.raycastTarget = false;
+
+            // unit 7 — "이거 눌러봐!" 탭 힌트 칩(항아리 위). ready & 닫힘 동안만 노출(어필 루프가 구동).
+            _tapHintBaseY = JarHeight + 16f;
+            var hintGO = new GameObject("TapHint", typeof(RectTransform), typeof(CanvasGroup));
+            hintGO.transform.SetParent(jarGO.transform, false);
+            var hintRect = (RectTransform)hintGO.transform;
+            hintRect.anchorMin = hintRect.anchorMax = new Vector2(0.5f, 0f);
+            hintRect.pivot = new Vector2(0.5f, 0.5f);
+            hintRect.anchoredPosition = new Vector2(0f, _tapHintBaseY);
+            hintRect.sizeDelta = new Vector2(74f, 30f);
+            _tapHintGroup = hintGO.GetComponent<CanvasGroup>();
+            var pill = new GameObject("Pill", typeof(RectTransform), typeof(Image));
+            pill.transform.SetParent(hintGO.transform, false);
+            var pillRect = (RectTransform)pill.transform;
+            pillRect.anchorMin = Vector2.zero; pillRect.anchorMax = Vector2.one;
+            pillRect.offsetMin = Vector2.zero; pillRect.offsetMax = Vector2.zero;
+            var pillImg = pill.GetComponent<Image>();
+            pillImg.sprite = UiRoundedSprite.Make(14f, 0f, maxColor, Color.clear);
+            pillImg.type = Image.Type.Sliced;
+            pillImg.raycastTarget = false;
+            var hintTextGO = new GameObject("Text", typeof(RectTransform));
+            hintTextGO.transform.SetParent(hintGO.transform, false);
+            var htRect = (RectTransform)hintTextGO.transform;
+            htRect.anchorMin = Vector2.zero; htRect.anchorMax = Vector2.one;
+            htRect.offsetMin = Vector2.zero; htRect.offsetMax = Vector2.zero;
+            var hintLabel = hintTextGO.AddComponent<TextMeshProUGUI>();
+            if (labelFont != null) hintLabel.font = labelFont;
+            hintLabel.text = tapHintText;
+            hintLabel.fontSize = 17f;
+            hintLabel.fontStyle = FontStyles.Bold;
+            hintLabel.color = new Color(0.15f, 0.1f, 0.02f, 1f); // 골드 칩 위 짙은 글자
+            hintLabel.alignment = TextAlignmentOptions.Center;
+            hintLabel.raycastTarget = false;
+            hintGO.SetActive(false);
 
             // 획득 +N 플로팅.
             var gainGO = new GameObject("GainDelta", typeof(RectTransform));
