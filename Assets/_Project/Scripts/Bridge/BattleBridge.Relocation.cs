@@ -28,6 +28,23 @@ namespace Wassup.Bridge
             return SpatialPlacementCheck(map, occupied, to);
         }
 
+        // unit 1 — 보드 유닛 조회 read seam (재배치 컨트롤러의 홀드 판정용). busy = 배치/이동
+        // 진행 중(PendingDeployment) — 홀드 진입 자체를 막는다.
+        public bool TryGetDefenderAt(Vector2Int cell, out Entity entity, out DefenderUnitData data, out bool busy)
+        {
+            if (_defenderByTile.TryGetValue(cell, out var b) && _em != null && _em.Exists(b.entity))
+            {
+                entity = b.entity;
+                data = b.data;
+                busy = _em.HasComponent<PendingDeployment>(b.entity);
+                return true;
+            }
+            entity = Entity.Null;
+            data = null;
+            busy = false;
+            return false;
+        }
+
         // read-only 사전 검증 (컨트롤러 hover/reject 피드백용) — 상태 변경 없음.
         // 페이즈 게이트는 CanPlaceDefenderAt 과 동일 규칙(_running || _placementAllowed).
         public bool CanRelocateDefender(Vector2Int from, Vector2Int to, out PlacementRejectReason reason)

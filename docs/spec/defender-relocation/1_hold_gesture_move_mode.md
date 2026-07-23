@@ -35,10 +35,24 @@ Battle 중 보드의 배치 유닛을 1초 홀드하면 이동모드에 진입�
 6. **상태 노출**: `bool InMoveMode` / `Vector2Int MoveSourceCell` / `DefenderUnitData MoveUnit` —
    unit 2 가 소비. 기존 `_armedUnit`(트레이) 과 완전 분리.
 
+## 구현 노트 (구현서와 달라진 점)
+
+- **드래그 컨트롤러 참조**: 씬 직렬화가 아니라 `DefenderSelector.DragController` 경유 lazy 해석 —
+  드래그 컨트롤러는 DefenderSelector 가 런타임 AddComponent 로 만들기 때문(씬에 존재하지 않음).
+- **홀드 진행 표시**: 별도 라디얼 위젯 대신 `SetHoverHighlight` 틴트를 진행률로 페이드-인(스코프 최소).
+  전용 게이지는 후속 폴리시 후보.
+- **임계 공유**: 스와이프 판정 임계도 `BoardDragThreshold` seam 으로 드래그 컨트롤러와 공유.
+
 ## 완료 기준
 
-- [ ] 컴파일 클린 + 씬 배선 완료(참조 누락 0)
-- [ ] 에디터 Play: 홀드 1초 → 이동모드(슬로모 체감 + 하이라이트 + 카메라 포커스), 임계 전 릴리즈는 무반응
-- [ ] 진입 쿨다운: 취소 직후 재홀드가 쿨다운만큼 거부됨
-- [ ] 타임아웃·대상 사망 시 자동 취소 + 슬로모 정상 해제 (TimeManager lease 누수 없음 — 취소 후 배속 1× 복귀)
-- [ ] 스킬 조준 중·트레이 armed 중·드래그 중 홀드 진입 불가
+- [x] 컴파일 클린 + 씬 배선 완료(참조 누락 0 — 씬 YAML fileID 5/5 비영 확인)
+- [x] 홀드 → 이동모드(슬로모 lease) / 임계 전 릴리즈 무반응 — PlayMode `RelocationMoveModeTest`
+      (상태 머신 reflection 구동, 원격 검증 경로). 하이라이트·카메라 포커스는 코드 경로 —
+      시각 체감은 unit 3 의 사용자 Play 게이트에서 함께 확인
+- [x] 진입 쿨다운: 취소 직후 재홀드가 쿨다운만큼 거부됨 — 테스트 검증
+- [x] 타임아웃 자동 취소 + 슬로모 해제(배속 1× 복귀) — 테스트 검증. 대상 사망 취소는 타임아웃과
+      같은 exit 경로(`StillValidSource`) — 코드 경로 확인
+- [x] 스킬 조준 중·트레이 armed 중·드래그 중 홀드 진입 불가 — 가드 코드 확인(자동 테스트 없음,
+      unit 4 경합 정리에서 재점검)
+
+2026-07-24 자동 검증 통과 (PlayMode 1/1, 에디터 실행).

@@ -130,6 +130,11 @@ namespace Wassup.UI
         // (계약 11 aim-mode race 재생산 방지). arm 은 직전 프레임에 확정돼 press 프레임 실행순서와 무관.
         public bool HasArmedUnit => _armedUnit != null;
 
+        // defender-relocation unit 1 — 재배치 컨트롤러가 같은 튜닝 소스를 공유하는 읽기 seam.
+        // 슬로모 스케일(계약 7: 기존 드래그와 동일 소스)과 탭/드래그 판정 임계(제스처 일관).
+        public float DragSlowmoScale => dragSlowmoScale;
+        public float BoardDragThreshold => Mathf.Max(1f, Cfg.boardDragThreshold);
+
         public void Configure(BattleBridge battleBridge, Camera camera, PlacementInput input,
             DragSwaySettings swaySettings = null, TMP_FontAsset uiFont = null,
             DeployCutscenePlayer cutscenePlayer = null)
