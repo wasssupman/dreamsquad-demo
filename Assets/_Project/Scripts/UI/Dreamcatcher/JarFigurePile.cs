@@ -166,6 +166,21 @@ namespace Wassup.UI
             }
         }
 
+        // unit 7 rev — 어필 바운스 리듬에 맞춘 1회 홉(들썩): 전 피규어에 위 임펄스 + 회전 킥.
+        // 갇힌 꿈-피규어가 "꺼내줘" 하듯 잠깐 튄다. 주기적(어필 주기)이라 상시 노이즈 아님.
+        public void Hop()
+        {
+            if (_figs == null || _active <= 0) return;
+            _jostlePhase += 2.3f;
+            for (int i = 0; i < _active; i++)
+            {
+                var f = _figs[i];
+                f.prevPos.y -= _jostleStrength * 2.4f; // 위로(prevPos 낮추면 상방 속도)
+                _figs[i] = f;
+                _rotVel[i] += Mathf.Sin(i * 2.1f + _jostlePhase) * _jostleStrength * 10f;
+            }
+        }
+
         public void Tick(float dt)
         {
             if (_rt == null || _figs == null || _active <= 0) return;

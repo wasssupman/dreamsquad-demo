@@ -36,6 +36,7 @@ namespace Wassup.UI
         [SerializeField] private Color overflowColor = new Color(1f, 0.35f, 0.24f, 1f);
         // unit 7 — "이거 눌러봐!" 어필 튜닝.
         [SerializeField] private float attentionPeriod = 1.5f; // 통통 바운스 + 펄스 링 주기(초)
+        [SerializeField] private float attentionLean = 5f;     // 튈 때 중앙(엄지) 쪽 넛지 각(deg)
         [SerializeField] private float valuePunchScale = 1.18f;
 
         [Header("Placement")]
@@ -160,7 +161,7 @@ namespace Wassup.UI
             }
             if (GameManager.Instance != null)
                 GameManager.Instance.PhaseChanged -= OnPhaseChanged;
-            if (_visualRoot != null) _visualRoot.localScale = Vector3.one;
+            if (_visualRoot != null) { _visualRoot.localScale = Vector3.one; _visualRoot.localRotation = Quaternion.identity; }
             if (_attention != null) { StopCoroutine(_attention); _attention = null; } // unit 7 — 어필 루프 정리
             CancelFlights(); // 진행 중 비행 정리(pending 오염·고아 고스트 방지)
         }
@@ -465,7 +466,11 @@ namespace Wassup.UI
             {
                 StopCoroutine(_attention);
                 _attention = null;
-                if (_visualRoot != null && _readyPulse == null) _visualRoot.localScale = Vector3.one;
+                if (_visualRoot != null && _readyPulse == null)
+                {
+                    _visualRoot.localScale = Vector3.one;
+                    _visualRoot.localRotation = Quaternion.identity; // 넛지 복원
+                }
                 SetPulseRingsActive(false);
             }
         }
@@ -481,16 +486,22 @@ namespace Wassup.UI
         {
             float t = 0f;
             float period = Mathf.Max(0.4f, attentionPeriod);
+            float lastCycle = 0f;
             while (true)
             {
                 t += Time.unscaledDeltaTime;
-                // 주기적 통통 바운스(짧은 솟음). ReadyPulse 한방(임계 진입)과는 안 겹치게 양보.
+                float cycle = t % period;
+                // 튀는 순간 짧은 솟음(bump 0→1→0). ReadyPulse 한방(임계 진입)과는 안 겹치게 양보.
+                float bump = cycle < 0.32f ? Mathf.Sin(cycle / 0.32f * Mathf.PI) : 0f;
                 if (_visualRoot != null && _readyPulse == null)
                 {
-                    float cycle = t % period;
-                    float bounce = cycle < 0.30f ? Mathf.Sin(cycle / 0.30f * Mathf.PI) * 0.11f : 0f;
-                    _visualRoot.localScale = Vector3.one * (1f + bounce);
+                    _visualRoot.localScale = Vector3.one * (1f + bump * 0.14f);
+                    // 넛지: 튈 때 엄지 접근 경로(중앙) 쪽으로 살짝 기울여 "이리로!" 몸짓(스프링백).
+                    _visualRoot.localRotation = Quaternion.Euler(0f, 0f, bump * attentionLean);
                 }
+                // 바운스 리듬에 맞춰 피규어 홉(들썩) 1회/주기 — 갇힌 꿈-피규어가 "꺼내줘" 몸짓.
+                if (cycle < lastCycle) _pile?.Hop();
+                lastCycle = cycle;
                 // 골드 림 브리딩(숨쉬는 발화).
                 if (_rim != null)
                 {
