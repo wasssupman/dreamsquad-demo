@@ -1,5 +1,6 @@
 using UnityEngine;
 using Wassup.Core;
+using Wassup.Core.Api;
 using Wassup.Data;
 
 namespace Wassup.UI
@@ -29,6 +30,15 @@ namespace Wassup.UI
         private void Awake()
         {
             if (loginPanel != null) loginPanel.onSignedIn += OnSignedIn;
+        }
+
+        // 이미 로그인된 채 로비에 들어온 경로(세션 중 재방문 / 에디터
+        // DisableDomainReload 로 static UserSession 이 살아남은 Play 재시작)에서는
+        // LoginPanelView.Start 가 onSignedIn 을 쏘지 않는다 → 구독만으로는 안 돈다.
+        // LoginAutoImport 와 같은 보강. 멱등하므로 양쪽이 다 울려도 무해하다.
+        private void Start()
+        {
+            if (UserSession.IsSignedIn) OnSignedIn();
         }
 
         private void OnDestroy()

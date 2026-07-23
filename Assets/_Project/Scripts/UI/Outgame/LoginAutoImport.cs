@@ -1,5 +1,6 @@
 using UnityEngine;
 using Wassup.Core;
+using Wassup.Core.Api;
 
 namespace Wassup.UI
 {
@@ -24,13 +25,30 @@ namespace Wassup.UI
         [SerializeField] private MonoBehaviour refresherSource;
 
         private bool _done;
+        private bool _devEnabled;
 
         private void Awake()
         {
             // Same gate as the lobby dev buttons: a release build must never call
             // the dev API. Not subscribing is the whole opt-out.
-            if (!Debug.isDebugBuild && !Application.isEditor) return;
+            _devEnabled = Debug.isDebugBuild || Application.isEditor;
+            if (!_devEnabled) return;
             if (loginPanel != null) loginPanel.onSignedIn += OnSignedIn;
+        }
+
+        // 이미 로그인된 채 로비에 들어온 경우를 잡는 두 번째 진입점. LoginPanelView.Start
+        // 는 `if (UserSession.IsSignedIn) return;` 으로 게이트만 닫고 onSignedIn 을 쏘지
+        // 않으므로, 구독만으로는 이 경로에서 영영 발화하지 않는다. 해당되는 상황:
+        //  - 세션 중 로비 재방문(전투 → 로비 복귀)
+        //  - 에디터의 Enter Play Mode = DisableDomainReload. UserSession 이 static 이라
+        //    Play 를 껐다 켜도 살아남아, 두 번째 Play 부터 로그인 흐름을 통째로 건너뛴다.
+        //    (실기기·빌드는 프로세스가 새로 떠서 해당 없음 — 에디터 전용 함정이었다.)
+        // _done 은 인스턴스 필드라 씬을 다시 로드하면 리셋된다 → "로비에 들어올 때마다
+        // 한 번" 이 되고, 같은 진입에서 onSignedIn 까지 울려도 중복 실행되지 않는다.
+        private void Start()
+        {
+            if (!_devEnabled) return;
+            if (UserSession.IsSignedIn) TriggerOnce(refresherSource as IRuntimeRefresher);
         }
 
         private void OnDestroy()

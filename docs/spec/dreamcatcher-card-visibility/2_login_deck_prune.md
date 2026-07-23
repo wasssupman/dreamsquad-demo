@@ -20,7 +20,14 @@
 - `card.visible == 0` 이면 제거한다.
 - 카탈로그가 null 이면 아무것도 하지 않는다(배선 오류로 덱을 훼손하지 않는다).
 
-**훅** (`HiddenCardDeckPruner`): `LoginPanelView.onSignedIn` 을 구독한다 — `LoginAutoImport` 가 "모든 진입 경로가 지나는 단일 seam" 으로 이미 쓰는 지점이다. 제거가 1건이라도 있을 때만 `ProfileStore.Save(profile)` 을 호출한다.
+**훅** (`HiddenCardDeckPruner`): `LoginPanelView.onSignedIn` 을 구독하고, **더해서 `Start()` 에서 `UserSession.IsSignedIn` 이면 직접 실행한다.** 제거가 1건이라도 있을 때만 `ProfileStore.Save(profile)` 을 호출한다.
+
+⚠ **구독만으로는 부족하다** (2026-07-23 실측으로 확인). `LoginPanelView.Start()` 의 첫 줄이 `if (UserSession.IsSignedIn) return;` 이라, 이미 로그인된 채 로비에 들어오면 게이트만 닫고 `onSignedIn` 을 쏘지 않는다. 해당되는 상황:
+
+- 세션 중 로비 재방문(전투 → 로비 복귀)
+- **에디터 `Enter Play Mode = DisableDomainReload`**: `UserSession` 이 static 이라 Play 를 껐다 켜도 살아남는다 → **두 번째 Play 부터 로그인 흐름을 통째로 건너뛴다.** 실기기·빌드는 프로세스가 새로 떠서 해당 없는 에디터 전용 함정이다.
+
+`LoginAutoImport` 도 같은 seam 을 쓰므로 같은 보강을 했다 — 그쪽은 이 구멍 때문에 **유닛/DC/프리셋/코스트 자동 import 전체가 에디터 2회차부터 안 돌고 있었다**.
 
 주의:
 - **`LoginAutoImport` 와 달리 dev 게이트를 걸지 않는다.** 자동 import 는 dev API 호출이라 릴리즈에서 꺼야 하지만, 이 정리는 빌드에 박힌 `visible` 값만 읽는 로컬 연산이라 릴리즈에서도 돌아야 한다.
