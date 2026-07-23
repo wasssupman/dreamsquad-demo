@@ -20,7 +20,7 @@ namespace Wassup.EditorTools
         private int _w = 15, _h = 10;
         private MapTileType[] _tiles;
         private readonly List<Vector2Int> _spawns = new();
-        private Vector2Int _goal = new Vector2Int(0, 0);
+        private readonly List<Vector2Int> _goals = new();   // multi-goal-map — 골 1~4
         private MapDocument _target;
         private Tool _tool = Tool.Road;
         private int _newW = 15, _newH = 10;
@@ -43,7 +43,7 @@ namespace Wassup.EditorTools
             _tiles = new MapTileType[_w * _h];
             for (int i = 0; i < _tiles.Length; i++) _tiles[i] = MapTileType.Place;
             _spawns.Clear();
-            _goal = new Vector2Int(0, 0);
+            _goals.Clear();
         }
 
         private void LoadFrom(MapDocument doc)
@@ -58,7 +58,11 @@ namespace Wassup.EditorTools
             _spawns.Clear();
             if (doc.Spawns != null)
                 foreach (var s in doc.Spawns) _spawns.Add(new Vector2Int(s.x, s.y));
-            _goal = new Vector2Int(doc.Goal.x, doc.Goal.y);
+            _goals.Clear();
+            if (doc.Goals != null && doc.Goals.Count > 0)
+                foreach (var g in doc.Goals) _goals.Add(new Vector2Int(g.x, g.y));
+            else
+                _goals.Add(new Vector2Int(doc.Goal.x, doc.Goal.y));   // 레거시 단일골 폴백
         }
 
         private void OnGUI()
@@ -67,7 +71,7 @@ namespace Wassup.EditorTools
             EditorGUILayout.Space(4);
             DrawGrid();
             EditorGUILayout.Space(4);
-            EditorGUILayout.LabelField($"{_w}×{_h}  spawns={_spawns.Count}  goal=({_goal.x},{_goal.y})", EditorStyles.miniLabel);
+            EditorGUILayout.LabelField($"{_w}×{_h}  spawns={_spawns.Count}  goals={_goals.Count}", EditorStyles.miniLabel);
             DrawValidationAndBake();
         }
 
@@ -134,7 +138,7 @@ namespace Wassup.EditorTools
                     Color c = ColorFor(_tiles[Idx(x, y)]);
                     EditorGUI.DrawRect(r, c);
 
-                    if (_goal == cell)
+                    if (_goals.Contains(cell))
                     {
                         EditorGUI.DrawRect(r, new Color(0.85f, 0.7f, 0.15f));
                         GUI.Label(r, "G", CenterLabel);
@@ -193,12 +197,12 @@ namespace Wassup.EditorTools
                 case Tool.Buildable:
                     _tiles[idx] = MapTileType.Place;
                     _spawns.Remove(cell);
-                    if (_goal == cell) _goal = new Vector2Int(-1, -1);
+                    _goals.Remove(cell);
                     break;
                 case Tool.Deco:
                     _tiles[idx] = MapTileType.Deco; // 장식(배치·이동 불가)
                     _spawns.Remove(cell);
-                    if (_goal == cell) _goal = new Vector2Int(-1, -1);
+                    _goals.Remove(cell);
                     break;
                 case Tool.Spawn:
                     if (!isDown) return; // 토글은 클릭만
@@ -210,9 +214,13 @@ namespace Wassup.EditorTools
                     }
                     break;
                 case Tool.Goal:
-                    if (!isDown) return;
-                    _tiles[idx] = MapTileType.Walk; // 골은 Walk 셀
-                    _goal = cell;
+                    if (!isDown) return; // 토글은 클릭만
+                    if (_goals.Contains(cell)) _goals.Remove(cell);
+                    else if (_goals.Count < 4)
+                    {
+                        _tiles[idx] = MapTileType.Walk; // 골은 Walk 셀
+                        _goals.Add(cell);
+                    }
                     break;
             }
         }
@@ -229,8 +237,10 @@ namespace Wassup.EditorTools
                 errs.Add($"스폰 {_spawns.Count}개 (1~4 필요)");
             foreach (var s in _spawns)
                 if (!IsWalk(s.x, s.y)) errs.Add($"스폰 ({s.x},{s.y}) 이 Walk 아님");
-            if (!IsWalk(_goal.x, _goal.y))
-                errs.Add($"골 ({_goal.x},{_goal.y}) 이 Walk 아님");
+            if (_goals.Count < 1 || _goals.Count > 4)
+                errs.Add($"골 {_goals.Count}개 (1~4 필요)");
+            foreach (var g in _goals)
+                if (!IsWalk(g.x, g.y)) errs.Add($"골 ({g.x},{g.y}) 이 Walk 아님");
 
             // 2×2 walk 블록 금지
             for (int y = 0; y < _h - 1; y++)
@@ -238,13 +248,14 @@ namespace Wassup.EditorTools
                     if (IsWalk(x, y) && IsWalk(x + 1, y) && IsWalk(x, y + 1) && IsWalk(x + 1, y + 1))
                     { errs.Add($"2×2 walk 블록 ({x},{y})"); y = _h; break; }
 
-            // BFS 연결성: 골에서 Walk 로 flood, 각 스폰 도달 확인
-            if (IsWalk(_goal.x, _goal.y) && _spawns.Count > 0)
+            // BFS 연결성: goals 전체에서 Walk 로 flood(멀티-소스), 각 스폰이 아무 골이든 도달 확인
+            if (_goals.Count > 0 && _spawns.Count > 0)
             {
                 var vis = new bool[_w * _h];
                 var q = new Queue<int>();
-                vis[Idx(_goal.x, _goal.y)] = true;
-                q.Enqueue(Idx(_goal.x, _goal.y));
+                foreach (var g in _goals)
+                    if (IsWalk(g.x, g.y) && !vis[Idx(g.x, g.y)])
+                    { vis[Idx(g.x, g.y)] = true; q.Enqueue(Idx(g.x, g.y)); }
                 int[] dx = { 1, -1, 0, 0 }, dy = { 0, 0, 1, -1 };
                 while (q.Count > 0)
                 {
@@ -306,6 +317,9 @@ namespace Wassup.EditorTools
                 var spawns = new NativeArray<int2>(_spawns.Count, Allocator.Temp);
                 for (int i = 0; i < _spawns.Count; i++) spawns[i] = new int2(_spawns[i].x, _spawns[i].y);
 
+                var goals = new NativeArray<int2>(_goals.Count, Allocator.Temp);
+                for (int i = 0; i < _goals.Count; i++) goals[i] = new int2(_goals[i].x, _goals[i].y);
+
                 var gm = new GeneratedMap
                 {
                     tiles = tiles,
@@ -314,11 +328,13 @@ namespace Wassup.EditorTools
                     propLayerId = prop,
                     gridSize = new int2(_w, _h),
                     spawns = spawns,
-                    goal = new int2(_goal.x, _goal.y),
+                    goals = goals,
+                    goal = _goals.Count > 0 ? goals[0] : new int2(0, 0),   // primary = goals[0]
                     seed = -1,
                     generatorVersion = 0,
                 };
                 MapDocumentBuilder.WriteToDocument(target, in gm);
+                goals.Dispose();
                 spawns.Dispose();
             }
             finally
@@ -329,7 +345,7 @@ namespace Wassup.EditorTools
             EditorUtility.SetDirty(target);
             AssetDatabase.SaveAssets();
             _target = target; // 연속 편집
-            Debug.Log($"[MapPainter] Bake 완료 → {AssetDatabase.GetAssetPath(target)} ({_w}×{_h}, spawns={_spawns.Count})");
+            Debug.Log($"[MapPainter] Bake 완료 → {AssetDatabase.GetAssetPath(target)} ({_w}×{_h}, spawns={_spawns.Count}, goals={_goals.Count})");
         }
     }
 }

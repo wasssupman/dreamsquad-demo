@@ -23,7 +23,10 @@
 
 ## 완료 기준
 
-- [ ] Goal 툴 다중 찍기(≤4)·토글, Load 가 goals 전체 로드
-- [ ] 검증이 멀티-골 연결성 반영, 실패 케이스 Bake 차단
-- [ ] Bake 왕복: goals N개 저장·복원 tileDiff=0
-- [ ] compile 0 error(에디터), 기존 EditMode green
+- [x] Goal 툴 다중 찍기(≤4)·토글, Load 가 goals 전체 로드(폴백 [Goal])
+- [x] 검증이 멀티-골 연결성 반영(goals 전체 시드 BFS), 골 1~4·각 Walk, 실패 시 Bake 차단
+- [x] Bake 가 goals NativeArray 로 WriteToDocument(왕복은 unit 0 `MultiGoal_...RoundTrip` 이 실증)
+- [x] compile 0 error(에디터), 기존 EditMode green
+- [ ] (사용자) 페인터로 멀티골 찍고 Bake → 문서 goals 확인 (인터랙티브 육안)
+
+확인 2026-07-23 — `_goal`→`List _goals`, Tool.Goal 토글(≤4), Load/렌더/검증/Bake 전부 멀티골. compile 0, EditMode 1276 green.
