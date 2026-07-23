@@ -1,7 +1,8 @@
 # dreamcatcher-orb-dock
 
-> 상태: **완료 2026-07-23** — units 0/1/2a/3/4 구현·검증·커밋(main). unit 2b(Spine)만 후속
-> 보류(24px 미식별, 사용자 결정). 인계: `5_handoff_summary.md`. 배경:
+> 상태: **완료 2026-07-23** — units 0/1/2a/3/4/6/7 구현·검증·커밋·사용자 육안 확인(main).
+> 피규어는 **Spine 미니어처(적별 스킨)로 재설계**(2b 보류 뒤집힘 — unit 6: maxFigures 44,
+> "많이·작게 크라우드", 죽은 유닛 스킨 re-skin). 인계: `5_handoff_summary.md`. 배경:
 > `docs/plans/2026-07-23-dreamcatcher-orb-dock-design.md`. 2-페르소나 리뷰 반영으로 항아리형.
 
 ## 목표
@@ -27,8 +28,8 @@
 | 3 | `3_absorb_flight.md` | 흡수 비행 — 킬 위치에서 피규어가 항아리로 날아와 쌓임(입자=피규어) | **완료** |
 | 4 | `4_ready_overflow_close.md` | ready 신호 + 오버플로우 경고 + 바깥 탭 닫기 | **완료** |
 | 5 | `5_handoff_summary.md` | 라이브 배틀 하네스 검증 · 인계 | **완료** |
-| 6 | `6_backing_full_skin.md` | backing 제거 + 100 가득(44) + 죽은 유닛 스킨(적별 re-skin) | **구현·기계검증(육안 대기)** |
-| 7 | `7_natural_pose_ready_attention.md` | 누운 자세 낙하 + 강조 20 + "이거 눌러봐" 어필 | **구현·기계검증(육안 대기)** |
+| 6 | `6_backing_full_skin.md` | backing 제거 + 100 가득(44) + 죽은 유닛 스킨(적별 re-skin) | **완료** |
+| 7 | `7_natural_pose_ready_attention.md` | 누운 자세 낙하 + 강조 20 + 소나 펄스 링·넛지·홉 어필 | **완료** |
 
 ## Feature-wide 계약
 
@@ -129,8 +130,6 @@ write 아님, ecs-review 경계 CLEAN). 시뮬/컨텍스트 경계 무변경.
 
 ## 후속 후보
 
-- **unit 2b — Spine 피규어 스킨** (보류): 20단계 granularity 피규어(~24px=실기 1.4mm)에선
-  Spine 이 미식별 → "6~8개·~44px" 재설계 시에만 가치. 절차적이 현재 최종.
 - **다발 킬 clutter / 실기 비행 육안**: 흡수 비행(unit 3)이 다발 킬에서 산만하면 배칭/감쇠 검토.
 - **라이브 랜드스케이프 스크린샷 / 실기 QA**: 오프스크린·reflection 하네스로 동작 확증했으나,
   게임뷰 aspect·overlay 캡처 제약으로 라이브 랜드스케이프 육안은 미완. 16:9/20:9 실기 그립 확인.
