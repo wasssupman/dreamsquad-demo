@@ -124,7 +124,8 @@ namespace Wassup.Battle.Movement
                     && huntField.dist[idx] != int.MaxValue;
 
                 // 사냥 중엔 goal 셀을 지나쳐도 누수 안 함(leak-proof) — 방어유닛 전멸 후에만 도달 처리.
-                if (!hunting && cell.x == field.goalCell.x && cell.y == field.goalCell.y)
+                // multi-goal-map — 어느 골이든 도달하면 누수(IsGoalCell = goals 멤버십/goalCell 폴백).
+                if (!hunting && field.IsGoalCell(cell))
                 {
                     ecb.AddComponent<PastGoalTag>(entity);
                     continue;

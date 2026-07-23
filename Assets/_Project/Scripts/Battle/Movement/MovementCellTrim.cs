@@ -17,7 +17,9 @@ namespace Wassup.Battle.Movement
             if (cell.x < 0 || cell.x >= field.gridSize.x ||
                 cell.y < 0 || cell.y >= field.gridSize.y)
                 return true;
-            if (cell.Equals(field.goalCell))
+            // multi-goal-map — 골 셀은 flow=0 이라 아래 zero-flow=wall 규칙에 걸린다. 모든 골을
+            // wall 예외로 빼 적이 골 밖으로 clamp 되지 않게(IsGoalCell = goals 멤버십/goalCell 폴백).
+            if (field.IsGoalCell(cell))
                 return false;
             return math.lengthsq(field.flow[GridMath.CellIndex(cell, field.gridSize)]) < 1e-6f;
         }

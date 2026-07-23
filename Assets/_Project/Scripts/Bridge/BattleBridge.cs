@@ -690,32 +690,22 @@ namespace Wassup.Bridge
 
                 var flow = new NativeArray<float2>(n, Allocator.Persistent);
                 var dist = new NativeArray<int>(n, Allocator.Persistent);
+                NativeArray<int2> goalsField = default;
                 try
                 {
                     var gridSize = _generatedMap.gridSize;
                     var goal = _generatedMap.goal;   // primary = goals[0] (FlowFieldSingleton.goalCell·폴백)
 
-                    // multi-goal-map 유닛 1 — goals 전체를 소스로 N-소스 BFS(최근접-골 라우팅).
-                    // goals 미초기화/빈 생산자(라이브 폴백 BuildFallbackLinear·legacy)는 [goal] 로
-                    // 폴백(GeneratedMap-레벨). 원본 goals 는 GeneratedMap 소유 — dispose 금지.
-                    bool ownsSources;
-                    NativeArray<int2> sources;
-                    if (_generatedMap.goals.IsCreated && _generatedMap.goals.Length > 0)
-                    {
-                        sources = _generatedMap.goals; ownsSources = false;
-                    }
-                    else
-                    {
-                        sources = new NativeArray<int2>(1, Allocator.Temp); sources[0] = goal; ownsSources = true;
-                    }
-                    try
-                    {
-                        FlowFieldBuilder.BuildFromSources(walk, gridSize, sources, flow, dist);
-                    }
-                    finally
-                    {
-                        if (ownsSources) sources.Dispose();
-                    }
+                    // multi-goal-map 유닛 1·2 — 골 집합을 Persistent 로 만들어 (a) N-소스 BFS 소스
+                    // (최근접-골 라우팅) (b) FlowFieldSingleton.goals 저장(IsGoalCell 멤버십). goals
+                    // 미초기화/빈 생산자(라이브 폴백 BuildFallbackLinear·legacy)는 [goal] 로 폴백.
+                    // 성공 시 goalsField 소유권은 싱글턴으로 이관 → TeardownFlowField 가 dispose.
+                    bool hasGoals = _generatedMap.goals.IsCreated && _generatedMap.goals.Length > 0;
+                    goalsField = new NativeArray<int2>(hasGoals ? _generatedMap.goals.Length : 1, Allocator.Persistent);
+                    if (hasGoals) goalsField.CopyFrom(_generatedMap.goals);
+                    else goalsField[0] = goal;
+
+                    FlowFieldBuilder.BuildFromSources(walk, gridSize, goalsField, flow, dist);
 
                     var data = new FlowFieldSingleton
                     {
@@ -723,6 +713,7 @@ namespace Wassup.Bridge
                         dist = dist,
                         gridSize = gridSize,
                         goalCell = goal,
+                        goals = goalsField,
                         tileSize = tileSize,
                         origin = _boardOrigin,
                         version = _generatedMap.generatorVersion,
@@ -736,6 +727,7 @@ namespace Wassup.Bridge
                 {
                     if (flow.IsCreated) flow.Dispose();
                     if (dist.IsCreated) dist.Dispose();
+                    if (goalsField.IsCreated) goalsField.Dispose();   // 싱글턴 이관 전 실패 시만
                     throw;
                 }
 

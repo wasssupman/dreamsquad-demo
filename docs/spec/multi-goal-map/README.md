@@ -39,12 +39,12 @@
 
 - **골 목록이 source of truth**: `MapDocument.goals`(1~4, 각 Walk). `goal`(단일)은 `goals[0]` = **primary**(단일-점 소비자·마이그레이션 폴백용). `goals` 비면 `[goal]` 로 폴백(기존 5맵 무마이그레이션 통과).
 - **🔴 GeneratedMap-레벨 폴백(리뷰 B1)**: `GeneratedMap` 은 **6개 생산자**가 있고(ToGeneratedMap·BuildFallbackLinear·BuildFromFixture·BuildFromManual·ProceduralMapGenerator·CellClassifier), 대부분 `goal` 만 세팅한다. `goals` NativeArray 를 **소비 지점**(BuildFlowField 유닛1·connectivity 유닛3)에서 `goals.IsCreated && Length>0 ? goals : [goal]` 로 폴백해 **모든 생산자**를 커버한다(cleanup 스펙과 독립). 유지되는 안전망 `BuildFallbackLinear` 는 `goals` 를 명시 세팅. **`GeneratedMap.IsCreated` 에 `goals.IsCreated` 를 넣지 않는다**(런타임 5곳 + 테스트 픽스처 ~10곳이 IsCreated=false 로 뒤집힘 — 리뷰).
-- **도달 = `dist==0`**: 어느 골이든 도달하면 누수. 유닛 2 의 "3곳"은 실제 성격이 다름 — **reached**(MovementSystem)·**wall 예외**(MovementCellTrim)·**해저드 배치 검증**(EffectSpawner) — 셋 다 dist==0 전환이 멀티골에 옳음. `FlowFieldSingleton.goalCell` 은 유닛 2 후 무참조가 되나(무해) primary 로 남긴다.
+- **골 판정 = `FlowFieldSingleton.IsGoalCell(cell)`**(구현 변경 — 유닛 2 참조): 초안의 `dist==0` 은 다수 EditMode 픽스처가 dist 를 all-zero 로 둬서 전부 골로 오판시켜 폐기. 대신 싱글턴 `goals` 집합 멤버십(**미설정 시 goalCell 폴백**)으로 판정 → 픽스처 무변경 통과. 4곳 전환: **reached**(MovementSystem)·**wall 예외**(MovementCellTrim)·**해저드 검증**(EffectSpawner)·**스모크 proxy**(MovementIntegritySmokeTest).
 - **최근접-골 라우팅**: `BuildFromSources` 로 emergent. per-lane 배정 없음.
 - **예산 불변**: 누수 이벤트=1/leak. `defeatGoalReachedCount`/timer/kill budget 무변경. 골 개수는 스트레스 예산과 무관.
 - **회귀 안전**: 단일 골 맵은 유닛 0~5 후에도 동작 동일(goals=[g] ⇒ 소스1·dist==0 한 칸). `BuildFromSources` 는 유효 소스에만 dist=0 → 회귀 0(리뷰 CONFIRM).
 - **병렬 단일골 표현도 확장(리뷰 M2)**: `BoardVisualPlan.goal`(배경 프랍 클리어런스·`BackgroundPropPlacer.IsNearSpawnOrGoal`)도 goals[] 로 → 유닛 5. 골 비주얼 앵커(`_goalVisualAnchorWorld`·튜토리얼)는 **primary 단일 유지**(의도).
-- **라이브 스모크(리뷰 M1)**: `MovementIntegritySmokeTest` 가 `cell==goalCell` 을 walkability proxy 로 씀 → 멀티골 풀에서 red. `dist==0` 으로 전환(유닛 2).
+- **라이브 스모크(리뷰 M1)**: `MovementIntegritySmokeTest` 가 `cell==goalCell` 을 walkability proxy 로 씀 → 멀티골 풀에서 red. `IsGoalCell` 로 전환(유닛 2).
 - **ECS 경계**: `FlowFieldSingleton` 은 Effects 소유(그대로). MovementSystem 은 dist **읽기만**. 새 맥락/NativeQueue 불필요(`GoalReachedEvent` 재사용).
 - **리뷰 매칭**: 유닛 1·2 는 ECS 시뮬 변경 → **ecs-reviewer**. 유닛 0(struct)·3(순수 BFS)·4(에디터)·5(Mono 렌더)·6(콘텐츠) → 일반 리뷰.
 

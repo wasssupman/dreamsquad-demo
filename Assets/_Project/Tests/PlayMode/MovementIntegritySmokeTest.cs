@@ -114,7 +114,7 @@ namespace Wassup.Tests.PlayMode
             {
                 var c = GridMath.WorldToCell(lts[i].Position, field.tileSize, field.gridSize, field.origin);
                 var f = field.flow[GridMath.CellIndex(c, field.gridSize)];
-                bool walk = (f.x != 0f || f.y != 0f) || (c.x == field.goalCell.x && c.y == field.goalCell.y);
+                bool walk = (f.x != 0f || f.y != 0f) || field.IsGoalCell(c);   // multi-goal
                 if (!walk) off++;
             }
             lts.Dispose();
@@ -142,7 +142,7 @@ namespace Wassup.Tests.PlayMode
                         int X = cx + dx, Y = cy + dy;
                         if (X < 0 || X >= field.gridSize.x || Y < 0 || Y >= field.gridSize.y) continue;
                         var f = field.flow[Y * field.gridSize.x + X];
-                        bool walk = (f.x != 0f || f.y != 0f) || (X == field.goalCell.x && Y == field.goalCell.y);
+                        bool walk = (f.x != 0f || f.y != 0f) || field.IsGoalCell(new int2(X, Y));   // multi-goal
                         if (walk) continue;
                         for (int k = 0; k < 4; k++)
                         {

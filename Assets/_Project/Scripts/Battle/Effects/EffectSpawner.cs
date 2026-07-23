@@ -177,7 +177,8 @@ namespace Wassup.Battle.Effects
                     return false;
                 }
 
-                if (cell.Equals(ff.goalCell))
+                // multi-goal-map — 차단 해저드가 어느 골이든 덮지 못하게(IsGoalCell = goals 멤버십/goalCell 폴백).
+                if (ff.IsGoalCell(cell))
                 {
                     reason = $"cell {cell} overlaps goal cell";
                     return false;
