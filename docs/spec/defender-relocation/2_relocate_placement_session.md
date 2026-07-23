@@ -1,0 +1,41 @@
+# 2 — 이동모드 배치 세션 (탭 / 드래그)
+
+## 목적
+
+이동모드에서 목적지를 두 방식으로 지정한다: **타일 탭**(tap-to-place) 또는 **프레스 드래그**.
+유효 판정·피드백은 기존 파이프라인을 재사용하고, 커밋만 unit 0 의 relocate API 로 분기한다.
+
+## 변경 대상
+
+- `Assets/_Project/Scripts/UI/DefenderRelocationController.cs` (unit 1 에 이어서)
+- `Assets/_Project/Scripts/UI/DefenderDragPlacementController.cs` (최소 접촉 — 공유 파일,
+  재사용 seam 노출만: 키링 프리뷰 빌드/hover 는 가능하면 public seam 호출로)
+
+## 구현
+
+1. **제스처 연속성** (README 설계): 이동모드 진입 시 손가락 상태로 분기 —
+   - **홀드 유지한 채 이동 임계 초과** → 즉시 드래그 추적 시작(프레스 드래그).
+   - **릴리즈** → relocate-armed 유지, 이후 보드 탭 대기(탭투플레이스).
+2. **목적지 판정**: `bridge.TryScreenToCell` 단일 소스. 유효 = unit 0 의 `RelocationCheck` 와 동일 규칙
+   (사전 검증은 `CanRelocate...` 계열 read-only 로). 무효 셀 = `bridge.FlashPlacementReject(cell)` 재사용 +
+   이동모드 유지. **본인 타일(from) 탭 = 취소**(README 계약 11).
+3. **드래그 프리뷰**: 기존 hover 하이라이트·타일 팝 재사용. 프리뷰 비주얼은 unit 3 의 비행 프리뷰와 공용
+   (이 unit 에서는 하이라이트만으로도 완료 가능 — 프리뷰 승격은 unit 3).
+4. **커밋 시퀀스** (확정 프레임): `TryBeginDefenderRelocation(from, to, ...)` 성공 시 →
+   슬로모 해제 + 하이라이트/카메라 복귀(unit 1 의 종료 루틴 공유) → unit 3 연출 핸드오프
+   (unit 3 전이라면 임시로 Finish+Activate 즉시 호출 = 즉시형).
+   실패 시 reject 피드백 + 이동모드 유지.
+5. **스킵 셋 확인** (README 계약 1·4·8): 이 경로는 `TryBeginDefenderDeployment`·코스트·컷신·
+   `PlacementCommitted`(배치 쿨다운)·on-place 를 지나지 않는다. 방향 유닛도 `_aimController.Begin` 을
+   타지 않는다(facing 보존, 계약 3).
+6. **세션 배타**: relocate 세션 중 트레이 드래그/탭 arm 이 시작되면 relocate 를 취소(단일 세션 원칙 —
+   기존 `_sessionGen` 하이재킹 방지 계약과 동일 결).
+
+## 완료 기준
+
+- [ ] 컴파일 클린
+- [ ] 에디터 Play: 홀드→릴리즈→타일 탭 으로 이동 성립(즉시형), 홀드→그대로 끌기→드롭 으로도 성립
+- [ ] 무효 셀(점유/경로/보드 밖) reject 피드백 + 이동모드 유지, 본인 타일 탭 = 취소
+- [ ] 이동 후: 코스트 불변 · 배치 쿨다운 미시작(트레이 오버레이 없음) · on-place VFX/스킬 미발동 ·
+      방향 유닛 방향 유지
+- [ ] relocate 중 트레이 조작 시 안전 취소(세션 충돌 없음)
