@@ -30,10 +30,12 @@
 
 ## 완료 기준
 
-- [ ] PaintMarkers·InstantiateStructureProps goals 순회, N개 표시
-- [ ] BoardVisualPlan.goals + BackgroundPropPlacer 전 골 클리어(2차 골 구조물 위 배경프랍 없음)
-- [ ] 골 비주얼 앵커 primary 유지(튜토리얼 무회귀)
-- [ ] 단일골 맵 렌더 기존과 동일(회귀)
-- [ ] 2골 맵: 골 마커/구조물 2개 육안, 배경프랍 침범 0(오프스크린/Play 스샷)
-- [ ] compile 0 error, EditMode green
-- [ ] `docs/reference/object-pipeline-map.md` 골 정거장 갱신 필요 여부 확인
+- [x] PaintMarkers·InstantiateStructureProps map.goals 순회(폴백 map.goal), N개 표시
+- [x] BoardVisualPlan.goals(폴백 [goal]) + BackgroundPropPlacer 전 골 클리어
+- [x] 골 비주얼 앵커 primary 유지(ResetStructureVisualAnchors=map.goal, i==0 앵커 — 튜토리얼 무회귀)
+- [x] 단일골 맵 렌더 기존과 동일(회귀 — EditMode green)
+- [ ] 2골 맵: 골 마커/구조물 2개 육안, 배경프랍 침범 0(유닛 6 실 멀티골 맵 + Play/오프스크린)
+- [x] compile 0 error, EditMode green
+- [ ] `docs/reference/object-pipeline-map.md` 골 정거장 갱신 필요 여부 확인(유닛 6)
+
+확인 2026-07-23 — 골 렌더 2곳 goals 순회, BoardVisualPlan.goals 로 배경프랍 전 골 회피, 앵커 primary 유지. compile 0, EditMode 1276 green(BoardVisualPlan/PropPlacer/TilemapMapView 폴백 통과).

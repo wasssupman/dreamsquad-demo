@@ -399,8 +399,10 @@ namespace Wassup.Data
             if (radius <= 0)
                 return false;
 
-            if (math.cmax(math.abs(cell - plan.goal)) <= radius)
-                return true;
+            // multi-goal-map — 모든 골 반경 클리어(plan.goals 는 폴백으로 항상 비어있지 않음).
+            for (int i = 0; i < plan.goals.Length; i++)
+                if (math.cmax(math.abs(cell - plan.goals[i])) <= radius)
+                    return true;
 
             for (int i = 0; i < plan.spawns.Length; i++)
             {

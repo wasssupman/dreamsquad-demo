@@ -79,7 +79,9 @@ namespace Wassup.Data
                     borderProximity);
             }
 
-            return new BoardVisualPlan(visualSeed, map.gridSize, map.goal, spawns, cells, regions.ToArray(), decorAnchors.ToArray());
+            // multi-goal-map — goals 전체를 plan 에 실어 배경프랍 클리어런스가 모든 골을 회피(폴백 [goal]).
+            int2[] goals = (map.goals.IsCreated && map.goals.Length > 0) ? map.goals.ToArray() : new[] { map.goal };
+            return new BoardVisualPlan(visualSeed, map.gridSize, map.goal, spawns, cells, regions.ToArray(), decorAnchors.ToArray(), goals);
         }
 
         private static void ComputePathProximity(int2 gridSize, BoardZoneType[] zones, byte[] distances)

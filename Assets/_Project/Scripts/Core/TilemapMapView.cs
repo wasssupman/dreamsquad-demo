@@ -341,7 +341,14 @@ namespace Wassup.Core
             if (overlayTilemap == null || _tileSet == null || !map.IsCreated) return;
 
             if (_tileSet.goalTile != null)
-                overlayTilemap.SetTile(ToCell(map.goal), _tileSet.goalTile);
+            {
+                // multi-goal-map — 골 마커 goals 순회(폴백 map.goal)
+                if (map.goals.IsCreated && map.goals.Length > 0)
+                    for (int i = 0; i < map.goals.Length; i++)
+                        overlayTilemap.SetTile(ToCell(map.goals[i]), _tileSet.goalTile);
+                else
+                    overlayTilemap.SetTile(ToCell(map.goal), _tileSet.goalTile);
+            }
 
             if (_tileSet.spawnTile != null && map.spawns.IsCreated)
             {
@@ -716,9 +723,22 @@ namespace Wassup.Core
 
             if (theme.goalStructureProp != null && theme.goalStructureProp.prefab != null)
             {
-                var instance = PlaceStructure(theme.goalStructureProp, map.goal, plan, theme);
-                _goalVisualAnchorWorld = ResolveVisualAnchor(instance, _goalVisualAnchorWorld);
-                if (overlayTilemap != null) overlayTilemap.SetTile(ToCell(map.goal), null);
+                // multi-goal-map — 골 구조물 goals 순회(폴백 map.goal). 비주얼 앵커는 primary(goals[0]) 유지.
+                if (map.goals.IsCreated && map.goals.Length > 0)
+                {
+                    for (int i = 0; i < map.goals.Length; i++)
+                    {
+                        var gi = PlaceStructure(theme.goalStructureProp, map.goals[i], plan, theme);
+                        if (i == 0) _goalVisualAnchorWorld = ResolveVisualAnchor(gi, _goalVisualAnchorWorld);
+                        if (overlayTilemap != null) overlayTilemap.SetTile(ToCell(map.goals[i]), null);
+                    }
+                }
+                else
+                {
+                    var instance = PlaceStructure(theme.goalStructureProp, map.goal, plan, theme);
+                    _goalVisualAnchorWorld = ResolveVisualAnchor(instance, _goalVisualAnchorWorld);
+                    if (overlayTilemap != null) overlayTilemap.SetTile(ToCell(map.goal), null);
+                }
             }
             if (theme.spawnStructureProp != null && theme.spawnStructureProp.prefab != null && map.spawns.IsCreated)
             {

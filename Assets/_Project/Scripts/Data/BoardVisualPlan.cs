@@ -12,7 +12,8 @@ namespace Wassup.Data
 
         public readonly int seed;
         public readonly int2 gridSize;
-        public readonly int2 goal;
+        public readonly int2 goal;          // primary = goals[0]
+        public readonly int2[] goals;       // multi-goal-map — 항상 비어있지 않음(폴백 [goal])
         public readonly int2[] spawns;
         public IReadOnlyList<BoardVisualCell> Cells => cells;
         public IReadOnlyList<BoardVisualRegion> Regions => regions;
@@ -30,11 +31,13 @@ namespace Wassup.Data
             int2[] spawns,
             BoardVisualCell[] cells,
             BoardVisualRegion[] regions,
-            BoardDecorAnchor[] decorAnchors)
+            BoardDecorAnchor[] decorAnchors,
+            int2[] goals = null)
         {
             this.seed = seed;
             this.gridSize = gridSize;
             this.goal = goal;
+            this.goals = (goals != null && goals.Length > 0) ? goals : new[] { goal };
             this.spawns = spawns ?? Array.Empty<int2>();
             this.cells = cells ?? Array.Empty<BoardVisualCell>();
             this.regions = regions ?? Array.Empty<BoardVisualRegion>();
