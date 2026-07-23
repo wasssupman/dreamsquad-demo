@@ -27,7 +27,11 @@
 
 ## 완료 기준
 
-- [ ] switch=MapGrid arm only, legacy 필드(map/mapSettings/useProcedural/mapDocument/_manualMapInput/mapPathShape/mapGenerationOptions/_mapGridGridSizeOverride) 제거, 가드 pool 화(shadow `map` 불변 확인)
-- [ ] Current*/Set* 맵-config 클러스터 제거(단 GoalEdgeOnly 쌍은 유닛 4), line 869 activeDoc=null
-- [ ] compile 0 error, EditMode green(삭제 대상 테스트 제외)
+- [x] switch 자체 제거(MapGrid 본문 인라인 — 1-arm switch 무의미), legacy 필드 9종(map/mapSettings/useProcedural/**mapSource**/mapDocument/_manualMapInput/mapPathShape/mapGenerationOptions/_mapGridGridSizeOverride) 제거, 가드 3곳 pool 화(shadow `map` :4040 불변 확인)
+- [x] Current*/Set* 맵-config 클러스터 제거(GoalEdgeOnly 쌍은 유닛 4 유지), activeDoc=null 초기화, GridSize/GeneratorVersion → Fallback 상수(라이브 값 20×10/ver1/lane2 와 동일), `RebuildDraftMapCallCount` 카운터 제거(소비 테스트 삭제됨 — `RebuildDraftMap` 본체는 라이프사이클 API 로 유지)
+- [x] `BattleBridgeDraftMapTests` 픽스처를 legacy MapData → **라이브 풀 경로**로 재작성(5케이스: 빌드/문서사용/무재빌드/재빌드/폴백. adapter settings-null 검사 탓 settings 인스턴스 주입 — 유닛 4 에서 제거)
+- [x] BattleScene 재저장으로 고아 직렬 필드 7종 드롭(diff 검증: ArkFunnel·PrototypeMap·MapGenerationSettings 씬 참조 소멸 — 유닛 3 에셋 삭제 사전 정리)
+- [x] compile 0 error, EditMode green(삭제 대상 테스트 제외)
 - [ ] (사용자) 스쿼드 Play — 매판 맵 로테이션·배치·pathing·점수 예산 정상(회귀 0)
+
+확인 2026-07-23 — EditMode 1299 중 1297 green(0 fail, 픽스처 재작성 +1케이스). deco-designate 게이트의 `mapSource==MapGrid` 조건도 함께 제거(상시 참). MapSource enum 파일은 무참조화 — 유닛 3 에서 삭제 판정.

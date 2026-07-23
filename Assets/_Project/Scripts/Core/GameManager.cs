@@ -258,7 +258,6 @@ namespace Wassup.Core
         private void StartSquadMatch(SquadSave squad)
         {
             logger?.SetEntryMode("squad");
-            battleBridge.SetMapGenerationOptions(MapGenerationOptions.Default);
             // squad-loadout regression fix — build the themed map (tile style +
             // background props) before placement, exactly as the draft path does
             // in Start(). Without this the BeginPlacement fallback left the map
@@ -327,7 +326,6 @@ namespace Wassup.Core
             var fallbackPreset = TestModeContext.DefenderPreset;
             TestModeContext.Clear(); // 1회 소비
 
-            battleBridge.SetMapGenerationOptions(MapGenerationOptions.Default);
             battleBridge.PrepareDraftMap();
 
             battleBridge.SetAuthoredWavePlan(plan);

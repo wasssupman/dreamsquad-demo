@@ -29,23 +29,15 @@ namespace Wassup.Bridge
     public partial class BattleBridge : MonoBehaviour
     {
         [SerializeField] private AttackDeck deck;
-        [SerializeField] private MapData map;
-        [SerializeField] private MapGenerationSettings mapSettings;
-        [Header("Phase 10B - Procedural (legacy)")]
-        [SerializeField] private bool useProcedural = true;
-        [Header("Map Grid Generation (new)")]
-        [SerializeField] private MapSource mapSource = MapSource.Legacy;
+        [Header("Map Grid")]
         [SerializeField] private MapGridGenerationSettings mapGridSettings;
-        [SerializeField] private MapDocument mapDocument;
-        // random-map-pool — (맵, 덱) 인코운터 풀. 비었으면 위 단일 mapDocument + deck 폴백.
-        // 배선되면 매판 seed 로 엔트리 하나를 골라 맵·덱을 함께 확정한다(맵마다 그 맵의 적 패턴).
+        // random-map-pool — (맵, 덱) 인코운터 풀. 맵 생산의 유일 경로(map-pipeline-cleanup unit 2
+        // 에서 legacy 소스 제거). 엔트리 하나를 골라 맵·덱을 함께 확정한다(맵마다 그 맵의 적 패턴).
         [SerializeField] private MapDocumentPool mapPool;
-        // 비0 = 맵 시드 고정(매판 동일 맵/인덱스 핀). 0 = matchSeed 파생 매판 랜덤. 웨이브/기믹 등 다른 시드 스트림은 영향 없음.
+        // 비0 = 맵 시드 고정(매판 동일 맵/인덱스 핀). 0 = 토너먼트 시드 결정론(부재 시 0번 폴백).
         [SerializeField] private int fixedMapSeed = 20260719;
         [Header("Season")]
         [SerializeField] private SeasonRegistry seasonRegistry;
-        [SerializeField] private MapPathShape mapPathShape = MapPathShape.Free;
-        [SerializeField] private MapGenerationOptions mapGenerationOptions = MapGenerationOptions.Default;
         [SerializeField] private float tileSize = 1f;
         [SerializeField] private float spawnHeight = 0.5f;
         [SerializeField] private ResultScreen resultScreen;
@@ -170,9 +162,7 @@ namespace Wassup.Bridge
         [Tooltip("사직서 뷰의 셀 중심 위 높이(월드).")]
         [SerializeField] private float resignationViewHeight = 0.2f;
 
-        private ManualMapInput? _manualMapInput;
         private GeneratedMap _generatedMap;
-        private int2? _mapGridGridSizeOverride;
 
         private World _world;
         private EntityManager _em;
@@ -854,20 +844,11 @@ namespace Wassup.Bridge
             _generatedMap = default;
         }
 
-        private int2 GridSize
-        {
-            get
-            {
-                var normalized = mapGenerationOptions.Normalized();
-                if (normalized.gridSize.x > 0 && normalized.gridSize.y > 0)
-                    return normalized.gridSize;
-                return mapSettings != null
-                    ? new int2(mapSettings.gridWidth, mapSettings.gridHeight)
-                    : new int2(20, 10);
-            }
-        }
-
-        private int GeneratorVersion => mapSettings != null ? mapSettings.generatorVersion : 1;
+        // map-pipeline-cleanup unit 2 — legacy 옵션/설정 에셋 제거 후 FallbackLinear 전용 상수.
+        // 값은 제거 시점 라이브와 동일(MapGenerationOptions.Default 20×10 / MapGenerationSettings 1).
+        private static readonly int2 FallbackGridSize = new int2(20, 10);
+        private const int FallbackGeneratorVersion = 1;
+        private const int FallbackSpawnLaneCount = 2;
 
         private void BuildMapForBattle()
         {
@@ -882,10 +863,11 @@ namespace Wassup.Bridge
             int seed = fixedMapSeed != 0 ? fixedMapSeed : Wassup.Core.MatchSeed.DeriveMapSeed(matchSeed);
 
             // random-map-pool unit 1 — 풀에서 (맵, 덱) 인코운터를 한 번 resolve.
-            // 맵·덱은 같은 인덱스로 잠긴다(맵마다 그 맵의 적 패턴). 풀 비거나 엔트리 미완성이면 레거시 폴백.
+            // 맵·덱은 같은 인덱스로 잠긴다(맵마다 그 맵의 적 패턴).
             // tournament-seed-map-select unit 2 — 인덱스 소스: fixedMapSeed(디버그) >
             // 서버 토너먼트 시드(같은 토너먼트 = 같은 맵) > 시드 부재 폴백 0번.
-            MapDocument activeDoc = mapDocument;
+            // map-pipeline-cleanup unit 2 — 단일 mapDocument 폴백 제거: 풀이 유일 소스.
+            MapDocument activeDoc = null;
             _resolvedDeck = deck;
             if (mapPool != null && mapPool.Count > 0)
             {
@@ -916,83 +898,28 @@ namespace Wassup.Bridge
                 }
             }
 
-            int version = GeneratorVersion;
-            var options = mapGenerationOptions.Normalized();
-            mapPathShape = options.pathShape;
-            int2 gridSize = options.gridSize;
-
-            switch (mapSource)
+            // map-pipeline-cleanup unit 2 — legacy 맵 소스(Manual/Fixture/Procedural/Legacy)
+            // 스위치 제거: authored 풀 문서 → ToGeneratedMap 이 유일 경로.
+            try
             {
-                case MapSource.Manual:
-                    if (_manualMapInput.HasValue)
-                        _generatedMap = BattleMapBuilder.BuildFromManual(_manualMapInput.Value, seed, version);
-                    else
-                        goto case MapSource.Fixture;
-                    break;
-
-                case MapSource.Procedural_Legacy:
-                    _generatedMap = ProceduralMapGenerator.Generate(
-                        seed, gridSize, theme, version,
-                        options.pathShape, options.spawnLaneCount, options.MinPlaceableRatio);
-                    break;
-
-                case MapSource.Fixture:
-                    if (map == null)
-                    {
-                        Debug.LogError("[BattleBridge] map reference missing — cannot build fixture GeneratedMap.", this);
-                        _generatedMap = BattleMapBuilder.BuildFallbackLinear(gridSize, seed, version, options.spawnLaneCount);
-                    }
-                    else
-                    {
-                        _generatedMap = BattleMapBuilder.BuildFromFixture(map, seed, version);
-                    }
-                    break;
-
-                case MapSource.MapGrid:
-                    try
-                    {
-                        _generatedMap = MapGridBattleAdapter.Build(seed, mapGridSettings, activeDoc, _mapGridGridSizeOverride);
-                    }
-                    catch (MapGenerationFailedException ex)
-                    {
-                        Debug.LogError($"[BattleBridge] {ex.Message}", this);
-                        _generatedMap = default;
-                        return;
-                    }
-                    break;
-
-                case MapSource.Legacy:
-                default:
-                    if (_manualMapInput.HasValue)
-                    {
-                        _generatedMap = BattleMapBuilder.BuildFromManual(_manualMapInput.Value, seed, version);
-                    }
-                    else if (useProcedural)
-                    {
-                        _generatedMap = ProceduralMapGenerator.Generate(
-                            seed, gridSize, theme, version,
-                            options.pathShape, options.spawnLaneCount, options.MinPlaceableRatio);
-                    }
-                    else if (map == null)
-                    {
-                        Debug.LogError("[BattleBridge] map reference missing — cannot build fixture GeneratedMap.", this);
-                        _generatedMap = BattleMapBuilder.BuildFallbackLinear(gridSize, seed, version, options.spawnLaneCount);
-                    }
-                    else
-                    {
-                        _generatedMap = BattleMapBuilder.BuildFromFixture(map, seed, version);
-                    }
-                    break;
+                _generatedMap = MapGridBattleAdapter.Build(seed, mapGridSettings, activeDoc, null);
+            }
+            catch (MapGenerationFailedException ex)
+            {
+                Debug.LogError($"[BattleBridge] {ex.Message}", this);
+                _generatedMap = default;
+                return;
             }
 
-            // MapGrid 절차 생성만 Validator 가 connectivity 를 보장한다. 수동 MapDocument 는
-            // Validator 를 거치지 않으므로 (adapter 가 문서를 그대로 반환) 다른 소스처럼 검사한다.
-            bool validatorBacked = mapSource == MapSource.MapGrid && !MapGridBattleAdapter.IsUsableDocument(activeDoc);
+            // 절차 생성만 Validator 가 connectivity 를 보장한다. authored MapDocument 는
+            // Validator 를 거치지 않으므로 (adapter 가 문서를 그대로 반환) 여기서 검사한다.
+            bool validatorBacked = !MapGridBattleAdapter.IsUsableDocument(activeDoc);
             if (!validatorBacked && !MapConnectivity.AllSpawnsReachGoal(_generatedMap))
             {
                 Debug.LogWarning("[BattleBridge] GeneratedMap connectivity failed; using fallback linear map.", this);
                 TeardownGeneratedMap();
-                _generatedMap = BattleMapBuilder.BuildFallbackLinear(gridSize, seed, version, options.spawnLaneCount);
+                _generatedMap = BattleMapBuilder.BuildFallbackLinear(
+                    FallbackGridSize, seed, FallbackGeneratorVersion, FallbackSpawnLaneCount);
             }
 
             // tilemap-world-surround unit 1 — MapGrid 내부에 장식 Deco 셀을 데이터로 designate (배경 프랍 호스트).
@@ -1006,7 +933,7 @@ namespace Wassup.Bridge
             if (_generatedMap.IsCreated)
                 for (int i = 0; i < _generatedMap.tiles.Length; i++)
                     if (_generatedMap.tiles[i] == MapTileType.Deco) { hasAuthoredDeco = true; break; }
-            if (mapSource == MapSource.MapGrid && theme != null
+            if (theme != null
                 && theme.mapGridBuildableKeepRatio < 1f && _generatedMap.IsCreated && !hasAuthoredDeco)
             {
                 var decoRng = Unity.Mathematics.Random.CreateFromIndex((uint)(_generatedMap.seed ^ 0x5A5A5A) | 1u);
@@ -1129,8 +1056,8 @@ namespace Wassup.Bridge
                 _generatedMap.generatorVersion,
                 _generatedMap.gridSize,
                 _generatedMap.spawns.Length,
-                options.pathShape.ToString());
-            Debug.Log($"[BattleBridge] Map: seed={_generatedMap.seed} ver={_generatedMap.generatorVersion} shape={options.pathShape} density={options.obstacleDensity} size={_generatedMap.gridSize} spawns={_generatedMap.spawns.Length}");
+                "authored");
+            Debug.Log($"[BattleBridge] Map: seed={_generatedMap.seed} ver={_generatedMap.generatorVersion} size={_generatedMap.gridSize} spawns={_generatedMap.spawns.Length}");
             // 로그의 mapSeed 를 실제 빌드에 쓰인 시드로 갱신 (fixedMapSeed 오버라이드/수동 document(-1) 반영).
             GameManager.Instance?.Logger?.SetActualMapSeed(_generatedMap.seed);
         }
@@ -1175,9 +1102,9 @@ namespace Wassup.Bridge
         // PlaceDefenderAs works immediately, but spawns / timer stay dormant.
         public void BeginPlacement()
         {
-            if (ActiveDeck == null || map == null)
+            if (ActiveDeck == null || mapPool == null || mapPool.Count == 0)
             {
-                Debug.LogError("[BattleBridge] deck or map reference missing.", this);
+                Debug.LogError("[BattleBridge] deck or map pool reference missing.", this);
                 return;
             }
             _world = World.DefaultGameObjectInjectionWorld;
@@ -1239,9 +1166,9 @@ namespace Wassup.Bridge
 
         public void StartBattle()
         {
-            if (ActiveDeck == null || map == null)
+            if (ActiveDeck == null || mapPool == null || mapPool.Count == 0)
             {
-                Debug.LogError("[BattleBridge] deck or map reference missing.", this);
+                Debug.LogError("[BattleBridge] deck or map pool reference missing.", this);
                 return;
             }
             if (!_placementAllowed) BeginPlacement();
@@ -1537,9 +1464,9 @@ namespace Wassup.Bridge
         // Initialises ECS infrastructure and builds the map so it is visible during the draft stage.
         public void PrepareDraftMap()
         {
-            if (ActiveDeck == null || map == null)
+            if (ActiveDeck == null || mapPool == null || mapPool.Count == 0)
             {
-                Debug.LogError("[BattleBridge] deck or map reference missing.", this);
+                Debug.LogError("[BattleBridge] deck or map pool reference missing.", this);
                 return;
             }
             _world = World.DefaultGameObjectInjectionWorld;
@@ -1591,24 +1518,18 @@ namespace Wassup.Bridge
             if (!q.IsEmpty) _em.DestroyEntity(q);
         }
 
-        // draft-stage-map-prebuild Unit 0 — called by DraftController on option change / Redraft.
+        // draft-stage-map-prebuild Unit 0 — 맵 재빌드 진입점. map-pipeline-cleanup unit 2 로
+        // 런타임 호출처(옵션 변경 패널)는 사라졌고, 라이프사이클 계약(BattleBridgeDraftMapTests)
+        // 이 유지한다. 옵션 카운터는 소비 테스트 삭제로 함께 제거.
         public void RebuildDraftMap()
         {
             if (_world == null) { PrepareDraftMap(); return; }
             CleanupDraftMapBeforeRebuild();
             BuildMapForBattle();
-#if UNITY_INCLUDE_TESTS
-            RebuildDraftMapCallCount++;
-#endif
         }
 
         // draft-stage-map-prebuild Unit 0 — true once BuildMapForBattle has succeeded at least once.
         public bool HasGeneratedMap => _generatedMap.IsCreated;
-
-#if UNITY_INCLUDE_TESTS
-        // Unit 4 EditMode test counter — stripped from non-test builds.
-        public int RebuildDraftMapCallCount { get; private set; }
-#endif
 
         // wave-authoring-test-mode unit 2 — 테스트 모드: seed 생성 대신 작성 플랜 사용.
         // null 을 주면 seed 경로로 복귀. StartBattle 의 TryInitializeGeneratedWaves 가 소비.
@@ -1811,35 +1732,14 @@ namespace Wassup.Bridge
             defenderPool = pool;
         }
 
-        public void SetMapSource(MapSource src) => mapSource = src;
-        public MapSource CurrentMapSource => mapSource;
-
-        public void SetMapGridGridSizeOverride(int2? gridSize) => _mapGridGridSizeOverride = gridSize;
-        public int2? CurrentMapGridGridSizeOverride => _mapGridGridSizeOverride;
-
         // PlayMode-only mutation of the shared SO. Reverts on Stop.
+        // (map-pipeline-cleanup: mapGridSettings 와 함께 유닛 4 에서 제거 예정.)
         public void SetGoalEdgeOnly(bool value)
         {
             if (mapGridSettings != null) mapGridSettings.SetGoalEdgeOnly(value);
         }
 
         public bool CurrentGoalEdgeOnly => mapGridSettings != null && mapGridSettings.GoalEdgeOnly;
-
-        public void SetMapPathShape(MapPathShape shape)
-        {
-            mapPathShape = shape;
-            var options = mapGenerationOptions.Normalized();
-            options.pathShape = shape;
-            mapGenerationOptions = options;
-        }
-
-        public void SetMapGenerationOptions(MapGenerationOptions options)
-        {
-            mapGenerationOptions = options.Normalized();
-            mapPathShape = mapGenerationOptions.pathShape;
-        }
-
-        public MapGenerationOptions CurrentMapGenerationOptions => mapGenerationOptions;
 
         public DefenderUnitData[] DefenderPool => defenderPool;
         public float TileSize => tileSize;
@@ -1986,7 +1886,7 @@ namespace Wassup.Bridge
 
         public Unity.Mathematics.int2 DebugWorldToCell(Vector3 worldPosition)
         {
-            int2 gridSize = _generatedMap.IsCreated ? _generatedMap.gridSize : GridSize;
+            int2 gridSize = _generatedMap.IsCreated ? _generatedMap.gridSize : FallbackGridSize;
             return GridMath.WorldToCell(new float3(worldPosition.x, worldPosition.y, worldPosition.z), tileSize, gridSize, origin: _boardOrigin);
         }
 
@@ -2003,7 +1903,7 @@ namespace Wassup.Bridge
         // placement-cell-snap unit 1 — DebugWorldToCell 이 clamp 에 쓰는 grid 크기(정책의 결과 clamp 용).
         public Vector2Int DebugGridSize
         {
-            get { int2 g = _generatedMap.IsCreated ? _generatedMap.gridSize : GridSize; return new Vector2Int(g.x, g.y); }
+            get { int2 g = _generatedMap.IsCreated ? _generatedMap.gridSize : FallbackGridSize; return new Vector2Int(g.x, g.y); }
         }
 
         public bool TryGetNearestWalkCell(Unity.Mathematics.int2 requestedCell, out Unity.Mathematics.int2 walkCell)
@@ -2765,7 +2665,7 @@ namespace Wassup.Bridge
             while (_shieldBreakQueue.TryDequeue(out var evt))
             {
                 var logger = GameManager.Instance?.Logger;
-                int2 grid = _generatedMap.IsCreated ? _generatedMap.gridSize : GridSize;
+                int2 grid = _generatedMap.IsCreated ? _generatedMap.gridSize : FallbackGridSize;
                 var hostCell = GridMath.WorldToCell(evt.position, tileSize, grid, origin: _boardOrigin);
                 Logging.ShieldBreakLog log = logger != null
                     ? new Logging.ShieldBreakLog
@@ -2836,7 +2736,7 @@ namespace Wassup.Bridge
             System.Collections.Generic.List<(Entity entity, Vector2Int cell)> results)
         {
             results.Clear();
-            int2 grid = _generatedMap.IsCreated ? _generatedMap.gridSize : GridSize;
+            int2 grid = _generatedMap.IsCreated ? _generatedMap.gridSize : FallbackGridSize;
             var centerCell = GridMath.WorldToCell(center, tileSize, grid, origin: _boardOrigin);
             using var enemyQuery = _em.CreateEntityQuery(
                 ComponentType.ReadOnly<AttackUnitTag>(),
@@ -2911,7 +2811,7 @@ namespace Wassup.Bridge
                 if (logger == null) continue;
                 var defData = FindDefenderData(evt.attacker);
                 var sourceUnit = defData != null ? defData.displayName : "<unknown>";
-                int2 grid = _generatedMap.IsCreated ? _generatedMap.gridSize : GridSize;
+                int2 grid = _generatedMap.IsCreated ? _generatedMap.gridSize : FallbackGridSize;
                 var srcCell = GridMath.WorldToCell(evt.sourcePos, tileSize, grid, origin: _boardOrigin);
                 var tgtCell = GridMath.WorldToCell(evt.targetPos, tileSize, grid, origin: _boardOrigin);
                 string detail = "";
@@ -3149,7 +3049,7 @@ namespace Wassup.Bridge
                 // 살찌운 제물 — 표식 악몽 처치: 카드 회수 알림(보상은 위 relay 가
                 // 표식 시점에 배율된 baked 값으로 이미 지급).
                 NotifyEnemyGoneIfMarked(evt.entity);
-                int2 grid = _generatedMap.IsCreated ? _generatedMap.gridSize : GridSize;
+                int2 grid = _generatedMap.IsCreated ? _generatedMap.gridSize : FallbackGridSize;
                 var cell = GridMath.WorldToCell(evt.position, tileSize, grid, origin: _boardOrigin);
                 float time = LogElapsedTime;
                 var logger = GameManager.Instance?.Logger;
@@ -5321,7 +5221,7 @@ namespace Wassup.Bridge
 
         private Vector2Int WorldToLogCell(float3 worldPosition)
         {
-            int2 grid = _generatedMap.IsCreated ? _generatedMap.gridSize : GridSize;
+            int2 grid = _generatedMap.IsCreated ? _generatedMap.gridSize : FallbackGridSize;
             var cell = GridMath.WorldToCell(worldPosition, tileSize, grid, origin: _boardOrigin);
             return new Vector2Int(cell.x, cell.y);
         }

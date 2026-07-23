@@ -4,10 +4,14 @@ using Unity.Entities;
 using UnityEngine;
 using Wassup.Bridge;
 using Wassup.Data;
+using Wassup.Data.MapGrid;
 
 namespace Wassup.Tests.EditMode
 {
     // Unit 4 — BattleBridge draft-map prebuild contracts.
+    // map-pipeline-cleanup unit 2 — fixture 를 legacy MapData 주입에서 **라이브 경로**
+    // (mapPool → MapGridBattleAdapter → ToGeneratedMap)로 재작성. 검증하는 라이프사이클
+    // 계약(빌드/재빌드/BeginPlacement 무재빌드/폴백 빌드)은 동일하다.
     //
     // Fixture notes:
     //   • PrepareDraftMap() always overwrites _world with World.DefaultGameObjectInjectionWorld,
@@ -18,15 +22,17 @@ namespace Wassup.Tests.EditMode
     //       3. Call BuildMapForBattle() (private).
     //     This is the identical code path that would run if the world were available.
     //   • RebuildDraftMap() works directly because it checks _world != null before proceeding.
-    //   • BeginPlacement() also checks World.DefaultGameObjectInjectionWorld — same treatment
-    //     (inject _world first, then the internal guard _generatedMap.IsCreated is consulted).
     public class BattleBridgeDraftMapTests
     {
         private World _world;
         private GameObject _go;
         private BattleBridge _bridge;
         private AttackDeck _deck;
-        private MapData _map;
+        private MapDocument _doc;
+        private MapDocumentPool _pool;
+        // adapter 가 doc 경로 진입 전에 null 검사만 한다(usable doc 이면 내용은 안 읽음).
+        // 유닛 4 의 adapter 단순화(Build(doc))에서 이 주입은 제거된다.
+        private MapGridGenerationSettings _gridSettings;
 
         [SetUp]
         public void SetUp()
@@ -34,19 +40,19 @@ namespace Wassup.Tests.EditMode
             // Real ECS world — needed by EnsureQueriesAndQueues / BuildFlowField.
             _world = new World("BattleBridgeDraftMapTests");
 
-            // Minimal ScriptableObjects.
             _deck = ScriptableObject.CreateInstance<AttackDeck>();
-            _map  = ScriptableObject.CreateInstance<MapData>();
+            _doc  = BuildUsableDocument();
+            _pool = ScriptableObject.CreateInstance<MapDocumentPool>();
+            AddPoolEntry(_pool, _doc, deck: null); // deck null → serialized deck 폴백 계약
 
             // BattleBridge as a plain GameObject (Awake not called in EditMode).
             _go     = new GameObject("BattleBridge_Test");
             _bridge = _go.AddComponent<BattleBridge>();
 
-            // Inject private SerializeFields.
-            SetField(_bridge, "deck",          _deck);
-            SetField(_bridge, "map",           _map);
-            // useProcedural=false → BuildFromFixture (only needs MapData).
-            SetField(_bridge, "useProcedural", false);
+            _gridSettings = ScriptableObject.CreateInstance<MapGridGenerationSettings>();
+            SetField(_bridge, "deck",            _deck);
+            SetField(_bridge, "mapPool",         _pool);
+            SetField(_bridge, "mapGridSettings", _gridSettings);
 
             // Inject the test World so ECS operations work.
             SetField(_bridge, "_world", _world);
@@ -58,9 +64,42 @@ namespace Wassup.Tests.EditMode
         {
             if (_go   != null) Object.DestroyImmediate(_go);
             if (_deck != null) Object.DestroyImmediate(_deck);
-            if (_map  != null) Object.DestroyImmediate(_map);
+            if (_doc  != null) Object.DestroyImmediate(_doc);
+            if (_pool != null) Object.DestroyImmediate(_pool);
+            if (_gridSettings != null) Object.DestroyImmediate(_gridSettings);
             // World owns NativeContainers — dispose last.
             _world?.Dispose();
+        }
+
+        // 최소 usable 문서: 6×4, y=2 복도 Walk, 스폰 2(connectivity 는 스폰 ≥2 요구), 골 1.
+        private static MapDocument BuildUsableDocument()
+        {
+            const int w = 6;
+            const int h = 4;
+            int n = w * h;
+
+            var tiles = new MapTileType[n];
+            for (int i = 0; i < n; i++) tiles[i] = MapTileType.Place;
+            for (int x = 0; x < w; x++) tiles[2 * w + x] = MapTileType.Walk;
+
+            var doc = ScriptableObject.CreateInstance<MapDocument>();
+            doc.SetFrom(
+                w, h,
+                tiles, new byte[n], new bool[n], new byte[n],
+                new[] { new Vector2Int(w - 1, 2) },
+                new[] { new Vector2Int(0, 2), new Vector2Int(1, 2) },
+                seed: 42,
+                version: 1);
+            return doc;
+        }
+
+        private static void AddPoolEntry(MapDocumentPool pool, MapDocument doc, AttackDeck deck)
+        {
+            var fi = typeof(MapDocumentPool).GetField("entries",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            Assert.IsNotNull(fi, "MapDocumentPool.entries field not found");
+            var list = (System.Collections.IList)fi.GetValue(pool);
+            list.Add(new MapDocumentPool.Entry { document = doc, deck = deck });
         }
 
         // Case 1 — Internal prepare path sets HasGeneratedMap to true.
@@ -72,6 +111,15 @@ namespace Wassup.Tests.EditMode
             Assert.IsTrue(_bridge.HasGeneratedMap);
         }
 
+        // Case 2 — 풀 문서 경로가 실제로 쓰였다(폴백 리니어가 아니라 doc authoringSeed).
+        [Test]
+        public void PrepareDraftMap_UsesPoolDocument()
+        {
+            CallPrepareDraftMapInternal(_bridge);
+            Assert.AreEqual(42, GetGeneratedMapSeed(_bridge),
+                "GeneratedMap must come from the pool document (authoringSeed), not a fallback");
+        }
+
         // Case 3 — BeginPlacement after an already-built map does not rebuild
         //           (seed stays the same; no new BuildMapForBattle invocation).
         [Test]
@@ -81,19 +129,14 @@ namespace Wassup.Tests.EditMode
             Assert.IsTrue(_bridge.HasGeneratedMap);
 
             int seedBefore = GetGeneratedMapSeed(_bridge);
-
-            // BeginPlacement checks _world = World.DefaultGameObjectInjectionWorld too.
-            // Inject world again before calling it (it will reassign the field).
-            // We do this by calling EnsureAndBeginPlacement which mirrors BeginPlacement's
-            // non-coroutine path with the world already present.
             CallBeginPlacementInternal(_bridge);
-
             int seedAfter = GetGeneratedMapSeed(_bridge);
+
             Assert.AreEqual(seedBefore, seedAfter,
                 "BeginPlacement must not rebuild map when one already exists");
         }
 
-        // Case 2 — RebuildDraftMap disposes old map and creates a new valid one.
+        // Case 4 — RebuildDraftMap disposes old map and creates a new valid one.
         [Test]
         public void RebuildDraftMap_DisposesOldAndCreatesNew()
         {
@@ -108,7 +151,7 @@ namespace Wassup.Tests.EditMode
             Assert.IsTrue(gm.IsCreated, "rebuilt GeneratedMap.IsCreated must be true");
         }
 
-        // Case 4 — When no map has been built, the fallback path in BeginPlacement builds one.
+        // Case 5 — When no map has been built, the fallback path in BeginPlacement builds one.
         [Test]
         public void BeginPlacement_WithoutPrepare_FallbackBuilds()
         {
@@ -132,10 +175,7 @@ namespace Wassup.Tests.EditMode
         // Mirrors the non-coroutine branch: EnsureQueriesAndQueues + fallback BuildMapForBattle.
         private static void CallBeginPlacementInternal(BattleBridge bridge)
         {
-            // Re-inject world in case BeginPlacement would overwrite (call sequence matters).
-            // We bypass BeginPlacement entirely and call its internals.
             CallPrivateMethod(bridge, "EnsureQueriesAndQueues");
-            // Replicate the fallback guard: only call BuildMapForBattle if no map exists.
             var gm = GetGeneratedMap(bridge);
             if (!gm.IsCreated)
                 CallPrivateMethod(bridge, "BuildMapForBattle");

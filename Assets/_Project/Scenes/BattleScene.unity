@@ -4143,23 +4143,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Wassup.Bridge.BattleBridge
   deck: {fileID: 11400000, guid: c971fe4b10aae4515a723d33e6e1731e, type: 2}
-  map: {fileID: 11400000, guid: 0787ec9271df64707a2f470418f78692, type: 2}
-  mapSettings: {fileID: 11400000, guid: 9ed4dfa17ef6648e8bc91cef74b876cf, type: 2}
-  useProcedural: 1
-  mapSource: 4
   mapGridSettings: {fileID: 11400000, guid: 1f2599c24bec64c26941cf5e9b0137e1, type: 2}
-  mapDocument: {fileID: 11400000, guid: 1a25446142d844b5eb449719c8b67cee, type: 2}
   mapPool: {fileID: 11400000, guid: 947db597914b146e8b8551fc3b0820db, type: 2}
   fixedMapSeed: 0
   seasonRegistry: {fileID: 11400000, guid: d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8, type: 2}
-  mapPathShape: 1
-  mapGenerationOptions:
-    pathShape: 0
-    gridSize:
-      x: 20
-      y: 10
-    obstacleDensity: 0
-    spawnLaneCount: 2
   tileSize: 1
   spawnHeight: 0.5
   resultScreen: {fileID: 441089446}
