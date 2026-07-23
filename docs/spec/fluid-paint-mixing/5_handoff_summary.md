@@ -34,7 +34,8 @@
 - FluidMath TDD RED(CS0103)→GREEN 8/8.
 - unit 3 스크래치 Play: 콘솔 에러 0 + 물감-혼합 룩 스크린샷.
 - unit 4 BattleScene 배선 완료(DreamcatcherFluidBackdropCanvas, sortingOrder 4, HandGated). AlwaysOn 으로 실 보드 위 유체 렌더 Play-스크린샷 검증 후 HandGated 확정.
-- 앰비언트를 연속 유동으로 전환(사용자 피드백: 터짐/깜빡임 → 흐르는 액체). FluidScratch Play 로 마블 유동 확인.
+- 앰비언트 룩 반복 튜닝(사용자 피드백): 방울 터짐/깜빡임 → 연속 유동 → 가장자리 유입 → **최종: 테두리 밴드에만 분포**
+  (Display `_EdgeMask`가 중앙 비움 + 변-접선 흐름). 값은 전부 FluidSimConfig.asset(edgeMaskWidth/ambientColorAmount/ambientFlow…). 사용자 확정.
 - **미완**: 실제 핸드-오픈 상태에서의 gated look 라이브 확인(MCP 로 핸드 여는 게 어려움) + 실기 perf.
 
 ## Notes (되돌리면 안 됨)

@@ -1,6 +1,6 @@
 # Fluid Paint-Mixing (WebGL 유체 축소 이식)
 
-**상태: 진행 중 (2026-07-23) — unit 0~4 완료. BattleScene 에 Dreamcatcher 유체 backdrop 배선(HandGated, sortingOrder 4). 앰비언트는 연속 유동(터짐/깜빡임 없음). 남은 것: 핸드 오픈 라이브 look 확인 + 실기 perf + push.**
+**상태: 진행 중 (2026-07-23) — unit 0~4 완료. BattleScene 에 Dreamcatcher 유체 backdrop 배선(HandGated, sortingOrder 4). 최종 룩 = 화면 밖에서 스며든 색이 테두리 밴드에만 성기게 분포(중앙 비움, edgeMaskWidth). 사용자 확정. 남은 것: 핸드 오픈 라이브 look 확인 + 실기 perf + push.**
 
 ## 상위 목표
 
