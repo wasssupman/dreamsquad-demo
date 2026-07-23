@@ -6,6 +6,7 @@
 > - **구조 유효**: `MapSettingsPanelView` 소비처(DraftView/SquadPrepView), legacy 스위치 arm, `ActiveDeck==null || map==null` 가드 3곳(라인 1140/1204/1502 → **1178/1242/1540** 이동) 전부 그대로. 각 유닛 구현 시 라인 앵커는 재확인하고 진행.
 > - **keep-set 갱신**: 라이브 풀 선택은 이제 `fixedMapSeed(디버그) > 토너먼트 시드(SelectIndexFromTournamentSeed) > 폴백 0번` 3분기(tournament-seed-map-select). `BuildFallbackLinear` 는 goals 명시 세팅 포함(multi-goal unit 0), `MapConnectivity.AllSpawnsReachGoal` 은 멀티-소스 BFS 로 진화 — 모두 keep-set 그대로, 이 스펙이 건드리지 않는다.
 > - **신규 keep 테스트**: `FlowFieldSingletonTests`·`MultiGoalPoolSeparationTests`·`MapConnectivityTests`(+2)·`MapDocumentRoundTripTests`(멀티골 케이스 추가됨) — 삭제 대상 아님. 유닛 4 의 `MapGridBattleAdapterTests` 재작성 시 멀티골 라운드트립 케이스 보존 확인.
+> - **교차 참조 정밀 검증(grep, 2026-07-23)**: ① 풀 참조 GUID 에 TwinLane/hello 없음(유닛 0 안전) ② `MapPainterWindow`(멀티골 재작업분)는 삭제 체인 타입 0 참조(자체 BFS) ③ 신규 테스트 5종·멀티골 소비자 5종(TilemapMapView 등) 모두 삭제 대상 0 참조 ④ 씬 `mapDocument`=ArkFunnel 바인딩은 **inert**(풀이 항상 우선 — 코드 확인). manual-map-authoring 의 "document 최우선" 계약은 random-map-pool 이후 이미 stale — 맵 강제 노브는 `fixedMapSeed`(밸런싱 레퍼런스 문서화)로 대체됨 → 유닛 2/3 삭제 무영향 ⑤ `BuildFallbackLinear` 라이브 호출(:995 connectivity 폴백)은 keep — 유닛 2 의 gridSize/version 상수화가 이 호출 인자(options.spawnLaneCount 포함)를 커버해야 함.
 
 ## 목표
 
