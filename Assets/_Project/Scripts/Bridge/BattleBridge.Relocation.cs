@@ -93,6 +93,30 @@ namespace Wassup.Bridge
             return true;
         }
 
+        // unit 3 — 비행 중 뷰 위치 오버라이드. sim(LocalTransform)은 착지 프레임까지 옛 위치에
+        // 머무르므로, SyncMonoUnitViews 의 defender 피드가 이 값을 대신 쓰게 해 실제 유닛 뷰를
+        // 컨트롤러가 직접 날린다(프리뷰 신설 없음 — 좌표계 지식은 Bridge 내부 유지).
+        private readonly Dictionary<Entity, Unity.Mathematics.float3> _relocationViewOverride = new();
+
+        public void SetRelocationViewOverride(Entity entity, Vector3 simPos)
+            => _relocationViewOverride[entity] = new Unity.Mathematics.float3(simPos.x, simPos.y, simPos.z);
+
+        public void ClearRelocationViewOverride(Entity entity)
+            => _relocationViewOverride.Remove(entity);
+
+        internal bool TryGetRelocationViewOverride(Entity entity, out Unity.Mathematics.float3 pos)
+            => _relocationViewOverride.TryGetValue(entity, out pos);
+
+        // 비행 앵커(sim 좌표, 스폰 y 규칙) — 컨트롤러가 베지어 궤적의 양 끝으로 쓴다.
+        public bool TryGetRelocationAnchors(Vector2Int from, Vector2Int to, out Vector3 start, out Vector3 end)
+        {
+            start = end = default;
+            if (!_generatedMap.IsCreated) return false;
+            start = GridToWorldCenter(from, spawnHeight);
+            end = GridToWorldCenter(to, spawnHeight);
+            return true;
+        }
+
         // 착지 프레임 — 시뮬 월드 위치를 목적 셀로 (스폰과 같은 y 규칙, 회전·스케일 유지).
         // 활성화(ActivateDeployedDefender)는 재전개 대기 후 호출자가 수행한다(unit 3).
         public void FinishDefenderRelocation(Vector2Int to, Entity entity)

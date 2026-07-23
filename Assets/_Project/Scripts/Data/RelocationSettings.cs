@@ -24,5 +24,18 @@ namespace Wassup.Data
         [Header("재전개 (unit 3 소비)")]
         [Tooltip("착지 후 전투 복귀까지 대기(초, Battle 시계 — 슬로모에 정직)")]
         public float redeploySeconds = 1.5f;
+
+        [Header("비행 (unit 3)")]
+        [Tooltip("비행 기본 시간(초, Battle 시계)")]
+        public float flightBaseSeconds = 0.35f;
+
+        [Tooltip("sim 거리 1당 추가 비행 시간(초)")]
+        public float flightSecondsPerUnit = 0.04f;
+
+        [Tooltip("비행 시간 상한(초)")]
+        public float flightMaxSeconds = 0.9f;
+
+        [Tooltip("비행 아치 높이(sim 단위)")]
+        public float flightArcHeight = 1.2f;
     }
 }

@@ -1,3 +1,4 @@
+using System.Collections;
 using Unity.Entities;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -60,6 +61,10 @@ namespace Wassup.UI
         private bool _pressCarried;       // 홀드에서 이어진 press (임계 전 릴리즈 = 커밋 아닌 탭 대기 전환)
         private Vector2 _targetDownScreen;
         private Vector2Int? _scoutCell;   // hover 스카우트 중인 셀
+        // unit 3 — 비행/재전개 (세대 토큰 = _sessionGen 패턴 준용)
+        private int _flightGen;
+        private Vector2Int _activeFlightTo;
+        private Entity _activeFlightEntity;
 
         private void Update()
         {
@@ -207,16 +212,83 @@ namespace Wassup.UI
         // 커밋: relocate API 만 지난다 — 코스트·on-place·컷신·PlacementCommitted 는 지나지 않는다(계약 1·4·8).
         private void CommitRelocation(Vector2Int to)
         {
-            if (!bridge.TryBeginDefenderRelocation(_sourceCell, to, out var entity, out _))
+            var from = _sourceCell;
+            if (!bridge.TryBeginDefenderRelocation(from, to, out var entity, out _))
             {
                 bridge.FlashPlacementReject(to);
                 ClearScout();
                 return;
             }
-            CancelMoveMode(); // 확정 = 슬로모 해제(계약 7) + 하이라이트/스카우트 정리
-            // unit 3 전 임시 즉시형 꼬리 — 비행/재전개 연출(unit 3)이 이 두 줄을 코루틴으로 대체한다.
+            CancelMoveMode(); // 확정 = 슬로모 해제(계약 7: 비행은 실시간 — DPS 공백의 시각화) + 정리
+            // unit 3 — 비행(뷰 오버라이드) → 착지(Finish) → 재전개(Battle 시계) → 활성화.
+            _activeFlightTo = to;
+            _activeFlightEntity = entity;
+            StartCoroutine(RunRelocationFlight(++_flightGen, from, to, entity));
+        }
+
+        // unit 3 — 비행/재전개 코루틴. 시뮬은 확정 프레임에 이미 to 귀속(점유·DefenderTile),
+        // 뷰만 베지어로 난다. 진행 시계 = Battle 도메인(다른 배치 슬로모에 정직 — 계약 5 결).
+        private IEnumerator RunRelocationFlight(int gen, Vector2Int from, Vector2Int to, Entity entity)
+        {
+            if (!bridge.TryGetRelocationAnchors(from, to, out var start, out var end))
+            {
+                FinishFlightInstant(to, entity); // 앵커 불가(맵 teardown 등) — 즉시형 폴백
+                yield break;
+            }
+
+            float dist = Vector3.Distance(start, end);
+            float duration = Mathf.Clamp(
+                settings.flightBaseSeconds + settings.flightSecondsPerUnit * dist,
+                0.1f, settings.flightMaxSeconds);
+            Vector3 dir = dist > 0.001f ? (end - start) / dist : Vector3.forward;
+            Vector3 arc = Vector3.up * settings.flightArcHeight;
+            Vector3 c1 = start + arc + dir * (dist * 0.2f);
+            Vector3 c2 = end + arc - dir * (dist * 0.2f);
+
+            float t = 0f;
+            while (t < 1f)
+            {
+                if (gen != _flightGen || !FlightBindingIntact(to, entity)) { AbandonFlight(entity); yield break; }
+                t += TimeManager.Instance.DeltaTime(TimeDomain.Battle) / duration;
+                float k = 1f - Mathf.Pow(1f - Mathf.Clamp01(t), 3f); // OutCubic — 빠른 출발, 착지 감속
+                bridge.SetRelocationViewOverride(entity, KeyringSim.CubicBezier(start, c1, c2, end, k));
+                yield return null;
+            }
+
+            bridge.ClearRelocationViewOverride(entity);
+            bridge.FinishDefenderRelocation(to, entity);
+            bridge.PulsePlacementHover(to, true); // 기존 착지 타일 팝 재사용
+
+            // 재전개 — Battle 시계 대기 후 활성화(on-place 는 가드 셋으로 미재발화).
+            float wait = settings.redeploySeconds;
+            while (wait > 0f)
+            {
+                if (gen != _flightGen || !FlightBindingIntact(to, entity)) { AbandonFlight(entity); yield break; }
+                wait -= TimeManager.Instance.DeltaTime(TimeDomain.Battle);
+                yield return null;
+            }
+            bridge.ActivateDeployedDefender(to, entity);
+            _activeFlightEntity = Entity.Null;
+        }
+
+        private bool FlightBindingIntact(Vector2Int to, Entity entity)
+            => bridge != null && bridge.TryGetDefenderAt(to, out var e, out _, out _) && e == entity;
+
+        private void AbandonFlight(Entity entity)
+        {
+            bridge?.ClearRelocationViewOverride(entity);
+            if (_activeFlightEntity == entity) _activeFlightEntity = Entity.Null;
+        }
+
+        // 컨트롤러 비활성/파괴 시 진행 중 비행을 즉시형으로 완결(유닛이 pending 에 갇히지 않게).
+        private void FinishFlightInstant(Vector2Int to, Entity entity)
+        {
+            if (bridge == null) return;
+            bridge.ClearRelocationViewOverride(entity);
+            if (!FlightBindingIntact(to, entity)) return;
             bridge.FinishDefenderRelocation(to, entity);
             bridge.ActivateDeployedDefender(to, entity);
+            if (_activeFlightEntity == entity) _activeFlightEntity = Entity.Null;
         }
 
         // hover 스카우트 — 기존 배치 hover/팝 표면 재사용(UpdateBoardScout 미러, 범위 격자는 제외).
@@ -279,9 +351,14 @@ namespace Wassup.UI
 
         private void OnDisable()
         {
-            // teardown/씬 전환 시 lease 누수 방지.
+            // teardown/씬 전환 시 lease 누수 방지 + 진행 중 비행은 즉시형으로 완결(pending 고착 방지).
             CancelMoveMode();
             ResetHold();
+            if (_activeFlightEntity != Entity.Null)
+            {
+                _flightGen++; // 코루틴 무효화(재개돼도 물러남)
+                FinishFlightInstant(_activeFlightTo, _activeFlightEntity);
+            }
         }
 
         private CameraDirector EnsureCameraDirector()

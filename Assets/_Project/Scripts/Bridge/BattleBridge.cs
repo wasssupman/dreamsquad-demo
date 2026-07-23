@@ -2497,6 +2497,9 @@ namespace Wassup.Bridge
                     continue;
 
                 var p = _em.GetComponentData<LocalTransform>(entity).Position;
+                // defender-relocation unit 3 — 비행 중엔 컨트롤러가 준 오버라이드가 뷰 위치를 대신한다
+                // (sim 은 착지 프레임에 이동 — BattleBridge.Relocation.cs).
+                if (TryGetRelocationViewOverride(entity, out var relocFlightPos)) p = relocFlightPos;
                 var world = new Vector3(p.x, p.y + spineDefenderYOffset, p.z);
                 // unit-health-display unit 3 — 타일 게이지: defender HP read-only → 타일 중심(바닥)
                 // view 좌표로 Set. 만피 숨김은 레이어가 처리.

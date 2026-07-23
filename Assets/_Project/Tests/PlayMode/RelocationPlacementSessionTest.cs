@@ -47,6 +47,7 @@ namespace Wassup.Tests.PlayMode
             fast.holdSeconds = 0.2f;
             fast.entryCooldownSeconds = 0.1f;
             fast.moveModeTimeoutSeconds = 30f;
+            fast.redeploySeconds = 0.2f; // unit 3 — 비행+재전개 총 대기 짧게
             SetField(controller, "settings", fast);
 
             var cat = FindCatalog();
@@ -99,13 +100,20 @@ namespace Wassup.Tests.PlayMode
             var mover = controller.MoveEntity;
             float costBefore = gm.CostRuntime.Current;
             Vector2 tgtScreen = ScreenOf(bridge, cam, target2);
+            var posBefore = em.GetComponentData<Unity.Transforms.LocalTransform>(mover).Position;
             Step(controller, true, true, tgtScreen, 0.02f);
             Step(controller, false, false, tgtScreen, 0.02f); // 릴리즈 = 커밋
             Assert.IsFalse(controller.InMoveMode, "commit exits move mode");
             Assert.AreEqual(1f, TimeManager.Instance.ScaleOf(TimeDomain.Battle), 0.001f, "slowmo released on commit");
             Assert.AreEqual(costBefore, gm.CostRuntime.Current, 0.001f, "relocation costs no cost (계약 1)");
-            Assert.AreEqual(target2, CellOf(bridge, em, mover), "binding at tap target");
-            Assert.IsFalse(em.HasComponent<PendingDeployment>(mover), "instant tail activated (unit 3 전 임시)");
+            Assert.AreEqual(target2, CellOf(bridge, em, mover), "binding at tap target (확정 프레임)");
+            // unit 3 — 커밋 직후는 비행/재전개 중(비타겟·비무장), 활성화는 비동기.
+            Assert.IsTrue(em.HasComponent<PendingDeployment>(mover), "pending during flight/redeploy (unit 3)");
+            yield return WaitUntilActivated(em, mover, 5f);
+            Assert.IsFalse(em.HasComponent<PendingDeployment>(mover), "activated after flight+redeploy");
+            var posAfter = em.GetComponentData<Unity.Transforms.LocalTransform>(mover).Position;
+            Assert.Greater(Unity.Mathematics.math.distance(posBefore.xz, posAfter.xz), 0.5f,
+                "sim position moved at landing (Finish)");
 
             // ── 3) 드래그 커밋: 홀드 승계 press 를 임계 초과 이동 → 릴리즈 = 커밋 (원 타일로 복귀)
             for (int i = 0; i < 4; i++) Step(controller, false, false, tgtScreen, 0.05f); // 쿨다운 소진
@@ -116,8 +124,18 @@ namespace Wassup.Tests.PlayMode
             Step(controller, false, false, backScreen, 0.02f);  // 릴리즈 = 드래그 커밋
             Assert.IsFalse(controller.InMoveMode, "drag commit exits move mode");
             Assert.AreEqual(source, CellOf(bridge, em, mover), "binding back at source via drag commit");
+            yield return WaitUntilActivated(em, mover, 5f); // 비행 완결 후 종료(다음 테스트 오염 방지)
+            Assert.IsFalse(em.HasComponent<PendingDeployment>(mover), "second flight also activates");
 
             Object.Destroy(fast);
+        }
+
+        private static IEnumerator WaitUntilActivated(EntityManager em, Entity e, float timeoutSec)
+        {
+            float deadline = Time.realtimeSinceStartup + timeoutSec;
+            while (Time.realtimeSinceStartup < deadline
+                   && em.Exists(e) && em.HasComponent<PendingDeployment>(e))
+                yield return null;
         }
 
         // ── helpers ──────────────────────────────────────────────────────────
