@@ -29,8 +29,10 @@
 
 ## 완료 기준
 
-- [ ] ProceduralMapGenerator/PathCarver/MapData/ManualMapInput + meta 삭제, legacy 에셋 3종 삭제
-- [ ] BattleMapBuilder=FallbackLinear only(MapTile/MarkCells 제거), ObstaclePlacer=DesignateDeco only(live 메서드 온전)
-- [ ] MapGenerationOptions/PathShape/ObstacleDensity 무참조 확인 후 제거(잔존 시 사유 기록)
-- [ ] compile 0 error, EditMode green(삭제 테스트 제외, DesignateDeco 간접·FallbackLinear 케이스 통과 유지)
-- [ ] refresh 후 콘솔 missing-reference 0
+- [x] ProceduralMapGenerator/PathCarver/MapData/ManualMapInput + meta 삭제, legacy 에셋 3종 삭제(빈 `Scripts/Data/Maps/` 폴더 동반 제거)
+- [x] BattleMapBuilder=FallbackLinear only(BuildFromFixture/BuildFromManual/MapTile/MarkCells/FindAdditionalWalkSpawn 제거), ObstaclePlacer=DesignateDeco only(stale 주석 정정, live 메서드 온전)
+- [x] MapGenerationOptions/MapPathShape/MapObstacleDensity/MapGenerationSettings.cs **+ MapSource.cs**(유닛 2 에서 무참조화) 무참조 확인 후 삭제
+- [x] compile 0 error, EditMode green(삭제 테스트 제외, FallbackLinear 2케이스 통과 유지)
+- [x] refresh 후 콘솔 missing-reference 0
+
+확인 2026-07-23 — EditMode 1290 중 1288 green(0 fail). 삭제 전 GUID 재확인에서 PrototypeMap·MapGenerationSettings 참조가 `Assets/_Recovery/0*.unity`(4~5월 Unity 크래시 복구 스냅샷, **git 미추적**)에서 검출 — 라이브 소비자 아님으로 판정하고 진행(복구 씬 dangling GUID 는 무해). GeneratedMap 헤더의 생산자 목록 주석도 현행화.

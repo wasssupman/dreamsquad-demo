@@ -4,25 +4,12 @@ using Random = Unity.Mathematics.Random;
 
 namespace Wassup.Data
 {
+    // map-pipeline-cleanup unit 3 — 절차 생성 전용 Place() 는 생성기와 함께 제거.
+    // DesignateDeco 는 authored-Deco 를 칠하지 않은 문서맵의 배치칸 커빙에 살아있다.
     public static class ObstaclePlacer
     {
-        public static void Place(
-            ref Random rng,
-            NativeArray<MapTileType> tiles,
-            int2 gridSize,
-            MapThemeData theme,
-            float minPlaceableRatio = -1f)
-        {
-            if (theme == null || theme.obstaclePrefabs == null || theme.obstaclePrefabs.Length == 0) return;
-
-            float ratio = minPlaceableRatio >= 0f ? minPlaceableRatio : theme.minPlaceableRatio;
-            // dirt coverage 를 살짝 줄인다(0.85×). 박스화 채움을 제거했으므로 최종 dirt 는
-            // 대략 이 시드량 + 약간의 오목 smoothing 수준.
-            DesignateDeco(ref rng, tiles, gridSize, math.clamp(ratio, 0.2f, 0.8f) * 0.85f);
-        }
-
         // Place(=buildable) 를 솔리드 블롭으로 남기고 나머지를 Deco 로 변환. keepFraction = 남길 Place 비율 [0,1].
-        // 시드 결정적. ProceduralMapGenerator(obstacle)·MapGrid(decorative deco) 양쪽이 공유한다.
+        // 시드 결정적. BattleBridge 의 맵 빌드(데코 미지정 문서맵)가 소비한다.
         public static void DesignateDeco(
             ref Random rng,
             NativeArray<MapTileType> tiles,

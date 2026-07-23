@@ -5,7 +5,7 @@ using Unity.Mathematics;
 namespace Wassup.Data
 {
     // Phase 10: 판 1회용 맵 데이터. BattleBridge 가 owner.
-    // BuildFromFixture / BuildFromManual / ProceduralMapGenerator.Generate / MapGridGenerator.Generate 중 하나로 생성.
+    // MapDocumentBuilder.ToGeneratedMap(authored 풀) / MapGridGenerator.Generate / BuildFallbackLinear(안전망)로 생성.
     public struct GeneratedMap : IDisposable
     {
         public NativeArray<MapTileType> tiles;   // gridSize.x * gridSize.y
