@@ -25,7 +25,9 @@
 
 ## 완료 기준
 
-- [ ] 4개 asset + meta 삭제 (desert 관련 2종은 **유지**)
-- [ ] 삭제 후 각 GUID grep 참조 0 (자기참조 없음)
-- [ ] Unity refresh 후 콘솔 missing-reference/broken-guid 경고 0
-- [ ] EditMode green (변화 없어야 정상 — 이 유닛은 코드 무관)
+- [x] 4개 asset + meta 삭제 (desert 관련 2종은 **유지**)
+- [x] 삭제 후 각 GUID grep 참조 0 (자기참조 없음 — 삭제 전 전수 재확인 완료)
+- [x] Unity refresh 후 콘솔 missing-reference/broken-guid 경고 0
+- [x] EditMode green (변화 없어야 정상 — 이 유닛은 코드 무관)
+
+확인 2026-07-23 — 삭제 전 GUID 4종 전수 grep 참조 0 재확인 → UnityMCP manage_asset delete(meta 동반) → refresh 후 콘솔 error/warning 0 → EditMode 1301 중 1299 green(2 skip=기존 Ignored).
