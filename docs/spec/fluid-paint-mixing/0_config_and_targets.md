@@ -20,9 +20,9 @@
 - 해상도: `simResolution`(짧은 변, 기본 128), `dyeResolution`(기본 256 — 원본 1024는 모바일 과함)
 - 솔버: `pressureIterations`(20), `velocityDissipation`(0.2), `densityDissipation`(1.0), `pressure`(0.8), `curl`(30)
 - splat: `splatRadius`(0.25, 정규화), `splatForce`(6000, 외부 Splat 용)
-- 앰비언트 흐름(연속 유동): `ambientEmitters`(3), `ambientDrift`(배회 속도), `ambientFlow`(프레임당 velocity), `ambientColorAmount`(프레임당 색), `ambientColorCycle`(색 순환), `palette`(비면 순환 HSV)
+- 앰비언트 가장자리 유입: `ambientEmitters`(4=네 변), `ambientDrift`, `ambientFlow`, `ambientColorAmount`, `ambientColorCycle`, `palette`, `seedSplats`(검은 시작 방지 소량)
 - 정밀도: `preferHalfFloat`(미지원 시 자동 폴백)
-- 감쇠 기본값은 흐름-지향(densityDissipation 0.4, velocityDissipation 0.15, curl 22) — 방울 터짐/깜빡임 대신 잔상이 흐른다
+- 감쇠 기본값(densityDissipation 1.1, velocityDissipation 0.15, curl 18) — 가장자리에서 유입된 색이 안쪽으로 갈수록 옅어져 중앙이 잔잔(차오르지 않음)
 
 ### FluidMath (Wassup.Presentation, 순수 static — EditMode 테스트 대상)
 - `Vector2Int CalcResolution(int target, float aspect)` — 원본 `getResolution` 이식. 짧은 변=target,
