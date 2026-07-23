@@ -33,10 +33,12 @@ namespace Wassup.UI
         [FormerlySerializedAs("dormantFrameColor")]
         [SerializeField] private Color dormantColor = new Color(0.62f, 0.58f, 0.7f, 0.7f);
         [SerializeField] private Color tickColor = new Color(0.86f, 0.82f, 0.96f, 0.72f);
+        // 오버플로우(낭비) 전용 색 — MAX 골드와 분리해 "지금 버려지는 중"을 명확히(손실회피).
+        [SerializeField] private Color overflowColor = new Color(1f, 0.35f, 0.24f, 1f);
         [SerializeField] private float valuePunchScale = 1.18f;
 
         [Header("Placement")]
-        [SerializeField] private float trayGap = 16f;      // 트레이 우측 엣지와의 간격
+        [SerializeField] private float trayGap = 30f;      // 트레이 우측 엣지와의 간격(오탭 방지 여유)
         [SerializeField] private float baselineY = 18f;     // 하단 기준선
         [SerializeField] private float fallbackTrayHalf = 490f; // 트레이 미bind 시 폴백 반폭
 
@@ -54,8 +56,9 @@ namespace Wassup.UI
         [SerializeField] private float figureFlightSeconds = 0.44f; // 킬 위치→항아리 비행 시간
         [SerializeField] private float figureFlightArc = 140f;      // 아치 솟음(px)
         [SerializeField] private float figureFlightStagger = 0.05f; // 한 획득의 여러 피규어 간 지연
-        [SerializeField] private float figureJostleInterval = 1.4f; // 주기적 통통 튕김 간격(초)
-        [SerializeField] private float figureJostleStrength = 3.2f; // 통통 튕김 임펄스 세기
+        [SerializeField] private int maxConcurrentFlights = 4;      // 동시 비행 상한(다발 킬 clutter↓)
+        [SerializeField] private float figureJostleInterval = 1.9f; // 주기적 통통 튕김 간격(초, 완화)
+        [SerializeField] private float figureJostleStrength = 2.1f; // 통통 튕김 임펄스 세기(주변시 노이즈↓)
         [SerializeField] private Color[] figureTints =
         {
             new Color(0.62f, 0.5f, 0.9f, 1f),
@@ -163,6 +166,13 @@ namespace Wassup.UI
             if (_panel == null || !_panel.activeInHierarchy) return;
             if (_overflow != null) StopCoroutine(_overflow);
             _overflow = StartCoroutine(OverflowFlashRoutine());
+            // 손실회피: 버려진 양을 -N 으로 명시(획득 +N 의 거울). MAX 에선 GaugeChanged 미발화라
+            // +N 과 겹치지 않음. _gainLabel 재사용.
+            if (lost > 0)
+            {
+                if (_gain != null) StopCoroutine(_gain);
+                _gain = StartCoroutine(ShowLoss(lost));
+            }
         }
 
         // ── 흡수 비행 (unit 3) ────────────────────────────────────────────────
@@ -195,16 +205,18 @@ namespace Wassup.UI
             bool haveEnd = canFly && TryJarTopLocal(out endLocal);
             bool haveStart = canFly && TryWorldToSafeAreaLocal(worldPos, out startLocal);
 
+            // 다발 킬 코얼레스: 동시 비행 상한(maxConcurrentFlights)까지만 실제 비행, 초과분은
+            // 즉시 SpawnAtTop 으로 카운트만 반영해 화면 회전 스프라이트 폭주를 막는다(spec 배칭 계약).
             for (int i = 0; i < delta; i++)
             {
-                if (haveStart && haveEnd)
+                if (haveStart && haveEnd && _pendingFlights < maxConcurrentFlights)
                 {
                     StartCoroutine(FlightRoutine(startLocal, endLocal, i * figureFlightStagger));
                     _pendingFlights++;
                 }
                 else
                 {
-                    _pile.SpawnAtTop(); // 폴백(패널 비활성/무효 좌표)
+                    _pile.SpawnAtTop(); // 폴백(패널 비활성/무효 좌표) 또는 동시 비행 상한 초과
                 }
             }
         }
@@ -308,8 +320,8 @@ namespace Wassup.UI
                 Vector2 p = Vector2.Lerp(startLocal, endLocal, ease);
                 p.y += Mathf.Sin(k * Mathf.PI) * figureFlightArc; // 아치 솟음
                 grt.anchoredPosition = p;
-                // 뱅글뱅글 회전 + 빨려드는 축소(사용자 요청).
-                grt.localRotation = Quaternion.Euler(0f, 0f, spinDir * k * 720f);
+                // 뱅글뱅글 회전 + 빨려드는 축소(사용자 요청). 회전은 340°로 절제(clutter↓).
+                grt.localRotation = Quaternion.Euler(0f, 0f, spinDir * k * 340f);
                 grt.localScale = Vector3.one * baseScale * Mathf.Lerp(1.25f, 0.7f, k);
                 yield return null;
             }
@@ -699,6 +711,31 @@ namespace Wassup.UI
             _gain = null;
         }
 
+        // 오버플로우 손실 -N (ShowGain 의 거울: 아래로 흘리고 낭비 색).
+        private IEnumerator ShowLoss(int lost)
+        {
+            if (_gainLabel == null) yield break;
+            const float duration = 0.62f;
+            var rt = _gainLabel.rectTransform;
+            Vector2 start = new Vector2(0f, JarHeight * 0.5f + 18f);
+            Vector2 end = new Vector2(0f, JarHeight * 0.5f - 26f); // 아래로(손실)
+            _gainLabel.text = $"-{lost}";
+            _gainLabel.gameObject.SetActive(true);
+            float time = 0f;
+            while (time < duration)
+            {
+                time += Time.unscaledDeltaTime;
+                float k = Mathf.Clamp01(time / duration);
+                rt.anchoredPosition = Vector2.Lerp(start, end, 1f - (1f - k) * (1f - k));
+                var c = overflowColor;
+                c.a = 1f - Mathf.Clamp01((k - 0.5f) * 2f);
+                _gainLabel.color = c;
+                yield return null;
+            }
+            _gainLabel.gameObject.SetActive(false);
+            _gain = null;
+        }
+
         private IEnumerator ReadyPulseRoutine()
         {
             if (_visualRoot == null) yield break;
@@ -732,8 +769,9 @@ namespace Wassup.UI
                 float flash = Mathf.Abs(Mathf.Sin(k * Mathf.PI * 3f)) * (1f - k); // 3회 감쇠 깜빡임
                 if (_rim != null)
                 {
-                    var c = Color.Lerp(rimColor, maxColor, 0.7f + 0.3f * flash);
-                    c.a = Mathf.Max(0.35f, flash);
+                    // MAX 상시 골드와 분리된 낭비 색으로 "지금 버려지는 중" 명확화.
+                    var c = overflowColor;
+                    c.a = Mathf.Max(0.4f, flash);
                     _rim.color = c;
                 }
                 if (_visualRoot != null)
