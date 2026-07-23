@@ -41,9 +41,22 @@ namespace Wassup.Data
         [Tooltip("페이즈별 포즈 델타. 미등록 페이즈 진입은 현재 델타 유지(hold).")]
         public CameraPhasePose[] phasePoses = System.Array.Empty<CameraPhasePose>();
 
+        // camera-direction unit 8 — 맵 크기에 맞춘 홈 거리 계산의 여유 배율.
+        // 1 = 보드 코너가 화면 가장자리에 딱 닿음. 크게 할수록 여백이 늘고 보드가 작아진다.
+        [Tooltip("보드 fit 여유 배율. 1 = 보드 코너가 화면 가장자리에 딱 닿음. HUD 가 위아래를 가리므로 여유를 둔다.")]
+        public float boardFitMargin = 1.12f;
+
         [Header("배틀 구두점 (unit 2) — additive 전용, 카메라 탈취 없음")]
-        [Tooltip("헤비 임팩트(광역 착탄) 줌 펄스 FOV 델타(도). 음수 = 줌인.")]
+        [Tooltip("헤비 임팩트(광역 착탄) 줌 펄스 FOV 델타(도). 음수 = 줌인. [은퇴 — 줌은 pulseDolly 가 담당] 0 권장.")]
         public float pulseFovDelta = -2.5f;
+        // camera-fov-to-dolly — 줌 펄스를 FOV 가 아니라 전진(transform)으로 낸다.
+        // FOV 줌은 원근이 함께 변해 기울어진 보드에서 왜곡이 도드라진다. dolly 는 원근을
+        // 유지한 채 크기만 바꾼다. 부호 규약은 focusDolly/inspectDolly 와 동일 — 양수 = 전진.
+        // 환산: 화면에 담기는 세계 크기가 같으려면 d' = d · tan((v+Δ)/2)/tan(v/2).
+        // 현 씬 포즈(보드까지 약 15.5, 홈 수직 FOV 36)에서 FOV -2.5° ≈ 전진 1.15.
+        // 홈 포즈나 FOV 를 크게 바꾸면 이 값도 다시 환산해야 한다.
+        [Tooltip("헤비 임팩트 줌 펄스 dolly(월드 유닛). 양수 = 전진 = 줌인. 0 = 펄스 줌 끔.")]
+        public float pulseDolly = 1.15f;
         [Tooltip("줌 펄스 시간(초). 0 = 펄스 끔.")]
         public float pulseSec = 0.22f;
         [Tooltip("킬 스트릭 셰이크 최대 위치 진폭(월드 유닛, heat=1 기준).")]

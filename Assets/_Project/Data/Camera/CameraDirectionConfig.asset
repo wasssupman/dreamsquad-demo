@@ -61,17 +61,19 @@ MonoBehaviour:
       m_PreInfinity: 0
       m_PostInfinity: 0
       m_RotationOrder: 0
-  pulseFovDelta: -2.5
+  boardFitMargin: 1.12
+  pulseFovDelta: 0
+  pulseDolly: 1.14
   pulseSec: 0.22
   shakeMaxPosAmp: 0.04
   shakeMaxRotAmp: 0.12
   shakeFreqX: 13.93
   shakeFreqY: 8.3
   punctuationFadeSec: 0.15
-  fovMin: 41
+  fovMin: 31
   fovMax: 60
-  focusDolly: 0
-  focusFovDelta: 4
+  focusDolly: -1.87
+  focusFovDelta: 0
   focusLookWeight: 0.25
   focusLeanPerSpeed: 1.2
   focusLeanMaxDeg: 2.5
@@ -79,8 +81,8 @@ MonoBehaviour:
   focusDamping: 10
   focusFadeInSec: 0.25
   focusFadeOutSec: 0.24
-  inspectDolly: 4
-  inspectFovDelta: -2
+  inspectDolly: 4.92
+  inspectFovDelta: 0
   inspectLookWeight: 0.5
   inspectFadeInSec: 0.22
   inspectFadeOutSec: 0.3

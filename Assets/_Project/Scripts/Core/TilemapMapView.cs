@@ -242,6 +242,23 @@ namespace Wassup.Core
             }
         }
 
+        // camera-direction unit 8 — 플레이 그리드(경로·배치 셀)의 월드 bounds.
+        // TryGetBoardWorldBounds 는 ground 렌더러 실측이라 주변 데코 지대까지 포함한다
+        // (20×12 맵이 35×32 로 잡힌다) — 카메라 프레이밍은 플레이 영역만 담아야 하므로
+        // 여기서는 grid 셀 좌표로 직접 범위를 만든다. iso 마름모는 대각선 양 끝만으로는
+        // 좌우 극단을 놓치므로 4코너를 모두 감싼다. 높이는 0(평면) — 유닛이 솟는 만큼은
+        // fit margin 이 흡수한다.
+        public bool TryGetPlayfieldWorldBounds(Vector2Int gridSize, out Bounds bounds)
+        {
+            bounds = default;
+            if (grid == null || gridSize.x <= 0 || gridSize.y <= 0) return false;
+            bounds = new Bounds(grid.CellToWorld(new Vector3Int(0, 0, 0)), Vector3.zero);
+            bounds.Encapsulate(grid.CellToWorld(new Vector3Int(gridSize.x, 0, 0)));
+            bounds.Encapsulate(grid.CellToWorld(new Vector3Int(0, gridSize.y, 0)));
+            bounds.Encapsulate(grid.CellToWorld(new Vector3Int(gridSize.x, gridSize.y, 0)));
+            return true;
+        }
+
         // unit 1 — 페인트된 ground 영역의 월드 bounds (카메라 프레이밍용; iso 마름모도 실측).
         public bool TryGetBoardWorldBounds(out Bounds bounds)
         {

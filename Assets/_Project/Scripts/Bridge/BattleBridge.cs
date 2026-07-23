@@ -988,6 +988,16 @@ namespace Wassup.Bridge
             // 페이즈별 카메라가 필요하면 CameraDirector 의 페이즈 포즈 델타(spec unit 1)로 구현한다.
             // ApplyTilemapCameraPreset(); // 매 빌드 idempotent 재적용
 
+            // camera-direction unit 8 — 맵마다 크기가 달라(12×10 ~ 20×12) 고정 포즈로는 여백이
+            // 남거나 가장자리가 잘린다. 그리드가 확정된 지금 홈 거리를 다시 잡는다.
+            // 카메라를 직접 쓰지 않고 소유자(CameraDirector)의 홈만 갱신 — 페이즈/포커스/킥 델타는
+            // 홈 기준이라 그대로 따라온다. view·director 부재(headless)면 조용히 skip.
+            // bounds 는 ground 렌더러 실측(TryGetBoardWorldBounds)이 아니라 플레이 그리드다 —
+            // 전자는 주변 데코 지대까지 포함해(20×12 → 35×32) 카메라가 과하게 물러난다.
+            if (tilemapMapView != null && tilemapMapView.TryGetPlayfieldWorldBounds(
+                    new Vector2Int(_generatedMap.gridSize.x, _generatedMap.gridSize.y), out var boardBounds))
+                EnsureCameraDirector()?.FrameBoard(boardBounds);
+
             BuildFlowField();
             // season-gimmick-overwork unit 4 — 픽업 스폰 후보 셀(Walk∪Place)은 goal field 와
             // 같은 맵-빌드 시점에 구축. gimmick 비활성이면 no-op.

@@ -171,6 +171,27 @@ namespace Wassup.Presentation
             return null;
         }
 
+        // unit 8 — 보드 크기에 맞춰 홈 위치를 다시 잡는다(회전·FOV 는 씬 값 유지).
+        // 맵마다 크기가 달라(12×10 ~ 20×12) 고정 포즈로는 여백이 남거나 가장자리가 잘린다.
+        //
+        // 홈만 갈아끼우는 이유: 페이즈 포즈·드래그 포커스·킥·브리딩이 전부 홈 기준 델타라
+        // (CameraComposeMath.Compose) 나머지 연출이 그대로 따라온다. 카메라 transform 을
+        // 직접 쓰면 다음 LateUpdate 에 되돌려져 무효다 — 옛 ApplyTilemapCameraPreset 이 그래서 은퇴했다.
+        //
+        // 호출 시점은 맵 빌드(보드 bounds 확정) 직후. 그때는 연출 가중치가 없으므로 진행 중
+        // 채널을 건드리지 않는다.
+        public void FrameBoard(Bounds boardWorld)
+        {
+            if (_cam == null) return; // Awake 전 호출 — 홈 미캡처
+            float margin = config != null ? config.boardFitMargin : 1f;
+            CameraFramingMath.FrustumTangents(_homeFov, _cam.aspect, out float tanH, out float tanV);
+            _cornerBuf = CameraFramingMath.LocalCorners(boardWorld, _homeRot, _cornerBuf);
+            float dist = CameraFramingMath.FitDistance(_cornerBuf, tanH, tanV, margin);
+            _homePos = boardWorld.center - (_homeRot * Vector3.forward) * dist;
+        }
+
+        private Vector3[] _cornerBuf;
+
         // 임팩트 킥 (구 CameraImpactKick.Kick 승계 — 호출처: DreamcatcherHandView 카드 흡수 임팩트).
         // config 배선 전 호출은 안전 no-op (spec unit 0 계약). kickDuration 0 = 킥 비활성
         // (envelope 의 duration<=0 가드가 단일 소유 — 별도 최소치 클램프를 두지 않는다).
@@ -488,9 +509,14 @@ namespace Wassup.Presentation
             {
                 if (pulseEnv > 0f)
                 {
+                    // camera-fov-to-dolly — 줌 펄스는 전진(z)으로 낸다. FOV 를 흔들면 원근이
+                    // 함께 변해 기울어진 보드에서 왜곡이 도드라진다. pulseFovDelta 는 은퇴
+                    // (기본 0)지만 경로는 남겨둔다 — 둘을 섞어 쓰고 싶을 때를 위해.
+                    float amp = _pulseStrength * pulseEnv * _punctWeight;
                     delta = CameraComposeMath.Add(delta, new CameraPoseDelta
                     {
-                        fovDelta = config.pulseFovDelta * _pulseStrength * pulseEnv * _punctWeight,
+                        localPos = new Vector3(0f, 0f, config.pulseDolly * amp),
+                        fovDelta = config.pulseFovDelta * amp,
                     });
                 }
                 if (_shakeHeat > 0.0001f)
