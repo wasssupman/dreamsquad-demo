@@ -1905,24 +1905,34 @@ MonoBehaviour:
   handController: {fileID: 2054561897}
   labelFont: {fileID: 11400000, guid: 218cce73e3172a04a8c536a4d368d90f, type: 2}
   numberFont: {fileID: 11400000, guid: 7f50de03946cd4d229e8920dd91dbd1a, type: 2}
-  burstFrameSprite: {fileID: 21300000, guid: c7b317b798a348499d23dfe3086b0aef, type: 3}
   backingColor: {r: 0.07, g: 0.05, b: 0.14, a: 0.94}
   fillColor: {r: 0.7, g: 0.43, b: 1, a: 1}
   chargedColor: {r: 0.43, g: 0.92, b: 1, a: 1}
-  haloColor: {r: 0.56, g: 0.28, b: 1, a: 0.5}
   maxColor: {r: 1, g: 0.77, b: 0.12, a: 1}
-  dormantFrameColor: {r: 0.68, g: 0.65, b: 0.76, a: 0.78}
+  rimColor: {r: 0.56, g: 0.28, b: 1, a: 0.5}
+  dormantColor: {r: 0.68, g: 0.65, b: 0.76, a: 0.78}
+  tickColor: {r: 0.86, g: 0.82, b: 0.96, a: 0.72}
   valuePunchScale: 1.18
-  ambientCycleSeconds: 3.2
-  ambientScale: 1.018
-  ambientTiltDegrees: 0.6
-  dormantAmbientMultiplier: 0.45
-  sheenIntervalSeconds: 3.8
-  sheenSweepSeconds: 0.68
-  sheenSize: {x: 30, y: 154}
-  sheenTravel: 86
-  sheenTiltDegrees: -16
-  sheenColor: {r: 0.82, g: 0.98, b: 1, a: 0.18}
+  trayGap: 16
+  baselineY: 18
+  fallbackTrayHalf: 490
+  maxFigures: 8
+  figureRadius: 18
+  figureGravity: 1500
+  figureDamping: 0.9
+  representativeUnit: {fileID: 11400000, guid: a2fc78633cb4410896cdd585f849ee39, type: 2}
+  figureSkeletonMaterial: {fileID: 2100000, guid: 9c6ec24bca5fc42489fe47358fef0d4a, type: 2}
+  figureAnimation: Idle
+  figureScale: 0.34
+  figureFlightSeconds: 0.44
+  figureFlightArc: 140
+  figureFlightStagger: 0.05
+  figureJostleInterval: 1.4
+  figureJostleStrength: 3.2
+  figureTints:
+  - {r: 0.62, g: 0.5, b: 0.9, a: 1}
+  - {r: 0.45, g: 0.82, b: 0.88, a: 1}
+  - {r: 0.55, g: 0.62, b: 0.95, a: 1}
 --- !u!4 &1012444855
 Transform:
   m_ObjectHideFlags: 0
@@ -2197,10 +2207,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.CostDisplay
   gameManager: {fileID: 1495062450}
-  costPanelSprite: {fileID: 21300000, guid: 7498396673481ab4ab7f0a6d0b1d9421, type: 3}
   costEnergyIcon: {fileID: 21300000, guid: df956c11e21074948acef866ba4a34a0, type: 3}
-  costBarFilled: {fileID: 21300000, guid: b67bd304568ecc840b864c12c9daeadd, type: 3}
-  costBarEmpty: {fileID: 21300000, guid: 5a53efaa2e57bfc42b70c85fa911d169, type: 3}
   numberFont: {fileID: 11400000, guid: 218cce73e3172a04a8c536a4d368d90f, type: 2}
   trayConfig: {fileID: 11400000, guid: 903c6fe71bf7844489939928774546b6, type: 2}
 --- !u!4 &1075095675
@@ -3021,6 +3028,8 @@ MonoBehaviour:
   unitHoverTint: {r: 1, g: 0.28, b: 0.22, a: 1}
   tooltipWidth: 480
   tooltipTopOffset: 24
+  tooltipHeaderFont: 27
+  tooltipBodyFont: 23
   tooltipBobY: 6
   tooltipBobX: 3
   tooltipBobFreq: 1.2

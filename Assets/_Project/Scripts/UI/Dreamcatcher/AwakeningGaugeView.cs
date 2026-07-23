@@ -5,6 +5,7 @@ using UnityEngine;
 using UnityEngine.Serialization;
 using UnityEngine.UI;
 using Wassup.Core;
+using Wassup.Data;
 using Wassup.UI.Layout;
 
 namespace Wassup.UI
@@ -38,11 +39,17 @@ namespace Wassup.UI
         [SerializeField] private float baselineY = 18f;     // 하단 기준선
         [SerializeField] private float fallbackTrayHalf = 490f; // 트레이 미bind 시 폴백 반폭
 
-        [Header("Figure Pile (unit 2a) + Absorb Flight (unit 3)")]
-        [SerializeField] private int maxFigures = 20;
-        [SerializeField] private float figureRadius = 12f;
+        [Header("Figure Pile — Spine miniatures (unit 2b)")]
+        // 적게·크게(사용자 결정): Spine 미니어처가 읽히려면 6~8개 · ~44px.
+        [SerializeField] private int maxFigures = 8;
+        [SerializeField] private float figureRadius = 18f;
         [SerializeField] private float figureGravity = 1500f;
         [SerializeField] private float figureDamping = 0.9f;
+        // Spine 미니어처(대표 스켈레톤 + 머티리얼). 미배선 시 절차적 원 폴백(무회귀).
+        [SerializeField] private AttackUnitData representativeUnit; // 대표 나이트메어(적 정체성 미제공)
+        [SerializeField] private Material figureSkeletonMaterial;   // SkeletonGraphic 머티리얼
+        [SerializeField] private string figureAnimation = "Idle";  // 동결 포즈(가독성=Idle; Die 도 가능)
+        [SerializeField] private float figureScale = 0.34f;        // localScale(~36px, 오프스크린 튜닝)
         [SerializeField] private float figureFlightSeconds = 0.44f; // 킬 위치→항아리 비행 시간
         [SerializeField] private float figureFlightArc = 140f;      // 아치 솟음(px)
         [SerializeField] private float figureFlightStagger = 0.05f; // 한 획득의 여러 피규어 간 지연
@@ -415,6 +422,12 @@ namespace Wassup.UI
 
             var roots = UiCanvasSetup.Ensure(gameObject, sortingOrder: 7);
             _safeArea = roots.SafeAreaRoot; // unit 3 — 흡수 비행 고스트 부모(전체 화면)
+            // unit 2b — SkeletonGraphic 미니어처는 CanvasRenderer 에 uv1/uv2/normal/tangent 가
+            // 실려야 정상 렌더(SquadCharacterPage 관례). 이 order 7 캔버스에 채널을 켠다.
+            if (roots.Canvas != null)
+                roots.Canvas.additionalShaderChannels |=
+                    AdditionalCanvasShaderChannels.TexCoord1 | AdditionalCanvasShaderChannels.TexCoord2 |
+                    AdditionalCanvasShaderChannels.Normal | AdditionalCanvasShaderChannels.Tangent;
 
             // 트레이 우측 분리 독. anchor 하단중앙, pivot 하단좌 → LateUpdate 가 x 를 트레이
             // 우측 엣지로 민다. 히트 영역 = 패널 전체(세로 항아리라 세로 히트 면적 충분).
@@ -497,7 +510,8 @@ namespace Wassup.UI
                 damping = figureDamping,
                 sleepMotionSq = 0.02f,
             };
-            _pile.Configure(maxFigures, figureRadius, pileParams, _figureSprite, figureTints);
+            _pile.Configure(maxFigures, figureRadius, pileParams, representativeUnit, figureSkeletonMaterial,
+                figureScale, figureAnimation, _figureSprite, figureTints);
             _pile.SetJostle(figureJostleInterval, figureJostleStrength);
 
             // 큰 숫자(1순위). 채움/피규어 위에 아웃라인으로 항상 읽히게.

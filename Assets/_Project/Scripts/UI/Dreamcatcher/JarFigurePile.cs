@@ -1,22 +1,25 @@
+using Spine.Unity;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.UI;
+using Wassup.Data;
+using Wassup.Presentation;
 
 namespace Wassup.UI
 {
-    // dreamcatcher-orb-dock unit 2a/3 — 항아리 안 미니 피규어 물리 더미.
+    // dreamcatcher-orb-dock unit 2b — 항아리 안 미니 피규어(SkeletonGraphic 미니어처) 물리 더미.
     // JarFigurePhysics(unit 0) 순수 시뮬을 고정 스텝으로 Tick 하고 위치를 RectTransform 에 매핑.
-    // 피규어 비주얼은 절차적 스프라이트(최종). 개수는 이 컴포넌트가 아니라 **뷰가** 명시적으로
-    // 구동한다(unit 3: 흡수 비행이 도착할 때 SpawnAtTop, 소비/리셋 때 RemoveTop). RectTransform 은
-    // 항아리 인테리어를 채우고 pivot 하단중앙이라 시뮬 로컬좌표(x∈[-halfWidth,halfWidth], y=0
-    // 바닥)를 anchoredPosition 에 직접 쓸 수 있다.
+    // 피규어 = 대표 유닛 스켈레톤을 특정 애니(기본 Idle) 마지막 프레임에 동결한 SkeletonGraphic.
+    // 데이터/머티리얼 미배선 시 절차적 원 스프라이트로 폴백(무회귀). 개수는 뷰가 명시적으로 구동
+    // (흡수 비행 도착 시 SpawnAtTop, 소비/리셋 때 RemoveTop). 주기적 통통 튕김(JostleAll).
+    // RectTransform 은 항아리 인테리어를 채우고 pivot 하단중앙이라 시뮬 로컬좌표를 직접 매핑.
     public class JarFigurePile : MonoBehaviour
     {
         const float FixedDt = 1f / 60f; // Verlet 안정성 = 고정 dt
 
         private RectTransform _rt;
         private JarFigure[] _figs;
-        private Image[] _views;
+        private Graphic[] _views; // SkeletonGraphic 또는 Image(폴백)
         private int _max;
         private float _radius;
         private JarSimParams _params;
@@ -37,29 +40,72 @@ namespace Wassup.UI
             _jostleStrength = strength;
         }
 
-        public void Configure(int max, float radius, JarSimParams p, Sprite figureSprite, Color[] tints)
+        // Spine 미니어처 풀 생성. visualData+material 있으면 SkeletonGraphic, 없으면 원 폴백.
+        public void Configure(int max, float radius, JarSimParams p,
+            ISpineUnitVisualData visualData, Material skeletonMaterial, float figureScale, string animName,
+            Sprite fallbackSprite, Color[] fallbackTints)
         {
             _rt = (RectTransform)transform;
             _max = Mathf.Max(1, max);
             _radius = radius;
             _params = p;
             _figs = new JarFigure[_max];
-            _views = new Image[_max];
+            _views = new Graphic[_max];
+
+            bool useSpine = visualData != null && visualData.SpineSkeletonDataAsset != null && skeletonMaterial != null;
             for (int i = 0; i < _max; i++)
             {
-                var go = new GameObject("Figure" + i, typeof(RectTransform), typeof(Image));
-                go.transform.SetParent(transform, false);
-                var vr = (RectTransform)go.transform;
-                vr.anchorMin = vr.anchorMax = new Vector2(0.5f, 0f); // 하단중앙 원점
-                vr.pivot = new Vector2(0.5f, 0.5f);
-                vr.sizeDelta = new Vector2(radius * 2f, radius * 2f);
-                var img = go.GetComponent<Image>();
-                img.sprite = figureSprite;
-                img.color = (tints != null && tints.Length > 0) ? tints[i % tints.Length] : Color.white;
-                img.raycastTarget = false;
-                go.SetActive(false);
-                _views[i] = img;
+                _views[i] = useSpine
+                    ? BuildSkeletonFigure(i, visualData, skeletonMaterial, figureScale, animName)
+                    : BuildSpriteFigure(i, radius, fallbackSprite, fallbackTints);
+                _views[i].gameObject.SetActive(false);
             }
+        }
+
+        private Graphic BuildSpriteFigure(int i, float radius, Sprite sprite, Color[] tints)
+        {
+            var go = new GameObject("Figure" + i, typeof(RectTransform), typeof(Image));
+            go.transform.SetParent(transform, false);
+            var vr = (RectTransform)go.transform;
+            vr.anchorMin = vr.anchorMax = new Vector2(0.5f, 0f);
+            vr.pivot = new Vector2(0.5f, 0.5f);
+            vr.sizeDelta = new Vector2(radius * 2f, radius * 2f);
+            var img = go.GetComponent<Image>();
+            img.sprite = sprite;
+            img.color = (tints != null && tints.Length > 0) ? tints[i % tints.Length] : Color.white;
+            img.raycastTarget = false;
+            return img;
+        }
+
+        // SkeletonGraphic 미니어처: 스킨 적용 + 지정 애니 마지막 프레임 동결. 셋업 시퀀스는
+        // SquadCharacterPage/SpineUnitView 관례 + spine-unity 4.2 freeze(마지막 프레임 UpdateMesh 후 정지).
+        private Graphic BuildSkeletonFigure(int i, ISpineUnitVisualData data, Material mat, float scale, string animName)
+        {
+            var go = new GameObject("Figure" + i, typeof(RectTransform));
+            go.transform.SetParent(transform, false);
+            var vr = (RectTransform)go.transform;
+            vr.anchorMin = vr.anchorMax = new Vector2(0.5f, 0f);
+            vr.pivot = new Vector2(0.5f, 0.5f);
+
+            var sg = go.AddComponent<SkeletonGraphic>();
+            sg.material = mat;
+            sg.raycastTarget = false;
+            sg.skeletonDataAsset = data.SpineSkeletonDataAsset;
+            sg.Initialize(true);
+            if (sg.Skeleton != null)
+                SpineCombinedSkinCache.Apply(sg.Skeleton, data);
+            string anim = string.IsNullOrEmpty(animName) ? data.SpineDeathAnimation : animName;
+            if (sg.Skeleton != null && !string.IsNullOrEmpty(anim) && sg.Skeleton.Data.FindAnimation(anim) != null)
+            {
+                var te = sg.AnimationState.SetAnimation(0, anim, false);
+                te.TrackTime = te.AnimationEnd; // 마지막 프레임
+                sg.Update(0f);                  // 포즈 확정
+                sg.UpdateMesh();                // CanvasRenderer 메시 반영
+            }
+            sg.freeze = true; // 이후 정지(이동은 transform 만, 메시 재빌드 없음)
+            vr.sizeDelta = new Vector2(400f, 600f);
+            go.transform.localScale = Vector3.one * scale;
+            return sg;
         }
 
         private JarBounds Bounds()
@@ -69,7 +115,6 @@ namespace Wassup.UI
             return new JarBounds { halfWidth = w * 0.5f, height = h };
         }
 
-        // 통 위쪽에서 결정론적 x 분산 + 하향 속도로 한 개 스폰(흡수 비행 도착 시 호출).
         public void SpawnAtTop()
         {
             if (_rt == null || _figs == null || _active >= _max) return;
@@ -84,7 +129,6 @@ namespace Wassup.UI
             _active++;
         }
 
-        // 위에서부터 한 개 제거(소비/리셋).
         public void RemoveTop()
         {
             if (_active <= 0) return;
@@ -95,16 +139,6 @@ namespace Wassup.UI
         public void Clear()
         {
             while (_active > 0) RemoveTop();
-        }
-
-        // 물리 한 고정 스텝(개수 조작 없음 — add/remove 는 외부가 구동).
-        public void Tick(float dt)
-        {
-            if (_rt == null || _figs == null || _active <= 0) return;
-            var b = Bounds();
-            JarFigurePhysics.Step(_figs, _active, b, _params, dt, 6);
-            for (int i = 0; i < _active; i++)
-                _views[i].rectTransform.anchoredPosition = new Vector2(_figs[i].pos.x, _figs[i].pos.y);
         }
 
         // 주기적으로 통 안 피규어에 위로 임펄스를 가해 계속 통통 튕기게 한다(정착·수면 방지).
@@ -121,6 +155,15 @@ namespace Wassup.UI
                 f.prevPos.y -= dy; // 위로(양수 y = 상방)
                 _figs[i] = f;
             }
+        }
+
+        public void Tick(float dt)
+        {
+            if (_rt == null || _figs == null || _active <= 0) return;
+            var b = Bounds();
+            JarFigurePhysics.Step(_figs, _active, b, _params, dt, 6);
+            for (int i = 0; i < _active; i++)
+                _views[i].rectTransform.anchoredPosition = new Vector2(_figs[i].pos.x, _figs[i].pos.y);
         }
 
         private void Update()
