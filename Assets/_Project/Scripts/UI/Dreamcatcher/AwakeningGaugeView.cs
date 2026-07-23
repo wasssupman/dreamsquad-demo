@@ -84,6 +84,7 @@ namespace Wassup.UI
         private Coroutine _gain;
         private Coroutine _pulse;
         private Coroutine _readyPulse;
+        private Coroutine _overflow;
 
         public void Pulse()
         {
@@ -108,7 +109,10 @@ namespace Wassup.UI
         private void OnEnable()
         {
             if (handController != null)
+            {
                 handController.GaugeChanged += OnGaugeChanged;
+                handController.AwakeningOverflowed += OnOverflow;
+            }
             if (GameManager.Instance != null)
             {
                 GameManager.Instance.PhaseChanged += OnPhaseChanged;
@@ -119,10 +123,22 @@ namespace Wassup.UI
         private void OnDisable()
         {
             if (handController != null)
+            {
                 handController.GaugeChanged -= OnGaugeChanged;
+                handController.AwakeningOverflowed -= OnOverflow;
+            }
             if (GameManager.Instance != null)
                 GameManager.Instance.PhaseChanged -= OnPhaseChanged;
             if (_visualRoot != null) _visualRoot.localScale = Vector3.one;
+        }
+
+        // unit 4 — 게이지 상한에서 획득분 소멸(넘침). 손실 회피를 위해 시끄러운 경고:
+        // 골드 림 플래시 + 짧은 통 흔들림. 상시 pulse 금지 계약과 달리 이벤트 반응이라 허용.
+        private void OnOverflow(int lost)
+        {
+            if (_panel == null || !_panel.activeInHierarchy) return;
+            if (_overflow != null) StopCoroutine(_overflow);
+            _overflow = StartCoroutine(OverflowFlashRoutine());
         }
 
         // 트레이 우측 엣지에 독을 정렬. 트레이·독 SafeAreaRoot 는 congruent(UiSafeAreaFitter)라
@@ -508,6 +524,31 @@ namespace Wassup.UI
             }
             _visualRoot.localScale = Vector3.one;
             _readyPulse = null;
+        }
+
+        private IEnumerator OverflowFlashRoutine()
+        {
+            const float duration = 0.6f;
+            float time = 0f;
+            Vector3 baseLocal = _visualRoot != null ? _visualRoot.localPosition : Vector3.zero;
+            while (time < duration)
+            {
+                time += Time.unscaledDeltaTime;
+                float k = Mathf.Clamp01(time / duration);
+                float flash = Mathf.Abs(Mathf.Sin(k * Mathf.PI * 3f)) * (1f - k); // 3회 감쇠 깜빡임
+                if (_rim != null)
+                {
+                    var c = Color.Lerp(rimColor, maxColor, 0.7f + 0.3f * flash);
+                    c.a = Mathf.Max(0.35f, flash);
+                    _rim.color = c;
+                }
+                if (_visualRoot != null)
+                    _visualRoot.localPosition = baseLocal + new Vector3(Mathf.Sin(time * 62f) * 3.5f * (1f - k), 0f, 0f);
+                yield return null;
+            }
+            if (_visualRoot != null) _visualRoot.localPosition = baseLocal;
+            _overflow = null;
+            UpdateVisualState(); // rim 색/알파 정상 복원
         }
 
         private IEnumerator PulseRoutine()

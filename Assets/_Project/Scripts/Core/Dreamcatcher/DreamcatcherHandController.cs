@@ -37,6 +37,9 @@ namespace Wassup.Core
         public enum HandChangeReason { Reset, Used, Recovered }
 
         public event System.Action<int> GaugeChanged;
+        // dreamcatcher-orb-dock unit 4 — 게이지가 상한이라 획득분이 소멸(넘침)할 때 손실량을
+        // 알린다. 뷰가 오버플로우 경고 연출을 구동(손실 회피 신호). Mono 전용.
+        public event System.Action<int> AwakeningOverflowed;
         public event System.Action<HandChangeReason> HandChanged;
         // unit-dreamcatcher-icons unit 0 — fires only when the attach registry
         // actually changes (attach / death recovery / placement reset).
@@ -278,6 +281,9 @@ namespace Wassup.Core
         {
             if (reward <= 0) return;
             int next = Mathf.Min(Gauge + reward, GaugeMax); // overflow is lost
+            int applied = next - Gauge;
+            if (applied < reward) // 일부(또는 전부)가 상한에 막혀 소멸 → 넘침 경고
+                AwakeningOverflowed?.Invoke(reward - applied);
             if (next == Gauge) return;
             Gauge = next;
             GaugeChanged?.Invoke(Gauge);
