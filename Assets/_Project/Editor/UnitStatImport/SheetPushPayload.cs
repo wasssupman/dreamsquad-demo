@@ -14,7 +14,8 @@ namespace Wassup.Editor.UnitStatImport
         public static string BuildCombinedJson(
             string defenderSheet, string enemySheet, string defenderFolder, string enemyFolder,
             string[] dcTabs, string dcFolder, string skillFolder,
-            string presetTab)
+            string presetTab,
+            string costTab, string costFolder)
         {
             string tempDir = Path.Combine(Path.GetTempPath(),
                 "wassup_sheet_push_" + System.Guid.NewGuid().ToString("N"));
@@ -26,12 +27,15 @@ namespace Wassup.Editor.UnitStatImport
                 // preset-sheet-import unit 6 — Presets 탭(list-replace 모드, 서버가 라우팅).
                 // F3: 컬렉션 결측이면 Presets 만 생략하고 8탭은 진행(false → AddTab 스킵).
                 bool hasPresets = PresetSheetExporter.ExportToFolder(tempDir, presetTab);
+                // unit 7 — CostConfig 탭(신규). DcConfig 와 같은 keyed-upsert(id).
+                CostConfigSheetExporter.ExportToFolder(tempDir, costTab, costFolder);
 
                 var root = new JObject();
                 AddTab(root, tempDir, defenderSheet);
                 AddTab(root, tempDir, enemySheet);
                 foreach (var tab in dcTabs) AddTab(root, tempDir, tab);
                 if (hasPresets) AddTab(root, tempDir, presetTab);
+                AddTab(root, tempDir, costTab);
 
                 return root.ToString(Formatting.Indented);
             }

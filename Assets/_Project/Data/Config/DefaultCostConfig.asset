@@ -12,6 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2607d0ad290194c499f59757a0298644, type: 3}
   m_Name: DefaultCostConfig
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.CostConfig
+  id: cost_default
   startingCost: 10
   maxCost: 10
   regenPerSec: 0.35

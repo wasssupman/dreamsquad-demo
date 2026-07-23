@@ -40,12 +40,19 @@ namespace Wassup.Editor.UnitStatImport
         private const string PresetTabPrefsKey = "Wassup.UnitStatImport.PresetSheet";
         private const string DefaultPresetTab = "Presets";
 
+        // sheet-export-push unit 7 — CostConfig 탭(신규). DcConfig 와 같은 flat-config
+        // keyed-upsert(id) 라 push 경로에 그대로 얹힌다. 이번 스코프는 export 방향만.
+        private const string CostTabPrefsKey = "Wassup.UnitStatImport.CostSheet";
+        private const string DefaultCostTab = "CostConfig";
+        private const string ConfigFolder = "Assets/_Project/Data/Config";
+
         private string _baseUrl = "";
         private string _defenderSheet = "";
         private string _enemySheet = "";
         private string _dcSheets = "";
         private string _scriptUrl = "";
         private string _presetTab = "";
+        private string _costTab = "";
         private string _statusLog = "";
         private bool _requestInFlight;
 
@@ -60,6 +67,7 @@ namespace Wassup.Editor.UnitStatImport
             _dcSheets = EditorPrefs.GetString(DcSheetsPrefsKey, DefaultDcSheets);
             _scriptUrl = EditorPrefs.GetString(ScriptUrlPrefsKey, "");
             _presetTab = EditorPrefs.GetString(PresetTabPrefsKey, DefaultPresetTab);
+            _costTab = EditorPrefs.GetString(CostTabPrefsKey, DefaultCostTab);
             // hotfix ③ — serialized true survives a domain reload while the
             // completed callback does not; reset so the Import button never sticks.
             _requestInFlight = false;
@@ -152,7 +160,7 @@ namespace Wassup.Editor.UnitStatImport
             }
 
             EditorGUILayout.Space();
-            EditorGUILayout.LabelField("Push to Sheet (유닛+DC+프리셋)", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField("Push to Sheet (유닛+DC+프리셋+코스트)", EditorStyles.boldLabel);
             EditorGUI.BeginChangeCheck();
             _scriptUrl = EditorGUILayout.TextField("Apps Script URL", _scriptUrl);
             if (EditorGUI.EndChangeCheck()) EditorPrefs.SetString(ScriptUrlPrefsKey, _scriptUrl);
@@ -163,13 +171,13 @@ namespace Wassup.Editor.UnitStatImport
             using (new EditorGUI.DisabledScope(_requestInFlight
                 || string.IsNullOrWhiteSpace(_scriptUrl)
                 || string.IsNullOrWhiteSpace(_defenderSheet) || string.IsNullOrWhiteSpace(_enemySheet)
-                || string.IsNullOrWhiteSpace(_presetTab)
+                || string.IsNullOrWhiteSpace(_presetTab) || string.IsNullOrWhiteSpace(_costTab)
                 || dcTabs == null))
             {
                 if (GUILayout.Button(_requestInFlight ? "..." : "Push to Sheet"))
                 {
                     if (EditorUtility.DisplayDialog("Push to Sheet",
-                        "유닛 2탭 + DC 6탭은 업서트(고아 삭제 안 함, 리포트만).\n"
+                        "유닛 2탭 + DC 6탭 + CostConfig 탭은 업서트(고아 삭제 안 함, 리포트만).\n"
                         + "Presets 탭은 list-SoT라 Unity 리스트로 전체 교체(삭제/재정렬 반영).\n계속할까요?",
                         "Push", "취소"))
                     {
@@ -207,6 +215,38 @@ namespace Wassup.Editor.UnitStatImport
                     string path = EditorUtility.SaveFilePanel("Export Preset 시트 시드", "", _presetTab.Trim(), "json");
                     if (!string.IsNullOrEmpty(path))
                         _statusLog = PresetSheetExporter.ExportToFile(path);
+                }
+            }
+
+            EditorGUILayout.Space();
+            EditorGUILayout.LabelField("Cost", EditorStyles.boldLabel);
+            EditorGUI.BeginChangeCheck();
+            _costTab = EditorGUILayout.TextField("Cost Sheet", _costTab);
+            if (EditorGUI.EndChangeCheck()) EditorPrefs.SetString(CostTabPrefsKey, _costTab);
+
+            using (new EditorGUI.DisabledScope(_requestInFlight
+                || string.IsNullOrWhiteSpace(_baseUrl) || string.IsNullOrWhiteSpace(_costTab)))
+            {
+                if (GUILayout.Button(_requestInFlight ? "Importing..." : "Import CostConfig"))
+                {
+                    _requestInFlight = true;
+                    _statusLog = "Requesting...";
+                    RunCostImport(_baseUrl, _costTab, result =>
+                    {
+                        _statusLog = result;
+                        _requestInFlight = false;
+                        Repaint();
+                    });
+                }
+            }
+            // unit 7 — export 는 로컬 SO → disk(API URL 불요). 시트 반영은 위 Push 버튼.
+            using (new EditorGUI.DisabledScope(_requestInFlight || string.IsNullOrWhiteSpace(_costTab)))
+            {
+                if (GUILayout.Button("Export CostConfig SO → JSON"))
+                {
+                    string folder = EditorUtility.SaveFolderPanel("Export CostConfig JSON", "", "");
+                    if (!string.IsNullOrEmpty(folder))
+                        _statusLog = CostConfigSheetExporter.ExportToFolder(folder, _costTab, ConfigFolder);
                 }
             }
 
@@ -382,6 +422,38 @@ namespace Wassup.Editor.UnitStatImport
             return log.ToString();
         }
 
+        // sheet-export-push unit 7 — 1탭 fetch → parse → CostConfigSheetApplier → 디스크 저장.
+        // onDone 은 apply 예외에도 발화(RunDcImport/RunPresetImport 동일 보장) → 버튼 고착 방지.
+        internal static void RunCostImport(string baseUrl, string tab, System.Action<string> onDone)
+        {
+            var url = SheetEnvelopeParser.BuildSheetUrl(baseUrl, tab);
+            SheetFetcher.Fetch(url, result =>
+            {
+                string res;
+                try { res = ApplyCostFetched(result, tab); }
+                catch (System.Exception e) { res = $"Import failed: {e}"; }
+                onDone(res);
+            });
+        }
+
+        // 런타임 refresher 와 같은 applier 를 쓰되, id→SO 는 AssetDatabase 스캔 인덱스이고
+        // 적용분은 디스크에 저장한다(에디터 import 의 공통 형태).
+        internal static string ApplyCostFetched(SheetFetcher.Result r, string tab)
+        {
+            var log = new StringBuilder();
+            var rows = SheetEnvelopeParser.ParseSheetLogged<CostConfigDto>(r.body, r.transportError, tab, log);
+            if (rows == null) return log.ToString();
+
+            var byId = UnitStatApplier.BuildIndex(
+                UnitAssetScan.Enumerate<CostConfig>(ConfigFolder), so => so.id, log, nameof(CostConfig));
+
+            return CostConfigSheetApplier.Apply(rows, byId, so =>
+            {
+                EditorUtility.SetDirty(so);
+                AssetDatabase.SaveAssetIfDirty(so);
+            }, log);
+        }
+
         // sheet-export-push unit 4 — 전 8탭 push. payload 조립(동기, 자체 try/catch) 후
         // SheetPushClient.Push(비동기). 콜백은 성공/거부/전송오류/예외 모두에서 발화하므로
         // _requestInFlight 가 물리지 않는다(import 버튼과 동일 보장).
@@ -396,7 +468,8 @@ namespace Wassup.Editor.UnitStatImport
             {
                 payload = SheetPushPayload.BuildCombinedJson(
                     _defenderSheet, _enemySheet, DefenderFolder, EnemyFolder,
-                    dcTabs, DcFolder, SkillFolder, _presetTab);
+                    dcTabs, DcFolder, SkillFolder, _presetTab,
+                    _costTab, ConfigFolder);
             }
             catch (System.Exception e)
             {

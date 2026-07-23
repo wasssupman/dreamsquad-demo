@@ -1,6 +1,7 @@
 # Sheet Export Push — Unity→구글 시트 자동 반영 + 이식 가능한 SheetSync 코어
 
-> 상태: **완료 2026-07-22** — units 0~5 구현·커밋(`ad2028f8`~`0896e050`) + 라이브 push 동작 + 양방향 정합성 8탭 OK(SO==sheet, drift 0). Defenders `공` 헤더 사고 정리 포함. 인계는 `6_handoff_summary.md`.
+> 상태: units 0~5 **완료 2026-07-22** — 구현·커밋(`ad2028f8`~`0896e050`) + 라이브 push 동작 + 양방향 정합성 8탭 OK(SO==sheet, drift 0). Defenders `공` 헤더 사고 정리 포함. 인계는 `6_handoff_summary.md`.
+> unit 7(`CostConfig` 탭) **진행 중 2026-07-23** — 코드·씬 배선·EditMode 완료, 시트 왕복 실증 대기.
 > 선행: `unit-stat-spreadsheet-schema` (완료) · `dreamcatcher-sheet-sync` (완료) — API 계약·DTO·exporter 를 그대로 재사용한다.
 > SoT 전환(시트=진실)은 **현 스코프 밖** — 별도 spec 초안으로 대기.
 
@@ -14,7 +15,7 @@ Unity SO → 구글 시트 **자동 push** 를 만든다. 현재 export 는 JSON
 
 - **쓰기 경로 = Google Apps Script 웹앱** (백엔드 무관·OAuth 불필요·시트에서 직접 배포). 읽기(import)는 기존 REST 프록시(`GET {base}/{tab}`) 유지.
 - **삭제 규칙 = 업서트 + 고아 리포트** (비파괴). SO 에 없는 시트 행은 지우지 않고 목록만 리포트해 사람이 판단.
-- **범위 = 전 8탭** (Defenders/Enemies + DC 6탭).
+- **범위 = 전 8탭** (Defenders/Enemies + DC 6탭). 이후 `Presets`(unit 6, list-replace 모드)와 `CostConfig`(unit 7, keyed-upsert)가 더해져 현재 10탭.
 - **모듈화 = 자체 asmdef core + adapter** (UPM 패키징은 안 함).
 - **런타임 export 는 제외** — push 프론트는 에디터 전용. import 의 런타임 refresher 경로는 그대로.
 - **무위험 유닛 0** (2026-07-22 사용자 결정): SheetSync 는 **POST+envelope 신규 파일만** 담고, working import(`SheetFetcher`/`SheetEnvelopeParser`/`ApiEnvelope`)는 **건드리지 않는다**. 순수 추가라 회귀 위험 0. 대가는 일시적 중복(GET 헬퍼가 레거시에 하나 더) — read 를 SheetSync 로 이관해 중복 제거하는 건 **후속 후보**.
@@ -30,6 +31,7 @@ Unity SO → 구글 시트 **자동 push** 를 만든다. 현재 export 는 JSON
 | 4 | 구현 | `4_editor_push_button.md` | Import 창에 Script URL 필드(EditorPrefs)+Push 버튼+확인 다이얼로그+결과 로그 |
 | 5 | 서버+검증 | `5_apps_script_dopost.md` | `apps-script/Code.gs` generic 업서트 엔진 커밋 + 배포 가이드 + 실 test 탭 1회 push 왕복 검증 |
 | 6 | 인계 | `6_handoff_summary.md` | (종료 시) |
+| 7 | 구현 | `7_costconfig_tab.md` | `CostConfig` 탭 신설 — 코스트 경제 SO push/import + 로비 dev 버튼 |
 
 ## Feature-wide 계약
 
@@ -38,7 +40,7 @@ Unity SO → 구글 시트 **자동 push** 를 만든다. 현재 export 는 JSON
 - **push 는 에디터 전용** (`Wassup.Editor.UnitStatImport`): AssetDatabase scan → DTO 직렬화(8탭 병합) → SheetSync POST `/exec` → 응답 로그.
 - **Apps Script 계약**: 업서트 by 키(`id` / `(cardId,slot)`) · **blank=keep**(JSON 에 없는 키는 그 셀 안 건드림, import 의 "빈 셀=유지" 와 대칭) · 헤더 순서 유지 + JSON 에만 있는 새 키는 오른쪽 새 열 · **고아 행(시트엔 있고 JSON 엔 없는 키) 삭제 안 함, 리포트만** · 값 원문(enum=문자열, 숫자, 한글).
 - **응답 봉투 재사용 shape**: `{success, data:{results:{<탭>:{updated,added,orphans:[키]}}}, errorDetail}`. SheetSync envelope 로 검증, push client 가 `data.results` 해석.
-- **키 계약** (import applier 와 동일): `id` = Defenders/Enemies/DcCards/DcSkills/DcConfig · `(cardId,slot)` = DcCardEffects/DcMechanics/DcAttackMods.
+- **키 계약** (import applier 와 동일): `id` = Defenders/Enemies/DcCards/DcSkills/DcConfig/CostConfig · `(cardId,slot)` = DcCardEffects/DcMechanics/DcAttackMods. (`Presets` 만 키가 없는 list-replace — 아래 경계 메모 참조.)
 - **URL=secret**: Apps Script `/exec` URL 은 쓰기 권한이라 EditorPrefs 에만 저장(미커밋).
 - **읽기 프록시 캐시 주의**: push 는 시트에 직접 쓰지만 import 는 `dev-api-somnia` 프록시로 읽는다 → push 직후 프록시가 stale 값을 줄 수 있다(별개 계층). 시트가 진실, 프록시는 지연 가능.
 

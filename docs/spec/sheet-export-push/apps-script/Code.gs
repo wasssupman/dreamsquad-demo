@@ -23,6 +23,7 @@ var KEY_CONFIG = {
   DcCards:       ['id'],
   DcSkills:      ['id'],
   DcConfig:      ['id'],
+  CostConfig:    ['id'],
   DcCardEffects: ['cardId', 'slot'],
   DcMechanics:   ['cardId', 'slot'],
   DcAttackMods:  ['cardId', 'slot'],
