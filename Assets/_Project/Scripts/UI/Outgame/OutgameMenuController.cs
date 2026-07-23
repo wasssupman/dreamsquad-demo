@@ -178,6 +178,10 @@ namespace Wassup.UI
                 gatePopup.Show(_shortfalls, OnOpenSquad, OnOpenDreamcatcher);
                 return;
             }
+            // tournament-seed-map-select unit 1 — pre-issue the tournament attempt so
+            // its response (tournament.seed) arrives during the transition, before the
+            // battle scene builds the map. Gate-popup returns above never issue.
+            Wassup.Core.Api.TournamentMatchReporter.BeginMatchFromLobby();
             SceneTransition.Go(SceneNames.Battle);
         }
 

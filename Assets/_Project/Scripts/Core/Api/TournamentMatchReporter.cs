@@ -23,12 +23,38 @@ namespace Wassup.Core.Api
         private static string _entryId;
         private static bool _completeSent;
 
+        // tournament-seed-map-select unit 1 — the server tournament seed from the
+        // latest play response. Map-pool selection reads it at map-build time;
+        // absent (guest, in-flight, failed) means the caller falls back to index 0.
+        private static bool _lobbyIssued;
+        public static bool HasTournamentSeed { get; private set; }
+        public static ulong TournamentSeed { get; private set; }
+
+        // tournament-seed-map-select unit 1 — lobby pre-issue: fire play at the
+        // lobby start button so the response (tournament.seed) lands during the
+        // scene transition, before BuildMapForBattle. GameManager.OnEnable's
+        // BeginMatch then adopts this attempt instead of re-issuing.
+        public static void BeginMatchFromLobby()
+        {
+            _lobbyIssued = false; // re-entrance safety: always issue fresh from here
+            BeginMatch();
+            _lobbyIssued = true;
+        }
+
         public static void BeginMatch()
         {
+            // adopt the lobby-issued attempt: skip the re-issue AND the state reset
+            // (resetting would stale-drop the in-flight play response carrying the seed).
+            if (_lobbyIssued) { _lobbyIssued = false; return; }
+
             _epoch++;
             _attemptId = null;   // an unfinished previous attempt is abandoned, not completed
             _entryId = null;
             _completeSent = false;
+            // clear before any early return — a stale seed from a previous session
+            // must never pick the map for a new match (e.g. sign-out → guest play).
+            HasTournamentSeed = false;
+            TournamentSeed = 0;
 
             if (!UserSession.HasAccount) return; // guest / not signed in (firebase or username account required)
             string baseUrl = UserSession.GameServerBaseUrl;
@@ -50,6 +76,14 @@ namespace Wassup.Core.Api
                 var uts = state.userTournamentState;
                 _attemptId = uts?.tournamentEntryAttemptId;
                 _entryId = uts?.tournamentEntryId;
+                // tournament-seed-map-select unit 1 — surface the tournament seed for
+                // map-pool selection. Old-schema responses (no tournament node) simply
+                // leave it absent → map index 0 fallback.
+                if (state.tournament != null)
+                {
+                    TournamentSeed = state.tournament.seed;
+                    HasTournamentSeed = true;
+                }
                 // abandoned-match-reconciliation unit 1 — persist the just-opened
                 // attempt so a hard kill can be reconciled (completed with 0) on the
                 // next lobby entry. Guarded by the epoch check above: AbandonMatch's
