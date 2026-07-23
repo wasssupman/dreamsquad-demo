@@ -219,6 +219,10 @@ namespace Wassup.Bridge
         private bool _resignationViewQueryCreated;
         private readonly Dictionary<Entity, GameObject> _resignationVisualMap = new();
         private readonly List<Entity> _resignationReapBuffer = new();
+        // dreamcatcher-orb-dock unit 6 — 킬 각성 피규어를 "죽은 적 스킨"으로 렌더하기 위한
+        // Entity→적 데이터 등록부(스폰 시 기록, 킬 드레인 시 조회+제거). 파괴된 Entity 값도
+        // 키 비교는 유효(역참조 안 함 — SO 참조만 보관). teardown 에서 Clear.
+        private readonly Dictionary<Entity, AttackUnitData> _enemyTypeByEntity = new();
         private EntityQuery _projectileSpawnRequestQuery;
         private bool _projectileSpawnRequestQueryCreated;
         private EntityQuery _projectileQuery;
@@ -496,6 +500,7 @@ namespace Wassup.Bridge
             unitOverheadUiLayer?.Clear(); // unit-overhead-ui — 공통 health/card view 정리
             ClearPickupVisuals(); // season-gimmick-overwork unit 6 — 잔여 레드불 뷰 정리
             ClearResignationVisuals(); // season-gimmick-clockout unit 1 — 잔여 사직서 뷰 정리
+            _enemyTypeByEntity.Clear(); // dreamcatcher-orb-dock unit 6 — 적 데이터 등록부 정리
             _dcAuraPool?.Clear(); _dcAuraPool = null; // nightmare-whip-aura rev 2 — 드림캐쳐 부착 오라 정리(생명주기 대칭)
             ClearBlockingHazardVisuals();
 
@@ -3111,8 +3116,15 @@ namespace Wassup.Bridge
                 _killScoreTotal += evt.killScore;
                 // dreamcatcher-awakening-hand unit 1 — awakening economy relay.
                 // unit 3 — 흡수 비행 시작점으로 사망 view-space 위치 동봉(sim→view).
+                // orb-dock unit 6 — 죽은 적 데이터 동봉(피규어 스킨 소스). 등록부 조회+제거.
+                Wassup.Data.ISpineUnitVisualData killedVisual = null;
+                if (_enemyTypeByEntity.TryGetValue(evt.entity, out var killedType))
+                {
+                    killedVisual = killedType;
+                    _enemyTypeByEntity.Remove(evt.entity);
+                }
                 EnemyKilledAwakening?.Invoke(evt.awakeningReward,
-                    Wassup.Core.BoardSpace.ToView((Vector3)evt.position));
+                    Wassup.Core.BoardSpace.ToView((Vector3)evt.position), killedVisual);
                 // 살찌운 제물 — 표식 악몽 처치: 카드 회수 알림(보상은 위 relay 가
                 // 표식 시점에 배율된 baked 값으로 이미 지급).
                 NotifyEnemyGoneIfMarked(evt.entity);
@@ -5648,6 +5660,8 @@ namespace Wassup.Bridge
             _em.AddComponentData(entity, LocalTransform.FromPositionRotationScale(spawnWorldPos, quaternion.identity, CharacterVisualScale));
 
             _em.AddComponent<AttackUnitTag>(entity);
+            // dreamcatcher-orb-dock unit 6 — 스폰 시 적 데이터 등록(킬 각성 피규어 스킨 소스).
+            _enemyTypeByEntity[entity] = entry.unitType;
             _em.AddComponentData(entity, new Health { value = entry.unitType.health, max = entry.unitType.health });
             _em.AddComponentData(entity, new FactionTag { value = Faction.Enemy });
             // dreamcatcher-awakening-hand unit 1 — bake the death grant so

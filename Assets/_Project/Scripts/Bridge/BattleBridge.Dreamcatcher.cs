@@ -51,7 +51,9 @@ namespace Wassup.Bridge
         // (subscriber reads data.awakeningReward).
         // dreamcatcher-orb-dock unit 3 — 흡수 비행용으로 사망 view-space 위치를 함께 실어보낸다
         // (기존 sim 데이터 surfacing; 새 ECS write 아님). 구독자는 컨트롤러 하나뿐이라 안전.
-        public event System.Action<int, Vector3> EnemyKilledAwakening;
+        // unit 6 — 죽은 적 시각 데이터(ISpineUnitVisualData)를 함께 실어 피규어를 그 적 스킨으로
+        // 렌더한다(등록부 조회, null 이면 대표 스킨 폴백).
+        public event System.Action<int, Vector3, Wassup.Data.ISpineUnitVisualData> EnemyKilledAwakening;
         public event System.Action<Entity, Wassup.Data.DefenderUnitData, Vector3> DefenderDied;
         // subconscious-curse-expansion unit 2 (살찌운 제물) — 표식 악몽 소멸(처치 또는
         // 유출) 알림. 컨트롤러가 카드 회수(큐 복귀)에 구독한다. 처치/유출의 보상 차이는

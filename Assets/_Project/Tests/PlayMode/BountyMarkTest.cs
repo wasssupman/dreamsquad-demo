@@ -76,7 +76,7 @@ namespace Wassup.Tests.PlayMode
 
             var awakened = new List<int>();
             var gone = new List<Entity>();
-            System.Action<int, UnityEngine.Vector3> onAwaken = (r, pos) => awakened.Add(r);
+            System.Action<int, UnityEngine.Vector3, Wassup.Data.ISpineUnitVisualData> onAwaken = (r, pos, vis) => awakened.Add(r);
             System.Action<Entity> onGone = e => gone.Add(e);
             _bridge.EnemyKilledAwakening += onAwaken;
             _bridge.EnemyGone += onGone;

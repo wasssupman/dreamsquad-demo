@@ -99,7 +99,11 @@ namespace Wassup.UI
             return new JarBounds { halfWidth = w * 0.5f, height = h };
         }
 
-        public void SpawnAtTop()
+        public void SpawnAtTop() => SpawnAtTop(null);
+
+        // dreamcatcher-orb-dock unit 6 — 활성화하는 피규어를 "죽은 유닛" 스킨으로 교체
+        // (data==null 이면 빌드 시 대표 스킨 유지). 스켈레톤 불일치 시 Reskin 이 스킵.
+        public void SpawnAtTop(ISpineUnitVisualData data)
         {
             if (_rt == null || _figs == null || _active >= _max) return;
             var b = Bounds();
@@ -108,6 +112,7 @@ namespace Wassup.UI
             float vx = (((idx * 37) % 100) / 100f - 0.5f) * b.halfWidth * 4f;
             float startY = b.height + _radius;
             _figs[idx] = JarFigurePhysics.Create(new float2(jitterX, startY), new float2(vx, -b.height), _radius, FixedDt);
+            if (data != null && _views[idx] is SkeletonGraphic sg) SpineFigureBuilder.Reskin(sg, data);
             _views[idx].gameObject.SetActive(true);
             _views[idx].rectTransform.anchoredPosition = new Vector2(jitterX, startY);
             _active++;

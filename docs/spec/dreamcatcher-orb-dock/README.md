@@ -27,6 +27,7 @@
 | 3 | `3_absorb_flight.md` | 흡수 비행 — 킬 위치에서 피규어가 항아리로 날아와 쌓임(입자=피규어) | **완료** |
 | 4 | `4_ready_overflow_close.md` | ready 신호 + 오버플로우 경고 + 바깥 탭 닫기 | **완료** |
 | 5 | `5_handoff_summary.md` | 라이브 배틀 하네스 검증 · 인계 | **완료** |
+| 6 | `6_backing_full_skin.md` | backing 제거 + 100 가득(44) + 죽은 유닛 스킨(적별 re-skin) | **구현·기계검증(육안 대기)** |
 
 ## Feature-wide 계약
 

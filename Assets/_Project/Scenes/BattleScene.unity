@@ -1906,7 +1906,6 @@ MonoBehaviour:
   labelFont: {fileID: 11400000, guid: 218cce73e3172a04a8c536a4d368d90f, type: 2}
   numberFont: {fileID: 11400000, guid: 7f50de03946cd4d229e8920dd91dbd1a, type: 2}
   backingColor: {r: 0.07, g: 0.05, b: 0.14, a: 0.94}
-  fillColor: {r: 0.7, g: 0.43, b: 1, a: 1}
   chargedColor: {r: 0.43, g: 0.92, b: 1, a: 1}
   maxColor: {r: 1, g: 0.77, b: 0.12, a: 1}
   rimColor: {r: 0.56, g: 0.28, b: 1, a: 0.5}
@@ -1917,7 +1916,7 @@ MonoBehaviour:
   trayGap: 30
   baselineY: 18
   fallbackTrayHalf: 490
-  maxFigures: 16
+  maxFigures: 44
   figureRadius: 11
   figureGravity: 1500
   figureDamping: 0.9

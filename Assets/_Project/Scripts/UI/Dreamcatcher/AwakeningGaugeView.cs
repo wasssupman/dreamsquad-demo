@@ -24,7 +24,6 @@ namespace Wassup.UI
 
         [Header("Jar Colors")]
         [SerializeField] private Color backingColor = new Color(0.09f, 0.08f, 0.15f, 0.95f);
-        [SerializeField] private Color fillColor = new Color(0.55f, 0.42f, 0.82f, 0.9f);
         [SerializeField] private Color chargedColor = new Color(0.43f, 0.86f, 0.92f, 0.95f);
         [SerializeField] private Color maxColor = new Color(1f, 0.77f, 0.12f, 1f);
         // 기존 authored 값 보존: haloColor→rimColor, dormantFrameColor→dormantColor.
@@ -44,7 +43,7 @@ namespace Wassup.UI
 
         [Header("Figure Pile — Spine miniatures (unit 2b)")]
         // 더 작게·더 많이(사용자 재조정): ~16개 · ~22px. 흡수 비행 = 회전 미니어처.
-        [SerializeField] private int maxFigures = 16;
+        [SerializeField] private int maxFigures = 44; // unit 6 — 100 에서 항아리 가득
         [SerializeField] private float figureRadius = 11f;
         [SerializeField] private float figureGravity = 1500f;
         [SerializeField] private float figureDamping = 0.9f;
@@ -83,7 +82,6 @@ namespace Wassup.UI
         private RectTransform _visualRoot;
         private Image _jarFrame;
         private Image _rim;
-        private Image _fill;
         private JarFigurePile _pile;
         // unit 3 — 흡수 비행. 킬 위치에서 항아리로 날아가는 고스트 → 도착 시 pile.SpawnAtTop.
         private RectTransform _safeArea;
@@ -194,7 +192,8 @@ namespace Wassup.UI
         }
 
         // 킬/사망 위치에서 피규어가 날아온다(입자=피규어). 획득으로 늘어난 목표만큼 비행 발사.
-        private void OnAwakeningGainedAt(int applied, Vector3 worldPos)
+        // unit 6 — killedVisual = 죽은 유닛 스킨(null 이면 대표 스킨). 피규어/고스트가 그 스킨으로 렌더.
+        private void OnAwakeningGainedAt(int applied, Vector3 worldPos, ISpineUnitVisualData killedVisual)
         {
             if (_pile == null || handController == null) return;
             int delta = FiguresForGauge(handController.Gauge) - FiguresCommitted;
@@ -211,12 +210,12 @@ namespace Wassup.UI
             {
                 if (haveStart && haveEnd && _pendingFlights < maxConcurrentFlights)
                 {
-                    StartCoroutine(FlightRoutine(startLocal, endLocal, i * figureFlightStagger));
+                    StartCoroutine(FlightRoutine(startLocal, endLocal, i * figureFlightStagger, killedVisual));
                     _pendingFlights++;
                 }
                 else
                 {
-                    _pile.SpawnAtTop(); // 폴백(패널 비활성/무효 좌표) 또는 동시 비행 상한 초과
+                    _pile.SpawnAtTop(killedVisual); // 폴백(패널 비활성/무효 좌표) 또는 동시 비행 상한 초과
                 }
             }
         }
@@ -288,10 +287,12 @@ namespace Wassup.UI
 
         // 킬 위치 → 항아리 상단으로 아치 비행. 도착 시 pile.SpawnAtTop + 목표 보정.
         // gen 이 바뀌면(전투 이탈) 즉시 중단(pending 은 CancelFlights 가 이미 0 으로 리셋).
-        private IEnumerator FlightRoutine(Vector2 startLocal, Vector2 endLocal, float delay)
+        private IEnumerator FlightRoutine(Vector2 startLocal, Vector2 endLocal, float delay, ISpineUnitVisualData killedVisual)
         {
             int gen = _flightGen;
             var ghost = GetGhost();
+            // unit 6 — 날아가는 고스트도 죽은 유닛 스킨으로(입자=그 적 피규어). 스켈레톤 불일치 시 스킵.
+            if (ghost is SkeletonGraphic ghostSg) SpineFigureBuilder.Reskin(ghostSg, killedVisual);
             var grt = ghost.rectTransform;
             // Spine 미니어처는 base 스케일 = figureScale(원본 rig 가 큼). Image 폴백은 1(sizeDelta).
             float baseScale = ghost is SkeletonGraphic ? figureScale : 1f;
@@ -330,7 +331,7 @@ namespace Wassup.UI
             _pendingFlights = Mathf.Max(0, _pendingFlights - 1);
             if (_pile != null)
             {
-                _pile.SpawnAtTop();
+                _pile.SpawnAtTop(killedVisual); // unit 6 — 도착 피규어도 죽은 유닛 스킨
                 TrimToTarget(handController != null ? handController.Gauge : 0);
             }
         }
@@ -393,15 +394,7 @@ namespace Wassup.UI
             _valueLabel.text = value.ToString();
             float previousNormalized = _normalized;
             _normalized = max > 0 ? Mathf.Clamp01((float)value / max) : 0f;
-            if (_fill != null)
-            {
-                // unit 2a — 피규어 더미가 주 채움. 단색 면은 옅은 액체 backing 으로 강등
-                // (피규어가 성길 때 잔량 힌트만).
-                _fill.fillAmount = _normalized;
-                var fc = Color.Lerp(fillColor, chargedColor, _normalized);
-                fc.a *= 0.3f;
-                _fill.color = fc;
-            }
+            // unit 6 — 단색 backing 제거(스프라이트 늘린 인상). 피규어 더미가 유일한 채움.
             // unit 3 — 증가분은 흡수 비행(OnAwakeningGainedAt)이 채운다. 여기선 감소(소비/리셋)만
             // 정착 피규어를 줄여 목표에 맞춘다(비행 중인 건 도착 시 self-correct).
             TrimToTarget(value);
@@ -504,23 +497,7 @@ namespace Wassup.UI
             float interiorW = JarWidth - 2f * InteriorPad;
             float interiorH = JarHeight - 2f * InteriorPad;
 
-            // 세로 채움(unit 2 피규어가 덮을 placeholder). 바닥→위 Filled.
-            var fillGO = new GameObject("Fill", typeof(RectTransform), typeof(Image));
-            fillGO.transform.SetParent(jarGO.transform, false);
-            var fillRect = (RectTransform)fillGO.transform;
-            fillRect.anchorMin = fillRect.anchorMax = new Vector2(0.5f, 0f);
-            fillRect.pivot = new Vector2(0.5f, 0f);
-            fillRect.anchoredPosition = new Vector2(0f, InteriorPad);
-            fillRect.sizeDelta = new Vector2(interiorW, interiorH);
-            _fill = fillGO.GetComponent<Image>();
-            _fill.sprite = UiRoundedSprite.Make(8f, 0f, Color.white, Color.clear);
-            _fill.type = Image.Type.Filled;
-            _fill.fillMethod = Image.FillMethod.Vertical;
-            _fill.fillOrigin = (int)Image.OriginVertical.Bottom;
-            _fill.fillAmount = 0f;
-            _fill.color = fillColor;
-            _fill.raycastTarget = false;
-
+            // unit 6 — 세로 단색 backing 제거(스프라이트를 늘린 듯한 인상). 피규어 더미가 유일한 채움.
             BuildCostTicks(jarGO.transform, interiorW, interiorH, InteriorPad);
 
             // 게이지 비례 미니 피규어 더미(unit 2a). 인테리어를 채우고 pivot 하단중앙 →

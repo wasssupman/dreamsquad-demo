@@ -35,5 +35,21 @@ namespace Wassup.UI
             sg.freeze = true; // 이후 정지(이동/회전은 transform 만, 메시 재빌드 없음)
             sg.rectTransform.sizeDelta = new Vector2(400f, 600f);
         }
+
+        // dreamcatcher-orb-dock unit 6 — 이미 만들어진(동결된) 미니어처를 다른 유닛 스킨으로
+        // 교체(킬 각성 피규어 = 죽은 적 스킨). **같은 스켈레톤 전제** — 적은 전부 한 스켈레톤을
+        // 공유하므로 스킨만 갈아끼운다. 스켈레톤이 다르면(예: 디펜더가 다른 rig) 스킵해 기존
+        // 대표 스킨을 유지(스킨 미존재 예외 회피). 동결 해제→스킨 적용→메시 갱신→재동결.
+        public static void Reskin(SkeletonGraphic sg, ISpineUnitVisualData data)
+        {
+            if (sg == null || data == null || sg.Skeleton == null) return;
+            if (data.SpineSkeletonDataAsset == null || sg.skeletonDataAsset != data.SpineSkeletonDataAsset) return;
+            SpineCombinedSkinCache.Apply(sg.Skeleton, data);
+            bool wasFrozen = sg.freeze;
+            sg.freeze = false;
+            sg.Update(0f);
+            sg.UpdateMesh();
+            sg.freeze = wasFrozen;
+        }
     }
 }
