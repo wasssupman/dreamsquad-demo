@@ -2,6 +2,11 @@
 
 **상태: 초안 2026-07-23** (팀리뷰 2인 반영 완료 — 승인 대기)
 
+> **재점검 2026-07-23 (multi-goal-map·tournament-seed-map-select 반영)**: 스펙 작성 후 두 feature 가 keep-set 주변을 수정했다. 앵커 재검증 결과 —
+> - **구조 유효**: `MapSettingsPanelView` 소비처(DraftView/SquadPrepView), legacy 스위치 arm, `ActiveDeck==null || map==null` 가드 3곳(라인 1140/1204/1502 → **1178/1242/1540** 이동) 전부 그대로. 각 유닛 구현 시 라인 앵커는 재확인하고 진행.
+> - **keep-set 갱신**: 라이브 풀 선택은 이제 `fixedMapSeed(디버그) > 토너먼트 시드(SelectIndexFromTournamentSeed) > 폴백 0번` 3분기(tournament-seed-map-select). `BuildFallbackLinear` 는 goals 명시 세팅 포함(multi-goal unit 0), `MapConnectivity.AllSpawnsReachGoal` 은 멀티-소스 BFS 로 진화 — 모두 keep-set 그대로, 이 스펙이 건드리지 않는다.
+> - **신규 keep 테스트**: `FlowFieldSingletonTests`·`MultiGoalPoolSeparationTests`·`MapConnectivityTests`(+2)·`MapDocumentRoundTripTests`(멀티골 케이스 추가됨) — 삭제 대상 아님. 유닛 4 의 `MapGridBattleAdapterTests` 재작성 시 멀티골 라운드트립 케이스 보존 확인.
+
 ## 목표
 
 맵을 만드는 실 경로가 **하나**(`mapSource=MapGrid` + authored `MapDocumentPool`)로 굳었는데, 그 주변에 **두 세대 분량의 절차 생성 코드 + 참조 0 에셋**이 legacy 로 남아있다. 살아있는 경로는 건드리지 않고, 도달 불가/우회된 legacy 를 compile-safe 순서로 걷어낸다.
