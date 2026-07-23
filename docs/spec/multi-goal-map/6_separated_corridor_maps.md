@@ -43,7 +43,7 @@
 - [x] 풀 GUID 유지 덮어쓰기, 배선/덱 페어링 불변(execute_code WriteToDocument)
 - [x] 데이터 검증: 5맵 골 1~2·connectivity=True. 수렴 실 sim: Coil/Spiral 3스폰 전부 1골(dist=0) 도달
 - [x] 회귀 가드: `MultiGoalPoolSeparationTests` 재작성 — 골 ≤2·각 스폰 도달·복도 non-goal 병합 금지(분리/수렴 공통). EditMode 1287 green
-- [ ] (사용자) Play — 분리 맵 각자 출구·수렴 맵 다중입구→1출구, 누수 작동, 골 마커/구조물 렌더 정상
+- [x] (사용자) Play — 분리 맵 각자 출구·수렴 맵 다중입구→1출구, 누수 작동, 골 마커/구조물 렌더 정상 (확인 2026-07-23)
 - [x] 콘솔 bake 에러 0
 
-확인 2026-07-23 — 검증기(scratchpad/akmaps_mix.py, 수렴 허용)로 5맵 설계·검증 후 GUID 유지 덮어쓰기. 사용자 Play 육안만 남음.
+확인 2026-07-23 — 검증기(scratchpad/akmaps_mix.py, 수렴 허용)로 5맵 설계·검증 후 GUID 유지 덮어쓰기. **사용자 Play 육안 확인 완료 — feature 종료.**
