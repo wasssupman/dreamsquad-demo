@@ -539,7 +539,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 211636737}
-  - component: {fileID: 211636736}
   m_Layer: 0
   m_Name: MapView
   m_TagString: Untagged
@@ -547,18 +546,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &211636736
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 211636735}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b0af4001c2b594a1389217a9c7ae1708, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Wassup.Core.MapView
 --- !u!4 &211636737
 Transform:
   m_ObjectHideFlags: 0
@@ -583,7 +570,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 220057793}
-  - component: {fileID: 220057792}
   - component: {fileID: 220057794}
   m_Layer: 5
   m_Name: DraftView
@@ -592,18 +578,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &220057792
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 220057791}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ef68c460fec27434ba896a189ce7c8c3, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.DraftView
 --- !u!4 &220057793
 Transform:
   m_ObjectHideFlags: 0
@@ -619,7 +593,6 @@ Transform:
   m_Children:
   - {fileID: 1634174273}
   - {fileID: 780954128}
-  - {fileID: 1939162980}
   m_Father: {fileID: 725522407}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &220057794
@@ -637,7 +610,6 @@ MonoBehaviour:
   controller: {fileID: 20521825}
   strip: {fileID: 1634174272}
   fan: {fileID: 780954127}
-  mapSettings: {fileID: 1939162979}
   dwellSeconds: 5
 --- !u!1 &229215105
 GameObject:
@@ -1208,8 +1180,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.SquadPrepView
   gameManager: {fileID: 1495062450}
-  draftController: {fileID: 20521825}
-  mapSettings: {fileID: 1939162979}
   wavePatternStrip: {fileID: 1634174272}
 --- !u!4 &563611223
 Transform:
@@ -1998,6 +1968,7 @@ MonoBehaviour:
   tickColor: {r: 0.86, g: 0.82, b: 0.96, a: 0.72}
   overflowColor: {r: 1, g: 0.35, b: 0.24, a: 1}
   attentionPeriod: 1.5
+  attentionLean: 5
   valuePunchScale: 1.18
   trayGap: 30
   baselineY: 18
@@ -3714,7 +3685,6 @@ MonoBehaviour:
   config: {fileID: 11400000, guid: 77787a3555ae5d5499d90f0bce1bac02, type: 2}
   solverMaterial: {fileID: 2100000, guid: 7b6825863ff3d91458589a90bef3e476, type: 2}
   referenceSize: {x: 1920, y: 1080}
-  seedSplats: 16
 --- !u!225 &1717021860
 CanvasGroup:
   m_ObjectHideFlags: 0
@@ -4143,55 +4113,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1939162978
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1939162980}
-  - component: {fileID: 1939162979}
-  m_Layer: 5
-  m_Name: MapSettingsPanel
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1939162979
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1939162978}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 44fde27d6fe6442fbb5dc3a5e8c208de, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.Draft.MapSettingsPanelView
-  controller: {fileID: 20521825}
---- !u!224 &1939162980
-RectTransform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1939162978}
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 220057793}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 100, y: 100}
-  m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &1939688407
 GameObject:
   m_ObjectHideFlags: 0

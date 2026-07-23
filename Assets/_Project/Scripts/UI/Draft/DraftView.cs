@@ -21,7 +21,6 @@ namespace Wassup.UI.Draft
         [SerializeField] private DraftController controller;
         [SerializeField] private WavePatternStripView strip;
         [SerializeField] private DraftCardFanView fan;
-        [SerializeField] private MapSettingsPanelView mapSettings;
 
         [SerializeField] private float dwellSeconds = 2.0f;
 
@@ -163,7 +162,6 @@ namespace Wassup.UI.Draft
             if (strip != null) strip.gameObject.SetActive(true);
             // Fan is activated by RunFlow only after the strip Roll completes.
             if (fan != null) fan.gameObject.SetActive(false);
-            if (mapSettings != null) mapSettings.gameObject.SetActive(true);
             if (_skillPanel != null) _skillPanel.gameObject.SetActive(true);
         }
 
@@ -171,7 +169,6 @@ namespace Wassup.UI.Draft
         {
             if (strip != null) { strip.SnapHidden(); strip.gameObject.SetActive(false); }
             if (fan != null) fan.gameObject.SetActive(false);
-            if (mapSettings != null) mapSettings.gameObject.SetActive(false);
             if (_skillPanel != null) _skillPanel.gameObject.SetActive(false);
         }
 
@@ -185,7 +182,6 @@ namespace Wassup.UI.Draft
             var roots = UiCanvasSetup.Ensure(gameObject, sortingOrder: 5);
 
             BuildSkillPanel(roots.SafeAreaRoot);
-            if (mapSettings != null) mapSettings.Initialize(controller);
 
             UiLayer.Apply(gameObject);
         }

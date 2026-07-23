@@ -9,16 +9,13 @@ namespace Wassup.UI
     // squad map-setup — pre-placement step for squad mode.
     // prep-attack-pattern-flow Unit 3: on entry the flow advances straight to
     // placement (dreamcatcher pick) WITHOUT force-showing the attack pattern. The
-    // wave strip is kept active but hidden with its "!" toggle enabled, and the map
-    // settings keep their own toggle — both reachable through placement and battle.
-    // (Unit 0's auto-intro Unroll→dwell→Roll is retired.)
+    // wave strip is kept active but hidden with its "!" toggle enabled.
+    // (Unit 0's auto-intro Unroll→dwell→Roll is retired. map-pipeline-cleanup
+    // unit 1: the debug map-settings panel is removed — maps come from the
+    // authored pool only.)
     public class SquadPrepView : MonoBehaviour
     {
         [SerializeField] private GameManager gameManager;
-        [SerializeField] private DraftController draftController;
-        // Self-contained toggle (its own "MAP SETTINGS" button + collapsible panel).
-        // Kept active past entry so the player can adjust the map during placement.
-        [SerializeField] private MapSettingsPanelView mapSettings;
         // Attack-pattern preview (the draft stage's wave strip). Has its own "!"
         // toggle button; kept active so it can be opened anytime.
         [SerializeField] private WavePatternStripView wavePatternStrip;
@@ -40,13 +37,6 @@ namespace Wassup.UI
         {
             if (!_built) EnsureCanvas();
             _advanced = false;
-
-            if (mapSettings != null)
-            {
-                // Active with its own toggle; panel starts collapsed (Build hides it).
-                mapSettings.Initialize(draftController);
-                mapSettings.gameObject.SetActive(true);
-            }
 
             if (wavePatternStrip != null)
             {

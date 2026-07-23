@@ -1,10 +1,8 @@
 using System;
 using System.Collections.Generic;
-using Unity.Mathematics;
 using UnityEngine;
 using Wassup.Bridge;
 using Wassup.Data;
-using Wassup.Data.MapGrid;
 using Wassup.Logging;
 
 namespace Wassup.Core
@@ -41,11 +39,6 @@ namespace Wassup.Core
         public int PickCount => DraftPoolSize - discardCount;
         public IReadOnlyList<DefenderUnitData> CollectionPool => collectionPool;
         public IReadOnlyList<DefenderUnitData> Catalog => collectionPool;
-        public MapGenerationOptions SelectedMapGenerationOptions { get; private set; } = MapGenerationOptions.Default;
-        public MapPathShape SelectedMapPathShape => SelectedMapGenerationOptions.pathShape;
-        public MapSource SelectedMapSource { get; private set; } = MapSource.Legacy;
-        public bool BridgeGoalEdgeOnly => battleBridge != null && battleBridge.CurrentGoalEdgeOnly;
-        public int2? SelectedMapGridGridSize { get; private set; }
 
         public event Action DraftStarted;
         public event Action DraftConfirmed;
@@ -129,7 +122,6 @@ namespace Wassup.Core
                 // entity or cost — REDRAFT-leak fix's symmetry, unit 3).
                 GameManager.Instance?.CostRuntime?.SetRegenRateMultiplier(1f);
                 battleBridge.SetDefenderPool(_session.PickedArray());
-                battleBridge.SetMapGenerationOptions(SelectedMapGenerationOptions);
 
                 // Phase 7: prefer the SkillLoadoutController roll; fall back to
                 // the legacy Inspector array only when no loadout controller is
@@ -169,70 +161,6 @@ namespace Wassup.Core
             }
             DraftConfirmed?.Invoke();
             return true;
-        }
-
-        public void SetMapPathShape(MapPathShape shape)
-        {
-            var options = SelectedMapGenerationOptions.Normalized();
-            options.pathShape = shape;
-            SelectedMapGenerationOptions = options;
-            // draft-stage-map-prebuild Unit 3 — propagate to bridge so the playfield
-            // behind the card fan reflects the change immediately.
-            if (battleBridge != null)
-            {
-                battleBridge.SetMapGenerationOptions(SelectedMapGenerationOptions);
-                battleBridge.RebuildDraftMap();
-            }
-        }
-
-        public void SetMapGenerationOptions(MapGenerationOptions options)
-        {
-            SelectedMapGenerationOptions = options.Normalized();
-            // draft-stage-map-prebuild Unit 3 — propagate to bridge.
-            if (battleBridge != null)
-            {
-                battleBridge.SetMapGenerationOptions(SelectedMapGenerationOptions);
-                battleBridge.RebuildDraftMap();
-            }
-        }
-
-        // 씬 BattleBridge authoring 값을 컨트롤러 상태로 흡수한다 (bridge 로의 push 없음 — 씬이 source of truth).
-        // 패널 초기화가 호출. 이후 TryConfirm 등이 push 하는 값이 씬 값과 일치하게 된다.
-        public void SyncMapStateFromBridge()
-        {
-            if (battleBridge == null) return;
-            SelectedMapSource = battleBridge.CurrentMapSource;
-            SelectedMapGridGridSize = battleBridge.CurrentMapGridGridSizeOverride;
-            SelectedMapGenerationOptions = battleBridge.CurrentMapGenerationOptions.Normalized();
-        }
-
-        public void SetMapSource(MapSource src)
-        {
-            SelectedMapSource = src;
-            if (battleBridge != null)
-            {
-                battleBridge.SetMapSource(src);
-                battleBridge.RebuildDraftMap();
-            }
-        }
-
-        public void SetMapGridGridSize(int2? gridSize)
-        {
-            SelectedMapGridGridSize = gridSize;
-            if (battleBridge != null)
-            {
-                battleBridge.SetMapGridGridSizeOverride(gridSize);
-                battleBridge.RebuildDraftMap();
-            }
-        }
-
-        public void SetGoalEdgeOnly(bool value)
-        {
-            if (battleBridge != null)
-            {
-                battleBridge.SetGoalEdgeOnly(value);
-                battleBridge.RebuildDraftMap();
-            }
         }
 
         private static int GenerateSeed()
