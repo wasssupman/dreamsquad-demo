@@ -666,6 +666,18 @@ namespace Wassup.UI
             if (_dealSeq.isAlive) _dealSeq.Stop();
         }
 
+        // hand-deal-in — 딜 진행 중 카드를 누르면 즉시 딜을 완주(스냅)시켜 게이트를 연다.
+        // 성급한 플레이어는 한 번의 터치로 바로 집고, 기다린 플레이어는 전체 딜 연출을 본다
+        // (HS/StS 손맛: 딜 꼬리 대기 제거). Complete = 모든 카드를 home/scale/text 최종 상태로
+        // 스냅 → _dealSeq.isAlive false → Transitioning 해제 → 호출처가 같은 프레임에 focus 성공.
+        // 반환: 실제로 완주시켰으면 true.
+        public bool TryFastForwardDeal()
+        {
+            if (!_dealSeq.isAlive) return false;
+            _dealSeq.Complete();
+            return true;
+        }
+
         // Mirror of the deck-draw: cards sink back down to the deck (reverse
         // stagger, InBack + scale-down + backing fade-out), then the defender
         // strip folds back in. ForceClose's hard stop skips OnSinkComplete —

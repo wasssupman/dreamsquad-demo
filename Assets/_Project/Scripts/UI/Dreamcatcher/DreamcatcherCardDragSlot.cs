@@ -68,6 +68,8 @@ namespace Wassup.UI
         public void OnPointerDown(PointerEventData eventData)
         {
             if (_view == null || _dragging) return;
+            // 딜이 아직 진행 중이면 이 터치로 즉시 완주 → 게이트가 열려 같은 press 가 바로 집는다.
+            _view.TryFastForwardDeal();
             _view.SetFocus(_index);
             if (_view.CanPeek(_index)) _view.ShowDragTooltip(_index);
         }
