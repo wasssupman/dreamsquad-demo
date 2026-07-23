@@ -31,6 +31,44 @@ namespace Wassup.Tests.EditMode.Api
         }
 
         [Test]
+        public void TryParsePlay_BindsTournamentSeed()
+        {
+            // tournament-seed-map-select unit 0 — live dev-server shape (2026-07-23):
+            // the uint64 seed sits next to fields we don't consume.
+            const string body = @"{ ""success"": true, ""data"": {
+                ""tournament"": { ""status"": ""IN_PROGRESS"", ""typeId"": 1,
+                    ""seed"": 9128566303723636648, ""name"": ""기본 토너먼트 테스트"" },
+                ""userTournamentState"": {
+                    ""status"": ""IN_PROGRESS"",
+                    ""tournamentEntryId"": ""e-1"",
+                    ""tournamentEntryAttemptId"": ""a-1"" } } }";
+
+            var state = TournamentApi.TryParsePlay(body, out string error);
+
+            Assert.IsNull(error);
+            Assert.AreEqual(9128566303723636648UL, state.tournament.seed);
+            Assert.AreEqual("a-1", state.userTournamentState.tournamentEntryAttemptId);
+        }
+
+        [Test]
+        public void TryParsePlay_MissingTournamentNode_StillBindsAttempt()
+        {
+            // old-schema defence: no tournament node → PlayState stays valid,
+            // tournament is null (seed availability is unit 1's judgement).
+            const string body = @"{ ""success"": true, ""data"": {
+                ""userTournamentState"": {
+                    ""status"": ""IN_PROGRESS"",
+                    ""tournamentEntryId"": ""e-1"",
+                    ""tournamentEntryAttemptId"": ""a-1"" } } }";
+
+            var state = TournamentApi.TryParsePlay(body, out string error);
+
+            Assert.IsNull(error);
+            Assert.IsNull(state.tournament);
+            Assert.AreEqual("a-1", state.userTournamentState.tournamentEntryAttemptId);
+        }
+
+        [Test]
         public void TryParsePlay_ErrorDetail_ReportsCode()
         {
             const string body = @"{ ""success"": false, ""errorDetail"": {

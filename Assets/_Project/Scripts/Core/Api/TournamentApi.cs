@@ -21,7 +21,17 @@ namespace Wassup.Core.Api
         [Serializable]
         public class PlayState
         {
+            public TournamentInfo tournament;
             public UserTournamentState userTournamentState;
+        }
+
+        // tournament-seed-map-select unit 0 — 서버 토너먼트 시드(uint64). 같은
+        // 토너먼트 참가자 전원이 같은 값을 받아 맵풀 인덱스 결정론의 소스가 된다.
+        // tournament 노드가 없는 응답(구 스키마)도 유효 — null 로 남는다.
+        [Serializable]
+        public class TournamentInfo
+        {
+            public ulong seed;
         }
 
         [Serializable]
