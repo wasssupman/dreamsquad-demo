@@ -38,6 +38,19 @@ namespace Wassup.UI
         [SerializeField] private float baselineY = 18f;     // 하단 기준선
         [SerializeField] private float fallbackTrayHalf = 490f; // 트레이 미bind 시 폴백 반폭
 
+        [Header("Figure Pile (unit 2a)")]
+        [SerializeField] private int maxFigures = 20;
+        [SerializeField] private float figureRadius = 12f;
+        [SerializeField] private float figureGravity = 1500f;
+        [SerializeField] private float figureDamping = 0.9f;
+        [SerializeField] private float figureSpawnInterval = 0.06f;
+        [SerializeField] private Color[] figureTints =
+        {
+            new Color(0.62f, 0.5f, 0.9f, 1f),
+            new Color(0.45f, 0.82f, 0.88f, 1f),
+            new Color(0.55f, 0.62f, 0.95f, 1f),
+        };
+
         // Layout consts (authored 아님 — 항아리 기하).
         const float DockWidth = 150f, DockHeight = 236f;
         const float JarWidth = 134f, JarHeight = 208f, JarBottom = 24f;
@@ -56,6 +69,7 @@ namespace Wassup.UI
         private Image _jarFrame;
         private Image _rim;
         private Image _fill;
+        private JarFigurePile _pile;
         private TextMeshProUGUI _valueLabel;
         private TextMeshProUGUI _gainLabel;
         private bool _built;
@@ -170,9 +184,14 @@ namespace Wassup.UI
             _normalized = max > 0 ? Mathf.Clamp01((float)value / max) : 0f;
             if (_fill != null)
             {
+                // unit 2a — 피규어 더미가 주 채움. 단색 면은 옅은 액체 backing 으로 강등
+                // (피규어가 성길 때 잔량 힌트만).
                 _fill.fillAmount = _normalized;
-                _fill.color = Color.Lerp(fillColor, chargedColor, _normalized);
+                var fc = Color.Lerp(fillColor, chargedColor, _normalized);
+                fc.a *= 0.3f;
+                _fill.color = fc;
             }
+            if (_pile != null) _pile.SetTargetLevel(_normalized);
 
             int delta = _lastShown >= 0 ? value - _lastShown : 0;
             if (punch && value != _lastShown && _panel != null && _panel.activeInHierarchy)
@@ -283,6 +302,25 @@ namespace Wassup.UI
             _fill.raycastTarget = false;
 
             BuildCostTicks(jarGO.transform, interiorW, interiorH, InteriorPad);
+
+            // 게이지 비례 미니 피규어 더미(unit 2a). 인테리어를 채우고 pivot 하단중앙 →
+            // JarFigurePhysics 로컬좌표를 anchoredPosition 에 직접 매핑. ticks 위·number 아래.
+            var pileGO = new GameObject("FigurePile", typeof(RectTransform));
+            pileGO.transform.SetParent(jarGO.transform, false);
+            var pileRect = (RectTransform)pileGO.transform;
+            pileRect.anchorMin = pileRect.anchorMax = new Vector2(0.5f, 0f);
+            pileRect.pivot = new Vector2(0.5f, 0f);
+            pileRect.anchoredPosition = new Vector2(0f, InteriorPad);
+            pileRect.sizeDelta = new Vector2(interiorW, interiorH);
+            _pile = pileGO.AddComponent<JarFigurePile>();
+            var figureSprite = UiRoundedSprite.MakeCircle(48, Color.white, 5f, new Color(0.2f, 0.16f, 0.32f, 1f));
+            var pileParams = new JarSimParams
+            {
+                gravity = figureGravity,
+                damping = figureDamping,
+                sleepMotionSq = 0.02f,
+            };
+            _pile.Configure(maxFigures, figureRadius, pileParams, figureSprite, figureTints, figureSpawnInterval);
 
             // 큰 숫자(1순위). 채움/피규어 위에 아웃라인으로 항상 읽히게.
             var valueGO = new GameObject("Value", typeof(RectTransform));
