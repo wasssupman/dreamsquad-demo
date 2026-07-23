@@ -1,6 +1,6 @@
 # Fluid Paint-Mixing (WebGL 유체 축소 이식)
 
-**상태: 진행 중 (2026-07-23) — unit 0~4 완료. BattleScene 에 Dreamcatcher 유체 backdrop 배선(HandGated, sortingOrder 4). 최종 룩 = 화면 밖에서 스며든 색이 테두리 밴드에만 성기게 분포(중앙 비움, edgeMaskWidth). 사용자 확정. 남은 것: 핸드 오픈 라이브 look 확인 + 실기 perf + push.**
+**상태: 완료 2026-07-23 (main 머지 `f27a4e50`) — unit 0~4. WebGL-Fluid-Simulation(MIT) 축소 솔버 URP 이식 → BattleScene Dreamcatcher 유체 backdrop(HandGated, sortingOrder 4). 최종 룩 = 화면 밖에서 스며든 색이 테두리 밴드에만 성기게 분포(중앙 비움, edgeMaskWidth). 검증: compile 0 / EditMode 1293 pass·0 fail / 씬 로드·Play 에러 0. 남은 것(후속 후보): 핸드 오픈 라이브 look 확인 + 실기 perf.**
 
 ## 상위 목표
 

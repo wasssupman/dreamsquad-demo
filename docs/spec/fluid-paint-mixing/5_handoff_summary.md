@@ -2,7 +2,11 @@
 
 세션 인계 지도. 최신 계약은 README/번호 문서가 우선.
 
-## Commit (branch `feature/fluid-paint-mixing`, 로컬 — 미푸시)
+## Commit — main 머지 완료 (2026-07-23)
+
+- feature 브랜치 `feature/fluid-paint-mixing`(tip `b83eff2b`) → **`main` 머지 커밋 `f27a4e50`** (BattleScene union 머지, origin push 완료). 머지 후 feature 브랜치는 로컬+원격 삭제.
+
+### 이력 (feature 브랜치 커밋)
 
 - `0b2af3c1` docs: spec 신설
 - `83e7d3f3` unit 0 — FluidSimConfig + RenderTargets + FluidMath(TDD 8/8)
@@ -36,7 +40,8 @@
 - unit 4 BattleScene 배선 완료(DreamcatcherFluidBackdropCanvas, sortingOrder 4, HandGated). AlwaysOn 으로 실 보드 위 유체 렌더 Play-스크린샷 검증 후 HandGated 확정.
 - 앰비언트 룩 반복 튜닝(사용자 피드백): 방울 터짐/깜빡임 → 연속 유동 → 가장자리 유입 → **최종: 테두리 밴드에만 분포**
   (Display `_EdgeMask`가 중앙 비움 + 변-접선 흐름). 값은 전부 FluidSimConfig.asset(edgeMaskWidth/ambientColorAmount/ambientFlow…). 사용자 확정.
-- **미완**: 실제 핸드-오픈 상태에서의 gated look 라이브 확인(MCP 로 핸드 여는 게 어려움) + 실기 perf.
+- main 머지 후 실검증: compile 0 / EditMode 1293 pass·0 fail·2 skip(기존 Ignore) / BattleScene 로드·Play 콘솔 에러 0 / 씬 계층에 유체 캔버스 + main 오브젝트 공존.
+- **미완(후속)**: 실제 핸드-오픈 상태에서의 gated look 라이브 확인(MCP 로 핸드 여는 게 어려움) + 실기 perf.
 
 ## Notes (되돌리면 안 됨)
 
@@ -48,6 +53,5 @@
 
 ## Follow-up
 
-- **unit 4 BattleScene 실배선**(다음): Dreamcatcher 캔버스 아래 backdrop GO 배치 + 핸드 오픈 시 카드 뒤 유체 라이브 확인 + 실기 perf 프로파일. 공유 씬 아트 배치라 사용자와 함께.
+- **핸드 오픈 라이브 look 확인 + 실기 perf**: 배선·머지 완료(HandGated). 실제 핸드를 열어 카드 뒤 유체 look 최종 확인(MCP 로 핸드-오픈 재현이 어려워 미확인) + 안드로이드 실기 프로파일. 색 농도/알파는 실 카드 위에서 조정.
 - 이벤트 구동 splat(코스트/히트 → Splat), bloom 글로우, 코스트 셀 배경 변형, 터치 인터랙티브 — README 후속 후보 참조.
-- push 는 사용자 승인 후.
