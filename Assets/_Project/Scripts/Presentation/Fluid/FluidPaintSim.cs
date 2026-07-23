@@ -42,6 +42,7 @@ namespace Wassup.Presentation
         private static readonly int IdSplatPoint = Shader.PropertyToID("_SplatPoint");
         private static readonly int IdSplatRadius = Shader.PropertyToID("_SplatRadius");
         private static readonly int IdClearValue = Shader.PropertyToID("_ClearValue");
+        private static readonly int IdEdgeMask = Shader.PropertyToID("_EdgeMask");
 
         private readonly FluidRenderTargets _targets = new();
         private Material _mat;
@@ -156,8 +157,9 @@ namespace Wassup.Presentation
             Graphics.Blit(t.DyeRead, t.DyeWrite, _mat, PassAdvection);
             t.SwapDye();
 
-            // 9. Display: dye 프론트 → 안정 출력 핸들
+            // 9. Display: dye 프론트 → 안정 출력 핸들 (+ 가장자리 마스크: 중앙 비우고 테두리만)
             _mat.SetTexture(IdSource, t.DyeRead);
+            _mat.SetFloat(IdEdgeMask, config.edgeMaskWidth);
             Graphics.Blit(t.DyeRead, t.Display, _mat, PassDisplay);
         }
 
@@ -189,28 +191,31 @@ namespace Wassup.Presentation
         // 원본 correctRadius — 가로가 긴 화면에서 splat 이 세로로 눌리지 않게 aspect 보정.
         private static float CorrectRadius(float radius, float aspect) => aspect > 1f ? radius * aspect : radius;
 
-        // 가장자리 유입: 각 방출기가 한 변에 붙어 천천히 미끄러지며 안쪽으로 색·힘을 흘려 넣는다.
-        // 중앙 배회가 아니라 "화면 밖에서 스며드는" 느낌 — 안쪽으로 갈수록 dye 감쇠로 옅어져 가장자리 위주로 남는다.
+        // 화면 밖에서 중앙으로 수렴하는 유입: 방출기가 변에 바짝 붙어(출처가 화면 밖처럼) 천천히 미끄러지며
+        // 화면 중앙을 향해 색·힘을 흘려 넣는다. 낮은 flow·색 + 높은 감쇠 → 성긴 촉수가 천천히 안쪽으로 뻗다 옅어진다.
         private void EmitFlow()
         {
             int n = config.ambientEmitters;
             if (n <= 0) return;
             float t = Time.time;
-            const float inset = 0.14f; // 변 안쪽에서 주입 — 너무 붙으면 가우시안 절반이 화면 밖으로 샌다
+            const float inset = 0.03f; // 변에 바짝 — 출처가 화면 밖처럼 보이게(가우시안 절반은 밖)
             for (int e = 0; e < n; e++)
             {
-                int edge = e % 4; // 0=좌 1=우 2=하 3=상 — 방출기를 네 변에 분배
-                float slide = 0.5f + 0.42f * Mathf.Sin(t * config.ambientDrift * (0.6f + 0.09f * e) + e * 1.7f);
-                float wob = Mathf.Sin(t * config.ambientDrift * 2.3f + e) * 0.25f; // 접선 흔들림(직선 유입 방지)
-                Vector2 uv, dir;
+                int edge = e % 4; // 방출기를 변에 분배(수 적으면 일부 변만 = 성김)
+                float slide = 0.5f + 0.40f * Mathf.Sin(t * config.ambientDrift * (0.6f + 0.09f * e) + e * 1.7f);
+                Vector2 uv, along, inward;
                 switch (edge)
                 {
-                    case 0: uv = new Vector2(inset, slide);        dir = new Vector2(1f, wob); break;   // 좌 → 우
-                    case 1: uv = new Vector2(1f - inset, slide);   dir = new Vector2(-1f, wob); break;  // 우 → 좌
-                    case 2: uv = new Vector2(slide, inset);        dir = new Vector2(wob, 1f); break;   // 하 → 상
-                    default: uv = new Vector2(slide, 1f - inset);  dir = new Vector2(wob, -1f); break;  // 상 → 하
+                    case 0: uv = new Vector2(inset, slide);       along = new Vector2(0f, 1f);  inward = new Vector2(1f, 0f); break;   // 좌
+                    case 1: uv = new Vector2(1f - inset, slide);  along = new Vector2(0f, 1f);  inward = new Vector2(-1f, 0f); break;  // 우
+                    case 2: uv = new Vector2(slide, inset);       along = new Vector2(1f, 0f);  inward = new Vector2(0f, 1f); break;   // 하
+                    default: uv = new Vector2(slide, 1f - inset); along = new Vector2(1f, 0f);  inward = new Vector2(0f, -1f); break;  // 상
                 }
-                Splat(uv, dir.normalized * config.ambientFlow, PickFlowColor(e, t));
+                // 변을 따라(접선) 미끄러지며 살짝만 안쪽 — 색이 중앙으로 뻗지 않고 테두리 밴드에 머문다.
+                // (Display 의 _EdgeMask 가 중앙을 확실히 비우므로, 여기선 에너지를 테두리에 유지)
+                float sway = Mathf.Sin(t * config.ambientDrift * 2.1f + e * 1.3f);
+                Vector2 dir = (along * sway + inward * 0.25f).normalized;
+                Splat(uv, dir * config.ambientFlow, PickFlowColor(e, t));
             }
         }
 

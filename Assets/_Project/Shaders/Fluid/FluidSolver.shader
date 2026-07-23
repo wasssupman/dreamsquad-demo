@@ -241,7 +241,8 @@ Shader "Wassup/Fluid/FluidSolver"
             ENDCG
         }
 
-        // ── Pass 8 · Display (dye 복사; 후속에서 tonemap 여지) ──────────
+        // ── Pass 8 · Display (dye 복사 + 선택적 가장자리 마스크) ────────
+        // _EdgeMask>0 이면 테두리에서 그 폭(uv)만큼만 색을 남기고 중앙은 비운다("가장자리만 분포").
         Pass
         {
             Name "Display"
@@ -251,10 +252,18 @@ Shader "Wassup/Fluid/FluidSolver"
             #include "FluidCommon.cginc"
 
             sampler2D _Source;
+            float _EdgeMask;
 
             float4 frag(v2fSimple i) : SV_Target
             {
-                return tex2D(_Source, i.uv);
+                float4 c = tex2D(_Source, i.uv);
+                if (_EdgeMask > 0.0)
+                {
+                    // 가장 가까운 변까지의 거리(0=테두리, 0.5=중앙). 그 폭 안에서만 남긴다.
+                    float dEdge = min(min(i.uv.x, 1.0 - i.uv.x), min(i.uv.y, 1.0 - i.uv.y));
+                    c *= 1.0 - smoothstep(0.0, _EdgeMask, dEdge);
+                }
+                return c;
             }
             ENDCG
         }
