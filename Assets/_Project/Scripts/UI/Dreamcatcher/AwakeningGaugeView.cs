@@ -46,6 +46,8 @@ namespace Wassup.UI
         [SerializeField] private float figureFlightSeconds = 0.44f; // 킬 위치→항아리 비행 시간
         [SerializeField] private float figureFlightArc = 140f;      // 아치 솟음(px)
         [SerializeField] private float figureFlightStagger = 0.05f; // 한 획득의 여러 피규어 간 지연
+        [SerializeField] private float figureJostleInterval = 1.4f; // 주기적 통통 튕김 간격(초)
+        [SerializeField] private float figureJostleStrength = 3.2f; // 통통 튕김 임펄스 세기
         [SerializeField] private Color[] figureTints =
         {
             new Color(0.62f, 0.5f, 0.9f, 1f),
@@ -496,6 +498,7 @@ namespace Wassup.UI
                 sleepMotionSq = 0.02f,
             };
             _pile.Configure(maxFigures, figureRadius, pileParams, _figureSprite, figureTints);
+            _pile.SetJostle(figureJostleInterval, figureJostleStrength);
 
             // 큰 숫자(1순위). 채움/피규어 위에 아웃라인으로 항상 읽히게.
             var valueGO = new GameObject("Value", typeof(RectTransform));

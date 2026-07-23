@@ -22,9 +22,20 @@ namespace Wassup.UI
         private JarSimParams _params;
         private int _active;
         private float _accum;
+        // 주기적 통통 튕김 — 정착해 잠들지 않게 주기적으로 위로 임펄스(사용자 요청).
+        private float _jostleInterval = 1.4f;
+        private float _jostleStrength = 3.2f;
+        private float _jostleTimer;
+        private float _jostlePhase;
 
         public int ActiveCount => _active;
         public int Capacity => _max;
+
+        public void SetJostle(float interval, float strength)
+        {
+            _jostleInterval = Mathf.Max(0.05f, interval);
+            _jostleStrength = strength;
+        }
 
         public void Configure(int max, float radius, JarSimParams p, Sprite figureSprite, Color[] tints)
         {
@@ -96,9 +107,35 @@ namespace Wassup.UI
                 _views[i].rectTransform.anchoredPosition = new Vector2(_figs[i].pos.x, _figs[i].pos.y);
         }
 
+        // 주기적으로 통 안 피규어에 위로 임펄스를 가해 계속 통통 튕기게 한다(정착·수면 방지).
+        // 인덱스 기반 결정론 변주(seeded RNG 대신). Verlet 임펄스 = prevPos 를 뒤로 밀기.
+        private void JostleAll()
+        {
+            _jostlePhase += 1.7f;
+            for (int i = 0; i < _active; i++)
+            {
+                var f = _figs[i];
+                float dx = Mathf.Sin(i * 2.4f + _jostlePhase) * _jostleStrength;
+                float dy = (0.5f + 0.5f * Mathf.Abs(Mathf.Cos(i * 1.7f + _jostlePhase))) * _jostleStrength;
+                f.prevPos.x -= dx;
+                f.prevPos.y -= dy; // 위로(양수 y = 상방)
+                _figs[i] = f;
+            }
+        }
+
         private void Update()
         {
-            _accum += Mathf.Min(Time.unscaledDeltaTime, 0.1f);
+            float dt = Mathf.Min(Time.unscaledDeltaTime, 0.1f);
+            if (_active > 0 && _jostleStrength > 0f)
+            {
+                _jostleTimer -= dt;
+                if (_jostleTimer <= 0f)
+                {
+                    JostleAll();
+                    _jostleTimer = _jostleInterval;
+                }
+            }
+            _accum += dt;
             int guard = 0;
             while (_accum >= FixedDt && guard++ < 6)
             {
