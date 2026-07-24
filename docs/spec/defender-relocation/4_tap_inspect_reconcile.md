@@ -46,3 +46,19 @@
 2026-07-24 자동 검증 통과 (relocation PlayMode 스위트 4/4 회귀 없음). 부수: 스모크의 시너지
 어서션을 총합 `damageMul` → **origin=Synergy 슬롯 직독**으로 견고화(랜덤 기믹의 데미지 배율이
 총합을 오염시키는 간헐 실패 관측·수정).
+
+## 개정 (2026-07-24) — 터치다운/홀드 분리 (리뷰 MEDIUM + 사용자 리포트 해소)
+
+**증상**: 유닛 터치**다운** 즉시 인스펙트가 열려(패널+카메라 줌) 1초 홀드 조작을 방해.
+초기 구현은 DcInspect 가 `wasPressedThisFrame` 에 곧장 `Select()` → `FeedZoomTarget` 이 카메라를 당김.
+
+**수정**: DcInspect 의 선택 발동을 **터치다운 → 탭 릴리즈**로 이동.
+- 프레스다운(UI 밖)에 `_pendingTap` 만 무장(선택/카메라 이동 없음). 릴리즈 시 이동량이 작으면
+  `HandleTap` → 선택. 이동량 초과(드래그/홀드) 또는 `Blocked()`(이동모드 진입 포함) 시 후보 취소.
+- 홀드로 이어지면 relocation 이 move mode 진입 → `Blocked()` 참 → 인스펙트 아예 안 열림.
+- 과거 press 규약 이유(카드 드래그 OnEndDrag touchup 이 패널 오픈)는 재발 없음: 카드 드래그는
+  프레스다운이 손패 UI 위라 `_pendingTap` 무장 자체가 안 되고, 손패 열림 중엔 `Blocked()` 참.
+- `tapMoveThreshold`(기본 24px) SerializeField 추가 — 값 타입 기본값이라 씬 재배선 불요.
+
+**검증**: 컴파일 클린 + relocation PlayMode 5/5 회귀 없음. 카메라 미이동 시각 체감은 사용자 Play
+게이트(`3_...md`)에 합류.

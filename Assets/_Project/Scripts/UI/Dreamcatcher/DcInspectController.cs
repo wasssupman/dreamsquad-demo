@@ -43,6 +43,8 @@ namespace Wassup.UI
         // unit 4 — 선택 유닛 줌. 카메라 포즈의 유일한 쓰기 주체가 CameraDirector 이므로
         // 여기선 타겟만 피드한다(카메라 직접 조작 금지 계약).
         [SerializeField] private Wassup.Presentation.CameraDirector cameraDirector;
+        // defender-relocation UX — 탭 판정 이동 허용치(px). 이보다 크게 움직이면 탭이 아님(홀드/드래그).
+        [SerializeField] private float tapMoveThreshold = 24f;
 
         private readonly List<(Entity host, DreamcatcherCard card)> _scratch = new List<(Entity, DreamcatcherCard)>();
         private readonly List<DreamcatcherCard> _cards = new List<DreamcatcherCard>();
@@ -50,6 +52,9 @@ namespace Wassup.UI
         private readonly List<RaycastResult> _uiHits = new List<RaycastResult>();
         private Entity _selected = Entity.Null;
         private TimeLease _slomoLease;
+        // defender-relocation UX — 탭 릴리즈 판정용 후보 상태(터치다운에 선택 금지).
+        private bool _pendingTap;
+        private Vector2 _pendingScreen;
 
         private void Start()
         {
@@ -74,8 +79,8 @@ namespace Wassup.UI
             if (bridge == null || mainCamera == null) return;
 
             // 배타 파트너가 입력을 쥐면 열려 있던 패널은 닫는다(계약 8). 손패를 열거나
-            // 배치 드래그를 시작하면 인스펙트는 물러난다.
-            if (Blocked()) { Close(); return; }
+            // 배치 드래그를 시작하거나 이동모드에 진입하면 인스펙트는 물러난다.
+            if (Blocked()) { _pendingTap = false; Close(); return; }
 
             // unit 4 — 선택 중 매 프레임 줌 타겟 피드. 끊기면 CameraDirector 가 2프레임 후
             // 자동 해제한다(명시 Clear 불필요 — 붙박이 줌 방지). Update(-50) → Director
@@ -83,16 +88,38 @@ namespace Wassup.UI
             FeedZoomTarget();
 
             var pointer = Pointer.current;
-            if (pointer == null) return;
-            // 계약 3 — press 규약. release 로 하면 DreamcatcherCardDragSlot.OnEndDrag 가
-            // touchup 으로 부착을 커밋하는 바로 그 제스처가 패널까지 열어버린다.
-            if (!pointer.press.wasPressedThisFrame) return;
-
+            if (pointer == null) { _pendingTap = false; return; }
             var screenPos = pointer.position.ReadValue();
-            // UI 위에서 시작한 press 는 보드 탭이 아니다.
-            if (IsOverUi(screenPos)) return;
 
-            HandleTap(screenPos);
+            // defender-relocation review MEDIUM / UX — 선택(패널+카메라 줌)은 터치다운이 아니라
+            // **탭 릴리즈**에 발동한다. 터치다운 즉시 인스펙트가 열려 카메라가 움직이면 1초 홀드
+            // (재배치) 조작을 방해한다. 홀드로 이어지면 relocation 이 move mode 에 진입하고 Blocked()
+            // 가 여기 탭 후보를 취소하므로 인스펙트는 아예 안 열린다.
+            //
+            // 과거 press 규약을 쓴 이유(카드 드래그 OnEndDrag touchup 이 release 로 패널을 여는 것)는
+            // 여기서 재발하지 않는다: 탭 후보는 **UI 밖 프레스다운**에서만 무장되는데 카드 드래그의
+            // 프레스다운은 손패 카드(UI) 위라 무장되지 않고, 손패가 열린 동안은 Blocked() 가 참이다.
+            if (pointer.press.wasPressedThisFrame)
+            {
+                _pendingTap = !IsOverUi(screenPos);
+                _pendingScreen = screenPos;
+                return;
+            }
+            if (!_pendingTap) return;
+
+            // 이동량이 크면 탭이 아니다(드래그/홀드 의도) — 후보 취소.
+            if (Vector2.Distance(screenPos, _pendingScreen) > Mathf.Max(1f, tapMoveThreshold))
+            {
+                _pendingTap = false;
+                return;
+            }
+            if (pointer.press.wasReleasedThisFrame)
+            {
+                _pendingTap = false;
+                if (!IsOverUi(screenPos)) HandleTap(screenPos); // 릴리즈가 UI 위면 무시
+                return;
+            }
+            if (!pointer.press.isPressed) _pendingTap = false; // 릴리즈 이벤트 유실 방어
         }
 
         // EventSystem.IsPointerOverGameObject() 를 쓰지 않는다(중요).
