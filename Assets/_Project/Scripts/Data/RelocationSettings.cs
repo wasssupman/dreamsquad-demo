@@ -42,8 +42,8 @@ namespace Wassup.Data
         [Tooltip("고리 반지름(sim 단위)")]
         public float flightRingRadius = 0.16f;
 
-        [Tooltip("줄/고리 두께")]
-        public float flightCordWidth = 0.05f;
+        [Tooltip("줄/고리 두께(월드)")]
+        public float flightCordWidth = 0.09f;
 
         [Tooltip("고리 추종 부드러움(작을수록 sway 큼) — SmoothDamp time")]
         public float flightRingFollow = 0.08f;

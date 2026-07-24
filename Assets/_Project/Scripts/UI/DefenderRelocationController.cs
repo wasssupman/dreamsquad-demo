@@ -377,7 +377,9 @@ namespace Wassup.UI
             lr.numCornerVertices = 2;
             lr.textureMode = LineTextureMode.Stretch;
             lr.startColor = lr.endColor = settings.flightKeyringColor;
-            lr.sortingOrder = 50; // 유닛 위
+            // Sprites/Default 는 depth 미기록 → sortingOrder 로 그려진다. 보드/유닛(높은 sorting) 위로
+            // 올리지 않으면 가려져 안 보인다. 드래그 키링 프리뷰와 동일한 최상단 order 사용(원인: 이전 50).
+            lr.sortingOrder = Wassup.Presentation.BoardSortOrder.DragPreviewOrder;
             return lr;
         }
 
