@@ -49,6 +49,20 @@
    좌표 없는 config 구동 채널 신설(`SetMoveOverview`, 헤드룸 채널 미러 — dolly 음수=후퇴=줌아웃 + 스프링
    가중치). `CameraDirectionConfig.moveOverview*` 필드(코드 기본값이라 에셋 재배선 불요).
 
+## 키링 안 보임 디버깅 (2026-07-24)
+
+진단 테스트로 실측: 키링 LineRenderer 는 정상 생성·설정(sortingOrder 20000, Sprites/Default,
+width, 좌표)·`isVisible=True` 인데도 화면에 안 보였다 → **depth 가림**. 드래그 키링 고리는 카메라
+레이 위(모든 지오메트리 앞)라 안 가리지만, 이 키링은 유닛 근처(보드 깊이)라 불투명 보드/유닛 뒤로
+가려진다(sortingOrder 는 투명 정렬만, 불투명 depth 는 별개). 유닛 아치(불투명)는 보이고 키링만 안 보인 것과 일치.
+
+**수정**: 키링 머티리얼을 `Hidden/Internal-Colored`(_ZTest/_ZWrite/블렌드 프로퍼티 노출)로 +
+`ZTest Always`·오버레이 큐 = **항상 위**. (Sprites/Default 는 _ZTest 프로퍼티가 없어 override 불가.)
+잘못 짚은 이력: ① 셰이더 null(아님) ② sortingOrder 50→20000(정렬 문제 아님, depth 문제였음).
+
+**빌드 주의**: `Hidden/Internal-Colored` 는 Hidden 셰이더라 빌드 스트립 가능 → 폴백 Sprites/Default 는
+다시 가려질 수 있다. 실기 배포 전 전용 on-top 셰이더(ZTest Always 노출) 승격 또는 Always Included 등록 필요.
+
 ## 후속 후보
 
 - 키링 sway 물리 고도화(현재 고리 스무스 추종 근사) / 드래그 배치 키링과 완전 통일

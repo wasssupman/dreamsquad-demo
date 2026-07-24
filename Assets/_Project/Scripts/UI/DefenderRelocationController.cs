@@ -352,13 +352,23 @@ namespace Wassup.UI
         private void EnsureKeyring()
         {
             if (_keyringRoot != null || settings == null) return;
-            // Sprites/Default 는 LineRenderer 정점색 tint 를 존중(URP 포함). 폴백 체인으로 견고화 —
-            // 다 없으면 비주얼만 생략(아치 비행은 유지).
-            var sh = Shader.Find("Sprites/Default")
-                     ?? Shader.Find("Universal Render Pipeline/Unlit")
-                     ?? Shader.Find("Unlit/Color");
+            // 진단(2026-07-24): 키링은 생성·설정·isVisible=True 인데 안 보였다 → depth 가림. 드래그 키링은
+            // 고리가 카메라 레이 위(모든 지오메트리 앞)라 안 가리지만, 이 키링은 유닛 근처(보드 깊이)라
+            // 불투명 보드/유닛 뒤로 가려진다. Sprites/Default 는 _ZTest 프로퍼티가 없어 override 불가 →
+            // 디버그 라인용 Hidden/Internal-Colored(_ZTest/_ZWrite/블렌드 프로퍼티 노출, 정점색 지원)로
+            // ZTest Always + 오버레이 큐 = 항상 위에 그린다. (에디터 확정. 빌드는 Hidden 스트립 주의 —
+            // 폴백 Sprites/Default 는 다시 가려질 수 있어 후속에서 전용 셰이더 승격.)
+            var sh = Shader.Find("Hidden/Internal-Colored")
+                     ?? Shader.Find("Sprites/Default")
+                     ?? Shader.Find("Universal Render Pipeline/Unlit");
             if (sh == null) return;
-            _keyringMat = new Material(sh);
+            _keyringMat = new Material(sh) { hideFlags = HideFlags.HideAndDontSave };
+            _keyringMat.SetInt("_ZTest", (int)UnityEngine.Rendering.CompareFunction.Always);
+            _keyringMat.SetInt("_ZWrite", 0);
+            _keyringMat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            _keyringMat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            _keyringMat.SetInt("_Cull", (int)UnityEngine.Rendering.CullMode.Off);
+            _keyringMat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Overlay; // 4000
             _keyringRoot = new GameObject("RelocationKeyring");
             _cord = MakeLine(3, "Cord");   // 줄: 고리→유닛 (2점이면 되지만 cap 여유)
             _ring = MakeLine(17, "Ring");  // 고리: 16세그 루프 + 닫힘
