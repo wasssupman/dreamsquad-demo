@@ -40,6 +40,8 @@ namespace Wassup.UI
         // (DreamcatcherHandView 도 같은 이유로 config 를 따로 들고 있다).
         [SerializeField] private AwakeningConfig config;
         [SerializeField] private DcInspectPanelView panel;
+        // defender-relocation unit 5 — 선택 시 유닛 좌측 액션 플립북(이동모드+더미2).
+        [SerializeField] private DcActionFlipbookView actionFlipbook;
         // unit 4 — 선택 유닛 줌. 카메라 포즈의 유일한 쓰기 주체가 CameraDirector 이므로
         // 여기선 타겟만 피드한다(카메라 직접 조작 금지 계약).
         [SerializeField] private Wassup.Presentation.CameraDirector cameraDirector;
@@ -202,7 +204,21 @@ namespace Wassup.UI
                 if (_cards.Count > 0) panel.Show(anchor, mainCamera, _cards, _costs);
                 else panel.Hide(); // 빈 상태 UI 는 만들지 않는다 — 없는 게 정직하다
             }
+            // unit 5 — 부착 유무와 무관하게 좌측 액션 플립북 등장(이동모드 진입 입구).
+            if (actionFlipbook != null)
+                actionFlipbook.Show(anchor, mainCamera, relocationController != null, OnMovePressed);
             AcquireSlomo();
+        }
+
+        // unit 5 — 이동모드 버튼: 선택 해제(패널/줌/플립북) 후 relocation 이 자기 슬로모/하이라이트/
+        // 카메라를 새로 잡는다(순차 handoff, lease 겹침 없음).
+        private void OnMovePressed()
+        {
+            var e = _selected;
+            if (e == Entity.Null || relocationController == null) return;
+            bool hasCell = bridge.TryGetDefenderCell(e, out var cell);
+            Close();
+            if (hasCell) relocationController.BeginMoveModeFor(e, cell);
         }
 
         // 부착 목록에서 host 에 걸린 카드만 추린다. 반환 false = 보여줄 게 없다(선택 자체는 유효).
@@ -234,6 +250,7 @@ namespace Wassup.UI
         {
             _selected = Entity.Null;
             if (panel != null) panel.Hide();
+            if (actionFlipbook != null) actionFlipbook.Hide();
             _slomoLease.Dispose();
         }
 

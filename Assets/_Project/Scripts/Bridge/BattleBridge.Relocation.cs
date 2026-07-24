@@ -45,6 +45,20 @@ namespace Wassup.Bridge
             return false;
         }
 
+        // unit 5 — entity→cell 역참조 (선택 액션 플립북이 픽한 entity 로 이동모드 진입 시 소스 셀 해석).
+        // 소규모 그리드라 선형 스캔 비용 무시. _defenderByTile 이 유일 소스.
+        public bool TryGetDefenderCell(Entity entity, out Vector2Int cell)
+        {
+            foreach (var kv in _defenderByTile)
+            {
+                if (kv.Value.entity != entity) continue;
+                cell = kv.Key;
+                return true;
+            }
+            cell = default;
+            return false;
+        }
+
         // read-only 사전 검증 (컨트롤러 hover/reject 피드백용) — 상태 변경 없음.
         // 페이즈 게이트는 CanPlaceDefenderAt 과 동일 규칙(_running || _placementAllowed).
         public bool CanRelocateDefender(Vector2Int from, Vector2Int to, out PlacementRejectReason reason)

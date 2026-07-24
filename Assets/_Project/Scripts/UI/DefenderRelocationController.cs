@@ -12,9 +12,9 @@ using Wassup.Presentation;
 
 namespace Wassup.UI
 {
-    // defender-relocation unit 1 — 배치된 유닛 1초 홀드 → 이동모드(슬로모+하이라이트+카메라 포커스).
-    // 목적지 지정(탭/드래그)은 unit 2 — 이 컨트롤러는 진입/유지/취소만 소유한다.
-    // 짧은 탭(홀드 임계 전 릴리즈)은 소비하지 않는다 — 기존 소비자(DcInspect) 양보(spec README 계약 10).
+    // defender-relocation — 이동모드(슬로모+하이라이트+카메라) + 목적지 지정(탭/드래그) + 비행/재전개.
+    // unit 5: 진입은 홀드가 아니라 선택 액션 플립북의 이동모드 버튼 → 외부에서 BeginMoveModeFor 호출.
+    // 이 컨트롤러는 이동모드의 유지/목적지 지정/커밋/취소만 소유한다.
     // 남용 방지 = 진입 쿨다운(확정/취소 무관) + 이동모드 타임아웃(계약 7).
     public class DefenderRelocationController : MonoBehaviour
     {
@@ -43,10 +43,6 @@ namespace Wassup.UI
         public DefenderUnitData MoveUnit => _unit;
         public Entity MoveEntity => _entity;
 
-        // 홀드 추적
-        private bool _holding;
-        private float _holdElapsed;
-        private Vector2 _downScreen;
         // 이동모드
         private bool _moveMode;
         private float _moveModeElapsed;
@@ -58,10 +54,8 @@ namespace Wassup.UI
         private bool _hasLease;
         private CameraDirector _cameraDirector;
         private bool _cameraDirectorMissWarned;
-        // unit 2 — 이동모드 배치 세션 (목적지 지정 제스처)
-        private bool _targetPressActive;  // 목적지 지정 press 진행 중
-        private bool _pressCarried;       // 홀드에서 이어진 press (임계 전 릴리즈 = 커밋 아닌 탭 대기 전환)
-        private Vector2 _targetDownScreen;
+        // 이동모드 배치 세션 (목적지 지정 제스처) — press 추적 → 릴리즈 셀에서 해석(탭/드래그 공통).
+        private bool _targetPressActive;
         private Vector2Int? _scoutCell;   // hover 스카우트 중인 셀
         // unit 3 — 비행/재전개 (세대 토큰 = _sessionGen 패턴 준용)
         private int _flightGen;
@@ -78,65 +72,34 @@ namespace Wassup.UI
         }
 
         // 입력-독립 상태 머신 — PlayMode 테스트가 reflection 으로 직접 구동한다(원격 검증 경로).
+        // 진입은 외부(BeginMoveModeFor). 이동모드 중에만 목적지 제스처를 돌린다.
         private void Step(bool pressStarted, bool pressed, Vector2 screen, float unscaledDt)
         {
             if (_entryCooldownRemaining > 0f) _entryCooldownRemaining -= unscaledDt;
-
-            if (_moveMode) { TickMoveMode(pressStarted, pressed, screen, unscaledDt); return; }
-            if (_holding) { TickHolding(pressed, screen, unscaledDt); return; }
-            if (pressStarted) TryBeginHold(screen);
+            if (_moveMode) TickMoveMode(pressStarted, pressed, screen, unscaledDt);
         }
 
-        private void TryBeginHold(Vector2 screen)
+        // unit 5 — 선택 액션 플립북의 이동모드 버튼이 부르는 외부 진입점(홀드 대체). 버튼(UI) 경유라
+        // 보드 press/UI raycast 게이트를 안 탄다. 활성 비행/쿨다운/페이즈/유닛유효만 가드.
+        // review H1: _flightGen/_activeFlightEntity 단일 슬롯 → 앞 유닛 비행 중엔 새 진입 거부(고아화 방지).
+        public bool BeginMoveModeFor(Entity entity, Vector2Int cell)
         {
-            if (bridge == null || settings == null) return;
-            // review H1(양측 확인) — 단일 세션: 앞 유닛의 비행/재전개가 끝나기 전엔 새 이동을 시작하지
-            // 않는다. _flightGen/_activeFlightEntity 가 단일 슬롯이라, 겹치면 앞 유닛이 AbandonFlight 로
-            // 빠져 PendingDeployment 에 영구 고착된다(회수 불가). 직렬화가 이 feature 의 단일 armed·단일
-            // 세션 철학과 일관 — 동시 비행 지원은 후속 후보(per-entity generation map).
-            if (_activeFlightEntity != Entity.Null) return;
-            if (_entryCooldownRemaining > 0f) return;
+            if (bridge == null || settings == null) return false;
+            if (_moveMode || _activeFlightEntity != Entity.Null) return false;
+            if (_entryCooldownRemaining > 0f) return false;
             var gm = GameManager.Instance;
-            if (gm == null || gm.CurrentPhase != GamePhase.Battle) return; // Battle 전용(Placement 재배치는 후속 후보)
-            if (gm.IsAiming) return;                                        // 스킬 조준과 이중 소비 방지
-            if (DragController != null &&
-                (DragController.HasArmedUnit || DragController.IsDragging || DragController.IsAiming)) return;
-            if (IsOverUi(screen)) return;
-            if (mainCamera == null) mainCamera = Camera.main;
-            if (mainCamera == null) return;
-            if (!bridge.TryScreenToCell(mainCamera, screen, out var cell)) return;
-            if (!bridge.TryGetDefenderAt(cell, out var entity, out var unit, out bool busy) || busy) return;
-
-            _holding = true;
-            _holdElapsed = 0f;
-            _downScreen = screen;
+            if (gm == null || gm.CurrentPhase != GamePhase.Battle) return false;
+            if (!bridge.TryGetDefenderAt(cell, out var e, out var unit, out bool busy) || busy || e != entity)
+                return false;
             _sourceCell = cell;
             _unit = unit;
             _entity = entity;
-        }
-
-        private void TickHolding(bool pressed, Vector2 screen, float unscaledDt)
-        {
-            // 릴리즈(임계 전) = 불소비 취소 — 짧은 탭은 기존 소비자(DcInspect) 몫.
-            if (!pressed) { ResetHold(); return; }
-            // 이동 임계 초과 = 홀드 의도가 아님(스와이프) — 취소. 임계는 보드 드래그 판정과 동일 소스.
-            float threshold = DragController != null ? DragController.BoardDragThreshold : 12f;
-            if (Vector2.Distance(screen, _downScreen) >= threshold) { ResetHold(); return; }
-            // 대상 소실(사망/이동) — 취소.
-            if (!StillValidSource()) { ResetHold(); return; }
-
-            _holdElapsed += unscaledDt;
-            // 홀드 진행 표시(스코프 최소): 하이라이트 틴트를 진행률로 페이드-인.
-            if (spineUnitPool != null && spineUnitPool.TryGet(_entity, out var view))
-                view.SetHoverHighlight(true,
-                    Color.Lerp(Color.white, settings.highlightColor, _holdElapsed / Mathf.Max(0.01f, settings.holdSeconds)));
-
-            if (_holdElapsed >= settings.holdSeconds) EnterMoveMode();
+            EnterMoveMode();
+            return true;
         }
 
         private void EnterMoveMode()
         {
-            _holding = false;
             _moveMode = true;
             _moveModeElapsed = 0f;
             _entryCooldownRemaining = settings.entryCooldownSeconds; // 진입 시점 시작 — 확정/취소 무관(계약 7)
@@ -145,11 +108,8 @@ namespace Wassup.UI
             _hasLease = true;
             if (spineUnitPool != null && spineUnitPool.TryGet(_entity, out var view))
                 view.SetHoverHighlight(true, settings.highlightColor);
-            // unit 2 — 홀드에서 이어진 press 를 목적지 지정 제스처로 승계.
-            // 손 안 떼고 임계 초과 = 드래그(릴리즈 커밋), 임계 전 릴리즈 = 탭 대기 전환(README 제스처 트리).
-            _targetPressActive = true;
-            _pressCarried = true;
-            _targetDownScreen = _downScreen;
+            // 버튼 진입 — carried press 없음. 목적지 탭/드래그를 이후 새 press 로 받는다.
+            _targetPressActive = false;
             _scoutCell = null;
         }
 
@@ -170,34 +130,19 @@ namespace Wassup.UI
             // 인스펙트 포커스 — 매 프레임 피드(미피드 시 자동 해제되는 채널, DirectionAim 패턴).
             EnsureCameraDirector()?.SetInspectFocus(bridge.GridCellToViewCenter(_sourceCell));
 
-            // unit 2 — 목적지 지정 제스처. 탭과 드래그를 한 모델로: press 추적 → 릴리즈 지점에서 해석.
-            float threshold = DragController != null ? DragController.BoardDragThreshold : 12f;
-
+            // 목적지 지정 제스처 — 탭/드래그 공통: press 동안 hover 스카우트, 릴리즈 셀에서 해석.
             if (_targetPressActive)
             {
-                if (pressed)
-                {
-                    // 홀드 승계 press 가 임계를 넘으면 드래그 의도로 승격(릴리즈 = 커밋 시도).
-                    if (_pressCarried && Vector2.Distance(screen, _targetDownScreen) >= threshold)
-                        _pressCarried = false;
-                    UpdateScout(screen);
-                    return;
-                }
-                // 릴리즈 해석
-                bool carriedTap = _pressCarried && Vector2.Distance(screen, _targetDownScreen) < threshold;
+                if (pressed) { UpdateScout(screen); return; }
                 _targetPressActive = false;
-                _pressCarried = false;
-                if (carriedTap) { ClearScout(); return; } // 홀드에서 손만 뗌 — 탭 대기 유지(커밋 아님)
                 ResolveRelease(screen);
                 return;
             }
 
             if (pressStarted)
             {
-                if (IsOverUi(screen)) return; // UI press 는 목적지 지정이 아님
+                if (IsOverUi(screen)) return; // UI press(플립북 버튼 등)는 목적지 지정이 아님
                 _targetPressActive = true;
-                _pressCarried = false;
-                _targetDownScreen = screen;
                 UpdateScout(screen);
             }
         }
@@ -320,20 +265,12 @@ namespace Wassup.UI
         // 진입 쿨다운은 진입 시점에 이미 시작됐으므로 여기서 건드리지 않는다.
         public void CancelMoveMode()
         {
-            if (!_moveMode) { ResetHold(); return; }
+            if (!_moveMode) { ClearHighlight(); return; }
             _moveMode = false;
             _targetPressActive = false;
-            _pressCarried = false;
             ReleaseLease();
             ClearHighlight();
             ClearScout();
-        }
-
-        private void ResetHold()
-        {
-            _holding = false;
-            _holdElapsed = 0f;
-            ClearHighlight();
         }
 
         private void ClearHighlight()
@@ -360,7 +297,6 @@ namespace Wassup.UI
         {
             // teardown/씬 전환 시 lease 누수 방지 + 진행 중 비행은 즉시형으로 완결(pending 고착 방지).
             CancelMoveMode();
-            ResetHold();
             if (_activeFlightEntity != Entity.Null)
             {
                 _flightGen++; // 코루틴 무효화(재개돼도 물러남)
@@ -382,10 +318,9 @@ namespace Wassup.UI
             return _cameraDirector;
         }
 
-        // defender-relocation 버그 수정 — 명시 좌표 RaycastAll 로 UI 위 여부 판정.
-        // 기존 IsPointerOverGameObject 는 EventSystem 의 "지난 프레임/다른 pointer" 상태를 읽어
-        // 보드 위에서도 true 를 뱉었다(→ 홀드가 시작조차 안 됨). DcInspect.IsOverUi 와 동일 방식으로
-        // 정렬해 "탭으로 인스펙트되는 유닛은 홀드도 시작된다"를 보장한다(둘이 같은 press 를 동일 해석).
+        // 명시 좌표 RaycastAll 로 UI 위 여부 판정(DcInspect.IsOverUi 와 동일). 목적지 제스처가 UI press
+        // (플립북 버튼 등)를 목적지 선택으로 오해하지 않게 한다. IsPointerOverGameObject 는 지난 프레임/
+        // 다른 pointer 상태를 읽어 보드 위에서도 true 를 뱉으므로 쓰지 않는다.
         private readonly List<RaycastResult> _uiHits = new();
         private bool IsOverUi(Vector2 screenPos)
         {

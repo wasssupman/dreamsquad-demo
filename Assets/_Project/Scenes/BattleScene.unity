@@ -1233,7 +1233,9 @@ MonoBehaviour:
   relocationController: {fileID: 1251145711}
   config: {fileID: 11400000, guid: b1ff068a6a1b7a44b8fd4ea85f159ff6, type: 2}
   panel: {fileID: 751645447}
+  actionFlipbook: {fileID: 1090654029}
   cameraDirector: {fileID: 1420088188}
+  tapMoveThreshold: 24
 --- !u!4 &603193525
 Transform:
   m_ObjectHideFlags: 0
@@ -2283,6 +2285,59 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 725522407}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1090654028
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1090654030}
+  - component: {fileID: 1090654029}
+  m_Layer: 0
+  m_Name: DcActionFlipbook
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1090654029
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1090654028}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5b4e206bdcb776249937d0540a1f61b3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.DcActionFlipbookView
+  labelFont: {fileID: 11400000, guid: 218cce73e3172a04a8c536a4d368d90f, type: 2}
+  radius: 96
+  buttonSize: 66
+  fanSpreadDeg: 38
+  stagger: 0.06
+  appearDur: 0.18
+  fill: {r: 0.1, g: 0.09, b: 0.17, a: 1}
+  moveBorder: {r: 0.45, g: 0.85, b: 1, a: 1}
+  dummyBorder: {r: 0.5, g: 0.5, b: 0.58, a: 1}
+--- !u!4 &1090654030
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1090654028}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1151968985
 GameObject:
@@ -4418,3 +4473,4 @@ SceneRoots:
   - {fileID: 1606569296}
   - {fileID: 78826496}
   - {fileID: 1251145712}
+  - {fileID: 1090654030}

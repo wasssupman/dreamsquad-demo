@@ -55,7 +55,8 @@ UX 는 기존 배치와 대칭: 홀드로 이동모드 진입(슬로모) → 탭
 | 2 | 배치 | `2_relocate_placement_session.md` | 이동모드에서 탭/드래그 배치 → relocate 커밋 분기(스킵 셋 적용) |
 | 3 | 연출 | `3_flight_redeploy_activation.md` | 실뷰 숨김+프리뷰 비행 → 착지 → 재전개 → 활성화. Play 전체 플로우 검증 |
 | 4 | 정리 | `4_tap_inspect_reconcile.md` | 짧은 탭과 DcInspect 경합 정리(유닛 상태 화면은 기존 인스펙트에 위임) |
-| 5 | 인계 | `5_handoff_summary.md` | (구현 종료 시) 커밋/검증/주의점 |
+| 5 | UX 전환 | `5_select_action_flipbook.md` | 선택 액션 플립북(이동+더미2) + 이동모드 진입을 홀드→버튼(BeginMoveModeFor)으로 전환 |
+| 6 | 인계 | `6_handoff_summary.md` | (구현 종료 시) 커밋/검증/주의점 |
 
 의존: `0 → 2 → 3`, `1 → 2`. `4` 는 `1` 이후 아무 때나.
 

@@ -7,10 +7,7 @@ namespace Wassup.Data
     [CreateAssetMenu(menuName = "Wassup/Relocation Settings", fileName = "RelocationSettings")]
     public class RelocationSettings : ScriptableObject
     {
-        [Header("홀드 진입")]
-        [Tooltip("보드 유닛 press 유지로 이동모드에 진입하는 시간(초, 실시간)")]
-        public float holdSeconds = 1f;
-
+        [Header("진입")]
         [Tooltip("이동모드 진입 쿨다운(초, 실시간) — 확정/취소 무관 적용(슬로모 남용 방지)")]
         public float entryCooldownSeconds = 3f;
 

@@ -14,9 +14,9 @@ using Wassup.UI;
 
 namespace Wassup.Tests.PlayMode
 {
-    // defender-relocation unit 2 — 이동모드 배치 세션: 홀드 릴리즈(커밋 아님) → 탭 커밋 /
-    // 본인 탭 취소 / 무효(점유) 탭 reject+유지 / 드래그 릴리즈 커밋. 코스트 불변(계약 1).
-    // 컨트롤러 Step 을 reflection 으로 구동(원격 검증 경로), 커밋 꼬리는 unit 3 전 임시 즉시형.
+    // defender-relocation unit 2/5 — 이동모드 배치 세션: 진입(BeginMoveModeFor) → 탭 커밋 /
+    // 본인 탭 취소 / 무효(점유) 탭 reject+유지 / 드래그 커밋 → 비행·재전개. 코스트 불변(계약 1).
+    // 진입은 홀드가 아닌 외부 BeginMoveModeFor(플립북 버튼 대체), 목적지 제스처는 Step reflection 구동.
     public class RelocationPlacementSessionTest
     {
         static MethodInfo _stepMethod;
@@ -45,7 +45,6 @@ namespace Wassup.Tests.PlayMode
             DisableUiCanvases(); // 런타임 Overlay 가 보드를 덮어 IsOverUi 를 막지 않게(실 Play=보드 위 UI 없음)
 
             var fast = ScriptableObject.CreateInstance<RelocationSettings>();
-            fast.holdSeconds = 0.2f;
             fast.entryCooldownSeconds = 0.1f;
             fast.moveModeTimeoutSeconds = 30f;
             fast.redeploySeconds = 0.2f; // unit 3 — 비행+재전개 총 대기 짧게
@@ -76,11 +75,9 @@ namespace Wassup.Tests.PlayMode
             Vector2Int target2 = FindRelocTarget(bridge, source); // 새 유효 목적지
             Assert.AreNotEqual(occupiedCell, target2, "distinct valid target exists");
 
-            // ── 1) 홀드 진입 → 손 떼기(커밋 아님) → 무효(점유) 탭 = reject + 유지 → 본인 탭 = 취소
-            EnterMoveMode(controller, srcScreen, fast);
+            // ── 1) 버튼 진입 → 무효(점유) 탭 = reject + 유지 → 본인 탭 = 취소
+            EnterMoveMode(controller, bridge, source);
             Assert.IsTrue(controller.InMoveMode, "in move mode");
-            Step(controller, false, false, srcScreen, 0.02f); // 홀드 승계 press 릴리즈(임계 전) — 탭 대기
-            Assert.IsTrue(controller.InMoveMode, "carried-press release keeps move mode (no commit)");
 
             Vector2 occScreen = ScreenOf(bridge, cam, occupiedCell);
             Step(controller, true, true, occScreen, 0.02f);
@@ -96,8 +93,7 @@ namespace Wassup.Tests.PlayMode
 
             // ── 2) 탭 커밋 (쿨다운 소진 후 재진입)
             for (int i = 0; i < 4; i++) Step(controller, false, false, srcScreen, 0.05f);
-            EnterMoveMode(controller, srcScreen, fast);
-            Step(controller, false, false, srcScreen, 0.02f); // 탭 대기 전환
+            EnterMoveMode(controller, bridge, source);
             var mover = controller.MoveEntity;
             float costBefore = gm.CostRuntime.Current;
             Vector2 tgtScreen = ScreenOf(bridge, cam, target2);
@@ -116,13 +112,14 @@ namespace Wassup.Tests.PlayMode
             Assert.Greater(Unity.Mathematics.math.distance(posBefore.xz, posAfter.xz), 0.5f,
                 "sim position moved at landing (Finish)");
 
-            // ── 3) 드래그 커밋: 홀드 승계 press 를 임계 초과 이동 → 릴리즈 = 커밋 (원 타일로 복귀)
+            // ── 3) 드래그 커밋: press → 이동 → 릴리즈 셀에서 커밋 (원 타일로 복귀). mover 는 지금 target2.
             for (int i = 0; i < 4; i++) Step(controller, false, false, tgtScreen, 0.05f); // 쿨다운 소진
             Vector2 nowScreen = ScreenOf(bridge, cam, target2);
-            EnterMoveMode(controller, nowScreen, fast);
+            EnterMoveMode(controller, bridge, target2);
             Vector2 backScreen = ScreenOf(bridge, cam, source); // 원 타일(현재 비어 있음)
-            Step(controller, false, true, backScreen, 0.02f);   // 손 안 떼고 임계 초과 이동
-            Step(controller, false, false, backScreen, 0.02f);  // 릴리즈 = 드래그 커밋
+            Step(controller, true, true, nowScreen, 0.02f);     // 현재 셀에서 press 시작
+            Step(controller, false, true, backScreen, 0.02f);   // 원 타일로 드래그
+            Step(controller, false, false, backScreen, 0.02f);  // 릴리즈 = 커밋
             Assert.IsFalse(controller.InMoveMode, "drag commit exits move mode");
             Assert.AreEqual(source, CellOf(bridge, em, mover), "binding back at source via drag commit");
             yield return WaitUntilActivated(em, mover, 5f); // 비행 완결 후 종료(다음 테스트 오염 방지)
@@ -146,7 +143,6 @@ namespace Wassup.Tests.PlayMode
             DisableUiCanvases(); // 런타임 Overlay 가 보드를 덮어 IsOverUi 를 막지 않게(실 Play=보드 위 UI 없음)
 
             var fast = ScriptableObject.CreateInstance<RelocationSettings>();
-            fast.holdSeconds = 0.2f;
             fast.entryCooldownSeconds = 0.01f;
             fast.moveModeTimeoutSeconds = 30f;
             fast.flightBaseSeconds = 0.5f;   // 비행을 충분히 길게 — 그 사이 둘째 시도
@@ -179,18 +175,15 @@ namespace Wassup.Tests.PlayMode
 
             // A 이동 커밋 → 비행 시작
             var targetA = FindRelocTargetExcluding(bridge, cellA, blockerCell);
-            EnterMoveMode(controller, screenA, fast);
-            Step(controller, false, false, screenA, 0.02f); // 탭 대기
+            EnterMoveMode(controller, bridge, cellA);
             Step(controller, true, true, ScreenOf(bridge, cam, targetA), 0.02f);
             Step(controller, false, false, ScreenOf(bridge, cam, targetA), 0.02f); // 커밋
             Assert.IsTrue(em.HasComponent<PendingDeployment>(moverA), "A in flight (pending)");
 
-            // 비행 중 B 이동 시도 — 가드로 홀드 진입 자체가 막혀야 한다
-            Vector2 screenB = ScreenOf(bridge, cam, blockerCell);
-            Step(controller, true, true, screenB, 0.02f);
-            int ticks = Mathf.CeilToInt(fast.holdSeconds / 0.05f) + 2;
-            for (int i = 0; i < ticks; i++) Step(controller, false, true, screenB, 0.05f);
-            Assert.IsFalse(controller.InMoveMode, "second relocation blocked while first in flight");
+            // 비행 중 B 이동 진입 시도 — 활성비행 가드로 거부돼야 한다
+            Assert.IsFalse(controller.BeginMoveModeFor(unitB, blockerCell),
+                "second relocation blocked while first in flight");
+            Assert.IsFalse(controller.InMoveMode, "not in move mode (blocked)");
             Assert.IsFalse(em.HasComponent<PendingDeployment>(unitB), "unit B untouched (never entered flight)");
 
             // A 는 고아화 없이 정상 활성화
@@ -236,12 +229,11 @@ namespace Wassup.Tests.PlayMode
 
         // ── helpers ──────────────────────────────────────────────────────────
 
-        private static void EnterMoveMode(DefenderRelocationController c, Vector2 screen, RelocationSettings s)
+        // unit 5 — 진입은 홀드가 아니라 BeginMoveModeFor(플립북 이동모드 버튼 대체).
+        private static void EnterMoveMode(DefenderRelocationController c, BattleBridge bridge, Vector2Int cell)
         {
-            Step(c, true, true, screen, 0.02f);
-            int ticks = Mathf.CeilToInt(s.holdSeconds / 0.05f) + 2;
-            for (int i = 0; i < ticks; i++) Step(c, false, true, screen, 0.05f);
-            Assert.IsTrue(c.InMoveMode, "hold entered move mode");
+            Assert.IsTrue(bridge.TryGetDefenderAt(cell, out var e, out _, out _), "resolve entity for entry");
+            Assert.IsTrue(c.BeginMoveModeFor(e, cell), "BeginMoveModeFor entered move mode");
         }
 
         private static Vector2 ScreenOf(BattleBridge bridge, Camera cam, Vector2Int cell)
