@@ -36,19 +36,9 @@ namespace Wassup.Data
         public float flightArcHeight = 1.8f;
 
         [Header("비행 키링(고리+줄)")]
-        [Tooltip("유닛 위 고리까지 줄 길이(카메라 up, sim 단위)")]
-        public float flightRopeLength = 0.9f;
-
-        [Tooltip("고리 반지름(sim 단위)")]
-        public float flightRingRadius = 0.16f;
-
-        [Tooltip("줄/고리 두께(월드)")]
-        public float flightCordWidth = 0.09f;
-
-        [Tooltip("고리 추종 부드러움(작을수록 sway 큼) — SmoothDamp time")]
+        // 고리/줄의 룩(반경·폭·색·머티리얼·스타일)은 배치 키링과 단일 소스(DragSwaySettings)를 공유한다
+        // — DefenderDragPlacementController.CreateKeyringHardware 가 소유. 여기엔 재배치 전용 sway 만 둔다.
+        [Tooltip("고리 추종 부드러움(작을수록 sway 큼) — exp-lerp time(초)")]
         public float flightRingFollow = 0.08f;
-
-        [Tooltip("줄/고리 색")]
-        public Color flightKeyringColor = new Color(0.95f, 0.85f, 0.5f, 1f);
     }
 }

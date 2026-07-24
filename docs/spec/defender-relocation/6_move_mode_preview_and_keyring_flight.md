@@ -20,11 +20,13 @@
    타깃; 소스는 점유라 자동 제외). `CancelMoveMode` 에서 `HidePlacementHighlight()` + `ClearPlacementRange()`.
 2. **범위 프리뷰**: `UpdateScout` 에서 셀 변경 시 유효하면 `bridge.SetPlacementRange(cell, _unit)`,
    무효면 `ClearPlacementRange()`. `ClearScout` 에서도 `ClearPlacementRange()`. (드래그 배치 스카우트 미러)
-3. **키링 비행(자체완결)**: 기존 `RunRelocationFlight` 의 실뷰 베지어 비행을 유지하되, 비행 동안 유닛
-   위에 **고리(ring) + 줄(cord) LineRenderer** 를 띄워 키링 룩을 준다. 고리는 유닛 위 `flightRopeLength`
-   (카메라 up) 지점을 부드럽게 추종(줄 각도가 흔들려 sway 느낌). 착지/중단 시 제거. 드래그 컨트롤러의
-   세션/슬로모/커밋에 손대지 않는다(공유 핫파일 무수술). Shader.Find("Sprites/Default") null 가드 —
-   실패 시 비주얼만 생략(유닛 비행은 유지).
+3. **키링 비행(배치 키링 재사용)**: 실뷰 베지어 비행(`SetRelocationViewOverride`)은 유지하되, 비행 동안
+   **배치(D&D/탭)와 동일한 고리+줄**을 유닛 머리 위에 얹는다. 룩(빌보드 고리 + 월드 줄, 스타일/머티리얼/
+   색/폭)은 `DefenderDragPlacementController.CreateKeyringHardware(unit)` 팩토리가 **단일 소유**(배치
+   프리뷰의 고리/줄 구성과 같은 소스 = `DragSwaySettings`·`Sprites/Default`·`Billboard`). 실루엣은 재배치의
+   실제 유닛이 담당하므로 팩토리는 고리+줄만 만든다. 위치 앵커 = 실제 렌더 유닛 뷰의 `transform.position`
+   (= `SpineUnitView` 가 `BoardSpace.ToView` 적용을 마친 좌표) → 고리는 그 위 `head + ropeWorld` 를 스무스
+   추종(sway 근사). 착지/중단 시 root 만 파괴(머티리얼은 드래그 컨트롤러 공유 — 파괴 금지).
 
 ## 완료 기준
 
@@ -36,8 +38,9 @@
 - [ ] **사용자 Play 시각 확인** — 하이라이트·범위·키링 룩·드랍. 뷰 비주얼이라 자동 재현 불가(원격).
 
 2026-07-24 자동 검증 통과 (PlayMode relocation 5/5). 사용자 시각 확인만 남음.
-**주의**: 키링은 `Shader.Find("Sprites/Default"→URP/Unlit→Unlit/Color)` 폴백. 다 null 시 비주얼 생략
-(아치 비행은 유지). 실기 빌드에서 셰이더 포함 여부 확인 필요.
+**주의**: 키링 룩은 배치 키링과 단일 소스(`CreateKeyringHardware`) — 별도 셰이더/빌드 리스크 없음
+(배치 프리뷰가 이미 쓰는 `Sprites/Default`). `DragController` 미해석(트레이 미준비) 시 키링만 생략,
+유닛 비행은 유지. 개정 2 참조.
 
 ## 개정 (2026-07-24) — 사용자 피드백 반영
 
@@ -49,21 +52,27 @@
    좌표 없는 config 구동 채널 신설(`SetMoveOverview`, 헤드룸 채널 미러 — dolly 음수=후퇴=줌아웃 + 스프링
    가중치). `CameraDirectionConfig.moveOverview*` 필드(코드 기본값이라 에셋 재배선 불요).
 
-## 키링 안 보임 디버깅 (2026-07-24)
+## 개정 2 (2026-07-24) — 키링 재설계: 배치 키링 재사용
 
-진단 테스트로 실측: 키링 LineRenderer 는 정상 생성·설정(sortingOrder 20000, Sprites/Default,
-width, 좌표)·`isVisible=True` 인데도 화면에 안 보였다 → **depth 가림**. 드래그 키링 고리는 카메라
-레이 위(모든 지오메트리 앞)라 안 가리지만, 이 키링은 유닛 근처(보드 깊이)라 불투명 보드/유닛 뒤로
-가려진다(sortingOrder 는 투명 정렬만, 불투명 depth 는 별개). 유닛 아치(불투명)는 보이고 키링만 안 보인 것과 일치.
+사용자 피드백: 자작 키링이 "배치/탭 키링과 전혀 다르게 생겼고 위치도 엉뚱한 데서 움직인다".
+근본 원인 2개:
+1. **룩 불일치**: 자작 = raw 월드 LineRenderer 2개 + `Hidden/Internal-Colored`+`ZTest Always` 해킹.
+   기존 배치 키링 = 빌보드 고리(로컬 원 14세그) + 월드 줄, `Sprites/Default`, `DragSwaySettings` 색/반경/폭,
+   머리 위로 부양해 depth 자연 통과. → 완전히 다른 물건이었다.
+2. **위치 오류**: `UpdateKeyring(p)` 가 sim 좌표 `p` 를 world 로 직접 사용(`BoardSpace.ToView` 누락).
+   실제 렌더 유닛은 `ToView(p)+offset` 에 있는데 키링은 sim 공간에 그려져 어긋났다.
 
-**수정**: 키링 머티리얼을 `Hidden/Internal-Colored`(_ZTest/_ZWrite/블렌드 프로퍼티 노출)로 +
-`ZTest Always`·오버레이 큐 = **항상 위**. (Sprites/Default 는 _ZTest 프로퍼티가 없어 override 불가.)
-잘못 짚은 이력: ① 셰이더 null(아님) ② sortingOrder 50→20000(정렬 문제 아님, depth 문제였음).
+**재설계**: 키링 룩을 `DefenderDragPlacementController.CreateKeyringHardware(unit)` 팩토리로 이관 —
+배치 프리뷰의 고리/줄 구성과 **단일 소스**. 재배치는 팩토리 산출물을 받아 **실제 유닛 뷰의
+`transform.position`**(ToView 완료) 위에 매 프레임 얹는다. ZTest 해킹 제거(배치 키링과 같은
+`Sprites/Default` — **빌드 안전**, Hidden 셰이더 스트립 우려 소멸). 색/반경/폭은 `DragSwaySettings` 공유,
+재배치 전용 knob 은 `flightRingFollow`(sway) 만 남김(`RelocationSettings` 의 flightRing*/flightCord*/
+flightKeyring*/flightRopeLength 제거 — orphan YAML 키는 무해).
 
-**빌드 주의**: `Hidden/Internal-Colored` 는 Hidden 셰이더라 빌드 스트립 가능 → 폴백 Sprites/Default 는
-다시 가려질 수 있다. 실기 배포 전 전용 on-top 셰이더(ZTest Always 노출) 승격 또는 Always Included 등록 필요.
+폐기 이력: ZTest Always(Hidden/Internal-Colored)·sortingPriority 튜닝은 depth 우회 시도였으나, 애초에
+"자작 키링"이라는 방향이 틀렸다 — 기존 것을 재사용하니 depth·룩·빌드안전이 한 번에 해소.
 
 ## 후속 후보
 
-- 키링 sway 물리 고도화(현재 고리 스무스 추종 근사) / 드래그 배치 키링과 완전 통일
+- 키링 sway 물리 고도화(현재 고리 스무스 추종 근사)
 - 배치 스킬/어그로 반경 등 다른 색 채널 범위 표시(range-preview 백로그와 합류)

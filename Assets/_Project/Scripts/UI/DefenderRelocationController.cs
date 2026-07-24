@@ -213,7 +213,7 @@ namespace Wassup.UI
                 float k = 1f - Mathf.Pow(1f - Mathf.Clamp01(t), 3f); // OutCubic — 빠른 출발, 착지 감속
                 var p = KeyringSim.CubicBezier(start, c1, c2, end, k);
                 bridge.SetRelocationViewOverride(entity, p);
-                UpdateKeyring(p); // 유닛 위 고리 추종
+                UpdateKeyring(); // 실제 유닛 뷰 위로 고리 추종(배치 키링과 동일 룩)
                 yield return null;
             }
 
@@ -340,90 +340,48 @@ namespace Wassup.UI
             return _cameraDirector;
         }
 
-        // unit 6 — 비행 키링(고리+줄) 비주얼. 실뷰 비행(SetRelocationViewOverride)에 얹는 self-contained
-        // 데코(드래그 컨트롤러 세션/슬로모/커밋 무관). 고리는 유닛 위를 스무스 추종해 sway 를 근사한다.
-        private GameObject _keyringRoot;
-        private LineRenderer _cord;
-        private LineRenderer _ring;
-        private Material _keyringMat;
+        // 비행 키링 = 배치(D&D/탭)와 '동일한' 고리+줄. 하드웨어 구성(빌보드 고리 + 월드 줄, 스타일/
+        // 머티리얼/색/폭)은 드래그 컨트롤러의 팩토리(CreateKeyringHardware)가 소유 — 룩 단일 소스.
+        // 실루엣은 재배치의 '실제 유닛'이 담당하므로 여기선 고리+줄만 유닛 머리 위에 얹는다.
+        // 위치 앵커 = 실제 렌더 유닛 뷰의 transform.position(ToView 적용 완료) — sim 좌표를 world 로
+        // 직접 쓰던 이전 버그("엉뚱한 위치") 교정. 고리는 목표를 스무스 추종해 sway 를 근사한다.
+        private DefenderDragPlacementController.KeyringHardware _keyring;
         private Vector3 _ringPos;
         private bool _ringInit;
 
         private void EnsureKeyring()
         {
-            if (_keyringRoot != null || settings == null) return;
-            // 진단(2026-07-24): 키링은 생성·설정·isVisible=True 인데 안 보였다 → depth 가림. 드래그 키링은
-            // 고리가 카메라 레이 위(모든 지오메트리 앞)라 안 가리지만, 이 키링은 유닛 근처(보드 깊이)라
-            // 불투명 보드/유닛 뒤로 가려진다. Sprites/Default 는 _ZTest 프로퍼티가 없어 override 불가 →
-            // 디버그 라인용 Hidden/Internal-Colored(_ZTest/_ZWrite/블렌드 프로퍼티 노출, 정점색 지원)로
-            // ZTest Always + 오버레이 큐 = 항상 위에 그린다. (에디터 확정. 빌드는 Hidden 스트립 주의 —
-            // 폴백 Sprites/Default 는 다시 가려질 수 있어 후속에서 전용 셰이더 승격.)
-            var sh = Shader.Find("Hidden/Internal-Colored")
-                     ?? Shader.Find("Sprites/Default")
-                     ?? Shader.Find("Universal Render Pipeline/Unlit");
-            if (sh == null) return;
-            _keyringMat = new Material(sh) { hideFlags = HideFlags.HideAndDontSave };
-            _keyringMat.SetInt("_ZTest", (int)UnityEngine.Rendering.CompareFunction.Always);
-            _keyringMat.SetInt("_ZWrite", 0);
-            _keyringMat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
-            _keyringMat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-            _keyringMat.SetInt("_Cull", (int)UnityEngine.Rendering.CullMode.Off);
-            _keyringMat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Overlay; // 4000
-            _keyringRoot = new GameObject("RelocationKeyring");
-            _cord = MakeLine(3, "Cord");   // 줄: 고리→유닛 (2점이면 되지만 cap 여유)
-            _ring = MakeLine(17, "Ring");  // 고리: 16세그 루프 + 닫힘
+            if (_keyring.valid || DragController == null || _unit == null) return;
+            _keyring = DragController.CreateKeyringHardware(_unit);
             _ringInit = false;
         }
 
-        private LineRenderer MakeLine(int count, string name)
+        // 매 프레임 고리/줄을 실제 유닛 뷰 위로 갱신. 뷰가 아직 없으면(회수/미스폰) 조용히 스킵.
+        private void UpdateKeyring()
         {
-            var go = new GameObject(name);
-            go.transform.SetParent(_keyringRoot.transform, false);
-            var lr = go.AddComponent<LineRenderer>();
-            lr.useWorldSpace = true;
-            lr.sharedMaterial = _keyringMat;
-            lr.positionCount = name == "Cord" ? 2 : count;
-            lr.numCapVertices = 2;
-            lr.numCornerVertices = 2;
-            lr.textureMode = LineTextureMode.Stretch;
-            lr.startColor = lr.endColor = settings.flightKeyringColor;
-            // Sprites/Default 는 depth 미기록 → sortingOrder 로 그려진다. 보드/유닛(높은 sorting) 위로
-            // 올리지 않으면 가려져 안 보인다. 드래그 키링 프리뷰와 동일한 최상단 order 사용(원인: 이전 50).
-            lr.sortingOrder = Wassup.Presentation.BoardSortOrder.DragPreviewOrder;
-            return lr;
-        }
-
-        private void UpdateKeyring(Vector3 unitWorld)
-        {
-            if (_keyringRoot == null) return;
+            if (!_keyring.valid) return;
+            if (spineUnitPool == null || !spineUnitPool.TryGet(_entity, out var view) || view == null) return;
             var cam = mainCamera != null ? mainCamera : Camera.main;
             Vector3 up = cam != null ? cam.transform.up : Vector3.up;
-            Vector3 right = cam != null ? cam.transform.right : Vector3.right;
-            Vector3 ringTarget = unitWorld + up * settings.flightRopeLength;
+            Vector3 feet = view.transform.position;              // 실제 렌더 유닛(ToView 완료 좌표)
+            Vector3 head = feet + up * view.ApproxWorldHeight;   // 머리 = 발 + 유닛 높이(배치와 동일 camera-up)
+            Vector3 ringTarget = head + up * _keyring.ropeWorld; // 고리 = 머리 위 rope 길이(= 배치 프리뷰)
             if (!_ringInit) { _ringPos = ringTarget; _ringInit = true; }
             else
             {
                 float a = 1f - Mathf.Exp(-Time.unscaledDeltaTime / Mathf.Max(0.001f, settings.flightRingFollow));
                 _ringPos = Vector3.Lerp(_ringPos, ringTarget, a); // 스무스 추종 = sway 근사
             }
-            float w = settings.flightCordWidth;
-            _cord.startWidth = _cord.endWidth = w;
-            _cord.SetPosition(0, _ringPos);
-            _cord.SetPosition(1, unitWorld);
-            _ring.startWidth = _ring.endWidth = w;
-            int n = _ring.positionCount;
-            for (int i = 0; i < n; i++)
-            {
-                float ang = i / (float)(n - 1) * Mathf.PI * 2f;
-                _ring.SetPosition(i, _ringPos + (right * Mathf.Cos(ang) + up * Mathf.Sin(ang)) * settings.flightRingRadius);
-            }
+            _keyring.ring.position = _ringPos;
+            _keyring.cord.SetPosition(0, _ringPos);
+            _keyring.cord.SetPosition(1, head);
         }
 
         private void HideKeyring()
         {
-            if (_keyringRoot != null) Destroy(_keyringRoot);
-            if (_keyringMat != null) Destroy(_keyringMat); // 런타임 머티리얼 누수 방지
-            _keyringRoot = null; _cord = null; _ring = null; _keyringMat = null; _ringInit = false;
+            if (_keyring.root != null) Destroy(_keyring.root); // 머티리얼은 드래그 컨트롤러 공유 — 파괴 금지
+            _keyring = default;
+            _ringInit = false;
         }
 
         // 명시 좌표 RaycastAll 로 UI 위 여부 판정(DcInspect.IsOverUi 와 동일). 목적지 제스처가 UI press

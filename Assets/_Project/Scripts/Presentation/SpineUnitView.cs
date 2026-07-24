@@ -221,6 +221,11 @@ namespace Wassup.Presentation
             return true;
         }
 
+        // defender-relocation unit 6 — 재배치 비행 키링을 머리 위에 얹기 위한 대략 높이(월드).
+        // 메시 AABB 세로 크기(빌보드 실루엣의 화면 세로 높이). 미준비 시 스케일 폴백.
+        public float ApproxWorldHeight =>
+            _meshRenderer != null ? _meshRenderer.bounds.size.y : Mathf.Abs(transform.lossyScale.y);
+
         // dreamcatcher-awakening-hand rev 4 — 카드 드래그 타겟팅 호버 강조.
         // on: 현재 RGB 를 저장하고 tint 로 교체 / off: 저장값 복원. 호버 중 들어오는
         // SetHealthTint 는 저장값에 흡수해(스켈레톤 직접 쓰기 대신) 해제 시 최신
