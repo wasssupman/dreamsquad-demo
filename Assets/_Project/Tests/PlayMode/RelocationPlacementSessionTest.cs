@@ -130,6 +130,100 @@ namespace Wassup.Tests.PlayMode
             Object.Destroy(fast);
         }
 
+        // review H1(양측 확인) 회귀 — 첫 유닛 비행/재전개 중 둘째 유닛 이동 시도가 단일 세션 가드로
+        // 차단되고, 첫 유닛은 고아화 없이 정상 활성화되는가. (가드 이전엔 첫 유닛이 영구 pending 고착)
+        [UnityTest]
+        public IEnumerator SecondRelocationBlockedWhileFirstInFlight_FirstStillActivates()
+        {
+            LogAssert.ignoreFailingMessages = true;
+            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            for (int i = 0; i < 6; i++) yield return null;
+
+            var bridge = Object.FindObjectOfType<BattleBridge>();
+            var controller = Object.FindObjectOfType<DefenderRelocationController>();
+            controller.enabled = false;
+
+            var fast = ScriptableObject.CreateInstance<RelocationSettings>();
+            fast.holdSeconds = 0.2f;
+            fast.entryCooldownSeconds = 0.01f;
+            fast.moveModeTimeoutSeconds = 30f;
+            fast.flightBaseSeconds = 0.5f;   // 비행을 충분히 길게 — 그 사이 둘째 시도
+            fast.flightMaxSeconds = 0.5f;
+            fast.redeploySeconds = 0.5f;
+            SetField(controller, "settings", fast);
+
+            var cat = FindCatalog();
+            var unit = cat.ById("ranger");
+            bridge.SetDefenderPool(new[] { unit });
+            bridge.BeginPlacement();
+            var gm = Object.FindObjectOfType<GameManager>();
+            gm.CostRuntime.ResetToStart();
+            gm.CostRuntime.AddCost(1000);
+            yield return null;
+
+            Assert.IsTrue(PlaceFirstValid(bridge, unit), "place unit A");
+            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+            var cellA = SoleCell(bridge);
+            // 둘째로 집을 유닛 B 를 다른 셀에 배치
+            var blockerCell = FindRelocTarget(bridge, cellA);
+            Assert.IsTrue(bridge.PlaceDefenderAs(blockerCell.x, blockerCell.y, unit), "place unit B");
+            gm.SetPhase(GamePhase.Battle);
+            yield return null;
+
+            var cam = Camera.main;
+            var moverA = EntityAtCell(bridge, em, cellA);
+            var unitB = EntityAtCell(bridge, em, blockerCell);
+            Vector2 screenA = ScreenOf(bridge, cam, cellA);
+
+            // A 이동 커밋 → 비행 시작
+            var targetA = FindRelocTargetExcluding(bridge, cellA, blockerCell);
+            EnterMoveMode(controller, screenA, fast);
+            Step(controller, false, false, screenA, 0.02f); // 탭 대기
+            Step(controller, true, true, ScreenOf(bridge, cam, targetA), 0.02f);
+            Step(controller, false, false, ScreenOf(bridge, cam, targetA), 0.02f); // 커밋
+            Assert.IsTrue(em.HasComponent<PendingDeployment>(moverA), "A in flight (pending)");
+
+            // 비행 중 B 이동 시도 — 가드로 홀드 진입 자체가 막혀야 한다
+            Vector2 screenB = ScreenOf(bridge, cam, blockerCell);
+            Step(controller, true, true, screenB, 0.02f);
+            int ticks = Mathf.CeilToInt(fast.holdSeconds / 0.05f) + 2;
+            for (int i = 0; i < ticks; i++) Step(controller, false, true, screenB, 0.05f);
+            Assert.IsFalse(controller.InMoveMode, "second relocation blocked while first in flight");
+            Assert.IsFalse(em.HasComponent<PendingDeployment>(unitB), "unit B untouched (never entered flight)");
+
+            // A 는 고아화 없이 정상 활성화
+            yield return WaitUntilActivated(em, moverA, 5f);
+            Assert.IsFalse(em.HasComponent<PendingDeployment>(moverA), "A activated (not orphaned)");
+            Assert.AreEqual(targetA, CellOf(bridge, em, moverA), "A landed at its target");
+
+            Object.Destroy(fast);
+        }
+
+        private static Vector2Int FindRelocTargetExcluding(BattleBridge bridge, Vector2Int from, Vector2Int exclude)
+        {
+            for (int x = -24; x < 48; x++)
+                for (int y = -24; y < 48; y++)
+                {
+                    var c = new Vector2Int(x, y);
+                    if (c == exclude) continue;
+                    if (bridge.CanRelocateDefender(from, c, out _)) return c;
+                }
+            Assert.Fail("no valid relocation target excluding blocker");
+            return default;
+        }
+
+        private static Entity EntityAtCell(BattleBridge bridge, EntityManager em, Vector2Int cell)
+        {
+            var f = typeof(BattleBridge).GetField("_defenderByTile", BindingFlags.NonPublic | BindingFlags.Instance);
+            foreach (System.Collections.DictionaryEntry de in (System.Collections.IDictionary)f.GetValue(bridge))
+            {
+                if ((Vector2Int)de.Key != cell) continue;
+                var entity = (Entity)de.Value.GetType().GetField("Item1").GetValue(de.Value);
+                return em.Exists(entity) ? entity : Entity.Null;
+            }
+            return Entity.Null;
+        }
+
         private static IEnumerator WaitUntilActivated(EntityManager em, Entity e, float timeoutSec)
         {
             float deadline = Time.realtimeSinceStartup + timeoutSec;

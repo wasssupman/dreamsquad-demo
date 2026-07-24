@@ -1115,6 +1115,7 @@ namespace Wassup.Bridge
             _occupiedTiles.Clear();
             RefreshPlacementHighlightIfShown(); // placement-eligible-tile-highlight unit 2
             _defenderByTile.Clear();
+            _relocationViewOverride.Clear(); // defender-relocation review L1 — 뷰 오버라이드도 _defenderByTile 리셋과 co-locate(불변식)
             tileHealthGaugeLayer?.Clear(); // unit 3 — 게이지 정리를 _defenderByTile 리셋과 co-locate(불변식)
             unitOverheadUiLayer?.Clear();
             // ingame-dreamcatcher Unit 2/3 — reset card registry + triggers for a new match.

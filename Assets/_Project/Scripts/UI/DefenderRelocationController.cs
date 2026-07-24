@@ -88,6 +88,11 @@ namespace Wassup.UI
         private void TryBeginHold(Vector2 screen)
         {
             if (bridge == null || settings == null) return;
+            // review H1(양측 확인) — 단일 세션: 앞 유닛의 비행/재전개가 끝나기 전엔 새 이동을 시작하지
+            // 않는다. _flightGen/_activeFlightEntity 가 단일 슬롯이라, 겹치면 앞 유닛이 AbandonFlight 로
+            // 빠져 PendingDeployment 에 영구 고착된다(회수 불가). 직렬화가 이 feature 의 단일 armed·단일
+            // 세션 철학과 일관 — 동시 비행 지원은 후속 후보(per-entity generation map).
+            if (_activeFlightEntity != Entity.Null) return;
             if (_entryCooldownRemaining > 0f) return;
             var gm = GameManager.Instance;
             if (gm == null || gm.CurrentPhase != GamePhase.Battle) return; // Battle 전용(Placement 재배치는 후속 후보)

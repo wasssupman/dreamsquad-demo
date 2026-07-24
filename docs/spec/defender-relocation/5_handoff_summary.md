@@ -45,6 +45,18 @@
 - 시너지 계약 검증은 총합 `damageMul` 이 아니라 origin=Synergy 슬롯 직독(랜덤 기믹 오염 방지).
 - 라이브 씬은 `enableAdjacencySynergy=0` — 시너지 재계산 호출은 유지되나 현재 no-op.
 
+## Review (2026-07-24, 투트랙)
+
+code-reviewer + ecs-reviewer 병렬. **양측 동일 HIGH 1건으로 수렴** → 수정 완료.
+
+- **HIGH(수정됨)**: 단일 `_flightGen`/`_activeFlightEntity` 가 동시 비행 2개 표현 불가 → 연속 재배치
+  시 앞 유닛 영구 pending 고아화. 픽스 = `TryBeginHold` 에 `if (_activeFlightEntity != Entity.Null) return;`
+  단일 세션 가드 + 회귀 테스트(`SecondRelocationBlockedWhileFirstInFlight_FirstStillActivates`).
+- **LOW(수정됨)**: `_relocationViewOverride` 를 `BeginPlacement` 리셋에 co-locate.
+- **MEDIUM(후속)**: 탭↔홀드 전이 겹침 → README 후속 후보.
+- ECS 경계 5개 제약 전부 PASS, Entity recycle/뷰 오버라이드 고아 clean, `dotnet build` 0 에러.
+- 사용자 4개 질문(재사용/분기/피격X/슬로모X): 정상 경로 전부 IMPLEMENTED 확인.
+
 ## Follow-up
 
 - README "후속 후보" 참조 (재조준 · Placement 페이즈 재배치 · 풀 상태화면 · 어그로 chase 재계산 ·
