@@ -732,21 +732,11 @@ namespace Wassup.UI
 
             // unit 6 — 3차 던지기: 시작은 앞·위, 도착은 낮게 두어 상승/하강 접선을 분리한다.
             // unit 5 의 결정론 좌우 변주는 두 제어점에 같은 오프셋으로 유지 → 중간에만 휘고 endpoint 는 정확.
-            float throwDistance = Vector3.Distance(startFeet, endFeet);
-            const float GoldenRatioConjugate = 0.61803398875f;
-            float sequencePhase = (_tapFlightSeq++ + 0.5f) * GoldenRatioConjugate;
-            float lateralUnit = (sequencePhase - Mathf.Floor(sequencePhase)) * 2f - 1f; // -1..1
+            // defender-relocation unit 6 — 곡선 계산은 KeyringSim.ThrowArcControls 로 추출(재배치 비행과 공유).
             Vector3 boardRight = Vector3.ProjectOnPlane(camT.right, boardN);
-            Vector3 lateralOffset = Vector3.zero;
-            if (boardRight.sqrMagnitude > 1e-6f)
-                lateralOffset = boardRight.normalized * (throwDistance * cfg.tapArcLateralFactor * lateralUnit);
-            float arcHeight = throwDistance * cfg.tapArcHeightFactor;
-            Vector2 launchControl = cfg.tapThrowLaunchControl;
-            Vector2 landingControl = cfg.tapThrowLandingControl;
-            Vector3 controlA = Vector3.Lerp(startFeet, endFeet, launchControl.x)
-                               + camT.up * (arcHeight * launchControl.y) + lateralOffset;
-            Vector3 controlB = Vector3.Lerp(startFeet, endFeet, landingControl.x)
-                               + camT.up * (arcHeight * landingControl.y) + lateralOffset;
+            KeyringSim.ThrowArcControls(startFeet, endFeet, camT.up, boardRight,
+                cfg.tapArcHeightFactor, cfg.tapArcLateralFactor, cfg.tapThrowLaunchControl, cfg.tapThrowLandingControl,
+                _tapFlightSeq++, out Vector3 controlA, out Vector3 controlB);
 
             float t = 0f;
             while (t < 1f && _session.active && _sessionGen == gen)
@@ -1051,6 +1041,18 @@ namespace Wassup.UI
             cordLr.sortingOrder = BoardSortOrder.DragPreviewOrder - 1;
 
             return new KeyringHardware(root, ringGo.transform, cordLr, Cfg.ropeLength * scale);
+        }
+
+        // defender-relocation unit 6 — 재배치 비행이 탭 배치와 '동일한' 던지기 곡선을 공유하도록 하는 래퍼.
+        // Cfg(DragSwaySettings)의 곡선 튜닝(arcHeight/lateral/launch/landing)을 순수 헬퍼에 공급한다.
+        // 좌표(start/end/camUp/boardRight)는 호출측이 view 공간으로 넘긴다 — 탭 경로(RunSimulatedDrag)와 동일 규약.
+        public void ComputeThrowArc(Vector3 startView, Vector3 endView, Vector3 camUp, Vector3 boardRight,
+            int seq, out Vector3 controlA, out Vector3 controlB)
+        {
+            var cfg = Cfg;
+            KeyringSim.ThrowArcControls(startView, endView, camUp, boardRight,
+                cfg.tapArcHeightFactor, cfg.tapArcLateralFactor, cfg.tapThrowLaunchControl, cfg.tapThrowLandingControl,
+                seq, out controlA, out controlB);
         }
 
         private static string ResolveAnimation(SkeletonAnimation skeleton, params string[] candidates)

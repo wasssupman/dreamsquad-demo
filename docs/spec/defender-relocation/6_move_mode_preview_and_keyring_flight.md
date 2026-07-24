@@ -44,9 +44,9 @@
 
 ## 개정 (2026-07-24) — 사용자 피드백 반영
 
-1. **비행이 "평면 이동"으로 보임** → 아치를 `Vector3.up`(world) → **카메라 up** 으로 변경. Low-TopDown
-   뷰에서 world-up 아치는 시선과 겹쳐 foreshorten 되어 평면처럼 보였다. 카메라-up 은 화면 세로라
-   각도 무관하게 던지는 아치가 보인다(tap-to-place 키링 기준과 동일). `flightArcHeight` 기본값 1.2→1.8.
+1. **비행이 "평면 이동"으로 보임** → 아치를 `Vector3.up`(world) → **카메라 up** 으로 변경 시도.
+   (**개정 3 에서 폐기** — camera-up 만으론 안 됐다. 진짜 원인은 sim 공간 아치를 `BoardSpace.ToView`
+   가 통째로 버린 것. sim 이 아니라 **view 공간**에서 곡선을 태워야 한다. 개정 3 참조.)
 2. **이동모드 카메라 통합** → 진입 경로 무관 **줌아웃 고정 오버뷰**. 기존엔 `SetInspectFocus`(소스 줌인)
    였으나, 목적지 선택엔 보드 전체가 보여야 하므로 `SetMoveOverview()`(줌아웃) 로 교체. CameraDirector 에
    좌표 없는 config 구동 채널 신설(`SetMoveOverview`, 헤드룸 채널 미러 — dolly 음수=후퇴=줌아웃 + 스프링
@@ -68,6 +68,26 @@
 `Sprites/Default` — **빌드 안전**, Hidden 셰이더 스트립 우려 소멸). 색/반경/폭은 `DragSwaySettings` 공유,
 재배치 전용 knob 은 `flightRingFollow`(sway) 만 남김(`RelocationSettings` 의 flightRing*/flightCord*/
 flightKeyring*/flightRopeLength 제거 — orphan YAML 키는 무해).
+
+## 개정 3 (2026-07-24) — 비행 곡선을 탭 배치와 동일 로직 공유
+
+사용자 피드백: "이동이 아직도 평면이동이다. 탭투플레이스 비행 시뮬 로직 살펴보고 동일 로직 공유하는 형태로".
+
+**진짜 근본 원인**: `BoardSpace.ToView(sim)` 는 **sim 높이(y)를 완전히 버린다**(보드 = 평면 정면뷰 —
+`cx=simX, cy=simZ` 만 사용). 재배치 비행은 `SetRelocationViewOverride(sim)` → SyncMonoUnitViews 가
+`ToView` 적용 → **아치의 수직 성분이 소실** → 평면. camera-up/world-up 은 무관했다(둘 다 sim 에 넣으면
+ToView 가 죽임). 반면 tap 은 프리뷰 transform 을 **view 공간에 직접** 배치(ToView 우회)라 아치가 산다.
+
+**수정**:
+- 비행 곡선 계산을 순수 함수 `KeyringSim.ThrowArcControls`(arcHeight 배수·좌우 변주·상승/하강 접선)로
+  추출 — tap(`RunSimulatedDrag`)과 재배치가 **공유**(EditMode 테스트로 고정). tap 은 이 함수로 리팩터(동작 불변).
+- 튜닝은 `DragSwaySettings`(tapArc*/tapThrow*) 단일 소스 — `DefenderDragPlacementController.ComputeThrowArc`
+  가 공급. `RelocationSettings.flightArcHeight` 제거.
+- 비행을 **view 공간**으로 이관: `TryGetRelocationAnchors` 가 view 좌표(ToView 적용) 반환, 컨트롤러가
+  view 공간에서 곡선 샘플, override 를 **view 좌표**로 저장. SyncMonoUnitViews 는 override 시 `ToView`
+  재적용 없이 `SpineUnitView.SetFlightView`(직배치 + 전경 소팅)로 그리고 게이지/오버헤드는 생략(비전투 이동).
+
+검증: 컴파일 클린, EditMode 12/12(ThrowArcControls 2 신규), PlayMode relocation 5/5.
 
 폐기 이력: ZTest Always(Hidden/Internal-Colored)·sortingPriority 튜닝은 depth 우회 시도였으나, 애초에
 "자작 키링"이라는 방향이 틀렸다 — 기존 것을 재사용하니 depth·룩·빌드안전이 한 번에 해소.

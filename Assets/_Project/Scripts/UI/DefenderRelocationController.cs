@@ -194,15 +194,18 @@ namespace Wassup.UI
             float duration = Mathf.Clamp(
                 settings.flightBaseSeconds + settings.flightSecondsPerUnit * dist,
                 0.1f, settings.flightMaxSeconds);
-            Vector3 dir = dist > 0.001f ? (end - start) / dist : Vector3.forward;
-            // unit 6 — 아치를 world-up 이 아니라 **카메라 up** 으로. Low-TopDown 뷰에서 world-up 아치는
-            // 시선 방향과 겹쳐 foreshorten 되어 "평면 이동"으로 보였다. 카메라-up 은 화면 세로라 각도
-            // 무관하게 던지는 아치가 보인다(tap-to-place 키링 비행과 동일 기준).
+            // unit 6 — 곡선은 탭 배치와 **동일 로직**(KeyringSim.ThrowArcControls via DragController.ComputeThrowArc).
+            // start/end 는 VIEW 좌표(앵커) → view 공간에서 camUp 아치 + boardRight 좌우 변주 → 화면 세로로
+            // 던져진다. sim 공간 아치는 평면뷰(BoardSpace.ToView height-discard)로 평면이 됐던 문제 교정.
+            // DragController 미해석(트레이 미준비/테스트) 시 직선 폴백.
             var flightCam = mainCamera != null ? mainCamera : Camera.main;
-            Vector3 upDir = flightCam != null ? flightCam.transform.up : Vector3.up;
-            Vector3 arc = upDir * settings.flightArcHeight;
-            Vector3 c1 = start + arc + dir * (dist * 0.2f);
-            Vector3 c2 = end + arc - dir * (dist * 0.2f);
+            Vector3 camUp = flightCam != null ? flightCam.transform.up : Vector3.up;
+            Vector3 boardRight = flightCam != null
+                ? Vector3.ProjectOnPlane(flightCam.transform.right, BoardSpace.RaycastPlane().normal)
+                : Vector3.right;
+            bool haveArc = DragController != null;
+            Vector3 c1 = default, c2 = default;
+            if (haveArc) DragController.ComputeThrowArc(start, end, camUp, boardRight, gen, out c1, out c2);
 
             EnsureKeyring(); // unit 6 — 비행 동안 고리+줄 비주얼
             float t = 0f;
@@ -211,7 +214,8 @@ namespace Wassup.UI
                 if (gen != _flightGen || !FlightBindingIntact(to, entity)) { AbandonFlight(entity); yield break; }
                 t += TimeManager.Instance.DeltaTime(TimeDomain.Battle) / duration;
                 float k = 1f - Mathf.Pow(1f - Mathf.Clamp01(t), 3f); // OutCubic — 빠른 출발, 착지 감속
-                var p = KeyringSim.CubicBezier(start, c1, c2, end, k);
+                var p = haveArc ? KeyringSim.CubicBezier(start, c1, c2, end, k)
+                                : Vector3.Lerp(start, end, k);
                 bridge.SetRelocationViewOverride(entity, p);
                 UpdateKeyring(); // 실제 유닛 뷰 위로 고리 추종(배치 키링과 동일 룩)
                 yield return null;

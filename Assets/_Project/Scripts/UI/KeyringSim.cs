@@ -55,6 +55,28 @@ namespace Wassup.UI
                    + t * t * t * b;
         }
 
+        // defender-tap-to-place / defender-relocation — 던지기 곡선의 3차 베지어 제어점 2개(pure, 좌표계 비의존).
+        // 탭 배치와 재배치가 공유: 시작 상승(launch)·도착 하강(landing) 접선을 독립 튜닝하고, 결정론적
+        // 좌우 변주(golden-ratio 시퀀스 → -1..1)를 boardRight 로 준다. arcHeight = |start-end| × arcHeightFactor.
+        // camUp/boardRight 는 호출측이 정한 좌표계에서 넘긴다(탭·재배치 모두 view 공간) — 아치 lift 가
+        // 화면 세로(camUp)라 평면 정면뷰의 height-discard(BoardSpace.ToView)에 먹히지 않는다.
+        public static void ThrowArcControls(
+            Vector3 start, Vector3 end, Vector3 camUp, Vector3 boardRight,
+            float arcHeightFactor, float lateralFactor, Vector2 launchControl, Vector2 landingControl,
+            int seq, out Vector3 controlA, out Vector3 controlB)
+        {
+            float throwDistance = Vector3.Distance(start, end);
+            const float GoldenRatioConjugate = 0.61803398875f;
+            float sequencePhase = (seq + 0.5f) * GoldenRatioConjugate;
+            float lateralUnit = (sequencePhase - Mathf.Floor(sequencePhase)) * 2f - 1f; // -1..1
+            Vector3 lateralOffset = Vector3.zero;
+            if (boardRight.sqrMagnitude > 1e-6f)
+                lateralOffset = boardRight.normalized * (throwDistance * lateralFactor * lateralUnit);
+            float arcHeight = throwDistance * arcHeightFactor;
+            controlA = Vector3.Lerp(start, end, launchControl.x) + camUp * (arcHeight * launchControl.y) + lateralOffset;
+            controlB = Vector3.Lerp(start, end, landingControl.x) + camUp * (arcHeight * landingControl.y) + lateralOffset;
+        }
+
         // 줄(→고리) 방향 → 기울임각(deg, ±maxAngle 클램프). 내부 정규화 금지 —
         // 입력은 호출측 그대로(인게임: 단위벡터의 camRight/camUp 투영 = 비단위 2D, 아웃게임: 단위 2D).
         // y 의 1e-3 floor 는 수평/역방향 퇴화 방지 — 스케일 불변 아님, 현행 동작 보존이 우선.

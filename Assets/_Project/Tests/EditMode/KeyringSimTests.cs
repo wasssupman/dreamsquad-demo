@@ -239,5 +239,42 @@ namespace Wassup.Tests.EditMode
                 Assert.AreEqual(expected, KeyringSim.LeanAngle(c.x, c.y, 8f), 0f, $"({c.x},{c.y})");
             }
         }
+
+        // defender-relocation unit 6 — 던지기 곡선 제어점(탭 배치 · 재배치 공유).
+        // 핵심 회귀 가드: 아치 lift 가 camUp(화면 세로)로 가야 한다. 보드 평면(start-end + boardRight)에
+        // 갇히면 "평면 이동"으로 보인다(sim 공간 아치의 옛 버그). camUp ⟂ 보드일 때 control 의 camUp 성분이 양수여야.
+        [Test]
+        public void ThrowArcControls_LiftsAlongCamUp_NotInBoardPlane()
+        {
+            Vector3 start = Vector3.zero, end = new Vector3(0f, 0f, 4f); // 진행은 z, 보드 평면 = XZ
+            Vector3 camUp = Vector3.up, boardRight = Vector3.right;       // camUp=y(보드 밖), lateral=x
+            KeyringSim.ThrowArcControls(start, end, camUp, boardRight,
+                0.32f, 0f, new Vector2(0.18f, 1f), new Vector2(0.72f, 0.22f), 0,
+                out var cA, out var cB);
+            float arc = 4f * 0.32f;
+            Assert.AreEqual(arc * 1.0f, cA.y, 1e-4f, "controlA camUp lift(launch.y=1)");
+            Assert.AreEqual(arc * 0.22f, cB.y, 1e-4f, "controlB camUp lift(landing.y=0.22)");
+            Assert.Greater(cA.y, 0.5f, "아치가 화면 세로로 떠야 한다(평면 아님)");
+            Assert.AreEqual(0f, cA.x, 1e-5f, "lateral 0 → boardRight 성분 없음");
+            Assert.AreEqual(0f, cB.x, 1e-5f);
+            Assert.AreEqual(0.18f * 4f, cA.z, 1e-4f, "controlA 진행(launch.x)");
+            Assert.AreEqual(0.72f * 4f, cB.z, 1e-4f, "controlB 진행(landing.x)");
+        }
+
+        [Test]
+        public void ThrowArcControls_Deterministic_AndLateralVariesBySeq()
+        {
+            Vector3 start = Vector3.zero, end = new Vector3(0f, 0f, 4f);
+            Vector3 camUp = Vector3.up, boardRight = Vector3.right;
+            KeyringSim.ThrowArcControls(start, end, camUp, boardRight, 0.32f, 0.22f,
+                new Vector2(0.18f, 1f), new Vector2(0.72f, 0.22f), 3, out var a1, out var b1);
+            KeyringSim.ThrowArcControls(start, end, camUp, boardRight, 0.32f, 0.22f,
+                new Vector2(0.18f, 1f), new Vector2(0.72f, 0.22f), 3, out var a2, out var b2);
+            Assert.AreEqual(a1.x, a2.x, 0f, "같은 seq → 결정론적 A.x");
+            Assert.AreEqual(b1.x, b2.x, 0f, "같은 seq → 결정론적 B.x");
+            KeyringSim.ThrowArcControls(start, end, camUp, boardRight, 0.32f, 0.22f,
+                new Vector2(0.18f, 1f), new Vector2(0.72f, 0.22f), 4, out var a3, out _);
+            Assert.AreNotEqual(a1.x, a3.x, "다른 seq → 좌우 변주(boardRight=x)가 달라야 한다");
+        }
     }
 }

@@ -32,8 +32,8 @@ namespace Wassup.Data
         [Tooltip("비행 시간 상한(초)")]
         public float flightMaxSeconds = 0.9f;
 
-        [Tooltip("비행 아치 높이(카메라 up 방향, sim 단위) — 던지는 아치 가시성")]
-        public float flightArcHeight = 1.8f;
+        // 던지기 아치 형태(높이 배수·좌우 변주·상승/하강 접선)는 탭 배치와 단일 소스(DragSwaySettings 의
+        // tapArc*/tapThrow*) — DefenderDragPlacementController.ComputeThrowArc 가 공급. 여기 별도 아치 knob 없음.
 
         [Header("비행 키링(고리+줄)")]
         // 고리/줄의 룩(반경·폭·색·머티리얼·스타일)은 배치 키링과 단일 소스(DragSwaySettings)를 공유한다

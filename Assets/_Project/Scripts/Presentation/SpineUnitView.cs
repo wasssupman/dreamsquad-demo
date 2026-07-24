@@ -226,6 +226,15 @@ namespace Wassup.Presentation
         public float ApproxWorldHeight =>
             _meshRenderer != null ? _meshRenderer.bounds.size.y : Mathf.Abs(transform.lossyScale.y);
 
+        // defender-relocation unit 6 — 비행 중 VIEW 좌표 직접 배치(BoardSpace.ToView 우회 — 평면 정면뷰가
+        // sim 높이를 버려 아치가 평면이 되던 문제 교정: 아치가 이미 view 공간에 있으므로 그대로 쓴다) +
+        // 전경 소팅(보드 타일 위로 hop). 비행은 PendingDeployment(비전투)라 facing/walk/게이지 갱신 불요.
+        public void SetFlightView(Vector3 viewPos)
+        {
+            transform.position = viewPos;
+            if (_meshRenderer != null) _meshRenderer.sortingOrder = BoardSortOrder.DragPreviewOrder;
+        }
+
         // dreamcatcher-awakening-hand rev 4 — 카드 드래그 타겟팅 호버 강조.
         // on: 현재 RGB 를 저장하고 tint 로 교체 / off: 저장값 복원. 호버 중 들어오는
         // SetHealthTint 는 저장값에 흡수해(스켈레톤 직접 쓰기 대신) 해제 시 최신

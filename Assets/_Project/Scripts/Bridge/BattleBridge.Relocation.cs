@@ -107,13 +107,14 @@ namespace Wassup.Bridge
             return true;
         }
 
-        // unit 3 — 비행 중 뷰 위치 오버라이드. sim(LocalTransform)은 착지 프레임까지 옛 위치에
+        // unit 6 — 비행 중 뷰 위치 오버라이드. sim(LocalTransform)은 착지 프레임까지 옛 위치에
         // 머무르므로, SyncMonoUnitViews 의 defender 피드가 이 값을 대신 쓰게 해 실제 유닛 뷰를
-        // 컨트롤러가 직접 날린다(프리뷰 신설 없음 — 좌표계 지식은 Bridge 내부 유지).
+        // 컨트롤러가 직접 날린다(프리뷰 신설 없음). 값은 **VIEW 좌표**(ToView 완료) — 평면 정면뷰가
+        // sim 높이를 버리므로 아치를 view 공간에서 계산해 넘긴다. SyncMonoUnitViews 는 ToView 재적용 없이 직배치.
         private readonly Dictionary<Entity, Unity.Mathematics.float3> _relocationViewOverride = new();
 
-        public void SetRelocationViewOverride(Entity entity, Vector3 simPos)
-            => _relocationViewOverride[entity] = new Unity.Mathematics.float3(simPos.x, simPos.y, simPos.z);
+        public void SetRelocationViewOverride(Entity entity, Vector3 viewPos)
+            => _relocationViewOverride[entity] = new Unity.Mathematics.float3(viewPos.x, viewPos.y, viewPos.z);
 
         public void ClearRelocationViewOverride(Entity entity)
             => _relocationViewOverride.Remove(entity);
@@ -121,13 +122,15 @@ namespace Wassup.Bridge
         internal bool TryGetRelocationViewOverride(Entity entity, out Unity.Mathematics.float3 pos)
             => _relocationViewOverride.TryGetValue(entity, out pos);
 
-        // 비행 앵커(sim 좌표, 스폰 y 규칙) — 컨트롤러가 베지어 궤적의 양 끝으로 쓴다.
+        // 비행 앵커 — **VIEW 좌표**(셀 중심의 ToView). 컨트롤러가 view 공간 던지기 곡선의 양 끝으로 쓴다.
+        // sim 이 아니라 view 로 주는 이유: 평면 정면뷰(BoardSpace.ToView)가 sim 높이를 버려, sim 공간
+        // 아치는 화면에서 평면으로 보인다. view 공간에서 camUp 아치를 태워야 화면 세로로 던져진다.
         public bool TryGetRelocationAnchors(Vector2Int from, Vector2Int to, out Vector3 start, out Vector3 end)
         {
             start = end = default;
             if (!_generatedMap.IsCreated) return false;
-            start = GridToWorldCenter(from, spawnHeight);
-            end = GridToWorldCenter(to, spawnHeight);
+            start = (Vector3)Wassup.Core.BoardSpace.ToView((float3)GridToWorldCenter(from, spawnHeight));
+            end = (Vector3)Wassup.Core.BoardSpace.ToView((float3)GridToWorldCenter(to, spawnHeight));
             return true;
         }
 
