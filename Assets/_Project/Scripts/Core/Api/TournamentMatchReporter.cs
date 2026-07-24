@@ -30,18 +30,23 @@ namespace Wassup.Core.Api
         public static bool HasTournamentSeed { get; private set; }
         public static ulong TournamentSeed { get; private set; }
 
-        // tournament-seed-map-select unit 1 — lobby pre-issue: fire play at the
-        // lobby start button so the response (tournament.seed) lands during the
-        // scene transition, before BuildMapForBattle. GameManager.OnEnable's
-        // BeginMatch then adopts this attempt instead of re-issuing.
-        public static void BeginMatchFromLobby()
+        // tournament-flow-guards unit 1 — 게이트 진입. play 응답을 대기해 attemptId 를
+        // 확보(성공)해야만 onReady 로 배틀 전환을 허용한다. 실패/무응답(API 10s 타임아웃)
+        // 은 onFailed 로 표면화 → 호출자가 알림 후 입장 취소. 게스트는 attempt 자체가
+        // 없으므로 게이트 비대상(즉시 onReady). 선발행 목적(seed 를 맵 빌드 전에 확보)은
+        // 유지되며, await 로 시드는 오히려 입장 전에 확정된다.
+        public static void BeginMatchFromLobby(Action onReady, Action<string> onFailed)
         {
             _lobbyIssued = false; // re-entrance safety: always issue fresh from here
-            BeginMatch();
-            _lobbyIssued = true;
+            BeginMatchInternal(onReady, onFailed);
         }
 
-        public static void BeginMatch()
+        // GameManager.OnEnable 진입용(비게이트). 로비 발행 attempt 채택 또는 직접진입 재발행.
+        public static void BeginMatch() => BeginMatchInternal(null, null);
+
+        // onReady/onFailed 는 게이트 진입(BeginMatchFromLobby)에서만 non-null.
+        // 비게이트(BeginMatch)면 둘 다 null 이라 콜백이 no-op — 기존 동작과 동일.
+        private static void BeginMatchInternal(Action onReady, Action<string> onFailed)
         {
             // adopt the lobby-issued attempt: skip the re-issue AND the state reset
             // (resetting would stale-drop the in-flight play response carrying the seed).
@@ -56,11 +61,18 @@ namespace Wassup.Core.Api
             HasTournamentSeed = false;
             TournamentSeed = 0;
 
-            if (!UserSession.HasAccount) return; // guest / not signed in (firebase or username account required)
+            if (!UserSession.HasAccount)
+            {
+                // guest / not signed in — no tournament attempt. Entry is not gated, so
+                // a gated caller proceeds immediately; a non-gated caller (BeginMatch) no-ops.
+                if (onReady != null) { _lobbyIssued = true; onReady(); }
+                return;
+            }
             string baseUrl = UserSession.GameServerBaseUrl;
             if (string.IsNullOrEmpty(baseUrl))
             {
                 Debug.LogWarning("[TournamentReporter] signed in but no base URL in session; play skipped.");
+                onFailed?.Invoke("서버 주소가 없습니다.");
                 return;
             }
 
@@ -71,6 +83,7 @@ namespace Wassup.Core.Api
                 if (state == null)
                 {
                     Debug.LogWarning($"[TournamentReporter] play failed: {error}");
+                    onFailed?.Invoke(error);   // gated: surface; non-gated: null → no-op
                     return;
                 }
                 var uts = state.userTournamentState;
@@ -84,15 +97,21 @@ namespace Wassup.Core.Api
                     TournamentSeed = state.tournament.seed;
                     HasTournamentSeed = true;
                 }
-                // abandoned-match-reconciliation unit 1 — persist the just-opened
-                // attempt so a hard kill can be reconciled (completed with 0) on the
-                // next lobby entry. Guarded by the epoch check above: AbandonMatch's
-                // _epoch++ drops this callback so it never Saves post-teardown. Skip
-                // when the server returned no attemptId (nothing the client can complete).
-                if (!string.IsNullOrEmpty(_attemptId))
-                    PendingMatchStore.Save(_attemptId, UserSession.Current?.userId ?? string.Empty,
-                        DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+                // tournament-flow-guards unit 1 — 게이트는 attemptId 확보 기준. HTTP 200
+                // 이어도 attempt 가 비면 실패로 본다 — attempt 없이 입장하면 서버 락만 걸리고
+                // 강제 0점 되는 그 버그가 그대로 재발한다.
+                if (string.IsNullOrEmpty(_attemptId))
+                {
+                    Debug.LogWarning("[TournamentReporter] play ok but empty attemptId — treated as failure.");
+                    onFailed?.Invoke("attempt 발급 실패");
+                    return;
+                }
+                // abandoned-match-reconciliation unit 1 — persist the just-opened attempt
+                // so a hard kill can be reconciled on the next lobby entry (epoch-guarded).
+                PendingMatchStore.Save(_attemptId, UserSession.Current?.userId ?? string.Empty,
+                    DateTimeOffset.UtcNow.ToUnixTimeSeconds());
                 Debug.Log($"[TournamentReporter] play ok — status={uts?.status} attemptId={_attemptId} entryId={_entryId}");
+                if (onReady != null) { _lobbyIssued = true; onReady(); }
             });
         }
 

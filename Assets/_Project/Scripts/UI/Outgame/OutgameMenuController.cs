@@ -50,6 +50,9 @@ namespace Wassup.UI
         // tournament-history unit 2 — cached to (un)subscribe its back-out event.
         private TournamentHistoryPanel _historyPanelView;
 
+        // tournament-flow-guards unit 1 — play 응답 대기 중 재진입(더블탭) 차단.
+        private bool _starting;
+
         private void Awake()
         {
             ApplyAuthGate();
@@ -178,11 +181,27 @@ namespace Wassup.UI
                 gatePopup.Show(_shortfalls, OnOpenSquad, OnOpenDreamcatcher);
                 return;
             }
-            // tournament-seed-map-select unit 1 — pre-issue the tournament attempt so
-            // its response (tournament.seed) arrives during the transition, before the
-            // battle scene builds the map. Gate-popup returns above never issue.
-            Wassup.Core.Api.TournamentMatchReporter.BeginMatchFromLobby();
-            SceneTransition.Go(SceneNames.Battle);
+            // tournament-flow-guards unit 1 — play 응답을 확인하고서야 입장한다. 응답으로
+            // attemptId 를 확보하면 배틀로 전환하고, 실패/무응답이면 입장하지 않고 알린다.
+            // 대기 중 재진입 차단(중복 play = 중복 서버 락). ShowBusy 딤이 입력도 막는다.
+            if (_starting) return;
+            _starting = true;
+            NoticePopup.ShowBusy("매칭 중");
+            Wassup.Core.Api.TournamentMatchReporter.BeginMatchFromLobby(
+                onReady: () =>
+                {
+                    _starting = false;
+                    NoticePopup.Hide();
+                    SceneTransition.Go(SceneNames.Battle);
+                },
+                onFailed: err =>
+                {
+                    _starting = false;
+                    Debug.LogWarning($"[OutgameMenuController] play 실패 — 입장 취소: {err}");
+                    NoticePopup.ShowAlert("입장 실패",
+                        "서버에 연결하지 못했습니다.\n잠시 후 다시 시도해 주세요.",
+                        onRetry: OnStartGame);
+                });
         }
 
         public void OnOpenSquad() => RaiseExclusive(squadPanel);
