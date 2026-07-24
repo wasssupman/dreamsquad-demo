@@ -56,3 +56,23 @@ Battle 중 보드의 배치 유닛을 1초 홀드하면 이동모드에 진입�
       unit 4 경합 정리에서 재점검)
 
 2026-07-24 자동 검증 통과 (PlayMode 1/1, 에디터 실행).
+
+## 버그 수정 (2026-07-24) — 이동모드 전혀 발동 안 됨
+
+**증상**: 실제 Play 에서 유닛을 홀드해도 이동모드에 전혀 진입 안 함. 자동 테스트(Step reflection
+구동)는 통과했으나 그것들은 `Update()`→입력 경로와 UI 게이트를 실질적으로 안 탔다(거짓 신뢰).
+
+**근본 원인**: `TryBeginHold` 의 UI 게이트가 `EventSystem.IsPointerOverGameObject()` 기반이었는데,
+이 API 는 EventSystem 의 "지난 프레임/다른 pointer" 상태를 읽어 **보드 위에서도 true 를 반환** →
+홀드가 시작조차 안 됨. `DcInspectController` 는 이미 이 API 를 버리고 명시 좌표 `RaycastAll` 을
+쓴다(그래서 인스펙트는 동작). 확정 근거: 사용자가 "터치다운에 선택모드(인스펙트) 발동"을 봤다 =
+그 유닛 위에서 DcInspect 의 `RaycastAll==0` (UI 없음) → 같은 지점에서 relocation 의
+`IsPointerOverGameObject`==true 였다는 비대칭.
+
+**수정**: relocation 의 UI 판정을 DcInspect 와 동일한 **명시 좌표 `RaycastAll`**(`IsOverUi(screen)`)로
+교체. "탭으로 인스펙트되는 유닛은 홀드도 시작된다"를 보장(둘이 같은 press 를 동일 해석).
+
+**검증 한계**: press 전이(`wasPressedThisFrame`)는 코루틴 하네스로 신뢰 재현이 안 돼(InputTestFixture
+필요) 실입력 자동 검증은 불가. 근본 원인은 코드 로직+사용자 관측으로 확정. **실제 Play 시각 확인 필요.**
+reflection Step 테스트는 UI 게이트가 환경 의존이라, 테스트의 런타임 Overlay 아티팩트를 캔버스
+비활성으로 제거해 "보드 위 UI 없음"(실 Play) 상태로 맞춰 상태머신을 검증한다.

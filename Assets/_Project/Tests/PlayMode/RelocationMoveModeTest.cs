@@ -42,6 +42,7 @@ namespace Wassup.Tests.PlayMode
             var controller = Object.FindObjectOfType<DefenderRelocationController>();
             Assert.IsNotNull(controller, "DefenderRelocationController wired in scene");
             controller.enabled = false; // 실제 입력 Update 차단 — Step 을 테스트가 단독 구동
+            DisableUiCanvases(); // bare SetPhase 상태의 런타임 Overlay 가 보드를 덮어 IsOverUi 를 막지 않게(실 Play=보드 위 UI 없음)
 
             // 빠른 테스트용 설정 주입
             var fast = ScriptableObject.CreateInstance<RelocationSettings>();
@@ -114,6 +115,15 @@ namespace Wassup.Tests.PlayMode
             _stepMethod ??= typeof(DefenderRelocationController)
                 .GetMethod("Step", BindingFlags.NonPublic | BindingFlags.Instance);
             _stepMethod.Invoke(c, new object[] { pressStarted, pressed, screen, dt });
+        }
+
+        // 실제 Play 에선 유닛 위치에 UI 가 없다(DcInspect 가 거기서 동작 = RaycastAll 0). 그러나
+        // 테스트의 bare BeginPlacement+SetPhase 상태는 런타임 Overlay 가 보드를 덮어 IsOverUi(RaycastAll)를
+        // 막는다. 캔버스를 꺼 RaycastAll=0 으로 만들어 상태머신 검증에 UI 아티팩트가 끼지 않게 한다.
+        private static void DisableUiCanvases()
+        {
+            foreach (var c in Object.FindObjectsByType<Canvas>(FindObjectsSortMode.None))
+                c.gameObject.SetActive(false);
         }
 
         private static void SetField(object obj, string name, object value)

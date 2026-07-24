@@ -70,6 +70,9 @@ UX 는 기존 배치와 대칭: 홀드로 이동모드 진입(슬로모) → 탭
   동시에 날게 하려면 `_flightGen`/`_activeFlightEntity` 를 per-entity generation map 으로 교체. UX 결정 선행.
 - ~~**탭↔홀드 전이 구간 겹침 폴리시** (review MEDIUM)~~ → **해소 2026-07-24**: 인스펙트 선택을
   터치다운→탭 릴리즈로 이동해 홀드 중 카메라 이동 제거(`4_tap_inspect_reconcile.md` 개정 참조).
+- **DefenderDragPlacementController.PointerOverUi 도 같은 잠복 버그** [S] — armed 보드-탭 경로가
+  `IsPointerOverGameObject` 기반이라 보드 위에서 오판 가능. relocation 과 같은 명시좌표 RaycastAll 로
+  통일 후보(이번 스코프 밖 — 사용자 보고는 relocation 이었음).
 - **착지 후 재조준 페이즈** (방향 유닛) — `DeployedFacing` 쓰기 소유권 재정의 선행. directional-volley 백로그
   "배치 후 방향 재지정"과 합류.
 - **Placement 페이즈 중 재배치** — 초기 배치 수정 QoL. 슬로모·재전개 무의미 구간이라 규칙 별도 설계.

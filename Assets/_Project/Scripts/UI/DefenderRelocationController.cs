@@ -1,6 +1,8 @@
 using System.Collections;
+using System.Collections.Generic;
 using Unity.Entities;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using Wassup.Bridge;
 using Wassup.Core;
@@ -99,7 +101,7 @@ namespace Wassup.UI
             if (gm.IsAiming) return;                                        // 스킬 조준과 이중 소비 방지
             if (DragController != null &&
                 (DragController.HasArmedUnit || DragController.IsDragging || DragController.IsAiming)) return;
-            if (PointerOverUi()) return;
+            if (IsOverUi(screen)) return;
             if (mainCamera == null) mainCamera = Camera.main;
             if (mainCamera == null) return;
             if (!bridge.TryScreenToCell(mainCamera, screen, out var cell)) return;
@@ -192,7 +194,7 @@ namespace Wassup.UI
 
             if (pressStarted)
             {
-                if (PointerOverUi()) return; // UI press 는 목적지 지정이 아님
+                if (IsOverUi(screen)) return; // UI press 는 목적지 지정이 아님
                 _targetPressActive = true;
                 _pressCarried = false;
                 _targetDownScreen = screen;
@@ -380,15 +382,18 @@ namespace Wassup.UI
             return _cameraDirector;
         }
 
-        // DefenderDragPlacementController.PointerOverUi 와 동일 판정(터치는 touchId).
-        private static bool PointerOverUi()
+        // defender-relocation 버그 수정 — 명시 좌표 RaycastAll 로 UI 위 여부 판정.
+        // 기존 IsPointerOverGameObject 는 EventSystem 의 "지난 프레임/다른 pointer" 상태를 읽어
+        // 보드 위에서도 true 를 뱉었다(→ 홀드가 시작조차 안 됨). DcInspect.IsOverUi 와 동일 방식으로
+        // 정렬해 "탭으로 인스펙트되는 유닛은 홀드도 시작된다"를 보장한다(둘이 같은 press 를 동일 해석).
+        private readonly List<RaycastResult> _uiHits = new();
+        private bool IsOverUi(Vector2 screenPos)
         {
-            var es = UnityEngine.EventSystems.EventSystem.current;
+            var es = EventSystem.current;
             if (es == null) return false;
-            var ts = Touchscreen.current;
-            if (ts != null && ts.primaryTouch.press.isPressed)
-                return es.IsPointerOverGameObject(ts.primaryTouch.touchId.ReadValue());
-            return es.IsPointerOverGameObject();
+            _uiHits.Clear();
+            es.RaycastAll(new PointerEventData(es) { position = screenPos }, _uiHits);
+            return _uiHits.Count > 0;
         }
     }
 }
