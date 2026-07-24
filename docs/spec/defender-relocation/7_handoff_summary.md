@@ -11,14 +11,16 @@
 - `e751182f` fix — 리뷰 HIGH: 연속 재배치 고아화(단일 세션 가드)
 - `5a777294` fix — 선택 발동을 터치다운→탭 릴리즈로 이동
 - `14ceb047` fix — 이동모드 미발동 근본 수정(UI 게이트 IsPointerOverGameObject→RaycastAll)
-- (unit 5) 선택 액션 플립북 + 이동모드 진입 홀드→버튼 전환 — 이 문서와 같은 커밋
+- `33900586` unit 5 — 선택 액션 플립북 + 이동모드 진입 홀드→버튼 전환
+- (unit 6) 이동모드 프리뷰 강화(타일 하이라이트·범위) + 키링 비행 — 이 문서와 같은 커밋
 
 ## Implemented
 
 - **진입(unit 5)**: 유닛 탭 → 선택모드(우측 부착 카드 패널 + 좌측 액션 플립북: 이동모드+더미2, flip 등장)
   → 이동모드 버튼 → 선택 해제 + `BeginMoveModeFor` 로 이동모드 진입. **홀드 진입 제거.**
-- 이동모드(슬로모 0.2×·하이라이트·카메라) → 탭 or 드래그로 목적지 지정 → 확정 시 슬로모 해제 →
-  실뷰가 베지어 아치로 비행(실시간) → 착지 → 재전개(Battle 시계) → 전투 복귀
+- 이동모드(슬로모 0.2×·하이라이트·카메라) → **배치 가능 타일 하이라이트**, 목적지 press 중 **공격범위
+  프리뷰**(unit 6) → release 확정 시 슬로모 해제 → 실뷰가 **키링(고리+줄) 비행**(unit 6, 실시간) →
+  착지 → 재전개(Battle 시계) → 전투 복귀
 - 비용 = 재전개 시간 단독: 코스트 0 · 배치쿨다운/on-place/컷신/`PlacementCommitted` 미발화
 - 이탈 구간 = `PendingDeployment` 재사용(비타겟·비무장·시너지 제외), 점유/`DefenderTile` 은 확정
   프레임 원자 스왑, `LocalTransform` 은 착지 프레임
@@ -30,6 +32,7 @@
 - `Assets/_Project/Scripts/Bridge/BattleBridge.Relocation.cs` — relocate API·seam·entity↔cell 역참조
 - `Assets/_Project/Scripts/UI/DefenderRelocationController.cs` — 이동모드/배치/비행 상태 머신 + `BeginMoveModeFor`(진입)
 - `Assets/_Project/Scripts/UI/Dreamcatcher/DcActionFlipbookView.cs` — 좌측 부채꼴 3버튼 플립북(신규)
+- `DefenderRelocationController` 내: 진입 하이라이트/범위 프리뷰/키링 비행(고리+줄 LineRenderer, self-contained)
 - `Assets/_Project/Scripts/UI/Dreamcatcher/DcInspectController.cs` — 선택 시 플립북 표시 + 이동모드 콜백 handoff
 - `Assets/_Project/Scripts/Data/RelocationSettings.cs` + `Data/Config/RelocationSettings.asset` — 노브(holdSeconds 제거됨)
 - `Assets/_Project/Tests/PlayMode/Relocation*.cs` (3) + `Tests/EditMode/RelocationCheckTests.cs`
@@ -37,7 +40,9 @@
 
 ## Verified
 
-- EditMode 7/7 + PlayMode relocation 스위트 5/5 (에디터 실행, 커밋마다 재실행)
+- EditMode 7/7 + PlayMode relocation 스위트 5/5 (에디터 실행, 커밋마다 재실행 — unit 6 뷰 추가에도 회귀 0)
+- **키링 비행은 `Shader.Find("Sprites/Default")` 의존** — null 시 비주얼 생략(비행 로직은 유지). 실기 빌드
+  셰이더 포함 확인 필요(unit 6 완료 기준 주의).
 - 컨트롤러 상태 머신은 입력-독립 `Step`/`BeginMoveModeFor` 를 테스트가 reflection·직접호출로 구동(원격 제약 우회)
 - **사용자 Play 시각 확인(UX 수용 게이트) 미완** — 원격 세션. 절차: Battle 중 유닛 탭 → 좌측 플립북
   등장 → 이동모드 버튼 → 이동모드 진입 → 목적지 탭/드래그 → 비행·재전개. `5_...md` 완료 기준 체크.

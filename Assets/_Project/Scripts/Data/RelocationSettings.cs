@@ -34,5 +34,21 @@ namespace Wassup.Data
 
         [Tooltip("비행 아치 높이(sim 단위)")]
         public float flightArcHeight = 1.2f;
+
+        [Header("비행 키링(고리+줄)")]
+        [Tooltip("유닛 위 고리까지 줄 길이(카메라 up, sim 단위)")]
+        public float flightRopeLength = 0.9f;
+
+        [Tooltip("고리 반지름(sim 단위)")]
+        public float flightRingRadius = 0.16f;
+
+        [Tooltip("줄/고리 두께")]
+        public float flightCordWidth = 0.05f;
+
+        [Tooltip("고리 추종 부드러움(작을수록 sway 큼) — SmoothDamp time")]
+        public float flightRingFollow = 0.08f;
+
+        [Tooltip("줄/고리 색")]
+        public Color flightKeyringColor = new Color(0.95f, 0.85f, 0.5f, 1f);
     }
 }

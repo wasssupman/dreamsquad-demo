@@ -108,6 +108,7 @@ namespace Wassup.UI
             _hasLease = true;
             if (spineUnitPool != null && spineUnitPool.TryGet(_entity, out var view))
                 view.SetHoverHighlight(true, settings.highlightColor);
+            bridge.ShowPlacementHighlight(); // unit 6 — 배치 가능 타일 하이라이트(소스는 점유라 자동 제외)
             // 버튼 진입 — carried press 없음. 목적지 탭/드래그를 이후 새 press 로 받는다.
             _targetPressActive = false;
             _scoutCell = null;
@@ -197,16 +198,20 @@ namespace Wassup.UI
             Vector3 c1 = start + arc + dir * (dist * 0.2f);
             Vector3 c2 = end + arc - dir * (dist * 0.2f);
 
+            EnsureKeyring(); // unit 6 — 비행 동안 고리+줄 비주얼
             float t = 0f;
             while (t < 1f)
             {
                 if (gen != _flightGen || !FlightBindingIntact(to, entity)) { AbandonFlight(entity); yield break; }
                 t += TimeManager.Instance.DeltaTime(TimeDomain.Battle) / duration;
                 float k = 1f - Mathf.Pow(1f - Mathf.Clamp01(t), 3f); // OutCubic — 빠른 출발, 착지 감속
-                bridge.SetRelocationViewOverride(entity, KeyringSim.CubicBezier(start, c1, c2, end, k));
+                var p = KeyringSim.CubicBezier(start, c1, c2, end, k);
+                bridge.SetRelocationViewOverride(entity, p);
+                UpdateKeyring(p); // 유닛 위 고리 추종
                 yield return null;
             }
 
+            HideKeyring();
             bridge.ClearRelocationViewOverride(entity);
             bridge.FinishDefenderRelocation(to, entity);
             bridge.PulsePlacementHover(to, true); // 기존 착지 타일 팝 재사용
@@ -228,6 +233,7 @@ namespace Wassup.UI
 
         private void AbandonFlight(Entity entity)
         {
+            HideKeyring();
             bridge?.ClearRelocationViewOverride(entity);
             if (_activeFlightEntity == entity) _activeFlightEntity = Entity.Null;
         }
@@ -236,6 +242,7 @@ namespace Wassup.UI
         private void FinishFlightInstant(Vector2Int to, Entity entity)
         {
             if (bridge == null) return;
+            HideKeyring();
             bridge.ClearRelocationViewOverride(entity);
             if (!FlightBindingIntact(to, entity)) return;
             bridge.FinishDefenderRelocation(to, entity);
@@ -251,13 +258,20 @@ namespace Wassup.UI
             bool changed = !_scoutCell.HasValue || _scoutCell.Value != cell;
             if (changed && _scoutCell.HasValue) bridge.ClearPlacementHover(_scoutCell.Value);
             _scoutCell = cell;
-            if (changed) bridge.PulsePlacementHover(cell, valid);
+            if (changed)
+            {
+                bridge.PulsePlacementHover(cell, valid);
+                // unit 6 — press 중 그 타일의 공격범위 프리뷰(드래그 배치 스카우트 미러). 무효 셀은 소거.
+                if (valid) bridge.SetPlacementRange(cell, _unit);
+                else bridge.ClearPlacementRange();
+            }
             bridge.SetPlacementHover(cell, valid);
         }
 
         private void ClearScout()
         {
             if (_scoutCell.HasValue && bridge != null) bridge.ClearPlacementHover(_scoutCell.Value);
+            bridge?.ClearPlacementRange(); // unit 6
             _scoutCell = null;
         }
 
@@ -271,6 +285,7 @@ namespace Wassup.UI
             ReleaseLease();
             ClearHighlight();
             ClearScout();
+            if (bridge != null) bridge.HidePlacementHighlight(); // unit 6
         }
 
         private void ClearHighlight()
@@ -302,6 +317,7 @@ namespace Wassup.UI
                 _flightGen++; // 코루틴 무효화(재개돼도 물러남)
                 FinishFlightInstant(_activeFlightTo, _activeFlightEntity);
             }
+            HideKeyring(); // 방어적 — 진행 중 비행 없더라도 잔여 비주얼/머티리얼 정리
         }
 
         private CameraDirector EnsureCameraDirector()
@@ -316,6 +332,76 @@ namespace Wassup.UI
                 _cameraDirectorMissWarned = true;
             }
             return _cameraDirector;
+        }
+
+        // unit 6 — 비행 키링(고리+줄) 비주얼. 실뷰 비행(SetRelocationViewOverride)에 얹는 self-contained
+        // 데코(드래그 컨트롤러 세션/슬로모/커밋 무관). 고리는 유닛 위를 스무스 추종해 sway 를 근사한다.
+        private GameObject _keyringRoot;
+        private LineRenderer _cord;
+        private LineRenderer _ring;
+        private Material _keyringMat;
+        private Vector3 _ringPos;
+        private bool _ringInit;
+
+        private void EnsureKeyring()
+        {
+            if (_keyringRoot != null || settings == null) return;
+            var sh = Shader.Find("Sprites/Default"); // URP 포함 기본 셰이더. 없으면 비주얼 생략(비행은 유지).
+            if (sh == null) return;
+            _keyringMat = new Material(sh);
+            _keyringRoot = new GameObject("RelocationKeyring");
+            _cord = MakeLine(3, "Cord");   // 줄: 고리→유닛 (2점이면 되지만 cap 여유)
+            _ring = MakeLine(17, "Ring");  // 고리: 16세그 루프 + 닫힘
+            _ringInit = false;
+        }
+
+        private LineRenderer MakeLine(int count, string name)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(_keyringRoot.transform, false);
+            var lr = go.AddComponent<LineRenderer>();
+            lr.useWorldSpace = true;
+            lr.sharedMaterial = _keyringMat;
+            lr.positionCount = name == "Cord" ? 2 : count;
+            lr.numCapVertices = 2;
+            lr.numCornerVertices = 2;
+            lr.textureMode = LineTextureMode.Stretch;
+            lr.startColor = lr.endColor = settings.flightKeyringColor;
+            lr.sortingOrder = 50; // 유닛 위
+            return lr;
+        }
+
+        private void UpdateKeyring(Vector3 unitWorld)
+        {
+            if (_keyringRoot == null) return;
+            var cam = mainCamera != null ? mainCamera : Camera.main;
+            Vector3 up = cam != null ? cam.transform.up : Vector3.up;
+            Vector3 right = cam != null ? cam.transform.right : Vector3.right;
+            Vector3 ringTarget = unitWorld + up * settings.flightRopeLength;
+            if (!_ringInit) { _ringPos = ringTarget; _ringInit = true; }
+            else
+            {
+                float a = 1f - Mathf.Exp(-Time.unscaledDeltaTime / Mathf.Max(0.001f, settings.flightRingFollow));
+                _ringPos = Vector3.Lerp(_ringPos, ringTarget, a); // 스무스 추종 = sway 근사
+            }
+            float w = settings.flightCordWidth;
+            _cord.startWidth = _cord.endWidth = w;
+            _cord.SetPosition(0, _ringPos);
+            _cord.SetPosition(1, unitWorld);
+            _ring.startWidth = _ring.endWidth = w;
+            int n = _ring.positionCount;
+            for (int i = 0; i < n; i++)
+            {
+                float ang = i / (float)(n - 1) * Mathf.PI * 2f;
+                _ring.SetPosition(i, _ringPos + (right * Mathf.Cos(ang) + up * Mathf.Sin(ang)) * settings.flightRingRadius);
+            }
+        }
+
+        private void HideKeyring()
+        {
+            if (_keyringRoot != null) Destroy(_keyringRoot);
+            if (_keyringMat != null) Destroy(_keyringMat); // 런타임 머티리얼 누수 방지
+            _keyringRoot = null; _cord = null; _ring = null; _keyringMat = null; _ringInit = false;
         }
 
         // 명시 좌표 RaycastAll 로 UI 위 여부 판정(DcInspect.IsOverUi 와 동일). 목적지 제스처가 UI press
