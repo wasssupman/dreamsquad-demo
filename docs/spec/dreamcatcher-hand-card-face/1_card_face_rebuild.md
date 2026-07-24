@@ -28,15 +28,17 @@ public static Sprite MakeCardFace(int width, int height, float radius, float bor
 
 ### 슬롯 구조 변경 (EnsureSlots)
 
+- **카드 크기 184×230** (`EnsureSlots` 로컬 상수 `cardW`/`cardH` 172×200 → 교체 — 코드 상수라
+  씬 갱신 불요). 본문 폰트 예산 확보가 목적(rev 1 — 툴팁 19pt 불가 실측 이력).
 - `Art`(UiCardFaceMesh) → 이름을 `Face` 로, 인셋 6px → **0**(면 전체가 카드). `preserveAspect` 유지.
   root `frame` Image 는 바인딩 시 투명 — 빈 슬롯 표시로만 남는다.
 - `nameTag` 하단 밴드 → **헤더 이름**으로 이동: 헤더 밴드 영역(상단 ~64px) 중앙, 배경 Image 제거
   (face 헤더색이 배경), 좌우 인셋 ~46px(코스트 배지·태그 칩 회피), 오토사이즈 14~20. `nameGroup`
   페이드 패턴 유지.
 - **태그 칩 신규**: 우상단, `UiRoundedSprite.Make` 라운드 칩(헤더색보다 어두운 틴트 + 흰 텍스트
-  ~13pt, `CardCategoryStyle.TargetTag`). `CanvasGroup` 페이드 동참.
-- **본문 TMP 신규**: 헤더 아래~하단 패딩 10px, 좌상 정렬, `labelFont`(Jua), 오토사이즈 13~17,
-  `DreamcatcherCardText.BodyLinesOnly`. `CanvasGroup` 페이드 동참.
+  ~15pt, `CardCategoryStyle.TargetTag`). `CanvasGroup` 페이드 동참.
+- **본문 TMP 신규**: 헤더 아래~하단 패딩 10px, 좌상 정렬, `labelFont`(Jua), 오토사이즈 **16~20**
+  (floor 16 — 계약 8), `DreamcatcherCardText.BodyLinesOnly`. `CanvasGroup` 페이드 동참.
 - 코스트 배지 무변경.
 - `cardOverlap` 기본값 54 → **16** (5장×172=860 < 패널 980 — 겹침은 감성 목적만 남긴다).
   ⚠ SerializeField 라 코드 기본값 변경은 **씬에 이미 직렬화된 54를 못 이긴다** —
@@ -47,6 +49,8 @@ public static Sprite MakeCardFace(int width, int height, float radius, float bor
 - `BindCard`: `face.sprite = 캐시된 MakeCardFace(...)`, `face.color = Color.white`.
   `card.art`/`skill.uiTint` 참조 제거. 이름·태그·본문 텍스트 기입.
 - `BindEmpty`: face 비활성 + root frame 만 기존 빈 슬롯 표시.
+- `RefreshUsability`: 사용 불가 dim 을 `group.alpha 0.42` 일괄 → **face 어두운 틴트 + alpha 0.75**
+  로 교체(계약 8 — 텍스트 가독 유지). 복원 시 face 틴트 원복(white).
 - `RestoreSlotHome`/`StartDeal`: 신규 태그·본문 `CanvasGroup` 을 기존 `nameGroup`/`costGroup`
   페이드 목록에 추가(펴짐 완료 후 페이드-인, 복원 시 alpha 1).
 

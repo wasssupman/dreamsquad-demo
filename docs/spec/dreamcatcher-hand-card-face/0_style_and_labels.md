@@ -24,7 +24,8 @@ public static Color HandHeader(CardType type);
 public static Color HandBody();
 // 카드 외곽 테두리: 무의식이면 SubconsciousFrame 보라, 아니면 어두운 중립.
 public static Color HandBorder(DreamcatcherCard c);
-// 대상 태그: Squad=축 라벨(전체/레인저/가디언/1코스트), Unit="아군 부착",
+// 대상 태그(역할 병기 — rev 1: 타입 색은 무명 코드라 칩이 대상+역할을 글자로 말한다):
+// Squad=축 라벨+" 버프"(전체 버프/레인저 버프/가디언 버프/1코스트 버프), Unit="아군 부착",
 // Active=skill.effect 파생(타일 지정/타일 2개/아군 지정), skill null·미지원=폴백 "필드".
 public static string TargetTag(DreamcatcherCard c);
 ```
@@ -52,7 +53,7 @@ Active 태그 매핑 (`SkillEffectType` 기준):
 - EditMode `HandCardStyleTests` 통과:
   - 타입 3종 → `HandHeader` 색이 서로 다름 (상수 값 자체는 검증하지 않음 — 선택 로직만).
   - 무의식 카드 → `HandBorder` == `Frame`(Subconscious) 보라 / 일반 카드 → 중립.
-  - `TargetTag`: Squad 축 4종, Unit, Active 스킬 6종 + skill null 폴백.
+  - `TargetTag`: Squad 축 4종(`… 버프` 접미 포함), Unit, Active 스킬 6종 + skill null 폴백.
   - `BodyLinesOnly`: 효과 라인만 반환(축·타입 헤더 문자열 미포함), effects 없는 Unit 카드는
     description 폴백, description 도 비면 빈 문자열.
 - 기존 EditMode 스위트 무회귀.
