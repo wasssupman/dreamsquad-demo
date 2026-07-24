@@ -859,55 +859,9 @@ namespace Wassup.UI
             float scale = Mathf.Max(0.01f, unitData.spineVisualScale * BattleBridge.CharacterVisualScale);
 
             var root = new GameObject($"DragPreview_{unitData.displayName}");
-            var st = Cfg.style; // keyring-unify 3 — 스타일. null/슬롯 null = 절차적 폴백.
 
-            // 고리(ring): 스타일 스프라이트가 있으면 SpriteRenderer(홀로), 없으면 로컬 원 LineRenderer 루프.
-            var ringGo = new GameObject($"{root.name}_Ring");
-            ringGo.transform.SetParent(root.transform, false);
-            if (st != null && st.ringSprite != null)
-            {
-                var ringSr = ringGo.AddComponent<SpriteRenderer>();
-                ringSr.sprite = st.ringSprite;
-                if (st.worldRingMaterial != null) ringSr.sharedMaterial = st.worldRingMaterial;
-                ringSr.color = Color.white; // 계약 7 — 스타일 적용 시 틴트 중성화(cordColor 갈색 오염 방지)
-                ringSr.sortingOrder = BoardSortOrder.DragPreviewOrder;
-                // 지름 = ringRadius*2 — 절차적 원(반경 ringRadius*scale)과 크기 등가.
-                float spriteWidth = st.ringSprite.bounds.size.x;
-                if (spriteWidth > 1e-4f)
-                    ringGo.transform.localScale = Vector3.one * (Cfg.ringRadius * 2f * scale / spriteWidth);
-            }
-            else
-            {
-                var ringLr = ringGo.AddComponent<LineRenderer>();
-                ringLr.useWorldSpace = false;
-                ringLr.loop = true;
-                ringLr.numCapVertices = 2;
-                ringLr.positionCount = RingSegments;
-                for (int i = 0; i < RingSegments; i++)
-                {
-                    float a = (i / (float)RingSegments) * Mathf.PI * 2f;
-                    ringLr.SetPosition(i, new Vector3(Mathf.Cos(a), Mathf.Sin(a), 0f) * (Cfg.ringRadius * scale));
-                }
-                ringLr.sharedMaterial = CordMaterial();
-                ringLr.widthMultiplier = Cfg.cordWidth * scale;
-                ringLr.startColor = ringLr.endColor = Cfg.cordColor;
-                ringLr.sortingOrder = BoardSortOrder.DragPreviewOrder;
-            }
-            var ringBillboard = ringGo.AddComponent<Billboard>();
-            ringBillboard.Setup(BillboardMode.Tilted, BattleBridge.CharacterBillboardTilt);
-
-            // 줄(cord): 월드 LineRenderer, 2점(고리→머리). 스타일 머티리얼(u=길이, _LengthAxis=1) 또는 절차적 단색.
-            var cordGo = new GameObject($"{root.name}_Cord");
-            cordGo.transform.SetParent(root.transform, false);
-            var cordLr = cordGo.AddComponent<LineRenderer>();
-            cordLr.useWorldSpace = true;
-            cordLr.numCapVertices = 2;
-            cordLr.positionCount = 2;
-            bool styledCord = st != null && st.worldCordMaterial != null;
-            cordLr.sharedMaterial = styledCord ? st.worldCordMaterial : CordMaterial();
-            cordLr.widthMultiplier = Cfg.cordWidth * scale;
-            cordLr.startColor = cordLr.endColor = styledCord ? Color.white : Cfg.cordColor;
-            cordLr.sortingOrder = BoardSortOrder.DragPreviewOrder - 1;
+            // 고리+줄 하드웨어는 공통 헬퍼가 만든다(재배치 비행과 단일 소스). 실루엣(Spine)은 아래서 붙인다.
+            BuildRingAndCord(root, root.name, scale, out var ringXform, out var cordLr);
 
             // endNode(머리 위치, 빌보드) → swingPivot(머리 중심 기울임) → spineChild(실루엣).
             var endNode = new GameObject($"{root.name}_End");
@@ -952,7 +906,7 @@ namespace Wassup.UI
 
             session.preview = root;
             session.cordLine = cordLr;
-            session.ring = ringGo.transform;
+            session.ring = ringXform;
             session.endNode = endNode.transform;
             session.swingPivot = swingPivot.transform;
             session.spineChild = spineChild.transform;
@@ -971,38 +925,24 @@ namespace Wassup.UI
             return _cordMaterial;
         }
 
-        // defender-relocation unit 6 — 재배치 비행이 배치(D&D/탭) 키링과 '동일한' 고리+줄을 재사용하도록
-        // 하는 팩토리. TryBuildKeyringPreview 의 고리/줄 구성과 같은 소스(Cfg·CordMaterial·style·Billboard)를
-        // 쓴다 — 실루엣은 재배치의 '실제 유닛'이 담당하므로 하드웨어(빌보드 고리 + 월드 줄)만 만든다.
-        // 위치는 호출측(재배치 컨트롤러)이 매 프레임 설정한다. 머티리얼은 공유(파괴 금지) — 호출측은 root 만 파괴.
-        public readonly struct KeyringHardware
+        // 키링 고리(ring)+줄(cord) 하드웨어 공통 생성 — 배치 프리뷰(TryBuildKeyringPreview)와 재배치 비행
+        // (CreateKeyringHardware)의 **단일 소스**. 실루엣은 각 호출측이 별도로 붙인다(배치=Spine 자식,
+        // 재배치=실제 유닛). 스타일/머티리얼/색/폭/빌보드/order 는 여기 한 곳에서만 정한다.
+        private void BuildRingAndCord(GameObject root, string namePrefix, float scale,
+            out Transform ring, out LineRenderer cord)
         {
-            public readonly GameObject root;
-            public readonly Transform ring;
-            public readonly LineRenderer cord;
-            public readonly float ropeWorld;   // 고리를 머리 위로 띄우는 월드 길이 (= ropeLength × scale)
-            public readonly bool valid;
-            public KeyringHardware(GameObject root, Transform ring, LineRenderer cord, float ropeWorld)
-            { this.root = root; this.ring = ring; this.cord = cord; this.ropeWorld = ropeWorld; valid = root != null; }
-        }
-
-        public KeyringHardware CreateKeyringHardware(DefenderUnitData unitData)
-        {
-            if (unitData == null) return default;
-            float scale = Mathf.Max(0.01f, unitData.spineVisualScale * BattleBridge.CharacterVisualScale);
-            var st = Cfg.style;
-            var root = new GameObject("RelocationKeyring");
-
-            // 고리: 스타일 스프라이트 or 절차적 원 루프 (배치 프리뷰와 동일).
-            var ringGo = new GameObject("Ring");
+            var st = Cfg.style; // keyring-unify 3 — 스타일. null/슬롯 null = 절차적 폴백.
+            // 고리(ring): 스타일 스프라이트가 있으면 SpriteRenderer(홀로), 없으면 로컬 원 LineRenderer 루프.
+            var ringGo = new GameObject($"{namePrefix}_Ring");
             ringGo.transform.SetParent(root.transform, false);
             if (st != null && st.ringSprite != null)
             {
                 var ringSr = ringGo.AddComponent<SpriteRenderer>();
                 ringSr.sprite = st.ringSprite;
                 if (st.worldRingMaterial != null) ringSr.sharedMaterial = st.worldRingMaterial;
-                ringSr.color = Color.white;
+                ringSr.color = Color.white; // 계약 7 — 스타일 적용 시 틴트 중성화(cordColor 갈색 오염 방지)
                 ringSr.sortingOrder = BoardSortOrder.DragPreviewOrder;
+                // 지름 = ringRadius*2 — 절차적 원(반경 ringRadius*scale)과 크기 등가.
                 float spriteWidth = st.ringSprite.bounds.size.x;
                 if (spriteWidth > 1e-4f)
                     ringGo.transform.localScale = Vector3.one * (Cfg.ringRadius * 2f * scale / spriteWidth);
@@ -1027,20 +967,44 @@ namespace Wassup.UI
             var ringBillboard = ringGo.AddComponent<Billboard>();
             ringBillboard.Setup(BillboardMode.Tilted, BattleBridge.CharacterBillboardTilt);
 
-            // 줄: 월드 2점(고리→머리). 배치 프리뷰와 동일 머티리얼/폭/색/order.
-            var cordGo = new GameObject("Cord");
+            // 줄(cord): 월드 LineRenderer, 2점(고리→머리). 스타일 머티리얼(u=길이, _LengthAxis=1) 또는 절차적 단색.
+            var cordGo = new GameObject($"{namePrefix}_Cord");
             cordGo.transform.SetParent(root.transform, false);
-            var cordLr = cordGo.AddComponent<LineRenderer>();
-            cordLr.useWorldSpace = true;
-            cordLr.numCapVertices = 2;
-            cordLr.positionCount = 2;
+            cord = cordGo.AddComponent<LineRenderer>();
+            cord.useWorldSpace = true;
+            cord.numCapVertices = 2;
+            cord.positionCount = 2;
             bool styledCord = st != null && st.worldCordMaterial != null;
-            cordLr.sharedMaterial = styledCord ? st.worldCordMaterial : CordMaterial();
-            cordLr.widthMultiplier = Cfg.cordWidth * scale;
-            cordLr.startColor = cordLr.endColor = styledCord ? Color.white : Cfg.cordColor;
-            cordLr.sortingOrder = BoardSortOrder.DragPreviewOrder - 1;
+            cord.sharedMaterial = styledCord ? st.worldCordMaterial : CordMaterial();
+            cord.widthMultiplier = Cfg.cordWidth * scale;
+            cord.startColor = cord.endColor = styledCord ? Color.white : Cfg.cordColor;
+            cord.sortingOrder = BoardSortOrder.DragPreviewOrder - 1;
+            ring = ringGo.transform;
+        }
 
-            return new KeyringHardware(root, ringGo.transform, cordLr, Cfg.ropeLength * scale);
+        // defender-relocation unit 6 — 재배치 비행이 배치(D&D/탭) 키링과 '동일한' 고리+줄을 재사용하도록
+        // 하는 팩토리. 고리/줄 구성은 배치 프리뷰와 **동일 헬퍼**(BuildRingAndCord)를 경유 = 진짜 단일 소스.
+        // 실루엣은 재배치의 '실제 유닛'이 담당하므로 하드웨어(빌보드 고리 + 월드 줄)만 만든다.
+        // 위치는 호출측(재배치 컨트롤러)이 매 프레임 설정한다. 머티리얼은 공유(파괴 금지) — 호출측은 root 만 파괴.
+        public readonly struct KeyringHardware
+        {
+            public readonly GameObject root;
+            public readonly Transform ring;
+            public readonly LineRenderer cord;
+            public readonly float ropeWorld;   // 고리를 머리 위로 띄우는 월드 길이 (= ropeLength × scale)
+            public readonly bool valid;
+            public KeyringHardware(GameObject root, Transform ring, LineRenderer cord, float ropeWorld)
+            { this.root = root; this.ring = ring; this.cord = cord; this.ropeWorld = ropeWorld; valid = root != null; }
+        }
+
+        public KeyringHardware CreateKeyringHardware(DefenderUnitData unitData)
+        {
+            if (unitData == null) return default;
+            float scale = Mathf.Max(0.01f, unitData.spineVisualScale * BattleBridge.CharacterVisualScale);
+            var root = new GameObject("RelocationKeyring");
+            // 고리+줄은 배치 프리뷰와 공통 헬퍼(BuildRingAndCord)로 만든다 — 룩 단일 소스.
+            BuildRingAndCord(root, "RelocationKeyring", scale, out var ring, out var cord);
+            return new KeyringHardware(root, ring, cord, Cfg.ropeLength * scale);
         }
 
         // defender-relocation unit 6 — 재배치 비행이 탭 배치와 '동일한' 던지기 곡선을 공유하도록 하는 래퍼.
