@@ -872,7 +872,14 @@ namespace Wassup.Bridge
             {
                 int poolIndex;
                 string poolSource;
-                if (fixedMapSeed != 0)
+                // map-play-feel unit 2 — 개발 확인용 인덱스 강제(모바일 개발빌드 런타임).
+                // 서버 API 는 그대로 받되 override 가 설정돼 있으면 최우선. 없으면 아래 기존 3분기.
+                if (Wassup.Core.DevMapOverride.HasIndex)
+                {
+                    poolIndex = Mathf.Clamp(Wassup.Core.DevMapOverride.Index, 0, mapPool.Count - 1);
+                    poolSource = "dev";
+                }
+                else if (fixedMapSeed != 0)
                 {
                     poolIndex = MapPoolSelect.SelectIndex(seed, mapPool.Count);
                     poolSource = "debug";
