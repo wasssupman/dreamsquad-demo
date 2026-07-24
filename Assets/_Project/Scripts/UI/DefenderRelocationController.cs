@@ -128,8 +128,9 @@ namespace Wassup.UI
                 CancelMoveMode();
                 return;
             }
-            // 인스펙트 포커스 — 매 프레임 피드(미피드 시 자동 해제되는 채널, DirectionAim 패턴).
-            EnsureCameraDirector()?.SetInspectFocus(bridge.GridCellToViewCenter(_sourceCell));
+            // unit 6 — 이동모드는 줌인 인스펙트가 아니라 **줌아웃 고정 오버뷰**(목적지 선택 위해 보드 전체
+            // 가시). 진입 경로 무관 동일 상태. 매 프레임 피드(미피드 시 자동 홈 복귀).
+            EnsureCameraDirector()?.SetMoveOverview();
 
             // 목적지 지정 제스처 — 탭/드래그 공통: press 동안 hover 스카우트, 릴리즈 셀에서 해석.
             if (_targetPressActive)
@@ -194,7 +195,12 @@ namespace Wassup.UI
                 settings.flightBaseSeconds + settings.flightSecondsPerUnit * dist,
                 0.1f, settings.flightMaxSeconds);
             Vector3 dir = dist > 0.001f ? (end - start) / dist : Vector3.forward;
-            Vector3 arc = Vector3.up * settings.flightArcHeight;
+            // unit 6 — 아치를 world-up 이 아니라 **카메라 up** 으로. Low-TopDown 뷰에서 world-up 아치는
+            // 시선 방향과 겹쳐 foreshorten 되어 "평면 이동"으로 보였다. 카메라-up 은 화면 세로라 각도
+            // 무관하게 던지는 아치가 보인다(tap-to-place 키링 비행과 동일 기준).
+            var flightCam = mainCamera != null ? mainCamera : Camera.main;
+            Vector3 upDir = flightCam != null ? flightCam.transform.up : Vector3.up;
+            Vector3 arc = upDir * settings.flightArcHeight;
             Vector3 c1 = start + arc + dir * (dist * 0.2f);
             Vector3 c2 = end + arc - dir * (dist * 0.2f);
 
@@ -346,7 +352,11 @@ namespace Wassup.UI
         private void EnsureKeyring()
         {
             if (_keyringRoot != null || settings == null) return;
-            var sh = Shader.Find("Sprites/Default"); // URP 포함 기본 셰이더. 없으면 비주얼 생략(비행은 유지).
+            // Sprites/Default 는 LineRenderer 정점색 tint 를 존중(URP 포함). 폴백 체인으로 견고화 —
+            // 다 없으면 비주얼만 생략(아치 비행은 유지).
+            var sh = Shader.Find("Sprites/Default")
+                     ?? Shader.Find("Universal Render Pipeline/Unlit")
+                     ?? Shader.Find("Unlit/Color");
             if (sh == null) return;
             _keyringMat = new Material(sh);
             _keyringRoot = new GameObject("RelocationKeyring");

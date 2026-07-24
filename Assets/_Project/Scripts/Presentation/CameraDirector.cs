@@ -70,6 +70,10 @@ namespace Wassup.Presentation
         private int _headroomFedFrame = -10;
         private float _headroomWeight;
         private float _headroomVel;
+        // defender-relocation unit 6 — 이동모드 줌아웃 오버뷰(좌표 없는 config 구동 채널, 헤드룸 미러).
+        private int _overviewFedFrame = -10;
+        private float _overviewWeight;
+        private float _overviewVel;
 
         // unit 3 — 앰비언트 브리딩 채널. 파동 위상 누적(절대 시각 비사용 — 장세션 float 정밀도),
         // 켜진 페이즈에서만, 비행 중 가중치 0 크로스페이드 후 서서히 복귀.
@@ -242,6 +246,15 @@ namespace Wassup.Presentation
             _headroomFedFrame = Time.frameCount;
         }
 
+        // defender-relocation unit 6 — 이동모드(목적지 선택) 중 매 프레임 호출. 어떤 경로로 진입했건
+        // 동일한 줌아웃 고정 오버뷰를 준다. 좌표를 받지 않는 게 계약(SetHandHeadroom 과 동일 — 되먹임
+        // 루프 없음). 피드가 끊기면(2프레임 초과) 자동으로 홈 포즈로 복귀한다.
+        public void SetMoveOverview()
+        {
+            if (config == null) return;
+            _overviewFedFrame = Time.frameCount;
+        }
+
         private void LateUpdate()
         {
             if (config == null) return;
@@ -298,10 +311,16 @@ namespace Wassup.Presentation
             bool headroomSettled = Mathf.Abs(_headroomWeight) < 0.0005f
                 && Mathf.Abs(_headroomVel) < 0.0005f;
             bool headroomActive = headroomTarget > 0f || !headroomSettled;
+            // 이동모드 오버뷰 — 헤드룸과 동일 staleness/스프링 규약.
+            bool overviewConfigured = config.moveOverviewDolly != 0f || config.moveOverviewPitchDeg != 0f;
+            bool overviewFed = Time.frameCount - _overviewFedFrame <= 2 && overviewConfigured;
+            float overviewTarget = overviewFed ? 1f : 0f;
+            bool overviewSettled = Mathf.Abs(_overviewWeight) < 0.0005f && Mathf.Abs(_overviewVel) < 0.0005f;
+            bool overviewActive = overviewTarget > 0f || !overviewSettled;
             // inspectActive 를 빠뜨리면 아래 idle 최적화(_settled)가 줌을 한 프레임 만에 덮어쓴다.
             // headroomActive 도 같다 — 빠뜨리면 손패를 열어도 pitch 가 즉시 홈으로 덮인다.
             bool anyActive = _kickRemaining > 0f || flying || punctActive || breathActive
-                || focusActive || inspectActive || headroomActive;
+                || focusActive || inspectActive || headroomActive || overviewActive;
 
             // 아이들: 정착 포즈(홈⊕현재 페이즈 델타)를 1회만 쓰고 이후 프레임은 no-op —
             // 매 프레임 transform/FOV 재기입(하이어라키 dirty + 네이티브 세터)을 모바일에서
@@ -432,6 +451,24 @@ namespace Wassup.Presentation
                 _headroomVel = 0f;
             }
 
+            // 이동모드 오버뷰 채널 — 헤드룸 미러. dolly(음수=후퇴=줌아웃) + 선택적 pitch 를 가중치로 곱한다.
+            if (overviewActive)
+            {
+                Wassup.UI.KeyringSim.SpringStep(ref _overviewWeight, ref _overviewVel,
+                    overviewTarget, config.moveOverviewSpring, config.moveOverviewDamping, 0f,
+                    Mathf.Max(Time.unscaledDeltaTime, 1e-4f));
+                delta = CameraComposeMath.Add(delta, new CameraPoseDelta
+                {
+                    pitchDeg = config.moveOverviewPitchDeg * _overviewWeight,
+                    localPos = new Vector3(0f, 0f, config.moveOverviewDolly * _overviewWeight),
+                });
+            }
+            else
+            {
+                _overviewWeight = 0f;
+                _overviewVel = 0f;
+            }
+
             // 구두점 채널 — 가중치 페이드 갱신 후 펄스/셰이크 합산.
             _punctWeight = config.punctuationFadeSec <= 0f
                 ? punctTarget
@@ -540,6 +577,9 @@ namespace Wassup.Presentation
             _headroomWeight = 0f;
             _headroomVel = 0f;
             _headroomFedFrame = -10;
+            _overviewWeight = 0f;
+            _overviewVel = 0f;
+            _overviewFedFrame = -10;
             _kickRemaining = 0f;
             _pulseRemaining = 0f;
             _shakeHeat = 0f;

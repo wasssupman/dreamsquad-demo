@@ -121,6 +121,16 @@ namespace Wassup.Data
         [Tooltip("헤드룸 가중치 감쇠. 2*sqrt(spring) 이 임계감쇠(오버슈트 없음) — 그보다 낮으면 오버슈트.")]
         public float handHeadroomDamping = 14f;
 
+        [Header("이동모드 줌아웃 (defender-relocation) — 목적지 선택 중 고정 오버뷰")]
+        [Tooltip("이동모드 중 dolly(월드 유닛). 음수 = 후퇴 = 줌아웃. 목적지 선택 위해 보드를 넓게 보이게. 0 = 끔.")]
+        public float moveOverviewDolly = -4.5f;
+        [Tooltip("이동모드 중 pitch 델타(도). 음수 = 카메라를 눕힘. 0 = 유지.")]
+        public float moveOverviewPitchDeg = 0f;
+        [Tooltip("이동모드 줌아웃 가중치 스프링 계수. 클수록 빠르게 도달.")]
+        public float moveOverviewSpring = 90f;
+        [Tooltip("이동모드 줌아웃 가중치 감쇠.")]
+        public float moveOverviewDamping = 16f;
+
         [Header("앰비언트 브리딩 (unit 3) — 인지 임계 이하 상시 생명감")]
         [Tooltip("브리딩 위치 진폭(월드 유닛). 0 = 끔. 호버 셀 플립이 상한(spec).")]
         public float breathPosAmp = 0.03f;

@@ -36,8 +36,18 @@
 - [ ] **사용자 Play 시각 확인** — 하이라이트·범위·키링 룩·드랍. 뷰 비주얼이라 자동 재현 불가(원격).
 
 2026-07-24 자동 검증 통과 (PlayMode relocation 5/5). 사용자 시각 확인만 남음.
-**주의**: 키링은 `Shader.Find("Sprites/Default")` null 시 비주얼 생략(비행은 유지). 실기 빌드에서
-셰이더 포함 여부 확인 필요(미포함 시 Always Included Shaders 등록 or SerializeField Material 로 승격).
+**주의**: 키링은 `Shader.Find("Sprites/Default"→URP/Unlit→Unlit/Color)` 폴백. 다 null 시 비주얼 생략
+(아치 비행은 유지). 실기 빌드에서 셰이더 포함 여부 확인 필요.
+
+## 개정 (2026-07-24) — 사용자 피드백 반영
+
+1. **비행이 "평면 이동"으로 보임** → 아치를 `Vector3.up`(world) → **카메라 up** 으로 변경. Low-TopDown
+   뷰에서 world-up 아치는 시선과 겹쳐 foreshorten 되어 평면처럼 보였다. 카메라-up 은 화면 세로라
+   각도 무관하게 던지는 아치가 보인다(tap-to-place 키링 기준과 동일). `flightArcHeight` 기본값 1.2→1.8.
+2. **이동모드 카메라 통합** → 진입 경로 무관 **줌아웃 고정 오버뷰**. 기존엔 `SetInspectFocus`(소스 줌인)
+   였으나, 목적지 선택엔 보드 전체가 보여야 하므로 `SetMoveOverview()`(줌아웃) 로 교체. CameraDirector 에
+   좌표 없는 config 구동 채널 신설(`SetMoveOverview`, 헤드룸 채널 미러 — dolly 음수=후퇴=줌아웃 + 스프링
+   가중치). `CameraDirectionConfig.moveOverview*` 필드(코드 기본값이라 에셋 재배선 불요).
 
 ## 후속 후보
 

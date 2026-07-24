@@ -32,8 +32,8 @@ namespace Wassup.Data
         [Tooltip("비행 시간 상한(초)")]
         public float flightMaxSeconds = 0.9f;
 
-        [Tooltip("비행 아치 높이(sim 단위)")]
-        public float flightArcHeight = 1.2f;
+        [Tooltip("비행 아치 높이(카메라 up 방향, sim 단위) — 던지는 아치 가시성")]
+        public float flightArcHeight = 1.8f;
 
         [Header("비행 키링(고리+줄)")]
         [Tooltip("유닛 위 고리까지 줄 길이(카메라 up, sim 단위)")]
