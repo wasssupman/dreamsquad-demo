@@ -31,3 +31,7 @@
 - PlayMode 테스트 green, 콘솔 에러 0.
 - 배관 6개 + 리스크/리워드 2개 어서션 통과.
 - (밸런싱 — 킬 vs 스트레스 가중 실튜닝 — 은 후속. 이 테스트는 산식 성립만 고정.)
+
+✅ 확인 2026-07-25 — 가설(시간0·누수 saturation)은 결정론 EditMode `EndlessScoreTests` 3/3 로,
+통합(부팅·10초간격·30웨이브·mapPool 불변·누수무사망)은 PlayMode `EndlessModeSmokeTest` 1/1 로 분리 검증.
+full EditMode 1298/1298(회귀 0). 커밋 해시는 handoff(unit 5) 참조.
