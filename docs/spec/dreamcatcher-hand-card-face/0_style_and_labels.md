@@ -25,8 +25,10 @@ public static Color HandBody();
 // 카드 외곽 테두리: 무의식이면 SubconsciousFrame 보라, 아니면 어두운 중립.
 public static Color HandBorder(DreamcatcherCard c);
 // 대상 태그(역할 병기 — rev 1: 타입 색은 무명 코드라 칩이 대상+역할을 글자로 말한다):
-// Squad=축 라벨+" 버프"(전체 버프/레인저 버프/가디언 버프/1코스트 버프), Unit="아군 부착",
-// Active=skill.effect 파생(타일 지정/타일 2개/아군 지정), skill null·미지원=폴백 "필드".
+// Squad=축 라벨+" 버프"(전체 버프/레인저 버프/가디언 버프/1코스트 버프),
+// Unit=BountyMark 보유 시 "적 지정"(판별 = DreamcatcherCard.HasBountyMark — 조준 라우팅과
+// 단일 소스) / 그 외 "아군 부착", Active=skill.effect 파생(타일 지정/타일 2개/아군 지정),
+// skill null·미지원=폴백 "필드".
 public static string TargetTag(DreamcatcherCard c);
 ```
 

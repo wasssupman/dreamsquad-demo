@@ -37,8 +37,10 @@ public static Sprite MakeCardFace(int width, int height, float radius, float bor
   페이드 패턴 유지.
 - **태그 칩 신규**: 우상단, `UiRoundedSprite.Make` 라운드 칩(헤더색보다 어두운 틴트 + 흰 텍스트
   ~15pt, `CardCategoryStyle.TargetTag`). `CanvasGroup` 페이드 동참.
-- **본문 TMP 신규**: 헤더 아래~하단 패딩 10px, 좌상 정렬, `labelFont`(Jua), 오토사이즈 **16~20**
-  (floor 16 — 계약 8), `DreamcatcherCardText.BodyLinesOnly`. `CanvasGroup` 페이드 동참.
+- **본문 TMP 신규**: 헤더 아래~하단 패딩 10px, 좌상 정렬, `labelFont`(Jua), 오토사이즈
+  **18~24**(시각 검증 상향 — 계약 8 floor 16 상회), 랩 `Normal` 명시(+말줄임) — 코드베이스
+  관례상 TMP 랩은 기본값 신뢰 금지. `DreamcatcherCardText.BodyLinesOnly`(화살표 강제 줄바꿈
+  포함). `CanvasGroup` 페이드 동참.
 - 코스트 배지 무변경.
 - `cardOverlap` 기본값 54 → **16** (5장×172=860 < 패널 980 — 겹침은 감성 목적만 남긴다).
   ⚠ SerializeField 라 코드 기본값 변경은 **씬에 이미 직렬화된 54를 못 이긴다** —
@@ -49,8 +51,8 @@ public static Sprite MakeCardFace(int width, int height, float radius, float bor
 - `BindCard`: `face.sprite = 캐시된 MakeCardFace(...)`, `face.color = Color.white`.
   `card.art`/`skill.uiTint` 참조 제거. 이름·태그·본문 텍스트 기입.
 - `BindEmpty`: face 비활성 + root frame 만 기존 빈 슬롯 표시.
-- `RefreshUsability`: 사용 불가 dim 을 `group.alpha 0.42` 일괄 → **face 어두운 틴트 + alpha 0.75**
-  로 교체(계약 8 — 텍스트 가독 유지). 복원 시 face 틴트 원복(white).
+- `RefreshUsability`: 사용 불가 dim 을 `group.alpha 0.42` 일괄 → **face 어두운 틴트만(알파 1
+  고정, solid)** 으로 교체(계약 8 개정 — 알파 dim 은 보드 비침 = "투명 카드"). 복원 시 white.
 - `RestoreSlotHome`/`StartDeal`: 신규 태그·본문 `CanvasGroup` 을 기존 `nameGroup`/`costGroup`
   페이드 목록에 추가(펴짐 완료 후 페이드-인, 복원 시 alpha 1).
 
@@ -60,3 +62,6 @@ public static Sprite MakeCardFace(int width, int height, float radius, float bor
 - 에디터 Play: 손패 오픈 시 3타입 카드가 각각 블루/골드/청록 헤더 + 태그 + 이름 + 본문으로 표시,
   무의식 카드는 보라 테두리. 크럼플 딜인·press-lift·드래그·커밋·툴팁 정상.
 - 기존 PlayMode 손패 테스트 무회귀.
+
+확인 2026-07-25 — 커밋 `911056ec` + 시각 검증 이터레이션 픽스(랩 명시/solid 면/폰트 18~24/화살표
+줄바꿈 — unit 2 스탬프 커밋 참조). 사용자 Play 확인 후 종결.
