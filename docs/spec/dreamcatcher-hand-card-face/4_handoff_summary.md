@@ -44,7 +44,5 @@
 
 ## Follow-up
 
-- 아웃게임(덱빌더/브라우저/팝업) 동일 BG·태그 문법 통일 — README 후속 후보.
-- 실기기(Android) 폰트 가독 확인 — 에디터 Game 뷰 기준으로만 검증됨.
-- PlayMode 기존 실패 6건 원인 트래킹(본 spec 무관 판정 — 인프라/타 spec 플로우).
-- 태그 아이콘화·색약 팔레트 검증.
+- `docs/spec/README.md` Follow-up Backlog "손패 카드 시인성" 서브그룹 참조 (아웃게임 문법 통일 ·
+  실기기 폰트 확인 · PlayMode 기존 실패 6건 트래킹 · 태그 아이콘화/색약).

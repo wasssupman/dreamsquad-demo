@@ -121,6 +121,21 @@ code + git history        구현 상세
 
 > 출처 spec 이 섞여 있다. 그룹 헤더 또는 항목 끝의 `(spec-slug)` 라벨로 출처 표기.
 
+#### 손패 카드 시인성 (dreamcatcher-hand-card-face — 완료 2026-07-25)
+
+손패 카드에서 아트를 걷고 타입색 헤더 + 대상 태그 + 효과 본문 구조로 교체(프로토 검증용 —
+정식판은 원안 복귀 전제), 상단 툴팁은 조작 브리핑으로 전환했다.
+상세: `docs/spec/dreamcatcher-hand-card-face/`.
+
+- **아웃게임 카드 문법 통일** [M] — 덱빌더 그리드/덱 스트립/브라우저/상세 팝업을 같은 BG·태그
+  문법으로. `CardCategoryStyle` 손패 함수(HandHeader/TargetTag)가 그대로 소스
+- **실기기(Android) 폰트 가독 확인** [S] — 본문 18~24pt 는 에디터 Game 뷰 기준 검증. 태그 칩
+  (10~15pt)이 최우선 확인 대상
+- **PlayMode 기존 실패 6건 트래킹** [M] — 본 spec 검증 중 발견, spec 무관 판정(인증 서버 500 ·
+  Gift 페이즈 진입 2건 · 씬 전환 · 덱 캐리인 0장 · CcEffect ECS 예외). 타 세션 in-flight 작업과
+  대조 필요
+- **태그 아이콘화 + 색약 팔레트 검증** [S~M] — 칩에 아이콘 병행(색약 대응 겸), 타입 3색 대비 검증
+
 #### 점수 시스템 (battle-score-formula · score-tally-sequence — 둘 다 완료 2026-07-21)
 
 최종 점수를 예산 소모 모델(시간+스트레스+킬)로 교체하고, 전투 종료 후 합산 연출을 붙였다.
