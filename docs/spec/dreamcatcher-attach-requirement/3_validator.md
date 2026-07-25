@@ -23,3 +23,7 @@
 - compile 통과.
 - 임시로 위 3종 위반 카드를 **코드로 생성**(`ScriptableObject.CreateInstance`)한 EditMode 테스트에서 각 위반이 정확히 1건씩 리포트된다.
 - 현재 카탈로그 전체 스캔 결과 위반 0건(기존 카드는 전부 `attachRequire==None`).
+
+확인 2026-07-25 — 컴파일 에러 0 · EditMode 1332건(1330 pass / 0 fail / 2 기존 Ignore), 신규 5건(정상·무효 2종·없는 id·카탈로그 부재 시 생략·범위 밖 2종·범위밖+무효 동시 2건 보고) · 메뉴 실사 실행 로그 `카드 44장 중 0장에서 0건. 위반 없음.`
+
+구현 노트: 검증 코어는 순수 `CollectWarnings(card, knownUnitIds)` 이고, 배치 메뉴(`Wassup/Tools/Validate Dreamcatcher Attach Requirements`)와 `DreamcatcherCard` 인스펙터 HelpBox 가 이를 공유한다(`UnitVisualDataValidator` 선례). 인스펙터는 매 `OnInspectorGUI` 에셋 스캔을 피하려 id 존재 검사를 생략 — 그 항목은 배치 메뉴 담당.
