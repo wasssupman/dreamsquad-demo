@@ -44,14 +44,12 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             int checked_ = 0;
             foreach (JObject row in rows)
             {
-                // 현재 카탈로그는 전부 제한 없음(attachRequire == None) → 세 키 모두 부재.
-                string kind = (string)row["attachRequire"];
+                // 현재 카탈로그는 전부 제한 없음(attachType == None) → 세 키 모두 부재.
+                string kind = (string)row["attachType"];
                 if (kind != null) continue; // 제한이 설정된 카드가 생기면 그 행은 대상 밖
                 checked_++;
-                Assert.IsNull(row["attachRequireClass"],
-                    $"'{(string)row["id"]}': 제한 없는 행에 attachRequireClass 키가 있으면 안 된다");
-                Assert.IsNull(row["attachRequireUnitId"],
-                    $"'{(string)row["id"]}': 제한 없는 행에 attachRequireUnitId 키가 있으면 안 된다");
+                Assert.IsNull(row["attachValue"],
+                    $"'{(string)row["id"]}': 제한 없는 행에 attachValue 키가 있으면 안 된다");
             }
             Assert.Greater(checked_, 0, "제한 없는 카드 행이 하나 이상 검사되어야 한다");
         }

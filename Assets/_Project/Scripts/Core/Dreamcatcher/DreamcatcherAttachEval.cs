@@ -32,19 +32,36 @@ namespace Wassup.Core
             DefenderClass hostRole, string hostUnitId)
         {
             if (card == null) return false;
-            switch (card.attachRequire)
+            switch (card.attachType)
             {
-                case DcAttachRequireKind.None:
+                case DcAttachType.None:
                     return true;
-                case DcAttachRequireKind.Class:
-                    return card.attachRequireClass != DefenderClass.None
-                        && hostRole == card.attachRequireClass;
-                case DcAttachRequireKind.UnitId:
-                    return !string.IsNullOrEmpty(card.attachRequireUnitId)
-                        && string.Equals(hostUnitId, card.attachRequireUnitId, StringComparison.Ordinal);
+                case DcAttachType.Class:
+                    return TryParseAttachClass(card.attachValue, out var cls) && hostRole == cls;
+                case DcAttachType.UnitId:
+                    // id 는 저장 키라 ordinal — 대소문자가 다르면 다른 유닛이다.
+                    return !string.IsNullOrEmpty(card.attachValue)
+                        && string.Equals(hostUnitId, card.attachValue, StringComparison.Ordinal);
                 default:
-                    return false; // 미래 kind append 시 배선 전까지 안전 기본값
+                    return false; // 미래 type append 시 배선 전까지 안전 기본값
             }
+        }
+
+        // unit 7 rev — attachValue 를 DefenderClass 로 읽는 단일 지점. 판정·무효검사·
+        // 문안·validator 가 모두 이걸 쓰므로 "무엇이 유효한 클래스 값인가"가 한 곳에 있다.
+        //
+        // 대소문자는 무시한다(시트에 손으로 적는 값이고 DefenderClass 이름끼리 대소문자만
+        // 다른 쌍이 없다). 단 Enum.TryParse 는 "1" 같은 숫자 문자열도 통과시키므로 이름
+        // 왕복으로 배제한다 — 시트에 숫자를 적으면 조용히 엉뚱한 클래스가 되는 걸 막는다.
+        // None 은 제한으로서 무의미하므로 실패로 취급(fail-closed).
+        public static bool TryParseAttachClass(string value, out DefenderClass cls)
+        {
+            cls = DefenderClass.None;
+            if (string.IsNullOrEmpty(value)) return false;
+            if (!Enum.TryParse(value, ignoreCase: true, out cls)) { cls = DefenderClass.None; return false; }
+            if (!cls.ToString().Equals(value, StringComparison.OrdinalIgnoreCase))
+            { cls = DefenderClass.None; return false; }
+            return cls != DefenderClass.None;
         }
 
         // unit 1·3 공유 — "제한이 설정됐지만 값이 비어 무의미한가"(= fail-closed 사유).
@@ -53,12 +70,13 @@ namespace Wassup.Core
         public static bool HasInvalidAttachRequirement(DreamcatcherCard card)
         {
             if (card == null) return false;
-            switch (card.attachRequire)
+            switch (card.attachType)
             {
-                case DcAttachRequireKind.Class:
-                    return card.attachRequireClass == DefenderClass.None;
-                case DcAttachRequireKind.UnitId:
-                    return string.IsNullOrEmpty(card.attachRequireUnitId);
+                case DcAttachType.Class:
+                    // 빈 값 · 알 수 없는 이름 · None — 전부 "어디에도 안 붙는" 설정이다.
+                    return !TryParseAttachClass(card.attachValue, out _);
+                case DcAttachType.UnitId:
+                    return string.IsNullOrEmpty(card.attachValue);
                 default:
                     return false;
             }

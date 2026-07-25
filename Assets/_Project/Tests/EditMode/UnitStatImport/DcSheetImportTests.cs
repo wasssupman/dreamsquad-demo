@@ -78,16 +78,15 @@ namespace Wassup.Tests.EditMode.UnitStatImport
         // -------- dreamcatcher-attach-requirement unit 2: 부착 제한 3열 --------
 
         [Test]
-        public void Deserialize_CardDto_ParsesAttachRequirementEnumsByName()
+        public void Deserialize_CardDto_ParsesAttachTypeByName_AndValueAsString()
         {
-            const string json = @"[{ ""id"": ""x"", ""attachRequire"": ""Class"",
-                ""attachRequireClass"": ""Guardian"" }]";
+            const string json = @"[{ ""id"": ""x"", ""attachType"": ""Class"",
+                ""attachValue"": ""Guardian"" }]";
 
             var rows = JsonConvert.DeserializeObject<DcCardDto[]>(json);
 
-            Assert.AreEqual(DcAttachRequireKind.Class, rows[0].attachRequire);
-            Assert.AreEqual(DefenderClass.Guardian, rows[0].attachRequireClass);
-            Assert.IsNull(rows[0].attachRequireUnitId, "생략된 열은 null 유지");
+            Assert.AreEqual(DcAttachType.Class, rows[0].attachType);
+            Assert.AreEqual("Guardian", rows[0].attachValue);
         }
 
         [Test]
@@ -99,27 +98,27 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             {
                 cards = new[]
                 {
-                    new DcCardDto { id = "c_cls", attachRequire = DcAttachRequireKind.Class,
-                        attachRequireClass = DefenderClass.Guardian },
-                    new DcCardDto { id = "c_uid", attachRequire = DcAttachRequireKind.UnitId,
-                        attachRequireUnitId = "shield_shuttle" },
+                    new DcCardDto { id = "c_cls", attachType = DcAttachType.Class,
+                        attachValue = "Guardian" },
+                    new DcCardDto { id = "c_uid", attachType = DcAttachType.UnitId,
+                        attachValue = "shield_shuttle" },
                 },
             };
 
             Apply(payload, new Dictionary<string, DreamcatcherCard> { ["c_cls"] = cls, ["c_uid"] = uid });
 
-            Assert.AreEqual(DcAttachRequireKind.Class, cls.attachRequire);
-            Assert.AreEqual(DefenderClass.Guardian, cls.attachRequireClass);
-            Assert.AreEqual(DcAttachRequireKind.UnitId, uid.attachRequire);
-            Assert.AreEqual("shield_shuttle", uid.attachRequireUnitId);
+            Assert.AreEqual(DcAttachType.Class, cls.attachType);
+            Assert.AreEqual("Guardian", cls.attachValue);
+            Assert.AreEqual(DcAttachType.UnitId, uid.attachType);
+            Assert.AreEqual("shield_shuttle", uid.attachValue);
         }
 
         [Test]
         public void ApplyCards_BlankAttachColumns_KeepExistingRestriction()
         {
             var so = NewCard("c");
-            so.attachRequire = DcAttachRequireKind.Class;
-            so.attachRequireClass = DefenderClass.Guardian;
+            so.attachType = DcAttachType.Class;
+            so.attachValue = "Guardian";
             var payload = new DcSheetPayload
             {
                 // 부착 열 전부 빈 셀(null) — 다른 열만 갱신한다.
@@ -129,8 +128,8 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             Apply(payload, new Dictionary<string, DreamcatcherCard> { ["c"] = so });
 
             Assert.AreEqual("new", so.displayName);
-            Assert.AreEqual(DcAttachRequireKind.Class, so.attachRequire, "빈 셀은 blank=keep");
-            Assert.AreEqual(DefenderClass.Guardian, so.attachRequireClass);
+            Assert.AreEqual(DcAttachType.Class, so.attachType, "빈 셀은 blank=keep");
+            Assert.AreEqual("Guardian", so.attachValue);
         }
 
         [Test]
@@ -138,17 +137,17 @@ namespace Wassup.Tests.EditMode.UnitStatImport
         {
             // 제한 해제의 **유일한** 수단 — 빈 셀이 아니라 None 명시.
             var so = NewCard("c");
-            so.attachRequire = DcAttachRequireKind.UnitId;
-            so.attachRequireUnitId = "shield_shuttle";
+            so.attachType = DcAttachType.UnitId;
+            so.attachValue = "shield_shuttle";
             var payload = new DcSheetPayload
             {
-                cards = new[] { new DcCardDto { id = "c", attachRequire = DcAttachRequireKind.None } },
+                cards = new[] { new DcCardDto { id = "c", attachType = DcAttachType.None } },
             };
 
             Apply(payload, new Dictionary<string, DreamcatcherCard> { ["c"] = so });
 
-            Assert.AreEqual(DcAttachRequireKind.None, so.attachRequire);
-            Assert.AreEqual("shield_shuttle", so.attachRequireUnitId,
+            Assert.AreEqual(DcAttachType.None, so.attachType);
+            Assert.AreEqual("shield_shuttle", so.attachValue,
                 "kind 가 판별자 — 잔존 unitId 는 inert 이므로 청소하지 않는다");
         }
 

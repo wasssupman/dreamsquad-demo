@@ -47,20 +47,16 @@ namespace Wassup.Editor.UnitStatImport
                 var row = new CardRow();
                 UnitStatFieldMapper.ReadFieldsToDto(so, row);
                 row._skillId = so.skill != null ? so.skill.id : null;
-                // dreamcatcher-attach-requirement unit 2 — 제한 없는 카드만 3열 blank
-                // (null → 키 생략, NullValueHandling.Ignore). 현재 전 카드가 여기 해당하므로
-                // 시트에 enum-zero 노이즈("None"/"None"/"")가 설정된 것처럼 보이지 않는다.
+                // dreamcatcher-attach-requirement unit 2(+unit 7 rev) — 제한 없는 카드만
+                // 2열 blank(null → 키 생략, NullValueHandling.Ignore). 현재 전 카드가 여기
+                // 해당하므로 시트에 enum-zero 노이즈가 설정된 것처럼 보이지 않는다.
                 //
-                // review M2 — 제한이 **걸린** 카드는 비소비 companion 열도 그대로 내보낸다.
-                // blank 하면 시트에는 안 보이는데 에셋에는 남은 잔존값이, 나중에 kind 를
-                // Class 로 바꾸는 순간 blank=keep 때문에 조용히 되살아난다(예: 잔존
-                // attachRequireClass=Support → 의도와 달리 '서포트 전용'). 런타임에서 잔존값이
-                // inert 라는 계약은 그대로 두고, 시트에서는 **보이게** 해서 함정을 없앤다.
-                if (so.attachRequire == DcAttachRequireKind.None)
+                // 값 칸이 하나뿐이라 구 3필드 설계의 "잔존 companion 부활" 함정(review M2)이
+                // 구조적으로 없다 — type 을 바꾸면 같은 칸의 값을 반드시 함께 보게 된다.
+                if (so.attachType == DcAttachType.None)
                 {
-                    row.attachRequire = null;
-                    row.attachRequireClass = null;
-                    row.attachRequireUnitId = null;
+                    row.attachType = null;
+                    row.attachValue = null;
                 }
                 cardRows.Add(row);
 

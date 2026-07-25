@@ -12,9 +12,9 @@
 
 카탈로그의 `DreamcatcherCard` 전체를 스캔해 아래를 리포트한다. MenuItem 1개 + 리포트 로그(경고 목록 + 총계) 형태로, 기존 시트 import 창의 로그 관행을 따른다.
 
-1. **무효 설정** — `attachRequire==Class` 인데 `attachRequireClass==None` / `attachRequire==UnitId` 인데 `attachRequireUnitId` 가 빈 문자열. 둘 다 fail-closed 라 그 카드는 어떤 유닛에도 붙지 않는다.
-2. **없는 유닛 id** — `attachRequireUnitId` 가 `DefenderCatalog.units` 의 어느 `id` 와도 일치하지 않음. 오타/리네임 잔재 검출.
-3. **범위 밖 설정 (조용한 무효)** — `attachRequire != None` 인데 `type != Unit`(Squad/Active), 또는 `HasBountyMark()` 인 적 타겟 카드. 이 조합은 게이트 함수를 아예 통과하지 않으므로 런타임 경고조차 안 난다 — validator 만이 잡을 수 있는 유일한 항목이다.
+1. **무효 값** — `attachValue` 가 비었거나(두 type 공통), `Class` 인데 값을 클래스 이름으로 읽을 수 없다(오타·숫자·`None`). 전부 fail-closed 라 그 카드는 어떤 유닛에도 붙지 않는다. **오타 검출은 rev 후 validator 의 고유 몫**이다 — 값이 string 이 되면서 import 시점 enum 예외가 없어졌기 때문(`7_field_shape_rev.md`). 문구에 문제 값과 허용 이름을 함께 담는다.
+2. **없는 유닛 id** — `attachValue` 가 `DefenderCatalog.units` 의 어느 `id` 와도 일치하지 않음. 오타/리네임 잔재 검출.
+3. **범위 밖 설정 (조용한 무효)** — `attachType != None` 인데 `type != Unit`(Squad/Active), 또는 `HasBountyMark()` 인 적 타겟 카드. 이 조합은 게이트 함수를 아예 통과하지 않으므로 런타임 경고조차 안 난다 — validator 만이 잡을 수 있는 유일한 항목이다.
 
 시트 export 시점 경고로 대체하지 않는다: export 는 Unity→시트 방향이고, 문제 값은 시트→Unity import 로 들어온다.
 
@@ -22,7 +22,7 @@
 
 - compile 통과.
 - 임시로 위 3종 위반 카드를 **코드로 생성**(`ScriptableObject.CreateInstance`)한 EditMode 테스트에서 각 위반이 정확히 1건씩 리포트된다.
-- 현재 카탈로그 전체 스캔 결과 위반 0건(기존 카드는 전부 `attachRequire==None`).
+- 현재 카탈로그 전체 스캔 결과 위반 0건(기존 카드는 전부 `attachType==None`).
 
 확인 2026-07-25 — 컴파일 에러 0 · EditMode 1332건(1330 pass / 0 fail / 2 기존 Ignore), 신규 5건(정상·무효 2종·없는 id·카탈로그 부재 시 생략·범위 밖 2종·범위밖+무효 동시 2건 보고) · 메뉴 실사 실행 로그 `카드 44장 중 0장에서 0건. 위반 없음.`
 

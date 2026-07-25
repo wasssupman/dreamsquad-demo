@@ -16,13 +16,12 @@
    ```csharp
    // dreamcatcher-attach-requirement unit 0 — 부착 시점 정적 술어. 발동 게이트
    // (DcGateKind)와 레이어가 다르다. append-only.
-   public enum DcAttachRequireKind { None, Class, UnitId }
+   public enum DcAttachType { None, Class, UnitId }
    ```
 2. 카드 필드 append (직렬화 순서 안정 — 클래스 끝, `leakAllowanceCost` 뒤):
    ```csharp
-   public DcAttachRequireKind attachRequire;   // None = 제한 없음(기존 카드 zero-init)
-   public DefenderClass attachRequireClass;    // attachRequire==Class 일 때만 읽힘
-   public string attachRequireUnitId;          // attachRequire==UnitId 일 때만 읽힘 (DefenderUnitData.id)
+   public DcAttachType attachType;  // None = 제한 없음(기존 카드 zero-init)
+   public string attachValue;       // type 이 읽는 방식을 정한다(unit 7 rev)
    ```
 3. 순수 판정 — **`WouldApply` 시그니처는 건드리지 않는다**:
    ```csharp
@@ -30,9 +29,9 @@
    public static bool MeetsAttachRequirement(DreamcatcherCard card, DefenderClass hostRole, string hostUnitId)
    ```
    - `None` → true
-   - `Class` → `attachRequireClass != DefenderClass.None && hostRole == attachRequireClass` (무효 설정 = fail-closed false)
-   - `UnitId` → `!string.IsNullOrEmpty(attachRequireUnitId) && string.Equals(hostUnitId, attachRequireUnitId, StringComparison.Ordinal)`
-   - `kind` 가 판별자이므로 나머지 두 필드는 해당 분기에서만 읽힌다(잔존 값 inert).
+   - `Class` → `TryParseAttachClass(attachValue, out var cls) && hostRole == cls` (빈 값·오타·숫자·`None` = fail-closed)
+   - `UnitId` → `!string.IsNullOrEmpty(attachValue) && string.Equals(hostUnitId, attachValue, StringComparison.Ordinal)`
+   - 값 해석 규칙의 단일 지점은 `TryParseAttachClass` — 상세는 `7_field_shape_rev.md`.
 
 **왜 `WouldApply` 확장이 아닌가** (리뷰 확정): ① 커밋 경로(`ApplyDreamcatcherCardToUnit`)는 애초에 `WouldApply` 를 부르지 않고 자체 preflight 체인을 쓴다 ② 비-Unit 호출처(`BattleBridge.Dreamcatcher.cs:698`)는 Squad 조기 return 이라 새 인자를 절대 읽지 않는데 더미를 넘겨야 한다 ③ 독립 함수로 두면 `DreamcatcherAttachEvalTests` 편집이 3곳 → **0곳**. 제약 8(불필요한 추상 레이어 금지)에도 부합.
 

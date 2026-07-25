@@ -372,13 +372,11 @@ namespace Wassup.Tests.EditMode
 
         // ── dreamcatcher-attach-requirement unit 4: 부착 제한 접두 ────────────────
 
-        private DreamcatcherCard RequireCard(DcAttachRequireKind kind,
-            DefenderClass cls = DefenderClass.None, string unitId = null)
+        private DreamcatcherCard RequireCard(DcAttachType type, string value = null)
         {
             var card = Card(CardType.Unit, description: "부착 즉시 → 뭔가 한다");
-            card.attachRequire = kind;
-            card.attachRequireClass = cls;
-            card.attachRequireUnitId = unitId;
+            card.attachType = type;
+            card.attachValue = value;
             return card;
         }
 
@@ -387,7 +385,7 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void AttachRequirement_ClassPrefix_IsFirstLine()
         {
-            var card = RequireCard(DcAttachRequireKind.Class, cls: DefenderClass.Guardian);
+            var card = RequireCard(DcAttachType.Class, "Guardian");
             Assert.AreEqual("가디언 전용", FirstLine(DreamcatcherCardText.BodyLinesOnly(card)));
             Assert.That(DreamcatcherCardText.Body(card), Does.Contain("가디언 전용"));
         }
@@ -395,7 +393,7 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void AttachRequirement_UnitIdPrefix_UsesResolverThenFallsBackToId()
         {
-            var card = RequireCard(DcAttachRequireKind.UnitId, unitId: "shield_shuttle");
+            var card = RequireCard(DcAttachType.UnitId, "shield_shuttle");
 
             Assert.AreEqual("실드셔틀 전용", FirstLine(DreamcatcherCardText.BodyLinesOnly(
                 card, id => id == "shield_shuttle" ? "실드셔틀" : null)));
@@ -410,17 +408,17 @@ namespace Wassup.Tests.EditMode
         {
             // 무효 설정에 "None 전용" 같은 문구를 보이지 않는다 — fail-closed 는 게이트/validator 담당.
             Assert.That(DreamcatcherCardText.BodyLinesOnly(
-                RequireCard(DcAttachRequireKind.Class, cls: DefenderClass.None)),
+                RequireCard(DcAttachType.Class, "")),
                 Does.Not.Contain("전용"));
             Assert.That(DreamcatcherCardText.BodyLinesOnly(
-                RequireCard(DcAttachRequireKind.UnitId, unitId: "")),
+                RequireCard(DcAttachType.UnitId, "")),
                 Does.Not.Contain("전용"));
         }
 
         [Test]
         public void AttachRequirement_UnrestrictedCard_BodyUnchanged()
         {
-            var card = RequireCard(DcAttachRequireKind.None);
+            var card = RequireCard(DcAttachType.None);
             Assert.AreEqual("부착 즉시 → 뭔가 한다".Replace(" → ", " →\n"),
                 DreamcatcherCardText.BodyLinesOnly(card), "제한 없는 카드 문안은 무변화");
         }

@@ -23,22 +23,23 @@ namespace Wassup.Data.StatImport
         // exporter/applier 변경 없이 reflection 이 양방향을 처리하고, 서버는 새 키를
         // 오른쪽 새 열로 추가한다. 빈 셀은 null → 기존 값 유지(blank=keep).
         public int? visible;
-        // dreamcatcher-attach-requirement unit 2 — 부착 대상 제한 3열. 이름이 SO 와 1:1
-        // 이라 reflection 매퍼가 양방향을 처리한다. enum 은 이름 문자열로 오간다
-        // (StringEnumConverter — 예 "Class" / "Guardian").
+        // dreamcatcher-attach-requirement unit 2(+unit 7 rev) — 부착 대상 제한 2열.
+        // 이름이 SO 와 1:1 이라 reflection 매퍼가 양방향을 처리한다. attachType 은 이름
+        // 문자열로 오간다(StringEnumConverter — "None"/"Class"/"UnitId").
+        // attachValue 는 type 이 정하는 대로 읽힌다: Class→클래스 이름("Guardian"),
+        // UnitId→유닛 id("shield_shuttle").
         //
-        // ⚠ 제한 **해제**는 attachRequire 열에 `None` 을 명시해야 한다. 빈 셀은
-        // blank=keep(ApplyNonNullFields 가 null 만 skip)이라 해제가 아니다. kind 가
-        // 판별자이므로 None 만 적으면 남은 class/unitId 값은 inert — 청소 불요.
+        // ⚠ 제한 **해제**는 attachType 열에 `None` 을 명시해야 한다. 빈 셀은
+        // blank=keep(ApplyNonNullFields 가 null 만 skip)이라 해제가 아니다. None 을 적으면
+        // attachValue 는 읽히지 않으므로 값 칸은 비우지 않아도 된다.
         //
         // ⚠ 미검증 전제(review): "string 은 빈칸으로 지울 수 없다" 는 빈 셀이 JSON 에
         // **키 생략**으로 도착할 때만 참이다. 서버 시트→JSON 단계가 빈 텍스트 셀을
-        // ""(빈 문자열)로 내보내면 non-null 이라 그대로 써서 attachRequireUnitId 가
+        // ""(빈 문자열)로 내보내면 non-null 이라 그대로 써서 attachValue 가
         // 지워진다(그 뒤 fail-closed 경고). 그 단계는 이 repo 밖이라 확인하지 못했다 —
         // 시트 연동 후 실제 페이로드로 한 번 확인할 것.
-        public DcAttachRequireKind? attachRequire;
-        public DefenderClass? attachRequireClass;
-        public string attachRequireUnitId;
+        public DcAttachType? attachType;
+        public string attachValue;
     }
 
     // Sheet-SoT child row (effects[] rebuild): slot is the ordering/identity key.

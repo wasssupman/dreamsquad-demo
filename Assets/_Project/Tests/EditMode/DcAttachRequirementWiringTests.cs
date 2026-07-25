@@ -78,8 +78,8 @@ namespace Wassup.Tests.EditMode
             var card = ScriptableObject.CreateInstance<DreamcatcherCard>();
             card.type = CardType.Unit;
             card.description = "부착 즉시 → 뭔가 한다";
-            card.attachRequire = DcAttachRequireKind.UnitId;
-            card.attachRequireUnitId = id;
+            card.attachType = DcAttachType.UnitId;
+            card.attachValue = id;
 
             Assert.That(DreamcatcherCardText.BodyLinesOnly(card, catalog.DisplayNameOf),
                 Does.StartWith($"{expectedName} 전용"), "해석기를 넘기면 표시명 접두");

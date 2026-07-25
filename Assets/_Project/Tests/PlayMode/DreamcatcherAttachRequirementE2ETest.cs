@@ -58,11 +58,11 @@ namespace Wassup.Tests.PlayMode
             Assert.AreNotEqual(Entity.Null, gHost, "guardian host resolved");
             Assert.AreNotEqual(Entity.Null, rHost, "ranger host resolved");
 
-            var classCard = RequireCard(DcAttachRequireKind.Class, cls: DefenderClass.Guardian);
-            var idCard = RequireCard(DcAttachRequireKind.UnitId, unitId: "guardian");
-            var wrongIdCard = RequireCard(DcAttachRequireKind.UnitId, unitId: "ranger");
-            var invalidCard = RequireCard(DcAttachRequireKind.Class, cls: DefenderClass.None);
-            var freeCard = RequireCard(DcAttachRequireKind.None);
+            var classCard = RequireCard(DcAttachType.Class, "Guardian");
+            var idCard = RequireCard(DcAttachType.UnitId, "guardian");
+            var wrongIdCard = RequireCard(DcAttachType.UnitId, "ranger");
+            var invalidCard = RequireCard(DcAttachType.Class, "");
+            var freeCard = RequireCard(DcAttachType.None);
 
             // ── ① UI 판정 (읽기 전용 — 어떤 apply 보다 먼저 본다) ──────────────────
             Assert.IsTrue(bridge.WouldDreamcatcherCardApply(gHost, classCard),
@@ -127,7 +127,7 @@ namespace Wassup.Tests.PlayMode
             // 코스트가 0 이 아니어야 '무차감'이 의미를 갖는다.
             var cfg = ScriptableObject.CreateInstance<AwakeningConfig>();
             cfg.costUnit = 30; cfg.gaugeMax = 100; cfg.handSize = 5; cfg.maxAttachPerUnit = 3;
-            var card = RequireCard(DcAttachRequireKind.Class, cls: DefenderClass.Guardian);
+            var card = RequireCard(DcAttachType.Class, "Guardian");
             var deck = new DreamcatcherCycleDeck(new List<DreamcatcherCard> { card }, 0);
 
             var go = new GameObject("HandController_AttachRequirement");
@@ -175,11 +175,10 @@ namespace Wassup.Tests.PlayMode
 
         // 제한 외 조건은 두 host 모두 통과하는 카드 — HeavyStrike 는 양수 Damage output 만
         // 요구하고 가디언·레인저 둘 다 보유하므로 제한이 유일한 변수가 된다.
-        private static DreamcatcherCard RequireCard(DcAttachRequireKind kind,
-            DefenderClass cls = DefenderClass.None, string unitId = null)
+        private static DreamcatcherCard RequireCard(DcAttachType type, string value = null)
         {
             var card = ScriptableObject.CreateInstance<DreamcatcherCard>();
-            card.id = $"test_require_{kind}_{cls}_{unitId}";
+            card.id = $"test_require_{type}_{value}";
             card.axis = CardTargetAxis.All;
             card.type = CardType.Unit;
             card.effects = new CardEffect[0];
@@ -188,9 +187,8 @@ namespace Wassup.Tests.PlayMode
                 trigger = new DcTriggerSpec { kind = DcTriggerKind.AttackN, period = 1 },
                 payload = new DcPayloadSpec { kind = DcPayloadKind.HeavyStrike, magnitude = 2f },
             }};
-            card.attachRequire = kind;
-            card.attachRequireClass = cls;
-            card.attachRequireUnitId = unitId;
+            card.attachType = type;
+            card.attachValue = value;
             return card;
         }
 

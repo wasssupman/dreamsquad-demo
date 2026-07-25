@@ -1,14 +1,14 @@
 # dreamcatcher-attach-requirement — 부착 대상 제한 필드 (클래스 / 특정 유닛)
 
-상태: 구현 완료 2026-07-25 (units 0~5) — 사용자 체감(문안 노출) 확인 대기
+상태: 구현 완료 2026-07-25 (units 0~5 + unit 7 rev) — 사용자 체감(문안 노출) 확인 대기
 
-검증: EditMode **1339건**(1337 pass / 0 fail / 2 기존 Ignore, 신규 23건) · PlayMode 신규 **1건** pass(부착 게이트 e2e). 문안 배선 검증은 PlayMode 가 아니라 EditMode 3건(`DcAttachRequirementWiringTests`) — 씬 런타임 로드가 뒤따르는 전투 테스트를 오염시켜 unit 5 에서 의도적으로 옮겼다(경위는 `5_text_wiring.md`). validator 실사 스캔 `카드 44장 중 0건`. PlayMode 전체 잔여 실패 6건은 clean 트리 재현으로 **사전 실패** 확정.
+검증: EditMode **1343건**(1341 pass / 0 fail / 2 기존 Ignore, 신규 27건) · PlayMode 신규 **2건** pass(부착 게이트 e2e + 무차감 보장). 문안 배선 검증은 PlayMode 가 아니라 EditMode 3건(`DcAttachRequirementWiringTests`) — 씬 런타임 로드가 뒤따르는 전투 테스트를 오염시켜 unit 5 에서 의도적으로 옮겼다(경위는 `5_text_wiring.md`). validator 실사 스캔 `카드 44장 중 0건`. PlayMode 전체 잔여 실패 6건은 clean 트리 재현으로 **사전 실패** 확정.
 
 ## 상위 목표
 
 Unit 타입 드림캐쳐에 **부착 시점 정적 술어**("가디언에만 부착 가능" / "방패셔틀에만 부착 가능")를 데이터 필드로 추가한다. 기존 capability 게이트(투사체/데미지 output — `DreamcatcherAttachEval`)는 그대로 두고 그 위에 겹친다. 필드는 시트(DcCards 탭)에서 제어된다.
 
-검증 질문: *시트에서 `attachRequire=Class, attachRequireClass=Guardian` 을 넣으면 그 카드는 가디언이 아닌 유닛에 드래그 시 invalid 리티클이 뜨고, 커밋 시 무차감 거절되며, 문안에 "가디언 전용"이 표기되는가? 필드를 비운 기존 카드는 전부 무회귀인가?*
+검증 질문: *시트에서 `attachType=Class, attachValue=Guardian` 을 넣으면 그 카드는 가디언이 아닌 유닛에 드래그 시 invalid 리티클이 뜨고, 커밋 시 무차감 거절되며, 문안에 "가디언 전용"이 표기되는가? 필드를 비운 기존 카드는 전부 무회귀인가?*
 
 ## 작업 단위
 
@@ -21,15 +21,16 @@ Unit 타입 드림캐쳐에 **부착 시점 정적 술어**("가디언에만 부
 | `4_card_text_formatter.md` | 문안 | 포매터 접두 조립 + 골든 (optional resolver) |
 | `5_text_wiring.md` | 배선 | 소비처 4곳 resolver 주입 + 씬 wiring + Play 육안 |
 | `6_handoff_summary.md` | (종료 시) | 인계 요약 |
+| `7_field_shape_rev.md` | rev | 필드 형태 3→2 (`attachType`+`attachValue`) |
 
 ## Feature-wide 계약
 
-- **정의 계층 append-only**: 카드 끝에 `attachRequire`(`DcAttachRequireKind{None, Class, UnitId}`) · `attachRequireClass`(`DefenderClass`) · `attachRequireUnitId`(string). zero-init = 제한 없음 → 기존 카드 무손상. `kind` 가 판별자 — 나머지 두 필드는 해당 분기에서만 읽히므로 잔존 값은 inert.
+- **정의 계층 append-only**: 카드 끝에 `attachType`(`DcAttachType{None, Class, UnitId}`) + `attachValue`(string) **2필드**. zero-init = 제한 없음 → 기존 카드 무손상. `attachType` 이 `attachValue` 를 읽는 방식을 정한다 — `Class`=클래스 이름(대소문자 무시), `UnitId`=유닛 id(ordinal). 값 칸이 하나라 "종류를 바꿨는데 옛 값이 되살아나는" 함정이 구조적으로 없다(unit 7 rev).
 - **적용 범위 = `CardType.Unit` 의 defender 부착 경로만** (2026-07-25 사용자 결정). Squad(host 무제약 계약 유지)·Active·BountyMark 비적용. 클래스 제한은 **단일 클래스**(같은 결정). 유닛 매칭 키는 `DefenderUnitData.id`(저장용 안정 키, ordinal) — 표시명 아님.
 - **판정 = 단일 함수, 두 소비처**: `MeetsAttachRequirement` 를 `WouldDreamcatcherCardApply`(UI 스냅샷)와 `ApplyDreamcatcherCardToUnit`(커밋 preflight)이 각각 호출한다. **`WouldApply` 시그니처는 확장하지 않는다** — 커밋 경로는 `WouldApply` 를 부르지 않고, 비-Unit 호출처는 새 인자를 읽지 않으며, 독립 함수면 기존 EditMode 편집이 0곳이다.
-- **fail-closed**: 무효 설정(Class×None / UnitId×빈문자열) 또는 host 데이터 조회 실패 시 불허 + loud 경고. 제한이 조용히 풀리는 쪽보다 눈에 띄게 안 붙는 쪽을 택한다.
+- **fail-closed**: 값을 못 읽거나(빈 값 · `Class` 인데 오타·숫자·`None`) host 데이터 조회 실패 시 불허 + loud 경고. 제한이 조용히 풀리는 쪽보다 눈에 띄게 안 붙는 쪽을 택한다. 값 해석 규칙의 단일 지점은 `DreamcatcherAttachEval.TryParseAttachClass`.
 - **커밋 거절 = 카드 전체·무차감**: preflight 는 `DefenderUnitTag` 검사 직후·모든 쓰기 전. `-1` 반환이 `DreamcatcherHandController.cs:342` 에서 `AttachAndSpend` 전에 걸려 무차감·카드 잔류를 보장한다.
-- **시트**: `DcCardDto` 에 nullable 3필드 append(reflection 양방향 자동). enum 셀은 **이름 문자열**(`Class`/`Guardian` — `StringEnumConverter`). **제한 해제는 `attachRequire=None` 을 명시** — 빈 셀은 "유지"라서 해제 수단이 아니다(string 을 빈칸으로 지울 수 없음).
+- **시트**: `DcCardDto` 에 **2필드** append(reflection 양방향 자동). `attachType` 셀은 이름 문자열(`None`/`Class`/`UnitId` — `StringEnumConverter`), `attachValue` 는 자유 문자열(`Guardian` / `shield_shuttle`). **제한 해제는 `attachType=None` 을 명시** — 빈 셀은 "유지"라서 해제 수단이 아니다.
 - **문안 자동 표기** (2026-07-25 사용자 결정): 포매터가 "가디언 전용" / "{유닛명} 전용" 접두를 조립하고, 유닛 표시명은 caller 주입 resolver(실패 시 id 폴백)로 해석 — 포매터는 카탈로그를 직접 알지 않는다.
 
 ### 의도된 동작 (버그로 오인 금지)

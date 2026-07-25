@@ -26,29 +26,39 @@ namespace Wassup.Editor.UnitStatImport
         public static List<string> CollectWarnings(DreamcatcherCard card, ICollection<string> knownUnitIds)
         {
             var warnings = new List<string>();
-            if (card == null || card.attachRequire == DcAttachRequireKind.None) return warnings;
+            if (card == null || card.attachType == DcAttachType.None) return warnings;
 
             // ① 범위 밖 설정 — 조용한 무효. 부착 제한은 type=Unit 의 defender 부착 경로만
             // 소비한다. BountyMark 카드는 Classify 가 적 타겟으로 라우팅해 게이트를 안 탄다.
             if (card.type != CardType.Unit)
-                warnings.Add($"attachRequire 가 설정됐지만 type={card.type} — 부착 제한은 type=Unit 만 소비한다(조용히 무효).");
+                warnings.Add($"attachType 이 설정됐지만 카드 type={card.type} — 부착 제한은 type=Unit 만 소비한다(조용히 무효).");
             else if (card.HasBountyMark())
-                warnings.Add("attachRequire 가 설정됐지만 적 지정(BountyMark) 카드 — 적에게 부착되므로 제한이 조용히 무효다.");
+                warnings.Add("attachType 이 설정됐지만 적 지정(BountyMark) 카드 — 적에게 부착되므로 제한이 조용히 무효다.");
 
-            // ② 무효 설정 — fail-closed 라 어떤 유닛에도 붙지 않는다.
+            // ② 무효 값 — fail-closed 라 어떤 유닛에도 붙지 않는다.
+            // unit 7 rev — Class 는 "비었다" 와 "이름을 못 읽는다"(오타·숫자)를 구분해 알린다.
+            // 구 3필드 설계에선 클래스 오타가 import 예외로 잡혔는데, 값 칸이 string 이 된
+            // 뒤로는 이 검사가 그 역할을 대신한다.
             if (DreamcatcherAttachEval.HasInvalidAttachRequirement(card))
             {
-                warnings.Add(card.attachRequire == DcAttachRequireKind.Class
-                    ? "attachRequire=Class 인데 attachRequireClass 가 None — 어떤 유닛에도 부착되지 않는다(fail-closed)."
-                    : "attachRequire=UnitId 인데 attachRequireUnitId 가 비어 있다 — 어떤 유닛에도 부착되지 않는다(fail-closed).");
-                return warnings; // 값이 비었으면 아래 id 존재 검사는 무의미
+                if (card.attachType == DcAttachType.Class)
+                {
+                    warnings.Add(string.IsNullOrEmpty(card.attachValue)
+                        ? "attachType=Class 인데 attachValue 가 비어 있다 — 어떤 유닛에도 부착되지 않는다(fail-closed)."
+                        : $"attachType=Class 인데 attachValue='{card.attachValue}' 를 클래스 이름으로 읽을 수 없다 — 어떤 유닛에도 부착되지 않는다(fail-closed). 허용: Ranger/Guardian/Fighter/Caster/Support.");
+                }
+                else
+                {
+                    warnings.Add("attachType=UnitId 인데 attachValue 가 비어 있다 — 어떤 유닛에도 부착되지 않는다(fail-closed).");
+                }
+                return warnings; // 값을 못 읽으면 아래 id 존재 검사는 무의미
             }
 
             // ③ 없는 유닛 id — 오타/리네임 잔재. 역시 fail-closed 로 귀결된다.
-            if (card.attachRequire == DcAttachRequireKind.UnitId
-                && knownUnitIds != null && !knownUnitIds.Contains(card.attachRequireUnitId))
+            if (card.attachType == DcAttachType.UnitId
+                && knownUnitIds != null && !knownUnitIds.Contains(card.attachValue))
             {
-                warnings.Add($"attachRequireUnitId='{card.attachRequireUnitId}' 가 어느 DefenderUnitData.id 와도 일치하지 않는다 — 어떤 유닛에도 부착되지 않는다.");
+                warnings.Add($"attachValue='{card.attachValue}' 가 어느 DefenderUnitData.id 와도 일치하지 않는다 — 어떤 유닛에도 부착되지 않는다.");
             }
 
             return warnings;

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using Wassup.Battle.Combat;
+using Wassup.Core;
 using Wassup.Data;
 
 namespace Wassup.UI
@@ -63,21 +64,23 @@ namespace Wassup.UI
             return lines;
         }
 
-        // unit 4 — "가디언 전용" / "{유닛명} 전용". 무효 설정(Class×None, 빈 unitId)에는
+        // unit 4(+unit 7 rev) — "가디언 전용" / "{유닛명} 전용". 무효 설정(빈 값·알 수 없는
+        // 클래스 이름)에는
         // 붙이지 않는다 — fail-closed 는 게이트와 validator 가 담당하고, 플레이어에게
         // "None 전용" 같은 문구를 보이지 않는다. 클래스 라벨은 기존 UnitLabels 재사용.
         internal static string AttachRequirementLine(DreamcatcherCard card, Func<string, string> unitNameOf)
         {
             if (card == null) return null;
-            switch (card.attachRequire)
+            switch (card.attachType)
             {
-                case DcAttachRequireKind.Class:
-                    string cls = UnitLabels.ClassLabel(card.attachRequireClass);
+                case DcAttachType.Class:
+                    if (!DreamcatcherAttachEval.TryParseAttachClass(card.attachValue, out var role)) return null;
+                    string cls = UnitLabels.ClassLabel(role);
                     return string.IsNullOrEmpty(cls) ? null : $"{cls} 전용";
-                case DcAttachRequireKind.UnitId:
-                    if (string.IsNullOrEmpty(card.attachRequireUnitId)) return null;
-                    string name = unitNameOf == null ? null : unitNameOf(card.attachRequireUnitId);
-                    return $"{(string.IsNullOrEmpty(name) ? card.attachRequireUnitId : name)} 전용";
+                case DcAttachType.UnitId:
+                    if (string.IsNullOrEmpty(card.attachValue)) return null;
+                    string name = unitNameOf == null ? null : unitNameOf(card.attachValue);
+                    return $"{(string.IsNullOrEmpty(name) ? card.attachValue : name)} 전용";
                 default:
                     return null;
             }

@@ -40,9 +40,10 @@ namespace Wassup.Data
     public enum CardType { Squad, Unit, Active }
 
     // dreamcatcher-attach-requirement unit 0 — 부착 **시점**의 정적 술어(누구에게 붙을
-    // 수 있나). 발동 시점의 동적 술어인 DcGateKind 와 레이어가 다르다. kind 가 판별자 —
-    // None 이면 나머지 두 필드는 읽히지 않는다. append-only.
-    public enum DcAttachRequireKind { None, Class, UnitId }
+    // 수 있나). 발동 시점의 동적 술어인 DcGateKind 와 레이어가 다르다.
+    // unit 7 rev — 값 칸을 하나로 합쳐(attachType + attachValue) 종류별 companion 필드를
+    // 없앴다. 이 enum 은 attachValue 를 **어떻게 읽을지**만 정한다. append-only.
+    public enum DcAttachType { None, Class, UnitId }
 
     [Serializable]
     public struct CardEffect
@@ -104,19 +105,22 @@ namespace Wassup.Data
         // 오프셋(_leakAllowancePenalty)으로만 반영되고 환불되지 않는다(§6 리스크
         // 선불·세탁 차단). 끝에 추가 → 기존 카드 에셋은 0 으로 역직렬화(inert).
         public int leakAllowanceCost;
-        // dreamcatcher-attach-requirement unit 0 — 부착 대상 제한. type=Unit 의 defender
-        // 부착 경로만 소비한다(Squad 는 host 무제약 계약 유지, BountyMark 는 적 타겟이라
-        // Classify 라우팅으로 애초에 이 게이트를 안 탄다). 판정은
-        // DreamcatcherAttachEval.MeetsAttachRequirement 한 곳. 끝에 추가 → 기존 카드
-        // 에셋은 None/None/null 로 역직렬화(제한 없음).
-        // 시트에서 제한을 되돌릴 때는 attachRequire 에 None 을 **명시**해야 한다 —
-        // 빈 셀은 blank=keep 이라 해제가 아니다(아래 두 필드도 빈칸으로 못 지운다).
-        public DcAttachRequireKind attachRequire;
-        // attachRequire==Class 일 때만 읽힘. None 이면 fail-closed(어디에도 안 붙음).
-        public DefenderClass attachRequireClass;
-        // attachRequire==UnitId 일 때만 읽힘 — DefenderUnitData.id(저장용 안정 키)와
-        // ordinal 비교. 표시명/에셋명 아님. 빈 문자열이면 fail-closed.
-        public string attachRequireUnitId;
+        // dreamcatcher-attach-requirement unit 0(+unit 7 rev) — 부착 대상 제한.
+        // type=Unit 의 defender 부착 경로만 소비한다(Squad 는 host 무제약 계약 유지,
+        // BountyMark 는 적 타겟이라 Classify 라우팅으로 애초에 이 게이트를 안 탄다).
+        // 판정은 DreamcatcherAttachEval.MeetsAttachRequirement 한 곳.
+        // 끝에 추가 → 기존 카드 에셋은 None/빈문자열로 역직렬화(제한 없음).
+        //
+        // 시트에서 제한을 되돌릴 때는 attachType 에 None 을 **명시**해야 한다 —
+        // 빈 셀은 blank=keep 이라 해제가 아니다.
+        public DcAttachType attachType;
+        // attachType 이 해석 방식을 정한다:
+        //   Class  → DefenderClass 이름("Guardian", 대소문자 무시). 파싱 실패/None = fail-closed.
+        //   UnitId → DefenderUnitData.id(저장용 안정 키)와 **ordinal** 비교. 표시명/에셋명 아님.
+        // 빈 문자열이면 두 경우 다 fail-closed(어디에도 안 붙음).
+        // 값 칸이 하나뿐이라 "종류를 바꿨는데 옛 값이 되살아나는" 함정이 구조적으로 없다
+        // (unit 7 rev 의 동기 — 구 3필드 설계의 잔존 companion 문제).
+        public string attachValue;
 
         // 적 지정 판별 — 전용 필드 없이 mechanics 파생(BountyMark payload 보유 = 적 타겟).
         // 조준 라우팅(DreamcatcherCardDragSlot.Classify)과 손패 태그 칩
