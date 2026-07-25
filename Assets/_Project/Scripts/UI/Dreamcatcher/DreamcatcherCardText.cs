@@ -17,8 +17,10 @@ namespace Wassup.UI
         // dreamcatcher-hand-card-face unit 0 — 손패 카드 본문: 타입/대상은 카드 면의
         // 색·태그 칩이 담당하므로 헤더 줄(축·타입) 없이 효과 라인만. 라인 빌드와
         // description 폴백 규칙은 Assemble 과 같은 소스(LinesWithFallback)를 공유한다.
+        // 화살표 강제 줄바꿈(2026-07-25 사용자 확정): 좁은 카드 폭에서 "트리거 →" 와
+        // 효과가 줄로 분리되어 구조가 읽힌다. 손패 전용 — 툴팁/덱빌더(넓은 패널)는 미적용.
         public static string BodyLinesOnly(DreamcatcherCard card)
-            => string.Join("\n", LinesWithFallback(card));
+            => string.Join("\n", LinesWithFallback(card)).Replace(" → ", " →\n");
 
         private static string Assemble(DreamcatcherCard card, bool compact)
         {

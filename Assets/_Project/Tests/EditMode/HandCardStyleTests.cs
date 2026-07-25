@@ -68,6 +68,18 @@ namespace Wassup.Tests.EditMode
         public void TargetTag_Unit_IsAttach()
             => Assert.AreEqual("아군 부착", CardCategoryStyle.TargetTag(MakeCard(CardType.Unit)));
 
+        [Test]
+        public void TargetTag_UnitWithBountyMark_IsEnemyTarget()
+        {
+            // 적 지정은 전용 필드가 없다 — mechanics 의 BountyMark payload 파생(조준 라우팅과 동일 판별).
+            var card = MakeCard(CardType.Unit);
+            card.mechanics = new[]
+            {
+                new DcMechanic { payload = new DcPayloadSpec { kind = DcPayloadKind.BountyMark } },
+            };
+            Assert.AreEqual("적 지정", CardCategoryStyle.TargetTag(card));
+        }
+
         [TestCase(SkillEffectType.Meteor, "타일 지정")]
         [TestCase(SkillEffectType.SlowField, "타일 지정")]
         [TestCase(SkillEffectType.Tornado, "타일 지정")]
@@ -98,7 +110,16 @@ namespace Wassup.Tests.EditMode
         {
             var card = MakeCard(CardType.Unit);
             card.description = "부착 즉시 → 수면 4초";
-            Assert.AreEqual("부착 즉시 → 수면 4초", DreamcatcherCardText.BodyLinesOnly(card));
+            // 화살표 강제 줄바꿈 — 폴백 description 도 같은 규칙을 탄다.
+            Assert.AreEqual("부착 즉시 →\n수면 4초", DreamcatcherCardText.BodyLinesOnly(card));
+        }
+
+        [Test]
+        public void BodyLinesOnly_BreaksLineAtArrow()
+        {
+            var card = MakeCard(CardType.Squad, CardTargetAxis.All);
+            card.effects = new[] { new CardEffect { kind = CardBuffKind.MoveSpeed, percent = 10f } };
+            StringAssert.Contains("항상 →\n", DreamcatcherCardText.BodyLinesOnly(card));
         }
 
         [Test]

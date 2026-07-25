@@ -50,6 +50,7 @@ namespace Wassup.UI
         private readonly System.Collections.Generic.List<(Entity entity, Rect rect)> _defRectBuf = new();
         private readonly System.Collections.Generic.HashSet<Entity> _attachable = new();
         private bool _enemyMarkHoverValid; // 적 표식: 현재 호버가 유효(미표식 적)인가
+        private bool _enemyMarkOnUnit;     // 적 표식: 손가락이 아군 유닛 위(무효 사유 구분 — unit 3 브리핑)
 
         public bool IsDragging => _dragging;
         public bool IsPortalAiming => _portalEntryCell.HasValue;
@@ -71,7 +72,15 @@ namespace Wassup.UI
             // 딜이 아직 진행 중이면 이 터치로 즉시 완주 → 게이트가 열려 같은 press 가 바로 집는다.
             _view.TryFastForwardDeal();
             _view.SetFocus(_index);
-            if (_view.CanPeek(_index)) _view.ShowDragTooltip(_index);
+            // hand-card-face unit 3 — press 브리핑: 조작법 + 시작 상태(사용 불가 사유 포함).
+            // 카드 설명은 카드 면이 담당하므로 여기는 조작 안내만.
+            if (_view.CanPeek(_index))
+            {
+                string status = Slot.usable
+                    ? "위로 끌어 올려 사용하세요"
+                    : "<color=#FF9B8A>각성치가 부족합니다</color>";
+                _view.ShowDragBriefing(ControlsFor(Classify(Slot.card), Slot.card), status);
+            }
         }
 
         // 해제 시 숨김 — 단 드래그로 이어졌으면 EndInteraction 깔때기가, 포탈 조준은
@@ -91,7 +100,9 @@ namespace Wassup.UI
                 // subconscious-curse-expansion unit 3 — BountyMark 카드는 적 타겟.
                 // 정식 라우팅은 이 판별 하나 — CommitAttach 로 새어도 bake 의
                 // trigger=None 가드가 무차감 거절한다(unit 2 계약).
-                case CardType.Unit when HasBountyMark(card):
+                // hand-card-face — 판별은 DreamcatcherCard.HasBountyMark 로 단일화
+                // (손패 태그 칩과 공유).
+                case CardType.Unit when card.HasBountyMark():
                     return AimMode.EnemyMark;
                 case CardType.Unit:
                 case CardType.Squad: // unit 9 — host-bound, aims like Unit
@@ -103,15 +114,6 @@ namespace Wassup.UI
                 default:
                     return AimMode.None;
             }
-        }
-
-        // 순수 데이터 판독 — mechanics 에 BountyMark payload 포함 여부(신규 필드 없음).
-        private static bool HasBountyMark(DreamcatcherCard card)
-        {
-            if (card.mechanics == null) return false;
-            for (int i = 0; i < card.mechanics.Length; i++)
-                if (card.mechanics[i].payload.kind == DcPayloadKind.BountyMark) return true;
-            return false;
         }
 
         // ── drag ─────────────────────────────────────────────────────────────
@@ -135,7 +137,8 @@ namespace Wassup.UI
                 GameManager.Instance.IsAiming = true;
                 GameManager.Instance.SelectedDefender = null; // last-pressed-wins
             }
-            _view.ShowDragTooltip(_index); // hand-drag-tooltip unit 1 — 성능 툴팁
+            // hand-card-face unit 3 — 조작 브리핑(조작법 고정 + 상태 실시간).
+            _view.ShowDragBriefing(ControlsFor(_mode, slot.card), StatusFor(insideHand: false));
             BeginFocus(slot); // dreamcatcher-attach-lockon — dim/링/리티클/콜아웃 시작
             UpdateDragVisual(eventData.position);
         }
@@ -187,6 +190,7 @@ namespace Wassup.UI
                 case AimMode.ActiveTile: UpdateAimRange(eventData.position, Slot.card.skill); break;
             }
             UpdateDragVisual(eventData.position);
+            UpdateBriefingStatus(eventData.position); // unit 3 — 호버/취소영역 상태 줄
         }
 
         public void OnEndDrag(PointerEventData eventData)
@@ -275,7 +279,12 @@ namespace Wassup.UI
                     // Two-tap: touchup = entry tile, the NEXT field tap (Update
                     // below) picks the exit and commits. IsAiming stays true.
                     if (TryScreenToCell(eventData.position, out var entry))
+                    {
                         _portalEntryCell = entry;
+                        // unit 3 — 2탭 국면 전환 브리핑(툴팁은 조준 중 유지 계약).
+                        _view.UpdateDragBriefingStatus(
+                            "<color=#9FE6A0>입구 지정됨</color> — 출구 타일을 탭하세요");
+                    }
                     else CancelDrag();
                     return;
 
@@ -364,6 +373,62 @@ namespace Wassup.UI
             // hand-drag-tooltip unit 1 — 종료 깔때기에서 숨김(포탈 첫 탭은 종료가
             // 아니라 조준 전환이므로 여기 안 옴 → 조준 중 유지 계약).
             if (_view != null) _view.HideDragTooltip();
+        }
+
+        // ── unit 3 — 조작 브리핑 문안 (header = 조작법 고정 / body = 상태 실시간) ──
+        // 자명 분기 + 호출처 1 — 순수 함수 추출 대상 아님(CLAUDE.md 제약 10 판정).
+
+        private static string ControlsFor(AimMode mode, DreamcatcherCard card)
+        {
+            switch (mode)
+            {
+                case AimMode.Defender:
+                    return card != null && card.type == CardType.Active
+                        ? "아군 유닛 위에서 놓으면 시전  ·  손패로 놓으면 취소"
+                        : "아군 유닛 위에서 놓으면 부착  ·  손패로 놓으면 취소";
+                case AimMode.ActiveTile:
+                    return "원하는 타일에서 놓으면 시전  ·  손패로 놓으면 취소";
+                case AimMode.ActivePortal:
+                    return "놓아서 입구 지정 → 출구 타일 탭  ·  손패로 놓으면 취소";
+                case AimMode.EnemyMark:
+                    return "적 근처에서 놓으면 표식 부여  ·  손패로 놓으면 취소";
+                default:
+                    return "";
+            }
+        }
+
+        private void UpdateBriefingStatus(Vector2 screenPos)
+        {
+            bool insideHand = _view.HandPanelRect != null && RectTransformUtility
+                .RectangleContainsScreenPoint(_view.HandPanelRect, screenPos, null);
+            _view.UpdateDragBriefingStatus(StatusFor(insideHand));
+        }
+
+        // 색 코딩: 초록 = 놓으면 커밋, 적색 = 불가/취소, 무색 = 안내.
+        private string StatusFor(bool insideHand)
+        {
+            if (insideHand) return "<color=#FF9B8A>여기서 놓으면 취소</color>";
+            switch (_mode)
+            {
+                case AimMode.Defender:
+                    if (_hoverEntity == Entity.Null) return "아군 유닛 위로 끌어가세요";
+                    if (!IsHoverAttachable()) return "<color=#FF9B8A>이 유닛에는 부착할 수 없습니다</color>";
+                    return Slot.card != null && Slot.card.type == CardType.Active
+                        ? "<color=#9FE6A0>놓으면 이 유닛에 시전</color>"
+                        : "<color=#9FE6A0>놓으면 이 유닛에 부착</color>";
+                case AimMode.EnemyMark:
+                    if (_hoverEntity == Entity.Null) return "적에게만 쓸 수 있습니다";
+                    if (_enemyMarkOnUnit) return "<color=#FF9B8A>적에게만 쓸 수 있습니다</color>";
+                    return _enemyMarkHoverValid
+                        ? "<color=#9FE6A0>놓으면 이 적에게 표식</color>"
+                        : "<color=#FF9B8A>이미 표식이 있는 적입니다</color>";
+                case AimMode.ActiveTile:
+                    return "<color=#9FE6A0>놓으면 이 위치에 시전</color>";
+                case AimMode.ActivePortal:
+                    return "놓으면 입구가 지정됩니다";
+                default:
+                    return "";
+            }
         }
 
         // ── aim visuals ──────────────────────────────────────────────────────
@@ -458,12 +523,14 @@ namespace Wassup.UI
             {
                 _hoverEntity = defender;
                 _enemyMarkHoverValid = false;
+                _enemyMarkOnUnit = true; // unit 3 — 브리핑이 무효 사유(유닛 위)를 구분
                 _view.Focus?.SetAimEnemyMark(screenPos, defender, valid: false, onUnit: true);
                 return;
             }
             _hoverEntity = _view.Bridge.TryPickNearestEnemy(_view.MainCamera, screenPos,
                 _view.Controller.EnemyPickRadiusTiles, out var enemy) ? enemy : Entity.Null;
             _enemyMarkHoverValid = _hoverEntity != Entity.Null && !_view.Bridge.IsEnemyMarked(_hoverEntity);
+            _enemyMarkOnUnit = false;
             _view.Focus?.SetAimEnemyMark(screenPos, _hoverEntity, _enemyMarkHoverValid, onUnit: false);
         }
 

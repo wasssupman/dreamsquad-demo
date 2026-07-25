@@ -99,5 +99,17 @@ namespace Wassup.Data
         // 오프셋(_leakAllowancePenalty)으로만 반영되고 환불되지 않는다(§6 리스크
         // 선불·세탁 차단). 끝에 추가 → 기존 카드 에셋은 0 으로 역직렬화(inert).
         public int leakAllowanceCost;
+
+        // 적 지정 판별 — 전용 필드 없이 mechanics 파생(BountyMark payload 보유 = 적 타겟).
+        // 조준 라우팅(DreamcatcherCardDragSlot.Classify)과 손패 태그 칩
+        // (CardCategoryStyle.TargetTag)이 공유하는 단일 소스. 관리 배열 순회 —
+        // bake/UI 시점 전용, per-frame 호출 금지(mechanics 주석과 동일 규칙).
+        public bool HasBountyMark()
+        {
+            if (mechanics == null) return false;
+            for (int i = 0; i < mechanics.Length; i++)
+                if (mechanics[i].payload.kind == DcPayloadKind.BountyMark) return true;
+            return false;
+        }
     }
 }

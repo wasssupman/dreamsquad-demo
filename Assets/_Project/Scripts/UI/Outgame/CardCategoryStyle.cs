@@ -43,7 +43,9 @@ namespace Wassup.UI
         private static readonly Color HandHeaderSquad = new Color(0.20f, 0.32f, 0.55f, 1f);
         private static readonly Color HandHeaderUnit = new Color(0.55f, 0.40f, 0.14f, 1f);
         private static readonly Color HandHeaderActive = new Color(0.13f, 0.42f, 0.42f, 1f);
-        private static readonly Color HandBodyFill = new Color(0.10f, 0.08f, 0.18f, 1f);
+        // 본문은 트레이 배킹(짙은 네이비)과 톤이 겹치면 "투명해 보인다"(2026-07-25 사용자
+        // 피드백) — 배킹보다 한 단계 밝은 solid 슬레이트로 카드가 독립 판으로 읽히게.
+        private static readonly Color HandBodyFill = new Color(0.16f, 0.15f, 0.27f, 1f);
         private static readonly Color HandBorderNeutral = new Color(0.05f, 0.04f, 0.10f, 1f);
 
         public static Color HandHeader(CardType type)
@@ -68,7 +70,9 @@ namespace Wassup.UI
             if (c == null) return "";
             switch (c.type)
             {
-                case CardType.Unit: return "아군 부착";
+                // 적 지정(BountyMark)은 전용 필드가 없고 mechanics 파생 — 조준 라우팅과
+                // 같은 판별(DreamcatcherCard.HasBountyMark)로 칩 문안을 가른다.
+                case CardType.Unit: return c.HasBountyMark() ? "적 지정" : "아군 부착";
                 case CardType.Active: return ActiveTargetTag(c.skill);
                 default: return DreamcatcherCardText.AxisLabel(c.axis) + " 버프";
             }

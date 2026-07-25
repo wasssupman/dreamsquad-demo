@@ -263,6 +263,7 @@ namespace Wassup.UI
         private TextMeshProUGUI _tooltipHeader;
         private TextMeshProUGUI _tooltipBody;
         private bool _tooltipVisible;
+        private string _briefingStatus; // unit 3 — 상태 줄 캐시(매프레임 재레이아웃 방지)
         private Vector2 _tooltipBasePos; // rev 1 — bob 은 base 에 가산(누적 금지)
         private const float TooltipLerpK = 16f;   // 페이드/스케일 추종(스프링 감성)
         // unit 4 — 보드 가림을 줄이려 패딩/간격을 조였다(14→10, 8→4). 세로 예산이
@@ -777,11 +778,12 @@ namespace Wassup.UI
             {
                 if (slot.entryId < 0) continue;
                 slot.usable = handController.CanUse(slot.entryId);
-                // hand-card-face rev 1(계약 8) — dim 도 본문이 읽혀야 한다(테스터는 못 내는
-                // 카드도 읽는다): 일괄 0.42 알파 대신 face 어둡게 + 완만한 0.75.
-                slot.group.alpha = slot.usable ? 1f : 0.75f;
+                // hand-card-face rev 1(계약 8) + 2026-07-25 사용자 피드백(solid BG) —
+                // 카드 면은 항상 완전 불투명. 사용불가 dim 은 알파가 아니라 face 어둡기만으로
+                // 표현한다(알파 dim 은 보드가 비쳐 "투명 카드"로 읽혔고 본문 가독도 죽였다).
+                slot.group.alpha = 1f;
                 if (slot.face != null)
-                    slot.face.color = slot.usable ? Color.white : new Color(0.55f, 0.55f, 0.62f, 1f);
+                    slot.face.color = slot.usable ? Color.white : new Color(0.62f, 0.62f, 0.70f, 1f);
             }
         }
 
@@ -980,17 +982,36 @@ namespace Wassup.UI
             return tmp;
         }
 
-        // 드래그 시작 훅(DreamcatcherCardDragSlot.OnBeginDrag). 본문은 공용 포맷터,
-        // 코스트는 기존 슬롯 배지와 동일 정책(Controller.CostOf).
-        public void ShowDragTooltip(int slotIndex)
+        // hand-card-face unit 3 — 툴팁 역할 전환: 카드 설명은 카드 면이 담당하므로 이
+        // 위젯은 조작 브리핑이 된다. header = 조작법(AimMode 별 고정 — 드래그 슬롯이
+        // 분류 소유), body = 조작 상태(호버/취소영역/포탈 단계, 실시간 갱신).
+        public void ShowDragBriefing(string controls, string status)
         {
-            if (_tooltipRoot == null || slotIndex < 0 || slotIndex >= _slots.Count) return;
-            var card = _slots[slotIndex].card;
-            if (card == null || handController == null) return;
+            if (_tooltipRoot == null || string.IsNullOrEmpty(controls)) return;
+            _tooltipHeader.text = controls;
+            _briefingStatus = null; // 상태 캐시 무효화 — 아래 갱신이 반드시 레이아웃을 탄다
+            UpdateDragBriefingStatus(status);
 
-            string title = string.IsNullOrEmpty(card.displayName) ? card.id : card.displayName;
-            _tooltipHeader.text = $"<b>{title}</b>  <color=#C9A6FF>{handController.CostOf(card)}</color>";
-            _tooltipBody.text = DreamcatcherCardText.BodyCompact(card);
+            // rev 5 — 슬롯과 무관한 상단 중앙 고정. 좌우 플립 없음.
+            _tooltipBasePos = new Vector2(0f, -tooltipTopOffset);
+            _tooltipRect.anchoredPosition = _tooltipBasePos;
+
+            _tooltipVisible = true;
+            if (!_tooltipRoot.activeSelf)
+            {
+                _tooltipGroup.alpha = 0f;
+                _tooltipRect.localScale = new Vector3(TooltipHiddenScale, TooltipHiddenScale, 1f);
+                _tooltipRoot.SetActive(true);
+            }
+            CardPeeked?.Invoke(); // 튜토리얼 훅 유지 — 브리핑 노출 = "끌어보세요" 배너 소진 신호
+        }
+
+        // 상태 줄 실시간 갱신 — OnDrag 매프레임 호출되므로 동일 문자열이면 조기 반환.
+        public void UpdateDragBriefingStatus(string status)
+        {
+            if (_tooltipRoot == null || status == _briefingStatus) return;
+            _briefingStatus = status;
+            _tooltipBody.text = status ?? "";
 
             // 내용 기반 세로 크기(TMP preferred). 폭은 고정, 라벨은 top-anchored 스택.
             float innerW = tooltipWidth - TooltipPad * 2f;
@@ -1004,19 +1025,6 @@ namespace Wassup.UI
             brt.anchoredPosition = new Vector2(0f, -bodyTop);
             brt.sizeDelta = new Vector2(brt.sizeDelta.x, bodyH);
             _tooltipRect.sizeDelta = new Vector2(tooltipWidth, bodyTop + bodyH + TooltipPad);
-
-            // rev 5 — 슬롯과 무관한 상단 중앙 고정. 좌우 플립 없음.
-            _tooltipBasePos = new Vector2(0f, -tooltipTopOffset);
-            _tooltipRect.anchoredPosition = _tooltipBasePos;
-
-            _tooltipVisible = true;
-            if (!_tooltipRoot.activeSelf)
-            {
-                _tooltipGroup.alpha = 0f;
-                _tooltipRect.localScale = new Vector3(TooltipHiddenScale, TooltipHiddenScale, 1f);
-                _tooltipRoot.SetActive(true);
-            }
-            CardPeeked?.Invoke();
         }
 
         // 멱등 — EndInteraction 은 비드래그 상황(OnDisable 등)에서도 불린다.
@@ -1117,6 +1125,8 @@ namespace Wassup.UI
                 slot.nameLabel.fontSizeMax = 20;
                 slot.nameLabel.color = Color.white;
                 slot.nameLabel.alignment = TextAlignmentOptions.Center;
+                // 이름은 한 줄 고정 — 길이는 오토사이즈가 흡수(코드베이스 관례: 랩은 명시 설정).
+                slot.nameLabel.textWrappingMode = TextWrappingModes.NoWrap;
                 slot.nameLabel.raycastTarget = false;
 
                 // hand-card-face unit 1 — 우상단 대상+역할 칩(타입 색은 무명 코드 — 칩이 해설).
@@ -1151,6 +1161,7 @@ namespace Wassup.UI
                 slot.tagLabel.fontSizeMax = 15;
                 slot.tagLabel.color = Color.white;
                 slot.tagLabel.alignment = TextAlignmentOptions.Center;
+                slot.tagLabel.textWrappingMode = TextWrappingModes.NoWrap; // 칩 한 줄 고정
                 slot.tagLabel.raycastTarget = false;
 
                 // hand-card-face unit 1 — 하단 효과 본문(계약 8: floor 16pt — 실기기 가독 하한).
@@ -1164,12 +1175,16 @@ namespace Wassup.UI
                 slot.bodyGroup = bodyGO.GetComponent<CanvasGroup>();
                 slot.bodyLabel = bodyGO.AddComponent<TextMeshProUGUI>();
                 if (labelFont != null) slot.bodyLabel.font = labelFont;
-                slot.bodyLabel.fontSize = 20;
+                slot.bodyLabel.fontSize = 24;
                 slot.bodyLabel.enableAutoSizing = true;
-                slot.bodyLabel.fontSizeMin = 16;
-                slot.bodyLabel.fontSizeMax = 20;
+                slot.bodyLabel.fontSizeMin = 18; // 계약 8 floor(16) 상회 — 사용자 확정 상향
+                slot.bodyLabel.fontSizeMax = 24;
                 slot.bodyLabel.color = new Color(0.92f, 0.92f, 0.98f, 1f);
                 slot.bodyLabel.alignment = TextAlignmentOptions.TopLeft;
+                // 본문은 카드 폭 안에서 줄바꿈 — 랩 명시(기본값 신뢰 금지, 미설정 시 한 줄로
+                // 카드 밖 유출). floor 16pt 로도 넘치는 극단 케이스는 말줄임으로 방어.
+                slot.bodyLabel.textWrappingMode = TextWrappingModes.Normal;
+                slot.bodyLabel.overflowMode = TextOverflowModes.Ellipsis;
                 slot.bodyLabel.raycastTarget = false;
 
                 // Cost badge: top-left round chip.
