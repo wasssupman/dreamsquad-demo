@@ -17,19 +17,20 @@ MonoBehaviour:
   displayName: "\uC2A4\uB098\uC774\uD37C"
   desc: "\uB808\uC778\uC800 \xB7 \uC6D0\uAC70\uB9AC\uD615. \uBC30\uCE58 \uC2DC \uC804\uBC29
     \uBC1C\uC0AC."
-  health: 250
-  attackRange: 7
-  attackCooldown: 3
+  health: 190
+  attackRange: 6
+  attackCooldown: 2.9
   hitDelaySec: 0.3
   deployDelaySec: 0
   attackTargetCount: 1
   visualMesh: {fileID: 0}
   visualMaterial: {fileID: 2100000, guid: a1b2c3d4e5f601234567890abcdef101, type: 2}
-  deployVoiceClip: {fileID: 8300000, guid: d6de6a4598ddc4b459f33117254670ba, type: 3}
+  deployVoiceClip: {fileID: 8300000, guid: ef4b79448a0a040b595fe501d4344289, type: 3}
+  attackSfxClip: {fileID: 0}
   projectile: {fileID: 11400000, guid: 3ff11c1bd9a37449fb137b0993b15d0b, type: 2}
   outputs:
   - kind: 0
-    magnitude: 80
+    magnitude: 65
     duration: 0
     stat: 0
     op: 0
@@ -39,20 +40,10 @@ MonoBehaviour:
   onPlaceRange: 8
   onPlaceMagnitude: 120
   onPlaceDuration: 0
-  cost: 4
+  cost: 5
+  placementCooldown: 0
   targetAllies: 0
-  directionalAttack: 0
-  shotCount: 1
-  shotIntervalSec: 0
-  spreadAngleDeg: 0
-  hazardCastEnabled: 0
-  hazardCastRange: 0
-  hazardCastCooldown: 0
-  hazardCastKind: 0
-  zoneHazard: {fileID: 0}
-  blockingHazard: {fileID: 0}
-  hazardFootprintWidth: 1
-  hazardFootprintHeight: 1
+  abilities: []
   rarity: 1
   portrait: {fileID: 21300000, guid: 5f8d927ca9d3ed84da5bcae878945464, type: 3}
   aggroCapacity: 0
@@ -137,6 +128,7 @@ MonoBehaviour:
   deployCutsceneTiltGain: 1
   knockbackDistance: 0
   knockbackDuration: 0
+  sleepOnHitSec: 0
   onPlacePushDistance: 0
   onPlacePushDuration: 0
   onPlacePushRadius: 0

@@ -155,7 +155,7 @@ namespace Wassup.UI
 
         private void OnWaveButtonClicked()
         {
-            SoundManager.Instance?.PlayUiTick();
+            SoundManager.Instance?.PlayNextWave();
             if (bridge != null) bridge.ForceNextWave();
             if (_backingImage != null)
                 Tween.PunchScale(_backingImage.rectTransform, Vector3.one * 0.06f, 0.2f, useUnscaledTime: true);

@@ -14,22 +14,23 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DefenderUnitData
   id: shield_shuttle
   role: 2
-  displayName: "실드셔틀"
-  desc: "가디언 \xB7 근접형. 아군에게 실드를
-    셔틀한다."
-  health: 1200
+  displayName: "\uC2E4\uB4DC\uC154\uD2C0"
+  desc: "\uAC00\uB514\uC5B8 \xB7 \uADFC\uC811\uD615. \uC544\uAD70\uC5D0\uAC8C \uC2E4\uB4DC\uB97C
+    \uC154\uD2C0\uD55C\uB2E4."
+  health: 1000
   attackRange: 2
-  attackCooldown: 2
+  attackCooldown: 1.9
   hitDelaySec: 0.3
   deployDelaySec: 0
   attackTargetCount: 1
   visualMesh: {fileID: 0}
   visualMaterial: {fileID: 2100000, guid: 6fa13ca4169ea45da96dbc3495b7b178, type: 2}
-  deployVoiceClip: {fileID: 8300000, guid: ea7b77cf5c26d46d29a237efef3b95ca, type: 3}
+  deployVoiceClip: {fileID: 8300000, guid: 005ae8f0afe4f492f8300ea11dd12bb7, type: 3}
+  attackSfxClip: {fileID: 8300000, guid: e8962da3f1ead45c6a177491b461d564, type: 3}
   projectile: {fileID: 0}
   outputs:
   - kind: 0
-    magnitude: 20
+    magnitude: 45
     duration: 0
     stat: 0
     op: 0
@@ -40,23 +41,8 @@ MonoBehaviour:
   onPlaceMagnitude: 0
   onPlaceDuration: 0
   cost: 4
+  placementCooldown: 0
   targetAllies: 0
-  directionalAttack: 0
-  shotCount: 1
-  shotIntervalSec: 0
-  spreadAngleDeg: 0
-  hazardCastEnabled: 0
-  hazardCastRange: 0
-  hazardCastCooldown: 0
-  hazardCastKind: 0
-  zoneHazard: {fileID: 0}
-  blockingHazard: {fileID: 0}
-  hazardFootprintWidth: 1
-  hazardFootprintHeight: 1
-  shieldCastCooldown: 4
-  shieldAmount: 150
-  shieldTargetCount: 2
-  shieldTargetFilter: 2
   abilities:
   - {fileID: 11400000, guid: 8a9b0c1d2e3f44a5b6c7d8e9f0a1b2c3, type: 2}
   rarity: 2
@@ -98,7 +84,7 @@ MonoBehaviour:
   onPlacePushDistance: 0
   onPlacePushDuration: 0
   onPlacePushRadius: 0
-  castAnchorBone:
+  castAnchorBone: 
   castAnchorLocalOffset: {x: 0.5, y: 1, z: 0}
   deploymentDuration: 0.45
   placementSkillDelay: 0

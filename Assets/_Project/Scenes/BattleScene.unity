@@ -1912,7 +1912,15 @@ MonoBehaviour:
   uiTickClip: {fileID: 8300000, guid: 02e7adbdc761d49b4a8b48ba82010c41, type: 3}
   uiTickVolume: 0.5
   deployVoiceVolume: 0.8
-  bgmClip: {fileID: 8300000, guid: 0f1ffe20701064ad69bd1d71cbc381c5, type: 3}
+  deployPlaceClip: {fileID: 8300000, guid: 01de4e40acec1427db8ba5df5092067c, type: 3}
+  deployPlaceVolume: 0.4
+  bossWarningClip: {fileID: 8300000, guid: 5f9059c3c332247de8508eb246974095, type: 3}
+  bossWarningVolume: 0.85
+  costTickClip: {fileID: 8300000, guid: d92778876c5e4454d921af034f950f37, type: 3}
+  costTickVolume: 0.7
+  nextWaveClip: {fileID: 8300000, guid: 6d01ffc6bf2bb4fee8549cd0ce12d943, type: 3}
+  nextWaveVolume: 0.7
+  bgmClip: {fileID: 8300000, guid: 04401f422940e4420ae275533bf45065, type: 3}
   bgmVolume: 0.35
   bgmOnlyInBattle: 1
   voiceCount: 6

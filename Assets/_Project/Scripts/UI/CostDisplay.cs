@@ -224,6 +224,10 @@ namespace Wassup.UI
                     // (epsilon 이 없으면 float32 1 ULP 드리프트로 약 10% 가 오분류).
                     PlayWellTick();
                     PlayValuePunch();
+                    // 다음 정수 도달 알림음 — 가득 찰수록 피치를 올려 "차오르는" 느낌.
+                    float tickPitch = Mathf.Lerp(1f, 1.2f,
+                        runtime.Max > 1f ? Mathf.Clamp01(curInt / runtime.Max) : 0f);
+                    SoundManager.Instance?.PlayCostTick(tickPitch);
                 }
                 else
                 {

@@ -37,6 +37,10 @@ namespace Wassup.Data
         // battle-audio: 배치 시 캐릭터별 캐주얼 추임새(클래스 어울리는 짧은 라인, TTS 보이스).
         public AudioClip deployVoiceClip;
 
+        // battle-audio: 공격 실행 시 효과음(근접 클래스 등 per-unit). Null → 무음.
+        // 투사체 유닛은 PlayProjectileFire 가 별도로 울리므로 보통 비워둔다.
+        public AudioClip attackSfxClip;
+
         // Phase 3: when set, the AttackSystem queues a ProjectileSpawnRequest rather
         // than appending IncomingDamage immediately. Leaving this null keeps the
         // Phase 0-2 direct-damage path for regression coverage.

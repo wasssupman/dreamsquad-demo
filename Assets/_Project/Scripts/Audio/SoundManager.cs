@@ -23,6 +23,12 @@ namespace Wassup.Core
         [Tooltip("발사음 최소 간격(초) — 다발 발사 시 과중첩 방지")]
         [SerializeField] private float projectileFireMinInterval = 0.045f;
 
+        [Header("Attack SFX (melee)")]
+        [Tooltip("공격 실행 효과음 볼륨. 클립은 유닛별 DefenderUnitData.attackSfxClip.")]
+        [Range(0f, 1f)] [SerializeField] private float attackSfxVolume = 0.9f;
+        [Tooltip("공격음 최소 간격(초) — 다수 근접 유닛 동시 타격 과중첩 방지")]
+        [SerializeField] private float attackSfxMinInterval = 0.04f;
+
         [Header("Card absorb")]
         [Tooltip("카드 흡수 찰싹 틱 클립(card-fly-to-target-absorb). Null → no-op.")]
         [SerializeField] private AudioClip cardAbsorbClip;
@@ -46,6 +52,26 @@ namespace Wassup.Core
         [Tooltip("배치 추임새 볼륨. 클립은 캐릭터별 DefenderUnitData.deployVoiceClip.")]
         [Range(0f, 1f)] [SerializeField] private float deployVoiceVolume = 0.85f;
 
+        [Header("Deploy place SFX")]
+        [Tooltip("유닛 배치(드롭) 통일 효과음. Null → no-op.")]
+        [SerializeField] private AudioClip deployPlaceClip;
+        [Range(0f, 1f)] [SerializeField] private float deployPlaceVolume = 0.4f;
+
+        [Header("Boss warning")]
+        [Tooltip("보스 경보 배너 스팅어(~2s). Null → no-op.")]
+        [SerializeField] private AudioClip bossWarningClip;
+        [Range(0f, 1f)] [SerializeField] private float bossWarningVolume = 0.85f;
+
+        [Header("Cost tick")]
+        [Tooltip("코스트가 자연 충전으로 다음 정수에 도달한 순간 블립(BGM 위로 뚫리게 밝은 톤). Null → no-op.")]
+        [SerializeField] private AudioClip costTickClip;
+        [Range(0f, 1f)] [SerializeField] private float costTickVolume = 0.7f;
+
+        [Header("Next wave button")]
+        [Tooltip("다음 웨이브 조기 소환 버튼 프레스(전용 만족감 사운드). Null → no-op.")]
+        [SerializeField] private AudioClip nextWaveClip;
+        [Range(0f, 1f)] [SerializeField] private float nextWaveVolume = 0.7f;
+
         [Header("BGM")]
         [Tooltip("전투 배경음. Null → 무음.")]
         [SerializeField] private AudioClip bgmClip;
@@ -61,6 +87,7 @@ namespace Wassup.Core
         private int _next;
         private AudioSource _bgmSource;
         private float _lastProjectileFire = -100f;
+        private float _lastAttackSfx = -100f;
         private bool _subscribed;
 
         private void Awake()
@@ -142,6 +169,19 @@ namespace Wassup.Core
             src.PlayOneShot(projectileFireClip, projectileFireVolume);
         }
 
+        // 근접 등 공격 실행 SFX(유닛별 DefenderUnitData.attackSfxClip). 다수 동시 타격 과중첩 방지 스로틀.
+        public void PlayAttack(AudioClip clip)
+        {
+            if (clip == null || _voices == null) return;
+            float t = Time.unscaledTime;
+            if (t - _lastAttackSfx < attackSfxMinInterval) return;
+            _lastAttackSfx = t;
+            var src = _voices[_next];
+            _next = (_next + 1) % _voices.Length;
+            src.pitch = 1f;
+            src.PlayOneShot(clip, attackSfxVolume);
+        }
+
         // card-fly-to-target-absorb unit 1 — 카드가 유닛에 찰싹 흡수되는 임팩트 틱.
         public void PlayCardAbsorb()
         {
@@ -176,6 +216,26 @@ namespace Wassup.Core
             src.pitch = 1f;
             src.PlayOneShot(clip, deployVoiceVolume);
         }
+
+        // battle-audio: unit placement (drop) voice. clip != null → 유닛별 배치 보이스,
+        // null → 통합 폴백(deployPlaceClip). 볼륨은 공통(deployPlaceVolume).
+        public void PlayDeployPlace(AudioClip clip = null) => PlayOneShot(clip != null ? clip : deployPlaceClip, deployPlaceVolume);
+
+        // boss-wave-cadence: 보스 경보 배너 슬램 순간 스팅어(~2s).
+        public void PlayBossWarning() => PlayOneShot(bossWarningClip, bossWarningVolume);
+
+        // 코스트 물통이 자연 충전으로 다음 정수에 도달한 순간 블립. pitch 로 상승감(가득 찰수록 높게).
+        public void PlayCostTick(float pitch = 1f)
+        {
+            if (costTickClip == null || _voices == null) return;
+            var src = _voices[_next];
+            _next = (_next + 1) % _voices.Length;
+            src.pitch = Mathf.Clamp(pitch, 0.5f, 2f);
+            src.PlayOneShot(costTickClip, costTickVolume);
+        }
+
+        // 다음 웨이브 조기 소환 버튼 프레스(전용 만족감 사운드).
+        public void PlayNextWave() => PlayOneShot(nextWaveClip, nextWaveVolume);
 
         public void PlayBgm()
         {

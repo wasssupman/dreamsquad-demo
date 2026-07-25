@@ -82,6 +82,7 @@ namespace Wassup.UI
             if (_seq.isAlive) _seq.Stop();
 
             _panel.SetActive(true);
+            SoundManager.Instance?.PlayBossWarning();
             _canvasGroup.alpha = 1f;
             _panelRect.localScale = Vector3.one * slamFromScale;
             _text.color = whiteHotFlash;

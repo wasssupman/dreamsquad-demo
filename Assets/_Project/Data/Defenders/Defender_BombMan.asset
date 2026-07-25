@@ -14,50 +14,29 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DefenderUnitData
   id: bomb_man
   role: 1
-  displayName: 폭탄맨
-  desc: '지정 방향 앞 N칸에 폭탄을 굴려 착지 후 폭발(범위 피해). 3종 랜덤 투척 — 데미지·수면·스턴.'
-  health: 420
+  displayName: "\uD3ED\uD0C4\uB9E8"
+  desc: "\uC9C0\uC815 \uBC29\uD5A5 \uC55E N\uCE78\uC5D0 \uD3ED\uD0C4\uC744 \uAD74\uB824
+    \uCC29\uC9C0 \uD6C4 \uD3ED\uBC1C(\uBC94\uC704 \uD53C\uD574). 3\uC885 \uB79C\uB364
+    \uD22C\uCC99 \u2014 \uB370\uBBF8\uC9C0\xB7\uC218\uBA74\xB7\uC2A4\uD134."
+  health: 300
   attackRange: 5
-  attackCooldown: 3
+  attackCooldown: 2.8
   hitDelaySec: 0
   deployDelaySec: 0
   attackTargetCount: 1
   visualMesh: {fileID: 0}
   visualMaterial: {fileID: 2100000, guid: a1b2c3d4e5f601234567890abcdef105, type: 2}
-  deployVoiceClip: {fileID: 0}
+  deployVoiceClip: {fileID: 8300000, guid: 58fbe264ba47e4c55a146440bd96dd02, type: 3}
+  attackSfxClip: {fileID: 0}
   projectile: {fileID: 11400000, guid: d1f7a3c95e8b42a6bc09f4d7e21a6b83, type: 2}
   outputs: []
   onPlaceEffect: 0
   onPlaceRange: 0
   onPlaceMagnitude: 0
   onPlaceDuration: 0
-  cost: 4
+  cost: 6
+  placementCooldown: 0
   targetAllies: 0
-  directionalAttack: 1
-  shotCount: 1
-  shotIntervalSec: 0.1
-  spreadAngleDeg: 0
-  hazardCastEnabled: 0
-  hazardCastRange: 0
-  hazardCastCooldown: 0
-  hazardCastKind: 0
-  zoneHazard: {fileID: 0}
-  blockingHazard: {fileID: 0}
-  hazardFootprintWidth: 1
-  hazardFootprintHeight: 1
-  shieldCastCooldown: 0
-  shieldAmount: 0
-  shieldTargetCount: 1
-  shieldTargetFilter: 0
-  bombLandingTiles: 3
-  bombTravelSec: 1
-  bombFuseSec: 1
-  bombAoeTileRange: 1
-  bombAoeTargetCap: 3
-  bombArcHeight: 0.7
-  bombDamage: 60
-  bombSleepSec: 2.5
-  bombStunSec: 1.5
   abilities:
   - {fileID: 11400000, guid: 5d6e7f8a9b0c41d2e3f4a5b6c7d8e9f0, type: 2}
   rarity: 2

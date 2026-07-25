@@ -2830,6 +2830,9 @@ namespace Wassup.Bridge
                 var defData = FindDefenderData(evt.attacker);
                 if (defData == null) continue;
 
+                // battle-audio: per-unit 공격 실행 SFX(근접 클래스 등). 투사체 유닛은 clip 미할당 → 무음.
+                Wassup.Core.SoundManager.Instance?.PlayAttack(defData.attackSfxClip);
+
                 if (defData.attackVfxPrefab != null)
                     _projectileViewPool?.PlayHit(defData.attackVfxPrefab, evt.targetWorld);
 
@@ -4230,8 +4233,8 @@ namespace Wassup.Bridge
             GameManager.Instance?.Logger?.RecordPlacement(unitData.displayName, cell, Time.time - _startTime, unitData.cost);
             entity = CreateDefenderEntity(cell, unitData, pendingDeployment: true, spawnPlacementVfx: false);
             ApplyOnPlacePush(unitData, cell);
-            // battle-audio: per-character casual deploy interjection (class-fitting voice).
-            Wassup.Core.SoundManager.Instance?.PlayDeployVoice(unitData.deployVoiceClip);
+            // battle-audio: 유닛별 배치 보이스(deployVoiceClip). 미할당 유닛은 통합 폴백.
+            Wassup.Core.SoundManager.Instance?.PlayDeployPlace(unitData.deployVoiceClip);
             Debug.Log($"[BattleBridge] Began pending deployment for {unitData.displayName} at ({tileX},{tileY}).");
             return true;
         }
