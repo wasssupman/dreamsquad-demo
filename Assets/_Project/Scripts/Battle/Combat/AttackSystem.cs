@@ -225,6 +225,13 @@ namespace Wassup.Battle.Combat
                 Entity bestTarget = Entity.Null;
                 float3 bestTargetPos = default;
                 int mask = attack.ValueRO.targetMask;
+                // healer-lowest-health-targeting — an ally-targeting defender (targetAllies →
+                // mask == Defender, baked in BattleBridge) heals the most-hurt ally, not the
+                // nearest. Gated on DefenderUnitTag so a taunted enemy (also mask == Defender
+                // via TauntAttackGrantSystem) keeps nearest targeting. Same candidate set as
+                // the nearest scan — only the ranking criterion changes (distance → HP ratio).
+                bool rankByHealth = mask == (int)Faction.Defender
+                                    && defenderTagLookup.HasComponent(attackerEntity);
                 // aggro-targeting Unit 4 — enemy class filter + priority. Defenders have
                 // no EnemyTargetFilter → filterMask -1 / prioClass -1 = legacy nearest.
                 bool hasFilter = enemyFilterLookup.HasComponent(attackerEntity);
@@ -268,6 +275,11 @@ namespace Wassup.Battle.Combat
                 FrontmostTargeting.Candidate fmBest = default;
                 Entity fmBestEntity = Entity.Null;
                 float3 fmBestPos = default;
+                // healer-lowest-health-targeting — most-hurt ally tracked in the same pass.
+                bool healHasBest = false;
+                LowestHealthTargeting.Candidate healBest = default;
+                Entity healBestEntity = Entity.Null;
+                float3 healBestPos = default;
                 for (int i = 0; i < targetEntities.Length; i++)
                 {
                     if (((int)targetFactions[i].value & mask) == 0) continue;
@@ -285,6 +297,23 @@ namespace Wassup.Battle.Combat
                         bestSq = d2;
                         bestTarget = targetEntities[i];
                         bestTargetPos = nearestPos;
+                    }
+                    // healer-lowest-health-targeting — rank in-range allies by HP ratio.
+                    // Candidates come from a query that requires Health, so direct index is safe.
+                    if (rankByHealth)
+                    {
+                        var h = healthLookup[targetEntities[i]];
+                        var hc = new LowestHealthTargeting.Candidate
+                        {
+                            hpRatio = Wassup.Battle.Units.Health.ComputeRatio(h.value, h.max),
+                            sqDist = d2,
+                            entityIndex = targetEntities[i].Index,
+                            entityVersion = targetEntities[i].Version,
+                        };
+                        if (!healHasBest || LowestHealthTargeting.RanksBefore(hc, healBest))
+                        {
+                            healBest = hc; healBestEntity = targetEntities[i]; healBestPos = nearestPos; healHasBest = true;
+                        }
                     }
                     if (prioClass >= 0 && cclass == prioClass && d2 < bestSqPrio)
                     {
@@ -327,6 +356,19 @@ namespace Wassup.Battle.Combat
                         }
                     }
                 }
+                // healer-lowest-health-targeting — override nearest with the most-hurt ally.
+                // healHasBest is true iff an in-range candidate existed (same filters as the
+                // nearest scan), so this only re-ranks; it never targets when nearest wouldn't.
+                // priority/focus/aggro below are enemy-only (skipped for defenders). frontmost
+                // (FrontmostAttackLock) and facing (DeployedFacing) ARE defender-gated and would
+                // re-override this pick — but a plain healer carries neither; a healer that also
+                // holds a frontmost/facing card is an out-of-scope aggregate (see spec follow-up).
+                if (rankByHealth && healHasBest)
+                {
+                    bestTarget = healBestEntity;
+                    bestTargetPos = healBestPos;
+                }
+
                 // priority override — prefer a priority-class target if any is in range.
                 if (prioClass >= 0 && bestTargetPrio != Entity.Null)
                 {
@@ -884,6 +926,9 @@ namespace Wassup.Battle.Combat
                                     {
                                         float passSq = float.MaxValue;
                                         int passIdx = -1;
+                                        // healer-lowest-health-targeting — secondaries also by HP ratio.
+                                        bool passHasBest = false;
+                                        LowestHealthTargeting.Candidate passBest = default;
                                         for (int i = 0; i < targetEntities.Length; i++)
                                         {
                                             if (hitMaskO[i]) continue;
@@ -893,7 +938,22 @@ namespace Wassup.Battle.Combat
                                             int tileDistAoE = math.max(math.abs(tgtCellAoE.x - atkCell.x), math.abs(tgtCellAoE.y - atkCell.y));
                                             if (tileDistAoE > tileRange) continue;
                                             float d2 = DistanceSqToTarget(atkPos, targetEntities[i], targetTransforms[i].Position, blockingHazardCellsLookup, hasFlowField, flowField, out _);
-                                            if (d2 < passSq)
+                                            if (rankByHealth)
+                                            {
+                                                var h = healthLookup[targetEntities[i]];
+                                                var hc = new LowestHealthTargeting.Candidate
+                                                {
+                                                    hpRatio = Wassup.Battle.Units.Health.ComputeRatio(h.value, h.max),
+                                                    sqDist = d2,
+                                                    entityIndex = targetEntities[i].Index,
+                                                    entityVersion = targetEntities[i].Version,
+                                                };
+                                                if (!passHasBest || LowestHealthTargeting.RanksBefore(hc, passBest))
+                                                {
+                                                    passBest = hc; passIdx = i; passHasBest = true;
+                                                }
+                                            }
+                                            else if (d2 < passSq)
                                             {
                                                 passSq = d2;
                                                 passIdx = i;
