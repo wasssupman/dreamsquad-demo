@@ -21,7 +21,8 @@
 | 2 | bridge | `2_bridge_mode_awareness.md` | 진입(전용 encounter)+간격+누수게이트+시간0+리포트스킵 (모드 분기 전부) |
 | 3 | authoring | `3_authoring_and_wiring.md` | `Deck_Endless` + `endlessEncounter` 배선 + dev 토글 |
 | 4 | test | `4_playmode_smoke.md` | PlayMode 스모크 + 리스크/리워드 어서션 |
-| 5 | handoff | `5_handoff_summary.md` | (구현 종료 후 작성) |
+| 5 | handoff | `5_handoff_summary.md` | 세션 인계 요약 |
+| 6 | UI | `6_endless_leak_hud.md` | 무한 모드 누수 HUD 한계/위기색 숨김(개수만) — 뷰만 |
 
 ## Feature-wide 계약
 

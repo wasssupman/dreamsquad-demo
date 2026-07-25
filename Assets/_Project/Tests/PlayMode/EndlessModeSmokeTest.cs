@@ -8,6 +8,7 @@ using Wassup.Bridge;
 using Wassup.Core;
 using Wassup.Core.TimeControl;
 using Wassup.Data;
+using Wassup.UI;
 
 namespace Wassup.Tests.PlayMode
 {
@@ -94,6 +95,15 @@ namespace Wassup.Tests.PlayMode
             Assert.IsFalse(defeatSeen, "무한 모드는 누수로 패배하지 않는다(defeatEnabled=!IsEndless)");
             if (ended)
                 Assert.AreEqual(0, endTimeScore, "무한 모드 종료 결과의 시간점수는 0");
+
+            // 무한 모드 누수 HUD 는 죽는 한계가 없으니 "/한계" 를 숨기고 개수만 표시한다.
+            // (TMP_Text 타입 참조를 피해 .text 프로퍼티를 reflection 으로 읽는다 — asmdef 무변경.)
+            var hud = Object.FindObjectOfType<ScoreHudView>();
+            var leakValueObj = hud != null ? GetField(hud, "_leakValue") : null;
+            string leakText = leakValueObj?.GetType().GetProperty("text")?.GetValue(leakValueObj) as string;
+            if (leakText != null)
+                Assert.IsFalse(leakText.Contains("/"),
+                    $"무한 모드 누수 HUD 는 '/한계' 를 숨겨야 한다 (실제: '{leakText}')");
         }
 
         // BattleLogger.currentEntry.result 에서 outcome/time_score 를 읽는다(TallyFlowTest 와 동형).

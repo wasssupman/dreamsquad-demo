@@ -3888,7 +3888,7 @@ namespace Wassup.Bridge
             => ActiveDeck != null ? ActiveDeck.defeatGoalReachedCount - _leakAllowancePenalty : 0;
 
         private void RefreshLeakHud()
-            => scoreHud?.SetLeakStatus(_goalReachedCount, EffectiveLeakLimit());
+            => scoreHud?.SetLeakStatus(_goalReachedCount, EffectiveLeakLimit(), !IsEndless);
 
         // subconscious-curse-expansion unit 1 (몽마의 계약) — 잔여 유출 허용치.
         // = SO 기준치 − 선불 차감 − 이미 유출된 수. 컨트롤러 게이트/HUD 조회용.
