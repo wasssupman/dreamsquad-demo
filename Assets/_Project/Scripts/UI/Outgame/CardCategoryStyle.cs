@@ -35,5 +35,58 @@ namespace Wassup.UI
                 default: return "스쿼드 버프";
             }
         }
+
+        // dreamcatcher-hand-card-face unit 0 — 인게임 손패 카드 면(헤더 밴드형)의 단일
+        // 스타일 소스. BG 헤더 색 = 타입(사용 문법), 테두리 = 무의식 여부(리스크),
+        // 태그 칩 = 적용 대상+역할. Active 청록은 신규 배정 — 보라는 무의식 테두리와
+        // 각성 게이지가 이미 점유라 회피.
+        private static readonly Color HandHeaderSquad = new Color(0.20f, 0.32f, 0.55f, 1f);
+        private static readonly Color HandHeaderUnit = new Color(0.55f, 0.40f, 0.14f, 1f);
+        private static readonly Color HandHeaderActive = new Color(0.13f, 0.42f, 0.42f, 1f);
+        private static readonly Color HandBodyFill = new Color(0.10f, 0.08f, 0.18f, 1f);
+        private static readonly Color HandBorderNeutral = new Color(0.05f, 0.04f, 0.10f, 1f);
+
+        public static Color HandHeader(CardType type)
+        {
+            switch (type)
+            {
+                case CardType.Unit: return HandHeaderUnit;
+                case CardType.Active: return HandHeaderActive;
+                default: return HandHeaderSquad;
+            }
+        }
+
+        public static Color HandBody() => HandBodyFill;
+
+        public static Color HandBorder(DreamcatcherCard c)
+            => IsSubconscious(c) ? SubconsciousFrame : HandBorderNeutral;
+
+        // 태그 칩 문안: 타입 색은 배워야 하는 무명 코드라, 칩이 대상+역할을 글자로 해설한다.
+        // Squad = 축 라벨 + " 버프", Unit = 부착 제스처, Active = 스킬 타겟 유형.
+        public static string TargetTag(DreamcatcherCard c)
+        {
+            if (c == null) return "";
+            switch (c.type)
+            {
+                case CardType.Unit: return "아군 부착";
+                case CardType.Active: return ActiveTargetTag(c.skill);
+                default: return DreamcatcherCardText.AxisLabel(c.axis) + " 버프";
+            }
+        }
+
+        private static string ActiveTargetTag(SkillData skill)
+        {
+            if (skill == null) return "필드"; // 미배선 config — 폴백(카드는 여전히 사용 가능)
+            switch (skill.effect)
+            {
+                case SkillEffectType.Meteor:
+                case SkillEffectType.SlowField:
+                case SkillEffectType.Tornado: return "타일 지정";
+                case SkillEffectType.Portal: return "타일 2개";
+                case SkillEffectType.PowerSurge:
+                case SkillEffectType.RapidFire: return "아군 지정";
+                default: return "필드";
+            }
+        }
     }
 }
