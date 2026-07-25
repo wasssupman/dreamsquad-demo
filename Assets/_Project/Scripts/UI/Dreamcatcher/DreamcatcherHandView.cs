@@ -47,7 +47,10 @@ namespace Wassup.UI
         [SerializeField] private Wassup.Data.BattleHudTrayConfig trayConfig;
         [SerializeField] private float flipHalfDuration = 0.14f;
         // hand-deal-in unit 0 — StS/HS 아치 부채 기하 + 스프링 추종.
-        [SerializeField] private float cardOverlap = 54f;  // 카드 겹침(step = cardW - overlap)
+        // dreamcatcher-hand-card-face unit 1 — 54 → 16: 겹침은 부채 감성만 남기고 이름·본문이
+        // 항상 보이게(시인성 개편의 핵심 노브). ⚠ 씬(BattleScene)에 54 가 직렬화돼 있어
+        // 코드 기본값만으로는 무효 — 씬 값도 16 으로 갱신해야 한다(unit 2).
+        [SerializeField] private float cardOverlap = 16f;  // 카드 겹침(step = CardW - overlap)
         [SerializeField] private float arcHeight = 46f;    // 포물선 아치 높이(가운데 솟음)
         [SerializeField] private float rotMax = 10f;       // 바깥 카드 접선 회전(도)
         [SerializeField] private float handBaseY = 16f;    // 부채 밑단 y
@@ -203,9 +206,15 @@ namespace Wassup.UI
             public Image frame;
             public Image art;
             public UiCardFaceMesh face;  // card-crumple-unfold — art = 서브디바이드 크럼플 그래픽
-            public GameObject nameTag; // rev 4-5 — 하단 네임 밴드(어두운 배킹+이름, 항상 표시)
+            public GameObject nameTag; // hand-card-face unit 1 — 헤더 밴드(타입 색) 중앙 이름 영역
             public TextMeshProUGUI nameLabel;
             public CanvasGroup nameGroup; // 크럼플 중 숨겼다 펴짐 완료 시 페이드-인(TMP 비크럼플)
+            public GameObject tagChip;    // hand-card-face unit 1 — 우상단 대상+역할 칩
+            public Image tagBg;
+            public TextMeshProUGUI tagLabel;
+            public CanvasGroup tagGroup;
+            public TextMeshProUGUI bodyLabel; // hand-card-face unit 1 — 하단 효과 본문
+            public CanvasGroup bodyGroup;
             public GameObject costBadge;
             public TextMeshProUGUI costLabel;
             public CanvasGroup costGroup;
@@ -221,6 +230,14 @@ namespace Wassup.UI
             public DreamcatcherCard card;
             public bool usable;
         }
+
+        // dreamcatcher-hand-card-face unit 1 — 카드 면 기하. 본문 16pt floor(계약 8) 예산
+        // 확보를 위해 172×200 → 184×230 (5장×184=920 ≤ 패널 980, README rev 1).
+        private const float CardW = 184f, CardH = 230f, HeaderH = 64f;
+        // 타입×무의식별 투톤 face 스프라이트 캐시(2x 베이크 — 코너/보더 선명도).
+        private readonly Dictionary<(CardType type, bool subconscious), Sprite> _faceCache =
+            new Dictionary<(CardType, bool), Sprite>();
+        private Sprite _chipSprite; // 흰 라운드 칩 공용 스프라이트(틴트는 Image.color 가 담당)
 
         private GameObject _panel;
         // dreamcatcher-orb-dock unit 4 — 손패 오픈 중 보드 영역 탭으로 물러나기(바깥 탭 dismiss).
@@ -462,6 +479,8 @@ namespace Wassup.UI
             if (slot.face != null) slot.face.Unfold = 1f;
             if (slot.nameGroup != null) slot.nameGroup.alpha = 1f;
             if (slot.costGroup != null) slot.costGroup.alpha = 1f;
+            if (slot.tagGroup != null) slot.tagGroup.alpha = 1f;   // hand-card-face unit 1
+            if (slot.bodyGroup != null) slot.bodyGroup.alpha = 1f;
         }
 
         // Drag slots call this at every interaction end (commit/cancel) so a
@@ -645,6 +664,8 @@ namespace Wassup.UI
                 if (slot.face != null) slot.face.Unfold = 0f;
                 if (slot.nameGroup != null) slot.nameGroup.alpha = 0f;
                 if (slot.costGroup != null) slot.costGroup.alpha = 0f;
+                if (slot.tagGroup != null) slot.tagGroup.alpha = 0f;   // hand-card-face unit 1
+                if (slot.bodyGroup != null) slot.bodyGroup.alpha = 0f;
                 float d = dealt * dealStaggerSec;
                 _dealSeq.Group(Tween.UIAnchoredPosition(rt, slot.homePos, dealDurationSec, Ease.OutBack, startDelay: d));
                 _dealSeq.Group(Tween.Scale(rt, Vector3.one, dealDurationSec, Ease.OutBack, startDelay: d));
@@ -657,6 +678,8 @@ namespace Wassup.UI
                 float textDelay = d + Mathf.Max(0f, crumpleUnfoldSec - textFadeSec);
                 if (slot.nameGroup != null) _dealSeq.Group(Tween.Alpha(slot.nameGroup, 1f, textFadeSec, Ease.OutQuad, startDelay: textDelay));
                 if (slot.costGroup != null) _dealSeq.Group(Tween.Alpha(slot.costGroup, 1f, textFadeSec, Ease.OutQuad, startDelay: textDelay));
+                if (slot.tagGroup != null) _dealSeq.Group(Tween.Alpha(slot.tagGroup, 1f, textFadeSec, Ease.OutQuad, startDelay: textDelay));
+                if (slot.bodyGroup != null) _dealSeq.Group(Tween.Alpha(slot.bodyGroup, 1f, textFadeSec, Ease.OutQuad, startDelay: textDelay));
                 dealt++;
             }
         }
@@ -754,35 +777,50 @@ namespace Wassup.UI
             {
                 if (slot.entryId < 0) continue;
                 slot.usable = handController.CanUse(slot.entryId);
-                slot.group.alpha = slot.usable ? 1f : 0.42f; // dim = unaffordable
+                // hand-card-face rev 1(계약 8) — dim 도 본문이 읽혀야 한다(테스터는 못 내는
+                // 카드도 읽는다): 일괄 0.42 알파 대신 face 어둡게 + 완만한 0.75.
+                slot.group.alpha = slot.usable ? 1f : 0.75f;
+                if (slot.face != null)
+                    slot.face.color = slot.usable ? Color.white : new Color(0.55f, 0.55f, 0.62f, 1f);
             }
         }
 
+        // hand-card-face unit 1 — 아트 제거: 카드 면 = 투톤 face 스프라이트(타입색 헤더 +
+        // 중립 본문 + 무의식 테두리). card.art/skill.uiTint 는 손패에서 더 이상 읽지 않는다
+        // (덱빌더는 계속 사용). 텍스트가 정보를 전달한다: 이름(헤더)·태그(대상+역할)·본문(효과).
         private void BindCard(CardSlot slot, int entryId, DreamcatcherCard card)
         {
             slot.entryId = entryId;
             slot.card = card;
-            slot.frame.color = new Color(0.1f, 0.08f, 0.18f, 0.92f);
+            slot.frame.color = Color.clear; // face 가 카드 면 전체 — frame 은 빈 슬롯 표시 전용
             slot.costBadge.SetActive(true);
             slot.costLabel.text = handController.CostOf(card).ToString();
 
-            // rev 4-5 — 이름은 아트 유무와 무관하게 항상 하단 밴드에 표시(시인성).
             slot.nameTag.SetActive(true);
             slot.nameLabel.text = card.displayName;
 
-            if (card.art != null)
-            {
-                slot.art.enabled = true;
-                slot.art.sprite = card.art;
-                slot.art.color = Color.white;
-            }
-            else
-            {
-                // Active cards ship without tarot art: skill uiTint fallback.
-                slot.art.enabled = true;
-                slot.art.sprite = null;
-                slot.art.color = card.skill != null ? card.skill.uiTint : new Color(0.35f, 0.3f, 0.5f, 1f);
-            }
+            slot.tagChip.SetActive(true);
+            slot.tagLabel.text = CardCategoryStyle.TargetTag(card);
+            // 칩 배경 = 헤더색을 어둡게(같은 계열 유지, 흰 텍스트 대비 확보).
+            slot.tagBg.color = Color.Lerp(CardCategoryStyle.HandHeader(card.type), Color.black, 0.35f);
+
+            slot.bodyLabel.text = DreamcatcherCardText.BodyLinesOnly(card);
+
+            slot.art.enabled = true;
+            slot.art.sprite = FaceSpriteFor(card);
+            slot.art.color = Color.white;
+        }
+
+        private Sprite FaceSpriteFor(DreamcatcherCard card)
+        {
+            var key = (card.type, card.category == CardCategory.Subconscious);
+            if (_faceCache.TryGetValue(key, out var sprite) && sprite != null) return sprite;
+            sprite = UiRoundedSprite.MakeCardFace(
+                (int)(CardW * 2f), (int)(CardH * 2f), radius: 44f, border: 6f,
+                CardCategoryStyle.HandHeader(card.type), CardCategoryStyle.HandBody(),
+                CardCategoryStyle.HandBorder(card), HeaderH / CardH);
+            _faceCache[key] = sprite;
+            return sprite;
         }
 
         private void BindEmpty(CardSlot slot)
@@ -794,6 +832,8 @@ namespace Wassup.UI
             slot.art.enabled = false;
             slot.nameTag.SetActive(false);
             slot.nameLabel.text = "";
+            slot.tagChip.SetActive(false);
+            slot.bodyLabel.text = "";
             slot.costBadge.SetActive(false);
             slot.group.alpha = 1f;
         }
@@ -1013,8 +1053,7 @@ namespace Wassup.UI
             foreach (var s in _slots) if (s.root != null) Destroy(s.root);
             _slots.Clear();
 
-            float cardW = 172f, cardH = 200f;
-            float step = cardW - cardOverlap; // 겹친 부채(음수 간격 효과)
+            float step = CardW - cardOverlap; // 겹친 부채(음수 간격 효과)
             for (int i = 0; i < count; i++)
             {
                 var slot = new CardSlot();
@@ -1030,42 +1069,38 @@ namespace Wassup.UI
                 float y = handBaseY + arcHeight * (1f - t * t);
                 float rotZ = -t * rotMax;
                 slot.rect.anchoredPosition = new Vector2(x, y);
-                slot.rect.sizeDelta = new Vector2(cardW, cardH);
+                slot.rect.sizeDelta = new Vector2(CardW, CardH);
                 slot.rect.localEulerAngles = new Vector3(0f, 0f, rotZ);
 
                 slot.frame = slot.root.GetComponent<Image>();
                 slot.group = slot.root.GetComponent<CanvasGroup>();
 
-                // card-crumple-unfold unit 0 — art 는 서브디바이드 Graphic(구김 토대).
-                // frame(root Image)·드래그·CanvasGroup 은 그대로(D1 = art-only).
-                var artGO = new GameObject("Art", typeof(RectTransform), typeof(UiCardFaceMesh));
-                artGO.transform.SetParent(slot.root.transform, false);
-                var art = (RectTransform)artGO.transform;
-                art.anchorMin = Vector2.zero;
-                art.anchorMax = Vector2.one;
-                art.offsetMin = new Vector2(6f, 6f);
-                art.offsetMax = new Vector2(-6f, -6f);
-                slot.face = artGO.GetComponent<UiCardFaceMesh>();
+                // card-crumple-unfold unit 0 — face 는 서브디바이드 Graphic(구김 토대).
+                // hand-card-face unit 1 — 아트 → 투톤 face 스프라이트: 카드 면 전체(인셋 0).
+                // frame(root Image)·드래그·CanvasGroup 은 그대로.
+                var faceGO = new GameObject("Face", typeof(RectTransform), typeof(UiCardFaceMesh));
+                faceGO.transform.SetParent(slot.root.transform, false);
+                var faceRt = (RectTransform)faceGO.transform;
+                faceRt.anchorMin = Vector2.zero;
+                faceRt.anchorMax = Vector2.one;
+                faceRt.offsetMin = Vector2.zero;
+                faceRt.offsetMax = Vector2.zero;
+                slot.face = faceGO.GetComponent<UiCardFaceMesh>();
                 slot.art = slot.face;
                 slot.art.preserveAspect = true;
                 slot.art.raycastTarget = false;
 
-                // rev 4-5 — 이름은 항상 표시: 아트 위에서도 읽히도록 하단 어두운
-                // 밴드 + 흰 텍스트 오버레이 (DefenderSelector 포트레이트 이름 관례).
-                slot.nameTag = new GameObject("NameTag", typeof(RectTransform), typeof(Image));
+                // hand-card-face unit 1 — 이름은 헤더 밴드(타입 색) 중앙(y -32~-64, 코스트/
+                // 태그 줄 아래). 배킹 이미지 없음(face 헤더색이 배경), 크럼플 페이드 그룹 유지.
+                slot.nameTag = new GameObject("NameTag", typeof(RectTransform), typeof(CanvasGroup));
                 slot.nameTag.transform.SetParent(slot.root.transform, false);
                 var tagRt = (RectTransform)slot.nameTag.transform;
-                tagRt.anchorMin = new Vector2(0f, 0f);
-                tagRt.anchorMax = new Vector2(1f, 0f);
-                tagRt.pivot = new Vector2(0.5f, 0f);
-                tagRt.offsetMin = new Vector2(6f, 6f);   // 하단 밴드: y 6~36
-                tagRt.offsetMax = new Vector2(-6f, 36f);
-                var tagImg = slot.nameTag.GetComponent<Image>();
-                tagImg.color = new Color(0f, 0f, 0f, 0.62f);
-                tagImg.raycastTarget = false;
-                slot.nameGroup = slot.nameTag.AddComponent<CanvasGroup>(); // 크럼플 중 페이드용
-
-
+                tagRt.anchorMin = new Vector2(0f, 1f);
+                tagRt.anchorMax = new Vector2(1f, 1f);
+                tagRt.pivot = new Vector2(0.5f, 1f);
+                tagRt.offsetMin = new Vector2(8f, -HeaderH);
+                tagRt.offsetMax = new Vector2(-8f, -32f);
+                slot.nameGroup = slot.nameTag.GetComponent<CanvasGroup>(); // 크럼플 중 페이드용
 
                 var nameGO = new GameObject("Name", typeof(RectTransform));
                 nameGO.transform.SetParent(slot.nameTag.transform, false);
@@ -1077,12 +1112,65 @@ namespace Wassup.UI
                 slot.nameLabel = nameGO.AddComponent<TextMeshProUGUI>();
                 if (labelFont != null) slot.nameLabel.font = labelFont;
                 slot.nameLabel.fontSize = 20;
-                slot.nameLabel.enableAutoSizing = true; // 긴 영문 스탯명 축소 허용
-                slot.nameLabel.fontSizeMin = 12;
+                slot.nameLabel.enableAutoSizing = true; // 긴 이름 축소 허용
+                slot.nameLabel.fontSizeMin = 14;
                 slot.nameLabel.fontSizeMax = 20;
                 slot.nameLabel.color = Color.white;
                 slot.nameLabel.alignment = TextAlignmentOptions.Center;
                 slot.nameLabel.raycastTarget = false;
+
+                // hand-card-face unit 1 — 우상단 대상+역할 칩(타입 색은 무명 코드 — 칩이 해설).
+                if (_chipSprite == null)
+                    _chipSprite = UiRoundedSprite.Make(11f, 0f, Color.white, Color.white);
+                slot.tagChip = new GameObject("TargetTag", typeof(RectTransform), typeof(Image), typeof(CanvasGroup));
+                slot.tagChip.transform.SetParent(slot.root.transform, false);
+                var chipRt = (RectTransform)slot.tagChip.transform;
+                chipRt.anchorMin = new Vector2(1f, 1f);
+                chipRt.anchorMax = new Vector2(1f, 1f);
+                chipRt.pivot = new Vector2(1f, 1f);
+                chipRt.anchoredPosition = new Vector2(-8f, -8f);
+                chipRt.sizeDelta = new Vector2(96f, 24f);
+                slot.tagBg = slot.tagChip.GetComponent<Image>();
+                slot.tagBg.sprite = _chipSprite;
+                slot.tagBg.type = Image.Type.Sliced;
+                slot.tagBg.raycastTarget = false;
+                slot.tagGroup = slot.tagChip.GetComponent<CanvasGroup>();
+
+                var tagTextGO = new GameObject("Value", typeof(RectTransform));
+                tagTextGO.transform.SetParent(slot.tagChip.transform, false);
+                var ttrt = (RectTransform)tagTextGO.transform;
+                ttrt.anchorMin = Vector2.zero;
+                ttrt.anchorMax = Vector2.one;
+                ttrt.offsetMin = new Vector2(4f, 0f);
+                ttrt.offsetMax = new Vector2(-4f, 0f);
+                slot.tagLabel = tagTextGO.AddComponent<TextMeshProUGUI>();
+                if (labelFont != null) slot.tagLabel.font = labelFont;
+                slot.tagLabel.fontSize = 15;
+                slot.tagLabel.enableAutoSizing = true;
+                slot.tagLabel.fontSizeMin = 10;
+                slot.tagLabel.fontSizeMax = 15;
+                slot.tagLabel.color = Color.white;
+                slot.tagLabel.alignment = TextAlignmentOptions.Center;
+                slot.tagLabel.raycastTarget = false;
+
+                // hand-card-face unit 1 — 하단 효과 본문(계약 8: floor 16pt — 실기기 가독 하한).
+                var bodyGO = new GameObject("Body", typeof(RectTransform), typeof(CanvasGroup));
+                bodyGO.transform.SetParent(slot.root.transform, false);
+                var brt = (RectTransform)bodyGO.transform;
+                brt.anchorMin = Vector2.zero;
+                brt.anchorMax = Vector2.one;
+                brt.offsetMin = new Vector2(10f, 8f);
+                brt.offsetMax = new Vector2(-10f, -(HeaderH + 4f));
+                slot.bodyGroup = bodyGO.GetComponent<CanvasGroup>();
+                slot.bodyLabel = bodyGO.AddComponent<TextMeshProUGUI>();
+                if (labelFont != null) slot.bodyLabel.font = labelFont;
+                slot.bodyLabel.fontSize = 20;
+                slot.bodyLabel.enableAutoSizing = true;
+                slot.bodyLabel.fontSizeMin = 16;
+                slot.bodyLabel.fontSizeMax = 20;
+                slot.bodyLabel.color = new Color(0.92f, 0.92f, 0.98f, 1f);
+                slot.bodyLabel.alignment = TextAlignmentOptions.TopLeft;
+                slot.bodyLabel.raycastTarget = false;
 
                 // Cost badge: top-left round chip.
                 slot.costBadge = new GameObject("Cost", typeof(RectTransform), typeof(Image));
