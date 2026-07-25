@@ -228,6 +228,7 @@ namespace Wassup.Tests.EditMode
             Assert.IsFalse(DcTrigger.GateComboSupported(Wassup.Data.DcTriggerKind.OnKill, Wassup.Data.DcGateKind.HpBelow, Wassup.Data.DcGateSubject.EventTarget), "사망 대상 항상 참 = 퇴화");
             Assert.IsFalse(DcTrigger.GateComboSupported(Wassup.Data.DcTriggerKind.AttackN, Wassup.Data.DcGateKind.HpBelow, Wassup.Data.DcGateSubject.Self), "미배선 (후속 후보)");
             Assert.IsFalse(DcTrigger.GateComboSupported(Wassup.Data.DcTriggerKind.OnDamagedN, Wassup.Data.DcGateKind.HpBelow, Wassup.Data.DcGateSubject.EventTarget), "미배선 (다중 source subject 규칙 미정)");
+            Assert.IsFalse(DcTrigger.GateComboSupported(Wassup.Data.DcTriggerKind.OnDamagedN, (Wassup.Data.DcGateKind)999, Wassup.Data.DcGateSubject.Self), "미래 gate enum 은 명시 배선 전까지 거절");
         }
 
         [Test]

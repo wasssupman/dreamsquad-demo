@@ -112,6 +112,10 @@ namespace Wassup.Tests.PlayMode
 
             var em = World.DefaultGameObjectInjectionWorld.EntityManager;
             var host = FindDefender(bridge, em);
+            // 이 테스트는 최대 10초 동안 실웨이브와 공존한다. 선행 PlayMode 테스트와
+            // 연속 실행해도 호스트 사망이 두 번째(게이트 안) 관측 구간을 끊지 않도록
+            // 생존성은 테스트 입력으로 고정한다 — 검증 대상은 처형타의 출력 배율이다.
+            em.SetComponentData(host, new Health { value = 1_000_000f, max = 1_000_000f });
             int handle = bridge.ApplyDreamcatcherCardToUnit(host, MakeExecutionCard());
             Assert.GreaterOrEqual(handle, 0, "execution attached (bake ok)");
 

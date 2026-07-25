@@ -190,6 +190,28 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
+        public void UnitMechanic_UnsupportedGateCombo_UsesDescriptionFallback()
+        {
+            var card = Card(CardType.Unit, description: "미지원 게이트 설명");
+            card.mechanics = new[]
+            {
+                new DcMechanic
+                {
+                    trigger = new DcTriggerSpec
+                    {
+                        kind = DcTriggerKind.OnDamagedN, period = 2,
+                        gate = DcGateKind.HpBelow, gateSubject = DcGateSubject.EventTarget, gateValue = 0.30f,
+                    },
+                    payload = new DcPayloadSpec { kind = DcPayloadKind.SelfTileAoe, magnitude = 20f, tileRange = 1 },
+                },
+            };
+
+            string body = DreamcatcherCardText.Body(card);
+            StringAssert.Contains("미지원 게이트 설명", body);
+            StringAssert.DoesNotContain("2번째 피격마다", body);
+        }
+
+        [Test]
         public void UnitMechanic_FormatsThresholdAndPermanentEffect()
         {
             var card = Card(CardType.Unit);

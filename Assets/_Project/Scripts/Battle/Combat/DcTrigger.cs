@@ -88,6 +88,7 @@ namespace Wassup.Battle.Combat
         public static bool GateComboSupported(Wassup.Data.DcTriggerKind trigger, Wassup.Data.DcGateKind gate, Wassup.Data.DcGateSubject subject)
         {
             if (gate == Wassup.Data.DcGateKind.None) return true;
+            if (gate != Wassup.Data.DcGateKind.HpBelow) return false;
             if (trigger == Wassup.Data.DcTriggerKind.OnDamagedN && subject == Wassup.Data.DcGateSubject.Self) return true;
             if (trigger == Wassup.Data.DcTriggerKind.AttackN && subject == Wassup.Data.DcGateSubject.EventTarget) return true;
             return false;
