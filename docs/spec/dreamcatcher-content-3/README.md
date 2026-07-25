@@ -35,7 +35,7 @@ e2e 검증 (UnityMCP 라이브 에디터, 실전 웨이브 + 더미 계측): ①
 - **신규 NativeQueue 채널 금지**: 시체폭발은 `EnemyKilledEvent` 필드 위드닝으로 운반한다 — `DefenderDeathEvent.hasOnDeathAoe`(작별 선물) 선례와 동형. 22번째 채널을 만들지 않는다.
 - **AoE 실행은 기존 정거장 재사용**: 모든 폭발은 `SkyFall × TileAoe` 투사체(flightTime 0) — OnDeath 폭발(`DrainDefenderDeathEvents`)·실드 파열(`DrainShieldBreakEvents`)과 동일 경로. 신규 아키타입 없음.
 - **카드 flat 데미지 원칙**: 카드발 데미지에 attacker damageMul 미적용 (기존 계약 유지).
-- **v1 단순화 선례 유지**: OnKill/HealthThreshold AoE 는 "첫 매칭 슬롯만" (OnDeath v1 선례). 카드 2장 중복 부착 시 폭발 1회.
+- **v1 단순화 선례 유지**: OnKill/OnDeath AoE 는 event-stamp 구조상 "첫 매칭 슬롯만" — 카드 2장 중복 부착 시 폭발 1회. **HealthThreshold 는 슬롯당 발동**(빈사폭주가 원래 그런 방식 — 중복 부착 시 폭발 2회. 2026-07-25 투트랙 리뷰 A-M1 정정: 최초 문구가 "첫 매칭"을 HealthThreshold 까지 과일반화했었다).
 - **art = null**: 카드 아트는 category 색 폴백으로 출시, 실아트는 후속(guid 유지 교체 관례).
 - **문안**: `DreamcatcherCardText` 가 조합을 지원하면 자동 문안, 아니면 SO `description` 폴백. 신규 조합마다 `DreamcatcherCardTextTests` 케이스 1개.
 - **시트 push**: feature 종료 시 1회 (비파괴 업서트). 유닛별로 하지 않는다.
