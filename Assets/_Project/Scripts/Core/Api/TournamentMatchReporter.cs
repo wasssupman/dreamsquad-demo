@@ -198,13 +198,13 @@ namespace Wassup.Core.Api
             });
         }
 
-        // abandoned-match-reconciliation unit 1 — lobby recovery for a match the
-        // client never got to terminally complete (hard kill / crash). Operates
-        // purely on the persisted record + the CURRENT session (never the live
-        // in-memory _attemptId): account-guards, then within the grace window sends
-        // complete(0), otherwise discards and leaves the server's round cleanup to
-        // finalize it. Clears the record before sending (optimistic) so a double-
-        // fire (Awake + onSignedIn) can't double-complete.
+        // abandoned-match-reconciliation unit 1 (+ tournament-flow-guards unit 5·6) —
+        // lobby recovery for a match the client never terminally completed (hard kill /
+        // crash / 미완주). Operates purely on the persisted record + the CURRENT session
+        // (never the live in-memory _attemptId): account-guards, then **나이 무관 항상**
+        // complete(0) 로 그 attempt 를 마감해 서버 락을 푼다. pending 은 complete 가 성공한
+        // 뒤에만 지운다(실패면 유지 → 다음 로비 재시도). 재진입 중복 complete 는 _reconciling
+        // in-flight 플래그로 막는다.
         public static void ReconcilePending()
         {
             if (_reconciling) return; // in-flight — 중복 complete 방지(Awake+onSignedIn)

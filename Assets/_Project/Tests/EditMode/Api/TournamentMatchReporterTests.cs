@@ -3,11 +3,11 @@ using Wassup.Core.Api;
 
 namespace Wassup.Tests.EditMode.Api
 {
-    // abandoned-match-reconciliation unit 1 — ReconcilePending's client-side branches
-    // (no-record / no-account / account-mismatch / over-window discard). Each of these
-    // clears the store and returns WITHOUT reaching the Complete0 network call, so they
-    // are EditMode-safe. The within-window Complete0 path fires a real server request
-    // and is verified live (throwaway-account probe), not here.
+    // abandoned-match-reconciliation unit 1 (+ tournament-flow-guards unit 5·6) —
+    // ReconcilePending's EditMode-safe client-side branches (no-record / no-account /
+    // account-mismatch). Each returns WITHOUT reaching the Complete0 network call. The
+    // complete(0) path (나이 무관 항상 시도, 성공 시에만 pending clear) fires a real server
+    // request and is verified live (throwaway-account probe), not here.
     public class TournamentMatchReporterTests
     {
         [SetUp]
@@ -44,16 +44,6 @@ namespace Wassup.Tests.EditMode.Api
         {
             // record belongs to a different user → must NOT be completed under this session.
             PendingMatchStore.Save("a-1", "other-user", Now());
-            SignInAs("u-1");
-            TournamentMatchReporter.ReconcilePending();
-            Assert.IsFalse(PendingMatchStore.TryLoad(out _));
-        }
-
-        [Test]
-        public void ReconcilePending_OverWindow_DiscardsWithoutComplete()
-        {
-            long oldUnix = Now() - (PendingMatchPolicy.DefaultTtlSeconds + 3600); // TTL + 1h past
-            PendingMatchStore.Save("a-1", "u-1", oldUnix);
             SignInAs("u-1");
             TournamentMatchReporter.ReconcilePending();
             Assert.IsFalse(PendingMatchStore.TryLoad(out _));
