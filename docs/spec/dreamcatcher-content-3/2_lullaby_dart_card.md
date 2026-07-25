@@ -23,6 +23,8 @@ N번째 공격이 적을 재우는 카드. 적 수면은 실드수면(AreaSleep 
 
 ## 완료 기준
 
-- [ ] compile 클린 + EditMode 전체 green
-- [ ] `DreamcatcherCardTextTests` 에 Sleep 문안 케이스 1개 추가·통과
+- [x] compile 클린 + EditMode 전체 green
+- [x] `DreamcatcherCardTextTests` 에 Sleep 문안 케이스 1개 추가·통과
 - [ ] Play smoke: 5번째 공격에 적이 잠들고, 다른 유닛의 공격에 즉시 깨는 것 확인
+
+구현 커밋 79d9f844 (2026-07-25). 문안은 "(피격 시 해제)" 명시로 확장. Play smoke 대기.

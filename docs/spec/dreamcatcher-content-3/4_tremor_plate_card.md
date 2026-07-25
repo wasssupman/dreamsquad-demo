@@ -25,6 +25,8 @@
 
 ## 완료 기준
 
-- [ ] compile 클린 + EditMode 전체 green (HealthThresholdEval 기존 테스트 무회귀)
-- [ ] 기존 빈사폭주(last_stand) Play/e2e 무회귀 — bake 호이스팅의 핵심 검증
+- [x] compile 클린 + EditMode 전체 green (HealthThresholdEval 기존 테스트 무회귀)
+- [x] 기존 빈사폭주(last_stand) Play/e2e 무회귀 — bake 호이스팅의 핵심 검증 (PlayMode `LastStand_BelowHpThreshold_BuffsAttackDamage` green)
 - [ ] Play smoke: 부착 탱커가 두들겨 맞을 때 10% 경계마다 자기 위치 폭발·주변 적 데미지 확인
+
+구현 커밋 9186ab85 (2026-07-25). PlayMode 킬임계/온히트/전투데미지 전부 green. `DreamcatcherEffectTest.CardBuffs` 1건 실패는 clean HEAD 리그 재현으로 **이 spec 과 무관한 사전 실패** 판정(가디언 dmgTaken 에 여분 ×1.25 — 별도 조사 후보). Play smoke 대기.

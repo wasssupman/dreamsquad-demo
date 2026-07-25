@@ -33,5 +33,7 @@
 
 ## 완료 기준
 
-- [ ] EditMode 전체 green
+- [x] EditMode 전체 green
 - [ ] Play smoke: 부착 유닛이 같은 적을 연타 → 3타에서 감속, 5타에서 1초 정지 후 스택 리셋 재누적 확인. `stackModifierAuthoring` 배선 누락 시의 무효과가 아님을 로그/거동으로 확인
+
+구현 커밋 bc27201e (2026-07-25). 씬 배선은 BattleScene.unity YAML append 로 반영(1줄, 씬 재오픈 필요). CardText 에 AttackN period-1 문안 특례("공격마다") 포함. Play smoke 대기.

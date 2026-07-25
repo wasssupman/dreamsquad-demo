@@ -24,5 +24,7 @@ N번째 공격에 맞은 적을 밀쳐내는 카드. Impulse CC 는 bake(`MapDcC
 
 ## 완료 기준
 
-- [ ] EditMode 전체 green (`DreamcatcherCatalogSyncTests` 가 신규 카드 등록 자동 검증)
+- [x] EditMode 전체 green (`DreamcatcherCatalogSyncTests` 가 신규 카드 등록 자동 검증)
 - [ ] Play smoke: 카드 부착 유닛의 4번째 공격에서 적이 밀려나는 것 육안 확인, 콘솔에 bake skip 경고·unhandled payload 경고 없음
+
+구현 커밋 60e1f8d9 (2026-07-25). 카드 수 검증 테스트 2건(이름 맵·structuredCount)은 카드 추가 절차대로 갱신. Play smoke 대기.
