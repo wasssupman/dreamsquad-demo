@@ -151,6 +151,8 @@ namespace Wassup.UI
         private int _leakCurrent;
         private int _leakLimit;
         private bool _hasLeakSnapshot;
+        // endless-mode — 무한 모드는 죽는 한계가 없어 "/한계" 와 위기색을 숨긴다(누수 개수만 표시).
+        private bool _leakShowLimit = true;
         private Tween _punchTween;
         private Tween _colorTween;
         private Tween _leakPunchTween;
@@ -310,7 +312,7 @@ namespace Wassup.UI
         // battle-leak-limit-hud unit 0 — BattleBridge owns the authoritative
         // GoalReached count and effective defeat limit. Store the snapshot even while
         // the Battle-only panel is hidden; unit 1 renders it without duplicating math.
-        public void SetLeakStatus(int current, int limit)
+        public void SetLeakStatus(int current, int limit, bool showLimit = true)
         {
             int nextCurrent = Mathf.Max(0, current);
             int nextLimit = Mathf.Max(0, limit);
@@ -318,6 +320,7 @@ namespace Wassup.UI
                 (nextCurrent > _leakCurrent || nextLimit < _leakLimit);
             _leakCurrent = nextCurrent;
             _leakLimit = nextLimit;
+            _leakShowLimit = showLimit;
             _hasLeakSnapshot = true;
             RefreshLeakDisplay(worsened);
         }
@@ -326,11 +329,21 @@ namespace Wassup.UI
         {
             if (_leakValue == null) return;
 
-            _leakValue.text = $"{_leakCurrent} / {_leakLimit}";
-            int remaining = _leakLimit - _leakCurrent;
-            Color targetColor = remaining <= leakCriticalRemaining
-                ? leakCriticalColor
-                : remaining <= leakWarningRemaining ? leakWarningColor : leakNormalColor;
+            Color targetColor;
+            if (_leakShowLimit)
+            {
+                _leakValue.text = $"{_leakCurrent} / {_leakLimit}";
+                int remaining = _leakLimit - _leakCurrent;
+                targetColor = remaining <= leakCriticalRemaining
+                    ? leakCriticalColor
+                    : remaining <= leakWarningRemaining ? leakWarningColor : leakNormalColor;
+            }
+            else
+            {
+                // endless-mode — 죽는 한계가 없으니 "/한계"·위기색 숨김, 누수 개수만.
+                _leakValue.text = $"{_leakCurrent}";
+                targetColor = leakNormalColor;
+            }
 
             if (!punch || _panel == null || !_panel.activeSelf)
             {

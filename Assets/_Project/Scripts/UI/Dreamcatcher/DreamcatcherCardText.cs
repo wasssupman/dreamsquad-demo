@@ -14,16 +14,17 @@ namespace Wassup.UI
 
         public static string BodyCompact(DreamcatcherCard card) => Assemble(card, compact: true);
 
+        // dreamcatcher-hand-card-face unit 0 — 손패 카드 본문: 타입/대상은 카드 면의
+        // 색·태그 칩이 담당하므로 헤더 줄(축·타입) 없이 효과 라인만. 라인 빌드와
+        // description 폴백 규칙은 Assemble 과 같은 소스(LinesWithFallback)를 공유한다.
+        // 화살표 강제 줄바꿈(2026-07-25 사용자 확정): 좁은 카드 폭에서 "트리거 →" 와
+        // 효과가 줄로 분리되어 구조가 읽힌다. 손패 전용 — 툴팁/덱빌더(넓은 패널)는 미적용.
+        public static string BodyLinesOnly(DreamcatcherCard card)
+            => string.Join("\n", LinesWithFallback(card)).Replace(" → ", " →\n");
+
         private static string Assemble(DreamcatcherCard card, bool compact)
         {
-            bool hasUnsupportedData;
-            var lines = BuildSummaryLines(card, out hasUnsupportedData);
-            if ((lines.Count == 0 || hasUnsupportedData)
-                && card != null && !string.IsNullOrEmpty(card.description))
-            {
-                if (hasUnsupportedData) lines.Clear();
-                lines.Add(card.description);
-            }
+            var lines = LinesWithFallback(card);
 
             string axis = AxisLabel(card == null ? CardTargetAxis.All : card.axis);
             string typeLabel = TypeLabel(card == null ? CardType.Squad : card.type);
@@ -35,6 +36,19 @@ namespace Wassup.UI
             string body = $"<size={headSize}>{header}</size>";
             if (lines.Count > 0) body += gap + string.Join("\n", lines);
             return body;
+        }
+
+        private static List<string> LinesWithFallback(DreamcatcherCard card)
+        {
+            bool hasUnsupportedData;
+            var lines = BuildSummaryLines(card, out hasUnsupportedData);
+            if ((lines.Count == 0 || hasUnsupportedData)
+                && card != null && !string.IsNullOrEmpty(card.description))
+            {
+                if (hasUnsupportedData) lines.Clear();
+                lines.Add(card.description);
+            }
+            return lines;
         }
 
         private static List<string> BuildSummaryLines(DreamcatcherCard card, out bool hasUnsupportedData)
@@ -290,7 +304,9 @@ namespace Wassup.UI
             return true;
         }
 
-        private static string AxisLabel(CardTargetAxis axis)
+        // dreamcatcher-hand-card-face unit 0 — CardCategoryStyle.TargetTag 가 위임(축 라벨
+        // 이중 정의 금지). 같은 어셈블리(Wassup.Runtime) 한정.
+        internal static string AxisLabel(CardTargetAxis axis)
         {
             switch (axis)
             {

@@ -32,7 +32,8 @@ namespace Wassup.Data
                 deck.bossWaveInterval,
                 deck.bossEscortMin,
                 deck.bossEscortMax,
-                deck.waveCountJitter);
+                deck.waveCountJitter,
+                deck.fixedWaveIntervalSec);
         }
 
         public static GeneratedWavePlan Generate(
@@ -49,7 +50,8 @@ namespace Wassup.Data
             int bossWaveInterval = 0,
             int bossEscortMin = 0,
             int bossEscortMax = 0,
-            int waveCountJitter = 1)
+            int waveCountJitter = 1,
+            float fixedIntervalSec = 0f)
         {
             if (attackUnitPool == null) throw new ArgumentNullException(nameof(attackUnitPool));
 
@@ -75,7 +77,11 @@ namespace Wassup.Data
             int maxUnits = math.max(minUnits, math.max(minUnitsPerWave, maxUnitsPerWave));
 
             float duration = timerDurationSec > 0f ? timerDurationSec : 180f;
-            float interval = waveCount > 0 ? duration / waveCount : 0f;
+            // endless-mode unit 1 — 고정 간격(>0)이면 웨이브수 의존 파생 대신 그 값을 쓴다.
+            // triggerTimeSec = i*interval 계약은 불변 → 스케줄러(QueueDueWaves) 재사용.
+            float interval = fixedIntervalSec > 0f
+                ? fixedIntervalSec
+                : (waveCount > 0 ? duration / waveCount : 0f);
             float spacing = intraWaveSpacingSec > 0f ? intraWaveSpacingSec : 0.35f;
 
             var waves = new List<GeneratedWave>(waveCount);

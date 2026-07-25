@@ -31,12 +31,25 @@ namespace Wassup.UI
             int count = pool != null ? pool.Count : 0;
             if (count <= 0) return;
 
-            int next;
-            if (!DevMapOverride.HasIndex)
-                next = dir > 0 ? 0 : count - 1;                 // OFF 에서 진입: ▶=0, ◀=마지막
+            // endless-mode unit 3 — 스텝 사이클에 ENDLESS 슬롯(마지막 인덱스 다음)을 추가.
+            // 슬롯 [0..count-1]=풀 인덱스, 슬롯 count=무한 모드. OFF 는 별도(OFF 버튼).
+            int total = count + 1;
+            int cur;
+            if (DevMapOverride.Endless) cur = count;
+            else if (DevMapOverride.HasIndex) cur = DevMapOverride.Index;
+            else cur = dir > 0 ? -1 : total;                    // OFF 진입: ▶=0, ◀=ENDLESS
+            int next = ((cur + dir) % total + total) % total;
+
+            if (next >= count)                                  // ENDLESS 슬롯
+            {
+                DevMapOverride.Endless = true;
+                DevMapOverride.Index = -1;                      // 인덱스 off (무한이 우선하지만 표시 정합)
+            }
             else
-                next = ((DevMapOverride.Index + dir) % count + count) % count; // wrap
-            DevMapOverride.Index = next;
+            {
+                DevMapOverride.Endless = false;
+                DevMapOverride.Index = next;
+            }
             Refresh();
         }
 
@@ -49,6 +62,7 @@ namespace Wassup.UI
         private void Refresh()
         {
             if (label == null) return;
+            if (DevMapOverride.Endless) { label.text = "ENDLESS"; return; }
             if (!DevMapOverride.HasIndex) { label.text = "MAP?"; return; }
 
             int i = DevMapOverride.Index;

@@ -33,6 +33,9 @@ namespace Wassup.Bridge
         // random-map-pool — (맵, 덱) 인코운터 풀. 맵 생산의 유일 경로(map-pipeline-cleanup unit 2
         // 에서 legacy 소스 제거). 엔트리 하나를 골라 맵·덱을 함께 확정한다(맵마다 그 맵의 적 패턴).
         [SerializeField] private MapDocumentPool mapPool;
+        // endless-mode unit 2 — 무한 모드 전용 (맵, 덱) 인카운터. 공용 mapPool 에 넣지 않아
+        // 랜덤/토너먼트 맵 선택이 절대 안 뽑는다(계약 5). DevMapOverride.Endless 로만 진입.
+        [SerializeField] private MapDocumentPool.Entry endlessEncounter;
         // 비0 = 맵 시드 고정(매판 동일 맵/인덱스 핀). 0 = 토너먼트 시드 결정론(부재 시 0번 폴백).
         [SerializeField] private int fixedMapSeed = 20260719;
         [Header("Season")]
@@ -337,6 +340,10 @@ namespace Wassup.Bridge
         // 모든 덱 소비는 ActiveDeck 경유. public = 브리핑 스트립이 선택된 덱을 읽어 브리핑=실전 일치(unit 4).
         private AttackDeck _resolvedDeck;
         public AttackDeck ActiveDeck => _resolvedDeck != null ? _resolvedDeck : deck;
+
+        // endless-mode unit 2 — 현재 배틀이 무한 모드인가. BattleBridge 만 이 값으로 분기한다
+        // (진입/간격은 데이터 구동, 누수/시간축/토너먼트 리포트는 아래 각 지점에서 이 플래그로).
+        private bool IsEndless => ActiveDeck != null && ActiveDeck.battleMode == BattleMode.Endless;
 
         // random-map-pool unit 6 — draft 브리핑 스트립이 실전과 동일한 플랜을 프리뷰하도록.
         // TryInitializeGeneratedWaves 의 생성 경로와 같은 ActiveDeck·seed 로직 미러(authored-plan 제외).
@@ -868,7 +875,16 @@ namespace Wassup.Bridge
             // map-pipeline-cleanup unit 2 — 단일 mapDocument 폴백 제거: 풀이 유일 소스.
             MapDocument activeDoc = null;
             _resolvedDeck = deck;
-            if (mapPool != null && mapPool.Count > 0)
+            // endless-mode unit 2 — 무한 모드 진입: 공용 풀 이전에 전용 인카운터를 우선한다.
+            // 풀 count 를 안 건드려 랜덤/토너먼트 맵 선택은 byte-identical(계약 5). DevMapOverride.Endless 로만.
+            if (Wassup.Core.DevMapOverride.Endless && endlessEncounter.deck != null
+                && MapGridBattleAdapter.IsUsableDocument(endlessEncounter.document))
+            {
+                activeDoc = endlessEncounter.document;
+                _resolvedDeck = endlessEncounter.deck;
+                Debug.Log("[BattleBridge] map source = ENDLESS encounter (DevMapOverride.Endless).");
+            }
+            else if (mapPool != null && mapPool.Count > 0)
             {
                 int poolIndex;
                 string poolSource;
@@ -3899,7 +3915,7 @@ namespace Wassup.Bridge
             => ActiveDeck != null ? ActiveDeck.defeatGoalReachedCount - _leakAllowancePenalty : 0;
 
         private void RefreshLeakHud()
-            => scoreHud?.SetLeakStatus(_goalReachedCount, EffectiveLeakLimit());
+            => scoreHud?.SetLeakStatus(_goalReachedCount, EffectiveLeakLimit(), !IsEndless);
 
         // subconscious-curse-expansion unit 1 (몽마의 계약) — 잔여 유출 허용치.
         // = SO 기준치 − 선불 차감 − 이미 유출된 수. 컨트롤러 게이트/HUD 조회용.
@@ -3934,7 +3950,9 @@ namespace Wassup.Bridge
                 // 몽마의 계약 — 패배 판정은 선불 차감을 반영한 유효 허용치 기준.
                 int leakLimit = EffectiveLeakLimit();
                 Debug.Log($"[BattleBridge] Goal reached! Count: {_goalReachedCount}/{leakLimit}");
-                if (!_resultShown && _goalReachedCount >= leakLimit)
+                // endless-mode unit 2 — 무한 모드는 누수로 죽지 않는다(계약 4). 누수 카운트/HUD 는 그대로
+                // 누적돼 스트레스 점수에 반영. 메인은 IsEndless=false 라 기존 패배 게이트 불변.
+                if (!IsEndless && !_resultShown && _goalReachedCount >= leakLimit)
                 {
                     _resultShown = true;
                     _running = false;
@@ -3999,6 +4017,12 @@ namespace Wassup.Bridge
         // list stays.
         private void ReportMatchResult(int playerScore)
         {
+            // endless-mode unit 2 — 무한 모드는 토너먼트에 리포트하지 않는다(계약 5). 결과 팝업은 정상 표시.
+            if (IsEndless)
+            {
+                Debug.Log("[BattleBridge] ENDLESS — 토너먼트 리포트 스킵.");
+                return;
+            }
             var logger = GameManager.Instance?.Logger;
             Wassup.Core.Api.TournamentMatchReporter.ReportResult(playerScore, logger?.SnapshotJson(),
                 ranking => resultScreen?.UpdateLeaderboard(ranking, Wassup.Core.Api.UserSession.Current?.userId),
@@ -4059,7 +4083,9 @@ namespace Wassup.Bridge
                     + "ScoreRules.asset 을 인스펙터에 물릴 것.");
             }
 
-            int remainingMs = Mathf.RoundToInt(RemainingBattleSeconds() * 1000f);
+            // endless-mode unit 2 — 무한 모드는 시간축 0(스코어어택). 조기클리어로 remainingMs>0
+            // 이어도 시간점수가 새지 않게 여기서 0 고정. 메인은 기존대로 남은시간 반영.
+            int remainingMs = IsEndless ? 0 : Mathf.RoundToInt(RemainingBattleSeconds() * 1000f);
             int stressLimit = ActiveDeck != null ? ActiveDeck.defeatGoalReachedCount : 0;
             int stressAccrued = _goalReachedCount + _leakAllowancePenalty;
 
