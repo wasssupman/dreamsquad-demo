@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ad58317f24d22400db8492b1886b69e2, type: 3}
+  m_Name: StackModifier_Ice
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.StackModifierSO
+  kind: 2
+  maxStack: 5
+  perAppDuration: 4
+  policy: 0
+  thresholds:
+  - atStack: 3
+    mode: 0
+    derivedKind: 2
+    magnitude: 0.6
+    duration: 1.5
+    stat: 4
+    op: 0
+  - atStack: 5
+    mode: 1
+    derivedKind: 1
+    magnitude: 1
+    duration: 0
+    stat: 0
+    op: 0

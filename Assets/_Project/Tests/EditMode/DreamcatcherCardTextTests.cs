@@ -290,7 +290,7 @@ namespace Wassup.Tests.EditMode
 
             }
 
-            Assert.AreEqual(38, structuredCount, "all current Dreamcatcher cards should be data-formatted");
+            Assert.AreEqual(39, structuredCount, "all current Dreamcatcher cards should be data-formatted");
         }
 
     }

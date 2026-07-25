@@ -214,7 +214,8 @@ namespace Wassup.UI
             switch (trigger.kind)
             {
                 case DcTriggerKind.AttackN:
-                    text = $"{Count(trigger.period)}번째 공격마다";
+                    // period 1 은 "1번째 공격마다"가 아니라 "공격마다" (frostbite, content-3 unit 1)
+                    text = trigger.period == 1 ? "공격마다" : $"{Count(trigger.period)}번째 공격마다";
                     return trigger.period > 0;
                 case DcTriggerKind.OnDamagedN:
                     text = $"{Count(trigger.period)}번째 피격마다";

@@ -1,0 +1,42 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cdcd617d396824acd8882a45466b4886, type: 3}
+  m_Name: Card_Frostbite
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
+  id: frostbite
+  displayName: "동상"
+  axis: 3
+  category: 1
+  effects: []
+  art: {fileID: 0}
+  mechanics:
+  - trigger:
+      kind: 1
+      period: 1
+      periodSeconds: 0
+      fraction: 0
+    payload:
+      kind: 11
+      magnitude: 1
+      projectile: {fileID: 0}
+      tileRange: 5
+      duration: 4
+      auraPrefab: {fileID: 0}
+      auraScale: 0
+      ccKind: 0
+      stackKind: 1
+      buffStat: 0
+  attackMods: []
+  type: 1
+  skill: {fileID: 0}
+  description: "공격마다 → 대상에게 빙결 1스택 · 4초"
+  leakAllowanceCost: 0

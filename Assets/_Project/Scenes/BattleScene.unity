@@ -4313,6 +4313,7 @@ MonoBehaviour:
   stackModifierAuthoring:
   - {fileID: 11400000, guid: 9ef2f1f251f1c48ca88ace43e01b0a12, type: 2}
   - {fileID: 11400000, guid: 8509b6127629ddd4893dfa78d7f4ea96, type: 2}
+  - {fileID: 11400000, guid: de365d3d90c04af19bb3fb09e3509249, type: 2}
   enableAdjacencySynergy: 0
   pickupViewPrefab: {fileID: 919132149155446097, guid: 5e4c5f9eddda4e94ea888e9beff38d4c, type: 3}
   pickupViewHeight: 0.3

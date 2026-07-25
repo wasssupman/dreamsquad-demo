@@ -37,6 +37,7 @@
 | `farewell` | 작별 선물 | 사망폭발 |
 | `sub_fattened_offering` | 살찌운 제물 | 제물표식 |
 | `frost_arrow` | 서리의 화살 | 빙결 |
+| `frostbite` | 살을 에는 서리 | 동상 |
 | `gale_shove` | 돌풍의 손길 | 밀치기 |
 | `guardian_as` | 가디언 폭타 | 가디언속 |
 | `guardian_fortress` | 가디언 풀존버 | 가디언벽 |
