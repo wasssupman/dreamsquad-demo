@@ -135,6 +135,29 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
+        public void UnitMechanic_FormatsSleepWithWakeNote()
+        {
+            var card = Card(CardType.Unit);
+            card.mechanics = new[]
+            {
+                new DcMechanic
+                {
+                    trigger = new DcTriggerSpec { kind = DcTriggerKind.AttackN, period = 5 },
+                    payload = new DcPayloadSpec
+                    {
+                        kind = DcPayloadKind.ApplyCcToTarget,
+                        ccKind = DcCcKind.Sleep,
+                        duration = 2.5f,
+                    },
+                },
+            };
+
+            StringAssert.Contains(
+                "5번째 공격마다 → 대상에게 수면 2.5초 (피격 시 해제)",
+                DreamcatcherCardText.Body(card));
+        }
+
+        [Test]
         public void UnitMechanic_FormatsThresholdAndPermanentEffect()
         {
             var card = Card(CardType.Unit);
@@ -290,7 +313,7 @@ namespace Wassup.Tests.EditMode
 
             }
 
-            Assert.AreEqual(39, structuredCount, "all current Dreamcatcher cards should be data-formatted");
+            Assert.AreEqual(40, structuredCount, "all current Dreamcatcher cards should be data-formatted");
         }
 
     }

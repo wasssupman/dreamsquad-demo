@@ -43,6 +43,7 @@ namespace Wassup.Tests.EditMode
             { "sub_incubus_pact", "희생계약" },
             { "last_flame", "불꽃폭주" },
             { "last_stand", "빈사폭주" },
+            { "lullaby_dart", "자장가" },
             { "nightmare_afterglow", "킬딜" },
             { "poke_needle", "관통침" },
             { "ranger_as", "레인저속" },

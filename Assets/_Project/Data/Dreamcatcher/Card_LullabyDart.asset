@@ -1,0 +1,42 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cdcd617d396824acd8882a45466b4886, type: 3}
+  m_Name: Card_LullabyDart
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
+  id: lullaby_dart
+  displayName: "자장가"
+  axis: 3
+  category: 1
+  effects: []
+  art: {fileID: 0}
+  mechanics:
+  - trigger:
+      kind: 1
+      period: 5
+      periodSeconds: 0
+      fraction: 0
+    payload:
+      kind: 10
+      magnitude: 0
+      projectile: {fileID: 0}
+      tileRange: 0
+      duration: 2.5
+      auraPrefab: {fileID: 0}
+      auraScale: 0
+      ccKind: 2
+      stackKind: 0
+      buffStat: 0
+  attackMods: []
+  type: 1
+  skill: {fileID: 0}
+  description: "5번째 공격마다 → 대상에게 수면 2.5초 (피격 시 해제)"
+  leakAllowanceCost: 0

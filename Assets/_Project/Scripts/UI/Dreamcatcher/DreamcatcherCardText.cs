@@ -179,9 +179,12 @@ namespace Wassup.UI
                            + $"{SignedPercent(payload.magnitude)} · {Duration(payload.duration)}";
                     break;
                 case DcPayloadKind.ApplyCcToTarget:
+                    // Sleep 은 wake-on-hit 리스크가 카드 판단의 핵심이라 문안에 명시 (content-3 unit 2)
                     effect = payload.ccKind == DcCcKind.Impulse
                         ? $"대상에게 넉백 속도 {Count(payload.magnitude)} · {Duration(payload.duration)}"
-                        : $"대상에게 {CcLabel(payload.ccKind)} {Duration(payload.duration)}";
+                        : payload.ccKind == DcCcKind.Sleep
+                            ? $"대상에게 수면 {Duration(payload.duration)} (피격 시 해제)"
+                            : $"대상에게 {CcLabel(payload.ccKind)} {Duration(payload.duration)}";
                     break;
                 case DcPayloadKind.ApplyStackToTarget:
                     effect = $"대상에게 {StackLabel(payload.stackKind)} {Count(payload.magnitude)}스택"
@@ -328,6 +331,7 @@ namespace Wassup.UI
             {
                 case DcCcKind.Stun: return "기절";
                 case DcCcKind.Impulse: return "넉백";
+                case DcCcKind.Sleep: return "수면";
                 default: return kind.ToString();
             }
         }

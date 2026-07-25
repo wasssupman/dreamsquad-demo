@@ -81,7 +81,9 @@ namespace Wassup.Data
     // 실제 CcEffect 로 소비되는 종류만: Stun(행동 정지=얼림), Impulse(넉백). unit 1 발견 —
     // 이 엔진의 "Slow" 는 CcEffect 가 아니라 MoveSpeedMul StatModifier(ZoneApplySystem)라
     // 제외. 슬로우 카드가 필요하면 별도 stat 페이로드로(후속). append-only.
-    public enum DcCcKind { Stun, Impulse }
+    // dreamcatcher-content-3 unit 2 — Sleep(수면, wake-on-hit) append. AreaSleep 이 이미
+    // EnemyCcEvent{Sleep} 으로 검증한 적측 수면을 온-히트 단일 대상으로 개통(lullaby_dart).
+    public enum DcCcKind { Stun, Impulse, Sleep }
 
     // dreamcatcher-new-abilities unit 0 — 데이터 계층 스택 선택자. Battle.Effects.StackKind
     // 의 비-None 미러(번역은 BattleBridge). append-only.

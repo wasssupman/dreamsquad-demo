@@ -786,6 +786,7 @@ namespace Wassup.Bridge
             {
                 case Wassup.Data.DcCcKind.Stun: return Wassup.Battle.Effects.CcKind.Stun;
                 case Wassup.Data.DcCcKind.Impulse: return Wassup.Battle.Effects.CcKind.Impulse;
+                case Wassup.Data.DcCcKind.Sleep: return Wassup.Battle.Effects.CcKind.Sleep;
                 default: return Wassup.Battle.Effects.CcKind.Stun;
             }
         }
