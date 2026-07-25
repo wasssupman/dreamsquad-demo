@@ -8,6 +8,12 @@ namespace Wassup.Data
     public class AttackDeck : ScriptableObject
     {
         public string deckId = "WaveA";
+
+        // endless-mode unit 0 — 배틀 모드. Main=기존 토너먼트, Endless=스코어어택 무한 모드.
+        // BattleBridge 만 읽어 분기(간격/누수/시간축/리포트). 기본 Main 이라 기존 덱 동작 불변.
+        [Header("Battle Mode")]
+        public BattleMode battleMode = BattleMode.Main;
+
         [Header("Generated Waves")]
         public bool useGeneratedWaves = true;
         // wave-pattern unit 6(2026-07-20): 비0 = 라이브 고정 오버라이드 — 매판 동일 공격 패턴
@@ -27,6 +33,11 @@ namespace Wassup.Data
         [Tooltip("웨이브 진행 수량 램프의 지터 폭(±정수). 0 = 순수 선형. min→max 선형값을 이만큼 흔든 뒤 [min,max] 클램프.")]
         public int waveCountJitter = 1;
         public float intraWaveSpacingSec = 0.35f;
+
+        // endless-mode unit 0 — 웨이브 간 고정 간격(초). 0 = 기존 제한시간/웨이브수 파생,
+        // >0 = 이 값으로 고정(무한 모드는 10). WavePatternGenerator 가 interval 계산에서 우선한다.
+        [Tooltip("웨이브 간 고정 간격(초). 0=제한시간/웨이브수 파생(기존), >0=이 값 고정(무한 모드).")]
+        public float fixedWaveIntervalSec = 0f;
 
         [Header("Boss Waves")]
         [Tooltip("보스 웨이브에 스폰할 보스 유닛. null이면 보스 웨이브 없음. attackUnitPool에 넣지 말 것 — 생성기가 방어적으로 제외한다.")]

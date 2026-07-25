@@ -32,3 +32,6 @@
 - **기존 덱 동작 불변**: `battleMode` 기본 `Main`, `fixedWaveIntervalSec=0` → 메인 5덱 + Hook
   직렬화/런타임 그대로.
 - 인스펙터에서 신규 2필드 노출 확인.
+
+✅ 확인 2026-07-25 — MCP 강제 리컴파일 에러 0 + `Deck_Serpent` SerializedProperty 검증
+(`battleMode`:Enum / `fixedWaveIntervalSec`:Float). 커밋 해시는 handoff(unit 5) 참조.
