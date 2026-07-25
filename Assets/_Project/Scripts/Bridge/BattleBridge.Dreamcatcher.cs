@@ -237,6 +237,27 @@ namespace Wassup.Bridge
                 return -1;
             }
 
+            // dreamcatcher-attach-requirement unit 1 — 부착 제한 preflight. 여기까지는
+            // 전부 순수 읽기라(첫 쓰기는 아래 mechanics bake 루프) 부분 적용 위험 0.
+            // 거절은 카드 전체·무차감(-1 → HandController.CommitAttach 가 Spend 전 반환).
+            if (!PassesAttachRequirement(defender, card))
+            {
+                if (Wassup.Core.DreamcatcherAttachEval.HasInvalidAttachRequirement(card))
+                {
+                    // 데이터 실수 — 이 카드는 어떤 유닛에도 붙지 않는다(손패 슬롯 점유).
+                    Debug.LogWarning($"[BattleBridge] ApplyDreamcatcherCardToUnit('{card.id}'): 부착 제한 설정이 무효(attachRequire={card.attachRequire}, class={card.attachRequireClass}, unitId='{card.attachRequireUnitId}') — 어떤 유닛에도 부착되지 않는다. 시트 값을 확인할 것.");
+                }
+                else
+                {
+                    string want = card.attachRequire == Wassup.Data.DcAttachRequireKind.Class
+                        ? card.attachRequireClass.ToString()
+                        : card.attachRequireUnitId;
+                    TryGetDefenderDataByEntity(defender, out var hostData);
+                    Debug.LogWarning($"[BattleBridge] ApplyDreamcatcherCardToUnit('{card.id}'): 부착 제한 불일치 — 요구 {card.attachRequire}={want}, host role={(hostData != null ? hostData.role.ToString() : "?")} id='{(hostData != null ? hostData.id : "?")}' — card not attached.");
+                }
+                return -1;
+            }
+
             // subconscious-cursed-relics unit 0 — reject before any mechanic writes.
             // AddComponentData sets component data even when LethalTimer already exists,
             // which would reset the original death deadline and partially apply a
@@ -698,6 +719,9 @@ namespace Wassup.Bridge
                 return Wassup.Core.DreamcatcherAttachEval.WouldApply(card, false, false, false, false);
             if (!HasLiveEntityManager() || !_em.Exists(defender) || !_em.HasComponent<DefenderUnitTag>(defender))
                 return false;
+            // dreamcatcher-attach-requirement unit 1 — 부착 제한(클래스/특정 유닛)은 능력
+            // 게이트와 독립인 정적 술어라 먼저 본다. 커밋 preflight 와 같은 함수 → 일치.
+            if (!PassesAttachRequirement(defender, card)) return false;
             bool hasProjectile = _em.HasComponent<ProjectileRef>(defender);
             bool hasDamageOutput = HasPositiveDamageOutput(defender);
             bool hasLethalTimer = _em.HasComponent<Wassup.Battle.Units.LethalTimer>(defender);
@@ -763,6 +787,38 @@ namespace Wassup.Bridge
                     Wassup.Battle.Effects.ModifierOrigin.Dreamcatcher);
             _bountyMarked.Add(enemy);
             return 0;
+        }
+
+        // dreamcatcher-attach-requirement unit 1 — entity 키 defender SO 조회. 등록부
+        // (_defenderByTile)가 유일 소스이고 소규모 그리드라 선형 스캔으로 충분하다
+        // (BattleBridge.Relocation.cs 의 TryGetDefenderCell 과 동형). 기존 헬퍼는
+        // cell 키(TryGetDefenderData) 또는 entity→cell 뿐이라 이 방향은 여기서 신설.
+        private bool TryGetDefenderDataByEntity(Entity entity, out Wassup.Data.DefenderUnitData data)
+        {
+            foreach (var kv in _defenderByTile)
+            {
+                if (kv.Value.entity != entity) continue;
+                data = kv.Value.data;
+                return data != null;
+            }
+            data = null;
+            return false;
+        }
+
+        // dreamcatcher-attach-requirement unit 1 — 부착 제한(정적 술어) 게이트. UI 판정
+        // (WouldDreamcatcherCardApply)과 커밋 preflight(ApplyDreamcatcherCardToUnit)가
+        // 이 하나를 공유하므로 리티클 색과 커밋 결과가 어긋나지 않는다.
+        //
+        // attachRequire==None 이면 조회조차 하지 않는다 → 무제한 카드(현재 전부)의 경로가
+        // 완전히 무변화. host 조회 실패는 fail-closed: 사망 teardown 창에서 등록부 제거와
+        // 엔티티 파괴의 수명이 달라 제한 카드만 먼저 거절될 수 있다(무차감이라 실피해
+        // 없음 — spec README '의도된 동작' 계약. 버그로 오인 금지).
+        private bool PassesAttachRequirement(Entity defender, Wassup.Data.DreamcatcherCard card)
+        {
+            if (card == null) return false;
+            if (card.attachRequire == Wassup.Data.DcAttachRequireKind.None) return true;
+            if (!TryGetDefenderDataByEntity(defender, out var data)) return false;
+            return Wassup.Core.DreamcatcherAttachEval.MeetsAttachRequirement(card, data.role, data.id);
         }
 
         // dreamcatcher-content-2 unit 1 — does this defender emit at least one positive

@@ -179,5 +179,30 @@ namespace Wassup.Tests.EditMode
         {
             Assert.IsFalse(Meets(null, DefenderClass.Guardian, "shield_shuttle"));
         }
+
+        // unit 1 — 무효 설정 판별(브리지 경고 문구 분기 + unit 3 validator 공유 정의).
+        // "제한 불일치(정상 거절)"와 "데이터 실수"를 구분하는 것이 목적이다.
+        [Test]
+        public void HasInvalidAttachRequirement_DetectsEmptyValues()
+        {
+            Assert.IsTrue(DreamcatcherAttachEval.HasInvalidAttachRequirement(
+                RequireCard(DcAttachRequireKind.Class, cls: DefenderClass.None)));
+            Assert.IsTrue(DreamcatcherAttachEval.HasInvalidAttachRequirement(
+                RequireCard(DcAttachRequireKind.UnitId, unitId: null)));
+            Assert.IsTrue(DreamcatcherAttachEval.HasInvalidAttachRequirement(
+                RequireCard(DcAttachRequireKind.UnitId, unitId: "")));
+        }
+
+        [Test]
+        public void HasInvalidAttachRequirement_ValidAndUnrestricted_AreNotInvalid()
+        {
+            Assert.IsFalse(DreamcatcherAttachEval.HasInvalidAttachRequirement(
+                RequireCard(DcAttachRequireKind.Class, cls: DefenderClass.Guardian)));
+            Assert.IsFalse(DreamcatcherAttachEval.HasInvalidAttachRequirement(
+                RequireCard(DcAttachRequireKind.UnitId, unitId: "guardian")));
+            Assert.IsFalse(DreamcatcherAttachEval.HasInvalidAttachRequirement(
+                RequireCard(DcAttachRequireKind.None)), "제한 없음은 '무효'가 아니다");
+            Assert.IsFalse(DreamcatcherAttachEval.HasInvalidAttachRequirement(null));
+        }
     }
 }

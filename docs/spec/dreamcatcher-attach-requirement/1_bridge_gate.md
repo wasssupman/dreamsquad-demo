@@ -27,4 +27,7 @@ unit 0 의 순수 함수를 bridge 의 두 소비처에 각각 배선한다: ①
   - `WouldDreamcatcherCardApply` 가 두 host 에 대해 같은 답(true/false)
 - 무제한 카드 부착 무회귀(기존 PlayMode 회귀 green).
 
+확인 2026-07-25 — 컴파일 에러 0 · PlayMode e2e 1/1 pass(경고 3종 구분 확인: 제한 불일치 Class·UnitId / 무효 설정) · EditMode 1322건(1320 pass / 0 fail / 2 기존 Ignore).
+PlayMode 전체 53건 중 6건 실패는 **회귀 아님** — 변경을 stash 한 clean 트리(52건)에서 **같은 6건이 같은 메시지로** 실패함을 직접 재현해 확인했다(AuthE2E 서버 500 중복키 · 폴백 덱 0장 · CardBuffs 가디언 dmgTaken · Gift↔Placement 흐름 drift 2건 · SceneTransition 전체실행 순서의존[단독 실행은 통과]). 전부 기존 backlog 기록분.
+
 > **에셋 편집으로 검증하지 않는다.** append 필드는 인스펙터로 값을 넣는 순간 YAML 에 키가 기록되고 None 으로 원복해도 키가 남는다(`DreamcatcherCard.cs:56-57` 의 `visible` 필드 선례 · orphan 키 정리 불가). "에셋 diff 0" 은 달성 불가능한 기준이므로 코드로 카드를 만드는 e2e 가 유일하게 깨끗한 검증이다.

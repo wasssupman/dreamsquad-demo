@@ -47,6 +47,23 @@ namespace Wassup.Core
             }
         }
 
+        // unit 1·3 공유 — "제한이 설정됐지만 값이 비어 무의미한가"(= fail-closed 사유).
+        // 브리지의 별도 경고 문구(unit 1)와 에디터 validator(unit 3)가 같은 정의를 쓴다.
+        // 제한 불일치(정상 거절)와 데이터 실수를 구분하는 것이 목적.
+        public static bool HasInvalidAttachRequirement(DreamcatcherCard card)
+        {
+            if (card == null) return false;
+            switch (card.attachRequire)
+            {
+                case DcAttachRequireKind.Class:
+                    return card.attachRequireClass == DefenderClass.None;
+                case DcAttachRequireKind.UnitId:
+                    return string.IsNullOrEmpty(card.attachRequireUnitId);
+                default:
+                    return false;
+            }
+        }
+
         public static bool WouldApply(DreamcatcherCard card,
             bool hasProjectile, bool hasDamageOutput, bool hasLethalTimer, bool hasDreamCocoon)
         {
