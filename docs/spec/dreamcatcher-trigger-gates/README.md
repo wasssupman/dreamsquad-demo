@@ -42,7 +42,7 @@ N/A — 플레이 오브젝트 신설·생성→렌더 경로 변경 없음.
 
 ## 후속 후보
 
-- **궁지폭발 폭발 킬의 owner 귀속 결정** (투트랙 리뷰 B-M1) — 공유 shield-break 드레인이 SelfTileAoe 에 owner 를 안 실어 궁지폭발/실드폭발 킬은 OnKill 연쇄·위협 귀속 미발동 (점수는 무영향). 시체폭발(owner=killer)·진동갑주(owner=self)와 비대칭. 연쇄를 원하면 evt.host 스레딩 — 단 실드폭발 카드의 귀속도 함께 바뀌는 사양 결정
+- ~~궁지폭발 폭발 킬의 owner 귀속 결정~~ → **결정 완료 (2026-07-25 사용자: 통일)** — 공유 드레인 SelfTileAoe 에 owner=host 스레딩. 궁지폭발·실드폭발 킬도 주인의 킬로 인정(OnKill 연쇄·위협 귀속 발동, 점수 무영향). 전 폭발 카드 귀속 원칙 통일: 시체폭발=killer · 진동갑주=self · 궁지폭발/실드폭발=host
 - **시체폭발·진동갑주 PlayMode e2e 핀** (투트랙 리뷰 B-M2) — 라이브 검증은 됐으나 반복 가능한 회귀 핀 부재. DreamcatcherGateE2ETest 패턴으로 추가
 - **미배선 게이트 조합 개방** — Self×AttackN(저체력 공세)·Self×OnKill(위기 처치)·Self×OnShieldBreak·Self×PeriodicTimer(디펜더 개방 시)·EventTarget×OnShieldBreak. 각각 쓰는 카드 + 배선 + 테스트를 한 묶음으로. EventTarget×OnDamagedN 은 한 프레임 다중 source 의 subject 선정 규칙(KillAttribution 전례) 결정도 필요
 - SelfHpAbove(만전형) — 부등호 하나, 카드 기획 생기면

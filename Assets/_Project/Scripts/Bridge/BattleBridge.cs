@@ -2713,6 +2713,12 @@ namespace Wassup.Bridge
                             flightTime = 0f,
                             dataIndex = evt.aoeDataIndex,
                             visualScale = 1f,
+                            // trigger-gates 후속 결정(2026-07-25, 투트랙 리뷰 B-M1) — 폭발 킬
+                            // 귀속 통일: owner=host 라 궁지폭발/실드폭발 킬도 주인의 킬로
+                            // 인정되어 OnKill 연쇄·위협 귀속이 발동한다 (시체폭발 owner=killer,
+                            // 진동갑주 owner=self 와 동일 원칙). host 가 같은 프레임 사망해도
+                            // verbatim 복사일 뿐 역참조 없음(corpse killer 선례).
+                            owner = evt.host,
                         }, Entity.Null);
                         if (log != null)
                         {

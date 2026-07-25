@@ -44,7 +44,7 @@
 - **탐지 = 피격 소멸 전용**. `DamageApplicationSystem`(Units)에서 `ShieldMath.Absorb` **전 `preSum = Sum(slots)`, 후 `Sum(slots)`** — `preSum > 0 && post == 0` 이면 이번 프레임 피격으로 실드 파열. host 의 `DcTriggerSlot`(Combat, RO — OnKill 선례) 에 `OnShieldBreak` 슬롯 있으면 `ShieldBreakEvent` emit. **시간만료 미탐지**(경로 없음/구조적 배제).
 - **파열 의미 = 실드 풀 전체 소멸(Sum>0→0), 1회**. 다출처 슬롯이면 마지막 슬롯이 피격 소진되는 순간 1회. (부분 흡수·개별 슬롯 소진 중간엔 미발동.)
 - **호스트 = 실드를 부여받은 유닛**. 발동 중심 = host 위치. "실드 소멸 시 주변" = host 주변. (플레이 전제: shield-guardian 등으로 host 가 실드를 받는 편성.)
-- **A(데미지) = 기존 `SelfTileAoe` 재사용**. 트리거 무관 bake(payload 기준). 실행 = `SpawnProjectile`(SkyFall×TileAoe, `targetFaction=Enemy`, owner=Null) — OnDeath 폭발/메테오와 동형. **Combat 투사체 코드 불변**.
+- **A(데미지) = 기존 `SelfTileAoe` 재사용**. 트리거 무관 bake(payload 기준). 실행 = `SpawnProjectile`(SkyFall×TileAoe, `targetFaction=Enemy`, ~~owner=Null~~ **owner=host — 2026-07-25 trigger-gates 후속 결정(투트랙 리뷰 B-M1)으로 귀속 통일**: 파열 폭발 킬도 host 의 킬로 인정되어 OnKill 연쇄·위협 귀속 발동) — OnDeath 폭발/메테오와 동형. **Combat 투사체 코드 불변**.
 - **B(수면) = 신규 `AreaSleep`**. 필드 재사용(신규 DcPayloadSpec 필드 0): `magnitude=M`(적 수 cap, floor int)·`tileRange=N`(Chebyshev 반경)·`duration=L`(Sleep 초). 실행 = host cell Chebyshev N 내 적(`AttackUnitTag`) 수집 → `AoeTargetCap.SelectNearest`(거리² 오름차순 M, 동률=인덱스, 결정론) → 각 적에 `EnemyCcEvent{ kind=Sleep, remainingTime=L }` enqueue. `DcCcKind` 확장 불필요(payload 자체가 Sleep 확정).
 - **Sleep = wake-on-hit**(기존 combat-action-lock). 다른 데미지에 맞으면 조기 해제 — 의도된 리스크(B 는 데미지를 안 줌). A/B 는 별 카드라 상호 간섭 없음.
 - **채널**: 신규 `ShieldBreakEventsSingleton`(Units→Bridge NativeQueue). 실행측이 `EnemyCcEventsSingleton`(기존)에 Sleep enqueue. CLAUDE.md 채널 목록 갱신(구현 단위에서).
