@@ -23,6 +23,15 @@
 - 정상 플레이에서 미완료/이탈 매치가 로비 복귀 시 항상 `reconcile/abandon complete ok score=0` 로 락 해제 → 다음 `시작` 이 500 없이 진행.
 - 응답 실패(무락)는 저장·reconcile 없음.
 
+## unit 6 — pending 은 complete 성공 후에만 제거
+
+`ReconcilePending` 이 complete **보내기 전에** pending 을 optimistic clear 하던 것이 영구 락의 근본 원인이었다: complete 가 실패하면 attemptId 를 잃어 그 열린 락을 **다시는 못 푼다**(재시도할 근거 소멸 → 영구 500 "cannot wait").
+
+- **성공 콜백에서만** `PendingMatchStore.Clear()`. 실패면 pending 유지 → 다음 로비 진입에 재시도.
+- 재진입 중복 complete 는 `_reconciling` in-flight 플래그로 방지(예전엔 optimistic clear 가 그 역할).
+- 이로써 "응답받아 연 attempt 는 스코어 제출로 반드시 락 해제"가 **재시도까지 보장**된다.
+- (한계) 영구 실패 attempt(라운드 종료 등)면 로비마다 1회 재시도가 남는다 — 미세 누수, 후속에서 "already closed" 감지로 정리 가능.
+
 ## 주의 (현재 인스턴스 오염)
 
 디버깅 중 **raw play 프로브**가 pending 저장 없이 서버 attempt 를 여러 개 만들어(= 클라가 attemptId 를 안 가진 락) 현재 에디터 세션이 그 락들로 막혀 있다. 이 락들은 pending 이 없어 reconcile 로 못 풀며 **서버 강제 0점**으로만 풀린다. 정상 플레이 경로에는 없는 오염이다.

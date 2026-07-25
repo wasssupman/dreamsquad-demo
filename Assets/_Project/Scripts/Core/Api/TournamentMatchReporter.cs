@@ -23,6 +23,10 @@ namespace Wassup.Core.Api
         private static string _entryId;
         private static bool _completeSent;
 
+        // tournament-flow-guards unit 6 — reconcile in-flight 가드(성공 확인 후에만 pending
+        // 을 지우므로, Awake+onSignedIn 동시 발화 시 중복 complete 를 이 플래그로 막는다).
+        private static bool _reconciling;
+
         // tournament-seed-map-select unit 1 — the server tournament seed from the
         // latest play response. Map-pool selection reads it at map-build time;
         // absent (guest, in-flight, failed) means the caller falls back to index 0.
@@ -203,19 +207,12 @@ namespace Wassup.Core.Api
         // fire (Awake + onSignedIn) can't double-complete.
         public static void ReconcilePending()
         {
+            if (_reconciling) return; // in-flight — 중복 complete 방지(Awake+onSignedIn)
             if (!PendingMatchStore.TryLoad(out var rec)) return;
             if (!UserSession.HasAccount) { PendingMatchStore.Clear(); return; }
 
             string currentUserId = UserSession.Current?.userId ?? string.Empty;
             if (currentUserId != rec.userId) { PendingMatchStore.Clear(); return; } // different account
-
-            // tournament-flow-guards unit 5 — 락은 스코어 제출로만 풀린다(사용자 모델).
-            // 예전엔 경과시간이 TTL(600s)을 넘으면 complete 없이 discard 했는데, 그러면
-            // 아직 열린 락을 클라가 안 풀어 새 play 가 500 "cannot wait" 로 막힌다. 그래서
-            // 나이와 무관하게 **항상 complete(0)** 로 이 attempt 를 마감해 락을 푼다(라운드가
-            // 이미 닫혔으면 서버가 무해하게 거부할 뿐). 응답 받은 attempt 만 pending 에 있으므로
-            // "응답 없으면 세션관리 안 함" 규칙과도 일치.
-            PendingMatchStore.Clear(); // optimistic — before send, blocks re-entrant double-complete
 
             string baseUrl = UserSession.GameServerBaseUrl;
             if (string.IsNullOrEmpty(baseUrl))
@@ -223,12 +220,28 @@ namespace Wassup.Core.Api
                 Debug.LogWarning("[TournamentReporter] pending reconcile skipped — no base URL.");
                 return;
             }
+
+            // tournament-flow-guards unit 5·6 — 락은 스코어 제출로만 풀린다(사용자 모델).
+            // 나이(TTL) 무관 항상 complete(0) 로 마감해 락을 푼다. **핵심**: pending 은
+            // complete 가 **성공한 뒤에만** 지운다. 예전엔 전송 전에 optimistic clear 했는데,
+            // complete 가 실패하면 attemptId 를 잃어 열린 락을 영영 못 풀었다(영구 500 원인).
+            // 실패면 pending 을 그대로 둬서 다음 로비 진입에 재시도한다. 응답 받은 attempt 만
+            // pending 에 있으므로 "응답 없으면 세션관리 안 함" 규칙과도 일치.
+            _reconciling = true;
             AuthCredential credential = UserSession.Credential;
             string attemptId = rec.attemptId;
             TournamentApi.Complete(baseUrl, credential, attemptId, 0, "", (ok, error) =>
             {
-                if (!ok) Debug.LogWarning($"[TournamentReporter] reconcile complete failed: {error}");
-                else Debug.Log($"[TournamentReporter] reconcile complete ok — attemptId={attemptId} score=0");
+                _reconciling = false;
+                if (ok)
+                {
+                    PendingMatchStore.Clear(); // 성공 확인 후에만 제거
+                    Debug.Log($"[TournamentReporter] reconcile complete ok — attemptId={attemptId} score=0");
+                }
+                else
+                {
+                    Debug.LogWarning($"[TournamentReporter] reconcile complete failed (pending 유지 → 다음 로비 재시도): {error}");
+                }
             });
         }
     }
