@@ -49,3 +49,6 @@ BattleBridge 가 `battleMode` 를 인지해 무한 모드를 구동한다. **모
 - `DevMapOverride.Endless` 켜면 `Deck_Endless` 로드, 10초 간격 플랜, 누수해도 안 죽음, 결과 시간점수 0,
   토너먼트 리포트 미발생 (로그 확인). 실검증은 unit 4.
 - **`mapPool.Count` 불변 확인** — 토너먼트 시드→맵 매핑 회귀 없음.
+
+✅ 확인 2026-07-25 — MCP 강제 리컴파일 에러 0 + EditMode 전체 1295/1295 통과(0 실패, 2 skip=기존
+[Ignore], 회귀 0). 런타임 진입/누수/시간0 실검증은 unit 4. 커밋 해시는 handoff(unit 5) 참조.
