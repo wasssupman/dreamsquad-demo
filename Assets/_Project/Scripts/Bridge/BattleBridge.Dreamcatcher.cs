@@ -361,6 +361,23 @@ namespace Wassup.Bridge
                     continue;
                 }
 
+                // trigger-gates unit 1 — 게이트 배선 검증. 배선 표의 단일 SoT 는
+                // DcTrigger.GateComboSupported — 미배선/퇴화 조합은 조용한 무효과 대신
+                // loud 거절 (기존 bake 가드 컨벤션).
+                if (m.trigger.gate != Wassup.Data.DcGateKind.None)
+                {
+                    if (!DcTrigger.GateComboSupported(m.trigger.kind, m.trigger.gate, m.trigger.gateSubject))
+                    {
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: unsupported gate combo ({m.trigger.kind}×{m.trigger.gate}/{m.trigger.gateSubject}) — skipped.");
+                        continue;
+                    }
+                    if (m.trigger.gateValue <= 0f || m.trigger.gateValue >= 1f)
+                    {
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: gateValue out of (0,1) — skipped.");
+                        continue;
+                    }
+                }
+
                 // content-1 ① (가시 갑옷) — OnDamagedN×NextAttackDoubleFire bakes into
                 // DamagedCounter (Units-owned buffer), NOT DcTriggerSlot (Combat): the
                 // count is written where the defender takes damage (DamageApplicationSystem,
@@ -381,6 +398,9 @@ namespace Wassup.Bridge
                         counter = 0,
                         payload = m.payload.kind,
                         aoeDataIndex = -1,
+                        // trigger-gates unit 1 — OnDamagedN 게이트(Self 고정, 위 배선 검증 통과분).
+                        gate = m.trigger.gate,
+                        gateValue = m.trigger.gateValue,
                     };
                     if (m.payload.kind == Wassup.Data.DcPayloadKind.SelfTileAoe)
                     {
@@ -421,6 +441,10 @@ namespace Wassup.Bridge
                     payload = m.payload.kind,
                     magnitude = m.payload.magnitude,
                     projectileDataIndex = -1,
+                    // trigger-gates unit 1 — 게이트 번역 (위 배선 검증 통과분만 착지).
+                    gate = m.trigger.gate,
+                    gateSubject = m.trigger.gateSubject,
+                    gateValue = m.trigger.gateValue,
                 };
                 if (m.payload.kind == Wassup.Data.DcPayloadKind.ProjectileToTarget)
                 {

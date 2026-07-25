@@ -89,6 +89,18 @@ namespace Wassup.Data
     // 의 비-None 미러(번역은 BattleBridge). append-only.
     public enum DcStackKind { Fire, Ice, Bleed, Poison }
 
+    // dreamcatcher-trigger-gates unit 1 — 사건 트리거에 얹는 동적 술어 게이트.
+    // 트리거 kind 는 "언제 평가하나"(사건), 게이트는 "발화를 허용하나"(상태 술어)로
+    // 직교 분해된다 — 조합마다 kind 를 늘리지 않는다(kind 폭발 방지). 게이트 술어는
+    // ECS sim 이 unmanaged 로 읽을 수 있는 상태만 가능(Mono 상태 불가 — README 계약).
+    // v1 어휘 = HpBelow 하나. append-only.
+    public enum DcGateKind { None, HpBelow }
+
+    // 게이트의 주어 — Self(호스트) / EventTarget(사건 상대: AttackN=피해자 등).
+    // v1 배선 조합은 OnDamagedN×Self, AttackN×EventTarget 뿐 — 그 외는 bake 거절
+    // (배선 표의 단일 SoT = DcTrigger.GateComboSupported). append-only.
+    public enum DcGateSubject { Self, EventTarget }
+
     [Serializable]
     public struct DcTriggerSpec
     {
@@ -102,6 +114,13 @@ namespace Wassup.Data
         // 스냅샷 비율, 예 0.10 = 90%,80%,… 누적 하향 돌파마다 발동, 래치 단조).
         // <=0 이면 발동 안 함(동일 가드). 기본 0 = inert.
         public float fraction;
+        // dreamcatcher-trigger-gates unit 1 — 게이트 축 (기본값 = None/Self/0 →
+        // 기존 카드 무손상). gateValue 는 fraction 컨벤션(0~1, 예 0.30 = HP 30%).
+        // 판정은 현재값/현재 max 기준(HealthThreshold 의 스폰 스냅샷과 다름) +
+        // 카운트 게이트(통과 사건만 counter 증가) — README 계약.
+        public DcGateKind gate;
+        public DcGateSubject gateSubject;
+        public float gateValue;
     }
 
     [Serializable]

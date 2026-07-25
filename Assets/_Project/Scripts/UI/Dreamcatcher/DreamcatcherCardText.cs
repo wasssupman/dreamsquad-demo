@@ -214,6 +214,17 @@ namespace Wassup.UI
 
         private static bool TryFormatTrigger(DcTriggerSpec trigger, out string text)
         {
+            // trigger-gates unit 1 — 게이트 접두는 트리거 문안에 직교 합성 (조립 위치 고정).
+            if (!TryFormatTriggerCore(trigger, out text)) return false;
+            if (trigger.gate == DcGateKind.HpBelow)
+                text = (trigger.gateSubject == DcGateSubject.EventTarget
+                    ? $"HP {Number(trigger.gateValue * 100f)}% 이하인 적에게 "
+                    : $"HP {Number(trigger.gateValue * 100f)}% 이하일 때 ") + text;
+            return true;
+        }
+
+        private static bool TryFormatTriggerCore(DcTriggerSpec trigger, out string text)
+        {
             switch (trigger.kind)
             {
                 case DcTriggerKind.AttackN:

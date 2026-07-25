@@ -22,6 +22,7 @@
 
 - **HeavyStrike 합성 불변식 (critic HIGH)**: pre-scan 판정 = `WouldFire(counter, period) ∧ Pass(gate, …, bestTargetHp)`, counter 루프 = `if (Pass(…same input…)) { fired = Tick(…) }`. 두 지점은 같은 프레임·같은 bestTarget·같은 HP 스냅샷을 사용해 결과가 반드시 일치. **등가성 EditMode 테스트 필수** — 게이트 통과/실패 × period 1/3 매트릭스로 pre-scan 예측 == 루프 발동 확인 (unit 3 카드는 period 1 이라 이 seam 을 못 건드림).
 - **판정 시점 = pre-damage**: AttackN×EventTarget 은 이번 공격 데미지 적용 전 HP (critic MED). 판정은 현재값/현재 max (스폰 스냅샷 아님).
+- **판정 시점 (OnDamagedN×Self) = post-damage**: 이 피격 프레임의 적용 후(newHp) 기준 — "이하 상태로 만든 그 피격부터" 카운트된다 (구현 시 확정. AttackN 의 pre-damage 와 방향이 다른 건 사건 성질 차이: 공격은 때리기 전 대상을 보고, 피격은 맞은 결과의 내 상태를 본다).
 - **카운트 게이트 조립**: `if(Pass){ if(Tick()) fire; }` — 게이트 실패 사건은 counter 무변화. Pass·Tick 은 각각 순수라 EditMode 가 따로 커버, 조립 seam 만 e2e (unit 2).
 - **subject 소멸 처리**: bestTarget 이 Null/파괴/DeadTag 면 게이트 실패 취급(발동·카운트 없음) — caller 책임.
 

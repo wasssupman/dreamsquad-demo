@@ -226,6 +226,10 @@ namespace Wassup.Battle.Units
                     for (int c = 0; c < counters.Length; c++)
                     {
                         var slot = counters[c];
+                        // trigger-gates unit 1 — Self 게이트: 이 피격 적용 후(newHp) 기준
+                        // ("이하 상태로 만든 그 피격부터" 카운트). 실패 사건은 counter
+                        // 무변화 (카운트 게이트 — if(GatePass){Tick} 조립).
+                        if (!DcTrigger.GatePass(slot.gate, slot.gateValue, newHp, maxHp)) continue;
                         ushort cnt = slot.counter;
                         bool fired = DcTrigger.Tick(ref cnt, slot.period);
                         slot.counter = cnt;

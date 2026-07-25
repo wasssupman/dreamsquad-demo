@@ -635,10 +635,23 @@ namespace Wassup.Battle.Combat
                         for (int hi = 0; hi < heavySlots.Length; hi++)
                         {
                             var hs = heavySlots[hi];
-                            if (hs.trigger == Wassup.Data.DcTriggerKind.AttackN
-                                && hs.payload == Wassup.Data.DcPayloadKind.HeavyStrike
-                                && DcTrigger.WouldFire(hs.counter, hs.period))
-                                heavyMul *= hs.magnitude > 0f ? hs.magnitude : 1f;
+                            if (hs.trigger != Wassup.Data.DcTriggerKind.AttackN
+                                || hs.payload != Wassup.Data.DcPayloadKind.HeavyStrike
+                                || !DcTrigger.WouldFire(hs.counter, hs.period))
+                                continue;
+                            // trigger-gates unit 1 — 게이트 합성 불변식: pre-scan 은
+                            // WouldFire ∧ GatePass, 아래 counter 루프는 if(GatePass) Tick —
+                            // 같은 프레임·같은 bestTarget·pre-damage HP 라 결과가 일치한다.
+                            // 게이트 실패 시 counter 도 안 오르므로(카운트 게이트) 이
+                            // 공격은 강공이 아니고, 다음 게이트 통과 공격이 같은 카운트로
+                            // 재도전한다.
+                            if (hs.gate != Wassup.Data.DcGateKind.None)
+                            {
+                                if (!healthLookup.HasComponent(bestTarget)) continue;
+                                var gh = healthLookup[bestTarget];
+                                if (!DcTrigger.GatePass(hs.gate, hs.gateValue, gh.value, gh.max)) continue;
+                            }
+                            heavyMul *= hs.magnitude > 0f ? hs.magnitude : 1f;
                         }
                     }
 
@@ -1172,6 +1185,15 @@ namespace Wassup.Battle.Combat
                         {
                             var slot = dcSlots[si];
                             if (slot.trigger != Wassup.Data.DcTriggerKind.AttackN) continue;
+                            // trigger-gates unit 1 — 게이트: 통과 사건만 카운트
+                            // (if(GatePass){Tick} 조립). EventTarget=bestTarget 의
+                            // pre-damage HP — 위 heavy pre-scan 과 동일 입력(합성 불변식).
+                            if (slot.gate != Wassup.Data.DcGateKind.None)
+                            {
+                                if (!healthLookup.HasComponent(bestTarget)) continue;
+                                var gh = healthLookup[bestTarget];
+                                if (!DcTrigger.GatePass(slot.gate, slot.gateValue, gh.value, gh.max)) continue;
+                            }
                             ushort dcCounter = slot.counter;
                             bool dcFired = DcTrigger.Tick(ref dcCounter, slot.period);
                             slot.counter = dcCounter;

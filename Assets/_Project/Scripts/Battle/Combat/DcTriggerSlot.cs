@@ -58,6 +58,14 @@ namespace Wassup.Battle.Combat
         // duration(TTL, <=0=영구)과 함께 self 에 StatModifierApplyEvent enqueue. 기본값
         // DamageMul(0) 은 SelfStatBuff 가 아닌 슬롯에선 inert.
         public Wassup.Battle.Effects.StatKind buffStat;
+        // dreamcatcher-trigger-gates unit 1 — 게이트 축 (AttackN×EventTarget 배선).
+        // bake 가 GateComboSupported 로 걸러 배선 조합만 착지. 판정은 AttackSystem 의
+        // pre-scan(WouldFire∧GatePass)과 counter 루프(if(GatePass) Tick) 두 곳 —
+        // 같은 프레임·같은 bestTarget·같은 HP 스냅샷이라 결과가 반드시 일치(합성 불변식).
+        public Wassup.Data.DcGateKind gate;
+        public Wassup.Data.DcGateSubject gateSubject;
+        public float gateValue;
+
         // dreamcatcher-kill-and-threshold unit 1 — SelfStatBuff 재부여 merge 키(stackId).
         // 위 instanceId(트리거 인스턴스 네임스페이스)와 달리 이건 **StatModifier stackId
         // 네임스페이스**의 값 — bake 가 BattleBridge._dcStackCounter(squad 이펙트와 동일

@@ -195,5 +195,62 @@ namespace Wassup.Tests.EditMode
             Assert.IsTrue(DcTrigger.HealthThresholdEval(0f, 100f, 0.10f, ref k));
             Assert.AreEqual(10, k, "경계 10%·k=10 에서 0 < 100·(1-1.0)=0 이 거짓 — 정지");
         }
+
+        // ── dreamcatcher-trigger-gates unit 1 — 게이트 순수 함수 계약 ──
+
+        [Test]
+        public void GatePass_HpBelow_BoundaryIsInclusive()
+        {
+            // 30% 게이트: 정확히 경계값(30.0)은 통과(<=), 바로 위는 실패.
+            Assert.IsTrue(DcTrigger.GatePass(Wassup.Data.DcGateKind.HpBelow, 0.30f, 29.9f, 100f), "29.9% 통과");
+            Assert.IsTrue(DcTrigger.GatePass(Wassup.Data.DcGateKind.HpBelow, 0.30f, 30.0f, 100f), "정확히 30.0% 통과 (이하)");
+            Assert.IsFalse(DcTrigger.GatePass(Wassup.Data.DcGateKind.HpBelow, 0.30f, 30.1f, 100f), "30.1% 실패");
+            Assert.IsTrue(DcTrigger.GatePass(Wassup.Data.DcGateKind.None, 0f, 100f, 100f), "None 게이트는 항상 통과");
+        }
+
+        [Test]
+        public void GatePass_HpBelow_GuardsZeroValueAndUnbakedMax()
+        {
+            Assert.IsFalse(DcTrigger.GatePass(Wassup.Data.DcGateKind.HpBelow, 0f, 1f, 100f), "무값 카드(gateValue 0) 가드");
+            Assert.IsFalse(DcTrigger.GatePass(Wassup.Data.DcGateKind.HpBelow, 0.30f, 1f, 0f), "미베이크(max 0) 가드");
+        }
+
+        [Test]
+        public void GateComboSupported_WiredTableIsExact()
+        {
+            // 배선 2조합만 true (v1). gate=None 은 전 트리거 통과.
+            Assert.IsTrue(DcTrigger.GateComboSupported(Wassup.Data.DcTriggerKind.OnDamagedN, Wassup.Data.DcGateKind.HpBelow, Wassup.Data.DcGateSubject.Self));
+            Assert.IsTrue(DcTrigger.GateComboSupported(Wassup.Data.DcTriggerKind.AttackN, Wassup.Data.DcGateKind.HpBelow, Wassup.Data.DcGateSubject.EventTarget));
+            Assert.IsTrue(DcTrigger.GateComboSupported(Wassup.Data.DcTriggerKind.OnDeath, Wassup.Data.DcGateKind.None, Wassup.Data.DcGateSubject.Self), "None 은 항상 지원");
+            // 퇴화/미배선 조합 — bake 거절 대상 (critic MED: 어서션 고정).
+            Assert.IsFalse(DcTrigger.GateComboSupported(Wassup.Data.DcTriggerKind.OnDeath, Wassup.Data.DcGateKind.HpBelow, Wassup.Data.DcGateSubject.Self), "OnDeath×HpBelow: 사망 시 항상 참 = 퇴화");
+            Assert.IsFalse(DcTrigger.GateComboSupported(Wassup.Data.DcTriggerKind.HealthThreshold, Wassup.Data.DcGateKind.HpBelow, Wassup.Data.DcGateSubject.Self), "상태 트리거에 게이트 중첩 거절");
+            Assert.IsFalse(DcTrigger.GateComboSupported(Wassup.Data.DcTriggerKind.OnKill, Wassup.Data.DcGateKind.HpBelow, Wassup.Data.DcGateSubject.EventTarget), "사망 대상 항상 참 = 퇴화");
+            Assert.IsFalse(DcTrigger.GateComboSupported(Wassup.Data.DcTriggerKind.AttackN, Wassup.Data.DcGateKind.HpBelow, Wassup.Data.DcGateSubject.Self), "미배선 (후속 후보)");
+            Assert.IsFalse(DcTrigger.GateComboSupported(Wassup.Data.DcTriggerKind.OnDamagedN, Wassup.Data.DcGateKind.HpBelow, Wassup.Data.DcGateSubject.EventTarget), "미배선 (다중 source subject 규칙 미정)");
+        }
+
+        [Test]
+        public void Gate_PreScanPrediction_MatchesCountedTick_AcrossPeriodsAndGateStates()
+        {
+            // HeavyStrike 합성 불변식: pre-scan(WouldFire ∧ Pass) == 루프(if(Pass) Tick 발화).
+            // 같은 입력(동일 hp 스냅샷)으로 평가하는 한 period·게이트 상태 조합 전체에서 일치.
+            foreach (ushort period in new ushort[] { 1, 3 })
+            {
+                ushort counter = 0;
+                // hp 시나리오: 통과(20%) / 실패(80%) 를 섞어 12 사건 진행.
+                float[] hpSeq = { 20f, 80f, 20f, 20f, 80f, 20f, 20f, 20f, 80f, 20f, 20f, 20f };
+                foreach (float hp in hpSeq)
+                {
+                    ushort before = counter;
+                    bool pass = DcTrigger.GatePass(Wassup.Data.DcGateKind.HpBelow, 0.30f, hp, 100f);
+                    bool predicted = DcTrigger.WouldFire(counter, period) && pass;
+                    bool fired = false;
+                    if (pass) fired = DcTrigger.Tick(ref counter, period);
+                    Assert.AreEqual(predicted, fired, $"period {period}, hp {hp}: pre-scan 예측과 실제 발화 불일치");
+                    if (!pass) Assert.AreEqual(before, counter, $"period {period}, hp {hp}: 게이트 실패 사건은 counter 무변화(카운트 게이트)");
+                }
+            }
+        }
     }
 }

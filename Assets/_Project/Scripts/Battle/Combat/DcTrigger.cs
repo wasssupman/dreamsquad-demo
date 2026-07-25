@@ -62,5 +62,35 @@ namespace Wassup.Battle.Combat
             }
             return fired;
         }
+
+        // dreamcatcher-trigger-gates unit 1 — 게이트 판정 순수 함수. 조립 계약은
+        // `if (Pass) { if (Tick()) fire; }` — 게이트 실패 사건은 counter 무변화
+        // (카운트 게이트). HpBelow 는 `<=`: 정확히 경계값(30.0%)이면 통과.
+        // 판정은 현재 hp/현재 max (HealthThreshold 의 스폰 스냅샷과 다름).
+        // subject 소멸/DeadTag 처리는 caller 책임(게이트 실패 취급). gate=None 은
+        // 항상 통과 — 기존 카드의 무게이트 경로.
+        public static bool GatePass(Wassup.Data.DcGateKind gate, float gateValue, float subjectHp, float subjectMaxHp)
+        {
+            switch (gate)
+            {
+                case Wassup.Data.DcGateKind.None: return true;
+                case Wassup.Data.DcGateKind.HpBelow:
+                    if (gateValue <= 0f || subjectMaxHp <= 0f) return false; // 무값 카드/미베이크 가드
+                    return subjectHp <= subjectMaxHp * gateValue;
+                default: return false;
+            }
+        }
+
+        // dreamcatcher-trigger-gates unit 1 — 게이트 배선 표의 단일 source of truth.
+        // v1 배선 = ① OnDamagedN×Self(궁지폭발) ② AttackN×EventTarget(처형타) 뿐.
+        // 그 외 gate≠None 조합은 bake 가 이 함수를 보고 loud 거절한다 — 미사용
+        // 라이브 경로 금지(critic HIGH). 새 조합은 카드+배선+테스트 한 묶음으로 개방.
+        public static bool GateComboSupported(Wassup.Data.DcTriggerKind trigger, Wassup.Data.DcGateKind gate, Wassup.Data.DcGateSubject subject)
+        {
+            if (gate == Wassup.Data.DcGateKind.None) return true;
+            if (trigger == Wassup.Data.DcTriggerKind.OnDamagedN && subject == Wassup.Data.DcGateSubject.Self) return true;
+            if (trigger == Wassup.Data.DcTriggerKind.AttackN && subject == Wassup.Data.DcGateSubject.EventTarget) return true;
+            return false;
+        }
     }
 }

@@ -23,5 +23,11 @@ namespace Wassup.Battle.Units
         public float magnitude;  // SelfTileAoe: flat AoE 데미지
         public int tileRange;    // SelfTileAoe: Chebyshev 반경
         public int aoeDataIndex; // SelfTileAoe: AoE view ProjectileData index (-1 = none)
+
+        // dreamcatcher-trigger-gates unit 1 — 게이트 (OnDamagedN×Self 배선 전용이라
+        // subject 필드는 생략 — Self 고정). 판정 hp = 이 피격 프레임의 적용 후(newHp):
+        // "이하 상태로 만든 그 피격부터" 카운트된다. gate=None 기본값 = 기존 카드 무손상.
+        public Wassup.Data.DcGateKind gate;
+        public float gateValue;
     }
 }

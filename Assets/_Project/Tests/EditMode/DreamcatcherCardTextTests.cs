@@ -157,6 +157,38 @@ namespace Wassup.Tests.EditMode
                 DreamcatcherCardText.Body(card));
         }
 
+        // dreamcatcher-trigger-gates unit 1 — 게이트 접두 문안 (배선 조합 골든).
+        [Test]
+        public void UnitMechanic_FormatsGatePrefix_ForWiredCombos()
+        {
+            var card = Card(CardType.Unit);
+            card.mechanics = new[]
+            {
+                new DcMechanic
+                {
+                    trigger = new DcTriggerSpec
+                    {
+                        kind = DcTriggerKind.AttackN, period = 1,
+                        gate = DcGateKind.HpBelow, gateSubject = DcGateSubject.EventTarget, gateValue = 0.25f,
+                    },
+                    payload = new DcPayloadSpec { kind = DcPayloadKind.HeavyStrike, magnitude = 2f },
+                },
+                new DcMechanic
+                {
+                    trigger = new DcTriggerSpec
+                    {
+                        kind = DcTriggerKind.OnDamagedN, period = 2,
+                        gate = DcGateKind.HpBelow, gateSubject = DcGateSubject.Self, gateValue = 0.30f,
+                    },
+                    payload = new DcPayloadSpec { kind = DcPayloadKind.SelfTileAoe, magnitude = 20f, tileRange = 1 },
+                },
+            };
+
+            string body = DreamcatcherCardText.Body(card);
+            StringAssert.Contains("HP 25% 이하인 적에게 공격마다 → 피해 x2", body);
+            StringAssert.Contains("HP 30% 이하일 때 2번째 피격마다 → 반경 1칸 피해 20", body);
+        }
+
         [Test]
         public void UnitMechanic_FormatsThresholdAndPermanentEffect()
         {
