@@ -57,3 +57,5 @@ Active 태그 매핑 (`SkillEffectType` 기준):
   - `BodyLinesOnly`: 효과 라인만 반환(축·타입 헤더 문자열 미포함), effects 없는 Unit 카드는
     description 폴백, description 도 비면 빈 문자열.
 - 기존 EditMode 스위트 무회귀.
+
+확인 2026-07-25 — EditMode 전체 1297 통과/0 실패/2 스킵(신규 17케이스 포함), 커밋 `30c10e3f`.
