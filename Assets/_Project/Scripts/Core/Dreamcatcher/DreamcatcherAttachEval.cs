@@ -1,3 +1,4 @@
+using System;
 using Wassup.Data;
 
 namespace Wassup.Core
@@ -17,6 +18,35 @@ namespace Wassup.Core
     //   DreamcatcherAttachEvalTests 케이스 추가. 데이터-검증 guard 추가는 무관.
     public static class DreamcatcherAttachEval
     {
+        // dreamcatcher-attach-requirement unit 0 — 부착 대상 제한(정적 술어) 판정.
+        // WouldApply 와 합치지 않고 별도 함수로 둔 이유: 커밋 경로
+        // (ApplyDreamcatcherCardToUnit)는 WouldApply 를 부르지 않고 자체 preflight 체인을
+        // 쓰므로, 두 소비처(UI attachable 스냅샷 · 커밋 preflight)가 각각 이 함수를 직접
+        // 호출한다. WouldApply 에 인자를 늘리면 Squad 조기 return 호출처가 절대 읽지 않는
+        // 더미를 넘겨야 한다.
+        //
+        // bake/UI 시점 전용 — per-frame 호출 금지(managed SO 필드 읽기, mechanics 규율 동일).
+        // 무효 설정(Class×None / UnitId×빈문자열)은 fail-closed(false): 제한이 조용히
+        // 풀리는 것보다 카드가 눈에 띄게 안 붙는 쪽을 택한다.
+        public static bool MeetsAttachRequirement(DreamcatcherCard card,
+            DefenderClass hostRole, string hostUnitId)
+        {
+            if (card == null) return false;
+            switch (card.attachRequire)
+            {
+                case DcAttachRequireKind.None:
+                    return true;
+                case DcAttachRequireKind.Class:
+                    return card.attachRequireClass != DefenderClass.None
+                        && hostRole == card.attachRequireClass;
+                case DcAttachRequireKind.UnitId:
+                    return !string.IsNullOrEmpty(card.attachRequireUnitId)
+                        && string.Equals(hostUnitId, card.attachRequireUnitId, StringComparison.Ordinal);
+                default:
+                    return false; // 미래 kind append 시 배선 전까지 안전 기본값
+            }
+        }
+
         public static bool WouldApply(DreamcatcherCard card,
             bool hasProjectile, bool hasDamageOutput, bool hasLethalTimer, bool hasDreamCocoon)
         {

@@ -110,5 +110,74 @@ namespace Wassup.Tests.EditMode
             Assert.IsFalse(Eval(UnitCard(), proj: true, dmg: true));
             Assert.IsFalse(DreamcatcherAttachEval.WouldApply(null, true, true, false, false));
         }
+
+        // ── dreamcatcher-attach-requirement unit 0: 부착 대상 제한(정적 술어) ──────
+        // WouldApply 와 독립 함수라 위 케이스들은 무영향 — 제한만 따로 핀한다.
+
+        private static DreamcatcherCard RequireCard(DcAttachRequireKind kind,
+            DefenderClass cls = DefenderClass.None, string unitId = null)
+        {
+            // 제한 외 조건은 통과하는 카드로 둔다(제한이 유일한 변수).
+            var c = UnitCard(mech: new[] { Mech(DcPayloadKind.SelfStatBuff) });
+            c.attachRequire = kind;
+            c.attachRequireClass = cls;
+            c.attachRequireUnitId = unitId;
+            return c;
+        }
+
+        private static bool Meets(DreamcatcherCard card, DefenderClass role, string unitId = "") =>
+            DreamcatcherAttachEval.MeetsAttachRequirement(card, role, unitId);
+
+        [Test]
+        public void NoRequirement_AllowsAnyHost()
+        {
+            var card = RequireCard(DcAttachRequireKind.None);
+            Assert.IsTrue(Meets(card, DefenderClass.Ranger, "archer"));
+            Assert.IsTrue(Meets(card, DefenderClass.Guardian, "shield_shuttle"),
+                "기존 카드(zero-init)는 모든 유닛에 부착 가능해야 한다");
+        }
+
+        [Test]
+        public void ClassRequirement_GatesByRole()
+        {
+            var card = RequireCard(DcAttachRequireKind.Class, cls: DefenderClass.Guardian);
+            Assert.IsTrue(Meets(card, DefenderClass.Guardian, "shield_shuttle"));
+            Assert.IsFalse(Meets(card, DefenderClass.Ranger, "archer"), "가디언 전용 카드는 레인저에 불가");
+            Assert.IsFalse(Meets(card, DefenderClass.Support, "healer"));
+        }
+
+        [Test]
+        public void ClassRequirement_WithNoneClass_FailsClosed()
+        {
+            // 무효 설정: kind=Class 인데 클래스 미지정 → 어디에도 붙지 않는다(조용히 풀리지 않음).
+            var card = RequireCard(DcAttachRequireKind.Class, cls: DefenderClass.None);
+            Assert.IsFalse(Meets(card, DefenderClass.Guardian, "shield_shuttle"));
+            Assert.IsFalse(Meets(card, DefenderClass.None, "x"));
+        }
+
+        [Test]
+        public void UnitIdRequirement_GatesById()
+        {
+            var card = RequireCard(DcAttachRequireKind.UnitId, unitId: "shield_shuttle");
+            Assert.IsTrue(Meets(card, DefenderClass.Guardian, "shield_shuttle"));
+            Assert.IsFalse(Meets(card, DefenderClass.Guardian, "guardian"), "다른 유닛 id 는 불가");
+            Assert.IsFalse(Meets(card, DefenderClass.Guardian, "Shield_Shuttle"),
+                "id 는 ordinal 비교 — 대소문자가 다르면 다른 유닛이다");
+        }
+
+        [Test]
+        public void UnitIdRequirement_BlankId_FailsClosed()
+        {
+            Assert.IsFalse(Meets(RequireCard(DcAttachRequireKind.UnitId, unitId: null),
+                DefenderClass.Guardian, "shield_shuttle"));
+            Assert.IsFalse(Meets(RequireCard(DcAttachRequireKind.UnitId, unitId: ""),
+                DefenderClass.Guardian, ""), "빈 요구 id 는 빈 host id 와도 매칭되지 않는다");
+        }
+
+        [Test]
+        public void MeetsAttachRequirement_NullCard_FailsClosed()
+        {
+            Assert.IsFalse(Meets(null, DefenderClass.Guardian, "shield_shuttle"));
+        }
     }
 }
