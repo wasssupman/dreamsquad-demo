@@ -50,6 +50,6 @@ N/A — 플레이 오브젝트 신설·생성→렌더 경로 변경 없음. 폭
 - Fire / Poison 스택 카드 (StackModifier SO 만 추가하면 동상과 동형 — 출혈과의 차별화 설계 필요)
 - 동상 오버헤드 스택 아이콘 (`OverheadStackKind` 확장 + surfacing — 현재 Bleed 도 아이콘 없음)
 - 넉백 방향의 경로-역방향 옵션 (현재는 공격자→적 방향)
-- OnDamagedN 트리거 범용화 (현재 NextAttackDoubleFire 전용 특례 경로)
+- ~~OnDamagedN 트리거 범용화~~ → `docs/spec/dreamcatcher-trigger-gates/` unit 0 으로 이관 (2026-07-25)
 - PeriodicTimer 트리거 디펜더 카드 개방 (현재 보스 스폰 경로만 bake)
 - 5장 실아트 (guid 유지 교체)
