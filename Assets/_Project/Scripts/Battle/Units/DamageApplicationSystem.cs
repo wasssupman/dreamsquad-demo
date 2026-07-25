@@ -222,16 +222,40 @@ namespace Wassup.Battle.Units
                     && _damagedCounterLookup.HasBuffer(entity))
                 {
                     var counters = _damagedCounterLookup[entity];
-                    bool fired = false;
+                    bool grantDoubleFire = false;
                     for (int c = 0; c < counters.Length; c++)
                     {
                         var slot = counters[c];
                         ushort cnt = slot.counter;
-                        if (DcTrigger.Tick(ref cnt, slot.period)) fired = true;
+                        bool fired = DcTrigger.Tick(ref cnt, slot.period);
                         slot.counter = cnt;
                         counters[c] = slot;
+                        if (!fired) continue;
+
+                        // trigger-gates unit 0 — payload 디스패치 (위드닝). 발동했는데
+                        // arm 이 없으면 loud fail (AttackSystem unhandled 컨벤션).
+                        if (slot.payload == Wassup.Data.DcPayloadKind.NextAttackDoubleFire)
+                            grantDoubleFire = true;
+                        else if (slot.payload == Wassup.Data.DcPayloadKind.SelfTileAoe)
+                        {
+                            // 피격 폭발 — OnShieldBreak 와 같은 큐/드레인 실행기 재사용.
+                            if (hasShieldBreakQueue && _transformLookup.HasComponent(entity))
+                                shieldBreakSingleton.ValueRW.queue.Enqueue(new ShieldBreakEvent
+                                {
+                                    host = entity,
+                                    position = _transformLookup[entity].Position,
+                                    payload = Wassup.Data.DcPayloadKind.SelfTileAoe,
+                                    magnitude = slot.magnitude,
+                                    tileRange = slot.tileRange,
+                                    duration = 0f,
+                                    aoeDataIndex = slot.aoeDataIndex,
+                                    fromDamagedTrigger = true,
+                                });
+                        }
+                        else
+                            UnityEngine.Debug.LogWarning("[DamageApplication] DamagedCounter fired with unhandled payload kind.");
                     }
-                    if (fired) ecb.AddComponent(entity, new NextAttackDoubleFire { charges = 1 });
+                    if (grantDoubleFire) ecb.AddComponent(entity, new NextAttackDoubleFire { charges = 1 });
                 }
 
                 // dreamcatcher-shield-break unit 0 — 실드가 피격으로 파열된 프레임: host 의

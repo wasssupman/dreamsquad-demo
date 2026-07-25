@@ -14,5 +14,14 @@ namespace Wassup.Battle.Units
         public int instanceId;
         public ushort period;   // OnDamagedN: fire on every N-th damaged frame
         public ushort counter;  // owned write: DamageApplicationSystem only
+
+        // dreamcatcher-trigger-gates unit 0 — payload 개통 (위드닝). DcTriggerSlot 로
+        // 통합하지 않는 이유는 위와 동일: counter 쓰기가 Units 라 소유를 여기 둔다.
+        // NextAttackDoubleFire = 기존 charge handoff, SelfTileAoe = ShieldBreakEvents
+        // 큐로 emit(이 시스템이 이미 쓰는 채널). 나머지 kind 는 발동 시 loud 경고.
+        public Wassup.Data.DcPayloadKind payload;
+        public float magnitude;  // SelfTileAoe: flat AoE 데미지
+        public int tileRange;    // SelfTileAoe: Chebyshev 반경
+        public int aoeDataIndex; // SelfTileAoe: AoE view ProjectileData index (-1 = none)
     }
 }

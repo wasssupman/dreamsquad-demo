@@ -2691,7 +2691,8 @@ namespace Wassup.Bridge
                     {
                         host_unit = FindDefenderData(evt.host)?.displayName ?? "<unknown>",
                         tile = new Vector2Int(hostCell.x, hostCell.y),
-                        payload = evt.payload.ToString(),
+                        // trigger-gates unit 0 — 채널 공유 origin 구분 (실드파열 vs 피격트리거).
+                        payload = (evt.fromDamagedTrigger ? "damaged-trigger:" : "") + evt.payload,
                     }
                     : null;
 

@@ -365,23 +365,49 @@ namespace Wassup.Bridge
                 // DamagedCounter (Units-owned buffer), NOT DcTriggerSlot (Combat): the
                 // count is written where the defender takes damage (DamageApplicationSystem,
                 // Units). Buffer element → same card twice = independent counters.
-                if (m.trigger.kind == Wassup.Data.DcTriggerKind.OnDamagedN &&
-                    m.payload.kind == Wassup.Data.DcPayloadKind.NextAttackDoubleFire)
+                if (m.trigger.kind == Wassup.Data.DcTriggerKind.OnDamagedN)
                 {
+                    // trigger-gates unit 0 — payload 개통. NextAttackDoubleFire 전용
+                    // 가드 해제: SelfTileAoe(피격 폭발)도 bake. 그 외 kind 는 미지원.
                     if (m.trigger.period <= 0)
                     {
                         Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: OnDamagedN non-positive period — skipped.");
                         continue;
                     }
-                    var dbuf = _em.HasBuffer<Wassup.Battle.Units.DamagedCounter>(defender)
-                        ? _em.GetBuffer<Wassup.Battle.Units.DamagedCounter>(defender)
-                        : _em.AddBuffer<Wassup.Battle.Units.DamagedCounter>(defender);
-                    dbuf.Add(new Wassup.Battle.Units.DamagedCounter
+                    var dEntry = new Wassup.Battle.Units.DamagedCounter
                     {
                         instanceId = _dcInstanceCounter++,
                         period = (ushort)math.clamp(m.trigger.period, 0, ushort.MaxValue),
                         counter = 0,
-                    });
+                        payload = m.payload.kind,
+                        aoeDataIndex = -1,
+                    };
+                    if (m.payload.kind == Wassup.Data.DcPayloadKind.SelfTileAoe)
+                    {
+                        // SelfTileAoe bake 규칙은 슬롯 경로와 동일 (AOE view + 양수 데미지).
+                        if (m.payload.projectile == null)
+                        {
+                            Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: OnDamagedN×SelfTileAoe without ProjectileData (AOE view) — skipped.");
+                            continue;
+                        }
+                        if (m.payload.magnitude <= 0f)
+                        {
+                            Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: non-positive magnitude — skipped.");
+                            continue;
+                        }
+                        dEntry.magnitude = m.payload.magnitude;
+                        dEntry.tileRange = math.max(0, m.payload.tileRange);
+                        dEntry.aoeDataIndex = GetOrCreateProjectileDataIndex(m.payload.projectile);
+                    }
+                    else if (m.payload.kind != Wassup.Data.DcPayloadKind.NextAttackDoubleFire)
+                    {
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: OnDamagedN unsupported payload ({m.payload.kind}) — skipped.");
+                        continue;
+                    }
+                    var dbuf = _em.HasBuffer<Wassup.Battle.Units.DamagedCounter>(defender)
+                        ? _em.GetBuffer<Wassup.Battle.Units.DamagedCounter>(defender)
+                        : _em.AddBuffer<Wassup.Battle.Units.DamagedCounter>(defender);
+                    dbuf.Add(dEntry);
                     attached++;
                     continue;
                 }
