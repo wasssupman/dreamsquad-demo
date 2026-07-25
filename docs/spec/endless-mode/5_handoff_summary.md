@@ -52,6 +52,8 @@
 - 시간축 0 은 `CheckVictory` 비활성 아닌 `remainingMs=IsEndless?0` 한 줄(조기클리어 유지 + soft-lock 회피).
 - BattleScene 커밋은 `endlessEncounter` hunk만 수술적 스테이징 — 세션 시작부터 있던 무관한 씬 편집
   (RawImage/GameObject)은 **미커밋 유지**(사용자 소유).
+- **엔드리스에 매치 기믹이 등장하는 건 의도**(2026-07-25 감사 시 확인 → 사용자 B안). `AssignGimmick`
+  이 모든 진입 경로 공통이라 엔드리스도 `gimmickPool` 기믹을 받는다. 버그 아님 — 제거하지 말 것.
 
 ## Follow-up (미착수)
 

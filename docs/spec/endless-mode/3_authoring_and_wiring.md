@@ -26,8 +26,9 @@
 2. **`endlessEncounter` 배선**: BattleScene 의 BattleBridge 에 `endlessEncounter =
    (기존 맵 문서 1개, Deck_Endless)` 할당. **신규 맵 오써링 불필요** — 기존 맵 재사용.
 3. **dev 토글**: `DevMapOverridePanel` 에 "Endless" 체크박스 추가 → `DevMapOverride.Endless` 세팅.
-4. **가정 명시**: 엔드리스는 **기믹 없음**(gimmickPool 미적용) 전제 → `_leakAllowancePenalty=0` →
-   스트레스 = 순수 누수 수. 배선 시 엔드리스 경로에 기믹이 안 붙는지 확인.
+4. **기믹 등장** (2026-07-25 B안): 엔드리스도 `GameManager.AssignGimmick`(모든 진입 경로 공통)으로
+   매치 기믹이 그대로 배정된다 — 제거하지 않는 게 의도. 스트레스 점수는 기믹/카드가
+   `_leakAllowancePenalty` 를 건드리면 그만큼 반영된다.
 
 ## 완료 기준
 

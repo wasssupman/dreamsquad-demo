@@ -39,8 +39,10 @@
    토너먼트에 리포트도 안 함.
 6. **ECS 맥락 변경 없음.** 스폰은 기존 `QueueWave→SpawnUnit`(Units) 그대로.
 7. **하드코딩 금지.** 모든 값(간격·웨이브수·예산·타이머)은 `Deck_Endless` SO 에서.
-8. **엔드리스는 기믹 없음(v1).** `_leakAllowancePenalty=0` 전제 → 스트레스=순수 누수 수. 엔드리스 덱은
-   `timerDurationSec>0` 필수(타이머가 유일 종료자).
+8. **엔드리스도 매치 기믹이 등장한다** (2026-07-25 사용자 결정 — B안). `GameManager.AssignGimmick` 이
+   모든 진입 경로 공통이라 엔드리스에도 `gimmickPool` 기믹이 배정된다 — 제거하지 않는 게 의도. 스트레스
+   점수는 기믹/카드가 `_leakAllowancePenalty` 를 건드리면 그만큼 반영된다(순수 누수 수 아님). 엔드리스
+   덱은 `timerDurationSec>0` 필수(타이머가 유일 종료자).
 
 ## 누수 예산 (saturation 주의 — critic MAJOR#3)
 
