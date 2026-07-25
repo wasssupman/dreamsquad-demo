@@ -19,6 +19,10 @@ namespace Wassup.UI
         [SerializeField] private Image artImage;      // backdrop (scene/builder wired)
         [SerializeField] private RectTransform cardRoot;
         [SerializeField] private TMP_FontAsset font;
+        // dreamcatcher-attach-requirement unit 5 — "{유닛명} 전용" 접두 해석기.
+        // 이 뷰는 런타임 AddComponent 로 생성되므로 씬 와이어가 아니라
+        // DreamcatcherDeckPage 의 SetField 주입으로 받는다(기존 artImage/font 와 동일 경로).
+        [SerializeField] private DefenderCatalog defenderCatalog;
 
         public event Action AddClicked;
         public event Action RemoveClicked;
@@ -52,7 +56,9 @@ namespace Wassup.UI
                 _nameText.text = card == null ? "" : (string.IsNullOrEmpty(card.displayName) ? card.id : card.displayName);
             if (_catBadgeBg != null) _catBadgeBg.color = CardCategoryStyle.Frame(card);
             if (_catBadgeText != null) _catBadgeText.text = CardCategoryStyle.Label(card);
-            if (_effectText != null) _effectText.text = card == null ? "" : DreamcatcherCardText.Body(card);
+            if (_effectText != null)
+                _effectText.text = card == null ? "" : DreamcatcherCardText.Body(
+                    card, defenderCatalog != null ? defenderCatalog.DisplayNameOf : (Func<string, string>)null);
 
             if (_addGo != null) _addGo.SetActive(!inDeck);
             if (!inDeck)

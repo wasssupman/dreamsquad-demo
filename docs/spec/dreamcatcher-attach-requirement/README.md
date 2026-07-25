@@ -1,6 +1,8 @@
 # dreamcatcher-attach-requirement — 부착 대상 제한 필드 (클래스 / 특정 유닛)
 
-상태: 스펙 초안 2026-07-25 · 2트랙 리뷰 반영 완료 (착수 승인 대기)
+상태: 구현 완료 2026-07-25 (units 0~5) — 사용자 체감(문안 노출) 확인 대기
+
+검증: EditMode 1336건(1334 pass / 0 fail / 2 기존 Ignore, 신규 20건) · PlayMode 신규 3건 pass(부착 게이트 e2e 1 + 문안 배선 2) · validator 실사 스캔 `카드 44장 중 0건`. PlayMode 전체 잔여 실패 6건은 clean 트리 재현으로 **사전 실패** 확정.
 
 ## 상위 목표
 

@@ -17,6 +17,9 @@ namespace Wassup.UI
     public class DreamcatcherDeckBuilderView : MonoBehaviour
     {
         [SerializeField] private DreamcatcherCardCatalog catalog;
+        // dreamcatcher-attach-requirement unit 5 — "{유닛명} 전용" 접두 해석기.
+        // null 이면 포매터가 id 문자열로 폴백한다.
+        [SerializeField] private DefenderCatalog defenderCatalog;
         [SerializeField] private PlayerProfileSO profileSO;
         [SerializeField] private RectTransform deckContainer;
         [SerializeField] private RectTransform ownedContainer;
@@ -331,7 +334,8 @@ namespace Wassup.UI
             _popupArtFallback.enabled = card.art == null;
 
             _popupTitle.text = string.IsNullOrEmpty(card.displayName) ? card.id : card.displayName;
-            _popupEffect.text = DreamcatcherCardText.Body(card);
+            _popupEffect.text = DreamcatcherCardText.Body(
+                card, defenderCatalog != null ? defenderCatalog.DisplayNameOf : (System.Func<string, string>)null);
 
             _popupActionBtn.onClick.RemoveAllListeners();
             if (fromDeck)

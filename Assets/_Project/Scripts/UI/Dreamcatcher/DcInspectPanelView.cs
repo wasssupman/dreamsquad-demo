@@ -22,6 +22,9 @@ namespace Wassup.UI
         private const float LerpK = 18f;
 
         [SerializeField] private TMP_FontAsset labelFont;
+        // dreamcatcher-attach-requirement unit 5 — "{유닛명} 전용" 접두 해석기.
+        // null 이면 포매터가 id 문자열로 폴백한다.
+        [SerializeField] private Wassup.Data.DefenderCatalog defenderCatalog;
 
         [Header("Layout")]
         [SerializeField] private float panelWidth = 460f;
@@ -125,7 +128,8 @@ namespace Wassup.UI
                 string title = string.IsNullOrEmpty(card.displayName) ? card.id : card.displayName;
                 int cost = costs != null && i < costs.Count ? costs[i] : 0;
                 row.header.text = $"<b>{title}</b>  <color=#{ColorUtility.ToHtmlStringRGB(costColor)}>{cost}</color>";
-                row.body.text = DreamcatcherCardText.Body(card);
+                row.body.text = DreamcatcherCardText.Body(
+                    card, defenderCatalog != null ? defenderCatalog.DisplayNameOf : (System.Func<string, string>)null);
 
                 bool hasArt = card.art != null;
                 row.art.gameObject.SetActive(hasArt);

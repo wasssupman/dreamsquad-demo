@@ -14,6 +14,9 @@ namespace Wassup.UI
     public class DreamcatcherDeckPage : MonoBehaviour
     {
         [SerializeField] private DreamcatcherCardCatalog catalog;
+        // dreamcatcher-attach-requirement unit 5 — 런타임 생성되는 detail view 에 넘길
+        // "{유닛명} 전용" 접두 해석기 소스. 씬 와이어는 이 한 곳뿐.
+        [SerializeField] private DefenderCatalog defenderCatalog;
         [SerializeField] private PlayerProfileSO profileSO;
         [SerializeField] private TMP_FontAsset font;
 
@@ -64,6 +67,7 @@ namespace Wassup.UI
             SetField(detailView, "artImage", artImg);
             SetField(detailView, "cardRoot", cardRoot);
             SetField(detailView, "font", font);
+            SetField(detailView, "defenderCatalog", defenderCatalog);
 
             // ---- Deck strip (right, top band) ----
             var strip = Panel("DeckStrip", self, new Vector2(detailWidth, 1f - headerHeight), new Vector2(1f, 1f), HeaderBg);

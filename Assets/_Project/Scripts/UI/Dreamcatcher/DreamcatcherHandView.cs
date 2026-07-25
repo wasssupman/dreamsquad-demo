@@ -34,6 +34,9 @@ namespace Wassup.UI
         // 스트립과 함께 배지도 퇴장시킨다. 표시 결정은 CostDisplay 가 소유.
         [SerializeField] private CostDisplay costDisplay;
         [SerializeField] private AwakeningConfig config;
+        // dreamcatcher-attach-requirement unit 5 — 부착 제한이 UnitId 일 때 카드 문안의
+        // "{유닛명} 전용" 접두를 표시명으로 해석한다. null 이면 포매터가 id 로 폴백.
+        [SerializeField] private DefenderCatalog defenderCatalog;
         // dreamcatcher-attach-lockon unit 0 — 부착 조준 포커스 연출 노브(dim/리티클/
         // 콜아웃/base-ring/확정비트). 미할당 시 프레젠터 미생성(무회귀).
         [SerializeField] private DreamcatcherFocusConfig focusConfig;
@@ -806,7 +809,8 @@ namespace Wassup.UI
             // 칩 배경 = 헤더색을 어둡게(같은 계열 유지, 흰 텍스트 대비 확보).
             slot.tagBg.color = Color.Lerp(CardCategoryStyle.HandHeader(card.type), Color.black, 0.35f);
 
-            slot.bodyLabel.text = DreamcatcherCardText.BodyLinesOnly(card);
+            slot.bodyLabel.text = DreamcatcherCardText.BodyLinesOnly(
+                card, defenderCatalog != null ? defenderCatalog.DisplayNameOf : (System.Func<string, string>)null);
 
             slot.art.enabled = true;
             slot.art.sprite = FaceSpriteFor(card);

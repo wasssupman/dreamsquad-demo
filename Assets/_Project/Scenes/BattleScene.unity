@@ -1528,6 +1528,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.DcInspectPanelView
   labelFont: {fileID: 11400000, guid: 218cce73e3172a04a8c536a4d368d90f, type: 2}
+  defenderCatalog: {fileID: 11400000, guid: 346c00d9daf72429d94ddd29337c7d23, type: 2}
   panelWidth: 460
   pad: 14
   rowGap: 8
@@ -1901,6 +1902,8 @@ MonoBehaviour:
   projectileFireClip: {fileID: 8300000, guid: fc4cd59f881f84776b2dd2d22526b617, type: 3}
   projectileFireVolume: 0.4
   projectileFireMinInterval: 0.045
+  attackSfxVolume: 0.9
+  attackSfxMinInterval: 0.04
   cardAbsorbClip: {fileID: 8300000, guid: 22a918ae7fbf14d83b339bfca418d8d6, type: 3}
   cardAbsorbVolume: 0.7
   cardDealClip: {fileID: 8300000, guid: 53f55f7b47d224fe8919f13cdc7d5470, type: 3}
@@ -3165,6 +3168,7 @@ MonoBehaviour:
   defenderSelector: {fileID: 915292524}
   costDisplay: {fileID: 1075095674}
   config: {fileID: 11400000, guid: b1ff068a6a1b7a44b8fd4ea85f159ff6, type: 2}
+  defenderCatalog: {fileID: 11400000, guid: 346c00d9daf72429d94ddd29337c7d23, type: 2}
   focusConfig: {fileID: 11400000, guid: 4c0ee75552ae74daabf68d5c0c14058a, type: 2}
   bridge: {fileID: 1939688408}
   mainCamera: {fileID: 1420088185}
