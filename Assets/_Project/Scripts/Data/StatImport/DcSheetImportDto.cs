@@ -28,9 +28,14 @@ namespace Wassup.Data.StatImport
         // (StringEnumConverter — 예 "Class" / "Guardian").
         //
         // ⚠ 제한 **해제**는 attachRequire 열에 `None` 을 명시해야 한다. 빈 셀은
-        // blank=keep(ApplyNonNullFields 가 null 만 skip)이라 해제가 아니고, string 인
-        // attachRequireUnitId 는 빈칸으로 지울 수도 없다. kind 가 판별자이므로 None 만
-        // 적으면 남은 class/unitId 값은 inert — 청소 불요.
+        // blank=keep(ApplyNonNullFields 가 null 만 skip)이라 해제가 아니다. kind 가
+        // 판별자이므로 None 만 적으면 남은 class/unitId 값은 inert — 청소 불요.
+        //
+        // ⚠ 미검증 전제(review): "string 은 빈칸으로 지울 수 없다" 는 빈 셀이 JSON 에
+        // **키 생략**으로 도착할 때만 참이다. 서버 시트→JSON 단계가 빈 텍스트 셀을
+        // ""(빈 문자열)로 내보내면 non-null 이라 그대로 써서 attachRequireUnitId 가
+        // 지워진다(그 뒤 fail-closed 경고). 그 단계는 이 repo 밖이라 확인하지 못했다 —
+        // 시트 연동 후 실제 페이로드로 한 번 확인할 것.
         public DcAttachRequireKind? attachRequire;
         public DefenderClass? attachRequireClass;
         public string attachRequireUnitId;

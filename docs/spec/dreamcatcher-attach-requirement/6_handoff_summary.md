@@ -59,6 +59,7 @@
 
 - **사용자 체감 확인 대기**: 실제 제한 카드를 1장 저작해(시트 또는 에셋) 손패·덱빌더 상세에서 접두가 보이는지 육안 확인. 아직 제한이 걸린 카드는 0장이라 화면에서는 기능이 보이지 않는다.
 - 시트 작업: DcCards 탭 오른쪽에 `attachRequire` / `attachRequireClass` / `attachRequireUnitId` 3열 추가 필요(아직 안 했음). 첫 import 시 카드 에셋 YAML 대량 diff 가 정상 발생한다.
+- **시트 연동 후 확인할 미검증 전제 1건**: 빈 텍스트 셀이 JSON 에 **키 생략**으로 오는지 `""` 로 오는지. 후자면 `attachRequireUnitId` 가 빈 셀만으로 지워진다(위험하진 않지만 "빈칸으로 못 지운다"는 문서 문장이 틀리게 된다). 서버 단계라 이 repo 에서 확인 불가 — 첫 실 import 페이로드로 검증할 것.
 - BountyMark×제한의 조용한 무효는 validator 만 잡는다 — `OnValidate` 승격은 README 후속 후보.
 - **PlayMode 테스트의 ECS 정리 부재(리뷰 M1, 프로젝트 전반)**: 이 spec 의 e2e 를 포함해 PlayMode 테스트 21개 중 `TearDown` 에서 엔티티를 파괴하는 것은 **하나도 없다**. World 가 러너 세션 내에서 공유되므로 잠재적 누수다. 이 spec 만 다르게 하지 않고(관례 이탈이 오히려 혼란) 프로젝트 차원 후속으로 남긴다.
 - **부착 in-flight 재배치(리뷰 L1, 기존 동작)**: `PendingDeployment` 중에도 부착이 가능하다. 초기 배치와 동일한 성질이고 비행이 짧아 실피해는 없다 — 문서화만.

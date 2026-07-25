@@ -122,6 +122,9 @@ namespace Wassup.Data
         // 조준 라우팅(DreamcatcherCardDragSlot.Classify)과 손패 태그 칩
         // (CardCategoryStyle.TargetTag)이 공유하는 단일 소스. 관리 배열 순회 —
         // bake/UI 시점 전용, per-frame 호출 금지(mechanics 주석과 동일 규칙).
+        // ⚠ 예외 하나(review): 에디터 인스펙터(DreamcatcherCardEditor → validator)는
+        // repaint 마다 이 메서드를 부른다. 배열 몇 칸이라 에디터에선 무관하지만, 여기에
+        // 실제 비용이 있는 작업을 넣으면 인스펙터가 그 비용을 매 프레임 문다.
         public bool HasBountyMark()
         {
             if (mechanics == null) return false;

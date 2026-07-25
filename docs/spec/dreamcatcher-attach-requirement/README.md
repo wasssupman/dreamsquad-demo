@@ -35,6 +35,7 @@ Unit 타입 드림캐쳐에 **부착 시점 정적 술어**("가디언에만 부
 ### 의도된 동작 (버그로 오인 금지)
 
 - **사망 teardown 창의 비대칭**: `_defenderByTile.Remove`(`BattleBridge.cs:2660`)와 ECS 엔티티 파괴는 수명이 달라, 바인딩은 제거됐지만 엔티티는 남은 프레임에 제한 카드만 먼저 거절된다(무제한 카드는 `_em.Exists` 기준이라 통과). 무차감이라 실피해 없음. 조회 방식을 바꿔도 둘 다 `_defenderByTile` 소스라 해소되지 않는다.
+  - 실제 창은 이 서술보다 **더 좁다**(review 확인): 드래그 픽(`TryPickDefenderAtScreen`)도 같은 `_defenderByTile` 을 돌기 때문에 바인딩이 사라진 프레임에는 hover 자체가 안 잡혀 드래그 경로로는 도달하지 않는다. 커밋 경로에 직접 진입하는 코드(테스트·미래 자동 부착)만 해당. 거절 시 전용 경고 문구가 나오므로 로그로 구분된다.
 - **BountyMark×제한 = 조용한 무효**: `Classify` 가 `HasBountyMark()` 카드를 `AimMode.EnemyMark` → `ApplyBountyMark` 로 라우팅해 defender 게이트를 통과하지 않는다(배제는 코드 수준 자동 보장). 게이트 함수를 안 타므로 런타임 경고조차 없어 unit 3 validator 가 유일한 검출 수단.
 - **`axis` 재사용 안 함**: `CardTargetAxis` 에도 ClassGuardian/Cost1 이 있으나 ① `axis` 는 Squad 효과 대상 집합 + PlacementAura 수혜 축으로 load-bearing(Unit 카드도 `RegisterPlacementAura` 로 소비) — 겸용하면 두 의미가 얽힌다 ② `axis` 는 Ranger/Guardian 뿐, `DefenderClass` 는 Fighter/Caster/Support 까지 ③ "특정 유닛 id" 가 axis 어휘에 없다.
 

@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
@@ -92,6 +93,85 @@ namespace Wassup.Tests.PlayMode
             Assert.GreaterOrEqual(bridge.ApplyDreamcatcherCardToUnit(rHost, freeCard), 0,
                 "무제한 카드는 레인저에도 부착 (무회귀)");
         }
+
+        // review §5 — 위 테스트는 반환값 -1 만 어서션하고 "무차감·카드 잔류"는 컨트롤러
+        // 코드를 읽어 추론했을 뿐이라, 정작 이 feature 의 헤드라인 보장이 아무것도
+        // 핀되지 않았다. 실제 CommitAttach 를 구동해 각성 코스트와 손패를 어서션한다.
+        // (PlacementAuraTest 의 컨트롤러 구성 패턴 재사용 — 비활성 → 필드 주입 → 활성.)
+        [UnityTest]
+        public IEnumerator RejectedAttach_DoesNotSpendAwakening_AndKeepsCardInHand()
+        {
+            LogAssert.ignoreFailingMessages = true;
+            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            for (int i = 0; i < 6; i++) yield return null;
+
+            var bridge = Object.FindObjectOfType<BattleBridge>();
+            var gm = Object.FindObjectOfType<GameManager>();
+            var cat = FindDefenderCatalog();
+            var guardian = cat.ById("guardian");
+            var ranger = cat.ById("ranger");
+
+            bridge.SetDefenderPool(new[] { guardian, ranger });
+            bridge.BeginPlacement();
+            gm.CostRuntime.ResetToStart();
+            gm.CostRuntime.AddCost(100000);
+            yield return null;
+            Assert.IsTrue(PlaceFirstValid(bridge, guardian), "place guardian");
+            Assert.IsTrue(PlaceFirstValid(bridge, ranger), "place ranger");
+            yield return null;
+
+            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+            var gHost = FindDefenderById(bridge, em, "guardian");
+            var rHost = FindDefenderById(bridge, em, "ranger");
+
+            // 코스트가 0 이 아니어야 '무차감'이 의미를 갖는다.
+            var cfg = ScriptableObject.CreateInstance<AwakeningConfig>();
+            cfg.costUnit = 30; cfg.gaugeMax = 100; cfg.handSize = 5; cfg.maxAttachPerUnit = 3;
+            var card = RequireCard(DcAttachRequireKind.Class, cls: DefenderClass.Guardian);
+            var deck = new DreamcatcherCycleDeck(new List<DreamcatcherCard> { card }, 0);
+
+            var go = new GameObject("HandController_AttachRequirement");
+            go.SetActive(false);
+            var ctrl = go.AddComponent<DreamcatcherHandController>();
+            SetPrivate(ctrl, "bridge", bridge);
+            SetPrivate(ctrl, "config", cfg);
+            SetPrivate(ctrl, "_deck", deck);
+            go.SetActive(true);
+
+            // 게이지는 프로덕션 경로(GainAwakening)로 채운다 — 백킹필드 직접 쓰기 회피.
+            InvokePrivate(ctrl, "GainAwakening", 60, Vector3.zero, null);
+            Assert.AreEqual(60, ctrl.Gauge, "테스트 전제: 게이지 60");
+
+            int entryId = deck.Hand(cfg.handSize)[0].entryId;
+            Assert.IsTrue(ctrl.CanUse(entryId), "전제: 60 >= costUnit 30 이라 사용 가능");
+
+            // ── 거절: 가디언 전용 카드를 레인저에 ─────────────────────────────
+            Assert.IsFalse(ctrl.CommitAttach(entryId, rHost), "제한 불일치면 커밋 실패");
+            Assert.AreEqual(60, ctrl.Gauge, "거절 시 각성 무차감 (이 feature 의 헤드라인 보장)");
+            Assert.IsTrue(HandContains(ctrl, entryId), "거절 시 카드가 손패에 잔류");
+
+            // ── 통과: 같은 카드를 가디언에 ────────────────────────────────────
+            Assert.IsTrue(ctrl.CommitAttach(entryId, gHost), "제한 일치면 커밋 성공");
+            Assert.AreEqual(30, ctrl.Gauge, "성공 시에는 정상 차감(60-30) — 무차감이 전면 무효가 아님을 대조");
+            Assert.IsFalse(HandContains(ctrl, entryId), "성공 시 카드가 손패를 떠난다");
+
+            Object.Destroy(go);
+        }
+
+        private static bool HandContains(DreamcatcherHandController ctrl, int entryId)
+        {
+            foreach (var e in ctrl.Hand())
+                if (e.entryId == entryId) return true;
+            return false;
+        }
+
+        private static void SetPrivate(object target, string field, object value) =>
+            target.GetType().GetField(field, BindingFlags.NonPublic | BindingFlags.Instance)
+                .SetValue(target, value);
+
+        private static void InvokePrivate(object target, string method, params object[] args) =>
+            target.GetType().GetMethod(method, BindingFlags.NonPublic | BindingFlags.Instance)
+                .Invoke(target, args);
 
         // 제한 외 조건은 두 host 모두 통과하는 카드 — HeavyStrike 는 양수 Damage output 만
         // 요구하고 가디언·레인저 둘 다 보유하므로 제한이 유일한 변수가 된다.
