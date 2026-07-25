@@ -32,6 +32,7 @@ namespace Wassup.Tests.EditMode
             { "cracked_grail", "피값딜" },
             { "devouring_craving", "킬속" },
             { "ember_bite", "출혈" },
+            { "execution_strike", "처형타" },
             { "eye_on_the_end", "우선조준" },
             { "farewell", "사망폭발" },
             { "sub_fattened_offering", "제물표식" },

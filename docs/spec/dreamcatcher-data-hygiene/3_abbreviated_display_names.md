@@ -35,6 +35,7 @@
 | `cracked_grail` | 금이 간 성배 | 피값딜 |
 | `devouring_craving` | 포식의 갈망 | 킬속 |
 | `ember_bite` | 불씨 물기 | 출혈 |
+| `execution_strike` | 끝맺는 일격 | 처형타 |
 | `eye_on_the_end` | 끝을 보는 눈 | 우선조준 |
 | `farewell` | 작별 선물 | 사망폭발 |
 | `sub_fattened_offering` | 살찌운 제물 | 제물표식 |
