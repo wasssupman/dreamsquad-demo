@@ -2,7 +2,7 @@
 
 상태: 구현 완료 2026-07-25 (units 0~5) — 사용자 체감(문안 노출) 확인 대기
 
-검증: EditMode 1336건(1334 pass / 0 fail / 2 기존 Ignore, 신규 20건) · PlayMode 신규 3건 pass(부착 게이트 e2e 1 + 문안 배선 2) · validator 실사 스캔 `카드 44장 중 0건`. PlayMode 전체 잔여 실패 6건은 clean 트리 재현으로 **사전 실패** 확정.
+검증: EditMode **1339건**(1337 pass / 0 fail / 2 기존 Ignore, 신규 23건) · PlayMode 신규 **1건** pass(부착 게이트 e2e). 문안 배선 검증은 PlayMode 가 아니라 EditMode 3건(`DcAttachRequirementWiringTests`) — 씬 런타임 로드가 뒤따르는 전투 테스트를 오염시켜 unit 5 에서 의도적으로 옮겼다(경위는 `5_text_wiring.md`). validator 실사 스캔 `카드 44장 중 0건`. PlayMode 전체 잔여 실패 6건은 clean 트리 재현으로 **사전 실패** 확정.
 
 ## 상위 목표
 

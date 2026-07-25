@@ -253,7 +253,16 @@ namespace Wassup.Bridge
                         ? card.attachRequireClass.ToString()
                         : card.attachRequireUnitId;
                     var hostData = FindDefenderData(defender);
-                    Debug.LogWarning($"[BattleBridge] ApplyDreamcatcherCardToUnit('{card.id}'): 부착 제한 불일치 — 요구 {card.attachRequire}={want}, host role={(hostData != null ? hostData.role.ToString() : "?")} id='{(hostData != null ? hostData.id : "?")}' — card not attached.");
+                    // review M4 — 거절 사유 3종을 문구로 구분한다. 조회 실패를 '불일치'로
+                    // 적으면 사망 teardown 창(의도된 동작)이 데이터 문제처럼 읽힌다.
+                    if (hostData == null)
+                    {
+                        Debug.LogWarning($"[BattleBridge] ApplyDreamcatcherCardToUnit('{card.id}'): host 등록부 조회 실패 — 요구 {card.attachRequire}={want} 를 판정할 수 없어 fail-closed 거절(무차감). 사망 teardown 창의 의도된 동작 (spec README '의도된 동작').");
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"[BattleBridge] ApplyDreamcatcherCardToUnit('{card.id}'): 부착 제한 불일치 — 요구 {card.attachRequire}={want}, host role={hostData.role} id='{hostData.id}' — card not attached.");
+                    }
                 }
                 return -1;
             }

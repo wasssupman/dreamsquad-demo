@@ -1,4 +1,5 @@
 using System.IO;
+using System.Reflection;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
@@ -38,6 +39,25 @@ namespace Wassup.Tests.EditMode
             AssertWired(OutgameScene, "Assets/_Project/Scripts/UI/Outgame/DreamcatcherDeckPage.cs");
         }
 
+        // review M3 — DreamcatcherCardDetailView 는 씬 와이어가 불가(런타임 AddComponent)라
+        // DreamcatcherDeckPage 가 SetField("defenderCatalog", ...) 로 **문자열 이름** 리플렉션
+        // 주입한다. SetField 는 필드를 못 찾으면 조용히 no-op 하므로, 필드명을 바꾸면
+        // 덱 상세 문안이 경고 없이 유닛 id 로 되돌아간다. 그 rename 을 여기서 잡는다.
+        [Test]
+        public void DetailView_FieldName_MatchesDeckPageInjectionKey()
+        {
+            var f = typeof(DreamcatcherCardDetailView).GetField("defenderCatalog",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            Assert.IsNotNull(f,
+                "DreamcatcherCardDetailView.defenderCatalog 필드명이 DeckPage 의 SetField 주입 키와 어긋났다 — 덱 상세 문안이 조용히 id 폴백된다");
+            Assert.AreEqual(typeof(DefenderCatalog), f.FieldType);
+
+            // 주입 호출이 실제로 그 이름을 쓰는지도 확인(양쪽이 함께 틀어지는 것 방지).
+            string page = File.ReadAllText("Assets/_Project/Scripts/UI/Outgame/DreamcatcherDeckPage.cs");
+            Assert.That(page, Does.Contain("SetField(detailView, \"defenderCatalog\""),
+                "DeckPage 가 detailView 에 defenderCatalog 를 주입하지 않는다");
+        }
+
         [Test]
         public void RealCatalog_ResolvesDisplayName_AndDrivesPrefix()
         {
@@ -75,6 +95,11 @@ namespace Wassup.Tests.EditMode
             Assert.IsFalse(string.IsNullOrEmpty(scriptGuid), $"script guid: {scriptPath}");
             Assert.IsTrue(File.Exists(scenePath), scenePath);
 
+            // 참조가 '비어있지 않은' 것만 보면 다른 에셋을 가리켜도 통과한다 → 실제
+            // DefenderCatalog guid 와 일치하는지까지 본다(review 지적).
+            string catalogGuid = AssetDatabase.AssetPathToGUID("Assets/_Project/Data/DefenderCatalog.asset");
+            Assert.IsFalse(string.IsNullOrEmpty(catalogGuid), "DefenderCatalog 에셋 guid");
+
             string name = Path.GetFileNameWithoutExtension(scriptPath);
             int found = 0;
             foreach (string block in File.ReadAllText(scenePath).Split(new[] { "--- !u!" }, System.StringSplitOptions.None))
@@ -85,8 +110,12 @@ namespace Wassup.Tests.EditMode
                     $"{name}: 씬 블록에 defenderCatalog 키가 없다 — 씬을 다시 저장할 것");
                 Assert.IsFalse(block.Contains("defenderCatalog: {fileID: 0}"),
                     $"{name}: defenderCatalog 미할당 — 문안이 유닛 표시명 대신 id 로 보인다");
+                Assert.IsTrue(block.Contains($"defenderCatalog: {{fileID: 11400000, guid: {catalogGuid}"),
+                    $"{name}: defenderCatalog 가 DefenderCatalog.asset 이 아닌 다른 에셋을 가리킨다");
             }
-            Assert.AreEqual(1, found, $"{name}: 씬에 컴포넌트 인스턴스가 정확히 1개여야 한다");
+            // 인스턴스가 2개 이상이어도(변형·디버그 캔버스) 전부 배선돼 있으면 통과 —
+            // 개수 자체는 이 테스트가 핀할 대상이 아니다(review 지적).
+            Assert.GreaterOrEqual(found, 1, $"{name}: 씬에서 컴포넌트를 찾지 못했다");
         }
     }
 }

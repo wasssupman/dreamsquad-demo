@@ -26,4 +26,6 @@
 
 확인 2026-07-25 — 컴파일 에러 0 · EditMode 1332건(1330 pass / 0 fail / 2 기존 Ignore), 신규 5건(정상·무효 2종·없는 id·카탈로그 부재 시 생략·범위 밖 2종·범위밖+무효 동시 2건 보고) · 메뉴 실사 실행 로그 `카드 44장 중 0장에서 0건. 위반 없음.`
 
-구현 노트: 검증 코어는 순수 `CollectWarnings(card, knownUnitIds)` 이고, 배치 메뉴(`Wassup/Tools/Validate Dreamcatcher Attach Requirements`)와 `DreamcatcherCard` 인스펙터 HelpBox 가 이를 공유한다(`UnitVisualDataValidator` 선례). 인스펙터는 매 `OnInspectorGUI` 에셋 스캔을 피하려 id 존재 검사를 생략 — 그 항목은 배치 메뉴 담당.
+구현 노트(스펙과 다른 점 — review 지적): 스캔 소스는 "카탈로그"가 아니라 **폴더**(`Assets/_Project/Data/Dreamcatcher`, `UnitAssetScan.Enumerate<DreamcatcherCard>`)다. 현재는 등가다(카드 44장 전부 이 폴더, `DefenderCatalog.asset` 1개). 다만 README 가 validator 를 "BountyMark×제한 조용한 무효의 유일한 검출 수단"이라 규정하므로, **폴더 밖에 등록된 카드는 검사에서 빠진다** — 카드가 다른 폴더에 생기면 `DreamcatcherCardCatalog` 순회로 바꿀 것.
+
+검증 코어는 순수 `CollectWarnings(card, knownUnitIds)` 이고, 배치 메뉴(`Wassup/Tools/Validate Dreamcatcher Attach Requirements`)와 `DreamcatcherCard` 인스펙터 HelpBox 가 이를 공유한다(`UnitVisualDataValidator` 선례). 인스펙터는 매 `OnInspectorGUI` 에셋 스캔을 피하려 id 존재 검사를 생략 — 그 항목은 배치 메뉴 담당.

@@ -47,13 +47,21 @@ namespace Wassup.Editor.UnitStatImport
                 var row = new CardRow();
                 UnitStatFieldMapper.ReadFieldsToDto(so, row);
                 row._skillId = so.skill != null ? so.skill.id : null;
-                // dreamcatcher-attach-requirement unit 2 — data-hygiene 전례(payload
-                // 판별자)와 같은 규칙: 그 kind 가 소비하지 않는 열은 blank(null → 키 생략,
-                // NullValueHandling.Ignore)로 내보낸다. 제한 없는 카드 행에 enum-zero
-                // 노이즈("None"/"None"/"")가 마치 설정된 것처럼 보이지 않게 한다.
-                if (so.attachRequire == DcAttachRequireKind.None) row.attachRequire = null;
-                if (so.attachRequire != DcAttachRequireKind.Class) row.attachRequireClass = null;
-                if (so.attachRequire != DcAttachRequireKind.UnitId) row.attachRequireUnitId = null;
+                // dreamcatcher-attach-requirement unit 2 — 제한 없는 카드만 3열 blank
+                // (null → 키 생략, NullValueHandling.Ignore). 현재 전 카드가 여기 해당하므로
+                // 시트에 enum-zero 노이즈("None"/"None"/"")가 설정된 것처럼 보이지 않는다.
+                //
+                // review M2 — 제한이 **걸린** 카드는 비소비 companion 열도 그대로 내보낸다.
+                // blank 하면 시트에는 안 보이는데 에셋에는 남은 잔존값이, 나중에 kind 를
+                // Class 로 바꾸는 순간 blank=keep 때문에 조용히 되살아난다(예: 잔존
+                // attachRequireClass=Support → 의도와 달리 '서포트 전용'). 런타임에서 잔존값이
+                // inert 라는 계약은 그대로 두고, 시트에서는 **보이게** 해서 함정을 없앤다.
+                if (so.attachRequire == DcAttachRequireKind.None)
+                {
+                    row.attachRequire = null;
+                    row.attachRequireClass = null;
+                    row.attachRequireUnitId = null;
+                }
                 cardRows.Add(row);
 
                 for (int i = 0; i < (so.effects?.Length ?? 0); i++)

@@ -382,11 +382,7 @@ namespace Wassup.Tests.EditMode
             return card;
         }
 
-        private static string FirstLine(string body)
-        {
-            var lines = body.Split('\n');
-            return lines[lines.Length > 0 ? 0 : 0];
-        }
+        private static string FirstLine(string body) => body.Split('\n')[0];
 
         [Test]
         public void AttachRequirement_ClassPrefix_IsFirstLine()
