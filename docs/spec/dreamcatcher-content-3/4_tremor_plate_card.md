@@ -29,4 +29,6 @@
 - [x] 기존 빈사폭주(last_stand) Play/e2e 무회귀 — bake 호이스팅의 핵심 검증 (PlayMode `LastStand_BelowHpThreshold_BuffsAttackDamage` green)
 - [ ] Play smoke: 부착 탱커가 두들겨 맞을 때 10% 경계마다 자기 위치 폭발·주변 적 데미지 확인
 
-구현 커밋 9186ab85 (2026-07-25). PlayMode 킬임계/온히트/전투데미지 전부 green. `DreamcatcherEffectTest.CardBuffs` 1건 실패는 clean HEAD 리그 재현으로 **이 spec 과 무관한 사전 실패** 판정(가디언 dmgTaken 에 여분 ×1.25 — 별도 조사 후보). Play smoke 대기.
+구현 커밋 9186ab85 (2026-07-25). PlayMode 킬임계/온히트/전투데미지 전부 green. `DreamcatcherEffectTest.CardBuffs` 1건 실패는 clean HEAD 리그 재현으로 **이 spec 과 무관한 사전 실패** 판정(가디언 dmgTaken 에 여분 ×1.25 — 별도 조사 후보).
+
+e2e 확인 (2026-07-25, 라이브 에디터): 가디언 HP 를 84%로 주입 → +0.03s 에 인접 더미 정확히 −15 (가디언 평타 2초 주기 밖의 여분 타격 = 귀속 명확). 이후 36초간 재발동 없음 — 90% 경계 1회 발동·래치 단조 전진 정상. bake 덤프에서 fraction 0.10·maxHpRef 스냅샷·k=1 확인(호이스팅 정상).
