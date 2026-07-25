@@ -51,7 +51,10 @@ PlayMode에서 Canvas order/elevated 원복과 marker offset, goal 라벨 방향
 - [x] BattleScene 첫 Goal beat와 배치 방법 안내에 spawn/goal/tray 겹침이 없다
 - [ ] 로비 챕터 A/B에서 dim < guidance이며 홀 버튼 실제 클릭이 유지된다
 - [ ] 클래스 안내 탭 캐처 활성 중 `MenuReturnCanvas`가 탭을 가로채지 않는다
-- [ ] 사용자 Play 확인 후 확인 일자와 커밋 해시 기록
+- [x] 사용자 Play 확인 후 확인 일자와 커밋 해시 기록
 
 자동 검증 2026-07-25: EditMode 1279 pass/0 fail/2 skip. PlayMode 튜토리얼 5/5 통과.
 전체 PlayMode 43/48 통과, 기존 환경·상태 의존 실패 5개(Auth/Deck/Dreamstone/SceneTransition/Squad).
+
+완료 확인: 2026-07-25 사용자 BattleScene Play 확인 — Goal beat와 배치 방법 안내의
+spawn/goal/tray 겹침 없음. 구현 커밋 `8138996b`.
