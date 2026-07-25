@@ -34,3 +34,9 @@
 - `.asset` + `.meta` 짝 커밋 (경로지정 add 시 .meta 누락 금지).
 - 에디터에서 `DevMapOverride.Endless` 켜고 Play → `deck 'Deck_Endless'` 로드 로그.
 - BattleBridge.endlessEncounter 슬롯 채워짐 확인.
+
+✅ 확인 2026-07-25 — Deck_Endless(battleMode=Endless, waveSeed 20260807, waveCount 30,
+fixedWaveIntervalSec 10, timer 180, defeatGoalReachedCount 100) 생성·설정. BattleScene BattleBridge
+endlessEncounter=(MapDocument_Serpent, Deck_Endless) 배선(수술적 hunk 커밋 — 무관한 씬 편집 제외).
+DevMapOverridePanel 에 ENDLESS 스텝 슬롯(코드, 새 GO 없음). 부팅 실검증은 unit 4 PlayMode.
+커밋 해시는 handoff(unit 5) 참조.
