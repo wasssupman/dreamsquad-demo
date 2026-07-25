@@ -34,6 +34,7 @@ namespace Wassup.Tests.EditMode
             { "farewell", "사망폭발" },
             { "sub_fattened_offering", "제물표식" },
             { "frost_arrow", "빙결" },
+            { "gale_shove", "밀치기" },
             { "guardian_as", "가디언속" },
             { "guardian_fortress", "가디언벽" },
             { "guardian_hp", "가디언체" },
