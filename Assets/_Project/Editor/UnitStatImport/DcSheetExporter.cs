@@ -47,6 +47,13 @@ namespace Wassup.Editor.UnitStatImport
                 var row = new CardRow();
                 UnitStatFieldMapper.ReadFieldsToDto(so, row);
                 row._skillId = so.skill != null ? so.skill.id : null;
+                // dreamcatcher-attach-requirement unit 2 — data-hygiene 전례(payload
+                // 판별자)와 같은 규칙: 그 kind 가 소비하지 않는 열은 blank(null → 키 생략,
+                // NullValueHandling.Ignore)로 내보낸다. 제한 없는 카드 행에 enum-zero
+                // 노이즈("None"/"None"/"")가 마치 설정된 것처럼 보이지 않게 한다.
+                if (so.attachRequire == DcAttachRequireKind.None) row.attachRequire = null;
+                if (so.attachRequire != DcAttachRequireKind.Class) row.attachRequireClass = null;
+                if (so.attachRequire != DcAttachRequireKind.UnitId) row.attachRequireUnitId = null;
                 cardRows.Add(row);
 
                 for (int i = 0; i < (so.effects?.Length ?? 0); i++)

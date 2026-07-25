@@ -75,6 +75,83 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             Assert.AreEqual("keep", so.description, "omitted column must keep the SO value");
         }
 
+        // -------- dreamcatcher-attach-requirement unit 2: 부착 제한 3열 --------
+
+        [Test]
+        public void Deserialize_CardDto_ParsesAttachRequirementEnumsByName()
+        {
+            const string json = @"[{ ""id"": ""x"", ""attachRequire"": ""Class"",
+                ""attachRequireClass"": ""Guardian"" }]";
+
+            var rows = JsonConvert.DeserializeObject<DcCardDto[]>(json);
+
+            Assert.AreEqual(DcAttachRequireKind.Class, rows[0].attachRequire);
+            Assert.AreEqual(DefenderClass.Guardian, rows[0].attachRequireClass);
+            Assert.IsNull(rows[0].attachRequireUnitId, "생략된 열은 null 유지");
+        }
+
+        [Test]
+        public void ApplyCards_SetsClassAndUnitIdRestriction()
+        {
+            var cls = NewCard("c_cls");
+            var uid = NewCard("c_uid");
+            var payload = new DcSheetPayload
+            {
+                cards = new[]
+                {
+                    new DcCardDto { id = "c_cls", attachRequire = DcAttachRequireKind.Class,
+                        attachRequireClass = DefenderClass.Guardian },
+                    new DcCardDto { id = "c_uid", attachRequire = DcAttachRequireKind.UnitId,
+                        attachRequireUnitId = "shield_shuttle" },
+                },
+            };
+
+            Apply(payload, new Dictionary<string, DreamcatcherCard> { ["c_cls"] = cls, ["c_uid"] = uid });
+
+            Assert.AreEqual(DcAttachRequireKind.Class, cls.attachRequire);
+            Assert.AreEqual(DefenderClass.Guardian, cls.attachRequireClass);
+            Assert.AreEqual(DcAttachRequireKind.UnitId, uid.attachRequire);
+            Assert.AreEqual("shield_shuttle", uid.attachRequireUnitId);
+        }
+
+        [Test]
+        public void ApplyCards_BlankAttachColumns_KeepExistingRestriction()
+        {
+            var so = NewCard("c");
+            so.attachRequire = DcAttachRequireKind.Class;
+            so.attachRequireClass = DefenderClass.Guardian;
+            var payload = new DcSheetPayload
+            {
+                // 부착 열 전부 빈 셀(null) — 다른 열만 갱신한다.
+                cards = new[] { new DcCardDto { id = "c", displayName = "new" } },
+            };
+
+            Apply(payload, new Dictionary<string, DreamcatcherCard> { ["c"] = so });
+
+            Assert.AreEqual("new", so.displayName);
+            Assert.AreEqual(DcAttachRequireKind.Class, so.attachRequire, "빈 셀은 blank=keep");
+            Assert.AreEqual(DefenderClass.Guardian, so.attachRequireClass);
+        }
+
+        [Test]
+        public void ApplyCards_ExplicitNone_ClearsRestriction()
+        {
+            // 제한 해제의 **유일한** 수단 — 빈 셀이 아니라 None 명시.
+            var so = NewCard("c");
+            so.attachRequire = DcAttachRequireKind.UnitId;
+            so.attachRequireUnitId = "shield_shuttle";
+            var payload = new DcSheetPayload
+            {
+                cards = new[] { new DcCardDto { id = "c", attachRequire = DcAttachRequireKind.None } },
+            };
+
+            Apply(payload, new Dictionary<string, DreamcatcherCard> { ["c"] = so });
+
+            Assert.AreEqual(DcAttachRequireKind.None, so.attachRequire);
+            Assert.AreEqual("shield_shuttle", so.attachRequireUnitId,
+                "kind 가 판별자 — 잔존 unitId 는 inert 이므로 청소하지 않는다");
+        }
+
         [Test]
         public void ApplyConfigs_UnionRow_TouchesOnlyItsOwnSo()
         {

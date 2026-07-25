@@ -23,6 +23,17 @@ namespace Wassup.Data.StatImport
         // exporter/applier 변경 없이 reflection 이 양방향을 처리하고, 서버는 새 키를
         // 오른쪽 새 열로 추가한다. 빈 셀은 null → 기존 값 유지(blank=keep).
         public int? visible;
+        // dreamcatcher-attach-requirement unit 2 — 부착 대상 제한 3열. 이름이 SO 와 1:1
+        // 이라 reflection 매퍼가 양방향을 처리한다. enum 은 이름 문자열로 오간다
+        // (StringEnumConverter — 예 "Class" / "Guardian").
+        //
+        // ⚠ 제한 **해제**는 attachRequire 열에 `None` 을 명시해야 한다. 빈 셀은
+        // blank=keep(ApplyNonNullFields 가 null 만 skip)이라 해제가 아니고, string 인
+        // attachRequireUnitId 는 빈칸으로 지울 수도 없다. kind 가 판별자이므로 None 만
+        // 적으면 남은 class/unitId 값은 inert — 청소 불요.
+        public DcAttachRequireKind? attachRequire;
+        public DefenderClass? attachRequireClass;
+        public string attachRequireUnitId;
     }
 
     // Sheet-SoT child row (effects[] rebuild): slot is the ordering/identity key.

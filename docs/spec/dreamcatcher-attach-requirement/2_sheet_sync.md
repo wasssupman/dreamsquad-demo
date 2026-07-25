@@ -33,3 +33,5 @@
 - compile 통과.
 - EditMode 라운드트립: `attachRequire=Class/Guardian` 페이로드 적용 → SO 반영 / 빈 셀 → 기존 값 유지 / `UnitId` 케이스 동일 — `DcSheetImportTests` 패턴으로 3케이스 이상.
 - export 결과 JSON 에서 무제한 카드 행에 attach 계열 키 미출현(blank 규칙) 확인.
+
+확인 2026-07-25 — 컴파일 에러 0 · EditMode 1327건(1325 pass / 0 fail / 2 기존 Ignore), 신규 5건: import 4(이름 문자열 파싱 · Class/UnitId 적용 · 빈 셀 keep · None 명시 해제) + export 1(`DcSheetAttachRequireExportTests` — 실제 exporter 를 임시 폴더로 돌려 제한 없는 행에 attach 3열이 **부재**함을 확인).
