@@ -29,4 +29,4 @@
 - Play: 힐러 사거리 내에 다친 아군 + 풀피 아군이 섞였을 때 힐이 다친 쪽에 집중(사용자 확인).
 
 ---
-완료 확인: 2026-07-25 사용자 Play 확인 — 힐이 사거리 내 최저 HP비율 아군에 집중됨. 투트랙 리뷰(code-reviewer·ecs-reviewer) 양측 APPROVE. 커밋 b8b48683
+완료 확인: 2026-07-25 사용자 Play 확인 — 힐이 사거리 내 최저 HP비율 아군에 집중됨. 투트랙 리뷰(code-reviewer·ecs-reviewer) 양측 APPROVE. 구현 커밋 2da3ccc9
