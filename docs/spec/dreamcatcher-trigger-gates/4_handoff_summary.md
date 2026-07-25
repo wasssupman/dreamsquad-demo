@@ -7,7 +7,8 @@
 - `c5bc1f47` unit 2 — 궁지폭발 카드
 - `dbda0cc7` unit 3 — 처형타 카드
 - `7c57bb31` 게이트 e2e PlayMode 테스트 2건
-- spec: `c03f12b4`(rev 2 — critic 반영 이력 포함)
+- `378c792a` 폭발 킬 owner 귀속 통일(궁지폭발/실드폭발=host — 투트랙 리뷰 B-M1, 사용자 결정)
+- spec: `c03f12b4`(rev 2 — critic 반영 이력 포함) · `cb36c074`(투트랙 리뷰 반영 docs)
 
 ## Implemented
 
