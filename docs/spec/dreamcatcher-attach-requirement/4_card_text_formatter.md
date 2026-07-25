@@ -28,3 +28,7 @@
 - compile 통과, 기존 호출처 4곳 무수정.
 - EditMode 골든: Class 제한 첫 줄 = "가디언 전용" / UnitId + resolver 성공 = "{표시명} 전용" / resolver null = id 폴백 / 무제한 카드 = 기존 골든 무변화 / 무효 설정 = 접두 없음 — 5케이스.
 - 기존 `DreamcatcherCardTextTests` 전부 green.
+
+확인 2026-07-25 — 컴파일 에러 0 · EditMode 1336건(1334 pass / 0 fail / 2 기존 Ignore), 신규 4건. 기존 호출처 4곳 무수정(optional 파라미터) · 카드 44장 골든 테스트 무변화.
+
+구현 노트(스펙과 다른 점): 클래스 한글 라벨을 새로 만들지 않았다 — `Wassup.Data.UnitLabels.ClassLabel` 이 이미 5종 전부(레인저/가디언/파이터/캐스터/서포트)를 제공해 그대로 재사용했다. `None` 은 빈 문자열을 돌려주므로 무효 설정의 "접두 없음"이 별도 분기 없이 처리된다. 접두 삽입은 `LinesWithFallback` 한 곳(description 폴백 **뒤**) — `Body`/`BodyCompact`/`BodyLinesOnly` 세 표면이 함께 얻는다.

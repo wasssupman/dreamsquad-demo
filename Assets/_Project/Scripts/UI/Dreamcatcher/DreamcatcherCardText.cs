@@ -11,21 +11,27 @@ namespace Wassup.UI
     // only a fallback for cards whose data has no supported summary rule yet.
     public static class DreamcatcherCardText
     {
-        public static string Body(DreamcatcherCard card) => Assemble(card, compact: false);
+        // dreamcatcher-attach-requirement unit 4 — unitNameOf 는 부착 제한이
+        // UnitId 일 때 id→표시명 해석기(주입). optional 이라 기존 호출처는 무수정으로
+        // 컴파일되고, 미주입 시 id 문자열로 폴백한다(unit 5 가 실제 해석기를 넘긴다).
+        // 포매터는 DefenderCatalog 를 직접 알지 않는다 — 순수 유지.
+        public static string Body(DreamcatcherCard card, Func<string, string> unitNameOf = null)
+            => Assemble(card, compact: false, unitNameOf);
 
-        public static string BodyCompact(DreamcatcherCard card) => Assemble(card, compact: true);
+        public static string BodyCompact(DreamcatcherCard card, Func<string, string> unitNameOf = null)
+            => Assemble(card, compact: true, unitNameOf);
 
         // dreamcatcher-hand-card-face unit 0 — 손패 카드 본문: 타입/대상은 카드 면의
         // 색·태그 칩이 담당하므로 헤더 줄(축·타입) 없이 효과 라인만. 라인 빌드와
         // description 폴백 규칙은 Assemble 과 같은 소스(LinesWithFallback)를 공유한다.
         // 화살표 강제 줄바꿈(2026-07-25 사용자 확정): 좁은 카드 폭에서 "트리거 →" 와
         // 효과가 줄로 분리되어 구조가 읽힌다. 손패 전용 — 툴팁/덱빌더(넓은 패널)는 미적용.
-        public static string BodyLinesOnly(DreamcatcherCard card)
-            => string.Join("\n", LinesWithFallback(card)).Replace(" → ", " →\n");
+        public static string BodyLinesOnly(DreamcatcherCard card, Func<string, string> unitNameOf = null)
+            => string.Join("\n", LinesWithFallback(card, unitNameOf)).Replace(" → ", " →\n");
 
-        private static string Assemble(DreamcatcherCard card, bool compact)
+        private static string Assemble(DreamcatcherCard card, bool compact, Func<string, string> unitNameOf = null)
         {
-            var lines = LinesWithFallback(card);
+            var lines = LinesWithFallback(card, unitNameOf);
 
             string axis = AxisLabel(card == null ? CardTargetAxis.All : card.axis);
             string typeLabel = TypeLabel(card == null ? CardType.Squad : card.type);
@@ -39,7 +45,8 @@ namespace Wassup.UI
             return body;
         }
 
-        private static List<string> LinesWithFallback(DreamcatcherCard card)
+        private static List<string> LinesWithFallback(DreamcatcherCard card,
+            Func<string, string> unitNameOf = null)
         {
             bool hasUnsupportedData;
             var lines = BuildSummaryLines(card, out hasUnsupportedData);
@@ -49,7 +56,31 @@ namespace Wassup.UI
                 if (hasUnsupportedData) lines.Clear();
                 lines.Add(card.description);
             }
+            // unit 4 — 부착 제한 접두는 description 폴백(위 Clear) **뒤**에 얹는다.
+            // 여기 한 곳에 넣으면 Body/BodyCompact/BodyLinesOnly 세 표면이 함께 얻는다.
+            string requirement = AttachRequirementLine(card, unitNameOf);
+            if (requirement != null) lines.Insert(0, requirement);
             return lines;
+        }
+
+        // unit 4 — "가디언 전용" / "{유닛명} 전용". 무효 설정(Class×None, 빈 unitId)에는
+        // 붙이지 않는다 — fail-closed 는 게이트와 validator 가 담당하고, 플레이어에게
+        // "None 전용" 같은 문구를 보이지 않는다. 클래스 라벨은 기존 UnitLabels 재사용.
+        internal static string AttachRequirementLine(DreamcatcherCard card, Func<string, string> unitNameOf)
+        {
+            if (card == null) return null;
+            switch (card.attachRequire)
+            {
+                case DcAttachRequireKind.Class:
+                    string cls = UnitLabels.ClassLabel(card.attachRequireClass);
+                    return string.IsNullOrEmpty(cls) ? null : $"{cls} 전용";
+                case DcAttachRequireKind.UnitId:
+                    if (string.IsNullOrEmpty(card.attachRequireUnitId)) return null;
+                    string name = unitNameOf == null ? null : unitNameOf(card.attachRequireUnitId);
+                    return $"{(string.IsNullOrEmpty(name) ? card.attachRequireUnitId : name)} 전용";
+                default:
+                    return null;
+            }
         }
 
         private static List<string> BuildSummaryLines(DreamcatcherCard card, out bool hasUnsupportedData)
