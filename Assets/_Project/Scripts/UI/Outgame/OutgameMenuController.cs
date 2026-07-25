@@ -198,9 +198,10 @@ namespace Wassup.UI
                 {
                     _starting = false;
                     Debug.LogWarning($"[OutgameMenuController] play 실패 — 입장 취소: {err}");
+                    // 재시도 버튼 없음 — 그건 로비 '시작'(=새 play) 재호출과 동일해서 중복이고,
+                    // 서버 락 상황에선 즉시 재시도가 또 실패해 버그처럼 보인다. 닫으면 로비로.
                     NoticePopup.ShowAlert("입장 실패",
-                        "서버에 연결하지 못했습니다.\n잠시 후 다시 시도해 주세요.",
-                        onRetry: OnStartGame);
+                        "게임에 입장하지 못했습니다.\n잠시 후 '시작'을 다시 눌러 주세요.", null);
                 });
         }
 

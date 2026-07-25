@@ -26,13 +26,13 @@
 - gate refs / LoadoutGate 체크는 현행 유지(먼저).
 - 통과 후: `if (_starting) return; _starting = true;` 로 **재진입 차단** → `NoticePopup.ShowBusy("매칭 중")` → `BeginMatchFromLobby(onReady, onFailed)`.
   - `onReady`: `_starting=false; NoticePopup.Hide(); SceneTransition.Go(SceneNames.Battle);`
-  - `onFailed`: `_starting=false;` + `NoticePopup.ShowAlert("입장 실패", "…다시 시도…", onRetry: OnStartGame)`.
+  - `onFailed`: `_starting=false;` + `NoticePopup.ShowAlert("입장 실패", "…잠시 후 '시작' 다시…", null)`. **재시도 버튼 없음** — `다시 시도`는 로비 `시작`(=새 play) 재호출과 동일해 중복이고, 서버 락 상황에선 즉시 재시도가 또 실패해 버그처럼 보인다. 닫으면 로비로 돌아가 `시작`을 다시 누른다.
 - busy 딤(raycast 차단)이 대기 중 다른 로비 버튼 입력도 막는다(모달). `_starting` 이 실질 재진입 가드.
 
 ## 완료 기준
 
 - compile 통과, 콘솔 에러 0.
 - 성공 경로: play 정상 → "매칭 중" 잠깐 → 배틀 진입. 진입 후 `_attemptId` 보장(reflection 확인) → 완주 시 `complete ok — score=…` (미뤘던 "완주 매치가 서버에 실점수로 남는가" 를 unit 3 에서 종결).
-- 실패 경로(강제): 잘못된 baseUrl/네트워크 → 배틀 **미진입** + "입장 실패" 팝업 + 다시시도 동작.
+- 실패 경로(강제): 잘못된 baseUrl/네트워크/서버 락 → 배틀 **미진입** + "입장 실패" 팝업(닫기 단독). 닫고 `시작` 재탭 시 새 play.
 - 게스트: 게이트 없이 즉시 진입(현행).
 - 비게이트 `BeginMatch`(GameManager.OnEnable) 동작 불변.
