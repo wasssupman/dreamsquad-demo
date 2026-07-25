@@ -30,3 +30,6 @@
   (마지막 웨이브 = 290s, 타이머 밖은 unit 2/6 스케줄러가 자연 컷).
 - **회귀**: `fixedIntervalSec=0` 이면 기존 `duration/waveCount` 동작 불변 — 기존 생성기 테스트 전부 green.
 - rng 소비 순서 불변 확인(기존 결정론 테스트 green).
+
+✅ 확인 2026-07-25 — EditMode run_tests 12/12 통과 (신규 WaveFixedIntervalTests 3 + 기존
+WavePatternGeneratorTests 9, 회귀 0). 커밋 해시는 handoff(unit 5) 참조.
