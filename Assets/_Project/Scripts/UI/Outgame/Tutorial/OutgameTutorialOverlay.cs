@@ -12,13 +12,10 @@ namespace Wassup.UI
     // the holes have no graphic at all, which lets the raycast fall through to
     // MenuCanvas (order 0) and the focused button is pressed for real.
     //
-    // Must live on its own GameObject: TutorialGuidanceView calls
-    // UiCanvasSetup.Ensure(gameObject, 10) on itself, so sharing a GameObject
-    // would make the two views fight over one Canvas and its sortingOrder.
+    // Must live on its own GameObject: TutorialGuidanceView owns a separate Canvas,
+    // so sharing a GameObject would make the two views fight over one sortingOrder.
     public sealed class OutgameTutorialOverlay : MonoBehaviour
     {
-        private const int SortingOrder = 9;
-
         // Keep below half the smallest gap between two focused buttons, or the
         // padded holes merge and the dim strip between them disappears. The lobby
         // column leaves 24px between Squad and Dreamcatcher, so 12 is the ceiling.
@@ -33,6 +30,7 @@ namespace Wassup.UI
         private bool _built;
         private Tween _fade;
         private Rect _areaRect;
+        private int _sortingOrder;
 
         private readonly List<Image> _pieces = new List<Image>();
         private readonly List<Rect> _holeRects = new List<Rect>();
@@ -40,6 +38,17 @@ namespace Wassup.UI
         private readonly List<RectTransform> _targets = new List<RectTransform>();
         private readonly List<Vector3> _cornerCache = new List<Vector3>();
         private readonly Vector3[] _corners = new Vector3[4];
+
+        // first-session-tutorial unit 14 — OutgameTutorialController 가 공용
+        // TutorialGuidanceStyle 의 dim order 를 전달한다. lazy build 전후 모두 안전하다.
+        public void SetSortingOrder(int sortingOrder)
+        {
+            _sortingOrder = sortingOrder;
+            if (!_built) return;
+
+            Canvas canvas = GetComponent<Canvas>();
+            if (canvas != null) canvas.sortingOrder = sortingOrder;
+        }
 
         // No Awake(): building lazily and never calling Hide() from Awake is
         // deliberate. TutorialGuidanceView.Awake() runs an unconditional Hide(),
@@ -252,7 +261,7 @@ namespace Wassup.UI
             if (_built) return;
             _built = true;
 
-            UiCanvasRoots roots = UiCanvasSetup.Ensure(gameObject, SortingOrder);
+            UiCanvasRoots roots = UiCanvasSetup.Ensure(gameObject, _sortingOrder);
             _fullBleedRoot = roots.FullBleedRoot;
 
             _root = new GameObject("DimRoot", typeof(RectTransform), typeof(CanvasGroup));

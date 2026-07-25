@@ -11,9 +11,6 @@ namespace Wassup.UI.Tutorial
     // Everything except Skip is visual-only and never consumes gameplay input.
     public sealed class TutorialGuidanceView : MonoBehaviour
     {
-        private const int SortingOrder = 10;
-        // unit 8 — 선물 튜토리얼 문구는 GiftPanel(sortingOrder 30) 위에 떠야 한다.
-        private const int ElevatedSortingOrder = 40;
         private const float SafeEdgePadding = 20f;
         private const float PointerGap = 30f;
         private const float MessageHorizontalPadding = 56f;
@@ -31,6 +28,9 @@ namespace Wassup.UI.Tutorial
         public float ClassHintFallbackSeconds => Style.classHintFallbackSeconds;
         public Color SpawnMarkerColor => Style.spawnMarkerColor;
         public Color GoalMarkerColor => Style.goalMarkerColor;
+        public int DimSortingOrder => Style.dimSortingOrder;
+        public int GuidanceSortingOrder => Style.guidanceSortingOrder;
+        public int ElevatedSortingOrder => Style.elevatedSortingOrder;
 
         private GameObject _overlay;
         private Canvas _canvas;
@@ -51,6 +51,7 @@ namespace Wassup.UI.Tutorial
         private string _preferredText;
         private float _preferredTextWidth = -1f;
         private float _preferredTextHeight;
+        private bool _worldMarkerLayout;
         private bool _built;
 
         private readonly Vector3[] _worldCorners = new Vector3[4];
@@ -66,6 +67,7 @@ namespace Wassup.UI.Tutorial
             public float age;
             public float duration;
             public bool persistent;
+            public bool preferLabelAbove;
         }
 
         private TutorialGuidanceStyle Style
@@ -118,18 +120,30 @@ namespace Wassup.UI.Tutorial
                 duration: duration > 0f ? duration : Mathf.Max(0.2f, Style.goalBeatSeconds * 0.55f));
         }
 
-        // Step 1 map comprehension marker. Unlike PulseWorldPoint this remains
-        // until gameplay input explicitly advances the tutorial, so reading speed
-        // never determines whether the player gets to see spawn/goal context.
-        public void ShowWorldMarker(Camera camera, Vector3 worldPosition, string label, Color color)
+        // Step 1 map comprehension marker. Unlike PulseWorldPoint this remains until
+        // the caller explicitly clears it after the reading beat or early gameplay input.
+        public void ShowWorldMarker(Camera camera, Vector3 worldPosition, string label, Color color,
+            bool preferLabelAbove = false)
         {
-            CreateWorldPulse(camera, worldPosition, color, label, persistent: true, duration: 0f);
+            CreateWorldPulse(camera, worldPosition, color, label, persistent: true, duration: 0f,
+                preferLabelAbove: preferLabelAbove);
         }
 
-        public void ClearWorldMarkers() => ClearWorldPulses();
+        public void SetWorldMarkerLayout(bool active)
+        {
+            if (_worldMarkerLayout == active) return;
+            _worldMarkerLayout = active;
+            if (_built) UpdateMessageLayout();
+        }
+
+        public void ClearWorldMarkers()
+        {
+            ClearWorldPulses();
+            SetWorldMarkerLayout(false);
+        }
 
         private void CreateWorldPulse(Camera camera, Vector3 worldPosition, Color color,
-            string label, bool persistent, float duration)
+            string label, bool persistent, float duration, bool preferLabelAbove = false)
         {
             if (!_built) BuildCanvas();
             if (camera == null) return;
@@ -157,6 +171,7 @@ namespace Wassup.UI.Tutorial
                 world = worldPosition,
                 duration = duration,
                 persistent = persistent,
+                preferLabelAbove = preferLabelAbove,
             });
             UpdateWorldPulse(_worldPulses[_worldPulses.Count - 1]);
             UiLayer.Apply(go);
@@ -168,7 +183,7 @@ namespace Wassup.UI.Tutorial
             plateGo.transform.SetParent(marker, false);
             var plateRect = (RectTransform)plateGo.transform;
             plateRect.anchorMin = plateRect.anchorMax = new Vector2(0.5f, 0.5f);
-            plateRect.anchoredPosition = new Vector2(0f, -76f);
+            plateRect.anchoredPosition = new Vector2(0f, -Style.worldMarkerLabelOffset);
             plateRect.sizeDelta = new Vector2(168f, 46f);
             var plate = plateGo.GetComponent<Image>();
             plate.sprite = _plateSprite;
@@ -197,7 +212,7 @@ namespace Wassup.UI.Tutorial
         public void Hide()
         {
             ClearFocus();
-            ClearWorldPulses();
+            ClearWorldMarkers();
             SetTapToContinue(false);
             if (_overlay != null) _overlay.SetActive(false);
         }
@@ -246,12 +261,14 @@ namespace Wassup.UI.Tutorial
             _tapCatcher.SetActive(false);
         }
 
-        // unit 8 — 선물 튜토리얼 동안만 GiftPanel 위로 올린다. Hide 는 정렬을 건드리지
-        // 않으므로 원복은 호출자(FirstSessionTutorialController)의 종료 경로가 명시 수행한다.
+        // unit 8 — 선물 튜토리얼 동안만 elevated order 로 올린다. unit 14 부터 세 order 는
+        // TutorialGuidanceStyle 이 소유한다. Hide 는 정렬을 건드리지 않으므로 원복은
+        // 호출자(FirstSessionTutorialController)의 종료 경로가 명시 수행한다.
         public void SetElevated(bool elevated)
         {
             if (!_built) BuildCanvas();
-            if (_canvas != null) _canvas.sortingOrder = elevated ? ElevatedSortingOrder : SortingOrder;
+            if (_canvas != null)
+                _canvas.sortingOrder = elevated ? ElevatedSortingOrder : GuidanceSortingOrder;
         }
 
         private void Update()
@@ -360,10 +377,15 @@ namespace Wassup.UI.Tutorial
                 float labelCenterX = Mathf.Clamp(local.x,
                     _safeRoot.rect.xMin + halfWidth + SafeEdgePadding,
                     _safeRoot.rect.xMax - halfWidth - SafeEdgePadding);
-                bool placeAbove = local.y - 76f - pulse.label.sizeDelta.y * 0.5f <
+                float labelOffset = Style.worldMarkerLabelOffset;
+                float labelHalfHeight = pulse.label.sizeDelta.y * 0.5f;
+                bool fitsAbove = local.y + labelOffset + labelHalfHeight <=
+                    _safeRoot.rect.yMax - SafeEdgePadding;
+                bool fitsBelow = local.y - labelOffset - labelHalfHeight >=
                     _safeRoot.rect.yMin + SafeEdgePadding;
+                bool placeAbove = (pulse.preferLabelAbove && fitsAbove) || !fitsBelow;
                 pulse.label.anchoredPosition = new Vector2(
-                    labelCenterX - local.x, placeAbove ? 76f : -76f);
+                    labelCenterX - local.x, placeAbove ? labelOffset : -labelOffset);
             }
         }
 
@@ -394,7 +416,10 @@ namespace Wassup.UI.Tutorial
             // but never allow either edge to leave the current device safe rect.
             float maxTopOffset = Mathf.Max(SafeEdgePadding,
                 _safeRoot.rect.height - size.y - SafeEdgePadding);
-            float topOffset = Mathf.Clamp(Style.messageTopOffset, SafeEdgePadding, maxTopOffset);
+            float requestedTopOffset = _worldMarkerLayout
+                ? Style.worldMarkerMessageTopOffset
+                : Style.messageTopOffset;
+            float topOffset = Mathf.Clamp(requestedTopOffset, SafeEdgePadding, maxTopOffset);
             rect.anchoredPosition = new Vector2(0f, -topOffset);
         }
 
@@ -402,7 +427,7 @@ namespace Wassup.UI.Tutorial
         {
             if (_built) return;
             _built = true;
-            var roots = UiCanvasSetup.Ensure(gameObject, SortingOrder);
+            var roots = UiCanvasSetup.Ensure(gameObject, GuidanceSortingOrder);
             _canvas = roots.Canvas;
             _safeRoot = roots.SafeAreaRoot;
             _fullBleedRoot = roots.FullBleedRoot;

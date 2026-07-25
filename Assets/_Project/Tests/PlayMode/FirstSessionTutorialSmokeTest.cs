@@ -137,17 +137,29 @@ namespace Wassup.Tests.PlayMode
         }
 
         [UnityTest]
-        public IEnumerator PersistentWorldMarker_RemainsUntilExplicitClear()
+        public IEnumerator WorldMarkerBeat_AvoidsFixedUiAndClearsBeforePlacementMethod()
         {
             var cameraGo = new GameObject("TutorialWorldMarkerCamera");
             var camera = cameraGo.AddComponent<Camera>();
             camera.orthographic = true;
             camera.transform.position = new Vector3(0f, 0f, -10f);
 
+            var style = ScriptableObject.CreateInstance<TutorialGuidanceStyle>();
             var guidanceGo = new GameObject("TutorialWorldMarkerGuidance");
+            guidanceGo.SetActive(false);
             var guidance = guidanceGo.AddComponent<TutorialGuidanceView>();
-            guidance.ShowWorldMarker(camera, Vector3.zero, "방어 목표", Color.yellow);
+            WriteField(guidance, "style", style);
+            guidanceGo.SetActive(true);
+            guidance.SetWorldMarkerLayout(true);
+            guidance.ShowMessage("적이 노란색 베이스에 닿기 전에 막아주세요.", showSkip: true);
+            guidance.ShowWorldMarker(camera, Vector3.zero, "방어 목표", Color.yellow,
+                preferLabelAbove: true);
             yield return null;
+
+            var messagePanel = (GameObject)ReadField(guidance, "_messagePanel");
+            var messageRect = (RectTransform)messagePanel.transform;
+            Assert.AreEqual(-style.worldMarkerMessageTopOffset, messageRect.anchoredPosition.y, 0.01f,
+                "The map-reading message must move below the top title and spawn markers.");
 
             var markers = (IList)ReadField(guidance, "_worldPulses");
             Assert.AreEqual(1, markers.Count);
@@ -160,7 +172,12 @@ namespace Wassup.Tests.PlayMode
             var rect = (RectTransform)marker.GetType()
                 .GetField("rect", BindingFlags.Instance | BindingFlags.Public)
                 .GetValue(marker);
+            var label = (RectTransform)marker.GetType()
+                .GetField("label", BindingFlags.Instance | BindingFlags.Public)
+                .GetValue(marker);
             Assert.IsTrue(rect.gameObject.activeSelf);
+            Assert.Greater(label.anchoredPosition.y, 0f,
+                "The bottom goal label must sit above its marker instead of covering the defender tray.");
             Component markerText = null;
             var markerComponents = rect.GetComponentsInChildren<Component>();
             for (int i = 0; i < markerComponents.Length; i++)
@@ -173,11 +190,73 @@ namespace Wassup.Tests.PlayMode
             yield return null;
             Assert.AreEqual(1, markers.Count, "Persistent marker must survive far beyond the intro beat.");
 
-            guidance.ClearWorldMarkers();
-            Assert.AreEqual(0, markers.Count);
+            var controllerGo = new GameObject("TutorialWorldMarkerController");
+            controllerGo.SetActive(false);
+            var controller = controllerGo.AddComponent<FirstSessionTutorialController>();
+            WriteField(controller, "guidance", guidance);
+            typeof(FirstSessionTutorialController)
+                .GetMethod("BeginPick", BindingFlags.Instance | BindingFlags.NonPublic)
+                .Invoke(controller, null);
 
+            Assert.AreEqual(0, markers.Count,
+                "The placement-method message must not retain map markers over its multi-line panel.");
+            Assert.AreEqual(-style.messageTopOffset, messageRect.anchoredPosition.y, 0.01f,
+                "The placement-method message must return to the normal top position.");
+
+            Object.Destroy(controllerGo);
             Object.Destroy(guidanceGo);
             Object.Destroy(cameraGo);
+            Object.Destroy(style);
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator TutorialCanvasOrder_StaysAboveMenusAndBelowSceneTransition()
+        {
+            const int ExistingMenuLayer = 1000;
+            const int SceneTransitionLayer = 10000;
+
+            var style = ScriptableObject.CreateInstance<TutorialGuidanceStyle>();
+
+            var guidanceGo = new GameObject("TutorialCanvasOrderGuidance");
+            guidanceGo.SetActive(false);
+            var guidance = guidanceGo.AddComponent<TutorialGuidanceView>();
+            WriteField(guidance, "style", style);
+            guidanceGo.SetActive(true);
+
+            var overlayGo = new GameObject("TutorialCanvasOrderDim");
+            var overlay = overlayGo.AddComponent<OutgameTutorialOverlay>();
+            overlay.SetSortingOrder(guidance.DimSortingOrder);
+            overlay.Show();
+            yield return null;
+
+            Canvas guidanceCanvas = guidanceGo.GetComponent<Canvas>();
+            Canvas dimCanvas = overlayGo.GetComponent<Canvas>();
+            GraphicRaycaster guidanceRaycaster = guidanceGo.GetComponent<GraphicRaycaster>();
+            Assert.IsNotNull(guidanceCanvas);
+            Assert.IsNotNull(dimCanvas);
+            Assert.IsNotNull(guidanceRaycaster);
+            Assert.AreEqual(style.dimSortingOrder, dimCanvas.sortingOrder);
+            Assert.AreEqual(style.guidanceSortingOrder, guidanceCanvas.sortingOrder);
+            Assert.Less(dimCanvas.sortingOrder, guidanceCanvas.sortingOrder,
+                "The blocking dim must render immediately below guidance and its Skip/focus UI.");
+            Assert.Greater(guidanceCanvas.sortingOrder, ExistingMenuLayer,
+                "Tutorial guidance and its tap catcher must outrank the battle menu canvases.");
+            Assert.Greater(guidanceRaycaster.sortOrderPriority, ExistingMenuLayer,
+                "The full-screen tutorial tap catcher must win input priority over the battle menu.");
+
+            guidance.SetElevated(true);
+            Assert.AreEqual(style.elevatedSortingOrder, guidanceCanvas.sortingOrder);
+            Assert.Greater(guidanceCanvas.sortingOrder, style.guidanceSortingOrder);
+            Assert.Less(guidanceCanvas.sortingOrder, SceneTransitionLayer,
+                "Scene transitions must remain above every tutorial presentation.");
+
+            guidance.SetElevated(false);
+            Assert.AreEqual(style.guidanceSortingOrder, guidanceCanvas.sortingOrder);
+
+            Object.Destroy(overlayGo);
+            Object.Destroy(guidanceGo);
+            Object.Destroy(style);
             yield return null;
         }
 

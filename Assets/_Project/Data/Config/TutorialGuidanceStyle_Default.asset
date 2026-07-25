@@ -15,6 +15,9 @@ MonoBehaviour:
   koreanFont: {fileID: 11400000, guid: 218cce73e3172a04a8c536a4d368d90f, type: 2}
   messageFontSize: 42
   skipFontSize: 28
+  dimSortingOrder: 1499
+  guidanceSortingOrder: 1500
+  elevatedSortingOrder: 1501
   messageSize: {x: 880, y: 116}
   messageTopOffset: 184
   messageFill: {r: 0.025, g: 0.045, b: 0.09, a: 0.96}
@@ -29,6 +32,8 @@ MonoBehaviour:
   spawnMarkerColor: {r: 1, g: 0.34, b: 0.24, a: 1}
   goalMarkerColor: {r: 1, g: 0.82, b: 0.25, a: 1}
   worldMarkerFontSize: 24
+  worldMarkerLabelOffset: 76
+  worldMarkerMessageTopOffset: 320
   tapCatcherDimAlpha: 0.35
   goalBeatSeconds: 5
   awakeningPromptSeconds: 3.5

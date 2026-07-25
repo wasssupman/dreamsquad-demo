@@ -11,6 +11,11 @@ namespace Wassup.UI.Tutorial
         public float messageFontSize = 42f;
         public float skipFontSize = 28f;
 
+        [Header("Canvas Layering")]
+        public int dimSortingOrder = 1499;
+        public int guidanceSortingOrder = 1500;
+        public int elevatedSortingOrder = 1501;
+
         [Header("Message")]
         public Vector2 messageSize = new Vector2(880f, 116f);
         public float messageTopOffset = 184f;
@@ -30,6 +35,8 @@ namespace Wassup.UI.Tutorial
         public Color spawnMarkerColor = new Color(1f, 0.34f, 0.24f, 1f);
         public Color goalMarkerColor = new Color(1f, 0.82f, 0.25f, 1f);
         public float worldMarkerFontSize = 24f;
+        public float worldMarkerLabelOffset = 76f;
+        public float worldMarkerMessageTopOffset = 320f;
 
         // unit 11 — 읽고 넘기는 스텝의 차단 dim. 완전 투명이면 무반응이 버그로 읽힌다.
         [Range(0f, 1f)] public float tapCatcherDimAlpha = 0.35f;

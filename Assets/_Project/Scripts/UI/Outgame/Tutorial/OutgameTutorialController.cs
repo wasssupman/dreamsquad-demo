@@ -105,6 +105,7 @@ namespace Wassup.UI
                 return;
             }
 
+            overlay.SetSortingOrder(guidance.DimSortingOrder);
             if (TutorialProgress.ShouldRunLobbyIntro(profileSO)) EnterStep(Step.IntroMessage);
             else if (TutorialProgress.ShouldRunLobbyLoadoutHint(profileSO)) EnterStep(Step.LoadoutMessage);
         }

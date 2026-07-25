@@ -46,7 +46,9 @@ dim 은 주의를 좁히는 수단일 뿐이고, 진행시키는 것은 언제�
 - **최소 표시 시간**: 각 단계는 진입 후 `minStepSeconds`(기본 0.5초) 동안 입력을 무시한다. 씬 전환
   직후의 잔여 탭이나 연타로 문구를 읽기 전에 챕터가 소진되는 것을 막는다.
 - **기존 UI 레이어를 수정하지 않는다.** 별도 Canvas 로 얹는다. `MenuCanvas`(0) 위,
-  `TutorialGuidanceView`(10) 아래, `SceneTransition`(10000) 아래.
+  `TutorialGuidanceView` 바로 아래, `SceneTransition`(10000) 아래. 실제 order는 공용
+  `TutorialGuidanceStyle`의 `dimSortingOrder`/`guidanceSortingOrder`가 소유한다
+  (`first-session-tutorial` unit 14).
 - **두 뷰의 GameObject 는 씬 루트여야 한다** — 어떤 Canvas 의 자식도 아니어야 한다. 중첩 캔버스에서는
   `overrideSorting` 이 렌더 순서만 올리고 레이캐스트 우선순위는 마지막 sibling 이 이긴다
   (`LoadoutGatePopup.cs:44-47`, `SquadBuilderView.cs:392-399` 의 실패 기록). 루트 형제 캔버스여야

@@ -173,6 +173,7 @@ namespace Wassup.UI.Tutorial
             _coreStep = CoreStep.Goal;
             placementView.BeginTutorialGate();
             gimmickGuide?.SetTutorialSuppressed(true);
+            guidance.SetWorldMarkerLayout(true);
             guidance.ShowMessage("적이 노란색 베이스에 닿기 전에 막아주세요.", showSkip: true);
             _goalRoutine = StartCoroutine(GoalBeatRoutine());
         }
@@ -212,7 +213,8 @@ namespace Wassup.UI.Tutorial
                     : mapView.CellCenterToWorld(plan.goal.x, plan.goal.y);
                 guidance.ShowWorldMarker(camera,
                     world,
-                    "방어 목표", guidance.GoalMarkerColor);
+                    "방어 목표", guidance.GoalMarkerColor,
+                    preferLabelAbove: true);
             }
             yield return WaitUnscaled(half);
             _goalRoutine = null;
@@ -232,6 +234,7 @@ namespace Wassup.UI.Tutorial
         private void BeginPick()
         {
             _coreStep = CoreStep.Pick;
+            guidance.ClearWorldMarkers();
             guidance.ShowMessage(
                 "캐릭터를 배치하는 방법 두가지 방법!\n" +
                 "1. 캐릭터 터치! 원하는 위치에 터치!\n" +
