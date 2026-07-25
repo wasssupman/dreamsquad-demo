@@ -252,7 +252,7 @@ namespace Wassup.Bridge
                     string want = card.attachRequire == Wassup.Data.DcAttachRequireKind.Class
                         ? card.attachRequireClass.ToString()
                         : card.attachRequireUnitId;
-                    TryGetDefenderDataByEntity(defender, out var hostData);
+                    var hostData = FindDefenderData(defender);
                     Debug.LogWarning($"[BattleBridge] ApplyDreamcatcherCardToUnit('{card.id}'): 부착 제한 불일치 — 요구 {card.attachRequire}={want}, host role={(hostData != null ? hostData.role.ToString() : "?")} id='{(hostData != null ? hostData.id : "?")}' — card not attached.");
                 }
                 return -1;
@@ -789,22 +789,6 @@ namespace Wassup.Bridge
             return 0;
         }
 
-        // dreamcatcher-attach-requirement unit 1 — entity 키 defender SO 조회. 등록부
-        // (_defenderByTile)가 유일 소스이고 소규모 그리드라 선형 스캔으로 충분하다
-        // (BattleBridge.Relocation.cs 의 TryGetDefenderCell 과 동형). 기존 헬퍼는
-        // cell 키(TryGetDefenderData) 또는 entity→cell 뿐이라 이 방향은 여기서 신설.
-        private bool TryGetDefenderDataByEntity(Entity entity, out Wassup.Data.DefenderUnitData data)
-        {
-            foreach (var kv in _defenderByTile)
-            {
-                if (kv.Value.entity != entity) continue;
-                data = kv.Value.data;
-                return data != null;
-            }
-            data = null;
-            return false;
-        }
-
         // dreamcatcher-attach-requirement unit 1 — 부착 제한(정적 술어) 게이트. UI 판정
         // (WouldDreamcatcherCardApply)과 커밋 preflight(ApplyDreamcatcherCardToUnit)가
         // 이 하나를 공유하므로 리티클 색과 커밋 결과가 어긋나지 않는다.
@@ -817,7 +801,10 @@ namespace Wassup.Bridge
         {
             if (card == null) return false;
             if (card.attachRequire == Wassup.Data.DcAttachRequireKind.None) return true;
-            if (!TryGetDefenderDataByEntity(defender, out var data)) return false;
+            // 조회는 기존 FindDefenderData(BattleBridge.cs) 재사용 — 같은 _defenderByTile
+            // 선형 스캔을 중복 구현하지 않는다(review M2).
+            var data = FindDefenderData(defender);
+            if (data == null) return false;
             return Wassup.Core.DreamcatcherAttachEval.MeetsAttachRequirement(card, data.role, data.id);
         }
 
