@@ -25,6 +25,7 @@ namespace Wassup.Tests.EditMode
             { "bouncy_bead", "튕구슬" },
             { "sub_butterfly_dream", "나비꿈" },
             { "calamity_heart", "시한폭탄" },
+            { "corpse_burst", "시체폭발" },
             { "cost1_as", "1코속" },
             { "cost1_hp", "1코체" },
             { "cracked_grail", "피값딜" },

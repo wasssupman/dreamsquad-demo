@@ -28,5 +28,16 @@ namespace Wassup.Battle.Units
         // copied from the enemy's baked KillScore at enqueue time (same reason as
         // awakeningReward above). Appended last; 0 when the component was absent.
         public int killScore;
+
+        // dreamcatcher-content-3 unit 3 (시체폭발) — killer 의 OnKill×SelfTileAoe 첫 매칭
+        // 슬롯을 킬 시점에 스탬프(DefenderDeathEvent.hasOnDeathAoe 선례 — 드레인 시점엔
+        // 슬롯을 못 읽는다). 실행 = 브리지 드레인의 SkyFall×TileAoe(flightTime 0).
+        // killer 는 폭발 데미지 귀속용(owner) — 폭발발 킬도 OnKill 을 재발동시키는 연쇄가
+        // 사양이다(flat 데미지 + 반경으로 자연 제동). Appended last; 기본값 = 무폭발.
+        public bool hasKillBurst;
+        public float burstDamage;
+        public int burstTileRange;
+        public int burstDataIndex;
+        public Entity killer;
     }
 }

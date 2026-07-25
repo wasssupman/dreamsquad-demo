@@ -273,6 +273,28 @@ namespace Wassup.Battle.Units
                         && _attackTagLookup.HasComponent(entity)
                         && _transformLookup.HasComponent(entity))
                     {
+                        // 시체폭발 (content-3 unit 3) — killer 의 OnKill×SelfTileAoe 첫 매칭
+                        // 슬롯을 이벤트에 스탬프(첫 슬롯만 — OnDeath v1 선례). 슬롯 읽기는
+                        // devouring 루프와 같은 RO 읽기(contract 3).
+                        bool hasKillBurst = false;
+                        float burstDamage = 0f;
+                        int burstTileRange = 0;
+                        int burstDataIndex = -1;
+                        if (killerSource != Entity.Null && _dcTriggerSlotLookup.HasBuffer(killerSource))
+                        {
+                            var bSlots = _dcTriggerSlotLookup[killerSource];
+                            for (int s = 0; s < bSlots.Length; s++)
+                            {
+                                var bs = bSlots[s];
+                                if (bs.trigger != Wassup.Data.DcTriggerKind.OnKill ||
+                                    bs.payload != Wassup.Data.DcPayloadKind.SelfTileAoe) continue;
+                                hasKillBurst = true;
+                                burstDamage = bs.magnitude;
+                                burstTileRange = bs.tileRange;
+                                burstDataIndex = bs.projectileDataIndex;
+                                break;
+                            }
+                        }
                         enemyKilledSingleton.ValueRW.queue.Enqueue(new EnemyKilledEvent
                         {
                             position = _transformLookup[entity].Position,
@@ -286,6 +308,11 @@ namespace Wassup.Battle.Units
                             // 이 분기에 오지 않으므로 유출된 적은 점수를 남기지 않는다.
                             killScore = _killScoreLookup.HasComponent(entity)
                                 ? _killScoreLookup[entity].value : 0,
+                            hasKillBurst = hasKillBurst,
+                            burstDamage = burstDamage,
+                            burstTileRange = burstTileRange,
+                            burstDataIndex = burstDataIndex,
+                            killer = killerSource,
                         });
                     }
 

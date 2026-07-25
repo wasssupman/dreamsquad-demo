@@ -3074,6 +3074,26 @@ namespace Wassup.Bridge
                 var logger = GameManager.Instance?.Logger;
                 logger?.RecordKill(string.Empty, new Vector2Int(cell.x, cell.y), time);
                 logger?.AddScoreEvent("enemy_killed", evt.killScore, time);
+
+                // 시체폭발 (content-3 unit 3) — 킬 셀 중심 즉발 TileAoe. OnDeath 폭발
+                // (DrainDefenderDeathEvents)과 동형. owner=killer 로 폭발발 킬의 OnKill
+                // 연쇄 재발동이 사양.
+                if (evt.hasKillBurst && evt.burstDataIndex >= 0)
+                {
+                    var impactWorld = GridToWorldCenter(new Vector2Int(cell.x, cell.y), spawnHeight);
+                    SpawnProjectile(new ProjectileSpawnRequest
+                    {
+                        movement = MovementKind.SkyFall,
+                        payload = PayloadKind.TileAoe,
+                        impact = impactWorld,
+                        damage = evt.burstDamage,
+                        impactTileRange = evt.burstTileRange,
+                        flightTime = 0f,
+                        dataIndex = evt.burstDataIndex,
+                        visualScale = 1f,
+                        owner = evt.killer,
+                    }, Entity.Null);
+                }
             }
         }
 

@@ -28,6 +28,7 @@
 | `bouncy_bead` | 통통 구슬 | 튕구슬 |
 | `sub_butterfly_dream` | 호접몽 | 나비꿈 |
 | `calamity_heart` | 재앙의 심장 | 시한폭탄 |
+| `corpse_burst` | 터지는 악몽 | 시체폭발 |
 | `cost1_as` | 1코 폭타 | 1코속 |
 | `cost1_hp` | 1코 존버 | 1코체 |
 | `cracked_grail` | 금이 간 성배 | 피값딜 |
