@@ -1,6 +1,6 @@
 # Endless Mode (무한 모드)
 
-> 상태: 착수 예정 (설계 확정 + critic 리뷰 반영 2026-07-24) — 구현 전
+> 상태: **완료 2026-07-25** — unit 0~4 구현·검증·커밋 (인계: `5_handoff_summary.md`).
 > 브레인스토밍: `docs/plans/2026-07-24-endless-mode-design.md`
 
 ## 상위 목표
