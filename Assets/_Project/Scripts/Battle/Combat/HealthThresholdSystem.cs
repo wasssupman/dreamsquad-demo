@@ -80,6 +80,10 @@ namespace Wassup.Battle.Combat
             NativeArray<LocalTransform> defTransforms = default;
             bool defBuilt = false;
 
+            // 진동갑주 (content-3 unit 4) — SelfTileAoe 캐리어 스테이징용 ECB.
+            // Playback 은 이 시스템 끝(브리지 드레인 전 materialize — AttackSystem dcCarrier 선례).
+            var ecb = new EntityCommandBuffer(Allocator.Temp);
+
             // 2. Threshold eval + blink resolve.
             foreach (var (slotsRef, health, transform, entity) in
                      SystemAPI.Query<DynamicBuffer<DcTriggerSlot>, RefRO<Health>, RefRO<LocalTransform>>()
@@ -156,6 +160,27 @@ namespace Wassup.Battle.Combat
                             // 목적지 실패(방어유닛 전멸/링 상한 초과) = skip — k 는
                             // 이미 전진(발동 소모 유지, 재발동 없음).
                         }
+                        else if (slot.payload == Wassup.Data.DcPayloadKind.SelfTileAoe)
+                        {
+                            // 진동갑주 (content-3 unit 4) — 자기 위치 즉발 TileAoe. 캐리어
+                            // entity 로 ProjectileSpawnRequest 스테이징(AttackN ProjectileToTarget
+                            // dcCarrier 선례) — 브리지 드레인이 스폰 후 캐리어를 파괴한다.
+                            // owner=self 라 폭발 킬은 이 유닛에 귀속(OnKill 카드와 연쇄 가능).
+                            var carrier = ecb.CreateEntity();
+                            ecb.AddComponent(carrier, new Projectile.ProjectileSpawnRequest
+                            {
+                                movement = Projectile.MovementKind.SkyFall,
+                                payload = Projectile.PayloadKind.TileAoe,
+                                impact = transform.ValueRO.Position,
+                                damage = slot.magnitude,
+                                impactTileRange = slot.tileRange,
+                                flightTime = 0f,
+                                dataIndex = slot.projectileDataIndex,
+                                visualScale = slot.visualScale > 0f ? slot.visualScale : 1f,
+                                owner = entity,
+                            });
+                            ecb.AddComponent<Projectile.ProjectileRequestCarrier>(carrier);
+                        }
                         else
                         {
                             UnityEngine.Debug.LogWarning("[HealthThreshold] HealthThreshold slot fired with unhandled payload kind.");
@@ -170,6 +195,9 @@ namespace Wassup.Battle.Combat
                 defEntities.Dispose();
                 defTransforms.Dispose();
             }
+
+            ecb.Playback(state.EntityManager);
+            ecb.Dispose();
         }
 
         // 폴백 체인: 위협 리더(alive) → 최근접 생존 방어유닛 → false(skip).

@@ -55,6 +55,7 @@ namespace Wassup.Tests.EditMode
             { "shield_lull", "실드수면" },
             { "slow_awakening", "공속각성" },
             { "thornmail", "가시반격" },
+            { "tremor_plate", "진동갑주" },
         };
 
         [Test]

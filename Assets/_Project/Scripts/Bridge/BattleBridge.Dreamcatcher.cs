@@ -503,24 +503,9 @@ namespace Wassup.Bridge
                     // 공유) — instanceId 잘라쓰기(네임스페이스 오염) 대신. 슬롯당 고정 →
                     // 매 킬/틱 refresh.
                     slot.statBuffStackId = _dcStackCounter++;
-                    if (m.trigger.kind == Wassup.Data.DcTriggerKind.HealthThreshold)
-                    {
-                        // 디펜더 임계 상태 bake — 스폰 maxHp 스냅샷·경계 간격·래치 k=1.
-                        if (m.trigger.fraction <= 0f)
-                        {
-                            Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: HealthThreshold non-positive fraction — skipped.");
-                            continue;
-                        }
-                        if (!_em.HasComponent<Wassup.Battle.Units.Health>(defender))
-                        {
-                            Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: HealthThreshold target has no Health — skipped.");
-                            continue;
-                        }
-                        slot.fraction = m.trigger.fraction;
-                        slot.maxHpRef = _em.GetComponentData<Wassup.Battle.Units.Health>(defender).max;
-                        slot.nextBoundaryIndex = 1;
-                    }
-                    // OnKill: 추가 슬롯 상태 없음 — 매 킬 DamageApplicationSystem 에서 발동(unit 2).
+                    // HealthThreshold 상태 bake 는 payload-불문 공통 블록(아래)으로 호이스팅됨
+                    // (dreamcatcher-content-3 unit 4). OnKill: 추가 슬롯 상태 없음 — 매 킬
+                    // DamageApplicationSystem 에서 발동(kill-and-threshold unit 2).
                 }
                 else if (m.payload.kind == Wassup.Data.DcPayloadKind.HeavyStrike)
                 {
@@ -544,6 +529,27 @@ namespace Wassup.Bridge
                         Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: HeavyStrike on a unit with no positive Damage output — skipped.");
                         continue;
                     }
+                }
+
+                // dreamcatcher-content-3 unit 4 — HealthThreshold 상태 bake 를 payload-불문
+                // 공통 블록으로 호이스팅. 기존엔 SelfStatBuff 분기 안에만 있어 진동갑주
+                // (HealthThreshold×SelfTileAoe)가 fraction 0(inert)으로 잠들었다. 가드·
+                // 시맨틱스(스폰 maxHp 스냅샷·경계 간격·래치 k=1)는 last_stand 시절 그대로.
+                if (m.trigger.kind == Wassup.Data.DcTriggerKind.HealthThreshold)
+                {
+                    if (m.trigger.fraction <= 0f)
+                    {
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: HealthThreshold non-positive fraction — skipped.");
+                        continue;
+                    }
+                    if (!_em.HasComponent<Wassup.Battle.Units.Health>(defender))
+                    {
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: HealthThreshold target has no Health — skipped.");
+                        continue;
+                    }
+                    slot.fraction = m.trigger.fraction;
+                    slot.maxHpRef = _em.GetComponentData<Wassup.Battle.Units.Health>(defender).max;
+                    slot.nextBoundaryIndex = 1;
                 }
                 // Immediate (non-ECB) AddBuffer — same technique as ModifierApplySystem's
                 // bufferless path: several attaches in one frame must all land; a

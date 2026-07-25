@@ -58,6 +58,7 @@
 | `shield_lull` | 고요한 파문 | 실드수면 |
 | `slow_awakening` | 느린 각성 | 공속각성 |
 | `thornmail` | 가시 갑옷 | 가시반격 |
+| `tremor_plate` | 울리는 갑주 | 진동갑주 |
 
 ## 운영/검증
 
