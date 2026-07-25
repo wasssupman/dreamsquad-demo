@@ -23,7 +23,7 @@ MonoBehaviour:
       kind: 5
       period: 0
       periodSeconds: 0
-      fraction: 0.1
+      fraction: 0.7
     payload:
       kind: 2
       magnitude: 15
@@ -38,5 +38,5 @@ MonoBehaviour:
   attackMods: []
   type: 1
   skill: {fileID: 0}
-  description: "HP 90% 이하 → 반경 1칸 피해 15"
+  description: "HP 30% 이하 → 반경 1칸 피해 15"
   leakAllowanceCost: 0

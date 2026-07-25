@@ -2,7 +2,7 @@
 
 ## 목적
 
-부착 유닛이 최대체력의 10%를 잃을 때마다 자기 주위 폭발. "맞는 것이 곧 광역딜"인 탱커 정체성 카드 — 빈사폭주(HealthThreshold×SelfStatBuff)와 트리거는 같고 효과가 액션. 발동 순수함수(`DcTrigger.HealthThresholdEval`)·래치 상태는 기존 그대로 재사용.
+부착 유닛이 HP 30% 이하로 떨어지는 순간 자기 주위 폭발(전투 중 1회 — 2026-07-25 사용자 결정, 최초 설계 "10%마다 반복"에서 변경). "맞다가 위기에 터뜨리는" 탱커 정체성 카드 — 빈사폭주(HealthThreshold×SelfStatBuff)와 트리거·1회성까지 같고 효과가 액션. 발동 순수함수(`DcTrigger.HealthThresholdEval`)·래치 상태는 기존 그대로 재사용.
 
 ## 변경 대상
 
@@ -20,14 +20,14 @@
 
 - id `tremor_plate` · displayName `진동갑주` · axis All · type Unit — All 로 두되 가디언 시너지가 자연스럽다 (axis 제한은 밸런스 후 결정)
 - mechanics[0]: trigger `{ HealthThreshold(5), fraction: 0.10 }` / payload `{ SelfTileAoe(2), magnitude: 15, tileRange: 1, projectile: AOE-view ProjectileData(작별 선물 재사용) }` — 초안값
-- description: `체력 10%를 잃을 때마다 → 자기 주위 폭발 (반경 1)`
-- 특성상 최대 9회 발동(90% 소실까지) + maxHp 스냅샷 기준 — 기존 래치 사양 그대로.
+- description: `HP 30% 이하 → 반경 1칸 피해 15` (formatter 정확 미러)
+- fraction 0.7 → 경계 = 30% 하나뿐(다음 경계 −40% = 도달 불가) = 전투 중 1회. maxHp 스냅샷 기준 — 기존 래치 사양 그대로 (last_stand 의 fraction 0.5 "HP 50% 이하" 선례와 동형).
 
 ## 완료 기준
 
 - [x] compile 클린 + EditMode 전체 green (HealthThresholdEval 기존 테스트 무회귀)
 - [x] 기존 빈사폭주(last_stand) Play/e2e 무회귀 — bake 호이스팅의 핵심 검증 (PlayMode `LastStand_BelowHpThreshold_BuffsAttackDamage` green)
-- [ ] Play smoke: 부착 탱커가 두들겨 맞을 때 10% 경계마다 자기 위치 폭발·주변 적 데미지 확인
+- [ ] Play smoke: 부착 탱커가 HP 30% 이하로 떨어지는 순간 자기 위치 폭발 1회·주변 적 데미지 확인
 
 구현 커밋 9186ab85 (2026-07-25). PlayMode 킬임계/온히트/전투데미지 전부 green. `DreamcatcherEffectTest.CardBuffs` 1건 실패는 clean HEAD 리그 재현으로 **이 spec 과 무관한 사전 실패** 판정(가디언 dmgTaken 에 여분 ×1.25 — 별도 조사 후보).
 
