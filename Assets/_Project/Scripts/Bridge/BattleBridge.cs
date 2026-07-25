@@ -3974,7 +3974,10 @@ namespace Wassup.Bridge
         {
             var logger = GameManager.Instance?.Logger;
             Wassup.Core.Api.TournamentMatchReporter.ReportResult(playerScore, logger?.SnapshotJson(),
-                ranking => resultScreen?.UpdateLeaderboard(ranking, Wassup.Core.Api.UserSession.Current?.userId));
+                ranking => resultScreen?.UpdateLeaderboard(ranking, Wassup.Core.Api.UserSession.Current?.userId),
+                // tournament-flow-guards unit 2 — 실제 complete 실패만 알림(논블로킹, 재시도 없음).
+                onError: _ => Wassup.UI.NoticePopup.ShowAlert("점수 전송 실패",
+                    "이번 판 점수가 서버에 전송되지 않았습니다.\n네트워크 상태를 확인해 주세요.", null));
         }
 
         // score-tally-sequence unit 1 — 전투 종료 → 결과 연출 → 결과 화면의 단일 관문.

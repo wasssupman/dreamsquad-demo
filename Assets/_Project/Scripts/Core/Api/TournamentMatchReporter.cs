@@ -118,7 +118,7 @@ namespace Wassup.Core.Api
         // onRanking fires only on the full success path (complete ok → result ok)
         // and only while the same match is still current.
         public static void ReportResult(int score, string battleLogJson,
-            Action<TournamentApi.ResultData> onRanking = null)
+            Action<TournamentApi.ResultData> onRanking = null, Action<string> onError = null)
         {
             if (!UserSession.HasAccount) return; // guest — nothing to report
             if (string.IsNullOrEmpty(_attemptId))
@@ -150,6 +150,7 @@ namespace Wassup.Core.Api
                 if (!ok)
                 {
                     Debug.LogWarning($"[TournamentReporter] complete failed: {error}");
+                    onError?.Invoke(error);   // tournament-flow-guards unit 2 — 실제 전송 실패만 알림
                     return;
                 }
                 Debug.Log($"[TournamentReporter] complete ok — score={score}");
