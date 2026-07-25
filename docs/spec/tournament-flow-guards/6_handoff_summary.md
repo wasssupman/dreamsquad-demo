@@ -42,7 +42,7 @@
 
 ## Follow-up
 
-- **라이브 e2e**(로비 시작→배틀→완주→로비, 완주 매치 서버 실점수 기록) — 현재 세션은 진단 프로브가 만든 서버 락으로 막혀 있어 락 해제(라운드 롤오버) 후 확인.
+- ~~라이브 e2e~~ — **통과 확인(2026-07-25, 사용자 "잘된다").** 로비 시작→입장 정상.
 - **서버 이관**(unit 4): play-while-locked 를 500 대신 열린 attempt 재발급/409 로, 또는 락 TTL 단축 — 있어야 attemptId 유실 orphan 도 즉시 복구.
 - **결함 A**(범위 밖): `GameManager.OnEnable.BeginMatch` 가 TestMode/직접Play 진입에도 play(엔트리) 발행.
 - reconcile 영구실패 attempt 는 로비마다 1회 재시도 잔존 — "already closed" 감지로 정리 가능(미세).

@@ -1,7 +1,7 @@
 # tournament-flow-guards
 
-> 상태: 구현 완료 (units 0~6 + 정리) — 2026-07-25
-> 컴파일 클린 · EditMode 1275 pass / 0 fail. 라이브 e2e(로비 시작→완주)만 서버 락 해제 후 확인 대기.
+> 상태: 완료 2026-07-25 (units 0~6 + 정리)
+> 컴파일 클린 · EditMode 1275 pass / 0 fail · **라이브 e2e 통과(사용자 확인 "잘된다")**.
 > 커밋: 820de3c2·5d6c84a0·bedda40e·f496889f·98f2cd55·30989502·44d24c01
 
 ## 한 줄
