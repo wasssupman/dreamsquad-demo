@@ -9,6 +9,8 @@
 - `9babf756` unit 2 — BattleBridge 모드 인지(진입/누수/시간0/리포트)
 - `5db07211` unit 3 — Deck_Endless + endlessEncounter 배선 + 패널 토글
 - `37eb26d8` unit 4 — 스모크(PlayMode) + 리스크/리워드(EditMode)
+- `39194252` 완료 — handoff + README 상태
+- `7a6304d3` unit 6 — 무한 모드 누수 HUD 한계/위기색 숨김(개수만, 뷰만)
 - (스펙: `5463bb87` 착수, `79d97705` critic 반영)
 
 ## Implemented
@@ -22,6 +24,8 @@
 - 데이터: `Deck_Endless`(battleMode=Endless, waveSeed 20260807, waveCount 30, 간격 10, timer 180,
   defeatGoalReachedCount 100=스트레스 예산). 메인 `scoreRules`·`ScoreMath` 재사용(엔드리스 전용 SO 없음).
 - `DevMapOverridePanel`: ◀▶ 스텝 사이클에 ENDLESS 슬롯(코드만, 새 GO 없음).
+- (unit 6) 누수 HUD: 무한 모드는 죽는 한계가 없어 `SetLeakStatus(...,showLimit:!IsEndless)` 로
+  "/한계"·위기색 숨기고 누수 개수만 표시. 뷰만 — 점수/예산 불변.
 
 ## Key Files
 
