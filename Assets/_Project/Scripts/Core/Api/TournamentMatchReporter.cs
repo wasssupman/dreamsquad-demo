@@ -209,15 +209,13 @@ namespace Wassup.Core.Api
             string currentUserId = UserSession.Current?.userId ?? string.Empty;
             if (currentUserId != rec.userId) { PendingMatchStore.Clear(); return; } // different account
 
-            long elapsed = DateTimeOffset.UtcNow.ToUnixTimeSeconds() - rec.startedAtUnix;
-            var action = PendingMatchPolicy.Decide(elapsed, PendingMatchPolicy.DefaultTtlSeconds);
-
+            // tournament-flow-guards unit 5 — 락은 스코어 제출로만 풀린다(사용자 모델).
+            // 예전엔 경과시간이 TTL(600s)을 넘으면 complete 없이 discard 했는데, 그러면
+            // 아직 열린 락을 클라가 안 풀어 새 play 가 500 "cannot wait" 로 막힌다. 그래서
+            // 나이와 무관하게 **항상 complete(0)** 로 이 attempt 를 마감해 락을 푼다(라운드가
+            // 이미 닫혔으면 서버가 무해하게 거부할 뿐). 응답 받은 attempt 만 pending 에 있으므로
+            // "응답 없으면 세션관리 안 함" 규칙과도 일치.
             PendingMatchStore.Clear(); // optimistic — before send, blocks re-entrant double-complete
-            if (action == PendingMatchAction.DiscardOnly)
-            {
-                Debug.Log($"[TournamentReporter] pending attempt discarded (elapsed={elapsed}s > TTL).");
-                return;
-            }
 
             string baseUrl = UserSession.GameServerBaseUrl;
             if (string.IsNullOrEmpty(baseUrl))
