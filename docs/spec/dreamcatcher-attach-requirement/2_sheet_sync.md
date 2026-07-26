@@ -1,8 +1,8 @@
-# 2 — 시트 동기화 (DcCards 탭 3열)
+# 2 — 시트 동기화 (DcCards 탭 2열)
 
 ## 목적
 
-부착 제한 3필드를 시트 왕복(import/export)에 편입한다. 시트가 제어 지점이라는 요구의 핵심 unit.
+부착 제한 2필드(`attachType` + `attachValue`)를 시트 왕복(import/export)에 편입한다. 시트가 제어 지점이라는 요구의 핵심 unit.
 
 ## 변경 대상
 
@@ -25,7 +25,7 @@
 2. **export blank 규칙 — 제한 없는 카드만**: `attachType == None` 인 행만 2열 전부 blank 로 내보낸다(현재 전 카드가 여기 해당 → 시트에 enum-zero 노이즈 없음).
 
    > **unit 7 rev 로 구 함정이 사라졌다.** 구 3필드 설계에선 비소비 companion 열을 blank 하면 시트에 안 보이는 잔존값이 kind 를 바꾸는 순간 blank=keep 으로 조용히 되살아났다(review M2 — `attachRequireClass=Support` 잔존 → 의도 "가디언 전용"이 "서포트 전용"으로). 그때는 companion 열을 보이게 내보내는 우회로 막았지만, 값 칸이 하나가 된 지금은 **종류를 바꿀 때 같은 칸을 반드시 함께 보게 되어** 우회가 필요 없다.
-3. 서버 시트(DcCards 탭)에는 새 키를 오른쪽 새 열 **2개**로 추가한다(card-visibility 전례 — 시트 측 안내는 handoff 에 한 줄).
+3. 서버 시트(DcCards 탭)에는 `attachType` / `attachValue` 헤더가 오른쪽 새 열 **2개**로 추가된다. 일반 카드 export는 `None` 행에서 두 키를 생략하지만, unit 8의 Push 전용 키 없는 헤더 시드가 두 키를 운반한다. Apps Script는 컬럼을 만든 뒤 `id` 없는 시드 행을 데이터 업서트에서 건너뛰므로 수동 헤더 추가·가짜 카드 행·`None` 노이즈가 모두 없다.
 
 > **첫 import 는 카드 에셋 YAML 대량 diff 를 만든다.** `UnitStatImportWindow.cs:326-327` 이 매칭된 모든 SO 에 `SetDirty` + `SaveAssetIfDirty` 를 하므로, 새 필드가 추가된 뒤 첫 import 시 전 카드 에셋에 2개 키가 기록된다. 회귀가 아니라 append 필드의 정상 동작 — handoff 에 미리 적어 다음 세션이 놀라지 않게 한다.
 
@@ -37,4 +37,4 @@
 
 > 아래 확인 기록의 테스트 수·문구는 **rev 전(3필드) 시점**이다. rev 후 최종 수치는 `7_field_shape_rev.md` 참조.
 
-확인 2026-07-25 — 컴파일 에러 0 · EditMode 1327건(1325 pass / 0 fail / 2 기존 Ignore), 신규 5건: import 4(이름 문자열 파싱 · Class/UnitId 적용 · 빈 셀 keep · None 명시 해제) + export 1(`DcSheetAttachRequireExportTests` — 실제 exporter 를 임시 폴더로 돌려 제한 없는 행에 attach 3열이 **부재**함을 확인).
+확인 2026-07-25 — 컴파일 에러 0 · EditMode 1327건(1325 pass / 0 fail / 2 기존 Ignore), 신규 5건: import 4(이름 문자열 파싱 · Class/UnitId 적용 · 빈 셀 keep · None 명시 해제) + export 1(`DcSheetAttachRequireExportTests` — 실제 exporter 를 임시 폴더로 돌려 제한 없는 행에 당시 attach 3열이 **부재**함을 확인; unit 7 rev 후 최종 계약은 2열).

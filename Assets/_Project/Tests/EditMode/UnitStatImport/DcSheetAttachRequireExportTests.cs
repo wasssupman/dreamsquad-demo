@@ -13,6 +13,9 @@ namespace Wassup.Tests.EditMode.UnitStatImport
     {
         private const string DcFolder = "Assets/_Project/Data/Dreamcatcher";
         private const string SkillFolder = "Assets/_Project/Data/Skills";
+        private const string DefenderFolder = "Assets/_Project/Data/Defenders";
+        private const string EnemyFolder = "Assets/_Project/Data/Enemies";
+        private const string ConfigFolder = "Assets/_Project/Data/Config";
 
         private string _dir;
 
@@ -44,7 +47,7 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             int checked_ = 0;
             foreach (JObject row in rows)
             {
-                // 현재 카탈로그는 전부 제한 없음(attachType == None) → 세 키 모두 부재.
+                // 현재 카탈로그는 전부 제한 없음(attachType == None) → 두 키 모두 부재.
                 string kind = (string)row["attachType"];
                 if (kind != null) continue; // 제한이 설정된 카드가 생기면 그 행은 대상 밖
                 checked_++;
@@ -52,6 +55,37 @@ namespace Wassup.Tests.EditMode.UnitStatImport
                     $"'{(string)row["id"]}': 제한 없는 행에 attachValue 키가 있으면 안 된다");
             }
             Assert.Greater(checked_, 0, "제한 없는 카드 행이 하나 이상 검사되어야 한다");
+        }
+
+        [Test]
+        public void PushPayload_UnrestrictedCards_SeedsAttachHeadersWithoutDataRow()
+        {
+            var tabs = new[] { "DcCards", "DcCardEffects", "DcMechanics", "DcAttackMods", "DcSkills", "DcConfig" };
+            string json = SheetPushPayload.BuildCombinedJson(
+                "Defenders", "Enemies", DefenderFolder, EnemyFolder,
+                tabs, DcFolder, SkillFolder,
+                "Presets",
+                "CostConfig", ConfigFolder);
+
+            var rows = (JArray)JObject.Parse(json)["DcCards"];
+            int seedCount = 0;
+            int cardCount = 0;
+            foreach (JObject row in rows)
+            {
+                if (row["id"] != null)
+                {
+                    cardCount++;
+                    continue;
+                }
+
+                seedCount++;
+                Assert.AreEqual("", (string)row["attachType"]);
+                Assert.AreEqual("", (string)row["attachValue"]);
+                Assert.AreEqual(2, row.Count, "헤더 시드에는 attach 두 키 외 데이터가 없어야 한다");
+            }
+
+            Assert.AreEqual(1, seedCount, "키 없는 Push 전용 헤더 시드는 정확히 하나");
+            Assert.AreEqual(rows.Count - 1, cardCount, "헤더 시드는 실제 카드 행 수에 포함되지 않는다");
         }
     }
 }

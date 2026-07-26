@@ -2,7 +2,7 @@
 
 ## 목적
 
-`DreamcatcherCard` 에 부착 제한 3필드를 append 하고, 제한 판정을 `DreamcatcherAttachEval` 의 **독립 public 순수 함수**로 추가한다. 이 unit 은 정의 계층 + 순수 로직만 — bridge 배선은 unit 1.
+`DreamcatcherCard` 에 부착 제한 2필드(`attachType` + `attachValue`)를 append 하고, 제한 판정을 `DreamcatcherAttachEval` 의 **독립 public 순수 함수**로 추가한다. 이 unit 은 정의 계층 + 순수 로직만 — bridge 배선은 unit 1.
 
 ## 변경 대상
 

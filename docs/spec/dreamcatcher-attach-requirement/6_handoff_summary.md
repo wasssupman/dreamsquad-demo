@@ -6,7 +6,7 @@
 |---|---|
 | `ab2baef0` | unit 0 — 정의 계층 필드 + 순수 판정 |
 | `763d052c` | unit 1 — 브리지 게이트 배선 (UI 판정 + 커밋 preflight) |
-| `536ddabe` | unit 2 — 시트 동기화 (DcCards 부착 제한 3열) |
+| `536ddabe` | unit 2 — 시트 동기화 (당시 3열, unit 7 rev 에서 최종 2열로 수렴) |
 | `facacfc1` | unit 3 — 에디터 validator |
 | `26ee3e07` | unit 4 — 문안 접두 포매터 |
 | `e9e5f184` | unit 5 — 문안 resolver 배선 (화면 노출) |
@@ -60,7 +60,7 @@
 ## Follow-up
 
 - **사용자 체감 확인 대기**: 실제 제한 카드를 1장 저작해(시트 또는 에셋) 손패·덱빌더 상세에서 접두가 보이는지 육안 확인. 아직 제한이 걸린 카드는 0장이라 화면에서는 기능이 보이지 않는다.
-- 시트 작업: DcCards 탭 오른쪽에 `attachType` / `attachValue` **2열** 추가 필요(아직 안 했음). `attachType` = `None`/`Class`/`UnitId`, `attachValue` = 클래스 이름(`Guardian`, 대소문자 무시) 또는 유닛 id(`shield_shuttle`, 대소문자 구분). 첫 import 시 카드 에셋 YAML 대량 diff 가 정상 발생한다.
+- 시트 작업: unit 8의 Push 전용 키 없는 헤더 시드가 첫 `Push to Sheet`에서 `DcCards` 오른쪽에 `attachType` / `attachValue` **2열**을 자동 생성한다. 실제 Push 확인은 대기. `attachType` = `None`/`Class`/`UnitId`, `attachValue` = 클래스 이름(`Guardian`, 대소문자 무시) 또는 유닛 id(`shield_shuttle`, 대소문자 구분). 첫 import 시 카드 에셋 YAML 대량 diff 가 정상 발생한다.
 - **시트 연동 후 확인할 미검증 전제 1건**: 빈 텍스트 셀이 JSON 에 **키 생략**으로 오는지 `""` 로 오는지. 후자면 `attachValue` 가 빈 셀만으로 지워진다(위험하진 않지만 "빈칸으로 못 지운다"는 문서 문장이 틀리게 된다). 서버 단계라 이 repo 에서 확인 불가 — 첫 실 import 페이로드로 검증할 것.
 - BountyMark×제한의 조용한 무효는 validator 만 잡는다 — `OnValidate` 승격은 README 후속 후보.
 - **PlayMode 테스트의 ECS 정리 부재(리뷰 M1, 프로젝트 전반)**: 이 spec 의 e2e 를 포함해 PlayMode 테스트 21개 중 `TearDown` 에서 엔티티를 파괴하는 것은 **하나도 없다**. World 가 러너 세션 내에서 공유되므로 잠재적 누수다. 이 spec 만 다르게 하지 않고(관례 이탈이 오히려 혼란) 프로젝트 차원 후속으로 남긴다.

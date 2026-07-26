@@ -1,6 +1,7 @@
 using System.IO;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Wassup.Data.StatImport;
 
 namespace Wassup.Editor.UnitStatImport
 {
@@ -36,6 +37,18 @@ namespace Wassup.Editor.UnitStatImport
                 foreach (var tab in dcTabs) AddTab(root, tempDir, tab);
                 if (hasPresets) AddTab(root, tempDir, presetTab);
                 AddTab(root, tempDir, costTab);
+
+                // dreamcatcher-attach-requirement unit 8 — 제한 카드가 0장이면 일반
+                // exporter 는 attach 두 키를 전부 생략한다. Push 전용 id-less 행으로
+                // 키만 운반하면 기존 Apps Script 가 헤더를 만든 뒤 key 결측으로 행을
+                // 건너뛴다. 따라서 서버 재배포·가짜 카드·None 노이즈 없이 첫 Push 에서
+                // DcCards 오른쪽에 두 컬럼이 생긴다.
+                var dcCardRows = (JArray)root[dcTabs[0].Trim()];
+                dcCardRows.Add(new JObject
+                {
+                    [nameof(DcCardDto.attachType)] = "",
+                    [nameof(DcCardDto.attachValue)] = "",
+                });
 
                 return root.ToString(Formatting.Indented);
             }

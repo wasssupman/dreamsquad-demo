@@ -1,8 +1,8 @@
 # dreamcatcher-attach-requirement — 부착 대상 제한 필드 (클래스 / 특정 유닛)
 
-상태: 구현 완료 2026-07-25 (units 0~5 + unit 7 rev) — 사용자 체감(문안 노출) 확인 대기
+상태: 완료 2026-07-26 (units 0~5 + unit 7 rev + unit 8) — 최신 인계 → `9_handoff_summary.md`
 
-검증: EditMode **1343건**(1341 pass / 0 fail / 2 기존 Ignore, 신규 27건) · PlayMode 신규 **2건** pass(부착 게이트 e2e + 무차감 보장). 문안 배선 검증은 PlayMode 가 아니라 EditMode 3건(`DcAttachRequirementWiringTests`) — 씬 런타임 로드가 뒤따르는 전투 테스트를 오염시켜 unit 5 에서 의도적으로 옮겼다(경위는 `5_text_wiring.md`). validator 실사 스캔 `카드 44장 중 0건`. PlayMode 전체 잔여 실패 6건은 clean 트리 재현으로 **사전 실패** 확정.
+검증: EditMode **1343건**(1341 pass / 0 fail / 2 기존 Ignore, 신규 27건) · PlayMode 신규 **2건** pass(부착 게이트 e2e + 무차감 보장) · unit 8 Push payload 회귀 **2/2 pass**. 문안 배선 검증은 PlayMode 가 아니라 EditMode 3건(`DcAttachRequirementWiringTests`) — 씬 런타임 로드가 뒤따르는 전투 테스트를 오염시켜 unit 5 에서 의도적으로 옮겼다(경위는 `5_text_wiring.md`). validator 실사 스캔 `카드 44장 중 0건`. PlayMode 전체 잔여 실패 6건은 clean 트리 재현으로 **사전 실패** 확정.
 
 ## 상위 목표
 
@@ -22,6 +22,8 @@ Unit 타입 드림캐쳐에 **부착 시점 정적 술어**("가디언에만 부
 | `5_text_wiring.md` | 배선 | 소비처 4곳 resolver 주입 + 씬 wiring + Play 육안 |
 | `6_handoff_summary.md` | (종료 시) | 인계 요약 |
 | `7_field_shape_rev.md` | rev | 필드 형태 3→2 (`attachType`+`attachValue`) |
+| `8_push_header_bootstrap.md` | 시트 | 제한 카드 0장에서도 Push가 `DcCards` 신규 2열을 자동 생성 |
+| `9_handoff_summary.md` | 인계 | unit 7~8 반영 최종 인계 |
 
 ## Feature-wide 계약
 
@@ -30,7 +32,7 @@ Unit 타입 드림캐쳐에 **부착 시점 정적 술어**("가디언에만 부
 - **판정 = 단일 함수, 두 소비처**: `MeetsAttachRequirement` 를 `WouldDreamcatcherCardApply`(UI 스냅샷)와 `ApplyDreamcatcherCardToUnit`(커밋 preflight)이 각각 호출한다. **`WouldApply` 시그니처는 확장하지 않는다** — 커밋 경로는 `WouldApply` 를 부르지 않고, 비-Unit 호출처는 새 인자를 읽지 않으며, 독립 함수면 기존 EditMode 편집이 0곳이다.
 - **fail-closed**: 값을 못 읽거나(빈 값 · `Class` 인데 오타·숫자·`None`) host 데이터 조회 실패 시 불허 + loud 경고. 제한이 조용히 풀리는 쪽보다 눈에 띄게 안 붙는 쪽을 택한다. 값 해석 규칙의 단일 지점은 `DreamcatcherAttachEval.TryParseAttachClass`.
 - **커밋 거절 = 카드 전체·무차감**: preflight 는 `DefenderUnitTag` 검사 직후·모든 쓰기 전. `-1` 반환이 `DreamcatcherHandController.cs:342` 에서 `AttachAndSpend` 전에 걸려 무차감·카드 잔류를 보장한다.
-- **시트**: `DcCardDto` 에 **2필드** append(reflection 양방향 자동). `attachType` 셀은 이름 문자열(`None`/`Class`/`UnitId` — `StringEnumConverter`), `attachValue` 는 자유 문자열(`Guardian` / `shield_shuttle`). **제한 해제는 `attachType=None` 을 명시** — 빈 셀은 "유지"라서 해제 수단이 아니다.
+- **시트**: `DcCardDto` 에 **2필드** append(reflection 양방향 자동). `attachType` 셀은 이름 문자열(`None`/`Class`/`UnitId` — `StringEnumConverter`), `attachValue` 는 자유 문자열(`Guardian` / `shield_shuttle`). **제한 해제는 `attachType=None` 을 명시** — 빈 셀은 "유지"라서 해제 수단이 아니다. 전 카드가 `None` 이어도 Push 전용 키 없는 헤더 시드가 두 키를 운반하므로 첫 `Push to Sheet`에서 `DcCards` 오른쪽에 두 컬럼이 자동 생성된다(unit 8). 일반 카드 export의 blank 규칙은 유지한다.
 - **문안 자동 표기** (2026-07-25 사용자 결정): 포매터가 "가디언 전용" / "{유닛명} 전용" 접두를 조립하고, 유닛 표시명은 caller 주입 resolver(실패 시 id 폴백)로 해석 — 포매터는 카탈로그를 직접 알지 않는다.
 
 ### 의도된 동작 (버그로 오인 금지)
