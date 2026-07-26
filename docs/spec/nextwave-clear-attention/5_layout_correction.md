@@ -31,3 +31,5 @@
 - `다음 웨이브 2` 라벨과 이중 화살표가 배경 테두리에서 시각적으로 분리된다.
 - normal·clear-ready 캡처에서 라벨이 잘리거나 ring이 hit target을 가리지 않는다.
 - targeted PlayMode smoke green, C# compile error 0.
+
+검증 2026-07-26 — targeted PlayMode 1/1, 교정 normal/clear 16:9 캡처 — commit `e45c8ebf`.
