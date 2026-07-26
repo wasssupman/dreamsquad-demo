@@ -51,3 +51,5 @@ NextWaveClearReady =
   - `ForceNextWave()` 직후 false이며 기존 `_waveTimeShift` 테스트는 무회귀.
 - `CheckVictory()`와 신규 판정이 같은 `NoQueuedAttackersRemain()`을 사용한다.
 - Unity 6000.4.3f1 / Entities 6.4.0 compile green, 신규 채널·Component 0개.
+
+검증 2026-07-26 — EditMode 전체 1,358 pass / 0 fail / 2 skip — commit `8431b891`.

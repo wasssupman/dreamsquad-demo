@@ -34,3 +34,6 @@
 - 16:9·20:9에서 hit target과 라벨이 safe area 안에 있고 다른 하단 조작부와 겹치지 않는다.
 - 자동 Play smoke와 시각 캡처 확인 뒤 각 작업 문서에 확인 일자·커밋을 기록하고 README 완료
   상태 및 handoff를 작성한다.
+
+검증 2026-07-26 — 신규 smoke 1/1 pass. 전체 PlayMode 49/55 pass, 기존 독립 실패 6건은
+`4_handoff_summary.md`에 기록 — commit `78978afe`.

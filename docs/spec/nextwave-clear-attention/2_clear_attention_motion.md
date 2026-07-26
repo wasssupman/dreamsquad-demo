@@ -35,3 +35,5 @@ View 내부 상태는 `Normal / ClearReady / Disabled` 세 시각 상태로 제�
 - 버튼 클릭 또는 자동 웨이브 호출 프레임에 강조가 종료되고 잔여 ring/tween이 남지 않는다.
 - press/release와 attention이 겹쳐 scale이 누적되거나 비정상 각도로 고정되지 않는다.
 - 슬로모/일시정지 표현 중에도 UI 리듬은 안정적이며 타이머 숫자 판독을 방해하지 않는다.
+
+검증 2026-07-26 — targeted PlayMode 1/1 및 clear-ready 캡처 확인 — commit `663ad01c`.
