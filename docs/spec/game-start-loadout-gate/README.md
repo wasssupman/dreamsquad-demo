@@ -1,6 +1,6 @@
 # game-start-loadout-gate — 게임 시작 전 로드아웃 충족 게이트
 
-> 상태: **완료 2026-07-16** (units 0~2 — 사용자 Play 확인). 커밋: 0 `986efa09` · 1 `650135f8`. 인계 → `3_handoff_summary.md`
+> 상태: **완료 2026-07-26** (units 0~2 + unit 4 `visible` 기본 덱 정합화). 커밋: 0 `986efa09` · 1 `650135f8` · 4 `(이 커밋)`. 최신 인계 → `5_handoff_summary.md`
 > 선행: `squad-loadout`(완료) · `dreamcatcher-deck-builder`(완료) · `outgame-login-gate`(units 0~6)
 > 브레인스토밍 결정 2026-07-16: 스쿼드 기준 = 정확히 7명 · 팝업 = 미충족 나열 + 해당 패널 이동 버튼 · 테스트 모드는 게이트 없음
 > 설계 critic 반영 2026-07-16: C1(카탈로그 null → 해결 불가 팝업) · M1(스쿼드 판정을 `SquadDraw.Resolve` 에 위임) · M3(신규 유저 차단 → 기본 덱 시딩으로 해소, unit 1 신설)
@@ -26,6 +26,8 @@
 | 1 | 구현 | `1_default_deck_seed.md` | 기본 덱 소유권을 `ProfileStore` 로 이관 + 신규/덱없는 프로필에 기본 덱 시딩 |
 | 2 | 구현+wiring | `2_gate_popup_and_wiring.md` | `LoadoutGatePopup` 뷰 + `OnStartGame` 게이트 + 씬 배선 + Play 검증 |
 | 3 | 인계 | `3_handoff_summary.md` | handoff (구현 종료 시) |
+| 4 | 데이터+회귀 | `4_visible_default_deck.md` | 신규 유저 기본 덱에서 숨김 카드 2장 교체 + 시딩 visible 가드 |
+| 5 | 인계 | `5_handoff_summary.md` | unit 4 반영 최종 인계 |
 
 ## Feature-wide 계약
 

@@ -204,7 +204,8 @@ namespace Wassup.Core
             for (int i = 0; i < source.cards.Length && save.cardIds.Count < deckSize; i++)
             {
                 var card = source.cards[i];
-                if (card != null && !string.IsNullOrEmpty(card.id)) save.cardIds.Add(card.id);
+                if (card != null && card.visible != 0 && !string.IsNullOrEmpty(card.id))
+                    save.cardIds.Add(card.id);
             }
             return save;
         }

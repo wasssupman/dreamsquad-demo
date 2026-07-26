@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using NUnit.Framework;
+using UnityEditor;
 using UnityEngine;
 using Wassup.Core;
 using Wassup.Data;
@@ -14,6 +16,10 @@ namespace Wassup.Tests.EditMode
     public class ProfileStoreDefaultDeckTests
     {
         private const int DeckSize = 8;
+        private const string DefaultDeckPath =
+            "Assets/_Project/Data/Dreamcatcher/DreamcatcherDeck_Default.asset";
+        private const string CardCatalogPath =
+            "Assets/_Project/Data/Dreamcatcher/DreamcatcherCardCatalog.asset";
 
         private string _path;
         private readonly List<Object> _created = new List<Object>();
@@ -34,10 +40,10 @@ namespace Wassup.Tests.EditMode
             _created.Clear();
         }
 
-        private DreamcatcherCard Card(string id)
+        private DreamcatcherCard Card(string id, int visible = 1)
         {
             var c = ScriptableObject.CreateInstance<DreamcatcherCard>();
-            c.id = id; c.type = CardType.Unit;
+            c.id = id; c.type = CardType.Unit; c.visible = visible;
             _created.Add(c);
             return c;
         }
@@ -103,6 +109,16 @@ namespace Wassup.Tests.EditMode
             var save = ProfileStore.BuildDefaultDeck(deck, 10);
 
             CollectionAssert.AreEqual(new[] { "a", "b" }, save.cardIds);
+        }
+
+        [Test]
+        public void SkipsHiddenCards_AndContinuesToDeckSize()
+        {
+            var deck = Deck(Card("a"), Card("hidden", visible: 0), Card("b"), Card("c"));
+
+            var save = ProfileStore.BuildDefaultDeck(deck, 3);
+
+            CollectionAssert.AreEqual(new[] { "a", "b", "c" }, save.cardIds);
         }
 
         [Test]
@@ -214,6 +230,29 @@ namespace Wassup.Tests.EditMode
 
             Assert.IsNotNull(reloaded.SelectedDeck());
             Assert.IsTrue(DeckRules.Validate(reloaded.SelectedDeck().cardIds, cards, out var reason), reason);
+        }
+
+        [Test]
+        public void AuthoredDefaultDeck_IsExpectedVisibleValidStarter()
+        {
+            var source = AssetDatabase.LoadAssetAtPath<DreamcatcherDeck>(DefaultDeckPath);
+            var catalog = AssetDatabase.LoadAssetAtPath<DreamcatcherCardCatalog>(CardCatalogPath);
+            Assert.IsNotNull(source);
+            Assert.IsNotNull(catalog);
+
+            string[] expected =
+            {
+                "ranger_atk", "poke_needle", "ranger_as", "bouncy_bead", "guardian_as",
+                "thornmail", "ranger_hp", "guardian_hp", "farewell", "guardian_fortress",
+            };
+            CollectionAssert.AreEqual(expected, source.cards.Select(c => c != null ? c.id : null));
+            Assert.That(source.cards, Has.All.Matches<DreamcatcherCard>(
+                c => c != null && c.visible != 0), "기본 덱은 숨김 카드나 null을 포함하면 안 된다");
+
+            var profile = ProfileStore.CreateDefault(null, source, catalog);
+            Assert.IsNotNull(profile.SelectedDeck());
+            CollectionAssert.AreEqual(expected, profile.SelectedDeck().cardIds);
+            Assert.IsTrue(DeckRules.Validate(profile.SelectedDeck().cardIds, catalog, out var reason), reason);
         }
     }
 }
