@@ -129,7 +129,9 @@
 
 ## 예고 오버레이 (스폰 라인 — 폴링 구동 월드 오버레이)
 
-이벤트가 아니라 **미래 상태를 미리 읽어** 그리는 계열이라 큐/풀/프리팹이 전부 없다.
+이벤트가 아니라 **이미 확정된 다음 스폰 시각을 읽어** 그리는 계열이라 큐/풀/프리팹이 전부 없다.
+(2026-07-26 정정: 초기 구현은 "다음 웨이브 예측"이었으나 `spawn-point-alert/3` 에서 **큐잉된
+웨이브의 사실**로 바뀌었다 — 예측 로직·캐시가 사라졌다.)
 다른 아키타입과 트리거 성격이 다르므로 새 예고류는 이 표를 기준으로 삼는다.
 
 | 정거장 | 앵커 | 확인 포인트 |
@@ -137,7 +139,7 @@
 | 데이터 | `Presentation/SpawnAlertPresenter.cs` SerializeField (SO 아님) | 색·폭·타이밍 전부 인스펙터. 프리팹/SO 소스 없음 |
 | ECS | N/A — 시뮬 무관 순수 Mono | 예고는 시뮬을 바꾸지 않는다 |
 | 트리거 | ★큐 아님 — `BattleBridge.TryGetSpawnAlertForecast` **read-only 폴링** | NextWaveDock 과 같은 폴링 계열. 이벤트 drain 아님 |
-| 예보 산식 | `Data/WavePatternGenerator.FirstSpawnTimesPerLane` (순수) | 실스폰과 `EffectiveSpawnIndex`·`DeckIndexStride` 공유가 정확도 보증 |
+| 예보 산식 | `Data/WavePatternGenerator.FirstSpawnTimesPerLane` (순수) — **`BattleBridge.QueueWave` 가 큐잉 시점에 1회 호출** | 실스폰 엔트리와 **같은 인자**로 호출(+`EffectiveSpawnIndex`·`DeckIndexStride` 공유)가 정확도 보증. 창은 `waveSpawnLeadInSec`(wave-pattern 11)가 만든다 |
 | 경로 소스 | `BattleBridge.TryGetSpawnPathSim` (goal flow field 추적) | 유닛 이동과 같은 필드 → 표시 루트 = 실제 루트 |
 | View | `Presentation/SpawnAlertPresenter.cs` — lane 당 LineRenderer 3 + SpriteRenderer 1 | 풀 없음(lane 수만큼 생성 후 재사용). 텍스처 절차 생성 |
 | 정렬 | `BoardSortOrder.SpawnAlertOrder = -9` (−9~−6) | ★바닥 데칼 대역. 유닛(양수) 아래 — 양수로 두면 유닛을 덮는다 |

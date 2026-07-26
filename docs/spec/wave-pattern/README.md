@@ -7,6 +7,8 @@
 2026-07-20 추가: unit 6 고정 시드(`2d8c843e`, `deck.waveSeed` 비0 = 매판 동일 패턴) · unit 7 진행 수량 램프(`2c2ecacd`, min→max 선형 + `waveCountJitter` 지터).
 2026-07-21 추가: unit 9 강제 호출 리스케줄 — `Next Wave` 가 남은 웨이브 전체를 함께 앞당긴다(아래 "시간 배정" 참조).
 2026-07-26 추가: unit 11 스폰 리드인 — 웨이브 트리거와 첫 적 등장 사이에 균일 유예(`waveSpawnLeadInSec`, 전 덱 2초).
+**완료 2026-07-26 (사용자 Play 확인) · `ee9b7cb4`.** 인계는 `spawn-point-alert/4_handoff_summary.md` —
+같은 커밋의 짝 unit(예고 소스 전환)과 한 문서로 묶었다(중복 서술 방지).
 
 ## 구현 문서 목록
 
