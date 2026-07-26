@@ -2402,11 +2402,35 @@ MonoBehaviour:
   warnSeconds: 30
   tickPunch: 0.16
   tickPunchWarn: 0.36
+  panelSize: {x: 296, y: 166}
+  panelOffset: {x: 36, y: 320}
+  timerPlateSize: {x: 226, y: 64}
+  timerPlateOffset: {x: 10, y: 100}
+  buttonSize: {x: 296, y: 108}
   dockFrameSprite: {fileID: 21300000, guid: 238188419280461bb3401c9dc5644aec, type: 3}
   buttonFaceSprite: {fileID: 21300000, guid: 4bf3b1cb9224409fb02949fdd0e7bb8a, type: 3}
+  attentionRingSprite: {fileID: 21300000, guid: e799ce1ded4334d849337fde927aee59, type: 3}
   buttonColor: {r: 0.12, g: 0.42, b: 0.82, a: 0.95}
   buttonFontSize: 28
+  disabledContentColor: {r: 0.58, g: 0.66, b: 0.78, a: 0.9}
+  pressScale: {x: 1.02, y: 0.92, z: 1}
+  releaseDuration: 0.14
+  releaseOvershoot: 1.04
   backingColor: {r: 0, g: 0, b: 0, a: 0.45}
+  clearReadyColor: {r: 1, g: 0.72, b: 0.12, a: 1}
+  attentionEntryDuration: 0.48
+  attentionEntryScale: 1.1
+  attentionPeriod: 1.5
+  attentionHopDuration: 0.34
+  attentionHopHeight: 7
+  attentionBumpScale: 0.08
+  attentionLean: -4
+  attentionNudge: {x: 7, y: 2}
+  chevronKick: 9
+  pulseRingDuration: 0.72
+  pulseRingStagger: 0.18
+  pulseRingExpansion: 1.28
+  pulseRingThickness: 4
 --- !u!1 &1192245888
 GameObject:
   m_ObjectHideFlags: 0
