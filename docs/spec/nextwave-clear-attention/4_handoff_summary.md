@@ -48,5 +48,5 @@
 
 ## Follow-up
 
-- Android 실기기에서 alpha halo, cutout SafeArea, 터치 hit target을 최종 육안 확인한다.
+- **필수 종료 게이트**: Android 실기기에서 alpha halo, cutout SafeArea, 터치 hit target을 확인한다.
 - Next Wave 튜토리얼·자동 진행·클리어 보상은 이 spec 범위 밖이다.
