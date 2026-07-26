@@ -69,3 +69,8 @@ laneFirstSpawnSec = _spawnAlertForecast; return true;
   호출 위치만 옮겼다.
 - **Play**: 모든 웨이브에서 웨이브 큐잉 로그 시각에 예고선이 그어지고 첫 적 등장과 함께
   수렴한다. Wave 1(배틀 시작 0초)과 `Next Wave` 당김 직후도 포함. 마지막 웨이브 이후 잔상 없음.
+
+**확인 2026-07-26 · 커밋 `ee9b7cb4`** — EditMode 1356건 중 1354 pass / 0 fail / 2 known-skip.
+신규 `SpawnAlertForecastTests` 5건(큐잉 전 없음 · Wave 1 예보 존재 2/3/4초 · 강제 호출 예보 =
+당긴 시점+리드인 · 마지막 lane 스폰까지 유지 후 소멸 · `_running=false` 즉시 차단) 통과.
+`WaveSpawnForecastTests`(순수 함수) 무회귀 — 호출 위치만 옮겼다. **사용자 Play 확인 통과.**

@@ -3,8 +3,9 @@
 **작성일**: 2026-07-20
 **상태**: **완료 2026-07-20 (사용자 Play 확인)** — units 0~1 구현·커밋 (`5d996eb0`, `44f06965`),
 z-fighting 보정 `086507e1`. handoff: `2_handoff_summary.md`.
-**2026-07-26 재개**: unit 3 — 예보 소스를 큐잉된 웨이브로 바꿔 **모든 웨이브**(Wave 1·강제 포함)가
-예고를 받는다. 선행 `wave-pattern/11`(스폰 리드인 2초). Play 확인 대기.
+**2026-07-26 재개 · 완료 (사용자 Play 확인)**: unit 3 — 예보 소스를 큐잉된 웨이브로 바꿔
+**모든 웨이브**(Wave 1·강제 포함)가 예고를 받는다. 선행 `wave-pattern/11`(스폰 리드인 2초).
+커밋 `ee9b7cb4`. handoff: `4_handoff_summary.md`.
 선행 `wave-pattern` unit 6(고정 시드, `2d8c843e`)과 함께 작업했다. 실기기 성능만 미측정.
 **선행 spec**: `docs/spec/wave-pattern/` (GeneratedWavePlan — 예보의 소스), `wave-pattern/6_fixed_wave_seed.md` (검증 재현성 확보, 선행 권장)
 
@@ -31,6 +32,7 @@ z-fighting 보정 `086507e1`. handoff: `2_handoff_summary.md`.
 | `1_alert_view_wiring.md` | 프레젠테이션/배선 | BattleBridge read-only 예보/경로 API + 경로 라인 트레일 뷰 + 씬 배선 + Play 검증 |
 | `2_handoff_summary.md` | 인계 | 구현 결과·되돌리면 안 되는 판단·다음 후보 |
 | `3_alert_for_every_wave.md` | 계약 반전 (2026-07-26) | 예보 소스를 "큐잉된 웨이브"로 → **모든 웨이브에 예고**(Wave 1·강제 포함). 선행 `wave-pattern/11` |
+| `4_handoff_summary.md` | 인계 (2026-07-26) | unit 3 + `wave-pattern/11` 합본 인계 — 되돌리면 안 되는 판단·기각안·tail 마진 |
 
 ## 공통 원칙
 

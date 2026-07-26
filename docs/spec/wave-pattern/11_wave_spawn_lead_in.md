@@ -68,6 +68,11 @@ spacing 1) 최악 조합은 "마지막 웨이브가 일반 웨이브 + 10마리"
 - **Play**: 콘솔의 `Wave N queued` 시각 + 2초에 첫 적이 등장한다. 웨이브 간격·`Next Wave` 연타 동작 불변.
 - **범위 밖**: 예고선이 Wave 1·강제 웨이브에 뜨게 하는 것은 이 unit 이 아니다 → `spawn-point-alert/3_alert_for_every_wave.md`(예보 소스를 큐잉된 웨이브로). 리드인만으로는 예보가 `_nextWaveIndex` 기준이라 그대로 스킵된다.
 
+**확인 2026-07-26 · 커밋 `ee9b7cb4`** — EditMode 1356건 중 1354 pass / 0 fail / 2 known-skip.
+신규 `WaveSpawnLeadInTests` 8건(플랜 전달·음수 클램프·트리거 그리드 불변·`FromPlanAsset` 0·
+pending 첫 스폰 = 트리거+2·리드인 0 회귀·강제 호출 시 shift 무오염·전 덱 리드인 보유) 통과.
+pin 갱신 후에도 `LastSpawn_FitsInsideTheTimeLimit` green. **사용자 Play 확인 통과.**
+
 ## 함께 갱신하는 문서
 
 - `docs/spec/wave-pattern/README.md` — "시간 배정" 에 리드인 한 줄. 계약 "lane 배정은 `localIndex % laneCount`" 는 3+ lane 실제 규약(`deckIndex % laneCount`)과 다르므로 같이 정정.
