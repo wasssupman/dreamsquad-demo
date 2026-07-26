@@ -1,6 +1,7 @@
 # dreamcatcher-attach-requirement — 부착 대상 제한 필드 (클래스 / 특정 유닛)
 
-상태: 완료 2026-07-26 (units 0~5 + unit 7 rev + unit 8) — 최신 인계 → `9_handoff_summary.md`
+상태: 완료 2026-07-26 (units 0~5 + unit 7 rev + unit 8). 최신 커밋:
+unit 7 `12f5b644` · unit 8 `874a54ad`. 인계 → `9_handoff_summary.md`
 
 검증: EditMode **1343건**(1341 pass / 0 fail / 2 기존 Ignore, 신규 27건) · PlayMode 신규 **2건** pass(부착 게이트 e2e + 무차감 보장) · unit 8 Push payload 회귀 **2/2 pass**. 문안 배선 검증은 PlayMode 가 아니라 EditMode 3건(`DcAttachRequirementWiringTests`) — 씬 런타임 로드가 뒤따르는 전투 테스트를 오염시켜 unit 5 에서 의도적으로 옮겼다(경위는 `5_text_wiring.md`). validator 실사 스캔 `카드 44장 중 0건`. PlayMode 전체 잔여 실패 6건은 clean 트리 재현으로 **사전 실패** 확정.
 

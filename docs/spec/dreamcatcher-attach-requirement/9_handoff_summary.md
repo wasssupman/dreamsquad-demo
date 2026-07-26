@@ -3,7 +3,7 @@
 ## Commit
 
 - `12f5b644` unit 7 rev — 부착 제한 필드 3개를 `attachType` + `attachValue`로 수렴
-- `(이 커밋)` unit 8 — 제한 카드 0장에서도 Push 신규 컬럼 부트스트랩
+- `874a54ad` unit 8 — 제한 카드 0장에서도 Push 신규 컬럼 부트스트랩
 
 ## Implemented
 

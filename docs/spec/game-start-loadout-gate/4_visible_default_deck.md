@@ -59,4 +59,4 @@
 실제 기본 덱 10장 순서/visible/`CreateDefault`/`DeckRules.Validate` 통과.
 BattleScene Play 중 관측한 `JarFigurePile.cs:158` 반복 NRE는 본 unit 변경 전부터의
 별도 런타임 오류이며 변경 파일과 무관하다.
-사용자 완료 승인 2026-07-26 · 커밋 `(이 커밋)`.
+사용자 완료 승인 2026-07-26 · 커밋 `91dd96a5`.

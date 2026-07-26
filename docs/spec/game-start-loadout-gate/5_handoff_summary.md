@@ -4,7 +4,7 @@
 
 - `986efa09` unit 0 — 순수 로드아웃 게이트 판정
 - `650135f8` unit 1 — 신규 프로필 기본 덱 시딩
-- `(이 커밋)` unit 4 — visible 기준 신규 유저 기본 덱 정합화
+- `91dd96a5` unit 4 — visible 기준 신규 유저 기본 덱 정합화
 
 ## Implemented
 

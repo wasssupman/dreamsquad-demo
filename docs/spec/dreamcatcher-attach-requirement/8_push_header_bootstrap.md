@@ -42,6 +42,6 @@ blank 규칙과 기존 배포 Apps Script는 유지한다.
 
 자동 검증 2026-07-26 — Unity compile 에러 0 ·
 `DcSheetAttachRequireExportTests` 2/2 pass(기존 blank export + 신규 Push 헤더 시드).
-사용자 완료 승인 2026-07-26 · 커밋 `(이 커밋)`.
+사용자 완료 승인 2026-07-26 · 커밋 `874a54ad`.
 라이브 Push는 외부 시트 데이터를 변경하므로 이 커밋에서는 실행하지 않았고,
 최초 운영 Push의 비차단 실측 항목으로 `9_handoff_summary.md`에 남긴다.
