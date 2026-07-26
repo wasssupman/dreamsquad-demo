@@ -16,6 +16,7 @@ Battle 좌하단 `NextWaveDock`을 **다음 전투를 여는 주 행동 버튼**
 | 2 | `2_clear_attention_motion.md` | 클리어 진입 한방 + Jar Figure 계열 반복 어필 |
 | 3 | `3_wiring_play_validation.md` | BattleScene 배선·PlayMode/해상도 시각 검증 |
 | 4 | `4_handoff_summary.md` | 구현 종료 인계(완료 시 작성) |
+| 5 | `5_layout_correction.md` | 기존 좌하단 위치 복원·Sprite 비율·텍스트 패딩 교정 |
 
 ## Feature-wide 계약
 
@@ -28,7 +29,8 @@ Battle 좌하단 `NextWaveDock`을 **다음 전투를 여는 주 행동 버튼**
   Component/NativeQueue/C# 전역 이벤트는 만들지 않는다.
 - 스케줄 이동·2초 리드인·연타·클릭 SFX는 변경하지 않는다.
 - 강조는 시뮬 상태를 바꾸지 않으며 클릭·자동 호출·전투 종료 시 멈춘다.
-- 수치·색·주기·크기는 `NextWaveDock`의 `[SerializeField] private` 값과 Sprite에서 조정한다.
+- Dock 원점은 기존 좌하단 `(40, 40)`을 유지한다. Sprite 비율과 content-safe padding은 serialized
+  값으로 조정한다.
 
 ## 판정표
 
@@ -55,4 +57,4 @@ UGUI/Sprite만 변경한다.
 
 - 조기 호출 밸런스와 웨이브별 통계·보상·콤보·자동 진행.
 - Next Wave 튜토리얼·손가락 포인터·텍스트 말풍선.
-- Android cutout 전수 QA.
+- Android cutout.

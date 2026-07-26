@@ -34,11 +34,11 @@ namespace Wassup.UI
         [SerializeField] private float tickPunchWarn = 0.36f;
 
         [Header("Layout")]
-        [SerializeField] private Vector2 panelSize = new Vector2(296f, 166f);
-        [SerializeField] private Vector2 panelOffset = new Vector2(36f, 320f);
-        [SerializeField] private Vector2 timerPlateSize = new Vector2(226f, 64f);
-        [SerializeField] private Vector2 timerPlateOffset = new Vector2(10f, 100f);
-        [SerializeField] private Vector2 buttonSize = new Vector2(296f, 108f);
+        [SerializeField] private Vector2 panelSize = new Vector2(288f, 168f);
+        [SerializeField] private Vector2 panelOffset = new Vector2(40f, 40f);
+        [SerializeField] private Vector2 timerPlateSize = new Vector2(212f, 64f);
+        [SerializeField] private Vector2 timerPlateOffset = new Vector2(8f, 104f);
+        [SerializeField] private Vector2 buttonSize = new Vector2(288f, 108f);
 
         [Header("Next wave button")]
         [SerializeField] private Sprite dockFrameSprite;
@@ -46,6 +46,9 @@ namespace Wassup.UI
         [SerializeField] private Sprite attentionRingSprite;
         [SerializeField] private Color buttonColor = new Color(0.12f, 0.42f, 0.82f, 0.95f);
         [SerializeField] private float buttonFontSize = 28f;
+        [SerializeField] private float buttonMinFontSize = 22f;
+        [Tooltip("x=left, y=top, z=right(화살표 예약폭 포함), w=bottom")]
+        [SerializeField] private Vector4 buttonContentPadding = new Vector4(30f, 18f, 86f, 18f);
         [SerializeField] private Color disabledContentColor = new Color(0.58f, 0.66f, 0.78f, 0.9f);
         [SerializeField] private Vector3 pressScale = new Vector3(1.02f, 0.92f, 1f);
         [SerializeField] private float releaseDuration = 0.14f;
@@ -253,6 +256,7 @@ namespace Wassup.UI
             _backingImage = timerPlate.GetComponent<Image>();
             _backingImage.sprite = dockFrameSprite;
             _backingImage.color = dockFrameSprite != null ? Color.white : backingColor;
+            _backingImage.preserveAspect = dockFrameSprite != null;
             _backingImage.raycastTarget = false;
 
             var captionGO = new GameObject("TimerCaption", typeof(RectTransform));
@@ -276,8 +280,8 @@ namespace Wassup.UI
             var trt = (RectTransform)timerGO.transform;
             trt.anchorMin = Vector2.zero;
             trt.anchorMax = Vector2.one;
-            trt.offsetMin = new Vector2(84f, 6f);
-            trt.offsetMax = new Vector2(-14f, -6f);
+            trt.offsetMin = new Vector2(82f, 10f);
+            trt.offsetMax = new Vector2(-16f, -10f);
             _timerLabel = timerGO.AddComponent<TextMeshProUGUI>();
             if (timerFont != null) _timerLabel.font = timerFont;
             _timerLabel.text = "3:00";
@@ -325,6 +329,7 @@ namespace Wassup.UI
             _buttonImage = faceGO.GetComponent<Image>();
             _buttonImage.sprite = buttonFaceSprite;
             _buttonImage.color = buttonFaceSprite != null ? Color.white : buttonColor;
+            _buttonImage.preserveAspect = buttonFaceSprite != null;
             _buttonImage.raycastTarget = false;
 
             _waveButton = _buttonRoot.GetComponent<Button>();
@@ -355,11 +360,14 @@ namespace Wassup.UI
             var lrt = (RectTransform)labelGO.transform;
             lrt.anchorMin = Vector2.zero;
             lrt.anchorMax = Vector2.one;
-            lrt.offsetMin = new Vector2(18f, 10f);
-            lrt.offsetMax = new Vector2(-74f, -12f);
+            lrt.offsetMin = new Vector2(buttonContentPadding.x, buttonContentPadding.w);
+            lrt.offsetMax = new Vector2(-buttonContentPadding.z, -buttonContentPadding.y);
             _waveLabel = labelGO.AddComponent<TextMeshProUGUI>();
             _waveLabel.text = "다음 웨이브";
             _waveLabel.fontSize = buttonFontSize;
+            _waveLabel.enableAutoSizing = true;
+            _waveLabel.fontSizeMin = Mathf.Min(buttonMinFontSize, buttonFontSize);
+            _waveLabel.fontSizeMax = buttonFontSize;
             _waveLabel.color = Color.white;
             _waveLabel.fontStyle = FontStyles.Bold;
             _waveLabel.alignment = TextAlignmentOptions.Center;
@@ -592,6 +600,7 @@ namespace Wassup.UI
             var image = go.GetComponent<Image>();
             image.sprite = attentionRingSprite;
             image.color = attentionRingSprite != null ? Color.white : new Color(0f, 0f, 0f, 0f);
+            image.preserveAspect = attentionRingSprite != null;
             image.raycastTarget = false;
 
             if (attentionRingSprite != null) return;

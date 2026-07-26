@@ -25,6 +25,8 @@ namespace Wassup.Tests.PlayMode
         private NextWaveDock _dock;
         private AttackUnitData _a;
         private AttackUnitData _b;
+        private Texture2D _testTexture;
+        private Sprite _testSprite;
 
         [SetUp]
         public void SetUp()
@@ -68,12 +70,22 @@ namespace Wassup.Tests.PlayMode
             SetField(_bridge, "_aliveAttackersQueryCreated", true);
 
             _dockGo = new GameObject("NextWaveDock_NextWaveClearAttentionSmokeTest");
+            _dockGo.SetActive(false);
             _dock = _dockGo.AddComponent<NextWaveDock>();
+            _testTexture = new Texture2D(4, 4);
+            _testSprite = Sprite.Create(
+                _testTexture,
+                new Rect(0f, 0f, 4f, 4f),
+                new Vector2(0.5f, 0.5f));
             SetField(_dock, "bridge", _bridge);
+            SetField(_dock, "dockFrameSprite", _testSprite);
+            SetField(_dock, "buttonFaceSprite", _testSprite);
+            SetField(_dock, "attentionRingSprite", _testSprite);
             // Full PlayMode assembly leaves a GameManager singleton between some cases.
             // This smoke owns its phase explicitly; prevent lazy subscription from
             // replacing Battle with unrelated prior-test phase state.
             SetField(_dock, "_subscribed", true);
+            _dockGo.SetActive(true);
             Invoke(_dock, "OnPhaseChanged", GamePhase.Battle);
         }
 
@@ -84,12 +96,16 @@ namespace Wassup.Tests.PlayMode
             if (_bridgeGo != null) Object.DestroyImmediate(_bridgeGo);
             if (_a != null) Object.DestroyImmediate(_a);
             if (_b != null) Object.DestroyImmediate(_b);
+            if (_testSprite != null) Object.DestroyImmediate(_testSprite);
+            if (_testTexture != null) Object.DestroyImmediate(_testTexture);
             _world?.Dispose();
         }
 
         [UnityTest]
         public IEnumerator PendingAliveClearAndForceNextWave_DriveAttentionLifetime()
         {
+            AssertCorrectedLayout();
+
             SetField(_bridge, "_battleClock", 0.0);
             Invoke(_bridge, "QueueDueWaves", 0f);
             Invoke(_bridge, "RefreshNextWaveClearReady");
@@ -124,6 +140,24 @@ namespace Wassup.Tests.PlayMode
             Assert.IsFalse(ClearVisual());
             Assert.IsNull(GetField(_dock, "_attention"));
             AssertPulseRings(active: false);
+        }
+
+        private void AssertCorrectedLayout()
+        {
+            var panel = (GameObject)GetField(_dock, "_panel");
+            Assert.AreEqual(new Vector2(40f, 40f), ((RectTransform)panel.transform).anchoredPosition);
+
+            var backing = (UnityEngine.UI.Image)GetField(_dock, "_backingImage");
+            var button = (UnityEngine.UI.Image)GetField(_dock, "_buttonImage");
+            Assert.IsTrue(backing.preserveAspect);
+            Assert.IsTrue(button.preserveAspect);
+
+            var label = GetField(_dock, "_waveLabel");
+            Assert.IsTrue((bool)GetProperty(label, "enableAutoSizing"));
+            Assert.AreEqual(22f, (float)GetProperty(label, "fontSizeMin"));
+            var labelRect = (RectTransform)((Component)label).transform;
+            Assert.AreEqual(new Vector2(30f, 18f), labelRect.offsetMin);
+            Assert.AreEqual(new Vector2(-86f, -18f), labelRect.offsetMax);
         }
 
         private int PendingCount() => ((IList)GetField(_bridge, "_pending")).Count;
@@ -169,6 +203,15 @@ namespace Wassup.Tests.PlayMode
 
         private static object GetField(object target, string name) =>
             FindField(target, name).GetValue(target);
+
+        private static object GetProperty(object target, string name)
+        {
+            var property = target.GetType().GetProperty(
+                name,
+                BindingFlags.Public | BindingFlags.Instance);
+            Assert.IsNotNull(property, $"Property '{name}' not found on {target.GetType().Name}");
+            return property.GetValue(target);
+        }
 
         private static void Invoke(object target, string name, params object[] args)
         {
