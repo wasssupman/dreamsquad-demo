@@ -266,6 +266,9 @@ namespace Wassup.Bridge
         private WavePlanAsset _authoredPlan;
         private bool _usingAuthoredPlan;
         private int _nextWaveIndex;
+        // nextwave-clear-attention unit 0 — 이미 호출된 모든 웨이브의 pending/live 합집합이
+        // 비었는지 BattleBridge 가 판정한다. UI 는 아래 read-only getter 만 폴링한다.
+        private bool _nextWaveClearReady;
         // wave-pattern unit 9 — Next Wave 강제 호출로 앞당긴 누적 시간(앞당김이므로 음수).
         // 플랜의 triggerTimeSec 자체는 불변(브리핑 스트립·로그의 source of truth)이고,
         // 런타임 스케줄만 이 오프셋으로 민다. 남은 웨이브 전체가 같은 값만큼 이동하므로
@@ -476,6 +479,7 @@ namespace Wassup.Bridge
         private void TeardownCurrentBattle()
         {
             _running = false;
+            _nextWaveClearReady = false;
             _placementAllowed = false;
             if (skillRuntime != null) skillRuntime.ResetAll();
             // time-manager — 시간 스케일 요청도 매치 경계에서 초기화(앱 수명 싱글턴이라 매치 간
@@ -1145,6 +1149,7 @@ namespace Wassup.Bridge
             }
             _em = _world.EntityManager;
             _pending.Clear();
+            _nextWaveClearReady = false;
             _occupiedTiles.Clear();
             RefreshPlacementHighlightIfShown(); // placement-eligible-tile-highlight unit 2
             _defenderByTile.Clear();
@@ -1205,6 +1210,7 @@ namespace Wassup.Bridge
             if (!_placementAllowed) BeginPlacement();
             if (_world == null) return;
             _pending.Clear();
+            _nextWaveClearReady = false;
             _usingGeneratedWaves = TryInitializeGeneratedWaves();
             if (!_usingGeneratedWaves)
             {
@@ -1466,6 +1472,7 @@ namespace Wassup.Bridge
         {
             // dreamstone-loadout Unit 3 — reset symmetry: pending loadout must not outlive the match (review M2).
             _pendingDreamstones = null;
+            _nextWaveClearReady = false;
             // time-manager Unit 3 — 시간 상태도 매치와 함께 리셋.
             _battleClock = 0.0;
             _killScoreTotal = 0; // battle-score-formula unit 2 — 계약 9 (시계와 짝)
@@ -1648,6 +1655,8 @@ namespace Wassup.Bridge
         public bool NextWaveAvailable => _running && _usingGeneratedWaves && _wavePlan.waves != null;
         public bool NextWaveHasNext => NextWaveAvailable && _nextWaveIndex < _wavePlan.waves.Count;
         public int NextWaveNumber => _nextWaveIndex + 1;
+        public bool NextWaveClearReady =>
+            NextWaveHasNext && _nextWaveIndex > 0 && _nextWaveClearReady;
 
         // spawn-point-alert unit 3 — **마지막으로 큐잉된 웨이브**의 lane 별 첫 스폰 절대 시각
         // (read-only). SpawnAlertPresenter 폴링 전용. 미래 웨이브 예측이 아니라 QueueWave 가
@@ -1734,6 +1743,9 @@ namespace Wassup.Bridge
 
         private void QueueWave(GeneratedWave wave, float baseTriggerTimeSec, bool forced, float elapsedSec)
         {
+            // 자동/강제 호출 모두 같은 진입점. UI Update 순서와 무관하게 이전 클리어 강조를
+            // 즉시 내리고, 아래 pending/live 상태가 다시 빌 때만 Update 말미에 재활성한다.
+            _nextWaveClearReady = false;
             int laneCount = _generatedMap.IsCreated ? _generatedMap.spawns.Length : 1;
             var entries = WavePatternGenerator.ExpandWave(wave, baseTriggerTimeSec, laneCount, _wavePlan.intraWaveSpacingSec);
             int baseDeckIndex = wave.waveIndex * WavePatternGenerator.DeckIndexStride;
@@ -2196,6 +2208,7 @@ namespace Wassup.Bridge
             DrainGoalEvents();
             CheckTimer();
             CheckVictory();
+            RefreshNextWaveClearReady();
         }
 
         private void LateUpdate()
@@ -3994,9 +4007,7 @@ namespace Wassup.Bridge
         {
             if (_resultShown) return;
             if (_usingGeneratedWaves && _wavePlan.waves != null && _nextWaveIndex < _wavePlan.waves.Count) return;
-            if (_pending.Count > 0) return;
-            if (!_aliveAttackersQueryCreated) return;
-            if (_aliveAttackersQuery.CalculateEntityCount() > 0) return;
+            if (!NoQueuedAttackersRemain()) return;
 
             _resultShown = true;
             _running = false;
@@ -4006,6 +4017,22 @@ namespace Wassup.Bridge
             GameManager.Instance?.Logger?.SetScore(playerScore, score.Time, score.Stress, score.Kill);
             BeginTally(win: true, score, RemainingBattleSeconds());
             Debug.Log("[BattleBridge] VICTORY — all attack units defeated.");
+        }
+
+        // nextwave-clear-attention unit 0 — 최종 승리와 웨이브 사이 클리어가 공유하는
+        // emptiness source of truth. pending 은 호출됐지만 아직 스폰되지 않은 적,
+        // AttackUnitTag query 는 이미 필드에 나온 적을 각각 담당한다.
+        private bool NoQueuedAttackersRemain()
+        {
+            if (_pending.Count > 0 || !_aliveAttackersQueryCreated) return false;
+            return _aliveAttackersQuery.CalculateEntityCount() == 0;
+        }
+
+        private void RefreshNextWaveClearReady()
+        {
+            _nextWaveClearReady = NextWaveHasNext
+                && _nextWaveIndex > 0
+                && NoQueuedAttackersRemain();
         }
 
         // tournament-play-report Units 3/4 — shared result-popup hook: snapshot
