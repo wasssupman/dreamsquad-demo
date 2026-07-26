@@ -1,6 +1,6 @@
 # battle-score-formula — 최종 결과 점수 산식 재설계
 
-> 상태: **완료 2026-07-20** (units 0~5). 인계는 `6_handoff_summary.md`.
+> 상태: **완료 2026-07-20** (units 0~5) · **unit 7 추가 완료 2026-07-26**. 인계는 `6_handoff_summary.md`.
 > 남은 것: 유출 한계 10 의 플레이 감각 확인(사용자 판단).
 
 ## 상위 목표
@@ -129,6 +129,7 @@ return Math.Max(0, (int)(durationSec * 10f - _goalReachedCount * 50));
 | 4 | `4_result_ui.md` | `ResultScreen` 3축 분해 표시 |
 | 5 | `5_leak_limit_tighten.md` | 유출 한계 30 → 10 (밸런스 — 독립 튜닝·되돌림) |
 | 6 | `6_handoff_summary.md` | 인계 |
+| 7 | `7_result_raw_state_rows.md` | 결과 화면 원시 상태 2줄 (남은 시간 · 스트레스 누적/한계) |
 
 ## feature-wide 계약
 

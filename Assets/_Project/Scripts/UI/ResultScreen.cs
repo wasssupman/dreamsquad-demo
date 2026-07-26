@@ -49,6 +49,11 @@ namespace Wassup.UI
         private static readonly Color ChipLabel = new Color(0.72f, 0.76f, 0.82f, 1f);
         private static readonly Color CaptionText = new Color(0.78f, 0.82f, 0.88f, 1f);
         private static readonly Color SectionText = new Color(0.62f, 0.67f, 0.74f, 1f);
+        // battle-score-formula unit 7 — 원시 상태 행의 값 색. 칩 값이 전부 골드면 남은 시간·
+        // 스트레스 누적도 점수로 읽히므로 상태 쪽만 낮춘다.
+        private static readonly Color StateValue = new Color(0.88f, 0.91f, 0.95f, 1f);
+        // 0.10 은 이 네이비 위에서 2px 이 사실상 안 보였다(스크린샷 확인). 헤어라인으로 보이는 선.
+        private static readonly Color DividerFill = new Color(1f, 1f, 1f, 0.22f);
 
         // Two-column geometry at the 1920x1080 reference.
         //   pad 30 | left 520 | gap 28 | right 832 | pad 30  = PanelW 1440
@@ -62,6 +67,7 @@ namespace Wassup.UI
         private const float RowH = 56f;
         private const float RowGap = 6f;
         private const float ChipH = 60f;
+        private const float DividerH = 2f; // 상태 2줄 ↔ 점수 3축 구분선
         private const float ButtonH = 92f;
 
         private TextMeshProUGUI resultLabel;
@@ -70,7 +76,7 @@ namespace Wassup.UI
         private Image tabImage;
         private Button lobbyButton;
         private RectTransform _listContent;
-        private RectTransform _chipsRoot;
+        private RectTransform _statsRoot;
         private bool _built;
 
         // Cached procedural sprites (baked once, reused across rows).
@@ -80,6 +86,7 @@ namespace Wassup.UI
         private Sprite _rowOwn;
         private Sprite _rowWaiting;
         private Sprite _chipPlate;
+        private Sprite _dividerFill;
         private Sprite _badgeGold;
         private Sprite _badgeSilver;
         private Sprite _badgeBronze;
@@ -104,22 +111,30 @@ namespace Wassup.UI
         public readonly struct MatchStats
         {
             public readonly float RemainingSec;
-            public readonly int Leaks;
+            public readonly int Leaks; // 구 경로 전용 — 유출 수 그대로
             public readonly bool HasBreakdown;
             public readonly int TimeScore, StressScore, KillScore;
+
+            // unit 7 — 점수 3축 위에 얹는 원시 상태. **스트레스점수의 실제 입력과 같은 두 값**
+            // 이어야 화면에서 검산된다(누적 = 유출 + 계약 선불, 한계 = 덱 원본값 · 계약 8).
+            // StressLimit <= 0 = 한계 미표기(엔드리스 · 덱 미배선).
+            public readonly int StressAccrued, StressLimit;
 
             public MatchStats(float remainingSec, int leaks)
             {
                 RemainingSec = remainingSec; Leaks = leaks;
                 HasBreakdown = false;
                 TimeScore = StressScore = KillScore = 0;
+                StressAccrued = StressLimit = 0;
             }
 
-            public MatchStats(float remainingSec, int leaks, ScoreMath.BattleScore score)
+            public MatchStats(float remainingSec, int stressAccrued, int stressLimit,
+                ScoreMath.BattleScore score)
             {
-                RemainingSec = remainingSec; Leaks = leaks;
+                RemainingSec = remainingSec; Leaks = 0;
                 HasBreakdown = true;
                 TimeScore = score.Time; StressScore = score.Stress; KillScore = score.Kill;
+                StressAccrued = stressAccrued; StressLimit = stressLimit;
             }
         }
 
@@ -133,12 +148,15 @@ namespace Wassup.UI
             => ShowResult("승리", playerScore, new MatchStats(remainingSec, leaks));
 
         // battle-score-formula unit 4 — 점수 3축 분해를 실은 경로. 총점은 score.Total 이라
-        // 따로 받지 않는다.
-        public void ShowDefeat(ScoreMath.BattleScore score, float remainingSec, int leaks)
-            => ShowResult("패배", score.Total, new MatchStats(remainingSec, leaks, score));
+        // 따로 받지 않는다. unit 7 — 유출 수 대신 **스트레스 누적/한계**를 받는다(점수 산식의
+        // 실제 입력이라 화면에서 검산된다).
+        public void ShowDefeat(ScoreMath.BattleScore score, float remainingSec,
+            int stressAccrued, int stressLimit)
+            => ShowResult("패배", score.Total, new MatchStats(remainingSec, stressAccrued, stressLimit, score));
 
-        public void ShowVictory(ScoreMath.BattleScore score, float remainingSec, int leaks)
-            => ShowResult("승리", score.Total, new MatchStats(remainingSec, leaks, score));
+        public void ShowVictory(ScoreMath.BattleScore score, float remainingSec,
+            int stressAccrued, int stressLimit)
+            => ShowResult("승리", score.Total, new MatchStats(remainingSec, stressAccrued, stressLimit, score));
 
         private void ShowResult(string resultText, int playerScore, MatchStats? stats)
         {
@@ -153,32 +171,38 @@ namespace Wassup.UI
                 heroScoreLabel.color = win ? goldColor : defeatColor;
             }
 
-            // The stat rows take generic (label, value) pairs so battle-score-formula
-            // unit 4 can swap these two for the three score axes without touching
-            // any layout code here.
+            // The stat rows are generic StatRow values so battle-score-formula could
+            // swap what they carry without touching any layout code here.
             if (stats.HasValue && stats.Value.HasBreakdown)
             {
-                // 분모(예산 만점)를 붙이지 않는다. 시간 만점은 t=0 클리어를 전제한 값이라
+                // 점수 분모(예산 만점)는 붙이지 않는다. 시간 만점은 t=0 클리어를 전제한 값이라
                 // **현실적으로 도달 불가**인데, 그런 수치를 옆에 세우면 항상 한참 못 미친
                 // 것처럼 보인다. 축 사이 상대 비교는 세 줄이 나란히 있는 것으로 충분하다.
+                //
+                // unit 7 — 원시 상태 2줄이 그 **위**에 온다: "이 상태였고 → 그래서 이 점수".
+                // 점수 쪽 라벨에 `점수` 를 붙이는 이유는 전투 HUD 가 유출 배지를 `스트레스`
+                // 로 부르기 때문이다(ScoreHudView) — 접미사가 없으면 같은 화면의
+                // `스트레스 3 / 10` 과 `스트레스 6,300` 이 갈리지 않는다.
                 var s = stats.Value;
-                SetChips(new[]
+                SetStatRows(new[]
                 {
-                    ("시간", $"{s.TimeScore:N0}"),
-                    ("스트레스", $"{s.StressScore:N0}"),
-                    ("처치", $"{s.KillScore:N0}"),
+                    StatRow.State("남은 시간", ClockText(s.RemainingSec)),
+                    StatRow.State("스트레스", StressText(s.StressAccrued, s.StressLimit)),
+                    StatRow.Divider,
+                    StatRow.Score("시간 점수", $"{s.TimeScore:N0}"),
+                    StatRow.Score("스트레스 점수", $"{s.StressScore:N0}"),
+                    StatRow.Score("처치 점수", $"{s.KillScore:N0}"),
                 });
             }
             else if (stats.HasValue)
             {
-                int t = Mathf.Max(0, Mathf.CeilToInt(stats.Value.RemainingSec));
-                SetChips(new[]
+                SetStatRows(new[]
                 {
-                    ("남은 시간", $"{t / 60}:{t % 60:D2}"),
-                    ("유출", stats.Value.Leaks.ToString()),
+                    StatRow.State("남은 시간", ClockText(stats.Value.RemainingSec)),
+                    StatRow.State("유출", stats.Value.Leaks.ToString()),
                 });
             }
-            else SetChips(null);
+            else SetStatRows(null);
 
             var rows = BuildPendingRows(playerScore);
             RenderRows(rows);
@@ -287,23 +311,68 @@ namespace Wassup.UI
             for (int i = 0; i < rows.Count; i++) CreateRow(rows[i]);
         }
 
-        // null/empty hides the whole block (mirrors the old statsLabel behaviour).
-        private void SetChips((string label, string value)[] items)
+        // battle-score-formula unit 7 — 한 블록에 원시 상태(muted)와 점수(골드)가 섞이므로
+        // 색 구분과 구분선을 값으로 나른다.
+        private readonly struct StatRow
         {
-            if (_chipsRoot == null) return;
-            for (int i = _chipsRoot.childCount - 1; i >= 0; i--)
+            public readonly string Label, Value;
+            public readonly bool Muted, IsDivider;
+
+            private StatRow(string label, string value, bool muted, bool isDivider)
             {
-                var child = _chipsRoot.GetChild(i);
+                Label = label; Value = value; Muted = muted; IsDivider = isDivider;
+            }
+
+            public static StatRow State(string label, string value) => new StatRow(label, value, true, false);
+            public static StatRow Score(string label, string value) => new StatRow(label, value, false, false);
+            public static StatRow Divider => new StatRow(null, null, false, true);
+        }
+
+        // 남은 시간 표기 — `0:00` / `2:13`. ceil 이라 0.4초 남으면 1초로 올린다(0 은 0:00 그대로).
+        public static string ClockText(float remainingSec)
+        {
+            int t = Mathf.Max(0, Mathf.CeilToInt(remainingSec));
+            return $"{t / 60}:{t % 60:D2}";
+        }
+
+        // 스트레스 누적 표기. limit <= 0 = 한계 미표기 — 엔드리스(누수로 죽지 않아 한계가 무의미,
+        // HUD 도 같은 규칙으로 숨긴다) 또는 덱 미배선.
+        public static string StressText(int accrued, int limit)
+            => limit > 0 ? $"{accrued} / {limit}" : accrued.ToString();
+
+        // null/empty hides the whole block (mirrors the old statsLabel behaviour).
+        private void SetStatRows(StatRow[] items)
+        {
+            if (_statsRoot == null) return;
+            for (int i = _statsRoot.childCount - 1; i >= 0; i--)
+            {
+                var child = _statsRoot.GetChild(i);
                 child.SetParent(null, false);
                 Destroy(child.gameObject);
             }
             if (items == null || items.Length == 0)
             {
-                _chipsRoot.gameObject.SetActive(false);
+                _statsRoot.gameObject.SetActive(false);
                 return;
             }
-            _chipsRoot.gameObject.SetActive(true);
-            for (int i = 0; i < items.Length; i++) CreateChip(items[i].label, items[i].value);
+            _statsRoot.gameObject.SetActive(true);
+            for (int i = 0; i < items.Length; i++)
+            {
+                if (items[i].IsDivider) CreateDivider();
+                else CreateStatRow(items[i]);
+            }
+        }
+
+        private void CreateDivider()
+        {
+            var go = new GameObject("Divider", typeof(RectTransform), typeof(Image), typeof(LayoutElement));
+            go.transform.SetParent(_statsRoot, false);
+            go.GetComponent<LayoutElement>().preferredHeight = DividerH;
+            var img = go.GetComponent<Image>();
+            img.sprite = _dividerFill;
+            img.type = Image.Type.Sliced;
+            img.color = DividerFill;
+            img.raycastTarget = false;
         }
 
         // Full-width stat row in the left column: label left, value right. Sizing is
@@ -312,10 +381,10 @@ namespace Wassup.UI
         // AddComponent'd and its font asset is not resolved yet. That threw
         // mid-ShowResult and the popup never reached its SetActive(true), i.e. the
         // whole result screen silently failed to appear.
-        private void CreateChip(string label, string value)
+        private void CreateStatRow(StatRow row)
         {
             var go = new GameObject("Stat", typeof(RectTransform), typeof(Image), typeof(LayoutElement));
-            go.transform.SetParent(_chipsRoot, false);
+            go.transform.SetParent(_statsRoot, false);
             go.GetComponent<LayoutElement>().preferredHeight = ChipH;
 
             var plate = go.GetComponent<Image>();
@@ -324,15 +393,18 @@ namespace Wassup.UI
             plate.color = Color.white; // fill baked into the sprite
             plate.raycastTarget = false;
 
-            var key = CreateLabel(go.transform, "Label", label, 34, TextAlignmentOptions.MidlineLeft, ChipLabel);
+            var key = CreateLabel(go.transform, "Label", row.Label, 34, TextAlignmentOptions.MidlineLeft, ChipLabel);
             var kr = (RectTransform)key.transform;
             kr.anchorMin = new Vector2(0f, 0f);
             kr.anchorMax = new Vector2(1f, 1f);
             kr.offsetMin = new Vector2(26f, 0f);
             kr.offsetMax = new Vector2(-26f, 0f);
 
-            var val = CreateLabel(go.transform, "Value", value, 34, TextAlignmentOptions.MidlineRight, goldColor);
-            val.fontStyle = FontStyles.Bold;
+            // 상태 행은 muted + 보통 굵기, 점수 행은 골드 + 볼드 — 색과 무게 둘로 갈라야
+            // 숫자를 훑을 때 점수 3축만 눈에 들어온다.
+            var val = CreateLabel(go.transform, "Value", row.Value, 34, TextAlignmentOptions.MidlineRight,
+                row.Muted ? StateValue : goldColor);
+            if (!row.Muted) val.fontStyle = FontStyles.Bold;
             var vr = (RectTransform)val.transform;
             vr.anchorMin = new Vector2(0f, 0f);
             vr.anchorMax = new Vector2(1f, 1f);
@@ -474,6 +546,9 @@ namespace Wassup.UI
             _rowOwn = UiRoundedSprite.Make(14f, 3f, OwnFill, goldColor);
             _rowWaiting = UiRoundedSprite.Make(14f, 0f, WaitingFill, WaitingFill);
             _chipPlate = UiRoundedSprite.Make(14f, 0f, ChipFill, ChipFill);
+            // 흰색 solid — 색은 Image.color 로 준다. _chipPlate 를 재사용하면 알파가 곱해져
+            // (0.06 × 0.10) 사실상 안 보인다.
+            _dividerFill = UiRoundedSprite.Make(2f, 0f, Color.white, Color.white);
             _badgeGold = UiRoundedSprite.MakeCircle(48, BadgeGold);
             _badgeSilver = UiRoundedSprite.MakeCircle(48, BadgeSilver);
             _badgeBronze = UiRoundedSprite.MakeCircle(48, BadgeBronze);
@@ -525,10 +600,10 @@ namespace Wassup.UI
 
             AddFlexibleSpacer(cr);
 
-            // Stat rows. Generic (label, value) pairs — see SetChips.
+            // Stat rows — see SetStatRows.
             var chips = new GameObject("Stats", typeof(RectTransform), typeof(VerticalLayoutGroup));
             chips.transform.SetParent(cr, false);
-            _chipsRoot = (RectTransform)chips.transform;
+            _statsRoot = (RectTransform)chips.transform;
             var chipVlg = chips.GetComponent<VerticalLayoutGroup>();
             chipVlg.spacing = 10f;
             chipVlg.childAlignment = TextAnchor.UpperCenter;

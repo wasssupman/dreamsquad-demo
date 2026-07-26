@@ -3925,6 +3925,12 @@ namespace Wassup.Bridge
         private int EffectiveLeakLimit()
             => ActiveDeck != null ? ActiveDeck.defeatGoalReachedCount - _leakAllowancePenalty : 0;
 
+        // battle-score-formula unit 7 — 스트레스점수의 입력. 점수 계산(CalculateBattleScore)과
+        // 결과 화면 표기(FinishTally)가 **같은 값**을 써야 화면에서 검산된다. 한계는 덱 원본값
+        // 이고 EffectiveLeakLimit()(계약 차감 후)이 아니다 — 차감분은 누적 쪽에 있다(계약 8).
+        private int StressAccrued => _goalReachedCount + _leakAllowancePenalty;
+        private int StressLimit => ActiveDeck != null ? ActiveDeck.defeatGoalReachedCount : 0;
+
         private void RefreshLeakHud()
             => scoreHud?.SetLeakStatus(_goalReachedCount, EffectiveLeakLimit(), !IsEndless);
 
@@ -4085,8 +4091,11 @@ namespace Wassup.Bridge
         private void FinishTally(bool win, ScoreMath.BattleScore score, float remainingSec)
         {
             GameManager.Instance?.SetPhase(GamePhase.Result);
-            if (win) resultScreen?.ShowVictory(score, remainingSec, _goalReachedCount);
-            else resultScreen?.ShowDefeat(score, remainingSec, _goalReachedCount);
+            // unit 7 — 팝업에 넘기는 스트레스 값은 점수 계산과 같은 소스다. 엔드리스는 한계를
+            // 0으로 넘겨 분모를 숨긴다(누수로 죽지 않아 한계가 무의미 — HUD 와 같은 규칙).
+            int stressLimitForUi = IsEndless ? 0 : StressLimit;
+            if (win) resultScreen?.ShowVictory(score, remainingSec, StressAccrued, stressLimitForUi);
+            else resultScreen?.ShowDefeat(score, remainingSec, StressAccrued, stressLimitForUi);
         }
 
         // battle-score-formula unit 3 — 예산 소모 모델. 계산 자체는 ScoreMath 순수 함수가
@@ -4111,11 +4120,8 @@ namespace Wassup.Bridge
             // endless-mode unit 2 — 무한 모드는 시간축 0(스코어어택). 조기클리어로 remainingMs>0
             // 이어도 시간점수가 새지 않게 여기서 0 고정. 메인은 기존대로 남은시간 반영.
             int remainingMs = IsEndless ? 0 : Mathf.RoundToInt(RemainingBattleSeconds() * 1000f);
-            int stressLimit = ActiveDeck != null ? ActiveDeck.defeatGoalReachedCount : 0;
-            int stressAccrued = _goalReachedCount + _leakAllowancePenalty;
 
-
-            return ScoreMath.Evaluate(remainingMs, stressAccrued, stressLimit, _killScoreTotal,
+            return ScoreMath.Evaluate(remainingMs, StressAccrued, StressLimit, _killScoreTotal,
                 defeated, perSec, perStress);
         }
 
