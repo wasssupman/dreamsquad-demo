@@ -33,31 +33,78 @@ namespace Wassup.UI
         [SerializeField] private float tickPunch = 0.16f;
         [SerializeField] private float tickPunchWarn = 0.36f;
 
+        [Header("Layout")]
+        [SerializeField] private Vector2 panelSize = new Vector2(296f, 166f);
+        [SerializeField] private Vector2 panelOffset = new Vector2(36f, 320f);
+        [SerializeField] private Vector2 timerPlateSize = new Vector2(226f, 64f);
+        [SerializeField] private Vector2 timerPlateOffset = new Vector2(10f, 100f);
+        [SerializeField] private Vector2 buttonSize = new Vector2(296f, 108f);
+
         [Header("Next wave button")]
         [SerializeField] private Sprite dockFrameSprite;
         [SerializeField] private Sprite buttonFaceSprite;
+        [SerializeField] private Sprite attentionRingSprite;
         [SerializeField] private Color buttonColor = new Color(0.12f, 0.42f, 0.82f, 0.95f);
         [SerializeField] private float buttonFontSize = 28f;
+        [SerializeField] private Color disabledContentColor = new Color(0.58f, 0.66f, 0.78f, 0.9f);
+        [SerializeField] private Vector3 pressScale = new Vector3(1.02f, 0.92f, 1f);
+        [SerializeField] private float releaseDuration = 0.14f;
+        [SerializeField] private float releaseOvershoot = 1.04f;
 
         [Header("Backing")]
-        [Tooltip("타이머+버튼 뒤 dimmed 배경 판")]
+        [Tooltip("타이머 캡슐 Sprite 누락 시 대체색")]
         [SerializeField] private Color backingColor = new Color(0f, 0f, 0f, 0.45f);
+
+        [Header("Clear ready attention")]
+        [SerializeField] private Color clearReadyColor = new Color(1f, 0.72f, 0.12f, 1f);
+        [SerializeField] private float attentionEntryDuration = 0.48f;
+        [SerializeField] private float attentionEntryScale = 1.1f;
+        [SerializeField] private float attentionPeriod = 1.5f;
+        [SerializeField] private float attentionHopDuration = 0.34f;
+        [SerializeField] private float attentionHopHeight = 7f;
+        [SerializeField] private float attentionBumpScale = 0.08f;
+        [SerializeField] private float attentionLean = -4f;
+        [SerializeField] private Vector2 attentionNudge = new Vector2(7f, 2f);
+        [SerializeField] private float chevronKick = 9f;
+        [SerializeField] private float pulseRingDuration = 0.72f;
+        [SerializeField] private float pulseRingStagger = 0.18f;
+        [SerializeField] private float pulseRingExpansion = 1.28f;
+        [SerializeField] private float pulseRingThickness = 4f;
 
         private GameObject _panel;
         private Image _backingImage;
         private TextMeshProUGUI _timerCaption;
         private TextMeshProUGUI _timerLabel;
         private GameObject _buttonRoot;
+        private RectTransform _buttonMotionRoot;
         private RectTransform _buttonVisual;
         private Image _buttonImage;
         private Button _waveButton;
         private TextMeshProUGUI _waveLabel;
+        private RectTransform _chevronRoot;
+        private Vector2 _chevronRestPosition;
+        private CanvasGroup _chevronGroup;
+        private readonly Image[] _chevronImages = new Image[4];
+        private RectTransform _goldRim;
+        private CanvasGroup _goldRimGroup;
+        private readonly RectTransform[] _pulseRings = new RectTransform[2];
+        private readonly CanvasGroup[] _pulseRingGroups = new CanvasGroup[2];
         private bool _built;
         private Coroutine _buttonRelease;
+        private Coroutine _attention;
+        private bool _clearReadyVisual;
+        private bool _pointerPressed;
 
         // 초 단위 변화 감지용(직전 표시된 총 초). -1 = 아직 표시 전(첫 표시엔 pop 생략).
         private int _lastShownSec = -1;
         private Tween _tickTween;
+
+        private enum VisualState
+        {
+            Normal,
+            ClearReady,
+            Disabled
+        }
 
         private void Awake()
         {
@@ -73,7 +120,11 @@ namespace Wassup.UI
                 GameManager.Instance.PhaseChanged -= OnPhaseChanged;
             _subscribed = false;
             if (_buttonRelease != null) StopCoroutine(_buttonRelease);
-            if (_buttonVisual != null) _buttonVisual.localScale = Vector3.one;
+            _buttonRelease = null;
+            if (_tickTween.isAlive) _tickTween.Stop();
+            SetClearReadyVisual(false);
+            _pointerPressed = false;
+            ResetButtonPose();
         }
 
         // GameManager.Instance may not be set when OnEnable runs (scene load order), so
@@ -96,6 +147,7 @@ namespace Wassup.UI
             bool battle = phase == GamePhase.Battle;
             if (_panel.activeSelf != battle) _panel.SetActive(battle);
             if (battle) _lastShownSec = -1;
+            else SetClearReadyVisual(false);
         }
 
         private void Update()
@@ -141,6 +193,12 @@ namespace Wassup.UI
             bool available = bridge.NextWaveAvailable;
             if (_buttonRoot != null && _buttonRoot.activeSelf != available)
                 _buttonRoot.SetActive(available);
+            if (!available)
+            {
+                SetClearReadyVisual(false);
+                return;
+            }
+
             if (available)
             {
                 bool hasNext = bridge.NextWaveHasNext;
@@ -148,17 +206,22 @@ namespace Wassup.UI
                 if (_waveLabel != null)
                 {
                     _waveLabel.text = hasNext ? $"다음 웨이브 {bridge.NextWaveNumber}" : "웨이브 없음";
-                    _waveLabel.color = hasNext ? Color.white : new Color(0.68f, 0.72f, 0.8f, 0.95f);
                 }
+
+                VisualState state = !hasNext
+                    ? VisualState.Disabled
+                    : bridge.NextWaveClearReady
+                        ? VisualState.ClearReady
+                        : VisualState.Normal;
+                ApplyVisualState(state);
             }
         }
 
         private void OnWaveButtonClicked()
         {
+            SetClearReadyVisual(false);
             SoundManager.Instance?.PlayNextWave();
             if (bridge != null) bridge.ForceNextWave();
-            if (_backingImage != null)
-                Tween.PunchScale(_backingImage.rectTransform, Vector3.one * 0.06f, 0.2f, useUnscaledTime: true);
         }
 
         private void BuildCanvas()
@@ -168,56 +231,53 @@ namespace Wassup.UI
 
             var roots = UiCanvasSetup.Ensure(gameObject, sortingOrder: 7);
 
-            // Bottom-left container. The bottom-right safe corner belongs to the
-            // Dreamcatcher awakening talisman.
+            // Bottom-left footprint. The timer is deliberately smaller than the CTA so
+            // "advance the battle" reads before the supporting countdown information.
             _panel = new GameObject("DockPanel", typeof(RectTransform));
             _panel.transform.SetParent(roots.SafeAreaRoot, false);
             var prt = (RectTransform)_panel.transform;
             prt.anchorMin = new Vector2(0f, 0f);
             prt.anchorMax = new Vector2(0f, 0f);
             prt.pivot = new Vector2(0f, 0f);
-            prt.anchoredPosition = new Vector2(40f, 40f);
-            prt.sizeDelta = new Vector2(250f, 150f);
+            prt.anchoredPosition = panelOffset;
+            prt.sizeDelta = panelSize;
 
-            // Generated symbol-free jelly frame behind the unchanged two-row structure.
-            var backing = new GameObject("Backing", typeof(RectTransform), typeof(Image));
-            backing.transform.SetParent(_panel.transform, false);
-            var bkrt = (RectTransform)backing.transform;
-            bkrt.anchorMin = Vector2.zero;
-            bkrt.anchorMax = Vector2.one;
-            bkrt.offsetMin = new Vector2(-10f, -10f);
-            bkrt.offsetMax = new Vector2(10f, 10f);
-            _backingImage = backing.GetComponent<Image>();
+            var timerPlate = new GameObject("TimerPlate", typeof(RectTransform), typeof(Image));
+            timerPlate.transform.SetParent(_panel.transform, false);
+            var timerPlateRect = (RectTransform)timerPlate.transform;
+            timerPlateRect.anchorMin = Vector2.zero;
+            timerPlateRect.anchorMax = Vector2.zero;
+            timerPlateRect.pivot = Vector2.zero;
+            timerPlateRect.anchoredPosition = timerPlateOffset;
+            timerPlateRect.sizeDelta = timerPlateSize;
+            _backingImage = timerPlate.GetComponent<Image>();
             _backingImage.sprite = dockFrameSprite;
             _backingImage.color = dockFrameSprite != null ? Color.white : backingColor;
             _backingImage.raycastTarget = false;
 
-            // Small caption supports the time number without changing timer ownership.
             var captionGO = new GameObject("TimerCaption", typeof(RectTransform));
-            captionGO.transform.SetParent(_panel.transform, false);
+            captionGO.transform.SetParent(timerPlate.transform, false);
             var captionRect = (RectTransform)captionGO.transform;
-            captionRect.anchorMin = new Vector2(0f, 1f);
-            captionRect.anchorMax = new Vector2(1f, 1f);
-            captionRect.pivot = new Vector2(0.5f, 1f);
-            captionRect.offsetMin = new Vector2(16f, -24f);
-            captionRect.offsetMax = new Vector2(-16f, -4f);
+            captionRect.anchorMin = new Vector2(0f, 0f);
+            captionRect.anchorMax = new Vector2(0f, 1f);
+            captionRect.pivot = new Vector2(0f, 0.5f);
+            captionRect.anchoredPosition = new Vector2(18f, 0f);
+            captionRect.sizeDelta = new Vector2(66f, 0f);
             _timerCaption = captionGO.AddComponent<TextMeshProUGUI>();
-            _timerCaption.text = "남은 시간";
-            _timerCaption.fontSize = 17f;
+            _timerCaption.text = "남은\n시간";
+            _timerCaption.fontSize = 13f;
             _timerCaption.fontStyle = FontStyles.Bold;
             _timerCaption.color = new Color(0.5f, 0.92f, 1f, 0.95f);
             _timerCaption.alignment = TextAlignmentOptions.Center;
             _timerCaption.raycastTarget = false;
 
-            // Timer row (top).
             var timerGO = new GameObject("Timer", typeof(RectTransform));
-            timerGO.transform.SetParent(_panel.transform, false);
+            timerGO.transform.SetParent(timerPlate.transform, false);
             var trt = (RectTransform)timerGO.transform;
-            trt.anchorMin = new Vector2(0f, 1f);
-            trt.anchorMax = new Vector2(1f, 1f);
-            trt.pivot = new Vector2(0.5f, 1f);
-            trt.offsetMin = new Vector2(0f, -70f);
-            trt.offsetMax = new Vector2(0f, -25f);
+            trt.anchorMin = Vector2.zero;
+            trt.anchorMax = Vector2.one;
+            trt.offsetMin = new Vector2(84f, 6f);
+            trt.offsetMax = new Vector2(-14f, -6f);
             _timerLabel = timerGO.AddComponent<TextMeshProUGUI>();
             if (timerFont != null) _timerLabel.font = timerFont;
             _timerLabel.text = "3:00";
@@ -228,19 +288,45 @@ namespace Wassup.UI
             _timerLabel.raycastTarget = false;
             ApplyOutline(_timerLabel, new Color(0.03f, 0.06f, 0.17f, 1f), 0.18f);
 
-            // Next-wave button row (bottom).
             _buttonRoot = new GameObject("NextWaveButton", typeof(RectTransform), typeof(Image), typeof(Button));
             _buttonRoot.transform.SetParent(_panel.transform, false);
             var brt = (RectTransform)_buttonRoot.transform;
-            brt.anchorMin = new Vector2(0f, 0f);
-            brt.anchorMax = new Vector2(1f, 0f);
-            brt.pivot = new Vector2(0.5f, 0f);
-            brt.offsetMin = new Vector2(8f, 5f);
-            brt.offsetMax = new Vector2(-8f, 70f);
-            _buttonVisual = brt;
-            _buttonImage = _buttonRoot.GetComponent<Image>();
+            brt.anchorMin = Vector2.zero;
+            brt.anchorMax = Vector2.zero;
+            brt.pivot = Vector2.zero;
+            brt.anchoredPosition = Vector2.zero;
+            brt.sizeDelta = buttonSize;
+
+            var hitImage = _buttonRoot.GetComponent<Image>();
+            hitImage.color = new Color(1f, 1f, 1f, 0f);
+            hitImage.raycastTarget = true;
+
+            for (int i = 0; i < _pulseRings.Length; i++)
+            {
+                CreateAttentionFrame(
+                    _buttonRoot.transform,
+                    $"PulseRing{i + 1}",
+                    out _pulseRings[i],
+                    out _pulseRingGroups[i]);
+                _pulseRings[i].offsetMin = new Vector2(8f, 12f);
+                _pulseRings[i].offsetMax = new Vector2(-8f, -14f);
+            }
+
+            var motionGO = new GameObject("MotionRoot", typeof(RectTransform));
+            motionGO.transform.SetParent(_buttonRoot.transform, false);
+            _buttonMotionRoot = (RectTransform)motionGO.transform;
+            Stretch(_buttonMotionRoot);
+            _buttonVisual = _buttonMotionRoot;
+
+            var faceGO = new GameObject("Face", typeof(RectTransform), typeof(Image));
+            faceGO.transform.SetParent(_buttonMotionRoot, false);
+            var faceRect = (RectTransform)faceGO.transform;
+            Stretch(faceRect);
+            _buttonImage = faceGO.GetComponent<Image>();
             _buttonImage.sprite = buttonFaceSprite;
             _buttonImage.color = buttonFaceSprite != null ? Color.white : buttonColor;
+            _buttonImage.raycastTarget = false;
+
             _waveButton = _buttonRoot.GetComponent<Button>();
             _waveButton.targetGraphic = _buttonImage;
             _waveButton.transition = Selectable.Transition.ColorTint;
@@ -256,13 +342,21 @@ namespace Wassup.UI
             _waveButton.onClick.AddListener(OnWaveButtonClicked);
             BuildPointerFeedback(_buttonRoot);
 
+            CreateAttentionFrame(
+                _buttonMotionRoot,
+                "GoldRim",
+                out _goldRim,
+                out _goldRimGroup);
+            _goldRim.offsetMin = new Vector2(11f, 14f);
+            _goldRim.offsetMax = new Vector2(-11f, -17f);
+
             var labelGO = new GameObject("Label", typeof(RectTransform));
-            labelGO.transform.SetParent(_buttonRoot.transform, false);
+            labelGO.transform.SetParent(_buttonMotionRoot, false);
             var lrt = (RectTransform)labelGO.transform;
             lrt.anchorMin = Vector2.zero;
             lrt.anchorMax = Vector2.one;
-            lrt.offsetMin = Vector2.zero;
-            lrt.offsetMax = Vector2.zero;
+            lrt.offsetMin = new Vector2(18f, 10f);
+            lrt.offsetMax = new Vector2(-74f, -12f);
             _waveLabel = labelGO.AddComponent<TextMeshProUGUI>();
             _waveLabel.text = "다음 웨이브";
             _waveLabel.fontSize = buttonFontSize;
@@ -272,9 +366,273 @@ namespace Wassup.UI
             _waveLabel.raycastTarget = false;
             ApplyOutline(_waveLabel, new Color(0.02f, 0.08f, 0.2f, 1f), 0.16f);
 
+            var chevronGO = new GameObject("DoubleChevron", typeof(RectTransform), typeof(CanvasGroup));
+            chevronGO.transform.SetParent(_buttonMotionRoot, false);
+            _chevronRoot = (RectTransform)chevronGO.transform;
+            _chevronRoot.anchorMin = new Vector2(1f, 0.5f);
+            _chevronRoot.anchorMax = new Vector2(1f, 0.5f);
+            _chevronRoot.pivot = new Vector2(0.5f, 0.5f);
+            _chevronRoot.anchoredPosition = new Vector2(-42f, 3f);
+            _chevronRoot.sizeDelta = new Vector2(58f, 58f);
+            _chevronRestPosition = _chevronRoot.anchoredPosition;
+            _chevronGroup = chevronGO.GetComponent<CanvasGroup>();
+            _chevronGroup.blocksRaycasts = false;
+            _chevronGroup.interactable = false;
+            CreateChevronBar(_chevronRoot, 0, new Vector2(-10f, 8f), 45f);
+            CreateChevronBar(_chevronRoot, 1, new Vector2(-10f, -8f), -45f);
+            CreateChevronBar(_chevronRoot, 2, new Vector2(9f, 8f), 45f);
+            CreateChevronBar(_chevronRoot, 3, new Vector2(9f, -8f), -45f);
+
+            ResetButtonPose();
             _buttonRoot.SetActive(false);
 
             UiLayer.Apply(gameObject);
+        }
+
+        private void ApplyVisualState(VisualState state)
+        {
+            bool disabled = state == VisualState.Disabled;
+            if (_waveLabel != null)
+                _waveLabel.color = disabled ? disabledContentColor : Color.white;
+            if (_chevronGroup != null)
+                _chevronGroup.alpha = disabled ? 0.38f : 1f;
+            for (int i = 0; i < _chevronImages.Length; i++)
+                if (_chevronImages[i] != null)
+                    _chevronImages[i].color = disabled ? disabledContentColor : Color.white;
+            SetClearReadyVisual(state == VisualState.ClearReady);
+        }
+
+        private void SetClearReadyVisual(bool want)
+        {
+            if (_clearReadyVisual == want) return;
+            _clearReadyVisual = want;
+            if (want)
+            {
+                if (!_pointerPressed && _buttonRelease == null)
+                    StartAttention(playEntry: true);
+            }
+            else
+            {
+                StopAttention();
+            }
+        }
+
+        private void StartAttention(bool playEntry)
+        {
+            StopAttention();
+            if (!_clearReadyVisual || _pointerPressed || !isActiveAndEnabled) return;
+            _attention = StartCoroutine(AttentionRoutine(playEntry));
+        }
+
+        private void StopAttention()
+        {
+            if (_attention != null)
+            {
+                StopCoroutine(_attention);
+                _attention = null;
+            }
+            ResetButtonPose();
+        }
+
+        private IEnumerator AttentionRoutine(bool playEntry)
+        {
+            SetPulseRingsActive(true);
+
+            if (playEntry)
+            {
+                float elapsed = 0f;
+                float duration = Mathf.Max(0.01f, attentionEntryDuration);
+                while (elapsed < duration && _clearReadyVisual && !_pointerPressed)
+                {
+                    elapsed += Time.unscaledDeltaTime;
+                    float t = Mathf.Clamp01(elapsed / duration);
+                    float arc = Mathf.Sin(t * Mathf.PI);
+                    float scale = t < 0.45f
+                        ? Mathf.Lerp(1f, attentionEntryScale, t / 0.45f)
+                        : Mathf.Lerp(attentionEntryScale, 1f, (t - 0.45f) / 0.55f);
+                    ApplyAttentionPose(arc, scale, chevronKick * arc);
+                    if (_goldRimGroup != null) _goldRimGroup.alpha = 1f - t * 0.45f;
+                    yield return null;
+                }
+                ResetAttentionMotion();
+            }
+
+            float period = Mathf.Max(0.4f, attentionPeriod);
+            while (_clearReadyVisual && !_pointerPressed)
+            {
+                float elapsed = 0f;
+                while (elapsed < period && _clearReadyVisual && !_pointerPressed)
+                {
+                    elapsed += Time.unscaledDeltaTime;
+                    float hopT = Mathf.Clamp01(elapsed / Mathf.Max(0.01f, attentionHopDuration));
+                    float bump = elapsed <= attentionHopDuration ? Mathf.Sin(hopT * Mathf.PI) : 0f;
+                    ApplyAttentionPose(
+                        bump,
+                        1f + bump * attentionBumpScale,
+                        chevronKick * bump);
+
+                    if (_goldRimGroup != null)
+                    {
+                        float breath = 0.5f + 0.5f * Mathf.Sin(elapsed / period * Mathf.PI * 2f);
+                        _goldRimGroup.alpha = Mathf.Lerp(0.42f, 0.78f, breath);
+                    }
+
+                    UpdatePulseRings(elapsed);
+                    yield return null;
+                }
+                ResetAttentionMotion();
+            }
+
+            _attention = null;
+            ResetButtonPose();
+        }
+
+        private void ApplyAttentionPose(float amount, float scale, float chevronOffset)
+        {
+            if (_buttonMotionRoot != null)
+            {
+                _buttonMotionRoot.localScale = new Vector3(scale, scale, 1f);
+                _buttonMotionRoot.anchoredPosition =
+                    attentionNudge * amount + Vector2.up * (attentionHopHeight * amount);
+                _buttonMotionRoot.localRotation =
+                    Quaternion.Euler(0f, 0f, attentionLean * amount);
+            }
+            if (_chevronRoot != null)
+                _chevronRoot.anchoredPosition =
+                    _chevronRestPosition + Vector2.right * chevronOffset;
+        }
+
+        private void UpdatePulseRings(float elapsed)
+        {
+            float duration = Mathf.Max(0.01f, pulseRingDuration);
+            for (int i = 0; i < _pulseRings.Length; i++)
+            {
+                float t = (elapsed - i * pulseRingStagger) / duration;
+                bool active = t >= 0f && t <= 1f;
+                if (_pulseRingGroups[i] != null)
+                    _pulseRingGroups[i].alpha = active ? Mathf.Lerp(0.52f, 0f, t) : 0f;
+                if (_pulseRings[i] != null)
+                {
+                    float scale = active ? Mathf.Lerp(1f, pulseRingExpansion, t) : 1f;
+                    _pulseRings[i].localScale = new Vector3(scale, scale, 1f);
+                }
+            }
+        }
+
+        private void ResetAttentionMotion()
+        {
+            if (_buttonMotionRoot != null)
+            {
+                _buttonMotionRoot.anchoredPosition = Vector2.zero;
+                _buttonMotionRoot.localRotation = Quaternion.identity;
+                if (!_pointerPressed && _buttonRelease == null)
+                    _buttonMotionRoot.localScale = Vector3.one;
+            }
+            if (_chevronRoot != null)
+                _chevronRoot.anchoredPosition = _chevronRestPosition;
+        }
+
+        private void ResetButtonPose()
+        {
+            ResetAttentionMotion();
+            if (_buttonMotionRoot != null && !_pointerPressed && _buttonRelease == null)
+                _buttonMotionRoot.localScale = Vector3.one;
+            if (_goldRimGroup != null) _goldRimGroup.alpha = 0f;
+            SetPulseRingsActive(false);
+        }
+
+        private void SetPulseRingsActive(bool active)
+        {
+            for (int i = 0; i < _pulseRings.Length; i++)
+            {
+                if (_pulseRings[i] != null)
+                {
+                    _pulseRings[i].gameObject.SetActive(active);
+                    _pulseRings[i].localScale = Vector3.one;
+                }
+                if (_pulseRingGroups[i] != null) _pulseRingGroups[i].alpha = 0f;
+            }
+        }
+
+        private void CreateChevronBar(
+            RectTransform parent,
+            int index,
+            Vector2 anchoredPosition,
+            float angle)
+        {
+            var go = new GameObject($"Bar{index + 1}", typeof(RectTransform), typeof(Image));
+            go.transform.SetParent(parent, false);
+            var rect = (RectTransform)go.transform;
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = anchoredPosition;
+            rect.sizeDelta = new Vector2(7f, 28f);
+            rect.localRotation = Quaternion.Euler(0f, 0f, angle);
+            _chevronImages[index] = go.GetComponent<Image>();
+            _chevronImages[index].color = Color.white;
+            _chevronImages[index].raycastTarget = false;
+        }
+
+        private void CreateAttentionFrame(
+            Transform parent,
+            string name,
+            out RectTransform rect,
+            out CanvasGroup group)
+        {
+            var go = new GameObject(name, typeof(RectTransform), typeof(CanvasGroup), typeof(Image));
+            go.transform.SetParent(parent, false);
+            rect = (RectTransform)go.transform;
+            Stretch(rect);
+            group = go.GetComponent<CanvasGroup>();
+            group.alpha = 0f;
+            group.interactable = false;
+            group.blocksRaycasts = false;
+
+            var image = go.GetComponent<Image>();
+            image.sprite = attentionRingSprite;
+            image.color = attentionRingSprite != null ? Color.white : new Color(0f, 0f, 0f, 0f);
+            image.raycastTarget = false;
+
+            if (attentionRingSprite != null) return;
+            CreateOutlineBar(rect, "Top", clearReadyColor, new Vector2(0f, 1f), new Vector2(1f, 1f),
+                new Vector2(0.5f, 1f), new Vector2(0f, pulseRingThickness));
+            CreateOutlineBar(rect, "Bottom", clearReadyColor, new Vector2(0f, 0f), new Vector2(1f, 0f),
+                new Vector2(0.5f, 0f), new Vector2(0f, pulseRingThickness));
+            CreateOutlineBar(rect, "Left", clearReadyColor, new Vector2(0f, 0f), new Vector2(0f, 1f),
+                new Vector2(0f, 0.5f), new Vector2(pulseRingThickness, 0f));
+            CreateOutlineBar(rect, "Right", clearReadyColor, new Vector2(1f, 0f), new Vector2(1f, 1f),
+                new Vector2(1f, 0.5f), new Vector2(pulseRingThickness, 0f));
+        }
+
+        private static void CreateOutlineBar(
+            RectTransform parent,
+            string name,
+            Color color,
+            Vector2 anchorMin,
+            Vector2 anchorMax,
+            Vector2 pivot,
+            Vector2 sizeDelta)
+        {
+            var go = new GameObject(name, typeof(RectTransform), typeof(Image));
+            go.transform.SetParent(parent, false);
+            var rect = (RectTransform)go.transform;
+            rect.anchorMin = anchorMin;
+            rect.anchorMax = anchorMax;
+            rect.pivot = pivot;
+            rect.anchoredPosition = Vector2.zero;
+            rect.sizeDelta = sizeDelta;
+            var image = go.GetComponent<Image>();
+            image.color = color;
+            image.raycastTarget = false;
+        }
+
+        private static void Stretch(RectTransform rect)
+        {
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
         }
 
         private void BuildPointerFeedback(GameObject target)
@@ -286,8 +644,11 @@ namespace Wassup.UI
             down.callback.AddListener(_ =>
             {
                 if (_waveButton == null || !_waveButton.interactable || _buttonVisual == null) return;
+                _pointerPressed = true;
+                StopAttention();
                 if (_buttonRelease != null) StopCoroutine(_buttonRelease);
-                _buttonVisual.localScale = new Vector3(1.02f, 0.92f, 1f);
+                _buttonRelease = null;
+                _buttonVisual.localScale = pressScale;
             });
             trigger.triggers.Add(down);
 
@@ -303,6 +664,8 @@ namespace Wassup.UI
         private void BeginButtonRelease()
         {
             if (_buttonVisual == null) return;
+            if (!_pointerPressed && _buttonRelease == null) return;
+            _pointerPressed = false;
             if (_buttonRelease != null) StopCoroutine(_buttonRelease);
             _buttonRelease = StartCoroutine(ButtonReleaseRoutine());
         }
@@ -310,20 +673,23 @@ namespace Wassup.UI
         private IEnumerator ButtonReleaseRoutine()
         {
             Vector3 start = _buttonVisual.localScale;
-            const float duration = 0.14f;
+            float duration = Mathf.Max(0.01f, releaseDuration);
             float time = 0f;
             while (time < duration)
             {
                 time += Time.unscaledDeltaTime;
                 float k = Mathf.Clamp01(time / duration);
                 Vector3 scale = k < 0.58f
-                    ? Vector3.Lerp(start, new Vector3(1.04f, 1.04f, 1f), k / 0.58f)
-                    : Vector3.Lerp(new Vector3(1.04f, 1.04f, 1f), Vector3.one, (k - 0.58f) / 0.42f);
+                    ? Vector3.Lerp(start, Vector3.one * releaseOvershoot, k / 0.58f)
+                    : Vector3.Lerp(Vector3.one * releaseOvershoot, Vector3.one, (k - 0.58f) / 0.42f);
+                scale.z = 1f;
                 _buttonVisual.localScale = scale;
                 yield return null;
             }
             _buttonVisual.localScale = Vector3.one;
             _buttonRelease = null;
+            if (_clearReadyVisual)
+                StartAttention(playEntry: false);
         }
 
         private static void ApplyOutline(TextMeshProUGUI label, Color color, float width)
