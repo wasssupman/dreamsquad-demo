@@ -15,8 +15,8 @@
 
 ## 구현
 
-- 전체 footprint는 좌하단 SafeArea와 중앙 트레이 예약폭 안에 둔다. 약 300×170 크기와 트레이
-  위쪽 오프셋은 serialized layout 값으로 둔다.
+- 전체 footprint는 좌하단 SafeArea와 중앙 트레이 예약폭 안에 둔다. 개편 전 원점 `(40,40)`을
+  유지하고 약 300×170 크기·내부 패딩은 serialized layout 값으로 둔다.
 - **타이머 캡슐**: 작은 네이비 플레이트, `남은 시간` 보조 라벨, 큰 `m:ss`. 현 경고색과 초 tick
   punch를 유지하되 행동 버튼보다 면적·채도를 낮춘다.
 - **행동 버튼**: 타이머보다 크고 돌출된 청록/블루 젤리 면, 두꺼운 네이비 하단 그림자,
@@ -37,4 +37,5 @@
 - normal / pressed / disabled 세 상태가 정지 캡처에서도 구분된다.
 - 버튼 클릭은 한 번에 한 웨이브만 호출하고 기존 스케줄 테스트가 무회귀다.
 
-검증 2026-07-26 — 16:9·20:9 캡처, Sprite import/alpha 확인 — commit `663ad01c`.
+검증 2026-07-26 — Editor 16:9·20:9 및 Sprite import/alpha 확인. Android 실기기
+halo/cutout/touch는 대기 — commit `663ad01c`.
