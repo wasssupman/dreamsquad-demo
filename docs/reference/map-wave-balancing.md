@@ -47,10 +47,16 @@
 | 등장 몬스터 종류 | `attackUnitPool` (AttackUnitData[]) | 9종 |
 | 보스 | `bossUnit` · `bossWaveInterval` · `bossEscortMin`/`Max` | Nightmare · 5마다 · 3~4 |
 | 스폰 템포 | `intraWaveSpacingSec` | 1s |
+| **웨이브 시작 → 첫 적 유예** | `waveSpawnLeadInSec` | 2s |
 | 누수 한계(스트레스 축) | `defeatGoalReachedCount` | 10 |
 | 제한 시간 | `timerDurationSec` | 180 |
 
 **수량 결정 방식**: `minUnitsPerWave~maxUnitsPerWave` 를 **초반→후반 ramp**(초반 웨이브 ≈ min, 후반 ≈ max, jitter). 일반 웨이브 = **2종류**(countA+countB 분할). 보스 웨이브 = 보스1 + 호위(escortMin~Max) 치환.
+
+**리드인**(`waveSpawnLeadInSec`, wave-pattern unit 11): 웨이브 트리거와 첫 적 등장 사이의 유예.
+트리거 그리드(`i × interval`)·강제 호출 리스케줄·플랜 시각·브리핑 표기는 **불변**이고 스폰만 밀린다.
+올릴 때는 **마지막 스폰이 `timerDurationSec` 안에 남는지** 확인할 것(`WaveKillBudgetPinTests` 가 가드).
+작성 플랜(`WavePlanAsset`)에는 적용되지 않는다 — 그룹 상대 시각으로 직접 표현한다.
 
 **완전 수제 웨이브**: `useGeneratedWaves=false` + `spawns` 리스트에 (시각, 유닛, 수) 직접 authoring → 생성기 안 씀.
 

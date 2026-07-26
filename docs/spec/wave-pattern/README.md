@@ -6,6 +6,7 @@
 **상태**: **완료 2026-07-20** (units 0~7). 1차 구현 `0ec5f71`(리뷰 보정 완료). units 6~7 최신 인계는 `8_handoff_summary.md`, 1차 인계는 `5_handoff_summary.md`.
 2026-07-20 추가: unit 6 고정 시드(`2d8c843e`, `deck.waveSeed` 비0 = 매판 동일 패턴) · unit 7 진행 수량 램프(`2c2ecacd`, min→max 선형 + `waveCountJitter` 지터).
 2026-07-21 추가: unit 9 강제 호출 리스케줄 — `Next Wave` 가 남은 웨이브 전체를 함께 앞당긴다(아래 "시간 배정" 참조).
+2026-07-26 추가: unit 11 스폰 리드인 — 웨이브 트리거와 첫 적 등장 사이에 균일 유예(`waveSpawnLeadInSec`, 전 덱 2초).
 
 ## 구현 문서 목록
 
@@ -22,6 +23,7 @@
 | 추가 8 (2026-07-20) | `8_handoff_summary.md` | units 6~7 인계 요약 (고정 시드 + 수량 램프 + 밸런스 값) |
 | 추가 9 (2026-07-21) | `9_force_wave_reschedule.md` | `Next Wave` 강제 호출이 남은 웨이브 스케줄을 함께 앞당기도록 수정 (계약-구현 불일치) (**완료 `dc80a3fc`**) |
 | 추가 10 (2026-07-22) | `10_handoff_summary.md` | unit 9 인계 요약 |
+| 추가 11 (2026-07-26) | `11_wave_spawn_lead_in.md` | 웨이브 스폰 리드인 — 트리거와 첫 적 등장 사이 유예(전 덱 2초) |
 
 ## 공통 원칙
 
@@ -38,7 +40,11 @@
 - wave 생성은 map 생성 seed 와 독립적으로 재현 가능해야 한다. 같은 map seed 를 재사용할 수는 있지만 로그에는 wave seed 를 별도로 기록한다.
 - 기존 `AttackUnitData` SO 가 공격 유닛 풀의 source of truth 다.
 - unit pool 이 2종 미만이면 generated wave 생성은 실패하고 legacy `spawns` fallback 을 사용한다.
-- generated wave 의 lane 배정은 `localIndex % laneCount` 다.
+- generated wave 의 lane 배정은 **`deckIndex % laneCount`** 다(`deckIndex = waveIndex × 1000 + 엔트리순번`,
+  `WavePatternGenerator.EffectiveSpawnIndex`). `localIndex % laneCount` 는 `ExpandWave` 가 채우는
+  authored 후보값이고, **lane 이 3개 이상이면 deckIndex 규약이 이를 덮는다** — `1000 % 3 = 1` 이라
+  웨이브마다 lane 이 한 칸씩 회전한다. lane ≤ 2 에서만 authored 값을 clamp 해서 쓴다.
+  (2026-07-26 정정: 기존 서술은 3+ lane 실제 동작과 달랐다. 실제 규약은 `spawn-point-alert/0_*` 참조.)
 - wave 내부 스폰 순서는 deterministic interleave 다. `A,B,A,B...` 순서로 펼치고 한쪽 수량이 먼저 끝나면 남은 타입을 이어서 스폰한다.
 - `intraWaveSpacingSec` 는 round-robin 펼침에서 스폰지점 간 첫 적 간격(= 지점별 텀)이자 같은 지점 내 간격은 `spacing × laneCount` 다. 값이 작으면 모든 스폰지점이 거의 동시에 활성화된다. (2026-07-20 밸런스: 0.35 → 1.0, 스폰지점 순차 출현. `WaveA.asset` 값)
 
@@ -51,7 +57,10 @@
 - Wave 1 은 0초에 호출한다.
 - 마지막 wave 는 `timerDurationSec - waveIntervalSec` 에 예약된다.
 - 예: 10 wave 는 18초 간격으로 0~162초, 15 wave 는 12초 간격으로 0~168초에 호출된다.
-- `Next Wave` 는 다음 예정 wave 를 현재 시점으로 앞당긴다.
+- **첫 적 등장 = 트리거 + `waveSpawnLeadInSec`** (unit 11, 전 덱 2초). 리드인은 `QueueWave` 의
+  스폰 base 에만 더해진다 — 트리거 그리드·`_waveTimeShift`·플랜 `triggerTimeSec`·브리핑 표기·
+  `wave_started` 로그 시각은 전부 불변이다. 작성 플랜은 그룹 상대 시각으로 직접 표현하므로 미적용.
+- `Next Wave` 는 다음 예정 wave 를 현재 시점으로 앞당긴다(첫 적은 그 시점 + 리드인).
 - **앞당긴 만큼 남은 wave 전체가 함께 이동한다** (unit 9). 웨이브 간 간격이 보존되므로
   강제 호출 뒤 다음 wave 는 `호출 시점 + 원래 간격` 에 나온다. 플랜의 `triggerTimeSec` 은
   불변이고(브리핑·로그의 source of truth) 런타임 오프셋 `_waveTimeShift` 만 이동한다.

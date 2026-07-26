@@ -421,7 +421,7 @@ board-visualization spec 자체는 ROI 부족으로 wrap 종료. 진단/실험�
 
 - **예고선 실기기 성능** [S] · lane 당 LineRenderer 3 + SpriteRenderer 1(3레인 = 12개), 매 프레임 폴리라인 재구축. Android 미측정. 부담되면 코너 정점만 유지하는 현 구조에서 갱신 주기를 낮추는 선택지. (spawn-point-alert)
 - **보스 웨이브 예고 차별화** [S] · 보스 웨이브 lane 만 색/굵기를 달리해 구분. 현재는 크림슨 워닝 배너(boss-wave-cadence)가 별도로 존재해 중복 여부 판단 필요. (spawn-point-alert)
-- **Wave 1 사전 예고** [S] · Wave 1 은 0초 트리거라 리드 타임 확보 불가 → 현재 자연 스킵. 배치 페이즈에 미리 노출하려면 "배틀 시작 시점 예지"가 필요해 별도 결정. (spawn-point-alert)
+- ~~**Wave 1 사전 예고** [S]~~ · **2026-07-26 해소** — `wave-pattern/11`(스폰 리드인 2초) + `spawn-point-alert/3`(예보를 큐잉 웨이브 기준으로)로 Wave 1·강제 웨이브 모두 예고를 받는다. 남은 후보는 "배치 페이즈(배틀 시작 전)에 미리 노출"뿐 — 시작 시점 예지 필요. (spawn-point-alert)
 - **예고 SFX** [S] · 라인이 그어질 때 저음 경고음. ElevenLabs 파이프라인 활용. (spawn-point-alert)
 
 #### 파이프라인 커버리지 — 후속 (object-pipeline-map)

@@ -10,6 +10,10 @@ namespace Wassup.Data
         public readonly float waveIntervalSec;
         public readonly float intraWaveSpacingSec;
         public readonly IReadOnlyList<GeneratedWave> waves;
+        // wave-pattern unit 11 — 웨이브 트리거와 첫 적 등장 사이의 리드인(초). 스폰 base 에만
+        // 더해지고 triggerTimeSec 그리드는 불변. 작성 플랜(FromPlanAsset)은 0 — 그룹 상대
+        // 시각으로 같은 표현이 가능하므로 겹쳐 주면 이중 가산이 된다.
+        public readonly float spawnLeadInSec;
 
         public GeneratedWavePlan(
             int seed,
@@ -17,7 +21,8 @@ namespace Wassup.Data
             float timerDurationSec,
             float waveIntervalSec,
             float intraWaveSpacingSec,
-            IReadOnlyList<GeneratedWave> waves)
+            IReadOnlyList<GeneratedWave> waves,
+            float spawnLeadInSec = 0f)
         {
             this.seed = seed;
             this.generatorVersion = generatorVersion;
@@ -25,6 +30,7 @@ namespace Wassup.Data
             this.waveIntervalSec = waveIntervalSec;
             this.intraWaveSpacingSec = intraWaveSpacingSec;
             this.waves = waves;
+            this.spawnLeadInSec = spawnLeadInSec;
         }
     }
 

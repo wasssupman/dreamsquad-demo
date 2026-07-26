@@ -1470,6 +1470,7 @@ namespace Wassup.Bridge
             _battleClock = 0.0;
             _killScoreTotal = 0; // battle-score-formula unit 2 — 계약 9 (시계와 짝)
             _waveTimeShift = 0f; // wave-pattern unit 9 — 계약 9 (시계와 짝)
+            _spawnAlertForecast = null; // spawn-point-alert unit 3 — 계약 9 (시계와 짝)
             _battleTimeScaleEntity = Entity.Null;
             // range-preview unit 3 — 매치 종료 시 격자 표시 무조건 해제(비행 중
             // 종료로 impact drain 이 못 지운 텔레그래프 잔상 방지).
@@ -1575,8 +1576,7 @@ namespace Wassup.Bridge
             _nextWaveIndex = 0;
             _waveTimeShift = 0f; // wave-pattern unit 9 — 강제 호출 오프셋은 매치 경계에서 초기화
             _usingAuthoredPlan = false;
-            _spawnAlertForecast = null;
-            _spawnAlertForecastWaveIndex = -1;
+            _spawnAlertForecast = null;   // spawn-point-alert unit 3 — 이전 판 예고 이월 방지
 
             // 작성 플랜 우선. 변환 실패 시 아래 seed 경로로 fall-through.
             if (_authoredPlan != null)
@@ -1626,13 +1626,19 @@ namespace Wassup.Bridge
         private float ScheduledWaveTime(int waveIndex) =>
             _wavePlan.waves[waveIndex].triggerTimeSec + _waveTimeShift;
 
+        // wave-pattern unit 11 — 웨이브 트리거와 첫 적 등장 사이의 리드인. 스폰 base 에만
+        // 더한다. ScheduledWaveTime(트리거 그리드)·_waveTimeShift 산식에는 절대 넣지 않는다 —
+        // 섞으면 강제 호출 연타마다 리드인이 누적 왜곡된다.
+        private float SpawnLeadInSec => _wavePlan.spawnLeadInSec;
+
         private void QueueDueWaves(float elapsedSec)
         {
             if (!_usingGeneratedWaves || _wavePlan.waves == null) return;
             while (_nextWaveIndex < _wavePlan.waves.Count &&
                    elapsedSec + 0.0001f >= ScheduledWaveTime(_nextWaveIndex))
             {
-                QueueWave(_wavePlan.waves[_nextWaveIndex], ScheduledWaveTime(_nextWaveIndex), false, elapsedSec);
+                QueueWave(_wavePlan.waves[_nextWaveIndex],
+                    ScheduledWaveTime(_nextWaveIndex) + SpawnLeadInSec, false, elapsedSec);
                 _nextWaveIndex++;
             }
         }
@@ -1643,38 +1649,22 @@ namespace Wassup.Bridge
         public bool NextWaveHasNext => NextWaveAvailable && _nextWaveIndex < _wavePlan.waves.Count;
         public int NextWaveNumber => _nextWaveIndex + 1;
 
-        // spawn-point-alert unit 1 — 다음 예정 웨이브의 lane 별 첫 스폰 절대 시각 예보(read-only).
-        // SpawnAlertPresenter 폴링 전용. _nextWaveIndex 가 바뀔 때만 재계산(캐시) —
-        // ForceNextWave 의 인덱스 증가로 캐시가 자연 무효화된다. 반환 배열은 캐시 참조라 수정 금지.
+        // spawn-point-alert unit 3 — **마지막으로 큐잉된 웨이브**의 lane 별 첫 스폰 절대 시각
+        // (read-only). SpawnAlertPresenter 폴링 전용. 미래 웨이브 예측이 아니라 QueueWave 가
+        // 큐잉 시점에 실제 스폰 base 로 1회 계산해 넣는다 — 실스폰과 어긋날 여지가 없고,
+        // 자동/강제/Wave 1 이 모두 같은 경로라 리드인(wave-pattern unit 11) 만큼의 창을 똑같이
+        // 얻는다. 반환 배열은 캐시 참조라 수정 금지.
         private float[] _spawnAlertForecast;
-        private int _spawnAlertForecastWaveIndex = -1;
 
         public bool TryGetSpawnAlertForecast(out float battleClockSec, out float[] laneFirstSpawnSec)
         {
             battleClockSec = (float)_battleClock;
             laneFirstSpawnSec = null;
-            if (!_running || !_usingGeneratedWaves || _wavePlan.waves == null) return false;
-            if (!_generatedMap.IsCreated || _generatedMap.spawns.Length == 0) return false;
-
-            // 웨이브가 큐잉되는 순간 _nextWaveIndex 가 넘어가지만, 그 웨이브의 뒷 lane 들은 아직
-            // 나오지 않았다(레인 간 intraWaveSpacing 간격). 인덱스를 그대로 따르면 뒷 lane 예고가
-            // 자기 유닛보다 먼저 사라지므로, 캐시된 예보에 미래 스폰이 남아 있으면 계속 서빙한다.
-            if (_spawnAlertForecast != null && LastSpawnSec(_spawnAlertForecast) > battleClockSec)
-            {
-                laneFirstSpawnSec = _spawnAlertForecast;
-                return true;
-            }
-
-            if (_nextWaveIndex >= _wavePlan.waves.Count) return false;
-
-            if (_spawnAlertForecastWaveIndex != _nextWaveIndex)
-            {
-                var wave = _wavePlan.waves[_nextWaveIndex];
-                // wave-pattern unit 9 — 예고도 강제 호출로 밀린 실제 예정 시각을 따라야 한다.
-                _spawnAlertForecast = WavePatternGenerator.FirstSpawnTimesPerLane(
-                    wave, ScheduledWaveTime(_nextWaveIndex), _generatedMap.spawns.Length, _wavePlan.intraWaveSpacingSec);
-                _spawnAlertForecastWaveIndex = _nextWaveIndex;
-            }
+            if (!_running || _spawnAlertForecast == null) return false;
+            // 미래 스폰이 남아 있는 동안만 서빙한다. 웨이브의 뒷 lane 들은 레인 간
+            // intraWaveSpacing 간격으로 늦게 나오므로, 마지막 lane 스폰까지 유지해야 뒷 lane
+            // 예고가 자기 유닛보다 먼저 사라지지 않는다.
+            if (LastSpawnSec(_spawnAlertForecast) <= battleClockSec) return false;
             laneFirstSpawnSec = _spawnAlertForecast;
             return true;
         }
@@ -1734,12 +1724,12 @@ namespace Wassup.Bridge
             _waveTimeShift -= ScheduledWaveTime(_nextWaveIndex) - elapsedSec;
 
             GameManager.Instance?.Logger?.RecordWaveEvent("wave_forced", wave.waveIndex, elapsedSec, true);
-            QueueWave(wave, elapsedSec, true, elapsedSec);
+            // unit 11 — 강제 호출도 리드인을 따른다(당긴 웨이브의 첫 적도 리드인 뒤에 나온다).
+            QueueWave(wave, elapsedSec + SpawnLeadInSec, true, elapsedSec);
             _nextWaveIndex++;
-            // spawn-point-alert unit 1 — 강제 호출은 예정 시각을 무효화한다(스폰이 지금 일어남).
-            // 캐시를 비워야 "예고 없이 즉시 스폰" 계약이 유지된다.
-            _spawnAlertForecast = null;
-            _spawnAlertForecastWaveIndex = -1;
+            // spawn-point-alert unit 3 — 예고는 QueueWave 가 이 웨이브 기준으로 채운다.
+            // (unit 1 의 "강제 호출은 예고 없이 즉시 스폰" 계약은 리드인 도입으로 폐기 —
+            //  당긴 웨이브도 리드인만큼의 예고 창을 갖는다.)
         }
 
         private void QueueWave(GeneratedWave wave, float baseTriggerTimeSec, bool forced, float elapsedSec)
@@ -1749,6 +1739,11 @@ namespace Wassup.Bridge
             int baseDeckIndex = wave.waveIndex * WavePatternGenerator.DeckIndexStride;
             for (int i = 0; i < entries.Count; i++)
                 _pending.Add(new PendingSpawnEntry { entry = entries[i], deckIndex = baseDeckIndex + i });
+
+            // spawn-point-alert unit 3 — 예고는 **이 웨이브의 실제 스폰 base** 로 계산한다(예측 아님).
+            // 자동·강제·Wave 1 이 모두 이 경로를 지나므로 예고 창이 균일하게 생긴다.
+            _spawnAlertForecast = WavePatternGenerator.FirstSpawnTimesPerLane(
+                wave, baseTriggerTimeSec, laneCount, _wavePlan.intraWaveSpacingSec);
 
             GameManager.Instance?.Logger?.RecordWaveEvent("wave_started", wave.waveIndex, elapsedSec, forced);
             Debug.Log($"[BattleBridge] Wave {wave.waveIndex + 1} queued ({entries.Count} spawns, forced={forced}). {WavePatternGenerator.FormatSummary(wave)}");

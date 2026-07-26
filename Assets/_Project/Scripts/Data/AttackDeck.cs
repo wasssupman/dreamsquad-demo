@@ -39,6 +39,14 @@ namespace Wassup.Data
         [Tooltip("웨이브 간 고정 간격(초). 0=제한시간/웨이브수 파생(기존), >0=이 값 고정(무한 모드).")]
         public float fixedWaveIntervalSec = 0f;
 
+        // wave-pattern unit 11 — 웨이브 트리거와 첫 적 등장 사이의 균일 리드인(초).
+        // 트리거 그리드(i*interval)·리스케줄(_waveTimeShift)·플랜 시각은 불변이고 QueueWave 의
+        // 스폰 base 만 밀린다. 0 = 기존 동작(트리거 = 첫 스폰).
+        // 작성 플랜(PerGroupTimeline)에는 적용되지 않는다 — 그룹 상대 시각으로 같은 표현이
+        // 가능해 겹쳐 주면 이중 가산이 된다(그래서 값은 플랜에 실어 FromPlanAsset 이 0).
+        [Tooltip("웨이브 시작과 첫 적 등장 사이의 리드인(초). 0=즉시 스폰(기존). 작성 플랜에는 미적용.")]
+        public float waveSpawnLeadInSec = 2f;
+
         [Header("Boss Waves")]
         [Tooltip("보스 웨이브에 스폰할 보스 유닛. null이면 보스 웨이브 없음. attackUnitPool에 넣지 말 것 — 생성기가 방어적으로 제외한다.")]
         public AttackUnitData bossUnit;

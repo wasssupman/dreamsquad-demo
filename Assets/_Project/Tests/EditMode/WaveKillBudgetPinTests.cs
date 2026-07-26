@@ -114,14 +114,17 @@ namespace Wassup.Tests.EditMode
             for (int i = 0; i < plan.waves.Count; i++)
             {
                 var wave = plan.waves[i];
+                // wave-pattern unit 11 — 리드인만큼 스폰 base 가 밀리므로 pin 도 같은 base 를
+                // 써야 한다. 트리거만 보면 실제보다 리드인만큼 이른 값을 재 pin 이 무력화된다.
                 var entries = WavePatternGenerator.ExpandWave(
-                    wave, wave.triggerTimeSec, 4, deck.intraWaveSpacingSec);
+                    wave, wave.triggerTimeSec + plan.spawnLeadInSec, 4, deck.intraWaveSpacingSec);
                 for (int e = 0; e < entries.Count; e++)
                     if (entries[e].triggerTimeSec > last) last = entries[e].triggerTimeSec;
             }
 
             Assert.Less(last, deck.timerDurationSec,
-                $"마지막 스폰 {last:F2}s 가 제한시간 {deck.timerDurationSec}s 를 넘는다 — 정상 클리어 불가");
+                $"마지막 스폰 {last:F2}s 가 제한시간 {deck.timerDurationSec}s 를 넘는다 "
+                + $"(리드인 {plan.spawnLeadInSec:F1}s 포함) — 정상 클리어 불가");
         }
     }
 }

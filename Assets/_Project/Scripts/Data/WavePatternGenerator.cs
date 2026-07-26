@@ -33,7 +33,8 @@ namespace Wassup.Data
                 deck.bossEscortMin,
                 deck.bossEscortMax,
                 deck.waveCountJitter,
-                deck.fixedWaveIntervalSec);
+                deck.fixedWaveIntervalSec,
+                deck.waveSpawnLeadInSec);
         }
 
         public static GeneratedWavePlan Generate(
@@ -51,7 +52,8 @@ namespace Wassup.Data
             int bossEscortMin = 0,
             int bossEscortMax = 0,
             int waveCountJitter = 1,
-            float fixedIntervalSec = 0f)
+            float fixedIntervalSec = 0f,
+            float spawnLeadInSec = 0f)
         {
             if (attackUnitPool == null) throw new ArgumentNullException(nameof(attackUnitPool));
 
@@ -127,7 +129,10 @@ namespace Wassup.Data
                 }
             }
 
-            return new GeneratedWavePlan(resolvedSeed, generatorVersion, duration, interval, spacing, waves);
+            // wave-pattern unit 11 — 리드인은 플랜에 실려 QueueWave 의 스폰 base 에서만 쓰인다.
+            // 위 triggerTimeSec(i*interval) 그리드는 이 값과 무관하게 불변이다.
+            return new GeneratedWavePlan(resolvedSeed, generatorVersion, duration, interval, spacing, waves,
+                math.max(0f, spawnLeadInSec));
         }
 
         // wave-authoring-test-mode unit 2/6 — 에디터 작성 플랜을 런타임 GeneratedWavePlan 으로.
@@ -159,6 +164,8 @@ namespace Wassup.Data
                 cumulativeStart += aw != null ? math.max(0f, aw.durationSec) : 0f;
             }
 
+            // spawnLeadInSec = 0 (기본값) — 작성 플랜은 그룹 상대 시각(triggerTimeSec ∈ [0,duration])
+            // 으로 리드인을 직접 표현한다. 덱 값을 겹쳐 주면 이중 가산이다(unit 11).
             return new GeneratedWavePlan(0, 0, plan.timerDurationSec, 0f, 0f, waves);
         }
 
