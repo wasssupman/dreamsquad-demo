@@ -41,7 +41,9 @@ namespace Wassup.Core
         NoEventPoint,        // 이 host 에는 그 트리거의 사건 지점이 없다
         NeedsEnemyTargeting, // 적을 겨누지 않는 host (힐러)
         NeedsDamageOutput,   // 데미지 output 이 없는 host
-        NeedsHomingRoute,    // homing 단발 경로에만 주입되는 mod
+        // 재조준 가능한 경로(homing/directional)를 요구하는 mod. 이름은 개통 전 어휘가
+        // 남은 것 — 지금 의미는 "Ballistic/Grenade 처럼 착탄이 고정된 경로는 불가"다.
+        NeedsHomingRoute,
         NeedsTargetContext,  // "그 공격의 대상"이 확정되지 않는 host
         DuplicateState,      // 이미 같은 상태 컴포넌트를 갖고 있다
         // unit 3 — host 가 대상을 못 주는데 폴백 반경(payload.tileRange)마저 0.

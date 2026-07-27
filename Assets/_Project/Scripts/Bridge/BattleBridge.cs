@@ -3317,6 +3317,7 @@ namespace Wassup.Bridge
                 bounceRemaining = req.bounceRemaining,
                 bounceTileRange = req.bounceTileRange,
                 bounceDamageMul = req.bounceDamageMul,
+                retargetTileRange = req.retargetTileRange,
                 // nightmare-catcher unit 1 — shooter attribution, verbatim copy.
                 // Null (bridge-cast skills) = no threat credit.
                 owner = req.owner,

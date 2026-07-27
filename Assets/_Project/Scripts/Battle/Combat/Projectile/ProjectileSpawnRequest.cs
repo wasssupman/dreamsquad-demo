@@ -74,6 +74,9 @@ namespace Wassup.Battle.Combat.Projectile
         public int bounceTileRange;
         public float bounceDamageMul;
 
+        // 대상 소멸 시 재조준 반경(Chebyshev 타일). 0 = 기존 동작(소멸).
+        public int retargetTileRange;
+
         // ── Shooter attribution (nightmare-catcher unit 1) ───────────────────
         // Copied verbatim onto ProjectileState by the drain. Default Entity.Null
         // (bridge-cast skills) = no threat attribution.

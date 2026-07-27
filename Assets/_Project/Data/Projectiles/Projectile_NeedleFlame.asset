@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: Projectile_NeedleFlame
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.ProjectileData
   id: needle_flame
-  speed: 63.1
+  speed: 1
   hitThreshold: 0.35
-  visualScale: 1.2
+  visualScale: 8
   visualHeightOffset: 0.7
   projectilePrefab: {fileID: 935282937514642825, guid: d6df65fd448514925a9696081cca2240, type: 3}
   hitPrefab: {fileID: 0}

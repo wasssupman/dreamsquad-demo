@@ -43,7 +43,7 @@ if (reason != DcRejectReason.None) { Debug.LogWarning(...reason...); continue; }
 - ProjectileToTarget 의 `TargetsEnemies` 게이트(`:493`, unit-trigger 계약 10)
 - HeavyStrike 의 `HasPositiveDamageOutput` 게이트
 - LethalTimer / DreamCocoon 이중 상태 preflight
-- attackMods 의 `ProjectileRef` 유무 게이트 → `route == Homing` 으로 **강화**
+- attackMods 의 `ProjectileRef` 유무 게이트 → 실제 발사 경로 판정으로 **강화** (unit 1 시점 `Homing` 전용 → unit 6 에서 `Directional` 추가)
 
 **남기는 것**: `magnitude <= 0`, `projectile == null`, `duration <= 0`, gate combo, `attachType` 제한 — 전부 카드 데이터 검증이라 unit 0 범위 밖이다(계약 유지).
 
@@ -53,7 +53,7 @@ if (reason != DcRejectReason.None) { Debug.LogWarning(...reason...); continue; }
 |---|---|---|
 | 비수 × 폭탄맨·캐스터4 | 거절 `NoEventPoint` | **unit 3·4** |
 | 빙결·밀치기·자장가·출혈·동상 × 폭탄맨·캐스터4 | 거절 `NoEventPoint` → 사건 개통 후에도 `NeedsTargetContext` | **영구**(계약 9) |
-| 통통구슬 × 머신거너·아틸러리·폭탄맨 | 거절 `NeedsHomingRoute` | **별도 spec**(방향탄 bounce 개통) |
+| 통통구슬 × 머신거너·아틸러리·폭탄맨 | 거절 `NeedsHomingRoute` | **머신거너는 unit 6 에서 개통**(방향탄 허용). 아틸러리·폭탄맨은 착탄 고정 경로라 영구 제외 |
 | 비수 × 힐러 | 거절 `NeedsEnemyTargeting` | 영구 |
 | 그 외 현행 부착 가능 조합 | **변화 없음** | — |
 

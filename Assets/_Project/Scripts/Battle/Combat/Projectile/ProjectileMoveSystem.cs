@@ -31,6 +31,44 @@ namespace Wassup.Battle.Combat.Projectile
             float dt = SystemAPI.Time.DeltaTime;
             var ecb = new EntityCommandBuffer(Allocator.Temp);
             var transformLookup = SystemAPI.GetComponentLookup<LocalTransform>(isReadOnly: true);
+            // DamageApplicationSystem 은 DeadTag 가 붙은 순간부터 IncomingDamage 를 뽑지
+            // 않는다 — 즉 "죽었지만 아직 파괴 전"인 창에 도착한 투사체는 시체에 데미지를
+            // append 하고 그대로 증발한다. 재조준은 그 창까지 덮어야 의미가 있다.
+            var deadLookup = SystemAPI.GetComponentLookup<Wassup.Battle.Units.DeadTag>(isReadOnly: true);
+
+            // 재조준(retargetTileRange > 0)용 적 후보. 그런 투사체가 하나도 없으면
+            // 스냅샷을 만들지 않는다 — 기존 투사체만 나는 프레임의 비용을 0 으로 둔다.
+            bool anyRetarget = false;
+            foreach (var ps in SystemAPI.Query<RefRO<ProjectileState>>().WithAll<ProjectileTag>())
+                if (ps.ValueRO.retargetTileRange > 0 && ps.ValueRO.movement == MovementKind.HomingToEntity)
+                { anyRetarget = true; break; }
+
+            var retargetEntities = default(NativeArray<Entity>);
+            var retargetPositions = default(NativeArray<float3>);
+            float tileSize = 1f;
+            int2 gridSize = new int2(128, 128);
+            float3 ffOrigin = float3.zero;
+            if (anyRetarget)
+            {
+                if (SystemAPI.TryGetSingleton<Wassup.Battle.Effects.FlowFieldSingleton>(out var flowField))
+                {
+                    tileSize = flowField.tileSize;
+                    gridSize = flowField.gridSize;
+                    ffOrigin = flowField.origin;
+                }
+                // AttackUnitTag = 적 전용 태그이자 이 풀의 유일한 진영 필터다
+                // (FactionTag 는 디펜더·적·해저드가 전부 갖고 있어 아무것도 안 거른다).
+                var q = SystemAPI.QueryBuilder()
+                    .WithAll<LocalTransform, Wassup.Battle.Units.AttackUnitTag>()
+                    .WithNone<Wassup.Battle.Units.DeadTag>()
+                    .WithNone<Wassup.Battle.Movement.PastGoalTag>()
+                    .Build();
+                retargetEntities = q.ToEntityArray(Allocator.Temp);
+                var xf = q.ToComponentDataArray<LocalTransform>(Allocator.Temp);
+                retargetPositions = new NativeArray<float3>(xf.Length, Allocator.Temp);
+                for (int i = 0; i < xf.Length; i++) retargetPositions[i] = xf[i].Position;
+                xf.Dispose();
+            }
 
             foreach (var (transform, projectile, entity) in
                      SystemAPI.Query<RefRW<LocalTransform>, RefRW<ProjectileState>>()
@@ -42,12 +80,31 @@ namespace Wassup.Battle.Combat.Projectile
                     case MovementKind.HomingToEntity:
                     {
                         var target = projectile.ValueRO.target;
-                        if (target == Entity.Null || !transformLookup.HasComponent(target))
+                        if (target == Entity.Null || !transformLookup.HasComponent(target)
+                            || deadLookup.HasComponent(target))
                         {
                             // Target gone (destroyed by DamageApplicationSystem or a
                             // prior hit) — never apply damage to a ghost target.
-                            ecb.DestroyEntity(entity);
-                            break;
+                            //
+                            // 단 retargetTileRange > 0 인 투사체는 파괴 대신 **현재 위치
+                            // 기준 반경 안에서 다시 겨눈다**. 니들처럼 N회에 한 번 나오는
+                            // 자원은 대상이 먼저 죽으면 그 주기가 통째로 버려지기 때문.
+                            // 기존 투사체(화살 등)는 이 값이 0 이라 동작이 그대로다.
+                            int rr = projectile.ValueRO.retargetTileRange;
+                            int repick = -1;
+                            if (rr > 0 && retargetPositions.IsCreated)
+                            {
+                                float3 here = transform.ValueRO.Position;
+                                repick = BounceRetarget.FindNext(
+                                    here, -1, retargetPositions, rr, tileSize, gridSize, ffOrigin);
+                            }
+                            if (repick < 0)
+                            {
+                                ecb.DestroyEntity(entity);
+                                break;
+                            }
+                            target = retargetEntities[repick];
+                            projectile.ValueRW.target = target;
                         }
 
                         float3 currentPos = transform.ValueRO.Position;
@@ -164,6 +221,9 @@ namespace Wassup.Battle.Combat.Projectile
                         break;
                 }
             }
+
+            if (retargetEntities.IsCreated) retargetEntities.Dispose();
+            if (retargetPositions.IsCreated) retargetPositions.Dispose();
 
             ecb.Playback(state.EntityManager);
             ecb.Dispose();

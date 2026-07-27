@@ -395,63 +395,60 @@ namespace Wassup.Battle.Combat.Projectile
                         sweptIdx.Dispose();
                         sweptDist.Dispose();
 
-                        if (budget != projectile.ValueRO.pierceRemaining)
-                        {
-                            var next = projectile.ValueRO;
-                            next.pierceRemaining = budget;
-                            ecb.SetComponent(entity, next);
-                        }
                         // Out of budget = spent; impactReached = flew its full range.
+                        var next = projectile.ValueRO;
+                        next.pierceRemaining = budget;
+                        bool dirty = budget != projectile.ValueRO.pierceRemaining;
                         survives = budget > 0 && !projectile.ValueRO.impactReached;
 
                         // ── 통통구슬 × 방향탄 (defender-directional-volley 후속 결정) ──
-                        // pierce 예산이 0 이 된 순간(= 이 탄이 더 뚫을 수 없을 때) bounce 가
+                        // 이 탄이 더 뚫을 수 없게 된 순간(예산 소진 또는 사거리 끝) bounce 가
                         // 남아 있으면, 마지막으로 맞힌 적에서 다음 적으로 **호밍 전환**해
                         // 재비행한다. 같은 엔티티를 유지하므로 뷰/트레일이 그대로 이어진다
-                        // (SingleSplash bounce 와 동일 원리).
+                        // (SingleSplash bounce 와 동일 원리 — ViewPool 은 Homing/Directional 을
+                        // 특수 처리하지 않아 전환 프레임에 끊기지 않는다).
                         //
                         // ⚠ 머신건 탄은 `pierceCount: 1` 이라 **관통이 없다** — 첫 적을
                         // 맞히는 즉시 예산이 0 이 되고 곧바로 튕긴다. 즉 실사용 형태는
                         // "관통하다 튕김"이 아니라 "**맞히고 튕김**"이다. pierce > 1 인 탄이
-                        // 생기면 그때 비로소 "다 뚫고 나서 튕김"이 된다 — 같은 코드가
-                        // 두 경우를 모두 덮는다.
+                        // 생기면 같은 코드가 "다 뚫고 나서 튕김"이 된다.
                         //
-                        // 데미지 예산이 곱해지지 않는 이유: 전환 시점에 pierce 는 이미 0 이라
-                        // 스윕으로 더 맞힐 수 없고, 이후는 bounce 횟수만큼만 추가된다.
-                        if (!survives && budget <= 0 && projectile.ValueRO.bounceRemaining > 0
-                            && lastVictimIdx >= 0)
+                        // 계약 2가지:
+                        //  · **바운스는 마지막 히트 프레임에서만** 발생한다. 아무도 못 맞히고
+                        //    사거리 끝에 도달하면 튕길 기준점이 없으므로 그대로 소멸한다
+                        //    (프레임을 넘겨 lastVictim 을 기억하는 상태는 만들지 않는다).
+                        //  · **PathHitRecord 를 승계하지 않는다.** 전환 후엔 SingleSplash 라
+                        //    그 버퍼를 읽지 않으므로, pierce>1 탄이 A→B 를 뚫고 B 에서 A 로
+                        //    다시 튕길 수 있다 — SingleSplash 바운스의 A→B→A 선례와 같다.
+                        if (!survives && next.bounceRemaining > 0 && lastVictimIdx >= 0)
                         {
                             int nextIdx = BounceRetarget.FindNext(
                                 lastVictimPos, lastVictimIdx, aoePositions,
-                                projectile.ValueRO.bounceTileRange, tileSize, gridSize, ffOrigin);
+                                next.bounceTileRange, tileSize, gridSize, ffOrigin);
                             if (nextIdx >= 0)
                             {
-                                float mul = projectile.ValueRO.bounceDamageMul;
-                                var next = projectile.ValueRO;
                                 next.movement = MovementKind.HomingToEntity; // 방향 → 호밍
                                 next.payload = PayloadKind.SingleSplash;     // 스윕 → 단일 착탄
                                 next.target = aoeEntities[nextIdx];
                                 next.impactReached = false;
-                                next.bounceRemaining = projectile.ValueRO.bounceRemaining - 1;
-                                next.damage = projectile.ValueRO.damage * mul;
-                                ecb.SetComponent(entity, next);
+                                next.bounceRemaining -= 1;
+                                next.damage *= next.bounceDamageMul;
 
-                                if (mul != 1f && outputLookup.HasBuffer(entity))
-                                {
-                                    var buf = outputLookup[entity];
-                                    for (int oi = 0; oi < buf.Length; oi++)
-                                    {
-                                        var e2 = buf[oi];
-                                        if (e2.value.kind == AttackOutputKind.Damage)
-                                        {
-                                            e2.value.magnitude *= mul;
-                                            buf[oi] = e2;
-                                        }
-                                    }
-                                }
+                                // outputs 스냅샷을 떼어 **Damage-only 계약을 유지**한다.
+                                // PathHit arm 은 state.damage 하나만 쓰지만 SingleSplash arm 은
+                                // outputs 가 있으면 전 kind(Stat/Stack/Heal)를 디스패치한다 —
+                                // 그대로 두면 "경로 히트엔 안 걸리던 슬로우가 바운스 홉에만
+                                // 걸리는" 비대칭이 생긴다. 기획이 방향탄에 상태이상 output 을
+                                // 붙이는 순간 코드 변경 없이 열리는 구멍이라 여기서 닫는다.
+                                // (버퍼가 없으면 SingleSplash 는 state.damage 폴백을 탄다.)
+                                if (outputLookup.HasBuffer(entity))
+                                    ecb.RemoveComponent<AttackOutputElement>(entity);
+
+                                dirty = true;
                                 survives = true;
                             }
                         }
+                        if (dirty) ecb.SetComponent(entity, next);
                         break;
                     }
 

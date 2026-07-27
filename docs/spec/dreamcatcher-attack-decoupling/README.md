@@ -16,7 +16,7 @@
 | 비수 | 해저드 캐스터 4종 | `attackRange 0` → `bestTarget` 없음. 실제 사건은 Effects 의 `HazardCastSystem` | `Defender_{Fire,Ice,Poison,Blocking}Caster.asset` |
 | 빙결·밀치기·자장가 `ApplyCcToTarget` | 폭탄맨·캐스터4 | 위와 동일(같은 arm) | `AttackSystem.cs:1246~1290` |
 | 출혈·동상 `ApplyStackToTarget` | 폭탄맨·캐스터4 | 위와 동일 | 〃 |
-| 통통구슬 `ProjectileBounce` | 머신거너 | 주입이 homing `else` 분기에만 + 재타겟이 `SingleSplash` arm 에만. MG 탄은 `DirectionalLinear × PathHit` | `AttackSystem.cs:801~846` · `ProjectileHitSystem.cs:265` |
+| 통통구슬 `ProjectileBounce` | 머신거너 | 주입이 homing `else` 분기에만 + 재타겟이 `SingleSplash` arm 에만. MG 탄은 `DirectionalLinear × PathHit` → **unit 6 에서 개통** | `AttackSystem.cs:801~846` · `ProjectileHitSystem.cs:265` |
 | 통통구슬 | 폭탄맨 | `ProjectileRef` 는 있어 부착 게이트를 통과하나, 발사가 `GrenadeToCell` 하드코딩이라 주입 지점에 닿지 않음 | `AttackSystem.cs:181` |
 | 통통구슬 | 아틸러리 | `BallisticArcToPoint` — 기존 계약 4 의 **의도된** 제외 | `Projectile_ArtilleryShell.asset` `flightMode: 1` |
 | 끝을 보는 눈 `FrontmostTarget` | 머신거너 | facing 유닛은 우선순위 보너스를 포기(`fmChosenIsPriority = false`) | `AttackSystem.cs:470~476` |
@@ -30,7 +30,7 @@
 - **축 A — 사건·타게팅 탈결합**: RESOLVE 에 **구조적으로 도달할 수 없는 host**(폭탄맨·캐스터)에 대체 사건 지점을 준다. 페이로드가 대상을 못 받으면 스스로 고른다.
 - **축 B — 적용성 판정 수렴**: `WouldApply` 에 임시방편으로 쌓인 host 게이트를 단일 판정으로 모으고, **게이트를 통과하는데 무효인 조합**을 없앤다. 지원 여부는 코드가 아니라 **선언된 데이터**로 설명된다.
 
-방향탄 bounce 개통(통통구슬×머신거너)은 **별도 spec** 이다 — `defender-directional-volley/README.md:79` 의 사용자 결정("차단이 아니라 개통")이 살아 있고, 볼리 arm 적재 + `PathHit` pierce 소진 후 재조준이라는 독립된 검증 질문을 갖는다. 이 spec 은 그 조합을 **거절 상태로 명시**만 하고 개통하지 않는다.
+~~방향탄 bounce 개통은 별도 spec~~ — **rev2(2026-07-28): 이 spec 안에서 개통했다**(`6_projectile_survival.md`). 애초에 이 spec 을 시작한 동기가 "머신거너에 바운스가 안 걸린다"였고, 판정 계층(unit 1)까지 세워 놓고 개통을 미루는 건 그 동기를 남겨두는 것이었다. unit 1 의 거절 표시는 개통 전 중간 상태로 읽는다.
 
 ## 검증 질문
 
@@ -81,7 +81,7 @@
 | 데이터 SO | `mechanics` / `attackMods` | `payload.tileRange` 를 `ProjectileToTarget` 폴백 반경으로 개통(unit 2) + 지원 행렬 데이터 신설(unit 0) |
 | 스폰 진입점 | `AttackSystem` RESOLVE 1곳 | **+ 폭탄맨 발사 지점(unit 3) + 캐스트 드레인(unit 4)**. 기존 캐리어 패턴 재사용, 신규 시스템 0 |
 | ECS 컴포넌트 (Combat) | `DcTriggerSlot` | 변경 없음(폴백 반경은 slot 의 기존 `tileRange`) |
-| 시뮬 시스템 | `ProjectileMove`/`ProjectileHit` | 무변경 — 니들은 여전히 `HomingToEntity × SingleSplash` |
+| 시뮬 시스템 | `ProjectileMove`/`ProjectileHit` | 니들 자체는 `HomingToEntity × SingleSplash` 유지. unit 6 이 **생존 규칙 2개**를 얹었다(방향탄 bounce 전환 · 대상 사망 재조준) |
 | 이벤트 큐 | 21채널 | **+1 = 22채널**(캐스트 사건). `CLAUDE.md` §"ECS 맥락 분리" 목록도 같은 커밋에서 갱신 |
 | 시스템 순서 | `HazardCastSystem`·`AttackSystem` 둘 다 `[UpdateAfter(MovementSystem)]`, 상호 제약 **없음** | `HazardCastSystem [UpdateBefore(AttackSystem)]` 명시 — 같은 프레임 소비 보장(사이클 없음: 확인됨) |
 | View/Pool · 씬 wiring | — | N/A — 신규 MonoBehaviour·프리팹 없음 |
@@ -96,14 +96,14 @@
 
 ## 스코프 밖 (명시적)
 
-- **방향탄 bounce 개통** — 별도 spec. 이 spec 은 통통구슬×{머신거너, 폭탄맨, 아틸러리}를 거절 상태로 선언만 한다. 그 사이 카드 1장의 유효 host 가 궁수·레인저·마크스맨·스나이퍼·스카우트·대포 계열로 좁아진다(수용된 트레이드오프).
+- ~~방향탄 bounce 개통~~ — **unit 6 에서 완료**. 통통구슬×머신거너가 열렸고, 폭탄맨·아틸러리는 착탄 고정 경로라 의도적으로 남은 제외다.
 - **적/보스 AttackN 게이트 개방** — dc arm 3곳이 `defenderTagLookup` 게이트다. 단 이쪽은 **이미 표면화돼 있다**(`BattleBridge.cs:5596` 이 loud warning 후 skip, "개방 시 이 가드를 함께 푼다" 주석). 그 가드가 계속 유일한 창구다.
 - **밸런스** — "공격 1회"의 실제 빈도는 유닛마다 다르다(머신거너 볼리 1회 = 10발). 구조를 먼저 세우고 시트에서 조정한다.
 - **`unit-trigger` 계약 10(힐러 게이트) 철회** — unit 2 가 진영 Enemy 고정으로 원인을 없애면 철회 대상이지만, 철회 판단은 unit 2 완료 기준에서. 그 전까지 살아 있어야 한다.
 
 ## 후속 후보
 
-- **방향탄 bounce 개통 spec** [M] · 볼리 arm 이 bounce 필드를 template·캐리어에 적재 + `PathHit` pierce 소진 후 재조준 + `pierceCount > 1` 합성 규칙(예산 곱 방지).
+- **머신거너 bounce 밸런스** [S] · 볼리 1회 = 10발이고 **각 탄이 카드값만큼의 bounce 예산을 통째로** 들고 나간다 — 호밍 유닛 대비 실효 10배다. 구조는 열렸으니 시트에서 조정할 축(ecs-review M7).
 - **`FrontmostTarget` × facing 유닛** [S] · 경로 의존이 아니라 **타게팅 규칙 의존**이라 지원 행렬로는 표현이 어색하다. 행렬 키를 "host 속성"(궤적/타게팅 규칙/데미지 output)으로 일반화할지와 함께 판단.
 - **`Projectile_Shuriken_GA` 데이터 위생** [S] · `flightMode` 미직렬화 상태(기본값 의존). 명시하지 않으면 다음 사람이 대포를 ballistic 으로 오독한다.
 - **적용성의 UI 노출** [S] · 덱 빌더/손패에서 "이 유닛엔 안 붙는다"를 부착 시도 전에.

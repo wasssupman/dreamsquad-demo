@@ -753,6 +753,27 @@ namespace Wassup.Battle.Combat
                         if (projectileRefLookup.HasComponent(attackerEntity))
                         {
                             var projRef = projectileRefLookup[attackerEntity];
+
+                            // attack-mod-bounce unit 3 + 방향탄 개통 — always-on 모드를 이
+                            // 공격의 산출물에 실을 값으로 집계한다(count 합 / range max /
+                            // mul 곱). 분기 위에서 **한 번만** 계산한다 — homing 과 directional
+                            // 이 같은 12줄을 각자 갖고 있으면 필드가 하나 늘 때 한쪽이 조용히
+                            // 뒤처진다. Ballistic 은 계산만 하고 request 에 싣지 않는다
+                            // (착탄 셀이 발사 시점에 고정돼 재조준할 대상이 없다 — 계약 4).
+                            int dcBounceCount = 0, dcBounceRange = 0;
+                            float dcBounceMul = 1f;
+                            if (defenderTagLookup.HasComponent(attackerEntity) && dcAttackModLookup.HasBuffer(attackerEntity))
+                            {
+                                var bmods = dcAttackModLookup[attackerEntity];
+                                for (int di = 0; di < bmods.Length; di++)
+                                {
+                                    var mod = bmods[di];
+                                    if (mod.kind != Wassup.Data.DcAttackModKind.ProjectileBounce) continue;
+                                    dcBounceCount += mod.count;
+                                    dcBounceRange = math.max(dcBounceRange, mod.tileRange);
+                                    dcBounceMul *= mod.damageMul;
+                                }
+                            }
                             float projectileDamage = 0f;
                             var projectileOutputs = ecb.AddBuffer<ProjectileSpawnOutputElement>(attackerEntity);
                             for (int oi = 0; oi < outputs.Length; oi++)
@@ -822,24 +843,6 @@ namespace Wassup.Battle.Combat
                                     float2 toTarget = (bestTargetPos - atkPos).xz;
                                     fireDir = math.lengthsq(toTarget) > 1e-6f ? math.normalize(toTarget) : new float2(0f, 1f);
                                 }
-                                // 통통구슬 — 방향탄도 bounce 를 싣는다. template 에 넣으므로
-                                // 확산탄·버스트 잔탄이 전부 같은 bounce 예산을 물려받는다
-                                // (템플릿 스냅샷 계약: 7번째 발이 1번째와 달라지지 않는다).
-                                int dirBounceCount = 0, dirBounceRange = 0;
-                                float dirBounceMul = 1f;
-                                if (defenderTagLookup.HasComponent(attackerEntity) && dcAttackModLookup.HasBuffer(attackerEntity))
-                                {
-                                    var dmods = dcAttackModLookup[attackerEntity];
-                                    for (int di = 0; di < dmods.Length; di++)
-                                    {
-                                        var mod = dmods[di];
-                                        if (mod.kind != Wassup.Data.DcAttackModKind.ProjectileBounce) continue;
-                                        dirBounceCount += mod.count;
-                                        dirBounceRange = math.max(dirBounceRange, mod.tileRange);
-                                        dirBounceMul *= mod.damageMul;
-                                    }
-                                }
-
                                 // 사거리는 레인 게이트와 같은 타일 단위로 환산 — 그래야
                                 // 탄이 "게이트가 인정한 마지막 칸"까지 정확히 닿는다.
                                 // direction 은 확산 전 기준 방향(템플릿 원본).
@@ -855,9 +858,9 @@ namespace Wassup.Battle.Combat
                                     hitThreshold = projRef.hitThreshold,
                                     visualScale = projRef.visualScale,
                                     dataIndex = projRef.dataIndex,
-                                    bounceRemaining = dirBounceCount,
-                                    bounceTileRange = dirBounceRange,
-                                    bounceDamageMul = dirBounceMul,
+                                    bounceRemaining = dcBounceCount,
+                                    bounceTileRange = dcBounceRange,
+                                    bounceDamageMul = dcBounceMul,
                                     owner = attackerEntity, // nightmare-catcher unit 1 — threat attribution
                                     priorityTarget = fmPrioTarget,
                                     priorityDamageMul = fmPrioMul,
@@ -909,25 +912,6 @@ namespace Wassup.Battle.Combat
                             }
                             else
                             {
-                                // attack-mod-bounce unit 3 — aggregate always-on mods onto
-                                // this base homing shot only (count sum / range max / mul
-                                // product). Ballistic + dc-trigger carrier shots are
-                                // excluded by construction (contract 4). Defaults 0/0/1 =
-                                // no bounce.
-                                int dcBounceCount = 0, dcBounceRange = 0;
-                                float dcBounceMul = 1f;
-                                if (defenderTagLookup.HasComponent(attackerEntity) && dcAttackModLookup.HasBuffer(attackerEntity))
-                                {
-                                    var mods = dcAttackModLookup[attackerEntity];
-                                    for (int di = 0; di < mods.Length; di++)
-                                    {
-                                        var mod = mods[di];
-                                        if (mod.kind != Wassup.Data.DcAttackModKind.ProjectileBounce) continue;
-                                        dcBounceCount += mod.count;
-                                        dcBounceRange = math.max(dcBounceRange, mod.tileRange);
-                                        dcBounceMul *= mod.damageMul;
-                                    }
-                                }
                                 ecb.AddComponent(attackerEntity, new ProjectileSpawnRequest
                                 {
                                     movement = MovementKind.HomingToEntity,
@@ -1420,6 +1404,9 @@ namespace Wassup.Battle.Combat
         // 캐리어 스폰이 세 곳(RESOLVE / 폭탄 발사 / 캐스트 드레인)에 복붙돼 있었다.
         // ProjectileSpawnRequest 는 필드가 10개라, 방향탄 bounce 개통처럼 필드가
         // 하나 늘 때 사본들이 조용히 뒤처진다 — 이 spec 이 없애려던 병의 재발이다.
+        // ⚠ 호출처 3곳(RESOLVE / 폭탄 발사 / 캐스트 드레인)은 전부 defender 게이트 안이라
+        // 니들의 재조준 후보 풀(AttackUnitTag = 적 전용)과 진영이 맞는다. 적이 니들을 쏘게
+        // 되는 날 이 전제가 깨지면 아군 오사가 되므로, 그때 후보 풀에 진영 축을 넣어야 한다.
         private static void SpawnNeedleCarrier(
             ref EntityCommandBuffer ecb, in DcTriggerSlot slot,
             Entity owner, float3 origin, Entity target, float3 targetPos,
@@ -1438,6 +1425,9 @@ namespace Wassup.Battle.Combat
                 visualScale = slot.visualScale,
                 dataIndex = slot.projectileDataIndex,
                 owner = owner,
+                // 대상이 맞기 전에 죽으면 같은 반경 안에서 다시 겨눈다. 니들은 5회에
+                // 한 번 나오는 자원이라 허공에 사라지면 그 주기가 통째로 버려진다.
+                retargetTileRange = slot.tileRange,
             });
             ecb.AddComponent<ProjectileRequestCarrier>(carrier);
             if (hasLog)

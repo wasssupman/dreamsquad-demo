@@ -105,6 +105,17 @@ namespace Wassup.Battle.Combat.Projectile
         public int bounceTileRange;   // retarget search radius (Chebyshev tiles)
         public float bounceDamageMul; // per-bounce decay applied to damage sources
 
+        // 대상이 죽거나 사라졌을 때 **파괴 대신 재조준**할 반경(Chebyshev 타일). 0 = 비활성.
+        // 기본 호밍 동작(대상 소멸 = 소멸)은 화살 등 기존 투사체의 감각/밸런스라 그대로 두고,
+        // 이 값을 실은 투사체만 opt-in 한다. bounce(맞고 나서 남은 홉, 소비형·감쇠 있음)와는
+        // 다른 축이다 — 이건 "맞히기도 전에 대상이 사라진 경우"(비소비형·감쇠 없음)를 다룬다.
+        // 한 투사체가 둘 다 가질 수 있어 합치지 않는다.
+        //
+        // ⚠ 원점이 다르다: 카드의 tileRange 는 **캐스터 기준** 사거리인데 이 값은 **투사체
+        // 현재 위치 기준**으로 재해석된다. 같은 숫자라도 니들이 날아간 만큼 실효 도달 범위가
+        // 늘어난다. 후보 풀의 진영은 호출부가 고정한다(현재 전부 적 전용).
+        public int retargetTileRange;
+
         // ── Shooter attribution (nightmare-catcher unit 1) ───────────────────
         // Entity that fired this projectile, filled at the AttackSystem launch
         // arms (base shots and dc-trigger carriers alike); Entity.Null for

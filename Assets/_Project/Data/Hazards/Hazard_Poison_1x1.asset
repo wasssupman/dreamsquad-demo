@@ -21,4 +21,4 @@ MonoBehaviour:
     param1: 20
     param2: 0
     restDuration: 0.2
-    tickInterval: 1.0
+    tickInterval: 0.5
