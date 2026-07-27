@@ -40,8 +40,10 @@ namespace Wassup.Battle.Combat.Projectile
         // projectile-emission-pattern unit 1 — 곡선으로 날면서 타겟을 추적한다.
         // HomingToEntity(직진·추적)와 BallisticArcToPoint(곡선·셀고정)가 배타적이라
         // 표현 불가였던 조합. 제어점 2개는 발사 시 결정론 생성(드레인이 SO 파라미터로
-        // 산출), 종점 P3 는 타겟의 live 위치라 매 프레임 곡선이 갱신된다. 대상 소실
-        // 정책은 HomingToEntity 상속(retargetTileRange 있으면 재조준, 없으면 파괴).
+        // 산출), 종점 P3 는 타겟의 live 위치라 매 프레임 곡선이 갱신된다. **대상 소실 =
+        // 파괴이며 재조준은 미지원**이다 — t=elapsed/flightTime 로 진행하므로 t≈1 에서
+        // 재조준하면 새 타겟으로 순간이동 후 즉시 착탄한다(곡선을 다시 그리려면 SO
+        // 파라미터가 필요한데 ISystem 이 못 읽는다).
         // sim 은 XZ 곡선만 굴리고 3축의 Y 는 view 공간에서 더한다(BoardSpace 가
         // sim-Y 를 drop 하므로 — BallisticArc 선례).
         BezierHomingToEntity = 5,

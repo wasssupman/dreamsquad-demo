@@ -4,6 +4,7 @@ using Unity.Core;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
+using Wassup.Battle.Combat;
 using Wassup.Battle.Combat.Projectile;
 using Wassup.Battle.Combat.Projectile.Emission;
 using Wassup.Battle.Effects;
@@ -40,7 +41,11 @@ namespace Wassup.Tests.EditMode
             _world = new World("ProjectileEmitterIntegrationTests");
             _em = _world.EntityManager;
             _simGroup = _world.CreateSystemManaged<SimulationSystemGroup>();
+            // arm → emitter 이음매까지 덮는다. arm 을 빼고 테스트가 직접 push 하면
+            // 시드 규약이 두 곳에 손으로 적혀 서로 어긋나도 초록으로 남는다.
+            _simGroup.AddSystemToUpdateList(_world.CreateSystem<BossPeriodicTriggerSystem>());
             _simGroup.AddSystemToUpdateList(_world.CreateSystem<ProjectileEmitterSystem>());
+            _simGroup.SortSystems();
 
             _flow = new NativeArray<float2>(Grid * Grid, Allocator.Persistent);
             _dist = new NativeArray<int>(Grid * Grid, Allocator.Persistent);
@@ -84,6 +89,7 @@ namespace Wassup.Tests.EditMode
             _em.AddComponent<AttackUnitTag>(e);
             _em.AddBuffer<PatternSlot>(e);
             _em.AddBuffer<EmitterInstance>(e);
+            _em.AddBuffer<DcTriggerSlot>(e); // arm 이 읽는 트리거 슬롯
             return e;
         }
 
@@ -94,16 +100,22 @@ namespace Wassup.Tests.EditMode
             selection = PatternSelectionRule.RoundRobin,
             shotCount = shotCount,
             shotIntervalSec = interval,
-            reselectPerShot = true,
+            // shipped 두 패턴이 모두 false 라 라이브 경로에 가깝다(잠금 코드가 실제로 돈다).
+            reselectPerShot = false,
             telegraphSec = 0f,
         };
 
-        // arm(BossPeriodicTriggerSystem)이 하는 push 를 그대로 재현.
-        private void PushInstance(Entity host, in PatternSpec spec)
+        // 패턴 슬롯을 host 에 얹는다. **push 는 하지 않는다** — 실제 arm
+        // (BossPeriodicTriggerSystem)이 `PeriodicTimer` 발화로 밀어넣게 두어야
+        // 시드 규약(fireCountBase += shotCount)이 테스트에 복제되지 않는다.
+        // 복제하면 arm 이 규약을 바꿔도 테스트는 옛 규약을 검증하며 초록으로 남는다.
+        private void InstallPattern(Entity host, in PatternSpec spec, float periodSeconds)
         {
             var pats = _em.GetBuffer<PatternSlot>(host);
-            if (pats.Length == 0)
-                pats.Add(new PatternSlot { spec = spec, template = new ProjectileSpawnRequest
+            pats.Add(new PatternSlot
+            {
+                spec = spec,
+                template = new ProjectileSpawnRequest
                 {
                     movement = MovementKind.HomingToEntity,
                     payload = PayloadKind.SingleSplash,
@@ -111,15 +123,24 @@ namespace Wassup.Tests.EditMode
                     dataIndex = 0,
                     owner = host,
                     targetFaction = ProjectileTargetFaction.Defender,
-                }, fireCountBase = 0 });
+                },
+                fireCountBase = 0,
+            });
 
-            var pat = pats[0];
-            var inst = new EmitterInstance { spec = pat.spec, template = pat.template, lockedTarget = Entity.Null };
-            EmitterTick.Begin(ref inst.runtime, inst.spec, pat.fireCountBase);
-            pat.fireCountBase += math.max(1, pat.spec.shotCount);
-            pats[0] = pat;
-            _em.GetBuffer<EmitterInstance>(host).Add(inst);
+            var slots = _em.GetBuffer<DcTriggerSlot>(host);
+            slots.Add(new DcTriggerSlot
+            {
+                trigger = DcTriggerKind.PeriodicTimer,
+                payload = DcPayloadKind.EmitProjectilePattern,
+                periodSeconds = periodSeconds,
+                elapsed = 0f,
+                patternIndex = pats.Length - 1,
+                projectileDataIndex = -1,
+            });
         }
+
+        // arm 이 발화하도록 주기만큼 시간을 보낸다(같은 프레임에 emitter 가 이어 돈다).
+        private void TickTrigger(float periodSeconds) => Tick(periodSeconds + 0.001f);
 
         private int CarrierCount()
         {
@@ -143,11 +164,26 @@ namespace Wassup.Tests.EditMode
             CreateDefender(new float3(5f, 0f, 5f));
             var host = CreatePatternHost(new float3(8f, 0f, 8f));
 
-            PushInstance(host, Spec(shotCount: 3, interval: 0f));
-            Tick();
+            InstallPattern(host, Spec(shotCount: 3, interval: 0f), periodSeconds: 1f);
+            TickTrigger(1f);
 
             Assert.AreEqual(3, CarrierCount(), "shotCount 만큼 캐리어가 나와야 한다(발-루프 회귀 핀)");
             Assert.AreEqual(0, _em.GetBuffer<EmitterInstance>(host).Length, "완주한 인스턴스는 제거된다");
+        }
+
+        // arm 가드 회귀 핀 — 죽은 host 는 새 발동을 시작하지 않는다.
+        [Test]
+        public void DeadHost_DoesNotStartNewBurst()
+        {
+            CreateDefender(new float3(2f, 0f, 2f));
+            var host = CreatePatternHost(new float3(8f, 0f, 8f));
+            InstallPattern(host, Spec(shotCount: 1, interval: 0f), periodSeconds: 1f);
+
+            _em.AddComponent<DeadTag>(host);
+            TickTrigger(1f);
+
+            Assert.AreEqual(0, CarrierCount(), "시체는 스킬을 쓰지 않는다");
+            Assert.AreEqual(0, _em.GetBuffer<EmitterInstance>(host).Length);
         }
 
         // 리뷰 CRITICAL 회귀 핀 ② — 후보가 0 이어도 발사는 소모되고 인스턴스는 제거돼야
@@ -158,8 +194,8 @@ namespace Wassup.Tests.EditMode
         {
             var host = CreatePatternHost(new float3(8f, 0f, 8f));
 
-            PushInstance(host, Spec(shotCount: 2, interval: 0f));
-            Tick();
+            InstallPattern(host, Spec(shotCount: 2, interval: 0f), periodSeconds: 1f);
+            TickTrigger(1f);
 
             Assert.AreEqual(0, CarrierCount(), "후보가 없으면 발사되지 않는다");
             Assert.AreEqual(0, _em.GetBuffer<EmitterInstance>(host).Length,
@@ -172,17 +208,14 @@ namespace Wassup.Tests.EditMode
         public void RepeatedEmptyFires_DoNotAccumulate_IntoBurstWhenTargetsReturn()
         {
             var host = CreatePatternHost(new float3(8f, 0f, 8f));
+            InstallPattern(host, Spec(shotCount: 1, interval: 0f), periodSeconds: 0.5f);
 
-            for (int i = 0; i < 5; i++)
-            {
-                PushInstance(host, Spec(shotCount: 1, interval: 0f));
-                Tick();
-            }
-            Assert.AreEqual(0, _em.GetBuffer<EmitterInstance>(host).Length);
+            for (int i = 0; i < 5; i++) TickTrigger(0.5f);
+            Assert.AreEqual(0, _em.GetBuffer<EmitterInstance>(host).Length,
+                "후보 0 구간의 발화가 인스턴스로 적재되면 안 된다");
 
             CreateDefender(new float3(3f, 0f, 3f));
-            PushInstance(host, Spec(shotCount: 1, interval: 0f));
-            Tick();
+            TickTrigger(0.5f);
 
             Assert.AreEqual(1, CarrierCount(), "밀린 발사가 쏟아지지 않고 이번 1발만 나가야 한다");
         }
@@ -195,11 +228,9 @@ namespace Wassup.Tests.EditMode
             var keep = CreateDefender(new float3(2f, 0f, 2f));
             var host = CreatePatternHost(new float3(8f, 0f, 8f));
 
-            var spec = Spec(shotCount: 3, interval: 0.1f);
-            spec.reselectPerShot = false;
-            PushInstance(host, spec);
+            InstallPattern(host, Spec(shotCount: 3, interval: 0.1f), periodSeconds: 1f);
 
-            Tick();                     // 첫 발 — 여기서 대상이 잠긴다
+            TickTrigger(1f);            // 첫 발 — 여기서 대상이 잠긴다
             Assert.AreEqual(1, CarrierCount());
             DestroyCarriers();
 
@@ -217,8 +248,8 @@ namespace Wassup.Tests.EditMode
             var def = CreateDefender(new float3(4f, 0f, 4f));
             var host = CreatePatternHost(new float3(9f, 0f, 9f));
 
-            PushInstance(host, Spec(shotCount: 1, interval: 0f));
-            Tick();
+            InstallPattern(host, Spec(shotCount: 1, interval: 0f), periodSeconds: 1f);
+            TickTrigger(1f);
 
             using var q = _em.CreateEntityQuery(ComponentType.ReadOnly<ProjectileSpawnRequest>());
             using var reqs = q.ToComponentDataArray<ProjectileSpawnRequest>(Allocator.Temp);
