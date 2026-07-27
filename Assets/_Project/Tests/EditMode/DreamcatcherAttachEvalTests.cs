@@ -25,9 +25,10 @@ namespace Wassup.Tests.EditMode
         private static DcAttackModSpec Mod(DcAttackModKind kind, int count, float damageMul) =>
             new DcAttackModSpec { kind = kind, count = count, damageMul = damageMul };
 
+        // targetsEnemies 기본 true = "적을 때리는 보통 유닛" — 기존 케이스의 전제.
         private static bool Eval(DreamcatcherCard card, bool proj, bool dmg,
-            bool lethal = false, bool cocoon = false) =>
-            DreamcatcherAttachEval.WouldApply(card, proj, dmg, lethal, cocoon);
+            bool lethal = false, bool cocoon = false, bool targetsEnemies = true) =>
+            DreamcatcherAttachEval.WouldApply(card, proj, dmg, lethal, cocoon, targetsEnemies);
 
         // ── 통통구슬 = ProjectileBounce: 투사체 유닛만 ──────────────────────────
         [Test]
@@ -68,6 +69,37 @@ namespace Wassup.Tests.EditMode
             Assert.IsFalse(Eval(card, proj: false, dmg: false));
         }
 
+        // ── 비수 = ProjectileToTarget: 적을 타겟하는 유닛만 ────────────────────
+        // 니들은 그 공격의 대상으로 날아가므로, 대상이 아군인 힐러(targetAllies)에
+        // 붙으면 회복 대상을 때린다. 근접/원거리/머신거너는 전부 적을 타겟한다.
+        [Test]
+        public void PokeNeedle_OnEnemyTargetingUnit_Applies()
+        {
+            var card = UnitCard(mech: new[] { Mech(DcPayloadKind.ProjectileToTarget) });
+            Assert.IsTrue(Eval(card, proj: true, dmg: true), "원거리 유닛");
+            Assert.IsTrue(Eval(card, proj: false, dmg: true), "근접 유닛도 5회째에 니들을 쏜다");
+        }
+
+        [Test]
+        public void PokeNeedle_OnAllyTargetingUnit_Rejects()
+        {
+            var card = UnitCard(mech: new[] { Mech(DcPayloadKind.ProjectileToTarget) });
+            Assert.IsFalse(Eval(card, proj: false, dmg: false, targetsEnemies: false),
+                "힐러(아군 타겟)에 붙으면 니들이 아군을 때린다 — 부착 거절");
+        }
+
+        [Test]
+        public void PokeNeedle_MixedCard_StillAppliesOnHealerViaOtherMechanic()
+        {
+            // ProjectileToTarget 만 거절되고 카드 전체가 죽지는 않는다(부분 skip = apply 와 동일 결).
+            var card = UnitCard(mech: new[]
+            {
+                Mech(DcPayloadKind.ProjectileToTarget),
+                Mech(DcPayloadKind.SelfStatBuff),
+            });
+            Assert.IsTrue(Eval(card, proj: false, dmg: false, targetsEnemies: false));
+        }
+
         // ── 유닛-무관 mechanic 은 아무 유닛에나 기여 ───────────────────────────
         [Test]
         public void GenericMechanic_AppliesToAnyUnit()
@@ -101,14 +133,14 @@ namespace Wassup.Tests.EditMode
         {
             var c = ScriptableObject.CreateInstance<DreamcatcherCard>();
             c.type = CardType.Squad;
-            Assert.IsTrue(DreamcatcherAttachEval.WouldApply(c, false, false, false, false));
+            Assert.IsTrue(DreamcatcherAttachEval.WouldApply(c, false, false, false, false, false));
         }
 
         [Test]
         public void NoEffects_Rejects()
         {
             Assert.IsFalse(Eval(UnitCard(), proj: true, dmg: true));
-            Assert.IsFalse(DreamcatcherAttachEval.WouldApply(null, true, true, false, false));
+            Assert.IsFalse(DreamcatcherAttachEval.WouldApply(null, true, true, false, false, true));
         }
 
         // ── dreamcatcher-attach-requirement unit 0: 부착 대상 제한(정적 술어) ──────

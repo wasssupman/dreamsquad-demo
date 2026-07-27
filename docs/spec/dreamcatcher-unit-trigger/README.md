@@ -36,6 +36,7 @@
 7. **magnitude 는 flat.** `damageMul` 등 공격자 스탯 모디파이어를 곱하지 않는다(카드 수치 = 예측 가능한 고정값). 스케일링 페이로드는 후속에서 별도 kind 로.
 8. **직렬화 append-only.** `DreamcatcherCard`/enum 확장은 기존 카드 에셋의 직렬화 값을 보존하도록 필드/케이스를 끝에 추가(기존 파일 주석 선례 유지).
 9. **바인딩 UX/회수 로직은 스코프 밖.** 이번 spec 의 부착은 `BattleBridge` 공개 API + 테스트 훅으로만 실증. 유닛 사망 시 카드 회수(재사용 가능 전환)는 `DrainDefenderDeathEvents` 가 seam — 별도 spec 에서.
+10. **`ProjectileToTarget` 은 적을 타겟하는 host 에만 붙는다** (2026-07-27 추가). 니들은 그 공격의 `bestTarget` 으로 날아가는데, `targetAllies` 유닛(힐러)의 `bestTarget` 은 **아군**이라 회복 대상을 20 데미지로 때린다(캐리어는 outputs 스냅샷이 없어 진영 필터 없는 `ProjectileHitSystem` fallback 을 탄다). 게이트 술어 = `AttackState.targetMask` 의 Enemy 비트(`BattleBridge.TargetsEnemies`), 판정 지점 = UI preflight(`DreamcatcherAttachEval.WouldApply`) + 커밋 bake **양쪽 동일** — 리티클 색과 커밋 결과가 어긋나지 않는다. 근접·원거리·머신거너(facing 볼리)는 전부 적을 타겟하므로 무영향. **폭탄맨**(RESOLVE 미진입, blind bombardment 로 early-continue)과 **해저드 캐스터**(`attackRange 0` → `bestTarget` 없음)는 부착은 되지만 발동하지 않는다 — 게이트 대상 아님(후속 후보).
 
 ## 파이프라인 커버리지 (투사체 아키타입 대조)
 

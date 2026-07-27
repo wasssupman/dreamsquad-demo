@@ -486,6 +486,14 @@ namespace Wassup.Bridge
                         Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: non-positive magnitude — skipped.");
                         continue;
                     }
+                    // 니들은 그 공격의 대상으로 날아간다 — ally-targeting host(힐러)에선
+                    // 아군이 그 대상이다. UI preflight(WouldApply)와 같은 술어로 거절해
+                    // 리티클 색과 커밋 결과가 어긋나지 않게 한다.
+                    if (!TargetsEnemies(defender))
+                    {
+                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: ProjectileToTarget on an ally-targeting host (아군을 때린다) — skipped.");
+                        continue;
+                    }
                     slot.projectileDataIndex = GetOrCreateProjectileDataIndex(m.payload.projectile);
                     slot.speed = m.payload.projectile.speed;
                     slot.hitThreshold = m.payload.projectile.hitThreshold;
@@ -723,7 +731,7 @@ namespace Wassup.Bridge
             if (card == null) return false;
             // Squad·비-Unit 은 유닛 종속 게이트 없음(축 버프 host 무제약) → eval 이 판단.
             if (card.type != Wassup.Data.CardType.Unit)
-                return Wassup.Core.DreamcatcherAttachEval.WouldApply(card, false, false, false, false);
+                return Wassup.Core.DreamcatcherAttachEval.WouldApply(card, false, false, false, false, false);
             if (!HasLiveEntityManager() || !_em.Exists(defender) || !_em.HasComponent<DefenderUnitTag>(defender))
                 return false;
             // dreamcatcher-attach-requirement unit 1 — 부착 제한(클래스/특정 유닛)은 능력
@@ -733,8 +741,9 @@ namespace Wassup.Bridge
             bool hasDamageOutput = HasPositiveDamageOutput(defender);
             bool hasLethalTimer = _em.HasComponent<Wassup.Battle.Units.LethalTimer>(defender);
             bool hasDreamCocoon = _em.HasComponent<Wassup.Battle.Effects.DreamCocoon>(defender);
+            bool hostTargetsEnemies = TargetsEnemies(defender);
             return Wassup.Core.DreamcatcherAttachEval.WouldApply(
-                card, hasProjectile, hasDamageOutput, hasLethalTimer, hasDreamCocoon);
+                card, hasProjectile, hasDamageOutput, hasLethalTimer, hasDreamCocoon, hostTargetsEnemies);
         }
 
         // subconscious-curse-expansion unit 2 (살찌운 제물) — 적 표식. 반환 규약은
@@ -818,6 +827,18 @@ namespace Wassup.Bridge
         // dreamcatcher-content-2 unit 1 — does this defender emit at least one positive
         // Damage-kind attack output (vs heal-only / output-less)? Gates FrontmostTarget
         // attach so 끝을 보는 눈 can't be spent inertly on a support unit.
+        // 비수(ProjectileToTarget) 게이트 — 이 유닛의 공격 대상이 적인가. 니들은 그 공격의
+        // bestTarget 으로 날아가는데, targetAllies 유닛(힐러)의 bestTarget 은 **아군**이라
+        // 부착하면 회복 대상을 때린다(캐리어 투사체는 outputs 스냅샷이 없어 진영 필터가
+        // 없는 ProjectileHitSystem fallback 을 탄다). mask 는 CreateDefenderEntity 가
+        // targetAllies 로 굽는다(Defender ↔ Enemy). 마스크 부재/0(공격 안 하는 유닛)도
+        // false — 발동할 수 없는 곳에 카드를 태우지 않는다.
+        private bool TargetsEnemies(Entity defender)
+        {
+            if (!_em.HasComponent<AttackState>(defender)) return false;
+            return (_em.GetComponentData<AttackState>(defender).targetMask & (int)Faction.Enemy) != 0;
+        }
+
         private bool HasPositiveDamageOutput(Entity defender)
         {
             if (!_em.HasBuffer<AttackOutputElement>(defender)) return false;

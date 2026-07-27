@@ -8,8 +8,9 @@ namespace Wassup.Core
     // 아닌가)를, **유닛-종속 게이트만** 미러해 plain 값으로 판정한다.
     //
     // ApplyDreamcatcherCardToUnit(BattleBridge.Dreamcatcher.cs)의 유닛-종속 skip 은
-    // 딱 셋 — ProjectileBounce→ProjectileRef(투사체) / FrontmostTarget·HeavyStrike→
-    // 데미지 output / 이중 LethalTimer·DreamCocoon(상태). 나머지 guard(magnitude·
+    // 딱 넷 — ProjectileBounce→ProjectileRef(투사체) / FrontmostTarget·HeavyStrike→
+    // 데미지 output / ProjectileToTarget→적 타겟 유닛(ally-targeting 힐러 배제) /
+    // 이중 LethalTimer·DreamCocoon(상태). 나머지 guard(magnitude·
     // duration·projectile-null·mapping)는 **카드 데이터 검증**이라 어느 유닛에서든 같은
     // 결과 → 여기선 유닛 종속 조건만 본다(authored-valid 전제). 그래서 UI 답이 '유닛별로'
     // 정확하다(같은 카드가 궁수엔 가능·가디언엔 불가).
@@ -83,7 +84,8 @@ namespace Wassup.Core
         }
 
         public static bool WouldApply(DreamcatcherCard card,
-            bool hasProjectile, bool hasDamageOutput, bool hasLethalTimer, bool hasDreamCocoon)
+            bool hasProjectile, bool hasDamageOutput, bool hasLethalTimer, bool hasDreamCocoon,
+            bool hostTargetsEnemies)
         {
             if (card == null) return false;
             // Squad = 축-집합 버프(host 무제약, unit 9) → host 종속 거부 없음. Active 는 이 경로 밖.
@@ -109,6 +111,10 @@ namespace Wassup.Core
                     var pk = card.mechanics[i].payload.kind;
                     if (pk == DcPayloadKind.None) continue;
                     if (pk == DcPayloadKind.HeavyStrike) { if (hasDamageOutput) return true; continue; }
+                    // 비수 = ProjectileToTarget: 니들은 그 공격의 **대상**(AttackSystem 의
+                    // bestTarget)에게 날아간다. ally-targeting host(힐러 = targetAllies)의
+                    // 대상은 아군이므로 부착하면 아군을 때린다 → 적을 타겟하는 유닛만.
+                    if (pk == DcPayloadKind.ProjectileToTarget) { if (hostTargetsEnemies) return true; continue; }
                     return true; // 그 외 mechanic 은 유닛 클래스 무관(데미지/투사체 불요)
                 }
             }
