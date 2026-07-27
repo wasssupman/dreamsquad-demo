@@ -36,7 +36,7 @@ namespace Wassup.UI
         [Header("Layout")]
         [SerializeField] private Vector2 panelSize = new Vector2(288f, 168f);
         [SerializeField] private Vector2 panelOffset = new Vector2(40f, 40f);
-        [SerializeField] private Vector2 timerPlateSize = new Vector2(212f, 64f);
+        [SerializeField] private Vector2 timerPlateSize = new Vector2(264f, 80f);
         [SerializeField] private Vector2 timerPlateOffset = new Vector2(8f, 104f);
         [SerializeField] private Vector2 buttonSize = new Vector2(288f, 108f);
 
@@ -265,23 +265,27 @@ namespace Wassup.UI
             captionRect.anchorMin = new Vector2(0f, 0f);
             captionRect.anchorMax = new Vector2(0f, 1f);
             captionRect.pivot = new Vector2(0f, 0.5f);
-            captionRect.anchoredPosition = new Vector2(18f, 0f);
-            captionRect.sizeDelta = new Vector2(66f, 0f);
+            captionRect.anchoredPosition = new Vector2(20f, 0f);
+            // 캡슐 스프라이트(NextWaveDockFrame)는 476x144 캔버스 중 pill 아트가 세로
+            // 102px(상하 21px 투명 여백) — 플레이트 264x80 기준 가시 pill 높이는 ~57px.
+            // 캡션 박스는 pill 안쪽으로 인셋해 한 줄 "남은시간"이 패딩을 갖고 담긴다.
+            captionRect.sizeDelta = new Vector2(100f, -34f);
             _timerCaption = captionGO.AddComponent<TextMeshProUGUI>();
-            _timerCaption.text = "남은\n시간";
-            _timerCaption.fontSize = 13f;
+            _timerCaption.text = "남은시간";
+            _timerCaption.fontSize = 20f;
             _timerCaption.fontStyle = FontStyles.Bold;
-            _timerCaption.color = new Color(0.5f, 0.92f, 1f, 0.95f);
+            _timerCaption.color = new Color(0.62f, 0.95f, 1f, 1f);
             _timerCaption.alignment = TextAlignmentOptions.Center;
             _timerCaption.raycastTarget = false;
+            ApplyOutline(_timerCaption, new Color(0.03f, 0.06f, 0.17f, 1f), 0.12f);
 
             var timerGO = new GameObject("Timer", typeof(RectTransform));
             timerGO.transform.SetParent(timerPlate.transform, false);
             var trt = (RectTransform)timerGO.transform;
             trt.anchorMin = Vector2.zero;
             trt.anchorMax = Vector2.one;
-            trt.offsetMin = new Vector2(82f, 10f);
-            trt.offsetMax = new Vector2(-16f, -10f);
+            trt.offsetMin = new Vector2(120f, 12f);
+            trt.offsetMax = new Vector2(-20f, -12f);
             _timerLabel = timerGO.AddComponent<TextMeshProUGUI>();
             if (timerFont != null) _timerLabel.font = timerFont;
             _timerLabel.text = "3:00";
