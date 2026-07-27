@@ -16,6 +16,7 @@ APK와 iOS Ad Hoc IPA를 재현 가능한 로컬 명령으로 만들고 Firebase
 | 1 | `1_manual_build_and_distribution.md` | 로컬 CLI 실행, Firebase 수동 업로드와 실기기 QA 절차 |
 | 2 | `2_mobile_build_cli.md` | Shell 진입점과 Unity Editor 빌드 계층, 입력·복원·실패 계약 |
 | 3 | `3_macos_signed_artifacts.md` | Android/iOS 서명 산출물 생성과 자동 검증 계약 |
+| 4 | `4_build_machine_preflight_fix.md` | Unity Hub 모듈 위치 탐지 회귀 수정과 첫 빌드머신 검증 |
 
 ## Feature-wide 계약
 
@@ -31,6 +32,8 @@ APK와 iOS Ad Hoc IPA를 재현 가능한 로컬 명령으로 만들고 Firebase
   `somnia-dev`를 사용하고 비밀번호는 실행할 때 숨김 입력한다.
 - iOS는 Keychain에 설치된 Team `69DK98XF77`의 `Apple Distribution` 인증서와 설치된
   `somnia_dev_adhoc` 프로파일을 사용한다.
+- Unity 플랫폼 모듈은 `Unity.app/Contents/PlaybackEngines`와 Unity Hub 버전 루트의
+  `PlaybackEngines` 중 요청 플랫폼의 실제 모듈이 존재하는 위치를 사용한다.
 - 실행 전후 Git worktree가 clean이어야 하며 기존 출력은 삭제하거나 덮어쓰지 않는다.
 - 버전·build·Android 서명 PlayerSettings는 빌드 중에만 적용하고 성공/실패 모두 원복한다.
 - 산출물과 중간 파일은 ignored `Builds/Mobile`에 두고 APK/IPA 서명·식별자·버전·아키텍처를

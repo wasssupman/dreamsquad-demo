@@ -15,6 +15,7 @@ BUILD_VERSION=""
 BUILD_NUMBER=""
 KEYSTORE_ARGUMENT=""
 UNITY_EDITOR=""
+UNITY_ANDROID_MODULE=""
 PROJECT_ROOT=""
 MOBILE_OUTPUT_ROOT=""
 STEM=""
@@ -277,25 +278,45 @@ preflight_common() {
   [ -x "$UNITY_EDITOR" ] ||
     fail "Unity 6000.4.3f1 is unavailable. Set UNITY_EDITOR_PATH to its executable."
 
-  local unity_contents
-  unity_contents="$(cd "$(dirname "$UNITY_EDITOR")/.." && pwd -P)"
-
   case "$TARGET" in
     android|both)
-      [ -d "$unity_contents/PlaybackEngines/AndroidPlayer" ] ||
+      UNITY_ANDROID_MODULE="$(find_unity_playback_engine AndroidPlayer)" ||
         fail "Unity Android Build Support is not installed."
       ;;
   esac
 
   case "$TARGET" in
     ios|both)
-      [ -d "$unity_contents/PlaybackEngines/iOSSupport" ] ||
+      find_unity_playback_engine iOSSupport >/dev/null ||
         fail "Unity iOS Build Support is not installed."
       ;;
   esac
 
   require_command unzip
   require_command shasum
+}
+
+find_unity_playback_engine() {
+  local engine_name="$1"
+  local unity_binary_dir
+  local candidate_root
+  local candidate
+
+  unity_binary_dir="$(cd "$(dirname "$UNITY_EDITOR")" && pwd -P)" || return 1
+
+  # Unity Hub currently installs platform modules beside Unity.app. Older layouts
+  # can place them under Unity.app/Contents, so accept either exact module root.
+  for candidate_root in "$unity_binary_dir/../../.." "$unity_binary_dir/.."; do
+    [ -d "$candidate_root" ] || continue
+    candidate_root="$(cd "$candidate_root" && pwd -P)"
+    candidate="$candidate_root/PlaybackEngines/$engine_name"
+    if [ -d "$candidate" ]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+
+  return 1
 }
 
 canonicalize_keystore() {
@@ -367,7 +388,6 @@ assert_secure_signing_file() {
 find_android_tool() {
   local tool_name="$1"
   local override_path="$2"
-  local unity_contents
   local unity_sdk
   local sdk_dir
   local candidate
@@ -380,8 +400,9 @@ find_android_tool() {
     return
   fi
 
-  unity_contents="$(cd "$(dirname "$UNITY_EDITOR")/.." && pwd -P)"
-  unity_sdk="$unity_contents/PlaybackEngines/AndroidPlayer/SDK"
+  [ -n "$UNITY_ANDROID_MODULE" ] ||
+    fail "Unity Android Build Support was not resolved before tool discovery."
+  unity_sdk="$UNITY_ANDROID_MODULE/SDK"
 
   for sdk_dir in "${ANDROID_SDK_ROOT:-}" "${ANDROID_HOME:-}" "$unity_sdk"; do
     [ -n "$sdk_dir" ] || continue
@@ -401,7 +422,6 @@ find_android_tool() {
 }
 
 find_keytool() {
-  local unity_contents
   local bundled_keytool
   local system_keytool
 
@@ -412,8 +432,9 @@ find_keytool() {
     return
   fi
 
-  unity_contents="$(cd "$(dirname "$UNITY_EDITOR")/.." && pwd -P)"
-  bundled_keytool="$unity_contents/PlaybackEngines/AndroidPlayer/OpenJDK/bin/keytool"
+  [ -n "$UNITY_ANDROID_MODULE" ] ||
+    fail "Unity Android Build Support was not resolved before keytool discovery."
+  bundled_keytool="$UNITY_ANDROID_MODULE/OpenJDK/bin/keytool"
   if [ -x "$bundled_keytool" ]; then
     printf '%s\n' "$bundled_keytool"
     return

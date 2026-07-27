@@ -24,7 +24,8 @@ macOS Shell과 Unity batchmode로 양 플랫폼을 빌드하되 비밀값과 Pla
   뒤 Android → iOS 순서다.
 - Unity 기본 경로는
   `/Applications/Unity/Hub/Editor/6000.4.3f1/Unity.app/Contents/MacOS/Unity`이며
-  `UNITY_EDITOR_PATH`로만 재정의한다.
+  `UNITY_EDITOR_PATH`로만 재정의한다. 플랫폼 모듈과 Android SDK/OpenJDK는 macOS Hub의
+  버전 루트 `PlaybackEngines`를 우선 포함해 실제 요청 모듈이 존재하는 위치에서 찾는다.
 - keystore/key password는 숨김 입력하며 key 값을 비우면 keystore 값을 재사용한다. 비밀값은
   필요한 자식 환경에서만 사용하고 command line·최종 로그·요약에 남기지 않으며 trap에서 제거한다.
 - Unity 자식에는 `DREAMSQUAD_BUILD_VERSION`, `DREAMSQUAD_BUILD_NUMBER`,
@@ -51,3 +52,4 @@ macOS Shell과 Unity batchmode로 양 플랫폼을 빌드하되 비밀값과 Pla
 - [ ] 성공/예외 모두 PlayerSettings snapshot이 원복되고 실행 후 worktree가 clean이다.
 - [ ] 로그·프로세스 명령행에 password, private key와 keystore 경로가 노출되지 않는다.
 - [ ] EditMode CLI/preflight/snapshot 테스트와 `bash -n scripts/mobile/build.sh`가 통과한다.
+- [ ] Shell 회귀 테스트가 Hub 버전 루트와 `Unity.app/Contents` 양쪽 모듈 배치를 검증한다.
