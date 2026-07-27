@@ -27,6 +27,12 @@ namespace Wassup.UI
         public event Action AddClicked;
         public event Action RemoveClicked;
 
+        // ui-polish 2026-07-27 — 설명 본문 가독성. 26 고정 → 26~32 오토사이즈:
+        // 짧은 문안은 32 로 크게 읽히고, 줄 수가 많은 카드(BountyMark 3줄 + "전용" 접두 등)는
+        // 기존 크기(26)까지만 줄어 hint/버튼 위로 흘러넘치지 않는다.
+        private const float EffectFontMin = 26f;
+        private const float EffectFontMax = 32f;
+
         private static readonly Color CardBg = new Color(0.06f, 0.07f, 0.10f, 0.82f);
         private static readonly Color AddColor = new Color(0.20f, 0.55f, 0.28f, 1f);
         private static readonly Color RemoveColor = new Color(0.55f, 0.22f, 0.24f, 1f);
@@ -129,8 +135,15 @@ namespace Wassup.UI
             var brt = _catBadgeText.rectTransform;
             brt.anchorMin = Vector2.zero; brt.anchorMax = Vector2.one; brt.offsetMin = Vector2.zero; brt.offsetMax = Vector2.zero;
 
-            _effectText = MakeText(cardRoot, "", 26, TextAlignmentOptions.TopLeft, 150);
+            _effectText = MakeText(cardRoot, "", EffectFontMax, TextAlignmentOptions.TopLeft, 150);
             _effectText.enableWordWrapping = true;
+            _effectText.enableAutoSizing = true;
+            _effectText.fontSizeMin = EffectFontMin;
+            _effectText.fontSizeMax = EffectFontMax;
+            // 카드 영역(cardRoot)의 잉여 높이를 본문이 흡수 — 이름/배지/hint/버튼은 고정이라
+            // 남는 세로 공간이 전부 설명으로 가고, 오토사이즈도 그만큼 큰 글자를 유지한다.
+            var effectLayout = _effectText.GetComponent<LayoutElement>();
+            if (effectLayout != null) effectLayout.flexibleHeight = 1f;
 
             _hintText = MakeText(cardRoot, "", 20, TextAlignmentOptions.Left, 28);
             _hintText.color = HintColor;
@@ -163,7 +176,7 @@ namespace Wassup.UI
             return btn;
         }
 
-        private TMP_Text MakeText(Transform parent, string text, int size, TextAlignmentOptions align, float preferredHeight)
+        private TMP_Text MakeText(Transform parent, string text, float size, TextAlignmentOptions align, float preferredHeight)
         {
             var go = new GameObject("Text", typeof(RectTransform), typeof(TextMeshProUGUI));
             go.transform.SetParent(parent, false);
