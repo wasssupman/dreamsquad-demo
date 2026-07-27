@@ -120,9 +120,19 @@ git -C "$STEM_REPO" \
   BUILD_NUMBER="1"
   BUILD_ATTEMPT="3"
   UNITY_EDITOR_PATH="$FAKE_UNITY"
+  date() {
+    printf '20260727-153045\n'
+  }
   configure_paths
   [ "$STEM" = "DreamSquad-Demo-0.1.0-1-${COMMIT_SHA}-attempt3" ] ||
     fail "The explicit build attempt was not added to the stem."
+  [ "$OUT_STEM" = \
+    "dreamquad-demo--0.1.0-1-20260727-153045-${COMMIT_SHA}-attempt3" ] ||
+    fail "The timestamped outs artifact stem is incorrect."
+  [ "$ANDROID_OUT_APK" = "$PROJECT_ROOT/Builds/outs/$OUT_STEM.apk" ] ||
+    fail "The timestamped APK outs path is incorrect."
+  [ "$IOS_OUT_IPA" = "$PROJECT_ROOT/Builds/outs/$OUT_STEM.ipa" ] ||
+    fail "The timestamped IPA outs path is incorrect."
   mkdir -p "$ANDROID_OUTPUT_DIR"
   if (assert_output_available "$ANDROID_OUTPUT_DIR" Android) >/dev/null 2>&1; then
     fail "An attempted stem collision was accepted."
@@ -137,6 +147,31 @@ git -C "$STEM_REPO" \
   configure_paths
   [ "$STEM" = "DreamSquad-Demo-0.1.0-1-${COMMIT_SHA}" ] ||
     fail "The default stem changed when --attempt was omitted."
+)
+
+(
+  PROJECT_ROOT="$STEM_REPO"
+  TARGET="both"
+  BUILD_VERSION="0.1.0"
+  BUILD_NUMBER="2"
+  BUILD_ATTEMPT=""
+  UNITY_EDITOR_PATH="$FAKE_UNITY"
+  date() {
+    printf '20260727-160102\n'
+  }
+  configure_paths
+  assert_output_root_safe
+  mkdir -p "$ANDROID_OUTPUT_DIR" "$IOS_OUTPUT_DIR"
+  printf 'verified apk\n' > "$ANDROID_APK"
+  printf 'verified ipa\n' > "$IOS_IPA"
+  publish_verified_artifacts
+  cmp -s "$ANDROID_APK" "$ANDROID_OUT_APK" ||
+    fail "The verified APK was not copied to Builds/outs."
+  cmp -s "$IOS_IPA" "$IOS_OUT_IPA" ||
+    fail "The verified IPA was not copied to Builds/outs."
+  if (publish_verified_artifacts) >/dev/null 2>&1; then
+    fail "An existing timestamped outs artifact was overwritten."
+  fi
 )
 
 licensing_fixture="$(

@@ -22,15 +22,20 @@ UNITY_EDITOR=""
 UNITY_ANDROID_MODULE=""
 PROJECT_ROOT=""
 MOBILE_OUTPUT_ROOT=""
+OUTS_OUTPUT_ROOT=""
 STEM=""
 STEM_ROOT=""
+BUILD_TIMESTAMP=""
+OUT_STEM=""
 ANDROID_OUTPUT_DIR=""
 ANDROID_APK=""
+ANDROID_OUT_APK=""
 IOS_OUTPUT_DIR=""
 IOS_XCODE_DIR=""
 IOS_ARCHIVE=""
 IOS_EXPORT_DIR=""
 IOS_IPA=""
+IOS_OUT_IPA=""
 TEMP_BASE="${TMPDIR:-/tmp}"
 TEMP_DIR=""
 RAW_UNITY_LOG=""
@@ -374,17 +379,24 @@ configure_paths() {
 
   UNITY_EDITOR="${UNITY_EDITOR_PATH:-$DEFAULT_UNITY_EDITOR}"
   MOBILE_OUTPUT_ROOT="$PROJECT_ROOT/Builds/Mobile"
+  OUTS_OUTPUT_ROOT="$PROJECT_ROOT/Builds/outs"
   STEM="DreamSquad-Demo-${BUILD_VERSION}-${BUILD_NUMBER}-${COMMIT_SHA}${attempt_suffix}"
   STEM_ROOT="$MOBILE_OUTPUT_ROOT/$STEM"
+  BUILD_TIMESTAMP="$(date '+%Y%m%d-%H%M%S')"
+  [[ "$BUILD_TIMESTAMP" =~ ^[0-9]{8}-[0-9]{6}$ ]] ||
+    fail "Could not determine the build timestamp."
+  OUT_STEM="dreamquad-demo--${BUILD_VERSION}-${BUILD_NUMBER}-${BUILD_TIMESTAMP}-${COMMIT_SHA}${attempt_suffix}"
 
   ANDROID_OUTPUT_DIR="$STEM_ROOT/Android"
   ANDROID_APK="$ANDROID_OUTPUT_DIR/$STEM.apk"
+  ANDROID_OUT_APK="$OUTS_OUTPUT_ROOT/$OUT_STEM.apk"
 
   IOS_OUTPUT_DIR="$STEM_ROOT/iOS"
   IOS_XCODE_DIR="$IOS_OUTPUT_DIR/Xcode"
   IOS_ARCHIVE="$IOS_OUTPUT_DIR/$STEM.xcarchive"
   IOS_EXPORT_DIR="$IOS_OUTPUT_DIR/Export"
   IOS_IPA="$IOS_OUTPUT_DIR/$STEM.ipa"
+  IOS_OUT_IPA="$OUTS_OUTPUT_ROOT/$OUT_STEM.ipa"
 }
 
 generate_keystore_serialization_variant() {
@@ -755,6 +767,8 @@ assert_output_root_safe() {
     fail "Builds output directory must not be a symbolic link."
   [ ! -L "$MOBILE_OUTPUT_ROOT" ] ||
     fail "Builds/Mobile output directory must not be a symbolic link."
+  [ ! -L "$OUTS_OUTPUT_ROOT" ] ||
+    fail "Builds/outs output directory must not be a symbolic link."
   [ ! -L "$STEM_ROOT" ] ||
     fail "The build stem output directory must not be a symbolic link."
 
@@ -763,6 +777,9 @@ assert_output_root_safe() {
   fi
   if [ -e "$MOBILE_OUTPUT_ROOT" ] && [ ! -d "$MOBILE_OUTPUT_ROOT" ]; then
     fail "Builds/Mobile output path must be a directory."
+  fi
+  if [ -e "$OUTS_OUTPUT_ROOT" ] && [ ! -d "$OUTS_OUTPUT_ROOT" ]; then
+    fail "Builds/outs output path must be a directory."
   fi
   if [ -e "$STEM_ROOT" ] && [ ! -d "$STEM_ROOT" ]; then
     fail "The build stem output path must be a directory."
@@ -1179,6 +1196,58 @@ reserve_output_directories() {
   esac
 }
 
+reserve_outs_directory() {
+  if [ ! -d "$OUTS_OUTPUT_ROOT" ]; then
+    mkdir "$OUTS_OUTPUT_ROOT"
+  fi
+  [ ! -L "$OUTS_OUTPUT_ROOT" ] ||
+    fail "Builds/outs output directory became a symbolic link."
+}
+
+copy_verified_artifact() {
+  local source_path="$1"
+  local destination_path="$2"
+  local label="$3"
+  local temporary_path="${destination_path}.partial.$$"
+
+  [ -f "$source_path" ] && [ ! -L "$source_path" ] ||
+    fail "$label source artifact is missing or is not a regular file."
+  assert_output_available "$destination_path" "$label outs"
+  assert_output_available "$temporary_path" "$label temporary outs"
+
+  if ! /bin/cp -p "$source_path" "$temporary_path"; then
+    rm -f -- "$temporary_path"
+    fail "Could not copy the verified $label to Builds/outs."
+  fi
+  if ! cmp -s "$source_path" "$temporary_path"; then
+    rm -f -- "$temporary_path"
+    fail "The $label copy in Builds/outs does not match the verified artifact."
+  fi
+  if ! /bin/ln "$temporary_path" "$destination_path"; then
+    rm -f -- "$temporary_path"
+    fail "Could not finalize the verified $label copy in Builds/outs."
+  fi
+  rm -f -- "$temporary_path" ||
+    fail "Could not remove the temporary $label copy in Builds/outs."
+}
+
+publish_verified_artifacts() {
+  reserve_outs_directory
+
+  case "$TARGET" in
+    android)
+      copy_verified_artifact "$ANDROID_APK" "$ANDROID_OUT_APK" "APK"
+      ;;
+    ios)
+      copy_verified_artifact "$IOS_IPA" "$IOS_OUT_IPA" "IPA"
+      ;;
+    both)
+      copy_verified_artifact "$ANDROID_APK" "$ANDROID_OUT_APK" "APK"
+      copy_verified_artifact "$IOS_IPA" "$IOS_OUT_IPA" "IPA"
+      ;;
+  esac
+}
+
 sanitize_android_unity_log() {
   local destination="$1"
 
@@ -1551,13 +1620,17 @@ main() {
   case "$TARGET" in
     android)
       assert_output_available "$ANDROID_OUTPUT_DIR" "Android"
+      assert_output_available "$ANDROID_OUT_APK" "APK outs"
       ;;
     ios)
       assert_output_available "$IOS_OUTPUT_DIR" "iOS"
+      assert_output_available "$IOS_OUT_IPA" "IPA outs"
       ;;
     both)
       assert_output_available "$ANDROID_OUTPUT_DIR" "Android"
       assert_output_available "$IOS_OUTPUT_DIR" "iOS"
+      assert_output_available "$ANDROID_OUT_APK" "APK outs"
+      assert_output_available "$IOS_OUT_IPA" "IPA outs"
       ;;
   esac
 
@@ -1597,16 +1670,22 @@ main() {
   is_worktree_clean ||
     fail "The build changed the Git worktree."
 
+  publish_verified_artifacts
+
   case "$TARGET" in
     android)
       info "APK: Builds/Mobile/$STEM/Android/$STEM.apk"
+      info "APK copy: Builds/outs/$OUT_STEM.apk"
       ;;
     ios)
       info "IPA: Builds/Mobile/$STEM/iOS/$STEM.ipa"
+      info "IPA copy: Builds/outs/$OUT_STEM.ipa"
       ;;
     both)
       info "APK: Builds/Mobile/$STEM/Android/$STEM.apk"
       info "IPA: Builds/Mobile/$STEM/iOS/$STEM.ipa"
+      info "APK copy: Builds/outs/$OUT_STEM.apk"
+      info "IPA copy: Builds/outs/$OUT_STEM.ipa"
       ;;
   esac
 

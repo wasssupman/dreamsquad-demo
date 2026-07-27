@@ -49,6 +49,10 @@ macOS Shell과 Unity batchmode로 양 플랫폼을 빌드하되 비밀값과 Pla
   `Builds/Mobile/<stem>/Android/<stem>.apk`, iOS는 같은 root 아래
   `iOS/Xcode`, `iOS/<stem>.xcarchive`, `iOS/Export`, `iOS/<stem>.ipa`에 둔다.
   플랫폼 디렉터리가 있으면 덮어쓰지 않는다.
+- 모든 요청 플랫폼의 빌드와 검증이 성공하고 worktree가 clean임을 확인한 뒤, 최종 APK·IPA를
+  `Builds/outs/dreamquad-demo--{version}-{build}-YYYYMMDD-HHMMSS-{sha8}[-attemptN].{apk|ipa}`로
+  복사한다. timestamp는 스크립트 실행당 한 번 계산하며 기존 `Builds/Mobile` 출력과
+  `Builds/outs` 파일은 덮어쓰지 않는다.
 
 ## 완료 기준
 
