@@ -29,8 +29,11 @@
 
 ## 완료 기준
 
-- [ ] MobileBuild EditMode 테스트가 직렬화 값 `5`, 실제 프로젝트 orientation과 기존 drift를 검증한다.
-- [ ] 프리베이크 폰트 회귀 테스트와 Unity 종료 후 worktree clean 검사가 통과한다.
-- [ ] PlayerSettings, Firebase 설정과 서명 파일에 변경이 없다.
-- [ ] 새 clean commit과 새 stem에서 Android 빌드·자동 검증이 통과한다.
-- [ ] 이어지는 iOS archive/Ad Hoc export·자동 검증이 통과한다.
+- [x] MobileBuild EditMode 테스트가 직렬화 값 `5`, 실제 프로젝트 orientation과 기존 drift를
+  검증한다.
+- [x] 프리베이크 폰트 회귀 테스트가 통과한다.
+- [ ] unit 6 적용 실빌드의 Unity 종료 후 worktree clean 검사가 자동으로 통과한다.
+- [x] PlayerSettings, Firebase 설정과 서명 파일에 영속 변경이 없다.
+- [x] clean source `1861a96a8819841df68edeb53b51bf622fce174a`의 새 stem에서 Android
+  빌드·자동 검증이 통과한다.
+- [x] 이어지는 iOS archive/Ad Hoc export·자동 검증이 통과한다.

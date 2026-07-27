@@ -31,5 +31,8 @@ version/build와 서명 계약은 바꾸지 않고 Android/iOS preflight가 실�
 - [x] `scripts/mobile/tests/build_sh_test.sh`가 세 모듈 탐지 케이스를 통과한다.
 - [x] 실제 Unity `6000.4.3f1`의 Android/iOS Build Support와 Android 도구를 인식한다.
 - [x] `somnia_dev_adhoc` 최신 프로파일 1개와 예상 배포 identity preflight가 통과한다.
-- [ ] clean commit에서 version `0.1.0`, build `1`, target `both`가 기존 출력 없이 시작된다.
-- [ ] 성공 시 APK/IPA 자동 검증과 SHA-256 생성 후 worktree가 clean이다.
+- [x] clean source `1861a96a8819841df68edeb53b51bf622fce174a`에서 version `0.1.0`,
+  build `1`, target `both`가 기존 출력 없이 시작된다.
+- [x] APK/IPA 자동 검증과 SHA-256 생성이 성공한다.
+- [ ] 첫 실빌드에서 수동 복원이 필요했던 Unity 직렬화 노이즈가 unit 6 적용 실빌드에서는
+  자동 복원되고 worktree가 clean이다.

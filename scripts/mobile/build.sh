@@ -9,10 +9,14 @@ readonly IOS_TEAM_ID="69DK98XF77"
 readonly IOS_SIGNING_IDENTITY="Apple Distribution"
 readonly IOS_PROFILE_NAME="somnia_dev_adhoc"
 readonly DEFAULT_UNITY_EDITOR="/Applications/Unity/Hub/Editor/6000.4.3f1/Unity.app/Contents/MacOS/Unity"
+readonly PROJECT_SETTINGS_RELATIVE="ProjectSettings/ProjectSettings.asset"
+readonly MOBILE_RP_ASSET_RELATIVE="Assets/Settings/Mobile_RPAsset.asset"
+readonly BUILD_LOCK_RELATIVE="Library/DreamSquadMobileBuild.lock"
 
 TARGET=""
 BUILD_VERSION=""
 BUILD_NUMBER=""
+BUILD_ATTEMPT=""
 KEYSTORE_ARGUMENT=""
 UNITY_EDITOR=""
 UNITY_ANDROID_MODULE=""
@@ -43,17 +47,26 @@ AAPT2=""
 APKSIGNER=""
 KEYTOOL=""
 COMMIT_SHA=""
+BUILD_HEAD_FULL=""
+SERIALIZATION_BASELINE_DIR=""
+SERIALIZATION_BASELINE_CAPTURED=0
+SERIALIZATION_RESTORE_ARMED=0
+UNITY_LAUNCH_ACTIVE=0
+DEFERRED_SIGNAL_EXIT=0
+BUILD_LOCK_DIR=""
+BUILD_LOCK_HELD=0
 
 usage() {
   cat <<'EOF'
 Usage:
-  ./scripts/mobile/build.sh android --version <version> --build <number> [--keystore <path>]
-  ./scripts/mobile/build.sh ios     --version <version> --build <number>
-  ./scripts/mobile/build.sh both    --version <version> --build <number> [--keystore <path>]
+  ./scripts/mobile/build.sh android --version <version> --build <number> [--attempt <number>] [--keystore <path>]
+  ./scripts/mobile/build.sh ios     --version <version> --build <number> [--attempt <number>]
+  ./scripts/mobile/build.sh both    --version <version> --build <number> [--attempt <number>] [--keystore <path>]
 
 Arguments:
   --version   Numeric version in major.minor or major.minor.patch form.
   --build     Positive build number used for Android versionCode and iOS CFBundleVersion.
+  --attempt   Positive retry number. Adds -attemptN to a new output stem.
   --keystore  Android keystore. Defaults to:
               ~/Library/Application Support/Playlinks/Signing/Android/somnia-dev.keystore
 
@@ -72,7 +85,11 @@ fail() {
 }
 
 is_worktree_clean() {
-  [ -z "$(git -C "$PROJECT_ROOT" status --porcelain --untracked-files=all)" ]
+  local status
+
+  status="$(git -C "$PROJECT_ROOT" status --porcelain --untracked-files=all)" ||
+    return 1
+  [ -z "$status" ]
 }
 
 cleanup() {
@@ -85,6 +102,16 @@ cleanup() {
   unset DREAMSQUAD_BUILD_VERSION DREAMSQUAD_BUILD_NUMBER DREAMSQUAD_BUILD_OUTPUT
   unset DREAMSQUAD_ANDROID_KEYSTORE DREAMSQUAD_ANDROID_KEYSTORE_PASSWORD
   unset DREAMSQUAD_ANDROID_KEY_PASSWORD DREAMSQUAD_KEYTOOL_STORE_PASSWORD
+
+  if [ "$SERIALIZATION_BASELINE_CAPTURED" -eq 1 ] &&
+    [ "$UNITY_LAUNCH_ACTIVE" -eq 0 ] &&
+    [ -d "$SERIALIZATION_BASELINE_DIR" ]; then
+    if ! reconcile_known_unity_serialization; then
+      printf '%s\n' \
+        '[DreamSquad Build] ERROR: Could not safely reconcile Unity serialization changes.' >&2
+      exit_code=1
+    fi
+  fi
 
   if [ -n "$TEMP_DIR" ]; then
     case "$TEMP_DIR" in
@@ -102,17 +129,89 @@ cleanup() {
     exit_code=1
   fi
 
+  if ! release_build_lock; then
+    printf '%s\n' \
+      '[DreamSquad Build] ERROR: Could not release the mobile build lock.' >&2
+    exit_code=1
+  fi
+
   exit "$exit_code"
 }
 
+handle_build_signal() {
+  local signal_exit="$1"
+
+  if [ "$UNITY_LAUNCH_ACTIVE" -eq 1 ]; then
+    DEFERRED_SIGNAL_EXIT="$signal_exit"
+    return
+  fi
+
+  exit "$signal_exit"
+}
+
+finish_unity_launch() {
+  UNITY_LAUNCH_ACTIVE=0
+}
+
+exit_if_unity_signal_deferred() {
+  local signal_exit
+
+  if [ "$DEFERRED_SIGNAL_EXIT" -ne 0 ]; then
+    signal_exit="$DEFERRED_SIGNAL_EXIT"
+    DEFERRED_SIGNAL_EXIT=0
+    exit "$signal_exit"
+  fi
+}
+
 trap cleanup EXIT
-trap 'exit 129' HUP
-trap 'exit 130' INT
-trap 'exit 143' TERM
+trap 'handle_build_signal 129' HUP
+trap 'handle_build_signal 130' INT
+trap 'handle_build_signal 143' TERM
 
 require_command() {
   command -v "$1" >/dev/null 2>&1 ||
     fail "Required command is unavailable: $1"
+}
+
+orphan_unity_licensing_pids() {
+  local expected_uid="$1"
+
+  awk -v expected_uid="$expected_uid" '
+    NF >= 4 && $1 ~ /^[0-9]+$/ && $2 == 1 && $3 == expected_uid {
+      executable = $4
+      for (field_index = 5; field_index <= NF; field_index++) {
+        executable = executable " " $field_index
+      }
+      sub(/^.*\//, "", executable)
+      if (executable == "Unity.Licensing.Client") {
+        print $1
+      }
+    }
+  '
+}
+
+snapshot_unity_processes() {
+  /bin/ps -ww -axo pid=,ppid=,uid=,comm=
+}
+
+assert_no_orphan_unity_licensing_client() {
+  local current_uid
+  local process_snapshot
+  local orphan_pids
+
+  current_uid="$(/usr/bin/id -u)" ||
+    fail "Could not determine the current macOS user."
+  process_snapshot="$(snapshot_unity_processes)" ||
+    fail "Could not inspect Unity licensing processes."
+  orphan_pids="$(
+    printf '%s\n' "$process_snapshot" |
+      orphan_unity_licensing_pids "$current_uid"
+  )"
+
+  if [ -n "$orphan_pids" ]; then
+    orphan_pids="${orphan_pids//$'\n'/,}"
+    fail "Detached Unity Licensing Client detected (PID: $orphan_pids). Quit Unity/Hub, re-check the PID, terminate it manually, and rerun."
+  fi
 }
 
 parse_arguments() {
@@ -138,6 +237,7 @@ parse_arguments() {
 
   local seen_version=0
   local seen_build=0
+  local seen_attempt=0
   local seen_keystore=0
 
   while [ "$#" -gt 0 ]; do
@@ -154,6 +254,13 @@ parse_arguments() {
         [ "$#" -ge 2 ] || fail "--build requires a value."
         BUILD_NUMBER="$2"
         seen_build=1
+        shift 2
+        ;;
+      --attempt)
+        [ "$seen_attempt" -eq 0 ] || fail "--attempt was provided more than once."
+        [ "$#" -ge 2 ] || fail "--attempt requires a value."
+        BUILD_ATTEMPT="$2"
+        seen_attempt=1
         shift 2
         ;;
       --keystore)
@@ -189,6 +296,16 @@ parse_arguments() {
     fail "--build must not exceed 2147483647."
   fi
 
+  if [ "$seen_attempt" -eq 1 ] && ! [[ "$BUILD_ATTEMPT" =~ ^[1-9][0-9]*$ ]]; then
+    fail "--attempt must be a positive integer."
+  fi
+  if [ "$seen_attempt" -eq 1 ] &&
+    { [ "${#BUILD_ATTEMPT}" -gt 10 ] ||
+      { [ "${#BUILD_ATTEMPT}" -eq 10 ] &&
+        [[ "$BUILD_ATTEMPT" > "2147483647" ]]; }; }; then
+    fail "--attempt must not exceed 2147483647."
+  fi
+
   if [ "$TARGET" = "ios" ] && [ "$seen_keystore" -eq 1 ]; then
     fail "--keystore is only valid for android or both."
   fi
@@ -222,14 +339,42 @@ resolve_project() {
   FINAL_CHECK_ARMED=1
 }
 
+acquire_build_lock() {
+  local library_dir="$PROJECT_ROOT/Library"
+
+  [ -d "$library_dir" ] && [ ! -L "$library_dir" ] ||
+    fail "Unity Library must be a regular directory before acquiring the build lock."
+  BUILD_LOCK_DIR="$PROJECT_ROOT/$BUILD_LOCK_RELATIVE"
+  if ! mkdir "$BUILD_LOCK_DIR" 2>/dev/null; then
+    fail "Another mobile build is running or a stale mobile build lock remains."
+  fi
+  BUILD_LOCK_HELD=1
+  chmod 700 "$BUILD_LOCK_DIR" ||
+    fail "Could not secure the mobile build lock."
+}
+
+release_build_lock() {
+  [ "$BUILD_LOCK_HELD" -eq 1 ] || return 0
+  /bin/rmdir -- "$BUILD_LOCK_DIR" || return 1
+  BUILD_LOCK_HELD=0
+}
+
 configure_paths() {
+  local attempt_suffix=""
+
+  BUILD_HEAD_FULL="$(git -C "$PROJECT_ROOT" rev-parse HEAD)"
+  [[ "$BUILD_HEAD_FULL" =~ ^[0-9a-fA-F]{40}$ ]] ||
+    fail "Could not determine the full Git commit SHA."
   COMMIT_SHA="$(git -C "$PROJECT_ROOT" rev-parse --short=8 HEAD)"
   [[ "$COMMIT_SHA" =~ ^[0-9a-fA-F]{8}$ ]] ||
     fail "Could not determine an eight-character Git commit SHA."
+  if [ -n "$BUILD_ATTEMPT" ]; then
+    attempt_suffix="-attempt${BUILD_ATTEMPT}"
+  fi
 
   UNITY_EDITOR="${UNITY_EDITOR_PATH:-$DEFAULT_UNITY_EDITOR}"
   MOBILE_OUTPUT_ROOT="$PROJECT_ROOT/Builds/Mobile"
-  STEM="DreamSquad-Demo-${BUILD_VERSION}-${BUILD_NUMBER}-${COMMIT_SHA}"
+  STEM="DreamSquad-Demo-${BUILD_VERSION}-${BUILD_NUMBER}-${COMMIT_SHA}${attempt_suffix}"
   STEM_ROOT="$MOBILE_OUTPUT_ROOT/$STEM"
 
   ANDROID_OUTPUT_DIR="$STEM_ROOT/Android"
@@ -240,6 +385,358 @@ configure_paths() {
   IOS_ARCHIVE="$IOS_OUTPUT_DIR/$STEM.xcarchive"
   IOS_EXPORT_DIR="$IOS_OUTPUT_DIR/Export"
   IOS_IPA="$IOS_OUTPUT_DIR/$STEM.ipa"
+}
+
+generate_keystore_serialization_variant() {
+  local source_file="$1"
+  local destination_file="$2"
+
+  awk -v replacement="  AndroidKeystoreName: '{inproject}: '" '
+    $0 == "  AndroidKeystoreName: " {
+      replacements++
+      print replacement
+      next
+    }
+    { print }
+    END {
+      if (replacements != 1) {
+        exit 1
+      }
+    }
+  ' "$source_file" > "$destination_file"
+}
+
+generate_ios_batching_serialization_variant() {
+  local source_file="$1"
+  local destination_file="$2"
+
+  awk '
+    $0 == "  m_BuildTargetBatching:" {
+      in_batching = 1
+    }
+    in_batching && $0 == "  - m_BuildTarget: iPhone" {
+      has_iphone = 1
+    }
+    in_batching && $0 == "  - m_BuildTarget: Android" {
+      android_entries++
+      in_android = 1
+      static_lines = 0
+      dynamic_lines = 0
+      print
+      next
+    }
+    in_android && $0 == "    m_StaticBatching: 1" {
+      static_lines++
+      print
+      next
+    }
+    in_android && $0 == "    m_DynamicBatching: 0" {
+      dynamic_lines++
+      print
+      if (static_lines != 1 || dynamic_lines != 1) {
+        invalid_android = 1
+        in_android = 0
+        next
+      }
+      print "  - m_BuildTarget: iPhone"
+      print "    m_StaticBatching: 1"
+      print "    m_DynamicBatching: 0"
+      inserted++
+      in_android = 0
+      next
+    }
+    in_android {
+      invalid_android = 1
+      in_android = 0
+    }
+    {
+      print
+    }
+    in_batching && $0 ~ /^  [A-Za-z_]/ &&
+      $0 != "  m_BuildTargetBatching:" {
+      in_batching = 0
+    }
+    END {
+      if (inserted != 1 || has_iphone || android_entries != 1 ||
+        invalid_android || in_android) {
+        exit 1
+      }
+    }
+  ' "$source_file" > "$destination_file"
+}
+
+generate_mobile_rp_serialization_variant() {
+  local source_file="$1"
+  local destination_file="$2"
+
+  awk '
+    $0 == "  m_PrefilterPointSamplingUpsampling: 0" {
+      removals++
+      next
+    }
+    { print }
+    END {
+      if (removals != 1) {
+        exit 1
+      }
+    }
+  ' "$source_file" > "$destination_file"
+}
+
+capture_serialization_baseline() {
+  local project_settings="$PROJECT_ROOT/$PROJECT_SETTINGS_RELATIVE"
+  local mobile_rp_asset="$PROJECT_ROOT/$MOBILE_RP_ASSET_RELATIVE"
+  local project_baseline
+  local project_keystore_variant
+  local project_batching_variant
+
+  [ "$(git -C "$PROJECT_ROOT" rev-parse HEAD)" = "$BUILD_HEAD_FULL" ] ||
+    fail "Git HEAD changed before the build baseline was captured."
+  is_worktree_clean ||
+    fail "Git worktree changed before the build baseline was captured."
+  [ -f "$project_settings" ] && [ ! -L "$project_settings" ] ||
+    fail "Tracked ProjectSettings baseline is unavailable."
+  [ -f "$mobile_rp_asset" ] && [ ! -L "$mobile_rp_asset" ] ||
+    fail "Tracked mobile render-pipeline baseline is unavailable."
+
+  SERIALIZATION_BASELINE_DIR="$TEMP_DIR/serialization-baseline"
+  mkdir "$SERIALIZATION_BASELINE_DIR"
+  project_baseline="$SERIALIZATION_BASELINE_DIR/ProjectSettings.asset"
+  project_keystore_variant="$SERIALIZATION_BASELINE_DIR/ProjectSettings.keystore.asset"
+  project_batching_variant="$SERIALIZATION_BASELINE_DIR/ProjectSettings.batching.asset"
+
+  /bin/cp -p "$project_settings" "$project_baseline"
+  /bin/cp -p "$mobile_rp_asset" "$SERIALIZATION_BASELINE_DIR/Mobile_RPAsset.asset"
+
+  if ! generate_keystore_serialization_variant \
+    "$project_baseline" \
+    "$project_keystore_variant"; then
+    rm -f -- "$project_keystore_variant"
+  fi
+  if ! generate_ios_batching_serialization_variant \
+    "$project_baseline" \
+    "$project_batching_variant"; then
+    rm -f -- "$project_batching_variant"
+  fi
+  if [ -f "$project_batching_variant" ] &&
+    ! generate_keystore_serialization_variant \
+      "$project_batching_variant" \
+      "$SERIALIZATION_BASELINE_DIR/ProjectSettings.both.asset"; then
+    rm -f -- "$SERIALIZATION_BASELINE_DIR/ProjectSettings.both.asset"
+  fi
+  if ! generate_mobile_rp_serialization_variant \
+    "$SERIALIZATION_BASELINE_DIR/Mobile_RPAsset.asset" \
+    "$SERIALIZATION_BASELINE_DIR/Mobile_RPAsset.migrated.asset"; then
+    rm -f -- "$SERIALIZATION_BASELINE_DIR/Mobile_RPAsset.migrated.asset"
+  fi
+
+  SERIALIZATION_BASELINE_CAPTURED=1
+}
+
+find_matching_serialization_candidate() {
+  local current_file="$1"
+  shift
+  local candidate
+
+  for candidate in "$@"; do
+    [ -f "$candidate" ] || continue
+    if cmp -s "$current_file" "$candidate"; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+verify_tracked_build_input_hashes() {
+  local relative_path
+  local expected_blob
+  local actual_blob
+
+  for relative_path in "$PROJECT_SETTINGS_RELATIVE" "$MOBILE_RP_ASSET_RELATIVE"; do
+    expected_blob="$(
+      git -C "$PROJECT_ROOT" rev-parse "$BUILD_HEAD_FULL:$relative_path"
+    )" || return 1
+    actual_blob="$(git hash-object "$PROJECT_ROOT/$relative_path")" || return 1
+    [ "$actual_blob" = "$expected_blob" ] || return 1
+  done
+}
+
+prepare_atomic_restore_file() {
+  local baseline_file="$1"
+  local current_file="$2"
+  local restore_name="$3"
+  local allow_missing_current="$4"
+  local restore_file="$BUILD_LOCK_DIR/$restore_name"
+
+  [ "$BUILD_LOCK_HELD" -eq 1 ] && [ -d "$BUILD_LOCK_DIR" ] ||
+    return 1
+  [ -f "$baseline_file" ] && [ ! -L "$baseline_file" ] ||
+    return 1
+  [ ! -e "$restore_file" ] && [ ! -L "$restore_file" ] ||
+    return 1
+  if [ -e "$current_file" ] || [ -L "$current_file" ]; then
+    [ -f "$current_file" ] && [ ! -L "$current_file" ] ||
+      return 1
+  else
+    [ "$allow_missing_current" -eq 1 ] ||
+      return 1
+  fi
+
+  /bin/cp -p "$baseline_file" "$restore_file" || return 1
+  cmp -s "$restore_file" "$baseline_file"
+}
+
+commit_atomic_restore_file() {
+  local baseline_file="$1"
+  local current_file="$2"
+  local restore_name="$3"
+  local allow_missing_current="$4"
+  local expected_current="${5:-}"
+  local restore_file="$BUILD_LOCK_DIR/$restore_name"
+
+  [ -f "$restore_file" ] && [ ! -L "$restore_file" ] ||
+    return 1
+  cmp -s "$restore_file" "$baseline_file" ||
+    return 1
+  if [ -e "$current_file" ] || [ -L "$current_file" ]; then
+    [ -f "$current_file" ] && [ ! -L "$current_file" ] ||
+      return 1
+  else
+    [ "$allow_missing_current" -eq 1 ] ||
+      return 1
+  fi
+  if [ -n "$expected_current" ]; then
+    cmp -s "$current_file" "$expected_current" ||
+      return 1
+  fi
+
+  /bin/mv -f "$restore_file" "$current_file" || return 1
+  cmp -s "$current_file" "$baseline_file"
+}
+
+reconcile_known_unity_serialization() {
+  local current_head
+  local status
+  local current_status
+  local line
+  local project_dirty=0
+  local mobile_rp_dirty=0
+  local project_settings="$PROJECT_ROOT/$PROJECT_SETTINGS_RELATIVE"
+  local mobile_rp_asset="$PROJECT_ROOT/$MOBILE_RP_ASSET_RELATIVE"
+  local project_candidate=""
+  local mobile_rp_candidate=""
+
+  [ "$SERIALIZATION_BASELINE_CAPTURED" -eq 1 ] || return 1
+  current_head="$(git -C "$PROJECT_ROOT" rev-parse HEAD)" || return 1
+  [ "$current_head" = "$BUILD_HEAD_FULL" ] || return 1
+  git -C "$PROJECT_ROOT" diff --cached --quiet -- || return 1
+  status="$(
+    git -C "$PROJECT_ROOT" status --porcelain --untracked-files=all
+  )" || return 1
+  if [ -n "$status" ] && [ "$SERIALIZATION_RESTORE_ARMED" -ne 1 ]; then
+    return 1
+  fi
+
+  if [ -n "$status" ]; then
+    while IFS= read -r line; do
+      case "$line" in
+        " M $PROJECT_SETTINGS_RELATIVE")
+          project_dirty=1
+          ;;
+        " M $MOBILE_RP_ASSET_RELATIVE")
+          mobile_rp_dirty=1
+          ;;
+        *)
+          return 1
+          ;;
+      esac
+    done <<< "$status"
+  fi
+
+  if [ "$project_dirty" -eq 1 ]; then
+    project_candidate="$(
+      find_matching_serialization_candidate \
+        "$project_settings" \
+        "$SERIALIZATION_BASELINE_DIR/ProjectSettings.keystore.asset" \
+        "$SERIALIZATION_BASELINE_DIR/ProjectSettings.batching.asset" \
+        "$SERIALIZATION_BASELINE_DIR/ProjectSettings.both.asset"
+    )" || return 1
+  fi
+  if [ "$mobile_rp_dirty" -eq 1 ]; then
+    mobile_rp_candidate="$(
+      find_matching_serialization_candidate \
+        "$mobile_rp_asset" \
+        "$SERIALIZATION_BASELINE_DIR/Mobile_RPAsset.migrated.asset"
+    )" || return 1
+  fi
+
+  if [ "$project_dirty" -eq 1 ]; then
+    cmp -s "$project_settings" "$project_candidate" || return 1
+  fi
+  if [ "$mobile_rp_dirty" -eq 1 ]; then
+    cmp -s "$mobile_rp_asset" "$mobile_rp_candidate" || return 1
+  fi
+  if [ "$project_dirty" -eq 1 ]; then
+    prepare_atomic_restore_file \
+      "$SERIALIZATION_BASELINE_DIR/ProjectSettings.asset" \
+      "$project_settings" \
+      "ProjectSettings.restore" \
+      0 || return 1
+  fi
+  if [ "$mobile_rp_dirty" -eq 1 ]; then
+    prepare_atomic_restore_file \
+      "$SERIALIZATION_BASELINE_DIR/Mobile_RPAsset.asset" \
+      "$mobile_rp_asset" \
+      "Mobile_RPAsset.restore" \
+      0 || return 1
+  fi
+
+  [ "$(git -C "$PROJECT_ROOT" rev-parse HEAD)" = "$BUILD_HEAD_FULL" ] ||
+    return 1
+  git -C "$PROJECT_ROOT" diff --cached --quiet -- || return 1
+  current_status="$(
+    git -C "$PROJECT_ROOT" status --porcelain --untracked-files=all
+  )" || return 1
+  [ "$current_status" = "$status" ] || return 1
+  if [ "$project_dirty" -eq 1 ]; then
+    cmp -s "$project_settings" "$project_candidate" || return 1
+  fi
+  if [ "$mobile_rp_dirty" -eq 1 ]; then
+    cmp -s "$mobile_rp_asset" "$mobile_rp_candidate" || return 1
+  fi
+  if [ "$project_dirty" -eq 1 ]; then
+    commit_atomic_restore_file \
+      "$SERIALIZATION_BASELINE_DIR/ProjectSettings.asset" \
+      "$project_settings" \
+      "ProjectSettings.restore" \
+      0 \
+      "$project_candidate" || return 1
+  fi
+  if [ "$mobile_rp_dirty" -eq 1 ]; then
+    commit_atomic_restore_file \
+      "$SERIALIZATION_BASELINE_DIR/Mobile_RPAsset.asset" \
+      "$mobile_rp_asset" \
+      "Mobile_RPAsset.restore" \
+      0 \
+      "$mobile_rp_candidate" || return 1
+  fi
+  verify_tracked_build_input_hashes || return 1
+  is_worktree_clean
+}
+
+settle_known_unity_serialization() {
+  local sample
+
+  for sample in 1 2 3; do
+    reconcile_known_unity_serialization ||
+      fail "Unity changed tracked files outside the approved serialization-only set."
+    if [ "$sample" -lt 3 ]; then
+      sleep 1
+    fi
+  done
+  SERIALIZATION_RESTORE_ARMED=0
 }
 
 assert_output_available() {
@@ -275,6 +772,7 @@ assert_output_root_safe() {
 preflight_common() {
   [ "$(uname -s)" = "Darwin" ] ||
     fail "This build wrapper requires macOS."
+  assert_no_orphan_unity_licensing_client
   [ -x "$UNITY_EDITOR" ] ||
     fail "Unity 6000.4.3f1 is unavailable. Set UNITY_EDITOR_PATH to its executable."
 
@@ -710,11 +1208,14 @@ run_unity_android() {
   local final_log="$ANDROID_OUTPUT_DIR/unity.log"
   local unity_exit
 
+  assert_no_orphan_unity_licensing_client
   RAW_UNITY_LOG="$TEMP_DIR/android-unity.log"
   : > "$RAW_UNITY_LOG"
   chmod 600 "$RAW_UNITY_LOG"
 
   set +e
+  SERIALIZATION_RESTORE_ARMED=1
+  UNITY_LAUNCH_ACTIVE=1
   (
     export DREAMSQUAD_BUILD_VERSION="$BUILD_VERSION"
     export DREAMSQUAD_BUILD_NUMBER="$BUILD_NUMBER"
@@ -732,11 +1233,14 @@ run_unity_android() {
       -logFile "$RAW_UNITY_LOG"
   )
   unity_exit=$?
+  finish_unity_launch
   set -e
 
   sanitize_android_unity_log "$final_log"
   rm -f -- "$RAW_UNITY_LOG"
   RAW_UNITY_LOG=""
+  settle_known_unity_serialization
+  exit_if_unity_signal_deferred
 
   [ "$unity_exit" -eq 0 ] ||
     fail "Unity Android build failed. Inspect the Android unity.log."
@@ -813,8 +1317,13 @@ verify_android_apk() {
 
 run_unity_ios_export() {
   local final_log="$IOS_OUTPUT_DIR/unity.log"
+  local unity_exit
 
-  if ! (
+  assert_no_orphan_unity_licensing_client
+  set +e
+  SERIALIZATION_RESTORE_ARMED=1
+  UNITY_LAUNCH_ACTIVE=1
+  (
     export DREAMSQUAD_BUILD_VERSION="$BUILD_VERSION"
     export DREAMSQUAD_BUILD_NUMBER="$BUILD_NUMBER"
     export DREAMSQUAD_BUILD_OUTPUT="$IOS_XCODE_DIR"
@@ -826,9 +1335,15 @@ run_unity_ios_export() {
       -buildTarget iOS \
       -executeMethod Wassup.Editor.MobileBuild.DreamSquadMobileBuildCli.ExportIosQa \
       -logFile "$final_log"
-  ); then
+  )
+  unity_exit=$?
+  finish_unity_launch
+  set -e
+  settle_known_unity_serialization
+  exit_if_unity_signal_deferred
+
+  [ "$unity_exit" -eq 0 ] ||
     fail "Unity iOS export failed. Inspect the iOS unity.log."
-  fi
 
   [ -f "$IOS_XCODE_DIR/Unity-iPhone.xcodeproj/project.pbxproj" ] ||
     fail "Unity reported success but did not produce an Xcode project."
@@ -1029,6 +1544,7 @@ build_ios() {
 main() {
   parse_arguments "$@"
   resolve_project
+  acquire_build_lock
   configure_paths
   assert_output_root_safe
 
@@ -1048,6 +1564,7 @@ main() {
   preflight_common
   TEMP_DIR="$(mktemp -d "$TEMP_BASE/dreamsquad-mobile.XXXXXX")"
   chmod 700 "$TEMP_DIR"
+  capture_serialization_baseline
 
   case "$TARGET" in
     android)

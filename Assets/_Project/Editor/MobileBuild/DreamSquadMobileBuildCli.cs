@@ -108,6 +108,7 @@ namespace Wassup.Editor.MobileBuild
             finally
             {
                 snapshot.Restore();
+                AssetDatabase.SaveAssets();
             }
         }
 
