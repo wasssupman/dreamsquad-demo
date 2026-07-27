@@ -62,6 +62,16 @@
 
 **전체 제약 목록은 `docs/TRD.md` 섹션 3(추상화 규칙), 섹션 5(금지 패턴)를 반드시 참조**하라.
 
+## 원격 저장소 · 푸시 전략 (2026-07-27 확정)
+
+- **GitHub 이 정본이다.** 모든 작업은 GitHub `main` 에 커밋·푸시한다 (`origin` = `github.com/wasssupman/dreamsquad-demo`).
+- **`GitHub main` ≡ `GitLab master`.** GitLab(`gitlab.playlinks.co/cash-royale/dreamsquad-demo`)은 미러이고 기본 브랜치는 **`master`** 다. GitLab `main` 브랜치는 **은퇴** — 쓰지 않는다(중복 계보로 분기를 만들었던 이력).
+- **동기화 2줄**: `git pull` → `git push gitlab main:refs/heads/master`. GitLab 이 앞서 있으면(동료가 GitLab 에 직접 푸시) 앞에 `git fetch gitlab && git merge gitlab/master` 를 붙여 **편입한 뒤 양쪽에 푸시**한다 — 한쪽으로 수렴시켜야 이후 fast-forward 가 유지된다.
+- **GitLab remote 는 SSH 만 쓴다**: `git@gitlab.playlinks.co:cash-royale/dreamsquad-demo.git`. HTTPS 는 AWS ALB 경유라 대용량 전송이 끊긴다(클론 실패 · 초기 푸시 HTTP 413). 진단·우회 상세는 `docs/reference/lessons/02-dev-workflow-git-scene.md`.
+- **GitLab 에서 커밋하지 않는다.** 웹 편집·GitLab 발 MR 로 GitLab 전용 커밋이 생기면 다음 fast-forward 가 막히고, 기본 브랜치는 보호돼 force push 도 불가하다. GitLab 프로젝트 merge method 는 **Fast-forward** 유지.
+- **푸시는 사용자 승인제.** 커밋은 자율 판단으로 진행해도 되지만 `git push` 는 **매번 사용자의 명시 승인 후**. 원격 force push·원격 브랜치 삭제는 특히 승인 필수이며, 무엇이 폐기되는지 먼저 확인해 보고한다.
+- **여러 세션이 같은 워크트리를 공유한다.** pull/push 전 `git status -sb` 로 현재 위치를 확인하고, 스테이징은 **경로 명시**로만 한다(무관한 dirty 파일 혼입 방지). `.git/index.lock` 경합 시 락을 지우지 말고 기다린다.
+
 ## 참조 문서 (필요 시 읽는 순서)
 
 | 상황 | 읽을 문서 |
