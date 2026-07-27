@@ -49,12 +49,18 @@ DcRejectReason EvaluateMechanic(in DcPayloadSpec payload, DcTriggerKind trigger,
 
 ## 완료 기준
 
-- [ ] 컴파일 클린 + EditMode 그린.
-- [ ] `DcApplicabilityTests`: `AttackN × BombThrow` 기대값이 `NoEventPoint` → `None` 으로 **뒤집힌다**(잠금 해제의 증거). `tileRange 0` 이면 `NeedsFallbackRange`.
-- [ ] `AttackSystemUnifiedLoopTests` 신규: 폭탄맨 + 비수 슬롯(period 5) → 5번째 **발사 성사** 프레임에 니들 캐리어 1개. `landValid == false` 프레임은 카운트되지 않는다.
-- [ ] 기존 회귀 없음: 근접/원거리/머신거너의 카운트 지점·빈도 무변화(계약 1·8).
-- [ ] Play: 폭탄맨에 비수 부착이 **허용**되고(`Would=True`), 실전투에서 5발마다 니들이 나간다.
+- [x] 컴파일 클린 + EditMode **1471 전원 통과**.
+- [x] `DcApplicabilityTests`: `AttackN × BombThrow` 가 `NoEventPoint` → `None` 으로 뒤집혔다(잠금 해제의 증거). `tileRange 0` 이면 `NeedsFallbackRange`, 단 host 가 대상을 주는 부류는 반경 0 이어도 통과(B안).
+- [x] `AttackSystemUnifiedLoopTests` 신규 2건: ① 5번째 발사에 니들 캐리어 1개 + **최근접** 적 선택(폭탄 착지셀과 무관) ② `landValid == false` 로 5틱 → 카운터 **0**.
+- [x] 기존 회귀 없음 — 근접 니들 테스트 포함 전원 통과.
+- [x] Play: 폭탄맨에 비수 부착 **허용**(`Would=True`, `Apply=0`). unit 1 에서 `-1` 이던 것이 뒤집혔고 배틀 진행 중 콘솔 에러 0.
+- [ ] **남음 — 실전투 시각 확인**: 폭탄맨이 5발마다 니들을 쏘는 장면. 라이브 슬롯 counter 조회는 `_defenderByTile` 값 타입 리플렉션에서 막혔고(시간 대비 가치 낮음), 시뮬 계약은 위 통합 테스트 2건이 덮는다. 사용자 Play 로 확인.
+
+## 주의 (unit 4 로 넘기는 것)
+
+- `HasEventPoint` 의 `AttackN` 줄은 이제 `archetype != HazardCast` 다. unit 4 가 캐스트 사건을 열면 이 조건 자체가 사라진다.
+- 폭탄맨 폴백 코드가 캐스터에서 재사용할 **후보 조립 패턴**이다(스냅샷 순회 → `eligible` = 진영 Enemy ∧ 자기 제외 → `SelectNearest`). 캐스터는 Effects 에서 사건이 오므로 조립 위치만 다르다.
 
 ---
 
-확인 일자 / 커밋: (미완)
+확인 일자 / 커밋: 2026-07-27 · `8f0f21dc` (실전투 시각 확인 1건 미완)
