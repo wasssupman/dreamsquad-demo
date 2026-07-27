@@ -51,12 +51,13 @@ stale 이벤트는 조용히 버린다 — `Exists` / `HasBuffer<DcTriggerSlot>`
 
 ## 완료 기준
 
-- [ ] 컴파일 클린 + EditMode 그린. `DcApplicabilityTests` 의 `HazardCast` 기대값이 `None` 으로 뒤집힌다.
-- [ ] 캐스터 SO 가드(EditMode): `HazardCastAbility` 보유 디펜더는 `attackRange == 0` ∧ `outputs` 비어 있음. 지금 이 조건은 **에셋 값의 우연**이고, 깨지면 한 host 가 RESOLVE + 캐스트로 **2 카운트**를 먹어 계약 2(host 당 사건 지점 1개)가 무너진다.
-- [ ] `CLAUDE.md` 채널 목록 22개로 갱신(같은 커밋).
-- [ ] 큐 수명: 로비 경유 **재진입 2회** 후 콘솔 무경고. 3점 세트 누락은 컴파일·EditMode 어디에도 안 걸린다.
-- [ ] Play: 캐스터에 비수 부착 허용(`Would=True`) + 실전투에서 캐스트 5회마다 니들.
+- [x] 컴파일 클린 + EditMode **1472 전원 통과**. `AttackN` 이 전 아키타입에서 `None`(사건 지점 개통 완료).
+- [x] 캐스터 SO 가드: `HazardCasters_CannotAlsoCountViaResolve` — `HazardCastAbility` 보유 디펜더는 `attackRange == 0` ∧ `outputs` 없음. 깨지면 그 host 가 RESOLVE + 캐스트로 2 카운트를 먹어 계약 2 가 무너진다.
+- [x] `CLAUDE.md` 채널 목록 22개 + 순서 계약 기재(같은 커밋).
+- [x] **큐 수명 라이브 검증**: 테스트 매치 **재진입 2회** 후 `CastEventsSingleton` 엔티티 **정확히 1개**, `_castEventQueue.IsCreated=True`, 콘솔 에러 0. 3점 세트가 대칭이라는 증거(비대칭이면 2개가 되어 `TryGetSingleton` 이 영구 실패한다).
+- [x] Play: 캐스터(FireCaster)에 비수 부착 **허용** — `Would=True`, `Apply=0`. unit 1 에서 `-1` 이던 것이 뒤집혔다.
+- [ ] **남음 — 실전투 시각 확인**: 캐스트 5회마다 니들이 나가는 장면(폭탄맨과 동일 항목).
 
 ---
 
-확인 일자 / 커밋: (미완)
+확인 일자 / 커밋: 2026-07-27 · `ed930e2b` (실전투 시각 확인 1건 미완)
