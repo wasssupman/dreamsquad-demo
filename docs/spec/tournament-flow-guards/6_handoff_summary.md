@@ -2,6 +2,8 @@
 
 토너먼트 서버 왕복(play/complete)의 성공·실패를 플레이어에게 드러내고, 락을 스코어 제출로 확실히 푸는 작업. 구현·정리 완료, 컴파일/EditMode green. 라이브 e2e 만 서버 락 해제 후 대기.
 
+> unit 7 (2026-07-27, `fa6f0b7e`): 락 유형 play 실패 시 pending attemptId 로 complete(0) → play 1회 재시도 자동 복구(tracked 한정, orphan 은 여전히 서버 이관) + 실패 팝업 락 메시지 분기·raw 에러 상세 표기. `ReconcilePending(onDone)` 오버로드 — released=true(complete 실제 성공)에만 재시도 게이트. 라이브 강제 재현 통과(7_ 문서 확인 라인).
+
 ## Commit
 
 - `820de3c2` unit 0 — 공용 알림 팝업 NoticePopup
@@ -11,6 +13,7 @@
 - `98f2cd55` unit 5 — reconcile 나이 무관 항상 complete(0)
 - `30989502` unit 6 — pending 은 complete 성공 후에만 제거
 - `44d24c01` 크리틱 리뷰 정리 — churn/데드코드 제거
+- `fa6f0b7e` unit 7 — 락 자동 복구(tracked) + 입장 실패 상세 에러
 
 ## Implemented
 
