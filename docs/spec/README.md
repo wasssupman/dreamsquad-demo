@@ -121,6 +121,14 @@ code + git history        구현 상세
 
 > 출처 spec 이 섞여 있다. 그룹 헤더 또는 항목 끝의 `(spec-slug)` 라벨로 출처 표기.
 
+#### 드림캐쳐 공격 결합 (dreamcatcher-attack-decoupling — 완료 2026-07-27)
+
+- **페이로드 다연발(n초 간격 m발)** [M] · 비수가 발동당 1발만 쏜다. `VolleyMath.TickBurst`(머신거너 10연발)와 `SpawnNeedleCarrier` 를 그대로 재사용하면 되고, 실제 작업은 "버스트 상태를 어디에 두고 언제 틱하느냐" 하나다 → `docs/spec/dreamcatcher-payload-burst/`
+- **방향탄 bounce 개통** [M] · 통통구슬×머신거너. `defender-directional-volley` 후속 후보의 사용자 결정("차단이 아니라 개통")이 살아 있다. 볼리 arm 이 bounce 필드를 적재 + `PathHit` pierce 소진 후 재조준 + `pierceCount>1` 합성 규칙.
+- **`payload × trigger` 배선표** [M] · 현재 적용성 판정은 host 필터일 뿐이라 `AttackN × SelfTileAoe` 같은 조합이 통과한다(현 카탈로그엔 없음). `DcTrigger.GateComboSupported` 가 gate 조합에 하는 일과 같은 형태. critic 2종 모두 "별도 spec" 판정.
+- **`FrontmostTarget × facing 유닛`** [S] · 붙지만 보너스가 inert(레인 타게팅이 우선순위를 덮는다). 경로 의존이 아니라 **타게팅 규칙 의존**이라 현재 지원 행렬로는 표현이 어색하다.
+- **`Projectile_Shuriken_GA` 의 `flightMode` 미직렬화** [S] · 기본값(Homing) 의존이라 다음 사람이 대포를 ballistic 으로 오독한다. 명시 저장.
+
 #### 손패 카드 시인성 (dreamcatcher-hand-card-face — 완료 2026-07-25)
 
 손패 카드에서 아트를 걷고 타입색 헤더 + 대상 태그 + 효과 본문 구조로 교체(프로토 검증용 —

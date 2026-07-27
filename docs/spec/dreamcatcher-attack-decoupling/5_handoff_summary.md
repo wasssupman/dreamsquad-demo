@@ -48,7 +48,8 @@
 
 ## Follow-up
 
-- **시트 `DcMechanics` / `poke_needle` 의 `tileRange` → 4** (현재 명시적 `0`). 안 고치면 다음 로그인 import 가 SO 를 되돌려 폭탄맨·캐스터의 비수가 죽는다 — **이 spec 에서 가장 실현 가능성 높은 회귀**. `PokeNeedle_HasPositiveFallbackRange` 는 SO 만 보므로 시트 드리프트는 못 잡는다.
+- ~~시트 `tileRange` → 4~~ **완료**(2026-07-27, `curl` 대조). 다만 `PokeNeedle_HasPositiveFallbackRange` 는 SO 만 보므로 **시트 드리프트는 여전히 못 잡는다** — 이 셀이 다시 `0` 이 되면 폭탄맨·캐스터의 비수가 조용히 죽는다. 시트 수정 시 주의.
+- 시트 `DcMechanics._projectileId` 가 아직 `ga_shard02` (실제는 `needle_flame`). `_` 접두사라 import 대상 밖이라 무해하지만 값은 stale.
 - **실전투 시각 확인**: 폭탄맨·캐스터가 5회마다 니들을 쏘는 장면(시뮬 계약은 EditMode 4건이 덮는다).
 - **방향탄 bounce 개통** — 별도 spec. `defender-directional-volley` 후속 후보의 사용자 결정이 살아 있다.
 - `FrontmostTarget × facing 유닛` — 경로 의존이 아니라 **타게팅 규칙 의존**이라 현재 행렬로는 표현이 어색하다(붙지만 보너스가 inert).

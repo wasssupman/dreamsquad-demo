@@ -49,7 +49,7 @@ spec critic 은 "반경 0 = 절대 발동 불가 = 부착 거절"을 제안했�
 - [x] 컴파일 클린 + EditMode **1467 전원 통과**. 기존 동작 무변화 — 폴백은 아직 호출되지 않는다.
 - [x] `NearestTargetingTests` 6케이스: 반경 밖 제외 · 부적격(진영/상태) 제외 · 동거리 tie-break 결정론(배열 순서 무관) · 후보 없음 → `-1` · `tileRange<=0` 폴백 비활성.
 - [x] `Card_PokeNeedle.payload.tileRange == 4` + bake 가 `slot.tileRange` 에 적재. 매트릭스 테스트에 반경>0 회귀 핀.
-- [ ] **시트 왕복 — 남음.** `DcMechanics` / `poke_needle` 행 `tileRange` 셀이 아직 명시적 `0`. 갱신하지 않으면 다음 로그인 import 가 SO 를 `0` 으로 되돌리고 폴백이 조용히 죽는다(`DcSheetApplier.cs:209` — blank 만 keep). 갱신 후 `curl` 대조.
+- [x] **시트 왕복 완료** (2026-07-27). `DcMechanics` / `poke_needle` 행 `tileRange` = `4`, `curl` 읽기 전용으로 SO 와 일치 확인. 이 셀이 `0` 이면 로그인 import 가 SO 를 되돌려 폴백이 조용히 죽는다(`DcSheetApplier.cs:209` — blank 만 keep).
 
 ## 주의 (unit 3·4 로 넘기는 것)
 
@@ -59,4 +59,4 @@ spec critic 은 "반경 0 = 절대 발동 불가 = 부착 거절"을 제안했�
 
 ---
 
-확인 일자 / 커밋: 2026-07-27 · `f3cffadb` (시트 갱신 1건 미완)
+확인 일자 / 커밋: 2026-07-27 · `f3cffadb` (시트 왕복 포함 완료)
