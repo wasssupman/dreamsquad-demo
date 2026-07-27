@@ -54,6 +54,13 @@ spec `af1796bc`(0~6 작성) → `5e69dc5f`(spec-review 반영) → `afb9d83f`(�
 
 리뷰 전 자체 검증으로 잡은 CRITICAL 1건(SkyFall origin → 폭격이 보스 머리 위에서 낙하, `b8ef7c37`)은 별건이다.
 
+## 테스트 배치 (리뷰 후 보강)
+
+- **순수 계층** — `EmitterTickTests`(9) · `PatternTargetingTests`(9) · `Bezier3Tests`(9). World 없이 돈다.
+- **emitter 통합** — `ProjectileEmitterIntegrationTests`(6). `SimulationSystemGroup` 에 **arm(BossPeriodicTriggerSystem) + emitter 를 함께** 넣어 실제 트리거 발화로 구동한다 — 테스트가 push 를 직접 하면 시드 규약이 두 곳에 복제돼 arm 이 규약을 바꿔도 초록으로 남는다.
+- **bake 경로** — `PatternBakeTests`(4). `BattleBridge` 는 `[ExecuteAlways]` 가 없어 EditMode `AddComponent` 로 Awake 가 돌지 않고, bake 가 요구하는 상태는 `_world`/`_em` 둘뿐이라 reflection 주입으로 충분하다(`BattleBridgeDraftMapTests` 와 같은 레시피). **bake 를 순수 함수로 추출해 테스트하지 말 것** — dangling 버퍼 핸들 류는 `EntityManager` 를 만지는 쪽에만 있어서, 추출하면 한 번도 깨진 적 없는 절반에 초록불이 켜진다.
+- **픽스처 함정**: `TickTrigger` 는 주기만큼 dt 를 한 번에 주므로 **버스트 tick 에도 그 dt 가 적용된다**(lag spike 사양). `interval > 0` 패턴은 한 프레임에 전량이 나가므로, 버스트 진행을 관찰하려면 `FireOnceThenDetach`(작은 dt 누적 + 슬롯 분리)를 쓴다.
+
 ## Follow-up
 
 - **Play e2e(unit 6) 미실시** — MCP 브리지 복구 필요. 확인 항목:
