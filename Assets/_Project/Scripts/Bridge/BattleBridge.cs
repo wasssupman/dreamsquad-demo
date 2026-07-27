@@ -40,8 +40,10 @@ namespace Wassup.Bridge
         [SerializeField] private int fixedMapSeed = 20260719;
         // [임시] 풀 인덱스 하드 고정(2026-07-27 사용자 요청). ≥0 이면 시드/토너먼트/dev override 를
         // 전부 제치고 이 인덱스로만 진입한다(현재 1 = Coil). 로비 맵 선택 스테퍼도 함께 임시 숨김
-        // (DevMapOverridePanel). 되돌릴 때: 이 값을 -1 로, 그리고 패널의 임시 숨김 해제 — 두 곳 다.
-        // 씬에 직렬화된 값이 없어 코드 기본값이 그대로 적용된다(씬 저장 불필요).
+        // (DevMapOverridePanel).
+        // 되돌릴 때 **세 곳** 다: (1) BattleScene 의 BattleBridge 인스펙터 값 → -1,
+        // (2) 이 코드 기본값 → -1, (3) DevMapOverridePanel.TemporarilyHidden → false.
+        // (1)이 핵심 — 씬 저장으로 이 필드가 BattleScene 에 직렬화됐고, 씬 값이 코드 기본값을 이긴다.
         [SerializeField] private int forcedMapPoolIndex = 1;
         [Header("Season")]
         [SerializeField] private SeasonRegistry seasonRegistry;
