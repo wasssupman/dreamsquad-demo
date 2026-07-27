@@ -22,6 +22,7 @@ namespace Wassup.Tests.EditMode
         private SimulationSystemGroup _simGroup;
         private NativeQueue<UnitAttackVisualEvent> _attackEventQueue;
         private NativeQueue<EnemyCcEvent> _ccQueue;
+        private NativeQueue<CastEvent> _castQueue;
 
         [SetUp]
         public void SetUp()
@@ -42,6 +43,12 @@ namespace Wassup.Tests.EditMode
             _ccQueue = new NativeQueue<EnemyCcEvent>(Allocator.Persistent);
             var ccSingleton = _em.CreateEntity();
             _em.AddComponentData(ccSingleton, new EnemyCcEventsSingleton { queue = _ccQueue });
+
+            // Singleton: cast events (Effects→Combat). 라이브에선 BattleBridge 가 소유하고
+            // HazardCastSystem 이 enqueue 한다. 여기서는 큐에 직접 넣어 드레인만 검증한다.
+            _castQueue = new NativeQueue<CastEvent>(Allocator.Persistent);
+            var castSingleton = _em.CreateEntity();
+            _em.AddComponentData(castSingleton, new CastEventsSingleton { queue = _castQueue });
         }
 
         [TearDown]
@@ -49,6 +56,7 @@ namespace Wassup.Tests.EditMode
         {
             if (_attackEventQueue.IsCreated) _attackEventQueue.Dispose();
             if (_ccQueue.IsCreated) _ccQueue.Dispose();
+            if (_castQueue.IsCreated) _castQueue.Dispose();
             _world?.Dispose();
         }
 
@@ -580,6 +588,90 @@ namespace Wassup.Tests.EditMode
                 "host 가 대상을 안 주므로 페이로드가 스스로 최근접 적을 고른다");
             Assert.AreEqual(bomber, req.owner, "위협 귀속은 폭탄맨 본인");
             Assert.AreNotEqual(far, req.target);
+        }
+
+        // ─── attack-decoupling unit 4 — 캐스트 사건 드레인. 해저드 캐스터는
+        // attackRange 0 이라 RESOLVE 에 못 가고, 캐스트 성사가 Effects 에서 큐로
+        // 넘어온다. 여기서는 HazardCastSystem 없이 큐에 직접 넣어 **드레인 자체**
+        // (카운트 → 폴백 선정 → 캐리어)를 검증한다. ───
+
+        private Entity CreateCasterWithSlot(float3 position, int period, int tileRange = 4)
+        {
+            // 캐스터는 공격 사거리가 없다(attackRange 0) — RESOLVE 로는 절대 카운트되지
+            // 않는다는 것이 계약 2 의 상호배타 전제다.
+            var e = CreateAttacker(
+                Faction.Defender, position,
+                damage: 0f, range: 0f, cooldownDuration: 999f,
+                targetMask: (int)Faction.Enemy,
+                defenderTag: true);
+            var slots = _em.AddBuffer<DcTriggerSlot>(e);
+            slots.Add(new DcTriggerSlot
+            {
+                instanceId = 1,
+                trigger = DcTriggerKind.AttackN,
+                period = (ushort)period,
+                counter = 0,
+                payload = DcPayloadKind.ProjectileToTarget,
+                magnitude = 20f,
+                projectileDataIndex = 0,
+                speed = 10f,
+                hitThreshold = 0.3f,
+                visualScale = 1f,
+                tileRange = tileRange,
+            });
+            return e;
+        }
+
+        [Test]
+        public void CastEvent_PokeNeedle_FiresOnFifthCastWithNearestTarget()
+        {
+            var caster = CreateCasterWithSlot(new float3(0f, 0f, 0f), period: 5);
+            var far = CreateTarget(Faction.Enemy, new float3(3f, 0f, 0f), attackerTag: true);
+            var near = CreateTarget(Faction.Enemy, new float3(1f, 0f, 0f), attackerTag: true);
+
+            using var carrierQuery = _em.CreateEntityQuery(
+                ComponentType.ReadOnly<ProjectileRequestCarrier>(),
+                ComponentType.ReadOnly<ProjectileSpawnRequest>());
+
+            for (int i = 0; i < 4; i++)
+            {
+                _castQueue.Enqueue(new CastEvent { caster = caster, casterPos = float3.zero });
+                Tick();
+            }
+            Assert.AreEqual(0, carrierQuery.CalculateEntityCount(),
+                "5회째 전에는 니들이 나가면 안 된다(캐스트만 카운트)");
+
+            _castQueue.Enqueue(new CastEvent { caster = caster, casterPos = float3.zero });
+            Tick();
+
+            Assert.AreEqual(1, carrierQuery.CalculateEntityCount(),
+                "캐스터도 5번째 캐스트에 니들 캐리어를 스폰해야 한다");
+            var carrier = carrierQuery.ToEntityArray(Allocator.Temp);
+            var req = _em.GetComponentData<ProjectileSpawnRequest>(carrier[0]);
+            carrier.Dispose();
+            Assert.AreEqual(near, req.target,
+                "host 가 대상을 안 주므로 페이로드가 스스로 최근접 적을 고른다");
+            Assert.AreEqual(caster, req.owner, "위협 귀속은 캐스터 본인");
+            Assert.AreEqual(20f, req.damage, 1e-4f, "flat magnitude(계약 7)");
+            Assert.AreNotEqual(far, req.target);
+        }
+
+        [Test]
+        public void CastEvent_DropsStaleCasterWithoutThrowing()
+        {
+            // enqueue 후 드레인 전에 캐스터가 죽는 창이 있다 — 그 이벤트는 조용히 버린다.
+            var caster = CreateCasterWithSlot(new float3(0f, 0f, 0f), period: 1);
+            CreateTarget(Faction.Enemy, new float3(1f, 0f, 0f), attackerTag: true);
+
+            using var carrierQuery = _em.CreateEntityQuery(
+                ComponentType.ReadOnly<ProjectileRequestCarrier>(),
+                ComponentType.ReadOnly<ProjectileSpawnRequest>());
+
+            _castQueue.Enqueue(new CastEvent { caster = caster, casterPos = float3.zero });
+            _em.DestroyEntity(caster);
+
+            Assert.DoesNotThrow(() => Tick(), "파괴된 캐스터의 이벤트가 드레인을 깨면 안 된다");
+            Assert.AreEqual(0, carrierQuery.CalculateEntityCount());
         }
 
         [Test]
