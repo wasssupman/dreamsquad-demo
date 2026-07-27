@@ -64,17 +64,28 @@ namespace Wassup.Core.Api
             => !string.IsNullOrEmpty(error)
                && error.IndexOf("cannot wait", StringComparison.OrdinalIgnoreCase) >= 0;
 
-        // GameManager.OnEnable 진입용(비게이트). 로비 발행 attempt 채택 또는 직접진입 재발행.
-        public static void BeginMatch() => BeginMatchInternal(null, null);
-
-        // onReady/onFailed 는 게이트 진입(BeginMatchFromLobby)에서만 non-null.
-        // 비게이트(BeginMatch)면 둘 다 null 이라 콜백이 no-op — 기존 동작과 동일.
-        private static void BeginMatchInternal(Action onReady, Action<string> onFailed)
+        // GameManager.OnEnable 진입용(비게이트). 로비 발행 attempt 를 adopt 하거나,
+        // 로비를 거치지 않은 진입(TestMode/에디터 직접 Play)이면 상태만 리셋하고
+        // **발행하지 않는다** (unit 8 — 결함 A: 개발/테스트 진입이 실서버 토너먼트
+        // 엔트리를 만들지 않게). ReportResult/AbandonMatch 는 attemptId 부재로 자연
+        // 스킵되고, 시드 부재는 맵풀 index 0 폴백으로 흡수된다.
+        public static void BeginMatch()
         {
-            // adopt the lobby-issued attempt: skip the re-issue AND the state reset
-            // (resetting would stale-drop the in-flight play response carrying the seed).
+            // adopt: skip the state reset too (resetting would stale-drop the
+            // in-flight play response carrying the seed).
             if (_lobbyIssued) { _lobbyIssued = false; return; }
 
+            _epoch++;
+            _attemptId = null;   // 직전 매치의 stale attempt 에 이 판의 점수가 제출되면 안 된다
+            _entryId = null;
+            _completeSent = false;
+            HasTournamentSeed = false;
+            TournamentSeed = 0;
+        }
+
+        // 게이트 진입 전용 발행 경로 — 유일한 play 발행 창구(unit 8).
+        private static void BeginMatchInternal(Action onReady, Action<string> onFailed)
+        {
             _epoch++;
             _attemptId = null;   // an unfinished previous attempt is abandoned, not completed
             _entryId = null;
@@ -86,8 +97,8 @@ namespace Wassup.Core.Api
 
             if (!UserSession.HasAccount)
             {
-                // guest / not signed in — no tournament attempt. Entry is not gated, so
-                // a gated caller proceeds immediately; a non-gated caller (BeginMatch) no-ops.
+                // guest / not signed in — no tournament attempt, entry is not gated:
+                // proceed immediately.
                 if (onReady != null) { _lobbyIssued = true; onReady(); }
                 return;
             }

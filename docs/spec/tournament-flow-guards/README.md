@@ -1,7 +1,7 @@
 # tournament-flow-guards
 
-> 상태: 완료 2026-07-27 (units 0~7)
-> units 0~6 완료 2026-07-25 · unit 7 (락 자동 복구 tracked 한정 + 상세 에러) 완료 2026-07-27, 라이브 강제 재현 통과.
+> 상태: 완료 2026-07-27 (units 0~8)
+> units 0~6 완료 2026-07-25 · unit 7 (락 자동 복구 tracked 한정 + 상세 에러) · unit 8 (비게이트 진입 무발행 = 결함 A 해소) 완료 2026-07-27, 라이브 검증 통과.
 > 커밋: 820de3c2·5d6c84a0·bedda40e·f496889f·98f2cd55·30989502·44d24c01
 
 ## 한 줄
@@ -30,6 +30,7 @@
 | 4 | 락 복구 조사 | `4_locked_attempt_recovery.md` | 라이브 프로브 결론: **orphan 락(무 pending)은 클라 복구 불가 → 서버 이관.** tracked 케이스만 클라 처리 가능 |
 | 5·6 | reconcile 신뢰성 | `5_reconcile_always_release.md` | 나이 무관 항상 complete(0) + **pending 은 complete 성공 후에만 제거**(optimistic clear = 영구 락 원인) |
 | 7 | 락 자동 복구 + 상세 에러 | `7_lock_recovery_and_error_detail.md` | play 락 실패 시 pending attemptId 로 complete(0) → play **1회** 재시도. 실패 팝업에 락 메시지 분기 + raw 에러 상세 표기 |
+| 8 | 비게이트 진입 무발행 | `8_nonlobby_entry_no_attempt.md` | 결함 A 해소 — `BeginMatch()` 를 adopt-or-reset 으로. TestMode/에디터 직접 Play 는 attempt 를 만들지 않는다(발행 창구 = `BeginMatchFromLobby` 유일) |
 
 ## Feature-wide 계약
 
@@ -49,6 +50,6 @@ N/A — 플레이 오브젝트(유닛/적/투사체/해저드/VFX) 신설·렌�
 
 ## 후속 후보 (범위 밖)
 
-- **결함 A**: `GameManager.OnEnable` 이 배틀씬 진입마다 무조건 `BeginMatch`(play) → TestMode·에디터 직접 Play·재진입도 토너먼트 엔트리 생성. 개발/테스트 진입은 엔트리를 안 만들도록 게이트하는 별도 결정 필요.
+- ~~**결함 A**~~: unit 8 에서 해소 — 비게이트 진입(TestMode/에디터 직접 Play)은 attempt 를 만들지 않는다.
 - **결함 C/D**: `ReportResult` 스킵 시 pending 정리, `reconcile`/`abandon` 의 `complete(0)` 정책 재검토(서버 락+강제0점 모델과의 정합 포함).
 - **히스토리 0-엔트리 정리**: 이미 쌓인 0 엔트리의 서버측 청소는 클라 범위 밖.

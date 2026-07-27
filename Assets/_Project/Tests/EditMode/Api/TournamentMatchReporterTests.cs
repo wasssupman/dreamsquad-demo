@@ -98,5 +98,43 @@ namespace Wassup.Tests.EditMode.Api
             TournamentMatchReporter.ReconcilePending(r => released = r);
             Assert.IsFalse(released.Value);
         }
+
+        // ── tournament-flow-guards unit 8 — 비게이트 BeginMatch 는 발행하지 않는다 ──
+
+        private static void SetPrivateStatic(string field, object value)
+            => typeof(TournamentMatchReporter)
+                .GetField(field, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)
+                .SetValue(null, value);
+
+        private static object GetPrivateStatic(string field)
+            => typeof(TournamentMatchReporter)
+                .GetField(field, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)
+                .GetValue(null);
+
+        // 로그인 상태 + stale attempt 가 있어도, 비게이트 진입은 리셋만 하고 play 를
+        // 발행하지 않는다(pending 미생성). 결함 A(TestMode/직접 Play 의 엔트리 오염) 방지.
+        [Test]
+        public void BeginMatch_NonGated_ResetsStateWithoutIssuing()
+        {
+            SignInAs("u-1"); // account + baseUrl — 예전 코드라면 여기서 play 가 나갔다
+            SetPrivateStatic("_lobbyIssued", false);
+            SetPrivateStatic("_attemptId", "stale-attempt");
+            TournamentMatchReporter.BeginMatch();
+            Assert.IsNull(GetPrivateStatic("_attemptId"));
+            Assert.IsFalse(TournamentMatchReporter.HasTournamentSeed);
+            Assert.IsFalse(PendingMatchStore.TryLoad(out _)); // 발행 없음 = pending 없음
+        }
+
+        // adopt 경로: 로비 발행분은 상태를 보존한 채 플래그만 소거한다.
+        [Test]
+        public void BeginMatch_LobbyIssued_AdoptsWithoutReset()
+        {
+            SetPrivateStatic("_lobbyIssued", true);
+            SetPrivateStatic("_attemptId", "lobby-attempt");
+            TournamentMatchReporter.BeginMatch();
+            Assert.AreEqual("lobby-attempt", (string)GetPrivateStatic("_attemptId"));
+            Assert.IsFalse((bool)GetPrivateStatic("_lobbyIssued"));
+            SetPrivateStatic("_attemptId", null); // static — 다른 테스트로 새지 않게
+        }
     }
 }
