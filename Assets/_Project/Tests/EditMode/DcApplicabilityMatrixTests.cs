@@ -83,13 +83,13 @@ namespace Wassup.Tests.EditMode
                     if (card.type != CardType.Unit) continue;
                     if (card.mechanics != null)
                         foreach (var m in card.mechanics)
-                            Assert.IsTrue(System.Enum.IsDefined(typeof(DcRejectReason),
-                                DcApplicability.EvaluateMechanic(m.payload, m.trigger.kind, host)),
+                            Assert.AreNotEqual(DcRejectReason.Unclassified,
+                                DcApplicability.EvaluateMechanic(m, host),
                                 $"미분류: {card.id} × {unit.id} ({m.payload.kind})");
                     if (card.attackMods != null)
                         foreach (var am in card.attackMods)
-                            Assert.IsTrue(System.Enum.IsDefined(typeof(DcRejectReason),
-                                DcApplicability.EvaluateAttackMod(am.kind, host)),
+                            Assert.AreNotEqual(DcRejectReason.Unclassified,
+                                DcApplicability.EvaluateAttackMod(am.kind, host),
                                 $"미분류: {card.id} × {unit.id} ({am.kind})");
                 }
             }
@@ -111,7 +111,7 @@ namespace Wassup.Tests.EditMode
                     if (card.type != CardType.Unit || card.mechanics == null) continue;
                     foreach (var m in card.mechanics)
                     {
-                        var reason = DcApplicability.EvaluateMechanic(m.payload, m.trigger.kind, host);
+                        var reason = DcApplicability.EvaluateMechanic(m, host);
 
                         // unit 3·4 로 전 아키타입에 사건 지점이 생겼다 — 이제
                         // NoEventPoint 로 거절되는 AttackN 조합은 없어야 한다.

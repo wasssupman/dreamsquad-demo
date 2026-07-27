@@ -1,4 +1,3 @@
-using Unity.Burst;
 using Unity.Collections;
 
 namespace Wassup.Battle.Combat
@@ -18,7 +17,6 @@ namespace Wassup.Battle.Combat
     //   · DeadTag / PendingDeployment / PastGoalTag(유출 대기) 제외.
     //   · tileDist = Chebyshev 타일 거리(GridMath.RangeToTiles 와 같은 자).
     // 위 조건을 통과한 후보만 eligible = true 로 넘긴다.
-    [BurstCompile]
     public static class DcNeedleTargeting
     {
         public struct Candidate
@@ -41,9 +39,12 @@ namespace Wassup.Battle.Combat
 
         // 반경 안에서 가장 앞선 후보의 인덱스. 없으면 -1(호출부는 발사를 건너뛴다 —
         // 카운트는 이미 소비됐다, README 계약 5).
+        // sibling(FrontmostTargeting/LowestHealthTargeting)은 랭킹만 하고 필터는 caller
+        // 몫인데 여기만 반경 필터를 안에 둔다 — `tileRange <= 0 = 폴백 없음`이 데이터
+        // 계약이라, 그 해석이 호출처마다 갈리면 안 되기 때문이다.
         // tileRange <= 0 은 폴백 비활성이다: 값이 없는 카드가 자기 셀만 뒤지는 것보다
         // 아무것도 안 하는 쪽이 명확하다(B안에서 0 은 "발동 불가"가 아니라 "폴백 없음").
-        public static int SelectNearest(in NativeArray<Candidate> candidates, int tileRange)
+        public static int SelectNearest(NativeArray<Candidate> candidates, int tileRange)
         {
             if (tileRange <= 0) return -1;
 

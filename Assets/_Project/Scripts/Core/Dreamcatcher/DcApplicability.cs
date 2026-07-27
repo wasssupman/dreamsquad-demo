@@ -2,11 +2,10 @@ using Wassup.Data;
 
 namespace Wassup.Core
 {
-    // dreamcatcher-attack-decoupling unit 0 — "이 payload/mod 가 이 host 에서
-    // 발동할 수 있는가"의 순수 판정. 지금 이 지식은 세 곳에 손으로 미러링돼
-    // 있고(DreamcatcherAttachEval.WouldApply / ApplyDreamcatcherCardToUnit 의
-    // 자체 preflight 체인 / BattleBridge 의 적 베이크 가드), 그 부채가 곧 이
-    // spec 이 고치려는 병의 원인이다. unit 1 이 소비처를 여기로 수렴시킨다.
+    // dreamcatcher-attack-decoupling — "이 mechanic/mod 가 이 host 에서 발동할 수
+    // 있는가"의 순수 판정. UI preflight(DreamcatcherAttachEval)와 커밋 bake
+    // (ApplyDreamcatcherCardToUnit)가 **같은 함수**를 호출한다 — 예전엔 두 미러를
+    // 손으로 맞췄고 그 부채가 "붙는데 무효" 조합의 원인이었다.
     //
     // 범위 경계: host **종속** 조건만 본다. magnitude<=0 · projectile==null ·
     // duration<=0 같은 **카드 데이터 검증**은 어느 host 에서든 결과가 같으므로
@@ -48,6 +47,9 @@ namespace Wassup.Core
         // unit 3 — host 가 대상을 못 주는데 폴백 반경(payload.tileRange)마저 0.
         // 붙어도 니들이 영영 안 나가므로 계약 4("부착 가능 ⇒ 발동")상 거절이다.
         NeedsFallbackRange,
+        // 배선 안 된 kind 가 판정에 도달했다 = 통합 버그. 정상 거절 사유와 섞으면
+        // 다음 사람이 틀린 단서를 쫓는다. total 테스트가 이 값으로 미분류를 잡는다.
+        Unclassified,
     }
 
     public static class DcApplicability
@@ -59,21 +61,17 @@ namespace Wassup.Core
         public static bool HostProvidesTarget(DcHostArchetype archetype)
             => archetype == DcHostArchetype.Standard || archetype == DcHostArchetype.FacingVolley;
 
-        // 이 host 에 해당 트리거의 사건 지점이 존재하는가.
-        // unit 3·4 로 **전 아키타입이 개통됐다** — 각자 자기 "공격 성립" 지점 1곳에서
-        // 카운트한다(spec 계약 2 표): Standard/FacingVolley = RESOLVE ·
-        // BombThrow = 폭탄 발사 성사 · HazardCast = 캐스트 성사(Effects→Combat 큐).
-        // 이 함수가 남아 있는 이유는 미래에 사건 지점 없는 아키타입이 생길 때
-        // **거절이 기본값**이어야 하기 때문이다(fail-closed).
-        public static bool HasEventPoint(DcTriggerKind trigger, DcHostArchetype archetype)
+        // 이 트리거가 실행 경로에 배선돼 있는가. **archetype 축은 없다** — unit 3·4 로
+        // 전 아키타입이 자기 "공격 성립" 지점 1곳을 갖췄기 때문이다(계약 2 표):
+        // Standard/FacingVolley = RESOLVE · BombThrow = 폭탄 발사 · HazardCast = 캐스트.
+        // 남은 역할은 하나뿐 — 새 DcTriggerKind 를 append 하고 arm 배선을 잊었을 때
+        // 조용히 통과시키지 않는 fail-closed 게이트.
+        public static bool IsTriggerWired(DcTriggerKind trigger)
         {
             switch (trigger)
             {
-                case DcTriggerKind.AttackN:
-                    return true;
-                // 나머지 트리거는 공격 경로와 무관한 사건(피격/사망/킬/주기/
-                // 임계/실드파열)이라 host 아키타입을 가리지 않는다.
                 case DcTriggerKind.None:
+                case DcTriggerKind.AttackN:
                 case DcTriggerKind.OnDamagedN:
                 case DcTriggerKind.OnDeath:
                 case DcTriggerKind.PeriodicTimer:
@@ -82,19 +80,27 @@ namespace Wassup.Core
                 case DcTriggerKind.OnShieldBreak:
                     return true;
                 default:
-                    return false; // fail-closed
+                    return false;
             }
         }
 
-        // unit 3 — 첫 인자가 kind 에서 spec 으로 넓어졌다. `tileRange > 0` 요구처럼
-        // **host × 데이터 조합**인 조건이 생겼기 때문이다(host 종속도 순수 데이터
-        // 검증도 아니다). host 속성은 여전히 profile 하나로 접혀 있고, payload 는
-        // 판정에 필요한 만큼만 본다 — magnitude/duration 등 순수 데이터 검증은
-        // 그대로 bake 쪽에 남는다.
-        public static DcRejectReason EvaluateMechanic(in DcPayloadSpec payload,
-            DcTriggerKind trigger, in DcHostProfile host)
+        // 판정은 mechanic 전체를 본다 — trigger(게이트 축)와 payload(반경 축)가 둘 다
+        // host 와 얽히기 때문이다. host 속성은 profile 하나로 접혀 있고, magnitude/
+        // duration 같은 순수 데이터 검증은 여기 없다(bake 가 최종 판정).
+        public static DcRejectReason EvaluateMechanic(in DcMechanic mechanic, in DcHostProfile host)
         {
-            if (!HasEventPoint(trigger, host.archetype)) return DcRejectReason.NoEventPoint;
+            var trigger = mechanic.trigger;
+            var payload = mechanic.payload;
+            if (!IsTriggerWired(trigger.kind)) return DcRejectReason.NoEventPoint;
+
+            // 게이트 주어가 EventTarget 인데 host 가 대상을 확정해 주지 않으면 게이트를
+            // **평가할 수단이 없다**. 폭탄맨/캐스터의 사건 지점은 RESOLVE 처럼 bestTarget
+            // 을 들고 있지 않아서, 그대로 두면 게이트가 실패가 아니라 **없는 것처럼**
+            // 무시되고 조건 없이 발동한다(사양 초과 — 조용한 무효보다 나쁘다).
+            if (trigger.gate != DcGateKind.None
+                && trigger.gateSubject == DcGateSubject.EventTarget
+                && !HostProvidesTarget(host.archetype))
+                return DcRejectReason.NeedsTargetContext;
 
             switch (payload.kind)
             {
@@ -115,8 +121,11 @@ namespace Wassup.Core
                     return HostProvidesTarget(host.archetype)
                         ? DcRejectReason.None : DcRejectReason.NeedsTargetContext;
 
-                // 강공은 그 공격의 출력 데미지를 배율한다 — 데미지 output 필요.
+                // 강공은 **그 공격의 출력 데미지**를 배율한다 → RESOLVE 에 도달하는 host
+                // 전용이다. 폭탄맨/캐스터에서 지금 거절되는 건 그 에셋들이 outputs 를
+                // 안 가진 우연일 뿐이라, 아키타입 축을 명시해 구조적으로 막는다.
                 case DcPayloadKind.HeavyStrike:
+                    if (!HostProvidesTarget(host.archetype)) return DcRejectReason.NeedsTargetContext;
                     return host.hasDamageOutput
                         ? DcRejectReason.None : DcRejectReason.NeedsDamageOutput;
 
@@ -143,9 +152,11 @@ namespace Wassup.Core
                     return DcRejectReason.None;
 
                 default:
-                    // 새 kind 를 추가하고 여기를 잊으면 조용히 통과하는 대신
-                    // 붙지 않는다(fail-closed). total 테스트가 먼저 잡는다.
-                    return DcRejectReason.NeedsTargetContext;
+                    // 새 kind 를 추가하고 여기를 잊으면 조용히 통과하는 대신 붙지
+                    // 않는다(fail-closed). 전용 사유를 쓰는 이유: 예전엔 여기가
+                    // NeedsTargetContext 를 반환해 경고 문구와 UI 에 **틀린 단서**가
+                    // 실렸다. 배선 누락과 정상 거절은 구분돼야 한다.
+                    return DcRejectReason.Unclassified;
             }
         }
 
@@ -170,7 +181,7 @@ namespace Wassup.Core
                     return DcRejectReason.None;
 
                 default:
-                    return DcRejectReason.NeedsHomingRoute; // fail-closed
+                    return DcRejectReason.Unclassified; // 배선 누락 (fail-closed)
             }
         }
     }

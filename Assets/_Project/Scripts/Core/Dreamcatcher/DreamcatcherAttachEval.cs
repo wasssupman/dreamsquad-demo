@@ -105,14 +105,14 @@ namespace Wassup.Core
                 for (int i = 0; i < card.mechanics.Length; i++)
                 {
                     var m = card.mechanics[i];
-                    if (DcApplicability.EvaluateMechanic(m.payload, m.trigger.kind, host)
+                    if (DcApplicability.EvaluateMechanic(m, host)
                         == DcRejectReason.DuplicateState) return false;
                 }
                 for (int i = 0; i < card.mechanics.Length; i++)
                 {
                     var m = card.mechanics[i];
                     if (m.payload.kind == DcPayloadKind.None) continue;
-                    if (DcApplicability.EvaluateMechanic(m.payload, m.trigger.kind, host)
+                    if (DcApplicability.EvaluateMechanic(m, host)
                         == DcRejectReason.None) return true;
                 }
             }

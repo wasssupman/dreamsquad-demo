@@ -45,6 +45,10 @@ namespace Wassup.Battle.Combat
             var targetEntities = targetCandidatesQuery.ToEntityArray(Allocator.Temp);
             var targetTransforms = targetCandidatesQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
             var targetFactions = targetCandidatesQuery.ToComponentDataArray<FactionTag>(Allocator.Temp);
+            // 니들 폴백 선정용 scratch — 예전엔 발동마다 할당/해제했다. 후보 수는
+            // 스냅샷 길이로 고정이라 프레임당 1회면 충분하다.
+            var needleScratch = new NativeArray<DcNeedleTargeting.Candidate>(
+                targetEntities.Length, Allocator.Temp);
 
             var ecb = new EntityCommandBuffer(Allocator.Temp);
             var projectileRefLookup = SystemAPI.GetComponentLookup<ProjectileRef>(isReadOnly: true);
@@ -91,6 +95,11 @@ namespace Wassup.Battle.Combat
             bool hasStatQ = SystemAPI.TryGetSingletonRW<Wassup.Battle.Effects.StatModifierApplyEventsSingleton>(out var statModSingleton);
             bool hasStackQ = SystemAPI.TryGetSingletonRW<Wassup.Battle.Effects.StackModifierApplyEventsSingleton>(out var stackModSingleton);
             bool hasFlowField = SystemAPI.TryGetSingleton<Wassup.Battle.Effects.FlowFieldSingleton>(out var flowField);
+            // 그리드 폴백은 프레임 불변이라 한 번만 푼다. 예전엔 폭탄 분기·attacker
+            // 루프·캐스트 드레인이 각자 삼항식을 반복했다(캐스트 쪽은 후보 루프 **안**).
+            float tileSize = hasFlowField ? flowField.tileSize : 1f;
+            int2 gridSize = hasFlowField ? flowField.gridSize : new int2(128, 128);
+            float3 ffOrigin = hasFlowField ? flowField.origin : float3.zero;
 
             // Attack-output log channel — enqueue one event per output-per-target fired.
             NativeQueue<AttackOutputLogEvent>.ParallelWriter? attackOutputLogWriter = null;
@@ -152,67 +161,25 @@ namespace Wassup.Battle.Combat
                         slot.counter = cc2;
                         castSlots[si] = slot;
                         if (!fired) continue;
-                        // 캐스터에 붙을 수 있는 AttackN 페이로드는 ProjectileToTarget 뿐
-                        // (CC/스택은 대상 문맥이 없어 적용성이 거절 — 계약 9).
-                        if (slot.payload != Wassup.Data.DcPayloadKind.ProjectileToTarget) continue;
+                        // 발동했는데 arm 이 없으면 loud fail — 조용히 카운트만 태우는 것이
+                        // 이 spec 이 없애려는 병이다(RESOLVE 의 unhandled 규율과 대칭).
+                        if (slot.payload != Wassup.Data.DcPayloadKind.ProjectileToTarget)
+                        {
+                            UnityEngine.Debug.LogWarning("[AttackSystem] cast-event dc slot fired with a payload that has no arm here — count consumed with no effect.");
+                            continue;
+                        }
 
-                        // 대상 선정은 폭탄맨과 같은 패턴(unit 3): 진영 Enemy 고정.
-                        var castCands = new NativeArray<DcNeedleTargeting.Candidate>(
-                            targetEntities.Length, Allocator.Temp);
-                        int2 casterCell = GridMath.WorldToCell(castEvt.casterPos,
-                            hasFlowField ? flowField.tileSize : 1f,
-                            hasFlowField ? flowField.gridSize : new int2(128, 128),
-                            origin: hasFlowField ? flowField.origin : float3.zero);
-                        for (int ci = 0; ci < targetEntities.Length; ci++)
-                        {
-                            var cand = targetEntities[ci];
-                            bool ok = cand != castEvt.caster
-                                && ((int)targetFactions[ci].value & (int)Faction.Enemy) != 0;
-                            float3 cp = targetTransforms[ci].Position;
-                            int2 cc3 = GridMath.WorldToCell(cp,
-                                hasFlowField ? flowField.tileSize : 1f,
-                                hasFlowField ? flowField.gridSize : new int2(128, 128),
-                                origin: hasFlowField ? flowField.origin : float3.zero);
-                            castCands[ci] = new DcNeedleTargeting.Candidate
-                            {
-                                eligible = ok,
-                                tileDist = math.max(math.abs(cc3.x - casterCell.x),
-                                                    math.abs(cc3.y - casterCell.y)),
-                                sqDist = math.distancesq(castEvt.casterPos, cp),
-                                entityIndex = cand.Index,
-                                entityVersion = cand.Version,
-                            };
-                        }
-                        int pick = DcNeedleTargeting.SelectNearest(castCands, slot.tileRange);
+                        int2 casterCell = GridMath.WorldToCell(castEvt.casterPos, tileSize, gridSize, origin: ffOrigin);
+                        int pick = PickFallbackTarget(needleScratch,
+                            targetEntities, targetTransforms, targetFactions, pastGoalLookup,
+                            castEvt.caster, castEvt.casterPos, casterCell,
+                            tileSize, gridSize, ffOrigin, slot.tileRange);
+                        // pick < 0 = 반경 안에 적이 없다. 카운트는 이미 소비됐다(계약 5).
                         if (pick >= 0)
-                        {
-                            var needleCarrier = ecb.CreateEntity();
-                            ecb.AddComponent(needleCarrier, new ProjectileSpawnRequest
-                            {
-                                movement = MovementKind.HomingToEntity,
-                                payload = PayloadKind.SingleSplash,
-                                target = targetEntities[pick],
-                                origin = castEvt.casterPos,
-                                damage = slot.magnitude, // flat — 계약 7
-                                speed = slot.speed,
-                                hitThreshold = slot.hitThreshold,
-                                visualScale = slot.visualScale,
-                                dataIndex = slot.projectileDataIndex,
-                                owner = castEvt.caster,
-                            });
-                            ecb.AddComponent<ProjectileRequestCarrier>(needleCarrier);
-                            if (attackOutputLogWriter.HasValue)
-                                attackOutputLogWriter.Value.Enqueue(new AttackOutputLogEvent
-                                {
-                                    attacker  = castEvt.caster,
-                                    kind      = Wassup.Data.AttackOutputKind.Damage,
-                                    magnitude = slot.magnitude,
-                                    duration  = 0f,
-                                    sourcePos = castEvt.casterPos,
-                                    targetPos = targetTransforms[pick].Position,
-                                });
-                        }
-                        castCands.Dispose();
+                            SpawnNeedleCarrier(ref ecb, slot, castEvt.caster, castEvt.casterPos,
+                                targetEntities[pick], targetTransforms[pick].Position,
+                                attackOutputLogWriter.HasValue,
+                                attackOutputLogWriter.HasValue ? attackOutputLogWriter.Value : default);
                     }
                 }
             }
@@ -250,15 +217,12 @@ namespace Wassup.Battle.Combat
                         var bomb = bombLauncherLookup[attackerEntity];
                         var bProjRef = projectileRefLookup[attackerEntity];
                         float3 bPos = transform.ValueRO.Position;
-                        float bTileSize = hasFlowField ? flowField.tileSize : 1f;
-                        int2 bGridSize = hasFlowField ? flowField.gridSize : new int2(128, 128);
-                        float3 bOrigin = hasFlowField ? flowField.origin : float3.zero;
-                        int2 bCasterCell = GridMath.WorldToCell(bPos, bTileSize, bGridSize, origin: bOrigin);
+                        int2 bCasterCell = GridMath.WorldToCell(bPos, tileSize, gridSize, origin: ffOrigin);
                         BombLanding.ResolveCell(bCasterCell, facingLookup[attackerEntity].value,
-                            bomb.landingTiles, bGridSize, out int2 landCell, out bool landValid);
+                            bomb.landingTiles, gridSize, out int2 landCell, out bool landValid);
                         if (landValid)
                         {
-                            float3 landWorld = GridMath.CellToWorldCenter(landCell, bTileSize, 0f, origin: bOrigin);
+                            float3 landWorld = GridMath.CellToWorldCenter(landCell, tileSize, 0f, origin: ffOrigin);
                             // 3종 랜덤(균등 1/3): 0 데미지 / 1 수면 / 2 스턴. 캐스터별 rng advance.
                             int bombType = bomb.rng.NextInt(0, 3);
                             bombLauncherLookup[attackerEntity] = bomb; // rng 상태 저장
@@ -313,63 +277,25 @@ namespace Wassup.Battle.Combat
                                     slot.counter = bc;
                                     bombSlots[si] = slot;
                                     if (!fired) continue;
-                                    // 폭탄맨에 붙을 수 있는 AttackN 페이로드는 적용성 판정상
-                                    // ProjectileToTarget 뿐이다(CC/스택은 대상 문맥 없음 → 거절).
-                                    if (slot.payload != Wassup.Data.DcPayloadKind.ProjectileToTarget) continue;
+                                    // 발동했는데 arm 이 없으면 loud fail (RESOLVE 규율과 대칭).
+                                    if (slot.payload != Wassup.Data.DcPayloadKind.ProjectileToTarget)
+                                    {
+                                        UnityEngine.Debug.LogWarning("[AttackSystem] bomb-throw dc slot fired with a payload that has no arm here — count consumed with no effect.");
+                                        continue;
+                                    }
 
                                     // host 가 대상을 안 주므로 스스로 고른다(unit 2 폴백).
-                                    // 진영은 Enemy 고정 — host mask 재사용 금지(힐러 자해 방지).
-                                    var cands = new NativeArray<DcNeedleTargeting.Candidate>(
-                                        targetEntities.Length, Allocator.Temp);
-                                    for (int ci = 0; ci < targetEntities.Length; ci++)
-                                    {
-                                        var cand = targetEntities[ci];
-                                        bool ok = cand != attackerEntity
-                                            && ((int)targetFactions[ci].value & (int)Faction.Enemy) != 0;
-                                        float3 cp = targetTransforms[ci].Position;
-                                        int2 cc = GridMath.WorldToCell(cp, bTileSize, bGridSize, origin: bOrigin);
-                                        cands[ci] = new DcNeedleTargeting.Candidate
-                                        {
-                                            eligible = ok,
-                                            tileDist = math.max(math.abs(cc.x - bCasterCell.x),
-                                                                math.abs(cc.y - bCasterCell.y)),
-                                            sqDist = math.distancesq(bPos, cp),
-                                            entityIndex = cand.Index,
-                                            entityVersion = cand.Version,
-                                        };
-                                    }
-                                    int pick = DcNeedleTargeting.SelectNearest(cands, slot.tileRange);
-                                    if (pick >= 0)
-                                    {
-                                        var needleTarget = targetEntities[pick];
-                                        var needleCarrier = ecb.CreateEntity();
-                                        ecb.AddComponent(needleCarrier, new ProjectileSpawnRequest
-                                        {
-                                            movement = MovementKind.HomingToEntity,
-                                            payload = PayloadKind.SingleSplash,
-                                            target = needleTarget,
-                                            origin = bPos,
-                                            damage = slot.magnitude, // flat — 계약 7
-                                            speed = slot.speed,
-                                            hitThreshold = slot.hitThreshold,
-                                            visualScale = slot.visualScale,
-                                            dataIndex = slot.projectileDataIndex,
-                                            owner = attackerEntity,
-                                        });
-                                        ecb.AddComponent<ProjectileRequestCarrier>(needleCarrier);
-                                        if (attackOutputLogWriter.HasValue)
-                                            attackOutputLogWriter.Value.Enqueue(new AttackOutputLogEvent
-                                            {
-                                                attacker  = attackerEntity,
-                                                kind      = Wassup.Data.AttackOutputKind.Damage,
-                                                magnitude = slot.magnitude,
-                                                duration  = 0f,
-                                                sourcePos = bPos,
-                                                targetPos = targetTransforms[pick].Position,
-                                            });
-                                    }
+                                    // 진영 Enemy 고정 + PastGoal 제외는 헬퍼가 보장한다.
+                                    int pick = PickFallbackTarget(needleScratch,
+                                        targetEntities, targetTransforms, targetFactions, pastGoalLookup,
+                                        attackerEntity, bPos, bCasterCell,
+                                        tileSize, gridSize, ffOrigin, slot.tileRange);
                                     // pick < 0 = 반경 안에 적이 없다. 카운트는 이미 소비됐다(계약 5).
-                                    cands.Dispose();
+                                    if (pick >= 0)
+                                        SpawnNeedleCarrier(ref ecb, slot, attackerEntity, bPos,
+                                            targetEntities[pick], targetTransforms[pick].Position,
+                                            attackOutputLogWriter.HasValue,
+                                            attackOutputLogWriter.HasValue ? attackOutputLogWriter.Value : default);
                                 }
                             }
                         }
@@ -381,9 +307,6 @@ namespace Wassup.Battle.Combat
 
                 // Find nearest in-range target allowed by this attacker's mask.
                 float3 atkPos = transform.ValueRO.Position;
-                float tileSize = hasFlowField ? flowField.tileSize : 1f;
-                int2 gridSize = hasFlowField ? flowField.gridSize : new int2(128, 128);
-                float3 ffOrigin = hasFlowField ? flowField.origin : float3.zero;
                 int tileRange = GridMath.RangeToTiles(attack.ValueRO.range);
                 int2 atkCell = GridMath.WorldToCell(atkPos, tileSize, gridSize, origin: ffOrigin);
                 float bestSq = float.MaxValue;
@@ -1377,33 +1300,11 @@ namespace Wassup.Battle.Combat
                                 // would throw. The carrier materializes at ecb.Playback
                                 // below, before BattleBridge's drain, and the drain
                                 // destroys it after spawning the projectile.
-                                var dcCarrier = ecb.CreateEntity();
-                                ecb.AddComponent(dcCarrier, new ProjectileSpawnRequest
-                                {
-                                    movement = MovementKind.HomingToEntity,
-                                    payload = PayloadKind.SingleSplash,
-                                    target = bestTarget,
-                                    origin = atkPos,
-                                    damage = slot.magnitude, // flat — no damageMul (spec contract 7)
-                                    speed = slot.speed,
-                                    hitThreshold = slot.hitThreshold,
-                                    visualScale = slot.visualScale,
-                                    dataIndex = slot.projectileDataIndex,
-                                    // nightmare-catcher unit 1 — card projectiles credit
-                                    // the bound defender, not the carrier entity.
-                                    owner = attackerEntity,
-                                });
-                                ecb.AddComponent<ProjectileRequestCarrier>(dcCarrier);
-                                if (attackOutputLogWriter.HasValue)
-                                    attackOutputLogWriter.Value.Enqueue(new AttackOutputLogEvent
-                                    {
-                                        attacker  = attackerEntity,
-                                        kind      = Wassup.Data.AttackOutputKind.Damage,
-                                        magnitude = slot.magnitude,
-                                        duration  = 0f,
-                                        sourcePos = atkPos,
-                                        targetPos = bestTargetPos,
-                                    });
+                                // owner = 부착된 디펜더(캐리어 아님) — 위협 귀속.
+                                SpawnNeedleCarrier(ref ecb, slot, attackerEntity, atkPos,
+                                    bestTarget, bestTargetPos,
+                                    attackOutputLogWriter.HasValue,
+                                    attackOutputLogWriter.HasValue ? attackOutputLogWriter.Value : default);
                             }
                             else if (slot.payload == Wassup.Data.DcPayloadKind.ApplyCcToTarget)
                             {
@@ -1485,6 +1386,7 @@ namespace Wassup.Battle.Combat
 
             ecb.Playback(state.EntityManager);
             ecb.Dispose();
+            needleScratch.Dispose();
             targetEntities.Dispose();
             targetTransforms.Dispose();
             targetFactions.Dispose();
@@ -1493,6 +1395,74 @@ namespace Wassup.Battle.Combat
         // dreamcatcher-new-abilities unit 2 — shatter_hymn 게이트: 대상에 활성 CcEffect
         // (Stun/Sleep/Impulse/DoT, remaining>0)가 하나라도 있는가. frost(Stun)·
         // ember(Bleed→DoT) 가 건 CC 를 감지. Slow 는 CcEffect 가 아니라 여기 해당 없음.
+        // ── attack-decoupling 리팩토링 — 니들 발사의 단일 창구 ──
+        // 캐리어 스폰이 세 곳(RESOLVE / 폭탄 발사 / 캐스트 드레인)에 복붙돼 있었다.
+        // ProjectileSpawnRequest 는 필드가 10개라, 방향탄 bounce 개통처럼 필드가
+        // 하나 늘 때 사본들이 조용히 뒤처진다 — 이 spec 이 없애려던 병의 재발이다.
+        private static void SpawnNeedleCarrier(
+            ref EntityCommandBuffer ecb, in DcTriggerSlot slot,
+            Entity owner, float3 origin, Entity target, float3 targetPos,
+            bool hasLog, NativeQueue<AttackOutputLogEvent>.ParallelWriter log)
+        {
+            var carrier = ecb.CreateEntity();
+            ecb.AddComponent(carrier, new ProjectileSpawnRequest
+            {
+                movement = MovementKind.HomingToEntity,
+                payload = PayloadKind.SingleSplash,
+                target = target,
+                origin = origin,
+                damage = slot.magnitude, // flat — 계약 7(공격자 damageMul 미적용)
+                speed = slot.speed,
+                hitThreshold = slot.hitThreshold,
+                visualScale = slot.visualScale,
+                dataIndex = slot.projectileDataIndex,
+                owner = owner,
+            });
+            ecb.AddComponent<ProjectileRequestCarrier>(carrier);
+            if (hasLog)
+                log.Enqueue(new AttackOutputLogEvent
+                {
+                    attacker  = owner,
+                    kind      = Wassup.Data.AttackOutputKind.Damage,
+                    magnitude = slot.magnitude,
+                    duration  = 0f,
+                    sourcePos = origin,
+                    targetPos = targetPos,
+                });
+        }
+
+        // host 가 대상을 확정해 주지 않는 아키타입(폭탄맨·캐스터)의 폴백 선정.
+        // 후보 조립이 두 곳에 복붙돼 있었고, 정작 실수하기 쉬운 부분(진영 마스크·
+        // 자기 제외·그리드 변환·PastGoal)이 테스트 밖에 남아 있었다 — 실제로
+        // PastGoalTag 제외가 두 곳 모두에서 누락됐다(DcNeedleTargeting 의 caller
+        // 계약과 README 계약 3 을 코드가 위반한 상태였다).
+        private static int PickFallbackTarget(
+            NativeArray<DcNeedleTargeting.Candidate> scratch,
+            NativeArray<Entity> ents, NativeArray<LocalTransform> xf, NativeArray<FactionTag> fac,
+            ComponentLookup<Wassup.Battle.Movement.PastGoalTag> pastGoal,
+            Entity self, float3 selfPos, int2 selfCell,
+            float tileSize, int2 gridSize, float3 gridOrigin, int tileRange)
+        {
+            for (int i = 0; i < ents.Length; i++)
+            {
+                var e = ents[i];
+                bool eligible = e != self
+                    && ((int)fac[i].value & (int)Faction.Enemy) != 0
+                    && !pastGoal.HasComponent(e); // 유출 대기 적에 니들을 낭비하지 않는다
+                float3 p = xf[i].Position;
+                int2 c = GridMath.WorldToCell(p, tileSize, gridSize, origin: gridOrigin);
+                scratch[i] = new DcNeedleTargeting.Candidate
+                {
+                    eligible = eligible,
+                    tileDist = math.max(math.abs(c.x - selfCell.x), math.abs(c.y - selfCell.y)),
+                    sqDist = math.distancesq(selfPos, p),
+                    entityIndex = e.Index,
+                    entityVersion = e.Version,
+                };
+            }
+            return DcNeedleTargeting.SelectNearest(scratch, tileRange);
+        }
+
         private static bool AnyActiveCc(in DynamicBuffer<Wassup.Battle.Effects.CcEffect> buf)
         {
             for (int i = 0; i < buf.Length; i++)

@@ -16,7 +16,9 @@ namespace Wassup.Battle.Combat
         public int instanceId;
         public DcTriggerKind trigger;
         public ushort period;   // AttackN: fire on every N-th attack resolve
-        public ushort counter;  // owned write: AttackSystem RESOLVE only
+        // owned write: AttackSystem 전용 — RESOLVE / 폭탄 발사 훅 / 캐스트 드레인
+        // 세 지점이며, host 하나는 그중 정확히 1곳만 탄다(attack-decoupling 계약 2).
+        public ushort counter;
         public DcPayloadKind payload;
         public float magnitude; // flat damage — attacker damageMul intentionally not applied
 
