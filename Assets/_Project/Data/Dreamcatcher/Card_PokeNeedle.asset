@@ -28,7 +28,7 @@ MonoBehaviour:
       kind: 1
       magnitude: 20
       projectile: {fileID: 11400000, guid: 9253ceedf772843b9a068339422e9082, type: 2}
-      tileRange: 0
+      tileRange: 4
       duration: 0
       auraPrefab: {fileID: 0}
       auraScale: 0

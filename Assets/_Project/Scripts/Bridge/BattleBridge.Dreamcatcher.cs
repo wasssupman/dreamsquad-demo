@@ -490,6 +490,10 @@ namespace Wassup.Bridge
                     slot.speed = m.payload.projectile.speed;
                     slot.hitThreshold = m.payload.projectile.hitThreshold;
                     slot.visualScale = m.payload.projectile.visualScale;
+                    // attack-decoupling unit 2 — 폴백 탐색 반경(host 가 대상을 못 고를 때만
+                    // 쓰인다). 0 이하는 "폴백 없음"이지 "발동 불가"가 아니다 — host 우선
+                    // 경로(현재 전부)는 반경과 무관하게 정상 동작한다(spec 계약 3).
+                    slot.tileRange = math.max(0, m.payload.tileRange);
                 }
                 else if (m.payload.kind == Wassup.Data.DcPayloadKind.SelfTileAoe)
                 {

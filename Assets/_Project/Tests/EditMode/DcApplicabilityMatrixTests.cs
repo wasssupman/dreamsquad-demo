@@ -130,6 +130,28 @@ namespace Wassup.Tests.EditMode
             Assert.IsEmpty(log.ToString(), "잠금 표 위반:\n" + log);
         }
 
+        // ── unit 2: 비수 폴백 반경이 에셋·bake 에 살아 있는지 ──────────────
+        // 시트 DcMechanics 의 tileRange 셀이 명시적 0 이면 로그인 import 가 SO 를
+        // 되돌린다(blank 만 keep) → 폴백이 조용히 죽는다. 이 테스트가 그 회귀를 잡는다.
+        [Test]
+        public void PokeNeedle_HasPositiveFallbackRange()
+        {
+            var card = AssetDatabase.LoadAssetAtPath<DreamcatcherCard>(
+                CardsRoot + "/Card_PokeNeedle.asset");
+            Assert.IsNotNull(card, "Card_PokeNeedle.asset 을 찾지 못했다");
+
+            var found = false;
+            foreach (var m in card.mechanics)
+            {
+                if (m.payload.kind != DcPayloadKind.ProjectileToTarget) continue;
+                found = true;
+                Assert.Greater(m.payload.tileRange, 0,
+                    "폴백 탐색 반경이 0 이면 host 타겟이 없는 유닛에서 니들이 영영 안 나간다. "
+                    + "시트 DcMechanics/poke_needle 의 tileRange 셀도 함께 확인할 것");
+            }
+            Assert.IsTrue(found, "ProjectileToTarget 메커닉이 없다");
+        }
+
         // ── 통통구슬: homing 유닛에만 (방향탄 개통은 별도 spec) ────────────
         [Test]
         public void ProjectileBounce_OnlyOnHomingRouteUnits()
