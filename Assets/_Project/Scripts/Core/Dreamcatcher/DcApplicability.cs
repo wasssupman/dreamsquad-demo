@@ -60,18 +60,17 @@ namespace Wassup.Core
             => archetype == DcHostArchetype.Standard || archetype == DcHostArchetype.FacingVolley;
 
         // 이 host 에 해당 트리거의 사건 지점이 존재하는가.
-        // ⚠ 잠금/해제 축: BombThrow 는 unit 3(개통 완료), HazardCast 는 unit 4 가
-        // 사건 지점을 만들면서 이 함수의 해당 줄을 뒤집는다.
+        // unit 3·4 로 **전 아키타입이 개통됐다** — 각자 자기 "공격 성립" 지점 1곳에서
+        // 카운트한다(spec 계약 2 표): Standard/FacingVolley = RESOLVE ·
+        // BombThrow = 폭탄 발사 성사 · HazardCast = 캐스트 성사(Effects→Combat 큐).
+        // 이 함수가 남아 있는 이유는 미래에 사건 지점 없는 아키타입이 생길 때
+        // **거절이 기본값**이어야 하기 때문이다(fail-closed).
         public static bool HasEventPoint(DcTriggerKind trigger, DcHostArchetype archetype)
         {
             switch (trigger)
             {
                 case DcTriggerKind.AttackN:
-                    // unit 3 — 폭탄맨은 RESOLVE 를 타지 않지만(early-continue) 폭탄
-                    // 발사가 완전한 공격 사건이라, 그 분기 안에 자기 사건 지점을 얻었다.
-                    // 해저드 캐스터는 아직(unit 4) — attackRange 0 이라 RESOLVE 에
-                    // 못 가고 캐스트 사건은 Effects 에 있다.
-                    return archetype != DcHostArchetype.HazardCast;
+                    return true;
                 // 나머지 트리거는 공격 경로와 무관한 사건(피격/사망/킬/주기/
                 // 임계/실드파열)이라 host 아키타입을 가리지 않는다.
                 case DcTriggerKind.None:

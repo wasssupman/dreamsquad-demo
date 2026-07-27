@@ -114,27 +114,26 @@ namespace Wassup.Tests.EditMode
                     Host(DcHostArchetype.Standard, cocoon: true)));
         }
 
-        // ── 잠금/해제 상태 ────────────────────────────────────────────────
-        // unit 3 이 폭탄맨 사건 지점을 열었다. 캐스터는 unit 4 대기.
+        // ── 사건 지점: unit 3·4 로 전 아키타입 개통 ────────────────────────
         [Test]
-        public void AttackN_OpensOnBombThrow_StillClosedOnHazardCast()
+        public void AttackN_HasEventPointOnEveryArchetype()
         {
-            Assert.AreEqual(DcRejectReason.None,
-                DcApplicability.EvaluateMechanic(Pay(DcPayloadKind.ProjectileToTarget), DcTriggerKind.AttackN, BombMan()),
-                "unit 3 — 폭탄 발사가 공격 사건이다");
-            Assert.AreEqual(DcRejectReason.NoEventPoint,
-                DcApplicability.EvaluateMechanic(Pay(DcPayloadKind.ProjectileToTarget), DcTriggerKind.AttackN, Caster()),
-                "unit 4 가 캐스트 사건을 열면 이 기대값이 None 으로 바뀐다");
+            foreach (DcHostArchetype archetype in Enum.GetValues(typeof(DcHostArchetype)))
+                Assert.AreEqual(DcRejectReason.None,
+                    DcApplicability.EvaluateMechanic(
+                        Pay(DcPayloadKind.ProjectileToTarget), DcTriggerKind.AttackN, Host(archetype)),
+                    $"{archetype} — 각 아키타입은 자기 '공격 성립' 지점에서 카운트한다");
         }
 
-        // 폭탄맨은 host 가 대상을 안 주므로 폴백 반경이 유일한 수단이다.
+        // host 가 대상을 안 주는 부류(폭탄맨·캐스터)는 폴백 반경이 유일한 수단이다.
         [Test]
-        public void PokeNeedle_OnBombThrow_NeedsFallbackRange()
+        public void PokeNeedle_WithoutHostTarget_NeedsFallbackRange()
         {
-            Assert.AreEqual(DcRejectReason.NeedsFallbackRange,
-                DcApplicability.EvaluateMechanic(
-                    Pay(DcPayloadKind.ProjectileToTarget, tileRange: 0), DcTriggerKind.AttackN, BombMan()),
-                "반경 0 이면 니들이 영영 안 나간다 — 붙이면 안 된다");
+            foreach (var host in new[] { BombMan(), Caster() })
+                Assert.AreEqual(DcRejectReason.NeedsFallbackRange,
+                    DcApplicability.EvaluateMechanic(
+                        Pay(DcPayloadKind.ProjectileToTarget, tileRange: 0), DcTriggerKind.AttackN, host),
+                    "반경 0 이면 니들이 영영 안 나간다 — 붙이면 안 된다");
             Assert.AreEqual(DcRejectReason.None,
                 DcApplicability.EvaluateMechanic(
                     Pay(DcPayloadKind.ProjectileToTarget, tileRange: 0), DcTriggerKind.AttackN, Archer()),

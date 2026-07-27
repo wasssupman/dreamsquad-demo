@@ -12,6 +12,11 @@ namespace Wassup.Battle.Effects
     [BurstCompile]
     [UpdateInGroup(typeof(BattleSimGroup))]
     [UpdateAfter(typeof(MovementSystem))]
+    // attack-decoupling unit 4 — 캐스트 사건을 AttackSystem 이 **같은 프레임**에
+    // 드레인하도록 순서를 명시한다. 둘 다 UpdateAfter(MovementSystem) 뿐이라
+    // 상대 순서가 정렬기 tie-break 에 맡겨져 있었고, 시스템이 하나 추가되면
+    // 뒤집혀 "가끔 한 프레임 늦게 나감"이 될 수 있었다.
+    [UpdateBefore(typeof(Wassup.Battle.Combat.AttackSystem))]
     public partial struct HazardCastSystem : ISystem
     {
         [BurstCompile]
@@ -29,6 +34,10 @@ namespace Wassup.Battle.Effects
             var flowField = SystemAPI.GetSingleton<FlowFieldSingleton>();
             var spawnSingleton = SystemAPI.GetSingletonRW<HazardSpawnRequestsSingleton>();
             bool hasAttackVisualQueue = SystemAPI.TryGetSingletonRW<UnitAttackVisualEventsSingleton>(out var attackVisualSingleton);
+            // attack-decoupling unit 4 — 캐스트 사건 채널(Effects→Combat). 큐가 아직
+            // 없으면(구 세이브/테스트 월드) 조용히 건너뛴다.
+            bool hasCastQueue = SystemAPI.TryGetSingletonRW<Wassup.Battle.Combat.CastEventsSingleton>(out var castSingleton);
+            var dcSlotLookup = SystemAPI.GetBufferLookup<Wassup.Battle.Combat.DcTriggerSlot>(isReadOnly: true);
 
             var targetsQuery = SystemAPI.QueryBuilder()
                 .WithAll<FactionTag, LocalTransform, PathFollowState>()
@@ -103,6 +112,17 @@ namespace Wassup.Battle.Effects
                     caster = casterEntity,
                     target = bestTarget,
                 });
+
+                // attack-decoupling unit 4 — 캐스트 성사 = 이 host 의 공격 사건.
+                // 카운터(Combat 소유)를 여기서 쓰지 않고 큐로 넘긴다(spec 계약 7).
+                // 생산자 게이트: 카드가 붙은 캐스터만 — 없으면 4초마다 이벤트가
+                // 쌓이기만 한다. dcSlotLookup 은 Combat 컴포넌트 **읽기**라 경계 위반 아님.
+                if (hasCastQueue && dcSlotLookup.HasBuffer(casterEntity))
+                    castSingleton.ValueRW.queue.Enqueue(new Wassup.Battle.Combat.CastEvent
+                    {
+                        caster = casterEntity,
+                        casterPos = casterPos,
+                    });
 
                 cast.ValueRW.cooldownRemaining = cast.ValueRO.cooldownDuration;
             }

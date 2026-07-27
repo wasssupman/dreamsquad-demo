@@ -113,12 +113,11 @@ namespace Wassup.Tests.EditMode
                     {
                         var reason = DcApplicability.EvaluateMechanic(m.payload, m.trigger.kind, host);
 
-                        // AttackN × HazardCast 는 아직 사건 지점이 없다(unit 4 가 연다).
-                        // BombThrow 는 unit 3 에서 개통됐다.
+                        // unit 3·4 로 전 아키타입에 사건 지점이 생겼다 — 이제
+                        // NoEventPoint 로 거절되는 AttackN 조합은 없어야 한다.
                         if (m.trigger.kind == DcTriggerKind.AttackN
-                            && host.archetype == DcHostArchetype.HazardCast
-                            && reason != DcRejectReason.NoEventPoint)
-                            log.AppendLine($"{card.id} × {unit.id}: AttackN 이 {host.archetype} 에서 열려 있다 ({reason})");
+                            && reason == DcRejectReason.NoEventPoint)
+                            log.AppendLine($"{card.id} × {unit.id}: AttackN 사건 지점이 없다 ({host.archetype})");
 
                         // 비수는 아군을 겨누는 host 에 붙으면 안 된다(영구).
                         if (m.payload.kind == DcPayloadKind.ProjectileToTarget
@@ -128,6 +127,32 @@ namespace Wassup.Tests.EditMode
                 }
             }
             Assert.IsEmpty(log.ToString(), "잠금 표 위반:\n" + log);
+        }
+
+        // ── unit 4: host 당 사건 지점 1개 (계약 2 상호배타) ────────────────
+        // 캐스터가 RESOLVE 에 못 가는 것은 지금 **에셋 값의 우연**이다(attackRange 0
+        // + outputs 없음). 누가 attackRange>0 인 캐스터를 만들면 그 유닛은 한
+        // 사이클에 RESOLVE + 캐스트로 2카운트를 먹어 발동 주기가 절반이 된다.
+        [Test]
+        public void HazardCasters_CannotAlsoCountViaResolve()
+        {
+            var units = LoadAll<DefenderUnitData>(DefendersRoot);
+            var offenders = new StringBuilder();
+            var checkedAny = false;
+
+            foreach (var unit in units)
+            {
+                if (unit.GetAbility<HazardCastAbility>() == null) continue;
+                checkedAny = true;
+                if (unit.attackRange > 0f)
+                    offenders.AppendLine($"{unit.id}: attackRange={unit.attackRange} (>0 이면 RESOLVE 도 탄다)");
+                if (unit.outputs != null && unit.outputs.Length > 0)
+                    offenders.AppendLine($"{unit.id}: outputs {unit.outputs.Length}개 (일반 공격을 갖는다)");
+            }
+
+            Assert.IsTrue(checkedAny, "HazardCastAbility 보유 유닛을 찾지 못했다");
+            Assert.IsEmpty(offenders.ToString(),
+                "캐스터는 캐스트 사건 하나로만 카운트해야 한다(spec 계약 2):\n" + offenders);
         }
 
         // ── unit 2: 비수 폴백 반경이 에셋·bake 에 살아 있는지 ──────────────

@@ -300,6 +300,8 @@ namespace Wassup.Bridge
         private NativeQueue<Wassup.Battle.Combat.Projectile.ProjectileHitEvent> _projectileHitEventQueue;
         // aggro-targeting Unit 11 — Combat(AttackSystem)→Effects(AggroStateSystem) 히트 채널.
         private NativeQueue<Wassup.Battle.Effects.AggroHitEvent> _aggroHitEventQueue;
+        // attack-decoupling unit 4 — Effects(HazardCastSystem)→Combat(AttackSystem) 캐스트 사건.
+        private NativeQueue<Wassup.Battle.Combat.CastEvent> _castEventQueue;
         // nightmare-catcher unit 1 — Combat→Combat 보스 위협 귀속 채널.
         private NativeQueue<Wassup.Battle.Combat.ThreatHitEvent> _threatHitEventQueue;
         // nightmare-catcher unit 3 — Combat→Movement 텔레포트(SelfBlink) 요청 채널.
@@ -582,6 +584,7 @@ namespace Wassup.Bridge
             DestroyEntitiesByType<Wassup.Battle.Effects.MeteorBarrageRequestsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Combat.AttackOutputLogEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.AggroHitEventsSingleton>();
+            DestroyEntitiesByType<Wassup.Battle.Combat.CastEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Combat.ThreatHitEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Movement.BlinkRequestEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.ObstacleSingleton>();
@@ -605,6 +608,7 @@ namespace Wassup.Bridge
             if (_unitAttackVisualQueue.IsCreated) _unitAttackVisualQueue.Dispose();
             if (_projectileHitEventQueue.IsCreated) _projectileHitEventQueue.Dispose();
             if (_aggroHitEventQueue.IsCreated) _aggroHitEventQueue.Dispose();
+            if (_castEventQueue.IsCreated) _castEventQueue.Dispose();
             if (_threatHitEventQueue.IsCreated) _threatHitEventQueue.Dispose();
             if (_blinkRequestQueue.IsCreated) _blinkRequestQueue.Dispose();
             if (_healAppliedEventQueue.IsCreated) _healAppliedEventQueue.Dispose();
@@ -1346,6 +1350,15 @@ namespace Wassup.Bridge
             _aggroHitEventQueue = new NativeQueue<Wassup.Battle.Effects.AggroHitEvent>(Allocator.Persistent);
             var aggroHitSingleton = _em.CreateEntity();
             _em.AddComponentData(aggroHitSingleton, new Wassup.Battle.Effects.AggroHitEventsSingleton { queue = _aggroHitEventQueue });
+
+            // attack-decoupling unit 4 — 캐스트 사건 채널(Effects→Combat). 해저드
+            // 캐스터는 attackRange 0 이라 RESOLVE 에 못 가므로 캐스트 성사가 곧 그
+            // host 의 공격 사건이다. HazardCastSystem 이 enqueue, AttackSystem 이
+            // 드레인. 브리지는 lifecycle 만(AggroHit 선례와 동일 3점 세트).
+            if (_castEventQueue.IsCreated) _castEventQueue.Dispose();
+            _castEventQueue = new NativeQueue<Wassup.Battle.Combat.CastEvent>(Allocator.Persistent);
+            var castEventSingleton = _em.CreateEntity();
+            _em.AddComponentData(castEventSingleton, new Wassup.Battle.Combat.CastEventsSingleton { queue = _castEventQueue });
 
             // nightmare-catcher unit 1 — Combat→Combat 보스 위협 귀속 채널. 데미지
             // 생산자(AttackSystem 근접 / ProjectileHitSystem 착탄)가 보스(ThreatEntry

@@ -129,6 +129,94 @@ namespace Wassup.Battle.Combat
                 ccWriter = ccSingleton.ValueRW.queue.AsParallelWriter();
             }
 
+            // ── attack-decoupling unit 4 — 캐스트 사건 드레인 (Effects→Combat) ──
+            // attacker foreach **앞**에서 처리한다: ① 후보 스냅샷/ecb 를 그대로
+            // 재사용하고 ② 카운터 변경이 루프 바깥에서 끝나 HeavyStrike pre-scan
+            // 합성 불변식(spec 계약 1)에 영향이 없다. 신규 시스템 0.
+            // HazardCastSystem 이 [UpdateBefore(AttackSystem)] 이라 같은 프레임 소비.
+            if (SystemAPI.TryGetSingletonRW<CastEventsSingleton>(out var castEvents))
+            {
+                var castQueue = castEvents.ValueRW.queue;
+                while (castQueue.TryDequeue(out var castEvt))
+                {
+                    // stale 드롭 — enqueue 후 드레인 전에 캐스터가 죽는 창이 있다.
+                    if (!dcSlotLookup.HasBuffer(castEvt.caster)) continue;
+
+                    var castSlots = dcSlotLookup[castEvt.caster];
+                    for (int si = 0; si < castSlots.Length; si++)
+                    {
+                        var slot = castSlots[si];
+                        if (slot.trigger != Wassup.Data.DcTriggerKind.AttackN) continue;
+                        ushort cc2 = slot.counter;
+                        bool fired = DcTrigger.Tick(ref cc2, slot.period);
+                        slot.counter = cc2;
+                        castSlots[si] = slot;
+                        if (!fired) continue;
+                        // 캐스터에 붙을 수 있는 AttackN 페이로드는 ProjectileToTarget 뿐
+                        // (CC/스택은 대상 문맥이 없어 적용성이 거절 — 계약 9).
+                        if (slot.payload != Wassup.Data.DcPayloadKind.ProjectileToTarget) continue;
+
+                        // 대상 선정은 폭탄맨과 같은 패턴(unit 3): 진영 Enemy 고정.
+                        var castCands = new NativeArray<DcNeedleTargeting.Candidate>(
+                            targetEntities.Length, Allocator.Temp);
+                        int2 casterCell = GridMath.WorldToCell(castEvt.casterPos,
+                            hasFlowField ? flowField.tileSize : 1f,
+                            hasFlowField ? flowField.gridSize : new int2(128, 128),
+                            origin: hasFlowField ? flowField.origin : float3.zero);
+                        for (int ci = 0; ci < targetEntities.Length; ci++)
+                        {
+                            var cand = targetEntities[ci];
+                            bool ok = cand != castEvt.caster
+                                && ((int)targetFactions[ci].value & (int)Faction.Enemy) != 0;
+                            float3 cp = targetTransforms[ci].Position;
+                            int2 cc3 = GridMath.WorldToCell(cp,
+                                hasFlowField ? flowField.tileSize : 1f,
+                                hasFlowField ? flowField.gridSize : new int2(128, 128),
+                                origin: hasFlowField ? flowField.origin : float3.zero);
+                            castCands[ci] = new DcNeedleTargeting.Candidate
+                            {
+                                eligible = ok,
+                                tileDist = math.max(math.abs(cc3.x - casterCell.x),
+                                                    math.abs(cc3.y - casterCell.y)),
+                                sqDist = math.distancesq(castEvt.casterPos, cp),
+                                entityIndex = cand.Index,
+                                entityVersion = cand.Version,
+                            };
+                        }
+                        int pick = DcNeedleTargeting.SelectNearest(castCands, slot.tileRange);
+                        if (pick >= 0)
+                        {
+                            var needleCarrier = ecb.CreateEntity();
+                            ecb.AddComponent(needleCarrier, new ProjectileSpawnRequest
+                            {
+                                movement = MovementKind.HomingToEntity,
+                                payload = PayloadKind.SingleSplash,
+                                target = targetEntities[pick],
+                                origin = castEvt.casterPos,
+                                damage = slot.magnitude, // flat — 계약 7
+                                speed = slot.speed,
+                                hitThreshold = slot.hitThreshold,
+                                visualScale = slot.visualScale,
+                                dataIndex = slot.projectileDataIndex,
+                                owner = castEvt.caster,
+                            });
+                            ecb.AddComponent<ProjectileRequestCarrier>(needleCarrier);
+                            if (attackOutputLogWriter.HasValue)
+                                attackOutputLogWriter.Value.Enqueue(new AttackOutputLogEvent
+                                {
+                                    attacker  = castEvt.caster,
+                                    kind      = Wassup.Data.AttackOutputKind.Damage,
+                                    magnitude = slot.magnitude,
+                                    duration  = 0f,
+                                    sourcePos = castEvt.casterPos,
+                                    targetPos = targetTransforms[pick].Position,
+                                });
+                        }
+                        castCands.Dispose();
+                    }
+                }
+            }
+
             // ─────────────────────────────────────────────────────────────────────
             // Unified attacker loop — defenders and enemies share this single query.
             // Defender-specific branches guard on defenderTagLookup / HasComponent.
