@@ -1,6 +1,6 @@
 # projectile-emission-pattern — 발사 명세(패턴) 시스템 + 베지어 호밍 미사일
 
-> 상태: **units 0~5 구현 + 투트랙 리뷰 반영 완료 2026-07-28** (양측 APPROVE, CRITICAL 4·HIGH 1·MEDIUM 다수 수정. EditMode 0 fail, 컴파일 클린). **남은 것 = unit 6 Play e2e**(MCP 브리지 복구 필요). 인계: `7_handoff_summary.md`
+> 상태: **완료 2026-07-28** (units 0~6. 투트랙 리뷰 양측 APPROVE — CRITICAL 4·HIGH 1·MEDIUM 다수 수정. EditMode 1514/1512 pass·0 fail. Play e2e 실측 통과 — 폭격 낙하 위치·미사일 곡선/데미지/랜덤 타겟·인스턴스 무누적·텔레포트 미발생). **남은 것 = 체감 튜닝**(미사일 damage 40·주기 0.5s·`bezierLateral` 1.2)과 `shotCount` 3 육안·무회귀 스모크. 인계: `7_handoff_summary.md`
 > 사용자 결정 3건 반영: v1 = 신규 패턴 + 융단폭격 흡수 / 텔레포트는 보스 SO 에서만 제거(코드 보존) / 랜덤 = 결정론 해시 셔플.
 >
 > 선행: `docs/spec/projectile-trajectory-payload/`(궤적×페이로드 2축 + 단일 라이프사이클), `docs/spec/defender-directional-volley/`(count/interval/spread 순수함수 — `VolleyMath`), `docs/spec/nightmare-catcher/`(보스 트리거 프레임워크 · 융단폭격 · 텔레포트).

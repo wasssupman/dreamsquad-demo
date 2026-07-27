@@ -61,14 +61,27 @@ spec `af1796bc`(0~6 작성) → `5e69dc5f`(spec-review 반영) → `afb9d83f`(�
 - **bake 경로** — `PatternBakeTests`(4). `BattleBridge` 는 `[ExecuteAlways]` 가 없어 EditMode `AddComponent` 로 Awake 가 돌지 않고, bake 가 요구하는 상태는 `_world`/`_em` 둘뿐이라 reflection 주입으로 충분하다(`BattleBridgeDraftMapTests` 와 같은 레시피). **bake 를 순수 함수로 추출해 테스트하지 말 것** — dangling 버퍼 핸들 류는 `EntityManager` 를 만지는 쪽에만 있어서, 추출하면 한 번도 깨진 적 없는 절반에 초록불이 켜진다.
 - **픽스처 함정**: `TickTrigger` 는 주기만큼 dt 를 한 번에 주므로 **버스트 tick 에도 그 dt 가 적용된다**(lag spike 사양). `interval > 0` 패턴은 한 프레임에 전량이 나가므로, 버스트 진행을 관찰하려면 `FireOnceThenDetach`(작은 dt 누적 + 슬롯 분리)를 쓴다.
 
+## Play e2e (2026-07-28 실측)
+
+진입: `TestModeContext.Set(WavePlan_BossTest, preset)` → `SceneTransition.Go(Battle)` → `bridge.StartBattle()`. **페이즈가 Placement 에 머물면 웨이브가 돌지 않는다** — `StartBattle` 을 직접 불러야 한다. 방어유닛 후보가 필요해 `DefenderUnitTag`+`LocalTransform`+`Health`+`FactionTag`+`IncomingDamage` 를 붙인 **더미 엔티티**를 walkable 셀에 세웠다(`TryBeginDefenderDeployment` 는 Placement 게이트·pool 제약으로 거절된다).
+
+| 항목 | 실측 |
+|---|---|
+| **폭격 낙하 위치** (`b8ef7c37`) | `sky@3.0,3.0 impact=3.0,3.0` · `sky@13.0,1.0 impact=13.0,1.0` — 위치 = 착탄 셀 = 타겟 셀. **수정 전이라면 시전자 위치로 갈렸다** |
+| 미사일 데미지 | `dmg40` (패턴 spec 값) |
+| 곡선 궤적 | `o=0.0,6.0 c1=5.0,5.4` / `c1=3.0,5.6` — 제어점이 직선을 벗어나고 **발마다 다르다**(swingIndex). 스크린샷에서 트레일이 휘는 것 육안 확인 |
+| 랜덤 타겟 | `distinctTargets=2`, 더미 6기 전부 누적 피해 5만~9만 |
+| 인스턴스 누적 | `inst0` 전 구간 유지 (CRITICAL 2 수정 검증) |
+| 텔레포트 미발생 | 보스 2기가 HP 60%·20% 까지 내려가 경계 70/40/10% 를 여러 번 통과했는데 위치 `@0.0,6.0` 고정 |
+| bake | `slots3 pats2` · 레지스트리 `[0]Barrage+pfb [1]Missile+pfb` |
+| 투사체 라이프사이클 | 보스 2기 기준 `bez4 / views4 / arrived0 / badTarget0 / flightTime 0.50~1.86s` — 좌초·유령 없음 |
+
+**관측 함정 2건**: ① MCP 왕복 지연(15~30s) 때문에 단발 프로브는 창을 놓친다 — `EditorApplication.update` 콜백 + `SessionState` 축적, 스크린샷은 **조건 기반**(미사일 2발 이상 비행 프레임만)으로 잡아야 한다. ② 한때 `bez60` 이 관측됐는데 누수가 아니라 **보스 다수 누적**(더미가 999999 HP 라 죽지 않아 매치가 끝나지 않고 보스가 쌓임)이었다 — 프로브에 보스 수를 함께 찍어야 오진을 피한다.
+
 ## Follow-up
 
-- **Play e2e(unit 6) 미실시** — MCP 브리지 복구 필요. 확인 항목:
-  - 0.5초 간격 발사 · 대상이 매번 다른 방어유닛(맵 반대편 포함) · 곡선 육안(연속 3프레임 이상) · 40 데미지 · 텔레포트 미발생(HP 70/40/10% 통과)
-  - **융단폭격 낙하가 방어유닛 위에서 떨어지는가**(`b8ef7c37` 회귀 검증 — 데미지는 맞고 VFX 만 틀리던 결함이라 눈으로만 확인된다) · 주기·순회·1.5s 텔레그래프·r3 값 보존
-  - **`shotCount` 를 임시로 3 으로 올려 3발이 나가는가**(리뷰 권고 — 현 authoring 이 1 이라 e2e 만점 통과해도 발-루프 회귀는 안 잡힌다)
-  - **방어유닛 전멸 → 재배치 시 일제사격이 없는가**(인스턴스 적재 회귀 — 통합 테스트가 덮지만 실환경 확인)
-  - 3슬롯 동시 동작 · 무회귀(홈잉/머신건/폭탄/곡사/Meteor)
+- **`shotCount` 3 실환경 육안 미실시** — 통합 테스트(`Burst_ProducesOneCarrierPerShot_ThenRetires`)가 캐리어 3개를 고정하므로 회귀는 덮이지만, "세 발이 각각 다른 곡선으로 갈라지는" 시각은 확인하지 않았다. 패턴 SO 의 `shotCount` 를 3 으로 올려 Play 하면 바로 보인다.
+- **무회귀 수동 스모크 미실시** — 홈잉/머신건/폭탄/곡사/플레이어 Meteor 각 1회. EditMode 1514 는 통과했고 축 매핑은 append-only 라 위험은 낮다.
 - **신규 `.cs` 3개의 `.meta` 미생성**(브리지 끊김 시점에 커밋): `EmitterInstance`·`PatternSlot`·`ProjectileEmitterSystem`. 브리지 복구 후 Unity 가 생성한 meta 를 별도 커밋. 씬/asset 참조가 없어 GUID 재생성 위험은 없다.
 - **미사일 damage 40 · 주기 0.5s · `bezierLateral` 1.2** 는 체감 튜닝 대상(전부 SO).
 - README 후속 후보의 범용성 갭 4개(무타겟 / host 독립 / 서브 발사 / non-Damage)는 `docs/spec/README.md` Follow-up Backlog 등록 대기.
