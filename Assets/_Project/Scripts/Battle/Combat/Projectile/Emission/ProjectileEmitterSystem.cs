@@ -141,9 +141,11 @@ namespace Wassup.Battle.Combat.Projectile.Emission
 
                         var req = inst.template;
                         req.origin = hostPos;
+                        // 명령이 결정한 값을 그대로 쓴다. template 의 dataIndex 와 오늘은
+                        // 같지만(bake 가 같은 barrelIndex 를 양쪽에 넣는다), 거기 기대면
+                        // 로직 계층의 결정이 bake 불변식에 묶인다 — order 가 source 다.
                         req.damage = order.damage;
-                        // dataIndex 는 template 이 bake 에서 이미 같은 barrelIndex 로 채웠다
-                        // (order.barrelDataIndex 와 항상 동일) — 재대입하지 않는다.
+                        req.dataIndex = order.barrelDataIndex;
 
                         switch (MovementBinding.Of(req.movement))
                         {

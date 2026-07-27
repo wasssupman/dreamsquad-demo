@@ -101,7 +101,7 @@ namespace Wassup.Tests.EditMode
         // 안정 키(예: 병렬 배열로 받은 entity index)를 함께 넘겨야 한다. 이 테스트는
         // 그 한계를 **문서화**한다 — 통과가 곧 "셀 단위까지만 결정론"이라는 뜻이다.
         [Test]
-        public void DuplicateCells_SelectionIsCellStable_ButNotEntityStable()
+        public void DuplicateCells_CellStable_EntityTieBreakIsSnapshotOrder()
         {
             var a = new[] { new int2(4, 4), new int2(4, 4), new int2(9, 1) };
             var b = new[] { new int2(4, 4), new int2(9, 1), new int2(4, 4) };

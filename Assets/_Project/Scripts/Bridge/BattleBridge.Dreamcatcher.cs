@@ -468,6 +468,10 @@ namespace Wassup.Bridge
                     payload = m.payload.kind,
                     magnitude = m.payload.magnitude,
                     projectileDataIndex = -1,
+                    // 보스 bake 와 같은 불변식(struct default 0 은 유효 index 다). 지금은
+                    // 아래 EmitProjectilePattern 거절이 도달 경로를 막지만, 불변식 자체를
+                    // 여기서 걸어두어야 다른 kind 가 patternIndex 를 쓰게 될 때 안전하다.
+                    patternIndex = -1,
                     // trigger-gates unit 1 — 게이트 번역 (위 배선 검증 통과분만 착지).
                     gate = m.trigger.gate,
                     gateSubject = m.trigger.gateSubject,

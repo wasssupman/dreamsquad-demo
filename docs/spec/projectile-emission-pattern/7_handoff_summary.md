@@ -9,7 +9,7 @@ spec `af1796bc`(0~6 작성) → `5e69dc5f`(spec-review 반영) → `afb9d83f`(�
 ## Implemented
 
 - **발사 명세가 데이터가 됐다**: `ProjectilePatternData`(barrel × damage × selection × count/interval × telegraph) + `PatternSpec`(unmanaged 미러). 탄의 성질은 `ProjectileData` 소유, 패턴은 복제하지 않는다.
-- **3층 분리**: 정의(`Wassup.Data`) / 로직(순수 static, `Unity.Entities` 무참조) / 아키텍처(emitter). `ShotOrder` 는 `Entity` 대신 후보 index 로 타겟을 가리켜 Mono 이식 시 ①②가 그대로 살아남는다.
+- **3층 분리**: 정의(`Wassup.Data`) / 로직(순수 static, `Unity.Entities` 무참조) / 아키텍처(emitter). `ShotOrder` 는 `Entity` 대신 후보 index 로 타겟을 가리킨다. 계약이 보장하는 것은 **결정 로직에 아키텍처 지식이 스며들지 않는다**는 것이지 무수정 이식이 아니다(`Unity.Mathematics`/`Collections` 의존·asmdef 동거는 남는다 — README 계약 1 참조).
 - **베지어 호밍 궤적**: `MovementKind.BezierHomingToEntity` — 곡선×추적 조합 개통. 제어점 결정론 좌우 교대(`shotCount` 올리면 살포로 갈라짐), 종점만 타겟 추적, sim XZ / view Y 분담.
 - **emitter 는 바인딩 클래스로 분기**: `MovementBinding.Of` → Entity/Cell/Direction 3분류. 기존 바인딩으로 분류되는 새 이동 수학은 emitter 무변경으로 발사된다.
 - **트리거 seam**: `DcPayloadKind.EmitProjectilePattern`(17) — arm 이 하는 일은 값 복사 push 뿐. 발사 도중 SO/버프가 바뀌어도 시작된 버스트는 불변.
@@ -56,7 +56,12 @@ spec `af1796bc`(0~6 작성) → `5e69dc5f`(spec-review 반영) → `afb9d83f`(�
 
 ## Follow-up
 
-- **Play e2e(unit 6) 미실시** — MCP 브리지 복구 필요. 확인 항목: 0.5초 간격 발사 · 대상이 매번 다른 방어유닛(맵 반대편 포함) · 곡선 육안(연속 3프레임 이상) · 40 데미지 · 텔레포트 미발생(HP 70/40/10% 통과) · 융단폭격 값 보존(주기·순회·1.5s 텔레그래프·r3) · 3슬롯 동시 동작 · 무회귀(홈잉/머신건/폭탄/곡사/Meteor).
+- **Play e2e(unit 6) 미실시** — MCP 브리지 복구 필요. 확인 항목:
+  - 0.5초 간격 발사 · 대상이 매번 다른 방어유닛(맵 반대편 포함) · 곡선 육안(연속 3프레임 이상) · 40 데미지 · 텔레포트 미발생(HP 70/40/10% 통과)
+  - **융단폭격 낙하가 방어유닛 위에서 떨어지는가**(`b8ef7c37` 회귀 검증 — 데미지는 맞고 VFX 만 틀리던 결함이라 눈으로만 확인된다) · 주기·순회·1.5s 텔레그래프·r3 값 보존
+  - **`shotCount` 를 임시로 3 으로 올려 3발이 나가는가**(리뷰 권고 — 현 authoring 이 1 이라 e2e 만점 통과해도 발-루프 회귀는 안 잡힌다)
+  - **방어유닛 전멸 → 재배치 시 일제사격이 없는가**(인스턴스 적재 회귀 — 통합 테스트가 덮지만 실환경 확인)
+  - 3슬롯 동시 동작 · 무회귀(홈잉/머신건/폭탄/곡사/Meteor)
 - **신규 `.cs` 3개의 `.meta` 미생성**(브리지 끊김 시점에 커밋): `EmitterInstance`·`PatternSlot`·`ProjectileEmitterSystem`. 브리지 복구 후 Unity 가 생성한 meta 를 별도 커밋. 씬/asset 참조가 없어 GUID 재생성 위험은 없다.
 - **미사일 damage 40 · 주기 0.5s · `bezierLateral` 1.2** 는 체감 튜닝 대상(전부 SO).
 - README 후속 후보의 범용성 갭 4개(무타겟 / host 독립 / 서브 발사 / non-Damage)는 `docs/spec/README.md` Follow-up Backlog 등록 대기.

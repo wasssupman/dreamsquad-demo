@@ -5656,6 +5656,10 @@ namespace Wassup.Bridge
             // AddBuffer 시점에 죽는다(ObjectDisposedException / 회수된 chunk write).
             // 사용 직전 GetBuffer 로 다시 얻는다 — 그 사이 구조 변경이 없으므로 유효하다.
 
+            // slots 는 **마지막** AddBuffer 라 아래 루프까지 캐시해도 안전하다: 루프 안의
+            // 쓰기는 DynamicBuffer.Add(리사이즈, archetype 불변)와 managed 조작뿐이다.
+            // 루프에 AddComponent/AddBuffer 를 하나라도 추가하는 순간 이 전제가 깨지므로,
+            // 그때는 이 핸들도 사용 직전 재획득으로 바꿔야 한다.
             var slots = _em.AddBuffer<DcTriggerSlot>(entity);
 
             for (int i = 0; i < mechanics.Length; i++) // bake-time only read (managed array)
@@ -5732,6 +5736,9 @@ namespace Wassup.Bridge
                     {
                         Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: SkyFall 패턴의 telegraphSec 가 0 — 예고 없이 즉착탄합니다.");
                     }
+                    // (BezierHoming 재조준 봉인은 authoring 표면이 없어 경고가 불필요하다 —
+                    //  ProjectileData 에 재조준 필드 자체가 없다. 그 필드를 여는 후속 작업이
+                    //  재조준 개통과 한 묶음이라는 점은 README 후속 후보에 적혀 있다.)
                     // 사용 직전 재획득(위 주석 참조).
                     var patternSlots = _em.GetBuffer<Wassup.Battle.Combat.Projectile.Emission.PatternSlot>(entity);
                     patternSlots.Add(new Wassup.Battle.Combat.Projectile.Emission.PatternSlot

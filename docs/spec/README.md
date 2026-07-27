@@ -121,6 +121,12 @@ code + git history        구현 상세
 
 > 출처 spec 이 섞여 있다. 그룹 헤더 또는 항목 끝의 `(spec-slug)` 라벨로 출처 표기.
 
+#### 발사 명세 시스템 (projectile-emission-pattern — units 0~5 완료 2026-07-28, Play e2e 대기)
+
+- **카드 bake payload 화이트리스트 + terminal else** [S] · 카드 bake 의 payload `if/else if` 체인에 terminal `else` 가 없어, 배선 안 된 kind 가 조용히 슬롯으로 붙고 "부착됨"으로 집계된다(설명 공란). 단순 추가가 안 되는 이유는 `NextAttackDoubleFire`·`SelfBuffLethal` 처럼 **분기 없이 통과해도 정상인 kind** 가 섞여 있고 그 목록이 어디에도 없기 때문 — 실제 작업은 화이트리스트 명시다. `DcApplicability` 는 이미 전수 테스트로 강제되므로 bake 만 비대칭. 다음에 payload 를 추가하는 spec 이 흡수하면 된다. (projectile-emission-pattern)
+- **범용성 갭 4종** [M~L] · 무타겟 패턴(방향/셀 지정) · host 독립 발사(사망 유언·bridge-cast) · 서브 발사(착탄 → 자식 패턴) · non-Damage 패턴(Stat/Stack/Heal outputs). 상세는 `docs/spec/projectile-emission-pattern/README.md` 후속 후보.
+- **defender 패턴 개통 시 안정 키** [S] · 타겟 선택의 tie-break 가 같은 셀 중복 시 스냅샷 순서에 의존한다. 적 후보는 자유 이동이라 셀 공유가 상시 — `hostIsDefender` 경로를 여는 커밋에서 반드시 함께 처리. (projectile-emission-pattern)
+
 #### 드림캐쳐 공격 결합 (dreamcatcher-attack-decoupling — 완료 2026-07-27)
 
 - **페이로드 다연발(n초 간격 m발)** [M] · 비수가 발동당 1발만 쏜다. `VolleyMath.TickBurst`(머신거너 10연발)와 `SpawnNeedleCarrier` 를 그대로 재사용하면 되고, 실제 작업은 "버스트 상태를 어디에 두고 언제 틱하느냐" 하나다 → `docs/spec/dreamcatcher-payload-burst/`

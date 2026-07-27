@@ -72,8 +72,15 @@ namespace Wassup.Battle.Combat
             bool whipEnemyPoolBuilt = false, whipDefEntitiesBuilt = false;
 
             foreach (var (slotsRef, entity) in
-                     SystemAPI.Query<DynamicBuffer<DcTriggerSlot>>().WithEntityAccess())
+                     SystemAPI.Query<DynamicBuffer<DcTriggerSlot>>()
+                              .WithNone<Wassup.Battle.Units.DeadTag>()
+                              .WithEntityAccess())
             {
+                // 죽은 유닛은 새 발동을 시작하지 않는다. DeadTag 는 DamageApplicationSystem 이
+                // 붙이고 UnitLifecycleSystem 이 같은 프레임에 파괴하지만, 그 사이에 이 시스템이
+                // 끼면 시체가 한 번 더 스킬을 쓴다. 시스템 순서(UpdateAfter)로 가리는 대신
+                // 규칙으로 표현한다 — 이미 시작된 버스트는 emitter 가 완주시킨다
+                // (combat-action-lock 의 "START 는 막고 RESOLVE 는 완료" 와 같은 결).
                 // foreach 변수는 readonly — DynamicBuffer 는 뷰 struct 라 로컬
                 // 복사가 같은 버퍼 메모리를 가리킨다(CS1654 회피 관용구).
                 var slots = slotsRef;

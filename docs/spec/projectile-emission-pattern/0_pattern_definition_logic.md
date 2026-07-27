@@ -114,10 +114,11 @@ static BindingClass MovementBinding.Of(MovementKind kind)
 
 - 컴파일 클린. 신규 `.cs` 추가이므로 `refresh_unity scope=all`(부분 refresh = cascading CS0246).
 - **`grep -l "using Unity.Entities" ` 가 이 unit 의 신규 파일 7개에서 0건** (계약 1 기계 검증).
-- `MovementBinding.Of`: 현 6 케이스 전 분류 + switch expression(신규 kind 추가 시 분류 누락 = 컴파일 에러) EditMode 1.
+- `MovementBinding.Of`: 현 6 케이스 전 분류 + `KnownKindCount` 대조 핀(신규 kind 추가 시 **테스트 실패** — 컴파일러는 enum 전수성을 강제하지 못한다) EditMode 1.
 - EditMode 신규 ≥ 12:
   - `EmitterTick`: 단발 · 버스트 정확 발수 · `interval<=0` 즉시 전부 · 느린 프레임 다중 발사 · 잔여 캐리 드리프트 0 · 완주 후 0
   - `Begin` 시드 연속성: `baseFireCount=k` 로 시작한 인스턴스의 선택이 "영속 카운터 k 인 상태" 와 동일 — **트리거 발화 2회 연속 시나리오에서 RoundRobin 이 다른 대상을 순회**하는 테스트(C2 회귀 핀)
   - `BuildOrder`: `shotIndex`/`fireCount` 전진 · order 필드 정확성
-  - `PatternTargeting`: round-robin 순회 · **`BarrageEpicenter` 와 동일 결과**(같은 입력 비교) · 셔플 결정론(같은 fireCount = 같은 결과) · 셔플 분포(후보 4개 · 100 발 전부 최소 1회) · 청크 순서 무관(후보 배열 셔플해도 동일 선택) · `n==0` → −1
+  - `PatternTargeting`: round-robin 순회 · 셔플 결정론(같은 fireCount = 같은 결과) · 셔플이 순회와 갈리는 지점 존재 · 셔플 분포(후보 4개 · 200발 전부 최소 1회) · 청크 순서 무관(후보 배열 셔플해도 동일 셀) · 중복 셀 한계 문서화 · `n==0` → −1
+    - 흡수 전 `BarrageEpicenter` 와의 동일성 테스트는 unit 0 시점에 작성해 검증한 뒤 unit 4(원본 삭제)에서 함께 제거했다.
 - 기존 EditMode 무회귀(현 905건 기준).
