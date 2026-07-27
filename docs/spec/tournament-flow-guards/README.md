@@ -1,7 +1,7 @@
 # tournament-flow-guards
 
-> 상태: 완료 2026-07-25 (units 0~6 + 정리)
-> 컴파일 클린 · EditMode 1275 pass / 0 fail · **라이브 e2e 통과(사용자 확인 "잘된다")**.
+> 상태: 완료 2026-07-27 (units 0~7)
+> units 0~6 완료 2026-07-25 · unit 7 (락 자동 복구 tracked 한정 + 상세 에러) 완료 2026-07-27, 라이브 강제 재현 통과.
 > 커밋: 820de3c2·5d6c84a0·bedda40e·f496889f·98f2cd55·30989502·44d24c01
 
 ## 한 줄
@@ -27,6 +27,9 @@
 | 1 | play 게이팅 | `1_play_gated_entry.md` | 리포터에 await 가능한 로비 진입(성공=attemptId+seed) 추가 + `OnStartGame` 이 성공 시에만 `Go(Battle)`, 실패/타임아웃 시 알림. 진행 중 재진입 차단 |
 | 2 | score 실패 알림 | `2_report_failure_alert.md` | complete 실패 콜백을 `NoticePopup` 으로 surfacing. **전송 로직 무변경, 재시도 없음, 논블로킹** |
 | 3 | 배선 + Play 검증 | `3_wiring_and_verify.md` | NoticePopup 부트스트랩, 성공/실패(강제) 경로 재현, 완주 매치가 서버에 실점수로 남는지 확인, handoff |
+| 4 | 락 복구 조사 | `4_locked_attempt_recovery.md` | 라이브 프로브 결론: **orphan 락(무 pending)은 클라 복구 불가 → 서버 이관.** tracked 케이스만 클라 처리 가능 |
+| 5·6 | reconcile 신뢰성 | `5_reconcile_always_release.md` | 나이 무관 항상 complete(0) + **pending 은 complete 성공 후에만 제거**(optimistic clear = 영구 락 원인) |
+| 7 | 락 자동 복구 + 상세 에러 | `7_lock_recovery_and_error_detail.md` | play 락 실패 시 pending attemptId 로 complete(0) → play **1회** 재시도. 실패 팝업에 락 메시지 분기 + raw 에러 상세 표기 |
 
 ## Feature-wide 계약
 
@@ -35,7 +38,7 @@
 3. **`_lobbyIssued` 채택 유지.** await 성공 후에도 `_lobbyIssued=true` 로 배틀씬 `GameManager.OnEnable.BeginMatch` 가 **재발행 없이 adopt**. 한 판 = 엔트리 1개 불변.
 4. **선발행(로비 play)의 목적 유지** — 응답의 `tournament.seed` 를 맵 빌드 전에 확보. await 로 시드는 오히려 입장 전 확정된다.
 5. **score 전송 로직은 현행 `ReportResult` 그대로.** play 정상 + 세션 유지면 그대로 보내는 게 정답. 추가는 **complete 실패 시 알림뿐** — 논블로킹, **재시도 없음**. 결과 화면/로컬 점수/씬 전환에 무영향.
-6. **await 무응답 방어가 목적.** 로비 await 는 **타임아웃(≤ play API timeout) 경과/실패 → 입장 취소 + 알림.** 진행 중 재진입(더블탭)은 차단(중복 play = 중복 락 방지).
+6. **await 무응답 방어가 목적.** 로비 await 는 **타임아웃(≤ play API timeout) 경과/실패 → 입장 취소 + 알림.** 진행 중 재진입(더블탭)은 차단(중복 play = 중복 락 방지). (unit 7 rev) 단 **락 유형("cannot wait") 실패는 pending attemptId 보유 시 complete(0) → play 1회 재시도** 후에만 취소로 떨어진다 — orphan 락은 즉시 취소+락 전용 안내.
 7. **`NoticePopup` 은 단일 공용 뷰.** self-building 절차적(저작 아트 없음 — `PresetConfirmPopup` 패턴), DontDestroyOnLoad 정적 `Show`. busy 모드(무버튼) + 알림 모드(닫기/선택적 다시시도). 부트스트랩 부재/헤드리스에서 **NRE 없이 no-op degrade**(SceneTransition 하드컷 선례).
 8. **메인 경로 방어에 한정한다.** epoch 드롭 후 stale 콜백, score 재시도, `reconcile`/`abandon` 의 `complete(0)` 덮어쓰기, TestMode 엔트리 생성(결함 A) 등은 **의도적으로 범위 밖**. "모든 구멍 방어" 아님.
 9. **비파괴.** 기존 `BeginMatch`(GameManager 진입용)·`ReportResult` 시그니처 유지. 로비 await 는 별도 진입점/오버로드로 추가한다.

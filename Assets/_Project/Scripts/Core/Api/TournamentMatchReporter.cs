@@ -42,8 +42,27 @@ namespace Wassup.Core.Api
         public static void BeginMatchFromLobby(Action onReady, Action<string> onFailed)
         {
             _lobbyIssued = false; // re-entrance safety: always issue fresh from here
-            BeginMatchInternal(onReady, onFailed);
+            BeginMatchInternal(onReady, error =>
+            {
+                // unit 7 — 락 유형(서버에 열린 attempt) 실패는, 클라가 그 attemptId 를
+                // 쥔 경우(pending)에 한해 complete(0) 로 락을 풀고 play 를 1회 재시도한다.
+                // pending 이 없는 orphan 락은 클라가 못 푼다(unit 4 라이브 프로브 결론)
+                // → 그대로 표면화해 호출자가 락 전용 안내를 띄운다.
+                if (!IsLockError(error)) { onFailed?.Invoke(error); return; }
+                ReconcilePending(released =>
+                {
+                    if (released) BeginMatchInternal(onReady, onFailed); // 1회 — 재실패는 그대로 표면화
+                    else onFailed?.Invoke(error);
+                });
+            });
         }
+
+        // unit 7 — play-while-locked 판정. 열린 attempt 가 있으면 서버가 500 에
+        // "cannot wait" 를 실어 거부한다(unit 4 라이브 프로브로 확정한 계약). 에러
+        // 문자열 내 구문 포함 여부로 판정 — 어느 errorDetail 필드에 실리든 견딘다.
+        internal static bool IsLockError(string error)
+            => !string.IsNullOrEmpty(error)
+               && error.IndexOf("cannot wait", StringComparison.OrdinalIgnoreCase) >= 0;
 
         // GameManager.OnEnable 진입용(비게이트). 로비 발행 attempt 채택 또는 직접진입 재발행.
         public static void BeginMatch() => BeginMatchInternal(null, null);
@@ -205,19 +224,25 @@ namespace Wassup.Core.Api
         // complete(0) 로 그 attempt 를 마감해 서버 락을 푼다. pending 은 complete 가 성공한
         // 뒤에만 지운다(실패면 유지 → 다음 로비 재시도). 재진입 중복 complete 는 _reconciling
         // in-flight 플래그로 막는다.
-        public static void ReconcilePending()
+        public static void ReconcilePending() => ReconcilePending(null);
+
+        // unit 7 — onDone(released): pending attemptId 로 complete(0) 가 **실제 성공**해
+        // 락이 풀렸을 때만 true. 그 외(무레코드/무계정/계정 불일치/in-flight/전송 실패)는
+        // false. BeginMatchFromLobby 의 락 복구 재시도가 이 신호에 게이트된다.
+        public static void ReconcilePending(Action<bool> onDone)
         {
-            if (_reconciling) return; // in-flight — 중복 complete 방지(Awake+onSignedIn)
-            if (!PendingMatchStore.TryLoad(out var rec)) return;
-            if (!UserSession.HasAccount) { PendingMatchStore.Clear(); return; }
+            if (_reconciling) { onDone?.Invoke(false); return; } // in-flight — 중복 complete 방지(Awake+onSignedIn)
+            if (!PendingMatchStore.TryLoad(out var rec)) { onDone?.Invoke(false); return; }
+            if (!UserSession.HasAccount) { PendingMatchStore.Clear(); onDone?.Invoke(false); return; }
 
             string currentUserId = UserSession.Current?.userId ?? string.Empty;
-            if (currentUserId != rec.userId) { PendingMatchStore.Clear(); return; } // different account
+            if (currentUserId != rec.userId) { PendingMatchStore.Clear(); onDone?.Invoke(false); return; } // different account
 
             string baseUrl = UserSession.GameServerBaseUrl;
             if (string.IsNullOrEmpty(baseUrl))
             {
                 Debug.LogWarning("[TournamentReporter] pending reconcile skipped — no base URL.");
+                onDone?.Invoke(false);
                 return;
             }
 
@@ -242,6 +267,7 @@ namespace Wassup.Core.Api
                 {
                     Debug.LogWarning($"[TournamentReporter] reconcile complete failed (pending 유지 → 다음 로비 재시도): {error}");
                 }
+                onDone?.Invoke(ok);
             });
         }
     }

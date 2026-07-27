@@ -45,8 +45,9 @@ play 가 **이미 열린(진행중) attempt 때문에 실패**(서버 500 "canno
 
 **락은 시간제로 자동 만료**됨을 확인(`play NOW code=200`, 새 라운드 롤오버). 그래서 실질 복구 = 대기 or 서버 수정.
 
-### 남는 클라측 액션 (achievable)
+### 남는 클라측 액션 (achievable) — unit 7 에서 구현됨
 - **락 유형 실패 메시지 구분**: play 500/`cannot wait` 면 "입장 실패" 대신 `"이미 진행 중인 게임이 있어요. 잠시 후 다시 시도해 주세요"` — 무의미한 즉시 재시도 방지. (unit 1 의 onFailed 메시지 분기)
+- tracked 락(pending 에 attemptId 보유)의 complete(0)+재시도 1회도 unit 7 이 커버 — 이 문서의 "구현 불가" 결론은 **orphan 락에 한정**해 유지된다.
 
 ### 서버 이관 (클라 범위 밖)
 - play-while-locked 를 500 대신 **열린 attempt 재발급/409** 로 주거나, 락 TTL 단축, 혹은 userId 기준 취소 엔드포인트 제공. 이게 있어야 클라가 즉시 복구 가능.

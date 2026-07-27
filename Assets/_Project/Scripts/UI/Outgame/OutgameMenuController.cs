@@ -200,8 +200,15 @@ namespace Wassup.UI
                     Debug.LogWarning($"[OutgameMenuController] play 실패 — 입장 취소: {err}");
                     // 재시도 버튼 없음 — 그건 로비 '시작'(=새 play) 재호출과 동일해서 중복이고,
                     // 서버 락 상황에선 즉시 재시도가 또 실패해 버그처럼 보인다. 닫으면 로비로.
-                    NoticePopup.ShowAlert("입장 실패",
-                        "게임에 입장하지 못했습니다.\n잠시 후 '시작'을 다시 눌러 주세요.");
+                    // unit 7 — 락 유형은 자동 복구(complete(0)+재시도)까지 실패한 뒤에만
+                    // 여기 도달한다(orphan 등). 원인을 구분해 안내하고, 진단용 raw 에러를
+                    // 작은 글씨로 덧붙인다(데모 단계라 사용자 노출 허용).
+                    string body = Wassup.Core.Api.TournamentMatchReporter.IsLockError(err)
+                        ? "이미 진행 중인 게임이 있어요.\n잠시 후 '시작'을 다시 눌러 주세요."
+                        : "게임에 입장하지 못했습니다.\n잠시 후 '시작'을 다시 눌러 주세요.";
+                    if (!string.IsNullOrEmpty(err))
+                        body += $"\n\n<size=60%>{err}</size>";
+                    NoticePopup.ShowAlert("입장 실패", body);
                 });
         }
 
