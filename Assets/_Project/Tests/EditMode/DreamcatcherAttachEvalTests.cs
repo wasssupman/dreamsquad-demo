@@ -25,10 +25,23 @@ namespace Wassup.Tests.EditMode
         private static DcAttackModSpec Mod(DcAttackModKind kind, int count, float damageMul) =>
             new DcAttackModSpec { kind = kind, count = count, damageMul = damageMul };
 
-        // targetsEnemies 기본 true = "적을 때리는 보통 유닛" — 기존 케이스의 전제.
+        // attack-decoupling unit 1 — host 속성이 DcHostProfile 하나로 접혔다.
+        // 기존 케이스의 전제를 그대로 보존한다: archetype = Standard(RESOLVE 도달),
+        // proj:true = homing 투사체 유닛 / proj:false = 근접, targetsEnemies 기본 true.
+        private static DcHostProfile Profile(bool proj, bool dmg, bool lethal, bool cocoon, bool targetsEnemies) =>
+            new DcHostProfile
+            {
+                archetype = DcHostArchetype.Standard,
+                route = proj ? DcProjectileRoute.Homing : DcProjectileRoute.None,
+                targetsEnemies = targetsEnemies,
+                hasDamageOutput = dmg,
+                hasLethalTimer = lethal,
+                hasDreamCocoon = cocoon,
+            };
+
         private static bool Eval(DreamcatcherCard card, bool proj, bool dmg,
             bool lethal = false, bool cocoon = false, bool targetsEnemies = true) =>
-            DreamcatcherAttachEval.WouldApply(card, proj, dmg, lethal, cocoon, targetsEnemies);
+            DreamcatcherAttachEval.WouldApply(card, Profile(proj, dmg, lethal, cocoon, targetsEnemies));
 
         // ── 통통구슬 = ProjectileBounce: 투사체 유닛만 ──────────────────────────
         [Test]
@@ -133,14 +146,14 @@ namespace Wassup.Tests.EditMode
         {
             var c = ScriptableObject.CreateInstance<DreamcatcherCard>();
             c.type = CardType.Squad;
-            Assert.IsTrue(DreamcatcherAttachEval.WouldApply(c, false, false, false, false, false));
+            Assert.IsTrue(DreamcatcherAttachEval.WouldApply(c, Profile(false, false, false, false, false)));
         }
 
         [Test]
         public void NoEffects_Rejects()
         {
             Assert.IsFalse(Eval(UnitCard(), proj: true, dmg: true));
-            Assert.IsFalse(DreamcatcherAttachEval.WouldApply(null, true, true, false, false, true));
+            Assert.IsFalse(DreamcatcherAttachEval.WouldApply(null, Profile(true, true, false, false, true)));
         }
 
         // ── dreamcatcher-attach-requirement unit 0: 부착 대상 제한(정적 술어) ──────
