@@ -67,6 +67,7 @@
 - **무타겟 패턴 (`PatternSelectionRule.None` + 방향/셀 지정)** [M] · fan/ring·고정 방향 발사는 대상이 없다 — 지금 구조는 후보 선택이 전제라 표현 불가. `None` rule + origin 기준 방향 셋(shape 축과 함께). Directional 탄의 `maxDistance` 출처 정의도 여기.
 - **host 독립 발사 (detached emitter)** [M] · 사망 유언 barrage·bridge-cast(플레이어 스킬) 패턴 발사. host 엔티티가 죽으면 `EmitterInstance` 버퍼도 죽는다 — ownerless 캐리어 엔티티에 버퍼를 실어 fire-and-forget. 첫 소비자 생길 때.
 - **서브 발사 (착탄 → 자식 패턴, cluster)** [L] · 범용 매니저의 리트머스. `ProjectileData` 에 `onImpactPattern` 참조 + 착탄 지점을 origin 으로 detached 발사 — host 독립 발사가 선행 조건.
+- **패턴 탄의 재조준/바운스 opt-in** [S] · (구현 후 리뷰 발견 2026-07-28) `retargetTileRange`·`bounce*` 는 `ProjectileSpawnRequest`/`ProjectileState` 필드일 뿐 `ProjectileData` 에 없다 — 지금은 `AttackSystem`·카드 경로가 코드로 채우는 값이라, **패턴 발사 투사체는 이 성질을 데이터로 켤 수 없다**(미사일은 대상이 먼저 죽으면 그대로 소멸). 계약 3 을 지키려면 `ProjectileData` 에 필드를 얹고 `BuildPatternTemplate` 이 복사한다. 미사일 체감에서 "죽은 표적에 쏜 탄이 낭비된다"가 걸리면 착수.
 - **non-Damage 패턴 (Stat/Stack/Heal outputs)** [S] · emitter 캐리어는 outputs 버퍼를 싣지 않아 `state.damage` 폴백(Damage-only) 고정. 슬로우탄/도트탄 패턴이 필요하면 template 조립에 outputs 스테이징 추가.
 - **`PayloadKind` → 해결 시점 / 효과 분리** [M] · 현 `PayloadKind` 는 두 개념을 겹쳐 든다: 해결 **시점**(점 도달 / 비행 중 경로 스윕 / 착탄 셀)과 **효과**(splash / pierce / tileAoe). bounce·retarget·priority·heavy 는 이미 `0=inert` 직교 필드인데 이 셋만 enum 에 묶여 있다. 승격하면 "곡선 호밍 + 관통 + 착탄 splash" 가 데이터로 열린다. 계약 3 이 가리키는 다음 단계 — 소비자는 그런 조합을 요구하는 첫 콘텐츠. `ProjectileHitSystem` 해결 분기 재편이라 기존 발사 지점 11곳이 회귀 표면이 되므로 별도 spec.
 - **fan/ring shape** [S] · `VolleyMath.SpreadDirection` 재사용 → 패턴 필드 1개 + 호출 1줄. Directional 탄과 페어링될 때 의미가 생긴다.
