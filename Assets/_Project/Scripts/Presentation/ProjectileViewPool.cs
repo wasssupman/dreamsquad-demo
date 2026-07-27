@@ -147,6 +147,12 @@ namespace Wassup.Presentation
                     var ps = em.GetComponentData<ProjectileState>(entity);
                     if (ps.movement == MovementKind.BallisticArcToPoint && ps.flightTime > 0f)
                         pos.y += BallisticArc.ArcHeight(ps.arcHeight, math.saturate(ps.elapsed / ps.flightTime));
+                    // projectile-emission-pattern unit 1 — 베지어 호밍의 3축 중 Y.
+                    // sim 은 XZ 곡선만 굴리므로(BoardSpace 가 sim-Y 를 drop) 높이는
+                    // 여기서만 생긴다. ArcHeight 재사용 = 신규 수학 0줄, pos 에 접혀
+                    // AlongVelocity 페이싱이 곡선을 따라 피칭한다.
+                    else if (ps.movement == MovementKind.BezierHomingToEntity && ps.flightTime > 0f)
+                        pos.y += BallisticArc.ArcHeight(ps.arcHeight, math.saturate(ps.elapsed / ps.flightTime));
                     // unit 9 — SkyFall 낙하: arcHeight 슬롯 = 낙하 시작 높이. sim 은 착탄 셀에
                     // 고정이므로 화면 낙하는 전부 여기 view-Y 로 표현된다. pos 에 접혀
                     // AlongVelocity 페이싱이 아래를 향하고 트레일이 위로 남는다.

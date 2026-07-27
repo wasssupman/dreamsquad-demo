@@ -3346,6 +3346,34 @@ namespace Wassup.Bridge
                 state.impactTileRange = req.impactTileRange;
                 state.flightTime = BallisticArc.FlightTime(spawnPos, ballisticImpact, req.speed, projData.minFlightTime);
             }
+            else if (req.movement == MovementKind.BezierHomingToEntity)
+            {
+                // projectile-emission-pattern unit 1 — 제어점은 SO 파라미터
+                // (bezierLateral/ForwardBias)가 필요해 **여기서** 산출한다. ISystem 은
+                // SO 를 못 읽으므로 번역자인 drain 이 채우는 것이 이 파이프라인의 관례다
+                // (SkyFall 의 dropHeight 보충 선례). 덕분에 발사 주체(AttackSystem·
+                // emitter·캐스트) 어느 쪽도 SO 를 알 필요가 없다.
+                float3 destPos = spawnPos;
+                if (req.target != Entity.Null && _em.HasComponent<LocalTransform>(req.target))
+                    destPos = _em.GetComponentData<LocalTransform>(req.target).Position;
+                // 제어점은 발사 시점 목표 위치 기준으로 한 번만 잡는다 — 이후 종점만
+                // 타겟을 따라가므로(Move arm) 곡선이 실시간으로 재조정된다.
+                var bezierDest = new float3(destPos.x, spawnHeight, destPos.z);
+                state.origin = spawnPos;
+                float lateral = projData != null ? projData.bezierLateral : 0f;
+                float forwardBias = projData != null ? projData.bezierForwardBias : 0.35f;
+                Bezier3.ControlPoints(spawnPos, bezierDest, req.swingIndex, lateral, forwardBias,
+                                      out var bezierC1, out var bezierC2);
+                state.control1 = bezierC1;
+                state.control2 = bezierC2;
+                // arcHeight 슬롯 = view 공간 Y 아치 높이(sim 은 XZ 곡선만).
+                state.arcHeight = req.arcHeight > 0f ? req.arcHeight
+                    : (projData != null ? projData.arcHeight : 0f);
+                // 비행 시간은 발사 시 거리/속도로 고정 — 타겟이 움직여도 곡선이
+                // 압축되며 파고든다(BallisticArc 와 같은 산출식·같은 하한).
+                state.flightTime = BallisticArc.FlightTime(
+                    spawnPos, bezierDest, req.speed, projData != null ? projData.minFlightTime : 0.3f);
+            }
             else if (req.movement == MovementKind.DirectionalLinear)
             {
                 // defender-directional-volley unit 2 — 방향 직선 비행. 타겟/착탄 셀이
@@ -3938,6 +3966,12 @@ namespace Wassup.Bridge
                 ProjectileFlightMode.BallisticToCell => (MovementKind.BallisticArcToPoint, PayloadKind.TileAoe),
                 // defender-directional-volley unit 1 — 방향 직선 비행 × 경로 스윕 페어.
                 ProjectileFlightMode.Directional => (MovementKind.DirectionalLinear, PayloadKind.PathHit),
+                // projectile-emission-pattern unit 1 — 곡선 추적 × 단일 착탄.
+                ProjectileFlightMode.BezierHoming => (MovementKind.BezierHomingToEntity, PayloadKind.SingleSplash),
+                // projectile-emission-pattern unit 4 — 낙하 텔레그래프 × 셀 AoE.
+                // 이 축은 여태 ApplyMeteor 하드코딩으로만 존재했다 — 패턴이 데이터로
+                // SkyFall 탄을 지정할 수 있어야 하므로 flightMode 어휘에 편입한다.
+                ProjectileFlightMode.SkyFall => (MovementKind.SkyFall, PayloadKind.TileAoe),
                 _ => (MovementKind.HomingToEntity, PayloadKind.SingleSplash),
             };
 

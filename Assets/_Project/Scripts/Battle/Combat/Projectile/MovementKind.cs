@@ -36,5 +36,14 @@ namespace Wassup.Battle.Combat.Projectile
         // flightTime + fuseSec. Reuses BallisticArc.ArcPosition for the roll
         // (arcHeight≈0 = ground roll); resolves as TileAoe at arrival.
         GrenadeToCell = 4,
+
+        // projectile-emission-pattern unit 1 — 곡선으로 날면서 타겟을 추적한다.
+        // HomingToEntity(직진·추적)와 BallisticArcToPoint(곡선·셀고정)가 배타적이라
+        // 표현 불가였던 조합. 제어점 2개는 발사 시 결정론 생성(드레인이 SO 파라미터로
+        // 산출), 종점 P3 는 타겟의 live 위치라 매 프레임 곡선이 갱신된다. 대상 소실
+        // 정책은 HomingToEntity 상속(retargetTileRange 있으면 재조준, 없으면 파괴).
+        // sim 은 XZ 곡선만 굴리고 3축의 Y 는 view 공간에서 더한다(BoardSpace 가
+        // sim-Y 를 drop 하므로 — BallisticArc 선례).
+        BezierHomingToEntity = 5,
     }
 }

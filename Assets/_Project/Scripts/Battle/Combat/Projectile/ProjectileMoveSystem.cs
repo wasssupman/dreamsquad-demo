@@ -40,7 +40,9 @@ namespace Wassup.Battle.Combat.Projectile
             // 스냅샷을 만들지 않는다 — 기존 투사체만 나는 프레임의 비용을 0 으로 둔다.
             bool anyRetarget = false;
             foreach (var ps in SystemAPI.Query<RefRO<ProjectileState>>().WithAll<ProjectileTag>())
-                if (ps.ValueRO.retargetTileRange > 0 && ps.ValueRO.movement == MovementKind.HomingToEntity)
+                if (ps.ValueRO.retargetTileRange > 0
+                    && (ps.ValueRO.movement == MovementKind.HomingToEntity
+                        || ps.ValueRO.movement == MovementKind.BezierHomingToEntity))
                 { anyRetarget = true; break; }
 
             var retargetEntities = default(NativeArray<Entity>);
@@ -124,6 +126,55 @@ namespace Wassup.Battle.Combat.Projectile
                         float dz = targetPos.z - newPos.z;
                         float thr = projectile.ValueRO.hitThreshold;
                         if (dx * dx + dz * dz <= thr * thr)
+                            projectile.ValueRW.impactReached = true;
+                        break;
+                    }
+
+                    case MovementKind.BezierHomingToEntity:
+                    {
+                        // projectile-emission-pattern unit 1 — 곡선 + 추적. 제어점은
+                        // 발사 시 고정(드레인 산출), 종점만 타겟을 따라가므로 대상이
+                        // 움직이면 곡선이 실시간으로 재조정된다. 대상 소실 정책은
+                        // HomingToEntity 와 **동일 규칙 상속**(재조준 opt-in / 파괴).
+                        var bTarget = projectile.ValueRO.target;
+                        if (bTarget == Entity.Null || !transformLookup.HasComponent(bTarget)
+                            || deadLookup.HasComponent(bTarget))
+                        {
+                            int rr = projectile.ValueRO.retargetTileRange;
+                            int repick = -1;
+                            if (rr > 0 && retargetPositions.IsCreated)
+                            {
+                                float3 here = transform.ValueRO.Position;
+                                repick = BounceRetarget.FindNext(
+                                    here, -1, retargetPositions, rr, tileSize, gridSize, ffOrigin);
+                            }
+                            if (repick < 0)
+                            {
+                                ecb.DestroyEntity(entity);
+                                break;
+                            }
+                            bTarget = retargetEntities[repick];
+                            projectile.ValueRW.target = bTarget;
+                        }
+
+                        float bElapsed = projectile.ValueRO.elapsed + dt;
+                        projectile.ValueRW.elapsed = bElapsed;
+                        float bFlight = projectile.ValueRO.flightTime;
+                        float bt = bFlight > 0f ? math.saturate(bElapsed / bFlight) : 1f;
+
+                        float3 bTargetPos = transformLookup[bTarget].Position;
+                        // sim 은 XZ 곡선만 굴린다 — 3축의 Y 는 view 공간에서 더한다
+                        // (BoardSpace.ToView 가 sim-Y 를 drop, BallisticArc 선례).
+                        float3 bNewPos = Bezier3.Position(
+                            projectile.ValueRO.origin, projectile.ValueRO.control1,
+                            projectile.ValueRO.control2, bTargetPos, bt);
+                        transform.ValueRW.Position = bNewPos;
+
+                        // 도착: 곡선 완주 또는 근접(움직이는 대상을 t<1 에 잡는 경우).
+                        float bdx = bTargetPos.x - bNewPos.x;
+                        float bdz = bTargetPos.z - bNewPos.z;
+                        float bthr = projectile.ValueRO.hitThreshold;
+                        if (bt >= 1f || bdx * bdx + bdz * bdz <= bthr * bthr)
                             projectile.ValueRW.impactReached = true;
                         break;
                     }

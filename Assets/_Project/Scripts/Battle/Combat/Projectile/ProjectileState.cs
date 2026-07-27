@@ -55,6 +55,13 @@ namespace Wassup.Battle.Combat.Projectile
         public float elapsed;
         public float arcHeight;
 
+        // ── Bezier homing trajectory (MovementKind.BezierHomingToEntity) ─────
+        // 발사 시 결정론 산출된 제어점 2개(드레인이 SO 파라미터로 계산 — ISystem 은
+        // SO 를 못 읽는다). P0 = origin, P3 = 타겟 live 위치라 여기 없다. flightTime/
+        // elapsed/arcHeight 는 위 슬롯 재사용(arcHeight = view 공간 Y 아치 높이).
+        public float3 control1;
+        public float3 control2;
+
         // ── Grenade fuse (MovementKind.GrenadeToCell, bomb-thrower-defender) ──
         // Extra hold at the cell after travel completes (elapsed >= flightTime)
         // before arrival fires at elapsed >= flightTime + fuseSec. Default 0 = no
