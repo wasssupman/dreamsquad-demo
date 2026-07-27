@@ -84,7 +84,7 @@ namespace Wassup.Tests.EditMode
                     if (card.mechanics != null)
                         foreach (var m in card.mechanics)
                             Assert.IsTrue(System.Enum.IsDefined(typeof(DcRejectReason),
-                                DcApplicability.EvaluateMechanic(m.payload.kind, m.trigger.kind, host)),
+                                DcApplicability.EvaluateMechanic(m.payload, m.trigger.kind, host)),
                                 $"미분류: {card.id} × {unit.id} ({m.payload.kind})");
                     if (card.attackMods != null)
                         foreach (var am in card.attackMods)
@@ -111,12 +111,12 @@ namespace Wassup.Tests.EditMode
                     if (card.type != CardType.Unit || card.mechanics == null) continue;
                     foreach (var m in card.mechanics)
                     {
-                        var reason = DcApplicability.EvaluateMechanic(m.payload.kind, m.trigger.kind, host);
+                        var reason = DcApplicability.EvaluateMechanic(m.payload, m.trigger.kind, host);
 
-                        // AttackN 은 사건 지점이 있는 아키타입에서만. unit 3·4 가 이 기대를 뒤집는다.
+                        // AttackN × HazardCast 는 아직 사건 지점이 없다(unit 4 가 연다).
+                        // BombThrow 는 unit 3 에서 개통됐다.
                         if (m.trigger.kind == DcTriggerKind.AttackN
-                            && (host.archetype == DcHostArchetype.BombThrow
-                             || host.archetype == DcHostArchetype.HazardCast)
+                            && host.archetype == DcHostArchetype.HazardCast
                             && reason != DcRejectReason.NoEventPoint)
                             log.AppendLine($"{card.id} × {unit.id}: AttackN 이 {host.archetype} 에서 열려 있다 ({reason})");
 

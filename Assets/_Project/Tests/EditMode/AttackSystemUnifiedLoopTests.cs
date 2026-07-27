@@ -505,5 +505,115 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(5, _em.GetBuffer<IncomingDamage>(enemy).Length,
                 "5회째에도 근접 직접타는 그대로(니들은 별도 산출물)");
         }
+
+        // ─── attack-decoupling unit 3 — 폭탄맨 사건 지점. 폭탄맨은 타겟팅/RESOLVE
+        // 경로를 타지 않고 early-continue 하므로 dc 트리거가 영영 안 돌았다. 이제
+        // **폭탄이 실제로 손을 떠난** 프레임이 1카운트이고, 니들 대상은 host 가
+        // 아니라 페이로드가 스스로 고른다(unit 2 폴백). ───
+
+        private Entity CreateBombThrower(float3 position, int2 facing, int landingTiles = 2)
+        {
+            // 폭탄맨도 AttackState 를 갖지만(쿨다운 소유) 타겟팅 루프는 타지 않는다.
+            var e = CreateAttacker(
+                Faction.Defender, position,
+                damage: 0f, range: 5f, cooldownDuration: 0.01f,
+                targetMask: (int)Faction.Enemy,
+                defenderTag: true);
+            _em.AddComponentData(e, new DeployedFacing { value = facing });
+            _em.AddComponentData(e, new ProjectileRef { dataIndex = 0, speed = 10f, visualScale = 1f });
+            _em.AddComponentData(e, new BombLauncherState
+            {
+                landingTiles = landingTiles,
+                travelSec = 0.2f,
+                fuseSec = 0.2f,
+                aoeTileRange = 1,
+                aoeTargetCap = 3,
+                dmgBombDamage = 5f,
+                rng = new Unity.Mathematics.Random(12345u),
+            });
+            return e;
+        }
+
+        [Test]
+        public void BombThrower_PokeNeedle_FiresOnFifthBombWithSelfChosenTarget()
+        {
+            var bomber = CreateBombThrower(new float3(0f, 0f, 0f), new int2(1, 0));
+
+            var slots = _em.AddBuffer<DcTriggerSlot>(bomber);
+            slots.Add(new DcTriggerSlot
+            {
+                instanceId = 1,
+                trigger = DcTriggerKind.AttackN,
+                period = 5,
+                counter = 0,
+                payload = DcPayloadKind.ProjectileToTarget,
+                magnitude = 20f,
+                projectileDataIndex = 0,
+                speed = 10f,
+                hitThreshold = 0.3f,
+                visualScale = 1f,
+                tileRange = 4, // 폴백 탐색 반경 — host 가 대상을 안 주므로 이게 유일한 수단
+            });
+
+            // 반경 안 적 2기. 니들은 **최근접**을 골라야 한다(폭탄 착지셀과 무관).
+            var far = CreateTarget(Faction.Enemy, new float3(3f, 0f, 0f), attackerTag: true);
+            var near = CreateTarget(Faction.Enemy, new float3(1f, 0f, 0f), attackerTag: true);
+
+            using var carrierQuery = _em.CreateEntityQuery(
+                ComponentType.ReadOnly<ProjectileRequestCarrier>(),
+                ComponentType.ReadOnly<ProjectileSpawnRequest>());
+
+            for (int i = 0; i < 4; i++) Tick();
+            Assert.AreEqual(0, carrierQuery.CalculateEntityCount(),
+                "5발째 전에는 니들이 나가면 안 된다(폭탄만 나간다)");
+
+            Tick();
+            Assert.AreEqual(1, carrierQuery.CalculateEntityCount(),
+                "폭탄맨도 5번째 발사에 니들 캐리어를 스폰해야 한다");
+
+            var carrier = carrierQuery.ToEntityArray(Allocator.Temp);
+            var req = _em.GetComponentData<ProjectileSpawnRequest>(carrier[0]);
+            carrier.Dispose();
+            Assert.AreEqual(MovementKind.HomingToEntity, req.movement);
+            Assert.AreEqual(20f, req.damage, 1e-4f, "flat magnitude(계약 7)");
+            Assert.AreEqual(near, req.target,
+                "host 가 대상을 안 주므로 페이로드가 스스로 최근접 적을 고른다");
+            Assert.AreEqual(bomber, req.owner, "위협 귀속은 폭탄맨 본인");
+            Assert.AreNotEqual(far, req.target);
+        }
+
+        [Test]
+        public void BombThrower_PokeNeedle_DoesNotCountWhenBombCannotLaunch()
+        {
+            // 그리드 밖을 향해 배치 → BombLanding.ResolveCell 이 landValid=false.
+            // 쿨다운은 돌지만 폭탄이 손을 떠나지 않으므로 카운트도 없다(계약 2).
+            var bomber = CreateBombThrower(new float3(0f, 0f, 0f), new int2(-1, 0), landingTiles: 5);
+
+            var slots = _em.AddBuffer<DcTriggerSlot>(bomber);
+            slots.Add(new DcTriggerSlot
+            {
+                instanceId = 1,
+                trigger = DcTriggerKind.AttackN,
+                period = 1, // 매 발사마다 발동 — 카운트가 돌면 즉시 드러난다
+                counter = 0,
+                payload = DcPayloadKind.ProjectileToTarget,
+                magnitude = 20f,
+                projectileDataIndex = 0,
+                speed = 10f,
+                visualScale = 1f,
+                tileRange = 4,
+            });
+            CreateTarget(Faction.Enemy, new float3(1f, 0f, 0f), attackerTag: true);
+
+            using var carrierQuery = _em.CreateEntityQuery(
+                ComponentType.ReadOnly<ProjectileRequestCarrier>(),
+                ComponentType.ReadOnly<ProjectileSpawnRequest>());
+
+            for (int i = 0; i < 5; i++) Tick();
+
+            Assert.AreEqual(0, _em.GetBuffer<DcTriggerSlot>(bomber)[0].counter,
+                "폭탄이 안 나간 프레임은 공격 사건이 아니다 — 카운터가 움직이면 안 된다");
+            Assert.AreEqual(0, carrierQuery.CalculateEntityCount());
+        }
     }
 }

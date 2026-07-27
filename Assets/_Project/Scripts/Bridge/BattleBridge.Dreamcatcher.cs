@@ -278,7 +278,7 @@ namespace Wassup.Bridge
             for (int i = 0; i < preflightMechanicsLen; i++)
             {
                 var pm = card.mechanics[i];
-                if (Wassup.Core.DcApplicability.EvaluateMechanic(pm.payload.kind, pm.trigger.kind, hostProfile)
+                if (Wassup.Core.DcApplicability.EvaluateMechanic(pm.payload, pm.trigger.kind, hostProfile)
                     != Wassup.Core.DcRejectReason.DuplicateState) continue;
 
                 Debug.LogWarning($"[BattleBridge] ApplyDreamcatcherCardToUnit('{card.id}'): target already has {pm.payload.kind} state — card not attached.");
@@ -297,7 +297,7 @@ namespace Wassup.Bridge
                 // output / 이중 상태)을 대체한다. 아래 kind별 블록에 남은 것은 전부
                 // **카드 데이터 검증**(magnitude·duration·projectile null 등)이다.
                 var hostReason = Wassup.Core.DcApplicability.EvaluateMechanic(
-                    m.payload.kind, m.trigger.kind, hostProfile);
+                    m.payload, m.trigger.kind, hostProfile);
                 if (hostReason != Wassup.Core.DcRejectReason.None)
                 {
                     Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: {m.payload.kind} 는 이 host 에서 발동하지 않는다 ({hostReason}, archetype={hostProfile.archetype}, route={hostProfile.route}) — skipped.");

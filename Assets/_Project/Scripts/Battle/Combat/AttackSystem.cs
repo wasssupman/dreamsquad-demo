@@ -207,6 +207,83 @@ namespace Wassup.Battle.Combat
                                     targetWorld = landWorld,
                                     attackAnimPeriod = attack.ValueRO.cooldownDuration,
                                 });
+
+                            // ── attack-decoupling unit 3 — 폭탄맨 사건 지점 ──
+                            // 폭탄이 **실제로 손을 떠난** 프레임만 1카운트다(landValid 안).
+                            // off-grid 로 쿨다운만 도는 프레임은 세지 않는다 — spec 계약 2.
+                            // RESOLVE 는 손대지 않는다(계약 1): 이 host 는 아래에서
+                            // continue 하므로 여기가 유일한 사건 지점이다.
+                            if (dcSlotLookup.HasBuffer(attackerEntity))
+                            {
+                                var bombSlots = dcSlotLookup[attackerEntity];
+                                for (int si = 0; si < bombSlots.Length; si++)
+                                {
+                                    var slot = bombSlots[si];
+                                    if (slot.trigger != Wassup.Data.DcTriggerKind.AttackN) continue;
+                                    ushort bc = slot.counter;
+                                    bool fired = DcTrigger.Tick(ref bc, slot.period);
+                                    slot.counter = bc;
+                                    bombSlots[si] = slot;
+                                    if (!fired) continue;
+                                    // 폭탄맨에 붙을 수 있는 AttackN 페이로드는 적용성 판정상
+                                    // ProjectileToTarget 뿐이다(CC/스택은 대상 문맥 없음 → 거절).
+                                    if (slot.payload != Wassup.Data.DcPayloadKind.ProjectileToTarget) continue;
+
+                                    // host 가 대상을 안 주므로 스스로 고른다(unit 2 폴백).
+                                    // 진영은 Enemy 고정 — host mask 재사용 금지(힐러 자해 방지).
+                                    var cands = new NativeArray<DcNeedleTargeting.Candidate>(
+                                        targetEntities.Length, Allocator.Temp);
+                                    for (int ci = 0; ci < targetEntities.Length; ci++)
+                                    {
+                                        var cand = targetEntities[ci];
+                                        bool ok = cand != attackerEntity
+                                            && ((int)targetFactions[ci].value & (int)Faction.Enemy) != 0;
+                                        float3 cp = targetTransforms[ci].Position;
+                                        int2 cc = GridMath.WorldToCell(cp, bTileSize, bGridSize, origin: bOrigin);
+                                        cands[ci] = new DcNeedleTargeting.Candidate
+                                        {
+                                            eligible = ok,
+                                            tileDist = math.max(math.abs(cc.x - bCasterCell.x),
+                                                                math.abs(cc.y - bCasterCell.y)),
+                                            sqDist = math.distancesq(bPos, cp),
+                                            entityIndex = cand.Index,
+                                            entityVersion = cand.Version,
+                                        };
+                                    }
+                                    int pick = DcNeedleTargeting.SelectNearest(cands, slot.tileRange);
+                                    if (pick >= 0)
+                                    {
+                                        var needleTarget = targetEntities[pick];
+                                        var needleCarrier = ecb.CreateEntity();
+                                        ecb.AddComponent(needleCarrier, new ProjectileSpawnRequest
+                                        {
+                                            movement = MovementKind.HomingToEntity,
+                                            payload = PayloadKind.SingleSplash,
+                                            target = needleTarget,
+                                            origin = bPos,
+                                            damage = slot.magnitude, // flat — 계약 7
+                                            speed = slot.speed,
+                                            hitThreshold = slot.hitThreshold,
+                                            visualScale = slot.visualScale,
+                                            dataIndex = slot.projectileDataIndex,
+                                            owner = attackerEntity,
+                                        });
+                                        ecb.AddComponent<ProjectileRequestCarrier>(needleCarrier);
+                                        if (attackOutputLogWriter.HasValue)
+                                            attackOutputLogWriter.Value.Enqueue(new AttackOutputLogEvent
+                                            {
+                                                attacker  = attackerEntity,
+                                                kind      = Wassup.Data.AttackOutputKind.Damage,
+                                                magnitude = slot.magnitude,
+                                                duration  = 0f,
+                                                sourcePos = bPos,
+                                                targetPos = targetTransforms[pick].Position,
+                                            });
+                                    }
+                                    // pick < 0 = 반경 안에 적이 없다. 카운트는 이미 소비됐다(계약 5).
+                                    cands.Dispose();
+                                }
+                            }
                         }
                         // 발사 성사/off-grid 무관 쿨다운 리셋(blind bombardment, 재스캔 스팸 방지).
                         attack.ValueRW.cooldownRemaining = attack.ValueRO.cooldownDuration;

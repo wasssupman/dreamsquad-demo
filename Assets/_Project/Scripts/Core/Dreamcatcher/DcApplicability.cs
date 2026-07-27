@@ -45,23 +45,33 @@ namespace Wassup.Core
         NeedsHomingRoute,    // homing 단발 경로에만 주입되는 mod
         NeedsTargetContext,  // "그 공격의 대상"이 확정되지 않는 host
         DuplicateState,      // 이미 같은 상태 컴포넌트를 갖고 있다
+        // unit 3 — host 가 대상을 못 주는데 폴백 반경(payload.tileRange)마저 0.
+        // 붙어도 니들이 영영 안 나가므로 계약 4("부착 가능 ⇒ 발동")상 거절이다.
+        NeedsFallbackRange,
     }
 
     public static class DcApplicability
     {
+        // 이 host 가 **자기 공격의 대상**을 확정해 주는가. Standard/FacingVolley 는
+        // RESOLVE 의 bestTarget 을 주고, BombThrow(blind bombardment)·HazardCast
+        // (attackRange 0)는 주지 못한다 — 후자에서 대상이 필요한 payload 는 스스로
+        // 골라야 하고(unit 2 폴백), 폴백 반경이 없으면 발동할 수 없다.
+        public static bool HostProvidesTarget(DcHostArchetype archetype)
+            => archetype == DcHostArchetype.Standard || archetype == DcHostArchetype.FacingVolley;
+
         // 이 host 에 해당 트리거의 사건 지점이 존재하는가.
-        // ⚠ 잠금/해제 축: BombThrow 는 unit 3, HazardCast 는 unit 4 가 사건
-        // 지점을 만들면서 이 함수의 해당 줄을 true 로 뒤집는다. 그 전까지
-        // AttackN 카드는 두 아키타입에서 부착 거절이다(spec 계약 4).
+        // ⚠ 잠금/해제 축: BombThrow 는 unit 3(개통 완료), HazardCast 는 unit 4 가
+        // 사건 지점을 만들면서 이 함수의 해당 줄을 뒤집는다.
         public static bool HasEventPoint(DcTriggerKind trigger, DcHostArchetype archetype)
         {
             switch (trigger)
             {
                 case DcTriggerKind.AttackN:
-                    // RESOLVE 에 도달하는 host 만. 폭탄맨은 early-continue,
-                    // 해저드 캐스터는 attackRange 0 이라 bestTarget 이 없다.
-                    return archetype == DcHostArchetype.Standard
-                        || archetype == DcHostArchetype.FacingVolley;
+                    // unit 3 — 폭탄맨은 RESOLVE 를 타지 않지만(early-continue) 폭탄
+                    // 발사가 완전한 공격 사건이라, 그 분기 안에 자기 사건 지점을 얻었다.
+                    // 해저드 캐스터는 아직(unit 4) — attackRange 0 이라 RESOLVE 에
+                    // 못 가고 캐스트 사건은 Effects 에 있다.
+                    return archetype != DcHostArchetype.HazardCast;
                 // 나머지 트리거는 공격 경로와 무관한 사건(피격/사망/킬/주기/
                 // 임계/실드파열)이라 host 아키타입을 가리지 않는다.
                 case DcTriggerKind.None:
@@ -77,27 +87,33 @@ namespace Wassup.Core
             }
         }
 
-        public static DcRejectReason EvaluateMechanic(DcPayloadKind payload,
+        // unit 3 — 첫 인자가 kind 에서 spec 으로 넓어졌다. `tileRange > 0` 요구처럼
+        // **host × 데이터 조합**인 조건이 생겼기 때문이다(host 종속도 순수 데이터
+        // 검증도 아니다). host 속성은 여전히 profile 하나로 접혀 있고, payload 는
+        // 판정에 필요한 만큼만 본다 — magnitude/duration 등 순수 데이터 검증은
+        // 그대로 bake 쪽에 남는다.
+        public static DcRejectReason EvaluateMechanic(in DcPayloadSpec payload,
             DcTriggerKind trigger, in DcHostProfile host)
         {
             if (!HasEventPoint(trigger, host.archetype)) return DcRejectReason.NoEventPoint;
 
-            switch (payload)
+            switch (payload.kind)
             {
                 // 비수 — 니들은 host 의 대상으로 날아가고(host 우선), host 가
                 // 대상을 못 고르면 자체 탐색한다. 어느 쪽이든 대상은 적이어야
                 // 하므로 아군을 겨누는 host(힐러)에서는 성립하지 않는다.
                 case DcPayloadKind.ProjectileToTarget:
-                    return host.targetsEnemies
-                        ? DcRejectReason.None : DcRejectReason.NeedsEnemyTargeting;
+                    if (!host.targetsEnemies) return DcRejectReason.NeedsEnemyTargeting;
+                    // host 가 대상을 안 주는 부류면 폴백 반경이 유일한 수단이다.
+                    return HostProvidesTarget(host.archetype) || payload.tileRange > 0
+                        ? DcRejectReason.None : DcRejectReason.NeedsFallbackRange;
 
                 // *그 공격의 대상*에 걸리는 페이로드 — 자체 탐색 폴백을 주지
                 // 않는다(spec 계약 9). 대상이 확정되지 않는 host 에선 영구 거절.
                 case DcPayloadKind.ApplyCcToTarget:
                 case DcPayloadKind.ApplyStackToTarget:
                     if (!host.targetsEnemies) return DcRejectReason.NeedsEnemyTargeting;
-                    return host.archetype == DcHostArchetype.Standard
-                        || host.archetype == DcHostArchetype.FacingVolley
+                    return HostProvidesTarget(host.archetype)
                         ? DcRejectReason.None : DcRejectReason.NeedsTargetContext;
 
                 // 강공은 그 공격의 출력 데미지를 배율한다 — 데미지 output 필요.

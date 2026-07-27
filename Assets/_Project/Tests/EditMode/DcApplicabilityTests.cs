@@ -24,6 +24,10 @@ namespace Wassup.Tests.EditMode
                 hasDreamCocoon = cocoon,
             };
 
+        // unit 3 — 판정이 payload spec 을 받는다(tileRange 축 추가). 기본 4 = 폴백 있음.
+        private static DcPayloadSpec Pay(DcPayloadKind kind, int tileRange = 4) =>
+            new DcPayloadSpec { kind = kind, tileRange = tileRange };
+
         // 대표 host 들 — 실제 카탈로그 유닛에 대응.
         private static DcHostProfile Archer() => Host(DcHostArchetype.Standard);
         private static DcHostProfile Guardian() => Host(DcHostArchetype.Standard, DcProjectileRoute.None);
@@ -42,7 +46,7 @@ namespace Wassup.Tests.EditMode
             foreach (DcTriggerKind trigger in Enum.GetValues(typeof(DcTriggerKind)))
             foreach (DcHostArchetype archetype in Enum.GetValues(typeof(DcHostArchetype)))
             {
-                var reason = DcApplicability.EvaluateMechanic(payload, trigger, Host(archetype));
+                var reason = DcApplicability.EvaluateMechanic(Pay(payload), trigger, Host(archetype));
                 Assert.IsTrue(Enum.IsDefined(typeof(DcRejectReason), reason),
                     $"미분류 조합: {payload} × {trigger} × {archetype}");
             }
@@ -65,12 +69,12 @@ namespace Wassup.Tests.EditMode
         public void PokeNeedle_RejectsAllyTargetingHost()
         {
             Assert.AreEqual(DcRejectReason.NeedsEnemyTargeting,
-                DcApplicability.EvaluateMechanic(DcPayloadKind.ProjectileToTarget, DcTriggerKind.AttackN, Healer()),
+                DcApplicability.EvaluateMechanic(Pay(DcPayloadKind.ProjectileToTarget), DcTriggerKind.AttackN, Healer()),
                 "힐러는 아군을 겨눠 니들이 아군을 때린다");
             Assert.AreEqual(DcRejectReason.None,
-                DcApplicability.EvaluateMechanic(DcPayloadKind.ProjectileToTarget, DcTriggerKind.AttackN, Archer()));
+                DcApplicability.EvaluateMechanic(Pay(DcPayloadKind.ProjectileToTarget), DcTriggerKind.AttackN, Archer()));
             Assert.AreEqual(DcRejectReason.None,
-                DcApplicability.EvaluateMechanic(DcPayloadKind.ProjectileToTarget, DcTriggerKind.AttackN, Guardian()),
+                DcApplicability.EvaluateMechanic(Pay(DcPayloadKind.ProjectileToTarget), DcTriggerKind.AttackN, Guardian()),
                 "근접도 5회째에 니들을 쏜다");
         }
 
@@ -93,9 +97,9 @@ namespace Wassup.Tests.EditMode
         public void HeavyStrike_NeedsDamageOutput()
         {
             Assert.AreEqual(DcRejectReason.None,
-                DcApplicability.EvaluateMechanic(DcPayloadKind.HeavyStrike, DcTriggerKind.AttackN, Archer()));
+                DcApplicability.EvaluateMechanic(Pay(DcPayloadKind.HeavyStrike), DcTriggerKind.AttackN, Archer()));
             Assert.AreEqual(DcRejectReason.NeedsDamageOutput,
-                DcApplicability.EvaluateMechanic(DcPayloadKind.HeavyStrike, DcTriggerKind.AttackN,
+                DcApplicability.EvaluateMechanic(Pay(DcPayloadKind.HeavyStrike), DcTriggerKind.AttackN,
                     Host(DcHostArchetype.Standard, hasDamageOutput: false)));
         }
 
@@ -103,25 +107,46 @@ namespace Wassup.Tests.EditMode
         public void DuplicateState_Rejects()
         {
             Assert.AreEqual(DcRejectReason.DuplicateState,
-                DcApplicability.EvaluateMechanic(DcPayloadKind.SelfBuffLethal, DcTriggerKind.None,
+                DcApplicability.EvaluateMechanic(Pay(DcPayloadKind.SelfBuffLethal), DcTriggerKind.None,
                     Host(DcHostArchetype.Standard, lethal: true)));
             Assert.AreEqual(DcRejectReason.DuplicateState,
-                DcApplicability.EvaluateMechanic(DcPayloadKind.DreamCocoon, DcTriggerKind.None,
+                DcApplicability.EvaluateMechanic(Pay(DcPayloadKind.DreamCocoon), DcTriggerKind.None,
                     Host(DcHostArchetype.Standard, cocoon: true)));
         }
 
-        // ── 잠금 상태 고정 (unit 3·4 가 이 기대값을 뒤집는다) ──────────────
+        // ── 잠금/해제 상태 ────────────────────────────────────────────────
+        // unit 3 이 폭탄맨 사건 지점을 열었다. 캐스터는 unit 4 대기.
         [Test]
-        public void AttackN_HasNoEventPoint_OnBombThrowAndHazardCast()
+        public void AttackN_OpensOnBombThrow_StillClosedOnHazardCast()
         {
-            foreach (var host in new[] { BombMan(), Caster() })
-            {
-                Assert.AreEqual(DcRejectReason.NoEventPoint,
-                    DcApplicability.EvaluateMechanic(DcPayloadKind.ProjectileToTarget, DcTriggerKind.AttackN, host),
-                    "unit 3·4 가 사건 지점을 만들면 이 기대값이 None 으로 바뀐다");
-                Assert.AreEqual(DcRejectReason.NoEventPoint,
-                    DcApplicability.EvaluateMechanic(DcPayloadKind.ApplyCcToTarget, DcTriggerKind.AttackN, host));
-            }
+            Assert.AreEqual(DcRejectReason.None,
+                DcApplicability.EvaluateMechanic(Pay(DcPayloadKind.ProjectileToTarget), DcTriggerKind.AttackN, BombMan()),
+                "unit 3 — 폭탄 발사가 공격 사건이다");
+            Assert.AreEqual(DcRejectReason.NoEventPoint,
+                DcApplicability.EvaluateMechanic(Pay(DcPayloadKind.ProjectileToTarget), DcTriggerKind.AttackN, Caster()),
+                "unit 4 가 캐스트 사건을 열면 이 기대값이 None 으로 바뀐다");
+        }
+
+        // 폭탄맨은 host 가 대상을 안 주므로 폴백 반경이 유일한 수단이다.
+        [Test]
+        public void PokeNeedle_OnBombThrow_NeedsFallbackRange()
+        {
+            Assert.AreEqual(DcRejectReason.NeedsFallbackRange,
+                DcApplicability.EvaluateMechanic(
+                    Pay(DcPayloadKind.ProjectileToTarget, tileRange: 0), DcTriggerKind.AttackN, BombMan()),
+                "반경 0 이면 니들이 영영 안 나간다 — 붙이면 안 된다");
+            Assert.AreEqual(DcRejectReason.None,
+                DcApplicability.EvaluateMechanic(
+                    Pay(DcPayloadKind.ProjectileToTarget, tileRange: 0), DcTriggerKind.AttackN, Archer()),
+                "host 가 대상을 주는 부류는 반경 0 이어도 정상(B안)");
+        }
+
+        // 사건 지점이 열려도 "그 공격의 대상"이 필요한 페이로드는 여전히 거절(계약 9).
+        [Test]
+        public void ApplyCcToTarget_StillRejectedOnBombThrow()
+        {
+            Assert.AreEqual(DcRejectReason.NeedsTargetContext,
+                DcApplicability.EvaluateMechanic(Pay(DcPayloadKind.ApplyCcToTarget), DcTriggerKind.AttackN, BombMan()));
         }
 
         [Test]
@@ -130,9 +155,9 @@ namespace Wassup.Tests.EditMode
             // 사건 지점이 있어도(Standard/FacingVolley) 대상 문맥이 필요하다는 축은 별개다.
             // 폭탄맨/캐스터가 unit 3·4 로 열려도 이 페이로드는 영구 거절 대상(계약 9).
             Assert.AreEqual(DcRejectReason.None,
-                DcApplicability.EvaluateMechanic(DcPayloadKind.ApplyCcToTarget, DcTriggerKind.AttackN, MachineGunner()));
+                DcApplicability.EvaluateMechanic(Pay(DcPayloadKind.ApplyCcToTarget), DcTriggerKind.AttackN, MachineGunner()));
             Assert.AreEqual(DcRejectReason.NeedsEnemyTargeting,
-                DcApplicability.EvaluateMechanic(DcPayloadKind.ApplyStackToTarget, DcTriggerKind.AttackN, Healer()));
+                DcApplicability.EvaluateMechanic(Pay(DcPayloadKind.ApplyStackToTarget), DcTriggerKind.AttackN, Healer()));
         }
 
         // ── 공격 경로와 무관한 트리거는 아키타입을 가리지 않는다 ───────────
@@ -162,7 +187,7 @@ namespace Wassup.Tests.EditMode
             foreach (DcHostArchetype archetype in Enum.GetValues(typeof(DcHostArchetype)))
             foreach (var kind in selfKinds)
                 Assert.AreEqual(DcRejectReason.None,
-                    DcApplicability.EvaluateMechanic(kind, DcTriggerKind.OnDeath, Host(archetype)),
+                    DcApplicability.EvaluateMechanic(Pay(kind), DcTriggerKind.OnDeath, Host(archetype)),
                     $"{kind} 는 host 공격 모델과 무관해야 한다 ({archetype})");
         }
     }
