@@ -3295,7 +3295,14 @@ namespace Wassup.Bridge
 #if UNITY_EDITOR
             _em.SetName(entity, $"Projectile_{req.dataIndex}");
 #endif
-            var spawnPos = new float3(req.origin.x, spawnHeight, req.origin.z);
+            // SkyFall 은 sim 이동이 0 이다(Move arm 이 elapsed 만 진행) — 따라서 스폰
+            // 위치가 그대로 최종 화면 위치가 된다. 발사 주체가 origin 에 무엇을 넣든
+            // 착탄 셀에서 떨어져야 하므로, 궤적의 불변식을 궤적 소유 지점인 여기서
+            // 강제한다. (기존 Meteor/구 barrage arm 은 origin==impact 로 보내와서
+            // 바이트 동일하고, emitter 처럼 origin=시전자 인 주체만 정정된다.)
+            var spawnPos = req.movement == MovementKind.SkyFall
+                ? new float3(req.impact.x, spawnHeight, req.impact.z)
+                : new float3(req.origin.x, spawnHeight, req.origin.z);
             _em.AddComponentData(entity, LocalTransform.FromPositionRotationScale(spawnPos, quaternion.identity, req.visualScale));
             _em.AddComponent<ProjectileTag>(entity);
 
