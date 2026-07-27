@@ -15,13 +15,20 @@
 
 ## 구현
 
-- PlayerSettings는 수정하지 않는다. 현재 `defaultScreenOrientation: 5`는 Unity 6.4
+- PlayerSettings는 수정하지 않는다. `defaultScreenOrientation: 5`는 Unity 6.4
   `PlayerSettings.defaultInterfaceOrientation`에서 `ScreenOrientation.AutoRotation`의 raw
   값으로 보일 수 있으므로, `UIOrientation.AutoRotation`과 해당 직렬화 값을 모두 인정한다.
 - 자동회전 값만으로 통과시키지 않는다. Portrait/PortraitUpsideDown은 모두 금지하고
   LandscapeLeft/LandscapeRight는 모두 허용해야 한다.
 - 회귀 테스트는 plain orientation 값 검증과 실제 tracked PlayerSettings capture를 분리해
   legacy 값과 가로 전용 플래그를 고정한다.
+
+> **2026-07-27 갱신** (`c82d34b7`): 위 두 번째·세 번째 항목이 자동회전 전용이라
+> `19ff8e8f`(5 → 2 `LandscapeRight` 고정, 자동회전 폐기) 이후 preflight 가 빌드를
+> 막았다. `IsLandscapeAutoRotation` → `IsLandscapeOnly` 로 넓혀 **가로 고정도 통과**
+> 시킨다(세로가 구조적으로 불가능해 자동회전보다 엄격). capture 테스트는 특정 값
+> 대신 "가로 전용 통과" 만 고정한다 — 값을 못박으면 제품 결정이 바뀔 때마다 빌드가
+> 멈춘다. 세로 허용 플래그 거부는 그대로다. 상세는 README 계약 참조.
 - 5개 TMP 동적 폰트는 과거 커밋의 한글/UI glyph 프리베이크를 그대로 보존한다. 각 폰트의
   `Clear Dynamic Data On Build`만 끄고, 신규 폰트 기본값인 전역 TMP Settings는 유지한다.
 - EditMode 회귀 테스트는 각 프리베이크 폰트의 clear 비활성, non-empty glyph/character
