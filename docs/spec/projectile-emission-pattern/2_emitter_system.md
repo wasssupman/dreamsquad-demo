@@ -45,9 +45,10 @@ OnCreate: RequireForUpdate<EmitterInstance>, RequireForUpdate<FlowFieldSingleton
    - `PatternTargeting.Select(cells, spec.selection, runtime.fireCount, gridSize)` → 후보 index
    - `PatternLogic.BuildOrder(spec, ref runtime, idx)` → `ShotOrder`. 타겟 잠금(`reselectPerShot`) 판단은 **여기 안에서** 끝난다 — 아키텍처가 되풀이하지 않는다.
    - `order.targetCandidateIndex < 0`(후보 0) → 그 발을 조용히 소모(융단폭격의 "방어유닛 0 = 발사 소모, 위상 보존" 선례).
-   - `template` 복사 → `order` 의 값(`damage`·`telegraphSec`)을 얹고 `movement` 로 빈칸 분기. **v1 분기는 소비 arm 3종만** — 그 외 `movement` 는 loud warn 후 소모(spec-review M2, 미사용 라이브 경로 금지 · `GateComboSupported` 선례). `BallisticArcToPoint`/`GrenadeToCell`/`DirectionalLinear` 분기는 소비자가 생길 때 연다(Directional 은 `maxDistance` 출처 정의도 그때):
-     - `HomingToEntity` / `BezierHomingToEntity` → `target` = 잠금/선택 해석 결과(위 잠금 semantics). 베지어는 `swingIndex = order.shotIndex` 만 세팅한다 — 제어점 산출은 드레인 몫이다(unit 1, `dropHeight` 선례). **emitter 는 SO 를 읽지 않는다.**
-     - `SkyFall` → `impact = GridMath.CellToWorldCenter(cells[order.targetCandidateIndex], …)`, `flightTime = order.telegraphSec`.
+   - `template` 복사 → `order` 의 값(`damage`·`telegraphSec`)을 얹고 빈칸을 채운다. **분기 축은 개별 `MovementKind` 가 아니라 타겟 바인딩 클래스다**(README 계약 11) — 발사 시점에 궤적이 요구하는 것은 "엔티티냐 셀이냐 방향이냐" 뿐이므로, 순수 헬퍼 `MovementBinding.Of(MovementKind)` (3값 enum 반환, unit 0 에 동거)로 분류한다. 기존 바인딩을 재사용하는 새 궤적은 emitter 변경 0:
+     - **EntityBound** (`HomingToEntity`·`BezierHomingToEntity`) → `target` = 잠금/선택 해석 결과(위 잠금 semantics). `swingIndex = order.shotIndex` 세팅(비-베지어 궤적은 이 필드를 안 읽어 무해) — 제어점 산출은 드레인 몫이다(unit 1, `dropHeight` 선례). **emitter 는 SO 를 읽지 않는다.**
+     - **CellBound** (`SkyFall`·`BallisticArcToPoint`·`GrenadeToCell`) → `impact = GridMath.CellToWorldCenter(cells[order.targetCandidateIndex], …)`, `flightTime = order.telegraphSec`(SkyFall 이 소비 · BallisticArc 는 드레인이 speed 로 재산출해 무시 · Grenade 는 굴림 시간으로 해석 — "도착 지연" 일반화). v1 실소비자는 SkyFall(폭격)뿐이지만 분기 코드가 클래스 공유라 별도 arm 이 늘지 않는다 — spec-review M2 의 "미소비 arm" 문제가 분기 축 교정으로 소멸.
+     - **DirectionBound** (`DirectionalLinear`) → **미개통**: loud warn 후 소모. 방향 발사는 타겟 후보 선택과 결이 다르고(무타겟 패턴) `maxDistance` 출처도 미정 — 후속 후보 "무타겟 패턴" 에서 함께 연다.
    - `origin` = host 위치.
    - **outputs 버퍼는 싣지 않는다** — SingleSplash 해결은 outputs 부재 시 `state.damage` 폴백을 탄다(`ProjectileHitSystem` 확인, dc 니들/스킬 발사 선례). 이 폴백이 load-bearing 이다: 패턴 데미지는 Damage-only 계약이고, **non-Damage outputs(Stat/Stack/Heal)는 패턴으로 나가지 않는다**(범용성 한계 — README 후속 후보).
    - 캐리어 엔티티 생성: `ecb.CreateEntity()` + `ProjectileSpawnRequest` + `ProjectileRequestCarrier` — 기존 3개 stage 지점과 동형이라 브리지 드레인이 스폰 후 캐리어를 파괴한다.

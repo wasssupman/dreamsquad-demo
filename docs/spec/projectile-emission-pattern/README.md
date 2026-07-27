@@ -42,7 +42,8 @@
 8. **인스턴스 시작 시 `PatternSpec` 값 스냅샷.** 발사 도중 SO·버프가 바뀌어도 7번째 탄이 1번째와 달라지지 않는다(defender volley 의 template 스냅샷 보증을 구조에서 얻는다).
 9. **view 공간 Y.** `BoardSpace.ToView` 는 sim-Y 를 drop 한다(평면 타일맵 보드). sim 은 XZ 곡선만 굴리고 3축의 Y 성분은 `ProjectileViewPool` 이 view 에서 더한다 — `BallisticArc`/`SkyFall` 이 이미 그 패턴이다. **sim-Y 에 높이를 실으면 화면에 안 보인다.**
 10. **SO 해석은 브리지(드레인)가 유일 seam.** ISystem 은 SO 를 읽을 수 없으므로, 궤적 파라미터 중 요청에 실리지 않는 값(`dropHeight`·베지어 `lateral`/`forwardBias`)은 `BattleBridge.SpawnProjectile` 이 `dataIndex` → `ProjectileData` 로 해석해 채운다 — 기존 `SkyFall` 선례. 덕분에 발사 주체(AttackSystem·emitter·캐스트)는 SO 를 몰라도 되고, 요청 struct 가 궤적마다 비대해지지 않는다.
-11. **무회귀가 완료 기준.** defender 다연발(`VolleyFireState`)·`AttackSystem` RESOLVE 경로·기존 5 궤적 × 3 페이로드는 **무접촉**. 융단폭격은 값(150 데미지 / r3 / 텔레그래프 1.5s / round-robin)이 보존돼야 한다.
+11. **궤적은 열린 어휘다 — 베지어는 산출물이 아니라 실증이다.** 새 이동 수학이 붙는 표준 레시피 = `MovementKind` append + 위치 순수함수 + Move arm + view-Y arm (projectile-trajectory-payload 계약 8, 현 어휘 5종이 전부 이 형태). 패턴 계층은 이동 수학을 모르고(barrel 소유, 계약 3), **emitter 는 개별 `MovementKind` 가 아니라 타겟 바인딩 클래스(entity-bound / cell-bound / direction-bound)로 분기한다** — 발사 시점에 궤적이 요구하는 것은 이 셋뿐이다. 따라서 기존 바인딩을 재사용하는 새 수학(나선 추적, 사인 스트레이프, 오비트 등)은 **emitter 변경 0**, 엔진 레시피 비용만 낸다.
+12. **무회귀가 완료 기준.** defender 다연발(`VolleyFireState`)·`AttackSystem` RESOLVE 경로·기존 5 궤적 × 3 페이로드는 **무접촉**. 융단폭격은 값(150 데미지 / r3 / 텔레그래프 1.5s / round-robin)이 보존돼야 한다.
 
 ## 파이프라인 커버리지
 

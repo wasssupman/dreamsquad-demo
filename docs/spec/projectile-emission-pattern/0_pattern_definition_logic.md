@@ -15,6 +15,7 @@
 - `EmitterTick.cs` — 시간 전진 → 이번 프레임 발사 수
 - `ShotOrder.cs` — 한 발의 발사 명령(plain 값)
 - `PatternTargeting.cs` — 후보 rank 기반 선택 (round-robin + 결정론 셔플)
+- `MovementBinding.cs` — `MovementKind` → 타겟 바인딩 클래스(Entity/Cell/Direction) 순수 분류 (README 계약 11 — emitter 의 분기 축. `MovementKind` 는 무의존 enum 이라 로직 계층 적격)
 
 신규 테스트:
 - `Assets/_Project/Tests/EditMode/EmitterTickTests.cs`
@@ -98,10 +99,20 @@ static int Select(in NativeArray<int2> candidateCells, PatternSelectionRule rule
 
 `NativeArray` 사용은 Burst 호환을 위한 기존 선택과 일관하다(`ThreatTable`·`BarrageEpicenter`). Mono 이식 시 컨테이너 타입만 교체된다.
 
+### `MovementBinding`
+
+```
+enum BindingClass : byte { Entity, Cell, Direction }
+static BindingClass MovementBinding.Of(MovementKind kind)
+```
+
+순수 switch 하나. **새 `MovementKind` 를 여기 분류하는 것이 emitter 편입의 전부다** — 기존 클래스로 분류되면 emitter 는 무변경으로 그 궤적을 발사한다. `default` 는 없다(전 케이스 명시 — 새 enum 추가 시 컴파일러가 분류 누락을 잡도록 switch expression 사용).
+
 ## 완료 기준
 
 - 컴파일 클린. 신규 `.cs` 추가이므로 `refresh_unity scope=all`(부분 refresh = cascading CS0246).
-- **`grep -l "using Unity.Entities" ` 가 이 unit 의 신규 파일 6개에서 0건** (계약 1 기계 검증).
+- **`grep -l "using Unity.Entities" ` 가 이 unit 의 신규 파일 7개에서 0건** (계약 1 기계 검증).
+- `MovementBinding.Of`: 현 6 케이스 전 분류 + switch expression(신규 kind 추가 시 분류 누락 = 컴파일 에러) EditMode 1.
 - EditMode 신규 ≥ 12:
   - `EmitterTick`: 단발 · 버스트 정확 발수 · `interval<=0` 즉시 전부 · 느린 프레임 다중 발사 · 잔여 캐리 드리프트 0 · 완주 후 0
   - `Begin` 시드 연속성: `baseFireCount=k` 로 시작한 인스턴스의 선택이 "영속 카운터 k 인 상태" 와 동일 — **트리거 발화 2회 연속 시나리오에서 RoundRobin 이 다른 대상을 순회**하는 테스트(C2 회귀 핀)

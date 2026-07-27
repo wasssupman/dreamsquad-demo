@@ -2,7 +2,9 @@
 
 ## 목적
 
-"곡선으로 날면서 타겟을 추적" 조합을 개통한다. 현 `MovementKind` 는 `HomingToEntity`(직진·추적)와 `BallisticArcToPoint`(곡선·셀고정)가 배타적이라 이 조합이 표현 불가다. 궤적 하나 추가 비용이 **위치 순수함수 + Move arm 1 + view Y arm 1**(시스템·드레인·태그 0)임을 실증한다 — projectile-trajectory-payload 계약 8 의 리트머스.
+"곡선으로 날면서 타겟을 추적" 조합을 개통한다. 현 `MovementKind` 는 `HomingToEntity`(직진·추적)와 `BallisticArcToPoint`(곡선·셀고정)가 배타적이라 이 조합이 표현 불가다. 궤적 하나 추가 비용이 **위치 순수함수 + Move arm 1 + view Y arm 1**(시스템·드레인·태그 0)임을 실증한다 — projectile-trajectory-payload 계약 8 의 리트머스. 베지어는 이 레시피의 실증이지 산출물의 전부가 아니다(README 계약 11 — 궤적은 열린 어휘).
+
+**이동 수학의 거주지 계약**: 수학 본체는 로직 계층 순수 static 이다 — `BallisticArc`/`SkyFall` 이 `using Unity.Mathematics` 만으로 이미 그 형태이고, 같은 함수를 ECS sim(XZ)과 Mono view(Y)가 나눠 소비한다(아키텍처 종속이면 불가능한 공유). arm 은 "상태 읽기 → 순수함수 호출 → 결과 쓰기" 3줄 소비자다. `elapsed += dt`·`impactReached` 같은 자명한 1줄 전진만 arm 인라인(제약 10 후반부 — 과잉 추상화 금지).
 
 ## 변경 대상
 
