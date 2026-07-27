@@ -24,8 +24,9 @@ Somnia dev 앱 식별자로 생성되도록 최소 PlayerSettings와 저장소 �
   - 씬 순서 `OutgameScene → BattleScene`
   - Android IL2CPP, ARM64
   - iOS 15.0, iPhone/iPad, Landscape
-- Android keystore 경로·alias·비밀번호와 Apple Team/profile 값은 저장소에 고정하지 않는다.
-  빌드 머신의 Unity/Xcode에서 배포 시점에만 선택한다.
+- Android keystore 경로·비밀번호와 Apple 서명값은 PlayerSettings에 저장하지 않는다.
+  로컬 스크립트가 실행 중 외부 keystore와 고정 alias `somnia-dev`를 주입했다가 원복하며,
+  생성한 iOS Xcode export에는 Team/profile을 적용한다.
 - `.gitignore`는 keystore/JKS/P12/mobileprovision 및 APK/IPA/Xcode 로컬 출력이
   추적되지 않도록 차단한다.
 - 프로젝트 정책은 Android 주 타깃을 유지하면서 iOS Ad Hoc 내부 QA 빌드만 예외로 허용한다.

@@ -4,6 +4,7 @@
     "references": [
         "Wassup.Runtime",
         "Wassup.Editor.UnitStatImport",
+        "Wassup.Editor.MobileBuild",
         "Wassup.SheetSync",
         "Unity.Entities",
         "Unity.Collections",
