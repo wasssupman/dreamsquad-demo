@@ -58,9 +58,9 @@
 
 - ~~시트 `tileRange` → 4~~ **완료**(2026-07-27, `curl` 대조). 다만 `PokeNeedle_HasPositiveFallbackRange` 는 SO 만 보므로 **시트 드리프트는 여전히 못 잡는다** — 이 셀이 다시 `0` 이 되면 폭탄맨·캐스터의 비수가 조용히 죽는다. 시트 수정 시 주의.
 - 시트 `DcMechanics._projectileId` 가 아직 `ga_shard02` (실제는 `needle_flame`). `_` 접두사라 import 대상 밖이라 무해하지만 값은 stale.
-- **실전투 시각 확인**: 폭탄맨·캐스터가 5회마다 니들을 쏘는 장면(시뮬 계약은 EditMode 4건이 덮는다).
+- **실전투 시각 확인**: 폭탄맨·캐스터가 5회마다 니들을 쏘는 장면(시뮬 계약은 EditMode 4건이 덮는다). ※ 재조준·bounce 는 확인 완료, 이 항목만 남음.
 - ~~방향탄 bounce 개통~~ **완료**(unit 6). 남은 축은 **밸런스**: 볼리 1회 = 10발이고 각 탄이 카드값만큼의 bounce 예산을 통째로 들고 나가 호밍 유닛 대비 실효 10배다(ecs-review M7). 시트에서 조정.
-- **Play 시각 확인**: ① 머신건 탄이 맞히고 튕기는가 ② 비수 대상이 먼저 죽었을 때 재조준하는가.
+- ~~Play 시각 확인~~ **완료**(2026-07-28 사용자 확인) — 머신건 탄의 맞히고-튕김, 비수의 대상 사망 재조준 둘 다.
 - `FrontmostTarget × facing 유닛` — 경로 의존이 아니라 **타게팅 규칙 의존**이라 현재 행렬로는 표현이 어색하다(붙지만 보너스가 inert).
 - `payload × trigger` 배선표 — 지금 판정은 host 필터일 뿐이라 `AttackN × SelfTileAoe` 같은 조합이 통과한다(현 카탈로그엔 없음). 두 critic 모두 "별도 spec" 판정.
 - `Projectile_Shuriken_GA` 의 `flightMode` 미직렬화(기본값 의존) — 명시하지 않으면 다음 사람이 대포를 ballistic 으로 오독한다.

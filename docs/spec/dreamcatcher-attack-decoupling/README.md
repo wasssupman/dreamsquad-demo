@@ -1,6 +1,6 @@
 # Dreamcatcher Attack Decoupling — 붙으면 반드시 발동한다
 
-> 상태: **완료 2026-07-27** (units 0~4 + 리팩토링). 인계: `5_handoff_summary.md`
+> 상태: **완료 2026-07-28** (units 0~6 + 리팩토링, Play 확인 완료). 인계: `5_handoff_summary.md`
 >
 > critic 2종(설계·ECS) 병렬 리뷰 2회 — 초안 1회, 구현 1회. 미완 2건은 handoff Follow-up 참조.
 
