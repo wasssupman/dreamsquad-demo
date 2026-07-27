@@ -2554,6 +2554,11 @@ MonoBehaviour:
   profileSO: {fileID: 11400000, guid: e610b4c0bbbeb4becb09188e400e6a55, type: 2}
   cardCatalog: {fileID: 11400000, guid: 7e41a0cd1ffdc4b6c872ef0ac3d8df0e, type: 2}
   defaultDeck: {fileID: 11400000, guid: d3a884355714e4262a953d61fa97e2af, type: 2}
+  defaultStones:
+  - {fileID: 11400000, guid: 700c4ce642884a5cb172534a067f8be2, type: 2}
+  - {fileID: 11400000, guid: f94a686b84ba487bb2567e9bb06a555d, type: 2}
+  - {fileID: 11400000, guid: 7f1d45ff54274022b612f36a9a6d926b, type: 2}
+  - {fileID: 11400000, guid: b05c299cd9964adcbbecd8c1353d7d7b, type: 2}
   squadPanel: {fileID: 37122196}
   dreamcatcherPanel: {fileID: 98252861}
   testModePanel: {fileID: 692049510}
@@ -8541,6 +8546,11 @@ MonoBehaviour:
   defenderCatalog: {fileID: 11400000, guid: 346c00d9daf72429d94ddd29337c7d23, type: 2}
   cardCatalog: {fileID: 11400000, guid: 7e41a0cd1ffdc4b6c872ef0ac3d8df0e, type: 2}
   defaultDeck: {fileID: 11400000, guid: d3a884355714e4262a953d61fa97e2af, type: 2}
+  defaultStones:
+  - {fileID: 11400000, guid: 700c4ce642884a5cb172534a067f8be2, type: 2}
+  - {fileID: 11400000, guid: f94a686b84ba487bb2567e9bb06a555d, type: 2}
+  - {fileID: 11400000, guid: 7f1d45ff54274022b612f36a9a6d926b, type: 2}
+  - {fileID: 11400000, guid: b05c299cd9964adcbbecd8c1353d7d7b, type: 2}
 --- !u!114 &1600350100
 MonoBehaviour:
   m_ObjectHideFlags: 0

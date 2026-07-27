@@ -26,6 +26,10 @@ namespace Wassup.UI
         // this button restores; a dev-only component must not be the only code that
         // knows what "default" means.
         [SerializeField] private DreamcatcherDeck defaultDeck;
+        // dreamstone-default-loadout — 스타터 스톤도 같은 이유로 여기 온다: 이 버튼이
+        // 복원하는 "default" 는 신규 설치가 받는 것과 같아야 한다.
+        // OutgameMenuController 의 같은 필드와 동일한 에셋을 배정할 것.
+        [SerializeField] private DreamstoneData[] defaultStones;
 
         private void Awake()
         {
@@ -47,7 +51,7 @@ namespace Wassup.UI
 
             // Squad and deck defaults both come from the path a fresh install takes;
             // this button must not invent a second definition of "default".
-            var profile = ProfileStore.CreateDefault(defenderCatalog, defaultDeck, cardCatalog);
+            var profile = ProfileStore.CreateDefault(defenderCatalog, defaultDeck, cardCatalog, defaultStones);
 
             // Replace the in-memory profile before saving: saving while the SO still
             // holds the old (or an empty) profile is how the squad gets wiped.
@@ -55,7 +59,8 @@ namespace Wassup.UI
             ProfileStore.Save(profile);
 
             Debug.Log($"[DefaultLoadout] squad={profile.SelectedSquad()?.unitIds.Count ?? 0} units, "
-                + $"deck={profile.SelectedDeck()?.cardIds.Count ?? 0} cards → {ProfileStore.Path}", this);
+                + $"deck={profile.SelectedDeck()?.cardIds.Count ?? 0} cards, "
+                + $"stones=[{string.Join(",", profile.SelectedSquad()?.stoneIds ?? new List<string>())}] → {ProfileStore.Path}", this);
         }
     }
 }

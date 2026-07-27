@@ -254,5 +254,69 @@ namespace Wassup.Tests.EditMode
             CollectionAssert.AreEqual(expected, profile.SelectedDeck().cardIds);
             Assert.IsTrue(DeckRules.Validate(profile.SelectedDeck().cardIds, catalog, out var reason), reason);
         }
+
+        // ---- EnsureDefaultStones (스타터 드림스톤 시드) ----
+
+        private DreamstoneData Stone(string id)
+        {
+            var s = ScriptableObject.CreateInstance<DreamstoneData>();
+            s.id = id;
+            _created.Add(s);
+            return s;
+        }
+
+        [Test]
+        public void FreshProfile_SeedsAuthoredStones_InOrder()
+        {
+            var cat = MakeCatalog("u0");
+            var stones = new[] { Stone("s_atk"), Stone("s_as"), Stone("s_cost"), Stone("s_hp") };
+
+            var p = ProfileStore.LoadOrCreateAt(_path, cat, null, null, stones);
+
+            CollectionAssert.AreEqual(new[] { "s_atk", "s_as", "s_cost", "s_hp" },
+                p.SelectedSquad().stoneIds);
+        }
+
+        [Test]
+        public void NoAuthoredStones_LeavesSlotsEmpty()
+        {
+            var cat = MakeCatalog("u0");
+
+            var p = ProfileStore.LoadOrCreateAt(_path, cat, null, null, null);
+
+            Assert.AreEqual(SquadSave.StoneSlotCount, p.SelectedSquad().stoneIds.Count);
+            CollectionAssert.AreEqual(new[] { "", "", "", "" }, p.SelectedSquad().stoneIds);
+        }
+
+        [Test]
+        public void SkipsNullAndIdlessStones_PackingRemainingSlots()
+        {
+            var cat = MakeCatalog("u0");
+            var stones = new[] { Stone("a"), null, Stone(""), Stone("b") };
+
+            var p = ProfileStore.LoadOrCreateAt(_path, cat, null, null, stones);
+
+            CollectionAssert.AreEqual(new[] { "a", "b", "", "" }, p.SelectedSquad().stoneIds);
+        }
+
+        // 시드는 리셋이 아니다: 플레이어가 스톤을 뺀 상태를 로드할 때마다 되살리면
+        // 해제 자체가 불가능해진다. 한 칸이라도 차 있으면 손대지 않는다.
+        [Test]
+        public void PlayerEquippedStones_AreNeverOverwritten()
+        {
+            var cat = MakeCatalog("u0");
+            var stones = new[] { Stone("s_atk"), Stone("s_as"), Stone("s_cost"), Stone("s_hp") };
+
+            var p = ProfileStore.LoadOrCreateAt(_path, cat, null, null, stones);
+            p.SelectedSquad().stoneIds[0] = "player_pick";
+            for (int i = 1; i < p.SelectedSquad().stoneIds.Count; i++)
+                p.SelectedSquad().stoneIds[i] = "";
+            ProfileStore.SaveAt(_path, p);
+
+            var reloaded = ProfileStore.LoadOrCreateAt(_path, cat, null, null, stones);
+
+            CollectionAssert.AreEqual(new[] { "player_pick", "", "", "" },
+                reloaded.SelectedSquad().stoneIds);
+        }
     }
 }

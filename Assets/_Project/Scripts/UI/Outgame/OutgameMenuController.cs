@@ -18,6 +18,10 @@ namespace Wassup.UI
         // cardCatalog too (deck rule numbers live on its DeckRuleConfig).
         [SerializeField] private DreamcatcherCardCatalog cardCatalog;
         [SerializeField] private DreamcatcherDeck defaultDeck;
+        // dreamstone-default-loadout — 신규 프로필이 받는 스타터 스톤(스쿼드 스톤 슬롯 4칸에
+        // 순서대로 들어간다). 어느 스톤인지는 전적으로 이 배정이 정한다 — 코드에 id 없음.
+        // 비워두면 "스톤을 시드하지 않는다"(기존 동작).
+        [SerializeField] private DreamstoneData[] defaultStones;
         [SerializeField] private GameObject squadPanel;
         [SerializeField] private GameObject dreamcatcherPanel;
         // wave-authoring-test-mode unit 4 — 테스트 모드 플랜 피커 패널.
@@ -71,7 +75,7 @@ namespace Wassup.UI
                 Debug.LogError("[OutgameMenuController] PlayerProfileSO unassigned.", this);
                 return;
             }
-            profileSO.SetLoadedProfile(ProfileStore.LoadOrCreate(catalog, defaultDeck, cardCatalog));
+            profileSO.SetLoadedProfile(ProfileStore.LoadOrCreate(catalog, defaultDeck, cardCatalog, defaultStones));
             Debug.Log($"[OutgameMenuController] Profile loaded: {(catalog != null ? catalog.units.Length : 0)} catalog units. path={ProfileStore.Path}");
             ClosePanels();
 

@@ -18,14 +18,18 @@ namespace Wassup.Core
         // game-start-loadout-gate unit 1 — the deck args are optional so the many
         // squad-only test call sites keep compiling; production (OutgameMenuController)
         // passes them. Omitting them means "do not seed a deck", not "seed an empty one".
+        // dreamstone-default-loadout — stones 도 같은 옵트인 규칙: 넘기지 않으면 "스톤을
+        // 시드하지 않는다"는 뜻이다(빈 세트를 시드하는 게 아니라).
         public static PlayerProfile LoadOrCreate(DefenderCatalog catalog,
-            DreamcatcherDeck defaultDeck = null, DreamcatcherCardCatalog cards = null)
-            => LoadOrCreateAt(Path, catalog, defaultDeck, cards);
+            DreamcatcherDeck defaultDeck = null, DreamcatcherCardCatalog cards = null,
+            DreamstoneData[] defaultStones = null)
+            => LoadOrCreateAt(Path, catalog, defaultDeck, cards, defaultStones);
 
         public static void Save(PlayerProfile profile) => SaveAt(Path, profile);
 
         public static PlayerProfile LoadOrCreateAt(string path, DefenderCatalog catalog,
-            DreamcatcherDeck defaultDeck = null, DreamcatcherCardCatalog cards = null)
+            DreamcatcherDeck defaultDeck = null, DreamcatcherCardCatalog cards = null,
+            DreamstoneData[] defaultStones = null)
         {
             if (File.Exists(path))
             {
@@ -37,7 +41,7 @@ namespace Wassup.Core
                     {
                         // Migration hook: when CurrentSchemaVersion advances, transform
                         // older profiles here before returning. Only v1 exists today.
-                        EnsureNonNull(profile, catalog, defaultDeck, cards);
+                        EnsureNonNull(profile, catalog, defaultDeck, cards, defaultStones);
                         return profile;
                     }
                     Debug.LogWarning("[ProfileStore] Parsed profile was null; recreating default.");
@@ -50,7 +54,7 @@ namespace Wassup.Core
                 }
             }
 
-            var created = CreateDefault(catalog, defaultDeck, cards);
+            var created = CreateDefault(catalog, defaultDeck, cards, defaultStones);
             SaveAt(path, created);
             return created;
         }
@@ -113,24 +117,28 @@ namespace Wassup.Core
         // rebuild the same starter profile a fresh install gets, instead of defining
         // a second notion of "default" next to this one.
         public static PlayerProfile CreateDefault(DefenderCatalog catalog,
-            DreamcatcherDeck defaultDeck = null, DreamcatcherCardCatalog cards = null)
+            DreamcatcherDeck defaultDeck = null, DreamcatcherCardCatalog cards = null,
+            DreamstoneData[] defaultStones = null)
         {
             var p = new PlayerProfile { schemaVersion = CurrentSchemaVersion };
             if (p.dreamcatcherDecks == null) p.dreamcatcherDecks = new System.Collections.Generic.List<DeckSave>();
             EnsureDefaultSquad(p, catalog);
             EnsureDefaultDeck(p, defaultDeck, cards);
+            EnsureDefaultStones(p, defaultStones);
             return p;
         }
 
         // JsonUtility may leave collection fields null when absent/partial in the
         // source JSON. Keep callers from null-checking every list.
         static void EnsureNonNull(PlayerProfile p, DefenderCatalog catalog,
-            DreamcatcherDeck defaultDeck, DreamcatcherCardCatalog cards)
+            DreamcatcherDeck defaultDeck, DreamcatcherCardCatalog cards,
+            DreamstoneData[] defaultStones = null)
         {
             if (p.squads == null) p.squads = new System.Collections.Generic.List<SquadSave>();
             if (p.dreamcatcherDecks == null) p.dreamcatcherDecks = new System.Collections.Generic.List<DeckSave>();
             EnsureDefaultSquad(p, catalog);
             EnsureDefaultDeck(p, defaultDeck, cards);
+            EnsureDefaultStones(p, defaultStones);
         }
 
         // squad-loadout Unit 0 — guarantee at least one squad (free starter, per
@@ -208,6 +216,30 @@ namespace Wassup.Core
                     save.cardIds.Add(card.id);
             }
             return save;
+        }
+
+        // dreamstone-default-loadout — EnsureDefaultSquad 의 스톤 짝. 어느 스톤을 줄지는
+        // 코드가 정하지 않는다: authored 배열(인스펙터 배정)을 그대로 슬롯에 넣는다.
+        // 유닛·덱과 같은 정책 — 비어 있을 때만 시드하고 플레이어가 채운 슬롯은 덮어쓰지 않는다.
+        // "4칸 전부 빈칸"일 때만 도는 이유: 한 칸이라도 끼웠다면 그건 플레이어의 편성이고,
+        // 의도적으로 뺀 상태를 로드할 때마다 되살리면 해제가 불가능해진다.
+        static void EnsureDefaultStones(PlayerProfile p, DreamstoneData[] defaultStones)
+        {
+            if (defaultStones == null || defaultStones.Length == 0) return;  // 호출자가 시딩을 옵트아웃
+            var squad = p.SelectedSquad();
+            if (squad == null) return;
+            squad.NormalizeSlots();
+
+            for (int i = 0; i < squad.stoneIds.Count; i++)
+                if (!string.IsNullOrEmpty(squad.stoneIds[i])) return;   // 하나라도 장착돼 있으면 손대지 않는다
+
+            int slot = 0;
+            for (int i = 0; i < defaultStones.Length && slot < SquadSave.StoneSlotCount; i++)
+            {
+                var s = defaultStones[i];
+                if (s == null || string.IsNullOrEmpty(s.id)) continue;   // 미배정 칸은 건너뛴다
+                squad.stoneIds[slot++] = s.id;
+            }
         }
 
         static void TryBackup(string path)
