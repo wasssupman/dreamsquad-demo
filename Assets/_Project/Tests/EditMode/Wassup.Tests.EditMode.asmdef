@@ -11,6 +11,7 @@
         "Unity.Mathematics",
         "Unity.Transforms",
         "Unity.Burst",
+        "Unity.TextMeshPro",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],

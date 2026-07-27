@@ -32,6 +32,15 @@ namespace Wassup.UI
         private const float Pad = 34f;
         private const float HeaderH = 150f;
         private const float RowH = 96f;
+        private const float RowInset = 24f;   // 행 좌변 여백
+        private const float RightPad = 22f;   // 랭크/점수 컬럼의 우변 여백
+        private const float RightColW = 200f; // 랭크/점수 컬럼 폭 (좌측 컬럼이 여기서 멈춘다)
+
+        // 행 라벨 밴드 = (하단 inset, 상단 inset). 이름/랭크는 위, 날짜/점수는 아래.
+        // 밴드는 반드시 offsetMin/offsetMax 로만 깎는다 — stretch 축에 anchoredPosition
+        // 을 대입하면 밴드가 중앙으로 리셋돼 위/아래 라벨이 같은 rect 로 붕괴한다.
+        private static readonly Vector2 TopBand = new Vector2(RowH * 0.42f, -12f);
+        private static readonly Vector2 BottomBand = new Vector2(12f, -RowH * 0.42f);
 
         // Fired when the user backs out. OutgameMenuController subscribes and runs
         // its ClosePanels (re-shows the lobby menu that RaiseExclusive hid).
@@ -139,42 +148,43 @@ namespace Wassup.UI
             // Tournament name (top-left).
             string title = string.IsNullOrEmpty(entry.tournamentName) ? "토너먼트" : entry.tournamentName;
             var name = CreateLabel(go.transform, "Name", title, 32, TextAlignmentOptions.TopLeft, Color.white);
-            var nameRt = (RectTransform)name.transform;
-            nameRt.anchorMin = new Vector2(0f, 0f);
-            nameRt.anchorMax = new Vector2(1f, 1f);
-            nameRt.offsetMin = new Vector2(24f, RowH * 0.42f);
-            nameRt.offsetMax = new Vector2(-200f, -12f);
+            SetLeftColumn((RectTransform)name.transform, TopBand);
 
             // Date (bottom-left).
             var date = CreateLabel(go.transform, "Date", FormatDate(entry.createdTime), 22,
                 TextAlignmentOptions.BottomLeft, SubText);
-            var dateRt = (RectTransform)date.transform;
-            dateRt.anchorMin = new Vector2(0f, 0f);
-            dateRt.anchorMax = new Vector2(1f, 1f);
-            dateRt.offsetMin = new Vector2(24f, 12f);
-            dateRt.offsetMax = new Vector2(-200f, -RowH * 0.42f);
+            SetLeftColumn((RectTransform)date.transform, BottomBand);
 
-            // Rank + score (right).
+            // Rank (top-right) + score (bottom-right). 밴드가 행 절반이라 정렬도
+            // Top/Bottom 으로 맞춘다 — Midline 이면 두 밴드의 글리프가 맞닿는다.
             string rankText = entry.rank > 0 ? $"{entry.rank}위" : "-";
-            var rank = CreateLabel(go.transform, "Rank", rankText, 34, TextAlignmentOptions.MidlineRight, GoldColor);
+            var rank = CreateLabel(go.transform, "Rank", rankText, 34, TextAlignmentOptions.TopRight, GoldColor);
             rank.fontStyle = FontStyles.Bold;
-            var rankRt = (RectTransform)rank.transform;
-            rankRt.anchorMin = new Vector2(1f, 0f);
-            rankRt.anchorMax = new Vector2(1f, 1f);
-            rankRt.pivot = new Vector2(1f, 0.5f);
-            rankRt.sizeDelta = new Vector2(180f, 0f);
-            rankRt.offsetMin = new Vector2(rankRt.offsetMin.x, RowH * 0.42f);
-            rankRt.anchoredPosition = new Vector2(-22f, 0f);
+            SetRightColumn((RectTransform)rank.transform, TopBand);
 
             var score = CreateLabel(go.transform, "Score", $"{entry.score:N0}점", 24,
-                TextAlignmentOptions.MidlineRight, SubText);
-            var scoreRt = (RectTransform)score.transform;
-            scoreRt.anchorMin = new Vector2(1f, 0f);
-            scoreRt.anchorMax = new Vector2(1f, 1f);
-            scoreRt.pivot = new Vector2(1f, 0.5f);
-            scoreRt.sizeDelta = new Vector2(180f, 0f);
-            scoreRt.offsetMax = new Vector2(scoreRt.offsetMax.x, -RowH * 0.42f);
-            scoreRt.anchoredPosition = new Vector2(-22f, 0f);
+                TextAlignmentOptions.BottomRight, SubText);
+            SetRightColumn((RectTransform)score.transform, BottomBand);
+        }
+
+        // 좌측 컬럼 — 행 좌변 여백부터 우측 컬럼이 시작되는 지점까지.
+        private static void SetLeftColumn(RectTransform rt, Vector2 band)
+        {
+            rt.anchorMin = new Vector2(0f, 0f);
+            rt.anchorMax = new Vector2(1f, 1f);
+            rt.offsetMin = new Vector2(RowInset, band.x);
+            rt.offsetMax = new Vector2(-RightColW, band.y);
+        }
+
+        // 우측 컬럼 — 행 우변에 붙는 RightColW 폭 박스. 행 폭이 레이아웃 그룹에 따라
+        // 변하므로 우측 앵커 기준 음수 오프셋으로 잡는다.
+        private static void SetRightColumn(RectTransform rt, Vector2 band)
+        {
+            rt.anchorMin = new Vector2(1f, 0f);
+            rt.anchorMax = new Vector2(1f, 1f);
+            rt.pivot = new Vector2(1f, 0.5f);
+            rt.offsetMin = new Vector2(-RightColW, band.x);
+            rt.offsetMax = new Vector2(-RightPad, band.y);
         }
 
         // ISO-8601 → yyyy.MM.dd; leaves blank if unparseable (display-only field).
