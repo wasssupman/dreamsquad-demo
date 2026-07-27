@@ -125,6 +125,28 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(7, rt.fireCount, "fireCount 는 발마다 전진한다(5 + 2발)");
         }
 
+        // 리뷰 CRITICAL 회귀 핀 — Advance 가 반환한 발수를 소비자가 **전부** 써야 한다.
+        // emitter 가 이 값을 `if (shots > 0)` 로만 받고 캐리어를 1개만 만들면 나머지가
+        // 증발했다(shotCount 노브 사문화). 순수 계층에서는 "총 반환 합 == shotCount" 로
+        // 그 계약을 고정한다 — 소비 측 루프는 emitter 통합 테스트(후속)가 덮는다.
+        [Test]
+        public void Advance_TotalReturnedShots_EqualsShotCount()
+        {
+            foreach (var (count, interval) in new[] { (5, 0f), (3, 0.1f), (1, 0f), (7, 0.05f) })
+            {
+                var spec = Spec(count, interval);
+                var rt = default(EmitterRuntime);
+                EmitterTick.Begin(ref rt, spec, 0);
+
+                int total = 0;
+                for (int f = 0; f < 200 && !EmitterTick.IsComplete(rt); f++)
+                    total += EmitterTick.Advance(ref rt, 0.02f, spec.shotIntervalSec);
+
+                Assert.AreEqual(count, total, $"shotCount={count}, interval={interval}: 반환 총합이 어긋나면 발사가 유실된다");
+                Assert.IsTrue(EmitterTick.IsComplete(rt));
+            }
+        }
+
         [Test]
         public void Begin_ClampsDegenerateShotCount()
         {

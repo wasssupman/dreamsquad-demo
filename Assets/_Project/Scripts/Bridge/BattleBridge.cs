@@ -5645,13 +5645,16 @@ namespace Wassup.Bridge
             for (int i = 0; i < mechanics.Length; i++)
                 if (mechanics[i].payload.kind == Wassup.Data.DcPayloadKind.EmitProjectilePattern)
                 { wantsPattern = true; break; }
-            var patternSlots = default(DynamicBuffer<Wassup.Battle.Combat.Projectile.Emission.PatternSlot>);
             if (wantsPattern)
             {
-                patternSlots = _em.AddBuffer<Wassup.Battle.Combat.Projectile.Emission.PatternSlot>(entity);
+                _em.AddBuffer<Wassup.Battle.Combat.Projectile.Emission.PatternSlot>(entity);
                 // 발사 인스턴스 버퍼도 미리(런타임 구조 변경 회피 — IncomingHeal 선례).
                 _em.AddBuffer<Wassup.Battle.Combat.Projectile.Emission.EmitterInstance>(entity);
             }
+            // ⚠ 여기서 PatternSlot 핸들을 캐시하지 않는다. 위 AddBuffer 2회 + 아래
+            // AddBuffer<DcTriggerSlot> 이 전부 구조 변경이라, 먼저 잡은 핸들은 마지막
+            // AddBuffer 시점에 죽는다(ObjectDisposedException / 회수된 chunk write).
+            // 사용 직전 GetBuffer 로 다시 얻는다 — 그 사이 구조 변경이 없으므로 유효하다.
 
             var slots = _em.AddBuffer<DcTriggerSlot>(entity);
 
@@ -5714,13 +5717,23 @@ namespace Wassup.Bridge
                         Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: EmitProjectilePattern needs a pattern with a barrel — skipped.");
                         continue;
                     }
-                    if (!patternSlots.IsCreated)
+                    if (!_em.HasBuffer<Wassup.Battle.Combat.Projectile.Emission.PatternSlot>(entity))
                     {
                         // 사전 스캔과 어긋난 경우(도달 불가) — 조용한 오발사보다 경고.
                         Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: pattern buffer missing — skipped.");
                         continue;
                     }
                     int barrelIndex = GetOrCreateProjectileDataIndex(pattern.barrel);
+                    // SkyFall 패턴은 낙하 예고가 곧 그 스킬의 정체다 — 0 이면 텔레그래프
+                    // 없이 즉착탄하므로 조용히 넘기지 않는다(구 arm 은 authoring 이 duration 을
+                    // 요구했다).
+                    if (pattern.barrel.flightMode == Wassup.Data.ProjectileFlightMode.SkyFall
+                        && pattern.telegraphSec <= 0f)
+                    {
+                        Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: SkyFall 패턴의 telegraphSec 가 0 — 예고 없이 즉착탄합니다.");
+                    }
+                    // 사용 직전 재획득(위 주석 참조).
+                    var patternSlots = _em.GetBuffer<Wassup.Battle.Combat.Projectile.Emission.PatternSlot>(entity);
                     patternSlots.Add(new Wassup.Battle.Combat.Projectile.Emission.PatternSlot
                     {
                         spec = pattern.ToSpec(barrelIndex),
@@ -5777,7 +5790,11 @@ namespace Wassup.Bridge
                 speed = barrel.speed,
                 hitThreshold = barrel.hitThreshold,
                 visualScale = barrel.visualScale,
-                arcHeight = barrel.arcHeight,
+                // SkyFall 은 arcHeight 슬롯을 "낙하 시작 높이"로 재사용하고, 드레인이
+                // req.arcHeight > 0 이면 그 값을, 아니면 dropHeight 를 쓴다. barrel 의
+                // arcHeight 기본값은 2 라 그대로 실으면 dropHeight(6~9)를 침묵 오버라이드해
+                // 낙하가 뚝 떨어진다 — 구 barrage arm 은 이 필드를 아예 안 실었다.
+                arcHeight = axes.movement == MovementKind.SkyFall ? 0f : barrel.arcHeight,
                 impactTileRange = barrel.impactTileRange,
                 onHitEffect = barrel.onHitEffect,
                 splashRadius = barrel.splashRadius,

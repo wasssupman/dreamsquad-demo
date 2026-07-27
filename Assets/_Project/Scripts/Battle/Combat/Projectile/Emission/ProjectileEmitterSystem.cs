@@ -101,6 +101,14 @@ namespace Wassup.Battle.Combat.Projectile.Emission
                             enemyBuilt = true;
                         }
 
+                    }
+
+                    // 발마다 — Advance 가 반환한 발수를 전부 소비한다. 이 루프가 없으면
+                    // burstRemaining 은 N 만큼 차감됐는데 캐리어는 1개만 생겨 나머지가
+                    // 증발하고(shotCount 노브 사문화), continue 가 아래 write-back·완주
+                    // 판정까지 건너뛰어 인스턴스가 영구 적재된다(두 리뷰어 CRITICAL).
+                    for (int s = 0; s < shots; s++)
+                    {
                         var poolEntities = hostIsEnemy ? defEntities : enemyEntities;
                         var poolCells = hostIsEnemy ? defCells : enemyCells;
 
@@ -134,7 +142,8 @@ namespace Wassup.Battle.Combat.Projectile.Emission
                         var req = inst.template;
                         req.origin = hostPos;
                         req.damage = order.damage;
-                        req.dataIndex = order.barrelDataIndex;
+                        // dataIndex 는 template 이 bake 에서 이미 같은 barrelIndex 로 채웠다
+                        // (order.barrelDataIndex 와 항상 동일) — 재대입하지 않는다.
 
                         switch (MovementBinding.Of(req.movement))
                         {

@@ -607,6 +607,19 @@ namespace Wassup.Bridge
                     }
                 }
 
+                // projectile-emission-pattern unit 3 — 발사 명세는 **카드 경로 미배선**이다.
+                // 패턴 자료(PatternSlot 버퍼 + template 조립)는 보스 스폰 bake 에만 있고,
+                // 여기서 통과시키면 슬롯이 patternIndex=0(struct default, 유효 index 처럼
+                // 보이는 값)으로 붙어 아무 일도 안 하는 카드가 "부착됨"으로 집계된다 —
+                // 설명 텍스트도 공란. 이 spec 이 인용해 온 "조용한 no-op 금지"(dc-trigger
+                // 선례)를 지켜 loud 거절한다. 개통하려면 defender 에도 PatternSlot/
+                // EmitterInstance 부착 + BuildPatternTemplate(hostIsEnemy:false) 이 필요하다.
+                if (m.payload.kind == Wassup.Data.DcPayloadKind.EmitProjectilePattern)
+                {
+                    Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: EmitProjectilePattern 은 카드(defender) 경로 미배선 — skipped.");
+                    continue;
+                }
+
                 // dreamcatcher-content-3 unit 4 — HealthThreshold 상태 bake 를 payload-불문
                 // 공통 블록으로 호이스팅. 기존엔 SelfStatBuff 분기 안에만 있어 진동갑주
                 // (HealthThreshold×SelfTileAoe)가 fraction 0(inert)으로 잠들었다. 가드·

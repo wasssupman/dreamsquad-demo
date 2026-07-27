@@ -95,6 +95,25 @@ namespace Wassup.Tests.EditMode
                 }
         }
 
+        // 리뷰 MEDIUM — 같은 셀에 후보가 둘 이상이면 tie-break 가 스냅샷 index 로 갈린다.
+        // 방어유닛은 타일 고정이라 유일하지만 적 후보(자유 이동)는 셀 공유가 상시다.
+        // 현재는 bake 가 host=enemy 로 고정돼 미도달이고, defender 패턴을 여는 시점에
+        // 안정 키(예: 병렬 배열로 받은 entity index)를 함께 넘겨야 한다. 이 테스트는
+        // 그 한계를 **문서화**한다 — 통과가 곧 "셀 단위까지만 결정론"이라는 뜻이다.
+        [Test]
+        public void DuplicateCells_SelectionIsCellStable_ButNotEntityStable()
+        {
+            var a = new[] { new int2(4, 4), new int2(4, 4), new int2(9, 1) };
+            var b = new[] { new int2(4, 4), new int2(9, 1), new int2(4, 4) };
+
+            for (int fire = 0; fire < 6; fire++)
+            {
+                int2 pickedA = a[Select(a, PatternSelectionRule.RoundRobin, fire)];
+                int2 pickedB = b[Select(b, PatternSelectionRule.RoundRobin, fire)];
+                Assert.AreEqual(pickedA, pickedB, "선택된 '셀' 은 스냅샷 순서와 무관해야 한다");
+            }
+        }
+
         [Test]
         public void NegativeFireCount_StaysInRange()
         {

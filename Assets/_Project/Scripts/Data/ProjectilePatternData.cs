@@ -23,6 +23,7 @@ namespace Wassup.Data
         public ProjectileData barrel;
 
         [Tooltip("이 패턴이 쏘는 탄의 데미지. 시전자 damageMul 은 적용하지 않는다(카드/스킬 magnitude 컨벤션).")]
+        [Min(0f)]
         public float damage = 10f;
 
         [Header("Selection")]
@@ -39,7 +40,9 @@ namespace Wassup.Data
         public bool reselectPerShot = false;
 
         [Header("Telegraph")]
-        [Tooltip("SkyFall 낙하 예고 초. barrel 이 SkyFall 궤적일 때만 의미. 0 = 즉시 착탄.")]
+        [Tooltip("착탄 지연 초(셀을 겨누는 궤적 전용). SkyFall = 낙하 예고, GrenadeToCell = 굴러가는 시간. " +
+                 "0 이면 즉시 착탄 — SkyFall 패턴에서 0 은 예고 없는 폭격이라 bake 가 경고한다. " +
+                 "BallisticArcToPoint 는 드레인이 거리/속도로 재산출하므로 이 값을 쓰지 않는다.")]
         [Min(0f)]
         public float telegraphSec = 0f;
 

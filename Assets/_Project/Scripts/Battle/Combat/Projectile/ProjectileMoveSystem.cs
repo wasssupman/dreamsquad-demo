@@ -40,9 +40,14 @@ namespace Wassup.Battle.Combat.Projectile
             // 스냅샷을 만들지 않는다 — 기존 투사체만 나는 프레임의 비용을 0 으로 둔다.
             bool anyRetarget = false;
             foreach (var ps in SystemAPI.Query<RefRO<ProjectileState>>().WithAll<ProjectileTag>())
+                // BezierHomingToEntity 는 여기 넣지 않는다: 베지어는 t=elapsed/flightTime
+                // 로 진행하므로 t≈1 에서 재조준하면 새 타겟 위치로 **순간이동 후 즉시
+                // 착탄**한다(HomingToEntity 는 speed*dt 로 움직여 이런 일이 없다). 곡선을
+                // 새 타겟 기준으로 다시 그리려면 제어점 재산출이 필요한데 그 파라미터는
+                // SO 에 있어 ISystem 이 못 읽는다 — 재조준 개통은 그 설계와 함께 온다
+                // (spec README 후속 후보 "패턴 탄의 재조준/바운스 opt-in").
                 if (ps.ValueRO.retargetTileRange > 0
-                    && (ps.ValueRO.movement == MovementKind.HomingToEntity
-                        || ps.ValueRO.movement == MovementKind.BezierHomingToEntity))
+                    && ps.ValueRO.movement == MovementKind.HomingToEntity)
                 { anyRetarget = true; break; }
 
             var retargetEntities = default(NativeArray<Entity>);
@@ -134,27 +139,16 @@ namespace Wassup.Battle.Combat.Projectile
                     {
                         // projectile-emission-pattern unit 1 — 곡선 + 추적. 제어점은
                         // 발사 시 고정(드레인 산출), 종점만 타겟을 따라가므로 대상이
-                        // 움직이면 곡선이 실시간으로 재조정된다. 대상 소실 정책은
-                        // HomingToEntity 와 **동일 규칙 상속**(재조준 opt-in / 파괴).
+                        // 움직이면 곡선이 실시간으로 재조정된다.
+                        //
+                        // 대상 소실 = 파괴(HomingToEntity 의 기본 동작). **재조준은
+                        // 의도적으로 미개통**이다 — 위 사전 스캔 주석 참조(t≈1 순간이동).
                         var bTarget = projectile.ValueRO.target;
                         if (bTarget == Entity.Null || !transformLookup.HasComponent(bTarget)
                             || deadLookup.HasComponent(bTarget))
                         {
-                            int rr = projectile.ValueRO.retargetTileRange;
-                            int repick = -1;
-                            if (rr > 0 && retargetPositions.IsCreated)
-                            {
-                                float3 here = transform.ValueRO.Position;
-                                repick = BounceRetarget.FindNext(
-                                    here, -1, retargetPositions, rr, tileSize, gridSize, ffOrigin);
-                            }
-                            if (repick < 0)
-                            {
-                                ecb.DestroyEntity(entity);
-                                break;
-                            }
-                            bTarget = retargetEntities[repick];
-                            projectile.ValueRW.target = bTarget;
+                            ecb.DestroyEntity(entity);
+                            break;
                         }
 
                         float bElapsed = projectile.ValueRO.elapsed + dt;

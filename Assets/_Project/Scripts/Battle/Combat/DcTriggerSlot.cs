@@ -42,7 +42,8 @@ namespace Wassup.Battle.Combat
         // HealthThresholdSystem (counter above stays AttackSystem-only).
         public float periodSeconds;   // PeriodicTimer 주기 초 (<=0 = no-fire, 계약 9)
         public float elapsed;         // PeriodicTimer accumulator (잔여 이월)
-        public int fireCount;         // AreaBarrage 진앙 round-robin (발동 시에만 증가)
+        // (구 AreaBarrage 진앙 round-robin 카운터 fireCount 는 제거됐다 — 융단폭격이
+        //  패턴으로 이관되며 영속 카운터가 PatternSlot.fireCountBase 로 옮겨갔다.)
         public float fraction;        // HealthThreshold 경계 간격 (<=0 = no-fire)
         public int nextBoundaryIndex; // HealthThreshold 래치 k (베이크 시 1, 단조 전진)
         public float maxHpRef;        // 스폰 시점 maxHp 스냅샷 (경계 기준 고정)
