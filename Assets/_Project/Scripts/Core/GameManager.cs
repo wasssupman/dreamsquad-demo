@@ -152,9 +152,9 @@ namespace Wassup.Core
         private void OnEnable()
         {
             if (logger != null) logger.StartSession();
-            // tournament-play-report Unit 3 — one tournament attempt per battle
-            // entry. result-screen-lobby-exit unit 0 made this the sole issuer: the
-            // result screen now exits to the lobby, so every attempt re-enters here.
+            // tournament-flow-guards unit 8 — adopt-only: 로비 게이트가 발행한 attempt 를
+            // 채택하고, 로비를 거치지 않은 진입(TestMode/에디터 직접 Play)은 상태 리셋만
+            // 될 뿐 attempt 가 생기지 않는다(발행 창구는 BeginMatchFromLobby 하나).
             Wassup.Core.Api.TournamentMatchReporter.BeginMatch();
         }
 
