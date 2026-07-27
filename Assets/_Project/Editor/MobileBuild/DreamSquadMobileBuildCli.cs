@@ -456,9 +456,6 @@ namespace Wassup.Editor.MobileBuild
 
     internal sealed class MobileBuildPreflightState
     {
-        internal const int SerializedScreenAutoRotationValue =
-            (int)ScreenOrientation.AutoRotation;
-
         internal string UnityVersion { get; set; }
         internal string CompanyName { get; set; }
         internal string ProductName { get; set; }
@@ -467,10 +464,6 @@ namespace Wassup.Editor.MobileBuild
         internal string ApplicationIdentifier { get; set; }
         internal IReadOnlyList<string> EnabledScenes { get; set; }
         internal UIOrientation DefaultOrientation { get; set; }
-        internal bool AllowPortrait { get; set; }
-        internal bool AllowPortraitUpsideDown { get; set; }
-        internal bool AllowLandscapeLeft { get; set; }
-        internal bool AllowLandscapeRight { get; set; }
         internal AndroidSdkVersions AndroidMinSdkVersion { get; set; }
         internal ScriptingImplementation AndroidScriptingBackend { get; set; }
         internal AndroidArchitecture AndroidArchitectures { get; set; }
@@ -502,10 +495,6 @@ namespace Wassup.Editor.MobileBuild
                     .Select(scene => scene.path)
                     .ToArray(),
                 DefaultOrientation = PlayerSettings.defaultInterfaceOrientation,
-                AllowPortrait = PlayerSettings.allowedAutorotateToPortrait,
-                AllowPortraitUpsideDown = PlayerSettings.allowedAutorotateToPortraitUpsideDown,
-                AllowLandscapeLeft = PlayerSettings.allowedAutorotateToLandscapeLeft,
-                AllowLandscapeRight = PlayerSettings.allowedAutorotateToLandscapeRight,
                 AndroidMinSdkVersion = PlayerSettings.Android.minSdkVersion,
                 AndroidScriptingBackend =
                     PlayerSettings.GetScriptingBackend(NamedBuildTarget.Android),
@@ -574,15 +563,10 @@ namespace Wassup.Editor.MobileBuild
                     "Enabled scenes must be exactly OutgameScene then BattleScene.");
             }
 
-            if (!IsLandscapeAutoRotation(
-                    DefaultOrientation,
-                    AllowPortrait,
-                    AllowPortraitUpsideDown,
-                    AllowLandscapeLeft,
-                    AllowLandscapeRight))
+            if (DefaultOrientation != UIOrientation.LandscapeRight)
             {
                 throw new MobileBuildException(
-                    "DreamSquad mobile builds require the existing landscape-only autorotation settings.");
+                    "DreamSquad mobile builds require the fixed LandscapeRight orientation.");
             }
 
             if (platform == MobileBuildPlatform.Android)
@@ -612,22 +596,6 @@ namespace Wassup.Editor.MobileBuild
             }
         }
 
-        internal static bool IsLandscapeAutoRotation(
-            UIOrientation defaultOrientation,
-            bool allowPortrait,
-            bool allowPortraitUpsideDown,
-            bool allowLandscapeLeft,
-            bool allowLandscapeRight)
-        {
-            var isAutoRotation =
-                defaultOrientation == UIOrientation.AutoRotation ||
-                (int)defaultOrientation == SerializedScreenAutoRotationValue;
-            return isAutoRotation &&
-                   !allowPortrait &&
-                   !allowPortraitUpsideDown &&
-                   allowLandscapeLeft &&
-                   allowLandscapeRight;
-        }
     }
 
     internal sealed class MobilePlayerSettingsState

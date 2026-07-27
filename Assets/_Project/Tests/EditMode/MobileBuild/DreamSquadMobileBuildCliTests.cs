@@ -217,57 +217,26 @@ namespace Wassup.Tests.EditMode.MobileBuild
             Assert.DoesNotThrow(() => CreateValidPreflight(platform).Validate(platform));
         }
 
-        [Test]
-        public void Preflight_AcceptsTrackedSerializedScreenAutoRotation()
+        [TestCase(UIOrientation.Portrait)]
+        [TestCase(UIOrientation.PortraitUpsideDown)]
+        [TestCase(UIOrientation.LandscapeLeft)]
+        [TestCase(UIOrientation.AutoRotation)]
+        public void Preflight_RejectsOrientationOtherThanLandscapeRight(
+            UIOrientation orientation)
         {
             var state = CreateValidPreflight(MobileBuildPlatform.Android);
-            state.DefaultOrientation =
-                (UIOrientation)MobileBuildPreflightState.SerializedScreenAutoRotationValue;
+            state.DefaultOrientation = orientation;
 
-            Assert.DoesNotThrow(() => state.Validate(MobileBuildPlatform.Android));
-        }
-
-        [TestCase((int)UIOrientation.Portrait, false, false, true, true)]
-        [TestCase((int)UIOrientation.PortraitUpsideDown, false, false, true, true)]
-        [TestCase((int)UIOrientation.LandscapeRight, false, false, true, true)]
-        [TestCase((int)UIOrientation.LandscapeLeft, false, false, true, true)]
-        [TestCase((int)UIOrientation.AutoRotation, true, false, true, true)]
-        [TestCase((int)UIOrientation.AutoRotation, false, true, true, true)]
-        [TestCase((int)UIOrientation.AutoRotation, false, false, false, true)]
-        [TestCase((int)UIOrientation.AutoRotation, false, false, true, false)]
-        [TestCase(MobileBuildPreflightState.SerializedScreenAutoRotationValue, true, false, true, true)]
-        [TestCase(MobileBuildPreflightState.SerializedScreenAutoRotationValue, false, true, true, true)]
-        [TestCase(MobileBuildPreflightState.SerializedScreenAutoRotationValue, false, false, false, true)]
-        [TestCase(MobileBuildPreflightState.SerializedScreenAutoRotationValue, false, false, true, false)]
-        public void LandscapeAutoRotation_RejectsFixedOrIncompleteConfiguration(
-            int defaultOrientation,
-            bool allowPortrait,
-            bool allowPortraitUpsideDown,
-            bool allowLandscapeLeft,
-            bool allowLandscapeRight)
-        {
-            Assert.That(
-                MobileBuildPreflightState.IsLandscapeAutoRotation(
-                    (UIOrientation)defaultOrientation,
-                    allowPortrait,
-                    allowPortraitUpsideDown,
-                    allowLandscapeLeft,
-                    allowLandscapeRight),
-                Is.False);
+            Assert.Throws<MobileBuildException>(
+                () => state.Validate(MobileBuildPlatform.Android));
         }
 
         [Test]
-        public void CapturedProjectOrientation_IsLandscapeOnlyAutoRotation()
+        public void CapturedProjectOrientation_IsFixedLandscapeRight()
         {
             var state = MobileBuildPreflightState.Capture(MobileBuildPlatform.Android);
 
-            Assert.That(
-                (int)state.DefaultOrientation,
-                Is.EqualTo(MobileBuildPreflightState.SerializedScreenAutoRotationValue));
-            Assert.That(state.AllowPortrait, Is.False);
-            Assert.That(state.AllowPortraitUpsideDown, Is.False);
-            Assert.That(state.AllowLandscapeLeft, Is.True);
-            Assert.That(state.AllowLandscapeRight, Is.True);
+            Assert.That(state.DefaultOrientation, Is.EqualTo(UIOrientation.LandscapeRight));
         }
 
         [TestCase("Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF - Fallback.asset")]
@@ -440,11 +409,7 @@ namespace Wassup.Tests.EditMode.MobileBuild
                 ApplicationIdentifier =
                     DreamSquadMobileBuildCli.ExpectedApplicationIdentifier,
                 EnabledScenes = (string[])DreamSquadMobileBuildCli.ExpectedScenes.Clone(),
-                DefaultOrientation = UIOrientation.AutoRotation,
-                AllowPortrait = false,
-                AllowPortraitUpsideDown = false,
-                AllowLandscapeLeft = true,
-                AllowLandscapeRight = true,
+                DefaultOrientation = UIOrientation.LandscapeRight,
                 AndroidMinSdkVersion = AndroidSdkVersions.AndroidApiLevel26,
                 AndroidScriptingBackend = ScriptingImplementation.IL2CPP,
                 AndroidArchitectures = AndroidArchitecture.ARM64,
@@ -479,7 +444,7 @@ namespace Wassup.Tests.EditMode.MobileBuild
                     state.EnabledScenes = state.EnabledScenes.Reverse().ToArray();
                     break;
                 case "orientation":
-                    state.AllowPortrait = true;
+                    state.DefaultOrientation = UIOrientation.Portrait;
                     break;
                 case "min-sdk":
                     state.AndroidMinSdkVersion = (AndroidSdkVersions)25;

@@ -20,6 +20,7 @@ APK와 iOS Ad Hoc IPA를 재현 가능한 로컬 명령으로 만들고 Firebase
 | 5 | `5_first_android_build_hygiene.md` | Android 첫 실행의 orientation 호환과 TMP 프리베이크 보존 |
 | 6 | `6_signed_build_recovery_hardening.md` | 실패 재시도 stem, licensing 고아와 Unity 직렬화 노이즈 방어 |
 | 7 | `7_handoff_summary.md` | 첫 서명 산출물과 hardening 검증 결과 인계 |
+| 8 | `8_fixed_landscape_preflight.md` | 고정 가로 PlayerSettings와 mobile build 사전검증 계약 정렬 |
 
 ## Feature-wide 계약
 
@@ -42,9 +43,8 @@ APK와 iOS Ad Hoc IPA를 재현 가능한 로컬 명령으로 만들고 Firebase
   `PlaybackEngines` 중 요청 플랫폼의 실제 모듈이 존재하는 위치를 사용한다.
 - 현재 사용자 소유의 고아 `Unity.Licensing.Client`는 비밀번호 입력·출력 예약 전에 차단하며
   스크립트가 프로세스를 자동 종료하지 않는다.
-- 가로 자동회전 검증은 Unity 6.4의 `UIOrientation.AutoRotation`과 프로젝트에 직렬화된
-  `ScreenOrientation.AutoRotation` 값 `5`를 같은 의미로 인정하되, 세로 2방향 금지와
-  가로 2방향 허용을 함께 요구한다.
+- 화면 방향은 현재 PlayerSettings 정본인 `UIOrientation.LandscapeRight` 고정만 허용한다.
+  과거 serialized autorotation 값 `5` 호환은 unit 5의 첫 빌드 이력이며 unit 8에서 대체됐다.
 - 실행 전후 Git worktree가 clean이어야 하며 기존 출력은 삭제하거나 덮어쓰지 않는다.
 - 프로젝트별 mobile build lock으로 두 로컬 빌드가 같은 Unity 설정을 동시에 다루지 못하게 한다.
 - Unity가 만드는 확정된 no-op 직렬화만 빌드 전 원본과 정확히 대조해 복원하고, 그 밖의
