@@ -140,7 +140,19 @@ namespace Wassup.Tests.EditMode
         }
 
         // arm 이 발화하도록 주기만큼 시간을 보낸다(같은 프레임에 emitter 가 이어 돈다).
+        // ⚠ 큰 dt 를 한 번에 주므로 **버스트 tick 에도 그 dt 가 적용된다** — interval > 0
+        // 인 패턴은 이 헬퍼로 한 프레임에 전량이 나간다(lag spike 사양). 버스트가 여러
+        // 프레임에 걸쳐 진행되는 걸 관찰하려면 아래 FireOnceThenDetach 를 쓴다.
         private void TickTrigger(float periodSeconds) => Tick(periodSeconds + 0.001f);
+
+        // 작은 dt 를 누적해 arm 을 **한 번만** 발화시키고, 슬롯을 떼어 재발화를 막는다.
+        // 버스트 진행(interval > 0)을 프레임 단위로 관찰하는 테스트용.
+        private void FireOnceThenDetach(Entity host)
+        {
+            for (int i = 0; i < 120 && _em.GetBuffer<EmitterInstance>(host).Length == 0; i++)
+                Tick(0.016f);
+            _em.GetBuffer<DcTriggerSlot>(host).Clear();
+        }
 
         private int CarrierCount()
         {
@@ -228,10 +240,12 @@ namespace Wassup.Tests.EditMode
             var keep = CreateDefender(new float3(2f, 0f, 2f));
             var host = CreatePatternHost(new float3(8f, 0f, 8f));
 
-            InstallPattern(host, Spec(shotCount: 3, interval: 0.1f), periodSeconds: 1f);
+            // 주기를 짧게 두고 작은 dt 로 한 번만 발화시킨다 — 큰 dt 를 주면 버스트
+            // 전량이 한 프레임에 나가 "버스트 도중"이라는 상황 자체가 성립하지 않는다.
+            InstallPattern(host, Spec(shotCount: 3, interval: 0.1f), periodSeconds: 0.05f);
 
-            TickTrigger(1f);            // 첫 발 — 여기서 대상이 잠긴다
-            Assert.AreEqual(1, CarrierCount());
+            FireOnceThenDetach(host);   // 첫 발 — 여기서 대상이 잠긴다
+            Assert.AreEqual(1, CarrierCount(), "interval 0.1s 라 첫 프레임엔 1발만");
             DestroyCarriers();
 
             _em.DestroyEntity(keep);    // 잠근 대상 소실
