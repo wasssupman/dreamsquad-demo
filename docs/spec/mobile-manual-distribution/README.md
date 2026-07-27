@@ -1,6 +1,6 @@
 # Mobile Manual Distribution
 
-상태: **커밋 `1861a96a` 로컬 서명 APK·IPA 자동 검증 완료 · 실기기 설치와 Firebase QA 대기 — 2026-07-27**
+상태: **커밋 `7b208524` iOS build 2 Ad Hoc IPA 자동 검증 완료 · 실기기 설치와 Firebase QA 대기 — 2026-07-27**
 
 ## 목표
 
@@ -63,8 +63,12 @@ APK와 iOS Ad Hoc IPA를 재현 가능한 로컬 명령으로 만들고 Firebase
   iOS SHA-256은 `4210a4614ba19ddee0c0964f1daef8271d8894ccec64e8aed31578fa012cf4db`다.
 - 두 summary의 package/bundle, version/build, Android signer·ARM64 IL2CPP, iOS
   codesign·Ad Hoc profile 검증값이 모두 통과했다.
-- 이후 현재 브랜치에는 게임 코드 변경과 build hardening이 추가됐다. 위 산출물은 현재 HEAD를
-  다시 빌드한 결과가 아니다. 실기기 설치와 Firebase 업로드는 수행하지 않았다.
+- 고정 가로 preflight를 정렬한 source commit
+  `7b208524bd2db9b16dc790a7ad787d699917e1d9`, version `0.1.0`, build `2`에서 iOS Ad Hoc
+  IPA만 다시 생성했다. SHA-256은
+  `518378400eab099e6ab7e50de79fda915c584f6babfc38d060333d35db6c0860`이며 bundle/version/build,
+  codesign과 embedded Ad Hoc profile 검증이 모두 통과했다.
+- build 2 Android APK, 실기기 설치와 Firebase 업로드는 수행하지 않았다.
 
 ## 비목표
 
