@@ -574,7 +574,7 @@ namespace Wassup.Editor.MobileBuild
                     "Enabled scenes must be exactly OutgameScene then BattleScene.");
             }
 
-            if (!IsLandscapeAutoRotation(
+            if (!IsLandscapeOnly(
                     DefaultOrientation,
                     AllowPortrait,
                     AllowPortraitUpsideDown,
@@ -582,7 +582,8 @@ namespace Wassup.Editor.MobileBuild
                     AllowLandscapeRight))
             {
                 throw new MobileBuildException(
-                    "DreamSquad mobile builds require the existing landscape-only autorotation settings.");
+                    "DreamSquad mobile builds require landscape-only orientation " +
+                    "(landscape autorotation with portrait disabled, or a fixed landscape orientation).");
             }
 
             if (platform == MobileBuildPlatform.Android)
@@ -612,21 +613,30 @@ namespace Wassup.Editor.MobileBuild
             }
         }
 
-        internal static bool IsLandscapeAutoRotation(
+        // 검사의 목적은 "세로로 빌드되는 사고 방지"다. 그 목적을 만족하는 설정은 둘이다:
+        //   ① 가로 자동회전 — 세로 2방향 금지 + 가로 2방향 허용(원래 프로젝트 설정)
+        //   ② 가로 고정 — LandscapeLeft/Right 고정. 세로가 **구조적으로** 불가능하므로
+        //      ①보다 엄격하다. 2026-07-27 사용자 결정(`19ff8e8f`: 5→2, 자동회전 폐기).
+        // ①만 통과시키면 현재 프로젝트 설정에서 빌드가 preflight 에 막힌다.
+        internal static bool IsLandscapeOnly(
             UIOrientation defaultOrientation,
             bool allowPortrait,
             bool allowPortraitUpsideDown,
             bool allowLandscapeLeft,
             bool allowLandscapeRight)
         {
+            // 세로 허용 플래그는 어느 모드에서도 사고의 씨앗이다.
+            if (allowPortrait || allowPortraitUpsideDown) return false;
+
             var isAutoRotation =
                 defaultOrientation == UIOrientation.AutoRotation ||
                 (int)defaultOrientation == SerializedScreenAutoRotationValue;
-            return isAutoRotation &&
-                   !allowPortrait &&
-                   !allowPortraitUpsideDown &&
-                   allowLandscapeLeft &&
-                   allowLandscapeRight;
+            // 자동회전이면 회전할 두 방향이 다 열려 있어야 의미가 있다.
+            if (isAutoRotation) return allowLandscapeLeft && allowLandscapeRight;
+
+            // 고정 모드 — 방향 자체가 가로여야 한다(플래그는 무의미해진다).
+            return defaultOrientation == UIOrientation.LandscapeLeft ||
+                   defaultOrientation == UIOrientation.LandscapeRight;
         }
     }
 
