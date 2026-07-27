@@ -53,6 +53,37 @@ EditMode 테스트 `.cs` 는 **`Assets/_Project/Tests/EditMode/`** 에 둔다(as
 - **진단**: 에셋 파일 mtime 확인 → `curl {baseUrl}/{탭}` 으로 시트 실측(읽기 전용, importer 는 dry-run 없음) → 둘 대조.
 - **처방**: 임포터 전체 실행은 무관 에셋 churn 을 만드니, 드리프트 난 필드만 UnityMCP `manage_scriptable_object`(modify) 로 반영 — 디스크와 로드된 인스턴스가 동시에 갱신된다. **시트 값을 바꾸면 에셋 동기화까지가 한 세트**라는 걸 잊지 않는 게 근본 예방.
 
+## GitLab 미러(ALB 뒤)는 SSH 로만 대용량 전송이 된다
+
+사내 GitLab(`gitlab.playlinks.co`)에 HTTPS 로 clone/fetch 하면 **응답 끝부분이 잘린다** — `curl 56 ... server closed abruptly (missing close_notify)` + `N bytes of body are still expected`. 초기 단일 푸시는 별도로 `HTTP 413`.
+
+- **원인**: 인증서 발급자가 `O=Amazon`(ACM) = **AWS ALB 가 TLS 종단**. 대용량 응답에서 graceful close 없이 연결을 끊는다. 잘린 양이 매번 다르다(90/1,560/7,996/47,354 B) → 크기 한도가 아니라 **시간 기반 컷오프**. 같은 PC 에서 GitHub 수백MB 클론은 정상이고, GitLab housekeeping(팩 재정리+bitmap) 후에도 동일 → 클라이언트·회선·레포 상태 전부 무관. 작은 레포는 안 걸려서 "다른 프로젝트는 잘 되는데 이것만" 으로 보인다.
+- **진단 1줄**: `echo | openssl s_client -connect <host>:443 -servername <host> | openssl x509 -noout -issuer` → 발급자가 Amazon 이면 앞단이 AWS LB.
+- **처방**: **SSH remote 를 쓴다** (`git@gitlab.playlinks.co:<group>/<proj>.git`). HTTPS 정상화는 인프라 몫 — ALB **idle timeout**(기본 60s)·**desync mitigation mode**, 뒤단 nginx `client_max_body_size`.
+- **미러 동기화 절차**(GitHub 이 유일한 저작 지점): `git pull` → `git push gitlab main:refs/heads/master`(+ 원하면 `main`). 보호 브랜치라도 **fast-forward 면 직접 푸시가 통과**한다.
+- **깨뜨리지 말 규칙 2개**: ① GitLab 에서 커밋하지 않는다(웹 편집·GitLab 발 MR) ② 프로젝트 merge method = **Fast-forward**. 어기면 master 에만 있는 커밋이 생겨 다음 fast-forward 가 막히고, 보호 브랜치라 force 도 불가해진다.
+
+## Git Bash 의 `ssh` 는 한글 사용자명 PC 에서 작동하지 않는다
+
+키와 `known_hosts` 를 정상 생성해도 `Host key verification failed`. `ssh -v` 를 보면 `identity file /c/Users/\271\332\273\363\301\330/.ssh/id_ed25519 type -1` — **개인키도 known_hosts 도 "없음"** 으로 본다.
+
+- **원인**: MSYS OpenSSH 가 HOME 의 한글(`박상준`)을 **CP949 바이트**로 해석하는데, 파일은 UTF-8 경로에 만들어져 서로 다른 디렉터리를 가리킨다.
+- **처방**: `git config --global core.sshCommand "C:/Windows/System32/OpenSSH/ssh.exe"`. Windows 기본 OpenSSH 는 Win32 API 로 경로를 풀어 정상 동작한다. 수동 `ssh`/`ssh-keyscan` 도 이 바이너리를 직접 호출한다.
+
+## 대용량 초기 푸시는 커밋 범위를 조각내 순차 푸시
+
+빈 원격에 306MB 레포를 처음 푸시하면 **모든 객체가 단일 HTTP 요청**이 되어 한도(nginx `client_max_body_size`, GitLab 기본 250m)에 걸린다.
+
+- **처방**: `git rev-list --reverse <ref>` 로 커밋 목록을 만들고 중간 지점들을 **순차 푸시**(`git push <url> <sha>:refs/heads/<branch>` 반복). 각 요청은 원격에 없는 객체만 보내므로 조각마다 한도 밑으로 떨어진다. 실측: 1,838 커밋을 17조각으로 나눠 전부 통과.
+- **분할점 선정**: `git rev-list --disk-usage --objects <sha>` 로 누적 크기를 재서 균등하게 자른다.
+
+## 보호 브랜치에 force 없이 무관 히스토리 편입 (`-s ours`)
+
+새 GitLab 레포의 기본 브랜치(`master`, README 1커밋)를 우리 히스토리로 갱신하려면 non-fast-forward 인데, **기본 브랜치는 자동 보호돼 force push 가 거부**된다.
+
+- **처방**: 그 README 커밋을 **부모로만** 편입한다 — `git merge -s ours --allow-unrelated-histories <sha>`. 트리는 불변(파일 변화 0)이고, 이후 master 갱신이 fast-forward 가 된다.
+- **주의**: 이 머지 커밋을 **GitHub 에도 올려야** 한다. GitLab 에만 두면 두 원격 히스토리가 갈라져 이후 동기화마다 같은 편법을 반복한다.
+
 ## `Assets/Screenshots/` 는 비추적 스크래치 — 통삭제 금지
 
 `Assets/Screenshots/` 는 dev 스크래치 폴더. git 은 폴더 `.meta` 만 추적하고 내부 PNG 는 **의도적 비추적**(MCP screenshot 결과물도 여기). `rm -rf` 같은 통삭제 금지 — **내가 만든 파일명만** 지운다(비추적은 git 복구 불가, `rm` 은 휴지통 안 거침).
