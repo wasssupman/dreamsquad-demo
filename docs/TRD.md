@@ -36,10 +36,13 @@ PHASE2.md          — (Phase 1 완료 후 작성)
 | 언어 | **C#** |
 | 아키텍처 | **하이브리드 ECS** (전투 시뮬레이션만 ECS, 나머지 MonoBehaviour) |
 | 주 타겟 | **Android** 실기기 |
-| 보조 타겟 | Unity Editor 플레이 모드 (일상 개발) |
+| 보조 타겟 | Unity Editor 플레이 모드 (일상 개발), iOS Ad Hoc 내부 QA 빌드 |
 | 최소 API 레벨 | Android 8.0 (API 26) 또는 그 이상 |
 
-**다른 플랫폼 고려 금지.** iOS, Windows, WebGL 등 멀티 플랫폼을 위한 어떤 추상화도 프로토타입 단계에 도입하지 않는다. Android 한 개 플랫폼에서 안정적으로 동작하는 것이 최우선.
+**Android 우선 원칙.** 게임 기능과 런타임 아키텍처는 Android 안정성을 최우선으로 하며,
+iOS 지원은 `com.playlinks.somnia.dev`를 사용하는 수동 Ad Hoc 내부 QA 빌드와 실기기 smoke로
+한정한다. 이 예외는 iOS 전용 게임 기능, 범용 멀티플랫폼 추상화, App Store 제출,
+Windows/WebGL 지원을 허용하지 않는다.
 
 ### 1.2 필수 패키지
 
@@ -67,7 +70,7 @@ PHASE2.md          — (Phase 1 완료 후 작성)
 - 씬 / GameObject / 컴포넌트 관리 (`manage_scene`, `manage_gameobject`, `manage_components`, `find_gameobjects`)
 - 프리팹·에셋·ScriptableObject 관리 (`manage_prefabs`, `manage_asset`, `manage_scriptable_object`)
 - 에디터 상태 제어 (`manage_editor`: 플레이 모드, 태그/레이어 관리 등)
-- 빌드 (`manage_build`: Android 빌드 포함)
+- 빌드 (`manage_build`: Android 빌드 및 iOS Xcode 프로젝트 export 포함)
 - 콘솔·컴파일 확인 (`read_console`, `editor_state` 리소스의 `isCompiling`)
 - 테스트 실행 (`run_tests`, `get_test_job`)
 - 패키지 관리 (`manage_packages`)
@@ -406,7 +409,8 @@ Phase가 진행되면서 ECS 맥락이 어떻게 채워지는지 요약:
 
 각 Phase 완료 시 에이전트는 다음을 제공한다:
 
-1. **동작하는 Unity 프로젝트** — 에디터 플레이 + Android 빌드 양쪽 동작
+1. **동작하는 Unity 프로젝트** — 에디터 플레이 + Android 빌드 동작. 모바일 수동 배포 설정을
+   변경한 작업은 추가로 iOS Xcode 프로젝트 export와 Ad Hoc 실기기 smoke 결과를 기록
 2. **최소 테스트** — EditMode 1개 이상, PlayMode 1개 이상
 3. **결정 기록 문서** — `phase{N}-decisions.md`. 해당 Phase에서 에이전트가 내린 기술적 결정(폴더 구조, 클래스 분할, 타겟팅 규칙 등)과 그 근거를 짧게 기록
 4. **로그 출력 확인** — 해당 Phase의 로그 스키마가 실제로 파일에 기록되는지 확인

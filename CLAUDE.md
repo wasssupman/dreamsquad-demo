@@ -28,7 +28,7 @@
 - **아키텍처**: 하이브리드 ECS — 전투 시뮬레이션만 ECS, 나머지 MonoBehaviour
 - **필수 패키지**: Entities 6.4.0, Entities Graphics 6.4.0, Burst, Collections, Mathematics, Jobs, TextMeshPro, Input System, spine-unity, spine-csharp
 - **ECS 버전 기준**: 이 프로젝트의 타겟은 Entities 6.4.0 이다. Entities 1.x 기준 문서/패턴을 source of truth 로 삼지 않는다.
-- **타겟**: Android 실기기 + Unity Editor 플레이
+- **타겟**: Android 실기기(주) + Unity Editor 플레이 + iOS Ad Hoc 내부 QA 빌드(보조)
 
 ## ECS 맥락 분리
 
