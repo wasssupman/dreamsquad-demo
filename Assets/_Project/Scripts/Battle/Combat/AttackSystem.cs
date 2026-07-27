@@ -47,7 +47,7 @@ namespace Wassup.Battle.Combat
             var targetFactions = targetCandidatesQuery.ToComponentDataArray<FactionTag>(Allocator.Temp);
             // 니들 폴백 선정용 scratch — 예전엔 발동마다 할당/해제했다. 후보 수는
             // 스냅샷 길이로 고정이라 프레임당 1회면 충분하다.
-            var needleScratch = new NativeArray<DcNeedleTargeting.Candidate>(
+            var needleScratch = new NativeArray<NearestTargeting.Candidate>(
                 targetEntities.Length, Allocator.Temp);
 
             var ecb = new EntityCommandBuffer(Allocator.Temp);
@@ -1434,10 +1434,10 @@ namespace Wassup.Battle.Combat
         // host 가 대상을 확정해 주지 않는 아키타입(폭탄맨·캐스터)의 폴백 선정.
         // 후보 조립이 두 곳에 복붙돼 있었고, 정작 실수하기 쉬운 부분(진영 마스크·
         // 자기 제외·그리드 변환·PastGoal)이 테스트 밖에 남아 있었다 — 실제로
-        // PastGoalTag 제외가 두 곳 모두에서 누락됐다(DcNeedleTargeting 의 caller
+        // PastGoalTag 제외가 두 곳 모두에서 누락됐다(NearestTargeting 의 caller
         // 계약과 README 계약 3 을 코드가 위반한 상태였다).
         private static int PickFallbackTarget(
-            NativeArray<DcNeedleTargeting.Candidate> scratch,
+            NativeArray<NearestTargeting.Candidate> scratch,
             NativeArray<Entity> ents, NativeArray<LocalTransform> xf, NativeArray<FactionTag> fac,
             ComponentLookup<Wassup.Battle.Movement.PastGoalTag> pastGoal,
             Entity self, float3 selfPos, int2 selfCell,
@@ -1451,7 +1451,7 @@ namespace Wassup.Battle.Combat
                     && !pastGoal.HasComponent(e); // 유출 대기 적에 니들을 낭비하지 않는다
                 float3 p = xf[i].Position;
                 int2 c = GridMath.WorldToCell(p, tileSize, gridSize, origin: gridOrigin);
-                scratch[i] = new DcNeedleTargeting.Candidate
+                scratch[i] = new NearestTargeting.Candidate
                 {
                     eligible = eligible,
                     tileDist = math.max(math.abs(c.x - selfCell.x), math.abs(c.y - selfCell.y)),
@@ -1460,7 +1460,7 @@ namespace Wassup.Battle.Combat
                     entityVersion = e.Version,
                 };
             }
-            return DcNeedleTargeting.SelectNearest(scratch, tileRange);
+            return NearestTargeting.SelectNearest(scratch, tileRange);
         }
 
         private static bool AnyActiveCc(in DynamicBuffer<Wassup.Battle.Effects.CcEffect> buf)

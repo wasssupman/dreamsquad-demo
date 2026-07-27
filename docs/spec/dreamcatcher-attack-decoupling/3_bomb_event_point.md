@@ -23,7 +23,7 @@
 
 ### 대상 = 자체 탐색
 
-폭탄맨은 적을 조회조차 하지 않으므로 `bestTarget` 이 없다 → unit 2 의 `DcNeedleTargeting.SelectNearest` 를 쓴다. 후보는 `OnUpdate` 상단 스냅샷(`:45~47`)을 그대로 재사용한다(별도 쿼리 금지).
+폭탄맨은 적을 조회조차 하지 않으므로 `bestTarget` 이 없다 → unit 2 의 `NearestTargeting.SelectNearest` 를 쓴다. 후보는 `OnUpdate` 상단 스냅샷(`:45~47`)을 그대로 재사용한다(별도 쿼리 금지).
 
 `eligible` 채우는 규칙(unit 2 caller 계약): **진영 `Faction.Enemy` 고정**(host mask 재사용 금지) · 자기 자신 제외 · `tileDist` 는 Chebyshev.
 

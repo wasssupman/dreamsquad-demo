@@ -4,13 +4,13 @@ using Wassup.Battle.Combat;
 
 namespace Wassup.Tests.EditMode
 {
-    // dreamcatcher-attack-decoupling unit 2 — 니들 폴백 선정의 결정론 핀.
-    // 실제 호출은 unit 3·4(폭탄맨/캐스터 사건 지점)에서 붙는다.
-    public class DcNeedleTargetingTests
+    // 반경 내 최근접 선정의 결정론 핀. 이 유틸은 특정 카드/효과에 속하지 않으므로
+    // 테스트도 호출 맥락과 무관하게 규칙 자체만 고정한다.
+    public class NearestTargetingTests
     {
-        private static DcNeedleTargeting.Candidate C(float sqDist, int tileDist,
+        private static NearestTargeting.Candidate C(float sqDist, int tileDist,
             int index, int version = 1, bool eligible = true) =>
-            new DcNeedleTargeting.Candidate
+            new NearestTargeting.Candidate
             {
                 eligible = eligible,
                 tileDist = tileDist,
@@ -19,10 +19,10 @@ namespace Wassup.Tests.EditMode
                 entityVersion = version,
             };
 
-        private static int Select(int tileRange, params DcNeedleTargeting.Candidate[] items)
+        private static int Select(int tileRange, params NearestTargeting.Candidate[] items)
         {
-            using var arr = new NativeArray<DcNeedleTargeting.Candidate>(items, Allocator.Temp);
-            return DcNeedleTargeting.SelectNearest(arr, tileRange);
+            using var arr = new NativeArray<NearestTargeting.Candidate>(items, Allocator.Temp);
+            return NearestTargeting.SelectNearest(arr, tileRange);
         }
 
         [Test]
@@ -43,9 +43,9 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void ExcludesIneligible()
         {
-            // eligible=false = caller 의 진영/PastGoal/사망 필터 탈락(아군·해저드 포함).
+            // eligible=false = 호출부의 진영/PastGoal/사망 필터 탈락.
             int i = Select(5, C(1f, 1, 10, eligible: false), C(9f, 3, 11));
-            Assert.AreEqual(1, i, "아군을 겨누지 않는다 — 진영은 caller 가 Enemy 로 고정");
+            Assert.AreEqual(1, i, "부적격 후보는 더 가까워도 뽑히지 않는다");
         }
 
         [Test]
@@ -67,10 +67,9 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
-        public void NonPositiveRange_DisablesFallback()
+        public void NonPositiveRange_SelectsNothing()
         {
-            // B안에서 tileRange 0 은 "발동 불가"가 아니라 "폴백 없음"이다.
-            // 자기 셀만 뒤지는 대신 아무것도 고르지 않는다.
+            // 반경 0 을 "자기 셀만 검색"으로 읽지 않는다 — 계약은 '선정 없음'이다.
             Assert.AreEqual(-1, Select(0, C(0f, 0, 10)));
             Assert.AreEqual(-1, Select(-1, C(0f, 0, 10)));
         }
