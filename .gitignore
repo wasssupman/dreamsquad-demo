@@ -60,10 +60,22 @@ ExportedObj/
 sysinfo.txt
 
 # Builds
+/Build/
+/Builds/
+/Xcode/
 *.apk
 *.aab
+*.ipa
+*.xcarchive
+*.dSYM
 *.unitypackage
 *.app
+
+# Mobile signing material (local/build-machine only)
+*.keystore
+*.jks
+*.p12
+*.mobileprovision
 
 # Crashlytics generated file
 crashlytics-build.properties
