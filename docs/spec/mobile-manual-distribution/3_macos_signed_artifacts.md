@@ -46,9 +46,11 @@ password, keystore 경로는 로그나 요약에 포함하지 않으며 검증 �
 
 ## 완료 기준
 
-- [ ] APK signer SHA-256이 alias `somnia-dev` 인증서와 같고 package/version/build가 일치한다.
-- [ ] APK에 ARM64 IL2CPP만 포함되고 `apksigner` 검증이 성공한다.
-- [ ] IPA의 strict codesign과 bundle/version/build/Team 검증이 성공한다.
-- [ ] embedded profile이 예상 Name/App ID/Team, 유효한 만료일과 등록 기기를 가진다.
-- [ ] APK/IPA마다 SHA-256이 생성되고 로그·요약에 비밀값이 없다.
-- [ ] 같은 출력 stem이 존재할 때 중단하며 기존 archive/IPA/APK를 덮어쓰지 않는다.
+- [x] APK signer SHA-256이 alias `somnia-dev` 인증서와 같고 package/version/build가 일치한다.
+- [x] APK에 ARM64 IL2CPP만 포함되고 `apksigner` 검증이 성공한다.
+- [x] IPA의 strict codesign과 bundle/version/build/Team 검증이 성공한다.
+- [x] embedded profile이 예상 Name/App ID/Team, 유효한 만료일과 등록 기기를 가진다.
+- [x] APK/IPA마다 SHA-256이 생성되고 로그·요약에 비밀값이 없다.
+- [x] 같은 출력 stem이 존재할 때 중단하며 기존 archive/IPA/APK를 덮어쓰지 않는다.
+
+확인: 2026-07-27, artifact source `1861a96a8819841df68edeb53b51bf622fce174a`.
