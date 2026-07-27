@@ -151,6 +151,13 @@ namespace Wassup.Core
                 case DcPayloadKind.SelfStatBuff:
                 case DcPayloadKind.BountyMark:
                 case DcPayloadKind.AreaSleep:
+                // 발사 명세(projectile-emission-pattern) — host 의 공격 모델과 직교다.
+                // 대상은 패턴의 selection 이 스스로 뽑고(host 가 대상을 줄 필요 없음),
+                // 진영은 host 진영의 반대로 자동 도출되며(spec README 계약 7), 데미지도
+                // 패턴이 자기 값을 갖는다 → targetsEnemies / HostProvidesTarget /
+                // hasDamageOutput 어느 축도 게이트가 아니다. 명세 자체의 유효성
+                // (pattern/barrel null)은 bake 가 최종 판정한다(위 주석의 분업).
+                case DcPayloadKind.EmitProjectilePattern:
                     return DcRejectReason.None;
 
                 default:

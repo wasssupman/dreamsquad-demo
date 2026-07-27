@@ -2,7 +2,6 @@ using System;
 using NUnit.Framework;
 using Unity.Collections;
 using Unity.Mathematics;
-using Wassup.Battle.Combat;
 using Wassup.Battle.Combat.Projectile;
 using Wassup.Battle.Combat.Projectile.Emission;
 using Wassup.Data;
@@ -39,25 +38,9 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(1, Select(cells, PatternSelectionRule.RoundRobin, 3));
         }
 
-        // unit 4 이관의 무회귀 근거: 같은 입력에 대해 흡수 전 함수와 결과가 같아야
-        // 융단폭격 진앙 순회가 값 보존된다.
-        [Test]
-        public void RoundRobin_MatchesLegacyBarrageEpicenter()
-        {
-            var cells = new[]
-            {
-                new int2(5, 3), new int2(1, 7), new int2(9, 3), new int2(0, 0), new int2(4, 11),
-            };
-            using var na = new NativeArray<int2>(cells, Allocator.Temp);
-
-            for (int fire = 0; fire < 13; fire++)
-            {
-                int legacy = BarrageEpicenter.Select(na, fire, Grid);
-                int now = PatternTargeting.Select(na, PatternSelectionRule.RoundRobin, fire, Grid);
-                Assert.AreEqual(legacy, now, $"fireCount={fire} 에서 흡수 전/후 선택이 갈렸다");
-            }
-        }
-
+        // 흡수 전 BarrageEpicenter 와의 결과 일치는 f787c607(unit 0) 시점에 동일성
+        // 테스트로 검증한 뒤 원본을 삭제했다(unit 4). 계약 자체는 위 row-major 순회
+        // 테스트와 아래 스냅샷 순서 무관성 테스트가 계속 고정한다.
         [Test]
         public void Shuffle_IsDeterministic_SameFireCountSameResult()
         {

@@ -42,22 +42,20 @@ namespace Wassup.Battle.Combat
             float dt = SystemAPI.Time.DeltaTime;
             var ff = SystemAPI.GetSingleton<FlowFieldSingleton>();
 
-            // Epicenter pool = living defenders. This is the PAYLOAD's faction
-            // axis (AreaBarrage strikes the caster's opposing side — spec fixes
-            // defenders as both epicenter and victims), not an arm gate.
+            // 방어유닛 셀 스냅샷 — whip 오라의 defender-host 경로가 쓴다(entities 는
+            // 아래에서 보충). projectile-emission-pattern unit 4 로 융단폭격 진앙이
+            // emitter 로 이관돼, 이제 이 배열의 유일한 소비자는 whip 이다.
             var defQuery = SystemAPI.QueryBuilder().WithAll<DefenderUnitTag, LocalTransform>().Build();
             var defTransforms = defQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
             var defCells = new NativeArray<int2>(defTransforms.Length, Allocator.Temp);
             for (int i = 0; i < defTransforms.Length; i++)
                 defCells[i] = GridMath.WorldToCell(defTransforms[i].Position, ff.tileSize, ff.gridSize, origin: ff.origin);
 
-            var ecb = new EntityCommandBuffer(Allocator.Temp);
-
             // nightmare-whip-aura unit 1 — whip pulse state: Effects channel ref
             // (RW — queue mutation intent) + lazy same-faction pools, built at
             // most once per frame and only when a whip slot actually fires
-            // (unlike the eager defender pool above, which the barrage epicenter
-            // always needs and which carries no entities).
+            // (unlike the eager defender cell snapshot above, which carries no
+            // entities).
             bool hasStatEvents = SystemAPI.TryGetSingletonRW<StatModifierApplyEventsSingleton>(out var statEventsRef);
             // unit 3 — 펄스 연출: 버프가 실제로 나간 펄스만 host 위치에 hit-VFX
             // 1회 재생 (blink 퍼프 선례 — Combat→Presentation 기존 채널).
@@ -188,54 +186,20 @@ namespace Wassup.Battle.Combat
                                 }
                             }
                         }
-                        else if (slot.payload != Wassup.Data.DcPayloadKind.AreaBarrage)
+                        else
                         {
                             // Payload landed without its arm — fail loudly instead
                             // of silently consuming the fire (dc-trigger 선례).
+                            // projectile-emission-pattern unit 4 — AreaBarrage arm 은
+                            // 제거됐다(융단폭격은 EmitProjectilePattern 으로 이관). enum
+                            // 값은 append-only 계약상 남아 있고 bake 가 loud 거절한다.
                             UnityEngine.Debug.LogWarning("[BossPeriodicTrigger] PeriodicTimer slot fired with unhandled payload kind.");
                         }
-                        else if (defCells.Length > 0)
-                        {
-                            int idx = BarrageEpicenter.Select(defCells, slot.fireCount, ff.gridSize);
-                            if (idx >= 0)
-                            {
-                                // Cell-lock the epicenter at fire time (SkyFall
-                                // impact) — mirror of the Meteor request build
-                                // (BattleBridge.ApplyMeteor), minus SO reads:
-                                // dataIndex/visualScale were baked into the slot
-                                // (unit 5), dropHeight is filled by the drain
-                                // (translator — the only seam with SO access).
-                                float3 impact = GridMath.CellToWorldCenter(defCells[idx], ff.tileSize, 0f, origin: ff.origin);
-                                var carrier = ecb.CreateEntity();
-                                ecb.AddComponent(carrier, new ProjectileSpawnRequest
-                                {
-                                    movement = MovementKind.SkyFall,
-                                    payload = PayloadKind.TileAoe,
-                                    origin = impact,
-                                    impact = impact,
-                                    damage = slot.magnitude, // flat — no damageMul (계약 8)
-                                    visualScale = slot.visualScale,
-                                    dataIndex = slot.projectileDataIndex,
-                                    impactTileRange = slot.tileRange,
-                                    flightTime = slot.duration, // 낙하 텔레그래프 (unit 0 rev 2)
-                                    owner = entity, // 시전자 귀속 — threat 게이트(defender-only)가 걸러냄
-                                    targetFaction = ProjectileTargetFaction.Defender, // 유일한 Defender setter (unit 4)
-                                });
-                                ecb.AddComponent<ProjectileRequestCarrier>(carrier);
-                                // Rotation advances only on an actual fire — a
-                                // 0-defender no-op keeps the phase (spec §진앙).
-                                slot.fireCount++;
-                            }
-                        }
-                        // 0 defenders: fire consumed, timer already carried over
-                        // by PeriodicTick (no backlog), fireCount unchanged.
                     }
                     slots[si] = slot;
                 }
             }
 
-            ecb.Playback(state.EntityManager);
-            ecb.Dispose();
             defTransforms.Dispose();
             defCells.Dispose();
             whipTargets.Dispose();

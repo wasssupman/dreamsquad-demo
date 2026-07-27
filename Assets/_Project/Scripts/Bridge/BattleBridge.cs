@@ -5690,14 +5690,12 @@ namespace Wassup.Bridge
                 };
                 if (m.payload.kind == Wassup.Data.DcPayloadKind.AreaBarrage)
                 {
-                    // SkyFall 낙하 비주얼 필수 — Meteor 파이프라인 재사용(unit 2).
-                    if (m.payload.projectile == null || m.payload.magnitude <= 0f)
-                    {
-                        Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: AreaBarrage needs ProjectileData + positive magnitude — skipped.");
-                        continue;
-                    }
-                    slot.projectileDataIndex = GetOrCreateProjectileDataIndex(m.payload.projectile);
-                    slot.visualScale = m.payload.projectile.visualScale;
+                    // projectile-emission-pattern unit 4 — AreaBarrage arm 은 제거됐다
+                    // (융단폭격은 EmitProjectilePattern + Pattern_* asset 으로 이관).
+                    // enum 값은 append-only 계약상 남아 있으므로, 옛 authoring 이
+                    // 조용한 no-op 으로 죽는 대신 여기서 거절 사유를 남긴다.
+                    Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: AreaBarrage 는 EmitProjectilePattern 으로 이관됐다(arm 제거) — skipped. 패턴 asset 을 지정하라.");
+                    continue;
                 }
                 else if (m.payload.kind == Wassup.Data.DcPayloadKind.EmitProjectilePattern)
                 {
