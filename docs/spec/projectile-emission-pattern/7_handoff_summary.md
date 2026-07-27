@@ -42,6 +42,18 @@ spec `af1796bc`(0~6 작성) → `5e69dc5f`(spec-review 반영) → `afb9d83f`(�
 - **새 `DcPayloadKind` 는 `DcApplicability` 에도 등록**해야 한다(미등록 = `Unclassified` fail-closed + 전수 테스트 실패). 이번에 실제로 걸렸다.
 - **빈 풀 발화 위상 전진은 의도된 semantics 차이**: 기존 arm 은 no-fire 시 `fireCount` 불변이었지만 새 구조는 push 시 선증가다. 관측자 없고 순회 공정성 무영향이며, 완주 시 write-back 은 겹침 버스트에서 시드 충돌한다.
 
+## 투트랙 리뷰 (2026-07-28, `ff36c497` 로 반영)
+
+두 리뷰어가 **독립적으로 같은 CRITICAL 을 잡았다.** 전부 런타임에서만 드러나는 종류라 EditMode 1502건이 통과했다 — 이 feature 의 가장 큰 교훈이다.
+
+- **CRITICAL 발-루프 소실**: "쿼리 생성을 발-루프 밖으로" 리팩터하며 `for` 를 `if` 로 바꿔 루프 자체를 없앴다. `Advance` 가 N 을 반환하고 `burstRemaining` 을 N 차감하는데 캐리어는 1개 → `shotCount` 사문화. **순수 계층 테스트(`ZeroInterval_DumpsEntireBurstInOneFrame` = 5 반환)는 초록인데 실제로는 1발**이 나갔다 — 순수 테스트가 통합 결함을 가려준 사례.
+- **CRITICAL `continue` 우회**: 위 결함의 귀결로 세 `continue` 가 인스턴스 루프를 건너뛰어 소비된 runtime 이 폐기되고 인스턴스가 영구 적재됐다. 방어유닛 0 구간에 쌓였다가 재배치 순간 일제 발사.
+- **CRITICAL `patternSlots` dangling**: `slots` 를 지키려 순서를 바꿨는데 정작 그 핸들이 `AddBuffer` 2회 뒤에 쓰였다. 사용 직전 `GetBuffer` 재획득으로 수정.
+- **HIGH 카드 경로 조용한 no-op**: `EmitProjectilePattern` 이 카드 bake 에 분기도 terminal else 도 없어 `patternIndex=0` 으로 붙고 "부착됨" 집계. loud 거절 추가.
+- **MEDIUM 4**: SkyFall barrel 의 `arcHeight` 기본값 2가 `dropHeight` 침묵 오버라이드(template 이 SkyFall 일 때 안 싣도록) · `telegraphSec 0` 무예고 폭격 bake 경고 · 베지어 재조준 봉인 · `damage [Min]`/툴팁/죽은 코드.
+
+리뷰 전 자체 검증으로 잡은 CRITICAL 1건(SkyFall origin → 폭격이 보스 머리 위에서 낙하, `b8ef7c37`)은 별건이다.
+
 ## Follow-up
 
 - **Play e2e(unit 6) 미실시** — MCP 브리지 복구 필요. 확인 항목: 0.5초 간격 발사 · 대상이 매번 다른 방어유닛(맵 반대편 포함) · 곡선 육안(연속 3프레임 이상) · 40 데미지 · 텔레포트 미발생(HP 70/40/10% 통과) · 융단폭격 값 보존(주기·순회·1.5s 텔레그래프·r3) · 3슬롯 동시 동작 · 무회귀(홈잉/머신건/폭탄/곡사/Meteor).

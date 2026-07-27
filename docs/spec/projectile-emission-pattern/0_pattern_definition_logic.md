@@ -106,7 +106,9 @@ enum BindingClass : byte { Entity, Cell, Direction }
 static BindingClass MovementBinding.Of(MovementKind kind)
 ```
 
-순수 switch 하나. **새 `MovementKind` 를 여기 분류하는 것이 emitter 편입의 전부다** — 기존 클래스로 분류되면 emitter 는 무변경으로 그 궤적을 발사한다. `default` 는 없다(전 케이스 명시 — 새 enum 추가 시 컴파일러가 분류 누락을 잡도록 switch expression 사용).
+순수 switch 하나. **새 `MovementKind` 를 여기 분류하는 것이 emitter 편입의 전부다** — 기존 클래스로 분류되면 emitter 는 무변경으로 그 궤적을 발사한다.
+
+분류 누락은 **컴파일러가 못 잡는다**(C# 은 switch expression 이든 문이든 enum 전수성을 강제하지 않는다 — CS8509 는 경고, 런타임 throw 는 Burst 에서 못 쓴다). 그래서 EditMode 핀으로 대신한다: `MovementBinding.KnownKindCount` 상수와 `Enum.GetValues(typeof(MovementKind)).Length` 를 대조하는 테스트가 있어, 새 kind 를 추가하면 **테스트가 실패해** 분류 갱신을 강제한다. `default` 는 `Direction`(미개통 = emitter 가 loud warn 후 소모)으로 떨어뜨린다.
 
 ## 완료 기준
 
