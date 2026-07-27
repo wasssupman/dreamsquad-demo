@@ -41,7 +41,7 @@
 | 정거장 | 앵커 | 확인 포인트 |
 |---|---|---|
 | 데이터 SO | `Data/ProjectileData.cs` | 궤적(MovementKind) × 페이로드(PayloadKind) 2축. flightMode 가 이 2축으로 번역됨(`ResolveProjectileAxes`) |
-| 스폰 진입점 | `Battle/Combat/AttackSystem.cs` 가 `ProjectileSpawnRequest` stage → `BattleBridge.DrainProjectileSpawnRequests`→`SpawnProjectile` | ★2단계 — ECS 는 request 만, 엔티티+뷰 생성은 Bridge |
+| 스폰 진입점 | `Battle/Combat/AttackSystem.cs` 가 `ProjectileSpawnRequest` stage → `BattleBridge.DrainProjectileSpawnRequests`→`SpawnProjectile` | ★2단계 — ECS 는 request 만, 엔티티+뷰 생성은 Bridge. **stage 지점은 3곳**: RESOLVE(기본 공격·dc 니들) / 폭탄 발사 성사 / 캐스트 사건 드레인 — 셋 다 `SpawnNeedleCarrier` 를 공유한다(dc 캐리어는 `ProjectileRequestCarrier` 태그, drain 이 스폰 후 파괴) |
 | ECS 컴포넌트 (Combat) | `Battle/Combat/Projectile/` ProjectileState·ProjectileTag·ProjectileSpawnRequest | 페이로드별 조건부: PathHitRecord 버퍼(PathHit — 대상당 1회 스윕, drain 이 부착) |
 | 시뮬 시스템 | `ProjectileMoveSystem.cs`(궤적) · `ProjectileHitSystem.cs`(페이로드 — IncomingDamage/IncomingHeal 기입) | |
 | 이벤트 큐 | `Battle/Combat/Projectile/ProjectileHitEventsSingleton.cs` | drain = `DrainProjectileHitEvents` → PlayHit |
@@ -56,7 +56,7 @@
 | 스폰 진입점 | `Battle/Effects/HazardCastSystem.cs` → HazardSpawnRequests 큐 → `BattleBridge.DrainHazardSpawnRequests` | staged-request drain (투사체와 동형) |
 | ECS 컴포넌트 (Effects) | `Battle/Effects/` Hazard·HazardEffect·BlockingHazard·BlockingHazardCellsBuffer (`EffectSpawner.cs`) | |
 | 시뮬 시스템 | `HazardLifetimeSystem.cs`·`ZoneApplySystem.cs`·`DotApplySystem.cs`·`CcApplySystem.cs` | |
-| 이벤트 큐 | HazardSpawnRequests·HazardDestroyed(Blocking 파괴)·HazardRuntime Singleton | ★HazardRuntimeEvents 는 **텔레메트리 로깅 전용** — VFX 트리거 아님 |
+| 이벤트 큐 | HazardSpawnRequests·HazardDestroyed(Blocking 파괴)·HazardRuntime Singleton + **CastEvents**(Effects→Combat) | ★HazardRuntimeEvents 는 **텔레메트리 로깅 전용** — VFX 트리거 아님. ★CastEvents 는 해저드 스폰과 무관 — 캐스트 성사를 **그 host 의 공격 사건**으로 Combat 에 넘기는 채널(캐스터는 `attackRange 0` 이라 RESOLVE 에 못 간다). `HazardCastSystem [UpdateBefore(AttackSystem)]` 로 같은 프레임 소비 |
 | View | Zone: `Presentation/HazardVisualLifetime.cs`(self-destroy) / Blocking: `Battle/Effects/BlockingHazardPresenter.cs`(엔티티 추적) | 계열별 뷰 백엔드 다름 |
 | 씬 wiring | BattleBridge (EffectSpawner·vfxSpawner 경유) | |
 
