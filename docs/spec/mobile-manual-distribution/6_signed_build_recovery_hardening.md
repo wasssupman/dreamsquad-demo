@@ -43,3 +43,5 @@
 - [x] `bash -n`, Shell 회귀 테스트와 격리 MobileBuild EditMode 60개가 통과한다.
 - [x] artifact source와 미실행 실기기/Firebase QA가 README에 구분된다.
 - [ ] hardening 적용 clean commit에서 target `both`를 다시 실행해 자동 clean을 통합 검증한다.
+
+확인: 2026-07-27, 구현 commit `4c054129a27d4224d4b1b56d4574b20dca4b47e4`.

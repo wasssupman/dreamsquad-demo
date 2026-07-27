@@ -19,6 +19,7 @@ APK와 iOS Ad Hoc IPA를 재현 가능한 로컬 명령으로 만들고 Firebase
 | 4 | `4_build_machine_preflight_fix.md` | Unity Hub 모듈 위치 탐지 회귀 수정과 첫 빌드머신 검증 |
 | 5 | `5_first_android_build_hygiene.md` | Android 첫 실행의 orientation 호환과 TMP 프리베이크 보존 |
 | 6 | `6_signed_build_recovery_hardening.md` | 실패 재시도 stem, licensing 고아와 Unity 직렬화 노이즈 방어 |
+| 7 | `7_handoff_summary.md` | 첫 서명 산출물과 hardening 검증 결과 인계 |
 
 ## Feature-wide 계약
 
