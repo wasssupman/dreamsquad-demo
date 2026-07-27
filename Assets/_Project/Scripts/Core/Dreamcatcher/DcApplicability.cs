@@ -164,10 +164,14 @@ namespace Wassup.Core
         {
             switch (kind)
             {
-                // 통통구슬 — 주입이 homing 단발 분기에만, 재타겟 후처리도
-                // SingleSplash arm 에만 있다. 방향탄 개통은 별도 spec.
+                // 통통구슬 — homing 단발과 방향탄(Directional) 둘 다 지원한다.
+                // 방향탄은 pierce 예산이 0 이 되는 순간 호밍으로 전환해 튕긴다
+                // (`ProjectileHitSystem` PathHit arm). Ballistic/Grenade 는 대상 개념이
+                // 달라 여전히 비적용 — 착탄 셀이 발사 시점에 고정되므로 재조준할 대상이
+                // 없다(attack-mod-bounce 계약 4 의 원래 제외 사유).
                 case DcAttackModKind.ProjectileBounce:
                     return host.route == DcProjectileRoute.Homing
+                        || host.route == DcProjectileRoute.Directional
                         ? DcRejectReason.None : DcRejectReason.NeedsHomingRoute;
 
                 // 끝을 보는 눈 — 데미지 output 필요. facing 유닛은 레인 타게팅이

@@ -327,6 +327,10 @@ namespace Wassup.Battle.Combat.Projectile
                         int budget = projectile.ValueRO.pierceRemaining;
                         float dmg = projectile.ValueRO.damage;
 
+                        // 방향탄 bounce — 관통을 다 쓴 지점(마지막 victim)에서 튕긴다.
+                        int lastVictimIdx = -1;
+                        float3 lastVictimPos = default;
+
                         var sweptIdx = new NativeList<int>(Allocator.Temp);
                         var sweptDist = new NativeList<float>(Allocator.Temp);
                         for (int i = 0; i < aoeEntities.Length; i++)
@@ -381,6 +385,9 @@ namespace Wassup.Battle.Combat.Projectile
                                     originalScale = transformLookup[victim].Scale,
                                 });
 
+                            lastVictimIdx = sweptIdx[nearest];
+                            lastVictimPos = victimPos;
+
                             budget--;
                             sweptIdx.RemoveAtSwapBack(nearest);
                             sweptDist.RemoveAtSwapBack(nearest);
@@ -396,6 +403,55 @@ namespace Wassup.Battle.Combat.Projectile
                         }
                         // Out of budget = spent; impactReached = flew its full range.
                         survives = budget > 0 && !projectile.ValueRO.impactReached;
+
+                        // ── 통통구슬 × 방향탄 (defender-directional-volley 후속 결정) ──
+                        // pierce 예산이 0 이 된 순간(= 이 탄이 더 뚫을 수 없을 때) bounce 가
+                        // 남아 있으면, 마지막으로 맞힌 적에서 다음 적으로 **호밍 전환**해
+                        // 재비행한다. 같은 엔티티를 유지하므로 뷰/트레일이 그대로 이어진다
+                        // (SingleSplash bounce 와 동일 원리).
+                        //
+                        // ⚠ 머신건 탄은 `pierceCount: 1` 이라 **관통이 없다** — 첫 적을
+                        // 맞히는 즉시 예산이 0 이 되고 곧바로 튕긴다. 즉 실사용 형태는
+                        // "관통하다 튕김"이 아니라 "**맞히고 튕김**"이다. pierce > 1 인 탄이
+                        // 생기면 그때 비로소 "다 뚫고 나서 튕김"이 된다 — 같은 코드가
+                        // 두 경우를 모두 덮는다.
+                        //
+                        // 데미지 예산이 곱해지지 않는 이유: 전환 시점에 pierce 는 이미 0 이라
+                        // 스윕으로 더 맞힐 수 없고, 이후는 bounce 횟수만큼만 추가된다.
+                        if (!survives && budget <= 0 && projectile.ValueRO.bounceRemaining > 0
+                            && lastVictimIdx >= 0)
+                        {
+                            int nextIdx = BounceRetarget.FindNext(
+                                lastVictimPos, lastVictimIdx, aoePositions,
+                                projectile.ValueRO.bounceTileRange, tileSize, gridSize, ffOrigin);
+                            if (nextIdx >= 0)
+                            {
+                                float mul = projectile.ValueRO.bounceDamageMul;
+                                var next = projectile.ValueRO;
+                                next.movement = MovementKind.HomingToEntity; // 방향 → 호밍
+                                next.payload = PayloadKind.SingleSplash;     // 스윕 → 단일 착탄
+                                next.target = aoeEntities[nextIdx];
+                                next.impactReached = false;
+                                next.bounceRemaining = projectile.ValueRO.bounceRemaining - 1;
+                                next.damage = projectile.ValueRO.damage * mul;
+                                ecb.SetComponent(entity, next);
+
+                                if (mul != 1f && outputLookup.HasBuffer(entity))
+                                {
+                                    var buf = outputLookup[entity];
+                                    for (int oi = 0; oi < buf.Length; oi++)
+                                    {
+                                        var e2 = buf[oi];
+                                        if (e2.value.kind == AttackOutputKind.Damage)
+                                        {
+                                            e2.value.magnitude *= mul;
+                                            buf[oi] = e2;
+                                        }
+                                    }
+                                }
+                                survives = true;
+                            }
+                        }
                         break;
                     }
 

@@ -822,6 +822,24 @@ namespace Wassup.Battle.Combat
                                     float2 toTarget = (bestTargetPos - atkPos).xz;
                                     fireDir = math.lengthsq(toTarget) > 1e-6f ? math.normalize(toTarget) : new float2(0f, 1f);
                                 }
+                                // 통통구슬 — 방향탄도 bounce 를 싣는다. template 에 넣으므로
+                                // 확산탄·버스트 잔탄이 전부 같은 bounce 예산을 물려받는다
+                                // (템플릿 스냅샷 계약: 7번째 발이 1번째와 달라지지 않는다).
+                                int dirBounceCount = 0, dirBounceRange = 0;
+                                float dirBounceMul = 1f;
+                                if (defenderTagLookup.HasComponent(attackerEntity) && dcAttackModLookup.HasBuffer(attackerEntity))
+                                {
+                                    var dmods = dcAttackModLookup[attackerEntity];
+                                    for (int di = 0; di < dmods.Length; di++)
+                                    {
+                                        var mod = dmods[di];
+                                        if (mod.kind != Wassup.Data.DcAttackModKind.ProjectileBounce) continue;
+                                        dirBounceCount += mod.count;
+                                        dirBounceRange = math.max(dirBounceRange, mod.tileRange);
+                                        dirBounceMul *= mod.damageMul;
+                                    }
+                                }
+
                                 // 사거리는 레인 게이트와 같은 타일 단위로 환산 — 그래야
                                 // 탄이 "게이트가 인정한 마지막 칸"까지 정확히 닿는다.
                                 // direction 은 확산 전 기준 방향(템플릿 원본).
@@ -837,6 +855,9 @@ namespace Wassup.Battle.Combat
                                     hitThreshold = projRef.hitThreshold,
                                     visualScale = projRef.visualScale,
                                     dataIndex = projRef.dataIndex,
+                                    bounceRemaining = dirBounceCount,
+                                    bounceTileRange = dirBounceRange,
+                                    bounceDamageMul = dirBounceMul,
                                     owner = attackerEntity, // nightmare-catcher unit 1 — threat attribution
                                     priorityTarget = fmPrioTarget,
                                     priorityDamageMul = fmPrioMul,

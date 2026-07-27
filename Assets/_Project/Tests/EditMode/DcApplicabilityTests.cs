@@ -91,9 +91,9 @@ namespace Wassup.Tests.EditMode
         {
             Assert.AreEqual(DcRejectReason.None,
                 DcApplicability.EvaluateAttackMod(DcAttackModKind.ProjectileBounce, Archer()));
-            Assert.AreEqual(DcRejectReason.NeedsHomingRoute,
+            Assert.AreEqual(DcRejectReason.None,
                 DcApplicability.EvaluateAttackMod(DcAttackModKind.ProjectileBounce, MachineGunner()),
-                "방향탄 개통은 별도 spec — 지금은 거절이 정답");
+                "방향탄 개통 — pierce 예산이 0 이 되면 호밍으로 전환해 튕긴다");
             Assert.AreEqual(DcRejectReason.NeedsHomingRoute,
                 DcApplicability.EvaluateAttackMod(DcAttackModKind.ProjectileBounce, Artillery()));
             Assert.AreEqual(DcRejectReason.NeedsHomingRoute,

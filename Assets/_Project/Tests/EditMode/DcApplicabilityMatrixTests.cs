@@ -191,11 +191,11 @@ namespace Wassup.Tests.EditMode
                 var reason = DcApplicability.EvaluateAttackMod(DcAttackModKind.ProjectileBounce, host);
                 (reason == DcRejectReason.None ? accepted : rejected).Add(unit.id);
                 if (reason == DcRejectReason.None)
-                    Assert.AreEqual(DcProjectileRoute.Homing, host.route,
-                        $"{unit.id}: homing 이 아닌데 bounce 를 통과시켰다");
+                    Assert.IsTrue(host.route == DcProjectileRoute.Homing || host.route == DcProjectileRoute.Directional,
+                        $"{unit.id}: homing/directional 이 아닌데 bounce 를 통과시켰다 ({host.route})");
             }
 
-            Assert.Contains("machine_gunner", rejected, "머신거너는 DirectionalLinear — 별도 spec 전까지 거절");
+            Assert.Contains("machine_gunner", accepted, "머신거너 방향탄도 튕긴다(pierce 소진 후 호밍 전환)");
             Assert.Contains("bomb_man", rejected, "폭탄맨은 GrenadeToCell (ProjectileRef 는 있지만)");
             Assert.Contains("artillery", rejected, "아틸러리는 Ballistic — 기존 계약 4 의 의도된 제외");
             Assert.Greater(accepted.Count, 0, "homing 유닛이 하나도 없을 리 없다");
