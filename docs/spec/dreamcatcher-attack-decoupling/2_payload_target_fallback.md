@@ -46,11 +46,17 @@ spec critic 은 "반경 0 = 절대 발동 불가 = 부착 거절"을 제안했�
 
 ## 완료 기준
 
-- [ ] 컴파일 클린 + EditMode 그린. **기존 동작 무변화** — 폴백은 아직 호출되지 않는다.
-- [ ] `DcNeedleTargetingTests`: 반경 밖 제외 · 아군/해저드 제외(`Faction.Enemy` 고정) · `PastGoalTag` 제외 · 동거리 tie-break 가 인덱스 순으로 **결정론** · 후보 없음 → `Entity.Null`.
-- [ ] `Card_PokeNeedle.payload.tileRange == 4` 이고 bake 가 `slot.tileRange` 에 싣는다(EditMode 로 에셋 값 고정).
-- [ ] **시트 왕복**: `DcMechanics` / `poke_needle` 행 `tileRange` 셀이 `4`. 현재 명시적 `0` 이라 갱신하지 않으면 다음 로그인 import 가 SO 를 되돌린다(`DcSheetApplier.cs:209` — blank 만 keep). `curl` 읽기 전용으로 대조까지가 완료.
+- [x] 컴파일 클린 + EditMode **1467 전원 통과**. 기존 동작 무변화 — 폴백은 아직 호출되지 않는다.
+- [x] `DcNeedleTargetingTests` 6케이스: 반경 밖 제외 · 부적격(진영/상태) 제외 · 동거리 tie-break 결정론(배열 순서 무관) · 후보 없음 → `-1` · `tileRange<=0` 폴백 비활성.
+- [x] `Card_PokeNeedle.payload.tileRange == 4` + bake 가 `slot.tileRange` 에 적재. 매트릭스 테스트에 반경>0 회귀 핀.
+- [ ] **시트 왕복 — 남음.** `DcMechanics` / `poke_needle` 행 `tileRange` 셀이 아직 명시적 `0`. 갱신하지 않으면 다음 로그인 import 가 SO 를 `0` 으로 되돌리고 폴백이 조용히 죽는다(`DcSheetApplier.cs:209` — blank 만 keep). 갱신 후 `curl` 대조.
+
+## 주의 (unit 3·4 로 넘기는 것)
+
+- **폴백 호출 시 caller 계약**: 후보의 `eligible` 은 진영 `Faction.Enemy` 고정 + `DeadTag`/`PendingDeployment`/`PastGoalTag` 제외로 채운다. host 의 `targetMask` 를 재사용하면 힐러 자해가 되돌아온다.
+- **적용성 조건 추가**: host 타겟이 구조적으로 없는 아키타입(`BombThrow`/`HazardCast`)에서 `ProjectileToTarget` 은 `tileRange > 0` 을 요구해야 한다. 지금 넣으면 쓰이지 않는 죽은 규칙이라 미뤘다.
+- **문안 재검토**: 폭탄맨·캐스터가 열리면 그 host 에서만 "대상"이 "반경 N칸 최근접 적"이 된다. 반경을 문안에 노출할지 그때 판단.
 
 ---
 
-확인 일자 / 커밋: (미완)
+확인 일자 / 커밋: 2026-07-27 · `f3cffadb` (시트 갱신 1건 미완)
