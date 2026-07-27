@@ -19,17 +19,21 @@ struct EmitterInstance : IBufferElementData
 {
     public PatternSpec    spec;      // 순수 명세 — 시작 시 값 스냅샷 (계약 8)
     public EmitterRuntime runtime;   // 순수 스케줄 상태
-    public ProjectileSpawnRequest template;  // ← ECS 바인딩은 이 한 줄
+    public ProjectileSpawnRequest template;  // ← ECS 바인딩 1
+    public Entity lockedTarget;      // ← ECS 바인딩 2 — reselectPerShot=false 잠금 신원 (spec-review H1)
 }
 ```
 
-**이 배치가 계약 1·2 를 지키는 방식**: 순수 부분(`spec`·`runtime`)은 아키텍처 컴포넌트 안에 **값으로 박히기만** 하고 아키텍처 타입을 참조하지 않는다. ECS 전용 자료는 `template` 하나이며, Mono 이식 시 그 자리에 Mono 용 발사 파라미터가 들어간다. 스케줄 상태가 `template` 을 **품는** 형태(현 `VolleyFireState`)는 순수 코어를 이식 불가로 만들므로 쓰지 않는다.
+**이 배치가 계약 1·2 를 지키는 방식**: 순수 부분(`spec`·`runtime`)은 아키텍처 컴포넌트 안에 **값으로 박히기만** 하고 아키텍처 타입을 참조하지 않는다. ECS 전용 자료는 `template`·`lockedTarget` 둘이며, Mono 이식 시 그 자리에 Mono 용 발사 파라미터/참조가 들어간다. 스케줄 상태가 `template` 을 **품는** 형태(현 `VolleyFireState`)는 순수 코어를 이식 불가로 만들므로 쓰지 않는다.
+
+잠금 semantics: `reselectPerShot=false` 면 **첫 성공 선택**에서 해석한 Entity 를 `lockedTarget` 에 저장하고 이후 발은 재사용한다(index 재사용 금지 — 후보 스냅샷은 프레임-로컬이다). 잠금 대상이 버스트 도중 소멸하면(`LocalTransform` 부재) 남은 발은 조용히 소모한다.
 
 `template` 은 bake(unit 3)가 SO 를 읽어 만든 request 원본이다 — `movement`/`payload`/`dataIndex`/`speed`/`arcHeight`/`impactTileRange`/`splash*`/`bezier*`/`owner`/`targetFaction` 등이 채워져 있고, **타겟 의존 필드(`target`/`impact`/`direction`/`control1`/`control2`)만 비어 있다**. emitter 가 발마다 그 빈칸을 채운다. `template.dataIndex` 는 `spec.barrelDataIndex` 에서 복사된 파생값이다(계약 3 의 "복제" 가 아님 — 명세는 중립 계층에서 완결되고 아키텍처가 자기 형태로 파생시킨다).
 
 ### `ProjectileEmitterSystem` (ISystem, Combat, `BattleSimGroup`)
 
 ```
+[UpdateAfter(typeof(BossPeriodicTriggerSystem))]   // push 와 같은 프레임에 첫 발 (spec-review L1)
 OnCreate: RequireForUpdate<EmitterInstance>, RequireForUpdate<FlowFieldSingleton>
 ```
 
@@ -41,11 +45,11 @@ OnCreate: RequireForUpdate<EmitterInstance>, RequireForUpdate<FlowFieldSingleton
    - `PatternTargeting.Select(cells, spec.selection, runtime.fireCount, gridSize)` → 후보 index
    - `PatternLogic.BuildOrder(spec, ref runtime, idx)` → `ShotOrder`. 타겟 잠금(`reselectPerShot`) 판단은 **여기 안에서** 끝난다 — 아키텍처가 되풀이하지 않는다.
    - `order.targetCandidateIndex < 0`(후보 0) → 그 발을 조용히 소모(융단폭격의 "방어유닛 0 = 발사 소모, 위상 보존" 선례).
-   - `template` 복사 → `order` 의 값(`damage`·`telegraphSec`)을 얹고 `movement` 로 빈칸 분기:
-     - `HomingToEntity` / `BezierHomingToEntity` → `target = entities[order.targetCandidateIndex]`. 베지어는 `swingIndex = order.shotIndex` 만 세팅한다 — 제어점 산출은 드레인 몫이다(unit 1, `dropHeight` 선례). **emitter 는 SO 를 읽지 않는다.**
-     - `SkyFall` / `BallisticArcToPoint` / `GrenadeToCell` → `impact = GridMath.CellToWorldCenter(cells[order.targetCandidateIndex], …)`, `flightTime = order.telegraphSec`.
-     - `DirectionalLinear` → `direction = normalize(destPos − origin)` (XZ).
+   - `template` 복사 → `order` 의 값(`damage`·`telegraphSec`)을 얹고 `movement` 로 빈칸 분기. **v1 분기는 소비 arm 3종만** — 그 외 `movement` 는 loud warn 후 소모(spec-review M2, 미사용 라이브 경로 금지 · `GateComboSupported` 선례). `BallisticArcToPoint`/`GrenadeToCell`/`DirectionalLinear` 분기는 소비자가 생길 때 연다(Directional 은 `maxDistance` 출처 정의도 그때):
+     - `HomingToEntity` / `BezierHomingToEntity` → `target` = 잠금/선택 해석 결과(위 잠금 semantics). 베지어는 `swingIndex = order.shotIndex` 만 세팅한다 — 제어점 산출은 드레인 몫이다(unit 1, `dropHeight` 선례). **emitter 는 SO 를 읽지 않는다.**
+     - `SkyFall` → `impact = GridMath.CellToWorldCenter(cells[order.targetCandidateIndex], …)`, `flightTime = order.telegraphSec`.
    - `origin` = host 위치.
+   - **outputs 버퍼는 싣지 않는다** — SingleSplash 해결은 outputs 부재 시 `state.damage` 폴백을 탄다(`ProjectileHitSystem` 확인, dc 니들/스킬 발사 선례). 이 폴백이 load-bearing 이다: 패턴 데미지는 Damage-only 계약이고, **non-Damage outputs(Stat/Stack/Heal)는 패턴으로 나가지 않는다**(범용성 한계 — README 후속 후보).
    - 캐리어 엔티티 생성: `ecb.CreateEntity()` + `ProjectileSpawnRequest` + `ProjectileRequestCarrier` — 기존 3개 stage 지점과 동형이라 브리지 드레인이 스폰 후 캐리어를 파괴한다.
 4. **완주 제거** — `runtime.burstRemaining == 0` 인 인스턴스를 버퍼에서 swap-back 제거. 버퍼 자체는 남긴다(구조 변경 0).
 

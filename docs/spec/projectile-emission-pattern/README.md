@@ -50,9 +50,9 @@
 
 | 정거장 | 앵커 | 이번 spec |
 |---|---|---|
-| 데이터 SO | `Data/ProjectileData.cs` | **+`Data/ProjectilePatternData.cs`**(발사 명세). `ProjectileFlightMode.BezierHoming` append → `ResolveProjectileAxes` 매핑 |
+| 데이터 SO | `Data/ProjectileData.cs` | **+`Data/ProjectilePatternData.cs`**(발사 명세). `ProjectileFlightMode` 에 `BezierHoming`·`SkyFall` append → `ResolveProjectileAxes` 매핑(SkyFall 은 지금껏 `ApplyMeteor` 하드코딩으로만 존재 — spec-review C1) |
 | 스폰 진입점 | RESOLVE / 폭탄 / 캐스트 드레인 3곳 | **+4번째 = `ProjectileEmitterSystem`**. 기존 3곳과 동형(`ProjectileRequestCarrier` 캐리어 → 브리지 드레인이 스폰 후 파괴) |
-| ECS 컴포넌트 (Combat) | `Projectile/` ProjectileState·Tag·SpawnRequest | +`Emission/EmitterInstance`(host 부착 버퍼) · `ProjectileState` 에 베지어 제어점 2필드 |
+| ECS 컴포넌트 (Combat) | `Projectile/` ProjectileState·Tag·SpawnRequest | +`Emission/EmitterInstance`·`Emission/PatternSlot`(둘 다 패턴 host 전용 버퍼 — 일반 유닛 무과세) · `ProjectileState` 에 베지어 제어점 2필드 |
 | 시뮬 시스템 | `ProjectileMoveSystem`(궤적) · `ProjectileHitSystem`(페이로드) | Move 에 `BezierHomingToEntity` arm 1개. Hit 무변경 |
 | 이벤트 큐 | `ProjectileHitEventsSingleton` | 무변경 — **신규 채널 0** |
 | View/Pool | `Presentation/ProjectileViewPool.cs` | view Y switch 에 베지어 arm 1개 |
@@ -60,6 +60,12 @@
 
 ## 후속 후보 (스코프 밖)
 
+> **범용 투사체 매니저까지의 거리 (spec-review 2026-07-28 판정):** v1 은 "타겟형 사격 매니저"다 — 발사 스케줄 × 타겟 선택 × 궤적/페이로드 위임까지. 범용을 자처하려면 아래 처음 4개(무타겟 / host 독립 / 서브 발사 / non-Damage)가 어휘에 들어와야 한다. 뼈대(순수 결정 계층 + ShotOrder + 기존 라이프사이클 재사용)는 그 확장을 수용하는 형태로 설계됐다.
+
+- **무타겟 패턴 (`PatternSelectionRule.None` + 방향/셀 지정)** [M] · fan/ring·고정 방향 발사는 대상이 없다 — 지금 구조는 후보 선택이 전제라 표현 불가. `None` rule + origin 기준 방향 셋(shape 축과 함께). Directional 탄의 `maxDistance` 출처 정의도 여기.
+- **host 독립 발사 (detached emitter)** [M] · 사망 유언 barrage·bridge-cast(플레이어 스킬) 패턴 발사. host 엔티티가 죽으면 `EmitterInstance` 버퍼도 죽는다 — ownerless 캐리어 엔티티에 버퍼를 실어 fire-and-forget. 첫 소비자 생길 때.
+- **서브 발사 (착탄 → 자식 패턴, cluster)** [L] · 범용 매니저의 리트머스. `ProjectileData` 에 `onImpactPattern` 참조 + 착탄 지점을 origin 으로 detached 발사 — host 독립 발사가 선행 조건.
+- **non-Damage 패턴 (Stat/Stack/Heal outputs)** [S] · emitter 캐리어는 outputs 버퍼를 싣지 않아 `state.damage` 폴백(Damage-only) 고정. 슬로우탄/도트탄 패턴이 필요하면 template 조립에 outputs 스테이징 추가.
 - **`PayloadKind` → 해결 시점 / 효과 분리** [M] · 현 `PayloadKind` 는 두 개념을 겹쳐 든다: 해결 **시점**(점 도달 / 비행 중 경로 스윕 / 착탄 셀)과 **효과**(splash / pierce / tileAoe). bounce·retarget·priority·heavy 는 이미 `0=inert` 직교 필드인데 이 셋만 enum 에 묶여 있다. 승격하면 "곡선 호밍 + 관통 + 착탄 splash" 가 데이터로 열린다. 계약 3 이 가리키는 다음 단계 — 소비자는 그런 조합을 요구하는 첫 콘텐츠. `ProjectileHitSystem` 해결 분기 재편이라 기존 발사 지점 11곳이 회귀 표면이 되므로 별도 spec.
 - **fan/ring shape** [S] · `VolleyMath.SpreadDirection` 재사용 → 패턴 필드 1개 + 호출 1줄. Directional 탄과 페어링될 때 의미가 생긴다.
 - **selection rule 확장** [S] · Nearest / LowestHp / Frontmost — 기존 순수함수(`NearestTargeting`·`LowestHealthTargeting`·`FrontmostTargeting`) 를 rule 로 노출. 소비자 생길 때.

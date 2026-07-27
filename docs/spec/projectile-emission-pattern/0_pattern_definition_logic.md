@@ -49,18 +49,21 @@ SO 와 동일 필드에서 `barrel` 만 `int barrelDataIndex` 로 치환한다. 
 struct EmitterRuntime {
     int   burstRemaining;
     float timer;
-    int   fireCount;          // 인스턴스 누적 발사 수 — 선택 규칙의 결정론 소스
+    int   fireCount;          // 선택 규칙의 결정론 소스 — Begin 이 baseFireCount 로 시드
     int   shotIndex;          // 현재 버스트 내 순번 (베지어 스윙 소스)
-    int   lockedTargetIndex;  // reselectPerShot == false 일 때 첫 발의 후보 index (−1 = 미확정)
 }
 
 static int  EmitterTick.Advance(ref EmitterRuntime rt, float dt, float intervalSec)
-static void EmitterTick.Begin(ref EmitterRuntime rt, in PatternSpec spec)
+static void EmitterTick.Begin(ref EmitterRuntime rt, in PatternSpec spec, int baseFireCount)
 ```
 
 `Advance` 는 `VolleyMath.TickBurst` 와 같은 계약(잔여 캐리로 드리프트 0, `interval<=0` = 남은 전부 즉시)이라 **그 함수를 그대로 호출**한다. `EmitterTick` 은 `fireCount`/`shotIndex` 전진과 완주 판정(`burstRemaining==0`)만 얹는 얇은 래퍼다 — 중복 구현 금지.
 
-`Begin` = 인스턴스 시작(`burstRemaining = shotCount`, `timer = 0`, `lockedTargetIndex = -1`). 첫 발은 시작 프레임에 나간다.
+`Begin` = 인스턴스 시작(`burstRemaining = shotCount`, `timer = 0`, `fireCount = baseFireCount`). 첫 발은 시작 프레임에 나간다.
+
+**`baseFireCount` 는 계약이다 (spec-review C2).** 인스턴스는 트리거 발화마다 생성·완주 후 제거되는 transient 라, `fireCount` 를 0 에서 시작하면 RoundRobin 은 영원히 rank 0(같은 대상만 폭격), 셔플은 `hash(0)` 고정(같은 대상만 저격)이 된다. 영속 카운터는 durable 소유자(트리거 슬롯)가 들고, 인스턴스는 시드만 받는다 — 기존 `slot.fireCount` 가 슬롯에 영속하는 이유와 동일. 시드/증가 배선은 unit 3.
+
+**타겟 잠금(`reselectPerShot=false`)은 순수 계층 상태가 아니다 (spec-review H1).** 후보 스냅샷은 매 프레임 재빌드되므로 "첫 발의 후보 index" 를 순수 상태로 잠그면 프레임을 넘는 버스트에서 같은 index 가 다른 유닛을 가리킨다. 잠금 대상의 신원(Entity)은 아키텍처 바인딩이다 — `EmitterInstance.lockedTarget` (unit 2, template 과 같은 결). 순수 계층은 `spec.reselectPerShot` 로 "재추첨하는가" 만 답한다.
 
 ### `ShotOrder` + `BuildOrder` — 로직이 만들고 아키텍처가 소비하는 자료구조
 
@@ -77,7 +80,7 @@ static ShotOrder PatternLogic.BuildOrder(in PatternSpec spec, ref EmitterRuntime
                                         int selectedCandidateIndex)
 ```
 
-`BuildOrder` 가 **명령 자료구조를 완성하는 유일한 지점**이다. `reselectPerShot == false` 면 `rt.lockedTargetIndex` 를 확정/재사용하고(첫 발만 새로 뽑음), `true` 면 전달된 index 를 그대로 쓴다. 아키텍처 계층은 이 order 를 받아 자기 형태(ECS = `ProjectileSpawnRequest`, Mono = 자기 발사 파라미터)로 번역만 한다 — 선택·잠금 판단을 아키텍처에서 되풀이하지 않는다.
+`BuildOrder` 가 **명령 자료구조를 완성하는 유일한 지점**이다(`shotIndex`/`fireCount` 전진 포함). 아키텍처 계층은 이 order 를 받아 자기 형태(ECS = `ProjectileSpawnRequest`, Mono = 자기 발사 파라미터)로 번역만 한다. 단 잠금 신원 저장은 아키텍처 몫이다(위 H1 항목).
 
 ### `PatternTargeting`
 
@@ -101,6 +104,7 @@ static int Select(in NativeArray<int2> candidateCells, PatternSelectionRule rule
 - **`grep -l "using Unity.Entities" ` 가 이 unit 의 신규 파일 6개에서 0건** (계약 1 기계 검증).
 - EditMode 신규 ≥ 12:
   - `EmitterTick`: 단발 · 버스트 정확 발수 · `interval<=0` 즉시 전부 · 느린 프레임 다중 발사 · 잔여 캐리 드리프트 0 · 완주 후 0
-  - `BuildOrder`: `reselectPerShot=false` 면 버스트 전 발이 같은 `targetCandidateIndex` · `true` 면 발마다 전달값 반영
+  - `Begin` 시드 연속성: `baseFireCount=k` 로 시작한 인스턴스의 선택이 "영속 카운터 k 인 상태" 와 동일 — **트리거 발화 2회 연속 시나리오에서 RoundRobin 이 다른 대상을 순회**하는 테스트(C2 회귀 핀)
+  - `BuildOrder`: `shotIndex`/`fireCount` 전진 · order 필드 정확성
   - `PatternTargeting`: round-robin 순회 · **`BarrageEpicenter` 와 동일 결과**(같은 입력 비교) · 셔플 결정론(같은 fireCount = 같은 결과) · 셔플 분포(후보 4개 · 100 발 전부 최소 1회) · 청크 순서 무관(후보 배열 셔플해도 동일 선택) · `n==0` → −1
 - 기존 EditMode 무회귀(현 905건 기준).
