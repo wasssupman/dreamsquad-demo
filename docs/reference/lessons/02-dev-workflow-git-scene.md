@@ -18,6 +18,24 @@ EditMode 테스트 `.cs` 는 **`Assets/_Project/Tests/EditMode/`** 에 둔다(as
 - **신규 `.cs`**: 리그 Unity 가 생성한 `.meta` 를 메인으로 회수해 guid 고정 후 커밋.
 - 리그가 stale 하면 HEAD 가 클린 체크아웃 컴파일 가능한지 먼저 의심(미커밋 의존 파일 탐지기 역할).
 
+## Unity mobile batchmode는 라이선스와 직렬화 후처리까지 빌드다
+
+첫 Android/iOS 연속 실빌드에서 `PPID=1`의 오래된 `Unity.Licensing.Client`가 mutex를
+점유해 batchmode가 반복 대기했고, 성공 종료 뒤에도 PlayerSettings의 keystore canonicalization,
+iPhone batching 기본값, URP obsolete 필드 제거가 tracked diff로 남았다.
+
+- process 판정은 argv가 아닌 `ps ... comm=`의 정확한 basename을 쓴다. 현재 UID의
+  `PPID=1` 항목만 PID로 알리고 자동 종료하지 않는다.
+- 실패 출력은 삭제하지 않는다. 같은 version/build/commit 재시도는 명시적 `--attempt N`으로
+  새 stem을 만든다.
+- 같은 프로젝트의 두 빌드를 lock으로 직렬화한다. Unity snapshot 복원 후 저장하고, Shell은
+  사전에 확정한 전체-file 직렬화 후보와 정확히 일치할 때만 원본을 atomic replace한다.
+- `git checkout` 같은 일반 복원은 사용자 변경을 지울 수 있으므로 금지한다. HEAD/index 변화,
+  unrelated diff와 symlink는 보존하고 실패한다. provenance를 판별할 수 없는 ignored Unity
+  editor 설정은 자동 복원하지 않는다.
+- shell fixture 통과만으로 끝내지 말고 격리 Unity Test Runner와 실제 양 플랫폼 signed build의
+  종료 후 clean 상태를 각각 확인한다.
+
 ## git 인덱스 쓰기는 샌드박스 비활성 필요
 
 이 환경에서 Bash 기본 샌드박스는 `.git/index` 쓰기를 격리/롤백한다 → `git add` 가 exit 0 을 반환하고도 아무것도 스테이징 안 됨, 이어지는 `git commit` 이 "no changes added" 로 조용히 실패.

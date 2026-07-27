@@ -30,7 +30,9 @@ macOS 빌드머신에서 버전 인자를 명시해 서명 APK/Ad Hoc IPA를 생
 Unity 기본 경로는
 `/Applications/Unity/Hub/Editor/6000.4.3f1/Unity.app/Contents/MacOS/Unity`이며 다른
 위치는 `UNITY_EDITOR_PATH`로 지정한다. 출력 stem은
-`Builds/Mobile/DreamSquad-Demo-{version}-{build}-{sha8}`이다. 기존 출력은 덮어쓰지 않는다.
+`Builds/Mobile/DreamSquad-Demo-{version}-{build}-{sha8}[-attemptN]`이다. 기존 출력은
+덮어쓰지 않는다. 실패 산출물을 보존하고 같은 version/build/commit을 재시도할 때만
+`--attempt <positive-integer>`를 명시한다.
 
 ### Android APK
 
@@ -62,4 +64,5 @@ embedded profile, strict codesign, SHA-256 검증을 수행한다. P12/profile i
 - [ ] 다음 Android build가 동일 서명으로 업데이트 설치된다.
 - [ ] 등록된 iOS 기기에서 IPA가 설치·실행된다.
 - [ ] Firebase Android/iOS 링크가 `dreamsquad-demo` 그룹에서 동작한다.
-- [ ] 자동 검증과 SHA-256 생성이 성공하고 tracked 변경이나 저장소 내 서명 재료가 없다.
+- [x] source `1861a96a8819841df68edeb53b51bf622fce174a`의 APK/IPA 자동 검증과
+  SHA-256 생성이 성공했고 저장소에 서명 재료를 추가하지 않았다. (2026-07-27)

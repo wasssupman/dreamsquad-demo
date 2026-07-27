@@ -217,6 +217,88 @@ namespace Wassup.Tests.EditMode.MobileBuild
             Assert.DoesNotThrow(() => CreateValidPreflight(platform).Validate(platform));
         }
 
+        [Test]
+        public void Preflight_AcceptsTrackedSerializedScreenAutoRotation()
+        {
+            var state = CreateValidPreflight(MobileBuildPlatform.Android);
+            state.DefaultOrientation =
+                (UIOrientation)MobileBuildPreflightState.SerializedScreenAutoRotationValue;
+
+            Assert.DoesNotThrow(() => state.Validate(MobileBuildPlatform.Android));
+        }
+
+        [TestCase((int)UIOrientation.Portrait, false, false, true, true)]
+        [TestCase((int)UIOrientation.PortraitUpsideDown, false, false, true, true)]
+        [TestCase((int)UIOrientation.LandscapeRight, false, false, true, true)]
+        [TestCase((int)UIOrientation.LandscapeLeft, false, false, true, true)]
+        [TestCase((int)UIOrientation.AutoRotation, true, false, true, true)]
+        [TestCase((int)UIOrientation.AutoRotation, false, true, true, true)]
+        [TestCase((int)UIOrientation.AutoRotation, false, false, false, true)]
+        [TestCase((int)UIOrientation.AutoRotation, false, false, true, false)]
+        [TestCase(MobileBuildPreflightState.SerializedScreenAutoRotationValue, true, false, true, true)]
+        [TestCase(MobileBuildPreflightState.SerializedScreenAutoRotationValue, false, true, true, true)]
+        [TestCase(MobileBuildPreflightState.SerializedScreenAutoRotationValue, false, false, false, true)]
+        [TestCase(MobileBuildPreflightState.SerializedScreenAutoRotationValue, false, false, true, false)]
+        public void LandscapeAutoRotation_RejectsFixedOrIncompleteConfiguration(
+            int defaultOrientation,
+            bool allowPortrait,
+            bool allowPortraitUpsideDown,
+            bool allowLandscapeLeft,
+            bool allowLandscapeRight)
+        {
+            Assert.That(
+                MobileBuildPreflightState.IsLandscapeAutoRotation(
+                    (UIOrientation)defaultOrientation,
+                    allowPortrait,
+                    allowPortraitUpsideDown,
+                    allowLandscapeLeft,
+                    allowLandscapeRight),
+                Is.False);
+        }
+
+        [Test]
+        public void CapturedProjectOrientation_IsLandscapeOnlyAutoRotation()
+        {
+            var state = MobileBuildPreflightState.Capture(MobileBuildPlatform.Android);
+
+            Assert.That(
+                (int)state.DefaultOrientation,
+                Is.EqualTo(MobileBuildPreflightState.SerializedScreenAutoRotationValue));
+            Assert.That(state.AllowPortrait, Is.False);
+            Assert.That(state.AllowPortraitUpsideDown, Is.False);
+            Assert.That(state.AllowLandscapeLeft, Is.True);
+            Assert.That(state.AllowLandscapeRight, Is.True);
+        }
+
+        [TestCase("Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF - Fallback.asset")]
+        [TestCase("Assets/_Project/Fonts/Anton SDF.asset")]
+        [TestCase("Assets/_Project/Fonts/Bangers SDF.asset")]
+        [TestCase("Assets/_Project/Fonts/Jua SDF.asset")]
+        [TestCase("Assets/_Project/Fonts/Kanit SDF.asset")]
+        public void PrebakedDynamicFont_PreservesGlyphsAcrossBuildExit(string assetPath)
+        {
+            var asset = AssetDatabase.LoadMainAssetAtPath(assetPath);
+            Assert.That(asset, Is.Not.Null, assetPath);
+
+            var serialized = new SerializedObject(asset);
+            Assert.That(
+                serialized.FindProperty("m_ClearDynamicDataOnBuild").boolValue,
+                Is.False,
+                assetPath);
+            Assert.That(
+                serialized.FindProperty("m_GlyphTable").arraySize,
+                Is.GreaterThan(0),
+                assetPath);
+            Assert.That(
+                serialized.FindProperty("m_CharacterTable").arraySize,
+                Is.GreaterThan(0),
+                assetPath);
+            Assert.That(
+                serialized.FindProperty("m_SourceFontFile").objectReferenceValue,
+                Is.Not.Null,
+                assetPath);
+        }
+
         [TestCase("android", BuildTarget.Android)]
         [TestCase("ios", BuildTarget.iOS)]
         public void BuildPlayerOptions_UseExactScenesTargetAndDebugOptions(
