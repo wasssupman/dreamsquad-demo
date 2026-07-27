@@ -6,8 +6,8 @@
 
 ## 변경 대상
 
-- `Data/ProjectileData.cs` — `ProjectileFlightMode.SkyFall` **append** (spec-review C1)
-- `Bridge/BattleBridge.cs` — `ResolveProjectileAxes` 에 `SkyFall → (MovementKind.SkyFall, PayloadKind.TileAoe)` 케이스
+- ~~`Data/ProjectileData.cs` — `ProjectileFlightMode.SkyFall` **append**~~ · ~~`ResolveProjectileAxes` 케이스~~ → **unit 1 에서 선반영**(궤적 enum 을 한 커밋에 모아 축 어휘를 한 번에 열었다)
+- `Core/Dreamcatcher/DcApplicability.cs` — `EmitProjectilePattern` 등록 (아래 참조)
 - 신규 `Assets/_Project/Data/Projectiles/Projectile_NightmareBarrage.asset` — Meteor 사본, flightMode/tileRange 확정치
 - 신규 `Assets/_Project/Data/Projectiles/Pattern_NightmareBarrage.asset`
 - `Assets/_Project/Data/Enemies/Enemy_Boss_Nightmare.asset` — mechanic 0 을 `EmitProjectilePattern` 으로 교체
@@ -47,6 +47,12 @@
 `BossPeriodicTriggerSystem` 에서 `AreaBarrage` 분기를 삭제한다. 남는 payload arm 은 `AllyMoveSpeedAura`(채찍질)와 `EmitProjectilePattern` 이며, 그 외는 기존대로 경고 로그다.
 
 bake 쪽 `AreaBarrage` 분기는 "arm 없음 — 패턴으로 이관됨" 경고 + skip 으로 바꾼다(조용한 no-op 금지, dc-trigger 선례).
+
+### `DcApplicability` 등록 (구현 중 발견, 2026-07-28)
+
+새 `DcPayloadKind` 는 `Core/Dreamcatcher/DcApplicability.EvaluateMechanic` 의 switch 에도 등록해야 한다. 등록하지 않으면 `DcRejectReason.Unclassified` 로 **fail-closed**(부착 거절)되고 `DcApplicabilityTests.EvaluateMechanic_IsTotalOverAllKindAndArchetypePairs` 가 전수 검사로 실패한다 — 실제로 unit 3 커밋 후 이 테스트가 걸렸고, 그게 설계된 안전망이다.
+
+`EmitProjectilePattern` 은 **host 의 공격 모델과 직교**하므로 무조건 `None`(허용) 그룹에 넣는다: 대상은 패턴의 selection 이 스스로 뽑고(host 가 대상을 줄 필요 없음), 진영은 host 진영의 반대로 도출되며(계약 7), 데미지도 패턴 소유다 → `targetsEnemies`·`HostProvidesTarget`·`hasDamageOutput` 어느 축도 게이트가 아니다. 명세 자체의 유효성(`pattern`/`barrel` null)은 bake 가 최종 판정한다.
 
 ### `BarrageEpicenter` 흡수
 

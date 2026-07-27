@@ -1,0 +1,50 @@
+# 7 — Handoff Summary (units 0~5 구현 완료 2026-07-28 · Play e2e 대기)
+
+## Commit
+
+spec `af1796bc`(0~6 작성) → `5e69dc5f`(spec-review 반영) → `afb9d83f`(궤적 열린 어휘 계약).
+구현: `f787c607`(u0 정의+로직) `9e6d97fa`(u1 베지어 궤적) `e2ed719d`(u2 emitter)
+`8a1fc0e3`(u3 트리거 seam) `de43db5a`(u4 융단폭격 이관) `6c963fbb`(u5 미사일 authoring).
+
+## Implemented
+
+- **발사 명세가 데이터가 됐다**: `ProjectilePatternData`(barrel × damage × selection × count/interval × telegraph) + `PatternSpec`(unmanaged 미러). 탄의 성질은 `ProjectileData` 소유, 패턴은 복제하지 않는다.
+- **3층 분리**: 정의(`Wassup.Data`) / 로직(순수 static, `Unity.Entities` 무참조) / 아키텍처(emitter). `ShotOrder` 는 `Entity` 대신 후보 index 로 타겟을 가리켜 Mono 이식 시 ①②가 그대로 살아남는다.
+- **베지어 호밍 궤적**: `MovementKind.BezierHomingToEntity` — 곡선×추적 조합 개통. 제어점 결정론 좌우 교대(`shotCount` 올리면 살포로 갈라짐), 종점만 타겟 추적, sim XZ / view Y 분담.
+- **emitter 는 바인딩 클래스로 분기**: `MovementBinding.Of` → Entity/Cell/Direction 3분류. 기존 바인딩으로 분류되는 새 이동 수학은 emitter 무변경으로 발사된다.
+- **트리거 seam**: `DcPayloadKind.EmitProjectilePattern`(17) — arm 이 하는 일은 값 복사 push 뿐. 발사 도중 SO/버프가 바뀌어도 시작된 버스트는 불변.
+- **융단폭격 이관**: 전용 arm·`BarrageEpicenter` 제거, 같은 emitter 로 값 보존(150/r3/1.5s/RoundRobin).
+- **콘텐츠**: 보스 텔레포트 제거 + 0.5초 간격 랜덤 방어유닛 곡선 미사일(damage 40 초안). **unit 5 는 코드 diff 0줄** — asset 3개 + 보스 SO 편집만.
+
+## Key Files
+
+- 정의: `Data/ProjectilePatternData.cs` · `Data/PatternSpec.cs` · `Data/Dreamcatcher/DcMechanic.cs`(payload 17 + `pattern` 필드)
+- 로직: `Battle/Combat/Projectile/Emission/` {`EmitterRuntime`·`EmitterTick`·`ShotOrder`(+`PatternLogic`)·`PatternTargeting`·`MovementBinding`} · `Projectile/Bezier3.cs`
+- 아키텍처: `Emission/ProjectileEmitterSystem.cs` · `Emission/EmitterInstance.cs` · `Emission/PatternSlot.cs`
+- 편입 지점: `BossPeriodicTriggerSystem.cs`(push arm) · `BattleBridge.cs`(`BuildPatternTemplate`·bake·드레인 베지어 제어점) · `ProjectileMoveSystem.cs`(arm) · `ProjectileViewPool.cs`(view Y) · `Core/Dreamcatcher/DcApplicability.cs`
+- 에셋: `Projectile_NightmareBarrage` · `Pattern_NightmareBarrage` · `Projectile_NightmareMissile` · `Pattern_NightmareMissile` · `Enemy_Boss_Nightmare`
+
+## Verified
+
+- **EditMode 1502 / 1500 passed / 0 failed / 2 skipped**(기존 무관 skip). 신규 30건: 스케줄 9 · 선택 규칙 8 · MovementBinding 분류 핀 1 · 베지어 9 · BuildOrder 등.
+- 컴파일 클린(배치 로그 `error CS` 0건), 신규 asset 로드 에러 0.
+- 검증 수단: **에디터가 Play Mode 라 MCP `run_tests` 가 거부됨** → `wassup-testrig` worktree 배치 실행으로 우회(에디터·포커스 무관). 세션 중 MCP 브리지가 끊겨 이후 검증도 배치로 진행.
+- `BarrageEpicenter` 흡수 동일성은 `f787c607` 시점에 대조 테스트로 검증 후 원본 삭제(라이브 참조 0 확인).
+
+## Notes (되돌리면 안 되는 의도)
+
+- **`PatternSlot.fireCountBase` 는 영속 카운터다.** `EmitterInstance` 는 발화마다 생성·제거되는 transient 라 카운터를 0 에서 시작하면 RoundRobin 은 영원히 같은 rank(같은 방어유닛만 폭격), 셔플은 `hash(0)` 고정(같은 대상만 저격)이 된다.
+- **`DcTriggerSlot.patternIndex` 는 bake 가 -1 로 명시 초기화**한다. struct default 0 은 유효 index 라 미배선 슬롯이 0번 패턴을 쏜다.
+- **패턴 버퍼는 `slots` 획득 전에 부착한다.** `AddBuffer` 는 구조 변경이라 이미 잡은 `DynamicBuffer` 핸들을 무효화한다 — 루프 안에서 붙이면 `slots` 가 죽는다.
+- **잠금은 `Entity` 로 저장**(index 아님). 후보 스냅샷은 프레임-로컬이라 index 를 잠그면 프레임 넘는 버스트에서 다른 유닛을 가리킨다.
+- **베지어 제어점은 드레인이 산출**한다(SO 파라미터 필요, ISystem 은 SO 를 못 읽는다). 요청은 `swingIndex` 만 싣는다 — `SkyFall.dropHeight` 보충과 같은 seam.
+- **폭격 barrel 은 Meteor 사본**이다. 공유 `Projectile_Meteor` 의 `flightMode 0`/`impactTileRange 0` 은 `ApplyMeteor` 가 축을 하드코딩해 방치된 값이며, 거기에 의미를 부여하면 플레이어 스킬과 소유가 얽힌다.
+- **새 `DcPayloadKind` 는 `DcApplicability` 에도 등록**해야 한다(미등록 = `Unclassified` fail-closed + 전수 테스트 실패). 이번에 실제로 걸렸다.
+- **빈 풀 발화 위상 전진은 의도된 semantics 차이**: 기존 arm 은 no-fire 시 `fireCount` 불변이었지만 새 구조는 push 시 선증가다. 관측자 없고 순회 공정성 무영향이며, 완주 시 write-back 은 겹침 버스트에서 시드 충돌한다.
+
+## Follow-up
+
+- **Play e2e(unit 6) 미실시** — MCP 브리지 복구 필요. 확인 항목: 0.5초 간격 발사 · 대상이 매번 다른 방어유닛(맵 반대편 포함) · 곡선 육안(연속 3프레임 이상) · 40 데미지 · 텔레포트 미발생(HP 70/40/10% 통과) · 융단폭격 값 보존(주기·순회·1.5s 텔레그래프·r3) · 3슬롯 동시 동작 · 무회귀(홈잉/머신건/폭탄/곡사/Meteor).
+- **신규 `.cs` 3개의 `.meta` 미생성**(브리지 끊김 시점에 커밋): `EmitterInstance`·`PatternSlot`·`ProjectileEmitterSystem`. 브리지 복구 후 Unity 가 생성한 meta 를 별도 커밋. 씬/asset 참조가 없어 GUID 재생성 위험은 없다.
+- **미사일 damage 40 · 주기 0.5s · `bezierLateral` 1.2** 는 체감 튜닝 대상(전부 SO).
+- README 후속 후보의 범용성 갭 4개(무타겟 / host 독립 / 서브 발사 / non-Damage)는 `docs/spec/README.md` Follow-up Backlog 등록 대기.

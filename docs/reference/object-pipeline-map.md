@@ -40,10 +40,10 @@
 
 | 정거장 | 앵커 | 확인 포인트 |
 |---|---|---|
-| 데이터 SO | `Data/ProjectileData.cs` | 궤적(MovementKind) × 페이로드(PayloadKind) 2축. flightMode 가 이 2축으로 번역됨(`ResolveProjectileAxes`) |
-| 스폰 진입점 | `Battle/Combat/AttackSystem.cs` 가 `ProjectileSpawnRequest` stage → `BattleBridge.DrainProjectileSpawnRequests`→`SpawnProjectile` | ★2단계 — ECS 는 request 만, 엔티티+뷰 생성은 Bridge. **stage 지점은 3곳**: RESOLVE(기본 공격·dc 니들) / 폭탄 발사 성사 / 캐스트 사건 드레인 — 셋 다 `SpawnNeedleCarrier` 를 공유한다(dc 캐리어는 `ProjectileRequestCarrier` 태그, drain 이 스폰 후 파괴) |
-| ECS 컴포넌트 (Combat) | `Battle/Combat/Projectile/` ProjectileState·ProjectileTag·ProjectileSpawnRequest | 페이로드별 조건부: PathHitRecord 버퍼(PathHit — 대상당 1회 스윕, drain 이 부착) |
-| 시뮬 시스템 | `ProjectileMoveSystem.cs`(궤적) · `ProjectileHitSystem.cs`(페이로드 — IncomingDamage/IncomingHeal 기입) | |
+| 데이터 SO | `Data/ProjectileData.cs`(탄 1발) + `Data/ProjectilePatternData.cs`(발사 명세) | 궤적(MovementKind) × 페이로드(PayloadKind) 2축. flightMode 가 이 2축으로 번역됨(`ResolveProjectileAxes`). **패턴 SO 는 "누구를·몇 발·어떤 간격" 만 소유하고 탄의 성질을 복제하지 않는다** — 새 효과는 `ProjectileData` 에 추가 |
+| 스폰 진입점 | `Battle/Combat/AttackSystem.cs` 가 `ProjectileSpawnRequest` stage → `BattleBridge.DrainProjectileSpawnRequests`→`SpawnProjectile` | ★2단계 — ECS 는 request 만, 엔티티+뷰 생성은 Bridge. **stage 지점은 4곳**: RESOLVE(기본 공격·dc 니들) / 폭탄 발사 성사 / 캐스트 사건 드레인 / **`ProjectileEmitterSystem`(발사 명세)** — 전부 `ProjectileRequestCarrier` 캐리어를 공유한다(drain 이 스폰 후 파괴) |
+| ECS 컴포넌트 (Combat) | `Battle/Combat/Projectile/` ProjectileState·ProjectileTag·ProjectileSpawnRequest + `Projectile/Emission/` EmitterInstance·PatternSlot | 페이로드별 조건부: PathHitRecord 버퍼(PathHit — 대상당 1회 스윕, drain 이 부착). Emission 버퍼 2개는 **패턴 host 전용**(패턴 없는 유닛엔 미부착) |
+| 시뮬 시스템 | `ProjectileMoveSystem.cs`(궤적) · `ProjectileHitSystem.cs`(페이로드 — IncomingDamage/IncomingHeal 기입) · `Projectile/Emission/ProjectileEmitterSystem.cs`(발사 스케줄→요청) | emitter 는 개별 MovementKind 가 아니라 **바인딩 클래스**(`MovementBinding.Of` → Entity/Cell/Direction)로 분기 — 새 이동 수학이 기존 바인딩이면 emitter 무변경 |
 | 이벤트 큐 | `Battle/Combat/Projectile/ProjectileHitEventsSingleton.cs` | drain = `DrainProjectileHitEvents` → PlayHit |
 | View/Pool | `Presentation/ProjectileViewPool.cs` | 매 프레임 `SyncTransforms`; muzzle/cast VFX 도 이 풀 (PlayHit/PlayCast, UnitAttackVisualEvents drain) |
 | 씬 wiring | BattleBridge `_projectileViewPool` | |
