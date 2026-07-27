@@ -455,6 +455,9 @@ namespace Wassup.Editor.MobileBuild
 
     internal sealed class MobileBuildPreflightState
     {
+        internal const int SerializedScreenAutoRotationValue =
+            (int)ScreenOrientation.AutoRotation;
+
         internal string UnityVersion { get; set; }
         internal string CompanyName { get; set; }
         internal string ProductName { get; set; }
@@ -570,11 +573,12 @@ namespace Wassup.Editor.MobileBuild
                     "Enabled scenes must be exactly OutgameScene then BattleScene.");
             }
 
-            if (DefaultOrientation != UIOrientation.AutoRotation ||
-                AllowPortrait ||
-                AllowPortraitUpsideDown ||
-                !AllowLandscapeLeft ||
-                !AllowLandscapeRight)
+            if (!IsLandscapeAutoRotation(
+                    DefaultOrientation,
+                    AllowPortrait,
+                    AllowPortraitUpsideDown,
+                    AllowLandscapeLeft,
+                    AllowLandscapeRight))
             {
                 throw new MobileBuildException(
                     "DreamSquad mobile builds require the existing landscape-only autorotation settings.");
@@ -605,6 +609,23 @@ namespace Wassup.Editor.MobileBuild
             {
                 throw new MobileBuildException("iOS must target both iPhone and iPad.");
             }
+        }
+
+        internal static bool IsLandscapeAutoRotation(
+            UIOrientation defaultOrientation,
+            bool allowPortrait,
+            bool allowPortraitUpsideDown,
+            bool allowLandscapeLeft,
+            bool allowLandscapeRight)
+        {
+            var isAutoRotation =
+                defaultOrientation == UIOrientation.AutoRotation ||
+                (int)defaultOrientation == SerializedScreenAutoRotationValue;
+            return isAutoRotation &&
+                   !allowPortrait &&
+                   !allowPortraitUpsideDown &&
+                   allowLandscapeLeft &&
+                   allowLandscapeRight;
         }
     }
 
