@@ -65,8 +65,22 @@ unit 4 완료 기준에서 이 표를 재확인한다(잠갔다 여는 왕복을
 - [ ] **전수 행렬** `DcApplicabilityMatrixTests`: 카탈로그 전 `DreamcatcherCard` × 전 `DefenderUnitData` 조합에 대해, 카드의 각 메커닉/모드 판정이 위 표와 일치. `AssetDatabase.FindAssets` 로 실제 에셋을 읽어 **다음 유닛/카드 추가 시 자동으로 커버**되게 한다.
 - [ ] 거절은 **무차감**: `attached == 0` → `-1` 반환 → `HandController.CommitAttach` 가 Spend 전에 반환(기존 계약 유지). 부분 무효는 부착되고 살아남은 메커닉만 동작.
 - [ ] 기존 `DreamcatcherAttachEvalTests` 전 케이스가 새 시그니처로 통과 — **UI 판정 결과가 바뀌지 않았음**의 증거.
-- [ ] Play 확인: 폭탄맨/캐스터에 비수를 조준하면 리티클이 **거절 색**이고, 커밋해도 코스트가 차감되지 않는다. 궁수/가디언은 현행 그대로.
+- [x] Play 확인: 배치 → `BuildHostProfile` → `Would/Apply` 실측. 전 조합이 잠금 표와 일치.
+
+  | host | archetype/route | 비수 | 통통구슬 | 빙결 |
+  |---|---|---|---|---|
+  | MachineGunner | FacingVolley/Directional | 0 | **-1** | 0 |
+  | BombMan | BombThrow/Grenade | **-1** | **-1** | **-1** |
+  | FireCaster | HazardCast/None | **-1** | **-1** | **-1** |
+  | Archer | Standard/Homing | 0 | 0 | 0 |
+
+  Play 가 잡은 결함 1건: `FacingVolley` 판별이 `DeployedFacing`(조준 완료 여부)을 요구해 조준 전 머신거너가 `Standard` 로 판정됐다 → `VolleyFireState` 단독 판별로 수정(`12958858`). 지금은 두 아키타입의 판정이 같아 무해했지만 unit 3·4 에서 규칙이 갈리면 잠복 버그였다.
+
+## 주의 (다음 단위로 넘기는 것)
+
+- **코스트 상한은 10** (`CostRuntime._max`). 라이브 검증에서 `AddCost(90)` 는 클램프된다 — 여러 유닛을 배치하려면 `_max`/`_current` 를 reflection 으로 올려야 한다.
+- unit 3·4 는 `DcApplicability.HasEventPoint` 의 `AttackN` 줄만 바꾸면 개통된다. `DcApplicabilityTests.AttackN_HasNoEventPoint_OnBombThrowAndHazardCast` 의 기대값이 뒤집히는 것이 곧 해제의 증거다.
 
 ---
 
-확인 일자 / 커밋: (미완)
+확인 일자 / 커밋: 2026-07-27 · `81817768`(구현) + `12958858`(Play 실측 수정)
