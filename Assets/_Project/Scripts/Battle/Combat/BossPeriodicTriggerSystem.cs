@@ -63,6 +63,11 @@ namespace Wassup.Battle.Combat
             // 1회 재생 (blink 퍼프 선례 — Combat→Presentation 기존 채널).
             bool hasHitQ = SystemAPI.TryGetSingletonRW<ProjectileHitEventsSingleton>(out var hitRW);
             NativeQueue<ProjectileHitEvent> hitQueue = hasHitQ ? hitRW.ValueRW.queue : default;
+            // projectile-emission-pattern unit 3 — 패턴 push seam. arm 이 하는 일은
+            // 인스턴스 하나를 host 버퍼에 넣는 것뿐이고, 발사 전개는 emitter 소유다.
+            var patternLookup = SystemAPI.GetBufferLookup<Projectile.Emission.PatternSlot>(isReadOnly: false);
+            var instanceLookup = SystemAPI.GetBufferLookup<Projectile.Emission.EmitterInstance>(isReadOnly: false);
+
             var whipTargets = new NativeList<int>(Allocator.Temp);
             NativeArray<Entity> whipEnemyEntities = default, whipDefEntities = default;
             NativeArray<int2> whipEnemyCells = default;
@@ -153,6 +158,33 @@ namespace Wassup.Battle.Combat
                                             source = entity,
                                         });
                                     }
+                                }
+                            }
+                        }
+                        else if (slot.payload == Wassup.Data.DcPayloadKind.EmitProjectilePattern)
+                        {
+                            // 발사 명세를 트리거한다. spec/template 을 **값으로 복사**하므로
+                            // 발사 도중 무엇이 바뀌어도 이미 시작된 버스트는 불변이다(계약 8).
+                            // 영속시켜야 하는 것은 발사 카운터 하나뿐이고, 그것만 durable
+                            // 소유자(PatternSlot)에 남아 다음 발화가 이어받는다 —
+                            // 안 그러면 선택 규칙이 고정된다(spec-review C2).
+                            if (slot.patternIndex >= 0
+                                && patternLookup.HasBuffer(entity) && instanceLookup.HasBuffer(entity))
+                            {
+                                var pats = patternLookup[entity];
+                                if (slot.patternIndex < pats.Length)
+                                {
+                                    var pat = pats[slot.patternIndex];
+                                    var inst = new Projectile.Emission.EmitterInstance
+                                    {
+                                        spec = pat.spec,
+                                        template = pat.template,
+                                        lockedTarget = Entity.Null,
+                                    };
+                                    Projectile.Emission.EmitterTick.Begin(ref inst.runtime, inst.spec, pat.fireCountBase);
+                                    pat.fireCountBase += math.max(1, pat.spec.shotCount);
+                                    pats[slot.patternIndex] = pat;
+                                    instanceLookup[entity].Add(inst);
                                 }
                             }
                         }

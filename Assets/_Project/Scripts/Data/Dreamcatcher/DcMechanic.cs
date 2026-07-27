@@ -73,6 +73,12 @@ namespace Wassup.Data
         // M명을 L초 수면. magnitude=M·tileRange=N·duration=L 재사용(신규 DcPayloadSpec 필드 0).
         // 실행=BattleBridge.DrainShieldBreakEvents(적 쿼리+AoeTargetCap+EnemyCcEvent{Sleep}). append-only.
         AreaSleep = 16,
+        // projectile-emission-pattern unit 3 — 발사 명세(ProjectilePatternData)를
+        // 트리거한다. 이 payload 는 발사 내부를 모르고, emitter 는 드림캐쳐를 모른다 —
+        // 접점은 "인스턴스 push" 하나다. 트리거가 사건이고 패턴이 그 한 번의 전개이므로
+        // 반복 주기는 트리거 소유다(PeriodicTimer(0.5s) × 패턴(1발) = 0.5초 간격 사격).
+        // append-only.
+        EmitProjectilePattern = 17,
     }
 
     // dreamcatcher-new-abilities unit 0 — 데이터 계층 CC 선택자(공격 온-히트용). 정의
@@ -172,6 +178,10 @@ namespace Wassup.Data
         // last_stand=AttackDamage / devouring=AttackSpeed. 다른 kind 는 무시.
         // subconscious-curse-expansion unit 0 — DreamCocoon 도 재사용(완주 버프 스탯).
         public CardBuffKind buffStat;
+        // projectile-emission-pattern unit 3 — EmitProjectilePattern 이 트리거할 발사
+        // 명세. 정의 계층은 SO 참조를 허용한다(위 projectile·auraPrefab 선례) — 금지
+        // 대상은 Entities/Battle 타입이다. null = bake 가 loud 거절. 다른 kind 는 무시.
+        public ProjectilePatternData pattern;
     }
 
     [Serializable]

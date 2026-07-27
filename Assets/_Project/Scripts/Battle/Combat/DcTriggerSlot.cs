@@ -75,5 +75,13 @@ namespace Wassup.Battle.Combat
         // refresh(지속만 갱신). instanceId 를 잘라 쓰지 않으므로 두 네임스페이스는 여전히
         // 분리(위 instanceId 주석의 불변식 유지).
         public ushort statBuffStackId;
+
+        // projectile-emission-pattern unit 3 — EmitProjectilePattern 의 발사 명세는
+        // 이 슬롯에 임베드하지 않고 host 의 병렬 PatternSlot 버퍼에 두고 **index 만**
+        // 가리킨다. 이 struct 는 defender 카드 슬롯과 공유하는 원소 타입이라, 여기에
+        // spec+template(~200B)을 넣으면 소비자는 보스뿐인데 모든 드림캐쳐 보유 유닛의
+        // chunk 상주 비용이 커진다. **bake 가 -1 로 명시 초기화**한다(struct default 0
+        // 은 유효 index 라 미배선 슬롯이 0번 패턴을 쏘게 된다).
+        public int patternIndex;
     }
 }

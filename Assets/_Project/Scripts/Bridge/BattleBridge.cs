@@ -5629,6 +5629,23 @@ namespace Wassup.Bridge
             // 위협 테이블은 보스와 항상 동행 — 텔레포트 arm 의 타겟 소스.
             // defender 히트가 쌓기 전까지 빈 버퍼(ThreatHitEvent 드레인이 채움).
             _em.AddBuffer<ThreatEntry>(entity);
+
+            // projectile-emission-pattern unit 3 — 패턴 버퍼는 **slots 획득 전에** 붙인다.
+            // AddBuffer 는 구조 변경이라 이미 잡아둔 DynamicBuffer 핸들을 무효화한다 —
+            // 루프 안에서 붙이면 아래 slots 가 죽는다. 패턴 mechanic 이 없으면 부착하지
+            // 않아 기존 유닛(카드만 쓰는 defender 포함)의 chunk 비용은 0 이다.
+            bool wantsPattern = false;
+            for (int i = 0; i < mechanics.Length; i++)
+                if (mechanics[i].payload.kind == Wassup.Data.DcPayloadKind.EmitProjectilePattern)
+                { wantsPattern = true; break; }
+            var patternSlots = default(DynamicBuffer<Wassup.Battle.Combat.Projectile.Emission.PatternSlot>);
+            if (wantsPattern)
+            {
+                patternSlots = _em.AddBuffer<Wassup.Battle.Combat.Projectile.Emission.PatternSlot>(entity);
+                // 발사 인스턴스 버퍼도 미리(런타임 구조 변경 회피 — IncomingHeal 선례).
+                _em.AddBuffer<Wassup.Battle.Combat.Projectile.Emission.EmitterInstance>(entity);
+            }
+
             var slots = _em.AddBuffer<DcTriggerSlot>(entity);
 
             for (int i = 0; i < mechanics.Length; i++) // bake-time only read (managed array)
@@ -5667,6 +5684,9 @@ namespace Wassup.Bridge
                     nextBoundaryIndex = 1,
                     maxHpRef = unitType.health,
                     duration = math.max(0f, m.payload.duration),
+                    // struct default 0 은 유효 index 라 미배선 슬롯이 0번 패턴을 쏘게
+                    // 된다 — 명시 -1 초기화가 계약이다(unit 3).
+                    patternIndex = -1,
                 };
                 if (m.payload.kind == Wassup.Data.DcPayloadKind.AreaBarrage)
                 {
@@ -5678,6 +5698,31 @@ namespace Wassup.Bridge
                     }
                     slot.projectileDataIndex = GetOrCreateProjectileDataIndex(m.payload.projectile);
                     slot.visualScale = m.payload.projectile.visualScale;
+                }
+                else if (m.payload.kind == Wassup.Data.DcPayloadKind.EmitProjectilePattern)
+                {
+                    // projectile-emission-pattern unit 3 — 발사 명세 bake. SO 해석은
+                    // 브리지가 유일 seam 이므로 spec 변환과 template 조립이 여기서 끝난다.
+                    var pattern = m.payload.pattern;
+                    if (pattern == null || pattern.barrel == null)
+                    {
+                        Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: EmitProjectilePattern needs a pattern with a barrel — skipped.");
+                        continue;
+                    }
+                    if (!patternSlots.IsCreated)
+                    {
+                        // 사전 스캔과 어긋난 경우(도달 불가) — 조용한 오발사보다 경고.
+                        Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: pattern buffer missing — skipped.");
+                        continue;
+                    }
+                    int barrelIndex = GetOrCreateProjectileDataIndex(pattern.barrel);
+                    patternSlots.Add(new Wassup.Battle.Combat.Projectile.Emission.PatternSlot
+                    {
+                        spec = pattern.ToSpec(barrelIndex),
+                        template = BuildPatternTemplate(pattern, barrelIndex, entity, hostIsEnemy: true),
+                        fireCountBase = 0,
+                    });
+                    slot.patternIndex = patternSlots.Length - 1;
                 }
                 else if ((m.payload.kind == Wassup.Data.DcPayloadKind.SelfBlink ||
                           m.payload.kind == Wassup.Data.DcPayloadKind.AllyMoveSpeedAura) &&
@@ -5706,6 +5751,39 @@ namespace Wassup.Bridge
                 }
                 slots.Add(slot);
             }
+        }
+
+        // projectile-emission-pattern unit 3 — 발사 요청 원본 조립. 향후 defender/카드
+        // 경로가 같은 함수를 호출하도록 bake 밖으로 분리해 둔다(트리거 소스 확장의 실비용
+        // 3요건 중 ②를 선불). 타겟 의존 필드(target/impact/swingIndex)는 비운 채 남기고
+        // emitter 가 발마다 채운다. **드레인이 SO 에서 직접 읽는 값은 싣지 않는다** —
+        // dropHeight(기존), 베지어 lateral/forwardBias(unit 1).
+        private ProjectileSpawnRequest BuildPatternTemplate(
+            Wassup.Data.ProjectilePatternData pattern, int barrelDataIndex, Entity owner, bool hostIsEnemy)
+        {
+            var barrel = pattern.barrel;
+            var axes = ResolveProjectileAxes(barrel.flightMode);
+            return new ProjectileSpawnRequest
+            {
+                movement = axes.movement,
+                payload = axes.payload,
+                // 기존 발사 지점들이 barrel SO 를 읽어 request 를 채우는 목록과 동일하게
+                // 유지한다(새 컨벤션을 만들지 않는다).
+                speed = barrel.speed,
+                hitThreshold = barrel.hitThreshold,
+                visualScale = barrel.visualScale,
+                arcHeight = barrel.arcHeight,
+                impactTileRange = barrel.impactTileRange,
+                onHitEffect = barrel.onHitEffect,
+                splashRadius = barrel.splashRadius,
+                splashDamageMul = barrel.splashDamageMul,
+                dataIndex = barrelDataIndex,
+                owner = owner,
+                // 진영은 host 에서 도출한다(계약 7) — 패턴 SO 에 faction 필드 없음.
+                targetFaction = hostIsEnemy
+                    ? ProjectileTargetFaction.Defender
+                    : ProjectileTargetFaction.Enemy,
+            };
         }
 
         private void SpawnUnit(PendingSpawnEntry pending)
