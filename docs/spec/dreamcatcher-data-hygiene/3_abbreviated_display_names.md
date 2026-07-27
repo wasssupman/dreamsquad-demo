@@ -51,7 +51,7 @@
 | `last_stand` | 최후의 발악 | 빈사폭주 |
 | `lullaby_dart` | 꿈결의 자장가 | 자장가 |
 | `nightmare_afterglow` | 악몽의 여운 | 킬딜 |
-| `poke_needle` | 콕콕 바늘 | 관통침 |
+| `poke_needle` | 콕콕 바늘 | 비수 |
 | `ranger_as` | 레인저 폭타 | 레인저속 |
 | `ranger_atk` | 레인저 핵딜 | 레인저딜 |
 | `ranger_hp` | 레인저 존버 | 레인저체 |

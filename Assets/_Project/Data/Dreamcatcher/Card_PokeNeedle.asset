@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Card_PokeNeedle
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: poke_needle
-  displayName: "\uAD00\uD1B5\uCE68"
+  displayName: "\uBE44\uC218"
   axis: 3
   category: 1
   effects: []

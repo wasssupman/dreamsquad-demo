@@ -48,7 +48,7 @@ namespace Wassup.Tests.EditMode
             { "last_stand", "빈사폭주" },
             { "lullaby_dart", "자장가" },
             { "nightmare_afterglow", "킬딜" },
-            { "poke_needle", "관통침" },
+            { "poke_needle", "비수" },
             { "ranger_as", "레인저속" },
             { "ranger_atk", "레인저딜" },
             { "ranger_hp", "레인저체" },
