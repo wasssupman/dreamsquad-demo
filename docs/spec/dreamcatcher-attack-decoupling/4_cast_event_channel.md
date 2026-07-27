@@ -41,7 +41,7 @@ public struct CastEventsSingleton : IComponentData { public NativeQueue<CastEven
 
 attacker foreach **앞**에서 드레인한다. 이유: ① 후보 스냅샷과 `ecb` 를 그대로 재사용 ② 카운터 변경이 루프 바깥에서 끝나므로 **HeavyStrike pre-scan 합성 불변식**(계약 1)에 영향이 없다. 신규 시스템 0.
 
-stale 이벤트는 조용히 버린다 — `Exists` / `HasBuffer<DcTriggerSlot>` / `LocalTransform` 중 하나라도 없으면(enqueue 후 드레인 전에 캐스터가 죽는 창이 있다).
+stale 이벤트는 조용히 버린다 — `HasBuffer<DcTriggerSlot>` 하나로 충분하다(파괴된 엔티티는 false, 위치는 이벤트가 스냅샷으로 들고 온다). enqueue 후 드레인 전에 캐스터가 죽는 창이 있다.
 
 대상 선정은 unit 3 의 폭탄맨 폴백과 **같은 패턴**이다(스냅샷 순회 → `eligible` = 진영 Enemy ∧ 자기 제외 → `SelectNearest`).
 

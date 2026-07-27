@@ -31,7 +31,9 @@
 1. **튕김은 payload 해결의 후처리다.** 임팩트 해결(outputs/damage 적용·VFX·HitFlash)은 기존 SingleSplash arm 을 그대로 통과하고, 그 **뒤에** `bounceRemaining > 0 && 재타겟 성공` 이면 `DestroyEntity` 대신 `ProjectileState` 갱신(target 교체, `impactReached=false`, `bounceRemaining--`)으로 재비행한다. 신규 시스템/드레인/태그 0 — 엔티티가 살아남으므로 뷰/풀/TrailRenderer 도 자동 연속.
 2. **재타겟 = 순수함수.** `BounceRetarget.FindNext(히트 위치·직전 대상 제외, ImpactSystem 의 기존 aoe 스냅샷, bounceTileRange)` — Chebyshev 타일 반경(프로젝트 관례) 내 최근접(sq 거리, 동률은 스냅샷 순서). 결정론 유지. 후보 없으면 -1 → 기존대로 파괴. **제외는 직전 대상 1개뿐 — A→B→A 재히트는 v1 의 의도된 동작이다** (적 2기 상황에서 튕김이 죽지 않도록; 전체 히스토리 제외는 후속 결정).
 3. **감쇠 = bounceDamageMul.** 튕길 때마다 `state.damage ×= mul` 그리고 outputs 버퍼의 Damage-kind magnitude ×= mul (둘 다 — outputs 보유 투사체는 outputs 경로가 데미지 소스이므로). 수치는 전부 카드 SO 에서 (하드코딩 금지).
-4. **호환 계약: ProjectileBounce 는 HomingToEntity × SingleSplash 산출물에만.** ballistic/스킬/TileAoe 는 대상 개념이 달라 v1 비적용 — AttackSystem 주입 지점이 Homing request 에만 얹는다. 부착 가드: `ProjectileRef` 없는(근접) 유닛은 warn + 거절 (unit-trigger 의 비-defender 가드와 같은 결).
+4. **호환 계약: ProjectileBounce 는 HomingToEntity × SingleSplash 산출물에만.** ballistic/스킬/TileAoe 는 대상 개념이 달라 v1 비적용 — AttackSystem 주입 지점이 Homing request 에만 얹는다.
+   - **부착 가드가 강화됐다**(`dreamcatcher-attack-decoupling` unit 1, 2026-07-27). 원래 가드는 `ProjectileRef` **유무**만 봐서 근접만 걸렀는데, 그건 폭탄맨(`GrenadeToCell`)·머신거너(`DirectionalLinear`)·아틸러리(`Ballistic`)를 전부 통과시켜 "붙는데 무효"를 만들었다. 이제 `DcApplicability.EvaluateAttackMod` 가 **실제 발사 경로**(`route == Homing`)를 요구한다(`NeedsHomingRoute`). 판정 키가 SO 의 `flightMode` 가 아닌 이유: `Projectile_Bomb` 은 `flightMode: 0`(Homing)이라 SO 만 보면 폭탄맨이 지원으로 오판된다.
+   - 방향탄 개통(머신거너)은 이 계약의 예외가 아니라 **별도 spec** 이다 — `defender-directional-volley` 후속 후보의 사용자 결정("차단이 아니라 개통")이 살아 있다.
 5. **다중 개조 슬롯 스택 규칙**: count 는 **합산**, damageMul 은 **곱**, tileRange 는 **max**. (독립 슬롯 유지 — 회수 시 개별 제거 가능해야 하므로 부착 시 병합하지 않고 스폰 주입 시점에 집계.)
 6. **정의 계층 불변**: `DcAttackModSpec` 은 순수 데이터, ECS 무참조. 카드 필드는 append-only (`attackMods[]`). `mechanics[]`(트리거형)와 공존 가능.
 7. **소유권**: `DcAttackModSlot` 쓰기 = bridge 부착(스폰타임 선례), 읽기 = AttackSystem 스폰 주입. `ProjectileState.bounce*` 쓰기 = ImpactSystem(임팩트 해결 소유 — projectile-trajectory-payload 계약 4 유지).

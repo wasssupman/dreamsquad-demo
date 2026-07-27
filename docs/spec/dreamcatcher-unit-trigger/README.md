@@ -28,15 +28,18 @@
 ## Feature-wide 계약 (load-bearing)
 
 1. **2계층.** 정의 계층(`Scripts/Data/Dreamcatcher/DcMechanic.cs`)은 순수 데이터 + Unity 에셋 참조만 — **Entities/Battle 타입 참조 금지**. 해석 계층(BattleBridge 베이크 + Combat 실행)만 ECS 를 안다. 아키텍처 교체 시 번역자만 재작성.
-2. **소유권 = Combat.** `DcTriggerSlot`(DynamicBuffer, defender 엔티티)은 Combat 소유. 카운터 쓰기 = `AttackSystem` RESOLVE, 부착/제거 = BattleBridge(유일 창구, `_em` 직접 쓰기 허용 선례). 다른 맥락 쓰기 금지.
-3. **카운팅 = RESOLVE 시점, 공격 1회 = 1카운트.** 멀티 output 이어도 1회. 근접/원거리 공통 지점(doResolve && bestTarget 유효). 지연 만료로 타겟이 사라져 RESOLVE 가 무산되면 카운트도 없다.
+2. **소유권 = Combat.** `DcTriggerSlot`(DynamicBuffer, defender 엔티티)은 Combat 소유. 카운터 쓰기 = `AttackSystem` **전용**(RESOLVE / 폭탄 발사 훅 / 캐스트 드레인 세 지점이며, host 하나는 그중 정확히 1곳만 탄다 — `dreamcatcher-attack-decoupling` 계약 2), 부착/제거 = BattleBridge(유일 창구, `_em` 직접 쓰기 허용 선례). 다른 맥락 쓰기 금지.
+3. **카운팅 = 공격 1회 = 1카운트.** 멀티 output 이어도 1회. 지연 만료로 타겟이 사라져 RESOLVE 가 무산되면 카운트도 없다.
+   - **RESOLVE 카운트는 이 spec 이후로도 그대로다.** `attack-decoupling` 은 이 규칙을 대체하지 않고, RESOLVE 에 **구조적으로 도달할 수 없는** host 에만 대체 사건 지점을 추가했다(폭탄 발사 성사 / 캐스트 성사). 카운트를 START 로 옮기면 응축된 일격 pre-scan 이 이미 증가한 카운터를 읽고, 처형타 게이트가 wind-up 이전 HP 를 보고, 지연 무산 규칙이 사라진다 — **옮기지 말 것**.
 4. **독립 카운터.** 슬롯 1개 = 효과 인스턴스 1개. 부착 시 `instanceId` 발급(bridge 카운터, stackId 패턴). 같은 카드 2장 = 슬롯 2개 = 카운터 2개.
 5. **페이로드 = 기존 프리미티브 재사용, 새 데미지 경로 금지.** `ProjectileToTarget` 은 기존 단일 투사체 라이프사이클(`ProjectileSpawnRequest → drain → Move → Impact`)에 `HomingToEntity × SingleSplash`, `damage=magnitude` 로 태운다. outputs 스냅샷 없음 = `ProjectileHitSystem` 의 **no-AttackOutputElement fallback 경로**(`ProjectileState.damage` 직접 적용)를 탄다 — 스킬 투사체 선례(projectile-trajectory-payload 계약 6).
 6. **request 캐리어 엔티티.** `ProjectileSpawnRequest` 는 엔티티당 단일 컴포넌트라 5회째 프레임에 기본 공격 요청과 충돌 → dc 투사체는 `ecb.CreateEntity` 한 캐리어 엔티티에 request + `ProjectileRequestCarrier` 태그로 부착하고, drain 이 캐리어를 **파괴**한다(기존 경로는 RemoveComponent 유지, additive 분기). 신규 시스템/드레인/큐 0.
 7. **magnitude 는 flat.** `damageMul` 등 공격자 스탯 모디파이어를 곱하지 않는다(카드 수치 = 예측 가능한 고정값). 스케일링 페이로드는 후속에서 별도 kind 로.
 8. **직렬화 append-only.** `DreamcatcherCard`/enum 확장은 기존 카드 에셋의 직렬화 값을 보존하도록 필드/케이스를 끝에 추가(기존 파일 주석 선례 유지).
 9. **바인딩 UX/회수 로직은 스코프 밖.** 이번 spec 의 부착은 `BattleBridge` 공개 API + 테스트 훅으로만 실증. 유닛 사망 시 카드 회수(재사용 가능 전환)는 `DrainDefenderDeathEvents` 가 seam — 별도 spec 에서.
-10. **`ProjectileToTarget` 은 적을 타겟하는 host 에만 붙는다** (2026-07-27 추가). 니들은 그 공격의 `bestTarget` 으로 날아가는데, `targetAllies` 유닛(힐러)의 `bestTarget` 은 **아군**이라 회복 대상을 20 데미지로 때린다(캐리어는 outputs 스냅샷이 없어 진영 필터 없는 `ProjectileHitSystem` fallback 을 탄다). 게이트 술어 = `AttackState.targetMask` 의 Enemy 비트(`BattleBridge.TargetsEnemies`), 판정 지점 = UI preflight(`DreamcatcherAttachEval.WouldApply`) + 커밋 bake **양쪽 동일** — 리티클 색과 커밋 결과가 어긋나지 않는다. 근접·원거리·머신거너(facing 볼리)는 전부 적을 타겟하므로 무영향. **폭탄맨**(RESOLVE 미진입, blind bombardment 로 early-continue)과 **해저드 캐스터**(`attackRange 0` → `bestTarget` 없음)는 부착은 되지만 발동하지 않는다 — 게이트 대상 아님(후속 후보).
+10. **`ProjectileToTarget` 은 적을 타겟하는 host 에만 붙는다** (2026-07-27). 니들은 그 공격의 `bestTarget` 으로 날아가는데 `targetAllies` 유닛(힐러)의 `bestTarget` 은 **아군**이라 회복 대상을 때린다(캐리어는 outputs 스냅샷이 없어 진영 필터 없는 `ProjectileHitSystem` fallback 을 탄다).
+    - **판정 위치가 이동했다**(`attack-decoupling` unit 1). 술어는 `DcApplicability.EvaluateMechanic` 한 곳이고 UI preflight 와 커밋 bake 가 그 함수를 공유한다. 여기 있던 `BattleBridge.TargetsEnemies` 전용 게이트는 그 수렴에 흡수됐다 — **철회가 아니라 이관**이며, 힐러 거절은 그대로 유효하고 `NeedsEnemyTargeting` 으로 보고된다.
+    - **폭탄맨·해저드 캐스터는 이제 발동한다**(unit 3·4). 각자 사건 지점을 얻었고, host 가 대상을 안 주므로 `payload.tileRange` 반경으로 스스로 고른다(반경 0 이면 `NeedsFallbackRange` 로 부착 거절).
 
 ## 파이프라인 커버리지 (투사체 아키타입 대조)
 

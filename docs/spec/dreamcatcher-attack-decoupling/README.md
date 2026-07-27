@@ -1,6 +1,8 @@
 # Dreamcatcher Attack Decoupling — 붙으면 반드시 발동한다
 
-> 상태: **초안 rev2 (승인 대기)** · 2026-07-27 · critic 2종(설계·ECS) 반영
+> 상태: **완료 2026-07-27** (units 0~4 + 리팩토링). 인계: `5_handoff_summary.md`
+>
+> critic 2종(설계·ECS) 병렬 리뷰 2회 — 초안 1회, 구현 1회. 미완 2건은 handoff Follow-up 참조.
 
 ## 문제
 
@@ -43,7 +45,7 @@
 | 2 | 타게팅 폴백 | `2_payload_target_fallback.md` | `ProjectileToTarget` 이 host `bestTarget` 없을 때 자체 탐색. 순수 함수 + SO/시트/문안 3점 갱신 |
 | 3 | 사건 지점 (Combat) | `3_bomb_event_point.md` | 폭탄맨 발사 성사 지점에 카운트 훅. RESOLVE 는 손대지 않는다 |
 | 4 | 사건 채널 (Effects) | `4_cast_event_channel.md` | 캐스트 사건 → NativeQueue → `AttackSystem` 상단 드레인 |
-| 5 | 인계 | `5_handoff_summary.md` | 종료 요약 + **선행 spec 계약 갱신**(`unit-trigger` 3·10, `attack-mod-bounce` 4) |
+| 5 | 인계 | `5_handoff_summary.md` | 종료 요약 + 선행 spec 계약 갱신(`unit-trigger` 2·3·10, `attack-mod-bounce` 4) — 완료 |
 
 **순서 근거**: 0(행렬 선언) → 1(그 행렬을 소비하는 판정)이어야 판정이 하드코딩을 피한다. 1 이 잠근 조합 중 일부를 3·4 가 다시 연다 — 각 단위 문서에 **잠금/해제 2열 표**를 두고, 4 완료 기준에 "1 의 잠금 목록 재확인"을 건다.
 
@@ -81,7 +83,7 @@
 | ECS 컴포넌트 (Combat) | `DcTriggerSlot` | 변경 없음(폴백 반경은 slot 의 기존 `tileRange`) |
 | 시뮬 시스템 | `ProjectileMove`/`ProjectileHit` | 무변경 — 니들은 여전히 `HomingToEntity × SingleSplash` |
 | 이벤트 큐 | 21채널 | **+1 = 22채널**(캐스트 사건). `CLAUDE.md` §"ECS 맥락 분리" 목록도 같은 커밋에서 갱신 |
-| 시스템 순서 | `HazardCastSystem`·`AttackSystem` 둘 다 `[UpdateAfter(MovementSystem)]`, 상호 제약 **없음** | `AttackSystem [UpdateAfter(HazardCastSystem)]` 명시 — 같은 프레임 소비 보장(사이클 없음: 확인됨) |
+| 시스템 순서 | `HazardCastSystem`·`AttackSystem` 둘 다 `[UpdateAfter(MovementSystem)]`, 상호 제약 **없음** | `HazardCastSystem [UpdateBefore(AttackSystem)]` 명시 — 같은 프레임 소비 보장(사이클 없음: 확인됨) |
 | View/Pool · 씬 wiring | — | N/A — 신규 MonoBehaviour·프리팹 없음 |
 
 ## 검증 (완료 기준의 뼈대)
