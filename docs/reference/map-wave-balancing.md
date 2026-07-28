@@ -13,6 +13,7 @@
 | **맵 지형** (경로·스폰·골·배치칸) | `Window/Wassup/Map Painter` 또는 execute_code | MapDocument (tiles/spawns/goals) |
 | **웨이브 난이도** (몬스터 수·종류·보스) | 맵별 `Deck_{맵}.asset` (AttackDeck) | 아래 §웨이브 knob |
 | **개별 몬스터 강함** (HP·속도·공격) | `Enemy_*.asset` (AttackUnitData) | health/moveSpeed/attackRange/attackCooldown… |
+| **특정 몬스터를 초반 웨이브에서 제외** | `Enemy_*.asset` (AttackUnitData) | `minWaveNumber` (기본 1=제한없음, Runner=2) |
 | **맵 랜덤 on/off** | `BattleBridge.fixedMapSeed` (BattleScene) | `0`=시드 배정(아래 우선순위), 비0=한 맵 고정 |
 | **개발 중 특정 맵으로 진입** | 로비 맵 스테퍼(◀ ▶ OFF, dev/에디터 전용) | `DevMapOverride`(PlayerPrefs), OFF=시드 배정 복귀 |
 

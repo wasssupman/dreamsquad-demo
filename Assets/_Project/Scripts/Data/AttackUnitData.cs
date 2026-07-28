@@ -18,6 +18,14 @@ namespace Wassup.Data
         [Header("Class")]
         public EnemyClass enemyClass = EnemyClass.None;
 
+        // wave-pattern unit 12 — 등장 게이트. 이 유닛이 나올 수 있는 가장 이른 웨이브(1부터).
+        // 1 = 제한 없음(기본, 기존 자산 전부 불변). 예: Runner=2 → 첫 웨이브에 절대 안 나온다.
+        // 적용 범위는 seed 생성 경로(WavePatternGenerator.Generate)뿐 — 작성 플랜(WavePlanAsset)은
+        // 디자이너가 명시한 배치를 그대로 존중한다.
+        [Header("Wave Gating")]
+        [Tooltip("이 유닛이 등장할 수 있는 가장 이른 웨이브(1부터). 1 = 제한 없음. seed 생성 웨이브에만 적용.")]
+        [Min(1)] public int minWaveNumber = 1;
+
         // enemy-behavior-components Unit 0 — behavior-as-data. Selected per-SO and
         // baked to ECS (attackMethod → attack components; EnemyBehavior/EnemyTargetFilter).
         // Decouples function from visuals; lets one class have sub-variants.
