@@ -1394,6 +1394,11 @@ namespace Wassup.Bridge
             var knockupVisualSingleton = _em.CreateEntity();
             _em.AddComponentData(knockupVisualSingleton, new Wassup.Battle.Combat.KnockupVisualEventsSingleton { queue = _knockupVisualQueue });
 
+            // beam unit 1 — 매치 경계에서 빔 세션을 전부 끊는다. 브리지는 매치 간 살아남으므로
+            // (이 함수가 큐를 재생성하는 것이 그 증거) 안 끊으면 이전 매치 엔티티를 키로 든
+            // 세션이 남아 TTL 이 만료될 때까지 허공에 빔이 뜬다.
+            beamPresenter?.CloseAll();
+
             // nightmare-catcher unit 1 — Combat→Combat 보스 위협 귀속 채널. 데미지
             // 생산자(AttackSystem 근접 / ProjectileHitSystem 착탄)가 보스(ThreatEntry
             // 버퍼 보유) 피격을 enqueue, Combat 드레인이 ThreatTable 에 누적(unit 3).
