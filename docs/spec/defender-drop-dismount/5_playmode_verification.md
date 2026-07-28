@@ -23,3 +23,5 @@ reflection 접근은 기존 테스트 관례(`Field`/`SessionHover` 헬퍼) 복�
 
 - 신규 4건 green · 기존 PlayMode 스위트에서 **이 변경으로 새로 깨지는 테스트 0건** (main 기존 실패 7건과 구분 — 2026-07-28 baseline 기록 있음)
 - 완료 시 README 상태 갱신 + `6_handoff_summary.md` 작성
+
+- 확인: 2026-07-28 · 신규 green + 전체 PlayMode 신규 실패 0건 · 커밋 `cd02fa3e` (+앵커≡렌더 단정 `35bb5642`)

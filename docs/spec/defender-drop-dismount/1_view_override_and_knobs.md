@@ -37,3 +37,5 @@ Range/Tooltip 은 기존 그룹 스타일을 따른다. 값 자체는 unit 5 검
 
 - compile 클린 · 재배치 PlayMode 테스트(`RelocationPlacementSessionTest` 2건) 통과 — 리네임 무회귀
 - `DragSwaySettings.asset` 인스펙터에 ⑩ 그룹 노출 확인
+
+- 확인: 2026-07-28 · 재배치 2건 green(리네임 무회귀) · 커밋 `fe53bd45`

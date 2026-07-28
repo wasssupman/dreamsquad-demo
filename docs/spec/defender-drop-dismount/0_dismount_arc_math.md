@@ -39,3 +39,5 @@ public static Vector3 DismountPoint(
   - apex 하한 동작: `minArcHeight` 는 **제어점 높이** semantics(ThrowArcControls 동일) — 실제 apex ≈ 0.4×제어점높이. 하한 적용/미적용 **대비**로 작동 증명(적용 apex ≥ 0.375×minH, 미적용 ≤ 0.05)
   - `startVel=0` 일 때 반동 구간이 단조 하강(dip 방향)
 - compile 클린 · 기존 테스트 무회귀
+
+- 확인: 2026-07-28 · EditMode 6건 green · 커밋 `ad886013`
