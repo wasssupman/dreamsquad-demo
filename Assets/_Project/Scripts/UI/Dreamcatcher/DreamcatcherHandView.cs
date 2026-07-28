@@ -81,6 +81,10 @@ namespace Wassup.UI
         // 헤드룸과 같은 감성의 스프링(살짝 오버슈트 후 안착). 하강·복귀 공용 — target 만 바뀐다.
         [SerializeField] private float dragClearanceSpring = 320f;
         [SerializeField] private float dragClearanceDamping = 24f;
+        // use-flow unit 0 — A/B 토글: true = 구동작(손패 열림 전체 슬로모), false = 신동작
+        // (카드를 잡은 press~release 동안만 슬로모). 매 프레임 폴링이라 Play 중 인스펙터에서
+        // 토글하는 즉시 반영된다 — 넣다 뺐다 비교용(사용자 요구 2026-07-29).
+        [SerializeField] private bool slomoOnOpen = false;
         // hand-deal-in unit 1 — 눌러서 들기(press-to-lift, 모바일: hover 아님).
         [SerializeField] private float focusRaise = 100f;
         [SerializeField] private float focusScale = 1.28f;
@@ -267,6 +271,7 @@ namespace Wassup.UI
         private Sequence _dealSeq;      // hand-deal-in — 딜/수렴 트윈(teardown 에서 Stop)
         private int _focusIndex = -1;  // hand-deal-in unit 1 — press-lift 대상 슬롯
         private TimeLease _slomoLease;
+        private bool _slomoActive; // use-flow unit 0 — TickSlomo 에지 트리거 상태
         private DreamcatcherTargetArrow _targetArrow;
         private DreamcatcherFocusPresenter _focus; // dreamcatcher-attach-lockon
         private CardAbsorbFlightPresenter _flightPresenter; // card-fly unit 0 — lazy, 캔버스 루트 하위
@@ -346,12 +351,33 @@ namespace Wassup.UI
             // 피드 주도 채널이라 닫힘/페이즈 이탈/파괴 어느 경로든 별도 해제 호출 없이
             // 홈 pitch 로 스프링 복귀한다(State 가 UnitStrip 이 되는 순간 피드가 끊긴다).
             EnsureCameraDirector()?.SetHandHeadroom();
-            TickHandClearance(); // hand-drag-clearance unit 0 — 조준 중 손패 하강/복귀
+            // held = "카드를 잡고 있다" 단일 판정 (press-lift focus / 드래그 / 포탈 2탭 대기).
+            // 슬로모(use-flow unit 0)와 손패 하강(hand-drag-clearance)이 이 한 신호로 움직인다:
+            // press = 슬로모 ON + 하강, release = OFF + 복귀.
+            bool held = _focusIndex >= 0 || AnyInteractionActive();
+            TickSlomo(held);
+            TickHandClearance(held);
             SpringSlots(); // hand-deal-in unit 0 — 슬롯 target 으로 매프레임 추종
             // ESC = cancel rule (spec unit 7 §6): drop any drag/portal-aim, no spend.
             var kb = UnityEngine.InputSystem.Keyboard.current;
             if (kb == null || !kb.escapeKey.wasPressedThisFrame) return;
             CancelAllCardInteraction();
+        }
+
+        // use-flow unit 0 — 슬로모 리스를 held 신호에 묶는다(에지 트리거). slomoOnOpen=true 면
+        // 구동작(손패 열림 전체 슬로모)으로 폴백 — Play 중 인스펙터 토글 즉시 반영(A/B 비교용).
+        // 매 프레임 재획득이 아니라 상태가 바뀌는 프레임에만 획득/해제한다.
+        private void TickSlomo(bool held)
+        {
+            bool want = slomoOnOpen || held;
+            if (want == _slomoActive) return;
+            _slomoActive = want;
+            _slomoLease.Dispose();
+            if (want)
+            {
+                float scale = config != null ? Mathf.Max(0.01f, config.slomoTimeScale) : 0.3f;
+                _slomoLease = TimeManager.Instance.Request(TimeDomain.Battle, scale, priority: 50);
+            }
         }
 
         // hand-drag-clearance unit 0 — 조준 중에만 손패 패널을 내려 큰 맵의 최하단 행을
@@ -369,7 +395,7 @@ namespace Wassup.UI
         //
         // 상태(IsDragging/IsPortalAiming)는 드래그 슬롯이 소유하고 여기서는 읽기만 한다:
         // 커밋·취소·ESC·닫힘·페이즈 이탈 어느 경로로 끝나든 별도 해제 호출 없이 복귀한다(계약 6).
-        private void TickHandClearance()
+        private void TickHandClearance(bool held)
         {
             if (_panel == null) return;
             // 카드를 누른 순간(press) 내려가고 뗀 순간 올라온다. press-lift focus 와 드래그가
@@ -377,8 +403,7 @@ namespace Wassup.UI
             // **보다 먼저** 실행하므로(같은 콜백) 전환에 빈 프레임이 없다. 덕분에 단순 탭 ·
             // 드래그 후 미부착 · 부착 성공이 전부 "포인터를 뗀 순간 복귀" 로 통일된다.
             // 예외는 포탈 2탭 대기(IsPortalAiming) 하나 — 손을 뗐어도 출구를 보드에서
-            // 골라야 하므로 하강을 유지한다.
-            bool held = _focusIndex >= 0 || AnyInteractionActive();
+            // 골라야 하므로 하강을 유지한다. (held 판정은 Update 가 계산해 슬로모와 공유.)
             float target = held ? -dragClearanceDrop : 0f;
             // 언더댐핑이라 target 을 스쳐 지난다 — 안착은 변위와 속도를 함께 본다.
             if (Mathf.Abs(_clearanceOffset - target) < 0.05f && Mathf.Abs(_clearanceVel) < 0.05f)
@@ -628,10 +653,10 @@ namespace Wassup.UI
             if (_dismissCatcher != null) _dismissCatcher.SetActive(true);
             if (gaugeView != null) gaugeView.SetOpen(true);
             Refresh();
-            // Battle slows while shopping; UI/interaction stay realtime.
+            // use-flow unit 0 — 슬로모는 여기서 잡지 않는다. TickSlomo(Update 폴링)가
+            // slomoOnOpen || held 를 에지 트리거로 획득/해제한다. 여기는 stale 잔재만 정리.
             _slomoLease.Dispose();
-            float scale = config != null ? Mathf.Max(0.01f, config.slomoTimeScale) : 0.3f;
-            _slomoLease = TimeManager.Instance.Request(TimeDomain.Battle, scale, priority: 50);
+            _slomoActive = false;
             if (costDisplay != null) costDisplay.SetSuppressed(true);
             // hand-deal-in unit 2 — 버튼 pulse(인과 힌트) + strip 접기 → 덱-드로우 딜.
             if (gaugeView != null) gaugeView.Pulse();
@@ -651,7 +676,8 @@ namespace Wassup.UI
             // hand-drag-tooltip unit 1 — 닫힘 계열은 즉시 숨김(침강 중 형제 잔류 방지).
             HideDragTooltip(immediate: true);
             _focusIndex = -1;
-            _slomoLease.Dispose(); // 슬로모 즉시 해제(연출은 realtime)
+            _slomoLease.Dispose(); // 슬로모 즉시 해제(연출은 realtime) — 폴링 밖 최후 안전망
+            _slomoActive = false;
             if (costDisplay != null) costDisplay.SetSuppressed(false);
             // hand-deal-in unit 4 — 딜의 거울: 카드가 하단 덱으로 침강 → strip 폴드 인.
             StartSink();
@@ -666,6 +692,7 @@ namespace Wassup.UI
             HideDragTooltip(immediate: true); // hand-drag-tooltip unit 1
             StopDeal(); // hand-deal-in — 잔류 트윈/late-land 방지
             _slomoLease.Dispose();
+            _slomoActive = false;
             if (_flip != null) { StopCoroutine(_flip); _flip = null; }
             State = HandState.UnitStrip;
             ResetHandClearance(); // hand-drag-clearance unit 0 — 하드 teardown(침강 없음)
