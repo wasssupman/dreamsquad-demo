@@ -337,6 +337,10 @@ namespace Wassup.Tests.EditMode
             // TODO: Refactor AttackSystem to extract ProcessAttackOutput(outputs, ccQ, statQ, stackQ)
             // as a static method, then test it with a controlled AttackOutputElement buffer and
             // mock NativeQueue writers.
+            //
+            // bleed-fighter-defender unit 0 — ApplyStack arm 은 그 사이 PlayMode 로 실질 커버됐다:
+            // Tests/PlayMode/DefenderApplyStackOutputTest.cs (enqueue 를 끊으면 실패하는 것까지 확인).
+            // 남은 미커버는 Damage/Heal/ApplyStat 3종.
         }
 
         // ── Test 5 (CRITICAL — hotfix regression guard) ───────────────────────────
