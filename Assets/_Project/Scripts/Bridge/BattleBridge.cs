@@ -38,13 +38,6 @@ namespace Wassup.Bridge
         [SerializeField] private MapDocumentPool.Entry endlessEncounter;
         // 비0 = 맵 시드 고정(매판 동일 맵/인덱스 핀). 0 = 토너먼트 시드 결정론(부재 시 0번 폴백).
         [SerializeField] private int fixedMapSeed = 20260719;
-        // [임시] 풀 인덱스 하드 고정(2026-07-27 사용자 요청). ≥0 이면 시드/토너먼트/dev override 를
-        // 전부 제치고 이 인덱스로만 진입한다(현재 1 = Coil). 로비 맵 선택 스테퍼도 함께 임시 숨김
-        // (DevMapOverridePanel).
-        // 되돌릴 때 **세 곳** 다: (1) BattleScene 의 BattleBridge 인스펙터 값 → -1,
-        // (2) 이 코드 기본값 → -1, (3) DevMapOverridePanel.TemporarilyHidden → false.
-        // (1)이 핵심 — 씬 저장으로 이 필드가 BattleScene 에 직렬화됐고, 씬 값이 코드 기본값을 이긴다.
-        [SerializeField] private int forcedMapPoolIndex = 1;
         [Header("Season")]
         [SerializeField] private SeasonRegistry seasonRegistry;
         [SerializeField] private float tileSize = 1f;
@@ -892,9 +885,7 @@ namespace Wassup.Bridge
             _resolvedDeck = deck;
             // endless-mode unit 2 — 무한 모드 진입: 공용 풀 이전에 전용 인카운터를 우선한다.
             // 풀 count 를 안 건드려 랜덤/토너먼트 맵 선택은 byte-identical(계약 5). DevMapOverride.Endless 로만.
-            // [임시] forcedMapPoolIndex 가 켜져 있으면 무한 모드 stale 토글도 제친다 — "고정"은 고정.
-            if (forcedMapPoolIndex < 0
-                && Wassup.Core.DevMapOverride.Endless && endlessEncounter.deck != null
+            if (Wassup.Core.DevMapOverride.Endless && endlessEncounter.deck != null
                 && MapGridBattleAdapter.IsUsableDocument(endlessEncounter.document))
             {
                 activeDoc = endlessEncounter.document;
@@ -907,13 +898,7 @@ namespace Wassup.Bridge
                 string poolSource;
                 // map-play-feel unit 2 — 개발 확인용 인덱스 강제(모바일 개발빌드 런타임).
                 // 서버 API 는 그대로 받되 override 가 설정돼 있으면 최우선. 없으면 아래 기존 3분기.
-                // [임시] 하드 고정이 최우선 — 서버 시드도, PlayerPrefs 에 남은 dev override 도 무시.
-                if (forcedMapPoolIndex >= 0)
-                {
-                    poolIndex = Mathf.Clamp(forcedMapPoolIndex, 0, mapPool.Count - 1);
-                    poolSource = "forced(temp)";
-                }
-                else if (Wassup.Core.DevMapOverride.HasIndex)
+                if (Wassup.Core.DevMapOverride.HasIndex)
                 {
                     poolIndex = Mathf.Clamp(Wassup.Core.DevMapOverride.Index, 0, mapPool.Count - 1);
                     poolSource = "dev";

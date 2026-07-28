@@ -17,17 +17,8 @@ namespace Wassup.UI
         [SerializeField] private Button nextButton;  // ▶
         [SerializeField] private Button offButton;   // OFF
 
-        // [임시] 맵을 풀 인덱스로 하드 고정하는 동안(BattleBridge.forcedMapPoolIndex, 2026-07-27
-        // 사용자 요청) 로비 스테퍼를 숨긴다. 조작해도 고정이 이기므로 오해만 부른다.
-        // 되돌릴 때: 이 상수를 false 로, BattleBridge.forcedMapPoolIndex 를 -1 로 — 두 곳 다.
-        // 씬(OutgameScene) 은 건드리지 않는다 — GameObject 는 살아 있고 이 게이트만 끄면 복귀.
-        // (const 가 아니라 static readonly — const 면 아래 본문이 unreachable 경고를 낸다.)
-        private static readonly bool TemporarilyHidden = true;
-
         private void Awake()
         {
-            if (TemporarilyHidden) { gameObject.SetActive(false); return; }
-
             if (prevButton != null) prevButton.onClick.AddListener(() => Step(-1));
             if (nextButton != null) nextButton.onClick.AddListener(() => Step(+1));
             if (offButton != null) offButton.onClick.AddListener(Off);
