@@ -312,13 +312,22 @@ namespace Wassup.Presentation
             StartCoroutine(FlashRoutine(dur));
         }
 
+        private bool _flashActive;      // use-flow unit 3 rev 2 — 연발 flash 가드
+        private Color _flashRestore;    // 진행 중 flash 의 복귀 목표(연발 시 승계)
+
         private System.Collections.IEnumerator FlashRoutine(float dur)
         {
             var skel = _skeleton.Skeleton;
             // flash 복귀 목표 = resting 색. hover 틴트 활성 중이면 _savedTint(=진짜 base)를
             // 잡는다 — skel 현재값은 우리 틴트라 그걸 restore 로 캡처하면 hover 가 flash 도중
             // 해제될 때 flash 종료가 틴트색으로 굳는다(stray tint). 저장값 기준으로 닫는다.
-            Color restore = _hoverHighlightActive ? _savedTint : new Color(skel.R, skel.G, skel.B);
+            // 연발 가드(rev 2) — 앞 flash 가 skel 을 흰빛으로 밀어둔 채 새 flash 가 "현재 색"을
+            // 캡처하면 복귀 목표가 중간 흰빛으로 오염돼 유닛이 밝게 굳는다. 진행 중이면
+            // 기존 restore 를 승계한다(발동 임팩트가 연발 경로를 만들며 노출된 잠재 버그).
+            Color restore = _hoverHighlightActive ? _savedTint
+                : (_flashActive ? _flashRestore : new Color(skel.R, skel.G, skel.B));
+            _flashRestore = restore;
+            _flashActive = true;
             skel.R = 1f; skel.G = 1f; skel.B = 1f;
             float e = 0f;
             while (e < dur)
@@ -339,6 +348,7 @@ namespace Wassup.Presentation
                 Color target = _hoverHighlightActive ? _savedTint : restore;
                 s.R = target.r; s.G = target.g; s.B = target.b;
             }
+            _flashActive = false; // 연발 시 뒤 코루틴이 마지막으로 닫으며 해제
         }
 
         // placement-enemy-see-through unit 2 — 드래그 배치 중 반투명 전환.

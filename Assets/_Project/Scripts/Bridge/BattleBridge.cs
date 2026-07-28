@@ -295,6 +295,8 @@ namespace Wassup.Bridge
         private NativeQueue<Wassup.Battle.Effects.AggroHitEvent> _aggroHitEventQueue;
         // attack-decoupling unit 4 — Effects(HazardCastSystem)→Combat(AttackSystem) 캐스트 사건.
         private NativeQueue<Wassup.Battle.Combat.CastEvent> _castEventQueue;
+        // use-flow unit 3 — Combat→Bridge 부착 카드 발동 신호(머리 위 아이콘 행 펄스).
+        private NativeQueue<Wassup.Battle.Combat.DcTriggerFiredEvent> _dcTriggerFiredQueue;
         // nightmare-catcher unit 1 — Combat→Combat 보스 위협 귀속 채널.
         private NativeQueue<Wassup.Battle.Combat.ThreatHitEvent> _threatHitEventQueue;
         // nightmare-catcher unit 3 — Combat→Movement 텔레포트(SelfBlink) 요청 채널.
@@ -578,6 +580,7 @@ namespace Wassup.Bridge
             DestroyEntitiesByType<Wassup.Battle.Combat.AttackOutputLogEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.AggroHitEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Combat.CastEventsSingleton>();
+            DestroyEntitiesByType<Wassup.Battle.Combat.DcTriggerFiredEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Combat.ThreatHitEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Movement.BlinkRequestEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.ObstacleSingleton>();
@@ -602,6 +605,7 @@ namespace Wassup.Bridge
             if (_projectileHitEventQueue.IsCreated) _projectileHitEventQueue.Dispose();
             if (_aggroHitEventQueue.IsCreated) _aggroHitEventQueue.Dispose();
             if (_castEventQueue.IsCreated) _castEventQueue.Dispose();
+            if (_dcTriggerFiredQueue.IsCreated) _dcTriggerFiredQueue.Dispose();
             if (_threatHitEventQueue.IsCreated) _threatHitEventQueue.Dispose();
             if (_blinkRequestQueue.IsCreated) _blinkRequestQueue.Dispose();
             if (_healAppliedEventQueue.IsCreated) _healAppliedEventQueue.Dispose();
@@ -1344,6 +1348,14 @@ namespace Wassup.Bridge
             _castEventQueue = new NativeQueue<Wassup.Battle.Combat.CastEvent>(Allocator.Persistent);
             var castEventSingleton = _em.CreateEntity();
             _em.AddComponentData(castEventSingleton, new Wassup.Battle.Combat.CastEventsSingleton { queue = _castEventQueue });
+
+            // use-flow unit 3 — Combat→Bridge 부착 카드 발동 신호 채널. AttackSystem 의
+            // AttackN 발동 3지점이 host 를 enqueue, 브리지 드레인이 머리 위 아이콘 행 펄스.
+            if (_dcTriggerFiredQueue.IsCreated) _dcTriggerFiredQueue.Dispose();
+            _dcTriggerFiredQueue = new NativeQueue<Wassup.Battle.Combat.DcTriggerFiredEvent>(Allocator.Persistent);
+            var dcFiredSingleton = _em.CreateEntity();
+            _em.AddComponentData(dcFiredSingleton, new Wassup.Battle.Combat.DcTriggerFiredEventsSingleton { queue = _dcTriggerFiredQueue });
+            _dcProcLastImpact.Clear(); // 매치 경계 — 엔티티는 매치마다 새로우니 스로틀 기록 리셋
 
             // nightmare-catcher unit 1 — Combat→Combat 보스 위협 귀속 채널. 데미지
             // 생산자(AttackSystem 근접 / ProjectileHitSystem 착탄)가 보스(ThreatEntry
@@ -2207,6 +2219,7 @@ namespace Wassup.Bridge
             DrainProjectileSpawnRequests();
             DrainDefenderDeathEvents();
             DrainShieldBreakEvents();
+            DrainDcTriggerFiredEvents(); // use-flow unit 3 — 발동 신호 → 아이콘 행 펄스
             DrainUnitAttackVisualEvents();
             DrainProjectileHitEvents();
             DrainHealAppliedEvents();
@@ -2714,12 +2727,50 @@ namespace Wassup.Bridge
 
         // dreamcatcher-shield-break unit 2 — 실드 피격 파열 이벤트 드레인. payload 분기:
         // SelfTileAoe(A) = SkyFall×TileAoe 폭발(OnDeath/메테오 동형), AreaSleep(B) = 근접 M명 수면.
+        // use-flow unit 3 — 부착 카드 발동 신호 → 아이콘 행 펄스 + **부착 임팩트 재사용**
+        // (rev 2, 사용자 피드백 "이펙트가 없어 보인다"): 유닛 몸 펀치 + 흰 플래시 + 카드 흡수
+        // 링/버스트 VFX. 부착 순간 박히던 그 임팩트가 발동 순간 다시 친다 — 인과 언어 일치.
+        // 카메라 킥·흡수 SFX 는 제외(주기 발동 연타에 멀미/소음). 같은 프레임 같은 host 다발
+        // 발동은 1회로 코얼레스(월드 임팩트 중첩 방지 — UI 펄스는 뷰가 자체 코얼레스).
+        private readonly System.Collections.Generic.HashSet<Entity> _dcFiredScratch = new();
+        // rev 2 연발 스로틀 — 주기 발동이 촘촘한 유닛(머신거너 등)에서 월드 임팩트(펀치/플래시/
+        // VFX)가 도배되는 것을 host 당 최소 간격으로 막는다. UI 펄스는 스로틀하지 않는다
+        // (뷰가 타이머 재시작으로 자체 코얼레스 — 발동 사실 자체는 매번 알린다).
+        [SerializeField] private float dcProcImpactMinIntervalSec = 0.25f;
+        private readonly System.Collections.Generic.Dictionary<Entity, float> _dcProcLastImpact = new();
+
+        private void DrainDcTriggerFiredEvents()
+        {
+            if (!_dcTriggerFiredQueue.IsCreated) return;
+            _dcFiredScratch.Clear();
+            while (_dcTriggerFiredQueue.TryDequeue(out var evt))
+            {
+                if (!_dcFiredScratch.Add(evt.host)) continue;
+                if (unitOverheadUiLayer != null) unitOverheadUiLayer.PulseCards(evt.host);
+                bool impactReady = !_dcProcLastImpact.TryGetValue(evt.host, out float last)
+                    || Time.unscaledTime - last >= dcProcImpactMinIntervalSec;
+                if (impactReady && spineUnitPool != null
+                    && spineUnitPool.TryGet(evt.host, out var view) && view != null)
+                {
+                    view.PlayPunch();
+                    view.FlashWhite();
+                    SpawnCardAbsorbVfx(view.transform.position);
+                    _dcProcLastImpact[evt.host] = Time.unscaledTime;
+                }
+            }
+        }
+
         private void DrainShieldBreakEvents()
         {
             if (!_shieldBreakQueue.IsCreated) return;
             var targets = new System.Collections.Generic.List<(Entity entity, Vector2Int cell)>();
             while (_shieldBreakQueue.TryDequeue(out var evt))
             {
+                // use-flow unit 3 — OnShieldBreak/피격트리거 payload 실행 = 부착 카드가 일한
+                // 순간. 이 채널은 이미 host 를 실어오므로 신규 채널 없이 펄스가 공짜다.
+                if (evt.payload != Wassup.Data.DcPayloadKind.None && unitOverheadUiLayer != null)
+                    unitOverheadUiLayer.PulseCards(evt.host);
+
                 var logger = GameManager.Instance?.Logger;
                 int2 grid = _generatedMap.IsCreated ? _generatedMap.gridSize : FallbackGridSize;
                 var hostCell = GridMath.WorldToCell(evt.position, tileSize, grid, origin: _boardOrigin);

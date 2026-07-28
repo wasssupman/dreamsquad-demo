@@ -105,6 +105,7 @@ namespace Wassup.Presentation
 
         private void Update()
         {
+            TickCardPulse(); // use-flow unit 3 — 발동 펄스(데미지 트레일과 독립 조건)
             if (!_built || _style == null || _trailRatio <= _ratio) return;
             _trailRatio = Mathf.MoveTowards(_trailRatio, _ratio,
                 _style.DamageTrailCatchup * Time.unscaledDeltaTime);
@@ -167,6 +168,82 @@ namespace Wassup.Presentation
         }
 
         // 확장(unit 7) — 카드행 높이를 반환(스택행이 그 위에 얹히도록). 카드 없으면 0.
+        // use-flow unit 3 — 부착 카드 발동 펄스(행 전체, host 단위 귀속 — 사용자 결정
+        // 2026-07-29). localScale 만 만지므로 매 프레임 ShowCards 의 sizeDelta/anchoredPosition
+        // 재기록과 충돌하지 않는다. 연타는 타이머 재시작으로 자연 코얼레스(과누적 방지).
+        // 화이트 플래시는 뺐다 — UI Image 틴트는 곱셈이라 '밝힘'이 불가(Spine 틴트와 같은 이유).
+        //
+        // 아이콘이 ~29px 라 펀치 단독으론 비가시(사용자 피드백 2026-07-29) → 행 중심에서
+        // 확산·페이드하는 링 버스트를 함께 쏜다(락온 확정 펄스와 같은 시각 문법 = 시안 링).
+        private float _cardPulseT = -1f;
+        private RectTransform _pulseRing;
+        private Image _pulseRingImg;
+        private float _cardRowCenterY; // ShowCards 캐시 — 링 앵커(행 중심)
+        private float _cardRowWidth;   // ShowCards 캐시 — 링 시작 지름
+
+        public void PulseCards()
+        {
+            if (_cards.Count == 0) return;
+            _cardPulseT = 0f;
+            // Rebuild 가 자식을 전부 파괴하므로 lazy 재생성(UnityEngine null = 파괴 포함).
+            if (_pulseRing == null)
+            {
+                _pulseRing = MakeRect("DcPulseRing", _root);
+                _pulseRing.anchorMin = _pulseRing.anchorMax = new Vector2(0.5f, 0f);
+                _pulseRing.pivot = new Vector2(0.5f, 0.5f);
+                _pulseRingImg = AddImage(_pulseRing.gameObject,
+                    Wassup.UI.UiRoundedSprite.MakeCircle(128, Color.clear, 10f, Color.white),
+                    Image.Type.Simple);
+                _pulseRingImg.raycastTarget = false;
+            }
+            _pulseRing.SetAsFirstSibling(); // 아이콘/바 뒤에서 퍼진다(가림 방지)
+            _pulseRing.gameObject.SetActive(true);
+        }
+
+        private void TickCardPulse()
+        {
+            if (_cardPulseT < 0f || _style == null) return;
+            // ecs-review L1 — 같은 Update 의 트레일과 타임소스 통일(unscaled; timeScale=1 고정
+            // 프로젝트라 동작 동일하지만 가정이 깨져도 안전).
+            _cardPulseT += Time.unscaledDeltaTime;
+            float u = _cardPulseT / _style.CardPulseSec;
+            if (u >= 1f)
+            {
+                _cardPulseT = -1f;
+                SetCardsScale(1f);
+                if (_pulseRing != null) _pulseRing.gameObject.SetActive(false);
+                return;
+            }
+            // 단봉 펀치: 빠르게 부풀었다 완만히 복귀.
+            SetCardsScale(1f + (_style.CardPulseScale - 1f) * Mathf.Sin(u * Mathf.PI));
+            // 링 버스트: ease-out 팽창 + 선형 페이드(확정 펄스와 같은 감각).
+            if (_pulseRing != null)
+            {
+                float grow = 1f - (1f - u) * (1f - u);
+                float dia = Mathf.Max(_cardRowWidth, _style.CardHeight * 2f)
+                            * Mathf.Lerp(1f, _style.CardPulseRingScale, grow);
+                _pulseRing.sizeDelta = new Vector2(dia, dia);
+                _pulseRing.anchoredPosition = new Vector2(0f, _cardRowCenterY);
+                var c = _style.CardPulseRingColor;
+                c.a *= 1f - u;
+                _pulseRingImg.color = c;
+            }
+        }
+
+        private void SetCardsScale(float s)
+        {
+            for (int i = 0; i < _cards.Count; i++)
+                _cards[i].root.localScale = new Vector3(s, s, 1f);
+        }
+
+        // 뷰 풀 반환/화면 밖 비활성 시 잔류 펄스 리셋(재사용 시 튐 방지).
+        private void OnDisable()
+        {
+            _cardPulseT = -1f;
+            SetCardsScale(1f);
+            if (_pulseRing != null) _pulseRing.gameObject.SetActive(false);
+        }
+
         private float ShowCards(IReadOnlyList<DreamcatcherCard> source, float tileWidth, float barWidth)
         {
             int count = source != null ? Mathf.Min(3, source.Count) : 0;
@@ -181,6 +258,10 @@ namespace Wassup.Presentation
             Vector2 size = UnitOverheadLayout.CardSize(_style.CardHeight, spacing, count, maxRowWidth);
             float step = size.x + spacing;
             float origin = -0.5f * step * (count - 1);
+            // use-flow unit 3 — 링 버스트 앵커/시작 지름 캐시(행 중심·행 폭).
+            float rowY = UnitOverheadLayout.VerticalOffsets(_style.HeadGap, _skin.height, _style.CardGap).y;
+            _cardRowCenterY = rowY + size.y * 0.5f;
+            _cardRowWidth = step * (count - 1) + size.x;
             for (int i = 0; i < _cards.Count; i++)
             {
                 var slot = _cards[i];

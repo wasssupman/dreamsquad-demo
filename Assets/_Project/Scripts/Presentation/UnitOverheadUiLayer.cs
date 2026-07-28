@@ -106,6 +106,14 @@ namespace Wassup.Presentation
         // 런타임에서 Legacy -> Unified로 되돌릴 때 AttachmentsChanged 재발행을 요구하지 않는다.
         public void RefreshAttachments() => RebuildCards();
 
+        // use-flow unit 3 — 부착 카드 발동 신호(BattleBridge 드레인 호출). host 뷰가 화면에
+        // 없으면(오프스크린/비활성) 조용히 무시 — 신호는 보이는 유닛에만 의미가 있다.
+        public void PulseCards(Entity host)
+        {
+            if (_active.TryGetValue(host, out var view) && view != null)
+                view.PulseCards();
+        }
+
         private void RebuildCards()
         {
             _cardsByHost.Clear();

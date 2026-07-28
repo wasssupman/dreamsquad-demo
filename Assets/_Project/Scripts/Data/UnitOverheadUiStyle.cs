@@ -40,6 +40,13 @@ namespace Wassup.Data
         [SerializeField] private float cardHeight = 28.8f;
         [SerializeField] private float cardSpacing = 4f;
         [SerializeField, Range(0.5f, 1f)] private float cardRowTileWidthFraction = 0.92f;
+        // use-flow unit 3 — 부착 카드 발동 펄스. 아이콘이 ~29px 라 펀치 단독으론 안 보인다
+        // (사용자 피드백 2026-07-29) → 행 펀치 + 확산 링 버스트(락온 확정 펄스와 같은 문법).
+        // 에셋에 키 없으면 코드 기본값.
+        [SerializeField] private float cardPulseScale = 1.8f;
+        [SerializeField] private float cardPulseSec = 0.4f;
+        [SerializeField] private float cardPulseRingScale = 1.6f;  // 링 최종 지름 = 행폭 × 이 값 (rev 2 축소 — 사용자)
+        [SerializeField] private Color cardPulseRingColor = new Color(0.55f, 0.95f, 1f, 0.9f);
         [SerializeField] private Color cardPlate = new Color(0.035f, 0.055f, 0.09f, 0.96f);
         [SerializeField] private Color unitCardBorder = new Color(0.08f, 0.82f, 0.9f, 1f);
         [SerializeField] private Color squadCardBorder = new Color(1f, 0.72f, 0.12f, 1f);
@@ -87,6 +94,10 @@ namespace Wassup.Data
         public float CardHeight => Mathf.Max(1f, cardHeight);
         public float CardSpacing => Mathf.Max(0f, cardSpacing);
         public float CardRowTileWidthFraction => Mathf.Clamp01(cardRowTileWidthFraction);
+        public float CardPulseScale => Mathf.Max(1f, cardPulseScale);
+        public float CardPulseSec => Mathf.Max(0.05f, cardPulseSec);
+        public float CardPulseRingScale => Mathf.Max(1f, cardPulseRingScale);
+        public Color CardPulseRingColor => cardPulseRingColor;
         public Color CardPlate => cardPlate;
         public Color UnitCardBorder => unitCardBorder;
         public Color SquadCardBorder => squadCardBorder;
