@@ -223,6 +223,8 @@ namespace Wassup.Tests.EditMode.MobileBuild
             var state = CreateValidPreflight(MobileBuildPlatform.Android);
             state.DefaultOrientation =
                 (UIOrientation)MobileBuildPreflightState.SerializedScreenAutoRotationValue;
+            state.AllowLandscapeLeft = true;
+            state.AllowLandscapeRight = true;
 
             Assert.DoesNotThrow(() => state.Validate(MobileBuildPlatform.Android));
         }
