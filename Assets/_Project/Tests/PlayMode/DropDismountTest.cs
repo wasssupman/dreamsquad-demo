@@ -106,6 +106,14 @@ namespace Wassup.Tests.PlayMode
             Assert.IsFalse(GetOverride(bridge, entityA).HasValue,
                 "착지(오버라이드 해제)가 활성화보다 늦지 않다(계약 3 클램프)");
 
+            // 착지 앵커 = 실제 렌더 좌표 — sim/view 혼동 회귀 가드(2026-07-28 육안 재현:
+            // 앵커가 sim 좌표면 비행이 화면 밖으로 이탈하다 해제 순간 타일로 텔레포트).
+            Assert.IsTrue(bridge.TryGetDefenderRestViewPos(cellA, out var restPos), "rest view pos resolvable");
+            var viewT = ResolveViewTransform(bridge, entityA);
+            Assert.IsNotNull(viewT, "unit view transform exists");
+            Assert.Less(Vector3.Distance(viewT.position, restPos), 0.05f,
+                $"착지 앵커({restPos})는 실제 렌더 좌표({viewT.position})와 일치(ToView 출력 미러)");
+
             // ── 4) 탭(시뮬) 경로 게이트: dismount 미발동 = 오버라이드 미등록 ──
             var cellB = FindValidCellWithScreen(bridge, cam, unit, out _, exclude: cellA);
             int overrideSightings = 0;
@@ -172,5 +180,11 @@ namespace Wassup.Tests.PlayMode
             var all = Resources.FindObjectsOfTypeAll<DefenderCatalog>();
             return all.Length > 0 ? all[0] : null;
         }
+
+        // Spine → Quad 폴백 순으로 실제 렌더 Transform (bridge 내부 앵커 해석 재사용).
+        private static Transform ResolveViewTransform(BattleBridge bridge, Entity entity)
+            => (Transform)typeof(BattleBridge)
+                .GetMethod("ResolveUnitViewTransform", BindingFlags.NonPublic | BindingFlags.Instance)
+                .Invoke(bridge, new object[] { entity });
     }
 }

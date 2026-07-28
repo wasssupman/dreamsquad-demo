@@ -3089,9 +3089,12 @@ namespace Wassup.Bridge
         public Vector3 GridCellToViewCenter(Vector2Int cell)
             => Wassup.Core.BoardSpace.ToView(GridToWorldCenterVector(cell));
 
-        // defender-drop-dismount unit 2 — 하마 비행 종점 = 착지 후 정상 피드가 그릴 뷰 좌표와 **정확히 동일**
-        // (팝 0 을 구조로 보장). SyncMonoUnitViews defender 피드 공식(world = p + spineDefenderYOffset·Y)을
-        // 미러한다 — 공식이 바뀌면 여기도 같이 바꾼다(착지 프레임 연속성의 단일 진실).
+        // defender-drop-dismount unit 2 — 하마 비행 종점 = 착지 후 정상 피드가 그릴 **뷰** 좌표와 정확히 동일
+        // (팝 0 을 구조로 보장). 미러 대상은 피드의 입력이 아니라 **출력**이다: SyncMonoUnitViews 는
+        // sim 기반 world 를 UpdatePosition 에 넘기고, SpineUnitView.ApplyRenderPosition 이 내부에서
+        // BoardSpace.ToView + SpineVisualOffset(방어 유닛은 zero 계약)을 적용해 그린다. 입력(sim)을
+        // 그대로 반환하면 비행이 sim 공간 점으로 날아가다 착지 해제 순간 뷰 좌표로 텔레포트한다
+        // (2026-07-28 육안 재현: 화면 오른쪽 이탈 → 스냅). 공식이 바뀌면 여기도 같이 바꾼다.
         public bool TryGetDefenderRestViewPos(Vector2Int cell, out Vector3 world)
         {
             world = default;
@@ -3099,7 +3102,8 @@ namespace Wassup.Bridge
             if (b.entity == Entity.Null || !_em.Exists(b.entity) || !_em.HasComponent<LocalTransform>(b.entity))
                 return false;
             var p = _em.GetComponentData<LocalTransform>(b.entity).Position;
-            world = new Vector3(p.x, p.y + spineDefenderYOffset, p.z);
+            world = (Vector3)Wassup.Core.BoardSpace.ToView(
+                new Unity.Mathematics.float3(p.x, p.y + spineDefenderYOffset, p.z));
             return true;
         }
 
