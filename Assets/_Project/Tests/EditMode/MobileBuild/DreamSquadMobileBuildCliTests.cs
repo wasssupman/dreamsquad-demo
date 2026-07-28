@@ -475,6 +475,13 @@ namespace Wassup.Tests.EditMode.MobileBuild
                     DreamSquadMobileBuildCli.ExpectedApplicationIdentifier,
                 EnabledScenes = (string[])DreamSquadMobileBuildCli.ExpectedScenes.Clone(),
                 DefaultOrientation = UIOrientation.LandscapeRight,
+                // 08cc7966 머지가 떨어뜨린 초기화(프로덕션 쪽은 72dca8ae 가 복원). 기본값 false 로
+                // 두면 고정 가로 분기로는 통과하지만, orientation 을 autorotation 으로 바꿔보는
+                // Preflight_AcceptsTrackedSerializedScreenAutoRotation 이 landscape 플래그를 요구해 실패한다.
+                AllowPortrait = false,
+                AllowPortraitUpsideDown = false,
+                AllowLandscapeLeft = true,
+                AllowLandscapeRight = true,
                 AndroidMinSdkVersion = AndroidSdkVersions.AndroidApiLevel26,
                 AndroidScriptingBackend = ScriptingImplementation.IL2CPP,
                 AndroidArchitectures = AndroidArchitecture.ARM64,
