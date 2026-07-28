@@ -13,7 +13,9 @@
 
 ## 구현
 
-1. **펠릿**: MachineGunBullet 사본 → `flightMode Directional` 유지, `pierceCount 0`(탄당 1히트 — 근접 뭉침에서 단일 대상이 전탄을 받는 것이 샷건 정체성). 속도/수명은 사거리 2 기준으로 사본 값에서 조정. 비주얼은 사본 그대로(placeholder 허용).
+1. **펠릿**: MachineGunBullet 사본 → `flightMode Directional` 유지, **`pierceCount 1`**(탄당 1히트 — 근접 뭉침에서 단일 대상이 전탄을 받는 것이 샷건 정체성). 비주얼은 사본 그대로(placeholder 허용).
+   - ⚠ **`pierceCount` 는 1이 "관통 없음"이다.** bake 가 `max(1, pierceCount)` 로 클램프하므로(`BattleBridge.cs:3432`) 0 을 적어도 1로 읽히고, 저작 의도만 오독된다. 머신건 탄과 같은 값이 맞다.
+   - `minFlightTime` 은 BallisticToCell 전용이라 Directional 펠릿에 영향 없음 — 사본 값 유지.
 2. **능력**: `shotCount 5` · `shotIntervalSec 0`(동프레임) · `spreadAngleDeg 90`. id 슬러그 `volley_shotgunner`.
 3. **유닛**: id `shotgunner` · 표시명 "샷건너" · role Ranger · rarity Rare · cost 3 · HP 200 · attackRange 2 · attackCooldown 2.2 · hitDelaySec 0.3 · outputs `[Damage 12]`(탄당) · projectile = 펠릿 · abilities = [능력]. 배치 밀치기: `onPlacePushDistance 1.5` · `onPlacePushDuration 0.35` · `onPlacePushRadius 2`. `onPlaceEffect None`.
 4. portrait/skeleton/deployVoice 는 기존 placeholder 재사용(guid 유지 교체 전제). `desc` 는 비워 `UnitKitSummary` 폴백 확인 후, 마음에 안 들면 한 줄 저작.
