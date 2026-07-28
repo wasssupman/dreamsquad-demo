@@ -245,6 +245,8 @@ namespace Wassup.UI
             public int entryId = -1;       // -1 = empty slot
             public DreamcatcherCard card;
             public bool usable;
+            // use-flow unit 1 — 사용 직후 1장 재딜인 트윈이 rect 를 소유 중(스프링/집기 제외).
+            public bool redealing;
         }
 
         // dreamcatcher-hand-card-face unit 1 — 카드 면 기하. 본문 16pt floor(계약 8) 예산
@@ -269,6 +271,10 @@ namespace Wassup.UI
         private bool _built;
         private Coroutine _flip;
         private Sequence _dealSeq;      // hand-deal-in — 딜/수렴 트윈(teardown 에서 Stop)
+        // use-flow unit 1 — 사용 직후 1장 재딜인 전용(= Transitioning 비게이트, 연속 사용 비차단).
+        private Sequence _redealSeq;
+        private readonly List<int> _prevIds = new List<int>();       // OnCardUsed 포즈 diff 용
+        private readonly List<Vector3> _prevPose = new List<Vector3>(); // xy=anchoredPos, z=rotZ
         private int _focusIndex = -1;  // hand-deal-in unit 1 — press-lift 대상 슬롯
         private TimeLease _slomoLease;
         private bool _slomoActive; // use-flow unit 0 — TickSlomo 에지 트리거 상태
@@ -467,7 +473,7 @@ namespace Wassup.UI
             for (int i = 0; i < _slots.Count; i++)
             {
                 var slot = _slots[i];
-                if (slot.entryId < 0 || OwnedByInteraction(slot)) continue;
+                if (slot.entryId < 0 || OwnedByInteraction(slot) || slot.redealing) continue;
                 // idle 흔들림은 눌러서 든 카드(focus)만 제외 — 그 카드는 안정적으로 들려 있어야.
                 Vector2 eff = slot.targetPos;
                 if (i != _focusIndex)
@@ -493,7 +499,8 @@ namespace Wassup.UI
         {
             // 손패 상태·전이·다른 카드 드래그 중이 아니고, 실제 카드가 든 슬롯일 때만 focus.
             if (State != HandState.Hand || Transitioning || AnyInteractionActive()) index = -1;
-            else if (index >= 0 && (index >= _slots.Count || _slots[index].entryId < 0)) index = -1;
+            else if (index >= 0 && (index >= _slots.Count || _slots[index].entryId < 0
+                || _slots[index].redealing)) index = -1;
             if (_focusIndex == index) return;
             _focusIndex = index;
             ApplyFocusTargets();
@@ -569,7 +576,7 @@ namespace Wassup.UI
             if (AnyInteractionActive()) return false; // one interaction at a time
             if (index < 0 || index >= _slots.Count) return false;
             var slot = _slots[index];
-            return slot.entryId >= 0 && slot.usable;
+            return slot.entryId >= 0 && slot.usable && !slot.redealing;
         }
 
         // hand-drag-tooltip rev 4 — press 툴팁 노출 판정(usable 무관, dim 카드 포함):
@@ -581,7 +588,7 @@ namespace Wassup.UI
             if (AnyInteractionActive()) return false;
             if (index < 0 || index >= _slots.Count) return false;
             var slot = _slots[index];
-            return slot.entryId >= 0 && slot.card != null;
+            return slot.entryId >= 0 && slot.card != null && !slot.redealing;
         }
 
         public void RestoreSlotHome(int index)
@@ -591,6 +598,7 @@ namespace Wassup.UI
             slot.rect.anchoredPosition = slot.homePos;
             slot.rect.localEulerAngles = new Vector3(0f, 0f, slot.homeRotZ);
             slot.rect.localScale = Vector3.one; // rev 4-6 — 화살표 모드 확대 복원
+            slot.redealing = false; // use-flow unit 1 — 잔류 플래그 안전망(콜백 누락 대비)
             // hand-deal-in unit 0 — 스프링 목표도 base 로 복원(호버/스프링 재개 시 튐 방지).
             slot.targetPos = slot.homePos;
             slot.targetRotZ = slot.homeRotZ;
@@ -626,8 +634,7 @@ namespace Wassup.UI
                     ForceClose();
                     break;
                 case DreamcatcherHandController.HandChangeReason.Used:
-                    Refresh();
-                    Close(); // auto-return after a committed use (user-confirmed UX)
+                    OnCardUsed(); // use-flow unit 1 — 유지/자동닫힘 분기(구 자동 닫힘 대체)
                     break;
                 case DreamcatcherHandController.HandChangeReason.Recovered:
                     // A re-render mid-drag would snap the floating card home and
@@ -641,6 +648,91 @@ namespace Wassup.UI
         private void OnGaugeChangedRefreshDim(int _)
         {
             if (State == HandState.Hand) RefreshUsability();
+        }
+
+        // use-flow unit 1 — 사용이 손패를 닫지 않는다(재열기 사이클 제거). 사용 가능 카드가
+        // 남으면 유지: 잔류 카드는 옛 포즈에서 새 home 으로 스프링 슬라이드(위치 diff 는
+        // entryId 로 판별 — 위치 기반이면 시프트된 카드가 전부 재딜인으로 오판된다), 새로
+        // 들어온 카드만 1장 딜인(재장전 감각). 0장이면 자동 닫힘 — 재딜인/pop-in 없이 사용
+        // 슬롯만 비우고 침강한다(계약 3: 딜인→침강 연쇄 금지).
+        private void OnCardUsed()
+        {
+            var hand = handController.Hand();
+            bool anyUsable = false;
+            for (int i = 0; i < hand.Count; i++)
+                if (handController.CanUse(hand[i].entryId)) { anyUsable = true; break; }
+
+            if (!anyUsable)
+            {
+                foreach (var slot in _slots)
+                {
+                    if (slot.entryId < 0) continue;
+                    bool still = false;
+                    for (int h = 0; h < hand.Count; h++)
+                        if (hand[h].entryId == slot.entryId) { still = true; break; }
+                    if (!still) BindEmpty(slot); // 소모된 카드 재표시 금지(고스트가 이미 날아감)
+                }
+                Close();
+                return;
+            }
+
+            // 연속 사용 — 직전 재딜인이 아직 날고 있으면 스냅 완주(포즈 캡처 오염 방지).
+            if (_redealSeq.isAlive) _redealSeq.Complete();
+            _prevIds.Clear();
+            _prevPose.Clear();
+            foreach (var slot in _slots)
+            {
+                _prevIds.Add(slot.entryId);
+                _prevPose.Add(new Vector3(slot.rect.anchoredPosition.x,
+                    slot.rect.anchoredPosition.y, slot.rect.localEulerAngles.z));
+            }
+            Refresh(); // 재바인딩 + RestoreSlotHome(전 슬롯 home 스냅)
+            for (int i = 0; i < _slots.Count; i++)
+            {
+                var slot = _slots[i];
+                if (slot.entryId < 0) continue;
+                int prevAt = _prevIds.IndexOf(slot.entryId);
+                if (prevAt >= 0)
+                {
+                    // 잔류 카드: 옛 포즈에서 시작 → SpringSlots 가 새 home 으로 끌고 간다.
+                    var p = _prevPose[prevAt];
+                    slot.rect.anchoredPosition = new Vector2(p.x, p.y);
+                    slot.rect.localEulerAngles = new Vector3(0f, 0f, p.z);
+                }
+                else DealInSlot(slot);
+            }
+        }
+
+        // 사용 직후 빈 자리 1장 재딜인. StartDeal 의 per-card 블록과 같은 연출이지만
+        // _dealSeq(=Transitioning 게이트)를 쓰지 않는다 — 딜인 중에도 다른 카드는 즉시
+        // 조작 가능해야 연속 사용이 막히지 않는다. 딜인 중인 슬롯만 redealing 으로 잠근다.
+        private void DealInSlot(CardSlot slot)
+        {
+            SoundManager.Instance?.PlayCardDeal();
+            slot.redealing = true;
+            var rt = slot.rect;
+            rt.anchoredPosition = new Vector2(slot.homePos.x * clusterK, handBaseY - dealRise);
+            rt.localScale = Vector3.one * dealStartScale;
+            rt.localEulerAngles = new Vector3(dealTiltX, 0f, slot.homeRotZ);
+            if (slot.face != null) slot.face.Unfold = 0f;
+            if (slot.nameGroup != null) slot.nameGroup.alpha = 0f;
+            if (slot.costGroup != null) slot.costGroup.alpha = 0f;
+            if (slot.tagGroup != null) slot.tagGroup.alpha = 0f;
+            if (slot.bodyGroup != null) slot.bodyGroup.alpha = 0f;
+            _redealSeq = Sequence.Create();
+            _redealSeq.Group(Tween.UIAnchoredPosition(rt, slot.homePos, dealDurationSec, Ease.OutBack));
+            _redealSeq.Group(Tween.Scale(rt, Vector3.one, dealDurationSec, Ease.OutBack));
+            _redealSeq.Group(Tween.LocalRotation(rt, Quaternion.Euler(0f, 0f, slot.homeRotZ), dealDurationSec, Ease.OutQuad));
+            _redealSeq.Group(Tween.PunchScale(rt, new Vector3(0.06f, -0.10f, 0f), 0.16f, frequency: 2f, startDelay: dealDurationSec));
+            if (slot.face != null)
+                _redealSeq.Group(Tween.Custom(slot.face, 0f, 1f, crumpleUnfoldSec, (f, u) => f.Unfold = u, Ease.OutQuad));
+            float textDelay = Mathf.Max(0f, crumpleUnfoldSec - textFadeSec);
+            if (slot.nameGroup != null) _redealSeq.Group(Tween.Alpha(slot.nameGroup, 1f, textFadeSec, Ease.OutQuad, startDelay: textDelay));
+            if (slot.costGroup != null) _redealSeq.Group(Tween.Alpha(slot.costGroup, 1f, textFadeSec, Ease.OutQuad, startDelay: textDelay));
+            if (slot.tagGroup != null) _redealSeq.Group(Tween.Alpha(slot.tagGroup, 1f, textFadeSec, Ease.OutQuad, startDelay: textDelay));
+            if (slot.bodyGroup != null) _redealSeq.Group(Tween.Alpha(slot.bodyGroup, 1f, textFadeSec, Ease.OutQuad, startDelay: textDelay));
+            var captured = slot;
+            _redealSeq.ChainCallback(() => captured.redealing = false);
         }
 
         // ── open/close ───────────────────────────────────────────────────────
@@ -811,6 +903,9 @@ namespace Wassup.UI
         private void StopDeal()
         {
             if (_dealSeq.isAlive) _dealSeq.Stop();
+            // use-flow unit 1 — 재딜인은 스냅 완주(Complete: 콜백이 redealing 을 푼다).
+            // Stop 이면 중간 상태(반쯤 구겨진 face/알파)로 굳는다.
+            if (_redealSeq.isAlive) _redealSeq.Complete();
         }
 
         // hand-deal-in — 딜 진행 중 카드를 누르면 즉시 딜을 완주(스냅)시켜 게이트를 연다.
