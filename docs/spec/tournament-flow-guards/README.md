@@ -31,6 +31,7 @@
 | 5·6 | reconcile 신뢰성 | `5_reconcile_always_release.md` | 나이 무관 항상 complete(0) + **pending 은 complete 성공 후에만 제거**(optimistic clear = 영구 락 원인) |
 | 7 | 락 자동 복구 + 상세 에러 | `7_lock_recovery_and_error_detail.md` | play 락 실패 시 pending attemptId 로 complete(0) → play **1회** 재시도. 실패 팝업에 락 메시지 분기 + raw 에러 상세 표기 |
 | 8 | 비게이트 진입 무발행 | `8_nonlobby_entry_no_attempt.md` | 결함 A 해소 — `BeginMatch()` 를 adopt-or-reset 으로. TestMode/에디터 직접 Play 는 attempt 를 만들지 않는다(발행 창구 = `BeginMatchFromLobby` 유일) |
+| 9 | clear-on-success 통일 | `9_clear_on_success.md` | 결함 C 해소 — `ReportResult`/`AbandonMatch` 의 clear-at-send 폐기. complete 실패 시 pending 을 남겨 다음 로비 reconcile 이 락을 푼다. compare-and-clear + `_completeInFlight` 가드 |
 
 ## Feature-wide 계약
 
@@ -43,6 +44,7 @@
 7. **`NoticePopup` 은 단일 공용 뷰.** self-building 절차적(저작 아트 없음 — `PresetConfirmPopup` 패턴), DontDestroyOnLoad 정적 `Show`. busy 모드(무버튼) + 알림 모드(닫기/선택적 다시시도). 부트스트랩 부재/헤드리스에서 **NRE 없이 no-op degrade**(SceneTransition 하드컷 선례).
 8. **메인 경로 방어에 한정한다.** epoch 드롭 후 stale 콜백, score 재시도, `reconcile`/`abandon` 의 `complete(0)` 덮어쓰기, TestMode 엔트리 생성(결함 A) 등은 **의도적으로 범위 밖**. "모든 구멍 방어" 아님.
 9. **비파괴.** 기존 `BeginMatch`(GameManager 진입용)·`ReportResult` 시그니처 유지. 로비 await 는 별도 진입점/오버로드로 추가한다.
+10. **pending 레코드는 complete 가 성공한 뒤에만 지운다** (unit 9, 세 발신 경로 공통). 전송 실패는 레코드를 남겨 다음 reconcile 트리거(로비 진입 / `시작` 락 복구)의 재시도 근거로 삼는다 — "보냈다"를 "성공했다"로 취급하지 않는다. 제거는 항상 **compare-and-clear**(`ClearIfMatches`): 그 사이 새 매치가 저장한 레코드를 지우면 다음 판의 안전망이 사라진다. 중복 마감 방지는 `_completesInFlight` **카운터**(bool 은 겹친 두 complete 중 먼저 온 응답이 가드를 조기 해제) + Play 진입 리셋(DisableDomainReload 잔존 대비).
 
 ## 파이프라인 커버리지
 
@@ -51,5 +53,8 @@ N/A — 플레이 오브젝트(유닛/적/투사체/해저드/VFX) 신설·렌�
 ## 후속 후보 (범위 밖)
 
 - ~~**결함 A**~~: unit 8 에서 해소 — 비게이트 진입(TestMode/에디터 직접 Play)은 attempt 를 만들지 않는다.
-- **결함 C/D**: `ReportResult` 스킵 시 pending 정리, `reconcile`/`abandon` 의 `complete(0)` 정책 재검토(서버 락+강제0점 모델과의 정합 포함).
+- ~~**결함 C**~~: unit 9 에서 해소 — complete 실패 시 pending 이 남아 다음 로비에서 재시도된다.
+- **결함 D**: `reconcile`/`abandon` 의 `complete(0)` 정책 재검토(서버 락+강제0점 모델과의 정합). 실패한 실점수를 0 대신 **저장했다가 재전송**하는 것도 여기 포함.
+- **닫힌 attempt 재-complete 서버 응답 확인**: 거부인지 덮어쓰기인지. unit 9 의 잔여 위험이 여기에 걸려 있다.
+- **복구 시점 확장**: 앱 resume 훅에서도 reconcile(현재는 로비 진입 + 시작 버튼 락 복구뿐).
 - **히스토리 0-엔트리 정리**: 이미 쌓인 0 엔트리의 서버측 청소는 클라 범위 밖.

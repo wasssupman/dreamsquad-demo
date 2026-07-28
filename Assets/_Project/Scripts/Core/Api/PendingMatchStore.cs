@@ -48,5 +48,17 @@ namespace Wassup.Core.Api
             PlayerPrefs.DeleteKey(Key);
             PlayerPrefs.Save();
         }
+
+        // tournament-flow-guards unit 9 — compare-and-clear. complete 가 성공한 뒤에야
+        // 레코드를 지우는데, 그 왕복 동안 새 매치가 시작돼 자기 attemptId 를 저장했을 수
+        // 있다. 무조건 Clear 하면 **다음 판의 안전망을 지운다** — 방금 마감한 그 attempt
+        // 의 레코드일 때만 제거한다. 반환값은 실제로 지웠는지.
+        public static bool ClearIfMatches(string attemptId)
+        {
+            if (string.IsNullOrEmpty(attemptId)) return false;
+            if (!TryLoad(out var record) || record.attemptId != attemptId) return false;
+            Clear();
+            return true;
+        }
     }
 }

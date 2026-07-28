@@ -23,9 +23,25 @@ namespace Wassup.Core.Api
         private static string _entryId;
         private static bool _completeSent;
 
-        // tournament-flow-guards unit 6 — reconcile in-flight 가드(성공 확인 후에만 pending
-        // 을 지우므로, Awake+onSignedIn 동시 발화 시 중복 complete 를 이 플래그로 막는다).
-        private static bool _reconciling;
+        // tournament-flow-guards unit 6 → unit 9 — complete in-flight 가드. 성공 확인
+        // 후에만 pending 을 지우므로, 응답 전에는 레코드가 남아 있다. 그 창 동안 다른
+        // 경로가 같은 attempt 를 또 마감하는 것을 막는다: reconcile 중복 발화(Awake+
+        // onSignedIn) 뿐 아니라, **나가기(AbandonMatch) 직후 로비 진입 reconcile** —
+        // 씬 전환(수백 ms)이 complete 왕복보다 대개 빨라 상시 겹친다.
+        // 카운터인 이유: 서로 다른 attempt 의 complete 두 개가 겹칠 수 있다(지연된
+        // reconcile(A) + 새 매치의 abandon(B)). bool 이면 먼저 돌아온 응답이 가드를
+        // 조기 해제해 세 번째 발신이 끼어든다.
+        private static int _completesInFlight;
+
+        // DisableDomainReload 환경에서 static 이 Play 세션을 넘어 잔존한다. 이전 세션이
+        // complete in-flight 인 채 끝나면(콜백 미발화) 카운터가 박혀 reconcile 이 영구
+        // skip 되므로 Play 진입마다 초기화한다(LobbyReactionLock 선례). 이전 세션의
+        // 고아 콜백이 뒤늦게 와도 감소는 0 클램프, 제거는 compare-and-clear 라 무해.
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetInFlightOnPlayEnter() => _completesInFlight = 0;
+
+        private static void CompleteReturned()
+            => _completesInFlight = Math.Max(0, _completesInFlight - 1);
 
         // tournament-seed-map-select unit 1 — the server tournament seed from the
         // latest play response. Map-pool selection reads it at map-build time;
@@ -168,22 +184,28 @@ namespace Wassup.Core.Api
                 return;
             }
             _completeSent = true;
-            // abandoned-match-reconciliation unit 1 — clear-at-send: the moment a
-            // terminal complete is initiated, drop the pending record so a later
-            // lobby reconcile can never overwrite this real score with a 0 (a slow
-            // complete + app kill would otherwise leave the record for reconcile).
-            PendingMatchStore.Clear();
 
             string baseUrl = UserSession.GameServerBaseUrl;
             AuthCredential credential = UserSession.Credential;
+            string attemptId = _attemptId;
             string entryId = _entryId;
             int epoch = _epoch;
-            TournamentApi.Complete(baseUrl, credential, _attemptId, score, battleLogJson, (ok, error) =>
+            // tournament-flow-guards unit 9 — clear-on-success (구 clear-at-send 폐기).
+            // 예전엔 전송 **직전**에 pending 을 지웠는데, complete 가 실패하면 attemptId 를
+            // 잃어 서버에 열린 락을 클라가 영영 못 풀었다(= 서버 배치까지 대기). 이 안전망이
+            // 필요한 유일한 경우가 바로 complete 실패인데 그때 레코드가 없던 셈이다.
+            // 이제 실패면 레코드를 남겨 다음 로비 reconcile 이 complete(0) 로 마감한다.
+            _completesInFlight++;
+            TournamentApi.Complete(baseUrl, credential, attemptId, score, battleLogJson, (ok, error) =>
             {
+                CompleteReturned();
+                // 락 해제 성사 여부는 이 매치의 생사와 무관하다 — epoch 가드보다 앞에서
+                // 처리해야 RESTART 로 epoch 가 바뀐 뒤 돌아온 성공 응답도 레코드를 정리한다.
+                if (ok) PendingMatchStore.ClearIfMatches(attemptId);
                 if (epoch != _epoch) return;
                 if (!ok)
                 {
-                    Debug.LogWarning($"[TournamentReporter] complete failed: {error}");
+                    Debug.LogWarning($"[TournamentReporter] complete failed (pending 유지 → 다음 로비 reconcile): {error}");
                     onError?.Invoke(error);   // tournament-flow-guards unit 2 — 실제 전송 실패만 알림
                     return;
                 }
@@ -220,11 +242,18 @@ namespace Wassup.Core.Api
             if (string.IsNullOrEmpty(attemptId) || _completeSent) return; // play not back yet / already sent
             _completeSent = true;
 
-            PendingMatchStore.Clear(); // clear-at-send
+            // unit 9 — clear-on-success. 나가기 직후 씬 전환 → 로비 reconcile 이 이 왕복과
+            // 겹치는 것은 _completesInFlight 가 막는다.
+            _completesInFlight++;
             TournamentApi.Complete(baseUrl, credential, attemptId, 0, "", (ok, error) =>
             {
-                if (!ok) Debug.LogWarning($"[TournamentReporter] abandon complete failed: {error}");
-                else Debug.Log("[TournamentReporter] abandon complete ok — score=0");
+                CompleteReturned();
+                if (!ok) Debug.LogWarning($"[TournamentReporter] abandon complete failed (pending 유지 → 다음 reconcile 트리거에서 재시도): {error}");
+                else
+                {
+                    PendingMatchStore.ClearIfMatches(attemptId);
+                    Debug.Log("[TournamentReporter] abandon complete ok — score=0");
+                }
             });
         }
 
@@ -233,8 +262,8 @@ namespace Wassup.Core.Api
         // crash / 미완주). Operates purely on the persisted record + the CURRENT session
         // (never the live in-memory _attemptId): account-guards, then **나이 무관 항상**
         // complete(0) 로 그 attempt 를 마감해 서버 락을 푼다. pending 은 complete 가 성공한
-        // 뒤에만 지운다(실패면 유지 → 다음 로비 재시도). 재진입 중복 complete 는 _reconciling
-        // in-flight 플래그로 막는다.
+        // 뒤에만 지운다(실패면 유지 → 다음 로비 재시도). 재진입 중복 complete 는
+        // _completesInFlight 카운터로 막는다(unit 9 에서 세 발신 경로 공통으로 확장).
         public static void ReconcilePending() => ReconcilePending(null);
 
         // unit 7 — onDone(released): pending attemptId 로 complete(0) 가 **실제 성공**해
@@ -242,7 +271,11 @@ namespace Wassup.Core.Api
         // false. BeginMatchFromLobby 의 락 복구 재시도가 이 신호에 게이트된다.
         public static void ReconcilePending(Action<bool> onDone)
         {
-            if (_reconciling) { onDone?.Invoke(false); return; } // in-flight — 중복 complete 방지(Awake+onSignedIn)
+            // unit 9 — in-flight complete 가 있으면(reconcile 중복 발화, 또는 방금 나가기로
+            // 보낸 abandon) 이번 발화는 skip 한다(대기 아님 — 재시도는 다음 reconcile
+            // 트리거: 다음 로비 진입 또는 `시작` 락 복구). 아직 안 지워진 레코드를 보고
+            // 같은 attempt 를 두 번 마감하지 않기 위함.
+            if (_completesInFlight > 0) { onDone?.Invoke(false); return; }
             if (!PendingMatchStore.TryLoad(out var rec)) { onDone?.Invoke(false); return; }
             if (!UserSession.HasAccount) { PendingMatchStore.Clear(); onDone?.Invoke(false); return; }
 
@@ -263,15 +296,17 @@ namespace Wassup.Core.Api
             // complete 가 실패하면 attemptId 를 잃어 열린 락을 영영 못 풀었다(영구 500 원인).
             // 실패면 pending 을 그대로 둬서 다음 로비 진입에 재시도한다. 응답 받은 attempt 만
             // pending 에 있으므로 "응답 없으면 세션관리 안 함" 규칙과도 일치.
-            _reconciling = true;
+            _completesInFlight++;
             AuthCredential credential = UserSession.Credential;
             string attemptId = rec.attemptId;
             TournamentApi.Complete(baseUrl, credential, attemptId, 0, "", (ok, error) =>
             {
-                _reconciling = false;
+                CompleteReturned();
                 if (ok)
                 {
-                    PendingMatchStore.Clear(); // 성공 확인 후에만 제거
+                    // 성공 확인 후에만 제거. unit 9 — 그 사이 새 매치가 저장한 레코드는
+                    // 남긴다(무조건 Clear 면 다음 판의 안전망을 지운다).
+                    PendingMatchStore.ClearIfMatches(attemptId);
                     Debug.Log($"[TournamentReporter] reconcile complete ok — attemptId={attemptId} score=0");
                 }
                 else

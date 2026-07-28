@@ -10,11 +10,12 @@ namespace Wassup.Tests.EditMode.Api
     // request and is verified live (throwaway-account probe), not here.
     public class TournamentMatchReporterTests
     {
+        // _completesInFlight 는 static 이라 테스트 간에 샌다 — 양쪽에서 되돌린다.
         [SetUp]
-        public void SetUp() { PendingMatchStore.Clear(); UserSession.Clear(); }
+        public void SetUp() { PendingMatchStore.Clear(); UserSession.Clear(); SetPrivateStatic("_completesInFlight", 0); }
 
         [TearDown]
-        public void TearDown() { PendingMatchStore.Clear(); UserSession.Clear(); }
+        public void TearDown() { PendingMatchStore.Clear(); UserSession.Clear(); SetPrivateStatic("_completesInFlight", 0); }
 
         private static void SignInAs(string userId)
             => UserSession.Set(new UserSignApi.SignedInUser { userId = userId }, "id-token",
@@ -99,6 +100,54 @@ namespace Wassup.Tests.EditMode.Api
             Assert.IsFalse(released.Value);
         }
 
+        // ── tournament-flow-guards unit 9 — in-flight complete 중엔 재마감 금지 ────
+
+        // clear-on-success 로 바뀌면서 응답 전까지 레코드가 남는다. 나가기(abandon)
+        // 직후 로비 진입처럼 두 경로가 겹칠 때, 남아 있는 레코드를 보고 같은 attempt 를
+        // 두 번 마감하지 않아야 한다(레코드는 그대로 유지 — 실패 시 재시도 근거).
+        [Test]
+        public void ReconcilePending_CompleteInFlight_SkipsAndKeepsRecord()
+        {
+            PendingMatchStore.Save("a-1", "u-1", Now());
+            SignInAs("u-1");
+            SetPrivateStatic("_completesInFlight", 1);
+
+            bool? released = null;
+            TournamentMatchReporter.ReconcilePending(r => released = r);
+
+            Assert.IsFalse(released.Value);
+            Assert.IsTrue(PendingMatchStore.TryLoad(out var rec));
+            Assert.AreEqual("a-1", rec.attemptId);
+        }
+
+        // 카운터인 이유(unit 9 리뷰): 서로 다른 attempt 의 complete 두 개가 겹칠 때
+        // (지연된 reconcile(A) + 새 매치의 abandon(B)), 먼저 돌아온 응답이 가드를
+        // 조기 해제하면 안 된다 — 하나라도 in-flight 면 reconcile 은 계속 skip.
+        [Test]
+        public void ReconcilePending_TwoInFlight_OneReturns_StillSkips()
+        {
+            PendingMatchStore.Save("b-2", "u-1", Now());
+            SignInAs("u-1");
+            SetPrivateStatic("_completesInFlight", 2);
+            InvokePrivateStatic("CompleteReturned"); // 첫 응답 도착 — 아직 하나 남음
+
+            bool? released = null;
+            TournamentMatchReporter.ReconcilePending(r => released = r);
+
+            Assert.IsFalse(released.Value);
+            Assert.IsTrue(PendingMatchStore.TryLoad(out _)); // 재마감 발신 없음
+        }
+
+        // Play 진입 리셋 + 0 클램프 — 이전 세션의 고아 콜백이 뒤늦게 감소시켜도
+        // 카운터가 음수로 내려가 가드가 망가지지 않는다.
+        [Test]
+        public void CompleteReturned_AtZero_ClampsNotNegative()
+        {
+            SetPrivateStatic("_completesInFlight", 0);
+            InvokePrivateStatic("CompleteReturned"); // 고아 콜백
+            Assert.AreEqual(0, (int)GetPrivateStatic("_completesInFlight"));
+        }
+
         // ── tournament-flow-guards unit 8 — 비게이트 BeginMatch 는 발행하지 않는다 ──
 
         private static void SetPrivateStatic(string field, object value)
@@ -110,6 +159,11 @@ namespace Wassup.Tests.EditMode.Api
             => typeof(TournamentMatchReporter)
                 .GetField(field, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)
                 .GetValue(null);
+
+        private static void InvokePrivateStatic(string method)
+            => typeof(TournamentMatchReporter)
+                .GetMethod(method, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)
+                .Invoke(null, null);
 
         // 로그인 상태 + stale attempt 가 있어도, 비게이트 진입은 리셋만 하고 play 를
         // 발행하지 않는다(pending 미생성). 결함 A(TestMode/직접 Play 의 엔트리 오염) 방지.
