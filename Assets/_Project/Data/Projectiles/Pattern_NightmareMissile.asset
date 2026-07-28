@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.ProjectilePatternData
   id: nightmare_missile
   barrel: {fileID: 11400000, guid: 8e5f27b4c1a94d63b072e9a1f3c85d47, type: 2}
-  damage: 5
+  damage: 2
   selection: 1
   shotCount: 1
   shotIntervalSec: 0
