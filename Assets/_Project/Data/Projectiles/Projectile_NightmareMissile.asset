@@ -15,7 +15,7 @@ MonoBehaviour:
   id: nightmare_missile
   speed: 6
   hitThreshold: 0.4
-  visualScale: 1.8
+  visualScale: 0.9
   visualHeightOffset: 0
   projectilePrefab: {fileID: 2548779769269718283, guid: 4c0502167a8ff8b4fa96aca7213cf59b, type: 3}
   hitPrefab: {fileID: 5130995591288852204, guid: ca77b6beeba2e1a49a780af9cca16a6a, type: 3}
@@ -39,11 +39,11 @@ MonoBehaviour:
   splashRadius: 0
   splashDamageMul: 0.5
   flightMode: 3
-  arcHeight: 1.5
+  arcHeight: 3.5
   impactTileRange: 0
-  minFlightTime: 0.5
+  minFlightTime: 0.7
   pierceCount: 1
-  bezierLateral: 1.2
-  bezierForwardBias: 0.35
+  bezierLateral: 0.5
+  bezierForwardBias: 0.28
   dropHeight: 6
   fallPortion: 1

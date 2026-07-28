@@ -97,7 +97,7 @@ MonoBehaviour:
   - trigger:
       kind: 4
       period: 0
-      periodSeconds: 0.5
+      periodSeconds: 0.1
       fraction: 0
     payload:
       kind: 17
