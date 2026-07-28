@@ -1,0 +1,98 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7d6648c9dfafd44cb8ce28bc0507242b, type: 3}
+  m_Name: Defender_Slasher
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DefenderUnitData
+  id: slasher
+  role: 3
+  displayName: "\uB09C\uB3C4\uC9C8\uAFBC"
+  desc: "\uD30C\uC774\uD130 \xB7 \uADFC\uC811\uD615. \uBE60\uB978 \uACF5\uACA9\uC73C\uB85C
+    \uB9E4 \uD0C0\uACA9\uB9C8\uB2E4 \uCD9C\uD608\uC744 \uB0A8\uAE30\uACE0, \uBC30\uCE58
+    \uC2DC \uC8FC\uBCC0\uC5D0 \uCD9C\uD608\uC744 \uB3C4\uD3EC\uD55C\uB2E4."
+  health: 350
+  attackRange: 1
+  attackCooldown: 0.9
+  hitDelaySec: 0.3
+  deployDelaySec: 0
+  attackTargetCount: 1
+  visualMesh: {fileID: 0}
+  visualMaterial: {fileID: 2100000, guid: a1b2c3d4e5f601234567890abcdef104, type: 2}
+  deployVoiceClip: {fileID: 8300000, guid: dc35584bdf3654f9a94250825593c36c, type: 3}
+  attackSfxClip: {fileID: 8300000, guid: 053fbfe1665fe4b93b781904d6acd499, type: 3}
+  projectile: {fileID: 0}
+  outputs:
+  - kind: 0
+    magnitude: 8
+    duration: 0
+    stat: 0
+    op: 0
+    stackKind: 0
+    stackMaxStack: 0
+  - kind: 3
+    magnitude: 1
+    duration: 4
+    stat: 0
+    op: 0
+    stackKind: 3
+    stackMaxStack: 5
+  onPlaceEffect: 8
+  onPlaceRange: 2
+  onPlaceMagnitude: 1
+  onPlaceDuration: 4
+  onPlaceStackKind: 3
+  cost: 2
+  placementCooldown: 0
+  targetAllies: 0
+  abilities: []
+  rarity: 0
+  portrait: {fileID: 21300000, guid: a23a525aeebba4a008f7424f308ccf83, type: 3}
+  aggroCapacity: 0
+  skeletonDataAsset: {fileID: 11400000, guid: ee98f82138b60430f97c6863317c3a2f, type: 2}
+  spineSkinName: full_skins
+  idleAnimation: Idle
+  attackAnimation: Attack3
+  deathAnimation: Die
+  spineVisualScale: 1.3
+  partSkins:
+  - boots/boots_c_18
+  - bottom/bottom_c_18
+  - brow/brow_c_10
+  - eyes/eyes_c_10
+  - gloves/gloves_c_15
+  - hair_short/hair_short_c_12
+  - mouth/mouth_c_8
+  - gear_right/gear_right_c_30
+  - top/top_c_18
+  - skin/skin_1
+  slotColors: []
+  dragAnimation: Attack1
+  deployAnimation: Hit
+  placementVfxPrefab: {fileID: 2427901435903505602, guid: 971aa18e6a15c0d48bf889c9d9df4fce, type: 3}
+  attackVfxPrefab: {fileID: 5971203435228136222, guid: f0b2a41c3f8adb84f8753145e83bafe7, type: 3}
+  deployCutsceneFrames: []
+  deployCutsceneFps: 24
+  deployCutsceneScale: 1
+  deployCutsceneOffset: {x: 0, y: 0}
+  deployCutsceneDepth: []
+  deployCutsceneTiltGain: 1
+  knockbackDistance: 0
+  knockbackDuration: 0
+  sleepOnHitSec: 0
+  knockupOnHitSec: 0
+  onPlacePushDistance: 0
+  onPlacePushDuration: 0
+  onPlacePushRadius: 0
+  castAnchorBone: 
+  castAnchorLocalOffset: {x: 0.5, y: 1, z: 0}
+  deploymentDuration: 0.45
+  placementSkillDelay: 0
+  awakeningReward: 4
