@@ -1,6 +1,6 @@
 # dreamcatcher-use-flow — 사용 흐름 개선 (숙련 보상 + 조준 피드백 + 발동 가시성)
 
-> 상태: unit 0 완료 2026-07-29 (사용자 Play 확인) · units 1~3 대기
+> 상태: **완료 2026-07-29** — units 0~3 구현·사용자 Play 확인·ecs-review APPROVE. 인계는 `4_handoff_summary.md`
 
 ## 배경
 
@@ -71,3 +71,7 @@ unit 0 이 그 spec 의 press~release 판정 신호(`_focusIndex >= 0 || AnyInte
 - **슬로모 진입/이탈 보간** — press 마다 1.0↔0.3 스냅이 잦아져 거슬리면 TimeManager 에
   짧은 램프. unit 0 완료 기준에서 체감 확인 후 판단.
 - **거절 사유의 덱빌더 표기** — attach-requirement 후속 후보와 병합.
+- **Units 계열 발동 신호 확장** — 진동갑주(OnDamagedN/HealthThreshold)·OnKill·OnDeath·
+  PeriodicTimer 는 생산 맥락이 달라 unit 3 채널이 나르지 않는다(§A.5). 확장 시 별도 결정.
+- **발동 전용 벤더 파티클 시그니처** — ShieldGranted 선례(vfxSpawner 원샷)로 꿈 스파클
+  계열 스킨. 아트 선택 필요.
