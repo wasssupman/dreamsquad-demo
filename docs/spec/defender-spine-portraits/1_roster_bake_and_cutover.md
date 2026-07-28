@@ -43,3 +43,6 @@ unit 0 도구로 라이브 방어유닛 전원의 Spine 상체 Sprite를 만들�
 - 흰색·검정·게임 UI 톤 배경 위에서 halo와 불투명 사각형이 없다.
 - `git diff`상 각 Defender SO는 `portrait` 참조 외 변경이 없다.
 - 사용자 확인: 20종 contact sheet의 상체 crop/캐릭터 정합성 통과.
+
+완료 확인: 2026-07-28 · 사용자 전수 진행 승인 · 구현 커밋 `4dc1244c` ·
+catalog/output/고유 Sprite 20/20/20, 현재 Spine 재렌더와 PNG 바이트 일치 20/20.
