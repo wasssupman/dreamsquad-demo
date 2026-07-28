@@ -39,7 +39,9 @@
 ### 능력 — 상시 압박 1 + 사건 구동 2
 
 - **상시**: cleave 3 × cd 0.6 (스탯. 별도 mechanic 아님)
-- **진동갑주** `HealthThreshold(fraction 0.20)` × `SelfTileAoe(반경 2)` — 경계마다 자기중심 폭발
+- **진동갑주** `HealthThreshold(fraction 0.20)` × `SelfTileAoe(반경 2)` — 경계마다 자기중심 폭발.
+  **`payload.projectile`(AOE 연출 SO) 참조가 필수 authoring 이다** — 없으면 폭발 요청 자체가 드롭되어
+  데미지까지 안 나간다(필수 준수 6)
 - **집단 도약** `HealthThreshold(fraction 0.20)` × `SelfBlink` — 방어유닛 밀집도 최대 지점 착지
 
 HP 950 · fraction 0.20 → 760 / 570 / 380 / 190 에서 **각 4회**. 래치 단조라 회복해도 재발동하지 않는다.
@@ -49,6 +51,11 @@ HP 950 · fraction 0.20 → 760 / 570 / 380 / 190 에서 **각 4회**. 래치 �
 `BlinkRequestEventsSingleton` seam 을 거쳐 Movement 가 나중에 위치를 옮긴다. 따라서 같은 fraction 을
 줘도 결정론적으로 폭발이 먼저다. 읽히는 서사는 "제자리를 쓸어버리고 다음 무리로 뛴다".
 역순("뛰어들어 터진다")을 원하면 별도의 순서 장치가 필요하므로 이번 범위에서 제외한다.
+
+코드로 확정했다: 두 슬롯 모두 같은 프레임에 `fired` 가 되고, 폭발은 `HealthThresholdSystem` 이
+`transform` 을 읽는 **blink 전 위치**에서 터지며, blink 는 `BlinkApplySystem` 이
+`[UpdateAfter(HealthThresholdSystem)]` 로 나중에 적용한다. **슬롯 순서로 뒤집을 수 없으므로
+spec 계약으로 못박는다.**
 
 **타이머 구동 능력을 넣지 않은 이유**: 보스 조우는 t≈50 / 110 / 170초이고 그 시점 플레이어 화력으로
 보스 생존은 4~7초다. 9~10초 주기 능력은 3회 조우 중 2회 이상 0발이고, 가장 극적이어야 할 마지막
@@ -60,9 +67,25 @@ HP 950 · fraction 0.20 → 760 / 570 / 380 / 190 에서 **각 4회**. 래치 �
   끌려갈 필요가 없다. 근본 원인은 `Aggroed` 가 붙는 순간 `AttackSystem:947` 이 타겟 수를 1로 강제해
   cleave 3 을 소멸시키고, `MovementSystem:97` 의 `Chasing` 조기 return 이 사냥 분기(`:122`)보다 앞이라
   보스가 가디언만 쫓게 되는 것이다. **코스트 2 가디언 1기가 이 보스의 정체성 전체를 껐다.**
-- **CC 완전 면역**: Stun / Sleep / Impulse 전부 무효.
-- **대가(사용자 확정 2026-07-29)**: 방어 측 CC 카드 — 아이스캐스터 스턴, `lullaby_dart` 수면, 넉백 —
-  이 보스전에서 무효가 된다. 자석 아키타입(가디언 어그로 전략)도 보스 상대로는 사장된다. 수용한다.
+- **CC 면역 = 행동 정지 + 넉백까지만.** `CcKind` 는 `{Slow, Impulse, DoT, Stun, Sleep}` 이고
+  **DoT 가 CC 와 같은 버퍼**를 쓴다. 무조건 거절하면 DoT·Slow 면역까지 삼켜서 `Card_EmberBite`(Bleed)가
+  보스에게 데미지 0 이 된다 — 사용자가 수용한 대가("스턴 / 수면 / 넉백")를 넘어선다. 따라서 술어를
+  `CcActionLock.IsLock(kind) || kind == Impulse` 로 좁히고 `DoT` / `Slow` 는 통과시킨다. lock-set
+  단일 소스를 재사용하면 새 lock 종류가 추가돼도 면역이 자동으로 동행한다.
+- **구현 지점**: 어그로는 **부착 1곳 차단**(`AggroStateSystem` 이 `Aggroed` 의 유일한 writer — 소비
+  지점이 6곳이라 "붙은 것을 무시" 방식보다 압도적으로 싸다). CC 는 **부여 시점 거절 2곳**
+  (`CcApplySystem` 의 `EnemyCcEventsSingleton` 드레인 + `EffectSpawner.ApplyCc`) — 모든 CC 생산자가
+  이 둘로 수렴하고 `Impulse` 도 같은 `CcEffect` 버퍼를 순회하므로 넉백이 공짜로 따라온다.
+  `AggroCapacity` 회계 · `CcClearRequestsSingleton` · FSM 전이는 **무변경**(`Evaluate` 가 순수 함수라
+  부착이 없으면 `aggroed = false` 로 자동).
+- **면역 후 보스는 `Chasing` / `Standoff` 에 영구히 들어가지 않는다** — `aggroed` 가 그 두 상태의
+  유일한 진입 조건이다. `Marching`(사냥 flow-follow) ↔ `Engaging` 만 쓴다. `boss-defender-field` 계약과
+  일치하며, 이번 결정은 그 spec 이 파킹해둔 "보스 어그로 면역" 후속 후보의 실행이다.
+- **조용히 죽는 기존 콘텐츠(실측)**: `Card_LullabyDart`(수면) · `Card_FrostArrow`(스턴) ·
+  `Card_GaleShove`(넉백)가 완전 무효. `Card_ShieldLull`(AreaSleep)은 보스 대상분만 무효.
+  `Card_Frostbite` 는 3스택 슬로우는 살고 **5스택 스턴만 무효**(카드 설계 의도의 절반).
+  자석 아키타입(가디언 어그로 전략)도 보스 상대로는 사장된다. **수용한다(사용자 확정 2026-07-29).**
+  `Defender_IceCaster` 의 CC 경로는 미확인 — spec 작성 시 1회 확인한다.
 
 ### bossPool
 
@@ -96,8 +119,12 @@ HP 950 · fraction 0.20 → 760 / 570 / 380 / 190 에서 **각 4회**. 래치 �
    갱신한다. `ThreatEntry` / threat drain 은 별 책임이니 남긴다.
 5. **`SelfTileAoe` 캐리어의 `targetFaction` 을 host 진영에서 도출한다.** 현재 기본값이 `Enemy` 라
    보스가 쓰면 자기 진영을 때린다. `BuildPatternTemplate` 의 `hostIsEnemy` 도출이 선례다.
-6. **보스 bake 경로가 `SelfTileAoe` 의 AOE 연출 인덱스를 채우는지 확인한다.** defender 경로는
-   ProjectileData 가 없으면 loud skip 한다 — 보스 경로에 같은 가드가 있는지 미확인.
+6. **보스 bake 가 `SelfTileAoe` 의 `projectileDataIndex` 를 채우도록 고친다 — 확인 완료, 현재 안 채운다.**
+   `BakeNightmareMechanics` 의 해당 분기가 `SelfBlink || AllyMoveSpeedAura` 뿐이라 `SelfTileAoe` 는
+   `-1` 이 남고, 드레인이 `dataIndex < 0` 이면 **`ProjectileSpawnRequest` 를 통째로 버린다.** 폭발이
+   그 요청 하나로 표현되므로 **VFX 만 빠지는 게 아니라 데미지도 나가지 않는다** — 능력 완전 무효다.
+   로그는 뜨지만 "dataIndex -1" 이라 원인이 드러나지 않는다. bake 조건에 `SelfTileAoe` 를 추가하고
+   `payload.projectile` 이 null 이면 loud skip 한다. **진동갑주는 코드 0줄이 아니다.**
 7. **bake 에 degenerate 값 loud 거절을 추가한다.** 현재 `fraction` / `periodSeconds` / `period` 를
    검증하지 않고 순수함수들이 조용히 false 를 반환한다. 오타 하나에 능력이 로그 없이 사라진다.
    bake 에 loud 거절 선례가 이미 4개 있다.
@@ -130,6 +157,18 @@ HP 950 · fraction 0.20 → 760 / 570 / 380 / 190 에서 **각 4회**. 래치 �
 - **적별 피격 반경** — `attackRange 2` + `attackTargetCount 3` 의 실제 cleave 체감(방어유닛 3기가 동시에
   사거리에 들어오는 빈도)은 플레이로만 알 수 있다. `docs/spec/README.md` 의 기존 후속 후보와 얽힌다.
 
-## 구현
+## 작업 단위
 
-작업 단위는 `docs/spec/boss-slasher/` 에 `README.md` + `0_*.md` ~ `N_*.md` 로 작성한다.
+| # | 작업 | 요지 |
+|---|---|---|
+| 0 | `bossPool` 필드 | 필드 추가 + `ResolveBossPool()` 폴백 + `Count == 1` 이면 rng 미소비. **Slasher asset 없이 기존 7덱 무회귀를 먼저 증명한다** |
+| 1 | Slasher asset | 스탯 · 외형 · 누락 필드 전부 + `EnemyCatalog` 등록 + 진동갑주용 AOE `ProjectileData` 준비. `nightmareMechanics` 는 비운다 |
+| 2 | 어그로 + CC 면역 | 부착 1곳 차단 + 부여 2곳 거절(kind 화이트리스트). **이것이 없으면 cleave 3 을 육안으로 검증할 수 없다** — 가디언이 타겟 수를 1로 강제한다 |
+| 3 | 진동갑주 | bake 에 `SelfTileAoe` 추가(필수 준수 6) + `mechanic[0]` |
+| 4 | 집단 도약 | 밀집도 순수 함수 + 정책 교체 + `WithNone<DeadTag>` + `mechanic[1]` + 동시 발동 순서 계약 |
+| 5 | handoff summary | |
+
+순서 근거: 면역을 asset 뒤에 두어야 같은 보스로 "면역 전 / 후" 를 비교할 수 있다. 컴파일 선행
+의존은 없다 — `BossTag` 은 이미 존재하고 면역 단위는 신규 타입 0이다.
+
+구현은 `docs/spec/boss-slasher/` 에 `README.md` + `0_*.md` ~ `5_*.md` 로 쪼갠다.
