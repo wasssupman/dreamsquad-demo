@@ -51,6 +51,9 @@ namespace Wassup.Core
         private readonly HashSet<Vector2Int> _rangeCells = new();
         // 범위 타일 세기 배율(펄스 알파에 곱). 1 = 기존 사각 범위. unit 9.
         private float _rangeAlphaMul = 1f;
+        // unit 4 — 지금 깔려 있는 범위 표시가 조준 페이즈 스타일인가. 페인트 시점에 정해지고
+        // Update() 의 틴트가 같은 플래그로 색을 고른다(타일과 색이 갈라지지 않게).
+        private bool _rangeAimStyle;
         // placement-eligible-tile-highlight unit 1 — 배치 가능 셀 밝은 하이라이트(정적, 펄스 없음).
         // range 와 분리된 전용 타일맵. 드래그 중엔 range 처럼 유닛 위로 상승(9998).
         private Tilemap _placeableTilemap;
@@ -124,6 +127,9 @@ namespace Wassup.Core
         // defender-directional-volley unit 9 — 조준 화살표도 같은 이유로 띄운다. 프랍보다
         // 조금 더(범위 타일 위에도 얹혀야) — 여전히 시각적으로 무시 가능한 높이.
         private const float ArrowGroundLift = 0.05f;
+        // unit 4 — 화살표를 조준 색에서 얼마나 밝히나. 화살표 스케일/알파(0.92·0.7·0.5)와 같은
+        // 결의 프레젠테이션 상수 — 색 자체는 TileSetData 가 소유하고 여기선 명도만 민다.
+        private const float AimArrowLighten = 0.72f;
 
         // BattleBridge 맵 빌드 시 호출 (unit 2). Grid cellLayout/cellSize 를 모드에 맞춰 설정한 뒤
         // 전체 셀을 일괄 페인트한다. 재진입(RebuildDraftMap) 안전 — Clear 선행.
@@ -183,11 +189,7 @@ namespace Wassup.Core
             if (_tileSet == null) return;
             // 사거리 알파 — 펄스 제거(사용자 요청): 정적 레벨(rangePulseMaxAlpha)만 적용.
             // 세기 차이(방향 미정 십자 vs 선택된 레인)는 _rangeAlphaMul 배율로만.
-            if (_rangeTilemap != null && _rangeCells.Count > 0)
-            {
-                var c = _tileSet.rangeColor; c.a = _tileSet.rangePulseMaxAlpha * _rangeAlphaMul;
-                _rangeTilemap.color = c;
-            }
+            if (_rangeTilemap != null && _rangeCells.Count > 0) ApplyRangeTint();
             // placement-eligible-tile-highlight unit 1 — 배치 하이라이트 페이드인(정적, 펄스 없음).
             // range 와 독립: 탭 arm 처럼 range 가 없어도 페이드가 돌아야 한다.
             if (_placeableActive && _placeableTilemap != null)
@@ -535,7 +537,9 @@ namespace Wassup.Core
         // defender-directional-volley unit 9 — 방향 지정 화살표. 보드에 눕는 탭 어포던스라
         // 블롭/팝과 같은 방식(grid 자식 절차적 스프라이트)으로 그린다. 이 뷰는 write-only —
         // 어느 칸에 어느 각도로 무엇이 선택됐는지는 전부 호출부가 정해 넘긴다.
-        public void SetAimArrows(IReadOnlyList<Vector2Int> cells, IReadOnlyList<float> anglesDeg, int selectedIndex)
+        // emphasized — unit 5. 방향이 확정된 상태(그 레인만 남은 상태)면 전부 또렷·크게,
+        // 미선택(4레인 전부 표시)이면 전부 흐리게·작게. 개별 선택 인덱스는 없다.
+        public void SetAimArrows(IReadOnlyList<Vector2Int> cells, IReadOnlyList<float> anglesDeg, bool emphasized)
         {
             if (grid == null || cells == null || anglesDeg == null || _tileSet == null) return;
             float cellWorld = grid.cellSize.x;
@@ -551,10 +555,11 @@ namespace Wassup.Core
                 // 회전/스케일 무관하게 정확히 +Y 만큼 — localPosition 뒤 world 로 보정).
                 sr.transform.position += Vector3.up * ArrowGroundLift;
 
-                bool on = i == selectedIndex;
-                // 선택된 화살표만 또렷하고 살짝 크다. 색은 범위 타일과 같은 rangeColor —
-                // 배치/스킬 범위와 같은 언어를 쓴다(새 색을 만들지 않는다).
-                var c = _tileSet.rangeColor;
+                bool on = emphasized;
+                // 선택된 화살표만 또렷하고 살짝 크다. 색은 조준 슬롯(unit 4)에서 오되 **명도를
+                // 올려** 쓴다 — 레인이 solid 로 채워지면 같은 색 화살표는 그 위에서 사라진다.
+                // 같은 색상(hue)을 유지하니 "레인과 한 몸"이라는 신호는 남고, 값 대비로 읽힌다.
+                var c = Color.Lerp(RangeTintColor(aimStyle: true), Color.white, AimArrowLighten);
                 c.a = on ? 1f : 0.5f;
                 sr.color = c;
                 float s = cellWorld * (on ? 0.92f : 0.7f);
@@ -874,6 +879,22 @@ namespace Wassup.Core
             }
         }
 
+        // unit 4 — 범위 표시의 두 스타일. 조준 페이즈 슬롯이 비어 있으면(기본) 전부 range*
+        // 로 폴백해 기존 동작과 바이트 동일하다 — 스타일 분리는 에셋 할당으로 켜진다.
+        private TileBase RangeTileFor(bool aimStyle)
+            => aimStyle && _tileSet.aimRangeTile != null ? _tileSet.aimRangeTile : _tileSet.rangeTile;
+
+        // 알파는 세기 배율(_rangeAlphaMul) 을 곱하기 전 기준값까지만 담는다 — 배율 적용은
+        // 알파를 소유한 Update() 의 몫(unit 9 계약).
+        private Color RangeTintColor(bool aimStyle)
+        {
+            if (aimStyle && _tileSet.aimRangeTile != null)
+            {
+                var ac = _tileSet.aimRangeColor; ac.a = _tileSet.aimRangeAlpha; return ac;
+            }
+            var c = _tileSet.rangeColor; c.a = _tileSet.rangePulseMaxAlpha; return c;
+        }
+
         // includeCenter — 배치 프리뷰는 중심 셀(유닛 위치)을 비우고, 스킬 AOE 는
         // 중심도 피해 범위라 포함한다 (range-preview unit 3).
         public void SetPlacementRange(Vector2Int center, int tileRange, bool includeCenter = false)
@@ -882,6 +903,7 @@ namespace Wassup.Core
             ClearPlacementRange();
             EnsureRangeTilemap();
             _rangeAlphaMul = 1f;
+            _rangeAimStyle = false;
             for (int dx = -tileRange; dx <= tileRange; dx++)
             for (int dz = -tileRange; dz <= tileRange; dz++)
             {
@@ -891,25 +913,39 @@ namespace Wassup.Core
                 _rangeTilemap.SetTile(ToCell(cell), _tileSet.rangeTile);
                 _rangeCells.Add(cell);
             }
-            var c = _tileSet.rangeColor; c.a = _rangeTilemap.color.a; _rangeTilemap.color = c;
+            ApplyRangeTint();
         }
 
         // defender-directional-volley unit 9 — 임의 셀 집합 점등(방향 레인). 사각 범위와
         // 같은 타일맵·수명·펄스를 공유하고 셀 목록만 호출부가 정한다. alphaMul = 세기
         // (방향 미정 십자는 흐리게, 선택된 레인은 또렷하게).
-        public void SetPlacementCells(IReadOnlyList<Vector2Int> cells, float alphaMul = 1f)
+        // aimStyle — unit 4. 조준 페이즈(레인/착지셀)는 배치 단계와 다른 타일·색을 쓴다.
+        // 드래그 프리뷰·스킬 조준/텔레그래프는 false 로 남아 기존 outline 그대로.
+        public void SetPlacementCells(IReadOnlyList<Vector2Int> cells, float alphaMul = 1f, bool aimStyle = false)
         {
             if (grid == null || _tileSet == null || _tileSet.rangeTile == null || cells == null) return;
             ClearPlacementRange();
             EnsureRangeTilemap();
             _rangeAlphaMul = Mathf.Clamp01(alphaMul);
+            _rangeAimStyle = aimStyle;
+            var tile = RangeTileFor(aimStyle);
             for (int i = 0; i < cells.Count; i++)
             {
                 var cell = cells[i];
                 if (cell.x < 0 || cell.x >= _gridSize.x || cell.y < 0 || cell.y >= _gridSize.y) continue;
-                _rangeTilemap.SetTile(ToCell(cell), _tileSet.rangeTile);
+                _rangeTilemap.SetTile(ToCell(cell), tile);
                 _rangeCells.Add(cell);
             }
+            // 이 프레임의 Update() 가 이미 지났으면 새 타일이 옛 색으로 한 프레임 보인다 —
+            // 두 스타일의 색이 다르므로 즉시 반영한다(리페인트는 방향이 바뀔 때만이라 저렴).
+            ApplyRangeTint();
+        }
+
+        private void ApplyRangeTint()
+        {
+            if (_rangeTilemap == null) return;
+            var c = RangeTintColor(_rangeAimStyle); c.a *= _rangeAlphaMul;
+            _rangeTilemap.color = c;
         }
 
         public void ClearPlacementRange()

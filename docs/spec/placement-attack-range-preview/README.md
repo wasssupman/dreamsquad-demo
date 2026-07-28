@@ -27,8 +27,10 @@
 | 1 | `1_tilemap_range_layer.md` | view | `_rangeTilemap` 생성 + Set/Clear + 동기 펄스 |
 | 2 | `2_bridge_and_drag_wiring.md` | wiring | BattleBridge 포워딩 + DragController 배선 |
 | 3 | `3_skill_aim_range.md` | 확장 | 스킬 aim 커서 추종 + 캐스트 후 텔레그래프 격자 통일 (owner 게이트, 빨간 쿼드 삭제) |
+| 4 | `4_aim_range_style_slot.md` | 확장 | 조준 페이즈 전용 2번째 스타일 슬롯(주황 solid) — 배치 단계와 표시 분리 |
+| 5 | `5_aim_icon_coverage_and_depth.md` | 확장 | 조준 아이콘을 전 범위 칸으로 + 정렬을 유닛 아래(보드 대역)로 |
 
-의존: `0 → 1 → 2` (순차) · `3` 은 2 완료 후 독립.
+의존: `0 → 1 → 2` (순차) · `3` 은 2 완료 후 독립 · `4` 는 2 완료 후 독립 · `5` 는 4 후속.
 
 ## Feature-wide 계약
 
@@ -52,7 +54,11 @@
   per-cell 폴백(`SetTileFlags(cell, TileFlags.None)` + `SetColor(cell, pulseColor)`, PaintSurroundRing
   과 동일 패턴, 매 펄스 프레임 재적용 ~48콜)으로 전환. 폴백도 전 셀 동일 alpha 라 동기 유지.
 - **시각 형태 = 격자 outline (map 가시성)**: `rangeTile` 스프라이트는 **셀 테두리만 그리는 격자 outline**
-  (중앙 투명). solid fill 은 맵을 과하게 가려 폐기(사용자 결정 2026-07-04). 현재 에셋
+  (중앙 투명). solid fill 은 맵을 과하게 가려 폐기(사용자 결정 2026-07-04). **단, unit 4 에서 조준
+  페이즈에 한해 이 결정이 뒤집혔다(사용자 재승인 2026-07-28)** — 두 번째 슬롯 `aimRangeTile` 이
+  같은 주황의 solid 채움. 가림은 적용 구간을 조준 페이즈로만 좁히고 알파를 낮춰(내부 실효 0.5)
+  완화한다. **배치 단계(드래그 프리뷰)·스킬 조준/텔레그래프는 outline 그대로** — 원 결정이 지켜지는
+  구간이다. 즉 두 단계를 가르는 신호는 색이 아니라 형태다. 현재 에셋
   `Assets/_Project/Data/TileSets/tile_grid_outline.png`(64px, **2px** 흰 테두리, PPU 64, Bilinear/Uncompressed).
   **형태 조정은 rangeTile 에셋 교체로만** — 페인트/펄스 코드는 스프라이트-agnostic(코드 무관).
 - **데이터 주도(하드코딩 금지)**: rangeTile / rangeColor / pulseMinAlpha / pulseMaxAlpha / pulseSpeed

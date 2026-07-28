@@ -34,6 +34,18 @@ namespace Wassup.Data
         [Range(0f, 1f)] public float rangePulseMaxAlpha = 0.85f;
         [Min(0.05f)] public float rangePulseSpeed = 3f; // sin(unscaledTime * speed) 각속도
 
+        [Header("Aim-phase range style (unit 4 — 조준 페이즈 전용 2번째 슬롯)")]
+        // 배치 단계(드래그 사거리 프리뷰)와 공격방향 지정 단계를 표시로 가른다. 조준 레인·
+        // 폭탄 착지셀·조준 화살표만 이 슬롯을 쓰고, 드래그 프리뷰/스킬 조준/텔레그래프는 range* 유지.
+        // **미할당(null) = 스타일 분리 off** — 타일·색·알파 전부 range* 폴백(기존 동작 그대로).
+        // 형태 조정은 이 스프라이트 교체로만(페인트 코드는 스프라이트-agnostic).
+        public TileBase aimRangeTile;
+        [Tooltip("조준 표시 tint. 스프라이트는 흰색+알파로만 그리고 색은 여기서 입힌다(틴트는 전역 곱).")]
+        public Color aimRangeColor = new Color(1f, 0.55f, 0.12f, 1f);
+        [Range(0f, 1f)]
+        [Tooltip("조준 표시 기준 알파. 실제 알파 = 이 값 × 세기 배율(미선택 십자 0.7 / 선택 레인 1).")]
+        public float aimRangeAlpha = 0.85f;
+
         [Header("Placement highlight (placement-eligible-tile-highlight)")]
         // 배치 가능 칸을 덮는 타일. 안쪽 은은한 fill + 가장자리 밝은 림이 한 스프라이트에 구워져
         // "플랫폼(슬랩)" 느낌을 준다(3D 융기 없음). 색은 placeableColor 가 tint. 형태 조정(림/베벨)은

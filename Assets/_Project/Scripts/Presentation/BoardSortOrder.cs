@@ -25,10 +25,11 @@ namespace Wassup.Presentation
         // 팝은 확정 순간의 이완이라 액체보다 앞에 터져야 한다.
         public const int PlacementLiquidOrder = 11000;
 
-        // defender-directional-volley unit 9 — 방향 지정 화살표: 레인 타일 위에 얹히는
-        // 탭 어포던스라 범위/하이라이트보다 앞. 확정 팝(12000)보다는 뒤 — 조준은 이미
-        // 끝난 뒤에 팝이 뜬다.
-        public const int AimArrowOrder = 11500;
+        // defender-directional-volley unit 9 — 방향 지정 화살표. **보드에 그려진 것**이므로
+        // "보드 레이어 < 유닛 레이어" 규칙을 따른다(스폰 예고 라인과 같은 판단):
+        // 범위 타일(−12) 바로 위, overlay(−10)·그림자(−5)·유닛(양수) 아래 = 유닛이 화살표를 가린다.
+        // 이전 값 11500 은 유닛 위로 떠서 조준 중 유닛을 덮었다(사용자 지적 2026-07-28, unit 5).
+        public const int AimArrowOrder = -11;
 
         // spawn-point-alert unit 1(rev) — 스폰 예고 라인은 **바닥에 그려진 것**이다.
         // "보드 레이어 < 유닛 레이어" 규칙(TilemapMapView)에 따라 음수 대역에 둔다:

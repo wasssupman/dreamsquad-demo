@@ -4495,7 +4495,9 @@ namespace Wassup.Bridge
         private enum RangeDisplayOwner { None, Placement, SkillAim, SkillTelegraph, PlacementAim }
         private RangeDisplayOwner _rangeOwner = RangeDisplayOwner.None;
         private readonly List<Vector2Int> _laneCellScratch = new List<Vector2Int>();
-        private readonly List<Vector2Int> _arrowCells = new List<Vector2Int>();
+        // unit 5 — 레인 셀과 **그 셀이 속한 방향**을 나란히 모은다. 아이콘이 이 목록에서 나오므로
+        // "아이콘 = 칠해진 칸"이 구조적으로 보장된다(셀 선정이 LaneMath 를 공유하는 것과 같은 결).
+        private readonly List<Vector2Int> _laneDirScratch = new List<Vector2Int>();
         private readonly List<float> _arrowAngles = new List<float>();
         // 방향 미정(4레인 십자) 세기. 선택된 레인은 1. 0.45 는 시안 하이라이트가
         // 비쳐 다른 색으로 오독됨(2026-07-19 사용자) — 같은 주황으로 읽히는 0.7.
@@ -4516,9 +4518,10 @@ namespace Wassup.Bridge
             // 안 정해졌으므로 고를 수 있는 4레인을 십자로 흐리게 — 조준 페이즈와 같은 언어.
             // defender-ability-assets unit 2 — 폭탄병은 레인도 거짓말(착지 셀만 때린다) →
             // 조준 페이즈(SetAimGuide)와 같은 착지 후보 4셀. 나머지 facing 유닛은 레인 유지.
+            // aimStyle=false — 여기는 아직 배치 단계다. 조준 해치는 드롭 뒤에 나온다(unit 4).
             var bombPreview = unit.GetAbility<BombThrowAbility>();
-            if (bombPreview != null) PaintLandingCells(center, bombPreview.landingTiles, null, AimLaneDimAlpha);
-            else if (unit.RequiresFacing) PaintLanes(center, tileRange, null, AimLaneDimAlpha);
+            if (bombPreview != null) PaintLandingCells(center, bombPreview.landingTiles, null, AimLaneDimAlpha, aimStyle: false);
+            else if (unit.RequiresFacing) PaintLanes(center, tileRange, null, AimLaneDimAlpha, aimStyle: false);
             else tilemapMapView.SetPlacementRange(center, tileRange);
             _rangeOwner = RangeDisplayOwner.Placement;
         }
@@ -4537,29 +4540,32 @@ namespace Wassup.Bridge
             {
                 // bomb-thrower-defender unit 8 — 착지 타일 조준: 상하좌우 N칸 착지 후보만
                 // 하이라이트(레인/화살표 없음 — 머신거너와 다른 모드). 선택되면 그 착지 셀만.
-                PaintLandingCells(center, bombAim.landingTiles, selected, selected.HasValue ? 1f : AimLaneDimAlpha);
+                PaintLandingCells(center, bombAim.landingTiles, selected, 1f, aimStyle: true);
                 _rangeOwner = RangeDisplayOwner.PlacementAim;
                 tilemapMapView.ClearAimArrows();
                 return;
             }
             int tileRange = GridMath.RangeToTiles(unit.attackRange);
-            PaintLanes(center, tileRange, selected, selected.HasValue ? 1f : AimLaneDimAlpha);
+            // unit 4 — 조준 표시는 세기 배율을 쓰지 않는다(전부 불투명). 미선택/선택은 알파가
+            // 아니라 **몇 개를 그리느냐**로 갈린다: 미선택=4레인 전부, 선택=그 레인 하나만.
+            // 드래그 프리뷰(SetPlacementRange)의 dim 은 outline 이라 그대로 AimLaneDimAlpha.
+            PaintLanes(center, tileRange, selected, 1f, aimStyle: true);
             _rangeOwner = RangeDisplayOwner.PlacementAim;
 
-            // 화살표는 각 레인의 첫 칸에 — 유닛을 둘러싼 D-pad 라 엄지로 닿고, 레인이
-            // 어디서 출발하는지도 같은 자리에서 말한다.
-            _arrowCells.Clear();
+            // unit 5 — 아이콘은 첫 칸이 아니라 **칠해진 모든 칸**에 얹는다. 채움만으로는
+            // "위로 쏜다"와 "위에서 쏜다"가 여전히 같아 보이는데(unit 9 판단 1), 칸마다
+            // 화살표가 있으면 레인 전체가 방향을 말한다. 목록은 PaintLanes 가 방금 고른
+            // 셀/방향 그대로라 아이콘과 타일이 어긋날 수 없다.
             _arrowAngles.Clear();
-            int selectedIndex = -1;
-            for (int i = 0; i < AimCardinals.Length; i++)
+            for (int i = 0; i < _laneDirScratch.Count; i++)
             {
-                var c = AimCardinals[i];
-                if (selected.HasValue && selected.Value == c) selectedIndex = i;
-                _arrowCells.Add(center + c);
+                var d = _laneDirScratch[i];
                 // 스프라이트는 +Y 를 향한다 → 그 방향으로 눕힌다.
-                _arrowAngles.Add(Mathf.Atan2(c.y, c.x) * Mathf.Rad2Deg - 90f);
+                _arrowAngles.Add(Mathf.Atan2(d.y, d.x) * Mathf.Rad2Deg - 90f);
             }
-            tilemapMapView.SetAimArrows(_arrowCells, _arrowAngles, selectedIndex);
+            // 선택되면 그 레인만 칠해지므로, 남은 아이콘은 전부 선택된 레인의 것이다 —
+            // 강조는 개별 인덱스가 아니라 상태 하나로 충분하다.
+            tilemapMapView.SetAimArrows(_laneCellScratch, _arrowAngles, selected.HasValue);
         }
 
         public void ClearAimGuide()
@@ -4570,29 +4576,39 @@ namespace Wassup.Bridge
 
         // 칠할 셀을 시뮬의 발사 게이트와 **같은 함수**로 고른다 — 보이는 칸과 실제로 맞는
         // 칸이 구조적으로 일치한다(따로 계산하면 언젠가 어긋난다).
-        private void PaintLanes(Vector2Int center, int tileRange, Vector2Int? facing, float alphaMul)
+        private void PaintLanes(Vector2Int center, int tileRange, Vector2Int? facing, float alphaMul, bool aimStyle)
         {
             if (tileRange <= 0) return;
+            CollectLaneCells(center, tileRange, facing);
+            tilemapMapView.SetPlacementCells(_laneCellScratch, alphaMul, aimStyle);
+        }
+
+        // 방향별로 나눠 훑어 셀과 방향을 짝지어 모은다. 판정은 여전히 시뮬의 발사 게이트
+        // (`LaneMath.IsInLane`)라 보이는 칸 = 실제로 맞는 칸이 유지된다.
+        private void CollectLaneCells(Vector2Int center, int tileRange, Vector2Int? facing)
+        {
             _laneCellScratch.Clear();
+            _laneDirScratch.Clear();
             var c = new int2(center.x, center.y);
-            for (int dx = -tileRange; dx <= tileRange; dx++)
-            for (int dz = -tileRange; dz <= tileRange; dz++)
+            for (int i = 0; i < AimCardinals.Length; i++)
             {
-                var cell = new int2(center.x + dx, center.y + dz);
-                bool lit = facing.HasValue
-                    ? LaneMath.IsInLane(c, new int2(facing.Value.x, facing.Value.y), tileRange, cell)
-                    : LaneMath.IsInLane(c, new int2(1, 0), tileRange, cell)
-                      || LaneMath.IsInLane(c, new int2(-1, 0), tileRange, cell)
-                      || LaneMath.IsInLane(c, new int2(0, 1), tileRange, cell)
-                      || LaneMath.IsInLane(c, new int2(0, -1), tileRange, cell);
-                if (lit) _laneCellScratch.Add(new Vector2Int(cell.x, cell.y));
+                var dir = AimCardinals[i];
+                if (facing.HasValue && facing.Value != dir) continue;
+                var d = new int2(dir.x, dir.y);
+                for (int dx = -tileRange; dx <= tileRange; dx++)
+                for (int dz = -tileRange; dz <= tileRange; dz++)
+                {
+                    var cell = new int2(center.x + dx, center.y + dz);
+                    if (!LaneMath.IsInLane(c, d, tileRange, cell)) continue;
+                    _laneCellScratch.Add(new Vector2Int(cell.x, cell.y));
+                    _laneDirScratch.Add(dir);
+                }
             }
-            tilemapMapView.SetPlacementCells(_laneCellScratch, alphaMul);
         }
 
         // bomb-thrower-defender unit 8 — 폭탄 착지 후보 셀. 미선택이면 4 cardinal 착지 셀
         // (center±N) 전부 dim, 선택되면 그 방향 착지 셀 1개만. PaintLanes 의 착지-셀 판.
-        private void PaintLandingCells(Vector2Int center, int landingTiles, Vector2Int? facing, float alphaMul)
+        private void PaintLandingCells(Vector2Int center, int landingTiles, Vector2Int? facing, float alphaMul, bool aimStyle)
         {
             if (landingTiles <= 0) return;
             _laneCellScratch.Clear();
@@ -4601,7 +4617,7 @@ namespace Wassup.Bridge
             else
                 for (int i = 0; i < AimCardinals.Length; i++)
                     _laneCellScratch.Add(center + AimCardinals[i] * landingTiles);
-            tilemapMapView.SetPlacementCells(_laneCellScratch, alphaMul);
+            tilemapMapView.SetPlacementCells(_laneCellScratch, alphaMul, aimStyle);
         }
 
         // 스킬 조준 범위 — 배치와 달리 중심 셀 포함(AOE 는 중심도 피해 범위).
