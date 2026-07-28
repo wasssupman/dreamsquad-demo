@@ -72,6 +72,15 @@ namespace Wassup.UI
         // hand-deal-in unit 4 — 퇴장 침강(딜의 거울: 하단 덱으로 InBack).
         [SerializeField] private float sinkDurationSec = 0.26f;
         [SerializeField] private float sinkStaggerSec = 0.04f;
+        // hand-drag-clearance unit 0 — 조준 중에만 손패를 내려 큰 맵의 최하단 행을 드러낸다.
+        // 210 = 카드 **헤더(이름) 띠만 남기는** 깊이(사용자 결정 2026-07-28). 바깥 카드 헤더
+        // 하단이 화면 y 4 로 내려와 전 카드의 이름이 읽히는 마지막 지점이다. 이때 조준 중
+        // 카드 top 은 342-210=132 라 가장 큰 맵의 보드 하단 모서리(167)보다 아래 — 최하단
+        // 행 셀이 통째로 드러난다.
+        [SerializeField] private float dragClearanceDrop = 210f;
+        // 헤드룸과 같은 감성의 스프링(살짝 오버슈트 후 안착). 하강·복귀 공용 — target 만 바뀐다.
+        [SerializeField] private float dragClearanceSpring = 320f;
+        [SerializeField] private float dragClearanceDamping = 24f;
         // hand-deal-in unit 1 — 눌러서 들기(press-to-lift, 모바일: hover 아님).
         [SerializeField] private float focusRaise = 100f;
         [SerializeField] private float focusScale = 1.28f;
@@ -243,6 +252,11 @@ namespace Wassup.UI
         private Sprite _chipSprite; // 흰 라운드 칩 공용 스프라이트(틴트는 Image.color 가 담당)
 
         private GameObject _panel;
+        // hand-drag-clearance unit 0 — 하강의 기준선. BuildCanvas 가 실제 배치한 값을 캡처하고
+        // (trayConfig 를 다시 읽지 않는다 — 기준은 하나) 리셋/복귀가 전부 이 값으로 돌아온다.
+        private float _panelBaseY;
+        private float _clearanceOffset;  // 0 = 기준선, -dragClearanceDrop = 완전 하강
+        private float _clearanceVel;
         // dreamcatcher-orb-dock unit 4 — 손패 오픈 중 보드 영역 탭으로 물러나기(바깥 탭 dismiss).
         private GameObject _dismissCatcher;
         private Image _backing;        // tray frame — deal 무대(카드와 별개로 페이드 인)
@@ -332,11 +346,88 @@ namespace Wassup.UI
             // 피드 주도 채널이라 닫힘/페이즈 이탈/파괴 어느 경로든 별도 해제 호출 없이
             // 홈 pitch 로 스프링 복귀한다(State 가 UnitStrip 이 되는 순간 피드가 끊긴다).
             EnsureCameraDirector()?.SetHandHeadroom();
+            TickHandClearance(); // hand-drag-clearance unit 0 — 조준 중 손패 하강/복귀
             SpringSlots(); // hand-deal-in unit 0 — 슬롯 target 으로 매프레임 추종
             // ESC = cancel rule (spec unit 7 §6): drop any drag/portal-aim, no spend.
             var kb = UnityEngine.InputSystem.Keyboard.current;
             if (kb == null || !kb.escapeKey.wasPressedThisFrame) return;
             CancelAllCardInteraction();
+        }
+
+        // hand-drag-clearance unit 0 — 조준 중에만 손패 패널을 내려 큰 맵의 최하단 행을
+        // 드러낸다. 카드 슬롯은 패널 자식이고 취소 판정(HandPanelRect)도 패널 기준이라,
+        // 패널 y 하나만 움직이면 카드·취소영역이 함께 따라온다(계약 1·3).
+        //
+        // 하강·복귀 모두 스프링이다(헤드룸과 같은 감성 — 살짝 오버슈트 후 안착).
+        //
+        // ⚠ 하강 중 카드가 손가락에서 미끄러지는 함정: ActiveTile/ActivePortal 은 카드가
+        // 포인터를 따라가는데 그 재고정이 `Slot.rect.position = screenPos`(스크린 좌표)이고
+        // OnDrag 는 포인터가 **움직일 때만** 호출된다. 패널이 그 사이 내려가면 자식인 카드도
+        // 딸려 내려가 손가락에서 최대 dragClearanceDrop 만큼 떨어진다(사거리 프리뷰도 함께
+        // 어긋난 채 정지). 그래서 패널을 움직이는 순간 그 슬롯의 화면 위치를 보존한다 —
+        // 이 보정이 있어야 부드러운 하강과 카드 추종이 양립한다.
+        //
+        // 상태(IsDragging/IsPortalAiming)는 드래그 슬롯이 소유하고 여기서는 읽기만 한다:
+        // 커밋·취소·ESC·닫힘·페이즈 이탈 어느 경로로 끝나든 별도 해제 호출 없이 복귀한다(계약 6).
+        private void TickHandClearance()
+        {
+            if (_panel == null) return;
+            // 카드를 누른 순간(press) 내려가고 뗀 순간 올라온다. press-lift focus 와 드래그가
+            // 한 조건으로 이어지는 이유: OnBeginDrag 가 `_dragging = true` 를 `SetFocus(-1)`
+            // **보다 먼저** 실행하므로(같은 콜백) 전환에 빈 프레임이 없다. 덕분에 단순 탭 ·
+            // 드래그 후 미부착 · 부착 성공이 전부 "포인터를 뗀 순간 복귀" 로 통일된다.
+            // 예외는 포탈 2탭 대기(IsPortalAiming) 하나 — 손을 뗐어도 출구를 보드에서
+            // 골라야 하므로 하강을 유지한다.
+            bool held = _focusIndex >= 0 || AnyInteractionActive();
+            float target = held ? -dragClearanceDrop : 0f;
+            // 언더댐핑이라 target 을 스쳐 지난다 — 안착은 변위와 속도를 함께 본다.
+            if (Mathf.Abs(_clearanceOffset - target) < 0.05f && Mathf.Abs(_clearanceVel) < 0.05f)
+            {
+                if (_clearanceOffset == target) return;
+                _clearanceOffset = target;
+                _clearanceVel = 0f;
+            }
+            else
+            {
+                KeyringSim.SpringStep(ref _clearanceOffset, ref _clearanceVel, target,
+                    dragClearanceSpring, dragClearanceDamping, 0f, Time.deltaTime);
+            }
+            ApplyClearanceOffset();
+        }
+
+        private void ApplyClearanceOffset()
+        {
+            var rt = (RectTransform)_panel.transform;
+            // 포인터 추종 카드는 화면 좌표로 직접 그려진다 — 패널 이동 전 위치를 잡아 복원한다.
+            // 드래그는 동시 1개만 성립하므로(CanStartDrag) 후보도 하나뿐이다.
+            RectTransform follow = null;
+            Vector3 followPos = default;
+            for (int i = 0; i < _slots.Count; i++)
+            {
+                var ds = _slots[i].dragSlot;
+                if (ds == null || !ds.IsPointerFollowing) continue;
+                follow = _slots[i].rect;
+                followPos = follow.position;
+                break;
+            }
+            var p = rt.anchoredPosition;
+            rt.anchoredPosition = new Vector2(p.x, _panelBaseY + _clearanceOffset);
+            if (follow != null) follow.position = followPos;
+        }
+
+        // 하강 상태의 하드 리셋. Close() 에는 두지 않는다 — Close 는 패널을 감추지 않고
+        // 침강(StartSink)만 시작하는데, 부착 성공 시 HandChanged 가 동기로 발화해 commit()
+        // 안에서 Close 가 FlyCard 보다 **먼저** 돌기 때문에, 거기서 리셋하면 가장 흔한 성공
+        // 경로에서 손패가 위로 튄 뒤 가라앉고 고스트 발사점과 어긋난다. 대신 패널이 실제로
+        // 꺼지거나 재구성되는 지점(Open / ForceClose / OnSinkComplete)에서만 되돌린다.
+        private void ResetHandClearance()
+        {
+            if (_panel == null) return;
+            _clearanceOffset = 0f;
+            _clearanceVel = 0f;
+            var rt = (RectTransform)_panel.transform;
+            var p = rt.anchoredPosition;
+            if (!Mathf.Approximately(p.y, _panelBaseY)) rt.anchoredPosition = new Vector2(p.x, _panelBaseY);
         }
 
         // Each card eases toward its target (arc base, or press-lifted in unit 1),
@@ -533,6 +624,7 @@ namespace Wassup.UI
         {
             if (State == HandState.Hand) return;
             State = HandState.Hand;
+            ResetHandClearance(); // hand-drag-clearance unit 0 — 항상 기준선에서 열린다
             if (_dismissCatcher != null) _dismissCatcher.SetActive(true);
             if (gaugeView != null) gaugeView.SetOpen(true);
             Refresh();
@@ -576,6 +668,7 @@ namespace Wassup.UI
             _slomoLease.Dispose();
             if (_flip != null) { StopCoroutine(_flip); _flip = null; }
             State = HandState.UnitStrip;
+            ResetHandClearance(); // hand-drag-clearance unit 0 — 하드 teardown(침강 없음)
             if (_dismissCatcher != null) _dismissCatcher.SetActive(false);
             if (gaugeView != null) gaugeView.SetOpen(false);
             // 억제 해제는 무조건 — 표시 여부는 CostDisplay 가 페이즈와 결합해 결정.
@@ -735,6 +828,7 @@ namespace Wassup.UI
             if (_panel != null)
             {
                 ((RectTransform)_panel.transform).localEulerAngles = Vector3.zero;
+                ResetHandClearance(); // hand-drag-clearance unit 0 — 침강 완료 = 패널이 꺼지는 시점
                 _panel.SetActive(false);
             }
             for (int i = 0; i < _slots.Count; i++) RestoreSlotHome(i); // 다음 오픈 대비 home 복원
@@ -886,6 +980,7 @@ namespace Wassup.UI
             prt.pivot = new Vector2(0.5f, 0f);
             prt.anchoredPosition = new Vector2(0f, trayConfig != null ? trayConfig.anchoredY : 32f);
             prt.sizeDelta = trayConfig != null ? trayConfig.handSize : new Vector2(980f, 232f);
+            _panelBaseY = prt.anchoredPosition.y; // hand-drag-clearance unit 0 — 하강 기준선
             var backing = _panel.GetComponent<Image>();
             // action-tray unit 3 — 트레이와 같은 외곽 문법(라운드+골드 엣지+네이비 fill)
             // 으로 "같은 프레임의 앞뒷면" 시각 통일. config 미할당 시 기존 단색 유지.

@@ -54,6 +54,12 @@ namespace Wassup.UI
 
         public bool IsDragging => _dragging;
         public bool IsPortalAiming => _portalEntryCell.HasValue;
+        // hand-drag-clearance unit 0 — 카드가 포인터를 따라가는 모드(UpdateDragVisual 이
+        // 위치를 **스크린 좌표**로 직접 쓴다). 손패 하강 중에도 카드는 손가락에 남아야 하므로
+        // View 가 패널을 움직일 때 이 슬롯만 위치를 보존한다. Defender/EnemyMark 는 카드가
+        // 손패 고정(화살표만 포인터 추종)이라 패널과 함께 내려가는 게 맞다.
+        public bool IsPointerFollowing =>
+            _dragging && (_mode == AimMode.ActiveTile || _mode == AimMode.ActivePortal);
 
         public void Bind(DreamcatcherHandView view, int index)
         {
