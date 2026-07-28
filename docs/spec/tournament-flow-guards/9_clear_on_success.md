@@ -67,6 +67,8 @@ clear-at-send 의 원래 사유는 "느린 complete + 앱 킬 시 남은 레코�
   진입에서 `reconcile complete ok — score=0` 로그 → 이어지는 `시작` 이 500 없이 진행.
 - 나가기(AbandonMatch) 직후 로비 진입에서 같은 attempt 로 complete 가 **두 번** 나가지 않는다.
 
+확인 2026-07-28 — 사용자 라이브 검증 통과. 커밋 eb67d5c5.
+
 ## 남는 구멍 (이 unit 범위 밖)
 
 - **orphan 락**: play 응답 유실 시 attemptId 자체가 없어 저장도 복구도 불가. 서버가
