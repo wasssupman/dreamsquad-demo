@@ -48,11 +48,11 @@ ring.position = _ringWorld;                       // 고리=손가락(UpdateDrag
 head = _unitPosWorld + camUp*unitHeight; endNode.position = head;
 swingPivot.localRotation Z = clamp(줄 방향각, ±maxAngle);  // 머리 중심 기울임
 cordLine: 고리→머리 2점;
-UpdateHoverAtTarget();                             // 하이라이트=_unitTargetWorld(마우스 안정) 칸
+UpdateHoverAtTarget();                             // 하이라이트=_fingerBoardWorld(손가락) 칸
 ```
 
-`UpdateDrag`: `TryComputeRingUnit` 로 `_ringWorld`/`_unitTargetWorld` 갱신(마우스 즉시 추종). 첫 프레임 `_unitPosWorld=target` 초기화. 오프보드면 preview 숨김.
-`UpdateHoverAtTarget`: `BoardSpace.ToSim(_unitTargetWorld)` → cell → `SetHover`. **스윙하는 `_unitPosWorld` 아님** → 배치 칸 안정.
+`UpdateDrag`: `TryComputeRingUnit` 로 `_ringWorld`/`_unitTargetWorld`/`_fingerBoardWorld` 갱신(마우스 즉시 추종). 첫 프레임 `_unitPosWorld=target` 초기화. 오프보드면 preview 숨김.
+`UpdateHoverAtTarget`: `BoardSpace.ToSim(_fingerBoardWorld)` → cell → `SetHover`. **스윙하는 `_unitPosWorld` 도, 매달린 `_unitTargetWorld` 도 아님** → 배치 칸이 안정적이면서 손가락에 붙는다(README 계약 3).
 `CleanupSession`: `_posInit/_onBoard/_unitVelWorld` 리셋.
 
 ## 완료 기준

@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29b8b73016fd4433dbba47a28c176c11, type: 3}
   m_Name: DragSwaySettings
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DragSwaySettings
-  ropeLength: 4.45
+  ropeLength: 1.5
   maxAngle: 8
   spring: 91
   damping: 60.2

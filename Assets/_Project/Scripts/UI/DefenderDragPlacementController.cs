@@ -66,7 +66,14 @@ namespace Wassup.UI
 
         // 키링 배치 상태: 고리 = 손가락(공중). 유닛 = 보드에 서서 무게추처럼 지연 추종.
         private Vector3 _ringWorld;        // 고리(손가락, 공중)
-        private Vector3 _unitTargetWorld;  // 유닛 발 추종 목표. 실제 drag=포인터 발점, tap=곡선 발점. 셀 판정 기준도 이 점.
+        private Vector3 _unitTargetWorld;  // 유닛 발 추종 목표(프리뷰 전용). 실제 drag=포인터 발점, tap=곡선 발점.
+        // 셀 판정 기준점 = 보드 평면 위 **손가락 직접 히트**. _unitTargetWorld 와 분리돼 있다:
+        // 발점은 totalDrop(유닛 키 + 줄×visualScale)만큼 화면 아래라, 그걸로 칸을 정하면 손가락이 화면
+        // 최상단에 닿아도 보드 상단 N행에 도달할 수 없다(실측 15×11 맵에서 3행 영구 배치 불가 + 화면
+        // 하단 절반이 전부 row 0 에 뭉침). 프리뷰는 계속 매달린 발점을 쓰고, 판정만 손가락을 따른다 —
+        // 같은 파일의 armed 보드 드래그(UpdateBoardScout/CommitBoardDrag)와 재배치 컨트롤러가 이미
+        // 쓰는 bridge.TryScreenToCell 과 같은 기준이다(프로젝트 단일 계약).
+        private Vector3 _fingerBoardWorld;
         private PlacementSnapDebounce.State _debounce; // unit 3: throttle 경과 상태(hoverTile 과 수명 동일)
         // defender-tap-to-place — arm(탭 선택) 상태(단일). 보드 탭 시 이 유닛을 슬롯에서 시뮬 배치.
         private DefenderDragSlot _armedSlot;
@@ -313,10 +320,12 @@ namespace Wassup.UI
             // 발↔고리 화면 세로 거리 = 유닛 키 + 줄 길이. 고리는 손가락에, 유닛은 그만큼 화면 아래 보드에.
             float totalDrop = _session.unitHeight + Cfg.ropeLength * _session.visualScale;
 
-            if (TryComputeRingUnit(screenPosition, totalDrop, out Vector3 ringW, out Vector3 unitTargetW))
+            if (TryComputeRingUnit(screenPosition, totalDrop, out Vector3 ringW, out Vector3 unitTargetW,
+                    out Vector3 fingerBoardW))
             {
                 _ringWorld = ringW;
-                _unitTargetWorld = unitTargetW; // 추종 목표 = 손가락 바로 아래 발점. 셀 판정도 이 점 기준.
+                _unitTargetWorld = unitTargetW; // 추종 목표 = 손가락 바로 아래 발점(프리뷰 전용)
+                _fingerBoardWorld = fingerBoardW; // 셀 판정 기준 = 손가락 보드 히트
                 if (!_posInit) { _unitPosWorld = unitTargetW; _unitVelWorld = Vector3.zero; _posInit = true; }
                 _onBoard = true;
                 if (_session.preview != null && !_session.preview.activeSelf) _session.preview.SetActive(true);
@@ -332,9 +341,16 @@ namespace Wassup.UI
         // 손가락 ray → 고리(손가락 위치) + 유닛 발 목표. 수직 분리는 카메라-up(화면 세로) 기준:
         // 고리는 손가락 ray 위, 발은 고리보다 화면상 totalDrop 아래이면서 보드 평면 위에 놓이도록 s 를 푼다.
         // (월드-up 으로 올리면 기울어진 카메라에서 화면상 거의 안 올라가 고리·유닛이 겹친다.)
-        private bool TryComputeRingUnit(Vector2 screenPos, float totalDrop, out Vector3 ringW, out Vector3 unitTargetW)
+        //
+        // fingerBoardW = **셀 판정 기준점**(보드 평면 위 손가락 직접 히트). 프리뷰용 발점과 분리하는 게
+        // load-bearing: 발점은 totalDrop(유닛 키 + 줄)만큼 화면 아래라, 그걸로 칸을 정하면 손가락이
+        // 화면 상단에 닿아도 발점이 상단 행에 못 미쳐 **보드 최상단 N행이 영구 배치 불가**가 된다
+        // (실측 15×11 맵에서 상단 3행). 아래 skew 보정이 이미 같은 점을 구해 수평축만 정렬하고 버렸다 —
+        // 세로도 같은 기준으로 통일해 spec 계약("배치 칸 = 마우스", keyring-cord-preview README)을 회복한다.
+        private bool TryComputeRingUnit(Vector2 screenPos, float totalDrop,
+            out Vector3 ringW, out Vector3 unitTargetW, out Vector3 fingerBoardW)
         {
-            ringW = default; unitTargetW = default;
+            ringW = default; unitTargetW = default; fingerBoardW = default;
             if (mainCamera == null) return false;
             var ray = mainCamera.ScreenPointToRay(screenPos);
             var boardPlane = BoardSpace.RaycastPlane();
@@ -355,12 +371,19 @@ namespace Wassup.UI
             if (sf > 0f)
             {
                 Vector3 pFinger = camT.position + ray.direction * sf;
+                fingerBoardW = pFinger; // 셀 판정 기준(위 주석)
                 Vector3 boardRight = Vector3.ProjectOnPlane(camT.right, N);
                 if (boardRight.sqrMagnitude > 1e-8f)
                 {
                     boardRight.Normalize();
                     feet -= boardRight * Vector3.Dot(feet - pFinger, boardRight);
                 }
+            }
+            else
+            {
+                // 손가락 ray 가 카메라 앞에서 보드를 안 만나는 퇴화 프레임(화면상 발생 안 함).
+                // 판정 기준을 비워두지 않고 발점으로 폴백 — 이전 동작과 동일.
+                fingerBoardW = feet;
             }
             Vector3 nUp = N.normalized;
             if (Vector3.Dot(nUp, camT.position - feet) < 0f) nUp = -nUp;
@@ -382,8 +405,10 @@ namespace Wassup.UI
             }
             else
             {
-                // 스윙하는 _unitPosWorld 가 아니라 손가락 바로 아래 발점으로 칸을 정한다 → 흔들림 없이 안정.
-                var sim = BoardSpace.ToSim(_unitTargetWorld);
+                // 손가락 보드 히트로 칸을 정한다 — 스윙하는 _unitPosWorld 도, 화면 아래로 매달린
+                // 발점(_unitTargetWorld)도 아니다. 전자는 흔들려서, 후자는 totalDrop 만큼 밀려서
+                // 상단 행에 도달하지 못한다(_fingerBoardWorld 선언부 주석 참조).
+                var sim = BoardSpace.ToSim(_fingerBoardWorld);
                 if (bridge != null)
                 {
                     // unit 1 — 매 프레임 반올림 대신 히스테리시스. 이전 포커스 셀(_session.hoverTile — 이미 sticky

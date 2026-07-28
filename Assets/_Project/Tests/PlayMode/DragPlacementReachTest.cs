@@ -1,0 +1,132 @@
+using System.Collections;
+using System.Reflection;
+using NUnit.Framework;
+using UnityEngine;
+using UnityEngine.TestTools;
+using UnityEngine.SceneManagement;
+using Wassup.Core;
+using Wassup.Core.TimeControl;
+using Wassup.Bridge;
+using Wassup.Data;
+using Wassup.UI;
+
+namespace Wassup.Tests.PlayMode
+{
+    // 트레이 드래그의 셀 판정이 **손가락**을 따르는지 지키는 회귀 가드.
+    //
+    // 회귀 이력: 판정 기준이 프리뷰용 발점(_unitTargetWorld)이었다. 발점은 손가락보다
+    // totalDrop(= 유닛 키 + ropeLength×visualScale) 만큼 화면 아래라, 손가락을 화면 최상단까지
+    // 올려도 발점이 상단 행에 못 미쳤다 → 15×11 맵에서 **상단 3행이 영구 배치 불가**, 동시에
+    // 화면 하단 절반이 전부 row 0 에 뭉쳤다. 판정을 손가락 보드 히트(_fingerBoardWorld)로
+    // 옮겨 해결. 스펙 계약은 원래 "배치 칸 = 마우스"(docs/spec/keyring-cord-preview/README.md).
+    //
+    // 이 테스트가 깨지면 ropeLength 튜닝이 아니라 **판정 기준이 발점으로 되돌아갔는지** 먼저 본다.
+    public class DragPlacementReachTest
+    {
+        [TearDown]
+        public void TearDown() => LogAssert.ignoreFailingMessages = false;
+
+        [UnityTearDown]
+        public IEnumerator UnityTearDown()
+        {
+            TimeManager.Instance.ResetAll();
+            PrimeTween.Tween.StopAll();
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator TopPlaceableRow_IsReachable_AndCommitFollowsFinger()
+        {
+            LogAssert.ignoreFailingMessages = true;
+            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            for (int i = 0; i < 6; i++) yield return null;
+
+            var bridge = Object.FindObjectOfType<BattleBridge>();
+            var selector = Object.FindObjectOfType<DefenderSelector>();
+            var unit = FindCatalog().ById("ranger");
+            bridge.SetDefenderPool(new[] { unit });
+            bridge.BeginPlacement();
+            var gm = Object.FindObjectOfType<GameManager>();
+            gm.CostRuntime.ResetToStart();
+            gm.CostRuntime.AddCost(1000);
+            for (int i = 0; i < 3; i++) yield return null;
+
+            var ctrl = selector.DragController;
+            Assert.IsNotNull(ctrl, "tray build created the drag controller");
+            var cam = Camera.main;
+            var grid = bridge.DebugGridSize;
+
+            int topPlaceableRow = TopPlaceableRow(bridge, unit, grid);
+            Assert.GreaterOrEqual(topPlaceableRow, 0, "map has at least one placeable cell");
+
+            ctrl.BeginDrag(unit, new Vector2(Screen.width * 0.5f, Screen.height * 0.08f));
+            yield return null;
+            Assert.IsTrue(ctrl.IsDragging, "drag session active");
+
+            // 화면 중앙 열을 아래→위로 촘촘히(1%) 스윕. 1% 스텝은 의도적이다: placementStickMargin
+            // 이 크면 이웃 도달 창이 (1 - margin) 타일로 좁아져, 거친 스텝은 실제 연속 드래그와 달리
+            // 행을 건너뛴다(그건 판정 버그가 아니라 샘플링 아티팩트).
+            int maxRow = int.MinValue;
+            int fingerMismatch = 0, samples = 0;
+            for (int p = 5; p <= 100; p++)
+            {
+                var screen = new Vector2(Screen.width * 0.5f,
+                                         Mathf.Min(Screen.height * (p / 100f), Screen.height - 1f));
+                ctrl.UpdateDrag(screen);
+                ResolveForceCommit(ctrl);
+
+                if (!(bool)Field(ctrl, "_onBoard")) continue;
+                var hover = SessionHover(ctrl);
+                if (!hover.HasValue) continue;
+                if (hover.Value.y > maxRow) maxRow = hover.Value.y;
+
+                // 확정 셀은 손가락이 가리키는 셀과 같아야 한다(히스테리시스 폭 이내).
+                if (bridge.TryScreenToCell(cam, screen, out var fingerCell))
+                {
+                    samples++;
+                    if (Mathf.Abs(hover.Value.y - fingerCell.y) > 1) fingerMismatch++;
+                }
+            }
+
+            Assert.AreEqual(topPlaceableRow, maxRow,
+                $"최상단 배치 가능 행({topPlaceableRow})에 도달해야 한다. 도달한 최대 행={maxRow}. " +
+                "판정 기준이 프리뷰 발점으로 되돌아갔는지 확인하라.");
+            Assert.Greater(samples, 20, "sweep produced samples");
+            Assert.AreEqual(0, fingerMismatch,
+                $"확정 셀이 손가락 셀에서 1행 이상 벗어난 샘플 {fingerMismatch}/{samples}건");
+
+            ctrl.Disarm();
+            yield return null;
+        }
+
+        private static int TopPlaceableRow(BattleBridge bridge, DefenderUnitData unit, Vector2Int grid)
+        {
+            for (int y = grid.y - 1; y >= 0; y--)
+                for (int x = 0; x < grid.x; x++)
+                    if (bridge.CanPlaceDefenderAt(x, y, unit, out _))
+                        return y;
+            return -1;
+        }
+
+        private static object Field(object o, string name)
+            => o.GetType().GetField(name, BindingFlags.NonPublic | BindingFlags.Instance).GetValue(o);
+
+        private static Vector2Int? SessionHover(object ctrl)
+        {
+            var session = Field(ctrl, "_session");
+            return (Vector2Int?)session.GetType()
+                .GetField("hoverTile", BindingFlags.Public | BindingFlags.Instance).GetValue(session);
+        }
+
+        // EndDrag 의 확정 경로와 동일 — throttle 을 기다리지 않고 손가락 최종 위치로 즉시 재해석.
+        private static void ResolveForceCommit(object ctrl)
+            => ctrl.GetType().GetMethod("ResolveFocusAndTarget", BindingFlags.NonPublic | BindingFlags.Instance)
+                   .Invoke(ctrl, new object[] { 0f, true, null });
+
+        private static DefenderCatalog FindCatalog()
+        {
+            var all = Resources.FindObjectsOfTypeAll<DefenderCatalog>();
+            return all.Length > 0 ? all[0] : null;
+        }
+    }
+}
