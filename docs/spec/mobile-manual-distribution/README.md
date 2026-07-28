@@ -1,6 +1,6 @@
 # Mobile Manual Distribution
 
-상태: **커밋 `1861a96a` 로컬 서명 APK·IPA 자동 검증 완료 · 실기기 설치와 Firebase QA 대기 — 2026-07-27**
+상태: **커밋 `7b208524` iOS build 2 Ad Hoc IPA 자동 검증 완료 · 실기기 설치와 Firebase QA 대기 — 2026-07-27**
 
 ## 목표
 
@@ -20,6 +20,8 @@ APK와 iOS Ad Hoc IPA를 재현 가능한 로컬 명령으로 만들고 Firebase
 | 5 | `5_first_android_build_hygiene.md` | Android 첫 실행의 orientation 호환과 TMP 프리베이크 보존 |
 | 6 | `6_signed_build_recovery_hardening.md` | 실패 재시도 stem, licensing 고아와 Unity 직렬화 노이즈 방어 |
 | 7 | `7_handoff_summary.md` | 첫 서명 산출물과 hardening 검증 결과 인계 |
+| 8 | `8_fixed_landscape_preflight.md` | 고정 가로 PlayerSettings와 mobile build 사전검증 계약 정렬 |
+| 9 | `9_timestamped_outs_copy.md` | 검증된 APK·IPA를 시간 식별자가 붙은 `Builds/outs` 복사본으로 제공 |
 
 ## Feature-wide 계약
 
@@ -56,6 +58,9 @@ APK와 iOS Ad Hoc IPA를 재현 가능한 로컬 명령으로 만들고 Firebase
 - 버전·build·Android 서명 PlayerSettings는 빌드 중에만 적용하고 성공/실패 모두 원복한다.
 - 산출물과 중간 파일은 ignored `Builds/Mobile`에 두고 APK/IPA 서명·식별자·버전·아키텍처를
   자동 검증한 뒤 SHA-256을 남긴다.
+- 성공한 빌드의 검증된 APK·IPA는 기존 `Builds/Mobile` 내용을 유지한 채
+  `Builds/outs/dreamquad-demo--{version}-{build}-YYYYMMDD-HHMMSS-{sha8}[-attemptN]`
+  이름의 플랫폼 확장자 복사본으로도 제공한다. `both`의 두 파일은 같은 실행 시각을 공유한다.
 - 서명 파일·비밀번호·private key·산출물은 저장소나 로그에 기록하지 않는다.
 - Somnia와 앱 ID가 같으므로 두 앱은 같은 기기에 공존하지 않으며 저장 데이터가 이어질 수 있다.
 
@@ -67,8 +72,12 @@ APK와 iOS Ad Hoc IPA를 재현 가능한 로컬 명령으로 만들고 Firebase
   iOS SHA-256은 `4210a4614ba19ddee0c0964f1daef8271d8894ccec64e8aed31578fa012cf4db`다.
 - 두 summary의 package/bundle, version/build, Android signer·ARM64 IL2CPP, iOS
   codesign·Ad Hoc profile 검증값이 모두 통과했다.
-- 이후 현재 브랜치에는 게임 코드 변경과 build hardening이 추가됐다. 위 산출물은 현재 HEAD를
-  다시 빌드한 결과가 아니다. 실기기 설치와 Firebase 업로드는 수행하지 않았다.
+- 고정 가로 preflight를 정렬한 source commit
+  `7b208524bd2db9b16dc790a7ad787d699917e1d9`, version `0.1.0`, build `2`에서 iOS Ad Hoc
+  IPA만 다시 생성했다. SHA-256은
+  `518378400eab099e6ab7e50de79fda915c584f6babfc38d060333d35db6c0860`이며 bundle/version/build,
+  codesign과 embedded Ad Hoc profile 검증이 모두 통과했다.
+- build 2 Android APK, 실기기 설치와 Firebase 업로드는 수행하지 않았다.
 
 ## 비목표
 

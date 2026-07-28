@@ -34,6 +34,11 @@ Unity 기본 경로는
 덮어쓰지 않는다. 실패 산출물을 보존하고 같은 version/build/commit을 재시도할 때만
 `--attempt <positive-integer>`를 명시한다.
 
+빌드 전체가 성공하면 검증된 최종 파일은 기존 출력과 별도로
+`Builds/outs/dreamquad-demo--{version}-{build}-YYYYMMDD-HHMMSS-{sha8}[-attemptN].apk`
+또는 `.ipa`에도 복사된다. `both` 실행의 두 복사본은 같은 실행 시각을 사용하며,
+`Builds/Mobile` 아래의 원본·로그·중간 산출물은 그대로 남는다.
+
 ### Android APK
 
 기본 keystore는

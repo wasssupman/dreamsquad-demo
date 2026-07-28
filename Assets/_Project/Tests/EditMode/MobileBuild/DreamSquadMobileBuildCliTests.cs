@@ -474,11 +474,7 @@ namespace Wassup.Tests.EditMode.MobileBuild
                 ApplicationIdentifier =
                     DreamSquadMobileBuildCli.ExpectedApplicationIdentifier,
                 EnabledScenes = (string[])DreamSquadMobileBuildCli.ExpectedScenes.Clone(),
-                DefaultOrientation = UIOrientation.AutoRotation,
-                AllowPortrait = false,
-                AllowPortraitUpsideDown = false,
-                AllowLandscapeLeft = true,
-                AllowLandscapeRight = true,
+                DefaultOrientation = UIOrientation.LandscapeRight,
                 AndroidMinSdkVersion = AndroidSdkVersions.AndroidApiLevel26,
                 AndroidScriptingBackend = ScriptingImplementation.IL2CPP,
                 AndroidArchitectures = AndroidArchitecture.ARM64,
@@ -513,7 +509,7 @@ namespace Wassup.Tests.EditMode.MobileBuild
                     state.EnabledScenes = state.EnabledScenes.Reverse().ToArray();
                     break;
                 case "orientation":
-                    state.AllowPortrait = true;
+                    state.DefaultOrientation = UIOrientation.Portrait;
                     break;
                 case "min-sdk":
                     state.AndroidMinSdkVersion = (AndroidSdkVersions)25;
