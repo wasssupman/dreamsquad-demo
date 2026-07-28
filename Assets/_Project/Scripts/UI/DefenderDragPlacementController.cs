@@ -830,13 +830,16 @@ namespace Wassup.UI
                 // 시뮬 비행은 자체 고스트가 이미 날았음). CleanupSession 전에 고스트 실좌표를 캡처해
                 // 실유닛 뷰를 하마 궤적으로 날린다. facing 유닛도 병행(계약 8) — aim 은 셀 기준 로직이라
                 // 뷰 비행과 무충돌.
-                if (!_simulatedDrag) StartDropDismount(session.unit, cell, entity);
+                // unit 3 — facing 여부를 먼저 확정: 비-facing 드롭은 스폰 연출을 착지 프레임으로 이관하고
+                // (RunDeployment 는 시계만 유지), facing 은 aim 경로 연출 현행 유지(이중 재생 방지).
+                bool facing = session.unit != null && session.unit.RequiresFacing && _aimController != null;
+                bool dismount = !_simulatedDrag && StartDropDismount(session.unit, cell, entity, presentAtLanding: !facing);
                 // defender-directional-volley unit 6 — 방향 지정 유닛은 여기서 배치가
                 // 끝나지 않는다: 엔티티는 PendingDeployment(전투 미참여)로 스폰된 채
                 // 공격방향 페이즈로 넘어가고, 방향이 확정돼야 활성화된다.
                 // Begin 이 먼저 슬로우모 lease 를 잡은 뒤 CleanupSession 이 드래그 lease 를
                 // 놓으므로 드롭 순간 전투가 정속으로 튀지 않는다(순서 의존).
-                if (session.unit != null && session.unit.RequiresFacing && _aimController != null)
+                if (facing)
                 {
                     _aimController.Begin(session.unit, cell, entity);
                     CleanupSession();
@@ -845,7 +848,7 @@ namespace Wassup.UI
                 }
                 CleanupSession();
                 PlacementCommitted?.Invoke(session.unit);
-                StartCoroutine(RunDeployment(session.unit, cell, entity));
+                StartCoroutine(RunDeployment(session.unit, cell, entity, skipPresentation: dismount));
                 return;
             }
             bridge?.FlashPlacementReject(cell);
@@ -861,12 +864,13 @@ namespace Wassup.UI
         // 시작 오버라이드는 **동기** 등록 — 같은 프레임 LateUpdate 피드가 소비해 스폰 위치 1프레임 팝을 막는다.
         // 팝 0 계약(5): 시작 = 고스트 실좌표(_unitPosWorld 그대로), 끝 = 정상 피드 공식 미러
         // (TryGetDefenderRestViewPos) — 변환·상수 없이 양 끝점을 각 렌더러 실좌표로 잡는다.
-        private void StartDropDismount(DefenderUnitData unit, Vector2Int cell, Unity.Entities.Entity entity)
+        private bool StartDropDismount(DefenderUnitData unit, Vector2Int cell, Unity.Entities.Entity entity,
+            bool presentAtLanding)
         {
-            if (bridge == null || !_onBoard || !_posInit) return;
+            if (bridge == null || !_onBoard || !_posInit) return false;
             if (mainCamera == null) mainCamera = Camera.main;
-            if (mainCamera == null) return;
-            if (!bridge.TryGetDefenderRestViewPos(cell, out var end)) return;
+            if (mainCamera == null) return false;
+            if (!bridge.TryGetDefenderRestViewPos(cell, out var end)) return false;
 
             var cfg = Cfg;
             float duration = Mathf.Max(0.05f, cfg.dropTotalSeconds);
@@ -882,12 +886,14 @@ namespace Wassup.UI
 
             bridge.SetDefenderViewOverride(entity, start);
             _activeDismounts[entity] = cell;
-            StartCoroutine(RunDropDismount(entity, cell, start, startVel, end,
-                mainCamera.transform.up, duration, recoilFrac));
+            StartCoroutine(RunDropDismount(entity, cell, unit, start, startVel, end,
+                mainCamera.transform.up, duration, recoilFrac, presentAtLanding));
+            return true;
         }
 
-        private IEnumerator RunDropDismount(Unity.Entities.Entity entity, Vector2Int cell,
-            Vector3 start, Vector3 startVel, Vector3 end, Vector3 camUp, float duration, float recoilFrac)
+        private IEnumerator RunDropDismount(Unity.Entities.Entity entity, Vector2Int cell, DefenderUnitData unit,
+            Vector3 start, Vector3 startVel, Vector3 end, Vector3 camUp, float duration, float recoilFrac,
+            bool presentAtLanding)
         {
             var cfg = Cfg;
             float elapsed = 0f;
@@ -914,7 +920,17 @@ namespace Wassup.UI
             // 착지 — 최종점(end)이 정상 피드 공식과 동일 좌표라 clear 직후 프레임이 그대로 이어진다(팝 0).
             _activeDismounts.Remove(entity);
             bridge?.ClearDefenderViewOverride(entity);
-            bridge?.PulsePlacementHover(cell, true); // 착지 훅 — unit 3 에서 스폰 연출(링·PlayDeploy)로 확장
+            bridge?.PulsePlacementHover(cell, true);
+            // unit 3 — 스폰 연출(배치 링 펄스·placementVfx·PlayDeploy 스폰애니)을 착지 프레임에 발화.
+            // 유닛이 공중인 commit 프레임에 타일에서 링이 터지던 어긋남 제거. **활성화 시계는 무변경**
+            // (계약 4) — RunDeployment(skipPresentation)가 deploymentDuration 을 직접 읽어 commit 기준으로
+            // 대기한다. 반환 duration 은 여기서 무시(시계는 이미 돌고 있음). facing 은 aim 경로 연출
+            // 현행 유지라 presentAtLanding=false(이중 재생 방지 — spec unit 3 정정).
+            if (presentAtLanding && bridge != null)
+            {
+                try { bridge.PlayDeploymentPresentation(unit, cell, entity); }
+                catch (System.Exception ex) { Debug.LogException(ex, this); }
+            }
         }
 
         private void AbandonDismount(Unity.Entities.Entity entity)
@@ -932,10 +948,18 @@ namespace Wassup.UI
             _activeDismounts.Clear();
         }
 
-        private IEnumerator RunDeployment(DefenderUnitData unitData, Vector2Int cell, Unity.Entities.Entity entity)
+        private IEnumerator RunDeployment(DefenderUnitData unitData, Vector2Int cell, Unity.Entities.Entity entity,
+            bool skipPresentation = false)
         {
             float duration = 0f;
-            if (bridge != null)
+            if (skipPresentation)
+            {
+                // defender-drop-dismount unit 3 — 연출은 하마 착지 프레임이 발화(RunDropDismount).
+                // 여기는 활성화 시계만: PlayDeploymentPresentation 의 반환과 같은 소스(deploymentDuration)를
+                // 직접 읽어 commit 기준 대기를 유지한다(계약 4 — 밸런스 무변경, 착지 ≤ 활성화).
+                duration = unitData != null ? Mathf.Max(0f, unitData.deploymentDuration) : 0f;
+            }
+            else if (bridge != null)
             {
                 try
                 {
