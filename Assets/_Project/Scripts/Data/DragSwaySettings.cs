@@ -115,5 +115,33 @@ namespace Wassup.Data
                  "미만이면 탭(범위 피크). ↑=드래그로 잘 안 넘어감(탭이 관대), ↓=조금만 움직여도 드래그.")]
         [Range(1f, 64f)]
         public float boardDragThreshold = 16f;
+
+        [Header("⑩ 드롭 하마 — 릴리스 반동→솟음→착지 (defender-drop-dismount)")]
+        [Tooltip("총 시간(초, unscaled) — 반동+솟음+착지 전체. 런타임에 deploymentDuration 으로 클램프(공중=pending 보장).")]
+        [Range(0.1f, 1f)]
+        public float dropTotalSeconds = 0.45f;
+        [Tooltip("반동 구간(초) — 줄이 벙은 채 -camUp 으로 dip(힘 모으기). 총 시간 내 비율로 환산.")]
+        [Range(0.02f, 0.3f)]
+        public float dropRecoilSeconds = 0.12f;
+        [Tooltip("반동 깊이(world) — dip = 시작점 − camUp×이 값.")]
+        [Range(0f, 1f)]
+        public float dropRecoilDip = 0.35f;
+        [Tooltip("아치 제어점 높이 = max(거리×이 값, 하한). 실제 apex ≈ 0.4×제어점 높이.")]
+        [Range(0f, 2f)]
+        public float dropArcHeightFactor = 0.5f;
+        [Tooltip("제어점 높이 절대 하한(world) — 짧은 드롭도 '솟음' 보장. 기본 3.5 → apex ≈ 1.4 world(유닛 키 ~1.2배).")]
+        [Range(0f, 8f)]
+        public float dropArcMinHeight = 3.5f;
+        [Tooltip("솟음 시작 제어점 — x=목표까지 전진 비율, y=제어점 높이 배수.")]
+        public Vector2 dropLaunchControl = new Vector2(0.25f, 1f);
+        [Tooltip("착지 제어점 높이 배수 — end 직상방(수직 스틱 착지). 0 금지(접선 퇴화).")]
+        [Range(0.05f, 1f)]
+        public float dropLandingHeight = 0.25f;
+        [Tooltip("분리 후 줄 페이드(초).")]
+        [Range(0.05f, 1f)]
+        public float dropCordSnapFade = 0.15f;
+        [Tooltip("고리 페이드(초) — 놓은 자리에 잠시 남았다 사라짐.")]
+        [Range(0.05f, 1f)]
+        public float dropRingFade = 0.3f;
     }
 }

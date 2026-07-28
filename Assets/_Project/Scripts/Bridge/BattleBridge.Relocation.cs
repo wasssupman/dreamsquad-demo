@@ -107,20 +107,22 @@ namespace Wassup.Bridge
             return true;
         }
 
-        // unit 6 — 비행 중 뷰 위치 오버라이드. sim(LocalTransform)은 착지 프레임까지 옛 위치에
+        // relocation unit 6 — 비행 중 뷰 위치 오버라이드. sim(LocalTransform)은 착지 프레임까지 옛 위치에
         // 머무르므로, SyncMonoUnitViews 의 defender 피드가 이 값을 대신 쓰게 해 실제 유닛 뷰를
         // 컨트롤러가 직접 날린다(프리뷰 신설 없음). 값은 **VIEW 좌표**(ToView 완료) — 평면 정면뷰가
         // sim 높이를 버리므로 아치를 view 공간에서 계산해 넘긴다. SyncMonoUnitViews 는 ToView 재적용 없이 직배치.
-        private readonly Dictionary<Entity, Unity.Mathematics.float3> _relocationViewOverride = new();
+        // defender-drop-dismount unit 1 — 소비처가 2개(재배치 비행·드롭 하마)가 되어 이름 중립화.
+        // 같은 entity 동시 소유는 없다: 드롭 창 = pending 창이고 재배치 진입은 busy(pending) 거부.
+        private readonly Dictionary<Entity, Unity.Mathematics.float3> _defenderViewOverride = new();
 
-        public void SetRelocationViewOverride(Entity entity, Vector3 viewPos)
-            => _relocationViewOverride[entity] = new Unity.Mathematics.float3(viewPos.x, viewPos.y, viewPos.z);
+        public void SetDefenderViewOverride(Entity entity, Vector3 viewPos)
+            => _defenderViewOverride[entity] = new Unity.Mathematics.float3(viewPos.x, viewPos.y, viewPos.z);
 
-        public void ClearRelocationViewOverride(Entity entity)
-            => _relocationViewOverride.Remove(entity);
+        public void ClearDefenderViewOverride(Entity entity)
+            => _defenderViewOverride.Remove(entity);
 
-        internal bool TryGetRelocationViewOverride(Entity entity, out Unity.Mathematics.float3 pos)
-            => _relocationViewOverride.TryGetValue(entity, out pos);
+        internal bool TryGetDefenderViewOverride(Entity entity, out Unity.Mathematics.float3 pos)
+            => _defenderViewOverride.TryGetValue(entity, out pos);
 
         // 비행 앵커 — **VIEW 좌표**(셀 중심의 ToView). 컨트롤러가 view 공간 던지기 곡선의 양 끝으로 쓴다.
         // sim 이 아니라 view 로 주는 이유: 평면 정면뷰(BoardSpace.ToView)가 sim 높이를 버려, sim 공간

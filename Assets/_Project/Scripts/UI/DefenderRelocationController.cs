@@ -216,13 +216,13 @@ namespace Wassup.UI
                 float k = 1f - Mathf.Pow(1f - Mathf.Clamp01(t), 3f); // OutCubic — 빠른 출발, 착지 감속
                 var p = haveArc ? KeyringSim.CubicBezier(start, c1, c2, end, k)
                                 : Vector3.Lerp(start, end, k);
-                bridge.SetRelocationViewOverride(entity, p);
+                bridge.SetDefenderViewOverride(entity, p);
                 UpdateKeyring(); // 실제 유닛 뷰 위로 고리 추종(배치 키링과 동일 룩)
                 yield return null;
             }
 
             HideKeyring();
-            bridge.ClearRelocationViewOverride(entity);
+            bridge.ClearDefenderViewOverride(entity);
             bridge.FinishDefenderRelocation(to, entity);
             bridge.PulsePlacementHover(to, true); // 기존 착지 타일 팝 재사용
 
@@ -244,7 +244,7 @@ namespace Wassup.UI
         private void AbandonFlight(Entity entity)
         {
             HideKeyring();
-            bridge?.ClearRelocationViewOverride(entity);
+            bridge?.ClearDefenderViewOverride(entity);
             if (_activeFlightEntity == entity) _activeFlightEntity = Entity.Null;
         }
 
@@ -253,7 +253,7 @@ namespace Wassup.UI
         {
             if (bridge == null) return;
             HideKeyring();
-            bridge.ClearRelocationViewOverride(entity);
+            bridge.ClearDefenderViewOverride(entity);
             if (!FlightBindingIntact(to, entity)) return;
             bridge.FinishDefenderRelocation(to, entity);
             bridge.ActivateDeployedDefender(to, entity);
