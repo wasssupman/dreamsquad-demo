@@ -30,6 +30,12 @@ namespace Wassup.Presentation
             public Entity source;       // 발사 주체(디펜더)
             public Entity target;       // 겨눈 대상 — 매 프레임 view 위치를 다시 읽는다
             public float ttl;
+            // 마지막으로 성공한 배치. 뷰 조회가 한 프레임 실패해도(풀 워밍업·리사이클 타이밍)
+            // 여기로 버틴다 — 실패를 종료 사유로 삼으면 세션이 재생성되고 파티클이 0부터
+            // 다시 쌓여(초당 20개·수명 1초) 빔이 끊겨 보인다.
+            public Vector3 lastSource;
+            public Vector3 lastEndpoint;
+            public bool placedOnce;
         }
 
         private readonly Dictionary<Entity, Session> _sessions = new();
@@ -67,8 +73,12 @@ namespace Wassup.Presentation
             {
                 var s = kv.Value;
                 s.ttl -= battleDeltaTime;
-                // 대상이 사라졌으면(사망/디스폰) 빔이 허공에 남지 않게 즉시 만료 처리한다.
-                if (s.ttl <= 0f || !TryPlace(s, pool)) _expiredScratch.Add(kv.Key);
+                if (s.ttl <= 0f) { _expiredScratch.Add(kv.Key); continue; }
+                // 배치 실패는 **종료 사유가 아니다.** 뷰가 아직 없거나 한 프레임 비는 경우가
+                // 있는데, 그때마다 세션을 닫으면 다음 공격에 새 세션이 열려 파티클이 0부터
+                // 다시 쌓인다 = 빔이 끊겨 보인다. 마지막 유효 배치로 버티고 TTL 로만 끝낸다.
+                // 단 **한 번도** 배치에 성공하지 못한 세션은 그릴 것이 없으니 정리한다.
+                if (!TryPlace(s, pool) && !s.placedOnce) _expiredScratch.Add(kv.Key);
             }
             for (int i = 0; i < _expiredScratch.Count; i++)
                 Close(_expiredScratch[i]);
@@ -96,12 +106,24 @@ namespace Wassup.Presentation
         private static bool TryPlace(Session s, SpineUnitPool pool)
         {
             if (pool == null) return false;
-            if (!TryViewPos(pool, s.source, useAnchor: true, out var sourceView)) return false;
-            if (!TryViewPos(pool, s.target, useAnchor: false, out var endpoint)) return false;
+            // 조회에 실패하면 마지막 유효값으로 버틴다(위 Tick 주석 — 깜빡임 방지).
+            if (!TryViewPos(pool, s.source, useAnchor: true, out var sourceView))
+            {
+                if (!s.placedOnce) return false;
+                sourceView = s.lastSource;
+            }
+            if (!TryViewPos(pool, s.target, useAnchor: false, out var endpoint))
+            {
+                if (!s.placedOnce) return false;
+                endpoint = s.lastEndpoint;
+            }
 
             // 끝점을 머즐과 같은 깊이(z)로 눕힌다. 평면 정면뷰 보드라 두 점의 z 가 다르면 빔이
             // 화면 안쪽으로 기울어 짧아 보인다 — TrySpawnCastVfx 가 `dir.z = 0` 하는 것과 같은 이유.
             endpoint.z = sourceView.z;
+            s.lastSource = sourceView;
+            s.lastEndpoint = endpoint;
+            s.placedOnce = true;
             Vector3 dir = endpoint - sourceView;
             float length = dir.magnitude;
             if (length < 1e-4f) return true; // 겹친 프레임은 그리지 않고 세션만 유지
@@ -154,6 +176,7 @@ namespace Wassup.Presentation
             if (_pool.Count > 0 && _pool.Peek().prefab == prefab && _pool.Peek().go != null)
             {
                 var reused = _pool.Pop();
+                reused.placedOnce = false; // 재사용 세션은 이전 대상의 좌표를 물려받으면 안 된다
                 reused.go.SetActive(true);
                 PlayAll(reused.go);
                 return reused;
