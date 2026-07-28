@@ -32,7 +32,40 @@ namespace Wassup.Tests.EditMode
         {
             foreach (var s in _pool) Object.DestroyImmediate(s);
             _pool = null;
+            foreach (var so in _extraSos) Object.DestroyImmediate(so);
+            _extraSos.Clear();
             Object.DestroyImmediate(_host);
+        }
+
+        // dreamcatcher-card-visibility unit 4 — FilterHiddenSkills 픽스처.
+        private readonly List<Object> _extraSos = new List<Object>();
+
+        private DreamcatcherCard MakeActiveCard(SkillData skill, int visible)
+        {
+            var card = ScriptableObject.CreateInstance<DreamcatcherCard>();
+            card.type = CardType.Active;
+            card.skill = skill;
+            card.visible = visible;
+            _extraSos.Add(card);
+            return card;
+        }
+
+        private DreamcatcherCard MakeCard(CardCategory category, CardType type, int visible)
+        {
+            var card = ScriptableObject.CreateInstance<DreamcatcherCard>();
+            card.category = category;
+            card.type = type;
+            card.visible = visible;
+            _extraSos.Add(card);
+            return card;
+        }
+
+        private DreamcatcherCardCatalog MakeCatalog(params DreamcatcherCard[] cards)
+        {
+            var catalog = ScriptableObject.CreateInstance<DreamcatcherCardCatalog>();
+            catalog.cards = cards;
+            _extraSos.Add(catalog);
+            return catalog;
         }
 
         [Test]
@@ -110,6 +143,104 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(0, _ctl.Picked.Count);
             Assert.IsFalse(_ctl.HasRolled);
             Assert.AreEqual(0, _ctl.Seed);
+        }
+
+        // ── FilterHiddenSkills (dreamcatcher-card-visibility unit 4) ─────────
+
+        [Test]
+        public void FilterHiddenSkills_Excludes_Skill_Wrapped_Only_By_Hidden_Card()
+        {
+            var catalog = MakeCatalog(MakeActiveCard(_pool[0], visible: 0));
+            var filtered = SkillLoadoutController.FilterHiddenSkills(_pool, catalog);
+            Assert.AreEqual(_pool.Count - 1, filtered.Count);
+            CollectionAssert.DoesNotContain(filtered, _pool[0]);
+        }
+
+        [Test]
+        public void FilterHiddenSkills_Keeps_Skill_With_Visible_Wrapping_Card()
+        {
+            var catalog = MakeCatalog(
+                MakeActiveCard(_pool[0], visible: 1),
+                MakeActiveCard(_pool[1], visible: 0));
+            var filtered = SkillLoadoutController.FilterHiddenSkills(_pool, catalog);
+            CollectionAssert.Contains(filtered, _pool[0]);
+            CollectionAssert.DoesNotContain(filtered, _pool[1]);
+        }
+
+        [Test]
+        public void FilterHiddenSkills_Keeps_Skill_When_Any_Of_Multiple_Wrappers_Visible()
+        {
+            var catalog = MakeCatalog(
+                MakeActiveCard(_pool[0], visible: 0),
+                MakeActiveCard(_pool[0], visible: 1));
+            var filtered = SkillLoadoutController.FilterHiddenSkills(_pool, catalog);
+            CollectionAssert.Contains(filtered, _pool[0]);
+        }
+
+        [Test]
+        public void FilterHiddenSkills_Keeps_Unwrapped_Skills()
+        {
+            var catalog = MakeCatalog(); // 카탈로그에 래핑 카드 없음
+            var filtered = SkillLoadoutController.FilterHiddenSkills(_pool, catalog);
+            CollectionAssert.AreEqual(_pool, filtered);
+        }
+
+        [Test]
+        public void FilterHiddenSkills_Ignores_NonActive_Hidden_Card()
+        {
+            var squadCard = MakeActiveCard(_pool[0], visible: 0);
+            squadCard.type = CardType.Squad; // 숨김이지만 Active 래퍼가 아님 — 스킬 보존
+            var catalog = MakeCatalog(squadCard);
+            var filtered = SkillLoadoutController.FilterHiddenSkills(_pool, catalog);
+            CollectionAssert.Contains(filtered, _pool[0]);
+        }
+
+        [Test]
+        public void FilterHiddenSkills_Null_Catalog_Passes_Through()
+        {
+            var filtered = SkillLoadoutController.FilterHiddenSkills(_pool, null);
+            CollectionAssert.AreEqual(_pool, filtered);
+        }
+
+        [Test]
+        public void Configure_Filters_Hidden_Skill_From_Roll_Pool_When_Catalog_Wired()
+        {
+            // 컴포넌트 통합 경로: private cardCatalog 를 리플렉션으로 주입해 Configure →
+            // Pool/Roll 모두에서 숨김 스킬이 사라지는지 본다(씬 배선과 같은 경로).
+            var catalog = MakeCatalog(MakeActiveCard(_pool[0], visible: 0));
+            typeof(SkillLoadoutController)
+                .GetField("cardCatalog", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                .SetValue(_ctl, catalog);
+
+            _ctl.Configure(_pool, _pool.Count, seed: 7);
+            CollectionAssert.DoesNotContain(_ctl.Pool, _pool[0]);
+            var picked = _ctl.Roll();
+            CollectionAssert.DoesNotContain(picked, _pool[0]);
+            Assert.AreEqual(_pool.Count - 1, picked.Count);
+        }
+
+        [Test]
+        public void ResolveRimGift_Excludes_Hidden_Cards_From_Pool_And_Fallback()
+        {
+            // DreamcatcherHandController가 만드는 두 후보 풀 모두에서 visible == 0을
+            // 제외한다. 무의식 풀이 부족하면 fallback을 쓰는 경계도 함께 고정한다.
+            var visibleSubconscious = MakeCard(CardCategory.Subconscious, CardType.Unit, visible: 1);
+            var hiddenSubconscious = MakeCard(CardCategory.Subconscious, CardType.Unit, visible: 0);
+            var visibleFallback = MakeCard(CardCategory.Normal, CardType.Squad, visible: 1);
+            var hiddenFallback = MakeCard(CardCategory.Normal, CardType.Squad, visible: 0);
+            var catalog = MakeCatalog(visibleSubconscious, hiddenSubconscious, visibleFallback, hiddenFallback);
+            var hand = _host.AddComponent<DreamcatcherHandController>();
+
+            typeof(DreamcatcherHandController)
+                .GetField("cardCatalog", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                .SetValue(hand, catalog);
+            var resolve = typeof(DreamcatcherHandController)
+                .GetMethod("ResolveRimGift", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            var picked = (List<DreamcatcherCard>)resolve.Invoke(hand, new object[] { 17 });
+
+            CollectionAssert.AreEquivalent(new[] { visibleSubconscious, visibleFallback }, picked);
+            CollectionAssert.DoesNotContain(picked, hiddenSubconscious);
+            CollectionAssert.DoesNotContain(picked, hiddenFallback);
         }
     }
 }

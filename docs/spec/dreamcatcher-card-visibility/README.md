@@ -1,6 +1,6 @@
 # Dreamcatcher Card Visibility — 카드 노출 스위치
 
-> 상태: **구현 완료 2026-07-23** — units 0~2 커밋(`9e89c49b`) + 로그인 발화 수정(`a4d15cdc`). Play 육안 확인 3건 남음. 인계는 `3_handoff_summary.md`.
+> 상태: **unit 4 진행 중 2026-07-27** — units 0~2 커밋(`9e89c49b`) + 로그인 발화 수정(`a4d15cdc`), Play 육안 확인 3건 남음(인계는 `3_handoff_summary.md`). unit 4 = 선물 페이즈 풀 + 스킬 풀 visible 반영.
 
 ## 목표
 
@@ -13,19 +13,21 @@
 | 0 | 구현 | `0_visible_field_and_sheet.md` | `DreamcatcherCard.visible` 필드 + `DcCards` 탭 컬럼(양방향) |
 | 1 | 구현 | `1_inventory_filter.md` | 덱 페이지 컬렉션에서 숨김 카드 제외 |
 | 2 | 구현 | `2_login_deck_prune.md` | 로그인 시 저장 덱에서 숨김 카드 장착 해제 |
-| 3 | 인계 | `3_handoff_summary.md` | 인계 요약 |
+| 3 | 인계 | `3_handoff_summary.md` | 인계 요약 (units 0~2) |
+| 4 | 구현 | `4_gift_and_skill_pool_visible.md` | 림의 선물 풀 + 루시드 스킬 풀에서 숨김 카드 제외 |
 
 ## Feature-wide 계약
 
 - **`visible` 은 int, 기본 1** (`0` = 숨김, 그 외 = 노출). 사용자 표현("visible == 0")과 시트 입력 편의를 따른다. `0` 만 숨김으로 해석하므로 빈 셀/미설정은 노출이다.
 - **기존 에셋 백필 없음.** Unity 는 필드명 기반 역직렬화라 YAML 에 `visible` 키가 없는 기존 카드는 C# 초기값 `1`(노출)을 유지한다. `id` 처럼 비면 동작이 갈리는 키가 아니라 기본값이 곧 정답이므로, 37장을 dirty 시키지 않는다.
 - **숨김의 의미는 "인벤토리에서 고를 수 없다"**. 이미 전투에 들어간 카드나 런타임 효과를 무효화하지 않는다 — 덱에서 빠지면 자연히 뽑히지 않는다.
+- **(unit 4) 숨김 카드는 선물 페이즈로도 오지 않는다.** 림 풀·rim fallback 은 카드 단위로 제외, 루시드는 래핑 Active 카드가 전부 숨김인 스킬을 **스킬 풀 자체에서** 제외한다(래핑 카드 없는 스킬은 보존 — 기존 경고 경로 유지).
 - **장착 해제는 로그인 시 1회**, 프로필의 **모든 덱**에 적용하고 변경이 있을 때만 저장한다. 덱 페이지를 열지 않아도 정리된다.
 - **정원 미달은 그대로 노출한다.** 숨김 카드가 빠지면 덱이 9/10 이 되고 `DeckRules.Validate` → `LoadoutGate` 가 START 를 막아 "덱을 채우라"고 유도한다. 자동 보충은 하지 않는다(어떤 카드로 채울지는 플레이어 결정).
 - **시트 왕복은 기존 `DcCards` 탭에 컬럼 하나 추가**로 끝난다. DTO 필드명이 SO 와 1:1 이라 `UnitStatFieldMapper` 가 이름으로 읽고 쓰며, exporter/applier 코드는 손대지 않는다.
 
 ## 후속 후보
 
-- **선물(림의 선물) 풀에도 visible 적용** · 현재 gift 풀은 `CardCategory.Subconscious` 로 뽑는다. 숨김 무의식 카드를 gift 에서도 빼려면 그 풀 필터에 조건을 더해야 한다. 이번 스코프(인벤토리 + 저장 덱) 밖.
+- ~~선물(림의 선물) 풀에도 visible 적용~~ → **unit 4 로 승격** (2026-07-27). 림 풀뿐 아니라 rim fallback 풀 + 루시드 스킬 풀(래핑 Active 카드가 숨김이면 스킬 자체를 롤에서 제외)까지 포함.
 - **스쿼드 프리셋(`SquadPreset.cards`) 정리** · 프리셋에 숨김 카드가 남을 수 있다. 덱과 같은 prune 이 필요한지는 프리셋 사용 흐름을 보고 판단.
 - **유닛(`DefenderUnitData`)에도 같은 스위치** · 요청 시 같은 패턴으로 확장.

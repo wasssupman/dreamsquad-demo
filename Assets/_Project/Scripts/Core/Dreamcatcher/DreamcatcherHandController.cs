@@ -173,6 +173,7 @@ namespace Wassup.Core
 
         // 림의 선물: 카탈로그의 무의식(Subconscious) 카드에서 시드로 N장. 풀 부족분은
         // non-Active·non-Subconscious 카드에서 임의 폴백(안전장치, unit 2 저작 후 미발동).
+        // 숨김(visible == 0) 카드는 풀/폴백 양쪽에서 제외(card-visibility unit 4).
         private List<DreamcatcherCard> ResolveRimGift(int seed)
         {
             var pool = new List<DreamcatcherCard>();
@@ -181,6 +182,7 @@ namespace Wassup.Core
                 foreach (var c in cardCatalog.cards)
                 {
                     if (c == null) continue;
+                    if (c.visible == 0) continue; // 숨김 카드는 선물 풀에서도 제외 (card-visibility unit 4)
                     if (c.category == CardCategory.Subconscious) pool.Add(c);
                     else if (c.type != CardType.Active) fallback.Add(c);
                 }

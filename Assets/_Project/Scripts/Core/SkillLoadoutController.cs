@@ -19,6 +19,9 @@ namespace Wassup.Core
     {
         [SerializeField] private List<SkillData> defaultPool = new();
         [SerializeField] private int defaultCount = 2;
+        // dreamcatcher-card-visibility unit 4 — 숨김(visible == 0) Active 카드를 래핑하는
+        // 스킬을 풀 설정 시점에 제외하기 위한 카탈로그. null = 무필터(배선 없는 씬/테스트 하위호환).
+        [SerializeField] private DreamcatcherCardCatalog cardCatalog;
 
         private List<SkillData> _pool = new();
         private int _count;
@@ -35,7 +38,7 @@ namespace Wassup.Core
         {
             if (defaultPool.Count == 0)
                 PopulateEditorFallbackPool();
-            if (_pool.Count == 0 && defaultPool.Count > 0) _pool = new List<SkillData>(defaultPool);
+            if (_pool.Count == 0 && defaultPool.Count > 0) _pool = FilterHiddenSkills(defaultPool, cardCatalog);
             if (_count == 0) _count = defaultCount;
         }
 
@@ -60,16 +63,44 @@ namespace Wassup.Core
         // let Roll pick a fresh time-based seed.
         public void Configure(IEnumerable<SkillData> pool, int count, int seed = 0)
         {
-            _pool = new List<SkillData>(pool);
+            _pool = FilterHiddenSkills(pool, cardCatalog);
             _count = count;
             _seed = seed;
         }
 
         public void Configure(SkillData[] pool)
         {
-            _pool = pool != null ? new List<SkillData>(pool) : new List<SkillData>();
+            _pool = FilterHiddenSkills(pool, cardCatalog);
             if (_count == 0) _count = defaultCount;
             _seed = 0;
+        }
+
+        // dreamcatcher-card-visibility unit 4 — 풀 설정 시점의 숨김 스킬 제외. 순수 값
+        // 연산(제약 10, DeckPrune 과 같은 shape) — EditMode 테스트 대상. Roll 이 아니라
+        // 풀 자체를 걸러 Pool 프로퍼티(BattleLogger 의 pool+seed 기록)와 롤 대상을 일치시킨다.
+        //
+        // 제외 조건: 카탈로그에 이 스킬을 래핑하는 Active 카드가 존재하고 그 **전부**가
+        // visible == 0. 래핑 카드가 없는 스킬은 보존한다 — 기존 "No Active card wraps
+        // skill" 경고 경로(gift 시점) 그대로. catalog/pool null 은 무필터/빈 리스트.
+        public static List<SkillData> FilterHiddenSkills(IEnumerable<SkillData> pool, DreamcatcherCardCatalog catalog)
+        {
+            var result = new List<SkillData>();
+            if (pool == null) return result;
+            var cards = catalog != null ? catalog.cards : null;
+            foreach (var skill in pool)
+            {
+                if (skill == null || cards == null) { result.Add(skill); continue; }
+                bool wrapped = false, anyVisible = false;
+                for (int i = 0; i < cards.Length; i++)
+                {
+                    var c = cards[i];
+                    if (c == null || c.type != CardType.Active || c.skill != skill) continue;
+                    wrapped = true;
+                    if (c.visible != 0) { anyVisible = true; break; }
+                }
+                if (!wrapped || anyVisible) result.Add(skill);
+            }
+            return result;
         }
 
         // Produces a new random picked set. Idempotent per seed: same seed always
