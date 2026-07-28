@@ -85,6 +85,42 @@ namespace Wassup.UI
             return Mathf.Clamp(-Mathf.Atan2(x, Mathf.Max(y, 1e-3f)) * Mathf.Rad2Deg, -maxAngle, maxAngle);
         }
 
+        // defender-drop-dismount unit 0 — 드롭 하마(下馬) 궤적 평가: 반동(Hermite)→솟음·착지(수직 끝접선 아치).
+        // t01 ∈ [0,1] 전체 정규화 시간. recoilFrac = 반동 구간 비율. startVel 은 **반동 구간 정규화 시간 기준
+        // 접선**(호출측이 월드속도 × 반동초 로 스케일해 전달) — 릴리스 잔여 스윙 속도를 반동에 흡수한다.
+        // 구간 경계는 C0(위치)만 연속 — C1 불연속은 의도(분리 순간의 스냅). 시간 이징은 호출측 책임(기하만).
+        //   dip = start − camUp·dipDistance
+        //   arcHeight = max(|dip−end|·arcHeightFactor, minArcHeight)   ← 절대 하한 = "솟음" 보장(계약)
+        //   c1 = Lerp(dip, end, launch.x) + camUp·(arcHeight·launch.y)
+        //   c2 = end + camUp·(arcHeight·landingHeight)                 ← end 직상방 = 끝접선 순수 -camUp(스틱 착지)
+        public static Vector3 DismountPoint(
+            Vector3 start, Vector3 startVel, Vector3 end, Vector3 camUp,
+            float recoilFrac, float dipDistance,
+            float arcHeightFactor, float minArcHeight, Vector2 launch, float landingHeight,
+            float t01)
+        {
+            float t = Mathf.Clamp01(t01);
+            recoilFrac = Mathf.Clamp(recoilFrac, 1e-4f, 0.9f);
+            Vector3 dip = start - camUp * dipDistance;
+
+            if (t <= recoilFrac)
+            {
+                // 반동: Hermite — p0=start(접선 startVel), p1=dip(접선 0). startVel=0 이면 smoothstep 단조 하강.
+                float s = t / recoilFrac;
+                float s2 = s * s, s3 = s2 * s;
+                return (2f * s3 - 3f * s2 + 1f) * start
+                     + (s3 - 2f * s2 + s) * startVel
+                     + (-2f * s3 + 3f * s2) * dip;
+            }
+
+            // 솟음·착지: dip→end 베지어. c2 가 end 직상방이라 끝접선 = 3(end−c2) = 순수 -camUp.
+            float u = (t - recoilFrac) / (1f - recoilFrac);
+            float arcHeight = Mathf.Max(Vector3.Distance(dip, end) * arcHeightFactor, minArcHeight);
+            Vector3 c1 = Vector3.Lerp(dip, end, launch.x) + camUp * (arcHeight * launch.y);
+            Vector3 c2 = end + camUp * (arcHeight * landingHeight);
+            return CubicBezier(dip, c1, c2, end, u);
+        }
+
         // 중력 적분 + 착지/반동 판정. 반환 true = 반동 없이 바닥에 정착(착지 속도 < bounceMinSpeed).
         // lobby-keyring-drag 2 의 LobbyKeyringDrag.FallStep 에서 이동.
         public static bool FallStep(ref float y, ref float velY, float floorY, float dt,

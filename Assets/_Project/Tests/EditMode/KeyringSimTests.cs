@@ -261,6 +261,100 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(0.72f * 4f, cB.z, 1e-4f, "controlB 진행(landing.x)");
         }
 
+        // --- defender-drop-dismount unit 0 — DismountPoint (반동 Hermite + 수직착지 아치) ---
+        // 공통 픽스처: 보드=XZ, camUp=+Y. start 는 매달린 발점, end 는 화면 위쪽(z+) 타일.
+
+        private static Vector3 Dismount(Vector3 start, Vector3 startVel, Vector3 end, float t,
+            float recoilFrac = 0.267f, float dip = 0.35f,
+            float factor = 0.5f, float minH = 1.5f, float landingH = 0.25f)
+        {
+            return KeyringSim.DismountPoint(start, startVel, end, Vector3.up,
+                recoilFrac, dip, factor, minH, new Vector2(0.25f, 1f), landingH, t);
+        }
+
+        [Test]
+        public void DismountPoint_Endpoints_Exact()
+        {
+            var start = new Vector3(1f, 0.2f, -2f);
+            var end = new Vector3(0.6f, 0f, 0.8f);
+            var vel = new Vector3(2f, 0f, 1f);
+            var p0 = Dismount(start, vel, end, 0f);
+            Assert.AreEqual(0f, Vector3.Distance(p0, start), 1e-4f, "t=0 → start");
+            var p1 = Dismount(start, vel, end, 1f);
+            Assert.AreEqual(0f, Vector3.Distance(p1, end), 1e-4f, "t=1 → end");
+        }
+
+        [Test]
+        public void DismountPoint_RecoilBoundary_C0Continuous_AtDip()
+        {
+            var start = new Vector3(0f, 0f, 0f);
+            var end = new Vector3(0f, 0f, 3f);
+            var dipPoint = start - Vector3.up * 0.35f;
+            var atFrac = Dismount(start, Vector3.zero, end, 0.267f);
+            Assert.AreEqual(0f, Vector3.Distance(atFrac, dipPoint), 1e-3f, "t=recoilFrac → dip");
+            var justAfter = Dismount(start, Vector3.zero, end, 0.267f + 1e-4f);
+            Assert.AreEqual(0f, Vector3.Distance(justAfter, dipPoint), 1e-2f, "경계 직후 C0 연속");
+        }
+
+        [Test]
+        public void DismountPoint_EndTangent_IsVerticalDescent()
+        {
+            var start = new Vector3(0.4f, 0f, -1f);
+            var end = new Vector3(0f, 0f, 2.5f);
+            var a = Dismount(start, Vector3.zero, end, 1f - 1e-3f);
+            var b = Dismount(start, Vector3.zero, end, 1f);
+            var dir = (b - a).normalized;
+            Assert.Less(Vector3.Dot(dir, Vector3.up), -0.99f, "착지 접선은 순수 -camUp(수직 스틱)");
+        }
+
+        [Test]
+        public void DismountPoint_ApexFloor_EngagesWhenDistanceProportionalIsFlat()
+        {
+            // 거리비례 항이 납작(3×0.01=0.03)해도 절대 하한(minH 2)이 apex 를 세운다 — "솟음" 계약.
+            var start = Vector3.zero;
+            var end = new Vector3(0f, 0f, 3f);
+            float apexFloored = 0f, apexNoFloor = 0f;
+            for (int i = 0; i <= 400; i++)
+            {
+                float t = i / 400f;
+                apexFloored = Mathf.Max(apexFloored,
+                    Dismount(start, Vector3.zero, end, t, factor: 0.01f, minH: 2f).y);
+                apexNoFloor = Mathf.Max(apexNoFloor,
+                    Dismount(start, Vector3.zero, end, t, factor: 0.01f, minH: 0f).y);
+            }
+            // minArcHeight 는 **제어점 높이** semantics(ThrowArcControls 와 동일) — 이 노브 조합의
+            // 실제 apex ≈ 0.41×제어점높이(dip 의 (1−u)³ 항 + lerp 감쇠). 경계 0.75 는 러프 하한.
+            Assert.GreaterOrEqual(apexFloored, 0.75f, "하한 2 → apex ≥ 0.375×minH");
+            Assert.LessOrEqual(apexNoFloor, 0.05f, "하한 없으면 납작 — 하한이 실제로 작동함을 대비로 증명");
+        }
+
+        [Test]
+        public void DismountPoint_ZeroVelocity_RecoilDescendsMonotonically()
+        {
+            var start = new Vector3(0f, 1f, 0f);
+            var end = new Vector3(0f, 0f, 3f);
+            float prevY = float.MaxValue;
+            for (int i = 0; i <= 40; i++)
+            {
+                float t = 0.267f * i / 40f;
+                float y = Dismount(start, Vector3.zero, end, t).y;
+                Assert.LessOrEqual(y, prevY + 1e-5f, $"반동 구간 단조 하강 위반 t={t:F3}");
+                prevY = y;
+            }
+        }
+
+        [Test]
+        public void DismountPoint_ResidualVelocity_ShapesRecoilStart()
+        {
+            // 릴리스 잔여 스윙 속도(접선)가 반동 초입 이동 방향을 지배해야 한다(F-2 흡수).
+            var start = Vector3.zero;
+            var end = new Vector3(0f, 0f, 3f);
+            var vel = new Vector3(5f, 0f, 0f); // 반동구간 정규화 접선
+            var p = Dismount(start, vel, end, 0.267f * 0.05f);
+            var dir = (p - start).normalized;
+            Assert.Greater(Vector3.Dot(dir, Vector3.right), 0.99f, "초입 방향 ≈ startVel");
+        }
+
         [Test]
         public void ThrowArcControls_Deterministic_AndLateralVariesBySeq()
         {

@@ -36,6 +36,6 @@ public static Vector3 DismountPoint(
   - `t=0` → start 정확, `t=1` → end 정확 (오차 < 1e-4)
   - `t=recoilFrac` 양측 극한 위치 일치 (C0)
   - `t=1` 근방 차분 접선이 -camUp 과 평행 (dot > 0.99) — 수직 착지
-  - apex(camUp 성분 최대)가 `max(start,end) camUp 성분 + minArcHeight·0.5` 이상 — 하한 동작
+  - apex 하한 동작: `minArcHeight` 는 **제어점 높이** semantics(ThrowArcControls 동일) — 실제 apex ≈ 0.4×제어점높이. 하한 적용/미적용 **대비**로 작동 증명(적용 apex ≥ 0.375×minH, 미적용 ≤ 0.05)
   - `startVel=0` 일 때 반동 구간이 단조 하강(dip 방향)
 - compile 클린 · 기존 테스트 무회귀

@@ -24,7 +24,7 @@ public float dropTotalSeconds = 0.45f;    // 총 시간. 런타임에 deployment
 public float dropRecoilSeconds = 0.12f;   // 반동 구간(총 시간 내 비율로 환산)
 public float dropRecoilDip = 0.35f;       // 반동 깊이(world, -camUp)
 public float dropArcHeightFactor = 0.5f;  // apex = max(거리×factor, min)
-public float dropArcMinHeight = 1.5f;     // apex 절대 하한(world) — "솟음" 보장
+public float dropArcMinHeight = 3.5f;     // 제어점 높이 하한(world). 실제 apex ≈ 0.4× → 기본 apex ≈ 1.4 world(유닛 키 ~1.2배)
 public Vector2 dropLaunchControl = new Vector2(0.25f, 1f); // c1: 전진비율·높이배수
 public float dropLandingHeight = 0.25f;   // c2 높이배수(end 직상방 — 수직 착지)
 public float dropCordSnapFade = 0.15f;    // 분리 후 줄 페이드(초)
