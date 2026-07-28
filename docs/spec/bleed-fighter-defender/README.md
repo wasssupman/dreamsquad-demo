@@ -28,6 +28,9 @@
 1. **Bleed 파생 규칙 SO(`StackModifier_Bleed`)는 ember 카드와 공유 — 이 spec 은 값을 바꾸지 않는다.**
    현행: 1스택 도달 → 소모 → DoT 3dps × 3s. 재저작(예: 5스택 축적형)은 카드 밸런스가 같이 움직이므로
    별도 결정 + 별도 StackKind 신설이 선결(후속 후보).
+   - ⚠ **`stackCount` 는 Bleed 의 관측값이 아니다.** 규칙이 `atStack 1 · mode Consume` 이라 1에
+     도달하는 순간 발화하며 스택을 도로 0으로 소모한다. "스택이 1개 붙었는지"로 단언하면 실패한다
+     (unit 1 테스트가 실제로 이걸로 한 번 죽었다). 도포의 관측 가능한 결과는 **파생 DoT** 다.
 2. **체인 검증 현황 (2026-07-29 리그 실측)**: 스택 부여(PlayMode `EmberBite` 2/2)·임계 배선
    assert·DoT→데미지(EditMode `DotApplySystemTests` 7/7) 전부 green. **유일한 미실증 구간 =
    outputs→큐 enqueue** — unit 0 이 이 구간을 고정한다.

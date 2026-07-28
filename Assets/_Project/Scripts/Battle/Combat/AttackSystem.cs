@@ -1206,6 +1206,28 @@ namespace Wassup.Battle.Combat
                                         enemy = hitTargets[ti],
                                     });
                             }
+
+                            // knockup-fighter-defender unit 0 — 공중 띄우기 = 히트한 **전 대상**에
+                            // 짧은 Stun. 아래 knockback/sleep 블록(주 타겟 1체)과 달리 여기 있는
+                            // 이유는 스코프가 hitTargets 전원이기 때문 — 어그로 enqueue 와 같은 자리다.
+                            // 심에 "공중" 개념은 없다. 떠오르는 연출은 뷰가 따로 재생한다(unit 3).
+                            if (ccWriter.HasValue && defenderCcLookup.HasComponent(attackerEntity))
+                            {
+                                float knockupSec = defenderCcLookup[attackerEntity].knockupOnHitSec;
+                                if (knockupSec > 0f)
+                                {
+                                    for (int ti = 0; ti < hitCount; ti++)
+                                        ccWriter.Value.Enqueue(new Wassup.Battle.Effects.EnemyCcEvent
+                                        {
+                                            target = hitTargets[ti],
+                                            effect = new Wassup.Battle.Effects.CcEffect
+                                            {
+                                                kind          = Wassup.Battle.Effects.CcKind.Stun,
+                                                remainingTime = knockupSec,
+                                            },
+                                        });
+                                }
+                            }
                             hitTargets.Dispose();
                         }
                     }

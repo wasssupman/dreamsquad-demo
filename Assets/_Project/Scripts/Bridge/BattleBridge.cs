@@ -3546,6 +3546,73 @@ namespace Wassup.Bridge
                 }
                 entities.Dispose();
             }
+            else if (unitData.onPlaceEffect == OnPlaceEffectType.ApplyStackNearby)
+            {
+                // bleed-fighter-defender unit 1 — 반경 내 적 전원에 스택 도포(등장 난도질).
+                // 스택 종류/수/지속은 SO, 상한은 그 StackKind 를 소유한 StackModifierSO 가
+                // 권위다(유닛마다 다른 상한을 적는 것이 아니라 스택의 성질) — 미등록이면
+                // AttackSystem outputs 경로와 같은 기본값 5.
+                if (unitData.onPlaceRange <= 0f || unitData.onPlaceMagnitude <= 0f) return 0;
+                if (!_aliveAttackersQueryCreated) return 0;
+                if (!_stackModifierQueue.IsCreated) return 0;
+
+                byte maxStack = 5;
+                if (stackModifierAuthoring != null)
+                {
+                    foreach (var so in stackModifierAuthoring)
+                        if (so != null && so.kind == unitData.onPlaceStackKind) { maxStack = so.maxStack; break; }
+                }
+
+                int tileRange = GridMath.RangeToTiles(unitData.onPlaceRange);
+                var entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
+                for (int i = 0; i < entities.Length; i++)
+                {
+                    var e = entities[i];
+                    if (!_em.HasComponent<LocalTransform>(e)) continue;
+                    var pos = _em.GetComponentData<LocalTransform>(e).Position;
+                    if (!InTileRange(pos, placedCell, tileRange)) continue;
+                    _stackModifierQueue.Enqueue(new Wassup.Battle.Effects.StackModifierApplyEvent
+                    {
+                        target         = e,
+                        kind           = unitData.onPlaceStackKind,
+                        countDelta     = (byte)math.max(1f, unitData.onPlaceMagnitude),
+                        maxStack       = maxStack,
+                        perAppDuration = unitData.onPlaceDuration,
+                        source         = placedEntity,
+                    });
+                    affected++;
+                }
+                entities.Dispose();
+            }
+            else if (unitData.onPlaceEffect == OnPlaceEffectType.StunNearby)
+            {
+                // knockup-fighter-defender unit 1 — 착지 충격(반경 내 적 전원 넉업).
+                // 심은 Stun 그대로 — "공중" 은 뷰가 붙이는 해석이다(unit 3).
+                if (unitData.onPlaceRange <= 0f || unitData.onPlaceDuration <= 0f) return 0;
+                if (!_aliveAttackersQueryCreated) return 0;
+                if (!_enemyCcQueue.IsCreated) return 0;
+
+                int tileRange = GridMath.RangeToTiles(unitData.onPlaceRange);
+                var entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
+                for (int i = 0; i < entities.Length; i++)
+                {
+                    var e = entities[i];
+                    if (!_em.HasComponent<LocalTransform>(e)) continue;
+                    var pos = _em.GetComponentData<LocalTransform>(e).Position;
+                    if (!InTileRange(pos, placedCell, tileRange)) continue;
+                    _enemyCcQueue.Enqueue(new Wassup.Battle.Effects.EnemyCcEvent
+                    {
+                        target = e,
+                        effect = new Wassup.Battle.Effects.CcEffect
+                        {
+                            kind          = Wassup.Battle.Effects.CcKind.Stun,
+                            remainingTime = unitData.onPlaceDuration,
+                        },
+                    });
+                    affected++;
+                }
+                entities.Dispose();
+            }
             else if (unitData.onPlaceEffect == OnPlaceEffectType.MeleeBurst)
             {
                 if (unitData.onPlaceRange <= 0f || unitData.onPlaceMagnitude <= 0f) return 0;
@@ -4856,6 +4923,7 @@ namespace Wassup.Bridge
                 onPlacePushDuration = unitData.onPlacePushDuration,
                 onPlacePushRadius   = unitData.onPlacePushRadius,
                 sleepOnHitSec       = unitData.sleepOnHitSec,
+                knockupOnHitSec     = unitData.knockupOnHitSec,
             });
             // defender-ability-assets unit 2 — 게이트 = 능력 에셋 존재(구 hazardCastEnabled).
             var hazardAbility = unitData.GetAbility<HazardCastAbility>();

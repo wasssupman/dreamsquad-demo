@@ -14,5 +14,8 @@ namespace Wassup.Battle.Combat
         public float onPlacePushRadius;
         // sleep-fighter-defender — RESOLVE 주 타겟에게 Sleep N초. 0 = disabled.
         public float sleepOnHitSec;
+        // knockup-fighter-defender — 히트한 **전 대상**에게 Stun N초(공중 띄우기의 심 실체).
+        // 스코프가 sleepOnHitSec(주 타겟 1체)과 다르다 — 둘을 하나로 합치면 투머치토커가 깨진다.
+        public float knockupOnHitSec;
     }
 }

@@ -56,6 +56,9 @@ namespace Wassup.Data
         public float onPlaceRange;
         public float onPlaceMagnitude;
         public float onPlaceDuration;
+        // bleed-fighter-defender unit 1 — ApplyStackNearby 전용. 스택 종류를 분기에
+        // 하드코딩하지 않기 위한 슬롯(제약 6). 다른 onPlaceEffect 에서는 무시된다.
+        public Wassup.Battle.Effects.StackKind onPlaceStackKind;
 
         // Phase 6: placement cost subtracted from CostRuntime on PlaceDefenderAs.
         public int cost = 1;
@@ -166,6 +169,13 @@ namespace Wassup.Data
         // 근접(무투사체) 전제 — 투사체 유닛은 넉백과 동일하게 발사 시점 적용됨.
         public float sleepOnHitSec;       // seconds. 0 = disabled
 
+        [Header("Knockup on hit (per attack)")]
+        // knockup-fighter-defender — 히트한 **전 대상**에게 Stun N초 = 공중 띄우기.
+        // ⚠ sleepOnHitSec 과 스코프가 다르다: 저쪽은 주 타겟 1체, 이쪽은 hitTargets 전원.
+        // 다중 타겟 유닛에서 둘의 결과가 갈리므로 하나의 필드로 통합하지 말 것.
+        // 떠오르는 연출은 뷰(unit 3)가 이 필드 보유를 보고 재생한다 — 심은 Stun 그대로다.
+        public float knockupOnHitSec;     // seconds. 0 = disabled
+
         [Header("On-place Push")]
         public float onPlacePushDistance; // world units. 0 = disabled
         public float onPlacePushDuration; // seconds
@@ -214,5 +224,8 @@ namespace Wassup.Data
         ForwardProjectile,
         GainCost,
         ReduceSkillCooldown,
+        // 아래는 항상 **맨 뒤에** 추가한다 — 기존 유닛 에셋이 이 enum 을 int 로 직렬화해 두었다.
+        ApplyStackNearby,   // bleed-fighter-defender unit 1 — 반경 내 적에게 onPlaceStackKind 스택 도포
+        StunNearby,         // knockup-fighter-defender unit 1 — 반경 내 적 전원 Stun(착지 충격 = 넉업)
     }
 }
