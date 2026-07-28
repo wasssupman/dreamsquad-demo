@@ -145,6 +145,7 @@ namespace Wassup.Presentation
             UpdateWalkTimeScale(world);
             // enemy-walk-anim-speed unit 4 — 갱신된 _smoothedSpeed 로 walk↔idle 전환.
             UpdateLocomotionAnimation();
+            AdvanceHop(); // knockup unit 3 — 호핑 시간 진행은 프레임당 여기서만
             ApplyRenderPosition(world);
         }
 
@@ -200,17 +201,20 @@ namespace Wassup.Presentation
             _hopHeight = height;
         }
 
+        // 시간 진행은 프레임 진입점(UpdatePosition)에서 **한 번만** 한다. ApplyRenderPosition 은
+        // Spawn 에서도 불리므로 거기서 진행시키면 스폰 프레임에 한 칸 건너뛴다.
+        private void AdvanceHop()
+        {
+            if (_hopElapsed < 0f) return;
+            // 배틀 스케일을 따른다 — 슬로모 중엔 천천히 뜨고 천천히 떨어져야 스턴 지속(sim 시간)과
+            // 착지 시점이 어긋나지 않는다.
+            _hopElapsed += Time.deltaTime * _battleScale;
+            if (_hopElapsed >= _hopDuration) _hopElapsed = -1f;
+        }
+
         private float CurrentHopOffset()
         {
             if (_hopElapsed < 0f) return 0f;
-            // 시간 도메인은 배틀 스케일을 따른다 — 슬로모 중엔 천천히 뜨고 천천히 떨어져야
-            // 스턴 지속(sim 시간)과 착지 시점이 어긋나지 않는다.
-            _hopElapsed += Time.deltaTime * _battleScale;
-            if (_hopElapsed >= _hopDuration)
-            {
-                _hopElapsed = -1f;
-                return 0f;
-            }
             float t = _hopElapsed / _hopDuration;      // 0..1
             return _hopHeight * 4f * t * (1f - t);     // 포물선: 양끝 0, 중앙 최고
         }

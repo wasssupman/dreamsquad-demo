@@ -3527,6 +3527,30 @@ namespace Wassup.Bridge
             return entity;
         }
 
+        // 배치 셀 반경 내 살아있는 적을 스크래치에 모은다. on-place 분기 다섯이 같은
+        // "쿼리 → 순회 → LocalTransform 확인 → InTileRange" 를 복제하고 있었다(bleed/knockup
+        // unit 1 이 두 개를 더하면서 다섯이 됨) — 호출처가 다섯이라 추출이 맞다.
+        // 재사용 스크래치라 배치마다 할당이 없다(`_dcFiredScratch` 선례).
+        private readonly System.Collections.Generic.List<Entity> _onPlaceInRangeScratch = new();
+
+        private System.Collections.Generic.List<Entity> CollectEnemiesInTileRange(Vector2Int cell, float range)
+        {
+            _onPlaceInRangeScratch.Clear();
+            if (range <= 0f || !_aliveAttackersQueryCreated) return _onPlaceInRangeScratch;
+            int tileRange = GridMath.RangeToTiles(range);
+            var entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
+            for (int i = 0; i < entities.Length; i++)
+            {
+                var e = entities[i];
+                if (!_em.HasComponent<LocalTransform>(e)) continue;
+                var pos = _em.GetComponentData<LocalTransform>(e).Position;
+                if (!InTileRange(pos, cell, tileRange)) continue;
+                _onPlaceInRangeScratch.Add(e);
+            }
+            entities.Dispose();
+            return _onPlaceInRangeScratch;
+        }
+
         // Fires the defender's on-place effect on surrounding entities. Returns
         // the count of entities affected so the logger can record magnitude.
         // Writes to Effects components go through EffectSpawner so the Effects-
@@ -3535,42 +3559,18 @@ namespace Wassup.Bridge
         {
             if (unitData.onPlaceEffect == OnPlaceEffectType.None) return 0;
 
-            float3 center = GridToWorldCenter(placedCell);
             int affected = 0;
 
-            if (unitData.onPlaceEffect == OnPlaceEffectType.SlowPulse)
+            // SlowPulse 와 BindNearby 는 예전부터 **같은 효과**다(둘 다 이동속도 배율 감쇠).
+            // 문구만 다르고 동작이 같으므로 한 분기로 합쳐 둔다 — 갈라 두면 한쪽만 고쳐진다.
+            if (unitData.onPlaceEffect == OnPlaceEffectType.SlowPulse
+                || unitData.onPlaceEffect == OnPlaceEffectType.BindNearby)
             {
-                if (unitData.onPlaceRange <= 0f) return 0;
-                if (!_aliveAttackersQueryCreated) return 0;
-                int tileRange = GridMath.RangeToTiles(unitData.onPlaceRange);
-                var entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
-                for (int i = 0; i < entities.Length; i++)
+                foreach (var e in CollectEnemiesInTileRange(placedCell, unitData.onPlaceRange))
                 {
-                    var e = entities[i];
-                    if (!_em.HasComponent<LocalTransform>(e)) continue;
-                    var pos = _em.GetComponentData<LocalTransform>(e).Position;
-                    if (!InTileRange(pos, placedCell, tileRange)) continue;
                     EnqueueMoveSpeedMul(e, unitData.onPlaceMagnitude, unitData.onPlaceDuration, Wassup.Battle.Effects.ModifierOrigin.OnPlace);
                     affected++;
                 }
-                entities.Dispose();
-            }
-            else if (unitData.onPlaceEffect == OnPlaceEffectType.BindNearby)
-            {
-                if (unitData.onPlaceRange <= 0f) return 0;
-                if (!_aliveAttackersQueryCreated) return 0;
-                int tileRange = GridMath.RangeToTiles(unitData.onPlaceRange);
-                var entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
-                for (int i = 0; i < entities.Length; i++)
-                {
-                    var e = entities[i];
-                    if (!_em.HasComponent<LocalTransform>(e)) continue;
-                    var pos = _em.GetComponentData<LocalTransform>(e).Position;
-                    if (!InTileRange(pos, placedCell, tileRange)) continue;
-                    EnqueueMoveSpeedMul(e, unitData.onPlaceMagnitude, unitData.onPlaceDuration, Wassup.Battle.Effects.ModifierOrigin.OnPlace);
-                    affected++;
-                }
-                entities.Dispose();
             }
             else if (unitData.onPlaceEffect == OnPlaceEffectType.ApplyStackNearby)
             {
@@ -3578,9 +3578,7 @@ namespace Wassup.Bridge
                 // 스택 종류/수/지속은 SO, 상한은 그 StackKind 를 소유한 StackModifierSO 가
                 // 권위다(유닛마다 다른 상한을 적는 것이 아니라 스택의 성질) — 미등록이면
                 // AttackSystem outputs 경로와 같은 기본값 5.
-                if (unitData.onPlaceRange <= 0f || unitData.onPlaceMagnitude <= 0f) return 0;
-                if (!_aliveAttackersQueryCreated) return 0;
-                if (!_stackModifierQueue.IsCreated) return 0;
+                if (unitData.onPlaceMagnitude <= 0f || !_stackModifierQueue.IsCreated) return 0;
 
                 byte maxStack = 5;
                 if (stackModifierAuthoring != null)
@@ -3589,14 +3587,8 @@ namespace Wassup.Bridge
                         if (so != null && so.kind == unitData.onPlaceStackKind) { maxStack = so.maxStack; break; }
                 }
 
-                int tileRange = GridMath.RangeToTiles(unitData.onPlaceRange);
-                var entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
-                for (int i = 0; i < entities.Length; i++)
+                foreach (var e in CollectEnemiesInTileRange(placedCell, unitData.onPlaceRange))
                 {
-                    var e = entities[i];
-                    if (!_em.HasComponent<LocalTransform>(e)) continue;
-                    var pos = _em.GetComponentData<LocalTransform>(e).Position;
-                    if (!InTileRange(pos, placedCell, tileRange)) continue;
                     _stackModifierQueue.Enqueue(new Wassup.Battle.Effects.StackModifierApplyEvent
                     {
                         target         = e,
@@ -3608,24 +3600,15 @@ namespace Wassup.Bridge
                     });
                     affected++;
                 }
-                entities.Dispose();
             }
             else if (unitData.onPlaceEffect == OnPlaceEffectType.StunNearby)
             {
                 // knockup-fighter-defender unit 1 — 착지 충격(반경 내 적 전원 넉업).
                 // 심은 Stun 그대로 — "공중" 은 뷰가 붙이는 해석이다(unit 3).
-                if (unitData.onPlaceRange <= 0f || unitData.onPlaceDuration <= 0f) return 0;
-                if (!_aliveAttackersQueryCreated) return 0;
-                if (!_enemyCcQueue.IsCreated) return 0;
+                if (unitData.onPlaceDuration <= 0f || !_enemyCcQueue.IsCreated) return 0;
 
-                int tileRange = GridMath.RangeToTiles(unitData.onPlaceRange);
-                var entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
-                for (int i = 0; i < entities.Length; i++)
+                foreach (var e in CollectEnemiesInTileRange(placedCell, unitData.onPlaceRange))
                 {
-                    var e = entities[i];
-                    if (!_em.HasComponent<LocalTransform>(e)) continue;
-                    var pos = _em.GetComponentData<LocalTransform>(e).Position;
-                    if (!InTileRange(pos, placedCell, tileRange)) continue;
                     _enemyCcQueue.Enqueue(new Wassup.Battle.Effects.EnemyCcEvent
                     {
                         target = e,
@@ -3642,24 +3625,16 @@ namespace Wassup.Bridge
                         hopView.PlayKnockupHop(unitData.onPlaceDuration, unitData.knockupVisualHeight);
                     affected++;
                 }
-                entities.Dispose();
             }
             else if (unitData.onPlaceEffect == OnPlaceEffectType.MeleeBurst)
             {
-                if (unitData.onPlaceRange <= 0f || unitData.onPlaceMagnitude <= 0f) return 0;
-                if (!_aliveAttackersQueryCreated) return 0;
-                int tileRange = GridMath.RangeToTiles(unitData.onPlaceRange);
-                var entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
-                for (int i = 0; i < entities.Length; i++)
+                if (unitData.onPlaceMagnitude <= 0f) return 0;
+                foreach (var e in CollectEnemiesInTileRange(placedCell, unitData.onPlaceRange))
                 {
-                    var e = entities[i];
-                    if (!_em.HasComponent<LocalTransform>(e) || !_em.HasBuffer<IncomingDamage>(e)) continue;
-                    var pos = _em.GetComponentData<LocalTransform>(e).Position;
-                    if (!InTileRange(pos, placedCell, tileRange)) continue;
+                    if (!_em.HasBuffer<IncomingDamage>(e)) continue;
                     _em.GetBuffer<IncomingDamage>(e).Add(new IncomingDamage { amount = unitData.onPlaceMagnitude });
                     affected++;
                 }
-                entities.Dispose();
             }
             else if (unitData.onPlaceEffect == OnPlaceEffectType.ForwardProjectile)
             {
