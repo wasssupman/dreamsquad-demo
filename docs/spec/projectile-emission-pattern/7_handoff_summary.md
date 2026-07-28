@@ -14,7 +14,9 @@ spec `af1796bc`(0~6 작성) → `5e69dc5f`(spec-review 반영) → `afb9d83f`(�
 - **emitter 는 바인딩 클래스로 분기**: `MovementBinding.Of` → Entity/Cell/Direction 3분류. 기존 바인딩으로 분류되는 새 이동 수학은 emitter 무변경으로 발사된다.
 - **트리거 seam**: `DcPayloadKind.EmitProjectilePattern`(17) — arm 이 하는 일은 값 복사 push 뿐. 발사 도중 SO/버프가 바뀌어도 시작된 버스트는 불변.
 - **융단폭격 이관**: 전용 arm·`BarrageEpicenter` 제거, 같은 emitter 로 값 보존(150/r3/1.5s/RoundRobin).
-- **콘텐츠**: 보스 텔레포트 제거 + 0.5초 간격 랜덤 방어유닛 곡선 미사일(damage 40 초안). **unit 5 는 코드 diff 0줄** — asset 3개 + 보스 SO 편집만.
+- **콘텐츠**: 보스 텔레포트 제거 + **0.1초 간격(초당 10발) 랜덤 방어유닛 곡사 호밍 미사일 damage 5** (`c5017b99` 튜닝). **unit 5 는 코드 diff 0줄** — asset 3개 + 보스 SO 편집만.
+  - 곡사 파라미터: `arcHeight 3.5`(포물선 정점, tileSize=1 기준 3.5타일) · `bezierLateral 0.5`(좌우는 약하게 — 발마다 교대 스윙이 남아야 초당 10발이 부채처럼 갈라진다) · `minFlightTime 0.7` · `visualScale 0.9`.
+  - **`visualScale` 이 곡사 가시성의 실질 열쇠였다**: 궤적은 처음부터 아치였는데(실측 `t0.49→y3.50` 정점) 두꺼운 파티클 트레일이 초당 10발 겹쳐 물줄기로 뭉개졌다. 탄을 1.8→0.9 로 줄이니 개별 아치가 드러난다. 밀도를 더 올릴 거면 트레일이 얇은 프리팹으로 교체하는 게 다음 수단이다.
 
 ## Key Files
 
