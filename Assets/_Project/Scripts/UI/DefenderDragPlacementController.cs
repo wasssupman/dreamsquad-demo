@@ -864,6 +864,20 @@ namespace Wassup.UI
         // 시작 오버라이드는 **동기** 등록 — 같은 프레임 LateUpdate 피드가 소비해 스폰 위치 1프레임 팝을 막는다.
         // 팝 0 계약(5): 시작 = 고스트 실좌표(_unitPosWorld 그대로), 끝 = 정상 피드 공식 미러
         // (TryGetDefenderRestViewPos) — 변환·상수 없이 양 끝점을 각 렌더러 실좌표로 잡는다.
+        // unit 4 — 릴리스 자리에 남는 고리+줄 잔류물. 반동 동안 줄이 비행 유닛을 따라 벙고,
+        // 분리 프레임에 위치 동결 → 페이드. 페이드는 per-renderer 색(SpriteRenderer.color /
+        // LineRenderer.start·endColor)으로만 — 공유 머티리얼 복제·오염 없음(spec 정정: 복제 불필요).
+        private sealed class KeyringRemnant
+        {
+            public GameObject holder;
+            public SpriteRenderer ringSprite;   // 스타일 고리(있으면)
+            public LineRenderer ringLine;       // 절차적 고리(폴백)
+            public LineRenderer cord;
+            public Color ringColor, cordStart, cordEnd;
+            public Vector3 ringPos;             // 분리 후에도 고정되는 고리 월드 위치
+            public float unitHeight;            // 줄 끝 = 유닛 발 + camUp·이 값(머리)
+        }
+
         private bool StartDropDismount(DefenderUnitData unit, Vector2Int cell, Unity.Entities.Entity entity,
             bool presentAtLanding)
         {
@@ -886,16 +900,95 @@ namespace Wassup.UI
 
             bridge.SetDefenderViewOverride(entity, start);
             _activeDismounts[entity] = cell;
+            // unit 4 — 곧 파괴될 세션 프리뷰에서 고리+줄을 분리해 잔류물로. 직후 CleanupSession 의
+            // Destroy(preview)는 실루엣만 지운다(분리된 서브트리는 root 밖).
+            var remnant = DetachKeyringRemnant(duration, recoilFrac);
             StartCoroutine(RunDropDismount(entity, cell, unit, start, startVel, end,
-                mainCamera.transform.up, duration, recoilFrac, presentAtLanding));
+                mainCamera.transform.up, duration, recoilFrac, presentAtLanding, remnant));
+            return true;
+        }
+
+        private KeyringRemnant DetachKeyringRemnant(float duration, float recoilFrac)
+        {
+            var ring = _session.ring;
+            var cord = _session.cordLine;
+            if (ring == null && cord == null) return null; // 폴백 capsule 프리뷰 — 잔류물 없음
+
+            var holder = new GameObject("KeyringRemnant");
+            var remnant = new KeyringRemnant { holder = holder, unitHeight = _session.unitHeight };
+            if (ring != null)
+            {
+                ring.SetParent(holder.transform, true);
+                remnant.ringPos = ring.position;
+                remnant.ringSprite = ring.GetComponent<SpriteRenderer>();
+                remnant.ringLine = ring.GetComponent<LineRenderer>();
+                if (remnant.ringSprite != null) remnant.ringColor = remnant.ringSprite.color;
+                else if (remnant.ringLine != null) remnant.ringColor = remnant.ringLine.startColor;
+            }
+            if (cord != null)
+            {
+                cord.transform.SetParent(holder.transform, true);
+                remnant.cord = cord;
+                remnant.cordStart = cord.startColor;
+                remnant.cordEnd = cord.endColor;
+            }
+            // 고아 방지 하드캡(OnDisable 로 코루틴이 죽어도 잔류물은 자멸) — 정상 경로는 코루틴이 먼저 지운다.
+            var cfg = Cfg;
+            Destroy(holder, duration + Mathf.Max(cfg.dropCordSnapFade, cfg.dropRingFade) + 0.5f);
+            return remnant;
+        }
+
+        // 반동 중: 줄이 고리(고정)→비행 유닛 머리를 잇는다. 분리 후: 위치 동결(스냅), 색 알파만 페이드.
+        // 반환 false = 페이드 완료(잔류물 파괴됨).
+        private bool UpdateKeyringRemnant(KeyringRemnant r, Vector3 unitFeet, Vector3 camUp,
+            float elapsed, float recoilSeconds, DragSwaySettings cfg)
+        {
+            if (r == null || r.holder == null) return false;
+            if (elapsed <= recoilSeconds)
+            {
+                if (r.cord != null)
+                {
+                    if (r.cord.positionCount != 2) r.cord.positionCount = 2;
+                    r.cord.SetPosition(0, r.ringPos);
+                    r.cord.SetPosition(1, unitFeet + camUp * r.unitHeight);
+                }
+                return true;
+            }
+            float sinceSep = elapsed - recoilSeconds;
+            float cordA = 1f - Mathf.Clamp01(sinceSep / Mathf.Max(0.01f, cfg.dropCordSnapFade));
+            float ringA = 1f - Mathf.Clamp01(sinceSep / Mathf.Max(0.01f, cfg.dropRingFade));
+            if (r.cord != null)
+            {
+                var s = r.cordStart; s.a *= cordA;
+                var e = r.cordEnd; e.a *= cordA;
+                r.cord.startColor = s;
+                r.cord.endColor = e;
+            }
+            if (r.ringSprite != null)
+            {
+                var c = r.ringColor; c.a *= ringA;
+                r.ringSprite.color = c;
+            }
+            else if (r.ringLine != null)
+            {
+                var c = r.ringColor; c.a *= ringA;
+                r.ringLine.startColor = r.ringLine.endColor = c;
+            }
+            if (cordA <= 0f && ringA <= 0f)
+            {
+                Destroy(r.holder);
+                r.holder = null;
+                return false;
+            }
             return true;
         }
 
         private IEnumerator RunDropDismount(Unity.Entities.Entity entity, Vector2Int cell, DefenderUnitData unit,
             Vector3 start, Vector3 startVel, Vector3 end, Vector3 camUp, float duration, float recoilFrac,
-            bool presentAtLanding)
+            bool presentAtLanding, KeyringRemnant remnant)
         {
             var cfg = Cfg;
+            float recoilSeconds = recoilFrac * duration;
             float elapsed = 0f;
             while (elapsed < duration)
             {
@@ -904,7 +997,7 @@ namespace Wassup.UI
                 // 계약 9 — binding 붕괴(판매·맵 teardown·리빌드) 시 물러남. 오버라이드는 맵 리셋이 co-locate clear.
                 if (bridge == null || !bridge.TryGetDefenderAt(cell, out var e, out _, out _) || e != entity)
                 {
-                    AbandonDismount(entity);
+                    AbandonDismount(entity, remnant);
                     yield break;
                 }
                 // 시계 = unscaled(배치 조작의 연장, 계약 스펙). 시간 이징 없음(선형) — 착지 임팩트 속도는
@@ -916,6 +1009,7 @@ namespace Wassup.UI
                     recoilFrac, cfg.dropRecoilDip, cfg.dropArcHeightFactor, cfg.dropArcMinHeight,
                     cfg.dropLaunchControl, cfg.dropLandingHeight, f);
                 bridge.SetDefenderViewOverride(entity, p);
+                UpdateKeyringRemnant(remnant, p, camUp, elapsed, recoilSeconds, cfg); // unit 4 — 줄 벙음→스냅 페이드
             }
             // 착지 — 최종점(end)이 정상 피드 공식과 동일 좌표라 clear 직후 프레임이 그대로 이어진다(팝 0).
             _activeDismounts.Remove(entity);
@@ -931,12 +1025,21 @@ namespace Wassup.UI
                 try { bridge.PlayDeploymentPresentation(unit, cell, entity); }
                 catch (System.Exception ex) { Debug.LogException(ex, this); }
             }
+            // unit 4 — 잔류 페이드 꼬리: 노브(dropRingFade 등)가 비행보다 길면 착지 후에도 페이드를
+            // 마저 굴린다(동결 방지). 기본값에선 착지 전에 끝나 한 번도 안 돈다.
+            while (UpdateKeyringRemnant(remnant, end, camUp, elapsed, recoilSeconds, cfg))
+            {
+                elapsed += Time.unscaledDeltaTime;
+                yield return null;
+            }
         }
 
-        private void AbandonDismount(Unity.Entities.Entity entity)
+        private void AbandonDismount(Unity.Entities.Entity entity, KeyringRemnant remnant = null)
         {
             _activeDismounts.Remove(entity);
             bridge?.ClearDefenderViewOverride(entity);
+            // 잔류물은 즉시 파괴(spec 정정: abandon = teardown 맥락 — 페이드 연출 의미 없음, 붙박이만 방지).
+            if (remnant != null && remnant.holder != null) { Destroy(remnant.holder); remnant.holder = null; }
         }
 
         // OnDisable/OnDestroy 즉시 완결 — 오버라이드를 비우면 정상 피드가 다음 프레임 착지 좌표로 그린다.
