@@ -1,5 +1,9 @@
 # 1 — UI 아트 에셋 Codex 브리프
 
+> 2026-07-28 후속: 아래 브리프는 완료 당시 생성 이력이다. 현재 캐릭터 아트 기준은
+> `Art/DefenderPortraits/spine/defender_portrait_*.png`이며, 동적 contact sheet는
+> `Window > Wassup > Defender Portrait Baker > Preview All`에서 확인한다.
+
 ## 목적
 
 전투 UI 두 곳에 쓸 캐주얼 아트 에셋을 Codex 로 생성한다. 아트 톤 기준은 방어 유닛
@@ -23,15 +27,13 @@
 
 ## Codex 에 전달할 브리프 (그대로 복사)
 
-> **[강한 지시]** 먼저 아래 두 컨택트 시트를 반드시 열어서 우리 게임의 캐릭터 아트
-> 스타일을 눈으로 확인하라:
-> - `Assets/_Project/Art/DefenderPortraits/bishoujo/defender_portraits_bishoujo_contact_test_01.png`
-> - `Assets/_Project/Art/DefenderPortraits/modern/defender_portraits_modern_contact_test_01.png`
+> **[강한 지시]** 먼저 `Assets/_Project/Art/DefenderPortraits/spine/`의 방어 유닛
+> 포트레이트 전수를 열거나 Defender Portrait Baker의 `Preview All` contact sheet로
+> 현재 게임의 캐릭터 아트 스타일을 눈으로 확인하라.
 >
-> 이 게임은 **치비(2~3등신) 아니메 · 캐주얼 모바일 가챠 RPG** 톤이다. 특징:
-> 골드/크림 이중 라운드 프레임, 반짝이·별·마법진 방사 배경, 밝고 채도 높은 팔레트,
-> 글로시한 소프트 셰이딩, 골드 악센트. **이 톤에 정확히 맞춰** 아래 UI 에셋을 만들어라.
-> 사실적/그런지/플랫 미니멀 금지. 밝고 귀엽고 juicy 한 캐주얼 게임 UI.
+> 이 게임은 밝고 친근한 **캐주얼 모바일 디펜스** 톤이다. 작은 크기에서도 읽히는 단순한
+> 실루엣, 깨끗한 외곽선, 밝은 팔레트와 높은 대비를 우선한다. 사실적·그런지·어두운
+> 하이판타지·수집형 RPG 키아트는 피하고, 아래 UI 에셋도 같은 캐주얼 게임 톤으로 만든다.
 >
 > 모두 **투명 배경 PNG**, 여백 최소, 지정 경로/크기로 저장.
 >
