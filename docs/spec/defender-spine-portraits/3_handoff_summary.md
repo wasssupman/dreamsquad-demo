@@ -39,6 +39,7 @@
 - DreamcatcherFocusPresenter의 `data.portrait` 바인딩과 preserveAspect 계약을 확인했다.
 - 삭제된 38개 PNG GUID의 Assets/Packages/ProjectSettings/docs 참조는 0건이다.
 - 최종 render probe 0, catalog validation 0, legacy asset 생존 0, Console Error 0이다.
+- 2026-07-28 사용자가 실제 UI 크기와 삭제 범위를 최종 확인했다.
 
 ## Notes
 
@@ -49,5 +50,4 @@
 
 ## Follow-up
 
-- 연결된 Android/iOS 실기기에서 92px/header와 Battle tray 가독성을 최종 QA한다.
 - 범위 밖 후보는 적 포트레이트, stale signature CI, 일부 화면의 SkeletonGraphic 전환이다.

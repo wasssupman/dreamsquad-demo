@@ -44,5 +44,5 @@
 - Unity 컴파일/Console error 0, Outgame→Battle 진입 smoke 통과.
 - 사용자 확인: 실제 UI 크기와 기존 AI 원본 삭제 범위 통과.
 
-- 확인 2026-07-28: Editor UI smoke·38장 삭제·GUID 참조 0 통과
-  (`5c4a3bdb`, 사용자 “모든 유닛 진행” 승인). Android/iOS 실기기 QA는 대기.
+- 확인 2026-07-28: UI 크기·38장 삭제 범위·GUID 참조 0 사용자 최종 확인 통과
+  (`5c4a3bdb`).
