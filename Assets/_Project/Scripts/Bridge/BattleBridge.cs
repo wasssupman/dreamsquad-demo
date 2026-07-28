@@ -3089,6 +3089,20 @@ namespace Wassup.Bridge
         public Vector3 GridCellToViewCenter(Vector2Int cell)
             => Wassup.Core.BoardSpace.ToView(GridToWorldCenterVector(cell));
 
+        // defender-drop-dismount unit 2 — 하마 비행 종점 = 착지 후 정상 피드가 그릴 뷰 좌표와 **정확히 동일**
+        // (팝 0 을 구조로 보장). SyncMonoUnitViews defender 피드 공식(world = p + spineDefenderYOffset·Y)을
+        // 미러한다 — 공식이 바뀌면 여기도 같이 바꾼다(착지 프레임 연속성의 단일 진실).
+        public bool TryGetDefenderRestViewPos(Vector2Int cell, out Vector3 world)
+        {
+            world = default;
+            if (_em == null || !_defenderByTile.TryGetValue(cell, out var b)) return false;
+            if (b.entity == Entity.Null || !_em.Exists(b.entity) || !_em.HasComponent<LocalTransform>(b.entity))
+                return false;
+            var p = _em.GetComponentData<LocalTransform>(b.entity).Position;
+            world = new Vector3(p.x, p.y + spineDefenderYOffset, p.z);
+            return true;
+        }
+
         // Enemy kills → live score HUD. One score bump per enemy killed by damage.
         private void DrainEnemyKilledEvents()
         {

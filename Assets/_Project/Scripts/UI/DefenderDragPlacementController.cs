@@ -826,6 +826,11 @@ namespace Wassup.UI
                 // defender-deploy-cutscene unit 8 — 배치 완료는 컷씬보다 절대 우선.
                 // 플립북/hold/slide-out 어느 단계든 즉시 숨기고 다음 배치를 위해 틸트까지 원복한다.
                 _cutscenePlayer?.ForceStopAndReset();
+                // defender-drop-dismount unit 2 — 실드래그 릴리스만(계약 1: 탭/armed 보드드래그의
+                // 시뮬 비행은 자체 고스트가 이미 날았음). CleanupSession 전에 고스트 실좌표를 캡처해
+                // 실유닛 뷰를 하마 궤적으로 날린다. facing 유닛도 병행(계약 8) — aim 은 셀 기준 로직이라
+                // 뷰 비행과 무충돌.
+                if (!_simulatedDrag) StartDropDismount(session.unit, cell, entity);
                 // defender-directional-volley unit 6 — 방향 지정 유닛은 여기서 배치가
                 // 끝나지 않는다: 엔티티는 PendingDeployment(전투 미참여)로 스폰된 채
                 // 공격방향 페이즈로 넘어가고, 방향이 확정돼야 활성화된다.
@@ -845,6 +850,86 @@ namespace Wassup.UI
             }
             bridge?.FlashPlacementReject(cell);
             CleanupSession();
+        }
+
+        // defender-drop-dismount unit 2 — 진행 중 하마 비행 등록부(entity→cell). OnDisable/OnDestroy
+        // 즉시 완결(오버라이드 clear)용. 코루틴은 자기 키 부재를 보고 자진 종료한다(재배치
+        // FinishFlightInstant 패턴 미러). 세션(_session/_sessionGen)과 독립 — 계약 7.
+        private readonly System.Collections.Generic.Dictionary<Unity.Entities.Entity, Vector2Int> _activeDismounts = new();
+
+        // 커밋 프레임에 고스트 상태를 plain 값으로 캡처하고 실유닛 뷰 오버라이드 비행을 시작한다.
+        // 시작 오버라이드는 **동기** 등록 — 같은 프레임 LateUpdate 피드가 소비해 스폰 위치 1프레임 팝을 막는다.
+        // 팝 0 계약(5): 시작 = 고스트 실좌표(_unitPosWorld 그대로), 끝 = 정상 피드 공식 미러
+        // (TryGetDefenderRestViewPos) — 변환·상수 없이 양 끝점을 각 렌더러 실좌표로 잡는다.
+        private void StartDropDismount(DefenderUnitData unit, Vector2Int cell, Unity.Entities.Entity entity)
+        {
+            if (bridge == null || !_onBoard || !_posInit) return;
+            if (mainCamera == null) mainCamera = Camera.main;
+            if (mainCamera == null) return;
+            if (!bridge.TryGetDefenderRestViewPos(cell, out var end)) return;
+
+            var cfg = Cfg;
+            float duration = Mathf.Max(0.05f, cfg.dropTotalSeconds);
+            // 계약 3 — 드롭 창 ⊆ pending 창: 공중 유닛이 활성(공격/피격/재배치 가능)이 되는 일이 구조적으로 없다.
+            if (unit != null && unit.deploymentDuration > 0f)
+                duration = Mathf.Min(duration, unit.deploymentDuration);
+            float recoilFrac = Mathf.Clamp(cfg.dropRecoilSeconds / duration, 0.02f, 0.6f);
+
+            Vector3 start = _unitPosWorld;
+            // F-2 — 릴리스 잔여 스윙 속도를 반동 Hermite 접선으로 흡수(플릭일수록 반동 큼).
+            // DismountPoint 의 접선 규약 = 반동 구간 정규화 시간 기준 → 월드속도 × 반동초.
+            Vector3 startVel = _unitVelWorld * (recoilFrac * duration);
+
+            bridge.SetDefenderViewOverride(entity, start);
+            _activeDismounts[entity] = cell;
+            StartCoroutine(RunDropDismount(entity, cell, start, startVel, end,
+                mainCamera.transform.up, duration, recoilFrac));
+        }
+
+        private IEnumerator RunDropDismount(Unity.Entities.Entity entity, Vector2Int cell,
+            Vector3 start, Vector3 startVel, Vector3 end, Vector3 camUp, float duration, float recoilFrac)
+        {
+            var cfg = Cfg;
+            float elapsed = 0f;
+            while (elapsed < duration)
+            {
+                yield return null;
+                if (!_activeDismounts.ContainsKey(entity)) yield break; // 외부 즉시 완결(OnDisable 등)
+                // 계약 9 — binding 붕괴(판매·맵 teardown·리빌드) 시 물러남. 오버라이드는 맵 리셋이 co-locate clear.
+                if (bridge == null || !bridge.TryGetDefenderAt(cell, out var e, out _, out _) || e != entity)
+                {
+                    AbandonDismount(entity);
+                    yield break;
+                }
+                // 시계 = unscaled(배치 조작의 연장, 계약 스펙). 시간 이징 없음(선형) — 착지 임팩트 속도는
+                // 기하(끝접선 = 3·(end−c2), 순수 -camUp)가 만든다. Out* 이징은 끝속도를 0 으로 죽여
+                // "스틱 착지"가 물러진다.
+                elapsed += Time.unscaledDeltaTime;
+                float f = Mathf.Clamp01(elapsed / duration);
+                var p = KeyringSim.DismountPoint(start, startVel, end, camUp,
+                    recoilFrac, cfg.dropRecoilDip, cfg.dropArcHeightFactor, cfg.dropArcMinHeight,
+                    cfg.dropLaunchControl, cfg.dropLandingHeight, f);
+                bridge.SetDefenderViewOverride(entity, p);
+            }
+            // 착지 — 최종점(end)이 정상 피드 공식과 동일 좌표라 clear 직후 프레임이 그대로 이어진다(팝 0).
+            _activeDismounts.Remove(entity);
+            bridge?.ClearDefenderViewOverride(entity);
+            bridge?.PulsePlacementHover(cell, true); // 착지 훅 — unit 3 에서 스폰 연출(링·PlayDeploy)로 확장
+        }
+
+        private void AbandonDismount(Unity.Entities.Entity entity)
+        {
+            _activeDismounts.Remove(entity);
+            bridge?.ClearDefenderViewOverride(entity);
+        }
+
+        // OnDisable/OnDestroy 즉시 완결 — 오버라이드를 비우면 정상 피드가 다음 프레임 착지 좌표로 그린다.
+        // 살아남은 코루틴(비활성화는 코루틴을 죽이지 않는다)은 키 부재 가드로 자진 종료.
+        private void FinishDismountsInstant()
+        {
+            if (_activeDismounts.Count == 0) return;
+            foreach (var kv in _activeDismounts) bridge?.ClearDefenderViewOverride(kv.Key);
+            _activeDismounts.Clear();
         }
 
         private IEnumerator RunDeployment(DefenderUnitData unitData, Vector2Int cell, Unity.Entities.Entity entity)
@@ -1149,12 +1234,14 @@ namespace Wassup.UI
         {
             if (_cutscenePlayer != null)
                 _cutscenePlayer.ForceStopAndReset(); // 비활성화는 고아 root Canvas 잔류 금지
+            FinishDismountsInstant(); // defender-drop-dismount unit 2 — 진행 중 하마 비행 즉시 완결
             CleanupSession();
         }
 
         private void OnDestroy()
         {
             if (_cutscenePlayer != null) _cutscenePlayer.ForceStopAndReset();
+            FinishDismountsInstant(); // defender-drop-dismount unit 2
             CleanupSession();
             if (_previewMaterial != null) Destroy(_previewMaterial);
             if (_cordMaterial != null) Destroy(_cordMaterial);

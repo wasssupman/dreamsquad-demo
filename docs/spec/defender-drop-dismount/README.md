@@ -34,7 +34,7 @@
 2. **커밋 타이밍 불변**: 점유·코스트·`PlacementCommitted`·튜토리얼/기믹 이벤트 전부 오늘과 같은 릴리스 프레임. dismount 는 순수 뷰.
 3. **드롭 지속시간 ≤ `deploymentDuration` 런타임 클램프** (현재 전 유닛 0.45s). dismount 창 ⊆ pending 창 → 공중 유닛은 구조적으로 공격·피격·재배치 진입(`busy` 가드) 불가. 노브 우연에 기대지 않는 코드 계약.
 4. **활성화 시계는 commit 기준 유지** (`commit + deploymentDuration + placementSkillDelay`). 밸런스 무변경. 착지 프레임 ≈ 활성화 프레임.
-5. **핸드오프 연속성**: 비행 시작점 = 커밋 프레임 고스트 실측(`_unitPosWorld`) − `previewHeight`·boardN 변환. 이격 > 0.05 world 팝 금지(unit 5 단정). 시작 속도 = `_unitVelWorld` 캡처.
+5. **핸드오프 연속성**: 변환·상수 없이 **양 끝점을 각 렌더러 실좌표로 캡처** — 시작 = 커밋 프레임 `_unitPosWorld` 그대로, 끝 = 정상 피드 공식 미러(`TryGetDefenderRestViewPos`). 이격 > 0.05 world 팝 금지(unit 5 단정). 시작 속도 = `_unitVelWorld` 캡처(반동 접선).
 6. **튜닝 독립**: 시작점·거리·유닛키는 전부 라이브 캡처 — `ropeLength`/`spring`/유닛별 `unitHeight` 튜닝이 자동 반영된다. 결합은 하나: 시간이 pending 창에 캡이므로 **드롭 속도 ∝ totalDrop** (ropeLength ↑ = 빨라짐, 길어지지 않음).
 7. **세션 독립**: dismount 는 `_session`/`_sessionGen` 과 분리(자체 gen + 시작 시 plain 값 캡처). 비행 중 새 드래그 시작해도 이전 dismount 지속. entity 별 오버라이드라 다중 비행 공존.
 8. **방향 지정 유닛 병행** (사용자 결정 2026-07-28): `RequiresFacing` 도 dismount 발동, aim 페이즈와 병행(aim=셀 기준·Battle 슬로모, dismount=뷰·unscaled — 무충돌).
