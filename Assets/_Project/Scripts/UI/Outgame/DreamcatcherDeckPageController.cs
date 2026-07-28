@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using Wassup.Core;
@@ -8,8 +9,8 @@ namespace Wassup.UI
     // dreamcatcher-deck-page unit 3 — orchestrator. Owns the detail view, card
     // browser and deck strip and drives the working deck. Feature parity with the
     // old DreamcatcherDeckBuilderView: add(cap)/remove/duplicates, Subconscious
-    // excluded from the add pool (removable if already in deck), explicit Save gated
-    // on DeckRules.Validate. Card detail lives in the left panel (modal retired).
+    // excluded from the add pool (removable if already in deck). Edits persist
+    // immediately; DeckRules.Validate remains the start gate's responsibility.
     public class DreamcatcherDeckPageController : MonoBehaviour
     {
         [SerializeField] private DreamcatcherCardCatalog catalog;
@@ -19,6 +20,8 @@ namespace Wassup.UI
         [SerializeField] private DreamcatcherDeckStrip deckStrip;
 
         private const string DeckId = "deck_1";
+
+        [NonSerialized] internal Action<PlayerProfile> ProfileSaver = ProfileStore.Save;
 
         private readonly List<string> _working = new List<string>();
         private readonly List<DreamcatcherCard> _pool = new List<DreamcatcherCard>(); // addable (non-Subconscious)
@@ -40,7 +43,7 @@ namespace Wassup.UI
             if (_wired) return;
             _wired = true;
             if (browser != null) browser.CardSelected += OnCardSelected;
-            if (deckStrip != null) { deckStrip.SlotTapped += OnSlotTapped; deckStrip.SaveClicked += OnSave; }
+            if (deckStrip != null) deckStrip.SlotTapped += OnSlotTapped;
             if (detailView != null) { detailView.AddClicked += OnAdd; detailView.RemoveClicked += OnRemove; }
         }
 
@@ -55,8 +58,8 @@ namespace Wassup.UI
                 if (c.category == CardCategory.Subconscious) continue; // gift-phase only, not addable
                 // dreamcatcher-card-visibility unit 1 — 시트에서 숨긴 카드. _pool 이 곧
                 // 그리드 소스이자 추가 가능 목록이라 이 한 줄이 "보이지도, 넣을 수도 없다"를
-                // 동시에 만든다. 이미 덱에 있는 숨김 카드를 여기서 빼지는 않는다 — 이 페이지는
-                // 명시적 Save 계약이라 임의 편집을 만들면 안 되고, 장착 해제는 로그인 prune 담당.
+                // 동시에 만든다. 이미 덱에 있는 숨김 카드를 여기서 빼지는 않는다 — 페이지
+                // 진입은 읽기 전용이고, 장착 해제는 로그인 prune 담당이다.
                 if (c.visible == 0) continue;
                 _pool.Add(c);
             }
@@ -144,8 +147,9 @@ namespace Wassup.UI
             if (card == null) return;
             if (!CanAdd(card, out _)) return; // dedup(이미 있으면 CanAdd=false)
             _working.Add(id);
+            PersistWorking();
             if (browser != null) browser.ShowCards(SortedPool()); // unit 6 — live re-sort
-            RefreshAll(); // in-memory edit; persists only via Save button (parity)
+            RefreshAll();
         }
 
         // 카드 id 기준으로 덱에서 한 장 제거(마지막 occurrence). 중복(Normal ×N)이면
@@ -156,8 +160,9 @@ namespace Wassup.UI
             int idx = _working.LastIndexOf(id);
             if (idx < 0) return;
             _working.RemoveAt(idx);
+            PersistWorking();
             if (browser != null) browser.ShowCards(SortedPool()); // unit 6 — live re-sort
-            RefreshAll(); // in-memory edit; persists only via Save button (parity)
+            RefreshAll();
         }
 
         // ---- events -------------------------------------------------------
@@ -180,29 +185,28 @@ namespace Wassup.UI
         private void OnAdd() => AddCard(_selectedCardId);
         private void OnRemove() => RemoveOccurrence(_selectedCardId);
 
-        // Explicit Save (deck strip button), gated on validity — parity with the old
-        // view. Edits are in-memory until this runs; an invalid deck (e.g. 8/10)
-        // never persists (Validate guard) so carry-in keeps the last valid deck.
-        private void OnSave()
+        // Every user edit persists, including an invalid intermediate deck. START is
+        // still blocked by LoadoutGate; page entry/LoadWorking never call this.
+        private void PersistWorking()
         {
             if (profileSO == null || profileSO.profile == null) return;
-            if (!DeckRules.Validate(_working, catalog, out _)) return; // invalid → keep prior save
+            if (!profileSO.IsLoadedThisSession) return;
             var profile = profileSO.profile;
+            if (profile.dreamcatcherDecks == null) profile.dreamcatcherDecks = new List<DeckSave>();
             var deck = profile.SelectedDeck();
             if (deck == null || deck.id != DeckId)
             {
                 deck = null;
-                if (profile.dreamcatcherDecks != null)
-                    foreach (var d in profile.dreamcatcherDecks) if (d != null && d.id == DeckId) deck = d;
+                foreach (var d in profile.dreamcatcherDecks) if (d != null && d.id == DeckId) deck = d;
                 if (deck == null)
                 {
                     deck = new DeckSave { id = DeckId, name = "Deck 1" };
-                    if (profile.dreamcatcherDecks != null) profile.dreamcatcherDecks.Add(deck);
+                    profile.dreamcatcherDecks.Add(deck);
                 }
             }
             deck.cardIds = new List<string>(_working);
             profile.selectedDeckId = DeckId;
-            ProfileStore.Save(profile);
+            (ProfileSaver ?? ProfileStore.Save)(profile);
         }
     }
 }

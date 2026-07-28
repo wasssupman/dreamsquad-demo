@@ -49,18 +49,24 @@ if (!profileSO.IsLoadedThisSession) return;   // README 계약 4
 
 ### 테스트
 
-`DreamcatcherDeckAutosaveTests` — `ProfileSaver` 를 주입하고 reflection 으로 컨트롤러를 구동한다(`_working`, `AddCard`, `RemoveOccurrence` 는 private).
+`DreamcatcherDeckAutosaveTests` — `ProfileSaver` 를 주입하고 reflection 으로 컨트롤러를 구동한다(`_working`, `AddCard`, `RemoveOccurrence`, `LoadWorking` 은 private).
 
-1. `AddCard` 1회 → saver 1회 호출, 전달된 프로필의 선택 덱 `cardIds` 가 `_working` 과 일치
-2. `RemoveOccurrence` 1회 → saver 호출, 덱 장수 감소
-3. 덱이 무효(예: 정원 미달)여도 저장된다 — 게이트 제거 회귀
-4. `IsLoadedThisSession` 이 false 면 saver 미호출 — 계약 4 회귀
+1. 빈 프로필에서 `AddCard` 1회 → saver 1회 호출, `deck_1` 생성·`selectedDeckId` 고정·선택 덱 `cardIds` 가 `_working` 과 일치
+2. 10장 덱에서 `RemoveOccurrence` 1회 → saver 호출, 9장(무효) 덱이 실제로 저장된다 — 게이트 제거 회귀
+3. `IsLoadedThisSession` 이 false 면 실제 `AddCard` 편집 뒤에도 saver 미호출 — 계약 4 회귀
+4. `LoadWorking` 은 saver 미호출 — 페이지 진입 읽기 전용 계약 5 회귀
+
+셋업에서 `profileSO.SetLoadedProfile(profile)` 로 플래그를 세워야 1~3이 성립한다(`SetLoadedProfile` 이 유일한 setter, public). EditMode 에서는 `RuntimeInitializeOnLoadMethod` 가 돌지 않아 `s_sessionToken` 이 1로 고정되므로 결정론적이다.
 
 ## 완료 기준
 
-- [ ] compile 통과, 콘솔 에러 0
-- [ ] `DreamcatcherDeckAutosaveTests` 4케이스 green. 3·4번은 변경 전 코드에서 실제로 red 임을 확인
-- [ ] 전체 EditMode 스위트에 신규 실패 없음 (기존 실패 `MobileBuild...CapturedProjectOrientation_IsLandscapeOnlyAutoRotation` 제외)
-- [ ] Play 검증: 로비 → 드림캐쳐 → 카드 1장 교체 → 페이지 나가기 → 재진입 시 교체가 남아 있다
-- [ ] Play 검증: 저장 버튼이 화면에 없고, 상태 라인은 `10/10` 및 미달 시 사유를 계속 표시한다
-- [ ] Play 검증: 9/10 로 나간 뒤 START → 로드아웃 게이트 팝업이 뜨고 "드림캐쳐 덱" 버튼으로 복귀한다
+- [x] compile 통과 (2026-07-27)
+- [x] `DreamcatcherDeckAutosaveTests` 4/4 green (2026-07-27)
+- [ ] **검출력 확인** — 테스트가 실제로 회귀를 잡는지 각각 다르게 증명한다:
+  - 1·2번: 변경 **전** 코드에서 red (`AddCard`/`RemoveOccurrence` 가 저장을 안 하므로 saver 미호출)
+  - 3번: 변경 전에는 저장 자체가 없어 **공허하게 통과**하므로 red 를 볼 수 없다. 구현 후 `IsLoadedThisSession` 가드 한 줄만 일시 제거해 red 를 확인하고 되돌린다
+  - 4번: 구현 후 `LoadWorking()` 에 저장 호출을 임시 삽입해 red 를 확인하고 되돌린다
+- [x] 전체 EditMode 1,456개 중 신규 실패 없음 — 기존 `MobileBuild...CapturedProjectOrientation_IsLandscapeOnlyAutoRotation` 1건만 실패 (2026-07-27)
+- [x] Play 검증: 로비 → 드림캐쳐 → 카드 1장 교체 → 페이지 나가기 → 재진입 시 교체가 남아 있다 (사용자 확인 2026-07-27)
+- [x] Play 검증: 저장 버튼이 화면에 없고, 상태 라인은 `10/10` 및 미달 시 사유를 계속 표시한다 (사용자 확인 2026-07-27)
+- [x] Play 검증: 9/10 로 나간 뒤 START → 로드아웃 게이트 팝업이 뜨고 "드림캐쳐 덱" 버튼으로 복귀한다 (사용자 확인 2026-07-27)

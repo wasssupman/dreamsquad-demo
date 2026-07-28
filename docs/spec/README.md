@@ -242,7 +242,7 @@ first-session-tutorial units 10~12 와 무관하다.
 
 #### 로드아웃 규칙 위생 (game-start-loadout-gate 종료 이관, 2026-07-16)
 
-- **스쿼드 저장 게이트** [S] · `SquadBuilderView.OnSave` 는 규칙 검사 없이 무조건 저장한다 — 덱 빌더는 유효할 때만 저장 버튼을 활성화하는데 정반대 정책이다. 무효 스쿼드가 애초에 저장되지 않게 막는 안. 판정은 `LoadoutGate` 를 재사용하면 된다. (game-start-loadout-gate)
+- **스쿼드 저장 가드** [S] · 드림캐쳐 덱은 사용자 편집마다 즉시 저장하고 `LoadoutGate` 에서 출전만 판정한다. `SquadBuilderView.OnSave` / `SquadCharacterPageController.Save` 에도 `IsLoadedThisSession` 가드를 넣어, 직접 씬 실행 때 비어 있는 프로필을 저장하지 않도록 한다. (dreamcatcher-deck-autosave)
 - **낡은 주석 정정** [S] · `PlayerProfile.cs:112` 의 "exactly 10, unique<=2" 중 **덱 크기 10 은 라이브와 일치**(현 `DeckRuleConfig_Default.asset` `deckSize=10` — 8→10 복귀), **"unique<=2" 만 stale**(라이브 `maxSquad=-1` → 타입캡 없음). **`DeckRules.cs:5-10` 은 건드리지 말 것** — 정확할 뿐 아니라 카탈로그 null → 폴백 10 함정을 경고하는 유일한 문서다. (game-start-loadout-gate · 2026-07-20 덱=10 확정 정정)
 - **`7` 이중 하드코딩** [S] · `SquadSave.SlotCount` 와 `SquadDraw.FieldCount` 가 독립 상수다. 한쪽만 바꾸면 조용히 어긋나고 요구치가 도달 불가능해질 수 있다 — `LoadoutGate` 는 `min()` 으로 방어만 해뒀다. (game-start-loadout-gate)
 - **`DreamcatcherDeckBuilderView.cs:45 DeckColumns = 10`** [S] · 현재는 라이브 `deckSize=10` 과 일치해 증상 없음(8장 시절의 셀 폭 불일치는 해소). 다만 `DeckColumns` 가 `EffectiveDeckSize` 를 읽지 않는 하드코딩이라 다음 deckSize flip 때 재발한다. (game-start-loadout-gate · 2026-07-20 덱=10 확정 정정)

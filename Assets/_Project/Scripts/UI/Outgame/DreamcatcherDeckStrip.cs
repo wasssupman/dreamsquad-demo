@@ -7,25 +7,17 @@ using Wassup.Data;
 
 namespace Wassup.UI
 {
-    // dreamcatcher-deck-page unit 2 — the deck tray: 10 slots + validity status
-    // + Save button (gated on DeckRules.Validate). Parity with the old view's
-    // "MY DECK" frame + statusText + save-only-when-valid. Slot tap raises
+    // dreamcatcher-deck-page unit 2 — the deck tray: 10 slots + validity status.
+    // Slot tap raises
     // SlotTapped(index); the orchestrator shows that card in the detail (remove mode).
     public class DreamcatcherDeckStrip : MonoBehaviour
     {
         [SerializeField] private DreamcatcherCardCatalog catalog;
         [SerializeField] private TMP_FontAsset font;
         [SerializeField] private Vector2 slotSize = new Vector2(70, 100);
-        // unit 7 — injected by the page builder; the save button fills this host
-        // (grid bottom-right) instead of squeezing into the strip's layout row.
-        [SerializeField] private RectTransform saveHost;
-
         public event Action<int> SlotTapped;
-        public event Action SaveClicked;
 
         private static readonly Color EmptySlot = new Color(0.16f, 0.18f, 0.24f, 1f);
-        private static readonly Color SaveOn = new Color(0.20f, 0.55f, 0.28f, 1f);
-        private static readonly Color SaveOff = new Color(0.28f, 0.30f, 0.36f, 1f);
         private static readonly Color SelectedOutline = new Color(1f, 0.9f, 0.45f, 1f); // same yellow as SquadHeaderStrip
 
         private class SlotW { public string id; public Image bg; public Image art; public TMP_Text plus; public GameObject outline; }
@@ -34,8 +26,6 @@ namespace Wassup.UI
         private string _selectedCardId;
         private readonly List<SlotW> _slots = new List<SlotW>();
         private TMP_Text _statusText;
-        private Image _saveBg;
-        private Button _saveButton;
 
         public void Refresh(List<string> cardIds)
         {
@@ -57,15 +47,13 @@ namespace Wassup.UI
             // ui-polish 2026-07-18 — 레거시 "squad {n}/{max}" 표기 제거(Squad 타입 캡 은퇴,
             // EffectiveMax(Squad)=-1 로 의미 없던 잔재). 수량 = 총 장수/덱크기 + 유효성 사유만.
             int count = cardIds != null ? cardIds.Count : 0;
-            bool valid = DeckRules.Validate(cardIds ?? new List<string>(), catalog, out string reason);
+            DeckRules.Validate(cardIds ?? new List<string>(), catalog, out string reason);
             if (_statusText != null)
             {
                 string status = count + "/" + deckSize;
                 if (!string.IsNullOrEmpty(reason)) status += "  ·  " + reason;
                 _statusText.text = status;
             }
-            if (_saveButton != null) _saveButton.interactable = valid;
-            if (_saveBg != null) _saveBg.color = valid ? SaveOn : SaveOff;
             ApplySelection();
         }
 
@@ -115,25 +103,7 @@ namespace Wassup.UI
             var sle = statusGo.AddComponent<LayoutElement>();
             sle.flexibleWidth = 1f; sle.minWidth = 200; sle.minHeight = slotSize.y;
 
-            // Save button — unit 7: fills the injected host (floating over the grid's
-            // bottom-right). Gating/ownership stay here; only the placement moved.
-            var saveGo = new GameObject("Save", typeof(RectTransform), typeof(Image), typeof(Button));
-            saveGo.transform.SetParent(saveHost != null ? (Transform)saveHost : transform, false);
-            var saveRt = (RectTransform)saveGo.transform;
-            saveRt.anchorMin = Vector2.zero; saveRt.anchorMax = Vector2.one;
-            saveRt.offsetMin = Vector2.zero; saveRt.offsetMax = Vector2.zero;
-            _saveBg = saveGo.GetComponent<Image>();
-            _saveBg.color = SaveOff;
-            _saveButton = saveGo.GetComponent<Button>();
-            _saveButton.transition = Selectable.Transition.None;
-            _saveButton.onClick.AddListener(() => SaveClicked?.Invoke());
-            var saveLabel = MakeText(saveGo.transform, "저장", 44, TextAlignmentOptions.Center);
-            saveLabel.raycastTarget = false;
-            var srt = saveLabel.rectTransform;
-            srt.anchorMin = Vector2.zero; srt.anchorMax = Vector2.one; srt.offsetMin = Vector2.zero; srt.offsetMax = Vector2.zero;
-
             UiLayer.Apply(gameObject);
-            UiLayer.Apply(saveGo);
         }
 
         private SlotW MakeSlot(Action onTap)
@@ -174,14 +144,5 @@ namespace Wassup.UI
             return new SlotW { bg = bg, art = art, plus = plus, outline = outlineGo };
         }
 
-        private TMP_Text MakeText(Transform parent, string text, int size, TextAlignmentOptions align)
-        {
-            var go = new GameObject("Text", typeof(RectTransform), typeof(TextMeshProUGUI));
-            go.transform.SetParent(parent, false);
-            var t = go.GetComponent<TextMeshProUGUI>();
-            t.text = text; t.fontSize = size; t.alignment = align; t.color = Color.white;
-            if (font != null) t.font = font;
-            return t;
-        }
     }
 }
