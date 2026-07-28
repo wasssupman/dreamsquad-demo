@@ -25,6 +25,8 @@ unit 0 도구로 라이브 방어유닛 전원의 Spine 상체 Sprite를 만들�
    asset/displayName/카탈로그 배열 순서 추측으로 매핑하지 않는다.
 4. SO에서는 `portrait` 이외 필드가 변하지 않았는지 diff로 확인한다.
    특히 `partSkins`, `slotColors`, 스탯, 능력, 카탈로그 순서는 불변이다.
+   베이커는 dirty SO를 거절하고 대상 SO를 디스크에서 강제 reimport한 뒤
+   `SaveAssetIfDirty`로 개별 저장해 런타임 시트 동기화 값이 함께 직렬화되지 않게 한다.
 5. 전수 검증:
    - 모든 유효 catalog unit의 portrait가 `Art/DefenderPortraits/spine/` 아래다.
    - portrait null 0, Sprite 중복 참조 0, 파일명 id 불일치 0.

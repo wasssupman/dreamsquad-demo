@@ -45,7 +45,7 @@ MonoBehaviour:
   targetAllies: 0
   abilities: []
   rarity: 0
-  portrait: {fileID: 21300000, guid: 68a5773f8ddaf8a4ba1436fd058df0e8, type: 3}
+  portrait: {fileID: 21300000, guid: e03ea9197fff1446ca06a480308e95bb, type: 3}
   aggroCapacity: 0
   skeletonDataAsset: {fileID: 11400000, guid: ee98f82138b60430f97c6863317c3a2f, type: 2}
   spineSkinName: full_skins

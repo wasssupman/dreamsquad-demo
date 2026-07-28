@@ -484,12 +484,31 @@ namespace Wassup.Editor.Portraits
             string outputFolder = GetOutputFolderPath(profile, errors);
             if (units == null || units.Count == 0)
                 errors.Add("No defenders selected for bake.");
+
+            var unitAssetPaths = new List<string>(units != null ? units.Count : 0);
+            if (units != null)
+            {
+                for (int i = 0; i < units.Count; i++)
+                {
+                    DefenderUnitData unit = units[i];
+                    string unitPath = unit != null ? AssetDatabase.GetAssetPath(unit) : null;
+                    unitAssetPaths.Add(unitPath);
+                    if (string.IsNullOrEmpty(unitPath))
+                        errors.Add($"Defender[{i}] is not a persistent asset.");
+                    else if (EditorUtility.IsDirty(unit))
+                        errors.Add($"{unit.id}: source asset has unsaved changes.");
+                }
+            }
+
             if (errors.Count > 0)
                 throw new InvalidOperationException(string.Join("\n", errors));
 
             var outputPaths = new List<string>(units.Count);
             try
             {
+                for (int i = 0; i < unitAssetPaths.Count; i++)
+                    AssetDatabase.ImportAsset(unitAssetPaths[i], ImportAssetOptions.ForceUpdate);
+
                 for (int i = 0; i < units.Count; i++)
                 {
                     DefenderUnitData unit = units[i];
@@ -518,12 +537,16 @@ namespace Wassup.Editor.Portraits
                     if (sprite == null)
                         throw new InvalidOperationException($"Sprite import failed: {outputPaths[i]}");
 
-                    DefenderUnitData unit = units[i];
+                    DefenderUnitData unit = AssetDatabase.LoadAssetAtPath<DefenderUnitData>(
+                        unitAssetPaths[i]);
+                    if (unit == null)
+                        throw new InvalidOperationException($"Defender reimport failed: {unitAssetPaths[i]}");
+
                     Undo.RecordObject(unit, "Assign Spine Defender Portrait");
                     unit.portrait = sprite;
                     EditorUtility.SetDirty(unit);
+                    AssetDatabase.SaveAssetIfDirty(unit);
                 }
-                AssetDatabase.SaveAssets();
             }
             finally
             {

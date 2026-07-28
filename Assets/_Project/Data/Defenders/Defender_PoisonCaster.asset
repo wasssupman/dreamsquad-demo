@@ -39,7 +39,7 @@ MonoBehaviour:
   abilities:
   - {fileID: 11400000, guid: 6b7c8d9e0f1a42b3c4d5e6f7a8b9c0d1, type: 2}
   rarity: 2
-  portrait: {fileID: 21300000, guid: 5fd3500288fd8d74e867605f3b5ec86c, type: 3}
+  portrait: {fileID: 21300000, guid: 3e3ad72fbc9bb4477adcf35d730576e6, type: 3}
   aggroCapacity: 0
   skeletonDataAsset: {fileID: 11400000, guid: ee98f82138b60430f97c6863317c3a2f, type: 2}
   spineSkinName: full_skins
