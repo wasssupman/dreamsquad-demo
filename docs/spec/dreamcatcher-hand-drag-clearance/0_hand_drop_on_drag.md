@@ -136,4 +136,4 @@ Defender/EnemyMark 는 카드가 손패 고정(화살표만 추종)이라 패널
 맵 강제는 `fixedMapSeed` 또는 개발용 맵 강제 override 로 지정한다.
 
 확인: 2026-07-29 사용자 Play 확인("이상없음") — rev3(press/release 통일 + 스프링 하강 + 추종
-카드 위치 보존) 기준. 커밋 해시는 handoff 참조.
+카드 위치 보존) 기준. 커밋 `cb38591e`.

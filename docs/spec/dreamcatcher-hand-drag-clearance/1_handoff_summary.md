@@ -2,7 +2,7 @@
 
 ## Commit
 
-- feat(dreamcatcher-hand-drag-clearance): unit 0 — 조준 중 손패 하강 (해시는 후속 docs 커밋에서 기재)
+- `cb38591e` feat(dreamcatcher-hand-drag-clearance): unit 0 — 조준 중 손패 하강으로 큰 맵 최하단 행 개방
 
 ## Implemented
 
