@@ -595,10 +595,15 @@ namespace Wassup.UI
         {
             if (index < 0 || index >= _slots.Count) return;
             var slot = _slots[index];
+            // use-flow unit 1 fix(마감 리뷰 M2) — 재딜인 트윈이 소유 중인 슬롯은 건드리지
+            // 않는다. 커밋 꼬리(EndInteraction→RestoreSlotHome)가 commit() 동기 발화로 방금
+            // 시작된 재딜인을 스냅으로 덮고 redealing 잠금까지 풀던 결함(맨 오른쪽 카드
+            // 부착 = _index 가 곧 재딜인 슬롯이라 매번 재현). 트윈은 home 에 안착하고
+            // 콜백이 잠금을 푼다 — 강제 종료 경로는 StopDeal 의 Complete 가 콜백까지 돌린다.
+            if (slot.redealing) return;
             slot.rect.anchoredPosition = slot.homePos;
             slot.rect.localEulerAngles = new Vector3(0f, 0f, slot.homeRotZ);
             slot.rect.localScale = Vector3.one; // rev 4-6 — 화살표 모드 확대 복원
-            slot.redealing = false; // use-flow unit 1 — 잔류 플래그 안전망(콜백 누락 대비)
             // hand-deal-in unit 0 — 스프링 목표도 base 로 복원(호버/스프링 재개 시 튐 방지).
             slot.targetPos = slot.homePos;
             slot.targetRotZ = slot.homeRotZ;
@@ -976,6 +981,12 @@ namespace Wassup.UI
         private void Refresh()
         {
             if (!_built || handController == null) return;
+            // use-flow unit 1 fix(마감 리뷰 M1) — 재바인딩 전에 살아있는 재딜인을 스냅 완주.
+            // Recovered(host 사망 카드 회수)가 재딜인 도중 오면, 트윈이 rect 를 소유한 채
+            // 슬롯 내용만 바뀌어 엉뚱한 카드가 홀로 다시 딜인되는 그림이 됐다. Complete 는
+            // 콜백까지 돌려 redealing 잠금도 함께 푼다(OnCardUsed 의 선행 Complete 와 중복
+            // 시 no-op).
+            if (_redealSeq.isAlive) _redealSeq.Complete();
             _focusIndex = -1; // 재바인딩 시 stale focus 해제(다음 press 가 재설정)
             EnsureSlots(handController.HandSize);
             var hand = handController.Hand();
