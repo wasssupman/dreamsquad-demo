@@ -47,8 +47,12 @@ namespace Wassup.Data
     [CreateAssetMenu(fileName = "StackModifier", menuName = "Wassup/StackModifier", order = 30)]
     public class StackModifierSO : ScriptableObject
     {
+        // 미등록 StackKind 의 상한 폴백. 여러 producer(AttackSystem outputs, on-place 도포)가
+        // 같은 기본값을 복사해 쓰고 있었다 — 권위는 스택을 소유한 이 SO 다.
+        public const byte DefaultMaxStack = 5;
+
         public StackKind kind;
-        public byte maxStack = 5;
+        public byte maxStack = DefaultMaxStack;
         public float perAppDuration = 5f;
         public StackPolicy policy = StackPolicy.RefreshAll;
         public ThresholdRule[] thresholds;

@@ -8,34 +8,28 @@ namespace Wassup.Presentation
     //
     // 심에는 "빔" 개념이 없다(계약 1). 버스터즈는 0.2초마다 직접 데미지를 넣는 유닛일 뿐이고,
     // 빔은 그 공격 사건들을 시간축에서 뭉쳐(coalesce) 하나의 지속 효과로 보이게 한 결과다.
-    // 그래서 이 클래스가 하는 일은 사실상 하나 — **TTL 세션 관리**:
-    //   공격 사건 수신 → 세션 없으면 생성 / 있으면 TTL·끝점 갱신 → TTL 만료되면 종료.
+    // 이 클래스가 하는 일은 **TTL 세션 관리** 하나다:
+    //   사건 수신 → 세션 없으면 열고 있으면 TTL 갱신 → 매 프레임 양 끝을 다시 읽고 → 만료 시 종료.
+    //
+    // 끝점은 **좌표가 아니라 엔티티**로 붙든다. 사건은 공격 주기로만 오는데(0.2s) 그 사이에
+    // 적은 계속 걸어가므로, 사건 시점 좌표를 스냅샷하면 빔이 허공을 겨눈다. 배치 스킬처럼
+    // 사건이 단 한 번뿐인 경우(2초 조사)는 스냅샷이면 2초 내내 어긋난다.
     //
     // 벤더(PixPlays) BeamVfx 는 쓰지 않는다. Destroy 기반 lifecycle(BaseVfx)이라 풀링과
     // 충돌하고, 재조준을 매 프레임 우리가 쥐어야 해서 프리팹 사본에서 걷어냈다.
-    // 여기서는 프리팹의 파츠 4개(BeamBody/BeamCast/BodyTip/Hit)를 직접 배치한다.
     public class BeamPresenter : MonoBehaviour
     {
-        [Tooltip("공격 사건이 이 시간 동안 안 들어오면 빔을 끊는다. 공격 주기보다 넉넉해야 " +
-                 "틱 사이에 빔이 깜빡이지 않는다(주기 0.2 기준 0.35 권장).")]
-        [SerializeField] private float sessionTtlSec = 0.35f;
-
-        [Tooltip("끝점 추종 반응 속도(1/초). 공격 사건은 주기적으로만 오므로 그 사이를 보간해 " +
-                 "끝점이 계단처럼 튀지 않게 한다. 클수록 즉각적.")]
-        [SerializeField] private float endpointFollowSpeed = 18f;
-
         private sealed class Session
         {
+            public GameObject prefab;   // 어느 프리팹에서 났는지 — 풀 재사용 시 대조한다
             public GameObject go;
             public Transform beamBody;
             public Transform beamCast;
             public Transform bodyTip;
             public Transform hit;
-            public Vector3 muzzle;        // 최근 사건이 알려온 발사점(view 공간)
-            public Vector3 endpoint;      // 현재 표시 중인 끝점(보간된 값)
-            public Vector3 targetPoint;   // 최근 사건이 알려온 끝점
+            public Entity source;       // 발사 주체(디펜더)
+            public Entity target;       // 겨눈 대상 — 매 프레임 view 위치를 다시 읽는다
             public float ttl;
-            public bool endpointInitialized;
         }
 
         private readonly Dictionary<Entity, Session> _sessions = new();
@@ -43,59 +37,29 @@ namespace Wassup.Presentation
         private readonly Stack<Session> _pool = new();
 
         /// <summary>
-        /// 공격 사건 1건. 세션이 없으면 열고, 있으면 TTL 과 끝점을 갱신한다(코얼레스).
-        /// sourceView/targetView 는 **view 공간** 좌표 — 호출측(BattleBridge)이 변환해 넘긴다.
+        /// 빔 세션을 열거나 잇는다. 같은 key 로 다시 부르면 TTL 과 대상만 갱신된다(코얼레스).
+        /// ttlSec 은 호출측이 정한다 — 공격 빔은 실발사 주기에서, 배치 스킬은 지속 시간에서.
+        /// key 는 세션 정체성이다: 공격 빔은 공격자, 대상별 조사는 대상 엔티티를 쓴다.
         /// </summary>
-        public void ReportAttack(Entity attacker, GameObject beamPrefab, Vector3 sourceView, Vector3 targetView)
+        public void Open(Entity key, GameObject beamPrefab, Entity source, Entity target, float ttlSec)
         {
-            if (beamPrefab == null) return;
-
-            if (!_sessions.TryGetValue(attacker, out var s))
-            {
-                s = Rent(beamPrefab);
-                if (s == null) return;
-                _sessions[attacker] = s;
-                s.endpointInitialized = false;
-            }
-            s.muzzle = sourceView;
-            s.targetPoint = targetView;
-            s.ttl = sessionTtlSec;
-            if (!s.endpointInitialized)
-            {
-                s.endpoint = targetView;
-                s.endpointInitialized = true;
-            }
-            Place(s, s.muzzle);
-        }
-
-        /// <summary>
-        /// 고정 지속 세션. 공격 코얼레스(ReportAttack)와 달리 갱신 없이 durationSec 만큼만 산다
-        /// — 배치 스킬처럼 "N초 동안 쏜다"가 이미 정해진 경우용. 키는 호출측이 정하며
-        /// (배치 조사는 **대상 엔티티**를 쓴다) 공격 세션 키(공격자)와 겹치지 않는다.
-        /// </summary>
-        public void OpenTimed(Entity key, GameObject beamPrefab, Vector3 sourceView, Vector3 targetView, float durationSec)
-        {
-            if (beamPrefab == null || durationSec <= 0f) return;
+            if (beamPrefab == null || ttlSec <= 0f) return;
             if (!_sessions.TryGetValue(key, out var s))
             {
                 s = Rent(beamPrefab);
-                if (s == null) return;
                 _sessions[key] = s;
             }
-            s.muzzle = sourceView;
-            s.targetPoint = targetView;
-            s.endpoint = targetView;
-            s.endpointInitialized = true;
-            s.ttl = durationSec;
-            Place(s, s.muzzle);
+            s.source = source;
+            s.target = target;
+            s.ttl = ttlSec;
         }
 
         /// <summary>
-        /// 매 프레임 TTL 을 깎고 만료된 세션을 닫는다. 호출은 BattleBridge sync.
+        /// 매 프레임 TTL 을 깎고, 살아있는 세션의 양 끝을 다시 읽어 배치한다.
         /// ⚠ deltaTime 은 **배틀 도메인 시간**이어야 한다 — 공격 사건이 sim 시간으로 오므로
         /// 실시간으로 재면 슬로모에서 사건 간격이 TTL 을 넘겨 빔이 깜빡인다.
         /// </summary>
-        public void Tick(float battleDeltaTime)
+        public void Tick(float battleDeltaTime, SpineUnitPool pool)
         {
             if (_sessions.Count == 0) return;
             _expiredScratch.Clear();
@@ -103,24 +67,22 @@ namespace Wassup.Presentation
             {
                 var s = kv.Value;
                 s.ttl -= battleDeltaTime;
-                if (s.ttl <= 0f) { _expiredScratch.Add(kv.Key); continue; }
-                // 끝점 보간 — 사건은 공격 주기로만 오므로 그 사이를 메운다.
-                s.endpoint = Vector3.Lerp(s.endpoint, s.targetPoint,
-                    1f - Mathf.Exp(-endpointFollowSpeed * Mathf.Max(0f, battleDeltaTime)));
-                Place(s, s.muzzle);
+                // 대상이 사라졌으면(사망/디스폰) 빔이 허공에 남지 않게 즉시 만료 처리한다.
+                if (s.ttl <= 0f || !TryPlace(s, pool)) _expiredScratch.Add(kv.Key);
             }
             for (int i = 0; i < _expiredScratch.Count; i++)
                 Close(_expiredScratch[i]);
         }
 
-        /// <summary>공격자가 사라졌을 때(사망/재배치) 즉시 끊는다.</summary>
-        public void Close(Entity attacker)
+        /// <summary>공격자/대상이 사라졌을 때 즉시 끊는다.</summary>
+        public void Close(Entity key)
         {
-            if (!_sessions.TryGetValue(attacker, out var s)) return;
-            _sessions.Remove(attacker);
+            if (!_sessions.TryGetValue(key, out var s)) return;
+            _sessions.Remove(key);
             Return(s);
         }
 
+        /// <summary>매치 경계 전량 정리. 브리지는 매치 간 살아남으므로 안 끊으면 세션이 누적된다.</summary>
         public void CloseAll()
         {
             foreach (var kv in _sessions) Return(kv.Value);
@@ -130,16 +92,19 @@ namespace Wassup.Presentation
         private void OnDestroy() => CloseAll();
 
         // ── 내부 ────────────────────────────────────────────────────────────
-        // 빔 파츠 배치: body 를 source→endpoint 로 늘이고, tip 은 끝, hit 은 대상 위에.
-        // 벤더 BeamVfx 의 배치 규칙과 같은 형태지만 코루틴/Destroy 없이 프레임마다 직접 쓴다.
-        private static void Place(Session s, Vector3 sourceView)
+        // 양 끝을 뷰에서 다시 읽어 빔 파츠를 배치한다. 한쪽이라도 못 찾으면 false = 세션 종료.
+        private static bool TryPlace(Session s, SpineUnitPool pool)
         {
+            if (pool == null) return false;
+            if (!TryViewPos(pool, s.source, useAnchor: true, out var sourceView)) return false;
+            if (!TryViewPos(pool, s.target, useAnchor: false, out var endpoint)) return false;
+
             // 끝점을 머즐과 같은 깊이(z)로 눕힌다. 평면 정면뷰 보드라 두 점의 z 가 다르면 빔이
             // 화면 안쪽으로 기울어 짧아 보인다 — TrySpawnCastVfx 가 `dir.z = 0` 하는 것과 같은 이유.
-            var endpoint = new Vector3(s.endpoint.x, s.endpoint.y, sourceView.z);
+            endpoint.z = sourceView.z;
             Vector3 dir = endpoint - sourceView;
             float length = dir.magnitude;
-            if (length < 1e-4f) return;
+            if (length < 1e-4f) return true; // 겹친 프레임은 그리지 않고 세션만 유지
             Vector3 fwd = dir / length;
 
             if (s.beamBody != null)
@@ -164,11 +129,29 @@ namespace Wassup.Presentation
                 s.hit.position = endpoint;
                 s.hit.forward = -fwd;
             }
+            return true;
+        }
+
+        // 엔티티의 현재 view 위치. 발사점은 cast anchor 우선(TrySpawnCastVfx 와 같은 경로),
+        // 없으면 view transform — transform.position 은 이미 view 공간이다.
+        // ⚠ Transform 을 붙들지 않고 **매 프레임 엔티티로 조회**한다: 풀이 뷰를 재사용하므로
+        // 붙들면 대상 사망 후 그 자리에 들어온 다른 유닛에 빔이 옮겨 붙는다.
+        private static bool TryViewPos(SpineUnitPool pool, Entity e, bool useAnchor, out Vector3 pos)
+        {
+            pos = default;
+            if (e == Entity.Null) return false;
+            if (useAnchor && pool.TryResolveAnchor(e, out pos)) return true;
+            if (!pool.TryGet(e, out var view) || view == null) return false;
+            pos = view.transform.position;
+            return true;
         }
 
         private Session Rent(GameObject prefab)
         {
-            if (_pool.Count > 0)
+            // 같은 프리팹에서 난 세션만 재사용한다. 프리팹을 안 보고 꺼내면 빔 유닛이 2종
+            // 이상일 때(후속 후보의 Ice/Lightning) 엉뚱한 외형이 나온다 — 지금은 소비자가
+            // 하나라 드러나지 않을 뿐이다.
+            if (_pool.Count > 0 && _pool.Peek().prefab == prefab && _pool.Peek().go != null)
             {
                 var reused = _pool.Pop();
                 reused.go.SetActive(true);
@@ -178,6 +161,7 @@ namespace Wassup.Presentation
             var go = Instantiate(prefab, transform);
             var s = new Session
             {
+                prefab = prefab,
                 go = go,
                 beamBody = go.transform.Find("BeamBody"),
                 beamCast = go.transform.Find("BeamCast"),
@@ -186,8 +170,8 @@ namespace Wassup.Presentation
             };
             if (s.beamBody == null)
             {
-                Debug.LogError("[BeamPresenter] 빔 프리팹에 'BeamBody' 자식이 없다 — 배치할 몸통이 없어 빔이 안 보인다. "
-                               + "프리팹: " + prefab.name);
+                Debug.LogError("[BeamPresenter] 빔 프리팹에 'BeamBody' 자식이 없다 — 배치할 몸통이 없어 "
+                               + "빔이 안 보인다. 프리팹: " + prefab.name);
             }
             PlayAll(go);
             return s;

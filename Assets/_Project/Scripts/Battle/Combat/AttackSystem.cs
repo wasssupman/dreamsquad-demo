@@ -661,6 +661,7 @@ namespace Wassup.Battle.Combat
                                 attacker = attackerEntity,
                                 targetWorld = bestTargetPos,
                                 attackAnimPeriod = attackAnimPeriod,
+                                target = bestTarget,
                             });
                         }
 
