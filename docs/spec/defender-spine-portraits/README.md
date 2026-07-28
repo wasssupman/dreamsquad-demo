@@ -1,6 +1,6 @@
 # defender-spine-portraits
 
-> 상태: Unit 0~1 완료 · Unit 2 구현 중 (2026-07-28)
+> 상태: Unit 0~2 구현 완료 · 실기기 QA 대기 (2026-07-28)
 >
 > 선행: `defender-portraits`(Sprite/UI), `unit-parts-appearance`(Spine 외형)
 

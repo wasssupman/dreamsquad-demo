@@ -35,9 +35,6 @@
    bishoujo/modern contact sheet 참조는 새 spine 출력/contact sheet 포인터로 교체한다.
 6. 삭제된 경로와 GUID를 `rg`로 전수 검색해 SO·씬·프리팹·문서의 잔존 참조가 0인지 확인한다.
 
-런타임 UI 코드 변경은 예정하지 않는다. smoke 실패가 있을 때도 우선순위는
-`profile 재베이크 → 기존 데이터 참조 확인 → 별도 UI 수정 unit` 순서다.
-
 ## 완료 기준
 
 - 위 Outgame/Battle 소비처 전부에서 캐릭터 식별, aspect, 여백, 라벨/오버레이가 정상이다.
@@ -46,3 +43,6 @@
 - 새 Spine 포트레이트 수가 유효 DefenderCatalog 수와 일치하며 전 SO가 새 Sprite를 참조한다.
 - Unity 컴파일/Console error 0, Outgame→Battle 진입 smoke 통과.
 - 사용자 확인: 실제 UI 크기와 기존 AI 원본 삭제 범위 통과.
+
+- 확인 2026-07-28: Editor UI smoke·38장 삭제·GUID 참조 0 통과
+  (`5c4a3bdb`, 사용자 “모든 유닛 진행” 승인). Android/iOS 실기기 QA는 대기.
