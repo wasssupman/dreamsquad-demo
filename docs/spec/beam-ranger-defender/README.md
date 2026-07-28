@@ -1,10 +1,7 @@
 # beam-ranger-defender — 버스터즈 (지속 레이저 빔 레인저)
 
-> 상태: **unit 0 완료(`45b1d645`) · units 1~2 미착수** (2026-07-29)
->
-> unit 0 으로 심(0.2초마다 7 피해)은 이미 돈다 — 지금 배치하면 빔 없이 데미지 넘버만 초당 5회 뜬다.
-> 남은 것은 **빔 비주얼(unit 1)** 과 그것을 재사용하는 **배치 스킬(unit 2)** 이며, 이 spec 에서
-> 가장 반복 튜닝이 필요한 부분이다(벤더 프리팹 스트립 + 코얼레스 규칙 + 씬 배선 + 육안 확인).
+> 상태: **units 0~2 구현 완료 · 사용자 Play 시각 확인 대기** (2026-07-29)
+> 커밋 `45b1d645` · `96720343` · `f83d8db5` · 리그 PlayMode 8/8 green. 상세는 `3_handoff_summary.md`
 
 ## 목표
 
@@ -26,9 +23,9 @@
 | # | 구분 | 문서 | 상태 | 목적 |
 |---|---|---|---|---|
 | 0 | asset+test | `0_hitscan_unit_and_test.md` | **완료** `45b1d645` | 유닛 SO(히트스캔 0.2s/7) + 카탈로그 + 전제 회귀 테스트 |
-| 1 | code | `1_beam_presenter.md` | 미착수 | FireBeam 통합 + 공격 이벤트 코얼레스 빔 프레젠터 |
-| 2 | code | `2_onplace_beam_barrage.md` | 미착수 | 배치 스킬: 2타일 2초 tick DoT + 대상별 빔 연출 |
-| 3 | docs | `3_handoff_summary.md` | — | 인계 요약 (종료 시) |
+| 1 | code | `1_beam_presenter.md` | **완료** `96720343` | FireBeam 통합 + 공격 이벤트 코얼레스 빔 프레젠터 |
+| 2 | code | `2_onplace_beam_barrage.md` | **완료** `96720343` | 배치 스킬: 2타일 2초 tick DoT + 대상별 빔 연출 |
+| 3 | docs | `3_handoff_summary.md` | **완료** | 인계 요약 |
 
 ### unit 0 에서 실증된 것 (unit 1 진입 전 읽을 것)
 
