@@ -179,7 +179,40 @@ namespace Wassup.Presentation
         {
             _simWorld = world;
             Vector3 offset = _visualData != null ? (Vector3)_visualData.SpineVisualOffset : Vector3.zero;
-            transform.position = (Vector3)Wassup.Core.BoardSpace.ToView(world) + offset;
+            transform.position = (Vector3)Wassup.Core.BoardSpace.ToView(world) + offset
+                                 + new Vector3(0f, CurrentHopOffset(), 0f);
+        }
+
+        // knockup-fighter-defender unit 3 — 넉업 띄우기. sim 은 이 유닛이 떠 있다는 사실을
+        // 모른다(심의 실체는 짧은 Stun) — 여기서만 해석하는 순수 뷰 오프셋이다.
+        // ⚠ sim-Y 에 넣으면 안 된다: 평면 tilemap 보드라 BoardSpace.ToView 가 sim-Y 를 버려
+        // 화면에 아무 변화가 없다. 그래서 ToView **뒤에** view 공간 Y 로 더한다.
+        private float _hopElapsed = -1f;   // <0 = 비활성
+        private float _hopDuration;
+        private float _hopHeight;
+
+        public void PlayKnockupHop(float durationSec, float height)
+        {
+            if (durationSec <= 0f || height <= 0f) return;
+            // 재신호는 재시작 — 연속 히트로 계속 떠 있는 것이 의도(스턴도 remainingTime=max 로 갱신).
+            _hopElapsed = 0f;
+            _hopDuration = durationSec;
+            _hopHeight = height;
+        }
+
+        private float CurrentHopOffset()
+        {
+            if (_hopElapsed < 0f) return 0f;
+            // 시간 도메인은 배틀 스케일을 따른다 — 슬로모 중엔 천천히 뜨고 천천히 떨어져야
+            // 스턴 지속(sim 시간)과 착지 시점이 어긋나지 않는다.
+            _hopElapsed += Time.deltaTime * _battleScale;
+            if (_hopElapsed >= _hopDuration)
+            {
+                _hopElapsed = -1f;
+                return 0f;
+            }
+            float t = _hopElapsed / _hopDuration;      // 0..1
+            return _hopHeight * 4f * t * (1f - t);     // 포물선: 양끝 0, 중앙 최고
         }
 
         public void UpdateSortingOrder(Unity.Mathematics.int2 gridSize, float tileSize)

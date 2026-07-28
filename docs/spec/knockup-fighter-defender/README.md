@@ -39,7 +39,14 @@
 4. 넉업 연출은 **메커닉(유닛 데이터) 소유** — 히트 이벤트에서 attacker 의 knockup 보유 여부로
    구동하고, CcEffect(Stun) 쪽에 kind 분기를 넣지 않는다(frost_arrow 등 일반 스턴과 연출 비간섭).
 5. 연출 수직 오프셋은 view 로컬 — 정렬/그림자/오버헤드 UI 와의 간섭은 unit 1 완료 기준에서 확인.
-6. 전 수치는 SO — 하드코딩 금지.
+6. 전 수치는 SO — 하드코딩 금지. 띄우기 높이는 `knockupVisualHeight`(**띄우는 쪽**의 SO).
+7. **연출은 전용 채널 `KnockupVisualEventsSingleton`(Combat→Bridge) 로 구동한다** (unit 3).
+   심에서 넉업의 실체는 Stun 이고 Stun 은 frost_arrow 등 다른 출처와 구분되지 않으므로,
+   뷰가 `CcEffect.kind == Stun` 을 보고 띄우면 **일반 스턴까지 떠오른다**(계약 4 위반).
+   그래서 "누구를 띄웠는가"는 넉업을 건 쪽이 직접 신호한다. `ShieldGrantedEventsSingleton`
+   (Effects→Bridge 원샷 VFX) 과 같은 형태. on-place 경로는 이미 브리지라 큐 없이 직접 재생.
+8. **호핑 오프셋은 `BoardSpace.ToView` 뒤에 view 공간 Y 로 더한다.** sim-Y 에 넣으면 평면
+   tilemap 보드가 sim-Y 를 버려 화면에 아무 변화가 없다.
 
 ## 초기값 (전부 튜닝 대상, SO 소유)
 
@@ -54,10 +61,10 @@ outputs `[Damage 20]` · knockupOnHitSec 0.8 (업타임 40% 광역 CC) · 착지
 | 스폰 진입점 | 변경 없음 — `DefenderCcData` 베이크에 1필드 추가(unit 0) |
 | ECS 컴포넌트 (Units) | 표준 세트 그대로. 능력 컴포넌트 전부 N/A(비활성) |
 | 시뮬 시스템 | `AttackSystem` RESOLVE 히트 루프에 knockup enqueue 분기(unit 0). CcApply/action-lock 기존 그대로 |
-| 이벤트 큐 | 신규 채널 0 — `EnemyCcEventsSingleton`(Stun)·기존 히트 이벤트 재사용 |
-| View/Pool | 기존 SpineUnitPool + 넉업 호핑(unit 1 — 적 view 수직 오프셋 one-shot) |
-| 체력 표시 | 변경 없음 — 오버헤드 UI 와 호핑 오프셋 간섭만 확인(unit 1) |
-| 씬 wiring | **N/A 예상 — 신규 SerializeField 없음**(기존 drain/view 경로 확장). unit 1 에서 확정 |
+| 이벤트 큐 | 심은 `EnemyCcEventsSingleton`(Stun) 재사용. **연출용 신규 채널 1개**(unit 3) — 아래 계약 7 |
+| View/Pool | 기존 SpineUnitPool + `SpineUnitView.PlayKnockupHop`(적 view 수직 오프셋 one-shot, unit 3) |
+| 체력 표시 | 변경 없음 — 오버헤드 UI 와 호핑 오프셋 간섭만 확인(unit 3) |
+| 씬 wiring | **N/A — 신규 SerializeField 없음**(기존 drain/view 경로 확장) |
 
 ## 후속 후보
 

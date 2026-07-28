@@ -138,6 +138,11 @@ namespace Wassup.Battle.Combat
                 ccWriter = ccSingleton.ValueRW.queue.AsParallelWriter();
             }
 
+            // knockup-fighter-defender unit 3 — 넉업 띄우기 연출 신호(Combat→Bridge).
+            NativeQueue<KnockupVisualEvent>.ParallelWriter? knockupVisualWriter = null;
+            if (SystemAPI.TryGetSingletonRW<KnockupVisualEventsSingleton>(out var knockupVisualEvents))
+                knockupVisualWriter = knockupVisualEvents.ValueRW.queue.AsParallelWriter();
+
             // use-flow unit 3 — 부착 카드 발동 신호(Combat→Bridge). 발동 = 카운터 소비 성사
             // 프레임이며 payload arm/대상 유무와 무관하게 신호한다(카운트 소비가 곧 사건).
             NativeQueue<DcTriggerFiredEvent>.ParallelWriter? dcFiredWriter = null;
@@ -1213,19 +1218,30 @@ namespace Wassup.Battle.Combat
                             // 심에 "공중" 개념은 없다. 떠오르는 연출은 뷰가 따로 재생한다(unit 3).
                             if (ccWriter.HasValue && defenderCcLookup.HasComponent(attackerEntity))
                             {
-                                float knockupSec = defenderCcLookup[attackerEntity].knockupOnHitSec;
-                                if (knockupSec > 0f)
+                                var kd = defenderCcLookup[attackerEntity];
+                                if (kd.knockupOnHitSec > 0f)
                                 {
                                     for (int ti = 0; ti < hitCount; ti++)
+                                    {
                                         ccWriter.Value.Enqueue(new Wassup.Battle.Effects.EnemyCcEvent
                                         {
                                             target = hitTargets[ti],
                                             effect = new Wassup.Battle.Effects.CcEffect
                                             {
                                                 kind          = Wassup.Battle.Effects.CcKind.Stun,
-                                                remainingTime = knockupSec,
+                                                remainingTime = kd.knockupOnHitSec,
                                             },
                                         });
+                                        // 연출 신호는 **띄운 쪽**이 보낸다 — 뷰가 CcEffect(Stun)를 보고
+                                        // 판단하면 일반 스턴까지 떠오른다(계약 4). unit 3.
+                                        if (knockupVisualWriter.HasValue)
+                                            knockupVisualWriter.Value.Enqueue(new KnockupVisualEvent
+                                            {
+                                                target      = hitTargets[ti],
+                                                durationSec = kd.knockupOnHitSec,
+                                                height      = kd.knockupVisualHeight,
+                                            });
+                                    }
                                 }
                             }
                             hitTargets.Dispose();

@@ -17,5 +17,7 @@ namespace Wassup.Battle.Combat
         // knockup-fighter-defender — 히트한 **전 대상**에게 Stun N초(공중 띄우기의 심 실체).
         // 스코프가 sleepOnHitSec(주 타겟 1체)과 다르다 — 둘을 하나로 합치면 투머치토커가 깨진다.
         public float knockupOnHitSec;
+        // 띄우기 연출 최고 높이(view 공간). 심은 이 값을 쓰지 않고 그대로 뷰에 실어 보낸다.
+        public float knockupVisualHeight;
     }
 }

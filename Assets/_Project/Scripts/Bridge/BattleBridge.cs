@@ -297,6 +297,8 @@ namespace Wassup.Bridge
         private NativeQueue<Wassup.Battle.Combat.CastEvent> _castEventQueue;
         // use-flow unit 3 — Combat→Bridge 부착 카드 발동 신호(머리 위 아이콘 행 펄스).
         private NativeQueue<Wassup.Battle.Combat.DcTriggerFiredEvent> _dcTriggerFiredQueue;
+        // knockup-fighter unit 3 — Combat→Bridge 넉업 띄우기 연출(대상 view 수직 호핑).
+        private NativeQueue<Wassup.Battle.Combat.KnockupVisualEvent> _knockupVisualQueue;
         // nightmare-catcher unit 1 — Combat→Combat 보스 위협 귀속 채널.
         private NativeQueue<Wassup.Battle.Combat.ThreatHitEvent> _threatHitEventQueue;
         // nightmare-catcher unit 3 — Combat→Movement 텔레포트(SelfBlink) 요청 채널.
@@ -581,6 +583,7 @@ namespace Wassup.Bridge
             DestroyEntitiesByType<Wassup.Battle.Effects.AggroHitEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Combat.CastEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Combat.DcTriggerFiredEventsSingleton>();
+            DestroyEntitiesByType<Wassup.Battle.Combat.KnockupVisualEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Combat.ThreatHitEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Movement.BlinkRequestEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.ObstacleSingleton>();
@@ -606,6 +609,7 @@ namespace Wassup.Bridge
             if (_aggroHitEventQueue.IsCreated) _aggroHitEventQueue.Dispose();
             if (_castEventQueue.IsCreated) _castEventQueue.Dispose();
             if (_dcTriggerFiredQueue.IsCreated) _dcTriggerFiredQueue.Dispose();
+            if (_knockupVisualQueue.IsCreated) _knockupVisualQueue.Dispose();
             if (_threatHitEventQueue.IsCreated) _threatHitEventQueue.Dispose();
             if (_blinkRequestQueue.IsCreated) _blinkRequestQueue.Dispose();
             if (_healAppliedEventQueue.IsCreated) _healAppliedEventQueue.Dispose();
@@ -1356,6 +1360,13 @@ namespace Wassup.Bridge
             var dcFiredSingleton = _em.CreateEntity();
             _em.AddComponentData(dcFiredSingleton, new Wassup.Battle.Combat.DcTriggerFiredEventsSingleton { queue = _dcTriggerFiredQueue });
             _dcProcLastImpact.Clear(); // 매치 경계 — 엔티티는 매치마다 새로우니 스로틀 기록 리셋
+
+            // knockup-fighter-defender unit 3 — 넉업 띄우기 연출 채널. 넉업을 건 쪽(AttackSystem
+            // RESOLVE / on-place StunNearby)이 대상을 enqueue, 브리지가 드레인해 view 를 띄운다.
+            if (_knockupVisualQueue.IsCreated) _knockupVisualQueue.Dispose();
+            _knockupVisualQueue = new NativeQueue<Wassup.Battle.Combat.KnockupVisualEvent>(Allocator.Persistent);
+            var knockupVisualSingleton = _em.CreateEntity();
+            _em.AddComponentData(knockupVisualSingleton, new Wassup.Battle.Combat.KnockupVisualEventsSingleton { queue = _knockupVisualQueue });
 
             // nightmare-catcher unit 1 — Combat→Combat 보스 위협 귀속 채널. 데미지
             // 생산자(AttackSystem 근접 / ProjectileHitSystem 착탄)가 보스(ThreatEntry
@@ -2220,6 +2231,7 @@ namespace Wassup.Bridge
             DrainDefenderDeathEvents();
             DrainShieldBreakEvents();
             DrainDcTriggerFiredEvents(); // use-flow unit 3 — 발동 신호 → 아이콘 행 펄스
+            DrainKnockupVisualEvents();  // knockup unit 3 — 띄우기 신호 → view 수직 호핑
             DrainUnitAttackVisualEvents();
             DrainProjectileHitEvents();
             DrainHealAppliedEvents();
@@ -2757,6 +2769,20 @@ namespace Wassup.Bridge
                     SpawnCardAbsorbVfx(view.transform.position);
                     _dcProcLastImpact[evt.host] = Time.unscaledTime;
                 }
+            }
+        }
+
+        // knockup-fighter-defender unit 3 — 띄우기 신호 → 대상 view 수직 호핑.
+        // 같은 프레임에 같은 대상이 여러 번 들어오면(다중 히트) 마지막 것으로 갱신 —
+        // 재생 중 재신호는 뷰가 타이머를 재시작해 자체 코얼레스한다.
+        private void DrainKnockupVisualEvents()
+        {
+            if (!_knockupVisualQueue.IsCreated) return;
+            while (_knockupVisualQueue.TryDequeue(out var evt))
+            {
+                if (evt.durationSec <= 0f || evt.height <= 0f) continue;
+                if (spineUnitPool != null && spineUnitPool.TryGet(evt.target, out var view) && view != null)
+                    view.PlayKnockupHop(evt.durationSec, evt.height);
             }
         }
 
@@ -3609,6 +3635,11 @@ namespace Wassup.Bridge
                             remainingTime = unitData.onPlaceDuration,
                         },
                     });
+                    // unit 3 — 공격 넉업과 같은 연출 경로. 여기는 이미 브리지(뷰 접근 가능)라
+                    // 큐를 거치지 않고 직접 재생한다.
+                    if (unitData.knockupVisualHeight > 0f && spineUnitPool != null
+                        && spineUnitPool.TryGet(e, out var hopView) && hopView != null)
+                        hopView.PlayKnockupHop(unitData.onPlaceDuration, unitData.knockupVisualHeight);
                     affected++;
                 }
                 entities.Dispose();
@@ -4924,6 +4955,7 @@ namespace Wassup.Bridge
                 onPlacePushRadius   = unitData.onPlacePushRadius,
                 sleepOnHitSec       = unitData.sleepOnHitSec,
                 knockupOnHitSec     = unitData.knockupOnHitSec,
+                knockupVisualHeight = unitData.knockupVisualHeight,
             });
             // defender-ability-assets unit 2 — 게이트 = 능력 에셋 존재(구 hazardCastEnabled).
             var hazardAbility = unitData.GetAbility<HazardCastAbility>();

@@ -175,6 +175,9 @@ namespace Wassup.Data
         // 다중 타겟 유닛에서 둘의 결과가 갈리므로 하나의 필드로 통합하지 말 것.
         // 떠오르는 연출은 뷰(unit 3)가 이 필드 보유를 보고 재생한다 — 심은 Stun 그대로다.
         public float knockupOnHitSec;     // seconds. 0 = disabled
+        // 띄우기 연출 최고 높이(view 공간 단위). 심은 안 쓰고 뷰만 해석한다.
+        // ⚠ sim-Y 가 아니다 — 평면 tilemap 보드라 BoardSpace 가 sim-Y 를 버린다(화면에 안 보임).
+        public float knockupVisualHeight = 1.2f;
 
         [Header("On-place Push")]
         public float onPlacePushDistance; // world units. 0 = disabled
