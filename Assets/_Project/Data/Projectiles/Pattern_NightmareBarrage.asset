@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 307673a61f8ae4e65aac21b646eb26a2, type: 3}
+  m_Name: Pattern_NightmareBarrage
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.ProjectilePatternData
+  id: nightmare_barrage
+  barrel: {fileID: 11400000, guid: 3b7c41e05f9a4d2eb18c6a7f2d5e8014, type: 2}
+  damage: 150
+  selection: 0
+  shotCount: 1
+  shotIntervalSec: 0
+  reselectPerShot: 0
+  telegraphSec: 1.5

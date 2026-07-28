@@ -7,15 +7,15 @@ namespace Wassup.Core
     // "이 Unit 카드가 이 유닛에 '기여'하는가"(= ApplyDreamcatcherCardToUnit 이 -1 이
     // 아닌가)를, **유닛-종속 게이트만** 미러해 plain 값으로 판정한다.
     //
-    // ApplyDreamcatcherCardToUnit(BattleBridge.Dreamcatcher.cs)의 유닛-종속 skip 은
-    // 딱 셋 — ProjectileBounce→ProjectileRef(투사체) / FrontmostTarget·HeavyStrike→
-    // 데미지 output / 이중 LethalTimer·DreamCocoon(상태). 나머지 guard(magnitude·
-    // duration·projectile-null·mapping)는 **카드 데이터 검증**이라 어느 유닛에서든 같은
-    // 결과 → 여기선 유닛 종속 조건만 본다(authored-valid 전제). 그래서 UI 답이 '유닛별로'
-    // 정확하다(같은 카드가 궁수엔 가능·가디언엔 불가).
+    // attack-decoupling unit 1 — host 종속 판정의 source of truth 는 이제
+    // `DcApplicability` **한 곳**이다. 이 클래스와 커밋 경로
+    // (ApplyDreamcatcherCardToUnit)가 같은 함수를 호출하므로, 예전의 "★ 동기화 계약"
+    // (두 미러를 손으로 맞추기)은 폐기됐다 — 그 부채가 통통구슬×머신거너 같은
+    // "붙는데 무효" 조합의 원인이었다.
     //
-    // ★ 동기화 계약: 새 **유닛-클래스 게이트** kind 를 apply 에 추가하면 여기도 갱신 +
-    //   DreamcatcherAttachEvalTests 케이스 추가. 데이터-검증 guard 추가는 무관.
+    // 여전히 여기 남는 것: **카드 단위 해석**(어느 메커닉 하나라도 발동하면 기여) +
+    // 카드 데이터 검증(magnitude·duration·projectile-null·attachType). 후자는 어느
+    // 유닛에서든 같은 결과라 host 판정과 레이어가 다르다.
     public static class DreamcatcherAttachEval
     {
         // dreamcatcher-attach-requirement unit 0 — 부착 대상 제한(정적 술어) 판정.
@@ -82,8 +82,12 @@ namespace Wassup.Core
             }
         }
 
-        public static bool WouldApply(DreamcatcherCard card,
-            bool hasProjectile, bool hasDamageOutput, bool hasLethalTimer, bool hasDreamCocoon)
+        // attack-decoupling unit 1 — host 종속 판정은 전부 DcApplicability 로 위임한다.
+        // 이 함수에 남는 것은 **카드 단위 해석**뿐: "메커닉/모드 중 하나라도 이 host 에서
+        // 발동하면 카드가 기여한다"(spec 계약 4 — 판정 단위는 메커닉, 전량 무효일 때만
+        // 카드 거절). host 속성이 profile 하나로 접혀 새 속성이 생겨도 시그니처가
+        // 흔들리지 않는다.
+        public static bool WouldApply(DreamcatcherCard card, in DcHostProfile host)
         {
             if (card == null) return false;
             // Squad = 축-집합 버프(host 무제약, unit 9) → host 종속 거부 없음. Active 는 이 경로 밖.
@@ -96,20 +100,20 @@ namespace Wassup.Core
 
             if (hasMech)
             {
-                // 이중 상태 거부 = 카드 '전체' 거부(apply preflight, return -1).
+                // 이중 상태 거부만 카드 '전체' 거부다(apply preflight 가 -1 을 반환하는
+                // 유일한 host 사유 — 부분 적용이 원래 상태를 리셋하기 때문).
                 for (int i = 0; i < card.mechanics.Length; i++)
                 {
-                    var pk = card.mechanics[i].payload.kind;
-                    if (hasLethalTimer && pk == DcPayloadKind.SelfBuffLethal) return false;
-                    if (hasDreamCocoon && pk == DcPayloadKind.DreamCocoon) return false;
+                    var m = card.mechanics[i];
+                    if (DcApplicability.EvaluateMechanic(m, host)
+                        == DcRejectReason.DuplicateState) return false;
                 }
-                // 하나라도 이 유닛에 먹는 mechanic 이 있으면 기여.
                 for (int i = 0; i < card.mechanics.Length; i++)
                 {
-                    var pk = card.mechanics[i].payload.kind;
-                    if (pk == DcPayloadKind.None) continue;
-                    if (pk == DcPayloadKind.HeavyStrike) { if (hasDamageOutput) return true; continue; }
-                    return true; // 그 외 mechanic 은 유닛 클래스 무관(데미지/투사체 불요)
+                    var m = card.mechanics[i];
+                    if (m.payload.kind == DcPayloadKind.None) continue;
+                    if (DcApplicability.EvaluateMechanic(m, host)
+                        == DcRejectReason.None) return true;
                 }
             }
 
@@ -118,18 +122,10 @@ namespace Wassup.Core
                 for (int i = 0; i < card.attackMods.Length; i++)
                 {
                     var am = card.attackMods[i];
+                    // 카드 데이터 검증(kind/damageMul/count)은 host 무관이라 여기 남는다.
                     if (am.kind == DcAttackModKind.None || am.damageMul <= 0f) continue;
-                    if (am.kind == DcAttackModKind.ProjectileBounce)
-                    {
-                        if (am.count > 0 && hasProjectile) return true; // 통통구슬 — 투사체 유닛만
-                        continue;
-                    }
-                    if (am.kind == DcAttackModKind.FrontmostTarget)
-                    {
-                        if (hasDamageOutput) return true; // 끝을 보는 눈 — 데미지 output 필요
-                        continue;
-                    }
-                    return true; // 그 외 mod(damageMul>0)는 유닛 클래스 무관
+                    if (am.kind == DcAttackModKind.ProjectileBounce && am.count <= 0) continue;
+                    if (DcApplicability.EvaluateAttackMod(am.kind, host) == DcRejectReason.None) return true;
                 }
             }
 

@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Deck_Twin
   m_EditorClassIdentifier: Assembly-CSharp::Wassup.Data.AttackDeck
   deckId: Deck_Twin
+  battleMode: 0
   useGeneratedWaves: 1
   waveSeed: 20260803
   waveGeneratorVersion: 2
@@ -26,12 +27,14 @@ MonoBehaviour:
   - {fileID: 11400000, guid: c50542723e75741f2a22013717a9b118, type: 2}
   - {fileID: 11400000, guid: 7ab2d97d212554352a263b4acf8e02e3, type: 2}
   - {fileID: 11400000, guid: 23687f8df52d940258a2e9f5e38c33bc, type: 2}
-  minWaveCount: 10
+  minWaveCount: 15
   maxWaveCount: 15
   minUnitsPerWave: 6
   maxUnitsPerWave: 10
   waveCountJitter: 1
   intraWaveSpacingSec: 1
+  fixedWaveIntervalSec: 0
+  waveSpawnLeadInSec: 2
   bossUnit: {fileID: 11400000, guid: a2fc78633cb4410896cdd585f849ee39, type: 2}
   bossWaveInterval: 5
   bossEscortMin: 3

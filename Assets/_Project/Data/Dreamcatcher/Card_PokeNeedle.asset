@@ -13,7 +13,8 @@ MonoBehaviour:
   m_Name: Card_PokeNeedle
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: poke_needle
-  displayName: "\uAD00\uD1B5\uCE68"
+  displayName: "\uBE44\uC218"
+  visible: 1
   axis: 3
   category: 1
   effects: []
@@ -24,11 +25,14 @@ MonoBehaviour:
       period: 5
       periodSeconds: 0
       fraction: 0
+      gate: 0
+      gateSubject: 0
+      gateValue: 0
     payload:
       kind: 1
       magnitude: 20
-      projectile: {fileID: 11400000, guid: 9253ceedf772843b9a068339422e9082, type: 2}
-      tileRange: 0
+      projectile: {fileID: 11400000, guid: f51a7c09100394fb3a3342db9bc8db52, type: 2}
+      tileRange: 4
       duration: 0
       auraPrefab: {fileID: 0}
       auraScale: 0
@@ -41,3 +45,5 @@ MonoBehaviour:
   description: "5\uBC88\uC9F8 \uACF5\uACA9\uB9C8\uB2E4 \u2192 \uB300\uC0C1\uC5D0\uAC8C
     \uCD94\uAC00 \uD22C\uC0AC\uCCB4 \uD53C\uD574 20"
   leakAllowanceCost: 0
+  attachType: 0
+  attachValue: 

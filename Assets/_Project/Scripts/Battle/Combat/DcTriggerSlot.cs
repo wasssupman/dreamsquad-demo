@@ -16,7 +16,9 @@ namespace Wassup.Battle.Combat
         public int instanceId;
         public DcTriggerKind trigger;
         public ushort period;   // AttackN: fire on every N-th attack resolve
-        public ushort counter;  // owned write: AttackSystem RESOLVE only
+        // owned write: AttackSystem 전용 — RESOLVE / 폭탄 발사 훅 / 캐스트 드레인
+        // 세 지점이며, host 하나는 그중 정확히 1곳만 탄다(attack-decoupling 계약 2).
+        public ushort counter;
         public DcPayloadKind payload;
         public float magnitude; // flat damage — attacker damageMul intentionally not applied
 
@@ -40,7 +42,8 @@ namespace Wassup.Battle.Combat
         // HealthThresholdSystem (counter above stays AttackSystem-only).
         public float periodSeconds;   // PeriodicTimer 주기 초 (<=0 = no-fire, 계약 9)
         public float elapsed;         // PeriodicTimer accumulator (잔여 이월)
-        public int fireCount;         // AreaBarrage 진앙 round-robin (발동 시에만 증가)
+        // (구 AreaBarrage 진앙 round-robin 카운터 fireCount 는 제거됐다 — 융단폭격이
+        //  패턴으로 이관되며 영속 카운터가 PatternSlot.fireCountBase 로 옮겨갔다.)
         public float fraction;        // HealthThreshold 경계 간격 (<=0 = no-fire)
         public int nextBoundaryIndex; // HealthThreshold 래치 k (베이크 시 1, 단조 전진)
         public float maxHpRef;        // 스폰 시점 maxHp 스냅샷 (경계 기준 고정)
@@ -73,5 +76,13 @@ namespace Wassup.Battle.Combat
         // refresh(지속만 갱신). instanceId 를 잘라 쓰지 않으므로 두 네임스페이스는 여전히
         // 분리(위 instanceId 주석의 불변식 유지).
         public ushort statBuffStackId;
+
+        // projectile-emission-pattern unit 3 — EmitProjectilePattern 의 발사 명세는
+        // 이 슬롯에 임베드하지 않고 host 의 병렬 PatternSlot 버퍼에 두고 **index 만**
+        // 가리킨다. 이 struct 는 defender 카드 슬롯과 공유하는 원소 타입이라, 여기에
+        // spec+template(~200B)을 넣으면 소비자는 보스뿐인데 모든 드림캐쳐 보유 유닛의
+        // chunk 상주 비용이 커진다. **bake 가 -1 로 명시 초기화**한다(struct default 0
+        // 은 유효 index 라 미배선 슬롯이 0번 패턴을 쏘게 된다).
+        public int patternIndex;
     }
 }

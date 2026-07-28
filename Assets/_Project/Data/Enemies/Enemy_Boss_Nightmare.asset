@@ -67,32 +67,17 @@ MonoBehaviour:
       periodSeconds: 10
       fraction: 0
     payload:
-      kind: 5
-      magnitude: 150
-      projectile: {fileID: 11400000, guid: 1705ed345dda4014bc5b6019f1a84e77, type: 2}
-      tileRange: 3
-      duration: 1.5
-      auraPrefab: {fileID: 0}
-      auraScale: 0
-      ccKind: 0
-      stackKind: 0
-      buffStat: 0
-  - trigger:
-      kind: 5
-      period: 0
-      periodSeconds: 0
-      fraction: 0.3
-    payload:
-      kind: 6
+      kind: 17
       magnitude: 0
-      projectile: {fileID: 11400000, guid: cbc979168a4b4c978e1765a3f427d06e, type: 2}
-      tileRange: 3
+      projectile: {fileID: 0}
+      tileRange: 0
       duration: 0
       auraPrefab: {fileID: 0}
       auraScale: 0
       ccKind: 0
       stackKind: 0
       buffStat: 0
+      pattern: {fileID: 11400000, guid: 6d2a89f314b74c05a9e37b1c8f4d6205, type: 2}
   - trigger:
       kind: 4
       period: 0
@@ -109,4 +94,21 @@ MonoBehaviour:
       ccKind: 0
       stackKind: 0
       buffStat: 0
+  - trigger:
+      kind: 4
+      period: 0
+      periodSeconds: 0.1
+      fraction: 0
+    payload:
+      kind: 17
+      magnitude: 0
+      projectile: {fileID: 0}
+      tileRange: 0
+      duration: 0
+      auraPrefab: {fileID: 0}
+      auraScale: 0
+      ccKind: 0
+      stackKind: 0
+      buffStat: 0
+      pattern: {fileID: 11400000, guid: 2c9d64a7e83b41f5ab16c05d729e8f31, type: 2}
   killScore: 2000

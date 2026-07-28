@@ -4201,7 +4201,6 @@ MonoBehaviour:
     document: {fileID: 11400000, guid: 71a5b7c02d53247139cbcc3014ba7310, type: 2}
     deck: {fileID: 11400000, guid: 1183549c15c80af4389c3f5ee5a88497, type: 2}
   fixedMapSeed: 0
-  forcedMapPoolIndex: 1
   seasonRegistry: {fileID: 11400000, guid: d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8, type: 2}
   tileSize: 1
   spawnHeight: 0.5

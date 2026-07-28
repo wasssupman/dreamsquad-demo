@@ -26,6 +26,7 @@
 | 추가 9 (2026-07-21) | `9_force_wave_reschedule.md` | `Next Wave` 강제 호출이 남은 웨이브 스케줄을 함께 앞당기도록 수정 (계약-구현 불일치) (**완료 `dc80a3fc`**) |
 | 추가 10 (2026-07-22) | `10_handoff_summary.md` | unit 9 인계 요약 |
 | 추가 11 (2026-07-26) | `11_wave_spawn_lead_in.md` | 웨이브 스폰 리드인 — 트리거와 첫 적 등장 사이 유예(전 덱 2초) |
+| 추가 12 (2026-07-28) | `12_early_wave_unit_gate.md` | 초반 웨이브 등장 게이트 — `AttackUnitData.minWaveNumber`(첫 웨이브 Runner 금지) |
 
 ## 공통 원칙
 
@@ -33,6 +34,7 @@
 - **시드 권한(unit 6 갱신)**: 라이브는 `deck.waveSeed` 비0 = 고정, 0 = `MatchSeed.DeriveWaveSeed(matchSeed)` 파생. `ResolveWaveSeed()` 의 `0→1` 폴백은 레거시 `Generate(deck)` 오버로드(프리뷰/테스트) 전용 — 0 판별이 필요한 라이브 분기는 필드를 직접 본다.
 - briefing preview 와 battle runtime 은 같은 `WavePatternGenerator.Generate(deck)` 경로를 사용한다.
 - 한 wave 는 정확히 2종의 공격 유닛 타입을 포함한다.
+- **등장 게이트(unit 12)**: 유닛은 `AttackUnitData.minWaveNumber`(기본 1 = 제한 없음)보다 이른 웨이브에 뽑히지 않는다. 뽑은 인덱스를 사후 보정하므로 rng 소비는 불변 — 게이트에 안 걸린 웨이브는 도입 전과 동일하다. 작성 플랜(`FromPlanAsset`)에는 미적용.
 - `unitsPerWave` 총량은 웨이브 진행에 따라 `minUnitsPerWave`(6, 첫 웨이브)→`maxUnitsPerWave`(10, 마지막)로 **선형 증가** + `±waveCountJitter`(1) 지터, `[min,max]` 클램프 (unit 7). min/max 는 이제 "균등 랜덤 범위"가 아니라 "램프 양끝"이다. (2026-07-20: 10~15 → −50% → +20% → 램프. `WaveA.asset` 값)
 - `wavesPerRun` 은 10~15개다.
 - 자동 wave 시간은 `timerDurationSec / wavesPerRun` 으로 배정한다.

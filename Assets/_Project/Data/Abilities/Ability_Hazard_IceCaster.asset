@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Ability_Hazard_IceCaster
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.HazardCastAbility
   id: hazard_ice_caster
-  castRange: 4
+  castRange: 3
   cooldown: 4
   kind: 1
   zoneHazard: {fileID: 11400000, guid: 204f7aa8047be44419e69ce1231a59a0, type: 2}

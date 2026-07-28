@@ -42,35 +42,45 @@ namespace Wassup.Battle.Combat
             float dt = SystemAPI.Time.DeltaTime;
             var ff = SystemAPI.GetSingleton<FlowFieldSingleton>();
 
-            // Epicenter pool = living defenders. This is the PAYLOAD's faction
-            // axis (AreaBarrage strikes the caster's opposing side — spec fixes
-            // defenders as both epicenter and victims), not an arm gate.
+            // 방어유닛 셀 스냅샷 — whip 오라의 defender-host 경로가 쓴다(entities 는
+            // 아래에서 보충). projectile-emission-pattern unit 4 로 융단폭격 진앙이
+            // emitter 로 이관돼, 이제 이 배열의 유일한 소비자는 whip 이다.
             var defQuery = SystemAPI.QueryBuilder().WithAll<DefenderUnitTag, LocalTransform>().Build();
             var defTransforms = defQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
             var defCells = new NativeArray<int2>(defTransforms.Length, Allocator.Temp);
             for (int i = 0; i < defTransforms.Length; i++)
                 defCells[i] = GridMath.WorldToCell(defTransforms[i].Position, ff.tileSize, ff.gridSize, origin: ff.origin);
 
-            var ecb = new EntityCommandBuffer(Allocator.Temp);
-
             // nightmare-whip-aura unit 1 — whip pulse state: Effects channel ref
             // (RW — queue mutation intent) + lazy same-faction pools, built at
             // most once per frame and only when a whip slot actually fires
-            // (unlike the eager defender pool above, which the barrage epicenter
-            // always needs and which carries no entities).
+            // (unlike the eager defender cell snapshot above, which carries no
+            // entities).
             bool hasStatEvents = SystemAPI.TryGetSingletonRW<StatModifierApplyEventsSingleton>(out var statEventsRef);
             // unit 3 — 펄스 연출: 버프가 실제로 나간 펄스만 host 위치에 hit-VFX
             // 1회 재생 (blink 퍼프 선례 — Combat→Presentation 기존 채널).
             bool hasHitQ = SystemAPI.TryGetSingletonRW<ProjectileHitEventsSingleton>(out var hitRW);
             NativeQueue<ProjectileHitEvent> hitQueue = hasHitQ ? hitRW.ValueRW.queue : default;
+            // projectile-emission-pattern unit 3 — 패턴 push seam. arm 이 하는 일은
+            // 인스턴스 하나를 host 버퍼에 넣는 것뿐이고, 발사 전개는 emitter 소유다.
+            var patternLookup = SystemAPI.GetBufferLookup<Projectile.Emission.PatternSlot>(isReadOnly: false);
+            var instanceLookup = SystemAPI.GetBufferLookup<Projectile.Emission.EmitterInstance>(isReadOnly: false);
+
             var whipTargets = new NativeList<int>(Allocator.Temp);
             NativeArray<Entity> whipEnemyEntities = default, whipDefEntities = default;
             NativeArray<int2> whipEnemyCells = default;
             bool whipEnemyPoolBuilt = false, whipDefEntitiesBuilt = false;
 
             foreach (var (slotsRef, entity) in
-                     SystemAPI.Query<DynamicBuffer<DcTriggerSlot>>().WithEntityAccess())
+                     SystemAPI.Query<DynamicBuffer<DcTriggerSlot>>()
+                              .WithNone<Wassup.Battle.Units.DeadTag>()
+                              .WithEntityAccess())
             {
+                // 죽은 유닛은 새 발동을 시작하지 않는다. DeadTag 는 DamageApplicationSystem 이
+                // 붙이고 UnitLifecycleSystem 이 같은 프레임에 파괴하지만, 그 사이에 이 시스템이
+                // 끼면 시체가 한 번 더 스킬을 쓴다. 시스템 순서(UpdateAfter)로 가리는 대신
+                // 규칙으로 표현한다 — 이미 시작된 버스트는 emitter 가 완주시킨다
+                // (combat-action-lock 의 "START 는 막고 RESOLVE 는 완료" 와 같은 결).
                 // foreach 변수는 readonly — DynamicBuffer 는 뷰 struct 라 로컬
                 // 복사가 같은 버퍼 메모리를 가리킨다(CS1654 회피 관용구).
                 var slots = slotsRef;
@@ -156,54 +166,47 @@ namespace Wassup.Battle.Combat
                                 }
                             }
                         }
-                        else if (slot.payload != Wassup.Data.DcPayloadKind.AreaBarrage)
+                        else if (slot.payload == Wassup.Data.DcPayloadKind.EmitProjectilePattern)
+                        {
+                            // 발사 명세를 트리거한다. spec/template 을 **값으로 복사**하므로
+                            // 발사 도중 무엇이 바뀌어도 이미 시작된 버스트는 불변이다(계약 8).
+                            // 영속시켜야 하는 것은 발사 카운터 하나뿐이고, 그것만 durable
+                            // 소유자(PatternSlot)에 남아 다음 발화가 이어받는다 —
+                            // 안 그러면 선택 규칙이 고정된다(spec-review C2).
+                            if (slot.patternIndex >= 0
+                                && patternLookup.HasBuffer(entity) && instanceLookup.HasBuffer(entity))
+                            {
+                                var pats = patternLookup[entity];
+                                if (slot.patternIndex < pats.Length)
+                                {
+                                    var pat = pats[slot.patternIndex];
+                                    var inst = new Projectile.Emission.EmitterInstance
+                                    {
+                                        spec = pat.spec,
+                                        template = pat.template,
+                                        lockedTarget = Entity.Null,
+                                    };
+                                    Projectile.Emission.EmitterTick.Begin(ref inst.runtime, inst.spec, pat.fireCountBase);
+                                    pat.fireCountBase += math.max(1, pat.spec.shotCount);
+                                    pats[slot.patternIndex] = pat;
+                                    instanceLookup[entity].Add(inst);
+                                }
+                            }
+                        }
+                        else
                         {
                             // Payload landed without its arm — fail loudly instead
                             // of silently consuming the fire (dc-trigger 선례).
+                            // projectile-emission-pattern unit 4 — AreaBarrage arm 은
+                            // 제거됐다(융단폭격은 EmitProjectilePattern 으로 이관). enum
+                            // 값은 append-only 계약상 남아 있고 bake 가 loud 거절한다.
                             UnityEngine.Debug.LogWarning("[BossPeriodicTrigger] PeriodicTimer slot fired with unhandled payload kind.");
                         }
-                        else if (defCells.Length > 0)
-                        {
-                            int idx = BarrageEpicenter.Select(defCells, slot.fireCount, ff.gridSize);
-                            if (idx >= 0)
-                            {
-                                // Cell-lock the epicenter at fire time (SkyFall
-                                // impact) — mirror of the Meteor request build
-                                // (BattleBridge.ApplyMeteor), minus SO reads:
-                                // dataIndex/visualScale were baked into the slot
-                                // (unit 5), dropHeight is filled by the drain
-                                // (translator — the only seam with SO access).
-                                float3 impact = GridMath.CellToWorldCenter(defCells[idx], ff.tileSize, 0f, origin: ff.origin);
-                                var carrier = ecb.CreateEntity();
-                                ecb.AddComponent(carrier, new ProjectileSpawnRequest
-                                {
-                                    movement = MovementKind.SkyFall,
-                                    payload = PayloadKind.TileAoe,
-                                    origin = impact,
-                                    impact = impact,
-                                    damage = slot.magnitude, // flat — no damageMul (계약 8)
-                                    visualScale = slot.visualScale,
-                                    dataIndex = slot.projectileDataIndex,
-                                    impactTileRange = slot.tileRange,
-                                    flightTime = slot.duration, // 낙하 텔레그래프 (unit 0 rev 2)
-                                    owner = entity, // 시전자 귀속 — threat 게이트(defender-only)가 걸러냄
-                                    targetFaction = ProjectileTargetFaction.Defender, // 유일한 Defender setter (unit 4)
-                                });
-                                ecb.AddComponent<ProjectileRequestCarrier>(carrier);
-                                // Rotation advances only on an actual fire — a
-                                // 0-defender no-op keeps the phase (spec §진앙).
-                                slot.fireCount++;
-                            }
-                        }
-                        // 0 defenders: fire consumed, timer already carried over
-                        // by PeriodicTick (no backlog), fireCount unchanged.
                     }
                     slots[si] = slot;
                 }
             }
 
-            ecb.Playback(state.EntityManager);
-            ecb.Dispose();
             defTransforms.Dispose();
             defCells.Dispose();
             whipTargets.Dispose();

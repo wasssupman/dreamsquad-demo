@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Ability_Hazard_PoisonCaster
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.HazardCastAbility
   id: hazard_poison_caster
-  castRange: 4
+  castRange: 3
   cooldown: 4
   kind: 1
   zoneHazard: {fileID: 11400000, guid: 589ef094113ba4b909db37893939c6f7, type: 2}

@@ -39,6 +39,14 @@ namespace Wassup.Data
         // defender-directional-volley unit 1 — 방향 벡터 직선 비행 + 경로 스윕 히트.
         // 타겟 엔티티/착탄 셀 없음. BattleBridge 가 (DirectionalLinear, PathHit) 로 매핑.
         Directional,
+        // projectile-emission-pattern unit 1 — 3차 베지어 곡선 + 타겟 추적.
+        // (BezierHomingToEntity, SingleSplash) 로 매핑.
+        BezierHoming,
+        // projectile-emission-pattern unit 4 — 낙하 텔레그래프 후 착탄 셀 AoE.
+        // 지금까지 이 축은 BattleBridge.ApplyMeteor 가 하드코딩으로만 만들었고
+        // flightMode 어휘엔 없었다 — 발사 명세(패턴)가 데이터로 SkyFall 탄을
+        // 지정할 수 있어야 하므로 개통한다. (SkyFall, TileAoe) 로 매핑.
+        SkyFall,
     }
 
     [CreateAssetMenu(fileName = "Projectile", menuName = "Wassup/Projectile", order = 13)]
@@ -105,6 +113,14 @@ namespace Wassup.Data
         [Header("Directional (flightMode = Directional)")]
         [Tooltip("관통 예산. 1 = 첫 피격 대상에서 소멸, N = N기 히트 후 소멸. Directional 전용.")]
         public int pierceCount = 1;
+
+        // projectile-emission-pattern unit 1 — 탄의 성질이므로 여기 산다(패턴 SO 는
+        // 이 값을 복제하지 않는다 — README 계약 3). 드레인이 읽어 제어점을 산출한다.
+        [Header("Bezier homing (flightMode = BezierHoming)")]
+        [Tooltip("좌우 스윙 폭(월드 유닛). 0 = 직선에 가깝게. 여러 발이면 발마다 좌우 교대로 더 크게 벌어진다.")]
+        public float bezierLateral = 1.2f;
+        [Tooltip("제어점을 진행 방향으로 밀어내는 비율(전체 거리 대비). 클수록 곡선이 늦게 휜다.")]
+        [Range(0f, 0.5f)] public float bezierForwardBias = 0.35f;
 
         [Header("SkyFall (스킬 낙하 투사체 — Meteor)")]
         [Tooltip("낙하 시작 높이(월드 유닛, view 공간 Y). flightTime(warningSec) 동안 이 높이에서 착탄 셀로 떨어진다. 내부적으로 state 의 arcHeight 슬롯을 재사용.")]

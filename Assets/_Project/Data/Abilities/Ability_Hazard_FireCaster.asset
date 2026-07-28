@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Ability_Hazard_FireCaster
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.HazardCastAbility
   id: hazard_fire_caster
-  castRange: 4
+  castRange: 3
   cooldown: 3.5
   kind: 1
   zoneHazard: {fileID: 11400000, guid: 8087a804bf218483baf97391f4fdc6e9, type: 2}

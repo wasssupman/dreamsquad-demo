@@ -13,7 +13,11 @@
 | **맵 지형** (경로·스폰·골·배치칸) | `Window/Wassup/Map Painter` 또는 execute_code | MapDocument (tiles/spawns/goals) |
 | **웨이브 난이도** (몬스터 수·종류·보스) | 맵별 `Deck_{맵}.asset` (AttackDeck) | 아래 §웨이브 knob |
 | **개별 몬스터 강함** (HP·속도·공격) | `Enemy_*.asset` (AttackUnitData) | health/moveSpeed/attackRange/attackCooldown… |
-| **맵 랜덤 on/off** | `BattleBridge.fixedMapSeed` (BattleScene) | `0`=매판 랜덤, 비0=한 맵 고정 |
+| **특정 몬스터를 초반 웨이브에서 제외** | `Enemy_*.asset` (AttackUnitData) | `minWaveNumber` (기본 1=제한없음, Runner=2) |
+| **맵 랜덤 on/off** | `BattleBridge.fixedMapSeed` (BattleScene) | `0`=시드 배정(아래 우선순위), 비0=한 맵 고정 |
+| **개발 중 특정 맵으로 진입** | 로비 맵 스테퍼(◀ ▶ OFF, dev/에디터 전용) | `DevMapOverride`(PlayerPrefs), OFF=시드 배정 복귀 |
+
+맵 인덱스 우선순위: **로비 스테퍼(dev override) > `fixedMapSeed`(비0) > 토너먼트 시드(같은 토너먼트 = 같은 맵) > 시드 부재 시 0번 폴백**.
 
 ---
 
@@ -28,7 +32,9 @@
 | MapDocument_Twin | Deck_Twin | 20260803 |
 | MapDocument_Spiral | Deck_Spiral | 20260804 |
 | MapDocument_Zig | Deck_Zig | 20260805 |
+| MapDocument_Hook | Deck_Hook | 20260806 |
 
+- 덱 asset 위치는 `Assets/_Project/Scripts/Data/Decks/`. 무한 모드 전용 `Deck_Endless`(waveSeed 20260807)는 풀 밖 — `BattleBridge.endlessEncounter` 슬롯이 들고 있다.
 - 맵과 덱은 **같은 인덱스로 함께 선택**된다(`MapPoolSelect.SelectIndex(seed, count)`), 그래서 "맵마다 고정된 적 패턴".
 - 맵 추가 = 풀 `entries` 에 (새 MapDocument, 새 Deck) 한 쌍 추가. **코드 변경 불필요**(GUID 참조).
 - `WaveA.asset`/`WaveB.asset` 은 레거시 원본(테스트 참조) — 풀은 안 씀, 삭제 금지.

@@ -35,6 +35,13 @@ namespace Wassup.Battle.Combat.Projectile
         public float3 impact;
         public float arcHeight;
 
+        // ── Bezier homing (projectile-emission-pattern unit 1) ───────────────
+        // 스윙 소스만 싣는다 — 제어점 자체는 드레인이 SO(bezierLateral/ForwardBias)를
+        // 읽어 산출한다(SkyFall 의 dropHeight 보충과 같은 번역자 seam). 덕분에 발사
+        // 주체(AttackSystem·emitter·캐스트)는 어느 쪽도 SO 를 알 필요가 없고, 요청
+        // struct 가 궤적마다 비대해지지 않는다. 기본 0 = 첫 발(중앙 스윙).
+        public int swingIndex;
+
         // ── Sky-fall trajectory ──────────────────────────────────────────────
         // Request-carried flight time (seconds). SkyFall has zero travel distance
         // so the drain cannot derive it from speed; Meteor maps warningSec here.
@@ -73,6 +80,9 @@ namespace Wassup.Battle.Combat.Projectile
         public int bounceRemaining;
         public int bounceTileRange;
         public float bounceDamageMul;
+
+        // 대상 소멸 시 재조준 반경(Chebyshev 타일). 0 = 기존 동작(소멸).
+        public int retargetTileRange;
 
         // ── Shooter attribution (nightmare-catcher unit 1) ───────────────────
         // Copied verbatim onto ProjectileState by the drain. Default Entity.Null

@@ -265,36 +265,24 @@ namespace Wassup.Bridge
                 return -1;
             }
 
-            // subconscious-cursed-relics unit 0 — reject before any mechanic writes.
-            // AddComponentData sets component data even when LethalTimer already exists,
-            // which would reset the original death deadline and partially apply a
-            // multi-mechanic card.
+            // attack-decoupling unit 1 — host 종속 판정의 단일 입력. UI preflight
+            // (WouldDreamcatcherCardApply)와 **같은 profile·같은 함수**를 쓴다.
+            var hostProfile = BuildHostProfile(defender);
+
+            // subconscious-cursed-relics unit 0 / curse-expansion unit 0 — 이중 상태는
+            // 어떤 쓰기도 하기 전에 **카드 전체**를 거절한다. AddComponentData 가 기존
+            // LethalTimer/DreamCocoon 을 덮어써 원래 타이머를 리셋하고 멀티-mechanic
+            // 카드를 부분 적용시키기 때문. (판정은 DcApplicability 로 수렴 — 두 블록이
+            // 하나가 됐다.)
             int preflightMechanicsLen = hasMechanics ? card.mechanics.Length : 0;
-            if (_em.HasComponent<LethalTimer>(defender))
+            for (int i = 0; i < preflightMechanicsLen; i++)
             {
-                for (int i = 0; i < preflightMechanicsLen; i++)
-                {
-                    if (card.mechanics[i].payload.kind != Wassup.Data.DcPayloadKind.SelfBuffLethal)
-                        continue;
+                var pm = card.mechanics[i];
+                if (Wassup.Core.DcApplicability.EvaluateMechanic(pm, hostProfile)
+                    != Wassup.Core.DcRejectReason.DuplicateState) continue;
 
-                    Debug.LogWarning($"[BattleBridge] ApplyDreamcatcherCardToUnit('{card.id}'): target already has LethalTimer — card not attached.");
-                    return -1;
-                }
-            }
-
-            // subconscious-curse-expansion unit 0 — 이중 코쿤 사전검증(LethalTimer 선례):
-            // AddComponentData 는 기존 DreamCocoon 을 덮어써 완주 타이머/버프를 리셋하고
-            // 멀티-mechanic 카드를 부분 적용시키므로, 어떤 쓰기도 하기 전에 거절한다.
-            if (_em.HasComponent<Wassup.Battle.Effects.DreamCocoon>(defender))
-            {
-                for (int i = 0; i < preflightMechanicsLen; i++)
-                {
-                    if (card.mechanics[i].payload.kind != Wassup.Data.DcPayloadKind.DreamCocoon)
-                        continue;
-
-                    Debug.LogWarning($"[BattleBridge] ApplyDreamcatcherCardToUnit('{card.id}'): target already has DreamCocoon — card not attached.");
-                    return -1;
-                }
+                Debug.LogWarning($"[BattleBridge] ApplyDreamcatcherCardToUnit('{card.id}'): target already has {pm.payload.kind} state — card not attached.");
+                return -1;
             }
 
             int attached = 0;
@@ -303,6 +291,17 @@ namespace Wassup.Bridge
             for (int i = 0; i < mechanicsLen; i++) // bake-time only read (managed array)
             {
                 var m = card.mechanics[i];
+
+                // attack-decoupling unit 1 — host 종속 판정 단일 게이트. 이 한 줄이
+                // 예전의 흩어진 가드 3종(ProjectileToTarget ally / HeavyStrike 데미지
+                // output / 이중 상태)을 대체한다. 아래 kind별 블록에 남은 것은 전부
+                // **카드 데이터 검증**(magnitude·duration·projectile null 등)이다.
+                var hostReason = Wassup.Core.DcApplicability.EvaluateMechanic(m, hostProfile);
+                if (hostReason != Wassup.Core.DcRejectReason.None)
+                {
+                    Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: {m.payload.kind} 는 이 host 에서 발동하지 않는다 ({hostReason}, archetype={hostProfile.archetype}, route={hostProfile.route}) — skipped.");
+                    continue;
+                }
 
                 // content-1 ③ (마지막 불꽃) — instant SelfBuffLethal (trigger=None, no
                 // slot). Handled BEFORE the trigger guard, which rejects trigger==None.
@@ -469,6 +468,10 @@ namespace Wassup.Bridge
                     payload = m.payload.kind,
                     magnitude = m.payload.magnitude,
                     projectileDataIndex = -1,
+                    // 보스 bake 와 같은 불변식(struct default 0 은 유효 index 다). 지금은
+                    // 아래 EmitProjectilePattern 거절이 도달 경로를 막지만, 불변식 자체를
+                    // 여기서 걸어두어야 다른 kind 가 patternIndex 를 쓰게 될 때 안전하다.
+                    patternIndex = -1,
                     // trigger-gates unit 1 — 게이트 번역 (위 배선 검증 통과분만 착지).
                     gate = m.trigger.gate,
                     gateSubject = m.trigger.gateSubject,
@@ -490,6 +493,10 @@ namespace Wassup.Bridge
                     slot.speed = m.payload.projectile.speed;
                     slot.hitThreshold = m.payload.projectile.hitThreshold;
                     slot.visualScale = m.payload.projectile.visualScale;
+                    // attack-decoupling unit 2 — 폴백 탐색 반경(host 가 대상을 못 고를 때만
+                    // 쓰인다). 0 이하는 "폴백 없음"이지 "발동 불가"가 아니다 — host 우선
+                    // 경로(현재 전부)는 반경과 무관하게 정상 동작한다(spec 계약 3).
+                    slot.tileRange = math.max(0, m.payload.tileRange);
                 }
                 else if (m.payload.kind == Wassup.Data.DcPayloadKind.SelfTileAoe)
                 {
@@ -590,8 +597,8 @@ namespace Wassup.Bridge
                     // dreamcatcher-heavy-strike unit 1 — 응축된 일격. AttackN 전용 강공:
                     // N회째 공격의 출력 데미지를 magnitude 배(2.0=×2). 다른 트리거로는
                     // 무의미 → AttackN 강제. 배율<=1 은 강공이 아니므로(1=평타, <1=약화)
-                    // 거절. host 는 곱할 Damage output 이 있어야 함(eye 선례 재사용 —
-                    // 힐러/output 없는 caster 거절). slot.magnitude 는 이미 배율(위 generic bake).
+                    // 거절. host 의 Damage output 요구는 위 단일 게이트가 처리한다
+                    // (NeedsDamageOutput). slot.magnitude 는 이미 배율(위 generic bake).
                     if (m.trigger.kind != Wassup.Data.DcTriggerKind.AttackN)
                     {
                         Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: HeavyStrike requires AttackN trigger — skipped.");
@@ -602,11 +609,19 @@ namespace Wassup.Bridge
                         Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: HeavyStrike magnitude<=1 (not a heavy hit) — skipped.");
                         continue;
                     }
-                    if (!HasPositiveDamageOutput(defender))
-                    {
-                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: HeavyStrike on a unit with no positive Damage output — skipped.");
-                        continue;
-                    }
+                }
+
+                // projectile-emission-pattern unit 3 — 발사 명세는 **카드 경로 미배선**이다.
+                // 패턴 자료(PatternSlot 버퍼 + template 조립)는 보스 스폰 bake 에만 있고,
+                // 여기서 통과시키면 슬롯이 patternIndex=0(struct default, 유효 index 처럼
+                // 보이는 값)으로 붙어 아무 일도 안 하는 카드가 "부착됨"으로 집계된다 —
+                // 설명 텍스트도 공란. 이 spec 이 인용해 온 "조용한 no-op 금지"(dc-trigger
+                // 선례)를 지켜 loud 거절한다. 개통하려면 defender 에도 PatternSlot/
+                // EmitterInstance 부착 + BuildPatternTemplate(hostIsEnemy:false) 이 필요하다.
+                if (m.payload.kind == Wassup.Data.DcPayloadKind.EmitProjectilePattern)
+                {
+                    Debug.LogWarning($"[BattleBridge] Card '{card.id}' mechanic {i}: EmitProjectilePattern 은 카드(defender) 경로 미배선 — skipped.");
+                    continue;
                 }
 
                 // dreamcatcher-content-3 unit 4 — HealthThreshold 상태 bake 를 payload-불문
@@ -656,34 +671,27 @@ namespace Wassup.Bridge
                     Debug.LogWarning($"[BattleBridge] Card '{card.id}' attackMod {i}: None kind / non-positive damageMul — skipped.");
                     continue;
                 }
+                // attack-decoupling unit 1 — host 종속 판정 단일 게이트(메커닉과 동일).
+                // ProjectileBounce 의 옛 게이트는 `ProjectileRef 유무`였는데, 그건
+                // 폭탄맨(GrenadeToCell)·머신거너(DirectionalLinear)·아틸러리(Ballistic)를
+                // 전부 통과시켜 "붙는데 무효"를 만들었다 — 이제 route==Homing 을 요구한다.
+                var modReason = Wassup.Core.DcApplicability.EvaluateAttackMod(m.kind, hostProfile);
+                if (modReason != Wassup.Core.DcRejectReason.None)
+                {
+                    Debug.LogWarning($"[BattleBridge] Card '{card.id}' attackMod {i}: {m.kind} 는 이 host 에서 발동하지 않는다 ({modReason}, archetype={hostProfile.archetype}, route={hostProfile.route}) — skipped.");
+                    continue;
+                }
                 if (m.kind == Wassup.Data.DcAttackModKind.ProjectileBounce)
                 {
-                    // Contract 4 — ProjectileBounce needs a positive bounce count and a
-                    // HomingToEntity×SingleSplash projectile to modify. Melee (no
-                    // ProjectileRef) has none; skip that mod only (same-card mechanics
-                    // may still apply).
                     if (m.count <= 0)
                     {
                         Debug.LogWarning($"[BattleBridge] Card '{card.id}' attackMod {i}: ProjectileBounce non-positive count — skipped.");
                         continue;
                     }
-                    if (!_em.HasComponent<ProjectileRef>(defender))
-                    {
-                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' attackMod {i}: ProjectileBounce on a non-projectile (melee) unit — skipped.");
-                        continue;
-                    }
                 }
                 else if (m.kind == Wassup.Data.DcAttackModKind.FrontmostTarget)
                 {
-                    // 끝을 보는 눈 — boosts the primary target's direct Damage, so it needs
-                    // a positive Damage-kind output to boost. Heal-only / output-less
-                    // support units would consume the card with zero effect → reject.
-                    // `count`/`tileRange` are ignored (uses the base attack range).
-                    if (!HasPositiveDamageOutput(defender))
-                    {
-                        Debug.LogWarning($"[BattleBridge] Card '{card.id}' attackMod {i}: FrontmostTarget on a unit with no positive Damage output — skipped.");
-                        continue;
-                    }
+                    // 끝을 보는 눈 — `count`/`tileRange` 는 무시(기본 사거리 사용).
                     // Combat-owned per-attack lock; add once, idempotent across copies.
                     if (!_em.HasComponent<FrontmostAttackLock>(defender))
                         _em.AddComponentData(defender, new FrontmostAttackLock
@@ -722,19 +730,15 @@ namespace Wassup.Bridge
         {
             if (card == null) return false;
             // Squad·비-Unit 은 유닛 종속 게이트 없음(축 버프 host 무제약) → eval 이 판단.
+            // profile 은 조기 return 경로에서 읽히지 않으므로 기본값으로 충분하다.
             if (card.type != Wassup.Data.CardType.Unit)
-                return Wassup.Core.DreamcatcherAttachEval.WouldApply(card, false, false, false, false);
+                return Wassup.Core.DreamcatcherAttachEval.WouldApply(card, default(Wassup.Core.DcHostProfile));
             if (!HasLiveEntityManager() || !_em.Exists(defender) || !_em.HasComponent<DefenderUnitTag>(defender))
                 return false;
             // dreamcatcher-attach-requirement unit 1 — 부착 제한(클래스/특정 유닛)은 능력
             // 게이트와 독립인 정적 술어라 먼저 본다. 커밋 preflight 와 같은 함수 → 일치.
             if (!PassesAttachRequirement(defender, card)) return false;
-            bool hasProjectile = _em.HasComponent<ProjectileRef>(defender);
-            bool hasDamageOutput = HasPositiveDamageOutput(defender);
-            bool hasLethalTimer = _em.HasComponent<Wassup.Battle.Units.LethalTimer>(defender);
-            bool hasDreamCocoon = _em.HasComponent<Wassup.Battle.Effects.DreamCocoon>(defender);
-            return Wassup.Core.DreamcatcherAttachEval.WouldApply(
-                card, hasProjectile, hasDamageOutput, hasLethalTimer, hasDreamCocoon);
+            return Wassup.Core.DreamcatcherAttachEval.WouldApply(card, BuildHostProfile(defender));
         }
 
         // subconscious-curse-expansion unit 2 (살찌운 제물) — 적 표식. 반환 규약은
@@ -818,6 +822,66 @@ namespace Wassup.Bridge
         // dreamcatcher-content-2 unit 1 — does this defender emit at least one positive
         // Damage-kind attack output (vs heal-only / output-less)? Gates FrontmostTarget
         // attach so 끝을 보는 눈 can't be spent inertly on a support unit.
+        // attack-decoupling unit 1 — host 종속 판정의 입력. ECS 조회를 여기서 한 번에
+        // 하고, 판정 자체는 순수 계층(DcApplicability)이 한다. UI preflight 와 커밋
+        // bake 가 **같은 profile → 같은 함수**를 쓰므로 리티클 색과 커밋 결과가 어긋날
+        // 수 없다(예전엔 두 미러를 손으로 맞췄다).
+        private Wassup.Core.DcHostProfile BuildHostProfile(Entity defender)
+        {
+            var profile = new Wassup.Core.DcHostProfile
+            {
+                archetype = Wassup.Core.DcHostArchetype.Standard,
+                route = Wassup.Core.DcProjectileRoute.None,
+            };
+            if (!HasLiveEntityManager() || !_em.Exists(defender)) return profile;
+
+            // 판정 순서 고정: 폭탄맨도 facing 을 쓰므로 BombThrow 를 먼저 걸러야 한다.
+            // HazardCast 는 attackRange 0 이라 RESOLVE 에 못 가는 부류.
+            //
+            // FacingVolley 는 `VolleyFireState` **단독**으로 판별한다 — DeployedFacing 은
+            // 조준 '완료 여부'라는 일시 상태라, 그걸 요구하면 같은 유닛이 조준 전후로
+            // 다르게 판정된다(Play 실측: 조준 전 머신거너가 Standard 로 나왔다). 유닛
+            // 정체성은 볼리 설정 보유가 나타낸다. SO 측 미러(DcApplicabilityMatrixTests
+            // 의 ProfileOf)가 쓰는 `RequiresFacing` 과 같은 결.
+            if (_em.HasComponent<BombLauncherState>(defender))
+                profile.archetype = Wassup.Core.DcHostArchetype.BombThrow;
+            else if (_em.HasComponent<Wassup.Battle.Effects.HazardCastState>(defender))
+                profile.archetype = Wassup.Core.DcHostArchetype.HazardCast;
+            else if (_em.HasComponent<VolleyFireState>(defender))
+                profile.archetype = Wassup.Core.DcHostArchetype.FacingVolley;
+
+            // route = host 가 **실제로** 타는 발사 경로. 폭탄맨은 ProjectileRef 가
+            // 무엇을 선언하든 GrenadeToCell 하드코딩이다(spec 계약 6) — SO 의
+            // flightMode 를 믿으면 Projectile_Bomb(=Homing) 때문에 오판한다.
+            if (profile.archetype == Wassup.Core.DcHostArchetype.BombThrow)
+                profile.route = Wassup.Core.DcProjectileRoute.Grenade;
+            else if (_em.HasComponent<ProjectileRef>(defender))
+            {
+                switch (_em.GetComponentData<ProjectileRef>(defender).movement)
+                {
+                    case MovementKind.HomingToEntity: profile.route = Wassup.Core.DcProjectileRoute.Homing; break;
+                    case MovementKind.BallisticArcToPoint:
+                    case MovementKind.SkyFall: profile.route = Wassup.Core.DcProjectileRoute.Ballistic; break;
+                    case MovementKind.DirectionalLinear: profile.route = Wassup.Core.DcProjectileRoute.Directional; break;
+                    case MovementKind.GrenadeToCell: profile.route = Wassup.Core.DcProjectileRoute.Grenade; break;
+                }
+            }
+
+            profile.targetsEnemies = TargetsEnemies(defender);
+            profile.hasDamageOutput = HasPositiveDamageOutput(defender);
+            profile.hasLethalTimer = _em.HasComponent<LethalTimer>(defender);
+            profile.hasDreamCocoon = _em.HasComponent<Wassup.Battle.Effects.DreamCocoon>(defender);
+            return profile;
+        }
+
+        // 이 유닛의 공격 대상이 적인가. mask 는 CreateDefenderEntity 가 targetAllies 로
+        // 굽는다(Defender ↔ Enemy). 마스크 부재/0(공격 안 하는 유닛)도 false.
+        private bool TargetsEnemies(Entity defender)
+        {
+            if (!_em.HasComponent<AttackState>(defender)) return false;
+            return (_em.GetComponentData<AttackState>(defender).targetMask & (int)Faction.Enemy) != 0;
+        }
+
         private bool HasPositiveDamageOutput(Entity defender)
         {
             if (!_em.HasBuffer<AttackOutputElement>(defender)) return false;

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Ability_Hazard_BlockingCaster
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.HazardCastAbility
   id: hazard_blocking_caster
-  castRange: 4
+  castRange: 3
   cooldown: 5
   kind: 2
   zoneHazard: {fileID: 0}

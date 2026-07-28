@@ -38,13 +38,6 @@ namespace Wassup.Bridge
         [SerializeField] private MapDocumentPool.Entry endlessEncounter;
         // 비0 = 맵 시드 고정(매판 동일 맵/인덱스 핀). 0 = 토너먼트 시드 결정론(부재 시 0번 폴백).
         [SerializeField] private int fixedMapSeed = 20260719;
-        // [임시] 풀 인덱스 하드 고정(2026-07-27 사용자 요청). ≥0 이면 시드/토너먼트/dev override 를
-        // 전부 제치고 이 인덱스로만 진입한다(현재 1 = Coil). 로비 맵 선택 스테퍼도 함께 임시 숨김
-        // (DevMapOverridePanel).
-        // 되돌릴 때 **세 곳** 다: (1) BattleScene 의 BattleBridge 인스펙터 값 → -1,
-        // (2) 이 코드 기본값 → -1, (3) DevMapOverridePanel.TemporarilyHidden → false.
-        // (1)이 핵심 — 씬 저장으로 이 필드가 BattleScene 에 직렬화됐고, 씬 값이 코드 기본값을 이긴다.
-        [SerializeField] private int forcedMapPoolIndex = 1;
         [Header("Season")]
         [SerializeField] private SeasonRegistry seasonRegistry;
         [SerializeField] private float tileSize = 1f;
@@ -300,6 +293,8 @@ namespace Wassup.Bridge
         private NativeQueue<Wassup.Battle.Combat.Projectile.ProjectileHitEvent> _projectileHitEventQueue;
         // aggro-targeting Unit 11 — Combat(AttackSystem)→Effects(AggroStateSystem) 히트 채널.
         private NativeQueue<Wassup.Battle.Effects.AggroHitEvent> _aggroHitEventQueue;
+        // attack-decoupling unit 4 — Effects(HazardCastSystem)→Combat(AttackSystem) 캐스트 사건.
+        private NativeQueue<Wassup.Battle.Combat.CastEvent> _castEventQueue;
         // nightmare-catcher unit 1 — Combat→Combat 보스 위협 귀속 채널.
         private NativeQueue<Wassup.Battle.Combat.ThreatHitEvent> _threatHitEventQueue;
         // nightmare-catcher unit 3 — Combat→Movement 텔레포트(SelfBlink) 요청 채널.
@@ -582,6 +577,7 @@ namespace Wassup.Bridge
             DestroyEntitiesByType<Wassup.Battle.Effects.MeteorBarrageRequestsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Combat.AttackOutputLogEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.AggroHitEventsSingleton>();
+            DestroyEntitiesByType<Wassup.Battle.Combat.CastEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Combat.ThreatHitEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Movement.BlinkRequestEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.ObstacleSingleton>();
@@ -605,6 +601,7 @@ namespace Wassup.Bridge
             if (_unitAttackVisualQueue.IsCreated) _unitAttackVisualQueue.Dispose();
             if (_projectileHitEventQueue.IsCreated) _projectileHitEventQueue.Dispose();
             if (_aggroHitEventQueue.IsCreated) _aggroHitEventQueue.Dispose();
+            if (_castEventQueue.IsCreated) _castEventQueue.Dispose();
             if (_threatHitEventQueue.IsCreated) _threatHitEventQueue.Dispose();
             if (_blinkRequestQueue.IsCreated) _blinkRequestQueue.Dispose();
             if (_healAppliedEventQueue.IsCreated) _healAppliedEventQueue.Dispose();
@@ -888,9 +885,7 @@ namespace Wassup.Bridge
             _resolvedDeck = deck;
             // endless-mode unit 2 — 무한 모드 진입: 공용 풀 이전에 전용 인카운터를 우선한다.
             // 풀 count 를 안 건드려 랜덤/토너먼트 맵 선택은 byte-identical(계약 5). DevMapOverride.Endless 로만.
-            // [임시] forcedMapPoolIndex 가 켜져 있으면 무한 모드 stale 토글도 제친다 — "고정"은 고정.
-            if (forcedMapPoolIndex < 0
-                && Wassup.Core.DevMapOverride.Endless && endlessEncounter.deck != null
+            if (Wassup.Core.DevMapOverride.Endless && endlessEncounter.deck != null
                 && MapGridBattleAdapter.IsUsableDocument(endlessEncounter.document))
             {
                 activeDoc = endlessEncounter.document;
@@ -903,13 +898,7 @@ namespace Wassup.Bridge
                 string poolSource;
                 // map-play-feel unit 2 — 개발 확인용 인덱스 강제(모바일 개발빌드 런타임).
                 // 서버 API 는 그대로 받되 override 가 설정돼 있으면 최우선. 없으면 아래 기존 3분기.
-                // [임시] 하드 고정이 최우선 — 서버 시드도, PlayerPrefs 에 남은 dev override 도 무시.
-                if (forcedMapPoolIndex >= 0)
-                {
-                    poolIndex = Mathf.Clamp(forcedMapPoolIndex, 0, mapPool.Count - 1);
-                    poolSource = "forced(temp)";
-                }
-                else if (Wassup.Core.DevMapOverride.HasIndex)
+                if (Wassup.Core.DevMapOverride.HasIndex)
                 {
                     poolIndex = Mathf.Clamp(Wassup.Core.DevMapOverride.Index, 0, mapPool.Count - 1);
                     poolSource = "dev";
@@ -1346,6 +1335,15 @@ namespace Wassup.Bridge
             _aggroHitEventQueue = new NativeQueue<Wassup.Battle.Effects.AggroHitEvent>(Allocator.Persistent);
             var aggroHitSingleton = _em.CreateEntity();
             _em.AddComponentData(aggroHitSingleton, new Wassup.Battle.Effects.AggroHitEventsSingleton { queue = _aggroHitEventQueue });
+
+            // attack-decoupling unit 4 — 캐스트 사건 채널(Effects→Combat). 해저드
+            // 캐스터는 attackRange 0 이라 RESOLVE 에 못 가므로 캐스트 성사가 곧 그
+            // host 의 공격 사건이다. HazardCastSystem 이 enqueue, AttackSystem 이
+            // 드레인. 브리지는 lifecycle 만(AggroHit 선례와 동일 3점 세트).
+            if (_castEventQueue.IsCreated) _castEventQueue.Dispose();
+            _castEventQueue = new NativeQueue<Wassup.Battle.Combat.CastEvent>(Allocator.Persistent);
+            var castEventSingleton = _em.CreateEntity();
+            _em.AddComponentData(castEventSingleton, new Wassup.Battle.Combat.CastEventsSingleton { queue = _castEventQueue });
 
             // nightmare-catcher unit 1 — Combat→Combat 보스 위협 귀속 채널. 데미지
             // 생산자(AttackSystem 근접 / ProjectileHitSystem 착탄)가 보스(ThreatEntry
@@ -3282,7 +3280,14 @@ namespace Wassup.Bridge
 #if UNITY_EDITOR
             _em.SetName(entity, $"Projectile_{req.dataIndex}");
 #endif
-            var spawnPos = new float3(req.origin.x, spawnHeight, req.origin.z);
+            // SkyFall 은 sim 이동이 0 이다(Move arm 이 elapsed 만 진행) — 따라서 스폰
+            // 위치가 그대로 최종 화면 위치가 된다. 발사 주체가 origin 에 무엇을 넣든
+            // 착탄 셀에서 떨어져야 하므로, 궤적의 불변식을 궤적 소유 지점인 여기서
+            // 강제한다. (기존 Meteor/구 barrage arm 은 origin==impact 로 보내와서
+            // 바이트 동일하고, emitter 처럼 origin=시전자 인 주체만 정정된다.)
+            var spawnPos = req.movement == MovementKind.SkyFall
+                ? new float3(req.impact.x, spawnHeight, req.impact.z)
+                : new float3(req.origin.x, spawnHeight, req.origin.z);
             _em.AddComponentData(entity, LocalTransform.FromPositionRotationScale(spawnPos, quaternion.identity, req.visualScale));
             _em.AddComponent<ProjectileTag>(entity);
 
@@ -3304,6 +3309,7 @@ namespace Wassup.Bridge
                 bounceRemaining = req.bounceRemaining,
                 bounceTileRange = req.bounceTileRange,
                 bounceDamageMul = req.bounceDamageMul,
+                retargetTileRange = req.retargetTileRange,
                 // nightmare-catcher unit 1 — shooter attribution, verbatim copy.
                 // Null (bridge-cast skills) = no threat credit.
                 owner = req.owner,
@@ -3331,6 +3337,34 @@ namespace Wassup.Bridge
                 state.arcHeight = req.arcHeight;
                 state.impactTileRange = req.impactTileRange;
                 state.flightTime = BallisticArc.FlightTime(spawnPos, ballisticImpact, req.speed, projData.minFlightTime);
+            }
+            else if (req.movement == MovementKind.BezierHomingToEntity)
+            {
+                // projectile-emission-pattern unit 1 — 제어점은 SO 파라미터
+                // (bezierLateral/ForwardBias)가 필요해 **여기서** 산출한다. ISystem 은
+                // SO 를 못 읽으므로 번역자인 drain 이 채우는 것이 이 파이프라인의 관례다
+                // (SkyFall 의 dropHeight 보충 선례). 덕분에 발사 주체(AttackSystem·
+                // emitter·캐스트) 어느 쪽도 SO 를 알 필요가 없다.
+                float3 destPos = spawnPos;
+                if (req.target != Entity.Null && _em.HasComponent<LocalTransform>(req.target))
+                    destPos = _em.GetComponentData<LocalTransform>(req.target).Position;
+                // 제어점은 발사 시점 목표 위치 기준으로 한 번만 잡는다 — 이후 종점만
+                // 타겟을 따라가므로(Move arm) 곡선이 실시간으로 재조정된다.
+                var bezierDest = new float3(destPos.x, spawnHeight, destPos.z);
+                state.origin = spawnPos;
+                float lateral = projData != null ? projData.bezierLateral : 0f;
+                float forwardBias = projData != null ? projData.bezierForwardBias : 0.35f;
+                Bezier3.ControlPoints(spawnPos, bezierDest, req.swingIndex, lateral, forwardBias,
+                                      out var bezierC1, out var bezierC2);
+                state.control1 = bezierC1;
+                state.control2 = bezierC2;
+                // arcHeight 슬롯 = view 공간 Y 아치 높이(sim 은 XZ 곡선만).
+                state.arcHeight = req.arcHeight > 0f ? req.arcHeight
+                    : (projData != null ? projData.arcHeight : 0f);
+                // 비행 시간은 발사 시 거리/속도로 고정 — 타겟이 움직여도 곡선이
+                // 압축되며 파고든다(BallisticArc 와 같은 산출식·같은 하한).
+                state.flightTime = BallisticArc.FlightTime(
+                    spawnPos, bezierDest, req.speed, projData != null ? projData.minFlightTime : 0.3f);
             }
             else if (req.movement == MovementKind.DirectionalLinear)
             {
@@ -3924,6 +3958,12 @@ namespace Wassup.Bridge
                 ProjectileFlightMode.BallisticToCell => (MovementKind.BallisticArcToPoint, PayloadKind.TileAoe),
                 // defender-directional-volley unit 1 — 방향 직선 비행 × 경로 스윕 페어.
                 ProjectileFlightMode.Directional => (MovementKind.DirectionalLinear, PayloadKind.PathHit),
+                // projectile-emission-pattern unit 1 — 곡선 추적 × 단일 착탄.
+                ProjectileFlightMode.BezierHoming => (MovementKind.BezierHomingToEntity, PayloadKind.SingleSplash),
+                // projectile-emission-pattern unit 4 — 낙하 텔레그래프 × 셀 AoE.
+                // 이 축은 여태 ApplyMeteor 하드코딩으로만 존재했다 — 패턴이 데이터로
+                // SkyFall 탄을 지정할 수 있어야 하므로 flightMode 어휘에 편입한다.
+                ProjectileFlightMode.SkyFall => (MovementKind.SkyFall, PayloadKind.TileAoe),
                 _ => (MovementKind.HomingToEntity, PayloadKind.SingleSplash),
             };
 
@@ -5581,6 +5621,30 @@ namespace Wassup.Bridge
             // 위협 테이블은 보스와 항상 동행 — 텔레포트 arm 의 타겟 소스.
             // defender 히트가 쌓기 전까지 빈 버퍼(ThreatHitEvent 드레인이 채움).
             _em.AddBuffer<ThreatEntry>(entity);
+
+            // projectile-emission-pattern unit 3 — 패턴 버퍼는 **slots 획득 전에** 붙인다.
+            // AddBuffer 는 구조 변경이라 이미 잡아둔 DynamicBuffer 핸들을 무효화한다 —
+            // 루프 안에서 붙이면 아래 slots 가 죽는다. 패턴 mechanic 이 없으면 부착하지
+            // 않아 기존 유닛(카드만 쓰는 defender 포함)의 chunk 비용은 0 이다.
+            bool wantsPattern = false;
+            for (int i = 0; i < mechanics.Length; i++)
+                if (mechanics[i].payload.kind == Wassup.Data.DcPayloadKind.EmitProjectilePattern)
+                { wantsPattern = true; break; }
+            if (wantsPattern)
+            {
+                _em.AddBuffer<Wassup.Battle.Combat.Projectile.Emission.PatternSlot>(entity);
+                // 발사 인스턴스 버퍼도 미리(런타임 구조 변경 회피 — IncomingHeal 선례).
+                _em.AddBuffer<Wassup.Battle.Combat.Projectile.Emission.EmitterInstance>(entity);
+            }
+            // ⚠ 여기서 PatternSlot 핸들을 캐시하지 않는다. 위 AddBuffer 2회 + 아래
+            // AddBuffer<DcTriggerSlot> 이 전부 구조 변경이라, 먼저 잡은 핸들은 마지막
+            // AddBuffer 시점에 죽는다(ObjectDisposedException / 회수된 chunk write).
+            // 사용 직전 GetBuffer 로 다시 얻는다 — 그 사이 구조 변경이 없으므로 유효하다.
+
+            // slots 는 **마지막** AddBuffer 라 아래 루프까지 캐시해도 안전하다: 루프 안의
+            // 쓰기는 DynamicBuffer.Add(리사이즈, archetype 불변)와 managed 조작뿐이다.
+            // 루프에 AddComponent/AddBuffer 를 하나라도 추가하는 순간 이 전제가 깨지므로,
+            // 그때는 이 핸들도 사용 직전 재획득으로 바꿔야 한다.
             var slots = _em.AddBuffer<DcTriggerSlot>(entity);
 
             for (int i = 0; i < mechanics.Length; i++) // bake-time only read (managed array)
@@ -5619,17 +5683,56 @@ namespace Wassup.Bridge
                     nextBoundaryIndex = 1,
                     maxHpRef = unitType.health,
                     duration = math.max(0f, m.payload.duration),
+                    // struct default 0 은 유효 index 라 미배선 슬롯이 0번 패턴을 쏘게
+                    // 된다 — 명시 -1 초기화가 계약이다(unit 3).
+                    patternIndex = -1,
                 };
                 if (m.payload.kind == Wassup.Data.DcPayloadKind.AreaBarrage)
                 {
-                    // SkyFall 낙하 비주얼 필수 — Meteor 파이프라인 재사용(unit 2).
-                    if (m.payload.projectile == null || m.payload.magnitude <= 0f)
+                    // projectile-emission-pattern unit 4 — AreaBarrage arm 은 제거됐다
+                    // (융단폭격은 EmitProjectilePattern + Pattern_* asset 으로 이관).
+                    // enum 값은 append-only 계약상 남아 있으므로, 옛 authoring 이
+                    // 조용한 no-op 으로 죽는 대신 여기서 거절 사유를 남긴다.
+                    Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: AreaBarrage 는 EmitProjectilePattern 으로 이관됐다(arm 제거) — skipped. 패턴 asset 을 지정하라.");
+                    continue;
+                }
+                else if (m.payload.kind == Wassup.Data.DcPayloadKind.EmitProjectilePattern)
+                {
+                    // projectile-emission-pattern unit 3 — 발사 명세 bake. SO 해석은
+                    // 브리지가 유일 seam 이므로 spec 변환과 template 조립이 여기서 끝난다.
+                    var pattern = m.payload.pattern;
+                    if (pattern == null || pattern.barrel == null)
                     {
-                        Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: AreaBarrage needs ProjectileData + positive magnitude — skipped.");
+                        Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: EmitProjectilePattern needs a pattern with a barrel — skipped.");
                         continue;
                     }
-                    slot.projectileDataIndex = GetOrCreateProjectileDataIndex(m.payload.projectile);
-                    slot.visualScale = m.payload.projectile.visualScale;
+                    if (!_em.HasBuffer<Wassup.Battle.Combat.Projectile.Emission.PatternSlot>(entity))
+                    {
+                        // 사전 스캔과 어긋난 경우(도달 불가) — 조용한 오발사보다 경고.
+                        Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: pattern buffer missing — skipped.");
+                        continue;
+                    }
+                    int barrelIndex = GetOrCreateProjectileDataIndex(pattern.barrel);
+                    // SkyFall 패턴은 낙하 예고가 곧 그 스킬의 정체다 — 0 이면 텔레그래프
+                    // 없이 즉착탄하므로 조용히 넘기지 않는다(구 arm 은 authoring 이 duration 을
+                    // 요구했다).
+                    if (pattern.barrel.flightMode == Wassup.Data.ProjectileFlightMode.SkyFall
+                        && pattern.telegraphSec <= 0f)
+                    {
+                        Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: SkyFall 패턴의 telegraphSec 가 0 — 예고 없이 즉착탄합니다.");
+                    }
+                    // (BezierHoming 재조준 봉인은 authoring 표면이 없어 경고가 불필요하다 —
+                    //  ProjectileData 에 재조준 필드 자체가 없다. 그 필드를 여는 후속 작업이
+                    //  재조준 개통과 한 묶음이라는 점은 README 후속 후보에 적혀 있다.)
+                    // 사용 직전 재획득(위 주석 참조).
+                    var patternSlots = _em.GetBuffer<Wassup.Battle.Combat.Projectile.Emission.PatternSlot>(entity);
+                    patternSlots.Add(new Wassup.Battle.Combat.Projectile.Emission.PatternSlot
+                    {
+                        spec = pattern.ToSpec(barrelIndex),
+                        template = BuildPatternTemplate(pattern, barrelIndex, entity, hostIsEnemy: true),
+                        fireCountBase = 0,
+                    });
+                    slot.patternIndex = patternSlots.Length - 1;
                 }
                 else if ((m.payload.kind == Wassup.Data.DcPayloadKind.SelfBlink ||
                           m.payload.kind == Wassup.Data.DcPayloadKind.AllyMoveSpeedAura) &&
@@ -5658,6 +5761,43 @@ namespace Wassup.Bridge
                 }
                 slots.Add(slot);
             }
+        }
+
+        // projectile-emission-pattern unit 3 — 발사 요청 원본 조립. 향후 defender/카드
+        // 경로가 같은 함수를 호출하도록 bake 밖으로 분리해 둔다(트리거 소스 확장의 실비용
+        // 3요건 중 ②를 선불). 타겟 의존 필드(target/impact/swingIndex)는 비운 채 남기고
+        // emitter 가 발마다 채운다. **드레인이 SO 에서 직접 읽는 값은 싣지 않는다** —
+        // dropHeight(기존), 베지어 lateral/forwardBias(unit 1).
+        private ProjectileSpawnRequest BuildPatternTemplate(
+            Wassup.Data.ProjectilePatternData pattern, int barrelDataIndex, Entity owner, bool hostIsEnemy)
+        {
+            var barrel = pattern.barrel;
+            var axes = ResolveProjectileAxes(barrel.flightMode);
+            return new ProjectileSpawnRequest
+            {
+                movement = axes.movement,
+                payload = axes.payload,
+                // 기존 발사 지점들이 barrel SO 를 읽어 request 를 채우는 목록과 동일하게
+                // 유지한다(새 컨벤션을 만들지 않는다).
+                speed = barrel.speed,
+                hitThreshold = barrel.hitThreshold,
+                visualScale = barrel.visualScale,
+                // SkyFall 은 arcHeight 슬롯을 "낙하 시작 높이"로 재사용하고, 드레인이
+                // req.arcHeight > 0 이면 그 값을, 아니면 dropHeight 를 쓴다. barrel 의
+                // arcHeight 기본값은 2 라 그대로 실으면 dropHeight(6~9)를 침묵 오버라이드해
+                // 낙하가 뚝 떨어진다 — 구 barrage arm 은 이 필드를 아예 안 실었다.
+                arcHeight = axes.movement == MovementKind.SkyFall ? 0f : barrel.arcHeight,
+                impactTileRange = barrel.impactTileRange,
+                onHitEffect = barrel.onHitEffect,
+                splashRadius = barrel.splashRadius,
+                splashDamageMul = barrel.splashDamageMul,
+                dataIndex = barrelDataIndex,
+                owner = owner,
+                // 진영은 host 에서 도출한다(계약 7) — 패턴 SO 에 faction 필드 없음.
+                targetFaction = hostIsEnemy
+                    ? ProjectileTargetFaction.Defender
+                    : ProjectileTargetFaction.Enemy,
+            };
         }
 
         private void SpawnUnit(PendingSpawnEntry pending)

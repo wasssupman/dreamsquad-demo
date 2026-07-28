@@ -93,6 +93,12 @@ namespace Wassup.Data
                 int bIndex = rng.NextInt(0, pool.Count - 1);
                 if (bIndex >= aIndex) bIndex++;
 
+                // wave-pattern unit 12 — 등장 게이트. 뽑은 인덱스만 사후 보정하므로 rng 소비가
+                // 불변이다 → 게이트에 안 걸리는 웨이브의 구성은 기존과 byte-identical.
+                int waveNumber = i + 1;
+                aIndex = ResolveWaveEligibleIndex(pool, aIndex, waveNumber);
+                bIndex = ResolveWaveEligibleIndex(pool, bIndex, waveNumber, aIndex);
+
                 // wave-pattern unit 7 — 수량 램프. NextFloat 1콜은 기존 NextInt 1콜과 rng
                 // 소비 수가 같아 아래 countA·보스 후처리의 rng 정렬이 불변이다.
                 float jitter01 = rng.NextFloat();
@@ -119,7 +125,8 @@ namespace Wassup.Data
                 {
                     if ((i + 1) % bossWaveInterval != 0) continue;
                     int escortCount = rng.NextInt(escortMin, escortMax + 1);
-                    var escortType = pool[rng.NextInt(0, pool.Count)]; // pool 은 boss-free
+                    // pool 은 boss-free. 호위도 같은 등장 게이트를 따른다(unit 12).
+                    var escortType = pool[ResolveWaveEligibleIndex(pool, rng.NextInt(0, pool.Count), i + 1)];
                     var groups = new List<WaveSpawnGroup>
                     {
                         new WaveSpawnGroup(bossUnit, 1),      // 선봉: RoundRobin round 0 = 보스 먼저
@@ -195,6 +202,30 @@ namespace Wassup.Data
             float center = math.lerp(minUnits, maxUnits, math.saturate(ramp));
             float jitter = jitterBand > 0 ? (jitter01 * 2f - 1f) * jitterBand : 0f;
             return math.clamp((int)math.round(center + jitter), minUnits, maxUnits);
+        }
+
+        // wave-pattern unit 12 — 등장 게이트 해소(순수). pool[startIndex] 가 이 웨이브에 등장할 수
+        // 없으면(unit.minWaveNumber > waveNumber) pool 순서로 다음 허용 유닛까지 순환해 그 인덱스를
+        // 돌려준다. 인덱스 in → 인덱스 out 이라 rng 를 건드리지 않는다(제약 10 순수 함수).
+        // excludeIndex(≥0) = 같은 웨이브의 다른 그룹. "한 웨이브 = 2종" 계약을 지키려 건너뛴다.
+        // 허용 유닛이 하나도 없으면 startIndex 를 그대로 돌려준다 — 빈/단일 웨이브를 만드느니
+        // 게이트를 여는 fail-open 이다(예: 풀의 모든 유닛이 첫 웨이브 금지인 경우).
+        public static int ResolveWaveEligibleIndex(
+            IReadOnlyList<AttackUnitData> pool, int startIndex, int waveNumber, int excludeIndex = -1)
+        {
+            if (pool == null || pool.Count == 0) return startIndex;
+
+            int count = pool.Count;
+            int start = ((startIndex % count) + count) % count;
+            for (int step = 0; step < count; step++)
+            {
+                int index = (start + step) % count;
+                if (index == excludeIndex) continue;
+                var unit = pool[index];
+                if (unit == null) continue;
+                if (unit.minWaveNumber <= waveNumber) return index;
+            }
+            return startIndex;
         }
 
         // 웨이브가 lane 별로 첫 적을 내보내는 절대 시각(스폰 없는 lane 은 -1).

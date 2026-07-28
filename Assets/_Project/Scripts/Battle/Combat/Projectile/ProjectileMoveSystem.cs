@@ -31,6 +31,51 @@ namespace Wassup.Battle.Combat.Projectile
             float dt = SystemAPI.Time.DeltaTime;
             var ecb = new EntityCommandBuffer(Allocator.Temp);
             var transformLookup = SystemAPI.GetComponentLookup<LocalTransform>(isReadOnly: true);
+            // DamageApplicationSystem 은 DeadTag 가 붙은 순간부터 IncomingDamage 를 뽑지
+            // 않는다 — 즉 "죽었지만 아직 파괴 전"인 창에 도착한 투사체는 시체에 데미지를
+            // append 하고 그대로 증발한다. 재조준은 그 창까지 덮어야 의미가 있다.
+            var deadLookup = SystemAPI.GetComponentLookup<Wassup.Battle.Units.DeadTag>(isReadOnly: true);
+
+            // 재조준(retargetTileRange > 0)용 적 후보. 그런 투사체가 하나도 없으면
+            // 스냅샷을 만들지 않는다 — 기존 투사체만 나는 프레임의 비용을 0 으로 둔다.
+            bool anyRetarget = false;
+            foreach (var ps in SystemAPI.Query<RefRO<ProjectileState>>().WithAll<ProjectileTag>())
+                // BezierHomingToEntity 는 여기 넣지 않는다: 베지어는 t=elapsed/flightTime
+                // 로 진행하므로 t≈1 에서 재조준하면 새 타겟 위치로 **순간이동 후 즉시
+                // 착탄**한다(HomingToEntity 는 speed*dt 로 움직여 이런 일이 없다). 곡선을
+                // 새 타겟 기준으로 다시 그리려면 제어점 재산출이 필요한데 그 파라미터는
+                // SO 에 있어 ISystem 이 못 읽는다 — 재조준 개통은 그 설계와 함께 온다
+                // (spec README 후속 후보 "패턴 탄의 재조준/바운스 opt-in").
+                if (ps.ValueRO.retargetTileRange > 0
+                    && ps.ValueRO.movement == MovementKind.HomingToEntity)
+                { anyRetarget = true; break; }
+
+            var retargetEntities = default(NativeArray<Entity>);
+            var retargetPositions = default(NativeArray<float3>);
+            float tileSize = 1f;
+            int2 gridSize = new int2(128, 128);
+            float3 ffOrigin = float3.zero;
+            if (anyRetarget)
+            {
+                if (SystemAPI.TryGetSingleton<Wassup.Battle.Effects.FlowFieldSingleton>(out var flowField))
+                {
+                    tileSize = flowField.tileSize;
+                    gridSize = flowField.gridSize;
+                    ffOrigin = flowField.origin;
+                }
+                // AttackUnitTag = 적 전용 태그이자 이 풀의 유일한 진영 필터다
+                // (FactionTag 는 디펜더·적·해저드가 전부 갖고 있어 아무것도 안 거른다).
+                var q = SystemAPI.QueryBuilder()
+                    .WithAll<LocalTransform, Wassup.Battle.Units.AttackUnitTag>()
+                    .WithNone<Wassup.Battle.Units.DeadTag>()
+                    .WithNone<Wassup.Battle.Movement.PastGoalTag>()
+                    .Build();
+                retargetEntities = q.ToEntityArray(Allocator.Temp);
+                var xf = q.ToComponentDataArray<LocalTransform>(Allocator.Temp);
+                retargetPositions = new NativeArray<float3>(xf.Length, Allocator.Temp);
+                for (int i = 0; i < xf.Length; i++) retargetPositions[i] = xf[i].Position;
+                xf.Dispose();
+            }
 
             foreach (var (transform, projectile, entity) in
                      SystemAPI.Query<RefRW<LocalTransform>, RefRW<ProjectileState>>()
@@ -42,12 +87,31 @@ namespace Wassup.Battle.Combat.Projectile
                     case MovementKind.HomingToEntity:
                     {
                         var target = projectile.ValueRO.target;
-                        if (target == Entity.Null || !transformLookup.HasComponent(target))
+                        if (target == Entity.Null || !transformLookup.HasComponent(target)
+                            || deadLookup.HasComponent(target))
                         {
                             // Target gone (destroyed by DamageApplicationSystem or a
                             // prior hit) — never apply damage to a ghost target.
-                            ecb.DestroyEntity(entity);
-                            break;
+                            //
+                            // 단 retargetTileRange > 0 인 투사체는 파괴 대신 **현재 위치
+                            // 기준 반경 안에서 다시 겨눈다**. 니들처럼 N회에 한 번 나오는
+                            // 자원은 대상이 먼저 죽으면 그 주기가 통째로 버려지기 때문.
+                            // 기존 투사체(화살 등)는 이 값이 0 이라 동작이 그대로다.
+                            int rr = projectile.ValueRO.retargetTileRange;
+                            int repick = -1;
+                            if (rr > 0 && retargetPositions.IsCreated)
+                            {
+                                float3 here = transform.ValueRO.Position;
+                                repick = BounceRetarget.FindNext(
+                                    here, -1, retargetPositions, rr, tileSize, gridSize, ffOrigin);
+                            }
+                            if (repick < 0)
+                            {
+                                ecb.DestroyEntity(entity);
+                                break;
+                            }
+                            target = retargetEntities[repick];
+                            projectile.ValueRW.target = target;
                         }
 
                         float3 currentPos = transform.ValueRO.Position;
@@ -67,6 +131,44 @@ namespace Wassup.Battle.Combat.Projectile
                         float dz = targetPos.z - newPos.z;
                         float thr = projectile.ValueRO.hitThreshold;
                         if (dx * dx + dz * dz <= thr * thr)
+                            projectile.ValueRW.impactReached = true;
+                        break;
+                    }
+
+                    case MovementKind.BezierHomingToEntity:
+                    {
+                        // projectile-emission-pattern unit 1 — 곡선 + 추적. 제어점은
+                        // 발사 시 고정(드레인 산출), 종점만 타겟을 따라가므로 대상이
+                        // 움직이면 곡선이 실시간으로 재조정된다.
+                        //
+                        // 대상 소실 = 파괴(HomingToEntity 의 기본 동작). **재조준은
+                        // 의도적으로 미개통**이다 — 위 사전 스캔 주석 참조(t≈1 순간이동).
+                        var bTarget = projectile.ValueRO.target;
+                        if (bTarget == Entity.Null || !transformLookup.HasComponent(bTarget)
+                            || deadLookup.HasComponent(bTarget))
+                        {
+                            ecb.DestroyEntity(entity);
+                            break;
+                        }
+
+                        float bElapsed = projectile.ValueRO.elapsed + dt;
+                        projectile.ValueRW.elapsed = bElapsed;
+                        float bFlight = projectile.ValueRO.flightTime;
+                        float bt = bFlight > 0f ? math.saturate(bElapsed / bFlight) : 1f;
+
+                        float3 bTargetPos = transformLookup[bTarget].Position;
+                        // sim 은 XZ 곡선만 굴린다 — 3축의 Y 는 view 공간에서 더한다
+                        // (BoardSpace.ToView 가 sim-Y 를 drop, BallisticArc 선례).
+                        float3 bNewPos = Bezier3.Position(
+                            projectile.ValueRO.origin, projectile.ValueRO.control1,
+                            projectile.ValueRO.control2, bTargetPos, bt);
+                        transform.ValueRW.Position = bNewPos;
+
+                        // 도착: 곡선 완주 또는 근접(움직이는 대상을 t<1 에 잡는 경우).
+                        float bdx = bTargetPos.x - bNewPos.x;
+                        float bdz = bTargetPos.z - bNewPos.z;
+                        float bthr = projectile.ValueRO.hitThreshold;
+                        if (bt >= 1f || bdx * bdx + bdz * bdz <= bthr * bthr)
                             projectile.ValueRW.impactReached = true;
                         break;
                     }
@@ -164,6 +266,9 @@ namespace Wassup.Battle.Combat.Projectile
                         break;
                 }
             }
+
+            if (retargetEntities.IsCreated) retargetEntities.Dispose();
+            if (retargetPositions.IsCreated) retargetPositions.Dispose();
 
             ecb.Playback(state.EntityManager);
             ecb.Dispose();

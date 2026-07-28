@@ -227,10 +227,9 @@ namespace Wassup.Tests.EditMode.MobileBuild
             Assert.DoesNotThrow(() => state.Validate(MobileBuildPlatform.Android));
         }
 
+        // 세로가 가능해지는 설정은 전부 거부한다 — 이 검사의 목적이 그것이다.
         [TestCase((int)UIOrientation.Portrait, false, false, true, true)]
         [TestCase((int)UIOrientation.PortraitUpsideDown, false, false, true, true)]
-        [TestCase((int)UIOrientation.LandscapeRight, false, false, true, true)]
-        [TestCase((int)UIOrientation.LandscapeLeft, false, false, true, true)]
         [TestCase((int)UIOrientation.AutoRotation, true, false, true, true)]
         [TestCase((int)UIOrientation.AutoRotation, false, true, true, true)]
         [TestCase((int)UIOrientation.AutoRotation, false, false, false, true)]
@@ -239,7 +238,10 @@ namespace Wassup.Tests.EditMode.MobileBuild
         [TestCase(MobileBuildPreflightState.SerializedScreenAutoRotationValue, false, true, true, true)]
         [TestCase(MobileBuildPreflightState.SerializedScreenAutoRotationValue, false, false, false, true)]
         [TestCase(MobileBuildPreflightState.SerializedScreenAutoRotationValue, false, false, true, false)]
-        public void LandscapeAutoRotation_RejectsFixedOrIncompleteConfiguration(
+        // 고정 가로여도 세로 허용 플래그가 켜져 있으면 거부(설정 실수 신호).
+        [TestCase((int)UIOrientation.LandscapeRight, true, false, true, true)]
+        [TestCase((int)UIOrientation.LandscapeLeft, false, true, true, true)]
+        public void LandscapeOnly_RejectsPortraitReachableConfiguration(
             int defaultOrientation,
             bool allowPortrait,
             bool allowPortraitUpsideDown,
@@ -247,7 +249,7 @@ namespace Wassup.Tests.EditMode.MobileBuild
             bool allowLandscapeRight)
         {
             Assert.That(
-                MobileBuildPreflightState.IsLandscapeAutoRotation(
+                MobileBuildPreflightState.IsLandscapeOnly(
                     (UIOrientation)defaultOrientation,
                     allowPortrait,
                     allowPortraitUpsideDown,
@@ -256,18 +258,50 @@ namespace Wassup.Tests.EditMode.MobileBuild
                 Is.False);
         }
 
+        // 가로 고정(19ff8e8f — 자동회전 폐기)은 자동회전보다 엄격하다: 세로가
+        // 구조적으로 불가능하므로 가로 방향 플래그와 무관하게 통과한다.
+        [TestCase((int)UIOrientation.LandscapeRight, false, false, true, true)]
+        [TestCase((int)UIOrientation.LandscapeLeft, false, false, true, true)]
+        [TestCase((int)UIOrientation.LandscapeRight, false, false, false, false)]
+        public void LandscapeOnly_AcceptsFixedLandscape(
+            int defaultOrientation,
+            bool allowPortrait,
+            bool allowPortraitUpsideDown,
+            bool allowLandscapeLeft,
+            bool allowLandscapeRight)
+        {
+            Assert.That(
+                MobileBuildPreflightState.IsLandscapeOnly(
+                    (UIOrientation)defaultOrientation,
+                    allowPortrait,
+                    allowPortraitUpsideDown,
+                    allowLandscapeLeft,
+                    allowLandscapeRight),
+                Is.True);
+        }
+
+        // 실제 프로젝트 설정이 가로 전용인지 고정한다. 어느 방식(자동회전/고정)인지는
+        // 제품 결정이라 여기서 못박지 않는다 — 못박으면 설정 변경마다 이 테스트가
+        // 빌드를 막는다(2026-07-27 `19ff8e8f` 이 5→2 로 바꿨을 때 실제로 그랬다).
+        // 지키는 것은 preflight 가 통과한다는 사실 하나다.
         [Test]
-        public void CapturedProjectOrientation_IsLandscapeOnlyAutoRotation()
+        public void CapturedProjectOrientation_IsLandscapeOnly()
         {
             var state = MobileBuildPreflightState.Capture(MobileBuildPlatform.Android);
 
             Assert.That(
-                (int)state.DefaultOrientation,
-                Is.EqualTo(MobileBuildPreflightState.SerializedScreenAutoRotationValue));
+                MobileBuildPreflightState.IsLandscapeOnly(
+                    state.DefaultOrientation,
+                    state.AllowPortrait,
+                    state.AllowPortraitUpsideDown,
+                    state.AllowLandscapeLeft,
+                    state.AllowLandscapeRight),
+                Is.True,
+                $"프로젝트 orientation 이 가로 전용이 아니다 (default={(int)state.DefaultOrientation}, "
+                + $"portrait={state.AllowPortrait}/{state.AllowPortraitUpsideDown}, "
+                + $"landscape={state.AllowLandscapeLeft}/{state.AllowLandscapeRight})");
             Assert.That(state.AllowPortrait, Is.False);
             Assert.That(state.AllowPortraitUpsideDown, Is.False);
-            Assert.That(state.AllowLandscapeLeft, Is.True);
-            Assert.That(state.AllowLandscapeRight, Is.True);
         }
 
         [TestCase("Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF - Fallback.asset")]
