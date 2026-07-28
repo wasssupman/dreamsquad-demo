@@ -1,6 +1,10 @@
 # beam-ranger-defender — 버스터즈 (지속 레이저 빔 레인저)
 
-> 상태: 초안 (사용자 승인 대기, 2026-07-29)
+> 상태: **unit 0 완료(`45b1d645`) · units 1~2 미착수** (2026-07-29)
+>
+> unit 0 으로 심(0.2초마다 7 피해)은 이미 돈다 — 지금 배치하면 빔 없이 데미지 넘버만 초당 5회 뜬다.
+> 남은 것은 **빔 비주얼(unit 1)** 과 그것을 재사용하는 **배치 스킬(unit 2)** 이며, 이 spec 에서
+> 가장 반복 튜닝이 필요한 부분이다(벤더 프리팹 스트립 + 코얼레스 규칙 + 씬 배선 + 육안 확인).
 
 ## 목표
 
@@ -19,12 +23,21 @@
 
 ## 작업 단위
 
-| # | 구분 | 문서 | 목적 |
-|---|---|---|---|
-| 0 | asset+test | `0_hitscan_unit_and_test.md` | 유닛 SO(히트스캔 0.2s/7) + 카탈로그 + 고속 틱 통합 테스트 |
-| 1 | code | `1_beam_presenter.md` | FireBeam 통합 + 공격 이벤트 코얼레스 빔 프레젠터 |
-| 2 | code | `2_onplace_beam_barrage.md` | 배치 스킬: 2타일 2초 tick DoT + 대상별 빔 연출 |
-| 3 | docs | `3_handoff_summary.md` | 인계 요약 (종료 시) |
+| # | 구분 | 문서 | 상태 | 목적 |
+|---|---|---|---|---|
+| 0 | asset+test | `0_hitscan_unit_and_test.md` | **완료** `45b1d645` | 유닛 SO(히트스캔 0.2s/7) + 카탈로그 + 전제 회귀 테스트 |
+| 1 | code | `1_beam_presenter.md` | 미착수 | FireBeam 통합 + 공격 이벤트 코얼레스 빔 프레젠터 |
+| 2 | code | `2_onplace_beam_barrage.md` | 미착수 | 배치 스킬: 2타일 2초 tick DoT + 대상별 빔 연출 |
+| 3 | docs | `3_handoff_summary.md` | — | 인계 요약 (종료 시) |
+
+### unit 0 에서 실증된 것 (unit 1 진입 전 읽을 것)
+
+- **"투사체 SO 없는 원거리 = 직접 데미지"** 전제가 실제로 성립한다. `AttackSystem` 의 발사 분기가
+  `projectileRefLookup.HasComponent(attacker)` 게이트이고 else 가 Outputs path(직접 IncomingDamage)다.
+  `HitscanDefenderTest` 가 이 전제를 고정한다(적을 1.6 거리에 세워 "무투사체=근접 퇴화"도 검출).
+- `hitDelaySec 0` 이 필수다. 프로젝트 기본값 0.3 은 틱 간격 0.2보다 길어 타격이 밀린다.
+- 아직 관측 안 된 것: **공격 애님/SFX 가 0.2s 마다 재트리거되는지**. unit 1 코얼레스 규칙의
+  입력이므로 Play 진입 시 먼저 볼 것.
 
 ## Feature-wide 계약
 
