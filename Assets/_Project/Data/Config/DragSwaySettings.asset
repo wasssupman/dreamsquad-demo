@@ -12,11 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 29b8b73016fd4433dbba47a28c176c11, type: 3}
   m_Name: DragSwaySettings
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DragSwaySettings
-  ropeLength: 1.5
-  maxAngle: 8
-  spring: 91
-  damping: 60.2
-  maxSpeed: 787.7
+  ropeLength: 4.29
+  maxAngle: 7.71
+  spring: 50.9
+  damping: 23.5
+  maxSpeed: 271.9
   cordWidth: 0.3
   cordColor: {r: 0.45, g: 0.38, b: 0.28, a: 1}
   ringRadius: 0.24
@@ -41,5 +41,13 @@ MonoBehaviour:
   tapFollowSmoothTime: 0.06
   tapSettleMaxDuration: 0.28
   directionAimSlowmoScale: 0.2
+  boardDragThreshold: 16
   dropTotalSeconds: 0.45
   dropRecoilSeconds: 0.12
+  dropRecoilDip: 0.35
+  dropArcHeightFactor: 1.399
+  dropArcMinHeight: 3.5
+  dropLaunchControl: {x: 0.25, y: 1}
+  dropLandingHeight: 0.25
+  dropCordSnapFade: 0.15
+  dropRingFade: 0.3
