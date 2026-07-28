@@ -40,6 +40,9 @@ namespace Wassup.Data
         // battle-audio: 공격 실행 시 효과음(근접 클래스 등 per-unit). Null → 무음.
         // 투사체 유닛은 PlayProjectileFire 가 별도로 울리므로 보통 비워둔다.
         public AudioClip attackSfxClip;
+        // beam-ranger-defender unit 1 — 지속 빔 유닛의 판별자 겸 프리팹. 비어 있으면 빔 없음.
+        // "빔 유닛인가"를 id/kind 로 분기하지 않기 위한 데이터 선언(메커닉 연출은 메커닉이 소유).
+        public GameObject beamVfxPrefab;
 
         // Phase 3: when set, the AttackSystem queues a ProjectileSpawnRequest rather
         // than appending IncomingDamage immediately. Leaving this null keeps the
@@ -59,6 +62,9 @@ namespace Wassup.Data
         // bleed-fighter-defender unit 1 — ApplyStackNearby 전용. 스택 종류를 분기에
         // 하드코딩하지 않기 위한 슬롯(제약 6). 다른 onPlaceEffect 에서는 무시된다.
         public Wassup.Battle.Effects.StackKind onPlaceStackKind;
+        // beam-ranger-defender unit 2 — DotNearby 전용. 이산 tick 간격(초).
+        // 이때 onPlaceMagnitude 는 **틱당 피해**다(DPS 아님 — CcEffect.tickInterval 계약).
+        public float onPlaceTickInterval;
 
         // Phase 6: placement cost subtracted from CostRuntime on PlaceDefenderAs.
         public int cost = 1;
@@ -230,5 +236,6 @@ namespace Wassup.Data
         // 아래는 항상 **맨 뒤에** 추가한다 — 기존 유닛 에셋이 이 enum 을 int 로 직렬화해 두었다.
         ApplyStackNearby,   // bleed-fighter-defender unit 1 — 반경 내 적에게 onPlaceStackKind 스택 도포
         StunNearby,         // knockup-fighter-defender unit 1 — 반경 내 적 전원 Stun(착지 충격 = 넉업)
+        DotNearby,          // beam-ranger-defender unit 2 — 반경 내 적 전원에 이산 tick DoT(개점 일제 조사)
     }
 }

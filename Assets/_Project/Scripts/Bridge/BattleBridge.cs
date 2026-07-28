@@ -99,6 +99,32 @@ namespace Wassup.Bridge
         [SerializeField] private Wassup.Data.UnitHealthPresentationMode unitHealthPresentationMode =
             Wassup.Data.UnitHealthPresentationMode.Legacy;
         [SerializeField] private Wassup.Presentation.UnitOverheadUiLayer unitOverheadUiLayer;
+        // beam-ranger-defender unit 1 — 지속 빔(버스터즈). 씬에 배선하면 인스펙터에서 TTL/추종
+        // 속도를 튜닝할 수 있고, 비어 있으면 첫 사용 시 기본값으로 자동 생성한다(EnsureBeamPresenter).
+        // 자동 생성 폴백을 두는 이유: 이 기능만을 위해 공용 씬을 저장하면 그 시점의 미저장 WIP 가
+        // 같이 박힌다. 튜닝이 필요해지면 그때 씬에 배선하면 된다.
+        [SerializeField] private Wassup.Presentation.BeamPresenter beamPresenter;
+
+        // 빔 발사점(view 공간). cast anchor 가 정식 경로이고(TrySpawnCastVfx 와 동일),
+        // 앵커가 없는 유닛은 view transform 으로 폴백한다 — transform.position 은 이미 view 공간.
+        private bool TryResolveViewMuzzle(Entity entity, out Vector3 muzzle)
+        {
+            muzzle = default;
+            if (spineUnitPool == null) return false;
+            if (spineUnitPool.TryResolveAnchor(entity, out muzzle)) return true;
+            if (!spineUnitPool.TryGet(entity, out var view) || view == null) return false;
+            muzzle = view.transform.position;
+            return true;
+        }
+
+        private Wassup.Presentation.BeamPresenter EnsureBeamPresenter()
+        {
+            if (beamPresenter != null) return beamPresenter;
+            var go = new GameObject("BeamPresenter (auto)");
+            go.transform.SetParent(transform, false);
+            beamPresenter = go.AddComponent<Wassup.Presentation.BeamPresenter>();
+            return beamPresenter;
+        }
         [SerializeField] private Wassup.UI.ScoreHudView scoreHud;
         // score-tally-sequence unit 2 — 결과 연출(점수 합산). 미배선이면 연출을 건너뛰고
         // 곧장 결과 화면으로 간다 — 연출은 곁가지, 결과 화면은 필수다.
@@ -2233,6 +2259,9 @@ namespace Wassup.Bridge
             DrainDcTriggerFiredEvents(); // use-flow unit 3 — 발동 신호 → 아이콘 행 펄스
             DrainKnockupVisualEvents();  // knockup unit 3 — 띄우기 신호 → view 수직 호핑
             DrainUnitAttackVisualEvents();
+            // beam unit 1 — 세션 TTL 은 **배틀 도메인 시간**으로 깎는다(공격 사건이 sim 시간).
+            beamPresenter?.Tick(Wassup.Core.TimeControl.TimeManager.Instance
+                .DeltaTime(Wassup.Core.TimeControl.TimeDomain.Battle));
             DrainProjectileHitEvents();
             DrainHealAppliedEvents();
             DrainShieldGrantedEvents();
@@ -2698,6 +2727,8 @@ namespace Wassup.Bridge
                 // removal so DefenderDied can carry the entity (card-recovery key)
                 // and the SO (awakeningReward) regardless of the spine pool.
                 bool hasBinding = _defenderByTile.TryGetValue(cell, out var binding);
+                // beam unit 1 — 쏘던 유닛이 죽으면 빔이 허공에 남는다. TTL 만료를 기다리지 않고 즉시 끊는다.
+                if (beamPresenter != null && hasBinding) beamPresenter.Close(binding.Item1);
                 if (spineUnitPool != null && hasBinding)
                 {
                     spineUnitPool.NotifyDeath(binding.entity);
@@ -2933,6 +2964,19 @@ namespace Wassup.Bridge
 
                 if (defData.attackVfxPrefab != null)
                     _projectileViewPool?.PlayHit(defData.attackVfxPrefab, evt.targetWorld);
+
+                // beam-ranger-defender unit 1 — 빔 유닛이면 이 공격 사건으로 세션을 열거나 잇는다.
+                // "빔 유닛인가"는 SO 의 프리팹 유무가 결정한다(id/kind 분기 없음).
+                // 좌표는 view 공간으로 넘긴다 — 평면 보드라 sim 좌표를 그대로 쓰면 빔이 눕는다.
+                if (defData.beamVfxPrefab != null && spineUnitPool != null)
+                {
+                    if (!TryResolveViewMuzzle(evt.attacker, out var muzzle)) continue;
+                    EnsureBeamPresenter().ReportAttack(
+                        evt.attacker,
+                        defData.beamVfxPrefab,
+                        muzzle,
+                        (Vector3)Wassup.Core.BoardSpace.ToView(evt.targetWorld));
+                }
 
                 TrySpawnCastVfx(evt.attacker, targetWorld);
             }
@@ -3623,6 +3667,42 @@ namespace Wassup.Bridge
                     if (unitData.knockupVisualHeight > 0f && spineUnitPool != null
                         && spineUnitPool.TryGet(e, out var hopView) && hopView != null)
                         hopView.PlayKnockupHop(unitData.onPlaceDuration, unitData.knockupVisualHeight);
+                    affected++;
+                }
+            }
+            else if (unitData.onPlaceEffect == OnPlaceEffectType.DotNearby)
+            {
+                // beam-ranger-defender unit 2 — 개점 일제 조사. 심은 기존 이산 tick DoT 그대로
+                // (dot-tick-cadence 계약) — 신규 시스템 0. 연출은 대상마다 빔 세션 1개.
+                // ⚠ tickInterval>0 일 때 scalar 는 **틱당 피해**다(DPS 아님).
+                if (unitData.onPlaceMagnitude <= 0f || unitData.onPlaceDuration <= 0f
+                    || !_enemyCcQueue.IsCreated) return 0;
+
+                bool hasMuzzle = TryResolveViewMuzzle(placedEntity, out var muzzle);
+
+                foreach (var e in CollectEnemiesInTileRange(placedCell, unitData.onPlaceRange))
+                {
+                    _enemyCcQueue.Enqueue(new Wassup.Battle.Effects.EnemyCcEvent
+                    {
+                        target = e,
+                        effect = new Wassup.Battle.Effects.CcEffect
+                        {
+                            kind          = Wassup.Battle.Effects.CcKind.DoT,
+                            scalar        = unitData.onPlaceMagnitude,
+                            tickInterval  = unitData.onPlaceTickInterval,
+                            tickTimer     = unitData.onPlaceTickInterval, // 첫 틱 즉발(CcApply add-path 규약)
+                            remainingTime = unitData.onPlaceDuration,
+                        },
+                    });
+                    // 대상별 빔 — 공격 빔과 같은 세션 풀을 쓴다. 키가 적 엔티티라 공격자 세션과
+                    // 충돌하지 않는다(공격 세션 키 = 공격자).
+                    if (unitData.beamVfxPrefab != null && hasMuzzle
+                        && _em.HasComponent<LocalTransform>(e))
+                    {
+                        var tv = (Vector3)Wassup.Core.BoardSpace.ToView(
+                            _em.GetComponentData<LocalTransform>(e).Position);
+                        EnsureBeamPresenter().OpenTimed(e, unitData.beamVfxPrefab, muzzle, tv, unitData.onPlaceDuration);
+                    }
                     affected++;
                 }
             }

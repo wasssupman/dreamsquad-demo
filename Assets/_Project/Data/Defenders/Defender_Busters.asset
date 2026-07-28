@@ -28,6 +28,7 @@ MonoBehaviour:
   visualMaterial: {fileID: 2100000, guid: a1b2c3d4e5f601234567890abcdef104, type: 2}
   deployVoiceClip: {fileID: 8300000, guid: dc35584bdf3654f9a94250825593c36c, type: 3}
   attackSfxClip: {fileID: 8300000, guid: 053fbfe1665fe4b93b781904d6acd499, type: 3}
+  beamVfxPrefab: {fileID: 6531319713837899222, guid: be1871bfe88404c58980277bf916902a, type: 3}
   projectile: {fileID: 0}
   outputs:
   - kind: 0
@@ -37,11 +38,12 @@ MonoBehaviour:
     op: 0
     stackKind: 0
     stackMaxStack: 0
-  onPlaceEffect: 0
-  onPlaceRange: 0
-  onPlaceMagnitude: 0
-  onPlaceDuration: 0
+  onPlaceEffect: 10
+  onPlaceRange: 2
+  onPlaceMagnitude: 7
+  onPlaceDuration: 2
   onPlaceStackKind: 0
+  onPlaceTickInterval: 0.2
   cost: 4
   placementCooldown: 0
   targetAllies: 0
