@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.AwakeningConfig
   id: awakening_default
   gaugeMax: 100
-  gaugeStart: 0
+  gaugeStart: 100
   costSquad: 20
   costUnit: 20
   costActive: 20
