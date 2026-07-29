@@ -15,4 +15,4 @@ MonoBehaviour:
   id: volley_shotgunner
   shotCount: 5
   shotIntervalSec: 0
-  spreadAngleDeg: 90
+  spreadAngleDeg: 55
