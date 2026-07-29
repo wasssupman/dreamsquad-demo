@@ -26,7 +26,8 @@
 - **`Enemy_Boss_Jjangssen`** — HP 950 / 이속 2.2 / cd 0.6 / cleave 3 / dmg 30 / hitDelay 0.25.
   나이트메어와 같은 Spine 스켈레톤 + `partSkins` 6종 교체 + 스케일 2.6(나이트메어 3.2).
 - **진동갑주** `HealthThreshold(0.20) × SelfTileAoe(반경 2, 60)` — 760/570/380/190 에서 4회.
-- **집단 도약** `HealthThreshold(0.20) × SelfBlink` — 방어유닛 밀집도 최대 셀로 착지.
+- **집단 도약** `HealthThreshold(0.50)`·`(0.90)` × `SelfBlink` — **50%·10% 2회**, 방어유닛 밀집도
+  최대 셀로 착지. `fraction` 이 균등 간격이라 비균등 경계는 슬롯 2개로 표현한다.
 - **보스 면역** — 어그로 부착 차단 + 직접 행동정지·넉백 거절. 스택 임계 CC·DoT·Slow 는 통과.
 - 덱 7개(맵 6 + Endless)에 `[나이트메어, 짱쎈놈]` 로테이션 투입. `WaveA`/`WaveB` 는 미변경.
 - **도약 아치 비행**(unit 6) — sim 은 텔레포트, 뷰만 `KeyringSim.DismountPoint` 궤적으로 0.83초 비행.
@@ -71,8 +72,10 @@
    연출은 `CcApplySystem` 을 거치지 않으므로, CC 만 막으면 보스가 떠오르는데 스턴은 안 걸린다.
    부여 거절 원칙("2곳")의 **유일한 예외**이며 이유가 이것이다.
 7. **밀집 tie-break 는 row-major 셀 키다.** 청크 순회 순서에 의존하면 결정론이 깨진다.
-8. **발동 순서 = 폭발 → 도약**, 시스템 순서(`BlinkApplySystem` 의 `[UpdateAfter]`)가 고정한다.
-   슬롯 순서로 뒤집을 수 없다.
+8. **폭발(0.20)과 도약(0.50·0.90)의 경계는 일부러 겹치지 않는다** — 같은 프레임 동시 발동이 없어
+   두 능력이 별개 사건으로 읽힌다("도약 말고는 구분이 안 된다" 피드백의 조치 중 하나).
+   경계를 다시 겹치게 하면 순서는 **폭발 → 도약**으로 시스템 순서가 고정한다
+   (`BlinkApplySystem` 의 `[UpdateAfter]`) — 슬롯 순서로는 뒤집을 수 없다.
 9. `SelfBlink` 의 구 착지 정책("위협 리더 근처")은 **은퇴**했다(`nightmare-catcher` 문서에 기재).
    `ThreatEntry`/threat drain 은 별 책임이라 살아 있다.
 
@@ -98,7 +101,8 @@
 
 **PlayMode 테스트(미작성)** — spec 이 요구한 e2e 는 아직 없다. 우선순위 항목:
 ① 가디언이 보스를 때려도 `Aggroed` 미부착(잡몹엔 부착) ② Bleed 스택 → 보스 HP 실제 감소
-③ 보스 HP 79% 세팅 → 밀집 셀 근처 blink + `DeadTag` 프레임엔 미발동.
+③ 보스 HP 를 49% 로 세팅 → 밀집 셀 근처 blink + `DeadTag` 프레임엔 미발동
+(경계가 0.50·0.90 이므로 79% 가 아니라 49%/9% 가 트리거 지점이다).
 
 **범위 밖(README 후속 후보 참조)** — 보스 트리거 개방(`AttackN` 대회전 / `OnKill` 학살 가속,
 `OnKill × SelfStatBuff` bake 의 `buffStat` 미설정 버그 동반) · 면역으로 죽은 카드·유닛 재설계 ·
