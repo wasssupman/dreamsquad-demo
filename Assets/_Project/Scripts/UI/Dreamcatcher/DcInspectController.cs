@@ -49,6 +49,9 @@ namespace Wassup.UI
         [SerializeField] private Wassup.Presentation.CameraDirector cameraDirector;
         // defender-relocation UX — 탭 판정 이동 허용치(px). 이보다 크게 움직이면 탭이 아님(홀드/드래그).
         [SerializeField] private float tapMoveThreshold = 24f;
+        // selection-hand-attach unit 1 — 선택 유닛 앵커가 이만큼 연속 프레임 사라지면 선택 해제.
+        // 1프레임 판정은 배치 직후/회수 타이밍의 일시 실패에 흔들린다.
+        [SerializeField] private int anchorMissFramesToClose = 3;
 
         private readonly List<(Entity host, DreamcatcherCard card)> _scratch = new List<(Entity, DreamcatcherCard)>();
         private readonly List<DreamcatcherCard> _cards = new List<DreamcatcherCard>();
@@ -60,6 +63,8 @@ namespace Wassup.UI
         // 불리는데, 무조건 Focus.End() 하면 손패 카드 드래그가 방금 시작한 조준 세션까지
         // 끊는다 — 우리가 시작한 세션만 끝낸다.
         private bool _reticleShown;
+        // selection-hand-attach unit 1 — 앵커 소실 연속 프레임 카운터(사망 감지).
+        private int _anchorMissFrames;
         // defender-relocation UX — 탭 릴리즈 판정용 후보 상태(터치다운에 선택 금지).
         private bool _pendingTap;
         private Vector2 _pendingScreen;
@@ -98,7 +103,8 @@ namespace Wassup.UI
             // close-trigger 라 선택이 닫히며 줌이 함께 풀렸는데, 이제 선택이 조준과 공존하므로
             // 끊지 않으면 inspectDolly 만큼 당겨진 채 Meteor 타일/포탈 출구를 고르게 된다.
             // staleness 자동 해제라 조준이 끝나면 다음 프레임 피드로 줌이 되돌아온다.
-            if (!AimingNow()) FeedZoomTarget();
+            // unit 1 — 같은 앵커 조회가 사망 감지도 겸한다(TickSelectionAnchor).
+            TickSelectionAnchor();
 
             var pointer = Pointer.current;
             if (pointer == null) { _pendingTap = false; return; }
@@ -158,12 +164,24 @@ namespace Wassup.UI
             return _uiHits.Count > 0;
         }
 
-        // 앵커가 사라졌으면(유닛 사망) 피드를 멈춘다 — staleness 가 줌을 되돌린다.
-        private void FeedZoomTarget()
+        // 선택 유닛 앵커를 프레임당 1회 조회해 두 가지를 한다:
+        //  (1) 줌 타겟 피드 (unit 4 — 조준 중이면 끊는다, unit 0)
+        //  (2) 수명 감시 (selection-hand-attach unit 1, critic M3)
+        //
+        // (2)가 필요한 이유: 부착 0장 유닛이 죽으면 DreamcatcherHandController.OnDefenderDied 가
+        // 회수할 카드가 없어 AttachmentsChanged 를 **아예 발화하지 않는다**. 사망 닫힘을 그
+        // 이벤트에만 걸어두면 선택·슬로모 lease·패널·열린 손패·죽은 SelectionTarget 이 좀비로
+        // 남는다(즉발은 매번 "부착 불가" 움찔만 낸다). 앵커 소실이 유일하게 항상 오는 신호다.
+        private void TickSelectionAnchor()
         {
-            if (cameraDirector == null || _selected == Entity.Null) return;
-            if (!bridge.TryGetUnitViewAnchor(_selected, out var anchor) || anchor == null) return;
-            cameraDirector.SetInspectFocus(anchor.position);
+            if (_selected == Entity.Null) { _anchorMissFrames = 0; return; }
+            if (!bridge.TryGetUnitViewAnchor(_selected, out var anchor) || anchor == null)
+            {
+                if (++_anchorMissFrames >= Mathf.Max(1, anchorMissFramesToClose)) Close();
+                return;
+            }
+            _anchorMissFrames = 0;
+            if (cameraDirector != null && !AimingNow()) cameraDirector.SetInspectFocus(anchor.position);
         }
 
         // selection-hand-attach unit 0 — 구 Blocked() 의 절반: **선택 자체를 닫아야 하는** 조건.
@@ -231,6 +249,7 @@ namespace Wassup.UI
             if (!bridge.TryGetUnitViewAnchor(entity, out var anchor)) { Close(); return; }
 
             _selected = entity;
+            _anchorMissFrames = 0; // unit 1 — 새 대상으로 수명 카운터 리셋
             Resolve(entity);
             // `?.` 가 아니라 `!= null` — 전자는 참조 null 검사로 낮아져 UnityEngine.Object 의
             // 수명 인지 == 연산자를 건너뛴다(파괴된 오브젝트가 통과한다).
@@ -260,6 +279,14 @@ namespace Wassup.UI
                 }
             }
             AcquireSlomo();
+            // selection-hand-attach unit 1 — 선택 = 손패 등장(사용자 결정 1: 항상). 대상 전달이
+            // 먼저다(뷰가 InSelectionMode 를 그 값에서 파생하므로 오픈 연출 분기가 첫 프레임부터
+            // 맞는다). 선택 전환(A→B)은 대상만 갱신되고 손패는 이미 열려 있어 재딜이 없다.
+            if (handView != null)
+            {
+                handView.SetSelectionTarget(entity);
+                handView.OpenForSelection();
+            }
         }
 
         // unit 5 — 이동모드 버튼: 선택 해제(패널/줌/플립북) 후 relocation 이 자기 슬로모/하이라이트/
@@ -300,7 +327,12 @@ namespace Wassup.UI
         // 멱등 — 미선택 상태에서 불려도 no-op.
         private void Close()
         {
+            // selection-hand-attach unit 1 — 손패 걷기는 "선택이 실제로 있었던" 닫힘만(계약 7
+            // 비대칭). 지우기 전에 읽어야 한다. 무선택 상태에서 불린 Close 가 항아리 단독
+            // 오픈을 걷어버리면 orb-dock 의 토글 계약이 깨진다(닫기 의도 탭은 unit 2 소관).
+            bool hadSelection = _selected != Entity.Null;
             _selected = Entity.Null;
+            _anchorMissFrames = 0;
             if (panel != null) panel.Hide();
             if (actionFlipbook != null) actionFlipbook.Hide();
             // unit 6 — 우리가 켠 리티클만 끈다(_reticleShown 가드 — 카드 드래그 조준 세션 보호).
@@ -311,6 +343,11 @@ namespace Wassup.UI
                 if (focus != null) focus.End();
             }
             _slomoLease.Dispose();
+            if (hadSelection && handView != null)
+            {
+                handView.ClearSelectionTarget();
+                handView.CloseFromSelection();
+            }
         }
 
         // 부착 변경(부착/사망 회수/Placement 리셋). 선택 유닛이 카드를 잃었거나 죽었으면 닫고,

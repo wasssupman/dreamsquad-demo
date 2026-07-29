@@ -135,6 +135,42 @@ namespace Wassup.UI
         public DreamcatcherFocusPresenter Focus => _focus;
         public DreamcatcherFocusConfig FocusConfig => focusConfig;
 
+        // ── selection-hand-attach unit 1 — 선택 파트너 표면 ───────────────────
+        // 즉발 부착 대상(= 인스펙트가 선택한 유닛). 선택 상태의 **소유자는
+        // DcInspectController** 이고 뷰는 전달만 받는다(계약 1) — 여기서 재판정하지 않는다.
+        // 카드 슬롯(unit 3)이 읽어 탭 즉발 타겟으로 쓴다.
+        public Entity SelectionTarget { get; private set; } = Entity.Null;
+        // 오픈 모드는 **파생값**이다 — 별도 상태로 저장하면 이중 상태가 된다(계약 8).
+        public bool InSelectionMode => SelectionTarget != Entity.Null;
+
+        public void SetSelectionTarget(Entity target) => SelectionTarget = target;
+
+        public void ClearSelectionTarget()
+        {
+            SelectionTarget = Entity.Null;
+            _pendingSelectionOpen = false; // 선택이 끝났으면 미뤄둔 오픈도 취소
+        }
+
+        // 선택 기인 오픈(사용자 결정 1: 항상). 컨트롤러가 SetSelectionTarget 직후 부른다.
+        // Transitioning 중이면 무시가 아니라 **래치**다(critic H5): 침강(0.26s+stagger)+strip
+        // fold(0.14s) 창에서 Open() 은 mash guard 에 막히는데, 그 사이 유닛을 탭하면 선택은
+        // 다 되고 손패만 없는 상태로 굳고 항아리 탭(OnToggled)도 같은 가드라 복구가 안 된다.
+        // "빈 보드 탭으로 닫고 곧바로 다른 유닛 탭" 은 이 feature 가 노리는 연속 조작이다.
+        public void OpenForSelection()
+        {
+            if (State == HandState.Hand) { _pendingSelectionOpen = false; return; }
+            if (Transitioning) { _pendingSelectionOpen = true; return; }
+            Open(selectionDriven: true);
+        }
+
+        // 컨트롤러가 뷰를 닫는 **유일한 공개 창구**(계약 7 — Close() 는 private 유지).
+        public void CloseFromSelection()
+        {
+            _pendingSelectionOpen = false; // 닫기 의도가 미뤄둔 오픈을 취소한다
+            if (State == HandState.UnitStrip) return;
+            Close();
+        }
+
         // card-fly-to-target-absorb unit 0 — 커밋 성공 시 손패 카드가 유닛으로
         // 날아가 찰싹 흡수. 발사점/스프라이트는 소비 전 호출부에서 캡처된 값.
         // 타겟은 유닛 뷰 앵커 Transform 을 매프레임 추적(행진 중에도 안착).
@@ -265,6 +301,9 @@ namespace Wassup.UI
         private float _clearanceVel;
         // dreamcatcher-orb-dock unit 4 — 손패 오픈 중 보드 영역 탭으로 물러나기(바깥 탭 dismiss).
         private GameObject _dismissCatcher;
+        // selection-hand-attach unit 1 — 전이(침강/딜) 중에 들어온 선택 기인 오픈 요청.
+        // 전이가 끝나는 첫 프레임에 소비된다(TickPendingSelectionOpen).
+        private bool _pendingSelectionOpen;
         private Image _backing;        // tray frame — deal 무대(카드와 별개로 페이드 인)
         private float _backingAlpha = 1f;
         private readonly List<CardSlot> _slots = new List<CardSlot>();
@@ -345,13 +384,14 @@ namespace Wassup.UI
             if (Transitioning) return; // mash guard
             // Toggling mid-interaction drops any drag/portal-aim first (no spend).
             CancelAllCardInteraction();
-            if (State == HandState.UnitStrip) Open();
+            if (State == HandState.UnitStrip) Open(selectionDriven: false);
             else Close();
         }
 
         private void Update()
         {
             TickTooltip(); // hand-drag-tooltip unit 1 — 상태 무관(퇴장 페이드 완주)
+            TickPendingSelectionOpen(); // selection-hand-attach unit 1 — 상태 무관(닫힘 중에도 돈다)
             if (State != HandState.Hand) return;
             // hand-drag-tooltip unit 6 — 손패가 열린 동안만 카메라 헤드룸을 요청한다.
             // 피드 주도 채널이라 닫힘/페이즈 이탈/파괴 어느 경로든 별도 해제 호출 없이
@@ -742,9 +782,20 @@ namespace Wassup.UI
 
         // ── open/close ───────────────────────────────────────────────────────
 
-        private void Open()
+        // selection-hand-attach unit 1 — 래치 소비. 전이가 끝나고(침강 완주) 선택이 아직
+        // 살아 있으면 그때 연다. 페이즈 이탈/선택 해제로 조건이 깨졌으면 조용히 버린다.
+        private void TickPendingSelectionOpen()
+        {
+            if (!_pendingSelectionOpen) return;
+            if (!InSelectionMode || State == HandState.Hand) { _pendingSelectionOpen = false; return; }
+            if (Transitioning) return;
+            Open(selectionDriven: true); // 내부에서 래치를 내린다
+        }
+
+        private void Open(bool selectionDriven)
         {
             if (State == HandState.Hand) return;
+            _pendingSelectionOpen = false;
             State = HandState.Hand;
             ResetHandClearance(); // hand-drag-clearance unit 0 — 항상 기준선에서 열린다
             if (_dismissCatcher != null) _dismissCatcher.SetActive(true);
@@ -756,7 +807,9 @@ namespace Wassup.UI
             _slomoActive = false;
             if (costDisplay != null) costDisplay.SetSuppressed(true);
             // hand-deal-in unit 2 — 버튼 pulse(인과 힌트) + strip 접기 → 덱-드로우 딜.
-            if (gaugeView != null) gaugeView.Pulse();
+            // selection-hand-attach unit 1 — pulse 는 "항아리를 눌렀다 → 손패가 열렸다" 인과
+            // 힌트다. 선택 기인 오픈은 항아리를 누른 게 아니므로 쏘지 않는다(critic L1).
+            if (gaugeView != null && !selectionDriven) gaugeView.Pulse();
             if (_flip != null) StopCoroutine(_flip);
             _flip = StartCoroutine(OpenRoutine());
         }
@@ -785,6 +838,10 @@ namespace Wassup.UI
         {
             // critic H2 — drop any in-flight drag/pending first (no spend).
             CancelAllCardInteraction();
+            // selection-hand-attach unit 1 — 하드 teardown 은 미뤄둔 선택 오픈도 버린다.
+            // 남겨두면 페이즈 이탈/Reset 직후 전이가 끝나는 프레임에 손패가 되살아난다.
+            // (SelectionTarget 자체는 소유자인 DcInspectController 가 정리한다 — 계약 1.)
+            _pendingSelectionOpen = false;
             _focus?.End(); // dreamcatcher-attach-lockon 계약 #10 — 포커스 오버레이 하드 클리어
             HideDragTooltip(immediate: true); // hand-drag-tooltip unit 1
             StopDeal(); // hand-deal-in — 잔류 트윈/late-land 방지
