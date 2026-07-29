@@ -40,6 +40,11 @@ namespace Wassup.Data
         // battle-audio: 공격 실행 시 효과음(근접 클래스 등 per-unit). Null → 무음.
         // 투사체 유닛은 PlayProjectileFire 가 별도로 울리므로 보통 비워둔다.
         public AudioClip attackSfxClip;
+        // 히트 VFX 크기. ProjectileViewPool.PlayHit 이 프리팹 스케일을 덮으므로 크기는 **여기서**
+        // 정한다(프리팹에서 줄여도 무시된다 — 실제로 한 번 헛수고했다). 1 = 원본 크기.
+        public float attackVfxScale = 1f;
+        // 히트 VFX 를 타격 방향으로 회전시킬지. 방향성 있는 폭발(흙 분출 등)만 true.
+        public bool attackVfxFacesTarget;
         // beam-ranger-defender unit 1 — 지속 빔 유닛의 판별자 겸 프리팹. 비어 있으면 빔 없음.
         // "빔 유닛인가"를 id/kind 로 분기하지 않기 위한 데이터 선언(메커닉 연출은 메커닉이 소유).
         public GameObject beamVfxPrefab;

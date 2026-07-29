@@ -2248,6 +2248,10 @@ namespace Wassup.Bridge
             DrainKnockupVisualEvents();  // knockup unit 3 — 띄우기 신호 → view 수직 호핑
             DrainUnitAttackVisualEvents();
             // beam unit 1 — 세션 TTL 은 **배틀 도메인 시간**으로 깎는다(공격 사건이 sim 시간).
+            // 히트 VFX 를 RESOLVE 시점으로 미뤄 재생(위 PendingHitVfx 주석).
+            TickPendingHitVfx(
+                Wassup.Core.TimeControl.TimeManager.Instance.DeltaTime(Wassup.Core.TimeControl.TimeDomain.Battle));
+
             if (beamPresenter != null)
             {
                 _beamViewResolver ??= ResolveBeamViewPos;
@@ -2992,7 +2996,32 @@ namespace Wassup.Bridge
                 Wassup.Core.SoundManager.Instance?.PlayAttack(defData.attackSfxClip);
 
                 if (defData.attackVfxPrefab != null)
-                    _projectileViewPool?.PlayHit(defData.attackVfxPrefab, evt.targetWorld);
+                {
+                    // 방향성 히트(흙 폭발 등)는 공격자→대상 방향으로 회전시킨다. 방향은 **view 공간**
+                    // 에서 구한다 — sim 방향을 그대로 쓰면 평면 보드에서 엉뚱한 축으로 돈다.
+                    Vector3 hitFacing = default;
+                    if (defData.attackVfxFacesTarget
+                        && ResolveBeamViewPos(evt.attacker, true, out var atkView))
+                    {
+                        hitFacing = (Vector3)Wassup.Core.BoardSpace.ToView(evt.targetWorld) - atkView;
+                    }
+                    // ⚠ 이 시각 이벤트는 공격 **START** 에 나온다(애니 트리거 겸용). 피해는
+                    // hitDelaySec 뒤 RESOLVE 에 들어가므로, 그대로 재생하면 이펙트가 타격보다
+                    // 먼저 터진다 — 파이터 4종이 전부 hitDelaySec 0.3 이라 눈에 띄었다.
+                    // 배틀 도메인 시간으로 미뤄 RESOLVE 시점에 맞춘다(슬로모에서도 동기 유지).
+                    if (defData.hitDelaySec > 0f)
+                        _pendingHitVfx.Add(new PendingHitVfx
+                        {
+                            prefab = defData.attackVfxPrefab,
+                            simPos = evt.targetWorld,
+                            scale = defData.attackVfxScale,
+                            facing = hitFacing,
+                            remaining = defData.hitDelaySec,
+                        });
+                    else
+                        _projectileViewPool?.PlayHit(defData.attackVfxPrefab, evt.targetWorld,
+                            scale: defData.attackVfxScale, facingViewDir: hitFacing);
+                }
 
                 // beam-ranger-defender unit 1 — 빔 유닛이면 이 공격 사건으로 세션을 열거나 잇는다.
                 // "빔 유닛인가"는 SO 의 프리팹 유무가 결정한다(id/kind 분기 없음).
@@ -3011,6 +3040,31 @@ namespace Wassup.Bridge
                 }
 
                 TrySpawnCastVfx(evt.attacker, targetWorld);
+            }
+        }
+
+        // 히트 VFX 지연 재생 큐(위 주석 — START 이벤트를 RESOLVE 시점으로 미룬다).
+        // 코루틴 대신 리스트+틱: 배틀 도메인 시간을 쓰려면 어차피 직접 깎아야 하고,
+        // 공격마다 코루틴을 새로 만들면 고속 공격 유닛에서 할당이 쌓인다.
+        private struct PendingHitVfx
+        {
+            public GameObject prefab;
+            public float3 simPos;
+            public float scale;
+            public Vector3 facing;
+            public float remaining;
+        }
+        private readonly System.Collections.Generic.List<PendingHitVfx> _pendingHitVfx = new();
+
+        private void TickPendingHitVfx(float battleDeltaTime)
+        {
+            for (int i = _pendingHitVfx.Count - 1; i >= 0; i--)
+            {
+                var p = _pendingHitVfx[i];
+                p.remaining -= battleDeltaTime;
+                if (p.remaining > 0f) { _pendingHitVfx[i] = p; continue; }
+                _projectileViewPool?.PlayHit(p.prefab, p.simPos, scale: p.scale, facingViewDir: p.facing);
+                _pendingHitVfx.RemoveAt(i);
             }
         }
 

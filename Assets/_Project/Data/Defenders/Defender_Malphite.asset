@@ -28,6 +28,9 @@ MonoBehaviour:
   visualMaterial: {fileID: 2100000, guid: a1b2c3d4e5f601234567890abcdef104, type: 2}
   deployVoiceClip: {fileID: 8300000, guid: b48decd1d7880495b9ffca60ab9b9c42, type: 3}
   attackSfxClip: {fileID: 8300000, guid: 053fbfe1665fe4b93b781904d6acd499, type: 3}
+  attackVfxScale: 0.45
+  attackVfxFacesTarget: 1
+  beamVfxPrefab: {fileID: 0}
   projectile: {fileID: 0}
   outputs:
   - kind: 0
@@ -42,6 +45,7 @@ MonoBehaviour:
   onPlaceMagnitude: 0
   onPlaceDuration: 0.8
   onPlaceStackKind: 0
+  onPlaceTickInterval: 0
   cost: 5
   placementCooldown: 0
   targetAllies: 0
@@ -71,7 +75,7 @@ MonoBehaviour:
   dragAnimation: Attack1
   deployAnimation: Hit
   placementVfxPrefab: {fileID: 2427901435903505602, guid: 971aa18e6a15c0d48bf889c9d9df4fce, type: 3}
-  attackVfxPrefab: {fileID: 5971203435228136222, guid: f0b2a41c3f8adb84f8753145e83bafe7, type: 3}
+  attackVfxPrefab: {fileID: 7907260701345176331, guid: 2eb4537b84cd74bffbe18ba2ea83ec25, type: 3}
   deployCutsceneFrames: []
   deployCutsceneFps: 24
   deployCutsceneScale: 1
@@ -82,6 +86,7 @@ MonoBehaviour:
   knockbackDuration: 0
   sleepOnHitSec: 0
   knockupOnHitSec: 0.8
+  knockupVisualHeight: 1.2
   onPlacePushDistance: 0
   onPlacePushDuration: 0
   onPlacePushRadius: 0

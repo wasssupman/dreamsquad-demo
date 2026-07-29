@@ -244,12 +244,17 @@ namespace Wassup.Presentation
         }
 
         // Fix 5: hitVfxLifetime > 0 overrides auto-detect.
+        // facingViewDir: 타격 방향(**view 공간**). 지정하면 VFX 가 그 방향으로 회전한다
+        // (말파이트 흙 폭발처럼 방향성이 있는 히트용). 기본 default = 회전 없음(기존 동작).
         public void PlayHit(GameObject hitPrefab, float3 position, float hitVfxLifetime = 0f,
-                            float heightOffset = 0f, float scale = 1f)
+                            float heightOffset = 0f, float scale = 1f, Vector3 facingViewDir = default)
         {
             var view = GetOrCreate(hitPrefab);
             view.SetActive(true);
             view.transform.localScale = Vector3.one * scale;   // 원본이 작으면 키움
+            // ⚠ 위 줄이 프리팹 스케일을 **덮는다** — 크기 조절은 프리팹이 아니라 이 인자로.
+            if (facingViewDir.sqrMagnitude > 0.0001f)
+                view.transform.rotation = Quaternion.LookRotation(facingViewDir, Vector3.up);
             float3 hitView = Wassup.Core.BoardSpace.ToView(position); // sim→view
             // heightOffset: 바닥에 깔리지 않게 view Y 로 띄움 (투사체 visualHeightOffset 과 동일 개념).
             view.transform.position = new Vector3(hitView.x, hitView.y + heightOffset, hitView.z);
