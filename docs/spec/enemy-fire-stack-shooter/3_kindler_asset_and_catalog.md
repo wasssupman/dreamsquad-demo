@@ -90,7 +90,8 @@ SO 전용이다.
 ### 회귀
 
 - [x] EditMode 전량 green (1584 중 1582 pass / 0 fail, skip 2 = 기존 Ignored)
-- [ ] PlayMode = HEAD 베이스라인 대조
+- [x] PlayMode = HEAD 베이스라인 대조 — **신규 회귀 0**
+      (베이스라인 `3e7440af` 69/57/12 → 변경 후 71/59/12, 실패 **집합이 동일**)
 
 ## 확인
 

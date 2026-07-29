@@ -1,6 +1,7 @@
 # enemy-fire-stack-shooter — 킨들러 (레인저 저격 화염 축적 원거리 적)
 
-> 상태: **작성 완료, 구현 대기** (2026-07-30)
+> 상태: **units 0~3 구현·커밋 완료 (2026-07-30)** — 프레젠테이션 5건 사용자 Play 확인 대기.
+> 상세는 `4_handoff_summary.md`
 
 ## 목표
 
@@ -102,8 +103,19 @@
 | 0 | code | `0_projectile_stack_source.md` | 투사체 `ApplyStack` 귀속을 투사체 → **사수**로. **이 spec 의 토대** |
 | 1 | asset | `1_stack_modifier_fire.md` | `StackModifier_Fire.asset` + BattleScene 배선 |
 | 2 | asset | `2_fireball_projectile.md` | PixPlays Fireball 뷰 복제 + `Projectile_Enemy_Fireball.asset` |
-| 3 | asset | `3_kindler_asset_and_catalog.md` | `Enemy_Kindler.asset` + 카탈로그 + 덱 풀 등록 + Play 검증 |
+| 3 | asset | `3_kindler_asset_and_catalog.md` | `Enemy_Kindler.asset` + 카탈로그 + 덱 풀 등록 + e2e |
 | 4 | docs | `4_handoff_summary.md` | 인계 요약 |
+
+## 검증 결과 (2026-07-30)
+
+| | 결과 |
+|---|---|
+| EditMode | 1584 중 **1582 pass / 0 fail** (skip 2 = 기존 Ignored) |
+| PlayMode | 베이스라인 `3e7440af` 69/57/12 → 변경 후 71/59/12 · **실패 집합 동일 = 신규 회귀 0** |
+| mutation | `source = entity` 로 되돌리면 14발이 **14슬롯** (`Expected 1 / But was 14`) |
+| e2e | 스폰 → 레인저 조준 → 히트 → 누적 → 임계 → `(Stack, Fire)` 도트 **Passed** |
+
+전부 testrig 배치 실행 — 에디터가 Play Mode 라 MCP 경로가 막혀 있었다.
 
 unit 0 은 단독 커밋한다 — 결함 수정이라 되돌릴 때 콘텐츠와 함께 딸려가면 안 된다.
 
