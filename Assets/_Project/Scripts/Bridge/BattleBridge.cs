@@ -194,6 +194,12 @@ namespace Wassup.Bridge
         // 전투 스택 오라(Bleed/Fire/Ice/Poison) 소스. 적·아군 공통이라 태그 게이트 없음.
         private EntityQuery _stackSlotQuery;
         private bool _stackSlotQueryCreated;
+        // 스택 오라 종류 래치. 슬롯은 "무엇이 이 DoT 를 만들었나"를 알려주지만 파생 DoT 보다
+        // 먼저 사라진다(Consume 이 스택을 0으로 되돌리고 슬롯도 perAppDuration 이 지나면 만료 —
+        // 출혈은 슬롯 2s vs 도트 4.85s). 그래서 살아 있는 슬롯을 볼 때 종류를 기억해 두고,
+        // 오라 점등은 DoT 진행 여부로만 판단한다. DoT 가 끝나면 지운다.
+        private readonly Dictionary<Entity, Wassup.Data.StatusFxKind> _stackAuraLatch = new();
+        private readonly List<Entity> _stackAuraLatchDead = new();
         private bool _modifierSlotQueryCreated;
         // season-gimmick-overwork unit 6 — 레드불 픽업 뷰 조정용 쿼리 (Pickup 은 Effects 소유, 읽기만).
         private EntityQuery _pickupViewQuery;
@@ -1185,6 +1191,7 @@ namespace Wassup.Bridge
             _activeDcEffects.Clear();
             _activePlacementSleeps.Clear(); // combat-action-lock — 매치별 placement-aura Sleep 등록 초기화
             _bountyMarked.Clear(); // 살찌운 제물 — 표식 등록부도 매치 경계에서 초기화
+            _stackAuraLatch.Clear(); // 스택 오라 종류 래치도 같은 이유로 매치 경계에서 초기화
             _dcStackCounter = 100;
             _dcInstanceCounter = 0; // dreamcatcher-unit-trigger Unit 1 — per-match instance ids
             // dreamstone-loadout Unit 3 — set-then-apply: reapply the pending stone
@@ -2397,9 +2404,11 @@ namespace Wassup.Bridge
                 }
             }
 
-            // 전투 스택 오라(Bleed/Fire/Ice/Poison). 소스 = 스택 슬롯 보유 **AND** DoT 진행 중.
-            // 왜 둘 다: CcEffect 는 kind 하나로 병합돼 어느 스택이 만든 DoT 인지 모른다(종류 식별
-            // 불가). 슬롯만 보면 발동 전 누적 단계에도 켜진다. 슬롯 = 종류 / DoT = 발동 여부.
+            // 전투 스택 오라(Bleed/Fire/Ice/Poison). **슬롯 = 종류 / DoT = 점등 여부**로 나눠 쓴다.
+            // CcEffect 는 kind 하나로 병합돼 어느 스택이 만든 DoT 인지 모르므로(종류 식별 불가)
+            // 종류는 슬롯에서만 알 수 있는데, 슬롯은 파생 DoT 보다 먼저 사라진다. 그래서 종류를
+            // _stackAuraLatch 에 기억해 두고 점등은 DoT 진행 여부로만 판단한다 — 그러지 않으면
+            // 도트가 도는 후반부에 오라가 꺼진다.
             if (_stackSlotQueryCreated)
             {
                 var stackEntities = _stackSlotQuery.ToEntityArray(Allocator.Temp);
@@ -2408,28 +2417,41 @@ namespace Wassup.Bridge
                     for (int i = 0; i < stackEntities.Length; i++)
                     {
                         var e = stackEntities[i];
+
+                        var stacks = _em.GetBuffer<Wassup.Battle.Effects.StackModifierSlot>(e, isReadOnly: true);
+                        for (int j = 0; j < stacks.Length; j++)
+                        {
+                            if (stacks[j].header.remaining <= 0f) continue;
+                            var seen = StackAuraKind(stacks[j].kind);
+                            if (seen.HasValue) _stackAuraLatch[e] = seen.Value;
+                        }
+
                         bool dotRunning = false;
                         var ccs = _em.GetBuffer<Wassup.Battle.Effects.CcEffect>(e, isReadOnly: true);
                         for (int j = 0; j < ccs.Length; j++)
                             if (ccs[j].kind == Wassup.Battle.Effects.CcKind.DoT && ccs[j].remainingTime > 0f)
                             { dotRunning = true; break; }
-                        if (!dotRunning) continue;
+                        if (!dotRunning) { _stackAuraLatch.Remove(e); continue; }
 
+                        if (!_stackAuraLatch.TryGetValue(e, out var fx)) continue;
                         var anchor = ResolveUnitViewTransform(e);
                         if (anchor == null) continue;
-                        var stacks = _em.GetBuffer<Wassup.Battle.Effects.StackModifierSlot>(e, isReadOnly: true);
-                        for (int j = 0; j < stacks.Length; j++)
-                        {
-                            if (stacks[j].header.remaining <= 0f) continue;
-                            var fx = StackAuraKind(stacks[j].kind);
-                            if (fx.HasValue) statusFxSpawner.Ensure(e, fx.Value, anchor);
-                        }
+                        statusFxSpawner.Ensure(e, fx, anchor);
                     }
                 }
                 finally
                 {
                     stackEntities.Dispose();
                 }
+            }
+            // 죽은 대상은 쿼리에서 빠져 위 루프가 지우지 못하므로 여기서 정리한다(누수 방지).
+            if (_stackAuraLatch.Count > 0)
+            {
+                _stackAuraLatchDead.Clear();
+                foreach (var kv in _stackAuraLatch)
+                    if (!_em.Exists(kv.Key)) _stackAuraLatchDead.Add(kv.Key);
+                for (int i = 0; i < _stackAuraLatchDead.Count; i++)
+                    _stackAuraLatch.Remove(_stackAuraLatchDead[i]);
             }
 
             // subconscious-curse-expansion unit 3 — 살찌운 제물 표식. 소스 = bridge 표식

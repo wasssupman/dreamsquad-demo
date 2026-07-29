@@ -94,9 +94,12 @@ Fighter · Common · 코스트 2 · HP 350 · 사거리 1 · **쿨다운 0.3s** 
 
 - ~~출혈 상태 표기(VFX)~~ → **구현 완료**(2026-07-29, `c4d799b6`). `StatusFxKind` 에 전투 스택
   4종(Bleed/Fire/Ice/Poison) 오라 추가 — PixPlays ElementalAuras 사본.
-  **소스 = 스택 슬롯 보유 AND DoT 진행 중**: `CcEffect` 는 kind 하나로 병합돼 어느 스택이 만든
-  DoT 인지 모르므로(종류 식별 불가), 슬롯으로 종류를 알고 DoT 로 점등 여부를 판단한다.
-  기존 Empowered/Burnout/LastRun 과 같은 reconcile 패턴이라 신규 로직 0.
+  **점등 = DoT 진행 / 종류 = 스택 슬롯(래치)**: `CcEffect` 는 kind 하나로 병합돼 어느 스택이 만든
+  DoT 인지 모르므로 종류는 슬롯에서만 알 수 있는데, 슬롯이 파생 DoT 보다 먼저 사라진다
+  (`Consume` + `perAppDuration 2s` vs 도트 4.85s). 그래서 bridge 가 살아 있는 슬롯을 볼 때
+  종류를 `_stackAuraLatch` 에 기억하고 점등은 DoT 로만 판단한다.
+  ⚠ **슬롯 보유를 점등 조건에 다시 넣지 말 것** — 도트 후반부에 오라가 조용히 꺼진다
+  (2026-07-29 회귀, 가드 = `BleedAuraOutlastsStackSlotTest`).
 - **아이콘 표기** [M] · 여전히 미구현. `OverheadStackKind` 가 기믹 전용(`Fatigue`/`Heat`) 2종뿐이고
   `StackKind → OverheadStackKind` 번역이 없다. 전투 스택을 이 enum 에 넣을지가 선결 결정.
   VFX 가 붙었으므로 우선순위는 낮다.

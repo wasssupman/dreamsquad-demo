@@ -25,10 +25,12 @@ namespace Wassup.Data
         // 수면(Zz)과 시각 구분용(스턴탄 등). Sleep 아이콘과 동일 경로.
         Stun = 6,
         // bleed-fighter-defender 후속 — 전투 스택 4종의 온-바디 오라.
-        // 소스 = `StackModifierSlot(kind)` 보유 **AND** 그 대상에 DoT CcEffect 가 도는 중.
-        // 왜 둘 다 보는가: CcEffect 는 kind 하나로 병합돼 **어느 스택이 만든 DoT 인지 모른다**
-        // (종류 식별 불가). 반대로 스택 슬롯만 보면 발동 전 누적 단계에도 켜진다.
-        // 슬롯 = 종류 식별 / DoT = 발동 여부 로 나눠 쓴다.
+        // **점등 = DoT CcEffect 진행 중 / 종류 = 스택 슬롯**으로 나눠 쓴다. CcEffect 는 kind
+        // 하나로 병합돼 **어느 스택이 만든 DoT 인지 모르므로**(종류 식별 불가) 종류는 슬롯에서만
+        // 알 수 있는데, 슬롯은 파생 DoT 보다 먼저 사라진다(Consume 이 스택을 0으로 되돌리고
+        // 슬롯도 perAppDuration 이 지나면 만료 — 출혈은 슬롯 2s vs 도트 4.85s). 그래서 bridge 가
+        // 살아 있는 슬롯을 볼 때 종류를 래치하고(`_stackAuraLatch`) 점등은 DoT 로만 판단한다.
+        // 슬롯 보유를 점등 조건에 함께 걸면 **도트 후반부에 오라가 꺼진다**(2026-07-29 회귀).
         Bleed = 7,
         FireStack = 8,
         IceStack = 9,
