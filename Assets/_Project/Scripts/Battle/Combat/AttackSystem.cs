@@ -159,6 +159,13 @@ namespace Wassup.Battle.Combat
             // 재사용하고 ② 카운터 변경이 루프 바깥에서 끝나 HeavyStrike pre-scan
             // 합성 불변식(spec 계약 1)에 영향이 없다. 신규 시스템 0.
             // HazardCastSystem 이 [UpdateBefore(AttackSystem)] 이라 같은 프레임 소비.
+            // 계약 2(host 당 사건 지점 1개)를 **코드로** 보장한다. 이전에는 캐스터의
+            // attackRange 가 0 인 덕에 RESOLVE 에 못 가는 것으로 우연히 성립했는데,
+            // 유닛 스탯 시트가 캐스터 attackRange 를 3 으로 확정하면서 그 우연이 깨졌다
+            // (캐스트 + RESOLVE 로 2카운트 → AttackN 카드 발동 주기가 절반). 시트가 정본이므로
+            // 데이터 모양에 의존하지 않도록 여기서 막는다: 이번 프레임에 캐스트로 카운트한
+            // host 는 아래 RESOLVE 카운팅 블록을 건너뛴다. 피해·다른 arm 은 영향 없다.
+            var castCountedHosts = new NativeHashSet<Entity>(8, Allocator.Temp);
             if (SystemAPI.TryGetSingletonRW<CastEventsSingleton>(out var castEvents))
             {
                 var castQueue = castEvents.ValueRW.queue;
@@ -166,6 +173,8 @@ namespace Wassup.Battle.Combat
                 {
                     // stale 드롭 — enqueue 후 드레인 전에 캐스터가 죽는 창이 있다.
                     if (!dcSlotLookup.HasBuffer(castEvt.caster)) continue;
+                    // 캐스트가 이 host 의 이번 프레임 "공격 사건" 이다(캐스트 우선).
+                    castCountedHosts.Add(castEvt.caster);
 
                     var castSlots = dcSlotLookup[castEvt.caster];
                     for (int si = 0; si < castSlots.Length; si++)
@@ -1328,7 +1337,9 @@ namespace Wassup.Battle.Combat
                     // bestTarget is guaranteed alive here: RESOLVE applies damage via
                     // the deferred IncomingDamage buffer, so nothing in this block can
                     // have destroyed it.
-                    if (defenderTagLookup.HasComponent(attackerEntity) && dcSlotLookup.HasBuffer(attackerEntity))
+                    // 계약 2 — 이번 프레임에 캐스트로 이미 카운트한 host 는 제외(위 드레인 주석).
+                    if (defenderTagLookup.HasComponent(attackerEntity) && dcSlotLookup.HasBuffer(attackerEntity)
+                        && !castCountedHosts.Contains(attackerEntity))
                     {
                         var dcSlots = dcSlotLookup[attackerEntity];
                         for (int si = 0; si < dcSlots.Length; si++)
@@ -1453,6 +1464,7 @@ namespace Wassup.Battle.Combat
             needleScratch.Dispose();
             targetEntities.Dispose();
             targetTransforms.Dispose();
+            castCountedHosts.Dispose();
             targetFactions.Dispose();
         }
 

@@ -130,11 +130,17 @@ namespace Wassup.Tests.EditMode
         }
 
         // ── unit 4: host 당 사건 지점 1개 (계약 2 상호배타) ────────────────
-        // 캐스터가 RESOLVE 에 못 가는 것은 지금 **에셋 값의 우연**이다(attackRange 0
-        // + outputs 없음). 누가 attackRange>0 인 캐스터를 만들면 그 유닛은 한
-        // 사이클에 RESOLVE + 캐스트로 2카운트를 먹어 발동 주기가 절반이 된다.
+        // **attackRange 절은 은퇴했다 (2026-07-29).** 원래 이 테스트는 "캐스터가 RESOLVE 에
+        // 못 가는 것은 에셋 값의 우연(attackRange 0)이다" 를 지키는 카나리아였는데, 유닛 스탯
+        // 시트가 캐스터 attackRange 를 3 으로 확정했고 **시트가 정본**이다. 그래서 계약 2 를
+        // 데이터 모양이 아니라 코드가 보장하도록 바꿨다 — `AttackSystem` 의 캐스트 드레인이
+        // 이번 프레임 카운트한 host 를 기록하고 RESOLVE 카운팅 블록이 그 host 를 건너뛴다
+        // (`castCountedHosts`). attackRange 가 얼마든 host 당 프레임 1카운트다.
+        //
+        // outputs 절은 남긴다 — 이건 이중 카운트 가드가 아니라 **설계 가드**다(캐스터가 일반
+        // 공격 피해까지 갖는 것은 아키타입 혼선). 이중 카운트 회귀는 PlayMode 로 잡아야 한다.
         [Test]
-        public void HazardCasters_CannotAlsoCountViaResolve()
+        public void HazardCasters_DoNotAlsoDealBasicAttackDamage()
         {
             var units = LoadAll<DefenderUnitData>(DefendersRoot);
             var offenders = new StringBuilder();
@@ -144,15 +150,13 @@ namespace Wassup.Tests.EditMode
             {
                 if (unit.GetAbility<HazardCastAbility>() == null) continue;
                 checkedAny = true;
-                if (unit.attackRange > 0f)
-                    offenders.AppendLine($"{unit.id}: attackRange={unit.attackRange} (>0 이면 RESOLVE 도 탄다)");
                 if (unit.outputs != null && unit.outputs.Length > 0)
                     offenders.AppendLine($"{unit.id}: outputs {unit.outputs.Length}개 (일반 공격을 갖는다)");
             }
 
             Assert.IsTrue(checkedAny, "HazardCastAbility 보유 유닛을 찾지 못했다");
             Assert.IsEmpty(offenders.ToString(),
-                "캐스터는 캐스트 사건 하나로만 카운트해야 한다(spec 계약 2):\n" + offenders);
+                "캐스터는 캐스트로만 피해를 준다(아키타입 분리):\n" + offenders);
         }
 
         // ── unit 2: 비수 폴백 반경이 에셋·bake 에 살아 있는지 ──────────────
