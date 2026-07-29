@@ -15,11 +15,7 @@ MonoBehaviour:
   id: bruiser
   role: 3
   displayName: "\uD30C\uC774\uD130"
-  desc: "\uAE30\uBCF8 \uAE30\uB2A5: \uB2E4\uC911
-    \xEA\xB7\xBC\xEC\_\x91 \uACF5\uACA9\n\uBC30\uCE58 \uC2A4\uD0AC:
-    \uC8FC\uBCC0 \xEC\_\x81\xEC\x97\x90\xEA\xB2\x8C \uD3ED\uBC1C
-    \uD53C\uD574\n\uD2B9\uC218 \uD6A8\uACFC:
-    \uC5C6\uC74C"
+  desc: "\uAE30\uBCF8 \uAE30\uB2A5: \uB2E4\uC911 \uADFC\uC811 \uACF5\uACA9\n\uBC30\uCE58 \uC2A4\uD0AC: \uC8FC\uBCC0 \uC801\uC5D0\uAC8C \uD3ED\uBC1C \uD53C\uD574\n\uD2B9\uC218 \uD6A8\uACFC: \uC5C6\uC74C"
   health: 900
   attackRange: 2
   attackCooldown: 1.02

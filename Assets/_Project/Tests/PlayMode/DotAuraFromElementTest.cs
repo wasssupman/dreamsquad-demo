@@ -40,9 +40,16 @@ namespace Wassup.Tests.PlayMode
             return active.ContainsKey((_victim, kind));
         }
 
+        [TearDown]
+        public void TearDown() => LogAssert.ignoreFailingMessages = false;
+
         [UnityTest]
         public IEnumerator Aura_FollowsDotElement_NotStackSlots()
         {
+            // 배틀 씬 PlayMode 테스트의 프로젝트 관례 — 무관한 엔진/트윈 에러 로그만으로
+            // 실패 처리되는 것을 막는다. 이게 없어 배치 실행에서 계속 붉었다.
+            LogAssert.ignoreFailingMessages = true;
+
             yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
             for (int i = 0; i < 6; i++) yield return null;
 

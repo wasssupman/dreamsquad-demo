@@ -32,11 +32,15 @@ CC 와 아무 상관이 없다.
 **CRITICAL — 도트 과피해.** `CcEffectMerge.cs:32-40` 이 `remainingTime` 은 `max` 로 합치고
 `scalar`·`tickInterval` 은 incoming 으로 덮는다. 성격이 다른 세 producer 가 한 슬롯을 공유한다:
 
-| producer | 위치 | 값 |
+| producer | 위치 | 값 (틱당 피해 / 주기 / 지속) |
 |---|---|---|
 | 스택 임계 파생 | `StackModifierTickSystem.cs:99` | 출혈 5 / 0.5s / 4.85s |
-| 해저드 장판 | `ZoneApplySystem.cs:62` | 10~20 / 0.25s(3x3 은 연속) / 0.2s |
+| 해저드 장판 | `ZoneApplySystem.cs:62` | 화염 10 / 0.25s / 0.2s · 독 20 / 0.5s / 0.2s |
 | 배치 스킬 `DotNearby` | `BattleBridge.cs:3894` (버스터즈) | 7 / 0.2s / 2s |
+
+장판 지속 0.2s 는 `restDuration` 이고 **매 프레임 갱신**된다 — 존 위에 서 있는 동안만 유지되고
+나가면 0.2초 뒤 꺼진다는 뜻이다. 배포된 해저드는 `Hazard_{Fire,Poison}_1x1` 둘뿐이다
+(`*_3x3` 2종은 참조 0 — 후속 후보 참조).
 
 출혈(rem 4.85) 중인 적이 화염 장판(10 / 0.25s)을 밟으면 **40 DPS 가 4.85초** 붙어 총 ~194
 (의도 50)가 되고, **장판을 나가도 계속 탄다**. 난도질꾼·FireCaster·PoisonCaster 전부 카탈로그에
@@ -119,6 +123,10 @@ unit 1 이후 점등 조건은 "그 원소의 도트가 도는 중"이다. 그�
 - **다중 공격자 출혈 합산** [M] · 두 축 모두 "무엇"이라 난도질꾼 2기는 여전히 한 슬롯. 도트 전용
   가산 병합이 별도로 필요(`bleed-fighter-defender` 에서 이관).
 - **`DotNearby` 의 element 저작** [S] · 지금은 None(버스터즈가 유일 producer 라 충돌 없음).
+- **미사용 해저드 2종 처분** [S] · `Hazard_Fire_3x3` · `Hazard_Poison_3x3` 은 **어디서도 참조되지
+  않는다**(`Ability_Hazard_{Fire,Poison}Caster` 는 1x1 만 가리킨다). 게다가 `tickInterval` 이
+  저작돼 있지 않아 레거시 연속 경로(scalar=DPS)로 떨어진다 — 살릴 거면 저작을 마치고, 아니면
+  지운다. 지금 상태로는 "3x3 은 연속"이라는 잘못된 인상만 남긴다.
 - **`maxStack` 권위 이중화** [S] · 유닛 SO `stackMaxStack` 과 `StackModifierSO.maxStack` 두 곳이
   권위이고 `ModifierApplySystem.cs:148` 이 기존 슬롯 값을 유지해 "먼저 도달한 producer" 가 이긴다.
 - **`DisposeCachedQueries` 조기 리턴 플래그 리셋** [S] · `BattleBridge.cs:662` 가 일부

@@ -14,11 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DefenderUnitData
   id: too_much_talker
   role: 3
-  displayName: "\xED\x88\xAC\xEB\xA8\xB8\xEC\xB9\x98\xED\x86\_\uCEE4"
-  desc: "\uAE30\uBCF8 \uAE30\uB2A5: \uB2E8\uC77C
-    \xEA\xB7\xBC\xEC\_\x91 \uACF5\uACA9\n\uBC30\uCE58 \uC2A4\uD0AC:
-    \uC5C6\uC74C\n\uD2B9\uC218 \uD6A8\uACFC:
-    \uACF5\uACA9\uD55C \xEC\_\x81\xEC\x9D\x84 \xEC\x9E\_\uC7AC\uC6C0"
+  displayName: "\uD22C\uBA38\uCE58\uD1A0\uCEE4"
+  desc: "\uAE30\uBCF8 \uAE30\uB2A5: \uB2E8\uC77C \uADFC\uC811 \uACF5\uACA9\n\uBC30\uCE58 \uC2A4\uD0AC: \uC5C6\uC74C\n\uD2B9\uC218 \uD6A8\uACFC: \uACF5\uACA9\uD55C \uC801\uC744 \uC7A0\uC7AC\uC6C0"
   health: 500
   attackRange: 2
   attackCooldown: 1.6

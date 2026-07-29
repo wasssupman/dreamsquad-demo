@@ -14,13 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DefenderUnitData
   id: machine_gunner
   role: 1
-  displayName: "\xEB\xA8\xB8\xEC\x8B\_\uAC70\uB108"
-  desc: "\uAE30\uBCF8 \uAE30\uB2A5: \xEC\xA7\x80\xEC\_\x95
-    \uBC29\uD5A5\uC73C\uB85C \uD0C4\uD658 \uC5F0\uC18D
-    \uBC1C\uC0AC\n\uBC30\uCE58 \uC2A4\uD0AC:
-    \uAE38\uBAA9 \uBC29\uD5A5\uC73C\uB85C \uAC15\uD55C
-    \uD0C4\uD658 \uBC1C\uC0AC\n\uD2B9\uC218 \uD6A8\uACFC:
-    \uC5C6\uC74C"
+  displayName: "\uBA38\uC2E0\uAC70\uB108"
+  desc: "\uAE30\uBCF8 \uAE30\uB2A5: \uC9C0\uC815 \uBC29\uD5A5\uC73C\uB85C \uD0C4\uD658 \uC5F0\uC18D \uBC1C\uC0AC\n\uBC30\uCE58 \uC2A4\uD0AC: \uAE38\uBAA9 \uBC29\uD5A5\uC73C\uB85C \uAC15\uD55C \uD0C4\uD658 \uBC1C\uC0AC\n\uD2B9\uC218 \uD6A8\uACFC: \uC5C6\uC74C"
   health: 270
   attackRange: 4
   attackCooldown: 1.9
