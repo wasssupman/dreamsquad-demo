@@ -46,6 +46,10 @@ defender 의 기존 진동갑주/작별선물/시체폭발 경로가 `Enemy` 를
 `payload { kind = SelfTileAoe, magnitude = <폭발 데미지>, tileRange = 2, projectile = unit 1 의 AOE SO }`.
 
 HP 950 · fraction 0.20 → 760 / 570 / 380 / 190 에서 **4회**. 래치 단조라 회복해도 재발동하지 않는다.
+
+연출은 `Projectile_JjangssenQuake` → **`EarthBlast`(URP), `hitVfxScale` 4**. 최초에는 범용 `vfx_Hit_Rock03`
+을 썼는데 다른 히트 이펙트와 구분이 안 된다는 사용자 피드백(2026-07-29)으로 전용 대형 blast 로 교체했다.
+도약의 `EarthSlamSpikesAoeVFX`(바닥에서 솟는 스파이크)와 실루엣이 달라 두 능력이 구분된다.
 폭발 데미지는 placeholder 로 두고 Play 튜닝한다 — 방어유닛 HP 대역이 90~195 이므로 즉사 여부가
 분산 배치 압력의 세기를 결정한다.
 
