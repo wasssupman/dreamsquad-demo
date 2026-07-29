@@ -92,6 +92,8 @@ namespace Wassup.UI
                 handView.FocusCleared += OnFocusSessionReleased;
                 // unit 8 — 부착 후 쓸 카드가 바닥나면 선택도 풀어 기본 진행으로 되돌린다.
                 handView.UsableCardsExhausted += OnUsableCardsExhausted;
+                // unit 9 — 선택 중 각성 버튼 = 그만하기. 손패와 함께 선택도 걷는다.
+                handView.SelectionDismissed += OnSelectionDismissed;
             }
         }
 
@@ -105,6 +107,7 @@ namespace Wassup.UI
                 handView.InteractionEnded -= OnFocusSessionReleased;
                 handView.FocusCleared -= OnFocusSessionReleased;
                 handView.UsableCardsExhausted -= OnUsableCardsExhausted;
+                handView.SelectionDismissed -= OnSelectionDismissed;
             }
             Close(); // lease 해제 — 비활성화가 슬로우를 남기면 안 된다
         }
@@ -347,6 +350,11 @@ namespace Wassup.UI
         // 되돌린다(계약 7 의 유일한 예외 — 손패 단독 닫힘이 선택을 데려가는 경우).
         // 미선택(항아리 단독 오픈)에서 게이지가 바닥난 경우엔 Close() 가 no-op 이라 무해하다.
         private void OnUsableCardsExhausted() => Close();
+
+        // selection-hand-attach unit 9 — 선택 중 각성 버튼(항아리)을 눌렀다 = 명시적 "그만하기".
+        // 손패만 걷으면 줌+슬로모가 걸린 채 할 일 없는 선택이 남아 빈 보드를 따로 탭해야 풀린다.
+        // 뷰가 InSelectionMode 일 때만 쏘므로 항아리 단독 오픈의 dismiss 는 영향받지 않는다.
+        private void OnSelectionDismissed() => Close();
 
         // selection-hand-attach unit 4 — 프레젠터 세션이 남에 의해 끝났다. 선택이 살아 있으면
         // 리티클을 1회 재주장한다(폴링 금지 — BeginSelection 은 매 프레임 부르면 pop 이 계속

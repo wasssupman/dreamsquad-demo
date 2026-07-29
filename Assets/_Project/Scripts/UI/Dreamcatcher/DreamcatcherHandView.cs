@@ -408,8 +408,15 @@ namespace Wassup.UI
             if (Transitioning) return; // mash guard
             // Toggling mid-interaction drops any drag/portal-aim first (no spend).
             CancelAllCardInteraction();
-            if (State == HandState.UnitStrip) Open(selectionDriven: false);
-            else Close();
+            if (State == HandState.UnitStrip) { Open(selectionDriven: false); return; }
+            // selection-hand-attach unit 9 — 선택 중이라면 각성 버튼은 "손패만 접기" 가 아니라
+            // "그만하기" 다(사용자 결정 2026-07-30). 손패만 걷으면 줌+슬로모가 걸린 채 할 일
+            // 없는 선택이 남아 빈 보드를 따로 탭해야 풀린다.
+            //
+            // 발화는 Close() **앞** — 뒤에 두면 Close() 의 FocusCleared 가 리티클을 재주장한
+            // 직후 구독자가 선택을 닫아 1프레임 깜빡임 + lease churn 이 생긴다(unit 8 과 동일).
+            if (InSelectionMode) SelectionDismissed?.Invoke();
+            Close(); // 구독자가 CloseFromSelection 으로 이미 걷었으면 no-op
         }
 
         private void Update()
@@ -725,6 +732,11 @@ namespace Wassup.UI
         // 확정). 구독자(DcInspectController)가 선택까지 풀어 기본 진행 상태로 되돌린다.
         // 발화 지점은 OnCardUsed 안 하나뿐 — 그래서 "사용이 실제로 있었다" 가 신호에 내포된다.
         public event System.Action UsableCardsExhausted;
+
+        // selection-hand-attach unit 9 — 선택 중 각성 버튼(항아리) = "그만하기" 명시 신호.
+        // unit 8 이 "자원이 바닥나서 끝났다" 라면 이쪽은 "사용자가 끝내겠다고 말했다" 다.
+        // 발화 지점은 OnToggled 의 닫힘 분기 하나뿐(무선택 오픈은 기존 dismiss 그대로).
+        public event System.Action SelectionDismissed;
 
         private void RaiseFocusCleared() => FocusCleared?.Invoke();
 
