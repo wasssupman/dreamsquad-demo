@@ -47,6 +47,8 @@ namespace Wassup.UI
         [SerializeField] private float statRowHeight = 44f;
         [SerializeField] private float hpBarHeight = 10f;
         [SerializeField] private float attachArtHeight = 69f;
+        [Tooltip("부착 카드 설명의 최대 줄 수. 넘치면 말줄임 — 패널이 아래 트레이를 침범하지 않게 성장을 묶는다.")]
+        [SerializeField] private int descMaxLines = 2;
 
         [Header("Colors")]
         [SerializeField] private Color fill = new Color(0.07f, 0.06f, 0.13f, 1f);        // 툴팁과 동일 네이비
@@ -80,6 +82,8 @@ namespace Wassup.UI
             public Image art;
             public TextMeshProUGUI name;
             public TextMeshProUGUI kind;
+            public TextMeshProUGUI desc;
+            public float height; // 측정으로 정해진 행 높이(설명 줄 수에 따라 가변)
         }
 
         private readonly List<AttachRow> _attachRows = new List<AttachRow>();
@@ -266,11 +270,33 @@ namespace Wassup.UI
                 ay += 24f + 4f;
 
                 float artW = attachArtHeight * (2f / 3f); // 타로 아트 2:3
-                float rowH = attachArtHeight + 12f;
                 for (int i = 0; i < _attachRows.Count; i++)
                 {
                     var row = _attachRows[i];
                     if (!row.root.activeSelf) continue;
+
+                    float tx = 8f + artW + 12f;
+                    float tw = inner - tx - 10f;
+
+                    // 설명은 줄 수가 카드마다 달라 **측정으로** 행 높이를 정한다. 갓 생성된
+                    // TMP 는 첫 레이아웃 전까지 폰트 스케일이 서지 않으므로 ForceMeshUpdate 선행.
+                    //
+                    // 상한이 필요하다: 부착은 최대 3장이고 시한폭탄처럼 효과가 3줄인 카드가
+                    // 있어, 묶지 않으면 패널이 아래 트레이까지 자란다(실측 3장 = 717px).
+                    // 줄 수를 잘라 성장을 예측 가능하게 만든다 — 넘치는 부분은 말줄임.
+                    row.desc.ForceMeshUpdate();
+                    float descH = string.IsNullOrEmpty(row.desc.text)
+                        ? 0f
+                        : row.desc.GetPreferredValues(row.desc.text, tw, 0f).y;
+                    if (descH > 0f && descMaxLines > 0)
+                    {
+                        row.desc.maxVisibleLines = descMaxLines;
+                        descH = Mathf.Min(descH, descMaxLines * row.desc.fontSize * 1.3f);
+                    }
+
+                    float textH = 12f + 28f + 22f + (descH > 0f ? descH + 4f : 0f) + 10f;
+                    float rowH = Mathf.Max(attachArtHeight + 12f, textH);
+                    row.height = rowH;
 
                     row.rect.anchoredPosition = new Vector2(pad, -ay);
                     row.rect.sizeDelta = new Vector2(inner, rowH);
@@ -279,12 +305,12 @@ namespace Wassup.UI
                     art.anchoredPosition = new Vector2(8f, -6f);
                     art.sizeDelta = new Vector2(artW, attachArtHeight);
 
-                    float tx = 8f + artW + 12f;
-                    float tw = inner - tx - 10f;
                     row.name.rectTransform.anchoredPosition = new Vector2(tx, -12f);
-                    row.name.rectTransform.sizeDelta = new Vector2(tw, 30f);
-                    row.kind.rectTransform.anchoredPosition = new Vector2(tx, -44f);
-                    row.kind.rectTransform.sizeDelta = new Vector2(tw, 24f);
+                    row.name.rectTransform.sizeDelta = new Vector2(tw, 28f);
+                    row.kind.rectTransform.anchoredPosition = new Vector2(tx, -40f);
+                    row.kind.rectTransform.sizeDelta = new Vector2(tw, 22f);
+                    row.desc.rectTransform.anchoredPosition = new Vector2(tx, -66f);
+                    row.desc.rectTransform.sizeDelta = new Vector2(tw, Mathf.Max(0f, descH));
 
                     ay += rowH + rowGap;
                 }
@@ -316,10 +342,15 @@ namespace Wassup.UI
                 row.name.color = valueColor;
 
                 int cost = costs != null && i < costs.Count ? costs[i] : 0;
-                // 종류 + 코스트. 본문 전문은 뺐다(전투 중 읽히지 않는 밀도이고, 상세는 손패
-                // 툴팁이 이미 나른다) — unit 11 결정.
                 row.kind.text = (isSquad ? "스쿼드" : "유닛") + "  ·  " + cost;
                 row.kind.color = isSquad ? squadBorder : unitBorder;
+
+                // unit 11 rev — 효과만(트리거 뒤). 이미 부착된 카드라 "언제"보다 "무엇이
+                // 달라지나"가 알고 싶은 것이고, 좁은 셀에 트리거까지 넣으면 효과가 밀린다.
+                // 문안 소유는 포매터 하나다(사본 금지 — 손패 툴팁과 어긋나면 안 된다).
+                row.desc.text = DreamcatcherCardText.EffectOnly(
+                    card, defenderCatalog != null ? defenderCatalog.DisplayNameOf : (System.Func<string, string>)null);
+                row.desc.color = labelColor;
 
                 bool hasArt = card.art != null;
                 row.art.gameObject.SetActive(hasArt);
@@ -506,6 +537,8 @@ namespace Wassup.UI
 
                 row.name = BuildLabel(row.root.transform, "Name", 21f, TextAlignmentOptions.TopLeft);
                 row.kind = BuildLabel(row.root.transform, "Kind", 17f, TextAlignmentOptions.TopLeft);
+                row.desc = BuildLabel(row.root.transform, "Desc", 17f, TextAlignmentOptions.TopLeft);
+                row.desc.overflowMode = TextOverflowModes.Ellipsis; // 줄 수 상한을 넘으면 …
 
                 _attachRows.Add(row);
             }

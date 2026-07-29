@@ -30,6 +30,38 @@ namespace Wassup.UI
         public static string BodyLinesOnly(DreamcatcherCard card, Func<string, string> unitNameOf = null)
             => string.Join("\n", LinesWithFallback(card, unitNameOf)).Replace(" → ", " →\n");
 
+        // selection-hand-attach unit 11 rev — **효과만** 남긴 압축 문안. 각 줄의
+        // "트리거 → 효과" 에서 화살표 뒤만 취한다(사용자 결정 2026-07-30).
+        //
+        // 이미 부착된 카드를 보는 화면(선택 상세 패널)에서는 트리거가 정보값이 낮다 —
+        // 무엇이 붙었는지는 이름이 말하고, 알고 싶은 것은 "그래서 뭐가 달라지나"다.
+        // 좁은 셀에 트리거까지 넣으면 그 한 줄이 효과를 밀어낸다.
+        //
+        // 화살표가 **하나도 없으면** 원문을 그대로 쓴다 — description 폴백 경로가
+        // 그렇고(자유 문장), 그때 잘라내면 내용이 통째로 사라진다.
+        // 화살표가 있는 줄이 하나라도 있으면 화살표 없는 줄(부착 제한 "레인저 전용" 등)은
+        // 버린다 — 그건 효과가 아니라 조건 표기다.
+        public static string EffectOnly(DreamcatcherCard card, Func<string, string> unitNameOf = null)
+        {
+            var lines = LinesWithFallback(card, unitNameOf);
+            var kept = new List<string>();
+            bool anyArrow = false;
+            foreach (var line in lines) if (line != null && line.Contains(Arrow)) { anyArrow = true; break; }
+
+            foreach (var line in lines)
+            {
+                if (string.IsNullOrEmpty(line)) continue;
+                int at = line.IndexOf(Arrow, StringComparison.Ordinal);
+                if (at >= 0) kept.Add(line.Substring(at + Arrow.Length).Trim());
+                else if (!anyArrow) kept.Add(line.Trim());
+            }
+            return string.Join("\n", kept);
+        }
+
+        // "트리거 → 효과" 의 구분자. 앞뒤 공백까지가 한 토큰이다(BodyLinesOnly 도 같은 문자열로
+        // 줄바꿈을 넣는다) — 여기서만 다르게 쓰면 두 표면이 어긋난다.
+        private const string Arrow = " → ";
+
         private static string Assemble(DreamcatcherCard card, bool compact, Func<string, string> unitNameOf = null)
         {
             var lines = LinesWithFallback(card, unitNameOf);
