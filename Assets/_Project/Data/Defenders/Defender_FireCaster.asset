@@ -15,8 +15,9 @@ MonoBehaviour:
   id: fire_caster
   role: 4
   displayName: "\uD30C\uC774\uC5B4\uCE90\uC2A4\uD130"
-  desc: "\uCE90\uC2A4\uD130 \xB7 \uADFC\uC811\uD615. \uC9C0\uC18D \uD574\uC800\uB4DC
-    \uC124\uCE58."
+  desc: "\uAE30\uBCF8 \uAE30\uB2A5: \uAE38\uBAA9\uC5D0 \uBD88\uC7A5\uD310 \uC8FC\uAE30
+    \uC124\uCE58\n\uBC30\uCE58 \uC2A4\uD0AC: \uC5C6\uC74C\n\uD2B9\uC218 \uD6A8\uACFC:
+    \uBD88\uC7A5\uD310\uC774 \uC9C0\uC18D \uD53C\uD574"
   health: 300
   attackRange: 0
   attackCooldown: 4

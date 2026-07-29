@@ -15,8 +15,8 @@ MonoBehaviour:
   id: healer
   role: 5
   displayName: "\uD790\uB7EC"
-  desc: "\uC11C\uD3EC\uD2B8 \xB7 \uC544\uAD70 \uCE58\uC720\uD615. \uCD5C\uB300 3\uCCB4
-    \uB3D9\uC2DC \uD0C0\uACA9."
+  desc: "\uAE30\uBCF8 \uAE30\uB2A5: \uC5EC\uB7EC \uC544\uAD70 \uB3D9\uC2DC \uD68C\uBCF5\n\uBC30\uCE58
+    \uC2A4\uD0AC: \uC5C6\uC74C\n\uD2B9\uC218 \uD6A8\uACFC: \uC5C6\uC74C"
   health: 210
   attackRange: 3
   attackCooldown: 3.15
