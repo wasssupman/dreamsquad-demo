@@ -51,3 +51,5 @@ MonoBehaviour:
   dropLandingHeight: 0.25
   dropCordSnapFade: 0.15
   dropRingFade: 0.3
+  placementPointerOffsetHeightRatio: 0.06
+  placementPointerOffsetRampDistance: 60
