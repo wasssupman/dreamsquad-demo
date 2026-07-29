@@ -2248,9 +2248,13 @@ namespace Wassup.Bridge
             DrainKnockupVisualEvents();  // knockup unit 3 — 띄우기 신호 → view 수직 호핑
             DrainUnitAttackVisualEvents();
             // beam unit 1 — 세션 TTL 은 **배틀 도메인 시간**으로 깎는다(공격 사건이 sim 시간).
-            beamPresenter?.Tick(
-                Wassup.Core.TimeControl.TimeManager.Instance.DeltaTime(Wassup.Core.TimeControl.TimeDomain.Battle),
-                spineUnitPool);
+            if (beamPresenter != null)
+            {
+                _beamViewResolver ??= ResolveBeamViewPos;
+                beamPresenter.Tick(
+                    Wassup.Core.TimeControl.TimeManager.Instance.DeltaTime(Wassup.Core.TimeControl.TimeDomain.Battle),
+                    _beamViewResolver);
+            }
             DrainProjectileHitEvents();
             DrainHealAppliedEvents();
             DrainShieldGrantedEvents();
@@ -2795,6 +2799,30 @@ namespace Wassup.Bridge
         // beam unit 1 — 씬에 배선돼 있으면 그것을, 없으면 첫 사용 시 만들어 쓴다.
         // 자동 생성 폴백을 두는 이유: 이 기능만을 위해 공용 씬을 저장하면 그 시점의 미저장 WIP 가
         // 같이 박힌다. 프레젠터는 무상태(TTL 은 호출측이 준다)라 자동 생성이어도 잃는 튜닝이 없다.
+        // 빔 양 끝의 view 위치. 매 프레임 delegate 를 새로 만들지 않도록 캐시한다.
+        private Wassup.Presentation.BeamPresenter.ViewPosResolver _beamViewResolver;
+
+        // 발사점은 cast anchor 우선(TrySpawnCastVfx 와 같은 경로), 그 다음 유닛 view,
+        // **마지막으로 ECS 위치**. 뷰 풀만 보면 풀에 없는 유닛(폴백 뷰·워밍업·비-Spine 적)이
+        // 끝점일 때 빔이 통째로 죽는다 — 배치 스킬 빔이 전멸했던 실제 원인이 이것이었다.
+        private bool ResolveBeamViewPos(Entity entity, bool useAnchor, out Vector3 pos)
+        {
+            pos = default;
+            if (entity == Entity.Null) return false;
+            if (spineUnitPool != null)
+            {
+                if (useAnchor && spineUnitPool.TryResolveAnchor(entity, out pos)) return true;
+                if (spineUnitPool.TryGet(entity, out var view) && view != null)
+                {
+                    pos = view.transform.position; // 이미 view 공간
+                    return true;
+                }
+            }
+            if (!_em.Exists(entity) || !_em.HasComponent<LocalTransform>(entity)) return false;
+            pos = (Vector3)Wassup.Core.BoardSpace.ToView(_em.GetComponentData<LocalTransform>(entity).Position);
+            return true;
+        }
+
         private Wassup.Presentation.BeamPresenter EnsureBeamPresenter()
         {
             if (beamPresenter != null) return beamPresenter;
@@ -3705,6 +3733,18 @@ namespace Wassup.Bridge
                             source: placedEntity, target: e, ttlSec: unitData.onPlaceDuration);
                     }
                     affected++;
+                }
+
+                // 조사(照射) 중에는 기본 공격을 하지 않는다. DotNearby 는 다른 on-place 효과와
+                // 달리 **지속을 갖는 채널**이라 그동안 유닛이 이 스킬에 묶여 있는 것이 사양이다
+                // (순간 효과인 MeleeBurst/StunNearby 등은 해당 없음 — 그래서 이 분기 안에 둔다).
+                // 첫 공격 쿨다운을 지속만큼 밀어 둔다. max 를 쓰는 이유는 이미 걸린 쿨다운을
+                // 줄이지 않기 위함.
+                if (_em.HasComponent<Wassup.Battle.Combat.AttackState>(placedEntity))
+                {
+                    var atk = _em.GetComponentData<Wassup.Battle.Combat.AttackState>(placedEntity);
+                    atk.cooldownRemaining = math.max(atk.cooldownRemaining, unitData.onPlaceDuration);
+                    _em.SetComponentData(placedEntity, atk);
                 }
             }
             else if (unitData.onPlaceEffect == OnPlaceEffectType.MeleeBurst)

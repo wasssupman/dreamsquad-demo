@@ -84,6 +84,102 @@ namespace Wassup.Tests.PlayMode
             if (em.Exists(enemy)) em.DestroyEntity(enemy);
         }
 
+        [UnityTest]
+        public IEnumerator OnPlaceBarrage_OpensOneBeamPerTarget_AndHoldsFire()
+        {
+            // 배치 스킬(개점 일제 조사)은 **반경 내 대상 수만큼** 빔을 연다. 그리고 조사가
+            // 끝날 때까지 기본 공격을 하지 않는다(유닛이 스킬에 묶여 있는 것이 사양).
+            //
+            // 회귀 가드: 초판은 빔 끝점을 spineUnitPool 로만 찾아, 풀에 없는 적이 끝점이면
+            // 세션이 첫 프레임에 죽었다. 배치 빔은 한 번만 열리므로 그대로 전멸했고, 0.2초마다
+            // 다시 열리는 **공격 빔 하나만** 남아 "빔이 1개만 나온다"로 보였다.
+            LogAssert.ignoreFailingMessages = true;
+            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            for (int i = 0; i < 6; i++) yield return null;
+
+            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+            var bridge = Object.FindObjectOfType<BattleBridge>();
+            var gm = Object.FindObjectOfType<GameManager>();
+            var busters = FindCatalog().ById("busters");
+            Assert.AreEqual(OnPlaceEffectType.DotNearby, busters.onPlaceEffect, "배치 스킬 = DotNearby");
+
+            bridge.SetDefenderPool(new[] { busters });
+            bridge.BeginPlacement();
+            gm.CostRuntime.ResetToStart();
+            gm.CostRuntime.AddCost(100000);
+
+            Vector2Int cell = FindPlaceableCell(bridge, busters);
+            Assert.AreNotEqual(int.MinValue, cell.x, "placeable cell");
+
+            // 반경(2) 안에 3체 — 배치 **전에** 세운다(on-place 는 그 순간의 스냅샷을 본다).
+            var spots = new[]
+            {
+                new Vector2Int(cell.x + 1, cell.y),
+                new Vector2Int(cell.x, cell.y + 1),
+                new Vector2Int(cell.x + 1, cell.y + 1),
+            };
+            var enemies = new Entity[spots.Length];
+            for (int i = 0; i < spots.Length; i++)
+            {
+                var w = bridge.GridToWorldCenterVector(spots[i]);
+                enemies[i] = SpawnDummyEnemy(em, new float3(w.x, w.y, w.z));
+            }
+
+            bridge.StartBattle();
+            Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, busters), "place busters");
+
+            // 조사 지속(2초) 동안 동시에 살아있는 빔 세션의 최대치.
+            int maxActive = 0;
+            float t = 0f;
+            while (t < 1.2f)
+            {
+                t += Time.deltaTime;
+                var presenter = GameObject.Find("BeamPresenter (auto)");
+                int active = 0;
+                if (presenter != null)
+                    foreach (Transform c in presenter.transform)
+                        if (c.gameObject.activeSelf) active++;
+                if (active > maxActive) maxActive = active;
+                yield return null;
+            }
+
+            for (int i = 0; i < enemies.Length; i++) if (em.Exists(enemies[i])) em.DestroyEntity(enemies[i]);
+
+            Assert.GreaterOrEqual(maxActive, spots.Length,
+                $"반경 내 {spots.Length}체 전원에게 빔이 이어져야 한다(실측 최대 {maxActive}). "
+                + "1 이면 배치 빔이 죽고 공격 빔만 남은 것");
+        }
+
+        [UnityTest]
+        public IEnumerator OnPlaceBarrage_SuppressesBasicAttackForItsDuration()
+        {
+            LogAssert.ignoreFailingMessages = true;
+            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            for (int i = 0; i < 6; i++) yield return null;
+
+            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+            var bridge = Object.FindObjectOfType<BattleBridge>();
+            var gm = Object.FindObjectOfType<GameManager>();
+            var busters = FindCatalog().ById("busters");
+
+            bridge.SetDefenderPool(new[] { busters });
+            bridge.BeginPlacement();
+            gm.CostRuntime.ResetToStart();
+            gm.CostRuntime.AddCost(100000);
+            Vector2Int cell = FindPlaceableCell(bridge, busters);
+            bridge.StartBattle();
+            Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, busters), "place busters");
+
+            var defender = FindDefender(bridge, em);
+            Assert.AreNotEqual(Entity.Null, defender, "defender resolved");
+
+            // 배치 직후 쿨다운이 조사 지속만큼 밀려 있어야 한다 = 그동안 기본 공격 없음.
+            var atk = em.GetComponentData<Wassup.Battle.Combat.AttackState>(defender);
+            Assert.GreaterOrEqual(atk.cooldownRemaining, busters.onPlaceDuration - 0.05f,
+                $"조사 중에는 기본 공격을 하지 않아야 한다(쿨다운 {atk.cooldownRemaining} < 지속 {busters.onPlaceDuration})");
+            yield return null;
+        }
+
         // ── helpers ──────────────────────────────────────────────────────────
         private static DefenderCatalog FindCatalog()
         {

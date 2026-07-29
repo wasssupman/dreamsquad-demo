@@ -65,15 +65,23 @@ namespace Wassup.Tests.PlayMode
             em.AddBuffer<IncomingDamage>(enemy);
             em.AddComponent<AttackUnitTag>(enemy);
 
+            // 배치 스킬(개점 일제 조사)이 끝날 때까지 기다린 뒤에 잰다. 조사 중에는 기본 공격을
+            // 하지 않는 것이 사양이고(BeamPresentationTest 가 그 계약을 지킨다), 조사의 tick DoT
+            // 자체도 이 적에게 들어오므로 그 구간을 섞으면 "기본 공격이 도는가"를 못 잰다.
+            float settle = busters.onPlaceDuration + 0.6f; // 조사 지속 + DoT 꼬리
+            float t = 0f;
+            while (t < settle) { t += Time.deltaTime; yield return null; }
+
             // 1.2초 = 쿨다운 0.2 기준 5~6틱. 정확한 틱 수는 프레임 경계에 걸리므로
             // "고속으로 여러 번 들어왔다" 만 단언한다(틱 수 고정은 취약).
-            float t = 0f;
+            float before = em.GetComponentData<Health>(enemy).value;
+            t = 0f;
             while (t < 1.2f)
             {
                 t += Time.deltaTime;
                 yield return null;
             }
-            float dealt = Hp - em.GetComponentData<Health>(enemy).value;
+            float dealt = before - em.GetComponentData<Health>(enemy).value;
             em.DestroyEntity(enemy);
 
             Assert.Greater(dealt, 7f * 2f,

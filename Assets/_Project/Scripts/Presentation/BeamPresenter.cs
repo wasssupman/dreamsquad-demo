@@ -19,6 +19,14 @@ namespace Wassup.Presentation
     // 충돌하고, 재조준을 매 프레임 우리가 쥐어야 해서 프리팹 사본에서 걷어냈다.
     public class BeamPresenter : MonoBehaviour
     {
+        /// <summary>
+        /// 엔티티의 현재 **view 공간** 위치 해석기. 프레젠터는 ECS 를 볼 수 없으므로(제약 1)
+        /// BattleBridge 가 넘긴다. useAnchor = 발사점(cast anchor 우선).
+        /// ⚠ 뷰 풀만 보면 안 된다: 풀에 없는 유닛(폴백 뷰·워밍업 중)이 끝점이면 빔이 통째로
+        /// 죽는다 — 배치 스킬 빔이 한 프레임 만에 전멸했던 원인이 정확히 이것이었다.
+        /// </summary>
+        public delegate bool ViewPosResolver(Entity entity, bool useAnchor, out Vector3 pos);
+
         private sealed class Session
         {
             public GameObject prefab;   // 어느 프리팹에서 났는지 — 풀 재사용 시 대조한다
@@ -65,7 +73,7 @@ namespace Wassup.Presentation
         /// ⚠ deltaTime 은 **배틀 도메인 시간**이어야 한다 — 공격 사건이 sim 시간으로 오므로
         /// 실시간으로 재면 슬로모에서 사건 간격이 TTL 을 넘겨 빔이 깜빡인다.
         /// </summary>
-        public void Tick(float battleDeltaTime, SpineUnitPool pool)
+        public void Tick(float battleDeltaTime, ViewPosResolver resolve)
         {
             if (_sessions.Count == 0) return;
             _expiredScratch.Clear();
@@ -78,7 +86,7 @@ namespace Wassup.Presentation
                 // 있는데, 그때마다 세션을 닫으면 다음 공격에 새 세션이 열려 파티클이 0부터
                 // 다시 쌓인다 = 빔이 끊겨 보인다. 마지막 유효 배치로 버티고 TTL 로만 끝낸다.
                 // 단 **한 번도** 배치에 성공하지 못한 세션은 그릴 것이 없으니 정리한다.
-                if (!TryPlace(s, pool) && !s.placedOnce) _expiredScratch.Add(kv.Key);
+                if (!TryPlace(s, resolve) && !s.placedOnce) _expiredScratch.Add(kv.Key);
             }
             for (int i = 0; i < _expiredScratch.Count; i++)
                 Close(_expiredScratch[i]);
@@ -103,16 +111,16 @@ namespace Wassup.Presentation
 
         // ── 내부 ────────────────────────────────────────────────────────────
         // 양 끝을 뷰에서 다시 읽어 빔 파츠를 배치한다. 한쪽이라도 못 찾으면 false = 세션 종료.
-        private static bool TryPlace(Session s, SpineUnitPool pool)
+        private static bool TryPlace(Session s, ViewPosResolver resolve)
         {
-            if (pool == null) return false;
+            if (resolve == null) return false;
             // 조회에 실패하면 마지막 유효값으로 버틴다(위 Tick 주석 — 깜빡임 방지).
-            if (!TryViewPos(pool, s.source, useAnchor: true, out var sourceView))
+            if (!resolve(s.source, true, out var sourceView))
             {
                 if (!s.placedOnce) return false;
                 sourceView = s.lastSource;
             }
-            if (!TryViewPos(pool, s.target, useAnchor: false, out var endpoint))
+            if (!resolve(s.target, false, out var endpoint))
             {
                 if (!s.placedOnce) return false;
                 endpoint = s.lastEndpoint;
@@ -154,19 +162,6 @@ namespace Wassup.Presentation
             return true;
         }
 
-        // 엔티티의 현재 view 위치. 발사점은 cast anchor 우선(TrySpawnCastVfx 와 같은 경로),
-        // 없으면 view transform — transform.position 은 이미 view 공간이다.
-        // ⚠ Transform 을 붙들지 않고 **매 프레임 엔티티로 조회**한다: 풀이 뷰를 재사용하므로
-        // 붙들면 대상 사망 후 그 자리에 들어온 다른 유닛에 빔이 옮겨 붙는다.
-        private static bool TryViewPos(SpineUnitPool pool, Entity e, bool useAnchor, out Vector3 pos)
-        {
-            pos = default;
-            if (e == Entity.Null) return false;
-            if (useAnchor && pool.TryResolveAnchor(e, out pos)) return true;
-            if (!pool.TryGet(e, out var view) || view == null) return false;
-            pos = view.transform.position;
-            return true;
-        }
 
         private Session Rent(GameObject prefab)
         {
