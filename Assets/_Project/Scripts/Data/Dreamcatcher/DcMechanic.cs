@@ -140,6 +140,9 @@ namespace Wassup.Data
         // placement-aura 의 magnitude=% 컨벤션). 음수 = 아군 슬로우(허용,
         // aggregator floor 클램프).
         // dreamcatcher-heavy-strike — HeavyStrike: 강공 데미지 배율(2.0 = ×2).
+        // boss-jjangssen unit 4 — SelfBlink: **밀집도 판정 반경**(타일, Chebyshev). 착지 앵커를
+        // "이 반경 안에 방어유닛이 가장 많은 셀" 로 고른다. tileRange 는 이미 착지 탐색 링 상한이라
+        // 두 반경이 다른 의미이므로 여기 싣는다(kind별 필드 재사용 컨벤션). <=0 = 자기 셀만.
         public float magnitude;
         // ProjectileToTarget: trajectory/view definition. nightmare-catcher
         // unit 0 — AreaBarrage: SkyFall 낙하 비주얼. 나머지 kind 는 null 유지

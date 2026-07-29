@@ -45,7 +45,6 @@ namespace Wassup.Battle.Combat
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            var transformLookup = SystemAPI.GetComponentLookup<LocalTransform>(isReadOnly: true);
             var threatLookup = SystemAPI.GetBufferLookup<ThreatEntry>(isReadOnly: false);
             // boss-jjangssen unit 2 — SelfTileAoe 캐리어의 피해 풀 진영을 host 에서 도출한다.
             // 기본값이 Enemy 라 그냥 두면 **보스의 폭발이 자기 진영(적)을 때린다**.
@@ -80,8 +79,8 @@ namespace Wassup.Battle.Combat
             // 판(last_stand 만 있고 blink 슬롯 없음)에서 매 프레임 쿼리+2배열 할당을 피하려
             // 첫 SelfBlink 발동 때 지연 생성(ecs-review MEDIUM). BossPeriodic whip 풀 선례.
             var defQuery = SystemAPI.QueryBuilder().WithAll<DefenderUnitTag, LocalTransform>().Build();
-            NativeArray<Entity> defEntities = default;
             NativeArray<LocalTransform> defTransforms = default;
+            NativeArray<int2> defCells = default;
             bool defBuilt = false;
 
             // 진동갑주 (content-3 unit 4) — SelfTileAoe 캐리어 스테이징용 ECB.
@@ -138,13 +137,17 @@ namespace Wassup.Battle.Combat
                             // 디펜더 폴백 풀은 여기서만 필요 — 첫 blink 발동 때 1회 생성.
                             if (hasBlinkQ && !defBuilt)
                             {
-                                defEntities = defQuery.ToEntityArray(Allocator.Temp);
                                 defTransforms = defQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
+                                // boss-jjangssen unit 4 — 밀집도 판정은 셀 단위. 위치→셀 변환을
+                                // 여기서 한 번만 하고 순수 함수엔 셀만 넘긴다.
+                                defCells = new NativeArray<int2>(defTransforms.Length, Allocator.Temp);
+                                for (int di = 0; di < defTransforms.Length; di++)
+                                    defCells[di] = GridMath.WorldToCell(
+                                        defTransforms[di].Position, ff.tileSize, ff.gridSize, origin: ff.origin);
                                 defBuilt = true;
                             }
-                            if (hasBlinkQ && TryResolveBlinkDest(entity, transform.ValueRO.Position, slot.tileRange,
-                                     in transformLookup, in threatLookup, defEntities, defTransforms, in ff,
-                                     out float3 destWorld))
+                            if (hasBlinkQ && TryResolveBlinkDest(slot.tileRange, (int)slot.magnitude,
+                                     defCells, in ff, out float3 destWorld))
                             {
                                 blinkRW.ValueRW.queue.Enqueue(new BlinkRequestEvent { entity = entity, destWorld = destWorld });
                                 // 출발지 + 도착지 퍼프 (dataIndex < 0 = 무연출 blink).
@@ -209,64 +212,33 @@ namespace Wassup.Battle.Combat
 
             if (defBuilt)
             {
-                defEntities.Dispose();
                 defTransforms.Dispose();
+                defCells.Dispose();
             }
 
             ecb.Playback(state.EntityManager);
             ecb.Dispose();
         }
 
-        // 폴백 체인: 위협 리더(alive) → 최근접 생존 방어유닛 → false(skip).
-        // alive 정의 = 조회 시점 LocalTransform 존재 (unit 1 과 공유).
+        // boss-jjangssen unit 4 — 착지 앵커 = **방어유닛 밀집도 최대 셀**.
+        //
+        // 구 정책(위협 리더 근처 → 최근접 폴백)을 **교체**했다. 필드로 정책을 고르게 하지
+        // 않은 이유: 구 정책의 라이브 authoring 사용처가 0이었다(나이트메어 mechanic 3개는
+        // 전부 PeriodicTimer). 쓰이지 않는 분기를 위해 셀렉터를 만드는 것은 제약 8 위반이다.
+        // `ThreatEntry` 와 threat drain 은 별 책임이라 그대로 남아 있다.
+        //
+        // OffsetDest(리더를 지나쳐 1타일)는 쓰지 않는다 — 밀집을 응징하러 뛰는 것이므로
+        // 밀집 셀 자체가 desired 이고, 그 셀이 배치칸(비-walkable)이면 TryFindLandingCell 의
+        // 링 탐색이 인접 walkable·연결 셀로 스냅한다(고립 포켓 착지 방지는 기존 계약).
         private static bool TryResolveBlinkDest(
-            Entity self, float3 selfPos, int maxRingRadius,
-            in ComponentLookup<LocalTransform> transformLookup,
-            in BufferLookup<ThreatEntry> threatLookup,
-            in NativeArray<Entity> defEntities, in NativeArray<LocalTransform> defTransforms,
+            int maxRingRadius, int densityRadius,
+            in NativeArray<int2> defCells,
             in FlowFieldSingleton ff, out float3 destWorld)
         {
             destWorld = default;
 
-            float3 leaderPos = default;
-            bool hasLeader = false;
-            if (threatLookup.HasBuffer(self))
-            {
-                var entries = threatLookup[self].AsNativeArray();
-                var alive = new NativeArray<bool>(entries.Length, Allocator.Temp);
-                for (int i = 0; i < entries.Length; i++)
-                    alive[i] = transformLookup.HasComponent(entries[i].attacker);
-                var leader = ThreatTable.Leader(entries, alive);
-                alive.Dispose();
-                if (leader != Entity.Null)
-                {
-                    leaderPos = transformLookup[leader].Position;
-                    hasLeader = true;
-                }
-            }
-            if (!hasLeader)
-            {
-                // 진짜 엣지 폴백(HIGH-2 격하): 위협 0 또는 리더 사망 → 최근접.
-                // 동거리 동점은 entity index 오름차순 (결정론).
-                float bestSq = float.MaxValue;
-                int bestIdx = -1;
-                for (int i = 0; i < defEntities.Length; i++)
-                {
-                    float3 d = defTransforms[i].Position - selfPos;
-                    d.y = 0f;
-                    float sq = math.lengthsq(d);
-                    if (sq < bestSq || (sq == bestSq && bestIdx >= 0 && defEntities[i].Index < defEntities[bestIdx].Index))
-                    {
-                        bestSq = sq;
-                        bestIdx = i;
-                    }
-                }
-                if (bestIdx < 0) return false; // 방어유닛 전멸 → skip
-                leaderPos = defTransforms[bestIdx].Position;
-            }
-
-            float3 desired = BlinkMath.OffsetDest(leaderPos, selfPos, ff.tileSize);
-            int2 desiredCell = GridMath.WorldToCell(desired, ff.tileSize, ff.gridSize, origin: ff.origin);
+            if (!DefenderDensity.TryFindDensestCell(defCells, densityRadius, ff.gridSize, out int2 desiredCell, out _))
+                return false; // 방어유닛 전멸 → skip
             if (!BlinkMath.TryFindLandingCell(desiredCell, ff.dist, ff.gridSize, math.max(0, maxRingRadius), out int2 landing))
                 return false; // 링 상한 내 착지 불가 → skip
             destWorld = GridMath.CellToWorldCenter(landing, ff.tileSize, 0f, origin: ff.origin);
