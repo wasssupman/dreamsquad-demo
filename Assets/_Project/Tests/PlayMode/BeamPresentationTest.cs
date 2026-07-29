@@ -151,6 +151,55 @@ namespace Wassup.Tests.PlayMode
         }
 
         [UnityTest]
+        public IEnumerator OnPlaceBarrage_ViaDragPath_AlsoOpensOneBeamPerTarget()
+        {
+            // 실사용은 드래그 배치다: TryBeginDefenderDeployment(PendingDeployment) →
+            // ActivateDeployedDefender → TriggerDeploymentOnPlaceSkill → ApplyOnPlaceEffect.
+            // 즉시 배치(PlaceDefenderAs)만 검증하면 이 경로의 차이를 놓친다.
+            LogAssert.ignoreFailingMessages = true;
+            yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
+            for (int i = 0; i < 6; i++) yield return null;
+
+            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+            var bridge = Object.FindObjectOfType<BattleBridge>();
+            var gm = Object.FindObjectOfType<GameManager>();
+            var busters = FindCatalog().ById("busters");
+
+            bridge.SetDefenderPool(new[] { busters });
+            bridge.BeginPlacement();
+            gm.CostRuntime.ResetToStart();
+            gm.CostRuntime.AddCost(100000);
+
+            Vector2Int cell = FindPlaceableCell(bridge, busters);
+            Assert.AreNotEqual(int.MinValue, cell.x, "placeable cell");
+
+            var spots = new[]
+            {
+                new Vector2Int(cell.x + 1, cell.y),
+                new Vector2Int(cell.x, cell.y + 1),
+                new Vector2Int(cell.x + 1, cell.y + 1),
+            };
+            for (int i = 0; i < spots.Length; i++)
+            {
+                var w = bridge.GridToWorldCenterVector(spots[i]);
+                SpawnDummyEnemy(em, new float3(w.x, w.y, w.z));
+            }
+
+            bridge.StartBattle();
+            Assert.IsTrue(bridge.TryBeginDefenderDeployment(cell.x, cell.y, busters, out var entity),
+                "drag 배치 시작");
+            bridge.ActivateDeployedDefender(cell, entity); // 배치 확정 = on-place 발동 시점
+
+            var presenter = GameObject.Find("BeamPresenter (auto)");
+            Assert.IsNotNull(presenter, "활성화 직후 빔 프레젠터가 있어야 한다");
+            var bp = presenter.GetComponent<Wassup.Presentation.BeamPresenter>();
+            Assert.GreaterOrEqual(bp.LiveSessionCount, spots.Length,
+                $"드래그 경로에서도 대상 {spots.Length}체 전원에게 빔이 열려야 한다"
+                + $"(실측 {bp.LiveSessionCount})");
+            yield return null;
+        }
+
+        [UnityTest]
         public IEnumerator OnPlaceBarrage_SuppressesBasicAttackForItsDuration()
         {
             LogAssert.ignoreFailingMessages = true;

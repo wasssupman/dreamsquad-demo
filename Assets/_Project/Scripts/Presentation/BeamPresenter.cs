@@ -92,6 +92,9 @@ namespace Wassup.Presentation
                 Close(_expiredScratch[i]);
         }
 
+        /// <summary>현재 살아있는 빔 세션 수(진단·테스트용).</summary>
+        public int LiveSessionCount => _sessions.Count;
+
         /// <summary>공격자/대상이 사라졌을 때 즉시 끊는다.</summary>
         public void Close(Entity key)
         {
