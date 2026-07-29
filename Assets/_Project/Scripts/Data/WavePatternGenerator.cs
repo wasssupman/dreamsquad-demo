@@ -34,7 +34,8 @@ namespace Wassup.Data
                 deck.bossEscortMax,
                 deck.waveCountJitter,
                 deck.fixedWaveIntervalSec,
-                deck.waveSpawnLeadInSec);
+                deck.waveSpawnLeadInSec,
+                deck.bossPool);
         }
 
         public static GeneratedWavePlan Generate(
@@ -53,16 +54,26 @@ namespace Wassup.Data
             int bossEscortMax = 0,
             int waveCountJitter = 1,
             float fixedIntervalSec = 0f,
-            float spawnLeadInSec = 0f)
+            float spawnLeadInSec = 0f,
+            // boss-jjangssen unit 0 — 보스 로테이션 풀. **맨 뒤에 추가**한 것은 의도다: 기존 boss 파라미터
+            // 사이에 끼우면 positional 인자로 호출하는 테스트들이 조용히 다른 값을 받는다.
+            IReadOnlyList<AttackUnitData> bossPool = null)
         {
             if (attackUnitPool == null) throw new ArgumentNullException(nameof(attackUnitPool));
 
             var pool = BuildDistinctPool(attackUnitPool);
+            // boss-jjangssen unit 0 — 폴백 소유자는 생성기다(덱을 안 거치는 직접 호출자도 같은 규칙을
+            // 받아야 하고, 두 곳에 두면 드리프트한다). bossPool 이 비면 bossUnit 단일.
+            var bosses = BuildBossPool(bossPool, bossUnit);
             // boss-wave-cadence unit 0 — 보스는 잡몹 pool 과 분리가 계약. 실수로 pool 에 섞여도
             // 방어적으로 제외해 비-보스 웨이브 보스 오발화·escort 보스 중복(보스 2기)을 원천 차단.
             // 없으면 no-op → 비-보스 웨이브는 현행 생성기와 불변.
-            if (bossUnit != null && pool.Remove(bossUnit))
-                Debug.LogWarning($"[WavePatternGenerator] bossUnit '{bossUnit.id}' 가 attackUnitPool 에 포함돼 있어 생성 pool 에서 제외했습니다. 덱에서 pool 과 bossUnit 을 분리하세요.");
+            // boss-jjangssen unit 0 — 단일 bossUnit 에서 pool 전체 루프로 확장(불변식 유지).
+            for (int b = 0; b < bosses.Count; b++)
+            {
+                if (pool.Remove(bosses[b]))
+                    Debug.LogWarning($"[WavePatternGenerator] boss '{bosses[b].id}' 가 attackUnitPool 에 포함돼 있어 생성 pool 에서 제외했습니다. 덱에서 pool 과 보스를 분리하세요.");
+            }
             if (pool.Count < 2)
                 throw new ArgumentException("Wave generation requires at least two distinct AttackUnitData entries.", nameof(attackUnitPool));
 
@@ -117,19 +128,23 @@ namespace Wassup.Data
 
             // boss-wave-cadence unit 0 — 매 bossWaveInterval 번째 웨이브를 보스×1(선봉) + 잡몹×[min,max]
             // 로 치환. 랜덤 루프 뒤 후처리라 비-보스 웨이브의 rng 소비는 현행과 byte-identical.
-            if (bossUnit != null && bossWaveInterval > 0)
+            if (bosses.Count > 0 && bossWaveInterval > 0)
             {
                 int escortMin = math.max(1, math.min(bossEscortMin, bossEscortMax));
                 int escortMax = math.max(escortMin, math.max(bossEscortMin, bossEscortMax));
                 for (int i = 0; i < waves.Count; i++)
                 {
                     if ((i + 1) % bossWaveInterval != 0) continue;
+                    // boss-jjangssen unit 0 — 보스가 1종이면 rng 를 **소비하지 않는다**. 라이브 덱은
+                    // 전부 단일 보스라, 이 가드가 rng 스트림을 byte-identical 하게 유지해 기존 맵들의
+                    // 웨이브 편성이 무회귀가 된다. 2종+ 부터 선택에 rng 1콜을 쓴다.
+                    var boss = bosses.Count == 1 ? bosses[0] : bosses[rng.NextInt(0, bosses.Count)];
                     int escortCount = rng.NextInt(escortMin, escortMax + 1);
                     // pool 은 boss-free. 호위도 같은 등장 게이트를 따른다(unit 12).
                     var escortType = pool[ResolveWaveEligibleIndex(pool, rng.NextInt(0, pool.Count), i + 1)];
                     var groups = new List<WaveSpawnGroup>
                     {
-                        new WaveSpawnGroup(bossUnit, 1),      // 선봉: RoundRobin round 0 = 보스 먼저
+                        new WaveSpawnGroup(boss, 1),          // 선봉: RoundRobin round 0 = 보스 먼저
                         new WaveSpawnGroup(escortType, escortCount),
                     };
                     waves[i] = new GeneratedWave(i, i * interval, groups, 0f, WaveExpandMode.RoundRobin);
@@ -346,6 +361,28 @@ namespace Wassup.Data
                 if (unit == null || result.Contains(unit)) continue;
                 result.Add(unit);
             }
+            return result;
+        }
+
+        // boss-jjangssen unit 0 — 보스 후보 확정. bossPool 이 실질 원소를 가지면 그것을(null/중복 제거),
+        // 아니면 bossUnit 단일로 폴백한다. 폴백을 여기 둔 이유는 덱 경로와 직접 호출 경로가 같은 규칙을
+        // 받아야 하기 때문이다 — 덱에도 폴백을 두면 두 곳이 드리프트한다.
+        // 순서 보존이 계약이다: 보스 선택이 index 기반이므로 authoring 순서가 곧 결정론의 입력이다.
+        private static List<AttackUnitData> BuildBossPool(
+            IReadOnlyList<AttackUnitData> bossPool, AttackUnitData bossUnit)
+        {
+            var result = new List<AttackUnitData>();
+            if (bossPool != null)
+            {
+                for (int i = 0; i < bossPool.Count; i++)
+                {
+                    var unit = bossPool[i];
+                    if (unit == null || result.Contains(unit)) continue;
+                    result.Add(unit);
+                }
+            }
+            if (result.Count == 0 && bossUnit != null)
+                result.Add(bossUnit);
             return result;
         }
     }

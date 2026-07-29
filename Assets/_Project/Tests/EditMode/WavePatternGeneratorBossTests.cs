@@ -150,6 +150,174 @@ namespace Wassup.Tests.EditMode
             finally { Object.DestroyImmediate(boss); }
         }
 
+        // ── boss-jjangssen unit 0 — bossPool 로테이션 ────────────────────────────────
+
+        // 무회귀의 실체: 보스 1종이면 선택 rng 를 소비하지 않아야 한다. 소비하면 escortCount·
+        // escortType 이 한 칸씩 밀려 **보스 웨이브 구성이 전부 바뀐다** → 라이브 7덱 회귀.
+        [Test]
+        public void SingleEntryBossPoolIsIdenticalToLegacyBossUnit()
+        {
+            var boss = CreateUnit("Boss");
+            try
+            {
+                var legacy = GenerateBoss(4242, boss, 5, 3, 4);
+                var pooled = GenerateBossPool(4242, new[] { boss });
+
+                Assert.AreEqual(legacy.waves.Count, pooled.waves.Count);
+                for (int i = 0; i < legacy.waves.Count; i++)
+                {
+                    Assert.AreEqual(legacy.waves[i].groups.Count, pooled.waves[i].groups.Count, $"wave {i} group count");
+                    for (int g = 0; g < legacy.waves[i].groups.Count; g++)
+                    {
+                        Assert.AreSame(legacy.waves[i].groups[g].unit, pooled.waves[i].groups[g].unit, $"wave {i} g{g} unit");
+                        Assert.AreEqual(legacy.waves[i].groups[g].count, pooled.waves[i].groups[g].count, $"wave {i} g{g} count");
+                    }
+                }
+            }
+            finally { Object.DestroyImmediate(boss); }
+        }
+
+        // 라이브 덱은 bossPool 이 비어 있다 — bossUnit 폴백이 끊기면 보스가 조용히 사라진다.
+        [Test]
+        public void EmptyBossPoolFallsBackToBossUnit()
+        {
+            var boss = CreateUnit("Boss");
+            try
+            {
+                foreach (var empty in new IReadOnlyList<AttackUnitData>[] { null, new AttackUnitData[0] })
+                {
+                    var plan = GenerateBossPool(31, empty, fallbackBoss: boss);
+                    for (int i = 0; i < plan.waves.Count; i++)
+                    {
+                        if ((i + 1) % 5 != 0) continue;
+                        Assert.AreSame(boss, plan.waves[i].groups[0].unit, $"wave {i} 폴백 보스 선봉");
+                    }
+                }
+            }
+            finally { Object.DestroyImmediate(boss); }
+        }
+
+        // 보스가 하나도 없으면(폴백도 null) 보스 웨이브 자체가 없다 — 기존 graceful no-op 유지.
+        [Test]
+        public void NoBossAtAllProducesNoBossWaves()
+        {
+            var plan = GenerateBossPool(31, new AttackUnitData[0], fallbackBoss: null);
+            foreach (var w in plan.waves)
+                Assert.AreEqual(2, w.groups.Count, "보스 없음 → 일반 2그룹 웨이브");
+        }
+
+        [Test]
+        public void BossSelectionIsDeterministicForSameSeed()
+        {
+            var a = CreateUnit("BossA");
+            var b = CreateUnit("BossB");
+            try
+            {
+                var first = GenerateBossPool(9001, new[] { a, b });
+                var second = GenerateBossPool(9001, new[] { a, b });
+                for (int i = 0; i < first.waves.Count; i++)
+                {
+                    if ((i + 1) % 5 != 0) continue;
+                    Assert.AreSame(first.waves[i].groups[0].unit, second.waves[i].groups[0].unit, $"wave {i} 보스 선택 결정론");
+                }
+            }
+            finally { Object.DestroyImmediate(a); Object.DestroyImmediate(b); }
+        }
+
+        // 선봉은 항상 pool 안의 보스이고, seed 를 바꾸면 **양쪽 보스가 다 나온다**(선택이 고정 아님).
+        [Test]
+        public void MultiBossPoolRotatesWithinPoolOnly()
+        {
+            var a = CreateUnit("BossA");
+            var b = CreateUnit("BossB");
+            try
+            {
+                var seen = new HashSet<AttackUnitData>();
+                for (int seed = 1; seed <= 30; seed++)
+                {
+                    var plan = GenerateBossPool(seed, new[] { a, b });
+                    for (int i = 0; i < plan.waves.Count; i++)
+                    {
+                        if ((i + 1) % 5 != 0) continue;
+                        var leader = plan.waves[i].groups[0].unit;
+                        Assert.IsTrue(leader == a || leader == b, $"seed {seed} wave {i} 선봉이 pool 밖");
+                        Assert.AreNotSame(leader, plan.waves[i].groups[1].unit, $"seed {seed} wave {i} escort≠보스");
+                        seen.Add(leader);
+                    }
+                }
+                Assert.AreEqual(2, seen.Count, "30 seed 안에 두 보스가 모두 등장해야 로테이션이 실제로 도는 것");
+            }
+            finally { Object.DestroyImmediate(a); Object.DestroyImmediate(b); }
+        }
+
+        [Test]
+        public void BossPoolWithNullEntriesIsFiltered()
+        {
+            var boss = CreateUnit("Boss");
+            try
+            {
+                var plan = GenerateBossPool(55, new AttackUnitData[] { null, boss, null, boss });
+                for (int i = 0; i < plan.waves.Count; i++)
+                {
+                    if ((i + 1) % 5 != 0) continue;
+                    Assert.AreSame(boss, plan.waves[i].groups[0].unit, $"wave {i} null/중복 제거 후 단일 보스");
+                }
+            }
+            finally { Object.DestroyImmediate(boss); }
+        }
+
+        // pool 방어가 단일 bossUnit 에서 pool 전체 루프로 확장됐는지 — 원소가 여럿이어도 전부 제외.
+        [Test]
+        public void AllBossPoolEntriesAreExcludedFromRegularSpawns()
+        {
+            var a = CreateUnit("BossA");
+            var b = CreateUnit("BossB");
+            var polluted = new List<AttackUnitData>(_units) { a, b }; // 둘 다 실수로 섞임
+            try
+            {
+                var plan = GenerateBossPool(1357, new[] { a, b }, pool: polluted);
+                for (int i = 0; i < plan.waves.Count; i++)
+                {
+                    var w = plan.waves[i];
+                    if ((i + 1) % 5 == 0)
+                    {
+                        Assert.AreEqual(1, w.groups[0].count, $"wave {i} 보스 1기");
+                        Assert.IsFalse(w.groups[1].unit == a || w.groups[1].unit == b, $"wave {i} escort 에 보스 누출");
+                    }
+                    else
+                    {
+                        foreach (var g in w.groups)
+                            Assert.IsFalse(g.unit == a || g.unit == b, $"wave {i} 비-보스 웨이브 보스 누출");
+                    }
+                }
+            }
+            finally { Object.DestroyImmediate(a); Object.DestroyImmediate(b); }
+        }
+
+        private GeneratedWavePlan GenerateBossPool(int seed, IReadOnlyList<AttackUnitData> bosses,
+            AttackUnitData fallbackBoss = null, IReadOnlyList<AttackUnitData> pool = null, int waveCount = 12)
+        {
+            // GenerateBoss 와 동일한 나머지 파라미터를 명시해 두 경로의 플랜이 비교 가능하게 유지한다.
+            return WavePatternGenerator.Generate(
+                seed,
+                1,
+                180f,
+                waveCount,
+                waveCount,
+                10,
+                15,
+                0.35f,
+                pool ?? _units,
+                fallbackBoss,
+                5,
+                3,
+                4,
+                waveCountJitter: 1,
+                fixedIntervalSec: 0f,
+                spawnLeadInSec: 0f,
+                bossPool: bosses);
+        }
+
         private GeneratedWavePlan GenerateBoss(int seed, AttackUnitData boss, int interval, int escMin, int escMax,
             IReadOnlyList<AttackUnitData> pool = null, int waveCount = 12)
         {

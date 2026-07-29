@@ -58,7 +58,15 @@
 `payload { kind = SelfBlink, tileRange = <착지 탐색 반경>, projectile = <출발/착지 퍼프 SO 또는 null> }`.
 
 `projectile` 이 null 이면 무연출 blink 다(기존 계약). 순간이동이 눈에 안 보이면 플레이어가 무슨 일이
-일어났는지 모르므로 퍼프를 넣는 것을 권한다.
+일어났는지 모르므로 반드시 넣는다.
+
+**도약 VFX = `Assets/PixPlays/ElementalAOE/EarthAOE/Version_URP/EarthSlamSpikesAoeVFX.prefab`**
+(사용자 지정 2026-07-29). URP 버전을 쓴다 — 프로젝트가 URP 17.4 이고 `Version_BuiltIn` 은 머티리얼이
+Built-in 파이프라인용이다. 흙 슬램 스파이크라 **착지 임팩트**에 맞는다.
+
+기존 blink arm 은 출발지·착지 **양쪽**에 같은 `projectileDataIndex` 로 히트 이벤트를 쏜다. 슬램 스파이크는
+착지에 어울리고 출발지에는 어색할 수 있으니, Play 확인 후 어색하면 출발지 연출 분리를 후속 후보로 올린다
+(현 arm 은 단일 인덱스라 분리에 필드 추가가 필요하다 — 이번 범위 아님).
 
 ### 동시 발동 순서 — 계약으로 못박는다
 

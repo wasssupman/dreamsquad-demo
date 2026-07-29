@@ -50,6 +50,13 @@ namespace Wassup.Data
         [Header("Boss Waves")]
         [Tooltip("보스 웨이브에 스폰할 보스 유닛. null이면 보스 웨이브 없음. attackUnitPool에 넣지 말 것 — 생성기가 방어적으로 제외한다.")]
         public AttackUnitData bossUnit;
+        // boss-jjangssen unit 0 — 보스 2종+ 로테이션. bossUnit 을 **rename 하지 않고** 병행 유지하는 것이
+        // 계약이다: 라이브 덱 asset 들이 bossUnit guid 를 직렬화하고 있어서 키를 바꾸면 YAML orphan 이
+        // 되고, 생성기가 "보스 없음" 을 graceful no-op 으로 처리하므로 **에러도 경고도 없이** 전 맵에서
+        // 보스만 사라진다. 비어 있으면 생성기가 bossUnit 단일로 폴백한다(폴백 소유자는 생성기 —
+        // 덱을 안 거치는 직접 호출자도 같은 규칙을 받아야 하므로 한 곳에만 둔다).
+        [Tooltip("보스 로테이션 풀. 비우면 bossUnit 단일로 폴백. attackUnitPool에 넣지 말 것 — 생성기가 방어적으로 제외한다.")]
+        public AttackUnitData[] bossPool = Array.Empty<AttackUnitData>();
         [Tooltip("매 N번째 웨이브가 보스 웨이브(보스 1기 + 잡몹 호위). <=0 이면 보스 웨이브 없음.")]
         public int bossWaveInterval = 5;
         [Tooltip("보스 웨이브의 잡몹 호위 최소 수")]

@@ -45,7 +45,13 @@
 나이트메어와 **같은 `skeletonDataAsset`** 을 쓰고 `partSkins` 조합·`spineVisualScale`·`slotColors` 로
 실루엣을 구분한다. 신규 Spine 아트 0. 나이트메어의 `partSkins` 5줄 구성을 참고 기준으로 삼는다.
 
-### AOE 연출 ProjectileData
+### 연출 ProjectileData 2개
+
+**도약 퍼프** — `payload.projectile`(unit 4) 용. 소스 프리팹은
+`Assets/PixPlays/ElementalAOE/EarthAOE/Version_URP/EarthSlamSpikesAoeVFX.prefab`
+(사용자 지정 2026-07-29, URP 버전 — 프로젝트가 URP 17.4).
+
+### 진동갑주 AOE 연출 ProjectileData
 
 unit 3 의 진동갑주 폭발이 `payload.projectile` 참조를 **필수**로 요구한다(없으면 폭발 요청이 통째로
 드롭되어 데미지까지 안 나간다). SkyFall × TileAoe 경로를 타는 기존 폭발 계열 `ProjectileData` 를
