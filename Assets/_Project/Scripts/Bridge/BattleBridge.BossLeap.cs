@@ -102,9 +102,10 @@ namespace Wassup.Bridge
             float duration = Mathf.Max(0.05f, bossLeapTotalSeconds);
             float recoilFrac = Mathf.Clamp(bossLeapRecoilSeconds / duration, 1e-4f, 0.9f);
 
-            // 출발 퍼프는 발이 뜨는 자리에서 즉시. 착지 퍼프는 뷰가 도착한 뒤(아래).
-            PlayLeapPuff(evt.dataIndex, start);
-
+            // 출발 퍼프는 재생하지 않는다 (사용자 확정 2026-07-29). 도약 연출이
+            // EarthSlamSpikes(바닥에서 솟는 스파이크)라 **착지에만** 어울린다 — 발이 뜨는
+            // 자리에서 스파이크가 솟으면 인과가 거꾸로 읽힌다. 출발 전용 연출이 생기면
+            // 그때 별도 dataIndex 로 되살린다(현 arm 은 단일 인덱스).
             // 첫 프레임부터 오버라이드를 걸어둔다 — 걸기 전에 한 프레임이라도 sim 좌표가
             // 소비되면 착지점으로 순간이동한 뒤 되돌아오는 팝이 보인다.
             _enemyViewOverride[evt.entity] = evt.fromWorld;
