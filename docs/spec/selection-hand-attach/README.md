@@ -41,6 +41,7 @@
 | 4 | `4_focus_session_handoff.md` | 연출 정합 | 리티클 재주장 — 트리거를 "세션 강제 종료 신호"로 확장 |
 | 5 | `5_wiring_play_validation.md` | 배선+검증 | Play e2e (포탈/사망/조준 프레이밍/튜토리얼 경로 포함) |
 | 6 | `6_handoff_summary.md` | 인계 | 커밋·핵심 파일·되돌리면 안 되는 의도 5건 + 남은 Play 검증 |
+| 7 | `7_selection_scope_narrowing.md` | 정책(추가) | 유닛 주변 아이콘 버튼 숨김(코드 유지) + 선택 중 Active 카드 차단 |
 
 0 → 1 → 2 순서 필수(게이트 분리 없이는 손패 오픈이 선택을 죽인다). 3·4 는 1 이후 독립.
 

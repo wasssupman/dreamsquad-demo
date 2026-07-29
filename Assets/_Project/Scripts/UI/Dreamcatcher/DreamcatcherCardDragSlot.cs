@@ -123,7 +123,10 @@ namespace Wassup.UI
             // EnemyMark 를 돌려주므로 이 조건에서 자동 배제된다(card.type == Unit 만 보면 통과한다).
             if (Classify(slot.card) != AimMode.Defender || slot.card.type == CardType.Active)
             {
-                Reject("이 카드는 <color=#FFD98A>끌어서</color> 사용하세요");
+                // Active 는 선택 중 아예 사용 불가(selection-active-block) — 드래그로도 안 되니
+                // "끌어서 쓰라" 고 안내하면 거짓이 된다. 적 표식은 드래그로는 여전히 된다.
+                if (slot.card.type == CardType.Active) ShowSelectionBlocked();
+                else Reject("이 카드는 <color=#FFD98A>끌어서</color> 사용하세요");
                 return;
             }
             if (!slot.usable)
@@ -147,6 +150,17 @@ namespace Wassup.UI
             var host = target;
             CommitNow(() => _view.Controller.CommitAttach(entryId, host),
                 () => _view.FlyCardToUnit(startUiWorld, ghostSize, face, host));
+        }
+
+        // selection-active-block — Active 차단 피드백(드래그 경로·탭 경로 공용). 헤더에 조작법을
+        // 그대로 쓰면 "끌어서 시전" 과 "사용 불가" 가 한 화면에서 모순되므로, 헤더는 **해제 방법**을
+        // 안내한다(막힌 이유만 알려주고 빠져나갈 길을 안 주면 안 된다).
+        private void ShowSelectionBlocked()
+        {
+            _view.FlinchSlot(_index);
+            _view.ShowDragBriefing(
+                "유닛 선택을 해제한 뒤 사용하세요  ·  빈 곳을 탭하면 해제",
+                "<color=#FF9B8A>유닛 선택 중에는 사용할 수 없습니다</color>");
         }
 
         // 즉발 거절 — 움찔 + 사유(기존 브리핑 표면 재사용, 신규 텍스트 위젯 없음). 차감 0.
@@ -188,6 +202,15 @@ namespace Wassup.UI
             var slot = Slot;
             _mode = Classify(slot.card);
             if (_mode == AimMode.None) return;
+            // selection-active-block (사용자 결정 2026-07-29) — 유닛이 선택된 동안 Active 카드는
+            // 쓸 수 없다. 선택 중 손패는 **부착 전용** 이라는 규칙이라 D&D 도 막는다(탭 즉발은
+            // OnPointerClick 이 같은 사유로 거절). 차감·조준 진입 없이 물러난다.
+            if (slot.card.type == CardType.Active && _view.SelectionTarget != Entity.Null)
+            {
+                _mode = AimMode.None; // 조준 상태를 남기지 않는다(EndInteraction 경유 안 함)
+                ShowSelectionBlocked();
+                return;
+            }
 
             _dragging = true;
             _view.SetFocus(-1); // hand-deal-in — 드래그 시작 시 focus 해제(이웃 scatter 복귀)

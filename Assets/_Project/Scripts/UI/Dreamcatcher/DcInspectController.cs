@@ -44,6 +44,11 @@ namespace Wassup.UI
         [SerializeField] private DcInspectPanelView panel;
         // defender-relocation unit 5 — 선택 시 유닛 좌측 액션 플립북(이동모드+더미2).
         [SerializeField] private DcActionFlipbookView actionFlipbook;
+        // 사용자 결정 2026-07-29 — 유닛 주변 아이콘 버튼 UI 를 당장은 노출하지 않는다(나중에 활용).
+        // 뷰/버튼/이동모드 코드는 모두 남겨 두고 **표시만** 끈다 — 이 토글을 켜면 즉시 복귀한다.
+        // ⚠ 이동 버튼이 재배치(DefenderRelocationController)의 유일한 진입 경로다(홀드 진입은
+        // 은퇴). 끈 동안 재배치는 도달 불가 상태로 잠든다.
+        [SerializeField] private bool showActionFlipbook = false;
         // unit 4 — 선택 유닛 줌. 카메라 포즈의 유일한 쓰기 주체가 CameraDirector 이므로
         // 여기선 타겟만 피드한다(카메라 직접 조작 금지 계약).
         [SerializeField] private Wassup.Presentation.CameraDirector cameraDirector;
@@ -298,7 +303,9 @@ namespace Wassup.UI
                 else panel.Hide(); // 빈 상태 UI 는 만들지 않는다 — 없는 게 정직하다
             }
             // unit 5 — 부착 유무와 무관하게 좌측 액션 플립북 등장(이동모드 진입 입구).
-            if (actionFlipbook != null)
+            // showActionFlipbook=false 면 표시하지 않는다(사용자 결정 2026-07-29). Hide 경로는
+            // 그대로 둔다 — 토글을 Play 중에 켜도 이전 잔상 없이 정상 동작한다.
+            if (actionFlipbook != null && showActionFlipbook)
                 actionFlipbook.Show(anchor, mainCamera, relocationController != null, OnMovePressed);
             ShowSelectionReticle(entity);
             AcquireSlomo();
