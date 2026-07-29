@@ -37,6 +37,7 @@
 | `deployDelaySec` | number | `deployDelaySec` | |
 | `attackTargetCount` | integer | `attackTargetCount` | |
 | `cost` | integer | `cost` | |
+| `placementCooldown` | number | `placementCooldown` | 재배치 대기(초), 0 = 없음 |
 | `aggroCapacity` | integer | `aggroCapacity` | |
 | `aggroRange` | number | `aggroRange` | |
 

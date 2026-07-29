@@ -37,6 +37,8 @@ namespace Wassup.Data.StatImport
         public float? deployDelaySec;
         public int? attackTargetCount;
         public int? cost;
+        // defender-placement-cooldown — 유닛 타입 재배치 대기(초). 0 = 쿨타임 없음.
+        public float? placementCooldown;
         public int? aggroCapacity;
         public float? aggroRange;
         // dreamcatcher-sheet-sync unit 4 — awakening gauge granted on this

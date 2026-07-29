@@ -19,7 +19,7 @@
 
 ### 컬럼 목록
 
-- **Defenders**: `id, displayName, role, rarity, health, attackRange, attackCooldown, hitDelaySec, deployDelaySec, attackTargetCount, cost, aggroCapacity, aggroRange, atk, heal`
+- **Defenders**: `id, displayName, role, rarity, health, attackRange, attackCooldown, hitDelaySec, deployDelaySec, attackTargetCount, cost, placementCooldown, aggroCapacity, aggroRange, atk, heal`
 - **Enemies**: `id, displayName, enemyClass, attackMethod, targetMode, engageMovement, targetPriorityClass, targetClassMask, health, moveSpeed, attackRange, attackCooldown, attackTargetCount, hitDelaySec, aggroAttackDamage, aggroAttackCooldown, aggroAttackRange, atk`
 
 ### 셀 값 규약
