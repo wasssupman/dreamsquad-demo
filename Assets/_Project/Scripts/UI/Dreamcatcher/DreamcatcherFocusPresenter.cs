@@ -20,7 +20,7 @@ namespace Wassup.UI
     // 움직이는 유닛을 리티클/콜아웃이 계속 추종한다.
     public class DreamcatcherFocusPresenter : MonoBehaviour
     {
-        public enum AimKind { DimOnly, DefenderCast, AttachAim, EnemyMark }
+        public enum AimKind { DimOnly, DefenderCast, AttachAim, EnemyMark, Selected }
 
         private DreamcatcherFocusConfig _cfg;
         private BattleBridge _bridge;
@@ -199,6 +199,18 @@ namespace Wassup.UI
             // 먼저 걷고 다시 깐다.
             ClearInvalidSweep();
             if (kind == AimKind.AttachAim) ApplyInvalidSweep();
+        }
+
+        // unit-dreamcatcher-inspect unit 6 — 선택 리티클. 조준(카드 스와이프 락온)과 같은
+        // 시각 언어를 유닛 선택에도 쓴다: 리티클 + 콜아웃(portrait+이름)만. dim/링/틴트/
+        // 카운트는 조준 전용 — 선택의 스포트라이트는 줌+슬로모(DcInspectController)가 이미
+        // 담당하므로 dim 을 겹치지 않는다. 대상 전환은 Begin 재호출로 리티클이 새 유닛
+        // 위에서 pop 한다(L6). 종료는 End() 공용.
+        public void BeginSelection(Entity locked, Vector2Int lockedCell)
+        {
+            Begin(AimKind.Selected, null);
+            _dimTarget = 0f;
+            SetAim(default, locked, lockedCell);
         }
 
         // dreamcatcher-attach-lockon — 살찌운 제물(적 표식) 조준. 적은 portrait 가 없어
@@ -454,8 +466,14 @@ namespace Wassup.UI
                 _calloutCount.color = tcol;
                 _calloutName.color = tcol;
 
-                // position above the unit, offset beyond fingertip, clamped to screen.
-                Vector2 p = new Vector2(_lockRect.center.x, _lockRect.yMax) + _cfg.calloutScreenOffset;
+                // unit-dreamcatcher-inspect unit 6 rev — 콜아웃 위치 규칙은 조준/선택 공통
+                // 하나(사용자 결정 2026-07-29): 리티클 프레임 상단 + calloutFrameGap. 스무딩된
+                // 프레임(_reticleCur) 기준이라 콜아웃이 프레임과 한 몸으로 움직인다. 손끝
+                // 회피는 프레임 최소 크기(reticleMinScreenSize)가 담당. 첫 프레임(_reticleInit
+                // 전)만 락온 렉트로 폴백. 화면 가장자리 클램프는 아래 공통.
+                Vector2 p = _reticleInit
+                    ? new Vector2(_reticleCur.center.x, _reticleCur.yMax + _cfg.calloutFrameGap)
+                    : new Vector2(_lockRect.center.x, _lockRect.yMax + _cfg.calloutFrameGap);
                 // H1 — sizeDelta 는 canvas-local, clamp 는 device px(Screen) → scaleFactor 로 환산.
                 float s = ScaleFactor;
                 float hw = _callout.sizeDelta.x * 0.5f * s, hgt = _callout.sizeDelta.y * s;

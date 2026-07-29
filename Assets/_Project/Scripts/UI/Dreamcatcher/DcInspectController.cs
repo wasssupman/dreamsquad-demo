@@ -54,6 +54,10 @@ namespace Wassup.UI
         private readonly List<RaycastResult> _uiHits = new List<RaycastResult>();
         private Entity _selected = Entity.Null;
         private TimeLease _slomoLease;
+        // unit 6 — 선택 리티클을 우리가 켰는지 추적. Close 는 Blocked() 동안 매 프레임
+        // 불리는데, 무조건 Focus.End() 하면 손패 카드 드래그가 방금 시작한 조준 세션까지
+        // 끊는다 — 우리가 시작한 세션만 끝낸다.
+        private bool _reticleShown;
         // defender-relocation UX — 탭 릴리즈 판정용 후보 상태(터치다운에 선택 금지).
         private bool _pendingTap;
         private Vector2 _pendingScreen;
@@ -207,6 +211,23 @@ namespace Wassup.UI
             // unit 5 — 부착 유무와 무관하게 좌측 액션 플립북 등장(이동모드 진입 입구).
             if (actionFlipbook != null)
                 actionFlipbook.Show(anchor, mainCamera, relocationController != null, OnMovePressed);
+            // unit 6 — 조준 락온과 같은 리티클+콜아웃(portrait+이름)을 선택에도. 프레젠터는
+            // 손패 뷰가 소유(Awake 생성)하므로 경유 도달, 미배선/focusConfig 미할당이면 생략.
+            var focus = handView != null ? handView.Focus : null;
+            if (focus != null)
+            {
+                if (bridge.TryGetDefenderCell(entity, out var cell))
+                {
+                    focus.BeginSelection(entity, cell);
+                    _reticleShown = true;
+                }
+                else if (_reticleShown)
+                {
+                    // 전환 대상의 셀 해석 실패 — 이전 유닛 리티클이 남지 않게 끈다.
+                    _reticleShown = false;
+                    focus.End();
+                }
+            }
             AcquireSlomo();
         }
 
@@ -251,6 +272,13 @@ namespace Wassup.UI
             _selected = Entity.Null;
             if (panel != null) panel.Hide();
             if (actionFlipbook != null) actionFlipbook.Hide();
+            // unit 6 — 우리가 켠 리티클만 끈다(_reticleShown 가드 — 카드 드래그 조준 세션 보호).
+            if (_reticleShown)
+            {
+                _reticleShown = false;
+                var focus = handView != null ? handView.Focus : null;
+                if (focus != null) focus.End();
+            }
             _slomoLease.Dispose();
         }
 

@@ -40,7 +40,11 @@ namespace Wassup.UI
         public float lockSwitchHysteresisPx = 40f; // 새 후보가 이만큼 더 가까워야 전환
 
         [Header("D · 오프셋 아이덴티티 콜아웃")]
-        public Vector2 calloutScreenOffset = new Vector2(0f, 96f); // 락온 렉트 상단 + 손끝 밖
+        // unit-dreamcatcher-inspect unit 6 rev(사용자 피드백 2026-07-29) — 콜아웃 위치 규칙은
+        // 조준/선택 공통 하나: 리티클 프레임 상단 + 이 간격. 손끝 회피는 별도 오프셋이 아니라
+        // 프레임 최소 크기(reticleMinScreenSize, 손끝 반경 초과 보장)가 담당한다.
+        // (구 calloutScreenOffset(y=96, 락온 렉트 기준)은 은퇴 — asset 의 잔존 키는 무해.)
+        public float calloutFrameGap = 24f;
         public float calloutIconSize = 56f;
         public Color calloutBgColor = new Color(0.06f, 0.05f, 0.13f, 0.92f);
         public Color calloutBorderColor = new Color(0.42f, 0.95f, 1f, 0.9f);

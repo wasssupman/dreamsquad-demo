@@ -1,6 +1,6 @@
 # Unit Dreamcatcher Inspect — 배치 유닛 탭 → 부착 드림캐쳐 상세
 
-> 상태: **완료 2026-07-15** (units 0~5, 사용자 Play 확인 통과)
+> 상태: **완료 2026-07-15** (units 0~5, 사용자 Play 확인 통과) · **unit 6 추가 완료 2026-07-29** (선택 리티클, 사용자 Play 확인)
 >
 > 커밋: `71fc4679`(기능 units 0~4) · `f54909de`(origin/main merge) · `5d7a2585`(탭 입력 잠복 결함 수정 — 이 spec 이 첫 보드 raw 탭 소비자라 드러남).
 > 설계 critic 1회(REVISE→반영) + 코드리뷰 1회(APPROVE-WITH-CHANGES→전건 반영) + 사용자 Play 확인.
@@ -36,6 +36,7 @@
 | 3 | `3_wiring_play_validation.md` | 배선+검증 | 씬 배선 + Play e2e |
 | 4 | `4_unit_zoom_focus.md` | 범위+카메라 | 전 유닛 트리거(계약 8 개정) + 선택 유닛 줌인(CameraDirector 채널) |
 | 5 | `5_handoff_summary.md` | 인계 | 종료 요약 + 되돌리지 말 것 |
+| 6 | `6_selection_reticle.md` | 뷰(추가 2026-07-29) | 선택 시 조준 락온 리티클+콜아웃(portrait+이름) 재사용 — `DreamcatcherFocusPresenter.BeginSelection` |
 
 ## Feature-wide 계약
 
