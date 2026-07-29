@@ -3160,9 +3160,9 @@ namespace Wassup.Bridge
         private static Wassup.Data.StatusFxKind? DotAuraKind(Wassup.Battle.Effects.DotFlavor f) => f switch
         {
             Wassup.Battle.Effects.DotFlavor.Bleed  => Wassup.Data.StatusFxKind.Bleed,
-            Wassup.Battle.Effects.DotFlavor.Fire   => Wassup.Data.StatusFxKind.FireStack,
-            Wassup.Battle.Effects.DotFlavor.Ice    => Wassup.Data.StatusFxKind.IceStack,
-            Wassup.Battle.Effects.DotFlavor.Poison => Wassup.Data.StatusFxKind.PoisonStack,
+            Wassup.Battle.Effects.DotFlavor.Fire   => Wassup.Data.StatusFxKind.Fire,
+            Wassup.Battle.Effects.DotFlavor.Ice    => Wassup.Data.StatusFxKind.Ice,
+            Wassup.Battle.Effects.DotFlavor.Poison => Wassup.Data.StatusFxKind.Poison,
             _ => null,
         };
 

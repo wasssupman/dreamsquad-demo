@@ -91,12 +91,12 @@ namespace Wassup.Tests.PlayMode
             for (int i = 0; i < 3; i++) yield return null;
             Assert.IsTrue(HasDot(DotFlavor.Bleed), "도트 부여 경로가 끊겼다(오라 이전 단계 문제)");
             Assert.IsTrue(AuraLit(StatusFxKind.Bleed), "출혈 도트가 도는데 오라가 안 켜졌다");
-            Assert.IsFalse(AuraLit(StatusFxKind.IceStack), "무관한 오라가 같이 켜졌다");
+            Assert.IsFalse(AuraLit(StatusFxKind.Ice), "무관한 오라가 같이 켜졌다");
 
             // 2) 냉기 도트를 얹으면 둘 다 켜진다 — 슬롯이 갈려 있으므로 별도 장치 없이 성립.
             Enqueue(DotFlavor.Ice, 0.6f);
             for (int i = 0; i < 3; i++) yield return null;
-            Assert.IsTrue(AuraLit(StatusFxKind.IceStack), "냉기 도트가 도는데 오라가 안 켜졌다");
+            Assert.IsTrue(AuraLit(StatusFxKind.Ice), "냉기 도트가 도는데 오라가 안 켜졌다");
             Assert.IsTrue(AuraLit(StatusFxKind.Bleed), "냉기가 얹히자 출혈 오라가 사라졌다");
 
             // 3) 회귀의 핵심 — 냉기만 만료되면 냉기 오라만 꺼진다.
@@ -107,7 +107,7 @@ namespace Wassup.Tests.PlayMode
             for (int i = 0; i < 3; i++) yield return null;
 
             Assert.IsTrue(HasDot(DotFlavor.Bleed), "출혈이 아직 돌고 있어야 회귀 구간이 성립한다");
-            Assert.IsFalse(AuraLit(StatusFxKind.IceStack),
+            Assert.IsFalse(AuraLit(StatusFxKind.Ice),
                 "냉기 도트가 끝났는데 냉기 오라가 남아 있다 — 종류가 도트가 아닌 곳에서 오고 있다");
             Assert.IsTrue(AuraLit(StatusFxKind.Bleed), "출혈 오라는 유지돼야 한다");
         }
