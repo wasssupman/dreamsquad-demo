@@ -1,6 +1,8 @@
 # boss-jjangssen — 두 번째 보스 "짱쎈놈"
 
-> 상태: **작성 완료, 구현 대기** (2026-07-29). 설계 근거·리뷰 이력은 `docs/plans/2026-07-29-boss-jjangssen-design.md`.
+> 상태: **구현 완료 2026-07-29 (Play 육안 검증 대기)**. units 0~4 커밋 `bbfc06c1`~`21b9aaec` + 덱 투입.
+> EditMode 1575 중 1573 통과·실패 0. 인계: `5_handoff_summary.md`. 설계 근거·리뷰 이력은
+> `docs/plans/2026-07-29-boss-jjangssen-design.md`.
 
 ## 목표
 
@@ -22,7 +24,7 @@
 | 2 | 브리지 | `2_vibration_armor.md` | bake 에 `SelfTileAoe` 추가 + 진영 도출 + `mechanic[0]` |
 | 3 | 시뮬 | `3_boss_immunity.md` | 보스 어그로 면역 + 직접 행동정지·넉백 면역(`EnemyCcEvent` 출처 필드) |
 | 4 | 시뮬 | `4_density_blink.md` | 밀집도 착지 순수함수 + 정책 교체 + `DeadTag` 가드 + `mechanic[1]` |
-| 5 | 인계 | `5_handoff_summary.md` | 구현 종료 시 작성 |
+| 5 | 인계 | `5_handoff_summary.md` | 커밋·검증·되돌리면 안 되는 것·Play 잔여 항목 |
 
 **순서 근거**: 0 은 asset 없이 빈 pool 폴백으로 **기존 7덱 무회귀를 먼저 증명**한다.
 
