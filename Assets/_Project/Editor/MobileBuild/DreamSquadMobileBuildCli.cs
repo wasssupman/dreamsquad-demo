@@ -207,6 +207,10 @@ namespace Wassup.Editor.MobileBuild
 
             project.SetBuildPropertyForConfig(releaseConfigGuid, "CODE_SIGN_STYLE", "Manual");
             project.SetBuildPropertyForConfig(releaseConfigGuid, "DEVELOPMENT_TEAM", ExpectedIosTeamId);
+            // Unity can carry the UUID serialized in PlayerSettings into the generated project.
+            // Xcode must select the current profile by its stable name below; a stale legacy UUID
+            // otherwise takes precedence and makes archive fail after a profile renewal.
+            project.SetBuildPropertyForConfig(releaseConfigGuid, "PROVISIONING_PROFILE", "");
             project.SetBuildPropertyForConfig(
                 releaseConfigGuid,
                 "CODE_SIGN_IDENTITY",
