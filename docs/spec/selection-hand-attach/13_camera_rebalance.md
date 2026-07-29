@@ -82,16 +82,19 @@ dolly 단독을 권했으나 그건 `fovMin` 이 41 이던 시절 기준이다. 
 ## 완료 기준
 
 - [x] compile 클린 (2026-07-30 — Unity 콘솔 error 0)
-- [ ] Play: **보드 최하단에 배치된 유닛을 선택** → 손패 위로 올라와 온전히 보인다
+- [x] Play: **보드 최하단에 배치된 유닛을 선택** → 손패 위로 올라와 온전히 보인다
       (rev1 회귀 재발 방지 — 이게 이 unit 의 핵심 확인이다)
-- [ ] Play: 상단·중앙 유닛 선택 시 프레이밍이 과하게 올라가 화면 밖으로 밀리지 않는다
+- [x] Play: 상단·중앙 유닛 선택 시 프레이밍이 과하게 올라가 화면 밖으로 밀리지 않는다
 - [x] 값 적용: `inspectDolly 4.92 → 3` · `inspectFovDelta 0 → -6` · `inspectFollowRate 12`(신설)
       · `inspectPitchDeg 0`(rev1 의 -5 철회) · `inspectFrameBiasY 0.35`(신설).
       에셋 재저장 시 `moveOverview*` 4필드가 함께 직렬화됐는데 **전부 클래스 기본값과 동일**
       (`-4.5 / 0 / 90 / 16`)이라 동작 변화가 없다.
 
 **아래 Play 항목은 값 튜닝의 출발점 검증이다** — 체감이 과하거나 모자라면 `inspectDolly` ·
-`inspectFovDelta` · `inspectFollowRate` 노브만 조정한다(코드 분기 금지, 계약 9).
+`inspectFovDelta` · `inspectFollowRate` · `inspectFrameBiasY` 노브만 조정한다(코드 분기 금지, 계약 9).
+
+확인: 2026-07-30 사용자 Play — **체감 통과**("느낌 괜찮음"). 확정값 `dolly 3` · `fovDelta -6` ·
+`followRate 12` · `frameBiasY 0.35` · `pitchDeg 0`.
 - [ ] Play: 유닛 선택 → 줌인이 과하지 않고 유닛이 배경에서 도드라진다(FOV 압축 체감)
 - [ ] Play: **유닛 A → B 연속 선택** → 카메라가 튀지 않고 미끄러지듯 옮겨간다
 - [ ] Play: **무선택 → 첫 선택** → 이전 위치에서 날아오지 않고 그 자리에서 줌인된다(스냅 규칙)
