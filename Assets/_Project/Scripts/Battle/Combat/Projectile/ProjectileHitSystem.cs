@@ -180,6 +180,14 @@ namespace Wassup.Battle.Combat.Projectile
                                                     op = output.op,
                                                     magnitude = output.magnitude,
                                                     duration = output.duration,
+                                                    // ⚠ 아래 ApplyStack 과 달리 여기는 **투사체 엔티티**가 source 다.
+                                                    // StatModifierSlot 의 병합 키도 (source, stat, op, stackId) 라
+                                                    // 발사마다 새 슬롯이 생겨 곱연산이 누적된다(Enemy_Debuffer
+                                                    // DamageMul ×0.6 → 0.6ⁿ). 지금 고치지 않는 이유는 라이브
+                                                    // 밸런스가 바뀌기 때문 — 현재는 ModifierMath 의 클램프
+                                                    // [0.2, 5](modifier-stacking-policy)가 병리를 경계하고 있다.
+                                                    // 수치 재조정과 한 묶음으로 별도 처리:
+                                                    // docs/spec/enemy-fire-stack-shooter/README.md 후속 후보.
                                                     source = entity,
                                                     stackId = 0,
                                                     origin = ModifierOrigin.OnHit,
@@ -195,7 +203,13 @@ namespace Wassup.Battle.Combat.Projectile
                                                     countDelta = (byte)math.max(1f, output.magnitude),
                                                     maxStack = output.stackMaxStack > 0 ? output.stackMaxStack : StackModifierSO.DefaultMaxStack,
                                                     perAppDuration = output.duration,
-                                                    source = entity,
+                                                    // enemy-fire-stack-shooter unit 0 — 병합 키는 (source, kind)
+                                                    // 다(ModifierApplySystem). 투사체는 발사마다 새 엔티티라 그걸
+                                                    // 실으면 매 히트가 새 슬롯을 만들어 stackCount 가 영원히 1이고
+                                                    // 임계(5스택)에 절대 도달하지 못한다. 근접 경로
+                                                    // (AttackSystem, source = attackerEntity)와 같은 규약 = 사수.
+                                                    // Null 폴백은 bridge-cast 투사체(owner 없음)용 현행 동작 보존.
+                                                    source = threatOwner != Entity.Null ? threatOwner : entity,
                                                 });
                                             break;
                                     }
