@@ -51,9 +51,10 @@
 | 10 | `10_effective_stat_read_seam.md` | 토대(추가) | 실효 스탯 pull API + 델타 계산 순수 함수 |
 | 11 | `11_selection_detail_panel.md` | 프레젠테이션(추가) | 패널 좌측 고정 도킹 + 스탯 3종 + 델타 칩 |
 | 12 | `12_reticle_simplification.md` | 프레젠테이션(추가) | 선택 모드 콜아웃 생략(조준 경로 불변) |
-| 13 | `13_camera_rebalance.md` | 연출(추가) | dolly↓ + FOV 압축 + 전환 NDC 스무딩 |
+| 13 | `13_camera_rebalance.md` | 연출(추가) | dolly↓ + FOV 압축 + 전환 NDC 스무딩 + 연출 pitch |
+| 14 | `14_reject_camera_kick.md` | 연출(추가) | 부착 거절 시 아주 짧은 카메라 킥 |
 
-10 → 11 → 12 순서 필수(읽을 값 → 표시할 곳 → 중복 제거). 13 은 독립.
+10 → 11 → 12 순서 필수(읽을 값 → 표시할 곳 → 중복 제거). 13·14 는 독립.
 
 0 → 1 → 2 순서 필수(게이트 분리 없이는 손패 오픈이 선택을 죽인다). 3·4 는 1 이후 독립.
 

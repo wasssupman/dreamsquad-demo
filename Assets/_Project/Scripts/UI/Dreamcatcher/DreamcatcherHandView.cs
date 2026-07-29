@@ -119,6 +119,10 @@ namespace Wassup.UI
         [SerializeField] private float flinchStrengthX = 14f;
         [SerializeField] private float flinchDuration = 0.26f;
         [SerializeField] private float flinchFrequency = 14f;
+        // unit 14 — 거절 시 카메라 킥. **아주 짧게**(카드 움찔 0.26s 보다 짧아 화면이 먼저
+        // 튀고 카드가 이어 흔들린다). 0 이하면 킥 없음 — 거슬리면 여기만 0 으로 끈다.
+        [SerializeField] private float rejectKickStrength = 0.45f;
+        [SerializeField] private float rejectKickDuration = 0.1f;
 
         public enum HandState { UnitStrip, Hand }
         public HandState State { get; private set; } = HandState.UnitStrip;
@@ -679,6 +683,10 @@ namespace Wassup.UI
                     flinchDuration, frequency: flinchFrequency)
                 .OnComplete(() => captured.flinching = false);
             SoundManager.Instance?.PlayCardReturn(); // 거절 = 카드가 제자리로(취소와 같은 계열음)
+            // unit 14 — 아주 짧은 카메라 킥을 얹는다. 카드만 움찔하면 손가락 밑이라 놓치기 쉬운데,
+            // 화면 전체가 한 번 튀면 "안 먹혔다"가 주변시로도 읽힌다. FeedbackKick 은 앰비언트
+            // 토글에 묶이지 않는다(Kick 은 묶여서 현재 에셋에선 no-op 이다).
+            EnsureCameraDirector()?.FeedbackKick(rejectKickStrength, rejectKickDuration);
         }
 
         public void RestoreSlotHome(int index)
