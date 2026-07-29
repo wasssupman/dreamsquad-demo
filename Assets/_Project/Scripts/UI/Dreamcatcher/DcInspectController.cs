@@ -78,12 +78,26 @@ namespace Wassup.UI
         {
             if (hand != null) hand.AttachmentsChanged += OnAttachmentsChanged;
             if (GameManager.Instance != null) GameManager.Instance.PhaseChanged += OnPhaseChanged;
+            // selection-hand-attach unit 2 — 손패 오픈 중 보드 탭은 캐처가 소유하고 여기로 온다.
+            if (handView != null)
+            {
+                handView.BoardTapped += OnBoardTapped;
+                // unit 4 — 리티클 재주장 트리거 2개(슬롯 종료 깔때기 + 뷰의 하드 클리어).
+                handView.InteractionEnded += OnFocusSessionReleased;
+                handView.FocusCleared += OnFocusSessionReleased;
+            }
         }
 
         private void OnDisable()
         {
             if (hand != null) hand.AttachmentsChanged -= OnAttachmentsChanged;
             if (GameManager.Instance != null) GameManager.Instance.PhaseChanged -= OnPhaseChanged;
+            if (handView != null)
+            {
+                handView.BoardTapped -= OnBoardTapped;
+                handView.InteractionEnded -= OnFocusSessionReleased;
+                handView.FocusCleared -= OnFocusSessionReleased;
+            }
             Close(); // lease 해제 — 비활성화가 슬로우를 남기면 안 된다
         }
 
@@ -223,6 +237,31 @@ namespace Wassup.UI
             return drag != null && drag.IsAiming;
         }
 
+        // selection-hand-attach unit 2 — 손패 오픈 중 보드 탭 라우팅. 손패가 닫혀 있을 때의
+        // raw 탭(HandleTap)과 결과는 같지만 "빈 보드/재탭" 이 **닫기 의도 탭**이라 선택 유무와
+        // 무관하게 손패까지 걷는다(계약 7 — 항아리 단독 오픈의 바깥 탭 dismiss 보존).
+        private void OnBoardTapped(Vector2 screenPos)
+        {
+            // 이동모드/배치 드래그가 입력 주인일 때는 캐처 클릭으로 선택이 오염되지 않게(critic M6).
+            if (MustClose()) return;
+            if (TryPick(screenPos, out var entity) && entity != _selected)
+            {
+                Select(entity); // 전환(무선택 상태의 첫 선택도 이 경로) — 손패는 유지된다
+                return;
+            }
+            CloseByIntent(); // 빈 보드 또는 선택 유닛 재탭
+        }
+
+        // 닫기 의도 탭 전용 — 선택이 없어도 손패를 걷는다. Close() 는 "선택이 있었을 때만"
+        // 손패를 닫으므로(무선택 no-op 계약) 그것만으로는 항아리 단독 오픈을 못 닫는다(critic H3).
+        private void CloseByIntent()
+        {
+            Close();
+            if (handView == null) return;
+            handView.ClearSelectionTarget();
+            handView.CloseFromSelection(); // 이미 닫혔으면 no-op
+        }
+
         private void HandleTap(Vector2 screenPos)
         {
             if (!TryPick(screenPos, out var entity)) { Close(); return; } // 빈 보드 → 닫기
@@ -261,23 +300,7 @@ namespace Wassup.UI
             // unit 5 — 부착 유무와 무관하게 좌측 액션 플립북 등장(이동모드 진입 입구).
             if (actionFlipbook != null)
                 actionFlipbook.Show(anchor, mainCamera, relocationController != null, OnMovePressed);
-            // unit 6 — 조준 락온과 같은 리티클+콜아웃(portrait+이름)을 선택에도. 프레젠터는
-            // 손패 뷰가 소유(Awake 생성)하므로 경유 도달, 미배선/focusConfig 미할당이면 생략.
-            var focus = handView != null ? handView.Focus : null;
-            if (focus != null)
-            {
-                if (bridge.TryGetDefenderCell(entity, out var cell))
-                {
-                    focus.BeginSelection(entity, cell);
-                    _reticleShown = true;
-                }
-                else if (_reticleShown)
-                {
-                    // 전환 대상의 셀 해석 실패 — 이전 유닛 리티클이 남지 않게 끈다.
-                    _reticleShown = false;
-                    focus.End();
-                }
-            }
+            ShowSelectionReticle(entity);
             AcquireSlomo();
             // selection-hand-attach unit 1 — 선택 = 손패 등장(사용자 결정 1: 항상). 대상 전달이
             // 먼저다(뷰가 InSelectionMode 를 그 값에서 파생하므로 오픈 연출 분기가 첫 프레임부터
@@ -287,6 +310,38 @@ namespace Wassup.UI
                 handView.SetSelectionTarget(entity);
                 handView.OpenForSelection();
             }
+        }
+
+        // unit 6 — 조준 락온과 같은 리티클+콜아웃(portrait+이름)을 선택에도. 프레젠터는 손패 뷰가
+        // 소유(Awake 생성)하므로 경유 도달하고, 미배선/focusConfig 미할당이면 조용히 생략한다.
+        // 호출처 2 — Select(신규/전환) + 재주장(unit 4).
+        private void ShowSelectionReticle(Entity entity)
+        {
+            var focus = handView != null ? handView.Focus : null;
+            if (focus == null) return;
+            if (bridge.TryGetDefenderCell(entity, out var cell))
+            {
+                focus.BeginSelection(entity, cell);
+                _reticleShown = true;
+            }
+            else if (_reticleShown)
+            {
+                // 셀 해석 실패(전환 대상 소실 등) — 이전 유닛 리티클이 남지 않게 끈다.
+                _reticleShown = false;
+                focus.End();
+            }
+        }
+
+        // selection-hand-attach unit 4 — 프레젠터 세션이 남에 의해 끝났다. 선택이 살아 있으면
+        // 리티클을 1회 재주장한다(폴링 금지 — BeginSelection 은 매 프레임 부르면 pop 이 계속
+        // 재생돼 깨진다). 조건은 코드 그대로다: TapGated() 를 쓰면 손패 오픈이 포함돼 재주장이
+        // 영영 돌지 않는다(그게 주 시나리오다).
+        private void OnFocusSessionReleased()
+        {
+            _reticleShown = false; // 남이 끝낸 세션 — 우리 플래그가 stale 로 남으면 남의 세션에 End 를 쏜다
+            if (_selected == Entity.Null) return;
+            if (AimingNow()) return; // 포탈 2탭 대기 등 — 조준이 끝날 때 다시 신호가 온다
+            ShowSelectionReticle(_selected);
         }
 
         // unit 5 — 이동모드 버튼: 선택 해제(패널/줌/플립북) 후 relocation 이 자기 슬로모/하이라이트/

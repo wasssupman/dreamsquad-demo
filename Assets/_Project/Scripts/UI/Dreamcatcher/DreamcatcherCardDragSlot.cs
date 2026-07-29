@@ -22,7 +22,7 @@ namespace Wassup.UI
     // Cancel = touchup inside the hand panel / ESC / phase exit — never spends.
     public class DreamcatcherCardDragSlot : MonoBehaviour,
         IBeginDragHandler, IDragHandler, IEndDragHandler,
-        IPointerDownHandler, IPointerUpHandler
+        IPointerDownHandler, IPointerUpHandler, IPointerClickHandler
     {
         private enum AimMode
         {
@@ -96,6 +96,64 @@ namespace Wassup.UI
             if (_view == null) return;
             _view.ClearFocus(_index);
             if (!_dragging && !IsPortalAiming) _view.HideDragTooltip();
+        }
+
+        // ── selection-hand-attach unit 3 — 탭 즉발 부착 ───────────────────────
+        // 유닛이 선택돼 있으면(손패가 그 대상을 들고 있다) 카드 **탭**만으로 그 유닛에 부착한다.
+        // 커밋은 D&D 성공 경로와 완전히 같은 CommitAttach → HandChanged(Used) 를 지나므로
+        // 유지/자동닫힘/재딜인/무차감 거절이 자동으로 승계된다(계약 4).
+        //
+        // ⚠ "드래그로 이어지면 UGUI 가 클릭을 삼킨다" 는 **거짓**이다(critic M1):
+        // eligibleForClick 은 pointerPress != pointerDrag 일 때만 해제되는데 이 슬롯은 press·drag
+        // 핸들러가 같은 GameObject 라 드래그 내내 eligible 이 유지되고, 클릭은 OnEndDrag 보다
+        // **먼저** 발화한다. 즉 "손패로 되돌려 취소" 제스처도 클릭을 함께 낸다 → 가드 0 필수.
+        // (레포 선례: DraftCardView 가 _dragHappened 로 명시 차단. DefenderDragSlot 의
+        //  "끌기면 이건 안 옴" 주석은 같은 오해를 담고 있어 선례로 삼지 않는다.)
+        public void OnPointerClick(PointerEventData eventData)
+        {
+            if (_view == null) return;
+            if (_dragging || IsPortalAiming) return;                 // 가드 0 — 드래그/조준의 릴리즈
+            var target = _view.SelectionTarget;
+            if (target == Entity.Null) return;                       // 선택 없음 = 즉발 개념 없음(움찔도 없다)
+            if (!_view.CanPeek(_index)) return;                      // 전환 중/타 인터랙션/재딜 중
+            var slot = Slot;
+            if (slot.entryId < 0 || slot.card == null) return;
+
+            // 즉발은 부착(Unit/Squad)만 — 사용자 결정 4. 적 표식(BountyMark)은 Classify 가
+            // EnemyMark 를 돌려주므로 이 조건에서 자동 배제된다(card.type == Unit 만 보면 통과한다).
+            if (Classify(slot.card) != AimMode.Defender || slot.card.type == CardType.Active)
+            {
+                Reject("이 카드는 <color=#FFD98A>끌어서</color> 사용하세요");
+                return;
+            }
+            if (!slot.usable)
+            {
+                Reject("<color=#FF9B8A>각성치가 부족합니다</color>");
+                return;
+            }
+            // D&D 의 _attachable 스냅샷과 동일한 판정 — 커밋 거절과 UI 를 일치시킨다(계약 5).
+            if (!_view.Controller.CanAttachMore(target) ||
+                !_view.Bridge.WouldDreamcatcherCardApply(target, slot.card))
+            {
+                Reject("<color=#FF9B8A>이 유닛에는 부착할 수 없습니다</color>");
+                return;
+            }
+
+            // 발사점/스프라이트는 커밋이 손패를 소비하기 전에 캡처(D&D 와 동일 계약).
+            int entryId = slot.entryId;
+            Vector3 startUiWorld = slot.rect.position;
+            Vector2 ghostSize = slot.rect.rect.size;
+            Sprite face = slot.art != null ? slot.art.sprite : null;
+            var host = target;
+            CommitNow(() => _view.Controller.CommitAttach(entryId, host),
+                () => _view.FlyCardToUnit(startUiWorld, ghostSize, face, host));
+        }
+
+        // 즉발 거절 — 움찔 + 사유(기존 브리핑 표면 재사용, 신규 텍스트 위젯 없음). 차감 0.
+        private void Reject(string reason)
+        {
+            _view.FlinchSlot(_index);
+            _view.ShowDragBriefing(ControlsFor(Classify(Slot.card), Slot.card), reason);
         }
 
         private static AimMode Classify(DreamcatcherCard card)
@@ -337,10 +395,16 @@ namespace Wassup.UI
         // 고스트 스프라이트는 commit() 이 손패를 소비하기 전에 호출부에서 캡처한다.
         private void CommitNow(System.Func<bool> commit, System.Action onSuccess = null)
         {
+            // dreamcatcher-attach-lockon 계약 #7/E — 성공 시 확정 비트(손끝 밖 펄스+햅틱).
+            // selection-hand-attach unit 3 (critic M5) — 중심은 **커밋 전에** 캡처한다: 마지막
+            // 사용 가능 카드의 커밋은 동기 HandChanged(Used) → OnCardUsed → Close() →
+            // Focus.End() 를 태워 커밋 직후엔 락온 정보가 이미 지워져 있고, 그러면 Confirm() 이
+            // 조용히 물러나 확정 비트가 사라진다. 펄스 자체는 독립 타이머라 End 후에도 완주한다.
+            Vector2 pulseCenter = default;
+            bool hasPulseCenter = false;
+            if (_view.Focus != null) hasPulseCenter = _view.Focus.TryCaptureConfirmCenter(out pulseCenter);
             bool ok = commit();
-            // dreamcatcher-attach-lockon 계약 #7/E — 성공 시 확정 비트(손끝 밖 펄스+햅틱)를
-            // teardown(End) 전에 캡처. 펄스는 독립 타이머라 End 후에도 완주한다.
-            if (ok) _view.Focus?.Confirm();
+            if (ok && hasPulseCenter) _view.Focus.Confirm(pulseCenter);
             EndInteraction();
             if (!ok) _view.RestoreSlotHome(_index);
             else onSuccess?.Invoke();

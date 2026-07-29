@@ -398,7 +398,15 @@ namespace Wassup.UI
             if (es == null) return false;
             _uiHits.Clear();
             es.RaycastAll(new PointerEventData(es) { position = screenPos }, _uiHits);
-            return _uiHits.Count > 0;
+            // selection-hand-attach unit 2 — 손패 dismiss 캐처는 전화면이라, 이동모드 중에
+            // 항아리(order 7 > 캐처 5)로 손패를 열면 목적지 지정이 통째로 봉쇄된다. 캐처는
+            // "보드 위 빈 공간" 의 대리이지 UI 위젯이 아니므로 **단독 히트면 UI 로 치지 않는다**.
+            // (캐처 클릭이 선택을 건드리는 쪽은 DcInspectController 의 MustClose 게이트가 막는다.)
+            for (int i = 0; i < _uiHits.Count; i++)
+                if (_uiHits[i].gameObject == null ||
+                    _uiHits[i].gameObject.GetComponent<HandDismissTapCatcher>() == null)
+                    return true;
+            return false;
         }
     }
 }

@@ -239,13 +239,27 @@ namespace Wassup.UI
             _enemyMarkOnUnit = onUnit;
         }
 
+        // selection-hand-attach unit 3 (critic M5) — 확정 펄스 중심을 커밋 **전에** 캡처하는 조회.
+        // 커밋이 손패를 닫는 경우(사용 가능 0장 자동 닫힘)엔 동기 HandChanged(Used) → Close() →
+        // Focus.End() 가 먼저 돌아 _locked/_hasLockRect 가 지워지고, 그 뒤 Confirm() 은 중심을
+        // 못 찾아 조용히 return 한다(= 마지막 카드에서 확정 비트가 사라진다).
+        public bool TryCaptureConfirmCenter(out Vector2 center)
+        {
+            if (_hasLockRect) { center = _lockRect.center; return true; }
+            if (_locked != Entity.Null && _bridge != null &&
+                _bridge.TryGetUnitScreenRect(_locked, _cam, out var r)) { center = r.center; return true; }
+            center = default;
+            return false;
+        }
+
         public void Confirm()
         {
-            Vector2 center;
-            if (_hasLockRect) center = _lockRect.center;
-            else if (_locked != Entity.Null && _bridge != null &&
-                     _bridge.TryGetUnitScreenRect(_locked, _cam, out var r)) center = r.center;
-            else return;
+            if (TryCaptureConfirmCenter(out var center)) Confirm(center);
+        }
+
+        // 캡처된 중심으로 확정 비트를 쏜다. 펄스는 독립 타이머라 End() 후에도 완주한다(계약 #7/E).
+        public void Confirm(Vector2 center)
+        {
             _pulseCenter = center;
             _pulseT = 0f;
             _pulse.gameObject.SetActive(true);

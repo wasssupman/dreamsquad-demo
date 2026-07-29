@@ -112,6 +112,13 @@ namespace Wassup.UI
         [SerializeField] private float tooltipBobY = 6f;   // 플로팅 bob 진폭(카드 idle 문법)
         [SerializeField] private float tooltipBobX = 3f;
         [SerializeField] private float tooltipBobFreq = 1.2f;
+        // selection-hand-attach unit 2 — 보드 탭 이동 허용치(px). 전화면 캐처는 IDragHandler 가
+        // 없어 이동량 판정을 스스로 해야 한다(critic M2). raw 경로(DcInspectController)와 같은 계열.
+        [SerializeField] private float boardTapMoveThreshold = 24f;
+        // selection-hand-attach unit 3 — 즉발 거절 움찔(좌우 셰이크) 튜닝.
+        [SerializeField] private float flinchStrengthX = 14f;
+        [SerializeField] private float flinchDuration = 0.26f;
+        [SerializeField] private float flinchFrequency = 14f;
 
         public enum HandState { UnitStrip, Hand }
         public HandState State { get; private set; } = HandState.UnitStrip;
@@ -161,6 +168,19 @@ namespace Wassup.UI
             if (State == HandState.Hand) { _pendingSelectionOpen = false; return; }
             if (Transitioning) { _pendingSelectionOpen = true; return; }
             Open(selectionDriven: true);
+        }
+
+        // selection-hand-attach unit 2 — 손패 오픈 중 보드 탭. 구독자(DcInspectController)가
+        // 유닛 픽/빈 보드를 판정해 선택 전환 또는 동시 해제로 라우팅한다(사용자 결정 2·3).
+        public event System.Action<Vector2> BoardTapped;
+
+        private void OnBoardTapCaught(Vector2 screenPos)
+        {
+            if (State != HandState.Hand) return;
+            // 구독자가 없으면(미배선/테스트) 기존 바깥 탭 dismiss 로 폴백 — 항아리 단독
+            // 사용성을 잃지 않는다(orb-dock unit 4 계약).
+            if (BoardTapped != null) BoardTapped.Invoke(screenPos);
+            else Close();
         }
 
         // 컨트롤러가 뷰를 닫는 **유일한 공개 창구**(계약 7 — Close() 는 private 유지).
@@ -283,6 +303,10 @@ namespace Wassup.UI
             public bool usable;
             // use-flow unit 1 — 사용 직후 1장 재딜인 트윈이 rect 를 소유 중(스프링/집기 제외).
             public bool redealing;
+            // selection-hand-attach unit 3 — 즉발 거절 움찔 트윈이 rect 를 소유 중.
+            // redealing 과 같은 이유의 소유 플래그: SpringSlots 가 동시 writer 라 안 막으면
+            // 셰이크 진폭이 매 프레임 홈으로 끌려가 뭉개진다(critic M7).
+            public bool flinching;
         }
 
         // dreamcatcher-hand-card-face unit 1 — 카드 면 기하. 본문 16pt floor(계약 8) 예산
@@ -513,7 +537,7 @@ namespace Wassup.UI
             for (int i = 0; i < _slots.Count; i++)
             {
                 var slot = _slots[i];
-                if (slot.entryId < 0 || OwnedByInteraction(slot) || slot.redealing) continue;
+                if (slot.entryId < 0 || OwnedByInteraction(slot) || slot.redealing || slot.flinching) continue;
                 // idle 흔들림은 눌러서 든 카드(focus)만 제외 — 그 카드는 안정적으로 들려 있어야.
                 Vector2 eff = slot.targetPos;
                 if (i != _focusIndex)
@@ -631,6 +655,25 @@ namespace Wassup.UI
             return slot.entryId >= 0 && slot.card != null && !slot.redealing;
         }
 
+        // selection-hand-attach unit 3 — 즉발 거절 피드백: 카드가 좌우로 움찔(고개 젓기). 부착은
+        // 일어나지 않고 차감도 없다는 것을 형태로 전한다(사유 문구는 기존 브리핑 채널이 담당).
+        // 트윈이 rect 를 소유하는 동안 flinching 으로 스프링을 물러나게 한다(critic M7) — 끝나면
+        // 플래그만 내리고 위치는 스프링이 targetPos(=home)로 되돌린다.
+        public void FlinchSlot(int index)
+        {
+            if (index < 0 || index >= _slots.Count) return;
+            var slot = _slots[index];
+            if (slot.entryId < 0 || slot.rect == null) return;
+            // 드래그/재딜인이 이미 rect 를 쥐고 있으면 끼어들지 않는다.
+            if (OwnedByInteraction(slot) || slot.redealing || slot.flinching) return;
+            slot.flinching = true;
+            var captured = slot;
+            Tween.ShakeLocalPosition(slot.rect, new Vector3(flinchStrengthX, 0f, 0f),
+                    flinchDuration, frequency: flinchFrequency)
+                .OnComplete(() => captured.flinching = false);
+            SoundManager.Instance?.PlayCardReturn(); // 거절 = 카드가 제자리로(취소와 같은 계열음)
+        }
+
         public void RestoreSlotHome(int index)
         {
             if (index < 0 || index >= _slots.Count) return;
@@ -661,7 +704,24 @@ namespace Wassup.UI
         public void NotifyInteractionEnded()
         {
             if (_refreshQueued && !AnyInteractionActive()) { _refreshQueued = false; Refresh(); }
+            InteractionEnded?.Invoke(); // selection-hand-attach unit 4 — 리티클 재주장 트리거 ①
         }
+
+        // ── selection-hand-attach unit 4 — 포커스 세션 핸드오프 신호 ───────────
+        // 프레젠터는 단일 세션이다(계약 6). 카드 조준이 선택 리티클을 대체하는 것은 정상이고,
+        // 그 세션이 끝나면 선택이 살아 있는 한 리티클을 **재주장**해야 한다.
+        //
+        // 트리거가 둘인 이유: Focus.End() 호출처가 슬롯 종료 깔때기 하나가 아니다(critic H2).
+        //  ① InteractionEnded — 슬롯의 커밋/취소/ESC(NotifyInteractionEnded 깔때기)
+        //  ② FocusCleared — 뷰의 Close()/ForceClose() 하드 클리어(항아리 토글·0장 자동 닫힘·
+        //     페이즈 이탈·Reset). 슬롯 OnDisable(침강 완료마다) 은 항상 이 둘 뒤에 오므로 함께 덮인다.
+        //
+        // FocusCleared 는 반드시 End() **뒤에** 발화한다 — 앞에서 발화하면 재주장한 리티클을
+        // 바로 이어지는 End() 가 다시 지운다.
+        public event System.Action InteractionEnded;
+        public event System.Action FocusCleared;
+
+        private void RaiseFocusCleared() => FocusCleared?.Invoke();
 
         // Battle/Placement 이탈 → 강제 클로즈 (critic H2). Placement 재진입 리셋은
         // HandChanged(Reset) 가 처리.
@@ -823,6 +883,7 @@ namespace Wassup.UI
             StopDeal();
             CancelAllCardInteraction(); // drop any in-flight drag (no spend)
             _focus?.End(); // dreamcatcher-attach-lockon 계약 #10 — 포커스 오버레이 하드 클리어
+            RaiseFocusCleared();        // selection-hand-attach unit 4 — End 뒤에 발화(순서가 요점)
             // hand-drag-tooltip unit 1 — 닫힘 계열은 즉시 숨김(침강 중 형제 잔류 방지).
             HideDragTooltip(immediate: true);
             _focusIndex = -1;
@@ -843,6 +904,7 @@ namespace Wassup.UI
             // (SelectionTarget 자체는 소유자인 DcInspectController 가 정리한다 — 계약 1.)
             _pendingSelectionOpen = false;
             _focus?.End(); // dreamcatcher-attach-lockon 계약 #10 — 포커스 오버레이 하드 클리어
+            RaiseFocusCleared();          // selection-hand-attach unit 4
             HideDragTooltip(immediate: true); // hand-drag-tooltip unit 1
             StopDeal(); // hand-deal-in — 잔류 트윈/late-land 방지
             _slomoLease.Dispose();
@@ -1147,17 +1209,21 @@ namespace Wassup.UI
             // dreamcatcher-orb-dock unit 4 — 보드 영역 탭 dismiss 캐처. 카드(_panel) 뒤 sibling
             // 이라 카드·backing(드래그취소) 입력은 안 가로채고, 손패 패널 바깥(보드) 탭만 Close.
             // 항아리 독·NextWaveDock 은 order 7 캔버스라 이 order 5 캐처 위에서 정상 동작.
-            _dismissCatcher = new GameObject("HandDismissCatcher", typeof(RectTransform), typeof(Image), typeof(Button));
+            // selection-hand-attach unit 2 — Button 대신 press-스냅샷 탭 캐처(사유는 그 클래스 주석).
+            _dismissCatcher = new GameObject("HandDismissCatcher",
+                typeof(RectTransform), typeof(Image), typeof(HandDismissTapCatcher));
             _dismissCatcher.transform.SetParent(roots.SafeAreaRoot, false);
             var dcRt = (RectTransform)_dismissCatcher.transform;
             dcRt.anchorMin = Vector2.zero; dcRt.anchorMax = Vector2.one;
             dcRt.offsetMin = Vector2.zero; dcRt.offsetMax = Vector2.zero;
             var dcImg = _dismissCatcher.GetComponent<Image>();
             dcImg.color = new Color(0f, 0f, 0f, 0.001f); // 투명하지만 raycast 수신
-            var dcBtn = _dismissCatcher.GetComponent<Button>();
-            dcBtn.transition = Selectable.Transition.None;
-            dcBtn.targetGraphic = dcImg;
-            dcBtn.onClick.AddListener(() => { if (State == HandState.Hand) Close(); });
+            _dismissCatcher.GetComponent<HandDismissTapCatcher>().Init(
+                // press 프레임에 카드 드래그/포탈 조준/Active 조준이 살아 있으면 그 릴리즈는
+                // 보드 탭이 아니다(critic H1). AnyInteractionActive 는 private 이라 클로저로 넘긴다.
+                () => AnyInteractionActive() || (GameManager.Instance != null && GameManager.Instance.IsAiming),
+                OnBoardTapCaught,
+                boardTapMoveThreshold);
             _dismissCatcher.transform.SetAsFirstSibling();
             _dismissCatcher.SetActive(false);
 
