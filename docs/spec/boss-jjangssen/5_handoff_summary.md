@@ -15,6 +15,8 @@
 | `6ab41555` | unit 6 rev1 — 착지 슬램 50/반경1 + 비행 시간 +50% |
 | `aa7537b3` | **fix** — 도약 첫 프레임 착지지점 팝(드레인을 `LateUpdate` 로) |
 | `7dcb38b8` `698faf1a` `b4a5fc32` `0436b29d` `48f41cc0` `74cbbcf0` `5b467560` `828a89ed` | 실플레이 튜닝 (연출·무기·애니·경계·아치) |
+| `15ef9a6d` | 5각도 리뷰 반영 — 이중 상태 제거 + abandon 누수 차단 |
+| `d95d15d6` | unit 7 — 도약 아치를 sim→view 공간으로 (좌표계 수정) |
 
 설계·리뷰 이력: `docs/plans/2026-07-29-boss-jjangssen-design.md`
 
@@ -32,8 +34,12 @@
 - 덱 7개(맵 6 + Endless)에 `[나이트메어, 짱쎈놈]` 로테이션 투입. `WaveA`/`WaveB` 는 미변경.
 - **도약 아치 비행**(unit 6) — sim 은 텔레포트, 뷰만 `KeyringSim.DismountPoint` 궤적으로 0.83초 비행.
   착지 프레임에 자기중심 반경 1 / 50 **슬램 피해**. 출발 퍼프는 없다(인과상 거꾸로 읽혀 제거).
+- **아치의 좌표계 분리**(unit 7) — 수평은 sim(→`ToView` 가 셀 정합), 높이는 뷰가 변환 **뒤에** 더한다
+  (`SetFlightHeight`). `ToView` 가 sim-Y 를 버리므로 섞으면 옆으로 미끄러진다.
 - **최종 튜닝값**: 도약 경계 50%·10% 2회 · 진동갑주 20%씩 4회(WindAoeVFX 2.08) ·
-  무기 스파이크 곤봉 + 파리채 · `Attack2`/`Run_Gear` · 아치 factor 0.95 / min 8.5 / launch.y 1.25.
+  무기 스파이크 곤봉 + 파리채 · `Attack2`/`Run_Gear`.
+  아치 기하 4종은 **드롭 하마(D&D)와 값 동일** — dip 0.35 / factor 0.5 / minHeight 3.5 /
+  launch (0.25, 1) / landing 0.25. 시간만 보스 고유(총 0.83초 · 반동 0.14초, D&D 는 0.45/0.12).
 
 ## Key Files
 
@@ -78,6 +84,19 @@
    (`BlinkApplySystem` 의 `[UpdateAfter]`) — 슬롯 순서로는 뒤집을 수 없다.
 9. `SelfBlink` 의 구 착지 정책("위협 리더 근처")은 **은퇴**했다(`nightmare-catcher` 문서에 기재).
    `ThreatEntry`/threat drain 은 별 책임이라 살아 있다.
+10. **도약 궤적은 드롭 하마와 같은 함수다** — `KeyringSim.DismountPoint` 하나를 두 호출처가 쓰고
+    (`BattleBridge.BossLeap.cs` · `DefenderDragPlacementController.cs`) 복제된 수학은 0줄이다.
+    `KeyringSimTests.DismountPoint_*` 6종이 **양쪽을 동시에** 지키므로 그 테스트를 보스 것이
+    아니라고 지우면 안 된다. 기하 파라미터도 값이 같다(위 최종 튜닝값). 다만 하네스는 일부러
+    다르다 — 기저축(보스 `Vector3.up` / 드롭 `camera.up`) · 시계(Battle 도메인 / unscaled) ·
+    `startVel`(0 / 잔여 스윙) · duration 상한(없음 / `deploymentDuration`) · 튜닝 소유
+    (`SerializeField` / `DragSwaySettings`) · 착지 처리(슬램 / 스폰 연출) · 부속물(없음 / 고리·줄
+    잔류). **공통 러너로 묶지 마라** — 7축을 파라미터로 뚫으면 순증 +60줄이고 호출처는 둘뿐이다
+    (제약 8). 값싼 부분(기하)은 이미 공유돼 있다.
+11. **`bossLeapArcHeightFactor` 는 대부분의 도약에서 죽어 있다.** `arcHeight =
+    max(거리 × factor, minHeight)` 이고 tileSize 1 · 링 반경 6 이므로 수평거리가 7 을 넘는
+    대각 장거리 도약에서만 factor 가 이긴다. **높이를 바꾸려면 `bossLeapArcMinHeight`** 다.
+    (제어점 높이 semantics — 실제 apex 는 약 0.4배.)
 
 ## Follow-up
 
@@ -89,6 +108,16 @@
 - 두 무리로 나눠 배치 → **더 많이 모인 쪽**으로 뛰는지 대조.
 - 말파이트가 때려도 보스가 떠오르지 않는지 / Bleed 스택은 보스 HP 를 깎는지.
 - 비행 중 보스 사망 시 공중 정지 없음 / 슬로모(0.3x) 중 도약 배율 동행.
+
+**`KeyringSim` 의 주소 이전 (이번 spec 범위 밖)** — 이 모듈은 이제 아웃게임 로비 · 인게임 배치 ·
+전투 브리지가 함께 쓰는 **콘텐츠 무의존 순수 이동 수학**인데 위치가 `Assets/_Project/Scripts/UI/`
+· namespace `Wassup.UI` 다. 전투 시스템이 `Wassup.UI` 를 `using` 하는 모양이 계속 남는다.
+`Assets/_Project/Scripts/Core/Motion/` · namespace `Wassup.Core.Motion` 으로 옮기는 게 맞다
+(`using UnityEngine;` 하나만 쓰므로 의존 문제는 없다. 파일 분할까지 하려면
+`FlightCurves`(CubicBezier·ThrowArcControls·DismountPoint) / `FollowSim`(SpringStep·LeanAngle·
+FallStep) 이 자연스러운 경계). **동작 변경 0 의 기계적 이동이고 영향 파일이 11개**라 별 커밋으로
+분리해야 한다 — 보스 spec 에 섞으면 diff 가 도약 변경을 덮는다. 도약형 유닛이 둘째로 생길 때
+같이 하는 게 자연스럽다.
 
 **출발 전용 연출** — 현 blink arm 은 `dataIndex` 가 하나라 출발/착지에 다른 연출을 줄 수 없다.
 출발 먼지 같은 걸 넣으려면 인덱스 분리가 필요하다.
