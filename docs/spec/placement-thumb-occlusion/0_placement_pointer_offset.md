@@ -23,9 +23,12 @@
 ### SO 필드 (그룹 ⑪, ⑩ 드롭 하마 뒤)
 
 ```
-placementPointerOffsetHeightRatio  [Range(0, 0.2)]  기본 0.06
-placementPointerOffsetRampSeconds  [Range(0, 0.4)]  기본 0.08
+placementPointerOffsetHeightRatio   [Range(0, 0.2)]    기본 0.06
+placementPointerOffsetRampDistance  [Range(0, 200)]    기본 60   (px)
 ```
+
+> 램프는 **이동량(px) 기준**으로 확정됐다(unit 1 에서 시간 기준을 대체). 초판 초안의
+> `placementPointerOffsetRampSeconds` 는 존재하지 않는다 — 이유는 `1_board_and_relocation_offset.md`.
 
 Tooltip 에 반드시 담을 것: `0 = 현행(손가락 위치 그대로)` · `↑ = 칸이 손가락에서 멀어져 잘 보이나
 최하단 행 도달성이 줄어든다` · `상한은 DragPlacementReachTest 가 못박는다 — 깨지는 값 채택 금지`.
@@ -141,7 +144,7 @@ private Vector2 _lastRawScreenPos;   // 카메라 포커스 전용 — 절대 ND
 
 ```csharp
 public float PlacementPointerOffsetPx => Cfg.PlacementPointerOffsetPx;
-public float PlacementPointerOffsetRampSeconds => Cfg.placementPointerOffsetRampSeconds;
+public float PlacementPointerOffsetRampDistance => Cfg.placementPointerOffsetRampDistance;
 ```
 
 ### 테스트 주석 갱신
@@ -163,3 +166,9 @@ public float PlacementPointerOffsetRampSeconds => Cfg.placementPointerOffsetRamp
 - **카메라가 드래그 중 위로 스르륵 밀리지 않는다**(포커스 raw 확인 — 가상을 먹이면 상수 바이어스).
 - **거부 라벨이 화면 상단 드래그에서 잘리지 않는다**(클램프 확인).
 - 탭 배치(트레이 슬롯 arm → 보드 탭)의 비행 착지 칸이 무변경.
+
+---
+
+**구현 완료 2026-07-29 · `039b8be2`** — 컴파일 에러·경고 0, `DragPlacementReachTest` 1/1,
+`DropDismountTest` 1/1 통과. 육안 Play 확인 4항목(하이라이트 위치 · 릴리즈 칸 일치 · 카메라 · 라벨)은
+사용자 확인 대기.

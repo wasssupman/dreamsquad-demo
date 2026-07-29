@@ -1,6 +1,10 @@
 # placement-thumb-occlusion
 
-상태: **작성 2026-07-29 · critic 리뷰 반영 완료 · 구현 대기**. 사용자 발의(모바일 D&D 배치 중 손가락이
+상태: **units 0~3 구현·자동검증 완료 2026-07-29 · 육안 Play 확인 대기**
+(`039b8be2` unit 0 / `6f117212` unit 1+3 / `31a79042` unit 2). 인계는 [`4_handoff_summary.md`](./4_handoff_summary.md).
+EditMode 8/8 · PlayMode 4/4 · 컴파일 에러 0. 오프셋 상한 실측: 0.18 통과 / **0.20 실패** → 확정값 0.06(3배 여유).
+
+사용자 발의(모바일 D&D 배치 중 손가락이
 하이라이트된 배치가능 타일을 덮어 UX 감성이 나쁘다) → 두 방안 아이데이션 후 **둘 다 채택**(원인 제거 +
 중복 송출) 확정.
 
@@ -118,6 +122,10 @@ critic 리뷰(REQUEST-CHANGES, Critical 2 / High 3 / Medium 8 / Low 7) 반영 �
 - **재배치 무효 표현 통일** [S] · `DefenderRelocationController.UpdateScout:275-276` 은 배치 불가를
   **사거리 소거**로 인코딩한다(적색이 아니라 사라짐). 동작 문제는 없지만 feature-wide 언어가 세 번째
   경로에서만 다르다. 이 spec 범위 밖(제약 9) — 기록만 남긴다.
+- **PlayMode 테스트 격리** [S] · `DragPlacementReachTest` · `DropDismountTest` ·
+  `RelocationPlacementSessionTest` 를 **한 묶음으로** 돌리면 `DropDismountTest` 의 탭-게이트 단언이
+  깨진다(각각 단독 실행은 전부 통과). **오프셋과 무관한 기존 문제** — 씬/ECS 월드/뷰 오버라이드 잔재가
+  다음 테스트로 넘어가는 것으로 보인다. 이 spec 범위 밖.
 - **램프 스칼라 통합** [S] · unit 1 은 재배치가 자기 램프 스칼라를 따로 굴린다. 두 컨트롤러가 동시에
   램프를 굴리는 상황은 실제로 없다(`TickMoveMode:123-124` 의 `sessionConflict` 가 트레이 드래그/arm 시
   재배치를 즉시 취소한다 — 확인). 상태 2개를 1개로 줄일 여지.

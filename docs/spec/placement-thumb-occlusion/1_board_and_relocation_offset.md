@@ -129,4 +129,22 @@ private static float EffectiveOffsetPx()
 - 에디터 Play — 재배치: 이동모드 진입 후 목적지를 **끌어서** 놓으면 커서 위 칸으로, **탭하면**
   누른 칸으로 간다.
 - `placementPointerOffsetHeightRatio = 0` 에서 세 경로 모두 현행과 동일.
-- 승격 순간 하이라이트가 순간이동하지 않는다(램프 육안 확인. `rampSeconds = 0` 과 비교해 차이 확인).
+- 승격 순간 하이라이트가 순간이동하지 않는다(램프 육안 확인. `rampDistance = 0` 과 비교해 차이 확인).
+
+---
+
+**구현 완료 2026-07-29 · `6f117212`** (unit 3 과 한 커밋 — 두 유닛을 한 상태에서 함께 검증했다).
+
+확정 사항:
+- **램프는 이동량 비례로 확정**(시간 기준 폐기). `placementPointerOffsetRampDistance` = 60px.
+  산식은 `PlacementPointerOffset.Ramp`(순수 static, 소비처 2곳) — EditMode 8케이스로 고정.
+- 재배치 승격 게이트 신설(`_targetPressDown` / `_targetDragging`), 임계·오프셋·램프는 전부
+  `DragController` 읽기 seam 공유. `DragController` 부재 시 오프셋 0 폴백.
+- **테스트 전략 변경**: 재배치 드래그 커밋 검증을 오프셋 역산 → **하이라이트 추적**으로 바꿨다.
+  역산이 실패한 이유 두 개 — ① ramp 가 이동량 의존이라 순환, ② `DisableUiCanvases()` 때문에
+  `FindObjectOfType` 이 비활성 selector 를 못 찾아(컨트롤러는 직렬화 참조로 찾는다) 실효 오프셋이
+  컨트롤러와 어긋났다. 이제 스카우트 셀이 목표를 가리킬 때까지 끌고 가서 릴리즈한다 — 사람의 조작과
+  같고 계약("배치 칸 == 하이라이트 칸")을 직접 검증하며 오프셋 튜닝에 면역이다.
+
+검증: EditMode 8/8 · `RelocationPlacementSessionTest` 2/2 · `DragPlacementReachTest` 1/1 ·
+`DropDismountTest` 1/1 · 컴파일 에러 0.

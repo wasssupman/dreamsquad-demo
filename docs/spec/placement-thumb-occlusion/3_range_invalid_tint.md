@@ -149,3 +149,22 @@ ClearPlacementRange()` 다 — 재배치에서 배치 불가는 이미 **사거�
 - **사막 시즌에서 사거리 격자가 보인다**(선행 조건 배선 확인). 안 보이면 이 단위는 미완료다.
 - 새 드래그 세션이 직전 세션의 적색을 상속하지 않는다.
 - `rangeInvalidColor` 를 `rangeColor` 와 같게 두면 현행과 동일(회귀 0 확인 경로).
+
+---
+
+**구현 완료 2026-07-29 · `6f117212`** (unit 1 과 한 커밋).
+
+확정 사항:
+- `SetPlacementRangeValidity` 가 `_rangeInvalid` 단독 소유, false→true 전이에만 스탬프.
+  `Set/ClearPlacementRange` 는 건드리지 않는다(플래시 연발 방지). `Clear()` 에만 방어 리셋.
+- 조준 채널 보호를 **소유권 기준**으로 확정: `ClearRange(caller)` 반납 + `SetSkillAimRange` ·
+  `PinSkillTelegraph` 획득 시점 리셋. `_rangeAimStyle` 은 이 역할을 못 한다(둘 다 aimStyle=false).
+- `TileSet_Desert.rangeTile` 배선 완료(guid `5008d558…` = `tile_grid_outline`, AutoTileTest 와 동일 소스).
+  이게 null 이라 **사막 시즌은 사거리 격자가 렌더조차 안 됐다** — 선행 버그 해소.
+- `rangeInvalid*` 3필드는 클래스 기본값으로 라이브(Unity 가 신설 필드에 기본값을 유지). 에셋에
+  명시 기입하지 않았다 — 인스펙터에서 그대로 튜닝 가능.
+
+검증: 컴파일 에러 0 · PlayMode 회귀 4/4(재배치 2 · 도달 1 · 드롭 1). **육안 확인 대기**:
+적색 전환+플래시, 코스트 부족 구간, 무효 영역 훑을 때 플래시 연발 없음, facing/폭탄 레인 가독성
+(`alphaMul=0.7` 로 흐려질 수 있음 — 안 읽히면 invalid 분기에서 바이패스 결정), 사막 시즌 격자 표시,
+스킬 조준 진입 시 적색 미유출.
