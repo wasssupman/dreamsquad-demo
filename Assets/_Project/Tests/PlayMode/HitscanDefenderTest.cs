@@ -63,6 +63,9 @@ namespace Wassup.Tests.PlayMode
             em.AddComponentData(enemy, new Health { value = Hp, max = Hp });
             em.AddComponentData(enemy, new FactionTag { value = Faction.Enemy });
             em.AddBuffer<IncomingDamage>(enemy);
+            // 배치 조사(DotNearby)가 이 적에게도 DoT 를 건다 — 실적 아키타입처럼 CcEffect 버퍼가
+            // 없으면 CcApply 가 던진다. 더미는 실제 적이 가진 것을 갖춰야 한다.
+            em.AddBuffer<Wassup.Battle.Effects.CcEffect>(enemy);
             em.AddComponent<AttackUnitTag>(enemy);
 
             // 배치 스킬(개점 일제 조사)이 끝날 때까지 기다린 뒤에 잰다. 조사 중에는 기본 공격을

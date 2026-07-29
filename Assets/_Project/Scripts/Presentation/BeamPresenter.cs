@@ -129,9 +129,6 @@ namespace Wassup.Presentation
                 endpoint = s.lastEndpoint;
             }
 
-            // 끝점을 머즐과 같은 깊이(z)로 눕힌다. 평면 정면뷰 보드라 두 점의 z 가 다르면 빔이
-            // 화면 안쪽으로 기울어 짧아 보인다 — TrySpawnCastVfx 가 `dir.z = 0` 하는 것과 같은 이유.
-            endpoint.z = sourceView.z;
             s.lastSource = sourceView;
             s.lastEndpoint = endpoint;
             s.placedOnce = true;
@@ -140,27 +137,39 @@ namespace Wassup.Presentation
             if (length < 1e-4f) return true; // 겹친 프레임은 그리지 않고 세션만 유지
             Vector3 fwd = dir / length;
 
+            // 롤(축 회전)을 카메라에 고정한다. forward 만 맞추면 Unity 가 world-up 으로 롤을
+            // 임의 결정하는데, 이 보드는 **XY 평면 정면 뷰**라 빔 방향이 화면 평면 안에 놓인다
+            // → 옆에서 보도록 만들어진 빔 메시를 축 방향에서 보게 되어 납작한 직선으로만
+            // 보인다(사용자 제보: "가로세로 직선으로만 표현되는 느낌"). up 을 카메라 정면의
+            // 반대로 주면 빔의 면이 카메라를 향한다.
+            var cam = Camera.main;
+            Quaternion rot = cam != null
+                ? Quaternion.LookRotation(fwd, -cam.transform.forward)
+                : Quaternion.LookRotation(fwd);
+
             if (s.beamBody != null)
             {
                 s.beamBody.position = sourceView;
-                s.beamBody.forward = fwd;
+                s.beamBody.rotation = rot;
                 var sc = s.beamBody.localScale;
                 s.beamBody.localScale = new Vector3(sc.x, sc.y, length);
             }
             if (s.beamCast != null)
             {
                 s.beamCast.position = sourceView;
-                s.beamCast.forward = fwd;
+                s.beamCast.rotation = rot;
             }
             if (s.bodyTip != null)
             {
                 s.bodyTip.position = endpoint;
-                s.bodyTip.forward = fwd;
+                s.bodyTip.rotation = rot;
             }
             if (s.hit != null)
             {
                 s.hit.position = endpoint;
-                s.hit.forward = -fwd;
+                s.hit.rotation = cam != null
+                    ? Quaternion.LookRotation(-fwd, -cam.transform.forward)
+                    : Quaternion.LookRotation(-fwd);
             }
             return true;
         }
@@ -194,6 +203,13 @@ namespace Wassup.Presentation
                 Debug.LogError("[BeamPresenter] 빔 프리팹에 'BeamBody' 자식이 없다 — 배치할 몸통이 없어 "
                                + "빔이 안 보인다. 프리팹: " + prefab.name);
             }
+            // 벤더 프리팹은 sortingOrder 0~2 로 들어온다. 그대로 두면 유닛(수백대) 뒤에 깔려
+            // 빈 땅 구간만 보인다 — 프리팹 내부 상대 순서는 보존하고 보드 대역만 끌어올린다.
+            // 새로 만든 인스턴스에만 적용한다(풀 재사용분은 이미 적용돼 있어 두 번 더하면 안 됨).
+            var renderers = go.GetComponentsInChildren<ParticleSystemRenderer>(true);
+            for (int i = 0; i < renderers.Length; i++)
+                renderers[i].sortingOrder = BoardSortOrder.BeamOrder + renderers[i].sortingOrder;
+
             PlayAll(go);
             return s;
         }

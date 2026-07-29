@@ -81,6 +81,14 @@ namespace Wassup.Tests.PlayMode
                 "BeamBody 의 z 가 프리팹 원본 그대로다 = TryPlace 가 한 번도 성공하지 않았다");
             Assert.Greater(z, 0.01f, "빔 길이가 0 이면 몸통이 안 보인다");
 
+            // 정렬 회귀 가드: 벤더 프리팹 기본값(0~2)이면 유닛(수백대) 뒤에 깔려
+            // 빈 땅 구간만 보이고 유닛에 가린 곳은 끊겨 보인다 — 실제 제보의 원인.
+            var renderers = body.parent.GetComponentsInChildren<ParticleSystemRenderer>(true);
+            Assert.Greater(renderers.Length, 0, "빔 렌더러가 있어야 한다");
+            foreach (var r in renderers)
+                Assert.GreaterOrEqual(r.sortingOrder, Wassup.Presentation.BoardSortOrder.BeamOrder,
+                    $"빔 렌더러 '{r.name}' 의 sortingOrder({r.sortingOrder})가 유닛 대역 아래다 — 가려진다");
+
             if (em.Exists(enemy)) em.DestroyEntity(enemy);
         }
 
@@ -244,6 +252,10 @@ namespace Wassup.Tests.PlayMode
             em.AddComponentData(e, new Health { value = Hp, max = Hp });
             em.AddComponentData(e, new FactionTag { value = Faction.Enemy });
             em.AddBuffer<IncomingDamage>(e);
+            // 배치 조사(DotNearby)가 이 적에게 DoT 를 건다 — 실적 아키타입처럼 CcEffect 버퍼가
+            // 없으면 CcApply 가 던진다. PlayMode 는 세션을 공유하므로 이 예외가 **다른 테스트**
+            // 실패로 전가돼 원인 추적이 어려워진다(실제로 그렇게 한 번 헤맸다).
+            em.AddBuffer<Wassup.Battle.Effects.CcEffect>(e);
             em.AddComponent<AttackUnitTag>(e);
             return e;
         }
