@@ -67,16 +67,19 @@ spec 계약으로 못박는다.**
   끌려갈 필요가 없다. 근본 원인은 `Aggroed` 가 붙는 순간 `AttackSystem:947` 이 타겟 수를 1로 강제해
   cleave 3 을 소멸시키고, `MovementSystem:97` 의 `Chasing` 조기 return 이 사냥 분기(`:122`)보다 앞이라
   보스가 가디언만 쫓게 되는 것이다. **코스트 2 가디언 1기가 이 보스의 정체성 전체를 껐다.**
-- **CC 면역 = 직접 CC 만. 스택이 유발한 CC 는 통과시킨다** (사용자 확정 2026-07-29).
+- **CC 면역 = 직접 걸리는 행동 정지(스턴·수면)만** (사용자 확정 2026-07-29).
   `CcKind` 는 `{Slow, Impulse, DoT, Stun, Sleep}` 이고 **DoT 가 CC 와 같은 버퍼**를 쓴다. 게다가
   스택 임계가 만드는 DoT·스턴도 **같은 `EnemyCcEventsSingleton` 큐**로 들어오므로 kind 만으로는
   직접 CC 와 구별되지 않는다(`StackModifierTickSystem` 이 `ApplyDot`/`ApplyStun` 을 둘 다 이 큐에 넣는다).
   따라서 **`EnemyCcEvent` 에 출처 필드를 1개 추가**하고 `StackModifierTickSystem` 의 enqueue 2곳에서만
-  켠다 — 기본값 = 직접이므로 기존 생산자 전부 무회귀다. 면역 술어 =
-  `직접 출처 && (CcActionLock.IsLock(kind) || kind == Impulse)`. lock-set 단일 소스를 재사용하면 새 lock
-  종류가 추가돼도 면역이 자동으로 동행한다.
-- **규칙으로 읽으면**: 직접 CC 는 무효, **누적해서 임계를 넘긴 CC 는 통한다.** 보스를 재우려면 스택을
-  쌓아야 한다 — CC 빌드에 보스 해답을 주면서 값싼 봉인은 막는다.
+  켠다 — 기본값 = 직접이므로 기존 생산자 전부 무회귀다.
+- **면역 술어 = `직접 출처 && CcActionLock.IsLock(kind)`.** 넉백(`Impulse`)·`Slow`·`DoT` 는 전부 통과한다.
+  술어가 lock-set 단일 소스 **그 자체**가 되어 예외 절이 없고, 새 lock 종류가 추가되면 면역이 자동으로
+  동행한다. `Impulse` 를 열어도 추가 작업은 없다 — 어차피 같은 `CcEffect` 버퍼를 순회하는 구조다.
+- **규칙으로 읽으면**: 보스는 **직접 걸리는 행동 정지에만 면역**이다. 넉백은 통하고, 스택을 누적해
+  임계를 넘긴 스턴·DoT 도 통한다. 보스를 재우려면 스택을 쌓아야 한다 — CC 빌드에 보스 해답을 주면서
+  값싼 봉인만 막는다. **넉백이 열려 있어 반복 넉백으로 보스를 지연시키는 플레이가 가능하다**
+  (카드 코스트·쿨다운이 상한 — 밸런스 관찰 항목).
 - **구현 지점**: 어그로는 **부착 1곳 차단**(`AggroStateSystem` 이 `Aggroed` 의 유일한 writer — 소비
   지점이 6곳이라 "붙은 것을 무시" 방식보다 압도적으로 싸다). CC 는 **부여 시점 거절 2곳**
   (`CcApplySystem` 의 `EnemyCcEventsSingleton` 드레인 + `EffectSpawner.ApplyCc`) — 모든 CC 생산자가
@@ -86,10 +89,10 @@ spec 계약으로 못박는다.**
 - **면역 후 보스는 `Chasing` / `Standoff` 에 영구히 들어가지 않는다** — `aggroed` 가 그 두 상태의
   유일한 진입 조건이다. `Marching`(사냥 flow-follow) ↔ `Engaging` 만 쓴다. `boss-defender-field` 계약과
   일치하며, 이번 결정은 그 spec 이 파킹해둔 "보스 어그로 면역" 후속 후보의 실행이다.
-- **죽는 기존 콘텐츠(실측) — 3종 + 부분 1종**: `Card_LullabyDart`(수면) · `Card_FrostArrow`(스턴) ·
-  `Card_GaleShove`(넉백)가 완전 무효. `Card_ShieldLull`(AreaSleep)은 보스 대상분만 무효(다른 적은 정상).
-  **스택 카드는 온전히 살아난다** — `Card_Frostbite`(Ice 3스택 슬로우 + 5스택 스턴)와
-  `Card_EmberBite`(Bleed → DoT) 모두 설계 의도대로 보스에게 통한다.
+- **죽는 기존 콘텐츠(실측) — 2종 + 부분 1종**: `Card_LullabyDart`(수면) · `Card_FrostArrow`(스턴)만
+  완전 무효. `Card_ShieldLull`(AreaSleep)은 보스 대상분만 무효(다른 적은 정상).
+  **`Card_GaleShove`(넉백) · `Card_Frostbite`(Ice 3스택 슬로우 + 5스택 스턴) · `Card_EmberBite`(Bleed → DoT)
+  는 온전히 살아난다.**
   자석 아키타입(가디언 어그로 전략)은 보스 상대로 사장된다. **수용한다(사용자 확정 2026-07-29).**
   `Defender_IceCaster` 의 CC 경로는 미확인 — spec 작성 시 1회 확인한다.
 
@@ -169,7 +172,7 @@ spec 계약으로 못박는다.**
 |---|---|---|
 | 0 | `bossPool` 필드 | 필드 추가 + `ResolveBossPool()` 폴백 + `Count == 1` 이면 rng 미소비. **Slasher asset 없이 기존 7덱 무회귀를 먼저 증명한다** |
 | 1 | Slasher asset | 스탯 · 외형 · 누락 필드 전부 + `EnemyCatalog` 등록 + 진동갑주용 AOE `ProjectileData` 준비. `nightmareMechanics` 는 비운다 |
-| 2 | 어그로 + CC 면역 | 부착 1곳 차단 + `EnemyCcEvent` 출처 필드 + 부여 2곳 거절(직접 출처 한정). **이것이 없으면 cleave 3 을 육안으로 검증할 수 없다** — 가디언이 타겟 수를 1로 강제한다 |
+| 2 | 어그로 + 행동 정지 면역 | 부착 1곳 차단 + `EnemyCcEvent` 출처 필드 + 부여 2곳 거절(`직접 출처 && IsLock(kind)`). **이것이 없으면 cleave 3 을 육안으로 검증할 수 없다** — 가디언이 타겟 수를 1로 강제한다 |
 | 3 | 진동갑주 | bake 에 `SelfTileAoe` 추가(필수 준수 6) + `mechanic[0]` |
 | 4 | 집단 도약 | 밀집도 순수 함수 + 정책 교체 + `WithNone<DeadTag>` + `mechanic[1]` + 동시 발동 순서 계약 |
 | 5 | handoff summary | |
