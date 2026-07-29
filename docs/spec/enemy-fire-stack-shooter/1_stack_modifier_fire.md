@@ -28,12 +28,13 @@
 | `thresholds[0].atStack` | `5` | |
 | `thresholds[0].mode` | `1` (`Consume`) | 소진 후 재축적. ⚠ Edge 다중 임계 금지(계약 1) |
 | `thresholds[0].derivedKind` | `0` (`ApplyDot`) | |
-| `thresholds[0].magnitude` | `10` | `tickInterval > 0` 이므로 **틱당 피해**(DPS 아님) |
-| `thresholds[0].tickInterval` | `0.5` | |
-| `thresholds[0].duration` | `2.85` | **= (6−1)×0.5 + 0.35** → 6틱 · 1회분 60 |
+| `thresholds[0].magnitude` | `4` | `tickInterval > 0` 이므로 **틱당 피해**(DPS 아님) |
+| `thresholds[0].tickInterval` | `1.0` | |
+| `thresholds[0].duration` | `4.85` | **= (5−1)×1.0 + 0.85** → 5틱 · 1회분 20 |
 
-`duration 3.0` 을 쓰면 안 된다 — 7번째 틱 자리가 만료와 정확히 겹쳐 6틱(60)과 7틱(70)
-사이에서 프레임레이트에 따라 흔들린다(계약 3, Bleed 4.85 와 같은 이유).
+`duration 5.0` 을 쓰면 안 된다 — 6번째 틱 자리가 만료와 겹쳐 프레임레이트에 따라 흔들린다.
+**실측(`DotTick.Advance` 직접 시뮬)**: `5.0` → 60·144fps 5틱 / 30·50·72·23.7fps **6틱**
+(20 vs 24, 20% 편차). `4.85` → 전 구간 5틱 고정.
 
 씬 배선: `stackModifierAuthoring` 배열은 `BattleBridge` 가 `_stackThresholds` 딕셔너리를
 채우는 유일한 소스다(`BattleBridge.cs:5875~5880`). 배열에 안 넣으면 에셋을 만들어도
@@ -42,7 +43,7 @@
 
 ## 완료 기준
 
-- [x] `StackModifier_Fire` 필드 전량 확인(특히 `tickInterval 0.5` · `duration 2.85`)
+- [x] `StackModifier_Fire` 필드 전량 확인(특히 `tickInterval 1.0` · `duration 4.85`)
 - [x] `BattleBridge.GetStackThresholds(StackKind.Fire).Length > 0` — 씬 배선 확인
 - [x] 씬 diff 가 `stackModifierAuthoring` 1줄 추가뿐인지 확인(무관 dirty 혼입 없음)
 - [ ] 오라 점등 육안 확인 — unit 3 사용자 Play 로 이관(프레젠테이션)
@@ -50,8 +51,10 @@
 ## 확인
 
 - **2026-07-30** · EditMode 저작 검증(testrig): SO 가 authored 값 그대로 파싱되고
-  틱 수 `floor((2.85−ε)/0.5)+1 = 6` · 1회분 `6×10 = 60` · `duration % tickInterval` 이
-  0에서 충분히 떨어져 있음(배수 경합 회피)을 단언으로 고정.
+  틱 수 · 1회분 총량 · 배수 경합 회피를 단언으로 고정.
+- **2026-07-30 rev1** · 사용자 지정("1초마다 4데미지 5초간")으로 `10 / 0.5s / 2.85s`(6틱 60)
+  → **`4 / 1.0s / 4.85s`(5틱 20)**. `DotTick.Advance` 를 60·30·144·23.7fps 로 직접 돌려
+  전 구간 5틱 · 총 20 확인. 화상 화력이 1/3 로 내려간다(킨들러 총 DPS 14.2 → 7.5).
 - 씬 배선은 `KindlerFireStackE2ETest` 의 선행 가드가 지킨다
   (`GetStackThresholds(Fire).Length > 0` — 없으면 스택만 쌓이고 아무 일도 안 일어난다).
 - 씬은 HEAD 기준 hunk 격리 스테이징으로 **정확히 1줄만** 커밋했다(사용자 WIP 1330줄 제외).
