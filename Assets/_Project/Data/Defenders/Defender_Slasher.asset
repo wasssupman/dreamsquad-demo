@@ -47,10 +47,10 @@ MonoBehaviour:
     stat: 0
     op: 0
     stackKind: 3
-    stackMaxStack: 6
+    stackMaxStack: 5
   onPlaceEffect: 8
   onPlaceRange: 2
-  onPlaceMagnitude: 6
+  onPlaceMagnitude: 5
   onPlaceDuration: 2
   onPlaceStackKind: 3
   onPlaceTickInterval: 0

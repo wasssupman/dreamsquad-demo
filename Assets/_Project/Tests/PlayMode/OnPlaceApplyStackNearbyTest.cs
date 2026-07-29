@@ -43,8 +43,8 @@ namespace Wassup.Tests.PlayMode
             slasher.onPlaceEffect = OnPlaceEffectType.ApplyStackNearby;
             slasher.onPlaceStackKind = StackKind.Bleed;
             slasher.onPlaceRange = 2f;
-            // Bleed 는 누적형(atStack 6 Consume) — 배치 도포는 임계치를 한 번에 준다.
-            slasher.onPlaceMagnitude = 6f;
+            // Bleed 는 누적형(atStack 5 Consume) — 배치 도포는 임계치를 한 번에 준다.
+            slasher.onPlaceMagnitude = 5f;
             slasher.onPlaceDuration = 2f;
 
             bridge.SetDefenderPool(new[] { slasher });
@@ -62,7 +62,7 @@ namespace Wassup.Tests.PlayMode
             Assert.IsTrue(bridge.PlaceDefenderAs(cell.x, cell.y, slasher), "place slasher");
 
             // 큐 드레인 + 임계 발화 + CcApply 까지 몇 프레임.
-            // ⚠ stackCount 로 단언하지 않는다: Bleed 는 `atStack 6 · mode Consume` 이라
+            // ⚠ stackCount 로 단언하지 않는다: Bleed 는 `atStack 5 · mode Consume` 이라
             // 임계에 닿는 순간 발화하며 **스택을 도로 소모**해 0으로 돌아간다. 스택 수는
             // Bleed 의 안정적 관측값이 아니고, 도포의 관측 가능한 결과는 파생 DoT 다.
             bool nearHadBleed = false, nearHasDot = false;
