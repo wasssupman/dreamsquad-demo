@@ -92,11 +92,11 @@ namespace Wassup.Tests.PlayMode
                         for (int i = 0; i < st.Length; i++)
                             if (st[i].kind == StackKind.Bleed) { sawBleed = true; break; }
                     }
-                    if (em.HasBuffer<CcEffect>(enemy))
+                    if (em.HasBuffer<DotEffect>(enemy))
                     {
-                        var cc = em.GetBuffer<CcEffect>(enemy);
+                        var cc = em.GetBuffer<DotEffect>(enemy);
                         for (int i = 0; i < cc.Length; i++)
-                            if (cc[i].kind == CcKind.DoT && cc[i].remainingTime > 0f) { sawDot = true; break; }
+                            if (cc[i].remainingTime > 0f) { sawDot = true; break; }
                     }
                 }
                 yield return null;
@@ -105,7 +105,7 @@ namespace Wassup.Tests.PlayMode
             Object.Destroy(bleeder);
 
             Assert.IsTrue(sawBleed, "outputs 의 ApplyStack 이 대상에 Bleed StackModifierSlot 을 부여해야 함");
-            Assert.IsTrue(sawDot, "Bleed 임계가 발화해 DoT(CcEffect) 까지 이어져야 함");
+            Assert.IsTrue(sawDot, "Bleed 임계가 발화해 DoT(DotEffect) 까지 이어져야 함");
         }
 
         // ── helpers (DreamcatcherOnHitTest 와 같은 형태 — 그쪽은 카드 경로, 여기는 outputs 경로) ──
@@ -118,7 +118,8 @@ namespace Wassup.Tests.PlayMode
             em.AddComponentData(enemy, new Health { value = Hp, max = Hp });
             em.AddComponentData(enemy, new FactionTag { value = Faction.Enemy });
             em.AddBuffer<IncomingDamage>(enemy);
-            em.AddBuffer<CcEffect>(enemy); // 임계 파생 DoT 의 소비처
+            em.AddBuffer<CcEffect>(enemy);
+            em.AddBuffer<DotEffect>(enemy); // 임계 파생 DoT 의 소비처(dot-effect-extraction unit 0)
             return enemy;
         }
 

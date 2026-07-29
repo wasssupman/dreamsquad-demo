@@ -1,6 +1,6 @@
 # result-screen-ranking-ui — 결과 화면을 랭킹 UI 로 재설계
 
-> 상태: **완료 2026-07-20** (units 0~1)
+> 상태: **완료 2026-07-20** (units 0~1) · **unit 2 추가 2026-07-29** (pending 레이스/칸수 픽스)
 
 ## 상위 목표
 
@@ -21,9 +21,9 @@
 |---|---|---|
 | 1 | `canvas.overrideSorting = true` | 이 뷰는 루트 `ResultCanvas` 아래 **중첩** 캔버스라 평범한 `sortingOrder` 가 무시된다. 없으면 배틀 HUD·MENU 버튼 위로 못 올라간다 |
 | 2 | `RenderRows` 의 detach-then-destroy | `Destroy` 가 지연이라, 봇 리스트가 실데이터로 교체될 때 한 프레임 이중 리스트가 보인다 |
-| 3 | `UpdateLeaderboard` 의 `activeSelf` early-return | 팝업 닫힌 뒤(즉시 RESTART) 도착한 응답을 버린다 |
+| 3 | `UpdateLeaderboard` 의 `activeSelf` early-return | 팝업 닫힌 뒤(즉시 RESTART) 도착한 응답을 버린다. **팝업 열리기 전 응답은 BattleBridge 가 보관 후 재적용** — unit 2 |
 | 4 | 폴백 리스트 자체 | 서버 응답 전/게스트/실패 시 빈 리스트를 막는다. **내용은 unit 1 에서 교체됨** — 아래 참조 |
-| 5 | WAITING 슬롯 | 토너먼트 슬롯은 선할당(10)이라 미참가 슬롯도 렌더한다 |
+| 5 | WAITING 슬롯 | 토너먼트 슬롯은 선할당(`maxEntryCount`, 현 서버 5)이라 미참가 슬롯도 렌더한다 |
 | 6 | 서버 `rank > 0` 우선 | dev 서버가 `rank` 를 생략해서 위치 기반 파생이 필요하지만, 오면 서버 값이 이긴다 |
 | 7 | `DisplayName` 10자 절단 | 긴 이름이 점수 컬럼을 침범한다 |
 | 8 | `SafeAreaRoot` 부모 지정 | 노치/제스처바 |
@@ -42,6 +42,7 @@
 |---|---|---|
 | 0 | `0_ranking_layout.md` | 2컬럼 재배치 + 타이포 스케일 + 점수 히어로 + 순위 콜아웃 |
 | 1 | `1_pending_fallback.md` | 봇 폴백 → "참가자 찾는 중" 대기 상태로 전환 (가짜 점수 제거) |
+| 2 | `2_pending_race_bracket_fix.md` | Tally 연출 중 도착한 랭킹 드랍 픽스 + pending 칸수 10→5 통일 |
 
 ## 다음 spec 으로 넘어가는 것
 

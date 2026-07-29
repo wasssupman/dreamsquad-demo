@@ -14,11 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DefenderUnitData
   id: healer
   role: 5
-  displayName: "\xED\x9E\x90\xEB\x9F\xAC"
-  desc: "\xEA\xB8\xB0\xEB\xB3\xB8 \xEA\xB8\xB0\xEB\x8A\xA5: \xEC\x97\xAC\xEB\x9F\xAC
-    \xEC\x95\x84\xEA\xB5\xB0 \xEB\x8F\x99\xEC\x8B\x9C \xED\x9A\x8C\xEB\xB3\xB5\n\xEB\xB0\xB0\xEC\xB9\x98
-    \xEC\x8A\xA4\xED\x82\xAC: \xEC\x97\x86\xEC\x9D\x8C\n\xED\x8A\xB9\xEC\x88\x98
-    \xED\x9A\xA8\xEA\xB3\xBC: \xEC\x97\x86\xEC\x9D\x8C"
+  displayName: "\uD790\uB7EC"
+  desc: "\uAE30\uBCF8 \uAE30\uB2A5: \uC5EC\uB7EC
+    \uC544\uAD70 \uB3D9\uC2DC \uD68C\uBCF5\n\uBC30\uCE58
+    \uC2A4\uD0AC: \uC5C6\uC74C\n\uD2B9\uC218
+    \uD6A8\uACFC: \uC5C6\uC74C"
   health: 315
   attackRange: 3
   attackCooldown: 3.15

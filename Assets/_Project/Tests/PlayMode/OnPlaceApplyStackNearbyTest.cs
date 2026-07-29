@@ -99,10 +99,10 @@ namespace Wassup.Tests.PlayMode
 
         private static bool HasDot(EntityManager em, Entity e)
         {
-            if (!em.Exists(e) || !em.HasBuffer<CcEffect>(e)) return false;
-            var buf = em.GetBuffer<CcEffect>(e);
+            if (!em.Exists(e) || !em.HasBuffer<DotEffect>(e)) return false;
+            var buf = em.GetBuffer<DotEffect>(e);
             for (int i = 0; i < buf.Length; i++)
-                if (buf[i].kind == CcKind.DoT && buf[i].remainingTime > 0f) return true;
+                if (buf[i].remainingTime > 0f) return true;
             return false;
         }
 
@@ -114,7 +114,8 @@ namespace Wassup.Tests.PlayMode
             em.AddComponentData(enemy, new Health { value = Hp, max = Hp });
             em.AddComponentData(enemy, new FactionTag { value = Faction.Enemy });
             em.AddBuffer<IncomingDamage>(enemy);
-            em.AddBuffer<CcEffect>(enemy);         // 임계 파생 DoT 의 소비처
+            em.AddBuffer<CcEffect>(enemy);
+            em.AddBuffer<DotEffect>(enemy);        // 임계 파생 DoT 의 소비처(dot-effect-extraction unit 0)
             em.AddComponent<AttackUnitTag>(enemy); // ← _aliveAttackersQuery 가 보는 유일한 조건
             return enemy;
         }

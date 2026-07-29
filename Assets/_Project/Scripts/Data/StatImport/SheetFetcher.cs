@@ -1,4 +1,5 @@
 using System;
+using System.Text;
 using UnityEngine.Networking;
 
 namespace Wassup.Data.StatImport
@@ -48,8 +49,22 @@ namespace Wassup.Data.StatImport
             var operation = request.SendWebRequest();
             operation.completed += _ =>
             {
+                // ⚠ `downloadHandler.text` 를 쓰지 않는다. 시트 API 응답은
+                // `content-type: application/json` 에 **charset 이 없어서** 디코딩이 핸들러의
+                // 추론에 맡겨진다. 실제로 그 추론이 어긋난 환경에서 한글 desc 가 UTF-8 바이트
+                // 하나하나가 개별 문자가 된 채(ê¸°ë³¸…) SO 에 저장돼 커밋까지 됐다
+                // (2026-07-29, 커밋 616e3584 — 에셋 24개 · 문자열 352개 손상).
+                // 서버가 charset 을 안 보내는 이상 여기서 못을 박는 것이 유일한 확실한 방어다.
+                string body = null;
+                if (request.downloadHandler != null)
+                {
+                    var bytes = request.downloadHandler.data;
+                    body = bytes != null && bytes.Length > 0
+                        ? new UTF8Encoding(false).GetString(bytes)
+                        : string.Empty;
+                }
                 var result = new Result(
-                    request.downloadHandler != null ? request.downloadHandler.text : null,
+                    body,
                     request.result == UnityWebRequest.Result.Success ? null : request.error);
                 request.Dispose();
                 onDone(result);
