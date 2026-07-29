@@ -13,15 +13,15 @@ MonoBehaviour:
   m_Name: StackModifier_Bleed
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.StackModifierSO
   kind: 3
-  maxStack: 5
-  perAppDuration: 4
+  maxStack: 6
+  perAppDuration: 2
   policy: 0
   thresholds:
-  - atStack: 1
+  - atStack: 6
     mode: 1
     derivedKind: 0
-    magnitude: 3
-    duration: 3
+    magnitude: 3.6
+    duration: 0.9
     stat: 0
     op: 0
-    tickInterval: 0.5
+    tickInterval: 0.3

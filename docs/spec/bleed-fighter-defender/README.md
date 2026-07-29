@@ -28,9 +28,20 @@
 1. **Bleed 파생 규칙 SO(`StackModifier_Bleed`)는 ember 카드와 공유 — 이 spec 은 값을 바꾸지 않는다.**
    현행: 1스택 도달 → 소모 → DoT 3dps × 3s. 재저작(예: 5스택 축적형)은 카드 밸런스가 같이 움직이므로
    별도 결정 + 별도 StackKind 신설이 선결(후속 후보).
-   - ⚠ **`stackCount` 는 Bleed 의 관측값이 아니다.** 규칙이 `atStack 1 · mode Consume` 이라 1에
-     도달하는 순간 발화하며 스택을 도로 0으로 소모한다. "스택이 1개 붙었는지"로 단언하면 실패한다
-     (unit 1 테스트가 실제로 이걸로 한 번 죽었다). 도포의 관측 가능한 결과는 **파생 DoT** 다.
+   - **현재 구조 = 누적 → 임계 폭발**(2026-07-29 사용자 지적으로 재설계). `atStack 6 · Consume` —
+     6타 모이면 발화하고 0으로 리셋. 초판은 `atStack 1` 이라 **누적이 아예 없었고 `maxStack` 이
+     죽은 값**이었다(사실상 갱신만 되는 플랫 도트).
+   - ⚠ **`stackCount` 는 안정적 관측값이 아니다.** 임계에서 소모되므로 "몇 스택인지"로 단언하면
+     타이밍에 따라 실패한다. 관측은 **파생 DoT** 로.
+   - ⚠ **강도 누적형(스택마다 dps 가산)으로 바꾸지 말 것.** `StackModifierTickSystem` 은
+     `stackCount > lastTriggeredStack` 일 때만 발화하므로, Edge 룰로 여러 임계를 깔면 상한 도달
+     후 **더 이상 발화하지 않고** 걸려 있던 DoT 가 지속 종료와 함께 꺼진다. Consume 은 스스로
+     0으로 되돌려 이 문제가 없다.
+   - ⚠ **폭발 지속 < 폭발 주기** 를 지킬 것(0.9s < 1.8s). `CcEffectMerge` 는 피해자당 kind 슬롯
+     하나만 두고 scalar 를 덮으므로, 겹치면 앞 폭발의 남은 틱이 소실된다. 같은 이유로 **여러
+     난도질꾼이 한 적을 물어도 출혈은 합산되지 않는다**(합산은 코드 결정 — 후속).
+   - `maxStack`/`perAppDuration` 은 **producer**(AttackOutput·onPlace)가 소유하고 `thresholds` 는
+     SO 가 소유한다. 한쪽만 바꾸면 조용히 어긋난다 — 배치 스킬(`onPlaceMagnitude`)도 같이 맞출 것.
 2. **체인 검증 현황 (2026-07-29 리그 실측)**: 스택 부여(PlayMode `EmberBite` 2/2)·임계 배선
    assert·DoT→데미지(EditMode `DotApplySystemTests` 7/7) 전부 green. **유일한 미실증 구간 =
    outputs→큐 enqueue** — unit 0 이 이 구간을 고정한다.

@@ -57,10 +57,13 @@ namespace Wassup.Tests.PlayMode
                 new AttackOutput
                 {
                     kind          = AttackOutputKind.ApplyStack,
-                    magnitude     = 1f,      // countDelta
-                    duration      = 4f,      // perAppDuration
+                    // 한 방에 임계까지 채운다. Bleed 는 **누적형**(atStack 6 Consume)이라
+                    // 1스택만 주면 임계에 못 닿아 DoT 가 안 나온다 — 이 테스트가 보려는 건
+                    // "outputs 의 ApplyStack 이 큐로 나가는가"이지 누적 속도가 아니다.
+                    magnitude     = 6f,      // countDelta = 임계치
+                    duration      = 2f,      // perAppDuration
                     stackKind     = StackKind.Bleed,
-                    stackMaxStack = 5,
+                    stackMaxStack = 6,
                 },
             };
 
