@@ -23,6 +23,7 @@ APK와 iOS Ad Hoc IPA를 재현 가능한 로컬 명령으로 만들고 Firebase
 | 8 | `8_fixed_landscape_preflight.md` | 고정 가로 PlayerSettings와 mobile build 사전검증 계약 정렬 |
 | 9 | `9_timestamped_outs_copy.md` | 검증된 APK·IPA를 시간 식별자가 붙은 `Builds/outs` 복사본으로 제공 |
 | 10 | `10_ios_no_allow_debugging.md` | iOS IL2CPP archive 4GB 한계 회피를 위해 Ad Hoc 디버거 제외 |
+| 11 | `11_landscape_autorotation_regression.md` | 가로 양방향 자동회전을 빌드 계약으로 고정하고 iOS 고정 방향 회귀 차단 |
 
 ## Feature-wide 계약
 
@@ -48,13 +49,11 @@ APK와 iOS Ad Hoc IPA를 재현 가능한 로컬 명령으로 만들고 Firebase
 - Android QA 빌드는 `Development | AllowDebugging`을 유지하고, iOS Ad Hoc QA 빌드는
   `Development`만 사용한다. iOS IL2CPP의 `GameAssembly` archive가 4GB member-offset 한계를
   넘지 않도록 디버거 심볼 생성을 제외한다.
-- **가로 전용 검증**(2026-07-27 갱신 — 검사 목적은 "세로로 빌드되는 사고 방지"다):
-  통과 조건은 둘 중 하나다. ① **가로 자동회전** — `UIOrientation.AutoRotation` 또는
-  직렬화 값 `5`를 같은 의미로 인정하되 세로 2방향 금지 + 가로 2방향 허용을 함께 요구.
-  ② **가로 고정** — `LandscapeLeft/Right`. 세로가 구조적으로 불가능하므로 ①보다 엄격하다.
-  세로 허용 플래그가 켜져 있으면 어느 모드에서도 거부한다(설정 실수 신호).
-  ①만 통과시키던 판정은 `19ff8e8f`(5→2, 자동회전 폐기) 이후 **빌드를 막았다** — 회귀
-  테스트가 특정 orientation 값을 못박으면 제품 결정이 바뀔 때마다 빌드가 멈춘다.
+- **화면 방향 검증**(2026-07-29 갱신): Android/iOS 모두 가로 전용이면서 기기의 상하가
+  바뀌면 `LandscapeLeft`와 `LandscapeRight` 사이에서 회전해야 한다. 따라서
+  `UIOrientation.AutoRotation`(Unity 직렬화 값 `5`), 세로 2방향 금지, 가로 2방향 허용을
+  모두 요구한다. `LandscapeLeft/Right` 고정은 가로이더라도 제품 동작을 만족하지 않으므로
+  preflight에서 거부한다.
 - 실행 전후 Git worktree가 clean이어야 하며 기존 출력은 삭제하거나 덮어쓰지 않는다.
 - 프로젝트별 mobile build lock으로 두 로컬 빌드가 같은 Unity 설정을 동시에 다루지 못하게 한다.
 - Unity가 만드는 확정된 no-op 직렬화만 빌드 전 원본과 정확히 대조해 복원하고, 그 밖의
