@@ -3016,11 +3016,13 @@ namespace Wassup.Bridge
                             simPos = evt.targetWorld,
                             scale = defData.attackVfxScale,
                             facing = hitFacing,
+                            euler = defData.attackVfxEulerOffset,
                             remaining = defData.hitDelaySec,
                         });
                     else
                         _projectileViewPool?.PlayHit(defData.attackVfxPrefab, evt.targetWorld,
-                            scale: defData.attackVfxScale, facingViewDir: hitFacing);
+                            scale: defData.attackVfxScale, facingViewDir: hitFacing,
+                            eulerOffset: defData.attackVfxEulerOffset);
                 }
 
                 // beam-ranger-defender unit 1 — 빔 유닛이면 이 공격 사건으로 세션을 열거나 잇는다.
@@ -3052,6 +3054,7 @@ namespace Wassup.Bridge
             public float3 simPos;
             public float scale;
             public Vector3 facing;
+            public Vector3 euler;
             public float remaining;
         }
         private readonly System.Collections.Generic.List<PendingHitVfx> _pendingHitVfx = new();
@@ -3063,7 +3066,8 @@ namespace Wassup.Bridge
                 var p = _pendingHitVfx[i];
                 p.remaining -= battleDeltaTime;
                 if (p.remaining > 0f) { _pendingHitVfx[i] = p; continue; }
-                _projectileViewPool?.PlayHit(p.prefab, p.simPos, scale: p.scale, facingViewDir: p.facing);
+                _projectileViewPool?.PlayHit(p.prefab, p.simPos, scale: p.scale,
+                    facingViewDir: p.facing, eulerOffset: p.euler);
                 _pendingHitVfx.RemoveAt(i);
             }
         }

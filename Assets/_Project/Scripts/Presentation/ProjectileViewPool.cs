@@ -247,7 +247,8 @@ namespace Wassup.Presentation
         // facingViewDir: 타격 방향(**view 공간**). 지정하면 VFX 가 그 방향으로 회전한다
         // (말파이트 흙 폭발처럼 방향성이 있는 히트용). 기본 default = 회전 없음(기존 동작).
         public void PlayHit(GameObject hitPrefab, float3 position, float hitVfxLifetime = 0f,
-                            float heightOffset = 0f, float scale = 1f, Vector3 facingViewDir = default)
+                            float heightOffset = 0f, float scale = 1f, Vector3 facingViewDir = default,
+                            Vector3 eulerOffset = default)
         {
             var view = GetOrCreate(hitPrefab);
             view.SetActive(true);
@@ -271,6 +272,11 @@ namespace Wassup.Presentation
             float3 hitView = Wassup.Core.BoardSpace.ToView(position); // sim→view
             // heightOffset: 바닥에 깔리지 않게 view Y 로 띄움 (투사체 visualHeightOffset 과 동일 개념).
             view.transform.position = new Vector3(hitView.x, hitView.y + heightOffset, hitView.z);
+            // 기본 자세 보정. 계산된 회전 **뒤에** 곱해 로컬 축 기준으로 돈다.
+            // facing 을 안 쓰는 이펙트도 이 값만으로 자세를 잡을 수 있다.
+            if (eulerOffset != Vector3.zero)
+                view.transform.rotation = view.transform.rotation * Quaternion.Euler(eulerOffset);
+
             ResetVfx(view);   // ga-reskin unit 1: 풀 재사용 시 파티클 재생 신선도
             float lifetime = hitVfxLifetime > 0f ? hitVfxLifetime : GetParticleLifetime(view);
             StartCoroutine(DespawnAfter(view, hitPrefab, lifetime));

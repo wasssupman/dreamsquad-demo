@@ -45,6 +45,12 @@ namespace Wassup.Data
         public float attackVfxScale = 1f;
         // 히트 VFX 를 타격 방향으로 회전시킬지. 방향성 있는 폭발(흙 분출 등)만 true.
         public bool attackVfxFacesTarget;
+        // 히트 VFX 기본 자세 보정(로컬 오일러, 계산된 회전 **뒤에** 곱해진다).
+        // 필요한 이유: 벤더 VFX 는 대개 "바닥 = 월드 XZ" 관례로 저작되는데, 이 게임의 보드는
+        // Tilemap 그리드라 **바닥이 월드 XY 평면**이다(BoardSpace.ToView 가 sim XZ → 셀 XY).
+        // 그래서 지면형 이펙트는 X축 -90° 같은 보정이 필요하다. 값은 눈으로 맞추는 knob —
+        // 코드가 추측하지 않는다(실제로 네 번 헛짚었다).
+        public Vector3 attackVfxEulerOffset;
         // beam-ranger-defender unit 1 — 지속 빔 유닛의 판별자 겸 프리팹. 비어 있으면 빔 없음.
         // "빔 유닛인가"를 id/kind 로 분기하지 않기 위한 데이터 선언(메커닉 연출은 메커닉이 소유).
         public GameObject beamVfxPrefab;

@@ -30,6 +30,7 @@ MonoBehaviour:
   attackSfxClip: {fileID: 8300000, guid: 053fbfe1665fe4b93b781904d6acd499, type: 3}
   attackVfxScale: 0.45
   attackVfxFacesTarget: 1
+  attackVfxEulerOffset: {x: -90, y: 0, z: 0}
   beamVfxPrefab: {fileID: 0}
   projectile: {fileID: 0}
   outputs:
