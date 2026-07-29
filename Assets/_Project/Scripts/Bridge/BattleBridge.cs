@@ -339,6 +339,8 @@ namespace Wassup.Bridge
         private NativeQueue<Wassup.Battle.Units.DamageNumberEvent> _damageNumberEventQueue;
         private NativeQueue<Wassup.Battle.Units.EnemyKilledEvent> _enemyKilledEventQueue;
         private NativeQueue<Wassup.Battle.Effects.EnemyCcEvent> _enemyCcQueue;
+        // dot-effect-extraction unit 0 — 지속 피해 부여 채널(25번째). CC 와 페이로드를 섞지 않는다.
+        private NativeQueue<Wassup.Battle.Effects.DotApplyEvent> _dotApplyQueue;
         // combat-action-lock unit 3 — wake-on-hit(Sleep 해제) Units→Effects 채널.
         private NativeQueue<Wassup.Battle.Effects.CcClearRequest> _ccClearQueue;
         private NativeQueue<Wassup.Battle.Effects.StatModifierApplyEvent> _statModifierQueue;
@@ -602,6 +604,7 @@ namespace Wassup.Bridge
             DestroyEntitiesByType<Wassup.Battle.Units.DamageNumberEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Units.EnemyKilledEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.EnemyCcEventsSingleton>();
+            DestroyEntitiesByType<Wassup.Battle.Effects.DotApplyEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.CcClearRequestsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.StatModifierApplyEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.StackModifierApplyEventsSingleton>();
@@ -650,6 +653,7 @@ namespace Wassup.Bridge
             if (_damageNumberEventQueue.IsCreated) _damageNumberEventQueue.Dispose();
             if (_enemyKilledEventQueue.IsCreated) _enemyKilledEventQueue.Dispose();
             if (_enemyCcQueue.IsCreated) _enemyCcQueue.Dispose();
+            if (_dotApplyQueue.IsCreated) _dotApplyQueue.Dispose();
             if (_ccClearQueue.IsCreated) _ccClearQueue.Dispose();
             if (_statModifierQueue.IsCreated) _statModifierQueue.Dispose();
             if (_stackModifierQueue.IsCreated) _stackModifierQueue.Dispose();
@@ -1472,6 +1476,13 @@ namespace Wassup.Bridge
             _enemyCcQueue = new NativeQueue<Wassup.Battle.Effects.EnemyCcEvent>(Allocator.Persistent);
             var enemyCcSingleton = _em.CreateEntity();
             _em.AddComponentData(enemyCcSingleton, new Wassup.Battle.Effects.EnemyCcEventsSingleton { queue = _enemyCcQueue });
+
+            // dot-effect-extraction unit 0 — 지속 피해 채널(25번째). DotApplySystem 이 드레인해
+            // DotEffect 버퍼에 flavor 별로 병합한다.
+            if (_dotApplyQueue.IsCreated) _dotApplyQueue.Dispose();
+            _dotApplyQueue = new NativeQueue<Wassup.Battle.Effects.DotApplyEvent>(Allocator.Persistent);
+            var dotApplySingleton = _em.CreateEntity();
+            _em.AddComponentData(dotApplySingleton, new Wassup.Battle.Effects.DotApplyEventsSingleton { queue = _dotApplyQueue });
 
             // combat-action-lock unit 3 — wake-on-hit clear channel(16th). CcClearSystem 이
             // drain 해 피격 유닛의 Sleep 을 제거(Units→Effects 단방향).
@@ -2460,10 +2471,12 @@ namespace Wassup.Bridge
                                 : seenMask;
 
                         bool dotRunning = false;
-                        var ccs = _em.GetBuffer<Wassup.Battle.Effects.CcEffect>(e, isReadOnly: true);
-                        for (int j = 0; j < ccs.Length; j++)
-                            if (ccs[j].kind == Wassup.Battle.Effects.CcKind.DoT && ccs[j].remainingTime > 0f)
-                            { dotRunning = true; break; }
+                        if (_em.HasBuffer<Wassup.Battle.Effects.DotEffect>(e))
+                        {
+                            var dots = _em.GetBuffer<Wassup.Battle.Effects.DotEffect>(e, isReadOnly: true);
+                            for (int j = 0; j < dots.Length; j++)
+                                if (dots[j].remainingTime > 0f) { dotRunning = true; break; }
+                        }
                         if (!dotRunning) { _stackAuraLatch.Remove(e); continue; }
 
                         if (!_stackAuraLatch.TryGetValue(e, out var latched)) continue;
@@ -3901,19 +3914,20 @@ namespace Wassup.Bridge
                 // (dot-tick-cadence 계약) — 신규 시스템 0. 연출은 대상마다 빔 세션 1개.
                 // ⚠ tickInterval>0 일 때 scalar 는 **틱당 피해**다(DPS 아님).
                 if (unitData.onPlaceMagnitude <= 0f || unitData.onPlaceDuration <= 0f
-                    || !_enemyCcQueue.IsCreated) return 0;
+                    || !_dotApplyQueue.IsCreated) return 0;
 
                 foreach (var e in CollectEnemiesInTileRange(placedCell, unitData.onPlaceRange))
                 {
-                    _enemyCcQueue.Enqueue(new Wassup.Battle.Effects.EnemyCcEvent
+                    _dotApplyQueue.Enqueue(new Wassup.Battle.Effects.DotApplyEvent
                     {
                         target = e,
-                        effect = new Wassup.Battle.Effects.CcEffect
+                        effect = new Wassup.Battle.Effects.DotEffect
                         {
-                            kind          = Wassup.Battle.Effects.CcKind.DoT,
+                            // flavor 는 None 유지 — 버스터즈가 유일 producer 라 충돌 상대가 없다.
+                            // Dot 배치기가 늘면 그때 저작 필드를 신설한다(제약 8).
                             scalar        = unitData.onPlaceMagnitude,
                             tickInterval  = unitData.onPlaceTickInterval,
-                            tickTimer     = unitData.onPlaceTickInterval, // 첫 틱 즉발(CcApply add-path 규약)
+                            tickTimer     = unitData.onPlaceTickInterval, // 첫 틱 즉발(add-path 규약)
                             remainingTime = unitData.onPlaceDuration,
                         },
                     });
@@ -5189,6 +5203,7 @@ namespace Wassup.Bridge
             // combat-action-lock unit 2 — defender 도 CC(Sleep/Stun) 수신하도록 CcEffect 버퍼
             // 사전 부착. ApplyActiveDcEffectsTo(3641, placement Sleep 적용) 이전이어야 함(MED4).
             _em.AddBuffer<Wassup.Battle.Effects.CcEffect>(entity);
+            _em.AddBuffer<Wassup.Battle.Effects.DotEffect>(entity); // dot-effect-extraction unit 0
             _defenderByTile[cell] = (entity, unitData);
             _em.AddComponentData(entity, new DefenderTile { cell = new int2(cell.x, cell.y) });
 #if UNITY_EDITOR
@@ -6336,6 +6351,7 @@ namespace Wassup.Bridge
             // Pre-attach empty buffers so downstream systems never need structural AddBuffer on hot paths.
             _em.AddBuffer<IncomingDamage>(entity);
             _em.AddBuffer<CcEffect>(entity);
+            _em.AddBuffer<DotEffect>(entity); // dot-effect-extraction unit 0
 
             // nightmare-catcher unit 5 — 보스 분기 베이크. nightmareMechanics 없는
             // 일반 적은 이 호출이 즉시 return(무변경).

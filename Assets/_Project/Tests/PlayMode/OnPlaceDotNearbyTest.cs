@@ -16,7 +16,7 @@ namespace Wassup.Tests.PlayMode
 {
     // beam-ranger-defender unit 2 — 개점 일제 조사(OnPlaceEffectType.DotNearby).
     //
-    // 검증 대상은 **틱당 피해 계약**이다. `CcEffect.tickInterval > 0` 이면 `scalar` 는 DPS 가
+    // 검증 대상은 **틱당 피해 계약**이다. `DotEffect.tickInterval > 0` 이면 `scalar` 는 DPS 가
     // 아니라 **틱당 피해**다(dot-tick-cadence). 이걸 DPS 로 오해해 환산하면 피해가 배로 틀린다
     // — 실제로 spec 초안이 그렇게 적혀 있었고 여기서 바로잡았다.
     //
@@ -87,6 +87,7 @@ namespace Wassup.Tests.PlayMode
             em.AddComponentData(e, new FactionTag { value = Faction.Enemy });
             em.AddBuffer<IncomingDamage>(e);
             em.AddBuffer<CcEffect>(e);
+            em.AddBuffer<DotEffect>(e); // dot-effect-extraction unit 0 — 배치 도트의 소비처
             em.AddComponent<AttackUnitTag>(e);
             return e;
         }

@@ -18,6 +18,7 @@ namespace Wassup.Battle.Effects
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<EnemyCcEventsSingleton>();
+            state.RequireForUpdate<DotApplyEventsSingleton>();
             state.RequireForUpdate<StatModifierApplyEventsSingleton>();
         }
 
@@ -25,6 +26,7 @@ namespace Wassup.Battle.Effects
         {
             float dt = SystemAPI.Time.DeltaTime;
             var ccQ   = SystemAPI.GetSingleton<EnemyCcEventsSingleton>().queue;
+            var dotQ  = SystemAPI.GetSingleton<DotApplyEventsSingleton>().queue;
             var statQ = SystemAPI.GetSingleton<StatModifierApplyEventsSingleton>().queue;
 
             foreach (var (_, entity) in
@@ -51,6 +53,7 @@ namespace Wassup.Battle.Effects
                             ref s,
                             entity,
                             ccQ,
+                            dotQ,
                             statQ);
                     }
 
@@ -77,6 +80,7 @@ namespace Wassup.Battle.Effects
             ref StackModifierSlot s,
             Entity entity,
             NativeQueue<EnemyCcEvent> ccQ,
+            NativeQueue<DotApplyEvent> dotQ,
             NativeQueue<StatModifierApplyEvent> statQ)
         {
             ThresholdRule[] rules = BattleBridge.GetStackThresholds(kind);
@@ -96,20 +100,21 @@ namespace Wassup.Battle.Effects
                 switch (rule.derivedKind)
                 {
                     case DerivedEffectKind.ApplyDot:
-                        ccQ.Enqueue(new EnemyCcEvent
+                        // dot-effect-extraction unit 0 — 지속 피해는 전용 채널·전용 버퍼로 간다.
+                        dotQ.Enqueue(new DotApplyEvent
                         {
                             target = entity,
-                            // boss-jjangssen unit 3 — 스택 임계 발화는 "직접 CC" 가 아니다.
-                            // 보스 면역이 이 축으로 통과시킨다(누적해서 임계를 넘긴 것은 통한다).
-                            source = CcSource.StackThreshold,
-                            effect = new CcEffect
+                            // 전용 도트 채널은 CcApplySystem 을 안 거치므로 보스 면역과 무관하게
+                            // 통과한다 — boss-jjangssen unit 3 의 "스택 임계 DoT 는 통한다" 유지.
+                            effect = new DotEffect
                             {
-                                kind          = CcKind.DoT,
+                                // 어느 스택이 만든 도트인지 실어 보낸다 — 병합 키이자 오라 소스.
+                                flavor        = DotFlavorMap.FromStack(kind),
                                 // tickInterval 0 = 연속(scalar 는 DPS) / >0 = 이산(scalar 는 틱당 피해).
                                 // 0 이면 매 프레임 지급이라 데미지 숫자가 초당 수십 번 튄다.
                                 scalar        = rule.magnitude,
                                 tickInterval  = rule.tickInterval,
-                                tickTimer     = rule.tickInterval, // 첫 틱 즉발(CcApply add-path 규약)
+                                tickTimer     = rule.tickInterval, // 첫 틱 즉발(add-path 규약)
                                 remainingTime = rule.duration,
                             }
                         });

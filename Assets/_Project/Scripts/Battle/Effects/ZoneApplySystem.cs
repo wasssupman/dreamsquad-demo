@@ -28,6 +28,7 @@ namespace Wassup.Battle.Effects
 
             var ccQueue = SystemAPI.GetSingleton<EnemyCcEventsSingleton>().queue;
             bool hasStatQueue = SystemAPI.TryGetSingleton<StatModifierApplyEventsSingleton>(out var statEvents);
+            bool hasDotQueue = SystemAPI.TryGetSingleton<DotApplyEventsSingleton>(out var dotEvents);
             bool hasRuntimeEvents = SystemAPI.TryGetSingleton<HazardRuntimeEventsSingleton>(out var runtimeEvents);
             var flowField = SystemAPI.GetSingleton<FlowFieldSingleton>();
 
@@ -57,6 +58,17 @@ namespace Wassup.Battle.Effects
                                 origin = ModifierOrigin.Zone,
                             });
                     }
+                    else if (effect.kind == CcKind.DoT)
+                    {
+                        // dot-effect-extraction unit 0 — 지속 피해는 전용 파이프라인으로 빠진다.
+                        // CcKind.DoT 는 저작 토큰으로만 남는다(위 Slow 와 같은 형태).
+                        if (hasDotQueue)
+                            dotEvents.queue.Enqueue(new DotApplyEvent
+                            {
+                                target = entity,
+                                effect = HazardEffectToDotEffect(effect),
+                            });
+                    }
                     else
                     {
                         ccQueue.Enqueue(new EnemyCcEvent
@@ -79,6 +91,18 @@ namespace Wassup.Battle.Effects
                     }
                 } while (hazardSingleton.cellToEffects.TryGetNextValue(out effect, ref iterator));
             }
+        }
+
+        private static DotEffect HazardEffectToDotEffect(in HazardEffect hazardEffect)
+        {
+            return new DotEffect
+            {
+                flavor = hazardEffect.flavor,
+                scalar = hazardEffect.param1,
+                remainingTime = hazardEffect.restDuration,
+                // tickTimer 는 미설정(0); DotEffectMerge add-path 가 첫 tick 즉발용으로 초기화한다.
+                tickInterval = hazardEffect.tickInterval,
+            };
         }
 
         private static CcEffect HazardEffectToCcEffect(in HazardEffect hazardEffect)
