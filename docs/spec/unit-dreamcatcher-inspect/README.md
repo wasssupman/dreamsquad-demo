@@ -44,7 +44,7 @@
 
 2. **픽킹 재사용.** `TryPickDefenderAtScreen` 1차 + `TryScreenToCell`→`TryGetDefenderAt` 2차 폴백. **신규 Collider / `Physics.Raycast` 도입 금지** — 프로젝트에 하나도 없고, 틸트 빌보드라 보드 평면 레이캐스트는 몸체 포인팅을 놓친다(`SpineUnitView.cs:198` 주석). `TryScreenToCell` 사본 금지(`BattleBridge.cs:2704~2707` 계약).
 
-3. **탭 = press** (`wasPressedThisFrame`). `PlacementInput.cs:56` 과 동일 규약. **release 금지** — `DreamcatcherCardDragSlot.OnEndDrag` 가 touchup 으로 부착을 커밋하므로, release 규약이면 카드 부착 성공마다 그 유닛의 패널이 열린다. 탭/드래그 임계도 도입 금지(프로젝트에 `dragThreshold` 류 전무, 보드 드래그 제스처가 경쟁하지 않음).
+3. **탭 = UI 밖 프레스다운으로 무장 → 릴리즈에 발동 + 이동 임계 24px** (rev: defender-relocation UX, 2026-07 — 원문 "press 규약·임계 금지"는 은퇴). 터치다운 즉시 발동하면 1초 홀드/드래그 조작을 방해해 릴리즈 판정으로 바뀌었고, `tapMoveThreshold`(24px)가 드래그 의도를 거른다. 원래 press 규약의 근거였던 "카드 부착 touchup 이 release 로 패널을 여는 문제"는 재발하지 않는다 — 탭 후보가 **UI 밖 프레스다운에서만** 무장되는데 카드 드래그의 프레스다운은 손패 카드(UI) 위이고, 손패 오픈 중엔 게이트가 막는다(`DcInspectController.cs:97~124` 주석이 현행 SoT). *(2026-07-29 selection-hand-attach critic L3 — stale 계약 교정.)*
 
 4. **실행 순서 `[DefaultExecutionOrder(-50)]`** — `PlacementInput` 과 동렬. 포탈 2탭(`DreamcatcherCardDragSlot.Update`, order 0)이 같은 프레임에 `EndInteraction` 으로 `IsAiming` 을 내리기 **전에** 읽어야 한다. 늦게 읽으면 포탈 출구를 확정한 그 탭이 패널을 연다(`PlacementInput.cs:12~18` 이 기록한 aim-mode race 와 동형).
 

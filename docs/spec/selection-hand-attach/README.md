@@ -1,6 +1,6 @@
 # selection-hand-attach — 유닛 선택 중 손패 등장 + 탭 즉발/D&D 부착
 
-> 상태: **초안 2026-07-29** (사용자 UX 결정 4건 반영, 구현 대기)
+> 상태: **초안 rev 2 2026-07-29** (critic REVISE(H5/M7/L7) 전건 반영 + 사용자 결정 5건, 구현 대기)
 
 ## 배경 / 목표
 
@@ -10,7 +10,7 @@
 - 유닛을 선택하면 드림캐쳐 손패가 **항상** 자동 등장한다.
 - 손패 카드 **탭 = 선택 유닛에 즉발 부착** (Unit/Squad 카드만). 불가 카드/불가 상태는 움찔 + 사유.
 - 손패 카드 **D&D = 기존 그대로** (임의 유닛/타일/적 조준 — 모든 카드).
-- 어제 확정된 손패 유지 메커니즘(use-flow: 사용 후 유지·재딜인·사용 가능 0장 자동 닫힘·press~release 슬로모)은 **그대로 탄다**.
+- 손패 유지 메커니즘(use-flow: 사용 후 유지·재딜인·사용 가능 0장 자동 닫힘)은 그대로 탄다.
 
 ## 검증 질문
 
@@ -23,17 +23,21 @@
 2. 손패 오픈 중 다른 유닛 탭 = **선택 전환 + 손패 유지** (연속 부착 흐름이 핵심 가치).
 3. 손패 오픈 중 빈 보드 탭 = **손패+선택 동시 해제**.
 4. 탭 즉발 = **부착 카드(Unit/Squad)만**. 그 외(Active 전 계열/적 표식)와 불가 상태는 탭 시 **움찔 + 사유 표시, 무차감**.
+5. (critic H4 회신) 손패 오픈을 **선택 모드 vs 일반 모드로 명시 분기**해 로직을 분리한다.
+   **선택 중에는 슬로모가 상시 적용**(기존 인스펙트 계약 유지 — 선택 lease 가 소유).
+   일반 오픈(항아리 단독)은 use-flow 계약 1(슬로모 = 카드를 잡은 동안만) 불변.
 
 ## 작업 단위
 
 | # | 문서 | 작업 | 목적 |
 |---|---|---|---|
-| 0 | `0_inspect_gate_split.md` | 리팩터 | `Blocked()` 를 close-trigger vs tap-gate 로 분리 — 손패/조준이 선택을 죽이지 않게 |
-| 1 | `1_selection_opens_hand.md` | 상태 결합 | 선택→손패 오픈(항상)·해제→손패 닫기 + 선택 타겟 전달 seam |
-| 2 | `2_board_tap_routing.md` | 입력 라우팅 | 손패 오픈 중 보드 탭: dismissCatcher → 유닛 픽=선택 전환 / 빈 보드=동시 해제 |
-| 3 | `3_tap_instant_attach.md` | 기능 | 카드 탭 즉발 부착(Unit/Squad) + 불가 움찔 피드백 |
-| 4 | `4_focus_session_handoff.md` | 연출 정합 | 카드 조준이 선택 리티클을 대체한 뒤 종료 시 재주장 |
-| 5 | `5_wiring_play_validation.md` | 배선+검증 | 씬 배선 확인 + Play e2e (카메라 합성 체감 포함) |
+| 0 | `0_inspect_gate_split.md` | 리팩터 | `Blocked()` 를 close-trigger vs tap-gate 로 분리 + 조준 중 줌 피드 중단 |
+| 1 | `1_selection_opens_hand.md` | 상태 결합 | 선택→손패 오픈(항상)·모드 분기·pending-open 래치·선택 수명(사망 커버) |
+| 2 | `2_board_tap_routing.md` | 입력 라우팅 | catcher 를 press-스냅샷 탭 캐처로 재설계 — 유닛 픽=선택 전환 / 빈 보드=동시 해제 |
+| 3 | `3_tap_instant_attach.md` | 기능 | 카드 탭 즉발 부착(Unit/Squad) + 명시 클릭 가드 + 움찔(flinching 소유) |
+| 4 | `4_focus_session_handoff.md` | 연출 정합 | 리티클 재주장 — 트리거를 "세션 강제 종료 신호"로 확장 |
+| 5 | `5_wiring_play_validation.md` | 배선+검증 | Play e2e (포탈/사망/조준 프레이밍/튜토리얼 경로 포함) |
+| 6 | `6_handoff_summary.md` | 인계 | (종료 시 작성 예약) |
 
 0 → 1 → 2 순서 필수(게이트 분리 없이는 손패 오픈이 선택을 죽인다). 3·4 는 1 이후 독립.
 
@@ -42,46 +46,78 @@
 1. **선택 상태 소유자는 `DcInspectController` 단일 유지.** 손패는 선택을 **전달받는** 파트너 —
    선택 Entity 를 뷰가 재판정하지 않는다. 전달 방향: 컨트롤러 → `DreamcatcherHandView`(기존
    `handView` 참조 재사용, 신규 씬 배선 0).
-2. **`Blocked()` 분리.** close-trigger(선택을 닫음) = 이동모드 / 배치 드래그·arm / 페이즈 이탈.
-   tap-gate(새 탭만 막음, 선택 유지) = 손패 오픈 / `IsAiming`(Active 조준) / 카드 인터랙션.
-3. **보드 raw 탭 소비자는 순간마다 하나** (inspect 계약 11 계승 — 동시 경쟁 금지, 순차 핸드오프 허용):
-   손패 닫힘 = `DcInspectController`(raw Pointer, -50) / 손패 열림 = `HandDismissCatcher`(UGUI Button).
-   catcher 는 **카드 인터랙션 진행 중(`AnyInteractionActive()`/포탈 조준) 클릭 무시** — 포탈 출구
-   탭의 릴리즈가 catcher 클릭으로 손패를 닫는 기존 엣지를 차단한다.
+2. **`Blocked()` 분리.** close-trigger(선택을 닫음) = 배치 드래그·arm / 이동모드 / 페이즈 이탈.
+   tap-gate(새 탭 후보만 막음, 선택 유지) = 손패 오픈 / `IsAiming`·카드 인터랙션.
+   게이트는 탭 후보 **무장 분기 앞**에 둔다. 조준·카드 인터랙션 중에는 **줌 피드도 중단**한다
+   (`FeedZoomTarget` — staleness 2프레임 자동 해제로 조준 프레이밍을 돌려준다, critic M4).
+3. **보드 raw 탭 소비자는 순간마다 하나** (inspect 계약 11 계승 — 순차 핸드오프): 손패 닫힘 =
+   `DcInspectController`(raw Pointer, -50) / 손패 열림 = **HandDismissTapCatcher**.
+   catcher 는 UGUI Button 이 아니라 `IPointerDownHandler + IPointerClickHandler` 경량 컴포넌트
+   (`GiftPhaseView.cs:264` TapCatcher 선례)다 — **press 프레임 스냅샷**(`_pressBlocked =
+   AnyInteractionActive() || GameManager.IsAiming`, `pressPosition`)으로 판정하고(릴리즈 시점
+   상태 판정 금지 — 포탈 커밋이 press 프레임에 상태를 지워 릴리즈 가드는 무효다, critic H1),
+   **이동 임계**(`eventData.pressPosition→position` 거리 ≤ 임계, SerializeField)로 보드 스와이프를
+   탭에서 걸러낸다(critic M2). 좌표는 `eventData` 를 쓴다(`Pointer.current` 금지).
 4. **커밋 경로 단일.** 탭 즉발도 `CommitAttach → HandChanged(Used) → OnCardUsed` 를 그대로 지난다
    — 유지/자동닫힘/재딜인/무차감 거절(use-flow 계약)이 자동 적용. 별도 소비 경로 신설 금지.
 5. **즉발 유효성 = 커밋 거절과 UI 일치**: `CanUse`(게이지) AND `CanAttachMore` AND
-   `WouldDreamcatcherCardApply`(D&D 의 `_attachable` 스냅샷과 같은 3판정). 불가 = 움찔 트윈 +
-   기존 브리핑 문안 재사용, 차감 0.
+   `WouldDreamcatcherCardApply` — D&D `_attachable` 스냅샷과 동일 3판정(코드 검증 완료).
+   불가 = 움찔 + 기존 브리핑 문안 재사용, 차감 0.
 6. **`DreamcatcherFocusPresenter` 는 단일 세션.** 카드 조준 `Begin` 이 선택 리티클(`Selected`)을
-   대체하는 것은 정상이고, 인터랙션 종료 시 선택이 살아 있으면 **재주장**(`BeginSelection` 재호출)
-   한다. 프레젠터에 세션 스택을 만들지 않는다(과잉 추상화 금지).
-7. **닫힘 비대칭**: 선택 해제(빈 보드 탭/유닛 사망/이동모드/페이즈)는 **손패도 닫는다**.
-   손패만 닫히는 경로(항아리 토글/사용 가능 0장 자동 닫힘)는 **선택을 유지**한다.
-8. **슬로모 중첩 무해 전제 유지** — 선택 lease 와 손패 held lease 는 동일 priority(50)·동일
-   scale(`AwakeningConfig.slomoTimeScale`) 이라 유효 스케일 불변. 이 노브를 갈라놓지 않는다.
+   대체하는 것은 정상. 재주장 트리거는 인터랙션 종료 하나가 아니라 **"프레젠터 세션이 남에 의해
+   종료됐다" 신호 전체**다(critic H2): ①슬롯 종료 깔때기(`NotifyInteractionEnded`) ②뷰의
+   `Close()/ForceClose()` 가 `_focus.End()` 직후 발화하는 `FocusCleared` 이벤트 ③슬롯 `OnDisable`
+   경로 커버. `Close()` 내부에서 `_focus.End()` 는 `CancelAllCardInteraction()` **앞**으로 옮긴다
+   (뒤에 두면 방금 재주장한 리티클을 같은 함수가 지운다). 세션 스택 금지(과잉 추상화).
+7. **닫힘 비대칭 (critic H3 재정의)**: **닫기 의도 탭**(빈 보드/선택 유닛 재탭)은 **선택 유무와
+   무관하게** 손패를 닫는다 — 항아리 단독 오픈의 바깥 탭 dismiss(orb-dock 계약)를 보존한다.
+   그 외 선택 해제 경로(사망·이동모드·페이즈·트레이 드래그)는 선택이 있었을 때만 손패를 닫는다.
+   손패만 닫히는 경로(항아리 토글/0장 자동 닫힘)는 선택을 유지한다. 컨트롤러가 뷰를 닫는 공개
+   창구는 `CloseFromSelection()` **하나**다(뷰 `Close()` 는 private 유지). 유닛 사망은 부착
+   0장이면 `AttachmentsChanged` 가 안 오므로(critic M3) **앵커 소실 연속 N프레임 → 선택 해제**를
+   컨트롤러 수명 규칙으로 추가한다.
+8. **슬로모 소유권 분리 (사용자 결정 5)**: 손패는 자기 오픈이 선택 기인인지 안다
+   (`SelectionTarget != Entity.Null` 로 파생 — 별도 상태 저장 금지). **선택 모드** = 선택
+   lease(0.3×, 상시)가 슬로모를 소유하고 손패 held lease 는 잉여(동일 priority/scale 라 기계적
+   무해 — `TimeManager` 승자 규칙 검증 완료). **일반 모드** = use-flow 계약 1 그대로(held 만).
+   README 의 이 조항이 use-flow 계약 1 의 명시 예외 기록이다.
 9. **카메라는 CameraDirector 채널 합성에 맡긴다** — 인스펙트 줌 + 손패 헤드룸은 독립 가중치
-   채널이라 기계적 충돌 없음. 체감(줌인+피치다운 동시)은 Play 검증 항목, 튜닝은 config 노브로만.
-10. **수치는 SerializeField/SO** (움찔 트윈 진폭/시간 등). 하드코딩 금지(제약 6).
+   채널. 단 조준 중 줌은 계약 2 의 피드 중단이 해소한다. 체감은 Play 검증 항목, 튜닝은 config 노브로만.
+10. **수치는 SerializeField/SO** (움찔 트윈, catcher 이동 임계 등). 하드코딩 금지(제약 6).
 
-## 상태 꼬임 지점 → 해소 매핑 (2026-07-29 실측)
+## 상태 꼬임 지점 → 해소 매핑 (critic 검증 완료)
 
-| 충돌 | 현행 동작 | 해소 |
+| 충돌 | 근거 | 해소 |
 |---|---|---|
-| `Blocked()`: 손패 오픈 = 선택 강제 Close | `DcInspectController.cs Blocked()/Update` | unit 0 분리 |
-| `IsAiming`(Active 카드 드래그) = 선택 Close | 〃 | unit 0 (tap-gate 로 이동) |
-| 손패 오픈 중 보드 탭 전량 catcher 소유 (`IsOverUi` 가 catcher 히트) | 유닛 탭 불가, 닫기만 | unit 2 라우팅 |
-| 포탈 출구 탭 릴리즈 = catcher 클릭 → 손패 닫힘 | 잠복 엣지 | unit 2 가드(계약 3) |
-| 카드 조준 `BeginFocus`/`EndInteraction→Focus.End()` 가 선택 리티클 소거 | inspect unit 6 리티클 | unit 4 재주장 |
-| 이동모드 목적지 탭이 catcher 에 먹힘 | — (신규 조합) | 계약 7: 이동모드 진입 = 손패 닫기 |
+| `Blocked()`: 손패 오픈 = 선택 강제 Close | `DcInspectController.Blocked()` | unit 0 분리 |
+| `IsAiming` = 선택 Close + 조준 중 인스펙트 줌 잔존(M4) | 〃 + `CameraDirectionConfig` dolly 4.92 | unit 0 (gate 이동 + 줌 피드 중단) |
+| 손패 오픈 중 보드 탭 전량 catcher 소유 | `IsOverUi` 가 catcher 히트 | unit 2 라우팅 |
+| 포탈 출구 탭: 커밋=press, catcher 클릭=release → 릴리즈 가드 무효(H1) | `DreamcatcherCardDragSlot.cs:304-330` | unit 2 press-스냅샷 |
+| catcher 이동 임계 부재 = 스와이프가 탭(M2) | Button 은 `IDragHandler` 없음 | unit 2 탭 캐처 재설계 |
+| `Close()/ForceClose()/슬롯 OnDisable` 의 `Focus.End()` 가 재주장 깔때기 밖(H2) | `DreamcatcherHandView.cs:772·788` | unit 4 FocusCleared |
+| 부착 0장 유닛 사망 = 이벤트 없음 → 좀비 선택(M3) | `DreamcatcherHandController.OnDefenderDied` 조기 return | unit 1 앵커 liveness |
+| 침강 0.4초 `Transitioning` 창 = 손패 없는 선택(H5) | `StartSink`+strip fold | unit 1 pending-open 래치 |
+| 상시 슬로모 × 상시 손패(H4) | 선택 lease 타임아웃 없음 | 계약 8 (사용자 결정 5) |
+| 이동모드 × 항아리 오픈 = 목적지 지정 봉쇄(M6) | catcher 가 `IsOverUi` 히트 | unit 2 (수신 게이트 + relocation catcher 예외) |
 
 ## 파이프라인 커버리지
 
 N/A — 플레이 오브젝트 신설/생성→렌더 경로 변경 없음. 기존 UGUI·커밋·연출 재사용.
 
+## 설계 리뷰 이력
+
+- **2026-07-29 critic REVISE → rev 2 반영.** H1 포탈 release-가드 무효(press 스냅샷으로 재설계) ·
+  H2 `Focus.End()` 다중 소유(재주장 신호 확장) · H3 unit 1↔2 모순(닫기 의도 탭 규칙 재정의) ·
+  H4 상시 슬로모(사용자 결정 5 로 명문화) · H5 Transitioning 창(래치). M1 "드래그가 클릭을
+  삼킨다"는 오해였다(`eligibleForClick` 은 `pointerPress != pointerDrag` 일 때만 해제 — 명시 가드로
+  교정, 레포 반례 `DraftCardView.cs:101`). M7 `Tween.PunchAnchoredPosition` 은 존재하지 않는 API 였다.
+  검증 통과 항목(계약 4·5·8 기계층·11 계승, canvas order 10/9>5, 씬 배선 0)은 유지.
+
 ## 후속 후보 (범위 밖)
 
 - **탭 즉발의 Active-DefenderUnit 확장** — 사용자 결정으로 이번엔 부착만. 체감 후 재평가.
-- **선택 유닛 강조 base-ring** — 손패 오픈 중 선택 유닛에 시안 링(조준 문법 확장). 리티클과 중복이라 보류.
+- **선택 유닛 강조 base-ring** — 리티클과 중복이라 보류.
 - **손패만 닫고 유닛 유지하는 2단계 해제** — Q3 에서 기각(동시 해제 채택). 불편 보고 시 재고.
-- **카드 탭 즉발의 언두/확인 스텝** — 오탭 부착 보고가 나오면 검토(현재는 드래그 임계=DPI 보정이 방어).
+- **카드 탭 즉발의 언두/확인 스텝** — 오탭 부착 보고가 나오면 검토.
+- **겹친 유닛 픽킹 "렉트 중심 최근접"** — inspect 후속 후보와 동일 항목이 즉발 대상 결정에도 관여하게 됨. 실기기 오탭 체감 시 승격.
+- **첫 세션 튜토리얼 문안** — `HandOpened` 원샷 힌트가 탭 즉발을 가르치지 않음(critic L4). 체감 후 문안 개정.
