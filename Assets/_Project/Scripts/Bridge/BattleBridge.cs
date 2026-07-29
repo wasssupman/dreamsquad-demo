@@ -2661,10 +2661,11 @@ namespace Wassup.Bridge
 
                             var p = _em.GetComponentData<LocalTransform>(entity).Position;
                             var world = new Vector3(p.x, p.y, p.z);
-                            // boss-jjangssen unit 6 — 도약 비행 중이면 뷰는 아치를 따른다(sim 은 이미
-                            // 착지 셀). Spine/Quad 분기보다 앞이라 한 곳으로 둘 다 적용된다.
-                            if (TryGetEnemyViewOverride(entity, out var leapView))
-                                world = new Vector3(leapView.x, leapView.y, leapView.z);
+                            // boss-jjangssen unit 6·7 — 도약 비행 중이면 뷰는 아치를 따른다(sim 은 이미
+                            // 착지 셀). **수평만 여기서 치환**하고 높이는 아래 뷰의 view 공간 오프셋으로
+                            // 넘긴다 — ToView 가 sim-Y 를 버리므로 높이를 여기 섞으면 평면화된다.
+                            bool leaping = TryGetEnemyViewOverride(entity, out var leapPos, out float leapHeight);
+                            if (leaping) world = new Vector3(leapPos.x, leapPos.y, leapPos.z);
                             // unit-health-display unit 1 — 적 저체력 틴트. HP read-only 평가는
                             // BattleBridge 소관(ECS 창구), 뷰는 Color 만 받아 적용.
                             Color tint = unifiedOverhead ? Color.white : EvaluateEnemyHealthTint(entity);
@@ -2673,6 +2674,8 @@ namespace Wassup.Bridge
                             bool dimmed = _enemyDimAlpha < 0.999f;
                             if (spineUnitPool != null && spineUnitPool.TryGet(entity, out var spineView))
                             {
+                                // 비행 아니면 0 을 써서 스스로 해제된다(별도 clear 경로 불필요).
+                                spineView.SetFlightHeight(leaping ? leapHeight : 0f);
                                 spineView.UpdatePosition(world);
                                 if (canSort) spineView.UpdateSortingOrder(gridSize, tileSize);
                                 spineView.SetDimmed(dimmed, _enemyDimAlpha);
@@ -2680,6 +2683,7 @@ namespace Wassup.Bridge
                             }
                             else if (enemyViewPool.TryGet(entity, out var view))
                             {
+                                view.SetFlightHeight(leaping ? leapHeight : 0f);
                                 view.UpdatePosition(world);
                                 if (canSort) view.UpdateSortingOrder(gridSize, tileSize);
                                 view.SetDimmed(dimmed, _enemyDimAlpha);
