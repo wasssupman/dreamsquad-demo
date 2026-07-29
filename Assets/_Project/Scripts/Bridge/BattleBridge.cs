@@ -5065,6 +5065,9 @@ namespace Wassup.Bridge
         public void SetSkillAimRange(Vector2Int center, SkillData skill)
         {
             if (tilemapMapView == null || skill == null) return;
+            // unit 3 — 스킬 조준은 aimStyle=false 로 그려지므로 _rangeAimStyle 가 지켜주지 않는다.
+            // 소유권 획득 시점에 유효성을 반납받아 직전 배치의 적색이 새지 않게 한다(계약: 색이 아니라 소유권이 경계).
+            tilemapMapView.SetPlacementRangeValidity(true);
             tilemapMapView.SetPlacementRange(center, GridMath.RangeToTiles(skill.range), includeCenter: true);
             _rangeOwner = RangeDisplayOwner.SkillAim;
         }
@@ -5074,6 +5077,7 @@ namespace Wassup.Bridge
         private void PinSkillTelegraph(Vector2Int cell, int tileRange)
         {
             if (tilemapMapView == null) return;
+            tilemapMapView.SetPlacementRangeValidity(true); // unit 3 — 조준과 동일 이유(aimStyle=false 경로)
             tilemapMapView.SetPlacementRange(cell, tileRange, includeCenter: true);
             _rangeOwner = RangeDisplayOwner.SkillTelegraph;
         }
@@ -5084,7 +5088,19 @@ namespace Wassup.Bridge
         {
             if (_rangeOwner != caller) return;
             _rangeOwner = RangeDisplayOwner.None;
-            if (tilemapMapView != null) tilemapMapView.ClearPlacementRange();
+            if (tilemapMapView != null)
+            {
+                tilemapMapView.ClearPlacementRange();
+                tilemapMapView.SetPlacementRangeValidity(true); // unit 3 — 소유권 반납 시 적색 상태 반납
+            }
+        }
+
+        // placement-thumb-occlusion unit 3 — 배치 판정 유효성 → 사거리 틴트(적색 + 전이 플래시).
+        // 사거리 페인트는 셀 변경 시만, 유효성은 매 프레임 뒤집힌다(슬로우모 중에도 전투가 돌아 점유가
+        // 변하고 코스트가 리젠된다) → 수명이 달라 SetPlacementRange 에 인자를 얹지 않고 분리한다.
+        public void SetPlacementRangeValidity(bool valid)
+        {
+            if (tilemapMapView != null) tilemapMapView.SetPlacementRangeValidity(valid);
         }
 
         public void FlashPlacementReject(Vector2Int cell)

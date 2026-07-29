@@ -116,10 +116,27 @@ namespace Wassup.Tests.PlayMode
             for (int i = 0; i < 4; i++) Step(controller, false, false, tgtScreen, 0.05f); // 쿨다운 소진
             Vector2 nowScreen = ScreenOf(bridge, cam, target2);
             EnterMoveMode(controller, bridge, target2);
+            // placement-thumb-occlusion unit 1 — 이 스텝은 이동량이 임계를 넘어 **드래그로 승격**되므로
+            // 목적지 판정이 가상 포인터(= 실제 좌표 + 화면 up × offset×ramp)를 쓴다.
+            //
+            // 오프셋을 역산하지 않는다: ramp 가 이동량에 의존해 순환이고, DragController 해석 여부에 따라
+            // 실효 오프셋이 0 일 수도 있다(이 테스트는 DisableUiCanvases 를 거친다). 대신 **하이라이트가
+            // source 를 가리킬 때까지 끌고 가서 릴리즈**한다 — 사람이 실제로 하는 조작이고, 지키려는 계약
+            // ("배치 칸 == 하이라이트가 보여준 칸")을 그대로 검증하며 오프셋 튜닝에 면역이다.
             Vector2 backScreen = ScreenOf(bridge, cam, source); // 원 타일(현재 비어 있음)
             Step(controller, true, true, nowScreen, 0.02f);     // 현재 셀에서 press 시작
-            Step(controller, false, true, backScreen, 0.02f);   // 원 타일로 드래그
-            Step(controller, false, false, backScreen, 0.02f);  // 릴리즈 = 커밋
+            Step(controller, false, true, backScreen, 0.02f);   // 원 타일 방향으로 드래그(= 승격)
+            Assert.IsTrue(TargetDragging(controller),
+                "임계 초과 이동이므로 드래그로 승격돼야 한다(탭으로 해석되면 오프셋 경로를 안 밟는다)");
+            for (int i = 0; i < 60 && ScoutCell(controller) != source; i++)
+            {
+                backScreen.y -= 4f; // 가상 포인터가 손가락 위에 있으므로 손가락을 내려 조준을 맞춘다
+                Step(controller, false, true, backScreen, 0.02f);
+            }
+            Assert.AreEqual(source, ScoutCell(controller),
+                "드래그 중 하이라이트가 목적지(source)를 가리켜야 한다 — 여기서 실패하면 오프셋이 과해 "
+                + "화면 아래로 조준이 안 닿는 것이다");
+            Step(controller, false, false, backScreen, 0.02f);  // 릴리즈 = 커밋(하이라이트가 보여준 칸)
             Assert.IsFalse(controller.InMoveMode, "drag commit exits move mode");
             Assert.AreEqual(source, CellOf(bridge, em, mover), "binding back at source via drag commit");
             yield return WaitUntilActivated(em, mover, 5f); // 비행 완결 후 종료(다음 테스트 오염 방지)
@@ -235,6 +252,16 @@ namespace Wassup.Tests.PlayMode
             Assert.IsTrue(bridge.TryGetDefenderAt(cell, out var e, out _, out _), "resolve entity for entry");
             Assert.IsTrue(c.BeginMoveModeFor(e, cell), "BeginMoveModeFor entered move mode");
         }
+
+        // placement-thumb-occlusion unit 1 — 컨트롤러가 실제로 보여주는 스카우트 셀 / 승격 상태.
+        // 오프셋 값을 역산하는 대신 이 둘을 읽어 "하이라이트가 가리키는 칸에 배치된다"를 직접 검증한다.
+        private static Vector2Int? ScoutCell(DefenderRelocationController c)
+            => (Vector2Int?)typeof(DefenderRelocationController)
+                .GetField("_scoutCell", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(c);
+
+        private static bool TargetDragging(DefenderRelocationController c)
+            => (bool)typeof(DefenderRelocationController)
+                .GetField("_targetDragging", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(c);
 
         private static Vector2 ScreenOf(BattleBridge bridge, Camera cam, Vector2Int cell)
         {

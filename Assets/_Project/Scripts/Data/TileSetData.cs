@@ -34,6 +34,20 @@ namespace Wassup.Data
         [Range(0f, 1f)] public float rangePulseMaxAlpha = 0.85f;
         [Min(0.05f)] public float rangePulseSpeed = 3f; // sin(unscaledTime * speed) 각속도
 
+        // placement-thumb-occlusion unit 3 — 배치 불가 시 사거리 격자를 적색으로. 사거리는 중심 셀을
+        // 제외한 링이라 손가락 바깥에 있고 면적이 커서 주변시로 읽힌다 = 가림에 구조적으로 면역인
+        // 유일한 채널. 형태(격자 outline)는 무변경 — solid 승급은 후속(맵 가림이 solid 폐기의 원 이유).
+        [Tooltip("배치 불가 시 사거리 tint. 주황(rangeColor)과 **한눈에 구분돼야** 한다 — 색상 거리가 짧으면 " +
+                 "소형 화면·낮은 알파에서 '붉게 했는데 티가 안 남'으로 끝난다. rangeColor 와 같은 값으로 두면 기능 off.")]
+        public Color rangeInvalidColor = new Color(1f, 0.16f, 0.13f, 1f);
+        [Range(0f, 1f)]
+        [Tooltip("유효→무효 전이 순간 1회 밝게 번쩍이는 시간(초, unscaledTime). 0=플래시 없음(정적 틴트만).")]
+        public float rangeInvalidFlashSeconds = 0.18f;
+        [Range(0f, 1f)]
+        [Tooltip("플래시 세기 — 전이 순간 색을 흰색 쪽으로 이만큼 끌어올린다(알파도 1 쪽으로). " +
+                 "명도 변화라 색약자에게도 작동하는 유일한 성분이다. 0=플래시 없음.")]
+        public float rangeInvalidFlashBoost = 0.7f;
+
         [Header("Aim-phase range style (unit 4 — 조준 페이즈 전용 2번째 슬롯)")]
         // 배치 단계(드래그 사거리 프리뷰)와 공격방향 지정 단계를 표시로 가른다. 조준 레인·
         // 폭탄 착지셀·조준 화살표만 이 슬롯을 쓰고, 드래그 프리뷰/스킬 조준/텔레그래프는 range* 유지.

@@ -154,10 +154,13 @@ namespace Wassup.Data
         [Range(0f, 0.2f)]
         public float placementPointerOffsetHeightRatio = 0.06f;
 
-        [Tooltip("오프셋 램프(초, unscaled) — 드래그 승격 순간 0→풀 오프셋으로 차오르는 시간.\n" +
-                 "하이라이트가 한 칸 순간이동하는 걸 막는다. 0=즉시. 트레이 D&D 는 직전 하이라이트가 없어 항상 즉시.")]
-        [Range(0f, 0.4f)]
-        public float placementPointerOffsetRampSeconds = 0.08f;
+        [Tooltip("오프셋 램프 거리(스크린 px) — 보드 제스처가 드래그로 승격된 뒤, 임계보다 이만큼 더 끌면 " +
+                 "풀 오프셋에 도달한다. 승격 순간 하이라이트가 한 칸 순간이동하는 걸 막는다.\n" +
+                 "시간이 아니라 이동량 기준 — 시간 램프는 손가락이 멈춰도 하이라이트가 계속 올라가고 " +
+                 "16px 승격이 65px 점프를 만드는 증폭이 남는다. 0=램프 없음(승격 즉시 풀 오프셋).\n" +
+                 "트레이 D&D 는 직전 하이라이트가 없어 램프 없이 첫 프레임부터 풀 오프셋이다.")]
+        [Range(0f, 200f)]
+        public float placementPointerOffsetRampDistance = 60f;
 
         // px 환산은 값과 같은 곳에 둔다(소비처: 드래그 컨트롤러 · 재배치 seam · PlayMode 테스트).
         public float PlacementPointerOffsetPx => placementPointerOffsetHeightRatio * Screen.height;

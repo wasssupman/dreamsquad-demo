@@ -51,6 +51,9 @@ namespace Wassup.Core
         private readonly HashSet<Vector2Int> _rangeCells = new();
         // 범위 타일 세기 배율(펄스 알파에 곱). 1 = 기존 사각 범위. unit 9.
         private float _rangeAlphaMul = 1f;
+        // placement-thumb-occlusion unit 3 — 배치 판정 유효성 + 전이 스탬프(SetPlacementRangeValidity 단독 소유).
+        private bool _rangeInvalid;
+        private float _rangeInvalidSince;
         // unit 4 — 지금 깔려 있는 범위 표시가 조준 페이즈 스타일인가. 페인트 시점에 정해지고
         // Update() 의 틴트가 같은 플래그로 색을 고른다(타일과 색이 갈라지지 않게).
         private bool _rangeAimStyle;
@@ -175,6 +178,7 @@ namespace Wassup.Core
             if (_effectTilemap != null) _effectTilemap.ClearAllTiles();
             if (_rangeTilemap != null) _rangeTilemap.ClearAllTiles();
             _rangeCells.Clear();
+            _rangeInvalid = false; // unit 3 — 맵 리빌드 경계 방어(정상 경로는 호출부 리셋이 덮는다)
             if (_placeableTilemap != null) _placeableTilemap.ClearAllTiles(); // placement-eligible-tile-highlight unit 1
             _placeableActive = false;
             if (_backgroundPropsRoot != null) { SafeDestroy(_backgroundPropsRoot.gameObject); _backgroundPropsRoot = null; }
@@ -892,7 +896,38 @@ namespace Wassup.Core
             {
                 var ac = _tileSet.aimRangeColor; ac.a = _tileSet.aimRangeAlpha; return ac;
             }
+            // placement-thumb-occlusion unit 3 — 배치 불가면 적색 + 전이 순간 1회 플래시.
+            // aimStyle 경로는 유효성을 모른다(드롭 후 방향 지정 채널). 단 스킬 조준/텔레그래프는
+            // aimStyle=false 로 그려지므로 이 분기 밖이 아니라 **owner 전환 시 리셋**이 그들을 지킨다
+            // (BattleBridge.ClearRange) — 색이 아니라 소유권이 경계다.
+            if (_rangeInvalid)
+            {
+                var ic = _tileSet.rangeInvalidColor;
+                ic.a = _tileSet.rangePulseMaxAlpha;
+                float flashDur = _tileSet.rangeInvalidFlashSeconds;
+                if (flashDur > 0f && _tileSet.rangeInvalidFlashBoost > 0f)
+                {
+                    float t = Mathf.Clamp01((Time.unscaledTime - _rangeInvalidSince) / flashDur);
+                    float boost = _tileSet.rangeInvalidFlashBoost * (1f - t);
+                    ic = Color.Lerp(ic, Color.white, boost);
+                    ic.a = Mathf.Lerp(_tileSet.rangePulseMaxAlpha, 1f, boost);
+                }
+                return ic;
+            }
             var c = _tileSet.rangeColor; c.a = _tileSet.rangePulseMaxAlpha; return c;
+        }
+
+        // placement-thumb-occlusion unit 3 — 배치 판정 유효성. **이 메서드가 유일한 소유자**다.
+        // Set/ClearPlacementRange 는 절대 건드리지 않는다: SetPlacementRange 가 내부에서
+        // ClearPlacementRange 를 먼저 부르므로(:903/:927) 거기서 리셋하면 셀이 바뀔 때마다
+        // false→true 전이가 재발생해 무효 영역을 훑는 동안 플래시가 연발한다.
+        // 세션 경계 리셋은 호출부(컨트롤러 ClearHover/ClearBoardScout, bridge ClearRange)가 명시적으로 한다.
+        public void SetPlacementRangeValidity(bool valid)
+        {
+            bool invalid = !valid;
+            if (invalid == _rangeInvalid) return; // 전이에만 반응 — 매 프레임 호출돼도 스팸 아님
+            _rangeInvalid = invalid;
+            if (invalid) _rangeInvalidSince = Time.unscaledTime;
         }
 
         // includeCenter — 배치 프리뷰는 중심 셀(유닛 위치)을 비우고, 스킬 AOE 는

@@ -56,6 +56,13 @@ namespace Wassup.UI
         private bool _cameraDirectorMissWarned;
         // 이동모드 배치 세션 (목적지 지정 제스처) — press 추적 → 릴리즈 셀에서 해석(탭/드래그 공통).
         private bool _targetPressActive;
+        // placement-thumb-occlusion unit 1 — 목적지 제스처의 탭/드래그 승격 게이트. 원래 이 경로엔
+        // 구분이 없었다(press 즉시 스카우트, 릴리즈에 해석). 배치 판정 오프셋은 **드래그로 승격된
+        // 뒤에만** 적용되므로(무이동 탭은 누른 칸 그대로) 여기에도 armed 보드 제스처와 같은 이동량
+        // 승격이 필요하다. 임계·오프셋·램프 거리는 전부 DragController 의 읽기 seam 을 공유한다 —
+        // 같은 손가락 이동에 두 제스처가 다르게 반응하면 그게 원래 문제보다 나쁘다.
+        private Vector2 _targetPressDown;
+        private bool _targetDragging;
         private Vector2Int? _scoutCell;   // hover 스카우트 중인 셀
         // unit 3 — 비행/재전개 (세대 토큰 = _sessionGen 패턴 준용)
         private int _flightGen;
@@ -111,6 +118,7 @@ namespace Wassup.UI
             bridge.ShowPlacementHighlight(); // unit 6 — 배치 가능 타일 하이라이트(소스는 점유라 자동 제외)
             // 버튼 진입 — carried press 없음. 목적지 탭/드래그를 이후 새 press 로 받는다.
             _targetPressActive = false;
+            _targetDragging = false; // unit 1 — 승격 상태도 진입마다 초기화(이전 제스처 잔재 금지)
             _scoutCell = null;
         }
 
@@ -133,11 +141,14 @@ namespace Wassup.UI
             EnsureCameraDirector()?.SetMoveOverview();
 
             // 목적지 지정 제스처 — 탭/드래그 공통: press 동안 hover 스카우트, 릴리즈 셀에서 해석.
+            // unit 1 — 이동량으로 탭/드래그를 갈라, 드래그일 때만 배치 판정 포인터를 화면 위로 올린다.
             if (_targetPressActive)
             {
-                if (pressed) { UpdateScout(screen); return; }
+                float travel = Vector2.Distance(screen, _targetPressDown);
+                if (!_targetDragging && travel >= TargetDragThreshold) _targetDragging = true;
+                if (pressed) { UpdateScout(AimScreen(screen, travel)); return; }
                 _targetPressActive = false;
-                ResolveRelease(screen);
+                ResolveRelease(AimScreen(screen, travel));
                 return;
             }
 
@@ -145,8 +156,26 @@ namespace Wassup.UI
             {
                 if (IsOverUi(screen)) return; // UI press(플립북 버튼 등)는 목적지 지정이 아님
                 _targetPressActive = true;
-                UpdateScout(screen);
+                _targetPressDown = screen;
+                _targetDragging = false;
+                UpdateScout(screen); // 승격 전 = 누른 칸 그대로(오프셋 없음)
             }
+        }
+
+        // placement-thumb-occlusion unit 1 — 목적지 판정 포인터. 승격 전엔 실제 좌표 그대로(탭 = 누른 칸),
+        // 승격 후엔 이동량 비례 램프로 화면 위로. 튜닝값은 DragController 가 소유한 단일 소스를 읽는다.
+        // DragController 부재(트레이 미빌드) 시 오프셋 0 — 재배치가 그것 때문에 죽지 않게 한다
+        // (DragSlowmoScale 폴백 선례와 동형).
+        private float TargetDragThreshold
+            => DragController != null ? DragController.BoardDragThreshold : 16f;
+
+        private Vector2 AimScreen(Vector2 screen, float travelPx)
+        {
+            var dc = DragController;
+            if (!_targetDragging || dc == null) return screen;
+            float ramp = PlacementPointerOffset.Ramp(travelPx, TargetDragThreshold,
+                dc.PlacementPointerOffsetRampDistance);
+            return PlacementPointerOffset.Apply(screen, dc.PlacementPointerOffsetPx, ramp);
         }
 
         // 릴리즈 지점 해석: 보드 밖/본인 = 취소, 무효 = reject+유지(unit 2 계약), 유효 = 커밋.
@@ -292,6 +321,7 @@ namespace Wassup.UI
             if (!_moveMode) { ClearHighlight(); return; }
             _moveMode = false;
             _targetPressActive = false;
+            _targetDragging = false; // unit 1 — 종료 시 승격 상태 리셋
             ReleaseLease();
             ClearHighlight();
             ClearScout();

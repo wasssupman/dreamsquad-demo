@@ -157,12 +157,12 @@ namespace Wassup.UI
         // placement-thumb-occlusion unit 0 — 같은 튜닝 소스를 공유하는 읽기 seam(위 둘과 동형).
         // 소비처: 재배치 컨트롤러(unit 1) · PlayMode 테스트(구동 좌표 보정).
         public float PlacementPointerOffsetPx => Cfg.PlacementPointerOffsetPx;
-        public float PlacementPointerOffsetRampSeconds => Cfg.placementPointerOffsetRampSeconds;
+        public float PlacementPointerOffsetRampDistance => Cfg.placementPointerOffsetRampDistance;
 
         // 배치 판정 포인터 = 실제 포인터 + 화면 up × offset. **파생값이지 치환이 아니다** —
         // UI 레이캐스트·탭/드래그 임계 비교·press 보드 가드는 계속 실제 좌표를 쓴다.
         private Vector2 ToPlacementPointer(Vector2 rawScreen)
-            => rawScreen + Vector2.up * (Cfg.PlacementPointerOffsetPx * _offsetRamp01);
+            => PlacementPointerOffset.Apply(rawScreen, Cfg.PlacementPointerOffsetPx, _offsetRamp01);
 
         public void Configure(BattleBridge battleBridge, Camera camera, PlacementInput input,
             DragSwaySettings swaySettings = null, TMP_FontAsset uiFont = null,
@@ -466,6 +466,10 @@ namespace Wassup.UI
             bool valid = bridge != null && bridge.CanPlaceDefenderAt(cell.x, cell.y, _session.unit, out reason);
             _session.rejectReason = valid ? PlacementRejectReason.None : reason;
             SetHover(cell, valid);
+            // placement-thumb-occlusion unit 3 — 사거리 적색화. **SetHover 뒤**여야 한다: SetHover 가 셀
+            // 변경 시 SetPlacementRange 를 부르고 그 페인트는 유효성을 모른다. 시뮬(탭) 경로는 사거리를
+            // 억제하므로 제외(범위 억제와 일관). 뷰가 전이만 스탬프하므로 매 프레임 호출이 스팸이 아니다.
+            if (!_simulatedDrag) bridge?.SetPlacementRangeValidity(valid);
             // unit 7 rev — 끈적 액체 하이라이트: 확정 칸 테두리는 고정, 내부 액체가 손가락 쪽으로 번진다.
             // 신호(dir,t)는 Resolve 와 같은 밴드로 산출 → t=1 이 실제 파열점과 일치.
             if (bridge != null && Cfg.stickyLiquidEnabled)
@@ -610,6 +614,7 @@ namespace Wassup.UI
                 if (!bridge.TryScreenToCell(mainCamera, _boardDownScreen, out _)) return;
                 _boardGestureActive = true;
                 _boardDragging = false;
+                _offsetRamp01 = 0f;          // placement-thumb-occlusion unit 1 — 승격 전엔 오프셋 없음(탭 = 누른 칸)
                 CancelTapPlaceRangePeek();   // unit 2 — 직전 탭 배치 range flourish 정지(새 제스처 우선)
             }
 
@@ -617,19 +622,31 @@ namespace Wassup.UI
 
             var cur = pointer.position.ReadValue();
             // 이동량 승격 — 시간이 아니라 거리로 탭/드래그를 가른다(사용자 결정 2026-07-20).
-            if (!_boardDragging && Vector2.Distance(cur, _boardDownScreen) >= Mathf.Max(1f, Cfg.boardDragThreshold))
+            float travel = Vector2.Distance(cur, _boardDownScreen);
+            if (!_boardDragging && travel >= BoardDragThreshold)
                 _boardDragging = true;
+
+            // placement-thumb-occlusion unit 1 — 오프셋은 **드래그로 승격된 뒤에만**. 이 경로엔 트레이
+            // 세션의 히스테리시스·throttle 이 없어(UpdateBoardScout 은 매 프레임 생 판정) 램프가 유일한
+            // 완충이다. 이동량 비례라 손가락이 움직인 만큼만 하이라이트가 앞서간다.
+            _offsetRamp01 = _boardDragging
+                ? PlacementPointerOffset.Ramp(travel, BoardDragThreshold, Cfg.placementPointerOffsetRampDistance)
+                : 0f;
 
             if (pointer.press.wasReleasedThisFrame)
             {
-                if (_boardDragging) { CommitBoardDrag(cur); ResetBoardGesture(); }
+                // 드래그 릴리즈 = 스카우트가 보여준 칸(가상 포인터)에 배치. 탭은 누른 칸 그대로(raw) —
+                // 탭은 피드백 루프를 볼 시간 없이 커밋되므로 오프셋이 오배치로 읽힌다.
+                if (_boardDragging) { CommitBoardDrag(ToPlacementPointer(cur)); ResetBoardGesture(); }
                 // 탭(무이동): 기존 클릭 배치와 동일 액션 — 즉시 배치하되(HandleBoardTap) 공격범위를 착지 셀에 잠깐 노출.
                 else { _boardGestureActive = false; _boardDragging = false; HandleBoardTap(cur); }
                 return;
             }
 
             // placement-armed-board-drag unit 1 — 프레스부터 릴리즈 직전까지 range-only 스카우트(손가락 셀 추종).
-            UpdateBoardScout(cur);
+            // 승격 전엔 램프 0 이라 ToPlacementPointer 가 항등 — 스카우트가 누른 칸을 그대로 비춰
+            // 릴리즈(탭) 결과와 일치한다("하이라이트는 어느 순간에도 거짓말하지 않는다").
+            UpdateBoardScout(ToPlacementPointer(cur));
         }
 
         // placement-armed-board-drag unit 1 — 세션 없는 range-only 스카우트. 드래그 세션 SetHover 의 표시 계약을
@@ -640,6 +657,7 @@ namespace Wassup.UI
             if (!bridge.TryScreenToCell(mainCamera, screen, out var cell)) { ClearBoardScout(); return; }
 
             bool valid = bridge.CanPlaceDefenderAt(cell.x, cell.y, _armedUnit, out _);
+            bridge.SetPlacementRangeValidity(valid); // unit 3 — 스카우트도 같은 적색 채널(매 프레임, 전이만 반응)
             bool changed = !_boardScoutCell.HasValue || _boardScoutCell.Value != cell;
             if (changed && _boardScoutCell.HasValue)
                 bridge.ClearPlacementHover(_boardScoutCell.Value); // 이전 셀 hover 정리(액체 비활성 경로)
@@ -662,6 +680,7 @@ namespace Wassup.UI
             {
                 if (_boardScoutCell.HasValue) bridge.ClearPlacementHover(_boardScoutCell.Value);
                 bridge.ClearPlacementRange();
+                bridge.SetPlacementRangeValidity(true); // unit 3 — 스카우트 경계 리셋(ClearHover 와 대칭)
                 bridge.ClearPlacementStretch();
             }
             _boardScoutCell = null;
@@ -682,6 +701,7 @@ namespace Wassup.UI
         {
             _boardGestureActive = false;
             _boardDragging = false;
+            _offsetRamp01 = 1f; // placement-thumb-occlusion unit 1 — 보드 제스처가 낮춰둔 램프 원복(트레이 세션 기본값)
             ClearBoardScout();  // unit 1 — 스카우트 범위/hover 소거
         }
 
@@ -1370,6 +1390,7 @@ namespace Wassup.UI
             if (_session.hoverTile.HasValue)
                 bridge?.ClearPlacementHover(_session.hoverTile.Value);
             bridge?.ClearPlacementRange();
+            bridge?.SetPlacementRangeValidity(true); // unit 3 — 세션 경계 리셋(뷰의 페인트 API 에 리셋을 얹지 않는다)
             bridge?.ClearPlacementStretch(); // unit 7 — 액체 하이라이트 수명은 hover 와 동일
             _session.hoverTile = null;
             _session.isValidTile = false;
