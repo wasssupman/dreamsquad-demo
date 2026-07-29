@@ -69,6 +69,11 @@ minArcHeight, launch, landingHeight, t01)` 를 그대로 호출한다.
 - 진행 시계는 `Time.unscaledDeltaTime` 이 아니라 **배틀 도메인 델타**를 쓴다 — 손패 슬로모(0.3x) 중에는
   도약도 같이 느려져야 시뮬과 어긋나지 않는다(하마는 UI 조작이라 unscaled 였다. 여기가 다른 점).
 - 매 프레임 `SetEnemyViewOverride(entity, p)`, 종료 시 `ClearEnemyViewOverride`.
+- **드레인 위치는 `LateUpdate` 의 `SyncMonoUnitViews` 바로 앞이어야 한다 (rev 3 — 실플레이 팝 수정).**
+  ECS 시뮬은 MonoBehaviour `Update` **뒤**에 돈다. 그래서 도약이 발동한 프레임에는 `Update` 시점에
+  큐가 비어 있고, `Update` 에서 드레인하면 그 프레임 `LateUpdate` 가 오버라이드 없이 sim 좌표
+  (=이미 착지점)를 그려 **보스가 착지지점에 1프레임 보였다가 아치가 시작된다.**
+  drop-dismount 가 "시작 오버라이드는 **동기 등록**" 으로 막은 것과 같은 함정이다.
 - **abandon 조건**: 엔티티 소멸/사망 → 즉시 override clear 후 종료(공중에 시체 정지 방지).
 - `OnDisable`/`OnDestroy`/매치 teardown → 진행 중 비행 전부 즉시 완결(override clear).
 

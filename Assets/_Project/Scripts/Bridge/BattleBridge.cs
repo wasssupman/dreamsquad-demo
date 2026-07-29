@@ -2264,7 +2264,6 @@ namespace Wassup.Bridge
                     _beamViewResolver);
             }
             DrainProjectileHitEvents();
-            DrainBossLeapVisualEvents(); // boss-jjangssen unit 6 — 도약 아치 비행 시작
             DrainHealAppliedEvents();
             DrainShieldGrantedEvents();
             DrainDamageNumberEvents();
@@ -2282,6 +2281,12 @@ namespace Wassup.Bridge
 
         private void LateUpdate()
         {
+            // boss-jjangssen unit 6 rev 3 — **SyncMonoUnitViews 바로 앞이어야 한다.**
+            // ECS 시뮬은 MonoBehaviour.Update 뒤에 돌므로, 도약이 발동한 프레임에는
+            // Update 시점에 큐가 비어 있다. Update 에서 드레인하면 그 프레임 LateUpdate 가
+            // 오버라이드 없이 sim 좌표(=이미 착지점)를 그려 **1프레임 팝**이 보인다.
+            // drop-dismount 가 "시작 오버라이드는 동기 등록" 으로 같은 함정을 막은 것과 같은 이유.
+            DrainBossLeapVisualEvents();
             SyncMonoUnitViews();
             ReconcileStatusFx();
             ReconcilePickupViews();
