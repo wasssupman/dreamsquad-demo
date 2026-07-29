@@ -25,6 +25,14 @@ namespace Wassup.Tests.EditMode
         {
             Assert.AreEqual(-1, Select(new int2[0], PatternSelectionRule.RoundRobin, 0));
             Assert.AreEqual(-1, Select(new int2[0], PatternSelectionRule.DeterministicShuffle, 3));
+            Assert.AreEqual(-1, Select(new int2[0], PatternSelectionRule.None, 0));
+        }
+
+        [Test]
+        public void None_DoesNotSelect_FromNonEmptyPool()
+        {
+            var cells = new[] { new int2(1, 1), new int2(2, 2) };
+            Assert.AreEqual(-1, Select(cells, PatternSelectionRule.None, 0));
         }
 
         [Test]

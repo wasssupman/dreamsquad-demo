@@ -6207,9 +6207,10 @@ namespace Wassup.Bridge
                         int shotCount = pattern.shots?.Length ?? 0;
                         Debug.LogWarning(
                             $"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: " +
-                            $"invalid projectile shot sequence (shots={shotCount}, " +
+                            $"invalid projectile shot sequence/binding contract (shots={shotCount}, " +
                             $"capacity={Wassup.Data.ProjectilePatternData.MaxShotCount}, " +
-                            $"angles={pattern.minAngleDeg}..{pattern.maxAngleDeg}) — skipped.");
+                            $"angles={pattern.minAngleDeg}..{pattern.maxAngleDeg}, " +
+                            $"selection={pattern.selection}, flight={pattern.barrel.flightMode}) — skipped.");
                         continue;
                     }
                     // 사용 직전 재획득(위 주석 참조).

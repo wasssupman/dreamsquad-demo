@@ -258,6 +258,23 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(0.125f, spec.shots[1].intervalAfterPreviousSec);
         }
 
+        [Test]
+        public void TryToSpec_RejectsSelectionAndMovementBindingMismatch()
+        {
+            _barrel.flightMode = ProjectileFlightMode.BezierHoming;
+            _patternA.selection = PatternSelectionRule.None;
+            Assert.IsFalse(_patternA.TryToSpec(0, out _),
+                "타겟 추적탄에 None을 쓰면 조용히 전 발이 소모된다");
+
+            _barrel.flightMode = ProjectileFlightMode.Directional;
+            _patternA.selection = PatternSelectionRule.RoundRobin;
+            Assert.IsFalse(_patternA.TryToSpec(0, out _),
+                "방향탄에 타겟 선택 규칙을 남기면 무타겟 계약이 authoring에 드러나지 않는다");
+
+            _patternA.selection = PatternSelectionRule.None;
+            Assert.IsTrue(_patternA.TryToSpec(0, out _));
+        }
+
         // 카드(defender) 경로는 미배선이다 — 조용히 붙어 "부착됨" 으로 집계되면 안 된다.
         [Test]
         public void CardPath_EmitProjectilePattern_IsRejected_NotSilentlyAttached()

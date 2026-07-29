@@ -24,6 +24,9 @@ namespace Wassup.Battle.Combat.Projectile.Emission
             int k;
             switch (rule)
             {
+                case PatternSelectionRule.None:
+                    return -1;
+
                 case PatternSelectionRule.DeterministicShuffle:
                     // 해시 → rank. 순회처럼 예측 가능하지 않으면서 같은 fireCount 는
                     // 항상 같은 결과(리플레이·테스트 가능). 연속 중복은 허용 —

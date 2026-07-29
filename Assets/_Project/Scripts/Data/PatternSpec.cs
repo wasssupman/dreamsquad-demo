@@ -9,6 +9,8 @@ namespace Wassup.Data
     {
         RoundRobin = 0,
         DeterministicShuffle = 1,
+        // projectile-shot-sequence unit 1 — 타겟 선택을 하지 않는 방향 발사.
+        None = 2,
     }
 
     // projectile-shot-sequence unit 0 — 한 발의 architecture-neutral 명세.

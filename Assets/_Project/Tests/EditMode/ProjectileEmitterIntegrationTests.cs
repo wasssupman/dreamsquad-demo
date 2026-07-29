@@ -119,25 +119,48 @@ namespace Wassup.Tests.EditMode
             };
         }
 
+        private static PatternSpec DirectionSpec()
+        {
+            var shots = default(FixedList128Bytes<PatternShotSpec>);
+            shots.Add(new PatternShotSpec { directionT = 0f, intervalAfterPreviousSec = 0f });
+            shots.Add(new PatternShotSpec { directionT = 0.5f, intervalAfterPreviousSec = 0f });
+            shots.Add(new PatternShotSpec { directionT = 1f, intervalAfterPreviousSec = 0f });
+            return new PatternSpec
+            {
+                barrelDataIndex = 3,
+                damage = 6f,
+                selection = PatternSelectionRule.None,
+                minAngleDeg = -30f,
+                maxAngleDeg = 30f,
+                shots = shots,
+            };
+        }
+
         // 패턴 슬롯을 host 에 얹는다. **push 는 하지 않는다** — 실제 arm
         // (BossPeriodicTriggerSystem)이 `PeriodicTimer` 발화로 밀어넣게 두어야
         // 시드 규약(fireCountBase += shots.Length)이 테스트에 복제되지 않는다.
         // 복제하면 arm 이 규약을 바꿔도 테스트는 옛 규약을 검증하며 초록으로 남는다.
         private void InstallPattern(Entity host, in PatternSpec spec, float periodSeconds)
         {
+            InstallPattern(host, spec, periodSeconds, new ProjectileSpawnRequest
+            {
+                movement = MovementKind.HomingToEntity,
+                payload = PayloadKind.SingleSplash,
+                speed = 10f,
+                dataIndex = 0,
+                owner = host,
+                targetFaction = ProjectileTargetFaction.Defender,
+            });
+        }
+
+        private void InstallPattern(Entity host, in PatternSpec spec, float periodSeconds,
+                                    in ProjectileSpawnRequest template)
+        {
             var pats = _em.GetBuffer<PatternSlot>(host);
             pats.Add(new PatternSlot
             {
                 spec = spec,
-                template = new ProjectileSpawnRequest
-                {
-                    movement = MovementKind.HomingToEntity,
-                    payload = PayloadKind.SingleSplash,
-                    speed = 10f,
-                    dataIndex = 0,
-                    owner = host,
-                    targetFaction = ProjectileTargetFaction.Defender,
-                },
+                template = template,
                 fireCountBase = 0,
             });
 
@@ -269,6 +292,71 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(0, _em.GetBuffer<EmitterInstance>(host).Length, "인스턴스는 완주 제거된다");
         }
 
+        [Test]
+        public void DirectionPattern_FiresWithoutTargets_OnTriggerFrame_WithSnapshotPayload()
+        {
+            var host = CreatePatternHost(new float3(8f, 0f, 8f));
+            var origin = new float3(3f, 0.25f, 7f);
+            var template = new ProjectileSpawnRequest
+            {
+                movement = MovementKind.DirectionalLinear,
+                payload = PayloadKind.PathHit,
+                origin = origin,
+                direction = new float2(0f, 1f),
+                maxDistance = 2.5f,
+                speed = 10f,
+                dataIndex = 3,
+                owner = host,
+                targetFaction = ProjectileTargetFaction.Defender,
+            };
+
+            InstallPattern(host, DirectionSpec(), periodSeconds: 1f, template: template);
+            TickTrigger(1f);
+
+            using var query = _em.CreateEntityQuery(ComponentType.ReadOnly<ProjectileSpawnRequest>());
+            using var requests = query.ToComponentDataArray<ProjectileSpawnRequest>(Allocator.Temp);
+            Assert.AreEqual(3, requests.Length, "타겟 후보가 0이어도 trigger 프레임에 3발 모두 생성");
+            Assert.AreEqual(0, _em.GetBuffer<EmitterInstance>(host).Length);
+
+            for (int i = 0; i < requests.Length; i++)
+            {
+                Assert.AreEqual(origin, requests[i].origin, "host 현재 위치로 snapshot 원점을 덮으면 안 된다");
+                Assert.AreEqual(2.5f, requests[i].maxDistance);
+                Assert.AreEqual(6f, requests[i].damage);
+                Assert.AreEqual(3, requests[i].dataIndex);
+                Assert.AreEqual(Entity.Null, requests[i].target);
+            }
+
+            float diagonal = math.sqrt(3f) * 0.5f;
+            Assert.IsTrue(ContainsDirection(requests, new float2(0.5f, diagonal)));
+            Assert.IsTrue(ContainsDirection(requests, new float2(0f, 1f)));
+            Assert.IsTrue(ContainsDirection(requests, new float2(-0.5f, diagonal)));
+        }
+
+        [Test]
+        public void DirectionPattern_ActiveInstanceOnDeadHost_DoesNotEmit()
+        {
+            var host = CreatePatternHost(float3.zero);
+            var spec = DirectionSpec();
+            var instance = new EmitterInstance
+            {
+                spec = spec,
+                template = new ProjectileSpawnRequest
+                {
+                    movement = MovementKind.DirectionalLinear,
+                    direction = new float2(1f, 0f),
+                    maxDistance = 2f,
+                },
+            };
+            EmitterTick.Begin(ref instance.runtime, spec, 0);
+            _em.GetBuffer<EmitterInstance>(host).Add(instance);
+            _em.AddComponent<DeadTag>(host);
+
+            Tick();
+
+            Assert.AreEqual(0, CarrierCount(), "DeadTag host의 진행 중 sequence는 더 발사하지 않는다");
+        }
+
         // 계약 7 — 진영은 host 에서 도출한다. 적 host 의 탄은 방어유닛을 겨눈다.
         [Test]
         public void EnemyHost_TargetsDefenders_WithDefenderVictimFaction()
@@ -285,6 +373,15 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(def, reqs[0].target);
             Assert.AreEqual(ProjectileTargetFaction.Defender, reqs[0].targetFaction);
             Assert.AreEqual(40f, reqs[0].damage, "damage 는 패턴 소유(spec) 값이다");
+        }
+
+        private static bool ContainsDirection(in NativeArray<ProjectileSpawnRequest> requests,
+                                              float2 expected)
+        {
+            for (int i = 0; i < requests.Length; i++)
+                if (math.distance(requests[i].direction, expected) < 0.0001f)
+                    return true;
+            return false;
         }
     }
 }

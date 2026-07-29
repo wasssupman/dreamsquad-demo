@@ -1,6 +1,6 @@
 # projectile-shot-sequence — 개별 탄환 시퀀스
 
-> 상태: 진행 중 — unit 0 완료 (2026-07-30)
+> 상태: 진행 중 — unit 0~1 완료 (2026-07-30)
 > 선행: `projectile-emission-pattern` · `defender-directional-volley`
 
 ## 목표

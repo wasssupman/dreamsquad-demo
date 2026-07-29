@@ -42,7 +42,7 @@ namespace Wassup.Data
         public float damage = 10f;
 
         [Header("Selection")]
-        [Tooltip("맵 전체 후보 중 누구를 겨냥하나. RoundRobin=순회, DeterministicShuffle=결정론 랜덤.")]
+        [Tooltip("타겟 선택. RoundRobin=순회, DeterministicShuffle=결정론 랜덤, None=무타겟 방향 발사.")]
         public PatternSelectionRule selection = PatternSelectionRule.RoundRobin;
 
         [Header("Shot Sequence (한 번의 trigger 안의 개별 탄)")]
@@ -70,8 +70,12 @@ namespace Wassup.Data
         {
             spec = default;
             var runtimeShots = default(Unity.Collections.FixedList128Bytes<PatternShotSpec>);
+            bool hasDirectionBinding = barrel != null
+                                       && barrel.flightMode == ProjectileFlightMode.Directional;
+            bool hasNoTargetSelection = selection == PatternSelectionRule.None;
             if (shots == null || shots.Length == 0 || shots.Length > MaxShotCount
-                || minAngleDeg > maxAngleDeg)
+                || minAngleDeg > maxAngleDeg
+                || (barrel != null && hasDirectionBinding != hasNoTargetSelection))
             {
                 return false;
             }
