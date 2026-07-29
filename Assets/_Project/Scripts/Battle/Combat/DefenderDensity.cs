@@ -36,8 +36,9 @@ namespace Wassup.Battle.Combat
                 int n = 0;
                 for (int j = 0; j < defenderCells.Length; j++)
                 {
-                    int2 d = defenderCells[j] - c;
-                    if (math.max(math.abs(d.x), math.abs(d.y)) <= r) n++;
+                    // Chebyshev 디스크 멤버십은 이 폴더의 명명된 프리미티브를 쓴다 —
+                    // `AuraPulse` 도 같은 판정을 "same idiom as the TileAoe impact check" 로 참조한다.
+                    if (TileAoe.IsInTileRange(defenderCells[j], c, r)) n++;
                 }
 
                 // gridSize 를 폭으로 쓰는 row-major 키. 그리드 밖 좌표가 들어와도 단조

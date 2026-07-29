@@ -8,7 +8,7 @@
 
 ## 변경 대상
 
-- `Assets/_Project/Scripts/Data/AttackDeck.cs` — `bossPool` 필드 + `ResolveBossPool()`
+- `Assets/_Project/Scripts/Data/AttackDeck.cs` — `bossPool` 필드
 - `Assets/_Project/Scripts/Data/WavePatternGenerator.cs` — 보스 선택 + pool 방어 루프
 - `Assets/_Project/Tests/EditMode/WavePatternGeneratorBossTests.cs` — 신규 케이스 + positional 인자 수정
 - `Assets/_Project/Tests/EditMode/WaveKillBudgetPinTests.cs` · `WaveSpawnLeadInTests.cs` — 시그니처 변경 대응
@@ -20,7 +20,9 @@
 생성기가 `null` 을 graceful no-op 으로 처리하므로 **에러도 경고도 없이 전 맵에서 보스만 사라진다.**
 
 - `bossUnit`(기존, 단일) 유지 + `bossPool`(신규, `AttackUnitData[]`) 추가.
-- `ResolveBossPool()` — `bossPool` 이 비어 있으면 `bossUnit` 단일 원소로 감싸 반환. 둘 다 비면 빈 배열.
+- **폴백은 생성기의 `BuildBossPool`** — `bossPool` 이 비면 `bossUnit` 단일, 둘 다 비면 빈 목록.
+  (구현 정정 2026-07-29: 당초 덱측 `ResolveBossPool()` 로 적었으나 `Generate` 직접 호출자도 같은
+  폴백을 받아야 하므로 생성기 소유로 바꿨다. distinct 규칙은 `BuildDistinctPool` 단일 소스에 위임.)
   선례: 같은 파일의 `ResolveAttackUnitPool()`.
 - `bossPool` 내 `null` 원소는 걸러낸다(authoring 실수 방어).
 

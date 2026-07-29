@@ -29,26 +29,44 @@ namespace Wassup.Bridge
         [Tooltip("반동으로 내려앉는 거리(월드). camUp 반대 방향.")]
         [SerializeField] private float bossLeapRecoilDip = 0.45f;
         // 아치 높이 3종은 함께 움직인다. **제어점 높이 semantics** 이므로 실제 apex 는
-        // 제어점 높이의 약 0.4배다(drop-dismount 0_dismount_arc_math 계약) — 눈에 보이는
-        // 높이를 2배로 하려면 이 값들도 대략 2배여야 한다.
+        // 제어점 높이의 약 0.4배다(drop-dismount 0_dismount_arc_math 계약).
+        //
+        // ⚠ unit 7 에서 **단위 의미가 바뀌었다.** 이전에는 아치를 sim 좌표에 넣어 ToView 가
+        // 세로 성분을 버렸기 때문에, 0.95/8.5/1.25 는 그 손실을 메우려 부풀린 값이었다. 이제
+        // 높이가 view 공간에 그대로 적용되므로 값이 정직해졌다 — 같은 궤적을 view 공간에서
+        // 쓰는 드롭 하마(`DragSwaySettings` ⑩: factor 0.5 / minHeight 3.5)와 같은 대역이다.
         [Tooltip("아치 높이 = 이동거리 × 이 계수 (하한은 아래 최소 높이). 제어점 높이 = apex 약 2.5배.")]
-        [SerializeField] private float bossLeapArcHeightFactor = 0.95f;
-        [Tooltip("아치 제어점 높이 하한(월드). 짧은 도약도 확실히 뜨게 한다.")]
-        [SerializeField] private float bossLeapArcMinHeight = 8.5f;
+        [SerializeField] private float bossLeapArcHeightFactor = 0.55f;
+        [Tooltip("아치 제어점 높이 하한(view 공간). 짧은 도약도 확실히 뜨게 한다.")]
+        [SerializeField] private float bossLeapArcMinHeight = 4.5f;
         [Tooltip("발사 제어점 (x=진행비율, y=아치높이배수). y 를 올리면 더 솟구친다.")]
-        [SerializeField] private Vector2 bossLeapLaunchControl = new Vector2(0.25f, 1.25f);
+        [SerializeField] private Vector2 bossLeapLaunchControl = new Vector2(0.25f, 1f);
         [Tooltip("착지 제어점 높이배수. 작을수록 수직으로 내리찍는다.")]
         [SerializeField] private float bossLeapLandingHeight = 0.22f;
 
         private NativeQueue<BossLeapVisualEvent> _bossLeapVisualQueue;
 
         // 비행 중 뷰 좌표. SyncMonoUnitViews 적 피드가 sim 좌표 대신 이 값을 쓴다.
-        private readonly Dictionary<Entity, Unity.Mathematics.float3> _enemyViewOverride = new();
-        // 진행 중 비행 (중복 시작 방지 + teardown 일괄 종료).
-        private readonly HashSet<Entity> _bossLeapInFlight = new();
+        // **키의 존재 자체가 "비행 중" 이다** — 별도 in-flight 집합을 두지 않는다. 같은 생명주기를
+        // 두 컬렉션이 나눠 들면 진입/이탈이 쌍으로 유지돼야 하고 한쪽만 잊히는 자리가 생긴다.
+        // 이 단일 진실 덕에 취소도 공짜다: 키를 지우면 코루틴이 다음 프레임에 자진 종료한다
+        // (drop-dismount 의 FinishDismountsInstant 와 같은 계약).
+        // 값은 **(보드 평면 sim 좌표, view 공간 아치 높이)** 두 축으로 분리해서 든다 —
+        // BoardSpace.ToView 가 sim-Y 를 버리므로 높이를 sim 좌표에 섞으면 화면에서 평면화되고
+        // camUp 의 보드 평면 성분만 살아 "뜨는" 대신 옆으로 미끄러진다(unit 7 에서 고친 것).
+        // 수평은 sim 으로 흘려 ToView 가 셀 정합을 잡고, 높이는 뷰가 변환 뒤에 더한다.
+        private readonly Dictionary<Entity, (Unity.Mathematics.float3 simPos, float viewHeight)>
+            _enemyViewOverride = new();
 
-        internal bool TryGetEnemyViewOverride(Entity entity, out Unity.Mathematics.float3 pos)
-            => _enemyViewOverride.TryGetValue(entity, out pos);
+        internal bool TryGetEnemyViewOverride(
+            Entity entity, out Unity.Mathematics.float3 simPos, out float viewHeight)
+        {
+            if (_enemyViewOverride.TryGetValue(entity, out var v))
+            {
+                simPos = v.simPos; viewHeight = v.viewHeight; return true;
+            }
+            simPos = default; viewHeight = 0f; return false;
+        }
 
         // ── lifecycle 3점 세트 (공유 파일에서 호출) ──
 
@@ -60,15 +78,12 @@ namespace Wassup.Bridge
             _em.AddComponentData(singleton, new BossLeapVisualEventsSingleton { queue = _bossLeapVisualQueue });
         }
 
+        // 매치 teardown / 컴포넌트 종료. 오버라이드를 비우면 진행 중 코루틴이 다음 프레임에
+        // 자진 종료한다(키 부재 가드) — 공중에 뷰가 멈춘 채 남지 않는다. 큐 파괴와 한 함수에
+        // 두어 "큐는 버렸는데 오버라이드는 남는" 조합을 구조적으로 배제한다.
         private void DisposeBossLeapChannel()
         {
             if (_bossLeapVisualQueue.IsCreated) _bossLeapVisualQueue.Dispose();
-        }
-
-        // 매치 teardown / 컴포넌트 종료: 공중에 뷰가 멈춘 채로 남는 것을 막는다.
-        private void AbortAllBossLeaps()
-        {
-            _bossLeapInFlight.Clear();
             _enemyViewOverride.Clear();
         }
 
@@ -80,8 +95,11 @@ namespace Wassup.Bridge
             while (_bossLeapVisualQueue.TryDequeue(out var evt))
             {
                 if (evt.entity == Entity.Null || !_em.Exists(evt.entity)) continue;
-                // 같은 엔티티의 비행이 이미 돌고 있으면 무시한다(경계 동시 관통 방어).
-                if (!_bossLeapInFlight.Add(evt.entity)) continue;
+                // 키가 있으면 이미 비행 중 — 무시(경계 동시 관통 방어).
+                if (_enemyViewOverride.ContainsKey(evt.entity)) continue;
+                // **첫 프레임 오버라이드는 여기서** 걸어야 한다. 걸기 전에 sim 좌표가 한 프레임이라도
+                // 소비되면 착지점으로 순간이동한 뒤 되돌아오는 팝이 보인다(rev 3 실측 증상).
+                _enemyViewOverride[evt.entity] = (evt.fromWorld, 0f);
                 StartCoroutine(RunBossLeap(evt));
             }
         }
@@ -92,16 +110,12 @@ namespace Wassup.Bridge
         {
             var start = new Vector3(evt.fromWorld.x, evt.fromWorld.y, evt.fromWorld.z);
             var end = new Vector3(evt.toWorld.x, evt.toWorld.y, evt.toWorld.z);
-            var cam = Camera.main;
-            // camUp 이 없으면(카메라 부재) 아치를 만들 축이 없다 — 비행을 포기하고 sim 좌표를 쓴다.
-            if (cam == null)
-            {
-                _bossLeapInFlight.Remove(evt.entity);
-                ResolveLanding(evt, end);
-                yield break;
-            }
-            Vector3 camUp = cam.transform.up;
-
+            // **아치의 기저축은 카메라가 아니라 순수 +Y 다.** 앵커의 y 를 0 으로 눕히고 up 축으로
+            // 궤적을 풀면 반환점의 xz 는 보드 평면 수평 경로, y 는 **순수 아치 높이**로 분리된다.
+            // camUp 을 쓰면 그 성분이 sim 좌표에 섞이고 ToView 가 y 를 버려 평면화된다(unit 7).
+            // 그래서 카메라 참조가 아예 필요 없다 — 조기 이탈 분기도 사라졌다.
+            var flatStart = new Vector3(start.x, 0f, start.z);
+            var flatEnd = new Vector3(end.x, 0f, end.z);
             float duration = Mathf.Max(0.05f, bossLeapTotalSeconds);
             float recoilFrac = Mathf.Clamp(bossLeapRecoilSeconds / duration, 1e-4f, 0.9f);
 
@@ -109,38 +123,46 @@ namespace Wassup.Bridge
             // EarthSlamSpikes(바닥에서 솟는 스파이크)라 **착지에만** 어울린다 — 발이 뜨는
             // 자리에서 스파이크가 솟으면 인과가 거꾸로 읽힌다. 출발 전용 연출이 생기면
             // 그때 별도 dataIndex 로 되살린다(현 arm 은 단일 인덱스).
-            // 첫 프레임부터 오버라이드를 걸어둔다 — 걸기 전에 한 프레임이라도 sim 좌표가
-            // 소비되면 착지점으로 순간이동한 뒤 되돌아오는 팝이 보인다.
-            _enemyViewOverride[evt.entity] = evt.fromWorld;
-
+            // 오버라이드 최초 기입은 드레인이 소유한다(같은 프레임 LateUpdate 피드가 소비).
+            bool abandoned = false;
             float t = 0f;
             while (t < duration)
             {
-                // 비행 중 소멸/사망 → 공중에 멈추지 않게 즉시 정리.
-                if (!_em.Exists(evt.entity) || _em.HasComponent<Wassup.Battle.Units.DeadTag>(evt.entity))
+                // 취소·소멸·사망 → 즉시 종료. **오버라이드 키 부재도 취소 신호다** —
+                // teardown 이 `_enemyViewOverride.Clear()` 로 비행을 끊는다.
+                if (!_enemyViewOverride.ContainsKey(evt.entity)
+                    || !_em.Exists(evt.entity)
+                    || _em.HasComponent<Wassup.Battle.Units.DeadTag>(evt.entity))
+                {
+                    abandoned = true;
                     break;
+                }
 
                 // 배틀 도메인 델타 — 손패 슬로모(0.3x) 중에는 도약도 같이 느려져야 시뮬과 어긋나지
                 // 않는다. 하마(드롭)가 unscaled 를 쓴 것은 UI 조작이라서이고, 여기는 전투 사건이다.
-                var tm = TimeManager.Instance;
-                t += tm != null ? tm.DeltaTime(TimeDomain.Battle) : Time.deltaTime;
+                t += TimeManager.Instance.DeltaTime(TimeDomain.Battle);
 
                 // 시간 이징 없음(선형) — drop-dismount 가 구현 중 확정한 계약. Out* 이징은 끝속도를
                 // 0 으로 죽여 내리찍는 임팩트가 물러진다. 착지 속도는 기하(끝접선)가 만든다.
+                float t01 = Mathf.Clamp01(t / duration);
                 Vector3 p = Wassup.UI.KeyringSim.DismountPoint(
-                    start, Vector3.zero, end, camUp,
+                    flatStart, Vector3.zero, flatEnd, Vector3.up,
                     recoilFrac, bossLeapRecoilDip,
                     bossLeapArcHeightFactor, bossLeapArcMinHeight,
                     bossLeapLaunchControl, bossLeapLandingHeight,
-                    Mathf.Clamp01(t / duration));
-                _enemyViewOverride[evt.entity] = new Unity.Mathematics.float3(p.x, p.y, p.z);
+                    t01);
+                // 수평(xz)은 sim 으로, 높이(y)는 view 공간 오프셋으로 각자 흐른다.
+                // sim y 는 지면 높이라 양 끝을 그대로 보간한다(아치와 무관).
+                float groundY = Mathf.Lerp(evt.fromWorld.y, evt.toWorld.y, t01);
+                _enemyViewOverride[evt.entity] =
+                    (new Unity.Mathematics.float3(p.x, groundY, p.z), p.y);
                 yield return null;
             }
 
             _enemyViewOverride.Remove(evt.entity);
-            _bossLeapInFlight.Remove(evt.entity);
-            // 착지 임팩트 — 뷰가 실제로 도착한 이 프레임.
-            ResolveLanding(evt, end);
+            // **abandon 이면 착지 처리를 하지 않는다.** 매치 teardown·보스 사망으로 끊긴 비행에
+            // 슬램을 발사하면 이미 해체된 월드에 투사체 요청을 내게 된다(브리지는 매치 간 생존).
+            if (!abandoned) ResolveLanding(evt, end);
         }
 
         // 착지 처리. 슬램이 있으면 TileAoe 피해 요청을 스폰하고(그 요청의 히트 이벤트가 VFX 도

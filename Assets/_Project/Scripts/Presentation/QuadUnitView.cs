@@ -124,9 +124,16 @@ namespace Wassup.Presentation
             _simWorld = world;
             Vector3 view = Wassup.Core.BoardSpace.ToView(world);
             // 타일맵이 XZ 바닥. 빌보드 밑동이 바닥 Y 와 같으면 z-fighting → 살짝 띄운다.
-            view.y += 0.01f;
+            view.y += 0.01f + _flightHeight;
             transform.position = view;
         }
+
+        // boss-jjangssen unit 7 — 뷰 비행 아치 높이. SpineUnitView 와 동일 계약:
+        // ToView 는 sim-Y 를 버리므로 높이는 **변환 뒤** view 공간에서 더한다.
+        // 매 프레임 피드가 값을 다시 쓰므로(비행 아니면 0) 별도 clear 불필요.
+        private float _flightHeight;
+
+        public void SetFlightHeight(float viewSpaceHeight) => _flightHeight = viewSpaceHeight;
 
         // unit-health-display unit 1 — 적 저체력 틴트(fallback quad 뷰). 원본 base color × tint.
         // Configure 가 매번 머티리얼을 새로 빌드하므로 재스폰 시 자동으로 무틴트로 리셋된다.

@@ -181,8 +181,17 @@ namespace Wassup.Presentation
             _simWorld = world;
             Vector3 offset = _visualData != null ? (Vector3)_visualData.SpineVisualOffset : Vector3.zero;
             transform.position = (Vector3)Wassup.Core.BoardSpace.ToView(world) + offset
-                                 + new Vector3(0f, CurrentHopOffset(), 0f);
+                                 + new Vector3(0f, CurrentHopOffset() + _flightHeight, 0f);
         }
+
+        // boss-jjangssen unit 7 — 뷰 비행(보스 도약) 아치 높이. 넉업 hop 과 **같은 이유로**
+        // ToView 뒤에 더한다: BoardSpace.ToView 는 sim-Y 를 버리므로 sim 좌표에 높이를 넣으면
+        // 화면에서 평면화되고, camUp 의 보드 평면 성분만 살아 "뜨는" 대신 옆으로 미끄러진다.
+        // hop 과 독립 슬롯인 이유 = 도약 중 넉업을 맞을 수 있고 둘은 합산돼야 한다.
+        // 매 프레임 피드가 값을 다시 쓰므로(비행 아니면 0) 별도 clear 가 필요 없다.
+        private float _flightHeight;
+
+        public void SetFlightHeight(float viewSpaceHeight) => _flightHeight = viewSpaceHeight;
 
         // knockup-fighter-defender unit 3 — 넉업 띄우기. sim 은 이 유닛이 떠 있다는 사실을
         // 모른다(심의 실체는 짧은 Stun) — 여기서만 해석하는 순수 뷰 오프셋이다.

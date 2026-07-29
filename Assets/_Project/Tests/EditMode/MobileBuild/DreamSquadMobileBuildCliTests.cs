@@ -229,7 +229,7 @@ namespace Wassup.Tests.EditMode.MobileBuild
             Assert.DoesNotThrow(() => state.Validate(MobileBuildPlatform.Android));
         }
 
-        // 세로가 가능해지는 설정은 전부 거부한다 — 이 검사의 목적이 그것이다.
+        // 세로가 가능하거나 가로 양방향 회전이 불가능한 설정은 전부 거부한다.
         [TestCase((int)UIOrientation.Portrait, false, false, true, true)]
         [TestCase((int)UIOrientation.PortraitUpsideDown, false, false, true, true)]
         [TestCase((int)UIOrientation.AutoRotation, true, false, true, true)]
@@ -240,10 +240,13 @@ namespace Wassup.Tests.EditMode.MobileBuild
         [TestCase(MobileBuildPreflightState.SerializedScreenAutoRotationValue, false, true, true, true)]
         [TestCase(MobileBuildPreflightState.SerializedScreenAutoRotationValue, false, false, false, true)]
         [TestCase(MobileBuildPreflightState.SerializedScreenAutoRotationValue, false, false, true, false)]
-        // 고정 가로여도 세로 허용 플래그가 켜져 있으면 거부(설정 실수 신호).
+        // 고정 가로는 세로를 막아도 기기를 뒤집었을 때 상하를 바꾸지 못하므로 거부한다.
         [TestCase((int)UIOrientation.LandscapeRight, true, false, true, true)]
         [TestCase((int)UIOrientation.LandscapeLeft, false, true, true, true)]
-        public void LandscapeOnly_RejectsPortraitReachableConfiguration(
+        [TestCase((int)UIOrientation.LandscapeRight, false, false, true, true)]
+        [TestCase((int)UIOrientation.LandscapeLeft, false, false, true, true)]
+        [TestCase((int)UIOrientation.LandscapeRight, false, false, false, false)]
+        public void LandscapeAutorotation_RejectsUnsupportedConfiguration(
             int defaultOrientation,
             bool allowPortrait,
             bool allowPortraitUpsideDown,
@@ -251,7 +254,7 @@ namespace Wassup.Tests.EditMode.MobileBuild
             bool allowLandscapeRight)
         {
             Assert.That(
-                MobileBuildPreflightState.IsLandscapeOnly(
+                MobileBuildPreflightState.IsLandscapeAutorotation(
                     (UIOrientation)defaultOrientation,
                     allowPortrait,
                     allowPortraitUpsideDown,
@@ -260,48 +263,26 @@ namespace Wassup.Tests.EditMode.MobileBuild
                 Is.False);
         }
 
-        // 가로 고정(19ff8e8f — 자동회전 폐기)은 자동회전보다 엄격하다: 세로가
-        // 구조적으로 불가능하므로 가로 방향 플래그와 무관하게 통과한다.
-        [TestCase((int)UIOrientation.LandscapeRight, false, false, true, true)]
-        [TestCase((int)UIOrientation.LandscapeLeft, false, false, true, true)]
-        [TestCase((int)UIOrientation.LandscapeRight, false, false, false, false)]
-        public void LandscapeOnly_AcceptsFixedLandscape(
-            int defaultOrientation,
-            bool allowPortrait,
-            bool allowPortraitUpsideDown,
-            bool allowLandscapeLeft,
-            bool allowLandscapeRight)
-        {
-            Assert.That(
-                MobileBuildPreflightState.IsLandscapeOnly(
-                    (UIOrientation)defaultOrientation,
-                    allowPortrait,
-                    allowPortraitUpsideDown,
-                    allowLandscapeLeft,
-                    allowLandscapeRight),
-                Is.True);
-        }
-
-        // 실제 프로젝트 설정이 가로 전용인지 고정한다. 어느 방식(자동회전/고정)인지는
-        // 제품 결정이라 여기서 못박지 않는다 — 못박으면 설정 변경마다 이 테스트가
-        // 빌드를 막는다(2026-07-27 `19ff8e8f` 이 5→2 로 바꿨을 때 실제로 그랬다).
-        // 지키는 것은 preflight 가 통과한다는 사실 하나다.
+        // 실제 프로젝트 설정도 제품 계약인 가로 양방향 자동회전으로 고정한다.
         [Test]
-        public void CapturedProjectOrientation_IsLandscapeOnly()
+        public void CapturedProjectOrientation_IsLandscapeAutorotation()
         {
             var state = MobileBuildPreflightState.Capture(MobileBuildPlatform.Android);
 
             Assert.That(
-                MobileBuildPreflightState.IsLandscapeOnly(
+                MobileBuildPreflightState.IsLandscapeAutorotation(
                     state.DefaultOrientation,
                     state.AllowPortrait,
                     state.AllowPortraitUpsideDown,
                     state.AllowLandscapeLeft,
                     state.AllowLandscapeRight),
                 Is.True,
-                $"프로젝트 orientation 이 가로 전용이 아니다 (default={(int)state.DefaultOrientation}, "
+                $"프로젝트 orientation 이 가로 양방향 자동회전이 아니다 (default={(int)state.DefaultOrientation}, "
                 + $"portrait={state.AllowPortrait}/{state.AllowPortraitUpsideDown}, "
                 + $"landscape={state.AllowLandscapeLeft}/{state.AllowLandscapeRight})");
+            Assert.That(
+                (int)state.DefaultOrientation,
+                Is.EqualTo(MobileBuildPreflightState.SerializedScreenAutoRotationValue));
             Assert.That(state.AllowPortrait, Is.False);
             Assert.That(state.AllowPortraitUpsideDown, Is.False);
         }
@@ -335,11 +316,12 @@ namespace Wassup.Tests.EditMode.MobileBuild
                 assetPath);
         }
 
-        [TestCase("android", BuildTarget.Android)]
-        [TestCase("ios", BuildTarget.iOS)]
-        public void BuildPlayerOptions_UseExactScenesTargetAndDebugOptions(
+        [TestCase("android", BuildTarget.Android, true)]
+        [TestCase("ios", BuildTarget.iOS, false)]
+        public void BuildPlayerOptions_UseExactScenesTargetAndPlatformDebugOptions(
             string platformName,
-            BuildTarget expectedTarget)
+            BuildTarget expectedTarget,
+            bool expectsAllowDebugging)
         {
             var platform = ParsePlatform(platformName);
             var request = CreateRequest(platform, platform == MobileBuildPlatform.Android
@@ -352,7 +334,9 @@ namespace Wassup.Tests.EditMode.MobileBuild
             Assert.That(options.target, Is.EqualTo(expectedTarget));
             Assert.That(options.locationPathName, Is.EqualTo(request.OutputPath));
             Assert.That((options.options & BuildOptions.Development) != 0, Is.True);
-            Assert.That((options.options & BuildOptions.AllowDebugging) != 0, Is.True);
+            Assert.That(
+                (options.options & BuildOptions.AllowDebugging) != 0,
+                Is.EqualTo(expectsAllowDebugging));
         }
 
         [Test]
@@ -476,10 +460,8 @@ namespace Wassup.Tests.EditMode.MobileBuild
                 ApplicationIdentifier =
                     DreamSquadMobileBuildCli.ExpectedApplicationIdentifier,
                 EnabledScenes = (string[])DreamSquadMobileBuildCli.ExpectedScenes.Clone(),
-                DefaultOrientation = UIOrientation.LandscapeRight,
-                // 08cc7966 머지가 떨어뜨린 초기화(프로덕션 쪽은 72dca8ae 가 복원). 기본값 false 로
-                // 두면 고정 가로 분기로는 통과하지만, orientation 을 autorotation 으로 바꿔보는
-                // Preflight_AcceptsTrackedSerializedScreenAutoRotation 이 landscape 플래그를 요구해 실패한다.
+                DefaultOrientation =
+                    (UIOrientation)MobileBuildPreflightState.SerializedScreenAutoRotationValue,
                 AllowPortrait = false,
                 AllowPortraitUpsideDown = false,
                 AllowLandscapeLeft = true,

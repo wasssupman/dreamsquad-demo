@@ -25,9 +25,6 @@ namespace Wassup.Battle.Effects
         // - DoT/Slow 는 통과 → Bleed 데미지·둔화가 보스전에서 살아남는다.
         // lock-set 을 IsLock 단일 소스에서 조회하므로 새 lock 종류가 추가되면 면역이 자동 동행한다.
         public static bool IsBossImmune(CcKind kind, CcSource source)
-        {
-            if (source != CcSource.Direct) return false;
-            return IsLock(kind) || kind == CcKind.Impulse;
-        }
+            => source == CcSource.Direct && (IsLock(kind) || kind == CcKind.Impulse);
     }
 }

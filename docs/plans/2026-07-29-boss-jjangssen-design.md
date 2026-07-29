@@ -98,7 +98,9 @@ spec 계약으로 못박는다.**
 - **`bossUnit` 을 rename 하지 않는다.** 라이브 덱 9개(`Deck_{Serpent,Coil,Twin,Spiral,Zig,Hook,Endless}`
   + `WaveA` / `WaveB`)가 `bossUnit` guid 를 들고 있다. rename 하면 YAML 키가 orphan 이 되고 생성기는
   `null` 을 graceful no-op 로 처리하므로 **에러도 경고도 없이 전 맵에서 보스만 사라진다.**
-- `bossUnit` 유지 + `bossPool` 추가 + `ResolveBossPool()` 폴백. 선례: `AttackDeck.ResolveAttackUnitPool()`
+- `bossUnit` 유지 + `bossPool` 추가 + 폴백. **구현은 생성기의 `BuildBossPool`**(정정 2026-07-29 —
+  `Generate` 직접 호출자도 같은 폴백을 받아야 해서. 덱측 `ResolveAttackUnitPool()` 선례를 인용했으나
+  그 선례는 덱 필드 간 관계를 아는 쪽이 폴백을 갖는 형태라, 이 결정은 선례와 다른 방향이다)
 - **`bossPool.Count == 1` 이면 `rng.NextInt` 를 소비하지 않는다** → 기존 7덱의 rng 스트림이
   byte-identical → 웨이브 편성 무회귀.
 - `waveGeneratorVersion` 은 올리지 않는다. 순수 로그 라벨이고 런타임이 소비하지 않는다.
@@ -167,7 +169,7 @@ spec 계약으로 못박는다.**
 
 | # | 작업 | 요지 |
 |---|---|---|
-| 0 | `bossPool` 필드 | 필드 추가 + `ResolveBossPool()` 폴백 + `Count == 1` 이면 rng 미소비. **Slasher asset 없이 기존 7덱 무회귀를 먼저 증명한다** |
+| 0 | `bossPool` 필드 | 필드 추가 + 생성기 `BuildBossPool` 폴백 + `Count == 1` 이면 rng 미소비. **Slasher asset 없이 기존 7덱 무회귀를 먼저 증명한다** |
 | 1 | Slasher asset | 스탯 · 외형 · 누락 필드 전부 + `EnemyCatalog` 등록 + 진동갑주용 AOE `ProjectileData` 준비. `nightmareMechanics` 는 비운다 |
 | 2 | 어그로 + CC 면역 | 부착 1곳 차단 + `EnemyCcEvent` 출처 필드 + 부여 2곳 거절(직접 출처 한정). **이것이 없으면 cleave 3 을 육안으로 검증할 수 없다** — 가디언이 타겟 수를 1로 강제한다 |
 | 3 | 진동갑주 | bake 에 `SelfTileAoe` 추가(필수 준수 6) + `mechanic[0]` |

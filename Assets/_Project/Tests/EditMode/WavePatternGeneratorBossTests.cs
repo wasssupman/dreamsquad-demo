@@ -294,32 +294,16 @@ namespace Wassup.Tests.EditMode
             finally { Object.DestroyImmediate(a); Object.DestroyImmediate(b); }
         }
 
+        // bossPool 경로는 GenerateBoss 에 인자 하나만 더한 것이다 — 호출을 복제하지 않는다.
+        // 복제하면 "bossPool 만 다르다" 는 회귀 테스트의 전제가 두 헬퍼 사이 눈대중 대조로 남고,
+        // 한쪽의 180f/10/15/0.35f 를 만지는 순간 서로 다른 두 설정의 비교가 된다.
         private GeneratedWavePlan GenerateBossPool(int seed, IReadOnlyList<AttackUnitData> bosses,
             AttackUnitData fallbackBoss = null, IReadOnlyList<AttackUnitData> pool = null, int waveCount = 12)
-        {
-            // GenerateBoss 와 동일한 나머지 파라미터를 명시해 두 경로의 플랜이 비교 가능하게 유지한다.
-            return WavePatternGenerator.Generate(
-                seed,
-                1,
-                180f,
-                waveCount,
-                waveCount,
-                10,
-                15,
-                0.35f,
-                pool ?? _units,
-                fallbackBoss,
-                5,
-                3,
-                4,
-                waveCountJitter: 1,
-                fixedIntervalSec: 0f,
-                spawnLeadInSec: 0f,
-                bossPool: bosses);
-        }
+            => GenerateBoss(seed, fallbackBoss, 5, 3, 4, pool, waveCount, bosses);
 
         private GeneratedWavePlan GenerateBoss(int seed, AttackUnitData boss, int interval, int escMin, int escMax,
-            IReadOnlyList<AttackUnitData> pool = null, int waveCount = 12)
+            IReadOnlyList<AttackUnitData> pool = null, int waveCount = 12,
+            IReadOnlyList<AttackUnitData> bossPool = null)
         {
             return WavePatternGenerator.Generate(
                 seed,
@@ -334,7 +318,8 @@ namespace Wassup.Tests.EditMode
                 boss,
                 interval,
                 escMin,
-                escMax);
+                escMax,
+                bossPool: bossPool);
         }
 
         private static AttackUnitData CreateUnit(string name)

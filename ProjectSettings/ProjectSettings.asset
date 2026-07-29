@@ -243,8 +243,8 @@ PlayerSettings:
   metalCompileShaderBinary: 0
   iOSRenderExtraFrameOnPause: 0
   iosCopyPluginsCodeInsteadOfSymlink: 0
-  appleDeveloperTeamID: 
-  iOSManualSigningProvisioningProfileID: ad9c1dcf-e1a5-41c1-a809-5a572180e5c0
+  appleDeveloperTeamID: 69DK98XF77
+  iOSManualSigningProvisioningProfileID: 6b326724-e542-4717-8f62-6bda83dd2ca2
   tvOSManualSigningProvisioningProfileID: 
   VisionOSManualSigningProvisioningProfileID: 
   iOSManualSigningProvisioningProfileType: 1
