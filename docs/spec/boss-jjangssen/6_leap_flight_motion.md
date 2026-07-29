@@ -101,6 +101,13 @@ defender 쪽(`_defenderViewOverride`, `SyncMonoUnitViews` 최우선 분기)의 �
 - 슬램이 있으면 그 요청의 히트 이벤트가 VFX 도 그린다 → **퍼프를 따로 재생하지 않는다**(이중 재생 방지).
 - 비행 시간 0.55 → **0.83초**(+50%, 사용자 지시). 씬에 직렬화되지 않은 SerializeField 라 코드 기본값이 실효값.
 
+**rev 4 (2026-07-29) — 아치를 더 높게.** `arcHeightFactor` 0.55 → **0.95**,
+`arcMinHeight` 4.5 → **8.5**, `launchControl.y` 1.0 → **1.25**.
+세 값은 **제어점 높이 semantics** 라 실제 apex 는 그 약 0.4배다(drop-dismount
+`0_dismount_arc_math` 계약) — 눈에 보이는 높이를 2배로 하려면 값도 대략 2배여야 한다.
+`landingHeight`(0.22)는 그대로 두었다: 이 값도 `arcHeight` 에 곱해지므로 착지 제어점이 함께
+올라가고, 그 결과 마지막 하강이 더 길고 급해져 내리찍는 임팩트가 오히려 강해진다.
+
 ## 완료 기준
 
 - compile 클린 · 기존 EditMode 전량 통과

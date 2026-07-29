@@ -28,12 +28,15 @@ namespace Wassup.Bridge
         [SerializeField] private float bossLeapRecoilSeconds = 0.14f;
         [Tooltip("반동으로 내려앉는 거리(월드). camUp 반대 방향.")]
         [SerializeField] private float bossLeapRecoilDip = 0.45f;
-        [Tooltip("아치 높이 = 이동거리 × 이 계수 (하한은 아래 최소 높이).")]
-        [SerializeField] private float bossLeapArcHeightFactor = 0.55f;
+        // 아치 높이 3종은 함께 움직인다. **제어점 높이 semantics** 이므로 실제 apex 는
+        // 제어점 높이의 약 0.4배다(drop-dismount 0_dismount_arc_math 계약) — 눈에 보이는
+        // 높이를 2배로 하려면 이 값들도 대략 2배여야 한다.
+        [Tooltip("아치 높이 = 이동거리 × 이 계수 (하한은 아래 최소 높이). 제어점 높이 = apex 약 2.5배.")]
+        [SerializeField] private float bossLeapArcHeightFactor = 0.95f;
         [Tooltip("아치 제어점 높이 하한(월드). 짧은 도약도 확실히 뜨게 한다.")]
-        [SerializeField] private float bossLeapArcMinHeight = 4.5f;
-        [Tooltip("발사 제어점 (x=진행비율, y=아치높이배수).")]
-        [SerializeField] private Vector2 bossLeapLaunchControl = new Vector2(0.25f, 1f);
+        [SerializeField] private float bossLeapArcMinHeight = 8.5f;
+        [Tooltip("발사 제어점 (x=진행비율, y=아치높이배수). y 를 올리면 더 솟구친다.")]
+        [SerializeField] private Vector2 bossLeapLaunchControl = new Vector2(0.25f, 1.25f);
         [Tooltip("착지 제어점 높이배수. 작을수록 수직으로 내리찍는다.")]
         [SerializeField] private float bossLeapLandingHeight = 0.22f;
 
