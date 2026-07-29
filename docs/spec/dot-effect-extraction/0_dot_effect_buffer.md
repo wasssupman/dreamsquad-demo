@@ -3,7 +3,7 @@
 ## 목적
 
 지속 피해를 `CcEffect` 에서 떼어내 자기 버퍼·자기 채널·자기 병합 규칙을 갖게 한다. 이 단위가
-CRITICAL 과피해를 끝낸다 — 병합이 flavor 별로 분리되므로 출혈과 화염 장판이 공존한다.
+CRITICAL 과피해를 끝낸다 — 병합이 `(origin, element)` 별로 분리되므로 출혈과 화염 장판이 공존한다.
 
 **원자적이어야 한다.** 쓰는 곳과 읽는 곳이 갈리는 중간 상태는 게임이 깨진다.
 
@@ -31,11 +31,13 @@ CRITICAL 과피해를 끝낸다 — 병합이 flavor 별로 분리되므로 출�
 ## 구현
 
 ```csharp
-public enum DotFlavor : byte { None = 0, Bleed = 1, Fire = 2, Ice = 3, Poison = 4 }
+public enum DotOrigin  : byte { Unspecified = 0, Stack = 1, Zone = 2, OnPlace = 3 }
+public enum DotElement : byte { None = 0, Bleed = 1, Fire = 2, Ice = 3, Poison = 4 }
 
 public struct DotEffect : IBufferElementData
 {
-    public DotFlavor flavor;
+    public DotOrigin origin;    // 슬롯을 가르는 기준 — 어느 파이프라인이 만들었나
+    public DotElement element;  // 화면에 보이는 그림 — 무슨 원소인가
     public float scalar;        // tickInterval>0 이면 틱당 피해 / 0 이면 DPS
     public float tickInterval;
     public float tickTimer;     // 슬롯 지속 상태 — 병합 시 보존
@@ -43,8 +45,9 @@ public struct DotEffect : IBufferElementData
 }
 ```
 
-병합은 flavor 로만 매칭한다 — `CcEffectMerge` 의 `tickTimer` 보존·주기 환산·add 경로 첫 틱
-즉발 규약을 그대로 가져오되, **kind 분기가 사라진다**(도메인이 하나라서).
+축이 둘인 이유와 겸직 금지는 README 계약 2번. 병합은 `(origin, element)` 로 매칭한다 —
+`CcEffectMerge` 의 `tickTimer` 보존·주기 환산·add 경로 첫 틱 즉발 규약을 그대로 가져오되,
+**kind 분기가 사라진다**(도메인이 하나라서).
 
 라우팅:
 
@@ -65,13 +68,13 @@ public struct DotEffect : IBufferElementData
 - [x] compile 통과, `CcEffect` 를 만들면서 `CcKind.DoT` 를 넣는 **런타임 코드가 0건**(grep)
 - [x] EditMode `DotApplySystemTests` — `DotEffect` 기준으로 이관하고 **7/7 green 유지**
       (연속/이산 분기, 틱 수, 피해량이 이전과 동일)
-- [x] EditMode `DotEffectMergeTests`(신규, 5건) — 같은 flavor 는 병합(`remainingTime = max`, `tickTimer`
-      보존, 주기 환산) / **다른 flavor 는 슬롯 분리** / `None` 끼리는 병합
-- [ ] ~~PlayMode `DotCoexistenceTest`(신규)~~ **미작성** — 공존은 리그 프로브로 실측했고 EditMode
-      `DotEffectMergeTests` 가 슬롯 분리를 고정하지만, end-to-end 회귀 가드는 남기지 않았다.
-      원래 계획: — 출혈 도트가 도는 대상에 화염 도트를 얹고:
-      두 슬롯이 각자 `scalar`·`tickInterval` 로 동시에 틱 / 화염이 끊기면 화염만 만료되고 출혈은
-      자기 남은 지속을 마저 채움. **현행 코드에서 red 임을 먼저 확인**(검출력 증명)
+- [x] EditMode `DotEffectMergeTests`(신규, 6건) — 같은 키는 병합(`remainingTime = max`, `tickTimer`
+      보존, 주기 환산) / **키가 다르면 슬롯 분리** / 같은 element 라도 origin 이 다르면 분리 /
+      element 없는 `OnPlace` 끼리는 병합
+- [x] PlayMode `DotCoexistenceTest`(신규, `7093222e`) — 전용 큐 → `DotApplySystem` 드레인 → 틱 →
+      감쇠의 실제 사슬을 태운다. 출혈(Stack·Bleed) 위에 화염(Zone·Fire)을 얹어 두 슬롯이 각자
+      `scalar`·`tickInterval` 을 유지하고, 화염 갱신이 끊기면 **화염만** 만료되며 그 뒤에도 출혈이
+      자기 요율로 계속 도는지 단언한다 — "장판을 나가도 장판 요율로 탄다"는 과피해의 e2e 가드
 - [x] PlayMode 55 통과 / 13 실패 = HEAD 베이스라인과 동일(13건 전부 사전 실패)
 - [ ] ~~PlayMode 기존 스택·오라·CC 스위트~~ (특히 `BleedAuraOutlastsStackSlotTest` — unit 1
       전까지 오라 경로는 `CcEffect` 를 보므로, DoT 가 빠지면 **깨진다. 이 단위에서 같이 옮긴다**)

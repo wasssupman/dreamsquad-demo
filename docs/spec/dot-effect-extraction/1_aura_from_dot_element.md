@@ -2,7 +2,7 @@
 
 ## 목적
 
-상태 오라의 소스를 "bridge 가 스택 슬롯을 보고 추측"에서 "도트가 들고 있는 flavor"로 바꾼다.
+상태 오라의 소스를 "bridge 가 스택 슬롯을 보고 추측"에서 "도트가 들고 있는 `element`"로 바꾼다.
 추측이 사라지므로 래치·쿼리·매핑이 통째로 삭제되고, 결함 3건이 동시에 없어진다.
 
 | 결함 | 왜 사라지는가 |
@@ -22,7 +22,7 @@
 ## 구현
 
 스택 슬롯을 볼 이유가 사라졌으므로 `_stackSlotQuery` 를 버리고 `DotEffect` 버퍼를 가진 대상을
-순회한다. flavor 가 `None` 이 아닌 슬롯마다 `Ensure`.
+순회한다. `element` 가 `None` 이 아닌 슬롯마다 `Ensure`.
 
 ```
 for each entity with DotEffect buffer:
@@ -37,8 +37,9 @@ for each entity with DotEffect buffer:
 **꺼짐 처리를 따로 쓰지 않는다** — 도트가 끝나면 자동으로 사라진다. 래치가 하던 "언제 지울까"
 문제가 통째로 없어지는 지점이다.
 
-unit 0 이 이미 슬롯을 flavor 별로 분리했으므로, 한 대상에 출혈·화염이 같이 걸리면 **오라도 자연히
-둘 다 뜬다.** 비트마스크 같은 별도 장치가 필요 없다.
+unit 0 이 이미 슬롯을 `(origin, element)` 별로 분리했으므로, 한 대상에 출혈·화염이 같이 걸리면
+**오라도 자연히 둘 다 뜬다.** 비트마스크 같은 별도 장치가 필요 없다. 반대로 여러 origin 이 같은
+element 를 만들면 오라는 **하나로 접힌다** — 장판 화염이든 스택 폭발 화염이든 그림은 같아야 한다.
 
 ⚠ 얼음은 `ApplyDot` 임계가 없어 뜨지 않는다 — 의도된 결과(README "알려진 결정").
 
@@ -46,14 +47,17 @@ unit 0 이 이미 슬롯을 flavor 별로 분리했으므로, 한 대상에 출�
 
 - [x] `_stackAuraLatch` · `_stackAuraLatchDead` · `StackAuraFxKinds` · `StackAuraKind` ·
       `_stackSlotQuery` 가 코드에서 사라짐 (grep 0건)
-- [x] `BleedAuraOutlastsStackSlotTest` 를 폐기하고 `DotAuraFromFlavorTest` 로 대체. 관측 대상이
+- [x] `BleedAuraOutlastsStackSlotTest` 를 폐기하고 `DotAuraFromElementTest` 로 대체. 관측 대상이
       private 딕셔너리가 아니라 **`StatusFxSpawner._active`(실제 스폰 결과)** 다(1차 리뷰 지적 반영).
       뷰가 필요하므로 합성 더미 대신 **배치된 실제 유닛**을 피해자로 쓴다
 - [x] **stale 회귀 테스트**: 냉기 도트를 얹고 그것만 만료시킨 뒤, 출혈 도트가 계속 도는 구간에서
-      `IceStack` 오라가 **꺼져 있음**을 단언 (`00a65045` 의 OR 마스크에서는 영영 안 꺼졌다)
+      `StatusFxKind.Ice` 오라가 **꺼져 있음**을 단언 (`00a65045` 의 OR 마스크에서는 영영 안 꺼졌다)
 - [x] **동시 오라 테스트**: 출혈 + 냉기 도트가 같이 도는 대상에 오라 2개가 뜬다 — unit 0 이 슬롯을
       갈라놔서 별도 장치 없이 성립
-- [x] 리그 PlayMode 55 통과 / 13 실패 = 베이스라인 동일. EditMode 1577 통과.
-      (신규 테스트는 단독 실행 green — 배치 실행에서는 DOTween 로그 아티팩트로 실패하는데,
-      폐기한 `BleedAuraOutlastsStackSlotTest` 도 베이스라인에서 같은 이유로 실패했다)
+- [x] 리그 PlayMode 실패 건수 = clean HEAD 베이스라인 동일. EditMode green.
+- [x] 배치 실행 실패 해소(`7093222e`) — 원인은 로그 관용 누락이었다. batchmode 에서 Entities
+      Graphics 의 asset GC(`EntitiesGraphicsSystem.cs:717`)와 PrimeTween 이 이 테스트와 무관한
+      에러 로그를 뱉는데, 기본 설정은 그것만으로 실패 처리한다. 배틀 씬 PlayMode 테스트의
+      프로젝트 관례(`LogAssert.ignoreFailingMessages`, 기존 27개 파일)를 적용해 통과로 전환.
+      **어설션은 그 전에도 통과하고 있었다**
 - [ ] Play 확인: 난도질꾼이 문 적에 출혈 오라만 / 화염 장판 위 적에 화염 오라 / 얼음 오라 없음
