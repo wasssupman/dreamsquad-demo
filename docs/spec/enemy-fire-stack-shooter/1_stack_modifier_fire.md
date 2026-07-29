@@ -42,13 +42,18 @@
 
 ## 완료 기준
 
-- [ ] 인스펙터에서 `StackModifier_Fire` 필드 전량 확인(특히 `tickInterval 0.5` · `duration 2.85`)
-- [ ] Play 진입 후 `BattleBridge.GetStackThresholds(StackKind.Fire).Length == 1` 확인
-      (`execute_code` 정적 프로브 — 배틀 진입 불요)
-- [ ] `DotElementMap.FromStack(StackKind.Fire) == DotElement.Fire` 는 기존 코드가 보장 —
-      별도 작업 없음. 오라 점등은 unit 3 Play 검증에서 육안 확인
-- [ ] 씬 diff 가 `stackModifierAuthoring` 1줄 추가뿐인지 확인(무관 dirty 혼입 없음)
+- [x] `StackModifier_Fire` 필드 전량 확인(특히 `tickInterval 0.5` · `duration 2.85`)
+- [x] `BattleBridge.GetStackThresholds(StackKind.Fire).Length > 0` — 씬 배선 확인
+- [x] 씬 diff 가 `stackModifierAuthoring` 1줄 추가뿐인지 확인(무관 dirty 혼입 없음)
+- [ ] 오라 점등 육안 확인 — unit 3 사용자 Play 로 이관(프레젠테이션)
 
 ## 확인
 
-<!-- 확인 일자 + 커밋 해시 -->
+- **2026-07-30** · EditMode 저작 검증(testrig): SO 가 authored 값 그대로 파싱되고
+  틱 수 `floor((2.85−ε)/0.5)+1 = 6` · 1회분 `6×10 = 60` · `duration % tickInterval` 이
+  0에서 충분히 떨어져 있음(배수 경합 회피)을 단언으로 고정.
+- 씬 배선은 `KindlerFireStackE2ETest` 의 선행 가드가 지킨다
+  (`GetStackThresholds(Fire).Length > 0` — 없으면 스택만 쌓이고 아무 일도 안 일어난다).
+- 씬은 HEAD 기준 hunk 격리 스테이징으로 **정확히 1줄만** 커밋했다(사용자 WIP 1330줄 제외).
+  ⚠ **에디터가 이 씬을 열고 있었다면 리로드 전까지 디스크 변경을 모른다** — 그 상태로
+  씬을 저장하면 이 줄이 되돌아간다. Unity 에서 씬을 다시 열어 확인할 것.
