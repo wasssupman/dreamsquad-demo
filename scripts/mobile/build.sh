@@ -1026,6 +1026,30 @@ plist_value() {
   /usr/libexec/PlistBuddy -c "Print :$2" "$1" 2>/dev/null
 }
 
+verify_landscape_orientation_array() {
+  local plist_path="$1"
+  local key="$2"
+  local first
+  local second
+  local third
+
+  first="$(plist_value "$plist_path" "$key:0" || true)"
+  second="$(plist_value "$plist_path" "$key:1" || true)"
+  third="$(plist_value "$plist_path" "$key:2" || true)"
+
+  [ -z "$third" ] ||
+    fail "IPA $key contains an unsupported extra orientation."
+  if ! {
+    [ "$first" = "UIInterfaceOrientationLandscapeLeft" ] &&
+      [ "$second" = "UIInterfaceOrientationLandscapeRight" ]
+  } && ! {
+    [ "$first" = "UIInterfaceOrientationLandscapeRight" ] &&
+      [ "$second" = "UIInterfaceOrientationLandscapeLeft" ]
+  }; then
+    fail "IPA $key must contain exactly both landscape orientations."
+  fi
+}
+
 decode_profile() {
   /usr/bin/security cms -D -i "$1" > "$2" 2>/dev/null
 }
@@ -1562,6 +1586,12 @@ verify_ios_ipa() {
     fail "IPA short version verification failed."
   [ "$bundle_version" = "$BUILD_NUMBER" ] ||
     fail "IPA build number verification failed."
+  verify_landscape_orientation_array \
+    "$info_plist" \
+    "UISupportedInterfaceOrientations"
+  verify_landscape_orientation_array \
+    "$info_plist" \
+    "UISupportedInterfaceOrientations~ipad"
 
   codesign_details="$(codesign -dv --verbose=4 "$app_path" 2>&1)" ||
     fail "Could not inspect IPA signing metadata."
@@ -1592,8 +1622,9 @@ verify_ios_ipa() {
     printf 'sha256=%s\n' "$checksum"
     printf 'codesignVerified=true\n'
     printf 'adHocProfileVerified=true\n'
+    printf 'landscapeOrientationVerified=true\n'
   } > "$summary"
-  info "iOS IPA verified (bundle, version, code signature, Ad Hoc profile)."
+  info "iOS IPA verified (bundle, version, landscape orientation, code signature, Ad Hoc profile)."
   info "iOS SHA-256: $checksum"
 }
 
