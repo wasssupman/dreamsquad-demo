@@ -41,13 +41,37 @@ Trail `m_Autodestruct: 0` 이라 `projectile-ga-reskin` 이 밟았던 풀 재사
 | `flightMode` | `Homing` | **명시 저작** — 기본값 의존 금지(`Projectile_Shuriken_GA` 선례가 후속 후보로 남아 있다) |
 | `speed` | 7 | 회피 불가하되 날아오는 게 보이는 속도 |
 | `hitThreshold` | 0.4 | |
-| `visualScale` | 0.35 | 원본 루트가 scale 2 로 저작돼 있어 그대로 쓰면 크다 |
+| `visualScale` | **1.4** | 실측 후 확정 — 아래 "크기 실측" 참조 |
 | `visualHeightOffset` | 0.3 | 타일에 깔리는 것 방지 |
 | `facing` | `AlongVelocity` | |
 | `preserveVfxColors` | `true` | 벤더 색 완성본 — recolor 우회 |
 | `projectilePrefab` / `hitPrefab` / `castPrefab` | 위 복제본 3종 | |
-| `hitVfxLifetime` | 1.0 | |
+| `hitVfxLifetime` / `hitVfxScale` | 1.0 / **0.55** | 히트 최대변 ≈ 1.45(약 1.5타일). 1.0 이면 2.6타일로 단일 대상 타격치고 과하다 |
 | `onHitEffect` | `None` | 스플래시 없음(단일 대상) |
+
+### 크기 실측 (2026-07-30, 오프스크린)
+
+이 투사체는 **메시 기반**이라(대부분의 기존 투사체는 파티클 전용) `visualScale` 이 월드 크기로
+거의 선형 변환된다 — 배율 ÷ 2.9 ≈ 월드 최대변. 타일 1칸 = 1.0 기준 실측:
+
+| `visualScale` | 월드 최대변 | 판정 |
+|---|---|---|
+| 0.35 (초안) | 0.12 | 타일의 12% — **점으로 보인다** |
+| 0.9 | 0.31 | 작음 |
+| **1.4** | **0.49** | 반 타일. 메시형 선례 `Projectile_Bomb`(0.50) 과 동급 ✅ |
+| 2.0 | 0.69 | 잡몹 투사체치고 큼 |
+
+⚠ **크기 판정에 파티클/트레일 bounds 를 섞지 말 것.** `Renderer.bounds` 를 전부 합치면
+트레일은 world-space 라 원점을 끌어들이고(측정값 6000+), 파티클 전용 프리팹은 0 이 나온다.
+`MeshRenderer` 만 세고 첫 렌더러에서 bounds 를 시작해야 숫자가 의미를 갖는다.
+
+### ⚠ 벤더 히트/캐스트 프리팹은 **루트가 비활성**으로 배포된다
+
+`FireballHit_View` · `FireballCast_View` 의 루트 `activeSelf = false` 다(자식은 활성).
+조립본의 `ProjectileVfx` 가 런타임에 켜주던 구조라, 그 스크립트 없이 그냥 Instantiate 하면
+**통째로 안 보인다.** 우리 경로는 `ProjectileViewPool.PlayHit/PlayCast` 가 `SetActive(true)`
+를 호출하므로 정상 동작한다 — 다른 경로에서 이 프리팹을 직접 쓰려면 반드시 켜야 한다.
+(오프스크린 프로브도 처음엔 이걸 안 켜서 빈 화면이 나왔다.)
 
 ⚠ **크기·회전은 코드 추측이 아니라 SO knob 으로 맞춘다.** 벤더 VFX 를 이 게임 보드에 얹을
 때 상습 함정이 셋이다 — 비활성 그룹 / 정렬 대역 / **바닥 평면 불일치**(이 게임 바닥 = 월드
@@ -61,9 +85,12 @@ XY, 벤더 = XZ). 조립본 루트에 `m_LocalEulerAnglesHint: {x: -90}` 이 박
       **벤더 경로를 하나도 참조하지 않는다**
 - [x] 복제본에 `ProjectileVfx` / `Rigidbody` / `Collider` 가 **없다**
 - [x] `flightMode` 가 `Homing` 으로 **명시 저작**돼 있다(기본값 의존 아님)
+- [x] **크기** — 오프스크린 실측으로 확정(위 표). 투사체 0.49 · 히트 1.45(타일 1.0 기준)
+- [x] **히트/캐스트가 실제로 그려진다** — 루트 활성화 후 파티클 렌더 확인
 - [ ] **육안 확인 — 사용자 Play 대기**: ① 몸체가 진행 방향으로 서는가 ② 트레일이 남는가
-      ③ 보드에 눕거나 묻히지 않는가 ④ 크기가 유닛 대비 과하지 않은가
-      ⑤ 연속 발사 시 트레일 소실·순간이동 streak 없음 ⑥ 착탄 `FireballHit` / 발사 `FireballCast`
+      ③ 보드에 눕거나 묻히지 않는가 ④ 연속 발사 시 트레일 소실·순간이동 streak 없음
+      ⑤ **히트 VFX 가 어두운 연기 위주라 밝은 보드에서 검은 얼룩처럼 보이지 않는가**
+      (오프스크린은 어두운 배경이라 이 판정에 관대하다)
 
 ## 확인
 

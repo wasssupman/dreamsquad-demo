@@ -15,7 +15,7 @@ MonoBehaviour:
   id: enemy_fireball
   speed: 7
   hitThreshold: 0.4
-  visualScale: 0.35
+  visualScale: 1.4
   visualHeightOffset: 0.3
   projectilePrefab: {fileID: 6487987637173855206, guid: 1b50ad197c844b0a93ba5f742bb9e3cd, type: 3}
   hitPrefab: {fileID: 3911334593277181048, guid: 57a9bd4551de4b76bdfd3e17b8bb4b2d, type: 3}
@@ -30,7 +30,7 @@ MonoBehaviour:
   textureVariants: []
   selectMode: 0
   hitVfxLifetime: 1
-  hitVfxScale: 1
+  hitVfxScale: 0.55
   castPrefab: {fileID: 8184599392683462342, guid: de21c7267b0f42339ba801f023a57290, type: 3}
   castVfxLifetime: 1
   onHitEffect: 0
