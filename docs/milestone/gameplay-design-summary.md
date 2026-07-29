@@ -1,5 +1,7 @@
 # Defense Tournament — 인게임 기획 현황 요약
 
+> **역사 보존 배너 — 2026-05-08 snapshot.** 이 문서는 당시의 draft·flow·수치를 보존하며 현재 구현의 진실원이 아니다. 2026-07-29 기준 실제 흐름은 [`production-transition/demo-baseline.md`](../production-transition/demo-baseline.md)를 우선한다.
+>
 > 작성일: 2026-05-08  
 > 기준: PRD + 전체 spec 문서 + 실제 코드/asset 직접 확인  
 > 목적: 인게임 상세 기획서 작성의 토대  

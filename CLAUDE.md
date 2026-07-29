@@ -77,6 +77,7 @@
 | 상황 | 읽을 문서 |
 |---|---|
 | "이 기능을 왜 만드나?" | `docs/PRD.md` — 검증 가설, 운영 원칙 |
+| "데모 경험을 정규 프로젝트 PRD·ADR로 옮기려면?" | [`docs/production-transition/README.md`](docs/production-transition/README.md) — 기준선, 제품 학습, 아키텍처 이전 판정, 검증 백로그. **현재 데모 구현을 변경하는 명세가 아님** |
 | "어떤 기술 제약이 있나?" | `docs/TRD.md` — ECS 경계, 맥락 분리, 추상화 규칙, 금지 패턴 |
 | "feature 구현 상세는?" | `docs/spec/{feature-slug}/` — 분산 스펙 (README + 0~N 작업 단위). 하단 "문서화 구조" 참조 |
 | "다음에 뭐 할까 / 후속 후보는?" | `docs/spec/README.md` 하단 **Follow-up Backlog** 섹션 — 종료된 spec 에서 이관된 후보. 새 spec 시작 전에 먼저 확인 |
