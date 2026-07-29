@@ -593,6 +593,7 @@ namespace Wassup.Bridge
             DestroyEntitiesByType<Wassup.Battle.Combat.CastEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Combat.DcTriggerFiredEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Combat.KnockupVisualEventsSingleton>();
+            DestroyEntitiesByType<Wassup.Battle.Combat.BossLeapVisualEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Combat.ThreatHitEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Movement.BlinkRequestEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.ObstacleSingleton>();
@@ -619,6 +620,8 @@ namespace Wassup.Bridge
             if (_castEventQueue.IsCreated) _castEventQueue.Dispose();
             if (_dcTriggerFiredQueue.IsCreated) _dcTriggerFiredQueue.Dispose();
             if (_knockupVisualQueue.IsCreated) _knockupVisualQueue.Dispose();
+            DisposeBossLeapChannel();
+            AbortAllBossLeaps(); // 공중에 뷰가 멈춘 채 남는 것 방지
             if (_threatHitEventQueue.IsCreated) _threatHitEventQueue.Dispose();
             if (_blinkRequestQueue.IsCreated) _blinkRequestQueue.Dispose();
             if (_healAppliedEventQueue.IsCreated) _healAppliedEventQueue.Dispose();
@@ -1376,6 +1379,7 @@ namespace Wassup.Bridge
             _knockupVisualQueue = new NativeQueue<Wassup.Battle.Combat.KnockupVisualEvent>(Allocator.Persistent);
             var knockupVisualSingleton = _em.CreateEntity();
             _em.AddComponentData(knockupVisualSingleton, new Wassup.Battle.Combat.KnockupVisualEventsSingleton { queue = _knockupVisualQueue });
+            CreateBossLeapChannel(); // boss-jjangssen unit 6 (상태·코루틴은 BattleBridge.BossLeap.cs)
 
             // beam unit 1 — 매치 경계에서 빔 세션을 전부 끊는다. 브리지는 매치 간 살아남으므로
             // (이 함수가 큐를 재생성하는 것이 그 증거) 안 끊으면 이전 매치 엔티티를 키로 든
@@ -2260,6 +2264,7 @@ namespace Wassup.Bridge
                     _beamViewResolver);
             }
             DrainProjectileHitEvents();
+            DrainBossLeapVisualEvents(); // boss-jjangssen unit 6 — 도약 아치 비행 시작
             DrainHealAppliedEvents();
             DrainShieldGrantedEvents();
             DrainDamageNumberEvents();
@@ -2559,6 +2564,10 @@ namespace Wassup.Bridge
 
                             var p = _em.GetComponentData<LocalTransform>(entity).Position;
                             var world = new Vector3(p.x, p.y, p.z);
+                            // boss-jjangssen unit 6 — 도약 비행 중이면 뷰는 아치를 따른다(sim 은 이미
+                            // 착지 셀). Spine/Quad 분기보다 앞이라 한 곳으로 둘 다 적용된다.
+                            if (TryGetEnemyViewOverride(entity, out var leapView))
+                                world = new Vector3(leapView.x, leapView.y, leapView.z);
                             // unit-health-display unit 1 — 적 저체력 틴트. HP read-only 평가는
                             // BattleBridge 소관(ECS 창구), 뷰는 Color 만 받아 적용.
                             Color tint = unifiedOverhead ? Color.white : EvaluateEnemyHealthTint(entity);

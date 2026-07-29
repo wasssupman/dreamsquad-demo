@@ -59,7 +59,8 @@ mechanics 를 비우는 것이 목적이라, 첫 mechanic 이 들어오는 unit 
    막아야** 한다(unit 3 — 안 막으면 보스가 떠오르는데 스턴은 안 걸리는 desync).
 7. **면역은 부착/부여 시점 차단.** 어그로는 `Aggroed` 의 유일한 writer 1곳(소비 지점 6곳 대비),
    CC 는 부여 2곳. `AggroCapacity` 회계 · `CcClearRequestsSingleton` · FSM 전이는 **무변경**.
-8. **신규 ECS 채널 0, 신규 맥락 0, 신규 시스템 0.** 기존 큐·arm·시스템만 확장한다.
+8. **신규 맥락 0, 신규 시스템 0.** units 0~4 는 신규 채널도 0이었고, **unit 6 이 프레젠테이션 전용
+   채널 1개**(`BossLeapVisualEventsSingleton`, Combat→Bridge)를 추가한다 — sim 로직·맥락 경계는 불변.
 9. **`maxHpRef` 는 스폰 시점 스냅샷이다.** 적에게 `MaxHealthMul` 을 거는 기믹/카드가 생기면 경계 4회
    보장이 깨진다(`BountyMark` 가 이미 적에게 `DmgTakenMul` 을 걸고 있어 문턱이 낮다).
 10. **하드코딩 금지 준수** — 스탯·반경·경계 비율·데미지는 전부 SO(`AttackUnitData` / `ProjectileData`)에서.

@@ -72,8 +72,11 @@ namespace Wassup.Battle.Combat
 
             // rev 3 (실플레이 피드백) — blink 연출: 출발/도착 퍼프를 기존 hit-VFX
             // 채널(Combat→Presentation)로 재생. 슬롯에 베이크된 퍼프 dataIndex 사용.
-            bool hasHitQ = SystemAPI.TryGetSingletonRW<Projectile.ProjectileHitEventsSingleton>(out var hitRW);
-            NativeQueue<Projectile.ProjectileHitEvent> hitQueue = hasHitQ ? hitRW.ValueRW.queue : default;
+            // boss-jjangssen unit 6 — 퍼프는 이 시스템이 직접 쏘지 않는다. 비행 연출이 생기면서
+            // 착지 퍼프가 뷰 도착보다 먼저 터지는 desync 가 되므로, 출발/착지 재생을 브리지의
+            // 비행 코루틴이 소유한다. 여기서는 "언제·어디서·어디로" 만 신호한다.
+            bool hasLeapQ = SystemAPI.TryGetSingletonRW<BossLeapVisualEventsSingleton>(out var leapRW);
+            NativeQueue<BossLeapVisualEvent> leapQueue = hasLeapQ ? leapRW.ValueRW.queue : default;
 
             // Fallback pool = living defenders (SelfBlink 목적지 폴백 전용). 디펜더-only
             // 판(last_stand 만 있고 blink 슬롯 없음)에서 매 프레임 쿼리+2배열 할당을 피하려
@@ -150,24 +153,17 @@ namespace Wassup.Battle.Combat
                                      defCells, in ff, out float3 destWorld))
                             {
                                 blinkRW.ValueRW.queue.Enqueue(new BlinkRequestEvent { entity = entity, destWorld = destWorld });
-                                // 출발지 + 도착지 퍼프 (dataIndex < 0 = 무연출 blink).
-                                if (hasHitQ && slot.projectileDataIndex >= 0)
-                                {
-                                    hitQueue.Enqueue(new Projectile.ProjectileHitEvent
+                                // sim 은 이번 프레임에 destWorld 로 텔레포트한다. 뷰는 브리지가
+                                // fromWorld → toWorld 아치로 날리고, 퍼프도 브리지가 비행
+                                // 시작/종료에 맞춰 재생한다(dataIndex < 0 = 무연출).
+                                if (hasLeapQ)
+                                    leapQueue.Enqueue(new BossLeapVisualEvent
                                     {
-                                        position = transform.ValueRO.Position,
+                                        entity = entity,
+                                        fromWorld = transform.ValueRO.Position,
+                                        toWorld = destWorld,
                                         dataIndex = slot.projectileDataIndex,
-                                        payload = Projectile.PayloadKind.SingleSplash,
-                                        source = entity,
                                     });
-                                    hitQueue.Enqueue(new Projectile.ProjectileHitEvent
-                                    {
-                                        position = destWorld,
-                                        dataIndex = slot.projectileDataIndex,
-                                        payload = Projectile.PayloadKind.SingleSplash,
-                                        source = entity,
-                                    });
-                                }
                             }
                             // 목적지 실패(방어유닛 전멸/링 상한 초과) = skip — k 는
                             // 이미 전진(발동 소모 유지, 재발동 없음).
