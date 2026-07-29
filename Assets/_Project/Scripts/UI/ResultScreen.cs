@@ -204,29 +204,59 @@ namespace Wassup.UI
             }
             else SetStatRows(null);
 
-            var rows = BuildPendingRows(playerScore);
+            // A ranking that landed while we were closed (the response usually beats
+            // the ~4s tally sequence) was held by UpdateLeaderboard — consume it so
+            // the popup opens already on the real rows: no pending flash, no
+            // same-frame double render. Empty responses fall back to the pending
+            // list, same rule as the live-update path.
+            List<LeaderboardList.Row> rows = null;
+            if (_heldRanking != null)
+            {
+                var held = LeaderboardList.BuildRows(_heldRanking.entries, _heldRanking.maxEntryCount, _heldOwnUserId);
+                if (held.Count > 0) rows = held;
+                _heldRanking = null;
+                _heldOwnUserId = null;
+            }
+            if (rows == null) rows = BuildPendingRows(playerScore);
             RenderRows(rows);
             UpdateCaption(rows);
             gameObject.SetActive(true);
         }
 
-        public void Hide() => gameObject.SetActive(false);
+        public void Hide()
+        {
+            _heldRanking = null;
+            _heldOwnUserId = null;
+            gameObject.SetActive(false);
+        }
 
         // No teardown first: the scene unloads wholesale. (MenuPopup.OnExit releases a
         // pause lease before leaving; the result screen holds none.)
         private void OnLobbyClicked() => SceneTransition.Go(SceneNames.Outgame);
 
+        // A ranking that arrived while the popup was closed (tally still playing).
+        // Consumed by the next ShowResult, cleared by Hide().
+        private TournamentApi.ResultData _heldRanking;
+        private string _heldOwnUserId;
+
         // tournament-play-report Unit 4 — swap the pending leaderboard for the real
-        // tournament ranking once it arrives (popup shows the pending list first;
-        // guests / fetch failures simply never get here). A response landing after
-        // the popup closed (e.g. instant RESTART) is dropped. A response landing
-        // BEFORE the popup opens (ranking usually beats the ~4s tally sequence) is
-        // also dropped here — BattleBridge holds it and re-invokes this right after
-        // ShowResult, so the popup opens with the real ranking already applied.
+        // tournament ranking once it arrives (guests / fetch failures simply never
+        // get here). The popup usually isn't open yet — the response tends to beat
+        // the ~4s tally sequence — so while closed the ranking is HELD, and the next
+        // ShowResult opens directly on it. A held value can't leak across matches:
+        // RESTART bumps the reporter epoch (an in-flight response is dropped before
+        // reaching us — TournamentMatchReporter's single stale-response rule) and
+        // Hide() clears the hold.
         public void UpdateLeaderboard(TournamentApi.ResultData data, string ownUserId)
         {
-            if (!gameObject.activeSelf) return;
-            if (data == null || _listContent == null) return;
+            if (data == null) return;
+            if (!gameObject.activeSelf)
+            {
+                _heldRanking = data;
+                _heldOwnUserId = ownUserId;
+                return;
+            }
+            if (_listContent == null) return;
 
             var rows = LeaderboardList.BuildRows(data.entries, data.maxEntryCount, ownUserId);
             if (rows.Count == 0) return; // nothing meaningful to draw — keep the pending list

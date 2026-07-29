@@ -21,15 +21,20 @@ Tally 연출이 unit 4(tournament-play-report) **이후에** 끼면서 생긴 �
 
 ## 구현
 
-1. **랭킹 보관 후 재적용 (BattleBridge)**: `_arrivedRanking` 필드 신설.
-   `ReportMatchResult` 의 onRanking 이 응답을 보관하고 기존처럼 `UpdateLeaderboard`
-   도 호출한다(팝업이 이미 열려 있으면 그 자리에서 적용). `FinishTally` 가
-   `ShowVictory/ShowDefeat` 로 팝업을 연 **직후** 보관값이 있으면 재적용한다.
-   - stale 차단: `ReportMatchResult` 진입 시마다 `_arrivedRanking = null`.
-     complete 왕복은 API 타임아웃 10초 안에 끝나므로 직전 판 응답이 다음 판
-     `FinishTally` 까지 살아남을 수 없다.
-   - `UpdateLeaderboard` 의 `!activeSelf` 가드는 유지 — "팝업 닫힌 뒤"(즉시
-     RESTART) 드랍 역할은 그대로 필요하다 (README 패리티 3).
+1. **닫힌 동안 도착한 랭킹은 ResultScreen 이 보관 후 오픈 시 소비** (rev 2026-07-29
+   리팩토링 — 최초 구현은 BattleBridge `_arrivedRanking` 보관 + FinishTally 재적용
+   이었는데, 4각 리뷰 수렴으로 팝업 자신의 불변식으로 이동):
+   - `UpdateLeaderboard`: `!activeSelf` 면 드랍 대신 `(_heldRanking, _heldOwnUserId)`
+     에 보관하고 반환.
+   - `ShowResult`(모든 Show* 오버로드의 단일 관문): 보관값이 있으면 pending 대신
+     실랭킹 행으로 **바로 연다**(소비 후 클리어) — pending 플래시/같은 프레임 이중
+     렌더 없음. 빈 응답(행 0개)은 pending 폴백.
+   - `Hide()`: 보관값 클리어.
+   - BattleBridge 는 픽스 이전의 fire-and-forget 콜백 한 줄로 복귀(특수 케이스 0).
+   - stale 차단은 **reporter 의 기존 epoch 불변식이 담당**: RESTART 는
+     `OnRestartRequested → TournamentMatchReporter.BeginMatch()`(epoch++) 라 비행 중
+     응답이 `UpdateLeaderboard` 에 도달 자체를 못 한다(`:205`, `:217` 가드). 남는
+     창은 Hide() 클리어가 덮는다. 타이밍 논증(10초 타임아웃)에 기대지 않는다.
 2. **pending 칸수 5 통일 (ResultScreen)**: `TerminalPendingSlots`/`AwaitingPendingSlots`
    와 `UserSession.HasAccount` 분기를 제거하고 `PendingSlots = 5` 단일 상수로.
    unit 1 의 "로그인 대기 = 10칸" 계약을 **대체**한다 (사용자 결정 2026-07-29:
