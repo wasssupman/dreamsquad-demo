@@ -32,8 +32,25 @@
 | `projectile` | `Projectile_Enemy_Fireball` | unit 2 |
 | `outputs[0]` | `Damage` 5 | |
 | `outputs[1]` | `ApplyStack` · `stackKind Fire(1)` · `magnitude 1` · `duration 3.0` · `stackMaxStack 5` | 계약 4 — SO 와 양쪽 명시 |
-| Spine | 기존 적 스켈레톤 + 파츠/슬롯 색 placeholder | 화염 계열 색(주황~적) |
+| Spine | 기존 적 스켈레톤 공유 + **풀페이스 레이싱 헬멧**(`helmet/helmet_c_39`) · 검정 탱크(`top/top_c_35`) · 화염 주황 피부 | 아래 "외형" 참조 |
 | `awakeningReward` / `killScore` | 2 / 100 | |
+
+### 외형 — 얼굴을 가려 실루엣으로 구분한다
+
+기존 적 8종은 전부 **같은 실루엣**(`bottom`/`brow`/`eyes`/`hair_short`/`mouth`/`skin`)에 인덱스와
+슬롯 색만 다르다. 킨들러도 초판은 Needler 조합을 그대로 복사해 "보라색 대신 주황색 Needler"
+였다. **풀페이스 레이싱 헬멧을 씌워 전 적 중 유일하게 얼굴이 가려진 실루엣**으로 만든다 —
+원거리에서 먼저 눈에 띄어야 하는 유닛이므로 색이 아니라 형태로 구분되어야 한다.
+
+- `helmet/helmet_c_39`(풀페이스) · `top/top_c_35`(검정 탱크) · `bottom/bottom_c_18`
+- 슬롯 색 3계열: 피부 주황 `(0.88, 0.34, 0.10)` · 헬멧 `(0.95, 0.52, 0.14)` ·
+  의복 차콜 `(0.26, 0.22, 0.24)`
+- ⚠ **슬롯 틴트는 텍스처에 곱해진다** — 원본이 다색이면 완전 재색칠이 안 된다(헬멧의 녹색 띠가
+  올리브로 남는다). 단색 아트(안전모 등)만 깔끔하게 물든다.
+- ⚠ `eye` 슬롯은 애니메이션이 rgba 를 키잉해 첫 프레임에 틴트가 덮인다 — 틴트 대상에서 제외
+  (기존 계약).
+- 부품 라이브러리는 **캐주얼 현대물**(교복·스포츠 유니폼·헬멧)이라 로브/마법사 모자는 없다.
+  판타지 캐스터 외형을 원하면 아트 신규 제작이 필요하다.
 
 **등장 게이트(`minWaveNumber`)** — `WavePatternGenerator.ResolveWaveEligibleIndex` 가 소비한다.
 뽑힌 인덱스의 유닛이 그 웨이브에 등장 불가면 **rng 를 건드리지 않고** 풀 순서로 다음 허용
