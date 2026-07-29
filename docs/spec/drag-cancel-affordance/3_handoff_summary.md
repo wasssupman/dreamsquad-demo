@@ -3,7 +3,7 @@
 ## Commit
 
 - `c377b60f` feat(drag-cancel-affordance): units 0~2 — 배치/카드 드래그 취소 수단
-- (unit 2 철회 커밋) revert(drag-cancel-affordance): unit 2 철회 — ESC/뒤로가기 하드 취소 제거
+- `ec5e9c05` revert(drag-cancel-affordance): unit 2 철회 — ESC/뒤로가기 하드 취소 제거
 
 ## Implemented
 
