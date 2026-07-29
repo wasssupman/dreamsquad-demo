@@ -23,7 +23,7 @@
 | 1 | 데이터 | `1_boss_asset.md` | `Enemy_Boss_Jjangssen.asset` + AOE `ProjectileData` + `EnemyCatalog` 등록 |
 | 2 | 브리지 | `2_vibration_armor.md` | bake 에 `SelfTileAoe` 추가 + 진영 도출 + `mechanic[0]` |
 | 3 | 시뮬 | `3_boss_immunity.md` | 보스 어그로 면역 + 직접 행동정지·넉백 면역(`EnemyCcEvent` 출처 필드) |
-| 4 | 시뮬 | `4_density_blink.md` | 밀집도 착지 순수함수 + 정책 교체 + `DeadTag` 가드 + `mechanic[1]` |
+| 4 | 시뮬 | `4_density_blink.md` | 밀집도 착지 순수함수 + 정책 교체 + `DeadTag` 가드 + `mechanic[1..2]`(50%·10%) |
 | 5 | 인계 | `5_handoff_summary.md` | 커밋·검증·되돌리면 안 되는 것·Play 잔여 항목 |
 
 **순서 근거**: 0 은 asset 없이 빈 pool 폴백으로 **기존 7덱 무회귀를 먼저 증명**한다.
