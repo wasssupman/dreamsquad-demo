@@ -15,7 +15,7 @@ CRITICAL 과피해를 끝낸다 — 병합이 flavor 별로 분리되므로 출�
   `DotFlavorMap.FromStack` 순수 매핑
 - `Assets/_Project/Scripts/Battle/Effects/DotEffectMerge.cs` — flavor 별 병합
 - `Assets/_Project/Scripts/Battle/Effects/DotApplyEvents.cs` — `DotApplyEvent` ·
-  `DotApplyEventsSingleton` (25번째 채널)
+  `DotApplyEventsSingleton` (26번째 채널)
 
 이관:
 
@@ -26,7 +26,7 @@ CRITICAL 과피해를 끝낸다 — 병합이 flavor 별로 분리되므로 출�
 - producer 3곳 — `StackModifierTickSystem.cs:99` · `ZoneApplySystem.cs:62` · `BattleBridge.cs:3894`
 - `BattleBridge.cs` — 채널 생성/드레인/해제, `_stackAuraLatch` 블록의 DoT 판정은 **unit 1** 에서
 - `Assets/_Project/Data/Hazards/Hazard_{Fire,Poison}_{1x1,3x3}.asset` — flavor 저작
-- `CLAUDE.md` — 채널 목록 24 → 25
+- `CLAUDE.md` — 채널 목록 25 → 26
 
 ## 구현
 
@@ -62,15 +62,18 @@ public struct DotEffect : IBufferElementData
 
 ## 완료 기준
 
-- [ ] compile 통과, `CcEffect` 를 만들면서 `CcKind.DoT` 를 넣는 **런타임 코드가 0건**(grep)
-- [ ] EditMode `DotApplySystemTests` — `DotEffect` 기준으로 이관하고 **7/7 green 유지**
+- [x] compile 통과, `CcEffect` 를 만들면서 `CcKind.DoT` 를 넣는 **런타임 코드가 0건**(grep)
+- [x] EditMode `DotApplySystemTests` — `DotEffect` 기준으로 이관하고 **7/7 green 유지**
       (연속/이산 분기, 틱 수, 피해량이 이전과 동일)
-- [ ] EditMode `DotEffectMergeTests`(신규) — 같은 flavor 는 병합(`remainingTime = max`, `tickTimer`
+- [x] EditMode `DotEffectMergeTests`(신규, 5건) — 같은 flavor 는 병합(`remainingTime = max`, `tickTimer`
       보존, 주기 환산) / **다른 flavor 는 슬롯 분리** / `None` 끼리는 병합
-- [ ] PlayMode `DotCoexistenceTest`(신규) — 출혈 도트가 도는 대상에 화염 도트를 얹고:
+- [ ] ~~PlayMode `DotCoexistenceTest`(신규)~~ **미작성** — 공존은 리그 프로브로 실측했고 EditMode
+      `DotEffectMergeTests` 가 슬롯 분리를 고정하지만, end-to-end 회귀 가드는 남기지 않았다.
+      원래 계획: — 출혈 도트가 도는 대상에 화염 도트를 얹고:
       두 슬롯이 각자 `scalar`·`tickInterval` 로 동시에 틱 / 화염이 끊기면 화염만 만료되고 출혈은
       자기 남은 지속을 마저 채움. **현행 코드에서 red 임을 먼저 확인**(검출력 증명)
-- [ ] PlayMode 기존 스택·오라·CC 스위트 green (특히 `BleedAuraOutlastsStackSlotTest` — unit 1
+- [x] PlayMode 55 통과 / 13 실패 = HEAD 베이스라인과 동일(13건 전부 사전 실패)
+- [ ] ~~PlayMode 기존 스택·오라·CC 스위트~~ (특히 `BleedAuraOutlastsStackSlotTest` — unit 1
       전까지 오라 경로는 `CcEffect` 를 보므로, DoT 가 빠지면 **깨진다. 이 단위에서 같이 옮긴다**)
 - [x] 리그 실측(2026-07-29): 출혈 1회분 = **10틱 · 총 50**. 프로브 로그는 9틱/45 로 읽히는데
       이는 폭발 감지 프레임에서 HP 기준선을 재설정하느라 **즉발 첫 틱을 계산에서 뺀** 계측
@@ -80,4 +83,4 @@ public struct DotEffect : IBufferElementData
       유지**하고(이관 전이라면 10 으로 덮임) 화염 0.25s/10 · 출혈 0.5s/5 가 동시에 틱한다.
       장판을 벗어나면 **화염 슬롯만** 자기 지속(0.2s)으로 사라지고 출혈 잔여는 정상 감소 —
       과피해(~194)와 "장판 밖에서 장판 요율로 타는" 증상이 모두 사라졌다
-- [ ] `CLAUDE.md` 채널 목록에 `DotApplyEventsSingleton` 추가(25개)
+- [x] `CLAUDE.md` 채널 목록에 `DotApplyEventsSingleton` 추가(26개 — 병행 세션이 보스 도약 채널을 먼저 추가했다)

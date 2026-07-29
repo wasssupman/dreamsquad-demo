@@ -44,13 +44,16 @@ unit 0 이 이미 슬롯을 flavor 별로 분리했으므로, 한 대상에 출�
 
 ## 완료 기준
 
-- [ ] `_stackAuraLatch` · `_stackAuraLatchDead` · `StackAuraFxKinds` · `StackAuraKind` ·
+- [x] `_stackAuraLatch` · `_stackAuraLatchDead` · `StackAuraFxKinds` · `StackAuraKind` ·
       `_stackSlotQuery` 가 코드에서 사라짐 (grep 0건)
-- [ ] `BleedAuraOutlastsStackSlotTest` 를 flavor 기준으로 고쳐 green. 관측 대상을 private
-      딕셔너리가 아니라 **`StatusFxSpawner` 의 실제 활성 집합**으로 바꾼다(1차 리뷰 지적 반영).
-      뷰가 필요하므로 더미 적에 앵커를 붙이거나 실제 스폰 적을 쓴다
-- [ ] **stale 비트 회귀 테스트**: 얼음 슬롯을 한 번 얹고 그 슬롯이 죽은 뒤에도 출혈 도트가 도는
-      구간에서 `IceStack` 오라가 **꺼져 있음**을 단언 → `00a65045` 코드에서 red
-- [ ] **동시 오라 테스트**: 출혈 + 화염 도트가 같이 도는 대상에 오라 2개가 뜬다
-- [ ] 리그 PlayMode 기존 스택·오라 스위트 green
+- [x] `BleedAuraOutlastsStackSlotTest` 를 폐기하고 `DotAuraFromFlavorTest` 로 대체. 관측 대상이
+      private 딕셔너리가 아니라 **`StatusFxSpawner._active`(실제 스폰 결과)** 다(1차 리뷰 지적 반영).
+      뷰가 필요하므로 합성 더미 대신 **배치된 실제 유닛**을 피해자로 쓴다
+- [x] **stale 회귀 테스트**: 냉기 도트를 얹고 그것만 만료시킨 뒤, 출혈 도트가 계속 도는 구간에서
+      `IceStack` 오라가 **꺼져 있음**을 단언 (`00a65045` 의 OR 마스크에서는 영영 안 꺼졌다)
+- [x] **동시 오라 테스트**: 출혈 + 냉기 도트가 같이 도는 대상에 오라 2개가 뜬다 — unit 0 이 슬롯을
+      갈라놔서 별도 장치 없이 성립
+- [x] 리그 PlayMode 55 통과 / 13 실패 = 베이스라인 동일. EditMode 1577 통과.
+      (신규 테스트는 단독 실행 green — 배치 실행에서는 DOTween 로그 아티팩트로 실패하는데,
+      폐기한 `BleedAuraOutlastsStackSlotTest` 도 베이스라인에서 같은 이유로 실패했다)
 - [ ] Play 확인: 난도질꾼이 문 적에 출혈 오라만 / 화염 장판 위 적에 화염 오라 / 얼음 오라 없음
