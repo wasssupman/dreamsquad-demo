@@ -24,7 +24,7 @@
 - `Assets/_Project/Scripts/Data/DefenderUnitData.cs` — `onPlaceStackKind` · enum 멤버
 - `Assets/_Project/Tests/PlayMode/DefenderApplyStackOutputTest.cs` (outputs 경로)
 - `Assets/_Project/Tests/PlayMode/OnPlaceApplyStackNearbyTest.cs` (배치 반경 필터)
-- `Assets/_Project/Data/Dreamcatcher/StackModifier_Bleed.asset` — 임계·틱 저작 지점(`atStack 5 · Consume` · 틱 4.5 / 1.0s · 지속 1.4s)
+- `Assets/_Project/Data/Dreamcatcher/StackModifier_Bleed.asset` — 임계·틱 저작 지점(`atStack 5 · Consume` · 틱 1.8 / 0.3s · 지속 1.35s = **5틱**)
 
 ## Verified
 
@@ -34,8 +34,9 @@
 
 ## Notes (되돌리지 말 것)
 
-- **출혈은 누적→폭발**(`atStack 5 · Consume`). 5타에서 발화하고 0으로 리셋 — 공속 0.3 기준 1.5초 주기, 1초 간격 2틱. **`stackCount` 는 안정적 관측값이 아니다**(임계에서 소모됨) — 관측은 **파생 DoT** 로. 초판 `atStack 1` 은 누적이 없어 사실상 플랫 도트였고 사용자 지적으로 재설계했다.
-- **강도 누적형으로 바꾸지 말 것** — `stackCount > lastTriggeredStack` 게이트 때문에 상한 도달 후 발화가 멎는다. **폭발 지속 < 발화 주기**(1.4 < 1.5)도 지킬 것(`CcEffectMerge` 가 kind 슬롯을 덮어씀).
+- **출혈은 누적→폭발**(`atStack 5 · Consume`). 5타에서 발화하고 0으로 리셋 — 공속 0.3 기준 1.5초 주기, 0.3초 간격 5틱. **`stackCount` 는 안정적 관측값이 아니다**(임계에서 소모됨) — 관측은 **파생 DoT** 로. 초판 `atStack 1` 은 누적이 없어 사실상 플랫 도트였고 사용자 지적으로 재설계했다.
+- **강도 누적형으로 바꾸지 말 것** — `stackCount > lastTriggeredStack` 게이트 때문에 상한 도달 후 발화가 멎는다. **폭발 지속 < 발화 주기**(1.35 < 1.5)도 지킬 것(`CcEffectMerge` 가 kind 슬롯을 덮어씀).
+- **`duration` 을 `tickInterval` 의 정확한 배수로 두지 말 것.** 첫 틱 즉발 + `tickTimer` dt 누적 구조라 마지막 틱과 만료가 같은 프레임에 겹치면 틱 수가 흔들린다. 현재는 마지막 틱 1.2s · 만료 1.35s 로 0.15s 여유(리그 실측: 폭발 3회 모두 잔여 0.13s 로 안정).
 - **`maxStack` 은 producer(outputs·onPlace) 소유, `thresholds` 는 SO 소유** — 한쪽만 바꾸면 조용히 어긋난다.
 - `StackModifier_Bleed` 를 쓰는 **배포 에셋은 난도질꾼뿐**이다(ember 는 테스트가 런타임 생성하는 카드). Bleed 를 쓰는 카드가 생기면 그때 밸런스 공유를 재검토할 것.
 - on-place 분기는 `CollectEnemiesInTileRange` 공용 헬퍼를 쓴다(리팩토링 커밋). 새 on-place 변종은 이 헬퍼를 쓸 것 — 쿼리/순회를 다시 복제하지 말 것.

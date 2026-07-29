@@ -26,7 +26,7 @@
 ## Feature-wide 계약
 
 1. **출혈 = 누적 → 임계 폭발**(`StackModifier_Bleed`). 타격당 1스택, `atStack 5 · Consume` 로
-   5타에서 발화하고 0으로 리셋. 공속 0.3 기준 **1.5초마다** 터지고 **1초 간격 2틱**.
+   5타에서 발화하고 0으로 리셋. 공속 0.3 기준 **1.5초마다** 터지고 **0.3초 간격 5틱**.
    - 초판은 `atStack 1` 이라 **누적이 아예 일어나지 않았고 `maxStack` 이 죽은 값**이었다(사실상
      갱신만 되는 플랫 도트). 2026-07-29 사용자 지적으로 재설계 — 업계 관례 조사 결과 스택 UI 가
      없는 상황에서는 **폭발 자체가 신호**인 이 패턴이 표준이다(엘든링·몬헌·명일방주 원소축적 계열).
@@ -38,7 +38,12 @@
      `stackCount > lastTriggeredStack` 일 때만 발화하므로, Edge 룰로 여러 임계를 깔면 상한 도달
      후 **더 이상 발화하지 않고** 걸려 있던 DoT 가 지속 종료와 함께 꺼진다. Consume 은 스스로
      0으로 되돌려 이 문제가 없다.
-   - ⚠ **폭발 지속 < 폭발 주기** 를 지킬 것(1.4s < 1.5s). `CcEffectMerge` 는 피해자당 kind 슬롯
+   - ⚠ **`duration` 을 `tickInterval` 의 정확한 배수에 걸치지 말 것.** 첫 틱은 즉발이고
+     (`CcEffectMerge` add 경로가 `tickTimer = tickInterval` 로 넣는다) 이후 `tickTimer` 가
+     프레임 dt 를 누적하므로, 마지막 틱 시각이 만료 시각과 같으면 둘이 같은 프레임에서 경합해
+     틱 수가 프레임레이트에 따라 흔들린다. 현재값은 마지막 틱 1.2s · 만료 1.35s 로 **양쪽 0.15s
+     여유**를 둔다(60fps 기준 9프레임). 틱 수 = `floor((duration − ε) ÷ tickInterval) + 1`.
+   - ⚠ **폭발 지속 < 폭발 주기** 를 지킬 것(1.35s < 1.5s). `CcEffectMerge` 는 피해자당 kind 슬롯
      하나만 두고 scalar 를 덮으므로, 겹치면 앞 폭발의 남은 틱이 소실된다. 같은 이유로 **여러
      난도질꾼이 한 적을 물어도 출혈은 합산되지 않는다**(합산은 코드 결정 — 후속).
    - `maxStack`/`perAppDuration` 은 **producer**(AttackOutput·onPlace)가 소유하고 `thresholds` 는
@@ -58,9 +63,9 @@
 Fighter · Common · 코스트 2 · HP 350 · 사거리 1 · **쿨다운 0.3s** · attackTargetCount 1
 · outputs `[Damage 2.67, ApplyStack(Bleed, 1스택, perApp 2s, max 5)]`
 · 등장 난도질: 반경 2 · **5스택**(임계치를 한 번에 = 배치 순간 즉시 출혈)
-· `StackModifier_Bleed`: `atStack 5 · Consume` · 틱 4.5 / 1.0s · 지속 1.4s
+· `StackModifier_Bleed`: `atStack 5 · Consume` · 틱 1.8 / 0.3s · 지속 1.35s (**5틱**)
 
-**단일 대상 DPS 14.9** = 직격 8.9(2.67 ÷ 0.3) + 출혈 6.0(2틱 × 4.5 ÷ 1.5s).
+**단일 대상 DPS 14.9** = 직격 8.9(2.67 ÷ 0.3) + 출혈 6.0(5틱 × 1.8 ÷ 1.5s).
 ⚠ **한 벌로 움직이는 값들이다.** 공속을 바꾸면 발화 주기(= `atStack` × 쿨다운)가 따라 움직이고,
 그러면 폭발 지속과 틱 수도 다시 잡아야 한다. 산식: `틱당피해 = 목표출혈DPS × 발화주기 ÷ 틱수`.
 
