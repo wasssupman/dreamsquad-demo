@@ -255,14 +255,16 @@ namespace Wassup.Presentation
             // ⚠ 위 줄이 프리팹 스케일을 **덮는다** — 크기 조절은 프리팹이 아니라 이 인자로.
             if (facingViewDir.sqrMagnitude > 0.0001f)
             {
-                // up 을 **카메라 쪽**으로 잡는다. Vector3.up 을 쓰면 이펙트의 지면 평면(local XZ)이
-                // 월드 수평면에 놓이는데, 이 보드는 XY 평면 정면 뷰라 그 평면이 화면에 대해 옆으로
-                // 서서 "바닥에 깔린" 것처럼 보인다(사용자 제보 — 빔 롤 문제와 같은 뿌리).
-                // -cam.forward 를 up 으로 주면 local XZ 가 화면 평면과 나란해져 폭발이 온전히 보인다.
+                // up 기준 = **화면 up(cam.up)**. world-up 은 안 된다: 이 카메라는 페이즈마다
+                // pitch 가 변해(Draft 40° / Battle 58°) world-up 과 화면 up 이 크게 다르고,
+                // 그러면 이펙트가 화면에 대해 누워 보인다(사용자 제보 "바닥에 깔린다").
+                // cam.up 으로 세우면 폭발이 화면 기준으로 똑바로 선다.
+                // 진행 방향과 cam.up 이 거의 나란하면 LookRotation 이 degenerate 하므로 폴백.
                 var cam = Camera.main;
-                view.transform.rotation = cam != null
-                    ? Quaternion.LookRotation(facingViewDir, -cam.transform.forward)
-                    : Quaternion.LookRotation(facingViewDir, Vector3.up);
+                Vector3 upRef = cam != null ? cam.transform.up : Vector3.up;
+                if (Mathf.Abs(Vector3.Dot(facingViewDir.normalized, upRef)) > 0.99f)
+                    upRef = cam != null ? -cam.transform.forward : Vector3.forward;
+                view.transform.rotation = Quaternion.LookRotation(facingViewDir, upRef);
             }
             float3 hitView = Wassup.Core.BoardSpace.ToView(position); // sim→view
             // heightOffset: 바닥에 깔리지 않게 view Y 로 띄움 (투사체 visualHeightOffset 과 동일 개념).
