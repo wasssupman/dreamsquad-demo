@@ -20,8 +20,8 @@ MonoBehaviour:
   - atStack: 5
     mode: 1
     derivedKind: 0
-    magnitude: 1.8
-    duration: 1.35
+    magnitude: 5
+    duration: 4.85
     stat: 0
     op: 0
-    tickInterval: 0.3
+    tickInterval: 0.5
