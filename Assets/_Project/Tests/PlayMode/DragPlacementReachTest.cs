@@ -134,6 +134,20 @@ namespace Wassup.Tests.PlayMode
                 + $"({BottomSafeRatio:P0}) 아래다. 그 행을 놓으려면 손가락이 트레이 영역까지 내려가야 한다 — "
                 + $"placementPointerOffsetHeightRatio 를 낮춰라. 현재 오프셋={ctrl.PlacementPointerOffsetPx:F1}px");
 
+            // ── drag-cancel-affordance unit 0: 취소 존과 배치 도달이 겹치지 않는다 ──────
+            // 취소 판정은 **가상 포인터**가 트레이 rect 안인지로 한다. 그 두 의도가 같은 좌표를
+            // 요구하면 최하단 행이 통째로 배치 불가가 된다(취소가 이기므로). 위 (B) 가 재는
+            // "최하단 행을 노릴 수 있는 가장 높은 손가락 위치" 의 **가상 포인터**가 트레이 밖이면
+            // 겹침이 없다. BottomSafeRatio 근사 대신 **실제 트레이 rect** 를 읽는 강한 가드다.
+            var trayRect = selector.PanelGO != null ? (RectTransform)selector.PanelGO.transform : null;
+            Assert.IsNotNull(trayRect, "tray panel exists");
+            var bottomAim = PlacementPointerOffset.Apply(
+                new Vector2(Screen.width * 0.5f, maxYTargetingBottom), ctrl.PlacementPointerOffsetPx, 1f);
+            Assert.IsFalse(RectTransformUtility.RectangleContainsScreenPoint(trayRect, bottomAim, null),
+                $"최하단 배치가능 행(row {bottomPlaceableRow})을 노리는 가상 포인터({bottomAim.y:F0}px)가 "
+                + "취소 존(트레이 rect) 안이다 — 그 행은 배치 대신 취소가 된다. 오프셋을 키우거나 "
+                + "트레이를 높이면 이 단언이 먼저 울린다.");
+
             ctrl.Disarm();
             yield return null;
         }

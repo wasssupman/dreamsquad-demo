@@ -286,8 +286,7 @@ namespace Wassup.UI
             _dragging = false;
 
             var slot = Slot;
-            bool insideHand = _view.HandPanelRect != null && RectTransformUtility
-                .RectangleContainsScreenPoint(_view.HandPanelRect, eventData.position, null);
+            bool insideHand = InsideCancelZone(eventData.position);
             if (insideHand)
             {
                 CancelDrag();
@@ -368,6 +367,8 @@ namespace Wassup.UI
                     if (TryScreenToCell(eventData.position, out var entry))
                     {
                         _portalEntryCell = entry;
+                        // drag-cancel-affordance unit 1 — 드래그는 끝났다(다음은 탭). 호버 힌트를 남기지 않는다.
+                        _view.SetCancelHint(false);
                         // unit 3 — 2탭 국면 전환 브리핑(툴팁은 조준 중 유지 계약).
                         _view.UpdateDragBriefingStatus(
                             "<color=#9FE6A0>입구 지정됨</color> — 출구 타일을 탭하세요");
@@ -389,8 +390,7 @@ namespace Wassup.UI
             if (pointer == null || !pointer.press.wasPressedThisFrame) return;
             var pos = pointer.position.ReadValue();
 
-            bool insideHand = _view.HandPanelRect != null && RectTransformUtility
-                .RectangleContainsScreenPoint(_view.HandPanelRect, pos, null);
+            bool insideHand = InsideCancelZone(pos);
             if (insideHand || !TryScreenToCell(pos, out var exitTile))
             {
                 CancelDrag(); // hand-area tap or off-board = cancel, no spend
@@ -454,6 +454,7 @@ namespace Wassup.UI
                 _view.RestoreSlotHome(_index); // 확대 복원(성공 시 Refresh 가 재정렬)
             }
             _view.Focus?.End(); // dreamcatcher-attach-lockon — dim/링/리티클/콜아웃 정리
+            _view.SetCancelHint(false); // drag-cancel-affordance unit 1 — 종료 깔때기에서 힌트 해제
             ClearHover();
             ClearAimRange();
             _portalEntryCell = null;
@@ -492,9 +493,19 @@ namespace Wassup.UI
 
         private void UpdateBriefingStatus(Vector2 screenPos)
         {
-            bool insideHand = _view.HandPanelRect != null && RectTransformUtility
-                .RectangleContainsScreenPoint(_view.HandPanelRect, screenPos, null);
+            bool insideHand = InsideCancelZone(screenPos);
             _view.UpdateDragBriefingStatus(StatusFor(insideHand));
+            // drag-cancel-affordance unit 1 — 손패 자리에도 같은 정보를 둔다(상단 툴팁은 시선이
+            // 보드에 있을 때 놓치기 쉽다). 이중 표기가 의도다.
+            _view.SetCancelHint(insideHand);
+        }
+
+        // drag-cancel-affordance unit 1 — 취소 판정 rect 단일 진입점. 뷰가 소유하고(부채 크기,
+        // 하강 승계, 폴백) 여기는 읽기만 한다 — 판정 3곳(드롭 · 포탈 출구 탭 · 브리핑)이 같은 rect 를 본다.
+        private bool InsideCancelZone(Vector2 screenPos)
+        {
+            var rect = _view != null ? _view.CancelRect : null;
+            return rect != null && RectTransformUtility.RectangleContainsScreenPoint(rect, screenPos, null);
         }
 
         // 색 코딩: 초록 = 놓으면 커밋, 적색 = 불가/취소, 무색 = 안내.

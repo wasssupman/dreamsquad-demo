@@ -3,12 +3,14 @@ using Spine.Unity;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.UI;
 using Wassup.Bridge;
 using Wassup.Core;
 using Wassup.Core.TimeControl;
 using Wassup.Data;
 using Wassup.Presentation;
 using Wassup.Rendering;
+using Wassup.UI.Layout;
 
 namespace Wassup.UI
 {
@@ -61,6 +63,21 @@ namespace Wassup.UI
         private TMP_FontAsset _uiFont;
         private GameObject _rejectCanvasGO;
         private TextMeshProUGUI _rejectLabel;
+        // drag-cancel-affordance unit 0 — 취소 존(= 트레이 패널 rect). DefenderSelector 가 패널을
+        // 만든 직후 주입한다(컨트롤러는 런타임 AddComponent 라 씬 배선이 없다). null 이면 취소 존
+        // 비활성 = 기존 동작 그대로(컨트롤러만 띄우는 테스트 하네스 경로).
+        private RectTransform _cancelZone;
+        private bool _cancelHover;      // 이번 프레임 가상 포인터가 취소 존 안인가
+        private bool _cancelZoneLeft;   // 이 세션이 취소 존을 한 번 벗어난 적 있는가(예고 룩 게이트)
+        private bool _cancelVisualOn;   // 예고 룩(고스트 알파 + 배너) 적용 상태
+        private GameObject _cancelBannerGO;
+        private Image _cancelBannerBg;
+        private TextMeshProUGUI _cancelBannerLabel;
+        private static readonly Vector3[] _cornerBuf = new Vector3[4];
+
+        // 예고(룩 + 보드 판정 정지)의 단일 술어. 릴리즈 취소는 `_cancelHover` 만 본다 —
+        // 존을 못 벗어난 짧은 드래그도 놓으면 취소가 맞다(그게 오배치보다 낫다).
+        private bool CancelArmed => _cancelHover && _cancelZoneLeft;
         // placement-thumb-occlusion unit 0 — 두 축을 이름으로 가른다. _lastAimScreenPos 는 **가상
         // 포인터**(셀 판정·고리·줄·고스트·거부 라벨 앵커), _lastRawScreenPos 는 실제 포인터다.
         // 가르는 이유: 카메라 포커스는 스크린좌표를 NDC 로 **절대 변환**하므로
@@ -122,6 +139,8 @@ namespace Wassup.UI
             public Transform endNode;       // 빌보드. 유닛 머리 위치.
             public Transform swingPivot;    // 머리 중심 기울임.
             public Transform spineChild;
+            // drag-cancel-affordance unit 0 — 취소 예고 고스트 알파용 핸들. 폴백 capsule 프리뷰면 null.
+            public SkeletonAnimation skeleton;
             public float visualScale;
             public float unitHeight;        // 실루엣 월드 높이(발→머리). 머리 오프셋용.
             public Vector2Int? hoverTile;
@@ -183,6 +202,11 @@ namespace Wassup.UI
             _aimController.Configure(bridge, mainCamera, swaySettings);
         }
 
+        // drag-cancel-affordance unit 0 — 취소 존 주입(트레이 패널 rect). DefenderSelector 가 패널을
+        // 만든 뒤 호출한다. 판정에 상수 오프셋을 더하지 않고 이 rect 하나만 읽는다(계약 2) — 트레이가
+        // 페이즈별로 크기를 바꿔도(placement/battle) 취소 영역이 보이는 트레이를 그대로 따라간다.
+        public void SetCancelZone(RectTransform zone) => _cancelZone = zone;
+
         public void BeginDrag(DefenderUnitData unitData, Vector2 screenPosition, bool simulated = false)
         {
             if (unitData == null || bridge == null) return;
@@ -241,7 +265,9 @@ namespace Wassup.UI
         private void UpdatePlacementHighlightState()
         {
             if (bridge == null) return;
-            bool desired = (_session.active && !_simulatedDrag) || _armedUnit != null;
+            // drag-cancel-affordance unit 0 — 취소 존 안이면 배치 하이라이트도 끈다. 취소 예고는
+            // "보드에서 아무 일도 일어나지 않는다" 를 한 덩어리로 보여야 한다(계약 4).
+            bool desired = (_session.active && !_simulatedDrag && !CancelArmed) || _armedUnit != null;
             if (desired == _placeableHlDesired) return;
             _placeableHlDesired = desired;
             if (desired) bridge.ShowPlacementHighlight(); else bridge.HidePlacementHighlight();
@@ -250,6 +276,7 @@ namespace Wassup.UI
         private void Update()
         {
             UpdatePlacementHighlightState(); // placement-eligible-tile-highlight unit 2 — early-return 위에서 매 프레임 파생 토글
+            TickEscapeCancel();              // drag-cancel-affordance unit 2 — ESC/Android 뒤로가기 하드 취소
 
             // placement-armed-board-drag unit 0 — arm 된 상태 + 드래그 아님일 때 보드 프레스-드래그-릴리즈 제스처.
             if (_armedUnit != null && !_session.active) UpdateBoardGesture();
@@ -268,6 +295,10 @@ namespace Wassup.UI
                 _prevScreenPos = _lastAimScreenPos;
             }
 
+            // drag-cancel-affordance unit 0 — 예고 룩은 아래 early-return 위에서 판단한다.
+            // 오프보드/프리뷰 없음 프레임에도 배너는 켜지고 꺼져야 한다.
+            UpdateCancelVisual();
+
             if (!_session.active || _session.preview == null || _session.endNode == null || mainCamera == null) return;
             if (!_onBoard || !_posInit) return;
             var s = Cfg;
@@ -277,7 +308,12 @@ namespace Wassup.UI
             // unit 2·3 — 추종 스텝 전에 포커스 셀을 확정(+디바운스)한다.
             // dt = unscaled(슬로우모 무관 실시간) — 디바운스 타이밍이 배치 슬로우모에 안 끌리게.
             // unit 4 — 탭 비행 중엔 선택 타일에 포커스 고정(실시간 발밑 추종 제거). 스와이프는 발밑 추종 유지.
-            ResolveFocusAndTarget(dt, lockCell: _simulatedDrag ? _simFocusCell : null);
+            // drag-cancel-affordance unit 0 — 취소 존 안에서는 판정 자체를 멈춘다. 추종 스텝(아래)은
+            // 계속 돌아 고스트가 손가락을 따라 트레이로 내려온다 — 멈추는 건 "어느 칸이냐" 뿐이다.
+            // 소거는 진입 프레임 1회면 충분하다(hoverTile 이 비면 그 뒤로 페인트가 없다) —
+            // 매 프레임 Clear* 를 부르면 타일맵 오버레이를 계속 다시 칠한다.
+            if (CancelArmed) { if (_session.hoverTile.HasValue) ClearHover(); }
+            else ResolveFocusAndTarget(dt, lockCell: _simulatedDrag ? _simFocusCell : null);
 
             // 실드래그는 무게추 스프링(탄성)+속도 상한으로 지연·스윙을 유지한다.
             // unit 6 rev — 탭 시뮬은 비행부터 정착까지 같은 비진동 추종을 쓴다. 비행 중 고감쇠 스프링에
@@ -324,6 +360,28 @@ namespace Wassup.UI
 
         }
 
+        // drag-cancel-affordance unit 2 — ESC(= Android 하드웨어 뒤로가기. Unity Android 백엔드가
+        // back 을 escapeKey 로 보고한다) 한 번에 취소. 드림캐쳐 손패의 같은 규칙과 짝이며, 둘은
+        // 상호배타(손패가 열리면 트레이는 숨는다)라 경합이 없다.
+        //
+        // 우선순위는 드래그 > arm 이다. BeginDrag 가 Disarm 을 먼저 부르므로 동시에 성립하지 않지만,
+        // 순서를 못 박아 두면 나중에 그 전제가 바뀌어도 "가장 최근 상호작용을 먼저 되돌린다" 가 남는다.
+        // 시뮬 비행(_simulatedDrag)은 제외 — 이미 코스트가 지불된 확정 배치의 연출이라 끊으면 유닛이
+        // 사라진다(계약 5).
+        private void TickEscapeCancel()
+        {
+            var kb = Keyboard.current;
+            if (kb == null || !kb.escapeKey.wasPressedThisFrame) return;
+            if (_session.active)
+            {
+                if (_simulatedDrag) return;
+                CleanupSession();
+                Wassup.Core.SoundManager.Instance?.PlayCardReturn();
+                return;
+            }
+            if (_armedUnit != null) Disarm();
+        }
+
         // camera-direction unit 5 — Director 캐시 (miss 캐시 + 1회 경고, 기존 패턴).
         private Wassup.Presentation.CameraDirector _cameraDirector;
         private bool _cameraDirectorMissWarned;
@@ -351,6 +409,15 @@ namespace Wassup.UI
             _lastRawScreenPos = screenPosition;
             screenPosition = ToPlacementPointer(screenPosition, 1f); // 트레이 세션 전용 경로 — 램프 없음
             _lastAimScreenPos = screenPosition; // unit 4 — 거부 라벨 포인터 추종
+            // drag-cancel-affordance unit 0 — 취소 존 판정. 가상 포인터로 재는 이유는 spec README
+            // ("도달성 무손실") 이 소유한다 — raw 로 바꾸면 큰 맵 최하단 행이 배치 불가가 된다.
+            // 갱신은 여기 한 곳(가상 포인터가 확정되는 유일한 지점)이고 EndDrag 는 이 값을 읽기만 한다.
+            _cancelHover = _cancelZone != null && !_simulatedDrag
+                           && RectTransformUtility.RectangleContainsScreenPoint(_cancelZone, screenPosition, null);
+            // 트레이 드래그는 **취소 존 안에서 시작한다**(슬롯 위 + 오프셋이 아직 트레이 대역).
+            // 판정은 그 순간부터 유효하지만(짧게 끌었다 놓으면 취소 = 원하는 동작), 예고 룩은
+            // 존을 한 번 벗어난 뒤부터 켠다 — 아니면 모든 드래그가 배너 깜빡임으로 시작한다.
+            if (!_cancelHover) _cancelZoneLeft = true;
             // 발↔고리 화면 세로 거리 = 유닛 키 + 줄 길이. 고리는 손가락에, 유닛은 그만큼 화면 아래 보드에.
             float totalDrop = _session.unitHeight + Cfg.ropeLength * _session.visualScale;
 
@@ -548,10 +615,97 @@ namespace Wassup.UI
             go.SetActive(false);
         }
 
+        // ── drag-cancel-affordance unit 0 — 취소 예고 ────────────────────────────
+        // 취소 존 안에 있는 동안 (a) 프리뷰 실루엣을 고스트 알파로 낮추고 (b) 트레이를 덮는
+        // `✕ 놓으면 취소` 배너를 띄운다. 색 단독 표기 금지라 글리프+문구를 함께 쓴다.
+
+        private void UpdateCancelVisual()
+        {
+            bool want = CancelArmed && _session.active;
+            if (want)
+            {
+                EnsureCancelBanner();
+                LayoutCancelBanner(); // 트레이는 페이즈 전환으로 크기가 바뀐다 — 매 프레임 rect 를 다시 읽는다
+            }
+            if (want == _cancelVisualOn) return;
+            _cancelVisualOn = want;
+            // 폴백 capsule 프리뷰는 skeleton 이 없다 — 알파 변화 없이 배너만(미지원, 계약 아님).
+            if (_session.skeleton != null)
+                SetPreviewAlpha(_session.skeleton, want ? Mathf.Clamp01(Cfg.cancelPreviewAlpha) : 1f);
+            if (_cancelBannerGO != null) _cancelBannerGO.SetActive(want);
+        }
+
+        // 취소 룩 하드 해제 — 세션 정리 경유(커밋/취소/비활성). 알파 원복은 프리뷰가 곧 파괴되므로
+        // 생략해도 무해하지만, 세대가 바뀐 세션에 상태가 새지 않게 플래그는 반드시 내린다.
+        private void ResetCancelVisual()
+        {
+            _cancelHover = false;
+            _cancelZoneLeft = false;
+            _cancelVisualOn = false;
+            if (_cancelBannerGO != null) _cancelBannerGO.SetActive(false);
+        }
+
+        private void EnsureCancelBanner()
+        {
+            if (_cancelBannerGO != null) return;
+            EnsureRejectLabel(); // 캔버스(order 20001)를 공유한다 — 취소 배너 전용 캔버스를 새로 만들지 않는다
+            _cancelBannerGO = new GameObject("CancelBanner", typeof(RectTransform), typeof(Image));
+            _cancelBannerGO.transform.SetParent(_rejectCanvasGO.transform, false);
+            var rt = (RectTransform)_cancelBannerGO.transform;
+            rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.zero;
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            _cancelBannerBg = _cancelBannerGO.GetComponent<Image>();
+            // fill 은 반투명(0.5) — 트레이 아이콘이 비쳐 "이 슬롯으로 되돌아간다" 가 읽힌다.
+            _cancelBannerBg.sprite = UiRoundedSprite.Make(22f, 3f,
+                new Color(0.06f, 0.03f, 0.04f, 0.5f), Cfg.cancelTint);
+            _cancelBannerBg.type = Image.Type.Sliced;
+            _cancelBannerBg.raycastTarget = false;
+
+            var labelGO = new GameObject("CancelLabel", typeof(RectTransform));
+            labelGO.transform.SetParent(_cancelBannerGO.transform, false);
+            var lrt = (RectTransform)labelGO.transform;
+            lrt.anchorMin = Vector2.zero; lrt.anchorMax = Vector2.one;
+            lrt.offsetMin = Vector2.zero; lrt.offsetMax = Vector2.zero;
+            _cancelBannerLabel = labelGO.AddComponent<TextMeshProUGUI>();
+            if (_uiFont != null) _cancelBannerLabel.font = _uiFont;
+            // 이 캔버스는 CanvasScaler 가 없다(거부 라벨과 공유) — 글자만 화면 높이에 맞춰 스케일해
+            // 트레이(스케일된 캔버스)와 크기 감각을 맞춘다. rect 는 트레이 rect 에서 오므로 이미 맞다.
+            _cancelBannerLabel.fontSize = 34f * Mathf.Max(0.5f, Screen.height / UiCanvasSetup.ReferenceResolution.y);
+            _cancelBannerLabel.fontStyle = FontStyles.Bold;
+            _cancelBannerLabel.alignment = TextAlignmentOptions.Center;
+            _cancelBannerLabel.textWrappingMode = TextWrappingModes.NoWrap;
+            _cancelBannerLabel.raycastTarget = false;
+            _cancelBannerLabel.text = "✕  놓으면 취소";
+            _cancelBannerGO.SetActive(false);
+        }
+
+        // 취소 존 rect(스크린) → 배너 배치. 오버레이 캔버스라 world corner 가 곧 스크린 px 이고,
+        // 배너 캔버스도 같은 오버레이 공간이라 변환이 필요 없다(계약 2 — 상수 오프셋 없음).
+        private void LayoutCancelBanner()
+        {
+            if (_cancelZone == null || _cancelBannerGO == null) return;
+            _cancelZone.GetWorldCorners(_cornerBuf);
+            Vector3 min = _cornerBuf[0], max = _cornerBuf[2];
+            var rt = (RectTransform)_cancelBannerGO.transform;
+            rt.position = (min + max) * 0.5f;
+            rt.sizeDelta = new Vector2(Mathf.Abs(max.x - min.x), Mathf.Abs(max.y - min.y));
+            if (_cancelBannerLabel != null) _cancelBannerLabel.color = Cfg.cancelTint;
+        }
+
         public void EndDrag(Vector2 screenPosition)
         {
             if (!_session.active) return;
             UpdateDrag(screenPosition);
+            // drag-cancel-affordance unit 0 — 취소 존 릴리즈 = 사용자가 의도한 정상 종료.
+            // FlashPlacementReject 를 부르지 않는다(취소는 거부가 아니다). 커밋 이전에 갈라지므로
+            // 코스트·쿨타임·엔티티 어느 것도 발생하지 않는다(계약 1).
+            if (_cancelHover)
+            {
+                CleanupSession();
+                // 전용 클립이 없고 의미("집었던 걸 되돌림")가 같아 카드 복귀음을 재사용한다.
+                Wassup.Core.SoundManager.Instance?.PlayCardReturn();
+                return;
+            }
             // review fix — 릴리즈 확정은 throttle tick 을 기다리지 않는다. 손가락 최종 위치를 히스테리시스로만
             // 거른 칸으로 즉시 재해석(하이라이트·팝도 같은 호출에서 갱신 → 표시 칸 == 배치 칸 유지).
             // 없으면 빠른 드롭이 최대 interval(0.5s) 전 stale 칸에 배치되는 회귀.
@@ -1207,6 +1361,7 @@ namespace Wassup.UI
             session.endNode = endNode.transform;
             session.swingPivot = swingPivot.transform;
             session.spineChild = spineChild.transform;
+            session.skeleton = skeleton; // drag-cancel-affordance unit 0 — 취소 고스트 알파
             session.visualScale = scale;
             session.unitHeight = unitHeight;
             return true;
@@ -1414,6 +1569,7 @@ namespace Wassup.UI
             _onBoard = false;
             _simulatedDrag = false; // defender-tap-to-place — 시뮬 표시 해제
             _simFocusCell = null;   // unit 4 — 탭 비행 포커스 고정 해제
+            ResetCancelVisual();    // drag-cancel-affordance unit 0 — 취소 예고 하드 해제
             _unitVelWorld = Vector3.zero;
             // ui-tweak 2026-07-08 — 클릭 배치 은퇴. 드래그 종료 후 재활성화하지 않는다.
         }

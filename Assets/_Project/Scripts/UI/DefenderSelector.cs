@@ -244,6 +244,11 @@ namespace Wassup.UI
             // RebuildSlots 에서 SetCellWidth 로 주입된다.
             if (costDisplay != null) costDisplay.AttachToTray(_panel.transform);
 
+            // drag-cancel-affordance unit 0 — 드래그 취소 존을 컨트롤러에 넘긴다. 패널은 여기서
+            // 한 번만 생성되고 RebuildSlots 는 SlotContainer 자식만 지우므로 참조가 stale 되지 않는다.
+            if (dragPlacementController != null)
+                dragPlacementController.SetCancelZone((RectTransform)_panel.transform);
+
             UiLayer.Apply(gameObject);
         }
 
@@ -928,6 +933,10 @@ namespace Wassup.UI
                     swaySettings, nameFont, deployCutscenePlayer);
             if (gimmickGuide != null)
                 gimmickGuide.BindPlacementActivity(dragPlacementController);
+            // drag-cancel-affordance unit 0 — 취소 존 = 트레이 패널. Awake 는 이 메서드를
+            // BuildCanvas 보다 먼저 부르므로 여기선 아직 null 일 수 있다(BuildCanvas 말미가 다시 준다).
+            if (_panel != null)
+                dragPlacementController.SetCancelZone((RectTransform)_panel.transform);
         }
     }
 }

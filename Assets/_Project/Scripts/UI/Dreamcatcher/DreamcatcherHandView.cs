@@ -81,6 +81,12 @@ namespace Wassup.UI
         // 헤드룸과 같은 감성의 스프링(살짝 오버슈트 후 안착). 하강·복귀 공용 — target 만 바뀐다.
         [SerializeField] private float dragClearanceSpring = 320f;
         [SerializeField] private float dragClearanceDamping = 24f;
+        // drag-cancel-affordance unit 1 — 취소 판정 rect 높이(패널 로컬, 하단 기준).
+        // 310 = 조준 중 카드 부채의 실제 상단: handBaseY 16 + arcHeight 46 + CardH 230 × 확대 1.08.
+        // 패널 배경(232)은 부채를 60px 못 덮어 "보이는 손패 ≠ 취소 영역" 이었다. 하강(210) 후
+        // top = 32-210+310 = 132 라 가장 큰 맵의 보드 하단 모서리(167)보다 여전히 아래다
+        // — hand-drag-clearance 가 연 최하단 행 부착을 되돌리지 않는다.
+        [SerializeField] private float cancelZoneHeight = 310f;
         // use-flow unit 0 — A/B 토글: true = 구동작(손패 열림 전체 슬로모), false = 신동작
         // (카드를 잡은 press~release 동안만 슬로모). 매 프레임 폴링이라 Play 중 인스펙터에서
         // 토글하는 즉시 반영된다 — 넣다 뺐다 비교용(사용자 요구 2026-07-29).
@@ -132,6 +138,11 @@ namespace Wassup.UI
         // unit 7 consumes these: card slots for drag sources + hand rect for
         // the cancel-region test.
         public RectTransform HandPanelRect => _panel != null ? (RectTransform)_panel.transform : null;
+
+        // drag-cancel-affordance unit 1 — 취소 판정 rect. 패널 **자식**이라 하강(210px)을 자동
+        // 승계한다(hand-drag-clearance 계약 1: 취소 rect 는 패널 위치가 단일 소유). 미생성 시
+        // 패널로 폴백해 기존 동작을 유지한다 — 슬롯 쪽에 분기를 두지 않기 위해 여기서 흡수한다.
+        public RectTransform CancelRect => _cancelZone != null ? _cancelZone : HandPanelRect;
         public IReadOnlyList<CardSlot> Slots => _slots;
 
         // Drag-slot service surface (unit 7).
@@ -327,6 +338,9 @@ namespace Wassup.UI
         private float _panelBaseY;
         private float _clearanceOffset;  // 0 = 기준선, -dragClearanceDrop = 완전 하강
         private float _clearanceVel;
+        // drag-cancel-affordance unit 1 — 취소 판정 rect(패널 자식, 그림 없음) + 그 안의 힌트 배너.
+        private RectTransform _cancelZone;
+        private GameObject _cancelHint;
         // dreamcatcher-orb-dock unit 4 — 손패 오픈 중 보드 영역 탭으로 물러나기(바깥 탭 dismiss).
         private GameObject _dismissCatcher;
         // selection-hand-attach unit 1 — 전이(침강/딜) 중에 들어온 선택 기인 오픈 요청.
@@ -528,6 +542,7 @@ namespace Wassup.UI
         // 꺼지거나 재구성되는 지점(Open / ForceClose / OnSinkComplete)에서만 되돌린다.
         private void ResetHandClearance()
         {
+            SetCancelHint(false); // drag-cancel-affordance unit 1 — Open/ForceClose/침강완료 공용 해제
             if (_panel == null) return;
             _clearanceOffset = 0f;
             _clearanceVel = 0f;
@@ -630,6 +645,63 @@ namespace Wassup.UI
             foreach (var slot in _slots)
                 if (slot.dragSlot != null && (slot.dragSlot.IsDragging || slot.dragSlot.IsPortalAiming))
                     slot.dragSlot.CancelDrag();
+            SetCancelHint(false); // drag-cancel-affordance unit 1 — ESC/각성버튼 경로의 하드 해제
+        }
+
+        // ── drag-cancel-affordance unit 1 — 취소 존 ──────────────────────────────
+        // 판정 rect 는 패널 자식이라 하강을 자동 승계한다(계약 2). 그림은 없고(Image 없음)
+        // 힌트 배너만 자식으로 달려 필요할 때 켜진다.
+        private void BuildCancelZone(RectTransform panelRect)
+        {
+            var zoneGO = new GameObject("CancelZone", typeof(RectTransform));
+            zoneGO.transform.SetParent(panelRect, false);
+            _cancelZone = (RectTransform)zoneGO.transform;
+            _cancelZone.anchorMin = new Vector2(0.5f, 0f);
+            _cancelZone.anchorMax = new Vector2(0.5f, 0f);
+            _cancelZone.pivot = new Vector2(0.5f, 0f);
+            _cancelZone.anchoredPosition = Vector2.zero;
+            _cancelZone.sizeDelta = new Vector2(panelRect.sizeDelta.x, cancelZoneHeight);
+
+            _cancelHint = new GameObject("CancelHint", typeof(RectTransform), typeof(Image));
+            _cancelHint.transform.SetParent(_cancelZone, false);
+            var hrt = (RectTransform)_cancelHint.transform;
+            // 배너는 존 상단에 얹는다 — 카드 헤더(이름) 띠를 가리지 않는 높이.
+            hrt.anchorMin = new Vector2(0.5f, 1f);
+            hrt.anchorMax = new Vector2(0.5f, 1f);
+            hrt.pivot = new Vector2(0.5f, 1f);
+            hrt.anchoredPosition = new Vector2(0f, -8f);
+            hrt.sizeDelta = new Vector2(360f, 56f);
+            var bg = _cancelHint.GetComponent<Image>();
+            bg.sprite = UiRoundedSprite.Make(18f, 3f, new Color(0.06f, 0.03f, 0.04f, 0.78f), CancelTint);
+            bg.type = Image.Type.Sliced;
+            bg.raycastTarget = false;
+
+            var labelGO = new GameObject("Label", typeof(RectTransform));
+            labelGO.transform.SetParent(_cancelHint.transform, false);
+            var lrt = (RectTransform)labelGO.transform;
+            lrt.anchorMin = Vector2.zero; lrt.anchorMax = Vector2.one;
+            lrt.offsetMin = Vector2.zero; lrt.offsetMax = Vector2.zero;
+            var label = labelGO.AddComponent<TextMeshProUGUI>();
+            if (labelFont != null) label.font = labelFont;
+            label.fontSize = 30f;
+            label.fontStyle = FontStyles.Bold;
+            label.alignment = TextAlignmentOptions.Center;
+            label.textWrappingMode = TextWrappingModes.NoWrap;
+            label.raycastTarget = false;
+            label.color = CancelTint;
+            label.text = "✕  놓으면 취소";
+            _cancelHint.SetActive(false);
+        }
+
+        // 코랄 — 거부/취소 계열 단일 색. 색 단독 표기 금지라 배너는 ✕ 글리프와 문구를 함께 쓴다.
+        private static readonly Color CancelTint = new Color(1f, 0.42f, 0.36f, 1f);
+
+        // 슬롯이 호출한다(insideHand 는 브리핑 상태 줄이 이미 계산하는 값이라 재계산이 없다).
+        public void SetCancelHint(bool on)
+        {
+            if (_cancelHint == null) return;
+            if (on && _cancelZone != null) _cancelZone.SetAsLastSibling(); // 카드 위로
+            if (_cancelHint.activeSelf != on) _cancelHint.SetActive(on);
         }
 
         private bool AnyInteractionActive()
@@ -1290,6 +1362,8 @@ namespace Wassup.UI
             _backing = backing;
             _backingAlpha = backing.color.a;
 
+            BuildCancelZone(prt); // drag-cancel-affordance unit 1 — 취소 판정 rect + 힌트 배너
+
             // rev 4-6 — 타겟팅 화살표는 패널 뒤 sibling 으로 붙여 카드 위에 그려진다.
             _targetArrow = DreamcatcherTargetArrow.Create(transform);
             _targetArrow.Configure(focusConfig);
@@ -1451,6 +1525,14 @@ namespace Wassup.UI
             _slots.Clear();
 
             float step = CardW - cardOverlap; // 겹친 부채(음수 간격 효과)
+            // drag-cancel-affordance unit 1 — 취소 rect 폭 = **보이는 부채 폭**(패널보다 넓을 수 있다).
+            // 카드 수가 확정되는 유일한 지점이라 여기서 맞춘다.
+            if (_cancelZone != null && _panel != null)
+            {
+                float fanWidth = CardW + step * Mathf.Max(0, count - 1);
+                _cancelZone.sizeDelta = new Vector2(
+                    Mathf.Max(((RectTransform)_panel.transform).sizeDelta.x, fanWidth), cancelZoneHeight);
+            }
             for (int i = 0; i < count; i++)
             {
                 var slot = new CardSlot();

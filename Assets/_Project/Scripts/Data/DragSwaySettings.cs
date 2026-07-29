@@ -164,5 +164,14 @@ namespace Wassup.Data
 
         // px 환산은 값과 같은 곳에 둔다(소비처: 드래그 컨트롤러 · 재배치 seam · PlayMode 테스트).
         public float PlacementPointerOffsetPx => placementPointerOffsetHeightRatio * Screen.height;
+
+        [Header("⑫ 드래그 취소 — 트레이로 되돌리면 취소 (drag-cancel-affordance)")]
+        // 취소 판정 자체는 트레이 패널 rect 가 소유한다(별도 좌표 노브를 두지 않는다 — 계약 2).
+        // 여기 있는 건 "취소될 것"을 놓기 전에 알리는 룩뿐이다.
+        [Tooltip("취소 존 안에서 드래그 프리뷰 실루엣 알파. ↓=더 유령처럼(배치 안 된다는 신호가 강함). 1=변화 없음.")]
+        [Range(0.1f, 1f)]
+        public float cancelPreviewAlpha = 0.4f;
+        [Tooltip("취소 배너 색 — 테두리/글자. 거부 라벨의 코랄과 같은 계열로 두면 '이건 진행되지 않는다' 신호가 통일된다.")]
+        public Color cancelTint = new Color(1f, 0.42f, 0.36f, 1f);
     }
 }
