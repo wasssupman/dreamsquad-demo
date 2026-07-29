@@ -207,6 +207,15 @@ namespace Wassup.UI
             }
             _anchorMissFrames = 0;
             if (cameraDirector != null && !AimingNow()) cameraDirector.SetInspectFocus(anchor.position);
+
+            // unit 11 — 실효 스탯은 매 프레임 갱신한다. 대상이 1 엔티티라 비용이 무시할 만하고
+            // (이 메서드가 이미 매 프레임 앵커를 조회한다), HP 가 뚝뚝 끊기지 않는다.
+            // 기본값은 readout 이 함께 실어 오므로 별도 캐시가 필요 없다.
+            if (panel != null)
+            {
+                bool hasStats = bridge.TryGetUnitStatReadout(_selected, out var stats);
+                panel.SetStats(stats, hasStats);
+            }
         }
 
         // selection-hand-attach unit 0 — 구 Blocked() 의 절반: **선택 자체를 닫아야 하는** 조건.
@@ -293,21 +302,16 @@ namespace Wassup.UI
         }
 
         // unit 4 (사용자 결정 2026-07-15) — 부착 유무와 무관하게 선택된다. 줌 자체가 피드백이라
-        // 부착 0장이어도 "이 유닛을 보고 있다"가 성립한다. 패널만 보여줄 게 있을 때 뜬다.
+        // 부착 0장이어도 "이 유닛을 보고 있다"가 성립한다.
+        // unit 11 — 패널도 **항상** 뜬다. 스탯이 생기면서 부착 0장이어도 보여줄 것이 있다
+        // (구 "패널은 보여줄 게 있을 때만" 은 부착 목록만 있던 시절의 계약이다).
         private void Select(Entity entity)
         {
             if (!bridge.TryGetUnitViewAnchor(entity, out var anchor)) { Close(); return; }
 
             _selected = entity;
             _anchorMissFrames = 0; // unit 1 — 새 대상으로 수명 카운터 리셋
-            Resolve(entity);
-            // `?.` 가 아니라 `!= null` — 전자는 참조 null 검사로 낮아져 UnityEngine.Object 의
-            // 수명 인지 == 연산자를 건너뛴다(파괴된 오브젝트가 통과한다).
-            if (panel != null)
-            {
-                if (_cards.Count > 0) panel.Show(anchor, mainCamera, _cards, _costs);
-                else panel.Hide(); // 빈 상태 UI 는 만들지 않는다 — 없는 게 정직하다
-            }
+            ShowPanelFor(entity); // 내부에서 Resolve — _cards/_costs 도 여기서 채워진다
             // unit 5 — 부착 유무와 무관하게 좌측 액션 플립북 등장(이동모드 진입 입구).
             // showActionFlipbook=false 면 표시하지 않는다(사용자 결정 2026-07-29). Hide 경로는
             // 그대로 둔다 — 토글을 Play 중에 켜도 이전 잔상 없이 정상 동작한다.
@@ -436,13 +440,27 @@ namespace Wassup.UI
             if (_selected == Entity.Null) return;
             // 앵커 소실 = 호스트 사망 → 선택 해제. unit 4 이후로는 **부착이 0장이 된 것만으로는
             // 닫지 않는다**(선택은 부착과 무관) — 카드를 다 잃어도 유닛은 살아있을 수 있다.
-            if (!bridge.TryGetUnitViewAnchor(_selected, out var anchor)) { Close(); return; }
-            Resolve(_selected);
-            if (panel != null)
+            if (!bridge.TryGetUnitViewAnchor(_selected, out _)) { Close(); return; }
+            ShowPanelFor(_selected);
+        }
+
+        // unit 11 — 패널 구조 갱신(선택 / 부착 변경). 스탯 값은 TickSelectionAnchor 가 매 프레임
+        // 따로 넣는다. 이름·포트레이트는 배치 셀로 SO 를 되짚어 얻는다(뷰는 Entity 를 모른다).
+        private void ShowPanelFor(Entity entity)
+        {
+            // `?.` 가 아니라 `!= null` — 전자는 참조 null 검사로 낮아져 UnityEngine.Object 의
+            // 수명 인지 == 연산자를 건너뛴다(파괴된 오브젝트가 통과한다).
+            if (panel == null) return;
+            Resolve(entity);
+            string unitName = null;
+            Sprite portrait = null;
+            if (bridge.TryGetDefenderCell(entity, out var cell) &&
+                bridge.TryGetDefenderData(cell, out var data) && data != null)
             {
-                if (_cards.Count > 0) panel.Show(anchor, mainCamera, _cards, _costs);
-                else panel.Hide();
+                unitName = data.displayName;
+                portrait = data.portrait;
             }
+            panel.Show(unitName, portrait, _cards, _costs);
         }
 
         // 계약 9 — DreamcatcherHandView.OnPhaseChanged 선례. UGUI 패널은 월드 스프라이트와

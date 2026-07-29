@@ -7,14 +7,20 @@ using Wassup.UI.Layout;
 
 namespace Wassup.UI
 {
-    // unit-dreamcatcher-inspect unit 2 — 선택 유닛 옆에 붙는 부착 카드 상세 스택 패널.
+    // unit-dreamcatcher-inspect unit 2 → selection-hand-attach unit 11 재설계.
     //
-    // 손패 드래그 툴팁(DreamcatcherHandView.BuildTooltip)의 시각 문법을 계승하되 위젯은
-    // 신규다 — 그 툴팁은 입력이 슬롯 인덱스이고 위치가 슬롯 homePos 에서 파생되며 생명주기가
-    // 손패 뷰에 종속돼 재사용할 수 없다. 공유되는 것은 본문 포맷터(DreamcatcherCardText)뿐.
+    // 선택 유닛의 상세 패널. 원래는 유닛 옆(스크린 좌표 +46px)에 붙어 따라다녔는데, 그러면
+    // 콜아웃 좌측 87px 와 리티클 우측 20px 를 **항상** 먹는다(기하학적으로 확정 — 패널 폭 460,
+    // 세로 중앙 정렬). 그래서 앵커 추종을 버리고 **화면 좌측에 고정**한다:
     //
-    // 뷰는 Entity/BattleBridge 를 모른다 — 컨트롤러가 앵커 Transform 을 해석해 넘긴다
-    // (DcIconStripSpawner→DcIconStripView 와 같은 역할 분담).
+    //  - 초점 침범이 0 이 된다. 유닛이 어디 있든 패널은 같은 자리다.
+    //  - 위치가 학습된다("부착·스탯은 항상 저기").
+    //  - 카메라 포즈 의존이 사라져 LateUpdate/Follow 자체가 불필요해졌다.
+    //
+    // 유닛↔패널의 공간적 연결은 **리티클**이 진다(README 계약 11) — 그래서 리티클은 간소화하되
+    // 없애지 않는다.
+    //
+    // 뷰는 Entity/BattleBridge 를 모른다 — 컨트롤러가 이름·포트레이트·스탯·부착을 해석해 넘긴다.
     public class DcInspectPanelView : MonoBehaviour
     {
         private const int PanelSortingOrder = 9; // SquadPrep(8) 위, MenuPopup(960) 아래
@@ -26,144 +32,111 @@ namespace Wassup.UI
         // null 이면 포매터가 id 문자열로 폴백한다.
         [SerializeField] private Wassup.Data.DefenderCatalog defenderCatalog;
 
+        [Header("Dock")]
+        [Tooltip("safe area 좌측에서 패널까지(캔버스 단위). MenuButton 과 같은 좌측 정렬")]
+        [SerializeField] private float dockLeft = 24f;
+        [Tooltip("safe area 상단에서 패널 상단까지. MenuButton(24+64) 아래로 내린 값")]
+        [SerializeField] private float dockTop = 120f;
+        [SerializeField] private float panelWidth = 360f;
+
         [Header("Layout")]
-        [SerializeField] private float panelWidth = 460f;
-        [SerializeField] private float pad = 14f;
+        [SerializeField] private float pad = 18f;
+        [SerializeField] private float sectionGap = 14f;
         [SerializeField] private float rowGap = 8f;
-        [SerializeField] private float artHeight = 84f;
-        [SerializeField] private float headerBodyGap = 6f;
-        [Tooltip("유닛 앵커에서 패널까지 가로 간격(캔버스 단위)")]
-        [SerializeField] private float gapFromUnit = 46f;
-        [Tooltip("safe area 안쪽 여백(캔버스 단위)")]
-        [SerializeField] private float edgeMargin = 10f;
+        [SerializeField] private float portraitSize = 84f;
+        [SerializeField] private float statRowHeight = 44f;
+        [SerializeField] private float hpBarHeight = 10f;
+        [SerializeField] private float attachArtHeight = 69f;
 
         [Header("Colors")]
         [SerializeField] private Color fill = new Color(0.07f, 0.06f, 0.13f, 1f);        // 툴팁과 동일 네이비
-        [SerializeField] private Color squadBorder = new Color(1f, 0.82f, 0.35f, 1f);    // 골드 — DcIconStrip 과 같은 색 언어
-        [SerializeField] private Color unitBorder = new Color(0.45f, 0.85f, 1f, 1f);     // 청록
-        [SerializeField] private Color costColor = new Color(0.79f, 0.65f, 1f, 1f);      // #C9A6FF — 손패 툴팁 코스트
+        [SerializeField] private Color squadBorder = new Color(1f, 0.82f, 0.35f, 1f);    // 골드 — Squad hosted
+        [SerializeField] private Color unitBorder = new Color(0.45f, 0.85f, 1f, 1f);     // 청록 — Unit 부착
+        [SerializeField] private Color labelColor = new Color(0.55f, 0.52f, 0.66f, 1f);
+        [SerializeField] private Color valueColor = new Color(0.94f, 0.93f, 0.98f, 1f);
+        [SerializeField] private Color deltaUpColor = new Color(1f, 0.82f, 0.35f, 1f);   // 상승 = 골드
+        [SerializeField] private Color deltaDownColor = new Color(1f, 0.48f, 0.42f, 1f); // 하락 = 코랄
+        [SerializeField] private Color hpFillColor = new Color(0.35f, 0.86f, 0.55f, 1f);
 
-        private class Row
+        // 델타가 이 값 미만이면 칩을 숨긴다. 표시 단위가 다른 스탯을 한 값으로 재는 것이라
+        // 넉넉하게 잡는다(rate 는 0.1 단위, 체력은 정수 단위).
+        [SerializeField] private float deltaEpsilon = UnitStatMath.DefaultDeltaEpsilon;
+
+        private class StatRow
+        {
+            public RectTransform rect;
+            public TextMeshProUGUI label;
+            public TextMeshProUGUI value;
+            public RectTransform chip;
+            public Image chipBg;
+            public TextMeshProUGUI chipText;
+        }
+
+        private class AttachRow
         {
             public GameObject root;
             public RectTransform rect;
             public Image bg;
             public Image art;
-            public TextMeshProUGUI header;
-            public TextMeshProUGUI body;
+            public TextMeshProUGUI name;
+            public TextMeshProUGUI kind;
         }
 
-        private readonly List<Row> _rows = new List<Row>();
-        private Canvas _canvas;
+        private readonly List<AttachRow> _attachRows = new List<AttachRow>();
+        private readonly StatRow[] _statRows = new StatRow[3];
+
         private RectTransform _safeRoot;
         private GameObject _root;
         private RectTransform _rect;
         private CanvasGroup _group;
         private Sprite _squadPlate;
         private Sprite _unitPlate;
-        private Transform _anchor;
-        private Camera _camera;
+        private Sprite _chipPlate;
+
+        // 헤더
+        private Image _portrait;
+        private TextMeshProUGUI _unitName;
+        // 스탯 섹션
+        private RectTransform _statsSection;
+        private TextMeshProUGUI _statsLabel;
+        private RectTransform _hpBarBg;
+        private RectTransform _hpBarFill;
+        // 부착 섹션
+        private RectTransform _attachSection;
+        private TextMeshProUGUI _attachLabel;
+
         private bool _visible;
         private bool _built;
 
         private void Awake() => Build();
 
-        private void Build()
+        // ── 공개 API ──────────────────────────────────────────────────────────
+
+        // 구조 갱신(선택/부착 변경). 스탯 값은 SetStats 가 매 프레임 따로 넣는다.
+        //
+        // unit 11 — **부착 0장이어도 띄운다.** 예전에는 보여줄 카드가 없으면 Hide 했지만
+        // ("빈 상태 UI 는 만들지 않는다"), 스탯이 생기면서 0장이어도 보여줄 것이 있다.
+        // 부착 섹션만 접는다.
+        public void Show(string unitName, Sprite portrait,
+            IReadOnlyList<DreamcatcherCard> cards, IReadOnlyList<int> costs)
         {
-            if (_built) return;
-            var roots = UiCanvasSetup.Ensure(gameObject, PanelSortingOrder);
-            _canvas = roots.Canvas;
-            _safeRoot = roots.SafeAreaRoot;
-
-            _root = new GameObject("InspectPanel", typeof(RectTransform), typeof(CanvasGroup));
-            _root.transform.SetParent(_safeRoot, false);
-            _rect = (RectTransform)_root.transform;
-            // pivot 을 좌측중앙 고정 → 좌우 플립을 pivot 이 아니라 좌표 계산으로 처리한다
-            // (pivot 을 바꾸면 같은 position 이 다른 위치를 뜻해 클램프 수식이 갈라진다).
-            _rect.anchorMin = new Vector2(0f, 0f);
-            _rect.anchorMax = new Vector2(0f, 0f);
-            _rect.pivot = new Vector2(0f, 0.5f);
-
-            _group = _root.GetComponent<CanvasGroup>();
-            _group.alpha = 0f;
-            _group.blocksRaycasts = false;
-            _group.interactable = false;
-            _root.SetActive(false);
-            _built = true;
-        }
-
-        // 컨트롤러가 앵커를 해석해 넘긴다. cards/costs 는 index 대응(같은 길이).
-        public void Show(Transform anchor, Camera cam, IReadOnlyList<DreamcatcherCard> cards, IReadOnlyList<int> costs)
-        {
-            if (anchor == null || cam == null || cards == null || cards.Count == 0) { Hide(); return; }
             Build();
             EnsurePlates();
 
-            _anchor = anchor;
-            _camera = cam;
-
             // 측정 전에 루트를 켠다. 비활성 계층에서 AddComponent 된 TMP 는 Awake 가 돌지
             // 않아 기본 설정이 로드되지 않고, 그 상태의 GetPreferredValues 는 정답의 1/10 을
-            // 답한다(실측 2026-07-15: 헤더 2.21 vs 22.0). 그러면 본문이 헤더 위로 겹친다.
+            // 답한다(실측 2026-07-15: 헤더 2.21 vs 22.0).
             bool wasHidden = !_root.activeSelf;
             _root.SetActive(true);
-            EnsureRows(cards.Count);
 
-            float artW = artHeight * (2f / 3f); // 타로 아트 2:3
-            float textX = pad + artW + pad;
-            float textW = panelWidth - textX - pad;
-            if (textW < 40f) textW = 40f; // 극단 튜닝값 방어
+            _unitName.text = string.IsNullOrEmpty(unitName) ? "" : unitName;
+            bool hasPortrait = portrait != null;
+            _portrait.gameObject.SetActive(hasPortrait);
+            if (hasPortrait) _portrait.sprite = portrait;
 
-            float y = 0f;
-            for (int i = 0; i < _rows.Count; i++)
-            {
-                var row = _rows[i];
-                bool used = i < cards.Count;
-                row.root.SetActive(used);
-                if (!used) continue;
-
-                var card = cards[i];
-                row.bg.sprite = card.type == CardType.Squad ? _squadPlate : _unitPlate;
-
-                string title = string.IsNullOrEmpty(card.displayName) ? card.id : card.displayName;
-                int cost = costs != null && i < costs.Count ? costs[i] : 0;
-                row.header.text = $"<b>{title}</b>  <color=#{ColorUtility.ToHtmlStringRGB(costColor)}>{cost}</color>";
-                row.body.text = DreamcatcherCardText.Body(
-                    card, defenderCatalog != null ? defenderCatalog.DisplayNameOf : (System.Func<string, string>)null);
-
-                bool hasArt = card.art != null;
-                row.art.gameObject.SetActive(hasArt);
-                if (hasArt) row.art.sprite = card.art;
-
-                // 텍스트 대입 후 ForceMeshUpdate 로 레이아웃을 확정한 뒤 측정한다. 갓 생성된
-                // TMP 는 첫 레이아웃 전까지 폰트 스케일이 서지 않아 측정값이 무의미하다.
-                row.header.ForceMeshUpdate();
-                row.body.ForceMeshUpdate();
-                float headerH = row.header.GetPreferredValues(row.header.text, textW, 0f).y;
-                float bodyH = row.body.GetPreferredValues(row.body.text, textW, 0f).y;
-
-                var hrt = (RectTransform)row.header.transform;
-                hrt.anchoredPosition = new Vector2(textX, -pad);
-                hrt.sizeDelta = new Vector2(textW, headerH);
-                var brt = (RectTransform)row.body.transform;
-                brt.anchoredPosition = new Vector2(textX, -(pad + headerH + headerBodyGap));
-                brt.sizeDelta = new Vector2(textW, bodyH);
-
-                var art = (RectTransform)row.art.transform;
-                art.anchoredPosition = new Vector2(pad, -pad);
-                art.sizeDelta = new Vector2(artW, artHeight);
-
-                float textH = pad + headerH + headerBodyGap + bodyH + pad;
-                float artColH = pad + artHeight + pad;
-                float rowH = Mathf.Max(textH, artColH);
-
-                row.rect.anchoredPosition = new Vector2(0f, -y);
-                row.rect.sizeDelta = new Vector2(panelWidth, rowH);
-                y += rowH + rowGap;
-            }
-            y -= rowGap; // 마지막 행 뒤 간격 제거 (cards.Count >= 1 은 위에서 보장됨)
-
-            _rect.sizeDelta = new Vector2(panelWidth, y);
+            int count = cards != null ? cards.Count : 0;
+            BuildAttachRows(cards, costs, count);
+            Layout(count);
 
             _visible = true;
             if (wasHidden)
@@ -171,17 +144,191 @@ namespace Wassup.UI
                 _group.alpha = 0f;
                 _rect.localScale = new Vector3(HiddenScale, HiddenScale, 1f);
             }
-            Follow(); // 첫 프레임 위치 확정 — 안 하면 (0,0) 에서 날아온다
+        }
+
+        // 실효 스탯 갱신 — 컨트롤러가 매 프레임 부른다(대상 1 엔티티라 비용 무시 가능).
+        //
+        // has=false 는 심이 그 엔티티를 못 내주는 프레임이다(사망 직후 등). **직전 값을 유지**한다 —
+        // 대시로 바꾸면 사망 순간 숫자가 깜빡이고, 어차피 컨트롤러의 앵커 liveness 가 곧 닫는다.
+        public void SetStats(in UnitStatReadout readout, bool has)
+        {
+            if (!_built || !has || !_root.activeSelf) return;
+
+            SetStat(0, Mathf.Round(readout.hp) + " / " + Mathf.Round(readout.hpMax),
+                readout.hpMaxBase, readout.hpMax, "F0");
+            SetStat(1, readout.damage.ToString("0.#"), readout.damageBase, readout.damage, "0.#");
+            SetStat(2, readout.attackRate.ToString("0.0") + "/s",
+                readout.attackRateBase, readout.attackRate, "0.0");
+
+            float ratio = readout.hpMax > 0f ? Mathf.Clamp01(readout.hp / readout.hpMax) : 0f;
+            float inner = panelWidth - pad * 2f;
+            _hpBarFill.sizeDelta = new Vector2(inner * ratio, hpBarHeight);
         }
 
         // 멱등 — 컨트롤러의 Close 는 미선택 상태에서도 불린다.
-        public void Hide()
+        public void Hide() => _visible = false;
+
+        // ── 내부 ──────────────────────────────────────────────────────────────
+
+        private void SetStat(int index, string valueText, float baseValue, float effValue, string fmt)
         {
-            _visible = false;
-            _anchor = null;
+            var row = _statRows[index];
+            row.value.text = valueText;
+
+            int sign = UnitStatMath.ResolveDelta(baseValue, effValue,
+                Mathf.Max(1e-5f, deltaEpsilon), out float magnitude);
+            if (sign == 0)
+            {
+                // 변화 없으면 칩을 그리지 않는다 — 항상 ▲0 을 띄우면 노이즈가 되고,
+                // 변화가 있을 때만 눈에 들어와야 부착의 피드백 루프가 닫힌다.
+                row.chip.gameObject.SetActive(false);
+                return;
+            }
+
+            row.chip.gameObject.SetActive(true);
+            row.chipText.text = (sign > 0 ? "▲" : "▼") + magnitude.ToString(fmt);
+            row.chipText.color = sign > 0 ? deltaUpColor : deltaDownColor;
+            var c = sign > 0 ? deltaUpColor : deltaDownColor;
+            row.chipBg.color = new Color(c.r, c.g, c.b, 0.16f);
+
+            row.chipText.ForceMeshUpdate();
+            float w = row.chipText.GetPreferredValues(row.chipText.text).x + 18f;
+            row.chip.sizeDelta = new Vector2(w, 26f);
         }
 
-        // 알파/스케일만 — 카메라 포즈와 무관하므로 Update 로 충분.
+        // 세로 한 열로 쌓는다. 좌측 대역은 세로로 열려 있고 가로로 좁으므로 세우는 것이 의도다.
+        private void Layout(int attachCount)
+        {
+            float inner = panelWidth - pad * 2f;
+            float y = pad;
+
+            // 헤더 — 포트레이트 + 이름. 포트레이트가 없는 유닛(아트 미할당)이면 자리를 비우지
+            // 않고 이름을 좌측으로 당긴다 — 안 그러면 빈 84px 들여쓰기가 남는다.
+            bool hasPortrait = _portrait.gameObject.activeSelf;
+            float headerH = hasPortrait ? portraitSize : 40f;
+            if (hasPortrait)
+            {
+                var prt = (RectTransform)_portrait.transform;
+                prt.anchoredPosition = new Vector2(pad, -y);
+                prt.sizeDelta = new Vector2(portraitSize, portraitSize);
+            }
+
+            float nameX = hasPortrait ? pad + portraitSize + 14f : pad;
+            float nameY = hasPortrait ? y + (portraitSize - 40f) * 0.5f : y;
+            var nrt = _unitName.rectTransform;
+            nrt.anchoredPosition = new Vector2(nameX, -nameY);
+            nrt.sizeDelta = new Vector2(panelWidth - nameX - pad, 40f);
+
+            y += headerH + sectionGap;
+
+            // 스탯 섹션
+            _statsSection.anchoredPosition = new Vector2(0f, -y);
+            float sy = 0f;
+            _statsLabel.rectTransform.anchoredPosition = new Vector2(pad, -sy);
+            _statsLabel.rectTransform.sizeDelta = new Vector2(inner, 24f);
+            sy += 24f + 4f;
+
+            for (int i = 0; i < _statRows.Length; i++)
+            {
+                var row = _statRows[i];
+                row.rect.anchoredPosition = new Vector2(0f, -sy);
+                row.rect.sizeDelta = new Vector2(panelWidth, statRowHeight);
+
+                // 3레인: 라벨 / 값(우측정렬) / 칩. 값 레인은 "340 / 420" 같은 최장 문자열을
+                // 담아야 하므로 라벨보다 넉넉히 준다(모자라면 autosize 가 글자를 줄인다).
+                row.label.rectTransform.anchoredPosition = new Vector2(pad, 0f);
+                row.label.rectTransform.sizeDelta = new Vector2(inner * 0.34f, statRowHeight);
+                row.value.rectTransform.anchoredPosition = new Vector2(pad + inner * 0.34f, 0f);
+                row.value.rectTransform.sizeDelta = new Vector2(inner * 0.38f, statRowHeight);
+                row.chip.anchoredPosition = new Vector2(pad + inner * 0.74f, -(statRowHeight - 26f) * 0.5f);
+
+                sy += statRowHeight;
+                if (i == 0) // 체력 행 아래에 게이지
+                {
+                    _hpBarBg.anchoredPosition = new Vector2(pad, -sy);
+                    _hpBarBg.sizeDelta = new Vector2(inner, hpBarHeight);
+                    _hpBarFill.sizeDelta = new Vector2(0f, hpBarHeight);
+                    sy += hpBarHeight + rowGap;
+                }
+            }
+            _statsSection.sizeDelta = new Vector2(panelWidth, sy);
+            y += sy + sectionGap;
+
+            // 부착 섹션 — 0장이면 접는다
+            bool hasAttach = attachCount > 0;
+            _attachSection.gameObject.SetActive(hasAttach);
+            if (hasAttach)
+            {
+                _attachSection.anchoredPosition = new Vector2(0f, -y);
+                float ay = 0f;
+                _attachLabel.rectTransform.anchoredPosition = new Vector2(pad, -ay);
+                _attachLabel.rectTransform.sizeDelta = new Vector2(inner, 24f);
+                ay += 24f + 4f;
+
+                float artW = attachArtHeight * (2f / 3f); // 타로 아트 2:3
+                float rowH = attachArtHeight + 12f;
+                for (int i = 0; i < _attachRows.Count; i++)
+                {
+                    var row = _attachRows[i];
+                    if (!row.root.activeSelf) continue;
+
+                    row.rect.anchoredPosition = new Vector2(pad, -ay);
+                    row.rect.sizeDelta = new Vector2(inner, rowH);
+
+                    var art = (RectTransform)row.art.transform;
+                    art.anchoredPosition = new Vector2(8f, -6f);
+                    art.sizeDelta = new Vector2(artW, attachArtHeight);
+
+                    float tx = 8f + artW + 12f;
+                    float tw = inner - tx - 10f;
+                    row.name.rectTransform.anchoredPosition = new Vector2(tx, -12f);
+                    row.name.rectTransform.sizeDelta = new Vector2(tw, 30f);
+                    row.kind.rectTransform.anchoredPosition = new Vector2(tx, -44f);
+                    row.kind.rectTransform.sizeDelta = new Vector2(tw, 24f);
+
+                    ay += rowH + rowGap;
+                }
+                if (attachCount > 0) ay -= rowGap;
+                _attachSection.sizeDelta = new Vector2(panelWidth, ay);
+                y += ay + sectionGap;
+            }
+
+            y += pad - sectionGap;
+            _rect.sizeDelta = new Vector2(panelWidth, y);
+        }
+
+        private void BuildAttachRows(IReadOnlyList<DreamcatcherCard> cards, IReadOnlyList<int> costs, int count)
+        {
+            EnsureAttachRows(count);
+            for (int i = 0; i < _attachRows.Count; i++)
+            {
+                var row = _attachRows[i];
+                bool used = i < count;
+                row.root.SetActive(used);
+                if (!used) continue;
+
+                var card = cards[i];
+                bool isSquad = card.type == CardType.Squad;
+                row.bg.sprite = isSquad ? _squadPlate : _unitPlate;
+
+                string title = string.IsNullOrEmpty(card.displayName) ? card.id : card.displayName;
+                row.name.text = title;
+                row.name.color = valueColor;
+
+                int cost = costs != null && i < costs.Count ? costs[i] : 0;
+                // 종류 + 코스트. 본문 전문은 뺐다(전투 중 읽히지 않는 밀도이고, 상세는 손패
+                // 툴팁이 이미 나른다) — unit 11 결정.
+                row.kind.text = (isSquad ? "스쿼드" : "유닛") + "  ·  " + cost;
+                row.kind.color = isSquad ? squadBorder : unitBorder;
+
+                bool hasArt = card.art != null;
+                row.art.gameObject.SetActive(hasArt);
+                if (hasArt) row.art.sprite = card.art;
+            }
+            _attachLabel.text = "부착 드림캐쳐 " + count;
+        }
+
+        // 알파/스케일만 — 위치가 고정이라 카메라 포즈와 무관하다(구 LateUpdate/Follow 는 제거).
         private void Update()
         {
             if (_root == null || !_root.activeSelf) return;
@@ -192,72 +339,151 @@ namespace Wassup.UI
             if (!_visible && _group.alpha < 0.02f) _root.SetActive(false);
         }
 
-        // 위치는 LateUpdate — CameraDirector(-90) 가 LateUpdate 에서 카메라 포즈를 확정한다.
-        // Update 에서 따라가면 지난 프레임 카메라를 읽어, 카메라가 움직이는 동안(킥/브리딩/
-        // 페이즈 pitch 전환) 패널만 1프레임 뒤처져 유닛에서 미끄러진다. DcIconStripView 선례.
-        // 게이트는 _visible 만 본다 — _root.activeSelf 를 조건에 넣으면, 아래 z<=0 경로가
-        // 루트를 끈 순간 이 메서드가 영구 early-return 해서 복구선(SetActive(true))에 영영
-        // 도달하지 못한다. 그러면 앵커가 다시 화면 앞으로 와도 패널은 사라진 채 컨트롤러만
-        // 슬로우 lease 를 쥐고 있게 된다. 활성/비활성은 Follow 가 소유한다.
-        private void LateUpdate()
+        // ── 생성 ──────────────────────────────────────────────────────────────
+
+        private void Build()
         {
-            if (_root == null || !_visible) return;
-            Follow();
+            if (_built) return;
+            var roots = UiCanvasSetup.Ensure(gameObject, PanelSortingOrder);
+            _safeRoot = roots.SafeAreaRoot;
+
+            _root = new GameObject("InspectPanel", typeof(RectTransform), typeof(CanvasGroup), typeof(Image));
+            _root.transform.SetParent(_safeRoot, false);
+            _rect = (RectTransform)_root.transform;
+            // 좌상단 고정 — 앵커 추종 없음(unit 11). pivot 도 좌상단이라 sizeDelta 가 아래로 자란다.
+            _rect.anchorMin = new Vector2(0f, 1f);
+            _rect.anchorMax = new Vector2(0f, 1f);
+            _rect.pivot = new Vector2(0f, 1f);
+            _rect.anchoredPosition = new Vector2(dockLeft, -dockTop);
+
+            var panelBg = _root.GetComponent<Image>();
+            panelBg.sprite = UiRoundedSprite.Make(16f, 2f, fill, unitBorder);
+            panelBg.type = Image.Type.Sliced;
+            panelBg.raycastTarget = false; // 계약 — 카드 드롭/조준 판정 비간섭
+
+            _group = _root.GetComponent<CanvasGroup>();
+            _group.alpha = 0f;
+            _group.blocksRaycasts = false;
+            _group.interactable = false;
+
+            // 헤더
+            var portraitGo = new GameObject("Portrait", typeof(RectTransform), typeof(Image));
+            portraitGo.transform.SetParent(_root.transform, false);
+            var prt = (RectTransform)portraitGo.transform;
+            prt.anchorMin = new Vector2(0f, 1f); prt.anchorMax = new Vector2(0f, 1f);
+            prt.pivot = new Vector2(0f, 1f);
+            _portrait = portraitGo.GetComponent<Image>();
+            _portrait.raycastTarget = false;
+            _portrait.preserveAspect = true;
+
+            _unitName = BuildLabel(_root.transform, "UnitName", 30f, TextAlignmentOptions.TopLeft);
+            _unitName.fontStyle = FontStyles.Bold;
+            _unitName.color = valueColor;
+
+            // 스탯 섹션
+            _statsSection = NewSection("StatsSection");
+            _statsLabel = BuildLabel(_statsSection, "StatsLabel", 17f, TextAlignmentOptions.TopLeft);
+            _statsLabel.color = labelColor;
+            _statsLabel.characterSpacing = 6f;
+            _statsLabel.text = "스탯";
+
+            string[] names = { "체력", "공격력", "공격속도" };
+            for (int i = 0; i < _statRows.Length; i++) _statRows[i] = BuildStatRow(names[i]);
+
+            var barBg = new GameObject("HpBarBg", typeof(RectTransform), typeof(Image));
+            barBg.transform.SetParent(_statsSection, false);
+            _hpBarBg = (RectTransform)barBg.transform;
+            _hpBarBg.anchorMin = new Vector2(0f, 1f); _hpBarBg.anchorMax = new Vector2(0f, 1f);
+            _hpBarBg.pivot = new Vector2(0f, 1f);
+            var bgImg = barBg.GetComponent<Image>();
+            bgImg.color = new Color(1f, 1f, 1f, 0.09f);
+            bgImg.raycastTarget = false;
+
+            var barFill = new GameObject("HpBarFill", typeof(RectTransform), typeof(Image));
+            barFill.transform.SetParent(barBg.transform, false);
+            _hpBarFill = (RectTransform)barFill.transform;
+            _hpBarFill.anchorMin = new Vector2(0f, 0f); _hpBarFill.anchorMax = new Vector2(0f, 0f);
+            _hpBarFill.pivot = new Vector2(0f, 0f);
+            _hpBarFill.anchoredPosition = Vector2.zero;
+            var fillImg = barFill.GetComponent<Image>();
+            fillImg.color = hpFillColor;
+            fillImg.raycastTarget = false;
+
+            // 부착 섹션
+            _attachSection = NewSection("AttachSection");
+            _attachLabel = BuildLabel(_attachSection, "AttachLabel", 17f, TextAlignmentOptions.TopLeft);
+            _attachLabel.color = labelColor;
+            _attachLabel.characterSpacing = 6f;
+
+            _root.SetActive(false);
+            _built = true;
         }
 
-        private void Follow()
+        private RectTransform NewSection(string name)
         {
-            // 앵커 파괴(유닛 사망) — 컨트롤러가 AttachmentsChanged 로 곧 닫지만, 그 사이
-            // 프레임에 NRE 를 내지 않도록 여기서도 방어한다.
-            if (_anchor == null || _camera == null) { _visible = false; return; }
-
-            var sp = _camera.WorldToScreenPoint(_anchor.position);
-            // 카메라 뒤 — WorldToScreenPoint 가 x/y 를 반전시켜 엉뚱한 곳에 뜬다.
-            // (SpineUnitView.TryGetScreenRect 도 같은 가드를 둔다.)
-            if (sp.z <= 0f) { _root.SetActive(false); return; }
-            if (!_root.activeSelf) _root.SetActive(true);
-
-            float sf = _canvas != null ? _canvas.scaleFactor : 1f;
-            if (sf <= 0f) sf = 1f;
-            // sizeDelta 는 캔버스 레퍼런스 단위, position 은 스크린 px → 클램프는 px 로 환산해야 한다.
-            float w = _rect.sizeDelta.x * sf;
-            float h = _rect.sizeDelta.y * sf;
-            float gap = gapFromUnit * sf;
-            float m = edgeMargin * sf;
-            var safe = Screen.safeArea;
-
-            // 우측 우선, 넘치면 좌측 플립(손패 툴팁 선례). pivot 이 (0,0.5) 로 고정이라
-            // x 는 항상 패널의 좌측 모서리를 뜻한다.
-            float x = sp.x + gap;
-            if (x + w > safe.xMax - m) x = sp.x - gap - w;
-            x = Mathf.Clamp(x, safe.xMin + m, Mathf.Max(safe.xMin + m, safe.xMax - m - w));
-
-            // 세로 클램프 — 3행 스택은 세로가 길어 상/하단을 넘길 수 있다(툴팁은 좌우 플립만 있음).
-            float y = sp.y;
-            float half = h * 0.5f;
-            float lo = safe.yMin + m + half;
-            float hi = safe.yMax - m - half;
-            y = hi >= lo ? Mathf.Clamp(y, lo, hi) : (safe.yMin + safe.yMax) * 0.5f;
-
-            _rect.position = new Vector3(x, y, 0f);
+            var go = new GameObject(name, typeof(RectTransform));
+            go.transform.SetParent(_root.transform, false);
+            var rt = (RectTransform)go.transform;
+            rt.anchorMin = new Vector2(0f, 1f);
+            rt.anchorMax = new Vector2(0f, 1f);
+            rt.pivot = new Vector2(0f, 1f);
+            return rt;
         }
 
-        // 타입별 플레이트 2종 캐시(DcIconStripSpawner.EnsureFrameSprites 선례).
-        // 손패 툴팁은 trayConfig.fallbackBorder 단색 보더를 쓰지만, 이 패널은 Squad/Unit
-        // 구분이 정보라 아이콘 스트립의 색 언어(골드/청록)를 따른다.
-        private void EnsurePlates()
+        private StatRow BuildStatRow(string label)
         {
-            if (_squadPlate == null) _squadPlate = UiRoundedSprite.Make(12f, 2f, fill, squadBorder);
-            if (_unitPlate == null) _unitPlate = UiRoundedSprite.Make(12f, 2f, fill, unitBorder);
+            var row = new StatRow();
+            var go = new GameObject("Stat_" + label, typeof(RectTransform));
+            go.transform.SetParent(_statsSection, false);
+            row.rect = (RectTransform)go.transform;
+            row.rect.anchorMin = new Vector2(0f, 1f);
+            row.rect.anchorMax = new Vector2(0f, 1f);
+            row.rect.pivot = new Vector2(0f, 1f);
+
+            row.label = BuildLabel(go.transform, "Label", 21f, TextAlignmentOptions.Left);
+            row.label.color = labelColor;
+            row.label.text = label;
+
+            row.value = BuildLabel(go.transform, "Value", 26f, TextAlignmentOptions.Right);
+            row.value.fontStyle = FontStyles.Bold;
+            row.value.color = valueColor;
+            // 값은 **절대 줄바꿈되면 안 된다** — "340 / 420" 이 두 줄로 접히면 바로 아래 HP
+            // 게이지를 침범한다(실측). 폭이 모자라면 줄을 늘리는 대신 글자를 줄인다.
+            row.value.textWrappingMode = TextWrappingModes.NoWrap;
+            row.value.enableAutoSizing = true;
+            row.value.fontSizeMin = 15f;
+            row.value.fontSizeMax = 26f;
+
+            var chipGo = new GameObject("Chip", typeof(RectTransform), typeof(Image));
+            chipGo.transform.SetParent(go.transform, false);
+            row.chip = (RectTransform)chipGo.transform;
+            row.chip.anchorMin = new Vector2(0f, 1f);
+            row.chip.anchorMax = new Vector2(0f, 1f);
+            row.chip.pivot = new Vector2(0f, 1f);
+            row.chipBg = chipGo.GetComponent<Image>();
+            row.chipBg.sprite = _chipPlate;
+            row.chipBg.type = Image.Type.Sliced;
+            row.chipBg.raycastTarget = false;
+
+            row.chipText = BuildLabel(chipGo.transform, "ChipText", 18f, TextAlignmentOptions.Center);
+            row.chipText.fontStyle = FontStyles.Bold;
+            row.chipText.textWrappingMode = TextWrappingModes.NoWrap; // 칩 폭은 텍스트에서 파생된다
+            var ct = row.chipText.rectTransform;
+            ct.anchorMin = Vector2.zero; ct.anchorMax = Vector2.one;
+            ct.pivot = new Vector2(0.5f, 0.5f);
+            ct.offsetMin = Vector2.zero; ct.offsetMax = Vector2.zero;
+
+            chipGo.SetActive(false);
+            return row;
         }
 
-        private void EnsureRows(int count)
+        private void EnsureAttachRows(int count)
         {
-            while (_rows.Count < count)
+            while (_attachRows.Count < count)
             {
-                var row = new Row();
-                row.root = new GameObject("Row" + _rows.Count, typeof(RectTransform), typeof(Image));
-                row.root.transform.SetParent(_root.transform, false);
+                var row = new AttachRow();
+                row.root = new GameObject("Attach" + _attachRows.Count, typeof(RectTransform), typeof(Image));
+                row.root.transform.SetParent(_attachSection, false);
                 row.rect = (RectTransform)row.root.transform;
                 row.rect.anchorMin = new Vector2(0f, 1f);
                 row.rect.anchorMax = new Vector2(0f, 1f);
@@ -266,11 +492,7 @@ namespace Wassup.UI
                 row.bg = row.root.GetComponent<Image>();
                 row.bg.type = Image.Type.Sliced;
                 row.bg.color = Color.white;
-                row.bg.raycastTarget = false; // 계약 — 카드 드롭/조준 판정 비간섭
-
-                var shadow = row.root.AddComponent<Shadow>();
-                shadow.effectDistance = new Vector2(0f, -4f);
-                shadow.effectColor = new Color(0f, 0f, 0f, 0.45f);
+                row.bg.raycastTarget = false;
 
                 var artGo = new GameObject("Art", typeof(RectTransform), typeof(Image));
                 artGo.transform.SetParent(row.root.transform, false);
@@ -282,10 +504,24 @@ namespace Wassup.UI
                 row.art.raycastTarget = false;
                 row.art.preserveAspect = true;
 
-                row.header = BuildLabel(row.root.transform, "Header", 22f, TextAlignmentOptions.TopLeft);
-                row.body = BuildLabel(row.root.transform, "Body", 19f, TextAlignmentOptions.TopLeft);
+                row.name = BuildLabel(row.root.transform, "Name", 21f, TextAlignmentOptions.TopLeft);
+                row.kind = BuildLabel(row.root.transform, "Kind", 17f, TextAlignmentOptions.TopLeft);
 
-                _rows.Add(row);
+                _attachRows.Add(row);
+            }
+        }
+
+        // 타입별 플레이트 2종 캐시(DcIconStripSpawner.EnsureFrameSprites 선례).
+        private void EnsurePlates()
+        {
+            if (_squadPlate == null) _squadPlate = UiRoundedSprite.Make(12f, 2f, fill, squadBorder);
+            if (_unitPlate == null) _unitPlate = UiRoundedSprite.Make(12f, 2f, fill, unitBorder);
+            if (_chipPlate == null)
+            {
+                _chipPlate = UiRoundedSprite.Make(8f, 0f, Color.white, Color.clear);
+                for (int i = 0; i < _statRows.Length; i++)
+                    if (_statRows[i] != null && _statRows[i].chipBg != null)
+                        _statRows[i].chipBg.sprite = _chipPlate;
             }
         }
 
@@ -304,8 +540,7 @@ namespace Wassup.UI
             tmp.alignment = align;
             tmp.raycastTarget = false;
             // 명시 설정 필수 — TMP_Settings 기본은 Normal 이지만 그 로드는 Awake 에서 일어난다.
-            // 비활성 계층에서 생성되면 Awake 가 안 돌아 enum 기본값 0(=NoWrap)이 남고, 본문이
-            // 행 플레이트 밖으로 흘러나간다(실측 2026-07-15).
+            // 비활성 계층에서 생성되면 Awake 가 안 돌아 enum 기본값 0(=NoWrap)이 남는다.
             tmp.textWrappingMode = TextWrappingModes.Normal;
             return tmp;
         }
