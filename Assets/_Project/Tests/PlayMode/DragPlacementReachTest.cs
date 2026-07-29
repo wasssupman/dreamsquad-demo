@@ -12,7 +12,7 @@ using Wassup.UI;
 
 namespace Wassup.Tests.PlayMode
 {
-    // 트레이 드래그의 셀 판정이 **손가락**을 따르는지 지키는 회귀 가드.
+    // 트레이 드래그의 셀 판정이 **가상 포인터**(= 손가락 + 고정 오프셋)를 따르는지 지키는 회귀 가드.
     //
     // 회귀 이력: 판정 기준이 프리뷰용 발점(_unitTargetWorld)이었다. 발점은 손가락보다
     // totalDrop(= 유닛 키 + ropeLength×visualScale) 만큼 화면 아래라, 손가락을 화면 최상단까지
@@ -20,7 +20,11 @@ namespace Wassup.Tests.PlayMode
     // 화면 하단 절반이 전부 row 0 에 뭉쳤다. 판정을 손가락 보드 히트(_fingerBoardWorld)로
     // 옮겨 해결. 스펙 계약은 원래 "배치 칸 = 마우스"(docs/spec/keyring-cord-preview/README.md).
     //
-    // 이 테스트가 깨지면 ropeLength 튜닝이 아니라 **판정 기준이 발점으로 되돌아갔는지** 먼저 본다.
+    // placement-thumb-occlusion unit 0 — 그 계약이 "배치 칸 = **가상 포인터**"로 개정됐다(손가락이
+    // 하이라이트를 덮는 문제). 오프셋은 **화면 높이 비율의 상수 평행이동**이라 발점 회귀와는 종류가
+    // 다르다 — 발점은 totalDrop 만큼 밀리며 히스테리시스 밴드 자체를 판 밖으로 끌고 나갔다.
+    //
+    // 이 테스트가 깨지면 ropeLength/오프셋 튜닝이 아니라 **판정 기준이 발점으로 되돌아갔는지** 먼저 본다.
     public class DragPlacementReachTest
     {
         [TearDown]
@@ -35,7 +39,7 @@ namespace Wassup.Tests.PlayMode
         }
 
         [UnityTest]
-        public IEnumerator TopPlaceableRow_IsReachable_AndCommitFollowsFinger()
+        public IEnumerator TopPlaceableRow_IsReachable_AndCommitFollowsPlacementPointer()
         {
             LogAssert.ignoreFailingMessages = true;
             yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
@@ -67,7 +71,7 @@ namespace Wassup.Tests.PlayMode
             // 이 크면 이웃 도달 창이 (1 - margin) 타일로 좁아져, 거친 스텝은 실제 연속 드래그와 달리
             // 행을 건너뛴다(그건 판정 버그가 아니라 샘플링 아티팩트).
             int maxRow = int.MinValue;
-            int fingerMismatch = 0, samples = 0;
+            int aimMismatch = 0, samples = 0;
             for (int p = 5; p <= 100; p++)
             {
                 var screen = new Vector2(Screen.width * 0.5f,
@@ -80,11 +84,14 @@ namespace Wassup.Tests.PlayMode
                 if (!hover.HasValue) continue;
                 if (hover.Value.y > maxRow) maxRow = hover.Value.y;
 
-                // 확정 셀은 손가락이 가리키는 셀과 같아야 한다(히스테리시스 폭 이내).
-                if (bridge.TryScreenToCell(cam, screen, out var fingerCell))
+                // 확정 셀은 **가상 포인터**가 가리키는 셀과 같아야 한다(히스테리시스 폭 이내).
+                // unit 0 — 비교 기준이 손가락에서 가상 포인터로 옮겨졌다. 스윕 좌표는 raw 로 두고
+                // 기대값만 올린다(컨트롤러가 UpdateDrag 진입부에서 같은 변환을 한다).
+                var aimScreen = screen + Vector2.up * ctrl.PlacementPointerOffsetPx;
+                if (bridge.TryScreenToCell(cam, aimScreen, out var aimCell))
                 {
                     samples++;
-                    if (Mathf.Abs(hover.Value.y - fingerCell.y) > 1) fingerMismatch++;
+                    if (Mathf.Abs(hover.Value.y - aimCell.y) > 1) aimMismatch++;
                 }
             }
 
@@ -92,8 +99,9 @@ namespace Wassup.Tests.PlayMode
                 $"최상단 배치 가능 행({topPlaceableRow})에 도달해야 한다. 도달한 최대 행={maxRow}. " +
                 "판정 기준이 프리뷰 발점으로 되돌아갔는지 확인하라.");
             Assert.Greater(samples, 20, "sweep produced samples");
-            Assert.AreEqual(0, fingerMismatch,
-                $"확정 셀이 손가락 셀에서 1행 이상 벗어난 샘플 {fingerMismatch}/{samples}건");
+            Assert.AreEqual(0, aimMismatch,
+                $"확정 셀이 **가상 포인터** 셀에서 1행 이상 벗어난 샘플 {aimMismatch}/{samples}건. "
+                + $"오프셋={ctrl.PlacementPointerOffsetPx:F1}px");
 
             ctrl.Disarm();
             yield return null;

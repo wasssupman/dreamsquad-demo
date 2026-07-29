@@ -143,5 +143,23 @@ namespace Wassup.Data
         [Tooltip("고리 페이드(초) — 놓은 자리에 잠시 남았다 사라짐.")]
         [Range(0.05f, 1f)]
         public float dropRingFade = 0.3f;
+
+        [Header("⑪ 배치 포인터 오프셋 — 손가락 가림 회피 (placement-thumb-occlusion)")]
+        // 배치 판정 포인터를 실제 포인터보다 화면상 위로 파생시켜 손가락이 포커스 칸 하이라이트를
+        // 덮지 않게 한다. 원 포인터를 덮어쓰지 않는다(UI 레이캐스트·탭/드래그 임계는 계속 raw).
+        // 화면 높이 비율인 이유: Screen.dpi 가 Android 에서 신뢰 불가라 물리 단위(dp)를 쓸 수 없다.
+        [Tooltip("배치 판정 포인터를 화면상 위로 올리는 양(화면 높이 비율). 0=현행(손가락 위치 그대로).\n" +
+                 "↑=칸이 손가락에서 멀어져 잘 보이나, 최하단 행을 노리는 손가락이 화면 하단(트레이 영역)으로 밀린다.\n" +
+                 "상한은 DragPlacementReachTest 의 하단 계측이 잰다 — 그 단언이 깨지는 값은 채택 금지.")]
+        [Range(0f, 0.2f)]
+        public float placementPointerOffsetHeightRatio = 0.06f;
+
+        [Tooltip("오프셋 램프(초, unscaled) — 드래그 승격 순간 0→풀 오프셋으로 차오르는 시간.\n" +
+                 "하이라이트가 한 칸 순간이동하는 걸 막는다. 0=즉시. 트레이 D&D 는 직전 하이라이트가 없어 항상 즉시.")]
+        [Range(0f, 0.4f)]
+        public float placementPointerOffsetRampSeconds = 0.08f;
+
+        // px 환산은 값과 같은 곳에 둔다(소비처: 드래그 컨트롤러 · 재배치 seam · PlayMode 테스트).
+        public float PlacementPointerOffsetPx => placementPointerOffsetHeightRatio * Screen.height;
     }
 }
