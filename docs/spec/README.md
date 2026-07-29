@@ -121,6 +121,18 @@ code + git history        구현 상세
 
 > 출처 spec 이 섞여 있다. 그룹 헤더 또는 항목 끝의 `(spec-slug)` 라벨로 출처 표기.
 
+#### 화염 스택 원거리 적 (enemy-fire-stack-shooter — 완료 2026-07-30, 사용자 Play 확인 통과)
+
+킨들러(레인저 전용 하드 타겟팅 원거리 적) + 프로젝트 최초 Fire 스택 producer. 선행 결함
+(투사체가 부여한 스택이 누적되지 않던 것)을 unit 0 에서 수정. 상세:
+`docs/spec/enemy-fire-stack-shooter/4_handoff_summary.md`.
+
+- **`ApplyStat` 의 투사체 귀속 결함** [S] · `ProjectileHitSystem` 의 `ApplyStat` 이 아직도 `source` 로 **투사체 엔티티**를 보내 발사마다 새 `StatModifierSlot` 을 만든다. `Enemy_Debuffer`(Needle 투사체, `DamageMul ×0.6 Multiplicative`)는 **한 기만 있어도** 0.6ⁿ 로 곱누적된다 — `modifier-stacking-policy` 가 "서로 다른 소스"로 진단하고 클램프 `[0.2, 5]` 로 막은 증상의 실제 뿌리로 보인다. `ApplyStack` 은 unit 0 에서 고쳤고 이쪽만 남았다. 고치면 곱누적 → 상시 ×0.6 이라 **라이브 밸런스가 움직이므로 수치 재조정과 한 묶음**이어야 한다. (enemy-fire-stack-shooter)
+- **전투 스택 오버헤드 아이콘** [M] · `OverheadStackKind` 가 기믹 전용(`Fatigue`/`Heat`) 2종뿐이라 전투 스택(Fire/Ice/Bleed/Poison) 축적이 화면에 안 보인다. 5스택이 터지기 전까지 플레이어가 받는 신호가 피격뿐. `bleed-fighter-defender` 후속 후보와 **같은 항목** — 먼저 착수하는 쪽이 흡수한다. (enemy-fire-stack-shooter × bleed-fighter-defender)
+- **화상 히트 VFX 분리** [S] · 스택 적재 순간의 피격 피드백과 5스택 발화 순간의 폭발 연출이 구분되지 않는다(둘 다 벤더 `FireballHit` 원샷). (enemy-fire-stack-shooter)
+- **다중 공격자 DoT 합산** [M] · 킨들러 N기가 붙어도 화상은 한 슬롯(`(Stack, Fire)`)으로 접혀 `remainingTime = max` 갱신만 된다 — **화상 화력이 마릿수에 비례하지 않고 4.0 DPS 가 천장**. 2026-07-30 사용자 결정으로 **그대로 두기로 확정**했다(뒤집으려면 `enemy-fire-stack-shooter` README 계약 2·6-1 인용 후 재승인). 열려면 `dot-effect-extraction` 의 "다중 공격자 출혈 합산"과 같은 작업 — 도트 전용 가산 병합이 필요하고 난도질꾼도 같이 바뀐다. (enemy-fire-stack-shooter × dot-effect-extraction)
+- **킨들러 전용 아트** [S] · 현재 Spine 은 공용 스켈레톤 + 파츠 placeholder(풀페이스 레이싱 헬멧 + 화염 틴트), 투사체는 벤더 as-is. ⚠ 부품 라이브러리가 **캐주얼 현대물**이라 로브/마법사 모자가 없다 — 판타지 캐스터 외형은 아트 신규 제작 사안. (enemy-fire-stack-shooter)
+
 #### 발사 명세 시스템 (projectile-emission-pattern — units 0~5 완료 2026-07-28, Play e2e 대기)
 
 - **카드 bake payload 화이트리스트 + terminal else** [S] · 카드 bake 의 payload `if/else if` 체인에 terminal `else` 가 없어, 배선 안 된 kind 가 조용히 슬롯으로 붙고 "부착됨"으로 집계된다(설명 공란). 단순 추가가 안 되는 이유는 `NextAttackDoubleFire`·`SelfBuffLethal` 처럼 **분기 없이 통과해도 정상인 kind** 가 섞여 있고 그 목록이 어디에도 없기 때문 — 실제 작업은 화이트리스트 명시다. `DcApplicability` 는 이미 전수 테스트로 강제되므로 bake 만 비대칭. 다음에 payload 를 추가하는 spec 이 흡수하면 된다. (projectile-emission-pattern)

@@ -46,7 +46,7 @@
 - [x] `StackModifier_Fire` 필드 전량 확인(특히 `tickInterval 1.0` · `duration 4.85`)
 - [x] `BattleBridge.GetStackThresholds(StackKind.Fire).Length > 0` — 씬 배선 확인
 - [x] 씬 diff 가 `stackModifierAuthoring` 1줄 추가뿐인지 확인(무관 dirty 혼입 없음)
-- [ ] 오라 점등 육안 확인 — unit 3 사용자 Play 로 이관(프레젠테이션)
+- [x] 오라 점등 육안 확인 — unit 3 사용자 Play 에서 통과(2026-07-30)
 
 ## 확인
 

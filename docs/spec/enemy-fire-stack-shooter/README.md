@@ -1,7 +1,7 @@
 # enemy-fire-stack-shooter — 킨들러 (레인저 저격 화염 축적 원거리 적)
 
-> 상태: **units 0~3 구현·커밋 완료 (2026-07-30)** — 프레젠테이션 5건 사용자 Play 확인 대기.
-> 상세는 `4_handoff_summary.md`
+> 상태: **완료 2026-07-30** — units 0~3 + rev 3건 구현·커밋, **사용자 Play 확인 통과**.
+> 상세는 `4_handoff_summary.md`. 후속 후보는 `docs/spec/README.md` Follow-up Backlog 로 이관.
 
 ## 목표
 
@@ -18,7 +18,9 @@
 
 > **"투사체로 부여한 화염 스택이 실제로 5까지 누적되어 방어유닛에게 화상을 터뜨리는가?"**
 
-지금은 **NO** 다 — unit 0 의 결함(아래) 때문에 투사체가 쌓는 스택은 영원히 1이다.
+**YES (2026-07-30 확인).** 착수 시점엔 NO 였다 — unit 0 의 결함 때문에 투사체가 쌓는
+스택은 영원히 1이었다. 배치 e2e(`KindlerFireStackE2ETest`)가 스폰→조준→히트→누적→임계→
+`(Stack, Fire)` 도트 전 사슬을 통과하고, 사용자 Play 로 연출까지 확인했다.
 
 ## 이 spec 이 처음 밟는 자리
 
@@ -113,7 +115,7 @@
    복제본만 연결한다(`projectile-ga-reskin` 공통 원칙).
 9. **레인저가 판에 없으면 아무도 안 쏘고 통과한다 — 사양.** (2026-07-30 사용자 결정)
 10. **`ApplyStat` 의 같은 결함은 이번에 고치지 않는다.** 라이브 밸런스가 바뀌므로 별도 결정
-    (아래 후속 후보).
+    (`docs/spec/README.md` Follow-up Backlog).
 11. 전 수치는 SO — 하드코딩 금지.
 
 ## 작업 단위
@@ -183,16 +185,6 @@ unit 0 은 단독 커밋한다 — 결함 수정이라 되돌릴 때 콘텐츠�
 
 ## 후속 후보
 
-- **`ApplyStat` 의 투사체 귀속 결함** [S] · `ProjectileHitSystem` 의 `ApplyStat` 도 `source` 를
-  투사체 엔티티로 보내 매 발 새 `StatModifierSlot` 을 만든다. `Enemy_Debuffer`(Needle 투사체,
-  `DamageMul ×0.6 Multiplicative`)는 **한 기만 있어도** 0.6ⁿ 로 곱누적된다 —
-  `modifier-stacking-policy` 가 "서로 다른 소스"로 진단하고 clamp `[0.2, 5]` 로 막은 증상의
-  실제 뿌리로 보인다. 고치면 Debuffer 가 곱누적 → 상시 ×0.6 으로 **라이브 밸런스가 바뀌므로**
-  수치 재조정과 한 묶음이어야 한다.
-- **전투 스택 오버헤드 아이콘** [M] · `OverheadStackKind` 에 전투 스택 4종을 넣을지가 선결 결정.
-  `bleed-fighter-defender` 후속 후보와 같은 항목 — 먼저 착수하는 쪽이 흡수한다.
-- **화상 히트 VFX** [S] · 지금은 벤더 `FireballHit` 원샷뿐. 스택 적재 순간의 피격 피드백과
-  5스택 발화 순간의 폭발 연출이 구분되지 않는다.
-- **다중 킨들러 화상 합산** [M] · 계약 6의 사양을 뒤집는 결정. `dot-effect-extraction` 후속 후보
-  "다중 공격자 출혈 합산"과 같은 작업 — 도트 전용 가산 병합이 필요하다.
-- **전용 아트 패스** [S] · Spine 파츠/틴트 + 화염 계열 투사체 색 조정(guid 유지 교체).
+**→ `docs/spec/README.md` 의 Follow-up Backlog 로 이관 (2026-07-30 spec 종료).**
+`ApplyStat` 투사체 귀속 결함 · 전투 스택 오버헤드 아이콘 · 화상 히트 VFX 분리 ·
+다중 공격자 DoT 합산 · 킨들러 전용 아트 — 5건.
