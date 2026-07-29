@@ -39,8 +39,9 @@ namespace Wassup.UI
         private DragSwaySettings Cfg => _cfg != null ? _cfg : (_cfg = ScriptableObject.CreateInstance<DragSwaySettings>());
 
         private const int RingSegments = 14;
-        // 거부 라벨 상단 여유(px) — 라벨 rect 높이 40 의 절반 + 패딩. 위의 +96f 오프셋과 동류의
-        // 레이아웃 구조 상수(게임플레이 수치 아님)라 SO 로 빼지 않는다.
+        // 거부 라벨 레이아웃 구조 상수(게임플레이 수치 아님 — SO 로 빼지 않는다).
+        // Rise = 포인터 위로 띄우는 양, TopMargin = 화면 상단 클램프 여유(라벨 rect 높이 40 의 절반 + 패딩).
+        private const float RejectLabelRise = 96f;
         private const float RejectLabelTopMargin = 32f;
 
         // defender-deploy-cutscene unit 3 — 드래그 시작 시 좌하단 컷신 재생기(옵셔널 주입).
@@ -60,16 +61,13 @@ namespace Wassup.UI
         private TMP_FontAsset _uiFont;
         private GameObject _rejectCanvasGO;
         private TextMeshProUGUI _rejectLabel;
-        // placement-thumb-occlusion unit 0 — _lastScreenPos 는 **가상 포인터**(판정·라벨 앵커),
-        // _lastRawScreenPos 는 실제 포인터다. 둘을 가르는 이유: 카메라 포커스는 스크린좌표를 NDC 로
-        // **절대 변환**하므로(CameraDirector.SetDragFocus) 가상을 먹이면 상수 바이어스가 실려 카메라가
-        // 프레임을 당기고, 보드가 화면상 내려가 손가락↔칸 간격을 되돌린다. 포커스는 "어디를 보나"
-        // 채널이라 raw 가 맞다. 나머지 소비처(셀 판정·고리·줄·고스트·거부 라벨)는 가상을 상속한다.
-        private Vector2 _lastScreenPos;
+        // placement-thumb-occlusion unit 0 — 두 축을 이름으로 가른다. _lastAimScreenPos 는 **가상
+        // 포인터**(셀 판정·고리·줄·고스트·거부 라벨 앵커), _lastRawScreenPos 는 실제 포인터다.
+        // 가르는 이유: 카메라 포커스는 스크린좌표를 NDC 로 **절대 변환**하므로
+        // (CameraDirector.SetDragFocus) 가상을 먹이면 상수 바이어스가 실려 카메라가 프레임을 당기고,
+        // 보드가 화면상 내려가 손가락↔칸 간격을 되돌린다. 포커스는 "어디를 보나" 채널이라 raw 가 맞다.
+        private Vector2 _lastAimScreenPos;
         private Vector2 _lastRawScreenPos;
-        // 오프셋 램프 스칼라(0=오프셋 없음, 1=풀). 트레이 D&D 는 BeginDrag 에서 1 로 시작한다 —
-        // 직전 하이라이트가 없어 부드럽게 할 대상이 없다. 승격 점프가 있는 경로는 unit 1 이 굴린다.
-        private float _offsetRamp01 = 1f;
 
         // depth-parallax unit 7 — 스와이프→틸트 피드 상태. _prevScreenPos = 직전 프레임 포인터(속도 델타용),
         // _swipeVelSmoothed = exp-lerp 스무딩 스와이프 속도, _tiltGain = 유닛별 게인(BeginDrag 에서 주입, 컨트롤러 단독 소유).
@@ -159,10 +157,12 @@ namespace Wassup.UI
         public float PlacementPointerOffsetPx => Cfg.PlacementPointerOffsetPx;
         public float PlacementPointerOffsetRampDistance => Cfg.placementPointerOffsetRampDistance;
 
-        // 배치 판정 포인터 = 실제 포인터 + 화면 up × offset. **파생값이지 치환이 아니다** —
-        // UI 레이캐스트·탭/드래그 임계 비교·press 보드 가드는 계속 실제 좌표를 쓴다.
-        private Vector2 ToPlacementPointer(Vector2 rawScreen)
-            => PlacementPointerOffset.Apply(rawScreen, Cfg.PlacementPointerOffsetPx, _offsetRamp01);
+        // 배치 판정 포인터. 계약은 PlacementPointerOffset.Apply 가 소유한다(중복 서술 금지).
+        // **ramp 는 인자다 — 필드로 들지 않는다.** 필드로 두면 보드 제스처가 굴린 mid-flight 램프(예 0.7)가
+        // 릴리즈→CommitBoardDrag→SimulateDragTo→BeginDrag 로 새어, 무관한 트레이 경로가 그 값을 물려받는다.
+        // 그걸 막으려고 BeginDrag 에서 1f 로 덮는 순서 의존이 생겼던 것 — 인자화가 함정 자체를 없앤다.
+        private Vector2 ToPlacementPointer(Vector2 rawScreen, float ramp01)
+            => PlacementPointerOffset.Apply(rawScreen, Cfg.PlacementPointerOffsetPx, ramp01);
 
         public void Configure(BattleBridge battleBridge, Camera camera, PlacementInput input,
             DragSwaySettings swaySettings = null, TMP_FontAsset uiFont = null,
@@ -222,10 +222,10 @@ namespace Wassup.UI
             // review fix — 스와이프→틸트 블록은 컷신 여부와 무관하게 매 프레임 돌므로, seed 를 컷신 분기 밖에서
             // 무조건 수행(비컷신/시뮬 드래그의 첫 프레임 stale-prev 속도 스파이크 방지).
             // placement-thumb-occlusion unit 0 — seed 도 **가상** 좌표여야 한다. 아래 rawVel 은
-            // (_lastScreenPos - _prevScreenPos) 인데 한쪽만 가상이면 첫 프레임에 offset/dt 스파이크가
-            // 실려 컷신 틸트가 튄다(위 주석이 경고하는 그 버그와 동종). 램프 세팅이 이 줄보다 앞이어야 한다.
-            _offsetRamp01 = 1f; // 트레이 D&D 는 첫 프레임부터 풀 오프셋(점프 없음) — 순서 의존
-            _prevScreenPos = ToPlacementPointer(screenPosition);
+            // (_lastAimScreenPos - _prevScreenPos) 인데 한쪽만 가상이면 첫 프레임에 offset/dt 스파이크가
+            // 실려 컷신 틸트가 튄다(위 주석이 경고하는 그 버그와 동종).
+            // 트레이 D&D 는 램프 없이 첫 프레임부터 풀 오프셋 — 직전 하이라이트가 없어 부드럽게 할 대상이 없다.
+            _prevScreenPos = ToPlacementPointer(screenPosition, 1f);
             _swipeVelSmoothed = Vector2.zero;
             bridge?.SetEnemiesDimmed(true); // placement-enemy-see-through — 적 반투명 on
             bridge?.SetPlacementHighlightAboveUnits(true); // unit 6 — 배치 하이라이트를 적 위로
@@ -260,12 +260,12 @@ namespace Wassup.UI
             if (_session.active)
             {
                 float swipeDt = Mathf.Max(Time.unscaledDeltaTime, 1e-4f);
-                Vector2 rawVel = (_lastScreenPos - _prevScreenPos) / swipeDt;
+                Vector2 rawVel = (_lastAimScreenPos - _prevScreenPos) / swipeDt;
                 _swipeVelSmoothed = Vector2.Lerp(_swipeVelSmoothed, rawVel, Cfg.deployCutsceneSwipeSmoothing);
                 Vector2 tilt = _swipeVelSmoothed / Mathf.Max(Cfg.deployCutsceneSwipeRefSpeed, 1f);
                 tilt = Vector2.ClampMagnitude(tilt, 1f) * _tiltGain; // 게인 곱은 컨트롤러가 단독 소유(플레이어는 게인 모름)
                 _cutscenePlayer?.SetTilt(tilt);
-                _prevScreenPos = _lastScreenPos;
+                _prevScreenPos = _lastAimScreenPos;
             }
 
             if (!_session.active || _session.preview == null || _session.endNode == null || mainCamera == null) return;
@@ -349,8 +349,8 @@ namespace Wassup.UI
             // EndDrag 는 이 메서드에 위임하고 screenPosition 을 재사용하지 않으므로 무변경이어야 한다 —
             // 거기서 또 변환하면 오프셋이 두 번 더해져 릴리즈 칸이 하이라이트보다 한 칸 더 위로 튄다.
             _lastRawScreenPos = screenPosition;
-            screenPosition = ToPlacementPointer(screenPosition);
-            _lastScreenPos = screenPosition; // unit 4 — 거부 라벨 포인터 추종
+            screenPosition = ToPlacementPointer(screenPosition, 1f); // 트레이 세션 전용 경로 — 램프 없음
+            _lastAimScreenPos = screenPosition; // unit 4 — 거부 라벨 포인터 추종
             // 발↔고리 화면 세로 거리 = 유닛 키 + 줄 길이. 고리는 손가락에, 유닛은 그만큼 화면 아래 보드에.
             float totalDrop = _session.unitHeight + Cfg.ropeLength * _session.visualScale;
 
@@ -518,8 +518,8 @@ namespace Wassup.UI
             // placement-thumb-occlusion unit 0 — 앵커는 **가상** 포인터(하이라이트 위에 떠야 한다).
             // 대신 화면 위로 이탈하지 않게 클램프한다: 오프셋이 붙으면 실제 손가락 기준 96+offset px 라
             // 상단 드래그에서 잘려 나간다. 이 라벨은 코스트 부족의 **유일한 문자 채널**이라 이탈 비용이 크다.
-            float labelY = Mathf.Min(_lastScreenPos.y + 96f, Screen.height - RejectLabelTopMargin);
-            _rejectLabel.transform.position = new Vector3(_lastScreenPos.x, labelY, 0f);
+            float labelY = Mathf.Min(_lastAimScreenPos.y + RejectLabelRise, Screen.height - RejectLabelTopMargin);
+            _rejectLabel.transform.position = new Vector3(_lastAimScreenPos.x, labelY, 0f);
         }
 
         private void EnsureRejectLabel()
@@ -614,7 +614,6 @@ namespace Wassup.UI
                 if (!bridge.TryScreenToCell(mainCamera, _boardDownScreen, out _)) return;
                 _boardGestureActive = true;
                 _boardDragging = false;
-                _offsetRamp01 = 0f;          // placement-thumb-occlusion unit 1 — 승격 전엔 오프셋 없음(탭 = 누른 칸)
                 CancelTapPlaceRangePeek();   // unit 2 — 직전 탭 배치 range flourish 정지(새 제스처 우선)
             }
 
@@ -629,7 +628,8 @@ namespace Wassup.UI
             // placement-thumb-occlusion unit 1 — 오프셋은 **드래그로 승격된 뒤에만**. 이 경로엔 트레이
             // 세션의 히스테리시스·throttle 이 없어(UpdateBoardScout 은 매 프레임 생 판정) 램프가 유일한
             // 완충이다. 이동량 비례라 손가락이 움직인 만큼만 하이라이트가 앞서간다.
-            _offsetRamp01 = _boardDragging
+            // 승격 전 램프 0 → ToPlacementPointer 가 항등 = 스카우트가 누른 칸을 그대로 비춘다.
+            float ramp = _boardDragging
                 ? PlacementPointerOffset.Ramp(travel, BoardDragThreshold, Cfg.placementPointerOffsetRampDistance)
                 : 0f;
 
@@ -637,16 +637,15 @@ namespace Wassup.UI
             {
                 // 드래그 릴리즈 = 스카우트가 보여준 칸(가상 포인터)에 배치. 탭은 누른 칸 그대로(raw) —
                 // 탭은 피드백 루프를 볼 시간 없이 커밋되므로 오프셋이 오배치로 읽힌다.
-                if (_boardDragging) { CommitBoardDrag(ToPlacementPointer(cur)); ResetBoardGesture(); }
+                if (_boardDragging) { CommitBoardDrag(ToPlacementPointer(cur, ramp)); ResetBoardGesture(); }
                 // 탭(무이동): 기존 클릭 배치와 동일 액션 — 즉시 배치하되(HandleBoardTap) 공격범위를 착지 셀에 잠깐 노출.
                 else { _boardGestureActive = false; _boardDragging = false; HandleBoardTap(cur); }
                 return;
             }
 
             // placement-armed-board-drag unit 1 — 프레스부터 릴리즈 직전까지 range-only 스카우트(손가락 셀 추종).
-            // 승격 전엔 램프 0 이라 ToPlacementPointer 가 항등 — 스카우트가 누른 칸을 그대로 비춰
             // 릴리즈(탭) 결과와 일치한다("하이라이트는 어느 순간에도 거짓말하지 않는다").
-            UpdateBoardScout(ToPlacementPointer(cur));
+            UpdateBoardScout(ToPlacementPointer(cur, ramp));
         }
 
         // placement-armed-board-drag unit 1 — 세션 없는 range-only 스카우트. 드래그 세션 SetHover 의 표시 계약을
@@ -701,7 +700,6 @@ namespace Wassup.UI
         {
             _boardGestureActive = false;
             _boardDragging = false;
-            _offsetRamp01 = 1f; // placement-thumb-occlusion unit 1 — 보드 제스처가 낮춰둔 램프 원복(트레이 세션 기본값)
             ClearBoardScout();  // unit 1 — 스카우트 범위/hover 소거
         }
 
@@ -834,8 +832,8 @@ namespace Wassup.UI
                 _ringWorld = feet + ringLift;                                       // 고리 = 발 위 totalDrop(camUp)
                 // 카메라 포커스 피드. 시뮬 경로는 월드에서 역산한 값이 곧 실제 포커스라 raw==가상
                 // (ToPlacementPointer seam 을 지나지 않는다 — 탭 비행이 한 칸 위로 날면 안 된다).
-                _lastScreenPos = (Vector2)mainCamera.WorldToScreenPoint(_ringWorld);
-                _lastRawScreenPos = _lastScreenPos;
+                _lastAimScreenPos = (Vector2)mainCamera.WorldToScreenPoint(_ringWorld);
+                _lastRawScreenPos = _lastAimScreenPos;
                 yield return null;
             }
             if (!_session.active || _sessionGen != gen) yield break; // 세션이 바뀜(새 드래그/정리) → 커밋 없이 물러남
@@ -844,8 +842,8 @@ namespace Wassup.UI
             // 거리+속도 조건을 만족할 때까지 짧게 정착한다. 제한시간은 실패 안전망.
             _unitTargetWorld = finalUnitTarget;
             _ringWorld = finalRing;
-            _lastScreenPos = (Vector2)mainCamera.WorldToScreenPoint(finalRing);
-            _lastRawScreenPos = _lastScreenPos;
+            _lastAimScreenPos = (Vector2)mainCamera.WorldToScreenPoint(finalRing);
+            _lastRawScreenPos = _lastAimScreenPos;
             float settleElapsed = 0f;
             while (_session.active && _sessionGen == gen)
             {

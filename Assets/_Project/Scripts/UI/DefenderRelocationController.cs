@@ -145,7 +145,11 @@ namespace Wassup.UI
             if (_targetPressActive)
             {
                 float travel = Vector2.Distance(screen, _targetPressDown);
-                if (!_targetDragging && travel >= TargetDragThreshold) _targetDragging = true;
+                // 승격은 DragController 가 있을 때만 의미가 있다 — 없으면 오프셋도 0 이라 래치가 무관.
+                // 래치를 유지하는 이유: rampDistance 가 0(램프 없음)일 때 Ramp 가 즉시 1 을 반환하므로,
+                // 이 게이트가 없으면 무이동 탭이 풀 오프셋을 먹는다.
+                if (!_targetDragging && DragController != null && travel >= DragController.BoardDragThreshold)
+                    _targetDragging = true;
                 if (pressed) { UpdateScout(AimScreen(screen, travel)); return; }
                 _targetPressActive = false;
                 ResolveRelease(AimScreen(screen, travel));
@@ -163,17 +167,17 @@ namespace Wassup.UI
         }
 
         // placement-thumb-occlusion unit 1 — 목적지 판정 포인터. 승격 전엔 실제 좌표 그대로(탭 = 누른 칸),
-        // 승격 후엔 이동량 비례 램프로 화면 위로. 튜닝값은 DragController 가 소유한 단일 소스를 읽는다.
-        // DragController 부재(트레이 미빌드) 시 오프셋 0 — 재배치가 그것 때문에 죽지 않게 한다
-        // (DragSlowmoScale 폴백 선례와 동형).
-        private float TargetDragThreshold
-            => DragController != null ? DragController.BoardDragThreshold : 16f;
-
+        // 승격 후엔 이동량 비례 램프로 화면 위로. 튜닝값은 DragController 가 소유한 단일 소스를 읽는다
+        // (RelocationSettings 가 명문화한 패턴 — 재배치가 SO 를 직접 참조하면 씬에 두 번째 할당 지점이 생겨
+        // 다른 에셋을 가리킬 수 있다). DragController 부재(트레이 미빌드) 시 오프셋 없음.
+        //
+        // 임계 매직 리터럴을 두지 않는다: 폴백이 필요한 유일한 경우가 dc == null 이고 그때는 오프셋이
+        // 0 이라 임계값이 무엇이든 관측되지 않는다 — SO 기본값을 여기 복제하면 drift 만 남는다.
         private Vector2 AimScreen(Vector2 screen, float travelPx)
         {
             var dc = DragController;
             if (!_targetDragging || dc == null) return screen;
-            float ramp = PlacementPointerOffset.Ramp(travelPx, TargetDragThreshold,
+            float ramp = PlacementPointerOffset.Ramp(travelPx, dc.BoardDragThreshold,
                 dc.PlacementPointerOffsetRampDistance);
             return PlacementPointerOffset.Apply(screen, dc.PlacementPointerOffsetPx, ramp);
         }

@@ -255,13 +255,23 @@ namespace Wassup.Tests.PlayMode
 
         // placement-thumb-occlusion unit 1 — 컨트롤러가 실제로 보여주는 스카우트 셀 / 승격 상태.
         // 오프셋 값을 역산하는 대신 이 둘을 읽어 "하이라이트가 가리키는 칸에 배치된다"를 직접 검증한다.
+        // FieldInfo 는 캐시한다 — 조준 루프가 최대 60회 돌고, 이 파일은 이미 _stepMethod 를 같은
+        // 방식으로 캐시한다(관례 일치).
+        private static FieldInfo _scoutField, _targetDraggingField;
+
         private static Vector2Int? ScoutCell(DefenderRelocationController c)
-            => (Vector2Int?)typeof(DefenderRelocationController)
-                .GetField("_scoutCell", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(c);
+        {
+            _scoutField ??= typeof(DefenderRelocationController)
+                .GetField("_scoutCell", BindingFlags.NonPublic | BindingFlags.Instance);
+            return (Vector2Int?)_scoutField.GetValue(c);
+        }
 
         private static bool TargetDragging(DefenderRelocationController c)
-            => (bool)typeof(DefenderRelocationController)
-                .GetField("_targetDragging", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(c);
+        {
+            _targetDraggingField ??= typeof(DefenderRelocationController)
+                .GetField("_targetDragging", BindingFlags.NonPublic | BindingFlags.Instance);
+            return (bool)_targetDraggingField.GetValue(c);
+        }
 
         private static Vector2 ScreenOf(BattleBridge bridge, Camera cam, Vector2Int cell)
         {

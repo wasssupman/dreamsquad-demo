@@ -1568,7 +1568,10 @@ namespace Wassup.Bridge
             _battleTimeScaleEntity = Entity.Null;
             // range-preview unit 3 — 매치 종료 시 격자 표시 무조건 해제(비행 중
             // 종료로 impact drain 이 못 지운 텔레그래프 잔상 방지).
-            _rangeOwner = RangeDisplayOwner.None;
+            // placement-thumb-occlusion — ClearRange 를 우회하는 경로라(소유자 무관 강제 해제) 전환은
+            // SetRangeOwner 로 태운다. 안 태우면 _rangeInvalid 가 매치 경계를 넘어 살아남고
+            // TilemapMapView.Clear() 의 방어 리셋에만 의존하게 된다(우연한 이중 방어).
+            SetRangeOwner(RangeDisplayOwner.None);
             _skillTelegraphProjectile = Entity.Null;
             if (tilemapMapView != null) tilemapMapView.ClearPlacementRange();
 
@@ -4935,6 +4938,25 @@ namespace Wassup.Bridge
         // 이미 PlacementAim 이면 그 호출이 내 레인을 지우지 않는다 — 별도 소유자인 이유.
         private enum RangeDisplayOwner { None, Placement, SkillAim, SkillTelegraph, PlacementAim }
         private RangeDisplayOwner _rangeOwner = RangeDisplayOwner.None;
+
+        // placement-thumb-occlusion — 소유권 전환의 유일한 지점. **모든** `_rangeOwner` 대입이 여기를 탄다.
+        //
+        // 왜 필드 대입을 감싸는가: 배치 유효성 적색(`SetPlacementRangeValidity`)은 **Placement 만 소유**하는
+        // 채널인데, 소유권은 획득 시 덮어쓰기로 전환된다(SkillAim 획득이 ClearRange(Placement) 를 부르지
+        // 않는다). 전환 지점이 7개라 per-site 로 리셋을 얹으면 반드시 빠지는 곳이 생긴다 — 실제로 초판은
+        // 3곳만 얹혀서 StopBattle 과 SetAimGuide 가 새고, TilemapMapView.Clear() 의 방어 리셋이 우연히
+        // 덮고 있었다. 여기 한 줄로 만들면 6번째 owner 를 추가하는 사람이 규칙을 외울 필요가 없다.
+        //
+        // **Placement 는 면제다** — 배치 경로는 포커스 셀이 바뀔 때마다 이 함수를 타므로 여기서 리셋하면
+        // false→true 전이가 매번 재발생해 무효 영역을 훑는 동안 플래시가 연발한다(TilemapMapView 의
+        // SetPlacementRangeValidity 주석이 경고하는 그 상황). 배치 경로의 리셋은 컨트롤러가 세션 경계에서
+        // 명시적으로 한다(ClearHover / ClearBoardScout). 이 비대칭은 load-bearing이니 "통일"하지 말 것.
+        private void SetRangeOwner(RangeDisplayOwner next)
+        {
+            _rangeOwner = next;
+            if (next != RangeDisplayOwner.Placement && tilemapMapView != null)
+                tilemapMapView.SetPlacementRangeValidity(true);
+        }
         private readonly List<Vector2Int> _laneCellScratch = new List<Vector2Int>();
         // unit 5 — 레인 셀과 **그 셀이 속한 방향**을 나란히 모은다. 아이콘이 이 목록에서 나오므로
         // "아이콘 = 칠해진 칸"이 구조적으로 보장된다(셀 선정이 LaneMath 를 공유하는 것과 같은 결).
@@ -4964,7 +4986,7 @@ namespace Wassup.Bridge
             if (bombPreview != null) PaintLandingCells(center, bombPreview.landingTiles, null, AimLaneDimAlpha, aimStyle: false);
             else if (unit.RequiresFacing) PaintLanes(center, tileRange, null, AimLaneDimAlpha, aimStyle: false);
             else tilemapMapView.SetPlacementRange(center, tileRange);
-            _rangeOwner = RangeDisplayOwner.Placement;
+            SetRangeOwner(RangeDisplayOwner.Placement); // 유효성 면제 — 컨트롤러가 매 프레임 소유
         }
 
         public void ClearPlacementRange() => ClearRange(RangeDisplayOwner.Placement);
@@ -4982,7 +5004,7 @@ namespace Wassup.Bridge
                 // bomb-thrower-defender unit 8 — 착지 타일 조준: 상하좌우 N칸 착지 후보만
                 // 하이라이트(레인/화살표 없음 — 머신거너와 다른 모드). 선택되면 그 착지 셀만.
                 PaintLandingCells(center, bombAim.landingTiles, selected, 1f, aimStyle: true);
-                _rangeOwner = RangeDisplayOwner.PlacementAim;
+                SetRangeOwner(RangeDisplayOwner.PlacementAim);
                 tilemapMapView.ClearAimArrows();
                 return;
             }
@@ -4991,7 +5013,7 @@ namespace Wassup.Bridge
             // 아니라 **몇 개를 그리느냐**로 갈린다: 미선택=4레인 전부, 선택=그 레인 하나만.
             // 드래그 프리뷰(SetPlacementRange)의 dim 은 outline 이라 그대로 AimLaneDimAlpha.
             PaintLanes(center, tileRange, selected, 1f, aimStyle: true);
-            _rangeOwner = RangeDisplayOwner.PlacementAim;
+            SetRangeOwner(RangeDisplayOwner.PlacementAim);
 
             // unit 5 — 아이콘은 첫 칸이 아니라 **칠해진 모든 칸**에 얹는다. 채움만으로는
             // "위로 쏜다"와 "위에서 쏜다"가 여전히 같아 보이는데(unit 9 판단 1), 칸마다
@@ -5064,22 +5086,23 @@ namespace Wassup.Bridge
         // 스킬 조준 범위 — 배치와 달리 중심 셀 포함(AOE 는 중심도 피해 범위).
         public void SetSkillAimRange(Vector2Int center, SkillData skill)
         {
-            if (tilemapMapView == null || skill == null) return;
-            // unit 3 — 스킬 조준은 aimStyle=false 로 그려지므로 _rangeAimStyle 가 지켜주지 않는다.
-            // 소유권 획득 시점에 유효성을 반납받아 직전 배치의 적색이 새지 않게 한다(계약: 색이 아니라 소유권이 경계).
-            tilemapMapView.SetPlacementRangeValidity(true);
-            tilemapMapView.SetPlacementRange(center, GridMath.RangeToTiles(skill.range), includeCenter: true);
-            _rangeOwner = RangeDisplayOwner.SkillAim;
+            if (skill == null) return;
+            PinCenteredRange(center, GridMath.RangeToTiles(skill.range), RangeDisplayOwner.SkillAim);
         }
 
         public void ClearSkillAimRange() => ClearRange(RangeDisplayOwner.SkillAim);
 
         private void PinSkillTelegraph(Vector2Int cell, int tileRange)
+            => PinCenteredRange(cell, tileRange, RangeDisplayOwner.SkillTelegraph);
+
+        // 스킬 조준·텔레그래프 공통 — 중심 포함 사각 범위 + 소유권 전환. 둘은 owner 만 다르다.
+        // 리셋을 여기 손으로 얹지 않는다: SetRangeOwner 가 Placement 외 전환에서 일괄 처리한다
+        // (이 두 경로는 aimStyle=false 로 그려져 _rangeAimStyle 가드 밖이라 반드시 반납이 필요하다).
+        private void PinCenteredRange(Vector2Int center, int tileRange, RangeDisplayOwner owner)
         {
             if (tilemapMapView == null) return;
-            tilemapMapView.SetPlacementRangeValidity(true); // unit 3 — 조준과 동일 이유(aimStyle=false 경로)
-            tilemapMapView.SetPlacementRange(cell, tileRange, includeCenter: true);
-            _rangeOwner = RangeDisplayOwner.SkillTelegraph;
+            tilemapMapView.SetPlacementRange(center, tileRange, includeCenter: true);
+            SetRangeOwner(owner);
         }
 
         private void ClearSkillTelegraph() => ClearRange(RangeDisplayOwner.SkillTelegraph);
@@ -5087,12 +5110,8 @@ namespace Wassup.Bridge
         private void ClearRange(RangeDisplayOwner caller)
         {
             if (_rangeOwner != caller) return;
-            _rangeOwner = RangeDisplayOwner.None;
-            if (tilemapMapView != null)
-            {
-                tilemapMapView.ClearPlacementRange();
-                tilemapMapView.SetPlacementRangeValidity(true); // unit 3 — 소유권 반납 시 적색 상태 반납
-            }
+            SetRangeOwner(RangeDisplayOwner.None); // 반납도 전환이다 — validity 리셋이 여기 딸려온다
+            if (tilemapMapView != null) tilemapMapView.ClearPlacementRange();
         }
 
         // placement-thumb-occlusion unit 3 — 배치 판정 유효성 → 사거리 틴트(적색 + 전이 플래시).

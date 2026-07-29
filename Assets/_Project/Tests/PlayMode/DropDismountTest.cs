@@ -54,11 +54,7 @@ namespace Wassup.Tests.PlayMode
 
             // ── 1) 실드래그 릴리스: 핸드오프 연속성 + 점유/코스트 커밋 프레임 확정 ──
             var cellA = FindValidCellWithScreen(bridge, cam, unit, out var screenA);
-            // placement-thumb-occlusion unit 0 — 배치 판정은 **가상 포인터**(실제 포인터 + 화면 up ×
-            // offset)를 쓴다. screenA 는 cellA 셀 중심이므로, 가상 포인터가 거기를 가리키게 하려면
-            // 구동 좌표에서 오프셋을 빼야 한다. UpdateDrag 를 직접 부르므로 화면 밖 y 도 무해하다
-            // (ScreenPointToRay 는 유효한 ray 를 준다). 셀 탐색/roundtrip 은 보정 전 값 그대로.
-            var driveA = screenA - Vector2.up * ctrl.PlacementPointerOffsetPx;
+            var driveA = DriveAiming(ctrl, screenA);
             ctrl.BeginDrag(unit, new Vector2(Screen.width * 0.5f, Screen.height * 0.08f));
             // 스프링 추종(_unitPosWorld)이 자리 잡도록 몇 프레임 목표를 유지
             for (int i = 0; i < 12; i++) { ctrl.UpdateDrag(driveA); yield return null; }
@@ -92,11 +88,9 @@ namespace Wassup.Tests.PlayMode
                 if (Vector3.Distance(cur.Value, sampleA) > 1e-4f) { progressed = true; break; }
             }
             Assert.IsTrue(progressed, "새 드래그 시작 후에도 이전 dismount 비행이 계속 갱신돼야 한다(계약 7)");
-            // 보드 밖 릴리스 = 취소. placement-thumb-occlusion unit 0 — **가상** 포인터가 보드 밖이어야
-            // 한다. 오프셋을 안 빼면 판정점이 화면 위로 올라가 보드 안에 들어오고, 취소가 아니라 배치가
-            // 되어 이 섹션의 의도(취소 경로)가 조용히 사라진다.
-            ctrl.EndDrag(new Vector2(Screen.width * 0.5f, Screen.height * 0.01f)
-                         - Vector2.up * ctrl.PlacementPointerOffsetPx);
+            // 보드 밖 릴리스 = 취소. **가상** 포인터가 보드 밖이어야 한다 — 오프셋을 안 빼면 판정점이
+            // 화면 위로 올라가 보드 안에 들어오고, 취소가 아니라 배치가 되어 이 섹션의 의도가 조용히 사라진다.
+            ctrl.EndDrag(DriveAiming(ctrl, new Vector2(Screen.width * 0.5f, Screen.height * 0.01f)));
 
             // ── 3) 활성화 시계: commit + deploymentDuration(±0.15s 창), 착지 ≤ 활성화 ──
             var em = World.DefaultGameObjectInjectionWorld.EntityManager;
@@ -145,6 +139,14 @@ namespace Wassup.Tests.PlayMode
         }
 
         // ── helpers ──────────────────────────────────────────────────────────
+
+        // placement-thumb-occlusion unit 0 — 배치 판정은 **가상 포인터**(실제 포인터 + 화면 up × offset)를
+        // 쓴다. 목표 지점을 가상 포인터가 가리키게 하는 **구동 좌표**를 준다 = Apply 의 역. 산식을 손으로
+        // 재구현하지 않는 이유: 축이 바뀌면 이 가드가 옛 산식으로 조용히 초록이 된다.
+        // UpdateDrag/EndDrag 를 직접 부르므로 화면 밖 y 도 무해하다(ScreenPointToRay 가 유효한 ray 를 준다).
+        // 셀 탐색/roundtrip 은 보정 전 값 그대로 쓴다.
+        private static Vector2 DriveAiming(DefenderDragPlacementController ctrl, Vector2 aimTarget)
+            => PlacementPointerOffset.Apply(aimTarget, -ctrl.PlacementPointerOffsetPx, 1f);
 
         private static object Field(object o, string name)
             => o.GetType().GetField(name, BindingFlags.NonPublic | BindingFlags.Instance).GetValue(o);

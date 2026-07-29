@@ -122,10 +122,12 @@ critic 리뷰(REQUEST-CHANGES, Critical 2 / High 3 / Medium 8 / Low 7) 반영 �
 - **재배치 무효 표현 통일** [S] · `DefenderRelocationController.UpdateScout:275-276` 은 배치 불가를
   **사거리 소거**로 인코딩한다(적색이 아니라 사라짐). 동작 문제는 없지만 feature-wide 언어가 세 번째
   경로에서만 다르다. 이 spec 범위 밖(제약 9) — 기록만 남긴다.
-- **PlayMode 테스트 격리** [S] · `DragPlacementReachTest` · `DropDismountTest` ·
-  `RelocationPlacementSessionTest` 를 **한 묶음으로** 돌리면 `DropDismountTest` 의 탭-게이트 단언이
-  깨진다(각각 단독 실행은 전부 통과). **오프셋과 무관한 기존 문제** — 씬/ECS 월드/뷰 오버라이드 잔재가
-  다음 테스트로 넘어가는 것으로 보인다. 이 spec 범위 밖.
+- **`DropDismountTest` 탭-게이트 단언이 flaky** [S] · `overrideSightings == 0`(계약 1)이 **타이밍 의존**이라
+  간헐 실패한다. 단독 실행에서도 재현되고(실패 → 코드 무변경 재실행 → 통과 확인), 묶음 실행에서 더 자주
+  깨진다. 원인 가설: 섹션 1 의 하마 비행이 완전히 정리되기 전에 섹션 4 가 오버라이드 딕셔너리를 샘플링한다
+  (`OverrideCount(bridge) > 0` 를 프레임마다 세는 방식). **오프셋과 무관한 기존 문제** — 초판에서 "격리
+  문제"로 적었으나 단독 재현으로 flaky 임이 확인돼 정정. 고치려면 섹션 4 진입 전 비행 완결을 대기해야 한다.
+  이 spec 범위 밖.
 - **램프 스칼라 통합** [S] · unit 1 은 재배치가 자기 램프 스칼라를 따로 굴린다. 두 컨트롤러가 동시에
   램프를 굴리는 상황은 실제로 없다(`TickMoveMode:123-124` 의 `sessionConflict` 가 트레이 드래그/arm 시
   재배치를 즉시 취소한다 — 확인). 상태 2개를 1개로 줄일 여지.

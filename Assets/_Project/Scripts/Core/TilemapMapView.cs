@@ -892,8 +892,18 @@ namespace Wassup.Core
         // 알파를 소유한 Update() 의 몫(unit 9 계약).
         private Color RangeTintColor(bool aimStyle)
         {
-            if (aimStyle && _tileSet.aimRangeTile != null)
+            // placement-thumb-occlusion — **유효성 면제는 에셋 유무가 아니라 aimStyle 이 결정한다.**
+            // 초판은 `aimStyle && aimRangeTile != null` 로 묶어서, aimRangeTile 미배선 tileset(새 시즌을
+            // CreateAssetMenu 로 만들면 기본 null)에서 조준 페이즈가 아래 invalid 분기로 떨어져 배치
+            // 유효성의 적색을 상속했다 — range-preview unit 4 가 약속한 "슬롯 비면 기존 동작과 바이트
+            // 동일" 폴백이 깨진다. aimStyle 은 "조준 채널이다"라는 **의미**로 쓰고, 에셋 유무는 타일·색
+            // 폴백에만 쓴다(스타일 축과 유효성 축을 직교로 유지).
+            if (aimStyle)
             {
+                if (_tileSet.aimRangeTile == null)
+                {
+                    var fc = _tileSet.rangeColor; fc.a = _tileSet.rangePulseMaxAlpha; return fc;
+                }
                 var ac = _tileSet.aimRangeColor; ac.a = _tileSet.aimRangeAlpha; return ac;
             }
             // placement-thumb-occlusion unit 3 — 배치 불가면 적색 + 전이 순간 1회 플래시.
@@ -905,7 +915,7 @@ namespace Wassup.Core
                 var ic = _tileSet.rangeInvalidColor;
                 ic.a = _tileSet.rangePulseMaxAlpha;
                 float flashDur = _tileSet.rangeInvalidFlashSeconds;
-                if (flashDur > 0f && _tileSet.rangeInvalidFlashBoost > 0f)
+                if (flashDur > 0f) // boost 0 은 아래 Lerp 가 항등이라 별도 가드 불요(0除만 막는다)
                 {
                     float t = Mathf.Clamp01((Time.unscaledTime - _rangeInvalidSince) / flashDur);
                     float boost = _tileSet.rangeInvalidFlashBoost * (1f - t);

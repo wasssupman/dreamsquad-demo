@@ -96,7 +96,9 @@ namespace Wassup.Tests.PlayMode
                 // 확정 셀은 **가상 포인터**가 가리키는 셀과 같아야 한다(히스테리시스 폭 이내).
                 // unit 0 — 비교 기준이 손가락에서 가상 포인터로 옮겨졌다. 스윕 좌표는 raw 로 두고
                 // 기대값만 올린다(컨트롤러가 UpdateDrag 진입부에서 같은 변환을 한다).
-                var aimScreen = screen + Vector2.up * ctrl.PlacementPointerOffsetPx;
+                // 산식은 프로덕션과 같은 함수를 쓴다 — 손으로 재구현하면 축이 바뀌어도(후속 후보의
+                // "물리 단위화"가 그 방향) 이 가드가 옛 산식으로 조용히 초록이 된다.
+                var aimScreen = PlacementPointerOffset.Apply(screen, ctrl.PlacementPointerOffsetPx, 1f);
                 if (bridge.TryScreenToCell(cam, aimScreen, out var aimCell))
                 {
                     samples++;
@@ -139,22 +141,24 @@ namespace Wassup.Tests.PlayMode
         // unit 2 — 트레이 UI 가 점유하는 화면 하단 비율의 근사. 테스트는 UI 를 모르므로 상수로 둔다.
         const float BottomSafeRatio = 0.12f;
 
-        // unit 2 — 하단 대칭 헬퍼. row 0 이 전부 경로/Deco 면 0 이 아닌 값이 나온다.
-        private static int BottomPlaceableRow(BattleBridge bridge, DefenderUnitData unit, Vector2Int grid)
-        {
-            for (int y = 0; y < grid.y; y++)
-                for (int x = 0; x < grid.x; x++)
-                    if (bridge.CanPlaceDefenderAt(x, y, unit, out _))
-                        return y;
-            return -1;
-        }
-
+        // 이름은 둘 유지(단언 메시지가 "최상단/최하단"으로 읽힌다), 스캔은 하나.
+        // unit 2 — 하단은 row 0 이 전부 경로/Deco 면 0 이 아닌 값이 나온다.
         private static int TopPlaceableRow(BattleBridge bridge, DefenderUnitData unit, Vector2Int grid)
+            => FirstPlaceableRow(bridge, unit, grid, fromTop: true);
+
+        private static int BottomPlaceableRow(BattleBridge bridge, DefenderUnitData unit, Vector2Int grid)
+            => FirstPlaceableRow(bridge, unit, grid, fromTop: false);
+
+        private static int FirstPlaceableRow(BattleBridge bridge, DefenderUnitData unit, Vector2Int grid,
+            bool fromTop)
         {
-            for (int y = grid.y - 1; y >= 0; y--)
+            for (int i = 0; i < grid.y; i++)
+            {
+                int y = fromTop ? grid.y - 1 - i : i;
                 for (int x = 0; x < grid.x; x++)
                     if (bridge.CanPlaceDefenderAt(x, y, unit, out _))
                         return y;
+            }
             return -1;
         }
 
