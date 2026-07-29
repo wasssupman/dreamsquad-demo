@@ -7,6 +7,7 @@
 - `698b38e0` feat(enemy): 화염 스택 임계 규칙 신설 + 씬 배선 (unit 1)
 - `8799bf8d` feat(projectile): 파이어볼 투사체 에셋 (unit 2)
 - `74148cb7` feat(enemy): 킨들러 — 레인저 저격 화염 축적 원거리 적 (unit 3)
+- `0fa44ab8` fix(projectile): 파이어볼 크기 실측 보정 (unit 2 rev1)
 
 ## Implemented
 
@@ -16,6 +17,8 @@
 - **`StackModifier_Fire` 신설** — 프로젝트 최초의 Fire 스택 임계 규칙.
   `atStack 5 · Consume · ApplyDot` · 틱당 10 / 0.5s / 지속 2.85s = **6틱 · 1회분 60**.
 - **파이어볼 투사체** — PixPlays 부품 프리팹 3종 복제(스트립 불요) + `ProjectileData`.
+  크기는 오프스크린 실측으로 확정: `visualScale 1.4`(월드 0.49 ≈ 반 타일) ·
+  `hitVfxScale 0.55`(1.45). 초안 0.35 는 타일의 12% 라 점으로 보였다.
 - **킨들러** — Shooter · 사거리 4 · 쿨다운 1.2 · HP 45 · `targetClassMask = Ranger 단독` ·
   `FocusUntilDead` · `Halt` · `minWaveNumber 2`. `EnemyCatalog` + 라이브 맵 덱 6종 등록.
 - **신규 테스트 2** — `ProjectileApplyStackAccumulatesTest`(귀속 회귀) ·
@@ -64,12 +67,14 @@
 
 ## Follow-up
 
-- **사용자 Play 확인 (미완)** — 아래 5건은 프레젠테이션이라 배치로 판정할 수 없다:
-  ① 파이어볼 외형(진행 방향 정렬·트레일·보드에 눕지 않는지·크기) ② `StatusFxKind.Fire`
-  오라 점등/소등 ③ 데미지 숫자가 0.5초 간격 정수 "10" × 6회 ④ 펄스 리듬(2.85s 화상 →
-  공백 → 재발화) ⑤ 어그로 예외(가디언이 때리면 조준이 넘어감) · 레인저 부재 시 통과.
-- ⚠ **씬 리로드 필요** — `BattleScene` 의 `stackModifierAuthoring` 을 디스크에서 직접 고쳤다.
-  에디터가 이 씬을 열고 있었다면 리로드 전까지 모르고, 그 상태로 저장하면 되돌아간다.
+- **사용자 Play 확인 (미완)** — 아래는 프레젠테이션이라 배치로 판정할 수 없다:
+  ① 파이어볼이 진행 방향으로 서는지 · 트레일이 남는지 · 보드에 눕거나 묻히지 않는지
+  ② **히트 VFX 가 어두운 연기 위주라 밝은 보드에서 검은 얼룩처럼 보이지 않는지**
+  (오프스크린은 어두운 배경이라 이 판정에 관대하다) ③ `StatusFxKind.Fire` 오라 점등/소등
+  ④ 데미지 숫자가 0.5초 간격 정수 "10" × 6회 ⑤ 펄스 리듬(2.85s 화상 → 공백 → 재발화)
+  ⑥ 어그로 예외(가디언이 때리면 조준이 넘어감) · 레인저 부재 시 통과.
+- ✅ **씬 리로드 완료 (2026-07-30)** — `stackModifierAuthoring` 4칸 확인
+  (`StackModifier_Fire(Fire, max5, thr1)` 포함), 씬 dirty 아님.
 - **밸런스 미검증** — 수치는 전부 placeholder. 화상 1회분 60 은 아처 HP 293 의 약 20%.
 - 나머지는 README 후속 후보 참조(`ApplyStat` 귀속 · 전투 스택 오버헤드 아이콘 ·
   화상 히트 VFX · 다중 킨들러 화상 합산 · 전용 아트).
