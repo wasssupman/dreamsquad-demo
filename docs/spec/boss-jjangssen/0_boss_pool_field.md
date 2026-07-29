@@ -45,3 +45,10 @@
   - `bossPool` 에 `null` 원소가 있어도 크래시 없음.
 - **기존 EditMode 전량 통과** — 특히 `NonBossWavesMatchBossOffPlanAtSameSeed`.
 - 라이브 덱 9개 asset 을 **건드리지 않은 상태로** 기존 보스가 5·10웨이브에 그대로 등장(Play 1회 확인).
+
+---
+
+**확인 2026-07-29 · 커밋 `bbfc06c1`** — EditMode 신규 7개 통과(단일풀=레거시 동일 · 폴백 · 보스없음 no-op ·
+결정론 · 30 seed 로테이션 실증 · null 필터 · pool 누출 방어). 보스 테스트 12/12, 전체 EditMode 1557 중
+1555 통과·실패 0·스킵 2(기존 `[Ignore]`). Play 항목은 `SingleEntryBossPoolIsIdenticalToLegacyBossUnit`
+이 전 웨이브 group 단위 동일성으로 더 강하게 커버.

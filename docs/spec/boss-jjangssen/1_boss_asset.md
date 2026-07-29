@@ -8,9 +8,9 @@
 ## 변경 대상
 
 - `Assets/_Project/Data/Enemies/Enemy_Boss_Jjangssen.asset` (신규 `AttackUnitData`)
-- `Assets/_Project/Data/Projectiles/` 아래 AOE 연출용 `ProjectileData` 1개 (신규 — unit 3 이 소비)
+- `Assets/_Project/Data/Projectiles/` 아래 AOE 연출용 `ProjectileData` 1개 (신규 — unit 2 가 소비)
 - `Assets/_Project/Data/EnemyCatalog.asset` — 등록
-- 덱 asset 은 **아직 건드리지 않는다**(`bossPool` 투입은 unit 3 이후)
+- 덱 asset 은 **아직 건드리지 않는다**(`bossPool` 투입은 unit 2 이후)
 
 ## 구현
 
@@ -53,18 +53,20 @@
 
 ### 진동갑주 AOE 연출 ProjectileData
 
-unit 3 의 진동갑주 폭발이 `payload.projectile` 참조를 **필수**로 요구한다(없으면 폭발 요청이 통째로
+unit 2 의 진동갑주 폭발이 `payload.projectile` 참조를 **필수**로 요구한다(없으면 폭발 요청이 통째로
 드롭되어 데미지까지 안 나간다). SkyFall × TileAoe 경로를 타는 기존 폭발 계열 `ProjectileData` 를
 복제해 만들고, `hitPrefab` 이 실제 히트 VFX(`vfx_Hit_*`)를 가리키는지 확인한다 — GA 계열 일부가
 머즐 프리팹을 가리키고 있는 기존 함정이 있다.
 
 ## 완료 기준
 
-- `EnemyCatalog.asset` 에서 짱쎈놈가 조회된다.
-- 임시로 `bossPool` 에 넣고 Play → 스폰되고, **"꿈결 위기!!" 배너가 뜬다**(`nightmareMechanics` 가 비어도
-  `BossTag` 경로가 동작하는지 확인. 배너 트리거가 `nightmareMechanics` 비어있지 않음 조건이면 이 시점엔
-  안 뜨는 것이 정상 — 어느 쪽인지 관찰해 unit 3 완료 기준에 반영).
+- `EnemyCatalog.asset` 에서 짱쎈놈이 조회된다.
+- 임시로 `bossPool` 에 넣고 Play → 스폰된다. **이 시점에는 `BossTag` 이 없다** —
+  `BakeNightmareMechanics` 가 `nightmareMechanics` 비어 있으면 early return 하므로
+  `BossTag`·`ThreatEntry`·"꿈결 위기!!" 배너가 **전부 안 붙는 것이 정상**이다. 따라서 방어유닛 사냥
+  (`boss-defender-field`)도 하지 않고 목표로 마칭한다 — cleave 확인은 **경로 위에 방어유닛을 놓고** 한다.
+  이 셋은 unit 2 에서 첫 mechanic 이 들어오면 함께 켜진다.
 - 나이트메어와 **육안으로 구분되는 실루엣**(사용자 확인).
 - 방어유닛 3기를 인접 배치 → **한 번의 공격에 3기가 동시에 피해**를 받는다.
-  단 가디언이 있으면 타겟 수가 1로 강제되므로 **가디언 없는 편성으로 확인**한다(unit 2 이전이므로).
+  단 가디언이 있으면 타겟 수가 1로 강제되므로 **가디언 없는 편성으로 확인**한다(면역은 unit 3 이므로).
 - 콘솔 경고 0. `.meta` 파일이 asset 과 함께 커밋됐다.

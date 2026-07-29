@@ -9,7 +9,7 @@
 
 ## 검증 질문
 
-> 짱쎈놈가 방어유닛을 스스로 사냥하며 cleave 3 으로 밀집을 갈아내고, 최대체력 20% 경계마다
+> 짱쎈놈이 방어유닛을 스스로 사냥하며 cleave 3 으로 밀집을 갈아내고, 최대체력 20% 경계마다
 > 자기중심 폭발 후 밀집 지점으로 도약하는가? 나이트메어와 로테이션으로 공존하면서
 > **기존 7덱의 웨이브 편성은 무회귀**인가?
 
@@ -19,14 +19,20 @@
 |---|---|---|---|
 | 0 | 데이터 | `0_boss_pool_field.md` | `AttackDeck.bossPool` 추가(rename 금지) + 생성기 선택 + EditMode |
 | 1 | 데이터 | `1_boss_asset.md` | `Enemy_Boss_Jjangssen.asset` + AOE `ProjectileData` + `EnemyCatalog` 등록 |
-| 2 | 시뮬 | `2_boss_immunity.md` | 보스 어그로 면역 + 직접 행동정지·넉백 면역(`EnemyCcEvent` 출처 필드) |
-| 3 | 브리지 | `3_vibration_armor.md` | bake 에 `SelfTileAoe` 추가 + 진영 도출 + `mechanic[0]` |
+| 2 | 브리지 | `2_vibration_armor.md` | bake 에 `SelfTileAoe` 추가 + 진영 도출 + `mechanic[0]` |
+| 3 | 시뮬 | `3_boss_immunity.md` | 보스 어그로 면역 + 직접 행동정지·넉백 면역(`EnemyCcEvent` 출처 필드) |
 | 4 | 시뮬 | `4_density_blink.md` | 밀집도 착지 순수함수 + 정책 교체 + `DeadTag` 가드 + `mechanic[1]` |
 | 5 | 인계 | `5_handoff_summary.md` | 구현 종료 시 작성 |
 
-**순서 근거**: 0 은 asset 없이 빈 pool 폴백으로 **기존 7덱 무회귀를 먼저 증명**한다. 2(면역)를
-1(asset) 직후에 두어야 같은 보스로 "면역 전/후" 를 비교할 수 있다 — 면역이 없으면 가디언이 타겟 수를
-1로 강제해서 **cleave 3 을 육안으로 검증할 수 없다**. 컴파일 선행 의존은 없다(`BossTag` 은 이미 존재).
+**순서 근거**: 0 은 asset 없이 빈 pool 폴백으로 **기존 7덱 무회귀를 먼저 증명**한다.
+
+**2(진동갑주)가 3(면역)보다 앞이어야 한다** — `BakeNightmareMechanics` 는 `nightmareMechanics` 가
+비어 있으면 early return 하므로 `BossTag`·`ThreatEntry`·경보가 **하나도 붙지 않는다**. unit 1 은
+mechanics 를 비우는 것이 목적이라, 첫 mechanic 이 들어오는 unit 2 이후에야 `BossTag` 가 생기고
+그때부터 `BossTag` 게이트를 쓰는 면역을 검증할 수 있다.
+
+면역(3)은 여전히 4(도약)보다 앞이다 — 면역이 없으면 가디언이 타겟 수를 1로 강제해서
+**cleave 3 을 육안으로 검증할 수 없다**. 컴파일 선행 의존은 없다(`BossTag` 은 이미 존재).
 
 ## Feature-wide 계약
 
@@ -48,7 +54,7 @@
    **대가(수용됨)**: `Defender_Archer` 넉백 · `Defender_Malphite` 넉업(= 전 대상 Stun) ·
    `Defender_TooMuchTalker` 수면이 보스전에서 무효가 된다. 말파이트·투머치토커는 **그 CC 가 유닛의 존재
    이유**이므로 손실이 크다. 넉업은 연출 신호가 CC 큐와 분리돼 있어 **`AttackSystem` 생산 지점에서도
-   막아야** 한다(unit 2 — 안 막으면 보스가 떠오르는데 스턴은 안 걸리는 desync).
+   막아야** 한다(unit 3 — 안 막으면 보스가 떠오르는데 스턴은 안 걸리는 desync).
 7. **면역은 부착/부여 시점 차단.** 어그로는 `Aggroed` 의 유일한 writer 1곳(소비 지점 6곳 대비),
    CC 는 부여 2곳. `AggroCapacity` 회계 · `CcClearRequestsSingleton` · FSM 전이는 **무변경**.
 8. **신규 ECS 채널 0, 신규 맥락 0, 신규 시스템 0.** 기존 큐·arm·시스템만 확장한다.
@@ -65,12 +71,12 @@
 | 데이터 SO | unit 1 | `Enemy_Boss_Jjangssen.asset` + **`EnemyCatalog` 등록** + `bossPool` 노출(unit 0) |
 | 스폰 진입점 | 기존 `SpawnUnit` 그대로 | 보스 선택은 생성기 안(unit 0). 스폰 경로 무변경 |
 | ECS 컴포넌트 | 기존 적 경로 상속 | `AttackUnitTag`·`Health`·`PathFollowState`·`AttackState`·`EnemyAiState` + `BossTag`/`ThreatEntry`/`DcTriggerSlot` (나이트메어와 동일 베이크) |
-| 시뮬 시스템 | 기존 + 3곳 수정 | `HealthThresholdSystem`(unit 3·4) · `AggroStateSystem`/`CcApplySystem`(unit 2). **신규 시스템 0** |
-| 이벤트 큐 | 기존 + 필드 1개 | `BlinkRequestEventsSingleton`(기존 — **첫 라이브 사용처**) · `EnemyCcEvent` 에 출처 필드 추가(unit 2). **신규 큐 0** |
+| 시뮬 시스템 | 기존 + 3곳 수정 | `HealthThresholdSystem`(unit 2·4) · `AggroStateSystem`/`CcApplySystem`(unit 3). **신규 시스템 0** |
+| 이벤트 큐 | 기존 + 필드 1개 | `BlinkRequestEventsSingleton`(기존 — **첫 라이브 사용처**) · `EnemyCcEvent` 에 출처 필드 추가(unit 3). **신규 큐 0** |
 | View/Pool | `SpineUnitPool` 공유 | 나이트메어와 같은 스켈레톤, `partSkins`/스케일만 다름 |
 | 체력 표시 | `UnitOverheadUiLayer` 자동 | 기존 폴링 경로 |
 | 씬 wiring | **N/A** | 신규 SerializeField 0. 바뀌는 것은 덱 asset 의 `bossPool` 값뿐 |
-| 투사체(폭발) | unit 1 준비 · unit 3 배선 | AOE 연출 `ProjectileData` 1개 신규. 기존 SkyFall × TileAoe 경로 재사용 |
+| 투사체(폭발) | unit 1 준비 · unit 2 배선 | AOE 연출 `ProjectileData` 1개 신규. 기존 SkyFall × TileAoe 경로 재사용 |
 
 ## 후속 후보 (범위 밖)
 
