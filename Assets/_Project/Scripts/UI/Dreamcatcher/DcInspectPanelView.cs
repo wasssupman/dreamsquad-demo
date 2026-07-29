@@ -36,17 +36,32 @@ namespace Wassup.UI
         [Tooltip("safe area 좌측에서 패널까지(캔버스 단위). MenuButton 과 같은 좌측 정렬")]
         [SerializeField] private float dockLeft = 24f;
         [Tooltip("safe area 상단에서 패널 상단까지. MenuButton(24+64) 아래로 내린 값")]
-        [SerializeField] private float dockTop = 120f;
-        [SerializeField] private float panelWidth = 360f;
+        [SerializeField] private float dockTop = 96f; // MenuButton 하단(24+64=88) 바로 아래
+        // 폰트를 키운 만큼 넓혀야 설명이 덜 접힌다(줄 수가 곧 패널 높이다). 좌측 대역은
+        // 어차피 비어 있어 폭은 여유가 있고, 아낄 것은 세로다.
+        [SerializeField] private float panelWidth = 430f;
+
+        // 폰트는 **크게** 간다(사용자 결정 2026-07-30). 플레이어층에 40대가 포함돼 있어
+        // 모바일 화면에서 작은 글자는 그냥 안 읽힌다. 값은 1920×1080 캔버스 기준.
+        [Header("Font sizes")]
+        [SerializeField] private float fontUnitName = 38f;
+        [SerializeField] private float fontSectionLabel = 21f;
+        [SerializeField] private float fontStatLabel = 27f;
+        [SerializeField] private float fontStatValue = 34f;
+        [SerializeField] private float fontStatValueMin = 20f; // autosize 하한(값이 길 때만 줄어든다)
+        [SerializeField] private float fontChip = 23f;
+        [SerializeField] private float fontAttachName = 27f;
+        [SerializeField] private float fontAttachKind = 22f;
+        [SerializeField] private float fontAttachDesc = 22f;
 
         [Header("Layout")]
         [SerializeField] private float pad = 18f;
-        [SerializeField] private float sectionGap = 14f;
+        [SerializeField] private float sectionGap = 10f;
         [SerializeField] private float rowGap = 8f;
         [SerializeField] private float portraitSize = 84f;
-        [SerializeField] private float statRowHeight = 44f;
-        [SerializeField] private float hpBarHeight = 10f;
-        [SerializeField] private float attachArtHeight = 69f;
+        [SerializeField] private float statRowHeight = 54f;
+        [SerializeField] private float hpBarHeight = 12f;
+        [SerializeField] private float attachArtHeight = 78f;
         [Tooltip("부착 카드 설명의 최대 줄 수. 넘치면 말줄임 — 패널이 아래 트레이를 침범하지 않게 성장을 묶는다.")]
         [SerializeField] private int descMaxLines = 2;
 
@@ -197,7 +212,7 @@ namespace Wassup.UI
 
             row.chipText.ForceMeshUpdate();
             float w = row.chipText.GetPreferredValues(row.chipText.text).x + 18f;
-            row.chip.sizeDelta = new Vector2(w, 26f);
+            row.chip.sizeDelta = new Vector2(w, fontChip * 1.5f); // 높이도 폰트 파생
         }
 
         // 세로 한 열로 쌓는다. 좌측 대역은 세로로 열려 있고 가로로 좁으므로 세우는 것이 의도다.
@@ -208,8 +223,15 @@ namespace Wassup.UI
 
             // 헤더 — 포트레이트 + 이름. 포트레이트가 없는 유닛(아트 미할당)이면 자리를 비우지
             // 않고 이름을 좌측으로 당긴다 — 안 그러면 빈 84px 들여쓰기가 남는다.
+            // 텍스트 블록 높이는 전부 폰트에서 파생한다 — 폰트를 키우면 상자도 같이 커져야
+            // 글자가 잘리거나 겹치지 않는다(1.3 = 한글 라인 높이 여유).
+            float nameH = fontUnitName * 1.3f;
+            float labelH = fontSectionLabel * 1.3f;
+            float attNameH = fontAttachName * 1.3f;
+            float attKindH = fontAttachKind * 1.3f;
+
             bool hasPortrait = _portrait.gameObject.activeSelf;
-            float headerH = hasPortrait ? portraitSize : 40f;
+            float headerH = hasPortrait ? portraitSize : nameH;
             if (hasPortrait)
             {
                 var prt = (RectTransform)_portrait.transform;
@@ -218,10 +240,10 @@ namespace Wassup.UI
             }
 
             float nameX = hasPortrait ? pad + portraitSize + 14f : pad;
-            float nameY = hasPortrait ? y + (portraitSize - 40f) * 0.5f : y;
+            float nameY = hasPortrait ? y + (portraitSize - nameH) * 0.5f : y;
             var nrt = _unitName.rectTransform;
             nrt.anchoredPosition = new Vector2(nameX, -nameY);
-            nrt.sizeDelta = new Vector2(panelWidth - nameX - pad, 40f);
+            nrt.sizeDelta = new Vector2(panelWidth - nameX - pad, nameH);
 
             y += headerH + sectionGap;
 
@@ -229,8 +251,8 @@ namespace Wassup.UI
             _statsSection.anchoredPosition = new Vector2(0f, -y);
             float sy = 0f;
             _statsLabel.rectTransform.anchoredPosition = new Vector2(pad, -sy);
-            _statsLabel.rectTransform.sizeDelta = new Vector2(inner, 24f);
-            sy += 24f + 4f;
+            _statsLabel.rectTransform.sizeDelta = new Vector2(inner, labelH);
+            sy += labelH + 4f;
 
             for (int i = 0; i < _statRows.Length; i++)
             {
@@ -244,7 +266,8 @@ namespace Wassup.UI
                 row.label.rectTransform.sizeDelta = new Vector2(inner * 0.34f, statRowHeight);
                 row.value.rectTransform.anchoredPosition = new Vector2(pad + inner * 0.34f, 0f);
                 row.value.rectTransform.sizeDelta = new Vector2(inner * 0.38f, statRowHeight);
-                row.chip.anchoredPosition = new Vector2(pad + inner * 0.74f, -(statRowHeight - 26f) * 0.5f);
+                float chipH = fontChip * 1.5f;
+                row.chip.anchoredPosition = new Vector2(pad + inner * 0.74f, -(statRowHeight - chipH) * 0.5f);
 
                 sy += statRowHeight;
                 if (i == 0) // 체력 행 아래에 게이지
@@ -266,8 +289,8 @@ namespace Wassup.UI
                 _attachSection.anchoredPosition = new Vector2(0f, -y);
                 float ay = 0f;
                 _attachLabel.rectTransform.anchoredPosition = new Vector2(pad, -ay);
-                _attachLabel.rectTransform.sizeDelta = new Vector2(inner, 24f);
-                ay += 24f + 4f;
+                _attachLabel.rectTransform.sizeDelta = new Vector2(inner, labelH);
+                ay += labelH + 4f;
 
                 float artW = attachArtHeight * (2f / 3f); // 타로 아트 2:3
                 for (int i = 0; i < _attachRows.Count; i++)
@@ -294,7 +317,9 @@ namespace Wassup.UI
                         descH = Mathf.Min(descH, descMaxLines * row.desc.fontSize * 1.3f);
                     }
 
-                    float textH = 12f + 28f + 22f + (descH > 0f ? descH + 4f : 0f) + 10f;
+                    // 이름과 종류가 한 줄이므로 높이는 둘 중 큰 쪽 하나만 든다.
+                    float titleH = Mathf.Max(attNameH, attKindH);
+                    float textH = 12f + titleH + (descH > 0f ? descH + 4f : 0f) + 10f;
                     float rowH = Mathf.Max(attachArtHeight + 12f, textH);
                     row.height = rowH;
 
@@ -305,11 +330,13 @@ namespace Wassup.UI
                     art.anchoredPosition = new Vector2(8f, -6f);
                     art.sizeDelta = new Vector2(artW, attachArtHeight);
 
+                    // 제목 줄: 이름(좌) + 종류·코스트(우) — 같은 y, 폭을 나눠 쓴다.
+                    float kindW = tw * 0.34f;
                     row.name.rectTransform.anchoredPosition = new Vector2(tx, -12f);
-                    row.name.rectTransform.sizeDelta = new Vector2(tw, 28f);
-                    row.kind.rectTransform.anchoredPosition = new Vector2(tx, -40f);
-                    row.kind.rectTransform.sizeDelta = new Vector2(tw, 22f);
-                    row.desc.rectTransform.anchoredPosition = new Vector2(tx, -66f);
+                    row.name.rectTransform.sizeDelta = new Vector2(tw - kindW - 6f, attNameH);
+                    row.kind.rectTransform.anchoredPosition = new Vector2(tx + tw - kindW, -12f);
+                    row.kind.rectTransform.sizeDelta = new Vector2(kindW, titleH);
+                    row.desc.rectTransform.anchoredPosition = new Vector2(tx, -(12f + titleH + 4f));
                     row.desc.rectTransform.sizeDelta = new Vector2(tw, Mathf.Max(0f, descH));
 
                     ay += rowH + rowGap;
@@ -407,13 +434,13 @@ namespace Wassup.UI
             _portrait.raycastTarget = false;
             _portrait.preserveAspect = true;
 
-            _unitName = BuildLabel(_root.transform, "UnitName", 30f, TextAlignmentOptions.TopLeft);
+            _unitName = BuildLabel(_root.transform, "UnitName", fontUnitName, TextAlignmentOptions.TopLeft);
             _unitName.fontStyle = FontStyles.Bold;
             _unitName.color = valueColor;
 
             // 스탯 섹션
             _statsSection = NewSection("StatsSection");
-            _statsLabel = BuildLabel(_statsSection, "StatsLabel", 17f, TextAlignmentOptions.TopLeft);
+            _statsLabel = BuildLabel(_statsSection, "StatsLabel", fontSectionLabel, TextAlignmentOptions.TopLeft);
             _statsLabel.color = labelColor;
             _statsLabel.characterSpacing = 6f;
             _statsLabel.text = "스탯";
@@ -442,7 +469,7 @@ namespace Wassup.UI
 
             // 부착 섹션
             _attachSection = NewSection("AttachSection");
-            _attachLabel = BuildLabel(_attachSection, "AttachLabel", 17f, TextAlignmentOptions.TopLeft);
+            _attachLabel = BuildLabel(_attachSection, "AttachLabel", fontSectionLabel, TextAlignmentOptions.TopLeft);
             _attachLabel.color = labelColor;
             _attachLabel.characterSpacing = 6f;
 
@@ -471,19 +498,19 @@ namespace Wassup.UI
             row.rect.anchorMax = new Vector2(0f, 1f);
             row.rect.pivot = new Vector2(0f, 1f);
 
-            row.label = BuildLabel(go.transform, "Label", 21f, TextAlignmentOptions.Left);
+            row.label = BuildLabel(go.transform, "Label", fontStatLabel, TextAlignmentOptions.Left);
             row.label.color = labelColor;
             row.label.text = label;
 
-            row.value = BuildLabel(go.transform, "Value", 26f, TextAlignmentOptions.Right);
+            row.value = BuildLabel(go.transform, "Value", fontStatValue, TextAlignmentOptions.Right);
             row.value.fontStyle = FontStyles.Bold;
             row.value.color = valueColor;
             // 값은 **절대 줄바꿈되면 안 된다** — "340 / 420" 이 두 줄로 접히면 바로 아래 HP
             // 게이지를 침범한다(실측). 폭이 모자라면 줄을 늘리는 대신 글자를 줄인다.
             row.value.textWrappingMode = TextWrappingModes.NoWrap;
             row.value.enableAutoSizing = true;
-            row.value.fontSizeMin = 15f;
-            row.value.fontSizeMax = 26f;
+            row.value.fontSizeMin = fontStatValueMin;
+            row.value.fontSizeMax = fontStatValue;
 
             var chipGo = new GameObject("Chip", typeof(RectTransform), typeof(Image));
             chipGo.transform.SetParent(go.transform, false);
@@ -496,7 +523,7 @@ namespace Wassup.UI
             row.chipBg.type = Image.Type.Sliced;
             row.chipBg.raycastTarget = false;
 
-            row.chipText = BuildLabel(chipGo.transform, "ChipText", 18f, TextAlignmentOptions.Center);
+            row.chipText = BuildLabel(chipGo.transform, "ChipText", fontChip, TextAlignmentOptions.Center);
             row.chipText.fontStyle = FontStyles.Bold;
             row.chipText.textWrappingMode = TextWrappingModes.NoWrap; // 칩 폭은 텍스트에서 파생된다
             var ct = row.chipText.rectTransform;
@@ -535,9 +562,11 @@ namespace Wassup.UI
                 row.art.raycastTarget = false;
                 row.art.preserveAspect = true;
 
-                row.name = BuildLabel(row.root.transform, "Name", 21f, TextAlignmentOptions.TopLeft);
-                row.kind = BuildLabel(row.root.transform, "Kind", 17f, TextAlignmentOptions.TopLeft);
-                row.desc = BuildLabel(row.root.transform, "Desc", 17f, TextAlignmentOptions.TopLeft);
+                row.name = BuildLabel(row.root.transform, "Name", fontAttachName, TextAlignmentOptions.TopLeft);
+                // 종류·코스트는 이름과 **같은 줄 오른쪽**에 붙인다. 줄을 따로 쓰면 부착 3장에서
+                // 그것만으로 ~90px 를 먹는데, 종류는 테두리 색이 이미 나르는 정보다.
+                row.kind = BuildLabel(row.root.transform, "Kind", fontAttachKind, TextAlignmentOptions.TopRight);
+                row.desc = BuildLabel(row.root.transform, "Desc", fontAttachDesc, TextAlignmentOptions.TopLeft);
                 row.desc.overflowMode = TextOverflowModes.Ellipsis; // 줄 수 상한을 넘으면 …
 
                 _attachRows.Add(row);
