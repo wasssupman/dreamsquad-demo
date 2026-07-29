@@ -24,8 +24,21 @@
 - armed 보드: press 시 `0f`, `_boardDragging` 승격 후 매 프레임 `dt/rampSeconds` 만큼 1 로 상승.
 - `ResetBoardGesture` / `CleanupSession` 에서 리셋.
 
-램프 중엔 판정 셀이 손가락이 멈춰 있어도 움직인다. 기존 `placementCommitInterval` throttle(기본 0.5s)이
-이 전이를 자연히 흡수하므로 추가 보정은 넣지 않는다.
+**램프는 "있으면 좋은 것"이 아니라 없으면 안 되는 것이다**(critic H3 — 초판 근거가 반대였다).
+throttle·히스테리시스는 `ResolveFocusAndTarget`(`:417-423`, `PlacementCellSnap.Resolve` +
+`PlacementSnapDebounce.Step`) **에만** 있고, 그 경로는 램프가 1f 고정이다(트레이 D&D). 반대로 램프가
+실제로 도는 두 경로엔 완충이 **전혀 없다**:
+
+- `UpdateBoardScout`(`:599-619`) — 매 프레임 `bridge.TryScreenToCell` 생 판정. 히스테리시스·디바운스 0
+- `DefenderRelocationController.UpdateScout`(`:264-279`) — 동일
+
+즉 "throttle 이 흡수한다"는 근거는 어느 경로에도 적용되지 않는다. 램프가 유일한 완충이다.
+
+**시간 램프보다 이동량 비례 램프를 먼저 시도한다.** 승격 임계 16px 이 65px 세로 점프를 유발하는
+**4배 증폭**이 시간 램프로는 남는다(손가락이 멈춰도 셀이 계속 올라간다). `(dist - threshold) /
+rampDistance` 를 1 까지 올리면 하이라이트가 **손가락이 움직인 만큼만** 앞서가므로 증폭이 구조적으로
+사라지고, 조작에 묶여 "리드한다"가 시간이 아니라 손에 붙는다. `placementPointerOffsetRampSeconds` 는
+`rampDistance` 로 대체하거나 둘 다 두고 Play 에서 고른다 — 그 선택은 이 단위의 튜닝 항목이다.
 
 ### armed 보드 제스처 (`UpdateBoardGesture`)
 
@@ -68,11 +81,14 @@ _targetDragging   : bool      이동량이 임계를 넘겨 드래그로 승격
 
 ### 테스트 갱신
 
-`RelocationPlacementSessionTest` 의 두 경로가 성격이 다르다:
+`RelocationPlacementSessionTest` 의 스텝들은 성격이 다르다(critic M6 — 초판 줄 참조가 틀렸다):
 
-- `:179-180` (무효 목적지 거부) — press·release 가 **같은 좌표** = 탭. 승격 게이트 덕에 **무변경으로 통과**한다.
-- `:120-122` (드래그 커밋) — `nowScreen` 에서 press 후 `backScreen` 으로 이동해 릴리즈한다. 승격되므로
-  릴리즈가 `backScreen + offset` 의 셀로 해석돼 `source` 대신 한 칸 위에 배치된다 → **단언 실패**.
+- **무변경 통과**: `:83-84`(무효/점유 목적지 거부), `:88-89`(본인 셀 탭 = 취소), `:101-102`(탭 커밋),
+  그리고 **같은 파일 두 번째 테스트** `SecondRelocationBlocked…` 의 `:179-180`. 전부 press·release 가
+  **같은 좌표** = 탭이라 승격 게이트가 오프셋을 막는다. 다음 사람이 재확인하지 않게 명시해 둔다.
+- **깨진다**: `:120-122`(드래그 커밋) — `nowScreen`(target2)에서 press 후 `backScreen`(source)으로
+  이동해 릴리즈한다. 승격되므로 릴리즈가 `backScreen + offset` 셀로 해석돼 `source` 대신 한 칸 위에
+  배치되고 `:124` `Assert.AreEqual(source, CellOf(...))` 가 실패한다.
 
 `backScreen` 을 "가상 포인터가 `source` 를 가리키는 실제 좌표"로 보정한다. 헬퍼를 하나 더 둔다:
 
@@ -97,9 +113,17 @@ private static float EffectiveOffsetPx()
 안 돼 탭으로 해석된다 — 그 경우 이 스텝은 보정 없이 통과하므로, **단언이 통과하는 이유가 무엇인지**
 (승격 후 보정 성공 vs 미승격) 를 헷갈리지 않게 두 셀의 화면 거리를 단언으로 한 줄 못박는다.
 
+### 알려진 1프레임 구멍 (무해 판단)
+
+`UpdateBoardGesture`(`:582-590`)에서 **같은 프레임에 승격 + 릴리즈**가 나면 `CommitBoardDrag` 는
+오프셋 셀에 놓는데 스카우트는 그 셀을 한 번도 보여주지 않았다 — "하이라이트는 어느 순간에도 거짓말하지
+않는다" 계약의 이론적 구멍이다(critic L4). 임계(16px)를 한 프레임에 넘기면서 같은 프레임에 떼는 조작이라
+실사용에서 나오기 어렵고, 나와도 결과는 "의도한 칸에서 한 칸 위"다. **알고 남긴다** — 막으려면 승격
+프레임에 릴리즈를 탭으로 강등해야 하는데 그게 더 놀랍다.
+
 ## 완료 기준
 
-- 컴파일 에러 0. `RelocationPlacementSessionTest` · `DragPlacementReachTest` 전부 통과.
+- 컴파일 에러 0. `RelocationPlacementSessionTest` · `DragPlacementReachTest` · `DropDismountTest` 통과.
 - 에디터 Play — armed 보드: 슬롯 탭 후 보드를 **누른 채 움직이면** 하이라이트가 커서 위로 올라가고
   릴리즈 시 그 칸에 배치된다. **누르고 바로 떼면** 누른 칸에 배치된다(오프셋 없음).
 - 에디터 Play — 재배치: 이동모드 진입 후 목적지를 **끌어서** 놓으면 커서 위 칸으로, **탭하면**
