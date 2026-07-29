@@ -57,15 +57,22 @@ XY, 벤더 = XZ). 조립본 루트에 `m_LocalEulerAnglesHint: {x: -90}` 이 박
 
 ## 완료 기준
 
-- [ ] 복제본 3종이 `Assets/_Project/VFX/Projectiles/PixPlays/` 아래에 있고, `ProjectileData` 가
-      **벤더 경로를 하나도 참조하지 않는다**(guid grep)
-- [ ] 복제본에 `ProjectileVfx` / `Rigidbody` / `Collider` 가 **없다**(grep 으로 확인)
-- [ ] 오프스크린 렌더 또는 Play 스크린샷으로 비행 중 외형 육안 확인 —
-      ① 몸체가 진행 방향으로 서는가 ② 트레일이 남는가 ③ 보드에 눕거나 묻히지 않는가
-      ④ 크기가 유닛 대비 과하지 않은가
-- [ ] 풀 재사용 확인: 연속 발사 시 트레일 소실·순간이동 streak 없음
-- [ ] 착탄 시 `FireballHit` 재생, 발사 시 `FireballCast` 재생
+- [x] 복제본 3종이 `Assets/_Project/VFX/Projectiles/PixPlays/` 아래에 있고, `ProjectileData` 가
+      **벤더 경로를 하나도 참조하지 않는다**
+- [x] 복제본에 `ProjectileVfx` / `Rigidbody` / `Collider` 가 **없다**
+- [x] `flightMode` 가 `Homing` 으로 **명시 저작**돼 있다(기본값 의존 아님)
+- [ ] **육안 확인 — 사용자 Play 대기**: ① 몸체가 진행 방향으로 서는가 ② 트레일이 남는가
+      ③ 보드에 눕거나 묻히지 않는가 ④ 크기가 유닛 대비 과하지 않은가
+      ⑤ 연속 발사 시 트레일 소실·순간이동 streak 없음 ⑥ 착탄 `FireballHit` / 발사 `FireballCast`
 
 ## 확인
 
-<!-- 확인 일자 + 커밋 해시 -->
+- **2026-07-30** · 구조 검증은 EditMode 단언으로 고정(testrig).
+  세 프리팹 전부에 대해 (a) 참조 경로가 `Assets/_Project/VFX/Projectiles/PixPlays/` 로
+  시작하는지 (b) `Rigidbody`/`Collider` 가 0개인지 (c) `MonoBehaviour` 가 **하나도 없는지**
+  를 단언한다 — 벤더 프리팹을 나중에 다시 끌어다 쓰면 이 단언이 즉시 깨진다.
+- e2e(`KindlerFireStackE2ETest`)가 이 투사체로 실제 히트를 성사시키므로
+  **비행·명중 경로 자체는 동작이 증명됐다.** 남은 것은 순수 외형 판정이다.
+- ⚠ 벤더 조립본(`Version_URP/Fireball.prefab`) 루트에는 데모 무버(`ProjectileVfx`,
+  `_FlySpeed`/`_FlyCurve`)와 `TrailScaleWithHierarchy` 가 붙어 있다. **조립본을 쓰지 말 것** —
+  부품 3종만 view-only 다.
