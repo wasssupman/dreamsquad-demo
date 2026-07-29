@@ -27,6 +27,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: c50542723e75741f2a22013717a9b118, type: 2}
   - {fileID: 11400000, guid: 7ab2d97d212554352a263b4acf8e02e3, type: 2}
   - {fileID: 11400000, guid: 23687f8df52d940258a2e9f5e38c33bc, type: 2}
+  - {fileID: 11400000, guid: 63427531b931467da2702f09eca696e7, type: 2}
   minWaveCount: 15
   maxWaveCount: 15
   minUnitsPerWave: 6

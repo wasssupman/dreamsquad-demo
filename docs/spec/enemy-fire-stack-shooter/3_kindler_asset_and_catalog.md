@@ -57,37 +57,49 @@ SO 전용이다.
 
 ### 배선
 
-- [ ] `EnemyCatalog.units` 에 등장, 라이브 덱 6종 `attackUnitPool` 에 등장
-- [ ] **첫 웨이브 미등장**: 6맵 각각의 `waveSeed` 로 `WavePatternGenerator.Generate` 를 돌려
-      wave 1 편성에 `kindler` 가 없는지 확인(EditMode 또는 `execute_code` — Play 불요)
-- [ ] 시트 importer 를 태워도(또는 로그인 후) SO 값이 유지되는지 확인 — `kindler` unmatched 로그
+- [x] `EnemyCatalog.units` 에 등장, 라이브 덱 6종 `attackUnitPool` 에 등장
+- [x] **첫 웨이브 미등장**: 6맵 각각의 `waveSeed` 로 `WavePatternGenerator.Generate` 를 돌려
+      wave 1 편성에 `kindler` 가 없음 + **6/6 덱에서 이후 웨이브에는 등장**(등록이 inert 가
+      아님을 같이 확인 — 게이트만 보면 "안 나오는 것"과 구분이 안 된다)
+- [ ] 시트 importer 를 태워도 SO 값이 유지되는지 — `kindler` 행이 없으므로 구조상 unmatched.
+      로그인 경유 실측은 사용자 Play 대기
 
-### Play 라이브 검증 (스크립트 e2e 또는 육안)
+### 배치 e2e — `KindlerFireStackE2ETest` (PlayMode, 포커스 무관)
 
-레인저를 1기 배치하고 킨들러가 사거리에 들어오는 상황을 만든 뒤:
+배치 근거: 킨들러를 **아처(Ranger) 위**에 두고 가디언을 체비셰프 **4칸** 떨어뜨린다.
+4 ≤ 킨들러 사거리(4) 라 가디언도 후보에는 들어오지만, 가디언 사거리는 1 이라 킨들러를
+때리지 못해 **어그로가 걸리지 않는다**. 어그로 sticky override 는 클래스 필터를 덮는 것이
+사양이므로 그 경로를 배제해야 base 필터를 본다.
 
-- [ ] **타겟팅**: 가디언/파이터를 앞에 세워도 킨들러가 **레인저만** 조준한다. 레인저를 치우면
-      아무도 안 쏘고 통과한다(계약 9)
-- [ ] **어그로 예외**: 가디언이 킨들러를 어그로하면 조준이 **가디언으로 넘어간다**
-      (`AttackSystem` sticky override)
-- [ ] **누적**: 레인저의 `StackModifierSlot(kind=Fire)` 이 **슬롯 1개**로 유지되며
-      `stackCount` 가 1→…→5 로 오른다 (`execute_code` reflection 프로브)
-- [ ] **발화**: 5스택 도달 프레임 근처에서 레인저에게 `DotEffect(origin=Stack, element=Fire)`
-      가 붙고, `stackCount` 가 0으로 리셋된다
-- [ ] **틱 수·총량**: 화상 1회분이 **6틱 · 총 60** (틱당 10). 데미지 숫자가 0.5초 간격 정수
-      "10" 으로 뜨고 초당 수십 개 스팸이 없다
-- [ ] **오라**: 레인저에게 `StatusFxKind.Fire` 오라가 점등되고 화상 종료와 함께 꺼진다.
-      **Stack origin 으로 이 오라가 켜지는 첫 사례** — `dot-effect-extraction` unit 1 검증 겸함
-- [ ] **2축 분리**: 킨들러 화상이 도는 레인저가 있을 때 `DotEffect` 버퍼에 `(Stack, Fire)`
-      슬롯만 있고 다른 origin 의 화염과 섞이지 않는다
-- [ ] **펄스 리듬**: 화상이 2.85초 뒤 꺼지고, 다음 발화(≈6초 주기)까지 공백이 있다(계약 2)
+- [x] **타겟팅**: 사거리 안의 가디언이 화염 스택을 **한 번도** 받지 않는다
+      (= `targetClassMask = Ranger` 하드 필터의 직접 증거)
+- [x] **누적**: 아처의 `StackModifierSlot(kind=Fire)` 이 **슬롯 1개**로 유지되며 `stackCount` 누적
+- [x] **발화**: 아처에게 `DotEffect(origin=Stack, element=Fire)` 가 붙는다
+- [x] **선행 가드**: `GetStackThresholds(Fire).Length > 0` (unit 1 씬 배선)
+
+### 사용자 Play 대기 (프레젠테이션 — 배치로는 판정 불가)
+
+- [ ] **어그로 예외**: 가디언이 킨들러를 때려 어그로하면 조준이 가디언으로 넘어간다
+- [ ] **레인저 부재**: 레인저를 치우면 아무도 안 쏘고 통과한다(계약 9)
+- [ ] **틱 수·총량**: 데미지 숫자가 0.5초 간격 정수 "10" × 6회. 초당 수십 개 스팸 없음
+- [ ] **오라**: 아처에게 `StatusFxKind.Fire` 오라 점등 → 화상 종료와 함께 소등.
+      **Stack origin 으로 이 오라가 켜지는 첫 사례**
+- [ ] **펄스 리듬**: 화상이 2.85초 뒤 꺼지고 다음 발화(≈6초)까지 공백(계약 2)
 - [ ] 콘솔 에러 0
 
 ### 회귀
 
-- [ ] EditMode 전량 green
-- [ ] PlayMode = HEAD 베이스라인과 동일(사전 실패 건수 대조)
+- [x] EditMode 전량 green (1584 중 1582 pass / 0 fail, skip 2 = 기존 Ignored)
+- [ ] PlayMode = HEAD 베이스라인 대조
 
 ## 확인
 
-<!-- 확인 일자 + 커밋 해시 -->
+- **2026-07-30** · `KindlerFireStackE2ETest` **Passed** (testrig 배치).
+  스폰 → 레인저 조준 → 파이어볼 히트 → 화염 누적 → 5스택 임계 → `(Stack, Fire)` 도트까지
+  배송 에셋 그대로 통과.
+- ⚠ 테스트가 킨들러를 찾을 때 **`EnemyCatalog` 를 쓰면 안 된다** — 그 에셋은 OutgameScene 의
+  `UnitStatRuntimeRefresher` 에서만 참조돼 BattleScene 에는 로드되지 않는다(초판이 NRE 로
+  죽었다). BattleScene 은 `MapDocumentPool` 을 참조하고 그 풀이 라이브 덱 6종을 물고 있어서,
+  덱 `attackUnitPool` 에 등록된 유닛은 씬 로드와 함께 올라온다.
+- ⚠ 적 스폰은 `BattleBridge.SpawnUnit`(private) 을 리플렉션으로 탄다. 엔티티를 직접 조립하면
+  outputs·`EnemyTargetFilter` bake 를 테스트가 복제하게 되어 **정작 검증하려는 배선을 우회**한다.
