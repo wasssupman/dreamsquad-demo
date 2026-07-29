@@ -14,9 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DefenderUnitData
   id: scout
   role: 1
-  displayName: "\uC2A4\uCE74\uC6B0\uD2B8"
-  desc: "\uAE30\uBCF8 \uAE30\uB2A5: \uB2E8\uC77C \uC6D0\uAC70\uB9AC \uACF5\uACA9\n\uBC30\uCE58
-    \uC2A4\uD0AC: \uCF54\uC2A4\uD2B8 \uD68D\uB4DD\n\uD2B9\uC218 \uD6A8\uACFC: \uC5C6\uC74C"
+  displayName: "\xEC\x8A\xA4\xEC\xB9\xB4\xEC\x9A\xB0\xED\x8A\xB8"
+  desc: "\xEA\xB8\xB0\xEB\xB3\xB8 \xEA\xB8\xB0\xEB\x8A\xA5: \xEB\x8B\xA8\xEC\x9D\xBC
+    \xEC\x9B\x90\xEA\xB1\xB0\xEB\xA6\xAC \xEA\xB3\xB5\xEA\xB2\xA9\n\xEB\xB0\xB0\xEC\xB9\x98
+    \xEC\x8A\xA4\xED\x82\xAC: \xEC\xBD\x94\xEC\x8A\xA4\xED\x8A\xB8 \xED\x9A\x8D\xEB\x93\x9D\n\xED\x8A\xB9\xEC\x88\x98
+    \xED\x9A\xA8\xEA\xB3\xBC: \xEC\x97\x86\xEC\x9D\x8C"
   health: 338
   attackRange: 3
   attackCooldown: 1.5
@@ -27,6 +29,9 @@ MonoBehaviour:
   visualMaterial: {fileID: 2100000, guid: a1b2c3d4e5f601234567890abcdef103, type: 2}
   deployVoiceClip: {fileID: 8300000, guid: 12e08cdc2c49b41a29abcefc075a0c03, type: 3}
   attackSfxClip: {fileID: 0}
+  attackVfxScale: 1
+  attackVfxFacesTarget: 0
+  attackVfxEulerOffset: {x: 0, y: 0, z: 0}
   beamVfxPrefab: {fileID: 0}
   projectile: {fileID: 11400000, guid: d3f1ca8734dde42bf8a2de05cb36f1bc, type: 2}
   outputs:
@@ -44,7 +49,7 @@ MonoBehaviour:
   onPlaceStackKind: 0
   onPlaceTickInterval: 0
   cost: 3
-  placementCooldown: 0
+  placementCooldown: 4
   targetAllies: 0
   abilities: []
   rarity: 0

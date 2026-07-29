@@ -14,10 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DefenderUnitData
   id: blocking_caster
   role: 4
-  displayName: "\uBE14\uB85C\uD0B9\uCE90\uC2A4\uD130"
-  desc: "\uAE30\uBCF8 \uAE30\uB2A5: \uAE38\uBAA9\uC5D0 \uBC29\uBCBD \uC8FC\uAE30
-    \uC124\uCE58\n\uBC30\uCE58 \uC2A4\uD0AC: \uC5C6\uC74C\n\uD2B9\uC218 \uD6A8\uACFC:
-    \uD30C\uAD34 \uC804\uAE4C\uC9C0 \uC801 \uC774\uB3D9 \uCC28\uB2E8"
+  displayName: "\xEB\xB8\x94\xEB\xA1\x9C\xED\x82\xB9\xEC\xBA\x90\xEC\x8A\xA4\xED\x84\xB0"
+  desc: "\xEA\xB8\xB0\xEB\xB3\xB8 \xEA\xB8\xB0\xEB\x8A\xA5: \xEA\xB8\xB8\xEB\xAA\xA9\xEC\x97\x90
+    \xEB\xB0\xA9\xEB\xB2\xBD \xEC\xA3\xBC\xEA\xB8\xB0 \xEC\x84\xA4\xEC\xB9\x98\n\xEB\xB0\xB0\xEC\xB9\x98
+    \xEC\x8A\xA4\xED\x82\xAC: \xEC\x97\x86\xEC\x9D\x8C\n\xED\x8A\xB9\xEC\x88\x98
+    \xED\x9A\xA8\xEA\xB3\xBC: \xED\x8C\x8C\xEA\xB4\xB4 \xEC\_\x84\xEA\xB9\x8C\xEC\xA7\x80
+    \xEC\_\x81 \xEC\x9D\xB4\xEB\x8F\x99 \xEC\xB0\xA8\xEB\x8B\xA8"
   health: 750
   attackRange: 3
   attackCooldown: 2
@@ -28,6 +30,9 @@ MonoBehaviour:
   visualMaterial: {fileID: 2100000, guid: a1b2c3d4e5f601234567890abcdef107, type: 2}
   deployVoiceClip: {fileID: 8300000, guid: 569a87889d2d1414682efafd419e99ea, type: 3}
   attackSfxClip: {fileID: 0}
+  attackVfxScale: 1
+  attackVfxFacesTarget: 0
+  attackVfxEulerOffset: {x: 0, y: 0, z: 0}
   beamVfxPrefab: {fileID: 0}
   projectile: {fileID: 0}
   outputs: []
@@ -38,7 +43,7 @@ MonoBehaviour:
   onPlaceStackKind: 0
   onPlaceTickInterval: 0
   cost: 3
-  placementCooldown: 0
+  placementCooldown: 4
   targetAllies: 0
   abilities:
   - {fileID: 11400000, guid: 4a5b6c7d8e9f40a1b2c3d4e5f6a7b890, type: 2}
