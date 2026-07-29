@@ -3793,13 +3793,6 @@ namespace Wassup.Bridge
                     affected++;
                 }
 
-                // [임시 진단] 배치 순간 반경 내 대상 수와 실제로 연 빔 수. 사용자 제보
-                // "빔이 1개만" 의 원인이 (a) 반경 내 적이 실제로 1체 (b) 세션이 죽음 중
-                // 무엇인지 가른다. 확인 후 제거할 것.
-                Debug.Log($"[BEAM-DIAG] 배치 조사: 반경 {unitData.onPlaceRange}타일 내 대상 {affected}체"
-                          + $" · 빔 프리팹 {(unitData.beamVfxPrefab == null ? "없음" : "있음")}"
-                          + $" · 현재 세션 {(beamPresenter != null ? beamPresenter.LiveSessionCount : -1)}");
-
                 // 조사(照射) 중에는 기본 공격을 하지 않는다. DotNearby 는 다른 on-place 효과와
                 // 달리 **지속을 갖는 채널**이라 그동안 유닛이 이 스킬에 묶여 있는 것이 사양이다
                 // (순간 효과인 MeleeBurst/StunNearby 등은 해당 없음 — 그래서 이 분기 안에 둔다).
