@@ -3,6 +3,7 @@
 ## Commit
 
 - `c377b60f` feat(drag-cancel-affordance): units 0~2 — 배치/카드 드래그 취소 수단
+- (unit 2 철회 커밋) revert(drag-cancel-affordance): unit 2 철회 — ESC/뒤로가기 하드 취소 제거
 
 ## Implemented
 
@@ -15,14 +16,15 @@
 - **드림캐쳐 취소 rect** — 패널(232)이 아니라 **보이는 카드 부채(310)** 로. 패널 자식이라 하강(210px)을
   자동 승계하고, 판정 3곳(드롭 · 포탈 출구 탭 · 브리핑)이 `CancelRect` 하나를 본다.
 - **손패 취소 힌트** — 취소 존 안이면 손패 위에 같은 `✕ 놓으면 취소` 배너(상단 툴팁과 이중 표기).
-- **ESC/Android 뒤로가기** — 유닛 드래그 취소 · arm 해제. 시뮬 비행(탭 배치)은 제외.
+- **unit 2(ESC/뒤로가기 하드 취소)는 철회** — 모바일에서 드래그 중 back 은 손가락이 닿지 않는다
+  (떼는 순간 이미 릴리즈). 코드 잔여물 0. 사유는 `2_escape_cancel.md` — 다시 제안하지 말 것.
 - **회귀 가드 2건** — `DragPlacementReachTest` 에 "최하단 행을 노리는 가상 포인터가 트레이 rect 밖"
   단언(BottomSafeRatio 근사 대신 실제 트레이 rect). 신규 `DragCancelZoneTest` 가 (1) 취소 존
   릴리즈 = 무차감 종료, (2) 손가락 트레이 안 + 조준점 트레이 밖 = 취소 아님 을 잰다.
 
 ## Key Files
 
-- `Assets/_Project/Scripts/UI/DefenderDragPlacementController.cs` — 취소 존 판정·예고·릴리즈·ESC
+- `Assets/_Project/Scripts/UI/DefenderDragPlacementController.cs` — 취소 존 판정·예고·릴리즈
 - `Assets/_Project/Scripts/UI/DefenderSelector.cs` — `SetCancelZone` 주입(BuildCanvas 말미 + EnsureDragController)
 - `Assets/_Project/Scripts/UI/Dreamcatcher/DreamcatcherHandView.cs` — `CancelRect` / `SetCancelHint` / CancelZone 빌드
 - `Assets/_Project/Scripts/UI/Dreamcatcher/DreamcatcherCardDragSlot.cs` — `InsideCancelZone` 단일 진입점
@@ -57,10 +59,11 @@
   확정 배치의 연출이라, 끊으면 유닛이 사라진다.
 - **예고 게이트(`_cancelZoneLeft`)는 릴리즈 판정에 걸지 않았다.** 존을 못 벗어난 짧은 드래그도
   놓으면 취소가 맞다(그게 랜덤 하단 셀 오배치보다 낫다).
+- **취소 수단은 드래그를 유지한 채 도달 가능해야 한다.** 키/시스템 버튼은 이 요건을 못 지켜
+  철회됐다 — 새 취소 수단을 넣을 땐 이 요건부터 통과시킬 것.
 
 ## Follow-up
 
 - 사용자 Play 확인 — 각 unit 문서의 미체크 항목(코스트 무차감 · 도달성 회귀 없음 · 배너 잔류 없음).
-- 실기기 — Android 뒤로가기 취소 동작 확인.
 - 방향 지정 페이즈 / 재배치 취소는 범위 밖(README 후속 후보 · spec README Follow-up Backlog
   "배치 취소/코스트 환불" 과 같은 건).

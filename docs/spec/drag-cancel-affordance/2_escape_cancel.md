@@ -1,50 +1,31 @@
-# 2 — 유닛 드래그·arm 의 ESC/뒤로가기 하드 취소
+# 2 — (철회) ESC / Android 뒤로가기 하드 취소
 
-## 목적
+> **상태: 철회 2026-07-30 (사용자 결정).** 구현했다가 되돌렸다. 다시 제안하지 말 것.
 
-손가락을 어디로 옮기든 상관없이 **한 번에** 취소할 수단을 준다. 드림캐쳐 손패에는 이미 있는 규칙
-(`DreamcatcherHandView.Update` 의 ESC → `CancelAllCardInteraction`)을 유닛 배치에도 맞춘다.
+## 철회 사유
 
-## 변경 대상
+**모바일에서 드래그 중에는 뒤로가기 버튼을 누를 수 없다.** 한 손가락이 카드/유닛을 붙잡고 있는
+상태가 취소가 필요한 바로 그 순간인데, 시스템 back 은 네비게이션 바(또는 엣지 스와이프)라 그
+손가락을 떼야 도달한다. 손을 떼는 순간 이미 릴리즈 판정이 나므로 **취소 수단으로서 도달 불가**다.
 
-- `Assets/_Project/Scripts/UI/DefenderDragPlacementController.cs` — `Update` 에 ESC 분기
+즉 이건 에디터에서만 동작하는 취소였고, 타겟은 Android 실기기다(CLAUDE.md 기술 스택). 에디터
+전용 편의를 계약처럼 문서에 남기면 다음 작업자가 "취소 수단이 3개"라고 오해한다.
 
-## 구현
+## 대신 무엇이 취소를 담당하나
 
-```
-// Update() 최상단(하이라이트 파생 다음, 보드 제스처 앞)
-var kb = Keyboard.current;
-if (kb != null && kb.escapeKey.wasPressedThisFrame)
-{
-    if (_session.active && !_simulatedDrag) { CleanupSession(); ...cancel SFX; }
-    else if (_armedUnit != null) Disarm();
-}
-```
+unit 0(트레이 복귀) · unit 1(손패 복귀) 이 전부다. 둘 다 **드래그를 유지한 채로 도달 가능**한
+화면 영역이라는 점이 요건이었고, 그게 이 spec 의 검증 질문("되돌릴 방법이 눈에 보이는가")과 같다.
 
-우선순위는 **드래그 > arm** 이다. 둘이 동시에 성립하지 않지만(BeginDrag 가 Disarm 을 먼저 부른다)
-분기 순서를 못 박아 두면 나중에 순서가 바뀌어도 "가장 최근 상호작용을 먼저 되돌린다"가 유지된다.
+arm(탭 선택) 해제는 **슬롯 재탭**이 담당한다(defender-tap-to-place unit 1, 기존 동작).
 
-`_simulatedDrag` 제외 = 계약 5(탭 배치 비행은 확정된 배치의 연출이다). 비행 중 ESC 는 아무 일도
-하지 않는다 — 비행을 끊으면 이미 지불된 코스트로 유닛이 사라진다.
+## 남겨둔 것
 
-포인터를 누른 채로 ESC 를 눌러도 안전하다: 나중에 도착하는 `OnEndDrag → EndDrag` 는
-`if (!_session.active) return;` 으로 물러난다.
-
-### Android 뒤로가기
-
-Unity Android 백엔드는 하드웨어 back 을 `Keyboard.escapeKey` 로 보고한다 — 별도 분기를 두지 않는다.
-(에디터/데스크톱의 ESC 와 같은 코드 경로.)
-
-### 전투 메뉴와의 관계
-
-`MenuPopup` 은 ESC 를 구독하지 않는다(버튼 전용). 그래서 ESC 소비자는 드림캐쳐 손패와 여기 둘뿐이고,
-둘은 상호배타(손패가 열리면 트레이는 숨는다)라 경합이 없다.
+`DreamcatcherHandView.Update` 의 ESC → `CancelAllCardInteraction` 은 **이 spec 이전부터 있던
+동작이라 건드리지 않았다**(dreamcatcher-awakening-hand unit 7). 위 사유는 그것에도 똑같이
+적용되지만, 그건 손패의 에디터 편의이고 사용자에게 취소 수단으로 안내되지 않는다 — 제거는 별건
+판단이므로 이 spec 의 범위 밖으로 둔다.
 
 ## 완료 기준
 
-- [x] 컴파일 통과, CS 에러 0
-- [x] EditMode 전량 통과(신규 실패 0) · PlayMode 신규 실패 0
-- [ ] Play(에디터) — 유닛 드래그 중 ESC → 프리뷰가 사라지고 코스트가 줄지 않는다
-- [ ] Play(에디터) — 슬롯 탭으로 arm 한 뒤 ESC → arm 해제(하이라이트/스카우트 소거)
-- [ ] Play(에디터) — 탭 배치 비행 중 ESC → 배치가 정상 완료된다(끊기지 않는다)
-- [ ] 실기기 — Android 뒤로가기로 같은 취소가 동작한다 (미확인 · handoff Follow-up)
+해당 없음 — 철회된 작업 단위다. 코드에 잔여물이 없다(`DefenderDragPlacementController` 에
+`escapeKey` 참조 0).

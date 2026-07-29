@@ -276,7 +276,6 @@ namespace Wassup.UI
         private void Update()
         {
             UpdatePlacementHighlightState(); // placement-eligible-tile-highlight unit 2 — early-return 위에서 매 프레임 파생 토글
-            TickEscapeCancel();              // drag-cancel-affordance unit 2 — ESC/Android 뒤로가기 하드 취소
 
             // placement-armed-board-drag unit 0 — arm 된 상태 + 드래그 아님일 때 보드 프레스-드래그-릴리즈 제스처.
             if (_armedUnit != null && !_session.active) UpdateBoardGesture();
@@ -358,28 +357,6 @@ namespace Wassup.UI
                 _session.cordLine.SetPosition(1, headPos);
             }
 
-        }
-
-        // drag-cancel-affordance unit 2 — ESC(= Android 하드웨어 뒤로가기. Unity Android 백엔드가
-        // back 을 escapeKey 로 보고한다) 한 번에 취소. 드림캐쳐 손패의 같은 규칙과 짝이며, 둘은
-        // 상호배타(손패가 열리면 트레이는 숨는다)라 경합이 없다.
-        //
-        // 우선순위는 드래그 > arm 이다. BeginDrag 가 Disarm 을 먼저 부르므로 동시에 성립하지 않지만,
-        // 순서를 못 박아 두면 나중에 그 전제가 바뀌어도 "가장 최근 상호작용을 먼저 되돌린다" 가 남는다.
-        // 시뮬 비행(_simulatedDrag)은 제외 — 이미 코스트가 지불된 확정 배치의 연출이라 끊으면 유닛이
-        // 사라진다(계약 5).
-        private void TickEscapeCancel()
-        {
-            var kb = Keyboard.current;
-            if (kb == null || !kb.escapeKey.wasPressedThisFrame) return;
-            if (_session.active)
-            {
-                if (_simulatedDrag) return;
-                CleanupSession();
-                Wassup.Core.SoundManager.Instance?.PlayCardReturn();
-                return;
-            }
-            if (_armedUnit != null) Disarm();
         }
 
         // camera-direction unit 5 — Director 캐시 (miss 캐시 + 1회 경고, 기존 패턴).
