@@ -62,6 +62,17 @@ Fighter · Common · 코스트 2 · HP 350 · 사거리 1 · 쿨다운 0.9s · a
 
 ## 후속 후보
 
+- **출혈 상태 표기(아이콘 / VFX)** [M] · 2026-07-29 사용자 결정으로 **후속 이관**. 현재 출혈이
+  걸렸는지 화면에서 알 방법이 도트 데미지 숫자뿐이다. 두 경로 모두 아직 전투 스택을 모른다:
+  - **아이콘**: `OverheadStackKind` 가 기믹 전용(`Fatigue`/`Heat`) 2종뿐이고 `StackIconRegistry`
+    도 그 2종만 매핑. `StackKind → OverheadStackKind` 번역 자체가 없다. 전투 스택 4종을 이
+    enum 에 넣을지가 선결 설계 결정.
+  - **VFX**(권장): `StatusFxKind` 확장이 더 자연스럽다 — `Empowered`/`Burnout`/`LastRun` 이 이미
+    "모디파이어/스택 슬롯 보유 → 온-바디 지속 VFX" 패턴이고, 출혈은 `StackModifierSlot` 중
+    `kind == Bleed` 보유를 소스로 같은 형태가 된다. enum 주석도 "Freeze, Poison … 나중에 **끝에**
+    추가 + registry 항목 + reconcile 소스 훅"으로 절차를 명시해 둔 상태.
+  - 범위 결정 필요: Bleed 만 열지 `Fire·Ice·Poison` 까지 4종을 한 번에 열지.
+
 - **5스택 폭발형 변종 유닛** [M] · 축적→강타 게임감. 별도 StackKind 신설(enum+레지스트리+아이콘)이 선결 — ember 공유 SO 를 건드리지 않기 위함.
 - **다중 타겟 출혈(회전베기)** [S] · `attackTargetCount` 만 올리면 성립하는 변형 — 별도 유닛 결정.
 - **전용 아트 패스** [S] · portrait/파츠/출혈 히트 VFX (placeholder 교체, guid 유지).
