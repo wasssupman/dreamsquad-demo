@@ -191,6 +191,9 @@ namespace Wassup.Bridge
         // unit-buff-debuff-aura 1 — 버프/디버프 오라 소스. StatModifierSlot 버퍼(Effects 소유)는 읽기만.
         // 임시(유한 지속) 슬롯만 판정 — 영구 baseline(로드아웃/시너지/드림캐쳐)은 classifier 가 제외.
         private EntityQuery _modifierSlotQuery;
+        // 전투 스택 오라(Bleed/Fire/Ice/Poison) 소스. 적·아군 공통이라 태그 게이트 없음.
+        private EntityQuery _stackSlotQuery;
+        private bool _stackSlotQueryCreated;
         private bool _modifierSlotQueryCreated;
         // season-gimmick-overwork unit 6 — 레드불 픽업 뷰 조정용 쿼리 (Pickup 은 Effects 소유, 읽기만).
         private EntityQuery _pickupViewQuery;
@@ -668,6 +671,7 @@ namespace Wassup.Bridge
             if (_modifierSlotQueryCreated)
             {
                 _modifierSlotQuery.Dispose();
+                if (_stackSlotQueryCreated) { _stackSlotQuery.Dispose(); _stackSlotQueryCreated = false; }
                 _modifierSlotQueryCreated = false;
             }
             if (_pickupViewQueryCreated)
@@ -1285,6 +1289,13 @@ namespace Wassup.Bridge
                     ComponentType.ReadOnly<Wassup.Battle.Effects.StatModifierSlot>(),
                     ComponentType.ReadOnly<Wassup.Battle.Units.DefenderUnitTag>());
                 _modifierSlotQueryCreated = true;
+            }
+            if (!_stackSlotQueryCreated)
+            {
+                _stackSlotQuery = _em.CreateEntityQuery(
+                    ComponentType.ReadOnly<Wassup.Battle.Effects.StackModifierSlot>(),
+                    ComponentType.ReadOnly<Wassup.Battle.Effects.CcEffect>());
+                _stackSlotQueryCreated = true;
             }
 
             if (!_projectileSpawnRequestQueryCreated)
@@ -2386,6 +2397,41 @@ namespace Wassup.Bridge
                 }
             }
 
+            // 전투 스택 오라(Bleed/Fire/Ice/Poison). 소스 = 스택 슬롯 보유 **AND** DoT 진행 중.
+            // 왜 둘 다: CcEffect 는 kind 하나로 병합돼 어느 스택이 만든 DoT 인지 모른다(종류 식별
+            // 불가). 슬롯만 보면 발동 전 누적 단계에도 켜진다. 슬롯 = 종류 / DoT = 발동 여부.
+            if (_stackSlotQueryCreated)
+            {
+                var stackEntities = _stackSlotQuery.ToEntityArray(Allocator.Temp);
+                try
+                {
+                    for (int i = 0; i < stackEntities.Length; i++)
+                    {
+                        var e = stackEntities[i];
+                        bool dotRunning = false;
+                        var ccs = _em.GetBuffer<Wassup.Battle.Effects.CcEffect>(e, isReadOnly: true);
+                        for (int j = 0; j < ccs.Length; j++)
+                            if (ccs[j].kind == Wassup.Battle.Effects.CcKind.DoT && ccs[j].remainingTime > 0f)
+                            { dotRunning = true; break; }
+                        if (!dotRunning) continue;
+
+                        var anchor = ResolveUnitViewTransform(e);
+                        if (anchor == null) continue;
+                        var stacks = _em.GetBuffer<Wassup.Battle.Effects.StackModifierSlot>(e, isReadOnly: true);
+                        for (int j = 0; j < stacks.Length; j++)
+                        {
+                            if (stacks[j].header.remaining <= 0f) continue;
+                            var fx = StackAuraKind(stacks[j].kind);
+                            if (fx.HasValue) statusFxSpawner.Ensure(e, fx.Value, anchor);
+                        }
+                    }
+                }
+                finally
+                {
+                    stackEntities.Dispose();
+                }
+            }
+
             // subconscious-curse-expansion unit 3 — 살찌운 제물 표식. 소스 = bridge 표식
             // 등록부(_bountyMarked): 처치/유출 드레인이 제거하므로 잔존 키 = 활성 표식
             // (ECS 쿼리 불요 — 등록부가 이미 권위. Exists 가드는 파괴~드레인 사이 1프레임 창).
@@ -3071,6 +3117,16 @@ namespace Wassup.Bridge
                 _pendingHitVfx.RemoveAt(i);
             }
         }
+
+        // 전투 스택 → 오라 kind. 매핑 없는 스택(Fatigue 등 기믹 계열)은 null = 오라 없음.
+        private static Wassup.Data.StatusFxKind? StackAuraKind(Wassup.Battle.Effects.StackKind k) => k switch
+        {
+            Wassup.Battle.Effects.StackKind.Bleed  => Wassup.Data.StatusFxKind.Bleed,
+            Wassup.Battle.Effects.StackKind.Fire   => Wassup.Data.StatusFxKind.FireStack,
+            Wassup.Battle.Effects.StackKind.Ice    => Wassup.Data.StatusFxKind.IceStack,
+            Wassup.Battle.Effects.StackKind.Poison => Wassup.Data.StatusFxKind.PoisonStack,
+            _ => null,
+        };
 
         private DefenderUnitData FindDefenderData(Entity entity)
         {

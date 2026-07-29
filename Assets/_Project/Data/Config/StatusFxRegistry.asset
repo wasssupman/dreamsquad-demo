@@ -62,3 +62,31 @@ MonoBehaviour:
     billboard: 1
     fallbackTint: {r: 1, g: 0.85, b: 0.2, a: 1}
     fallbackGlyph: 2
+  - kind: 7
+    prefab: {fileID: 6530448752386012335, guid: f4971909a03f4442da9cbf6d85109f66, type: 3}
+    localOffset: {x: 0, y: 1.65, z: 0}
+    scale: 0.65
+    billboard: 1
+    fallbackTint: {r: 1, g: 0.85, b: 0.2, a: 1}
+    fallbackGlyph: 2
+  - kind: 8
+    prefab: {fileID: 2692375763741349971, guid: ef8b769e51cda4d6b8039ce21ab55f65, type: 3}
+    localOffset: {x: 0, y: 1.65, z: 0}
+    scale: 0.65
+    billboard: 1
+    fallbackTint: {r: 1, g: 0.85, b: 0.2, a: 1}
+    fallbackGlyph: 2
+  - kind: 9
+    prefab: {fileID: 2987979887945417987, guid: 658df966d25fb485daf6ed33ed3c9846, type: 3}
+    localOffset: {x: 0, y: 1.65, z: 0}
+    scale: 0.65
+    billboard: 1
+    fallbackTint: {r: 1, g: 0.85, b: 0.2, a: 1}
+    fallbackGlyph: 2
+  - kind: 10
+    prefab: {fileID: 207745087118991948, guid: cc758bec89b774b928c0e4c19ff3e8e5, type: 3}
+    localOffset: {x: 0, y: 1.65, z: 0}
+    scale: 0.65
+    billboard: 1
+    fallbackTint: {r: 1, g: 0.85, b: 0.2, a: 1}
+    fallbackGlyph: 2

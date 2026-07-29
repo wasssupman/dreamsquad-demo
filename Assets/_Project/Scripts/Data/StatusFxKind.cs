@@ -24,6 +24,15 @@ namespace Wassup.Data
         // unit-status-fx 6 — Stun(CcKind.Stun, 적·아군 공통 action-lock). 소스 = CcEffect 버퍼.
         // 수면(Zz)과 시각 구분용(스턴탄 등). Sleep 아이콘과 동일 경로.
         Stun = 6,
-        // Freeze, Poison … 나중에 끝에 추가 + registry 항목 + reconcile 소스 훅.
+        // bleed-fighter-defender 후속 — 전투 스택 4종의 온-바디 오라.
+        // 소스 = `StackModifierSlot(kind)` 보유 **AND** 그 대상에 DoT CcEffect 가 도는 중.
+        // 왜 둘 다 보는가: CcEffect 는 kind 하나로 병합돼 **어느 스택이 만든 DoT 인지 모른다**
+        // (종류 식별 불가). 반대로 스택 슬롯만 보면 발동 전 누적 단계에도 켜진다.
+        // 슬롯 = 종류 식별 / DoT = 발동 여부 로 나눠 쓴다.
+        Bleed = 7,
+        FireStack = 8,
+        IceStack = 9,
+        PoisonStack = 10,
+        // 다음 항목은 반드시 **끝에** 추가할 것 — registry 가 int 로 직렬화한다.
     }
 }
