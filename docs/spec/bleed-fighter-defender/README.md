@@ -1,6 +1,7 @@
 # bleed-fighter-defender — 난도질꾼 (단일 대상 출혈 파이터)
 
-> 상태: **구현 완료 · 사용자 Play 확인 통과 (2026-07-29)** — units 0~2 커밋. 상세는 `3_handoff_summary.md`
+> 상태: **구현 완료 · 사용자 Play 확인 통과 (2026-07-29)** — units 0~2 + 상태 VFX·밸런스 후속
+> (`c4d799b6`~`bf0269b8`). 상세는 `3_handoff_summary.md`
 
 ## 목표
 

@@ -7,6 +7,13 @@
 - `b770b797` feat(defenders): 난도질꾼·말파이트 유닛 에셋 + 카탈로그 등록 (unit 2)
 - `c8808843` refactor(defenders): on-place 분기 중복 제거 (unit 1 분기가 공용 헬퍼로 접힘)
 
+후속(출혈 상태 VFX + 밸런스, 2026-07-29 사용자 Play 확인 통과):
+
+- `c4d799b6` feat(status-fx): 전투 스택 오라 4종 — DoT 진행 중에만 점등
+- `401cdeaa` fix(status-fx): 스택 오라를 머리 위 뱃지에서 발밑 지면 연출로
+- `1e2ec82d` tune(bleed): 출혈을 5초 지속 도트로 — 틱 5 / 0.5s · 10틱 · 1회분 총 50
+- `bf0269b8` fix(status-fx): 스택 오라가 도트 후반부에 꺼지던 문제 — 종류를 bridge 가 래치
+
 ## Implemented
 
 - 난도질꾼(`slasher`) — Fighter·Common·코스트 2, HP 350 · 사거리 1 · **쿨다운 0.3** · 직격 2.67
@@ -26,11 +33,17 @@
 - `Assets/_Project/Tests/PlayMode/OnPlaceApplyStackNearbyTest.cs` (배치 반경 필터)
 - `Assets/_Project/Data/Dreamcatcher/StackModifier_Bleed.asset` — 임계·틱 저작 지점(`atStack 5 · Consume` · 틱 5 / 0.5s · 지속 4.85s = **10틱 · 1회분 50**)
 
+- 출혈 상태 오라 = PixPlays ElementalAuras 사본, 발밑 지면 연출(`billboard=false` · offset y 0.05 · scale 0.7)
+- 오라 점등 판정은 **DoT 진행 여부**, 종류는 **bridge 래치**(`_stackAuraLatch`) — 슬롯이 도트보다 먼저 죽는다
+
 ## Verified
 
 - 리그 PlayMode: outputs 경로 · 배치 반경 필터 · 리팩토링 후 7/7 green
 - **mutation 검증**: `AttackSystem` 의 ApplyStack enqueue 게이트를 `false` 로 끊으면 1/1 실패 → 테스트에 검출력이 있음을 증명(체크섬으로 원복 확인)
 - 에디터 EditMode 1543건 중 사전 실패 2건만(MobileBuild 프리플라이트 · 미커밋 MapDocument_Zig)
+- 출혈 밸런스는 **리그 PlayMode 프로브 실측**으로 고정: 첫 발동 직후 공격자를 제거해 재적용을
+  끊고 순수 1회분을 셌다 — 정확히 10틱 · 총량 50.00 · 마지막 틱 후 잔여 0.33s
+- 오라 지속 회귀 가드 `BleedAuraOutlastsStackSlotTest` green · 사용자 Play 확인 통과(2026-07-29)
 
 ## Notes (되돌리지 말 것)
 
