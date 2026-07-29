@@ -254,7 +254,16 @@ namespace Wassup.Presentation
             view.transform.localScale = Vector3.one * scale;   // 원본이 작으면 키움
             // ⚠ 위 줄이 프리팹 스케일을 **덮는다** — 크기 조절은 프리팹이 아니라 이 인자로.
             if (facingViewDir.sqrMagnitude > 0.0001f)
-                view.transform.rotation = Quaternion.LookRotation(facingViewDir, Vector3.up);
+            {
+                // up 을 **카메라 쪽**으로 잡는다. Vector3.up 을 쓰면 이펙트의 지면 평면(local XZ)이
+                // 월드 수평면에 놓이는데, 이 보드는 XY 평면 정면 뷰라 그 평면이 화면에 대해 옆으로
+                // 서서 "바닥에 깔린" 것처럼 보인다(사용자 제보 — 빔 롤 문제와 같은 뿌리).
+                // -cam.forward 를 up 으로 주면 local XZ 가 화면 평면과 나란해져 폭발이 온전히 보인다.
+                var cam = Camera.main;
+                view.transform.rotation = cam != null
+                    ? Quaternion.LookRotation(facingViewDir, -cam.transform.forward)
+                    : Quaternion.LookRotation(facingViewDir, Vector3.up);
+            }
             float3 hitView = Wassup.Core.BoardSpace.ToView(position); // sim→view
             // heightOffset: 바닥에 깔리지 않게 view Y 로 띄움 (투사체 visualHeightOffset 과 동일 개념).
             view.transform.position = new Vector3(hitView.x, hitView.y + heightOffset, hitView.z);
