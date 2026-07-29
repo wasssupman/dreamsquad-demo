@@ -102,7 +102,11 @@ namespace Wassup.Battle.Effects
                             effect = new CcEffect
                             {
                                 kind          = CcKind.DoT,
-                                scalar        = rule.magnitude, // dps
+                                // tickInterval 0 = 연속(scalar 는 DPS) / >0 = 이산(scalar 는 틱당 피해).
+                                // 0 이면 매 프레임 지급이라 데미지 숫자가 초당 수십 번 튄다.
+                                scalar        = rule.magnitude,
+                                tickInterval  = rule.tickInterval,
+                                tickTimer     = rule.tickInterval, // 첫 틱 즉발(CcApply add-path 규약)
                                 remainingTime = rule.duration,
                             }
                         });

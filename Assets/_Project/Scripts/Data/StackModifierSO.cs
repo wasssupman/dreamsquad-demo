@@ -42,6 +42,12 @@ namespace Wassup.Data
         public StatKind stat;
         /// <summary>ApplyStat 만 의미 있음.</summary>
         public CombineOp op;
+        /// <summary>
+        /// ApplyDot 만 — 이산 tick 간격(초). 0 이면 연속(magnitude = DPS, 매 프레임 지급)이라
+        /// 데미지 숫자가 초당 수십 번 튄다. &gt;0 이면 **magnitude 는 틱당 피해**로 의미가 바뀐다
+        /// (dot-tick-cadence 계약) — 총량을 유지하려면 `magnitude = DPS × tickInterval` 로 맞출 것.
+        /// </summary>
+        public float tickInterval;
     }
 
     [CreateAssetMenu(fileName = "StackModifier", menuName = "Wassup/StackModifier", order = 30)]
