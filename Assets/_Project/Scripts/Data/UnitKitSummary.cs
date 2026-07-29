@@ -75,6 +75,11 @@ namespace Wassup.Data
                 case OnPlaceEffectType.ForwardProjectile: return "배치 시 전방 발사";
                 case OnPlaceEffectType.GainCost: return "배치 시 코스트 획득";
                 case OnPlaceEffectType.ReduceSkillCooldown: return "배치 시 스킬 쿨다운 감소";
+                case OnPlaceEffectType.ApplyStackNearby: return "배치 시 주변 상태 중첩";
+                case OnPlaceEffectType.StunNearby: return "배치 시 주변 기절";
+                case OnPlaceEffectType.DotNearby: return "배치 시 주변 지속 피해";
+                // default 가 빈 문자열이라 신규 enum 멤버는 **조용히 설명이 빈다**.
+                // OnPlaceEffectType 을 늘리면 여기도 같이 늘릴 것.
                 default: return "";
             }
         }

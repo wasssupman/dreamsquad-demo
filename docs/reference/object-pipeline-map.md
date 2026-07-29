@@ -18,8 +18,8 @@
 | 스폰 진입점 | `Bridge/BattleBridge.cs` `PlaceDefenderAs`→`CreateDefenderEntity` | 플레이어 배치 기반 |
 | ECS 컴포넌트 (Units) | `Battle/Units/` DefenderUnitTag·Health·IncomingDamage·DefenderTile | 능력별 조건부: AttackState / HazardCastState / AggroProvider / DeployedFacing(방향 지정 배치 — 활성화 시 1회 기록) / VolleyFireState(Combat 소유, shotCount>1 만) |
 | 시뮬 시스템 | `Battle/Combat/AttackSystem.cs` · `Battle/Units/DamageApplicationSystem.cs`·`HealthDeathSystem.cs` | 이동 없음(고정) — PathFollowState 미부여 |
-| 이벤트 큐 | `Battle/Units/DefenderDeathEventsSingleton.cs` + 공유 UnitAttackVisual/DamageNumber/HealApplied | drain = `BattleBridge.DrainDefenderDeathEvents` |
-| View/Pool | `Presentation/SpineUnitPool.cs`+`SpineUnitView.cs`, 폴백 `QuadUnitViewPool.cs` | 위치/틴트 sync = `BattleBridge.SyncMonoUnitViews` 매 프레임 |
+| 이벤트 큐 | `Battle/Units/DefenderDeathEventsSingleton.cs` + 공유 UnitAttackVisual/DamageNumber/HealApplied · 연출 전용 `Battle/Combat/KnockupVisualEvents.cs` | drain = `BattleBridge.DrainDefenderDeathEvents`. ★넉업 채널은 **연출 귀속용** — 심의 넉업은 Stun 이라 뷰가 `CcEffect.kind` 로는 일반 스턴과 구분 못 한다(knockup-fighter-defender unit 3) |
+| View/Pool | `Presentation/SpineUnitPool.cs`+`SpineUnitView.cs`, 폴백 `QuadUnitViewPool.cs` · 지속 빔 = `Presentation/BeamPresenter.cs` | 위치/틴트 sync = `BattleBridge.SyncMonoUnitViews` 매 프레임. ★빔은 고속 틱 공격 사건을 TTL 세션으로 뭉친 결과이지 심 개념이 아니다. 빔 유닛 판별 = SO `beamVfxPrefab` 유무(beam-ranger-defender unit 1) |
 | 체력 표시 | 기본: `Presentation/UnitOverheadUiLayer.cs`+`UnitOverheadView.cs` / Legacy: `TileHealthGaugeLayer.cs`+`TileHealthGaugeView.cs` | ★큐 아님 — `BattleBridge.SyncMonoUnitViews`가 매 프레임 Health read-only 폴링 |
 | 씬 wiring | BattleBridge SerializeField: spineUnitPool·defenderFallbackViewPool·unitOverheadUiLayer·tileHealthGaugeLayer | Unified/Legacy 상호배타, Spine 실패 시 Quad 폴백 |
 

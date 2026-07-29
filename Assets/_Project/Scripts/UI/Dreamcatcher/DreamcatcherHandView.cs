@@ -72,6 +72,19 @@ namespace Wassup.UI
         // hand-deal-in unit 4 — 퇴장 침강(딜의 거울: 하단 덱으로 InBack).
         [SerializeField] private float sinkDurationSec = 0.26f;
         [SerializeField] private float sinkStaggerSec = 0.04f;
+        // hand-drag-clearance unit 0 — 조준 중에만 손패를 내려 큰 맵의 최하단 행을 드러낸다.
+        // 210 = 카드 **헤더(이름) 띠만 남기는** 깊이(사용자 결정 2026-07-28). 바깥 카드 헤더
+        // 하단이 화면 y 4 로 내려와 전 카드의 이름이 읽히는 마지막 지점이다. 이때 조준 중
+        // 카드 top 은 342-210=132 라 가장 큰 맵의 보드 하단 모서리(167)보다 아래 — 최하단
+        // 행 셀이 통째로 드러난다.
+        [SerializeField] private float dragClearanceDrop = 210f;
+        // 헤드룸과 같은 감성의 스프링(살짝 오버슈트 후 안착). 하강·복귀 공용 — target 만 바뀐다.
+        [SerializeField] private float dragClearanceSpring = 320f;
+        [SerializeField] private float dragClearanceDamping = 24f;
+        // use-flow unit 0 — A/B 토글: true = 구동작(손패 열림 전체 슬로모), false = 신동작
+        // (카드를 잡은 press~release 동안만 슬로모). 매 프레임 폴링이라 Play 중 인스펙터에서
+        // 토글하는 즉시 반영된다 — 넣다 뺐다 비교용(사용자 요구 2026-07-29).
+        [SerializeField] private bool slomoOnOpen = false;
         // hand-deal-in unit 1 — 눌러서 들기(press-to-lift, 모바일: hover 아님).
         [SerializeField] private float focusRaise = 100f;
         [SerializeField] private float focusScale = 1.28f;
@@ -232,6 +245,8 @@ namespace Wassup.UI
             public int entryId = -1;       // -1 = empty slot
             public DreamcatcherCard card;
             public bool usable;
+            // use-flow unit 1 — 사용 직후 1장 재딜인 트윈이 rect 를 소유 중(스프링/집기 제외).
+            public bool redealing;
         }
 
         // dreamcatcher-hand-card-face unit 1 — 카드 면 기하. 본문 16pt floor(계약 8) 예산
@@ -243,6 +258,11 @@ namespace Wassup.UI
         private Sprite _chipSprite; // 흰 라운드 칩 공용 스프라이트(틴트는 Image.color 가 담당)
 
         private GameObject _panel;
+        // hand-drag-clearance unit 0 — 하강의 기준선. BuildCanvas 가 실제 배치한 값을 캡처하고
+        // (trayConfig 를 다시 읽지 않는다 — 기준은 하나) 리셋/복귀가 전부 이 값으로 돌아온다.
+        private float _panelBaseY;
+        private float _clearanceOffset;  // 0 = 기준선, -dragClearanceDrop = 완전 하강
+        private float _clearanceVel;
         // dreamcatcher-orb-dock unit 4 — 손패 오픈 중 보드 영역 탭으로 물러나기(바깥 탭 dismiss).
         private GameObject _dismissCatcher;
         private Image _backing;        // tray frame — deal 무대(카드와 별개로 페이드 인)
@@ -251,8 +271,13 @@ namespace Wassup.UI
         private bool _built;
         private Coroutine _flip;
         private Sequence _dealSeq;      // hand-deal-in — 딜/수렴 트윈(teardown 에서 Stop)
+        // use-flow unit 1 — 사용 직후 1장 재딜인 전용(= Transitioning 비게이트, 연속 사용 비차단).
+        private Sequence _redealSeq;
+        private readonly List<int> _prevIds = new List<int>();       // OnCardUsed 포즈 diff 용
+        private readonly List<Vector3> _prevPose = new List<Vector3>(); // xy=anchoredPos, z=rotZ
         private int _focusIndex = -1;  // hand-deal-in unit 1 — press-lift 대상 슬롯
         private TimeLease _slomoLease;
+        private bool _slomoActive; // use-flow unit 0 — TickSlomo 에지 트리거 상태
         private DreamcatcherTargetArrow _targetArrow;
         private DreamcatcherFocusPresenter _focus; // dreamcatcher-attach-lockon
         private CardAbsorbFlightPresenter _flightPresenter; // card-fly unit 0 — lazy, 캔버스 루트 하위
@@ -332,11 +357,108 @@ namespace Wassup.UI
             // 피드 주도 채널이라 닫힘/페이즈 이탈/파괴 어느 경로든 별도 해제 호출 없이
             // 홈 pitch 로 스프링 복귀한다(State 가 UnitStrip 이 되는 순간 피드가 끊긴다).
             EnsureCameraDirector()?.SetHandHeadroom();
+            // held = "카드를 잡고 있다" 단일 판정 (press-lift focus / 드래그 / 포탈 2탭 대기).
+            // 슬로모(use-flow unit 0)와 손패 하강(hand-drag-clearance)이 이 한 신호로 움직인다:
+            // press = 슬로모 ON + 하강, release = OFF + 복귀.
+            bool held = _focusIndex >= 0 || AnyInteractionActive();
+            TickSlomo(held);
+            TickHandClearance(held);
             SpringSlots(); // hand-deal-in unit 0 — 슬롯 target 으로 매프레임 추종
             // ESC = cancel rule (spec unit 7 §6): drop any drag/portal-aim, no spend.
             var kb = UnityEngine.InputSystem.Keyboard.current;
             if (kb == null || !kb.escapeKey.wasPressedThisFrame) return;
             CancelAllCardInteraction();
+        }
+
+        // use-flow unit 0 — 슬로모 리스를 held 신호에 묶는다(에지 트리거). slomoOnOpen=true 면
+        // 구동작(손패 열림 전체 슬로모)으로 폴백 — Play 중 인스펙터 토글 즉시 반영(A/B 비교용).
+        // 매 프레임 재획득이 아니라 상태가 바뀌는 프레임에만 획득/해제한다.
+        private void TickSlomo(bool held)
+        {
+            bool want = slomoOnOpen || held;
+            if (want == _slomoActive) return;
+            _slomoActive = want;
+            _slomoLease.Dispose();
+            if (want)
+            {
+                float scale = config != null ? Mathf.Max(0.01f, config.slomoTimeScale) : 0.3f;
+                _slomoLease = TimeManager.Instance.Request(TimeDomain.Battle, scale, priority: 50);
+            }
+        }
+
+        // hand-drag-clearance unit 0 — 조준 중에만 손패 패널을 내려 큰 맵의 최하단 행을
+        // 드러낸다. 카드 슬롯은 패널 자식이고 취소 판정(HandPanelRect)도 패널 기준이라,
+        // 패널 y 하나만 움직이면 카드·취소영역이 함께 따라온다(계약 1·3).
+        //
+        // 하강·복귀 모두 스프링이다(헤드룸과 같은 감성 — 살짝 오버슈트 후 안착).
+        //
+        // ⚠ 하강 중 카드가 손가락에서 미끄러지는 함정: ActiveTile/ActivePortal 은 카드가
+        // 포인터를 따라가는데 그 재고정이 `Slot.rect.position = screenPos`(스크린 좌표)이고
+        // OnDrag 는 포인터가 **움직일 때만** 호출된다. 패널이 그 사이 내려가면 자식인 카드도
+        // 딸려 내려가 손가락에서 최대 dragClearanceDrop 만큼 떨어진다(사거리 프리뷰도 함께
+        // 어긋난 채 정지). 그래서 패널을 움직이는 순간 그 슬롯의 화면 위치를 보존한다 —
+        // 이 보정이 있어야 부드러운 하강과 카드 추종이 양립한다.
+        //
+        // 상태(IsDragging/IsPortalAiming)는 드래그 슬롯이 소유하고 여기서는 읽기만 한다:
+        // 커밋·취소·ESC·닫힘·페이즈 이탈 어느 경로로 끝나든 별도 해제 호출 없이 복귀한다(계약 6).
+        private void TickHandClearance(bool held)
+        {
+            if (_panel == null) return;
+            // 카드를 누른 순간(press) 내려가고 뗀 순간 올라온다. press-lift focus 와 드래그가
+            // 한 조건으로 이어지는 이유: OnBeginDrag 가 `_dragging = true` 를 `SetFocus(-1)`
+            // **보다 먼저** 실행하므로(같은 콜백) 전환에 빈 프레임이 없다. 덕분에 단순 탭 ·
+            // 드래그 후 미부착 · 부착 성공이 전부 "포인터를 뗀 순간 복귀" 로 통일된다.
+            // 예외는 포탈 2탭 대기(IsPortalAiming) 하나 — 손을 뗐어도 출구를 보드에서
+            // 골라야 하므로 하강을 유지한다. (held 판정은 Update 가 계산해 슬로모와 공유.)
+            float target = held ? -dragClearanceDrop : 0f;
+            // 언더댐핑이라 target 을 스쳐 지난다 — 안착은 변위와 속도를 함께 본다.
+            if (Mathf.Abs(_clearanceOffset - target) < 0.05f && Mathf.Abs(_clearanceVel) < 0.05f)
+            {
+                if (_clearanceOffset == target) return;
+                _clearanceOffset = target;
+                _clearanceVel = 0f;
+            }
+            else
+            {
+                KeyringSim.SpringStep(ref _clearanceOffset, ref _clearanceVel, target,
+                    dragClearanceSpring, dragClearanceDamping, 0f, Time.deltaTime);
+            }
+            ApplyClearanceOffset();
+        }
+
+        private void ApplyClearanceOffset()
+        {
+            var rt = (RectTransform)_panel.transform;
+            // 포인터 추종 카드는 화면 좌표로 직접 그려진다 — 패널 이동 전 위치를 잡아 복원한다.
+            // 드래그는 동시 1개만 성립하므로(CanStartDrag) 후보도 하나뿐이다.
+            RectTransform follow = null;
+            Vector3 followPos = default;
+            for (int i = 0; i < _slots.Count; i++)
+            {
+                var ds = _slots[i].dragSlot;
+                if (ds == null || !ds.IsPointerFollowing) continue;
+                follow = _slots[i].rect;
+                followPos = follow.position;
+                break;
+            }
+            var p = rt.anchoredPosition;
+            rt.anchoredPosition = new Vector2(p.x, _panelBaseY + _clearanceOffset);
+            if (follow != null) follow.position = followPos;
+        }
+
+        // 하강 상태의 하드 리셋. Close() 에는 두지 않는다 — Close 는 패널을 감추지 않고
+        // 침강(StartSink)만 시작하는데, 부착 성공 시 HandChanged 가 동기로 발화해 commit()
+        // 안에서 Close 가 FlyCard 보다 **먼저** 돌기 때문에, 거기서 리셋하면 가장 흔한 성공
+        // 경로에서 손패가 위로 튄 뒤 가라앉고 고스트 발사점과 어긋난다. 대신 패널이 실제로
+        // 꺼지거나 재구성되는 지점(Open / ForceClose / OnSinkComplete)에서만 되돌린다.
+        private void ResetHandClearance()
+        {
+            if (_panel == null) return;
+            _clearanceOffset = 0f;
+            _clearanceVel = 0f;
+            var rt = (RectTransform)_panel.transform;
+            var p = rt.anchoredPosition;
+            if (!Mathf.Approximately(p.y, _panelBaseY)) rt.anchoredPosition = new Vector2(p.x, _panelBaseY);
         }
 
         // Each card eases toward its target (arc base, or press-lifted in unit 1),
@@ -351,7 +473,7 @@ namespace Wassup.UI
             for (int i = 0; i < _slots.Count; i++)
             {
                 var slot = _slots[i];
-                if (slot.entryId < 0 || OwnedByInteraction(slot)) continue;
+                if (slot.entryId < 0 || OwnedByInteraction(slot) || slot.redealing) continue;
                 // idle 흔들림은 눌러서 든 카드(focus)만 제외 — 그 카드는 안정적으로 들려 있어야.
                 Vector2 eff = slot.targetPos;
                 if (i != _focusIndex)
@@ -377,7 +499,8 @@ namespace Wassup.UI
         {
             // 손패 상태·전이·다른 카드 드래그 중이 아니고, 실제 카드가 든 슬롯일 때만 focus.
             if (State != HandState.Hand || Transitioning || AnyInteractionActive()) index = -1;
-            else if (index >= 0 && (index >= _slots.Count || _slots[index].entryId < 0)) index = -1;
+            else if (index >= 0 && (index >= _slots.Count || _slots[index].entryId < 0
+                || _slots[index].redealing)) index = -1;
             if (_focusIndex == index) return;
             _focusIndex = index;
             ApplyFocusTargets();
@@ -453,7 +576,7 @@ namespace Wassup.UI
             if (AnyInteractionActive()) return false; // one interaction at a time
             if (index < 0 || index >= _slots.Count) return false;
             var slot = _slots[index];
-            return slot.entryId >= 0 && slot.usable;
+            return slot.entryId >= 0 && slot.usable && !slot.redealing;
         }
 
         // hand-drag-tooltip rev 4 — press 툴팁 노출 판정(usable 무관, dim 카드 포함):
@@ -465,13 +588,19 @@ namespace Wassup.UI
             if (AnyInteractionActive()) return false;
             if (index < 0 || index >= _slots.Count) return false;
             var slot = _slots[index];
-            return slot.entryId >= 0 && slot.card != null;
+            return slot.entryId >= 0 && slot.card != null && !slot.redealing;
         }
 
         public void RestoreSlotHome(int index)
         {
             if (index < 0 || index >= _slots.Count) return;
             var slot = _slots[index];
+            // use-flow unit 1 fix(마감 리뷰 M2) — 재딜인 트윈이 소유 중인 슬롯은 건드리지
+            // 않는다. 커밋 꼬리(EndInteraction→RestoreSlotHome)가 commit() 동기 발화로 방금
+            // 시작된 재딜인을 스냅으로 덮고 redealing 잠금까지 풀던 결함(맨 오른쪽 카드
+            // 부착 = _index 가 곧 재딜인 슬롯이라 매번 재현). 트윈은 home 에 안착하고
+            // 콜백이 잠금을 푼다 — 강제 종료 경로는 StopDeal 의 Complete 가 콜백까지 돌린다.
+            if (slot.redealing) return;
             slot.rect.anchoredPosition = slot.homePos;
             slot.rect.localEulerAngles = new Vector3(0f, 0f, slot.homeRotZ);
             slot.rect.localScale = Vector3.one; // rev 4-6 — 화살표 모드 확대 복원
@@ -510,8 +639,7 @@ namespace Wassup.UI
                     ForceClose();
                     break;
                 case DreamcatcherHandController.HandChangeReason.Used:
-                    Refresh();
-                    Close(); // auto-return after a committed use (user-confirmed UX)
+                    OnCardUsed(); // use-flow unit 1 — 유지/자동닫힘 분기(구 자동 닫힘 대체)
                     break;
                 case DreamcatcherHandController.HandChangeReason.Recovered:
                     // A re-render mid-drag would snap the floating card home and
@@ -527,19 +655,105 @@ namespace Wassup.UI
             if (State == HandState.Hand) RefreshUsability();
         }
 
+        // use-flow unit 1 — 사용이 손패를 닫지 않는다(재열기 사이클 제거). 사용 가능 카드가
+        // 남으면 유지: 잔류 카드는 옛 포즈에서 새 home 으로 스프링 슬라이드(위치 diff 는
+        // entryId 로 판별 — 위치 기반이면 시프트된 카드가 전부 재딜인으로 오판된다), 새로
+        // 들어온 카드만 1장 딜인(재장전 감각). 0장이면 자동 닫힘 — 재딜인/pop-in 없이 사용
+        // 슬롯만 비우고 침강한다(계약 3: 딜인→침강 연쇄 금지).
+        private void OnCardUsed()
+        {
+            var hand = handController.Hand();
+            bool anyUsable = false;
+            for (int i = 0; i < hand.Count; i++)
+                if (handController.CanUse(hand[i].entryId)) { anyUsable = true; break; }
+
+            if (!anyUsable)
+            {
+                foreach (var slot in _slots)
+                {
+                    if (slot.entryId < 0) continue;
+                    bool still = false;
+                    for (int h = 0; h < hand.Count; h++)
+                        if (hand[h].entryId == slot.entryId) { still = true; break; }
+                    if (!still) BindEmpty(slot); // 소모된 카드 재표시 금지(고스트가 이미 날아감)
+                }
+                Close();
+                return;
+            }
+
+            // 연속 사용 — 직전 재딜인이 아직 날고 있으면 스냅 완주(포즈 캡처 오염 방지).
+            if (_redealSeq.isAlive) _redealSeq.Complete();
+            _prevIds.Clear();
+            _prevPose.Clear();
+            foreach (var slot in _slots)
+            {
+                _prevIds.Add(slot.entryId);
+                _prevPose.Add(new Vector3(slot.rect.anchoredPosition.x,
+                    slot.rect.anchoredPosition.y, slot.rect.localEulerAngles.z));
+            }
+            Refresh(); // 재바인딩 + RestoreSlotHome(전 슬롯 home 스냅)
+            for (int i = 0; i < _slots.Count; i++)
+            {
+                var slot = _slots[i];
+                if (slot.entryId < 0) continue;
+                int prevAt = _prevIds.IndexOf(slot.entryId);
+                if (prevAt >= 0)
+                {
+                    // 잔류 카드: 옛 포즈에서 시작 → SpringSlots 가 새 home 으로 끌고 간다.
+                    var p = _prevPose[prevAt];
+                    slot.rect.anchoredPosition = new Vector2(p.x, p.y);
+                    slot.rect.localEulerAngles = new Vector3(0f, 0f, p.z);
+                }
+                else DealInSlot(slot);
+            }
+        }
+
+        // 사용 직후 빈 자리 1장 재딜인. StartDeal 의 per-card 블록과 같은 연출이지만
+        // _dealSeq(=Transitioning 게이트)를 쓰지 않는다 — 딜인 중에도 다른 카드는 즉시
+        // 조작 가능해야 연속 사용이 막히지 않는다. 딜인 중인 슬롯만 redealing 으로 잠근다.
+        private void DealInSlot(CardSlot slot)
+        {
+            SoundManager.Instance?.PlayCardDeal();
+            slot.redealing = true;
+            var rt = slot.rect;
+            rt.anchoredPosition = new Vector2(slot.homePos.x * clusterK, handBaseY - dealRise);
+            rt.localScale = Vector3.one * dealStartScale;
+            rt.localEulerAngles = new Vector3(dealTiltX, 0f, slot.homeRotZ);
+            if (slot.face != null) slot.face.Unfold = 0f;
+            if (slot.nameGroup != null) slot.nameGroup.alpha = 0f;
+            if (slot.costGroup != null) slot.costGroup.alpha = 0f;
+            if (slot.tagGroup != null) slot.tagGroup.alpha = 0f;
+            if (slot.bodyGroup != null) slot.bodyGroup.alpha = 0f;
+            _redealSeq = Sequence.Create();
+            _redealSeq.Group(Tween.UIAnchoredPosition(rt, slot.homePos, dealDurationSec, Ease.OutBack));
+            _redealSeq.Group(Tween.Scale(rt, Vector3.one, dealDurationSec, Ease.OutBack));
+            _redealSeq.Group(Tween.LocalRotation(rt, Quaternion.Euler(0f, 0f, slot.homeRotZ), dealDurationSec, Ease.OutQuad));
+            _redealSeq.Group(Tween.PunchScale(rt, new Vector3(0.06f, -0.10f, 0f), 0.16f, frequency: 2f, startDelay: dealDurationSec));
+            if (slot.face != null)
+                _redealSeq.Group(Tween.Custom(slot.face, 0f, 1f, crumpleUnfoldSec, (f, u) => f.Unfold = u, Ease.OutQuad));
+            float textDelay = Mathf.Max(0f, crumpleUnfoldSec - textFadeSec);
+            if (slot.nameGroup != null) _redealSeq.Group(Tween.Alpha(slot.nameGroup, 1f, textFadeSec, Ease.OutQuad, startDelay: textDelay));
+            if (slot.costGroup != null) _redealSeq.Group(Tween.Alpha(slot.costGroup, 1f, textFadeSec, Ease.OutQuad, startDelay: textDelay));
+            if (slot.tagGroup != null) _redealSeq.Group(Tween.Alpha(slot.tagGroup, 1f, textFadeSec, Ease.OutQuad, startDelay: textDelay));
+            if (slot.bodyGroup != null) _redealSeq.Group(Tween.Alpha(slot.bodyGroup, 1f, textFadeSec, Ease.OutQuad, startDelay: textDelay));
+            var captured = slot;
+            _redealSeq.ChainCallback(() => captured.redealing = false);
+        }
+
         // ── open/close ───────────────────────────────────────────────────────
 
         private void Open()
         {
             if (State == HandState.Hand) return;
             State = HandState.Hand;
+            ResetHandClearance(); // hand-drag-clearance unit 0 — 항상 기준선에서 열린다
             if (_dismissCatcher != null) _dismissCatcher.SetActive(true);
             if (gaugeView != null) gaugeView.SetOpen(true);
             Refresh();
-            // Battle slows while shopping; UI/interaction stay realtime.
+            // use-flow unit 0 — 슬로모는 여기서 잡지 않는다. TickSlomo(Update 폴링)가
+            // slomoOnOpen || held 를 에지 트리거로 획득/해제한다. 여기는 stale 잔재만 정리.
             _slomoLease.Dispose();
-            float scale = config != null ? Mathf.Max(0.01f, config.slomoTimeScale) : 0.3f;
-            _slomoLease = TimeManager.Instance.Request(TimeDomain.Battle, scale, priority: 50);
+            _slomoActive = false;
             if (costDisplay != null) costDisplay.SetSuppressed(true);
             // hand-deal-in unit 2 — 버튼 pulse(인과 힌트) + strip 접기 → 덱-드로우 딜.
             if (gaugeView != null) gaugeView.Pulse();
@@ -559,7 +773,8 @@ namespace Wassup.UI
             // hand-drag-tooltip unit 1 — 닫힘 계열은 즉시 숨김(침강 중 형제 잔류 방지).
             HideDragTooltip(immediate: true);
             _focusIndex = -1;
-            _slomoLease.Dispose(); // 슬로모 즉시 해제(연출은 realtime)
+            _slomoLease.Dispose(); // 슬로모 즉시 해제(연출은 realtime) — 폴링 밖 최후 안전망
+            _slomoActive = false;
             if (costDisplay != null) costDisplay.SetSuppressed(false);
             // hand-deal-in unit 4 — 딜의 거울: 카드가 하단 덱으로 침강 → strip 폴드 인.
             StartSink();
@@ -574,8 +789,10 @@ namespace Wassup.UI
             HideDragTooltip(immediate: true); // hand-drag-tooltip unit 1
             StopDeal(); // hand-deal-in — 잔류 트윈/late-land 방지
             _slomoLease.Dispose();
+            _slomoActive = false;
             if (_flip != null) { StopCoroutine(_flip); _flip = null; }
             State = HandState.UnitStrip;
+            ResetHandClearance(); // hand-drag-clearance unit 0 — 하드 teardown(침강 없음)
             if (_dismissCatcher != null) _dismissCatcher.SetActive(false);
             if (gaugeView != null) gaugeView.SetOpen(false);
             // 억제 해제는 무조건 — 표시 여부는 CostDisplay 가 페이즈와 결합해 결정.
@@ -691,6 +908,9 @@ namespace Wassup.UI
         private void StopDeal()
         {
             if (_dealSeq.isAlive) _dealSeq.Stop();
+            // use-flow unit 1 — 재딜인은 스냅 완주(Complete: 콜백이 redealing 을 푼다).
+            // Stop 이면 중간 상태(반쯤 구겨진 face/알파)로 굳는다.
+            if (_redealSeq.isAlive) _redealSeq.Complete();
         }
 
         // hand-deal-in — 딜 진행 중 카드를 누르면 즉시 딜을 완주(스냅)시켜 게이트를 연다.
@@ -735,6 +955,7 @@ namespace Wassup.UI
             if (_panel != null)
             {
                 ((RectTransform)_panel.transform).localEulerAngles = Vector3.zero;
+                ResetHandClearance(); // hand-drag-clearance unit 0 — 침강 완료 = 패널이 꺼지는 시점
                 _panel.SetActive(false);
             }
             for (int i = 0; i < _slots.Count; i++) RestoreSlotHome(i); // 다음 오픈 대비 home 복원
@@ -760,6 +981,12 @@ namespace Wassup.UI
         private void Refresh()
         {
             if (!_built || handController == null) return;
+            // use-flow unit 1 fix(마감 리뷰 M1) — 재바인딩 전에 살아있는 재딜인을 스냅 완주.
+            // Recovered(host 사망 카드 회수)가 재딜인 도중 오면, 트윈이 rect 를 소유한 채
+            // 슬롯 내용만 바뀌어 엉뚱한 카드가 홀로 다시 딜인되는 그림이 됐다. Complete 는
+            // 콜백까지 돌려 redealing 잠금도 함께 푼다(OnCardUsed 의 선행 Complete 와 중복
+            // 시 no-op).
+            if (_redealSeq.isAlive) _redealSeq.Complete();
             _focusIndex = -1; // 재바인딩 시 stale focus 해제(다음 press 가 재설정)
             EnsureSlots(handController.HandSize);
             var hand = handController.Hand();
@@ -886,6 +1113,7 @@ namespace Wassup.UI
             prt.pivot = new Vector2(0.5f, 0f);
             prt.anchoredPosition = new Vector2(0f, trayConfig != null ? trayConfig.anchoredY : 32f);
             prt.sizeDelta = trayConfig != null ? trayConfig.handSize : new Vector2(980f, 232f);
+            _panelBaseY = prt.anchoredPosition.y; // hand-drag-clearance unit 0 — 하강 기준선
             var backing = _panel.GetComponent<Image>();
             // action-tray unit 3 — 트레이와 같은 외곽 문법(라운드+골드 엣지+네이비 fill)
             // 으로 "같은 프레임의 앞뒷면" 시각 통일. config 미할당 시 기존 단색 유지.

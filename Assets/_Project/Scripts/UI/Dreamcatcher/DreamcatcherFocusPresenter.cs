@@ -80,6 +80,8 @@ namespace Wassup.UI
         private Entity _countEntity = Entity.Null;   // L4 — 콜아웃 카운트 문자열 캐시
         private string _countText = "";
         private readonly List<(Entity entity, Rect rect)> _rectBuf = new List<(Entity, Rect)>();
+        // use-flow unit 2 — 드래그 시작에 붉게 칠한 불가 유닛(종료 시 원복 대상).
+        private readonly List<Entity> _sweptUnits = new List<Entity>();
         private Entity _tintedUnit = Entity.Null;     // F — 현재 Spine 틴트 적용 유닛(clean 토글)
 
         // 화살표 끝점 당김용 — 락온 유닛 화면 중심(없으면 null).
@@ -193,6 +195,10 @@ namespace Wassup.UI
             // L4 캐시 회귀 수정 — 부착수는 드래그 '중'엔 불변이나 드래그 '간'엔 바뀐다.
             // 매 조준 시작마다 카운트 캐시를 무효화해야 커밋 후 재조준 시 최신값을 낸다.
             _countEntity = Entity.Null;
+            // use-flow unit 2 — 불가 유닛 일괄 붉은 틴트(AttachAim 전용). Begin 연타 방어로
+            // 먼저 걷고 다시 깐다.
+            ClearInvalidSweep();
+            if (kind == AimKind.AttachAim) ApplyInvalidSweep();
         }
 
         // dreamcatcher-attach-lockon — 살찌운 제물(적 표식) 조준. 적은 portrait 가 없어
@@ -246,10 +252,41 @@ namespace Wassup.UI
             _hasLockRect = false;
             _attachable.Clear();
             ClearFocusTint(); // F — 락온 유닛 몸체 틴트 원복(누수 차단)
+            ClearInvalidSweep(); // use-flow unit 2 — 불가 스윕 원복(어느 종료 경로든)
         }
 
         // 패널 비활성/도메인 리로드로 End 를 못 걷고 꺼질 때의 안전 원복.
-        private void OnDisable() => ClearFocusTint();
+        private void OnDisable()
+        {
+            ClearFocusTint();
+            ClearInvalidSweep();
+        }
+
+        // use-flow unit 2 — 드래그 중 부착 불가 유닛 일괄 붉은 틴트. 화면 문법 대칭:
+        // 시안 링 = 되는 곳(base-ring), 붉은 몸 = 안 되는 곳. 대상 = Begin 시점 전체 열거
+        // − _attachable 스냅샷(드래그 중 재평가 없음 — 락온 valid 와 같은 정책). 색은 락온
+        // invalid 와 동일한 focusTintInvalid — 같은 의미는 같은 색(새 노브 금지). 뷰별
+        // 저장/복원(SetHoverHighlight)이라 다중 대상 안전, _dying 유닛은 뷰가 자체 거부.
+        private void ApplyInvalidSweep()
+        {
+            if (_bridge == null || _cam == null || _cfg == null || !_cfg.enableFocusTint) return;
+            _bridge.EnumerateDefenderScreenRects(_cam, _rectBuf);
+            for (int i = 0; i < _rectBuf.Count; i++)
+            {
+                var e = _rectBuf[i].entity;
+                if (_attachable.Contains(e)) continue;
+                _bridge.SetDefenderHoverHighlight(e, true, _cfg.focusTintInvalid);
+                _sweptUnits.Add(e);
+            }
+        }
+
+        private void ClearInvalidSweep()
+        {
+            if (_bridge != null)
+                for (int i = 0; i < _sweptUnits.Count; i++)
+                    _bridge.SetDefenderHoverHighlight(_sweptUnits[i], false, default);
+            _sweptUnits.Clear();
+        }
 
         // ── per-frame ────────────────────────────────────────────────────────
 
@@ -297,7 +334,10 @@ namespace Wassup.UI
         {
             bool want = _active && _hasLockRect && _locked != Entity.Null && _bridge != null
                         && _cfg.enableFocusTint
-                        && (_kind == AimKind.AttachAim || _kind == AimKind.DefenderCast);
+                        && (_kind == AimKind.AttachAim || _kind == AimKind.DefenderCast)
+                        // use-flow unit 2 — AttachAim 의 invalid 락온은 스윕이 이미 붉게
+                        // 소유 중: 여기서 on/off 를 겹치면 off 복원이 스윕 틴트까지 걷는다.
+                        && (_kind != AimKind.AttachAim || _lockValid);
             SetFocusTint(want ? _locked : Entity.Null);
         }
 

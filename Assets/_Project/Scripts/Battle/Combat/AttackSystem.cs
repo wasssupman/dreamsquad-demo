@@ -138,6 +138,17 @@ namespace Wassup.Battle.Combat
                 ccWriter = ccSingleton.ValueRW.queue.AsParallelWriter();
             }
 
+            // knockup-fighter-defender unit 3 — 넉업 띄우기 연출 신호(Combat→Bridge).
+            NativeQueue<KnockupVisualEvent>.ParallelWriter? knockupVisualWriter = null;
+            if (SystemAPI.TryGetSingletonRW<KnockupVisualEventsSingleton>(out var knockupVisualEvents))
+                knockupVisualWriter = knockupVisualEvents.ValueRW.queue.AsParallelWriter();
+
+            // use-flow unit 3 — 부착 카드 발동 신호(Combat→Bridge). 발동 = 카운터 소비 성사
+            // 프레임이며 payload arm/대상 유무와 무관하게 신호한다(카운트 소비가 곧 사건).
+            NativeQueue<DcTriggerFiredEvent>.ParallelWriter? dcFiredWriter = null;
+            if (SystemAPI.TryGetSingletonRW<DcTriggerFiredEventsSingleton>(out var dcFiredEvents))
+                dcFiredWriter = dcFiredEvents.ValueRW.queue.AsParallelWriter();
+
             // ── attack-decoupling unit 4 — 캐스트 사건 드레인 (Effects→Combat) ──
             // attacker foreach **앞**에서 처리한다: ① 후보 스냅샷/ecb 를 그대로
             // 재사용하고 ② 카운터 변경이 루프 바깥에서 끝나 HeavyStrike pre-scan
@@ -161,6 +172,8 @@ namespace Wassup.Battle.Combat
                         slot.counter = cc2;
                         castSlots[si] = slot;
                         if (!fired) continue;
+                        if (dcFiredWriter.HasValue) // use-flow unit 3 — 발동 신호
+                            dcFiredWriter.Value.Enqueue(new DcTriggerFiredEvent { host = castEvt.caster });
                         // 발동했는데 arm 이 없으면 loud fail — 조용히 카운트만 태우는 것이
                         // 이 spec 이 없애려는 병이다(RESOLVE 의 unhandled 규율과 대칭).
                         if (slot.payload != Wassup.Data.DcPayloadKind.ProjectileToTarget)
@@ -277,6 +290,8 @@ namespace Wassup.Battle.Combat
                                     slot.counter = bc;
                                     bombSlots[si] = slot;
                                     if (!fired) continue;
+                                    if (dcFiredWriter.HasValue) // use-flow unit 3 — 발동 신호
+                                        dcFiredWriter.Value.Enqueue(new DcTriggerFiredEvent { host = attackerEntity });
                                     // 발동했는데 arm 이 없으면 loud fail (RESOLVE 규율과 대칭).
                                     if (slot.payload != Wassup.Data.DcPayloadKind.ProjectileToTarget)
                                     {
@@ -646,6 +661,7 @@ namespace Wassup.Battle.Combat
                                 attacker = attackerEntity,
                                 targetWorld = bestTargetPos,
                                 attackAnimPeriod = attackAnimPeriod,
+                                target = bestTarget,
                             });
                         }
 
@@ -1196,6 +1212,39 @@ namespace Wassup.Battle.Combat
                                         enemy = hitTargets[ti],
                                     });
                             }
+
+                            // knockup-fighter-defender unit 0 — 공중 띄우기 = 히트한 **전 대상**에
+                            // 짧은 Stun. 아래 knockback/sleep 블록(주 타겟 1체)과 달리 여기 있는
+                            // 이유는 스코프가 hitTargets 전원이기 때문 — 어그로 enqueue 와 같은 자리다.
+                            // 심에 "공중" 개념은 없다. 떠오르는 연출은 뷰가 따로 재생한다(unit 3).
+                            if (ccWriter.HasValue && defenderCcLookup.HasComponent(attackerEntity))
+                            {
+                                var kd = defenderCcLookup[attackerEntity];
+                                if (kd.knockupOnHitSec > 0f)
+                                {
+                                    for (int ti = 0; ti < hitCount; ti++)
+                                    {
+                                        ccWriter.Value.Enqueue(new Wassup.Battle.Effects.EnemyCcEvent
+                                        {
+                                            target = hitTargets[ti],
+                                            effect = new Wassup.Battle.Effects.CcEffect
+                                            {
+                                                kind          = Wassup.Battle.Effects.CcKind.Stun,
+                                                remainingTime = kd.knockupOnHitSec,
+                                            },
+                                        });
+                                        // 연출 신호는 **띄운 쪽**이 보낸다 — 뷰가 CcEffect(Stun)를 보고
+                                        // 판단하면 일반 스턴까지 떠오른다(계약 4). unit 3.
+                                        if (knockupVisualWriter.HasValue)
+                                            knockupVisualWriter.Value.Enqueue(new KnockupVisualEvent
+                                            {
+                                                target      = hitTargets[ti],
+                                                durationSec = kd.knockupOnHitSec,
+                                                height      = kd.knockupVisualHeight,
+                                            });
+                                    }
+                                }
+                            }
                             hitTargets.Dispose();
                         }
                     }
@@ -1292,6 +1341,8 @@ namespace Wassup.Battle.Combat
                             slot.counter = dcCounter;
                             dcSlots[si] = slot;
                             if (!dcFired) continue;
+                            if (dcFiredWriter.HasValue) // use-flow unit 3 — 발동 신호
+                                dcFiredWriter.Value.Enqueue(new DcTriggerFiredEvent { host = attackerEntity });
 
                             // dreamcatcher-new-abilities unit 1 — payload 디스패치. AttackN
                             // 슬롯이 발동하면 kind 별로 carrier(투사체)/CC/스택 중 하나를 실행.

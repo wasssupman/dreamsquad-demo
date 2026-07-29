@@ -37,6 +37,13 @@ namespace Wassup.Presentation
         // 레이어 4개(광휘/스트릭/코어/링)가 +0~+3 을 쓰므로 −9 부터 −6 까지 정확히 채운다.
         public const int SpawnAlertOrder = -9;
 
+        // beam-ranger-defender unit 1 — 지속 빔. 벤더 프리팹은 order 0~2 로 들어오는데 그대로
+        // 두면 **유닛(Compute = 수백대) 뒤에 깔린다**: 바닥(−20/−10) 위라 빈 땅 구간만 보이고
+        // 유닛에 가린 구간은 끊겨 보이며, 적이 여럿이면 대부분 적 뒤에 숨어 "빔이 1개만" 처럼
+        // 보인다(사용자 제보 2건의 실제 원인). 투사체(+1000) 위 · 피격바(16000) 아래에 둔다.
+        // 프리팹 내부의 상대 순서(0/1/2)는 이 값에 **더해서** 보존한다.
+        public const int BeamOrder = 15000;
+
         public static int Compute(int2 gridSize, int cellX, int cellY, int offset = 0)
             => (gridSize.y - cellY) * 10 + cellX + offset;
 

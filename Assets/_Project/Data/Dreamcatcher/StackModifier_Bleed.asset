@@ -24,3 +24,4 @@ MonoBehaviour:
     duration: 3
     stat: 0
     op: 0
+    tickInterval: 0.5

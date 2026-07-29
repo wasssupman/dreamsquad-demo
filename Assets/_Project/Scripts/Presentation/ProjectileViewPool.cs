@@ -244,15 +244,39 @@ namespace Wassup.Presentation
         }
 
         // Fix 5: hitVfxLifetime > 0 overrides auto-detect.
+        // facingViewDir: 타격 방향(**view 공간**). 지정하면 VFX 가 그 방향으로 회전한다
+        // (말파이트 흙 폭발처럼 방향성이 있는 히트용). 기본 default = 회전 없음(기존 동작).
         public void PlayHit(GameObject hitPrefab, float3 position, float hitVfxLifetime = 0f,
-                            float heightOffset = 0f, float scale = 1f)
+                            float heightOffset = 0f, float scale = 1f, Vector3 facingViewDir = default,
+                            Vector3 eulerOffset = default)
         {
             var view = GetOrCreate(hitPrefab);
             view.SetActive(true);
             view.transform.localScale = Vector3.one * scale;   // 원본이 작으면 키움
+            // ⚠ 위 줄이 프리팹 스케일을 **덮는다** — 크기 조절은 프리팹이 아니라 이 인자로.
+            if (facingViewDir.sqrMagnitude > 0.0001f)
+            {
+                // ⚠ 방향을 그대로 forward 로 주면 안 된다. LookRotation 은 up 을 "가능한 한"
+                // 맞출 뿐이라, 방향이 up 쪽 성분을 가지면 이펙트가 통째로 기운다 — 근접 유닛은
+                // 대상이 화면상 위아래로 붙는 일이 많아 폭발이 바닥을 뚫고 들어갔다(제보).
+                //
+                // 그래서 **up 축을 고정**하고 방향은 그 축 둘레의 회전(yaw)만 담당하게 한다:
+                // 방향을 up 에 수직인 평면으로 투영하면 up 이 정확히 보존된다.
+                // 지면형 폭발이므로 up = 월드 up(위로 솟는다). 카메라 pitch 는 알아서 비춘다.
+                Vector3 upRef = Vector3.up;
+                Vector3 planar = Vector3.ProjectOnPlane(facingViewDir, upRef);
+                if (planar.sqrMagnitude > 1e-6f)
+                    view.transform.rotation = Quaternion.LookRotation(planar, upRef);
+                // 완전히 수직인 방향(투영이 0)이면 회전을 건드리지 않는다 — 프리팹 기본 자세 유지.
+            }
             float3 hitView = Wassup.Core.BoardSpace.ToView(position); // sim→view
             // heightOffset: 바닥에 깔리지 않게 view Y 로 띄움 (투사체 visualHeightOffset 과 동일 개념).
             view.transform.position = new Vector3(hitView.x, hitView.y + heightOffset, hitView.z);
+            // 기본 자세 보정. 계산된 회전 **뒤에** 곱해 로컬 축 기준으로 돈다.
+            // facing 을 안 쓰는 이펙트도 이 값만으로 자세를 잡을 수 있다.
+            if (eulerOffset != Vector3.zero)
+                view.transform.rotation = view.transform.rotation * Quaternion.Euler(eulerOffset);
+
             ResetVfx(view);   // ga-reskin unit 1: 풀 재사용 시 파티클 재생 신선도
             float lifetime = hitVfxLifetime > 0f ? hitVfxLifetime : GetParticleLifetime(view);
             StartCoroutine(DespawnAfter(view, hitPrefab, lifetime));

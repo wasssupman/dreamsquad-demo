@@ -40,6 +40,20 @@ namespace Wassup.Data
         // battle-audio: 공격 실행 시 효과음(근접 클래스 등 per-unit). Null → 무음.
         // 투사체 유닛은 PlayProjectileFire 가 별도로 울리므로 보통 비워둔다.
         public AudioClip attackSfxClip;
+        // 히트 VFX 크기. ProjectileViewPool.PlayHit 이 프리팹 스케일을 덮으므로 크기는 **여기서**
+        // 정한다(프리팹에서 줄여도 무시된다 — 실제로 한 번 헛수고했다). 1 = 원본 크기.
+        public float attackVfxScale = 1f;
+        // 히트 VFX 를 타격 방향으로 회전시킬지. 방향성 있는 폭발(흙 분출 등)만 true.
+        public bool attackVfxFacesTarget;
+        // 히트 VFX 기본 자세 보정(로컬 오일러, 계산된 회전 **뒤에** 곱해진다).
+        // 필요한 이유: 벤더 VFX 는 대개 "바닥 = 월드 XZ" 관례로 저작되는데, 이 게임의 보드는
+        // Tilemap 그리드라 **바닥이 월드 XY 평면**이다(BoardSpace.ToView 가 sim XZ → 셀 XY).
+        // 그래서 지면형 이펙트는 X축 -90° 같은 보정이 필요하다. 값은 눈으로 맞추는 knob —
+        // 코드가 추측하지 않는다(실제로 네 번 헛짚었다).
+        public Vector3 attackVfxEulerOffset;
+        // beam-ranger-defender unit 1 — 지속 빔 유닛의 판별자 겸 프리팹. 비어 있으면 빔 없음.
+        // "빔 유닛인가"를 id/kind 로 분기하지 않기 위한 데이터 선언(메커닉 연출은 메커닉이 소유).
+        public GameObject beamVfxPrefab;
 
         // Phase 3: when set, the AttackSystem queues a ProjectileSpawnRequest rather
         // than appending IncomingDamage immediately. Leaving this null keeps the
@@ -56,6 +70,12 @@ namespace Wassup.Data
         public float onPlaceRange;
         public float onPlaceMagnitude;
         public float onPlaceDuration;
+        // bleed-fighter-defender unit 1 — ApplyStackNearby 전용. 스택 종류를 분기에
+        // 하드코딩하지 않기 위한 슬롯(제약 6). 다른 onPlaceEffect 에서는 무시된다.
+        public Wassup.Battle.Effects.StackKind onPlaceStackKind;
+        // beam-ranger-defender unit 2 — DotNearby 전용. 이산 tick 간격(초).
+        // 이때 onPlaceMagnitude 는 **틱당 피해**다(DPS 아님 — CcEffect.tickInterval 계약).
+        public float onPlaceTickInterval;
 
         // Phase 6: placement cost subtracted from CostRuntime on PlaceDefenderAs.
         public int cost = 1;
@@ -166,6 +186,16 @@ namespace Wassup.Data
         // 근접(무투사체) 전제 — 투사체 유닛은 넉백과 동일하게 발사 시점 적용됨.
         public float sleepOnHitSec;       // seconds. 0 = disabled
 
+        [Header("Knockup on hit (per attack)")]
+        // knockup-fighter-defender — 히트한 **전 대상**에게 Stun N초 = 공중 띄우기.
+        // ⚠ sleepOnHitSec 과 스코프가 다르다: 저쪽은 주 타겟 1체, 이쪽은 hitTargets 전원.
+        // 다중 타겟 유닛에서 둘의 결과가 갈리므로 하나의 필드로 통합하지 말 것.
+        // 떠오르는 연출은 뷰(unit 3)가 이 필드 보유를 보고 재생한다 — 심은 Stun 그대로다.
+        public float knockupOnHitSec;     // seconds. 0 = disabled
+        // 띄우기 연출 최고 높이(view 공간 단위). 심은 안 쓰고 뷰만 해석한다.
+        // ⚠ sim-Y 가 아니다 — 평면 tilemap 보드라 BoardSpace 가 sim-Y 를 버린다(화면에 안 보임).
+        public float knockupVisualHeight = 1.2f;
+
         [Header("On-place Push")]
         public float onPlacePushDistance; // world units. 0 = disabled
         public float onPlacePushDuration; // seconds
@@ -214,5 +244,9 @@ namespace Wassup.Data
         ForwardProjectile,
         GainCost,
         ReduceSkillCooldown,
+        // 아래는 항상 **맨 뒤에** 추가한다 — 기존 유닛 에셋이 이 enum 을 int 로 직렬화해 두었다.
+        ApplyStackNearby,   // bleed-fighter-defender unit 1 — 반경 내 적에게 onPlaceStackKind 스택 도포
+        StunNearby,         // knockup-fighter-defender unit 1 — 반경 내 적 전원 Stun(착지 충격 = 넉업)
+        DotNearby,          // beam-ranger-defender unit 2 — 반경 내 적 전원에 이산 tick DoT(개점 일제 조사)
     }
 }

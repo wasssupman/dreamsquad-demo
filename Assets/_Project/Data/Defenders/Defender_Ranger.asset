@@ -15,8 +15,9 @@ MonoBehaviour:
   id: ranger
   role: 1
   displayName: "\uB808\uC778\uC800"
-  desc: "\uB808\uC778\uC800 \xB7 \uC6D0\uAC70\uB9AC\uD615. \uBC30\uCE58 \uC2DC \uC2A4\uD0AC
-    \uCFE8\uB2E4\uC6B4 \uAC10\uC18C."
+  desc: "\uAE30\uBCF8 \uAE30\uB2A5: \uBE60\uB978 \uB2E8\uC77C \uC6D0\uAC70\uB9AC
+    \uACF5\uACA9\n\uBC30\uCE58 \uC2A4\uD0AC: \uBAA8\uB4E0 \uC2A4\uD0AC \uB300\uAE30\uC2DC\uAC04
+    \uAC10\uC18C\n\uD2B9\uC218 \uD6A8\uACFC: \uC5C6\uC74C"
   health: 90
   attackRange: 3
   attackCooldown: 1
@@ -45,7 +46,7 @@ MonoBehaviour:
   targetAllies: 0
   abilities: []
   rarity: 0
-  portrait: {fileID: 21300000, guid: 7c404228775317245a55069494e3dffe, type: 3}
+  portrait: {fileID: 21300000, guid: 4b065513f6dc742e0ac9ff5ddba800c4, type: 3}
   aggroCapacity: 0
   skeletonDataAsset: {fileID: 11400000, guid: ee98f82138b60430f97c6863317c3a2f, type: 2}
   spineSkinName: full_skins

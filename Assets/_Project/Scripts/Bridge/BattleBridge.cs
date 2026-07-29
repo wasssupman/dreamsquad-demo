@@ -99,6 +99,15 @@ namespace Wassup.Bridge
         [SerializeField] private Wassup.Data.UnitHealthPresentationMode unitHealthPresentationMode =
             Wassup.Data.UnitHealthPresentationMode.Legacy;
         [SerializeField] private Wassup.Presentation.UnitOverheadUiLayer unitOverheadUiLayer;
+        // beam-ranger-defender unit 1 — 지속 빔(버스터즈). 씬에 배선하면 인스펙터에서 TTL/추종
+        // 속도를 튜닝할 수 있고, 비어 있으면 첫 사용 시 기본값으로 자동 생성한다(EnsureBeamPresenter).
+        // 자동 생성 폴백을 두는 이유: 이 기능만을 위해 공용 씬을 저장하면 그 시점의 미저장 WIP 가
+        // 같이 박힌다. 튜닝이 필요해지면 그때 씬에 배선하면 된다.
+        [SerializeField] private Wassup.Presentation.BeamPresenter beamPresenter;
+
+        // 빔 세션 TTL = 실발사 주기 × 이 계수. 사건이 한 틱 늦어도 끊기지 않을 여유이며
+        // 무차원이라 어떤 주기의 빔 유닛에도 그대로 맞는다(유닛 스탯이 아니므로 SO 대상 아님).
+        private const float BeamSessionTtlMargin = 1.75f;
         [SerializeField] private Wassup.UI.ScoreHudView scoreHud;
         // score-tally-sequence unit 2 — 결과 연출(점수 합산). 미배선이면 연출을 건너뛰고
         // 곧장 결과 화면으로 간다 — 연출은 곁가지, 결과 화면은 필수다.
@@ -295,6 +304,10 @@ namespace Wassup.Bridge
         private NativeQueue<Wassup.Battle.Effects.AggroHitEvent> _aggroHitEventQueue;
         // attack-decoupling unit 4 — Effects(HazardCastSystem)→Combat(AttackSystem) 캐스트 사건.
         private NativeQueue<Wassup.Battle.Combat.CastEvent> _castEventQueue;
+        // use-flow unit 3 — Combat→Bridge 부착 카드 발동 신호(머리 위 아이콘 행 펄스).
+        private NativeQueue<Wassup.Battle.Combat.DcTriggerFiredEvent> _dcTriggerFiredQueue;
+        // knockup-fighter unit 3 — Combat→Bridge 넉업 띄우기 연출(대상 view 수직 호핑).
+        private NativeQueue<Wassup.Battle.Combat.KnockupVisualEvent> _knockupVisualQueue;
         // nightmare-catcher unit 1 — Combat→Combat 보스 위협 귀속 채널.
         private NativeQueue<Wassup.Battle.Combat.ThreatHitEvent> _threatHitEventQueue;
         // nightmare-catcher unit 3 — Combat→Movement 텔레포트(SelfBlink) 요청 채널.
@@ -578,6 +591,8 @@ namespace Wassup.Bridge
             DestroyEntitiesByType<Wassup.Battle.Combat.AttackOutputLogEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.AggroHitEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Combat.CastEventsSingleton>();
+            DestroyEntitiesByType<Wassup.Battle.Combat.DcTriggerFiredEventsSingleton>();
+            DestroyEntitiesByType<Wassup.Battle.Combat.KnockupVisualEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Combat.ThreatHitEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Movement.BlinkRequestEventsSingleton>();
             DestroyEntitiesByType<Wassup.Battle.Effects.ObstacleSingleton>();
@@ -602,6 +617,8 @@ namespace Wassup.Bridge
             if (_projectileHitEventQueue.IsCreated) _projectileHitEventQueue.Dispose();
             if (_aggroHitEventQueue.IsCreated) _aggroHitEventQueue.Dispose();
             if (_castEventQueue.IsCreated) _castEventQueue.Dispose();
+            if (_dcTriggerFiredQueue.IsCreated) _dcTriggerFiredQueue.Dispose();
+            if (_knockupVisualQueue.IsCreated) _knockupVisualQueue.Dispose();
             if (_threatHitEventQueue.IsCreated) _threatHitEventQueue.Dispose();
             if (_blinkRequestQueue.IsCreated) _blinkRequestQueue.Dispose();
             if (_healAppliedEventQueue.IsCreated) _healAppliedEventQueue.Dispose();
@@ -1344,6 +1361,26 @@ namespace Wassup.Bridge
             _castEventQueue = new NativeQueue<Wassup.Battle.Combat.CastEvent>(Allocator.Persistent);
             var castEventSingleton = _em.CreateEntity();
             _em.AddComponentData(castEventSingleton, new Wassup.Battle.Combat.CastEventsSingleton { queue = _castEventQueue });
+
+            // use-flow unit 3 — Combat→Bridge 부착 카드 발동 신호 채널. AttackSystem 의
+            // AttackN 발동 3지점이 host 를 enqueue, 브리지 드레인이 머리 위 아이콘 행 펄스.
+            if (_dcTriggerFiredQueue.IsCreated) _dcTriggerFiredQueue.Dispose();
+            _dcTriggerFiredQueue = new NativeQueue<Wassup.Battle.Combat.DcTriggerFiredEvent>(Allocator.Persistent);
+            var dcFiredSingleton = _em.CreateEntity();
+            _em.AddComponentData(dcFiredSingleton, new Wassup.Battle.Combat.DcTriggerFiredEventsSingleton { queue = _dcTriggerFiredQueue });
+            _dcProcLastImpact.Clear(); // 매치 경계 — 엔티티는 매치마다 새로우니 스로틀 기록 리셋
+
+            // knockup-fighter-defender unit 3 — 넉업 띄우기 연출 채널. 넉업을 건 쪽(AttackSystem
+            // RESOLVE / on-place StunNearby)이 대상을 enqueue, 브리지가 드레인해 view 를 띄운다.
+            if (_knockupVisualQueue.IsCreated) _knockupVisualQueue.Dispose();
+            _knockupVisualQueue = new NativeQueue<Wassup.Battle.Combat.KnockupVisualEvent>(Allocator.Persistent);
+            var knockupVisualSingleton = _em.CreateEntity();
+            _em.AddComponentData(knockupVisualSingleton, new Wassup.Battle.Combat.KnockupVisualEventsSingleton { queue = _knockupVisualQueue });
+
+            // beam unit 1 — 매치 경계에서 빔 세션을 전부 끊는다. 브리지는 매치 간 살아남으므로
+            // (이 함수가 큐를 재생성하는 것이 그 증거) 안 끊으면 이전 매치 엔티티를 키로 든
+            // 세션이 남아 TTL 이 만료될 때까지 허공에 빔이 뜬다.
+            beamPresenter?.CloseAll();
 
             // nightmare-catcher unit 1 — Combat→Combat 보스 위협 귀속 채널. 데미지
             // 생산자(AttackSystem 근접 / ProjectileHitSystem 착탄)가 보스(ThreatEntry
@@ -2207,7 +2244,21 @@ namespace Wassup.Bridge
             DrainProjectileSpawnRequests();
             DrainDefenderDeathEvents();
             DrainShieldBreakEvents();
+            DrainDcTriggerFiredEvents(); // use-flow unit 3 — 발동 신호 → 아이콘 행 펄스
+            DrainKnockupVisualEvents();  // knockup unit 3 — 띄우기 신호 → view 수직 호핑
             DrainUnitAttackVisualEvents();
+            // beam unit 1 — 세션 TTL 은 **배틀 도메인 시간**으로 깎는다(공격 사건이 sim 시간).
+            // 히트 VFX 를 RESOLVE 시점으로 미뤄 재생(위 PendingHitVfx 주석).
+            TickPendingHitVfx(
+                Wassup.Core.TimeControl.TimeManager.Instance.DeltaTime(Wassup.Core.TimeControl.TimeDomain.Battle));
+
+            if (beamPresenter != null)
+            {
+                _beamViewResolver ??= ResolveBeamViewPos;
+                beamPresenter.Tick(
+                    Wassup.Core.TimeControl.TimeManager.Instance.DeltaTime(Wassup.Core.TimeControl.TimeDomain.Battle),
+                    _beamViewResolver);
+            }
             DrainProjectileHitEvents();
             DrainHealAppliedEvents();
             DrainShieldGrantedEvents();
@@ -2673,6 +2724,8 @@ namespace Wassup.Bridge
                 // removal so DefenderDied can carry the entity (card-recovery key)
                 // and the SO (awakeningReward) regardless of the spine pool.
                 bool hasBinding = _defenderByTile.TryGetValue(cell, out var binding);
+                // beam unit 1 — 쏘던 유닛이 죽으면 빔이 허공에 남는다. TTL 만료를 기다리지 않고 즉시 끊는다.
+                if (beamPresenter != null && hasBinding) beamPresenter.Close(binding.Item1);
                 if (spineUnitPool != null && hasBinding)
                 {
                     spineUnitPool.NotifyDeath(binding.entity);
@@ -2714,12 +2767,100 @@ namespace Wassup.Bridge
 
         // dreamcatcher-shield-break unit 2 — 실드 피격 파열 이벤트 드레인. payload 분기:
         // SelfTileAoe(A) = SkyFall×TileAoe 폭발(OnDeath/메테오 동형), AreaSleep(B) = 근접 M명 수면.
+        // use-flow unit 3 — 부착 카드 발동 신호 → 아이콘 행 펄스 + **부착 임팩트 재사용**
+        // (rev 2, 사용자 피드백 "이펙트가 없어 보인다"): 유닛 몸 펀치 + 흰 플래시 + 카드 흡수
+        // 링/버스트 VFX. 부착 순간 박히던 그 임팩트가 발동 순간 다시 친다 — 인과 언어 일치.
+        // 카메라 킥·흡수 SFX 는 제외(주기 발동 연타에 멀미/소음). 같은 프레임 같은 host 다발
+        // 발동은 1회로 코얼레스(월드 임팩트 중첩 방지 — UI 펄스는 뷰가 자체 코얼레스).
+        private readonly System.Collections.Generic.HashSet<Entity> _dcFiredScratch = new();
+        // rev 2 연발 스로틀 — 주기 발동이 촘촘한 유닛(머신거너 등)에서 월드 임팩트(펀치/플래시/
+        // VFX)가 도배되는 것을 host 당 최소 간격으로 막는다. UI 펄스는 스로틀하지 않는다
+        // (뷰가 타이머 재시작으로 자체 코얼레스 — 발동 사실 자체는 매번 알린다).
+        [SerializeField] private float dcProcImpactMinIntervalSec = 0.25f;
+        private readonly System.Collections.Generic.Dictionary<Entity, float> _dcProcLastImpact = new();
+
+        private void DrainDcTriggerFiredEvents()
+        {
+            if (!_dcTriggerFiredQueue.IsCreated) return;
+            _dcFiredScratch.Clear();
+            while (_dcTriggerFiredQueue.TryDequeue(out var evt))
+            {
+                if (!_dcFiredScratch.Add(evt.host)) continue;
+                if (unitOverheadUiLayer != null) unitOverheadUiLayer.PulseCards(evt.host);
+                bool impactReady = !_dcProcLastImpact.TryGetValue(evt.host, out float last)
+                    || Time.unscaledTime - last >= dcProcImpactMinIntervalSec;
+                if (impactReady && spineUnitPool != null
+                    && spineUnitPool.TryGet(evt.host, out var view) && view != null)
+                {
+                    view.PlayPunch();
+                    view.FlashWhite();
+                    SpawnCardAbsorbVfx(view.transform.position);
+                    _dcProcLastImpact[evt.host] = Time.unscaledTime;
+                }
+            }
+        }
+
+        // beam unit 1 — 씬에 배선돼 있으면 그것을, 없으면 첫 사용 시 만들어 쓴다.
+        // 자동 생성 폴백을 두는 이유: 이 기능만을 위해 공용 씬을 저장하면 그 시점의 미저장 WIP 가
+        // 같이 박힌다. 프레젠터는 무상태(TTL 은 호출측이 준다)라 자동 생성이어도 잃는 튜닝이 없다.
+        // 빔 양 끝의 view 위치. 매 프레임 delegate 를 새로 만들지 않도록 캐시한다.
+        private Wassup.Presentation.BeamPresenter.ViewPosResolver _beamViewResolver;
+
+        // 발사점은 cast anchor 우선(TrySpawnCastVfx 와 같은 경로), 그 다음 유닛 view,
+        // **마지막으로 ECS 위치**. 뷰 풀만 보면 풀에 없는 유닛(폴백 뷰·워밍업·비-Spine 적)이
+        // 끝점일 때 빔이 통째로 죽는다 — 배치 스킬 빔이 전멸했던 실제 원인이 이것이었다.
+        private bool ResolveBeamViewPos(Entity entity, bool useAnchor, out Vector3 pos)
+        {
+            pos = default;
+            if (entity == Entity.Null) return false;
+            if (spineUnitPool != null)
+            {
+                if (useAnchor && spineUnitPool.TryResolveAnchor(entity, out pos)) return true;
+                if (spineUnitPool.TryGet(entity, out var view) && view != null)
+                {
+                    pos = view.transform.position; // 이미 view 공간
+                    return true;
+                }
+            }
+            if (!_em.Exists(entity) || !_em.HasComponent<LocalTransform>(entity)) return false;
+            pos = (Vector3)Wassup.Core.BoardSpace.ToView(_em.GetComponentData<LocalTransform>(entity).Position);
+            return true;
+        }
+
+        private Wassup.Presentation.BeamPresenter EnsureBeamPresenter()
+        {
+            if (beamPresenter != null) return beamPresenter;
+            var go = new GameObject("BeamPresenter (auto)");
+            go.transform.SetParent(transform, false);
+            beamPresenter = go.AddComponent<Wassup.Presentation.BeamPresenter>();
+            return beamPresenter;
+        }
+
+        // knockup-fighter-defender unit 3 — 띄우기 신호 → 대상 view 수직 호핑.
+        // 같은 프레임에 같은 대상이 여러 번 들어오면(다중 히트) 마지막 것으로 갱신 —
+        // 재생 중 재신호는 뷰가 타이머를 재시작해 자체 코얼레스한다.
+        private void DrainKnockupVisualEvents()
+        {
+            if (!_knockupVisualQueue.IsCreated) return;
+            while (_knockupVisualQueue.TryDequeue(out var evt))
+            {
+                if (evt.durationSec <= 0f || evt.height <= 0f) continue;
+                if (spineUnitPool != null && spineUnitPool.TryGet(evt.target, out var view) && view != null)
+                    view.PlayKnockupHop(evt.durationSec, evt.height);
+            }
+        }
+
         private void DrainShieldBreakEvents()
         {
             if (!_shieldBreakQueue.IsCreated) return;
             var targets = new System.Collections.Generic.List<(Entity entity, Vector2Int cell)>();
             while (_shieldBreakQueue.TryDequeue(out var evt))
             {
+                // use-flow unit 3 — OnShieldBreak/피격트리거 payload 실행 = 부착 카드가 일한
+                // 순간. 이 채널은 이미 host 를 실어오므로 신규 채널 없이 펄스가 공짜다.
+                if (evt.payload != Wassup.Data.DcPayloadKind.None && unitOverheadUiLayer != null)
+                    unitOverheadUiLayer.PulseCards(evt.host);
+
                 var logger = GameManager.Instance?.Logger;
                 int2 grid = _generatedMap.IsCreated ? _generatedMap.gridSize : FallbackGridSize;
                 var hostCell = GridMath.WorldToCell(evt.position, tileSize, grid, origin: _boardOrigin);
@@ -2855,9 +2996,79 @@ namespace Wassup.Bridge
                 Wassup.Core.SoundManager.Instance?.PlayAttack(defData.attackSfxClip);
 
                 if (defData.attackVfxPrefab != null)
-                    _projectileViewPool?.PlayHit(defData.attackVfxPrefab, evt.targetWorld);
+                {
+                    // 방향성 히트(흙 폭발 등)는 공격자→대상 방향으로 회전시킨다. 방향은 **view 공간**
+                    // 에서 구한다 — sim 방향을 그대로 쓰면 평면 보드에서 엉뚱한 축으로 돈다.
+                    Vector3 hitFacing = default;
+                    if (defData.attackVfxFacesTarget
+                        && ResolveBeamViewPos(evt.attacker, true, out var atkView))
+                    {
+                        hitFacing = (Vector3)Wassup.Core.BoardSpace.ToView(evt.targetWorld) - atkView;
+                    }
+                    // ⚠ 이 시각 이벤트는 공격 **START** 에 나온다(애니 트리거 겸용). 피해는
+                    // hitDelaySec 뒤 RESOLVE 에 들어가므로, 그대로 재생하면 이펙트가 타격보다
+                    // 먼저 터진다 — 파이터 4종이 전부 hitDelaySec 0.3 이라 눈에 띄었다.
+                    // 배틀 도메인 시간으로 미뤄 RESOLVE 시점에 맞춘다(슬로모에서도 동기 유지).
+                    if (defData.hitDelaySec > 0f)
+                        _pendingHitVfx.Add(new PendingHitVfx
+                        {
+                            prefab = defData.attackVfxPrefab,
+                            simPos = evt.targetWorld,
+                            scale = defData.attackVfxScale,
+                            facing = hitFacing,
+                            euler = defData.attackVfxEulerOffset,
+                            remaining = defData.hitDelaySec,
+                        });
+                    else
+                        _projectileViewPool?.PlayHit(defData.attackVfxPrefab, evt.targetWorld,
+                            scale: defData.attackVfxScale, facingViewDir: hitFacing,
+                            eulerOffset: defData.attackVfxEulerOffset);
+                }
+
+                // beam-ranger-defender unit 1 — 빔 유닛이면 이 공격 사건으로 세션을 열거나 잇는다.
+                // "빔 유닛인가"는 SO 의 프리팹 유무가 결정한다(id/kind 분기 없음).
+                // 좌표는 view 공간으로 넘긴다 — 평면 보드라 sim 좌표를 그대로 쓰면 빔이 눕는다.
+                // 빔 세션 TTL 은 이 공격의 **실발사 주기**에서 온다(attackAnimPeriod 는 attackSpeedMul
+                // 까지 반영된 값). 상수로 박으면 공속 버프나 주기가 다른 두 번째 빔 유닛에서 깜빡인다.
+                // 남는 건 무차원 여유 계수 하나 — 사건이 조금 늦어도 빔이 끊기지 않을 만큼.
+                if (defData.beamVfxPrefab != null && evt.attackAnimPeriod > 0f)
+                {
+                    EnsureBeamPresenter().Open(
+                        evt.attacker,
+                        defData.beamVfxPrefab,
+                        source: evt.attacker,
+                        target: evt.target,
+                        ttlSec: evt.attackAnimPeriod * BeamSessionTtlMargin);
+                }
 
                 TrySpawnCastVfx(evt.attacker, targetWorld);
+            }
+        }
+
+        // 히트 VFX 지연 재생 큐(위 주석 — START 이벤트를 RESOLVE 시점으로 미룬다).
+        // 코루틴 대신 리스트+틱: 배틀 도메인 시간을 쓰려면 어차피 직접 깎아야 하고,
+        // 공격마다 코루틴을 새로 만들면 고속 공격 유닛에서 할당이 쌓인다.
+        private struct PendingHitVfx
+        {
+            public GameObject prefab;
+            public float3 simPos;
+            public float scale;
+            public Vector3 facing;
+            public Vector3 euler;
+            public float remaining;
+        }
+        private readonly System.Collections.Generic.List<PendingHitVfx> _pendingHitVfx = new();
+
+        private void TickPendingHitVfx(float battleDeltaTime)
+        {
+            for (int i = _pendingHitVfx.Count - 1; i >= 0; i--)
+            {
+                var p = _pendingHitVfx[i];
+                p.remaining -= battleDeltaTime;
+                if (p.remaining > 0f) { _pendingHitVfx[i] = p; continue; }
+                _projectileViewPool?.PlayHit(p.prefab, p.simPos, scale: p.scale,
+                    facingViewDir: p.facing, eulerOffset: p.euler);
+                _pendingHitVfx.RemoveAt(i);
             }
         }
 
@@ -3468,6 +3679,30 @@ namespace Wassup.Bridge
             return entity;
         }
 
+        // 배치 셀 반경 내 살아있는 적을 스크래치에 모은다. on-place 분기 다섯이 같은
+        // "쿼리 → 순회 → LocalTransform 확인 → InTileRange" 를 복제하고 있었다(bleed/knockup
+        // unit 1 이 두 개를 더하면서 다섯이 됨) — 호출처가 다섯이라 추출이 맞다.
+        // 재사용 스크래치라 배치마다 할당이 없다(`_dcFiredScratch` 선례).
+        private readonly System.Collections.Generic.List<Entity> _onPlaceInRangeScratch = new();
+
+        private System.Collections.Generic.List<Entity> CollectEnemiesInTileRange(Vector2Int cell, float range)
+        {
+            _onPlaceInRangeScratch.Clear();
+            if (range <= 0f || !_aliveAttackersQueryCreated) return _onPlaceInRangeScratch;
+            int tileRange = GridMath.RangeToTiles(range);
+            var entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
+            for (int i = 0; i < entities.Length; i++)
+            {
+                var e = entities[i];
+                if (!_em.HasComponent<LocalTransform>(e)) continue;
+                var pos = _em.GetComponentData<LocalTransform>(e).Position;
+                if (!InTileRange(pos, cell, tileRange)) continue;
+                _onPlaceInRangeScratch.Add(e);
+            }
+            entities.Dispose();
+            return _onPlaceInRangeScratch;
+        }
+
         // Fires the defender's on-place effect on surrounding entities. Returns
         // the count of entities affected so the logger can record magnitude.
         // Writes to Effects components go through EffectSpawner so the Effects-
@@ -3476,59 +3711,127 @@ namespace Wassup.Bridge
         {
             if (unitData.onPlaceEffect == OnPlaceEffectType.None) return 0;
 
-            float3 center = GridToWorldCenter(placedCell);
             int affected = 0;
 
-            if (unitData.onPlaceEffect == OnPlaceEffectType.SlowPulse)
+            // SlowPulse 와 BindNearby 는 예전부터 **같은 효과**다(둘 다 이동속도 배율 감쇠).
+            // 문구만 다르고 동작이 같으므로 한 분기로 합쳐 둔다 — 갈라 두면 한쪽만 고쳐진다.
+            if (unitData.onPlaceEffect == OnPlaceEffectType.SlowPulse
+                || unitData.onPlaceEffect == OnPlaceEffectType.BindNearby)
             {
-                if (unitData.onPlaceRange <= 0f) return 0;
-                if (!_aliveAttackersQueryCreated) return 0;
-                int tileRange = GridMath.RangeToTiles(unitData.onPlaceRange);
-                var entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
-                for (int i = 0; i < entities.Length; i++)
+                foreach (var e in CollectEnemiesInTileRange(placedCell, unitData.onPlaceRange))
                 {
-                    var e = entities[i];
-                    if (!_em.HasComponent<LocalTransform>(e)) continue;
-                    var pos = _em.GetComponentData<LocalTransform>(e).Position;
-                    if (!InTileRange(pos, placedCell, tileRange)) continue;
                     EnqueueMoveSpeedMul(e, unitData.onPlaceMagnitude, unitData.onPlaceDuration, Wassup.Battle.Effects.ModifierOrigin.OnPlace);
                     affected++;
                 }
-                entities.Dispose();
             }
-            else if (unitData.onPlaceEffect == OnPlaceEffectType.BindNearby)
+            else if (unitData.onPlaceEffect == OnPlaceEffectType.ApplyStackNearby)
             {
-                if (unitData.onPlaceRange <= 0f) return 0;
-                if (!_aliveAttackersQueryCreated) return 0;
-                int tileRange = GridMath.RangeToTiles(unitData.onPlaceRange);
-                var entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
-                for (int i = 0; i < entities.Length; i++)
+                // bleed-fighter-defender unit 1 — 반경 내 적 전원에 스택 도포(등장 난도질).
+                // 스택 종류/수/지속은 SO, 상한은 그 StackKind 를 소유한 StackModifierSO 가
+                // 권위다(유닛마다 다른 상한을 적는 것이 아니라 스택의 성질) — 미등록이면
+                // AttackSystem outputs 경로와 같은 기본값 5.
+                if (unitData.onPlaceMagnitude <= 0f || !_stackModifierQueue.IsCreated) return 0;
+
+                byte maxStack = Wassup.Data.StackModifierSO.DefaultMaxStack;
+                if (stackModifierAuthoring != null)
                 {
-                    var e = entities[i];
-                    if (!_em.HasComponent<LocalTransform>(e)) continue;
-                    var pos = _em.GetComponentData<LocalTransform>(e).Position;
-                    if (!InTileRange(pos, placedCell, tileRange)) continue;
-                    EnqueueMoveSpeedMul(e, unitData.onPlaceMagnitude, unitData.onPlaceDuration, Wassup.Battle.Effects.ModifierOrigin.OnPlace);
+                    foreach (var so in stackModifierAuthoring)
+                        if (so != null && so.kind == unitData.onPlaceStackKind) { maxStack = so.maxStack; break; }
+                }
+
+                foreach (var e in CollectEnemiesInTileRange(placedCell, unitData.onPlaceRange))
+                {
+                    _stackModifierQueue.Enqueue(new Wassup.Battle.Effects.StackModifierApplyEvent
+                    {
+                        target         = e,
+                        kind           = unitData.onPlaceStackKind,
+                        countDelta     = (byte)math.max(1f, unitData.onPlaceMagnitude),
+                        maxStack       = maxStack,
+                        perAppDuration = unitData.onPlaceDuration,
+                        source         = placedEntity,
+                    });
                     affected++;
                 }
-                entities.Dispose();
+            }
+            else if (unitData.onPlaceEffect == OnPlaceEffectType.StunNearby)
+            {
+                // knockup-fighter-defender unit 1 — 착지 충격(반경 내 적 전원 넉업).
+                // 심은 Stun 그대로 — "공중" 은 뷰가 붙이는 해석이다(unit 3).
+                if (unitData.onPlaceDuration <= 0f || !_enemyCcQueue.IsCreated) return 0;
+
+                foreach (var e in CollectEnemiesInTileRange(placedCell, unitData.onPlaceRange))
+                {
+                    _enemyCcQueue.Enqueue(new Wassup.Battle.Effects.EnemyCcEvent
+                    {
+                        target = e,
+                        effect = new Wassup.Battle.Effects.CcEffect
+                        {
+                            kind          = Wassup.Battle.Effects.CcKind.Stun,
+                            remainingTime = unitData.onPlaceDuration,
+                        },
+                    });
+                    // unit 3 — 공격 넉업과 같은 연출 경로. 여기는 이미 브리지(뷰 접근 가능)라
+                    // 큐를 거치지 않고 직접 재생한다.
+                    if (unitData.knockupVisualHeight > 0f && spineUnitPool != null
+                        && spineUnitPool.TryGet(e, out var hopView) && hopView != null)
+                        hopView.PlayKnockupHop(unitData.onPlaceDuration, unitData.knockupVisualHeight);
+                    affected++;
+                }
+            }
+            else if (unitData.onPlaceEffect == OnPlaceEffectType.DotNearby)
+            {
+                // beam-ranger-defender unit 2 — 개점 일제 조사. 심은 기존 이산 tick DoT 그대로
+                // (dot-tick-cadence 계약) — 신규 시스템 0. 연출은 대상마다 빔 세션 1개.
+                // ⚠ tickInterval>0 일 때 scalar 는 **틱당 피해**다(DPS 아님).
+                if (unitData.onPlaceMagnitude <= 0f || unitData.onPlaceDuration <= 0f
+                    || !_enemyCcQueue.IsCreated) return 0;
+
+                foreach (var e in CollectEnemiesInTileRange(placedCell, unitData.onPlaceRange))
+                {
+                    _enemyCcQueue.Enqueue(new Wassup.Battle.Effects.EnemyCcEvent
+                    {
+                        target = e,
+                        effect = new Wassup.Battle.Effects.CcEffect
+                        {
+                            kind          = Wassup.Battle.Effects.CcKind.DoT,
+                            scalar        = unitData.onPlaceMagnitude,
+                            tickInterval  = unitData.onPlaceTickInterval,
+                            tickTimer     = unitData.onPlaceTickInterval, // 첫 틱 즉발(CcApply add-path 규약)
+                            remainingTime = unitData.onPlaceDuration,
+                        },
+                    });
+                    // 대상별 빔 — 키가 적 엔티티라 공격 세션(키 = 공격자)과 충돌하지 않는다.
+                    // 대상을 엔티티로 넘기므로 2초 동안 적이 걸어가도 빔이 따라간다.
+                    if (unitData.beamVfxPrefab != null)
+                    {
+                        EnsureBeamPresenter().Open(
+                            e, unitData.beamVfxPrefab,
+                            source: placedEntity, target: e, ttlSec: unitData.onPlaceDuration);
+                    }
+                    affected++;
+                }
+
+                // 조사(照射) 중에는 기본 공격을 하지 않는다. DotNearby 는 다른 on-place 효과와
+                // 달리 **지속을 갖는 채널**이라 그동안 유닛이 이 스킬에 묶여 있는 것이 사양이다
+                // (순간 효과인 MeleeBurst/StunNearby 등은 해당 없음 — 그래서 이 분기 안에 둔다).
+                // 첫 공격 쿨다운을 지속만큼 밀어 둔다. max 를 쓰는 이유는 이미 걸린 쿨다운을
+                // 줄이지 않기 위함.
+                if (_em.HasComponent<Wassup.Battle.Combat.AttackState>(placedEntity))
+                {
+                    var atk = _em.GetComponentData<Wassup.Battle.Combat.AttackState>(placedEntity);
+                    atk.cooldownRemaining = math.max(atk.cooldownRemaining, unitData.onPlaceDuration);
+                    _em.SetComponentData(placedEntity, atk);
+                }
             }
             else if (unitData.onPlaceEffect == OnPlaceEffectType.MeleeBurst)
             {
-                if (unitData.onPlaceRange <= 0f || unitData.onPlaceMagnitude <= 0f) return 0;
-                if (!_aliveAttackersQueryCreated) return 0;
-                int tileRange = GridMath.RangeToTiles(unitData.onPlaceRange);
-                var entities = _aliveAttackersQuery.ToEntityArray(Allocator.Temp);
-                for (int i = 0; i < entities.Length; i++)
+                if (unitData.onPlaceMagnitude <= 0f) return 0;
+                foreach (var e in CollectEnemiesInTileRange(placedCell, unitData.onPlaceRange))
                 {
-                    var e = entities[i];
-                    if (!_em.HasComponent<LocalTransform>(e) || !_em.HasBuffer<IncomingDamage>(e)) continue;
-                    var pos = _em.GetComponentData<LocalTransform>(e).Position;
-                    if (!InTileRange(pos, placedCell, tileRange)) continue;
+                    if (!_em.HasBuffer<IncomingDamage>(e)) continue;
                     _em.GetBuffer<IncomingDamage>(e).Add(new IncomingDamage { amount = unitData.onPlaceMagnitude });
                     affected++;
                 }
-                entities.Dispose();
             }
             else if (unitData.onPlaceEffect == OnPlaceEffectType.ForwardProjectile)
             {
@@ -4823,6 +5126,8 @@ namespace Wassup.Bridge
                 onPlacePushDuration = unitData.onPlacePushDuration,
                 onPlacePushRadius   = unitData.onPlacePushRadius,
                 sleepOnHitSec       = unitData.sleepOnHitSec,
+                knockupOnHitSec     = unitData.knockupOnHitSec,
+                knockupVisualHeight = unitData.knockupVisualHeight,
             });
             // defender-ability-assets unit 2 — 게이트 = 능력 에셋 존재(구 hazardCastEnabled).
             var hazardAbility = unitData.GetAbility<HazardCastAbility>();

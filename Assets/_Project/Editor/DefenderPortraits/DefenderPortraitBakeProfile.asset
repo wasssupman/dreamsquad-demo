@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 23a4bc8d55a164d45ab48e06f7fe651a, type: 3}
+  m_Name: DefenderPortraitBakeProfile
+  m_EditorClassIdentifier: Assembly-CSharp-Editor::Wassup.Editor.Portraits.DefenderPortraitBakeProfile
+  catalog: {fileID: 11400000, guid: 346c00d9daf72429d94ddd29337c7d23, type: 2}
+  outputFolder: {fileID: 102900000, guid: 157d6eab8a2f64a3a97652cdd7ac6a60, type: 3}
+  resolution: 512
+  supersample: 2
+  poseAnimation: Idle
+  poseTimeSeconds: 0
+  anchorOffset: {x: -0.15, y: 0.32}
+  orthographicSize: 0.9
+  framingOverrides: []

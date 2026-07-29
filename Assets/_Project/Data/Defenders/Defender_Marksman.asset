@@ -15,8 +15,9 @@ MonoBehaviour:
   id: marksman
   role: 1
   displayName: "\uB9C8\uD06C\uC2A4\uB9E8"
-  desc: "\uB808\uC778\uC800 \xB7 \uC6D0\uAC70\uB9AC\uD615. \uBC30\uCE58 \uC2DC \uC804\uBC29
-    \uBC1C\uC0AC."
+  desc: "\uAE30\uBCF8 \uAE30\uB2A5: \uB2E8\uC77C \uC6D0\uAC70\uB9AC \uACF5\uACA9\n\uBC30\uCE58
+    \uC2A4\uD0AC: \uAE38\uBAA9 \uBC29\uD5A5\uC73C\uB85C \uAC15\uD55C \uD0C4\uD658
+    \uBC1C\uC0AC\n\uD2B9\uC218 \uD6A8\uACFC: \uC5C6\uC74C"
   health: 170
   attackRange: 4
   attackCooldown: 2
@@ -45,7 +46,7 @@ MonoBehaviour:
   targetAllies: 0
   abilities: []
   rarity: 0
-  portrait: {fileID: 21300000, guid: 0880bdc87b652064296dca36cb7638e3, type: 3}
+  portrait: {fileID: 21300000, guid: b7ba26f6c851a43438bc307e6b4d93b8, type: 3}
   aggroCapacity: 0
   skeletonDataAsset: {fileID: 11400000, guid: ee98f82138b60430f97c6863317c3a2f, type: 2}
   spineSkinName: full_skins

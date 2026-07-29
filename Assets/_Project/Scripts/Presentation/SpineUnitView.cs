@@ -145,6 +145,7 @@ namespace Wassup.Presentation
             UpdateWalkTimeScale(world);
             // enemy-walk-anim-speed unit 4 — 갱신된 _smoothedSpeed 로 walk↔idle 전환.
             UpdateLocomotionAnimation();
+            AdvanceHop(); // knockup unit 3 — 호핑 시간 진행은 프레임당 여기서만
             ApplyRenderPosition(world);
         }
 
@@ -179,7 +180,43 @@ namespace Wassup.Presentation
         {
             _simWorld = world;
             Vector3 offset = _visualData != null ? (Vector3)_visualData.SpineVisualOffset : Vector3.zero;
-            transform.position = (Vector3)Wassup.Core.BoardSpace.ToView(world) + offset;
+            transform.position = (Vector3)Wassup.Core.BoardSpace.ToView(world) + offset
+                                 + new Vector3(0f, CurrentHopOffset(), 0f);
+        }
+
+        // knockup-fighter-defender unit 3 — 넉업 띄우기. sim 은 이 유닛이 떠 있다는 사실을
+        // 모른다(심의 실체는 짧은 Stun) — 여기서만 해석하는 순수 뷰 오프셋이다.
+        // ⚠ sim-Y 에 넣으면 안 된다: 평면 tilemap 보드라 BoardSpace.ToView 가 sim-Y 를 버려
+        // 화면에 아무 변화가 없다. 그래서 ToView **뒤에** view 공간 Y 로 더한다.
+        private float _hopElapsed = -1f;   // <0 = 비활성
+        private float _hopDuration;
+        private float _hopHeight;
+
+        public void PlayKnockupHop(float durationSec, float height)
+        {
+            if (durationSec <= 0f || height <= 0f) return;
+            // 재신호는 재시작 — 연속 히트로 계속 떠 있는 것이 의도(스턴도 remainingTime=max 로 갱신).
+            _hopElapsed = 0f;
+            _hopDuration = durationSec;
+            _hopHeight = height;
+        }
+
+        // 시간 진행은 프레임 진입점(UpdatePosition)에서 **한 번만** 한다. ApplyRenderPosition 은
+        // Spawn 에서도 불리므로 거기서 진행시키면 스폰 프레임에 한 칸 건너뛴다.
+        private void AdvanceHop()
+        {
+            if (_hopElapsed < 0f) return;
+            // 배틀 스케일을 따른다 — 슬로모 중엔 천천히 뜨고 천천히 떨어져야 스턴 지속(sim 시간)과
+            // 착지 시점이 어긋나지 않는다.
+            _hopElapsed += Time.deltaTime * _battleScale;
+            if (_hopElapsed >= _hopDuration) _hopElapsed = -1f;
+        }
+
+        private float CurrentHopOffset()
+        {
+            if (_hopElapsed < 0f) return 0f;
+            float t = _hopElapsed / _hopDuration;      // 0..1
+            return _hopHeight * 4f * t * (1f - t);     // 포물선: 양끝 0, 중앙 최고
         }
 
         public void UpdateSortingOrder(Unity.Mathematics.int2 gridSize, float tileSize)
@@ -312,13 +349,22 @@ namespace Wassup.Presentation
             StartCoroutine(FlashRoutine(dur));
         }
 
+        private bool _flashActive;      // use-flow unit 3 rev 2 — 연발 flash 가드
+        private Color _flashRestore;    // 진행 중 flash 의 복귀 목표(연발 시 승계)
+
         private System.Collections.IEnumerator FlashRoutine(float dur)
         {
             var skel = _skeleton.Skeleton;
             // flash 복귀 목표 = resting 색. hover 틴트 활성 중이면 _savedTint(=진짜 base)를
             // 잡는다 — skel 현재값은 우리 틴트라 그걸 restore 로 캡처하면 hover 가 flash 도중
             // 해제될 때 flash 종료가 틴트색으로 굳는다(stray tint). 저장값 기준으로 닫는다.
-            Color restore = _hoverHighlightActive ? _savedTint : new Color(skel.R, skel.G, skel.B);
+            // 연발 가드(rev 2) — 앞 flash 가 skel 을 흰빛으로 밀어둔 채 새 flash 가 "현재 색"을
+            // 캡처하면 복귀 목표가 중간 흰빛으로 오염돼 유닛이 밝게 굳는다. 진행 중이면
+            // 기존 restore 를 승계한다(발동 임팩트가 연발 경로를 만들며 노출된 잠재 버그).
+            Color restore = _hoverHighlightActive ? _savedTint
+                : (_flashActive ? _flashRestore : new Color(skel.R, skel.G, skel.B));
+            _flashRestore = restore;
+            _flashActive = true;
             skel.R = 1f; skel.G = 1f; skel.B = 1f;
             float e = 0f;
             while (e < dur)
@@ -339,6 +385,7 @@ namespace Wassup.Presentation
                 Color target = _hoverHighlightActive ? _savedTint : restore;
                 s.R = target.r; s.G = target.g; s.B = target.b;
             }
+            _flashActive = false; // 연발 시 뒤 코루틴이 마지막으로 닫으며 해제
         }
 
         // placement-enemy-see-through unit 2 — 드래그 배치 중 반투명 전환.

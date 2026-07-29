@@ -15,8 +15,9 @@ MonoBehaviour:
   id: too_much_talker
   role: 3
   displayName: "\uD22C\uBA38\uCE58\uD1A0\uCEE4"
-  desc: "\uD30C\uC774\uD130 \xB7 \uADFC\uC811\uD615. \uC274 \uC0C8 \uC5C6\uB294 \uC218\uB2E4\uB85C
-    \uC801\uC744 \uC7AC\uC6B4\uB2E4."
+  desc: "\uAE30\uBCF8 \uAE30\uB2A5: \uB2E8\uC77C \uADFC\uC811 \uACF5\uACA9\n\uBC30\uCE58
+    \uC2A4\uD0AC: \uC5C6\uC74C\n\uD2B9\uC218 \uD6A8\uACFC: \uACF5\uACA9\uD55C \uC801\uC744
+    \uC7A0\uC7AC\uC6C0"
   health: 400
   attackRange: 2
   attackCooldown: 1.6
@@ -45,7 +46,7 @@ MonoBehaviour:
   targetAllies: 0
   abilities: []
   rarity: 2
-  portrait: {fileID: 21300000, guid: c7e1a6b94d4f46d3a9b8c2e17f506a31, type: 3}
+  portrait: {fileID: 21300000, guid: a23a525aeebba4a008f7424f308ccf83, type: 3}
   aggroCapacity: 0
   skeletonDataAsset: {fileID: 11400000, guid: ee98f82138b60430f97c6863317c3a2f, type: 2}
   spineSkinName: full_skins

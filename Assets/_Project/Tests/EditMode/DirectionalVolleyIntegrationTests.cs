@@ -257,6 +257,57 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
+        public void Spread_ShotgunParams_FansAllFiveShotsBySignedAngle()
+        {
+            // shotgun-spread-defender unit 0 — 실증 유닛 파라미터(5발/90°) 그대로의 정확 부채꼴.
+            // 3발/30° 테스트는 구조(가운데 직진 + 최대각)만 보고, 여기서는 5발의 부호 각
+            // 전체(−45/−22.5/0/+22.5/+45)를 고정한다 — 균등 분배 산식이 홀수 발수 밖에서도
+            // 깨지지 않는지가 계약이다.
+            CreateVolleyDefender(float3.zero, new int2(1, 0), shotCount: 5, intervalSec: 0f, spreadDeg: 90f);
+            CreateEnemy(new float3(2f, 0f, 0f));
+
+            Tick();
+            var reqs = CollectRequests();
+            Assert.AreEqual(5, reqs.Length, "동프레임 전탄");
+
+            var angles = new System.Collections.Generic.List<float>();
+            foreach (var r in reqs)
+            {
+                Assert.AreEqual(1f, math.length(r.direction), 1e-4f);
+                angles.Add(math.degrees(math.atan2(r.direction.y, r.direction.x)));
+            }
+            angles.Sort(); // 요청 수집 순서는 계약이 아니다 — 각의 집합만 고정한다.
+            float[] expected = { -45f, -22.5f, 0f, 22.5f, 45f };
+            for (int i = 0; i < expected.Length; i++)
+                Assert.AreEqual(expected[i], angles[i], 1e-2f, $"{i}번째(정렬) 각");
+        }
+
+        [Test]
+        public void Spread_SameFrameVolley_DoesNotExtendTheCooldown()
+        {
+            // interval 0 → CooldownAfterVolley 연장 0 이 통합 구간에서도 성립하는지.
+            // 버스트 테스트(쿨다운 1.6 + 0.9 = 2.5s)의 대칭 케이스 — 여기선 정확히 1.6s.
+            const float dt = 0.016f;
+            CreateVolleyDefender(float3.zero, new int2(1, 0), shotCount: 5, intervalSec: 0f, spreadDeg: 90f, cooldown: 1.6f);
+            CreateEnemy(new float3(2f, 0f, 0f));
+
+            Tick(dt);
+            Assert.AreEqual(5, CollectRequests().Length, "트리거 프레임에 전탄");
+            ClearRequests();
+
+            float elapsed = dt;
+            float nextVolleyAt = -1f;
+            for (int i = 0; i < 150 && nextVolleyAt < 0f; i++)
+            {
+                Tick(dt);
+                elapsed += dt;
+                if (CollectRequests().Length > 0) nextVolleyAt = elapsed;
+                ClearRequests();
+            }
+            Assert.AreEqual(1.6f, nextVolleyAt, 0.03f, "동프레임 볼리는 쿨다운만 기다린다 — 버스트 연장 없음");
+        }
+
+        [Test]
         public void BurstAndSpread_Combined_FanEachTimedShotByItsIndex()
         {
             // 버스트 틱의 발 인덱스 산식(shotCount − 남은수)은 **오직 이 조합에서만** 의미를
