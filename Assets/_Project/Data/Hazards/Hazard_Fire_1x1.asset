@@ -18,7 +18,7 @@ MonoBehaviour:
   visualPrefab: {fileID: 9171550270838806250, guid: e320937c462ac42068ecbbe410fcc27d, type: 3}
   effects:
   - kind: 2
-    flavor: 2
+    element: 2
     param1: 10
     param2: 0
     restDuration: 0.2

@@ -97,7 +97,8 @@ namespace Wassup.Battle.Effects
         {
             return new DotEffect
             {
-                flavor = hazardEffect.flavor,
+                origin = DotOrigin.Zone,
+                element = hazardEffect.element,
                 scalar = hazardEffect.param1,
                 remainingTime = hazardEffect.restDuration,
                 // tickTimer 는 미설정(0); DotEffectMerge add-path 가 첫 tick 즉발용으로 초기화한다.

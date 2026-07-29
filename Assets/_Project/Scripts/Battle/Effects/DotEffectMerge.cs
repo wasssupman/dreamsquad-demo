@@ -5,18 +5,21 @@ namespace Wassup.Battle.Effects
 {
     // dot-effect-extraction unit 0 — 지속 피해 병합 정책의 단일 소스.
     //
-    // 키는 **flavor** 다. 맛이 다르면 슬롯이 갈리므로 출혈과 화염 장판이 각자의 scalar·주기로
-    // 동시에 탄다. 한 버퍼·한 슬롯이던 시절엔 나중에 온 쪽이 scalar 와 tickInterval 을 덮어쓰고
-    // remainingTime 만 max 로 남아, 장판을 나가도 장판 요율로 계속 타는 과피해가 났다.
+    // 키는 **(origin, element)** 다. 둘 중 하나만 달라도 슬롯이 갈리므로
+    //  - 출혈(Stack·Bleed) 과 화염 장판(Zone·Fire) 이 각자의 scalar·주기로 동시에 타고
+    //  - 장판 화염(Zone·Fire) 과 화염 스택 폭발(Stack·Fire) 도 서로를 덮지 않는다.
+    // 한 슬롯을 공유하던 시절엔 나중에 온 쪽이 scalar·tickInterval 을 덮어쓰고 remainingTime 만
+    // max 로 남아, 장판을 나가도 장판 요율로 계속 타는 과피해가 났다.
     //
-    // None 끼리는 계속 병합된다 — 미분류 도트는 이관 전 동작을 유지한다.
+    // 같은 키끼리는 병합된다 — 난도질꾼 2기가 한 적을 물어도 출혈은 합산되지 않는다(사양).
     public static class DotEffectMerge
     {
         public static void Apply(ref DynamicBuffer<DotEffect> buffer, DotEffect incoming)
         {
             for (int i = 0; i < buffer.Length; i++)
             {
-                if (buffer[i].flavor != incoming.flavor) continue;
+                if (buffer[i].origin != incoming.origin) continue;
+                if (buffer[i].element != incoming.element) continue;
 
                 var slot = buffer[i];
                 // 누적기 보존: 매 프레임 존 refresh 에도 리셋 금지. incoming.tickTimer 는 무시한다.
@@ -31,7 +34,8 @@ namespace Wassup.Battle.Effects
 
                 buffer[i] = new DotEffect
                 {
-                    flavor        = incoming.flavor,
+                    origin        = incoming.origin,
+                    element       = incoming.element,
                     scalar        = incoming.scalar,
                     tickInterval  = incoming.tickInterval,
                     tickTimer     = carriedTimer,

@@ -2,15 +2,26 @@ using Unity.Entities;
 
 namespace Wassup.Battle.Effects
 {
-    // dot-effect-extraction unit 0 — 지속 피해의 출처 "맛".
+    // dot-effect-extraction unit 0 — 지속 피해를 만든 **파이프라인**.
     //
-    // 축이 source(Entity)가 아니라 맛인 이유: 난도질꾼 2기는 source 가 둘인데 둘 다 출혈이라
-    // 식별에 기여가 없고, 반대로 ZoneApplySystem 은 내부 루프에 해저드 엔티티가 없어 source 를
-    // 만들 수조차 없다(cellToEffects 는 셀→구조체 멀티맵). 선례 = StatModifierSlot 의 ModifierOrigin.
+    // `StatModifierSlot` 의 `ModifierOrigin` 과 같은 역할이고 어휘도 거기에 맞춘다. 축을
+    // source(Entity)로 잡으면 안 된다 — 난도질꾼 2기는 source 가 둘인데 둘 다 같은 출혈이라
+    // 식별에 기여가 없고, 반대로 `ZoneApplySystem` 은 내부 루프에 해저드 엔티티가 없어
+    // source 를 만들 수조차 없다(`cellToEffects` 는 셀→구조체 멀티맵).
     //
-    // None = 미분류. 서로 병합된다(= 이관 전 동작 유지).
     // 새 항목은 반드시 **끝에** 추가할 것 — byte 로 직렬화된다.
-    public enum DotFlavor : byte
+    public enum DotOrigin : byte
+    {
+        Unspecified = 0,
+        Stack = 1,    // 스택 임계 파생 (StackModifierTickSystem)
+        Zone = 2,     // 해저드 장판 (ZoneApplySystem)
+        OnPlace = 3,  // 배치 스킬 (BattleBridge)
+    }
+
+    // 지속 피해의 **원소**. 오라가 읽는 축이고, 슬롯을 가르는 축이 아니다.
+    // None = 원소 없음 = 오라 없음(버스터즈 배치 도트 등).
+    // 새 항목은 반드시 **끝에** 추가할 것.
+    public enum DotElement : byte
     {
         None = 0,
         Bleed = 1,
@@ -23,9 +34,14 @@ namespace Wassup.Battle.Effects
     // 중첩 정책도 정반대다: Stun/Sleep 은 "가장 긴 것 하나"가 정답이지만 지속 피해는 출처별로
     // 공존해야 한다. 한 버퍼를 쓰던 시절엔 화염 장판이 출혈의 scalar 를 덮어써 장판 밖에서도
     // 장판 요율로 타는 과피해가 났다.
+    //
+    // **축이 둘인 이유**: 슬롯을 가르는 기준(origin)과 화면에 보이는 그림(element)은 다른 질문이다.
+    // 장판이 주는 화염과 화염 스택 임계가 터뜨리는 화염은 **다른 파이프라인이라 각자 타야 하지만**
+    // 그림은 같은 화염이다. 한 필드로 겸하면 둘 중 하나가 반드시 틀린다.
     public struct DotEffect : IBufferElementData
     {
-        public DotFlavor flavor;
+        public DotOrigin origin;
+        public DotElement element;
         // tickInterval > 0 이면 틱당 피해, 0 이면 DPS(레거시 연속).
         public float scalar;
         public float tickInterval;
@@ -34,17 +50,17 @@ namespace Wassup.Battle.Effects
         public float remainingTime;
     }
 
-    // 전투 스택 → 맛. 순수 매핑(plain 값 in/out)이라 아키텍처 종속 메서드 밖에 둔다(제약 10).
-    // 기믹 스택(Fatigue 등)은 None — 전투 도트를 만들지 않으므로 분리·오라 대상이 아니다.
-    public static class DotFlavorMap
+    // 전투 스택 → 원소. 순수 매핑(plain 값 in/out)이라 아키텍처 종속 메서드 밖에 둔다(제약 10).
+    // 기믹 스택(Fatigue 등)은 None — 전투 도트를 만들지 않으므로 오라 대상이 아니다.
+    public static class DotElementMap
     {
-        public static DotFlavor FromStack(StackKind kind) => kind switch
+        public static DotElement FromStack(StackKind kind) => kind switch
         {
-            StackKind.Bleed  => DotFlavor.Bleed,
-            StackKind.Fire   => DotFlavor.Fire,
-            StackKind.Ice    => DotFlavor.Ice,
-            StackKind.Poison => DotFlavor.Poison,
-            _ => DotFlavor.None,
+            StackKind.Bleed  => DotElement.Bleed,
+            StackKind.Fire   => DotElement.Fire,
+            StackKind.Ice    => DotElement.Ice,
+            StackKind.Poison => DotElement.Poison,
+            _ => DotElement.None,
         };
     }
 }

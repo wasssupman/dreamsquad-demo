@@ -193,7 +193,7 @@ namespace Wassup.Bridge
         private EntityQuery _modifierSlotQuery;
         private bool _modifierSlotQueryCreated;
         // dot-effect-extraction unit 1 — 지속 피해 오라 소스. 적·아군 공통이라 태그 게이트 없음.
-        // 도트가 flavor 로 출처를 들고 다니므로 종류 래치가 필요 없다.
+        // 도트가 origin·element 를 들고 다니므로 종류 래치가 필요 없다.
         private EntityQuery _dotEffectQuery;
         private bool _dotEffectQueryCreated;
         // season-gimmick-overwork unit 6 — 레드불 픽업 뷰 조정용 쿼리 (Pickup 은 Effects 소유, 읽기만).
@@ -1458,7 +1458,7 @@ namespace Wassup.Bridge
             _em.AddComponentData(enemyCcSingleton, new Wassup.Battle.Effects.EnemyCcEventsSingleton { queue = _enemyCcQueue });
 
             // dot-effect-extraction unit 0 — 지속 피해 채널(25번째). DotApplySystem 이 드레인해
-            // DotEffect 버퍼에 flavor 별로 병합한다.
+            // DotEffect 버퍼에 (origin, element) 별로 병합한다.
             if (_dotApplyQueue.IsCreated) _dotApplyQueue.Dispose();
             _dotApplyQueue = new NativeQueue<Wassup.Battle.Effects.DotApplyEvent>(Allocator.Persistent);
             var dotApplySingleton = _em.CreateEntity();
@@ -2422,7 +2422,7 @@ namespace Wassup.Bridge
             }
 
             // dot-effect-extraction unit 1 — 지속 피해 오라. **소스는 도트 자신**이다.
-            // 도트가 flavor 로 자기 출처를 들고 다니므로 bridge 가 추측할 것이 없다 —
+            // 도트가 자기 원소를 들고 다니므로 bridge 가 추측할 것이 없다 —
             // 스택 슬롯을 보던 래치·쿼리·매핑이 전부 사라졌다(옛 방식은 슬롯이 도트보다
             // 먼저 죽어서 종류를 기억해야 했고, 그 기억이 안 꺼져 얼음 오라가 매치 끝까지
             // 남는 결함을 낳았다).
@@ -2444,7 +2444,7 @@ namespace Wassup.Bridge
                         for (int j = 0; j < dots.Length; j++)
                         {
                             if (dots[j].remainingTime <= 0f) continue;
-                            var fx = DotAuraKind(dots[j].flavor);
+                            var fx = DotAuraKind(dots[j].element);
                             if (!fx.HasValue) continue;
                             // 앵커 해석은 비싸므로 켤 것이 실제로 있을 때만.
                             if (anchor == null)
@@ -3156,13 +3156,15 @@ namespace Wassup.Bridge
             }
         }
 
-        // dot-effect-extraction unit 1 — 도트 맛 → 오라 kind. None(미분류 도트)은 null = 오라 없음.
-        private static Wassup.Data.StatusFxKind? DotAuraKind(Wassup.Battle.Effects.DotFlavor f) => f switch
+        // dot-effect-extraction unit 1 — 도트 **원소** → 오라 kind. origin 은 보지 않는다:
+        // 장판이 준 화염이든 스택 폭발이 준 화염이든 화면에는 같은 그림이어야 한다.
+        // None(원소 없는 도트)은 null = 오라 없음.
+        private static Wassup.Data.StatusFxKind? DotAuraKind(Wassup.Battle.Effects.DotElement e) => e switch
         {
-            Wassup.Battle.Effects.DotFlavor.Bleed  => Wassup.Data.StatusFxKind.Bleed,
-            Wassup.Battle.Effects.DotFlavor.Fire   => Wassup.Data.StatusFxKind.Fire,
-            Wassup.Battle.Effects.DotFlavor.Ice    => Wassup.Data.StatusFxKind.Ice,
-            Wassup.Battle.Effects.DotFlavor.Poison => Wassup.Data.StatusFxKind.Poison,
+            Wassup.Battle.Effects.DotElement.Bleed  => Wassup.Data.StatusFxKind.Bleed,
+            Wassup.Battle.Effects.DotElement.Fire   => Wassup.Data.StatusFxKind.Fire,
+            Wassup.Battle.Effects.DotElement.Ice    => Wassup.Data.StatusFxKind.Ice,
+            Wassup.Battle.Effects.DotElement.Poison => Wassup.Data.StatusFxKind.Poison,
             _ => null,
         };
 
@@ -3887,8 +3889,9 @@ namespace Wassup.Bridge
                         target = e,
                         effect = new Wassup.Battle.Effects.DotEffect
                         {
-                            // flavor 는 None 유지 — 버스터즈가 유일 producer 라 충돌 상대가 없다.
-                            // Dot 배치기가 늘면 그때 저작 필드를 신설한다(제약 8).
+                            // element 는 None 유지(원소 없음 = 오라 없음). 배치 도트에 원소를
+                            // 주고 싶어지면 그때 저작 필드를 신설한다(제약 8).
+                            origin        = Wassup.Battle.Effects.DotOrigin.OnPlace,
                             scalar        = unitData.onPlaceMagnitude,
                             tickInterval  = unitData.onPlaceTickInterval,
                             tickTimer     = unitData.onPlaceTickInterval, // 첫 틱 즉발(add-path 규약)

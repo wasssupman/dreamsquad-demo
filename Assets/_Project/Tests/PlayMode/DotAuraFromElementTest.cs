@@ -17,7 +17,7 @@ using Wassup.Presentation;
 
 namespace Wassup.Tests.PlayMode
 {
-    // dot-effect-extraction unit 1 — 지속 피해 오라가 **도트 자신**을 소스로 켜지는지.
+    // dot-effect-extraction unit 1 — 지속 피해 오라가 **도트의 원소**를 소스로 켜지는지.
     //
     // 회귀 대상 2건:
     //  (a) 종류 래치 시절, 한 번 켠 비트를 내리는 경로가 "도트가 하나도 안 돈다" 뿐이었다.
@@ -26,7 +26,7 @@ namespace Wassup.Tests.PlayMode
     //  (b) 점등 게이트가 "아무 도트나 진행 중"이라, 출혈만 아픈데 얼음 오라가 같이 떴다.
     //
     // 관측은 StatusFxSpawner 의 실제 활성 집합으로 한다(래치 같은 중간 상태가 아니라).
-    public class DotAuraFromFlavorTest
+    public class DotAuraFromElementTest
     {
         private EntityManager _em;
         private BattleBridge _bridge;
@@ -41,7 +41,7 @@ namespace Wassup.Tests.PlayMode
         }
 
         [UnityTest]
-        public IEnumerator Aura_FollowsDotFlavor_NotStackSlots()
+        public IEnumerator Aura_FollowsDotElement_NotStackSlots()
         {
             yield return SceneManager.LoadSceneAsync(SceneNames.Battle, LoadSceneMode.Single);
             for (int i = 0; i < 6; i++) yield return null;
@@ -79,22 +79,25 @@ namespace Wassup.Tests.PlayMode
             var dotQ = _em.CreateEntityQuery(ComponentType.ReadOnly<DotApplyEventsSingleton>())
                           .GetSingleton<DotApplyEventsSingleton>().queue;
 
-            void Enqueue(DotFlavor flavor, float duration) => dotQ.Enqueue(new DotApplyEvent
+            void Enqueue(DotElement element, float duration) => dotQ.Enqueue(new DotApplyEvent
             {
                 target = _victim,
                 effect = new DotEffect
-                { flavor = flavor, scalar = 1f, tickInterval = 0.5f, remainingTime = duration },
+                {
+                    origin = DotOrigin.Stack, element = element,
+                    scalar = 1f, tickInterval = 0.5f, remainingTime = duration,
+                },
             });
 
             // 1) 출혈 도트만 → 출혈 오라만 켜진다.
-            Enqueue(DotFlavor.Bleed, 6f);
+            Enqueue(DotElement.Bleed, 6f);
             for (int i = 0; i < 3; i++) yield return null;
-            Assert.IsTrue(HasDot(DotFlavor.Bleed), "도트 부여 경로가 끊겼다(오라 이전 단계 문제)");
+            Assert.IsTrue(HasDot(DotElement.Bleed), "도트 부여 경로가 끊겼다(오라 이전 단계 문제)");
             Assert.IsTrue(AuraLit(StatusFxKind.Bleed), "출혈 도트가 도는데 오라가 안 켜졌다");
             Assert.IsFalse(AuraLit(StatusFxKind.Ice), "무관한 오라가 같이 켜졌다");
 
             // 2) 냉기 도트를 얹으면 둘 다 켜진다 — 슬롯이 갈려 있으므로 별도 장치 없이 성립.
-            Enqueue(DotFlavor.Ice, 0.6f);
+            Enqueue(DotElement.Ice, 0.6f);
             for (int i = 0; i < 3; i++) yield return null;
             Assert.IsTrue(AuraLit(StatusFxKind.Ice), "냉기 도트가 도는데 오라가 안 켜졌다");
             Assert.IsTrue(AuraLit(StatusFxKind.Bleed), "냉기가 얹히자 출혈 오라가 사라졌다");
@@ -102,22 +105,22 @@ namespace Wassup.Tests.PlayMode
             // 3) 회귀의 핵심 — 냉기만 만료되면 냉기 오라만 꺼진다.
             //    출혈은 계속 돌고 있으므로 옛 래치 방식에서는 냉기 비트가 영영 안 내려갔다.
             float t = 0f;
-            while (t < 3f && HasDot(DotFlavor.Ice)) { t += Time.deltaTime; yield return null; }
-            Assert.IsFalse(HasDot(DotFlavor.Ice), "냉기 도트가 만료되지 않았다");
+            while (t < 3f && HasDot(DotElement.Ice)) { t += Time.deltaTime; yield return null; }
+            Assert.IsFalse(HasDot(DotElement.Ice), "냉기 도트가 만료되지 않았다");
             for (int i = 0; i < 3; i++) yield return null;
 
-            Assert.IsTrue(HasDot(DotFlavor.Bleed), "출혈이 아직 돌고 있어야 회귀 구간이 성립한다");
+            Assert.IsTrue(HasDot(DotElement.Bleed), "출혈이 아직 돌고 있어야 회귀 구간이 성립한다");
             Assert.IsFalse(AuraLit(StatusFxKind.Ice),
                 "냉기 도트가 끝났는데 냉기 오라가 남아 있다 — 종류가 도트가 아닌 곳에서 오고 있다");
             Assert.IsTrue(AuraLit(StatusFxKind.Bleed), "출혈 오라는 유지돼야 한다");
         }
 
-        private bool HasDot(DotFlavor flavor)
+        private bool HasDot(DotElement element)
         {
             if (!_em.HasBuffer<DotEffect>(_victim)) return false;
             var b = _em.GetBuffer<DotEffect>(_victim, isReadOnly: true);
             for (int i = 0; i < b.Length; i++)
-                if (b[i].flavor == flavor && b[i].remainingTime > 0f) return true;
+                if (b[i].element == element && b[i].remainingTime > 0f) return true;
             return false;
         }
     }

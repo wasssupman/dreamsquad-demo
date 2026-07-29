@@ -108,8 +108,9 @@ namespace Wassup.Battle.Effects
                             // 통과한다 — boss-jjangssen unit 3 의 "스택 임계 DoT 는 통한다" 유지.
                             effect = new DotEffect
                             {
-                                // 어느 스택이 만든 도트인지 실어 보낸다 — 병합 키이자 오라 소스.
-                                flavor        = DotFlavorMap.FromStack(kind),
+                                // 병합 키(origin·element) 와 오라 소스(element)를 실어 보낸다.
+                                origin        = DotOrigin.Stack,
+                                element       = DotElementMap.FromStack(kind),
                                 // tickInterval 0 = 연속(scalar 는 DPS) / >0 = 이산(scalar 는 틱당 피해).
                                 // 0 이면 매 프레임 지급이라 데미지 숫자가 초당 수십 번 튄다.
                                 scalar        = rule.magnitude,

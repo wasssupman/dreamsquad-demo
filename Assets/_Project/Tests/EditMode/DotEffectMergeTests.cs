@@ -6,7 +6,7 @@ namespace Wassup.Tests.EditMode
 {
     // dot-effect-extraction unit 0 — 지속 피해 병합 정책을 표로 고정한다.
     //
-    // 핵심 계약: **맛이 다르면 슬롯이 갈린다.** 한 버퍼·한 슬롯이던 시절엔 나중에 온 도트가
+    // 핵심 계약: **키(origin, element)가 다르면 슬롯이 갈린다.** 한 슬롯이던 시절엔 나중에 온 도트가
     // scalar·tickInterval 을 덮어쓰고 remainingTime 만 max 로 남아, 출혈 중인 적이 화염 장판을
     // 밟으면 장판을 나가도 장판 요율로 4.85초를 더 타는 과피해가 났다.
     public class DotEffectMergeTests
@@ -33,24 +33,25 @@ namespace Wassup.Tests.EditMode
             DotEffectMerge.Apply(ref buffer, incoming);
         }
 
+        // 출혈 = 스택 임계 파생 / 화염 = 해저드 장판. 축 두 개가 다 다른 실제 조합.
         private static DotEffect Bleed => new DotEffect
-        { flavor = DotFlavor.Bleed, scalar = 5f, tickInterval = 0.5f, remainingTime = 4.85f };
+        { origin = DotOrigin.Stack, element = DotElement.Bleed, scalar = 5f, tickInterval = 0.5f, remainingTime = 4.85f };
 
         private static DotEffect Fire => new DotEffect
-        { flavor = DotFlavor.Fire, scalar = 10f, tickInterval = 0.25f, remainingTime = 0.2f };
+        { origin = DotOrigin.Zone, element = DotElement.Fire, scalar = 10f, tickInterval = 0.25f, remainingTime = 0.2f };
 
         [Test]
-        public void DifferentFlavors_GetSeparateSlots()
+        public void DifferentKeys_GetSeparateSlots()
         {
             Apply(Bleed);
             Apply(Fire);
 
             var buffer = _em.GetBuffer<DotEffect>(_e);
-            Assert.AreEqual(2, buffer.Length, "맛이 다르면 슬롯이 갈려야 한다");
+            Assert.AreEqual(2, buffer.Length, "키가 다르면 슬롯이 갈려야 한다");
 
             // 각자 자기 값을 온전히 유지한다 — 이것이 과피해가 사라지는 이유다.
-            var bleed = buffer[0].flavor == DotFlavor.Bleed ? buffer[0] : buffer[1];
-            var fire  = buffer[0].flavor == DotFlavor.Fire  ? buffer[0] : buffer[1];
+            var bleed = buffer[0].element == DotElement.Bleed ? buffer[0] : buffer[1];
+            var fire  = buffer[0].element == DotElement.Fire  ? buffer[0] : buffer[1];
             Assert.AreEqual(5f, bleed.scalar, 1e-4f);
             Assert.AreEqual(0.5f, bleed.tickInterval, 1e-4f);
             Assert.AreEqual(4.85f, bleed.remainingTime, 1e-4f);
@@ -60,7 +61,7 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
-        public void SameFlavor_Merges_WithMaxRemaining()
+        public void SameKey_Merges_WithMaxRemaining()
         {
             Apply(Bleed);
             var refreshed = Bleed;
@@ -73,11 +74,25 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
-        public void NoneFlavor_StillMergesTogether()
+        public void SameElement_DifferentOrigin_GetsSeparateSlot()
         {
-            // 미분류끼리는 계속 병합된다 — 이관 전 동작 유지(버스터즈 배치 도트 등).
-            Apply(new DotEffect { flavor = DotFlavor.None, scalar = 7f, tickInterval = 0.2f, remainingTime = 2f });
-            Apply(new DotEffect { flavor = DotFlavor.None, scalar = 3f, tickInterval = 0.2f, remainingTime = 1f });
+            // 설계의 핵심: 장판이 준 화염과 화염 스택 임계가 터뜨린 화염은 **그림은 같지만
+            // 다른 파이프라인**이라 서로를 덮으면 안 된다. element 만으로 키를 잡으면 여기서
+            // 다시 과피해가 난다.
+            Apply(Fire);                                   // Zone · Fire
+            Apply(new DotEffect { origin = DotOrigin.Stack, element = DotElement.Fire,
+                                  scalar = 4f, tickInterval = 1f, remainingTime = 3f });
+
+            var buffer = _em.GetBuffer<DotEffect>(_e);
+            Assert.AreEqual(2, buffer.Length, "같은 원소라도 origin 이 다르면 각자 탄다");
+        }
+
+        [Test]
+        public void SameOrigin_NoElement_MergesTogether()
+        {
+            // 원소 없는 배치 도트(버스터즈)끼리는 한 슬롯 — 이관 전 동작 유지.
+            Apply(new DotEffect { origin = DotOrigin.OnPlace, scalar = 7f, tickInterval = 0.2f, remainingTime = 2f });
+            Apply(new DotEffect { origin = DotOrigin.OnPlace, scalar = 3f, tickInterval = 0.2f, remainingTime = 1f });
 
             var buffer = _em.GetBuffer<DotEffect>(_e);
             Assert.AreEqual(1, buffer.Length);

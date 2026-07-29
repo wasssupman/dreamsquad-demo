@@ -19,7 +19,7 @@ namespace Wassup.Battle.Effects
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            // 1. 부여 — 큐를 드레인해 flavor 별로 병합한다.
+            // 1. 부여 — 큐를 드레인해 (origin, element) 별로 병합한다.
             if (SystemAPI.TryGetSingleton<DotApplyEventsSingleton>(out var applyEvents))
             {
                 var queue = applyEvents.queue;

@@ -24,7 +24,8 @@ namespace Wassup.Data
         // unit-status-fx 6 — Stun(CcKind.Stun, 적·아군 공통 action-lock). 소스 = CcEffect 버퍼.
         // 수면(Zz)과 시각 구분용(스턴탄 등). Sleep 아이콘과 동일 경로.
         Stun = 6,
-        // dot-effect-extraction unit 1 — **지속 피해 오라**. 소스 = `DotEffect.flavor`.
+        // dot-effect-extraction unit 1 — **지속 피해 오라**. 소스 = `DotEffect.element`
+        // (`origin` 은 보지 않는다 — 장판 화염이든 스택 폭발이든 그림은 같은 화염이다).
         // 점등 의미는 "이 종류의 지속 피해가 돌고 있다" 이지 "스택이 쌓여 있다" 가 아니다.
         // 초판은 스택 슬롯을 소스로 삼아 이름이 `FireStack` 계열이었는데, 실제로 화염·독 도트를
         // 만드는 것은 **해저드 장판**(FireCaster·PoisonCaster)이고 이들은 스택을 부여하지 않는다.
