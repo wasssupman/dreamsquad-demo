@@ -1,5 +1,7 @@
 # Defense Tournament — 빠른 기획 현황 요약
 
+> **역사 보존 배너 — 2026-05-08 snapshot.** 이 빠른 요약의 draft·flow·수치는 현재 구현과 다를 수 있다. 2026-07-29 기준 실제 흐름은 [`production-transition/demo-baseline.md`](../production-transition/demo-baseline.md)를 우선한다.
+>
 > 기준일: 2026-05-08  
 > 상세본: `docs/milestone/gameplay-design-summary.md`  
 > 용도: 상세 기획서 작성 전 현재 구현/미결정 빠른 확인

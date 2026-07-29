@@ -267,7 +267,7 @@ first-session-tutorial units 10~12 와 무관하다.
 - **defender-side 오라 카드** [S] · `AllyMoveSpeedAura` 는 arm·오라 연출 모두 진영/kind 중립 — 카드 데이터 선언만으로 성립. 카드 taxonomy/밸런스는 product 결정. (nightmare-whip-aura)
 - **채찍질 전용 연출 고도화** [S] · 현 WindAura 재사용 → 전용 채찍 스윙/버프 링 저작(unity-vfx-authoring). 발동-순간 원샷 arm(`payload.projectile`)도 SO 게이트로 잔존해 조합 가능. (nightmare-whip-aura)
 - **수치 실측 튜닝** [S] · 펄스 0.5s/TTL 0.6s/+20%/3타일/오라 scale 1.2 — 전부 SO, 밸런스 실측 후 조정. (nightmare-whip-aura)
-- nightmare-catcher 잔여 후속(기본공격 원거리화 · 위협 감쇠 · GA hitPrefab 전수 정비 · 폭격 피격 체감)은 `docs/spec/nightmare-catcher/README.md` 후속 후보 참조. **보스 어그로 면역은 `docs/spec/boss-jjangssen/2_boss_immunity.md` 로 승격(2026-07-29)** — 부착 1곳 차단 + 직접 행동정지·넉백 면역까지, `BossTag` 전체 적용(나이트메어 포함).
+- nightmare-catcher 잔여 후속(기본공격 원거리화 · 위협 감쇠 · GA hitPrefab 전수 정비 · 폭격 피격 체감)은 `docs/spec/nightmare-catcher/README.md` 후속 후보 참조. **보스 어그로 면역은 `docs/spec/boss-jjangssen/3_boss_immunity.md` 로 승격(2026-07-29)** — 부착 1곳 차단 + 직접 행동정지·넉백 면역까지, `BossTag` 전체 적용(나이트메어 포함).
 
 #### 보스 방어유닛 지향 이동 (헌터 재구현, 2026-07-11)
 
@@ -445,8 +445,8 @@ board-visualization spec 자체는 ROI 부족으로 wrap 종료. 진단/실험�
 
 #### 워크플로우 재현성 — 후속 (workflow-reproducibility)
 
-- **문서 수명주기 정리** [S] · PRD/TRD 는 폐기된 "프로토타입/Phase" 프레임을 현재형으로 서술하는 legacy — staleness 배너 + supersession 포인터(현재 진실원=CLAUDE.md+spec)로 정직하게 동결.
-- **ADR 로그** [M] · 횡단 결정(TimeManager·구조적 결정론·ECS 맥락 규칙)을 `docs/decisions/` 에 동결·번호·supersede 규칙으로. `docs/reference/lessons/` 와 합류 가능.
+- **문서 수명주기 정리** [S] · [`docs/production-transition/`](../production-transition/README.md) 로 승격(2026-07-29) — PRD/TRD·milestone 에 역사 보존 배너를 두고, 기준선·출처 지도·supersession을 별도 관리한다.
+- **ADR 후보 로그** [M] · [`adr-candidates.md`](../production-transition/architecture/adr-candidates.md) 로 승격(2026-07-29) — 현재는 `ADR-CAND-###` 질문만 관리하며, 승인된 결정이 생길 때만 별도 공식 ADR과 `docs/decisions/`를 만든다.
 - **deepinit ↔ AGENTS symlink 충돌 정책** [S] · deepinit 재실행 시 AGENTS.md 를 실제 파일로 재생성해 symlink 이 풀림 — 재적용 자동화 또는 deepinit 출력 위치 변경.
 - **첫 실전 클론 체크리스트 완주 확인** [S] · 새 머신/팀원 첫 클론에서 루트 README 부트스트랩 체크리스트(훅 승인·Unity 첫 Play) 실전 검증.
 - **thick 하네스 표준화** [S] · OMC/superpowers 를 `enabledPlugins`+`extraKnownMarketplaces` 로 커밋해 팀 동일 오케스트레이션(사용자 결정 시).

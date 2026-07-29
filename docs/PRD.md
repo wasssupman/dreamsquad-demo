@@ -1,5 +1,7 @@
 # PRD — Defense Tournament (Initial Vertical Slice)
 
+> **역사 보존 배너 — Draft.** 이 문서는 데모의 초기 가설과 범위를 기록한 문서이며 정규 프로젝트 PRD가 아니다. 현재 구현 기준선과 정규 프로젝트 PRD 입력은 [`production-transition/`](production-transition/README.md)에서 관리한다. 본문의 과거 의도는 재작성하지 않는다.
+>
 > 본 문서는 코어/상세/FURTHERMORE/CHECKLIST에 정의된 전체 게임 중, **현재 단계에서 구현/검증할 범위만**을 확정한다. 풀 게임 스펙이 아니다. 본 게임의 상위 시스템(세션/에고/컬렉션덱/BM 등)은 이 문서에서 의도적으로 제외한다.
 
 ---
