@@ -45,3 +45,5 @@ unit 2에서 연결한다.
 - 각 carrier가 스냅샷 origin/maxDistance와 min·center·max 방향을 보존한다.
 - 기존 Entity/Cell emitter 통합 테스트가 모두 통과한다.
 - ECS 리뷰에서 신규 구조 변경·채널·managed hot-path·맥락 쓰기 위반이 없다.
+
+> 사용자 확인: 2026-07-30 · 구현 커밋 `5e7c3778`
