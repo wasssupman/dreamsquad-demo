@@ -2,7 +2,7 @@
 
 ## Commit
 
-- (커밋 예정) `feat(drag-cancel-affordance): units 0~2 — 배치/카드 드래그 취소 수단`
+- `c377b60f` feat(drag-cancel-affordance): units 0~2 — 배치/카드 드래그 취소 수단
 
 ## Implemented
 
