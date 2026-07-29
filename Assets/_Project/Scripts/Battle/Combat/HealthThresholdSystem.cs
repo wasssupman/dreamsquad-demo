@@ -47,6 +47,10 @@ namespace Wassup.Battle.Combat
         {
             var transformLookup = SystemAPI.GetComponentLookup<LocalTransform>(isReadOnly: true);
             var threatLookup = SystemAPI.GetBufferLookup<ThreatEntry>(isReadOnly: false);
+            // boss-jjangssen unit 2 — SelfTileAoe 캐리어의 피해 풀 진영을 host 에서 도출한다.
+            // 기본값이 Enemy 라 그냥 두면 **보스의 폭발이 자기 진영(적)을 때린다**.
+            // Units 소유 태그를 Combat 이 RO 로 읽는 것 — 이 시스템의 DefenderUnitTag 쿼리 선례와 동일.
+            var factionLookup = SystemAPI.GetComponentLookup<FactionTag>(isReadOnly: true);
 
             // 1. Threat drain — accumulate this frame's attributed hits. A victim
             // destroyed since enqueue simply drops its events (HasBuffer guard).
@@ -85,8 +89,13 @@ namespace Wassup.Battle.Combat
             var ecb = new EntityCommandBuffer(Allocator.Temp);
 
             // 2. Threshold eval + blink resolve.
+            // boss-jjangssen unit 2 — 죽은 유닛은 새 발동을 시작하지 않는다. DeadTag 는
+            // DamageApplicationSystem 이 자기 OnUpdate 끝에 playback 하므로 **죽는 프레임에 이미
+            // 붙어 있고**, 오버킬로 여러 경계를 한 번에 관통하면 시체가 마지막 경계에서 폭발/도약한다.
+            // BossPeriodicTriggerSystem 이 같은 이유로 같은 제외를 쓴다.
             foreach (var (slotsRef, health, transform, entity) in
                      SystemAPI.Query<DynamicBuffer<DcTriggerSlot>, RefRO<Health>, RefRO<LocalTransform>>()
+                              .WithNone<Wassup.Battle.Units.DeadTag>()
                               .WithEntityAccess())
             {
                 var slots = slotsRef; // CS1654 회피 — 뷰 struct 로컬 복사
@@ -178,6 +187,14 @@ namespace Wassup.Battle.Combat
                                 dataIndex = slot.projectileDataIndex,
                                 visualScale = slot.visualScale > 0f ? slot.visualScale : 1f,
                                 owner = entity,
+                                // boss-jjangssen unit 2 — 피해 풀 진영을 host 에서 도출. 적 host(보스)면
+                                // 방어유닛을, 그 외(디펜더 진동갑주)는 기존대로 적을 때린다. FactionTag
+                                // 부재 시 Enemy 유지 → 기존 디펜더 경로 byte-identical.
+                                targetFaction =
+                                    factionLookup.HasComponent(entity)
+                                    && factionLookup[entity].value == Faction.Enemy
+                                        ? Projectile.ProjectileTargetFaction.Defender
+                                        : Projectile.ProjectileTargetFaction.Enemy,
                             });
                             ecb.AddComponent<Projectile.ProjectileRequestCarrier>(carrier);
                         }

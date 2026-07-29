@@ -6074,13 +6074,27 @@ namespace Wassup.Bridge
                     slot.patternIndex = patternSlots.Length - 1;
                 }
                 else if ((m.payload.kind == Wassup.Data.DcPayloadKind.SelfBlink ||
-                          m.payload.kind == Wassup.Data.DcPayloadKind.AllyMoveSpeedAura) &&
+                          m.payload.kind == Wassup.Data.DcPayloadKind.AllyMoveSpeedAura ||
+                          m.payload.kind == Wassup.Data.DcPayloadKind.SelfTileAoe) &&
                          m.payload.projectile != null)
                 {
                     // rev 3 (실플레이 피드백) — blink 연출: hitPrefab 만 소비하는
                     // 퍼프 ProjectileData(투사체로는 안 뜀). null 이면 무연출.
                     // nightmare-whip-aura unit 3 — whip 펄스 연출도 같은 경로.
+                    // boss-jjangssen unit 2 — SelfTileAoe(진동갑주)도 이 경로가 필요하다.
+                    // blink/aura 는 연출만 잃지만 SelfTileAoe 는 **폭발 자체가 사라진다**:
+                    // 폭발이 ProjectileSpawnRequest 하나로 표현되고 드레인이 dataIndex<0 이면
+                    // 요청을 통째로 버리기 때문에 데미지까지 안 나간다.
                     slot.projectileDataIndex = GetOrCreateProjectileDataIndex(m.payload.projectile);
+                }
+                else if (m.payload.kind == Wassup.Data.DcPayloadKind.SelfTileAoe)
+                {
+                    // boss-jjangssen unit 2 — 위 분기에 안 걸렸다 = projectile 미지정.
+                    // 조용히 inert 가 되면 "왜 폭발이 없는지" 를 영영 알 수 없으므로 loud 하게
+                    // 거절한다(bake 의 기존 loud 거절 선례와 동일 표현). defender 슬롯 경로도
+                    // 같은 규칙을 쓴다.
+                    Debug.LogWarning($"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: SelfTileAoe 에 ProjectileData(AOE view) 가 없어 폭발 요청이 드롭된다 — skipped. payload.projectile 을 지정하라.");
+                    continue;
                 }
                 // nightmare-whip-aura unit 3 rev 2 — 메커닉 선언 부착 오라(kind 무관):
                 // 메커닉 데이터가 auraPrefab 을 선언하면 드림캐쳐 프레젠테이션 풀에

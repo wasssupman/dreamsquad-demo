@@ -62,5 +62,25 @@ MonoBehaviour:
     color: {r: 1, g: 1, b: 1, a: 0}
   visualOffset: {x: 0, y: 0, z: 0}
   awakeningReward: 5
-  nightmareMechanics: []
+  nightmareMechanics:
+  - trigger:
+      kind: 5
+      period: 0
+      periodSeconds: 0
+      fraction: 0.2
+      gate: 0
+      gateSubject: 0
+      gateValue: 0
+    payload:
+      kind: 2
+      magnitude: 60
+      projectile: {fileID: 11400000, guid: 55b09b910dda5244fac79fa2910d66ec, type: 2}
+      tileRange: 2
+      duration: 0
+      auraPrefab: {fileID: 0}
+      auraScale: 0
+      ccKind: 0
+      stackKind: 0
+      buffStat: 0
+      pattern: {fileID: 0}
   killScore: 2000
