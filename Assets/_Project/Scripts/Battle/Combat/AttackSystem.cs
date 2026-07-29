@@ -1180,7 +1180,7 @@ namespace Wassup.Battle.Combat
                                                     target         = hitTarget,
                                                     kind           = o.stackKind,
                                                     countDelta     = (byte)math.max(1f, o.magnitude),
-                                                    maxStack       = o.stackMaxStack > 0 ? o.stackMaxStack : (byte)5,
+                                                    maxStack       = o.stackMaxStack > 0 ? o.stackMaxStack : Wassup.Data.StackModifierSO.DefaultMaxStack,
                                                     perAppDuration = o.duration,
                                                     source         = attackerEntity,
                                                 });
@@ -1406,7 +1406,7 @@ namespace Wassup.Battle.Combat
                                         // = silent no-op). review B MED1 — maxStack 은 카드 authorable
                                         // (slot.tileRange), 미설정(0) 시에만 기존 producer 선례 5.
                                         countDelta     = (byte)math.clamp(slot.magnitude, 1f, 255f),
-                                        maxStack       = slot.tileRange > 0 ? (byte)math.min(slot.tileRange, 255) : (byte)5,
+                                        maxStack       = slot.tileRange > 0 ? (byte)math.min(slot.tileRange, 255) : Wassup.Data.StackModifierSO.DefaultMaxStack,
                                         perAppDuration = slot.duration,
                                         source         = attackerEntity,
                                     });

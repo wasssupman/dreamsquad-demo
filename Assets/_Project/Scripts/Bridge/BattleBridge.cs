@@ -191,6 +191,7 @@ namespace Wassup.Bridge
         // unit-buff-debuff-aura 1 — 버프/디버프 오라 소스. StatModifierSlot 버퍼(Effects 소유)는 읽기만.
         // 임시(유한 지속) 슬롯만 판정 — 영구 baseline(로드아웃/시너지/드림캐쳐)은 classifier 가 제외.
         private EntityQuery _modifierSlotQuery;
+        private bool _modifierSlotQueryCreated;
         // 전투 스택 오라(Bleed/Fire/Ice/Poison) 소스. 적·아군 공통이라 태그 게이트 없음.
         private EntityQuery _stackSlotQuery;
         private bool _stackSlotQueryCreated;
@@ -198,9 +199,20 @@ namespace Wassup.Bridge
         // 먼저 사라진다(Consume 이 스택을 0으로 되돌리고 슬롯도 perAppDuration 이 지나면 만료 —
         // 출혈은 슬롯 2s vs 도트 4.85s). 그래서 살아 있는 슬롯을 볼 때 종류를 기억해 두고,
         // 오라 점등은 DoT 진행 여부로만 판단한다. DoT 가 끝나면 지운다.
-        private readonly Dictionary<Entity, Wassup.Data.StatusFxKind> _stackAuraLatch = new();
+        //
+        // **값이 아니라 비트마스크인 이유**: 한 대상에 출혈·화염·냉기·중독이 **동시에** 쌓일 수
+        // 있고 각각 오라를 띄워야 한다(StackModifierSlot 은 kind 별로 분리된 슬롯이다).
+        // 종류 하나만 들면 버퍼 순서상 마지막 것이 앞을 덮어써 오라가 1개로 줄어든다.
+        private readonly Dictionary<Entity, int> _stackAuraLatch = new();
         private readonly List<Entity> _stackAuraLatchDead = new();
-        private bool _modifierSlotQueryCreated;
+        // 비트마스크 ↔ 오라 종류 대응표. StatusFxKind 값(7~10)을 비트 자리로 쓴다.
+        private static readonly Wassup.Data.StatusFxKind[] StackAuraFxKinds =
+        {
+            Wassup.Data.StatusFxKind.Bleed,
+            Wassup.Data.StatusFxKind.FireStack,
+            Wassup.Data.StatusFxKind.IceStack,
+            Wassup.Data.StatusFxKind.PoisonStack,
+        };
         // season-gimmick-overwork unit 6 — 레드불 픽업 뷰 조정용 쿼리 (Pickup 은 Effects 소유, 읽기만).
         private EntityQuery _pickupViewQuery;
         private bool _pickupViewQueryCreated;
@@ -677,8 +689,12 @@ namespace Wassup.Bridge
             if (_modifierSlotQueryCreated)
             {
                 _modifierSlotQuery.Dispose();
-                if (_stackSlotQueryCreated) { _stackSlotQuery.Dispose(); _stackSlotQueryCreated = false; }
                 _modifierSlotQueryCreated = false;
+            }
+            if (_stackSlotQueryCreated)
+            {
+                _stackSlotQuery.Dispose();
+                _stackSlotQueryCreated = false;
             }
             if (_pickupViewQueryCreated)
             {
@@ -2418,13 +2434,20 @@ namespace Wassup.Bridge
                     {
                         var e = stackEntities[i];
 
+                        // 살아 있는 슬롯의 종류를 누적(OR)한다. 슬롯이 먼저 죽어도 도트가 도는
+                        // 동안은 그 종류를 계속 들고 있어야 오라가 안 꺼진다.
+                        int seenMask = 0;
                         var stacks = _em.GetBuffer<Wassup.Battle.Effects.StackModifierSlot>(e, isReadOnly: true);
                         for (int j = 0; j < stacks.Length; j++)
                         {
                             if (stacks[j].header.remaining <= 0f) continue;
                             var seen = StackAuraKind(stacks[j].kind);
-                            if (seen.HasValue) _stackAuraLatch[e] = seen.Value;
+                            if (seen.HasValue) seenMask |= 1 << (int)seen.Value;
                         }
+                        if (seenMask != 0)
+                            _stackAuraLatch[e] = _stackAuraLatch.TryGetValue(e, out var prev)
+                                ? prev | seenMask
+                                : seenMask;
 
                         bool dotRunning = false;
                         var ccs = _em.GetBuffer<Wassup.Battle.Effects.CcEffect>(e, isReadOnly: true);
@@ -2433,10 +2456,12 @@ namespace Wassup.Bridge
                             { dotRunning = true; break; }
                         if (!dotRunning) { _stackAuraLatch.Remove(e); continue; }
 
-                        if (!_stackAuraLatch.TryGetValue(e, out var fx)) continue;
+                        if (!_stackAuraLatch.TryGetValue(e, out var latched)) continue;
                         var anchor = ResolveUnitViewTransform(e);
                         if (anchor == null) continue;
-                        statusFxSpawner.Ensure(e, fx, anchor);
+                        for (int k = 0; k < StackAuraFxKinds.Length; k++)
+                            if ((latched & (1 << (int)StackAuraFxKinds[k])) != 0)
+                                statusFxSpawner.Ensure(e, StackAuraFxKinds[k], anchor);
                     }
                 }
                 finally

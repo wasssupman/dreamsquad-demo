@@ -74,10 +74,10 @@ namespace Wassup.Tests.PlayMode
             var latchField = typeof(BattleBridge)
                 .GetField("_stackAuraLatch", BindingFlags.NonPublic | BindingFlags.Instance);
 
-            bool AuraLit()
+            bool AuraLit(StatusFxKind kind)
             {
-                var latch = (IDictionary<Entity, StatusFxKind>)latchField.GetValue(bridge);
-                return latch.TryGetValue(victim, out var k) && k == StatusFxKind.Bleed;
+                var latch = (IDictionary<Entity, int>)latchField.GetValue(bridge);
+                return latch.TryGetValue(victim, out var mask) && (mask & (1 << (int)kind)) != 0;
             }
             bool DotRunning()
             {
@@ -100,7 +100,20 @@ namespace Wassup.Tests.PlayMode
             while (t < 6f && !DotRunning()) { t += Time.deltaTime; yield return null; }
             Assert.IsTrue(DotRunning(), "출혈 임계가 발동하지 않았다");
             yield return null; // reconcile 한 프레임
-            Assert.IsTrue(AuraLit(), "발동 직후 오라 종류가 식별되지 않았다");
+            Assert.IsTrue(AuraLit(StatusFxKind.Bleed), "발동 직후 오라 종류가 식별되지 않았다");
+
+            // 1-b) 동시 스택: 출혈 도트가 도는 중에 화염 슬롯을 얹는다. 래치가 종류 하나만
+            // 들면 뒤에 온 화염이 출혈을 덮어써 오라가 1개로 줄어든다(2026-07-29 회귀).
+            em.GetBuffer<StackModifierSlot>(victim).Add(new StackModifierSlot
+            {
+                header = new ModifierHeader { remaining = 3f },
+                kind = StackKind.Fire,
+                stackCount = 1,
+                maxStack = 5,
+            });
+            yield return null;
+            Assert.IsTrue(AuraLit(StatusFxKind.FireStack), "화염 슬롯이 래치에 안 잡혔다");
+            Assert.IsTrue(AuraLit(StatusFxKind.Bleed), "화염이 얹히자 출혈 오라가 덮여 사라졌다");
 
             // 2) 공격자를 제거해 스택 재적용을 끊는다 → 슬롯은 만료되고 DoT 만 남는다.
             em.DestroyEntity(defender);
@@ -113,7 +126,7 @@ namespace Wassup.Tests.PlayMode
                 if (!SlotLive())
                 {
                     sawSlotGoneWhileDotRuns = true;
-                    Assert.IsTrue(AuraLit(),
+                    Assert.IsTrue(AuraLit(StatusFxKind.Bleed),
                         $"슬롯이 사라진 뒤 DoT 가 도는 중인데 오라 종류 식별이 끊겼다 (경과 {elapsed:F2}s)");
                 }
                 elapsed += Time.deltaTime;
@@ -124,7 +137,7 @@ namespace Wassup.Tests.PlayMode
 
             // 4) DoT 가 끝나면 꺼진다(래치가 영구 점등이 되지 않는다).
             for (int i = 0; i < 3; i++) yield return null;
-            Assert.IsFalse(AuraLit(), "DoT 종료 후에도 래치가 남아 있다(영구 점등)");
+            Assert.IsFalse(AuraLit(StatusFxKind.Bleed), "DoT 종료 후에도 래치가 남아 있다(영구 점등)");
 
             em.DestroyEntity(victim);
         }
