@@ -721,6 +721,11 @@ namespace Wassup.UI
         public event System.Action InteractionEnded;
         public event System.Action FocusCleared;
 
+        // selection-hand-attach unit 8 — 카드 사용 결과 쓸 수 있는 카드가 0장이 됐다(자동 닫힘
+        // 확정). 구독자(DcInspectController)가 선택까지 풀어 기본 진행 상태로 되돌린다.
+        // 발화 지점은 OnCardUsed 안 하나뿐 — 그래서 "사용이 실제로 있었다" 가 신호에 내포된다.
+        public event System.Action UsableCardsExhausted;
+
         private void RaiseFocusCleared() => FocusCleared?.Invoke();
 
         // Battle/Placement 이탈 → 강제 클로즈 (critic H2). Placement 재진입 리셋은
@@ -777,6 +782,15 @@ namespace Wassup.UI
                         if (hand[h].entryId == slot.entryId) { still = true; break; }
                     if (!still) BindEmpty(slot); // 소모된 카드 재표시 금지(고스트가 이미 날아감)
                 }
+                // selection-hand-attach unit 8 — 카드를 **쓴 결과** 더 쓸 게 없어졌다 → 선택까지
+                // 풀어 기본 진행 상태로 돌린다(편의성, 사용자 결정 2026-07-29). 이 신호는
+                // OnCardUsed 안에서만 나오므로 "부착을 1회라도 했을 때만" 조건이 자동 충족된다
+                // (게이지 0 인 채 선택만 한 경우엔 발화하지 않아 손패가 열린 채 남는다 — 의도).
+                //
+                // 발화 위치가 계약이다: BindEmpty **뒤**(침강이 소모된 카드를 다시 보이면 안 된다)
+                // + Close() **앞**(뒤에 두면 Close 의 FocusCleared 가 리티클을 재주장한 직후
+                // 구독자가 선택을 닫아 1프레임 깜빡임 + lease churn 이 생긴다).
+                UsableCardsExhausted?.Invoke();
                 Close();
                 return;
             }

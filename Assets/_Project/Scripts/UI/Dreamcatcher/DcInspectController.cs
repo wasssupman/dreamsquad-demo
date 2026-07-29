@@ -90,6 +90,8 @@ namespace Wassup.UI
                 // unit 4 — 리티클 재주장 트리거 2개(슬롯 종료 깔때기 + 뷰의 하드 클리어).
                 handView.InteractionEnded += OnFocusSessionReleased;
                 handView.FocusCleared += OnFocusSessionReleased;
+                // unit 8 — 부착 후 쓸 카드가 바닥나면 선택도 풀어 기본 진행으로 되돌린다.
+                handView.UsableCardsExhausted += OnUsableCardsExhausted;
             }
         }
 
@@ -102,6 +104,7 @@ namespace Wassup.UI
                 handView.BoardTapped -= OnBoardTapped;
                 handView.InteractionEnded -= OnFocusSessionReleased;
                 handView.FocusCleared -= OnFocusSessionReleased;
+                handView.UsableCardsExhausted -= OnUsableCardsExhausted;
             }
             Close(); // lease 해제 — 비활성화가 슬로우를 남기면 안 된다
         }
@@ -338,6 +341,12 @@ namespace Wassup.UI
                 focus.End();
             }
         }
+
+        // selection-hand-attach unit 8 — 부착으로 게이지를 다 쓴 순간(손패 자동 닫힘 확정).
+        // 선택을 유지하면 줌+슬로모 상태로 할 일 없이 남으므로 여기서 함께 풀어 기본 진행으로
+        // 되돌린다(계약 7 의 유일한 예외 — 손패 단독 닫힘이 선택을 데려가는 경우).
+        // 미선택(항아리 단독 오픈)에서 게이지가 바닥난 경우엔 Close() 가 no-op 이라 무해하다.
+        private void OnUsableCardsExhausted() => Close();
 
         // selection-hand-attach unit 4 — 프레젠터 세션이 남에 의해 끝났다. 선택이 살아 있으면
         // 리티클을 1회 재주장한다(폴링 금지 — BeginSelection 은 매 프레임 부르면 pop 이 계속
