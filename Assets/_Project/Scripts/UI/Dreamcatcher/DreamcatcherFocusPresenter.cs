@@ -446,7 +446,18 @@ namespace Wassup.UI
 
         private void UpdateCallout(float dt)
         {
-            bool show = _active && _hasLockRect && _kind != AimKind.DimOnly;
+            // selection-hand-attach unit 12 — 선택(Selected)에서는 콜아웃을 띄우지 않는다.
+            // 이름·부착수는 좌측 상세 패널(unit 11)이 더 크게 나르므로 중복이고, 이것 하나로
+            // 리티클 위 겹침이 사라진다. 리티클은 "이 유닛이 대상"만 지시한다(README 계약 11).
+            //
+            // **조준 계열은 그대로 유지한다** — 그쪽 콜아웃은 손가락에 가린 대상의 정체를
+            // 알리는 다른 역할이다(attach-lockon: "콜아웃이 손가락 밖 정체 주신호").
+            // 선택은 손가락이 이미 떠난 상태라 그 역할이 없다. 둘을 한 규칙으로 묶지 말 것.
+            //
+            // _calloutTarget=0 으로 내려 기존 페이드로 사라지게 한다 — 노드를 비활성화하거나
+            // 생성을 건너뛰면 조준으로 전환될 때 되살릴 경로가 없어진다.
+            bool show = _active && _hasLockRect
+                && _kind != AimKind.DimOnly && _kind != AimKind.Selected;
             if (show)
             {
                 // content — 방어수 부착/캐스트는 유닛 정체(portrait+name+X/3), 적 표식은
