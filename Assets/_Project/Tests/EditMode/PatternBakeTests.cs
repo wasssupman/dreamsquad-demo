@@ -37,6 +37,9 @@ namespace Wassup.Tests.EditMode
             _world = new World("PatternBakeTests");
 
             _go = new GameObject("BattleBridge_PatternBake");
+            // inactive 상태에서 붙여 Awake/씬 의존 validation 을 실행하지 않는다.
+            // 이 fixture 는 필요한 bake 필드만 아래 reflection 으로 주입한다.
+            _go.SetActive(false);
             _bridge = _go.AddComponent<BattleBridge>();
             SetField(_bridge, "_world", _world);
             SetField(_bridge, "_em", _world.EntityManager);
@@ -65,7 +68,12 @@ namespace Wassup.Tests.EditMode
             p.id = id;
             p.barrel = _barrel;
             p.damage = damage;
-            p.shotCount = 1;
+            p.minAngleDeg = 0f;
+            p.maxAngleDeg = 0f;
+            p.shots = new[]
+            {
+                new ProjectileShotStep { directionT = 0.5f, intervalAfterPreviousSec = 0f },
+            };
             return p;
         }
 
@@ -126,6 +134,8 @@ namespace Wassup.Tests.EditMode
 
             Assert.AreEqual(40f, pats[0].spec.damage);
             Assert.AreEqual(150f, pats[1].spec.damage);
+            Assert.AreEqual(1, pats[0].spec.shots.Length);
+            Assert.AreEqual(0.5f, pats[0].spec.shots[0].directionT);
             Assert.AreEqual(0, pats[0].fireCountBase, "영속 카운터는 0 에서 시작한다");
 
             Object.DestroyImmediate(unitType);
@@ -184,6 +194,68 @@ namespace Wassup.Tests.EditMode
 
             Object.DestroyImmediate(broken);
             Object.DestroyImmediate(unitType);
+        }
+
+        [TestCase("empty")]
+        [TestCase("over_capacity")]
+        [TestCase("reversed_angles")]
+        public void Bake_InvalidShotSequence_IsRejectedLoudly(string invalidCase)
+        {
+            switch (invalidCase)
+            {
+                case "empty":
+                    _patternA.shots = new ProjectileShotStep[0];
+                    break;
+                case "over_capacity":
+                    _patternA.shots = new ProjectileShotStep[ProjectilePatternData.MaxShotCount + 1];
+                    break;
+                case "reversed_angles":
+                    _patternA.minAngleDeg = 20f;
+                    _patternA.maxAngleDeg = -20f;
+                    break;
+            }
+
+            var unitType = ScriptableObject.CreateInstance<AttackUnitData>();
+            unitType.displayName = "InvalidSequenceBoss";
+            unitType.health = 100f;
+            unitType.nightmareMechanics = new[] { PatternMechanic(_patternA, 1f) };
+
+            var em = _world.EntityManager;
+            var entity = em.CreateEntity();
+
+            LogAssert.Expect(LogType.Warning,
+                new System.Text.RegularExpressions.Regex("invalid projectile shot sequence"));
+            InvokeBake(entity, unitType);
+
+            Assert.AreEqual(0, em.GetBuffer<DcTriggerSlot>(entity).Length);
+            Assert.AreEqual(0, em.GetBuffer<PatternSlot>(entity).Length);
+
+            Object.DestroyImmediate(unitType);
+        }
+
+        [Test]
+        public void TryToSpec_SnapshotsAndClampsAuthoredSteps()
+        {
+            Assert.AreEqual(15, ProjectilePatternData.MaxShotCount,
+                "8-byte step의 FixedList128Bytes 계약이 바뀌면 authoring 상한도 재검토한다");
+
+            _patternA.minAngleDeg = -27.5f;
+            _patternA.maxAngleDeg = 27.5f;
+            _patternA.shots = new[]
+            {
+                new ProjectileShotStep { directionT = -1f, intervalAfterPreviousSec = -0.1f },
+                new ProjectileShotStep { directionT = 2f, intervalAfterPreviousSec = 0.125f },
+            };
+
+            Assert.IsTrue(_patternA.TryToSpec(7, out var spec));
+            Assert.AreEqual(7, spec.barrelDataIndex);
+            Assert.AreEqual(-27.5f, spec.minAngleDeg);
+            Assert.AreEqual(27.5f, spec.maxAngleDeg);
+            Assert.AreEqual(2, spec.shots.Length);
+            Assert.AreEqual(0f, spec.shots[0].directionT);
+            Assert.AreEqual(0f, spec.shots[0].intervalAfterPreviousSec);
+            Assert.AreEqual(1f, spec.shots[1].directionT);
+            Assert.AreEqual(0.125f, spec.shots[1].intervalAfterPreviousSec);
         }
 
         // 카드(defender) 경로는 미배선이다 — 조용히 붙어 "부착됨" 으로 집계되면 안 된다.

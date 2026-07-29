@@ -17,6 +17,7 @@ namespace Wassup.Battle.Combat.Projectile.Emission
         public float damage;
         public int barrelDataIndex;
         public float telegraphSec;
+        public float directionT;
     }
 
     // 명령 자료구조를 완성하는 유일한 지점. 아키텍처 계층은 이 order 를 받아
@@ -33,6 +34,7 @@ namespace Wassup.Battle.Combat.Projectile.Emission
                 damage = spec.damage,
                 barrelDataIndex = spec.barrelDataIndex,
                 telegraphSec = spec.telegraphSec,
+                directionT = spec.shots[rt.shotIndex].directionT,
             };
             rt.shotIndex++;
             rt.fireCount++;

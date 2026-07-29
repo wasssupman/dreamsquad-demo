@@ -93,21 +93,35 @@ namespace Wassup.Tests.EditMode
             return e;
         }
 
-        private static PatternSpec Spec(int shotCount, float interval) => new PatternSpec
+        private static PatternSpec Spec(int shotCount, float interval)
         {
-            barrelDataIndex = 0,
-            damage = 40f,
-            selection = PatternSelectionRule.RoundRobin,
-            shotCount = shotCount,
-            shotIntervalSec = interval,
-            // shipped 두 패턴이 모두 false 라 라이브 경로에 가깝다(잠금 코드가 실제로 돈다).
-            reselectPerShot = false,
-            telegraphSec = 0f,
-        };
+            var shots = default(FixedList128Bytes<PatternShotSpec>);
+            for (int i = 0; i < shotCount; i++)
+            {
+                shots.Add(new PatternShotSpec
+                {
+                    directionT = 0.5f,
+                    intervalAfterPreviousSec = i == 0 ? 0f : interval,
+                });
+            }
+
+            return new PatternSpec
+            {
+                barrelDataIndex = 0,
+                damage = 40f,
+                selection = PatternSelectionRule.RoundRobin,
+                minAngleDeg = 0f,
+                maxAngleDeg = 0f,
+                shots = shots,
+                // shipped 두 패턴이 모두 false 라 라이브 경로에 가깝다(잠금 코드가 실제로 돈다).
+                reselectPerShot = false,
+                telegraphSec = 0f,
+            };
+        }
 
         // 패턴 슬롯을 host 에 얹는다. **push 는 하지 않는다** — 실제 arm
         // (BossPeriodicTriggerSystem)이 `PeriodicTimer` 발화로 밀어넣게 두어야
-        // 시드 규약(fireCountBase += shotCount)이 테스트에 복제되지 않는다.
+        // 시드 규약(fireCountBase += shots.Length)이 테스트에 복제되지 않는다.
         // 복제하면 arm 이 규약을 바꿔도 테스트는 옛 규약을 검증하며 초록으로 남는다.
         private void InstallPattern(Entity host, in PatternSpec spec, float periodSeconds)
         {
@@ -179,7 +193,7 @@ namespace Wassup.Tests.EditMode
             InstallPattern(host, Spec(shotCount: 3, interval: 0f), periodSeconds: 1f);
             TickTrigger(1f);
 
-            Assert.AreEqual(3, CarrierCount(), "shotCount 만큼 캐리어가 나와야 한다(발-루프 회귀 핀)");
+            Assert.AreEqual(3, CarrierCount(), "step 수만큼 캐리어가 나와야 한다(발-루프 회귀 핀)");
             Assert.AreEqual(0, _em.GetBuffer<EmitterInstance>(host).Length, "완주한 인스턴스는 제거된다");
         }
 

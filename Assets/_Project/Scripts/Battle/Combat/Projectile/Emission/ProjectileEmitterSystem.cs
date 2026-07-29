@@ -66,7 +66,7 @@ namespace Wassup.Battle.Combat.Projectile.Emission
                 for (int i = instances.Length - 1; i >= 0; i--)
                 {
                     var inst = instances[i];
-                    int shots = EmitterTick.Advance(ref inst.runtime, dt, inst.spec.shotIntervalSec);
+                    int shots = EmitterTick.Advance(ref inst.runtime, dt, inst.spec);
 
                     // 후보 풀은 이 프레임에 실제로 발사가 있을 때 1회만 만든다
                     // (쿼리 생성을 발-루프 안에 두지 않는다).
@@ -105,7 +105,7 @@ namespace Wassup.Battle.Combat.Projectile.Emission
 
                     // 발마다 — Advance 가 반환한 발수를 전부 소비한다. 이 루프가 없으면
                     // burstRemaining 은 N 만큼 차감됐는데 캐리어는 1개만 생겨 나머지가
-                    // 증발하고(shotCount 노브 사문화), continue 가 아래 write-back·완주
+                    // 증발하고(shot 목록 사문화), continue 가 아래 write-back·완주
                     // 판정까지 건너뛰어 인스턴스가 영구 적재된다(두 리뷰어 CRITICAL).
                     for (int s = 0; s < shots; s++)
                     {

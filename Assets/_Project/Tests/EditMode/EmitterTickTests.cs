@@ -1,161 +1,173 @@
 using NUnit.Framework;
+using Unity.Collections;
 using Wassup.Battle.Combat.Projectile.Emission;
 using Wassup.Data;
 
 namespace Wassup.Tests.EditMode
 {
-    // projectile-emission-pattern unit 0 — 발사 스케줄 순수 계층. World/EntityManager
-    // 없이 도는 것이 계약 1(로직 계층 이식 가능성)의 실증이다.
+    // projectile-shot-sequence unit 0 — World/EntityManager 없이 개별 interval
+    // 스케줄을 고정한다. 소비 측 발-루프는 emitter 통합 테스트가 덮는다.
     public class EmitterTickTests
     {
-        private static PatternSpec Spec(int shotCount, float interval, bool reselect = false)
-            => new PatternSpec
+        private static PatternSpec Spec(params float[] intervals)
+        {
+            var shots = default(FixedList128Bytes<PatternShotSpec>);
+            for (int i = 0; i < intervals.Length; i++)
+            {
+                shots.Add(new PatternShotSpec
+                {
+                    directionT = intervals.Length <= 1 ? 0.5f : i / (float)(intervals.Length - 1),
+                    intervalAfterPreviousSec = intervals[i],
+                });
+            }
+
+            return new PatternSpec
             {
                 barrelDataIndex = 7,
                 damage = 40f,
                 selection = PatternSelectionRule.RoundRobin,
-                shotCount = shotCount,
-                shotIntervalSec = interval,
-                reselectPerShot = reselect,
+                minAngleDeg = -20f,
+                maxAngleDeg = 30f,
+                shots = shots,
+                reselectPerShot = false,
                 telegraphSec = 1.5f,
             };
+        }
 
         [Test]
         public void SingleShot_FiresOnStartFrame_ThenCompletes()
         {
-            var spec = Spec(1, 0.1f);
+            var spec = Spec(0f);
             var rt = default(EmitterRuntime);
             EmitterTick.Begin(ref rt, spec, baseFireCount: 0);
 
-            Assert.AreEqual(1, EmitterTick.Advance(ref rt, 0.016f, spec.shotIntervalSec));
+            Assert.AreEqual(1, EmitterTick.Advance(ref rt, 0.016f, spec));
             Assert.IsTrue(EmitterTick.IsComplete(rt));
-            Assert.AreEqual(0, EmitterTick.Advance(ref rt, 0.016f, spec.shotIntervalSec));
+            Assert.AreEqual(0, EmitterTick.Advance(ref rt, 0.016f, spec));
         }
 
         [Test]
-        public void Burst_FiresExactCount_AcrossFrames()
+        public void VariableIntervals_FireEachStepAtItsOwnOffset()
         {
-            var spec = Spec(3, 0.1f);
+            var spec = Spec(0f, 0.04f, 0.12f, 0.03f);
             var rt = default(EmitterRuntime);
             EmitterTick.Begin(ref rt, spec, 0);
 
-            int total = 0;
-            // 0.05s 씩 12 프레임 = 0.6s — 3발 전부 나가고 그 이상은 안 나간다.
-            for (int i = 0; i < 12; i++) total += EmitterTick.Advance(ref rt, 0.05f, spec.shotIntervalSec);
-
-            Assert.AreEqual(3, total);
-            Assert.IsTrue(EmitterTick.IsComplete(rt));
-        }
-
-        [Test]
-        public void ZeroInterval_DumpsEntireBurstInOneFrame()
-        {
-            var spec = Spec(5, 0f);
-            var rt = default(EmitterRuntime);
-            EmitterTick.Begin(ref rt, spec, 0);
-
-            Assert.AreEqual(5, EmitterTick.Advance(ref rt, 0.016f, spec.shotIntervalSec));
+            Assert.AreEqual(1, EmitterTick.Advance(ref rt, 0.016f, spec), "첫 탄은 trigger 프레임");
+            Assert.AreEqual(0, EmitterTick.Advance(ref rt, 0.020f, spec));
+            Assert.AreEqual(1, EmitterTick.Advance(ref rt, 0.005f, spec), "두 번째 탄은 0.04초 뒤");
+            Assert.AreEqual(0, EmitterTick.Advance(ref rt, 0.100f, spec));
+            Assert.AreEqual(1, EmitterTick.Advance(ref rt, 0.020f, spec), "세 번째 탄은 추가 0.12초 뒤");
+            Assert.AreEqual(1, EmitterTick.Advance(ref rt, 0.030f, spec), "네 번째 탄은 추가 0.03초 뒤");
             Assert.IsTrue(EmitterTick.IsComplete(rt));
         }
 
         [Test]
-        public void LagSpike_FiresSeveralShotsInOneFrame()
+        public void ZeroIntervals_DumpEntireSequenceInOneFrame()
         {
-            var spec = Spec(4, 0.1f);
+            var spec = Spec(0f, 0f, 0f, 0f, 0f);
             var rt = default(EmitterRuntime);
             EmitterTick.Begin(ref rt, spec, 0);
 
-            // 0.35s 한 프레임: 시작 발 + 0.1·0.2·0.3 경계 = 4발.
-            Assert.AreEqual(4, EmitterTick.Advance(ref rt, 0.35f, spec.shotIntervalSec));
+            Assert.AreEqual(5, EmitterTick.Advance(ref rt, 0.016f, spec));
+            Assert.IsTrue(EmitterTick.IsComplete(rt));
+        }
+
+        [Test]
+        public void LagSpike_FiresEveryCoveredStepInOneFrame()
+        {
+            var spec = Spec(0f, 0.1f, 0.1f, 0.1f);
+            var rt = default(EmitterRuntime);
+            EmitterTick.Begin(ref rt, spec, 0);
+
+            Assert.AreEqual(4, EmitterTick.Advance(ref rt, 0.35f, spec));
         }
 
         [Test]
         public void IntervalRemainder_CarriesOver_NoDrift()
         {
-            var spec = Spec(3, 0.10f);
+            var spec = Spec(0f, 0.10f, 0.10f);
             var rt = default(EmitterRuntime);
             EmitterTick.Begin(ref rt, spec, 0);
 
-            // 시작 발 1.
-            Assert.AreEqual(1, EmitterTick.Advance(ref rt, 0.07f, spec.shotIntervalSec));
-            // 누적 0.14 > 0.10 → 2발째. 잔여 0.04 가 이월돼야 한다.
-            Assert.AreEqual(1, EmitterTick.Advance(ref rt, 0.07f, spec.shotIntervalSec));
-            // 잔여 0.04 + 0.07 = 0.11 > 0.10 → 3발째. 드리프트가 누적되면 여기서 0 이 된다.
-            Assert.AreEqual(1, EmitterTick.Advance(ref rt, 0.07f, spec.shotIntervalSec));
+            Assert.AreEqual(1, EmitterTick.Advance(ref rt, 0.07f, spec));
+            Assert.AreEqual(1, EmitterTick.Advance(ref rt, 0.07f, spec));
+            Assert.AreEqual(1, EmitterTick.Advance(ref rt, 0.07f, spec),
+                "잔여 시간이 이월되지 않으면 세 번째 탄이 한 프레임 늦어진다");
             Assert.IsTrue(EmitterTick.IsComplete(rt));
         }
 
-        // spec-review C2 회귀 핀 — 인스턴스는 발화마다 새로 만들어지는 transient 다.
-        // baseFireCount 시드가 없으면 fireCount 가 매번 0 에서 시작해 선택 규칙이
-        // 고정되고(RoundRobin=항상 rank 0), 보스가 같은 대상만 영원히 때린다.
         [Test]
         public void Begin_SeedsFireCount_SoConsecutiveInstancesAdvanceSelection()
         {
-            var spec = Spec(1, 0f);
+            var spec = Spec(0f);
 
             var first = default(EmitterRuntime);
             EmitterTick.Begin(ref first, spec, baseFireCount: 0);
             var order1 = PatternLogic.BuildOrder(spec, ref first, 0);
 
-            // 두 번째 발화: durable 소유자가 shotCount 만큼 전진시킨 값을 시드로 받는다.
             var second = default(EmitterRuntime);
-            EmitterTick.Begin(ref second, spec, baseFireCount: 1);
+            EmitterTick.Begin(ref second, spec, baseFireCount: spec.shots.Length);
 
             Assert.AreEqual(0, order1.shotIndex);
-            Assert.AreEqual(1, second.fireCount, "두 번째 인스턴스가 카운터를 이어받지 못하면 선택이 고정된다");
+            Assert.AreEqual(1, second.fireCount, "두 번째 인스턴스가 영속 카운터를 이어받아야 한다");
         }
 
         [Test]
-        public void BuildOrder_CopiesSpecValues_AndAdvancesCounters()
+        public void BuildOrder_CopiesStepAndSpecValues_AndAdvancesCounters()
         {
-            var spec = Spec(2, 0.1f);
+            var spec = Spec(0f, 0.1f);
             var rt = default(EmitterRuntime);
             EmitterTick.Begin(ref rt, spec, baseFireCount: 5);
 
-            var a = PatternLogic.BuildOrder(spec, ref rt, 3);
-            var b = PatternLogic.BuildOrder(spec, ref rt, 4);
+            var first = PatternLogic.BuildOrder(spec, ref rt, 3);
+            var second = PatternLogic.BuildOrder(spec, ref rt, 4);
 
-            Assert.AreEqual(0, a.shotIndex);
-            Assert.AreEqual(1, b.shotIndex);
-            Assert.AreEqual(3, a.targetCandidateIndex);
-            Assert.AreEqual(4, b.targetCandidateIndex);
-            Assert.AreEqual(40f, a.damage);
-            Assert.AreEqual(7, a.barrelDataIndex);
-            Assert.AreEqual(1.5f, a.telegraphSec);
-            Assert.AreEqual(7, rt.fireCount, "fireCount 는 발마다 전진한다(5 + 2발)");
+            Assert.AreEqual(0, first.shotIndex);
+            Assert.AreEqual(1, second.shotIndex);
+            Assert.AreEqual(0f, first.directionT);
+            Assert.AreEqual(1f, second.directionT);
+            Assert.AreEqual(3, first.targetCandidateIndex);
+            Assert.AreEqual(4, second.targetCandidateIndex);
+            Assert.AreEqual(40f, first.damage);
+            Assert.AreEqual(7, first.barrelDataIndex);
+            Assert.AreEqual(1.5f, first.telegraphSec);
+            Assert.AreEqual(7, rt.fireCount, "fireCount는 발마다 전진한다(5 + 2발)");
         }
 
-        // 리뷰 CRITICAL 회귀 핀 — Advance 가 반환한 발수를 소비자가 **전부** 써야 한다.
-        // emitter 가 이 값을 `if (shots > 0)` 로만 받고 캐리어를 1개만 만들면 나머지가
-        // 증발했다(shotCount 노브 사문화). 순수 계층에서는 "총 반환 합 == shotCount" 로
-        // 그 계약을 고정한다 — 소비 측 루프는 emitter 통합 테스트(후속)가 덮는다.
         [Test]
-        public void Advance_TotalReturnedShots_EqualsShotCount()
+        public void Advance_TotalReturnedShots_EqualsSequenceLength()
         {
-            foreach (var (count, interval) in new[] { (5, 0f), (3, 0.1f), (1, 0f), (7, 0.05f) })
+            foreach (var intervals in new[]
+                     {
+                         new[] { 0f, 0f, 0f, 0f, 0f },
+                         new[] { 0f, 0.1f, 0.03f },
+                         new[] { 0f },
+                         new[] { 0f, 0.05f, 0f, 0.02f, 0.09f, 0f, 0.01f },
+                     })
             {
-                var spec = Spec(count, interval);
+                var spec = Spec(intervals);
                 var rt = default(EmitterRuntime);
                 EmitterTick.Begin(ref rt, spec, 0);
 
                 int total = 0;
-                for (int f = 0; f < 200 && !EmitterTick.IsComplete(rt); f++)
-                    total += EmitterTick.Advance(ref rt, 0.02f, spec.shotIntervalSec);
+                for (int frame = 0; frame < 200 && !EmitterTick.IsComplete(rt); frame++)
+                    total += EmitterTick.Advance(ref rt, 0.02f, spec);
 
-                Assert.AreEqual(count, total, $"shotCount={count}, interval={interval}: 반환 총합이 어긋나면 발사가 유실된다");
+                Assert.AreEqual(spec.shots.Length, total, "반환 총합이 어긋나면 탄이 유실된다");
                 Assert.IsTrue(EmitterTick.IsComplete(rt));
             }
         }
 
         [Test]
-        public void Begin_ClampsDegenerateShotCount()
+        public void EmptySequence_IsComplete_AndFiresNothing()
         {
-            var spec = Spec(0, 0f); // authoring 사고: 0발
+            var spec = Spec();
             var rt = default(EmitterRuntime);
             EmitterTick.Begin(ref rt, spec, 0);
 
-            Assert.AreEqual(1, EmitterTick.Advance(ref rt, 0.016f, spec.shotIntervalSec),
-                "0발 패턴은 1발로 클램프 — 조용히 아무것도 안 하는 것보다 낫다");
+            Assert.IsTrue(EmitterTick.IsComplete(rt));
+            Assert.AreEqual(0, EmitterTick.Advance(ref rt, 0.016f, spec));
         }
     }
 }

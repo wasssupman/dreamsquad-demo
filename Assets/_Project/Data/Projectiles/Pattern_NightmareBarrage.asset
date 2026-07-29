@@ -16,7 +16,10 @@ MonoBehaviour:
   barrel: {fileID: 11400000, guid: 3b7c41e05f9a4d2eb18c6a7f2d5e8014, type: 2}
   damage: 150
   selection: 0
-  shotCount: 1
-  shotIntervalSec: 0
+  minAngleDeg: 0
+  maxAngleDeg: 0
+  shots:
+  - directionT: 0.5
+    intervalAfterPreviousSec: 0
   reselectPerShot: 0
   telegraphSec: 1.5

@@ -6202,11 +6202,21 @@ namespace Wassup.Bridge
                     // (BezierHoming 재조준 봉인은 authoring 표면이 없어 경고가 불필요하다 —
                     //  ProjectileData 에 재조준 필드 자체가 없다. 그 필드를 여는 후속 작업이
                     //  재조준 개통과 한 묶음이라는 점은 README 후속 후보에 적혀 있다.)
+                    if (!pattern.TryToSpec(barrelIndex, out var patternSpec))
+                    {
+                        int shotCount = pattern.shots?.Length ?? 0;
+                        Debug.LogWarning(
+                            $"[BattleBridge] {unitType.displayName} nightmare mechanic {i}: " +
+                            $"invalid projectile shot sequence (shots={shotCount}, " +
+                            $"capacity={Wassup.Data.ProjectilePatternData.MaxShotCount}, " +
+                            $"angles={pattern.minAngleDeg}..{pattern.maxAngleDeg}) — skipped.");
+                        continue;
+                    }
                     // 사용 직전 재획득(위 주석 참조).
                     var patternSlots = _em.GetBuffer<Wassup.Battle.Combat.Projectile.Emission.PatternSlot>(entity);
                     patternSlots.Add(new Wassup.Battle.Combat.Projectile.Emission.PatternSlot
                     {
-                        spec = pattern.ToSpec(barrelIndex),
+                        spec = patternSpec,
                         template = BuildPatternTemplate(pattern, barrelIndex, entity, hostIsEnemy: true),
                         fireCountBase = 0,
                     });

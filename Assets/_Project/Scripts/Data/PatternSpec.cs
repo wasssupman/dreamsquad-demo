@@ -1,3 +1,5 @@
+using Unity.Collections;
+
 namespace Wassup.Data
 {
     // projectile-emission-pattern unit 0 — 타겟 선택 규칙. index 기반 결정론만
@@ -7,6 +9,16 @@ namespace Wassup.Data
     {
         RoundRobin = 0,
         DeterministicShuffle = 1,
+    }
+
+    // projectile-shot-sequence unit 0 — 한 발의 architecture-neutral 명세.
+    // FixedList128Bytes 에 15개까지 들어가도록 8-byte plain 값만 둔다.
+    public struct PatternShotSpec
+    {
+        // 패턴 min/max 각도 안의 정규화 위치. 실제 방향 회전은 PatternDirection 몫.
+        public float directionT;
+        // 이 탄과 직전 탄 사이의 간격. 첫 탄은 trigger 프레임에 나가므로 index 0 값은 무시.
+        public float intervalAfterPreviousSec;
     }
 
     // projectile-emission-pattern unit 0 — ProjectilePatternData 의 unmanaged 미러.
@@ -19,8 +31,10 @@ namespace Wassup.Data
         public int barrelDataIndex;
         public float damage;
         public PatternSelectionRule selection;
-        public int shotCount;
-        public float shotIntervalSec;
+        public float minAngleDeg;
+        public float maxAngleDeg;
+        // shot 목록이 트리거당 발수의 단일 source of truth다.
+        public FixedList128Bytes<PatternShotSpec> shots;
         // 발마다 타겟을 다시 뽑는가(산개) / 첫 타겟에 집중하는가. 잠금 신원(Entity)
         // 자체는 아키텍처 바인딩이라 여기 없다 — 순수 계층은 "재추첨하는가" 만 답한다.
         public bool reselectPerShot;

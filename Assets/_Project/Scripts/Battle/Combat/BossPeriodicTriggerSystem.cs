@@ -187,7 +187,7 @@ namespace Wassup.Battle.Combat
                                         lockedTarget = Entity.Null,
                                     };
                                     Projectile.Emission.EmitterTick.Begin(ref inst.runtime, inst.spec, pat.fireCountBase);
-                                    pat.fireCountBase += math.max(1, pat.spec.shotCount);
+                                    pat.fireCountBase += pat.spec.shots.Length;
                                     pats[slot.patternIndex] = pat;
                                     instanceLookup[entity].Add(inst);
                                 }
