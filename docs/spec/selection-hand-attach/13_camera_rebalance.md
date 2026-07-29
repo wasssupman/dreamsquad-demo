@@ -51,6 +51,18 @@ dolly 단독을 권했으나 그건 `fovMin` 이 41 이던 시절 기준이다. 
 추종 계수는 `[SerializeField]` 노브. 기존 스프링 헬퍼(`KeyringSim.SpringStep`)를 쓰거나 지수
 감쇠 하나면 충분하다 — 새 수학을 만들지 않는다.
 
+### B-2. 연출 pitch (rev 2026-07-30 사용자 발의)
+
+지금까지 인스펙트에 걸리던 틸트는 `FocusDelta` 가 **lookat 에서 파생**한 것뿐이었다
+(`pitchFull × lookWeight`) — 선택 유닛을 바라보느라 생기는 각도이지 연출로 의도한 틸트가 아니다.
+손패 헤드룸(`handHeadroomPitchDeg`)과 이동모드 오버뷰(`moveOverviewPitchDeg`)에는 명시 pitch
+노브가 있는데 **인스펙트만 없었다**. 초판이 "다른 채널은 만지지 않는다"로 스코프를 잡으며
+이 비대칭을 놓쳤다.
+
+`inspectPitchDeg`(기본 -5) 신설. 음수 = 카메라를 낮춰 올려다본다 → 유닛이 서 있는 각도감이
+생겨 dolly/FOV 로는 못 얻는 부각이 붙는다. 적용은 헤드룸과 같은 형태(가중치 비례 가산)이고
+`FocusDelta` 는 건드리지 않는다. 0 이면 구 동작(lookat 파생 각도만).
+
 ### C. 건드리지 않는 것
 
 - `inspectLookWeight`·fade 초·staleness 2프레임 자동 해제 규약은 **불변**.
@@ -60,7 +72,9 @@ dolly 단독을 권했으나 그건 `fovMin` 이 41 이던 시절 기준이다. 
 ## 완료 기준
 
 - [x] compile 클린 (2026-07-30 — Unity 콘솔 error 0)
-- [x] 값 적용: `inspectDolly 4.92 → 3` · `inspectFovDelta 0 → -6` · `inspectFollowRate 12`(신설).
+- [ ] Play: 카메라가 낮아져 유닛을 **올려다보는** 각도감이 생긴다(`inspectPitchDeg`)
+- [x] 값 적용: `inspectDolly 4.92 → 3` · `inspectFovDelta 0 → -6` · `inspectFollowRate 12`(신설)
+      · `inspectPitchDeg -5`(신설. 참고: `handHeadroomPitchDeg` 는 -2 라 그보다 강한 틸트다).
       에셋 재저장 시 `moveOverview*` 4필드가 함께 직렬화됐는데 **전부 클래스 기본값과 동일**
       (`-4.5 / 0 / 90 / 16`)이라 동작 변화가 없다.
 

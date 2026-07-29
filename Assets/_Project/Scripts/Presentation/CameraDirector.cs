@@ -215,6 +215,23 @@ namespace Wassup.Presentation
             _kickRemaining = _kickDuration;
         }
 
+        // selection-hand-attach unit 14 — **사용자 행동에 대한 응답** 킥(부착 거절 등).
+        //
+        // Kick() 과 달리 `enableNonDragEffects` 에 묶지 않는다. 그 토글은 앰비언트 연출
+        // (브리딩·비행·펄스·shake heat) 억제용이고 **현재 에셋에서 꺼져 있어**, 묶으면 거절
+        // 피드백이 조용히 죽는다. 인스펙트 줌이 같은 이유로 이 토글에 묶이지 않는다
+        // ("명시적 제품 기능이라 묶으면 조용히 죽는다").
+        //
+        // 지속시간은 호출처가 준다 — "얼마나 짧은가"는 그 피드백의 성격이지 카메라의 성질이 아니다.
+        // 진폭(kickPosAmp/kickRotAmp)은 config 소유 그대로라 킥의 물리적 느낌은 한 곳에서 튜닝된다.
+        public void FeedbackKick(float strength, float duration)
+        {
+            if (config == null || duration <= 0f) return;
+            _kickStrength = Mathf.Clamp01(strength);
+            _kickDuration = duration;
+            _kickRemaining = duration;
+        }
+
         // unit 2 — 헤비 임팩트 줌 펄스. 연타 시 envelope 누적 없이 max 유지(과누적 방지):
         // 진폭은 현재 유효값과 새 값의 max, 타이머는 재시작. pulseSec 0 = 펄스 끔.
         public void ZoomPulse(float strength = 1f)
@@ -477,6 +494,15 @@ namespace Wassup.Presentation
                     _inspectNdc, Vector2.zero, _homeFov, _cam.aspect, _inspectWeight,
                     config.inspectDolly, config.inspectFovDelta, config.inspectLookWeight,
                     0f, 0f));
+
+                // unit 13 rev — 연출 pitch. FocusDelta 가 내는 pitch 는 lookat 파생(유닛을
+                // 바라보느라 생기는 각도)이라 "낮춰서 올려다보는" 부각이 안 나온다. 손패
+                // 헤드룸(handHeadroomPitchDeg)과 같은 형태로 가중치에 비례해 얹는다.
+                if (config.inspectPitchDeg != 0f)
+                    delta = CameraComposeMath.Add(delta, new CameraPoseDelta
+                    {
+                        pitchDeg = config.inspectPitchDeg * _inspectWeight,
+                    });
             }
             else
             {
