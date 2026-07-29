@@ -56,6 +56,7 @@ MonoBehaviour:
   - top/top_c_31
   - mouth/mouth_c_8
   - gear_right/gear_right_c_39
+  - gear_left/gear_left_c_36
   slotColors:
   - slotName: Back
     color: {r: 1, g: 1, b: 1, a: 0}
