@@ -4514,11 +4514,20 @@ namespace Wassup.Bridge
 
         // tournament-play-report Units 3/4 — shared result-popup hook: snapshot
         // the battle log (SetResult/SetScore must already be applied), send
-        // complete, and swap the popup's bot leaderboard for the real ranking
-        // when it arrives. Guests and failures fall through silently — the bot
+        // complete, and swap the popup's pending leaderboard for the real ranking
+        // when it arrives. Guests and failures fall through silently — the pending
         // list stays.
+        //
+        // 랭킹 응답은 대개 Tally 연출(~4초)보다 먼저 돌아오는데, 그 시점엔 결과 팝업이
+        // 아직 비활성이라 UpdateLeaderboard 가 응답을 버린다. 그래서 응답을 여기 보관해
+        // 두고 FinishTally 가 팝업을 연 직후 재적용한다. 직전 판의 잔존값이 새 판의
+        // 팝업에 실리지 않도록 매치 종료마다 먼저 비운다(complete 왕복은 API 타임아웃
+        // 10초 안에 끝나므로 다음 판의 FinishTally 까지 살아남는 stale 응답은 없다).
+        private Wassup.Core.Api.TournamentApi.ResultData _arrivedRanking;
+
         private void ReportMatchResult(int playerScore)
         {
+            _arrivedRanking = null;
             // endless-mode unit 2 — 무한 모드는 토너먼트에 리포트하지 않는다(계약 5). 결과 팝업은 정상 표시.
             if (IsEndless)
             {
@@ -4527,7 +4536,11 @@ namespace Wassup.Bridge
             }
             var logger = GameManager.Instance?.Logger;
             Wassup.Core.Api.TournamentMatchReporter.ReportResult(playerScore, logger?.SnapshotJson(),
-                ranking => resultScreen?.UpdateLeaderboard(ranking, Wassup.Core.Api.UserSession.Current?.userId),
+                ranking =>
+                {
+                    _arrivedRanking = ranking;
+                    resultScreen?.UpdateLeaderboard(ranking, Wassup.Core.Api.UserSession.Current?.userId);
+                },
                 // tournament-flow-guards unit 2 — 실제 complete 실패만 알림(논블로킹, 재시도 없음).
                 onError: _ => Wassup.UI.NoticePopup.ShowAlert("점수 전송 실패",
                     "이번 판 점수가 서버에 전송되지 않았습니다.\n네트워크 상태를 확인해 주세요."));
@@ -4567,6 +4580,9 @@ namespace Wassup.Bridge
             int stressLimitForUi = IsEndless ? 0 : StressLimit;
             if (win) resultScreen?.ShowVictory(score, remainingSec, StressAccrued, stressLimitForUi);
             else resultScreen?.ShowDefeat(score, remainingSec, StressAccrued, stressLimitForUi);
+            // Tally 연출 중 도착해 보관해 둔 랭킹 — 팝업이 방금 열렸으니 이제 붙는다.
+            if (_arrivedRanking != null)
+                resultScreen?.UpdateLeaderboard(_arrivedRanking, Wassup.Core.Api.UserSession.Current?.userId);
         }
 
         // battle-score-formula unit 3 — 예산 소모 모델. 계산 자체는 ScoreMath 순수 함수가

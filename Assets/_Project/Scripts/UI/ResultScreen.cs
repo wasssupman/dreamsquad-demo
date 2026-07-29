@@ -219,7 +219,10 @@ namespace Wassup.UI
         // tournament-play-report Unit 4 — swap the pending leaderboard for the real
         // tournament ranking once it arrives (popup shows the pending list first;
         // guests / fetch failures simply never get here). A response landing after
-        // the popup closed (e.g. instant RESTART) is dropped.
+        // the popup closed (e.g. instant RESTART) is dropped. A response landing
+        // BEFORE the popup opens (ranking usually beats the ~4s tally sequence) is
+        // also dropped here — BattleBridge holds it and re-invokes this right after
+        // ShowResult, so the popup opens with the real ranking already applied.
         public void UpdateLeaderboard(TournamentApi.ResultData data, string ownUserId)
         {
             if (!gameObject.activeSelf) return;
@@ -265,32 +268,21 @@ namespace Wassup.UI
         // Rank 0 means "unknown" — BuildRows never emits 0, and UpdateCaption drops
         // the rank when it sees it.
         //
-        // Slot count depends on WHY we are in the fallback:
-        //  - No tournament session (guest / not signed in / no server URL): this list
-        //    is terminal, nothing will ever replace it, so a 10-slot bracket would
-        //    imply a lobby that is filling up. Show 5.
-        //  - Signed in, ranking still in flight: keep the server's usual
-        //    maxEntryCount so the panel doesn't resize when the real rows land.
-        //
-        // The predicate matches TournamentMatchReporter (:33, :61), which gates on
-        // HasAccount — a firebase idToken OR a demo username-recovered session
-        // (demo-username-recovery). Do NOT switch this to UserSession.IsSignedIn —
-        // that is TRUE for guests (LoginPanelView SKIP sets a user with neither
-        // token nor name), and guests never get a tournament session.
-        private const int TerminalPendingSlots = 5;
-        private const int AwaitingPendingSlots = 10;
-
-        private static int PendingSlotCount =>
-            !UserSession.HasAccount ? TerminalPendingSlots : AwaitingPendingSlots;
+        // Always 5 slots = the server's tournament bracket size (maxEntryCount).
+        // An earlier revision showed 10 while signed-in to match a server max that
+        // has since shrunk to 5 — the stale bracket read as "10 participants"
+        // whenever the ranking never replaced the pending list. If the server ever
+        // grows the bracket, real rows still size by the response's maxEntryCount
+        // (BuildRows); only this pre-landing placeholder count is pinned here.
+        private const int PendingSlots = 5;
 
         private static List<LeaderboardList.Row> BuildPendingRows(int playerScore)
         {
-            int slots = PendingSlotCount;
-            var rows = new List<LeaderboardList.Row>(slots)
+            var rows = new List<LeaderboardList.Row>(PendingSlots)
             {
                 new LeaderboardList.Row(0, "나", playerScore, true, false),
             };
-            for (int i = 1; i < slots; i++)
+            for (int i = 1; i < PendingSlots; i++)
                 rows.Add(new LeaderboardList.Row(0, "참가자 찾는 중", 0, false, true));
             return rows;
         }
@@ -506,8 +498,8 @@ namespace Wassup.UI
             dimImg.color = UiOverlay.Dim;
 
             // Panel: two columns side by side. Height is content-driven — the right
-            // column's row count decides it (5-slot pending vs 10-slot bracket), and
-            // the left column stretches to match.
+            // column's row count decides it (pending 5-slot list, or however many
+            // rows the server bracket lands), and the left column stretches to match.
             var panel = new GameObject("ResultPanel", typeof(RectTransform), typeof(Image),
                 typeof(HorizontalLayoutGroup), typeof(ContentSizeFitter));
             panel.transform.SetParent(roots.SafeAreaRoot, false);
@@ -630,8 +622,8 @@ namespace Wassup.UI
             StretchFull((RectTransform)label.transform);
         }
 
-        // The standings. The list hugs its rows so 5-slot and 10-slot lists both look
-        // intentional — a fixed height left dead space under the short one.
+        // The standings. The list hugs its rows so any row count looks intentional —
+        // a fixed height left dead space under short lists.
         private void BuildRightColumn(RectTransform panel)
         {
             var col = new GameObject("Standings", typeof(RectTransform),
