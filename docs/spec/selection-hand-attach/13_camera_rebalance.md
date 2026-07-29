@@ -31,9 +31,13 @@
 
 ### A. FOV 압축
 
-`inspectDolly` 를 낮추고 `inspectFovDelta` 에 음수를 넣어 같은 부각을 나눠 만든다. 시작점은
-dolly `2.5~3.0` · fovDelta `-6 ~ -8`. **합성식은 그대로** — `FocusDelta` 가 이미 두 인자를 받는다
-(`CameraDirector.cs:455`). 코드 분기 0, 값만 바뀐다.
+`inspectDolly` 를 낮추고 `inspectFovDelta` 에 음수를 넣어 같은 부각을 나눠 만든다.
+**합성식은 그대로** — `FocusDelta` 가 이미 두 인자를 받는다. 코드 분기 0, 값만 바뀐다.
+
+**선행 확인 — FOV 여유**: `CameraDirectionConfig.cs` 주석이 "여유 2도뿐(fovMin 41 / 홈 43)"이라
+dolly 단독을 권했으나 그건 `fovMin` 이 41 이던 시절 기준이다. 실측 2026-07-30:
+**`fovMin 31` / 홈 FOV `60` → 여유 ≈29도**. 클램프에 조용히 깎이지 않으므로 FOV 를 실제
+레버로 쓸 수 있다. 주석도 이 실측으로 갱신한다.
 
 ### B. 전환 스무딩
 
@@ -55,7 +59,13 @@ dolly `2.5~3.0` · fovDelta `-6 ~ -8`. **합성식은 그대로** — `FocusDelt
 
 ## 완료 기준
 
-- [ ] compile 클린
+- [x] compile 클린 (2026-07-30 — Unity 콘솔 error 0)
+- [x] 값 적용: `inspectDolly 4.92 → 3` · `inspectFovDelta 0 → -6` · `inspectFollowRate 12`(신설).
+      에셋 재저장 시 `moveOverview*` 4필드가 함께 직렬화됐는데 **전부 클래스 기본값과 동일**
+      (`-4.5 / 0 / 90 / 16`)이라 동작 변화가 없다.
+
+**아래 Play 항목은 값 튜닝의 출발점 검증이다** — 체감이 과하거나 모자라면 `inspectDolly` ·
+`inspectFovDelta` · `inspectFollowRate` 노브만 조정한다(코드 분기 금지, 계약 9).
 - [ ] Play: 유닛 선택 → 줌인이 과하지 않고 유닛이 배경에서 도드라진다(FOV 압축 체감)
 - [ ] Play: **유닛 A → B 연속 선택** → 카메라가 튀지 않고 미끄러지듯 옮겨간다
 - [ ] Play: **무선택 → 첫 선택** → 이전 위치에서 날아오지 않고 그 자리에서 줌인된다(스냅 규칙)

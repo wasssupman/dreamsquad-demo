@@ -58,7 +58,9 @@ namespace Wassup.Presentation
         // 드래그 포커스와 같은 형태(NDC → FocusDelta, staleness 자동 해제)지만 입력이 다르다:
         // 손가락이 아니라 **고정 월드 좌표**라, NDC 를 홈 포즈 기준으로 산출한다(SetInspectFocus).
         // 스프링 없음 — 타겟이 안 움직여 스텝 변화가 없다. 부드러움은 가중치 페이드가 담당.
-        private Vector2 _inspectNdc;
+        private Vector2 _inspectNdc;       // 합성에 쓰는 추종된 현재값
+        private Vector2 _inspectNdcTarget; // 피드가 지정한 목표(선택 유닛)
+        private bool _inspectNdcInit;      // 이번 세션에서 목표에 한 번이라도 스냅했나
         private bool _inspectHasNdc;
         private int _inspectFedFrame = -10;
         private float _inspectWeight;
@@ -257,7 +259,11 @@ namespace Wassup.Presentation
             if (local.z <= 0.001f) return; // 홈 카메라 뒤/평면 — 이번 프레임 피드 스킵(= 자연 해제)
             float tanV = Mathf.Tan(_homeFov * 0.5f * Mathf.Deg2Rad);
             float tanH = tanV * Mathf.Max(0.01f, _cam.aspect);
-            _inspectNdc = new Vector2(
+            // selection-hand-attach unit 13 — **목표만** 갱신한다. 예전엔 여기서 _inspectNdc 를
+            // 직접 대입해, 선택이 A→B 로 바뀌면 그 프레임에 프레이밍이 통째로 점프했다.
+            // (가중치는 페이드가 걸려 있어 "재줌"은 원래 없었다 — 튀는 것은 NDC 스냅이었다.)
+            // 실제 추종/스냅 판정은 Compose 에서 한다.
+            _inspectNdcTarget = new Vector2(
                 local.x / (local.z * Mathf.Max(1e-4f, tanH)),
                 local.y / (local.z * Mathf.Max(1e-4f, tanV)));
             _inspectHasNdc = true;
@@ -450,6 +456,23 @@ namespace Wassup.Presentation
             }
             if (_inspectWeight > 0f)
             {
+                // unit 13 — 목표 추종. **가중치가 0 에서 올라오는 첫 프레임(=새 선택 시작)은
+                // 스냅**한다. 안 그러면 직전 유닛 위치에서 화면을 가로질러 날아온다
+                // (선택 리티클이 "날아오지 않고 pop" 인 것과 같은 이유).
+                // 추종이 도는 것은 가중치가 이미 살아 있는 **전환**뿐이다 — 그때 카메라가
+                // 유닛 사이를 미끄러진다. 오버슈트가 없어야 해서 스프링이 아니라 지수 감쇠다.
+                if (!_inspectNdcInit)
+                {
+                    _inspectNdc = _inspectNdcTarget;
+                    _inspectNdcInit = true;
+                }
+                else if (config.inspectFollowRate > 0f)
+                {
+                    float k = 1f - Mathf.Exp(-config.inspectFollowRate * Time.unscaledDeltaTime);
+                    _inspectNdc = Vector2.Lerp(_inspectNdc, _inspectNdcTarget, k);
+                }
+                else _inspectNdc = _inspectNdcTarget; // 0 이하 = 구 동작(즉시 스냅)
+
                 delta = CameraComposeMath.Add(delta, CameraComposeMath.FocusDelta(
                     _inspectNdc, Vector2.zero, _homeFov, _cam.aspect, _inspectWeight,
                     config.inspectDolly, config.inspectFovDelta, config.inspectLookWeight,
@@ -458,6 +481,7 @@ namespace Wassup.Presentation
             else
             {
                 _inspectHasNdc = false; // 다음 선택은 새 타겟에서 시작(스테일 NDC 방지)
+                _inspectNdcInit = false; // 다음 획득은 스냅으로 — 가로질러 날아오지 않게
             }
 
             // 손패 헤드룸 채널 — 가중치를 0↔1 로 스프링 추종시켜 pitch + dolly 에 곱한다.

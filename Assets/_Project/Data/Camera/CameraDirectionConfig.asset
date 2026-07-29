@@ -83,8 +83,9 @@ MonoBehaviour:
   focusDamping: 10
   focusFadeInSec: 0.25
   focusFadeOutSec: 0.24
-  inspectDolly: 4.92
-  inspectFovDelta: 0
+  inspectDolly: 3
+  inspectFovDelta: -6
+  inspectFollowRate: 12
   inspectLookWeight: 0.5
   inspectFadeInSec: 0.22
   inspectFadeOutSec: 0.3
@@ -92,6 +93,10 @@ MonoBehaviour:
   handHeadroomDolly: -1.5
   handHeadroomSpring: 90
   handHeadroomDamping: 14
+  moveOverviewDolly: -4.5
+  moveOverviewPitchDeg: 0
+  moveOverviewSpring: 90
+  moveOverviewDamping: 16
   breathPosAmp: 0.07
   breathRotAmp: -0.6
   breathWaves:
