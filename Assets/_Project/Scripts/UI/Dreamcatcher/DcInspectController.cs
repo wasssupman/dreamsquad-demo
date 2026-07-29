@@ -28,7 +28,9 @@ namespace Wassup.UI
         [SerializeField] private BattleBridge bridge;
         [SerializeField] private Camera mainCamera;
         [SerializeField] private DreamcatcherHandController hand;
-        [Tooltip("손패 오픈 중 인스펙트 양보")]
+        // selection-hand-attach unit 0 — 손패 오픈 중에는 보드 탭만 양보한다(선택은 유지).
+        // unit 6 의 선택 리티클 프레젠터(handView 소유)에도 이 참조로 도달한다.
+        [Tooltip("손패 오픈 중 보드 탭 양보 + 선택 리티클 프레젠터 도달 경로")]
         [SerializeField] private DreamcatcherHandView handView;
         // 배치 드래그 중 인스펙트 양보. DefenderDragPlacementController 자체는 런타임
         // AddComponent 라 씬 배선이 불가능해, 수명 소유자인 DefenderSelector 를 경유한다.
@@ -54,7 +56,7 @@ namespace Wassup.UI
         private readonly List<RaycastResult> _uiHits = new List<RaycastResult>();
         private Entity _selected = Entity.Null;
         private TimeLease _slomoLease;
-        // unit 6 — 선택 리티클을 우리가 켰는지 추적. Close 는 Blocked() 동안 매 프레임
+        // unit 6 — 선택 리티클을 우리가 켰는지 추적. Close 는 MustClose() 동안 매 프레임
         // 불리는데, 무조건 Focus.End() 하면 손패 카드 드래그가 방금 시작한 조준 세션까지
         // 끊는다 — 우리가 시작한 세션만 끝낸다.
         private bool _reticleShown;
@@ -84,27 +86,36 @@ namespace Wassup.UI
         {
             if (bridge == null || mainCamera == null) return;
 
-            // 배타 파트너가 입력을 쥐면 열려 있던 패널은 닫는다(계약 8). 손패를 열거나
-            // 배치 드래그를 시작하거나 이동모드에 진입하면 인스펙트는 물러난다.
-            if (Blocked()) { _pendingTap = false; Close(); return; }
+            // 배치 드래그/arm 또는 이동모드가 입력을 쥐면 선택 자체를 닫는다(계약 8).
+            // 손패 오픈·조준은 여기가 아니라 TapGated — 선택과 공존해야 한다(selection-hand-attach 계약 2).
+            if (MustClose()) { _pendingTap = false; Close(); return; }
 
             // unit 4 — 선택 중 매 프레임 줌 타겟 피드. 끊기면 CameraDirector 가 2프레임 후
             // 자동 해제한다(명시 Clear 불필요 — 붙박이 줌 방지). Update(-50) → Director
             // LateUpdate(-90) 순서라 같은 프레임에 반영된다(전 Update 가 전 LateUpdate 보다 앞).
-            FeedZoomTarget();
+            //
+            // selection-hand-attach unit 0 — 조준 중에는 피드를 끊는다. 예전엔 IsAiming 이
+            // close-trigger 라 선택이 닫히며 줌이 함께 풀렸는데, 이제 선택이 조준과 공존하므로
+            // 끊지 않으면 inspectDolly 만큼 당겨진 채 Meteor 타일/포탈 출구를 고르게 된다.
+            // staleness 자동 해제라 조준이 끝나면 다음 프레임 피드로 줌이 되돌아온다.
+            if (!AimingNow()) FeedZoomTarget();
 
             var pointer = Pointer.current;
             if (pointer == null) { _pendingTap = false; return; }
             var screenPos = pointer.position.ReadValue();
 
+            // selection-hand-attach unit 0 — 탭 후보 게이트는 **무장 분기 앞**이다. 뒤에 두면
+            // press 프레임에 무장이 이미 끝나 무효다. 여기서 후보를 비우므로 stale 도 없다.
+            if (TapGated()) { _pendingTap = false; return; }
+
             // defender-relocation review MEDIUM / UX — 선택(패널+카메라 줌)은 터치다운이 아니라
             // **탭 릴리즈**에 발동한다. 터치다운 즉시 인스펙트가 열려 카메라가 움직이면 1초 홀드
-            // (재배치) 조작을 방해한다. 홀드로 이어지면 relocation 이 move mode 에 진입하고 Blocked()
-            // 가 여기 탭 후보를 취소하므로 인스펙트는 아예 안 열린다.
+            // (재배치) 조작을 방해한다. 홀드로 이어지면 relocation 이 move mode 에 진입하고
+            // MustClose() 가 여기 탭 후보를 취소하므로 인스펙트는 아예 안 열린다.
             //
             // 과거 press 규약을 쓴 이유(카드 드래그 OnEndDrag touchup 이 release 로 패널을 여는 것)는
             // 여기서 재발하지 않는다: 탭 후보는 **UI 밖 프레스다운**에서만 무장되는데 카드 드래그의
-            // 프레스다운은 손패 카드(UI) 위라 무장되지 않고, 손패가 열린 동안은 Blocked() 가 참이다.
+            // 프레스다운은 손패 카드(UI) 위라 무장되지 않고, 손패가 열린 동안은 TapGated() 가 참이다.
             if (pointer.press.wasPressedThisFrame)
             {
                 _pendingTap = !IsOverUi(screenPos);
@@ -155,23 +166,43 @@ namespace Wassup.UI
             cameraDirector.SetInspectFocus(anchor.position);
         }
 
-        private bool Blocked()
+        // selection-hand-attach unit 0 — 구 Blocked() 의 절반: **선택 자체를 닫아야 하는** 조건.
+        // 손패 오픈/조준은 여기서 빠졌다(TapGated 로 이관) — 선택과 공존해야 하는 것이 그 spec 의
+        // 전제이기 때문이다. 여기 남은 둘은 "보드 입력의 주인이 아예 바뀌는" 경우다.
+        private bool MustClose()
         {
-            if (GameManager.Instance != null && GameManager.Instance.IsAiming) return true;
-            if (handView != null && handView.State == DreamcatcherHandView.HandState.Hand) return true;
             // 컨트롤러가 아직 AddComponent 되기 전이면 null — 드래그 중일 수 없으므로 통과.
-            // IsAiming(defender-directional-volley unit 6): 드롭은 끝났지만 방향 지정
-            // 스와이프가 진행 중이다. 막지 않으면 그 스와이프가 유닛 탭으로도 읽혀 인스펙트가
-            // 열리고, 방향 확정 뒤에도 이쪽 slomo/줌이 남아 닫는 클릭이 한 번 더 필요해진다.
-            var drag = defenderSelector != null ? defenderSelector.DragController : null;
             // placement-armed-board-drag unit 0: HasArmedUnit — 유닛이 arm 되면 보드 press 는 배치
             // 제스처(프레스-드래그-릴리즈)가 소유한다. 막지 않으면 armed 상태의 보드 탭이 인스펙트로도
             // 읽혀 두 소비자가 같은 press 를 노리는 aim-mode race 를 재생산한다(계약 11). arm 은 직전
             // 프레임에 확정돼 이 -50 실행순서와 무관하게 안정적으로 읽힌다.
-            if (drag != null && (drag.IsDragging || drag.IsAiming || drag.HasArmedUnit)) return true;
+            var drag = defenderSelector != null ? defenderSelector.DragController : null;
+            if (drag != null && (drag.IsDragging || drag.HasArmedUnit)) return true;
             // defender-relocation unit 4 — 이동모드가 보드 입력을 쥐면 인스펙트는 닫고 물러난다.
             if (relocationController != null && relocationController.InMoveMode) return true;
             return false;
+        }
+
+        // selection-hand-attach unit 0 — 구 Blocked() 의 나머지 절반: **새 탭 후보만** 막는다.
+        // 선택·줌·리티클·패널은 그대로 살아 있다(예전엔 이 조건들이 Close() 까지 했다).
+        private bool TapGated()
+        {
+            // 손패가 열린 동안 보드 탭은 dismiss 캐처가 소유한다(unit 2). 여기서 raw press 를
+            // 같이 노리면 두 소비자가 같은 press 를 다투게 된다(계약 11).
+            if (handView != null && handView.State == DreamcatcherHandView.HandState.Hand) return true;
+            // 조준 중 탭 오독 방지. drag.IsAiming(defender-directional-volley unit 6): 드롭은
+            // 끝났지만 방향 지정 스와이프가 진행 중 — 그 스와이프가 유닛 탭으로도 읽히면 안 된다.
+            if (AimingNow()) return true;
+            return false;
+        }
+
+        // 조준(Active 카드 캐스트 / 포탈 2탭 대기 / 배치 방향 지정) 진행 중인가.
+        // 탭 게이트와 줌 피드 중단이 같은 판정을 공유한다(계약 2).
+        private bool AimingNow()
+        {
+            if (GameManager.Instance != null && GameManager.Instance.IsAiming) return true;
+            var drag = defenderSelector != null ? defenderSelector.DragController : null;
+            return drag != null && drag.IsAiming;
         }
 
         private void HandleTap(Vector2 screenPos)
