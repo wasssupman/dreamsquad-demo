@@ -4,7 +4,7 @@ using Wassup.Data;
 namespace Wassup.Core
 {
     // dreamcatcher-attach-lockon — 부착 조준 유효성 preflight 의 순수 판정.
-    // "이 Unit 카드가 이 유닛에 '기여'하는가"(= ApplyDreamcatcherCardToUnit 이 -1 이
+    // "이 defender-hosted 카드가 이 유닛에 '기여'하는가"(= 실제 커밋이 -1 이
     // 아닌가)를, **유닛-종속 게이트만** 미러해 plain 값으로 판정한다.
     //
     // attack-decoupling unit 1 — host 종속 판정의 source of truth 는 이제
@@ -90,7 +90,9 @@ namespace Wassup.Core
         public static bool WouldApply(DreamcatcherCard card, in DcHostProfile host)
         {
             if (card == null) return false;
-            // Squad = 축-집합 버프(host 무제약, unit 9) → host 종속 거부 없음. Active 는 이 경로 밖.
+            // Squad = 축-집합 버프라 host 능력 profile 게이트는 없다. unit 10의
+            // attachType 앵커 제한은 이 함수 밖의 공용 preflight가 먼저 판정한다.
+            // Active는 defender-hosted 경로 밖.
             if (card.type == CardType.Squad) return true;
             if (card.type != CardType.Unit) return false;
 

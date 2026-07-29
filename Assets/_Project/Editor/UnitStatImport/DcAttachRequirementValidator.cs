@@ -12,7 +12,7 @@ namespace Wassup.Editor.UnitStatImport
     // 왜 필요한가: 카드 정의에는 bake 단계가 없다. 런타임 경고(BattleBridge)는 플레이어가
     // 드롭을 **시도할 때만** 나오므로 잘못된 시트 값이 실제 플레이 세션까지 살아간다.
     // 게다가 무효 카드는 부착도 소모도 되지 않아 매치 내내 손패 슬롯을 점유하고,
-    // 범위 밖 설정(Squad/Active/적표식)은 게이트 함수를 아예 안 타서 런타임 경고조차
+    // 범위 밖 설정(Active/적표식)은 게이트 함수를 아예 안 타서 런타임 경고조차
     // 나지 않는다 — validator 만이 잡을 수 있다.
     //
     // 검증 코어는 순수 static(CollectWarnings)으로 분리해 EditMode 가 같은 규칙을 핀한다
@@ -28,11 +28,11 @@ namespace Wassup.Editor.UnitStatImport
             var warnings = new List<string>();
             if (card == null || card.attachType == DcAttachType.None) return warnings;
 
-            // ① 범위 밖 설정 — 조용한 무효. 부착 제한은 type=Unit 의 defender 부착 경로만
-            // 소비한다. BountyMark 카드는 Classify 가 적 타겟으로 라우팅해 게이트를 안 탄다.
-            if (card.type != CardType.Unit)
-                warnings.Add($"attachType 이 설정됐지만 카드 type={card.type} — 부착 제한은 type=Unit 만 소비한다(조용히 무효).");
-            else if (card.HasBountyMark())
+            // ① 범위 밖 설정 — 조용한 무효. unit 10 부터 defender-hosted Unit/Squad가
+            // 제한을 소비한다. Active와 Unit BountyMark는 각자 다른 타겟 경로라 게이트를 안 탄다.
+            if (card.type != CardType.Unit && card.type != CardType.Squad)
+                warnings.Add($"attachType 이 설정됐지만 카드 type={card.type} — 부착 제한은 type=Unit/Squad만 소비한다(조용히 무효).");
+            else if (card.type == CardType.Unit && card.HasBountyMark())
                 warnings.Add("attachType 이 설정됐지만 적 지정(BountyMark) 카드 — 적에게 부착되므로 제한이 조용히 무효다.");
 
             // ② 무효 값 — fail-closed 라 어떤 유닛에도 붙지 않는다.

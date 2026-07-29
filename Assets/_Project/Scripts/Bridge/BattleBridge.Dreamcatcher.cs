@@ -96,14 +96,38 @@ namespace Wassup.Bridge
         public int ApplyDreamcatcherCard(Entity host, Wassup.Data.DreamcatcherCard card)
         {
             if (card == null) return -1;
-            return card.type == Wassup.Data.CardType.Unit
-                ? ApplyDreamcatcherCardToUnit(host, card)
-                : ApplyDreamcatcherCardHosted(card);
+            if (card.type == Wassup.Data.CardType.Unit)
+                return ApplyDreamcatcherCardToUnit(host, card);
+            if (card.type != Wassup.Data.CardType.Squad)
+                return -1;
+
+            // dreamcatcher-attach-requirement unit 10 — Squad 의 axis 는 버프 수혜
+            // 집합이고 attachType 은 전역 버프를 유지할 host 제한이다. hosted 효과 머신의
+            // 첫 쓰기(_activeDcEffects.Add) 전에 검사해 거절 시 부분 적용·차감이 없다.
+            if (!HasLiveEntityManager() || !_em.Exists(host))
+            {
+                Debug.LogWarning($"[BattleBridge] ApplyDreamcatcherCard('{card.id}'): ECS not ready or defender entity gone — card not attached.");
+                return -1;
+            }
+            if (!_em.HasComponent<DefenderUnitTag>(host))
+            {
+                Debug.LogWarning($"[BattleBridge] ApplyDreamcatcherCard('{card.id}'): target entity is not a defender — card not attached.");
+                return -1;
+            }
+            if (!PassesAttachRequirement(host, card))
+            {
+                LogAttachRequirementReject(host, card);
+                return -1;
+            }
+            return ApplyDreamcatcherCardHosted(card);
         }
 
         // awakening-hand unit 9 — host-bound squad apply. Same squad-wide effect
         // (current + future matching defenders), but the effects belong to a
         // revocation group; the controller revokes it when the host dies.
+        // Low-level effect machine for focused tests and pre-hosted sources: it has no
+        // host and therefore does not evaluate attachType. Production hand commits must
+        // enter through ApplyDreamcatcherCard(host, card), which owns the unit 10 gate.
         // Returns -1 when the card contributed nothing (no spend at the caller).
         public int ApplyDreamcatcherCardHosted(Wassup.Data.DreamcatcherCard card)
         {
@@ -242,26 +266,7 @@ namespace Wassup.Bridge
             // 거절은 카드 전체·무차감(-1 → HandController.CommitAttach 가 Spend 전 반환).
             if (!PassesAttachRequirement(defender, card))
             {
-                if (Wassup.Core.DreamcatcherAttachEval.HasInvalidAttachRequirement(card))
-                {
-                    // 데이터 실수 — 이 카드는 어떤 유닛에도 붙지 않는다(손패 슬롯 점유).
-                    Debug.LogWarning($"[BattleBridge] ApplyDreamcatcherCardToUnit('{card.id}'): 부착 제한 설정이 무효(attachType={card.attachType}, attachValue='{card.attachValue}') — 어떤 유닛에도 부착되지 않는다. 시트 값을 확인할 것.");
-                }
-                else
-                {
-                    string want = card.attachValue;
-                    var hostData = FindDefenderData(defender);
-                    // review M4 — 거절 사유 3종을 문구로 구분한다. 조회 실패를 '불일치'로
-                    // 적으면 사망 teardown 창(의도된 동작)이 데이터 문제처럼 읽힌다.
-                    if (hostData == null)
-                    {
-                        Debug.LogWarning($"[BattleBridge] ApplyDreamcatcherCardToUnit('{card.id}'): host 등록부 조회 실패 — 요구 {card.attachType}='{want}' 를 판정할 수 없어 fail-closed 거절(무차감). 사망 teardown 창의 의도된 동작 (spec README '의도된 동작').");
-                    }
-                    else
-                    {
-                        Debug.LogWarning($"[BattleBridge] ApplyDreamcatcherCardToUnit('{card.id}'): 부착 제한 불일치 — 요구 {card.attachType}='{want}', host role={hostData.role} id='{hostData.id}' — card not attached.");
-                    }
-                }
+                LogAttachRequirementReject(defender, card);
                 return -1;
             }
 
@@ -729,15 +734,18 @@ namespace Wassup.Bridge
         public bool WouldDreamcatcherCardApply(Entity defender, Wassup.Data.DreamcatcherCard card)
         {
             if (card == null) return false;
-            // Squad·비-Unit 은 유닛 종속 게이트 없음(축 버프 host 무제약) → eval 이 판단.
-            // profile 은 조기 return 경로에서 읽히지 않으므로 기본값으로 충분하다.
-            if (card.type != Wassup.Data.CardType.Unit)
+            bool defenderHosted = card.type == Wassup.Data.CardType.Unit
+                || card.type == Wassup.Data.CardType.Squad;
+            // Active 등은 defender 부착 경로 밖. profile 은 읽히지 않는다.
+            if (!defenderHosted)
                 return Wassup.Core.DreamcatcherAttachEval.WouldApply(card, default(Wassup.Core.DcHostProfile));
             if (!HasLiveEntityManager() || !_em.Exists(defender) || !_em.HasComponent<DefenderUnitTag>(defender))
                 return false;
-            // dreamcatcher-attach-requirement unit 1 — 부착 제한(클래스/특정 유닛)은 능력
-            // 게이트와 독립인 정적 술어라 먼저 본다. 커밋 preflight 와 같은 함수 → 일치.
+            // dreamcatcher-attach-requirement units 1·10 — Unit/Squad 모두 부착 제한을
+            // 먼저 본다. Squad 는 host 능력 profile 이 필요 없는 축 버프라 default 로 충분하다.
             if (!PassesAttachRequirement(defender, card)) return false;
+            if (card.type == Wassup.Data.CardType.Squad)
+                return Wassup.Core.DreamcatcherAttachEval.WouldApply(card, default(Wassup.Core.DcHostProfile));
             return Wassup.Core.DreamcatcherAttachEval.WouldApply(card, BuildHostProfile(defender));
         }
 
@@ -804,7 +812,7 @@ namespace Wassup.Bridge
         // (WouldDreamcatcherCardApply)과 커밋 preflight(ApplyDreamcatcherCardToUnit)가
         // 이 하나를 공유하므로 리티클 색과 커밋 결과가 어긋나지 않는다.
         //
-        // attachType==None 이면 조회조차 하지 않는다 → 무제한 카드(현재 전부)의 경로가
+        // attachType==None 이면 host data 조회조차 하지 않는다 → 무제한 카드 경로가
         // 완전히 무변화. host 조회 실패는 fail-closed: 사망 teardown 창에서 등록부 제거와
         // 엔티티 파괴의 수명이 달라 제한 카드만 먼저 거절될 수 있다(무차감이라 실피해
         // 없음 — spec README '의도된 동작' 계약. 버그로 오인 금지).
@@ -817,6 +825,30 @@ namespace Wassup.Bridge
             var data = FindDefenderData(defender);
             if (data == null) return false;
             return Wassup.Core.DreamcatcherAttachEval.MeetsAttachRequirement(card, data.role, data.id);
+        }
+
+        // units 1·10 — 실제 커밋 거절 로그. UI preflight 는 호버마다 호출되므로 로그를
+        // 남기지 않고, Unit/Squad 커밋만 이 helper 를 호출해 같은 원인을 같은 문구로 알린다.
+        private void LogAttachRequirementReject(Entity defender, Wassup.Data.DreamcatcherCard card)
+        {
+            if (Wassup.Core.DreamcatcherAttachEval.HasInvalidAttachRequirement(card))
+            {
+                // 데이터 실수 — 이 카드는 어떤 유닛에도 붙지 않는다(손패 슬롯 점유).
+                Debug.LogWarning($"[BattleBridge] ApplyDreamcatcherCard('{card.id}'): 부착 제한 설정이 무효(attachType={card.attachType}, attachValue='{card.attachValue}') — 어떤 유닛에도 부착되지 않는다. 시트 값을 확인할 것.");
+                return;
+            }
+
+            string want = card.attachValue;
+            var hostData = FindDefenderData(defender);
+            // review M4 — 거절 사유 3종을 문구로 구분한다. 조회 실패를 '불일치'로
+            // 적으면 사망 teardown 창(의도된 동작)이 데이터 문제처럼 읽힌다.
+            if (hostData == null)
+            {
+                Debug.LogWarning($"[BattleBridge] ApplyDreamcatcherCard('{card.id}'): host 등록부 조회 실패 — 요구 {card.attachType}='{want}' 를 판정할 수 없어 fail-closed 거절(무차감). 사망 teardown 창의 의도된 동작 (spec README '의도된 동작').");
+                return;
+            }
+
+            Debug.LogWarning($"[BattleBridge] ApplyDreamcatcherCard('{card.id}'): 부착 제한 불일치 — 요구 {card.attachType}='{want}', host role={hostData.role} id='{hostData.id}' — card not attached.");
         }
 
         // dreamcatcher-content-2 unit 1 — does this defender emit at least one positive

@@ -37,8 +37,9 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             Assert.IsEmpty(Warn(Card(DcAttachType.Class, "Guardian")));
             Assert.IsEmpty(Warn(Card(DcAttachType.UnitId, "shield_shuttle")));
             Assert.IsEmpty(Warn(null), "null 카드는 조용히 통과");
-            // 범위 밖이어도 제한이 없으면 신고 대상 아님 — 기존 Squad 카드 전부가 여기 해당.
+            // unit 10 — Squad도 defender-hosted 제한을 정상 소비한다.
             Assert.IsEmpty(Warn(Card(DcAttachType.None, type: CardType.Squad)));
+            Assert.IsEmpty(Warn(Card(DcAttachType.Class, "Ranger", type: CardType.Squad)));
         }
 
         [Test]
@@ -67,12 +68,11 @@ namespace Wassup.Tests.EditMode.UnitStatImport
         }
 
         [Test]
-        public void OutOfScopeSetting_IsFlagged()
+        public void ActiveAndBountyMark_OutOfScopeSettings_AreFlagged()
         {
-            // Squad 에 제한을 걸면 조용히 무효 — 런타임 경고조차 없어 validator 가 유일한 검출.
-            var squad = Warn(Card(DcAttachType.Class, "Guardian", type: CardType.Squad));
-            Assert.AreEqual(1, squad.Count);
-            Assert.That(squad[0], Does.Contain("type=Squad"));
+            var active = Warn(Card(DcAttachType.Class, "Guardian", type: CardType.Active));
+            Assert.AreEqual(1, active.Count);
+            Assert.That(active[0], Does.Contain("type=Active"));
 
             // 적 지정 카드도 defender 게이트를 안 탄다.
             var bounty = Warn(Card(DcAttachType.Class, "Guardian", bountyMark: true));

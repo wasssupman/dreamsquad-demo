@@ -106,8 +106,8 @@ namespace Wassup.Data
         // 선불·세탁 차단). 끝에 추가 → 기존 카드 에셋은 0 으로 역직렬화(inert).
         public int leakAllowanceCost;
         // dreamcatcher-attach-requirement unit 0(+unit 7 rev) — 부착 대상 제한.
-        // type=Unit 의 defender 부착 경로만 소비한다(Squad 는 host 무제약 계약 유지,
-        // BountyMark 는 적 타겟이라 Classify 라우팅으로 애초에 이 게이트를 안 탄다).
+        // defender에 부착되는 type=Unit/Squad 경로가 소비한다. Squad에서는 실제 버프
+        // 수혜 axis와 별개인 수명 앵커 제한이다. BountyMark는 적 타겟이라 이 게이트를 안 탄다.
         // 판정은 DreamcatcherAttachEval.MeetsAttachRequirement 한 곳.
         // 끝에 추가 → 기존 카드 에셋은 None/빈문자열로 역직렬화(제한 없음).
         //
