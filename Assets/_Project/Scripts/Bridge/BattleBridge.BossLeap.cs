@@ -4,6 +4,7 @@ using Unity.Collections;
 using Unity.Entities;
 using UnityEngine;
 using Wassup.Battle.Combat;
+using Wassup.Battle.Combat.Projectile;
 using Wassup.Core.TimeControl;
 
 namespace Wassup.Bridge
@@ -22,7 +23,7 @@ namespace Wassup.Bridge
         //    BossWarningView 가 같은 방식으로 전 파라미터를 SerializeField 로 둔 선례) ──
         [Header("Boss leap flight (boss-jjangssen unit 6)")]
         [Tooltip("도약 총 시간(초). 배틀 도메인 기준 — 슬로모 중엔 함께 느려진다.")]
-        [SerializeField] private float bossLeapTotalSeconds = 0.55f;
+        [SerializeField] private float bossLeapTotalSeconds = 0.83f;
         [Tooltip("웅크리는 반동 시간(초). 총 시간 중 이만큼이 반동 구간.")]
         [SerializeField] private float bossLeapRecoilSeconds = 0.14f;
         [Tooltip("반동으로 내려앉는 거리(월드). camUp 반대 방향.")]
@@ -93,7 +94,7 @@ namespace Wassup.Bridge
             if (cam == null)
             {
                 _bossLeapInFlight.Remove(evt.entity);
-                PlayLeapPuff(evt.dataIndex, end);
+                ResolveLanding(evt, end);
                 yield break;
             }
             Vector3 camUp = cam.transform.up;
@@ -134,8 +135,38 @@ namespace Wassup.Bridge
 
             _enemyViewOverride.Remove(evt.entity);
             _bossLeapInFlight.Remove(evt.entity);
-            // 착지 임팩트 — 뷰가 실제로 도착한 이 프레임에 터진다.
-            PlayLeapPuff(evt.dataIndex, end);
+            // 착지 임팩트 — 뷰가 실제로 도착한 이 프레임.
+            ResolveLanding(evt, end);
+        }
+
+        // 착지 처리. 슬램이 있으면 TileAoe 피해 요청을 스폰하고(그 요청의 히트 이벤트가 VFX 도
+        // 그린다), 없으면 퍼프만 재생한다. 둘을 동시에 하면 같은 VFX 가 두 번 겹친다.
+        private void ResolveLanding(BossLeapVisualEvent evt, Vector3 end)
+        {
+            if (evt.slamDamage <= 0f)
+            {
+                PlayLeapPuff(evt.dataIndex, end);
+                return;
+            }
+
+            // shooter = Entity.Null: 보스의 AttackOutput 버퍼를 스냅샷하지 않기 위함이다.
+            // 슬램은 기본공격 출력이 아니라 **고정 피해**다(메테오 barrage 와 같은 규약).
+            // owner 는 요청에 직접 실어 킬 귀속만 보스로 남긴다.
+            SpawnProjectile(new ProjectileSpawnRequest
+            {
+                movement        = MovementKind.SkyFall,
+                payload         = PayloadKind.TileAoe,
+                origin          = end,
+                impact          = end,
+                damage          = evt.slamDamage,
+                impactTileRange = evt.slamTileRange,
+                flightTime      = 0f,   // 즉발 — 뷰가 이미 도착했다
+                arcHeight       = 0f,
+                dataIndex       = evt.dataIndex,
+                visualScale     = 1f,
+                owner           = evt.entity,
+                targetFaction   = ProjectileTargetFaction.Defender, // 보스 슬램은 방어유닛을 때린다
+            }, Entity.Null);
         }
 
         // 퍼프 재생. DrainProjectileHitEvents 의 hitPrefab 라우팅만 재사용한다(절차 폴백·줌 펄스는

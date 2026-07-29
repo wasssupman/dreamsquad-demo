@@ -6034,6 +6034,9 @@ namespace Wassup.Bridge
                     // struct default 0 은 유효 index 라 미배선 슬롯이 0번 패턴을 쏘게
                     // 된다 — 명시 -1 초기화가 계약이다(unit 3).
                     patternIndex = -1,
+                    // boss-jjangssen unit 7 — SelfBlink 착지 슬램(0 = 이동만).
+                    slamDamage = math.max(0f, m.payload.slamDamage),
+                    slamTileRange = math.max(0, m.payload.slamTileRange),
                 };
                 if (m.payload.kind == Wassup.Data.DcPayloadKind.AreaBarrage)
                 {

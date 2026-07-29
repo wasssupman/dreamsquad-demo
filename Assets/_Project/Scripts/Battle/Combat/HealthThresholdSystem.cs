@@ -163,6 +163,8 @@ namespace Wassup.Battle.Combat
                                         fromWorld = transform.ValueRO.Position,
                                         toWorld = destWorld,
                                         dataIndex = slot.projectileDataIndex,
+                                        slamDamage = slot.slamDamage,
+                                        slamTileRange = slot.slamTileRange,
                                     });
                             }
                             // 목적지 실패(방어유닛 전멸/링 상한 초과) = skip — k 는

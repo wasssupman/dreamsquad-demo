@@ -84,5 +84,11 @@ namespace Wassup.Battle.Combat
         // chunk 상주 비용이 커진다. **bake 가 -1 로 명시 초기화**한다(struct default 0
         // 은 유효 index 라 미배선 슬롯이 0번 패턴을 쏘게 된다).
         public int patternIndex;
+
+        // boss-jjangssen unit 7 — SelfBlink 착지 슬램 파라미터. 슬램은 **뷰가 착지한 프레임**에
+        // 터져야 하므로(sim 은 이미 텔레포트했다) 브리지 비행 코루틴이 소비한다 — 이 슬롯은
+        // 값을 실어 BossLeapVisualEvent 로 넘기는 역할만 한다. 0 = 슬램 없음.
+        public float slamDamage;
+        public int slamTileRange;
     }
 }

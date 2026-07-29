@@ -20,6 +20,11 @@ namespace Wassup.Battle.Combat
         public float3 fromWorld;  // 도약 직전 위치
         public float3 toWorld;    // 착지 셀 중심 (sim 이 이미 도달한 곳)
         public int dataIndex;     // 출발/착지 퍼프 ProjectileData index (<0 = 무연출)
+        // boss-jjangssen unit 7 — 착지 슬램. 뷰가 도착한 프레임에 브리지가 TileAoe 피해 요청을
+        // 스폰한다. sim 이 아니라 브리지가 소유하는 이유: 슬램의 "언제" 는 비행이 끝나는 시점이고
+        // 그 시점을 아는 것은 비행을 구동하는 쪽뿐이다. 브리지는 ECS 창구라 경계 위반은 아니다.
+        public float slamDamage;   // <=0 = 슬램 없음(이동만)
+        public int slamTileRange;  // 슬램 반경(타일)
     }
 
     // Queue lifecycle 은 BattleBridge 소유 (생성 Persistent / 싱글턴 파괴 / Dispose 3점 세트).

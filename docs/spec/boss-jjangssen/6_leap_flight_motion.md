@@ -1,4 +1,4 @@
-# 6 — 도약 비행 모션 (텔레포트 → 아치 도약)
+# 6 — 도약 비행 모션 (텔레포트 → 아치 도약) + 착지 슬램
 
 ## 목적
 
@@ -73,6 +73,22 @@ defender 쪽(`_defenderViewOverride`, `SyncMonoUnitViews` 최우선 분기)의 �
 `BattleBridge` 는 여러 세션이 동시 편집하므로 상태·API·코루틴은 **신규 partial**
 (`BattleBridge.BossLeap.cs`)에 두고, 공유 파일에는 소비 2줄과 큐 lifecycle 만 넣는다.
 
+## rev 1 — 착지 슬램 (2026-07-29 사용자 지시)
+
+비행만 붙이면 **내리찍는 연출인데 피해가 0** 이라 연출이 거짓말을 한다. 착지 시 자기중심
+`slamTileRange` 타일에 `slamDamage` 를 준다(현 값 = 반경 1 / 50).
+
+- `DcPayloadSpec` · `DcTriggerSlot` 에 `slamDamage`/`slamTileRange` **명시 필드 append**.
+  SelfBlink 는 이미 `magnitude`(밀집 반경)·`tileRange`(링 상한)를 쓰고 있어 자유 스칼라가 없고,
+  무엇보다 **데미지 경로는 이름으로 grep 돼야** 한다. append-only → 기존 카드는 0 = 슬램 없음.
+- **피해 시점을 브리지가 소유한다.** 슬램의 "언제" 는 비행이 끝나는 프레임이고 그것을 아는 것은
+  비행 구동자뿐이다. sim 은 이미 텔레포트를 끝냈다. 브리지는 ECS 창구이고 `DrainMeteorBarrageRequests`
+  가 같은 방식으로 `ProjectileSpawnRequest` 를 내는 선례가 있다.
+- `shooter = Entity.Null` (보스 AttackOutput 스냅샷 방지 — 슬램은 고정 피해), `owner = 보스`(킬 귀속),
+  `targetFaction = Defender`, `flightTime = 0`.
+- 슬램이 있으면 그 요청의 히트 이벤트가 VFX 도 그린다 → **퍼프를 따로 재생하지 않는다**(이중 재생 방지).
+- 비행 시간 0.55 → **0.83초**(+50%, 사용자 지시). 씬에 직렬화되지 않은 SerializeField 라 코드 기본값이 실효값.
+
 ## 완료 기준
 
 - compile 클린 · 기존 EditMode 전량 통과
@@ -81,3 +97,8 @@ defender 쪽(`_defenderViewOverride`, `SyncMonoUnitViews` 최우선 분기)의 �
 - 비행 중 보스가 죽으면 공중에 멈추지 않고 즉시 정상 처리
 - 손패를 열어 슬로모(0.3x) 중 도약이 시뮬과 같은 배율로 느려진다
 - 나이트메어(도약 슬롯 없음)·방어유닛 재배치 비행 무회귀
+- **착지 슬램**: 착지 순간 반경 1 안의 방어유닛이 50 피해를 입는다. 킬은 보스에 귀속된다.
+  슬램 VFX 가 **한 번만** 재생된다(퍼프와 이중으로 겹치지 않는다)
+
+- 확인: 2026-07-29 · EditMode 1575 중 1573 통과·실패 0·스킵 2(기존 `[Ignore]`) · 컴파일 에러 0.
+  **Play 육안 검증은 미완** — 위 항목 참조.

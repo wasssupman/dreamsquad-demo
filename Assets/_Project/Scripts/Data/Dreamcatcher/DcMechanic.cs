@@ -185,6 +185,12 @@ namespace Wassup.Data
         // 명세. 정의 계층은 SO 참조를 허용한다(위 projectile·auraPrefab 선례) — 금지
         // 대상은 Entities/Battle 타입이다. null = bake 가 loud 거절. 다른 kind 는 무시.
         public ProjectilePatternData pattern;
+        // boss-jjangssen unit 7 — SelfBlink 착지 슬램. 명시 필드를 **추가**한 이유: SelfBlink 는
+        // 이미 magnitude(밀집 판정 반경)·tileRange(착지 탐색 링 상한)를 쓰고 있어 자유 스칼라가
+        // 남지 않았고(duration/auraScale 재사용은 auraPrefab 선언 시 의미가 겹친다), 무엇보다
+        // **데미지 경로**라 이름으로 grep 되어야 한다. append-only → 기존 카드는 0 = 슬램 없음.
+        public float slamDamage;    // 착지 시 자기중심 피해. <=0 = 슬램 없음(이동만)
+        public int slamTileRange;   // 슬램 반경(타일, Chebyshev)
     }
 
     [Serializable]

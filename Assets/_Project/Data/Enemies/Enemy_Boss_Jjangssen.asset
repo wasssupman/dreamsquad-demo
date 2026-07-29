@@ -85,6 +85,8 @@ MonoBehaviour:
       stackKind: 0
       buffStat: 0
       pattern: {fileID: 0}
+      slamDamage: 0
+      slamTileRange: 0
   - trigger:
       kind: 5
       period: 0
@@ -105,4 +107,6 @@ MonoBehaviour:
       stackKind: 0
       buffStat: 0
       pattern: {fileID: 0}
+      slamDamage: 50
+      slamTileRange: 1
   killScore: 2000
