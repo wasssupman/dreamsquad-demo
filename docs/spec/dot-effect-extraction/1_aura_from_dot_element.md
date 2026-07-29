@@ -1,4 +1,4 @@
-# 1 — 오라를 `DotEffect.flavor` 로 구동 (bridge 래치 삭제)
+# 1 — 오라를 `DotEffect.element` 로 구동 (bridge 래치 삭제)
 
 ## 목적
 
@@ -8,7 +8,7 @@
 | 결함 | 왜 사라지는가 |
 |---|---|
 | stale 비트 (얼음 오라가 매치 끝까지 잔존) | 래치 자체가 없어짐 — 매 프레임 도트에서 직접 읽음 |
-| 오귀속 (출혈만 아픈데 얼음 오라가 같이 뜸) | flavor 가 권위 — 실제 피해원만 켜짐 |
+| 오귀속 (출혈만 아픈데 얼음 오라가 같이 뜸) | element 가 권위 — 실제 피해원만 켜짐 |
 | 화염·독 오라가 영영 안 뜸 | 스택이 아니라 **해저드 도트**에 물림 → 처음으로 정상 동작 |
 
 ## 변경 대상
@@ -28,8 +28,8 @@
 for each entity with DotEffect buffer:
     anchor = ResolveUnitViewTransform(e); if null → skip
     for each dot in buffer:
-        if dot.remainingTime <= 0 || dot.flavor == None → skip
-        fx = FlavorToStatusFx(dot.flavor)      // 순수 static 매핑
+        if dot.remainingTime <= 0 || dot.element == None → skip
+        fx = ElementToStatusFx(dot.element)      // 순수 static 매핑
         if fx.HasValue → statusFxSpawner.Ensure(e, fx.Value, anchor)
 ```
 

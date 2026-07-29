@@ -11,9 +11,9 @@ CRITICAL 과피해를 끝낸다 — 병합이 flavor 별로 분리되므로 출�
 
 신규:
 
-- `Assets/_Project/Scripts/Battle/Effects/DotEffect.cs` — `DotFlavor` enum · `DotEffect` 버퍼 ·
-  `DotFlavorMap.FromStack` 순수 매핑
-- `Assets/_Project/Scripts/Battle/Effects/DotEffectMerge.cs` — flavor 별 병합
+- `Assets/_Project/Scripts/Battle/Effects/DotEffect.cs` — `DotOrigin`·`DotElement` enum · `DotEffect` 버퍼 ·
+  `DotElementMap.FromStack` 순수 매핑
+- `Assets/_Project/Scripts/Battle/Effects/DotEffectMerge.cs` — (origin, element) 별 병합
 - `Assets/_Project/Scripts/Battle/Effects/DotApplyEvents.cs` — `DotApplyEvent` ·
   `DotApplyEventsSingleton` (26번째 채널)
 
@@ -25,7 +25,7 @@ CRITICAL 과피해를 끝낸다 — 병합이 flavor 별로 분리되므로 출�
 - `CcApplySystem.cs` — DoT 라우팅 제거
 - producer 3곳 — `StackModifierTickSystem.cs:99` · `ZoneApplySystem.cs:62` · `BattleBridge.cs:3894`
 - `BattleBridge.cs` — 채널 생성/드레인/해제, `_stackAuraLatch` 블록의 DoT 판정은 **unit 1** 에서
-- `Assets/_Project/Data/Hazards/Hazard_{Fire,Poison}_{1x1,3x3}.asset` — flavor 저작
+- `Assets/_Project/Data/Hazards/Hazard_{Fire,Poison}_{1x1,3x3}.asset` — element 저작
 - `CLAUDE.md` — 채널 목록 25 → 26
 
 ## 구현
@@ -48,12 +48,12 @@ public struct DotEffect : IBufferElementData
 
 라우팅:
 
-- **스택 파생** — `DotFlavorMap.FromStack(kind)`. 기믹 스택(Fatigue 등)은 `None`
+- **스택 파생** — `DotElementMap.FromStack(kind)`. 기믹 스택(Fatigue 등)은 `None`
 - **해저드** — `ZoneApplySystem` 이 `effect.kind == CcKind.DoT` 를 보고 새 채널로 보낸다.
   `Slow` 가 이미 같은 형태로 `StatModifier` 로 빠지고 있으므로 **분기 하나가 늘 뿐**이다
-- **`DotNearby`** — flavor `None` 유지. 버스터즈가 유일 producer 라 충돌 상대가 없다(제약 8)
+- **`DotNearby`** — element `None` 유지. 버스터즈가 유일 producer 라 충돌 상대가 없다(제약 8)
 
-`HazardEffect` 에 `flavor` 저작 필드를 추가한다. `[Serializable]` 구조체라 append-safe 하고 기존
+`HazardEffect` 에 `element` 저작 필드를 추가한다. `[Serializable]` 구조체라 append-safe 하고 기존
 에셋은 0(None)으로 로드된다 → `Hazard_Fire_*` = Fire, `Hazard_Poison_*` = Poison 을 명시 저작.
 **`Hazard_Fire_3x3` 은 `tickInterval` 필드 자체가 없다**(그 필드 이전 저작 = 연속 도트) — 키 기준
 삽입이 필요하다.

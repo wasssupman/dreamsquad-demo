@@ -1,6 +1,6 @@
 # dot-effect-extraction — 지속 피해를 CC 버퍼에서 떼어낸다
 
-> 상태: **작성 중 (2026-07-29)** — 사용자 승인 대기
+> 상태: **units 0~1 구현 완료 (2026-07-29)** — 사용자 Play 확인 대기. 상세는 `2_handoff_summary.md`
 
 ## 목표
 
@@ -22,7 +22,7 @@
 
 5개 중 실제 CC 는 2~3개고, 하나는 이미 다른 집으로 갔고, `DoT` 는 성격이 다른데 남아 있다.
 
-**증상이 이미 나와 있었다.** 직전 설계 초안은 "병합 키를 **DoT 에 한해** flavor 로 넓힌다"였는데,
+**증상이 이미 나와 있었다.** 직전 설계 초안은 "병합 키를 **DoT 에 한해** element 로 넓힌다"였는데,
 공용 병합 함수 안에 `if (kind == DoT)` 분기를 넣는다는 것 자체가 **두 도메인이 한 함수를 공유하고
 있다**는 신호다. 이름도 마찬가지였다 — 출처 태그를 `CcFlavor` 라 불렀지만 지속 피해의 속성은
 CC 와 아무 상관이 없다.
@@ -49,8 +49,8 @@ CC 와 아무 상관이 없다.
 
 | # | 구분 | 문서 | 목적 |
 |---|---|---|---|
-| 0 | code | `0_dot_effect_buffer.md` | `DotEffect` 버퍼 + `DotFlavor` + 전용 채널. producer 3 · 소비 2 이관, flavor 별 병합 |
-| 1 | code | `1_aura_from_dot_flavor.md` | 오라를 `DotEffect.flavor` 로 구동 → bridge 래치 4종 삭제 |
+| 0 | code | `0_dot_effect_buffer.md` | `DotEffect` 버퍼 + `DotOrigin`·`DotElement` + 전용 채널. producer 3 · 소비 2 이관, (origin, element) 별 병합 |
+| 1 | code | `1_aura_from_dot_element.md` | 오라를 `DotEffect.element` 로 구동 → bridge 래치 4종 삭제 |
 | 2 | docs | `2_handoff_summary.md` | 인계 요약 |
 
 unit 0 은 크지만 **쪼갤 수 없다** — 버퍼를 옮기는 도중에 "쓰는 곳과 읽는 곳이 다른" 중간 상태가
@@ -60,12 +60,25 @@ unit 0 은 크지만 **쪼갤 수 없다** — 버퍼를 옮기는 도중에 "�
 
 1. **`DotEffect` 는 자기 버퍼다.** `CcEffect` 에서 `DoT` 는 **런타임 값으로 사라진다**
    (`CcKind.DoT` enum 멤버는 저작 호환을 위해 남는다 — 아래 4번).
-2. **`DotFlavor` 는 "무엇이 만들었나"이지 "누가"가 아니다.** 축을 `source`(Entity)로 잡으면 안 된다 —
-   난도질꾼 2기는 source 가 둘인데 둘 다 출혈이라 식별에 기여가 없고, `ZoneApplySystem` 은 내부
-   루프에 해저드 엔티티가 없어 **source 를 만들 수조차 없다**. 선례는 `StatModifierSlot` 의
-   `ModifierOrigin`. append-only, `None = 0` = 미분류(서로 병합).
-3. **병합은 flavor 별로 분리한다.** 새 파이프라인이므로 처음부터 올바르게 쓴다 — 옛 덮어쓰기를
-   재현했다가 다음 단위에서 고치지 않는다. `None` 끼리는 계속 병합(현행 동작 유지).
+2. **축은 둘이고, 겸직시키지 않는다.** 이게 이 spec 의 핵심 계약이다.
+   - `DotOrigin`(Stack·Zone·OnPlace) = **슬롯을 가르는 기준** = 어느 파이프라인이 만들었나
+   - `DotElement`(Bleed·Fire·Ice·Poison) = **화면에 보이는 그림** = 무슨 원소인가
+
+   초판은 한 필드(`flavor`)가 둘을 겸했다. 지금은 원소 하나가 파이프라인 하나에서만 나와서
+   (출혈=스택, 화염=장판) 우연히 1:1 이라 버텼지만, **화염을 스택으로도 만드는 순간 깨진다** —
+   장판 화염과 중첩 폭발 화염이 같은 값이 되어 한 슬롯에서 서로를 덮는다. 이 spec 이 고친
+   과피해가 화염 안에서 그대로 재현되는 것이다. 모호한 이름(`flavor`)이 그 겸직을 가려주고
+   있었다.
+   - ⚠ 축을 `source`(Entity)로 잡으면 안 된다 — 난도질꾼 2기는 source 가 둘인데 둘 다 출혈이라
+     식별에 기여가 없고, `ZoneApplySystem` 은 내부 루프에 해저드 엔티티가 없어 **source 를 만들
+     수조차 없다**. 어휘는 `StatModifierSlot` 의 `ModifierOrigin` 을 따른다(선례).
+   - 둘 다 append-only, `0` = 미분류.
+3. **병합 키 = `(origin, element)`.** 둘 중 하나만 달라도 슬롯이 갈린다. 이 형태가 "각 파이프라인은
+   서로를 모르고 통합 레이어가 중첩만 관리한다" 를 **문서가 아니라 키로 강제**한다.
+   같은 키끼리는 병합된다 — 난도질꾼 2기가 한 적을 물어도 출혈은 합산되지 않는다(사양).
+   가드: `DotEffectMergeTests.SameElement_DifferentOrigin_GetsSeparateSlot`.
+3b. **오라는 `element` 만 읽는다.** 장판이 준 화염이든 스택 폭발이 준 화염이든 화면에는 같은
+   그림이어야 한다 — 여러 origin 이 한 오라로 접힌다(`BattleBridge.DotAuraKind`).
 4. **`Stun`·`Sleep`·`Impulse` 는 손대지 않는다.** `CcEffectMerge` 의 남은 규칙은 그대로가 정답이고,
    `CcActionLock`·`CcClearSystem`·`DreamCocoonSystem`·`MovementSystem` 은 무영향이어야 한다.
    특히 wake-on-hit 를 source 별로 좁히면 호접몽 파탄 판정이 무력화되는 함정이 있다 — 건드리지 말 것.
@@ -74,9 +87,10 @@ unit 0 은 크지만 **쪼갤 수 없다** — 버퍼를 옮기는 도중에 "�
    잔존" 주석). 에셋 마이그레이션 0.
 6. **`tickTimer` 는 슬롯 지속 상태다.** 매 프레임 존 refresh 에도 리셋 금지, 주기 변경 시 진행률
    비례 환산 — 기존 `CcEffectMerge` 의 규약을 그대로 가져온다. add 경로 첫 틱 즉발도 유지.
-7. 전 수치는 SO — 하드코딩 금지. 해저드 flavor 는 `HazardEffect` 저작 필드.
+7. 전 수치는 SO — 하드코딩 금지. 해저드 `element` 는 `HazardEffect` 저작 필드이고,
+   `origin` 은 저작하지 않는다(해저드가 만들면 언제나 `Zone`).
 
-## 신규 이벤트 채널 (25번째)
+## 신규 이벤트 채널 (26번째)
 
 `DotApplyEventsSingleton` — Effects·Combat·Bridge → Effects 의 도트 부여 seam. 기존
 `EnemyCcEventsSingleton` 을 재사용하면 페이로드가 두 도메인을 섞게 되므로 분리한다(이 spec 의
@@ -89,7 +103,7 @@ unit 0 은 크지만 **쪼갤 수 없다** — 버퍼를 옮기는 도중에 "�
 
 ## 알려진 결정 — 얼음 오라는 뜨지 않게 된다
 
-unit 1 이후 점등 조건은 "그 flavor 의 도트가 도는 중"이다. 그런데 `StackModifier_Ice.asset` 의
+unit 1 이후 점등 조건은 "그 원소의 도트가 도는 중"이다. 그런데 `StackModifier_Ice.asset` 의
 임계는 `ApplyStat`(감속)·`ApplyStun` 뿐 **`ApplyDot` 이 없다** — 얼음은 도트를 만들지 않는다.
 지금 얼음 오라가 보이는 유일한 경로는 **오귀속**이므로, unit 1 은 기능을 없애는 게 아니라 **거짓
 점등을 없앤다.** 반대로 화염·독 오라는 해저드 도트에 물려 **처음으로 정상 동작한다**(현재는 스택
@@ -102,9 +116,9 @@ unit 1 이후 점등 조건은 "그 flavor 의 도트가 도는 중"이다. 그�
   사라진다. 값을 같은 순서로 두면 에셋 마이그레이션이 공짜다.
 - **`Impulse` 슬롯 합산** [M] · 분리하면 의미는 맞아지지만 바스티온·샷건너·`Card_GaleShove` 변위가
   전부 재튜닝 대상.
-- **다중 공격자 출혈 합산** [M] · flavor 는 "무엇"이라 난도질꾼 2기는 여전히 한 슬롯. 도트 전용
+- **다중 공격자 출혈 합산** [M] · 두 축 모두 "무엇"이라 난도질꾼 2기는 여전히 한 슬롯. 도트 전용
   가산 병합이 별도로 필요(`bleed-fighter-defender` 에서 이관).
-- **`DotNearby` 의 flavor 저작** [S] · 지금은 None(버스터즈가 유일 producer 라 충돌 없음).
+- **`DotNearby` 의 element 저작** [S] · 지금은 None(버스터즈가 유일 producer 라 충돌 없음).
 - **`maxStack` 권위 이중화** [S] · 유닛 SO `stackMaxStack` 과 `StackModifierSO.maxStack` 두 곳이
   권위이고 `ModifierApplySystem.cs:148` 이 기존 슬롯 값을 유지해 "먼저 도달한 producer" 가 이긴다.
 - **`DisposeCachedQueries` 조기 리턴 플래그 리셋** [S] · `BattleBridge.cs:662` 가 일부

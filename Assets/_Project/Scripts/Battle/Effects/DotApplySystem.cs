@@ -33,6 +33,12 @@ namespace Wassup.Battle.Effects
             }
 
             // 2. 틱 + 3. 감쇠
+            //
+            // 두 job 이 루프 모양을 공유하지만 **합치지 않았다.** `HasEvents` 플래그 하나로 접으면
+            // 로그 큐가 없는 경우에도 `NativeQueue<>.ParallelWriter` 필드가 job 에 남는데, 기본값
+            // 컨테이너는 스케줄 시점 안전성 검사에 걸린다(쓰지 않아도). 그렇다고 지급 루프를 공용
+            // static 으로 빼려면 콜백이 필요한데 Burst 에서 깔끔하지 않다. 중복은 루프 15줄뿐이고
+            // 실제 분기는 enqueue 유무 하나다 — 접는 비용이 얻는 것보다 크다.
             if (SystemAPI.TryGetSingleton<HazardRuntimeEventsSingleton>(out var runtimeEvents))
             {
                 new DotApplyWithEventsJob
