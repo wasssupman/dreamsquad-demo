@@ -114,10 +114,16 @@ magnitude × damageMul × [대상 CC면 attackerVsCc] × [frontmostMul] × [dcBo
 
 ## 완료 기준
 
-- [ ] compile 클린
-- [ ] **`Assets/_Project/Scripts/Battle/` diff 0** — ECS 시스템 무변경(D 의 기계적 확인)
-- [ ] EditMode: `CooldownToRate` 0/음수 쿨다운 가드 · 배율 결합 · `ResolveDelta` 부호 3종
-      (상승/하락/epsilon 내 flat)
+- [x] compile 클린 (2026-07-30 — Unity 콘솔 error 0)
+- [x] **`Assets/_Project/Scripts/Battle/` diff 0** — ECS 시스템 무변경(D 의 기계적 확인)
+- [x] EditMode: `CooldownToRate` 0/음수 쿨다운 가드 · 배율 결합 · `ResolveDelta` 부호 3종
+      (상승/하락/epsilon 내 flat) — `UnitStatReadoutTests` **9/9 통과**
 - [ ] Play: 공격력 버프 카드 부착 전후로 `damage` 가 바뀌고 `damageBase` 는 그대로다
 - [ ] Play: 표시된 공격력이 실제 데미지 숫자 팝업과 일치한다(조건부 배율이 없는 평범한 타격)
 - [ ] Play: 적 엔티티/미배치 엔티티로 호출 시 `false`, 예외 없음
+
+**Play 3항목은 소비자(unit 11 패널)가 생긴 뒤 함께 확인한다** — 지금은 값을 볼 표면이 없다.
+
+전체 EditMode 1589건 중 실패 1건은 `MultiGoalPoolSeparationTests`(`MapDocument_Zig.asset` 복도
+병합). 세션 시작 시점부터 dirty 였던 **타 세션의 맵 편집** 때문이며 이 unit 과 무관하다
+(이 unit 은 맵 데이터를 건드리지 않는다).
