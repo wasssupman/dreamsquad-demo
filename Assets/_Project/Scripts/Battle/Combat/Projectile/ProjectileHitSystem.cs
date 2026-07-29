@@ -193,7 +193,7 @@ namespace Wassup.Battle.Combat.Projectile
                                                     target = target,
                                                     kind = output.stackKind,
                                                     countDelta = (byte)math.max(1f, output.magnitude),
-                                                    maxStack = output.stackMaxStack > 0 ? output.stackMaxStack : (byte)5,
+                                                    maxStack = output.stackMaxStack > 0 ? output.stackMaxStack : StackModifierSO.DefaultMaxStack,
                                                     perAppDuration = output.duration,
                                                     source = entity,
                                                 });

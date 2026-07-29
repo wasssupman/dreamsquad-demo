@@ -14,14 +14,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.StackModifierSO
   kind: 3
   maxStack: 5
-  perAppDuration: 4
+  perAppDuration: 2
   policy: 0
   thresholds:
-  - atStack: 1
+  - atStack: 5
     mode: 1
     derivedKind: 0
-    magnitude: 3
-    duration: 3
+    magnitude: 5
+    duration: 4.85
     stat: 0
     op: 0
     tickInterval: 0.5

@@ -18,9 +18,9 @@ MonoBehaviour:
   desc: "\uAE30\uBCF8 \uAE30\uB2A5: \uAE38\uBAA9\uC5D0 \uB3C5\uC7A5\uD310 \uC8FC\uAE30
     \uC124\uCE58\n\uBC30\uCE58 \uC2A4\uD0AC: \uC5C6\uC74C\n\uD2B9\uC218 \uD6A8\uACFC:
     \uB3C5\uC7A5\uD310\uC774 \uC9C0\uC18D \uD53C\uD574"
-  health: 400
-  attackRange: 0
-  attackCooldown: 4
+  health: 600
+  attackRange: 3
+  attackCooldown: 2
   hitDelaySec: 0.3
   deployDelaySec: 0
   attackTargetCount: 1
@@ -28,13 +28,16 @@ MonoBehaviour:
   visualMaterial: {fileID: 2100000, guid: 6fa13ca4169ea45da96dbc3495b7b178, type: 2}
   deployVoiceClip: {fileID: 8300000, guid: ac8995eabec9f40a398472a62a5db1b3, type: 3}
   attackSfxClip: {fileID: 0}
+  beamVfxPrefab: {fileID: 0}
   projectile: {fileID: 0}
   outputs: []
   onPlaceEffect: 0
   onPlaceRange: 0
   onPlaceMagnitude: 0
   onPlaceDuration: 0
-  cost: 4
+  onPlaceStackKind: 0
+  onPlaceTickInterval: 0
+  cost: 3
   placementCooldown: 0
   targetAllies: 0
   abilities:
@@ -79,6 +82,8 @@ MonoBehaviour:
   knockbackDistance: 0
   knockbackDuration: 0
   sleepOnHitSec: 0
+  knockupOnHitSec: 0
+  knockupVisualHeight: 1.2
   onPlacePushDistance: 0
   onPlacePushDuration: 0
   onPlacePushRadius: 0
