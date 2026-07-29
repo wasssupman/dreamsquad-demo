@@ -22,6 +22,7 @@ APK와 iOS Ad Hoc IPA를 재현 가능한 로컬 명령으로 만들고 Firebase
 | 7 | `7_handoff_summary.md` | 첫 서명 산출물과 hardening 검증 결과 인계 |
 | 8 | `8_fixed_landscape_preflight.md` | 고정 가로 PlayerSettings와 mobile build 사전검증 계약 정렬 |
 | 9 | `9_timestamped_outs_copy.md` | 검증된 APK·IPA를 시간 식별자가 붙은 `Builds/outs` 복사본으로 제공 |
+| 10 | `10_ios_no_allow_debugging.md` | iOS IL2CPP archive 4GB 한계 회피를 위해 Ad Hoc 디버거 제외 |
 
 ## Feature-wide 계약
 
@@ -44,6 +45,9 @@ APK와 iOS Ad Hoc IPA를 재현 가능한 로컬 명령으로 만들고 Firebase
   `PlaybackEngines` 중 요청 플랫폼의 실제 모듈이 존재하는 위치를 사용한다.
 - 현재 사용자 소유의 고아 `Unity.Licensing.Client`는 비밀번호 입력·출력 예약 전에 차단하며
   스크립트가 프로세스를 자동 종료하지 않는다.
+- Android QA 빌드는 `Development | AllowDebugging`을 유지하고, iOS Ad Hoc QA 빌드는
+  `Development`만 사용한다. iOS IL2CPP의 `GameAssembly` archive가 4GB member-offset 한계를
+  넘지 않도록 디버거 심볼 생성을 제외한다.
 - **가로 전용 검증**(2026-07-27 갱신 — 검사 목적은 "세로로 빌드되는 사고 방지"다):
   통과 조건은 둘 중 하나다. ① **가로 자동회전** — `UIOrientation.AutoRotation` 또는
   직렬화 값 `5`를 같은 의미로 인정하되 세로 2방향 금지 + 가로 2방향 허용을 함께 요구.

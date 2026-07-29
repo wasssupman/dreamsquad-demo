@@ -335,11 +335,12 @@ namespace Wassup.Tests.EditMode.MobileBuild
                 assetPath);
         }
 
-        [TestCase("android", BuildTarget.Android)]
-        [TestCase("ios", BuildTarget.iOS)]
-        public void BuildPlayerOptions_UseExactScenesTargetAndDebugOptions(
+        [TestCase("android", BuildTarget.Android, true)]
+        [TestCase("ios", BuildTarget.iOS, false)]
+        public void BuildPlayerOptions_UseExactScenesTargetAndPlatformDebugOptions(
             string platformName,
-            BuildTarget expectedTarget)
+            BuildTarget expectedTarget,
+            bool expectsAllowDebugging)
         {
             var platform = ParsePlatform(platformName);
             var request = CreateRequest(platform, platform == MobileBuildPlatform.Android
@@ -352,7 +353,9 @@ namespace Wassup.Tests.EditMode.MobileBuild
             Assert.That(options.target, Is.EqualTo(expectedTarget));
             Assert.That(options.locationPathName, Is.EqualTo(request.OutputPath));
             Assert.That((options.options & BuildOptions.Development) != 0, Is.True);
-            Assert.That((options.options & BuildOptions.AllowDebugging) != 0, Is.True);
+            Assert.That(
+                (options.options & BuildOptions.AllowDebugging) != 0,
+                Is.EqualTo(expectsAllowDebugging));
         }
 
         [Test]

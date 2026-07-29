@@ -125,6 +125,11 @@ namespace Wassup.Editor.MobileBuild
             var targetGroup = request.Platform == MobileBuildPlatform.Android
                 ? BuildTargetGroup.Android
                 : BuildTargetGroup.iOS;
+            var options = BuildOptions.Development;
+            if (request.Platform == MobileBuildPlatform.Android)
+            {
+                options |= BuildOptions.AllowDebugging;
+            }
 
             return new BuildPlayerOptions
             {
@@ -132,7 +137,7 @@ namespace Wassup.Editor.MobileBuild
                 locationPathName = request.OutputPath,
                 target = target,
                 targetGroup = targetGroup,
-                options = BuildOptions.Development | BuildOptions.AllowDebugging
+                options = options
             };
         }
 
