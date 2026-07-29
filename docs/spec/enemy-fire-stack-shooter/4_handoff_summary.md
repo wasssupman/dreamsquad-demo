@@ -8,6 +8,8 @@
 - `8799bf8d` feat(projectile): 파이어볼 투사체 에셋 (unit 2)
 - `74148cb7` feat(enemy): 킨들러 — 레인저 저격 화염 축적 원거리 적 (unit 3)
 - `0fa44ab8` fix(projectile): 파이어볼 크기 실측 보정 (unit 2 rev1)
+- `c0577064` feat(enemy): 킨들러 외형 — 얼굴을 가려 실루엣으로 구분 (unit 3 rev1)
+- `40aef22d` balance(enemy): 킨들러 화상을 1초마다 4데미지 5초간으로 (unit 1 rev1)
 
 ## Implemented
 
@@ -44,6 +46,7 @@
 - **e2e 실측** — 사거리 안의 가디언이 화염 스택을 한 번도 못 받는다(클래스 필터 직접 증거),
   아처는 단일 슬롯에 누적 → `(Stack, Fire)` 도트 발화.
 - 전부 **testrig 배치 실행**. 에디터가 Play Mode 라 MCP 경로가 막혀 있었다.
+- **rev 후 재검증(`40aef22d`)** — 화상 수치 변경·외형 변경 후 신규 테스트 2건 재실행 **둘 다 Passed**.
 
 ## Notes (되돌리지 말 것)
 
