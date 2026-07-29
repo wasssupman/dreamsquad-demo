@@ -24,6 +24,7 @@ APK와 iOS Ad Hoc IPA를 재현 가능한 로컬 명령으로 만들고 Firebase
 | 9 | `9_timestamped_outs_copy.md` | 검증된 APK·IPA를 시간 식별자가 붙은 `Builds/outs` 복사본으로 제공 |
 | 10 | `10_ios_no_allow_debugging.md` | iOS IL2CPP archive 4GB 한계 회피를 위해 Ad Hoc 디버거 제외 |
 | 11 | `11_landscape_autorotation_regression.md` | 가로 양방향 자동회전을 빌드 계약으로 고정하고 iOS 고정 방향 회귀 차단 |
+| 12 | `12_ios_native_landscape_contract.md` | iOS 네이티브·런타임·최종 IPA의 가로 전용 계약 강제 및 검증 |
 
 ## Feature-wide 계약
 
@@ -53,7 +54,9 @@ APK와 iOS Ad Hoc IPA를 재현 가능한 로컬 명령으로 만들고 Firebase
   바뀌면 `LandscapeLeft`와 `LandscapeRight` 사이에서 회전해야 한다. 따라서
   `UIOrientation.AutoRotation`(Unity 직렬화 값 `5`), 세로 2방향 금지, 가로 2방향 허용을
   모두 요구한다. `LandscapeLeft/Right` 고정은 가로이더라도 제품 동작을 만족하지 않으므로
-  preflight에서 거부한다.
+  preflight에서 거부한다. iOS Xcode export는 iPhone/iPad의
+  `UISupportedInterfaceOrientations`를 두 가로 방향으로 명시하며, 최종 IPA 검증도 세로
+  방향이나 누락을 거부한다.
 - 실행 전후 Git worktree가 clean이어야 하며 기존 출력은 삭제하거나 덮어쓰지 않는다.
 - 프로젝트별 mobile build lock으로 두 로컬 빌드가 같은 Unity 설정을 동시에 다루지 못하게 한다.
 - Unity가 만드는 확정된 no-op 직렬화만 빌드 전 원본과 정확히 대조해 복원하고, 그 밖의

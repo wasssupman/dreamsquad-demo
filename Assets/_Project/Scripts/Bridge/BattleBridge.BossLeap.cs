@@ -26,23 +26,29 @@ namespace Wassup.Bridge
         [SerializeField] private float bossLeapTotalSeconds = 0.83f;
         [Tooltip("웅크리는 반동 시간(초). 총 시간 중 이만큼이 반동 구간.")]
         [SerializeField] private float bossLeapRecoilSeconds = 0.14f;
-        [Tooltip("반동으로 내려앉는 거리(월드). camUp 반대 방향.")]
-        [SerializeField] private float bossLeapRecoilDip = 0.45f;
-        // 아치 높이 3종은 함께 움직인다. **제어점 높이 semantics** 이므로 실제 apex 는
-        // 제어점 높이의 약 0.4배다(drop-dismount 0_dismount_arc_math 계약).
+        // ── 기하 4종: **드롭 하마(D&D)와 값이 동일하다** (사용자 지시 2026-07-29).
+        //    `DragSwaySettings` ⑩ 의 dropRecoilDip / dropArcHeightFactor / dropArcMinHeight /
+        //    dropLaunchControl / dropLandingHeight 와 1:1 로 맞춘다. 같은 함수를 쓰는데 값까지
+        //    같으면 두 연출이 한 몸짓으로 읽히고, 눈으로 튜닝된 쪽이 기준선이 된다.
+        //    ⚠ SO 를 참조하지는 않는다 — `DragSwaySettings` 는 드래그 UI 의 설정이고 전투 연출이
+        //    거기에 매달리면 UI 튜닝이 전투를 조용히 바꾼다. 값만 맞추고 소유는 분리한다.
         //
-        // ⚠ unit 7 에서 **단위 의미가 바뀌었다.** 이전에는 아치를 sim 좌표에 넣어 ToView 가
-        // 세로 성분을 버렸기 때문에, 0.95/8.5/1.25 는 그 손실을 메우려 부풀린 값이었다. 이제
-        // 높이가 view 공간에 그대로 적용되므로 값이 정직해졌다 — 같은 궤적을 view 공간에서
-        // 쓰는 드롭 하마(`DragSwaySettings` ⑩: factor 0.5 / minHeight 3.5)와 같은 대역이다.
-        [Tooltip("아치 높이 = 이동거리 × 이 계수 (하한은 아래 최소 높이). 제어점 높이 = apex 약 2.5배.")]
-        [SerializeField] private float bossLeapArcHeightFactor = 0.55f;
-        [Tooltip("아치 제어점 높이 하한(view 공간). 짧은 도약도 확실히 뜨게 한다.")]
-        [SerializeField] private float bossLeapArcMinHeight = 4.5f;
-        [Tooltip("발사 제어점 (x=진행비율, y=아치높이배수). y 를 올리면 더 솟구친다.")]
+        //    아치 높이 3종은 함께 움직이고, **제어점 높이 semantics** 이므로 실제 apex 는 제어점
+        //    높이의 약 0.4배다(drop-dismount 0_dismount_arc_math 계약).
+        //
+        //    ⚠ unit 7 에서 **단위 의미가 바뀌었다.** 이전에는 아치를 sim 좌표에 넣어 ToView 가
+        //    세로 성분을 버렸기 때문에, 0.95/8.5/1.25 는 그 손실을 메우려 부풀린 값이었다. 이제
+        //    높이가 view 공간에 그대로 적용되므로 D&D 와 같은 대역이 성립한다.
+        [Tooltip("반동으로 내려앉는 거리(월드). 아치 기저축(+Y) 반대 방향. = dropRecoilDip")]
+        [SerializeField] private float bossLeapRecoilDip = 0.35f;
+        [Tooltip("아치 높이 = 이동거리 × 이 계수 (하한은 아래 최소 높이). = dropArcHeightFactor")]
+        [SerializeField] private float bossLeapArcHeightFactor = 0.5f;
+        [Tooltip("아치 제어점 높이 하한(view 공간). 짧은 도약도 확실히 뜨게 한다. = dropArcMinHeight")]
+        [SerializeField] private float bossLeapArcMinHeight = 3.5f;
+        [Tooltip("발사 제어점 (x=진행비율, y=아치높이배수). y 를 올리면 더 솟구친다. = dropLaunchControl")]
         [SerializeField] private Vector2 bossLeapLaunchControl = new Vector2(0.25f, 1f);
-        [Tooltip("착지 제어점 높이배수. 작을수록 수직으로 내리찍는다.")]
-        [SerializeField] private float bossLeapLandingHeight = 0.22f;
+        [Tooltip("착지 제어점 높이배수. 작을수록 수직으로 내리찍는다. = dropLandingHeight")]
+        [SerializeField] private float bossLeapLandingHeight = 0.25f;
 
         private NativeQueue<BossLeapVisualEvent> _bossLeapVisualQueue;
 

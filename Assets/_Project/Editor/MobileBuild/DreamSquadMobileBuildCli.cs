@@ -99,7 +99,7 @@ namespace Wassup.Editor.MobileBuild
 
                 if (platform == MobileBuildPlatform.Ios)
                 {
-                    PatchIosMainTargetReleaseSigning(request.OutputPath);
+                    PatchIosXcodeProject(request.OutputPath);
                 }
 
                 ValidateBuildOutput(request);
@@ -184,7 +184,7 @@ namespace Wassup.Editor.MobileBuild
                 $"result={report.summary.result}, warnings={report.summary.totalWarnings}.");
         }
 
-        private static void PatchIosMainTargetReleaseSigning(string xcodeExportPath)
+        private static void PatchIosXcodeProject(string xcodeExportPath)
         {
 #if UNITY_IOS
             var projectPath = PBXProject.GetPBXProjectPath(xcodeExportPath);
@@ -229,11 +229,37 @@ namespace Wassup.Editor.MobileBuild
                 "PROVISIONING_PROFILE_SPECIFIER",
                 ExpectedIosProfileName);
             project.WriteToFile(projectPath);
+
+            var infoPlistPath = Path.Combine(xcodeExportPath, "Info.plist");
+            if (!File.Exists(infoPlistPath))
+            {
+                throw new MobileBuildException(
+                    "The generated Xcode project has no Info.plist.");
+            }
+
+            var plist = new PlistDocument();
+            plist.ReadFromString(File.ReadAllText(infoPlistPath));
+            SetLandscapeOrientations(plist.root, "UISupportedInterfaceOrientations");
+            SetLandscapeOrientations(plist.root, "UISupportedInterfaceOrientations~ipad");
+            plist.root.SetString(
+                "UIInterfaceOrientation",
+                "UIInterfaceOrientationLandscapeRight");
+            plist.root.SetBoolean("UIRequiresFullScreen", true);
+            File.WriteAllText(infoPlistPath, plist.WriteToString());
 #else
             throw new MobileBuildException(
-                "iOS signing configuration requires Unity to start with -buildTarget iOS.");
+                "iOS Xcode configuration requires Unity to start with -buildTarget iOS.");
 #endif
         }
+
+#if UNITY_IOS
+        private static void SetLandscapeOrientations(PlistElementDict root, string key)
+        {
+            var orientations = root.CreateArray(key);
+            orientations.AddString("UIInterfaceOrientationLandscapeLeft");
+            orientations.AddString("UIInterfaceOrientationLandscapeRight");
+        }
+#endif
     }
 
     internal enum MobileBuildPlatform

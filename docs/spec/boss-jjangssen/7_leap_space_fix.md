@@ -35,9 +35,16 @@ view 공간 Y 로 더한다."*
 비행이 비정상 종료해도 다음 프레임에 0이 된다.
 
 **튜닝 단위가 바뀌었다.** 이전 값(factor 0.95 / minHeight 8.5 / launch.y 1.25)은 버려지는 성분을
-메우려 부풀린 것이었다. 정직해진 지금은 같은 궤적을 view 공간에서 쓰는 드롭 하마
-(`DragSwaySettings` ⑩: factor 0.5 / minHeight 3.5)와 같은 대역이어야 한다 →
-**factor 0.55 / minHeight 4.5 / launch (0.25, 1.0)** 로 복귀.
+메우려 부풀린 것이었다. 정직해진 지금은 같은 궤적을 view 공간에서 쓰는 드롭 하마와 같은 대역이
+성립한다 → **기하 4종을 `DragSwaySettings` ⑩ 과 값까지 동일하게** 맞췄다(사용자 지시):
+dip 0.35 / factor 0.5 / minHeight 3.5 / launch (0.25, 1) / landing 0.25. **시간만 보스 고유**
+(총 0.83초 · 반동 0.14초 — D&D 는 0.45/0.12).
+
+SO 를 참조하지는 않는다 — `DragSwaySettings` 는 드래그 UI 의 설정이고 전투 연출이 거기에 매달리면
+UI 튜닝이 전투를 조용히 바꾼다. **값만 맞추고 소유는 분리**한다.
+
+높이를 다시 만질 때의 knob 은 `bossLeapArcMinHeight` 다 — `arcHeight = max(거리 × factor,
+minHeight)` 이고 tileSize 1 · 링 반경 6 이라 **factor 는 수평거리 7 초과(대각 장거리)에서만 이긴다.**
 
 ## 부수 효과 — 정렬 행 오독 해소
 

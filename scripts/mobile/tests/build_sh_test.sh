@@ -216,6 +216,42 @@ if (
 fi
 
 (
+  plist_value() {
+    case "$2" in
+      UISupportedInterfaceOrientations:0)
+        printf 'UIInterfaceOrientationLandscapeLeft\n'
+        ;;
+      UISupportedInterfaceOrientations:1)
+        printf 'UIInterfaceOrientationLandscapeRight\n'
+        ;;
+      *)
+        return 1
+        ;;
+    esac
+  }
+  verify_landscape_orientation_array fixture.plist UISupportedInterfaceOrientations
+)
+
+if (
+  plist_value() {
+    case "$2" in
+      UISupportedInterfaceOrientations:0)
+        printf 'UIInterfaceOrientationPortrait\n'
+        ;;
+      UISupportedInterfaceOrientations:1)
+        printf 'UIInterfaceOrientationLandscapeRight\n'
+        ;;
+      *)
+        return 1
+        ;;
+    esac
+  }
+  verify_landscape_orientation_array fixture.plist UISupportedInterfaceOrientations
+) >/dev/null 2>&1; then
+  fail "A portrait-capable iOS orientation plist passed verification."
+fi
+
+(
   UNITY_LAUNCH_ACTIVE=1
   DEFERRED_SIGNAL_EXIT=0
   handle_build_signal 130
