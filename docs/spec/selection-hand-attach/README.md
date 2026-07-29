@@ -1,6 +1,9 @@
 # selection-hand-attach — 유닛 선택 중 손패 등장 + 탭 즉발/D&D 부착
 
-> 상태: **초안 rev 2 2026-07-29** (critic REVISE(H5/M7/L7) 전건 반영 + 사용자 결정 5건, 구현 대기)
+> 상태: **units 0~4 구현 완료 2026-07-29 · Play 검증(unit 5) 대기**
+>
+> 커밋: `9d719953`(unit 0) · `1c51e312`(unit 1) · `4ea13544`(units 2~4). 설계는 critic
+> REVISE(H5/M7/L7) 전건 반영 rev 2(`9fdaba6a`) + 사용자 결정 5건. 인계는 `6_handoff_summary.md`.
 
 ## 배경 / 목표
 
@@ -37,7 +40,7 @@
 | 3 | `3_tap_instant_attach.md` | 기능 | 카드 탭 즉발 부착(Unit/Squad) + 명시 클릭 가드 + 움찔(flinching 소유) |
 | 4 | `4_focus_session_handoff.md` | 연출 정합 | 리티클 재주장 — 트리거를 "세션 강제 종료 신호"로 확장 |
 | 5 | `5_wiring_play_validation.md` | 배선+검증 | Play e2e (포탈/사망/조준 프레이밍/튜토리얼 경로 포함) |
-| 6 | `6_handoff_summary.md` | 인계 | (종료 시 작성 예약) |
+| 6 | `6_handoff_summary.md` | 인계 | 커밋·핵심 파일·되돌리면 안 되는 의도 5건 + 남은 Play 검증 |
 
 0 → 1 → 2 순서 필수(게이트 분리 없이는 손패 오픈이 선택을 죽인다). 3·4 는 1 이후 독립.
 

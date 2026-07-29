@@ -26,13 +26,20 @@
 
 - `public event Action FocusCleared` — 뷰가 `_focus.End()` 를 호출하는 모든 지점
   (`Close()`, `ForceClose()`) 에서 **End 직후** 발화.
-- **`Close()` 내부 순서 교정**: `_focus?.End()` 를 `CancelAllCardInteraction()` **앞**으로
-  옮긴다. 현행 순서(취소→End)는 취소 깔때기가 발화시킬 재주장을 같은 함수가 곧바로 지운다.
+- **순서가 계약이다**: `End()` **뒤에** 발화해야 한다. 앞에서 발화하면 재주장한 리티클을 바로
+  이어지는 `End()` 가 다시 지운다. 이 배치 하나로 critic 이 지적한 `Close()` 내부 순서 문제
+  (취소 깔때기의 재주장 → `End()` 가 덮어씀)도 함께 닫힌다 — 함수의 **마지막** 포커스 동작이
+  항상 재주장 트리거이므로, `CancelAllCardInteraction()` 과 `End()` 의 기존 순서는 유지한다.
 - 슬롯 `OnDisable → EndInteraction` 경로: 패널 비활성(침강 완료/teardown)마다 실행되는데
   `NotifyInteractionEnded` 를 부르지 않는다. 이 경로는 항상 `Close()/ForceClose()` 가 선행하므로
   **A 의 `FocusCleared` 가 이미 커버** — 슬롯 코드는 만지지 않는다(변경 최소).
 - `NotifyInteractionEnded()` 에서 `public event Action InteractionEnded` 발화(기존 깔때기 —
   커밋/취소/ESC).
+
+**주의(구현 후 확인)**: `Focus.End()` 는 슬롯 `EndInteraction` 안에도 있다. 탭 즉발(unit 3)은
+`_mode == None` 으로 `CommitNow → EndInteraction` 을 지나므로 그 `End()` 가 선택 리티클을 끄고,
+곧 이어지는 `NotifyInteractionEnded → InteractionEnded` 가 재주장한다 — 즉발 경로의 리티클 복귀는
+이 트리거에 의존한다(별도 처리 없음).
 
 ### B. 컨트롤러 — 재주장 수신부
 
@@ -63,7 +70,7 @@ void OnFocusSessionReleased()
 
 ## 완료 기준
 
-- [ ] compile 클린
+- [x] compile 클린 (2026-07-29 — Unity 콘솔 0; Play 검증은 unit 5 일괄)
 - [ ] Play: 선택 → 카드 D&D 로 **다른** 유닛에 부착 → 커밋 후 선택 유닛 위 리티클 복귀
       (콜아웃 이름 포함, 가로질러 날아오지 않고 pop)
 - [ ] Play: 선택 → 카드 드래그 취소(손패로 복귀/ESC) → 리티클 복귀

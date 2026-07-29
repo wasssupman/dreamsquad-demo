@@ -35,8 +35,11 @@ HandDismissTapCatcher : MonoBehaviour, IPointerDownHandler, IPointerClickHandler
 - **릴리즈 시점 상태로 판정 금지**: 포탈 출구 탭은 press 프레임에 커밋되어 `IsPortalAiming/
   IsAiming` 이 릴리즈 프레임엔 이미 false 다 — 릴리즈 가드는 무효(critic H1 프레임 추적).
   press 스냅샷만이 그 릴리즈를 걸러낸다.
-- `moveThreshold` 는 SerializeField(제약 6) — raw 경로의 `tapMoveThreshold 24px` 와 같은 계열.
-- `AnyInteractionActive()` 는 뷰 private → 뷰가 catcher 에 자기 참조를 주입(생성 시점).
+- `moveThreshold` 는 뷰의 SerializeField `boardTapMoveThreshold`(24px, 제약 6) — raw 경로의
+  `tapMoveThreshold` 와 같은 계열.
+- `AnyInteractionActive()` 는 뷰 private → **클로저(`Func<bool>`)로 주입**한다(뷰 참조를
+  캐처에 넘기지 않고 판정만 넘긴다). 캐처는 별도 파일의 top-level 클래스라 이동모드 쪽에서
+  타입으로 식별할 수 있다(C 절).
 
 ### B. `BoardTapped` 라우팅
 
@@ -68,7 +71,7 @@ catcher 는 "보드 위 빈 공간" 의 대리이지 UI 위젯이 아니다. (�
 
 ## 완료 기준
 
-- [ ] compile 클린
+- [x] compile 클린 (2026-07-29 — Unity 콘솔 0; Play 검증은 unit 5 일괄)
 - [ ] Play: 손패 오픈 중 다른 유닛 탭 → 선택 전환(줌·리티클·패널·플립북·SelectionTarget 이동),
       손패 유지·재딜 없음
 - [ ] Play: 손패 오픈 중 선택 유닛 재탭 → 전부 해제 / 빈 보드 탭 → 전부 해제

@@ -58,19 +58,21 @@ CommitNow(() => _view.Controller.CommitAttach(entryId, target),
 
 ### C. 움찔 피드백 — 뷰 소유 + 슬롯 소유권 (critic M7)
 
-- **API 사실 확인**: `Tween.PunchAnchoredPosition` 은 PrimeTween 에 없다. `PunchLocalPosition`
-  / `ShakeLocalPosition` / `PunchScale` 중 선택(구현 시 확정).
+- **API 사실 확인**: `Tween.PunchAnchoredPosition` 은 PrimeTween 에 없다. 실제 사용 =
+  **`Tween.ShakeLocalPosition(rect, new Vector3(강도, 0, 0), 시간, frequency:)`** (패키지
+  `Runtime/Shake.cs:35` 확인). 좌우 셰이크 = 고개 젓기 = 거절.
 - **rect 소유권**: `SpringSlots()` 는 매 프레임 pos/rot/scale 을 전부 덮어써 트윈과 동시 writer
-  충돌 — 셰이크가 뭉개진다. `redealing` 선례대로 **`flinching` 소유 플래그**를 슬롯에 추가:
-  `SpringSlots`/`ApplyFocusTargets` 가 그 슬롯을 건너뛰고, 트윈 완료 콜백이 플래그 해제 +
-  홈 복원. 강제 종료 경로(Refresh/ForceClose)는 `StopDeal` 의 `Complete()` 패턴 준용.
+  충돌 — 셰이크가 뭉개진다. `redealing` 선례대로 **`flinching` 소유 플래그**를 슬롯에 추가해
+  `SpringSlots` 가 그 슬롯을 건너뛰고, 트윈 `OnComplete` 가 플래그를 내린다. 위치 복원은
+  별도 스냅 없이 스프링이 `targetPos`(=home)로 되돌린다. `ApplyFocusTargets` 는 rect 를 쓰지
+  않고 target 만 갱신하므로 건너뛸 필요가 없다(셰이크와 경쟁하지 않는다).
 - 드래그/재딜 소유 슬롯(`OwnedByInteraction || redealing`)에는 움찔 no-op.
 - 진폭/시간은 `[SerializeField]`(제약 6). 사유 표시는 기존 press 브리핑 채널 재사용
   (`ShowDragBriefing`/`UpdateDragBriefingStatus`) — 신규 텍스트 표면 금지.
 
 ## 완료 기준
 
-- [ ] compile 클린
+- [x] compile 클린 (2026-07-29 — Unity 콘솔 0; Play 검증은 unit 5 일괄)
 - [ ] Play: 유닛 선택 → Unit/Squad 카드 탭 → 카드가 유닛으로 비행·부착 + **확정 펄스**, 게이지
       차감, 손패 유지+재딜인 · **마지막 사용 가능 카드 탭**(자동 닫힘 확정)에도 펄스가 나온다(M5)
 - [ ] Play: **카드를 끌었다가 같은 카드 위로 되돌려 놓기** → 취소만, 차감 0, 즉발 미발화(가드 0)
