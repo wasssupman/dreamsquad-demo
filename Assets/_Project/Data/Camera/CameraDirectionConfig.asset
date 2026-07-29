@@ -86,7 +86,8 @@ MonoBehaviour:
   inspectDolly: 3
   inspectFovDelta: -6
   inspectFollowRate: 12
-  inspectPitchDeg: -5
+  inspectPitchDeg: 0
+  inspectFrameBiasY: 0.35
   inspectLookWeight: 0.5
   inspectFadeInSec: 0.22
   inspectFadeOutSec: 0.3

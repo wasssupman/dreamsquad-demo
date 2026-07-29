@@ -113,13 +113,24 @@ namespace Wassup.Data
         public float inspectFovDelta = -6f;
         [Tooltip("선택 전환 시 프레이밍이 새 유닛으로 미끄러지는 속도(1/초). 클수록 빠르다. 0 이하 = 즉시 스냅(구 동작).")]
         public float inspectFollowRate = 12f;
-        // selection-hand-attach unit 13 rev — **연출 pitch**. 지금까지 인스펙트에 걸리던 틸트는
-        // FocusDelta 가 lookat 에서 파생한 것뿐이었다(선택 유닛을 바라보느라 생기는 각도).
-        // 손패 헤드룸·이동모드 오버뷰에는 명시 pitch 노브가 있는데 인스펙트만 없어 비대칭이었다.
-        // 음수 = 카메라를 낮춰 올려다본다 → 유닛이 서 있는 각도감이 생겨 dolly/FOV 로는 못 얻는
-        // 부각이 붙는다.
-        [Tooltip("인스펙트 중 pitch 델타(도). 음수 = 낮춰서 올려다봄(유닛 부각). 0 = 끔(lookat 파생 각도만 남음).")]
-        public float inspectPitchDeg = -5f;
+        // selection-hand-attach unit 13 rev2 — **기본 0(끔)**. rev1 에서 -5 로 켰다가 되돌렸다.
+        //
+        // 이유: 음수 pitch 는 "올려다보는" 각도인 동시에 **보드를 화면 아래로 내린다**
+        // (handHeadroomPitchDeg 와 같은 부호 규약 — 1도당 약 25px). 선택 중에는 손패가 **항상**
+        // 열려 있어(계약 1) 헤드룸 -2 가 이미 걸린 상태라, 여기에 -5 를 더하면 총 ~175px 하강이다.
+        // 하단에 배치된 유닛이 손패 카드 밑으로 완전히 깔려 보이지 않는다(실측 2026-07-30).
+        //
+        // 즉 **극적인 틸트와 "선택 중 손패 상시 개방"은 구조적으로 양립하지 않는다.**
+        // 유닛을 부각하되 가려지지 않게 하려면 각도가 아니라 **프레이밍**을 올려야 한다 →
+        // inspectFrameBiasY 가 그 일을 한다. 이 노브는 실험용으로 남긴다.
+        [Tooltip("인스펙트 중 pitch 델타(도). 음수 = 보드를 화면 아래로(하단 유닛이 손패에 가린다). 기본 0 권장.")]
+        public float inspectPitchDeg = 0f;
+        // 선택 유닛을 화면에서 **위로** 올리는 프레이밍 바이어스(NDC). 카메라가 유닛보다 살짝
+        // 아래를 겨냥하게 만들어, 결과적으로 유닛이 프레임 위쪽에 놓인다. 손패가 덮는 하단
+        // 대역에서 유닛을 꺼내는 것이 목적이라 pitch 와 달리 보드 전체를 기울이지 않는다.
+        // NDC 1.0 = 프러스텀 절반 높이. lookWeight(≤0.5) 블렌드를 지나므로 실효는 그 비율만큼이다.
+        [Tooltip("선택 유닛을 프레임 위쪽으로 올리는 양(NDC). 하단 배치 유닛이 손패에 가리지 않게 한다. 0 = 끔.")]
+        [Range(0f, 1f)] public float inspectFrameBiasY = 0.35f;
         [Tooltip("선택 유닛 방향 lookat 블렌드. FocusDelta 가 0~0.5 로 클램프(풀 lookat 은 보드 좌표감 파괴). 인스펙트는 고정 월드 타겟이라 되먹임 없음 — 상한은 취향. 0.5 = 허용 최대(유닛이 중앙에 가장 가까움).")]
         [Range(0f, 0.5f)] public float inspectLookWeight = 0.5f;
         [Tooltip("인스펙트 진입 페이드(초).")]

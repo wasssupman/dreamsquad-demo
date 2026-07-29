@@ -280,9 +280,13 @@ namespace Wassup.Presentation
             // 직접 대입해, 선택이 A→B 로 바뀌면 그 프레임에 프레이밍이 통째로 점프했다.
             // (가중치는 페이드가 걸려 있어 "재줌"은 원래 없었다 — 튀는 것은 NDC 스냅이었다.)
             // 실제 추종/스냅 판정은 Compose 에서 한다.
+            // unit 13 rev2 — y 에서 bias 를 빼면 카메라가 유닛보다 **살짝 아래**를 겨냥하고,
+            // 그 결과 유닛은 프레임 **위쪽**에 놓인다. 선택 중에는 손패가 항상 열려 하단
+            // 대역을 덮으므로(계약 1), 하단에 배치된 유닛을 그 밑에서 꺼내려면 이게 필요하다.
+            // pitch 로 같은 일을 하려 하면 보드 전체가 내려가 문제가 되레 악화된다(rev1 실패).
             _inspectNdcTarget = new Vector2(
                 local.x / (local.z * Mathf.Max(1e-4f, tanH)),
-                local.y / (local.z * Mathf.Max(1e-4f, tanV)));
+                local.y / (local.z * Mathf.Max(1e-4f, tanV)) - config.inspectFrameBiasY);
             _inspectHasNdc = true;
             _inspectFedFrame = Time.frameCount;
         }
