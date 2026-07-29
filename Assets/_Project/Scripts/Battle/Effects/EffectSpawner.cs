@@ -23,9 +23,15 @@ namespace Wassup.Battle.Effects
         // Adds or merges a CcEffect into the target's DynamicBuffer<CcEffect>.
         // 병합 정책은 CcEffectMerge 단일 소스(CcApplySystem 과 공유) — tickInterval/tickTimer
         // 포함 동일 규칙. 여기 Impulse/Sleep 은 tickInterval=0 이라 이산 tick 필드는 무영향.
-        public static void ApplyCc(EntityManager em, Entity target, CcEffect effect)
+        // boss-jjangssen unit 3 — source 는 보스 면역 판정용. 기본값 Direct 라 기존 호출처
+        // 3곳(브리지 스킬·드림캐쳐 2곳)은 인자 없이 그대로 "직접" 으로 남는다.
+        public static void ApplyCc(EntityManager em, Entity target, CcEffect effect,
+            CcSource source = CcSource.Direct)
         {
             if (!em.Exists(target))
+                return;
+            if (em.HasComponent<Wassup.Battle.Combat.BossTag>(target)
+                && CcActionLock.IsBossImmune(effect.kind, source))
                 return;
 
             var buffer = em.GetBuffer<CcEffect>(target);

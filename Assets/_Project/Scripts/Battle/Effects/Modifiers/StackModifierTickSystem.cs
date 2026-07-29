@@ -99,6 +99,9 @@ namespace Wassup.Battle.Effects
                         ccQ.Enqueue(new EnemyCcEvent
                         {
                             target = entity,
+                            // boss-jjangssen unit 3 — 스택 임계 발화는 "직접 CC" 가 아니다.
+                            // 보스 면역이 이 축으로 통과시킨다(누적해서 임계를 넘긴 것은 통한다).
+                            source = CcSource.StackThreshold,
                             effect = new CcEffect
                             {
                                 kind          = CcKind.DoT,
@@ -116,6 +119,8 @@ namespace Wassup.Battle.Effects
                         ccQ.Enqueue(new EnemyCcEvent
                         {
                             target = entity,
+                            // boss-jjangssen unit 3 — 위와 동일. Ice 5스택 스턴이 보스에게 통하는 근거.
+                            source = CcSource.StackThreshold,
                             effect = new CcEffect
                             {
                                 kind          = CcKind.Stun,

@@ -39,6 +39,8 @@ namespace Wassup.Battle.Effects
             // aggro-tile-chase unit 1 — 획득 게이트/필드용 RO lookup (Combat 컴포넌트는 읽기만).
             var attackLookup = SystemAPI.GetComponentLookup<Wassup.Battle.Combat.AttackState>(isReadOnly: true);
             var profileLookup = SystemAPI.GetComponentLookup<Wassup.Battle.Combat.AggroAttackProfile>(isReadOnly: true);
+            // boss-jjangssen unit 3 — 보스 어그로 면역 게이트용 RO lookup (위 Combat 읽기 선례와 동일).
+            var bossLookup = SystemAPI.GetComponentLookup<Wassup.Battle.Combat.BossTag>(isReadOnly: true);
             var transformLookup = SystemAPI.GetComponentLookup<Unity.Transforms.LocalTransform>(isReadOnly: true);
             var chaseLookup = SystemAPI.GetBufferLookup<AggroChaseCell>(isReadOnly: true);
             bool hasFlow = SystemAPI.TryGetSingleton<FlowFieldSingleton>(out var flowField) && flowField.IsCreated;
@@ -106,6 +108,14 @@ namespace Wassup.Battle.Effects
                     if (claimed.Contains(ev.enemy) || aggroedLookup.HasComponent(ev.enemy)) continue;
                     // 죽는 중인 적은 무시.
                     if (deadLookup.HasComponent(ev.enemy)) continue;
+                    // boss-jjangssen unit 3 — 보스는 어그로 면역. 보스는 boss-defender-field 로
+                    // 방어유닛을 전멸까지 스스로 사냥하므로 끌려갈 필요가 없고, Aggroed 가 붙으면
+                    // AttackSystem 이 타겟 수를 1로 강제해 cleave 가 소멸하고 MovementSystem 의
+                    // Chasing 조기 return 이 사냥 분기보다 앞이라 가디언만 쫓게 된다.
+                    // **부착 1곳 차단**이 정답이다 — 소비 지점은 6곳이라 "붙은 것을 무시" 는 비싸다.
+                    // AggroCapacity.held 는 매 프레임 Aggroed 보유 적으로 full recompute 하므로
+                    // 부착이 없으면 카운트에 아예 안 들어온다(회계 무변경).
+                    if (bossLookup.HasComponent(ev.enemy)) continue;
 
                     // aggro-tile-chase unit 1 — 전투수단(AttackState/도발 프로파일) 없는 적은
                     // 가디언을 때릴 수 없으므로 거부 (구 M5 "Chasing 고착"의 원천 차단).

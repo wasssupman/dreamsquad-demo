@@ -53,6 +53,11 @@ namespace Wassup.Battle.Combat
             var ecb = new EntityCommandBuffer(Allocator.Temp);
             var projectileRefLookup = SystemAPI.GetComponentLookup<ProjectileRef>(isReadOnly: true);
             var defenderCcLookup = SystemAPI.GetComponentLookup<DefenderCcData>(isReadOnly: true);
+            // boss-jjangssen unit 3 — 넉업만 여기서 게이트한다. 넉업은 CC(Stun)와 연출 신호를
+            // 한 쌍으로 내보내는데, 연출은 CcApplySystem 을 거치지 않으므로 부여 거절로는 못 막는다.
+            // CC 만 막으면 **보스가 떠오르는데 스턴은 안 걸리는** desync 가 된다
+            // (KnockupVisualEvent 계약: durationSec == 스턴 시간이어야 착지와 해제가 맞는다).
+            var bossLookup = SystemAPI.GetComponentLookup<BossTag>(isReadOnly: true);
             var defenderTagLookup = SystemAPI.GetComponentLookup<DefenderUnitTag>(isReadOnly: true);
             // defender-directional-volley unit 3 — 배치 시 확정된 영구 공격 방향(Units
             // 소유, 읽기 전용). 보유 유닛은 최근접 타겟 선택 대신 방향 레인 게이트로 발사.
@@ -1224,6 +1229,9 @@ namespace Wassup.Battle.Combat
                                 {
                                     for (int ti = 0; ti < hitCount; ti++)
                                     {
+                                        // boss-jjangssen unit 3 — 보스는 넉업 면역. CC 와 연출을
+                                        // **함께** 건너뛴다: 연출만 나가면 떠오르는데 스턴은 안 걸린다.
+                                        if (bossLookup.HasComponent(hitTargets[ti])) continue;
                                         ccWriter.Value.Enqueue(new Wassup.Battle.Effects.EnemyCcEvent
                                         {
                                             target = hitTargets[ti],
