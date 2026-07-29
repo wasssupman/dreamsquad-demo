@@ -1,7 +1,8 @@
 # dreamcatcher-attach-requirement — 부착 대상 제한 필드 (클래스 / 특정 유닛)
 
 상태: 완료 2026-07-30 (units 0~5 + unit 7 rev + units 8·10).
-기존 최신 커밋: unit 7 `12f5b644` · unit 8 `874a54ad`. 인계 → `9_handoff_summary.md`
+관련 커밋: unit 7 `12f5b644` · unit 8 `874a54ad` · unit 10 `33be2453`.
+최종 인계 → `11_handoff_summary.md`
 
 최신 자동 검증(unit 10, 2026-07-30): Unity compile error 0 · 관련 EditMode **6/6** ·
 관련 PlayMode **2/2**. 전체 EditMode 1574건 중 공유 워크트리의 map dirty 영향 1건,
