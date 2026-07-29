@@ -48,7 +48,10 @@ mechanics 를 비우는 것이 목적이라, 첫 mechanic 이 들어오는 unit 
 
 1. **`AttackDeck.bossUnit` 을 rename 하지 않는다.** 라이브 덱 9개가 guid 를 들고 있고, rename 하면 YAML
    키가 orphan 이 되어 생성기의 `null` graceful no-op 을 타고 **에러도 경고도 없이 전 맵에서 보스가
-   사라진다.** `bossUnit` 유지 + `bossPool` 추가 + `ResolveBossPool()` 폴백(`ResolveAttackUnitPool()` 선례).
+   사라진다.** `bossUnit` 유지 + `bossPool` 추가 + **생성기의 `BuildBossPool` 폴백**.
+   (구현 정정 2026-07-29: 당초 계약은 덱측 `ResolveBossPool()` 이었으나 `Generate` 를 직접 호출하는
+   경로도 같은 폴백을 받아야 해서 생성기에 두었다. 대가는 `Generate` 가 `bossUnit`·`bossPool` 두
+   파라미터를 병행하는 것 — `bossUnit` 은퇴 시 함께 정리한다.)
 2. **`bossPool.Count == 1` 이면 rng 를 소비하지 않는다.** 기존 7덱의 rng 스트림이 byte-identical 해야
    웨이브 편성이 무회귀다. `waveGeneratorVersion` 은 올리지 않는다(순수 로그 라벨).
 3. **보스 선택은 생성기 안에서만.** 프리뷰와 런타임이 같은 `Generate` 를 타므로 결정론이 자동 성립한다.
@@ -107,5 +110,11 @@ mechanics 를 비우는 것이 목적이라, 첫 mechanic 이 들어오는 unit 
   유닛 `Defender_Archer`(넉백)·`Defender_Malphite`(넉업)·`Defender_TooMuchTalker`(수면)가 보스전에서
   해당 효과를 잃는다. 보스전 대체 효과(예: CC 대신 데미지/취약 부여)는 **밸런스 작업으로 분리**.
   말파이트는 유닛 정체성 전체가 넉업이라 우선순위가 높다.
+- **위협 서브시스템 소비자 0** — unit 4 에서 `SelfBlink` 착지 정책을 밀집도로 교체하면서
+  `ThreatTable.Leader` 프로덕션 호출처가 0, `ThreatEntry` 를 **읽는 곳이 0**, `BlinkMath.OffsetDest`
+  도 0이 됐다. 그런데 보스 피격마다 `ThreatHitEventsSingleton` 에 enqueue 하고 매 프레임 드레인하며
+  채널(CLAUDE.md 등재)을 유지한다 — 생산 설비만 남은 상태다. **지금은 의도적 보존**(어그로 저항·
+  위협 기반 타겟팅 등 재사용 후보가 있고, 제거는 채널 은퇴 + 3파일 정리 + CLAUDE.md 갱신이라 별건).
+  재사용 계획이 없다고 판단되면 은퇴시킨다.
 - **스탯 재추산** — HP 950 근거는 **방어유닛 20종** 기준 실효 DPS 였다. 지금 24종이고 늘어난 4종
   (샷건너·난도질꾼·버스터즈·말파이트)이 전부 화력형이라 950 이 낮을 수 있다. Play 튜닝에서 확인.

@@ -641,8 +641,7 @@ namespace Wassup.Bridge
             if (_castEventQueue.IsCreated) _castEventQueue.Dispose();
             if (_dcTriggerFiredQueue.IsCreated) _dcTriggerFiredQueue.Dispose();
             if (_knockupVisualQueue.IsCreated) _knockupVisualQueue.Dispose();
-            DisposeBossLeapChannel();
-            AbortAllBossLeaps(); // 공중에 뷰가 멈춘 채 남는 것 방지
+            DisposeBossLeapChannel(); // 오버라이드 clear 포함 — 진행 중 비행이 자진 종료한다
             if (_threatHitEventQueue.IsCreated) _threatHitEventQueue.Dispose();
             if (_blinkRequestQueue.IsCreated) _blinkRequestQueue.Dispose();
             if (_healAppliedEventQueue.IsCreated) _healAppliedEventQueue.Dispose();

@@ -352,9 +352,12 @@ namespace Wassup.Data
             localIndex++;
         }
 
+        // null source 허용 — 보스 pool 은 미저작(null)이 정상이다. 잡몹 pool 경로는 상류
+        // (Generate 진입부)에서 이미 ArgumentNullException 을 던지므로 영향 없다.
         private static List<AttackUnitData> BuildDistinctPool(IReadOnlyList<AttackUnitData> source)
         {
             var result = new List<AttackUnitData>();
+            if (source == null) return result;
             for (int i = 0; i < source.Count; i++)
             {
                 var unit = source[i];
@@ -371,16 +374,9 @@ namespace Wassup.Data
         private static List<AttackUnitData> BuildBossPool(
             IReadOnlyList<AttackUnitData> bossPool, AttackUnitData bossUnit)
         {
-            var result = new List<AttackUnitData>();
-            if (bossPool != null)
-            {
-                for (int i = 0; i < bossPool.Count; i++)
-                {
-                    var unit = bossPool[i];
-                    if (unit == null || result.Contains(unit)) continue;
-                    result.Add(unit);
-                }
-            }
+            // distinct 규칙(순서 보존 + null 제거)은 BuildDistinctPool 단일 소스에 둔다 —
+            // 두 곳에 복제하면 한쪽만 바뀌어 조용히 갈린다. 여기 고유한 것은 폴백뿐이다.
+            var result = BuildDistinctPool(bossPool);
             if (result.Count == 0 && bossUnit != null)
                 result.Add(bossUnit);
             return result;

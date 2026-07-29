@@ -24,8 +24,12 @@ namespace Wassup.Battle.Combat
     //       - SelfStatBuff (last_stand): self 에 StatModifier enqueue(Effects 채널).
     //         duration<=0 = 영구(float.PositiveInfinity). 디펜더는 flowfield 만
     //         있으면 되므로 blink 채널 부재와 무관하게 발동.
-    //       - SelfBlink (boss): threat leader → nearest living defender → skip.
-    //         position write 는 Movement 소유라 BlinkRequestEventsSingleton 로 나감.
+    //       - SelfBlink (boss): **방어유닛 밀집도 최대 셀 → 링 스냅 → skip**
+    //         (boss-jjangssen unit 4 에서 구 "위협 리더 근처" 정책을 교체했다 — 그 정책은
+    //         라이브 authoring 사용처가 0이었다). position write 는 Movement 소유라
+    //         BlinkRequestEventsSingleton 로 나가고, 뷰 비행 신호는 BossLeapVisualEvents 로 나간다.
+    //         ⚠ ThreatEntry 는 이제 blink 목적지 계산에 쓰이지 않는다 — 아래 threat drain 은
+    //         현재 소비자가 없다(spec 후속 후보에 기재).
     //
     // Runs after DamageApplicationSystem so same-tick damage is visible to the
     // threshold, and after the same-tick threat hits have been enqueued
@@ -78,13 +82,13 @@ namespace Wassup.Battle.Combat
             bool hasLeapQ = SystemAPI.TryGetSingletonRW<BossLeapVisualEventsSingleton>(out var leapRW);
             NativeQueue<BossLeapVisualEvent> leapQueue = hasLeapQ ? leapRW.ValueRW.queue : default;
 
-            // Fallback pool = living defenders (SelfBlink 목적지 폴백 전용). 디펜더-only
-            // 판(last_stand 만 있고 blink 슬롯 없음)에서 매 프레임 쿼리+2배열 할당을 피하려
-            // 첫 SelfBlink 발동 때 지연 생성(ecs-review MEDIUM). BossPeriodic whip 풀 선례.
+            // Defender 셀 풀 = SelfBlink 착지 앵커 소스. 디펜더-only 판(last_stand 만 있고 blink
+            // 슬롯 없음)에서 매 프레임 쿼리+배열 할당을 피하려 첫 SelfBlink 발동 때 지연 생성
+            // (ecs-review MEDIUM). BossPeriodic whip 풀 선례.
             var defQuery = SystemAPI.QueryBuilder().WithAll<DefenderUnitTag, LocalTransform>().Build();
-            NativeArray<LocalTransform> defTransforms = default;
             NativeArray<int2> defCells = default;
-            bool defBuilt = false;
+            bool defBuilt = false; // defCells.IsCreated 로 대체 금지 — 방어유닛 전멸 시 길이 0
+                                   // 배열의 IsCreated 에 프레임당 재할당 여부가 걸린다.
 
             // 진동갑주 (content-3 unit 4) — SelfTileAoe 캐리어 스테이징용 ECB.
             // Playback 은 이 시스템 끝(브리지 드레인 전 materialize — AttackSystem dcCarrier 선례).
@@ -137,16 +141,18 @@ namespace Wassup.Battle.Combat
                         }
                         else if (slot.payload == Wassup.Data.DcPayloadKind.SelfBlink)
                         {
-                            // 디펜더 폴백 풀은 여기서만 필요 — 첫 blink 발동 때 1회 생성.
+                            // 착지 앵커 풀은 여기서만 필요 — 첫 blink 발동 때 1회 생성.
                             if (hasBlinkQ && !defBuilt)
                             {
-                                defTransforms = defQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
                                 // boss-jjangssen unit 4 — 밀집도 판정은 셀 단위. 위치→셀 변환을
-                                // 여기서 한 번만 하고 순수 함수엔 셀만 넘긴다.
+                                // 여기서 한 번만 하고 순수 함수엔 셀만 넘긴다. transforms 는 변환
+                                // 재료일 뿐이라 이 블록 밖으로 수명을 늘리지 않는다.
+                                var defTransforms = defQuery.ToComponentDataArray<LocalTransform>(Allocator.Temp);
                                 defCells = new NativeArray<int2>(defTransforms.Length, Allocator.Temp);
                                 for (int di = 0; di < defTransforms.Length; di++)
                                     defCells[di] = GridMath.WorldToCell(
                                         defTransforms[di].Position, ff.tileSize, ff.gridSize, origin: ff.origin);
+                                defTransforms.Dispose();
                                 defBuilt = true;
                             }
                             if (hasBlinkQ && TryResolveBlinkDest(slot.tileRange, (int)slot.magnitude,
@@ -208,11 +214,7 @@ namespace Wassup.Battle.Combat
                 }
             }
 
-            if (defBuilt)
-            {
-                defTransforms.Dispose();
-                defCells.Dispose();
-            }
+            if (defBuilt) defCells.Dispose();
 
             ecb.Playback(state.EntityManager);
             ecb.Dispose();

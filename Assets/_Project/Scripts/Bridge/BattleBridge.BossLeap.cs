@@ -43,9 +43,11 @@ namespace Wassup.Bridge
         private NativeQueue<BossLeapVisualEvent> _bossLeapVisualQueue;
 
         // 비행 중 뷰 좌표. SyncMonoUnitViews 적 피드가 sim 좌표 대신 이 값을 쓴다.
+        // **키의 존재 자체가 "비행 중" 이다** — 별도 in-flight 집합을 두지 않는다. 같은 생명주기를
+        // 두 컬렉션이 나눠 들면 진입/이탈이 쌍으로 유지돼야 하고 한쪽만 잊히는 자리가 생긴다.
+        // 이 단일 진실 덕에 취소도 공짜다: 키를 지우면 코루틴이 다음 프레임에 자진 종료한다
+        // (drop-dismount 의 FinishDismountsInstant 와 같은 계약).
         private readonly Dictionary<Entity, Unity.Mathematics.float3> _enemyViewOverride = new();
-        // 진행 중 비행 (중복 시작 방지 + teardown 일괄 종료).
-        private readonly HashSet<Entity> _bossLeapInFlight = new();
 
         internal bool TryGetEnemyViewOverride(Entity entity, out Unity.Mathematics.float3 pos)
             => _enemyViewOverride.TryGetValue(entity, out pos);
@@ -60,15 +62,12 @@ namespace Wassup.Bridge
             _em.AddComponentData(singleton, new BossLeapVisualEventsSingleton { queue = _bossLeapVisualQueue });
         }
 
+        // 매치 teardown / 컴포넌트 종료. 오버라이드를 비우면 진행 중 코루틴이 다음 프레임에
+        // 자진 종료한다(키 부재 가드) — 공중에 뷰가 멈춘 채 남지 않는다. 큐 파괴와 한 함수에
+        // 두어 "큐는 버렸는데 오버라이드는 남는" 조합을 구조적으로 배제한다.
         private void DisposeBossLeapChannel()
         {
             if (_bossLeapVisualQueue.IsCreated) _bossLeapVisualQueue.Dispose();
-        }
-
-        // 매치 teardown / 컴포넌트 종료: 공중에 뷰가 멈춘 채로 남는 것을 막는다.
-        private void AbortAllBossLeaps()
-        {
-            _bossLeapInFlight.Clear();
             _enemyViewOverride.Clear();
         }
 
@@ -80,8 +79,11 @@ namespace Wassup.Bridge
             while (_bossLeapVisualQueue.TryDequeue(out var evt))
             {
                 if (evt.entity == Entity.Null || !_em.Exists(evt.entity)) continue;
-                // 같은 엔티티의 비행이 이미 돌고 있으면 무시한다(경계 동시 관통 방어).
-                if (!_bossLeapInFlight.Add(evt.entity)) continue;
+                // 키가 있으면 이미 비행 중 — 무시(경계 동시 관통 방어).
+                if (_enemyViewOverride.ContainsKey(evt.entity)) continue;
+                // **첫 프레임 오버라이드는 여기서** 걸어야 한다. 걸기 전에 sim 좌표가 한 프레임이라도
+                // 소비되면 착지점으로 순간이동한 뒤 되돌아오는 팝이 보인다(rev 3 실측 증상).
+                _enemyViewOverride[evt.entity] = evt.fromWorld;
                 StartCoroutine(RunBossLeap(evt));
             }
         }
@@ -93,37 +95,36 @@ namespace Wassup.Bridge
             var start = new Vector3(evt.fromWorld.x, evt.fromWorld.y, evt.fromWorld.z);
             var end = new Vector3(evt.toWorld.x, evt.toWorld.y, evt.toWorld.z);
             var cam = Camera.main;
-            // camUp 이 없으면(카메라 부재) 아치를 만들 축이 없다 — 비행을 포기하고 sim 좌표를 쓴다.
-            if (cam == null)
-            {
-                _bossLeapInFlight.Remove(evt.entity);
-                ResolveLanding(evt, end);
-                yield break;
-            }
-            Vector3 camUp = cam.transform.up;
-
-            float duration = Mathf.Max(0.05f, bossLeapTotalSeconds);
-            float recoilFrac = Mathf.Clamp(bossLeapRecoilSeconds / duration, 1e-4f, 0.9f);
+            // camUp 이 없으면(카메라 부재) 아치를 만들 축이 없다 → duration 0 으로 아래 루프를
+            // 한 번도 돌지 않고 착지 처리로 떨어진다. 조기 이탈 블록을 따로 두면 정리 경로가
+            // 두 곳이 되어 착지 단계가 늘 때마다 양쪽을 고쳐야 한다.
+            float duration = cam != null ? Mathf.Max(0.05f, bossLeapTotalSeconds) : 0f;
+            Vector3 camUp = cam != null ? cam.transform.up : Vector3.up;
+            float recoilFrac = Mathf.Clamp(
+                bossLeapRecoilSeconds / Mathf.Max(duration, 1e-4f), 1e-4f, 0.9f);
 
             // 출발 퍼프는 재생하지 않는다 (사용자 확정 2026-07-29). 도약 연출이
             // EarthSlamSpikes(바닥에서 솟는 스파이크)라 **착지에만** 어울린다 — 발이 뜨는
             // 자리에서 스파이크가 솟으면 인과가 거꾸로 읽힌다. 출발 전용 연출이 생기면
             // 그때 별도 dataIndex 로 되살린다(현 arm 은 단일 인덱스).
-            // 첫 프레임부터 오버라이드를 걸어둔다 — 걸기 전에 한 프레임이라도 sim 좌표가
-            // 소비되면 착지점으로 순간이동한 뒤 되돌아오는 팝이 보인다.
-            _enemyViewOverride[evt.entity] = evt.fromWorld;
-
+            // 오버라이드 최초 기입은 드레인이 소유한다(같은 프레임 LateUpdate 피드가 소비).
+            bool abandoned = false;
             float t = 0f;
             while (t < duration)
             {
-                // 비행 중 소멸/사망 → 공중에 멈추지 않게 즉시 정리.
-                if (!_em.Exists(evt.entity) || _em.HasComponent<Wassup.Battle.Units.DeadTag>(evt.entity))
+                // 취소·소멸·사망 → 즉시 종료. **오버라이드 키 부재도 취소 신호다** —
+                // teardown 이 `_enemyViewOverride.Clear()` 로 비행을 끊는다.
+                if (!_enemyViewOverride.ContainsKey(evt.entity)
+                    || !_em.Exists(evt.entity)
+                    || _em.HasComponent<Wassup.Battle.Units.DeadTag>(evt.entity))
+                {
+                    abandoned = true;
                     break;
+                }
 
                 // 배틀 도메인 델타 — 손패 슬로모(0.3x) 중에는 도약도 같이 느려져야 시뮬과 어긋나지
                 // 않는다. 하마(드롭)가 unscaled 를 쓴 것은 UI 조작이라서이고, 여기는 전투 사건이다.
-                var tm = TimeManager.Instance;
-                t += tm != null ? tm.DeltaTime(TimeDomain.Battle) : Time.deltaTime;
+                t += TimeManager.Instance.DeltaTime(TimeDomain.Battle);
 
                 // 시간 이징 없음(선형) — drop-dismount 가 구현 중 확정한 계약. Out* 이징은 끝속도를
                 // 0 으로 죽여 내리찍는 임팩트가 물러진다. 착지 속도는 기하(끝접선)가 만든다.
@@ -138,9 +139,9 @@ namespace Wassup.Bridge
             }
 
             _enemyViewOverride.Remove(evt.entity);
-            _bossLeapInFlight.Remove(evt.entity);
-            // 착지 임팩트 — 뷰가 실제로 도착한 이 프레임.
-            ResolveLanding(evt, end);
+            // **abandon 이면 착지 처리를 하지 않는다.** 매치 teardown·보스 사망으로 끊긴 비행에
+            // 슬램을 발사하면 이미 해체된 월드에 투사체 요청을 내게 된다(브리지는 매치 간 생존).
+            if (!abandoned) ResolveLanding(evt, end);
         }
 
         // 착지 처리. 슬램이 있으면 TileAoe 피해 요청을 스폰하고(그 요청의 히트 이벤트가 VFX 도

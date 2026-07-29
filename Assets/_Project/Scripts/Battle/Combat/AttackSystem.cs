@@ -1240,7 +1240,12 @@ namespace Wassup.Battle.Combat
                                     {
                                         // boss-jjangssen unit 3 — 보스는 넉업 면역. CC 와 연출을
                                         // **함께** 건너뛴다: 연출만 나가면 떠오르는데 스턴은 안 걸린다.
-                                        if (bossLookup.HasComponent(hitTargets[ti])) continue;
+                                        // 판정은 하드코딩하지 않고 면역 술어 단일 소스를 부른다 —
+                                        // 나중에 면역 범위를 좁히면 이 지점도 자동으로 따라온다.
+                                        if (bossLookup.HasComponent(hitTargets[ti])
+                                            && Wassup.Battle.Effects.CcActionLock.IsBossImmune(
+                                                Wassup.Battle.Effects.CcKind.Stun,
+                                                Wassup.Battle.Effects.CcSource.Direct)) continue;
                                         ccWriter.Value.Enqueue(new Wassup.Battle.Effects.EnemyCcEvent
                                         {
                                             target = hitTargets[ti],
