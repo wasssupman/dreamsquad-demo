@@ -9,9 +9,9 @@
 
 ## Implemented
 
-- 난도질꾼(`slasher`) — Fighter·Common·코스트 2, HP 350 · 사거리 1 · 쿨다운 0.9 · 직격 8
-- `outputs` 에 `ApplyStack(Bleed 1스택 / perApp 4s / max 5)` 병기 — 히트마다 도트가 남는다
-- 배치 스킬 "등장 난도질" = `OnPlaceEffectType.ApplyStackNearby` 신설 (반경 2, 1스택)
+- 난도질꾼(`slasher`) — Fighter·Common·코스트 2, HP 350 · 사거리 1 · **쿨다운 0.3** · 직격 2.67
+- `outputs` 에 `ApplyStack(Bleed 1스택 / perApp 2s / max 5)` 병기 — 히트마다 **누적**되고 5스택에서 터진다
+- 배치 스킬 "등장 난도질" = `OnPlaceEffectType.ApplyStackNearby` 신설 (반경 2, **5스택** = 임계치를 한 번에 주어 즉시 출혈)
   - `onPlaceStackKind` 필드로 스택 종류 지정 — 분기에 하드코딩 없음
   - `maxStack` 은 그 StackKind 를 소유한 `StackModifierSO` 에서 읽는다(유닛이 아니라 스택의 성질)
 - `UnitKitSummary` 에 대응 절 추가(신규 enum 멤버는 default 가 빈 문자열이라 조용히 설명이 빈다)
@@ -24,7 +24,7 @@
 - `Assets/_Project/Scripts/Data/DefenderUnitData.cs` — `onPlaceStackKind` · enum 멤버
 - `Assets/_Project/Tests/PlayMode/DefenderApplyStackOutputTest.cs` (outputs 경로)
 - `Assets/_Project/Tests/PlayMode/OnPlaceApplyStackNearbyTest.cs` (배치 반경 필터)
-- `Assets/_Project/Data/Dreamcatcher/StackModifier_Bleed.asset` — **무변경**(ember 카드와 공유)
+- `Assets/_Project/Data/Dreamcatcher/StackModifier_Bleed.asset` — 임계·틱 저작 지점(`atStack 5 · Consume` · 틱 4.5 / 1.0s · 지속 1.4s)
 
 ## Verified
 
@@ -34,13 +34,14 @@
 
 ## Notes (되돌리지 말 것)
 
-- **`stackCount` 는 Bleed 의 관측값이 아니다.** 규칙이 `atStack 1 · mode Consume` 이라 1에 도달하는 순간 발화하며 스택을 0으로 소모한다. 실제로 이 오해로 테스트가 한 번 죽었다 — 관측은 **파생 DoT** 로.
-- `StackModifier_Bleed` 는 ember 카드와 공유한다. 임계 재저작은 카드 밸런스를 같이 움직이므로 별도 StackKind 신설이 선결(README 후속 후보).
+- **출혈은 누적→폭발**(`atStack 5 · Consume`). 5타에서 발화하고 0으로 리셋 — 공속 0.3 기준 1.5초 주기, 1초 간격 2틱. **`stackCount` 는 안정적 관측값이 아니다**(임계에서 소모됨) — 관측은 **파생 DoT** 로. 초판 `atStack 1` 은 누적이 없어 사실상 플랫 도트였고 사용자 지적으로 재설계했다.
+- **강도 누적형으로 바꾸지 말 것** — `stackCount > lastTriggeredStack` 게이트 때문에 상한 도달 후 발화가 멎는다. **폭발 지속 < 발화 주기**(1.4 < 1.5)도 지킬 것(`CcEffectMerge` 가 kind 슬롯을 덮어씀).
+- **`maxStack` 은 producer(outputs·onPlace) 소유, `thresholds` 는 SO 소유** — 한쪽만 바꾸면 조용히 어긋난다.
+- `StackModifier_Bleed` 를 쓰는 **배포 에셋은 난도질꾼뿐**이다(ember 는 테스트가 런타임 생성하는 카드). Bleed 를 쓰는 카드가 생기면 그때 밸런스 공유를 재검토할 것.
 - on-place 분기는 `CollectEnemiesInTileRange` 공용 헬퍼를 쓴다(리팩토링 커밋). 새 on-place 변종은 이 헬퍼를 쓸 것 — 쿼리/순회를 다시 복제하지 말 것.
 - `_aliveAttackersQuery` 는 **`AttackUnitTag`** 로만 잡는다. 테스트 더미 적에 이 태그가 없으면 반경 안이어도 0명이 되어 vacuous 해진다.
 
 ## Follow-up
 
-- **사용자 Play 체감 확인** — 배치 순간 주변 출혈 도포가 보이는지, 적이 사거리를 벗어난 뒤에도 도트가 계속 닳는지(차별점)
-- 코스트 2 / 직격 8 / 도트 3dps×3s 밸런스 감각
+- 밸런스 감각: 단일 대상 총 14.9 DPS(직격 8.9 + 출혈 6.0). 공속을 바꾸면 발화 주기가 따라 움직이므로 틱 수치도 한 벌로 다시 잡아야 한다 — 산식은 README 초기값 섹션
 - 나머지 후속 후보는 README 참조

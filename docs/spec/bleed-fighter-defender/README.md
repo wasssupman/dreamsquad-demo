@@ -1,18 +1,18 @@
 # bleed-fighter-defender — 난도질꾼 (단일 대상 출혈 파이터)
 
-> 상태: 초안 (사용자 승인 대기, 2026-07-29)
+> 상태: **구현 완료 · 사용자 Play 확인 통과 (2026-07-29)** — units 0~2 커밋. 상세는 `3_handoff_summary.md`
 
 ## 목표
 
-빠른 공속의 낮은 단타 + **히트마다 출혈(Bleed) 도트**를 묻히는 저코스트 근접 파이터
+빠른 공속의 낮은 단타 + **히트마다 출혈(Bleed) 누적, 5스택에서 터지는** 저코스트 근접 파이터
 **난도질꾼**(id `slasher`)을 추가한다.
 
 - Fighter 는 2종뿐이고 전부 Epic/Ego(코스트 4·7) — 저코스트 공백과 "단일 대상 지속딜" 정체성 공백을 동시에 메운다.
 - 적이 사거리를 벗어나 걸어가도 남은 도트가 계속 닳는 것이 차별점 ("스치면 출혈이 남는다").
 - 공격 `outputs` 의 `ApplyStack` 분기(`AttackSystem:1170`)의 **첫 실사용** — 코드는 있으나 사용 유닛 0, 전용 테스트는 Ignored 스텁 상태라 검증 테스트가 unit 0 이다.
-- 배치 스킬 = **등장 난도질**: 배치 순간 주변 적 전원에 Bleed 1스택 (`OnPlaceEffectType` 변종 신설).
+- 배치 스킬 = **등장 난도질**: 배치 순간 주변 적 전원에 Bleed **임계치(5스택)** — 즉시 출혈이 터진다 (`OnPlaceEffectType` 변종 신설).
 
-검증 질문: **"공격 outputs 의 ApplyStack 이 실전에서 발동하며, 히트당 도트가 저코스트 근접 딜러로 배치 가치가 있는가?"**
+검증 질문: **"공격 outputs 의 ApplyStack 이 실전에서 발동하며, 누적→폭발 리듬이 스택 UI 없이도 읽히는가?"**
 
 ## 작업 단위
 
@@ -21,16 +21,17 @@
 | 0 | test | `0_apply_stack_output_test.md` | outputs ApplyStack 경로 회귀 테스트 (첫 실사용 전 검증) |
 | 1 | code | `1_onplace_apply_stack_nearby.md` | `OnPlaceEffectType.ApplyStackNearby` 변종 신설 |
 | 2 | asset | `2_unit_asset_and_catalog.md` | 유닛 SO + 카탈로그 등록 + Play 검증 |
-| 3 | docs | `3_handoff_summary.md` | 인계 요약 (종료 시) |
+| 3 | docs | `3_handoff_summary.md` | 인계 요약 |
 
 ## Feature-wide 계약
 
-1. **Bleed 파생 규칙 SO(`StackModifier_Bleed`)는 ember 카드와 공유 — 이 spec 은 값을 바꾸지 않는다.**
-   현행: 1스택 도달 → 소모 → DoT 3dps × 3s. 재저작(예: 5스택 축적형)은 카드 밸런스가 같이 움직이므로
-   별도 결정 + 별도 StackKind 신설이 선결(후속 후보).
-   - **현재 구조 = 누적 → 임계 폭발**(2026-07-29 사용자 지적으로 재설계). `atStack 5 · Consume` —
-     5타 모이면 발화하고 0으로 리셋. 공속 0.3 기준 **1.5초마다** 터지고 **1초 간격 2틱**. 초판은 `atStack 1` 이라 **누적이 아예 없었고 `maxStack` 이
-     죽은 값**이었다(사실상 갱신만 되는 플랫 도트).
+1. **출혈 = 누적 → 임계 폭발**(`StackModifier_Bleed`). 타격당 1스택, `atStack 5 · Consume` 로
+   5타에서 발화하고 0으로 리셋. 공속 0.3 기준 **1.5초마다** 터지고 **1초 간격 2틱**.
+   - 초판은 `atStack 1` 이라 **누적이 아예 일어나지 않았고 `maxStack` 이 죽은 값**이었다(사실상
+     갱신만 되는 플랫 도트). 2026-07-29 사용자 지적으로 재설계 — 업계 관례 조사 결과 스택 UI 가
+     없는 상황에서는 **폭발 자체가 신호**인 이 패턴이 표준이다(엘든링·몬헌·명일방주 원소축적 계열).
+   - 이 SO 를 쓰는 **배포 에셋은 난도질꾼뿐**이다(ember 는 테스트가 런타임 생성하는 카드).
+     Bleed 를 쓰는 카드가 생기면 그때 밸런스 공유를 재검토할 것.
    - ⚠ **`stackCount` 는 안정적 관측값이 아니다.** 임계에서 소모되므로 "몇 스택인지"로 단언하면
      타이밍에 따라 실패한다. 관측은 **파생 DoT** 로.
    - ⚠ **강도 누적형(스택마다 dps 가산)으로 바꾸지 말 것.** `StackModifierTickSystem` 은
@@ -54,9 +55,14 @@
 
 ## 초기값 (전부 튜닝 대상, SO 소유)
 
-Fighter · Common · 코스트 2 · HP 350 · 사거리 1 · 쿨다운 0.9s · attackTargetCount 1
-· outputs `[Damage 8, ApplyStack(Bleed, 1스택, perApp 4s, max 5)]`
-· 등장 난도질: 반경 2 · 1스택. 예상 단일 대상 합산 ~19dps(직격 ~9 + 도트 중첩 ~10).
+Fighter · Common · 코스트 2 · HP 350 · 사거리 1 · **쿨다운 0.3s** · attackTargetCount 1
+· outputs `[Damage 2.67, ApplyStack(Bleed, 1스택, perApp 2s, max 5)]`
+· 등장 난도질: 반경 2 · **5스택**(임계치를 한 번에 = 배치 순간 즉시 출혈)
+· `StackModifier_Bleed`: `atStack 5 · Consume` · 틱 4.5 / 1.0s · 지속 1.4s
+
+**단일 대상 DPS 14.9** = 직격 8.9(2.67 ÷ 0.3) + 출혈 6.0(2틱 × 4.5 ÷ 1.5s).
+⚠ **한 벌로 움직이는 값들이다.** 공속을 바꾸면 발화 주기(= `atStack` × 쿨다운)가 따라 움직이고,
+그러면 폭발 지속과 틱 수도 다시 잡아야 한다. 산식: `틱당피해 = 목표출혈DPS × 발화주기 ÷ 틱수`.
 
 ## 파이프라인 커버리지 (Defender 아키타입 대조)
 
@@ -84,6 +90,7 @@ Fighter · Common · 코스트 2 · HP 350 · 사거리 1 · 쿨다운 0.9s · a
     추가 + registry 항목 + reconcile 소스 훅"으로 절차를 명시해 둔 상태.
   - 범위 결정 필요: Bleed 만 열지 `Fire·Ice·Poison` 까지 4종을 한 번에 열지.
 
-- **5스택 폭발형 변종 유닛** [M] · 축적→강타 게임감. 별도 StackKind 신설(enum+레지스트리+아이콘)이 선결 — ember 공유 SO 를 건드리지 않기 위함.
+- ~~5스택 폭발형 변종 유닛~~ → **본편에 흡수**(2026-07-29). 난도질꾼 자체가 누적→폭발 구조가 됐다.
+- **다중 공격자 출혈 합산** [M] · 스택 슬롯은 `(source, kind)` 로 분리되지만 폭발이 만드는 DoT 는 피해자당 `kind` 슬롯 하나를 공유해, 난도질꾼 2기가 한 적을 물어도 합산되지 않는다(`CcEffectMerge` 가 scalar 를 덮음). 합산하려면 도트 전용 가산 병합이 필요 — 코드 결정이라 별도 spec.
 - **다중 타겟 출혈(회전베기)** [S] · `attackTargetCount` 만 올리면 성립하는 변형 — 별도 유닛 결정.
 - **전용 아트 패스** [S] · portrait/파츠/출혈 히트 VFX (placeholder 교체, guid 유지).
