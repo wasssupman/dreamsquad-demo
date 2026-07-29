@@ -15,7 +15,7 @@
 - `Assets/_Project/Scripts/Battle/Combat/HealthThresholdSystem.cs` — 쿼리에 `DeadTag` 제외 + 착지 정책 교체
 - 밀집도 선택 순수 함수 (신규 파일, `Battle/Combat/` 아래 — `BlinkMath.cs` 인접)
 - `Assets/_Project/Tests/EditMode/` — 밀집도 선택 테스트 (신규)
-- `Assets/_Project/Data/Enemies/Enemy_Boss_Slasher.asset` — `nightmareMechanics[1]`
+- `Assets/_Project/Data/Enemies/Enemy_Boss_Jjangssen.asset` — `nightmareMechanics[1]`
 - `docs/spec/nightmare-catcher/` — "위협 리더 근처" 계약 문구 갱신(같은 커밋)
 
 ## 구현

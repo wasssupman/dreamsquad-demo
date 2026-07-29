@@ -2,7 +2,7 @@
 
 ## 목적
 
-**이 작업 단위 없이는 슬래셔가 성립하지 않는다.** 코스트 2 가디언 1기가 붙으면 `Aggroed` 가 타겟 수를
+**이 작업 단위 없이는 짱쎈놈가 성립하지 않는다.** 코스트 2 가디언 1기가 붙으면 `Aggroed` 가 타겟 수를
 1로 강제해 cleave 3 이 소멸하고, `Chasing` 조기 return 이 사냥 분기보다 앞이라 보스가 가디언만 쫓는다.
 `boss-defender-field` 가 파킹해둔 "보스 어그로 면역" 후속 후보를 실행한다.
 
@@ -54,6 +54,18 @@
 - 술어를 `IsLocked` **판정** 쪽에 넣지 않는다 — 그쪽은 무시 지점이 6곳 이상(이동·공격 락·변위·상태FX·
   wake-on-hit·`DreamCocoon`)이라 회귀 표면이 훨씬 크다.
 
+### 넉업 연출 신호도 함께 거절한다 (부여 거절 원칙의 유일한 예외)
+
+`AttackSystem` 은 `knockupOnHitSec` 블록의 **같은 루프에서** `EnemyCcEvent{Stun}` 과 `KnockupVisualEvent` 를
+함께 enqueue 한다. CC 만 거절하면 **보스가 시각적으로 떠오르는데 스턴은 걸리지 않는다** —
+`KnockupVisualEvents.cs` 의 "durationSec = 스턴 시간(같은 값이어야 착지와 해제가 맞는다)" 계약이 깨지고
+버그로 보인다.
+
+- `AttackSystem` 의 그 지점에서 대상이 `BossTag` 이면 **CC 와 연출 신호를 둘 다 skip** 한다.
+- 이것이 "부여 시점 거절 2곳" 원칙의 **유일한 예외**다. 이유는 연출 채널이 CC 큐와 분리돼 있어서
+  `CcApplySystem` 거절로는 도달할 수 없기 때문이다. 다른 CC 는 전부 큐로 수렴하므로 예외가 늘지 않는다.
+- `BossTag` 조회를 위해 이 지점에 lookup 이 하나 필요하다(Combat 내부 RO 읽기).
+
 ## 완료 기준
 
 - **EditMode**: 면역 술어를 순수 함수로 분리하고(`직접 출처`, `kind`) → 스택 출처는 전부 통과 /
@@ -66,5 +78,9 @@
   ⑤ 보스 `EnemyAiState` 가 `Chasing` 에 진입하지 않음
 - **Play 육안**: 가디언을 깐 상태에서 방어유닛 3기 인접 배치 → 보스가 가디언에 묶이지 않고 **3기를
   동시에** 갈아낸다(unit 1 에서 확인 못 했던 것이 여기서 확인된다).
-- `Defender_IceCaster` 의 CC 경로를 1회 확인하고 영향 범위를 README 후속 후보에서 제거하거나 확정한다.
+- **PlayMode 추가**: 말파이트가 보스를 때려도 **보스가 떠오르지 않는다**(연출 신호 거절 회귀 가드).
+- **영향 범위(검증 완료)**: CC-on-hit 필드를 가진 방어유닛은 `Defender_Archer`(`knockbackDistance: 2`) ·
+  `Defender_Malphite`(`knockupOnHitSec: 0.8`) · `Defender_TooMuchTalker`(`sleepOnHitSec: 3.5`) **3기뿐**이고
+  `Defender_IceCaster` 는 해당 필드가 없다. 이 3기가 보스전에서 해당 효과를 잃는 것을 Play 로 확인한다 —
+  **의도된 동작이며 조용히 무효가 되는 것을 수용한다**(사용자 확정 2026-07-29).
 - 나이트메어 무회귀 확인 — 어그로에 안 끌리는 것 외 기존 능력 3종이 그대로 동작.

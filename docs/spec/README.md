@@ -267,7 +267,7 @@ first-session-tutorial units 10~12 와 무관하다.
 - **defender-side 오라 카드** [S] · `AllyMoveSpeedAura` 는 arm·오라 연출 모두 진영/kind 중립 — 카드 데이터 선언만으로 성립. 카드 taxonomy/밸런스는 product 결정. (nightmare-whip-aura)
 - **채찍질 전용 연출 고도화** [S] · 현 WindAura 재사용 → 전용 채찍 스윙/버프 링 저작(unity-vfx-authoring). 발동-순간 원샷 arm(`payload.projectile`)도 SO 게이트로 잔존해 조합 가능. (nightmare-whip-aura)
 - **수치 실측 튜닝** [S] · 펄스 0.5s/TTL 0.6s/+20%/3타일/오라 scale 1.2 — 전부 SO, 밸런스 실측 후 조정. (nightmare-whip-aura)
-- nightmare-catcher 잔여 후속(기본공격 원거리화 · 위협 감쇠 · GA hitPrefab 전수 정비 · 폭격 피격 체감)은 `docs/spec/nightmare-catcher/README.md` 후속 후보 참조. **보스 어그로 면역은 `docs/spec/boss-slasher/2_boss_immunity.md` 로 승격(2026-07-29)** — 부착 1곳 차단 + 직접 행동정지·넉백 면역까지, `BossTag` 전체 적용(나이트메어 포함).
+- nightmare-catcher 잔여 후속(기본공격 원거리화 · 위협 감쇠 · GA hitPrefab 전수 정비 · 폭격 피격 체감)은 `docs/spec/nightmare-catcher/README.md` 후속 후보 참조. **보스 어그로 면역은 `docs/spec/boss-jjangssen/2_boss_immunity.md` 로 승격(2026-07-29)** — 부착 1곳 차단 + 직접 행동정지·넉백 면역까지, `BossTag` 전체 적용(나이트메어 포함).
 
 #### 보스 방어유닛 지향 이동 (헌터 재구현, 2026-07-11)
 

@@ -2,12 +2,12 @@
 
 ## 목적
 
-슬래셔의 몸을 만든다. **`nightmareMechanics` 는 비워 둔다** — 능력 없는 상태의 외형과 cleave 3 타격을
+짱쎈놈의 몸을 만든다. **`nightmareMechanics` 는 비워 둔다** — 능력 없는 상태의 외형과 cleave 3 타격을
 먼저 확정해서 뒤따르는 작업 단위(2~4)의 디버깅 기준선을 만든다.
 
 ## 변경 대상
 
-- `Assets/_Project/Data/Enemies/Enemy_Boss_Slasher.asset` (신규 `AttackUnitData`)
+- `Assets/_Project/Data/Enemies/Enemy_Boss_Jjangssen.asset` (신규 `AttackUnitData`)
 - `Assets/_Project/Data/Projectiles/` 아래 AOE 연출용 `ProjectileData` 1개 (신규 — unit 3 이 소비)
 - `Assets/_Project/Data/EnemyCatalog.asset` — 등록
 - 덱 asset 은 **아직 건드리지 않는다**(`bossPool` 투입은 unit 3 이후)
@@ -18,7 +18,7 @@
 
 | 필드 | 값 |
 |---|---|
-| `id` / `displayName` | `boss_slasher` / 슬래셔 |
+| `id` / `displayName` | `boss_jjangssen` / 짱쎈놈 |
 | `health` | 950 |
 | `moveSpeed` | 2.2 |
 | `attackCooldown` | 0.6 |
@@ -54,7 +54,7 @@ unit 3 의 진동갑주 폭발이 `payload.projectile` 참조를 **필수**로 �
 
 ## 완료 기준
 
-- `EnemyCatalog.asset` 에서 슬래셔가 조회된다.
+- `EnemyCatalog.asset` 에서 짱쎈놈가 조회된다.
 - 임시로 `bossPool` 에 넣고 Play → 스폰되고, **"꿈결 위기!!" 배너가 뜬다**(`nightmareMechanics` 가 비어도
   `BossTag` 경로가 동작하는지 확인. 배너 트리거가 `nightmareMechanics` 비어있지 않음 조건이면 이 시점엔
   안 뜨는 것이 정상 — 어느 쪽인지 관찰해 unit 3 완료 기준에 반영).

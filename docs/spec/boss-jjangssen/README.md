@@ -1,6 +1,6 @@
-# boss-slasher — 두 번째 보스 "슬래셔"
+# boss-jjangssen — 두 번째 보스 "짱쎈놈"
 
-> 상태: **작성 완료, 구현 대기** (2026-07-29). 설계 근거·리뷰 이력은 `docs/plans/2026-07-29-boss-slasher-design.md`.
+> 상태: **작성 완료, 구현 대기** (2026-07-29). 설계 근거·리뷰 이력은 `docs/plans/2026-07-29-boss-jjangssen-design.md`.
 
 ## 목표
 
@@ -9,7 +9,7 @@
 
 ## 검증 질문
 
-> 슬래셔가 방어유닛을 스스로 사냥하며 cleave 3 으로 밀집을 갈아내고, 최대체력 20% 경계마다
+> 짱쎈놈가 방어유닛을 스스로 사냥하며 cleave 3 으로 밀집을 갈아내고, 최대체력 20% 경계마다
 > 자기중심 폭발 후 밀집 지점으로 도약하는가? 나이트메어와 로테이션으로 공존하면서
 > **기존 7덱의 웨이브 편성은 무회귀**인가?
 
@@ -18,7 +18,7 @@
 | 파일 | 작업 | 문서 | 목적 |
 |---|---|---|---|
 | 0 | 데이터 | `0_boss_pool_field.md` | `AttackDeck.bossPool` 추가(rename 금지) + 생성기 선택 + EditMode |
-| 1 | 데이터 | `1_slasher_asset.md` | `Enemy_Boss_Slasher.asset` + AOE `ProjectileData` + `EnemyCatalog` 등록 |
+| 1 | 데이터 | `1_boss_asset.md` | `Enemy_Boss_Jjangssen.asset` + AOE `ProjectileData` + `EnemyCatalog` 등록 |
 | 2 | 시뮬 | `2_boss_immunity.md` | 보스 어그로 면역 + 직접 행동정지·넉백 면역(`EnemyCcEvent` 출처 필드) |
 | 3 | 브리지 | `3_vibration_armor.md` | bake 에 `SelfTileAoe` 추가 + 진영 도출 + `mechanic[0]` |
 | 4 | 시뮬 | `4_density_blink.md` | 밀집도 착지 순수함수 + 정책 교체 + `DeadTag` 가드 + `mechanic[1]` |
@@ -37,7 +37,7 @@
    웨이브 편성이 무회귀다. `waveGeneratorVersion` 은 올리지 않는다(순수 로그 라벨).
 3. **보스 선택은 생성기 안에서만.** 프리뷰와 런타임이 같은 `Generate` 를 타므로 결정론이 자동 성립한다.
    생성기 밖(브리지·스폰 시점)에서 뽑으면 깨진다.
-4. **슬래셔의 시계는 초가 아니라 사건이다.** 보스 생존이 4~7초라 주기(`PeriodicTimer`) 구동 능력은
+4. **짱쎈놈의 시계는 초가 아니라 사건이다.** 보스 생존이 4~7초라 주기(`PeriodicTimer`) 구동 능력은
    조우 3회 중 2회 이상 발동하지 못한다. 이 spec 의 능력은 전부 `HealthThreshold` 사건 구동이다.
 5. **발동 순서 = 폭발 → 도약.** 두 슬롯이 같은 `fraction` 이라 같은 프레임에 `fired` 가 되고, 폭발은
    `HealthThresholdSystem` 이 읽는 **blink 전 위치**에서 터지고 blink 는 `BlinkApplySystem`
@@ -45,6 +45,10 @@
 6. **면역 술어 = `직접 출처 && (CcActionLock.IsLock(kind) || kind == Impulse)`.** 스택 임계가 유발한
    CC(DoT·스턴)와 `DoT`/`Slow` 는 통과한다. 규칙: *직접 걸리는 행동정지·넉백은 무효, 누적해서 임계를
    넘긴 것은 통한다.* 적용 범위는 `BossTag` 전체 — **나이트메어도 함께 바뀐다.**
+   **대가(수용됨)**: `Defender_Archer` 넉백 · `Defender_Malphite` 넉업(= 전 대상 Stun) ·
+   `Defender_TooMuchTalker` 수면이 보스전에서 무효가 된다. 말파이트·투머치토커는 **그 CC 가 유닛의 존재
+   이유**이므로 손실이 크다. 넉업은 연출 신호가 CC 큐와 분리돼 있어 **`AttackSystem` 생산 지점에서도
+   막아야** 한다(unit 2 — 안 막으면 보스가 떠오르는데 스턴은 안 걸리는 desync).
 7. **면역은 부착/부여 시점 차단.** 어그로는 `Aggroed` 의 유일한 writer 1곳(소비 지점 6곳 대비),
    CC 는 부여 2곳. `AggroCapacity` 회계 · `CcClearRequestsSingleton` · FSM 전이는 **무변경**.
 8. **신규 ECS 채널 0, 신규 맥락 0, 신규 시스템 0.** 기존 큐·arm·시스템만 확장한다.
@@ -56,9 +60,9 @@
 
 대조 대상: `docs/reference/object-pipeline-map.md` §적(Enemy) + §투사체(진동갑주 폭발).
 
-| 정거장 | 슬래셔 | 비고 |
+| 정거장 | 짱쎈놈 | 비고 |
 |---|---|---|
-| 데이터 SO | unit 1 | `Enemy_Boss_Slasher.asset` + **`EnemyCatalog` 등록** + `bossPool` 노출(unit 0) |
+| 데이터 SO | unit 1 | `Enemy_Boss_Jjangssen.asset` + **`EnemyCatalog` 등록** + `bossPool` 노출(unit 0) |
 | 스폰 진입점 | 기존 `SpawnUnit` 그대로 | 보스 선택은 생성기 안(unit 0). 스폰 경로 무변경 |
 | ECS 컴포넌트 | 기존 적 경로 상속 | `AttackUnitTag`·`Health`·`PathFollowState`·`AttackState`·`EnemyAiState` + `BossTag`/`ThreatEntry`/`DcTriggerSlot` (나이트메어와 동일 베이크) |
 | 시뮬 시스템 | 기존 + 3곳 수정 | `HealthThresholdSystem`(unit 3·4) · `AggroStateSystem`/`CcApplySystem`(unit 2). **신규 시스템 0** |
@@ -81,6 +85,9 @@
   현재 오작동 없음(오라 판정 쿼리가 `DefenderUnitTag` 게이트).
 - **프리뷰/런타임 seed 불일치** — 드래프트·준비 화면과 런타임의 seed 출처가 달라 **프리뷰가 다른 보스
   이름을 보여줄 수 있다**(기존 불일치, 보스 2종이 되며 눈에 보인다). 일시정지 메뉴 경로만 정확하다.
-- **면역으로 죽은 카드 재설계** — `Card_LullabyDart`·`Card_FrostArrow`·`Card_GaleShove` 가 보스전에서
-  무효다. 보스전 대체 효과 부여 여부는 카드 밸런스 작업으로 분리.
-- **`Defender_IceCaster` CC 경로 확인** — 면역 영향 범위 미확인(unit 2 에서 1회 확인).
+- **면역으로 죽은 카드·유닛 재설계** — 카드 `Card_LullabyDart`·`Card_FrostArrow`·`Card_GaleShove` 와
+  유닛 `Defender_Archer`(넉백)·`Defender_Malphite`(넉업)·`Defender_TooMuchTalker`(수면)가 보스전에서
+  해당 효과를 잃는다. 보스전 대체 효과(예: CC 대신 데미지/취약 부여)는 **밸런스 작업으로 분리**.
+  말파이트는 유닛 정체성 전체가 넉업이라 우선순위가 높다.
+- **스탯 재추산** — HP 950 근거는 **방어유닛 20종** 기준 실효 DPS 였다. 지금 24종이고 늘어난 4종
+  (샷건너·난도질꾼·버스터즈·말파이트)이 전부 화력형이라 950 이 낮을 수 있다. Play 튜닝에서 확인.

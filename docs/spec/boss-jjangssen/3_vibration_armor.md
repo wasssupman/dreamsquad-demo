@@ -2,7 +2,7 @@
 
 ## 목적
 
-최대체력 20% 경계를 하향 돌파할 때마다 슬래셔 자기중심 반경 2 타일에 폭발을 일으킨다.
+최대체력 20% 경계를 하향 돌파할 때마다 짱쎈놈 자기중심 반경 2 타일에 폭발을 일으킨다.
 밀집 배치를 응징하는 광역 담당이고, 사건 구동이라 보스 생존 시간이 짧아도 확실히 발동한다.
 
 `HealthThreshold × SelfTileAoe` arm 은 이미 존재한다(진동갑주 = `dreamcatcher-content-3` unit 4).
@@ -12,8 +12,8 @@
 
 - `Assets/_Project/Scripts/Bridge/BattleBridge.cs` — `BakeNightmareMechanics` 의 `projectileDataIndex` 분기
 - `Assets/_Project/Scripts/Battle/Combat/HealthThresholdSystem.cs` — `SelfTileAoe` 캐리어의 진영
-- `Assets/_Project/Data/Enemies/Enemy_Boss_Slasher.asset` — `nightmareMechanics[0]`
-- 덱 asset — `bossPool` 에 슬래셔 투입(로테이션 라이브 확인이 여기서 끝난다)
+- `Assets/_Project/Data/Enemies/Enemy_Boss_Jjangssen.asset` — `nightmareMechanics[0]`
+- 덱 asset — `bossPool` 에 짱쎈놈 투입(로테이션 라이브 확인이 여기서 끝난다)
 
 ## 구현
 
@@ -58,5 +58,5 @@ HP 950 · fraction 0.20 → 760 / 570 / 380 / 190 에서 **4회**. 래치 단조
   4회 전부 발동한다.
 - `payload.projectile` 을 비운 asset 으로 bake 하면 **경고가 뜨고 skip** 된다(조용히 죽지 않는다).
 - `fraction` 을 0 으로 둔 asset 이 bake 에서 loud 거절된다.
-- 덱 `bossPool` 에 나이트메어 + 슬래셔 둘을 넣고 Play → **웨이브마다 하나가 결정론적으로** 등장하고
+- 덱 `bossPool` 에 나이트메어 + 짱쎈놈 둘을 넣고 Play → **웨이브마다 하나가 결정론적으로** 등장하고
   "꿈결 위기!!" 배너가 둘 다 정상.
