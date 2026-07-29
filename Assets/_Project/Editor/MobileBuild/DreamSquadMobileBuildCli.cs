@@ -125,6 +125,11 @@ namespace Wassup.Editor.MobileBuild
             var targetGroup = request.Platform == MobileBuildPlatform.Android
                 ? BuildTargetGroup.Android
                 : BuildTargetGroup.iOS;
+            var options = BuildOptions.Development;
+            if (request.Platform == MobileBuildPlatform.Android)
+            {
+                options |= BuildOptions.AllowDebugging;
+            }
 
             return new BuildPlayerOptions
             {
@@ -132,7 +137,7 @@ namespace Wassup.Editor.MobileBuild
                 locationPathName = request.OutputPath,
                 target = target,
                 targetGroup = targetGroup,
-                options = BuildOptions.Development | BuildOptions.AllowDebugging
+                options = options
             };
         }
 
@@ -207,6 +212,10 @@ namespace Wassup.Editor.MobileBuild
 
             project.SetBuildPropertyForConfig(releaseConfigGuid, "CODE_SIGN_STYLE", "Manual");
             project.SetBuildPropertyForConfig(releaseConfigGuid, "DEVELOPMENT_TEAM", ExpectedIosTeamId);
+            // Unity can carry the UUID serialized in PlayerSettings into the generated project.
+            // Xcode must select the current profile by its stable name below; a stale legacy UUID
+            // otherwise takes precedence and makes archive fail after a profile renewal.
+            project.SetBuildPropertyForConfig(releaseConfigGuid, "PROVISIONING_PROFILE", "");
             project.SetBuildPropertyForConfig(
                 releaseConfigGuid,
                 "CODE_SIGN_IDENTITY",
@@ -574,7 +583,7 @@ namespace Wassup.Editor.MobileBuild
                     "Enabled scenes must be exactly OutgameScene then BattleScene.");
             }
 
-            if (!IsLandscapeOnly(
+            if (!IsLandscapeAutorotation(
                     DefaultOrientation,
                     AllowPortrait,
                     AllowPortraitUpsideDown,
@@ -582,8 +591,8 @@ namespace Wassup.Editor.MobileBuild
                     AllowLandscapeRight))
             {
                 throw new MobileBuildException(
-                    "DreamSquad mobile builds require landscape-only orientation " +
-                    "(landscape autorotation with portrait disabled, or a fixed landscape orientation).");
+                    "DreamSquad mobile builds require landscape autorotation " +
+                    "(portrait disabled and both landscape directions enabled).");
             }
 
             if (platform == MobileBuildPlatform.Android)
@@ -613,30 +622,23 @@ namespace Wassup.Editor.MobileBuild
             }
         }
 
-        // 검사의 목적은 "세로로 빌드되는 사고 방지"다. 그 목적을 만족하는 설정은 둘이다:
-        //   ① 가로 자동회전 — 세로 2방향 금지 + 가로 2방향 허용(원래 프로젝트 설정)
-        //   ② 가로 고정 — LandscapeLeft/Right 고정. 세로가 **구조적으로** 불가능하므로
-        //      ①보다 엄격하다. 2026-07-27 사용자 결정(`19ff8e8f`: 5→2, 자동회전 폐기).
-        // ①만 통과시키면 현재 프로젝트 설정에서 빌드가 preflight 에 막힌다.
-        internal static bool IsLandscapeOnly(
+        // 제품 계약은 "가로 전용"뿐 아니라, 기기의 상하가 바뀔 때 두 가로 방향 사이에서
+        // 회전하는 것이다. 고정 LandscapeLeft/Right는 세로를 막아도 이 계약을 만족하지 않는다.
+        internal static bool IsLandscapeAutorotation(
             UIOrientation defaultOrientation,
             bool allowPortrait,
             bool allowPortraitUpsideDown,
             bool allowLandscapeLeft,
             bool allowLandscapeRight)
         {
-            // 세로 허용 플래그는 어느 모드에서도 사고의 씨앗이다.
-            if (allowPortrait || allowPortraitUpsideDown) return false;
-
             var isAutoRotation =
                 defaultOrientation == UIOrientation.AutoRotation ||
                 (int)defaultOrientation == SerializedScreenAutoRotationValue;
-            // 자동회전이면 회전할 두 방향이 다 열려 있어야 의미가 있다.
-            if (isAutoRotation) return allowLandscapeLeft && allowLandscapeRight;
-
-            // 고정 모드 — 방향 자체가 가로여야 한다(플래그는 무의미해진다).
-            return defaultOrientation == UIOrientation.LandscapeLeft ||
-                   defaultOrientation == UIOrientation.LandscapeRight;
+            return isAutoRotation &&
+                   !allowPortrait &&
+                   !allowPortraitUpsideDown &&
+                   allowLandscapeLeft &&
+                   allowLandscapeRight;
         }
     }
 
