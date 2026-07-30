@@ -2,12 +2,12 @@
 
 ## 목적
 
-"손패로 되돌리면 취소" 규칙이 **눈에 보이는 손패와 같은 크기**가 되게 하고, 취소 존 안에 있을 때
-그 사실을 배너로 알린다.
+"손패로 되돌리면 취소" 규칙이 **눈에 보이는 손패와 같은 크기**가 되게 한다. 취소 예고는 이미 있는
+상단 브리핑 상태 줄이 담당한다(rev1 의 손패 힌트 배너는 rev3 에서 삭제 — §C).
 
 ## 변경 대상
 
-- `Assets/_Project/Scripts/UI/Dreamcatcher/DreamcatcherHandView.cs` — CancelZone rect + 힌트 배너
+- `Assets/_Project/Scripts/UI/Dreamcatcher/DreamcatcherHandView.cs` — CancelZone 판정 rect (`CancelRect`)
 - `Assets/_Project/Scripts/UI/Dreamcatcher/DreamcatcherCardDragSlot.cs` — 판정 3곳을 새 rect 로
 
 ## 구현
@@ -54,7 +54,7 @@ rev1 에서는 손패 위에 `✕ 놓으면 취소` 힌트 배너를 함께 띄�
 
 ### D. 건드리지 않는 것
 
-- 패널 배경(`_backing`) 크기·색 — 딜인 페이드가 `color.a` 를 소유한다. 배너는 별도 GO 라 안 싸운다.
+- 패널 배경(`_backing`) 크기·색 — 딜인 페이드가 `color.a` 를 소유한다. CancelZone 은 Graphic 이 없어 안 싸운다.
 - 하강량/스프링, 카메라 헤드룸, 툴팁.
 - `HandPanelRect` 프로퍼티 자체(다른 소비처가 생길 수 있어 유지).
 

@@ -63,8 +63,8 @@ SFX 는 카드 복귀음을 재사용한다. 전용 클립이 없고 의미("집
 
 ### E. 정리
 
-`CleanupSession` 에서 `_cancelHover = false` + `SetCancelVisual(false)`. 배너 GO 는 거부 라벨과 같은
-캔버스에 살고 컨트롤러 파괴 시 함께 사라진다.
+`CleanupSession` 이 `ResetCancelVisual()` 로 취소 플래그 전부를 내린다. 라벨 GO 는 거부 라벨과 같은
+캔버스(order 20001)를 공유하고 컨트롤러 파괴 시 함께 사라진다.
 
 ### F. 노브 (DragSwaySettings ⑫)
 
@@ -109,7 +109,7 @@ dwell 은 `UpdateCancelVisual` 에서 `Time.unscaledDeltaTime` 으로 누적한�
 ### M2. 무차감을 문자로 못박는다
 
 빠른 템포에서 취소의 유일한 불안은 "코스트 날아갔나" 다. 라벨을
-`✕  놓으면 취소 · 코스트 유지` 로. 상수는 `CancelLabelText` 하나(포인터 라벨과 배너가 공유).
+`✕  놓으면 취소 · 코스트 유지` 로. 상수는 `CancelLabelText` 하나(두 취소 사유가 공유).
 드림캐쳐 힌트도 대칭으로 `· 각성치 유지`.
 
 ### 미반영 (후속 unit 후보)
