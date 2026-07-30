@@ -6,7 +6,11 @@
 - `ec5e9c05` revert(drag-cancel-affordance): unit 2 철회 — ESC/뒤로가기 하드 취소 제거
 - `c61aa51c` feat(drag-cancel-affordance): unit 0 rev2 + unit 3 — 예고를 정직하게, 보드 밖 취소 성립
 - `ffd6ae28` refactor(drag-cancel-affordance): rev3 — 취소 배너 삭제, 예고 표면을 하나로
-- (리뷰 반영 커밋) fix(drag-cancel-affordance): 코드 리뷰 반영 — 예고 술어 통합·테스트 강화
+- `fbcac2db` — ⚠ **리뷰 반영분이 이 커밋에 들어가 있다.** 제목은
+  `feat(first-session-tutorial): unit 15` 다. 병행 세션이 공유 인덱스를 커밋해 스테이징돼 있던
+  이 spec 의 7파일(컨트롤러·SO·테스트 2·문서 3)이 함께 쓸려 들어갔다. 코드는 온전하고, 그쪽
+  커밋 4개를 rewrite 하는 위험을 피하려 이력은 그대로 뒀다 —
+  **커밋 제목으로 검색하면 안 나오므로 `git log -S CancelStateNow` 로 찾을 것.**
 
 ## Implemented
 
