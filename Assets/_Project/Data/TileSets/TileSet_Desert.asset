@@ -22,7 +22,7 @@ MonoBehaviour:
   rejectTile: {fileID: 11400000, guid: 4c4f79cd82642494ea257c47a155261e, type: 2}
   placementLiquidMaterial: {fileID: 2100000, guid: 4e0cc541ac45f48ddbd551ff034d3c11, type: 2}
   rangeTile: {fileID: 11400000, guid: 5008d5588ce0b453aa136b9bd293156a, type: 2}
-  rangeColor: {r: 1, g: 0.55, b: 0.12, a: 1}
+  rangeColor: {r: 0.55, g: 1, b: 0.25, a: 1}
   rangePulseMinAlpha: 0.35
   rangePulseMaxAlpha: 0.85
   rangePulseSpeed: 3

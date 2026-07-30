@@ -22,10 +22,13 @@ MonoBehaviour:
   rejectTile: {fileID: 11400000, guid: 4c4f79cd82642494ea257c47a155261e, type: 2}
   placementLiquidMaterial: {fileID: 2100000, guid: 4e0cc541ac45f48ddbd551ff034d3c11, type: 2}
   rangeTile: {fileID: 11400000, guid: 5008d5588ce0b453aa136b9bd293156a, type: 2}
-  rangeColor: {r: 1, g: 0.55, b: 0.12, a: 1}
+  rangeColor: {r: 0.55, g: 1, b: 0.25, a: 1}
   rangePulseMinAlpha: 0.35
   rangePulseMaxAlpha: 0.85
   rangePulseSpeed: 3
+  rangeInvalidColor: {r: 1, g: 0.16, b: 0.13, a: 1}
+  rangeInvalidFlashSeconds: 0.18
+  rangeInvalidFlashBoost: 0.7
   aimRangeTile: {fileID: 11400000, guid: 44f6d5c4753ccd4b13d4b959565df56f, type: 2}
   aimRangeColor: {r: 1, g: 0.55, b: 0.12, a: 1}
   aimRangeAlpha: 1
