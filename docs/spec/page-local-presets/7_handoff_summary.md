@@ -12,6 +12,10 @@
 | `09d7e527` | feat — `[삭제]` 항상 활성 + 누르면 차단 사유 안내 |
 | `5de0f258` | feat — 삭제 확인 팝업(fail-closed + 콜백 가드 재검증) |
 | `2e4f4c63` | test — fail-closed 가 LogError 를 기대값으로 |
+| `9d9b70e6` | docs — handoff 2건 + 상태 라인 + 작업 단위별 검증 기록 |
+| `be9927bf` | docs — 진행 중 구현이 스펙과 달라진 5건 반영 |
+
+병합 `51aa8245` (타 세션 `tournament-deck-info` 편입) 이후 전체 재검증을 수행했다 — 아래 Verified 참조.
 
 ## Implemented
 
@@ -35,11 +39,12 @@
 ## Verified
 
 - 컴파일 **errors=0** — 4 어셈블리, `dotnet build` 로 Unity 지연 컴파일과 독립 확인(csproj 최신 여부 먼저 확인해 stale 오탐 배제).
-- **EditMode 1660 / 1658 pass / 0 fail / 2 skip**(사전 Ignored 2건 동일). 베이스라인 1617 → 삭제 21 + 신규 64.
+- **EditMode 1660 / 1658 pass / 0 fail / 2 skip**(병합 전 기준. 사전 Ignored 2건 동일). 베이스라인 1617 → 삭제 21 + 신규 64. **병합 후 1700 / 1698 pass / 0 fail**.
 - **PlayMode 프리셋 3건 통과** — `PresetBarPopupLayerTest` 2(두 페이지) + `PresetCarryInTest`. `f5f7608f` 시점 실행.
 - **마이그레이션 0 을 실제 데이터로 확인** — 디스크 `profile.json` 의 `squads[0]`={id,name,unitIds,stoneIds}, `dreamcatcherDecks[0]`={id,name,cardIds} 가 새 타입과 필드 일치.
 - **Play 육안** — 프리셋 바 6컨트롤이 밴드에 들어가고, 팝업이 헤더·브라우저 위에 렌더되며 확정 뱃지·초상 7개 표시. 버튼 dim 이 계약대로(확정분→선택 dim / 미변경→저장·되돌리기 dim / 1개뿐→삭제는 눌리고 사유 안내).
-- PlayMode 전체 79건 중 13건은 **사전 실패**(격리 실행으로 확인, `docs/spec/README.md` 에 기재). 이번 작업 귀속 실패 0.
+- **PlayMode 전체 86건 / 13 실패 — 13건 전부 사전 실패**(`docs/spec/README.md` 기재 목록과 정확히 일치). 이번 작업 귀속 실패 0. `PresetCarryInTest` · `PresetBarPopupLayerTest` 2건 통과.
+- 병합(`51aa8245`) 이후 재검증 완료 — 타 세션의 `tournament-deck-info` 와 내 접근자 개명이 함께 성립함을 확인(EditMode 1700/1698 pass).
 
 ## Notes — 되돌리면 안 되는 의도
 
@@ -56,8 +61,8 @@
 
 ## Follow-up
 
-- **PlayMode 전체 재실행** — 마지막 전체 실행은 `f5f7608f` 기준이다. 이후 커밋(되돌리기·삭제 확인)은 EditMode 로만 검증했다. 공유 Unity 가 Play 로 점유돼 미수행.
-- **`ActiveAllyZoneTest` · `DreamcatcherCombatDamageTest` 격리 확인** — 한 실행에서만 실패했고 둘 다 시간·프레임 누적 기반 단정이다. 그 실행은 `blocked_reason: editor_unfocused` 로 32/81 에서 멈췄으므로 프레임 펌핑 정지가 원인일 가능성이 높지만 **확정하지 못했다.**
+- ~~PlayMode 전체 재실행~~ **완료 2026-07-31** — 병합 후 86건 실행, 13 실패 전부 사전 실패.
+- ~~`ActiveAllyZoneTest` · `DreamcatcherCombatDamageTest` 격리 확인~~ **해소 2026-07-31** — 정상 실행에서 **둘 다 통과**. 앞선 실패는 `blocked_reason: editor_unfocused` 로 프레임 펌핑이 멈춘 실행의 부산물이었다(둘 다 시간·프레임 누적 단정). 회귀 아님.
 - **Play 조작 검증 미완**: 목록 31셀 스크롤 · `[+]` 30개 상한 dim · 한글 IME 이름 입력 · dirty 상태 전환 경고 팝업의 [취소]/[이동] · 삭제 확인 팝업 육안.
 - 리뷰 LOW 6건 미반영(리포트는 리뷰 세션 transcript).
 - README 후속 후보: 프리셋 복제 · diff 보기 · 로비 확정 요약 뱃지 · 순서 재배열 · `MaxPresets` SO 이관.
