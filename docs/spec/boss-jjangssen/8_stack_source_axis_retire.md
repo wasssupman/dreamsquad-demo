@@ -39,6 +39,8 @@ unit 3 은 보스 CC 면역을 `직접 출처 && (IsLock(kind) || Impulse)` 로 
 
 ## 완료 기준
 
-- [ ] EditMode 전체 green (`BossCcImmunityTests` 갱신 포함)
-- [ ] `rg CcSource` 결과 0건 — 축이 코드에 남지 않는다
+- [x] EditMode 전체 green (`BossCcImmunityTests` 갱신 포함) — 1662건 · 실패 0
+- [x] `rg CcSource` 결과 0건 — 축이 코드에 남지 않는다
 - [ ] Play: 보스에게 동상 5중첩을 쌓아도 멈추지 않고, 감속과 출혈은 그대로 걸린다
+
+구현 커밋 `0445e65c` (2026-07-31). Play 확인 대기.
