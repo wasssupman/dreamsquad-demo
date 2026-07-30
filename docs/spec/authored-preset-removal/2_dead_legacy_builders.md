@@ -31,3 +31,7 @@
 - [ ] OutgameScene 에 missing script 경고 0 — 씬 로드 시 콘솔 클린
 - [ ] Play — 스쿼드 페이지·드림캐쳐 페이지 정상 렌더 및 편성 동작(유닛 출전/해제, 스톤 장착, 카드 추가/제거), 콘솔 에러 0
 - [ ] EditMode + PlayMode 전체 그린
+
+---
+
+**검증 기록 2026-07-30 · `5592b676`** — 컴파일 errors=0 · `SquadBuilderView|DreamcatcherDeckBuilderView` 검색 0건(주석 4곳은 "retired" 표기로 수정) · 씬 missing script 경고 0 · EditMode 그린. 두 컴포넌트가 **살아있는 패널(SquadPanel/DreamcatcherPanel) 자체에 붙어 있어** GameObject 가 아니라 컴포넌트만 제거했고, 구 빌더 전용 자식 10개를 정리했다. **미검증**: 두 페이지 편성 조작 Play 육안(스쿼드 페이지 렌더는 스크린샷 확인).

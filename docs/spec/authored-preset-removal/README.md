@@ -1,6 +1,6 @@
 # authored-preset-removal — 기획자 authoring 프리셋 페이지 철거
 
-> 상태: **초안 2026-07-30**
+> 상태: **구현 완료 2026-07-30** (커밋 `5592b676`) — 컴파일 errors=0 · EditMode 1600/0 fail(삭제분 −17 정확히 일치). handoff `3_handoff_summary.md`. **미검증**: UnitStatImport 창 육안 · 시트 Push 왕복(공유 시트 쓰기라 사용자 승인 대기) · 로비 스탯 리프레시 Play
 > 선행: 없음 (자기증적 — 이 spec 만으로 컴파일·Play 그린)
 > 후속: `page-local-presets` (플레이어 소유 프리셋). **이 spec 이 먼저 커밋된다.**
 > 성격: 삭제 전용. 신규 동작 0. MonoBehaviour/Editor/에셋 제거 + 씬 정리.
@@ -22,6 +22,7 @@
 | 0 | 삭제 (UI) | `0_page_and_views.md` | 로비 진입점 + 페이지·뷰 3종 제거, `PresetConfirmPopup` 은 `ConfirmPopup` 으로 개명 존치 |
 | 1 | 삭제 (데이터·시트) | `1_data_and_sheet_path.md` | SO·에셋·`PresetApply`·시트 import/export/push 경로·런타임 refresher 제거 |
 | 2 | 삭제 (레거시) | `2_dead_legacy_builders.md` | 사문화된 `SquadBuilderView`·`DreamcatcherDeckBuilderView` 제거 |
+| 3 | 인계 | `3_handoff_summary.md` | handoff |
 
 순서: 0 → 1 → 2. 각 단위가 독립 커밋이고 어느 지점에서 멈춰도 컴파일 그린이다.
 

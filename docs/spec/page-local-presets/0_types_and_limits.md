@@ -87,3 +87,7 @@ public static class PresetIds
 - [ ] `PresetNormalizeTests` 신규 그린: 7/4 패딩 · 31개 입력 → 30 트림 · 깨진 확정 포인터 교정 · 빈 리스트에서 no-throw · `NextId` 가 삭제 후에도 충돌 없음 · 레거시 id(`squad_1`) 혼재 입력 처리
 - [ ] 기존 `profile.json` 을 그대로 로드해 편성이 **한 칸도** 바뀌지 않음 (마이그레이션 없음 증명 — 로드 전후 JSON diff 없음)
 - [ ] Play — 로비 → 스쿼드/드캐 페이지 → START 반입까지 기존과 동일 동작
+
+---
+
+**검증 기록 2026-07-30 · `5592b676`** — 컴파일 errors=0, 개명 누락 0건 · 기존 EditMode 그린이며 **어서션 값 변경 0**(개명만 했음의 증거) · `PresetNormalizeTests` 14건 그린 · **실기기 `profile.json` 필드 대조로 마이그레이션 0 실증**(`squads[0]`={id,name,unitIds,stoneIds}, `dreamcatcherDecks[0]`={id,name,cardIds}). **미검증**: START 반입 Play e2e(단 `PresetCarryInTest` 가 자동 검증).

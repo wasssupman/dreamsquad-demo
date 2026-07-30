@@ -49,3 +49,7 @@ if (draftController != null) { /* 레거시 draft */ }
 - [ ] 확정 아닌 프리셋의 빈 스톤 4칸이 로드마다 되살아나지 **않음** (의도적 해제 보존)
 - [ ] 빈 확정 프리셋으로 START → 게이트 팝업 `0/7`. BattleScene 직접 Play → draft 폴백 + 신규 로그 1줄
 - [ ] `DefaultLoadoutButton` 클릭 → 로그 정상, 프로필 재생성 후 페이지 재진입 시 프리셋 1개
+
+---
+
+**검증 기록 2026-07-30 · `5592b676`** — 컴파일 errors=0 · `ProfileStoreTests`·`ProfileStoreDefaultDeckTests` 그린 · **기존 profile.json 로드 시 편성 무변경 실측** · `DeckPrune` 이 이미 프리셋 전체를 순회함을 코드로 확인(변경 불필요) · `GameManager` 빈-스쿼드 폴백에 진단 로그 추가(동작 불변). **미검증**: 신규 프로필 시드 e2e(파일 삭제 후 로드) · 빈 확정분으로 START 시 게이트 팝업 육안.

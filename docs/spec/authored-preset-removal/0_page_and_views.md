@@ -42,3 +42,7 @@
 - [ ] `PresetPage|PresetPageController|PresetListItemView|PresetUnitCell|PresetConfirmPopup` 전체 검색 결과 0건 (`ConfirmPopup` 제외)
 - [ ] OutgameScene Play — 로비에 프리셋 버튼 없음, 나머지 버튼(스쿼드·드림캐쳐·히스토리·테스트모드·START) 정상 개폐, 콘솔 에러 0
 - [ ] `git status` 에 삭제된 `.cs` 와 `.cs.meta` 가 **짝으로** 올라와 있음
+
+---
+
+**검증 기록 2026-07-30 · `5592b676`** — 컴파일 errors=0 · 삭제 타입 전수 검색 0건(`ConfirmPopup` 주석의 이력 언급만) · `.cs`/`.cs.meta` 짝 삭제 확인 · 씬에서 `presetPanel` orphan YAML 키까지 제거(재직렬화). **미검증**: 로비 버튼 부재 육안(씬 grep 0건으로는 확인됨).

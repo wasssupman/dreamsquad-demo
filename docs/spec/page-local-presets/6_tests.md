@@ -54,3 +54,7 @@ Play 중에는 MCP 뮤테이션·코루틴·에디터 틱이 동결되므로 입
 - [ ] `PresetCarryInTest` 그린 — 확정한 프리셋의 유닛·스톤이 반입됨
 - [ ] "저장 없이 확정 → 저장분 반입" 케이스가 실제로 **실패할 수 있는 테스트**임을 확인 (저장/확정을 일부러 합쳐보면 빨개지는지 1회 검증 후 되돌린다)
 - [ ] 개명 영향 테스트에서 **어서션 값이 바뀐 것이 없음** (이름 기본값 `"스쿼드 1"`/`"덱 1"` 과 자동→명시 저장 전환분은 예외)
+
+---
+
+**검증 기록 2026-07-30 · `2e4f4c63`** — EditMode **1660/1658 pass/0 fail** · PlayMode 프리셋 3건 통과(`f5f7608f`) · PlayMode 전체 79건 중 13건은 격리 실행으로 **사전 실패 확인**(이번 작업 귀속 0). `DreamcatcherDeckAutosaveTests` → `DreamcatcherDeckSaveTests` 전제 반전 완료. **미검증**: PlayMode 전체 재실행(마지막 전체는 `f5f7608f` 기준) · `ActiveAllyZoneTest`·`DreamcatcherCombatDamageTest` 격리 확정.

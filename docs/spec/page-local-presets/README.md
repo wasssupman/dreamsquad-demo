@@ -1,6 +1,6 @@
 # page-local-presets — 스쿼드·드림캐쳐 페이지별 플레이어 프리셋
 
-> 상태: **초안 2026-07-30**
+> 상태: **구현 완료 2026-07-30** (커밋 `5592b676` → `2e4f4c63`, 8커밋) — 컴파일 errors=0 · **EditMode 1660/1658 pass/0 fail** · PlayMode 프리셋 3건 통과 · Play 육안(바·팝업 레이어·dim). handoff `7_handoff_summary.md`. **미검증**: PlayMode 전체 재실행(마지막 전체는 `f5f7608f` 기준) · Play 조작(31셀 스크롤·30 상한 dim·한글 IME·전환 경고·삭제 확인 육안)
 > 선행: `authored-preset-removal` (**먼저 커밋되어야 한다** — 구 authored 프리셋이 제거된 상태를 전제) · `squad-character-page`(스쿼드 페이지) · `dreamcatcher-deck-page`(드캐 페이지) · `dreamstone-loadout`(스톤 4슬롯)
 > 성격: 아웃게임 UI + 프로필 저장 의미론. **ECS/BattleBridge 무관.**
 

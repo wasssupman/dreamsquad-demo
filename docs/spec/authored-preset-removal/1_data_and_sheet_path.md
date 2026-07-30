@@ -43,3 +43,7 @@ authored 프리셋의 데이터 타입·에셋·적용 헬퍼와 `Presets` 시�
 - [ ] UnitStatImport 창 열림 — Preset 섹션 없음, 나머지 섹션(Unit/Enemy/DC/Cost) 정상 표시
 - [ ] **Push 왕복 실전 검증**: 시트 Push 1회 실행 → 성공 응답, `Presets` 를 제외한 9탭이 반영됨
 - [ ] 로비 Play — 스탯 리프레시 버튼 정상(`AllRuntimeRefresher` 가 남은 refresher 3개를 돌림), 콘솔 에러 0
+
+---
+
+**검증 기록 2026-07-30 · `5592b676`** — 런타임+Editor 컴파일 errors=0 · EditMode 1617→1600, 실패 0(삭제한 두 테스트 파일 6+11=17 과 정확히 일치) · 삭제 타입 전수 검색 0건 · 고아 폴더 `.meta` 4개 제거 · 씬 `AllRuntimeRefresher` 4→3 압축. **미검증**: UnitStatImport 창 육안 · **시트 Push 왕복(공유 Google 시트에 쓰는 외부 동작이라 승인 없이 미실행)** · 로비 스탯 리프레시 Play.

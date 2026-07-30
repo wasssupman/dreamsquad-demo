@@ -49,3 +49,7 @@ Unity 타입 의존 0 — 입력은 `string`/`IReadOnlyList<string>` 과 프리�
   - `stored == null` + 빈 작업본 → `false` / 내용 있는 작업본 → `true`
   - 드캐: 같은 카드 집합이지만 순서 다름 → `true`, 길이 다름 → `true`
 - [ ] `PresetDiff` 에 `UnityEngine` using 없음
+
+---
+
+**검증 기록 2026-07-30 · `5592b676`** — 컴파일 errors=0 · `PresetDiffTests` 18건 그린(뺐다 되넣기·자리 교환·스톤만·이름만·null≡""·길이차·덱 순서) · `PresetDiff` 에 `UnityEngine` using 없음 확인.
