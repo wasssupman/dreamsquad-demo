@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -54,6 +55,13 @@ namespace Wassup.UI
         private readonly int[] _selSection = { 0, 0 };
         private readonly int[] _selItem = { 0, 0 };
 
+        // deck-info-preset-apply unit 1 — 탭별 이벤트 둘. Action<int> 하나로 탭 인덱스를
+        // 넘기지 않는 이유는 호출측에서 0 이 무엇인지 읽히지 않기 때문이고, PresetApply.Target
+        // 을 넘기지 않는 이유는 이 팝업이 프리셋 어휘를 몰라도 되기 때문이다(순수
+        // 프레젠테이션). 페이로드도 넘기지 않는다 — 호출자(히스토리 패널)가 이미 갖고 있다.
+        public event Action SquadApplyRequested;
+        public event Action DreamcatcherApplyRequested;
+
         private TextMeshProUGUI _titleLabel;
         private TextMeshProUGUI _detailName;
         private TextMeshProUGUI _detailSub;
@@ -66,6 +74,9 @@ namespace Wassup.UI
         private RectTransform _detailBodyContent;
         private RectTransform _listViewport;
         private GameObject _presetButton;
+        private Button _presetButtonBtn;
+        private Image _presetButtonImg;
+        private TextMeshProUGUI _presetLabel;
         private Button _closeButton;
         private readonly Image[] _tabPlates = new Image[2];
 
@@ -119,6 +130,7 @@ namespace Wassup.UI
         private void OnDestroy()
         {
             if (_closeButton != null) _closeButton.onClick.RemoveListener(Hide);
+            if (_presetButtonBtn != null) _presetButtonBtn.onClick.RemoveListener(ClickPresetApply);
         }
 
         // ── Model ────────────────────────────────────────────────────────────
@@ -215,6 +227,7 @@ namespace Wassup.UI
             var sections = BuildSections(_tab);
             RenderList(sections);
             RenderDetail(sections);
+            RefreshPresetButton(sections);
         }
 
         private void RenderList(List<DeckInfoDisplay.Section> sections)
@@ -579,18 +592,18 @@ namespace Wassup.UI
             BuildPresetButton(panel, left);
         }
 
-        // 프리셋 적용 — **자리와 모양만** 잡는다. 기능은 별도 spec 이고, 그때까지는
-        // 비활성이다. 눌러도 아무 일 없는 활성 버튼은 결함으로 신고된다. 목록이 비어도
+        // 프리셋 적용 — deck-info-preset-apply unit 1 에서 살아났다(초안은 자리만 잡고
+        // 비활성이었다). 라벨·대상은 활성 탭을 따르고(RefreshPresetButton), 목록이 비어도
         // 자리는 유지한다 — 탭을 오갈 때 레이아웃이 뛰지 않게.
         private void BuildPresetButton(RectTransform panel, float left)
         {
             var go = new GameObject("PresetApplyButton", typeof(RectTransform), typeof(Image), typeof(Button));
             go.transform.SetParent(panel, false);
             _presetButton = go;
-            var img = go.GetComponent<Image>();
-            img.sprite = _buttonSprite;
-            img.type = Image.Type.Sliced;
-            img.color = new Color(1f, 1f, 1f, 0.10f);
+            _presetButtonImg = go.GetComponent<Image>();
+            _presetButtonImg.sprite = _buttonSprite;
+            _presetButtonImg.type = Image.Type.Sliced;
+            _presetButtonImg.color = new Color(1f, 1f, 1f, 0.10f);
 
             var rt = (RectTransform)go.transform;
             rt.anchorMin = new Vector2(0f, 0f);
@@ -599,13 +612,47 @@ namespace Wassup.UI
             rt.offsetMin = new Vector2(left, Pad + FooterH);
             rt.offsetMax = new Vector2(-Pad, Pad + FooterH + PresetH);
 
-            var btn = go.GetComponent<Button>();
-            btn.interactable = false;
+            _presetButtonBtn = go.GetComponent<Button>();
+            _presetButtonBtn.interactable = false;   // RefreshPresetButton 이 탭 내용으로 갱신
+            _presetButtonBtn.onClick.AddListener(ClickPresetApply);
 
-            var label = CreateLabel(go.transform, "Label", "프리셋 적용", 26,
+            _presetLabel = CreateLabel(go.transform, "Label", "프리셋 적용", 26,
                 TextAlignmentOptions.Center, new Color(1f, 1f, 1f, 0.55f));
-            StretchFull((RectTransform)label.transform);
+            _presetLabel.fontStyle = FontStyles.Bold;
+            StretchFull((RectTransform)_presetLabel.transform);
         }
+
+        // 비활성 조건은 하나뿐이다 — 그 탭에 적용할 항목이 0개. 화면이 이미 "덱 정보가
+        // 없습니다"/"없음"을 말하고 있어 dim 의 이유가 자명하다. payload null · 빈 배열 ·
+        // "스쿼드는 비었지만 카드는 있는" 혼합 케이스까지 항목 총수 한 식으로 덮인다.
+        private void RefreshPresetButton(List<DeckInfoDisplay.Section> sections)
+        {
+            if (_presetButtonBtn == null) return;
+            int items = 0;
+            for (int s = 0; s < sections.Count; s++) items += sections[s].Items.Count;
+            bool usable = items > 0;
+
+            _presetButtonBtn.interactable = usable;
+            _presetLabel.text = _tab == SquadTab ? "이 스쿼드를 프리셋으로" : "이 덱을 프리셋으로";
+            // 활성이면 닫기 버튼과 같은 결(금색 판 + 어두운 글자), 아니면 dim.
+            _presetButtonImg.color = usable ? GoldColor : new Color(1f, 1f, 1f, 0.10f);
+            _presetLabel.color = usable ? BadgeTextDark : new Color(1f, 1f, 1f, 0.55f);
+        }
+
+        // 버튼 핸들러와 테스트가 같은 경로를 탄다(SwitchTab/SelectCell 관례).
+        // 이벤트를 먼저 raise 하고 닫는다 — 구독자가 페이지 전환을 유발해 이 팝업의
+        // 부모(히스토리 패널)가 비활성화되므로, 이벤트가 살아 있는 상태에서 나가야 한다.
+        internal void ClickPresetApply()
+        {
+            if (_presetButtonBtn == null || !_presetButtonBtn.interactable) return;
+            if (_presetButton == null || !_presetButton.activeSelf) return;   // 내 덱 = 숨김
+            if (_tab == SquadTab) SquadApplyRequested?.Invoke();
+            else DreamcatcherApplyRequested?.Invoke();
+            Hide();
+        }
+
+        internal bool IsPresetButtonInteractable
+            => _presetButtonBtn != null && _presetButtonBtn.interactable;
 
         private void BuildFooter(RectTransform panel)
         {

@@ -146,7 +146,6 @@ code + git history        구현 상세
 `docs/spec/tournament-history-deck-view/5_handoff_summary.md`.
 
 - **0점 마감이 덱 기록을 덮어쓰는지 확인** [S] · 유일하게 남은 미확인. 좋은 판 뒤 **나가기로** 한 판을 끝내고 같은 엔트리를 다시 열면 판정된다. 덮인다면 클라를 더 고칠 게 아니라(이미 값 없으면 키를 안 보낸다) **서버에 최고점 가드를 요청**하는 쪽이 맞다. (tournament-deck-info)
-- **프리셋 적용 기능** [S~M] · 팝업 하단 버튼은 자리만 잡혀 비활성이다. `PresetApply.WriteToProfile` 이 붙을 자리인데 판단이 필요한 지점 셋: (a) 그 헬퍼가 **드림스톤을 안 건드린다**, (b) 내 카탈로그에 없는 id 가 섞인 덱을 적용하면?, (c) 저장 시점(`ProfileStore.Save`)과 확인 절차. 내 덱에서는 버튼이 숨겨진다. (tournament-history-deck-view)
 - **카드 문안 정합** [S] · 팝업은 `card.description` 원문을 쓴다. 게임 내 다른 카드 표면은 `DreamcatcherCardText` 를 거쳐 축/타입 헤더와 "○○ 전용" 부착 제한을 붙인다. 남의 덱에서 부착 제한이 안 보이는 것은 의식적 선택이지 누락이 아니다. (tournament-history-deck-view)
 - **결과 화면에도 덱보기** [S] · `LeaderboardList.Render` 의 옵트인 콜백을 켜기만 하면 된다. 판 직후 상대 덱을 보는 흐름이 자연스러운지는 별도 판단. (tournament-history-deck-view)
 - **랭킹 행 룩 통일** [S] · `ResultScreen` 은 `LeaderboardList.Render` 를 안 쓰고 자체 행 페인팅을 갖는다(`result-screen-ranking-ui` 재설계 때 갈라짐). 두 화면의 행 모양이 이미 미세하게 다르다. (tournament-history-deck-view)

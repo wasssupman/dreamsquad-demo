@@ -194,5 +194,63 @@ namespace Wassup.Tests.EditMode
 
             Assert.AreEqual(14, CountCells(), "고정 슬롯이 아니다 — 온 만큼 전부 그린다");
         }
+
+        // ---- 프리셋 적용 버튼 (deck-info-preset-apply unit 1) -------------------
+
+        [Test]
+        public void ApplyButton_RaisesPerTabEvent_AndCloses()
+        {
+            int squad = 0, dc = 0;
+            _popup.SquadApplyRequested += () => squad++;
+            _popup.DreamcatcherApplyRequested += () => dc++;
+
+            _popup.Show(Payload(units: new[] { "u_known" }, cards: new[] { "c_known" }), "someone");
+            _popup.ClickPresetApply();
+
+            Assert.AreEqual(1, squad, "스쿼드 탭 → 스쿼드 이벤트");
+            Assert.AreEqual(0, dc);
+            Assert.IsFalse(_popup.gameObject.activeSelf, "적용은 완료된 동작 — 팝업이 닫힌다");
+
+            _popup.Show(Payload(units: new[] { "u_known" }, cards: new[] { "c_known" }), "someone");
+            _popup.SwitchTab(1);
+            _popup.ClickPresetApply();
+
+            Assert.AreEqual(1, squad);
+            Assert.AreEqual(1, dc, "드림캐쳐 탭 → 드림캐쳐 이벤트");
+        }
+
+        [Test]
+        public void ApplyButton_DisabledWhenTabHasNothingToApply()
+        {
+            int raised = 0;
+            _popup.SquadApplyRequested += () => raised++;
+            _popup.DreamcatcherApplyRequested += () => raised++;
+
+            _popup.Show(null, "someone");   // 덱 정보 없음
+            Assert.IsFalse(_popup.IsPresetButtonInteractable);
+            _popup.ClickPresetApply();
+            Assert.AreEqual(0, raised, "비활성이면 이벤트도 없다");
+
+            _popup.SwitchTab(1);
+            Assert.IsFalse(_popup.IsPresetButtonInteractable);
+
+            // 혼합 케이스 — 스쿼드는 비었지만 카드는 있다.
+            _popup.Show(Payload(cards: new[] { "c_known" }), "someone");
+            Assert.IsFalse(_popup.IsPresetButtonInteractable, "빈 스쿼드 탭은 적용할 것이 없다");
+            _popup.SwitchTab(1);
+            Assert.IsTrue(_popup.IsPresetButtonInteractable, "카드 탭은 적용 가능");
+        }
+
+        [Test]
+        public void ApplyButton_HiddenForOwnDeck_NeverRaises()
+        {
+            int raised = 0;
+            _popup.SquadApplyRequested += () => raised++;
+
+            _popup.Show(Payload(units: new[] { "u_known" }), "me", allowPresetApply: false);
+            _popup.ClickPresetApply();
+
+            Assert.AreEqual(0, raised, "내 덱에는 버튼이 없다 — 숨김 상태에서 발화 금지");
+        }
     }
 }
