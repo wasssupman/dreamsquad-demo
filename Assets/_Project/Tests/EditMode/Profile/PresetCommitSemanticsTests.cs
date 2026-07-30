@@ -1,7 +1,9 @@
 using System.Collections.Generic;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.TestTools;
 using Wassup.Core;
 using Wassup.UI;
 
@@ -203,6 +205,11 @@ namespace Wassup.Tests.EditMode.Profile
         {
             MakeController();                          // confirmPopup 미주입
             SetField("_viewingPresetId", "squad_2");   // 삭제 가능한 프리셋
+
+            // fail-closed 는 **조용히 막지 않는다** — 배선 누락을 LogError 로 드러낸다.
+            // 이걸 기대값으로 못박아 두면 "아무 일도 안 일어났다"와 "차단 경로를 실제로
+            // 탔다"를 구분할 수 있다(전자는 가드를 지워도 통과할 수 있다).
+            LogAssert.Expect(LogType.Error, new Regex("confirmPopup 미주입"));
 
             Invoke("OnDeletePreset");
 
