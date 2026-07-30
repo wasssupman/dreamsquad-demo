@@ -9,7 +9,7 @@ namespace Wassup.Data.StatImport
     // match their SO counterpart 1:1 for the reflection mapper. Nested
     // trigger/payload fields are prefix-flattened (trigger.kind -> triggerKind)
     // and mapped manually in DcSheetApplier. `_`-prefixed sheet columns
-    // (_skillId/_projectileId/_effect/_target) have no DTO field on purpose —
+    // (_skillId/_projectileId/_effect) have no DTO field on purpose —
     // Json.NET drops unknown keys, so they stay informational.
 
     public class DcCardDto

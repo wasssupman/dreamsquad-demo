@@ -17,7 +17,6 @@ MonoBehaviour:
   description: "\uC9C0\uC815 \uC9C0\uC810 \uBC18\uACBD 2.0 \uD0C0\uC77C \uB0B4 \uC801
     \uC774\uB3D9\uC18D\uB3C4 \xD70.6, 5\uCD08 \uC9C0\uC18D."
   effect: 0
-  target: 0
   range: 2
   magnitude: 0.6
   durationSec: 5

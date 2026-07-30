@@ -17,8 +17,7 @@ MonoBehaviour:
   description: "\uC9C0\uC815 \uBC29\uC5B4 \uC720\uB2DB \uACF5\uACA9\uC18D\uB3C4 \xD72,
     6\uCD08 \uC9C0\uC18D."
   effect: 2
-  target: 1
-  range: 0
+  range: 1
   magnitude: 2
   durationSec: 6
   cooldownSec: 25

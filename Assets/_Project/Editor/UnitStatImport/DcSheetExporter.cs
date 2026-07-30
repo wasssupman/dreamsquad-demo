@@ -25,7 +25,9 @@ namespace Wassup.Editor.UnitStatImport
         // or the reflection mapper / row binding would have to special-case them.
         private class CardRow : DcCardDto { public string _skillId; }
         private class MechanicRow : DcMechanicDto { public string _projectileId; }
-        private class SkillRow : DcSkillDto { public string _effect; public string _target; }
+        // active-dreamcatcher-tile-aim unit 0 — `_target` 정보 열은 대상축(SkillTargetType)
+        // 폐기와 함께 제거. 모든 스킬이 타일 대상이라 열의 정보량이 0이다.
+        private class SkillRow : DcSkillDto { public string _effect; }
 
         // tabNames order: cards, cardEffects, mechanics, attackMods, skills, config.
         public static string ExportToFolder(string folder, string[] tabNames,
@@ -103,7 +105,6 @@ namespace Wassup.Editor.UnitStatImport
                 var row = new SkillRow();
                 UnitStatFieldMapper.ReadFieldsToDto(so, row);
                 row._effect = so.effect.ToString();
-                row._target = so.target.ToString();
                 skillRows.Add(row);
             }
 

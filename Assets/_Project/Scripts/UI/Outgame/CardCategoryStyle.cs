@@ -83,12 +83,14 @@ namespace Wassup.UI
             if (skill == null) return "필드"; // 미배선 config — 폴백(카드는 여전히 사용 가능)
             switch (skill.effect)
             {
+                // active-dreamcatcher-tile-aim unit 0 — Active 는 전부 타일 대상(대상축 폐기).
+                // 아군 버프도 "아군 지정" 이 아니라 타일 반경이다.
+                case SkillEffectType.Portal: return "타일 2개";
                 case SkillEffectType.Meteor:
                 case SkillEffectType.SlowField:
-                case SkillEffectType.Tornado: return "타일 지정";
-                case SkillEffectType.Portal: return "타일 2개";
+                case SkillEffectType.Tornado:
                 case SkillEffectType.PowerSurge:
-                case SkillEffectType.RapidFire: return "아군 지정";
+                case SkillEffectType.RapidFire: return "타일 지정";
                 default: return "필드";
             }
         }

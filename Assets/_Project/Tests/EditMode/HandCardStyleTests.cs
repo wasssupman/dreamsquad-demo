@@ -84,8 +84,9 @@ namespace Wassup.Tests.EditMode
         [TestCase(SkillEffectType.SlowField, "타일 지정")]
         [TestCase(SkillEffectType.Tornado, "타일 지정")]
         [TestCase(SkillEffectType.Portal, "타일 2개")]
-        [TestCase(SkillEffectType.PowerSurge, "아군 지정")]
-        [TestCase(SkillEffectType.RapidFire, "아군 지정")]
+        // active-dreamcatcher-tile-aim unit 0 — 아군 버프도 타일 대상(대상축 폐기).
+        [TestCase(SkillEffectType.PowerSurge, "타일 지정")]
+        [TestCase(SkillEffectType.RapidFire, "타일 지정")]
         public void TargetTag_Active_BySkillEffect(SkillEffectType effect, string expected)
             => Assert.AreEqual(expected,
                 CardCategoryStyle.TargetTag(MakeCard(CardType.Active, skill: MakeSkill(effect))));

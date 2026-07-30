@@ -38,6 +38,32 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(new int2(0, 0), cellLow);
         }
 
+        // active-dreamcatcher-tile-aim rev — clamp 하는 변형만으로는 "보드 밖" 을 물을 수 없다.
+        // 조준 커밋이 맵 밖 릴리즈를 거절하려면 접히지 않은 셀이 필요하다.
+        [Test]
+        public void WorldToCellUnclamped_OutOfBounds_KeepsCellOutside()
+        {
+            var high = GridMath.WorldToCellUnclamped(new float3(100, 0, 100), tileSize: 1f);
+            Assert.AreEqual(new int2(100, 100), high);
+
+            var low = GridMath.WorldToCellUnclamped(new float3(-10, 0, -10), tileSize: 1f);
+            Assert.AreEqual(new int2(-10, -10), low);
+        }
+
+        [Test]
+        public void WorldToCell_IsUnclampedThenClamped_SameRounding()
+        {
+            var grid = new int2(20, 10);
+            var origin = new float3(3f, 0f, -2f);
+            foreach (var p in new[] { new float3(0.6f, 0, 0.4f), new float3(7.5f, 0, 2.5f), new float3(-4f, 0, 30f) })
+            {
+                var raw = GridMath.WorldToCellUnclamped(p, tileSize: 2f, origin: origin);
+                var clamped = GridMath.WorldToCell(p, tileSize: 2f, gridSize: grid, origin: origin);
+                Assert.AreEqual(math.clamp(raw.x, 0, grid.x - 1), clamped.x, $"x @ {p}");
+                Assert.AreEqual(math.clamp(raw.y, 0, grid.y - 1), clamped.y, $"y @ {p}");
+            }
+        }
+
         [Test]
         public void WorldToCell_DifferentTileSize_Scales()
         {

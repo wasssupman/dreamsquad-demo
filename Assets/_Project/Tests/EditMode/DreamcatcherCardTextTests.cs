@@ -263,9 +263,10 @@ namespace Wassup.Tests.EditMode
         {
             var card = Card(CardType.Active, description: "레거시 설명");
             card.skill = Skill(SkillEffectType.RapidFire, 2f, 6f, 25f, 2);
+            card.skill.range = 1f; // active-dreamcatcher-tile-aim unit 0 — 아군 버프도 타일 반경
 
             StringAssert.Contains(
-                "아군 유닛 지정 → 공격 속도 x2 · 6초 · 비용 2 · 재사용 25초",
+                "타일 지정 → 반경 1칸 아군 공격 속도 x2 · 6초 · 비용 2 · 재사용 25초",
                 DreamcatcherCardText.Body(card));
             StringAssert.DoesNotContain("레거시 설명", DreamcatcherCardText.Body(card));
         }

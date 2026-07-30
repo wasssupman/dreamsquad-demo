@@ -22,6 +22,5 @@ MonoBehaviour:
   attackMods: []
   type: 2
   skill: {fileID: 11400000, guid: 617c2b597eefc4309bb176c2df4826ed, type: 2}
-  description: "\uC544\uAD70 \uC720\uB2DB \uC9C0\uC815 \u2192 \uACF5\uACA9 \uC18D\uB3C4
-    x2 \xB7 6\uCD08 \xB7 \uBE44\uC6A9 2 \xB7 \uC7AC\uC0AC\uC6A9 25\uCD08"
+  description: "\uD0C0\uC77C \uC9C0\uC815 \u2192 \uBC18\uACBD 1\uCE78 \uC544\uAD70 \uACF5\uACA9 \uC18D\uB3C4 x2 \xB7 6\uCD08 \xB7 \uBE44\uC6A9 2 \xB7 \uC7AC\uC0AC\uC6A9 25\uCD08"
   leakAllowanceCost: 0

@@ -537,22 +537,11 @@ namespace Wassup.UI
 
         private void ApplyClearanceOffset()
         {
+            // active-dreamcatcher-tile-aim unit 1 — 포인터 추종 카드가 사라져(모든 조준이
+            // 카드를 손패에 두고 화살표로 겨눈다) 패널 이동 전 위치를 보존할 슬롯도 없다.
             var rt = (RectTransform)_panel.transform;
-            // 포인터 추종 카드는 화면 좌표로 직접 그려진다 — 패널 이동 전 위치를 잡아 복원한다.
-            // 드래그는 동시 1개만 성립하므로(CanStartDrag) 후보도 하나뿐이다.
-            RectTransform follow = null;
-            Vector3 followPos = default;
-            for (int i = 0; i < _slots.Count; i++)
-            {
-                var ds = _slots[i].dragSlot;
-                if (ds == null || !ds.IsPointerFollowing) continue;
-                follow = _slots[i].rect;
-                followPos = follow.position;
-                break;
-            }
             var p = rt.anchoredPosition;
             rt.anchoredPosition = new Vector2(p.x, _panelBaseY + _clearanceOffset);
-            if (follow != null) follow.position = followPos;
         }
 
         // 하강 상태의 하드 리셋. Close() 에는 두지 않는다 — Close 는 패널을 감추지 않고

@@ -11,25 +11,22 @@ namespace Wassup.UI
     // DreamcatcherHandView, which supplies bridge/camera/controller.
     //
     // Aim modes (classified ONCE at drag start — single source, every handler
-    // branches on it):
-    // - Defender (Unit/Squad/Active-DefenderUnit): the card stays seated in the
-    //   hand (StS style) and a dotted arrow runs to the pointer; the hovered
-    //   defender shows a red spine tint. Touchup on a unit commits immediately.
-    // - ActiveTile (Meteor 계열): the card follows the pointer with the skill
-    //   range preview; touchup on a tile casts.
-    // - ActivePortal: touchup = entry tile, then a second field tap picks the
-    //   exit (old SkillBar two-tap machine).
-    // Cancel = touchup inside the hand panel / ESC / phase exit — never spends.
+    // branches on it). active-dreamcatcher-tile-aim unit 1 — **카드는 어느 모드에서도
+    // 손패에 남고 화살표가 겨눈다**(포인터 추종 모드 폐기). 모드는 "무엇을 겨누는가" 만 가른다:
+    // - Defender (Unit/Squad 부착): 유닛 락온 — 호버 유닛에 리티클/콜아웃, 유닛 위 릴리즈가 커밋.
+    // - TileAim (Active 6종): 화살표 끝이 타일을 물고 범위 프리뷰가 따라온다. 릴리즈가 시전.
+    //   포탈만 릴리즈로 입구를 잡고 두 번째 탭이 출구를 고른다(`_portalEntryCell`).
+    // - EnemyMark (살찌운 제물): 최근접 적 픽.
+    // Cancel = touchup inside the hand panel / 보드 밖 / ESC / phase exit — never spends.
     public class DreamcatcherCardDragSlot : MonoBehaviour,
         IBeginDragHandler, IDragHandler, IEndDragHandler,
         IPointerDownHandler, IPointerUpHandler, IPointerClickHandler
     {
         private enum AimMode
         {
-            None,         // unclassifiable (Active without a skill) — drag blocked
-            Defender,     // arrow + unit tint + unit drop
-            ActiveTile,   // card-follow + range preview + tile drop
-            ActivePortal, // card-follow + entry drop → two-tap exit
+            None,     // unclassifiable (Active without a skill) — drag blocked
+            Defender, // arrow + unit lock + unit drop
+            TileAim,  // arrow + tile reticle/range preview + tile drop (Active 전종)
             // subconscious-curse-expansion unit 3 — 살찌운 제물: arrow + 최근접 적 픽 드롭
             EnemyMark
         }
@@ -39,13 +36,20 @@ namespace Wassup.UI
 
         private bool _dragging;
         private AimMode _mode = AimMode.None;
-        private Vector2Int? _hoverCell; // hovered defender's cell (Active-defender commit arg)
+        private Vector2Int? _hoverCell; // hovered defender's cell (락온 리티클 위치용)
         private Entity _hoverEntity = Entity.Null;
         // unit 8 (M1) — Active aim mirrors GameManager.IsAiming (PlacementInput
         // mutual exclusion, old SkillBar lifecycle).
         private bool _activeAiming;
         private Vector2Int? _portalEntryCell;          // Portal two-tap: entry captured
         private Vector2Int _lastRangeCell = new(-1, -1); // aim range preview cache
+        // unit 1 — 타일 조준 상태. 셀이 바뀐 프레임에만 갱신(범위 점등·아군 카운트 공통 게이트).
+        private Vector2Int? _aimCell;
+        private int _aimAllyCount;
+        private int _allyStatusCount = -1;   // AllyCountStatus 캐시 키
+        private string _allyStatusCache;
+        // unit 2 — 포탈 2단계 점등용(입구 + 출구후보). 매 프레임 할당 금지.
+        private readonly System.Collections.Generic.List<Vector2Int> _portalCells = new();
         // dreamcatcher-attach-lockon — 조준 시작 attachable 스냅샷(부착수는 드래그 중 불변).
         private readonly System.Collections.Generic.List<(Entity entity, Rect rect)> _defRectBuf = new();
         private readonly System.Collections.Generic.HashSet<Entity> _attachable = new();
@@ -54,12 +58,6 @@ namespace Wassup.UI
 
         public bool IsDragging => _dragging;
         public bool IsPortalAiming => _portalEntryCell.HasValue;
-        // hand-drag-clearance unit 0 — 카드가 포인터를 따라가는 모드(UpdateDragVisual 이
-        // 위치를 **스크린 좌표**로 직접 쓴다). 손패 하강 중에도 카드는 손가락에 남아야 하므로
-        // View 가 패널을 움직일 때 이 슬롯만 위치를 보존한다. Defender/EnemyMark 는 카드가
-        // 손패 고정(화살표만 포인터 추종)이라 패널과 함께 내려가는 게 맞다.
-        public bool IsPointerFollowing =>
-            _dragging && (_mode == AimMode.ActiveTile || _mode == AimMode.ActivePortal);
 
         public void Bind(DreamcatcherHandView view, int index)
         {
@@ -185,10 +183,11 @@ namespace Wassup.UI
                 case CardType.Unit:
                 case CardType.Squad: // unit 9 — host-bound, aims like Unit
                     return AimMode.Defender;
+                // active-dreamcatcher-tile-aim unit 0~1 — Active 는 전부 타일 대상이다(대상축
+                // 폐기). 아군 버프(공격폭증·속사)도 지정 타일 반경으로 걸리므로 유닛 락온
+                // 경로로 가지 않는다. 포탈도 같은 모드 — 2단계는 `_portalEntryCell` 상태가 가른다.
                 case CardType.Active when card.skill != null:
-                    if (card.skill.target == SkillTargetType.DefenderUnit) return AimMode.Defender;
-                    return card.skill.effect == SkillEffectType.Portal
-                        ? AimMode.ActivePortal : AimMode.ActiveTile;
+                    return AimMode.TileAim;
                 default:
                     return AimMode.None;
             }
@@ -215,8 +214,8 @@ namespace Wassup.UI
             _dragging = true;
             _view.SetFocus(-1); // hand-deal-in — 드래그 시작 시 focus 해제(이웃 scatter 복귀)
             slot.rect.SetAsLastSibling(); // float above sibling cards
-            if (_mode == AimMode.Defender || _mode == AimMode.EnemyMark)
-                slot.rect.localScale = Vector3.one * 1.08f; // 선택 카드 강조(카드는 손패 고정)
+            // unit 1 — 카드는 모든 모드에서 손패 고정이라 강조도 공통이다.
+            slot.rect.localScale = Vector3.one * 1.08f;
 
             if (slot.card.type == CardType.Active && GameManager.Instance != null)
             {
@@ -230,32 +229,27 @@ namespace Wassup.UI
             UpdateDragVisual(eventData.position);
         }
 
-        // dreamcatcher-attach-lockon — 조준 종류별 포커스 연출 개시. Defender 부착
-        // (Unit/Squad)만 attachable 스냅샷 + base-ring, Active-DefenderUnit 은 캐스트
-        // 리티클(캡 무관), EnemyMark 는 dim 만(적 타겟은 별도 스코프).
+        // dreamcatcher-attach-lockon — 조준 종류별 포커스 연출 개시. Defender 모드(= Unit/Squad
+        // 부착)는 attachable 스냅샷 + base-ring, EnemyMark 는 dim 만(적 타겟은 별도 스코프).
+        // active-dreamcatcher-tile-aim unit 1 — Active 는 이 모드로 오지 않으므로 캐스트 리티클
+        // (AimKind.DefenderCast) 분기는 은퇴했다. TileAim 은 포커스를 켜지 않는다(범위 프리뷰가
+        // 대상을 말한다).
         private void BeginFocus(DreamcatcherHandView.CardSlot slot)
         {
             if (_view.Focus == null) return;
             if (_mode == AimMode.Defender)
             {
-                bool attach = slot.card != null &&
-                    (slot.card.type == CardType.Unit || slot.card.type == CardType.Squad);
-                if (attach)
+                _view.Bridge.EnumerateDefenderScreenRects(_view.MainCamera, _defRectBuf);
+                _attachable.Clear();
+                for (int i = 0; i < _defRectBuf.Count; i++)
                 {
-                    _view.Bridge.EnumerateDefenderScreenRects(_view.MainCamera, _defRectBuf);
-                    _attachable.Clear();
-                    for (int i = 0; i < _defRectBuf.Count; i++)
-                    {
-                        // 유효 = 부착 여유(캡) AND 이 카드가 이 유닛에 실제로 기여(통통구슬은
-                        // 투사체 유닛만 등). 커밋 거절과 UI 를 일치시킨다.
-                        var e = _defRectBuf[i].entity;
-                        if (_view.Controller.CanAttachMore(e) && _view.Bridge.WouldDreamcatcherCardApply(e, slot.card))
-                            _attachable.Add(e);
-                    }
-                    _view.Focus.Begin(DreamcatcherFocusPresenter.AimKind.AttachAim, _attachable);
+                    // 유효 = 부착 여유(캡) AND 이 카드가 이 유닛에 실제로 기여(통통구슬은
+                    // 투사체 유닛만 등). 커밋 거절과 UI 를 일치시킨다.
+                    var e = _defRectBuf[i].entity;
+                    if (_view.Controller.CanAttachMore(e) && _view.Bridge.WouldDreamcatcherCardApply(e, slot.card))
+                        _attachable.Add(e);
                 }
-                else
-                    _view.Focus.Begin(DreamcatcherFocusPresenter.AimKind.DefenderCast, null);
+                _view.Focus.Begin(DreamcatcherFocusPresenter.AimKind.AttachAim, _attachable);
             }
             else if (_mode == AimMode.EnemyMark)
             {
@@ -274,7 +268,7 @@ namespace Wassup.UI
             {
                 case AimMode.Defender: UpdateUnitHover(eventData.position); break;
                 case AimMode.EnemyMark: UpdateEnemyHover(eventData.position); break;
-                case AimMode.ActiveTile: UpdateAimRange(eventData.position, Slot.card.skill); break;
+                case AimMode.TileAim: UpdateTileAim(eventData.position); break;
             }
             UpdateDragVisual(eventData.position);
             UpdateBriefingStatus(eventData.position); // unit 3 — 호버/취소영역 상태 줄
@@ -300,32 +294,19 @@ namespace Wassup.UI
                     UpdateUnitHover(eventData.position);
                     if (_hoverEntity == Entity.Null) { CancelDrag(); return; } // no unit under touchup
                     var host = _hoverEntity;
-                    var cell = _hoverCell ?? default;
                     int entryId = slot.entryId;
-                    // dreamcatcher-taxonomy-cleanup unit 1 — Unit/Squad share one
-                    // attach commit (host-bound, aims the same); only Active-
-                    // DefenderUnit forks (casts a skill at the CELL, not an attach).
-                    if (slot.card.type == CardType.Active)
-                    {
-                        // card-fly unit 2 — Active-Defender 는 셀(타일 월드)로 찰싹(유닛 없음 반응).
-                        Vector3 startUiWorld = slot.rect.position;
-                        Vector2 ghostSize = slot.rect.rect.size;
-                        Sprite face = slot.art != null ? slot.art.sprite : null;
-                        var cell2 = cell;
-                        CommitNow(() => _view.Controller.CommitActiveDefender(entryId, cell),
-                            () => _view.FlyCardToCell(startUiWorld, ghostSize, face, cell2));
-                    }
-                    else
-                    {
-                        // card-fly-to-target-absorb unit 0 — 발사점/스프라이트를 커밋 전에
-                        // 캡처(성공 시 손패가 소비되므로). 유닛 케이스만 비행(타일=unit 2).
-                        Vector3 startUiWorld = slot.rect.position;
-                        Vector2 ghostSize = slot.rect.rect.size;
-                        Sprite face = slot.art != null ? slot.art.sprite : null;
-                        var host2 = host;
-                        CommitNow(() => _view.Controller.CommitAttach(entryId, host),
-                            () => _view.FlyCardToUnit(startUiWorld, ghostSize, face, host2));
-                    }
+                    // dreamcatcher-taxonomy-cleanup unit 1 — Unit/Squad share one attach
+                    // commit (host-bound, aims the same). active-dreamcatcher-tile-aim
+                    // unit 0 — Active 는 더 이상 이 모드로 오지 않는다(전부 타일 대상).
+                    //
+                    // card-fly-to-target-absorb unit 0 — 발사점/스프라이트를 커밋 전에
+                    // 캡처(성공 시 손패가 소비되므로).
+                    Vector3 startUiWorld = slot.rect.position;
+                    Vector2 ghostSize = slot.rect.rect.size;
+                    Sprite face = slot.art != null ? slot.art.sprite : null;
+                    var host2 = host;
+                    CommitNow(() => _view.Controller.CommitAttach(entryId, host),
+                        () => _view.FlyCardToUnit(startUiWorld, ghostSize, face, host2));
                     return;
                 }
 
@@ -346,33 +327,40 @@ namespace Wassup.UI
                     return;
                 }
 
-                case AimMode.ActiveTile:
-                    if (TryScreenToCell(eventData.position, out var tile))
-                    {
-                        ClearAimRange();
-                        // card-fly unit 2 — 타일 캐스트. 카드는 포인터를 따라와 타겟 근처라 짧은 찰싹.
-                        Vector3 tStart = slot.rect.position;
-                        Vector2 tSize = slot.rect.rect.size;
-                        Sprite tFace = slot.art != null ? slot.art.sprite : null;
-                        var tile2 = tile;
-                        CommitNow(() => _view.Controller.CommitActiveTile(slot.entryId, tile),
-                            () => _view.FlyCardToCell(tStart, tSize, tFace, tile2));
-                    }
-                    else CancelDrag();
-                    return;
+                case AimMode.TileAim:
+                {
+                    // 릴리즈 지점으로 조준을 최신화(드래그 마지막 프레임과 릴리즈 지점이 다를 수 있다).
+                    UpdateTileAim(eventData.position);
+                    if (!_aimCell.HasValue) { CancelDrag(); return; } // 보드 밖 = 취소·무차감
+                    var tile = _aimCell.Value;
 
-                case AimMode.ActivePortal:
-                    // Two-tap: touchup = entry tile, the NEXT field tap (Update
-                    // below) picks the exit and commits. IsAiming stays true.
-                    if (TryScreenToCell(eventData.position, out var entry))
+                    // 포탈은 릴리즈가 **입구**다 — 조준을 유지하고(EndInteraction 안 탐) 두 번째
+                    // 탭을 Update 가 받는다. IsAiming/툴팁/점등 모두 유지된다.
+                    if (IsPortalCard())
                     {
-                        _portalEntryCell = entry;
-                        // unit 3 — 2탭 국면 전환 브리핑(툴팁은 조준 중 유지 계약).
+                        _portalEntryCell = tile;
+                        _lastRangeCell = new Vector2Int(-1, -1); // 다음 갱신에서 [입구,출구]로 재점등
                         _view.UpdateDragBriefingStatus(
                             "<color=#9FE6A0>입구 지정됨</color> — 출구 타일을 탭하세요");
+                        return;
                     }
-                    else CancelDrag();
+
+                    // 아군 버프인데 범위에 아군이 없으면 커밋해도 bridge 가 거절한다 —
+                    // 조준 색과 같은 판정으로 여기서 먼저 물러난다(무차감).
+                    if (!AimCellValid) { CancelDrag(); return; }
+
+                    ClearAimRange();
+                    // card-fly unit 2 — 타일 캐스트. 발사점/스프라이트는 커밋 전에 캡처.
+                    Vector3 tStart = slot.rect.position;
+                    Vector2 tSize = slot.rect.rect.size;
+                    Sprite tFace = slot.art != null ? slot.art.sprite : null;
+                    var tile2 = tile;
+                    int tEntryId = slot.entryId;
+                    CommitNow(() => _view.Controller.CommitActiveTile(tEntryId, tile),
+                        () => _view.FlyCardToCell(tStart, tSize, tFace, tile2),
+                        TilePulseCenter(tile));
                     return;
+                }
 
                 default:
                     CancelDrag();
@@ -380,22 +368,32 @@ namespace Wassup.UI
             }
         }
 
-        // Portal second tap — polled like the old SkillBar aim loop.
+        // Portal 2단계 — 손을 뗀 상태라 OnDrag 가 돌지 않는다. 출구 조준(화살표·점등·상태줄)을
+        // 여기서 매 프레임 갱신하고 두 번째 press 를 커밋으로 받는다.
         private void Update()
         {
             if (!_portalEntryCell.HasValue) return;
             var pointer = UnityEngine.InputSystem.Pointer.current;
-            if (pointer == null || !pointer.press.wasPressedThisFrame) return;
+            if (pointer == null) return;
             var pos = pointer.position.ReadValue();
 
             bool insideHand = InsideCancelZone(pos);
-            if (insideHand || !TryScreenToCell(pos, out var exitTile))
+            UpdateTileAim(pos);
+            UpdateDragVisual(pos);
+            _view.UpdateDragBriefingStatus(StatusFor(insideHand));
+
+            if (!pointer.press.wasPressedThisFrame) return;
+            if (insideHand || !_aimCell.HasValue)
             {
                 CancelDrag(); // hand-area tap or off-board = cancel, no spend
                 return;
             }
+            // rev — 입구와 같은 타일은 출구가 아니다(퇴화 링크 = 정지 필드). 취소도 커밋도 아닌
+            // **무시**: 상태줄이 이미 "출구 타일을 탭하세요" 라고 말하고 있으므로 조준을 유지한다.
+            if (_aimCell.Value == _portalEntryCell.Value) return;
 
             var entry = _portalEntryCell.Value;
+            var exitTile = _aimCell.Value;
             int entryId = Slot.entryId;
             _portalEntryCell = null;
             // card-fly unit 2 — 포탈 확정(두 번째 탭 = 출구). 카드는 출구 타일로 찰싹.
@@ -405,7 +403,8 @@ namespace Wassup.UI
             Sprite pFace = pSlot.art != null ? pSlot.art.sprite : null;
             var exit2 = exitTile;
             CommitNow(() => _view.Controller.CommitActivePortal(entryId, entry, exitTile),
-                () => _view.FlyCardToCell(pStart, pSize, pFace, exit2));
+                () => _view.FlyCardToCell(pStart, pSize, pFace, exit2),
+                TilePulseCenter(exitTile));
         }
 
         // Touchup applies immediately: spend/cycle only happen inside a
@@ -414,7 +413,8 @@ namespace Wassup.UI
         // card-fly-to-target-absorb unit 0 — onSuccess 는 커밋 성공(ok) 시에만
         // 발화(실패/취소는 비용 0 · 연출 없음 계약 유지). 비행 발사점(슬롯 위치)·
         // 고스트 스프라이트는 commit() 이 손패를 소비하기 전에 호출부에서 캡처한다.
-        private void CommitNow(System.Func<bool> commit, System.Action onSuccess = null)
+        private void CommitNow(System.Func<bool> commit, System.Action onSuccess = null,
+            Vector2? pulseCenterOverride = null)
         {
             // dreamcatcher-attach-lockon 계약 #7/E — 성공 시 확정 비트(손끝 밖 펄스+햅틱).
             // selection-hand-attach unit 3 (critic M5) — 중심은 **커밋 전에** 캡처한다: 마지막
@@ -423,9 +423,18 @@ namespace Wassup.UI
             // 조용히 물러나 확정 비트가 사라진다. 펄스 자체는 독립 타이머라 End 후에도 완주한다.
             Vector2 pulseCenter = default;
             bool hasPulseCenter = false;
-            if (_view.Focus != null) hasPulseCenter = _view.Focus.TryCaptureConfirmCenter(out pulseCenter);
+            // unit 1 — 타일 조준은 락온 엔티티가 없어 Focus 가 중심을 못 낸다. 호출부가 조준
+            // 타일의 스크린 중심을 넘겨 확정 비트가 그 자리에서 터지게 한다(펄스는 독립 타이머).
+            if (pulseCenterOverride.HasValue)
+            {
+                pulseCenter = pulseCenterOverride.Value;
+                hasPulseCenter = true;
+            }
+            else if (_view.Focus != null) hasPulseCenter = _view.Focus.TryCaptureConfirmCenter(out pulseCenter);
             bool ok = commit();
-            if (ok && hasPulseCenter) _view.Focus.Confirm(pulseCenter);
+            // `?.` 필수 — override 경로는 Focus 없이도 hasPulseCenter 를 세운다(focusConfig
+            // 미배선 씬에서 성공 커밋이 NRE 로 끊기면 EndInteraction 이 안 돌아 조준이 고착된다).
+            if (ok && hasPulseCenter) _view.Focus?.Confirm(pulseCenter);
             EndInteraction();
             if (!ok) _view.RestoreSlotHome(_index);
             else onSuccess?.Invoke();
@@ -446,7 +455,8 @@ namespace Wassup.UI
         // arrow, hover tint, aim preview/IsAiming, portal state, mode.
         private void EndInteraction()
         {
-            if (_mode == AimMode.Defender || _mode == AimMode.EnemyMark)
+            // unit 1 — 전 모드가 화살표 + 손패 고정 카드를 쓰므로 정리도 공통이다.
+            if (_mode != AimMode.None)
             {
                 _view.TargetArrow?.Hide();
                 _view.RestoreSlotHome(_index); // 확대 복원(성공 시 Refresh 가 재정렬)
@@ -454,6 +464,8 @@ namespace Wassup.UI
             _view.Focus?.End(); // dreamcatcher-attach-lockon — dim/링/리티클/콜아웃 정리
             ClearHover();
             ClearAimRange();
+            _aimCell = null;
+            _aimAllyCount = 0;
             _portalEntryCell = null;
             if (_activeAiming)
             {
@@ -474,13 +486,11 @@ namespace Wassup.UI
             switch (mode)
             {
                 case AimMode.Defender:
-                    return card != null && card.type == CardType.Active
-                        ? "아군 유닛 위에서 놓으면 시전  ·  손패로 놓으면 취소"
-                        : "아군 유닛 위에서 놓으면 부착  ·  손패로 놓으면 취소";
-                case AimMode.ActiveTile:
-                    return "원하는 타일에서 놓으면 시전  ·  손패로 놓으면 취소";
-                case AimMode.ActivePortal:
-                    return "놓아서 입구 지정 → 출구 타일 탭  ·  손패로 놓으면 취소";
+                    return "아군 유닛 위에서 놓으면 부착  ·  손패로 놓으면 취소";
+                case AimMode.TileAim:
+                    return card != null && card.skill != null && card.skill.IsPortal
+                        ? "놓아서 입구 지정 → 출구 타일 탭  ·  손패로 놓으면 취소"
+                        : "원하는 타일에서 놓으면 시전  ·  손패로 놓으면 취소";
                 case AimMode.EnemyMark:
                     return "적 근처에서 놓으면 표식 부여  ·  손패로 놓으면 취소";
                 default:
@@ -512,19 +522,26 @@ namespace Wassup.UI
                 case AimMode.Defender:
                     if (_hoverEntity == Entity.Null) return "아군 유닛 위로 끌어가세요";
                     if (!IsHoverAttachable()) return "<color=#FF9B8A>이 유닛에는 부착할 수 없습니다</color>";
-                    return Slot.card != null && Slot.card.type == CardType.Active
-                        ? "<color=#9FE6A0>놓으면 이 유닛에 시전</color>"
-                        : "<color=#9FE6A0>놓으면 이 유닛에 부착</color>";
+                    return "<color=#9FE6A0>놓으면 이 유닛에 부착</color>";
                 case AimMode.EnemyMark:
                     if (_hoverEntity == Entity.Null) return "적에게만 쓸 수 있습니다";
                     if (_enemyMarkOnUnit) return "<color=#FF9B8A>적에게만 쓸 수 있습니다</color>";
                     return _enemyMarkHoverValid
                         ? "<color=#9FE6A0>놓으면 이 적에게 표식</color>"
                         : "<color=#FF9B8A>이미 표식이 있는 적입니다</color>";
-                case AimMode.ActiveTile:
-                    return "<color=#9FE6A0>놓으면 이 위치에 시전</color>";
-                case AimMode.ActivePortal:
-                    return "놓으면 입구가 지정됩니다";
+                case AimMode.TileAim:
+                    if (!_aimCell.HasValue) return "타일 위로 끌어가세요";
+                    // 포탈 2단계(입구 확정 후) — 이 상태 줄이 국면을 말한다. 릴리즈 직후엔 포인터가
+                    // 아직 입구 위에 있으므로(= 퇴화 링크) 초록 승인 대신 다음 할 일을 계속 안내한다.
+                    if (_portalEntryCell.HasValue)
+                        return _aimCell.Value == _portalEntryCell.Value
+                            ? "<color=#9FE6A0>입구 지정됨</color> — 출구 타일을 탭하세요"
+                            : "<color=#9FE6A0>놓으면 여기로 연결</color>";
+                    if (IsPortalCard()) return "놓으면 입구가 지정됩니다";
+                    if (!AimCellValid) return "<color=#FF9B8A>범위에 아군이 없습니다</color>";
+                    return TargetsAlliesNow()
+                        ? AllyCountStatus(_aimAllyCount)
+                        : "<color=#9FE6A0>놓으면 이 위치에 시전</color>";
                 default:
                     return "";
             }
@@ -532,42 +549,163 @@ namespace Wassup.UI
 
         // ── aim visuals ──────────────────────────────────────────────────────
 
+        // unit 1 — 카드는 손패에 고정이고 화살표만 포인터를 따른다(전 모드 공통).
+        // dreamcatcher-attach-lockon — 끝점을 대상(유닛 중심/타일 중심)으로 당겨 선이 대상에서
+        // 끝나게 한다. 색은 3-상태(무색=안내 / 시안=가능 / 붉음=불가)로 화살표가 소유.
         private void UpdateDragVisual(Vector2 screenPos)
         {
-            if (_mode == AimMode.Defender || _mode == AimMode.EnemyMark)
+            var slot = Slot;
+            Vector2 origin = ArrowOrigin(slot);
+            Vector2? lockCenter = null;
+            DreamcatcherTargetArrow.ArrowState state;
+
+            if (_mode == AimMode.TileAim)
             {
-                // 카드는 손패에 고정 — 화살표만 포인터를 따른다.
-                var slot = Slot;
-                Vector2 cardTop = (Vector2)slot.rect.position
-                                  + new Vector2(0f, slot.rect.rect.height * 0.5f * slot.rect.localScale.y);
-                // dreamcatcher-attach-lockon — 락온(Defender 부착/적 표식) 시 끝점을 대상
-                // 중심으로 당겨 선이 대상에서 끝나게. 색은 3-상태(기본/가능/불가)로 화살표가 소유.
-                Vector2? lockCenter = null;
+                if (_aimCell.HasValue && TilePulseCenter(_aimCell.Value) is Vector2 tileCenter)
+                    lockCenter = tileCenter;
+                // 포탈 2단계에서 포인터가 아직 입구 위인 것은 "잘못" 이 아니라 "아직" 이다 —
+                // 붉은 불가 대신 무색 안내(보드 밖과 같은 취급).
+                bool onPortalEntry = _portalEntryCell.HasValue && _aimCell.HasValue
+                                     && _aimCell.Value == _portalEntryCell.Value;
+                state = !_aimCell.HasValue || onPortalEntry
+                    ? DreamcatcherTargetArrow.ArrowState.None            // 보드 밖 / 아직 입구 = 안내
+                    : (AimCellValid ? DreamcatcherTargetArrow.ArrowState.Valid
+                                    : DreamcatcherTargetArrow.ArrowState.Invalid);
+            }
+            else
+            {
                 if (_hoverEntity != Entity.Null &&
                     _view.Bridge.TryGetUnitScreenRect(_hoverEntity, _view.MainCamera, out var hr))
                     lockCenter = hr.center;
-                var state = _hoverEntity == Entity.Null
+                state = _hoverEntity == Entity.Null
                     ? DreamcatcherTargetArrow.ArrowState.None
                     : (IsHoverAttachable() ? DreamcatcherTargetArrow.ArrowState.Valid
                                            : DreamcatcherTargetArrow.ArrowState.Invalid);
-                _view.TargetArrow?.SetPath(cardTop, screenPos, state, lockCenter);
+            }
+
+            _view.TargetArrow?.SetPath(origin, screenPos, state, lockCenter);
+        }
+
+        // unit 2 — 포탈 2단계는 화살표 기점이 손패 카드 → **입구 타일**로 옮겨간다. 선 자체가
+        // 입구→출구를 그려서 "지금 출구를 고르는 중" 이 형태로 읽힌다. 그 외에는 카드 상단.
+        private Vector2 ArrowOrigin(DreamcatcherHandView.CardSlot slot)
+        {
+            if (_portalEntryCell.HasValue && TilePulseCenter(_portalEntryCell.Value) is Vector2 entry)
+                return entry;
+            return (Vector2)slot.rect.position
+                   + new Vector2(0f, slot.rect.rect.height * 0.5f * slot.rect.localScale.y);
+        }
+
+        // 조준 타일의 스크린 중심(화살표 끝점 · 확정 펄스). 변환은 bridge 가 소유한다.
+        private Vector2? TilePulseCenter(Vector2Int cell)
+            => _view.Bridge != null &&
+               _view.Bridge.TryGetTileScreenCenter(cell, _view.MainCamera, out var screen)
+                ? screen : (Vector2?)null;
+
+        // unit 1 — 타일 조준 갱신. 셀이 바뀐 프레임에만 점등/카운트를 다시 계산한다.
+        private void UpdateTileAim(Vector2 screenPos)
+        {
+            var skill = Slot.card != null ? Slot.card.skill : null;
+            // 보드 밖 판정은 **엄격** 변형이어야 한다 — 관대한 TryScreenToCell 은 격자 clamp 때문에
+            // 맵 밖에서도 가장자리 셀을 돌려주고, 그러면 "보드 밖 = 취소" 계약이 사문화된다.
+            if (skill == null || !TryScreenToCellStrict(screenPos, out var cell))
+            {
+                _aimCell = null;
+                _aimAllyCount = 0;
+                // 포탈 2단계에선 입구 표식을 잃지 않는다(출구 후보만 사라진 상태).
+                if (_portalEntryCell.HasValue) PaintPortalCells(_portalEntryCell.Value, null);
+                else ClearAimRange(); // 다시 들어오면 재점등
+                _lastRangeCell = new Vector2Int(-1, -1);
                 return;
             }
-            // ScreenSpaceOverlay canvas: RectTransform.position is in screen pixels.
-            Slot.rect.position = screenPos;
+            _aimCell = cell;
+            // 아군 카운트는 **매 프레임** 다시 센다(점등만 셀 게이트). 셀에 손가락을 얹은 채로도
+            // 반경 내 아군이 죽거나 배치 완료로 PendingDeployment 를 벗으면 예고가 거짓이 된다 —
+            // 초록으로 약속했는데 커밋이 조용히 무효거나, 반대로 붉게 막고 있는데 실은 성립.
+            // 배치된 유닛 dict 순회라 비용이 작고 할당이 없다. 적 장판은 카운트 무의미(계약 5).
+            _aimAllyCount = skill.TargetsAllies
+                ? _view.Bridge.CountDefendersInRange(cell, skill) : 0;
+            if (cell == _lastRangeCell) return;
+            _lastRangeCell = cell;
+            PaintAimCells(cell, skill);
+        }
+
+        // unit 2 — 타일맵의 range/cells 는 서로를 지우는 **단일 채널**이라, 포탈 2단계에서
+        // 입구 표식을 유지하려면 [입구, 출구후보] 를 한 번에 칠해야 한다(계약 8).
+        private void PaintAimCells(Vector2Int cell, SkillData skill)
+        {
+            if (_portalEntryCell.HasValue)
+            {
+                PaintPortalCells(_portalEntryCell.Value, cell);
+                return;
+            }
+            // rev — range 0(포탈)은 SetSkillAimRange 가 tileRange<=0 에서 조기 return 해서
+            // **아무것도 칠하지 않으면서** 채널 소유권만 가져간다(직전 텔레그래프가 화면에
+            // 남고, 해제 시 그 텔레그래프를 지워버린다). 단일 셀로 명시 점등한다.
+            if (Wassup.Battle.Movement.GridMath.RangeToTiles(skill.range) <= 0)
+            {
+                _portalCells.Clear();
+                _portalCells.Add(cell);
+                _view.Bridge.SetSkillAimCells(_portalCells);
+                return;
+            }
+            _view.Bridge.SetSkillAimRange(cell, skill);
+        }
+
+        // 입구(+선택적 출구 후보) 점등. 출구가 없거나 입구와 같으면 입구만 칠한다.
+        private void PaintPortalCells(Vector2Int entry, Vector2Int? exit)
+        {
+            _portalCells.Clear();
+            _portalCells.Add(entry);
+            if (exit.HasValue && exit.Value != entry) _portalCells.Add(exit.Value);
+            _view.Bridge.SetSkillAimCells(_portalCells);
+        }
+
+        // 커밋 가능 여부 — 조준 색·상태줄·릴리즈 판정이 이 하나를 공유한다.
+        private bool AimCellValid
+        {
+            get
+            {
+                if (!_aimCell.HasValue) return false;
+                // 포탈 2단계: 입구와 같은 타일은 유효한 출구가 아니다(bridge 도 같은 판정으로 거절).
+                if (_portalEntryCell.HasValue) return _aimCell.Value != _portalEntryCell.Value;
+                return !TargetsAlliesNow() || _aimAllyCount > 0;
+            }
+        }
+
+        // 상태줄은 매 프레임 평가된다(호버/취소영역 실시간). 카운트가 바뀔 때만 문자열을 굽는다 —
+        // 값이 같으면 뷰가 스킵하므로 매 프레임 보간은 버려지는 할당이다(Android 타겟 경로).
+        private string AllyCountStatus(int count)
+        {
+            if (count != _allyStatusCount)
+            {
+                _allyStatusCount = count;
+                _allyStatusCache = $"<color=#9FE6A0>놓으면 아군 {count}기에 시전</color>";
+            }
+            return _allyStatusCache;
+        }
+
+        private bool TargetsAlliesNow()
+        {
+            var skill = Slot.card != null ? Slot.card.skill : null;
+            return skill != null && skill.TargetsAllies;
+        }
+
+        private bool IsPortalCard()
+        {
+            var skill = Slot.card != null ? Slot.card.skill : null;
+            return skill != null && skill.IsPortal;
         }
 
         // dreamcatcher-attach-lockon — 화살표/리티클 공유 유효성. 부착 가능(Unit/Squad=
-        // 부착 여유 있음 / Active-Defender=항상 / EnemyMark=미표식)이면 true.
+        // 부착 여유 있음 / EnemyMark=미표식)이면 true. Active 는 이 경로로 오지 않는다
+        // (active-dreamcatcher-tile-aim unit 1 — 전부 TileAim).
         private bool IsHoverAttachable()
         {
             if (_hoverEntity == Entity.Null) return false;
             if (_mode == AimMode.EnemyMark)
                 return _enemyMarkHoverValid; // UpdateEnemyHover 가 결정(유닛=false, 미표식 적=true)
-            var t = Slot.card != null ? Slot.card.type : CardType.Unit;
-            if (t == CardType.Unit || t == CardType.Squad)
-                return _attachable.Contains(_hoverEntity);
-            return true; // Active-DefenderUnit (셀 캐스트) — 항상 유효 타겟
+            return _attachable.Contains(_hoverEntity);
         }
 
         private void UpdateUnitHover(Vector2 screenPos)
@@ -649,12 +787,12 @@ namespace Wassup.UI
             return bridge != null && bridge.TryScreenToCell(_view.MainCamera, screenPos, out cell);
         }
 
-        private void UpdateAimRange(Vector2 screenPos, SkillData skill)
+        // 보드 밖을 거절하는 판정(타일 조준 전용). 관대한 위 함수와 나뉘는 이유는 bridge 주석 참조.
+        private bool TryScreenToCellStrict(Vector2 screenPos, out Vector2Int cell)
         {
-            if (!TryScreenToCell(screenPos, out var cell)) return;
-            if (cell == _lastRangeCell) return;
-            _lastRangeCell = cell;
-            _view.Bridge.SetSkillAimRange(cell, skill);
+            cell = default;
+            var bridge = _view.Bridge;
+            return bridge != null && bridge.TryScreenToCellStrict(_view.MainCamera, screenPos, out cell);
         }
 
         private void ClearAimRange()

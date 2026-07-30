@@ -66,7 +66,7 @@
 | id / displayName / description | string | |
 | range / magnitude / durationSec / cooldownSec / warningSec | float | 밸런스 스칼라 |
 | cost | int | CostRuntime 스킬바 비용 (awakening 비용은 DcConfig) |
-| _effect / _target | (정보) | 구조 enum — 시트에서 변경 금지 |
+| _effect | (정보) | 구조 enum — 시트에서 변경 금지. (`_target` 열은 대상축 폐기로 제거 — active-dreamcatcher-tile-aim unit 0) |
 
 ### `DcConfig` — 싱글턴 설정 union 탭 (행 = config SO 1개, 키 = `id`)
 

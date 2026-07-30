@@ -387,18 +387,12 @@ namespace Wassup.Core
             return AttachAndSpend(entryId, card, enemy, handle);
         }
 
+        // active-dreamcatcher-tile-aim unit 0 — Active 의 단일 커밋(포탈만 별도). 아군 버프
+        // (공격폭증·속사)도 여기로 온다 — 구 CommitActiveDefender 은퇴.
         public bool CommitActiveTile(int entryId, Vector2Int cell)
         {
             if (!TryGetUsableActive(entryId, out var card)) return false;
             if (!bridge.CastSkillAtTile(card.skill, cell, out _)) return false;
-            SpendAndRecycle(entryId, card);
-            return true;
-        }
-
-        public bool CommitActiveDefender(int entryId, Vector2Int cell)
-        {
-            if (!TryGetUsableActive(entryId, out var card)) return false;
-            if (!bridge.CastSkillOnDefender(card.skill, cell, out _)) return false;
             SpendAndRecycle(entryId, card);
             return true;
         }

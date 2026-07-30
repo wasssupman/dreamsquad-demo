@@ -359,11 +359,14 @@ namespace Wassup.UI
                 case SkillEffectType.Portal:
                     effect = $"두 타일 지정 → 입구 진입 적을 출구로 이동 · {Duration(skill.durationSec)}";
                     break;
+                // active-dreamcatcher-tile-aim unit 0 — 아군 버프도 타일 지정 + 반경이다.
                 case SkillEffectType.PowerSurge:
-                    effect = $"아군 유닛 지정 → 공격력 {Multiplier(skill.magnitude)} · {Duration(skill.durationSec)}";
+                    effect = $"타일 지정 → 반경 {Count(skill.range)}칸 아군 공격력 "
+                           + $"{Multiplier(skill.magnitude)} · {Duration(skill.durationSec)}";
                     break;
                 case SkillEffectType.RapidFire:
-                    effect = $"아군 유닛 지정 → 공격 속도 {Multiplier(skill.magnitude)} · {Duration(skill.durationSec)}";
+                    effect = $"타일 지정 → 반경 {Count(skill.range)}칸 아군 공격 속도 "
+                           + $"{Multiplier(skill.magnitude)} · {Duration(skill.durationSec)}";
                     break;
                 case SkillEffectType.SlowField:
                     effect = $"타일 지정 → 반경 {Count(skill.range)}칸 적 이동 속도 "

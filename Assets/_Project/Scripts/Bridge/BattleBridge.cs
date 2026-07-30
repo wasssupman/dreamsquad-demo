@@ -1877,7 +1877,6 @@ namespace Wassup.Bridge
         {
             affectedCount = 0;
             if (!_running || skill == null) return false;
-            if (skill.target != SkillTargetType.TilePoint) return false;
             if (skillRuntime != null && !skillRuntime.IsReady(skill)) return false;
 
             Vector2Int secondaryTile = new(-1, -1);
@@ -1892,8 +1891,20 @@ namespace Wassup.Bridge
                 case SkillEffectType.Meteor:
                     affectedCount = ApplyMeteor(tile, skill);
                     break;
+                // active-dreamcatcher-tile-aim unit 0 — 아군 버프도 타일 캐스트다(구
+                // CastSkillOnDefender 흡수). 적 장판은 아무도 안 맞아도 성공이지만(빈 곳
+                // 선점이 전술), 아군 버프는 즉발 1회라 대상 0기 = 순수 낭비 → 무차감 거절
+                // (spec 계약 5). 호출자는 false 를 보고 차감·순환을 하지 않는다.
+                case SkillEffectType.PowerSurge:
+                    affectedCount = ApplyAllyBuff(tile, skill, Wassup.Battle.Effects.StatKind.DamageMul);
+                    if (affectedCount == 0) return false;
+                    break;
+                case SkillEffectType.RapidFire:
+                    affectedCount = ApplyAllyBuff(tile, skill, Wassup.Battle.Effects.StatKind.AttackSpeedMul);
+                    if (affectedCount == 0) return false;
+                    break;
                 default:
-                    Debug.LogWarning($"[BattleBridge] TilePoint skill '{skill.id}' has unsupported effect {skill.effect}.");
+                    Debug.LogWarning($"[BattleBridge] Tile skill '{skill.id}' has unsupported effect {skill.effect}.");
                     return false;
             }
 
@@ -1920,6 +1931,15 @@ namespace Wassup.Bridge
             affectedCount = 0;
             if (!_running || skill == null) return false;
             if (skill.effect != SkillEffectType.Portal) return false;
+            // active-dreamcatcher-tile-aim rev — 입구 == 출구 거절. MovementSystem 의 포탈 스냅은
+            // flow step **앞**에 돌아서(MovementSystem 1번 블록) 같은 타일로 잇는 링크는 반경 안
+            // 적을 매 프레임 타일 중심으로 되돌린다 = 지속시간만큼의 정지 필드. 카드 한 장 값의
+            // 군중제어가 되어버리므로 창구에서 막는다(UI 도 조준 단계에서 같은 판정으로 거절).
+            if (entryTile == exitTile)
+            {
+                Debug.LogWarning($"[BattleBridge] CastPortal '{skill.id}' rejected — entry == exit {entryTile}.");
+                return false;
+            }
             if (skillRuntime != null && !skillRuntime.IsReady(skill)) return false;
 
             affectedCount = ApplyPortal(entryTile, exitTile, skill);
@@ -1937,45 +1957,54 @@ namespace Wassup.Bridge
             return true;
         }
 
-        // Cast a DefenderUnit-targeted skill (Power Surge, Rapid Fire). `tile` is
-        // the defender's cell coordinate as recorded during PlaceDefender.
-        public bool CastSkillOnDefender(SkillData skill, Vector2Int tile, out int affectedCount)
+        // active-dreamcatcher-tile-aim unit 0 — 지정 타일 반경 내 **아군 전부**에 스킬
+        // 모디파이어(공격폭증=DamageMul, 속사=AttackSpeedMul). 구 CastSkillOnDefender(타일의
+        // 유닛 1기)를 대체한다. 반경은 skill.range → 체비셰프 타일.
+        private int ApplyAllyBuff(Vector2Int tile, SkillData skill, Wassup.Battle.Effects.StatKind stat)
         {
-            affectedCount = 0;
-            if (!_running || skill == null) return false;
-            if (skill.target != SkillTargetType.DefenderUnit) return false;
-            if (!_defenderByTile.TryGetValue(tile, out var defender) || !_em.Exists(defender.entity)) return false;
-            var entity = defender.entity;
-            if (_em.HasComponent<PendingDeployment>(entity)) return false;
-            if (skillRuntime != null && !skillRuntime.IsReady(skill)) return false;
-
-            switch (skill.effect)
-            {
-                case SkillEffectType.PowerSurge:
-                    EnqueueDamageMul(entity, skill.magnitude, skill.durationSec, Wassup.Battle.Effects.ModifierOrigin.Skill);
-                    affectedCount = 1;
-                    break;
-                case SkillEffectType.RapidFire:
-                    EnqueueAttackSpeedMul(entity, skill.magnitude, skill.durationSec, Wassup.Battle.Effects.ModifierOrigin.Skill);
-                    affectedCount = 1;
-                    break;
-                default:
-                    Debug.LogWarning($"[BattleBridge] DefenderUnit skill '{skill.id}' has unsupported effect {skill.effect}.");
-                    return false;
-            }
-
-            skillRuntime?.Consume(skill);
-            GameManager.Instance?.Logger?.RecordSkillUsage(new Logging.SkillUsageLog
-            {
-                skill_id = skill.id,
-                time = Time.time - _startTime,
-                target_tile = tile,
-                affected_count = affectedCount,
-                cost_spent = skill.cost,
-            });
-            Debug.Log($"[BattleBridge] CastSkillOnDefender {skill.id} on defender@{tile} (entity {entity.Index}) cd={skill.cooldownSec}s");
-            return true;
+            CollectAlliesInRange(tile, GridMath.RangeToTiles(skill.range), _allyApplyScratch);
+            // 대상 수는 enqueue **전에** 확정한다 — 루프 중 리스트가 흔들리는 미래 변경이 조용히
+            // 절단된 수를 보고하는 대신 눈에 보이게 깨지도록.
+            int affected = _allyApplyScratch.Count;
+            for (int i = 0; i < affected; i++)
+                EnqueueStatModifier(_allyApplyScratch[i], stat, skill.magnitude, skill.durationSec,
+                    SkillAllyBuffStackId, Wassup.Battle.Effects.ModifierOrigin.Skill);
+            return affected;
         }
+
+        // 조준 예고용 읽기 조회(SetSkillAimRange 와 같은 인자 shape). 적용과 **같은**
+        // CollectAlliesInRange 를 타므로 "놓으면 아군 N기에 시전" 예고가 커밋 결과와 어긋날
+        // 수 없다(spec 계약 4). 공유하는 것은 **수집 규칙**이고 버퍼는 따로 쓴다 — 적용 중
+        // enqueue 루프가 도는 동안 조준이 같은 리스트를 다시 채우는 형태를 애초에 만들지 않는다.
+        public int CountDefendersInRange(Vector2Int center, SkillData skill)
+        {
+            if (skill == null) return 0;
+            CollectAlliesInRange(center, GridMath.RangeToTiles(skill.range), _allyCountScratch);
+            return _allyCountScratch.Count;
+        }
+
+        // 배치 대기(PendingDeployment) 유닛 제외 — 아직 판에 서지 않았다(on-place 오라와 같은 규칙).
+        // 월드 생존 가드는 레포 관용구(HasLiveEntityManager)를 쓴다 — `_em == default` 단독은
+        // 어디서도 리셋되지 않아 티어다운 후에도 통과한다.
+        private void CollectAlliesInRange(Vector2Int center, int tileRange, List<Entity> results)
+        {
+            results.Clear();
+            if (!HasLiveEntityManager()) return;
+            var originInt = new int2(center.x, center.y);
+            foreach (var kv in _defenderByTile)
+            {
+                var e = kv.Value.entity;
+                if (e == Entity.Null || !_em.Exists(e)) continue;
+                if (_em.HasComponent<PendingDeployment>(e)) continue;
+                var cellInt = new int2(kv.Key.x, kv.Key.y);
+                if (GridMath.ChebyshevDistance(cellInt, originInt) > tileRange) continue;
+                results.Add(e);
+            }
+        }
+
+        // 적용용/조준 조회용 버퍼를 분리한다(위 주석의 불변식을 주석이 아니라 구조로 만든다).
+        private readonly List<Entity> _allyApplyScratch = new List<Entity>();
+        private readonly List<Entity> _allyCountScratch = new List<Entity>();
 
         // Phase 9 — 모든 스킬 대상 타일 → world center 계산의 단일 소스.
         // Phase 10 에서 tileSize 가 theme 파라미터로 승격될 때 이 helper 만 바꾸면 됨.
@@ -4224,6 +4253,25 @@ namespace Wassup.Bridge
             return true;
         }
 
+        // active-dreamcatcher-tile-aim rev — 보드 **안**만 셀로 인정하는 엄격 변형.
+        // `TryScreenToCell` 은 `GridMath.WorldToCell` 의 clamp 때문에 맵 밖(빈 배경)을 찍어도
+        // 가장자리 셀에 true 를 준다 — "보드 밖 = 취소(무차감)" 를 계약으로 갖는 조준 경로는
+        // 반드시 이걸 써야 한다. 부착/적 표식처럼 관대한 판정이 맞는 곳은 기존 함수를 유지한다.
+        public bool TryScreenToCellStrict(Camera cam, Vector2 screenPos, out Vector2Int cell)
+        {
+            cell = default;
+            if (cam == null) return false;
+            var ray = cam.ScreenPointToRay(screenPos);
+            var plane = Wassup.Core.BoardSpace.RaycastPlane();
+            if (!plane.Raycast(ray, out float enter)) return false;
+            var world = (float3)(Vector3)Wassup.Core.BoardSpace.ToSim(ray.GetPoint(enter));
+            int2 raw = GridMath.WorldToCellUnclamped(world, tileSize, origin: _boardOrigin);
+            int2 size = _generatedMap.IsCreated ? _generatedMap.gridSize : FallbackGridSize;
+            if (raw.x < 0 || raw.x >= size.x || raw.y < 0 || raw.y >= size.y) return false;
+            cell = new Vector2Int(raw.x, raw.y);
+            return true;
+        }
+
         // subconscious-curse-expansion unit 3 (살찌운 제물) — 드롭 지점 최근접 적 픽.
         // 반경 = radiusTiles × tileSize(유클리드 xz, 셀 양자화 없이 평면 히트 그대로).
         // 픽은 커밋 순간의 스냅샷 — 이후 이동은 무관. 동거리 동점은 entity index
@@ -5107,6 +5155,31 @@ namespace Wassup.Bridge
 
         public void ClearSkillAimRange() => ClearRange(RangeDisplayOwner.SkillAim);
 
+        // active-dreamcatcher-tile-aim unit 1 — 타일 중심의 스크린 좌표(조준 화살표 끝점·확정
+        // 펄스). sim→view 변환(BoardSpace.ToView)은 보드 공간을 소유한 bridge 안에 남는다 —
+        // UI 가 sim 좌표를 카메라에 바로 넣으면 평면 뷰에서 셀이 어긋난다.
+        public bool TryGetTileScreenCenter(Vector2Int cell, Camera cam, out Vector2 screen)
+        {
+            screen = default;
+            if (cam == null || !_generatedMap.IsCreated) return false;
+            var view = Wassup.Core.BoardSpace.ToView(GridToWorldCenter(cell));
+            var p = cam.WorldToScreenPoint(new Vector3(view.x, view.y, view.z));
+            screen = new Vector2(p.x, p.y);
+            return true;
+        }
+
+        // active-dreamcatcher-tile-aim unit 2 — 임의 셀 집합 조준 점등(포탈의 입구+출구후보).
+        // 타일맵의 range/cells 는 서로를 지우는 **단일 채널**이라, 두 지점을 동시에 보여주려면
+        // 한 번에 칠해야 한다. 해제는 ClearSkillAimRange 가 같은 owner 를 반납한다.
+        public void SetSkillAimCells(IReadOnlyList<Vector2Int> cells)
+        {
+            if (tilemapMapView == null || cells == null || cells.Count == 0) return;
+            // aimStyle: false — 나머지 Active 5종의 범위 프리뷰(SetPlacementRange)와 같은 타일·틴트
+            // 규칙을 쓴다. true 로 두면 한 번의 캐스트 안에서 점등 아트가 바뀐다(계약 8: 한 채널).
+            tilemapMapView.SetPlacementCells(cells, 1f, aimStyle: false);
+            SetRangeOwner(RangeDisplayOwner.SkillAim);
+        }
+
         private void PinSkillTelegraph(Vector2Int cell, int tileRange)
             => PinCenteredRange(cell, tileRange, RangeDisplayOwner.SkillTelegraph);
 
@@ -5445,8 +5518,18 @@ namespace Wassup.Bridge
         }
 
         // effect-tiles unit 2 — 효과 타일 modifier 슬롯 네임스페이스.
-        // 규약: on-place/skill=0 · 시너지=1 · 드림캐쳐=100+ (EnqueueSynergyMul/_dcStackCounter 참조).
+        // 규약: on-place=0 · 시너지=1 · 효과타일=2 · **스킬 아군 버프=3** · 드림캐쳐=100+
+        // (EnqueueSynergyMul / SkillAllyBuffStackId / _dcStackCounter 참조).
         private const ushort EffectTileStackId = 2;
+
+        // active-dreamcatcher-tile-aim rev — 스킬(Active 드림캐쳐) 아군 버프 전용 슬롯.
+        // 구 CastSkillOnDefender 는 on-place 와 같은 0 을 썼다. 대상이 1기일 때는 충돌이 드물었지만,
+        // 이제 반경 내 최대 9칸에 걸리므로 5×5 가디언 배치 오라(같은 stat·Additive·0)와 겹치는 게
+        // 흔한 상황이 된다. merge 는 magnitude 를 **덮어쓰므로**(ModifierApplySystem) 뒤늦게 배치된
+        // 오라가 플레이어가 각성치를 지불한 ×2.0 을 ×1.3 으로 내려버렸다.
+        // → 전용 슬롯으로 분리해 오라와 **합산**된다(사용자 결정 2026-07-30). 같은 스킬 재캐스트는
+        //   같은 키라 여전히 refresh(멱등).
+        private const ushort SkillAllyBuffStackId = 3;
 
         // effect-tiles unit 1 — 효과 타일 단일 진입점: dict 등록 + View 페인트. 셀당 1개(덮어쓰기).
         // 맵 빌드 seed 선정이 첫 client — 후속 런타임 생성 루트(드림캐쳐/유닛 능력)도 이 진입점 사용.
