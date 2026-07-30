@@ -9,7 +9,7 @@
 **수정**:
 - `Assets/_Project/Tests/PlayMode/SquadCarryInSmokeTest.cs` (`:24~52`)
 - `Assets/_Project/Tests/PlayMode/DreamstoneCarryInSmokeTest.cs` (`:33~240`)
-- `Assets/_Project/Tests/EditMode/DreamcatcherDeckAutosaveTests.cs` (자동 저장 → 명시 저장)
+- `Assets/_Project/Tests/EditMode/DreamcatcherDeckAutosaveTests.cs` → **`DreamcatcherDeckSaveTests.cs`** 로 개명 (자동 저장 → 명시 저장, 전제 반전이므로 이름도 교체)
 - `Assets/_Project/Tests/EditMode/` 의 개명 영향분 (`ProfileStoreTests`, `ProfileStoreDefaultDeckTests`, `LoadoutGateTests`, `Profile/DeckPruneTests`)
 
 **신규**:
@@ -25,7 +25,7 @@ squad.unitIds[0] = catalogIds[0];   // ← 살아있는 참조라 동작했다
 ```
 개명 후에도 `CommittedSquad()` 는 살아있는 참조를 반환하므로(계약 6) **이 패턴은 계속 동작한다.** 따라서 수정은 개명 반영이 전부다. 단 계약 6 의 규율("리스트에 쓰는 것은 컨트롤러 저장 경로뿐")과 형태가 어긋나므로, 테스트가 **의도적으로 저장본을 직접 세팅한다**는 주석을 붙여 프로덕션 코드의 모범으로 오독되지 않게 한다.
 
-**2. `DreamcatcherDeckAutosaveTests`** — 이름과 전제가 함께 바뀐다. "편집 즉시 저장" 을 검증하던 케이스를 "편집은 저장하지 않고, [저장] 호출이 저장한다" 로 전환. `ProfileSaver` 심으로 **저장 호출 횟수**를 세는 형태가 자연스럽다:
+**2. `DreamcatcherDeckAutosaveTests` → `DreamcatcherDeckSaveTests`** — 이름과 전제가 함께 바뀐다. "편집 즉시 저장" 을 검증하던 케이스를 "편집은 저장하지 않고, [저장] 호출이 저장한다" 로 전환. `ProfileSaver` 심으로 **저장 호출 횟수**를 세는 형태가 자연스럽다:
 - 카드 추가/제거 N회 → 저장 호출 0회
 - [저장] 1회 → 저장 호출 1회, 내용 일치
 - 유효하지 않은 중간 덱(9/10)도 [저장]으로 저장됨(기존 계약 유지 — 게이트가 START 를 막는다)

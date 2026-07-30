@@ -26,7 +26,7 @@
 | `Scripts/UI/Outgame/DreamcatcherDeckPageController.cs` | 2 |
 | `Tests/PlayMode/DreamcatcherDeckCarryInTest.cs` | 1 |
 | `Tests/EditMode/ProfileStoreDefaultDeckTests.cs` | 1 |
-| `Tests/EditMode/DreamcatcherDeckAutosaveTests.cs` | 1 |
+| `Tests/EditMode/DreamcatcherDeckAutosaveTests.cs` | 1 | *(unit 4 에서 `DreamcatcherDeckSaveTests.cs` 로 개명)* |
 
 **접근자만 호출하는 파일** (타입명 미등장 — `SelectedSquad`/`SelectedDeck` 개명만 반영):
 `Scripts/Core/SceneTransition.cs`(`:262`) · `Scripts/Core/Dreamcatcher/DreamcatcherHandController.cs`(`:197`, `:491`) · `Scripts/UI/Outgame/DefaultLoadoutButton.cs`(`:61~63`)

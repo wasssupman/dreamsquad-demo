@@ -19,12 +19,12 @@
 `ConfirmPopup` 도 생성해 주입.
 
 **자동 저장 제거** — 현 컨트롤러의 핵심 변경:
-- `AddCard`/`RemoveOccurrence` 의 `PersistWorking()` 호출을 제거하고 `RefreshBar()`(dirty 재계산)로 교체
+- `AddCard`/`RemoveOccurrence` 의 `PersistWorking()` 호출을 제거하고 **`RefreshBarState()`**(dirty 재계산, 목록 재구성 없음)로 교체 — unit 3 과 동일한 분리
 - `PersistWorking()` 은 [저장] 전용 경로로 축소한다. 현재 이 메서드는 **하드코딩 `DeckId = "deck_1"` 을 찾아 없으면 만들고 `selectedDeckId` 를 강제 대입**한다 — 프리셋 30개 세계에서 이 세 동작 모두 틀렸다. `_viewingPresetId` 가 가리키는 엔트리에만 쓰고, **확정 포인터는 건드리지 않는다**([선택] 전용)
 - `const string DeckId = "deck_1"` 삭제
 - `LoadWorking()` 이 `CommittedDeck()` 대신 `_viewingPresetId` 의 엔트리를 읽도록 변경
 - `_workingName` 추가 (unit 1 의 `IsDeckDirty` 가 이름을 본다)
-- `ProfileSaver` 테스트 훅(`[NonSerialized] internal Action<PlayerProfile>`)은 유지 — `DreamcatcherDeckAutosaveTests` 가 쓰는 심이고, 자동 저장이 사라져도 [저장] 경로 검증에 그대로 쓸모가 있다
+- `ProfileSaver` 테스트 훅(`[NonSerialized] internal Action<PlayerProfile>`)은 유지 — 테스트가 쓰는 심이고, 자동 저장이 사라져도 [저장] 경로 검증(저장 호출 **횟수** 세기)에 그대로 쓸모가 있다. 해당 테스트는 `DreamcatcherDeckAutosaveTests` → **`DreamcatcherDeckSaveTests`** 로 개명됐다(전제가 반전됐으므로 이름도 함께)
 
 **4조작**: unit 3 의 표와 동일하되 대상이 `dreamcatcherDecks` / `selectedDeckId` / `_workingCards`. 기본 이름 `"덱 N"`.
 
@@ -41,8 +41,8 @@
 - [ ] 미저장 변경 + [선택] → START 시 **저장분이 반입**된다
 - [ ] `[+]` → 빈 덱 프리셋 생성 → 카드 채우고 저장 → 두 프리셋 간 전환이 각자 내용을 보존
 - [ ] [되돌리기] → 저장본 카드열로 복원 + dirty 꺼짐. 신규 빈 프리셋에서는 빈 덱
-- [ ] 삭제 가드(확정분·마지막 1개), 30 상한
-- [ ] 기존 `DreamcatcherDeckAutosaveTests` 를 **명시 저장 의미론에 맞게 갱신**하고 그린 (자동 저장 전제 케이스는 [저장] 호출 후 검증으로 전환)
+- [ ] 삭제: 확정분/마지막 1개는 사유 팝업 · 삭제 가능분은 확인 팝업 · 미주입 시 fail-closed. 30 상한
+- [ ] `DreamcatcherDeckAutosaveTests` → **`DreamcatcherDeckSaveTests`** 개명 + 전제 반전(편집 시 저장 **0회**, [저장] 시 1회)하고 그린
 - [ ] Play 콘솔 에러 0. 덱 스트립·카드 그리드·상세가 작업본을 반영
 
 ---
