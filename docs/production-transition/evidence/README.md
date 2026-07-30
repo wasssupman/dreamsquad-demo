@@ -68,7 +68,9 @@ build_id: immutable-build-id
 client_version: string
 server_version: string
 protocol_version: string
-content_version_or_hash: string
+ruleset_version_or_hash: string
+presentation_version_or_hash: string
+correlation_contract_path: relative-path | not-applicable-with-reason
 mode: first-match | first-return | normal | reconnect | other
 environment: internal | staging | production
 cohort_definition: string
@@ -93,7 +95,10 @@ approved_by: [role-or-pseudonymous-id]
 ```
 
 결측 필드는 삭제하지 말고 `unknown` 또는 `not-applicable`과 이유를 적는다. `as_of_commit`,
-build/server/content version이 없으면 다른 실행을 같은 조건으로 재현했다고 주장할 수 없다.
+build/server/ruleset/presentation version이 없으면 다른 실행을 같은 조건으로 재현했다고 주장할 수
+없다. Telemetry를 포함한 study는 `correlation_contract_path`에 아래 세 단계의 event 필드와 결합
+규칙을 정의한 schema 또는 query를 연결한다. 순수 설문·인터뷰처럼 event correlation이 없는
+study만 이유를 적은 `not-applicable`을 허용한다.
 
 ## 산출물별 최소 형식
 
@@ -111,13 +116,24 @@ build/server/content version이 없으면 다른 실행을 같은 조건으로 �
 ### Telemetry와 전투 로그
 
 - event에는 `event_name`, `event_version`, `occurred_at`, pseudonymous `participant_key`,
-  `session_key`, `match_id`, client/server/build/content/protocol version을 포함한다.
+  `session_key`, `match_id`, client/server/build/ruleset/presentation/protocol version을 포함한다.
 - session funnel은 최소 `lobby_shown → start_requested → play_accepted → gift_started →
   placement_started → battle_started → tally_started → result_shown → lobby_returned`를 구분한다.
 - 핵심 행동은 squad/deck 변경, 배치/회수, resource 보유·소비, unaffordable attempt,
   Awakening hand open/use, Next Wave, leak/stress, 승패와 server 확정 score를 연결할 수 있어야 한다.
-- server와 client event는 공통 match id와 correlation id로 결합하되, client 제출값과 server
-  authoritative 값을 별도 필드로 보존한다.
+- 게임 결과에 영향을 주는 행동은 하나의 opaque `correlation_id`로 다음 세 단계를 연결한다.
+  같은 match 안에서 ID가 유일해야 하며 PII, 인증 token 또는 원본 user id를 인코딩하지 않는다.
+
+    1. client `command/input` event: 같은 `correlation_id`, client command/input event ID, 행동
+       의도와 client 관측 시각을 기록한다. client가 계산한 결과나 prediction은 별도 비권위 필드로만
+       기록한다.
+    2. server `authoritative event/tick`: 같은 `correlation_id`, server event ID와 authoritative
+       tick을 기록하고 command 수락·거절 및 실제 상태 전이·결과를 보존한다.
+    3. client `presentation event`: 같은 `correlation_id`, presentation event ID, 연결된 server
+       event ID, 표시 시각과 표시·정정·억제·중복 제거 결과를 기록한다.
+- server의 실제 결과와 사용자가 본 presentation은 서로 다른 event/필드로 보존한다. client
+  presentation이 누락되거나 정정된 경우에도 server 값을 덮어쓰지 않으며, 하나의 authoritative
+  event가 여러 presentation event를 만들 수 있음을 correlation 계약에 명시한다.
 - E4에는 query 또는 분석 script, 집계 단위, denominator, bot/test exclusion, timezone,
   중복 제거와 결측 처리 규칙, 표본 크기와 관측 기간이 필요하다.
 - 저장소에는 원시 전체 log 대신 재현 가능한 query와 비식별 aggregate를 둔다. 작은 cell로

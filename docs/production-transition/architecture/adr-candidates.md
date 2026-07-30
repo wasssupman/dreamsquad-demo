@@ -16,6 +16,16 @@
 - 승인된 ADR이 생기면 해당 후보 상태를 `Superseded`로 바꾸고 공식 문서를 `superseded_by`로 연결한다.
 - 후보를 기각해도 삭제하지 않는다. 이유와 대체 후보를 기록한다.
 
+## 후보가 변경하지 않는 고정 책임 경계
+
+이 경계는 2026-07-30 정규 프로젝트 방향 결정이며, 아래 후보가 다시 선택하거나 완화할 대상이 아니다.
+
+- Product/Game Design은 규칙 의도·밸런스·콘텐츠 의미를 작성·승인하지만 런타임 판정 권위를 갖지 않는다.
+- 서버는 게임 결과에 영향을 주는 gameplay ruleset·상태·상태 전이의 정본과 실행 권위를 갖는다.
+- 클라이언트는 입력 UX와 시각·청각·촉각 presentation을 소유하고, server semantic outcome을 local asset으로 표현한다.
+- protocol은 intent-only command와 stable ID·authoritative tick 기반 semantic state/outcome을 교환하며 Unity asset·연출 지시를 전달하지 않는다.
+- 제한적 Client prediction은 비권위·폐기 가능해야 하고 server correction·resync가 항상 우선한다.
+
 ## 후보 목록과 선행 관계
 
 | 순서 | ID | 결정 주제 | 핵심 선행 입력 |
@@ -91,12 +101,18 @@
 | `sources` | [engineering learnings](engineering-learnings.md), [TRD](../../TRD.md), [`Scripts/Battle/`](../../../Assets/_Project/Scripts/Battle/) |
 | `related_commit_or_test` | 데모의 맥락 분리·순수 계산 테스트만 존재하며 non-ECS server slice는 없음 |
 | `transfer_action` | `decide` |
-| `production_impact` | authoritative state의 모듈·aggregate·transaction·concurrency·test seam을 결정한다. |
+| `production_impact` | authoritative gameplay ruleset과 state의 모듈·aggregate·transaction·concurrency·test seam을 결정하되 Client presentation과의 의존은 차단한다. |
 | `next_validation_or_decision` | representative combat slice를 2개 이하 후보 구조로 구현·비교 후 공식 ADR 작성 |
 
 **Question**
 
 ECS 없이 Units·Movement·Combat·Effects의 책임과 단일 쓰기 소유권을 어떤 domain 구조로 구현할 것인가?
+
+**Fixed constraints**
+
+- 서버 domain은 명령 유효성, 비용·쿨다운, 타게팅, 효과·피해, 웨이브·스폰, gameplay clock·RNG, 승패·점수·보상을 포함한 결과 영향 규칙과 상태 전이를 단독으로 실행한다.
+- Product/Game Design의 authoring·approval과 서버 runtime authority를 구분한다.
+- 서버 domain은 Unity, prefab, animation, VFX, SFX, camera, haptics 등 Client presentation 타입과 callback에 의존하지 않는다.
 
 **Drivers**
 
@@ -122,6 +138,7 @@ ECS 없이 Units·Movement·Combat·Effects의 책임과 단일 쓰기 소유권
 
 - spawn→move→target→damage→death의 representative slice
 - cross-module write violation을 검출하는 test
+- server domain이 Client presentation assembly·schema 없이 실행되는 dependency test
 - tick phase trace와 allocation/profile
 - match 생성·종료·오류 rollback test
 
@@ -144,9 +161,15 @@ ECS 없이 Units·Movement·Combat·Effects의 책임과 단일 쓰기 소유권
 
 서버 전투의 tick rate, update phase, RNG stream, tie-break, numeric type와 rounding을 어떤 결정론 계약으로 묶을 것인가?
 
+**Fixed constraints**
+
+- server tick과 gameplay RNG stream이 authoritative하며 Client clock·seed·RNG 결과를 판정 입력으로 신뢰하지 않는다.
+- Client cosmetic RNG는 telegraph 의미·가시성, 판정·충돌 시점, event 수, command 가능 여부, 대상 선택, 점수에 영향을 줄 수 없다.
+- gameplay-relevant telegraph는 서버 semantic state/event에서 파생하며 presentation clock·callback은 gameplay state를 진행하지 않는다.
+
 **Drivers**
 
-- 같은 command·content version·seed에서 같은 authoritative outcome
+- 같은 command·ruleset version·seed에서 같은 authoritative outcome
 - 서버 비용과 조작 반응성의 균형
 - replay·분쟁 조사·score 검증 가능성
 - float divergence, iteration order, RNG 소비 순서 변화 방지
@@ -167,6 +190,7 @@ ECS 없이 Units·Movement·Combat·Effects의 책임과 단일 쓰기 소유권
 
 - 장시간 동일 입력 반복 signature 비교
 - 경계 tick·large delta·RNG stream 독립성 test
+- cosmetic RNG seed·presentation frame rate를 바꿔도 authoritative signature가 변하지 않는 격리 test
 - target runtime 간 golden vector와 performance profile
 
 ## ADR-CAND-004 — Stable identity
@@ -225,19 +249,25 @@ match, player, squad slot, unit, projectile/effect 등 simulation object에 어�
 | `sources` | [tournament-play-report](../../spec/tournament-play-report/README.md), [tournament-flow-guards](../../spec/tournament-flow-guards/README.md), [`TournamentApi.cs`](../../../Assets/_Project/Scripts/Core/Api/TournamentApi.cs) |
 | `related_commit_or_test` | API URL·DTO·pending guard 테스트는 있으나 실시간 protocol test는 없음 |
 | `transfer_action` | `decide` |
-| `production_impact` | command validation, snapshot/delta/event 배달, bandwidth, version compatibility와 정보 공개를 결정한다. |
+| `production_impact` | intent-only command validation, semantic snapshot/delta/event 배달, bandwidth, version compatibility와 정보 공개를 결정한다. |
 | `next_validation_or_decision` | packet loss·duplicate·reorder·late join simulator를 포함한 protocol spike 후 공식 ADR 작성 |
 
 **Question**
 
 클라이언트 command와 서버의 snapshot/delta/event를 어떤 schema, cadence, reliability, ordering, versioning으로 교환할 것인가?
 
+**Fixed constraints**
+
+- Client command는 행동 의도, stable target/reference와 전송·dedupe에 필요한 식별자만 보낸다. damage, state delta, score, authoritative outcome이나 판정 시각 override를 제출하지 않는다.
+- 서버는 actor·state·ownership·permission·cost·cooldown·target·sequence·deadline·rate를 검증한 뒤 ruleset으로 결과를 계산한다.
+- snapshot/delta/event는 stable gameplay ID·authoritative tick·semantic state/outcome을 표현한다. prefab·animation·VFX·tween 같은 Unity asset 또는 연출 지시를 protocol에 넣지 않는다.
+
 **Drivers**
 
 - 서버 권위와 최소 지연
 - command validation·rate limit·deduplication
 - full snapshot 대비 delta bandwidth와 복구 복잡도
-- protocol schema evolution, content version mismatch, 보안상 visibility
+- protocol schema evolution, ruleset/presentation version mismatch, 보안상 visibility
 
 **Options to compare**
 
@@ -254,7 +284,9 @@ match, player, squad slot, unit, projectile/effect 등 simulation object에 어�
 **Decision evidence required**
 
 - 대표 match bandwidth·serialization CPU 측정
+- 변조된 damage·state delta·score·timing 필드를 거절하거나 무시하고 서버 결과만 사용하는 test
 - loss/reorder/duplicate/version mismatch/resync test
+- wire schema가 Client presentation 타입·asset reference를 포함하지 않는 자동 검증
 - 숨겨야 하는 state가 클라이언트에 노출되지 않는지 검증
 
 ## ADR-CAND-006 — Prediction / interpolation / reconciliation
@@ -269,12 +301,18 @@ match, player, squad slot, unit, projectile/effect 등 simulation object에 어�
 | `sources` | [transition matrix](transition-matrix.md), [demo baseline](../demo-baseline.md) |
 | `related_commit_or_test` | 현 저장소에 prediction·reconciliation 구현 및 테스트 없음 |
 | `transfer_action` | `decide` |
-| `production_impact` | 입력 반응성, 시각 안정성, correction 빈도, 구현 복잡도와 치트 표면을 결정한다. |
+| `production_impact` | 서버 권위를 바꾸지 않는 범위에서 입력 반응성, 시각 안정성, correction 빈도, 구현 복잡도와 치트 표면을 결정한다. |
 | `next_validation_or_decision` | 목표 지역 RTT·loss profile에서 조작감 prototype과 correction telemetry 확보 |
 
 **Question**
 
 어떤 상태와 행동을 예측하고, 무엇을 보간하며, 서버 결과와 불일치할 때 어떻게 reconciliation·resync할 것인가?
+
+**Fixed constraints**
+
+- prediction은 제한적·비권위·폐기 가능하며 accepted damage·state transition·score 등 authoritative outcome을 만들 수 없다.
+- 서버 snapshot·correction·resync가 항상 우선하고 Client predicted state는 확정 근거로 사용하지 않는다.
+- 예측 연출은 취소·병합 가능해야 하며 authoritative semantic event ID를 기준으로 VFX·SFX·UI·analytics 부작용을 중복 제거한다.
 
 **Drivers**
 
@@ -299,6 +337,7 @@ match, player, squad slot, unit, projectile/effect 등 simulation object에 어�
 
 - 20/80/150ms RTT와 loss/jitter 시나리오 사용자 테스트
 - correction rate·거리·중복 VFX/score event 검증
+- 예측 결과를 변조해도 서버 상태·점수에 영향이 없고 확정 event 부작용이 한 번만 발생하는 test
 - forced resync 중 command 유실·중복 test
 
 ## ADR-CAND-007 — Content authority / version
@@ -313,36 +352,44 @@ match, player, squad slot, unit, projectile/effect 등 simulation object에 어�
 | `sources` | [map-wave-balancing](../../reference/map-wave-balancing.md), [score-formula](../../reference/score-formula.md), [dreamcatcher-portability](../../reference/dreamcatcher-portability.md) |
 | `related_commit_or_test` | 에셋·생성기 테스트는 있으나 server/client version coexistence·rollback test는 없음 |
 | `transfer_action` | `decide` |
-| `production_impact` | 밸런스 정본, match 재현, client compatibility, 배포·rollback과 live operation의 안전성을 결정한다. |
+| `production_impact` | server canonical gameplay ruleset과 Client presentation catalog의 고정 소유권 분리 위에서 schema, version pinning, 배포·rollback과 compatibility 정책을 결정한다. |
 | `next_validation_or_decision` | canonical schema와 version pinning pipeline prototype 후 공식 ADR 작성 |
 
 **Question**
 
-전투 콘텐츠의 canonical source, schema version, artifact hash, 배포·rollback과 match pinning을 어떻게 관리할 것인가?
+분리된 server gameplay ruleset과 Client presentation catalog의 schema version, artifact hash, 배포·rollback, compatibility와 match pinning을 어떻게 관리할 것인가?
+
+**Fixed constraints**
+
+- server canonical gameplay ruleset은 stable gameplay ID, 수치·산식, 비용·쿨다운, 타게팅·효과 의미, 웨이브·스폰, timer, gameplay RNG parameter, 승패·점수·보상 입력의 정본이다.
+- Client presentation catalog는 stable gameplay ID를 prefab·animation·VFX·SFX·UI style/layout·localization·camera·haptics·accessibility·cosmetic asset에 매핑하며 gameplay outcome을 바꿀 수 없다.
+- 두 artifact는 stable ID와 명시적 호환 version/hash로 연결하고 match에서 사용한 ruleset version을 고정한다.
 
 **Drivers**
 
-- 서버 판정과 클라이언트 표현의 동일 의미
+- 서버 semantic outcome과 클라이언트 표현 mapping의 호환성
 - 진행 중 match가 배포 중간에 규칙을 바꾸지 않음
 - 과거 replay·분쟁 조사 시 원래 config 복원
 - schema migration과 구버전 client 정책
 
 **Options to compare**
 
-- versioned config artifact를 서버 배포와 함께 고정
-- 별도 content service가 signed artifact 제공
-- build-time generated shared schema + 환경별 manifest
-- 서버 canonical config와 client presentation mapping을 분리
+- versioned ruleset을 서버 배포와 함께 고정하고 presentation catalog는 Client build에 포함
+- 별도 content service가 signed ruleset/catalog artifact 제공
+- build-time generated stable ID/schema + 환경별 compatibility manifest
+- ruleset과 presentation catalog를 독립 배포하고 호환 manifest로 조합
 
 **Dependencies**
 
 - ADR-CAND-001 배포 모델, 002 domain schema, 005 protocol version
-- Product의 밸런스 배포 빈도와 긴급 rollback 요구
+- Product의 밸런스 배포 빈도, Client presentation 배포 주기와 긴급 rollback 요구
 
 **Decision evidence required**
 
 - version mismatch, mid-match deploy, rollback, old replay load test
 - schema compatibility policy와 artifact 서명/hash 검증
+- presentation catalog를 바꾸거나 누락시켜도 server authoritative outcome signature가 변하지 않는 test
+- stable gameplay ID mapping의 completeness와 incompatible version 차단 test
 
 ## ADR-CAND-008 — Score authority / anti-cheat
 
@@ -366,7 +413,7 @@ match, player, squad slot, unit, projectile/effect 등 simulation object에 어�
 **Drivers**
 
 - 랭킹 공정성과 client payload 불신
-- 산식·content version·match seed의 감사 가능성
+- 산식·ruleset version·match seed의 감사 가능성
 - invalid command, impossible action rate, desync 처리
 - 결과 저장의 멱등성과 동률·기권·무효 정책
 
@@ -378,7 +425,7 @@ match, player, squad slot, unit, projectile/effect 등 simulation object에 어�
 
 **Dependencies**
 
-- ADR-CAND-003 determinism/numeric, 004 identity, 007 content version
+- ADR-CAND-003 determinism/numeric, 004 identity, 007 ruleset version
 - Product의 score·동률·기권·무효 규칙
 
 **Decision evidence required**
@@ -487,16 +534,22 @@ match, player, squad slot, unit, projectile/effect 등 simulation object에 어�
 | `sources` | [tournament-play-report](../../spec/tournament-play-report/README.md), [`BattleLogSchema.cs`](../../../Assets/_Project/Scripts/Logging/BattleLogSchema.cs), [evidence policy](../evidence/README.md) |
 | `related_commit_or_test` | client snapshot·API body 기능 증거만 있으며 authoritative replay·운영 incident 증거 없음 |
 | `transfer_action` | `decide` |
-| `production_impact` | 운영 탐지, 분쟁 조사, 밸런스 분석, 재현 능력, 저장 비용과 개인정보 위험을 결정한다. |
+| `production_impact` | authoritative ruleset·outcome과 Client presentation을 end-to-end로 구분·연결해 운영 탐지, 분쟁 조사, 밸런스 분석, 재현 능력, 저장 비용과 개인정보 위험을 결정한다. |
 | `next_validation_or_decision` | incident reconstruction drill과 replay fidelity/cost 측정 후 공식 ADR 작성 |
 
 **Question**
 
-어떤 authoritative event·metric·trace를 어떤 correlation key와 보존 정책으로 남기며, replay를 어느 수준까지 보장할 것인가?
+어떤 authoritative event·metric·trace와 Client presentation telemetry를 어떤 version·correlation key·보존 정책으로 연결하며, replay를 어느 수준까지 보장할 것인가?
+
+**Fixed constraints**
+
+- authoritative audit에는 match·actor·server build·ruleset version/hash·server tick과 command/outcome correlation을 남긴다.
+- Client telemetry에는 presentation version/hash와 input/command → authoritative event/tick → presentation event correlation을 남기되 권위 판정 근거로 사용하지 않는다.
+- 개인정보·인증 token 원문을 기록하지 않으며 audit, metric, trace, replay와 Product telemetry의 목적·접근 권한을 구분한다.
 
 **Drivers**
 
-- match·player·content version·server build의 end-to-end correlation
+- match·player·ruleset version·presentation version·server build의 end-to-end correlation
 - desync, invalid command, disconnect, score dispute 조사
 - Product KPI와 gameplay telemetry 분리
 - 개인정보 최소화, 접근 통제, 보존 비용
@@ -519,6 +572,7 @@ match, player, squad slot, unit, projectile/effect 등 simulation object에 어�
 
 - 대표 장애를 문서 없이 log만으로 재구성하는 drill
 - replay outcome signature, schema migration, 누락·중복 event test
+- input/command부터 authoritative event/tick과 실제 presentation event까지 correlation completeness test
 - match당 저장량·query 비용·보존 기간 모델
 - 개인정보·token이 기록되지 않는 자동 검증
 

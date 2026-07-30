@@ -8,6 +8,13 @@
 
 이 문서는 출처를 “최신 문서 하나”로 합치지 않는다. 구현 사실은 코드·에셋·테스트와 활성 spec을 우선하고, PRD·TRD·prototype·milestone은 의도와 역사 근거로 사용한다. 제품 효과는 별도 증거 산출물이 없으면 확인되지 않은 것으로 남긴다.
 
+## 전환 해석 규칙
+
+- 데모에서 어떤 규칙·데이터·연출이 Client 코드나 Unity asset에 있다는 사실은 정규 프로젝트의 Client runtime 소유권 근거가 아니다. 현재 위치는 구현 사실로만 기록하고 정규 책임은 [전환 README의 책임 경계](README.md#정규-프로젝트-책임-경계)와 [transition matrix](architecture/transition-matrix.md)로 판정한다.
+- Product/Game Design이 규칙과 밸런스를 작성·승인하는 책임과 Server가 canonical ruleset을 보관·실행하는 runtime 권위는 구분한다.
+- 규칙 의미와 presentation이 섞인 출처는 한 덩어리로 이전하지 않는다. 예를 들어 `gift-phase`는 선택·허용·상태 전이의 근거와 UI·animation·copy의 근거를 분리하고, 전자는 Server gameplay 계약으로, 후자는 Client presentation 입력으로 해석한다.
+- 순수 계산·test vector는 Server 권위 규칙의 회귀 계약으로 이전할 수 있다. Client가 같은 계산의 일부를 prediction·preview에 사용하더라도 권위 소유권이 공유되는 것은 아니다.
+
 ## 출처 레지스터
 
 ### 운영·역사 문서

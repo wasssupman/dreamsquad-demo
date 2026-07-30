@@ -4,6 +4,8 @@
 >
 > 기준선: **2026-07-29 / `44c87885`**
 >
+> 정규 책임 경계 결정: **2026-07-30**
+>
 > 대상: Product, Client, Server
 >
 > 범위: 데모 근거팩, PRD 입력, ADR 후보
@@ -12,9 +14,24 @@
 
 이 폴더는 현재 데모에서 확인한 구현 사실과 학습 가설을 정규 프로젝트의 PRD와 ADR을 작성할 수 있는 입력으로 번역한다. 데모 문서를 최신인 것처럼 합치는 대신, 사실·결정·가설과 그 증거 수준을 분리한다.
 
-현재 데모의 정확한 경계는 **클라이언트 권위 전투 시뮬레이션 + Firebase 인증 + 서버 발급 토너먼트 시드·시도 + 결과·랭킹 API**다. 정규 프로젝트는 **서버가 전투 상태·판정·점수를 소유하는 온라인 게임**을 목표로 하며, 데모의 ECS 구현은 이식하지 않는다.
+현재 데모의 정확한 경계는 **클라이언트 권위 전투 시뮬레이션 + Firebase 인증 + 서버 발급 토너먼트 시드·시도 + 결과·랭킹 API**다. 정규 프로젝트는 **서버가 gameplay rule·canonical config·상태 전이·판정·점수의 권위 실행을 소유하고, 클라이언트가 입력 UX와 presentation을 소유하는 온라인 게임**을 목표로 하며, 데모의 ECS 구현은 이식하지 않는다.
 
 이 문서 묶음은 정규 프로젝트 구현을 허가하지 않는다. 이 저장소의 ECS 경계와 작업 규칙은 계속 [`CLAUDE.md`](../../CLAUDE.md)와 현재 spec을 따른다.
+
+## 정규 프로젝트 책임 경계
+
+여기서 `Game Design`과 `Client presentation`은 같은 “디자인”이 아니다. 규칙을 누가 작성·승인하는지와 runtime에서 누가 그 규칙을 판정하는지도 별개다.
+
+| 영역 | 정규 프로젝트 책임 | 포함 범위 |
+|---|---|---|
+| Product / Game Design authoring | 규칙 의도, 밸런스, 콘텐츠 의미, UX 목표를 작성·승인 | 플레이어 선택의 의미, 수치 목표, 콘텐츠 정책, 성공 기준 |
+| Server authoritative gameplay | 게임 결과에 영향을 주는 규칙·설정·상태 전이의 정본과 권위 실행 | command 유효성, 비용·쿨다운, 타게팅, 효과·피해, wave·spawn, tick·deadline, gameplay RNG, 승패·점수·보상 |
+| Client presentation | 입력 의도를 수집하고 권위 상태·결과를 시각·청각·촉각 경험으로 표현 | UI, animation, VFX, SFX, camera, haptics, localization, accessibility, cosmetic asset mapping |
+| Protocol boundary | 두 runtime을 stable ID와 의미론적 command·state·event로 연결 | client intent, authoritative tick·state·outcome, version·correlation 정보 |
+
+혼합 요소는 게임 결과에 영향을 주는지를 기준으로 분리한다. 피해 값과 판정 시점은 Server가 소유하고 타격 animation·VFX는 Client가 소유한다. 경기 deadline과 정보 공개 자격은 Server가 소유하고 countdown UI와 공개된 정보의 layout은 Client가 소유한다. tutorial hint는 Client presentation일 수 있지만 command 봉인·허용 규칙은 Server 판정이다.
+
+Client는 반응성을 위해 version이 고정된 최소 prediction·preview 계산을 가질 수 있으나, 이는 버릴 수 있는 비권위 projection이다. Client가 만든 결과·state delta·점수는 권위 입력이 아니며 Server correction·resynchronization이 항상 우선한다. 허용 범위와 reconciliation 방식은 [`ADR-CAND-006`](architecture/adr-candidates.md)에서 결정한다.
 
 ## 목적과 비목표
 
