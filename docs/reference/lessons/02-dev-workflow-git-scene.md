@@ -71,6 +71,23 @@ iPhone batching 기본값, URP obsolete 필드 제거가 tracked diff로 남았�
 - **진단**: 에셋 파일 mtime 확인 → `curl {baseUrl}/{탭}` 으로 시트 실측(읽기 전용, importer 는 dry-run 없음) → 둘 대조.
 - **처방**: 임포터 전체 실행은 무관 에셋 churn 을 만드니, 드리프트 난 필드만 UnityMCP `manage_scriptable_object`(modify) 로 반영 — 디스크와 로드된 인스턴스가 동시에 갱신된다. **시트 값을 바꾸면 에셋 동기화까지가 한 세트**라는 걸 잊지 않는 게 근본 예방.
 
+## swagger 의 필드 타입을 믿지 말 것 — 게임서버 `createdTime` 은 epoch 밀리초다
+
+`/v3/api-docs` 는 `UserTournamentResultEntry.createdTime` 을 `type: string, format: date-time` 으로
+적어두지만 dev 서버가 실제로 주는 값은 **epoch 밀리초 문자열**이다(`"1785419835370"`, 2026-07-30 실측).
+
+`DateTime.TryParse` 는 이 값에 **실패하고, 실패는 조용하다** — 표시 코드가 빈 문자열로 폴백하면 화면에
+날짜 칸만 비고 아무도 원인을 모른다. 히스토리 목록의 날짜가 계속 비어 있던 게 이것이었고, 같은 파서를
+정렬이 공유하고 있어서 "최신순 정렬"도 실제로는 서버 순서 그대로였다(전 항목이 "날짜 없음"으로 분류).
+
+- **처방**: 파서가 **둘 다** 받는다. 전부 숫자면 epoch(13자리=ms, 10자리=s), 아니면 ISO-8601.
+  구현: `TournamentHistoryPanel.TryParseCreated`.
+- **정렬과 표시가 같은 파서를 공유**하게 둘 것. 갈라지면 "화면엔 날짜가 있는데 정렬은 맨 뒤"가 된다.
+- **파싱 실패 행을 버리지 말 것.** 표시 전용 필드 하나 때문에 목록에서 사라지면 그 항목은 영영 못 연다.
+- **일반화**: 새 필드를 소비하기 전에 **실제 응답 원문을 한 번 찍어본다**. 읽기 전용 GET 을 콜백에서
+  `Debug.Log` 하고 `read_console` 로 확인하면 30초다. 시트↔SO 드리프트(위)와 같은 부류 — 문서가 아니라
+  실물이 진실원이다.
+
 ## GitLab 미러(ALB 뒤)는 SSH 로만 대용량 전송이 된다
 
 사내 GitLab(`gitlab.playlinks.co`)에 HTTPS 로 clone/fetch 하면 **응답 끝부분이 잘린다** — `curl 56 ... server closed abruptly (missing close_notify)` + `N bytes of body are still expected`. 초기 단일 푸시는 별도로 `HTTP 413`.

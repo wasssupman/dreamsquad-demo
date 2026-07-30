@@ -30,7 +30,7 @@
 - testrig 배치 EditMode **1633 tests / 1630 passed / 1 failed / 2 skipped**. 이 spec 관련 16건 전부 green.
 - 실패 1건 `DirectionalVolleyIntegrationTests.AuthoredDefenderPatterns_...` 는 **무관** — 병행 세션의 tap-to-place WIP. 그 테스트가 읽는 `Defender_Shotgunner.asset` 등 에셋이 미커밋인데 리그에는 `.cs` 만 복사돼 생긴 불일치다.
 - 코드 리뷰 1회(별도 레인). 지적 6건 중 5건 반영, 1건은 스코프 밖으로 이관(README 후속 후보).
-- **라이브 서버 왕복은 하지 않았다.** README "미확인" 2건 참조.
+- 라이브 서버 왕복은 이 spec 시점엔 못 했고, **후속 spec(`tournament-history-deck-view` unit 4)에서 닫았다** — 왕복 성립 확인, 선물 카드 분리도 실증(로컬 로그 12장 vs 화면 10장). 0점 덮어쓰기는 여전히 미확인.
 
 ## Notes (되돌리지 말 것)
 
@@ -39,9 +39,9 @@
 - **표시명을 페이로드에 넣지 말 것.** `displayName` 은 시트 구동이라(`UnitStatImportDto` / `DcSheetImportDto` 리플렉션 매핑) 스냅샷하면 이름 변경 시 옛 엔트리만 옛 이름으로 남아 한 화면에 두 이름이 공존한다.
 - **0점 마감 경로(`AbandonMatch` / `ReconcilePending`)에 지금 메모리의 덱을 붙이지 말 것.** 특히 reconcile 은 이전 세션/하드킬의 attempt 를 뒤늦게 닫는 경로라 남의 판에 엉뚱한 덱이 박힌다.
 - `SnapshotJson()` 은 호출처를 잃었지만 **의도적으로 남겼다**(2026-07-30 사용자 결정). 죽은 코드로 보고 지우지 말 것.
-- `TournamentDeckInfo.Deserialize` 의 소비처는 아직 테스트뿐이다. 후속 spec 이 유일한 소비처로 예정돼 있다.
+- `TournamentDeckInfo.Deserialize` 의 소비처는 `DeckInfoPopup`(히스토리 덱보기) 하나다 — `tournament-history-deck-view` 에서 붙었다.
 
 ## Follow-up
 
-- **히스토리 덱 보기 페이지** (다음 spec) — 이 spec 의 `Deserialize` 가 입력이다. **첫 작업으로 README "미확인" 2건(왕복 성립·0점 덮어쓰기)을 라이브로 확인**한 뒤 UI 를 얹는다.
-- 드림스톤 캐리인 로그가 미해석 id 를 버리는 비대칭 — README 후속 후보 참조.
+- **히스토리 덱 보기 페이지** → `docs/spec/tournament-history-deck-view/` (완료 2026-07-30). 이 spec 의 `Deserialize` 가 그 팝업의 입력이다.
+- 후속 후보 전체는 `docs/spec/README.md` → Follow-up Backlog → **토너먼트 덱 정보** 그룹으로 이관했다.
