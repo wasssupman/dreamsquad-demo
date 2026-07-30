@@ -268,6 +268,93 @@ namespace Wassup.Tests.EditMode.Profile
             Assert.AreEqual("u_b", _p.CommittedSquad().unitIds[0], "따라서 반입도 저장본이다");
         }
 
+        // ---- [되돌리기] = 저장본 기준 복원 (사용자 결정 2026-07-30) ------------
+
+        [Test]
+        public void Revert_RestoresStoredContent_NotEmpty()
+        {
+            MakeController();
+            SetField("_viewingPresetId", "squad_1");
+            Invoke("LoadWorking", "squad_1");
+            Working("_workingUnits")[0] = "u_EDITED";
+            Working("_workingUnits")[3] = "u_ADDED";
+
+            Invoke("OnRevertWorking");
+
+            Assert.AreEqual("u_a", Working("_workingUnits")[0],
+                "저장본 기준으로 복원된다 — 구 '리셋'의 완전 비움이 아니다");
+            Assert.AreEqual("", Working("_workingUnits")[3], "저장본에 없던 칸은 빈칸으로 돌아온다");
+        }
+
+        [Test]
+        public void Revert_ClearsDirty()
+        {
+            MakeController();
+            SetField("_viewingPresetId", "squad_1");
+            Invoke("LoadWorking", "squad_1");
+            Working("_workingUnits")[0] = "u_EDITED";
+            Assert.IsTrue(Dirty(), "precondition — 편집으로 dirty");
+
+            Invoke("OnRevertWorking");
+
+            Assert.IsFalse(Dirty(),
+                "되돌린 뒤 dirty 가 꺼진다 — 구 '리셋'은 완전 비움이라 오히려 dirty 를 켰다");
+        }
+
+        [Test]
+        public void Revert_OnFreshEmptyPreset_IsEffectivelyFullClear()
+        {
+            // 사용자 지적 — 신규 프리셋은 저장본이 0이라 되돌리기가 자연히 완전 비움이 된다.
+            MakeController();
+            Invoke("OnCreatePreset");                  // 빈 프리셋 생성 + 전환
+            string created = (string)typeof(SquadCharacterPageController)
+                .GetField("_viewingPresetId", BindingFlags.Instance | BindingFlags.NonPublic)
+                .GetValue(_ctrl);
+            Working("_workingUnits")[0] = "u_x";
+            Working("_workingUnits")[1] = "u_y";
+
+            Invoke("OnRevertWorking");
+
+            for (int i = 0; i < SquadPreset.SlotCount; i++)
+                Assert.AreEqual("", Working("_workingUnits")[i],
+                    "저장본이 비어 있으므로 되돌리기 = 완전 비움");
+            Assert.IsFalse(Dirty());
+        }
+
+        [Test]
+        public void Revert_DoesNotTouchDisk()
+        {
+            MakeController();
+            SetField("_viewingPresetId", "squad_1");
+            Invoke("LoadWorking", "squad_1");
+            Working("_workingUnits")[0] = "u_EDITED";
+            _saves = 0;
+
+            Invoke("OnRevertWorking");
+
+            Assert.AreEqual(0, _saves, "되돌리기는 저장본을 읽을 뿐 디스크에 쓰지 않는다");
+            Assert.AreEqual("u_a", StoredById("squad_1").unitIds[0], "저장본도 무변경");
+        }
+
+        [Test]
+        public void Revert_AlsoRestoresStones()
+        {
+            MakeController();
+            StoredById("squad_1").stoneIds[0] = "stone_saved";
+            SetField("_viewingPresetId", "squad_1");
+            Invoke("LoadWorking", "squad_1");
+            Working("_workingStones")[0] = "stone_EDITED";
+
+            Invoke("OnRevertWorking");
+
+            Assert.AreEqual("stone_saved", Working("_workingStones")[0],
+                "스쿼드 프리셋은 유닛+스톤 통합이므로 스톤도 함께 복원된다");
+        }
+
+        private bool Dirty() => (bool)typeof(SquadCharacterPageController)
+            .GetMethod("IsDirty", BindingFlags.Instance | BindingFlags.NonPublic)
+            .Invoke(_ctrl, null);
+
         [Test]
         public void Controller_EditsDoNotPersist()
         {

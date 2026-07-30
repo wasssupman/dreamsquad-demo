@@ -2,7 +2,7 @@
 
 ## 목적
 
-두 페이지가 공유하는 프리셋 조작 바. 목록 팝업 + 이름 필드 + 버튼 4개 + dirty 배지를 만들고 **이벤트만 raise** 한다. 상태 판단·저장은 페이지 컨트롤러 소유 — 이 뷰는 프리셋이 무엇인지 모른다.
+두 페이지가 공유하는 프리셋 조작 바. 목록 팝업 + 이름 필드 + 버튼 4개(선택/저장/되돌리기/삭제) + dirty 배지를 만들고 **이벤트만 raise** 한다. 상태 판단·저장은 페이지 컨트롤러 소유 — 이 뷰는 프리셋이 무엇인지 모른다.
 
 ## 변경 대상
 
@@ -17,7 +17,7 @@ public class PresetBarView : MonoBehaviour
     public event Action CreateClicked;          // [+] 셀
     public event Action CommitClicked;          // [선택]
     public event Action SaveClicked;            // [저장]
-    public event Action ResetClicked;           // [리셋]
+    public event Action RevertClicked;          // [되돌리기]
     public event Action DeleteClicked;          // [삭제]
     public event Action<string> NameCommitted;  // onEndEdit 에서만 발화
 
@@ -26,7 +26,7 @@ public class PresetBarView : MonoBehaviour
     public void SetEntries(IReadOnlyList<Entry> entries, string viewingId, bool canCreate);
     public void SetName(string name);
     public void SetDirty(bool dirty);
-    public void SetButtonEnabled(bool commit, bool save, bool reset, bool delete);
+    public void SetButtonEnabled(bool commit, bool save, bool revert, bool delete);
 }
 ```
 
@@ -34,7 +34,7 @@ public class PresetBarView : MonoBehaviour
 
 ```
 ┌──────────┬─────────────────────────────────────────────┐
-│░░░░░░░░░░│ [스쿼드 2 ▼] [이름____] 선택 〖저장〗 리셋 삭제 │ ← PresetBarView
+│░░░░░░░░░░│ [스쿼드 2 ▼] [이름__] 선택 〖저장〗 되돌리기 삭제 │ ← PresetBarView
 │░ SPINE  ░│ ● 미저장 변경 — 반입은 지금 저장분             │   (dirty 일 때만 2행)
 │░░░░░░░░░░├─────────────────────────────────────────────┤
 │          │ ▣▣▣▣▢▢▢   💎💎💎💎                            │ ← 기존 상단 밴드
@@ -47,7 +47,7 @@ public class PresetBarView : MonoBehaviour
 - 셀 내용 = 이름 + `thumbs` 를 작게 나열(스쿼드는 유닛 초상 최대 7, 드캐는 카드 카테고리 색 바). **스프라이트는 카탈로그에 이미 로드된 것을 그대로 받으므로 신규 로드 0** — 뷰는 스프라이트를 찾지 않고 `Entry` 로 받는다
 - `SetEntries` 는 셀을 전부 재구성하는 무거운 호출이다. 뷰는 호출된 대로 재구성하되, **컨트롤러가 구조 변경 시에만 부른다**(unit 3). 내용 편집 경로에서는 `SetDirty`/`SetButtonEnabled` 만 온다
 - 확정 프리셋 셀에 `확정` 뱃지(`entry.committed`)
-- 펼친 팝업은 브라우저 위에 그려져야 한다 — 페이지 루트 직속의 별도 형제로 만들고 `SetAsLastSibling()`
+- 펼친 팝업은 브라우저 위에 그려져야 한다. **구현 정정(리뷰 CRITICAL, 2026-07-30)**: 팝업은 바의 자식으로 두고, 열 때 **바 자체**를 페이지 루트의 마지막 형제로 올린다(`transform.SetAsLastSibling()`). 초안대로 팝업만 바 안에서 `SetAsLastSibling` 하면 페이지 루트 형제 순서가 바뀌지 않아, 나중에 생성된 불투명 `HeaderStrip`·`BrowserPanel` 이 팝업을 완전히 덮는다 — `[+]` 가 팝업 안에만 있어 프리셋 생성·전환이 **도달 불가**가 된다. 중첩 Canvas 로 우회하지 않는 이유는 `LoadoutGatePopup.cs:43-49` 에 기록돼 있다(렌더만 살고 탭이 샌다). 회귀는 `PresetBarPopupLayerTest` 가 형제 인덱스로 고정한다
 - 이름은 `TMP_InputField`, **`onEndEdit` 에서만** `NameCommitted` 발화(`onValueChanged` 미사용 — 계약 4 / unit 1 규약)
 - dirty 배지는 2행으로 나타나고, 사라질 때 1행으로 접힌다. 바 자체 높이는 고정(0.10)이고 배지는 그 안에서 토글 — 높이가 변하면 아래 밴드가 흔들린다
 - 버튼 dim 은 `SetButtonEnabled` 가 받은 대로만 반영한다. **어떤 조건에서 dim 인지 판단하지 않는다**(컨트롤러 책임)

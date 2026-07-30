@@ -182,9 +182,10 @@ namespace Wassup.Tests.EditMode.Profile
         }
 
         [Test]
-        public void Deck_ResetToEmpty_IsDirty()
+        public void Deck_ClearedWorking_IsDirty()
         {
-            // [리셋] 직후 상태 — 저장 전이므로 dirty 여야 하고, 그래야 나가면 원복된다.
+            // 카드를 전부 뺀 상태 — 저장 전이므로 dirty 다. 이 성질이 [되돌리기] 활성
+            // 조건(=dirty)을 만들고, [되돌리기]는 이 상태를 저장본으로 복원한다.
             Assert.IsTrue(PresetDiff.IsDeckDirty("덱 1", new List<string>(), Deck("c0", "c1")));
         }
     }

@@ -28,7 +28,7 @@ namespace Wassup.UI
         public event Action CreateClicked;          // [+] 셀
         public event Action CommitClicked;          // [선택]
         public event Action SaveClicked;            // [저장]
-        public event Action ResetClicked;           // [리셋]
+        public event Action RevertClicked;          // [되돌리기]
         public event Action DeleteClicked;          // [삭제]
         public event Action<string> NameCommitted;  // onEndEdit 에서만 발화
 
@@ -61,8 +61,8 @@ namespace Wassup.UI
         private GameObject _popup;
         private RectTransform _popupContent;
 
-        private Image _commitBg, _saveBg, _resetBg, _deleteBg;
-        private Button _commitBtn, _saveBtn, _resetBtn, _deleteBtn;
+        private Image _commitBg, _saveBg, _revertBg, _deleteBg;
+        private Button _commitBtn, _saveBtn, _revertBtn, _deleteBtn;
 
         private readonly List<GameObject> _cells = new List<GameObject>();
         private string _viewingId;
@@ -106,12 +106,12 @@ namespace Wassup.UI
         }
 
         // dim 조건은 컨트롤러가 판단한다 — 뷰는 받은 대로만 반영한다.
-        public void SetButtonEnabled(bool commit, bool save, bool reset, bool delete)
+        public void SetButtonEnabled(bool commit, bool save, bool revert, bool delete)
         {
             EnsureBuilt();
             Apply(_commitBtn, _commitBg, commit, BtnNeutral);
             Apply(_saveBtn, _saveBg, save, BtnNeutral);
-            Apply(_resetBtn, _resetBg, reset, BtnNeutral);
+            Apply(_revertBtn, _revertBg, revert, BtnNeutral);
             Apply(_deleteBtn, _deleteBg, delete, BtnDanger);
         }
 
@@ -154,7 +154,7 @@ namespace Wassup.UI
             _nameField = MakeNameField(row);
             _commitBtn = MakeButton(row, "선택", BtnNeutral, () => CommitClicked?.Invoke(), out _commitBg);
             _saveBtn = MakeButton(row, "저장", BtnNeutral, () => SaveClicked?.Invoke(), out _saveBg);
-            _resetBtn = MakeButton(row, "리셋", BtnNeutral, () => ResetClicked?.Invoke(), out _resetBg);
+            _revertBtn = MakeButton(row, "되돌리기", BtnNeutral, () => RevertClicked?.Invoke(), out _revertBg);
             _deleteBtn = MakeButton(row, "삭제", BtnDanger, () => DeleteClicked?.Invoke(), out _deleteBg);
 
             // 2행 배지 — dirty 일 때만. 계약 4: 팝업이 아니라 상시 표시.

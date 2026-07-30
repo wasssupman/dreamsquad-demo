@@ -95,7 +95,7 @@ namespace Wassup.UI
                 presetBar.CreateClicked += OnCreatePreset;
                 presetBar.CommitClicked += OnCommitPreset;
                 presetBar.SaveClicked += OnSavePreset;
-                presetBar.ResetClicked += OnResetWorking;
+                presetBar.RevertClicked += OnRevertWorking;
                 presetBar.DeleteClicked += OnDeletePreset;
                 presetBar.NameCommitted += OnNameCommitted;
             }
@@ -161,7 +161,9 @@ namespace Wassup.UI
             presetBar.SetButtonEnabled(
                 commit: !isCommitted,
                 save: dirty,
-                reset: !AllEmpty(_workingUnits) || !AllEmpty(_workingStones),
+                // [되돌리기]는 되돌릴 것이 있을 때만 = dirty. [저장]과 같은 조건이라 둘이
+                // "미저장 변경을 남길래 버릴래" 한 쌍으로 읽힌다.
+                revert: dirty,
                 delete: !isCommitted && count > 1);
             // SetDirty 는 SetButtonEnabled 뒤 — [저장] 엑센트 색이 interactable 을 읽는다.
             presetBar.SetDirty(dirty);
@@ -208,13 +210,6 @@ namespace Wassup.UI
                 arr[i] = u != null ? u.portrait : null;
             }
             return arr;
-        }
-
-        private static bool AllEmpty(List<string> list)
-        {
-            for (int i = 0; i < list.Count; i++)
-                if (!string.IsNullOrEmpty(list[i])) return false;
-            return true;
         }
 
         // ---- 프리셋 조작 (구조 변경은 즉시 저장, 내용은 [저장]만) ------------
@@ -298,11 +293,16 @@ namespace Wassup.UI
             RefreshBarEntries();          // dirty 꺼짐 + 썸네일/이름 갱신
         }
 
-        // 리셋은 **작업본만** 비운다. 저장 안 하고 나가면 원복된다.
-        private void OnResetWorking()
+        // [되돌리기] — 작업본을 **저장본 기준으로** 복원한다(구 "리셋"=완전 비움에서 변경,
+        // 사용자 결정 2026-07-30). 완전 비움은 두 가지가 어색했다: 초기화했는데 dirty 가
+        // 켜졌고, "백지에서 시작"은 이미 [+] 빈 프리셋 생성이 담당한다. 저장본 기준이면
+        // 되돌린 뒤 dirty 가 꺼져 [저장]/[되돌리기]가 "미저장 변경을 남길래 버릴래" 한 쌍이
+        // 된다. 신규 프리셋은 저장본이 비어 있으므로 자연히 완전 비움이 된다.
+        //
+        // 디스크에 쓰지 않는다 — 저장본을 읽어 작업본에 덮는 것뿐이다.
+        private void OnRevertWorking()
         {
-            for (int i = 0; i < _workingUnits.Count; i++) _workingUnits[i] = "";
-            for (int i = 0; i < _workingStones.Count; i++) _workingStones[i] = "";
+            LoadWorking(_viewingPresetId);
             EnterUnitMode(initial: true);
         }
 

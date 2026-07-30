@@ -42,14 +42,14 @@ private string _workingName;
 |---|---|
 | 선택 | `profile.selectedSquadId = _viewingPresetId` → `ProfileStore.Save`. **작업본을 기록하지 않는다**(계약 3) |
 | 저장 | 저장본 ← `_working*` 복제 + `_workingName` → `ProfileStore.Save` |
-| 리셋 | `_working*` 를 빈값(`""`×7, `""`×4)으로. **저장 안 함** → dirty 켜짐 |
+| 되돌리기 | `LoadWorking(_viewingPresetId)` 로 **저장본 기준 복원**. 저장 안 함 → dirty 꺼짐 (rev 2026-07-30) |
 | 삭제 | `squads` 에서 엔트리 제거 → `NormalizePresets()` → `ProfileStore.Save` → `_viewingPresetId = selectedSquadId` 로 복귀 후 `LoadWorking` |
 | `[+]` | `PresetIds.NextId` 로 id 발급, 이름 `"스쿼드 N"`, 빈 7/4칸 엔트리 추가 → `NormalizePresets()` → `ProfileStore.Save` → 그 프리셋으로 전환 |
 
 버튼 dim 조건(컨트롤러가 판단해 `SetButtonEnabled` 로 전달):
 - 선택: `_viewingPresetId == profile.selectedSquadId` 면 dim
 - 저장: `!dirty` 면 dim
-- 리셋: 작업본이 이미 전부 빈칸이면 dim
+- 되돌리기: `!dirty` 면 dim (=[저장]과 같은 조건, 한 쌍으로 읽힌다)
 - 삭제: 확정분이거나 `squads.Count <= 1` 이면 dim
 - `[+]`: `squads.Count >= PlayerProfile.MaxPresets` 면 dim
 
@@ -66,7 +66,7 @@ private string _workingName;
 - [ ] [저장] 후 재진입 시 저장 내용이 보인다
 - [ ] [선택]만 누르고 미저장 변경을 버린 뒤 START → **저장분이 반입된다**(계약 3 실증)
 - [ ] dirty 배지: 편집 시 나타나고 [저장] 시 사라지며, 뺐다 되넣으면 사라진다
-- [ ] [리셋] → 전 칸 빈칸 + dirty 켜짐 → [저장] 없이 다른 프리셋 갔다 오면 원복
+- [ ] [되돌리기] → 저장본 내용으로 복원 + dirty 꺼짐. 신규 빈 프리셋에서는 완전 비움
 - [ ] 삭제 가드: 확정분/마지막 1개에서 [삭제] dim + 이유 표시
 - [ ] `[+]` 로 30개까지 생성 후 dim, 31번째 불가
 - [ ] dirty 상태로 목록 전환 시 경고 팝업 → [취소]는 머물고 [이동]은 버리고 이동

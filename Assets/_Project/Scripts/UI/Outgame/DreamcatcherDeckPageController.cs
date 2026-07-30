@@ -85,7 +85,7 @@ namespace Wassup.UI
                 presetBar.CreateClicked += OnCreatePreset;
                 presetBar.CommitClicked += OnCommitPreset;
                 presetBar.SaveClicked += OnSavePreset;
-                presetBar.ResetClicked += OnResetWorking;
+                presetBar.RevertClicked += OnRevertWorking;
                 presetBar.DeleteClicked += OnDeletePreset;
                 presetBar.NameCommitted += OnNameCommitted;
             }
@@ -264,7 +264,7 @@ namespace Wassup.UI
             presetBar.SetButtonEnabled(
                 commit: !isCommitted,
                 save: dirty,
-                reset: _working.Count > 0,
+                revert: dirty,   // [저장]과 같은 조건 — 한 쌍으로 읽힌다
                 delete: !isCommitted && count > 1);
             // SetDirty 는 SetButtonEnabled 뒤 — [저장] 엑센트 색이 interactable 을 읽는다.
             presetBar.SetDirty(dirty);
@@ -395,10 +395,11 @@ namespace Wassup.UI
             RefreshBarEntries();   // dirty 꺼짐 + 썸네일/이름 갱신
         }
 
-        // 리셋은 작업본만 비운다. 고정 칸이 없으므로 빈 리스트다.
-        private void OnResetWorking()
+        // [되돌리기] — 작업본을 **저장본 기준으로** 복원한다(스쿼드 컨트롤러와 동일 정책,
+        // 사용자 결정 2026-07-30). 신규 프리셋은 저장본이 빈 리스트라 자연히 완전 비움.
+        private void OnRevertWorking()
         {
-            _working.Clear();
+            LoadWorking();
             if (browser != null) browser.ShowCards(SortedPool());
             RefreshAll();
         }
