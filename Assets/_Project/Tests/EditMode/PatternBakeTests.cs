@@ -4,6 +4,7 @@ using Unity.Entities;
 using UnityEngine;
 using UnityEngine.TestTools;
 using Wassup.Battle.Combat;
+using Wassup.Battle.Combat.Projectile;
 using Wassup.Battle.Combat.Projectile.Emission;
 using Wassup.Bridge;
 using Wassup.Data;
@@ -90,6 +91,93 @@ namespace Wassup.Tests.EditMode
                 BindingFlags.NonPublic | BindingFlags.Instance);
             Assert.IsNotNull(mi, "BakeNightmareMechanics 를 찾지 못했다(이름 변경?)");
             mi.Invoke(_bridge, new object[] { entity, unitType });
+        }
+
+        private void InvokeDefenderBake(Entity entity, DefenderUnitData unitType, int barrelDataIndex)
+        {
+            var mi = typeof(BattleBridge).GetMethod("BakeDefenderDirectionalPattern",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            Assert.IsNotNull(mi, "BakeDefenderDirectionalPattern 를 찾지 못했다(이름 변경?)");
+            mi.Invoke(_bridge, new object[] { entity, unitType, barrelDataIndex });
+        }
+
+        [Test]
+        public void DefenderBake_AttachesDirectionPatternBuffers_AfterStructuralChanges()
+        {
+            var barrel = ScriptableObject.CreateInstance<ProjectileData>();
+            barrel.id = "direction_barrel";
+            barrel.flightMode = ProjectileFlightMode.Directional;
+            barrel.speed = 20f;
+
+            var pattern = ScriptableObject.CreateInstance<ProjectilePatternData>();
+            pattern.id = "defender_direction";
+            pattern.barrel = barrel;
+            pattern.selection = PatternSelectionRule.None;
+            pattern.minAngleDeg = -10f;
+            pattern.maxAngleDeg = 10f;
+            pattern.shots = new[]
+            {
+                new ProjectileShotStep { directionT = 0.25f, intervalAfterPreviousSec = 0f },
+                new ProjectileShotStep { directionT = 0.75f, intervalAfterPreviousSec = 0.05f },
+            };
+
+            var ability = ScriptableObject.CreateInstance<DirectionalVolleyAbility>();
+            ability.pattern = pattern;
+            var unit = ScriptableObject.CreateInstance<DefenderUnitData>();
+            unit.displayName = "DirectionDefender";
+            unit.projectile = barrel;
+            unit.abilities.Add(ability);
+
+            var em = _world.EntityManager;
+            var entity = em.CreateEntity();
+            InvokeDefenderBake(entity, unit, 9);
+
+            Assert.IsTrue(em.HasBuffer<PatternSlot>(entity));
+            Assert.IsTrue(em.HasBuffer<EmitterInstance>(entity));
+            var slots = em.GetBuffer<PatternSlot>(entity);
+            Assert.AreEqual(1, slots.Length);
+            Assert.AreEqual(9, slots[0].spec.barrelDataIndex);
+            Assert.AreEqual(2, slots[0].spec.shots.Length);
+            Assert.AreEqual(ProjectileTargetFaction.Enemy, slots[0].template.targetFaction);
+            Assert.AreEqual(entity, slots[0].template.owner);
+
+            Object.DestroyImmediate(unit);
+            Object.DestroyImmediate(ability);
+            Object.DestroyImmediate(pattern);
+            Object.DestroyImmediate(barrel);
+        }
+
+        [Test]
+        public void DefenderBake_MismatchedBarrel_IsRejectedLoudly()
+        {
+            var unitBarrel = ScriptableObject.CreateInstance<ProjectileData>();
+            unitBarrel.flightMode = ProjectileFlightMode.Directional;
+            var otherBarrel = ScriptableObject.CreateInstance<ProjectileData>();
+            otherBarrel.flightMode = ProjectileFlightMode.Directional;
+            var pattern = ScriptableObject.CreateInstance<ProjectilePatternData>();
+            pattern.barrel = otherBarrel;
+            pattern.selection = PatternSelectionRule.None;
+            var ability = ScriptableObject.CreateInstance<DirectionalVolleyAbility>();
+            ability.pattern = pattern;
+            var unit = ScriptableObject.CreateInstance<DefenderUnitData>();
+            unit.displayName = "MismatchedDefender";
+            unit.projectile = unitBarrel;
+            unit.abilities.Add(ability);
+
+            var em = _world.EntityManager;
+            var entity = em.CreateEntity();
+            LogAssert.Expect(LogType.Warning,
+                new System.Text.RegularExpressions.Regex("pattern barrel must match defender projectile"));
+            InvokeDefenderBake(entity, unit, 2);
+
+            Assert.IsFalse(em.HasBuffer<PatternSlot>(entity));
+            Assert.IsFalse(em.HasBuffer<EmitterInstance>(entity));
+
+            Object.DestroyImmediate(unit);
+            Object.DestroyImmediate(ability);
+            Object.DestroyImmediate(pattern);
+            Object.DestroyImmediate(otherBarrel);
+            Object.DestroyImmediate(unitBarrel);
         }
 
         // 패턴 2개 + 비패턴 1개 — 실제 보스 SO 형상(폭격·채찍질·미사일)의 축소판.

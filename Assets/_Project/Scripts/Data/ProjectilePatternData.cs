@@ -37,7 +37,7 @@ namespace Wassup.Data
         [Header("Barrel (탄 1발 명세 — 궤적·효과·비주얼 전부 여기)")]
         public ProjectileData barrel;
 
-        [Tooltip("이 패턴이 쏘는 탄의 데미지. 시전자 damageMul 은 적용하지 않는다(카드/스킬 magnitude 컨벤션).")]
+        [Tooltip("이 패턴이 쏘는 기본 데미지. 카드/보스 패턴은 이 값을 쓰고, defender 기본공격은 trigger 시점의 실효 output damage로 덮어쓴다.")]
         [Min(0f)]
         public float damage = 10f;
 

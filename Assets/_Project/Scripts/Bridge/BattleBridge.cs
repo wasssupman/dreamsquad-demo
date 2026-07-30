@@ -5227,20 +5227,6 @@ namespace Wassup.Bridge
                 targetMask = unitData.targetAllies ? (int)Faction.Defender : (int)Faction.Enemy,
                 hitDelaySec = unitData.hitDelaySec,
             });
-            // defender-directional-volley unit 4 — 다연발 유닛만 볼리 상태를 진다.
-            // 스폰 시 사전 부착 = 발사 때마다 구조 변경이 없다(IncomingHeal 선례).
-            // shotCount <= 1 이면 미부착 → AttackSystem 이 현행 단발 경로 그대로.
-            // defender-ability-assets unit 2 — 파라미터 소유가 능력 서브에셋으로 이동(flat 대체).
-            var volleyAbility = unitData.GetAbility<DirectionalVolleyAbility>();
-            if (volleyAbility != null && volleyAbility.shotCount > 1)
-            {
-                _em.AddComponentData(entity, new Wassup.Battle.Combat.VolleyFireState
-                {
-                    shotCount = volleyAbility.shotCount,
-                    shotIntervalSec = volleyAbility.shotIntervalSec,
-                    spreadAngleDeg = volleyAbility.spreadAngleDeg,
-                });
-            }
             // aggro-targeting Unit 4 — expose defender class so enemies can filter/prioritize.
             _em.AddComponentData(entity, new Wassup.Battle.Units.DefenderClassTag { value = unitData.role });
             // aggro-targeting Unit 10 — guardians (aggroCapacity > 0) carry AggroCapacity
@@ -5377,6 +5363,13 @@ namespace Wassup.Bridge
                     arcHeight = unitData.projectile.arcHeight,
                     impactTileRange = unitData.projectile.impactTileRange,
                 });
+
+                BakeDefenderDirectionalPattern(entity, unitData, dataIndex);
+            }
+            else if (unitData.GetAbility<DirectionalVolleyAbility>() != null)
+            {
+                Debug.LogWarning(
+                    $"[BattleBridge] {unitData.displayName}: DirectionalVolleyAbility needs defender projectile — pattern skipped.");
             }
 
             // modifier-framework unit 5: attach AttackOutputElement buffer when SO defines outputs.
@@ -6264,6 +6257,54 @@ namespace Wassup.Bridge
                 }
                 slots.Add(slot);
             }
+        }
+
+        // projectile-shot-sequence unit 2 — 방향 능력의 schedule을 공용 pattern
+        // buffer로 굽는다. EntityManager/Unity SO가 실제로 필요한 Bridge seam이므로
+        // architecture-neutral 계산과 섞지 않는다.
+        private void BakeDefenderDirectionalPattern(Entity entity, DefenderUnitData unitData, int barrelDataIndex)
+        {
+            var volleyAbility = unitData.GetAbility<DirectionalVolleyAbility>();
+            if (volleyAbility == null) return;
+
+            var pattern = volleyAbility.pattern;
+            if (pattern == null || pattern.barrel == null)
+            {
+                Debug.LogWarning(
+                    $"[BattleBridge] {unitData.displayName}: DirectionalVolleyAbility needs a pattern with a barrel — pattern skipped.");
+                return;
+            }
+            if (pattern.barrel != unitData.projectile)
+            {
+                Debug.LogWarning(
+                    $"[BattleBridge] {unitData.displayName}: directional pattern barrel must match defender projectile — pattern skipped.");
+                return;
+            }
+            if (!pattern.TryToSpec(barrelDataIndex, out var patternSpec))
+            {
+                int shotCount = pattern.shots?.Length ?? 0;
+                Debug.LogWarning(
+                    $"[BattleBridge] {unitData.displayName}: invalid directional projectile shot sequence/binding " +
+                    $"(shots={shotCount}, capacity={Wassup.Data.ProjectilePatternData.MaxShotCount}, " +
+                    $"angles={pattern.minAngleDeg}..{pattern.maxAngleDeg}, selection={pattern.selection}, " +
+                    $"flight={pattern.barrel.flightMode}) — pattern skipped.");
+                return;
+            }
+
+            // 두 buffer 모두 스폰 때 사전 부착해 AttackSystem은 RESOLVE마다
+            // instance를 Add하기만 하고 구조 변경하지 않는다.
+            _em.AddBuffer<Wassup.Battle.Combat.Projectile.Emission.PatternSlot>(entity);
+            _em.AddBuffer<Wassup.Battle.Combat.Projectile.Emission.EmitterInstance>(entity);
+            // 위 AddBuffer 두 번은 구조 변경이다. 마지막 변경 뒤 핸들을 얻는다
+            // (boss pattern bake의 dangling-buffer 회귀 가드와 같은 규칙).
+            var patternSlots =
+                _em.GetBuffer<Wassup.Battle.Combat.Projectile.Emission.PatternSlot>(entity);
+            patternSlots.Add(new Wassup.Battle.Combat.Projectile.Emission.PatternSlot
+            {
+                spec = patternSpec,
+                template = BuildPatternTemplate(pattern, barrelDataIndex, entity, hostIsEnemy: false),
+                fireCountBase = 0,
+            });
         }
 
         // projectile-emission-pattern unit 3 — 발사 요청 원본 조립. 향후 defender/카드

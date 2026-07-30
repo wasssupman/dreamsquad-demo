@@ -85,7 +85,8 @@ namespace Wassup.Tests.EditMode
         private static DirectionalVolleyAbility Volley(int shots)
         {
             var a = ScriptableObject.CreateInstance<DirectionalVolleyAbility>();
-            a.shotCount = shots;
+            a.pattern = ScriptableObject.CreateInstance<ProjectilePatternData>();
+            a.pattern.shots = new ProjectileShotStep[shots];
             return a;
         }
 

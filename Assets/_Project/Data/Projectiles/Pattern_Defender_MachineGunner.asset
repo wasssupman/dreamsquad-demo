@@ -1,0 +1,43 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 307673a61f8ae4e65aac21b646eb26a2, type: 3}
+  m_Name: Pattern_Defender_MachineGunner
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.ProjectilePatternData
+  id: defender_machine_gunner
+  barrel: {fileID: 11400000, guid: 751ce360577b748b7985cb3e375a2cd1, type: 2}
+  damage: 0
+  selection: 2
+  minAngleDeg: 0
+  maxAngleDeg: 0
+  shots:
+  - directionT: 0.5
+    intervalAfterPreviousSec: 0
+  - directionT: 0.5
+    intervalAfterPreviousSec: 0.1
+  - directionT: 0.5
+    intervalAfterPreviousSec: 0.1
+  - directionT: 0.5
+    intervalAfterPreviousSec: 0.1
+  - directionT: 0.5
+    intervalAfterPreviousSec: 0.1
+  - directionT: 0.5
+    intervalAfterPreviousSec: 0.1
+  - directionT: 0.5
+    intervalAfterPreviousSec: 0.1
+  - directionT: 0.5
+    intervalAfterPreviousSec: 0.1
+  - directionT: 0.5
+    intervalAfterPreviousSec: 0.1
+  - directionT: 0.5
+    intervalAfterPreviousSec: 0.1
+  reselectPerShot: 0
+  telegraphSec: 0

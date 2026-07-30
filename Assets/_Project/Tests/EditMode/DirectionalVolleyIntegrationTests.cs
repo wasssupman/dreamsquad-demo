@@ -1,26 +1,28 @@
+using System.Collections.Generic;
 using NUnit.Framework;
 using Unity.Collections;
 using Unity.Core;
 using Unity.Entities;
+using UnityEditor;
 using Unity.Mathematics;
 using Unity.Transforms;
 using Wassup.Battle.Combat;
 using Wassup.Battle.Combat.Projectile;
+using Wassup.Battle.Combat.Projectile.Emission;
 using Wassup.Battle.Effects;
 using Wassup.Battle.Units;
 using Wassup.Data;
 
 namespace Wassup.Tests.EditMode
 {
-    // defender-directional-volley — AttackSystem 통합 게이트. 순수 함수(LaneMath/VolleyMath)는
-    // 각자의 테스트가 지키고, 여기서는 그것들이 실제 시스템 루프에 **붙어 있는지**를 본다:
-    // 레인만 보고 쏘는가, 볼리가 발수대로 나가는가, 방향은 facing 인가, 그리고 이 모든 것이
-    // facing 없는 유닛에게는 아무 일도 일어나지 않는가.
-    //
-    // 투사체 엔티티 자체는 BattleBridge(Mono) 가 만들므로 여기서는 그 직전 산출물인
-    // ProjectileSpawnRequest 를 센다 — ECS 가 책임지는 경계가 정확히 거기까지다.
+    // projectile-shot-sequence unit 2 — 진짜 producer(AttackSystem)와 consumer
+    // (ProjectileEmitterSystem)를 같은 BattleSim 순서로 돌린다. Bridge 경계 직전
+    // 산출물인 ProjectileSpawnRequest carrier를 관찰해 trigger 1회→instance 1개→
+    // N발, 실효 damage/거리 snapshot, lane·CC 독립 완주를 고정한다.
     public class DirectionalVolleyIntegrationTests
     {
+        private const float TileSize = 1.25f;
+
         private World _world;
         private EntityManager _em;
         private SimulationSystemGroup _simGroup;
@@ -34,11 +36,22 @@ namespace Wassup.Tests.EditMode
             _em = _world.EntityManager;
             _simGroup = _world.CreateSystemManaged<SimulationSystemGroup>();
             _simGroup.AddSystemToUpdateList(_world.CreateSystem<AttackSystem>());
+            _simGroup.AddSystemToUpdateList(_world.CreateSystem<ProjectileEmitterSystem>());
+            _simGroup.SortSystems();
 
             _attackEventQueue = new NativeQueue<UnitAttackVisualEvent>(Allocator.Persistent);
-            _em.AddComponentData(_em.CreateEntity(), new UnitAttackVisualEventsSingleton { queue = _attackEventQueue });
+            _em.AddComponentData(_em.CreateEntity(),
+                new UnitAttackVisualEventsSingleton { queue = _attackEventQueue });
             _ccQueue = new NativeQueue<EnemyCcEvent>(Allocator.Persistent);
-            _em.AddComponentData(_em.CreateEntity(), new EnemyCcEventsSingleton { queue = _ccQueue });
+            _em.AddComponentData(_em.CreateEntity(),
+                new EnemyCcEventsSingleton { queue = _ccQueue });
+
+            _em.AddComponentData(_em.CreateEntity(), new FlowFieldSingleton
+            {
+                tileSize = TileSize,
+                gridSize = new int2(32, 32),
+                origin = float3.zero,
+            });
         }
 
         [TearDown]
@@ -55,28 +68,77 @@ namespace Wassup.Tests.EditMode
             _simGroup.Update();
         }
 
-        // 머신건 형상: 사거리 5타일, 즉발, Directional 투사체.
-        private Entity CreateVolleyDefender(
-            float3 pos, int2? facing, int shotCount, float intervalSec, float spreadDeg, float cooldown = 1.6f)
+        private static PatternSpec Pattern(float damage, float minAngle, float maxAngle,
+                                           float[] directionTs, float[] intervals)
+        {
+            var shots = default(FixedList128Bytes<PatternShotSpec>);
+            for (int i = 0; i < directionTs.Length; i++)
+            {
+                shots.Add(new PatternShotSpec
+                {
+                    directionT = directionTs[i],
+                    intervalAfterPreviousSec = intervals[i],
+                });
+            }
+
+            return new PatternSpec
+            {
+                barrelDataIndex = 3,
+                damage = damage,
+                selection = PatternSelectionRule.None,
+                minAngleDeg = minAngle,
+                maxAngleDeg = maxAngle,
+                shots = shots,
+            };
+        }
+
+        private static PatternSpec MachineGunPattern()
+        {
+            var directions = new float[10];
+            var intervals = new float[10];
+            for (int i = 0; i < 10; i++)
+            {
+                directions[i] = 0.5f;
+                intervals[i] = i == 0 ? 0f : 0.1f;
+            }
+            return Pattern(999f, 0f, 0f, directions, intervals);
+        }
+
+        private static PatternSpec ShotgunPattern()
+            => Pattern(
+                damage: 999f,
+                minAngle: -30f,
+                maxAngle: 30f,
+                directionTs: new[] { 0.52f, 0.42f, 0.61f, 0.35f, 0.69f, 0.19f, 0.84f, 0.74f, 0.03f, 0.94f },
+                intervals: new[] { 0f, 0f, 0f, 0f, 0f, 0.025f, 0f, 0f, 0.025f, 0f });
+
+        private Entity CreateDirectionalDefender(float3 pos, int2 facing, float range,
+                                                  float cooldown, float baseDamage,
+                                                  PatternSpec? pattern = null,
+                                                  float damageMul = 1f,
+                                                  float hitDelaySec = 0f)
         {
             var e = _em.CreateEntity();
             _em.AddComponentData(e, LocalTransform.FromPosition(pos));
             _em.AddComponentData(e, new FactionTag { value = Faction.Defender });
             _em.AddComponentData(e, new Health { value = 100f, max = 100f });
             _em.AddBuffer<IncomingDamage>(e);
+            _em.AddBuffer<CcEffect>(e);
             _em.AddComponent<DefenderUnitTag>(e);
+            _em.AddComponentData(e, new DeployedFacing { value = facing });
             _em.AddComponentData(e, new AttackState
             {
-                range = 5f,
+                range = range,
                 cooldownDuration = cooldown,
                 cooldownRemaining = 0f,
                 attackTargetCount = 1,
                 targetMask = (int)Faction.Enemy,
+                hitDelaySec = hitDelaySec,
             });
             var outputs = _em.AddBuffer<AttackOutputElement>(e);
             outputs.Add(new AttackOutputElement
             {
-                value = new AttackOutput { kind = AttackOutputKind.Damage, magnitude = 8f }
+                value = new AttackOutput { kind = AttackOutputKind.Damage, magnitude = baseDamage },
             });
             _em.AddComponentData(e, new ProjectileRef
             {
@@ -85,17 +147,39 @@ namespace Wassup.Tests.EditMode
                 speed = 22f,
                 hitThreshold = 0.4f,
                 visualScale = 0.5f,
-                dataIndex = 0,
+                dataIndex = 3,
             });
-            if (facing.HasValue)
-                _em.AddComponentData(e, new DeployedFacing { value = facing.Value });
-            if (shotCount > 1)
-                _em.AddComponentData(e, new VolleyFireState
+            _em.AddComponentData(e, new ModifierStats
+            {
+                damageMul = damageMul,
+                attackSpeedMul = 1f,
+                dmgTakenMul = 1f,
+                moveSpeedMul = 1f,
+                damageVsCcMul = 1f,
+                maxHealthMul = 1f,
+            });
+
+            if (pattern.HasValue)
+            {
+                _em.AddBuffer<PatternSlot>(e);
+                _em.AddBuffer<EmitterInstance>(e);
+                var slots = _em.GetBuffer<PatternSlot>(e);
+                slots.Add(new PatternSlot
                 {
-                    shotCount = shotCount,
-                    shotIntervalSec = intervalSec,
-                    spreadAngleDeg = spreadDeg,
+                    spec = pattern.Value,
+                    template = new ProjectileSpawnRequest
+                    {
+                        movement = MovementKind.DirectionalLinear,
+                        payload = PayloadKind.PathHit,
+                        speed = 22f,
+                        hitThreshold = 0.4f,
+                        visualScale = 0.5f,
+                        dataIndex = 3,
+                        owner = e,
+                        targetFaction = ProjectileTargetFaction.Enemy,
+                    },
                 });
+            }
             return e;
         }
 
@@ -110,241 +194,8 @@ namespace Wassup.Tests.EditMode
             return e;
         }
 
-        // 이번 프레임까지 스테이징된 발사 요청(공격자 본인 + 캐리어) 전부.
-        private ProjectileSpawnRequest[] CollectRequests()
+        private Entity CreateTargetBoundDefender(float hitDelaySec = 0f)
         {
-            var q = _em.CreateEntityQuery(ComponentType.ReadOnly<ProjectileSpawnRequest>());
-            var arr = q.ToComponentDataArray<ProjectileSpawnRequest>(Allocator.Temp);
-            var result = arr.ToArray();
-            arr.Dispose();
-            return result;
-        }
-
-        private void ClearRequests()
-        {
-            // BattleBridge 드레인의 EditMode 대역: 요청을 소비해 다음 발만 세게 한다.
-            var carrierQ = _em.CreateEntityQuery(ComponentType.ReadOnly<ProjectileRequestCarrier>());
-            _em.DestroyEntity(carrierQ);
-            var reqQ = _em.CreateEntityQuery(ComponentType.ReadOnly<ProjectileSpawnRequest>());
-            _em.RemoveComponent<ProjectileSpawnRequest>(reqQ);
-        }
-
-        [Test]
-        public void LaneGate_FiresOnlyWhenEnemyStandsInTheFacingLane()
-        {
-            var defender = CreateVolleyDefender(float3.zero, new int2(1, 0), shotCount: 1, intervalSec: 0f, spreadDeg: 0f);
-            CreateEnemy(new float3(0f, 0f, 3f)); // 사거리 안이지만 +Z 레인 — facing 은 +X
-
-            Tick();
-            Assert.AreEqual(0, CollectRequests().Length, "레인 밖 적만 있으면 탄을 낭비하지 않는다");
-
-            var inLane = CreateEnemy(new float3(3f, 0f, 0f));
-            Tick();
-            var reqs = CollectRequests();
-            Assert.AreEqual(1, reqs.Length, "레인에 적이 들어오면 발사");
-            Assert.AreEqual(new float2(1f, 0f), reqs[0].direction, "타겟 방향이 아니라 facing 방향으로 나간다");
-            Assert.AreEqual(Entity.Null, reqs[0].target, "방향탄은 타겟을 싣지 않는다 — 경로에 있는 것을 맞힌다");
-            Assert.Greater(reqs[0].maxDistance, 0f);
-
-            _em.DestroyEntity(inLane);
-        }
-
-        [Test]
-        public void LaneGate_IgnoresEnemyOneTileOffTheLane()
-        {
-            CreateVolleyDefender(float3.zero, new int2(0, 1), shotCount: 1, intervalSec: 0f, spreadDeg: 0f);
-            CreateEnemy(new float3(1f, 0f, 3f)); // 폭 1타일 레인에서 한 칸 옆
-            Tick();
-            Assert.AreEqual(0, CollectRequests().Length);
-        }
-
-        [Test]
-        public void Burst_FiresEveryShotAtTheAuthoredInterval()
-        {
-            CreateVolleyDefender(float3.zero, new int2(1, 0), shotCount: 10, intervalSec: 0.1f, spreadDeg: 0f);
-            CreateEnemy(new float3(3f, 0f, 0f));
-
-            Tick();
-            Assert.AreEqual(1, CollectRequests().Length, "트리거 프레임엔 0번 발만");
-            ClearRequests();
-
-            // 0.9초 = (10-1) × 0.1 → 나머지 9발이 전부 나가야 한다.
-            int fired = 0;
-            for (int i = 0; i < 60; i++) // 60 × 0.016 = 0.96s
-            {
-                Tick();
-                fired += CollectRequests().Length;
-                ClearRequests();
-            }
-            Assert.AreEqual(9, fired, "버스트가 발수대로 완주");
-        }
-
-        [Test]
-        public void Burst_CompletesEvenAfterTheLaneEmpties()
-        {
-            CreateVolleyDefender(float3.zero, new int2(1, 0), shotCount: 5, intervalSec: 0.1f, spreadDeg: 0f);
-            var enemy = CreateEnemy(new float3(3f, 0f, 0f));
-
-            Tick();
-            Assert.AreEqual(1, CollectRequests().Length);
-            ClearRequests();
-
-            _em.DestroyEntity(enemy); // 첫 발 직후 적이 사라져도 시작된 버스트는 완주(계약 8)
-
-            int fired = 0;
-            for (int i = 0; i < 40; i++) { Tick(); fired += CollectRequests().Length; ClearRequests(); }
-            Assert.AreEqual(4, fired, "레인이 비어도 남은 발은 나간다");
-        }
-
-        [Test]
-        public void Burst_NextTriggerWaitsForTheVolleyToFinish()
-        {
-            const float dt = 0.016f;
-            CreateVolleyDefender(float3.zero, new int2(1, 0), shotCount: 10, intervalSec: 0.1f, spreadDeg: 0f, cooldown: 1.6f);
-            CreateEnemy(new float3(3f, 0f, 0f));
-
-            Tick(dt); // 트리거 프레임 = 0번 발
-            ClearRequests();
-
-            // 발사 시각을 전부 기록해 사이클을 직접 읽는다. 창을 잘라 세면 창 길이가
-            // 곧 기대값이 되어(0.1s 간격을 삼키면 한 발 더 잡힌다) 테스트가 계약이 아니라
-            // 자기 산수를 검증하게 된다.
-            float elapsed = dt;
-            float lastBurstShotAt = 0f;
-            float nextVolleyAt = -1f;
-            int seen = 0;
-            for (int i = 0; i < 220 && nextVolleyAt < 0f; i++)
-            {
-                Tick(dt);
-                elapsed += dt;
-                int n = CollectRequests().Length;
-                ClearRequests();
-                for (int s = 0; s < n; s++)
-                {
-                    seen++;
-                    if (seen <= 9) lastBurstShotAt = elapsed;   // 첫 볼리의 나머지 9발
-                    else nextVolleyAt = elapsed;                // 그 다음 발 = 두 번째 볼리의 0번
-                }
-            }
-
-            Assert.AreEqual(10, seen, "첫 볼리 9발 + 두 번째 볼리의 0번 발. 이 창에서 더 나오면 과다 발사다");
-            Assert.AreEqual(0.9f, lastBurstShotAt, 0.03f, "마지막 발은 (10-1)×0.1 = 0.9s 지점");
-            Assert.AreEqual(2.5f, nextVolleyAt, 0.03f, "다음 볼리는 쿨다운 1.6 + 버스트 0.9 = 2.5s 뒤 — 버스트와 겹치지 않는다");
-        }
-
-        [Test]
-        public void Spread_FiresEveryShotInOneFrame_FannedAroundFacing()
-        {
-            CreateVolleyDefender(float3.zero, new int2(1, 0), shotCount: 3, intervalSec: 0f, spreadDeg: 30f);
-            CreateEnemy(new float3(3f, 0f, 0f));
-
-            Tick();
-            var reqs = CollectRequests();
-            Assert.AreEqual(3, reqs.Length, "확산형은 같은 프레임에 전탄");
-
-            // 가운데 발은 facing 그대로, 바깥 두 발은 ±15° — 전부 단위 길이.
-            float maxAngle = 0f;
-            bool hasStraight = false;
-            foreach (var r in reqs)
-            {
-                Assert.AreEqual(1f, math.length(r.direction), 1e-4f);
-                float deg = math.degrees(math.acos(math.clamp(math.dot(r.direction, new float2(1f, 0f)), -1f, 1f)));
-                maxAngle = math.max(maxAngle, deg);
-                if (deg < 1e-3f) hasStraight = true;
-            }
-            Assert.IsTrue(hasStraight, "3발 중 가운데는 facing 직진");
-            Assert.AreEqual(15f, maxAngle, 1e-3f, "바깥 발은 총 확산각의 절반");
-        }
-
-        [Test]
-        public void Spread_ShotgunParams_FansAllFiveShotsBySignedAngle()
-        {
-            // shotgun-spread-defender unit 0 — 실증 유닛 파라미터(5발/90°) 그대로의 정확 부채꼴.
-            // 3발/30° 테스트는 구조(가운데 직진 + 최대각)만 보고, 여기서는 5발의 부호 각
-            // 전체(−45/−22.5/0/+22.5/+45)를 고정한다 — 균등 분배 산식이 홀수 발수 밖에서도
-            // 깨지지 않는지가 계약이다.
-            CreateVolleyDefender(float3.zero, new int2(1, 0), shotCount: 5, intervalSec: 0f, spreadDeg: 90f);
-            CreateEnemy(new float3(2f, 0f, 0f));
-
-            Tick();
-            var reqs = CollectRequests();
-            Assert.AreEqual(5, reqs.Length, "동프레임 전탄");
-
-            var angles = new System.Collections.Generic.List<float>();
-            foreach (var r in reqs)
-            {
-                Assert.AreEqual(1f, math.length(r.direction), 1e-4f);
-                angles.Add(math.degrees(math.atan2(r.direction.y, r.direction.x)));
-            }
-            angles.Sort(); // 요청 수집 순서는 계약이 아니다 — 각의 집합만 고정한다.
-            float[] expected = { -45f, -22.5f, 0f, 22.5f, 45f };
-            for (int i = 0; i < expected.Length; i++)
-                Assert.AreEqual(expected[i], angles[i], 1e-2f, $"{i}번째(정렬) 각");
-        }
-
-        [Test]
-        public void Spread_SameFrameVolley_DoesNotExtendTheCooldown()
-        {
-            // interval 0 → CooldownAfterVolley 연장 0 이 통합 구간에서도 성립하는지.
-            // 버스트 테스트(쿨다운 1.6 + 0.9 = 2.5s)의 대칭 케이스 — 여기선 정확히 1.6s.
-            const float dt = 0.016f;
-            CreateVolleyDefender(float3.zero, new int2(1, 0), shotCount: 5, intervalSec: 0f, spreadDeg: 90f, cooldown: 1.6f);
-            CreateEnemy(new float3(2f, 0f, 0f));
-
-            Tick(dt);
-            Assert.AreEqual(5, CollectRequests().Length, "트리거 프레임에 전탄");
-            ClearRequests();
-
-            float elapsed = dt;
-            float nextVolleyAt = -1f;
-            for (int i = 0; i < 150 && nextVolleyAt < 0f; i++)
-            {
-                Tick(dt);
-                elapsed += dt;
-                if (CollectRequests().Length > 0) nextVolleyAt = elapsed;
-                ClearRequests();
-            }
-            Assert.AreEqual(1.6f, nextVolleyAt, 0.03f, "동프레임 볼리는 쿨다운만 기다린다 — 버스트 연장 없음");
-        }
-
-        [Test]
-        public void BurstAndSpread_Combined_FanEachTimedShotByItsIndex()
-        {
-            // 버스트 틱의 발 인덱스 산식(shotCount − 남은수)은 **오직 이 조합에서만** 의미를
-            // 갖는다 — spread 0 이면 SpreadDirection 이 baseDir 를 그대로 돌려주기 때문에
-            // 인덱스가 틀려도 버스트 단독 테스트로는 절대 드러나지 않는다.
-            const float dt = 0.016f;
-            CreateVolleyDefender(float3.zero, new int2(1, 0), shotCount: 3, intervalSec: 0.1f, spreadDeg: 30f);
-            CreateEnemy(new float3(3f, 0f, 0f));
-
-            var angles = new System.Collections.Generic.List<float>();
-            void Harvest()
-            {
-                foreach (var r in CollectRequests())
-                {
-                    // facing(+X) 기준 부호 있는 각 — 좌/우를 구분해야 인덱스 순서가 보인다.
-                    angles.Add(math.degrees(math.atan2(r.direction.y, r.direction.x)));
-                }
-                ClearRequests();
-            }
-
-            Tick(dt);
-            Harvest();
-            Assert.AreEqual(1, angles.Count, "트리거 프레임엔 0번 발만");
-
-            for (int i = 0; i < 20 && angles.Count < 3; i++) { Tick(dt); Harvest(); }
-
-            Assert.AreEqual(3, angles.Count, "시간차로 3발 전부");
-            // 0/1/2 번 발이 각각 −15°/0°/+15° — 인덱스가 어긋나면 각이 뒤섞이거나 중복된다.
-            Assert.AreEqual(-15f, angles[0], 1e-2f, "0번 발");
-            Assert.AreEqual(0f, angles[1], 1e-2f, "1번 발 = 가운데");
-            Assert.AreEqual(15f, angles[2], 1e-2f, "2번 발");
-        }
-
-        [Test]
-        public void NonFacingDefender_KeepsLegacyTargetedFire()
-        {
-            // facing 없는 유닛은 이 spec 이 없던 때와 똑같이 동작해야 한다 — 회귀 가드.
             var e = _em.CreateEntity();
             _em.AddComponentData(e, LocalTransform.FromPosition(float3.zero));
             _em.AddComponentData(e, new FactionTag { value = Faction.Defender });
@@ -353,23 +204,297 @@ namespace Wassup.Tests.EditMode
             _em.AddComponent<DefenderUnitTag>(e);
             _em.AddComponentData(e, new AttackState
             {
-                range = 5f, cooldownDuration = 1f, cooldownRemaining = 0f,
-                attackTargetCount = 1, targetMask = (int)Faction.Enemy,
+                range = 5f,
+                cooldownDuration = 1f,
+                targetMask = (int)Faction.Enemy,
+                attackTargetCount = 1,
+                hitDelaySec = hitDelaySec,
             });
             var outputs = _em.AddBuffer<AttackOutputElement>(e);
-            outputs.Add(new AttackOutputElement { value = new AttackOutput { kind = AttackOutputKind.Damage, magnitude = 8f } });
+            outputs.Add(new AttackOutputElement
+            {
+                value = new AttackOutput { kind = AttackOutputKind.Damage, magnitude = 8f },
+            });
             _em.AddComponentData(e, new ProjectileRef
             {
-                movement = MovementKind.HomingToEntity, payload = PayloadKind.SingleSplash,
-                speed = 12f, hitThreshold = 0.35f, visualScale = 0.9f, dataIndex = 0,
+                movement = MovementKind.HomingToEntity,
+                payload = PayloadKind.SingleSplash,
+                speed = 12f,
+                hitThreshold = 0.35f,
+                visualScale = 0.9f,
+                dataIndex = 0,
             });
-            var offLane = CreateEnemy(new float3(1f, 0f, 3f)); // 레인 개념이 없으니 이것도 사거리 안이면 쏜다
+            return e;
+        }
+
+        private ProjectileSpawnRequest[] CollectRequests()
+        {
+            using var query = _em.CreateEntityQuery(ComponentType.ReadOnly<ProjectileSpawnRequest>());
+            using var requests = query.ToComponentDataArray<ProjectileSpawnRequest>(Allocator.Temp);
+            return requests.ToArray();
+        }
+
+        private void ClearRequests()
+        {
+            using (var carriers = _em.CreateEntityQuery(ComponentType.ReadOnly<ProjectileRequestCarrier>()))
+                _em.DestroyEntity(carriers);
+            using (var requests = _em.CreateEntityQuery(ComponentType.ReadOnly<ProjectileSpawnRequest>()))
+                _em.RemoveComponent<ProjectileSpawnRequest>(requests);
+        }
+
+        [Test]
+        public void LaneGate_FiresOnlyWhenEnemyStandsInTheFacingLane()
+        {
+            CreateDirectionalDefender(float3.zero, new int2(1, 0), 5f, 1f, 8f);
+            CreateEnemy(new float3(0f, 0f, 3f));
 
             Tick();
-            var reqs = CollectRequests();
-            Assert.AreEqual(1, reqs.Length);
-            Assert.AreEqual(MovementKind.HomingToEntity, reqs[0].movement);
-            Assert.AreEqual(offLane, reqs[0].target, "기존 유닛은 여전히 최근접 타겟을 추적한다");
+            Assert.AreEqual(0, CollectRequests().Length);
+
+            CreateEnemy(new float3(3f, 0f, 0f));
+            Tick();
+            var requests = CollectRequests();
+            Assert.AreEqual(1, requests.Length);
+            Assert.AreEqual(new float2(1f, 0f), requests[0].direction);
+            Assert.AreEqual(Entity.Null, requests[0].target);
+        }
+
+        [Test]
+        public void AuthoredDefenderPatterns_MatchShotgunAndMachineGunContracts()
+        {
+            var shotgun = AssetDatabase.LoadAssetAtPath<DefenderUnitData>(
+                "Assets/_Project/Data/Defenders/Defender_Shotgunner.asset");
+            var shotgunAbility = shotgun.GetAbility<DirectionalVolleyAbility>();
+            Assert.IsNotNull(shotgunAbility?.pattern);
+            Assert.AreSame(shotgun.projectile, shotgunAbility.pattern.barrel);
+            Assert.IsTrue(shotgunAbility.pattern.TryToSpec(3, out var shotgunSpec));
+            Assert.AreEqual(10, shotgunSpec.shots.Length);
+            Assert.AreEqual(-30f, shotgunSpec.minAngleDeg);
+            Assert.AreEqual(30f, shotgunSpec.maxAngleDeg);
+            Assert.AreEqual(0.05f, EmitterTick.TotalDuration(shotgunSpec), 1e-5f);
+            Assert.AreEqual(4f, shotgun.attackRange);
+            Assert.AreEqual(6f, shotgun.outputs[0].magnitude);
+            Assert.AreEqual(14f, shotgun.projectile.speed);
+            float[] expectedDirectionTs = { 0.52f, 0.42f, 0.61f, 0.35f, 0.69f, 0.19f, 0.84f, 0.74f, 0.03f, 0.94f };
+            float[] expectedIntervals = { 0f, 0f, 0f, 0f, 0f, 0.025f, 0f, 0f, 0.025f, 0f };
+            for (int i = 0; i < expectedDirectionTs.Length; i++)
+            {
+                Assert.AreEqual(expectedDirectionTs[i], shotgunSpec.shots[i].directionT, 1e-5f);
+                Assert.AreEqual(expectedIntervals[i], shotgunSpec.shots[i].intervalAfterPreviousSec, 1e-5f);
+            }
+
+            var machineGun = AssetDatabase.LoadAssetAtPath<DefenderUnitData>(
+                "Assets/_Project/Data/Defenders/Defender_MachineGunner.asset");
+            var machineAbility = machineGun.GetAbility<DirectionalVolleyAbility>();
+            Assert.IsNotNull(machineAbility?.pattern);
+            Assert.AreSame(machineGun.projectile, machineAbility.pattern.barrel);
+            Assert.IsTrue(machineAbility.pattern.TryToSpec(4, out var machineSpec));
+            Assert.AreEqual(10, machineSpec.shots.Length);
+            Assert.AreEqual(0.9f, EmitterTick.TotalDuration(machineSpec), 1e-5f);
+            Assert.AreEqual(0f, machineGun.hitDelaySec,
+                "머신거너는 START와 첫 탄이 같은 프레임인 즉시 방향 공격");
+            for (int i = 0; i < machineSpec.shots.Length; i++)
+                Assert.AreEqual(0.5f, machineSpec.shots[i].directionT);
+
+            var bombMan = AssetDatabase.LoadAssetAtPath<DefenderUnitData>(
+                "Assets/_Project/Data/Defenders/Defender_BombMan.asset");
+            Assert.AreEqual(0f, bombMan.hitDelaySec,
+                "폭탄맨은 target RESOLVE가 아니라 별도 blind-fire 분기를 즉시 사용");
+        }
+
+        [Test]
+        public void Shotgun_TriggerCreatesTenIrregularSpreadShots_WithDamageAndFourTileDistance()
+        {
+            var defender = CreateDirectionalDefender(
+                float3.zero, new int2(1, 0), range: 4f, cooldown: 2.2f,
+                baseDamage: 4f, pattern: ShotgunPattern(), damageMul: 1.5f);
+            CreateEnemy(new float3(4f * TileSize, 0f, 0f));
+
+            var angles = new List<float>();
+            var clusterSizes = new List<int>();
+            int fired = 0;
+            for (int frame = 0; frame < 60 && fired < 10; frame++)
+            {
+                Tick(0.01f);
+                var requests = CollectRequests();
+                if (requests.Length > 0) clusterSizes.Add(requests.Length);
+                foreach (var request in requests)
+                {
+                    fired++;
+                    angles.Add(math.degrees(math.atan2(request.direction.y, request.direction.x)));
+                    Assert.AreEqual(6f, request.damage, 1e-5f,
+                        "pattern authored damage가 아니라 trigger 시점 실효 damage를 전탄 snapshot");
+                    Assert.AreEqual(4f * TileSize, request.maxDistance, 1e-5f,
+                        "샷건 개별 탄환 lifecycle은 4타일 물리 거리");
+                    Assert.AreEqual(float3.zero, request.origin);
+                    Assert.AreEqual(defender, request.owner);
+                }
+                ClearRequests();
+            }
+
+            Assert.AreEqual(10, fired);
+            CollectionAssert.AreEqual(new[] { 5, 3, 2 }, clusterSizes, "한 번의 발사 안에서 5-3-2 마이크로 클러스터");
+            angles.Sort();
+            float[] expected = { -28.2f, -18.6f, -9f, -4.8f, 1.2f, 6.6f, 11.4f, 14.4f, 20.4f, 26.4f };
+            CollectionAssert.AreEqual(expected, angles, new FloatComparer(0.02f),
+                "균등 분할이 아닌 중심 밀집+불규칙 외곽 산개");
+            Assert.AreEqual(0, _em.GetBuffer<EmitterInstance>(defender).Length);
+        }
+
+        [Test]
+        public void MachineGun_FiresTenAtPointOneSecondIntervals_AndDefersNextTrigger()
+        {
+            const float dt = 0.01f;
+            CreateDirectionalDefender(float3.zero, new int2(1, 0), 4f, 1.6f, 5f, MachineGunPattern());
+            CreateEnemy(new float3(3f, 0f, 0f));
+
+            var fireTimes = new List<float>();
+            float elapsed = 0f;
+            while (elapsed < 2.7f && fireTimes.Count < 11)
+            {
+                Tick(dt);
+                elapsed += dt;
+                int count = CollectRequests().Length;
+                for (int i = 0; i < count; i++) fireTimes.Add(elapsed);
+                ClearRequests();
+            }
+
+            Assert.AreEqual(11, fireTimes.Count, "첫 10발과 다음 trigger의 첫 탄");
+            for (int i = 2; i < 10; i++)
+                Assert.AreEqual(0.1f, fireTimes[i] - fireTimes[i - 1], 0.011f);
+            Assert.AreEqual(2.5f, fireTimes[10], 0.03f,
+                "1.6초 기본 cooldown + sequence 0.9초 뒤 다음 trigger");
+        }
+
+        [Test]
+        public void ActiveSequence_CompletesAfterLaneEmptiesAndHostBecomesActionLocked()
+        {
+            var defender = CreateDirectionalDefender(
+                float3.zero, new int2(1, 0), 4f, 2f, 5f, MachineGunPattern());
+            var enemy = CreateEnemy(new float3(3f, 0f, 0f));
+
+            Tick(0.01f);
+            Assert.AreEqual(1, CollectRequests().Length);
+            ClearRequests();
+
+            _em.DestroyEntity(enemy);
+            _em.GetBuffer<CcEffect>(defender).Add(new CcEffect
+            {
+                kind = CcKind.Sleep,
+                remainingTime = 10f,
+            });
+
+            int remainingShots = 0;
+            for (int i = 0; i < 120; i++)
+            {
+                Tick(0.01f);
+                remainingShots += CollectRequests().Length;
+                ClearRequests();
+            }
+
+            Assert.AreEqual(9, remainingShots, "시작된 sequence는 lane/CC와 무관하게 전탄 완주");
+            Assert.AreEqual(0, _em.GetBuffer<EmitterInstance>(defender).Length);
+        }
+
+        [TestCase(false, TestName = "StartedShotgun_FiresAfterWitnessMovesOutOfLane")]
+        [TestCase(true, TestName = "StartedShotgun_FiresAfterWitnessDies")]
+        public void StartedShotgun_FiresAfterWitnessIsLostDuringWindup(bool killWitness)
+        {
+            var defender = CreateDirectionalDefender(
+                float3.zero, new int2(1, 0), range: 4f, cooldown: 2.2f,
+                baseDamage: 6f, pattern: ShotgunPattern(), hitDelaySec: 0.03f);
+            var witness = CreateEnemy(new float3(3f, 0f, 0f));
+
+            Tick(0.01f);
+            Assert.AreEqual(1, _attackEventQueue.Count, "START 모션은 한 번만 발생");
+            Assert.AreEqual(0, CollectRequests().Length, "wind-up 중에는 아직 발사하지 않음");
+
+            if (killWitness)
+            {
+                _em.SetComponentData(witness, new Health { value = 0f, max = 500f });
+                _em.AddComponent<DeadTag>(witness);
+            }
+            else
+            {
+                _em.SetComponentData(witness, LocalTransform.FromPosition(new float3(0f, 0f, 3f)));
+            }
+
+            Tick(0.02f);
+            Assert.AreEqual(0, CollectRequests().Length, "남은 wind-up 동안에는 발사하지 않음");
+            Tick(0.011f);
+
+            var requests = CollectRequests();
+            Assert.AreEqual(5, requests.Length,
+                "START가 성사된 샷건은 witness 소실 후에도 첫 5발 클러스터를 발사");
+            for (int i = 0; i < requests.Length; i++)
+            {
+                Assert.AreEqual(Entity.Null, requests[i].target);
+                Assert.AreEqual(new float3(0f), requests[i].origin);
+                Assert.AreEqual(4f * TileSize, requests[i].maxDistance, 1e-5f);
+            }
+            Assert.AreEqual(1, _em.GetBuffer<EmitterInstance>(defender).Length,
+                "나머지 5발도 동일 trigger instance에서 계속 진행");
+        }
+
+        [Test]
+        public void PatternAttack_PushesOneInstancePerTrigger_BeforeEmitterConsumesIt()
+        {
+            var defender = CreateDirectionalDefender(
+                float3.zero, new int2(1, 0), 4f, 2f, 5f, MachineGunPattern());
+            CreateEnemy(new float3(3f, 0f, 0f));
+
+            Tick(0.01f);
+
+            Assert.AreEqual(1, CollectRequests().Length, "trigger frame에는 첫 탄 carrier");
+            Assert.IsFalse(_em.HasComponent<ProjectileSpawnRequest>(defender),
+                "pattern defender 본체에 direct request를 더하면 한 trigger가 이중 발사된다");
+            using (var carriers = _em.CreateEntityQuery(ComponentType.ReadOnly<ProjectileRequestCarrier>()))
+                Assert.AreEqual(1, carriers.CalculateEntityCount());
+            Assert.AreEqual(1, _em.GetBuffer<EmitterInstance>(defender).Length,
+                "첫 탄 소비 뒤에도 같은 trigger의 단일 진행 instance만 남는다");
+        }
+
+        [Test]
+        public void NonFacingDefender_KeepsTargetBoundProjectilePath()
+        {
+            CreateTargetBoundDefender();
+            var enemy = CreateEnemy(new float3(1f, 0f, 3f));
+
+            Tick();
+            var requests = CollectRequests();
+            Assert.AreEqual(1, requests.Length);
+            Assert.AreEqual(MovementKind.HomingToEntity, requests[0].movement);
+            Assert.AreEqual(enemy, requests[0].target);
+        }
+
+        [Test]
+        public void NonFacingTargetBoundProjectile_StillLapsesWhenTargetDiesDuringWindup()
+        {
+            var defender = CreateTargetBoundDefender(hitDelaySec: 0.03f);
+            var enemy = CreateEnemy(new float3(1f, 0f, 3f));
+
+            Tick(0.01f);
+            Assert.AreEqual(1, _attackEventQueue.Count, "target-bound 공격도 START 모션은 발생");
+            Assert.AreEqual(0, CollectRequests().Length);
+
+            _em.SetComponentData(enemy, new Health { value = 0f, max = 500f });
+            _em.AddComponent<DeadTag>(enemy);
+            Tick(0.02f);
+            Tick(0.011f);
+
+            Assert.AreEqual(0, CollectRequests().Length,
+                "호밍/근접의 RESOLVE 타깃 재판정 계약은 방향탄 보정으로 바뀌지 않음");
+            Assert.AreEqual(0f, _em.GetComponentData<AttackState>(defender).hitDelayRemaining, 1e-5f);
+        }
+
+        private sealed class FloatComparer : System.Collections.IComparer
+        {
+            private readonly float _epsilon;
+
+            public FloatComparer(float epsilon) => _epsilon = epsilon;
+
+            public int Compare(object x, object y)
+                => math.abs((float)x - (float)y) <= _epsilon ? 0 : ((float)x).CompareTo((float)y);
         }
     }
 }

@@ -49,5 +49,16 @@ namespace Wassup.Battle.Combat.Projectile.Emission
         }
 
         public static bool IsComplete(in EmitterRuntime rt) => rt.burstRemaining <= 0;
+
+        // 한 trigger의 첫 탄부터 마지막 탄까지 걸리는 시간. 첫 step의 interval은
+        // 계약상 무시되고, 이후 step의 "직전 탄 이후" 값만 합산한다. defender
+        // AttackSystem이 다음 cooldown을 마지막 탄 뒤로 미루는 데 쓴다.
+        public static float TotalDuration(in PatternSpec spec)
+        {
+            float duration = 0f;
+            for (int i = 1; i < spec.shots.Length; i++)
+                duration += Unity.Mathematics.math.max(0f, spec.shots[i].intervalAfterPreviousSec);
+            return duration;
+        }
     }
 }

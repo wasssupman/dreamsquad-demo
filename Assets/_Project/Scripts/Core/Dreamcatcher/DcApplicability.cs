@@ -16,7 +16,7 @@ namespace Wassup.Core
 
     // host 의 실제 공격 모델. SO 선언이 아니라 런타임 컴포넌트로 판별한다
     // (BombLauncherState → BombThrow / HazardCastAbility → HazardCast /
-    // DeployedFacing+VolleyFireState → FacingVolley / 그 외 Standard).
+    // defender PatternSlot → FacingVolley / 그 외 Standard).
     public enum DcHostArchetype { Standard, FacingVolley, BombThrow, HazardCast }
 
     // host 가 실제로 타는 발사 경로. ProjectileData.flightMode 를 그대로 쓰면

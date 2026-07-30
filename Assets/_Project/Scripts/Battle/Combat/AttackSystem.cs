@@ -4,6 +4,7 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 using Wassup.Battle.Combat.Projectile;
+using Wassup.Battle.Combat.Projectile.Emission;
 using Wassup.Battle.Effects;
 using Wassup.Battle.Movement;
 using Wassup.Battle.Units;
@@ -62,8 +63,10 @@ namespace Wassup.Battle.Combat
             // defender-directional-volley unit 3 — 배치 시 확정된 영구 공격 방향(Units
             // 소유, 읽기 전용). 보유 유닛은 최근접 타겟 선택 대신 방향 레인 게이트로 발사.
             var facingLookup = SystemAPI.GetComponentLookup<Wassup.Battle.Units.DeployedFacing>(isReadOnly: true);
-            // defender-directional-volley unit 4 — 다연발 설정/진행 상태(Combat 소유 RW).
-            var volleyLookup = SystemAPI.GetComponentLookup<VolleyFireState>(isReadOnly: false);
+            // projectile-shot-sequence unit 2 — 방향 pattern 원본과 진행 인스턴스.
+            // 둘 다 Combat 소유이며 Bridge가 스폰 시 사전 부착한다.
+            var patternSlotLookup = SystemAPI.GetBufferLookup<PatternSlot>(isReadOnly: false);
+            var emitterInstanceLookup = SystemAPI.GetBufferLookup<EmitterInstance>(isReadOnly: false);
             // bomb-thrower-defender unit 4 — 폭탄맨 발사 상태(RW: rng advance). volleyLookup 선례.
             var bombLauncherLookup = SystemAPI.GetComponentLookup<BombLauncherState>(isReadOnly: false);
             var blockingHazardCellsLookup = SystemAPI.GetBufferLookup<BlockingHazardCellsBuffer>(isReadOnly: true);
@@ -383,6 +386,12 @@ namespace Wassup.Battle.Combat
                 // 위치를 바라보면 곧 facing 방향을 바라보는 것과 같다.
                 bool hasFacing = facingLookup.HasComponent(attackerEntity);
                 int2 facing = hasFacing ? facingLookup[attackerEntity].value : default;
+                // projectile-shot-sequence unit 2 — facing Direction 탄은 START 때 레인
+                // witness가 발사 허가만 한다. 이후 궤적은 targetless이므로 wind-up 중
+                // witness가 죽거나 레인 밖으로 나가도 RESOLVE 자체를 취소하면 안 된다.
+                bool isFacingDirectional = hasFacing
+                    && projectileRefLookup.HasComponent(attackerEntity)
+                    && projectileRefLookup[attackerEntity].movement == MovementKind.DirectionalLinear;
                 Entity laneWitness = Entity.Null;
                 float3 laneWitnessPos = default;
                 float laneBestSq = float.MaxValue;
@@ -580,8 +589,8 @@ namespace Wassup.Battle.Combat
                 // defender-directional-volley unit 3 — facing 최종 오버라이드. 방향 고정
                 // 유닛에게는 레인 밖 적이 존재하지 않는 것과 같다 — 최근접/우선순위/
                 // frontmost/aggro 가 무엇을 골랐든 레인 witness 로 덮는다(레인이 곧
-                // 타겟팅 규칙 전부). 레인이 비었으면 발사하지 않는다(탄 낭비 방지):
-                // Null 이면 아래 START/RESOLVE 게이트가 그대로 hold-fire.
+                // 타겟팅 규칙 전부). 레인이 비었으면 새 START는 하지 않는다(탄 낭비 방지).
+                // 단 이미 START된 targetless Direction 탄은 아래 RESOLVE 예외로 완주한다.
                 if (hasFacing)
                 {
                     bestTarget = laneWitness;
@@ -592,46 +601,9 @@ namespace Wassup.Battle.Combat
                     fmChosenIsPriority = false;
                 }
 
-                // ── BURST TICK ── defender-directional-volley unit 4.
-                // 시작된 버스트는 완주한다(계약 8): 레인이 비어도, 쿨다운/타겟 게이트와
-                // 무관하게 남은 발을 쏜다. 공격자가 죽으면 컴포넌트째 사라져 자연 중단.
-                // **CC 게이트(actionLocked)보다 위인 것도 의도다** — 볼리는 한 번의 공격이고,
-                // combat-action-lock 계약("CC 는 START 를 막지만 시작된 스윙의 RESOLVE 는
-                // 완료")과 같은 결이다. 잠든 유닛이 남은 발을 쏘는 건 버그가 아니다
-                // (2026-07-17 사용자 결정). 아래로 내리지 말 것.
-                // START/RESOLVE 앞에 두는 이유 — 트리거 프레임엔 burstRemaining 이 아직
-                // 0 이라 no-op 이고, 그래야 1번 발과 2번 발 간격이 정확히 interval 이다.
-                if (volleyLookup.HasComponent(attackerEntity))
-                {
-                    var volley = volleyLookup[attackerEntity];
-                    if (volley.burstRemaining > 0)
-                    {
-                        int owed = volley.burstRemaining;
-                        int remaining = owed;
-                        float timer = volley.burstTimer;
-                        int fired = VolleyMath.TickBurst(dt, ref remaining, ref timer, volley.shotIntervalSec);
-                        volley.burstRemaining = remaining;
-                        volley.burstTimer = timer;
-                        volleyLookup[attackerEntity] = volley;
-
-                        int volleyShots = math.max(1, volley.shotCount);
-                        for (int f = 0; f < fired; f++)
-                        {
-                            // 발 인덱스 = 이미 쏜 수. 0 번은 트리거 프레임이 쐈으므로
-                            // 여기서는 항상 1 이상 — 확산각 분배가 트리거 발과 이어진다.
-                            int shotIndex = volleyShots - owed + f;
-                            var req = volley.template;
-                            req.direction = VolleyMath.SpreadDirection(
-                                volley.template.direction, shotIndex, volleyShots, volley.spreadAngleDeg);
-                            var burstCarrier = ecb.CreateEntity();
-                            ecb.AddComponent(burstCarrier, req);
-                            ecb.AddComponent<ProjectileRequestCarrier>(burstCarrier);
-                        }
-                    }
-                }
-
                 // attack-hit-delay — fire 를 START(공격 시작) / RESOLVE(타격 판정) 로 분리.
-                // 지연 중이면 tick → 만료한 프레임에 RESOLVE(재판정된 bestTarget). 아니면 쿨다운+타겟 조건 시 START.
+                // 지연 중이면 tick → 만료한 프레임에 RESOLVE(재판정된 bestTarget, Direction은
+                // START 허가 유지). 아니면 쿨다운+타겟 조건 시 START.
                 bool doResolve = false;
                 if (attack.ValueRO.hitDelayRemaining > 0f)
                 {
@@ -713,8 +685,16 @@ namespace Wassup.Battle.Combat
                     }
                 }
 
-                // ── RESOLVE ── 타격 판정/적용 (재판정된 bestTarget). 데미지/투사체/넉백.
-                if (doResolve && bestTarget != Entity.Null)
+                // ── RESOLVE ── 일반 공격은 재판정된 bestTarget이 필요하다. 단 START가
+                // 성사된 facing Direction 탄은 targetless 궤적이므로 witness 소실 뒤에도
+                // 고정 facing으로 발사한다. 로그/방향 보조점은 레인 끝을 사용한다.
+                bool resolveFacingDirectionalWithoutWitness =
+                    doResolve && bestTarget == Entity.Null && isFacingDirectional;
+                if (resolveFacingDirectionalWithoutWitness)
+                {
+                    bestTargetPos = atkPos + new float3(facing.x, 0f, facing.y) * (tileRange * tileSize);
+                }
+                if (doResolve && (bestTarget != Entity.Null || resolveFacingDirectionalWithoutWitness))
                 {
                     float damageMul = modifierStatsLookup.HasComponent(attackerEntity)
                         ? modifierStatsLookup[attackerEntity].damageMul
@@ -747,7 +727,9 @@ namespace Wassup.Battle.Combat
                     // ownership stays the loop). Carried on the projectile via heavyDamageMul;
                     // consumed at hit-site + melee arm in unit 2 (inert until then).
                     float heavyMul = 1f;
-                    if (defenderTagLookup.HasComponent(attackerEntity) && dcSlotLookup.HasBuffer(attackerEntity))
+                    if (bestTarget != Entity.Null
+                        && defenderTagLookup.HasComponent(attackerEntity)
+                        && dcSlotLookup.HasBuffer(attackerEntity))
                     {
                         var heavySlots = dcSlotLookup[attackerEntity];
                         for (int hi = 0; hi < heavySlots.Length; hi++)
@@ -814,7 +796,10 @@ namespace Wassup.Battle.Combat
                                     float amount = o.magnitude * damageMul;
                                     // shatter_hymn — 발사 시점 의도 대상(bestTarget)이 CC 상태면
                                     // 배율(투사체 bake 경로도 포함 — 궁수 콤보 살림, critic HIGH).
-                                    if (attackerVsCc != 1f && ccActionLookup.HasBuffer(bestTarget) && AnyActiveCc(ccActionLookup[bestTarget]))
+                                    if (bestTarget != Entity.Null
+                                        && attackerVsCc != 1f
+                                        && ccActionLookup.HasBuffer(bestTarget)
+                                        && AnyActiveCc(ccActionLookup[bestTarget]))
                                         amount *= attackerVsCc;
                                     o.magnitude = amount;
                                     projectileDamage += amount;
@@ -897,48 +882,61 @@ namespace Wassup.Battle.Combat
                                     heavyDamageMul = heavyMul,
                                 };
 
-                                // defender-directional-volley unit 4 — 발수/확산/간격.
-                                // VolleyFireState 가 없으면(적·단발 유닛) 현행 그대로 1발.
-                                bool hasVolley = volleyLookup.HasComponent(attackerEntity);
-                                var volleyCfg = hasVolley ? volleyLookup[attackerEntity] : default;
-                                int shots = hasVolley ? math.max(1, volleyCfg.shotCount) : 1;
-                                float spreadDeg = hasVolley ? volleyCfg.spreadAngleDeg : 0f;
-                                float interval = hasVolley ? volleyCfg.shotIntervalSec : 0f;
-
-                                // 0 번 발은 언제나 지금, 공격자 본인 request 로. 1발 유닛의
-                                // 경로가 다연발 도입 전과 바이트 동일하게 남는다.
-                                var firstShot = template;
-                                firstShot.direction = VolleyMath.SpreadDirection(fireDir, 0, shots, spreadDeg);
-                                ecb.AddComponent(attackerEntity, firstShot);
-
-                                if (shots > 1)
+                                // projectile-shot-sequence unit 2 — pattern defender는
+                                // 직접 request를 만들지 않고 한 trigger를 instance 하나로
+                                // 번역한다. emitter가 이 시스템 뒤에 돌아 첫 탄도 같은 sim
+                                // frame에 carrier로 만든다.
+                                bool pushedPattern = false;
+                                if (patternSlotLookup.HasBuffer(attackerEntity) &&
+                                    emitterInstanceLookup.HasBuffer(attackerEntity))
                                 {
-                                    if (interval <= 0f)
+                                    var slots = patternSlotLookup[attackerEntity];
+                                    if (slots.Length > 0 && slots[0].spec.shots.Length > 0)
                                     {
-                                        // 확산형: 나머지 발도 같은 프레임에. request 는
-                                        // 엔티티당 1개뿐이라 발마다 캐리어가 필요하다.
-                                        for (int s = 1; s < shots; s++)
+                                        var slot = slots[0];
+                                        var spec = slot.spec;
+                                        // defender damage는 output/modifier가 결정한다. pattern
+                                        // SO의 damage는 boss/skill 경로용이며 여기서는 trigger
+                                        // 시점 실효값으로 덮어 전탄에 스냅샷한다.
+                                        spec.damage = projectileDamage;
+
+                                        // barrel 기반 template이 가진 effect/targetFaction은
+                                        // 보존하고, 이번 공격에만 결정되는 값은 RESOLVE에서
+                                        // 스냅샷한다.
+                                        var patternTemplate = slot.template;
+                                        patternTemplate.origin = template.origin;
+                                        patternTemplate.direction = template.direction;
+                                        patternTemplate.maxDistance = template.maxDistance;
+                                        patternTemplate.damage = projectileDamage;
+                                        patternTemplate.bounceRemaining = template.bounceRemaining;
+                                        patternTemplate.bounceTileRange = template.bounceTileRange;
+                                        patternTemplate.bounceDamageMul = template.bounceDamageMul;
+                                        patternTemplate.owner = attackerEntity;
+                                        patternTemplate.priorityTarget = template.priorityTarget;
+                                        patternTemplate.priorityDamageMul = template.priorityDamageMul;
+                                        patternTemplate.heavyDamageMul = template.heavyDamageMul;
+
+                                        var instance = new EmitterInstance
                                         {
-                                            var spreadReq = template;
-                                            spreadReq.direction = VolleyMath.SpreadDirection(fireDir, s, shots, spreadDeg);
-                                            var spreadCarrier = ecb.CreateEntity();
-                                            ecb.AddComponent(spreadCarrier, spreadReq);
-                                            ecb.AddComponent<ProjectileRequestCarrier>(spreadCarrier);
-                                        }
-                                    }
-                                    else
-                                    {
-                                        // 버스트형: 나머지는 틱이 쏜다. 템플릿을 통째로
-                                        // 스냅샷해 남은 발이 0 번 발과 동일한 payload 를 갖게.
-                                        volleyCfg.burstRemaining = shots - 1;
-                                        volleyCfg.burstTimer = interval;
-                                        volleyCfg.template = template;
-                                        volleyLookup[attackerEntity] = volleyCfg;
+                                            spec = spec,
+                                            template = patternTemplate,
+                                            lockedTarget = Entity.Null,
+                                        };
+                                        EmitterTick.Begin(ref instance.runtime, spec, slot.fireCountBase);
+                                        emitterInstanceLookup[attackerEntity].Add(instance);
+
+                                        slot.fireCountBase += spec.shots.Length;
+                                        slots[0] = slot;
                                         // 다음 트리거는 버스트가 끝난 뒤부터 기다린다(계약 8).
-                                        attack.ValueRW.cooldownRemaining = VolleyMath.CooldownAfterVolley(
-                                            attack.ValueRO.cooldownRemaining, shots, interval);
+                                        attack.ValueRW.cooldownRemaining += EmitterTick.TotalDuration(spec);
+                                        pushedPattern = true;
                                     }
                                 }
+
+                                // pattern 없는 방향 단발(적 또는 legacy authoring)은 기존
+                                // 요청 경로를 유지한다.
+                                if (!pushedPattern)
+                                    ecb.AddComponent(attackerEntity, template);
                             }
                             else
                             {
@@ -1272,7 +1270,9 @@ namespace Wassup.Battle.Combat
                     }
 
                     // [Defender only] Knockback CC — enemies do not carry DefenderCcData. (RESOLVE 시점)
-                    if (ccWriter.HasValue && defenderCcLookup.HasComponent(attackerEntity))
+                    if (bestTarget != Entity.Null
+                        && ccWriter.HasValue
+                        && defenderCcLookup.HasComponent(attackerEntity))
                     {
                         var ccData = defenderCcLookup[attackerEntity];
                         if (ccData.knockbackDistance > 0f && ccData.knockbackDuration > 0f)
@@ -1343,7 +1343,9 @@ namespace Wassup.Battle.Combat
                     // the deferred IncomingDamage buffer, so nothing in this block can
                     // have destroyed it.
                     // 계약 2 — 이번 프레임에 캐스트로 이미 카운트한 host 는 제외(위 드레인 주석).
-                    if (defenderTagLookup.HasComponent(attackerEntity) && dcSlotLookup.HasBuffer(attackerEntity)
+                    if (bestTarget != Entity.Null
+                        && defenderTagLookup.HasComponent(attackerEntity)
+                        && dcSlotLookup.HasBuffer(attackerEntity)
                         && !castCountedHosts.Contains(attackerEntity))
                     {
                         var dcSlots = dcSlotLookup[attackerEntity];

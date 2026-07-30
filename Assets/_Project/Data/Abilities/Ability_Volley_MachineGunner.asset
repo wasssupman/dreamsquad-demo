@@ -13,6 +13,4 @@ MonoBehaviour:
   m_Name: Ability_Volley_MachineGunner
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DirectionalVolleyAbility
   id: volley_machine_gunner
-  shotCount: 10
-  shotIntervalSec: 0.1
-  spreadAngleDeg: 0
+  pattern: {fileID: 11400000, guid: bd48014d0b9e4c29aa840df358a6c439, type: 2}

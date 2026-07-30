@@ -15,6 +15,8 @@
 "공격 시작 → `hitDelaySec` 후 타격 판정." (이동=타겟 도달 모델의 연장)
 - **공격 시작(T)**: 애니메이션 트리거 + 쿨다운 리셋 + (적)이동 정지.
 - **타격 판정(T + hitDelaySec)**: 사거리/타겟 **재판정** + 데미지/투사체/넉백.
+  단, 후속 `projectile-shot-sequence` unit 2의 facing `DirectionalLinear`는 START witness가
+  사라져도 타깃 없는 고정 궤적을 발사한다. 근접·호밍·ballistic 재판정 계약은 유지한다.
 - `hitDelaySec = 0` → 시작=판정 동시(현행 즉시).
 
 ## 공통 원칙 / 결정 (2026-06-29)
@@ -22,6 +24,7 @@
 - `AttackState` 에 **runtime**(`hitDelayRemaining`) + **config**(`hitDelaySec`). (standoff 와 같은 패턴.)
 - **쿨다운 기산 = 공격 시작(T).** 지연 중 새 공격 시작 안 함.
 - **T+N 판정 = 재판정**(그 순간 사거리 안 최근접). 시작 타겟은 애니메이션 facing 용.
+  위 facing `DirectionalLinear` 예외만 START 허가를 유지한다.
 - melee(데미지)·projectile(투사체 스폰) **fire 레벨 균일** 적용. hazard caster/taunt 는 기본 0.
 
 ## 작업 단위

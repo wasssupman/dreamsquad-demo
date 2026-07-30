@@ -13,6 +13,4 @@ MonoBehaviour:
   m_Name: Ability_Volley_Shotgunner
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DirectionalVolleyAbility
   id: volley_shotgunner
-  shotCount: 5
-  shotIntervalSec: 0
-  spreadAngleDeg: 55
+  pattern: {fileID: 11400000, guid: 0ba7559833824d71b37c1aec84fcb38a, type: 2}

@@ -36,7 +36,10 @@ namespace Wassup.Data
             // 폭탄 등 다른 facing 능력의 문구는 후속(현재 해당 유닛은 authored desc 사용).
             var volley = u.GetAbility<DirectionalVolleyAbility>();
             if (volley != null)
-                traits.Add(volley.shotCount > 1 ? $"지정 방향으로 {volley.shotCount}연발 사격" : "지정 방향 사격");
+            {
+                int shotCount = volley.pattern?.shots?.Length ?? 0;
+                traits.Add(shotCount > 1 ? $"지정 방향으로 {shotCount}연발 사격" : "지정 방향 사격");
+            }
             if (u.aggroCapacity > 0)
                 traits.Add($"최대 {u.aggroCapacity}체 도발 유지");
             string onPlace = OnPlaceClause(u.onPlaceEffect);

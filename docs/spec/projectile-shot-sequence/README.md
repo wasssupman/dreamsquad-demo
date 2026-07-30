@@ -1,12 +1,12 @@
 # projectile-shot-sequence — 개별 탄환 시퀀스
 
-> 상태: 진행 중 — unit 0~1 완료 (2026-07-30)
+> 상태: 진행 중 — unit 0~1 완료, unit 2 구현 중 (2026-07-30)
 > 선행: `projectile-emission-pattern` · `defender-directional-volley`
 
 ## 목표
 
 공용 emitter에서 `1회 트리거 → N발`을 실행한다. 각 step은 방향과 직전 탄 이후 interval을
-갖는다. 샷건너는 10발 spread·2타일 수명으로 바꾸고 머신거너도 이관한다. 투사체 표시 높이는
+갖는다. 샷건너는 10발 spread·4타일 수명으로 바꾸고 머신거너도 이관한다. 투사체 표시 높이는
 카메라 평면으로 투영하되 시뮬 원점은 유지한다.
 
 검증 질문: **10발의 순서·방향·거리·출발점이 트리거와 맵 위치에 무관하게 일관적인가?**
@@ -27,8 +27,9 @@
    각도 = `lerp(min,max,directionT)`.
 2. runtime은 unmanaged `FixedList128Bytes`(최대 15발). 초과 거절.
 3. `PatternSelectionRule.None`은 정상 방향 발사다. base=`DeployedFacing`, 후보 0이어도 발사한다.
-4. 트리거 시 spec·damage·origin·direction·`maxDistance`를 스냅샷한다. 레인/CC와 무관하게
-   완주하고 host 사망 시 중단한다. boss damage는 유지한다.
+4. START가 성사된 facing 방향 공격은 첫 RESOLVE 전 witness가 사망·이탈해도 고정 facing으로
+   emitter trigger를 만들고, 이후 spec·damage·origin·direction·`maxDistance`를 스냅샷한다.
+   레인/CC와 무관하게 완주하고 host 사망 시 중단한다. boss damage는 유지한다.
 5. 수명은 `attackRange * tileSize`; 마지막 sweep 뒤 개별 소멸한다.
 6. `ProjectileData`는 탄 성질, 패턴은 순서·방향·간격을 소유한다.
 7. emitter는 두 producer 뒤에 실행한다. 애니·cast·SFX는 trigger당 1회다.
@@ -37,9 +38,9 @@
 
 ## 초기값
 
-- 샷건너: 10 step, `-27.5°..+27.5°`, 중앙→바깥 교차, 총 전개 약 0.25~0.30초
-- 사거리 2 유지. 탄당 12→6으로 풀히트 60 보존. 다음 쿨다운은 마지막 탄 뒤부터
-- 머신거너: 기존 10발×0.1초·각도 0·사이클 2.5초 보존
+- 샷건너: 10 step, `-30°..+30°`, 불규칙 중심 밀집 `5-3-2` 클러스터, 총 전개 0.05초
+- 사거리 4. 탄당 12→6으로 풀히트 60 보존. 다음 쿨다운은 마지막 탄 뒤부터
+- 머신거너: 기존 10발×0.1초·각도 0과 현재 SO의 기본 쿨다운 보존
 - 기존 나이트메어 패턴 2종은 1-step으로 선이관한 뒤 legacy schedule 필드를 제거
 
 ## 파이프라인 커버리지

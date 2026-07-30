@@ -870,16 +870,16 @@ namespace Wassup.Bridge
             // 판정 순서 고정: 폭탄맨도 facing 을 쓰므로 BombThrow 를 먼저 걸러야 한다.
             // HazardCast 는 attackRange 0 이라 RESOLVE 에 못 가는 부류.
             //
-            // FacingVolley 는 `VolleyFireState` **단독**으로 판별한다 — DeployedFacing 은
+            // FacingVolley 는 `PatternSlot` **단독**으로 판별한다 — DeployedFacing 은
             // 조준 '완료 여부'라는 일시 상태라, 그걸 요구하면 같은 유닛이 조준 전후로
             // 다르게 판정된다(Play 실측: 조준 전 머신거너가 Standard 로 나왔다). 유닛
-            // 정체성은 볼리 설정 보유가 나타낸다. SO 측 미러(DcApplicabilityMatrixTests
+            // 정체성은 방향 pattern 보유가 나타낸다. SO 측 미러(DcApplicabilityMatrixTests
             // 의 ProfileOf)가 쓰는 `RequiresFacing` 과 같은 결.
             if (_em.HasComponent<BombLauncherState>(defender))
                 profile.archetype = Wassup.Core.DcHostArchetype.BombThrow;
             else if (_em.HasComponent<Wassup.Battle.Effects.HazardCastState>(defender))
                 profile.archetype = Wassup.Core.DcHostArchetype.HazardCast;
-            else if (_em.HasComponent<VolleyFireState>(defender))
+            else if (_em.HasBuffer<Wassup.Battle.Combat.Projectile.Emission.PatternSlot>(defender))
                 profile.archetype = Wassup.Core.DcHostArchetype.FacingVolley;
 
             // route = host 가 **실제로** 타는 발사 경로. 폭탄맨은 ProjectileRef 가

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Projectile_ShotgunPellet
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.ProjectileData
   id: shotgun_pellet
-  speed: 10
+  speed: 14
   hitThreshold: 0.7
   visualScale: 1.3
   visualHeightOffset: 0.7

@@ -169,5 +169,14 @@ namespace Wassup.Tests.EditMode
             Assert.IsTrue(EmitterTick.IsComplete(rt));
             Assert.AreEqual(0, EmitterTick.Advance(ref rt, 0.016f, spec));
         }
+
+        [Test]
+        public void TotalDuration_SumsIntervalsAfterTheFirstStep()
+        {
+            var spec = Spec(99f, 0.03f, 0.12f, -1f);
+
+            Assert.AreEqual(0.15f, EmitterTick.TotalDuration(spec), 1e-5f,
+                "첫 step interval은 trigger 즉발이라 무시하고 음수 값은 0으로 본다");
+        }
     }
 }
