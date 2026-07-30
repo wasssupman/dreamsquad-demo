@@ -5,6 +5,7 @@
 - `125b02a1` — feat: 히스토리 1뎁스 2컬럼 재설계 (unit 0)
 - `fa82b1aa` — feat: 덱보기 + DeckInfo 팝업 (units 1~3)
 - `42812708` — feat: 씬 배선 + Play e2e (unit 4)
+- `aee7ad45` — feat: 내 덱에서는 프리셋 적용 버튼을 숨긴다
 - 스펙 문서는 `8e865919` 로 먼저 푸시됨 (구현보다 앞서 올림)
 
 ## Implemented
@@ -27,9 +28,10 @@
 
 ## Verified
 
-- EditMode **1658 tests green** (이 spec 신규 25건). 실패 1건(`DirectionalVolleyIntegrationTests.AuthoredDefenderPatterns_*`)은 병행 세션의 샷건너 에셋 WIP — 무관.
+- EditMode **1659 tests green** (이 spec 신규 25건). 실패 1건(`DirectionalVolleyIntegrationTests.AuthoredDefenderPatterns_*`)은 병행 세션의 샷건너 에셋 WIP — 무관.
 - 실서버 Play e2e (계정 `wassup`): 히스토리 22건 최신순, 랭킹 5슬롯, 내 덱보기 → 스쿼드 11셀 / 드림캐쳐 10셀 전부 해석. 콘솔 에러 0.
 - 코드 리뷰 1회(별도 레인) — blocking 1건 포함 6건 반영.
+- 프리셋 버튼 숨김 Play 확인: 내 덱 → 버튼 없음 + 목록이 그 자리까지 확장, 남의 덱 → 버튼 노출. 같은 화면에서 **`deckInfo` 없는 참가자의 "덱 정보가 없습니다"** 도 실데이터로 확인(계약 10 null-payload 경로).
 - **`tournament-deck-info` 의 미확인 1번(왕복 성립) 닫힘.** 2번(0점 덮어쓰기)은 **여전히 미확인**.
 
 ## Notes (되돌리지 말 것)
@@ -47,5 +49,4 @@
 
 - **0점 마감이 덱 기록을 덮어쓰는지** — 좋은 판 뒤에 나가기로 한 판을 끝내고 같은 엔트리를 다시 열어보면 된다. 덮인다면 클라가 아니라 **서버에 최고점 가드를 요청**하는 게 맞다(클라는 이미 값 없으면 키를 안 보낸다).
 - 빈 목록 안내는 라이브로 못 봤다(실계정에 22건). EditMode 로만 고정돼 있다.
-- **내 덱에서 프리셋 버튼 숨김의 Play 확인 미완** — EditMode(`PresetButton_HiddenForOwnDeck_ShownForOthers`)로는 고정했으나, 숨겼을 때 목록이 내려오는 레이아웃은 눈으로 못 봤다(MCP 브리지 끊김). 다음에 히스토리를 열면 내 행/남의 행을 번갈아 보면 된다.
 - 나머지는 README "후속 후보" 참조 — 프리셋 적용 기능, 카드 문안 정합, 결과 화면 덱보기, 랭킹 캐시.
