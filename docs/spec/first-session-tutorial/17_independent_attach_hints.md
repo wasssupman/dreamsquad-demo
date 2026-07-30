@@ -119,10 +119,13 @@ unit 12 는 B 에 `_awakeningOfferedThisBattle && _awakeningArmedThisBattle`(= A
 - [x] EditMode: 경로별 pending/complete 독립 · 인트로 파생(`&&`) · `ResetAll` 과
       `ResetAllInJson` 이 신규 토큰까지 되돌리고 `changed` 에 반영한다 — 신규 4건 통과
 - [x] EditMode 전체 회귀 0 (`TutorialProgressTests` 리네임 반영 포함) —
-      **testrig 배치 실행 1611 / 통과 1609 / 실패 0 / 스킵 2**
-- [ ] Play: 둘째 판에 **항아리로 먼저** 열어 드래그 안내를 본 뒤, 같은 판에서 유닛을 선택해
-      손패를 열면 **탭 즉발 안내가 뜬다**(이 unit 의 핵심 — 지금은 안 뜬다)
-- [ ] Play: 반대 순서(선택 먼저 → 항아리)도 대칭으로 동작한다
+      **testrig 배치 실행 1615 / 통과 1613 / 실패 0 / 스킵 2**(rev 포함)
+- [x] EditMode: 손패가 이미 열린 채 선택 대상이 잡히면 신호가 나간다 —
+      `HandViewSelectionSignalTests` 4건 (B-rev 회귀 방지)
+- [ ] Play: 둘째 판에 **항아리로 먼저** 열어 드래그 안내를 본 뒤, **손패를 연 채로** 유닛을
+      선택하면 **탭 즉발 안내가 뜬다** — 이 unit 의 핵심이자 B-rev 가 고친 바로 그 경로
+- [ ] Play: 반대 순서(선택 먼저 → 항아리)는 **항아리 탭 2회**가 필요하다(1회차는 unit 9 의
+      "그만하기"). 2회차에 드래그 안내가 뜨면 정상
 - [ ] Play: 각 안내는 **각자 한 번씩만** — 같은 판에서 같은 경로로 다시 열면 안 뜬다
 - [ ] Play: 한쪽만 본 채 판을 끝내면 **다음 판에 인트로는 안 뜨고**(잔소리 없음) 못 본 쪽
       안내는 그 경로를 처음 쓸 때 뜬다
