@@ -222,8 +222,9 @@
   - 관련 커밋/증거: 기준 커밋 `44c87885`; server-side simulation/revalidation 산출물 없음.
 - `transfer_action`: `drop`
 - 정규 프로젝트 영향: client-authoritative battle/score를 유지하면 공정성, 치트 방지,
-  재접속 복구와 dispute audit 요구를 충족할 수 없다. 정규 프로젝트에서는 server가 battle state,
-  판정과 score를 소유해야 한다.
+  재접속 복구와 dispute audit 요구를 충족할 수 없다. 정규 프로젝트에서는 Server가 gameplay
+  rule·canonical config·battle state·상태 전이·판정·score를 소유하고, Client는 행동 의도만
+  제출한 뒤 Server의 stable ID 기반 semantic outcome을 presentation으로 해석해야 한다.
 - 다음 검증·결정: client command validation, server scoring, 결과 서명, audit/replay의 최소
   보존 범위를 ADR로 결정한다.
 
@@ -288,9 +289,11 @@
 - `transfer_action`: `drop`
 - 정규 프로젝트 영향: `Entity`, `IComponentData`, `ISystem`, `SystemGroup`, `ECB`, `NativeQueue`,
   ECS world 생성·dispose 규칙은 제거한다. domain responsibility, single write ownership,
-  pure calculation과 test contract는 별도 의미론으로 추출한다.
-- 다음 검증·결정: non-ECS domain module 경계와 server/client 공용 pure model의 범위를 ADR로
-  결정하고, ECS type이 새 interface나 protocol에 새지 않는지 review한다.
+  pure calculation과 test contract는 Server gameplay 의미론으로 추출하고, Client presentation은
+  stable ID 기반 semantic state·outcome을 별도 catalog로 해석한다.
+- 다음 검증·결정: non-ECS Server domain module 경계와 Client의 비권위 prediction·preview에
+  복제할 최소 pure model 범위를 ADR로 결정하고, ECS type이 새 interface나 protocol에 새지
+  않는지 review한다.
 
 ### BASE-009 — 로그는 계측 기반이지 플레이테스트 결과가 아님
 
@@ -311,8 +314,11 @@
     telemetry dataset 없음.
   - 관련 테스트/증거: logger 기능은 여러 PlayMode flow에서 사용되나, E3/E4 evidence artifact 없음.
 - `transfer_action`: `adapt`
-- 정규 프로젝트 영향: client local JSON 대신 server authoritative audit log와 product telemetry를
-  분리하고, build/config/protocol version과 pseudonymous participant key를 포함해야 한다.
+- 정규 프로젝트 영향: client local JSON 대신 Server의 Authoritative Match Record·authoritative
+  audit와 product telemetry를 분리해야 한다. Client의 `as-seen presentation trace`는 당시 표시를
+  조사하는 진단용 비권위 산출물로만 보존하고 canonical Replay의 정본으로 사용하지 않는다. 각
+  산출물에는 build/ruleset/presentation/protocol version과 pseudonymous participant key를
+  포함해야 한다.
 - 다음 검증·결정: [Evidence guide](./evidence/README.md)의 manifest로 첫 구조화 세션을 등록하고,
   raw data 저장 위치·retention·접근권한을 정한다.
 

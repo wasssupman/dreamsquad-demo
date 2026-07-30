@@ -4,6 +4,8 @@
 >
 > 기준선: **2026-07-29 / `44c87885`**
 >
+> 정규 책임 경계 결정: **2026-07-30**
+>
 > 대상: Product, Client, Server
 >
 > 범위: 데모 근거팩, PRD 입력, ADR 후보
@@ -12,9 +14,80 @@
 
 이 폴더는 현재 데모에서 확인한 구현 사실과 학습 가설을 정규 프로젝트의 PRD와 ADR을 작성할 수 있는 입력으로 번역한다. 데모 문서를 최신인 것처럼 합치는 대신, 사실·결정·가설과 그 증거 수준을 분리한다.
 
-현재 데모의 정확한 경계는 **클라이언트 권위 전투 시뮬레이션 + Firebase 인증 + 서버 발급 토너먼트 시드·시도 + 결과·랭킹 API**다. 정규 프로젝트는 **서버가 전투 상태·판정·점수를 소유하는 온라인 게임**을 목표로 하며, 데모의 ECS 구현은 이식하지 않는다.
+현재 데모의 정확한 경계는 **클라이언트 권위 전투 시뮬레이션 + Firebase 인증 + 서버 발급 토너먼트 시드·시도 + 결과·랭킹 API**다. 정규 프로젝트는 **서버가 gameplay rule·canonical config·상태 전이·판정·점수의 권위 실행을 소유하고, 클라이언트가 입력 UX와 presentation을 소유하는 온라인 게임**을 목표로 하며, 데모의 ECS 구현은 이식하지 않는다.
 
 이 문서 묶음은 정규 프로젝트 구현을 허가하지 않는다. 이 저장소의 ECS 경계와 작업 규칙은 계속 [`CLAUDE.md`](../../CLAUDE.md)와 현재 spec을 따른다.
+
+## 정규 프로젝트 책임 경계
+
+여기서 `Game Design`과 `Client presentation`은 같은 “디자인”이 아니다. 규칙을 누가 작성·승인하는지와 runtime에서 누가 그 규칙을 판정하는지도 별개다.
+
+| 영역 | 정규 프로젝트 책임 | 포함 범위 |
+|---|---|---|
+| Product / Game Design authoring | 규칙 의도, 밸런스, 콘텐츠 의미, UX 목표를 작성·승인 | 플레이어 선택의 의미, 수치 목표, 콘텐츠 정책, 성공 기준 |
+| Server authoritative gameplay | 게임 결과에 영향을 주는 규칙·설정·상태 전이의 정본과 권위 실행 | command 유효성, 비용·쿨다운, 타게팅, 효과·피해, wave·spawn, tick·deadline, gameplay RNG, 승패·점수·보상 |
+| Client presentation | 입력 의도를 수집하고 권위 상태·결과를 시각·청각·촉각 경험으로 표현 | UI, animation, VFX, SFX, camera, haptics, localization, accessibility, cosmetic asset mapping |
+| Protocol boundary | 두 runtime을 stable ID와 의미론적 command·state·event로 연결 | client intent, authoritative tick·state·outcome, version·correlation 정보 |
+
+혼합 요소는 게임 결과에 영향을 주는지를 기준으로 분리한다. 피해 값과 판정 시점은 Server가 소유하고 타격 animation·VFX는 Client가 소유한다. 경기 deadline과 정보 공개 자격은 Server가 소유하고 countdown UI와 공개된 정보의 layout은 Client가 소유한다. tutorial hint는 Client presentation일 수 있지만 command 봉인·허용 규칙은 Server 판정이다.
+
+Client는 반응성을 위해 version이 고정된 최소 prediction·preview 계산을 가질 수 있으나, 이는 버릴 수 있는 비권위 projection이다. Client가 만든 결과·state delta·점수는 권위 입력이 아니며 Server correction·resynchronization이 항상 우선한다. 허용 범위와 reconciliation 방식은 [`ADR-CAND-006`](architecture/adr-candidates.md)에서 결정한다.
+
+## Replay·관전의 정본과 표현 경계
+
+정규 프로젝트에서 경기의 유일한 **authoritative source of truth**는 `Authoritative Match Record`
+(AMR)다. AMR은 논리적 기록 계약이며, 선택한 저장 artifact는 Server가 확정한 tick·상태
+전이·semantic event·stable ID·gameplay RNG 결과, 승패·점수와 ruleset·recording schema 정보를
+직접 저장하거나 결정론적으로 재구성·검증할 수 있어야 한다. Client prediction, network 도착
+시각, camera·UI·prefab·animation·VFX·SFX 명령은 AMR에 포함하지 않는다.
+
+```text
+Authoritative Match Record
+             │
+   Viewer Projection Policy
+   ┌─────────┼──────────────┐
+Live Player  Replay       Spectator?
++ prediction + playback     + live/delayed tail
+             clock
+   └─────────┼──────────────┘
+      Client Presentation
+```
+
+| 계층 | 정본과 책임 | 허용되지 않는 것 |
+|---|---|---|
+| Authoritative Match Record | Server가 확정한 tick·상태 전이·semantic event·stable ID·RNG 결과·승패·점수와 ruleset·schema 정보 | Client prediction, camera, prefab, animation, VFX 명령 |
+| Viewer Projection | viewer role·관점·visibility·delay policy에 따라 AMR을 필터링한 순서 있는 semantic stream | 숨은 정보를 Client에 보낸 뒤 표시만 억제하는 방식 |
+| Client Presentation | projection을 UI·camera·animation·VFX·SFX로 표현하고 Replay playback clock을 관리 | 결과 재판정, gameplay state 변경, score·reward 재발행 |
+
+같은 경기를 재생한다는 계약은 다음 세 fidelity를 분리해서 판단한다.
+
+- `simulation_fidelity`: authoritative tick 순서, 상태 전이, stable ID, gameplay RNG 결과,
+  승패·점수는 반드시 일치한다.
+- `observation_fidelity`: 동일한 viewer role과 policy에서는 관찰 가능한 semantic event의
+  누락·추가·순서 오류가 없어야 하며, 허용되지 않은 숨은 정보를 노출하지 않는다.
+- `presentation_fidelity`: 핵심 단서와 인과관계는 이해 가능하게 표현하되 camera, UI 강조,
+  interpolation, cosmetic RNG와 VFX·SFX의 pixel/frame 동일성은 요구하지 않는다.
+
+모드별 계약은 다음과 같다.
+
+- Live player는 Server projection 위에 비권위 local prediction을 잠시 겹칠 수 있지만 Server
+  correction이 항상 우선한다.
+- canonical Replay는 confirmed Server progression만 재생하며 당시 prediction·reversal·network
+  arrival timing을 재연하지 않는다. `Player POV replay` 대신
+  `player-visible authoritative perspective`라는 용어를 사용한다.
+- 실제 사용자가 당시 본 화면이 필요하면 영상 또는 `as-seen presentation trace`를 별도 진단
+  산출물로 보존하고 canonical Replay와 혼합하지 않는다.
+- Spectator가 도입되면 Replay와 같은 Viewer Projection 계약을 사용한다. live/delayed cursor,
+  접근 권한, visibility와 anti-ghosting policy는 Server가 집행한다.
+- 동일한 match와 projection policy를 사용한 완료 Replay와 Spectator stream은 같은 authoritative
+  progression에 수렴해야 한다.
+- Replay의 pause·speed·seek·rewind는 Client presentation clock과 비권위 playback cursor/read
+  model을 변경할 수 있지만 Server authoritative state, 원 경기 결과 또는 다른 Client의 상태를
+  변경하지 않는다.
+
+AMR의 capture·저장·무결성·보존은 [`ADR-CAND-011`](architecture/adr-candidates.md), Replay와
+조건부 Spectator의 projection·playback·호환 정책은
+[`ADR-CAND-012`](architecture/adr-candidates.md)에서 결정한다.
 
 ## 목적과 비목표
 
