@@ -1,6 +1,7 @@
 # drag-cancel-affordance — 배치/사용 드래그의 취소 수단
 
-> 상태: **구현 완료 2026-07-30** (units 0 rev3 · 1 rev3 · 3 · unit 2 철회) · 사용자 Play 확인 대기
+> 상태: **완료 2026-07-30** — units 0(rev3) · 1(rev3) · 3 구현 · unit 2 철회 · 코드 리뷰 반영 ·
+> 사용자 Play 확인 통과. 인계는 `4_handoff_summary.md`.
 
 ## 검증 질문
 

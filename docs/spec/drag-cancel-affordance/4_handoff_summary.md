@@ -113,6 +113,8 @@
 
 ## Follow-up
 
-- 사용자 Play 확인 — 각 unit 문서의 미체크 항목(코스트 무차감 · 도달성 회귀 없음 · 배너 잔류 없음).
+- ~~사용자 Play 확인~~ — **2026-07-30 통과.** 각 unit 완료 기준 전항목 체크됨.
+- **감각 노브 재조정 여지** — `placementOutsideToleranceCells` 1(가장자리가 빡빡하면 2, 취소가 멀면 0) ·
+  `cancelHintDwellSeconds` 0.18. 둘 다 `DragSwaySettings.asset` 에서 Play 중 실시간 반영된다.
 - 방향 지정 페이즈 / 재배치 취소는 범위 밖(README 후속 후보 · spec README Follow-up Backlog
   "배치 취소/코스트 환불" 과 같은 건).
