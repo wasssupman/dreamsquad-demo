@@ -2,7 +2,7 @@
 
 ## Commit
 
-- `feat(active-dreamcatcher-tile-aim): units 0~3 — 액티브 조준 통일 + 대상축 폐기` (해시는 커밋 후 기재)
+- `e5cdb48a` — `feat(active-dreamcatcher-tile-aim): units 0~3 — 액티브 조준 통일(화살표+타일 지정) + 대상축 폐기`
 
 ## Implemented
 
