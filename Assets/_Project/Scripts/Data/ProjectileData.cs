@@ -57,7 +57,7 @@ namespace Wassup.Data
         public float hitThreshold = 0.3f;
         public float visualScale = 0.3f;
 
-        [Tooltip("비행체 시각을 view 공간에서 위로 띄우는 높이(월드 유닛). ECS/속도엔 영향 없이 렌더 Y 에만 더한다. 타일에 깔리는 것 방지용.")]
+        [Tooltip("비행체 시각을 카메라 평면 up으로 띄우는 높이(월드 유닛). ECS/속도엔 영향 없이 Presentation에만 적용한다. 타일에 깔리는 것 방지용.")]
         public float visualHeightOffset = 0f;
 
         public GameObject projectilePrefab;
@@ -103,7 +103,7 @@ namespace Wassup.Data
 
         [Header("Ballistic (flightMode = BallisticToCell)")]
         public ProjectileFlightMode flightMode = ProjectileFlightMode.Homing;
-        [Tooltip("포물선 정점 높이(월드 유닛). BallisticToCell 전용.")]
+        [Tooltip("카메라 평면 기준 포물선 정점 높이(월드 유닛). BallisticToCell 전용.")]
         public float arcHeight = 2f;
         [Tooltip("착탄 셀 기준 AOE 반경(타일, Chebyshev 거리). BallisticToCell 전용.")]
         public int impactTileRange = 1;
@@ -123,7 +123,7 @@ namespace Wassup.Data
         [Range(0f, 0.5f)] public float bezierForwardBias = 0.35f;
 
         [Header("SkyFall (스킬 낙하 투사체 — Meteor)")]
-        [Tooltip("낙하 시작 높이(월드 유닛, view 공간 Y). flightTime(warningSec) 동안 이 높이에서 착탄 셀로 떨어진다. 내부적으로 state 의 arcHeight 슬롯을 재사용.")]
+        [Tooltip("낙하 시작 높이(월드 유닛, 카메라 평면 up). flightTime(warningSec) 동안 이 높이에서 착탄 셀로 떨어진다. 내부적으로 state 의 arcHeight 슬롯을 재사용.")]
         public float dropHeight = 6f;
 
         [Tooltip("낙하가 차지하는 비행 후반 비율(0~1). 1=전체 구간 등속 낙하, 0.35=마지막 35% 에 압축(상공 대기 후 내리꽂힘 — 텔레그래프 시간은 그대로, 시각만 빨라짐). 순수 뷰 파라미터.")]

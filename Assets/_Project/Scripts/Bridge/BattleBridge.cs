@@ -116,6 +116,7 @@ namespace Wassup.Bridge
         // 의 보스 확정(BossTag 부착) 단일 지점에서 구동. 미배선(null)이면 무동작.
         [SerializeField] private Wassup.UI.BossWarningView _bossWarning;
         [SerializeField] private Wassup.Presentation.ProjectileViewPool _projectileViewPool;
+        private readonly System.Collections.Generic.List<Entity> _projectileViewScratch = new(8);
         // Phase 9 P9-07 — tileSize 단일 소스화. Awake 에서 PlacementInput 으로 주입.
         [SerializeField] private Wassup.Core.PlacementInput placementInput;
         [Header("Tilemap View Backend (tilemap-view-backend)")]
@@ -2320,7 +2321,41 @@ namespace Wassup.Bridge
             ReconcilePickupViews();
             ReconcileResignationViews();
             if (_em != null) _dcAuraPool?.Sync(_em); // 드림캐쳐 부착 오라 — 뷰 좌표 갱신 뒤 추종
-            if (_em != null) _projectileViewPool?.SyncTransforms(_em);
+            SyncProjectileViews();
+        }
+
+        // projectile-shot-sequence unit 3 — BattleBridge가 유일한 Mono↔ECS 경계다.
+        // Pool은 활성 entity key만 제공하고, Bridge가 component를 plain view snapshot으로
+        // 번역한다. Presentation은 EntityManager/LocalTransform/ProjectileState를 직접 읽지 않는다.
+        private void SyncProjectileViews()
+        {
+            if (_em == null || _projectileViewPool == null) return;
+
+            _projectileViewPool.CopyActiveEntities(_projectileViewScratch);
+            for (int i = 0; i < _projectileViewScratch.Count; i++)
+            {
+                Entity entity = _projectileViewScratch[i];
+                if (!_em.Exists(entity))
+                {
+                    _projectileViewPool.Despawn(entity);
+                    continue;
+                }
+
+                var frame = new Wassup.Presentation.ProjectileViewFrame
+                {
+                    simPosition = _em.GetComponentData<LocalTransform>(entity).Position,
+                };
+                if (_em.HasComponent<ProjectileState>(entity))
+                {
+                    var state = _em.GetComponentData<ProjectileState>(entity);
+                    frame.hasState = true;
+                    frame.movement = state.movement;
+                    frame.flightTime = state.flightTime;
+                    frame.elapsed = state.elapsed;
+                    frame.arcHeight = state.arcHeight;
+                }
+                _projectileViewPool.SyncTransform(entity, frame);
+            }
         }
 
         // unit-status-fx Unit 2 — 상태 연출 상태 구동 reconcile. 상태별 ECS 소스로 활성

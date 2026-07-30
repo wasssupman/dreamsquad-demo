@@ -2,13 +2,24 @@ using System.Collections;
 using System.Collections.Generic;
 using Unity.Entities;
 using Unity.Mathematics;
-using Unity.Transforms;
 using UnityEngine;
 using Wassup.Battle.Combat.Projectile;
 using Wassup.Data;
 
 namespace Wassup.Presentation
 {
+    // BattleBridge가 ECS 상태를 Presentation 값으로 번역한 프레임 스냅샷.
+    // ProjectileViewPool은 EntityManager/Component에 직접 접근하지 않는다.
+    public struct ProjectileViewFrame
+    {
+        public float3 simPosition;
+        public bool hasState;
+        public MovementKind movement;
+        public float flightTime;
+        public float elapsed;
+        public float arcHeight;
+    }
+
     // Attached once to each instantiated view — caches component arrays so ApplyMpb,
     // ReturnToPool, and ResetVfx never call GetComponentsInChildren on hot paths.
     public class ViewRendererCache : MonoBehaviour
@@ -30,8 +41,11 @@ namespace Wassup.Presentation
             public float spinSpeed;
             // bomb-thrower-defender unit 5 — GrenadeToCell 퓨즈 점멸 스케일 펄스의 기준값.
             public float baseScale;
+            // static body height를 제외한 카메라 평면 투영 궤적. AlongVelocity가 arc/drop을 따른다.
             public float3 lastPosition;
-            public float heightOffset;   // view 공간 Y 렌더 오프셋 (ECS/velocity 엔 미반영)
+            // 순수 BoardSpace 위치. RollAlongPath의 구름 축에 bounce 높이가 섞이지 않게 한다.
+            public float3 lastGroundPosition;
+            public float heightOffset;   // 카메라 평면 up 렌더 오프셋 (ECS/velocity 엔 미반영)
             // unit 9 — SkyFall 낙하 압축(뷰 전용): 낙하가 비행 후반 이 비율에 압축된다.
             // 1 = 전체 구간 등속. ECS state 를 늘리지 않고 view 딕셔너리에 태운다.
             public float fallPortion;
@@ -45,11 +59,10 @@ namespace Wassup.Presentation
 
         private readonly Dictionary<Entity, ProjectileViewState> _active = new();
         private readonly Dictionary<GameObject, Stack<GameObject>> _pool = new();
-        private readonly List<Entity> _toReturn = new(8);
-        private readonly List<(Entity entity, float3 pos)> _posUpdates = new(8);
         private readonly Dictionary<ProjectileData, int> _spawnCounters = new();
         private MaterialPropertyBlock _mpb;
         private System.Random _visualRng;
+        private Camera _projectionCamera;
 
         private void Awake()
         {
@@ -95,15 +108,16 @@ namespace Wassup.Presentation
             view.transform.localRotation = data.projectilePrefab.transform.localRotation
                 * Quaternion.Euler(0f, 0f, rollDeg);
 
-            // ga-reskin unit 1: 첫 SyncTransforms 전에 스폰 위치를 즉시 세팅하고 trail/particle 을
+            // ga-reskin unit 1: 첫 SyncTransform 전에 스폰 위치를 즉시 세팅하고 trail/particle 을
             // 리셋한다. 안 그러면 풀 재사용 시 이전 사망 위치 → 새 스폰 위치로 world-space 파티클/
             // TrailRenderer 가 streak(줄) 을 그린다.
-            float3 spawnView = Wassup.Core.BoardSpace.ToView(initialPosition);
-            // 낙하 오프셋은 SyncTransforms 의 pos(y+=drop) 와 같은 축(view-Y)에 선반영 —
+            float3 spawnGroundView = Wassup.Core.BoardSpace.ToView(initialPosition);
+            // 낙하 오프셋은 SyncTransforms 와 같은 카메라 평면 up 축에 선반영 —
             // lastPosition 에도 포함해야 첫 프레임 velocity 가 ≈0 이 되어(지면→하늘
             // 오차분이 안 섞여) 잘못된 위쪽 페이싱 플래시가 없다.
-            spawnView.y += initialDropOffset;
-            view.transform.position = new Vector3(spawnView.x, spawnView.y + data.visualHeightOffset, spawnView.z);
+            float3 spawnView = ProjectHeight(spawnGroundView, initialDropOffset);
+            view.transform.position = ProjectHeight(
+                spawnGroundView, initialDropOffset + data.visualHeightOffset);
             ResetVfx(view);
 
             _active[entity] = new ProjectileViewState
@@ -115,132 +129,137 @@ namespace Wassup.Presentation
                 baseScale = data.visualScale * scaleMul,
                 // tilemap-view-backend unit 3 — lastPosition 은 view 좌표로 보존(velocity 를 view 공간에서 계산).
                 lastPosition = spawnView,   // Fix 1 (heightOffset 미포함 = 순수 위치, velocity 정확)
+                lastGroundPosition = spawnGroundView,
                 heightOffset = data.visualHeightOffset,
                 fallPortion = data.fallPortion,
             };
         }
 
-        public void SyncTransforms(EntityManager em)
+        public void CopyActiveEntities(List<Entity> destination)
         {
-            _toReturn.Clear();
-            _posUpdates.Clear();
-            float dt = Time.deltaTime;
+            destination.Clear();
+            foreach (var entity in _active.Keys)
+                destination.Add(entity);
+        }
 
-            foreach (var (entity, state) in _active)
+        public void Despawn(Entity entity) => Return(entity);
+
+        public void SyncTransform(Entity entity, ProjectileViewFrame frame)
+        {
+            if (!_active.TryGetValue(entity, out var state)) return;
+
+            // sim→view 1회. 위치·속도·LookRotation 전부 view 공간끼리 (lastPosition 도 view).
+            float3 groundPos = Wassup.Core.BoardSpace.ToView(frame.simPosition);
+            float presentationHeight = 0f;
+
+            // Ballistic arc height is a presentation concern: BoardSpace.ToView drops
+            // sim Y on the flat board, so the visible parabola is added here in the
+            // camera plane. Folding it into `pos` (before velocity) also pitches the shell
+            // along the arc for AlongVelocity facing.
+            if (frame.hasState)
             {
-                if (!em.Exists(entity))
+                if (frame.movement == MovementKind.BallisticArcToPoint && frame.flightTime > 0f)
+                    presentationHeight += BallisticArc.ArcHeight(
+                        frame.arcHeight, math.saturate(frame.elapsed / frame.flightTime));
+                // projectile-emission-pattern unit 1 — 베지어 호밍의 3축 중 Y.
+                // sim 은 XZ 곡선만 굴리므로(BoardSpace 가 sim-Y 를 drop) 높이는
+                // 여기서만 생긴다. ArcHeight 재사용 = 신규 수학 0줄, pos 에 접혀
+                // AlongVelocity 페이싱이 곡선을 따라 피칭한다.
+                else if (frame.movement == MovementKind.BezierHomingToEntity && frame.flightTime > 0f)
+                    presentationHeight += BallisticArc.ArcHeight(
+                        frame.arcHeight, math.saturate(frame.elapsed / frame.flightTime));
+                // unit 9 — SkyFall 낙하: arcHeight 슬롯 = 낙하 시작 높이. sim 은 착탄 셀에
+                // 고정이므로 화면 낙하는 전부 여기 camera-up 으로 표현된다. pos 에 접혀
+                // AlongVelocity 페이싱이 아래를 향하고 트레일이 위로 남는다.
+                // fallPortion < 1 이면 낙하를 비행 후반에 압축하고, 대기(pre-fall)
+                // 구간엔 뷰를 숨긴다 — 상공 호버가 화면에 보이는 어색함 제거. 낙하
+                // 시작 프레임에 시작 높이에서 등장(transform 이 그 높이를 유지하고
+                // 있어 트레일 스트릭 없음, 파티클은 활성화 시점에 신선 재생).
+                // 텔레그래프(flightTime·데미지 타이밍)는 불변, 시각만 바뀐다.
+                else if (frame.movement == MovementKind.SkyFall)
                 {
-                    _toReturn.Add(entity);
-                    continue;
-                }
-
-                var simPos = em.GetComponentData<LocalTransform>(entity).Position;
-                // sim→view 1회. 위치·속도·LookRotation 전부 view 공간끼리 (lastPosition 도 view).
-                float3 pos = Wassup.Core.BoardSpace.ToView(simPos);
-
-                // Ballistic arc height is a presentation concern: BoardSpace.ToView drops
-                // sim Y on the flat board, so the visible parabola is added here in view
-                // space. Folding it into `pos` (before velocity) also pitches the shell
-                // along the arc for AlongVelocity facing.
-                if (em.HasComponent<ProjectileState>(entity))
-                {
-                    var ps = em.GetComponentData<ProjectileState>(entity);
-                    if (ps.movement == MovementKind.BallisticArcToPoint && ps.flightTime > 0f)
-                        pos.y += BallisticArc.ArcHeight(ps.arcHeight, math.saturate(ps.elapsed / ps.flightTime));
-                    // projectile-emission-pattern unit 1 — 베지어 호밍의 3축 중 Y.
-                    // sim 은 XZ 곡선만 굴리므로(BoardSpace 가 sim-Y 를 drop) 높이는
-                    // 여기서만 생긴다. ArcHeight 재사용 = 신규 수학 0줄, pos 에 접혀
-                    // AlongVelocity 페이싱이 곡선을 따라 피칭한다.
-                    else if (ps.movement == MovementKind.BezierHomingToEntity && ps.flightTime > 0f)
-                        pos.y += BallisticArc.ArcHeight(ps.arcHeight, math.saturate(ps.elapsed / ps.flightTime));
-                    // unit 9 — SkyFall 낙하: arcHeight 슬롯 = 낙하 시작 높이. sim 은 착탄 셀에
-                    // 고정이므로 화면 낙하는 전부 여기 view-Y 로 표현된다. pos 에 접혀
-                    // AlongVelocity 페이싱이 아래를 향하고 트레일이 위로 남는다.
-                    // fallPortion < 1 이면 낙하를 비행 후반에 압축하고, 대기(pre-fall)
-                    // 구간엔 뷰를 숨긴다 — 상공 호버가 화면에 보이는 어색함 제거. 낙하
-                    // 시작 프레임에 시작 높이에서 등장(transform 이 그 높이를 유지하고
-                    // 있어 트레일 스트릭 없음, 파티클은 활성화 시점에 신선 재생).
-                    // 텔레그래프(flightTime·데미지 타이밍)는 불변, 시각만 바뀐다.
-                    else if (ps.movement == MovementKind.SkyFall)
+                    float p = SkyFall.Progress(frame.elapsed, frame.flightTime);
+                    float fp = state.fallPortion;
+                    bool falling = fp >= 1f || p >= 1f - fp;
+                    if (state.view.activeSelf != falling)
                     {
-                        float p = SkyFall.Progress(ps.elapsed, ps.flightTime);
-                        float fp = state.fallPortion;
-                        bool falling = fp >= 1f || p >= 1f - fp;
-                        if (state.view.activeSelf != falling)
-                        {
-                            state.view.SetActive(falling);
-                            // reveal 시 파티클/트레일 명시 재생 — prefab 의 playOnAwake
-                            // 에 암묵 의존하지 않는다(리뷰 M1). 위치는 대기 내내 시작
-                            // 높이에 고정돼 있어 트레일 스트릭 없음.
-                            if (falling) ResetVfx(state.view);
-                        }
-                        pos.y += ps.arcHeight * (1f - SkyFall.FallProgress(p, fp));
+                        state.view.SetActive(falling);
+                        // reveal 시 파티클/트레일 명시 재생 — prefab 의 playOnAwake
+                        // 에 암묵 의존하지 않는다(리뷰 M1). 위치는 대기 내내 시작
+                        // 높이에 고정돼 있어 트레일 스트릭 없음.
+                        if (falling) ResetVfx(state.view);
                     }
-                    // bomb-thrower-defender unit 5 — 구르기 arc(travel 낮은 arc; 퓨즈엔 t=1
-                    // → ArcHeight 0 = 지면 정지) + 착지 후 폭발 예고 스케일 점멸.
-                    else if (ps.movement == MovementKind.GrenadeToCell)
+                    presentationHeight += frame.arcHeight * (1f - SkyFall.FallProgress(p, fp));
+                }
+                // bomb-thrower-defender unit 5 — 구르기 arc(travel 낮은 arc; 퓨즈엔 t=1
+                // → ArcHeight 0 = 지면 정지) + 착지 후 폭발 예고 스케일 점멸.
+                else if (frame.movement == MovementKind.GrenadeToCell)
+                {
+                    float gt = frame.flightTime > 0f
+                        ? math.saturate(frame.elapsed / frame.flightTime)
+                        : 1f;
+                    // 통통 튀기며 굴러감: 감쇠하는 다중 바운스(착지점 gt=1 에서 0 → 지면).
+                    // arcHeight = 첫 바운스 최대 높이(SO), BounceHops = 이동 중 튀는 횟수.
+                    const float BounceHops = 3f;
+                    presentationHeight += frame.arcHeight
+                        * math.abs(math.sin(math.PI * gt * BounceHops)) * (1f - gt);
+                    if (frame.elapsed >= frame.flightTime)
                     {
-                        float gt = ps.flightTime > 0f ? math.saturate(ps.elapsed / ps.flightTime) : 1f;
-                        // 통통 튀기며 굴러감: 감쇠하는 다중 바운스(착지점 gt=1 에서 0 → 지면).
-                        // arcHeight = 첫 바운스 최대 높이(SO), BounceHops = 이동 중 튀는 횟수.
-                        const float BounceHops = 3f;
-                        pos.y += ps.arcHeight * math.abs(math.sin(math.PI * gt * BounceHops)) * (1f - gt);
-                        if (ps.elapsed >= ps.flightTime)
-                        {
-                            float fuseT = ps.elapsed - ps.flightTime;
-                            float pulse = 1f + 0.18f * math.sin(fuseT * 18f);
-                            state.view.transform.localScale = Vector3.one * (state.baseScale * pulse);
-                        }
+                        float fuseT = frame.elapsed - frame.flightTime;
+                        float pulse = 1f + 0.18f * math.sin(fuseT * 18f);
+                        state.view.transform.localScale = Vector3.one * (state.baseScale * pulse);
                     }
                 }
-
-                var view = state.view;
-                view.transform.position = new Vector3(pos.x, pos.y + state.heightOffset, pos.z);
-
-                switch (state.facing)
-                {
-                    case ProjectileFacing.AlongVelocity:
-                        var vel = pos - state.lastPosition;
-                        if (math.lengthsq(vel) > 0.0001f)
-                            view.transform.rotation = Quaternion.LookRotation(
-                                new Vector3(vel.x, vel.y, vel.z), Vector3.up);
-                        break;
-                    case ProjectileFacing.SpinAroundUp:
-                        view.transform.Rotate(0f, state.spinSpeed * dt, 0f);
-                        break;
-                    case ProjectileFacing.RollAlongPath:
-                    {
-                        // bomb-thrower-defender unit 5 — 데굴데굴: 진행방향 수직 수평축 기준
-                        // tumble. 이동 중일 때만(퓨즈/착지 시 vel≈0 → 정지). spinSpeed = 굴림 속도.
-                        var rvel = pos - state.lastPosition;
-                        var rflat = new Vector3(rvel.x, 0f, rvel.z);
-                        if (rflat.sqrMagnitude > 0.0001f)
-                            view.transform.Rotate(Vector3.Cross(Vector3.up, rflat.normalized), state.spinSpeed * dt, Space.World);
-                        break;
-                    }
-                    case ProjectileFacing.FixedUp:
-                    default:
-                        break;
-                }
-
-                _posUpdates.Add((entity, pos));
             }
 
-            foreach (var (entity, pos) in _posUpdates)
+            // projectile-shot-sequence unit 3 — 월드 +Y는 원근 카메라에서 view depth까지
+            // 바꿔 외곽 탄환을 화면 바깥으로 민다. 높이·arc·drop은 카메라 평면 up으로
+            // 투영하고, groundPos(ECS ToView 결과)는 그대로 둔다.
+            float3 pos = ProjectHeight(groundPos, presentationHeight);
+            var view = state.view;
+            view.transform.position = ProjectHeight(
+                groundPos, presentationHeight + state.heightOffset);
+
+            switch (state.facing)
             {
-                if (_active.TryGetValue(entity, out var s))
-                    _active[entity] = new ProjectileViewState
-                    {
-                        view = s.view, prefab = s.prefab,
-                        facing = s.facing, spinSpeed = s.spinSpeed,
-                        baseScale = s.baseScale,
-                        lastPosition = pos,
-                        heightOffset = s.heightOffset,
-                        fallPortion = s.fallPortion,
-                    };
+                case ProjectileFacing.AlongVelocity:
+                    var vel = pos - state.lastPosition;
+                    if (math.lengthsq(vel) > 0.0001f)
+                        view.transform.rotation = Quaternion.LookRotation(
+                            new Vector3(vel.x, vel.y, vel.z), Vector3.up);
+                    break;
+                case ProjectileFacing.SpinAroundUp:
+                    view.transform.Rotate(0f, state.spinSpeed * Time.deltaTime, 0f);
+                    break;
+                case ProjectileFacing.RollAlongPath:
+                {
+                    // bomb-thrower-defender unit 5 — 데굴데굴: 진행방향 수직 수평축 기준
+                    // tumble. 이동 중일 때만(퓨즈/착지 시 vel≈0 → 정지). spinSpeed = 굴림 속도.
+                    // unit 3 — 카메라 평면 bounce는 world Z 성분도 가지므로 투영 궤적을
+                    // 쓰면 구름 축에 높이가 섞인다. 순수 ground delta로 기존 동작을 보존.
+                    var rvel = groundPos - state.lastGroundPosition;
+                    var rflat = new Vector3(rvel.x, 0f, rvel.z);
+                    if (rflat.sqrMagnitude > 0.0001f)
+                        view.transform.Rotate(
+                            Vector3.Cross(Vector3.up, rflat.normalized),
+                            state.spinSpeed * Time.deltaTime, Space.World);
+                    break;
+                }
+                case ProjectileFacing.FixedUp:
+                default:
+                    break;
             }
 
-            foreach (var e in _toReturn) Return(e);
+            state.lastPosition = pos;
+            state.lastGroundPosition = groundPos;
+            _active[entity] = state;
+        }
+
+        private Vector3 ProjectHeight(float3 basePosition, float height)
+        {
+            if (_projectionCamera == null)
+                _projectionCamera = Camera.main;
+            return HeadAnchor.Lift((Vector3)basePosition, Vector3.up * height, _projectionCamera);
         }
 
         // Fix 5: hitVfxLifetime > 0 overrides auto-detect.
@@ -270,8 +289,9 @@ namespace Wassup.Presentation
                 // 완전히 수직인 방향(투영이 0)이면 회전을 건드리지 않는다 — 프리팹 기본 자세 유지.
             }
             float3 hitView = Wassup.Core.BoardSpace.ToView(position); // sim→view
-            // heightOffset: 바닥에 깔리지 않게 view Y 로 띄움 (투사체 visualHeightOffset 과 동일 개념).
-            view.transform.position = new Vector3(hitView.x, hitView.y + heightOffset, hitView.z);
+            // heightOffset: projectile body와 같은 카메라 평면 up으로 띄워 착탄 순간
+            // 월드 +Y 왜곡/위치 점프가 생기지 않게 한다.
+            view.transform.position = ProjectHeight(hitView, heightOffset);
             // 기본 자세 보정. 계산된 회전 **뒤에** 곱해 로컬 축 기준으로 돈다.
             // facing 을 안 쓰는 이펙트도 이 값만으로 자세를 잡을 수 있다.
             if (eulerOffset != Vector3.zero)
