@@ -165,7 +165,20 @@ namespace Wassup.UI
         // 오픈 모드는 **파생값**이다 — 별도 상태로 저장하면 이중 상태가 된다(계약 8).
         public bool InSelectionMode => SelectionTarget != Entity.Null;
 
-        public void SetSelectionTarget(Entity target) => SelectionTarget = target;
+        // first-session-tutorial unit 17 rev — 선택 대상이 **잡혔다**는 신호.
+        //
+        // `HandOpened` 로는 이 사건을 못 잡는다: 그건 닫힘→열림 전이에서만 발화하는데,
+        // 항아리로 이미 손패를 연 상태에서 유닛을 탭하면 OpenForSelection 이 `State == Hand`
+        // 라 no-op 이라(계약: 선택 전환은 재딜 없음) Open() 도 HandOpened 도 돌지 않는다.
+        // 손패가 닫혀 있었으면 이 이벤트는 State 가 아직 UnitStrip 일 때 와서 구독자가 그냥
+        // 흘려보내고, 곧이어 HandOpened 가 같은 일을 한다 — 두 신호는 상보적이다.
+        public event System.Action SelectionTargetSet;
+
+        public void SetSelectionTarget(Entity target)
+        {
+            SelectionTarget = target;
+            if (target != Entity.Null) SelectionTargetSet?.Invoke();
+        }
 
         public void ClearSelectionTarget()
         {

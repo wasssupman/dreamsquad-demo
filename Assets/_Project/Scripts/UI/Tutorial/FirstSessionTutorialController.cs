@@ -106,6 +106,9 @@ namespace Wassup.UI.Tutorial
             if (handView != null)
             {
                 handView.HandOpened += OnHandOpened;
+                // unit 17 rev — 손패가 이미 열린 채 선택으로 **전환**되는 경우는 HandOpened 가
+                // 안 온다(OpenForSelection 이 no-op). 두 신호를 함께 받아야 두 경로가 대칭이 된다.
+                handView.SelectionTargetSet += OnSelectionTargetSet;
                 handView.CardPeeked += OnCardPeeked;
             }
             if (giftView != null)
@@ -141,6 +144,7 @@ namespace Wassup.UI.Tutorial
             if (handView != null)
             {
                 handView.HandOpened -= OnHandOpened;
+                handView.SelectionTargetSet -= OnSelectionTargetSet;
                 handView.CardPeeked -= OnCardPeeked;
             }
             if (giftView != null)
@@ -533,8 +537,23 @@ namespace Wassup.UI.Tutorial
             if (!_coreActive) guidance.Hide();
         }
 
-        private void OnHandOpened()
+        // 손패가 닫혀 있다가 열렸다(항아리 오픈 · 선택 기인 오픈 둘 다 여기로 온다).
+        private void OnHandOpened() => EvaluateCardHint();
+
+        // unit 17 rev — 손패가 **이미 열린 채** 선택 대상이 잡혔다. 항아리로 먼저 열어둔 뒤
+        // 유닛을 탭하는 경로가 이것뿐이라, 이 신호가 없으면 탭 즉발 안내가 영영 안 뜬다
+        // (사용자 보고 2026-07-30). 손패가 닫힌 상태에서 온 신호는 아래 State 가드가 흘려보내고
+        // 곧이어 오는 HandOpened 가 처리한다.
+        private void OnSelectionTargetSet() => EvaluateCardHint();
+
+        private void EvaluateCardHint()
         {
+            // unit 10 — 첫 판엔 각성 안내가 하나도 뜨지 않는다. 예전엔 이 경로가
+            // `_awakeningOfferedThisBattle`(A 가 떴다) 요구를 통해 **간접적으로** 보호됐는데,
+            // unit 17 이 그 요구를 걷어내며 보호도 함께 사라졌다. 지금은 첫 판에 손패를 열
+            // 방법이 없어(항아리 숨김 + unit 15 선택 봉인) 도달 불가지만, 그 두 장치에만
+            // 기대지 않도록 여기서 직접 막는다.
+            if (_awakeningLockedThisMatch) return;
             if (gameManager == null || gameManager.CurrentPhase != GamePhase.Battle ||
                 handView == null || handView.State != DreamcatcherHandView.HandState.Hand ||
                 guidance == null) return;
@@ -568,8 +587,8 @@ namespace Wassup.UI.Tutorial
 
             if (_awakeningRoutine != null) StopCoroutine(_awakeningRoutine);
             // unit 16 — InSelectionMode 는 SelectionTarget 파생값이고 DcInspectController 가
-            // SetSelectionTarget → OpenForSelection 순으로 부르므로 HandOpened 발화 시점엔 이미
-            // 확정돼 있다(래치 경로도 같은 Open() 을 지난다).
+            // SetSelectionTarget → OpenForSelection 순으로 부르므로, 두 진입 신호 어느 쪽에서든
+            // 이 시점엔 이미 확정돼 있다(SelectionTargetSet 은 대입 직후, HandOpened 는 그 뒤).
             // 포커스는 두 경우 모두 usable 슬롯이다 — 지시의 대상은 카드다.
             guidance.ShowMessage(selection ? CardHintSelectionText : CardHintDragText, showSkip: false);
             guidance.FocusUi(usable);

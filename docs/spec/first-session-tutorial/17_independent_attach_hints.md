@@ -58,6 +58,30 @@ API 는 호출처가 레포 안에만 있어 리네임 비용이 없다(컨트�
 `ProfileStore.ResetTutorialProgressAt` 이 그 bool 로 백업과 파일 교체를 게이팅하므로, 쓰기만
 하고 표현식에서 빠지면 그 토큰만 다를 때 디스크에 영영 안 닿는다(파일의 기존 주석 경고).
 
+### B-rev. 진입 신호가 하나로는 부족하다 (2026-07-30 사용자 보고)
+
+초판은 `HandOpened` 만 들었는데, **항아리로 먼저 열어둔 뒤 유닛을 탭하면 안내가 안 떴다.**
+
+`HandOpened` 는 `OpenRoutine()` 끝에서 발화하고, 그 코루틴은 `Open()` 이 돌 때만 시작된다.
+이미 열려 있으면 `OpenForSelection()` 이 `State == HandState.Hand` 에서 즉시 return 하므로
+(`DreamcatcherHandView.cs:183` — selection-hand-attach 계약 "선택 전환은 재딜 없음")
+**Open 도 HandOpened 도 돌지 않는다.** 저장 분리는 맞았는데 신호를 잘못 골랐다.
+
+그래서 신호를 **대상이 잡히는 시점**으로 옮긴다 — `DreamcatcherHandView.SelectionTargetSet`
+(non-null 대입 시 발화). 두 신호는 상보적이다:
+
+| 상황 | 오는 신호 | 처리 |
+|---|---|---|
+| 손패 닫힘 → 유닛 탭 | `SelectionTargetSet`(State 아직 UnitStrip → 흘림) 그다음 `HandOpened` | HandOpened 가 처리 |
+| 손패 열림(항아리) → 유닛 탭 | `SelectionTargetSet` 만 | 이 신호가 처리 |
+| 손패 닫힘 → 항아리 탭 | `HandOpened` 만 | HandOpened 가 처리 |
+
+둘 다 같은 `EvaluateCardHint()` 로 들어간다. 중복은 경로별 판당 래치가 막는다.
+
+**대칭에 대한 정확한 서술**: "선택 먼저 → 항아리" 는 항아리 탭이 **한 번 더** 필요하다.
+선택 중 항아리 탭은 unit 9 계약상 "그만하기"(손패+선택 동시 해제)이므로, 다시 탭해야 무선택
+오픈이 되고 그때 드래그 안내가 뜬다. 이건 설계된 동작이지 결함이 아니다.
+
 ### C. B단계 가드 — A 선행 요구를 뗀다
 
 unit 12 는 B 에 `_awakeningOfferedThisBattle && _awakeningArmedThisBattle`(= A 가 실제로 떴다)를
@@ -77,6 +101,11 @@ unit 12 는 B 에 `_awakeningOfferedThisBattle && _awakeningArmedThisBattle`(= A
 예외를 삼킨다) 한 판에서 같은 안내가 반복되지 않는다.
 
 `_awakeningOfferedThisBattle` 은 **남긴다** — A단계의 판당 1회를 여전히 지킨다.
+
+**대신 첫 판 봉인을 직접 건다.** 예전엔 카드 안내가 `_awakeningOfferedThisBattle` 요구를 통해
+`_awakeningLockedThisMatch` 의 보호를 **간접적으로** 받고 있었는데, 그 요구를 걷어내며 보호도
+함께 사라졌다. 지금은 첫 판에 손패를 열 방법이 없어(항아리 숨김 + unit 15 선택 봉인) 도달
+불가지만, 그 두 장치에만 기대지 않도록 `EvaluateCardHint` 첫 줄에서 직접 막는다.
 
 ### D. 기존 계정 이관
 
