@@ -139,11 +139,13 @@ code + git history        구현 상세
 - **`PendingDeployment` 제외 테스트 커버** [S] · 배치 대기 유닛이 장판/오라 멤버십에서 빠지는 규칙에 테스트가 없다(재배치 비행 창 포함). (active-ally-zone)
 - **액티브 전용 카드 아트** [S] · 현재 uiTint/스킬명 폴백. (active-dreamcatcher-tile-aim)
 
-#### 토너먼트 덱 정보 (tournament-deck-info · tournament-history-deck-view — 둘 다 완료 2026-07-30)
+#### 토너먼트 덱 정보 (tournament-deck-info · tournament-history-deck-view · deck-info-preset-apply — 완료)
 
-서버 `deckInfo` 를 채우고(전자), 히스토리에서 참가자의 덱을 보여준다(후자). 히스토리는 1뎁스 2컬럼으로
-재설계됐다. 상세: `docs/spec/tournament-deck-info/3_handoff_summary.md`,
-`docs/spec/tournament-history-deck-view/5_handoff_summary.md`.
+서버 `deckInfo` 를 채우고, 히스토리에서 참가자의 덱을 보여주며, 남의 편성을 스쿼드/드림캐쳐별
+새 프리셋 작업본으로 가져온다. 히스토리는 1뎁스 2컬럼으로 재설계됐다. 상세:
+`docs/spec/tournament-deck-info/3_handoff_summary.md`,
+`docs/spec/tournament-history-deck-view/5_handoff_summary.md`,
+`docs/spec/deck-info-preset-apply/6_handoff_summary.md`.
 
 - **0점 마감이 덱 기록을 덮어쓰는지 확인** [S] · 유일하게 남은 미확인. 좋은 판 뒤 **나가기로** 한 판을 끝내고 같은 엔트리를 다시 열면 판정된다. 덮인다면 클라를 더 고칠 게 아니라(이미 값 없으면 키를 안 보낸다) **서버에 최고점 가드를 요청**하는 쪽이 맞다. (tournament-deck-info)
 - **카드 문안 정합** [S] · 팝업은 `card.description` 원문을 쓴다. 게임 내 다른 카드 표면은 `DreamcatcherCardText` 를 거쳐 축/타입 헤더와 "○○ 전용" 부착 제한을 붙인다. 남의 덱에서 부착 제한이 안 보이는 것은 의식적 선택이지 누락이 아니다. (tournament-history-deck-view)

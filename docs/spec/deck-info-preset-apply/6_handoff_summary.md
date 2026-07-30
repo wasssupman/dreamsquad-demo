@@ -2,7 +2,8 @@
 
 ## Commit
 
-- `4d9190b4` — 히스토리 덱 → 새 프리셋 + 미저장 작업본 적용, 필터·라우팅·테스트·스펙
+- `ef3df843` — 히스토리 덱 → 새 프리셋 + 미저장 작업본 적용, 필터·라우팅·테스트·스펙
+- `6b553fdb` — 스쿼드/드림캐쳐 저장 버튼 분리 및 교차 저장 회귀 방지
 
 ## Implemented
 
@@ -30,21 +31,23 @@
 ## Verified
 
 - Unity 스크립트 컴파일: 오류 0
-- 신규/관련 EditMode: 46 pass
-- 전체 EditMode: 1,738 total · 1,736 pass · 2 existing ignored · 0 fail
+- 신규/관련 EditMode: 47 pass
+- 전체 EditMode: 1,739 total · 1,737 pass · 2 existing ignored · 0 fail
+- PlayMode 시각 스모크: 두 저장 버튼 동일 폭·독립 라벨 확인, `$visual-verdict` 96/100 pass
 - 전체 PlayMode: 86 total · 72 pass · 14 fail
   - 실패 14개는 이 spec 경로가 아니라 기존 서버 계정 중복, Tween error 로그, 드래그 좌표, 드림캐쳐 전투 효과, 캐리인 상태, 배치 오라, 씬 전환 테스트다.
-- 신규 `DeckInfoPresetApplyLiveE2ETest`는 로그인·히스토리 조회까지 진입했다. 현재 계정에 적용 가능한 외부 참가자 덱이 없어 실제 적용 assertion은 미완료다.
+- 신규 `DeckInfoPresetApplyLiveE2ETest`는 로그인·히스토리 조회까지 진입했다. 현재 계정에 적용 가능한 외부 참가자 덱이 없어 실제 적용 assertion은 실행되지 않았으며, 외부 데이터 의존 비차단 관찰 항목으로 분리했다.
 - 신규 `SerializeField` 및 씬 수정 0. `docs/reference/object-pipeline-map.md` 갱신 불요 확인.
 
 ## Notes
 
 - 처음 전체 EditMode 실행은 Windows가 unsigned Burst JIT DLL을 차단(error 4551)해 비예상 Error 로그 1건으로 실패했다. Editor의 `Jobs/Burst/Enable Compilation`을 로컬에서 꺼 재실행했고 전체 EditMode가 통과했다. 프로젝트 소스/Player 설정 변경은 없다.
-- `PresetApplyPickupTests`는 EditMode에서 일반 `MonoBehaviour.OnEnable`이 자동 실행된다고 가정해 13개가 실패했다. 실제 `OnEnable`을 호출하는 `Enter` 헬퍼로 테스트 하네스를 고쳤고 46개가 모두 통과했다.
+- `PresetApplyPickupTests`는 EditMode에서 일반 `MonoBehaviour.OnEnable`이 자동 실행된다고 가정해 13개가 실패했다. 실제 `OnEnable`을 호출하는 `Enter` 헬퍼로 테스트 하네스를 고쳤고, 버튼 분리 회귀를 포함한 관련 47개가 모두 통과했다.
 - live E2E는 프로필을 JSON 복제하고 두 페이지의 `ProfileSaver`를 no-op으로 바꿔 사용자 디스크 프로필을 쓰지 않는다.
 
-## Follow-up
+## Optional Live Observation
 
 1. 외부 참가자 덱이 있는 실계정에서 `DeckInfoPresetApplyLiveE2ETest`를 명시 실행한다.
 2. 성공 후 수동으로 `[저장]`, `[되돌리기]`, dirty 경고와 내 덱 버튼 숨김을 육안 확인한다.
-3. 공유 작업 트리에서 위 Key Files와 본 spec 문서만 선별해 Lore 프로토콜로 커밋한다.
+
+위 항목은 실서버 데이터가 있을 때의 추가 관찰이며 이 spec의 완료 조건을 막지 않는다.

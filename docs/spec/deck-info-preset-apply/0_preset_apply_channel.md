@@ -66,8 +66,8 @@ public static class PresetApply
 
 ## 완료 기준
 
-- [ ] 컴파일 그린
-- [ ] EditMode 테스트 통과:
+- [x] 컴파일 그린
+- [x] EditMode 테스트 통과:
   - `Stage` → `TryConsume(같은 대상)` = true + 내용 일치, 두 번째 호출은 false
   - `Stage(Squad)` → `TryConsume(Dreamcatcher)` = false **이고 예약이 사라진다**(`HasPending` false)
   - `Stage` 두 번 → 뒤엣것만 남는다

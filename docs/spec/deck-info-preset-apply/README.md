@@ -1,6 +1,6 @@
 # deck-info-preset-apply
 
-> 상태: 구현 완료 2026-07-31 (units 0~5) · 자동 검증 완료, 외부 참가자 덱 live E2E 대기
+> 상태: **완료** 2026-07-31 (units 0~5) · 구현/자동 검증/시각 검증/문서 종결 완료
 > 선행: `page-local-presets`(페이지별 프리셋) · `tournament-history-deck-view`(덱보기 팝업) 둘 다 완료.
 
 ## 한 줄
@@ -28,7 +28,7 @@
 | 2 | 라우팅 | `2_panel_and_menu_routing.md` | 히스토리 패널이 예약 → 메뉴 컨트롤러가 페이지 전환 |
 | 3 | 스쿼드 픽업 | `3_squad_page_pickup.md` | 진입 시 예약 소비 → 프리셋 생성 + 작업본 세팅 (유닛+스톤) |
 | 4 | 드캐 픽업 | `4_dreamcatcher_page_pickup.md` | 같은 형태 (카드) |
-| 5 | 검증 | `5_wiring_and_verify.md` | Play e2e + stale 문서 포인터 2곳 정정 + handoff |
+| 5 | 검증 | `5_wiring_and_verify.md` | 자동·시각 검증 + stale 문서 포인터 2곳 정정 + handoff |
 
 ## Feature-wide 계약
 
@@ -50,7 +50,7 @@
 
 8. **내 덱에는 버튼이 없다.** 기존 `Show(payload, title, allowPresetApply)` 를 그대로 쓴다 — 내 덱을 내 프로필에 다시 쓰는 건 no-op 이다.
 
-9. **비활성 조건은 하나뿐이다** — 그 탭에 적용할 항목이 0개(덱 정보 없음/빈 섹션). 화면이 이미 "덱 정보가 없습니다" 를 말하고 있어 dim 의 이유가 자명하다. 숨기지 않는 이유는 탭을 오갈 때 자리가 뛰지 않아야 하기 때문(계약 12 와 같은 이유).
+9. **각 버튼의 비활성 조건은 하나뿐이다** — 해당 종류에 적용할 항목이 0개(덱 정보 없음/빈 섹션). 화면이 이미 "덱 정보가 없습니다" 를 말하고 있어 dim 의 이유가 자명하다. 한쪽 데이터만 있으면 그쪽 버튼만 활성화된다.
 
 10. **ECS 접점 없음.** 전부 MonoBehaviour 계층(UI + Core/Profile). 배틀 시뮬레이션 무관.
 

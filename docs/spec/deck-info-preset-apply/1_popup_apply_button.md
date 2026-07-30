@@ -10,7 +10,7 @@
 
 ## 구현
 
-이벤트는 **탭별로 둘**이다:
+이벤트는 **대상별로 둘**이다:
 
 ```csharp
 public event Action SquadApplyRequested;
@@ -25,17 +25,18 @@ public event Action DreamcatcherApplyRequested;
 - `allowPresetApply == false`(내 덱)면 기존대로 영역 통째 숨김 + 목록이 그 자리까지 확장. 이 경로는 변경하지 않는다.
 - `OnDestroy` 에서 리스너 정리 — `_closeButton` 선례를 따른다.
 
-`Show()` 는 매번 `_tab = SquadTab` 으로 되돌리므로 라벨 초기화가 자동으로 따라온다.
+`Show()` 때 두 버튼의 활성 상태를 각 payload 섹션에서 다시 계산하므로 이전 팝업의 상태가 남지 않는다.
 
 ## 완료 기준
 
-- [ ] 컴파일 그린
-- [ ] `DeckInfoPopup` 에 `PlayerProfile|SquadPreset|DreamcatcherPreset|ProfileStore` 참조 0건 유지 (순수 프레젠테이션 계약)
-- [ ] EditMode(`DeckInfoPopupTests` 확장):
+- [x] 컴파일 그린
+- [x] `DeckInfoPopup` 에 `PlayerProfile|SquadPreset|DreamcatcherPreset|ProfileStore` 참조 0건 유지 (순수 프레젠테이션 계약)
+- [x] EditMode(`DeckInfoPopupTests` 확장):
   - 스쿼드 저장 클릭 → `SquadApplyRequested` 1회, `DreamcatcherApplyRequested` 0회, 팝업 비활성
   - 드림캐쳐 저장 클릭 → 반대로
   - `payload == null` → 두 버튼 모두 비활성, 클릭해도 이벤트 0회
   - 활성 탭과 무관하게 스쿼드 버튼은 스쿼드 이벤트만, 드림캐쳐 버튼은 드림캐쳐 이벤트만 1회
   - 카드만 있고 스쿼드가 빈 페이로드 → 스쿼드 버튼 비활성 / 드캐 버튼 활성
   - `allowPresetApply: false` → 영역 비표시 (기존 테스트 유지)
-- [ ] Play: 두 버튼이 동일 폭으로 분리되고 탭 전환 시 자리와 라벨이 바뀌지 않는다
+- [x] Play: 두 버튼이 동일 폭으로 분리되고 탭 전환 시 자리와 라벨이 바뀌지 않는다
+  - 2026-07-31 임시 PlayMode 시각 스모크 캡처 후 `$visual-verdict` 96/100 pass. 임시 테스트와 캡처 파일은 검증 후 제거했다.

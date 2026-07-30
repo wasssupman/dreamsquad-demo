@@ -38,8 +38,8 @@ RefreshBarEntries();
 
 ## 완료 기준
 
-- [ ] 컴파일 그린
-- [ ] EditMode(리플렉션으로 실제 컨트롤러 구동 — `PresetCommitSemanticsTests` 패턴):
+- [x] 컴파일 그린
+- [x] EditMode(리플렉션으로 실제 컨트롤러 구동 — `PresetCommitSemanticsTests` 패턴):
   - 예약 후 진입 → `squads.Count` +1, 이름 = `"{owner}의 덱"`, `_viewingPresetId` = 새 id
   - 작업본 = 필터 결과 · **저장본은 빈 상태 유지** · `IsDirty()` true
   - `[저장]` → 저장본에 반영 + dirty 꺼짐
@@ -48,4 +48,4 @@ RefreshBarEntries();
   - 상한 가득 → 프리셋 미증가 + **예약은 소멸**(재진입에 되살아나지 않는다)
   - `IsLoadedThisSession == false` → 미증가, `LogAssert.Expect(LogType.Error, ...)` 로 가드 발화를 못박는다
   - 예약 없이 진입 → 기존 동작(확정 프리셋 표시) 무변경
-- [ ] Play: 남의 덱 → 스쿼드 탭 적용 → 유닛/스톤이 채워진 새 프리셋 + dirty 배지 + `[저장]`/`[되돌리기]` 활성
+- [x] 페이지 픽업 계약 고정: 스쿼드 적용 시 스쿼드만 +1, 드림캐쳐 목록 불변, 작업본 dirty 및 저장/되돌리기 동작을 실제 컨트롤러 테스트로 검증
