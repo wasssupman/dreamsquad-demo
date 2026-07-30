@@ -1,6 +1,6 @@
 # projectile-shot-sequence — 개별 탄환 시퀀스
 
-> 상태: 구현 완료 — unit 0~3, 사용자 Play 시각 확인 대기 (2026-07-30)
+> 상태: 완료 (2026-07-30)
 > 선행: `projectile-emission-pattern` · `defender-directional-volley`
 
 ## 목표

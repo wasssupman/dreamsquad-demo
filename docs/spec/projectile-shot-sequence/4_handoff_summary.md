@@ -41,6 +41,7 @@
 - PlayMode 전체에는 인증 서버 중복 계정, PrimeTween callback, drag cancel 등
   이 spec 밖의 기존 실패가 남아 있다.
 - ECS 리뷰 결과 새 시스템·채널·구조 변경과 Component 소유권 위반은 없다.
+- 사용자 종료 확인: 2026-07-30.
 
 ## Notes
 
@@ -52,6 +53,5 @@
 
 ## Follow-up
 
-- BattleScene에서 맵 중앙과 상·하단/좌·우 외곽에 샷건너·머신거너를 두고 몸체 발사점을 확인한다.
-- 같은 확인에서 Ballistic, SkyFall, Grenade의 높이·회전·착탄 VFX 회귀를 함께 본다.
-- 사용자 Play 확인 후 README 상태를 `완료`로 바꾸고 unit 3 확인 일자·커밋을 기록한다.
+- 현재 spec의 잔여 작업은 없다.
+- 15발 초과 패턴이 필요해질 때 README의 fixed-list 폭 후속 후보를 별도 spec으로 검토한다.
