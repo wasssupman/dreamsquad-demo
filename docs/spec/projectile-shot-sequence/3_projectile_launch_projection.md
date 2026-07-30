@@ -44,3 +44,5 @@ ProjectileData 수치 재튜닝, 시뮬 궤적 변경은 범위가 아니다.
 - Play에서 맵 중앙과 상·하단/좌·우 외곽의 샷건너·머신거너 발사점이 같은 몸체 높이로 보이고,
   Ballistic/SkyFall/Grenade 표시가 유지된다.
 - ECS 리뷰에서 sim/Presentation 경계, Component 소유권, 구조 변경, lifecycle 회귀가 없다.
+
+> 구현 완료: 2026-07-30 · 커밋 `2651c577` · 사용자 Play 시각 확인 대기
