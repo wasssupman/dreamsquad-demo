@@ -20,7 +20,8 @@ namespace Wassup.Battle.Effects
         {
             state.RequireAnyForUpdate(
                 state.GetEntityQuery(ComponentType.ReadOnly<TornadoField>()),
-                state.GetEntityQuery(ComponentType.ReadOnly<PortalLink>()));
+                state.GetEntityQuery(ComponentType.ReadOnly<PortalLink>()),
+                state.GetEntityQuery(ComponentType.ReadOnly<AllyBuffField>()));
         }
 
         [BurstCompile]
@@ -36,6 +37,21 @@ namespace Wassup.Battle.Effects
             {
                 effect.ValueRW.remaining -= dt;
                 if (effect.ValueRO.remaining <= 0f)
+                {
+                    ecb.DestroyEntity(entity);
+                }
+            }
+
+            // active-ally-zone unit 0 — AllyBuffField: 같은 캐리어 형태.
+            // 파괴되면 AllyBuffFieldSystem 이 더 이상 재발행하지 않아 버프가 자연 소멸한다.
+            // (이 시스템과 ModifierApplySystem 사이에 명시 순서가 없어 파괴되는 프레임에 한 번 더
+            //  갱신될 수 있으나, 수용된 AllyBuffApplySec 지연 안이라 무해하다 — [UpdateAfter] 를
+            //  얹지 말 것.)
+            foreach (var (field, entity) in
+                     SystemAPI.Query<RefRW<AllyBuffField>>().WithEntityAccess())
+            {
+                field.ValueRW.remaining -= dt;
+                if (field.ValueRO.remaining <= 0f)
                 {
                     ecb.DestroyEntity(entity);
                 }

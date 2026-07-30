@@ -174,6 +174,14 @@ namespace Wassup.UI
         // 흘려보내고, 곧이어 HandOpened 가 같은 일을 한다 — 두 신호는 상보적이다.
         public event System.Action SelectionTargetSet;
 
+        // active-ally-zone unit 3 — 선택 중 Active 조준이 시작됐다(= 선택을 놓아야 한다).
+        // 슬롯 OnBeginDrag 이 발화하고 DcInspectController 가 구독해 **선택만** 놓는다
+        // (손패·조준 슬로모는 유지). `AimingNow()` 폴링으로 대체하지 말 것 — 그 판정엔 배치
+        // 방향지정 조준이 포함돼 아무도 요청하지 않은 "방향지정 중 선택 해제" 가 생긴다.
+        public event System.Action SelectionReleasedForAim;
+
+        public void NotifySelectionReleasedForAim() => SelectionReleasedForAim?.Invoke();
+
         public void SetSelectionTarget(Entity target)
         {
             SelectionTarget = target;

@@ -55,6 +55,37 @@ namespace Wassup.Battle.Effects
             return e;
         }
 
+        // active-ally-zone unit 0 — 아군 버프 모디파이어의 재발행 지속시간(초).
+        // **밸런스 값이 아니라 프레임워크 지연 상한**이다: 장판을 벗어나거나 장판이 사라진 뒤
+        // 버프가 풀리기까지의 최대 지연이 이 값이다(ModifierStatsAggregateSystem 의 clamp 상수와
+        // 같은 성격).
+        //
+        // ⚠ 기준은 "한 프레임 시간" 이 아니라 **Unity 가 허용하는 최대 프레임 델타**다
+        // (ProjectSettings Maximum Allowed Timestep = 0.3333). 이보다 작으면 히칭 프레임 한 번에
+        // StatModifierTickSystem(UpdateAfter ModifierApplySystem)이 방금 갱신한 값을 넘어서 깎아
+        // 슬롯을 제거하고, 그 프레임만 장판 안 전원이 base 스탯으로 돌아간다 — 조용하고 자가치유
+        // 돼서 버그로 안 보이고 "버프가 일정하지 않다" 로만 느껴진다. 배율이 1을 넘길 여지까지 두고 0.5.
+        // public 인 이유: PlayMode 테스트가 대기시간을 이 값에서 계산한다(상수 복제 금지).
+        public const float AllyBuffApplySec = 0.5f;
+
+        // active-ally-zone unit 0 — 아군 버프 장판. TornadoField 와 같은 캐리어 엔티티이고,
+        // 멤버십 갱신은 AllyBuffFieldSystem 이 매 프레임 한다(스냅샷 아님). 재캐스트는 독립
+        // 장판을 만든다 — 겹쳐도 merge 키가 같아 모디파이어는 한 슬롯으로 접힌다(refresh).
+        public static Entity SpawnAllyBuffField(EntityManager em, int2 centerCell, int tileRange,
+            StatKind stat, float magnitude, float duration)
+        {
+            var e = em.CreateEntity();
+            em.AddComponentData(e, new AllyBuffField
+            {
+                centerCell = centerCell,
+                tileRange  = tileRange,
+                stat       = stat,
+                magnitude  = magnitude,
+                remaining  = duration,
+            });
+            return e;
+        }
+
         // Phase 7 — Portal: carrier entity with the two endpoints. Re-cast spawns a
         // separate link (player-decided overlap) rather than merging.
         // Phase 9: exitWaypointIndex parameter dropped. After teleport, next-frame

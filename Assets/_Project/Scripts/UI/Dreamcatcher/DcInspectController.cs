@@ -95,6 +95,8 @@ namespace Wassup.UI
                 handView.UsableCardsExhausted += OnUsableCardsExhausted;
                 // unit 9 — 선택 중 각성 버튼 = 그만하기. 손패와 함께 선택도 걷는다.
                 handView.SelectionDismissed += OnSelectionDismissed;
+                // active-ally-zone unit 3 — 선택 중 Active 조준 시작 = 선택만 놓는다(손패 유지).
+                handView.SelectionReleasedForAim += ReleaseSelectionKeepHand;
             }
         }
 
@@ -109,6 +111,7 @@ namespace Wassup.UI
                 handView.FocusCleared -= OnFocusSessionReleased;
                 handView.UsableCardsExhausted -= OnUsableCardsExhausted;
                 handView.SelectionDismissed -= OnSelectionDismissed;
+                handView.SelectionReleasedForAim -= ReleaseSelectionKeepHand;
             }
             Close(); // lease 해제 — 비활성화가 슬로우를 남기면 안 된다
         }
@@ -452,6 +455,38 @@ namespace Wassup.UI
                 handView.ClearSelectionTarget();
                 handView.CloseFromSelection();
             }
+        }
+
+        // active-ally-zone unit 3 — 선택만 놓고 **손패는 유지**한다. 선택 중 Active 조준이 시작될 때
+        // 쓰는 경로다: 카드를 이미 잡고 있으므로 손패가 닫히면 안 된다.
+        //
+        // Close() 를 쓰지 않는 이유: 그쪽은 손패 걷기(CloseFromSelection)까지 한 몸이고, 그 안의
+        // CancelAllCardInteraction() 이 **방금 시작한 드래그를 취소**한다.
+        //
+        // 반대로 `_slomoLease` 는 **반드시** 놓는다. 이건 인스펙트 자기 lease(AcquireSlomo, 0.3×,
+        // priority 50)이고 지금까지 Close() 에서만 해제됐다. 안 걷으면 손패가 열린 동안엔 조준
+        // lease 와 값이 같아 보이지 않다가, 손패가 닫힌 뒤 Battle 도메인을 0.3× 로 **고착**시킨다
+        // (TimeManager 가 lease 스택에서 (priority desc, scale asc) 로 승자를 뽑는다).
+        // 조준 슬로모는 DreamcatcherHandView 가 소유하는 다른 lease 라 영향받지 않는다.
+        private void ReleaseSelectionKeepHand()
+        {
+            if (_selected == Entity.Null) return;
+            _selected = Entity.Null;
+            _anchorMissFrames = 0;
+            if (panel != null) panel.Hide();
+            // 우리가 켠 리티클만 끈다 — 카드 조준 세션의 포커스는 건드리지 않는다.
+            if (_reticleShown)
+            {
+                _reticleShown = false;
+                var focus = handView != null ? handView.Focus : null;
+                if (focus != null) focus.End();
+            }
+            _slomoLease.Dispose();
+            // 탭 즉발 부착의 게이트가 이 값이다 — 안 비우면 해제된 선택을 계속 타겟으로 본다.
+            if (handView != null) handView.ClearSelectionTarget();
+            // 줌은 신규 API 없이 자동 복귀한다: TickSelectionAnchor 가 `!AimingNow()` 일 때만
+            // SetInspectFocus 를 피드하고, 조준 시작이 IsAiming 을 세웠으므로 피드가 끊겨
+            // CameraDirector 가 staleness 로 페이드아웃한다.
         }
 
         // 부착 변경(부착/사망 회수/Placement 리셋). 선택 유닛이 카드를 잃었거나 죽었으면 닫고,

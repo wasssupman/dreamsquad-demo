@@ -522,6 +522,7 @@ namespace Wassup.Bridge
             unitOverheadUiLayer?.Clear(); // unit-overhead-ui — 공통 health/card view 정리
             ClearPickupVisuals(); // season-gimmick-overwork unit 6 — 잔여 레드불 뷰 정리
             ClearResignationVisuals(); // season-gimmick-clockout unit 1 — 잔여 사직서 뷰 정리
+            ClearAllyBuffZonePaint(); // active-ally-zone unit 2 — 잔여 장판 점등 정리(생명주기 대칭)
             _enemyTypeByEntity.Clear(); // dreamcatcher-orb-dock unit 6 — 적 데이터 등록부 정리
             _dcAuraPool?.Clear(); _dcAuraPool = null; // nightmare-whip-aura rev 2 — 드림캐쳐 부착 오라 정리(생명주기 대칭)
             ClearBlockingHazardVisuals();
@@ -574,6 +575,11 @@ namespace Wassup.Bridge
             // world)에 잔존해, 로비 경유 재진입 시 ReconcileResignationViews 가 옛 엔티티의 뷰를
             // 다시 만들어 사직서가 남아 보인다(+ threshold 카운트도 오염).
             DestroyEntitiesByType<Wassup.Battle.Effects.Resignation>();
+            // active-ally-zone unit 0 — 아군 버프 장판 캐리어 정리. 누락 시 위 사직서와 같은 사고가
+            // 난다: 매치 종료 직전에 깐 장판(6~8초)이 앱 수명 default world 에 남아, 다음 매치에서
+            // AllyBuffFieldSystem 이 **옛 centerCell** 로 다시 버프를 걸어 보이지 않는 강화 구역이 된다
+            // (뷰 등록부는 매치 경계에서 비워지므로 점등도 없다).
+            DestroyEntitiesByType<Wassup.Battle.Effects.AllyBuffField>();
         }
 
         private void DestroyEcsInfrastructureEntities()
@@ -1197,6 +1203,7 @@ namespace Wassup.Bridge
             _activeDcEffects.Clear();
             _activePlacementSleeps.Clear(); // combat-action-lock — 매치별 placement-aura Sleep 등록 초기화
             _bountyMarked.Clear(); // 살찌운 제물 — 표식 등록부도 매치 경계에서 초기화
+            ClearAllyBuffZonePaint(); // active-ally-zone unit 2 — 등록부와 refcount 를 함께 반납
             _dcStackCounter = 100;
             _dcInstanceCounter = 0; // dreamcatcher-unit-trigger Unit 1 — per-match instance ids
             // dreamstone-loadout Unit 3 — set-then-apply: reapply the pending stone
@@ -1891,17 +1898,13 @@ namespace Wassup.Bridge
                 case SkillEffectType.Meteor:
                     affectedCount = ApplyMeteor(tile, skill);
                     break;
-                // active-dreamcatcher-tile-aim unit 0 — 아군 버프도 타일 캐스트다(구
-                // CastSkillOnDefender 흡수). 적 장판은 아무도 안 맞아도 성공이지만(빈 곳
-                // 선점이 전술), 아군 버프는 즉발 1회라 대상 0기 = 순수 낭비 → 무차감 거절
-                // (spec 계약 5). 호출자는 false 를 보고 차감·순환을 하지 않는다.
+                // active-ally-zone unit 1 — 아군 버프는 **시간제 장판**이다(즉시 버프 폐기).
+                // 빈 칸에도 놓을 수 있어 적 장판과 규칙이 같아졌다 — 0기 거절은 폐기.
                 case SkillEffectType.PowerSurge:
-                    affectedCount = ApplyAllyBuff(tile, skill, Wassup.Battle.Effects.StatKind.DamageMul);
-                    if (affectedCount == 0) return false;
+                    affectedCount = SpawnAllyBuffZone(tile, skill, Wassup.Battle.Effects.StatKind.DamageMul);
                     break;
                 case SkillEffectType.RapidFire:
-                    affectedCount = ApplyAllyBuff(tile, skill, Wassup.Battle.Effects.StatKind.AttackSpeedMul);
-                    if (affectedCount == 0) return false;
+                    affectedCount = SpawnAllyBuffZone(tile, skill, Wassup.Battle.Effects.StatKind.AttackSpeedMul);
                     break;
                 default:
                     Debug.LogWarning($"[BattleBridge] Tile skill '{skill.id}' has unsupported effect {skill.effect}.");
@@ -1960,32 +1963,88 @@ namespace Wassup.Bridge
         // active-dreamcatcher-tile-aim unit 0 — 지정 타일 반경 내 **아군 전부**에 스킬
         // 모디파이어(공격폭증=DamageMul, 속사=AttackSpeedMul). 구 CastSkillOnDefender(타일의
         // 유닛 1기)를 대체한다. 반경은 skill.range → 체비셰프 타일.
-        private int ApplyAllyBuff(Vector2Int tile, SkillData skill, Wassup.Battle.Effects.StatKind stat)
+        // active-ally-zone unit 1 — 아군 버프 = 장판 스폰. 시뮬 적용(누가 안에 있나 → 누가
+        // 강화되나)은 Effects 의 AllyBuffFieldSystem 소관이고, bridge 는 스폰 호출과 **로그용
+        // 스냅샷 카운트**만 한다(TRD: MonoBehaviour 에 전투 로직 금지).
+        // 반환값은 로그의 affected_count 전용 — 성공/실패 판정에 쓰지 않는다(0기도 성공).
+        private int SpawnAllyBuffZone(Vector2Int tile, SkillData skill, Wassup.Battle.Effects.StatKind stat)
         {
-            CollectAlliesInRange(tile, GridMath.RangeToTiles(skill.range), _allyApplyScratch);
-            // 대상 수는 enqueue **전에** 확정한다 — 루프 중 리스트가 흔들리는 미래 변경이 조용히
-            // 절단된 수를 보고하는 대신 눈에 보이게 깨지도록.
-            int affected = _allyApplyScratch.Count;
-            for (int i = 0; i < affected; i++)
-                EnqueueStatModifier(_allyApplyScratch[i], stat, skill.magnitude, skill.durationSec,
-                    SkillAllyBuffStackId, Wassup.Battle.Effects.ModifierOrigin.Skill);
-            return affected;
+            int tileRange = GridMath.RangeToTiles(skill.range);
+            var carrier = Wassup.Battle.Effects.EffectSpawner.SpawnAllyBuffField(
+                _em, new int2(tile.x, tile.y), tileRange, stat, skill.magnitude, skill.durationSec);
+            PaintAllyBuffZone(carrier, tile, tileRange); // unit 2 — 원인이 화면에 남는다
+            CollectAlliesInRange(tile, tileRange, _allyLogScratch);
+            return _allyLogScratch.Count;
         }
 
-        // 조준 예고용 읽기 조회(SetSkillAimRange 와 같은 인자 shape). 적용과 **같은**
-        // CollectAlliesInRange 를 타므로 "놓으면 아군 N기에 시전" 예고가 커밋 결과와 어긋날
-        // 수 없다(spec 계약 4). 공유하는 것은 **수집 규칙**이고 버퍼는 따로 쓴다 — 적용 중
-        // enqueue 루프가 도는 동안 조준이 같은 리스트를 다시 채우는 형태를 애초에 만들지 않는다.
-        public int CountDefendersInRange(Vector2Int center, SkillData skill)
+        // active-ally-zone unit 2 — 장판 점등 등록부(캐리어 엔티티 → 칠한 셀). 만료는 ECS 가
+        // 엔티티를 파괴해서 알리므로, 뷰 회수는 프레임 재조정으로 한다(bridge 책임 = 시각 드레인).
+        // 셀 목록을 들고 있지 않고 (중심, 반경)만 기억한다 — 캐스트마다 List 를 새로 만들지 않고,
+        // 회수 시 같은 규칙으로 다시 만든다(칠한 것과 반납하는 것이 같은 함수에서 나오게).
+        private readonly Dictionary<Entity, (Vector2Int center, int tileRange)> _allyZonePaint = new();
+        private readonly List<Vector2Int> _zoneCellScratch = new List<Vector2Int>();
+        private readonly List<Entity> _zoneGoneScratch = new List<Entity>();
+
+        private void PaintAllyBuffZone(Entity carrier, Vector2Int center, int tileRange)
         {
-            if (skill == null) return 0;
-            CollectAlliesInRange(center, GridMath.RangeToTiles(skill.range), _allyCountScratch);
-            return _allyCountScratch.Count;
+            if (tilemapMapView == null || carrier == Entity.Null) return;
+            if (_allyZonePaint.ContainsKey(carrier)) return; // 같은 캐리어 이중 등록 = refcount 누수
+            BuildZoneCells(center, tileRange, _zoneCellScratch);
+            tilemapMapView.AddZoneCells(_zoneCellScratch);
+            _allyZonePaint[carrier] = (center, tileRange);
+        }
+
+        // 보드 안 셀만 담는다 — 점등하는 것과 등록부가 서술하는 것이 같아야 refcount 를 읽을 수 있다.
+        private void BuildZoneCells(Vector2Int center, int tileRange, List<Vector2Int> results)
+        {
+            results.Clear();
+            int2 size = _generatedMap.IsCreated ? _generatedMap.gridSize : FallbackGridSize;
+            for (int dx = -tileRange; dx <= tileRange; dx++)
+            for (int dz = -tileRange; dz <= tileRange; dz++)
+            {
+                var cell = new Vector2Int(center.x + dx, center.y + dz);
+                if (cell.x < 0 || cell.x >= size.x || cell.y < 0 || cell.y >= size.y) continue;
+                results.Add(cell);
+            }
+        }
+
+        // 등록부를 비우는 유일한 지점 — refcount 반납을 **같은 함수 안에서** 한다.
+        // 둘을 떼어 놓으면(등록부만 비우고 타일 정리는 TilemapMapView.Clear 에 맡기면) 순서가
+        // 바뀌는 순간 stale 엔트리가 새 매치의 refcount 를 깎아 살아 있는 장판의 발자국이 꺼진다 —
+        // refcount 를 도입한 이유가 그것이었다. 뷰 쪽 ClearZoneCells 는 멱등이라 이중 호출도 안전.
+        private void ClearAllyBuffZonePaint()
+        {
+            _allyZonePaint.Clear();
+            if (tilemapMapView != null) tilemapMapView.ClearZoneCells();
+        }
+
+        // 살아 있는 캐리어가 아닌 항목의 점등을 반납한다. 칸별 refcount 라 겹친 장판이 서로의
+        // 발자국을 지우지 않는다(TilemapMapView.RemoveZoneCells).
+        private void DrainAllyBuffZoneVisuals()
+        {
+            if (_allyZonePaint.Count == 0) return;
+            _zoneGoneScratch.Clear();
+            foreach (var kv in _allyZonePaint)
+                if (kv.Key == Entity.Null || !_em.Exists(kv.Key)
+                    || !_em.HasComponent<Wassup.Battle.Effects.AllyBuffField>(kv.Key))
+                    _zoneGoneScratch.Add(kv.Key);
+
+            for (int i = 0; i < _zoneGoneScratch.Count; i++)
+            {
+                var gone = _zoneGoneScratch[i];
+                if (tilemapMapView != null && _allyZonePaint.TryGetValue(gone, out var painted))
+                {
+                    BuildZoneCells(painted.center, painted.tileRange, _zoneCellScratch);
+                    tilemapMapView.RemoveZoneCells(_zoneCellScratch);
+                }
+                _allyZonePaint.Remove(gone);
+            }
         }
 
         // 배치 대기(PendingDeployment) 유닛 제외 — 아직 판에 서지 않았다(on-place 오라와 같은 규칙).
         // 월드 생존 가드는 레포 관용구(HasLiveEntityManager)를 쓴다 — `_em == default` 단독은
         // 어디서도 리셋되지 않아 티어다운 후에도 통과한다.
+        // 남은 용도는 **로그 스냅샷 하나**다(시뮬 멤버십 권위는 ECS 의 DefenderTile).
         private void CollectAlliesInRange(Vector2Int center, int tileRange, List<Entity> results)
         {
             results.Clear();
@@ -2002,9 +2061,8 @@ namespace Wassup.Bridge
             }
         }
 
-        // 적용용/조준 조회용 버퍼를 분리한다(위 주석의 불변식을 주석이 아니라 구조로 만든다).
-        private readonly List<Entity> _allyApplyScratch = new List<Entity>();
-        private readonly List<Entity> _allyCountScratch = new List<Entity>();
+        // 로그 스냅샷 전용 버퍼 하나(적용은 ECS 가 한다 — active-ally-zone unit 1).
+        private readonly List<Entity> _allyLogScratch = new List<Entity>();
 
         // Phase 9 — 모든 스킬 대상 타일 → world center 계산의 단일 소스.
         // Phase 10 에서 tileSize 가 theme 파라미터로 승격될 때 이 helper 만 바꾸면 됨.
@@ -2287,6 +2345,12 @@ namespace Wassup.Bridge
             float dimTarget = _enemyDimActive ? Mathf.Clamp01(enemyDragDimAlpha) : 1f;
             _enemyDimAlpha = Mathf.MoveTowards(_enemyDimAlpha, dimTarget,
                 enemyDragDimFadeSpeed * UnityEngine.Time.unscaledDeltaTime);
+
+            // active-ally-zone unit 2 — 장판 점등 회수는 **페이즈 무관**이다(위 적 dim 페이드와 같은 이유).
+            // 승패는 `_running=false` 후 집계/결과 화면을 띄우는데, 그 사이에도 BattleSimGroup 은 돌아
+            // 만료된 캐리어가 파괴된다. `_running` 아래에 두면 결과를 읽는 동안 아무것도 없는 자리에
+            // 민트 타일이 켜진 채 남아 보드가 거짓을 보여준다.
+            if (HasLiveEntityManager()) DrainAllyBuffZoneVisuals();
 
             if (!_running) return;
 
@@ -5519,17 +5583,11 @@ namespace Wassup.Bridge
 
         // effect-tiles unit 2 — 효과 타일 modifier 슬롯 네임스페이스.
         // 규약: on-place=0 · 시너지=1 · 효과타일=2 · **스킬 아군 버프=3** · 드림캐쳐=100+
-        // (EnqueueSynergyMul / SkillAllyBuffStackId / _dcStackCounter 참조).
+        // (EnqueueSynergyMul / AllyBuffField.StackId / _dcStackCounter 참조).
         private const ushort EffectTileStackId = 2;
 
-        // active-dreamcatcher-tile-aim rev — 스킬(Active 드림캐쳐) 아군 버프 전용 슬롯.
-        // 구 CastSkillOnDefender 는 on-place 와 같은 0 을 썼다. 대상이 1기일 때는 충돌이 드물었지만,
-        // 이제 반경 내 최대 9칸에 걸리므로 5×5 가디언 배치 오라(같은 stat·Additive·0)와 겹치는 게
-        // 흔한 상황이 된다. merge 는 magnitude 를 **덮어쓰므로**(ModifierApplySystem) 뒤늦게 배치된
-        // 오라가 플레이어가 각성치를 지불한 ×2.0 을 ×1.3 으로 내려버렸다.
-        // → 전용 슬롯으로 분리해 오라와 **합산**된다(사용자 결정 2026-07-30). 같은 스킬 재캐스트는
-        //   같은 키라 여전히 refresh(멱등).
-        private const ushort SkillAllyBuffStackId = 3;
+        // 스킬 아군 버프 슬롯(=3)은 active-ally-zone unit 0 에서 `AllyBuffField.StackId` 로 이전됐다 —
+        // 적용 주체가 Effects 시스템이라 상수도 그쪽이 소유한다. 슬롯 규약은 위 주석 참조.
 
         // effect-tiles unit 1 — 효과 타일 단일 진입점: dict 등록 + View 페인트. 셀당 1개(덮어쓰기).
         // 맵 빌드 seed 선정이 첫 client — 후속 런타임 생성 루트(드림캐쳐/유닛 능력)도 이 진입점 사용.

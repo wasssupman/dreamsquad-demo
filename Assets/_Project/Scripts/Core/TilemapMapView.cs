@@ -32,6 +32,10 @@ namespace Wassup.Core
         [SerializeField] private Color commitPopValidColor = new Color(0.35f, 1f, 0.9f, 1f);
         [SerializeField] private Color commitPopInvalidColor = new Color(1f, 0.4f, 0.32f, 1f);
 
+        // active-ally-zone unit 2 — 아군 장판 색(민트). 조준 시안/불가 적색과 구분되는 색.
+        // 타일맵당 색 1개라 채널 균일하다. 이 파일의 색 규약(SerializeField 또는 tileSet SO)을 따른다.
+        [SerializeField] private Color allyZoneColor = new Color(0.42f, 0.95f, 0.72f, 0.42f);
+
         [Header("끈적 액체 타일 (placement-cell-snap unit 7 rev)")]
         // 포커스 셀 하이라이트 자체가 액체 — 테두리(셀 고정) + 내부 번짐(손가락 방향).
         // 모양 튜닝(테두리 폭/도달/목 등)은 PlacementLiquidTile.mat 인스펙터. 여기는 팔레트 + 관성만.
@@ -181,6 +185,7 @@ namespace Wassup.Core
             _rangeInvalid = false; // unit 3 — 맵 리빌드 경계 방어(정상 경로는 호출부 리셋이 덮는다)
             if (_placeableTilemap != null) _placeableTilemap.ClearAllTiles(); // placement-eligible-tile-highlight unit 1
             _placeableActive = false;
+            ClearZoneCells(); // active-ally-zone unit 2 — 맵 리빌드/티어다운에서 장판 점등 회수
             if (_backgroundPropsRoot != null) { SafeDestroy(_backgroundPropsRoot.gameObject); _backgroundPropsRoot = null; }
             if (_ringPropsRoot != null) { SafeDestroy(_ringPropsRoot.gameObject); _ringPropsRoot = null; }
             if (_structurePropsRoot != null) { SafeDestroy(_structurePropsRoot.gameObject); _structurePropsRoot = null; }
@@ -292,6 +297,7 @@ namespace Wassup.Core
             SetRendererSorting(overlayTilemap, above ? 10002 : -10);
             SetRendererSorting(_rangeTilemap, above ? 10000 : -12);
             SetRendererSorting(_placeableTilemap, above ? 9998 : -13); // placement-eligible-tile-highlight unit 1
+            SetRendererSorting(_zoneTilemap, above ? 9997 : -14);     // active-ally-zone unit 2
         }
 
         // tilemap-real-shadows — 타일/맵은 그림자를 드리우지 않는다(유닛·프랍만 cast).
@@ -999,6 +1005,72 @@ namespace Wassup.Core
             if (_rangeTilemap != null)
                 foreach (var cell in _rangeCells) _rangeTilemap.SetTile(ToCell(cell), null);
             _rangeCells.Clear();
+        }
+
+        // ── active-ally-zone unit 2 — 액티브 아군 장판 점등 ──────────────────────
+        // 전용 타일맵이다. 조준 프리뷰(range)·맵 효과 타일(effect) 채널은 둘 다 단일 owner
+        // set/clear 라 재사용하면 서로를 지운다(조준이 장판을 지우거나 그 반대).
+        //
+        // **칸별 refcount 필수**: 장판은 동시에 여러 장 존재할 수 있어서, 단순 set/clear 를
+        // 복사하면 먼저 만료된 장판이 겹친 칸을 지우고 살아 있는 장판의 발자국이 사라진다.
+        private Tilemap _zoneTilemap;
+        private readonly Dictionary<Vector2Int, int> _zoneCellRefs = new Dictionary<Vector2Int, int>();
+
+        public void AddZoneCells(IReadOnlyList<Vector2Int> cells)
+        {
+            if (grid == null || _tileSet == null || _tileSet.rangeTile == null || cells == null) return;
+            EnsureZoneTilemap();
+            for (int i = 0; i < cells.Count; i++)
+            {
+                var cell = cells[i];
+                if (cell.x < 0 || cell.x >= _gridSize.x || cell.y < 0 || cell.y >= _gridSize.y) continue;
+                _zoneCellRefs.TryGetValue(cell, out int refs);
+                _zoneCellRefs[cell] = refs + 1;
+                if (refs == 0) _zoneTilemap.SetTile(ToCell(cell), _tileSet.rangeTile);
+            }
+        }
+
+        public void RemoveZoneCells(IReadOnlyList<Vector2Int> cells)
+        {
+            if (_zoneTilemap == null || cells == null) return;
+            for (int i = 0; i < cells.Count; i++)
+            {
+                var cell = cells[i];
+                if (!_zoneCellRefs.TryGetValue(cell, out int refs)) continue;
+                if (refs <= 1)
+                {
+                    _zoneCellRefs.Remove(cell);
+                    _zoneTilemap.SetTile(ToCell(cell), null); // 마지막 참조만 실제로 끈다
+                }
+                else _zoneCellRefs[cell] = refs - 1;
+            }
+        }
+
+        public void ClearZoneCells()
+        {
+            _zoneCellRefs.Clear();
+            if (_zoneTilemap != null) _zoneTilemap.ClearAllTiles();
+        }
+
+        private void EnsureZoneTilemap()
+        {
+            if (_zoneTilemap != null) return;
+            if (grid == null) return;
+            var go = new GameObject("AllyZoneTiles");
+            go.transform.SetParent(grid.transform, false);
+            // z-fight 방지 + 깊이 순서: effect(-15) 위, placeable(-0.04)/range(-0.05) 아래.
+            go.transform.localPosition = new Vector3(0f, 0f, -0.03f);
+            _zoneTilemap = go.AddComponent<Tilemap>();
+            var r = go.AddComponent<TilemapRenderer>();
+            _zoneTilemap.tileAnchor = new Vector3(0.5f, 0.5f, 0f);
+            r.sortingOrder = _highlightAbove ? 9997 : -14;
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            if (overlayTilemap != null) // 검증된 반투명 tint 경로 재사용(range/placeable 과 동일)
+            {
+                var or = overlayTilemap.GetComponent<TilemapRenderer>();
+                if (or != null) r.sharedMaterial = or.sharedMaterial;
+            }
+            _zoneTilemap.color = allyZoneColor;
         }
 
         // placement-eligible-tile-highlight unit 1 — 배치 가능 셀 밝은 하이라이트(전용 타일맵, range 와 분리).

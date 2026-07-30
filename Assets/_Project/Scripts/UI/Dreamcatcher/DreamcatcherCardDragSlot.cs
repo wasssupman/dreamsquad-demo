@@ -45,9 +45,6 @@ namespace Wassup.UI
         private Vector2Int _lastRangeCell = new(-1, -1); // aim range preview cache
         // unit 1 — 타일 조준 상태. 셀이 바뀐 프레임에만 갱신(범위 점등·아군 카운트 공통 게이트).
         private Vector2Int? _aimCell;
-        private int _aimAllyCount;
-        private int _allyStatusCount = -1;   // AllyCountStatus 캐시 키
-        private string _allyStatusCache;
         // unit 2 — 포탈 2단계 점등용(입구 + 출구후보). 매 프레임 할당 금지.
         private readonly System.Collections.Generic.List<Vector2Int> _portalCells = new();
         // dreamcatcher-attach-lockon — 조준 시작 attachable 스냅샷(부착수는 드래그 중 불변).
@@ -121,10 +118,9 @@ namespace Wassup.UI
             // EnemyMark 를 돌려주므로 이 조건에서 자동 배제된다(card.type == Unit 만 보면 통과한다).
             if (Classify(slot.card) != AimMode.Defender || slot.card.type == CardType.Active)
             {
-                // Active 는 선택 중 아예 사용 불가(selection-active-block) — 드래그로도 안 되니
-                // "끌어서 쓰라" 고 안내하면 거짓이 된다. 적 표식은 드래그로는 여전히 된다.
-                if (slot.card.type == CardType.Active) ShowSelectionBlocked();
-                else Reject("이 카드는 <color=#FFD98A>끌어서</color> 사용하세요");
+                // active-ally-zone unit 3 — Active 도 이제 선택 중 **쓸 수 있다**(끌면 선택이 풀린다).
+                // 즉발 탭은 여전히 부착 전용이므로 안내는 "끌어서 쓰라" 로 통일된다.
+                Reject("이 카드는 <color=#FFD98A>끌어서</color> 사용하세요");
                 return;
             }
             if (!slot.usable)
@@ -148,17 +144,6 @@ namespace Wassup.UI
             var host = target;
             CommitNow(() => _view.Controller.CommitAttach(entryId, host),
                 () => _view.FlyCardToUnit(startUiWorld, ghostSize, face, host));
-        }
-
-        // selection-active-block — Active 차단 피드백(드래그 경로·탭 경로 공용). 헤더에 조작법을
-        // 그대로 쓰면 "끌어서 시전" 과 "사용 불가" 가 한 화면에서 모순되므로, 헤더는 **해제 방법**을
-        // 안내한다(막힌 이유만 알려주고 빠져나갈 길을 안 주면 안 된다).
-        private void ShowSelectionBlocked()
-        {
-            _view.FlinchSlot(_index);
-            _view.ShowDragBriefing(
-                "유닛 선택을 해제한 뒤 사용하세요  ·  빈 곳을 탭하면 해제",
-                "<color=#FF9B8A>유닛 선택 중에는 사용할 수 없습니다</color>");
         }
 
         // 즉발 거절 — 움찔 + 사유(기존 브리핑 표면 재사용, 신규 텍스트 위젯 없음). 차감 0.
@@ -201,15 +186,13 @@ namespace Wassup.UI
             var slot = Slot;
             _mode = Classify(slot.card);
             if (_mode == AimMode.None) return;
-            // selection-active-block (사용자 결정 2026-07-29) — 유닛이 선택된 동안 Active 카드는
-            // 쓸 수 없다. 선택 중 손패는 **부착 전용** 이라는 규칙이라 D&D 도 막는다(탭 즉발은
-            // OnPointerClick 이 같은 사유로 거절). 차감·조준 진입 없이 물러난다.
+            // active-ally-zone unit 3 — 선택 중 Active 차단(구 selection-active-block) 폐기.
+            // 막는 대신 **선택을 놓고 필드 문맥으로 나온다**: 손패·조준 슬로모는 유지되고
+            // 선택·패널·리티클·줌만 풀린다(DcInspectController.ReleaseSelectionKeepHand).
+            // 트리거가 press 가 아니라 여기(드래그 확정)인 이유: press 시점엔 이 제스처가 탭 즉발
+            // 부착인지 Active 드래그인지 알 수 없어, 거기서 풀면 탭 부착이 매번 죽는다.
             if (slot.card.type == CardType.Active && _view.SelectionTarget != Entity.Null)
-            {
-                _mode = AimMode.None; // 조준 상태를 남기지 않는다(EndInteraction 경유 안 함)
-                ShowSelectionBlocked();
-                return;
-            }
+                _view.NotifySelectionReleasedForAim();
 
             _dragging = true;
             _view.SetFocus(-1); // hand-deal-in — 드래그 시작 시 focus 해제(이웃 scatter 복귀)
@@ -465,7 +448,6 @@ namespace Wassup.UI
             ClearHover();
             ClearAimRange();
             _aimCell = null;
-            _aimAllyCount = 0;
             _portalEntryCell = null;
             if (_activeAiming)
             {
@@ -538,10 +520,9 @@ namespace Wassup.UI
                             ? "<color=#9FE6A0>입구 지정됨</color> — 출구 타일을 탭하세요"
                             : "<color=#9FE6A0>놓으면 여기로 연결</color>";
                     if (IsPortalCard()) return "놓으면 입구가 지정됩니다";
-                    if (!AimCellValid) return "<color=#FF9B8A>범위에 아군이 없습니다</color>";
-                    return TargetsAlliesNow()
-                        ? AllyCountStatus(_aimAllyCount)
-                        : "<color=#9FE6A0>놓으면 이 위치에 시전</color>";
+                    // active-ally-zone unit 1 — 아군 카운트 예고 폐기. 아군 버프도 장판이라 빈 칸에
+                    // 놓을 수 있어 6종 문안이 하나로 통일된다.
+                    return "<color=#9FE6A0>놓으면 이 위치에 시전</color>";
                 default:
                     return "";
             }
@@ -611,7 +592,6 @@ namespace Wassup.UI
             if (skill == null || !TryScreenToCellStrict(screenPos, out var cell))
             {
                 _aimCell = null;
-                _aimAllyCount = 0;
                 // 포탈 2단계에선 입구 표식을 잃지 않는다(출구 후보만 사라진 상태).
                 if (_portalEntryCell.HasValue) PaintPortalCells(_portalEntryCell.Value, null);
                 else ClearAimRange(); // 다시 들어오면 재점등
@@ -619,12 +599,6 @@ namespace Wassup.UI
                 return;
             }
             _aimCell = cell;
-            // 아군 카운트는 **매 프레임** 다시 센다(점등만 셀 게이트). 셀에 손가락을 얹은 채로도
-            // 반경 내 아군이 죽거나 배치 완료로 PendingDeployment 를 벗으면 예고가 거짓이 된다 —
-            // 초록으로 약속했는데 커밋이 조용히 무효거나, 반대로 붉게 막고 있는데 실은 성립.
-            // 배치된 유닛 dict 순회라 비용이 작고 할당이 없다. 적 장판은 카운트 무의미(계약 5).
-            _aimAllyCount = skill.TargetsAllies
-                ? _view.Bridge.CountDefendersInRange(cell, skill) : 0;
             if (cell == _lastRangeCell) return;
             _lastRangeCell = cell;
             PaintAimCells(cell, skill);
@@ -662,6 +636,7 @@ namespace Wassup.UI
         }
 
         // 커밋 가능 여부 — 조준 색·상태줄·릴리즈 판정이 이 하나를 공유한다.
+        // active-ally-zone unit 1 — 아군 유무 조건 제거(장판은 빈 칸에도 놓인다).
         private bool AimCellValid
         {
             get
@@ -669,26 +644,8 @@ namespace Wassup.UI
                 if (!_aimCell.HasValue) return false;
                 // 포탈 2단계: 입구와 같은 타일은 유효한 출구가 아니다(bridge 도 같은 판정으로 거절).
                 if (_portalEntryCell.HasValue) return _aimCell.Value != _portalEntryCell.Value;
-                return !TargetsAlliesNow() || _aimAllyCount > 0;
+                return true;
             }
-        }
-
-        // 상태줄은 매 프레임 평가된다(호버/취소영역 실시간). 카운트가 바뀔 때만 문자열을 굽는다 —
-        // 값이 같으면 뷰가 스킵하므로 매 프레임 보간은 버려지는 할당이다(Android 타겟 경로).
-        private string AllyCountStatus(int count)
-        {
-            if (count != _allyStatusCount)
-            {
-                _allyStatusCount = count;
-                _allyStatusCache = $"<color=#9FE6A0>놓으면 아군 {count}기에 시전</color>";
-            }
-            return _allyStatusCache;
-        }
-
-        private bool TargetsAlliesNow()
-        {
-            var skill = Slot.card != null ? Slot.card.skill : null;
-            return skill != null && skill.TargetsAllies;
         }
 
         private bool IsPortalCard()

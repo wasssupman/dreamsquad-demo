@@ -52,12 +52,8 @@ namespace Wassup.Data
         // 드림캐쳐 손패 카드의 아트 폴백) without an icon texture.
         public Color uiTint = Color.white;
 
-        // active-dreamcatcher-tile-aim unit 0 — 이 스킬이 겨누는 것이 아군인가(= 반경 내
-        // 아군에게 모디파이어). 조준 UI 가 유효성/예고 문안을 가르는 데 쓴다. 필드가 아니라
-        // effect 파생값이라 직렬화 무변경이고, 무엇이 실제로 적용되는지의 권위는 여전히
-        // BattleBridge.CastSkillAtTile 의 effect switch 다.
-        public bool TargetsAllies
-            => effect == SkillEffectType.PowerSurge || effect == SkillEffectType.RapidFire;
+        // (`TargetsAllies` 는 active-ally-zone unit 1 에서 삭제 — 아군 버프가 장판이 되면서 조준이
+        //  아군 유무를 물을 이유가 사라졌고, 아군/적 구분은 스폰 경로에서 구조적으로 갈린다.)
 
         // 두 타일(입구/출구)을 요구하는 유일한 스킬. 조준 문안·라우팅·커밋 3곳이 같은 판별을 쓴다.
         public bool IsPortal => effect == SkillEffectType.Portal;
