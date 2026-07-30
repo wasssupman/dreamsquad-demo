@@ -72,6 +72,19 @@
 | View | `Presentation/VfxSpawner.cs` (SpawnTornado/SpawnMeteorFall/SpawnPortal/SpawnMeteorBurst) + `MeteorFall.cs` | 경고링은 BattleBridge 인라인 쿼드 |
 | 씬 wiring | BattleBridge.vfxSpawner + VfxSpawner 프리팹 슬롯 | |
 
+## 스킬 아군 장판 — 공격폭증/속사 (active-ally-zone)
+
+| 정거장 | 앵커 | 확인 포인트 |
+|---|---|---|
+| 데이터 SO | `Data/SkillData.cs` (range/magnitude/durationSec) | 정본은 **DcSkills 시트** — 에셋만 고치면 런타임 갱신이 덮는다 |
+| 스폰 진입점 | `BattleBridge.CastSkillAtTile` → `SpawnAllyBuffZone` | Mono 주도. 대상 0기여도 성공(카운트는 로그용) |
+| ECS 캐리어 (Effects) | `Battle/Effects/AllyBuffField.cs` (`EffectSpawner.SpawnAllyBuffField`) | 중심=셀(int2), `StackId=3` |
+| 시뮬 consumer | `Battle/Effects/AllyBuffFieldSystem.cs` | 매 프레임 재발행(ZoneApplySystem 관용구). duration = `AllyBuffApplySec` 고정 |
+| 이벤트 큐 | `StatModifierApplyEventsSingleton` (기존) | 신규 큐 없음 |
+| 수명/정리 | `Battle/Effects/EffectTickSystem.cs` + `BattleBridge.DestroyBattleEntities` | 만료 파괴 + 매치 경계 정리 |
+| View | `Core/TilemapMapView.cs` 전용 zone 타일맵(`AddZoneCells`/`RemoveZoneCells`, 칸별 refcount) + `BattleBridge.PaintAllyBuffZone`/`DrainAllyBuffZoneVisuals`/`ClearAllyBuffZonePaint` | 조준 프리뷰(`SkillAim`)·맵 효과 타일 채널과 분리 |
+| 씬 wiring | `TilemapMapView.allyZoneColor` | 유닛별 신호는 미구현(StatusFx 후속) |
+
 ## 픽업 — 레드불 (season-gimmick-overwork, 시즌 기믹)
 
 | 정거장 | 앵커 | 확인 포인트 |

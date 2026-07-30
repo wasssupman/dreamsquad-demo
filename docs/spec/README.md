@@ -121,6 +121,24 @@ code + git history        구현 상세
 
 > 출처 spec 이 섞여 있다. 그룹 헤더 또는 항목 끝의 `(spec-slug)` 라벨로 출처 표기.
 
+#### 액티브 드림캐쳐 (active-dreamcatcher-tile-aim + active-ally-zone — 완료 2026-07-30, 사용자 Play 확인 통과)
+
+액티브 6종을 "화살표 + 타일 지정" 한 문법으로 통일하고(대상축 `SkillTargetType` 폐기), 아군 버프를
+시간제 장판으로 바꿔 "액티브는 지정한 칸에 영역을 만든다" 를 성립시켰다. 선택 중 액티브 차단도 폐기.
+상세: `docs/spec/active-dreamcatcher-tile-aim/4_handoff_summary.md` ·
+`docs/spec/active-ally-zone/5_handoff_summary.md`.
+
+- **감속장을 캐리어로** [M] · `ApplySlowField` 는 아직 **스냅샷**이다 — 시전 시점 반경 내 적에게 지속시간 모디파이어를 직접 걸어, 나중에 들어온 적은 안 걸리고 나간 적은 계속 느리다. 원칙("안에 있는 대상이 영향을 받는다")의 **마지막 예외**. `AllyBuffField`/`TornadoField` 패턴을 적 쪽에 그대로 적용하면 된다. (active-ally-zone)
+- **장판 위 아군 하이라이트** [M] · 지금은 바닥 점등만이라 "누가 강화 중인가" 가 유닛에 안 붙는다. `SetHoverHighlight` 는 단일 슬롯 래치라 조준 틴트와 공존 불가 → 정식 경로는 `StatusFxKind` append + `ReconcileStatusFx` 의 `origin == Skill` 분기. **프리팹 1개(아트) 필요.** (active-ally-zone × active-dreamcatcher-tile-aim)
+- **press 시점 범위 프리뷰** [S] · 카드를 집는 순간 어디에 얼마나 퍼지는지 보이면 "이 카드는 영역" 을 글로 배우지 않아도 된다. 지금은 끌어야 보인다. 액티브/부착 공통. (active-ally-zone)
+- **적/아군 장판 프리뷰 색 구분** [S] · 조준 프리뷰가 적 대상·아군 대상 모두 같은 aim 타일이다. 장판 점등은 민트로 갈랐으니 조준도 같은 언어로. (active-dreamcatcher-tile-aim × active-ally-zone)
+- **장판 겹침 시각 규칙** [S] · 두 장이 겹친 칸의 표현(현재 refcount 로 점등만 유지, 수명 페이드 없음). 칸별 색은 타일맵당 컬러 1개 제약 때문에 별도 설계가 필요하다. (active-ally-zone)
+- **손가락 오클루전 오프셋** [S] · 타일 조준점이 손끝에 가려지는지 실기기 확인 후 판단. 배치 쪽에는 이미 가상 포인터 오프셋 선례가 있다. (active-dreamcatcher-tile-aim)
+- **`TornadoField`/`PortalLink` 매치 경계 정리 누락** [S] · `DestroyBattleEntities` 에 없어 캐리어가 다음 판까지 산다. 적 전용이라 매치 사이엔 대상이 없어 실질 무해했지만 `AllyBuffField` 와 같은 구멍이었다. (active-ally-zone)
+- **`SkillData.cooldownSec`/`cost` 완전 삭제** [S] · 액티브 흡수 후 dormant(각성치가 비용, 순환이 재등장 간격). 에셋 값만 남아 있다. (active-dreamcatcher-tile-aim)
+- **`PendingDeployment` 제외 테스트 커버** [S] · 배치 대기 유닛이 장판/오라 멤버십에서 빠지는 규칙에 테스트가 없다(재배치 비행 창 포함). (active-ally-zone)
+- **액티브 전용 카드 아트** [S] · 현재 uiTint/스킬명 폴백. (active-dreamcatcher-tile-aim)
+
 #### 드래그 취소 (drag-cancel-affordance — 완료 2026-07-30, 사용자 Play 확인 통과)
 
 유닛 트레이 / 드림캐쳐 손패 D&D 의 취소 수단. 트레이·손패 복귀 취소 + 격자 밖 관용(`Resolve` 가
