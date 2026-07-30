@@ -60,3 +60,5 @@
   나머지 sequence가 발사된다.
 - 비방향 단발 projectile와 기존 boss pattern 테스트가 회귀 없이 통과한다.
 - ECS 리뷰에서 버퍼 사전 부착, Combat 소유 쓰기, Burst/unmanaged, 시스템 순서 위반이 없다.
+
+> 사용자 확인: 2026-07-30 · 구현 커밋 `62260b82`
