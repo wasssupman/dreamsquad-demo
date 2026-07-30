@@ -323,7 +323,9 @@ namespace Wassup.UI
         private void OpenDeckPopup(LeaderboardList.Row row)
         {
             var payload = TournamentDeckInfo.Deserialize(row.DeckInfo);
-            EnsureDeckPopup().Show(payload, row.Name);
+            // 내 덱에는 "프리셋 적용"을 띄우지 않는다 — 내가 그때 쓴 덱을 내 프로필에
+            // 다시 쓰는 건 no-op 이다. 판정은 BuildRows 가 이미 해 둔 IsPlayer.
+            EnsureDeckPopup().Show(payload, row.Name, allowPresetApply: !row.IsPlayer);
         }
 
         private DeckInfoPopup EnsureDeckPopup()

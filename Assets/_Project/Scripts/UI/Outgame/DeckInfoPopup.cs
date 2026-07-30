@@ -64,6 +64,8 @@ namespace Wassup.UI
         private RectTransform _listContent;
         private RectTransform _detailRoot;
         private RectTransform _detailBodyContent;
+        private RectTransform _listViewport;
+        private GameObject _presetButton;
         private Button _closeButton;
         private readonly Image[] _tabPlates = new Image[2];
 
@@ -84,10 +86,15 @@ namespace Wassup.UI
         }
 
         // payload == null 은 정상 입력이다(덱 정보 없음).
-        public void Show(TournamentDeckInfo.Payload payload, string title)
+        //
+        // allowPresetApply: 내 덱을 볼 때는 false 를 넘겨 "프리셋 적용"을 **숨긴다**
+        // — 내가 그때 쓴 덱을 내 프로필에 다시 쓰는 건 no-op 이다. 팝업은 그게 누구
+        // 덱인지 모르므로(순수 프레젠테이션) 호출자가 판정해서 넘긴다.
+        public void Show(TournamentDeckInfo.Payload payload, string title, bool allowPresetApply = true)
         {
             if (!_built) BuildCanvas();
             _payload = payload;
+            SetPresetVisible(allowPresetApply);
             gameObject.SetActive(true);
             transform.SetAsLastSibling();
             // BuildCanvas 는 비활성 상태에서 돌 수 있고(패널이 미리 만들어 둔다), 중첩
@@ -149,6 +156,22 @@ namespace Wassup.UI
             _selSection[tab] = 0;
             _selItem[tab] = -1;
         }
+
+        // 버튼을 숨길 땐 목록이 그 자리까지 내려온다 — 그냥 끄면 64px 죽은 공간이
+        // 남는다. 탭 전환 중에는 바뀌지 않으므로(Show 에서만 결정) "탭을 오갈 때
+        // 자리가 뛰지 않는다"는 계약은 그대로다.
+        private void SetPresetVisible(bool visible)
+        {
+            if (_presetButton == null || _listViewport == null) return;
+            _presetButton.SetActive(visible);
+
+            float bottom = Pad + FooterH + (visible ? PresetH + 10f : 0f);
+            var min = new Vector2(Pad + DetailW + ColGap, bottom);
+            _listViewport.offsetMin = min;
+            if (_emptyLabel != null) ((RectTransform)_emptyLabel.transform).offsetMin = min;
+        }
+
+        internal bool IsPresetButtonVisible => _presetButton != null && _presetButton.activeSelf;
 
         // 탭 전환 / 셀 선택 — 버튼 핸들러와 테스트가 **같은 경로**를 탄다.
         internal void SwitchTab(int tab)
@@ -543,6 +566,7 @@ namespace Wassup.UI
             scroll.movementType = ScrollRect.MovementType.Elastic;
             scroll.scrollSensitivity = 24f;
             _listContent = contentRt;
+            _listViewport = vpRt;
 
             _emptyLabel = CreateLabel(panel, "Empty", "", 28, TextAlignmentOptions.Center, SubText);
             var eRt = (RectTransform)_emptyLabel.transform;
@@ -562,6 +586,7 @@ namespace Wassup.UI
         {
             var go = new GameObject("PresetApplyButton", typeof(RectTransform), typeof(Image), typeof(Button));
             go.transform.SetParent(panel, false);
+            _presetButton = go;
             var img = go.GetComponent<Image>();
             img.sprite = _buttonSprite;
             img.type = Image.Type.Sliced;

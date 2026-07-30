@@ -173,6 +173,17 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
+        public void PresetButton_HiddenForOwnDeck_ShownForOthers()
+        {
+            // 내가 그때 쓴 덱을 내 프로필에 다시 쓰는 건 no-op 이다.
+            _popup.Show(Payload(cards: new[] { "c_known" }), "wassup", allowPresetApply: false);
+            Assert.IsFalse(_popup.IsPresetButtonVisible);
+
+            _popup.Show(Payload(cards: new[] { "c_known" }), "someone-else");
+            Assert.IsTrue(_popup.IsPresetButtonVisible, "남의 덱에는 자리가 있어야 한다");
+        }
+
+        [Test]
         public void OverCount_RendersEveryItem()
         {
             var many = new List<string>();
