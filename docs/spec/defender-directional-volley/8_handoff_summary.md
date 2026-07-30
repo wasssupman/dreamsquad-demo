@@ -57,9 +57,11 @@
 - ~~unit 6 배선 커밋 미완~~ → **완료(`c6437876`)**. 병행 tap-to-place/액체타일(`dedde0f6`) 커밋 후 볼리 hunk 만 격리 스테이징(BattleBridge 는 overhead-ui hunk 제외하고 hash-object 로 볼리 hunk 만 인덱스 적용, 워크트리 overhead diff 보존). 커밋 트리 overhead 심볼 0 검증됨.
 - ~~씬 배선 미완(HIGH-2)~~ → **해소(`044b639a`)**. 튜닝값이 `slowmoScale` 하나뿐이라 전용 SO(DirectionAimSettings)를 폐기하고 이미 씬 배선된 `DragSwaySettings.directionAimSlowmoScale` 로 합침. 별도 에셋·배선 불필요. 라이브 에셋 참조라 Play 중 편집 반영 유지.
 - ~~설계 질문: CC 중 버스트 완주 여부~~ → **결정됨(2026-07-17 사용자)**: 완주가 맞다. 볼리 = 한 번의 공격, combat-action-lock 의 "시작된 스윙은 RESOLVE 완료"와 같은 결. 버스트 틱이 `actionLocked` 게이트 위인 것은 의도 — 계약 8·코드 주석에 명문화. 되돌리지 말 것.
-- **`shotIndex` 산식 추출 후보**: 버스트 발 인덱스(`shotCount − 남은수`)가 AttackSystem 인라인. 샷건 spec 착수 시 `VolleyMath` 로 추출 + EditMode 고정 검토(현재는 통합 테스트가 커버).
+- ~~`shotIndex` 산식 추출 후보~~ → **완료**. `projectile-shot-sequence`에서
+  `EmitterTick`/`ShotOrder` 기반 공용 emitter로 이관했고 legacy `VolleyMath`는 제거됐다.
 - **코루틴 중단 시 PendingDeployment 잔류**: `Confirm` 후 배치 연출 대기 중 컨트롤러가 파괴되면 유닛이 굳는다. 단 드래그 컨트롤러 `RunDeployment` 도 동일 노출 — 신규 회귀 아닌 기존 패턴 parity.
 - **Play e2e + 실기기 스모크(사용자)**: 드래그→드롭→방향 지정→활성화→10연발→피해. 시뮬 계약은 통합 테스트가 덮으므로 남은 건 Mono 배선과 시각/조작감.
 - 아트 플레이스홀더(Marksman Spine + Sniper 파츠) — guid 유지 교체 전제.
 - **bounce(통통구슬)×방향 유닛**(사용자 결정 2026-07-18, 후속): 지금은 통통구슬이 방향 유닛에 붙어도 inert. 목표 = 트리거당 N발이 각각 bounce 를 받아 튕기게. 상세·설계 과제는 README 후속 후보 참조.
-- 후속 후보는 README 참조(배치 취소, 방향 재지정, 레인 폭 파라미터화, 샷건 유닛, 머신건 연사음, bounce×방향 등).
+- 후속 후보는 README 참조(배치 취소, 방향 재지정, 레인 폭 파라미터화,
+  머신건 연사음, bounce×방향 등). 샷건 유닛은 `shotgun-spread-defender`에서 완료됐다.

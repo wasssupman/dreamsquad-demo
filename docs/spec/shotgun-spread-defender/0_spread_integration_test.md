@@ -26,4 +26,7 @@
 
 ## 완료 기준
 
-- [ ] EditMode 신규 케이스 green + 기존 볼리/발사 테스트 무회귀 (Play 체감·backlog 링크 교체는 unit 1)
+- [x] EditMode 신규 케이스 green + 기존 볼리/발사 테스트 무회귀 (`bfbc8387`).
+
+> 이 5발 균등 분포 테스트는 초기 엔진 실증 이력이다. 현재 10발 불규칙 계약은
+> `projectile-shot-sequence`의 `DirectionalVolleyIntegrationTests`가 검증한다.

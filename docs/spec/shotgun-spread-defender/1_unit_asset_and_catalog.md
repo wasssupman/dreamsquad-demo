@@ -1,5 +1,8 @@
 # 1 — 유닛/능력/투사체 에셋 + 카탈로그 등록
 
+> 상태: 완료 (`376eeba0`). 아래 5발·사거리 2 수치는 최초 저작 이력이며, 현재 수치는
+> `docs/spec/projectile-shot-sequence/2_defender_attack_pattern_cutover.md`가 우선한다.
+
 ## 목적
 
 샷건너를 순수 데이터로 성립시킨다. 코드 변경 0.
@@ -24,8 +27,8 @@
 
 ## 완료 기준
 
-- [ ] compile clean + `DcApplicabilityMatrixTests`/`UnitKitSummaryTests` green (Data/Defenders 전수 스캔에 자동 편입)
-- [ ] 에디터 Play: 로스터에 샷건너 노출 → 배치 → 방향 지정 페이즈 진입(머신거너 문법) → 확정
-- [ ] 정면 레인에 적 진입 시 **한 프레임에 부채꼴 5발** 발사 육안 확인 + 배치 순간 주변 적 밀쳐짐 확인
-- [ ] 사용자 Play 확인: 부채꼴 발사가 샷건답게 읽히는지 (탄속/크기 튜닝 피드백 수집)
-- [ ] 통과 시 `defender-directional-volley` README 후속 후보의 "스프레드 실증 유닛" 줄을 본 spec 링크로 대체
+- [x] compile clean + `DcApplicabilityMatrixTests`/`UnitKitSummaryTests` green.
+- [x] 샷건너·능력·펠릿·카탈로그 등록.
+- [x] 초기 5발 스프레드 통합 검증.
+- [x] 현재 10발·4타일 계약으로 이관 및 사용자 확인(`projectile-shot-sequence`).
+- [x] `defender-directional-volley`의 “스프레드 실증 유닛” 후속 항목 정리.

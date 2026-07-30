@@ -55,3 +55,4 @@
 
 - 현재 spec의 잔여 작업은 없다.
 - 15발 초과 패턴이 필요해질 때 README의 fixed-list 폭 후속 후보를 별도 spec으로 검토한다.
+- 일반 target-bound 투사체의 wind-up 중 타깃 소실 정책은 별도 spec 후보로 남겼다.

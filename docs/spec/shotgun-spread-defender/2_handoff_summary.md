@@ -1,5 +1,8 @@
 # 2 — handoff summary
 
+> 초기 5발 구현 인계 기록. 현재 계약과 후속 작업은
+> `docs/spec/projectile-shot-sequence/README.md` 및 `4_handoff_summary.md`를 우선한다.
+
 ## Commit
 
 - `bfbc8387` test(shotgun-spread-defender): unit 0 — 스프레드 통합 테스트 2케이스 추가
@@ -20,7 +23,8 @@
 - `Assets/_Project/Data/Abilities/Ability_Volley_Shotgunner.asset`
 - `Assets/_Project/Data/Projectiles/Projectile_ShotgunPellet.asset`
 - `Assets/_Project/Tests/EditMode/DirectionalVolleyIntegrationTests.cs` (케이스 2건 추가)
-- `Assets/_Project/Scripts/Battle/Combat/VolleyMath.cs` (무변경 — `SpreadDirection` 소비만)
+- 현재 스케줄러: `Assets/_Project/Scripts/Battle/Combat/Projectile/Emission/`
+  (`EmitterTick`·`ShotOrder`; 초기 `VolleyMath`는 후속 spec에서 제거됨)
 
 ## Verified
 
@@ -37,6 +41,5 @@
 
 ## Follow-up
 
-- **사용자 Play 체감 확인** — 부채꼴이 샷건답게 읽히는지, 사거리 2 발동 창이 답답하지 않은지(탄속/크기 튜닝 후보)
-- 통과 시 `defender-directional-volley` README 후속 후보의 "스프레드 실증 유닛" 줄을 본 spec 링크로 대체
-- 나머지 후속 후보는 README 참조
+- 초기 5발 체감 확인은 10발·4타일 개편과 사용자 확인으로 대체됐다.
+- 남은 콘텐츠 후보는 README의 거리감쇠·전용 아트 패스 참조.

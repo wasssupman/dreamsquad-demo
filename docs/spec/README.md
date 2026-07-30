@@ -272,7 +272,11 @@ first-session-tutorial units 10~12 와 무관하다.
 - **배치 취소/코스트 환불** [S] · 공격방향 페이즈엔 취소 제스처가 없다 — 드롭 = 코스트 확정. 데드존 릴리즈는 가이드를 유지하고 재스와이프를 기다린다. 취소를 넣으려면 `TryBeginDefenderDeployment` 의 spend 를 되감는 경로가 먼저 필요 — `drag-cancel-affordance` 는 커밋 **이전**에만 갈라져서 환불이 필요 없었고(계약 1) 그래서 이 페이즈를 범위 밖으로 뒀다. (defender-directional-volley × drag-cancel-affordance)
 - **배치 후 방향 재지정** [S] · 유닛 탭 → 가이드 재오픈. `DeployedFacing` 은 현재 1회 기록 후 불변 계약이라 쓰기 소유권부터 재정의해야 한다. (defender-directional-volley)
 - **레인 폭 파라미터화** [S] · 현재 1타일 고정(`LaneMath.IsInLane` 의 `side == 0`). 폭 2+ 는 side 허용치를 SO 로. (defender-directional-volley)
-- **확산형 실증 유닛(샷건)** [S] · 엔진(`spreadAngleDeg`)은 완성·테스트됨, 유닛 에셋만 없다. 30도 3발은 SO 저작만으로 성립. (defender-directional-volley)
+- **target-bound 투사체 wind-up 발사 보장** [M] · 일반 호밍 투사체는 RESOLVE 시 타깃을
+  재판정하므로 wind-up 중 유일한 타깃이 죽거나 이탈하면 START 모션 뒤 투사체가 생략된다.
+  방향탄은 `projectile-shot-sequence`에서 해결됐고 머신거너·폭탄맨은 구조상 노출되지 않는다.
+  일반 투사체까지 바꾸려면 START 타깃 커밋·재타겟·빗나감 중 정책을 별도 spec에서 결정한다.
+  (projectile-shot-sequence 후속)
 - **버스트/스프레드 × Homing·Ballistic 조합** [S] · 볼리는 전 궤적에 열려 있으나 e2e 는 Directional 에서만 했다. Homing×버스트는 발마다 타겟이 재평가되지 않고 템플릿 스냅샷을 쓴다는 점 확인 필요. (defender-directional-volley)
 - **머신건 연사음** [S] · 버스트 캐리어 발은 `DefenderUnitTag` 가 없어 drain 의 발사 SFX 게이트 밖 → 볼리당 1회. rat-tat-tat 을 원하면 battle-audio 쪽 게이트 재설계. (defender-directional-volley)
 - **방향 가이드 정식 아트 + 머신건 아트** [S] · 가이드는 절차적 보드 스프라이트(레인 점등 + 삼각 화살표, unit 9), 유닛은 Marksman Spine + Sniper 파츠 플레이스홀더(guid 유지 교체 전제). (defender-directional-volley)
