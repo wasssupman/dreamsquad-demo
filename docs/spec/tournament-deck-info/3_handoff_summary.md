@@ -2,7 +2,7 @@
 
 ## Commit
 
-- `<TBD>` — feat(tournament-deck-info): complete body 를 deckInfo 단독으로 (units 0~2)
+- `4f2fafac` — feat(tournament-deck-info): complete body 를 deckInfo 단독으로 (units 0~2)
 
 ## Implemented
 
