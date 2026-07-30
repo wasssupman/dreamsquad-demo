@@ -4,7 +4,7 @@
 
 - `125b02a1` — feat: 히스토리 1뎁스 2컬럼 재설계 (unit 0)
 - `fa82b1aa` — feat: 덱보기 + DeckInfo 팝업 (units 1~3)
-- `<TBD>` — feat: 씬 배선 + Play e2e (unit 4)
+- `42812708` — feat: 씬 배선 + Play e2e (unit 4)
 - 스펙 문서는 `8e865919` 로 먼저 푸시됨 (구현보다 앞서 올림)
 
 ## Implemented
