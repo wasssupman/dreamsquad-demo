@@ -45,8 +45,9 @@
 | 14 | `14_tutorial_ui_layering.md` | UI 레이어 | Canvas 우선순위와 첫 배치 안내의 화면 겹침 방지 |
 | 15 | `15_first_match_selection_lockout.md` | 회귀 수정 | 첫 판 유닛 선택 봉인 — 각성 봉인 누수 차단 |
 | 16 | `16_selection_aware_awakening_hint.md` | 문구/분기 | 손패 여는 문 2개 안내 + 오픈 경로별 부착 방식 |
+| 17 | `17_independent_attach_hints.md` | 진행 상태 | 두 부착 안내를 경로별 플래그로 분리(서로 삼키지 않게) |
 
-15 → 16 순서 필수(첫 판 경계가 흐리면 16 의 검증이 성립하지 않는다).
+15 → 16 → 17 순서 필수(첫 판 경계가 흐리면 16 의 검증이 성립하지 않고, 17 의 분기는 16 이 만든다).
 
 ## Feature-wide 계약
 
@@ -119,6 +120,18 @@
   분기는 `DreamcatcherHandView.InSelectionMode` 로 한다(신규 이벤트 금지 — 이미 public 이다).
   일반 오픈 = 드래그 문구(기존), 선택 오픈 = 탭 즉발 + 좌측 패널 문구. **포커스는 두 경우 모두
   usable 슬롯**이다.
+- **두 부착 안내는 서로를 소비하지 않는다(unit 17).** 완료 저장이 경로별이다 —
+  `awakeningHintVersion`(= 드래그) · `awakeningTapAttachHintVersion`(= 탭 즉발). JSON 필드명을
+  좁히지 않는 이유는 호환이다(바꾸면 기존 진행이 0 으로 읽힌다) — 의미는 API 이름이 나른다
+  (`ShouldRunDragAttachHint`/`ShouldRunTapAttachHint`).
+  **인트로(0·A단계)는 파생**: `ShouldRunAwakeningIntro = 드래그 pending && 탭 pending`.
+  `||` 로 쓰면 한쪽만 쓰는 플레이어에게 영원히 떠서 잔소리가 된다. 신규 토큰은
+  `ResetAll`/`ResetAllInJson` 의 **`changed` 표현식에 반드시** 넣는다(빠지면 그 토큰만 다를 때
+  디스크에 영영 안 닿는다).
+- **unit 12 의 "B 는 A 선행 요구" 가드는 unit 17 이 걷어냈다.** 그 목적("B 가 A 의 완료 저장을
+  훔치는 것" 방지)은 저장이 경로별이 되면서 사라졌고, 남겨두면 인트로가 끝난 뒤
+  `_awakeningOfferedThisBattle` 이 false 로 고정돼 **못 배운 나머지 한쪽이 영영 발화하지 못한다**.
+  "낼 수 있는 카드가 있을 때만" 은 usable 슬롯 탐색이 계속 강제한다.
 - **A단계 문구에 새 정보를 넣지 말 것.** 현 튜닝(`gaugeStart 20` · 비용 20)에서 Battle 진입
   즉시 `20 >= 20` 이라 A 가 `OnPhaseChanged` 안에서 동기로 뜨고, 다음 프레임 0단계 코루틴이
   덮어써 **한 프레임만 존재한다**. 읽을 수 없는 자리다. 이 성립 조건은 **여유가 0** 이다 —

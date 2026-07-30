@@ -8,7 +8,11 @@ namespace Wassup.Core
     public static class TutorialProgress
     {
         public const int CoreVersion = 1;
-        public const int AwakeningHintVersion = 1;
+        // unit 17 — 부착 안내는 **경로별로 독립**이다. 드래그(항아리 오픈)와 탭 즉발(선택
+        // 오픈)은 서로 다른 조작이라 하나를 봤다고 다른 하나가 필요 없어지지 않는다.
+        // 드래그 쪽 저장 위치는 기존 `awakeningHintVersion` 필드다(JSON 호환 — PlayerProfile 주석).
+        public const int DragAttachHintVersion = 1;
+        public const int TapAttachHintVersion = 1;
         public const int GiftTutorialVersion = 1;
         public const int LobbyIntroVersion = 1;
         public const int LobbyLoadoutHintVersion = 1;
@@ -16,8 +20,22 @@ namespace Wassup.Core
         public static bool ShouldRunCore(PlayerProfileSO holder) =>
             holder != null && holder.IsLoadedThisSession && IsCorePending(holder.profile);
 
-        public static bool ShouldRunAwakeningHint(PlayerProfileSO holder) =>
-            holder != null && holder.IsLoadedThisSession && IsAwakeningHintPending(holder.profile);
+        public static bool ShouldRunDragAttachHint(PlayerProfileSO holder) =>
+            holder != null && holder.IsLoadedThisSession && IsDragAttachHintPending(holder.profile);
+
+        public static bool ShouldRunTapAttachHint(PlayerProfileSO holder) =>
+            holder != null && holder.IsLoadedThisSession && IsTapAttachHintPending(holder.profile);
+
+        // unit 17 — 각성 인트로(0·A단계)는 **파생**이다. 별도 플래그로 두면 "둘 다 pending"과
+        // 같은 값을 두 곳에 들게 되어 어긋날 수 있다.
+        //
+        // `||` 가 아니라 `&&` 인 것이 요점이다: 한쪽 경로만 쓰는 플레이어에게 `||` 는 인트로를
+        // **영원히** 띄운다(이미 아는 조작을 매 판 안내하는 잔소리). 하나를 배웠으면 "덱을 여는
+        // 법"은 이해한 것이므로 인트로의 할 일은 끝났다 — 못 배운 나머지 한쪽은 그 경로를
+        // 처음 쓰는 순간 자기 안내가 뜬다.
+        public static bool ShouldRunAwakeningIntro(PlayerProfileSO holder) =>
+            holder != null && holder.IsLoadedThisSession &&
+            IsDragAttachHintPending(holder.profile) && IsTapAttachHintPending(holder.profile);
 
         // unit 6 — the gift walkthrough runs on the first battle where the gift
         // presentation is actually visible: core must be complete (the first run
@@ -43,8 +61,11 @@ namespace Wassup.Core
         public static bool IsCorePending(PlayerProfile profile) =>
             profile != null && profile.firstBattleTutorialVersion < CoreVersion;
 
-        public static bool IsAwakeningHintPending(PlayerProfile profile) =>
-            profile != null && profile.awakeningHintVersion < AwakeningHintVersion;
+        public static bool IsDragAttachHintPending(PlayerProfile profile) =>
+            profile != null && profile.awakeningHintVersion < DragAttachHintVersion;
+
+        public static bool IsTapAttachHintPending(PlayerProfile profile) =>
+            profile != null && profile.awakeningTapAttachHintVersion < TapAttachHintVersion;
 
         public static bool IsGiftTutorialPending(PlayerProfile profile) =>
             profile != null && profile.giftTutorialVersion < GiftTutorialVersion;
@@ -62,10 +83,17 @@ namespace Wassup.Core
             return true;
         }
 
-        public static bool CompleteAwakeningHint(PlayerProfile profile)
+        public static bool CompleteDragAttachHint(PlayerProfile profile)
         {
-            if (profile == null || profile.awakeningHintVersion >= AwakeningHintVersion) return false;
-            profile.awakeningHintVersion = AwakeningHintVersion;
+            if (profile == null || profile.awakeningHintVersion >= DragAttachHintVersion) return false;
+            profile.awakeningHintVersion = DragAttachHintVersion;
+            return true;
+        }
+
+        public static bool CompleteTapAttachHint(PlayerProfile profile)
+        {
+            if (profile == null || profile.awakeningTapAttachHintVersion >= TapAttachHintVersion) return false;
+            profile.awakeningTapAttachHintVersion = TapAttachHintVersion;
             return true;
         }
 
@@ -96,10 +124,12 @@ namespace Wassup.Core
         {
             if (profile == null) return false;
             bool changed = profile.firstBattleTutorialVersion != 0 || profile.awakeningHintVersion != 0 ||
+                           profile.awakeningTapAttachHintVersion != 0 ||
                            profile.giftTutorialVersion != 0 || profile.lobbyIntroVersion != 0 ||
                            profile.lobbyLoadoutHintVersion != 0;
             profile.firstBattleTutorialVersion = 0;
             profile.awakeningHintVersion = 0;
+            profile.awakeningTapAttachHintVersion = 0;
             profile.giftTutorialVersion = 0;
             profile.lobbyIntroVersion = 0;
             profile.lobbyLoadoutHintVersion = 0;
@@ -115,15 +145,18 @@ namespace Wassup.Core
             var root = JObject.Parse(json);
             int core = root.Value<int?>(nameof(PlayerProfile.firstBattleTutorialVersion)) ?? 0;
             int awakening = root.Value<int?>(nameof(PlayerProfile.awakeningHintVersion)) ?? 0;
+            int tapAttach = root.Value<int?>(nameof(PlayerProfile.awakeningTapAttachHintVersion)) ?? 0;
             int gift = root.Value<int?>(nameof(PlayerProfile.giftTutorialVersion)) ?? 0;
             int lobbyIntro = root.Value<int?>(nameof(PlayerProfile.lobbyIntroVersion)) ?? 0;
             int lobbyHint = root.Value<int?>(nameof(PlayerProfile.lobbyLoadoutHintVersion)) ?? 0;
             // Every token must be in this expression: ProfileStore.ResetTutorialProgressAt
             // gates the backup and the file replacement on it, so a token that is only
             // written below would never reach disk when it is the sole difference.
-            changed = core != 0 || awakening != 0 || gift != 0 || lobbyIntro != 0 || lobbyHint != 0;
+            changed = core != 0 || awakening != 0 || tapAttach != 0 || gift != 0 ||
+                      lobbyIntro != 0 || lobbyHint != 0;
             root[nameof(PlayerProfile.firstBattleTutorialVersion)] = 0;
             root[nameof(PlayerProfile.awakeningHintVersion)] = 0;
+            root[nameof(PlayerProfile.awakeningTapAttachHintVersion)] = 0;
             root[nameof(PlayerProfile.giftTutorialVersion)] = 0;
             root[nameof(PlayerProfile.lobbyIntroVersion)] = 0;
             root[nameof(PlayerProfile.lobbyLoadoutHintVersion)] = 0;

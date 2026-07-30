@@ -24,7 +24,7 @@ namespace Wassup.Tests.EditMode
         {
             var profile = new PlayerProfile();
             Assert.IsTrue(TutorialProgress.IsCorePending(profile));
-            Assert.IsTrue(TutorialProgress.IsAwakeningHintPending(profile));
+            Assert.IsTrue(TutorialProgress.IsDragAttachHintPending(profile));
             Assert.IsTrue(TutorialProgress.IsGiftTutorialPending(profile));
             Assert.IsTrue(TutorialProgress.IsLobbyIntroPending(profile));
             Assert.IsTrue(TutorialProgress.IsLobbyLoadoutHintPending(profile));
@@ -95,12 +95,12 @@ namespace Wassup.Tests.EditMode
             var profile = new PlayerProfile();
             Assert.IsTrue(TutorialProgress.CompleteCore(profile));
             Assert.IsFalse(TutorialProgress.IsCorePending(profile));
-            Assert.IsTrue(TutorialProgress.IsAwakeningHintPending(profile));
+            Assert.IsTrue(TutorialProgress.IsDragAttachHintPending(profile));
             Assert.IsTrue(TutorialProgress.IsGiftTutorialPending(profile));
             Assert.IsFalse(TutorialProgress.CompleteCore(profile));
 
-            Assert.IsTrue(TutorialProgress.CompleteAwakeningHint(profile));
-            Assert.IsFalse(TutorialProgress.IsAwakeningHintPending(profile));
+            Assert.IsTrue(TutorialProgress.CompleteDragAttachHint(profile));
+            Assert.IsFalse(TutorialProgress.IsDragAttachHintPending(profile));
 
             Assert.IsTrue(TutorialProgress.CompleteGiftTutorial(profile));
             Assert.IsFalse(TutorialProgress.IsGiftTutorialPending(profile));
@@ -113,7 +113,7 @@ namespace Wassup.Tests.EditMode
             var profile = new PlayerProfile();
             Assert.IsTrue(TutorialProgress.CompleteGiftTutorial(profile));
             Assert.IsTrue(TutorialProgress.IsCorePending(profile));
-            Assert.IsTrue(TutorialProgress.IsAwakeningHintPending(profile));
+            Assert.IsTrue(TutorialProgress.IsDragAttachHintPending(profile));
         }
 
         [Test]
@@ -122,11 +122,11 @@ namespace Wassup.Tests.EditMode
             var profile = new PlayerProfile
             {
                 firstBattleTutorialVersion = TutorialProgress.CoreVersion + 1,
-                awakeningHintVersion = TutorialProgress.AwakeningHintVersion + 1,
+                awakeningHintVersion = TutorialProgress.DragAttachHintVersion + 1,
                 giftTutorialVersion = TutorialProgress.GiftTutorialVersion + 1,
             };
             Assert.IsFalse(TutorialProgress.IsCorePending(profile));
-            Assert.IsFalse(TutorialProgress.IsAwakeningHintPending(profile));
+            Assert.IsFalse(TutorialProgress.IsDragAttachHintPending(profile));
             Assert.IsFalse(TutorialProgress.IsGiftTutorialPending(profile));
         }
 
@@ -155,7 +155,7 @@ namespace Wassup.Tests.EditMode
         {
             Assert.IsNotNull(_holder.profile, "asset default profile is intentionally non-null");
             Assert.IsFalse(TutorialProgress.ShouldRunCore(_holder));
-            Assert.IsFalse(TutorialProgress.ShouldRunAwakeningHint(_holder));
+            Assert.IsFalse(TutorialProgress.ShouldRunDragAttachHint(_holder));
             // Even with core complete on the asset default, not-loaded blocks gift too.
             TutorialProgress.CompleteCore(_holder.profile);
             Assert.IsFalse(TutorialProgress.ShouldRunGiftTutorial(_holder));
@@ -163,7 +163,7 @@ namespace Wassup.Tests.EditMode
             _holder.SetLoadedProfile(new PlayerProfile());
             Assert.IsTrue(_holder.IsLoadedThisSession);
             Assert.IsTrue(TutorialProgress.ShouldRunCore(_holder));
-            Assert.IsTrue(TutorialProgress.ShouldRunAwakeningHint(_holder));
+            Assert.IsTrue(TutorialProgress.ShouldRunDragAttachHint(_holder));
         }
 
         [Test]
@@ -171,10 +171,10 @@ namespace Wassup.Tests.EditMode
         {
             _holder.SetLoadedProfile(null);
             Assert.IsFalse(TutorialProgress.ShouldRunCore(_holder));
-            Assert.IsFalse(TutorialProgress.ShouldRunAwakeningHint(_holder));
+            Assert.IsFalse(TutorialProgress.ShouldRunDragAttachHint(_holder));
             Assert.IsFalse(TutorialProgress.ShouldRunGiftTutorial(_holder));
             Assert.IsFalse(TutorialProgress.CompleteCore(null));
-            Assert.IsFalse(TutorialProgress.CompleteAwakeningHint(null));
+            Assert.IsFalse(TutorialProgress.CompleteDragAttachHint(null));
             Assert.IsFalse(TutorialProgress.CompleteGiftTutorial(null));
         }
 
@@ -184,12 +184,12 @@ namespace Wassup.Tests.EditMode
             var source = new PlayerProfile
             {
                 firstBattleTutorialVersion = TutorialProgress.CoreVersion,
-                awakeningHintVersion = TutorialProgress.AwakeningHintVersion,
+                awakeningHintVersion = TutorialProgress.DragAttachHintVersion,
                 giftTutorialVersion = TutorialProgress.GiftTutorialVersion,
             };
             var loaded = JsonUtility.FromJson<PlayerProfile>(JsonUtility.ToJson(source));
             Assert.AreEqual(TutorialProgress.CoreVersion, loaded.firstBattleTutorialVersion);
-            Assert.AreEqual(TutorialProgress.AwakeningHintVersion, loaded.awakeningHintVersion);
+            Assert.AreEqual(TutorialProgress.DragAttachHintVersion, loaded.awakeningHintVersion);
             Assert.AreEqual(TutorialProgress.GiftTutorialVersion, loaded.giftTutorialVersion);
         }
 
@@ -203,7 +203,7 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(0, loaded.lobbyIntroVersion);
             Assert.AreEqual(0, loaded.lobbyLoadoutHintVersion);
             Assert.IsTrue(TutorialProgress.IsCorePending(loaded));
-            Assert.IsTrue(TutorialProgress.IsAwakeningHintPending(loaded));
+            Assert.IsTrue(TutorialProgress.IsDragAttachHintPending(loaded));
             Assert.IsTrue(TutorialProgress.IsGiftTutorialPending(loaded));
             Assert.IsTrue(TutorialProgress.IsLobbyIntroPending(loaded));
             Assert.IsTrue(TutorialProgress.IsLobbyLoadoutHintPending(loaded));
@@ -216,7 +216,7 @@ namespace Wassup.Tests.EditMode
             {
                 selectedSquadId = "keep_squad",
                 firstBattleTutorialVersion = TutorialProgress.CoreVersion,
-                awakeningHintVersion = TutorialProgress.AwakeningHintVersion,
+                awakeningHintVersion = TutorialProgress.DragAttachHintVersion,
                 giftTutorialVersion = TutorialProgress.GiftTutorialVersion,
                 lobbyIntroVersion = TutorialProgress.LobbyIntroVersion,
                 lobbyLoadoutHintVersion = TutorialProgress.LobbyLoadoutHintVersion,
@@ -259,6 +259,7 @@ namespace Wassup.Tests.EditMode
             var expected = JObject.Parse(source);
             expected[nameof(PlayerProfile.firstBattleTutorialVersion)] = 0;
             expected[nameof(PlayerProfile.awakeningHintVersion)] = 0;
+            expected[nameof(PlayerProfile.awakeningTapAttachHintVersion)] = 0;
             expected[nameof(PlayerProfile.giftTutorialVersion)] = 0;
             expected[nameof(PlayerProfile.lobbyIntroVersion)] = 0;
             expected[nameof(PlayerProfile.lobbyLoadoutHintVersion)] = 0;
@@ -292,6 +293,76 @@ namespace Wassup.Tests.EditMode
             var stored = JObject.Parse(result);
             Assert.AreEqual(0, stored.Value<int>(nameof(PlayerProfile.lobbyIntroVersion)));
             Assert.AreEqual(0, stored.Value<int>(nameof(PlayerProfile.lobbyLoadoutHintVersion)));
+        }
+
+        // first-session-tutorial unit 17 — 위와 같은 함정을 신규 토큰에도 건다. 탭 즉발 안내만
+        // 완료된 계정(= 항아리를 한 번도 안 써본 플레이어)이 유일한 차이일 때, 이 토큰이
+        // `changed` 표현식에서 빠져 있으면 RESET TUTORIAL 이 "이미 초기화됨" 이라고 로그하고
+        // 디스크는 그대로 남아 탭 안내가 다시는 안 뜬다.
+        [Test]
+        public void ResetAllInJson_ReportsChanged_WhenOnlyTapAttachTokenIsSet()
+        {
+            const string source = @"{
+                'firstBattleTutorialVersion': 0,
+                'awakeningHintVersion': 0,
+                'awakeningTapAttachHintVersion': 1,
+                'giftTutorialVersion': 0,
+                'lobbyIntroVersion': 0,
+                'lobbyLoadoutHintVersion': 0
+            }";
+
+            string result = TutorialProgress.ResetAllInJson(source, out bool changed);
+
+            Assert.IsTrue(changed, "탭 즉발 안내만 완료된 상태도 초기화 대상이다");
+            Assert.AreEqual(0, JObject.Parse(result)
+                .Value<int>(nameof(PlayerProfile.awakeningTapAttachHintVersion)));
+        }
+
+        // unit 17 — 두 부착 안내는 서로를 소비하지 않는다. 이 테스트가 깨지면 항아리로 먼저
+        // 열어본 플레이어가 탭 즉발을 영영 못 배우는 원래 버그로 되돌아간 것이다.
+        [Test]
+        public void AttachHints_AreIndependentPerPath()
+        {
+            var profile = new PlayerProfile();
+            Assert.IsTrue(TutorialProgress.IsDragAttachHintPending(profile));
+            Assert.IsTrue(TutorialProgress.IsTapAttachHintPending(profile));
+
+            Assert.IsTrue(TutorialProgress.CompleteDragAttachHint(profile));
+            Assert.IsFalse(TutorialProgress.IsDragAttachHintPending(profile));
+            Assert.IsTrue(TutorialProgress.IsTapAttachHintPending(profile),
+                "드래그 안내를 봤다고 탭 즉발 안내가 소비되면 안 된다");
+
+            Assert.IsTrue(TutorialProgress.CompleteTapAttachHint(profile));
+            Assert.IsFalse(TutorialProgress.IsTapAttachHintPending(profile));
+            // 멱등
+            Assert.IsFalse(TutorialProgress.CompleteTapAttachHint(profile));
+            Assert.IsFalse(TutorialProgress.CompleteTapAttachHint(null));
+        }
+
+        // unit 17 — 인트로(0·A단계)는 파생이다. `||` 로 쓰면 한쪽만 쓰는 플레이어에게 영원히
+        // 떠서 잔소리가 된다 — 하나라도 배우면 "덱 여는 법"은 이해한 것이므로 끝나야 한다.
+        [Test]
+        public void AwakeningIntro_StopsAfterEitherPathIsLearned()
+        {
+            _holder.SetLoadedProfile(new PlayerProfile());
+            Assert.IsTrue(TutorialProgress.ShouldRunAwakeningIntro(_holder), "둘 다 pending 이면 인트로가 뜬다");
+
+            TutorialProgress.CompleteDragAttachHint(_holder.profile);
+            Assert.IsFalse(TutorialProgress.ShouldRunAwakeningIntro(_holder),
+                "한쪽을 배우면 인트로는 끝난다(&& 이지 || 가 아니다)");
+            Assert.IsTrue(TutorialProgress.ShouldRunTapAttachHint(_holder),
+                "인트로가 끝나도 못 배운 경로의 안내는 살아 있어야 한다");
+        }
+
+        // 반대 순서도 대칭이어야 한다.
+        [Test]
+        public void AwakeningIntro_StopsAfterTapPathToo()
+        {
+            _holder.SetLoadedProfile(new PlayerProfile());
+
+            TutorialProgress.CompleteTapAttachHint(_holder.profile);
+            Assert.IsFalse(TutorialProgress.ShouldRunAwakeningIntro(_holder));
+            Assert.IsTrue(TutorialProgress.ShouldRunDragAttachHint(_holder));
         }
 
         [Test]

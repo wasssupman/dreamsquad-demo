@@ -61,7 +61,12 @@ namespace Wassup.UI.Tutorial
         private Coroutine _goalRoutine;
         private Coroutine _awakeningRoutine;
         private bool _awakeningOfferedThisBattle;
-        private bool _awakeningArmedThisBattle;
+        // unit 17 — 부착 안내는 경로별로 독립이다. 판당 래치도 경로별로 둔다: 저장은
+        // TrySaveProfile 이 예외를 삼키므로 실패할 수 있는데, 그때도 한 판에서 같은 안내가
+        // 반복되면 안 된다. (unit 12 의 `_awakeningArmedThisBattle` 을 대체한다 — 그 필드는
+        // B 가 유일한 독자였고, A 선행 요구를 뗀 지금 아무도 읽지 않는다. unit 17 C절.)
+        private bool _dragHintShownThisBattle;
+        private bool _tapHintShownThisBattle;
         // unit 12 — 배틀 시작 인트로(0단계). _awakeningOfferedThisBattle 을 쓰면
         // A 단계("드림캐쳐 사용 준비 완료!")가 영영 안 뜨므로 전용 플래그를 둔다.
         private bool _awakeningIntroShownThisBattle;
@@ -370,7 +375,8 @@ namespace Wassup.UI.Tutorial
             if (phase == GamePhase.Battle)
             {
                 _awakeningOfferedThisBattle = false;
-                _awakeningArmedThisBattle = false;
+                _dragHintShownThisBattle = false;
+                _tapHintShownThisBattle = false;
                 _awakeningIntroShownThisBattle = false;
 
                 // unit 10 — _coreActive 와 무관하게 완료 처리한다. 참조 누락이나 affordable
@@ -458,7 +464,7 @@ namespace Wassup.UI.Tutorial
         {
             if (_awakeningLockedThisMatch || _awakeningIntroShownThisBattle) return;
             if (guidance == null || gaugeView == null) return;
-            if (!TutorialProgress.ShouldRunAwakeningHint(profileSO)) return;
+            if (!TutorialProgress.ShouldRunAwakeningIntro(profileSO)) return;
 
             if (_awakeningIntroRoutine != null) StopCoroutine(_awakeningIntroRoutine);
             _awakeningIntroRoutine = StartCoroutine(AwakeningIntroRoutine());
@@ -472,7 +478,7 @@ namespace Wassup.UI.Tutorial
             if (_awakeningLockedThisMatch || _awakeningIntroShownThisBattle) yield break;
             if (gameManager == null || gameManager.CurrentPhase != GamePhase.Battle) yield break;
             if (guidance == null || gaugeView == null) yield break;
-            if (!TutorialProgress.ShouldRunAwakeningHint(profileSO)) yield break;
+            if (!TutorialProgress.ShouldRunAwakeningIntro(profileSO)) yield break;
 
             // 지연의 목적이 패널 활성화를 기다리는 것이므로 실제로 활성인지 확인한다.
             // 아직 비활성이면 Pulse 가 조용히 no-op 되고 링도 안 뜨는데, 플래그만 소모돼
@@ -500,11 +506,10 @@ namespace Wassup.UI.Tutorial
             if (_awakeningLockedThisMatch) return;
             if (_coreActive || _awakeningOfferedThisBattle || gameManager == null ||
                 gameManager.CurrentPhase != GamePhase.Battle || guidance == null || gaugeView == null ||
-                handController == null || !TutorialProgress.ShouldRunAwakeningHint(profileSO)) return;
+                handController == null || !TutorialProgress.ShouldRunAwakeningIntro(profileSO)) return;
             if (!HasAffordableCard()) return;
 
             _awakeningOfferedThisBattle = true;
-            _awakeningArmedThisBattle = true;
             gaugeView.Pulse();
             guidance.ShowMessage("드림캐쳐 사용 준비 완료!", showSkip: false);
             guidance.FocusUi(gaugeView.HitRect);
@@ -530,12 +535,24 @@ namespace Wassup.UI.Tutorial
 
         private void OnHandOpened()
         {
-            // A단계가 실제로 뜬 뒤에만 진행한다(0단계 단독 arm 으로는 발화하지 않는다).
-            if (!_awakeningOfferedThisBattle || !_awakeningArmedThisBattle ||
-                gameManager == null || gameManager.CurrentPhase != GamePhase.Battle ||
-                handView == null || handView.State != DreamcatcherHandView.HandState.Hand || guidance == null ||
-                !TutorialProgress.ShouldRunAwakeningHint(profileSO)) return;
+            if (gameManager == null || gameManager.CurrentPhase != GamePhase.Battle ||
+                handView == null || handView.State != DreamcatcherHandView.HandState.Hand ||
+                guidance == null) return;
 
+            // unit 17 — 오픈 경로가 곧 어떤 안내인지를 정한다. 두 안내는 서로 다른 조작을
+            // 가르치므로 **각자의 pending 과 각자의 판당 래치**로 갈린다 — 한쪽을 본 것이
+            // 다른 쪽을 소비하지 않는다(이 unit 의 요점).
+            bool selection = handView.InSelectionMode;
+            if (selection
+                ? (_tapHintShownThisBattle || !TutorialProgress.ShouldRunTapAttachHint(profileSO))
+                : (_dragHintShownThisBattle || !TutorialProgress.ShouldRunDragAttachHint(profileSO))) return;
+
+            // unit 12 의 `_awakeningOfferedThisBattle && _awakeningArmedThisBattle`(= A 가 실제로
+            // 떴다) 요구는 여기서 뺐다. 그 목적은 "B 가 A 의 완료 저장을 앞당겨 훔치는 것"을
+            // 막는 것이었는데, 저장이 경로별이라 훔칠 대상이 없고 인트로는 파생이라 저장 자체가
+            // 없다. 반대로 남겨두면 인트로가 끝난 뒤 A 가 안 떠서 `_awakeningOfferedThisBattle`
+            // 이 false 로 고정되고, **못 배운 나머지 한쪽이 영영 발화하지 못한다**(unit 17 C절).
+            // 가드의 나머지 의미("낼 수 있는 카드가 있을 때만")는 아래 usable 탐색이 강제한다.
             RectTransform usable = null;
             var slots = handView.Slots;
             for (int i = 0; i < slots.Count; i++)
@@ -550,17 +567,23 @@ namespace Wassup.UI.Tutorial
             if (usable == null) return;
 
             if (_awakeningRoutine != null) StopCoroutine(_awakeningRoutine);
-            // unit 16 — 오픈 경로로 분기. InSelectionMode 는 SelectionTarget 파생값이고
-            // DcInspectController 가 SetSelectionTarget → OpenForSelection 순으로 부르므로
-            // HandOpened 발화 시점엔 이미 확정돼 있다(래치 경로도 같은 Open() 을 지난다).
+            // unit 16 — InSelectionMode 는 SelectionTarget 파생값이고 DcInspectController 가
+            // SetSelectionTarget → OpenForSelection 순으로 부르므로 HandOpened 발화 시점엔 이미
+            // 확정돼 있다(래치 경로도 같은 Open() 을 지난다).
             // 포커스는 두 경우 모두 usable 슬롯이다 — 지시의 대상은 카드다.
-            guidance.ShowMessage(
-                handView.InSelectionMode ? CardHintSelectionText : CardHintDragText,
-                showSkip: false);
+            guidance.ShowMessage(selection ? CardHintSelectionText : CardHintDragText, showSkip: false);
             guidance.FocusUi(usable);
-            TutorialProgress.CompleteAwakeningHint(profileSO.profile);
-            TrySaveProfile();
-            _awakeningArmedThisBattle = false;
+
+            if (selection)
+            {
+                _tapHintShownThisBattle = true;
+                if (TutorialProgress.CompleteTapAttachHint(profileSO.profile)) TrySaveProfile();
+            }
+            else
+            {
+                _dragHintShownThisBattle = true;
+                if (TutorialProgress.CompleteDragAttachHint(profileSO.profile)) TrySaveProfile();
+            }
             _cardInstructionShowing = true;
             _awakeningRoutine = StartCoroutine(HideCardInstructionRoutine());
         }
@@ -650,7 +673,9 @@ namespace Wassup.UI.Tutorial
                 _awakeningIntroRoutine = null;
             }
             _awakeningOfferedThisBattle = false;
-            _awakeningArmedThisBattle = false;
+            // unit 17 — 경로별 래치도 함께(unit 12 의 비대칭 방지 규칙 계승).
+            _dragHintShownThisBattle = false;
+            _tapHintShownThisBattle = false;
             _awakeningIntroShownThisBattle = false;
             if (hide && !_coreActive) guidance?.Hide();
         }

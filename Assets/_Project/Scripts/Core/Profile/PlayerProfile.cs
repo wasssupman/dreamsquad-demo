@@ -15,7 +15,13 @@ namespace Wassup.Core
         // progress. Additive JSON fields intentionally default to 0 for profiles
         // written before the tutorial existed; schemaVersion stays unchanged.
         public int firstBattleTutorialVersion;
+        // unit 17 — 이 필드는 이제 **드래그 부착 안내**(항아리로 연 손패)만 뜻한다. 이름을
+        // 좁히지 않는 이유는 JSON 호환이다 — 바꾸면 기존 프로필의 진행이 0 으로 읽혀
+        // 튜토리얼이 되살아난다. 의미는 TutorialProgress 의 API 이름이 나른다.
         public int awakeningHintVersion;
+        // unit 17 — 탭 즉발 부착 안내(선택으로 연 손패). 위와 **독립**이다: 두 안내는 서로
+        // 다른 조작을 가르치므로 하나를 봤다고 다른 하나가 필요 없어지지 않는다.
+        public int awakeningTapAttachHintVersion;
         // first-session-tutorial unit 6 — gift-phase walkthrough, shown once on
         // the first battle where the gift presentation is visible (core done).
         public int giftTutorialVersion;
