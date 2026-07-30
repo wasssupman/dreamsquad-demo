@@ -30,30 +30,30 @@ namespace Wassup.UI
         public static string BodyLinesOnly(DreamcatcherCard card, Func<string, string> unitNameOf = null)
             => string.Join("\n", LinesWithFallback(card, unitNameOf)).Replace(" → ", " →\n");
 
-        // selection-hand-attach unit 11 rev — **효과만** 남긴 압축 문안. 각 줄의
-        // "트리거 → 효과" 에서 화살표 뒤만 취한다(사용자 결정 2026-07-30).
+        // selection-hand-attach unit 11 rev2 — 부착 셀용 압축 문안.
+        // **"항상 → " 만 떼고 나머지 트리거는 남긴다**(사용자 결정 2026-07-30).
         //
-        // 이미 부착된 카드를 보는 화면(선택 상세 패널)에서는 트리거가 정보값이 낮다 —
-        // 무엇이 붙었는지는 이름이 말하고, 알고 싶은 것은 "그래서 뭐가 달라지나"다.
-        // 좁은 셀에 트리거까지 넣으면 그 한 줄이 효과를 밀어낸다.
+        // rev1 은 화살표 뒤를 전부 취했는데, 그러면 조건부 카드의 뜻이 무너진다:
+        // 궁지폭발 "HP 30% 이하일 때 1번째 피격마다 → 반경 1칸 피해 20" 이 "반경 1칸 피해 20"
+        // 만 남고, 시한폭탄의 "3번째 공격마다 → 피해 x2" 는 "피해 x2" 가 돼 상시 효과처럼 읽힌다.
+        // **"언제"가 곧 그 카드의 정체인 경우가 많다.**
         //
-        // 화살표가 **하나도 없으면** 원문을 그대로 쓴다 — description 폴백 경로가
-        // 그렇고(자유 문장), 그때 잘라내면 내용이 통째로 사라진다.
-        // 화살표가 있는 줄이 하나라도 있으면 화살표 없는 줄(부착 제한 "레인저 전용" 등)은
-        // 버린다 — 그건 효과가 아니라 조건 표기다.
+        // "항상" 은 정보가 0 인 유일한 트리거라 이것만 떼는 것이 안전하다.
+        // 조건 표기(부착 제한 "레인저 전용")는 효과가 아니므로 계속 버린다 — 판별은 휴리스틱이
+        // 아니라 그 줄을 만든 AttachRequirementLine 과 직접 대조한다.
         public static string EffectOnly(DreamcatcherCard card, Func<string, string> unitNameOf = null)
         {
             var lines = LinesWithFallback(card, unitNameOf);
+            string requirement = AttachRequirementLine(card, unitNameOf);
             var kept = new List<string>();
-            bool anyArrow = false;
-            foreach (var line in lines) if (line != null && line.Contains(Arrow)) { anyArrow = true; break; }
 
             foreach (var line in lines)
             {
                 if (string.IsNullOrEmpty(line)) continue;
-                int at = line.IndexOf(Arrow, StringComparison.Ordinal);
-                if (at >= 0) kept.Add(line.Substring(at + Arrow.Length).Trim());
-                else if (!anyArrow) kept.Add(line.Trim());
+                if (requirement != null && line == requirement) continue; // 조건 표기 ≠ 효과
+                kept.Add(line.StartsWith(AlwaysPrefix, StringComparison.Ordinal)
+                    ? line.Substring(AlwaysPrefix.Length).Trim()
+                    : line.Trim());
             }
             return string.Join("\n", kept);
         }
@@ -61,6 +61,10 @@ namespace Wassup.UI
         // "트리거 → 효과" 의 구분자. 앞뒤 공백까지가 한 토큰이다(BodyLinesOnly 도 같은 문자열로
         // 줄바꿈을 넣는다) — 여기서만 다르게 쓰면 두 표면이 어긋난다.
         private const string Arrow = " → ";
+
+        // 조건 없는 상시 효과의 트리거. **생산자와 소비자가 같은 상수를 본다** —
+        // EffectOnly 가 이 접두만 떼어내므로 리터럴로 흩어두면 조용히 어긋난다.
+        private const string AlwaysPrefix = "항상" + Arrow;
 
         private static string Assemble(DreamcatcherCard card, bool compact, Func<string, string> unitNameOf = null)
         {
@@ -153,7 +157,7 @@ namespace Wassup.UI
             foreach (var effect in card.effects)
                 effects.Add(FormatSquadEffect(card.axis, effect));
 
-            lines.Add($"항상 → {string.Join(" · ", effects)}");
+            lines.Add(AlwaysPrefix + string.Join(" · ", effects));
         }
 
         private static string FormatSquadEffect(CardTargetAxis axis, CardEffect effect)
@@ -196,11 +200,11 @@ namespace Wassup.UI
                     string falloff = Approximately(mod.damageMul, 1f)
                         ? "감쇠 없음"
                         : $"튕길 때마다 피해 {Multiplier(mod.damageMul)}";
-                    line = $"항상 → 공격 투사체가 최대 {Count(mod.tileRange)}칸 범위 내 "
+                    line = AlwaysPrefix + $"공격 투사체가 최대 {Count(mod.tileRange)}칸 범위 내 "
                          + $"{Count(mod.count)}회 튕김 ({falloff})";
                     return true;
                 case DcAttackModKind.FrontmostTarget:
-                    line = "항상 → 목표 지점에 가장 가까운 적 우선 공격"
+                    line = AlwaysPrefix + "목표 지점에 가장 가까운 적 우선 공격"
                          + $" · 해당 적 직접 피해 {SignedPercent((mod.damageMul - 1f) * 100f)}";
                     return true;
                 default:
