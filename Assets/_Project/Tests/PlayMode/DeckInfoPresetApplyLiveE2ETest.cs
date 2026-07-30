@@ -110,6 +110,8 @@ namespace Wassup.Tests.PlayMode
                 if (appliedTarget == PresetApply.Target.Squad)
                 {
                     Assert.AreEqual(squadsBefore + 1, clone.squads.Count);
+                    Assert.AreEqual(decksBefore, clone.dreamcatcherDecks.Count,
+                        "스쿼드 적용 한 번이 드림캐쳐 프리셋까지 생성하면 안 된다.");
                     Assert.IsTrue(squad.gameObject.activeInHierarchy);
                     Assert.IsTrue(Invoke<bool>(squad, "IsDirty"), "스쿼드 작업본은 미저장 dirty 여야 한다.");
                     Assert.IsTrue(clone.squads.Last().IsEmpty(), "새 스쿼드 저장본은 비어 있어야 한다.");
@@ -117,6 +119,8 @@ namespace Wassup.Tests.PlayMode
                 else
                 {
                     Assert.AreEqual(decksBefore + 1, clone.dreamcatcherDecks.Count);
+                    Assert.AreEqual(squadsBefore, clone.squads.Count,
+                        "드림캐쳐 적용 한 번이 스쿼드 프리셋까지 생성하면 안 된다.");
                     Assert.IsTrue(deck.gameObject.activeInHierarchy);
                     Assert.IsTrue(Invoke<bool>(deck, "IsDirty"), "덱 작업본은 미저장 dirty 여야 한다.");
                     Assert.AreEqual(0, clone.dreamcatcherDecks.Last().Count(),

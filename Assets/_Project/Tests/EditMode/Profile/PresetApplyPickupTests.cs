@@ -167,6 +167,8 @@ namespace Wassup.Tests.EditMode.Profile
             Enter(ctrl);   // OnEnable → TryConsume → ApplyStaged
 
             Assert.AreEqual(2, _p.squads.Count, "새 프리셋이 생긴다");
+            Assert.AreEqual(1, _p.dreamcatcherDecks.Count,
+                "스쿼드 적용은 드림캐쳐 프리셋 목록을 변경하지 않는다");
             var created = _p.squads[1];
             Assert.AreEqual("wassup의 덱", created.name);
             Assert.AreEqual(created.id, (string)Get(ctrl, "_viewingPresetId"), "새 프리셋을 보고 있다");
@@ -304,6 +306,8 @@ namespace Wassup.Tests.EditMode.Profile
             Enter(ctrl);
 
             Assert.AreEqual(2, _p.dreamcatcherDecks.Count);
+            Assert.AreEqual(1, _p.squads.Count,
+                "드림캐쳐 적용은 스쿼드 프리셋 목록을 변경하지 않는다");
             var created = _p.dreamcatcherDecks[1];
             Assert.AreEqual("wassup의 덱", created.name);
             Assert.AreEqual(created.id, (string)Get(ctrl, "_viewingPresetId"));

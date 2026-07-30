@@ -49,5 +49,5 @@ private void OnPresetApply(PresetApply.Target target)
 - [ ] 컴파일 그린
 - [ ] `TournamentHistoryPanel` 에 `PlayerProfileSO`/`ProfileStore` 참조 0건 (프로필 무지 유지)
 - [ ] EditMode: 패널의 적용 핸들러 호출 → `PresetApply.HasPending` true + `Request.target`·`presetName`·id 목록이 행 데이터와 일치. 팝업을 두 번 열고 각각 다른 행으로 적용해도 마지막 행의 것이 예약된다
-- [ ] Play: 스쿼드 탭 적용 → 히스토리가 닫히고 스쿼드 페이지가 열린다. 드림캐쳐 탭 적용 → 드림캐쳐 페이지
+- [ ] Play: 스쿼드 저장 → 히스토리가 닫히고 스쿼드 페이지가 열린다. 드림캐쳐 저장 → 드림캐쳐 페이지
 - [ ] Play: 히스토리를 닫고 다시 열어 적용해도 이동이 **1회**만 일어난다(구독 누적 없음)
