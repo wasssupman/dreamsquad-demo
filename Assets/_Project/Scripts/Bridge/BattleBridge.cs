@@ -4554,8 +4554,9 @@ namespace Wassup.Bridge
         }
 
         // tournament-play-report Units 3/4 — shared result-popup hook: snapshot
-        // the battle log (SetResult/SetScore must already be applied), send
-        // complete, and swap the popup's pending leaderboard for the real ranking
+        // the deck carried into this match (tournament-deck-info unit 1 — the
+        // battle log is no longer sent), send complete, and swap the popup's
+        // pending leaderboard for the real ranking
         // when it arrives. Guests and failures fall through silently — the pending
         // list stays. The popup usually isn't open yet when the response lands
         // (ranking beats the ~4s tally) — ResultScreen holds an early response and
@@ -4569,7 +4570,7 @@ namespace Wassup.Bridge
                 return;
             }
             var logger = GameManager.Instance?.Logger;
-            Wassup.Core.Api.TournamentMatchReporter.ReportResult(playerScore, logger?.SnapshotJson(),
+            Wassup.Core.Api.TournamentMatchReporter.ReportResult(playerScore, logger?.DeckInfoJson(),
                 ranking => resultScreen?.UpdateLeaderboard(ranking, Wassup.Core.Api.UserSession.Current?.userId),
                 // tournament-flow-guards unit 2 — 실제 complete 실패만 알림(논블로킹, 재시도 없음).
                 onError: _ => Wassup.UI.NoticePopup.ShowAlert("점수 전송 실패",

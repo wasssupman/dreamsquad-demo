@@ -167,7 +167,7 @@ namespace Wassup.Core.Api
 
         // onRanking fires only on the full success path (complete ok → result ok)
         // and only while the same match is still current.
-        public static void ReportResult(int score, string battleLogJson,
+        public static void ReportResult(int score, string deckInfoJson,
             Action<TournamentApi.ResultData> onRanking = null, Action<string> onError = null)
         {
             if (!UserSession.HasAccount) return; // guest — nothing to report
@@ -196,7 +196,7 @@ namespace Wassup.Core.Api
             // 필요한 유일한 경우가 바로 complete 실패인데 그때 레코드가 없던 셈이다.
             // 이제 실패면 레코드를 남겨 다음 로비 reconcile 이 complete(0) 로 마감한다.
             _completesInFlight++;
-            TournamentApi.Complete(baseUrl, credential, attemptId, score, battleLogJson, (ok, error) =>
+            TournamentApi.Complete(baseUrl, credential, attemptId, score, deckInfoJson, (ok, error) =>
             {
                 CompleteReturned();
                 // 락 해제 성사 여부는 이 매치의 생사와 무관하다 — epoch 가드보다 앞에서
@@ -245,6 +245,8 @@ namespace Wassup.Core.Api
             // unit 9 — clear-on-success. 나가기 직후 씬 전환 → 로비 reconcile 이 이 왕복과
             // 겹치는 것은 _completesInFlight 가 막는다.
             _completesInFlight++;
+            // tournament-deck-info unit 1 — deckInfo 는 빈 값. 0점 마감은 최고점 후보가
+            // 아니므로 덱을 기록할 이유가 없다.
             TournamentApi.Complete(baseUrl, credential, attemptId, 0, "", (ok, error) =>
             {
                 CompleteReturned();
@@ -299,6 +301,9 @@ namespace Wassup.Core.Api
             _completesInFlight++;
             AuthCredential credential = UserSession.Credential;
             string attemptId = rec.attemptId;
+            // tournament-deck-info unit 1 — deckInfo 는 빈 값. 이 경로는 **이전 세션/
+            // 하드킬의 attempt** 를 뒤늦게 닫는 것이라, 지금 메모리의 덱을 붙이면 남의
+            // 판에 엉뚱한 덱이 박힌다.
             TournamentApi.Complete(baseUrl, credential, attemptId, 0, "", (ok, error) =>
             {
                 CompleteReturned();

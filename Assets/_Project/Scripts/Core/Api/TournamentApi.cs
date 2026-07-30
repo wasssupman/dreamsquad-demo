@@ -7,7 +7,7 @@ using UnityEngine.Networking;
 namespace Wassup.Core.Api
 {
     // tournament-play-report Unit 0 — the three tournament endpoints this demo
-    // consumes: play (attempt issue), complete (score + battle log), and result
+    // consumes: play (attempt issue), complete (score + deck info), and result
     // (competitor ranking). Same conventions as UserSignApi: envelope via
     // ApiEnvelope, onDone(value, error) with exactly one side meaningful.
     public static class TournamentApi
@@ -49,6 +49,10 @@ namespace Wassup.Core.Api
             public string userName;
             public int score;
             public int rank;
+            // tournament-deck-info unit 2 — 서버가 **최고 점수 attempt** 의 deckInfo 를
+            // 엔트리에 보관해 돌려준다. 기록이 없는 과거 참가는 null.
+            // 해석은 TournamentDeckInfo.Deserialize (실패/구 참가 → null).
+            public string deckInfo;
         }
 
         [Serializable]
@@ -75,10 +79,13 @@ namespace Wassup.Core.Api
             public bool claimed;
         }
 
+        // tournament-deck-info unit 1 — `TournamentResultExtraData`. 서버 스키마에는
+        // `debug` 도 있지만 **싣지 않는다**: 거기 실리던 것은 배틀 로그 전문이고,
+        // 소비처가 정해지지 않은 채 매 판 올라가고 있었다(로컬 GameLogs 기록은 유지).
         [Serializable]
         internal class ExtraDataBody
         {
-            public string debug;
+            public string deckInfo;
         }
 
         public static void Play(string baseUrl, AuthCredential credential, Action<PlayState, string> onDone)
@@ -95,13 +102,13 @@ namespace Wassup.Core.Api
         // onDone(success, error) — the TournamentResult payload is not consumed
         // here; ranking is fetched separately via GetResult (spec decision).
         public static void Complete(string baseUrl, AuthCredential credential, string attemptId, int score,
-            string debugJson, Action<bool, string> onDone)
+            string deckInfoJson, Action<bool, string> onDone)
         {
             Send(() =>
             {
                 var request = new UnityWebRequest(BuildCompleteUrl(baseUrl, attemptId, score), UnityWebRequest.kHttpVerbPOST);
                 request.uploadHandler = new UploadHandlerRaw(
-                    System.Text.Encoding.UTF8.GetBytes(BuildCompleteBody(debugJson)));
+                    System.Text.Encoding.UTF8.GetBytes(BuildCompleteBody(deckInfoJson)));
                 request.SetRequestHeader("Content-Type", "application/json");
                 return request;
             }, credential, (body, transportError) =>
@@ -200,9 +207,17 @@ namespace Wassup.Core.Api
             => $"{TrimBase(baseUrl)}/tournament/result/entry/unclaimed";
 
         // TournamentResultExtraData — Newtonsoft handles the escaping of the
-        // embedded battle-log JSON string.
-        internal static string BuildCompleteBody(string debugJson)
-            => JsonConvert.SerializeObject(new ExtraDataBody { debug = debugJson ?? string.Empty });
+        // embedded deck JSON string.
+        //
+        // **덱이 없으면 키를 아예 빼서 `{}` 를 보낸다.** 0점 마감 두 경로(나가기·
+        // reconcile)가 빈 문자열을 실으면, 서버가 엔트리 컬럼을 최고점 가드 없이 매
+        // complete 마다 대입할 경우 좋은 판의 덱 기록을 빈 값으로 덮어쓴다. 서버 문구는
+        // 가드가 있음을 시사하지만 확인된 사실이 아니고, 키를 빼는 쪽은 어느 서버
+        // 동작에서도 더 나쁘지 않다.
+        internal static string BuildCompleteBody(string deckInfoJson)
+            => JsonConvert.SerializeObject(
+                new ExtraDataBody { deckInfo = string.IsNullOrEmpty(deckInfoJson) ? null : deckInfoJson },
+                new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore });
 
         internal static PlayState TryParsePlay(string body, out string error)
             => ApiEnvelope.Parse<PlayState>(body, out error);
