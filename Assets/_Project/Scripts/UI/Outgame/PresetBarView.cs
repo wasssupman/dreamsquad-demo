@@ -400,7 +400,7 @@ namespace Wassup.UI
                 CreateClicked?.Invoke();
             });
 
-            var t = Text(root.transform, _canCreate ? "＋  새 프리셋" : "＋  상한 도달", 24, TextAlignmentOptions.Center);
+            var t = Text(root.transform, _canCreate ? "+  새 프리셋" : "+  상한 도달", 24, TextAlignmentOptions.Center);
             var rt = t.rectTransform;
             rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one;
             rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
