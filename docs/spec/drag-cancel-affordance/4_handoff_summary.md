@@ -113,8 +113,7 @@
 
 ## Follow-up
 
-- ~~사용자 Play 확인~~ — **2026-07-30 통과.** 각 unit 완료 기준 전항목 체크됨.
-- **감각 노브 재조정 여지** — `placementOutsideToleranceCells` 1(가장자리가 빡빡하면 2, 취소가 멀면 0) ·
-  `cancelHintDwellSeconds` 0.18. 둘 다 `DragSwaySettings.asset` 에서 Play 중 실시간 반영된다.
-- 방향 지정 페이즈 / 재배치 취소는 범위 밖(README 후속 후보 · spec README Follow-up Backlog
-  "배치 취소/코스트 환불" 과 같은 건).
+종료된 spec 이므로 후속 후보는 **중앙 backlog 로 이관**했다 →
+`docs/spec/README.md` Follow-up Backlog · `#### 드래그 취소 (drag-cancel-affordance)` (7건).
+
+남은 확인 사항 없음 — 완료 기준 19항목 전부 사용자 Play 확인 통과(2026-07-30).

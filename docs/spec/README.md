@@ -121,6 +121,20 @@ code + git history        구현 상세
 
 > 출처 spec 이 섞여 있다. 그룹 헤더 또는 항목 끝의 `(spec-slug)` 라벨로 출처 표기.
 
+#### 드래그 취소 (drag-cancel-affordance — 완료 2026-07-30, 사용자 Play 확인 통과)
+
+유닛 트레이 / 드림캐쳐 손패 D&D 의 취소 수단. 트레이·손패 복귀 취소 + 격자 밖 관용(`Resolve` 가
+`Vector2Int?` 반환)으로 "보드 밖에 놓으면 취소" 를 성립시켰다. 상세:
+`docs/spec/drag-cancel-affordance/4_handoff_summary.md`.
+
+- **출발 슬롯 지목** [S] · 취소 상태에서 그 유닛의 슬롯만 코랄 링/미세 확대로 "이 슬롯으로 돌아간다" 를 지목. rev3 에서 덮는 배너를 지울 때 함께 보류했으나 **덮지 않는 보강**이라 재고 가치가 있다. 현재 예고는 프리뷰 고스트 + 포인터 라벨뿐. (drag-cancel-affordance)
+- **취소 수단 최초 발견 힌트** [S] · 취소 라벨은 취소 상태에 **들어간 뒤에만** 뜨므로 수단을 모르는 플레이어는 계속 모른다. 첫 배치 드래그 1회에 1.5초 안내 — `UserDragStarted` 훅이 이미 있고 `GimmickGuideView` 가 같은 훅을 쓴다. (drag-cancel-affordance)
+- **취소 존 진입 햅틱** [S] · 모바일에서 취소 상태 진입 시 짧은 진동. 실기기 확인이 필요해 분리했다. (drag-cancel-affordance)
+- **감각 노브 재조정** [S] · `placementOutsideToleranceCells` 1(가장자리가 빡빡하면 2, 취소가 멀면 0) · `cancelHintDwellSeconds` 0.18. 둘 다 `DragSwaySettings.asset` 에서 Play 중 실시간 반영 — 실기기 감각이 갈리면 여기부터. (drag-cancel-affordance)
+- **손패의 기존 ESC 취소 제거** [S] · `DreamcatcherHandView.Update` 의 ESC → `CancelAllCardInteraction` 은 이 spec 이전 동작이라 남겼다. unit 2 철회 사유("모바일에서 드래그 중 back 은 손가락이 닿지 않는다")가 그것에도 적용되지만, 사용자에게 취소 수단으로 안내되지 않는 에디터 편의라 제거는 별건 판단. (drag-cancel-affordance)
+- **재배치(DefenderRelocation) 취소** [M] · 이미 배치된 유닛을 드는 경로라 "무차감" 정의가 다르다(원위치 복귀가 취소). 트레이 존 판정을 그대로 쓸 수 없어 별도 설계 필요. (drag-cancel-affordance)
+- **손패 패널 배경을 부채 크기로** [S] · 이 spec 은 **판정 rect** 만 카드 부채(310)에 맞추고 배경 그림은 그대로 뒀다. 배경을 키우면 "취소 영역 = 보이는 손패" 가 그림으로도 일치하지만 보드 가림이 60px 늘어난다. (drag-cancel-affordance × dreamcatcher-hand-drag-clearance)
+
 #### 화염 스택 원거리 적 (enemy-fire-stack-shooter — 완료 2026-07-30, 사용자 Play 확인 통과)
 
 킨들러(레인저 전용 하드 타겟팅 원거리 적) + 프로젝트 최초 Fire 스택 producer. 선행 결함
@@ -255,7 +269,7 @@ first-session-tutorial units 10~12 와 무관하다.
 
 #### 방향 지정 배치 · 다연발 (defender-directional-volley 종료 이관, 2026-07-17)
 
-- **배치 취소/코스트 환불** [S] · 공격방향 페이즈엔 취소 제스처가 없다 — 드롭 = 코스트 확정. 데드존 릴리즈는 가이드를 유지하고 재스와이프를 기다린다. 취소를 넣으려면 `TryBeginDefenderDeployment` 의 spend 를 되감는 경로가 먼저 필요. (defender-directional-volley)
+- **배치 취소/코스트 환불** [S] · 공격방향 페이즈엔 취소 제스처가 없다 — 드롭 = 코스트 확정. 데드존 릴리즈는 가이드를 유지하고 재스와이프를 기다린다. 취소를 넣으려면 `TryBeginDefenderDeployment` 의 spend 를 되감는 경로가 먼저 필요 — `drag-cancel-affordance` 는 커밋 **이전**에만 갈라져서 환불이 필요 없었고(계약 1) 그래서 이 페이즈를 범위 밖으로 뒀다. (defender-directional-volley × drag-cancel-affordance)
 - **배치 후 방향 재지정** [S] · 유닛 탭 → 가이드 재오픈. `DeployedFacing` 은 현재 1회 기록 후 불변 계약이라 쓰기 소유권부터 재정의해야 한다. (defender-directional-volley)
 - **레인 폭 파라미터화** [S] · 현재 1타일 고정(`LaneMath.IsInLane` 의 `side == 0`). 폭 2+ 는 side 허용치를 SO 로. (defender-directional-volley)
 - **확산형 실증 유닛(샷건)** [S] · 엔진(`spreadAngleDeg`)은 완성·테스트됨, 유닛 에셋만 없다. 30도 3발은 SO 저작만으로 성립. (defender-directional-volley)
