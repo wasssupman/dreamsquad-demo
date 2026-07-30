@@ -324,3 +324,28 @@ Unity 는 이런 파일에도 `.meta` 를 만들어 두므로 meta 존재만으�
 
 - **처방**: 줄 수는 추정하지 말고 `TMP_Text.ForceMeshUpdate()` 후 `textInfo.lineCount` / `preferredHeight` 를 읽는다. Play 에서 한 번 재면 끝난다.
 - 폰트 후보를 고를 때도 같은 방식으로 훑으면 슬롯을 채우는 값을 바로 찾는다(실측 예: 30→2줄 71px, 32→2줄 76px, 34→3줄 123px, 36→3줄 130px).
+
+## 런타임 생성 중첩 캔버스는 두 번 배신한다 (dim 이 100×100 · overrideSorting 리셋)
+
+자기-빌드 팝업(`UiCanvasSetup.Ensure` + `FullBleedRoot`/`SafeAreaRoot` 패턴)을 **코드로 만들어 다른 UI 밑에
+붙이면** 두 가지가 조용히 어긋난다. 둘 다 예외도 경고도 없다.
+
+**1) 자기 RectTransform 을 안 펴면 전체화면 dim 이 100×100 이 된다.** 중첩(nested) 캔버스는 rect 를
+구동하지 않으므로, `new GameObject(..., typeof(RectTransform))` 의 기본 100×100 이 그대로 남고
+`FullBleedRoot` 가 거기에 stretch 된다. 증상은 "암전이 없다 + 바깥 탭으로 안 닫힌다 + **뒤 페이지로 클릭이
+통과한다**" — 모달인데 뒤 목록이 눌리고 뒤로가기까지 먹힌다.
+
+- **처방**: `BuildCanvas` 첫 줄에서 `selfRt.anchorMin=0 / anchorMax=1 / offset=0`.
+  선례: `PresetConfirmPopup.EnsureBuilt`, `DraftCardFanView`, `WavePatternStripView`.
+- 씬에 authored 된 패널도 같다 — authored rect 가 100×100 이면 같은 증상이 난다.
+
+**2) 비활성 상태에서 세팅한 `overrideSorting` 은 활성화되면 풀린다.** 팝업을 미리 만들어 두고
+`SetActive(false)` 로 재우는 패턴(지연 생성)에서, `BuildCanvas` 가 `overrideSorting=true; sortingOrder=3200`
+을 박아도 `SetActive(true)` 뒤에 읽으면 `false / 부모값` 이다.
+
+- **처방**: `Show()` 에서 **활성화한 다음** 다시 박는다.
+- 실측 2026-07-30 `DeckInfoPopup`: BuildCanvas 직후 3200 → 활성화 후 `override=False, order=2500`(부모 상속).
+
+**진단 순서**: 뒤 화면이 비친다 → 먼저 **패널 배경 알파**를 본다(0.98 이면 어두운 패널 위 흰 글자가 읽힌다.
+모달은 1.0). 그래도 남으면 sorting, 그 다음 rect. 세 개가 비슷한 증상으로 보여 엉뚱한 곳을 판다.
+`GetWorldCorners` 로 **실제 화면 rect 를 찍어보는 게 가장 빠르다**.

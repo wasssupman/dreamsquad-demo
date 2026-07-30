@@ -488,9 +488,17 @@ namespace Wassup.Core
             var ids = new List<string>(cards.Count);
             foreach (var card in cards)
                 if (card != null) ids.Add(card.id);
+            // tournament-deck-info unit 1 — 선물을 뺀 "고른 덱"도 같이 기록한다.
+            // _giftBaseCards 가 ResolveAttachDeck() 결과 = 저장 덱(또는 기본 덱)이다.
+            var baseIds = new List<string>(_giftBaseCards.Count);
+            foreach (var card in _giftBaseCards)
+                if (card != null) baseIds.Add(card.id);
+
+            // 머지 해소(2026-07-31): page-local-presets 가 SelectedDeck → CommittedDeck 으로
+            // 개명했고 tournament-deck-info 는 개명 전 이름을 썼다. 살아 있는 API 는 CommittedDeck.
             var save = (profileSO != null && profileSO.profile != null) ? profileSO.profile.CommittedDeck() : null;
             logger.SetDreamcatcherDeck(save != null ? save.id : "default",
-                save != null ? save.name : "Default+Active", ids);
+                save != null ? save.name : "Default+Active", ids, baseIds);
         }
     }
 }

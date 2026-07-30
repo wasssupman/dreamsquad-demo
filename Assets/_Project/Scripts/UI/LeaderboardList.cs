@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -31,6 +32,13 @@ namespace Wassup.UI
         private static readonly Color BadgeTextDark = new Color(0.10f, 0.09f, 0.06f, 1f);
 
         private const float RowH = 48f;
+        private const float DeckBtnW = 108f;
+        private const float DeckBtnH = 34f;
+        // 점수 컬럼이 행 우변에서 차지하는 폭(sizeDelta 140 + 우여백 22). 덱보기 버튼과
+        // 이름 컬럼이 전부 이 값에서 파생된다 — 예전엔 이름 inset(150)을 버튼 기준으로
+        // 재사용해 버튼이 점수 rect 를 6px 물었다(점수가 7자리가 되면 겹친다).
+        private const float ScoreColW = 162f;
+        private const float ColSpacing = 8f;
 
         // Cached procedural sprites (baked once, reused across rows).
         private readonly Sprite _rowNormal;
@@ -40,9 +48,12 @@ namespace Wassup.UI
         private readonly Sprite _badgeSilver;
         private readonly Sprite _badgeBronze;
         private readonly Sprite _badgeNavy;
+        private readonly Sprite _deckBtn;
 
         public LeaderboardList()
         {
+            _deckBtn = UiRoundedSprite.Make(10f, 2f, new Color(1f, 1f, 1f, 0.08f),
+                new Color(Gold.r, Gold.g, Gold.b, 0.55f));
             _rowNormal = UiRoundedSprite.Make(14f, 0f, RowFill, RowFill);
             _rowOwn = UiRoundedSprite.Make(14f, 3f, OwnFill, Gold);
             _rowWaiting = UiRoundedSprite.Make(14f, 0f, WaitingFill, WaitingFill);
@@ -62,14 +73,21 @@ namespace Wassup.UI
             public readonly int Score;
             public readonly bool IsPlayer;
             public readonly bool IsWaiting;
+            // tournament-history-deck-view unit 1 — 그 참가자가 그 판에 들고 간 덱의
+            // 원문 페이로드. **파싱하지 않고** 실어만 나른다 — 해석은 팝업을 여는
+            // 직전에 한 번이면 되고, 행 모델이 스키마를 알 이유가 없다.
+            // 기록이 없는 참가(구 엔트리)와 대기 슬롯은 null.
+            public readonly string DeckInfo;
 
-            public Row(int rank, string name, int score, bool isPlayer, bool isWaiting)
+            public Row(int rank, string name, int score, bool isPlayer, bool isWaiting,
+                string deckInfo = null)
             {
                 Rank = rank;
                 Name = name;
                 Score = score;
                 IsPlayer = isPlayer;
                 IsWaiting = isWaiting;
+                DeckInfo = deckInfo;
             }
         }
 
@@ -97,7 +115,7 @@ namespace Wassup.UI
                     var e = sorted[i];
                     int rank = e.rank > 0 ? e.rank : i + 1;
                     bool isPlayer = !string.IsNullOrEmpty(ownUserId) && e.userId == ownUserId;
-                    rows.Add(new Row(rank, DisplayName(e.userName), e.score, isPlayer, false));
+                    rows.Add(new Row(rank, DisplayName(e.userName), e.score, isPlayer, false, e.deckInfo));
                 }
                 else
                 {
@@ -118,20 +136,25 @@ namespace Wassup.UI
         // Repaints `content` with `rows`. Detach-then-destroy so old rows leave the
         // layout this frame (Destroy is deferred) — avoids a one-frame double list
         // when bots swap for real data.
-        public void Render(RectTransform content, IReadOnlyList<Row> rows)
+        // onDeckView: null 이면 덱보기 버튼을 만들지 않는다(옵트인). 넘기면 대기 슬롯을
+        // 제외한 모든 행에 버튼이 붙고, 눌린 행이 그대로 콜백으로 온다 — 덱 정보가 없는
+        // 참가자도 포함이다(버튼이 행마다 있다 없다 하면 눌러도 되는지 매번 판단하게
+        // 된다). "없음"을 말하는 건 팝업의 몫이다.
+        public void Render(RectTransform content, IReadOnlyList<Row> rows, Action<Row> onDeckView = null)
         {
             if (content == null) return;
             for (int i = content.childCount - 1; i >= 0; i--)
             {
                 var child = content.GetChild(i);
                 child.SetParent(null, false);
-                Object.Destroy(child.gameObject);
+                // `using System` 이 들어와 Object 가 모호해진다 — 한정 필수.
+                UnityEngine.Object.Destroy(child.gameObject);
             }
             if (rows == null) return;
-            for (int i = 0; i < rows.Count; i++) CreateRow(content, rows[i]);
+            for (int i = 0; i < rows.Count; i++) CreateRow(content, rows[i], onDeckView);
         }
 
-        private void CreateRow(RectTransform content, Row row)
+        private void CreateRow(RectTransform content, Row row, Action<Row> onDeckView)
         {
             var go = new GameObject("Row", typeof(RectTransform), typeof(Image), typeof(LayoutElement));
             go.transform.SetParent(content, false);
@@ -171,13 +194,22 @@ namespace Wassup.UI
 
             Color textColor = row.IsWaiting ? WaitingText : row.IsPlayer ? Gold : Color.white;
 
+            // 덱보기 컬럼이 붙으면 이름이 그만큼 물러난다. **버튼이 없는 호출자의 여백은
+            // 지금 값 그대로** — 공유 컴포넌트라 다른 소비처가 조용히 틀어지면 안 된다.
+            // 대기 슬롯에는 버튼을 안 붙이지만 여백은 같이 준다(컬럼이 어긋나 보인다).
+            float nameRightInset = onDeckView != null
+                ? ScoreColW + ColSpacing + DeckBtnW + ColSpacing
+                : 150f; // 버튼이 없는 호출자의 여백은 기존 값 그대로(공유 컴포넌트)
+
             // Name (left, after badge).
             var name = CreateLabel(go.transform, "Name", row.Name, 30, TextAlignmentOptions.MidlineLeft, textColor);
             var nameRt = (RectTransform)name.transform;
             nameRt.anchorMin = new Vector2(0f, 0f);
             nameRt.anchorMax = new Vector2(1f, 1f);
             nameRt.offsetMin = new Vector2(66f, 0f);
-            nameRt.offsetMax = new Vector2(-150f, 0f);
+            nameRt.offsetMax = new Vector2(-nameRightInset, 0f);
+
+            if (onDeckView != null && !row.IsWaiting) CreateDeckButton(go.transform, row, onDeckView);
 
             // Score (right).
             string scoreText = row.IsWaiting ? "-" : row.Score.ToString("N0");
@@ -188,6 +220,31 @@ namespace Wassup.UI
             scoreRt.pivot = new Vector2(1f, 0.5f);
             scoreRt.sizeDelta = new Vector2(140f, 0f);
             scoreRt.anchoredPosition = new Vector2(-22f, 0f);
+        }
+
+        // 점수 컬럼 왼쪽에 붙는 작은 액션 버튼. 행 자체를 누르는 방식이 아닌 이유:
+        // 랭킹 행은 히스토리에서 선택 대상이 아니라 정보라서, 행 전체가 눌리면
+        // 좌측 목록의 "행 = 선택" 규칙과 충돌한다.
+        private void CreateDeckButton(Transform parent, Row row, Action<Row> onDeckView)
+        {
+            var go = new GameObject("DeckViewButton", typeof(RectTransform), typeof(Image), typeof(Button));
+            go.transform.SetParent(parent, false);
+            var img = go.GetComponent<Image>();
+            img.sprite = _deckBtn;
+            img.type = Image.Type.Sliced;
+
+            var rt = (RectTransform)go.transform;
+            rt.anchorMin = rt.anchorMax = new Vector2(1f, 0.5f);
+            rt.pivot = new Vector2(1f, 0.5f);
+            rt.sizeDelta = new Vector2(DeckBtnW, DeckBtnH);
+            rt.anchoredPosition = new Vector2(-(ScoreColW + ColSpacing), 0f);
+
+            var captured = row;
+            go.GetComponent<Button>().onClick.AddListener(() => onDeckView(captured));
+
+            var label = CreateLabel(go.transform, "Label", "덱보기", 20,
+                TextAlignmentOptions.Center, Color.white);
+            StretchFull((RectTransform)label.transform);
         }
 
         private static TextMeshProUGUI CreateLabel(Transform parent, string name, string text,

@@ -100,6 +100,9 @@ namespace Wassup.Logging
             currentEntry.dreamcatcher.deckCardIds = previous.dreamcatcher.deckCardIds != null
                 ? new List<string>(previous.dreamcatcher.deckCardIds)
                 : new List<string>();
+            currentEntry.dreamcatcher.baseDeckCardIds = previous.dreamcatcher.baseDeckCardIds != null
+                ? new List<string>(previous.dreamcatcher.baseDeckCardIds)
+                : new List<string>();
             currentEntry.skill.loadout = previous.skill.loadout != null ? new List<string>(previous.skill.loadout) : new List<string>();
             currentEntry.skill.pool = previous.skill.pool != null ? new List<string>(previous.skill.pool) : new List<string>();
             currentEntry.skill.seed = previous.skill.seed;
@@ -222,12 +225,15 @@ namespace Wassup.Logging
             currentEntry.dreamstones = stones != null ? new List<DreamstoneRecord>(stones) : new List<DreamstoneRecord>();
         }
 
-        public void SetDreamcatcherDeck(string deckId, string deckName, IEnumerable<string> cardIds)
+        // cardIds = 이번 판에 돌린 조합 덱(저장 + 선물), baseCardIds = 고른 덱만.
+        public void SetDreamcatcherDeck(string deckId, string deckName,
+            IEnumerable<string> cardIds, IEnumerable<string> baseCardIds)
         {
             if (currentEntry == null) return;
             currentEntry.dreamcatcher.deckId = deckId ?? string.Empty;
             currentEntry.dreamcatcher.deckName = deckName ?? string.Empty;
             currentEntry.dreamcatcher.deckCardIds = cardIds != null ? new List<string>(cardIds) : new List<string>();
+            currentEntry.dreamcatcher.baseDeckCardIds = baseCardIds != null ? new List<string>(baseCardIds) : new List<string>();
         }
 
         public void RecordDreamcatcherOffer(string trigger, int waveNumber, float time, IEnumerable<string> cardIds)
@@ -416,6 +422,25 @@ namespace Wassup.Logging
             currentEntry.timestamp_end = now.ToString("o");
             currentEntry.result.duration_sec = (float)(now - startedAt).TotalSeconds;
             return JsonUtility.ToJson(currentEntry, prettyPrint: false);
+        }
+
+        // tournament-deck-info unit 1 — `complete` 에 실을 덱 정보. 프로필이 아니라
+        // **이 판에 실제로 들고 들어온 것**을 쓴다(캐리인 시점 스냅샷). complete 시점의
+        // 프로필은 그 사이 바뀌었을 수 있다. 세션이 없으면 null → 호출자가 빈 값으로 흘린다.
+        public string DeckInfoJson()
+        {
+            if (currentEntry == null) return null;
+
+            var stoneIds = new List<string>();
+            for (int i = 0; i < currentEntry.dreamstones.Count; i++)
+                if (currentEntry.dreamstones[i] != null) stoneIds.Add(currentEntry.dreamstones[i].id);
+
+            // 카드는 **고른 덱만**(baseDeckCardIds). 조합 덱(deckCardIds)은 매 판 랜덤인
+            // 선물 카드가 섞여 있어 로드아웃 비교의 노이즈다.
+            return Wassup.Core.Api.TournamentDeckInfo.Serialize(
+                currentEntry.squad.unitIds,
+                stoneIds,
+                currentEntry.dreamcatcher.baseDeckCardIds);
         }
 
         public void EndSession()

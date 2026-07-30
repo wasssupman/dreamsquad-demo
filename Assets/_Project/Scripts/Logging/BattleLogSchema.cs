@@ -163,7 +163,12 @@ namespace Wassup.Logging
     {
         public string deckId;
         public string deckName;
+        // 이 판에 실제로 돌린 조합 덱 = 저장 덱 + 이번 판 선물 카드.
         public List<string> deckCardIds = new();
+        // tournament-deck-info unit 1 — 플레이어가 **고른** 덱만(선물 제외). 선물은
+        // 매 판 랜덤이라 로드아웃 비교에는 노이즈다. `deckCardIds` 와 나란히 두는 이유:
+        // 로컬 로그는 "실제로 뭘 돌렸나"를, 토너먼트 기록은 "뭘 골랐나"를 답해야 한다.
+        public List<string> baseDeckCardIds = new();
         public List<DreamcatcherOfferLog> offers = new();
         public List<DreamcatcherPickLog> picks = new();
     }

@@ -109,21 +109,36 @@ namespace Wassup.Tests.EditMode.Api
         [Test]
         public void BuildCompleteBody_EscapesEmbeddedJson_RoundTrips()
         {
-            // battle log JSON is a string value inside the body — quotes and
-            // newlines must survive the embedding.
-            const string debugJson = "{\"result\":{\"outcome\":\"victory\"},\n\"note\":\"line1\nline2\"}";
+            // tournament-deck-info unit 1 — deck JSON is a string value inside the
+            // body; quotes must survive the embedding.
+            const string deckInfoJson = "{\"v\":1,\"squad\":{\"units\":[\"u1\"],\"stones\":[]},\"dc\":{\"cards\":[]}}";
 
-            string body = TournamentApi.BuildCompleteBody(debugJson);
+            string body = TournamentApi.BuildCompleteBody(deckInfoJson);
             var parsed = JObject.Parse(body);
 
-            Assert.AreEqual(debugJson, parsed.Value<string>("debug"));
+            Assert.AreEqual(deckInfoJson, parsed.Value<string>("deckInfo"));
         }
 
         [Test]
-        public void BuildCompleteBody_NullDebug_YieldsEmptyString()
+        public void BuildCompleteBody_NoDeck_OmitsKeyEntirely()
         {
-            var parsed = JObject.Parse(TournamentApi.BuildCompleteBody(null));
-            Assert.AreEqual(string.Empty, parsed.Value<string>("debug"));
+            // 0점 마감(나가기·reconcile)이 빈 값을 실어 최고점 판의 덱 기록을 덮어쓰는
+            // 것을 막는다 — 키를 아예 빼서 `{}` 를 보낸다.
+            foreach (string noDeck in new[] { null, "" })
+            {
+                var parsed = JObject.Parse(TournamentApi.BuildCompleteBody(noDeck));
+                Assert.IsFalse(parsed.ContainsKey("deckInfo"), $"input: {noDeck ?? "null"}");
+            }
+        }
+
+        [Test]
+        public void BuildCompleteBody_OmitsDebugKey()
+        {
+            // tournament-deck-info 계약 5 — 배틀 로그 전문을 네트워크로 올리는 경로는
+            // 종료됐다. 빈 값으로 채우는 것도 아니고 키 자체가 나가지 않는다.
+            var parsed = JObject.Parse(TournamentApi.BuildCompleteBody("{\"v\":1}"));
+
+            Assert.IsFalse(parsed.ContainsKey("debug"));
         }
 
         // ── result ───────────────────────────────────────────────────────────────
@@ -136,7 +151,8 @@ namespace Wassup.Tests.EditMode.Api
                 ""entryCount"": 2,
                 ""maxEntryCount"": 10,
                 ""entries"": [
-                    { ""userId"": ""u-1"", ""userName"": ""sj"", ""score"": 900, ""rank"": 1 },
+                    { ""userId"": ""u-1"", ""userName"": ""sj"", ""score"": 900, ""rank"": 1,
+                      ""deckInfo"": ""{\""v\"":1,\""squad\"":{\""units\"":[\""u1\""]}}"" },
                     { ""userId"": ""u-2"", ""userName"": ""bot"", ""score"": 450, ""rank"": 2 } ] } }";
 
             var result = TournamentApi.TryParseResult(body, out string error);
@@ -150,6 +166,12 @@ namespace Wassup.Tests.EditMode.Api
             Assert.AreEqual(900, result.entries[0].score);
             Assert.AreEqual(1, result.entries[0].rank);
             Assert.AreEqual("u-2", result.entries[1].userId);
+
+            // tournament-deck-info unit 2 — 엔트리의 덱 정보는 문자열 그대로 실려오고,
+            // 기록이 없는 참가(구 엔트리)는 null 로 남는다.
+            var deck = TournamentDeckInfo.Deserialize(result.entries[0].deckInfo);
+            CollectionAssert.AreEqual(new[] { "u1" }, deck.squad.units);
+            Assert.IsNull(result.entries[1].deckInfo);
         }
 
         // ── unclaimed list ─────────────────────────────────────────────────────────
