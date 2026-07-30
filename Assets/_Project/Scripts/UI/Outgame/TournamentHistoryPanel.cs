@@ -54,6 +54,13 @@ namespace Wassup.UI
         // its ClosePanels (re-shows the lobby menu that RaiseExclusive hid).
         public event Action onClose;
 
+        // tournament-history-deck-view unit 1 — 덱보기 팝업이 id 를 이름·아트로 푸는 데
+        // 쓴다. 팝업은 런타임 생성이라 자기 SerializeField 가 안 채워져서, 씬에 있는
+        // 이 패널이 들고 주입한다. 미배선(null)이어도 팝업은 raw id 로 동작한다.
+        [SerializeField] private Wassup.Data.DefenderCatalog unitCatalog;
+        [SerializeField] private Wassup.Data.DreamstoneCatalog stoneCatalog;
+        [SerializeField] private Wassup.Data.DreamcatcherCardCatalog cardCatalog;
+
         private RectTransform _listContent;
         private RectTransform _rankContent;
         private TextMeshProUGUI _listStatus;
@@ -64,6 +71,7 @@ namespace Wassup.UI
         private Sprite _rowSprite;
         private Sprite _rowSelectedSprite;
         private Sprite _buttonSprite;
+        private DeckInfoPopup _deckPopup;
         private bool _built;
         private int _listEpoch;
         private int _rankEpoch;
@@ -83,6 +91,10 @@ namespace Wassup.UI
             // drop any in-flight fetch when the page closes
             _listEpoch++;
             _rankEpoch++;
+            // 팝업은 이 패널의 자식이라 같이 사라지지만 activeSelf 는 true 로 남는다.
+            // 안 닫으면 다음에 히스토리를 열 때 **직전 참가자의 덱 팝업**이 그대로 얹힌
+            // 채로 새 목록이 뒤에서 로딩된다.
+            if (_deckPopup != null) _deckPopup.Hide();
         }
 
         // ── List (left column) ───────────────────────────────────────────────
@@ -278,7 +290,7 @@ namespace Wassup.UI
                 _rankTitle.text = string.IsNullOrEmpty(data.name) ? "토너먼트 결과" : data.name;
                 var rows = LeaderboardList.BuildRows(data.entries, data.maxEntryCount,
                     UserSession.Current?.userId);
-                _leaderboard.Render(_rankContent, rows);
+                _leaderboard.Render(_rankContent, rows, OpenDeckPopup);
                 SetRankStatus(rows.Count == 0 ? "참가 기록이 없습니다." : "");
             });
         }
@@ -286,6 +298,25 @@ namespace Wassup.UI
         private void ClearRanking()
         {
             if (_leaderboard != null) _leaderboard.Render(_rankContent, null);
+        }
+
+        // 파싱은 여는 직전 한 번. 실패/빈 값은 null 이고, 그대로 넘기면 팝업이
+        // "덱 정보가 없습니다"를 그린다 — 버튼을 숨기지 않는 이유가 이것이다.
+        private void OpenDeckPopup(LeaderboardList.Row row)
+        {
+            var payload = TournamentDeckInfo.Deserialize(row.DeckInfo);
+            EnsureDeckPopup().Show(payload, row.Name);
+        }
+
+        private DeckInfoPopup EnsureDeckPopup()
+        {
+            if (_deckPopup != null) return _deckPopup;
+            var go = new GameObject("DeckInfoPopup", typeof(RectTransform));
+            go.transform.SetParent(transform, false);
+            _deckPopup = go.AddComponent<DeckInfoPopup>();
+            _deckPopup.Setup(unitCatalog, stoneCatalog, cardCatalog);
+            go.SetActive(false);
+            return _deckPopup;
         }
 
         // ── Status ───────────────────────────────────────────────────────────
@@ -317,6 +348,11 @@ namespace Wassup.UI
             _rowSelectedSprite = UiRoundedSprite.Make(14f, 3f, RowSelectedFill, GoldColor);
             _buttonSprite = UiRoundedSprite.Make(28f, 0f, Color.white, Color.white);
             _leaderboard = new LeaderboardList();
+
+            // 씬의 이 오브젝트 rect 는 authored 100×100 인데 중첩 캔버스는 rect 를
+            // 구동하지 않는다 — 안 펴면 dim 이 100×100 이라 화면을 못 덮는다
+            // (PresetConfirmPopup 선례).
+            StretchFull((RectTransform)transform);
 
             var roots = UiCanvasSetup.Ensure(gameObject, sortingOrder: 2500);
             roots.Canvas.overrideSorting = true;

@@ -17,7 +17,7 @@
 public void Show(TournamentDeckInfo.Payload payload, string title);
 ```
 
-`payload == null` 이 정상 입력이다(덱 정보 없음). 카탈로그 3종은 `[SerializeField]` 로 받고, **null 이어도 동작해야 한다**(id 만으로 렌더). 자기-빌드 캔버스 + 모달 dim + 닫기 — 은퇴한 `TournamentDetailPopup` 의 빌드 패턴을 따른다(`UiCanvasSetup` / `UiRoundedSprite` / `UiLayer`, 중첩 캔버스라 `overrideSorting` 필수).
+`payload == null` 이 정상 입력이다(덱 정보 없음). 카탈로그 3종은 **`Setup(units, stones, cards)` 로 주입한다** — 이 팝업은 히스토리 패널이 런타임에 만들어서 씬에 오브젝트가 없고, 따라서 자기 `[SerializeField]` 가 채워지지 않는다. `[SerializeField]` 는 **패널**이 들고 팝업에 넘긴다. 셋 중 무엇이 null 이어도 동작해야 한다(id 만으로 렌더). 자기-빌드 캔버스 + 모달 dim + 닫기 — 은퇴한 `TournamentDetailPopup` 의 빌드 패턴을 따른다(`UiCanvasSetup` / `UiRoundedSprite` / `UiLayer`, 중첩 캔버스라 `overrideSorting` 필수).
 
 **레이아웃**
 
@@ -46,9 +46,13 @@ public void Show(TournamentDeckInfo.Payload payload, string title);
 
 ## 완료 기준
 
-- [ ] 컴파일 통과
-- [ ] EditMode: 위 견고성 표 6줄 전부 — 예외 없이 기대 항목 수/라벨이 나온다
+- [x] 컴파일 통과
+- [x] EditMode: 위 견고성 표 6줄 전부 — 예외 없이 기대 항목 수/라벨이 나온다 (`DeckInfoDisplayTests` 8건 + `DeckInfoPopupTests` 7건)
+- [x] **자기 rect 를 먼저 편다** — 런타임 생성 자식이라 RectTransform 이 기본 100×100 이고 중첩 캔버스는 rect 를 구동하지 않는다. 안 펴면 dim 이 화면을 못 덮어 암전이 사라지고 뒤 페이지로 클릭이 통과한다(`PresetConfirmPopup.EnsureBuilt` 선례)
+- [x] 선택이 없을 때 좌측 컬럼을 **끄지 않고** 안내를 띄운다 (끄면 380px 가 구멍으로 보인다)
 - [ ] EditMode: 미해석 id 가 **버려지지 않고** raw id 로 남는다
-- [ ] 팝업을 열고 탭을 오가도 선택이 각 탭별로 유지된다
-- [ ] 스쿼드 탭에서 유닛/스톤을 고르면 좌측 상세가 바뀐다
-- [ ] "프리셋 적용" 버튼이 자리에 있고 **비활성**이다 — 눌러도 아무 일이 없고, 콘솔에 경고/예외도 없다
+- [x] 팝업을 열고 탭을 오가도 선택이 각 탭별로 유지된다 (`TabSelection_IsKeptPerTab`)
+- [x] 스쿼드 탭에서 유닛/스톤을 고르면 좌측 상세가 바뀐다
+- [x] "프리셋 적용" 버튼이 자리에 있고 **비활성**이다 — 눌러도 아무 일이 없고, 콘솔에 경고/예외도 없다
+
+확인: 2026-07-30 EditMode green. **Play 시각 확인은 unit 4 로 이월** — 씬 배선이 아직이라 실화면을 못 띄웠다.

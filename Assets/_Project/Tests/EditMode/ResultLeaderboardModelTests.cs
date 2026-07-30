@@ -104,5 +104,23 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(10, rows.Count);
             foreach (var row in rows) Assert.IsTrue(row.IsWaiting);
         }
+
+        // tournament-history-deck-view unit 1 — 덱보기 버튼이 쓸 원문 페이로드를 행이
+        // 실어 나른다. 파싱은 팝업을 여는 직전에 한 번.
+        [Test]
+        public void BuildRows_CarriesDeckInfo_AndLeavesWaitingSlotsNull()
+        {
+            var withDeck = Entry("u1", "Alice", 700);
+            withDeck.deckInfo = "{\"v\":1}";
+
+            var rows = LeaderboardList.BuildRows(
+                new List<TournamentApi.ResultEntry> { withDeck, Entry("u2", "Bob", 400) },
+                maxEntryCount: 3, ownUserId: "u1");
+
+            Assert.AreEqual("{\"v\":1}", rows[0].DeckInfo);
+            Assert.IsNull(rows[1].DeckInfo, "기록이 없는 참가(구 엔트리)는 null 이다");
+            Assert.IsTrue(rows[2].IsWaiting);
+            Assert.IsNull(rows[2].DeckInfo);
+        }
     }
 }
