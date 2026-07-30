@@ -314,8 +314,11 @@
     telemetry dataset 없음.
   - 관련 테스트/증거: logger 기능은 여러 PlayMode flow에서 사용되나, E3/E4 evidence artifact 없음.
 - `transfer_action`: `adapt`
-- 정규 프로젝트 영향: client local JSON 대신 server authoritative audit log와 product telemetry를
-  분리하고, build/config/protocol version과 pseudonymous participant key를 포함해야 한다.
+- 정규 프로젝트 영향: client local JSON 대신 Server의 Authoritative Match Record·authoritative
+  audit와 product telemetry를 분리해야 한다. Client의 `as-seen presentation trace`는 당시 표시를
+  조사하는 진단용 비권위 산출물로만 보존하고 canonical Replay의 정본으로 사용하지 않는다. 각
+  산출물에는 build/ruleset/presentation/protocol version과 pseudonymous participant key를
+  포함해야 한다.
 - 다음 검증·결정: [Evidence guide](./evidence/README.md)의 manifest로 첫 구조화 세션을 등록하고,
   raw data 저장 위치·retention·접근권한을 정한다.
 

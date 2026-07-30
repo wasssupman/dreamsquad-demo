@@ -14,6 +14,11 @@
 - Product/Game Design이 규칙과 밸런스를 작성·승인하는 책임과 Server가 canonical ruleset을 보관·실행하는 runtime 권위는 구분한다.
 - 규칙 의미와 presentation이 섞인 출처는 한 덩어리로 이전하지 않는다. 예를 들어 `gift-phase`는 선택·허용·상태 전이의 근거와 UI·animation·copy의 근거를 분리하고, 전자는 Server gameplay 계약으로, 후자는 Client presentation 입력으로 해석한다.
 - 순수 계산·test vector는 Server 권위 규칙의 회귀 계약으로 이전할 수 있다. Client가 같은 계산의 일부를 prediction·preview에 사용하더라도 권위 소유권이 공유되는 것은 아니다.
+- 데모의 Client log는 canonical Replay의 근거가 아니다. 정규 프로젝트에서 당시 사용자가 본 화면을
+  조사할 필요가 있을 때 `as-seen presentation trace`로 변환할 수 있지만, 이 진단 산출물은
+  Server의 Authoritative Match Record를 덮어쓰지 않는다.
+- 외부 엔진 문서는 문제 분해와 용어를 비교하는 E0 참고 자료다. 해당 엔진, ECS, replication
+  구조나 저장 형식을 정규 프로젝트의 승인된 선택으로 승격하지 않는다.
 
 ## 출처 레지스터
 
@@ -64,6 +69,8 @@
 | SRC-REF-002 | [`dreamcatcher-portability.md`](../reference/dreamcatcher-portability.md) | definition/interpreter 분리와 trigger×payload×modifier 의미론 | 2026-07-29 확인 / E1 | 현재 `DcMechanic`은 Unity asset·prefab 참조를 포함하므로 서버 공유 모델과 동일하지 않다. |
 | SRC-REF-003 | [`lessons/04-sim-design.md`](../reference/lessons/04-sim-design.md) | 구조적 결정론·TimeManager에서 얻은 데모 교훈 | 2026-07-29 확인 / E0 (경험 기록) | 서버 tick·수치 정책의 승인된 결정이 아니다. |
 | SRC-REF-004 | [`ingame-flow.md`](../reference/ingame-flow.md) | 2026-07-06 당시 스쿼드 기반 흐름 요약 | 2026-07-06 / historical | Gift, 최신 첫 판 tutorial과 일부 tournament guard를 반영하지 않는다. |
+| SRC-EXT-001 | [Unity Netcode for Entities — Interpolation](https://docs.unity.cn/Packages/com.unity.netcode%401.5/manual/interpolation.html) | server·predicted·interpolated timeline을 분리해 설명하는 외부 용어 사례 | 2026-07-30 확인 / E0 (외부 참고) | Netcode for Entities `1.5.0-exp.2`의 엔진별 구현이다. 정규 프로젝트의 ECS·network runtime 선택이나 Replay 계약 근거가 아니다. |
+| SRC-EXT-002 | [Epic — Replay System](https://dev.epicgames.com/documentation/en-us/unreal-engine/using-the-replay-system-in-unreal-engine), [DemoNetDriver and Streamers](https://dev.epicgames.com/documentation/en-us/unreal-engine/demonetdriver-and-streamers-in-unreal-engine) | playback pause·speed·seek, version, checkpoint와 viewer relevancy를 분리해 다루는 외부 사례 | 2026-07-30 확인 / E0 (외부 참고) | Unreal의 replication·DemoNetDriver·Streamer 구조와 data format을 채택하는 결정이 아니다. |
 
 ### 코드·자동 검증
 

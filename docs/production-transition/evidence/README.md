@@ -70,6 +70,17 @@ server_version: string
 protocol_version: string
 ruleset_version_or_hash: string
 presentation_version_or_hash: string
+recording_schema_version: string | not-applicable-with-reason
+authoritative_record_id: opaque-id | not-applicable-with-reason
+viewer_mode: live-player | replay | spectator | diagnostic | not-applicable-with-reason
+viewer_role: versioned-role-id | not-applicable-with-reason
+viewpoint_subject_key: study-pseudonymous-stable-id | not-applicable-with-reason
+projection_policy_version_or_hash: string | not-applicable-with-reason
+viewpoint_profile_version_or_hash: string | not-applicable-with-reason
+visibility_policy_version_or_hash: string | not-applicable-with-reason
+source_presentation_version_or_hash: string | not-applicable-with-reason
+playback_presentation_version_or_hash: string | not-applicable-with-reason
+effective_delay_ms: integer | not-applicable-with-reason
 correlation_contract_path: relative-path | not-applicable-with-reason
 mode: first-match | first-return | normal | reconnect | other
 environment: internal | staging | production
@@ -96,9 +107,22 @@ approved_by: [role-or-pseudonymous-id]
 
 결측 필드는 삭제하지 말고 `unknown` 또는 `not-applicable`과 이유를 적는다. `as_of_commit`,
 build/server/ruleset/presentation version이 없으면 다른 실행을 같은 조건으로 재현했다고 주장할 수
-없다. Telemetry를 포함한 study는 `correlation_contract_path`에 아래 세 단계의 event 필드와 결합
+없다. Telemetry를 포함한 study는 `correlation_contract_path`에 아래 네 단계의 event 필드와 결합
 규칙을 정의한 schema 또는 query를 연결한다. 순수 설문·인터뷰처럼 event correlation이 없는
 study만 이유를 적은 `not-applicable`을 허용한다.
+
+`mode`는 첫 판·재방문·재접속 같은 gameplay/session 조건이고 `viewer_mode`는 같은 match를 어느
+표면에서 관찰했는지 구분한다. `viewer_role`은 해당 정책의 role ID, `viewpoint_subject_key`는
+player-follow처럼 관점 대상이 있을 때 쓰는 study 범위 pseudonymous stable ID다.
+`projection_policy_version_or_hash`는 적용한 viewpoint·visibility·접근·공개 시점·delay 정책
+조합을 식별하며, 독립 배포되는 `viewpoint_profile_version_or_hash`와
+`visibility_policy_version_or_hash`도 함께 기록한다. Replay·Spectator 비교 study에서
+`authoritative_record_id`, `recording_schema_version`, viewer role·subject와 위 policy version을
+`unknown`으로 둔 채 fidelity를 주장할 수 없다. `presentation_version_or_hash`는 해당 study가
+직접 관찰한 Client presentation을 가리킨다. cross-mode 비교에서는 당시 live Client의
+`source_presentation_version_or_hash`와 재생 Client의
+`playback_presentation_version_or_hash`도 따로 기록한다. `effective_delay_ms`는 Spectator에서
+Server가 적용한 실제 지연을 기록하고 다른 mode에는 이유를 적은 `not-applicable`을 사용한다.
 
 ## 산출물별 최소 형식
 
@@ -117,27 +141,75 @@ study만 이유를 적은 `not-applicable`을 허용한다.
 
 - event에는 `event_name`, `event_version`, `occurred_at`, pseudonymous `participant_key`,
   `session_key`, `match_id`, client/server/build/ruleset/presentation/protocol version을 포함한다.
+- Authoritative Match Record의 semantic event에는 `authoritative_record_id`,
+  `recording_schema_version`, match 안에서 유일한 `authoritative_event_id`와 `authoritative_tick`을
+  포함한다. Live player·Replay·Spectator 사이의 canonical join key는
+  **`(match_id, authoritative_event_id)`**다.
+- Viewer Projection event에는 `viewer_projection_event_id`, canonical join key, `viewer_mode`,
+  viewer role·subject, projection/viewpoint/visibility policy version, projection stream
+  sequence/cursor, emit 시각과 적용된 delay를 포함한다. 해당 policy가 허용한 semantic field만
+  담으며, 숨은 정보를 Client로 보낸 뒤 presentation에서 가리는 방식은 evidence 경계로 인정하지
+  않는다.
 - session funnel은 최소 `lobby_shown → start_requested → play_accepted → gift_started →
   placement_started → battle_started → tally_started → result_shown → lobby_returned`를 구분한다.
 - 핵심 행동은 squad/deck 변경, 배치/회수, resource 보유·소비, unaffordable attempt,
   Awakening hand open/use, Next Wave, leak/stress, 승패와 server 확정 score를 연결할 수 있어야 한다.
-- 게임 결과에 영향을 주는 행동은 하나의 opaque `correlation_id`로 다음 세 단계를 연결한다.
-  같은 match 안에서 ID가 유일해야 하며 PII, 인증 token 또는 원본 user id를 인코딩하지 않는다.
+- Client 입력에서 시작해 게임 결과에 영향을 주고 Server가 수락한 행동은 하나의 opaque
+  `correlation_id`로 다음 네 단계를 연결한다. 같은 match 안에서 ID가 유일해야 하며 PII, 인증
+  token 또는 원본 user id를 인코딩하지 않는다.
 
     1. client `command/input` event: 같은 `correlation_id`, client command/input event ID, 행동
        의도와 client 관측 시각을 기록한다. client가 계산한 결과나 prediction은 별도 비권위 필드로만
        기록한다.
-    2. server `authoritative event/tick`: 같은 `correlation_id`, server event ID와 authoritative
-       tick을 기록하고 command 수락·거절 및 실제 상태 전이·결과를 보존한다.
-    3. client `presentation event`: 같은 `correlation_id`, presentation event ID, 연결된 server
-       event ID, 표시 시각과 표시·정정·억제·중복 제거 결과를 기록한다.
-- server의 실제 결과와 사용자가 본 presentation은 서로 다른 event/필드로 보존한다. client
-  presentation이 누락되거나 정정된 경우에도 server 값을 덮어쓰지 않으며, 하나의 authoritative
-  event가 여러 presentation event를 만들 수 있음을 correlation 계약에 명시한다.
+    2. server `authoritative event/tick`: `(match_id, authoritative_event_id)`, authoritative tick,
+       적용 가능한 경우 같은 `correlation_id`를 기록하고 수락된 command가 만든 실제 상태
+       전이·결과를 보존한다.
+    3. server `viewer projection event`: `viewer_projection_event_id`, canonical join key,
+       `viewer_mode`, viewer role·subject, 적용한 policy version, stream sequence/cursor와 emit
+       시각·delay를 기록한다.
+    4. client `presentation event`: canonical join key와 `viewer_projection_event_id`,
+       presentation event ID, 적용 가능한 경우 같은 `correlation_id`, 표시 시각과
+       표시·정정·억제·중복 제거 결과를 기록한다.
+- 거절된 command는 `correlation_id`와 별도 `command_decision_id`로 수락 여부·거절 이유를
+  audit하고 canonical progression 밖에 둔다. 거절 자체가 별도의 authoritative gameplay event로
+  정의되지 않았다면 `authoritative_event_id`를 만들거나 canonical Replay에 삽입하지 않는다.
+- timer·AI·gameplay RNG·spawn처럼 Client 입력 없이 Server에서 발생하는 event에 가짜
+  `correlation_id`를 만들지 않는다. 이 event들은 canonical join key로 projection·presentation과
+  연결한다.
+- server의 실제 결과, viewer별 projection과 사용자가 본 presentation은 서로 다른 event/필드로
+  보존한다. Client presentation이 누락되거나 정정된 경우에도 server 값을 덮어쓰지 않는다.
+  하나의 authoritative event는 권한·관점·policy별 `0..N` projection event를 만들고, 각 projection
+  event는 `0..N` presentation event를 만들 수 있다. 이 fan-out을 여러 authoritative 결과로
+  중복 집계하지 않고 canonical join key로 묶는다.
+- 결과가 확정되기 전의 Client prediction event는 `viewer_mode: diagnostic`의 비권위 trace로만
+  보존할 수 있다. 거절·정정된 prediction을 Authoritative Match Record나 canonical Replay
+  progression에 삽입하지 않는다.
 - E4에는 query 또는 분석 script, 집계 단위, denominator, bot/test exclusion, timezone,
   중복 제거와 결측 처리 규칙, 표본 크기와 관측 기간이 필요하다.
 - 저장소에는 원시 전체 log 대신 재현 가능한 query와 비식별 aggregate를 둔다. 작은 cell로
   개인을 역추정할 수 있으면 bucket을 합치거나 suppress한다.
+
+#### Replay·관전 fidelity
+
+Authoritative Match Record, Viewer Projection, 실제 network delivery trace와 Client presentation
+trace는 서로 다른 artifact로 보존한다. canonical Replay는 confirmed Server progression에서
+생성하며 당시 local prediction, reversal, packet arrival timing이나 camera를 정본처럼 복원하지
+않는다. `player-visible authoritative perspective`는 해당 player에게 권한이 있었던 authoritative
+semantic event를 뜻하며 실제 화면 녹화인 `as-seen presentation trace`와 구분한다.
+
+- `simulation_fidelity`: authoritative tick 순서, 상태 전이, stable ID, gameplay RNG 결과,
+  승패·점수와 progression signature의 일치를 측정한다.
+- `observation_fidelity`: 같은 viewpoint·visibility policy에서 보이는 semantic event의
+  누락·추가·순서 오류와 숨은 정보의 조기 노출을 측정한다.
+- `presentation_fidelity`: 핵심 단서 표시와 인과 이해를 측정한다. camera·interpolation·cosmetic
+  RNG·VFX/SFX의 pixel/frame 동일성은 기본 성공 기준으로 사용하지 않는다.
+
+Spectator가 도입되면 Replay와 같은 Viewer Projection 계약을 사용하고 `effective_delay_ms`와
+접근 policy를 함께 기록한다. 동일한 `authoritative_record_id`와 projection policy를 사용한 완료
+Replay와 Spectator stream은 canonical join key의 semantic event 순서에 수렴해야 한다. pause,
+speed, seek와 rewind는 비권위 playback cursor/read model을 바꿀 수 있으며 Replay-control
+telemetry로 별도 기록한다. 이를 Server tick, 원 경기 gameplay event 또는 score·reward 같은 권위
+결과가 다시 발생한 것으로 집계하지 않는다.
 
 ### 설문
 

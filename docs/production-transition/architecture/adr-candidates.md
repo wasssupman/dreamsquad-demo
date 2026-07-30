@@ -25,6 +25,9 @@
 - 클라이언트는 입력 UX와 시각·청각·촉각 presentation을 소유하고, server semantic outcome을 local asset으로 표현한다.
 - protocol은 intent-only command와 stable ID·authoritative tick 기반 semantic state/outcome을 교환하며 Unity asset·연출 지시를 전달하지 않는다.
 - 제한적 Client prediction은 비권위·폐기 가능해야 하고 server correction·resync가 항상 우선한다.
+- Authoritative Match Record는 서버가 확정한 progression의 유일한 경기 source of truth인 논리적 기록 계약이며 Client prediction·delivery timing·presentation history를 포함하지 않는다.
+- Replay와 조건부 Spectator는 Authoritative Match Record에서 서버가 viewer role·관점·visibility·delay policy를 적용해 만든 semantic projection을 소비한다. Client는 숨은 정보를 받은 뒤 표시만 억제하지 않는다.
+- canonical Replay는 authoritative progression과 viewer별 관찰 의미론을 재현하며 당시 Live player 화면의 pixel/frame 동일성을 보장하지 않는다.
 
 ## 후보 목록과 선행 관계
 
@@ -40,7 +43,8 @@
 | 8 | `ADR-CAND-008` | Score authority / anti-cheat | 003·004·007 |
 | 9 | `ADR-CAND-009` | Reconnect / terminal lifecycle | 001·004·005 |
 | 10 | `ADR-CAND-010` | Online time control | 003·005·006 |
-| 11 | `ADR-CAND-011` | Observability / replay | 003~005·007~009 |
+| 11 | `ADR-CAND-011` | Authoritative Match Record / observability | 003~005·007~009 |
+| 12 | `ADR-CAND-012` | Replay playback / viewer projection | 003~007·011, Product viewer policy |
 
 이 순서는 문서 등록 순서다. 조사와 spike는 병렬로 진행할 수 있지만, 뒤 후보의 최종 승인은 선행 계약과 모순되지 않는지 확인해야 한다.
 
@@ -154,7 +158,7 @@ ECS 없이 Units·Movement·Combat·Effects의 책임과 단일 쓰기 소유권
 | `sources` | [map-wave-balancing](../../reference/map-wave-balancing.md), [sim-design](../../reference/lessons/04-sim-design.md), [`BattleScaledRateManager.cs`](../../../Assets/_Project/Scripts/Battle/BattleScaledRateManager.cs) |
 | `related_commit_or_test` | [`MatchSeedTests.cs`](../../../Assets/_Project/Tests/EditMode/MatchSeedTests.cs), [`WavePatternGeneratorTests.cs`](../../../Assets/_Project/Tests/EditMode/WavePatternGeneratorTests.cs); 전체 battle replay test 없음 |
 | `transfer_action` | `decide` |
-| `production_impact` | authoritative simulation cadence, replay 가능성, cross-runtime 결과, 성능과 수치 안정성을 결정한다. |
+| `production_impact` | authoritative simulation cadence, progression signature 재현 가능성, cross-runtime 결과, 성능과 수치 안정성을 결정한다. |
 | `next_validation_or_decision` | 목표 tick rate별 profile과 cross-run signature test 후 공식 ADR 작성 |
 
 **Question**
@@ -166,6 +170,8 @@ ECS 없이 Units·Movement·Combat·Effects의 책임과 단일 쓰기 소유권
 - server tick과 gameplay RNG stream이 authoritative하며 Client clock·seed·RNG 결과를 판정 입력으로 신뢰하지 않는다.
 - Client cosmetic RNG는 telegraph 의미·가시성, 판정·충돌 시점, event 수, command 가능 여부, 대상 선택, 점수에 영향을 줄 수 없다.
 - gameplay-relevant telegraph는 서버 semantic state/event에서 파생하며 presentation clock·callback은 gameplay state를 진행하지 않는다.
+- authoritative progression signature는 accepted command 순서, authoritative tick·stable ID·상태 전이·gameplay RNG 결과·승패·점수를 검증한다. network delivery history, Client prediction·correction, camera와 frame/pixel 결과는 signature에서 제외한다.
+- `simulation_fidelity`는 고정 요구지만 byte-identical record 저장 또는 cross-runtime command 재시뮬레이션 여부는 ADR-CAND-011에서 비교한다.
 
 **Drivers**
 
@@ -191,6 +197,7 @@ ECS 없이 Units·Movement·Combat·Effects의 책임과 단일 쓰기 소유권
 - 장시간 동일 입력 반복 signature 비교
 - 경계 tick·large delta·RNG stream 독립성 test
 - cosmetic RNG seed·presentation frame rate를 바꿔도 authoritative signature가 변하지 않는 격리 test
+- 동일 authoritative progression이 서로 다른 network arrival·Client presentation 조건에서도 같은 signature로 수렴하는 test
 - target runtime 간 golden vector와 performance profile
 
 ## ADR-CAND-004 — Stable identity
@@ -261,6 +268,7 @@ match, player, squad slot, unit, projectile/effect 등 simulation object에 어�
 - Client command는 행동 의도, stable target/reference와 전송·dedupe에 필요한 식별자만 보낸다. damage, state delta, score, authoritative outcome이나 판정 시각 override를 제출하지 않는다.
 - 서버는 actor·state·ownership·permission·cost·cooldown·target·sequence·deadline·rate를 검증한 뒤 ruleset으로 결과를 계산한다.
 - snapshot/delta/event는 stable gameplay ID·authoritative tick·semantic state/outcome을 표현한다. prefab·animation·VFX·tween 같은 Unity asset 또는 연출 지시를 protocol에 넣지 않는다.
+- viewer용 protocol envelope는 canonical authoritative event를 참조하고 viewer role·viewpoint·visibility·delay policy의 version을 식별한다. 서버가 policy를 적용한 뒤 전송하며 Client-side display suppression을 정보 보호 경계로 사용하지 않는다.
 
 **Drivers**
 
@@ -287,7 +295,7 @@ match, player, squad slot, unit, projectile/effect 등 simulation object에 어�
 - 변조된 damage·state delta·score·timing 필드를 거절하거나 무시하고 서버 결과만 사용하는 test
 - loss/reorder/duplicate/version mismatch/resync test
 - wire schema가 Client presentation 타입·asset reference를 포함하지 않는 자동 검증
-- 숨겨야 하는 state가 클라이언트에 노출되지 않는지 검증
+- viewer role·visibility·delay policy별로 숨겨야 하는 state가 클라이언트에 노출되지 않는지 검증
 
 ## ADR-CAND-006 — Prediction / interpolation / reconciliation
 
@@ -313,6 +321,7 @@ match, player, squad slot, unit, projectile/effect 등 simulation object에 어�
 - prediction은 제한적·비권위·폐기 가능하며 accepted damage·state transition·score 등 authoritative outcome을 만들 수 없다.
 - 서버 snapshot·correction·resync가 항상 우선하고 Client predicted state는 확정 근거로 사용하지 않는다.
 - 예측 연출은 취소·병합 가능해야 하며 authoritative semantic event ID를 기준으로 VFX·SFX·UI·analytics 부작용을 중복 제거한다.
+- predicted state/event와 reversal·network arrival history는 Authoritative Match Record와 canonical Replay에 포함하지 않는다. 당시 사용자 화면 조사가 필요하면 권위 기록과 분리된 `as-seen presentation trace`로만 취급한다.
 
 **Drivers**
 
@@ -338,6 +347,7 @@ match, player, squad slot, unit, projectile/effect 등 simulation object에 어�
 - 20/80/150ms RTT와 loss/jitter 시나리오 사용자 테스트
 - correction rate·거리·중복 VFX/score event 검증
 - 예측 결과를 변조해도 서버 상태·점수에 영향이 없고 확정 event 부작용이 한 번만 발생하는 test
+- prediction 성공·정정·거절 모두에서 predicted/reversal event가 canonical record·Replay에 섞이지 않고 최종 authoritative signature가 일치하는 test
 - forced resync 중 command 유실·중복 test
 
 ## ADR-CAND-007 — Content authority / version
@@ -364,6 +374,7 @@ match, player, squad slot, unit, projectile/effect 등 simulation object에 어�
 - server canonical gameplay ruleset은 stable gameplay ID, 수치·산식, 비용·쿨다운, 타게팅·효과 의미, 웨이브·스폰, timer, gameplay RNG parameter, 승패·점수·보상 입력의 정본이다.
 - Client presentation catalog는 stable gameplay ID를 prefab·animation·VFX·SFX·UI style/layout·localization·camera·haptics·accessibility·cosmetic asset에 매핑하며 gameplay outcome을 바꿀 수 없다.
 - 두 artifact는 stable ID와 명시적 호환 version/hash로 연결하고 match에서 사용한 ruleset version을 고정한다.
+- Authoritative Match Record에는 recording schema와 match-pinned ruleset version/hash를, Replay presentation에는 사용한 presentation catalog version/hash를 각각 기록한다. 과거 catalog를 보존할지 호환 catalog로 재표현할지는 선택 대상이지만 semantic outcome을 변경할 수 없다.
 
 **Drivers**
 
@@ -390,6 +401,7 @@ match, player, squad slot, unit, projectile/effect 등 simulation object에 어�
 - schema compatibility policy와 artifact 서명/hash 검증
 - presentation catalog를 바꾸거나 누락시켜도 server authoritative outcome signature가 변하지 않는 test
 - stable gameplay ID mapping의 completeness와 incompatible version 차단 test
+- 과거 Replay를 다른 catalog로 열 때 `normal`·`degraded`·`rejected` 호환 상태를 구분하고 핵심 semantic cue의 보존 여부를 검증
 
 ## ADR-CAND-008 — Score authority / anti-cheat
 
@@ -522,7 +534,7 @@ match, player, squad slot, unit, projectile/effect 등 simulation object에 어�
 - deadline edge와 late command 처리 test
 - 지연 환경에서 남은 시간 표시와 사용자 이해 검증
 
-## ADR-CAND-011 — Observability / replay
+## ADR-CAND-011 — Authoritative Match Record / observability
 
 | field | value |
 |---|---|
@@ -530,37 +542,40 @@ match, player, squad slot, unit, projectile/effect 등 simulation object에 어�
 | `claim_kind` | `decision` |
 | `evidence_status` | `untested` |
 | `evidence_level` | `E0` |
-| `as_of` | `2026-07-29 / 44c87885`; 데모는 client `BattleLogger` JSON을 debug body로 전송 |
+| `as_of` | `2026-07-30`; 데모 기준선은 `2026-07-29 / 44c87885`이며 client `BattleLogger` JSON을 debug body로 전송 |
 | `sources` | [tournament-play-report](../../spec/tournament-play-report/README.md), [`BattleLogSchema.cs`](../../../Assets/_Project/Scripts/Logging/BattleLogSchema.cs), [evidence policy](../evidence/README.md) |
-| `related_commit_or_test` | client snapshot·API body 기능 증거만 있으며 authoritative replay·운영 incident 증거 없음 |
+| `related_commit_or_test` | client snapshot·API body 기능 증거만 있으며 Authoritative Match Record·운영 incident reconstruction 증거 없음 |
 | `transfer_action` | `decide` |
-| `production_impact` | authoritative ruleset·outcome과 Client presentation을 end-to-end로 구분·연결해 운영 탐지, 분쟁 조사, 밸런스 분석, 재현 능력, 저장 비용과 개인정보 위험을 결정한다. |
-| `next_validation_or_decision` | incident reconstruction drill과 replay fidelity/cost 측정 후 공식 ADR 작성 |
+| `production_impact` | 경기 source of truth인 Authoritative Match Record의 capture·저장·checkpoint·무결성·보존과 audit·metric·trace·Client presentation artifact의 correlation을 결정한다. |
+| `next_validation_or_decision` | record 후보별 progression signature, incident reconstruction, 저장·조회 비용과 개인정보 검증 후 공식 ADR 작성 |
 
 **Question**
 
-어떤 authoritative event·metric·trace와 Client presentation telemetry를 어떤 version·correlation key·보존 정책으로 연결하며, replay를 어느 수준까지 보장할 것인가?
+서버가 확정한 경기 progression을 어떤 Authoritative Match Record로 capture·저장·검증하고, 운영 telemetry와 어떤 correlation·보존 정책으로 연결할 것인가?
 
 **Fixed constraints**
 
-- authoritative audit에는 match·actor·server build·ruleset version/hash·server tick과 command/outcome correlation을 남긴다.
-- Client telemetry에는 presentation version/hash와 input/command → authoritative event/tick → presentation event correlation을 남기되 권위 판정 근거로 사용하지 않는다.
-- 개인정보·인증 token 원문을 기록하지 않으며 audit, metric, trace, replay와 Product telemetry의 목적·접근 권한을 구분한다.
+- Authoritative Match Record는 match·server build·recording schema·ruleset version/hash와 서버가 확정한 tick·상태 전이·semantic event·stable ID·gameplay RNG 결과·승패·점수를 직접 저장하거나 결정론적으로 재구성·검증할 수 있는 유일한 논리적 경기 source of truth다.
+- Client prediction·correction·network arrival timing·camera·UI·VFX/SFX와 `as-seen presentation trace`는 Authoritative Match Record에 포함하지 않는다. invalid/rejected command audit도 canonical progression과 구분한다.
+- command/RNG 재시뮬레이션, checkpoint+event/delta playback, hybrid 중 저장 방식은 미정이다. 어느 방식이든 동일 progression signature를 산출하고 누락·중복·변조와 첫 divergent authoritative event를 식별해야 한다.
+- Client telemetry에는 presentation version/hash와 선택적 input/command → authoritative event/tick → viewer projection event → presentation event correlation을 남기되 권위 판정 근거로 사용하지 않는다. timer·AI·RNG·spawn처럼 Client command가 없는 event도 독립적으로 식별한다.
+- 개인정보·인증 token 원문을 기록하지 않으며 Authoritative Match Record, audit, metric, trace, Product telemetry와 Client diagnostic trace의 목적·접근 권한·보존을 구분한다.
 
 **Drivers**
 
+- authoritative progression의 재현 가능성과 무결성
 - match·player·ruleset version·presentation version·server build의 end-to-end correlation
 - desync, invalid command, disconnect, score dispute 조사
 - Product KPI와 gameplay telemetry 분리
 - 개인정보 최소화, 접근 통제, 보존 비용
-- exact replay와 diagnostic reconstruction의 비용 차이
+- 전 match 기본 기록과 상세 진단 artifact의 비용 차이
 
 **Options to compare**
 
-- authoritative command/event log + deterministic replay
-- 주기 snapshot + command/event tail
-- diagnostic audit trail만 유지하고 exact replay는 제한
-- 전 match 기본 telemetry + 표본/신고 match 상세 기록
+- accepted command·RNG 입력을 저장하고 deterministic server simulation으로 재구성
+- 주기 authoritative checkpoint + semantic event/delta tail을 저장하고 직접 playback
+- command/RNG와 checkpoint/event를 함께 보존하는 hybrid
+- 전 match canonical record + 표본·신고·오류 match에만 상세 audit/trace를 추가하는 tiered retention
 
 **Dependencies**
 
@@ -570,11 +585,73 @@ match, player, squad slot, unit, projectile/effect 등 simulation object에 어�
 
 **Decision evidence required**
 
-- 대표 장애를 문서 없이 log만으로 재구성하는 drill
-- replay outcome signature, schema migration, 누락·중복 event test
-- input/command부터 authoritative event/tick과 실제 presentation event까지 correlation completeness test
+- 각 저장 후보가 동일 authoritative progression signature를 재현하는 cross-run·cross-version test
+- schema migration, checkpoint 경계, 누락·중복·변조·순서 오류와 첫 divergence 탐지 test
+- 대표 장애를 문서 없이 record·audit·trace만으로 재구성하는 drill
+- 선택적 input/command부터 authoritative event/tick, viewer projection event와 실제 presentation event까지 correlation completeness test
 - match당 저장량·query 비용·보존 기간 모델
 - 개인정보·token이 기록되지 않는 자동 검증
+
+## ADR-CAND-012 — Replay playback / viewer projection
+
+| field | value |
+|---|---|
+| `status` | `Candidate` |
+| `claim_kind` | `decision` |
+| `evidence_status` | `untested` |
+| `evidence_level` | `E0` |
+| `as_of` | `2026-07-30`; 정규 프로젝트 Replay는 확정 요구이며 Spectator 제공 여부는 미정 |
+| `sources` | [ENG-011](engineering-learnings.md), [transition matrix](transition-matrix.md), [PRD inputs](../product/prd-inputs.md), [validation backlog](../product/validation-backlog.md) |
+| `related_commit_or_test` | 현 저장소에 Authoritative Match Record·Replay·Spectator projection 구현 및 테스트 없음 |
+| `transfer_action` | `decide` |
+| `production_impact` | Authoritative Match Record를 viewer role·관점·visibility·delay policy에 맞는 read-only semantic stream으로 투영하고 Replay playback 및 조건부 Spectator에서 표현하는 계약을 결정한다. |
+| `next_validation_or_decision` | 첫 server-authoritative slice에서 Live player·Replay semantic parity와 viewer 이해를 검증하고, Spectator 채택 시 live/delayed projection test 후 공식 ADR 작성 |
+
+**Question**
+
+Authoritative Match Record에서 어떤 viewer projection을 만들고, Replay의 관점·공개 시점·playback 동작·과거 version 호환과 조건부 Spectator 정책을 어떻게 정의할 것인가?
+
+**Fixed constraints**
+
+- canonical Replay는 confirmed Server progression을 재생한다. 당시 Live player의 prediction·reversal·network arrival timing·camera·cosmetic timing을 재연하지 않으며, 실제 사용자 화면이 필요하면 영상이나 별도 `as-seen presentation trace`를 사용한다.
+- “Player POV replay” 대신 `player-visible authoritative perspective`를 사용한다. 이는 해당 role·관점에서 볼 수 있었던 authoritative semantic progression이지 실제 화면의 pixel/frame 복제가 아니다.
+- `simulation_fidelity`는 authoritative tick 순서·상태 전이·stable ID·gameplay RNG 결과·승패·점수의 일치를 요구한다.
+- `observation_fidelity`는 같은 viewer role과 policy에서 관찰 가능한 event의 누락·추가·순서 오류가 없고 숨은 정보가 노출되지 않을 것을 요구한다.
+- `presentation_fidelity`는 핵심 단서와 인과관계를 이해할 수 있어야 하지만 pixel/frame 동일성은 요구하지 않는다.
+- 서버는 viewer 권한·visibility·delay를 projection 전에 적용한다. projection은 stable ID 기반 semantic state/event만 전달하며 prefab·animation·VFX·tween 지시를 포함하지 않는다.
+- Replay pause·speed·seek·rewind는 Client playback/presentation clock과 비권위 replay cursor/read model을 변경할 수 있지만 Server authoritative state나 원 경기 결과를 변경하지 않는다. 원 경기의 score·reward·achievement·gameplay analytics 같은 비가역 부작용은 재발행하지 않고, Replay 조작 telemetry는 별도 관찰 event로 기록한다.
+- Spectator가 채택되면 Replay와 같은 projection 계약의 live/delayed tail을 read-only로 소비한다. 접근 권한·delay·late join·anti-ghosting은 서버가 집행하며, 동일 match·policy의 완료 stream은 Replay와 같은 authoritative semantic sequence에 수렴한다.
+
+**Drivers**
+
+- 같은 경기와 결과라는 신뢰를 유지하면서 Live prediction과 Replay presentation의 차이를 설명할 수 있음
+- viewer 관점별 hidden information·공정성·privacy 보호
+- pause·seek·rewind·배속과 event 부작용 중복 방지
+- old ruleset·recording schema·presentation catalog의 장기 호환
+- Spectator 도입 시 stream-sniping·late join·비용·지연 trade-off
+
+**Options to compare**
+
+- player-visible authoritative perspective를 기본 Replay로 제공
+- match 종료 후 승인된 omniscient perspective를 제공
+- Product가 정한 복수의 versioned viewpoint/visibility policy 중 권한에 맞는 projection 제공
+- Spectator를 제공하지 않거나, 동일 projection의 live tail 또는 server-delayed tail로 제공
+
+**Dependencies**
+
+- Product의 Replay 핵심 단서·관점·공개 시점과 Spectator 제공 여부
+- ADR-CAND-003 progression signature, 004 stable identity, 005 projection protocol, 006 prediction boundary
+- ADR-CAND-007 ruleset/catalog compatibility, 011 Authoritative Match Record
+
+**Decision evidence required**
+
+- prediction 성공·정정·거절 모두에서 Replay 최종 상태·승패·점수가 Authoritative Match Record signature와 일치하는 test
+- 같은 viewer role·policy의 event 누락·추가·순서와 hidden information 비노출 test
+- pause·seek·rewind·배속 반복 시 VFX 누적과 원 경기 score·reward·achievement·gameplay
+  analytics 재발행이 없고, Replay-control telemetry는 조작 단위로 별도 기록되는 test
+- 과거 ruleset·recording schema와 다른 presentation catalog 조합의 `normal`·`degraded`·`rejected` 호환 test
+- Spectator 채택 시 loss·reconnect·late join 후 완료 stream이 같은 policy의 Replay semantic sequence에 수렴하는 test
+- Live player와 Replay의 presentation 차이에도 핵심 인과와 동일 경기로 인지되는지 사용자 검증
 
 ## 후보 상태 전이
 
@@ -585,4 +662,4 @@ Candidate
   └─> Deferred     ──> 재개 조건과 필요한 증거 기록
 ```
 
-현재는 11개 모두 `Candidate`다. 선택된 runtime, transport, database, tick rate 또는 구현 패턴은 없다.
+현재는 12개 모두 `Candidate`다. 선택된 runtime, transport, database, tick rate, Authoritative Match Record 저장 방식, viewer projection 구현 패턴 또는 Spectator 제공 여부는 없다.
