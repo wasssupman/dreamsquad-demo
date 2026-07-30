@@ -9,28 +9,36 @@ using Wassup.UI.Layout;
 
 namespace Wassup.UI
 {
-    // tournament-history Unit 2 — lobby history page. On open, fetches my
-    // (in-progress) tournament entries via TournamentApi.GetUnclaimedEntries and
-    // lists them; a row tap opens the detail ranking popup for that
-    // tournamentEntryId. Self-building canvas (ResultScreen precedent).
+    // tournament-history Unit 2 → tournament-history-deck-view unit 0 — lobby
+    // history page, now **one depth**: left column lists my tournament entries,
+    // right column shows the selected tournament's ranking. The old modal detail
+    // popup is retired — selecting a row swaps only the right column, so entries
+    // can be compared by clicking down the list.
     //
     // Visibility (SetActive) is owned by OutgameMenuController.RaiseExclusive; this
     // view loads on enable and reports close via onClose (LoginPanelView precedent).
     // Guests (empty IdToken) skip the API and show an empty state.
+    //
+    // Two independent fetches, two independent epochs: the list load and the
+    // ranking load fail and retry separately (a failed ranking must still leave the
+    // list usable so another tournament can be picked).
     public class TournamentHistoryPanel : MonoBehaviour
     {
         private static readonly Color GoldColor = new Color(1f, 0.78f, 0.28f, 1f);
         private static readonly Color NavyFill = new Color(0.05f, 0.06f, 0.10f, 0.98f);
-        private static readonly Color BadgeTextDark = new Color(0.10f, 0.09f, 0.06f, 1f);
         private static readonly Color SubText = new Color(0.72f, 0.76f, 0.82f, 1f);
         private static readonly Color RowFill = new Color(1f, 1f, 1f, 0.05f);
+        private static readonly Color RowSelectedFill = new Color(1f, 0.83f, 0.35f, 0.18f);
 
-        private const float PanelW = 820f;
-        // Fits within the 1080-tall reference safe area (ResultScreen precedent);
-        // the row list scrolls, so height need not grow with entry count.
+        // 2-column: the page is landscape-only (ResultScreen precedent uses the same
+        // widened panel). Left = entry list, right = ranking for the selection.
+        private const float PanelW = 1440f;
         private const float PanelH = 960f;
         private const float Pad = 34f;
         private const float HeaderH = 150f;
+        private const float ColGap = 20f;
+        private const float LeftColW = 620f;
+        private const float RankTitleH = 72f;
         private const float RowH = 96f;
         private const float RowInset = 24f;   // 행 좌변 여백
         private const float RightPad = 22f;   // 랭크/점수 컬럼의 우변 여백
@@ -47,13 +55,22 @@ namespace Wassup.UI
         public event Action onClose;
 
         private RectTransform _listContent;
-        private TextMeshProUGUI _statusLabel;
+        private RectTransform _rankContent;
+        private TextMeshProUGUI _listStatus;
+        private TextMeshProUGUI _rankStatus;
+        private TextMeshProUGUI _rankTitle;
+        private LeaderboardList _leaderboard;
         private Sprite _panelSprite;
         private Sprite _rowSprite;
+        private Sprite _rowSelectedSprite;
         private Sprite _buttonSprite;
-        private TournamentDetailPopup _popup;
         private bool _built;
-        private int _epoch;
+        private int _listEpoch;
+        private int _rankEpoch;
+        private string _selectedEntryId;
+
+        // Row plates kept so the selection highlight can move without rebuilding.
+        private readonly List<KeyValuePair<string, Image>> _rowPlates = new List<KeyValuePair<string, Image>>();
 
         private void OnEnable()
         {
@@ -63,60 +80,113 @@ namespace Wassup.UI
 
         private void OnDisable()
         {
-            _epoch++; // drop any in-flight list fetch when the page closes
+            // drop any in-flight fetch when the page closes
+            _listEpoch++;
+            _rankEpoch++;
         }
 
+        // ── List (left column) ───────────────────────────────────────────────
         private void LoadEntries()
         {
-            int epoch = ++_epoch;
+            int epoch = ++_listEpoch;
+            _rankEpoch++; // a fresh list invalidates whatever ranking was loading
             ClearRows();
-            SetStatus("불러오는 중...");
+            ClearRanking();
+            SetListStatus("불러오는 중...");
+            SetRankStatus("");
+            _rankTitle.text = "";
+            _selectedEntryId = null;
 
             AuthCredential credential = UserSession.Credential;
             string baseUrl = UserSession.GameServerBaseUrl;
             if (!UserSession.HasAccount) // guest / not signed in
             {
-                SetStatus("로그인이 필요합니다.");
+                SetEmptyBoth("로그인이 필요합니다.");
                 return;
             }
             if (string.IsNullOrEmpty(baseUrl))
             {
-                SetStatus("기록을 불러올 수 없습니다.");
+                SetEmptyBoth("기록을 불러올 수 없습니다.");
                 return;
             }
 
             TournamentApi.GetUnclaimedEntries(baseUrl, credential, (list, error) =>
             {
-                if (this == null || epoch != _epoch || !isActiveAndEnabled) return;
+                if (this == null || epoch != _listEpoch || !isActiveAndEnabled) return;
                 if (list == null)
                 {
-                    SetStatus("기록 조회에 실패했습니다.");
+                    SetEmptyBoth("기록 조회에 실패했습니다.");
                     Debug.LogWarning($"[TournamentHistoryPanel] list fetch failed: {error}");
                     return;
                 }
-                if (list.Count == 0)
+
+                var sorted = SortRecentFirst(list);
+                if (sorted.Count == 0)
                 {
-                    SetStatus("참여한 토너먼트가 없습니다.");
+                    SetEmptyBoth("참여한 토너먼트가 없습니다.");
                     return;
                 }
-                SetStatus("");
-                for (int i = 0; i < list.Count; i++) CreateRow(list[i]);
+
+                SetListStatus("");
+                for (int i = 0; i < sorted.Count; i++) CreateRow(sorted[i]);
+
+                // 진입 = 가장 최근 토너먼트 자동 포커스.
+                Select(sorted[0].tournamentEntryId);
             });
         }
 
-        private TournamentDetailPopup EnsurePopup()
+        // 최신 우선 정렬. 서버 정렬 순서에 기대지 않는다. createdTime 이 없거나 파싱
+        // 불가한 항목은 **버리지 않고** 맨 뒤로 보낸다 — 표시 전용 필드 하나 때문에
+        // 참가 기록이 목록에서 사라지면 안 된다. 같은 조건끼리는 원래 순서를 유지한다
+        // (List.Sort 가 불안정 정렬이라 인덱스를 최종 타이브레이커로 쓴다).
+        internal static List<TournamentApi.UserTournamentResultEntry> SortRecentFirst(
+            IReadOnlyList<TournamentApi.UserTournamentResultEntry> list)
         {
-            if (_popup != null) return _popup;
-            var go = new GameObject("TournamentDetailPopup", typeof(RectTransform));
-            go.transform.SetParent(transform, false);
-            _popup = go.AddComponent<TournamentDetailPopup>();
-            go.SetActive(false);
-            return _popup;
+            var keyed = new List<(TournamentApi.UserTournamentResultEntry entry, int index, long ticks, bool dated)>();
+            if (list != null)
+            {
+                for (int i = 0; i < list.Count; i++)
+                {
+                    if (list[i] == null) continue;
+                    bool dated = TryParseCreated(list[i].createdTime, out DateTime dt);
+                    keyed.Add((list[i], i, dated ? dt.Ticks : 0L, dated));
+                }
+            }
+
+            keyed.Sort((a, b) =>
+            {
+                if (a.dated != b.dated) return a.dated ? -1 : 1;
+                if (a.dated && a.ticks != b.ticks) return b.ticks.CompareTo(a.ticks); // 최신 우선
+                return a.index.CompareTo(b.index);
+            });
+
+            var result = new List<TournamentApi.UserTournamentResultEntry>(keyed.Count);
+            for (int i = 0; i < keyed.Count; i++) result.Add(keyed[i].entry);
+            return result;
         }
 
-        // ── Rows ─────────────────────────────────────────────────────────────
+        // 정렬과 표시가 같은 파싱을 쓴다 — 갈라지면 "화면엔 날짜가 있는데 정렬은 맨 뒤"
+        // 같은 어긋남이 생긴다.
+        internal static bool TryParseCreated(string iso, out DateTime local)
+        {
+            local = default;
+            if (string.IsNullOrEmpty(iso)) return false;
+            if (!DateTime.TryParse(iso, CultureInfo.InvariantCulture,
+                    DateTimeStyles.RoundtripKind, out var dt)) return false;
+            local = dt.ToLocalTime();
+            return true;
+        }
+
+        // ISO-8601 → yyyy.MM.dd HH:mm. 같은 날 참가가 구분돼야 해서 시각까지 붙인다
+        // (목록이 선택 UI 가 되고 최신순 정렬이 붙었다). 파싱 실패는 빈 문자열.
+        internal static string FormatDate(string iso)
+            => TryParseCreated(iso, out var dt)
+                ? dt.ToString("yyyy.MM.dd HH:mm", CultureInfo.InvariantCulture)
+                : "";
+
         private void ClearRows()
         {
+            _rowPlates.Clear();
             if (_listContent == null) return;
             for (int i = _listContent.childCount - 1; i >= 0; i--)
             {
@@ -139,10 +209,11 @@ namespace Wassup.UI
             plate.color = Color.white;
 
             string entryId = entry.tournamentEntryId;
+            _rowPlates.Add(new KeyValuePair<string, Image>(entryId, plate));
             go.GetComponent<Button>().onClick.AddListener(() =>
             {
                 if (string.IsNullOrEmpty(entryId)) return;
-                EnsurePopup().Show(entryId);
+                Select(entryId);
             });
 
             // Tournament name (top-left).
@@ -167,41 +238,71 @@ namespace Wassup.UI
             SetRightColumn((RectTransform)score.transform, BottomBand);
         }
 
-        // 좌측 컬럼 — 행 좌변 여백부터 우측 컬럼이 시작되는 지점까지.
-        private static void SetLeftColumn(RectTransform rt, Vector2 band)
+        // ── Ranking (right column) ───────────────────────────────────────────
+        private void Select(string entryId)
         {
-            rt.anchorMin = new Vector2(0f, 0f);
-            rt.anchorMax = new Vector2(1f, 1f);
-            rt.offsetMin = new Vector2(RowInset, band.x);
-            rt.offsetMax = new Vector2(-RightColW, band.y);
+            _selectedEntryId = entryId;
+            for (int i = 0; i < _rowPlates.Count; i++)
+            {
+                var plate = _rowPlates[i].Value;
+                if (plate == null) continue;
+                plate.sprite = _rowPlates[i].Key == entryId ? _rowSelectedSprite : _rowSprite;
+            }
+            LoadRanking(entryId);
         }
 
-        // 우측 컬럼 — 행 우변에 붙는 RightColW 폭 박스. 행 폭이 레이아웃 그룹에 따라
-        // 변하므로 우측 앵커 기준 음수 오프셋으로 잡는다.
-        private static void SetRightColumn(RectTransform rt, Vector2 band)
+        private void LoadRanking(string entryId)
         {
-            rt.anchorMin = new Vector2(1f, 0f);
-            rt.anchorMax = new Vector2(1f, 1f);
-            rt.pivot = new Vector2(1f, 0.5f);
-            rt.offsetMin = new Vector2(-RightColW, band.x);
-            rt.offsetMax = new Vector2(-RightPad, band.y);
+            int epoch = ++_rankEpoch;
+            ClearRanking();
+            _rankTitle.text = "";
+            SetRankStatus("불러오는 중...");
+
+            string baseUrl = UserSession.GameServerBaseUrl;
+            AuthCredential credential = UserSession.Credential;
+            if (!UserSession.HasAccount || string.IsNullOrEmpty(baseUrl) || string.IsNullOrEmpty(entryId))
+            {
+                SetRankStatus("결과를 불러올 수 없습니다.");
+                return;
+            }
+
+            TournamentApi.GetResult(baseUrl, credential, entryId, (data, error) =>
+            {
+                if (this == null || epoch != _rankEpoch || !isActiveAndEnabled) return;
+                if (data == null)
+                {
+                    SetRankStatus("결과 조회에 실패했습니다.");
+                    Debug.LogWarning($"[TournamentHistoryPanel] result fetch failed: {error}");
+                    return;
+                }
+                _rankTitle.text = string.IsNullOrEmpty(data.name) ? "토너먼트 결과" : data.name;
+                var rows = LeaderboardList.BuildRows(data.entries, data.maxEntryCount,
+                    UserSession.Current?.userId);
+                _leaderboard.Render(_rankContent, rows);
+                SetRankStatus(rows.Count == 0 ? "참가 기록이 없습니다." : "");
+            });
         }
 
-        // ISO-8601 → yyyy.MM.dd; leaves blank if unparseable (display-only field).
-        private static string FormatDate(string iso)
+        private void ClearRanking()
         {
-            if (string.IsNullOrEmpty(iso)) return "";
-            if (DateTime.TryParse(iso, CultureInfo.InvariantCulture,
-                    DateTimeStyles.RoundtripKind, out var dt))
-                return dt.ToLocalTime().ToString("yyyy.MM.dd", CultureInfo.InvariantCulture);
-            return "";
+            if (_leaderboard != null) _leaderboard.Render(_rankContent, null);
         }
 
-        private void SetStatus(string text)
+        // ── Status ───────────────────────────────────────────────────────────
+        private void SetListStatus(string text) => SetStatus(_listStatus, text);
+        private void SetRankStatus(string text) => SetStatus(_rankStatus, text);
+
+        private void SetEmptyBoth(string text)
         {
-            if (_statusLabel == null) return;
-            _statusLabel.text = text;
-            _statusLabel.gameObject.SetActive(!string.IsNullOrEmpty(text));
+            SetListStatus(text);
+            SetRankStatus(text);
+        }
+
+        private static void SetStatus(TextMeshProUGUI label, string text)
+        {
+            if (label == null) return;
+            label.text = text;
+            label.gameObject.SetActive(!string.IsNullOrEmpty(text));
         }
 
         // ── Build ────────────────────────────────────────────────────────────
@@ -213,7 +314,9 @@ namespace Wassup.UI
             _panelSprite = UiRoundedSprite.Make(32f, 4f, NavyFill,
                 new Color(GoldColor.r, GoldColor.g, GoldColor.b, 0.95f));
             _rowSprite = UiRoundedSprite.Make(14f, 0f, RowFill, RowFill);
+            _rowSelectedSprite = UiRoundedSprite.Make(14f, 3f, RowSelectedFill, GoldColor);
             _buttonSprite = UiRoundedSprite.Make(28f, 0f, Color.white, Color.white);
+            _leaderboard = new LeaderboardList();
 
             var roots = UiCanvasSetup.Ensure(gameObject, sortingOrder: 2500);
             roots.Canvas.overrideSorting = true;
@@ -238,7 +341,8 @@ namespace Wassup.UI
             panelImg.type = Image.Type.Sliced;
 
             BuildHeader(panelRect);
-            BuildScrollList(panelRect);
+            BuildLeftColumn(panelRect);
+            BuildRightColumn(panelRect);
 
             UiLayer.Apply(gameObject);
         }
@@ -271,16 +375,17 @@ namespace Wassup.UI
             StretchFull((RectTransform)backLabel.transform);
         }
 
-        private void BuildScrollList(RectTransform panel)
+        // 좌 컬럼 = 내 토너먼트 목록(스크롤).
+        private void BuildLeftColumn(RectTransform panel)
         {
-            var viewport = new GameObject("Viewport", typeof(RectTransform), typeof(Image),
+            var viewport = new GameObject("ListViewport", typeof(RectTransform), typeof(Image),
                 typeof(RectMask2D), typeof(ScrollRect));
             viewport.transform.SetParent(panel, false);
             var vpRt = (RectTransform)viewport.transform;
             vpRt.anchorMin = new Vector2(0f, 0f);
             vpRt.anchorMax = new Vector2(1f, 1f);
             vpRt.offsetMin = new Vector2(Pad, Pad);
-            vpRt.offsetMax = new Vector2(-Pad, -(Pad + HeaderH));
+            vpRt.offsetMax = new Vector2(-(PanelW - Pad - LeftColW), -(Pad + HeaderH));
             var vpImg = viewport.GetComponent<Image>();
             vpImg.sprite = UiRoundedSprite.Make(18f, 0f, new Color(0f, 0f, 0f, 0.24f), new Color(0f, 0f, 0f, 0.24f));
             vpImg.type = Image.Type.Sliced;
@@ -315,14 +420,80 @@ namespace Wassup.UI
 
             _listContent = contentRt;
 
-            // Status overlay (loading / empty / error) — centered over the viewport.
-            _statusLabel = CreateLabel(panel, "Status", "", 30, TextAlignmentOptions.Center, SubText);
-            var sr = (RectTransform)_statusLabel.transform;
+            _listStatus = CreateLabel(panel, "ListStatus", "", 30, TextAlignmentOptions.Center, SubText);
+            var sr = (RectTransform)_listStatus.transform;
             sr.anchorMin = new Vector2(0f, 0f);
             sr.anchorMax = new Vector2(1f, 1f);
-            sr.offsetMin = new Vector2(Pad, Pad);
-            sr.offsetMax = new Vector2(-Pad, -(Pad + HeaderH));
-            _statusLabel.gameObject.SetActive(false);
+            sr.offsetMin = vpRt.offsetMin;
+            sr.offsetMax = vpRt.offsetMax;
+            _listStatus.gameObject.SetActive(false);
+        }
+
+        // 우 컬럼 = 선택된 토너먼트의 랭킹. 최대 5슬롯이라 스크롤 없이 세로 배치.
+        private void BuildRightColumn(RectTransform panel)
+        {
+            float leftEdge = Pad + LeftColW + ColGap;
+
+            _rankTitle = CreateLabel(panel, "RankTitle", "", 36, TextAlignmentOptions.Center, GoldColor);
+            _rankTitle.fontStyle = FontStyles.Bold;
+            var trt = (RectTransform)_rankTitle.transform;
+            trt.anchorMin = new Vector2(0f, 1f);
+            trt.anchorMax = new Vector2(1f, 1f);
+            trt.pivot = new Vector2(0.5f, 1f);
+            trt.offsetMin = new Vector2(leftEdge, -(Pad + HeaderH + RankTitleH));
+            trt.offsetMax = new Vector2(-Pad, -(Pad + HeaderH));
+
+            var list = new GameObject("RankList", typeof(RectTransform), typeof(Image),
+                typeof(RectMask2D), typeof(VerticalLayoutGroup));
+            list.transform.SetParent(panel, false);
+            var lr = (RectTransform)list.transform;
+            lr.anchorMin = new Vector2(0f, 0f);
+            lr.anchorMax = new Vector2(1f, 1f);
+            lr.offsetMin = new Vector2(leftEdge, Pad);
+            lr.offsetMax = new Vector2(-Pad, -(Pad + HeaderH + RankTitleH));
+
+            var well = list.GetComponent<Image>();
+            well.sprite = UiRoundedSprite.Make(18f, 0f, new Color(0f, 0f, 0f, 0.24f), new Color(0f, 0f, 0f, 0.24f));
+            well.type = Image.Type.Sliced;
+            well.raycastTarget = false;
+
+            var vlg = list.GetComponent<VerticalLayoutGroup>();
+            vlg.padding = new RectOffset(12, 12, 12, 12);
+            vlg.spacing = 8f;
+            vlg.childAlignment = TextAnchor.UpperCenter;
+            vlg.childControlWidth = true;
+            vlg.childControlHeight = true;
+            vlg.childForceExpandWidth = true;
+            vlg.childForceExpandHeight = false;
+            _rankContent = lr;
+
+            _rankStatus = CreateLabel(panel, "RankStatus", "", 30, TextAlignmentOptions.Center, SubText);
+            var sr = (RectTransform)_rankStatus.transform;
+            sr.anchorMin = new Vector2(0f, 0f);
+            sr.anchorMax = new Vector2(1f, 1f);
+            sr.offsetMin = lr.offsetMin;
+            sr.offsetMax = lr.offsetMax;
+            _rankStatus.gameObject.SetActive(false);
+        }
+
+        // 좌측 컬럼 — 행 좌변 여백부터 우측 컬럼이 시작되는 지점까지.
+        private static void SetLeftColumn(RectTransform rt, Vector2 band)
+        {
+            rt.anchorMin = new Vector2(0f, 0f);
+            rt.anchorMax = new Vector2(1f, 1f);
+            rt.offsetMin = new Vector2(RowInset, band.x);
+            rt.offsetMax = new Vector2(-RightColW, band.y);
+        }
+
+        // 우측 컬럼 — 행 우변에 붙는 RightColW 폭 박스. 행 폭이 레이아웃 그룹에 따라
+        // 변하므로 우측 앵커 기준 음수 오프셋으로 잡는다.
+        private static void SetRightColumn(RectTransform rt, Vector2 band)
+        {
+            rt.anchorMin = new Vector2(1f, 0f);
+            rt.anchorMax = new Vector2(1f, 1f);
+            rt.pivot = new Vector2(1f, 0.5f);
+            rt.offsetMin = new Vector2(-RightColW, band.x);
+            rt.offsetMax = new Vector2(-RightPad, band.y);
         }
 
         private static TextMeshProUGUI CreateLabel(Transform parent, string name, string text,
