@@ -20,7 +20,18 @@ namespace Wassup.UI
         // (초기 주석 "0.5 이상이면 진입 불가"는 오판 — 0.5 의 창은 0.5타일로 멀쩡하다.)
         private const float MaxMargin = 0.95f;
 
-        public static Vector2Int Resolve(Vector2Int? current, Vector2 frac, float stickMargin, Vector2Int gridSize)
+        // drag-cancel-affordance unit 3 — 반환이 **nullable** 이다: 격자 밖으로 outsideToleranceCells
+        // 보다 더 나간 좌표는 "아무 칸도 아니다"(null). 그 전에는 무조건 격자로 clamp 했고, 그래서
+        // 화면 어디를 눌러도 칸이 하나 잡혀 **"보드 밖 = 취소" 가 성립하지 않았다**(EndDrag 의
+        // "칸 없음 → 취소" 경로가 사실상 도달 불가). 관용 안에서는 종전대로 테두리 칸에 붙인다.
+        //
+        // 관용은 **셀 인덱스 초과분**으로 센다(정수 판정 — frac 임계를 따로 두면 히스테리시스 밴드와
+        // 두 개의 경계가 생긴다). tol=1 이면 cx=-1 은 0 으로 붙고 cx=-2 는 null 이다.
+        // 히스테리시스가 이미 "테두리 칸에 올라선 뒤의 관용"을 담당한다는 점이 load-bearing:
+        // current=0 이면 frac ∈ [-(0.5+margin), …) 동안 0 이 유지되므로, tol 은 그 밴드 **밖**의
+        // 추가 여유만 정한다.
+        public static Vector2Int? Resolve(Vector2Int? current, Vector2 frac, float stickMargin,
+            Vector2Int gridSize, int outsideToleranceCells)
         {
             float margin = Mathf.Clamp(stickMargin, 0f, MaxMargin);
 
@@ -36,9 +47,12 @@ namespace Wassup.UI
                 cy = RoundAxis(frac.y);
             }
 
-            return new Vector2Int(
-                Mathf.Clamp(cx, 0, Mathf.Max(0, gridSize.x - 1)),
-                Mathf.Clamp(cy, 0, Mathf.Max(0, gridSize.y - 1)));
+            int tol = Mathf.Max(0, outsideToleranceCells);
+            int maxX = Mathf.Max(0, gridSize.x - 1);
+            int maxY = Mathf.Max(0, gridSize.y - 1);
+            if (cx < -tol || cx > maxX + tol || cy < -tol || cy > maxY + tol) return null;
+
+            return new Vector2Int(Mathf.Clamp(cx, 0, maxX), Mathf.Clamp(cy, 0, maxY));
         }
 
         // unit 7 — 끈적 액체 하이라이트용 신호. **Resolve 와 같은 파일·같은 밴드·같은 clamp** 를 쓰는 게 load-bearing:

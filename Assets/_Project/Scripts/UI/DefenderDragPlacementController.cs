@@ -69,7 +69,10 @@ namespace Wassup.UI
         private RectTransform _cancelZone;
         private bool _cancelHover;      // 이번 프레임 가상 포인터가 취소 존 안인가
         private bool _cancelZoneLeft;   // 이 세션이 취소 존을 한 번 벗어난 적 있는가(예고 룩 게이트)
+        private float _cancelDwell;     // 존을 벗어나기 전 머문 시간(초, unscaled) — 게이트의 두 번째 문
         private bool _cancelVisualOn;   // 예고 룩(고스트 알파 + 배너) 적용 상태
+        // unit 3 — 격자 밖 관용 초과로 "아무 칸도 아님". 취소 예고(고스트 + 포인터 라벨)의 두 번째 사유.
+        private bool _noCell;
         private GameObject _cancelBannerGO;
         private Image _cancelBannerBg;
         private TextMeshProUGUI _cancelBannerLabel;
@@ -77,7 +80,16 @@ namespace Wassup.UI
 
         // 예고(룩 + 보드 판정 정지)의 단일 술어. 릴리즈 취소는 `_cancelHover` 만 본다 —
         // 존을 못 벗어난 짧은 드래그도 놓으면 취소가 맞다(그게 오배치보다 낫다).
-        private bool CancelArmed => _cancelHover && _cancelZoneLeft;
+        //
+        // rev2 — 게이트에 dwell 문을 하나 더 달았다. "존 이탈 1회" 만이면 **가장 빠른 취소가
+        // 침묵한다**: 트레이 드래그는 존 안에서 시작하므로 "집었다가 그 자리에서 놓기" 는 이미
+        // 취소로 동작하는데, 그 순간엔 배너가 안 뜨니 아무도 그 수단을 배울 수 없다.
+        private bool CancelArmed =>
+            _cancelHover && (_cancelZoneLeft || _cancelDwell >= Cfg.cancelHintDwellSeconds);
+
+        // 취소 예고 문구 — 빠른 템포에서 유일한 불안이 "코스트 날아갔나" 라 무차감을 문자로 못박는다.
+        // 거부 라벨(`X 코스트 부족`)과 같은 글리프+문구 문법(색 단독 표기 금지).
+        private const string CancelLabelText = "✕  놓으면 취소 · 코스트 유지";
         // placement-thumb-occlusion unit 0 — 두 축을 이름으로 가른다. _lastAimScreenPos 는 **가상
         // 포인터**(셀 판정·고리·줄·고스트·거부 라벨 앵커), _lastRawScreenPos 는 실제 포인터다.
         // 가르는 이유: 카메라 포커스는 스크린좌표를 NDC 로 **절대 변환**하므로
@@ -311,7 +323,12 @@ namespace Wassup.UI
             // 계속 돌아 고스트가 손가락을 따라 트레이로 내려온다 — 멈추는 건 "어느 칸이냐" 뿐이다.
             // 소거는 진입 프레임 1회면 충분하다(hoverTile 이 비면 그 뒤로 페인트가 없다) —
             // 매 프레임 Clear* 를 부르면 타일맵 오버레이를 계속 다시 칠한다.
-            if (CancelArmed) { if (_session.hoverTile.HasValue) ClearHover(); }
+            if (CancelArmed)
+            {
+                if (_session.hoverTile.HasValue) ClearHover();
+                _noCell = false;    // 배너가 예고를 소유하는 구간 — 포인터 라벨과 겹치지 않게
+                HideRejectLabel();
+            }
             else ResolveFocusAndTarget(dt, lockCell: _simulatedDrag ? _simFocusCell : null);
 
             // 실드래그는 무게추 스프링(탄성)+속도 상한으로 지연·스윙을 유지한다.
@@ -394,7 +411,7 @@ namespace Wassup.UI
             // 트레이 드래그는 **취소 존 안에서 시작한다**(슬롯 위 + 오프셋이 아직 트레이 대역).
             // 판정은 그 순간부터 유효하지만(짧게 끌었다 놓으면 취소 = 원하는 동작), 예고 룩은
             // 존을 한 번 벗어난 뒤부터 켠다 — 아니면 모든 드래그가 배너 깜빡임으로 시작한다.
-            if (!_cancelHover) _cancelZoneLeft = true;
+            if (!_cancelHover) { _cancelZoneLeft = true; _cancelDwell = 0f; }
             // 발↔고리 화면 세로 거리 = 유닛 키 + 줄 길이. 고리는 손가락에, 유닛은 그만큼 화면 아래 보드에.
             float totalDrop = _session.unitHeight + Cfg.ropeLength * _session.visualScale;
 
@@ -492,7 +509,20 @@ namespace Wassup.UI
                     // unit 1 — 매 프레임 반올림 대신 히스테리시스. 이전 포커스 셀(_session.hoverTile — 이미 sticky
                     // 상태, 진실 소스 하나)을 밴드 안에서 유지해 경계 지터를 흡수. frac/gridSize 는 DebugWorldToCell 과 동일 공간.
                     frac = bridge.DebugWorldToCellFractional((Vector3)sim);
-                    Vector2Int target = PlacementCellSnap.Resolve(_session.hoverTile, frac, Cfg.placementStickMargin, bridge.DebugGridSize);
+                    var resolved = PlacementCellSnap.Resolve(_session.hoverTile, frac,
+                        Cfg.placementStickMargin, bridge.DebugGridSize, Cfg.placementOutsideToleranceCells);
+                    // drag-cancel-affordance unit 3 — 관용 밖 = **칸 없음**. 하이라이트/사거리를 걷고
+                    // 취소 예고(고스트 + 포인터 라벨)로 넘긴다. 릴리즈는 EndDrag 의 "칸 없음" 경로가
+                    // 받는다(그 분기는 원래부터 있었고, clamp 때문에 도달 불가였을 뿐이다).
+                    if (!resolved.HasValue)
+                    {
+                        _noCell = true;
+                        ClearHover();
+                        UpdateRejectLabel(); // ClearHover 가 감춘 라벨을 취소 문구로 다시 켠다
+                        return;
+                    }
+                    _noCell = false;
+                    Vector2Int target = resolved.Value;
                     // unit 3 — throttle(주기적 커밋): 이동 중에도 interval 마다 현재 칸으로 스텝 갱신, 사이엔 유지.
                     // 첫 프레임(hoverTile 없음)과 forceCommit(릴리즈 최종 해석)은 즉시 확정 + 상태 리셋.
                     if (forceCommit || !_session.hoverTile.HasValue) { cell = target; _debounce = default; }
@@ -535,12 +565,23 @@ namespace Wassup.UI
         // action-tray unit 4 — 사유 매핑: coral X(비용) / amber ■(점유) / neutral —(불가).
         private void UpdateRejectLabel()
         {
+            // drag-cancel-affordance unit 3 — 칸 없음(격자 밖 관용 초과)은 **거부가 아니라 취소** 예고다.
+            // 새 표면을 만들지 않고 같은 포인터 추종 라벨 채널을 쓴다. 트레이 존은 배너가 담당하므로
+            // 겹치지 않게 CancelArmed 를 배제한다.
+            if (_noCell && _session.active && !_simulatedDrag && !CancelArmed)
+            {
+                EnsureRejectLabel();
+                if (!_rejectLabel.gameObject.activeSelf) _rejectLabel.gameObject.SetActive(true);
+                _rejectLabel.text = CancelLabelText;
+                _rejectLabel.color = Cfg.cancelTint;
+                PositionRejectLabel();
+                return;
+            }
             bool show = _session.active && _onBoard && _session.hoverTile.HasValue
                         && !_session.isValidTile && _session.rejectReason != PlacementRejectReason.None;
             if (!show)
             {
-                if (_rejectLabel != null && _rejectLabel.gameObject.activeSelf)
-                    _rejectLabel.gameObject.SetActive(false);
+                HideRejectLabel();
                 return;
             }
 
@@ -559,11 +600,22 @@ namespace Wassup.UI
             if (!_rejectLabel.gameObject.activeSelf) _rejectLabel.gameObject.SetActive(true);
             _rejectLabel.text = text;
             _rejectLabel.color = color;
-            // placement-thumb-occlusion unit 0 — 앵커는 **가상** 포인터(하이라이트 위에 떠야 한다).
-            // 대신 화면 위로 이탈하지 않게 클램프한다: 오프셋이 붙으면 실제 손가락 기준 96+offset px 라
-            // 상단 드래그에서 잘려 나간다. 이 라벨은 코스트 부족의 **유일한 문자 채널**이라 이탈 비용이 크다.
+            PositionRejectLabel();
+        }
+
+        // placement-thumb-occlusion unit 0 — 앵커는 **가상** 포인터(하이라이트 위에 떠야 한다).
+        // 대신 화면 위로 이탈하지 않게 클램프한다: 오프셋이 붙으면 실제 손가락 기준 96+offset px 라
+        // 상단 드래그에서 잘려 나간다. 이 라벨은 코스트 부족의 **유일한 문자 채널**이라 이탈 비용이 크다.
+        private void PositionRejectLabel()
+        {
             float labelY = Mathf.Min(_lastAimScreenPos.y + RejectLabelRise, Screen.height - RejectLabelTopMargin);
             _rejectLabel.transform.position = new Vector3(_lastAimScreenPos.x, labelY, 0f);
+        }
+
+        private void HideRejectLabel()
+        {
+            if (_rejectLabel != null && _rejectLabel.gameObject.activeSelf)
+                _rejectLabel.gameObject.SetActive(false);
         }
 
         private void EnsureRejectLabel()
@@ -598,18 +650,29 @@ namespace Wassup.UI
 
         private void UpdateCancelVisual()
         {
+            // dwell 은 존 **안에 머무는 동안**만 자란다. OnDrag 는 포인터가 움직일 때만 오지만
+            // _cancelHover 는 마지막 값을 유지하므로, 손가락을 멈춘 채 머무는 경우가 정확히 잡힌다.
+            if (_cancelHover && _session.active && !_cancelZoneLeft)
+                _cancelDwell += Time.unscaledDeltaTime;
+
             bool want = CancelArmed && _session.active;
             if (want)
             {
                 EnsureCancelBanner();
                 LayoutCancelBanner(); // 트레이는 페이즈 전환으로 크기가 바뀐다 — 매 프레임 rect 를 다시 읽는다
             }
-            if (want == _cancelVisualOn) return;
-            _cancelVisualOn = want;
-            // 폴백 capsule 프리뷰는 skeleton 이 없다 — 알파 변화 없이 배너만(미지원, 계약 아님).
-            if (_session.skeleton != null)
-                SetPreviewAlpha(_session.skeleton, want ? Mathf.Clamp01(Cfg.cancelPreviewAlpha) : 1f);
-            if (_cancelBannerGO != null) _cancelBannerGO.SetActive(want);
+            // 고스트 알파는 **두 사유 공용**(트레이 존 + 칸 없음) — "이대로 놓으면 안 꽂힌다" 는
+            // 한 가지 신호로 읽혀야 한다. 배너는 트레이 존 전용(칸 없음은 포인터 라벨이 담당).
+            bool ghost = (want || _noCell) && _session.active;
+            if (ghost != _cancelVisualOn)
+            {
+                _cancelVisualOn = ghost;
+                // 폴백 capsule 프리뷰는 skeleton 이 없다 — 알파 변화 없이 배너만(미지원, 계약 아님).
+                if (_session.skeleton != null)
+                    SetPreviewAlpha(_session.skeleton, ghost ? Mathf.Clamp01(Cfg.cancelPreviewAlpha) : 1f);
+            }
+            if (_cancelBannerGO != null && _cancelBannerGO.activeSelf != want)
+                _cancelBannerGO.SetActive(want);
         }
 
         // 취소 룩 하드 해제 — 세션 정리 경유(커밋/취소/비활성). 알파 원복은 프리뷰가 곧 파괴되므로
@@ -618,7 +681,9 @@ namespace Wassup.UI
         {
             _cancelHover = false;
             _cancelZoneLeft = false;
+            _cancelDwell = 0f;
             _cancelVisualOn = false;
+            _noCell = false;
             if (_cancelBannerGO != null) _cancelBannerGO.SetActive(false);
         }
 
@@ -652,20 +717,30 @@ namespace Wassup.UI
             _cancelBannerLabel.alignment = TextAlignmentOptions.Center;
             _cancelBannerLabel.textWrappingMode = TextWrappingModes.NoWrap;
             _cancelBannerLabel.raycastTarget = false;
-            _cancelBannerLabel.text = "✕  놓으면 취소";
+            _cancelBannerLabel.text = CancelLabelText;
             _cancelBannerGO.SetActive(false);
         }
 
         // 취소 존 rect(스크린) → 배너 배치. 오버레이 캔버스라 world corner 가 곧 스크린 px 이고,
-        // 배너 캔버스도 같은 오버레이 공간이라 변환이 필요 없다(계약 2 — 상수 오프셋 없음).
+        // 배너 캔버스도 같은 오버레이 공간이라 변환이 필요 없다.
+        //
+        // rev2 (H1) — 배너는 트레이 rect 가 아니라 **손가락 기준 트리거 영역**에 그린다. 판정은
+        // 가상 포인터(손가락 + 오프셋)로 하므로, 트레이 rect 를 그대로 그리면 보이는 밴드와
+        // 실제 히트박스가 오프셋만큼(1080에서 65px) 어긋난다 — "배너가 켜졌는데 떼니 꽂혔다" 가
+        // 그 어긋남이다. 트레이 rect 를 오프셋만큼 **내려** 그리면 보이는 것 = 만지는 것이 된다.
+        // 오프셋 값은 여전히 한 곳(Cfg.PlacementPointerOffsetPx)에서만 나온다(계약 2 유지).
         private void LayoutCancelBanner()
         {
             if (_cancelZone == null || _cancelBannerGO == null) return;
             _cancelZone.GetWorldCorners(_cornerBuf);
             Vector3 min = _cornerBuf[0], max = _cornerBuf[2];
+            float off = Cfg.PlacementPointerOffsetPx;
+            // 화면 밖으로 내려간 부분은 잘라낸다 — 라벨이 보이는 밴드 중앙에 오게.
+            float bottom = Mathf.Max(0f, min.y - off);
+            float top = Mathf.Max(bottom + 1f, max.y - off);
             var rt = (RectTransform)_cancelBannerGO.transform;
-            rt.position = (min + max) * 0.5f;
-            rt.sizeDelta = new Vector2(Mathf.Abs(max.x - min.x), Mathf.Abs(max.y - min.y));
+            rt.position = new Vector3((min.x + max.x) * 0.5f, (bottom + top) * 0.5f, 0f);
+            rt.sizeDelta = new Vector2(Mathf.Abs(max.x - min.x), top - bottom);
             if (_cancelBannerLabel != null) _cancelBannerLabel.color = Cfg.cancelTint;
         }
 
@@ -695,6 +770,10 @@ namespace Wassup.UI
             }
             if (_session.hoverTile.HasValue)
                 bridge?.FlashPlacementReject(_session.hoverTile.Value);
+            else
+                // drag-cancel-affordance unit 3 — 칸 없음 = 취소(거부 아님). 트레이 존 릴리즈와 같은
+                // 소리를 쓴다 — 사용자에겐 "되돌렸다" 라는 같은 사건이다.
+                Wassup.Core.SoundManager.Instance?.PlayCardReturn();
             CleanupSession();
         }
 

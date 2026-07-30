@@ -55,6 +55,12 @@ namespace Wassup.Data
                  "상한 0.95 — 1.0 이상이면 이웃 셀을 건너뛴다(코드에서 clamp).")]
         [Range(0f, 0.95f)]
         public float placementStickMargin = 0.3f;
+        [Tooltip("격자 밖 관용(셀) — 손가락이 보드를 벗어나 이 칸 수까지는 테두리 칸으로 붙여준다.\n" +
+                 "그보다 더 나가면 **아무 칸도 잡지 않는다** → 놓으면 취소(drag-cancel-affordance unit 3).\n" +
+                 "이 값이 없던 시절엔 격자로 무조건 clamp 해서 화면 어디서 놓아도 셀이 나왔고, 그래서\n" +
+                 "'보드 밖 = 취소' 가 성립하지 않았다. ↑=가장자리 칸이 관대하지만 취소가 멀어짐. 0=격자 밖은 즉시 취소.")]
+        [Range(0, 4)]
+        public int placementOutsideToleranceCells = 1;
         [Tooltip("판정 갱신 주기(초) — 이동 중 이 간격마다 현재 칸으로 스텝 갱신. ↓=더 자주(실시간에 가까움). 0=매 프레임.")]
         [Range(0f, 1f)]
         public float placementCommitInterval = 0.5f;
@@ -173,5 +179,10 @@ namespace Wassup.Data
         public float cancelPreviewAlpha = 0.4f;
         [Tooltip("취소 배너 색 — 테두리/글자. 거부 라벨의 코랄과 같은 계열로 두면 '이건 진행되지 않는다' 신호가 통일된다.")]
         public Color cancelTint = new Color(1f, 0.42f, 0.36f, 1f);
+        [Tooltip("취소 예고 dwell(초) — 트레이 드래그는 취소 존 **안에서** 시작하므로, 존을 벗어나기 전이면\n" +
+                 "이 시간 이상 머물러야 배너가 뜬다. 위로 튕기는 드래그는 조용하고 망설이는 손가락에는 뜬다.\n" +
+                 "0=즉시(모든 드래그가 배너 깜빡임으로 시작). ↑=늦게 뜸(가장 빠른 취소가 안 보인다).")]
+        [Range(0f, 1f)]
+        public float cancelHintDwellSeconds = 0.18f;
     }
 }

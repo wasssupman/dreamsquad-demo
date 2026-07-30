@@ -8,8 +8,16 @@ public class PlacementCellSnapTests
     private static readonly Vector2Int Grid = new Vector2Int(10, 10);
     private const float Margin = 0.18f;
 
+    // drag-cancel-affordance unit 3 — 히스테리시스 케이스는 격자 밖 관용과 직교하므로, 이 헬퍼는
+    // 관용을 넓게 열어(WideTolerance) **종전의 무조건 clamp 거동**을 재현한다. 관용 자체의 계약은
+    // 아래 OutsideTolerance_* 테스트가 따로 잰다 — 두 관심사를 한 헬퍼에 섞지 않는다.
+    private const int WideTolerance = 999;
+
     private static Vector2Int Resolve(Vector2Int? cur, float fx, float fy, float margin = Margin)
-        => PlacementCellSnap.Resolve(cur, new Vector2(fx, fy), margin, Grid);
+        => PlacementCellSnap.Resolve(cur, new Vector2(fx, fy), margin, Grid, WideTolerance).Value;
+
+    private static Vector2Int? ResolveTol(Vector2Int? cur, float fx, float fy, int tol, float margin = Margin)
+        => PlacementCellSnap.Resolve(cur, new Vector2(fx, fy), margin, Grid, tol);
 
     // current == null → 순수 round (floor(f+0.5), half-up).
     [Test]
@@ -82,11 +90,49 @@ public class PlacementCellSnapTests
         Assert.AreEqual(5, Resolve(new Vector2Int(3, 5), 4.7f, 5f, 0.95f).x);
     }
 
-    // 결과는 grid 범위로 clamp.
+    // 결과는 grid 범위로 clamp (관용 안에서는 종전 그대로).
     [Test]
     public void Result_ClampedToGrid()
     {
         Assert.AreEqual(new Vector2Int(9, 0), Resolve(null, 20f, -3f));
+    }
+
+    // --- drag-cancel-affordance unit 3: 격자 밖 관용 → "칸 없음" ---
+    // 이 계약이 "보드 밖에서 놓으면 취소" 를 성립시킨다. 예전엔 무조건 clamp 라 화면 어디를
+    // 눌러도 칸이 나왔고, EndDrag 의 "칸 없음 → 취소" 분기가 도달 불가였다.
+
+    [Test]
+    public void OutsideTolerance_WithinTolerance_SnapsToBorderCell()
+    {
+        // cx = -1 (frac -1.0 → round -1) : tol 1 이면 테두리 칸 0 으로 붙는다.
+        Assert.AreEqual(new Vector2Int(0, 0), ResolveTol(null, -1.0f, -1.0f, 1));
+        // 반대편도 대칭: cx = 10 → 9.
+        Assert.AreEqual(new Vector2Int(9, 9), ResolveTol(null, 10.0f, 10.0f, 1));
+    }
+
+    [Test]
+    public void OutsideTolerance_BeyondTolerance_ReturnsNull()
+    {
+        Assert.IsNull(ResolveTol(null, -2.0f, 5f, 1), "x 가 관용 밖이면 칸 없음");
+        Assert.IsNull(ResolveTol(null, 5f, -2.0f, 1), "y 가 관용 밖이면 칸 없음");
+        Assert.IsNull(ResolveTol(null, 11.0f, 5f, 1), "상한 쪽도 대칭");
+    }
+
+    [Test]
+    public void OutsideTolerance_Zero_RejectsAnyOffGridRound()
+    {
+        Assert.IsNull(ResolveTol(null, -1.0f, 5f, 0), "tol 0 = 격자 밖 반올림은 즉시 칸 없음");
+        Assert.AreEqual(new Vector2Int(0, 5), ResolveTol(null, -0.4f, 5f, 0), "격자 안은 그대로");
+    }
+
+    // 히스테리시스가 "테두리 칸에 올라선 뒤의 관용" 을 담당한다 — tol 0 이어도 밴드 안에서는
+    // 테두리 칸이 유지되므로 가장자리 배치가 tol 에 의해 갑자기 빡빡해지지 않는다(load-bearing).
+    [Test]
+    public void OutsideTolerance_HysteresisStillHoldsBorderCell()
+    {
+        var held = ResolveTol(new Vector2Int(0, 5), -0.5f, 5f, 0);
+        Assert.AreEqual(new Vector2Int(0, 5), held, "밴드 안(|f - 0| < 0.5+margin)이면 테두리 칸 유지");
+        Assert.IsNull(ResolveTol(new Vector2Int(0, 5), -1.0f, 5f, 0), "밴드를 벗어나면 칸 없음");
     }
 
     // --- unit 7: EvaluateStretch (끈적함 블롭 신호) ---

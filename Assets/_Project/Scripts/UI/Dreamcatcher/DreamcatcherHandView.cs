@@ -670,7 +670,7 @@ namespace Wassup.UI
             hrt.anchorMax = new Vector2(0.5f, 1f);
             hrt.pivot = new Vector2(0.5f, 1f);
             hrt.anchoredPosition = new Vector2(0f, -8f);
-            hrt.sizeDelta = new Vector2(360f, 56f);
+            hrt.sizeDelta = new Vector2(440f, 56f); // rev2 — 문구 길어짐(코스트 유지 표기)
             var bg = _cancelHint.GetComponent<Image>();
             bg.sprite = UiRoundedSprite.Make(18f, 3f, new Color(0.06f, 0.03f, 0.04f, 0.78f), CancelTint);
             bg.type = Image.Type.Sliced;
@@ -689,7 +689,8 @@ namespace Wassup.UI
             label.textWrappingMode = TextWrappingModes.NoWrap;
             label.raycastTarget = false;
             label.color = CancelTint;
-            label.text = "✕  놓으면 취소";
+            // rev2 — 무차감을 문자로 못박는다(유닛 트레이 배너와 같은 문법). 카드의 자원은 각성치다.
+            label.text = "✕  놓으면 취소 · 각성치 유지";
             _cancelHint.SetActive(false);
         }
 
