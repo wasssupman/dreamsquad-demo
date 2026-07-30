@@ -196,18 +196,61 @@ namespace Wassup.Tests.EditMode.Profile
             Assert.AreEqual(0, _saves);
         }
 
+        // 삭제는 확인 팝업을 거친다(사용자 결정 2026-07-30). 삭제 가능한 프리셋이어도
+        // OnDeletePreset 만으로는 지워지지 않는다 — 실제 삭제는 DeletePresetConfirmed 다.
         [Test]
-        public void Delete_NonCommittedPreset_RemovesItAndReturnsToCommitted()
+        public void Delete_WithoutConfirmPopup_IsBlocked_FailClosed()
         {
-            MakeController();
-            SetField("_viewingPresetId", "squad_2");   // 확정분이 아니다
+            MakeController();                          // confirmPopup 미주입
+            SetField("_viewingPresetId", "squad_2");   // 삭제 가능한 프리셋
 
             Invoke("OnDeletePreset");
 
-            Assert.AreEqual(1, _p.squads.Count, "확정분이 아니면 삭제된다");
+            Assert.AreEqual(2, _p.squads.Count,
+                "확인을 받을 수 없으면 파괴적 동작을 진행하지 않는다(fail-closed)");
+            Assert.AreEqual(0, _saves);
+        }
+
+        [Test]
+        public void DeleteConfirmed_RemovesPresetAndReturnsToCommitted()
+        {
+            MakeController();
+            SetField("_viewingPresetId", "squad_2");
+
+            Invoke("DeletePresetConfirmed", "squad_2");   // = 팝업에서 [삭제] 누른 뒤
+
+            Assert.AreEqual(1, _p.squads.Count, "확인 후에는 삭제된다");
             Assert.AreEqual("squad_1", _p.selectedSquadId);
             Assert.IsNotNull(_p.CommittedSquad());
             Assert.AreEqual(1, _saves, "구조 변경이므로 즉시 저장된다");
+        }
+
+        [Test]
+        public void DeleteConfirmed_RevalidatesGuard_WhenPresetBecameCommitted()
+        {
+            // 팝업 콜백은 나중에 온다 — 그 사이 대상이 확정됐으면 지우면 안 된다.
+            MakeController();
+            SetField("_viewingPresetId", "squad_2");
+            _p.selectedSquadId = "squad_2";              // 확인 대기 중 확정됐다고 가정
+
+            Invoke("DeletePresetConfirmed", "squad_2");
+
+            Assert.AreEqual(2, _p.squads.Count, "확정된 프리셋은 확인 후에도 지워지지 않는다");
+            Assert.AreEqual(0, _saves);
+        }
+
+        [Test]
+        public void DeleteConfirmed_RevalidatesGuard_WhenOnlyOneLeft()
+        {
+            MakeController();
+            _p.squads.RemoveAll(s => s.id == "squad_2");   // 확인 대기 중 1개만 남았다고 가정
+            _p.selectedSquadId = "";                       // 확정분 가드는 비켜둔다
+            SetField("_viewingPresetId", "squad_1");
+
+            Invoke("DeletePresetConfirmed", "squad_1");
+
+            Assert.AreEqual(1, _p.squads.Count, "마지막 1개는 확인 후에도 지워지지 않는다");
+            Assert.AreEqual(0, _saves);
         }
 
         [Test]

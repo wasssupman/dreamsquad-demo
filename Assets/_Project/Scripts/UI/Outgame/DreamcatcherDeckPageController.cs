@@ -423,7 +423,32 @@ namespace Wassup.UI
                 return;
             }
 
-            p.dreamcatcherDecks.RemoveAll(d => d != null && d.id == _viewingPresetId);
+            // 삭제 확인 — 스쿼드 컨트롤러와 동일 정책(되돌릴 수 없으므로 확인, 미주입은 fail-closed).
+            if (confirmPopup == null)
+            {
+                Debug.LogError("[DeckPreset] confirmPopup 미주입 — 확인을 받을 수 없어 삭제를 "
+                    + "차단했다. 페이지 빌더의 주입을 확인할 것.", this);
+                return;
+            }
+
+            var target = StoredPreset(_viewingPresetId);
+            string label = (target != null && !string.IsNullOrEmpty(target.name)) ? target.name : "이 프리셋";
+            string captured = _viewingPresetId;
+            confirmPopup.Show(
+                $"'{label}' 덱 프리셋을 삭제합니다.\n저장된 카드 구성이 사라지며 되돌릴 수 없습니다.",
+                () => DeletePresetConfirmed(captured), "삭제");
+        }
+
+        // 확인 후 실제 삭제. 팝업 콜백은 나중에 오므로 가드를 다시 확인한다(스쿼드와 동일).
+        private void DeletePresetConfirmed(string id)
+        {
+            if (!CanPersist()) return;
+            var p = Profile;
+            if (p == null || p.dreamcatcherDecks == null || string.IsNullOrEmpty(id)) return;
+            if (id == p.selectedDeckId) return;   // 그 사이 확정됐다
+            if (p.dreamcatcherDecks.Count <= 1) return;
+
+            p.dreamcatcherDecks.RemoveAll(d => d != null && d.id == id);
             p.NormalizePresets();
             Save();
             SwitchTo(p.selectedDeckId);   // 확정분으로 복귀

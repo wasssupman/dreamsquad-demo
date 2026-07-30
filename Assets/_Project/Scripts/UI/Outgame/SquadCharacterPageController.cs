@@ -331,7 +331,36 @@ namespace Wassup.UI
                 return;
             }
 
-            p.squads.RemoveAll(s => s != null && s.id == _viewingPresetId);
+            // 삭제는 **되돌릴 수 없다** — [되돌리기]는 작업본 대상이라 지워진 프리셋을
+            // 살리지 못한다. 유닛 한 칸 바꾸는 것도 [저장]을 요구하는 이 페이지에서
+            // 프리셋 통째 삭제만 무경고 즉시 실행이면 앞뒤가 맞지 않으므로 확인을 받는다.
+            // 미주입이면 fail-closed — 파괴적 동작을 확인 없이 진행하지 않는다.
+            if (confirmPopup == null)
+            {
+                Debug.LogError("[SquadPreset] confirmPopup 미주입 — 확인을 받을 수 없어 삭제를 "
+                    + "차단했다. 페이지 빌더의 주입을 확인할 것.", this);
+                return;
+            }
+
+            var target = StoredPreset(_viewingPresetId);
+            string label = (target != null && !string.IsNullOrEmpty(target.name)) ? target.name : "이 프리셋";
+            string captured = _viewingPresetId;   // 콜백 시점의 _viewingPresetId 에 의존하지 않는다
+            confirmPopup.Show(
+                $"'{label}' 프리셋을 삭제합니다.\n저장된 편성이 사라지며 되돌릴 수 없습니다.",
+                () => DeletePresetConfirmed(captured), "삭제");
+        }
+
+        // 확인 후 실제 삭제. **가드를 다시 확인한다** — 팝업 콜백은 나중에 오므로 그 사이
+        // 상태가 바뀔 수 있다(예: 그 프리셋이 확정됐거나 다른 경로로 이미 지워졌거나).
+        private void DeletePresetConfirmed(string id)
+        {
+            if (!CanPersist()) return;
+            var p = Profile;
+            if (p == null || p.squads == null || string.IsNullOrEmpty(id)) return;
+            if (id == p.selectedSquadId) return;   // 그 사이 확정됐다
+            if (p.squads.Count <= 1) return;
+
+            p.squads.RemoveAll(s => s != null && s.id == id);
             p.NormalizePresets();
             Save();                       // 구조 변경 = 즉시 디스크
             SwitchTo(p.selectedSquadId);  // 확정분으로 복귀
