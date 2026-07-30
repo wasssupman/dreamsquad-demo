@@ -126,15 +126,25 @@ if (MustClose()) { _pendingTap = false; Close(); return; }
 
 ## 완료 기준
 
-- [ ] compile 클린 · Unity 콘솔 error 0
+- [x] compile 클린 · Unity 콘솔 error 0 (2026-07-30 — `dotnet build` 오류 0)
+- [x] **배선 확인**: 씬 YAML 에서 `DcInspectController.handView` · `DreamcatcherHandView.gaugeView`
+      가 둘 다 non-zero fileID — 풀 체인이 온전해 이 unit 이 no-op 이 아니다
+- [x] EditMode: 릴레이 getter 가 소유자 값을 그대로 옮긴다(이름 오타·부호 역전 방지) —
+      `AwakeningSealRelayTests` 3건
+- [x] EditMode 전체 1607 / 실패 1 — `MultiGoalPoolSeparationTests`(타 세션의 dirty
+      `MapDocument_Zig`)만 남는다. 무관
+- [x] PlayMode: 튜토리얼·인스펙트·손패·재배치 테스트 실패 0. 전체 실패 9종은 전부 타 세션
+      영역(`drag-cancel-affordance rev3` · `62260b82` 의 `BattleBridge*`/`DcApplicability`)
+      이거나 기존 환경 실패(Auth·DeckCarryIn·Dreamstone·CardBuffs)
 - [ ] Play 첫 판: 배치한 유닛을 탭해도 **아무 일도 일어나지 않는다** — 패널·리티클·줌·슬로모·
       손패 전부. 특히 `Start` 스텝(`좋습니다! 더 배치해보세요`) 중에 확인한다
 - [ ] Play 첫 판: 항아리는 여전히 숨겨져 있고 배치·전투 시작은 정상(unit 10 회귀 0)
 - [ ] Play 둘째 판: 유닛 탭 → 선택·패널·리티클·손패 전부 정상(봉인이 확실히 풀린다)
 - [ ] Play 둘째 판: 패널의 **이동 버튼 → 재배치**가 정상 동작(첫 판에만 사라지는지 확인 — C절)
 - [ ] Play: 튜토리얼 컴포넌트를 비활성화해도 선택이 정상 동작(fail-open)
-- [ ] EditMode: 릴레이 getter 가 소유자 값을 그대로 옮긴다(이름 오타·부호 역전 방지)
-- [ ] EditMode 전체 + PlayMode 튜토리얼 스모크 회귀 0
+
+구현 `fbcac2db` · 테스트 `77e013b2` (2026-07-30). **Play 항목은 사용자 확인 대기** —
+로비 `OnResetTutorial()` 로 리셋 1회 후 unit 16 과 함께 관통 검증한다(위 검증 준비 절).
 
 > **자동 테스트 한계**: 게이트 본체(`DcInspectController`)는 `BattleBridge`·Entity·EventSystem
 > 의존이라 EditMode 로 못 덮고, PlayMode 로 덮으려면 배틀 하네스가 필요하다. handoff 13 이

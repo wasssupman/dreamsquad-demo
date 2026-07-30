@@ -107,7 +107,9 @@ usable 슬롯 탐색 · `ShouldRunAwakeningHint`)와 **저장 시점 · disarm �
 
 ## 완료 기준
 
-- [ ] compile 클린 · Unity 콘솔 error 0
+- [x] compile 클린 · Unity 콘솔 error 0 (2026-07-30 — `dotnet build` 오류 0)
+- [x] EditMode 전체 1607 / 실패 1(무관) · PlayMode 튜토리얼 테스트 실패 0 — unit 15 완료
+      기준의 검증 결과를 공유한다(같은 런)
 - [ ] Play 둘째 판 전투 시작: 0단계가 **두 문 문구 2줄**로 뜨고 포커스 링은 항아리에 있다
 - [ ] Play: 0단계 상태에서 **항아리로** 열면 `…끌어보세요!` + usable 슬롯 포커스
 - [ ] Play: 0단계 상태에서 **유닛 탭으로** 열면 `카드를 탭하면…` 2줄 + usable 슬롯 포커스
@@ -122,3 +124,6 @@ usable 슬롯 탐색 · `ShouldRunAwakeningHint`)와 **저장 시점 · disarm �
 > 기존 `FirstSessionTutorialSmokeTest` 로는 못 덮는다(그 스모크는 `HandOpened` 를 태우지 않는다).
 > 문구 상수를 EditMode 로 고정하는 것은 값 복제일 뿐 분기를 검증하지 못한다 — **테스트를 만들지
 > 않고 Play 체크리스트에 의존한다는 것을 명시**한다. handoff 13 의 커버리지 gap 과 같은 성격이다.
+
+구현 `652d2b4f` (2026-07-30). **Play 항목 전량 사용자 확인 대기** — unit 15 와 같은 리셋
+1회로 관통 검증한다.
