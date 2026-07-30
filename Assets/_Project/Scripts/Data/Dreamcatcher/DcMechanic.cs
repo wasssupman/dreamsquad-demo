@@ -191,6 +191,13 @@ namespace Wassup.Data
         // **데미지 경로**라 이름으로 grep 되어야 한다. append-only → 기존 카드는 0 = 슬램 없음.
         public float slamDamage;    // 착지 시 자기중심 피해. <=0 = 슬램 없음(이동만)
         public int slamTileRange;   // 슬램 반경(타일, Chebyshev)
+        // dreamcatcher-content-3 unit 6 — ApplyStackToTarget 전용. **문안 전용 참조**다:
+        // 런타임 임계 조회는 여전히 BattleBridge 의 kind→rules 레지스트리(씬의
+        // stackModifierAuthoring)가 권위이고, 이 필드는 카드 문안이 "몇 중첩에 무엇이
+        // 터지나"를 같은 SO 에서 읽게 해 수치가 문자열로 복제되는 것을 막는다(제약 6).
+        // 정의 계층의 SO 참조는 위 projectile·auraPrefab·pattern 선례와 동일 — 금지
+        // 대상은 Entities/Battle 타입이다. null = 요약 라인 생략(기존 카드 무변화).
+        public StackModifierSO stackModifier;
     }
 
     [Serializable]

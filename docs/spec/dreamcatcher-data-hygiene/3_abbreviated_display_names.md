@@ -39,7 +39,7 @@
 | `eye_on_the_end` | 끝을 보는 눈 | 우선조준 |
 | `farewell` | 작별 선물 | 사망폭발 |
 | `sub_fattened_offering` | 살찌운 제물 | 제물표식 |
-| `frost_arrow` | 서리의 화살 | 빙결 |
+| `frost_arrow` | 서리의 화살 | ~~빙결~~ → 스턴메이커 (아래 각주) |
 | `frostbite` | 살을 에는 서리 | 동상 |
 | `gale_shove` | 돌풍의 손길 | 밀치기 |
 | `guardian_as` | 가디언 폭타 | 가디언속 |
@@ -61,6 +61,15 @@
 | `slow_awakening` | 느린 각성 | 공속각성 |
 | `thornmail` | 가시 갑옷 | 가시반격 |
 | `tremor_plate` | 울리는 갑주 | 진동갑주 |
+
+### 각주 — `frost_arrow` 재명명 (2026-07-31, dreamcatcher-content-3 unit 6)
+
+"빙결"은 **`StackKind.Ice` 의 표시 라벨과 같은 단어**였다. 동상(`frostbite`)이 쌓는 것이 "빙결 1스택"
+이라, 카드 선택 화면에서 동상을 찾다가 `frost_arrow` 를 열게 되는 충돌이 실제로 발생했다.
+**이름은 다른 카드의 효과 어휘와도 겹치면 안 된다** — 이 규칙을 위 계약에 추가로 적용한다.
+
+시트(`DcCards`)에는 이미 "스턴메이커"가 authoring 돼 있었고 SO 만 옛 값으로 남아 있었다(드리프트).
+SO 를 시트에 맞추는 방향으로 통일했다.
 
 ## 운영/검증
 

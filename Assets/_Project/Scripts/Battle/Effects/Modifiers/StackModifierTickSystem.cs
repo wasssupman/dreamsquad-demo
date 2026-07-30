@@ -15,6 +15,10 @@ namespace Wassup.Battle.Effects
     [UpdateAfter(typeof(ModifierStatsAggregateSystem))]
     public partial struct StackModifierTickSystem : ISystem
     {
+        // 스택 임계가 만든 스탯 모디파이어의 stackId 네임스페이스 시작점(+ StackKind).
+        internal const int StackDerivedStackIdBase = 100;
+
+
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<EnemyCcEventsSingleton>();
@@ -144,7 +148,13 @@ namespace Wassup.Battle.Effects
                             magnitude = rule.magnitude,
                             duration  = rule.duration,
                             source    = entity,
-                            stackId   = 0,
+                            // dreamcatcher-content-3 unit 6 — 슬롯 분리. 이 파생은 source=피해자
+                            // 자신이라 BattleBridge.EnqueueMoveSpeedMul(배치/스킬 감속: source=target,
+                            // stackId=0)과 (source,stat,op,stackId) 4개가 전부 겹쳤다 — 병합 규칙이
+                            // magnitude 덮어쓰기라 강한 배치 감속이 약한 스택 감속으로 깎였다.
+                            // kind 별 전용 id 로 갈라 파생끼리도 원소별 독립. base 100 은 저번호
+                            // (0=일반, 1=Synergy)를 피하기 위한 것.
+                            stackId   = (ushort)(StackDerivedStackIdBase + (int)kind),
                             // 야근 번아웃만 전용 origin 승격 — 상태FX(BattleBridge)가 다른 Stack
                             // 파생과 안 섞이게(review #3). 범용 trigger→domain 통합은 파킹 문서.
                             origin    = kind == StackKind.Fatigue

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Card_FrostArrow
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DreamcatcherCard
   id: frost_arrow
-  displayName: "\uBE59\uACB0"
+  displayName: "\uC2A4\uD134\uBA54\uC774\uCEE4"
   axis: 3
   category: 1
   effects: []

@@ -17,13 +17,38 @@ MonoBehaviour:
   perAppDuration: 4
   policy: 0
   thresholds:
+  - atStack: 1
+    mode: 0
+    derivedKind: 2
+    magnitude: 0.9
+    duration: 4
+    stat: 4
+    op: 0
+    tickInterval: 0
+  - atStack: 2
+    mode: 0
+    derivedKind: 2
+    magnitude: 0.8
+    duration: 4
+    stat: 4
+    op: 0
+    tickInterval: 0
   - atStack: 3
     mode: 0
     derivedKind: 2
-    magnitude: 0.6
-    duration: 1.5
+    magnitude: 0.7
+    duration: 4
     stat: 4
     op: 0
+    tickInterval: 0
+  - atStack: 4
+    mode: 0
+    derivedKind: 2
+    magnitude: 0.6
+    duration: 4
+    stat: 4
+    op: 0
+    tickInterval: 0
   - atStack: 5
     mode: 1
     derivedKind: 1
@@ -31,3 +56,4 @@ MonoBehaviour:
     duration: 0
     stat: 0
     op: 0
+    tickInterval: 0

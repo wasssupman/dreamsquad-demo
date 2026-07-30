@@ -35,6 +35,7 @@ MonoBehaviour:
       ccKind: 0
       stackKind: 1
       buffStat: 0
+      stackModifier: {fileID: 11400000, guid: de365d3d90c04af19bb3fb09e3509249, type: 2}
   attackMods: []
   type: 1
   skill: {fileID: 0}

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using Wassup.Battle.Combat;
+using Wassup.Battle.Effects;
 using Wassup.Core;
 using Wassup.Data;
 
@@ -294,7 +295,110 @@ namespace Wassup.UI
             }
 
             lines.Add($"{trigger} → {effect}");
+            // content-3 unit 6 — 스택 카드는 "무엇이 쌓이나" 만으로는 정체가 안 읽힌다.
+            // 임계에서 무엇이 터지는지가 그 카드의 실체라 요약 라인을 한 줄 덧붙인다.
+            if (payload.kind == DcPayloadKind.ApplyStackToTarget)
+            {
+                string summary = StackThresholdSummary(payload.stackModifier, payload.stackKind);
+                if (summary != null) lines.Add(summary);
+            }
             return true;
+        }
+
+        // content-3 unit 6 — ThresholdRule[] → 한 줄 요약. 수치는 전부 SO 에서 나온다
+        // (문자열에 복제 금지 — 제약 6). so 미연결 = null 반환 = 라인 생략.
+        internal static string StackThresholdSummary(StackModifierSO so, DcStackKind stackKind)
+        {
+            if (so == null || so.thresholds == null || so.thresholds.Length == 0) return null;
+
+            var parts = new List<string>();
+            var rules = so.thresholds;
+
+            // 균등 계단(1중첩부터 1씩, 같은 stat, 등차)이면 중첩별 나열 대신 "중첩당" 으로 접는다.
+            int folded = 0;
+            if (TryFoldStatRamp(rules, out float stepPercent, out StatKind rampStat, out folded))
+                parts.Add($"중첩당 {StatLabel(rampStat)} {SignedPercent(stepPercent)}");
+
+            for (int i = folded; i < rules.Length; i++)
+            {
+                var rule = rules[i];
+                string body;
+                switch (rule.derivedKind)
+                {
+                    case DerivedEffectKind.ApplyStat:
+                        body = $"{StatLabel(rule.stat)} {SignedPercent(StatPercent(rule.op, rule.magnitude))}";
+                        break;
+                    case DerivedEffectKind.ApplyStun:
+                        // 심에서 이 파생은 CcKind.Stun 이다 — 별도 상태로 오해시키지 않게 CcLabel 과 통일.
+                        body = $"{CcLabel(DcCcKind.Stun)} {Duration(rule.magnitude)}";
+                        break;
+                    case DerivedEffectKind.ApplyDot:
+                        // tickInterval>0 이면 magnitude 는 틱당 피해다(dot-tick-cadence 계약) —
+                        // 카드에는 초당으로 환산해 적는다.
+                        body = $"초당 피해 {Count(DotPerSecond(rule.magnitude, rule.tickInterval))}"
+                             + $" · {Duration(rule.duration)}";
+                        break;
+                    default:
+                        continue;
+                }
+                if (rule.mode == ThresholdMode.Consume) body += " (중첩 소모)";
+                parts.Add($"{Count(rule.atStack)}중첩 {body}");
+            }
+
+            return parts.Count == 0 ? null : $"{StackLabel(stackKind)} {string.Join(" · ", parts)}";
+        }
+
+        // 선두 ApplyStat 규칙들이 "1중첩부터 1씩 · 같은 stat/op · 등차" 인지 판정한다.
+        // 참이면 stepPercent(중첩당 증감 %)와 접힌 개수를 돌려준다. 규칙 2개 미만이면 접지 않는다.
+        internal static bool TryFoldStatRamp(ThresholdRule[] rules, out float stepPercent,
+            out StatKind stat, out int foldedCount)
+        {
+            stepPercent = 0f;
+            stat = default;
+            foldedCount = 0;
+            if (rules == null || rules.Length < 2) return false;
+
+            var first = rules[0];
+            if (first.derivedKind != DerivedEffectKind.ApplyStat || first.atStack != 1) return false;
+            stat = first.stat;
+            stepPercent = StatPercent(first.op, first.magnitude);
+            if (Approximately(stepPercent, 0f)) return false;
+
+            int n = 1;
+            while (n < rules.Length)
+            {
+                var r = rules[n];
+                if (r.derivedKind != DerivedEffectKind.ApplyStat) break;
+                if (r.atStack != n + 1 || r.stat != stat || r.op != first.op) break;
+                if (!Approximately(StatPercent(r.op, r.magnitude), stepPercent * (n + 1))) break;
+                n++;
+            }
+
+            // 접기 실패 시 foldedCount 를 0 으로 되돌린다 — 호출부가 이 값을 나열 시작
+            // 인덱스로 쓰므로, 실패한 채 1 을 남기면 첫 규칙이 문안에서 통째로 사라진다.
+            if (n < 2) { foldedCount = 0; return false; }
+            foldedCount = n;
+            return true;
+        }
+
+        // Multiplicative 는 배율(0.9 = -10%), Additive 는 델타(0.3 = +30%) — ModifierAuthoring 규약.
+        internal static float StatPercent(CombineOp op, float magnitude)
+            => op == CombineOp.Multiplicative ? (magnitude - 1f) * 100f : magnitude * 100f;
+
+        internal static float DotPerSecond(float magnitude, float tickInterval)
+            => tickInterval > 0f ? magnitude / tickInterval : magnitude;
+
+        private static string StatLabel(StatKind stat)
+        {
+            switch (stat)
+            {
+                case StatKind.DamageMul: return "공격력";
+                case StatKind.AttackSpeedMul: return "공격 속도";
+                case StatKind.DmgTakenMul: return "받는 피해";
+                case StatKind.MoveSpeedMul: return "이동 속도";
+                case StatKind.MaxHealthMul: return "최대 체력";
+                default: return stat.ToString();
+            }
         }
 
         private static bool TryFormatTrigger(DcTriggerSpec trigger, out string text)

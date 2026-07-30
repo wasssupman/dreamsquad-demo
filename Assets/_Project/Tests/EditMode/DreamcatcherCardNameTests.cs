@@ -36,7 +36,9 @@ namespace Wassup.Tests.EditMode
             { "eye_on_the_end", "우선조준" },
             { "farewell", "사망폭발" },
             { "sub_fattened_offering", "제물표식" },
-            { "frost_arrow", "빙결" },
+            // content-3 unit 6 — "빙결" 은 Ice 스택 라벨(동상이 쌓는 것)과 충돌해
+            // 카드 선택 화면에서 동상과 서로를 잡아먹었다. 시트 authoring 값으로 통일.
+            { "frost_arrow", "스턴메이커" },
             { "frostbite", "동상" },
             { "gale_shove", "밀치기" },
             { "guardian_as", "가디언속" },
