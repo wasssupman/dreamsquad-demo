@@ -367,8 +367,6 @@ namespace Wassup.UI
                     if (TryScreenToCell(eventData.position, out var entry))
                     {
                         _portalEntryCell = entry;
-                        // drag-cancel-affordance unit 1 — 드래그는 끝났다(다음은 탭). 호버 힌트를 남기지 않는다.
-                        _view.SetCancelHint(false);
                         // unit 3 — 2탭 국면 전환 브리핑(툴팁은 조준 중 유지 계약).
                         _view.UpdateDragBriefingStatus(
                             "<color=#9FE6A0>입구 지정됨</color> — 출구 타일을 탭하세요");
@@ -454,7 +452,6 @@ namespace Wassup.UI
                 _view.RestoreSlotHome(_index); // 확대 복원(성공 시 Refresh 가 재정렬)
             }
             _view.Focus?.End(); // dreamcatcher-attach-lockon — dim/링/리티클/콜아웃 정리
-            _view.SetCancelHint(false); // drag-cancel-affordance unit 1 — 종료 깔때기에서 힌트 해제
             ClearHover();
             ClearAimRange();
             _portalEntryCell = null;
@@ -494,10 +491,8 @@ namespace Wassup.UI
         private void UpdateBriefingStatus(Vector2 screenPos)
         {
             bool insideHand = InsideCancelZone(screenPos);
+            // drag-cancel-affordance rev3 — 취소 예고는 이 상태 줄 하나가 담당한다(손패 배너 삭제).
             _view.UpdateDragBriefingStatus(StatusFor(insideHand));
-            // drag-cancel-affordance unit 1 — 손패 자리에도 같은 정보를 둔다(상단 툴팁은 시선이
-            // 보드에 있을 때 놓치기 쉽다). 이중 표기가 의도다.
-            _view.SetCancelHint(insideHand);
         }
 
         // drag-cancel-affordance unit 1 — 취소 판정 rect 단일 진입점. 뷰가 소유하고(부채 크기,

@@ -41,17 +41,16 @@ CardH 230 × 드래그 확대 1.08 = 310.4`. 즉 **사용자가 보는 카드 �
 `DreamcatcherCardDragSlot` 의 `insideHand` 계산 3곳(`OnEndDrag` / 포탈 출구 `Update` /
 `UpdateBriefingStatus`)을 `_view.CancelRect` 로 통일한다. 뷰가 폴백을 소유하므로 슬롯 쪽 분기는 없다.
 
-### C. 취소 힌트 배너
+### C. 취소 예고 — 기존 브리핑 상태 줄 하나 (rev3)
 
-취소 존 안에 포인터가 있는 동안 `✕ 놓으면 취소` 배너를 띄운다.
+**새 표면을 만들지 않는다.** 조준 중 상단 중앙 브리핑이 이미 `insideHand` 를 분기해
+`<color=#FF9B8A>여기서 놓으면 취소</color>` 를 상시 표시한다(`StatusFor`). 그게 유일한 취소 문자 채널이다.
 
-- **소유는 뷰**(`SetCancelHint(bool)`), 호출은 슬롯(`UpdateBriefingStatus` 가 이미 `insideHand` 를 계산한다).
-- 배너는 `_cancelZone` 자식이므로 하강을 자동 승계하고, 카드보다 **앞**(`SetAsLastSibling`)에 그린다.
-- 브리핑 상태 줄(`"여기서 놓으면 취소"`)은 그대로 둔다 — 상단 툴팁은 시선이 보드에 있을 때 놓치기 쉬워
-  손패 자리에도 같은 정보를 둔다(이중 표기가 의도다).
-- 종료 깔때기에서 반드시 끈다: `EndInteraction`(커밋/취소/비활성) 과 `CancelAllCardInteraction`.
+rev1 에서는 손패 위에 `✕ 놓으면 취소` 힌트 배너를 함께 띄웠으나 **rev3 에서 삭제했다**
+(사용자 결정 2026-07-30): 같은 문장을 두 곳에 그리는 중복이었고 카드 이름 띠를 가렸다. 유닛
+트레이 배너를 지운 것과 같은 판단이다 — 취소 상태당 표면 하나.
 
-배경은 `UiRoundedSprite` + `trayConfig` 색 계열, 문구는 코랄. 색 단독 금지 → `✕` 글리프 동반.
+지워진 것: `_cancelHint` GO · `SetCancelHint` · 슬롯의 호출 3곳. 남는 것은 **판정 rect** 뿐이다.
 
 ### D. 건드리지 않는 것
 
@@ -64,7 +63,7 @@ CardH 230 × 드래그 확대 1.08 = 310.4`. 즉 **사용자가 보는 카드 �
 - [x] 컴파일 통과, CS 에러 0
 - [x] EditMode 전량 통과(신규 실패 0) · PlayMode 신규 실패 0
 - [ ] Play — 카드를 들고 **보이는 카드 위**에서 떼면 취소된다(예전엔 상단 60px 이 취소가 아니었다)
-- [ ] Play — 취소 존에 들어가면 배너가 뜨고 나가면 사라진다
-- [ ] Play — 커밋 / ESC / 손패 닫기 후 배너가 남지 않는다
+- [ ] Play — 취소 존에 들어가면 상단 브리핑이 취소 문구로 바뀌고 나가면 되돌아온다
+- [ ] Play — 커밋 / ESC / 손패 닫기 후 취소 문구가 남지 않는다
 - [ ] Play — 큰 맵(Serpent/Twin/Spiral) **최하단 행 유닛 부착이 여전히 된다**(hand-drag-clearance 회귀 없음)
 - [ ] Play — 포탈 2탭 대기 중에도 손패 탭이 취소로 동작한다

@@ -3,14 +3,12 @@ using Spine.Unity;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using UnityEngine.UI;
 using Wassup.Bridge;
 using Wassup.Core;
 using Wassup.Core.TimeControl;
 using Wassup.Data;
 using Wassup.Presentation;
 using Wassup.Rendering;
-using Wassup.UI.Layout;
 
 namespace Wassup.UI
 {
@@ -73,10 +71,6 @@ namespace Wassup.UI
         private bool _cancelVisualOn;   // 예고 룩(고스트 알파 + 배너) 적용 상태
         // unit 3 — 격자 밖 관용 초과로 "아무 칸도 아님". 취소 예고(고스트 + 포인터 라벨)의 두 번째 사유.
         private bool _noCell;
-        private GameObject _cancelBannerGO;
-        private Image _cancelBannerBg;
-        private TextMeshProUGUI _cancelBannerLabel;
-        private static readonly Vector3[] _cornerBuf = new Vector3[4];
 
         // 예고(룩 + 보드 판정 정지)의 단일 술어. 릴리즈 취소는 `_cancelHover` 만 본다 —
         // 존을 못 벗어난 짧은 드래그도 놓으면 취소가 맞다(그게 오배치보다 낫다).
@@ -326,8 +320,8 @@ namespace Wassup.UI
             if (CancelArmed)
             {
                 if (_session.hoverTile.HasValue) ClearHover();
-                _noCell = false;    // 배너가 예고를 소유하는 구간 — 포인터 라벨과 겹치지 않게
-                HideRejectLabel();
+                _noCell = false;      // 사유는 트레이 존 하나로 귀속(라벨 문구는 어차피 같다)
+                UpdateRejectLabel();  // ClearHover 가 감춘 라벨을 취소 문구로 다시 켠다
             }
             else ResolveFocusAndTarget(dt, lockCell: _simulatedDrag ? _simFocusCell : null);
 
@@ -565,10 +559,10 @@ namespace Wassup.UI
         // action-tray unit 4 — 사유 매핑: coral X(비용) / amber ■(점유) / neutral —(불가).
         private void UpdateRejectLabel()
         {
-            // drag-cancel-affordance unit 3 — 칸 없음(격자 밖 관용 초과)은 **거부가 아니라 취소** 예고다.
-            // 새 표면을 만들지 않고 같은 포인터 추종 라벨 채널을 쓴다. 트레이 존은 배너가 담당하므로
-            // 겹치지 않게 CancelArmed 를 배제한다.
-            if (_noCell && _session.active && !_simulatedDrag && !CancelArmed)
+            // 취소 예고의 **유일한 문자 채널**. 사유가 둘(트레이 존 복귀 / 격자 밖 관용 초과)이지만
+            // 표면은 하나다 — rev3 에서 트레이 배너를 지우고 이 라벨로 합쳤다. 거부(코스트 부족·점유)와
+            // 달리 취소는 "진행되지 않는다" 가 아니라 "되돌린다" 라서 문구·색이 따로다.
+            if ((CancelArmed || _noCell) && _session.active && !_simulatedDrag)
             {
                 EnsureRejectLabel();
                 if (!_rejectLabel.gameObject.activeSelf) _rejectLabel.gameObject.SetActive(true);
@@ -645,9 +639,13 @@ namespace Wassup.UI
         }
 
         // ── drag-cancel-affordance unit 0 — 취소 예고 ────────────────────────────
-        // 취소 존 안에 있는 동안 (a) 프리뷰 실루엣을 고스트 알파로 낮추고 (b) 트레이를 덮는
-        // `✕ 놓으면 취소` 배너를 띄운다. 색 단독 표기 금지라 글리프+문구를 함께 쓴다.
-
+        // 신호는 **두 개뿐**이다: (a) 프리뷰 실루엣이 고스트 알파, (b) 보드 하이라이트·사거리 소거.
+        // 문자는 포인터 추종 라벨 하나가 담당한다(UpdateRejectLabel).
+        //
+        // rev3 (사용자 결정 2026-07-30) — 트레이를 덮던 취소 배너를 **삭제**했다. 위 두 신호가 이미
+        // 플레이어의 시선 위치(손에 든 유닛 · 보드)에 있어서 배너는 그 위에 얹은 스크림이었고,
+        // 코스트 물통과 출발 슬롯을 가려 "어디로 되돌아가는지" 를 오히려 지웠다. 1초짜리 인터랙션에
+        // 전면 오버레이는 과하다. 표면을 하나로 줄이면 "칸 없음" 취소와도 같은 문법이 된다.
         private void UpdateCancelVisual()
         {
             // dwell 은 존 **안에 머무는 동안**만 자란다. OnDrag 는 포인터가 움직일 때만 오지만
@@ -655,24 +653,14 @@ namespace Wassup.UI
             if (_cancelHover && _session.active && !_cancelZoneLeft)
                 _cancelDwell += Time.unscaledDeltaTime;
 
-            bool want = CancelArmed && _session.active;
-            if (want)
-            {
-                EnsureCancelBanner();
-                LayoutCancelBanner(); // 트레이는 페이즈 전환으로 크기가 바뀐다 — 매 프레임 rect 를 다시 읽는다
-            }
             // 고스트 알파는 **두 사유 공용**(트레이 존 + 칸 없음) — "이대로 놓으면 안 꽂힌다" 는
-            // 한 가지 신호로 읽혀야 한다. 배너는 트레이 존 전용(칸 없음은 포인터 라벨이 담당).
-            bool ghost = (want || _noCell) && _session.active;
-            if (ghost != _cancelVisualOn)
-            {
-                _cancelVisualOn = ghost;
-                // 폴백 capsule 프리뷰는 skeleton 이 없다 — 알파 변화 없이 배너만(미지원, 계약 아님).
-                if (_session.skeleton != null)
-                    SetPreviewAlpha(_session.skeleton, ghost ? Mathf.Clamp01(Cfg.cancelPreviewAlpha) : 1f);
-            }
-            if (_cancelBannerGO != null && _cancelBannerGO.activeSelf != want)
-                _cancelBannerGO.SetActive(want);
+            // 한 가지 신호로 읽혀야 한다.
+            bool ghost = (CancelArmed || _noCell) && _session.active;
+            if (ghost == _cancelVisualOn) return;
+            _cancelVisualOn = ghost;
+            // 폴백 capsule 프리뷰는 skeleton 이 없다 — 알파 변화 없음(미지원, 계약 아님).
+            if (_session.skeleton != null)
+                SetPreviewAlpha(_session.skeleton, ghost ? Mathf.Clamp01(Cfg.cancelPreviewAlpha) : 1f);
         }
 
         // 취소 룩 하드 해제 — 세션 정리 경유(커밋/취소/비활성). 알파 원복은 프리뷰가 곧 파괴되므로
@@ -684,64 +672,6 @@ namespace Wassup.UI
             _cancelDwell = 0f;
             _cancelVisualOn = false;
             _noCell = false;
-            if (_cancelBannerGO != null) _cancelBannerGO.SetActive(false);
-        }
-
-        private void EnsureCancelBanner()
-        {
-            if (_cancelBannerGO != null) return;
-            EnsureRejectLabel(); // 캔버스(order 20001)를 공유한다 — 취소 배너 전용 캔버스를 새로 만들지 않는다
-            _cancelBannerGO = new GameObject("CancelBanner", typeof(RectTransform), typeof(Image));
-            _cancelBannerGO.transform.SetParent(_rejectCanvasGO.transform, false);
-            var rt = (RectTransform)_cancelBannerGO.transform;
-            rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.zero;
-            rt.pivot = new Vector2(0.5f, 0.5f);
-            _cancelBannerBg = _cancelBannerGO.GetComponent<Image>();
-            // fill 은 반투명(0.5) — 트레이 아이콘이 비쳐 "이 슬롯으로 되돌아간다" 가 읽힌다.
-            _cancelBannerBg.sprite = UiRoundedSprite.Make(22f, 3f,
-                new Color(0.06f, 0.03f, 0.04f, 0.5f), Cfg.cancelTint);
-            _cancelBannerBg.type = Image.Type.Sliced;
-            _cancelBannerBg.raycastTarget = false;
-
-            var labelGO = new GameObject("CancelLabel", typeof(RectTransform));
-            labelGO.transform.SetParent(_cancelBannerGO.transform, false);
-            var lrt = (RectTransform)labelGO.transform;
-            lrt.anchorMin = Vector2.zero; lrt.anchorMax = Vector2.one;
-            lrt.offsetMin = Vector2.zero; lrt.offsetMax = Vector2.zero;
-            _cancelBannerLabel = labelGO.AddComponent<TextMeshProUGUI>();
-            if (_uiFont != null) _cancelBannerLabel.font = _uiFont;
-            // 이 캔버스는 CanvasScaler 가 없다(거부 라벨과 공유) — 글자만 화면 높이에 맞춰 스케일해
-            // 트레이(스케일된 캔버스)와 크기 감각을 맞춘다. rect 는 트레이 rect 에서 오므로 이미 맞다.
-            _cancelBannerLabel.fontSize = 34f * Mathf.Max(0.5f, Screen.height / UiCanvasSetup.ReferenceResolution.y);
-            _cancelBannerLabel.fontStyle = FontStyles.Bold;
-            _cancelBannerLabel.alignment = TextAlignmentOptions.Center;
-            _cancelBannerLabel.textWrappingMode = TextWrappingModes.NoWrap;
-            _cancelBannerLabel.raycastTarget = false;
-            _cancelBannerLabel.text = CancelLabelText;
-            _cancelBannerGO.SetActive(false);
-        }
-
-        // 취소 존 rect(스크린) → 배너 배치. 오버레이 캔버스라 world corner 가 곧 스크린 px 이고,
-        // 배너 캔버스도 같은 오버레이 공간이라 변환이 필요 없다.
-        //
-        // rev2 (H1) — 배너는 트레이 rect 가 아니라 **손가락 기준 트리거 영역**에 그린다. 판정은
-        // 가상 포인터(손가락 + 오프셋)로 하므로, 트레이 rect 를 그대로 그리면 보이는 밴드와
-        // 실제 히트박스가 오프셋만큼(1080에서 65px) 어긋난다 — "배너가 켜졌는데 떼니 꽂혔다" 가
-        // 그 어긋남이다. 트레이 rect 를 오프셋만큼 **내려** 그리면 보이는 것 = 만지는 것이 된다.
-        // 오프셋 값은 여전히 한 곳(Cfg.PlacementPointerOffsetPx)에서만 나온다(계약 2 유지).
-        private void LayoutCancelBanner()
-        {
-            if (_cancelZone == null || _cancelBannerGO == null) return;
-            _cancelZone.GetWorldCorners(_cornerBuf);
-            Vector3 min = _cornerBuf[0], max = _cornerBuf[2];
-            float off = Cfg.PlacementPointerOffsetPx;
-            // 화면 밖으로 내려간 부분은 잘라낸다 — 라벨이 보이는 밴드 중앙에 오게.
-            float bottom = Mathf.Max(0f, min.y - off);
-            float top = Mathf.Max(bottom + 1f, max.y - off);
-            var rt = (RectTransform)_cancelBannerGO.transform;
-            rt.position = new Vector3((min.x + max.x) * 0.5f, (bottom + top) * 0.5f, 0f);
-            rt.sizeDelta = new Vector2(Mathf.Abs(max.x - min.x), top - bottom);
-            if (_cancelBannerLabel != null) _cancelBannerLabel.color = Cfg.cancelTint;
         }
 
         public void EndDrag(Vector2 screenPosition)

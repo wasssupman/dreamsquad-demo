@@ -340,7 +340,6 @@ namespace Wassup.UI
         private float _clearanceVel;
         // drag-cancel-affordance unit 1 — 취소 판정 rect(패널 자식, 그림 없음) + 그 안의 힌트 배너.
         private RectTransform _cancelZone;
-        private GameObject _cancelHint;
         // dreamcatcher-orb-dock unit 4 — 손패 오픈 중 보드 영역 탭으로 물러나기(바깥 탭 dismiss).
         private GameObject _dismissCatcher;
         // selection-hand-attach unit 1 — 전이(침강/딜) 중에 들어온 선택 기인 오픈 요청.
@@ -542,7 +541,6 @@ namespace Wassup.UI
         // 꺼지거나 재구성되는 지점(Open / ForceClose / OnSinkComplete)에서만 되돌린다.
         private void ResetHandClearance()
         {
-            SetCancelHint(false); // drag-cancel-affordance unit 1 — Open/ForceClose/침강완료 공용 해제
             if (_panel == null) return;
             _clearanceOffset = 0f;
             _clearanceVel = 0f;
@@ -645,12 +643,11 @@ namespace Wassup.UI
             foreach (var slot in _slots)
                 if (slot.dragSlot != null && (slot.dragSlot.IsDragging || slot.dragSlot.IsPortalAiming))
                     slot.dragSlot.CancelDrag();
-            SetCancelHint(false); // drag-cancel-affordance unit 1 — ESC/각성버튼 경로의 하드 해제
         }
 
         // ── drag-cancel-affordance unit 1 — 취소 존 ──────────────────────────────
-        // 판정 rect 는 패널 자식이라 하강을 자동 승계한다(계약 2). 그림은 없고(Image 없음)
-        // 힌트 배너만 자식으로 달려 필요할 때 켜진다.
+        // 판정 rect 는 패널 자식이라 하강을 자동 승계한다(계약 2). **그림이 없다**(Image 없음) —
+        // rev3 에서 힌트 배너를 지웠고, 취소 예고는 상단 브리핑 상태 줄이 단독으로 담당한다.
         private void BuildCancelZone(RectTransform panelRect)
         {
             var zoneGO = new GameObject("CancelZone", typeof(RectTransform));
@@ -661,49 +658,12 @@ namespace Wassup.UI
             _cancelZone.pivot = new Vector2(0.5f, 0f);
             _cancelZone.anchoredPosition = Vector2.zero;
             _cancelZone.sizeDelta = new Vector2(panelRect.sizeDelta.x, cancelZoneHeight);
-
-            _cancelHint = new GameObject("CancelHint", typeof(RectTransform), typeof(Image));
-            _cancelHint.transform.SetParent(_cancelZone, false);
-            var hrt = (RectTransform)_cancelHint.transform;
-            // 배너는 존 상단에 얹는다 — 카드 헤더(이름) 띠를 가리지 않는 높이.
-            hrt.anchorMin = new Vector2(0.5f, 1f);
-            hrt.anchorMax = new Vector2(0.5f, 1f);
-            hrt.pivot = new Vector2(0.5f, 1f);
-            hrt.anchoredPosition = new Vector2(0f, -8f);
-            hrt.sizeDelta = new Vector2(440f, 56f); // rev2 — 문구 길어짐(코스트 유지 표기)
-            var bg = _cancelHint.GetComponent<Image>();
-            bg.sprite = UiRoundedSprite.Make(18f, 3f, new Color(0.06f, 0.03f, 0.04f, 0.78f), CancelTint);
-            bg.type = Image.Type.Sliced;
-            bg.raycastTarget = false;
-
-            var labelGO = new GameObject("Label", typeof(RectTransform));
-            labelGO.transform.SetParent(_cancelHint.transform, false);
-            var lrt = (RectTransform)labelGO.transform;
-            lrt.anchorMin = Vector2.zero; lrt.anchorMax = Vector2.one;
-            lrt.offsetMin = Vector2.zero; lrt.offsetMax = Vector2.zero;
-            var label = labelGO.AddComponent<TextMeshProUGUI>();
-            if (labelFont != null) label.font = labelFont;
-            label.fontSize = 30f;
-            label.fontStyle = FontStyles.Bold;
-            label.alignment = TextAlignmentOptions.Center;
-            label.textWrappingMode = TextWrappingModes.NoWrap;
-            label.raycastTarget = false;
-            label.color = CancelTint;
-            // rev2 — 무차감을 문자로 못박는다(유닛 트레이 배너와 같은 문법). 카드의 자원은 각성치다.
-            label.text = "✕  놓으면 취소 · 각성치 유지";
-            _cancelHint.SetActive(false);
         }
 
-        // 코랄 — 거부/취소 계열 단일 색. 색 단독 표기 금지라 배너는 ✕ 글리프와 문구를 함께 쓴다.
-        private static readonly Color CancelTint = new Color(1f, 0.42f, 0.36f, 1f);
-
-        // 슬롯이 호출한다(insideHand 는 브리핑 상태 줄이 이미 계산하는 값이라 재계산이 없다).
-        public void SetCancelHint(bool on)
-        {
-            if (_cancelHint == null) return;
-            if (on && _cancelZone != null) _cancelZone.SetAsLastSibling(); // 카드 위로
-            if (_cancelHint.activeSelf != on) _cancelHint.SetActive(on);
-        }
+        // rev3 (사용자 결정 2026-07-30) — 손패를 덮던 취소 힌트 배너를 **삭제**했다. 조준 중 상단
+        // 중앙 브리핑이 이미 `여기서 놓으면 취소` 를 상시 표시하므로(StatusFor 의 insideHand 분기)
+        // 배너는 같은 문장을 손패 위에 한 번 더 그리는 중복이었고, 카드 이름 띠를 가렸다.
+        // 취소 **판정** rect(_cancelZone)는 그대로 남는다 — 지워진 건 표면뿐이다.
 
         private bool AnyInteractionActive()
         {
@@ -1363,7 +1323,7 @@ namespace Wassup.UI
             _backing = backing;
             _backingAlpha = backing.color.a;
 
-            BuildCancelZone(prt); // drag-cancel-affordance unit 1 — 취소 판정 rect + 힌트 배너
+            BuildCancelZone(prt); // drag-cancel-affordance unit 1 — 취소 판정 rect
 
             // rev 4-6 — 타겟팅 화살표는 패널 뒤 sibling 으로 붙여 카드 위에 그려진다.
             _targetArrow = DreamcatcherTargetArrow.Create(transform);
