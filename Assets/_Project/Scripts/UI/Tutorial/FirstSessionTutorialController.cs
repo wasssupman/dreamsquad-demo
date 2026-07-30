@@ -23,6 +23,19 @@ namespace Wassup.UI.Tutorial
             "서포터: 힐러, 버퍼 등 전투 보조\n" +
             "상황에 맞게 유닛을 골라서 배치해보세요.";
 
+        // unit 16 — 손패를 여는 문이 둘이다(항아리 · 유닛 선택). 포커스 링이 첫 번째 문을
+        // 시연하는 동안 문구가 두 번째 문을 알린다.
+        private const string AwakeningIntroText =
+            "항아리를 누르거나 캐릭터를 탭하면\n드림캐쳐 덱이 열립니다";
+
+        // unit 16 — B단계는 **오픈 경로**로 갈린다. 항아리로 연 손패에는 즉발 대상이 없어
+        // 드래그가 유일한 사용법이고, 선택으로 연 손패에는 탭 즉발이 있다
+        // (selection-hand-attach unit 3). 같은 문구를 쓰면 절반이 거짓말이 된다.
+        private const string CardHintDragText =
+            "포커스된 카드를 원하는 캐릭터로 끌어보세요!";
+        private const string CardHintSelectionText =
+            "카드를 탭하면 이 캐릭터에 바로 부착됩니다\n왼쪽에서 능력치와 부착 상태를 볼 수 있어요";
+
         [Header("Core")]
         [SerializeField] private PlayerProfileSO profileSO;
         [SerializeField] private GameManager gameManager;
@@ -473,7 +486,7 @@ namespace Wassup.UI.Tutorial
             // 0단계가 arm 하면 gaugeStart > 0 인 순간 B 가 앞당겨 발화해 완료가 저장되고
             // A 문구가 그 계정에서 영영 안 뜬다.
             gaugeView.Pulse();
-            guidance.ShowMessage("여기서 드림캐쳐 덱을 열어보세요", showSkip: false);
+            guidance.ShowMessage(AwakeningIntroText, showSkip: false);
             guidance.FocusUi(gaugeView.HitRect);
             if (_awakeningRoutine != null) StopCoroutine(_awakeningRoutine);
             _awakeningRoutine = StartCoroutine(HideAwakeningPromptRoutine());
@@ -537,7 +550,13 @@ namespace Wassup.UI.Tutorial
             if (usable == null) return;
 
             if (_awakeningRoutine != null) StopCoroutine(_awakeningRoutine);
-            guidance.ShowMessage("포커스된 카드를 원하는 캐릭터로 끌어보세요!", showSkip: false);
+            // unit 16 — 오픈 경로로 분기. InSelectionMode 는 SelectionTarget 파생값이고
+            // DcInspectController 가 SetSelectionTarget → OpenForSelection 순으로 부르므로
+            // HandOpened 발화 시점엔 이미 확정돼 있다(래치 경로도 같은 Open() 을 지난다).
+            // 포커스는 두 경우 모두 usable 슬롯이다 — 지시의 대상은 카드다.
+            guidance.ShowMessage(
+                handView.InSelectionMode ? CardHintSelectionText : CardHintDragText,
+                showSkip: false);
             guidance.FocusUi(usable);
             TutorialProgress.CompleteAwakeningHint(profileSO.profile);
             TrySaveProfile();
