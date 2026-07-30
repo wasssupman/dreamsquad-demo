@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
+using Wassup.Battle.Effects;
 using Wassup.Data;
 using Wassup.UI;
 
@@ -422,6 +423,145 @@ namespace Wassup.Tests.EditMode
             var card = RequireCard(DcAttachType.None);
             Assert.AreEqual("부착 즉시 → 뭔가 한다".Replace(" → ", " →\n"),
                 DreamcatcherCardText.BodyLinesOnly(card), "제한 없는 카드 문안은 무변화");
+        }
+
+        // --- content-3 unit 6: 스택 임계 요약 ---
+
+        private StackModifierSO StackSO(StackKind kind, params ThresholdRule[] rules)
+        {
+            var so = ScriptableObject.CreateInstance<StackModifierSO>();
+            so.kind = kind;
+            so.thresholds = rules;
+            _cleanup.Add(so);
+            return so;
+        }
+
+        private static ThresholdRule SlowRule(byte atStack, float multiplier)
+            => new ThresholdRule
+            {
+                atStack = atStack,
+                mode = ThresholdMode.Edge,
+                derivedKind = DerivedEffectKind.ApplyStat,
+                magnitude = multiplier,
+                duration = 4f,
+                stat = StatKind.MoveSpeedMul,
+                op = CombineOp.Multiplicative,
+            };
+
+        private DreamcatcherCard StackCard(DcStackKind stackKind, StackModifierSO so)
+        {
+            var card = Card(CardType.Unit);
+            card.mechanics = new[]
+            {
+                new DcMechanic
+                {
+                    trigger = new DcTriggerSpec { kind = DcTriggerKind.AttackN, period = 1 },
+                    payload = new DcPayloadSpec
+                    {
+                        kind = DcPayloadKind.ApplyStackToTarget,
+                        magnitude = 1f,
+                        duration = 4f,
+                        stackKind = stackKind,
+                        stackModifier = so,
+                    },
+                },
+            };
+            return card;
+        }
+
+        [Test]
+        public void StackThresholds_EvenRamp_FoldsIntoPerStackLine()
+        {
+            // 동상 형태 — 1~4중첩 계단 감속 + 5중첩 Consume 기절.
+            var so = StackSO(StackKind.Ice,
+                SlowRule(1, 0.9f), SlowRule(2, 0.8f), SlowRule(3, 0.7f), SlowRule(4, 0.6f),
+                new ThresholdRule
+                {
+                    atStack = 5,
+                    mode = ThresholdMode.Consume,
+                    derivedKind = DerivedEffectKind.ApplyStun,
+                    magnitude = 1f,
+                });
+
+            Assert.AreEqual("빙결 중첩당 이동 속도 -10% · 5중첩 기절 1초 (중첩 소모)",
+                DreamcatcherCardText.StackThresholdSummary(so, DcStackKind.Ice));
+        }
+
+        [Test]
+        public void StackThresholds_DotRule_ConvertsTickDamageToPerSecond()
+        {
+            // 화상물기 형태 — tickInterval>0 이면 magnitude 는 틱당 피해다(초당으로 환산해 표기).
+            var so = StackSO(StackKind.Bleed, new ThresholdRule
+            {
+                atStack = 5,
+                mode = ThresholdMode.Consume,
+                derivedKind = DerivedEffectKind.ApplyDot,
+                magnitude = 5f,
+                duration = 4.85f,
+                tickInterval = 0.5f,
+            });
+
+            Assert.AreEqual("출혈 5중첩 초당 피해 10 · 4.85초 (중첩 소모)",
+                DreamcatcherCardText.StackThresholdSummary(so, DcStackKind.Bleed));
+        }
+
+        [Test]
+        public void StackThresholds_UnevenRamp_ListsEachStack()
+        {
+            // 등차가 아니면 접지 않고 중첩별로 나열한다(수치를 왜곡하지 않는다).
+            var so = StackSO(StackKind.Ice, SlowRule(1, 0.9f), SlowRule(2, 0.5f));
+
+            Assert.AreEqual("빙결 1중첩 이동 속도 -10% · 2중첩 이동 속도 -50%",
+                DreamcatcherCardText.StackThresholdSummary(so, DcStackKind.Ice));
+        }
+
+        [Test]
+        public void StackThresholds_NotStartingAtOne_ListsEachStack()
+        {
+            var so = StackSO(StackKind.Ice, SlowRule(2, 0.8f), SlowRule(3, 0.7f));
+
+            Assert.AreEqual("빙결 2중첩 이동 속도 -20% · 3중첩 이동 속도 -30%",
+                DreamcatcherCardText.StackThresholdSummary(so, DcStackKind.Ice));
+        }
+
+        [Test]
+        public void StackThresholds_MissingSo_OmitsLine()
+        {
+            Assert.IsNull(DreamcatcherCardText.StackThresholdSummary(null, DcStackKind.Ice));
+            Assert.IsNull(DreamcatcherCardText.StackThresholdSummary(
+                StackSO(StackKind.Ice), DcStackKind.Ice), "규칙 0개면 라인 없음");
+
+            // 카드 문안에도 트리거 줄만 남는다(기존 카드 무회귀).
+            var card = StackCard(DcStackKind.Ice, null);
+            Assert.AreEqual("공격마다 → 대상에게 빙결 1스택 · 4초",
+                DreamcatcherCardText.EffectOnly(card));
+        }
+
+        [Test]
+        public void StackCard_Body_AppendsSummaryLine()
+        {
+            var so = StackSO(StackKind.Ice, SlowRule(1, 0.9f), SlowRule(2, 0.8f));
+            var card = StackCard(DcStackKind.Ice, so);
+
+            Assert.AreEqual(
+                "공격마다 → 대상에게 빙결 1스택 · 4초\n빙결 중첩당 이동 속도 -10%",
+                DreamcatcherCardText.EffectOnly(card));
+        }
+
+        [Test]
+        public void StackAssets_CarryTheirModifierReference()
+        {
+            // 참조가 빠지면 문안에서 임계가 조용히 사라진다 — authoring 회귀 가드.
+            foreach (var id in new[] { "Card_Frostbite", "Card_EmberBite" })
+            {
+                var path = $"Assets/_Project/Data/Dreamcatcher/{id}.asset";
+                var card = AssetDatabase.LoadAssetAtPath<DreamcatcherCard>(path);
+                Assert.IsNotNull(card, $"{path} 로드 실패");
+                Assert.IsNotNull(card.mechanics[0].payload.stackModifier,
+                    $"{id} 의 payload.stackModifier 미연결");
+                StringAssert.Contains("중첩", DreamcatcherCardText.EffectOnly(card),
+                    $"{id} 문안에 임계 요약이 없다");
+            }
         }
     }
 }

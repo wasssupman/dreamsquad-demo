@@ -28,6 +28,7 @@ e2e 검증 (UnityMCP 라이브 에디터, 실전 웨이브 + 더미 계측): ①
 | `3_corpse_burst_card.md` | 소규모 코드 | 킬 위치 폭발 — OnKill 지점에 SelfTileAoe arm |
 | `4_tremor_plate_card.md` | 소규모 코드 | 피격 임계 폭발 — HealthThreshold 지점에 SelfTileAoe arm |
 | `5_handoff_summary.md` | (종료 시) | 인계 요약 |
+| `6_frostbite_stack_curve_and_text.md` | 데이터+코드 | 동상 1중첩부터 계단 감속 + 스택 임계를 카드 문안에 노출 (unit 1 rev) |
 
 ## Feature-wide 계약
 

@@ -20,11 +20,16 @@ namespace Wassup.Battle.Effects
         // boss-jjangssen unit 3 — 보스 CC 면역 술어. 순수 함수라 EditMode 로 고정한다
         // (부여 지점 3곳이 같은 판정을 써야 하고, CcKind 에 값이 추가될 때의 회귀 가드).
         //
-        // 규칙: **직접 걸리는 행동정지(Stun/Sleep)와 넉백(Impulse)만 막는다.**
-        // - 스택 임계가 유발한 CC 는 통과 → 스택을 쌓으면 보스도 재울 수 있다(카드 설계 유지).
-        // - DoT/Slow 는 통과 → Bleed 데미지·둔화가 보스전에서 살아남는다.
+        // 규칙: **행동정지(Stun/Sleep)와 넉백(Impulse)을 막는다 — 출처 불문.**
         // lock-set 을 IsLock 단일 소스에서 조회하므로 새 lock 종류가 추가되면 면역이 자동 동행한다.
-        public static bool IsBossImmune(CcKind kind, CcSource source)
-            => source == CcSource.Direct && (IsLock(kind) || kind == CcKind.Impulse);
+        //
+        // unit 8 — 원래는 `직접 출처` 조건이 앞에 있어 스택 임계발 CC 는 통과했다. 그 예외의
+        // 근거는 "DoT 가 CcEffect 버퍼를 공유하니 kind 로만 막으면 스택 DoT 까지 죽는다" 였는데,
+        // dot-effect-extraction 이 DoT 를 전용 채널로 빼면서 근거가 사라졌다(같은 날 3시간 뒤).
+        // 남은 유일한 통과자가 Ice 5중첩 스턴이라, 축은 면역에 구멍만 유지하고 있었다.
+        // 스택 카드는 여전히 보스전에서 산다 — 감속은 StatModifier, DoT 는 DotApplyEvents 라
+        // 둘 다 이 술어를 지나지 않는다.
+        public static bool IsBossImmune(CcKind kind)
+            => IsLock(kind) || kind == CcKind.Impulse;
     }
 }
