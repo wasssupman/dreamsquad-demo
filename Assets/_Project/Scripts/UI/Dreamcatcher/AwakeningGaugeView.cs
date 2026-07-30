@@ -368,6 +368,11 @@ namespace Wassup.UI
             ApplyPanelVisibility();
         }
 
+        // first-session-tutorial unit 15 — "이 판은 각성이 봉인됐다"를 읽기 전용으로 공개한다.
+        // 소비자가 둘이 됐다: 이 뷰(항아리 표시를 끈다)와 DcInspectController(선택을 막는다 —
+        // 선택이 손패를 열기 때문). 소유는 여전히 여기이고 쓰기 창구는 SetSuppressed 하나다.
+        public bool IsSuppressed => _suppressed;
+
         // first-session-tutorial — 첫 판은 배치만으로 승부를 보게 각성 UI 를 감춘다.
         // 표시 소유자는 여전히 이 뷰. FirstSessionTutorialController 가 SetSuppressed 로 갱신.
         public void SetSuppressed(bool suppressed)

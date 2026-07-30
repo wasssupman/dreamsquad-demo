@@ -82,6 +82,13 @@ namespace Wassup.Tests.PlayMode
             yield return null;
             Assert.IsTrue((bool)Field(ctrl, "_cancelHover"),
                 $"조준점({fingerCancel.y + offset:F0}px)이 트레이 중심이면 취소 존 안이다");
+            // 이 단언이 없으면 가드가 **공허해질 수 있다**: 취소 존 분기를 지워도 흐름이
+            // ResolveFocusAndTarget 으로 내려가 unit 3 의 "칸 없음"(_noCell) 경로가 대신 취소해
+            // 코스트가 그대로 남는다. 즉 가드의 강도가 로드된 맵의 보드 하단 위치에 달리게 된다.
+            // "칸이 있었는데도 취소됐다 = 취소 존이 이겼다" 를 증명하려면 칸 존재를 먼저 못박아야 한다.
+            ResolveForceCommit(ctrl);
+            Assert.IsFalse((bool)Field(ctrl, "_noCell"),
+                "이 조준점은 격자 관용 안이라 칸이 잡힌다 — 그래야 뒤의 무차감이 '취소 존이 이겼다' 의 증거가 된다");
 
             ctrl.EndDrag(fingerCancel);
             yield return null;
@@ -95,6 +102,12 @@ namespace Wassup.Tests.PlayMode
 
         private static object Field(object o, string name)
             => o.GetType().GetField(name, BindingFlags.NonPublic | BindingFlags.Instance).GetValue(o);
+
+        // EndDrag 와 같은 확정 경로 — throttle 을 기다리지 않고 현재 포인터로 즉시 재해석.
+        // (DragPlacementReachTest 와 같은 헬퍼. `_noCell` 을 이 프레임 값으로 확정시키는 데 쓴다.)
+        private static void ResolveForceCommit(object ctrl)
+            => ctrl.GetType().GetMethod("ResolveFocusAndTarget", BindingFlags.NonPublic | BindingFlags.Instance)
+                   .Invoke(ctrl, new object[] { 0f, true, null });
 
         private static DefenderCatalog FindCatalog()
         {

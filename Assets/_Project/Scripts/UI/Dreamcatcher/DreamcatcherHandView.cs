@@ -198,6 +198,14 @@ namespace Wassup.UI
             else Close();
         }
 
+        // first-session-tutorial unit 15 — 첫 판 각성 봉인 릴레이. 사실은 AwakeningGaugeView 가
+        // 소유하고(튜토리얼이 SetSuppressed 로 세운다) 여기는 옮기기만 한다 — DcInspectController
+        // 가 gaugeView 를 직접 참조하려면 신규 씬 배선이 필요한데 BattleScene 을 저장할 수 없다.
+        //
+        // 이름을 `AwakeningSuppressed` 로 두지 않는다: `Suppressed` 는 "항아리 표시를 끈다"는
+        // 소비자 어휘라, 선택을 막는 쪽에서 읽으면 왜 막히는지가 안 보인다. 사실의 이름으로 둔다.
+        public bool AwakeningSealedThisMatch => gaugeView != null && gaugeView.IsSuppressed;
+
         // 컨트롤러가 뷰를 닫는 **유일한 공개 창구**(계약 7 — Close() 는 private 유지).
         public void CloseFromSelection()
         {

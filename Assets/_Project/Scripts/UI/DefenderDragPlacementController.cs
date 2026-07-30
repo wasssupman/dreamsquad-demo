@@ -68,18 +68,30 @@ namespace Wassup.UI
         private bool _cancelHover;      // 이번 프레임 가상 포인터가 취소 존 안인가
         private bool _cancelZoneLeft;   // 이 세션이 취소 존을 한 번 벗어난 적 있는가(예고 룩 게이트)
         private float _cancelDwell;     // 존을 벗어나기 전 머문 시간(초, unscaled) — 게이트의 두 번째 문
-        private bool _cancelVisualOn;   // 예고 룩(고스트 알파 + 배너) 적용 상태
+        private bool _cancelVisualOn;   // 예고 룩(고스트 알파) 적용 상태
         // unit 3 — 격자 밖 관용 초과로 "아무 칸도 아님". 취소 예고(고스트 + 포인터 라벨)의 두 번째 사유.
         private bool _noCell;
 
-        // 예고(룩 + 보드 판정 정지)의 단일 술어. 릴리즈 취소는 `_cancelHover` 만 본다 —
-        // 존을 못 벗어난 짧은 드래그도 놓으면 취소가 맞다(그게 오배치보다 낫다).
+        // 이번 프레임 "이대로 놓으면 취소" 인가 — **사유 무관**(트레이 존 복귀 / 격자 밖 관용 초과).
+        // 릴리즈 취소는 이 술어를 보지 않는다: 트레이 존은 `_cancelHover` 를 직접 보고, 칸 없음은
+        // hoverTile 이 비어 EndDrag 꼬리로 떨어진다. 게이트는 **예고에만** 걸린다.
+        private bool CancelStateNow => _cancelHover || _noCell;
+
+        // 예고(고스트 알파 + 보드 침묵 + 라벨)를 켤 것인가. 두 문 중 하나를 통과해야 한다:
         //
-        // rev2 — 게이트에 dwell 문을 하나 더 달았다. "존 이탈 1회" 만이면 **가장 빠른 취소가
-        // 침묵한다**: 트레이 드래그는 존 안에서 시작하므로 "집었다가 그 자리에서 놓기" 는 이미
-        // 취소로 동작하는데, 그 순간엔 배너가 안 뜨니 아무도 그 수단을 배울 수 없다.
+        //  (a) 취소 존을 한 번 벗어난 뒤의 **존 재진입** = 의도적 복귀 → 즉시 켠다.
+        //  (b) 그 외 → dwell(cancelHintDwellSeconds)을 넘겨야 켠다.
+        //
+        // (b) 가 두 종류의 깜빡임을 함께 막는다. 하나는 **드래그 시작 구간** — 트레이 드래그는
+        // 취소 존 안에서 시작하므로(슬롯 위 + 오프셋이 아직 트레이 대역) 게이트가 없으면 모든
+        // 드래그가 취소 예고로 시작한다. 다른 하나는 **격자 밖 오버슛** — 가장자리 열을 노리며
+        // 좌우로 흔들면 관용 링을 순간 넘었다 돌아오는데, 그때마다 Spine 실루엣 알파가 1↔0.4 로
+        // 튀고 라벨이 껌뻑인다(맵 무관). `_noCell` 에 시간 히스테리시스가 없던 것이 원인이었다.
+        //
+        // 반대로 (a) 가 없으면 "트레이로 되돌리기" 라는 **의도적** 제스처가 매번 dwell 을 기다린다.
         private bool CancelArmed =>
-            _cancelHover && (_cancelZoneLeft || _cancelDwell >= Cfg.cancelHintDwellSeconds);
+            CancelStateNow &&
+            ((_cancelHover && _cancelZoneLeft) || _cancelDwell >= Cfg.cancelHintDwellSeconds);
 
         // 취소 예고 문구 — 빠른 템포에서 유일한 불안이 "코스트 날아갔나" 라 무차감을 문자로 못박는다.
         // 거부 라벨(`X 코스트 부족`)과 같은 글리프+문구 문법(색 단독 표기 금지).
@@ -271,8 +283,9 @@ namespace Wassup.UI
         private void UpdatePlacementHighlightState()
         {
             if (bridge == null) return;
-            // drag-cancel-affordance unit 0 — 취소 존 안이면 배치 하이라이트도 끈다. 취소 예고는
-            // "보드에서 아무 일도 일어나지 않는다" 를 한 덩어리로 보여야 한다(계약 4).
+            // drag-cancel-affordance unit 0 — 취소 예고 중이면 배치 하이라이트도 끈다. "보드에서
+            // 아무 일도 일어나지 않는다" 를 한 덩어리로 보여야 한다(계약 4). CancelArmed 가 두 사유
+            // (트레이 존 / 칸 없음)를 함께 덮으므로 사유별로 화면이 갈리지 않는다(계약 6).
             bool desired = (_session.active && !_simulatedDrag && !CancelArmed) || _armedUnit != null;
             if (desired == _placeableHlDesired) return;
             _placeableHlDesired = desired;
@@ -301,7 +314,7 @@ namespace Wassup.UI
             }
 
             // drag-cancel-affordance unit 0 — 예고 룩은 아래 early-return 위에서 판단한다.
-            // 오프보드/프리뷰 없음 프레임에도 배너는 켜지고 꺼져야 한다.
+            // 오프보드/프리뷰 없음 프레임에도 예고는 켜지고 꺼져야 한다(dwell 누적도 여기서 돈다).
             UpdateCancelVisual();
 
             if (!_session.active || _session.preview == null || _session.endNode == null || mainCamera == null) return;
@@ -400,12 +413,14 @@ namespace Wassup.UI
             // drag-cancel-affordance unit 0 — 취소 존 판정. 가상 포인터로 재는 이유는 spec README
             // ("도달성 무손실") 이 소유한다 — raw 로 바꾸면 큰 맵 최하단 행이 배치 불가가 된다.
             // 갱신은 여기 한 곳(가상 포인터가 확정되는 유일한 지점)이고 EndDrag 는 이 값을 읽기만 한다.
-            _cancelHover = _cancelZone != null && !_simulatedDrag
+            // activeInHierarchy — 트레이는 페이즈에 따라 숨는다(None/Draft/Gift/Result). 드래그 세션이
+            // 페이즈 전환을 넘겨 살면 "보이지 않는 취소 영역" 이 되므로 보이는 동안만 판정한다.
+            // rect 를 하나만 읽는다는 계약 2 는 유지된다(오프셋을 더하지 않는다).
+            _cancelHover = _cancelZone != null && _cancelZone.gameObject.activeInHierarchy && !_simulatedDrag
                            && RectTransformUtility.RectangleContainsScreenPoint(_cancelZone, screenPosition, null);
-            // 트레이 드래그는 **취소 존 안에서 시작한다**(슬롯 위 + 오프셋이 아직 트레이 대역).
-            // 판정은 그 순간부터 유효하지만(짧게 끌었다 놓으면 취소 = 원하는 동작), 예고 룩은
-            // 존을 한 번 벗어난 뒤부터 켠다 — 아니면 모든 드래그가 배너 깜빡임으로 시작한다.
-            if (!_cancelHover) { _cancelZoneLeft = true; _cancelDwell = 0f; }
+            // 존을 벗어난 적이 있는가 — CancelArmed 의 (a) 문(의도적 복귀는 dwell 면제). dwell 누적/
+            // 리셋은 통합 상태 기준이라 UpdateCancelVisual 이 소유한다(여기서 리셋하면 칸 없음 쪽이 새다).
+            if (!_cancelHover) _cancelZoneLeft = true;
             // 발↔고리 화면 세로 거리 = 유닛 키 + 줄 길이. 고리는 손가락에, 유닛은 그만큼 화면 아래 보드에.
             float totalDrop = _session.unitHeight + Cfg.ropeLength * _session.visualScale;
 
@@ -422,6 +437,7 @@ namespace Wassup.UI
             else
             {
                 _onBoard = false;
+                _noCell = false; // 세션 플래그를 이 분기에서도 관리(프리뷰가 숨으므로 고스트 상태를 남기지 않는다)
                 ClearHover();
                 if (_session.preview != null) _session.preview.SetActive(false);
             }
@@ -511,8 +527,10 @@ namespace Wassup.UI
                     if (!resolved.HasValue)
                     {
                         _noCell = true;
-                        ClearHover();
-                        UpdateRejectLabel(); // ClearHover 가 감춘 라벨을 취소 문구로 다시 켠다
+                        // 소거는 진입 프레임 1회 — 아래 CancelArmed 분기와 같은 규칙(hoverTile 이
+                        // 비면 그 뒤로 페인트가 없다). 라벨은 포인터를 따라야 하므로 매 프레임.
+                        if (_session.hoverTile.HasValue) ClearHover();
+                        UpdateRejectLabel();
                         return;
                     }
                     _noCell = false;
@@ -562,7 +580,8 @@ namespace Wassup.UI
             // 취소 예고의 **유일한 문자 채널**. 사유가 둘(트레이 존 복귀 / 격자 밖 관용 초과)이지만
             // 표면은 하나다 — rev3 에서 트레이 배너를 지우고 이 라벨로 합쳤다. 거부(코스트 부족·점유)와
             // 달리 취소는 "진행되지 않는다" 가 아니라 "되돌린다" 라서 문구·색이 따로다.
-            if ((CancelArmed || _noCell) && _session.active && !_simulatedDrag)
+            // 게이트(CancelArmed)를 지나므로 오버슛·드래그 시작 구간에 껌뻑이지 않는다.
+            if (CancelArmed && _session.active && !_simulatedDrag)
             {
                 EnsureRejectLabel();
                 if (!_rejectLabel.gameObject.activeSelf) _rejectLabel.gameObject.SetActive(true);
@@ -648,14 +667,14 @@ namespace Wassup.UI
         // 전면 오버레이는 과하다. 표면을 하나로 줄이면 "칸 없음" 취소와도 같은 문법이 된다.
         private void UpdateCancelVisual()
         {
-            // dwell 은 존 **안에 머무는 동안**만 자란다. OnDrag 는 포인터가 움직일 때만 오지만
-            // _cancelHover 는 마지막 값을 유지하므로, 손가락을 멈춘 채 머무는 경우가 정확히 잡힌다.
-            if (_cancelHover && _session.active && !_cancelZoneLeft)
-                _cancelDwell += Time.unscaledDeltaTime;
+            // dwell 은 **취소 상태에 머무는 동안**만 자란다(사유 무관). OnDrag 는 포인터가 움직일
+            // 때만 오지만 _cancelHover/_noCell 은 마지막 값을 유지하므로, 손가락을 멈춘 채 머무는
+            // 경우가 정확히 잡힌다. 상태가 끊기면 0 으로 되돌려 오버슛이 dwell 을 적립하지 못하게 한다.
+            if (_session.active && CancelStateNow) _cancelDwell += Time.unscaledDeltaTime;
+            else _cancelDwell = 0f;
 
-            // 고스트 알파는 **두 사유 공용**(트레이 존 + 칸 없음) — "이대로 놓으면 안 꽂힌다" 는
-            // 한 가지 신호로 읽혀야 한다.
-            bool ghost = (CancelArmed || _noCell) && _session.active;
+            // 고스트 알파는 **두 사유 공용** — "이대로 놓으면 안 꽂힌다" 는 한 가지 신호로 읽혀야 한다.
+            bool ghost = CancelArmed && _session.active;
             if (ghost == _cancelVisualOn) return;
             _cancelVisualOn = ghost;
             // 폴백 capsule 프리뷰는 skeleton 이 없다 — 알파 변화 없음(미지원, 계약 아님).
@@ -685,7 +704,7 @@ namespace Wassup.UI
             {
                 CleanupSession();
                 // 전용 클립이 없고 의미("집었던 걸 되돌림")가 같아 카드 복귀음을 재사용한다.
-                Wassup.Core.SoundManager.Instance?.PlayCardReturn();
+                SoundManager.Instance?.PlayCardReturn();
                 return;
             }
             // review fix — 릴리즈 확정은 throttle tick 을 기다리지 않는다. 손가락 최종 위치를 히스테리시스로만
@@ -703,7 +722,7 @@ namespace Wassup.UI
             else
                 // drag-cancel-affordance unit 3 — 칸 없음 = 취소(거부 아님). 트레이 존 릴리즈와 같은
                 // 소리를 쓴다 — 사용자에겐 "되돌렸다" 라는 같은 사건이다.
-                Wassup.Core.SoundManager.Instance?.PlayCardReturn();
+                SoundManager.Instance?.PlayCardReturn();
             CleanupSession();
         }
 

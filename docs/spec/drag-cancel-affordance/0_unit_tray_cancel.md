@@ -44,12 +44,11 @@ _cancelHover = _cancelZone != null && !_simulatedDrag && _session.active
   거부 라벨이 전부 소거된다(취소 존에 있는 동안 보드는 "여기 아무 일도 없다").
 - 프리뷰 실루엣 알파를 `cancelPreviewAlpha`(기본 0.4)로 낮춘다. 세션이 Spine 핸들을 들고 있어야 하므로
   `DragSession.skeleton` 필드를 추가한다(폴백 capsule 은 알파 변경 없음 — 계약 아님, 단순 미지원).
-- 트레이 rect 를 덮는 **취소 배너**(`✕ 놓으면 취소`)를 띄운다. 기존 거부 라벨 캔버스(order 20001)에
-  형제로 만들고, 위치·크기는 매 프레임 `_cancelZone.GetWorldCorners` 에서 가져온다(오버레이 캔버스라
-  world corner == screen px). 별도 상수 오프셋 없음 = 계약 2.
+- 문자 예고는 포인터 추종 라벨(`UpdateRejectLabel`)이 담당한다. **⚠ rev3 에서 트레이를 덮던 배너를
+  삭제했다** — 이 §C 를 배너 사양으로 읽지 말 것. 아래 rev3 절이 최신이다.
 
-취소 존을 **나가면** 다음 프레임의 `ResolveFocusAndTarget` 이 hover 를 즉시 복구한다. 알파와 배너는
-`SetCancelVisual(false)` 가 원복한다.
+취소 존을 **나가면** 다음 프레임의 `ResolveFocusAndTarget` 이 hover 를 즉시 복구하고, 알파는
+`UpdateCancelVisual` 이 원복한다.
 
 ### D. 릴리즈 분기
 
@@ -70,11 +69,12 @@ SFX 는 카드 복귀음을 재사용한다. 전용 클립이 없고 의미("집
 ### F. 노브 (DragSwaySettings ⑫)
 
 ```
-cancelPreviewAlpha = 0.4    // 취소 존 안 프리뷰 실루엣 알파
-cancelTint         = coral  // 배너 테두리/글자색
+cancelPreviewAlpha       = 0.4   // 취소 예고 중 프리뷰 실루엣 알파
+cancelTint               = coral // 취소 라벨 색
+cancelHintDwellSeconds   = 0.18  // 예고 게이트(rev2) — 오버슛·시작 구간 깜빡임 차단
 ```
 
-하드코딩 금지(제약 6). 배너 문구는 게임플레이 수치가 아니라 구조 문자열이므로 코드 상수로 둔다
+하드코딩 금지(제약 6). 라벨 문구는 게임플레이 수치가 아니라 구조 문자열이므로 코드 상수로 둔다
 (거부 라벨의 `"X 코스트 부족"` 과 같은 취급).
 
 ## rev2 — UX 리뷰 반영 (2026-07-30)
@@ -135,6 +135,20 @@ dwell 은 `UpdateCancelVisual` 에서 `Time.unscaledDeltaTime` 으로 누적한�
 
 남는 것: 판정 rect(트레이 패널), 고스트 알파(`cancelPreviewAlpha`), 라벨 색(`cancelTint`),
 dwell 노브. `UnityEngine.UI` / `Wassup.UI.Layout` using 도 함께 정리(배너 전용 의존).
+
+### 리뷰 반영 (code review 2026-07-30)
+
+- **M1/M2 — 예고 술어를 하나로 통합.** `CancelStateNow`(= `_cancelHover || _noCell`) 위에 게이트를
+  얹어 `CancelArmed` 를 만든다. 게이트는 `(존 이탈 후 재진입) || dwell`. 전에는 dwell 게이트가
+  트레이 존에만 걸려 **`_noCell` 이 판정 프레임에 즉시 예고를 켰다** — 가장자리 열을 좌우로 흔들면
+  관용 링을 넘나들며 알파/라벨이 껌뻑였고(맵 무관), 배치가능 타일 하이라이트도 사유별로 달랐다
+  (`UpdatePlacementHighlightState` 가 `_noCell` 을 안 봤다 → 계약 4·6 위반). 통합으로 둘 다 해소.
+- **M3 — 테스트 공허 통과 차단.** `DragCancelZoneTest` 가 릴리즈 직전에 `_noCell == false` 를 단언한다.
+  없으면 취소 존 분기를 지워도 `_noCell` 경로가 대신 취소해 무차감 단언이 통과할 수 있었다(강도가
+  로드된 맵에 의존).
+- **MINOR** — 인스펙터 툴팁/주석의 '배너' 잔재 정리, `_noCell` 소거를 진입 1회로, 오프보드 전이에서
+  `_noCell` 관리, 비활성 트레이는 취소 판정 제외(`activeInHierarchy`), `SoundManager` 풀네임 호출 정리,
+  관용 **경계값**(frac −1.5 / −1.51, 10.49 / 10.5) 테스트 추가.
 
 ## 완료 기준
 

@@ -6,6 +6,7 @@
 - `ec5e9c05` revert(drag-cancel-affordance): unit 2 철회 — ESC/뒤로가기 하드 취소 제거
 - `c61aa51c` feat(drag-cancel-affordance): unit 0 rev2 + unit 3 — 예고를 정직하게, 보드 밖 취소 성립
 - `ffd6ae28` refactor(drag-cancel-affordance): rev3 — 취소 배너 삭제, 예고 표면을 하나로
+- (리뷰 반영 커밋) fix(drag-cancel-affordance): 코드 리뷰 반영 — 예고 술어 통합·테스트 강화
 
 ## Implemented
 
@@ -56,6 +57,24 @@
   배치 드래그 계열은 하나도 없다. `DragCancelZoneTest` · `DragPlacementReachTest` ·
   `RelocationPlacementSessionTest` 전부 통과.
 
+## Code review (2026-07-30)
+
+독립 리뷰어 1회. **CRITICAL 0 · MAJOR 3 · MINOR 7 — 전부 반영.**
+
+- **M1/M2 (같은 뿌리)** — dwell 게이트가 트레이 존에만 걸려 `_noCell` 이 판정 프레임에 즉시 예고를
+  켰다. 가장자리 열을 좌우로 흔들면 관용 링을 넘나들며 고스트 알파·라벨이 껌뻑였고(**맵 무관**),
+  `UpdatePlacementHighlightState` 가 `_noCell` 을 안 봐서 배치가능 하이라이트가 사유별로 갈렸다
+  (계약 4·6 위반). → 술어 통합(`CancelStateNow` + `CancelArmed`)으로 동시 해소.
+- **M3** — `DragCancelZoneTest` 의 무차감 단언이 공허할 수 있었다(취소 존 분기를 지워도 `_noCell`
+  경로가 대신 취소 → 강도가 로드된 맵에 의존). 릴리즈 직전 `_noCell == false` 단언 추가.
+- **MINOR** — 인스펙터 툴팁 '배너' 잔재, `_noCell` 소거 1회화, 오프보드 전이 `_noCell` 관리,
+  비활성 트레이 취소 판정 제외(`activeInHierarchy`), `SoundManager` 풀네임, 스펙 문서 코드-모순 2곳,
+  관용 **경계값** 테스트(frac −1.5/−1.51 · 10.49/10.5).
+
+리뷰어가 검증하고 문제없다고 한 것: `Resolve` 호출처 단일·null 전파, 히스테리시스↔관용 경계 순서
+정합성(밴드 최대 1.45셀 < tol 1 의 1.5셀 → 계약 8 이 margin 전 구간 성립), 계약 1/2/3/7/9,
+세션 경계 플래그 리셋, 라벨 owner 경합 없음, ESC·배너 잔재 0, `CancelZone` raycast 미누출.
+
 ## Notes (되돌리면 안 되는 것)
 
 - **취소 예고에 덮는 UI 를 다시 넣지 말 것**(rev3, 사용자 결정). 신호 둘이 이미 시선 위치에 있고,
@@ -80,8 +99,11 @@
   문제가 되돌아온다.
 - **시뮬 경로(`_simulatedDrag`)는 취소 대상이 아니다.** 탭 배치 비행은 이미 코스트가 지불된
   확정 배치의 연출이라, 끊으면 유닛이 사라진다.
-- **예고 게이트(`_cancelZoneLeft`)는 릴리즈 판정에 걸지 않았다.** 존을 못 벗어난 짧은 드래그도
-  놓으면 취소가 맞다(그게 랜덤 하단 셀 오배치보다 낫다).
+- **예고 게이트는 릴리즈 판정에 걸지 않는다.** 존을 못 벗어난 짧은 드래그도 놓으면 취소가 맞다
+  (그게 랜덤 하단 셀 오배치보다 낫다). 게이트는 **예고 전용**이다.
+- **예고 술어를 두 사유로 다시 쪼개지 말 것.** `_cancelHover`(트레이 존)와 `_noCell`(칸 없음)은
+  `CancelStateNow` 로 합쳐 하나의 게이트를 지난다. 쪼개면 리뷰 M1(오버슛 깜빡임)·M2(사유별로 다른
+  보드 상태)가 그대로 돌아온다.
 - **취소 수단은 드래그를 유지한 채 도달 가능해야 한다.** 키/시스템 버튼은 이 요건을 못 지켜
   철회됐다 — 새 취소 수단을 넣을 땐 이 요건부터 통과시킬 것.
 

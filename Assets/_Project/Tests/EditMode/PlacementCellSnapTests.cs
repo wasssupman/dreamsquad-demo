@@ -118,6 +118,21 @@ public class PlacementCellSnapTests
         Assert.IsNull(ResolveTol(null, 11.0f, 5f, 1), "상한 쪽도 대칭");
     }
 
+    // 진짜 경계 — 반올림이 tol 링의 마지막 칸을 가리키는 지점과 그 한 틱 밖.
+    // 위 두 테스트는 −1.0/−2.0 처럼 넉넉히 안/밖만 재므로 경계가 한 칸 밀려도 초록이 된다.
+    // cell = floor(frac + 0.5) 이므로 tol 1 의 마지막 유효 반올림은 cx = −1, 즉 frac ∈ [−1.5, −0.5).
+    [Test]
+    public void OutsideTolerance_ExactBoundary_SnapsInsideAndRejectsJustBeyond()
+    {
+        Assert.AreEqual(new Vector2Int(0, 5), ResolveTol(null, -1.5f, 5f, 1),
+            "frac −1.5 → cx −1 = tol 1 의 마지막 칸 → 테두리 0 으로 붙는다");
+        Assert.IsNull(ResolveTol(null, -1.51f, 5f, 1),
+            "frac −1.51 → cx −2 = tol 밖 → 칸 없음");
+        // 상한 쪽 대칭: gridSize 10 → maxX 9, tol 1 의 마지막 칸은 cx 10 (frac ∈ [9.5, 10.5)).
+        Assert.AreEqual(new Vector2Int(9, 5), ResolveTol(null, 10.49f, 5f, 1));
+        Assert.IsNull(ResolveTol(null, 10.5f, 5f, 1));
+    }
+
     [Test]
     public void OutsideTolerance_Zero_RejectsAnyOffGridRound()
     {
