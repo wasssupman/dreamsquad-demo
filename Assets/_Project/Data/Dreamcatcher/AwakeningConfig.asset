@@ -14,10 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.AwakeningConfig
   id: awakening_default
   gaugeMax: 100
-  gaugeStart: 100
+  gaugeStart: 20
   costSquad: 20
   costUnit: 20
   costActive: 20
   handSize: 4
   maxAttachPerUnit: 3
   slomoTimeScale: 0.3
+  enemyPickRadiusTiles: 1.5
