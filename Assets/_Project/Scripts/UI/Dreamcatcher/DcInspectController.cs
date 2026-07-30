@@ -42,13 +42,14 @@ namespace Wassup.UI
         // (DreamcatcherHandView 도 같은 이유로 config 를 따로 들고 있다).
         [SerializeField] private AwakeningConfig config;
         [SerializeField] private DcInspectPanelView panel;
-        // defender-relocation unit 5 — 선택 시 유닛 좌측 액션 플립북(이동모드+더미2).
-        [SerializeField] private DcActionFlipbookView actionFlipbook;
-        // 사용자 결정 2026-07-29 — 유닛 주변 아이콘 버튼 UI 를 당장은 노출하지 않는다(나중에 활용).
-        // 뷰/버튼/이동모드 코드는 모두 남겨 두고 **표시만** 끈다 — 이 토글을 켜면 즉시 복귀한다.
-        // ⚠ 이동 버튼이 재배치(DefenderRelocationController)의 유일한 진입 경로다(홀드 진입은
-        // 은퇴). 끈 동안 재배치는 도달 불가 상태로 잠든다.
-        [SerializeField] private bool showActionFlipbook = false;
+        // selection-hand-attach unit 15 — 유닛 주변 액션 플립북(defender-relocation unit 5)은
+        // **폐기**됐다. unit 7 에서 표시만 껐다가(재배치가 도달 불가로 잠들었다) 이제 이동
+        // 진입구를 상세 패널의 버튼으로 옮겼다 — 정보와 조작이 한 자리에 모인다.
+        //
+        // `DcActionFlipbookView` 클래스와 씬의 `DcActionFlipbook` 오브젝트는 아직 남아 있다.
+        // 지금 씬을 저장할 수 없어(타 세션 WIP) 오브젝트를 지우지 못했고, 클래스를 먼저 지우면
+        // 씬에 missing script 가 남기 때문이다. **아무도 구동하지 않으므로 inert** 하다 —
+        // 씬을 안전하게 저장할 수 있을 때 오브젝트+클래스를 함께 제거한다.
         // unit 4 — 선택 유닛 줌. 카메라 포즈의 유일한 쓰기 주체가 CameraDirector 이므로
         // 여기선 타겟만 피드한다(카메라 직접 조작 금지 계약).
         [SerializeField] private Wassup.Presentation.CameraDirector cameraDirector;
@@ -307,16 +308,13 @@ namespace Wassup.UI
         // (구 "패널은 보여줄 게 있을 때만" 은 부착 목록만 있던 시절의 계약이다).
         private void Select(Entity entity)
         {
-            if (!bridge.TryGetUnitViewAnchor(entity, out var anchor)) { Close(); return; }
+            // 앵커는 **유효성 확인용**이다 — 살아있는 뷰가 없으면 선택 자체가 성립하지 않는다.
+            // 좌표는 더 이상 아무도 쓰지 않는다(패널은 고정 도킹 unit 11, 플립북은 폐기 unit 15).
+            if (!bridge.TryGetUnitViewAnchor(entity, out _)) { Close(); return; }
 
             _selected = entity;
             _anchorMissFrames = 0; // unit 1 — 새 대상으로 수명 카운터 리셋
             ShowPanelFor(entity); // 내부에서 Resolve — _cards/_costs 도 여기서 채워진다
-            // unit 5 — 부착 유무와 무관하게 좌측 액션 플립북 등장(이동모드 진입 입구).
-            // showActionFlipbook=false 면 표시하지 않는다(사용자 결정 2026-07-29). Hide 경로는
-            // 그대로 둔다 — 토글을 Play 중에 켜도 이전 잔상 없이 정상 동작한다.
-            if (actionFlipbook != null && showActionFlipbook)
-                actionFlipbook.Show(anchor, mainCamera, relocationController != null, OnMovePressed);
             ShowSelectionReticle(entity);
             AcquireSlomo();
             // selection-hand-attach unit 1 — 선택 = 손패 등장(사용자 결정 1: 항상). 대상 전달이
@@ -416,8 +414,7 @@ namespace Wassup.UI
             bool hadSelection = _selected != Entity.Null;
             _selected = Entity.Null;
             _anchorMissFrames = 0;
-            if (panel != null) panel.Hide();
-            if (actionFlipbook != null) actionFlipbook.Hide();
+            if (panel != null) panel.Hide(); // 이동 버튼도 패널과 함께 사라진다(unit 15)
             // unit 6 — 우리가 켠 리티클만 끈다(_reticleShown 가드 — 카드 드래그 조준 세션 보호).
             if (_reticleShown)
             {
@@ -460,7 +457,10 @@ namespace Wassup.UI
                 unitName = data.displayName;
                 portrait = data.portrait;
             }
-            panel.Show(unitName, portrait, _cards, _costs);
+            // unit 15 — 이동 진입구는 이제 패널의 버튼이다(유닛 주변 플립북 폐기).
+            // relocation 미배선이면 콜백을 넘기지 않아 버튼 자체가 뜨지 않는다.
+            panel.Show(unitName, portrait, _cards, _costs,
+                relocationController != null ? (System.Action)OnMovePressed : null);
         }
 
         // 계약 9 — DreamcatcherHandView.OnPhaseChanged 선례. UGUI 패널은 월드 스프라이트와

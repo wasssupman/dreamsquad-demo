@@ -36,7 +36,9 @@ namespace Wassup.UI
         [Tooltip("safe area 좌측에서 패널까지(캔버스 단위). MenuButton 과 같은 좌측 정렬")]
         [SerializeField] private float dockLeft = 24f;
         [Tooltip("safe area 상단에서 패널 상단까지. MenuButton(24+64) 아래로 내린 값")]
-        [SerializeField] private float dockTop = 96f; // MenuButton 하단(24+64=88) 바로 아래
+        // MenuButton 하단(24+64=88)에 붙인다. 아래쪽 여유가 빠듯해서 위를 아낀다 —
+        // 트레이 상단은 1080 기준 y 912(placementSize.y 136 + anchoredY 32, bottom pivot).
+        [SerializeField] private float dockTop = 88f;
         // 폰트를 키운 만큼 넓혀야 설명이 덜 접힌다(줄 수가 곧 패널 높이다). 좌측 대역은
         // 어차피 비어 있어 폭은 여유가 있고, 아낄 것은 세로다.
         [SerializeField] private float panelWidth = 430f;
@@ -64,6 +66,8 @@ namespace Wassup.UI
         [SerializeField] private float attachArtHeight = 78f;
         [Tooltip("부착 카드 설명의 최대 줄 수. 넘치면 말줄임 — 패널이 아래 트레이를 침범하지 않게 성장을 묶는다.")]
         [SerializeField] private int descMaxLines = 2;
+        [SerializeField] private float actionButtonHeight = 60f;
+        [SerializeField] private float fontActionButton = 26f;
 
         [Header("Colors")]
         [SerializeField] private Color fill = new Color(0.07f, 0.06f, 0.13f, 1f);        // 툴팁과 동일 네이비
@@ -123,6 +127,10 @@ namespace Wassup.UI
         // 부착 섹션
         private RectTransform _attachSection;
         private TextMeshProUGUI _attachLabel;
+        // 액션(이동) — 유닛 주변 플립북을 대체한 진입구. unit 15.
+        private RectTransform _moveButton;
+        private UnityEngine.UI.Button _moveButtonComp;
+        private System.Action _onMove;
 
         private bool _visible;
         private bool _built;
@@ -136,11 +144,15 @@ namespace Wassup.UI
         // unit 11 — **부착 0장이어도 띄운다.** 예전에는 보여줄 카드가 없으면 Hide 했지만
         // ("빈 상태 UI 는 만들지 않는다"), 스탯이 생기면서 0장이어도 보여줄 것이 있다.
         // 부착 섹션만 접는다.
+        // onMove 가 null 이면 이동 버튼을 감춘다(재배치 컨트롤러 미배선 등).
         public void Show(string unitName, Sprite portrait,
-            IReadOnlyList<DreamcatcherCard> cards, IReadOnlyList<int> costs)
+            IReadOnlyList<DreamcatcherCard> cards, IReadOnlyList<int> costs,
+            System.Action onMove = null)
         {
             Build();
             EnsurePlates();
+            _onMove = onMove;
+            _moveButton.gameObject.SetActive(onMove != null);
 
             // 측정 전에 루트를 켠다. 비활성 계층에서 AddComponent 된 TMP 는 Awake 가 돌지
             // 않아 기본 설정이 로드되지 않고, 그 상태의 GetPreferredValues 는 정답의 1/10 을
@@ -346,6 +358,14 @@ namespace Wassup.UI
                 y += ay + sectionGap;
             }
 
+            // 액션 버튼 — 패널 맨 아래 전폭. 정보(위)와 조작(아래)이 분리돼 읽기 순서가 선다.
+            if (_moveButton.gameObject.activeSelf)
+            {
+                _moveButton.anchoredPosition = new Vector2(pad, -y);
+                _moveButton.sizeDelta = new Vector2(inner, actionButtonHeight);
+                y += actionButtonHeight + sectionGap;
+            }
+
             y += pad - sectionGap;
             _rect.sizeDelta = new Vector2(panelWidth, y);
         }
@@ -394,6 +414,9 @@ namespace Wassup.UI
             _group.alpha = Mathf.Lerp(_group.alpha, _visible ? 1f : 0f, a);
             float s = Mathf.Lerp(_rect.localScale.x, _visible ? 1f : HiddenScale, a);
             _rect.localScale = new Vector3(s, s, 1f);
+            // unit 15 — 보이는 동안만 입력을 받는다. 닫히는 중에 이동 버튼이 눌리면 이미
+            // 해제된 선택으로 재배치를 시작하게 된다.
+            _group.blocksRaycasts = _visible;
             if (!_visible && _group.alpha < 0.02f) _root.SetActive(false);
         }
 
@@ -421,8 +444,11 @@ namespace Wassup.UI
 
             _group = _root.GetComponent<CanvasGroup>();
             _group.alpha = 0f;
+            // unit 15 — 이동 버튼이 생기며 인터랙티브가 됐다. blocksRaycasts 는 Update 에서
+            // _visible 과 함께 움직인다(페이드 중/닫힌 뒤에 눌리지 않게). 그룹이 열려도 실제
+            // 히트 대상은 버튼 하나뿐이다 — 나머지 그래픽은 raycastTarget=false 다.
             _group.blocksRaycasts = false;
-            _group.interactable = false;
+            _group.interactable = true;
 
             // 헤더
             var portraitGo = new GameObject("Portrait", typeof(RectTransform), typeof(Image));
@@ -473,8 +499,53 @@ namespace Wassup.UI
             _attachLabel.color = labelColor;
             _attachLabel.characterSpacing = 6f;
 
+            BuildMoveButton();
+
             _root.SetActive(false);
             _built = true;
+        }
+
+        // selection-hand-attach unit 15 — 유닛 주변 아이콘 플립북을 대체한 이동 진입구.
+        //
+        // **패널에서 유일하게 레이캐스트를 받는 요소다.** 나머지 그래픽은 전부
+        // raycastTarget=false 로 두어 "카드 드롭/조준 판정 비간섭" 계약을 지킨다 — 버튼 하나만
+        // 히트 대상이므로 패널 자리에서 막히는 것은 그 버튼 사각형뿐이다.
+        // CanvasGroup 의 blocksRaycasts 는 그룹 전체를 껐다 켜므로 Update 에서 _visible 과
+        // 함께 움직인다(페이드 아웃 중에 눌리지 않게).
+        private void BuildMoveButton()
+        {
+            var go = new GameObject("MoveButton", typeof(RectTransform), typeof(Image),
+                typeof(UnityEngine.UI.Button));
+            go.transform.SetParent(_root.transform, false);
+            _moveButton = (RectTransform)go.transform;
+            _moveButton.anchorMin = new Vector2(0f, 1f);
+            _moveButton.anchorMax = new Vector2(0f, 1f);
+            _moveButton.pivot = new Vector2(0f, 1f);
+
+            var img = go.GetComponent<Image>();
+            img.sprite = UiRoundedSprite.Make(12f, 2f, fill, unitBorder); // 패널과 같은 색 언어
+            img.type = Image.Type.Sliced;
+            img.raycastTarget = true; // 계약상 유일한 예외
+
+            _moveButtonComp = go.GetComponent<UnityEngine.UI.Button>();
+            _moveButtonComp.targetGraphic = img;
+            var colors = _moveButtonComp.colors;
+            colors.highlightedColor = new Color(1.15f, 1.15f, 1.15f, 1f);
+            colors.pressedColor = new Color(0.8f, 0.8f, 0.8f, 1f);
+            colors.fadeDuration = 0.06f;
+            _moveButtonComp.colors = colors;
+            _moveButtonComp.onClick.AddListener(() => { if (_onMove != null) _onMove(); });
+
+            var label = BuildLabel(go.transform, "Label", fontActionButton, TextAlignmentOptions.Center);
+            label.fontStyle = FontStyles.Bold;
+            label.color = unitBorder;
+            label.text = "이동";
+            var lrt = label.rectTransform;
+            lrt.anchorMin = Vector2.zero; lrt.anchorMax = Vector2.one;
+            lrt.pivot = new Vector2(0.5f, 0.5f);
+            lrt.offsetMin = Vector2.zero; lrt.offsetMax = Vector2.zero;
+
+            go.SetActive(false);
         }
 
         private RectTransform NewSection(string name)
