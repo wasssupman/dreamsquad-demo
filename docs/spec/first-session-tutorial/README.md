@@ -2,7 +2,8 @@
 
 > 상태: **핵심(0~4) 완료 2026-07-19 · 선물 튜토리얼 확장(6~8) 커밋 `9e75c0ae` 2026-07-20 ·
 > 아웃게임 튜토리얼 연계 개선(10~12) 완료 2026-07-21 (`7a704a20`~`649991bb`, 사용자 확인) ·
-> UI 레이어 수정(unit 14) 진행 중 2026-07-25**
+> UI 레이어 수정(unit 14) 완료 2026-07-25 (`8138996b`) ·
+> 선택 UX 연계(15~16) 스펙 작성 2026-07-30 — 구현 대기**
 > 선행: `defender-tap-to-place` · `mobile-ui-safe-area` · `awakening-hud-resource-button` (완료)
 
 ## 검증 질문
@@ -41,6 +42,10 @@
 | 12 | `12_awakening_intro_on_battle_start.md` | 각성 인트로 | 두 번째 판 전투 시작 시 버튼 포커스(3단계 중 0단계) |
 | 13 | `13_handoff_summary.md` | 인계 | units 10~12 커밋·검증·되돌림 금지 항목 |
 | 14 | `14_tutorial_ui_layering.md` | UI 레이어 | Canvas 우선순위와 첫 배치 안내의 화면 겹침 방지 |
+| 15 | `15_first_match_selection_lockout.md` | 회귀 수정 | 첫 판 유닛 선택 봉인 — 각성 봉인 누수 차단 |
+| 16 | `16_selection_aware_awakening_hint.md` | 문구/분기 | 손패 여는 문 2개 안내 + 오픈 경로별 부착 방식 |
+
+15 → 16 순서 필수(첫 판 경계가 흐리면 16 의 검증이 성립하지 않는다).
 
 ## Feature-wide 계약
 
@@ -98,6 +103,25 @@
 - **튜토리얼 Canvas order는 `TutorialGuidanceStyle`이 소유한다.** guidance와 탭 캐처는 일반
   HUD·메뉴보다 위, 결과·중요 알림·씬 전환보다 아래다. 아웃게임 dim은 같은 Style의 별도
   order로 guidance 바로 아래에 두어 통과구멍 입력 계약을 유지한다.
+- **첫 판 봉인은 문이 둘이다(units 15·16).** unit 10 의 "손패를 여는 유일한 경로가 항아리
+  버튼" 전제는 `selection-hand-attach` unit 1 이 깼다 — 유닛 탭도 손패를 연다. 게다가
+  `AwakeningConfig` 은 `gaugeStart 20` · 카드 비용 전부 20 이라 첫 판에도 **1장을 실제로 쓸 수
+  있다**. 그래서 첫 판엔 **선택 자체를 봉인**한다(사용자 결정 2026-07-30). 봉인 사실은
+  `AwakeningGaugeView._suppressed` 가 소유하고 `DreamcatcherHandView` 릴레이로
+  `DcInspectController` 가 **풀**한다 — 푸시로 만들면 신규 씬 배선이 필요한데
+  `BattleScene.unity` 를 저장할 수 없다. 릴레이 이름은 `AwakeningSealedThisMatch`(사실의 이름)로
+  둔다 — `Suppressed` 는 항아리 표시의 어휘라 선택 봉인 쪽에서 읽으면 인과가 안 보인다.
+  **첫 판엔 재배치도 함께 사라진다**(이동 버튼이 패널 안에 있다). Placement 재배치는 원래
+  없으므로(`BeginMoveModeFor` 가 Battle 게이트) 손실은 첫 판 Battle 하나이고, 튜토리얼이
+  재배치를 가르치지 않으므로 의도에 부합한다.
+- **각성 안내는 오픈 경로를 구분한다.** `HandOpened` 는 경로를 구분하지 않고 발화하므로
+  분기는 `DreamcatcherHandView.InSelectionMode` 로 한다(신규 이벤트 금지 — 이미 public 이다).
+  일반 오픈 = 드래그 문구(기존), 선택 오픈 = 탭 즉발 + 좌측 패널 문구. **포커스는 두 경우 모두
+  usable 슬롯**이다.
+- **A단계 문구에 새 정보를 넣지 말 것.** 현 튜닝(`gaugeStart 20` · 비용 20)에서 Battle 진입
+  즉시 `20 >= 20` 이라 A 가 `OnPhaseChanged` 안에서 동기로 뜨고, 다음 프레임 0단계 코루틴이
+  덮어써 **한 프레임만 존재한다**. 읽을 수 없는 자리다. 이 성립 조건은 **여유가 0** 이다 —
+  비용이 21 이 되거나 `gaugeStart` 가 19 가 되면 A 가 진입에 안 뜬다(unit 16 알려진 한계).
 
 ## 파이프라인 커버리지
 
@@ -106,6 +130,10 @@ N/A — 신규 플레이 오브젝트나 생성→렌더 경로가 아니다. Sc
 ## 비목표 / 후속 후보
 
 - Android 가로 실기기에서 탭 배치·D&D·Skip·각성 힌트 최종 터치 QA
+- **A단계가 현 튜닝에서 안 보인다** — 진입 즉시 affordable 이라 0단계 코루틴이 다음 프레임에
+  덮어쓴다. 3단계를 2단계로 접거나 0/A 순서를 재설계하는 두 방향. (unit 16 조사)
+- **부착 안내를 판당 경로별 1회로** — 지금은 첫 B 에서 저장하고 끝나 한쪽 문만 배운다.
+  `_awakeningArmedThisBattle` 래치 + `ShouldRunAwakeningHint` 가드 재설계가 필요하다. (unit 16)
 - units 10~12 후속 후보 5건은 `docs/spec/README.md` Follow-up Backlog →
   **첫 판 튜토리얼 개선 (first-session-tutorial units 10~12 이관, 2026-07-21)** 로 이관
 - 카드 타입별 종합 설명 이미지, 도움말 도감, 튜토리얼 다시 보기 메뉴
