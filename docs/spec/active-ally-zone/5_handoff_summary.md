@@ -2,7 +2,7 @@
 
 ## Commit
 
-- (해시는 커밋 직후 기재) `feat(active-ally-zone): units 0~4 — 아군 버프 장판화 + 선택 중 액티브 허용`
+- `2b8b3efd` — `feat(active-ally-zone): units 0~4 — 아군 버프 장판화 + 선택 중 액티브 허용`
 - 선행: `e5cdb48a` (`active-dreamcatcher-tile-aim`, Play 육안 검증 대기)
 
 ## Implemented
