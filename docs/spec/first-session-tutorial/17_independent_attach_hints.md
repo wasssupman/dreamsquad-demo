@@ -86,10 +86,11 @@ unit 12 는 B 에 `_awakeningOfferedThisBattle && _awakeningArmedThisBattle`(= A
 
 ## 완료 기준
 
-- [ ] compile 클린 · Unity 콘솔 error 0
-- [ ] EditMode: 경로별 pending/complete 독립 · 인트로 파생(`&&`) · `ResetAll` 과
-      `ResetAllInJson` 이 신규 토큰까지 되돌리고 `changed` 에 반영한다
-- [ ] EditMode 전체 회귀 0 (`TutorialProgressTests` 리네임 반영 포함)
+- [x] compile 클린 (2026-07-30 — Runtime · Tests.EditMode · Tests.PlayMode 3개 어셈블리 오류 0)
+- [x] EditMode: 경로별 pending/complete 독립 · 인트로 파생(`&&`) · `ResetAll` 과
+      `ResetAllInJson` 이 신규 토큰까지 되돌리고 `changed` 에 반영한다 — 신규 4건 통과
+- [x] EditMode 전체 회귀 0 (`TutorialProgressTests` 리네임 반영 포함) —
+      **testrig 배치 실행 1611 / 통과 1609 / 실패 0 / 스킵 2**
 - [ ] Play: 둘째 판에 **항아리로 먼저** 열어 드래그 안내를 본 뒤, 같은 판에서 유닛을 선택해
       손패를 열면 **탭 즉발 안내가 뜬다**(이 unit 의 핵심 — 지금은 안 뜬다)
 - [ ] Play: 반대 순서(선택 먼저 → 항아리)도 대칭으로 동작한다
@@ -97,3 +98,13 @@ unit 12 는 B 에 `_awakeningOfferedThisBattle && _awakeningArmedThisBattle`(= A
 - [ ] Play: 한쪽만 본 채 판을 끝내면 **다음 판에 인트로는 안 뜨고**(잔소리 없음) 못 본 쪽
       안내는 그 경로를 처음 쓸 때 뜬다
 - [ ] Play: 둘 다 본 뒤에는 0·A·B 어느 것도 다시 뜨지 않는다
+
+구현 `4665fc1f` (2026-07-30). **Play 항목은 사용자 확인 대기** — units 15·16 과 같은 리셋
+1회로 함께 본다.
+
+> **검증 환경 메모**: 에디터가 Play Mode 로 점유돼 있어(병행 세션) MCP `run_tests` 가
+> `"Cannot start a test run while the Editor is in or entering Play Mode"` 로 막혔다.
+> `wassup-testrig` 워크트리에서 배치로 돌려 우회했다. **`-runTests` 에 `-quit` 를 같이 주면
+> 테스트 전에 종료돼 결과 XML 이 안 나온다**(exit 0 이라 성공으로 보인다) — 빼야 한다.
+> 이 배치 런은 깨끗한 HEAD 라 워크트리에서 상시 실패하던 `MultiGoalPoolSeparationTests` 도
+> 통과했다 — 그 실패가 타 세션의 dirty `MapDocument_Zig` 탓임이 확인된다.
