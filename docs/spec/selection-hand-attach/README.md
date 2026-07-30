@@ -1,13 +1,14 @@
 # selection-hand-attach — 유닛 선택 중 손패 등장 + 탭 즉발/D&D 부착
 
-> 상태: **units 0~9 구현 완료 · Play 검증(unit 5) 대기 · units 10~13 설계 완료(미구현)**
+> 상태: **units 0~15 구현·커밋 완료 · 핵심 체감 Play 확인 · `unit 5` e2e 전량 훑기 대기**
+> (units 9~15 인계는 `16_handoff_summary.md`)
 >
-> 커밋: `9d719953`(unit 0) · `1c51e312`(unit 1) · `4ea13544`(units 2~4) · `61101ed9`(unit 7) ·
-> `79efeaeb`(unit 8) · unit 9 미커밋. 설계는 critic REVISE(H5/M7/L7) 전건 반영
-> rev 2(`9fdaba6a`) + 사용자 결정. 인계는 `6_handoff_summary.md`.
+> 커밋: units 0~8 은 `6_handoff_summary.md`, units 9~15 는 `16_handoff_summary.md` 참조.
+> 설계는 critic REVISE(H5/M7/L7) 전건 반영 rev 2(`9fdaba6a`) + 사용자 결정 다수.
 >
-> **units 10~13 은 선택 모드의 프레젠테이션 재설계**다(2026-07-30 사용자 발의: 부착 패널이
-> 리티클·맵을 가림). 기능 계약(0~9)은 건드리지 않는다 — 무엇을 보여주고 어디에 두느냐만 바꾼다.
+> **units 10~15 는 선택 모드의 프레젠테이션 재설계**다(2026-07-30 사용자 발의: 부착 패널이
+> 리티클·맵을 가림). 기능 계약(0~9)은 건드리지 않는다 — 무엇을 보여주고 어디에 두느냐만
+> 바꾼다. units 10~15 전부 **ECS 무변경**이다.
 
 ## 배경 / 목표
 
@@ -54,6 +55,7 @@
 | 13 | `13_camera_rebalance.md` | 연출(추가) | dolly↓ + FOV 압축 + 전환 NDC 스무딩 + 연출 pitch |
 | 14 | `14_reject_camera_kick.md` | 연출(추가) | 부착 거절 시 아주 짧은 카메라 킥 |
 | 15 | `15_move_button_in_panel.md` | 정책(추가) | 이동 버튼을 패널로 — 유닛 주변 플립북 폐기 |
+| 16 | `16_handoff_summary.md` | 인계 | units 9~15 커밋·되돌림 금지 7건·공간 실측·잔여 |
 
 10 → 11 → 12 순서 필수(읽을 값 → 표시할 곳 → 중복 제거). 13·14 는 독립. 15 는 11 이후.
 
