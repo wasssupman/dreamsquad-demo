@@ -256,7 +256,6 @@ namespace Wassup.UI
             if (presetBar == null) return;
             var p = Profile;
 
-            int count = p != null && p.dreamcatcherDecks != null ? p.dreamcatcherDecks.Count : 0;
             bool isCommitted = p != null && _viewingPresetId == p.selectedDeckId;
             bool dirty = IsDirty();
 
@@ -265,7 +264,7 @@ namespace Wassup.UI
                 commit: !isCommitted,
                 save: dirty,
                 revert: dirty,   // [저장]과 같은 조건 — 한 쌍으로 읽힌다
-                delete: !isCommitted && count > 1);
+                delete: true);   // 항상 누를 수 있다 — 사유는 OnDeletePreset 이 안내(스쿼드와 동일)
             // SetDirty 는 SetButtonEnabled 뒤 — [저장] 엑센트 색이 interactable 을 읽는다.
             presetBar.SetDirty(dirty);
         }
@@ -409,8 +408,20 @@ namespace Wassup.UI
             if (!CanPersist()) return;   // review MEDIUM-4
             var p = Profile;
             if (p == null || p.dreamcatcherDecks == null) return;
-            if (_viewingPresetId == p.selectedDeckId) return;    // 확정분 보호
-            if (p.dreamcatcherDecks.Count <= 1) return;          // 최소 1개 유지
+            // 차단 사유 안내 — 스쿼드 컨트롤러와 동일 정책.
+            if (_viewingPresetId == p.selectedDeckId)
+            {
+                NoticePopup.ShowAlert("삭제할 수 없음",
+                    "지금 보고 있는 덱 프리셋이 <b>확정</b> 상태입니다.\n"
+                    + "다른 프리셋을 [선택]으로 확정한 뒤 삭제하세요.");
+                return;
+            }
+            if (p.dreamcatcherDecks.Count <= 1)
+            {
+                NoticePopup.ShowAlert("삭제할 수 없음",
+                    "덱 프리셋이 하나뿐입니다.\n반입할 덱이 없어지므로 마지막 프리셋은 지울 수 없습니다.");
+                return;
+            }
 
             p.dreamcatcherDecks.RemoveAll(d => d != null && d.id == _viewingPresetId);
             p.NormalizePresets();

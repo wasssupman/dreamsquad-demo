@@ -153,7 +153,6 @@ namespace Wassup.UI
             if (presetBar == null) return;
             var p = Profile;
 
-            int count = p != null && p.squads != null ? p.squads.Count : 0;
             bool isCommitted = p != null && _viewingPresetId == p.selectedSquadId;
             bool dirty = IsDirty();
 
@@ -164,7 +163,10 @@ namespace Wassup.UI
                 // [되돌리기]는 되돌릴 것이 있을 때만 = dirty. [저장]과 같은 조건이라 둘이
                 // "미저장 변경을 남길래 버릴래" 한 쌍으로 읽힌다.
                 revert: dirty,
-                delete: !isCommitted && count > 1);
+                // [삭제]는 **항상 누를 수 있다**(사용자 결정 2026-07-30). 죽은 버튼은 왜
+                // 안 눌리는지 말해주지 못한다 — 누르게 하고 OnDeletePreset 이 사유를
+                // 안내한다. 뷰는 여전히 dim 조건을 판단하지 않으므로 파라미터는 남긴다.
+                delete: true);
             // SetDirty 는 SetButtonEnabled 뒤 — [저장] 엑센트 색이 interactable 을 읽는다.
             presetBar.SetDirty(dirty);
         }
@@ -311,8 +313,23 @@ namespace Wassup.UI
             if (!CanPersist()) return;   // review MEDIUM-4
             var p = Profile;
             if (p == null || p.squads == null) return;
-            if (_viewingPresetId == p.selectedSquadId) return;   // 확정분 보호
-            if (p.squads.Count <= 1) return;                     // 최소 1개 유지
+            // 차단 사유를 **말해준다**. 예전엔 버튼을 dim 해 두고 조용히 return 했는데,
+            // 죽은 버튼은 "고장인가 내가 뭘 잘못했나"로 읽힌다. NoticePopup 은 자기
+            // 부트스트랩(RuntimeInitializeOnLoadMethod + DontDestroyOnLoad)이라 씬 배선이
+            // 필요 없고 sortingOrder 3000 으로 프리셋 팝업 위에 뜬다.
+            if (_viewingPresetId == p.selectedSquadId)
+            {
+                NoticePopup.ShowAlert("삭제할 수 없음",
+                    "지금 보고 있는 프리셋이 <b>확정</b> 상태입니다.\n"
+                    + "다른 프리셋을 [선택]으로 확정한 뒤 삭제하세요.");
+                return;
+            }
+            if (p.squads.Count <= 1)
+            {
+                NoticePopup.ShowAlert("삭제할 수 없음",
+                    "프리셋이 하나뿐입니다.\n반입할 편성이 없어지므로 마지막 프리셋은 지울 수 없습니다.");
+                return;
+            }
 
             p.squads.RemoveAll(s => s != null && s.id == _viewingPresetId);
             p.NormalizePresets();
