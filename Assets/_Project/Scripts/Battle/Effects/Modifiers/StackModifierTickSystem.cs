@@ -129,8 +129,8 @@ namespace Wassup.Battle.Effects
                         ccQ.Enqueue(new EnemyCcEvent
                         {
                             target = entity,
-                            // boss-jjangssen unit 3 — 위와 동일. Ice 5스택 스턴이 보스에게 통하는 근거.
-                            source = CcSource.StackThreshold,
+                            // boss-jjangssen unit 8 — 여기가 출처 축의 유일한 생산자였다. 축이
+                            // 은퇴하면서 보스는 스택 임계 스턴에도 면역이다(CcApplySystem 이 거절).
                             effect = new CcEffect
                             {
                                 kind          = CcKind.Stun,

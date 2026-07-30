@@ -1242,8 +1242,7 @@ namespace Wassup.Battle.Combat
                                         // 나중에 면역 범위를 좁히면 이 지점도 자동으로 따라온다.
                                         if (bossLookup.HasComponent(hitTargets[ti])
                                             && Wassup.Battle.Effects.CcActionLock.IsBossImmune(
-                                                Wassup.Battle.Effects.CcKind.Stun,
-                                                Wassup.Battle.Effects.CcSource.Direct)) continue;
+                                                Wassup.Battle.Effects.CcKind.Stun)) continue;
                                         ccWriter.Value.Enqueue(new Wassup.Battle.Effects.EnemyCcEvent
                                         {
                                             target = hitTargets[ti],

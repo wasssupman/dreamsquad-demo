@@ -35,6 +35,7 @@
 | 5 | 인계 | `5_handoff_summary.md` | 커밋·검증·되돌리면 안 되는 것·Play 잔여 항목 |
 | 6 | 프레젠테이션 | `6_leap_flight_motion.md` | 도약 아치 비행(순간이동 제거) + 착지 슬램 |
 | 7 | 프레젠테이션 | `7_leap_space_fix.md` | 아치를 sim→view 공간으로 (정렬 오독 동반 해소) |
+| 8 | 시뮬 | `8_stack_source_axis_retire.md` | 스택 출처 예외 철회 + `CcSource` 축 은퇴 (unit 3 rev) |
 
 **순서 근거**: 0 은 asset 없이 빈 pool 폴백으로 **기존 7덱 무회귀를 먼저 증명**한다.
 
@@ -64,9 +65,12 @@ mechanics 를 비우는 것이 목적이라, 첫 mechanic 이 들어오는 unit 
    0.5·0.9 는 0.2 의 배수가 아니라 **같은 프레임 동시 발동이 없다** — 두 능력이 별개 사건으로 읽힌다.
    경계를 다시 겹치게 만들면 순서는 **폭발 → 도약**으로 시스템 순서가 고정한다(폭발은 blink 전 위치에서
    터지고 `BlinkApplySystem` 이 `[UpdateAfter]` 로 나중에 적용). **슬롯 순서로는 뒤집을 수 없다.**
-6. **면역 술어 = `직접 출처 && (CcActionLock.IsLock(kind) || kind == Impulse)`.** 스택 임계가 유발한
-   CC(DoT·스턴)와 `DoT`/`Slow` 는 통과한다. 규칙: *직접 걸리는 행동정지·넉백은 무효, 누적해서 임계를
-   넘긴 것은 통한다.* 적용 범위는 `BossTag` 전체 — **나이트메어도 함께 바뀐다.**
+6. **면역 술어 = `CcActionLock.IsLock(kind) || kind == Impulse`** (unit 8 rev — 출처 축 은퇴).
+   규칙: *행동정지·넉백은 출처 불문 무효.* 스택 임계가 만든 스턴도 막힌다. 감속(`StatModifier`)과
+   지속 피해(`DotApplyEvents`)는 애초에 이 술어를 지나지 않으므로 보스전에서 그대로 산다.
+   적용 범위는 `BossTag` 전체 — **나이트메어도 함께 바뀐다.**
+   ~~직접 출처 && …~~ 초판의 `CcSource` 축은 "스택 DoT 가 CC 버퍼를 공유한다"를 전제로 했는데,
+   `dot-effect-extraction` 이 같은 날 DoT 를 전용 채널로 빼면서 전제가 사라졌다 — unit 8 참조.
    **대가(수용됨)**: `Defender_Archer` 넉백 · `Defender_Malphite` 넉업(= 전 대상 Stun) ·
    `Defender_TooMuchTalker` 수면이 보스전에서 무효가 된다. 말파이트·투머치토커는 **그 CC 가 유닛의 존재
    이유**이므로 손실이 크다. 넉업은 연출 신호가 CC 큐와 분리돼 있어 **`AttackSystem` 생산 지점에서도

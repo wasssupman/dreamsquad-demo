@@ -31,7 +31,7 @@ namespace Wassup.Battle.Effects
                 if (!state.EntityManager.Exists(evt.target))
                     continue;
                 if (bossLookup.HasComponent(evt.target)
-                    && CcActionLock.IsBossImmune(evt.effect.kind, evt.source))
+                    && CcActionLock.IsBossImmune(evt.effect.kind))
                     continue;
 
                 var buffer = state.EntityManager.GetBuffer<CcEffect>(evt.target);

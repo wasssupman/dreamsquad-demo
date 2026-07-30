@@ -21,35 +21,35 @@ namespace Wassup.Tests.EditMode
             new() { CcKind.Stun, CcKind.Sleep, CcKind.Impulse };
 
         [Test]
-        public void DirectSourceImmunityMatchesApprovedScope()
+        public void ImmunityMatchesApprovedScope()
         {
             foreach (CcKind kind in Enum.GetValues(typeof(CcKind)))
                 Assert.AreEqual(
                     ApprovedImmune.Contains(kind),
-                    CcActionLock.IsBossImmune(kind, CcSource.Direct),
-                    $"{kind}: 직접 출처 면역 여부가 승인 범위와 어긋났다. " +
+                    CcActionLock.IsBossImmune(kind),
+                    $"{kind}: 면역 여부가 승인 범위와 어긋났다. " +
                     "새 CcKind 를 추가했다면 ApprovedImmune 을 사람이 결정해 갱신하라.");
         }
 
-        // 규칙: "누적해서 임계를 넘긴 CC 는 통한다." Ice 5스택 스턴이 보스에게 통하는 근거이고,
-        // Bleed(→DoT)가 보스 HP 를 깎는 근거다. kind 를 손으로 나열하지 않는다 — 6번째 값이
-        // 추가될 때 커버리지가 조용히 비는 것을 막는다.
+        // unit 8 — 출처 축 은퇴. 예전에는 스택 임계가 유발한 CC 가 kind 불문 통과했고
+        // (Ice 5중첩 스턴이 보스를 멈추는 근거였다), 그 예외의 이유는 "스택 DoT 가 CC 버퍼를
+        // 공유한다" 였다. dot-effect-extraction 이 DoT 를 전용 채널로 빼면서 이유가 사라졌으므로
+        // 스턴은 출처와 무관하게 막힌다. 이 테스트는 그 계약이 되돌려지지 않게 고정한다.
         [Test]
-        public void StackThresholdSourceAlwaysPassesThrough()
+        public void StackThresholdStunIsAlsoImmune()
         {
-            foreach (CcKind kind in Enum.GetValues(typeof(CcKind)))
-                Assert.IsFalse(
-                    CcActionLock.IsBossImmune(kind, CcSource.StackThreshold),
-                    $"{kind}: 스택 임계 출처는 kind 불문 통과해야 한다");
+            Assert.IsTrue(CcActionLock.IsBossImmune(CcKind.Stun),
+                "스택 임계가 만든 스턴도 보스에게는 막혀야 한다 — 술어에 출처 축을 되살리지 말 것");
         }
 
-        // 기본값 계약: source 를 채우지 않은 생산자는 "직접" 으로 취급돼야 한다.
-        // 이게 깨지면 기존 CC 생산자 전부가 조용히 보스에게 통해버린다.
+        // 스택 카드가 보스전에서 통째로 죽는 것은 아니다: 감속은 StatModifier(MoveSpeedMul),
+        // 지속 피해는 DotApplyEvents 라 둘 다 이 술어를 지나지 않는다. CcKind 에 남아 있는
+        // Slow/DoT 토큰이 면역 목록에 섞여 들어가면 그 계약이 깨진다.
         [Test]
-        public void DefaultSourceIsDirect()
+        public void SlowAndDotTokensAreNotImmune()
         {
-            Assert.AreEqual(CcSource.Direct, default(CcSource));
-            Assert.AreEqual(CcSource.Direct, new EnemyCcEvent().source);
+            Assert.IsFalse(CcActionLock.IsBossImmune(CcKind.Slow));
+            Assert.IsFalse(CcActionLock.IsBossImmune(CcKind.DoT));
         }
     }
 }
