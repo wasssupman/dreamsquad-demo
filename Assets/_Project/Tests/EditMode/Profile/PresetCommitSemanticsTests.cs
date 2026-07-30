@@ -1,6 +1,9 @@
 using System.Collections.Generic;
+using System.Reflection;
 using NUnit.Framework;
+using UnityEngine;
 using Wassup.Core;
+using Wassup.UI;
 
 namespace Wassup.Tests.EditMode.Profile
 {
@@ -134,41 +137,78 @@ namespace Wassup.Tests.EditMode.Profile
             Assert.AreEqual("u_a", reloaded[0], "복귀 시 보이는 것은 저장본이다(작업본 유실이 정상)");
         }
 
-        // ---- 삭제 가드 -------------------------------------------------------
+        // ---- 삭제 가드 · 상한 (실제 컨트롤러 구동) ---------------------------
+        //
+        // review HIGH-2 — 이전 버전은 가드 조건을 테스트 안에서 다시 계산해
+        // `viewing == _p.selectedSquadId` 같은 항진명제를 단정했다. 그건 컨트롤러의 가드를
+        // 지워도 그린이라 회귀를 못 잡는다. 이제 `SquadCharacterPageController` 를 실제로
+        // 구동한다(DreamcatcherDeckSaveTests 와 같은 reflection 방식).
+
+        private GameObject _host;
+        private SquadCharacterPageController _ctrl;
+        private PlayerProfileSO _profSO;
+        private int _saves;
+
+        private void MakeController()
+        {
+            _profSO = ScriptableObject.CreateInstance<PlayerProfileSO>();
+            _profSO.SetLoadedProfile(_p);
+            _host = new GameObject("PresetCommitSemanticsHost");
+            _host.SetActive(false);   // OnEnable 이 돌지 않게 — 상태를 직접 세팅한다
+            _ctrl = _host.AddComponent<SquadCharacterPageController>();
+            SetField("profileSO", _profSO);
+            _saves = 0;
+            _ctrl.ProfileSaver = _ => _saves++;
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            if (_host != null) Object.DestroyImmediate(_host);
+            if (_profSO != null) Object.DestroyImmediate(_profSO);
+        }
 
         [Test]
         public void Delete_CommittedPresetIsProtected()
         {
-            // 컨트롤러 OnDeletePreset 의 가드와 같은 조건.
-            string viewing = _p.selectedSquadId;
-            bool blocked = viewing == _p.selectedSquadId;
+            MakeController();
+            SetField("_viewingPresetId", "squad_1");   // = 확정분
+            Assert.AreEqual("squad_1", _p.selectedSquadId, "precondition");
 
-            Assert.IsTrue(blocked, "확정 프리셋은 삭제할 수 없다");
-            Assert.AreEqual(2, _p.squads.Count);
+            Invoke("OnDeletePreset");
+
+            Assert.AreEqual(2, _p.squads.Count, "확정 프리셋은 삭제되지 않는다");
+            Assert.AreEqual(0, _saves, "차단됐으므로 디스크 쓰기도 없다");
         }
 
         [Test]
         public void Delete_LastRemainingPresetIsProtected()
         {
             _p.squads.RemoveAll(s => s.id == "squad_2");
-            _p.NormalizePresets();
+            _p.selectedSquadId = "";            // 확정분 가드를 비켜 마지막-1개 가드만 남긴다
+            MakeController();
+            SetField("_viewingPresetId", "squad_1");
             Assert.AreEqual(1, _p.squads.Count, "precondition");
 
-            bool blocked = _p.squads.Count <= 1;
-            Assert.IsTrue(blocked, "마지막 1개는 삭제할 수 없다 — 반입할 편성이 사라진다");
+            Invoke("OnDeletePreset");
+
+            Assert.AreEqual(1, _p.squads.Count, "마지막 1개는 삭제되지 않는다");
+            Assert.AreEqual(0, _saves);
         }
 
         [Test]
-        public void Delete_NonCommittedPreset_LeavesCommittedPointerValid()
+        public void Delete_NonCommittedPreset_RemovesItAndReturnsToCommitted()
         {
-            _p.squads.RemoveAll(s => s.id == "squad_2");
-            _p.NormalizePresets();
+            MakeController();
+            SetField("_viewingPresetId", "squad_2");   // 확정분이 아니다
 
+            Invoke("OnDeletePreset");
+
+            Assert.AreEqual(1, _p.squads.Count, "확정분이 아니면 삭제된다");
             Assert.AreEqual("squad_1", _p.selectedSquadId);
             Assert.IsNotNull(_p.CommittedSquad());
+            Assert.AreEqual(1, _saves, "구조 변경이므로 즉시 저장된다");
         }
-
-        // ---- 상한 -----------------------------------------------------------
 
         [Test]
         public void Create_IsBlockedAtMaxPresets()
@@ -176,11 +216,105 @@ namespace Wassup.Tests.EditMode.Profile
             while (_p.squads.Count < PlayerProfile.MaxPresets)
                 _p.squads.Add(Squad("squad_" + (_p.squads.Count + 1), "s"));
             _p.NormalizePresets();
+            MakeController();
 
-            Assert.AreEqual(PlayerProfile.MaxPresets, _p.squads.Count);
-            bool canCreate = _p.squads.Count < PlayerProfile.MaxPresets;
-            Assert.IsFalse(canCreate, "상한에서 [+] 는 막힌다");
+            Invoke("OnCreatePreset");
+
+            Assert.AreEqual(PlayerProfile.MaxPresets, _p.squads.Count, "상한에서 생성은 막힌다");
+            Assert.AreEqual(0, _saves);
         }
+
+        [Test]
+        public void Create_BelowMax_AddsPresetWithUniqueId_AndPersists()
+        {
+            MakeController();
+
+            Invoke("OnCreatePreset");
+
+            Assert.AreEqual(3, _p.squads.Count);
+            Assert.AreEqual("squad_3", _p.squads[2].id, "접미 max+1 로 발급된다");
+            Assert.AreEqual(1, _saves, "구조 변경 = 즉시 저장");
+        }
+
+        // ---- 컨트롤러 경유 저장/확정 분리 -----------------------------------
+
+        [Test]
+        public void Controller_SaveDoesNotMoveCommittedPointer()
+        {
+            MakeController();
+            SetField("_viewingPresetId", "squad_2");
+            Invoke("LoadWorking", "squad_2");
+            Working("_workingUnits")[0] = "u_EDITED";
+
+            Invoke("OnSavePreset");
+
+            Assert.AreEqual("u_EDITED", StoredById("squad_2").unitIds[0], "저장본에 반영된다");
+            Assert.AreEqual("squad_1", _p.selectedSquadId, "[저장]은 확정을 옮기지 않는다");
+        }
+
+        [Test]
+        public void Controller_CommitDoesNotWriteWorkingCopy()
+        {
+            MakeController();
+            SetField("_viewingPresetId", "squad_2");
+            Invoke("LoadWorking", "squad_2");
+            Working("_workingUnits")[0] = "u_UNSAVED";   // 저장하지 않는다
+
+            Invoke("OnCommitPreset");
+
+            Assert.AreEqual("squad_2", _p.selectedSquadId, "확정은 옮겨진다");
+            Assert.AreEqual("u_b", StoredById("squad_2").unitIds[0],
+                "확정은 내용을 기록하지 않는다 — 저장본이 그대로다");
+            Assert.AreEqual("u_b", _p.CommittedSquad().unitIds[0], "따라서 반입도 저장본이다");
+        }
+
+        [Test]
+        public void Controller_EditsDoNotPersist()
+        {
+            MakeController();
+            SetField("_viewingPresetId", "squad_1");
+            Invoke("LoadWorking", "squad_1");
+
+            Invoke("ToggleUnit", "u_new_unit");
+
+            Assert.AreEqual(0, _saves, "내용 편집은 디스크에 닿지 않는다");
+            Assert.AreEqual("u_a", StoredById("squad_1").unitIds[0], "저장본 무변경");
+        }
+
+        [Test]
+        public void Controller_StructuralChangeBlockedBeforeProfileLoaded()
+        {
+            // review MEDIUM-4 — 로드본이 아니면 **변이 자체가** 일어나지 않아야 한다.
+            // (예전에는 변이 후 Save() 에서만 막혀 메모리/디스크가 갈렸다.)
+            _profSO = ScriptableObject.CreateInstance<PlayerProfileSO>();
+            _profSO.profile = _p;                 // SetLoadedProfile 을 거치지 않음
+            _host = new GameObject("PresetCommitSemanticsHost");
+            _host.SetActive(false);
+            _ctrl = _host.AddComponent<SquadCharacterPageController>();
+            SetField("profileSO", _profSO);
+            _saves = 0;
+            _ctrl.ProfileSaver = _ => _saves++;
+
+            Invoke("OnCreatePreset");
+
+            Assert.AreEqual(2, _p.squads.Count, "프리셋이 메모리에도 추가되지 않는다");
+            Assert.AreEqual(0, _saves);
+        }
+
+        private System.Collections.Generic.List<string> Working(string field) =>
+            (System.Collections.Generic.List<string>)typeof(SquadCharacterPageController)
+                .GetField(field, BindingFlags.Instance | BindingFlags.NonPublic)
+                .GetValue(_ctrl);
+
+        private void SetField(string name, object value) =>
+            typeof(SquadCharacterPageController)
+                .GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)
+                .SetValue(_ctrl, value);
+
+        private void Invoke(string name, params object[] args) =>
+            typeof(SquadCharacterPageController)
+                .GetMethod(name, BindingFlags.Instance | BindingFlags.NonPublic)
+                .Invoke(_ctrl, args);
 
         // ---- 드림캐쳐 쪽도 같은 규칙 ----------------------------------------
 

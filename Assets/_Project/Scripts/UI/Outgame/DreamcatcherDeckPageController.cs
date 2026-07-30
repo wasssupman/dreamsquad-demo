@@ -234,11 +234,15 @@ namespace Wassup.UI
 
         // page-local-presets unit 4 — 디스크 쓰기. 프리셋 구조 변경(생성/삭제/확정)과
         // [저장]에서만 불린다. 편집 경로에서는 부르지 않는다.
+        // review MEDIUM-4 — 구조 변경(생성·삭제·확정)은 **변이 전에** 물어야 한다. Save() 안에서만
+        // 걸면 메모리에는 프리셋이 생겼는데 디스크에는 없는 상태로 조용히 갈린다.
+        private bool CanPersist() =>
+            Profile != null && profileSO != null && profileSO.IsLoadedThisSession;
+
         private void Save()
         {
-            var p = Profile;
-            if (p == null || !profileSO.IsLoadedThisSession) return;
-            (ProfileSaver ?? ProfileStore.Save)(p);
+            if (!CanPersist()) return;
+            (ProfileSaver ?? ProfileStore.Save)(Profile);
         }
 
         private bool IsDirty() =>
@@ -315,8 +319,15 @@ namespace Wassup.UI
         private void OnPresetPicked(string id)
         {
             if (string.IsNullOrEmpty(id) || id == _viewingPresetId) return;
-            if (IsDirty() && confirmPopup != null)
+            if (IsDirty())
             {
+                // review MEDIUM-5 — fail-closed (스쿼드 컨트롤러와 동일 정책).
+                if (confirmPopup == null)
+                {
+                    Debug.LogError("[DeckPreset] confirmPopup 미주입 — 미저장 변경이 있어 프리셋 "
+                        + "전환을 차단했다. 페이지 빌더의 주입을 확인할 것.", this);
+                    return;
+                }
                 string captured = id;
                 confirmPopup.Show(
                     "저장하지 않은 변경이 있습니다.\n이동하면 변경은 사라집니다.",
@@ -337,6 +348,7 @@ namespace Wassup.UI
 
         private void OnCreatePreset()
         {
+            if (!CanPersist()) return;   // review MEDIUM-4 — 변이 전에 묻는다
             var p = Profile;
             if (p == null || p.dreamcatcherDecks == null) return;
             if (p.dreamcatcherDecks.Count >= PlayerProfile.MaxPresets) return;
@@ -359,6 +371,7 @@ namespace Wassup.UI
 
         private void OnCommitPreset()
         {
+            if (!CanPersist()) return;   // review MEDIUM-4
             var p = Profile;
             if (p == null || string.IsNullOrEmpty(_viewingPresetId)) return;
             if (StoredPreset(_viewingPresetId) == null) return;
@@ -371,6 +384,7 @@ namespace Wassup.UI
 
         private void OnSavePreset()
         {
+            if (!CanPersist()) return;   // review MEDIUM-4
             var stored = StoredPreset(_viewingPresetId);
             if (stored == null) return;
 
@@ -391,6 +405,7 @@ namespace Wassup.UI
 
         private void OnDeletePreset()
         {
+            if (!CanPersist()) return;   // review MEDIUM-4
             var p = Profile;
             if (p == null || p.dreamcatcherDecks == null) return;
             if (_viewingPresetId == p.selectedDeckId) return;    // 확정분 보호
@@ -405,7 +420,9 @@ namespace Wassup.UI
         private void OnNameCommitted(string value)
         {
             _workingName = value ?? "";
-            RefreshBarEntries();   // 목록 셀 이름 표시 갱신
+            // review MEDIUM-3 — 목록 셀은 **저장본**의 이름을 그리므로 작업본 이름이 바뀐
+            // 것만으로 목록을 재구성할 이유가 없다. [저장] 시점에 RefreshBarEntries 가 돈다.
+            RefreshBarState();
         }
     }
 }

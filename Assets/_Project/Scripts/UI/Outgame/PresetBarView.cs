@@ -291,7 +291,15 @@ namespace Wassup.UI
             if (_popup == null) return;
             bool next = !_popup.activeSelf;
             _popup.SetActive(next);
-            if (next) _popup.transform.SetAsLastSibling();
+            if (!next) return;
+
+            // 팝업은 바 밖(아래)으로 내려오는데 UGUI 렌더 순서는 계층 순서다. 두 페이지
+            // 빌더는 PresetBar 를 BrowserPanel **앞에** 만들므로, 팝업을 바 안에서만
+            // SetAsLastSibling 해도 브라우저 그리드가 그 위에 그려져 목록이 가려진다.
+            // 그래서 **바 자체**를 페이지 루트의 마지막 형제로 올린다(바는 자기 밴드를
+            // 독점하므로 올려도 다른 밴드를 가리지 않는다).
+            transform.SetAsLastSibling();
+            _popup.transform.SetAsLastSibling();
         }
 
         // ---- cells --------------------------------------------------------
