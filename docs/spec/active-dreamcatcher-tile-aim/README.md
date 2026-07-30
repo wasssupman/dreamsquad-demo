@@ -1,6 +1,6 @@
 # Active Dreamcatcher Tile Aim — 액티브 사용방식 통일 (화살표 + 타일 지정)
 
-> 상태: **진행 중 2026-07-30** — units 0~3 구현 + 리뷰 rev 반영. Play 육안 검증 대기
+> 상태: **완료 2026-07-30** — units 0~3 구현 + 리뷰 rev 반영 + 사용자 Play 육안 확인. 인계는 `4_handoff_summary.md`
 > rev(2026-07-30, code-review REQUEST CHANGES 반영): 보드 밖 엄격 판정(H1) · 퇴화 포탈 거절(H2) ·
 > range 0 단일 셀 점등(M1) · Focus null 가드(M2) · 월드 생존 가드(M3) · 2단계 입구 표식 보존(M4)
 

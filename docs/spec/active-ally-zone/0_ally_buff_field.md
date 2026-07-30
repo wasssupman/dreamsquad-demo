@@ -79,3 +79,5 @@
 > 순서 주의(L1): `EffectTickSystem` 은 `ModifierApplySystem` 과 명시 순서가 없어, 이번 프레임에
 > 파괴되는 장판이 같은 프레임에 한 번 더 갱신될 수 있다. 수용된 `AllyBuffApplySec` 지연 안이라
 > 무해하다 — 여기에 `[UpdateAfter]` 를 얹지 말 것.
+
+> 확인 2026-07-30 — 커밋 `2b8b3efd` · 사용자 Play 육안 확인 완료.

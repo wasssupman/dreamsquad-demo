@@ -1,7 +1,8 @@
 # Active Ally Zone — 아군 버프를 장판으로 + 선택 중 액티브 허용
 
-> 상태: **초안 2026-07-30** — units 0~4. critic REVISE 반영(C1·C2·H1~H5·M1~M8·L1~L5).
-> 선행: `docs/spec/active-dreamcatcher-tile-aim/` (구현 완료 · **Play 육안 검증 대기**, `e5cdb48a`)
+> 상태: **완료 2026-07-30** — units 0~4 구현 + 리뷰 3회 반영(spec critic REVISE / code-reviewer /
+> ecs-reviewer) + 사용자 Play 육안 확인. 인계는 `5_handoff_summary.md`
+> 선행: `docs/spec/active-dreamcatcher-tile-aim/` (완료, `e5cdb48a`)
 
 ## 배경
 
@@ -117,7 +118,11 @@
 8. **카메라를 직접 조작하지 않는다.** 인스펙트 줌은 **피드 중단 = 자동 해제**(staleness 페이드)이므로
    해제 API 를 신설하지 않는다. `TickSelectionAnchor` 가 `!AimingNow()` 일 때만 피드하고 조준 시작이
    `IsAiming` 을 세우므로, 확인만 하면 된다.
-9. **밸런스 수치는 SO** — 반경·지속시간은 `SkillData`. `AllyBuffApplySec` 는 **밸런스가 아니라
+9. **밸런스 수치의 정본은 시트다.** `SkillData` 의 `range`/`magnitude`/`durationSec` 은 `DcSkills`
+   탭에서 내려오고 런타임 갱신(`DcSheetRuntimeRefresher`)이 인메모리로 덮는다 — **에셋만 고치면
+   플레이에서 되돌아간다**(2026-07-30 실제로 겪음: 반경을 에셋에서 1로 바꿨는데 조준이 계속 1칸이었고,
+   시트를 고쳐야 3×3 이 나왔다). 반경/배율 조정은 시트 → 임포트가 정순이다.
+9-1. **`AllyBuffApplySec` 는 밸런스가 아니다** — 반경·지속시간은 `SkillData`. `AllyBuffApplySec` 는 **밸런스가 아니라
    프레임워크 지연 상한**이라 `EffectSpawner` 의 public const 로 둔다(`MulStatFloor`/`MulStatCeil`
    선례). 테스트가 그 값을 읽어 대기시간을 계산한다 — 상수를 테스트에 복제하지 않는다.
 10. **선택 해제 신호는 전용 이벤트로 배선한다.** `AimingNow()` 폴링 금지 — 그 판정엔 배치

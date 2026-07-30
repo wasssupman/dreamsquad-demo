@@ -41,7 +41,9 @@
   `DragCancelZoneTest` 실패는 이 변경 **전에도 같은 메시지로 실패**했다(배치 트레이 소관).
 - 리뷰 3회 반영: spec critic(REVISE — C1·C2·H1~H5·M1~M8) + code-reviewer(REQUEST CHANGES — H1·M1~M5·L1~L7)
   + ecs-reviewer(REQUEST CHANGES — H1·M1~M3·L1~L6).
-- **Play 육안 검증 미완**(사용자 대기): `4_validation.md` Play e2e 1~6.
+- **Play 육안 검증 완료** (사용자 2026-07-30): `4_validation.md` Play e2e 1~6.
+  단 반경이 처음엔 1칸으로 보였고 **시트(`DcSkills`)의 `range` 를 고쳐야** 3×3 이 나왔다 —
+  에셋 값만 바꾸면 런타임 시트 갱신이 덮는다(README 계약 9).
 
 ## Notes (되돌리면 안 되는 의도)
 

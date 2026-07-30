@@ -40,7 +40,8 @@
   적 장판 0기 성공 / 오라 위 합산(증분 +1.0) / 퇴화 포탈 거절
 - 투트랙 리뷰 반영 완료(code-reviewer H1·H2·M1~M4·L1·L3·L4 / ecs-reviewer H1·M3~M6·L7·L9).
   ECS 트랙 경계 판정은 통과 — 맥락 간 쓰기는 `StatModifierApplyEvents` 큐만, 조준 경로 0 할당.
-- **Play 육안 검증 미완**(사용자 대기): 6종 조준·포탈 2단계·손패 하강 회귀·선택 중 Active 차단.
+- **Play 육안 검증 완료** (사용자 2026-07-30). 단 "선택 중 Active 차단" 은 후속 spec
+  `active-ally-zone` unit 3 에서 **폐기**됐다(막지 않고 선택만 해제) — 이 spec 의 계약 10 은 그쪽이 대체.
 
 ## Notes (되돌리면 안 되는 의도)
 

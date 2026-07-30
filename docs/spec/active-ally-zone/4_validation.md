@@ -54,3 +54,5 @@
 - [ ] 투트랙 리뷰(code-reviewer + ecs-reviewer) 지적 반영.
 - [ ] `docs/reference/object-pipeline-map.md` 에 아군 버프 장판 아키타입 반영(README 파이프라인
       커버리지 표 기준).
+
+> 확인 2026-07-30 — 커밋 `2b8b3efd` · 사용자 Play 육안 확인 완료.
