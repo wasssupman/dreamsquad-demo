@@ -179,11 +179,29 @@ namespace Wassup.UI
 
         // 정렬과 표시가 같은 파싱을 쓴다 — 갈라지면 "화면엔 날짜가 있는데 정렬은 맨 뒤"
         // 같은 어긋남이 생긴다.
-        internal static bool TryParseCreated(string iso, out DateTime local)
+        //
+        // **서버는 두 가지 모양으로 준다.** swagger 는 `format: date-time` 이라고 적혀
+        // 있지만 dev 서버의 실제 값은 **epoch 밀리초 문자열**(예: "1785419835370")이다.
+        // ISO 만 파싱하던 시절엔 날짜 칸이 항상 비어 있었고(그게 표시 요청이 나온 이유),
+        // 이 파서를 정렬이 공유하므로 "최신순"도 사실 서버 순서 그대로였다.
+        // 문서를 믿지 말고 둘 다 받는다.
+        internal static bool TryParseCreated(string raw, out DateTime local)
         {
             local = default;
-            if (string.IsNullOrEmpty(iso)) return false;
-            if (!DateTime.TryParse(iso, CultureInfo.InvariantCulture,
+            if (string.IsNullOrWhiteSpace(raw)) return false;
+
+            if (long.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out long epoch))
+            {
+                // 13자리 = 밀리초, 10자리 = 초. 경계는 2001-09-09(1e12ms)라 실사용 구간에서
+                // 안전하다 — 초 단위로 1e12 를 넘으려면 서기 33658년이어야 한다.
+                var utc = epoch >= 1_000_000_000_000L
+                    ? DateTimeOffset.FromUnixTimeMilliseconds(epoch)
+                    : DateTimeOffset.FromUnixTimeSeconds(epoch);
+                local = utc.ToLocalTime().DateTime;
+                return true;
+            }
+
+            if (!DateTime.TryParse(raw, CultureInfo.InvariantCulture,
                     DateTimeStyles.RoundtripKind, out var dt)) return false;
             local = dt.ToLocalTime();
             return true;

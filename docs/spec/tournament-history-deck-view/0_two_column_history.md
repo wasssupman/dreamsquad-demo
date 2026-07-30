@@ -17,7 +17,9 @@
 **진입 흐름**
 
 1. `OnEnable` → `GetUnclaimedEntries` (기존 그대로).
-2. 응답을 **`createdTime` 내림차순**으로 정렬한다. 서버 정렬에 기대지 않는다 — `createdTime` 은 ISO-8601 문자열이고 `ApiEnvelope` 가 `DateParseHandling.None` 으로 원문을 보존하므로 문자열 비교가 아니라 `DateTimeOffset.TryParse` 후 비교한다(파싱 실패 행은 맨 뒤로).
+2. 응답을 **`createdTime` 내림차순**으로 정렬한다. 서버 정렬에 기대지 않는다. 파싱 실패 행은 맨 뒤로(버리지 않는다).
+
+   > **`createdTime` 은 ISO-8601 이 아니다.** swagger 에는 `format: date-time` 으로 적혀 있지만 dev 서버가 실제로 주는 값은 **epoch 밀리초 문자열**이다(`"1785419835370"` — 2026-07-30 실측). ISO 만 파싱하던 기존 `FormatDate` 는 그래서 **항상 빈 문자열을 반환했고**, 목록의 날짜 칸이 계속 비어 있었다(그게 표시 요청이 나온 이유다). 정렬이 같은 파서를 공유하므로 "최신순"도 사실은 서버 순서 그대로였다. **둘 다 받는다** — 전부 숫자면 epoch(13자리=ms, 10자리=s), 아니면 ISO.
 3. 첫 항목을 선택 상태로 만들고 그 `tournamentEntryId` 로 랭킹을 부른다.
 4. 목록이 비면 좌우 모두 안내 상태 — 좌 "참가한 토너먼트가 없습니다", 우는 랭킹 대신 같은 안내.
 

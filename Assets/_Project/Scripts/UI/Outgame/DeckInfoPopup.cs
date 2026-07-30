@@ -22,7 +22,9 @@ namespace Wassup.UI
     public class DeckInfoPopup : MonoBehaviour
     {
         private static readonly Color GoldColor = new Color(1f, 0.78f, 0.28f, 1f);
-        private static readonly Color NavyFill = new Color(0.05f, 0.06f, 0.10f, 0.98f);
+        // 알파 1.0 — 모달이라 뒤가 비치면 안 된다. 0.98 이면 뒤 히스토리 행 텍스트가
+        // 흐릿하게 읽힌다(어두운 패널 위 흰 글자라 2% 도 눈에 띈다). Play 에서 실측.
+        private static readonly Color NavyFill = new Color(0.05f, 0.06f, 0.10f, 1f);
         private static readonly Color BadgeTextDark = new Color(0.10f, 0.09f, 0.06f, 1f);
         private static readonly Color SubText = new Color(0.72f, 0.76f, 0.82f, 1f);
         private static readonly Color CellFill = new Color(1f, 1f, 1f, 0.05f);
@@ -39,6 +41,7 @@ namespace Wassup.UI
         private const float PresetH = 64f;
         private const int SquadTab = 0;
         private const int DreamcatcherTab = 1;
+        private const int PopupSortingOrder = 3200;
 
         private DefenderCatalog _unitCatalog;
         private DreamstoneCatalog _stoneCatalog;
@@ -87,6 +90,15 @@ namespace Wassup.UI
             _payload = payload;
             gameObject.SetActive(true);
             transform.SetAsLastSibling();
+            // BuildCanvas 는 비활성 상태에서 돌 수 있고(패널이 미리 만들어 둔다), 중첩
+            // 캔버스의 overrideSorting 은 활성화 시점에 풀린다 — Play 에서 실측했다.
+            // 활성화 뒤에 다시 박아야 히스토리 패널(2500) 위로 확실히 올라간다.
+            var canvas = GetComponent<Canvas>();
+            if (canvas != null)
+            {
+                canvas.overrideSorting = true;
+                canvas.sortingOrder = PopupSortingOrder;
+            }
 
             _titleLabel.text = string.IsNullOrWhiteSpace(title) ? "덱 정보" : title;
             _tab = SquadTab;
@@ -327,9 +339,9 @@ namespace Wassup.UI
             StretchFull((RectTransform)transform);
 
             // 히스토리 패널(2500) 위에 뜬다. 중첩 캔버스라 overrideSorting 이 필수다.
-            var roots = UiCanvasSetup.Ensure(gameObject, sortingOrder: 3200);
+            var roots = UiCanvasSetup.Ensure(gameObject, sortingOrder: PopupSortingOrder);
             roots.Canvas.overrideSorting = true;
-            roots.Canvas.sortingOrder = 3200;
+            roots.Canvas.sortingOrder = PopupSortingOrder;
 
             var dim = new GameObject("Dim", typeof(RectTransform), typeof(Image), typeof(Button));
             dim.transform.SetParent(roots.FullBleedRoot, false);

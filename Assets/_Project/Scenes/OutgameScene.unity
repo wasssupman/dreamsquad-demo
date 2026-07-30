@@ -5015,6 +5015,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 60578cc6ac76fc9f08b14190dfaa56ea, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.TournamentHistoryPanel
+  unitCatalog: {fileID: 11400000, guid: 346c00d9daf72429d94ddd29337c7d23, type: 2}
+  stoneCatalog: {fileID: 11400000, guid: c8bc438b0fcdd46d099efeb04b7e8bac, type: 2}
+  cardCatalog: {fileID: 11400000, guid: 7e41a0cd1ffdc4b6c872ef0ac3d8df0e, type: 2}
 --- !u!1 &1133380929
 GameObject:
   m_ObjectHideFlags: 0
