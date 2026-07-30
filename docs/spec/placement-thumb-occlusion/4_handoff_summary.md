@@ -36,7 +36,8 @@
 - `Assets/_Project/Scripts/UI/DefenderRelocationController.cs` — 목적지 승격 게이트 · `AimScreen`
 - `Assets/_Project/Scripts/Core/TilemapMapView.cs` — `SetPlacementRangeValidity` · `RangeTintColor` 플래시
 - `Assets/_Project/Scripts/Bridge/BattleBridge.cs` — 포워딩 + owner 전환 리셋 3곳
-- `Assets/_Project/Data/Config/DragSwaySettings.asset` — ratio 0.06 / rampDistance 60
+- `Assets/_Project/Data/Config/DragSwaySettings.asset` — ratio **0.10**(2026-07-31 사용자 튜닝
+  `e45ee478`, 최초 확정값은 0.06) / rampDistance 60
 - 테스트: `PlacementPointerOffsetTests`(EditMode) · `DragPlacementReachTest` ·
   `DropDismountTest` · `RelocationPlacementSessionTest`
 
@@ -47,6 +48,9 @@
 
 민감도 실측(1080 세로): 0.06 통과 · 0.18 통과 · **0.20 실패**(row 0 조준 최고점 119px = 11% < 12%).
 첫 실패 ≈ 0.19 → 확정값 0.06 은 약 3배 여유. **가드가 실제로 무는 것이 증명됐다.**
+
+2026-07-31 라이브 값은 **0.10**(≈108px @1080). 가드 여유 약 1.9배. 이 값으로 테스트를 다시 돌리지는
+않았고, 하단 도달성은 **사용자 Play 확인**으로 통과했다(실측 표의 0.18 통과가 상한 근거).
 
 ## Notes (되돌리면 안 되는 의도)
 

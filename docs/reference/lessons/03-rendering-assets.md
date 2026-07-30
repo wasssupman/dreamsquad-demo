@@ -89,6 +89,19 @@ Unity `Mathf.SmoothStep(from, to, t)` 는 **결과를 `from..to` 로 보간**한
 - **레거시 MapView**: 여기서만 `MapThemeData` 의 envTileTexture/surfaceRules 가 바닥에 쓰임.
 - 새 테마의 **바닥**을 바꾸려면 전용 `TileSetData` 필요. 테마별 선택은 **`MapThemeData.tileSet` 훅**(`theme.tileSet ?? scene tileSet`, 커밋 5ebe315). "테마만 바꾸면 바닥이 바뀐다"는 오답.
 
+## 라이브 TileSetData 는 이름으로 고르면 틀린다 — guid 로 확인할 것
+
+`TileSetData` 는 2개뿐이고 **이름이 직관과 반대**다:
+
+| 에셋 | guid | 쓰이는 곳 |
+|---|---|---|
+| `Generated/Tiles/AutoTileTest/TileSet_AutoTileTest` | `d780c834…` | BattleScene `BattleBridge.tileSet` = **씬 fallback** = forest 테마(= 현 시즌 overwork)의 라이브 |
+| `Data/TileSets/TileSet_Desert` | `466c1d82…` | `Map/Theme/desert/desert.asset` — **사막 시즌에서만** |
+
+"Desert" 가 정본처럼 보여서 거기만 고치면 **현 시즌에서 아무 변화가 없다**(2026-07-31 사거리 색을 바꾸며 실제로 헛짚었다). 확인 순서는 `BattleScene.unity` 의 `tileSet:` guid → `*.asset.meta` 대조. **`.meta` 여러 개를 한 grep 으로 훑어 출력 순서로 짝짓지 말 것** — 그 착각이 이 사고의 원인이었다. 파일당 한 번씩 읽어라.
+
+곁가지 함정: 에디터가 켜진 채 `.asset` YAML 을 **밖에서** 고치면 아무 일도 안 일어난다. 에디터는 메모리의 옛 값을 계속 쓰고, 그 상태로 저장하면 되레 내 수정이 날아간다. `manage_asset action=import`(리임포트) 또는 인스펙터 직접 입력으로 반영시킨다.
+
 ## 배틀 카메라는 페이즈마다 pitch 가 바뀐다
 
 BattleScene Tilemap 모드 Main Camera 는 **런타임 정적이 아니다**. 실측: **Draft pitch 40° / z=−10.44**, **Battle pitch 58° / z=−7.85**. `ApplyTilemapCameraPreset()` 호출이 주석 처리돼 있어도 페이즈 전환이 카메라를 다시 움직인다.
