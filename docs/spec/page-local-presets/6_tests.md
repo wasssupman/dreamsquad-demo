@@ -57,4 +57,4 @@ Play 중에는 MCP 뮤테이션·코루틴·에디터 틱이 동결되므로 입
 
 ---
 
-**검증 기록 2026-07-30 · `2e4f4c63`** — EditMode **1660/1658 pass/0 fail** · PlayMode 프리셋 3건 통과(`f5f7608f`) · PlayMode 전체 79건 중 13건은 격리 실행으로 **사전 실패 확인**(이번 작업 귀속 0). `DreamcatcherDeckAutosaveTests` → `DreamcatcherDeckSaveTests` 전제 반전 완료. **2026-07-31 재검증(병합 `51aa8245` 이후)**: EditMode **1700/1698 pass/0 fail** · PlayMode **86건/13 실패 = 전부 사전 실패**. `ActiveAllyZoneTest`·`DreamcatcherCombatDamageTest` 는 정상 실행에서 **통과** — 앞선 실패는 `editor_unfocused` 로 프레임 펌핑이 멈춘 실행의 부산물이었다(회귀 아님).
+**검증 기록 2026-07-30 · `2e4f4c63`** — EditMode **1660/1658 pass/0 fail** · PlayMode 프리셋 3건 통과(`f5f7608f`) · PlayMode 전체 79건 중 13건은 격리 실행으로 **사전 실패 확인**(이번 작업 귀속 0). `DreamcatcherDeckAutosaveTests` → `DreamcatcherDeckSaveTests` 전제 반전 완료. **2026-07-31 재검증(병합 `51aa8245` 이후)**: EditMode **1700/1698 pass/0 fail** · PlayMode **86건/13 실패 = 전부 사전 실패**. `ActiveAllyZoneTest`·`DreamcatcherCombatDamageTest` 는 정상 실행에서 **통과**(회귀 아님).

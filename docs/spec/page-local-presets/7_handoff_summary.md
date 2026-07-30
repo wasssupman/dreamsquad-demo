@@ -62,7 +62,7 @@
 ## Follow-up
 
 - ~~PlayMode 전체 재실행~~ **완료 2026-07-31** — 병합 후 86건 실행, 13 실패 전부 사전 실패.
-- ~~`ActiveAllyZoneTest` · `DreamcatcherCombatDamageTest` 격리 확인~~ **해소 2026-07-31** — 정상 실행에서 **둘 다 통과**. 앞선 실패는 `blocked_reason: editor_unfocused` 로 프레임 펌핑이 멈춘 실행의 부산물이었다(둘 다 시간·프레임 누적 단정). 회귀 아님.
+- ~~`ActiveAllyZoneTest` · `DreamcatcherCombatDamageTest` 격리 확인~~ **해소 2026-07-31** — 정상 실행에서 둘 다 통과. 회귀 아님.
 - **Play 조작 검증 미완**: 목록 31셀 스크롤 · `[+]` 30개 상한 dim · 한글 IME 이름 입력 · dirty 상태 전환 경고 팝업의 [취소]/[이동] · 삭제 확인 팝업 육안.
 - 리뷰 LOW 6건 미반영(리포트는 리뷰 세션 transcript).
 - README 후속 후보: 프리셋 복제 · diff 보기 · 로비 확정 요약 뱃지 · 순서 재배열 · `MaxPresets` SO 이관.

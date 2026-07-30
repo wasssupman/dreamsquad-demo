@@ -244,14 +244,11 @@ unit 9 로 `Next Wave` 가 남은 웨이브 전체를 앞당기게 되면서 "�
 >   `DreamcatcherEffectTest`(2건) · `PlacementAuraTest`(3건) — 격리에서도 실패
 > - `SceneTransitionSmokeTest` · `BountyMarkTest` — **격리에서는 통과**. 전체 실행 순서 의존
 >   (교차 오염). 스위트 순서 위생 문제이고 특정 spec 의 회귀가 아니다.
->
-> **2026-07-31 재측정 (86건 / 13 실패)**: 위 13건이 그대로 재현됐다. 이때
-> `ActiveAllyZoneTest`·`DreamcatcherCombatDamageTest` 는 **통과** — 앞선 관측에서 이 2건이
-> 실패했던 실행은 `blocked_reason: editor_unfocused` 로 32/81 에서 멈춘 것이었고, 둘 다
-> 시간(`≤0.25s`)·프레임 누적 단정이라 프레임 펌핑 정지의 부산물이었다. **PlayMode 판정 시
-> Unity 창 포커스를 유지할 것** — 포커스가 빠지면 시간 기반 테스트가 거짓 실패한다.
 > - `AuthE2ETest` — dev 서버 `uk_users_user_name` 중복키(500). 환경 문제이며 `e2e-test`
 >   계정명이 서버에 이미 존재해 sign-up 이 실패한다.
+>
+> **2026-07-31 재측정 (86건 / 13 실패)**: 위 13건 그대로. `ActiveAllyZoneTest`·
+> `DreamcatcherCombatDamageTest` 는 통과 — 회귀 아님.
 >
 > `DreamcatcherDeckCarryInTest` 의 원인은 확정됐다 — 폴백 덱이 **의도적으로 제거**됐다
 > (`DreamcatcherHandController.ResolveAttachDeck`, "기본(fallback) 덱 제거 (사용자 결정
