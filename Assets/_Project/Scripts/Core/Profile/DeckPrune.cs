@@ -11,6 +11,13 @@ namespace Wassup.Core
         // 프로필의 모든 덱에서 숨김 카드를 제거하고 제거한 장수를 돌려준다.
         // 0 = 바뀐 것 없음 → 호출처는 저장하지 않는다.
         //
+        // page-local-presets unit 5 — "모든 덱"은 이제 **프리셋 30개 전체**를 뜻한다.
+        // 순회가 확정분 하나로 좁혀져 있지 않으므로 별도 대응이 필요 없다. 확정분만 훑으면
+        // 시트에서 숨긴 카드가 나머지 프리셋에 영구 잔존한다 — 그 좁히기를 하지 말 것.
+        // 프루닝은 시스템 주도 변경이라 플레이어의 [저장] 대상이 아니고 즉시 저장이 맞다.
+        // 호출 시점은 로그인 직후(HiddenCardDeckPruner)라 페이지 진입 전이므로 편집 중인
+        // 작업본과 충돌하지 않는다.
+        //
         // 카탈로그가 모르는 id 는 남긴다: 미해결 id 는 이 기능의 관심사가 아니고,
         // 조용히 지우면 LoadoutGate 의 "카탈로그가 모르는 id" 진단이 사라진다.
         public static int RemoveHiddenCards(PlayerProfile profile, DreamcatcherCardCatalog catalog)

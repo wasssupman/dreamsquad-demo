@@ -46,7 +46,7 @@ namespace Wassup.UI
             // Same-canvas last sibling wins render order AND raycast priority. A
             // nested canvas with overrideSorting would only win the former, and taps
             // would still resolve to the lobby buttons underneath (see
-            // SquadBuilderView.OpenPicker for where that was found the hard way).
+            // the retired SquadBuilderView.OpenPicker for where that was found the hard way).
             _root.transform.SetAsLastSibling();
             _root.SetActive(true);
         }

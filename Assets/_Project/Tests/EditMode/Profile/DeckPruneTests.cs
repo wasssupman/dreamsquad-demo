@@ -33,9 +33,9 @@ namespace Wassup.Tests.EditMode.Profile
             return new PlayerProfile
             {
                 selectedDeckId = "deck_1",
-                dreamcatcherDecks = new List<DeckSave>
+                dreamcatcherDecks = new List<DreamcatcherPreset>
                 {
-                    new DeckSave { id = "deck_1", cardIds = new List<string>(ids) },
+                    new DreamcatcherPreset { id = "deck_1", cardIds = new List<string>(ids) },
                 },
             };
         }
@@ -101,7 +101,7 @@ namespace Wassup.Tests.EditMode.Profile
         {
             var catalog = NewCatalog(NewCard("a", 1), NewCard("h", 0));
             var profile = ProfileWithDeck("a", "h");
-            profile.dreamcatcherDecks.Add(new DeckSave { id = "deck_2", cardIds = new List<string> { "h", "h" } });
+            profile.dreamcatcherDecks.Add(new DreamcatcherPreset { id = "deck_2", cardIds = new List<string> { "h", "h" } });
 
             int removed = DeckPrune.RemoveHiddenCards(profile, catalog);
 

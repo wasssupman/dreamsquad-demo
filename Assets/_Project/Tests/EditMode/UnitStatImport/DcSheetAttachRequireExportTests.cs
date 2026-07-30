@@ -64,7 +64,6 @@ namespace Wassup.Tests.EditMode.UnitStatImport
             string json = SheetPushPayload.BuildCombinedJson(
                 "Defenders", "Enemies", DefenderFolder, EnemyFolder,
                 tabs, DcFolder, SkillFolder,
-                "Presets",
                 "CostConfig", ConfigFolder);
 
             var rows = (JArray)JObject.Parse(json)["DcCards"];

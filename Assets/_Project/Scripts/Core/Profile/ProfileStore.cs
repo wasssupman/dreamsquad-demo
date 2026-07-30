@@ -121,10 +121,14 @@ namespace Wassup.Core
             DreamstoneData[] defaultStones = null)
         {
             var p = new PlayerProfile { schemaVersion = CurrentSchemaVersion };
-            if (p.dreamcatcherDecks == null) p.dreamcatcherDecks = new System.Collections.Generic.List<DeckSave>();
+            if (p.dreamcatcherDecks == null) p.dreamcatcherDecks = new System.Collections.Generic.List<DreamcatcherPreset>();
             EnsureDefaultSquad(p, catalog);
             EnsureDefaultDeck(p, defaultDeck, cards);
             EnsureDefaultStones(p, defaultStones);
+            // page-local-presets unit 5 — 프리셋 리스트 불변식(상한·칸수·확정 포인터)의
+            // "로드" 호출 지점. 세 EnsureDefault* 안에 각각 넣지 않는다 — 3중 호출이 되고
+            // 불변식의 소유자가 흐려진다.
+            p.NormalizePresets();
             return p;
         }
 
@@ -134,11 +138,12 @@ namespace Wassup.Core
             DreamcatcherDeck defaultDeck, DreamcatcherCardCatalog cards,
             DreamstoneData[] defaultStones = null)
         {
-            if (p.squads == null) p.squads = new System.Collections.Generic.List<SquadSave>();
-            if (p.dreamcatcherDecks == null) p.dreamcatcherDecks = new System.Collections.Generic.List<DeckSave>();
+            if (p.squads == null) p.squads = new System.Collections.Generic.List<SquadPreset>();
+            if (p.dreamcatcherDecks == null) p.dreamcatcherDecks = new System.Collections.Generic.List<DreamcatcherPreset>();
             EnsureDefaultSquad(p, catalog);
             EnsureDefaultDeck(p, defaultDeck, cards);
             EnsureDefaultStones(p, defaultStones);
+            p.NormalizePresets();   // page-local-presets unit 5 — 위 CreateDefault 와 같은 이유
         }
 
         // squad-loadout Unit 0 — guarantee at least one squad (free starter, per
@@ -150,25 +155,28 @@ namespace Wassup.Core
         // enter squad mode out of the box.
         static void EnsureDefaultSquad(PlayerProfile p, DefenderCatalog catalog)
         {
-            if (p.squads == null) p.squads = new System.Collections.Generic.List<SquadSave>();
+            if (p.squads == null) p.squads = new System.Collections.Generic.List<SquadPreset>();
             if (p.squads.Count == 0)
             {
-                p.squads.Add(new SquadSave { id = "squad_1", name = "Squad 1" });
+                p.squads.Add(new SquadPreset { id = "squad_1", name = "스쿼드 1" });
             }
             foreach (var s in p.squads) if (s != null) s.NormalizeSlots();
-            if (string.IsNullOrEmpty(p.selectedSquadId) || p.SelectedSquad() == null)
+            // page-local-presets unit 5 — 이 포인터 교정은 아래 시딩의 **선행 조건**이다
+            // (시딩 대상이 CommittedSquad()). NormalizePresets 가 같은 일을 하지만 그건
+            // EnsureNonNull 말미에 돌므로 여기서 빼면 시딩이 조용히 건너뛰어진다.
+            if (string.IsNullOrEmpty(p.selectedSquadId) || p.CommittedSquad() == null)
                 p.selectedSquadId = p.squads[0].id;
 
             // Seed only when the selected squad is empty — never overwrite a squad the
             // player has filled. Units are not profile-owned (all units are always
             // available), so the starter squad is seeded straight from the catalog.
-            var selected = p.SelectedSquad();
+            var selected = p.CommittedSquad();
             if (selected != null && selected.IsEmpty() && catalog != null)
             {
                 int i = 0;
                 foreach (var id in catalog.AllIds())
                 {
-                    if (i >= SquadSave.SlotCount) break;
+                    if (i >= SquadPreset.SlotCount) break;
                     selected.unitIds[i++] = id;
                 }
             }
@@ -186,7 +194,7 @@ namespace Wassup.Core
         static void EnsureDefaultDeck(PlayerProfile p, DreamcatcherDeck defaultDeck, DreamcatcherCardCatalog cards)
         {
             if (defaultDeck == null || cards == null) return;   // caller opted out of seeding
-            if (p.SelectedDeck() != null) return;               // player's choice stands
+            if (p.CommittedDeck() != null) return;               // player's choice stands
 
             if (p.dreamcatcherDecks.Count > 0)
             {
@@ -205,9 +213,9 @@ namespace Wassup.Core
         // change is followed automatically instead of re-authoring the asset. Lives
         // next to CreateDefault so the fresh-install path and the dev DEFAULT LOADOUT
         // button share one definition of "default deck".
-        public static DeckSave BuildDefaultDeck(DreamcatcherDeck source, int deckSize)
+        public static DreamcatcherPreset BuildDefaultDeck(DreamcatcherDeck source, int deckSize)
         {
-            var save = new DeckSave { id = "deck_1", name = "Deck 1", cardIds = new System.Collections.Generic.List<string>() };
+            var save = new DreamcatcherPreset { id = "deck_1", name = "덱 1", cardIds = new System.Collections.Generic.List<string>() };
             if (source == null || source.cards == null) return save;
             for (int i = 0; i < source.cards.Length && save.cardIds.Count < deckSize; i++)
             {
@@ -226,7 +234,7 @@ namespace Wassup.Core
         static void EnsureDefaultStones(PlayerProfile p, DreamstoneData[] defaultStones)
         {
             if (defaultStones == null || defaultStones.Length == 0) return;  // 호출자가 시딩을 옵트아웃
-            var squad = p.SelectedSquad();
+            var squad = p.CommittedSquad();
             if (squad == null) return;
             squad.NormalizeSlots();
 
@@ -234,7 +242,7 @@ namespace Wassup.Core
                 if (!string.IsNullOrEmpty(squad.stoneIds[i])) return;   // 하나라도 장착돼 있으면 손대지 않는다
 
             int slot = 0;
-            for (int i = 0; i < defaultStones.Length && slot < SquadSave.StoneSlotCount; i++)
+            for (int i = 0; i < defaultStones.Length && slot < SquadPreset.StoneSlotCount; i++)
             {
                 var s = defaultStones[i];
                 if (s == null || string.IsNullOrEmpty(s.id)) continue;   // 미배정 칸은 건너뛴다

@@ -12,7 +12,7 @@ namespace Wassup.UI
     // under SquadPanel and constructs the whole character page at runtime (detail
     // panel + live-Spine backdrop + header strip + roster browser), then hands the
     // pieces to SquadCharacterPageController. Runtime construction mirrors the
-    // project's SquadBuilderView pattern; the only authored state is this component
+    // project's runtime-build pattern; the only authored state is this component
     // and its asset references, so the scene footprint (and rollback) is minimal.
     //
     // Layout constants are the values verified via the Play overlay preview
@@ -28,6 +28,9 @@ namespace Wassup.UI
         [Header("Layout")]
         [SerializeField] private float detailWidth = 0.34f;
         [SerializeField] private float headerHeight = 0.14f;
+        // page-local-presets unit 3 — 우측 컬럼 최상단 프리셋 바. 좌측 상세는 Spine 전체
+        // 높이를 유지하고, 좌상단 authored CloseButton 과도 겹치지 않는다.
+        [SerializeField] private float presetBarHeight = 0.10f;
         // ui-polish 2026-07-18 — 큰 폰트 수용 위해 카드 영역 확대, Spine 위로.
         [SerializeField] private float spineScale = 1.9f;
         [SerializeField] private float spineFeet = 0.57f;
@@ -88,17 +91,30 @@ namespace Wassup.UI
             SetField(detailView, "cardRoot", cardRoot);
             SetField(detailView, "font", font);
 
-            // ---- Header strip (right, top band) ----
-            var header = Panel("HeaderStrip", self, new Vector2(detailWidth, 1f - headerHeight), new Vector2(1f, 1f), HeaderBg);
+            // ---- Preset bar (right, topmost band) ----
+            float headerTop = 1f - presetBarHeight;
+            var barRt = Panel("PresetBar", self, new Vector2(detailWidth, headerTop), new Vector2(1f, 1f), HeaderBg);
+            var presetBar = barRt.gameObject.AddComponent<PresetBarView>();
+            presetBar.Init(font);
+
+            // ---- Header strip (right, below preset bar) ----
+            float headerBottom = headerTop - headerHeight;
+            var header = Panel("HeaderStrip", self, new Vector2(detailWidth, headerBottom), new Vector2(1f, headerTop), HeaderBg);
             var headerStrip = header.gameObject.AddComponent<SquadHeaderStrip>();
             SetField(headerStrip, "catalog", catalog);
             SetField(headerStrip, "stoneCatalog", stoneCatalog);
             SetField(headerStrip, "font", font);
 
             // ---- Roster browser (right, below header) ----
-            var browserRt = Panel("BrowserPanel", self, new Vector2(detailWidth, 0f), new Vector2(1f, 1f - headerHeight), BrowserBg);
+            var browserRt = Panel("BrowserPanel", self, new Vector2(detailWidth, 0f), new Vector2(1f, headerBottom), BrowserBg);
             var browser = browserRt.gameObject.AddComponent<SquadRosterBrowser>();
             SetField(browser, "font", font);
+
+            // ---- Confirm popup (미저장 경고) — 스크롤/바 이후 생성해 최상단 렌더 ----
+            var popupGo = new GameObject("ConfirmPopup", typeof(RectTransform));
+            popupGo.transform.SetParent(self, false);
+            var popup = popupGo.AddComponent<ConfirmPopup>();
+            popup.Init(font);
 
             // ---- Controller (built inactive so its fields are set before OnEnable) ----
             var ctrlGo = new GameObject("Controller");
@@ -111,6 +127,8 @@ namespace Wassup.UI
             SetField(controller, "detailView", detailView);
             SetField(controller, "browser", browser);
             SetField(controller, "header", headerStrip);
+            SetField(controller, "presetBar", presetBar);
+            SetField(controller, "confirmPopup", popup);
             ctrlGo.SetActive(true);
         }
 

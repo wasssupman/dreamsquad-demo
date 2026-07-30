@@ -70,7 +70,7 @@ namespace Wassup.Tests.EditMode
         private PlayerProfile MakeProfile(IEnumerable<string> unitIds, IEnumerable<string> cardIds)
         {
             var p = new PlayerProfile();
-            var squad = new SquadSave { id = "squad_1" };
+            var squad = new SquadPreset { id = "squad_1" };
             squad.unitIds = unitIds != null ? unitIds.ToList() : new List<string>();
             squad.NormalizeSlots();
             p.squads.Add(squad);
@@ -78,14 +78,14 @@ namespace Wassup.Tests.EditMode
 
             if (cardIds != null)
             {
-                var deck = new DeckSave { id = "deck_1", cardIds = cardIds.ToList() };
+                var deck = new DreamcatcherPreset { id = "deck_1", cardIds = cardIds.ToList() };
                 p.dreamcatcherDecks.Add(deck);
                 p.selectedDeckId = deck.id;
             }
             return p;
         }
 
-        private static List<string> FullSquad() => Enumerable.Range(1, SquadSave.SlotCount).Select(i => $"u{i}").ToList();
+        private static List<string> FullSquad() => Enumerable.Range(1, SquadPreset.SlotCount).Select(i => $"u{i}").ToList();
         private static List<string> FullDeck() => Enumerable.Repeat("c1", DeckSize).ToList();
 
         [Test]
@@ -104,7 +104,7 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(1, _shortfalls.Count);
             Assert.AreEqual(LoadoutTarget.Squad, _shortfalls[0].target);
             Assert.AreEqual(5, _shortfalls[0].have);
-            Assert.AreEqual(SquadSave.SlotCount, _shortfalls[0].need);
+            Assert.AreEqual(SquadPreset.SlotCount, _shortfalls[0].need);
         }
 
         [Test]
@@ -134,7 +134,7 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void StaleUnitIds_DoNotCount()
         {
-            var stale = Enumerable.Range(1, SquadSave.SlotCount).Select(i => $"renamed_{i}");
+            var stale = Enumerable.Range(1, SquadPreset.SlotCount).Select(i => $"renamed_{i}");
             var p = MakeProfile(stale, FullDeck());
             Assert.IsFalse(LoadoutGate.Check(p, _units, _cards, _shortfalls));
             Assert.AreEqual(1, _shortfalls.Count);
@@ -153,7 +153,7 @@ namespace Wassup.Tests.EditMode
             Assert.IsFalse(LoadoutGate.Check(p, _units, _cards, _shortfalls));
             Assert.AreEqual(1, _shortfalls.Count);
             Assert.AreEqual(LoadoutTarget.Squad, _shortfalls[0].target);
-            Assert.AreEqual(SquadSave.SlotCount - 1, _shortfalls[0].have);
+            Assert.AreEqual(SquadPreset.SlotCount - 1, _shortfalls[0].have);
         }
 
         // Order matters: SquadDraw.Resolve de-dups and *then* caps at FieldCount, so
@@ -165,14 +165,14 @@ namespace Wassup.Tests.EditMode
         {
             var raw = new List<string> { "u1", "u1", "u2", "u3", "u4", "u5", "u6", "u7" };
             var p = new PlayerProfile();
-            var squad = new SquadSave { id = "squad_1", unitIds = raw };  // no NormalizeSlots: hand-edited json
+            var squad = new SquadPreset { id = "squad_1", unitIds = raw };  // no NormalizeSlots: hand-edited json
             p.squads.Add(squad);
             p.selectedSquadId = squad.id;
-            var deck = new DeckSave { id = "deck_1", cardIds = FullDeck() };
+            var deck = new DreamcatcherPreset { id = "deck_1", cardIds = FullDeck() };
             p.dreamcatcherDecks.Add(deck);
             p.selectedDeckId = deck.id;
 
-            Assert.AreEqual(SquadSave.SlotCount, SquadDraw.Resolve(raw).Count, "precondition: SquadDraw fields 7");
+            Assert.AreEqual(SquadPreset.SlotCount, SquadDraw.Resolve(raw).Count, "precondition: SquadDraw fields 7");
             Assert.IsTrue(LoadoutGate.Check(p, _units, _cards, _shortfalls));
             CollectionAssert.IsEmpty(_shortfalls);
         }

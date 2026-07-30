@@ -4,7 +4,7 @@ using Wassup.Data;
 namespace Wassup.UI
 {
     // squad-character-page Unit 3 — shared dreamstone presentation (grade frame
-    // color + "ATK +7.5%" effect summary). Lifted from SquadBuilderView's private
+    // color + "ATK +7.5%" effect summary). Lifted from the retired SquadBuilderView's private
     // GradeColor/StoneSummary so the character page's stone cells (browser), stone
     // slots (header), and stone detail all read one source. The legacy view is
     // retired in unit 4.

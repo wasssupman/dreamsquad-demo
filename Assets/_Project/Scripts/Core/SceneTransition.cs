@@ -69,7 +69,7 @@ namespace Wassup.Core
         [SerializeField] private string loadingAnimation = "Run";
 
         [Header("Loading squad source")]
-        [Tooltip("로비/배틀이 공유하는 in-memory 프로파일. SelectedSquad() 로 러너 외형을 뽑는다.")]
+        [Tooltip("로비/배틀이 공유하는 in-memory 프로파일. CommittedSquad() 로 러너 외형을 뽑는다.")]
         [SerializeField] private PlayerProfileSO profileSO;
         [Tooltip("스쿼드 unitId → DefenderUnitData 해석용 카탈로그.")]
         [SerializeField] private DefenderCatalog catalog;
@@ -259,7 +259,7 @@ namespace Wassup.Core
         private List<DefenderUnitData> BuildRunnerUnits(int max)
         {
             var chosen = new List<DefenderUnitData>();
-            var squad = profileSO != null && profileSO.profile != null ? profileSO.profile.SelectedSquad() : null;
+            var squad = profileSO != null && profileSO.profile != null ? profileSO.profile.CommittedSquad() : null;
             if (squad == null || catalog == null) return chosen;
 
             var ids = SquadDraw.Resolve(squad.unitIds);

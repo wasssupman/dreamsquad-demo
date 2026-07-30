@@ -8,7 +8,7 @@ namespace Wassup.UI
 {
     // wave-authoring-test-mode unit 4 — 테스트 모드 플랜 피커. TestModeConfig.planCatalog
     // 의 작성 플랜을 버튼으로 나열, 선택 시 TestModeContext.Set 후 BattleScene 로드.
-    // UI 는 OnEnable 에서 자체 빌드(SquadBuilderView 패턴).
+    // UI 는 OnEnable 에서 자체 빌드(런타임 빌더 패턴).
     public class TestModePanelView : MonoBehaviour
     {
         [SerializeField] private TestModeConfig config;

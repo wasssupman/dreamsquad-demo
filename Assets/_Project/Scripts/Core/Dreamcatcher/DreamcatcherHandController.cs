@@ -194,7 +194,7 @@ namespace Wassup.Core
         private List<DreamcatcherCard> ResolveAttachDeck()
         {
             var result = new List<DreamcatcherCard>();
-            var save = (profileSO != null && profileSO.profile != null) ? profileSO.profile.SelectedDeck() : null;
+            var save = (profileSO != null && profileSO.profile != null) ? profileSO.profile.CommittedDeck() : null;
             if (save != null && cardCatalog != null && DeckRules.Validate(save.cardIds, cardCatalog, out _))
             {
                 foreach (var id in save.cardIds)
@@ -488,7 +488,7 @@ namespace Wassup.Core
             var ids = new List<string>(cards.Count);
             foreach (var card in cards)
                 if (card != null) ids.Add(card.id);
-            var save = (profileSO != null && profileSO.profile != null) ? profileSO.profile.SelectedDeck() : null;
+            var save = (profileSO != null && profileSO.profile != null) ? profileSO.profile.CommittedDeck() : null;
             logger.SetDreamcatcherDeck(save != null ? save.id : "default",
                 save != null ? save.name : "Default+Active", ids);
         }

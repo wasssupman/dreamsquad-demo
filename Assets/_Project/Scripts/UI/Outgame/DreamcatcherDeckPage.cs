@@ -23,6 +23,8 @@ namespace Wassup.UI
         [Header("Layout")]
         [SerializeField] private float detailWidth = 0.34f;
         [SerializeField] private float headerHeight = 0.16f;
+        // page-local-presets unit 4 — 스쿼드 페이지와 동일한 우측 최상단 프리셋 바.
+        [SerializeField] private float presetBarHeight = 0.10f;
         // ui-polish 2026-07-18 — 큰 폰트 수용 위해 카드 영역 확대 + 하단 여백.
         [SerializeField] private float cardHeight = 0.50f;
         [SerializeField] private float cardBottomMargin = 0.03f;
@@ -65,16 +67,29 @@ namespace Wassup.UI
             SetField(detailView, "font", font);
             SetField(detailView, "defenderCatalog", defenderCatalog);
 
-            // ---- Deck strip (right, top band) ----
-            var strip = Panel("DeckStrip", self, new Vector2(detailWidth, 1f - headerHeight), new Vector2(1f, 1f), HeaderBg);
+            // ---- Preset bar (right, topmost band) ----
+            float stripTop = 1f - presetBarHeight;
+            var barRt = Panel("PresetBar", self, new Vector2(detailWidth, stripTop), new Vector2(1f, 1f), HeaderBg);
+            var presetBar = barRt.gameObject.AddComponent<PresetBarView>();
+            presetBar.Init(font);
+
+            // ---- Deck strip (right, below preset bar) ----
+            float stripBottom = stripTop - headerHeight;
+            var strip = Panel("DeckStrip", self, new Vector2(detailWidth, stripBottom), new Vector2(1f, stripTop), HeaderBg);
             var deckStrip = strip.gameObject.AddComponent<DreamcatcherDeckStrip>();
             SetField(deckStrip, "catalog", catalog);
             SetField(deckStrip, "font", font);
 
             // ---- Card browser (right, below) ----
-            var browserRt = Panel("BrowserPanel", self, new Vector2(detailWidth, 0f), new Vector2(1f, 1f - headerHeight), BrowserBg);
+            var browserRt = Panel("BrowserPanel", self, new Vector2(detailWidth, 0f), new Vector2(1f, stripBottom), BrowserBg);
             var browser = browserRt.gameObject.AddComponent<DreamcatcherCardBrowser>();
             SetField(browser, "font", font);
+
+            // ---- Confirm popup (미저장 경고) — 최상단 렌더 ----
+            var popupGo = new GameObject("ConfirmPopup", typeof(RectTransform));
+            popupGo.transform.SetParent(self, false);
+            var popup = popupGo.AddComponent<ConfirmPopup>();
+            popup.Init(font);
 
             // ---- Controller (inactive → inject → activate) ----
             var ctrlGo = new GameObject("Controller");
@@ -86,6 +101,8 @@ namespace Wassup.UI
             SetField(controller, "detailView", detailView);
             SetField(controller, "browser", browser);
             SetField(controller, "deckStrip", deckStrip);
+            SetField(controller, "presetBar", presetBar);
+            SetField(controller, "confirmPopup", popup);
             ctrlGo.SetActive(true);
         }
 

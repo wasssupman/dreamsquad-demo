@@ -8,9 +8,13 @@ namespace Wassup.UI
 {
     // dreamcatcher-deck-page unit 3 — orchestrator. Owns the detail view, card
     // browser and deck strip and drives the working deck. Feature parity with the
-    // old DreamcatcherDeckBuilderView: add(cap)/remove/duplicates, Subconscious
-    // excluded from the add pool (removable if already in deck). Edits persist
-    // immediately; DeckRules.Validate remains the start gate's responsibility.
+    // retired DreamcatcherDeckBuilderView: add(cap)/remove/duplicates, Subconscious
+    // excluded from the add pool (removable if already in deck).
+    //
+    // page-local-presets unit 4 — **편집은 더 이상 즉시 저장되지 않는다.** 예전 주석의
+    // "Edits persist immediately" 는 폐기됐다: 편집은 작업본만 바꾸고 [저장]이 유일한
+    // 기록 경로다. DeckRules.Validate 는 여전히 START 게이트 책임이라 유효하지 않은
+    // 중간 덱도 저장할 수 있다.
     public class DreamcatcherDeckPageController : MonoBehaviour
     {
         [SerializeField] private DreamcatcherCardCatalog catalog;
@@ -18,8 +22,13 @@ namespace Wassup.UI
         [SerializeField] private DreamcatcherCardDetailView detailView;
         [SerializeField] private DreamcatcherCardBrowser browser;
         [SerializeField] private DreamcatcherDeckStrip deckStrip;
+        [SerializeField] private PresetBarView presetBar;
+        [SerializeField] private ConfirmPopup confirmPopup;
 
-        private const string DeckId = "deck_1";
+        // page-local-presets unit 4 — 구 `DeckId = "deck_1"` 하드코딩은 제거됐다. 프리셋이
+        // 30개인 세계에서 "덱은 deck_1 하나"는 틀린 전제이고, 매 편집이 selectedDeckId 를
+        // 강제 대입하던 것도 [선택] 전용 권한을 침범한다.
+        private const string IdPrefix = "deck_";
 
         [NonSerialized] internal Action<PlayerProfile> ProfileSaver = ProfileStore.Save;
 
@@ -28,14 +37,39 @@ namespace Wassup.UI
         private string _selectedCardId; // grid/deck 어느 쪽을 눌러도 이 카드가 상세 대상
         private bool _wired;
 
+        // ---- 작업본 ---------------------------------------------------------
+        private string _viewingPresetId;
+        private string _workingName = "";
+        private readonly List<PresetBarView.Entry> _entries = new List<PresetBarView.Entry>();
+
+        private PlayerProfile Profile => profileSO != null ? profileSO.profile : null;
+
+        private DreamcatcherPreset StoredPreset(string id)
+        {
+            var p = Profile;
+            if (p == null || p.dreamcatcherDecks == null || string.IsNullOrEmpty(id)) return null;
+            for (int i = 0; i < p.dreamcatcherDecks.Count; i++)
+                if (p.dreamcatcherDecks[i] != null && p.dreamcatcherDecks[i].id == id) return p.dreamcatcherDecks[i];
+            return null;
+        }
+
         private void OnEnable()
         {
             WireOnce();
             BuildPool();
+
+            var p = Profile;
+            if (p != null)
+            {
+                p.NormalizePresets();
+                // 페이지 진입은 **확정 프리셋**을 디폴트로 보여준다.
+                _viewingPresetId = p.selectedDeckId;
+            }
             LoadWorking();
             if (browser != null) browser.ShowCards(SortedPool());
             _selectedCardId = _pool.Count > 0 ? _pool[0].id : null;
             RefreshAll();
+            RefreshBarEntries();   // 페이지 진입 시 목록 1회 구성(없으면 팝업이 빈 채로 열린다)
         }
 
         private void WireOnce()
@@ -45,6 +79,16 @@ namespace Wassup.UI
             if (browser != null) browser.CardSelected += OnCardSelected;
             if (deckStrip != null) deckStrip.SlotTapped += OnSlotTapped;
             if (detailView != null) { detailView.AddClicked += OnAdd; detailView.RemoveClicked += OnRemove; }
+            if (presetBar != null)
+            {
+                presetBar.PresetPicked += OnPresetPicked;
+                presetBar.CreateClicked += OnCreatePreset;
+                presetBar.CommitClicked += OnCommitPreset;
+                presetBar.SaveClicked += OnSavePreset;
+                presetBar.ResetClicked += OnResetWorking;
+                presetBar.DeleteClicked += OnDeletePreset;
+                presetBar.NameCommitted += OnNameCommitted;
+            }
         }
 
         private void BuildPool()
@@ -85,10 +129,12 @@ namespace Wassup.UI
             return sorted;
         }
 
+        // 확정분이 아니라 **보고 있는 프리셋**의 저장본을 작업본으로 복제한다.
         private void LoadWorking()
         {
             _working.Clear();
-            var deck = (profileSO != null && profileSO.profile != null) ? profileSO.profile.SelectedDeck() : null;
+            var deck = StoredPreset(_viewingPresetId);
+            _workingName = deck != null ? (deck.name ?? "") : "";
             if (deck != null && deck.cardIds != null)
                 foreach (var id in deck.cardIds) if (!string.IsNullOrEmpty(id)) _working.Add(id);
         }
@@ -100,6 +146,7 @@ namespace Wassup.UI
             if (deckStrip != null) { deckStrip.Refresh(_working); deckStrip.SetSelected(_selectedCardId); }
             if (browser != null) { browser.SetBadged(BadgedSet()); browser.SetSelected(_selectedCardId); }
             ShowSelectedDetail();
+            RefreshBarState();
         }
 
         private void ShowSelectedDetail()
@@ -147,7 +194,7 @@ namespace Wassup.UI
             if (card == null) return;
             if (!CanAdd(card, out _)) return; // dedup(이미 있으면 CanAdd=false)
             _working.Add(id);
-            PersistWorking();
+            // 저장하지 않는다 — [저장]이 유일한 기록 경로다(page-local-presets unit 4).
             if (browser != null) browser.ShowCards(SortedPool()); // unit 6 — live re-sort
             RefreshAll();
         }
@@ -160,7 +207,7 @@ namespace Wassup.UI
             int idx = _working.LastIndexOf(id);
             if (idx < 0) return;
             _working.RemoveAt(idx);
-            PersistWorking();
+            // 저장하지 않는다 — [저장]이 유일한 기록 경로다(page-local-presets unit 4).
             if (browser != null) browser.ShowCards(SortedPool()); // unit 6 — live re-sort
             RefreshAll();
         }
@@ -185,28 +232,180 @@ namespace Wassup.UI
         private void OnAdd() => AddCard(_selectedCardId);
         private void OnRemove() => RemoveOccurrence(_selectedCardId);
 
-        // Every user edit persists, including an invalid intermediate deck. START is
-        // still blocked by LoadoutGate; page entry/LoadWorking never call this.
-        private void PersistWorking()
+        // page-local-presets unit 4 — 디스크 쓰기. 프리셋 구조 변경(생성/삭제/확정)과
+        // [저장]에서만 불린다. 편집 경로에서는 부르지 않는다.
+        private void Save()
         {
-            if (profileSO == null || profileSO.profile == null) return;
-            if (!profileSO.IsLoadedThisSession) return;
-            var profile = profileSO.profile;
-            if (profile.dreamcatcherDecks == null) profile.dreamcatcherDecks = new List<DeckSave>();
-            var deck = profile.SelectedDeck();
-            if (deck == null || deck.id != DeckId)
+            var p = Profile;
+            if (p == null || !profileSO.IsLoadedThisSession) return;
+            (ProfileSaver ?? ProfileStore.Save)(p);
+        }
+
+        private bool IsDirty() =>
+            PresetDiff.IsDeckDirty(_workingName, _working, StoredPreset(_viewingPresetId));
+
+        // ---- 프리셋 바 --------------------------------------------------------
+
+        // 가벼운 갱신 — 이름/dirty/버튼 활성만. **내용 편집 경로가 쓰는 것.**
+        private void RefreshBarState()
+        {
+            if (presetBar == null) return;
+            var p = Profile;
+
+            int count = p != null && p.dreamcatcherDecks != null ? p.dreamcatcherDecks.Count : 0;
+            bool isCommitted = p != null && _viewingPresetId == p.selectedDeckId;
+            bool dirty = IsDirty();
+
+            presetBar.SetName(_workingName);
+            presetBar.SetButtonEnabled(
+                commit: !isCommitted,
+                save: dirty,
+                reset: _working.Count > 0,
+                delete: !isCommitted && count > 1);
+            // SetDirty 는 SetButtonEnabled 뒤 — [저장] 엑센트 색이 interactable 을 읽는다.
+            presetBar.SetDirty(dirty);
+        }
+
+        // 목록 셀 전체 재구성. **구조 변경에서만** 부른다(생성·삭제·확정·저장·전환).
+        // 카드 토글마다 부르면 매 탭 30셀을 다시 만들고, 아직 저장하지 않은 내용이 목록에
+        // 새어 나간다 — 목록은 "저장된 프리셋들"이다.
+        private void RefreshBarEntries()
+        {
+            if (presetBar == null) return;
+            var p = Profile;
+
+            _entries.Clear();
+            if (p != null && p.dreamcatcherDecks != null)
             {
-                deck = null;
-                foreach (var d in profile.dreamcatcherDecks) if (d != null && d.id == DeckId) deck = d;
-                if (deck == null)
+                for (int i = 0; i < p.dreamcatcherDecks.Count; i++)
                 {
-                    deck = new DeckSave { id = DeckId, name = "Deck 1" };
-                    profile.dreamcatcherDecks.Add(deck);
+                    var d = p.dreamcatcherDecks[i];
+                    if (d == null) continue;
+                    _entries.Add(new PresetBarView.Entry
+                    {
+                        id = d.id,
+                        name = d.name,
+                        thumbs = Thumbs(d),
+                        committed = d.id == p.selectedDeckId,
+                    });
                 }
             }
-            deck.cardIds = new List<string>(_working);
-            profile.selectedDeckId = DeckId;
-            (ProfileSaver ?? ProfileStore.Save)(profile);
+
+            int count = p != null && p.dreamcatcherDecks != null ? p.dreamcatcherDecks.Count : 0;
+            presetBar.SetEntries(_entries, _viewingPresetId, count < PlayerProfile.MaxPresets);
+            RefreshBarState();
+        }
+
+        // 목록 셀 썸네일 — 저장본의 앞 카드 아트. 스쿼드의 7 초상과 같은 자리를 쓴다.
+        private Sprite[] Thumbs(DreamcatcherPreset d)
+        {
+            const int Max = 7;
+            var arr = new Sprite[Max];
+            if (d == null || d.cardIds == null || catalog == null) return arr;
+            for (int i = 0; i < Max && i < d.cardIds.Count; i++)
+            {
+                var c = !string.IsNullOrEmpty(d.cardIds[i]) ? catalog.ById(d.cardIds[i]) : null;
+                arr[i] = c != null ? c.art : null;
+            }
+            return arr;
+        }
+
+        // ---- 프리셋 조작 (구조 변경은 즉시 저장, 내용은 [저장]만) ------------
+
+        private void OnPresetPicked(string id)
+        {
+            if (string.IsNullOrEmpty(id) || id == _viewingPresetId) return;
+            if (IsDirty() && confirmPopup != null)
+            {
+                string captured = id;
+                confirmPopup.Show(
+                    "저장하지 않은 변경이 있습니다.\n이동하면 변경은 사라집니다.",
+                    () => SwitchTo(captured), "이동");
+                return;
+            }
+            SwitchTo(id);
+        }
+
+        private void SwitchTo(string id)
+        {
+            _viewingPresetId = id;
+            LoadWorking();
+            if (browser != null) browser.ShowCards(SortedPool());
+            RefreshAll();
+            RefreshBarEntries();   // 선택 하이라이트 이동 = 구조 변경
+        }
+
+        private void OnCreatePreset()
+        {
+            var p = Profile;
+            if (p == null || p.dreamcatcherDecks == null) return;
+            if (p.dreamcatcherDecks.Count >= PlayerProfile.MaxPresets) return;
+
+            var ids = new List<string>(p.dreamcatcherDecks.Count);
+            for (int i = 0; i < p.dreamcatcherDecks.Count; i++)
+                if (p.dreamcatcherDecks[i] != null) ids.Add(p.dreamcatcherDecks[i].id);
+
+            var created = new DreamcatcherPreset
+            {
+                id = PresetIds.NextId(ids, IdPrefix),
+                name = "덱 " + (p.dreamcatcherDecks.Count + 1),
+                cardIds = new List<string>(),
+            };
+            p.dreamcatcherDecks.Add(created);
+            p.NormalizePresets();
+            Save();                       // 구조 변경 = 즉시 디스크
+            SwitchTo(created.id);
+        }
+
+        private void OnCommitPreset()
+        {
+            var p = Profile;
+            if (p == null || string.IsNullOrEmpty(_viewingPresetId)) return;
+            if (StoredPreset(_viewingPresetId) == null) return;
+
+            // 내용은 건드리지 않는다 — 확정은 "이 프리셋의 저장본을 반입한다"는 뜻이다.
+            p.selectedDeckId = _viewingPresetId;
+            Save();
+            RefreshBarEntries();   // 확정 뱃지 이동
+        }
+
+        private void OnSavePreset()
+        {
+            var stored = StoredPreset(_viewingPresetId);
+            if (stored == null) return;
+
+            stored.name = _workingName;
+            // 유효하지 않은 중간 덱(9/10)도 저장된다 — START 는 LoadoutGate 가 막는다(기존 계약).
+            stored.cardIds = new List<string>(_working);
+            Save();
+            RefreshBarEntries();   // dirty 꺼짐 + 썸네일/이름 갱신
+        }
+
+        // 리셋은 작업본만 비운다. 고정 칸이 없으므로 빈 리스트다.
+        private void OnResetWorking()
+        {
+            _working.Clear();
+            if (browser != null) browser.ShowCards(SortedPool());
+            RefreshAll();
+        }
+
+        private void OnDeletePreset()
+        {
+            var p = Profile;
+            if (p == null || p.dreamcatcherDecks == null) return;
+            if (_viewingPresetId == p.selectedDeckId) return;    // 확정분 보호
+            if (p.dreamcatcherDecks.Count <= 1) return;          // 최소 1개 유지
+
+            p.dreamcatcherDecks.RemoveAll(d => d != null && d.id == _viewingPresetId);
+            p.NormalizePresets();
+            Save();
+            SwitchTo(p.selectedDeckId);   // 확정분으로 복귀
+        }
+
+        private void OnNameCommitted(string value)
+        {
+            _workingName = value ?? "";
+            RefreshBarEntries();   // 목록 셀 이름 표시 갱신
         }
     }
 }

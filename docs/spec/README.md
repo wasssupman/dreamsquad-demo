@@ -201,10 +201,25 @@ unit 9 로 `Next Wave` 가 남은 웨이브 전체를 앞당기게 되면서 "�
   호출 가능" 게이트, 시간점수 상한 또는 곡선화. 어느 쪽이든 `stressScorePerPoint`·킬점수와의
   예산 균형을 함께 봐야 한다. (wave-pattern)
 
-#### PlayMode 사전 실패 3건 (2026-07-21 관측)
+#### PlayMode 사전 실패 (2026-07-21 관측 3건 → 2026-07-30 재측정 13건)
 
-에디터 실행 기준 PlayMode 40개 중 **3개** 실패. `596191c5` 와 `649991bb` 양쪽에서 동일해
-first-session-tutorial units 10~12 와 무관하다.
+> **2026-07-30 재측정 (page-local-presets 작업 중)**: 에디터 실행 기준 PlayMode **77개 중 13개**
+> 사전 실패. 테스트가 40→77개로 늘며 실패도 늘었다. 아래 3건은 그대로 남아 있고, 추가 10건은
+> 전부 ECS/Bridge·연출·서버 도메인이다. **격리 실행으로 사전 실패임을 확인**했다(프리셋 변경분이
+> 없는 조합에서도 동일 실패):
+> - `DragCancelZoneTest` · `DreamcatcherCursedRelicTest` · `DreamCocoonTest` ·
+>   `DreamcatcherEffectTest`(2건) · `PlacementAuraTest`(3건) — 격리에서도 실패
+> - `SceneTransitionSmokeTest` · `BountyMarkTest` — **격리에서는 통과**. 전체 실행 순서 의존
+>   (교차 오염). 스위트 순서 위생 문제이고 특정 spec 의 회귀가 아니다.
+> - `AuthE2ETest` — dev 서버 `uk_users_user_name` 중복키(500). 환경 문제이며 `e2e-test`
+>   계정명이 서버에 이미 존재해 sign-up 이 실패한다.
+>
+> `DreamcatcherDeckCarryInTest` 의 원인은 확정됐다 — 폴백 덱이 **의도적으로 제거**됐다
+> (`DreamcatcherHandController.ResolveAttachDeck`, "기본(fallback) 덱 제거 (사용자 결정
+> 2026-07-15)"). 즉 제품 버그가 아니라 **stale 테스트**이고, 기대값을 0장으로 갱신하는 것이 맞다.
+
+2026-07-21 관측: 에디터 실행 기준 PlayMode 40개 중 **3개** 실패. `596191c5` 와 `649991bb`
+양쪽에서 동일해 first-session-tutorial units 10~12 와 무관하다.
 
 - **`DreamcatcherDeckCarryInTest.SelectedSavedDeck_DrivesDraws`** [S] · `selectedDeckId = null` 일 때
   `ResolveAttachDeck()` 폴백이 **0장**을 돌려준다(기대 10). `DreamcatcherDeck_Default` 에셋 자체는

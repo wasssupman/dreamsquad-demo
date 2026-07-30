@@ -58,9 +58,12 @@ namespace Wassup.UI
             profileSO.profile = profile;
             ProfileStore.Save(profile);
 
-            Debug.Log($"[DefaultLoadout] squad={profile.SelectedSquad()?.unitIds.Count ?? 0} units, "
-                + $"deck={profile.SelectedDeck()?.cardIds.Count ?? 0} cards, "
-                + $"stones=[{string.Join(",", profile.SelectedSquad()?.stoneIds ?? new List<string>())}] → {ProfileStore.Path}", this);
+            // page-local-presets unit 5 — 프리셋이 여러 개일 수 있으므로 "확정분"임을 명시한다.
+            // 예전 문구는 편성이 하나뿐인 것처럼 읽혔다.
+            Debug.Log($"[DefaultLoadout] 프리셋 재생성 — 스쿼드 {profile.squads?.Count ?? 0}개 / 덱 {profile.dreamcatcherDecks?.Count ?? 0}개. "
+                + $"확정 스쿼드('{profile.CommittedSquad()?.name}')={profile.CommittedSquad()?.FilledCount() ?? 0} units, "
+                + $"확정 덱('{profile.CommittedDeck()?.name}')={profile.CommittedDeck()?.Count() ?? 0} cards, "
+                + $"stones=[{string.Join(",", profile.CommittedSquad()?.stoneIds ?? new List<string>())}] → {ProfileStore.Path}", this);
         }
     }
 }

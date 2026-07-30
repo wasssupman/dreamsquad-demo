@@ -151,8 +151,8 @@ namespace Wassup.Tests.EditMode
 
             var p = ProfileStore.LoadOrCreateAt(_path, cat, Deck(authored), cards);
 
-            Assert.IsNotNull(p.SelectedDeck(), "a fresh install must not start deckless");
-            Assert.IsTrue(DeckRules.Validate(p.SelectedDeck().cardIds, cards, out var reason), reason);
+            Assert.IsNotNull(p.CommittedDeck(), "a fresh install must not start deckless");
+            Assert.IsTrue(DeckRules.Validate(p.CommittedDeck().cardIds, cards, out var reason), reason);
         }
 
         // The squad-only overload is what every pre-existing caller uses; it must keep
@@ -165,25 +165,25 @@ namespace Wassup.Tests.EditMode
             var p = ProfileStore.LoadOrCreateAt(_path, cat);
 
             Assert.AreEqual(0, p.dreamcatcherDecks.Count);
-            Assert.IsNull(p.SelectedDeck());
+            Assert.IsNull(p.CommittedDeck());
         }
 
         // Seeding fills a hole; it is not a reset. A deck invalidated by a rule change
         // must survive so the gate can report it and the player can fix it.
         [Test]
-        public void ExistingSelectedDeck_IsNeverOverwritten()
+        public void ExistingCommittedDeck_IsNeverOverwritten()
         {
             var cat = MakeCatalog("scout");
             var cards = MakeCardCatalog(out var authored);
 
             var seeded = ProfileStore.LoadOrCreateAt(_path, cat, Deck(authored), cards);
-            seeded.SelectedDeck().cardIds.RemoveAt(0);          // now invalid (7 of 8)
-            var mine = new List<string>(seeded.SelectedDeck().cardIds);
+            seeded.CommittedDeck().cardIds.RemoveAt(0);          // now invalid (7 of 8)
+            var mine = new List<string>(seeded.CommittedDeck().cardIds);
             ProfileStore.SaveAt(_path, seeded);
 
             var reloaded = ProfileStore.LoadOrCreateAt(_path, cat, Deck(authored), cards);
 
-            CollectionAssert.AreEqual(mine, reloaded.SelectedDeck().cardIds);
+            CollectionAssert.AreEqual(mine, reloaded.CommittedDeck().cardIds);
             Assert.AreEqual(1, reloaded.dreamcatcherDecks.Count, "no second deck should appear");
         }
 
@@ -212,7 +212,7 @@ namespace Wassup.Tests.EditMode
             var p = ProfileStore.LoadOrCreateAt(_path, cat, Deck(), cards);
 
             Assert.AreEqual(0, p.dreamcatcherDecks.Count, "an empty deck helps no one");
-            Assert.IsNull(p.SelectedDeck());
+            Assert.IsNull(p.CommittedDeck());
         }
 
         // Existing installs predate deck seeding; loading must rescue them too, exactly
@@ -224,12 +224,12 @@ namespace Wassup.Tests.EditMode
             var cards = MakeCardCatalog(out var authored);
 
             var legacy = ProfileStore.LoadOrCreateAt(_path, cat);   // saved without a deck
-            Assert.IsNull(legacy.SelectedDeck(), "precondition: deckless");
+            Assert.IsNull(legacy.CommittedDeck(), "precondition: deckless");
 
             var reloaded = ProfileStore.LoadOrCreateAt(_path, cat, Deck(authored), cards);
 
-            Assert.IsNotNull(reloaded.SelectedDeck());
-            Assert.IsTrue(DeckRules.Validate(reloaded.SelectedDeck().cardIds, cards, out var reason), reason);
+            Assert.IsNotNull(reloaded.CommittedDeck());
+            Assert.IsTrue(DeckRules.Validate(reloaded.CommittedDeck().cardIds, cards, out var reason), reason);
         }
 
         [Test]
@@ -250,9 +250,9 @@ namespace Wassup.Tests.EditMode
                 c => c != null && c.visible != 0), "기본 덱은 숨김 카드나 null을 포함하면 안 된다");
 
             var profile = ProfileStore.CreateDefault(null, source, catalog);
-            Assert.IsNotNull(profile.SelectedDeck());
-            CollectionAssert.AreEqual(expected, profile.SelectedDeck().cardIds);
-            Assert.IsTrue(DeckRules.Validate(profile.SelectedDeck().cardIds, catalog, out var reason), reason);
+            Assert.IsNotNull(profile.CommittedDeck());
+            CollectionAssert.AreEqual(expected, profile.CommittedDeck().cardIds);
+            Assert.IsTrue(DeckRules.Validate(profile.CommittedDeck().cardIds, catalog, out var reason), reason);
         }
 
         // ---- EnsureDefaultStones (스타터 드림스톤 시드) ----
@@ -274,7 +274,7 @@ namespace Wassup.Tests.EditMode
             var p = ProfileStore.LoadOrCreateAt(_path, cat, null, null, stones);
 
             CollectionAssert.AreEqual(new[] { "s_atk", "s_as", "s_cost", "s_hp" },
-                p.SelectedSquad().stoneIds);
+                p.CommittedSquad().stoneIds);
         }
 
         [Test]
@@ -284,8 +284,8 @@ namespace Wassup.Tests.EditMode
 
             var p = ProfileStore.LoadOrCreateAt(_path, cat, null, null, null);
 
-            Assert.AreEqual(SquadSave.StoneSlotCount, p.SelectedSquad().stoneIds.Count);
-            CollectionAssert.AreEqual(new[] { "", "", "", "" }, p.SelectedSquad().stoneIds);
+            Assert.AreEqual(SquadPreset.StoneSlotCount, p.CommittedSquad().stoneIds.Count);
+            CollectionAssert.AreEqual(new[] { "", "", "", "" }, p.CommittedSquad().stoneIds);
         }
 
         [Test]
@@ -296,7 +296,7 @@ namespace Wassup.Tests.EditMode
 
             var p = ProfileStore.LoadOrCreateAt(_path, cat, null, null, stones);
 
-            CollectionAssert.AreEqual(new[] { "a", "b", "", "" }, p.SelectedSquad().stoneIds);
+            CollectionAssert.AreEqual(new[] { "a", "b", "", "" }, p.CommittedSquad().stoneIds);
         }
 
         // 시드는 리셋이 아니다: 플레이어가 스톤을 뺀 상태를 로드할 때마다 되살리면
@@ -308,15 +308,15 @@ namespace Wassup.Tests.EditMode
             var stones = new[] { Stone("s_atk"), Stone("s_as"), Stone("s_cost"), Stone("s_hp") };
 
             var p = ProfileStore.LoadOrCreateAt(_path, cat, null, null, stones);
-            p.SelectedSquad().stoneIds[0] = "player_pick";
-            for (int i = 1; i < p.SelectedSquad().stoneIds.Count; i++)
-                p.SelectedSquad().stoneIds[i] = "";
+            p.CommittedSquad().stoneIds[0] = "player_pick";
+            for (int i = 1; i < p.CommittedSquad().stoneIds.Count; i++)
+                p.CommittedSquad().stoneIds[i] = "";
             ProfileStore.SaveAt(_path, p);
 
             var reloaded = ProfileStore.LoadOrCreateAt(_path, cat, null, null, stones);
 
             CollectionAssert.AreEqual(new[] { "player_pick", "", "", "" },
-                reloaded.SelectedSquad().stoneIds);
+                reloaded.CommittedSquad().stoneIds);
         }
     }
 }

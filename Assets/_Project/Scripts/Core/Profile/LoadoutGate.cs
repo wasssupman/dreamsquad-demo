@@ -50,19 +50,19 @@ namespace Wassup.Core
             shortfalls?.Clear();
             bool ok = true;
 
-            // What a correctly-filled squad actually fields. SquadSave.SlotCount
+            // What a correctly-filled squad actually fields. SquadPreset.SlotCount
             // (how many slots exist) and SquadDraw.FieldCount (how many deploy) are
             // independent constants that both happen to be 7; taking the lower keeps
             // the requirement reachable if they ever drift apart.
-            int squadNeed = SquadSave.SlotCount < SquadDraw.FieldCount ? SquadSave.SlotCount : SquadDraw.FieldCount;
-            int squadHave = DeployableUnitCount(p?.SelectedSquad(), units);
+            int squadNeed = SquadPreset.SlotCount < SquadDraw.FieldCount ? SquadPreset.SlotCount : SquadDraw.FieldCount;
+            int squadHave = DeployableUnitCount(p?.CommittedSquad(), units);
             if (squadHave != squadNeed)
             {
                 shortfalls?.Add(new LoadoutShortfall(LoadoutTarget.Squad, squadHave, squadNeed, null));
                 ok = false;
             }
 
-            var deck = p?.SelectedDeck();
+            var deck = p?.CommittedDeck();
             // Validate handles a null card list (count 0 -> "need exactly N (have 0)"),
             // so an unselected deck needs no separate branch.
             if (!DeckRules.Validate(deck?.cardIds, cards, out var reason))
@@ -80,7 +80,7 @@ namespace Wassup.Core
         // runs it at match start; re-deriving that here would let the gate and the
         // match disagree. The gate only adds what Resolve deliberately omits —
         // catalog resolution — so a squad of stale ids reads as 0, not 7.
-        private static int DeployableUnitCount(SquadSave squad, DefenderCatalog units)
+        private static int DeployableUnitCount(SquadPreset squad, DefenderCatalog units)
         {
             if (squad == null || units == null) return 0;
 

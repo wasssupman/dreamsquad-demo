@@ -3,7 +3,6 @@ using UnityEditor;
 using UnityEngine;
 using Wassup.Core;
 using Wassup.Data;
-using Wassup.Data.PresetImport;
 using Wassup.Data.StatImport;
 
 namespace Wassup.Editor.UnitStatImport
@@ -35,11 +34,6 @@ namespace Wassup.Editor.UnitStatImport
         // 프로젝트에 커밋하지 않고 에디터 로컬(EditorPrefs)에만 둔다.
         private const string ScriptUrlPrefsKey = "Wassup.UnitStatImport.ScriptUrl";
 
-        // preset-sheet-import unit 2 — Presets 탭(신규). 위치 기반 list-SoT + id→SO 참조 해석이라
-        // 8탭의 keyed-upsert 와 별개 경로(applier 가 collection.presets 를 통째 재구성).
-        private const string PresetTabPrefsKey = "Wassup.UnitStatImport.PresetSheet";
-        private const string DefaultPresetTab = "Presets";
-
         // sheet-export-push unit 7 — CostConfig 탭(신규). DcConfig 와 같은 flat-config
         // keyed-upsert(id) 라 push 경로에 그대로 얹힌다. 이번 스코프는 export 방향만.
         private const string CostTabPrefsKey = "Wassup.UnitStatImport.CostSheet";
@@ -51,7 +45,6 @@ namespace Wassup.Editor.UnitStatImport
         private string _enemySheet = "";
         private string _dcSheets = "";
         private string _scriptUrl = "";
-        private string _presetTab = "";
         private string _costTab = "";
         private string _statusLog = "";
         private bool _requestInFlight;
@@ -66,7 +59,6 @@ namespace Wassup.Editor.UnitStatImport
             _enemySheet = EditorPrefs.GetString(EnemySheetPrefsKey, "Enemies");
             _dcSheets = EditorPrefs.GetString(DcSheetsPrefsKey, DefaultDcSheets);
             _scriptUrl = EditorPrefs.GetString(ScriptUrlPrefsKey, "");
-            _presetTab = EditorPrefs.GetString(PresetTabPrefsKey, DefaultPresetTab);
             _costTab = EditorPrefs.GetString(CostTabPrefsKey, DefaultCostTab);
             // hotfix ③ — serialized true survives a domain reload while the
             // completed callback does not; reset so the Import button never sticks.
@@ -171,50 +163,17 @@ namespace Wassup.Editor.UnitStatImport
             using (new EditorGUI.DisabledScope(_requestInFlight
                 || string.IsNullOrWhiteSpace(_scriptUrl)
                 || string.IsNullOrWhiteSpace(_defenderSheet) || string.IsNullOrWhiteSpace(_enemySheet)
-                || string.IsNullOrWhiteSpace(_presetTab) || string.IsNullOrWhiteSpace(_costTab)
+                || string.IsNullOrWhiteSpace(_costTab)
                 || dcTabs == null))
             {
                 if (GUILayout.Button(_requestInFlight ? "..." : "Push to Sheet"))
                 {
                     if (EditorUtility.DisplayDialog("Push to Sheet",
-                        "유닛 2탭 + DC 6탭 + CostConfig 탭은 업서트(고아 삭제 안 함, 리포트만).\n"
-                        + "Presets 탭은 list-SoT라 Unity 리스트로 전체 교체(삭제/재정렬 반영).\n계속할까요?",
+                        "유닛 2탭 + DC 6탭 + CostConfig 탭은 업서트(고아 삭제 안 함, 리포트만).\n계속할까요?",
                         "Push", "취소"))
                     {
                         StartPush(dcTabs);
                     }
-                }
-            }
-
-            EditorGUILayout.Space();
-            EditorGUILayout.LabelField("Preset", EditorStyles.boldLabel);
-            EditorGUI.BeginChangeCheck();
-            _presetTab = EditorGUILayout.TextField("Preset Sheet", _presetTab);
-            if (EditorGUI.EndChangeCheck()) EditorPrefs.SetString(PresetTabPrefsKey, _presetTab);
-
-            using (new EditorGUI.DisabledScope(_requestInFlight
-                || string.IsNullOrWhiteSpace(_baseUrl) || string.IsNullOrWhiteSpace(_presetTab)))
-            {
-                if (GUILayout.Button(_requestInFlight ? "Importing..." : "Import Preset"))
-                {
-                    _requestInFlight = true;
-                    _statusLog = "Requesting...";
-                    RunPresetImport(_baseUrl, _presetTab, result =>
-                    {
-                        _statusLog = result;
-                        _requestInFlight = false;
-                        Repaint();
-                    });
-                }
-            }
-            // export = 로컬 SO → disk. 현 프리셋을 시트 시드로 뽑는다(API URL 불요).
-            using (new EditorGUI.DisabledScope(_requestInFlight || string.IsNullOrWhiteSpace(_presetTab)))
-            {
-                if (GUILayout.Button("Export Preset SO → JSON (시트 시드)"))
-                {
-                    string path = EditorUtility.SaveFilePanel("Export Preset 시트 시드", "", _presetTab.Trim(), "json");
-                    if (!string.IsNullOrEmpty(path))
-                        _statusLog = PresetSheetExporter.ExportToFile(path);
                 }
             }
 
@@ -379,51 +338,8 @@ namespace Wassup.Editor.UnitStatImport
             }, log);
         }
 
-        // preset-sheet-import unit 2 — 1탭 fetch → parse → PresetSheetApplier → collection 저장.
-        // onDone 은 apply 예외에도 발화(RunDcImport 동일 보장) → _requestInFlight 고착 방지.
-        internal static void RunPresetImport(string baseUrl, string tab, System.Action<string> onDone)
-        {
-            var url = SheetEnvelopeParser.BuildSheetUrl(baseUrl, tab);
-            SheetFetcher.Fetch(url, result =>
-            {
-                string res;
-                try { res = ApplyPresetFetched(result, tab); }
-                catch (System.Exception e) { res = $"Import failed: {e}"; }
-                onDone(res);
-            });
-        }
-
-        // 시트 = list-SoT: collection.presets 를 통째 재구성. id→SO 는 AssetDatabase 스캔 인덱스.
-        // rows=null(fetch 실패/빈) 또는 컬렉션 없으면 no-op(applier 가 리스트 보존).
-        internal static string ApplyPresetFetched(SheetFetcher.Result r, string tab)
-        {
-            var log = new StringBuilder();
-            var rows = SheetEnvelopeParser.ParseSheetLogged<PresetDto>(r.body, r.transportError, tab, log);
-            if (rows == null) return log.ToString();
-
-            var collection = PresetCollectionAsset.Load(log);
-            if (collection == null) return log.ToString();
-
-            var unitsById = UnitStatApplier.BuildIndex(
-                UnitAssetScan.Enumerate<DefenderUnitData>(DefenderFolder), so => so.id, log, nameof(DefenderUnitData));
-            var cardsById = UnitStatApplier.BuildIndex(
-                UnitAssetScan.Enumerate<DreamcatcherCard>(DcFolder), so => so.id, log, nameof(DreamcatcherCard));
-
-            bool changed = PresetSheetApplier.Apply(rows,
-                id => unitsById.TryGetValue(id, out var u) ? u : null,
-                id => cardsById.TryGetValue(id, out var c) ? c : null,
-                SquadSave.SlotCount, collection, log);
-
-            if (changed)
-            {
-                EditorUtility.SetDirty(collection);
-                AssetDatabase.SaveAssets();
-            }
-            return log.ToString();
-        }
-
         // sheet-export-push unit 7 — 1탭 fetch → parse → CostConfigSheetApplier → 디스크 저장.
-        // onDone 은 apply 예외에도 발화(RunDcImport/RunPresetImport 동일 보장) → 버튼 고착 방지.
+        // onDone 은 apply 예외에도 발화(RunDcImport 동일 보장) → 버튼 고착 방지.
         internal static void RunCostImport(string baseUrl, string tab, System.Action<string> onDone)
         {
             var url = SheetEnvelopeParser.BuildSheetUrl(baseUrl, tab);
@@ -468,7 +384,7 @@ namespace Wassup.Editor.UnitStatImport
             {
                 payload = SheetPushPayload.BuildCombinedJson(
                     _defenderSheet, _enemySheet, DefenderFolder, EnemyFolder,
-                    dcTabs, DcFolder, SkillFolder, _presetTab,
+                    dcTabs, DcFolder, SkillFolder,
                     _costTab, ConfigFolder);
             }
             catch (System.Exception e)

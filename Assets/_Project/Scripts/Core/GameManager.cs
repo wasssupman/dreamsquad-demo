@@ -35,7 +35,7 @@ namespace Wassup.Core
         // in Start; null/empty → existing draft path).
         [SerializeField] private PlayerProfileSO profileSO;
         [SerializeField] private DefenderCatalog catalog;
-        // dreamstone-loadout Unit 3 — resolves SquadSave.stoneIds to assets for carry-in.
+        // dreamstone-loadout Unit 3 — resolves SquadPreset.stoneIds to assets for carry-in.
         [SerializeField] private DreamstoneCatalog stoneCatalog;
 
         // match-seed-unification — 단일 매치 시드 소유. 맵·웨이브가 여기서 파생된다.
@@ -225,12 +225,21 @@ namespace Wassup.Core
 
             // squad-loadout Unit 3 — squad mode takes priority. Empty/unset squad
             // falls through to the existing draft path (A non-destructive).
-            var squad = (profileSO != null && profileSO.profile != null) ? profileSO.profile.SelectedSquad() : null;
+            var squad = (profileSO != null && profileSO.profile != null) ? profileSO.profile.CommittedSquad() : null;
             if (squad != null && !squad.IsEmpty() && battleBridge != null && catalog != null)
             {
                 StartSquadMatch(squad);
                 return;
             }
+
+            // page-local-presets unit 5 — 확정 프리셋이 비어 있으면 아래 draft 폴백으로
+            // 떨어진다. 로비에서는 LoadoutGate 가 START 를 막으므로 도달 불가이고, 남은
+            // 도달 경로는 게이트를 우회하는 것들(테스트 모드, 에디터에서 BattleScene 직접
+            // Play)이다. 폴백 자체는 프리셋보다 오래된 안전망이라 이번 spec 에서 바꾸지
+            // 않되, 조용히 다른 모드로 갈아타 원인 추적이 어려웠던 것만 로그로 드러낸다.
+            if (squad == null || squad.IsEmpty())
+                Debug.Log("[GameManager] 확정 스쿼드 프리셋이 비어 있음 — 레거시 draft 폴백으로 진입한다. "
+                    + "(로비 START 는 LoadoutGate 가 막으므로 이 경로는 게이트 우회 진입이다.)");
 
             if (draftController != null)
             {
@@ -255,7 +264,7 @@ namespace Wassup.Core
         // squad-loadout Unit 3 — skip the draft and bring the selected squad
         // straight into placement. Deterministic: exactly the saved squad units
         // (rev 2026-06-05 — no random fill).
-        private void StartSquadMatch(SquadSave squad)
+        private void StartSquadMatch(SquadPreset squad)
         {
             logger?.SetEntryMode("squad");
             // squad-loadout regression fix — build the themed map (tile style +
@@ -339,7 +348,7 @@ namespace Wassup.Core
             if (defenders != null && defenders.Length > 0)
             {
                 battleBridge.SetDefenderPool(defenders);
-                var squadForLog = (profileSO != null && profileSO.profile != null) ? profileSO.profile.SelectedSquad() : null;
+                var squadForLog = (profileSO != null && profileSO.profile != null) ? profileSO.profile.CommittedSquad() : null;
                 LogSquadCarryIn(squadForLog, new List<DefenderUnitData>(defenders));
             }
             else
@@ -347,7 +356,7 @@ namespace Wassup.Core
 
             // dreamstone-loadout Unit 3 — StartSquadMatch 미러. 스톤은 스쿼드 소속이라
             // 디펜더가 프리셋으로 폴백해도(위 defenders) 저장 스쿼드의 장착 스톤은 그대로 반입한다.
-            var stoneSquad = (profileSO != null && profileSO.profile != null) ? profileSO.profile.SelectedSquad() : null;
+            var stoneSquad = (profileSO != null && profileSO.profile != null) ? profileSO.profile.CommittedSquad() : null;
             battleBridge.SetDreamstones(ResolveEquippedStones(stoneSquad));
             // dreamstone-loadout Unit 6 — StartSquadMatch 미러 (CostRate 분리 적용).
             if (costRuntime != null) costRuntime.SetRegenRateMultiplier(ResolveCostRateMultiplier(stoneSquad));
@@ -377,7 +386,7 @@ namespace Wassup.Core
         // 스쿼드 없음/빈 경우 null 반환(호출부가 프리셋 폴백 판단).
         private DefenderUnitData[] ResolveSquadDefenders()
         {
-            var squad = (profileSO != null && profileSO.profile != null) ? profileSO.profile.SelectedSquad() : null;
+            var squad = (profileSO != null && profileSO.profile != null) ? profileSO.profile.CommittedSquad() : null;
             if (squad == null || squad.IsEmpty() || catalog == null) return null;
 
             var ids = SquadDraw.Resolve(squad.unitIds);
@@ -390,7 +399,7 @@ namespace Wassup.Core
             return units.ToArray();
         }
 
-        private void LogSquadCarryIn(SquadSave squad, List<DefenderUnitData> units)
+        private void LogSquadCarryIn(SquadPreset squad, List<DefenderUnitData> units)
         {
             if (logger == null || units == null) return;
 
@@ -406,7 +415,7 @@ namespace Wassup.Core
             logger.SetSquad(squad != null ? squad.id : string.Empty, squad != null ? squad.name : string.Empty, ids, names);
         }
 
-        private void LogDreamstoneCarryIn(SquadSave squad)
+        private void LogDreamstoneCarryIn(SquadPreset squad)
         {
             if (logger == null) return;
 
@@ -456,7 +465,7 @@ namespace Wassup.Core
         // policy as ResolveSquadDefenders/SquadDraw use for unitIds.
         // dreamstone-loadout Unit 6 — CostRate stones are excluded here; they have
         // no entity stat and route to CostRuntime instead (ResolveCostRateMultiplier).
-        private List<DreamstoneData> ResolveEquippedStones(SquadSave squad)
+        private List<DreamstoneData> ResolveEquippedStones(SquadPreset squad)
         {
             var stones = new List<DreamstoneData>();
             if (squad == null || squad.stoneIds == null || stoneCatalog == null) return stones;
@@ -475,7 +484,7 @@ namespace Wassup.Core
         // Only match-entry call sites (StartSquadMatch/StartTestModeMatch) call
         // this — see CostRuntime.SetRegenRateMultiplier for the full ownership
         // contract (ResetToStart/Configure must never touch the multiplier).
-        private float ResolveCostRateMultiplier(SquadSave squad)
+        private float ResolveCostRateMultiplier(SquadPreset squad)
         {
             float sum = 0f;
             if (squad == null || squad.stoneIds == null || stoneCatalog == null) return 1f;

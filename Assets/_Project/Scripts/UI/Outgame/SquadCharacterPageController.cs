@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using Wassup.Core;
@@ -6,13 +7,16 @@ using Wassup.Data;
 namespace Wassup.UI
 {
     // squad-character-page Unit 4 — the orchestrator. Owns the detail view, roster
-    // browser and header strip and drives the selected squad (profile). Replaces the
-    // old SquadBuilderView slot+modal flow (retired in scene wiring, unit 5).
+    // browser and header strip. Two modes share one browser + one detail panel (no
+    // modal): Unit mode browses defenders and edits the 7 unit slots; Stone mode
+    // (entered by tapping a header stone slot) browses the 64 dreamstones and edits
+    // the active stone slot.
     //
-    // Two modes share one browser + one detail panel (no modal): Unit mode browses
-    // defenders and edits the 7 unit slots; Stone mode (entered by tapping a header
-    // stone slot) browses the 64 dreamstones and edits the active stone slot. Every
-    // edit mutates the selected SquadSave in place and auto-saves.
+    // page-local-presets unit 3 — **편집 대상이 프로필에서 작업본으로 바뀌었다.** 예전에는
+    // 확정 스쿼드를 in-place 로 고치고 매 탭마다 디스크에 썼다. 이제는:
+    //   저장본(profile.squads[i]) --복제--> 작업본(_working*) --[저장]--> 저장본 --> 디스크
+    // 그래서 [저장] 없이 페이지를 떠나면 편집이 사라지고, [선택](확정)은 **저장본**을
+    // 가리킬 뿐 작업본을 기록하지 않는다. "확정 ≠ 화면"이 가능하므로 dirty 배지가 필수다.
     public class SquadCharacterPageController : MonoBehaviour
     {
         [SerializeField] private DefenderCatalog catalog;
@@ -21,6 +25,13 @@ namespace Wassup.UI
         [SerializeField] private SquadUnitDetailView detailView;
         [SerializeField] private SquadRosterBrowser browser;
         [SerializeField] private SquadHeaderStrip header;
+        [SerializeField] private PresetBarView presetBar;
+        [SerializeField] private ConfirmPopup confirmPopup;
+
+        // 테스트 주입 훅 — DreamcatcherDeckPageController.ProfileSaver 와 동형.
+        [NonSerialized] internal Action<PlayerProfile> ProfileSaver = ProfileStore.Save;
+
+        private const string IdPrefix = "squad_";
 
         private enum Mode { Unit, Stone }
         private Mode _mode = Mode.Unit;
@@ -32,16 +43,39 @@ namespace Wassup.UI
         private readonly List<DefenderUnitData> _units = new List<DefenderUnitData>();
         private readonly List<DreamstoneData> _stones = new List<DreamstoneData>();
 
-        private SquadSave Squad =>
-            (profileSO != null && profileSO.profile != null) ? profileSO.profile.SelectedSquad() : null;
+        // ---- 작업본 ---------------------------------------------------------
+        private string _viewingPresetId;
+        private string _workingName = "";
+        private readonly List<string> _workingUnits = new List<string>();
+        private readonly List<string> _workingStones = new List<string>();
+        private readonly List<PresetBarView.Entry> _entries = new List<PresetBarView.Entry>();
+
+        private PlayerProfile Profile => profileSO != null ? profileSO.profile : null;
+
+        private SquadPreset StoredPreset(string id)
+        {
+            var p = Profile;
+            if (p == null || p.squads == null || string.IsNullOrEmpty(id)) return null;
+            for (int i = 0; i < p.squads.Count; i++)
+                if (p.squads[i] != null && p.squads[i].id == id) return p.squads[i];
+            return null;
+        }
 
         private void OnEnable()
         {
             WireOnce();
             BuildLists();
-            var squad = Squad;
-            if (squad != null) squad.NormalizeSlots();
+
+            var p = Profile;
+            if (p != null)
+            {
+                p.NormalizePresets();
+                // 페이지 진입은 **확정 프리셋**을 디폴트로 보여준다.
+                _viewingPresetId = p.selectedSquadId;
+            }
+            LoadWorking(_viewingPresetId);
             EnterUnitMode(initial: true);
+            RefreshBarEntries();   // 페이지 진입 시 목록 1회 구성
         }
 
         private void WireOnce()
@@ -55,6 +89,16 @@ namespace Wassup.UI
                 header.UnitSlotTapped += OnUnitSlotTapped;
                 header.StoneSlotTapped += OnStoneSlotTapped;
             }
+            if (presetBar != null)
+            {
+                presetBar.PresetPicked += OnPresetPicked;
+                presetBar.CreateClicked += OnCreatePreset;
+                presetBar.CommitClicked += OnCommitPreset;
+                presetBar.SaveClicked += OnSavePreset;
+                presetBar.ResetClicked += OnResetWorking;
+                presetBar.DeleteClicked += OnDeletePreset;
+                presetBar.NameCommitted += OnNameCommitted;
+            }
         }
 
         private void BuildLists()
@@ -67,6 +111,204 @@ namespace Wassup.UI
                 foreach (var id in stoneCatalog.AllIds()) { var s = stoneCatalog.ById(id); if (s != null) _stones.Add(s); }
         }
 
+        // ---- 작업본 로드/저장 ----------------------------------------------
+
+        private void LoadWorking(string presetId)
+        {
+            _viewingPresetId = presetId;
+            var stored = StoredPreset(presetId);
+
+            _workingName = stored != null ? (stored.name ?? "") : "";
+            CopySlots(stored != null ? stored.unitIds : null, _workingUnits, SquadPreset.SlotCount);
+            CopySlots(stored != null ? stored.stoneIds : null, _workingStones, SquadPreset.StoneSlotCount);
+        }
+
+        // 저장본을 작업본으로 **복제**한다(참조 공유 금지 — 공유하면 편집이 곧 저장이 된다).
+        private static void CopySlots(List<string> src, List<string> dst, int count)
+        {
+            dst.Clear();
+            for (int i = 0; i < count; i++)
+                dst.Add(src != null && i < src.Count && src[i] != null ? src[i] : "");
+        }
+
+        private bool IsDirty() =>
+            PresetDiff.IsSquadDirty(_workingName, _workingUnits, _workingStones, StoredPreset(_viewingPresetId));
+
+        private void Save()
+        {
+            var p = Profile;
+            if (p == null || !profileSO.IsLoadedThisSession) return;
+            (ProfileSaver ?? ProfileStore.Save)(p);
+        }
+
+        // ---- 프리셋 바 --------------------------------------------------------
+
+        // 가벼운 갱신 — 이름/dirty/버튼 활성만. **내용 편집 경로가 쓰는 것.**
+        private void RefreshBarState()
+        {
+            if (presetBar == null) return;
+            var p = Profile;
+
+            int count = p != null && p.squads != null ? p.squads.Count : 0;
+            bool isCommitted = p != null && _viewingPresetId == p.selectedSquadId;
+            bool dirty = IsDirty();
+
+            presetBar.SetName(_workingName);
+            presetBar.SetButtonEnabled(
+                commit: !isCommitted,
+                save: dirty,
+                reset: !AllEmpty(_workingUnits) || !AllEmpty(_workingStones),
+                delete: !isCommitted && count > 1);
+            // SetDirty 는 SetButtonEnabled 뒤 — [저장] 엑센트 색이 interactable 을 읽는다.
+            presetBar.SetDirty(dirty);
+        }
+
+        // 목록 셀 전체 재구성(30셀 × 초상 7). **구조 변경에서만** 부른다 — 생성·삭제·확정·
+        // 저장·전환. 유닛 토글마다 부르면 매 탭 30셀을 다시 만들고, 아직 저장하지 않은
+        // 내용이 목록에 새어 나간다(목록은 "저장된 프리셋들"이다).
+        private void RefreshBarEntries()
+        {
+            if (presetBar == null) return;
+            var p = Profile;
+
+            _entries.Clear();
+            if (p != null && p.squads != null)
+            {
+                for (int i = 0; i < p.squads.Count; i++)
+                {
+                    var s = p.squads[i];
+                    if (s == null) continue;
+                    _entries.Add(new PresetBarView.Entry
+                    {
+                        id = s.id,
+                        name = s.name,
+                        thumbs = Thumbs(s),
+                        committed = s.id == p.selectedSquadId,
+                    });
+                }
+            }
+
+            int count = p != null && p.squads != null ? p.squads.Count : 0;
+            presetBar.SetEntries(_entries, _viewingPresetId, count < PlayerProfile.MaxPresets);
+            RefreshBarState();
+        }
+
+        // 목록 셀 썸네일은 **저장본**을 그린다(목록은 "저장된 프리셋들"이다).
+        private Sprite[] Thumbs(SquadPreset s)
+        {
+            var arr = new Sprite[SquadPreset.SlotCount];
+            if (s == null || s.unitIds == null || catalog == null) return arr;
+            for (int i = 0; i < SquadPreset.SlotCount && i < s.unitIds.Count; i++)
+            {
+                var u = !string.IsNullOrEmpty(s.unitIds[i]) ? catalog.ById(s.unitIds[i]) : null;
+                arr[i] = u != null ? u.portrait : null;
+            }
+            return arr;
+        }
+
+        private static bool AllEmpty(List<string> list)
+        {
+            for (int i = 0; i < list.Count; i++)
+                if (!string.IsNullOrEmpty(list[i])) return false;
+            return true;
+        }
+
+        // ---- 프리셋 조작 (구조 변경은 즉시 저장, 내용은 [저장]만) ------------
+
+        private void OnPresetPicked(string id)
+        {
+            if (string.IsNullOrEmpty(id) || id == _viewingPresetId) return;
+            if (IsDirty() && confirmPopup != null)
+            {
+                string captured = id;
+                confirmPopup.Show(
+                    "저장하지 않은 변경이 있습니다.\n이동하면 변경은 사라집니다.",
+                    () => SwitchTo(captured), "이동");
+                return;
+            }
+            SwitchTo(id);
+        }
+
+        private void SwitchTo(string id)
+        {
+            LoadWorking(id);
+            EnterUnitMode(initial: true);
+            RefreshBarEntries();   // 선택 하이라이트 이동 = 구조 변경
+        }
+
+        private void OnCreatePreset()
+        {
+            var p = Profile;
+            if (p == null || p.squads == null) return;
+            if (p.squads.Count >= PlayerProfile.MaxPresets) return;
+
+            var ids = new List<string>(p.squads.Count);
+            for (int i = 0; i < p.squads.Count; i++) if (p.squads[i] != null) ids.Add(p.squads[i].id);
+
+            var created = new SquadPreset
+            {
+                id = PresetIds.NextId(ids, IdPrefix),
+                name = "스쿼드 " + (p.squads.Count + 1),
+            };
+            created.NormalizeSlots();
+            p.squads.Add(created);
+            p.NormalizePresets();
+            Save();                       // 구조 변경 = 즉시 디스크
+            SwitchTo(created.id);
+        }
+
+        private void OnCommitPreset()
+        {
+            var p = Profile;
+            if (p == null || string.IsNullOrEmpty(_viewingPresetId)) return;
+            if (StoredPreset(_viewingPresetId) == null) return;
+
+            // **내용은 건드리지 않는다** — 확정은 "이 프리셋의 저장본을 반입한다"는 뜻이다.
+            p.selectedSquadId = _viewingPresetId;
+            Save();
+            RefreshBarEntries();   // 확정 뱃지 이동
+        }
+
+        private void OnSavePreset()
+        {
+            var stored = StoredPreset(_viewingPresetId);
+            if (stored == null) return;
+
+            stored.name = _workingName;
+            stored.unitIds = new List<string>(_workingUnits);
+            stored.stoneIds = new List<string>(_workingStones);
+            stored.NormalizeSlots();
+            Save();
+            RefreshBarEntries();          // dirty 꺼짐 + 썸네일/이름 갱신
+        }
+
+        // 리셋은 **작업본만** 비운다. 저장 안 하고 나가면 원복된다.
+        private void OnResetWorking()
+        {
+            for (int i = 0; i < _workingUnits.Count; i++) _workingUnits[i] = "";
+            for (int i = 0; i < _workingStones.Count; i++) _workingStones[i] = "";
+            EnterUnitMode(initial: true);
+        }
+
+        private void OnDeletePreset()
+        {
+            var p = Profile;
+            if (p == null || p.squads == null) return;
+            if (_viewingPresetId == p.selectedSquadId) return;   // 확정분 보호
+            if (p.squads.Count <= 1) return;                     // 최소 1개 유지
+
+            p.squads.RemoveAll(s => s != null && s.id == _viewingPresetId);
+            p.NormalizePresets();
+            Save();                       // 구조 변경 = 즉시 디스크
+            SwitchTo(p.selectedSquadId);  // 확정분으로 복귀
+        }
+
+        private void OnNameCommitted(string value)
+        {
+            _workingName = value ?? "";
+            RefreshBarEntries();   // 목록 셀 이름 표시 갱신
+        }
+
         // ---- Unit mode ----------------------------------------------------
 
         private void EnterUnitMode(bool initial = false)
@@ -77,70 +319,70 @@ namespace Wassup.UI
             if (browser != null) browser.ShowUnits(SortedUnits());
             if (initial || string.IsNullOrEmpty(_selectedUnitId) ||
                 (catalog != null && catalog.ById(_selectedUnitId) == null))
-                _selectedUnitId = FirstSquadUnitOrDefault();
+                _selectedUnitId = FirstWorkingUnitOrDefault();
             RefreshUnitMode();
         }
 
-        // Unit 10 — squad members first (slot order, matching the header strip),
-        // the rest in catalog order. Re-shown on every membership change so the
-        // invariant holds live.
+        // Unit 10 — 편성된 유닛 먼저(슬롯 순서, 헤더 스트립과 동일), 나머지는 카탈로그
+        // 순서. 이제 기준은 저장본이 아니라 **작업본**이다.
         private List<DefenderUnitData> SortedUnits()
         {
-            var squad = Squad;
-            if (squad == null || squad.unitIds == null) return _units;
             var sorted = new List<DefenderUnitData>(_units.Count);
-            for (int i = 0; i < squad.unitIds.Count; i++)
+            var seen = new HashSet<string>();
+            for (int i = 0; i < _workingUnits.Count; i++)
             {
-                var u = (!string.IsNullOrEmpty(squad.unitIds[i]) && catalog != null) ? catalog.ById(squad.unitIds[i]) : null;
+                var id = _workingUnits[i];
+                if (string.IsNullOrEmpty(id) || catalog == null || !seen.Add(id)) continue;
+                var u = catalog.ById(id);
                 if (u != null) sorted.Add(u);
             }
             for (int i = 0; i < _units.Count; i++)
-                if (!Contains(squad.unitIds, _units[i].id)) sorted.Add(_units[i]);
+                if (!seen.Contains(_units[i].id)) sorted.Add(_units[i]);
             return sorted;
         }
 
-        private string FirstSquadUnitOrDefault()
+        private string FirstWorkingUnitOrDefault()
         {
-            var squad = Squad;
-            if (squad != null)
-                for (int i = 0; i < squad.unitIds.Count; i++)
-                    if (!string.IsNullOrEmpty(squad.unitIds[i])) return squad.unitIds[i];
+            for (int i = 0; i < _workingUnits.Count; i++)
+                if (!string.IsNullOrEmpty(_workingUnits[i])) return _workingUnits[i];
             return _units.Count > 0 ? _units[0].id : null;
         }
 
         private void RefreshUnitMode()
         {
-            var squad = Squad;
-            if (header != null) { header.Refresh(squad); header.SetSelectedUnit(_selectedUnitId); }
+            if (header != null)
+            {
+                header.Refresh(_workingUnits, _workingStones);
+                header.SetSelectedUnit(_selectedUnitId);
+            }
             if (browser != null)
             {
-                browser.SetBadged(IdSet(squad != null ? squad.unitIds : null));
+                browser.SetBadged(IdSet(_workingUnits));
                 browser.SetSelected(_selectedUnitId);
             }
             if (detailView != null)
             {
                 var unit = catalog != null ? catalog.ById(_selectedUnitId) : null;
-                detailView.Show(unit, Contains(squad != null ? squad.unitIds : null, _selectedUnitId));
+                detailView.Show(unit, Contains(_workingUnits, _selectedUnitId));
             }
+            RefreshBarState();
         }
 
         private void ToggleUnit(string id)
         {
-            var squad = Squad;
-            if (squad == null || string.IsNullOrEmpty(id)) return;
-            squad.NormalizeSlots();
-            int idx = squad.unitIds.IndexOf(id);
+            if (string.IsNullOrEmpty(id)) return;
+            int idx = _workingUnits.IndexOf(id);
             if (idx >= 0)
             {
-                squad.unitIds[idx] = "";
+                _workingUnits[idx] = "";
             }
             else
             {
-                int empty = squad.unitIds.FindIndex(s => string.IsNullOrEmpty(s));
-                if (empty < 0) return; // squad full — ignore
-                squad.unitIds[empty] = id;
+                int empty = _workingUnits.FindIndex(string.IsNullOrEmpty);
+                if (empty < 0) return; // 만석 — 무시
+                _workingUnits[empty] = id;
             }
-            Save();
+            // 저장하지 않는다 — [저장]이 유일한 기록 경로다.
             if (browser != null) browser.ShowUnits(SortedUnits());
             RefreshUnitMode();
         }
@@ -150,28 +392,22 @@ namespace Wassup.UI
         private void EnterStoneMode(int slotIndex)
         {
             _mode = Mode.Stone;
-            _activeStoneSlot = Mathf.Clamp(slotIndex, 0, SquadSave.StoneSlotCount - 1);
+            _activeStoneSlot = Mathf.Clamp(slotIndex, 0, SquadPreset.StoneSlotCount - 1);
             if (browser != null) browser.ShowStones(SortedStones());
-            var squad = Squad;
-            string cur = (squad != null && _activeStoneSlot < squad.stoneIds.Count) ? squad.stoneIds[_activeStoneSlot] : "";
+            string cur = _activeStoneSlot < _workingStones.Count ? _workingStones[_activeStoneSlot] : "";
             _selectedStoneId = !string.IsNullOrEmpty(cur) ? cur : (_stones.Count > 0 ? _stones[0].id : null);
             RefreshStoneMode();
         }
 
-        // Unit 13 — 장착 스톤 먼저(슬롯 순서, 헤더 스트립과 동일), 나머지는 카탈로그
-        // 순서. unit 10 의 SortedUnits 와 동형이되, 저장 계층이 슬롯 중복을 허용하므로
-        // (PlayerProfile.SetStoneSlot — 유일성은 UI 가 강제) 1패스에 중복 가드를 둔다.
-        // _stones 를 in-place 정렬하면 안 된다 — EnterStoneMode 의 _stones[0] 폴백이
-        // 카탈로그 순서에 의존한다.
+        // Unit 13 — 장착 스톤 먼저(슬롯 순서), 나머지는 카탈로그 순서. _stones 를 in-place
+        // 정렬하면 안 된다 — EnterStoneMode 의 _stones[0] 폴백이 카탈로그 순서에 의존한다.
         private List<DreamstoneData> SortedStones()
         {
-            var squad = Squad;
-            if (squad == null || squad.stoneIds == null) return _stones;
             var sorted = new List<DreamstoneData>(_stones.Count);
             var seen = new HashSet<string>();
-            for (int i = 0; i < squad.stoneIds.Count; i++)
+            for (int i = 0; i < _workingStones.Count; i++)
             {
-                var id = squad.stoneIds[i];
+                var id = _workingStones[i];
                 if (string.IsNullOrEmpty(id) || stoneCatalog == null || !seen.Add(id)) continue;
                 var s = stoneCatalog.ById(id);
                 if (s != null) sorted.Add(s);
@@ -183,46 +419,42 @@ namespace Wassup.UI
 
         private void RefreshStoneMode()
         {
-            var squad = Squad;
             if (header != null)
             {
-                header.Refresh(squad);
+                header.Refresh(_workingUnits, _workingStones);
                 header.SetActiveStoneSlot(_activeStoneSlot);
                 header.SetSelectedUnit(null); // unit outline is unit-mode only (unit 10)
             }
             if (browser != null)
             {
-                browser.SetBadged(IdSet(squad != null ? squad.stoneIds : null));
+                browser.SetBadged(IdSet(_workingStones));
                 browser.SetSelected(_selectedStoneId);
             }
             if (detailView != null)
             {
                 var stone = stoneCatalog != null ? stoneCatalog.ById(_selectedStoneId) : null;
-                bool equipped = stone != null && squad != null &&
-                    _activeStoneSlot >= 0 && _activeStoneSlot < squad.stoneIds.Count &&
-                    squad.stoneIds[_activeStoneSlot] == _selectedStoneId;
+                bool equipped = stone != null &&
+                    _activeStoneSlot >= 0 && _activeStoneSlot < _workingStones.Count &&
+                    _workingStones[_activeStoneSlot] == _selectedStoneId;
                 detailView.ShowStone(stone, equipped);
             }
+            RefreshBarState();
         }
 
         private void ToggleStone(string id)
         {
-            var squad = Squad;
-            if (squad == null || _activeStoneSlot < 0 || string.IsNullOrEmpty(id)) return;
-            squad.NormalizeSlots();
-            if (squad.stoneIds[_activeStoneSlot] == id)
+            if (_activeStoneSlot < 0 || string.IsNullOrEmpty(id)) return;
+            if (_workingStones[_activeStoneSlot] == id)
             {
-                squad.SetStoneSlot(_activeStoneSlot, "");
+                _workingStones[_activeStoneSlot] = "";
             }
             else
             {
-                // "one item, one slot" — move: clear any other slot holding this id.
-                for (int i = 0; i < squad.stoneIds.Count; i++)
-                    if (i != _activeStoneSlot && squad.stoneIds[i] == id) squad.stoneIds[i] = "";
-                squad.SetStoneSlot(_activeStoneSlot, id);
+                // "one item, one slot" — 다른 슬롯의 같은 id 를 먼저 비운다.
+                for (int i = 0; i < _workingStones.Count; i++)
+                    if (i != _activeStoneSlot && _workingStones[i] == id) _workingStones[i] = "";
+                _workingStones[_activeStoneSlot] = id;
             }
-            Save();
-            // Unit 13 — 유닛 모드(ToggleUnit)와 동형 라이브 재정렬. 셀 이동 자체가 편성 피드백.
             if (browser != null) browser.ShowStones(SortedStones());
             RefreshStoneMode();
         }
@@ -241,23 +473,16 @@ namespace Wassup.UI
             else ToggleStone(_selectedStoneId);
         }
 
-        // Unit 9 — a filled-slot tap selects the unit for the detail panel (removal
-        // moved to the [편성 해제] button); an empty-slot tap is a no-op.
+        // Unit 9 — 찬 슬롯 탭은 그 유닛을 상세 대상으로 선택한다(제거는 [편성 해제]).
         private void OnUnitSlotTapped(int i)
         {
-            var squad = Squad;
-            if (squad == null) { if (_mode == Mode.Stone) EnterUnitMode(); return; }
-            squad.NormalizeSlots();
-            string id = (i >= 0 && i < squad.unitIds.Count) ? squad.unitIds[i] : "";
+            string id = (i >= 0 && i < _workingUnits.Count) ? _workingUnits[i] : "";
             if (!string.IsNullOrEmpty(id)) _selectedUnitId = id;
             if (_mode == Mode.Stone) { EnterUnitMode(); return; }
             RefreshUnitMode();
         }
 
-        private void OnStoneSlotTapped(int i)
-        {
-            EnterStoneMode(i);
-        }
+        private void OnStoneSlotTapped(int i) => EnterStoneMode(i);
 
         // ---- Helpers ------------------------------------------------------
 
@@ -271,14 +496,6 @@ namespace Wassup.UI
         }
 
         private static bool Contains(List<string> ids, string id)
-        {
-            return !string.IsNullOrEmpty(id) && ids != null && ids.Contains(id);
-        }
-
-        private void Save()
-        {
-            if (profileSO != null && profileSO.profile != null)
-                ProfileStore.Save(profileSO.profile);
-        }
+            => !string.IsNullOrEmpty(id) && ids != null && ids.Contains(id);
     }
 }

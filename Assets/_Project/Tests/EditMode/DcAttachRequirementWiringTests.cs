@@ -33,7 +33,10 @@ namespace Wassup.Tests.EditMode
         [Test]
         public void OutgameScene_DeckSurfaces_HaveCatalogAssigned()
         {
-            AssertWired(OutgameScene, "Assets/_Project/Scripts/UI/Outgame/DreamcatcherDeckBuilderView.cs");
+            // authored-preset-removal unit 2 — 구 `DreamcatcherDeckBuilderView` 핀은 제거됐다.
+            // 그 컴포넌트는 사문화(m_Enabled 0) 상태로 씬에 남아 있던 레거시이고 이제
+            // 삭제됐다. 남은 덱 표면은 DeckPage 하나다.
+            //
             // DeckPage 는 런타임 생성되는 DreamcatcherCardDetailView 의 주입원 —
             // 여기가 비면 덱 상세 문안이 유닛 id 로 보인다.
             AssertWired(OutgameScene, "Assets/_Project/Scripts/UI/Outgame/DreamcatcherDeckPage.cs");

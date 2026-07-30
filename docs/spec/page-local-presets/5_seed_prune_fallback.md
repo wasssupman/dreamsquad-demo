@@ -16,7 +16,8 @@
 **1. 시드 (`ProfileStore`)** — 구조는 거의 그대로다. 기존 코드가 이미 "리스트가 비면 하나 만들고, 확정 포인터가 깨졌으면 교정하고, **비어 있을 때만** 내용을 시드" 라는 옳은 정책을 갖고 있다. 바꿀 것:
 - `EnsureDefaultSquad` 가 만드는 첫 엔트리 이름을 `"Squad 1"` → `"스쿼드 1"` (unit 3 의 기본 이름 규칙과 일치)
 - `EnsureDefaultDeck` 의 `"Deck 1"` → `"덱 1"`
-- `NormalizePresets()` 를 **`EnsureNonNull` 과 `CreateDefault` 각각의 말미 1곳**에서 호출한다(unit 0 의 "로드" 호출 지점). 세 `EnsureDefault*` 안에 각각 넣지 않는다 — 3중 호출이 되고 불변식의 소유자가 흐려진다. 기존 `EnsureDefaultSquad` 안에 있던 확정 포인터 교정(`:159~160`)은 `NormalizePresets` 로 흡수되므로 중복 로직을 남기지 않는다
+- `NormalizePresets()` 를 **`EnsureNonNull` 과 `CreateDefault` 각각의 말미 1곳**에서 호출한다(unit 0 의 "로드" 호출 지점). 세 `EnsureDefault*` 안에 각각 넣지 않는다 — 3중 호출이 되고 불변식의 소유자가 흐려진다
+- **`EnsureDefaultSquad` 안의 확정 포인터 교정은 남긴다** (구현 중 정정 — 초안은 "`NormalizePresets` 로 흡수"라고 적었으나 틀렸다). 그 두 줄은 불변식이 아니라 **바로 아래 시딩의 선행 조건**이다: 시딩 대상이 `CommittedSquad()` 이므로 포인터가 깨진 상태로 들어오면 시딩이 조용히 건너뛰어지고 신규 프로필이 빈 스쿼드로 시작한다. `NormalizePresets` 는 `EnsureNonNull` **말미**에 돌기 때문에 이 시점보다 늦다
 - **시드가 여러 프리셋을 만들지 않는다** — 신규 유저는 프리셋 1개로 시작하고 나머지는 `[+]` 로 만든다
 
 `EnsureDefaultStones` 는 `CommittedSquad()` 의 4칸이 전부 비었을 때만 시드하는 현 정책을 유지한다. 프리셋이 여러 개여도 **확정 프리셋에만** 시드한다 — 다른 프리셋을 의도적으로 비워둔 것을 로드마다 되살리면 해제가 불가능해진다(기존 주석의 논리 그대로).

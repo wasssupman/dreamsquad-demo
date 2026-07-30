@@ -51,7 +51,7 @@ namespace Wassup.Tests.PlayMode
             // build a valid saved deck of 10x ranger_atk and select it.
             var profile = _profSO.profile;
             profile.dreamcatcherDecks.Clear();
-            var deck = new DeckSave { id = "deck_test", name = "T", cardIds = Enumerable.Repeat("ranger_atk", 10).ToList() };
+            var deck = new DreamcatcherPreset { id = "deck_test", name = "T", cardIds = Enumerable.Repeat("ranger_atk", 10).ToList() };
             profile.dreamcatcherDecks.Add(deck);
             profile.selectedDeckId = "deck_test";
 

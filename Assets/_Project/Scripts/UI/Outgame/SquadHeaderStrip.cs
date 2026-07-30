@@ -43,19 +43,23 @@ namespace Wassup.UI
         private readonly List<SlotW> _unitSlots = new List<SlotW>();
         private readonly List<SlotW> _stoneSlots = new List<SlotW>();
 
-        public void Refresh(SquadSave squad)
+        // page-local-presets unit 3 — 프리셋 객체가 아니라 **작업본 두 리스트**를 받는다.
+        // 페이지 편집은 저장본을 직접 고치지 않으므로(작업본 → [저장] → 저장본) 헤더가
+        // 그려야 하는 것은 저장본이 아니라 작업본이다. 부수 효과로 이 뷰는 프로필 타입
+        // 의존이 사라져 순수 뷰가 됐다.
+        public void Refresh(IReadOnlyList<string> unitIds, IReadOnlyList<string> stoneIds)
         {
             EnsureBuilt();
             for (int i = 0; i < _unitSlots.Count; i++)
             {
-                string id = (squad != null && squad.unitIds != null && i < squad.unitIds.Count) ? squad.unitIds[i] : "";
+                string id = (unitIds != null && i < unitIds.Count) ? unitIds[i] : "";
                 var unit = (!string.IsNullOrEmpty(id) && catalog != null) ? catalog.ById(id) : null;
                 _unitSlots[i].id = id;
                 PaintSlot(_unitSlots[i], unit != null ? unit.portrait : null, unit != null ? FilledUnit : EmptySlot, string.IsNullOrEmpty(id));
             }
             for (int i = 0; i < _stoneSlots.Count; i++)
             {
-                string id = (squad != null && squad.stoneIds != null && i < squad.stoneIds.Count) ? squad.stoneIds[i] : "";
+                string id = (stoneIds != null && i < stoneIds.Count) ? stoneIds[i] : "";
                 var stone = (!string.IsNullOrEmpty(id) && stoneCatalog != null) ? stoneCatalog.ById(id) : null;
                 _stoneSlots[i].id = id;
                 PaintSlot(_stoneSlots[i], stone != null ? stone.icon : null, stone != null ? DreamstoneStyle.Frame(stone.grade) : EmptySlot, string.IsNullOrEmpty(id));
@@ -109,13 +113,13 @@ namespace Wassup.UI
             hlg.childForceExpandWidth = false;
             hlg.childForceExpandHeight = false;
 
-            for (int i = 0; i < SquadSave.SlotCount; i++)
+            for (int i = 0; i < SquadPreset.SlotCount; i++)
             {
                 int index = i;
                 _unitSlots.Add(MakeSlot(unitSlotSize, () => UnitSlotTapped?.Invoke(index)));
             }
             MakeSpacer(24);
-            for (int i = 0; i < SquadSave.StoneSlotCount; i++)
+            for (int i = 0; i < SquadPreset.StoneSlotCount; i++)
             {
                 int index = i;
                 _stoneSlots.Add(MakeSlot(stoneSlotSize, () => StoneSlotTapped?.Invoke(index)));

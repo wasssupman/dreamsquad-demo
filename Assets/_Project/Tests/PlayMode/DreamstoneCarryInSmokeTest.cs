@@ -30,7 +30,7 @@ namespace Wassup.Tests.PlayMode
             // Clear the in-memory squad so other tests / a draft path are not polluted
             // by this run's setup (SquadCarryInSmokeTest pattern, extended to stoneIds).
             // No-op for the bridge-direct test above, which never sets _profSO.
-            var squad = _profSO != null && _profSO.profile != null ? _profSO.profile.SelectedSquad() : null;
+            var squad = _profSO != null && _profSO.profile != null ? _profSO.profile.CommittedSquad() : null;
             if (squad != null)
             {
                 for (int i = 0; i < squad.unitIds.Count; i++) squad.unitIds[i] = "";
@@ -144,7 +144,7 @@ namespace Wassup.Tests.PlayMode
             Assert.IsNotNull(_profSO, "profileSO wired");
 
             var profile = _profSO.profile;
-            var squad = profile.SelectedSquad();
+            var squad = profile.CommittedSquad();
             Assert.IsNotNull(squad, "default squad exists");
             var catalogIds = new System.Collections.Generic.List<string>(
                 ((Wassup.Data.DefenderCatalog)menu.GetType()
@@ -222,7 +222,7 @@ namespace Wassup.Tests.PlayMode
             Assert.IsNotNull(_profSO, "profileSO wired");
 
             var profile = _profSO.profile;
-            var squad = profile.SelectedSquad();
+            var squad = profile.CommittedSquad();
             Assert.IsNotNull(squad, "default squad exists");
             var catalogIds = new System.Collections.Generic.List<string>(
                 ((Wassup.Data.DefenderCatalog)menu.GetType()

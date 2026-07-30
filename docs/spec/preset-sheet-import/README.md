@@ -1,5 +1,7 @@
 # Preset Sheet Import — 스프레드시트 → SquadPresetCollection 임포트 매퍼
 
+> **은퇴 2026-07-30** — authored 프리셋(기획자 SO/시트 authoring)이 플레이어 소유 프리셋으로 대체되면서 `SquadPresetCollection`·`Presets` 탭 import/export/push 경로가 전부 제거됐다. → `docs/spec/authored-preset-removal/` (철거) · `docs/spec/page-local-presets/` (대체 기능). 아래 내용은 읽기 전용 이력이다. 서버 시트의 `Presets` 탭과 Apps Script 라우팅은 남아 있으나 클라이언트가 더는 사용하지 않는다.
+>
 > 상태: **완료 2026-07-22** — units 0~4 + 6(push). 커밋 `e66be309`(1)·`06eb866d`(2)·`8a922165`(3)·`0ae9a2c7`(4)·`fed036fa`(6)·`0c624458`(F3). EditMode 8/8, export/import round-trip 구조 검증(units 14/0/0·cards 20/0). **라이브 왕복 검증**: 재배포 후 push `Presets: replaced 2`(unit 6) + read-only 대조로 SO 2프리셋 = 시트 2행 IDENTICAL(squad 7·dc 10 csv, 원본 무쓰기). **잔여(선택)**: 로그인 자동반영 Play 스모크(applier·배선은 검증됨). 인계는 `5_handoff_summary.md`.
 > 선행/재사용: `unit-stat-spreadsheet-schema`(완료) · `dreamcatcher-sheet-sync`(완료) — 읽기 transport(`SheetFetcher`/`SheetEnvelopeParser`) · `UnitAssetScan` · `BuildIndex` 를 그대로 재사용.
 > 관계: `sheet-export-push`(진행 중; unit 0 `e17ab435` 착지) 와 **방향 반대** — 저건 SO→시트 push, 우리는 시트→SO import. `Wassup.SheetSync` 는 **POST 전용**이라(코어 주석: "GET 은 소비처 없음, import 는 레거시 SheetFetcher 유지") 우리 읽기 경로는 레거시 위에 짓고 SheetSync 는 건드리지 않는다.
