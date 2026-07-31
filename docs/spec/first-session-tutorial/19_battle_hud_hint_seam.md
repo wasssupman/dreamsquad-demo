@@ -13,7 +13,9 @@
   · `hudHintMessageTopOffset`
 - `Scripts/UI/Tutorial/TutorialGuidanceView.cs` — 말풍선 앵커를 bool → 3값으로
 - `Scripts/UI/Tutorial/FirstSessionTutorialController.cs` — 체인 골격 + 스트레스 2줄
-- `Assets/_Project/Data/Config/TutorialGuidanceStyle_Default.asset` — 신규 필드 기본값
+- `Assets/_Project/Data/Config/TutorialGuidanceStyle_Default.asset` — **편집하지 않는다.** YAML 에
+  없는 키는 Unity 가 C# 필드 초기값을 그대로 유지하므로 초기값만 코드에 주면 된다. 굳이 재직렬화하면
+  이 spec 과 무관한 orphan 키 churn 이 딸려온다(`forcereserialize-keeps-orphan-keys`).
 - `Assets/_Project/Scenes/BattleScene.unity` — 신규 SerializeField `scoreHud` 배선
 
 ## 구현

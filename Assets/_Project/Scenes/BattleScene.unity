@@ -3292,6 +3292,7 @@ MonoBehaviour:
   gaugeView: {fileID: 1012444854}
   handView: {fileID: 1558370269}
   giftView: {fileID: 1586207281}
+  scoreHud: {fileID: 1279129162}
 --- !u!114 &1572896087
 MonoBehaviour:
   m_ObjectHideFlags: 0

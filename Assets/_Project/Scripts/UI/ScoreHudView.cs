@@ -142,6 +142,9 @@ namespace Wassup.UI
         private RectTransform _valueRect;
         private TextMeshProUGUI _leakValue;
         private RectTransform _leakValueRect;
+        // first-session-tutorial unit 19 — 튜토리얼 포커스 링이 감쌀 대상. 원래 BuildCanvas
+        // 의 지역 변수였고 표시 로직은 쓰지 않는다(노출 전용 승격).
+        private RectTransform _leakPlateRect;
         private bool _built;
         private bool _subscribed;
 
@@ -308,6 +311,18 @@ namespace Wassup.UI
             _milestoneFlash = 1f;
             _burstCooldownUntil = now + Mathf.Max(0.05f, milestoneDuration);
         }
+
+        // first-session-tutorial unit 19 — 첫 판 전투 HUD 안내가 읽는 읽기 전용 seam.
+        // 선례: AwakeningGaugeView.HitRect · PlacementPhaseView.StartButtonRect.
+        //
+        // 배지 **플레이트**(LeakPlate)를 준다 — _leakValueRect(숫자만)를 주면 링이 왼쪽
+        // 캡션 `스트레스` 를 감싸지 못해 무엇을 가리키는지가 안 보인다.
+        public RectTransform StressBadgeRect => _leakPlateRect;
+        // 안내 문구가 가리키는 수치는 **화면 배지의 그 숫자**다(= 분모 EffectiveLeakLimit).
+        // 결과 화면의 덱 원본값과 다를 수 있으므로 여기서 스냅샷을 그대로 읽는다.
+        public int StressLimit => _leakLimit;
+        // 엔드리스는 분모를 표기하지 않고 유출로 패배하지도 않는다 → 패배 조건 문구를 생략해야 한다.
+        public bool ShowsStressLimit => _leakShowLimit;
 
         // battle-leak-limit-hud unit 0 — BattleBridge owns the authoritative
         // GoalReached count and effective defeat limit. Store the snapshot even while
@@ -643,6 +658,7 @@ namespace Wassup.UI
                 plateBorderWidth, plateColor, plateBorderColor);
             leakPlate.type = Image.Type.Sliced;
             var leakPlateRt = leakPlate.rectTransform;
+            _leakPlateRect = leakPlateRt;
             leakPlateRt.anchorMin = new Vector2(0.5f, 1f);
             leakPlateRt.anchorMax = new Vector2(0.5f, 1f);
             leakPlateRt.pivot = new Vector2(0.5f, 1f);
