@@ -47,4 +47,4 @@ MonoBehaviour:
     tintColor: {r: 0.98, g: 0.45, b: 0.2, a: 1}
     revealVfxPrefab: {fileID: 0}
     sfxClip: {fileID: 0}
-  defaultSfxClip: {fileID: 0}
+  defaultSfxClip: {fileID: 8300000, guid: a80a1ebb0101948fb8b610a0f820db21, type: 3}

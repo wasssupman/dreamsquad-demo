@@ -46,6 +46,8 @@
 - `GimmickPhaseView.PlayRevealSfx` 가 비트 ① 시작과 같은 프레임에 호출. 해석 순서 = 기믹 전용 `sfxClip` → 공용 `defaultSfxClip` → 무음.
 - **발화 검증 통과**: `defaultSfxClip` 에 임시 클립(`BossWarning.mp3`)을 물리고 Play 에서 `BeginReveal` → 재생 중 AudioSource 0 → 1. 전용 클립이 없는 기믹(ClockOut)으로 확인해 **공용 폴백 경로**까지 탔다. 검증 후 임시 클립은 제거(에셋 diff 0 확인).
 
-**막힌 것**: 등장음 에셋 자체. MCP `generate_audio` 의 fal provider 가 `configured: false` 이고, ElevenLabs 경로는 키가 스크래치패드 전용이라 세션 간 넘어오지 않는다. 클립이 생기면 `defaultSfxClip` 슬롯에 꽂기만 하면 되고 **코드 변경은 없다**.
+**클립 착지 (같은 날 후속)**: ElevenLabs `POST /v1/sound-generation` 으로 1.07s 스팅 생성 → `Assets/_Project/Audio/GimmickReveal.mp3`, `defaultSfxClip` 배선. Play 재검증 통과(재생 소스 0 → 1, 전용 클립 없는 기믹으로 공용 폴백 경로 확인).
 
-**클립 만들 때**: 짧은 등장 스팅(0.5~1.0s, ElevenLabs SFX 최소 길이 0.5s). `Audio/BossWarning.mp3` 가 같은 계열(스팅어)이라 길이·볼륨 감각의 기준이 되지만, 경고가 아니라 **선언**이라 톤은 달라야 한다.
+**톤 교체는 GUID 유지 덮어쓰기로.** `Audio/GimmickRevealTakes/` 에 성격이 다른 3테이크를 남겨뒀다 — Take1 스탬프+시머(현재 채택) / Take2 서브썸프+스파클 / Take3 훅+벨. 인스펙터 미리듣기로 고른 뒤 그 파일 내용을 `GimmickReveal.mp3` 에 덮어쓰면 **GUID 가 유지돼 재배선이 필요 없다**. 톤이 다 아니면 프롬프트만 바꿔 재생성한다(`duration_seconds` 최소 0.5s).
+
+**품질 판정은 사용자 청취.** 이 세션은 소리를 들을 수 없어 **발화 여부만** 검증했다. 채택 테이크가 확정되면 나머지 테이크 폴더는 지운다.
