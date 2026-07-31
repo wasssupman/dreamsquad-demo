@@ -1,6 +1,6 @@
 # gimmick-recognition-upgrade
 
-> 상태: 작성 2026-07-31 — 승인 대기. 매판 달라지는 기믹을 **진입 순간 한 번**에 인지시킨다.
+> 상태: **구현 완료 2026-08-01** (unit 0~3, `afada286`~`921829a4`). 매판 달라지는 기믹을 **진입 순간 한 번**에 인지시킨다. 사용자 실기 체감 확인만 남음 — 인계: [`4_handoff_summary.md`](4_handoff_summary.md).
 
 ## 상위 목표
 
@@ -58,13 +58,13 @@
 
 ## 작업 단위
 
-| 파일 | 작업 구분 | 문서 | revert 시 |
-|---|---|---|---|
-| 0 | 데이터 | `0_copy_fields_and_icons.md` | 문구만 원복, 기존 카드 정상 동작 |
-| 1 | 신규 페이즈 | `1_gimmick_phase_reveal.md` | 리빌 사라짐, 기존 카드 복귀 |
-| 2 | 사운드 | `2_reveal_sfx.md` | 무음 리빌로 복귀 |
-| 3 | 은퇴 | `3_guide_card_retirement.md` | 기존 배치 카드 부활 |
-| 4 | handoff | `4_handoff_summary.md` | — |
+| 파일 | 작업 구분 | 문서 | revert 시 | 상태 |
+|---|---|---|---|---|
+| 0 | 데이터 | `0_copy_fields_and_icons.md` | 문구만 원복, 기존 카드 정상 동작 | 완료 |
+| 1 | 신규 페이즈 | `1_gimmick_phase_reveal.md` | 리빌 사라짐, 기존 카드 복귀 | 완료 |
+| 2 | 사운드 | `2_reveal_sfx.md` | 무음 리빌로 복귀 | 완료 |
+| 3 | 은퇴 | `3_guide_card_retirement.md` | 기존 배치 카드 부활 | 완료 |
+| 4 | handoff | `4_handoff_summary.md` | — | 완료 |
 
 ## 파이프라인 커버리지
 
