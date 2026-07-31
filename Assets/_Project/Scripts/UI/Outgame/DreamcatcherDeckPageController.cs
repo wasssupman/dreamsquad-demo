@@ -66,6 +66,10 @@ namespace Wassup.UI
                 _viewingPresetId = p.selectedDeckId;
             }
             LoadWorking();
+            // deck-info-preset-apply unit 4 — 예약 소비는 브라우저 구성 **앞** — SortedPool
+            // 이 _working 을 읽어 편성 카드를 앞으로 보내므로, 작업본이 채워진 뒤 그리드를
+            // 만들어야 진입 화면부터 정렬이 맞는다.
+            if (PresetApply.TryConsume(PresetApply.Target.Dreamcatcher, out var staged)) ApplyStaged(staged);
             if (browser != null) browser.ShowCards(SortedPool());
             _selectedCardId = _pool.Count > 0 ? _pool[0].id : null;
             RefreshAll();
@@ -248,6 +252,28 @@ namespace Wassup.UI
         private bool IsDirty() =>
             PresetDiff.IsDeckDirty(_workingName, _working, StoredPreset(_viewingPresetId));
 
+        // page-local-presets unit 8 — 스쿼드와 같은 저장본/작업본 비교로 Close를 지킨다.
+        // 확인 전에는 공통 닫기 콜백을 호출하지 않아 페이지와 작업본이 그대로 남는다.
+        public void RequestClose(Action close)
+        {
+            if (!IsDirty())
+            {
+                close?.Invoke();
+                return;
+            }
+
+            if (confirmPopup == null)
+            {
+                Debug.LogError("[DeckPreset] confirmPopup 미주입 — 미저장 변경이 있어 페이지 "
+                    + "닫기를 차단했다. 페이지 빌더의 주입을 확인할 것.", this);
+                return;
+            }
+
+            confirmPopup.Show(
+                "저장하지 않은 변경이 있습니다.\n닫으면 변경은 사라집니다.",
+                close, "닫기");
+        }
+
         // ---- 프리셋 바 --------------------------------------------------------
 
         // 가벼운 갱신 — 이름/dirty/버튼 활성만. **내용 편집 경로가 쓰는 것.**
@@ -352,6 +378,18 @@ namespace Wassup.UI
             if (p == null || p.dreamcatcherDecks == null) return;
             if (p.dreamcatcherDecks.Count >= PlayerProfile.MaxPresets) return;
 
+            var created = CreatePreset("덱 " + (p.dreamcatcherDecks.Count + 1));
+            if (created == null) return;
+            SwitchTo(created.id);
+        }
+
+        // 생성 공통부 — [+] 와 프리셋 적용 픽업(ApplyStaged)이 공유한다. 상한/CanPersist
+        // 판정은 호출처가 먼저 한다 — 차단 사유 안내가 호출처마다 다르다(스쿼드와 동형).
+        private DreamcatcherPreset CreatePreset(string name)
+        {
+            var p = Profile;
+            if (p == null || p.dreamcatcherDecks == null) return null;
+
             var ids = new List<string>(p.dreamcatcherDecks.Count);
             for (int i = 0; i < p.dreamcatcherDecks.Count; i++)
                 if (p.dreamcatcherDecks[i] != null) ids.Add(p.dreamcatcherDecks[i].id);
@@ -359,13 +397,54 @@ namespace Wassup.UI
             var created = new DreamcatcherPreset
             {
                 id = PresetIds.NextId(ids, IdPrefix),
-                name = "덱 " + (p.dreamcatcherDecks.Count + 1),
+                name = name,
                 cardIds = new List<string>(),
             };
             p.dreamcatcherDecks.Add(created);
             p.NormalizePresets();
             Save();                       // 구조 변경 = 즉시 디스크
-            SwitchTo(created.id);
+            return created;
+        }
+
+        // deck-info-preset-apply unit 4 — 예약 소비(스쿼드 컨트롤러와 동형). 적용 = 생성 +
+        // 작업본 세팅, 저장이 아니다. 카드는 AddCard 를 거치지 않는다 — 필터가 이미 CanAdd
+        // 와 같은 규칙(상한·타입 제한·중복·숨김·Subconscious)을 적용했고, AddCard 는 매
+        // 장마다 브라우저 재정렬과 RefreshAll 을 돈다(10장이면 10번).
+        private void ApplyStaged(PresetApply.Request req)
+        {
+            var p = Profile;
+            if (!CanPersist() || p == null || p.dreamcatcherDecks == null)
+            {
+                Debug.LogError("[DeckPreset] 프리셋 적용 차단 — 프로필이 로드되지 않았다.", this);
+                NoticePopup.ShowAlert("적용할 수 없음", "프로필이 로드되지 않아 프리셋을 만들 수 없습니다.");
+                return;
+            }
+            if (p.dreamcatcherDecks.Count >= PlayerProfile.MaxPresets)
+            {
+                NoticePopup.ShowAlert("적용할 수 없음",
+                    $"덱 프리셋이 {PlayerProfile.MaxPresets}개로 가득 차 새로 만들 수 없습니다.\n"
+                    + "하나를 삭제한 뒤 다시 시도하세요.");
+                return;
+            }
+
+            var cards = PresetApply.FilterCards(req.cardIds, catalog, out int dropped);
+
+            var names = new List<string>(p.dreamcatcherDecks.Count);
+            for (int i = 0; i < p.dreamcatcherDecks.Count; i++)
+                if (p.dreamcatcherDecks[i] != null) names.Add(p.dreamcatcherDecks[i].name);
+            var created = CreatePreset(PresetApply.UniqueName(names, req.presetName));
+            if (created == null) return;
+
+            // 빈 저장본을 복제한 뒤(이름 포함) 필터 결과를 작업본에만 얹는다 — [저장]이
+            // 유일한 기록 경로다. 원본이 9장이었으면 9장으로 들어간다(유효하지 않은 중간
+            // 덱도 저장 가능, START 는 LoadoutGate 가 막는다 — 기존 계약 유지).
+            _viewingPresetId = created.id;
+            LoadWorking();
+            _working.AddRange(cards);
+
+            if (dropped > 0)
+                NoticePopup.ShowAlert("일부 항목 제외",
+                    $"{dropped}개 항목은 현재 버전에서 사용할 수 없어 제외했습니다.");
         }
 
         private void OnCommitPreset()

@@ -65,7 +65,14 @@ namespace Wassup.UI
             if (historyPanel != null)
             {
                 _historyPanelView = historyPanel.GetComponent<TournamentHistoryPanel>();
-                if (_historyPanelView != null) _historyPanelView.onClose += OnClosePanels;
+                if (_historyPanelView != null)
+                {
+                    _historyPanelView.onClose += OnClosePanels;
+                    // deck-info-preset-apply unit 2 — 덱보기의 "프리셋 적용" → 해당
+                    // 페이지로 전환. 예약(PresetApply.Stage)은 패널이 이미 마쳤고, 켜진
+                    // 페이지의 OnEnable 픽업이 그 프레임에 소비한다.
+                    _historyPanelView.onPresetApply += OnPresetApply;
+                }
             }
 
             if (profileSO == null)
@@ -87,7 +94,11 @@ namespace Wassup.UI
         private void OnDestroy()
         {
             if (loginPanel != null) loginPanel.onSignedIn -= ApplyAuthGate;
-            if (_historyPanelView != null) _historyPanelView.onClose -= OnClosePanels;
+            if (_historyPanelView != null)
+            {
+                _historyPanelView.onClose -= OnClosePanels;
+                _historyPanelView.onPresetApply -= OnPresetApply;
+            }
         }
 
         private void ApplyAuthGate()
@@ -223,7 +234,53 @@ namespace Wassup.UI
         // tournament-history unit 2 — 로비 "히스토리" 버튼 → 히스토리 페이지.
         public void OnOpenHistory() => RaiseExclusive(historyPanel);
 
-        public void OnClosePanels() => ClosePanels();
+        // deck-info-preset-apply unit 2 — 라우팅 실패(대상 패널 미배선)면 예약을 **즉시
+        // 지운다**. "다음 진입에서 소멸" 규칙은 대상이 다른 페이지일 때만 유령을 죽인다 —
+        // 이동이 실패한 채 남기면, 한참 뒤 그 페이지를 손으로 열었을 때 맥락 없는
+        // 프리셋이 불쑥 생긴다. 배선 누락은 조용한 지연 동작이 아니라 즉시 에러다.
+        private void OnPresetApply(PresetApply.Target target)
+        {
+            var panel = target == PresetApply.Target.Squad ? squadPanel : dreamcatcherPanel;
+            if (panel == null)
+            {
+                PresetApply.Clear();
+                Debug.LogError($"[OutgameMenuController] 프리셋 적용 라우팅 실패 — {target} 패널 "
+                    + "미배선. 예약을 폐기했다.", this);
+                return;
+            }
+            RaiseExclusive(panel);
+        }
+
+        public void OnClosePanels()
+        {
+            // page-local-presets unit 8 — 씬의 두 CloseButton 은 이 공통 메서드를 직접
+            // 호출한다. 활성 프리셋 페이지가 있으면 저장본/작업본 dirty 가드를 먼저
+            // 거치고, 확인 콜백에서만 기존 ClosePanels 를 실행한다. 다른 패널은 기존
+            // 즉시 닫기 동작을 유지한다.
+            if (squadPanel != null && squadPanel.activeSelf)
+            {
+                var controller =
+                    squadPanel.GetComponentInChildren<SquadCharacterPageController>(true);
+                if (controller != null)
+                {
+                    controller.RequestClose(ClosePanels);
+                    return;
+                }
+            }
+
+            if (dreamcatcherPanel != null && dreamcatcherPanel.activeSelf)
+            {
+                var controller =
+                    dreamcatcherPanel.GetComponentInChildren<DreamcatcherDeckPageController>(true);
+                if (controller != null)
+                {
+                    controller.RequestClose(ClosePanels);
+                    return;
+                }
+            }
+
+            ClosePanels();
+        }
 
         private void RaiseExclusive(GameObject panel)
         {

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -54,6 +55,13 @@ namespace Wassup.UI
         private readonly int[] _selSection = { 0, 0 };
         private readonly int[] _selItem = { 0, 0 };
 
+        // deck-info-preset-apply unit 1 — 탭별 이벤트 둘. Action<int> 하나로 탭 인덱스를
+        // 넘기지 않는 이유는 호출측에서 0 이 무엇인지 읽히지 않기 때문이고, PresetApply.Target
+        // 을 넘기지 않는 이유는 이 팝업이 프리셋 어휘를 몰라도 되기 때문이다(순수
+        // 프레젠테이션). 페이로드도 넘기지 않는다 — 호출자(히스토리 패널)가 이미 갖고 있다.
+        public event Action SquadApplyRequested;
+        public event Action DreamcatcherApplyRequested;
+
         private TextMeshProUGUI _titleLabel;
         private TextMeshProUGUI _detailName;
         private TextMeshProUGUI _detailSub;
@@ -65,7 +73,10 @@ namespace Wassup.UI
         private RectTransform _detailRoot;
         private RectTransform _detailBodyContent;
         private RectTransform _listViewport;
-        private GameObject _presetButton;
+        private readonly GameObject[] _presetButtons = new GameObject[2];
+        private readonly Button[] _presetButtonBtns = new Button[2];
+        private readonly Image[] _presetButtonImgs = new Image[2];
+        private readonly TextMeshProUGUI[] _presetLabels = new TextMeshProUGUI[2];
         private Button _closeButton;
         private readonly Image[] _tabPlates = new Image[2];
 
@@ -119,6 +130,10 @@ namespace Wassup.UI
         private void OnDestroy()
         {
             if (_closeButton != null) _closeButton.onClick.RemoveListener(Hide);
+            if (_presetButtonBtns[SquadTab] != null)
+                _presetButtonBtns[SquadTab].onClick.RemoveListener(ClickSquadPresetApply);
+            if (_presetButtonBtns[DreamcatcherTab] != null)
+                _presetButtonBtns[DreamcatcherTab].onClick.RemoveListener(ClickDreamcatcherPresetApply);
         }
 
         // ── Model ────────────────────────────────────────────────────────────
@@ -162,8 +177,9 @@ namespace Wassup.UI
         // 자리가 뛰지 않는다"는 계약은 그대로다.
         private void SetPresetVisible(bool visible)
         {
-            if (_presetButton == null || _listViewport == null) return;
-            _presetButton.SetActive(visible);
+            if (_presetButtons[SquadTab] == null || _listViewport == null) return;
+            for (int i = 0; i < _presetButtons.Length; i++)
+                if (_presetButtons[i] != null) _presetButtons[i].SetActive(visible);
 
             float bottom = Pad + FooterH + (visible ? PresetH + 10f : 0f);
             var min = new Vector2(Pad + DetailW + ColGap, bottom);
@@ -171,7 +187,8 @@ namespace Wassup.UI
             if (_emptyLabel != null) ((RectTransform)_emptyLabel.transform).offsetMin = min;
         }
 
-        internal bool IsPresetButtonVisible => _presetButton != null && _presetButton.activeSelf;
+        internal bool IsPresetButtonVisible
+            => _presetButtons[SquadTab] != null && _presetButtons[SquadTab].activeSelf;
 
         // 탭 전환 / 셀 선택 — 버튼 핸들러와 테스트가 **같은 경로**를 탄다.
         internal void SwitchTab(int tab)
@@ -215,6 +232,7 @@ namespace Wassup.UI
             var sections = BuildSections(_tab);
             RenderList(sections);
             RenderDetail(sections);
+            RefreshPresetButtons();
         }
 
         private void RenderList(List<DeckInfoDisplay.Section> sections)
@@ -579,33 +597,99 @@ namespace Wassup.UI
             BuildPresetButton(panel, left);
         }
 
-        // 프리셋 적용 — **자리와 모양만** 잡는다. 기능은 별도 spec 이고, 그때까지는
-        // 비활성이다. 눌러도 아무 일 없는 활성 버튼은 결함으로 신고된다. 목록이 비어도
-        // 자리는 유지한다 — 탭을 오갈 때 레이아웃이 뛰지 않게.
+        // 적용 대상을 탭 상태에 숨겨 두지 않는다. 스쿼드/드림캐쳐 버튼을 명시적으로
+        // 분리해 한 번의 클릭이 정확히 한 종류의 프리셋만 요청하도록 한다.
         private void BuildPresetButton(RectTransform panel, float left)
         {
-            var go = new GameObject("PresetApplyButton", typeof(RectTransform), typeof(Image), typeof(Button));
+            const float gap = 10f;
+            float width = PanelW - left - Pad;
+            float half = (width - gap) * 0.5f;
+            BuildPresetButton(panel, SquadTab, "SquadPresetApplyButton", "스쿼드 프리셋 저장",
+                left, left + half, ClickSquadPresetApply);
+            BuildPresetButton(panel, DreamcatcherTab, "DreamcatcherPresetApplyButton",
+                "드림캐쳐 프리셋 저장", left + half + gap, PanelW - Pad,
+                ClickDreamcatcherPresetApply);
+            RefreshPresetButtons();
+        }
+
+        private void BuildPresetButton(RectTransform panel, int target, string objectName,
+            string labelText, float xMin, float xMax, UnityEngine.Events.UnityAction onClick)
+        {
+            var go = new GameObject(objectName, typeof(RectTransform), typeof(Image), typeof(Button));
             go.transform.SetParent(panel, false);
-            _presetButton = go;
-            var img = go.GetComponent<Image>();
-            img.sprite = _buttonSprite;
-            img.type = Image.Type.Sliced;
-            img.color = new Color(1f, 1f, 1f, 0.10f);
+            _presetButtons[target] = go;
+            _presetButtonImgs[target] = go.GetComponent<Image>();
+            _presetButtonImgs[target].sprite = _buttonSprite;
+            _presetButtonImgs[target].type = Image.Type.Sliced;
+            _presetButtonImgs[target].color = new Color(1f, 1f, 1f, 0.10f);
 
             var rt = (RectTransform)go.transform;
-            rt.anchorMin = new Vector2(0f, 0f);
-            rt.anchorMax = new Vector2(1f, 0f);
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = Vector2.zero;
             rt.pivot = new Vector2(0.5f, 0f);
-            rt.offsetMin = new Vector2(left, Pad + FooterH);
-            rt.offsetMax = new Vector2(-Pad, Pad + FooterH + PresetH);
+            rt.offsetMin = new Vector2(xMin, Pad + FooterH);
+            rt.offsetMax = new Vector2(xMax, Pad + FooterH + PresetH);
 
-            var btn = go.GetComponent<Button>();
-            btn.interactable = false;
+            _presetButtonBtns[target] = go.GetComponent<Button>();
+            _presetButtonBtns[target].interactable = false;
+            _presetButtonBtns[target].onClick.AddListener(onClick);
 
-            var label = CreateLabel(go.transform, "Label", "프리셋 적용", 26,
+            _presetLabels[target] = CreateLabel(go.transform, "Label", labelText, 24,
                 TextAlignmentOptions.Center, new Color(1f, 1f, 1f, 0.55f));
-            StretchFull((RectTransform)label.transform);
+            _presetLabels[target].fontStyle = FontStyles.Bold;
+            StretchFull((RectTransform)_presetLabels[target].transform);
         }
+
+        // 각 버튼은 자기 데이터만 보고 활성화된다. 활성 탭은 표시 상태일 뿐 저장 대상을
+        // 바꾸지 않는다.
+        private void RefreshPresetButtons()
+        {
+            RefreshPresetButton(SquadTab);
+            RefreshPresetButton(DreamcatcherTab);
+        }
+
+        private void RefreshPresetButton(int target)
+        {
+            if (_presetButtonBtns[target] == null) return;
+            var sections = BuildSections(target);
+            int items = 0;
+            for (int s = 0; s < sections.Count; s++) items += sections[s].Items.Count;
+            bool usable = items > 0;
+
+            _presetButtonBtns[target].interactable = usable;
+            _presetButtonImgs[target].color = usable ? GoldColor : new Color(1f, 1f, 1f, 0.10f);
+            _presetLabels[target].color = usable ? BadgeTextDark : new Color(1f, 1f, 1f, 0.55f);
+        }
+
+        internal void ClickSquadPresetApply() => ClickPresetApply(SquadTab);
+        internal void ClickDreamcatcherPresetApply() => ClickPresetApply(DreamcatcherTab);
+
+        // 기존 테스트/호출용 진입점은 활성 탭의 명시적 버튼으로 위임한다.
+        internal void ClickPresetApply() => ClickPresetApply(_tab);
+
+        private void ClickPresetApply(int target)
+        {
+            if (_presetButtonBtns[target] == null || !_presetButtonBtns[target].interactable) return;
+            if (_presetButtons[target] == null || !_presetButtons[target].activeSelf) return;
+
+            // 재진입/같은 프레임의 중복 클릭도 두 번째 요청을 만들 수 없게 먼저 잠근다.
+            for (int i = 0; i < _presetButtonBtns.Length; i++)
+                if (_presetButtonBtns[i] != null) _presetButtonBtns[i].interactable = false;
+
+            if (target == SquadTab) SquadApplyRequested?.Invoke();
+            else DreamcatcherApplyRequested?.Invoke();
+            Hide();
+        }
+
+        internal bool IsPresetButtonInteractable
+            => _presetButtonBtns[_tab] != null && _presetButtonBtns[_tab].interactable;
+
+        internal bool IsSquadPresetButtonInteractable
+            => _presetButtonBtns[SquadTab] != null && _presetButtonBtns[SquadTab].interactable;
+
+        internal bool IsDreamcatcherPresetButtonInteractable
+            => _presetButtonBtns[DreamcatcherTab] != null
+                && _presetButtonBtns[DreamcatcherTab].interactable;
 
         private void BuildFooter(RectTransform panel)
         {

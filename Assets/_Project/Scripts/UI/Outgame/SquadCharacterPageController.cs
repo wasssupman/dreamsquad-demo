@@ -74,6 +74,10 @@ namespace Wassup.UI
                 _viewingPresetId = p.selectedSquadId;
             }
             LoadWorking(_viewingPresetId);
+            // deck-info-preset-apply unit 3 — 히스토리 덱보기에서 넘어온 예약이 있으면
+            // 소비한다. LoadWorking(확정분) **뒤** — 예약이 없을 때의 기존 동작을 그대로
+            // 두고, 있을 때만 새 프리셋으로 갈아탄다.
+            if (PresetApply.TryConsume(PresetApply.Target.Squad, out var staged)) ApplyStaged(staged);
             EnterUnitMode(initial: true);
             RefreshBarEntries();   // 페이지 진입 시 목록 1회 구성
         }
@@ -133,6 +137,29 @@ namespace Wassup.UI
 
         private bool IsDirty() =>
             PresetDiff.IsSquadDirty(_workingName, _workingUnits, _workingStones, StoredPreset(_viewingPresetId));
+
+        // page-local-presets unit 8 — 씬 CloseButton 은 공통 메뉴 컨트롤러를 향하므로,
+        // 메뉴가 활성 페이지를 찾은 뒤 이 가드에 실제 닫기 콜백을 맡긴다. dirty 판정은
+        // 드롭다운 전환과 동일하게 저장본 대 작업본 비교를 그대로 쓴다.
+        public void RequestClose(Action close)
+        {
+            if (!IsDirty())
+            {
+                close?.Invoke();
+                return;
+            }
+
+            if (confirmPopup == null)
+            {
+                Debug.LogError("[SquadPreset] confirmPopup 미주입 — 미저장 변경이 있어 페이지 "
+                    + "닫기를 차단했다. 페이지 빌더의 주입을 확인할 것.", this);
+                return;
+            }
+
+            confirmPopup.Show(
+                "저장하지 않은 변경이 있습니다.\n닫으면 변경은 사라집니다.",
+                close, "닫기");
+        }
 
         // review MEDIUM-4 — 구조 변경(생성·삭제·확정)은 **변이 전에** 물어야 한다. Save() 안에서만
         // 걸면 메모리에는 프리셋이 생겼는데 디스크에는 없는 상태로 조용히 갈린다.
@@ -253,19 +280,80 @@ namespace Wassup.UI
             if (p == null || p.squads == null) return;
             if (p.squads.Count >= PlayerProfile.MaxPresets) return;
 
+            var created = CreatePreset("스쿼드 " + (p.squads.Count + 1));
+            if (created == null) return;
+            SwitchTo(created.id);
+        }
+
+        // 생성 공통부 — [+] 와 프리셋 적용 픽업(ApplyStaged)이 공유한다. 상한/CanPersist
+        // 판정은 호출처가 먼저 한다 — 차단 사유 안내가 호출처마다 다르다.
+        private SquadPreset CreatePreset(string name)
+        {
+            var p = Profile;
+            if (p == null || p.squads == null) return null;
+
             var ids = new List<string>(p.squads.Count);
             for (int i = 0; i < p.squads.Count; i++) if (p.squads[i] != null) ids.Add(p.squads[i].id);
 
             var created = new SquadPreset
             {
                 id = PresetIds.NextId(ids, IdPrefix),
-                name = "스쿼드 " + (p.squads.Count + 1),
+                name = name,
             };
             created.NormalizeSlots();
             p.squads.Add(created);
             p.NormalizePresets();
             Save();                       // 구조 변경 = 즉시 디스크
-            SwitchTo(created.id);
+            return created;
+        }
+
+        // deck-info-preset-apply unit 3 — 예약 소비. **적용 = 생성 + 작업본 세팅, 저장이
+        // 아니다.** 새 프리셋은 빈 내용으로 즉시 디스크에 생기고(구조 변경), 랭커의 편성은
+        // 작업본에만 들어간다 → dirty 배지 on. [저장]이 유일한 기록 경로라는 규율에 예외를
+        // 만들지 않는다 — 마음에 들면 [저장], 아니면 [되돌리기]로 빈 프리셋이 된다.
+        //
+        // 차단 사유는 이 페이지에서 안내한다(NoticePopup 3000 이 덱 팝업 3200 아래 깔리는
+        // z-order 문제를 피하고, "가득 참"은 삭제할 수 있는 화면에서 말해야 이어진다).
+        private void ApplyStaged(PresetApply.Request req)
+        {
+            var p = Profile;
+            if (!CanPersist() || p == null || p.squads == null)
+            {
+                // 미로드를 조용한 무동작으로 위장하지 않는다 — confirmPopup fail-closed 와
+                // 같은 정책.
+                Debug.LogError("[SquadPreset] 프리셋 적용 차단 — 프로필이 로드되지 않았다.", this);
+                NoticePopup.ShowAlert("적용할 수 없음", "프로필이 로드되지 않아 프리셋을 만들 수 없습니다.");
+                return;
+            }
+            if (p.squads.Count >= PlayerProfile.MaxPresets)
+            {
+                NoticePopup.ShowAlert("적용할 수 없음",
+                    $"프리셋이 {PlayerProfile.MaxPresets}개로 가득 차 새로 만들 수 없습니다.\n"
+                    + "하나를 삭제한 뒤 다시 시도하세요.");
+                return;
+            }
+
+            // 내 빌드에서 쓸 수 없는 항목은 제외한다 — 덱보기의 "미해석 id 를 남긴다"와
+            // 의도적으로 반대(반입할 편성에 유령 id 가 남으면 안 된다). 근거는 PresetApply.
+            var units = PresetApply.FilterUnits(req.unitIds, catalog, out int droppedUnits);
+            var stones = PresetApply.FilterStones(req.stoneIds, stoneCatalog, out int droppedStones);
+
+            var names = new List<string>(p.squads.Count);
+            for (int i = 0; i < p.squads.Count; i++) if (p.squads[i] != null) names.Add(p.squads[i].name);
+            var created = CreatePreset(PresetApply.UniqueName(names, req.presetName));
+            if (created == null) return;
+
+            // 빈 저장본을 작업본으로 복제한 뒤 그 위에 얹는다 — 목록 셀 썸네일은 저장본
+            // (빈)을 그리는 게 맞고([저장] 후 채워진다), 작업본 리스트 길이는 CopySlots 가
+            // 보장한 슬롯 수 불변식을 유지한다.
+            LoadWorking(created.id);
+            for (int i = 0; i < units.Count && i < _workingUnits.Count; i++) _workingUnits[i] = units[i];
+            for (int i = 0; i < stones.Count && i < _workingStones.Count; i++) _workingStones[i] = stones[i];
+
+            int dropped = droppedUnits + droppedStones;
+            if (dropped > 0)
+                NoticePopup.ShowAlert("일부 항목 제외",
+                    $"{dropped}개 항목은 현재 버전에서 사용할 수 없어 제외했습니다.");
         }
 
         private void OnCommitPreset()

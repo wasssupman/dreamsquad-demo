@@ -484,9 +484,14 @@ namespace Wassup.UI
             _slomoLease.Dispose();
             // 탭 즉발 부착의 게이트가 이 값이다 — 안 비우면 해제된 선택을 계속 타겟으로 본다.
             if (handView != null) handView.ClearSelectionTarget();
-            // 줌은 신규 API 없이 자동 복귀한다: TickSelectionAnchor 가 `!AimingNow()` 일 때만
-            // SetInspectFocus 를 피드하고, 조준 시작이 IsAiming 을 세웠으므로 피드가 끊겨
+            // 줌은 신규 API 없이 자동 복귀한다: 위에서 `_selected` 를 비웠으므로
+            // TickSelectionAnchor 가 첫 줄에서 조기 return 해 SetInspectFocus 피드가 끊기고,
             // CameraDirector 가 staleness 로 페이드아웃한다.
+            //
+            // selection-hand-attach unit 17 rev 2 — 이 기전은 **조준 종류에 중립**이다. 예전
+            // 주석은 "조준 시작이 IsAiming 을 세웠으므로 피드가 끊긴다"고 적었는데, 그건 Active
+            // 캐스트만 세우는 플래그다(제물 표식은 안 세운다). 실제 근거는 `_selected` 이고,
+            // 그래서 비-Defender 조준 전체가 이 경로를 안전하게 공유한다.
         }
 
         // 부착 변경(부착/사망 회수/Placement 리셋). 선택 유닛이 카드를 잃었거나 죽었으면 닫고,

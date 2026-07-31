@@ -1,7 +1,7 @@
 # selection-hand-attach — 유닛 선택 중 손패 등장 + 탭 즉발/D&D 부착
 
-> 상태: **units 0~15 구현·커밋 완료 · 핵심 체감 Play 확인 · `unit 5` e2e 전량 훑기 대기**
-> (units 9~15 인계는 `16_handoff_summary.md`)
+> 상태: **units 0~15·17 구현·커밋 완료 · 핵심 체감 Play 확인 · `unit 5` e2e 전량 훑기 대기**
+> (units 9~15 인계는 `16_handoff_summary.md`. `unit 17` 은 2026-07-31 Play 확인 후 `b7bfa5c7`)
 >
 > 커밋: units 0~8 은 `6_handoff_summary.md`, units 9~15 는 `16_handoff_summary.md` 참조.
 > 설계는 critic REVISE(H5/M7/L7) 전건 반영 rev 2(`9fdaba6a`) + 사용자 결정 다수.
@@ -56,6 +56,7 @@
 | 14 | `14_reject_camera_kick.md` | 연출(추가) | 부착 거절 시 아주 짧은 카메라 킥 |
 | 15 | `15_move_button_in_panel.md` | 정책(추가) | 이동 버튼을 패널로 — 유닛 주변 플립북 폐기 |
 | 16 | `16_handoff_summary.md` | 인계 | units 9~15 커밋·되돌림 금지 7건·공간 실측·잔여 |
+| 17 | `17_ineligible_card_dim.md` | 정책(추가) | 선택 유닛에 못 붙는 **부착 카드**를 딤 + 탭·드래그 차단 |
 
 10 → 11 → 12 순서 필수(읽을 값 → 표시할 곳 → 중복 제거). 13·14 는 독립. 15 는 11 이후.
 

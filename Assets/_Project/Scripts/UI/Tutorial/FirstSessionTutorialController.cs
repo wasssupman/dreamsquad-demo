@@ -571,13 +571,17 @@ namespace Wassup.UI.Tutorial
             // 막는 것이었는데, 저장이 경로별이라 훔칠 대상이 없고 인트로는 파생이라 저장 자체가
             // 없다. 반대로 남겨두면 인트로가 끝난 뒤 A 가 안 떠서 `_awakeningOfferedThisBattle`
             // 이 false 로 고정되고, **못 배운 나머지 한쪽이 영영 발화하지 못한다**(unit 17 C절).
-            // 가드의 나머지 의미("낼 수 있는 카드가 있을 때만")는 아래 usable 탐색이 강제한다.
+            // 가드의 나머지 의미("낼 수 있는 카드가 있을 때만")는 아래 탐색이 강제한다.
+            // selection-hand-attach unit 17 — `usable`(각성치)이 아니라 `Playable` 을 본다.
+            // 선택 중이면 각성치가 충분해도 그 유닛에 못 붙는 카드는 딤 + 조작 불가라,
+            // 거기에 포커스를 주면 튜토리얼이 **거절당하는 제스처**를 가르친다. 후보가 없으면
+            // 아래 null 반환으로 안내를 미룬다(래치 미소비 — 다음 기회에 다시 시도).
             RectTransform usable = null;
             var slots = handView.Slots;
             for (int i = 0; i < slots.Count; i++)
             {
                 var slot = slots[i];
-                if (slot != null && slot.usable && slot.card != null && slot.rect != null)
+                if (slot != null && slot.Playable && slot.card != null && slot.rect != null)
                 {
                     usable = slot.rect;
                     break;

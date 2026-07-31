@@ -4,6 +4,7 @@ using System.Globalization;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using Wassup.Core;
 using Wassup.Core.Api;
 using Wassup.UI.Layout;
 
@@ -54,6 +55,11 @@ namespace Wassup.UI
         // its ClosePanels (re-shows the lobby menu that RaiseExclusive hid).
         public event Action onClose;
 
+        // deck-info-preset-apply unit 2 — 팝업의 "프리셋 적용"이 눌리면 예약(Stage)을
+        // 마친 뒤 발화한다. OutgameMenuController 가 받아 해당 페이지로 전환한다(onClose
+        // 선례). 이 패널은 프로필을 모른다 — 예약과 이동 요청까지만 한다.
+        public event Action<PresetApply.Target> onPresetApply;
+
         // tournament-history-deck-view unit 1 — 덱보기 팝업이 id 를 이름·아트로 푸는 데
         // 쓴다. 팝업은 런타임 생성이라 자기 SerializeField 가 안 채워져서, 씬에 있는
         // 이 패널이 들고 주입한다. 미배선(null)이어도 팝업은 raw id 로 동작한다.
@@ -76,6 +82,11 @@ namespace Wassup.UI
         private int _listEpoch;
         private int _rankEpoch;
         private string _selectedEntryId;
+
+        // deck-info-preset-apply unit 2 — 마지막으로 연 덱의 페이로드/주인. 팝업은
+        // 페이로드를 되돌려주지 않으므로(프리셋 어휘를 모른다) 연 쪽이 기억한다.
+        private TournamentDeckInfo.Payload _deckPayload;
+        private string _deckOwnerName;
 
         // Row plates kept so the selection highlight can move without rebuilding.
         private readonly List<KeyValuePair<string, Image>> _rowPlates = new List<KeyValuePair<string, Image>>();
@@ -323,6 +334,8 @@ namespace Wassup.UI
         private void OpenDeckPopup(LeaderboardList.Row row)
         {
             var payload = TournamentDeckInfo.Deserialize(row.DeckInfo);
+            _deckPayload = payload;
+            _deckOwnerName = row.Name;
             // 내 덱에는 "프리셋 적용"을 띄우지 않는다 — 내가 그때 쓴 덱을 내 프로필에
             // 다시 쓰는 건 no-op 이다. 판정은 BuildRows 가 이미 해 둔 IsPlayer.
             EnsureDeckPopup().Show(payload, row.Name, allowPresetApply: !row.IsPlayer);
@@ -335,8 +348,41 @@ namespace Wassup.UI
             go.transform.SetParent(transform, false);
             _deckPopup = go.AddComponent<DeckInfoPopup>();
             _deckPopup.Setup(unitCatalog, stoneCatalog, cardCatalog);
+            // 생성 직후 1회 구독 — 팝업은 재사용되므로 Show 마다 구독하면 중복 발화한다.
+            _deckPopup.SquadApplyRequested += OnSquadApplyRequested;
+            _deckPopup.DreamcatcherApplyRequested += OnDreamcatcherApplyRequested;
             go.SetActive(false);
             return _deckPopup;
+        }
+
+        private void OnSquadApplyRequested()
+            => RequestPresetApply(PresetApply.Target.Squad);
+
+        private void OnDreamcatcherApplyRequested()
+            => RequestPresetApply(PresetApply.Target.Dreamcatcher);
+
+        // 예약 + 이동 요청. **필터는 여기서 걸지 않는다** — 카탈로그 판정과 상한은 픽업
+        // 시점의 프로필 상태에 달렸고, 그 판단의 소유자는 페이지 컨트롤러다. 원본 id 를
+        // 그대로 예약한다(Stage 가 복제한다). 탭이 곧 대상이라 그 탭의 것만 싣는다 —
+        // 한 번의 적용이 두 페이지를 동시에 바꾸지 않는다.
+        private void RequestPresetApply(PresetApply.Target target)
+        {
+            var request = new PresetApply.Request
+            {
+                target = target,
+                presetName = PresetApply.DeckName(_deckOwnerName),
+            };
+            if (target == PresetApply.Target.Squad)
+            {
+                request.unitIds = _deckPayload?.squad?.units;
+                request.stoneIds = _deckPayload?.squad?.stones;
+            }
+            else
+            {
+                request.cardIds = _deckPayload?.dc?.cards;
+            }
+            PresetApply.Stage(request);
+            onPresetApply?.Invoke(target);
         }
 
         // ── Status ───────────────────────────────────────────────────────────
