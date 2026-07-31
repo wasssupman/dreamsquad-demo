@@ -86,45 +86,6 @@ namespace Wassup.UI
             return Sprite.Create(tex, new Rect(0, 0, w, h), new Vector2(0.5f, 0.5f), 100f);
         }
 
-        /// 수평 그라디언트 라운드렉트 — lobby-neon-restyle unit 1 (START CTA).
-        /// 좌→우 fillLeft→fillRight 로 보간, 외곽은 borderColor 링. 9-slice 로 늘리면
-        /// 그라디언트 중앙이 평탄해지므로 full-rect — 대상 RectTransform 크기로 굽는다
-        /// (MakeCardFace 와 같은 사용 계약, Image.Type.Simple).
-        public static Sprite MakeHorizontalGradient(int width, int height, float radius, float border,
-            Color fillLeft, Color fillRight, Color borderColor)
-        {
-            int w = Mathf.Max(8, width), h = Mathf.Max(8, height);
-            int r = Mathf.Max(1, Mathf.RoundToInt(radius));
-            int b = Mathf.Max(0, Mathf.RoundToInt(border));
-            var tex = new Texture2D(w, h, TextureFormat.RGBA32, false)
-            {
-                wrapMode = TextureWrapMode.Clamp,
-                filterMode = FilterMode.Bilinear
-            };
-            var px = new Color32[w * h];
-            float halfW = (w - 1) * 0.5f, halfH = (h - 1) * 0.5f;
-            float bx = halfW - r, by = halfH - r;            // straight-region half extents
-            for (int y = 0; y < h; y++)
-            {
-                for (int x = 0; x < w; x++)
-                {
-                    float qx = Mathf.Abs(x - halfW) - bx;
-                    float qy = Mathf.Abs(y - halfH) - by;
-                    float outside = Mathf.Sqrt(Mathf.Max(qx, 0f) * Mathf.Max(qx, 0f) +
-                                               Mathf.Max(qy, 0f) * Mathf.Max(qy, 0f));
-                    float sd = outside + Mathf.Min(Mathf.Max(qx, qy), 0f) - r; // <=0 inside
-                    float aa = Mathf.Clamp01(0.5f - sd);
-                    Color c = (b > 0 && sd > -b) ? borderColor
-                        : Color.Lerp(fillLeft, fillRight, x / (float)(w - 1));
-                    c.a *= aa;
-                    px[y * w + x] = c;
-                }
-            }
-            tex.SetPixels32(px);
-            tex.Apply();
-            return Sprite.Create(tex, new Rect(0, 0, w, h), new Vector2(0.5f, 0.5f), 100f);
-        }
-
         /// 꽉 찬 원 스프라이트(순위 배지용). border>0 이면 borderColor 링을 두른다.
         /// 고정 크기로 쓰므로 9-slice 불필요 — Image.Type.Simple 로 사용.
         public static Sprite MakeCircle(int diameter, Color fill, float border = 0f, Color borderColor = default)

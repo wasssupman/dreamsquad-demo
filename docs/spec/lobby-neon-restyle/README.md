@@ -23,6 +23,7 @@ START CTA 가 보이고, 기존 기능(로그인 게이트, 패널 열기, 캐�
 | 1 | `1_button_neon_reskin.md` | LobbyNeonChip + UiRoundedSprite 그라디언트 오버로드 + 버튼 와이어링 | 메뉴 버튼 네온 리스킨 |
 | 2 | `2_background_swap.md` | 디졸브/패럴랙스 슬롯을 네온 배경으로 스왑 | 배경 교체 |
 | 3 | `3_handoff_summary.md` | 인계 요약 | 종료 시 작성 |
+| 4 | `4_start_cta_banner.md` | START 를 시안의 네온 리본 배너로 재구현 (unit 1 rev) | CTA 형태 일치 |
 
 ## Feature-wide 계약
 
@@ -32,8 +33,8 @@ START CTA 가 보이고, 기존 기능(로그인 게이트, 패널 열기, 캐�
   revert 시 png 삭제로 씬에 dangling GUID 가 남으므로 **역순(2→1→0) 롤백만 안전**하다.
 - **스테이징은 경로 명시만** (공유 워크트리). `.png` 는 반드시 `.meta` 짝과 함께 add.
   `ProjectSettings/ProjectSettings.asset` 불가침.
-- **코드 변경 최소**: 신설은 `LobbyNeonChip`(MonoBehaviour) 1개 + `UiRoundedSprite`
-  수평 그라디언트 오버로드 1개. `OutgameMenuController`/`LobbyBackgroundDissolve`/
+- **코드 변경 최소**: 신설은 스킨 컴포넌트 2개 — `LobbyNeonChip`(칩 3종),
+  `LobbyNeonCta`(START 배너, unit 4). `OutgameMenuController`/`LobbyBackgroundDissolve`/
   `LobbyBackgroundParallax` 코드는 불가침 — 배경 교체는 **인스펙터 슬롯 스왑만**.
 - **칩 스프라이트는 에셋이 아니라 런타임 베이크**: `UiRoundedSprite.Make()` 재사용
   (선례: score-hud-impact-upgrade, result-screen-visual-upgrade).
@@ -57,8 +58,8 @@ N/A — 플레이 오브젝트 신설/생성→렌더 경로 변경이 아니라
 - 스쿼드/덱/히스토리 패널 프레임·헤더의 네온 스타일 확장.
 - 시안의 프로필/재화 헤더 UI (outgame-lobby-layout 후속 후보와 병합).
 - 시안 캐릭터 컷아웃 3종 활용처 검토 (스크래치패드에 분리 완료 상태였음).
-- (리뷰 minor) START CTA 프로포션 — 240×292 세로 rect 통째 베이크라 비어 보임.
-  버튼 rect 는 두고 CTA 전용 자식 Image 에 굽는 방안.
-- (리뷰 minor) 씬에 박힌 무오버라이드 TMP 머티리얼 인스턴스 2개(Anton/Jua) 정리 —
-  라벨 4개의 머티리얼 출처 통일.
+- (리뷰 minor) 씬에 박힌 무오버라이드 TMP 머티리얼 인스턴스 정리 — 라벨 머티리얼 출처 통일.
+  (START 라벨은 unit 4 에서 런타임 인스턴스 + 실제 아웃라인 오버라이드를 쓰므로 해당 없음.)
+- START 텍스트를 시안처럼 넓은 헤비 이탤릭으로 — 현재 Anton 은 콘덴스드라 자폭이 좁다.
+  전용 폰트 수급 시 교체.
 - (리뷰 minor) 네온 배경 고해상 버전(구 항구 배경은 2391×1345, 현재 1670×941) 수급 시 교체.

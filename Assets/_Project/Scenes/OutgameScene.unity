@@ -5162,13 +5162,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8409ee4fbdde0e54387fd69a544073ae, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.LobbyNeonChip
-  kind: 0
   background: {fileID: 0}
   cornerRadius: 24
   borderWidth: 3
   fill: {r: 0.0627451, g: 0.05882353, b: 0.15686275, a: 0.92156863}
   border: {r: 0.5882353, g: 0.43137255, b: 0.8627451, a: 1}
-  fillRight: {r: 0.49019608, g: 0.38039216, b: 0.9137255, a: 1}
 --- !u!1 &1226591683
 GameObject:
   m_ObjectHideFlags: 0
@@ -9291,7 +9289,7 @@ RectTransform:
   m_AnchorMin: {x: 1, y: 0}
   m_AnchorMax: {x: 1, y: 0}
   m_AnchoredPosition: {x: -48, y: 48}
-  m_SizeDelta: {x: 240, y: 292}
+  m_SizeDelta: {x: 500, y: 180}
   m_Pivot: {x: 1, y: 0}
 --- !u!114 &2039894585
 MonoBehaviour:
@@ -9396,16 +9394,32 @@ MonoBehaviour:
   m_GameObject: {fileID: 2039894583}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8409ee4fbdde0e54387fd69a544073ae, type: 3}
+  m_Script: {fileID: 11500000, guid: 436499e13704c2c4eb4b73e493742898, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.LobbyNeonChip
-  kind: 1
-  background: {fileID: 0}
-  cornerRadius: 36
-  borderWidth: 5
-  fill: {r: 0.984, g: 0.31, b: 0.686, a: 1}
-  border: {r: 0.47, g: 0.78, b: 1, a: 1}
-  fillRight: {r: 0.49, g: 0.38, b: 0.914, a: 1}
+  m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.LobbyNeonCta
+  background: {fileID: 2039894586}
+  label: {fileID: 2103641349}
+  pointFrac: 0.75
+  farCornerInset: 0.17
+  nearCornerInset: 0.07
+  cornerRadius: 9
+  rimGap: 9
+  rimWidth: 4.5
+  glowReach: 18
+  rimColor: {r: 0.96862745, g: 0.9882353, b: 1, a: 1}
+  glowColor: {r: 0.1882353, g: 0.5058824, b: 0.827451, a: 1}
+  bodyLeft: {r: 0.9882353, g: 0.3372549, b: 0.6901961, a: 1}
+  bodyRight: {r: 0.49411765, g: 0.28235295, b: 0.8745098, a: 1}
+  gradientAngle: -45
+  chevronInset: 26
+  chevronWidth: 18
+  chevronHalfHeight: 17
+  chevronThickness: 9
+  chevronSpacing: 6
+  chevronCount: 2
+  chevronColor: {r: 1, g: 1, b: 1, a: 0.38}
+  labelOutlineWidth: 0.3
+  labelOutlineColor: {r: 0.4117647, g: 0.019607844, b: 0.57254905, a: 1}
 --- !u!1 &2055204300
 GameObject:
   m_ObjectHideFlags: 0
@@ -9893,7 +9907,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 230, y: 100}
+  m_SizeDelta: {x: 330, y: 120}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &2103641349
 MonoBehaviour:
@@ -9944,8 +9958,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 54
-  m_fontSizeBase: 54
+  m_fontSize: 92
+  m_fontSizeBase: 92
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
@@ -9954,7 +9968,7 @@ MonoBehaviour:
   m_HorizontalAlignment: 2
   m_VerticalAlignment: 512
   m_textAlignment: 65535
-  m_characterSpacing: 0
+  m_characterSpacing: 2
   m_characterHorizontalScale: 1
   m_wordSpacing: 0
   m_lineSpacing: 0
@@ -10146,13 +10160,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8409ee4fbdde0e54387fd69a544073ae, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.LobbyNeonChip
-  kind: 0
   background: {fileID: 0}
   cornerRadius: 24
   borderWidth: 3
   fill: {r: 0.0627451, g: 0.05882353, b: 0.15686275, a: 0.92156863}
   border: {r: 0.5882353, g: 0.43137255, b: 0.8627451, a: 1}
-  fillRight: {r: 0.49019608, g: 0.38039216, b: 0.9137255, a: 1}
 --- !u!1 &2124171166
 GameObject:
   m_ObjectHideFlags: 0
@@ -10441,13 +10453,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8409ee4fbdde0e54387fd69a544073ae, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.UI.LobbyNeonChip
-  kind: 0
   background: {fileID: 0}
   cornerRadius: 24
   borderWidth: 3
   fill: {r: 0.0627451, g: 0.05882353, b: 0.15686275, a: 0.92156863}
   border: {r: 0.5882353, g: 0.43137255, b: 0.8627451, a: 1}
-  fillRight: {r: 0.49019608, g: 0.38039216, b: 0.9137255, a: 1}
 --- !u!1 &2144528081
 GameObject:
   m_ObjectHideFlags: 0
