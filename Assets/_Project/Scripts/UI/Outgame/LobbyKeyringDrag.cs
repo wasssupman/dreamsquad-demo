@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -38,6 +39,11 @@ namespace Wassup.UI
         // 드래그/낙하 중 — 캐릭터 클릭 리액션 차단 가드용(unit 2 에서 Falling 포함).
         public bool IsBusy => _phase != Phase.Idle;
 
+        // outgame-tutorial unit 6 — 챕터 C(로비 키링 안내)의 완료 신호. 잡은 사건만
+        // 알린다: OnBeginDrag 의 조기 return(settings null · 두 번째 포인터 · 좌표 변환
+        // 실패)에서는 발화하지 않으므로, 구독자는 "정말 드래그가 시작됐다"로 믿어도 된다.
+        public event Action DragStarted;
+
         // lobby-background-parallax — 배경 패럴랙스가 "키링 스와이프 중" 만 구동되도록 구독하는 신호.
         // 세션 1개(두 번째 포인터 무시)라 static 참조 하나로 충분. 별도 정리 로직이 필요 없다:
         // phase 가 Dragging 을 벗어나면 자동 false, 오브젝트가 파괴되면 Unity 의 null 비교가 잡는다.
@@ -72,6 +78,7 @@ namespace Wassup.UI
             BuildRig();
             _phase = Phase.Dragging;
             _active = this; // 배경 패럴랙스 게이트(AnyDragging)
+            DragStarted?.Invoke(); // 성공 경로 말미 — 상태를 모두 세운 뒤 알린다
         }
 
         public void OnDrag(PointerEventData eventData)

@@ -82,7 +82,9 @@ namespace Wassup.UI
             }
             profileSO.SetLoadedProfile(ProfileStore.LoadOrCreate(catalog, defaultDeck, cardCatalog, defaultStones));
             Debug.Log($"[OutgameMenuController] Profile loaded: {(catalog != null ? catalog.units.Length : 0)} catalog units. path={ProfileStore.Path}");
-            ClosePanels();
+            // restoreLobby=false — 이건 패널 가시성 초기화지 로비 복귀가 아니다. 튜토리얼
+            // 통지는 바로 아래 한 줄이 소유한다(아래 주석의 "유일한 진입점"을 유지).
+            ClosePanels(false);
 
             // outgame-tutorial unit 4 — 프로필 로드 이후여야 한다. ApplyAuthGate 는
             // 이 메서드의 첫 줄이라 그 시점 profileSO.profile 은 곧 교체될 인스턴스이고,
@@ -137,7 +139,9 @@ namespace Wassup.UI
         // back to the login screen.
         public void OnResetAccount()
         {
-            ClosePanels();
+            // restoreLobby=false — 곧 ApplyAuthGate 가 로그아웃으로 챕터를 중단시킨다.
+            // 알렸다가 즉시 중단시킬 이유가 없다.
+            ClosePanels(false);
             if (loginPanel != null) loginPanel.ResetAccount();
             ApplyAuthGate();
         }
@@ -263,7 +267,10 @@ namespace Wassup.UI
                     squadPanel.GetComponentInChildren<SquadCharacterPageController>(true);
                 if (controller != null)
                 {
-                    controller.RequestClose(ClosePanels);
+                    // 람다로 감싼다 — ClosePanels 는 optional 파라미터를 가지므로
+                    // Action(무인자)으로 직접 메서드 그룹 변환되지 않는다. 이 경로는
+                    // 진짜 로비 복귀라 restoreLobby 기본값(true)을 그대로 쓴다.
+                    controller.RequestClose(() => ClosePanels());
                     return;
                 }
             }
@@ -274,7 +281,7 @@ namespace Wassup.UI
                     dreamcatcherPanel.GetComponentInChildren<DreamcatcherDeckPageController>(true);
                 if (controller != null)
                 {
-                    controller.RequestClose(ClosePanels);
+                    controller.RequestClose(() => ClosePanels());
                     return;
                 }
             }
@@ -284,7 +291,11 @@ namespace Wassup.UI
 
         private void RaiseExclusive(GameObject panel)
         {
-            ClosePanels();
+            // restoreLobby=false — 이 호출은 "로비 복귀"가 아니라 **패널을 여는 준비**다.
+            // true 로 두면 스쿼드/드림캐쳐를 여는 순간 로비 튜토리얼 챕터 C 가 시작해
+            // 열리는 패널 위에 dim 과 말풍선이 얹힌다(로비 캐릭터는 lobbyCharactersRoot
+            // 라 menuRoot 와 달리 숨겨지지도 않는다). outgame-tutorial unit 6.
+            ClosePanels(false);
             if (panel != null) panel.SetActive(true);
             // 로비 버튼 묶음(menuRoot)은 MenuCanvas 상에서 패널들보다 뒤 sibling —
             // 그대로 두면 패널 위에 렌더/클릭된다. 패널이 열리는 동안 통째로 숨긴다.
@@ -294,7 +305,10 @@ namespace Wassup.UI
             SetDevButtonsVisible(false);
         }
 
-        private void ClosePanels()
+        // restoreLobby = "이 호출로 로비가 실제로 돌아온다". 패널을 여는 경로(RaiseExclusive)와
+        // 로그아웃 경로(OnResetAccount)는 곧 다른 화면을 띄우므로 false 를 넘긴다 —
+        // 이 플래그가 없으면 두 경로가 로비 튜토리얼 챕터 C 를 잘못 켠다(outgame-tutorial unit 6).
+        private void ClosePanels(bool restoreLobby = true)
         {
             if (squadPanel != null) squadPanel.SetActive(false);
             if (dreamcatcherPanel != null) dreamcatcherPanel.SetActive(false);
@@ -304,6 +318,12 @@ namespace Wassup.UI
             // 상태에서는 계속 숨겨야 하므로 signedIn 을 반영한다(Awake 진입 시에도 안전).
             if (menuRoot != null) menuRoot.SetActive(UserSession.IsSignedIn);
             SetDevButtonsVisible(true);
+
+            // outgame-tutorial unit 6 — "챕터 B 완료 → 패널 열림 → 닫힘" 이 정확히 이 경로다.
+            // OnLobbyShown 은 멱등하고 `_step != None` 가드가 재진입을 막으므로 신규 메서드를
+            // 만들지 않는다. 복귀가 아닌 호출에서 부르지 않는 것이 이 조건의 전부다.
+            if (restoreLobby && outgameTutorial != null)
+                outgameTutorial.OnLobbyShown(UserSession.IsSignedIn);
         }
 
         // Dev buttons live on the lobby layer only: fade + disable their raycasts

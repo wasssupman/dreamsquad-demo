@@ -28,6 +28,7 @@ namespace Wassup.Tests.EditMode
             Assert.IsTrue(TutorialProgress.IsGiftTutorialPending(profile));
             Assert.IsTrue(TutorialProgress.IsLobbyIntroPending(profile));
             Assert.IsTrue(TutorialProgress.IsLobbyLoadoutHintPending(profile));
+            Assert.IsTrue(TutorialProgress.IsLobbyKeyringHintPending(profile));
         }
 
         [Test]
@@ -202,11 +203,13 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(0, loaded.giftTutorialVersion);
             Assert.AreEqual(0, loaded.lobbyIntroVersion);
             Assert.AreEqual(0, loaded.lobbyLoadoutHintVersion);
+            Assert.AreEqual(0, loaded.lobbyKeyringHintVersion);
             Assert.IsTrue(TutorialProgress.IsCorePending(loaded));
             Assert.IsTrue(TutorialProgress.IsDragAttachHintPending(loaded));
             Assert.IsTrue(TutorialProgress.IsGiftTutorialPending(loaded));
             Assert.IsTrue(TutorialProgress.IsLobbyIntroPending(loaded));
             Assert.IsTrue(TutorialProgress.IsLobbyLoadoutHintPending(loaded));
+            Assert.IsTrue(TutorialProgress.IsLobbyKeyringHintPending(loaded));
         }
 
         [Test]
@@ -263,6 +266,7 @@ namespace Wassup.Tests.EditMode
             expected[nameof(PlayerProfile.giftTutorialVersion)] = 0;
             expected[nameof(PlayerProfile.lobbyIntroVersion)] = 0;
             expected[nameof(PlayerProfile.lobbyLoadoutHintVersion)] = 0;
+            expected[nameof(PlayerProfile.lobbyKeyringHintVersion)] = 0;
 
             string result = TutorialProgress.ResetAllInJson(source, out bool changed);
 
@@ -363,6 +367,105 @@ namespace Wassup.Tests.EditMode
             TutorialProgress.CompleteTapAttachHint(_holder.profile);
             Assert.IsFalse(TutorialProgress.ShouldRunAwakeningIntro(_holder));
             Assert.IsTrue(TutorialProgress.ShouldRunDragAttachHint(_holder));
+        }
+
+        // outgame-tutorial unit 6 — 챕터 C 는 챕터 B 완료를 전제로 한다. B 를 전제로 걸어야
+        // A·B·C 가 동시에 pending 될 수 없고, A → B → C 순서에 별도 상태가 필요 없다.
+        [Test]
+        public void LobbyKeyringHint_RunsOnlyAfterLoadoutHintComplete()
+        {
+            var profile = new PlayerProfile();
+            _holder.SetLoadedProfile(profile);
+
+            // 첫 진입: A 만 pending. C 는 B 를 기다린다.
+            Assert.IsTrue(TutorialProgress.ShouldRunLobbyIntro(_holder));
+            Assert.IsFalse(TutorialProgress.ShouldRunLobbyKeyringHint(_holder));
+
+            // A 완료 + core 완료 → B 차례. 여기서도 C 는 뜨지 않는다.
+            TutorialProgress.CompleteLobbyIntro(profile);
+            TutorialProgress.CompleteCore(profile);
+            Assert.IsTrue(TutorialProgress.ShouldRunLobbyLoadoutHint(_holder));
+            Assert.IsFalse(TutorialProgress.ShouldRunLobbyKeyringHint(_holder));
+
+            // B 완료 → C 가 정확히 여기서 뜬다.
+            TutorialProgress.CompleteLobbyLoadoutHint(profile);
+            Assert.IsFalse(TutorialProgress.ShouldRunLobbyLoadoutHint(_holder));
+            Assert.IsTrue(TutorialProgress.ShouldRunLobbyKeyringHint(_holder));
+
+            TutorialProgress.CompleteLobbyKeyringHint(profile);
+            Assert.IsFalse(TutorialProgress.ShouldRunLobbyKeyringHint(_holder));
+
+            // 세션 가드와 null 프로필도 A·B 와 같게 막는다.
+            _holder.SetLoadedProfile(null);
+            Assert.IsFalse(TutorialProgress.ShouldRunLobbyKeyringHint(_holder));
+        }
+
+        [Test]
+        public void LobbyKeyringCompletion_IsIdempotentAndTouchesNothingElse()
+        {
+            var profile = new PlayerProfile();
+
+            Assert.IsTrue(TutorialProgress.CompleteLobbyKeyringHint(profile));
+            Assert.IsFalse(TutorialProgress.IsLobbyKeyringHintPending(profile));
+            Assert.IsFalse(TutorialProgress.CompleteLobbyKeyringHint(profile), "멱등");
+            Assert.IsFalse(TutorialProgress.CompleteLobbyKeyringHint(null));
+
+            // C 완료가 A·B 를 소비하면 안 된다 — 챕터별로 독립된 토큰이다.
+            Assert.IsTrue(TutorialProgress.IsLobbyIntroPending(profile));
+            Assert.IsTrue(TutorialProgress.IsLobbyLoadoutHintPending(profile));
+
+            // 미래 버전으로 앞서 있는 프로필도 pending 이 아니다.
+            var ahead = new PlayerProfile
+            {
+                lobbyKeyringHintVersion = TutorialProgress.LobbyKeyringHintVersion + 1,
+            };
+            Assert.IsFalse(TutorialProgress.IsLobbyKeyringHintPending(ahead));
+        }
+
+        // unit 6 — 신규 토큰은 ResetAll 의 `changed` 표현식에도 들어가야 한다. 빠지면 이
+        // 토큰만 1 인 프로필에서 ResetTutorialProgressAt 의 memoryChanged 가 false 가 되고,
+        // 디스크 쪽도 같은 누락이면 "이미 초기화됨" 이라 로그하며 리셋이 사라진다.
+        [Test]
+        public void ResetAll_ReportsChanged_WhenOnlyKeyringTokenIsSet()
+        {
+            var profile = new PlayerProfile
+            {
+                selectedSquadId = "keep_squad",
+                lobbyKeyringHintVersion = TutorialProgress.LobbyKeyringHintVersion,
+            };
+
+            Assert.IsTrue(TutorialProgress.ResetAll(profile),
+                "키링 안내만 완료된 상태도 초기화 대상이다");
+            Assert.AreEqual(0, profile.lobbyKeyringHintVersion);
+            Assert.AreEqual("keep_squad", profile.selectedSquadId);
+            Assert.IsFalse(TutorialProgress.ResetAll(profile), "멱등");
+        }
+
+        // unit 6 — 디스크 쪽 같은 함정(unit 17 교훈). 이 토큰이 유일한 차이일 때
+        // `changed` 가 false 면 ResetTutorialProgressAt 이 백업·파일 교체를 건너뛰어
+        // 리셋이 디스크에 영영 안 닿는다. 미지 필드 보존도 같은 자리에서 고정한다.
+        [Test]
+        public void ResetAllInJson_ReportsChanged_WhenOnlyKeyringTokenIsSet()
+        {
+            const string source = @"{
+                'firstBattleTutorialVersion': 0,
+                'awakeningHintVersion': 0,
+                'awakeningTapAttachHintVersion': 0,
+                'giftTutorialVersion': 0,
+                'lobbyIntroVersion': 0,
+                'lobbyLoadoutHintVersion': 0,
+                'lobbyKeyringHintVersion': 1,
+                'selectedSquadId': 'keep_squad',
+                'futureAccountData': { 'currency': 12345 }
+            }";
+
+            string result = TutorialProgress.ResetAllInJson(source, out bool changed);
+
+            Assert.IsTrue(changed, "키링 안내만 완료된 상태도 초기화 대상이다");
+            var stored = JObject.Parse(result);
+            Assert.AreEqual(0, stored.Value<int>(nameof(PlayerProfile.lobbyKeyringHintVersion)));
+            Assert.AreEqual("keep_squad", stored.Value<string>(nameof(PlayerProfile.selectedSquadId)));
+            Assert.AreEqual(12345, stored["futureAccountData"]?["currency"]?.Value<int>());
         }
 
         [Test]

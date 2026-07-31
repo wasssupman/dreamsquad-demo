@@ -8,10 +8,12 @@ using Wassup.UI.Tutorial;
 
 namespace Wassup.UI
 {
-    // outgame-tutorial units 2~3 — the two lobby chapters.
+    // outgame-tutorial units 2~3, 6 — the three lobby chapters.
     //   A intro   : first lobby reveal      → focus StartButton
     //   B loadout : back from the first run → focus Squad + Dreamcatcher
-    // Each is `message` → any tap → `message + focus` → press the real button.
+    //   C keyring : back from a closed panel → drag a lobby character
+    // A·B are `message` → any tap → `message + focus` → press the real button.
+    // C is a single step (`message + focus`) finished by an actual drag.
     // The overlay never presses anything for the player; the inspector-wired
     // persistent calls (OnStartGame / OnOpenSquad / OnOpenDreamcatcher) run from
     // the player's own click and this only records completion.
@@ -21,8 +23,10 @@ namespace Wassup.UI
         private const string IntroFocusText = "이 버튼을 눌러 출발!";
         private const string LoadoutText = "더 잘 막고 싶다면, 함께 싸울 유닛과 카드를 손봐보세요.";
         private const string LoadoutFocusText = "스쿼드와 드림캐쳐에서 바꿀 수 있어요!";
+        // unit 6 — 사용자 작성본. 임의로 고치지 않는다.
+        private const string KeyringText = "배경에 있는 캐릭터를 끌고 드래그 해보세요";
 
-        private enum Step { None, IntroMessage, IntroFocus, LoadoutMessage, LoadoutFocus }
+        private enum Step { None, IntroMessage, IntroFocus, LoadoutMessage, LoadoutFocus, KeyringFocus }
 
         [SerializeField] private PlayerProfileSO profileSO;
         [SerializeField] private OutgameTutorialOverlay overlay;
@@ -30,6 +34,12 @@ namespace Wassup.UI
         [SerializeField] private RectTransform startButton;
         [SerializeField] private RectTransform squadButton;
         [SerializeField] private RectTransform dreamcatcherButton;
+        // unit 6 — 챕터 C 의 대상. RectTransform 이 아니라 **컴포넌트**로 받는다: 홀 대상과
+        // 완료 신호(DragStarted)를 한 참조에서 파생시켜야, 두 필드가 서로 다른 오브젝트를
+        // 가리키는 배선 사고가 컴파일·플레이를 조용히 통과하지 못한다.
+        // 배회형(Hello)이 아니라 제자리형(World) 캐릭터를 배선한다 — 홀이 매 프레임
+        // 움직이면 조준이 어렵다(사용자 결정).
+        [SerializeField] private LobbyKeyringDrag keyringCharacter;
 
         [Tooltip("단계 진입 후 이 시간 동안 dim 탭을 무시한다. 씬 전환 직후 잔여 탭·연타 방지.")]
         [SerializeField] private float minStepSeconds = 0.5f;
@@ -43,6 +53,7 @@ namespace Wassup.UI
         private bool _skipShown;
         private string _currentText;
         private RectTransform _unionRect;
+        private bool _keyringHooked;
 
         private readonly List<RectTransform> _holes = new List<RectTransform>();
         private readonly List<Button> _hookedButtons = new List<Button>();
@@ -61,6 +72,7 @@ namespace Wassup.UI
             if (overlay != null) overlay.Tapped -= OnOverlayTapped;
             if (guidance != null) guidance.SkipRequested -= OnSkipRequested;
             ReleaseButtonHooks();
+            ReleaseKeyringHook();
             DestroyUnionRect();
         }
 
@@ -106,8 +118,11 @@ namespace Wassup.UI
             }
 
             overlay.SetSortingOrder(guidance.DimSortingOrder);
+            // A → B → C 순서가 계약이다. 각 Should* 가 앞 챕터의 완료를 전제로 하므로
+            // 이 else-if 사슬 순서와 플래그가 서로를 이중으로 보장한다.
             if (TutorialProgress.ShouldRunLobbyIntro(profileSO)) EnterStep(Step.IntroMessage);
             else if (TutorialProgress.ShouldRunLobbyLoadoutHint(profileSO)) EnterStep(Step.LoadoutMessage);
+            else if (TutorialProgress.ShouldRunLobbyKeyringHint(profileSO)) EnterStep(Step.KeyringFocus);
         }
 
         private void EnterStep(Step step)
@@ -130,6 +145,34 @@ namespace Wassup.UI
                 case Step.LoadoutFocus:
                     ShowFocus(LoadoutFocusText, squadButton, dreamcatcherButton);
                     break;
+                case Step.KeyringFocus:
+                    RectTransform keyringRect = keyringCharacter != null
+                        ? keyringCharacter.transform as RectTransform
+                        : null;
+                    // fail-open: 끌 대상이 없으면 챕터를 **아예 열지 않는다**. A·B 의
+                    // "구멍 없이 표시 → dim 탭으로 종료" 폴백이 C 에는 성립하지 않는다 —
+                    // KeyringFocus 의 dim 탭은 의도적 no-op 이라, 여기서 dim 만 띄우면
+                    // 8초 Skip 이 뜰 때까지 로비가 통째로 잠긴다. 완료도 저장하지 않으므로
+                    // 배선을 고치면 다음 복귀에서 정상 노출된다.
+                    if (keyringRect == null || !keyringRect.gameObject.activeInHierarchy)
+                    {
+                        Debug.LogWarning(
+                            "[OutgameTutorial] 키링 대상 미배선/비활성 — 챕터 C 를 생략합니다.", this);
+                        _step = Step.None;
+                        return;
+                    }
+                    // C 는 포커스 단계에서 **시작하는** 유일한 챕터다. A·B 는 항상
+                    // ShowMessageOnly(→ overlay.Show())를 거쳐 오므로 ShowFocus 자신은
+                    // dim 을 켜지 않는다 — 여기서 켜지 않으면 이전 챕터의 Hide() 로
+                    // DimRoot 가 비활성인 채라 말풍선만 뜨고 dim 이 안 나온다.
+                    // Show 를 ShowFocus 안으로 옮기면 A·B 의 문구→포커스 전환에서
+                    // 페이드가 alpha 0 부터 다시 시작해 dim 이 깜빡인다.
+                    overlay.Show();
+                    // 문구와 포커스를 동시에 낸다 — 문구가 하나뿐이라 A·B 의
+                    // "읽기 → 지목" 2단계가 필요 없다(사용자 결정 2026-08-01).
+                    ShowFocus(KeyringText, keyringRect);
+                    HookKeyringDrag();
+                    break;
             }
         }
 
@@ -146,6 +189,9 @@ namespace Wassup.UI
         {
             _currentText = text;
             ReleaseButtonHooks();
+            // 챕터 C 의 구독도 여기서 끊는다 — 단계를 갈아탈 때 이전 훅이 남으면
+            // 드래그 한 번이 두 단계를 소진한다. 재구독은 EnterStep 의 케이스가 한다.
+            ReleaseKeyringHook();
 
             _holes.Clear();
             for (int i = 0; i < targets.Length; i++)
@@ -166,6 +212,9 @@ namespace Wassup.UI
                 return;
             }
 
+            // 이 훅은 **버튼 대상 전용**이다. 챕터 C 의 로비 캐릭터에는 Button 이 없어
+            // 조용히 no-op 으로 지나간다 — 그래서 C 는 완료 신호를 HookKeyringDrag 로
+            // 따로 건다. 여기에 의존하면 챕터가 영원히 끝나지 않는다.
             for (int i = 0; i < _holes.Count; i++)
             {
                 var button = _holes[i].GetComponent<Button>();
@@ -216,6 +265,12 @@ namespace Wassup.UI
                 case Step.LoadoutFocus:
                     CompleteAndEnd();
                     break;
+                case Step.KeyringFocus:
+                    // 캐릭터를 실제로 끌어야 진행한다 — 드래그 제스처를 가르치는 단계다.
+                    // **바로 위 LoadoutFocus 를 복붙하지 말 것**: dim 탭으로 완료가 저장되면
+                    // 드래그를 한 번도 안 해보고 넘어가 이 챕터의 목적이 통째로 사라진다.
+                    // (탈출구는 Update 의 8초 Skip 노출과 Esc/백키다.)
+                    break;
             }
         }
 
@@ -228,11 +283,40 @@ namespace Wassup.UI
             CompleteAndEnd();
         }
 
+        // unit 6 — 챕터 C 의 완료 신호. dim 홀에는 그래픽이 없어 레이캐스트가 아래
+        // authored Canvas 로 떨어지고 LobbyKeyringDrag 가 진짜로 드래그를 받는다.
+        // 챕터 A·B 의 버튼 클릭과 같은 통과구멍이며, 여기서는 완료만 기록한다.
+        private void HookKeyringDrag()
+        {
+            if (keyringCharacter == null || _keyringHooked) return;
+            keyringCharacter.DragStarted += OnKeyringDragStarted;
+            _keyringHooked = true;
+        }
+
+        // 종료·중단·파괴 3경로 모두에서 불린다(ReleaseButtonHooks 와 같은 규율).
+        // _keyringHooked 로 게이팅해 미구독 상태의 -= 를 피한다.
+        private void ReleaseKeyringHook()
+        {
+            if (!_keyringHooked) return;
+            _keyringHooked = false;
+            if (keyringCharacter != null) keyringCharacter.DragStarted -= OnKeyringDragStarted;
+        }
+
+        // 잡는 순간 완료·종료 → dim 이 즉시 걷혀 키링 스윙을 가리지 않는다.
+        // minStepSeconds 로 게이팅하지 않는다(OnFocusedButtonClicked 와 같은 이유) —
+        // 드래그는 이미 시작됐고, 저장을 건너뛰면 안내가 영원히 반복된다.
+        private void OnKeyringDragStarted()
+        {
+            if (_step != Step.KeyringFocus) return;
+            CompleteAndEnd();
+        }
+
         private void OnSkipRequested() => CompleteAndEnd();
 
         private void Update()
         {
-            if (_step != Step.IntroFocus && _step != Step.LoadoutFocus) return;
+            if (_step != Step.IntroFocus && _step != Step.LoadoutFocus &&
+                _step != Step.KeyringFocus) return;
 
             var keyboard = Keyboard.current;
             if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame)
@@ -249,15 +333,32 @@ namespace Wassup.UI
 
         private void CompleteAndEnd()
         {
-            bool isIntro = _step == Step.IntroMessage || _step == Step.IntroFocus;
-            PlayerProfile profile = profileSO != null ? profileSO.profile : null;
-
             // 캐시하지 않고 지금 읽는다. OutgameMenuController.Awake 가 ApplyAuthGate
             // 뒤에서 프로필 인스턴스를 교체하므로, 캐시본에 쓰면 플레이어가 안내대로
             // 스쿼드/덱을 저장하는 순간 라이브 인스턴스가 디스크를 되돌린다.
-            bool changed = isIntro
-                ? TutorialProgress.CompleteLobbyIntro(profile)
-                : TutorialProgress.CompleteLobbyLoadoutHint(profile);
+            PlayerProfile profile = profileSO != null ? profileSO.profile : null;
+
+            // 분기는 **챕터 수만큼** 있어야 한다. "인트로냐 아니냐" 2분기로 두면 챕터 C 가
+            // 챕터 B 의 플래그를 다시 쓰고, C 자신의 토큰은 0 으로 남아 영원히 pending 이 된다.
+            bool changed;
+            switch (_step)
+            {
+                case Step.IntroMessage:
+                case Step.IntroFocus:
+                    changed = TutorialProgress.CompleteLobbyIntro(profile);
+                    break;
+                case Step.LoadoutMessage:
+                case Step.LoadoutFocus:
+                    changed = TutorialProgress.CompleteLobbyLoadoutHint(profile);
+                    break;
+                case Step.KeyringFocus:
+                    changed = TutorialProgress.CompleteLobbyKeyringHint(profile);
+                    break;
+                default:
+                    // Step.None — 진행 중인 챕터가 없으면 어떤 플래그도 쓰지 않는다.
+                    changed = false;
+                    break;
+            }
 
             if (changed) TrySaveProfile(profile);
             EndChapter();
@@ -280,6 +381,7 @@ namespace Wassup.UI
         private void EndChapter()
         {
             ReleaseButtonHooks();
+            ReleaseKeyringHook();
             DestroyUnionRect();
             if (guidance != null) guidance.Hide();
             if (overlay != null) overlay.Hide();

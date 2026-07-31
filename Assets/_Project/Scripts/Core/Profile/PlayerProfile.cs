@@ -35,6 +35,10 @@ namespace Wassup.Core
         // back in the lobby. Same additive-field rule as the three above.
         public int lobbyIntroVersion;
         public int lobbyLoadoutHintVersion;
+        // outgame-tutorial unit 6 — chapter C: the first time the player closes a
+        // panel and the lobby comes back, it asks them to actually drag a lobby
+        // character. Additive like the rest — 0 means pending.
+        public int lobbyKeyringHintVersion;
 
         // Units are not profile-owned — all catalog units are always available
         // (the squad page lists the catalog directly). No ownedUnitIds by design.

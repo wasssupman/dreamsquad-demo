@@ -16,6 +16,7 @@ namespace Wassup.Core
         public const int GiftTutorialVersion = 1;
         public const int LobbyIntroVersion = 1;
         public const int LobbyLoadoutHintVersion = 1;
+        public const int LobbyKeyringHintVersion = 1;
 
         public static bool ShouldRunCore(PlayerProfileSO holder) =>
             holder != null && holder.IsLoadedThisSession && IsCorePending(holder.profile);
@@ -58,6 +59,14 @@ namespace Wassup.Core
             holder != null && holder.IsLoadedThisSession && holder.profile != null &&
             !IsCorePending(holder.profile) && IsLobbyLoadoutHintPending(holder.profile);
 
+        // unit 6 — chapter C requires chapter B to be complete, so A·B·C can never be
+        // pending at the same time and the A → B → C order needs no extra state (same
+        // shape as ShouldRunLobbyLoadoutHint). B in turn requires the in-game core
+        // tutorial, so this transitively sits behind that too.
+        public static bool ShouldRunLobbyKeyringHint(PlayerProfileSO holder) =>
+            holder != null && holder.IsLoadedThisSession && holder.profile != null &&
+            !IsLobbyLoadoutHintPending(holder.profile) && IsLobbyKeyringHintPending(holder.profile);
+
         public static bool IsCorePending(PlayerProfile profile) =>
             profile != null && profile.firstBattleTutorialVersion < CoreVersion;
 
@@ -75,6 +84,9 @@ namespace Wassup.Core
 
         public static bool IsLobbyLoadoutHintPending(PlayerProfile profile) =>
             profile != null && profile.lobbyLoadoutHintVersion < LobbyLoadoutHintVersion;
+
+        public static bool IsLobbyKeyringHintPending(PlayerProfile profile) =>
+            profile != null && profile.lobbyKeyringHintVersion < LobbyKeyringHintVersion;
 
         public static bool CompleteCore(PlayerProfile profile)
         {
@@ -118,21 +130,31 @@ namespace Wassup.Core
             return true;
         }
 
+        public static bool CompleteLobbyKeyringHint(PlayerProfile profile)
+        {
+            if (profile == null || profile.lobbyKeyringHintVersion >= LobbyKeyringHintVersion) return false;
+            profile.lobbyKeyringHintVersion = LobbyKeyringHintVersion;
+            return true;
+        }
+
         // Tutorial replay support. This deliberately touches only tutorial
         // progress; squad, deck, account, and every other profile field remain.
         public static bool ResetAll(PlayerProfile profile)
         {
             if (profile == null) return false;
+            // 신규 토큰은 여기와 ResetAllInJson 의 `changed` 표현식 **양쪽에** 넣는다.
+            // 한쪽만 쓰면 그 토큰이 유일한 차이일 때 리셋이 조용히 누락된다(아래 주석 참조).
             bool changed = profile.firstBattleTutorialVersion != 0 || profile.awakeningHintVersion != 0 ||
                            profile.awakeningTapAttachHintVersion != 0 ||
                            profile.giftTutorialVersion != 0 || profile.lobbyIntroVersion != 0 ||
-                           profile.lobbyLoadoutHintVersion != 0;
+                           profile.lobbyLoadoutHintVersion != 0 || profile.lobbyKeyringHintVersion != 0;
             profile.firstBattleTutorialVersion = 0;
             profile.awakeningHintVersion = 0;
             profile.awakeningTapAttachHintVersion = 0;
             profile.giftTutorialVersion = 0;
             profile.lobbyIntroVersion = 0;
             profile.lobbyLoadoutHintVersion = 0;
+            profile.lobbyKeyringHintVersion = 0;
             return changed;
         }
 
@@ -149,17 +171,19 @@ namespace Wassup.Core
             int gift = root.Value<int?>(nameof(PlayerProfile.giftTutorialVersion)) ?? 0;
             int lobbyIntro = root.Value<int?>(nameof(PlayerProfile.lobbyIntroVersion)) ?? 0;
             int lobbyHint = root.Value<int?>(nameof(PlayerProfile.lobbyLoadoutHintVersion)) ?? 0;
+            int lobbyKeyring = root.Value<int?>(nameof(PlayerProfile.lobbyKeyringHintVersion)) ?? 0;
             // Every token must be in this expression: ProfileStore.ResetTutorialProgressAt
             // gates the backup and the file replacement on it, so a token that is only
             // written below would never reach disk when it is the sole difference.
             changed = core != 0 || awakening != 0 || tapAttach != 0 || gift != 0 ||
-                      lobbyIntro != 0 || lobbyHint != 0;
+                      lobbyIntro != 0 || lobbyHint != 0 || lobbyKeyring != 0;
             root[nameof(PlayerProfile.firstBattleTutorialVersion)] = 0;
             root[nameof(PlayerProfile.awakeningHintVersion)] = 0;
             root[nameof(PlayerProfile.awakeningTapAttachHintVersion)] = 0;
             root[nameof(PlayerProfile.giftTutorialVersion)] = 0;
             root[nameof(PlayerProfile.lobbyIntroVersion)] = 0;
             root[nameof(PlayerProfile.lobbyLoadoutHintVersion)] = 0;
+            root[nameof(PlayerProfile.lobbyKeyringHintVersion)] = 0;
             return root.ToString(Formatting.Indented);
         }
     }
