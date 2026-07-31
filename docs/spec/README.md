@@ -542,6 +542,18 @@ board-visualization spec 자체는 ROI 부족으로 wrap 종료. 진단/실험�
 - **한글 TMP 폰트** [S] · 현재 LiberationSans only → UI 라벨 영문. 로컬라이즈 패스에서 한글 폰트 에셋 도입.
 - **반복 씬 로드 ECS leak 점검** [M] · 2-씬 전환으로 BattleScene 반복 로드 → 기존 **BattleBridge.StartBattle Persistent allocates 경고** 백로그가 더 중요. 재진입 시 ECS World/Persistent 정리 경로 검증.
 
+#### 로비 네온 리스킨 — 후속 (lobby-neon-restyle — 완료 2026-07-31, 사용자 실기 확인 통과)
+
+외부 시안(네온 시티 목업)에서 **배경과 UI 스타일만** 로비 1차 화면에 이식했다(시안 캐릭터는 제외).
+낮/밤 페어 + 디졸브 시간대 전환, 다크 칩 메뉴 버튼, START 네온 리본 배너.
+상세: `docs/spec/lobby-neon-restyle/3_handoff_summary.md`.
+
+- **START 전용 폰트** [S] · 시안은 넓은 헤비 이탤릭인데 Anton 은 콘덴스드라 자폭이 좁다. 형태·색·아웃라인은 맞췄고 남은 차이는 글자 자체뿐. 폰트 수급 시 교체. (lobby-neon-restyle)
+- **씬에 박힌 무오버라이드 TMP 머티리얼 인스턴스 정리** [S] · 라벨 4개의 머티리얼 출처가 제각각(공유 에셋 / 기존 인스턴스 / 신규 인스턴스)이라 공유 머티리얼을 고쳐도 일부 라벨엔 안 먹는다. START 라벨은 실제 아웃라인 오버라이드가 있어 해당 없음. (lobby-neon-restyle)
+- **패널 프레임까지 네온 확장** [M] · 스쿼드/덱/히스토리 패널의 프레임·헤더는 이번 스코프 밖이라 기존 스타일 그대로다. 1차 화면과 패널 내부의 룩이 갈린다. (lobby-neon-restyle)
+- **프로필/재화 헤더 UI** [M] · 시안 상단의 레벨 바·코인/젬 카운터. `outgame-lobby-layout` 의 같은 후속 후보와 병합해서 판단. (lobby-neon-restyle × outgame-lobby-layout)
+- **네온 배경 고해상 버전** [S] · 현재 1672×941. 구 항구 배경은 2391×1345 였어서 고해상 기기에서 상대적으로 소프트하다. (lobby-neon-restyle)
+
 ### Promoted / Closed
 
 - **무의식 저주 유물 2종** → `docs/spec/subconscious-cursed-relics/` (완료 2026-07-15 — 플레이스홀더 `깊은 잠`/`꿈결 가속`을 재앙의 심장(시한부 공속·3타 강공·사망 폭발)과 금이 간 성배(전군 화력↑/생존↓)로 교체. 기존 mechanic/effect 조합만 사용하고 신규 메커니즘·인터페이스·ECS 채널은 추가하지 않음. 기존 `LethalTimer` 중복 부착 사전검증과 회귀 테스트 보강. 신규 2장 및 문자 placeholder 3장 카드 아트 완성.)

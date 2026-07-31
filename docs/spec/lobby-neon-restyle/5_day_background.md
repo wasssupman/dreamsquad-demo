@@ -32,6 +32,6 @@ no-op 으로 두었다. 낮 버전을 받아 실제 시간대 전환을 살린�
   (`Assets/Screenshots/neon_lobby_day.png`), 확인 후 `1` 로 원복.
 - 씬 diff 는 낮 슬롯 2곳만.
 
-> 2026-07-31 완료. 위 3항목 확인. 낮 아트 임포트 시 spriteMode 가 또 Multiple 로 떨어져
-> `.meta` 직접 수정으로 Single 고정(MCP `manage_asset` 의 알려진 함정).
-> **미실시**: 캐릭터 터치로 실제 디졸브 전환 재생 확인 — 입력이 필요해 사용자 확인 대기.
+> 2026-07-31 완료 — 커밋 `00106f15`. 위 3항목 확인. 낮 아트 임포트 시 spriteMode 가 또
+> Multiple 로 떨어져 `.meta` 직접 수정으로 Single 고정(MCP `manage_asset` 의 알려진 함정).
+> **사용자 확인 2026-07-31**: 캐릭터 터치 디졸브 시간대 전환 실기 확인 완료.
