@@ -15,7 +15,9 @@ MonoBehaviour:
   id: slasher
   role: 3
   displayName: "\uC774\uC464\uC2DC\uAC1C"
-  desc: "\uAE30\uBCF8 \uAE30\uB2A5: \uBE60\uB978 \uB2E8\uC77C \uADFC\uC811 \uACF5\uACA9\n\uBC30\uCE58 \uC2A4\uD0AC: \uC8FC\uBCC0 \uC801\uC5D0\uAC8C \uCD9C\uD608 \uBD80\uC5EC\n\uD2B9\uC218 \uD6A8\uACFC: \uACF5\uACA9\uD560 \uB54C\uB9C8\uB2E4 \uCD9C\uD608 \uB204\uC801"
+  desc: "\uAE30\uBCF8 \uAE30\uB2A5: \uBE60\uB978 \uB2E8\uC77C \uADFC\uC811 \uACF5\uACA9\n\uBC30\uCE58
+    \uC2A4\uD0AC: \uC8FC\uBCC0 \uC801\uC5D0\uAC8C \uCD9C\uD608 \uBD80\uC5EC\n\uD2B9\uC218
+    \uD6A8\uACFC: \uACF5\uACA9\uD560 \uB54C\uB9C8\uB2E4 \uCD9C\uD608 \uB204\uC801"
   health: 350
   attackRange: 1
   attackCooldown: 0.3
@@ -100,3 +102,5 @@ MonoBehaviour:
   deploymentDuration: 0.45
   placementSkillDelay: 0
   awakeningReward: 4
+  weaponTrailPrefab: {fileID: 9065637864092112376, guid: f4c2f14b1ef3141aa890eaf129a78d12, type: 3}
+  weaponTrailEndNormalized: 0.31

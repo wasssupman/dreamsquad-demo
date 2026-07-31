@@ -15,7 +15,9 @@ MonoBehaviour:
   id: bastion
   role: 2
   displayName: "\uBC30\uC2A4\uD2F0\uC628"
-  desc: "\uAE30\uBCF8 \uAE30\uB2A5: \uB2E4\uC911 \uADFC\uC811 \uACF5\uACA9\n\uBC30\uCE58 \uC2A4\uD0AC: \uC8FC\uBCC0 \uD3ED\uBC1C \u00B7 \uC801 \uBC00\uCCD0\uB0C4\n\uD2B9\uC218 \uD6A8\uACFC: \uACF5\uACA9\uD55C \uC801 \uB3C4\uBC1C"
+  desc: "\uAE30\uBCF8 \uAE30\uB2A5: \uB2E4\uC911 \uADFC\uC811 \uACF5\uACA9\n\uBC30\uCE58
+    \uC2A4\uD0AC: \uC8FC\uBCC0 \uD3ED\uBC1C \xB7 \uC801 \uBC00\uCCD0\uB0C4\n\uD2B9\uC218
+    \uD6A8\uACFC: \uACF5\uACA9\uD55C \uC801 \uB3C4\uBC1C"
   health: 2070
   attackRange: 1
   attackCooldown: 1.5
@@ -95,3 +97,5 @@ MonoBehaviour:
   deploymentDuration: 0.45
   placementSkillDelay: 0
   awakeningReward: 4
+  weaponTrailPrefab: {fileID: 9065637864092112376, guid: f4c2f14b1ef3141aa890eaf129a78d12, type: 3}
+  weaponTrailEndNormalized: 0.31

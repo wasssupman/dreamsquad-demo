@@ -15,7 +15,9 @@ MonoBehaviour:
   id: too_much_talker
   role: 3
   displayName: "\uD22C\uBA38\uCE58\uD1A0\uCEE4"
-  desc: "\uAE30\uBCF8 \uAE30\uB2A5: \uB2E8\uC77C \uADFC\uC811 \uACF5\uACA9\n\uBC30\uCE58 \uC2A4\uD0AC: \uC5C6\uC74C\n\uD2B9\uC218 \uD6A8\uACFC: \uACF5\uACA9\uD55C \uC801\uC744 \uC7A0\uC7AC\uC6C0"
+  desc: "\uAE30\uBCF8 \uAE30\uB2A5: \uB2E8\uC77C \uADFC\uC811 \uACF5\uACA9\n\uBC30\uCE58
+    \uC2A4\uD0AC: \uC5C6\uC74C\n\uD2B9\uC218 \uD6A8\uACFC: \uACF5\uACA9\uD55C \uC801\uC744
+    \uC7A0\uC7AC\uC6C0"
   health: 500
   attackRange: 2
   attackCooldown: 1.6
@@ -93,3 +95,5 @@ MonoBehaviour:
   deploymentDuration: 0.45
   placementSkillDelay: 0
   awakeningReward: 4
+  weaponTrailPrefab: {fileID: 9065637864092112376, guid: f4c2f14b1ef3141aa890eaf129a78d12, type: 3}
+  weaponTrailEndNormalized: 0.31
