@@ -415,6 +415,10 @@ namespace Wassup.UI.Tutorial
                 _dragHintShownThisBattle = false;
                 _tapHintShownThisBattle = false;
                 _awakeningIntroShownThisBattle = false;
+                // unit 19 — 형제 래치들과 같은 자리에서 되돌린다. 지금은
+                // `_awakeningLockedThisMatch` 가 지배해서 없어도 무해하지만, HUD 안내가 자기
+                // 진행 토큰을 갖게 되는 날 이 비대칭이 조용한 replay 결함이 된다.
+                _hudHintShownThisBattle = false;
 
                 // unit 10 — _coreActive 와 무관하게 완료 처리한다. 참조 누락이나 affordable
                 // 슬롯 부재로 안내가 fail-open 된 계정도 "첫 판"은 소비된 것으로 본다.
@@ -731,7 +735,9 @@ namespace Wassup.UI.Tutorial
                 yield break;
             }
 
-            // 말풍선을 배지 아래로 내린다 — 기본 앵커(184)는 배지 구간(178~242)을 덮는다.
+            // 말풍선을 배지·링 아래로 내린다. 배지는 우상단 214~278 이고 링은 ~297 까지 온다 —
+            // 와이드 화면에서는 수평으로 안 겹치지만 4:3 급에서는 겹친다(TutorialGuidanceStyle 주석).
+            // 이 앵커는 체인이 끝날 때까지 유지한다(웨이브 스텝에서 되돌리지 않는다).
             guidance.SetMessageAnchor(TutorialGuidanceView.MessageAnchor.HudHint);
             guidance.ShowMessage(HudHintStressText, showSkip: false);
             guidance.FocusUi(badge);
@@ -772,8 +778,9 @@ namespace Wassup.UI.Tutorial
                 yield break;
             }
 
-            // 대상이 좌하단이라 말풍선과 겹치지 않는다 — 스트레스 스텝이 내려둔 앵커를 되돌린다.
-            guidance.SetMessageAnchor(TutorialGuidanceView.MessageAnchor.Default);
+            // 앵커는 스트레스 스텝이 내려둔 HudHint 를 **그대로 유지한다.** Default(184)로 되돌리면
+            // 방금 가르친 스트레스 배지를 이 두 줄이 덮는다(4:3 급 화면). 대상이 좌하단이라
+            // 말풍선이 아래에 있어도 지시 관계는 흐려지지 않는다. 원복은 StopBattleHudHint 가 한다.
             guidance.ShowMessage(HudHintWaveText, showSkip: false);
             guidance.FocusUi(button);
             yield return WaitUnscaled(guidance.HudHintLineSeconds);
