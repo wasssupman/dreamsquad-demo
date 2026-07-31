@@ -20,6 +20,10 @@ MonoBehaviour:
     \uB2F4\uADF8\uBA74 \uC557 \uB728\uAC70! \uC624\uD788\uB824 \uCCB4\uB825\uC774
     \uAE4E\uC778\uB2E4. \uB2E8, \uC5F4\uAE30\uB9CC\uC73C\uB85C\uB294 \uC4F0\uB7EC\uC9C0\uC9C0
     \uC54A\uB294\uB2E4."
+  ruleLabel: "\uACFC\uC5F4"
+  summary: "\uCC98\uC74C\uC5D4 \uD68C\uBCF5, \uC624\uB798\uB418\uBA74 \uD654\uC0C1
+    (\uC8FD\uC9C4 \uC54A\uB294\uB2E4)"
+  icon: {fileID: 21300000, guid: b28e4f9a6c713d50a1e3f7c8d9426b15, type: 3}
   heatInterval: 5
   flipThreshold: 5
   healPercent: 0.1

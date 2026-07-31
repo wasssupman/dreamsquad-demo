@@ -32,13 +32,15 @@
 | Burnout | 번아웃 | 내 유닛은 오래 둘수록 약해진다 |
 | RedBull | 레드불 | 밟으면 폭주 — 빨라지고, 곧 아프다 |
 | ClockOut | 사직서 | 아군이 쓰러지면 사직서, 5장이면 메테오 |
-| Onsen | 과열 | 처음엔 회복, 오래되면 화상 (죽진 않음) |
+| Onsen | 과열 | 처음엔 회복, 오래되면 화상 (죽진 않는다) |
 
-**아이콘 4종** — `Assets/_Project/Art/GimmickIcons/icon_gimmick_{burnout,redbull,clockout,onsen}.png`.
+**아이콘**
 
-- 번아웃·과열은 기존 `Art/StackIcons/icon_stack_fatigue.png` / `icon_stack_heat.png` 의 시각 언어를 계승한다 — 같은 개념이 같은 그림으로 읽혀야 오버헤드 스택 아이콘과 충돌하지 않는다.
-- **실질 신규 아트는 레드불·사직서 2개.** 임포트 설정은 `Art/StackIcons/` 전례를 따른다(같은 용도·같은 표시 크기대).
-- 캐주얼 디펜스 아트 방향: 작은 크기에서 읽히는 단순 실루엣, 밝고 선명, 게임 어포던스가 분명할 것. RPG 컨셉아트·다크 판타지 금지.
+- **번아웃·과열은 기존 `Art/StackIcons/icon_stack_fatigue.png` / `icon_stack_heat.png` 를 그대로 참조한다.** 복제본을 만들지 않는다 — 오버헤드 스택 아이콘과 **같은 개념이 같은 그림**으로 읽혀야 하고, 사본을 두면 나중에 한쪽만 바뀐다. 신규 아트 0.
+- **레드불·사직서 2개만 신규.** 캐주얼 디펜스 아트 방향: 작은 크기에서 읽히는 단순 실루엣, 굵은 외곽선, 밝고 선명. RPG 컨셉아트·다크 판타지 금지. 임포트 설정은 `Art/StackIcons/` 전례를 따른다.
+- **미할당 상태로 착지 가능**하다 — `icon` 은 nullable 이고 뷰가 라벨만 표시한다. 아이콘이 늦게 와도 이 유닛은 완결된다(계약 5의 nullable 슬롯 패턴).
+
+> **2026-07-31 실행 메모**: 레드불·사직서 아이콘은 **미착지**. UnityMCP `generate_image` 의 두 provider(fal / openrouter)가 모두 `configured: false` 라 생성 경로가 막혀 있다. 키를 넣거나 아트를 직접 주면 슬롯에 꽂기만 하면 된다.
 
 **뷰 소비** — `GimmickGuideView.Populate`:
 - 카드 제목을 2층으로: `ruleLabel` 주(대형) + `displayName` 부제(소형). 본문 = `summary` + `description`.

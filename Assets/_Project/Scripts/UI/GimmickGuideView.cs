@@ -32,8 +32,12 @@ namespace Wassup.UI
         private GameObject _card;
         private GameObject _chip;
         private TextMeshProUGUI _titleLabel;
+        private TextMeshProUGUI _subtitleLabel;
+        private TextMeshProUGUI _summaryLabel;
         private TextMeshProUGUI _bodyLabel;
         private TextMeshProUGUI _chipLabel;
+        private Image _cardIcon;
+        private Image _chipIcon;
         private CanvasGroup _cardGroup;
         private CanvasGroup _chipGroup;
         private RectTransform _cardRt;
@@ -250,13 +254,42 @@ namespace Wassup.UI
             _chipRt.localScale = Vector3.one;
         }
 
+        // gimmick-recognition-upgrade unit 0 — 문구 4단 소비.
+        // 주제목 = ruleLabel(룰), 부제 = displayName(정서 카피), 본문 = summary 한 줄 + description 상세.
+        // 폴백 체인: ruleLabel → displayName → gimmickId. 아이콘 미할당이면 라벨만 뜬다.
         private void Populate(Wassup.Data.GimmickData g)
         {
-            string title = string.IsNullOrEmpty(g.displayName) ? g.gimmickId : g.displayName;
-            if (_titleLabel != null) _titleLabel.text = title;
-            if (_bodyLabel != null) _bodyLabel.text = g.description;
-            if (_chipLabel != null)
-                _chipLabel.text = $"<color=#FFD159>특수룰</color> · {title}";
+            string rule = FirstNonEmpty(g.ruleLabel, g.displayName, g.gimmickId);
+            // 룰 라벨이 비어 displayName 으로 폴백했으면 같은 문구를 부제로 중복 노출하지 않는다.
+            string subtitle = string.IsNullOrEmpty(g.ruleLabel) ? "" : g.displayName;
+
+            if (_titleLabel != null) _titleLabel.text = rule;
+            SetLabel(_subtitleLabel, subtitle);
+            SetLabel(_summaryLabel, g.summary);
+            SetLabel(_bodyLabel, g.description);
+            if (_chipLabel != null) _chipLabel.text = $"<color=#FFD159>특수룰</color> · {rule}";
+            SetIcon(_cardIcon, g.icon);
+            SetIcon(_chipIcon, g.icon);
+        }
+
+        private static string FirstNonEmpty(string a, string b, string c) =>
+            !string.IsNullOrEmpty(a) ? a : (!string.IsNullOrEmpty(b) ? b : c);
+
+        // 빈 문구는 GameObject 를 꺼서 레이아웃에서 빠지게 한다(빈 줄 간격 방지).
+        private static void SetLabel(TextMeshProUGUI label, string text)
+        {
+            if (label == null) return;
+            bool has = !string.IsNullOrEmpty(text);
+            label.text = has ? text : "";
+            if (label.gameObject.activeSelf != has) label.gameObject.SetActive(has);
+        }
+
+        private static void SetIcon(Image image, Sprite sprite)
+        {
+            if (image == null) return;
+            image.sprite = sprite;
+            bool has = sprite != null;
+            if (image.gameObject.activeSelf != has) image.gameObject.SetActive(has);
         }
 
         private void BuildCanvas()
@@ -299,10 +332,14 @@ namespace Wassup.UI
             fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
             fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
 
-            // 머리말(UI 문구 — 데이터 아님) / 제목(displayName) / 본문(description)
+            // 머리말(UI 문구 — 데이터 아님) / 아이콘 / 제목(ruleLabel) / 부제(displayName)
+            // / 한 줄(summary) / 상세(description). unit 0 문구 4단.
             MakeLabel(_card.transform, "Header", "이번 판 특수 룰", 22f, AccentGold, FontStyles.Bold);
+            _cardIcon = MakeIcon(_card.transform, "Icon", 96f);
             _titleLabel = MakeLabel(_card.transform, "Title", "", 40f, Color.white, FontStyles.Bold);
-            _bodyLabel = MakeLabel(_card.transform, "Body", "", 26f, new Color(0.9f, 0.92f, 0.96f, 1f), FontStyles.Normal);
+            _subtitleLabel = MakeLabel(_card.transform, "Subtitle", "", 22f, new Color(0.72f, 0.76f, 0.85f, 1f), FontStyles.Italic);
+            _summaryLabel = MakeLabel(_card.transform, "Summary", "", 28f, AccentGold, FontStyles.Bold);
+            _bodyLabel = MakeLabel(_card.transform, "Body", "", 24f, new Color(0.9f, 0.92f, 0.96f, 1f), FontStyles.Normal);
             BuildGoButton();
 
             BuildChip(roots.SafeAreaRoot);
@@ -373,11 +410,28 @@ namespace Wassup.UI
             fitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
             fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
+            _chipIcon = MakeIcon(_chip.transform, "Icon", 32f);
             _chipLabel = MakeLabel(_chip.transform, "Label", "", 24f, Color.white, FontStyles.Bold);
 
             var button = _chip.GetComponent<Button>();
             button.targetGraphic = bg;
             button.onClick.AddListener(OnChipTapped);
+        }
+
+        // unit 0 — 아이콘 슬롯. 스프라이트 미할당이면 Populate 가 GameObject 를 꺼서
+        // 레이아웃에서 통째로 빠진다(에셋↔코드 디커플링, StackIconRegistry null 폴백과 같은 형태).
+        private static Image MakeIcon(Transform parent, string iconName, float size)
+        {
+            var go = new GameObject(iconName, typeof(RectTransform), typeof(LayoutElement));
+            go.transform.SetParent(parent, false);
+            var le = go.GetComponent<LayoutElement>();
+            le.preferredWidth = size;
+            le.preferredHeight = size;
+            var image = go.AddComponent<Image>();
+            image.preserveAspect = true; // 부모가 폭을 늘려도 원본 비율 유지
+            image.raycastTarget = false;
+            go.SetActive(false); // 기본 숨김 — 스프라이트가 들어올 때만 켠다
+            return image;
         }
 
         private TextMeshProUGUI MakeLabel(Transform parent, string labelName, string text, float size, Color color, FontStyles style)
