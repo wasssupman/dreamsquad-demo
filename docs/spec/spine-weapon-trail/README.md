@@ -1,6 +1,7 @@
 # spine-weapon-trail — Spine 유닛 공격 무기 궤적
 
-> 상태: **spec 작성 · 사용자 승인 대기** (2026-07-31)
+> 상태: **unit 0 완료 · unit 1 대기** (2026-08-01)
+> unit 0 커밋 `d37e3196` — 리그 프리팹 + 프리셋 + 정렬 대역 + 벤더 패키지 편입
 
 ## 목표
 
@@ -22,8 +23,8 @@ Spine 유닛이 공격할 때 손에 든 무기가 지나간 자리에 **궤적 
 
 | # | 구분 | 문서 | 상태 | 목적 |
 |---|---|---|---|---|
-| 0 | asset+code | `0_trail_rig_and_sorting.md` | 대기 | 본 추종 리그 프리팹 + 프로젝트 소유 프리셋(정렬 대역) + `BoardSortOrder` 상수 |
-| 1 | code | `1_attack_driven_trail.md` | 대기 | SO opt-in 필드 + 스폰 시 부착 + `PlayAttack` 에서 Start/Stop |
+| 0 | asset+code | `0_trail_rig_and_sorting.md` | **완료** `d37e3196` | 본 추종 리그 프리팹 + 프로젝트 소유 프리셋(정렬 대역) + `BoardSortOrder` 상수 |
+| 1 | code | `1_attack_driven_trail.md` | 대기 | SO opt-in 필드 + 스폰 시 부착 + `PlayAttack` Start/Stop + **가시성 판정 게이트** |
 | 2 | asset | `2_melee_roster_and_tuning.md` | 대기 | 근접 로스터 적용 + 오프셋/수명/색 튜닝 + **가독성 상한 판정** |
 | 3 | docs | `3_handoff_summary.md` | 대기 | 인계 요약 |
 
