@@ -16,8 +16,10 @@
 ## 구현
 
 - `LobbyNeonChip`: `enum Kind { Chip, Cta }` + SerializeField 색상(기본값=시안 실측 팔레트)
-  + 대상 `Image`(배경), 글리프 `Image`(Chip 만), 라벨 `TMP_Text` 참조. Awake 에서
+  + 대상 `Image`(배경, 미할당 시 같은 GO 의 Image) 만 참조. Awake 에서
   `UiRoundedSprite.Make`(Chip) / `MakeHorizontalGradient`(Cta) 로 굽고 할당.
+  글리프·라벨은 컴포넌트가 참조하지 않는 순수 씬 오브젝트 — 지오메트리는 씬이,
+  스프라이트/색만 이 컴포넌트가 소유한다.
   아키텍처 중립 계산 없음(전부 렌더 파라미터) — 순수 함수 분리 대상 아님.
 - 씬: 각 버튼 GO 이름·계층 위치·Button 컴포넌트·onClick 불변. 하위에
   글리프 Image + Jua 라벨(TMP) 배치, 기존 스티커 아이콘 Image 는 **sprite 참조만 교체하지

@@ -28,6 +28,8 @@ START CTA 가 보이고, 기존 기능(로그인 게이트, 패널 열기, 캐�
 
 - **롤백 계약**: 구 에셋(스티커 아이콘 `LobbyIcons/*.png`, 항구 배경 `lobby_bg_day/night.png`,
   `Depth/lobby_bg_depth.png`)은 삭제·수정하지 않는다. 각 unit 커밋은 단독 revert 가능해야 한다.
+  **단서(리뷰 검증)**: unit 1·2 는 단독 revert 안전(격리 워크트리에서 실측). unit 0 은 단독
+  revert 시 png 삭제로 씬에 dangling GUID 가 남으므로 **역순(2→1→0) 롤백만 안전**하다.
 - **스테이징은 경로 명시만** (공유 워크트리). `.png` 는 반드시 `.meta` 짝과 함께 add.
   `ProjectSettings/ProjectSettings.asset` 불가침.
 - **코드 변경 최소**: 신설은 `LobbyNeonChip`(MonoBehaviour) 1개 + `UiRoundedSprite`
@@ -51,6 +53,12 @@ N/A — 플레이 오브젝트 신설/생성→렌더 경로 변경이 아니라
 ## 후속 후보 (이번 스코프 밖)
 
 - 네온 시티 **낮 버전** 배경 도착 시 daySprite 슬롯 스왑 (디졸브 전환 부활).
+  `SceneTransition.prefab` 의 daySprite 도 같이 — 커버는 로비 배경과 같은 그림이어야 한다.
 - 스쿼드/덱/히스토리 패널 프레임·헤더의 네온 스타일 확장.
 - 시안의 프로필/재화 헤더 UI (outgame-lobby-layout 후속 후보와 병합).
 - 시안 캐릭터 컷아웃 3종 활용처 검토 (스크래치패드에 분리 완료 상태였음).
+- (리뷰 minor) START CTA 프로포션 — 240×292 세로 rect 통째 베이크라 비어 보임.
+  버튼 rect 는 두고 CTA 전용 자식 Image 에 굽는 방안.
+- (리뷰 minor) 씬에 박힌 무오버라이드 TMP 머티리얼 인스턴스 2개(Anton/Jua) 정리 —
+  라벨 4개의 머티리얼 출처 통일.
+- (리뷰 minor) 네온 배경 고해상 버전(구 항구 배경은 2391×1345, 현재 1670×941) 수급 시 교체.

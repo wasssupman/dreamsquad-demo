@@ -10,6 +10,9 @@
 
 - `Assets/_Project/Scenes/OutgameScene.unity` — `LobbyBackground`(디졸브 앞) /
   `LobbyBackgroundUnder`(뒤) 의 컴포넌트 참조 교체
+- `Assets/Resources/SceneTransition.prefab` — 씬 전환 커버의 day/night 슬롯 + 커버 Image.
+  **커버는 "현재 로비 배경과 같은 그림"이라는 전제로 불투명 스냅을 숨긴다**
+  (`SceneTransition.cs:189~196` 주석) — 로비 배경을 바꾸면 이 프리팹도 반드시 함께 스왑.
 
 ## 구현
 
@@ -32,3 +35,6 @@
 > 2026-07-31 구현 완료 — 커밋 `f8f0c89f` (참조 5개만: 앞/뒤 Image sprite, day/night 슬롯, depthMap).
 > Play 스크린샷으로 네온 배경 렌더 확인(`screenshot-20260731-123955.png`).
 > 미실시: 캐릭터 터치 디졸브 파면·키링 스와이프 패럴랙스 실기 확인 — 사용자 확인 대기.
+>
+> **리뷰 반영 (major)**: `SceneTransition.prefab` 커버 참조 3개가 항구 배경으로 남아
+> START 진입 시 커버 스냅에서 항구 배경이 노출되는 회귀 발견 → 네온 밤으로 스왑 (unit 2 rev).
