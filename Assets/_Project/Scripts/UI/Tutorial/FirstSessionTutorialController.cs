@@ -41,6 +41,12 @@ namespace Wassup.UI.Tutorial
         private const string HudHintStressText = "악몽을 막아 스트레스 관리하세요!";
         private const string HudHintStressLimitFormat = "스트레스가 {0}가 되면 패배합니다.";
 
+        // unit 20 — 사용자 작성 문구. 임의로 고치지 말 것. 클릭을 요구하지 않는다:
+        // 둘째 줄이 "지금 누르지 마"라는 뜻이라 행동 성공 신호로 진행시키면 문구와 모순이고,
+        // 첫 판에 웨이브를 겹치면 안내가 스트레스 한계 = 패배를 유도한다.
+        private const string HudHintWaveText = "더 높은 점수를 위해 다음 웨이브 호출해보세요";
+        private const string HudHintWaveCaveatText = "단, 준비가 되었을때!";
+
         [Header("Core")]
         [SerializeField] private PlayerProfileSO profileSO;
         [SerializeField] private GameManager gameManager;
@@ -61,6 +67,9 @@ namespace Wassup.UI.Tutorial
 
         [Header("Battle HUD hint (unit 19)")]
         [SerializeField] private ScoreHudView scoreHud;
+        // unit 20 — 좌하단 `다음 웨이브` 버튼. 레거시 덱(생성 웨이브 아님) 경로에는 버튼이
+        // 아예 없으므로 미배선·부재 모두 그 스텝만 생략한다.
+        [SerializeField] private NextWaveDock waveDock;
 
         private DefenderDragPlacementController _drag;
         private RectTransform _recommendedSlot;
@@ -701,8 +710,7 @@ namespace Wassup.UI.Tutorial
         private IEnumerator BattleHudHintRoutine()
         {
             yield return StressHintSteps();
-            // unit 20 — 여기에 다음 웨이브 스텝(③④)을 잇는다: `yield return NextWaveHintSteps();`
-            // 앵커를 Default 로 되돌리는 것은 그 스텝이 직접 한다(대상이 좌하단이다).
+            yield return NextWaveHintSteps();
             _hudHintRoutine = null;
             StopBattleHudHint();
         }
@@ -733,6 +741,33 @@ namespace Wassup.UI.Tutorial
 
         private RectTransform ResolveStressBadgeRect() =>
             scoreHud != null ? scoreHud.StressBadgeRect : null;
+
+        // unit 20 — ③④ 다음 웨이브. 점수를 위해 당길 수 있다는 선택지와 그 조건을 알린다.
+        // **클릭을 요구하지 않는다**(사용자 결정 2026-08-01) — 문구 자체가 "지금 누르지 마"이고,
+        // 첫 판에 웨이브를 겹치게 만들면 안내가 패배를 유도한다.
+        private IEnumerator NextWaveHintSteps()
+        {
+            yield return WaitForHintTarget(ResolveWaveButtonRect);
+            RectTransform button = ResolveWaveButtonRect();
+            if (button == null || !button.gameObject.activeInHierarchy)
+            {
+                // 레거시 덱(생성 웨이브 아님)에는 버튼이 아예 없다 — 정상 경로이므로 조용히 넘긴다.
+                Debug.LogWarning("[FirstSessionTutorial] 다음 웨이브 버튼 부재 — 웨이브 안내를 생략합니다.", this);
+                yield break;
+            }
+
+            // 대상이 좌하단이라 말풍선과 겹치지 않는다 — 스트레스 스텝이 내려둔 앵커를 되돌린다.
+            guidance.SetMessageAnchor(TutorialGuidanceView.MessageAnchor.Default);
+            guidance.ShowMessage(HudHintWaveText, showSkip: false);
+            guidance.FocusUi(button);
+            yield return WaitUnscaled(guidance.HudHintLineSeconds);
+
+            guidance.ShowMessage(HudHintWaveCaveatText, showSkip: false);
+            yield return WaitUnscaled(guidance.HudHintLineSeconds);
+        }
+
+        private RectTransform ResolveWaveButtonRect() =>
+            waveDock != null ? waveDock.WaveButtonRect : null;
 
         // FocusUi 는 대상이 activeInHierarchy 가 아니면 **링을 조용히 끈다**(0단계가 빠졌던
         // 함정). HUD 뷰들은 자기 Update 에서 lazily 구독·활성화되고 PhaseChanged 구독자 순서는

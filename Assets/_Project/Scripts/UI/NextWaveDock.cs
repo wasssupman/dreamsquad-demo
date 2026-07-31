@@ -109,6 +109,16 @@ namespace Wassup.UI
             Disabled
         }
 
+        // first-session-tutorial unit 20 — 튜토리얼 포커스 링이 감쌀 대상(읽기 전용).
+        // _panel(타이머 캡슐까지 포함한 dock 전체)이 아니라 **버튼만** 준다 — 링이 남은시간을
+        // 함께 감싸면 지시 대상이 흐려진다.
+        //
+        // 이 오브젝트는 Awake 에서 SetActive(false) 로 시작하고 Update 의
+        // bridge.NextWaveAvailable 폴링이 켠다. 즉 Battle 진입 프레임에는 아직 비활성이므로,
+        // 튜토리얼은 활성을 기다린 뒤에 포커스를 걸어야 한다(unit 19 의 WaitForHintTarget).
+        public RectTransform WaveButtonRect =>
+            _buttonRoot != null ? (RectTransform)_buttonRoot.transform : null;
+
         private void Awake()
         {
             BuildCanvas();
