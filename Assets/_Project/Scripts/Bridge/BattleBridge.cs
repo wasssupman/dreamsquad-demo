@@ -3901,7 +3901,21 @@ namespace Wassup.Bridge
             if (projData != null && projData.projectilePrefab != null)
             {
                 float initialDrop = req.movement == MovementKind.SkyFall ? projData.dropHeight : 0f;
-                _projectileViewPool?.Spawn(entity, projData, spawnPos, initialDrop);
+                // projectile-shot-sequence unit 5 — emitter carrier는 일회성 request
+                // entity라 view가 없다. 실제 공격자(req.owner)를 우선하고 owner 없는
+                // legacy 요청만 drain의 shooter를 fallback으로 쓴다. SkyFall은 유닛
+                // 발사가 아니라 impact cell에서 내려오므로 anchor를 적용하지 않는다.
+                bool hasLaunchAnchor = false;
+                Vector3 launchAnchor = default;
+                if (req.movement != MovementKind.SkyFall && spineUnitPool != null)
+                {
+                    Entity visualOwner = req.owner != Entity.Null ? req.owner : shooter;
+                    if (visualOwner != Entity.Null)
+                        hasLaunchAnchor = spineUnitPool.TryResolveProjectileLaunchAnchor(
+                            visualOwner, out launchAnchor);
+                }
+                _projectileViewPool?.Spawn(
+                    entity, projData, spawnPos, initialDrop, hasLaunchAnchor, launchAnchor);
             }
             return entity;
         }

@@ -59,6 +59,17 @@ namespace Wassup.Presentation
             return false;
         }
 
+        public bool TryResolveProjectileLaunchAnchor(Entity entity, out Vector3 worldPos)
+        {
+            if (TryGet(entity, out var view))
+            {
+                worldPos = view.ResolveProjectileLaunchAnchor();
+                return true;
+            }
+            worldPos = default;
+            return false;
+        }
+
         public void NotifyDeath(Entity entity)
         {
             if (_byEntity.TryGetValue(entity, out var view) && view != null)

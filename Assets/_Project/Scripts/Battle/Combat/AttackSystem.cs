@@ -389,9 +389,11 @@ namespace Wassup.Battle.Combat
                 // projectile-shot-sequence unit 2 — facing Direction 탄은 START 때 레인
                 // witness가 발사 허가만 한다. 이후 궤적은 targetless이므로 wind-up 중
                 // witness가 죽거나 레인 밖으로 나가도 RESOLVE 자체를 취소하면 안 된다.
-                bool isFacingDirectional = hasFacing
-                    && projectileRefLookup.HasComponent(attackerEntity)
+                bool isDirectionalProjectile = projectileRefLookup.HasComponent(attackerEntity)
                     && projectileRefLookup[attackerEntity].movement == MovementKind.DirectionalLinear;
+                bool isFacingDirectional = hasFacing && isDirectionalProjectile;
+                float2 committedDirection = attack.ValueRO.committedDirection;
+                bool hasCommittedDirection = attack.ValueRO.hasCommittedDirection != 0;
                 Entity laneWitness = Entity.Null;
                 float3 laneWitnessPos = default;
                 float laneBestSq = float.MaxValue;
@@ -627,6 +629,21 @@ namespace Wassup.Battle.Combat
 
                     if (stateAllowsFire)
                     {
+                        // projectile-shot-sequence unit 5 — 일반 타겟팅 Direction 탄은
+                        // Archer/Ranger처럼 nearest target으로 START하되, wind-up 뒤의
+                        // 재판정이 이번 발사 기준축을 바꾸거나 취소하지 못하게 방향만
+                        // Combat 상태에 스냅샷한다. 즉시 RESOLVE도 아래 로컬 값을 쓴다.
+                        if (!hasFacing && isDirectionalProjectile)
+                        {
+                            float2 toTarget = (bestTargetPos - atkPos).xz;
+                            committedDirection = math.lengthsq(toTarget) > 1e-6f
+                                ? math.normalize(toTarget)
+                                : new float2(0f, 1f);
+                            hasCommittedDirection = true;
+                            attack.ValueRW.committedDirection = committedDirection;
+                            attack.ValueRW.hasCommittedDirection = 1;
+                        }
+
                         float attackSpeedMul = modifierStatsLookup.HasComponent(attackerEntity)
                             ? modifierStatsLookup[attackerEntity].attackSpeedMul
                             : 1f;
@@ -688,13 +705,24 @@ namespace Wassup.Battle.Combat
                 // ── RESOLVE ── 일반 공격은 재판정된 bestTarget이 필요하다. 단 START가
                 // 성사된 facing Direction 탄은 targetless 궤적이므로 witness 소실 뒤에도
                 // 고정 facing으로 발사한다. 로그/방향 보조점은 레인 끝을 사용한다.
+                bool resolveCommittedDirectionalWithoutWitness =
+                    doResolve && bestTarget == Entity.Null && !hasFacing
+                    && isDirectionalProjectile && hasCommittedDirection;
                 bool resolveFacingDirectionalWithoutWitness =
                     doResolve && bestTarget == Entity.Null && isFacingDirectional;
                 if (resolveFacingDirectionalWithoutWitness)
                 {
                     bestTargetPos = atkPos + new float3(facing.x, 0f, facing.y) * (tileRange * tileSize);
                 }
-                if (doResolve && (bestTarget != Entity.Null || resolveFacingDirectionalWithoutWitness))
+                else if (resolveCommittedDirectionalWithoutWitness)
+                {
+                    bestTargetPos = atkPos
+                        + new float3(committedDirection.x, 0f, committedDirection.y)
+                        * (tileRange * tileSize);
+                }
+                if (doResolve && (bestTarget != Entity.Null
+                                  || resolveFacingDirectionalWithoutWitness
+                                  || resolveCommittedDirectionalWithoutWitness))
                 {
                     float damageMul = modifierStatsLookup.HasComponent(attackerEntity)
                         ? modifierStatsLookup[attackerEntity].damageMul
@@ -853,7 +881,11 @@ namespace Wassup.Battle.Combat
                                 // 방향은 facing 이 원칙이고, facing 없는 유닛이 이 SO 를
                                 // 쓰면 조준 대상 쪽으로 쏜다(퇴화 벡터는 drain 이 폐기).
                                 float2 fireDir = facing;
-                                if (!hasFacing)
+                                if (!hasFacing && hasCommittedDirection)
+                                {
+                                    fireDir = committedDirection;
+                                }
+                                else if (!hasFacing)
                                 {
                                     float2 toTarget = (bestTargetPos - atkPos).xz;
                                     fireDir = math.lengthsq(toTarget) > 1e-6f ? math.normalize(toTarget) : new float2(0f, 1f);
@@ -899,6 +931,12 @@ namespace Wassup.Battle.Combat
                                         // SO의 damage는 boss/skill 경로용이며 여기서는 trigger
                                         // 시점 실효값으로 덮어 전탄에 스냅샷한다.
                                         spec.damage = projectileDamage;
+                                        // unit 5 — 랜덤 패턴도 instance가 완성된 runtime
+                                        // shot 목록을 소유한다. 같은 host의 연속 trigger와
+                                        // 여러 host가 같은 시퀀스를 반복하지 않되 결정론은 유지.
+                                        PatternShotRandomizer.Apply(
+                                            ref spec,
+                                            math.hash(new int2(attackerEntity.Index, slot.fireCountBase)));
 
                                         // barrel 기반 template이 가진 effect/targetFaction은
                                         // 보존하고, 이번 공격에만 결정되는 값은 RESOLVE에서
@@ -1462,6 +1500,11 @@ namespace Wassup.Battle.Combat
                     {
                         active = false, target = Entity.Null, damageMulSnapshot = 1f, targetIsPriority = false,
                     };
+                }
+                if (doResolve && hasCommittedDirection)
+                {
+                    attack.ValueRW.committedDirection = default;
+                    attack.ValueRW.hasCommittedDirection = 0;
                 }
             }
 

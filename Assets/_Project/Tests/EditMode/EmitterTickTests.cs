@@ -1,5 +1,6 @@
 using NUnit.Framework;
 using Unity.Collections;
+using Unity.Mathematics;
 using Wassup.Battle.Combat.Projectile.Emission;
 using Wassup.Data;
 
@@ -177,6 +178,54 @@ namespace Wassup.Tests.EditMode
 
             Assert.AreEqual(0.15f, EmitterTick.TotalDuration(spec), 1e-5f,
                 "첫 step interval은 trigger 즉발이라 무시하고 음수 값은 0으로 본다");
+        }
+
+        [Test]
+        public void Randomizer_SameSeedReproduces_AndDifferentSeedChangesSequence()
+        {
+            var first = Spec(0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f);
+            first.randomizeShotsPerTrigger = true;
+            first.randomIntervalMinSec = 0.006f;
+            first.randomIntervalMaxSec = 0.018f;
+            var same = first;
+            var different = first;
+
+            PatternShotRandomizer.Apply(ref first, 123u);
+            PatternShotRandomizer.Apply(ref same, 123u);
+            PatternShotRandomizer.Apply(ref different, 456u);
+
+            bool differs = false;
+            for (int i = 0; i < first.shots.Length; i++)
+            {
+                Assert.AreEqual(first.shots[i].directionT, same.shots[i].directionT);
+                Assert.AreEqual(first.shots[i].intervalAfterPreviousSec, same.shots[i].intervalAfterPreviousSec);
+                Assert.That(first.shots[i].directionT, Is.InRange(0f, 1f));
+                if (i == 0)
+                    Assert.AreEqual(0f, first.shots[i].intervalAfterPreviousSec);
+                else
+                    Assert.That(first.shots[i].intervalAfterPreviousSec, Is.InRange(0.006f, 0.018f));
+
+                if (math.abs(first.shots[i].directionT - different.shots[i].directionT) > 1e-5f
+                    || math.abs(first.shots[i].intervalAfterPreviousSec
+                                - different.shots[i].intervalAfterPreviousSec) > 1e-5f)
+                    differs = true;
+            }
+            Assert.IsTrue(differs, "다른 trigger seed가 같은 10발 시퀀스를 반복하면 안 된다");
+        }
+
+        [Test]
+        public void Randomizer_Disabled_PreservesAuthoredSteps()
+        {
+            var spec = Spec(0f, 0.03f, 0.12f);
+            var before = spec;
+
+            PatternShotRandomizer.Apply(ref spec, 999u);
+
+            for (int i = 0; i < spec.shots.Length; i++)
+            {
+                Assert.AreEqual(before.shots[i].directionT, spec.shots[i].directionT);
+                Assert.AreEqual(before.shots[i].intervalAfterPreviousSec, spec.shots[i].intervalAfterPreviousSec);
+            }
         }
     }
 }

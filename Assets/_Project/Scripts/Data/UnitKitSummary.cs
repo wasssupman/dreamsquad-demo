@@ -38,7 +38,8 @@ namespace Wassup.Data
             if (volley != null)
             {
                 int shotCount = volley.pattern?.shots?.Length ?? 0;
-                traits.Add(shotCount > 1 ? $"지정 방향으로 {shotCount}연발 사격" : "지정 방향 사격");
+                string aim = volley.RequiresFacing ? "지정 방향" : "대상 방향";
+                traits.Add(shotCount > 1 ? $"{aim}으로 {shotCount}연발 사격" : $"{aim} 사격");
             }
             if (u.aggroCapacity > 0)
                 traits.Add($"최대 {u.aggroCapacity}체 도발 유지");

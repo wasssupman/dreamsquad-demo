@@ -37,6 +37,11 @@ namespace Wassup.Data
         public float maxAngleDeg;
         // shot 목록이 트리거당 발수의 단일 source of truth다.
         public FixedList128Bytes<PatternShotSpec> shots;
+        // trigger마다 directionT와 첫 탄 이후 interval을 다시 스냅샷한다.
+        // 값 범위는 SO가 소유하고, seed는 trigger producer가 공급한다.
+        public bool randomizeShotsPerTrigger;
+        public float randomIntervalMinSec;
+        public float randomIntervalMaxSec;
         // 발마다 타겟을 다시 뽑는가(산개) / 첫 타겟에 집중하는가. 잠금 신원(Entity)
         // 자체는 아키텍처 바인딩이라 여기 없다 — 순수 계층은 "재추첨하는가" 만 답한다.
         public bool reselectPerShot;

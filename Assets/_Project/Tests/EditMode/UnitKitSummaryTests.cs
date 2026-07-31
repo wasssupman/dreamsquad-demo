@@ -82,11 +82,12 @@ namespace Wassup.Tests.EditMode
         }
 
         // defender-ability-assets unit 2 — trait 소스가 능력 서브에셋으로 이동. 문구 불변.
-        private static DirectionalVolleyAbility Volley(int shots)
+        private static DirectionalVolleyAbility Volley(int shots, bool requiresFacing = true)
         {
             var a = ScriptableObject.CreateInstance<DirectionalVolleyAbility>();
             a.pattern = ScriptableObject.CreateInstance<ProjectilePatternData>();
             a.pattern.shots = new ProjectileShotStep[shots];
+            a.requiresFacing = requiresFacing;
             return a;
         }
 
@@ -111,6 +112,18 @@ namespace Wassup.Tests.EditMode
             u.projectile = Projectile();
             u.abilities.Add(Volley(1));
             Assert.AreEqual("레인저 · 원거리형. 지정 방향 사격.", UnitKitSummary.Build(u));
+        }
+
+        [Test]
+        public void AutoTargetVolley_UsesTargetDirectionPhrase()
+        {
+            var u = Unit();
+            u.role = DefenderClass.Ranger;
+            u.projectile = Projectile();
+            u.abilities.Add(Volley(10, requiresFacing: false));
+            Assert.AreEqual(
+                "레인저 · 원거리형. 대상 방향으로 10연발 사격.",
+                UnitKitSummary.Build(u));
         }
 
         [Test]

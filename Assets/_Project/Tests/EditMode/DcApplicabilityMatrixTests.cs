@@ -39,7 +39,8 @@ namespace Wassup.Tests.EditMode
             bool hasHazard = unit.GetAbility<HazardCastAbility>() != null;
             if (hasBomb) archetype = DcHostArchetype.BombThrow;
             else if (hasHazard) archetype = DcHostArchetype.HazardCast;
-            else if (unit.RequiresFacing) archetype = DcHostArchetype.FacingVolley;
+            else if (unit.GetAbility<DirectionalVolleyAbility>() != null)
+                archetype = DcHostArchetype.FacingVolley;
 
             if (hasBomb) route = DcProjectileRoute.Grenade;
             else if (unit.projectile != null)

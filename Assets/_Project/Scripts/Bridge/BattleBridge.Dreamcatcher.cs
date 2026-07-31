@@ -874,7 +874,7 @@ namespace Wassup.Bridge
             // 조준 '완료 여부'라는 일시 상태라, 그걸 요구하면 같은 유닛이 조준 전후로
             // 다르게 판정된다(Play 실측: 조준 전 머신거너가 Standard 로 나왔다). 유닛
             // 정체성은 방향 pattern 보유가 나타낸다. SO 측 미러(DcApplicabilityMatrixTests
-            // 의 ProfileOf)가 쓰는 `RequiresFacing` 과 같은 결.
+            // 의 ProfileOf)도 `DirectionalVolleyAbility` 보유로 같은 분류를 만든다.
             if (_em.HasComponent<BombLauncherState>(defender))
                 profile.archetype = Wassup.Core.DcHostArchetype.BombThrow;
             else if (_em.HasComponent<Wassup.Battle.Effects.HazardCastState>(defender))

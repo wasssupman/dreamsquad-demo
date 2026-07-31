@@ -536,8 +536,8 @@ namespace Wassup.Presentation
         {
             // 반환값은 view 공간(transform 기반, transform.position 은 이미 ToView). 호출측은 view 끼리 비교/빼기.
             // Cast anchor is only meaningful for defenders firing projectiles.
-            // Without IDefenderSpineExtras (enemies), fall back to the unit's
-            // transform origin so callers still get a sensible world position.
+            // Without IDefenderSpineExtras (enemies), preserve the existing transform
+            // origin fallback used by beam/cast callers.
             if (_defenderExtras == null) return transform.position;
 
             if (_skeleton != null && _skeleton.Skeleton != null && !string.IsNullOrEmpty(_defenderExtras.SpineCastAnchorBone))
@@ -550,6 +550,17 @@ namespace Wassup.Presentation
             if (_skeleton != null && _skeleton.Skeleton != null && _skeleton.Skeleton.ScaleX < 0f)
                 off.x = -off.x;
             return transform.TransformPoint(off);
+        }
+
+        public Vector3 ResolveProjectileLaunchAnchor()
+        {
+            // defender는 저작된 weapon bone/cast offset을 그대로 공유한다. 적은
+            // defender extras가 없으므로 renderer의 실제 world body center를 쓴다.
+            // transform origin(발밑)이나 고정 sim 높이는 원근 카메라 위치에 따라
+            // 화면상 발사점이 달라 보이므로 projectile 전용 seam에서만 보정한다.
+            if (_defenderExtras == null)
+                return _meshRenderer != null ? _meshRenderer.bounds.center : transform.position;
+            return ResolveCastAnchor();
         }
 
         private void PlayIdleLooping()

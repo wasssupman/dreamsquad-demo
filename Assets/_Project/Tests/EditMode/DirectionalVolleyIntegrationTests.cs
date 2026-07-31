@@ -5,6 +5,7 @@ using Unity.Core;
 using Unity.Entities;
 using UnityEditor;
 using Unity.Mathematics;
+using UnityEngine;
 using Unity.Transforms;
 using Wassup.Battle.Combat;
 using Wassup.Battle.Combat.Projectile;
@@ -69,7 +70,10 @@ namespace Wassup.Tests.EditMode
         }
 
         private static PatternSpec Pattern(float damage, float minAngle, float maxAngle,
-                                           float[] directionTs, float[] intervals)
+                                           float[] directionTs, float[] intervals,
+                                           bool randomize = false,
+                                           float randomIntervalMin = 0f,
+                                           float randomIntervalMax = 0f)
         {
             var shots = default(FixedList128Bytes<PatternShotSpec>);
             for (int i = 0; i < directionTs.Length; i++)
@@ -89,6 +93,9 @@ namespace Wassup.Tests.EditMode
                 minAngleDeg = minAngle,
                 maxAngleDeg = maxAngle,
                 shots = shots,
+                randomizeShotsPerTrigger = randomize,
+                randomIntervalMinSec = randomIntervalMin,
+                randomIntervalMaxSec = randomIntervalMax,
             };
         }
 
@@ -109,14 +116,18 @@ namespace Wassup.Tests.EditMode
                 damage: 999f,
                 minAngle: -30f,
                 maxAngle: 30f,
-                directionTs: new[] { 0.52f, 0.42f, 0.61f, 0.35f, 0.69f, 0.19f, 0.84f, 0.74f, 0.03f, 0.94f },
-                intervals: new[] { 0f, 0f, 0f, 0f, 0f, 0.025f, 0f, 0f, 0.025f, 0f });
+                directionTs: new[] { 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f },
+                intervals: new[] { 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f },
+                randomize: true,
+                randomIntervalMin: 0.006f,
+                randomIntervalMax: 0.018f);
 
         private Entity CreateDirectionalDefender(float3 pos, int2 facing, float range,
                                                   float cooldown, float baseDamage,
                                                   PatternSpec? pattern = null,
                                                   float damageMul = 1f,
-                                                  float hitDelaySec = 0f)
+                                                  float hitDelaySec = 0f,
+                                                  bool addFacing = true)
         {
             var e = _em.CreateEntity();
             _em.AddComponentData(e, LocalTransform.FromPosition(pos));
@@ -125,7 +136,8 @@ namespace Wassup.Tests.EditMode
             _em.AddBuffer<IncomingDamage>(e);
             _em.AddBuffer<CcEffect>(e);
             _em.AddComponent<DefenderUnitTag>(e);
-            _em.AddComponentData(e, new DeployedFacing { value = facing });
+            if (addFacing)
+                _em.AddComponentData(e, new DeployedFacing { value = facing });
             _em.AddComponentData(e, new AttackState
             {
                 range = range,
@@ -266,27 +278,51 @@ namespace Wassup.Tests.EditMode
                 "Assets/_Project/Data/Defenders/Defender_Shotgunner.asset");
             var shotgunAbility = shotgun.GetAbility<DirectionalVolleyAbility>();
             Assert.IsNotNull(shotgunAbility?.pattern);
+            Assert.IsFalse(shotgun.RequiresFacing,
+                "샷건너는 Archer/Ranger와 같은 일반 배치 경로를 사용한다");
             Assert.AreSame(shotgun.projectile, shotgunAbility.pattern.barrel);
             Assert.IsTrue(shotgunAbility.pattern.TryToSpec(3, out var shotgunSpec));
             Assert.AreEqual(10, shotgunSpec.shots.Length);
             Assert.AreEqual(-30f, shotgunSpec.minAngleDeg);
             Assert.AreEqual(30f, shotgunSpec.maxAngleDeg);
-            Assert.AreEqual(0.05f, EmitterTick.TotalDuration(shotgunSpec), 1e-5f);
+            Assert.IsTrue(shotgunSpec.randomizeShotsPerTrigger);
+            Assert.AreEqual(0.006f, shotgunSpec.randomIntervalMinSec, 1e-5f);
+            Assert.AreEqual(0.018f, shotgunSpec.randomIntervalMaxSec, 1e-5f);
             Assert.AreEqual(4f, shotgun.attackRange);
             Assert.AreEqual(6f, shotgun.outputs[0].magnitude);
             Assert.AreEqual(14f, shotgun.projectile.speed);
-            float[] expectedDirectionTs = { 0.52f, 0.42f, 0.61f, 0.35f, 0.69f, 0.19f, 0.84f, 0.74f, 0.03f, 0.94f };
-            float[] expectedIntervals = { 0f, 0f, 0f, 0f, 0f, 0.025f, 0f, 0f, 0.025f, 0f };
-            for (int i = 0; i < expectedDirectionTs.Length; i++)
+            Assert.AreEqual(0.7f, shotgun.projectile.visualScale, 1e-5f);
+            Assert.AreSame(
+                AssetDatabase.LoadAssetAtPath<GameObject>(
+                    "Assets/_Project/VFX/Projectiles/GA/vfx_Projectile_Shard01.prefab"),
+                shotgun.projectile.projectilePrefab,
+                "샷건 10발은 긴 fireball trail 대신 정리된 GA Shard01을 사용한다");
+            Assert.AreEqual(1,
+                shotgun.projectile.projectilePrefab.GetComponentsInChildren<ParticleSystem>(true).Length);
+            var pelletTrails =
+                shotgun.projectile.projectilePrefab.GetComponentsInChildren<TrailRenderer>(true);
+            Assert.AreEqual(2, pelletTrails.Length);
+            for (int i = 0; i < pelletTrails.Length; i++)
+                Assert.LessOrEqual(pelletTrails[i].time, 0.0751f,
+                    "10발 spread의 trail은 0.3초 fireball처럼 길게 남지 않아야 한다");
+            Assert.AreEqual(0,
+                shotgun.projectile.projectilePrefab.GetComponentsInChildren<Rigidbody>(true).Length,
+                "vendor Rigidbody가 ECS 이동과 경쟁하면 안 된다");
+            Assert.AreEqual(0,
+                shotgun.projectile.projectilePrefab.GetComponentsInChildren<Collider>(true).Length,
+                "vendor Collider가 ECS hit 판정과 경쟁하면 안 된다");
+            for (int i = 0; i < shotgunSpec.shots.Length; i++)
             {
-                Assert.AreEqual(expectedDirectionTs[i], shotgunSpec.shots[i].directionT, 1e-5f);
-                Assert.AreEqual(expectedIntervals[i], shotgunSpec.shots[i].intervalAfterPreviousSec, 1e-5f);
+                Assert.AreEqual(0.5f, shotgunSpec.shots[i].directionT, 1e-5f,
+                    "authored step은 발수 placeholder이고 runtime trigger가 실제 방향을 스냅샷한다");
+                Assert.AreEqual(0f, shotgunSpec.shots[i].intervalAfterPreviousSec, 1e-5f);
             }
 
             var machineGun = AssetDatabase.LoadAssetAtPath<DefenderUnitData>(
                 "Assets/_Project/Data/Defenders/Defender_MachineGunner.asset");
             var machineAbility = machineGun.GetAbility<DirectionalVolleyAbility>();
             Assert.IsNotNull(machineAbility?.pattern);
+            Assert.IsTrue(machineGun.RequiresFacing, "머신거너의 기존 2단계 방향 배치는 유지한다");
             Assert.AreSame(machineGun.projectile, machineAbility.pattern.barrel);
             Assert.IsTrue(machineAbility.pattern.TryToSpec(4, out var machineSpec));
             Assert.AreEqual(10, machineSpec.shots.Length);
@@ -303,25 +339,31 @@ namespace Wassup.Tests.EditMode
         }
 
         [Test]
-        public void Shotgun_TriggerCreatesTenIrregularSpreadShots_WithDamageAndFourTileDistance()
+        public void Shotgun_NormalTargetTriggerCreatesTenRandomSpreadShots_WithDamageAndFourTileDistance()
         {
             var defender = CreateDirectionalDefender(
                 float3.zero, new int2(1, 0), range: 4f, cooldown: 2.2f,
-                baseDamage: 4f, pattern: ShotgunPattern(), damageMul: 1.5f);
-            CreateEnemy(new float3(4f * TileSize, 0f, 0f));
+                baseDamage: 4f, pattern: ShotgunPattern(), damageMul: 1.5f,
+                addFacing: false);
+            CreateEnemy(new float3(3f * TileSize, 0f, TileSize));
 
             var angles = new List<float>();
-            var clusterSizes = new List<int>();
+            var fireTimes = new List<float>();
             int fired = 0;
-            for (int frame = 0; frame < 60 && fired < 10; frame++)
+            float elapsed = 0f;
+            for (int frame = 0; frame < 300 && fired < 10; frame++)
             {
-                Tick(0.01f);
+                Tick(0.001f);
+                elapsed += 0.001f;
                 var requests = CollectRequests();
-                if (requests.Length > 0) clusterSizes.Add(requests.Length);
+                Assert.LessOrEqual(requests.Length, 1,
+                    "1ms 관측에서 여러 탄이 같은 timestamp에 몰리면 개별 interval이 아니다");
                 foreach (var request in requests)
                 {
                     fired++;
-                    angles.Add(math.degrees(math.atan2(request.direction.y, request.direction.x)));
+                    fireTimes.Add(elapsed);
+                    float angle = math.degrees(math.atan2(request.direction.y, request.direction.x));
+                    angles.Add(angle);
                     Assert.AreEqual(6f, request.damage, 1e-5f,
                         "pattern authored damage가 아니라 trigger 시점 실효 damage를 전탄 snapshot");
                     Assert.AreEqual(4f * TileSize, request.maxDistance, 1e-5f,
@@ -333,11 +375,15 @@ namespace Wassup.Tests.EditMode
             }
 
             Assert.AreEqual(10, fired);
-            CollectionAssert.AreEqual(new[] { 5, 3, 2 }, clusterSizes, "한 번의 발사 안에서 5-3-2 마이크로 클러스터");
-            angles.Sort();
-            float[] expected = { -28.2f, -18.6f, -9f, -4.8f, 1.2f, 6.6f, 11.4f, 14.4f, 20.4f, 26.4f };
-            CollectionAssert.AreEqual(expected, angles, new FloatComparer(0.02f),
-                "균등 분할이 아닌 중심 밀집+불규칙 외곽 산개");
+            float baseAngle = math.degrees(math.atan2(1f, 3f));
+            for (int i = 0; i < angles.Count; i++)
+                Assert.That(angles[i], Is.InRange(baseAngle - 30f, baseAngle + 30f),
+                    "각 탄은 START 타겟 기준 min/max spread 안에 있어야 한다");
+            for (int i = 1; i < fireTimes.Count; i++)
+                Assert.That(fireTimes[i] - fireTimes[i - 1], Is.InRange(0.005f, 0.019f),
+                    "각 탄은 SO의 랜덤 interval 범위를 프레임 양자화 안에서 따라야 한다");
+            Assert.Greater(new HashSet<float>(angles).Count, 7,
+                "고정 균등 분할이나 한 방향 반복이 아니라 trigger별 난수 방향이어야 한다");
             Assert.AreEqual(0, _em.GetBuffer<EmitterInstance>(defender).Length);
         }
 
@@ -396,14 +442,15 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(0, _em.GetBuffer<EmitterInstance>(defender).Length);
         }
 
-        [TestCase(false, TestName = "StartedShotgun_FiresAfterWitnessMovesOutOfLane")]
+        [TestCase(false, TestName = "StartedShotgun_FiresAfterTargetMovesOutOfRange")]
         [TestCase(true, TestName = "StartedShotgun_FiresAfterWitnessDies")]
-        public void StartedShotgun_FiresAfterWitnessIsLostDuringWindup(bool killWitness)
+        public void StartedShotgun_FiresAfterTargetIsLostDuringWindup(bool killWitness)
         {
             var defender = CreateDirectionalDefender(
                 float3.zero, new int2(1, 0), range: 4f, cooldown: 2.2f,
-                baseDamage: 6f, pattern: ShotgunPattern(), hitDelaySec: 0.03f);
-            var witness = CreateEnemy(new float3(3f, 0f, 0f));
+                baseDamage: 6f, pattern: ShotgunPattern(), hitDelaySec: 0.03f,
+                addFacing: false);
+            var witness = CreateEnemy(new float3(3f, 0f, 1f));
 
             Tick(0.01f);
             Assert.AreEqual(1, _attackEventQueue.Count, "START 모션은 한 번만 발생");
@@ -416,7 +463,8 @@ namespace Wassup.Tests.EditMode
             }
             else
             {
-                _em.SetComponentData(witness, LocalTransform.FromPosition(new float3(0f, 0f, 3f)));
+                _em.SetComponentData(witness,
+                    LocalTransform.FromPosition(new float3(0f, 0f, 8f * TileSize)));
             }
 
             Tick(0.02f);
@@ -424,16 +472,20 @@ namespace Wassup.Tests.EditMode
             Tick(0.011f);
 
             var requests = CollectRequests();
-            Assert.AreEqual(5, requests.Length,
-                "START가 성사된 샷건은 witness 소실 후에도 첫 5발 클러스터를 발사");
+            Assert.AreEqual(1, requests.Length,
+                "START가 성사된 샷건은 target 소실 후에도 랜덤 sequence 첫 탄을 발사");
             for (int i = 0; i < requests.Length; i++)
             {
                 Assert.AreEqual(Entity.Null, requests[i].target);
                 Assert.AreEqual(new float3(0f), requests[i].origin);
                 Assert.AreEqual(4f * TileSize, requests[i].maxDistance, 1e-5f);
+                float angle = math.degrees(math.atan2(requests[i].direction.y, requests[i].direction.x));
+                float startAngle = math.degrees(math.atan2(1f, 3f));
+                Assert.That(angle, Is.InRange(startAngle - 30f, startAngle + 30f),
+                    "RESOLVE 시 타겟이 없어도 START 방향이 spread 기준축이어야 한다");
             }
             Assert.AreEqual(1, _em.GetBuffer<EmitterInstance>(defender).Length,
-                "나머지 5발도 동일 trigger instance에서 계속 진행");
+                "나머지 9발도 동일 trigger instance에서 계속 진행");
         }
 
         [Test]

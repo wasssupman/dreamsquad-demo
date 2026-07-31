@@ -14,3 +14,4 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wassup.Runtime::Wassup.Data.DirectionalVolleyAbility
   id: volley_shotgunner
   pattern: {fileID: 11400000, guid: 0ba7559833824d71b37c1aec84fcb38a, type: 2}
+  requiresFacing: 0

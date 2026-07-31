@@ -49,6 +49,9 @@ namespace Wassup.Presentation
             // unit 9 — SkyFall 낙하 압축(뷰 전용): 낙하가 비행 후반 이 비율에 압축된다.
             // 1 = 전체 구간 등속. ECS state 를 늘리지 않고 view 딕셔너리에 태운다.
             public float fallPortion;
+            // unit 5 — spawn 직후 같은 프레임의 Bridge sync가 weapon/body anchor를
+            // 덮지 않도록 딱 한 번 위치 갱신을 보류한다.
+            public bool holdLaunchAnchorForFirstSync;
         }
 
         private static readonly int PropBaseColor    = Shader.PropertyToID("_BaseColor");
@@ -83,7 +86,10 @@ namespace Wassup.Presentation
         // Fix 1: initialPosition prevents first-frame wrong-direction rotation for AlongVelocity.
         // initialDropOffset (unit 9, SkyFall): 첫 프레임 뷰를 낙하 시작 높이에서 시작시킨다 —
         // 지면에 스폰 후 첫 Sync 에서 하늘로 점프하면 풀링 TrailRenderer 가 스트릭을 긋는다.
-        public void Spawn(Entity entity, ProjectileData data, float3 initialPosition, float initialDropOffset = 0f)
+        public void Spawn(Entity entity, ProjectileData data, float3 initialPosition,
+                          float initialDropOffset = 0f,
+                          bool hasLaunchAnchor = false,
+                          Vector3 launchAnchor = default)
         {
             var view = GetOrCreate(data.projectilePrefab);
             view.SetActive(true);
@@ -116,8 +122,9 @@ namespace Wassup.Presentation
             // lastPosition 에도 포함해야 첫 프레임 velocity 가 ≈0 이 되어(지면→하늘
             // 오차분이 안 섞여) 잘못된 위쪽 페이싱 플래시가 없다.
             float3 spawnView = ProjectHeight(spawnGroundView, initialDropOffset);
-            view.transform.position = ProjectHeight(
-                spawnGroundView, initialDropOffset + data.visualHeightOffset);
+            view.transform.position = hasLaunchAnchor
+                ? launchAnchor
+                : ProjectHeight(spawnGroundView, initialDropOffset + data.visualHeightOffset);
             ResetVfx(view);
 
             _active[entity] = new ProjectileViewState
@@ -132,6 +139,7 @@ namespace Wassup.Presentation
                 lastGroundPosition = spawnGroundView,
                 heightOffset = data.visualHeightOffset,
                 fallPortion = data.fallPortion,
+                holdLaunchAnchorForFirstSync = hasLaunchAnchor,
             };
         }
 
@@ -147,6 +155,13 @@ namespace Wassup.Presentation
         public void SyncTransform(Entity entity, ProjectileViewFrame frame)
         {
             if (!_active.TryGetValue(entity, out var state)) return;
+
+            if (state.holdLaunchAnchorForFirstSync)
+            {
+                state.holdLaunchAnchorForFirstSync = false;
+                _active[entity] = state;
+                return;
+            }
 
             // sim→view 1회. 위치·속도·LookRotation 전부 view 공간끼리 (lastPosition 도 view).
             float3 groundPos = Wassup.Core.BoardSpace.ToView(frame.simPosition);

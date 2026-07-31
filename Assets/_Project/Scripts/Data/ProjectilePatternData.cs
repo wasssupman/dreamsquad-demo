@@ -54,6 +54,13 @@ namespace Wassup.Data
         {
             new ProjectileShotStep { directionT = 0.5f, intervalAfterPreviousSec = 0f },
         };
+        [Tooltip("트리거마다 shot 수는 유지하고 각 탄의 directionT와 interval을 아래 범위에서 다시 뽑는다.")]
+        public bool randomizeShotsPerTrigger;
+        [Tooltip("랜덤 시퀀스의 첫 탄 이후 최소/최대 탄간 간격(초).")]
+        [Min(0f)]
+        public float randomIntervalMinSec;
+        [Min(0f)]
+        public float randomIntervalMaxSec;
         [Tooltip("true = 발마다 타겟 재추첨(산개) · false = 첫 타겟에 집중.")]
         public bool reselectPerShot = false;
 
@@ -75,6 +82,7 @@ namespace Wassup.Data
             bool hasNoTargetSelection = selection == PatternSelectionRule.None;
             if (shots == null || shots.Length == 0 || shots.Length > MaxShotCount
                 || minAngleDeg > maxAngleDeg
+                || (randomizeShotsPerTrigger && randomIntervalMinSec > randomIntervalMaxSec)
                 || (barrel != null && hasDirectionBinding != hasNoTargetSelection))
             {
                 return false;
@@ -97,6 +105,9 @@ namespace Wassup.Data
                 minAngleDeg = minAngleDeg,
                 maxAngleDeg = maxAngleDeg,
                 shots = runtimeShots,
+                randomizeShotsPerTrigger = randomizeShotsPerTrigger,
+                randomIntervalMinSec = Mathf.Max(0f, randomIntervalMinSec),
+                randomIntervalMaxSec = Mathf.Max(0f, randomIntervalMaxSec),
                 reselectPerShot = reselectPerShot,
                 telegraphSec = Mathf.Max(0f, telegraphSec),
             };

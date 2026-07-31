@@ -329,6 +329,9 @@ namespace Wassup.Tests.EditMode
 
             _patternA.minAngleDeg = -27.5f;
             _patternA.maxAngleDeg = 27.5f;
+            _patternA.randomizeShotsPerTrigger = true;
+            _patternA.randomIntervalMinSec = 0.006f;
+            _patternA.randomIntervalMaxSec = 0.018f;
             _patternA.shots = new[]
             {
                 new ProjectileShotStep { directionT = -1f, intervalAfterPreviousSec = -0.1f },
@@ -344,6 +347,19 @@ namespace Wassup.Tests.EditMode
             Assert.AreEqual(0f, spec.shots[0].intervalAfterPreviousSec);
             Assert.AreEqual(1f, spec.shots[1].directionT);
             Assert.AreEqual(0.125f, spec.shots[1].intervalAfterPreviousSec);
+            Assert.IsTrue(spec.randomizeShotsPerTrigger);
+            Assert.AreEqual(0.006f, spec.randomIntervalMinSec);
+            Assert.AreEqual(0.018f, spec.randomIntervalMaxSec);
+        }
+
+        [Test]
+        public void TryToSpec_RejectsReversedRandomIntervalRange()
+        {
+            _patternA.randomizeShotsPerTrigger = true;
+            _patternA.randomIntervalMinSec = 0.02f;
+            _patternA.randomIntervalMaxSec = 0.01f;
+
+            Assert.IsFalse(_patternA.TryToSpec(0, out _));
         }
 
         [Test]

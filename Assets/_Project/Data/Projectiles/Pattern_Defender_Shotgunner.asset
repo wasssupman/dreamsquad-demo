@@ -19,25 +19,28 @@ MonoBehaviour:
   minAngleDeg: -30
   maxAngleDeg: 30
   shots:
-  - directionT: 0.52
+  - directionT: 0.5
     intervalAfterPreviousSec: 0
-  - directionT: 0.42
+  - directionT: 0.5
     intervalAfterPreviousSec: 0
-  - directionT: 0.61
+  - directionT: 0.5
     intervalAfterPreviousSec: 0
-  - directionT: 0.35
+  - directionT: 0.5
     intervalAfterPreviousSec: 0
-  - directionT: 0.69
+  - directionT: 0.5
     intervalAfterPreviousSec: 0
-  - directionT: 0.19
-    intervalAfterPreviousSec: 0.025
-  - directionT: 0.84
+  - directionT: 0.5
     intervalAfterPreviousSec: 0
-  - directionT: 0.74
+  - directionT: 0.5
     intervalAfterPreviousSec: 0
-  - directionT: 0.03
-    intervalAfterPreviousSec: 0.025
-  - directionT: 0.94
+  - directionT: 0.5
     intervalAfterPreviousSec: 0
+  - directionT: 0.5
+    intervalAfterPreviousSec: 0
+  - directionT: 0.5
+    intervalAfterPreviousSec: 0
+  randomizeShotsPerTrigger: 1
+  randomIntervalMinSec: 0.006
+  randomIntervalMaxSec: 0.018
   reselectPerShot: 0
   telegraphSec: 0
