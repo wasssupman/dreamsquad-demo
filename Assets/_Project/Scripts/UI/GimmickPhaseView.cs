@@ -47,6 +47,8 @@ namespace Wassup.UI
         private RectTransform _nameRect;
         private TextMeshProUGUI _summary;
         private CanvasGroup _summaryGroup;
+        private TextMeshProUGUI _tapHint;
+        private CanvasGroup _tapHintGroup;
         private Sequence _seq;
         private float _startedAt;
         private GameObject _vfxInstance;
@@ -55,6 +57,9 @@ namespace Wassup.UI
         private Material _labelOutlineMat;
 
         private const float ParticleStartAlpha = 0.75f;
+        // 힌트는 있다는 걸 알리되 요약보다 앞서면 안 된다 — 낮은 알파로 고정.
+        private const float TapHintAlpha = 0.55f;
+        private const string TapHintText = "탭하여 계속";
 
         private void Awake()
         {
@@ -132,7 +137,15 @@ namespace Wassup.UI
             _seq.Chain(Tween.Alpha(_nameGroup, 1f, config.beatNameSec, Ease.OutQuad))
                 .Group(Tween.UIAnchoredPosition(_nameRect, TitleRestPos, config.beatNameSec, Ease.OutCubic));
 
-            _seq.Chain(Tween.Alpha(_summaryGroup, 1f, config.beatOutSec * 0.5f, Ease.OutQuad));
+            // 요약은 이 연출의 핵심 정보다. ② 명명이 끝나기 전에 미리 들여보내 읽을 시간을 번다
+            // (Chain 이 아니라 Group + startDelay 라 ② 와 겹친다). 탭 힌트는 반 박자 뒤.
+            float lead = Mathf.Clamp(config.summaryLeadSec, 0f, config.beatNameSec);
+            float summaryFade = config.beatOutSec * 0.5f;
+            _seq.Group(Tween.Alpha(_summaryGroup, 1f, summaryFade, Ease.OutQuad,
+                startDelay: config.beatNameSec - lead));
+            _seq.Group(Tween.Alpha(_tapHintGroup, TapHintAlpha, summaryFade, Ease.OutQuad,
+                startDelay: config.beatNameSec - lead + summaryFade));
+
             _seq.ChainDelay(config.summaryHoldSec);
             _seq.Chain(Tween.Alpha(_rootGroup, 0f, config.beatOutSec, Ease.InQuad));
             // 자기 콜백 안에서 Stop 금지(BossWarningView 교훈) — 완주 경로는 시퀀스를 건드리지 않는다.
@@ -194,8 +207,14 @@ namespace Wassup.UI
             _nameGroup.alpha = 0f;
             _nameRect.anchoredPosition = new Vector2(0f, config.titleOffsetY + config.titleRiseFrom);
 
-            ((RectTransform)_summary.transform).anchoredPosition = new Vector2(0f, config.summaryOffsetY);
+            var summaryRt = (RectTransform)_summary.transform;
+            summaryRt.anchoredPosition = new Vector2(0f, config.summaryOffsetY);
+            // 두 줄이라 한 줄 기준 높이로는 잘린다.
+            summaryRt.sizeDelta = new Vector2(summaryRt.sizeDelta.x, _summary.fontSize * 3.4f);
             _summaryGroup.alpha = 0f;
+
+            ((RectTransform)_tapHint.transform).anchoredPosition = new Vector2(0f, config.tapHintOffsetY);
+            _tapHintGroup.alpha = 0f;
         }
 
         // ── 절차 파티클 (신규 아트 0 — UiRoundedSprite 로 원을 만들어 흩뿌린다) ──
@@ -305,9 +324,16 @@ namespace Wassup.UI
             _subtitle = MakeLabel(nameBlock, "Subtitle", "", 34f,
                 new Color(0.78f, 0.82f, 0.9f, 1f), FontStyles.Italic);
 
+            // 요약은 두 줄(원인 / 결과)이고 강조는 에셋의 리치텍스트 색이 담당한다.
+            // 그래서 라벨 기본색은 중립 밝은 톤 — 여기에 색을 넣으면 강조와 싸운다.
             _summary = MakeLabel((RectTransform)_panel.transform, "Summary", "", 40f,
-                new Color(1f, 0.9f, 0.62f, 1f), FontStyles.Bold);
+                new Color(0.93f, 0.95f, 0.98f, 1f), FontStyles.Bold);
+            _summary.lineSpacing = 12f;
             _summaryGroup = _summary.gameObject.AddComponent<CanvasGroup>();
+
+            _tapHint = MakeLabel((RectTransform)_panel.transform, "TapHint", TapHintText, 26f,
+                new Color(0.78f, 0.83f, 0.92f, 1f), FontStyles.Normal);
+            _tapHintGroup = _tapHint.gameObject.AddComponent<CanvasGroup>();
 
             UiLayer.Apply(gameObject);
         }

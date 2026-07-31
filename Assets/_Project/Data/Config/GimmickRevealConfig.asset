@@ -15,7 +15,8 @@ MonoBehaviour:
   beatStampSec: 0.6
   beatNameSec: 0.8
   beatOutSec: 0.6
-  summaryHoldSec: 0.7
+  summaryLeadSec: 0.35
+  summaryHoldSec: 2
   tapSkipGraceSec: 0.25
   dimAlpha: 0.82
   tintAlpha: 0.12
@@ -25,6 +26,7 @@ MonoBehaviour:
   titleOffsetY: 20
   subtitleGap: 76
   summaryOffsetY: -140
+  tapHintOffsetY: -290
   titleRiseFrom: -64
   particleCount: 14
   particleSize: 26

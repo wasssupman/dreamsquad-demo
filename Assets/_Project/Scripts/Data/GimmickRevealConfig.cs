@@ -26,10 +26,16 @@ namespace Wassup.Data
         public float beatStampSec = 0.6f;
         [Tooltip("② 명명 — 룰 라벨 + 정서 카피 부제.")]
         public float beatNameSec = 0.8f;
-        [Tooltip("③ 퇴장 — 한 줄 노출 후 페이드아웃.")]
+        [Tooltip("③ 퇴장 — 요약 노출 후 페이드아웃.")]
         public float beatOutSec = 0.6f;
-        [Tooltip("한 줄(summary) 을 읽을 시간. ③ 페이드 시작 전 홀드.")]
-        public float summaryHoldSec = 0.7f;
+        // 요약은 이 연출의 핵심 정보인데 마지막 1/3에만 떠서 읽을 시간이 모자랐다.
+        // ② 명명이 끝나기 전에 미리 들어와 텀을 줄인다(0 = 기존처럼 ② 종료 후 시작).
+        [Tooltip("요약이 ② 명명 종료보다 얼마나 먼저 들어오는지(초). beatNameSec 로 클램프.")]
+        public float summaryLeadSec = 0.35f;
+        // 탭 스킵이 있으므로 이 값은 '탭하지 않은 사람에게만 적용되는 하한'이다.
+        // 아는 사람은 탭으로 즉시 넘어가므로 넉넉히 잡아도 반복 플레이를 막지 않는다.
+        [Tooltip("요약을 읽을 시간. 탭하면 즉시 넘어가므로 넉넉해도 된다.")]
+        public float summaryHoldSec = 2f;
         [Tooltip("탭 스킵이 먹기 시작하는 시점. 연출 시작 직후 오탭이 통째로 날리는 걸 막는다.")]
         public float tapSkipGraceSec = 0.25f;
 
@@ -52,8 +58,10 @@ namespace Wassup.Data
         public float titleOffsetY = 20f;
         [Tooltip("제목 아래 정서 카피까지의 간격.")]
         public float subtitleGap = 76f;
-        [Tooltip("한 줄 요약 y.")]
+        [Tooltip("요약 y. 두 줄(원인 / 결과)이라 높이를 넉넉히 잡는다.")]
         public float summaryOffsetY = -140f;
+        [Tooltip("\"탭하여 계속\" 힌트 y. 빠른 길을 보이게 해서 늘어난 홀드가 아무도 막지 않게 한다.")]
+        public float tapHintOffsetY = -290f;
         [Tooltip("② 명명에서 제목 블록이 떠오르는 시작 오프셋(아래로).")]
         public float titleRiseFrom = -64f;
         [Tooltip("절차 파티클 개수. 0 이면 생략.")]
