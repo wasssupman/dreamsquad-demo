@@ -47,8 +47,6 @@ MonoBehaviour:
   effectTiles:
   - {fileID: 11400000, guid: 0e0f732b856bb4b1880e74774b22cb69, type: 2}
   - {fileID: 11400000, guid: 0ee1c60d07e494bb49a83feefb0b0c04, type: 2}
-  - {fileID: 11400000, guid: a84cc90d3166f4246b101c21c6270d51, type: 2}
-  - {fileID: 11400000, guid: 8e0b183d2532b4169ad73b8bf15e5d57, type: 2}
   - {fileID: 11400000, guid: e067dcb089be444e49e36ad700951eff, type: 2}
   effectTileCount: 3
   effectTileMaterial: {fileID: 2100000, guid: 7be5dd845e71843738d299537da4390e, type: 2}
