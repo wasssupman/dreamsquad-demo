@@ -150,7 +150,7 @@ namespace Wassup.Tests.PlayMode
             var guidance = guidanceGo.AddComponent<TutorialGuidanceView>();
             WriteField(guidance, "style", style);
             guidanceGo.SetActive(true);
-            guidance.SetWorldMarkerLayout(true);
+            guidance.SetMessageAnchor(TutorialGuidanceView.MessageAnchor.WorldMarker);
             guidance.ShowMessage("적이 노란색 베이스에 닿기 전에 막아주세요.", showSkip: true);
             guidance.ShowWorldMarker(camera, Vector3.zero, "방어 목표", Color.yellow,
                 preferLabelAbove: true);

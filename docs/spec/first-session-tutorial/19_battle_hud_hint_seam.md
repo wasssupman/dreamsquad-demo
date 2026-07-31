@@ -63,30 +63,45 @@
   높이 116) 구간 **184~300**. `hudHintMessageTopOffset` 기본값은 280 에서 시작해 **스크린샷 실측으로
   확정**한다(링은 `focusPadding 14` + `focusBorder 5` 만큼 더 나온다).
 - ① `악몽을 막아 스트레스 관리하세요!` — 사용자 작성본
-- ② `스트레스가 {한계}가 되면 패배합니다.` — `{한계}` 는 위 seam 에서 읽는다. **하드코딩 금지**
+- ② `스트레스가 {한계}이 되면 패배합니다.` — `{한계}` 는 위 seam 에서 읽는다. **하드코딩 금지**
   (제약 6). 현재 `WaveA.asset → defeatGoalReachedCount = 10` 이지만 덱마다 다르다.
-- `ShowsStressLimit == false`(엔드리스 — 분모 미표기 · 유출로 패배하지 않음)면 ②를 생략한다.
+  - **사용자 작성 원문은 `스트레스가 10이되면 패배합니다.`** (2026-08-01 요청). 수치만 데이터로
+    빼고 조사 `이` 는 원문 그대로 두었으며, `이되면` → `이 되면` 띄어쓰기만 교정했다.
+  - 한국어 이/가 는 수치의 읽음에 따라 갈린다(10=십 → `이`, 5=오 → `가`). 자릿수별 조사 계산은
+    데모 범위에서 과잉이라 현 튜닝(한계 10)에 맞춘다 — 한계를 바꾸면 이 줄을 함께 본다.
+- ②를 생략하는 조건은 **둘**이다: `ShowsStressLimit == false`(엔드리스 — 분모 미표기 · 유출로
+  패배하지 않음) **또는** `StressLimit <= 0`. 후자가 필요한 이유는 `_leakShowLimit` 기본값이
+  true 이고 `_leakLimit` 기본값이 0 이라, 스냅샷이 아직 안 왔거나 `ActiveDeck` 이 없으면
+  `스트레스가 0이 되면 패배합니다.` 가 **경고 없이** 나가기 때문이다.
 - 각 줄 `hudHintLineSeconds`(기본 3초, unscaled). **비차단** — `SetTapToContinue` 를 쓰지 않는다.
   전투 중이라 배치 입력을 막으면 안 된다(사용자 결정 2026-08-01).
 
-### 기믹 배너
+### 기믹 배너는 건드리지 않는다
 
-- 체인 시작에서 `gimmickGuide?.SetTutorialSuppressed(true)`, 종료 **모든** 경로에서 `false`.
-- **`EndCore` 에 기대지 말 것.** `EndCore` 는 `if (!_coreActive) return` **뒤에서** 억제를 푼다.
-  체인 구간은 core 가 이미 끝난 상태라 `OnDisable → EndCore` 가 조기 return 하고
-  **억제가 영구 고착된다**(로비로 나갔다 와도 기믹 안내가 다시 안 뜬다).
+`GimmickGuideView.RefreshVisibility` 의 표시 조건이 `_phase == GamePhase.Placement` 다. 이 체인은
+Battle 에서만 도니까 **억제할 대상이 애초에 없다.** `SetTutorialSuppressed` 를 부르면 죽은 코드에
+"억제 영구 고착" 위험만 딸려 온다(제약 8·10). core 안내는 Placement 라 계속 억제가 필요하므로
+`OnPlacementReady` 쪽은 그대로 둔다.
 
 ### 정리 경로 3곳
 
-`StopBattleHudHint()` = 코루틴 중단 + `guidance.Hide()` + 앵커 원복 + 기믹 억제 해제.
+`StopBattleHudHint()` = 코루틴 중단 + `guidance.Hide()` + 앵커 원복.
 호출처: ① `OnPhaseChanged` 의 non-Battle 분기(Tally 포함) ② `OnDisable` ③ 체인 정상 종료.
+
+- **`EndCore` 에 기대지 말 것.** 체인 구간은 core 가 이미 끝나 있어 `EndCore` 가
+  `!_coreActive` 로 조기 return 한다 — 체인이 세운 상태(코루틴·말풍선·앵커)는 아무도 되돌리지
+  않는다.
+- **`_hudHintActive` 가드가 본체다.** 이 함수는 체인이 없을 때도 불린다(Placement 진입). 가드
+  없이 `Hide()`·앵커 원복을 실행하면 core 안내가 막 세운 말풍선을 걷어버린다.
 
 ## 완료 기준
 
 - 컴파일 오류 0 (Runtime · Tests.EditMode · Tests.PlayMode)
-- EditMode 신규 1건: `ScoreHudView` seam — `SetLeakStatus(2, 7)` 뒤 `StressLimit == 7` ·
-  `ShowsStressLimit` · `StressBadgeRect != null`. 뷰 빌드가 EditMode 에서 성립하지 않으면(절차적
-  스프라이트·폰트) 테스트를 억지로 만들지 말고 **그 사유를 이 완료 기준에 적고** Play 검증으로 갈음한다
+- EditMode 신규 4건 `ScoreHudStressSeamTests` — 한계·표기 플래그 왕복, 스냅샷 전 `0`/true 조합,
+  링 대상이 `LeakPlate`(숫자 텍스트 아님)임. **EditMode 는 `AddComponent` 로 `Awake` 를 부르지
+  않는다** — 앞 3건은 `BuildCanvas` 없이 성립하고, 링 대상 검증만 `BuildCanvas` 를 리플렉션으로
+  강제한다. 그때 Unity 빌트인 리소스(`UI/Skin/Knob.psd`) 어서트가 나므로 그 테스트만
+  `LogAssert.ignoreFailingMessages` 를 쓴다(문자열을 Expect 로 고정하면 Unity 버전에 깨진다)
 - Play(첫 판 전투 시작): 배지에 링 + ①②가 3초씩 순차 → 자동 종료 · **말풍선이 배지를 가리지
   않음**(스크린샷 첨부) · 그 동안 배치·탭 입력이 계속 동작 · 두 번째 판엔 미노출(각성 인트로가 대신)
 - 로비 왕복 후 기믹 안내가 정상 노출(억제 고착 회귀 확인)

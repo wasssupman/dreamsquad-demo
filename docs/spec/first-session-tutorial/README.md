@@ -5,7 +5,8 @@
 > UI 레이어 수정(unit 14) 완료 2026-07-25 (`8138996b`) ·
 > 선택 UX 연계(15~17) 구현·커밋 2026-07-30 — **핵심 경로 사용자 Play 확인 완료**,
 > 경계 항목 잔여. 인계는 `18_handoff_summary.md` ·
-> 첫 판 전투 HUD 안내(19~20) 스펙 작성 2026-08-01, 구현 대기**
+> 첫 판 전투 HUD 안내(19~20) 구현·커밋 2026-08-01 (`45d35fea`·`34cf2a8d`, 리뷰 반영 포함) —
+> **사용자 Play 확인 대기**
 > 선행: `defender-tap-to-place` · `mobile-ui-safe-area` · `awakening-hud-resource-button` (완료)
 
 ## 검증 질문
@@ -148,9 +149,12 @@
   (Battle 시점엔 이미 false 다 — 위 계약과 같은 함정).
 - **HUD 안내 체인은 `_awakeningRoutine` 을 공유하지 않는다.** 그 핸들은 0·A·B 단계가 공유하고
   `ResetAwakeningSession`·`OnCardPeeked` 가 임의로 중단시킨다. 전용 `_hudHintRoutine` 을 둔다.
-- **HUD 안내의 기믹 억제 해제를 `EndCore` 에 기대지 말 것.** `EndCore` 는 `!_coreActive` 조기
-  return **뒤에서** 억제를 푼다. 체인 구간은 core 가 이미 끝나 있어 `OnDisable → EndCore` 가
-  조기 return 하고 **억제가 영구 고착된다**. 체인 자체 정리 경로가 해제를 소유한다.
+- **HUD 안내는 기믹 배너를 억제하지 않는다.** `GimmickGuideView` 의 표시 조건이
+  `_phase == Placement` 이므로 Battle 전용 체인에는 억제할 대상이 없다 — 부르면 죽은 코드에
+  "억제 영구 고착" 위험만 딸려 온다. core 안내(Placement)의 억제는 그대로 유지한다.
+- **체인 정리는 `EndCore` 에 기대지 말 것.** `EndCore` 는 `!_coreActive` 로 조기 return 하므로
+  체인이 세운 상태(코루틴·말풍선·앵커)를 되돌리지 않는다. 반대로 정리 함수는 체인이 없을 때도
+  불리므로(Placement 진입) `_hudHintActive` 가드가 없으면 core 안내의 말풍선을 걷어버린다.
 - **포커스 대상은 활성을 기다린 뒤 건다.** `ScoreHudView`·`NextWaveDock` 은 모두 자기 `Update`
   에서 lazily 켜지고, 특히 웨이브 버튼은 `bridge.NextWaveAvailable` 폴링 결과라 Battle 진입
   프레임엔 꺼져 있다. `FocusUi` 는 비활성 대상에서 링을 조용히 끄므로(0단계와 같은 함정)

@@ -82,14 +82,16 @@ namespace Wassup.UI
             }
             profileSO.SetLoadedProfile(ProfileStore.LoadOrCreate(catalog, defaultDeck, cardCatalog, defaultStones));
             Debug.Log($"[OutgameMenuController] Profile loaded: {(catalog != null ? catalog.units.Length : 0)} catalog units. path={ProfileStore.Path}");
-            // restoreLobby=false — 이건 패널 가시성 초기화지 로비 복귀가 아니다. 튜토리얼
-            // 통지는 바로 아래 한 줄이 소유한다(아래 주석의 "유일한 진입점"을 유지).
+            // restoreLobby=false — 이건 패널 가시성 초기화지 로비 복귀가 아니다. 이 시점의
+            // 튜토리얼 통지는 바로 아래 한 줄이 소유한다(여기서 겹쳐 부르지 않는다).
             ClosePanels(false);
 
             // outgame-tutorial unit 4 — 프로필 로드 이후여야 한다. ApplyAuthGate 는
             // 이 메서드의 첫 줄이라 그 시점 profileSO.profile 은 곧 교체될 인스턴스이고,
             // 전투 복귀 경로에서는 UserSession 이 이미 signed-in 이라 onSignedIn 이
-            // 재발화하지 않아 이 호출이 챕터 B 의 유일한 진입점이 된다.
+            // 재발화하지 않는다 — 그래서 **전투 복귀 경로**에서는 이 호출이 챕터 B 의 유일한
+            // 진입점이다. (진입점 전체는 셋: 여기 · ApplyAuthGate · ClosePanels 의 로비 복귀.
+            // 마지막 것은 unit 6 의 챕터 C 가 추가했고 B 도 같이 태운다.)
             if (outgameTutorial != null) outgameTutorial.OnLobbyShown(UserSession.IsSignedIn);
         }
 

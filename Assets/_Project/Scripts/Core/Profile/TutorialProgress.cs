@@ -142,8 +142,7 @@ namespace Wassup.Core
         public static bool ResetAll(PlayerProfile profile)
         {
             if (profile == null) return false;
-            // 신규 토큰은 여기와 ResetAllInJson 의 `changed` 표현식 **양쪽에** 넣는다.
-            // 한쪽만 쓰면 그 토큰이 유일한 차이일 때 리셋이 조용히 누락된다(아래 주석 참조).
+            // 신규 토큰은 ResetAllInJson 의 `changed` 표현식에도 넣어야 한다 — 이유는 그쪽 주석.
             bool changed = profile.firstBattleTutorialVersion != 0 || profile.awakeningHintVersion != 0 ||
                            profile.awakeningTapAttachHintVersion != 0 ||
                            profile.giftTutorialVersion != 0 || profile.lobbyIntroVersion != 0 ||

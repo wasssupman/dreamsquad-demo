@@ -39,7 +39,10 @@ namespace Wassup.UI.Tutorial
         // unit 19 — 첫 판 전투 HUD 안내. 사용자 작성 문구. 임의로 고치지 말 것.
         // 한계 수치는 화면 배지와 같은 소스에서 채운다(하드코딩 금지 — 덱마다 다르다).
         private const string HudHintStressText = "악몽을 막아 스트레스 관리하세요!";
-        private const string HudHintStressLimitFormat = "스트레스가 {0}가 되면 패배합니다.";
+        // 조사는 사용자 원문의 `이` 를 쓴다(원문: `스트레스가 10이되면 패배합니다.`). 한국어
+        // 이/가 는 수치의 읽음에 따라 갈리므로(10=십 → 이, 5=오 → 가) 데이터로 바뀌면 어색해질
+        // 수 있다. 자릿수별 조사 계산은 데모 범위에서 과잉이라 현 튜닝(한계 10)에 맞춘다.
+        private const string HudHintStressLimitFormat = "스트레스가 {0}이 되면 패배합니다.";
 
         // unit 20 — 사용자 작성 문구. 임의로 고치지 말 것. 클릭을 요구하지 않는다:
         // 둘째 줄이 "지금 누르지 마"라는 뜻이라 행동 성공 신호로 진행시키면 문구와 모순이고,
@@ -180,9 +183,9 @@ namespace Wassup.UI.Tutorial
             }
             UnsubscribeDrag();
             EndCore(restoreNormalPlacement: true);
-            // unit 19 — 정리 경로 ②. EndCore 에 기대면 안 된다: 체인 구간은 core 가 이미
-            // 끝나 있어 EndCore 가 `!_coreActive` 조기 return 하고, 그 뒤에 있는 기믹 억제
-            // 해제에 도달하지 못해 **억제가 영구 고착된다**(로비 왕복 후에도 기믹 안내 실종).
+            // unit 19 — 정리 경로 ②. 바로 위 EndCore 에 기대면 안 된다: 체인 구간은 core 가 이미
+            // 끝나 있어 EndCore 가 `!_coreActive` 로 조기 return 하므로, 체인이 세운 상태
+            // (코루틴 · 말풍선 · 말풍선 앵커)는 아무도 되돌리지 않는다.
             StopBattleHudHint();
             ResetAwakeningSession(hide: true);
             guidance?.SetElevated(false);
@@ -225,7 +228,7 @@ namespace Wassup.UI.Tutorial
             _coreStep = CoreStep.Goal;
             placementView.BeginTutorialGate();
             gimmickGuide?.SetTutorialSuppressed(true);
-            guidance.SetWorldMarkerLayout(true);
+            guidance.SetMessageAnchor(TutorialGuidanceView.MessageAnchor.WorldMarker);
             guidance.ShowMessage("적이 노란색 베이스에 닿기 전에 막아주세요.", showSkip: true);
             _goalRoutine = StartCoroutine(GoalBeatRoutine());
         }
@@ -684,14 +687,18 @@ namespace Wassup.UI.Tutorial
 
             _hudHintShownThisBattle = true;
             _hudHintActive = true;
-            // 한 화면에 한 지시만 남긴다. 해제는 StopBattleHudHint 가 소유한다(EndCore 아님).
-            gimmickGuide?.SetTutorialSuppressed(true);
+            // 기믹 배너를 억제하지 않는다. GimmickGuideView.RefreshVisibility 의 표시 조건이
+            // `_phase == Placement` 라, Battle 에서만 도는 이 체인에는 억제할 대상이 애초에 없다
+            // (core 안내는 Placement 라 계속 억제가 필요하다 — OnPlacementReady 쪽은 그대로).
             if (_hudHintRoutine != null) StopCoroutine(_hudHintRoutine);
             _hudHintRoutine = StartCoroutine(BattleHudHintRoutine());
         }
 
-        // 정리 단일 창구: 코루틴 중단 + 말풍선 정리 + 앵커 원복 + 기믹 억제 해제.
+        // 정리 단일 창구: 코루틴 중단 + 말풍선 정리 + 앵커 원복.
         // 호출처 3곳 — OnPhaseChanged 의 비-Battle 경로 · OnDisable · 체인 정상 종료.
+        //
+        // `_hudHintActive` 가드가 본체다. 이 함수는 체인이 없을 때도 불리는데(Placement 진입),
+        // 가드 없이 Hide()·앵커 원복을 실행하면 core 안내가 막 세운 말풍선을 걷어버린다.
         private void StopBattleHudHint()
         {
             if (!_hudHintActive) return;
@@ -704,7 +711,6 @@ namespace Wassup.UI.Tutorial
             guidance?.Hide();
             // 앵커를 되돌리지 않으면 다음 안내(각성 · 선물)가 배지 아래 엉뚱한 위치에 뜬다.
             guidance?.SetMessageAnchor(TutorialGuidanceView.MessageAnchor.Default);
-            gimmickGuide?.SetTutorialSuppressed(false);
         }
 
         private IEnumerator BattleHudHintRoutine()
@@ -733,7 +739,10 @@ namespace Wassup.UI.Tutorial
             yield return WaitUnscaled(guidance.HudHintLineSeconds);
 
             // 엔드리스는 분모를 표기하지 않고 유출로 패배하지도 않으므로 둘째 줄이 거짓이 된다.
-            if (!scoreHud.ShowsStressLimit) yield break;
+            // `StressLimit > 0` 도 함께 요구한다: _leakShowLimit 기본값이 true 이고 _leakLimit
+            // 기본값이 0 이라, 스냅샷(SetLeakStatus)이 아직 안 왔거나 ActiveDeck 이 없으면
+            // `스트레스가 0이 되면 패배합니다.` 가 경고 없이 나간다. 안내는 거짓말보다 침묵이 낫다.
+            if (!scoreHud.ShowsStressLimit || scoreHud.StressLimit <= 0) yield break;
             guidance.ShowMessage(string.Format(HudHintStressLimitFormat, scoreHud.StressLimit),
                 showSkip: false);
             yield return WaitUnscaled(guidance.HudHintLineSeconds);
@@ -748,11 +757,18 @@ namespace Wassup.UI.Tutorial
         private IEnumerator NextWaveHintSteps()
         {
             yield return WaitForHintTarget(ResolveWaveButtonRect);
+            // 미배선과 버튼 부재는 다른 사건이다. 앞은 씬 배선 버그(경고), 뒤는 레거시 덱
+            // (생성 웨이브 아님)의 **정상** 경로다 — 후자를 경고로 올리면 정상 플레이가 콘솔을
+            // 더럽히고 "경고 0" 완료 기준과 모순된다.
+            if (waveDock == null)
+            {
+                Debug.LogWarning("[FirstSessionTutorial] waveDock 미배선 — 웨이브 안내를 생략합니다.", this);
+                yield break;
+            }
             RectTransform button = ResolveWaveButtonRect();
             if (button == null || !button.gameObject.activeInHierarchy)
             {
-                // 레거시 덱(생성 웨이브 아님)에는 버튼이 아예 없다 — 정상 경로이므로 조용히 넘긴다.
-                Debug.LogWarning("[FirstSessionTutorial] 다음 웨이브 버튼 부재 — 웨이브 안내를 생략합니다.", this);
+                Debug.Log("[FirstSessionTutorial] 다음 웨이브 버튼 부재(생성 웨이브 아님) — 웨이브 안내를 생략합니다.", this);
                 yield break;
             }
 

@@ -364,11 +364,16 @@ namespace Wassup.UI
             EndChapter();
         }
 
-        private static void TrySaveProfile(PlayerProfile profile)
+        // 교체 가능한 저장 seam. 챕터 완료 저장은 개발자의 실제 profile.json 을 재작성하므로,
+        // 테스트가 그걸 건드리지 않고 오케스트레이션만 검증할 수 있어야 한다
+        // (선례: FirstSessionTutorialController.ProfileSaver · SquadBuilderView.ProfileSaver).
+        [System.NonSerialized] internal Action<PlayerProfile> ProfileSaver = ProfileStore.Save;
+
+        private void TrySaveProfile(PlayerProfile profile)
         {
             try
             {
-                ProfileStore.Save(profile);
+                (ProfileSaver ?? ProfileStore.Save)(profile);
             }
             catch (Exception exception)
             {

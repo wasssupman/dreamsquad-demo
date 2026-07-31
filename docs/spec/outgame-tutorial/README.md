@@ -1,7 +1,7 @@
 # outgame-tutorial — 로비 통과구멍 온보딩
 
 > 상태: **units 0~4 완료 2026-07-21 · 동작 확인됨 · 모바일 실기기 QA 는 보류(사용자 결정) ·
-> 챕터 C(unit 6) 스펙 작성 2026-08-01, 구현 대기**
+> 챕터 C(unit 6) 구현·커밋 2026-08-01 (`f0d05bd7`, 리뷰 반영 포함) — **사용자 Play 확인 대기**
 > 선행: `first-session-tutorial` (완료) · `outgame-lobby-layout` (완료) · `lobby-keyring-drag` (완료)
 
 ## 검증 질문

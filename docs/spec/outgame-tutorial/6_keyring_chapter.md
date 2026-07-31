@@ -103,6 +103,11 @@
 - `TutorialProgressTests` 신규 4건: ① C 는 B 완료 전엔 pending 아님 ② `CompleteLobbyKeyringHint`
   멱등 ③ `ResetAll` 이 이 토큰만 다를 때도 `changed = true` ④ `ResetAllInJson` 이 이 토큰을 0 으로
   되돌리고 미지 필드를 보존
+- `OutgameTutorialChapterCTests` 신규 3건 — **위 4건은 순수 진행 상태 레이어만 봐서 이 unit 의
+  가장 위험한 회귀 둘을 관측하지 못한다.** 오케스트레이션을 직접 고정한다: ① `KeyringFocus` 의
+  dim 탭이 완료를 저장하지 않음 ② 드래그가 키링 토큰만 세우고 챕터 B 플래그를 다시 쓰지 않음
+  ③ 챕터 종료 후 늦게 온 드래그 신호가 아무것도 쓰지 않음.
+  저장은 `ProfileSaver` seam(형제 컨트롤러 선례)으로 가로채 실제 `profile.json` 을 건드리지 않는다
 - Play: 튜토리얼 리셋 → 로비 A → 첫 판 → 복귀 B → 스쿼드 열고 닫기 → **C 노출** →
   World 캐릭터 드래그 → dim·말풍선 즉시 종료 → 로비 재진입 시 미노출
 - **패널을 여는 순간에는 C 가 뜨지 않는다**(위 `restoreLobby` 회귀). 스쿼드·드림캐쳐·테스트모드·

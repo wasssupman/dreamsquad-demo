@@ -142,11 +142,6 @@ namespace Wassup.UI.Tutorial
             if (_built) UpdateMessageLayout();
         }
 
-        // 기존 호출처(핵심 안내 · 스모크 테스트) 보존용 — bool 두 값은 unit 19 이전과 같은
-        // 의미다(true = 월드 마커 레이아웃, false = 기본).
-        public void SetWorldMarkerLayout(bool active) =>
-            SetMessageAnchor(active ? MessageAnchor.WorldMarker : MessageAnchor.Default);
-
         public void ClearWorldMarkers()
         {
             ClearWorldPulses();

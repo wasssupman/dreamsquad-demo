@@ -22,6 +22,7 @@ namespace Wassup.UI.Tutorial
         // unit 19 — 첫 판 전투 HUD 안내(우상단 스트레스 배지) 전용 앵커. 기본 offset(184)은
         // 배지 구간(top inset 20 + plate 148 → 178~242)을 그대로 덮는다. 배지 아래로 내리는
         // 값이며 실측으로 확정한다(링은 focusPadding + focusBorder 만큼 더 나온다).
+        [Tooltip("전투 HUD 안내(스트레스 배지) 전용 말풍선 상단 오프셋. 기본 184 는 배지를 덮는다 — 실측으로 확정할 값.")]
         public float hudHintMessageTopOffset = 280f;
         public Color messageFill = new Color(0.025f, 0.045f, 0.09f, 0.96f);
         public Color messageBorder = new Color(1f, 0.78f, 0.24f, 1f);
