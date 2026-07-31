@@ -22,7 +22,9 @@ namespace Wassup.UI
         IBeginDragHandler, IDragHandler, IEndDragHandler,
         IPointerDownHandler, IPointerUpHandler, IPointerClickHandler
     {
-        private enum AimMode
+        // selection-hand-attach unit 17 — 뷰(딤 판정)도 이 분류를 읽는다. 조준 라우팅과 딤이
+        // 같은 판별을 봐야 BountyMark 같은 라우팅 변경이 딤에 자동으로 따라온다.
+        internal enum AimMode
         {
             None,     // unclassifiable (Active without a skill) — drag blocked
             Defender, // arrow + unit lock + unit drop
@@ -77,11 +79,19 @@ namespace Wassup.UI
             // 카드 설명은 카드 면이 담당하므로 여기는 조작 안내만.
             if (_view.CanPeek(_index))
             {
-                string status = Slot.usable
-                    ? "위로 끌어 올려 사용하세요"
-                    : "<color=#FF9B8A>각성치가 부족합니다</color>";
-                _view.ShowDragBriefing(ControlsFor(Classify(Slot.card), Slot.card), status);
+                _view.ShowDragBriefing(ControlsFor(Classify(Slot.card), Slot.card), PressStatus(Slot));
             }
+        }
+
+        // selection-hand-attach unit 17 — press 브리핑 상태 줄. 딤 사유는 두 갈래이고 다음
+        // 행동이 다르다: 각성치를 모아라 / 다른 유닛을 골라라. 순서는 딤 판정과 같다(각성치 우선).
+        // 부착 불가는 각성치가 충분해도 드래그가 시작되지 않으므로, "끌어 올리세요" 를 그대로
+        // 두면 press 안내가 거짓말이 된다.
+        private static string PressStatus(DreamcatcherHandView.CardSlot slot)
+        {
+            if (!slot.usable) return "<color=#FF9B8A>각성치가 부족합니다</color>";
+            if (slot.attachBlocked) return "<color=#FF9B8A>이 유닛에는 부착할 수 없습니다</color>";
+            return "위로 끌어 올려 사용하세요";
         }
 
         // 해제 시 숨김 — 단 드래그로 이어졌으면 EndInteraction 깔때기가, 포탈 조준은
@@ -118,8 +128,9 @@ namespace Wassup.UI
             // EnemyMark 를 돌려주므로 이 조건에서 자동 배제된다(card.type == Unit 만 보면 통과한다).
             if (Classify(slot.card) != AimMode.Defender || slot.card.type == CardType.Active)
             {
-                // active-ally-zone unit 3 — Active 도 이제 선택 중 **쓸 수 있다**(끌면 선택이 풀린다).
-                // 즉발 탭은 여전히 부착 전용이므로 안내는 "끌어서 쓰라" 로 통일된다.
+                // active-ally-zone unit 3 + unit 17 rev 2 — Active·제물 표식 **둘 다** 선택 중에
+                // 쓸 수 있다(끌면 선택이 풀린다). 즉발 탭만 부착 전용이므로 안내는 "끌어서 쓰라"
+                // 하나로 통일된다.
                 Reject("이 카드는 <color=#FFD98A>끌어서</color> 사용하세요");
                 return;
             }
@@ -153,7 +164,7 @@ namespace Wassup.UI
             _view.ShowDragBriefing(ControlsFor(Classify(Slot.card), Slot.card), reason);
         }
 
-        private static AimMode Classify(DreamcatcherCard card)
+        internal static AimMode Classify(DreamcatcherCard card)
         {
             if (card == null) return AimMode.None;
             switch (card.type)
@@ -190,8 +201,17 @@ namespace Wassup.UI
             // 막는 대신 **선택을 놓고 필드 문맥으로 나온다**: 손패·조준 슬로모는 유지되고
             // 선택·패널·리티클·줌만 풀린다(DcInspectController.ReleaseSelectionKeepHand).
             // 트리거가 press 가 아니라 여기(드래그 확정)인 이유: press 시점엔 이 제스처가 탭 즉발
-            // 부착인지 Active 드래그인지 알 수 없어, 거기서 풀면 탭 부착이 매번 죽는다.
-            if (slot.card.type == CardType.Active && _view.SelectionTarget != Entity.Null)
+            // 부착인지 조준 드래그인지 알 수 없어, 거기서 풀면 탭 부착이 매번 죽는다.
+            //
+            // selection-hand-attach unit 17 rev 2 — 조건을 카드 **타입**이 아니라 조준 **모드**로
+            // 바꿨다: `Defender` 가 아닌 모든 조준(Active 타일 · 제물 표식 적 지정)이 같은 이유로
+            // 선택을 놓는다 — 겨누는 대상이 선택 유닛이 아니기 때문이다. 제물 표식은 rev 1 에서
+            // 딤+차단이었는데, 막는 것보다 Active 와 같은 문법으로 **놓아주는** 쪽이 맞다
+            // (사용자 결정 2026-07-31). 새 비-Defender 조준이 생겨도 여기에 타입을 더할 일이 없다.
+            //
+            // ⚠ 호출은 `BeginFocus(slot)` **앞**을 유지할 것. 뒤로 가면 해제가 방금 시작한 조준
+            // 포커스 세션을 지운다(ReleaseSelectionKeepHand 의 `focus.End()`).
+            if (_mode != AimMode.Defender && _view.SelectionTarget != Entity.Null)
                 _view.NotifySelectionReleasedForAim();
 
             _dragging = true;

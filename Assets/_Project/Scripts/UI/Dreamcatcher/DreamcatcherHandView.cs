@@ -182,9 +182,13 @@ namespace Wassup.UI
 
         public void NotifySelectionReleasedForAim() => SelectionReleasedForAim?.Invoke();
 
+        // unit 17 — 대상이 바뀌면 부착 딤을 다시 계산한다. **선택 전환(A→B)을 잡는 유일한
+        // 지점**이다: 손패가 이미 열려 있으면 `OpenForSelection()` 이 no-op 이라 `Refresh()` 가
+        // 돌지 않아, 여기서 안 하면 A 기준 딤이 B 를 고른 뒤에도 그대로 남는다.
         public void SetSelectionTarget(Entity target)
         {
             SelectionTarget = target;
+            RefreshUsability();
             if (target != Entity.Null) SelectionTargetSet?.Invoke();
         }
 
@@ -192,6 +196,7 @@ namespace Wassup.UI
         {
             SelectionTarget = Entity.Null;
             _pendingSelectionOpen = false; // 선택이 끝났으면 미뤄둔 오픈도 취소
+            RefreshUsability();            // unit 17 — 부착 딤 해제(각성치 딤만 남는다)
         }
 
         // 선택 기인 오픈(사용자 결정 1: 항상). 컨트롤러가 SetSelectionTarget 직후 부른다.
@@ -325,13 +330,10 @@ namespace Wassup.UI
             public GameObject nameTag; // hand-card-face unit 1 — 헤더 밴드(타입 색) 중앙 이름 영역
             public TextMeshProUGUI nameLabel;
             public CanvasGroup nameGroup; // 크럼플 중 숨겼다 펴짐 완료 시 페이드-인(TMP 비크럼플)
-            public GameObject tagChip;    // hand-card-face unit 1 — 우상단 대상+역할 칩
-            public Image tagBg;
-            public TextMeshProUGUI tagLabel;
-            public CanvasGroup tagGroup;
             public TextMeshProUGUI bodyLabel; // hand-card-face unit 1 — 하단 효과 본문
             public CanvasGroup bodyGroup;
             public GameObject costBadge;
+            public Image costBadgeBg; // unit 17 rev 3 — 딤에서 붉게(각성치 부족이 곧 이 숫자다)
             public TextMeshProUGUI costLabel;
             public CanvasGroup costGroup;
             public CanvasGroup group;
@@ -344,7 +346,14 @@ namespace Wassup.UI
             public float targetScale = 1f;
             public int entryId = -1;       // -1 = empty slot
             public DreamcatcherCard card;
+            // 각성치로 낼 수 있는가(`CanUse`). **뜻을 넓히지 말 것** — 탭 거절 문구가
+            // `!usable → "각성치가 부족합니다"` 로 갈리므로 다른 사유를 접으면 문구가 어긋난다.
             public bool usable;
+            // selection-hand-attach unit 17 — 선택 유닛에 이 카드가 못 붙는다(부착 카드 한정).
+            // 선택이 없거나 부착 카드가 아니면 항상 false.
+            public bool attachBlocked;
+            // 지금 이 카드를 만질 수 있는가. 딤 틴트·드래그 게이트·press 확대가 이 하나를 읽는다.
+            public bool Playable => usable && !attachBlocked;
             // use-flow unit 1 — 사용 직후 1장 재딜인 트윈이 rect 를 소유 중(스프링/집기 제외).
             public bool redealing;
             // selection-hand-attach unit 3 — 즉발 거절 움찔 트윈이 rect 를 소유 중.
@@ -355,11 +364,39 @@ namespace Wassup.UI
 
         // dreamcatcher-hand-card-face unit 1 — 카드 면 기하. 본문 16pt floor(계약 8) 예산
         // 확보를 위해 172×200 → 184×230 (5장×184=920 ≤ 패널 980, README rev 1).
-        private const float CardW = 184f, CardH = 230f, HeaderH = 64f;
+        // unit 5 — 헤더 64 → 76: 태그 칩을 걷고 그 예산을 이름(20→32pt)에 준다. 카드 기하는
+        // 그대로 둔다 — CardH 를 키우면 cancelZoneHeight(310)·dragClearanceDrop(210)의 실측
+        // 근거(조준 중 최하단 행 노출)가 함께 무너진다. 대가는 본문 154 → 142px.
+        //
+        // ⚠ 헤더를 키운 만큼 본문 **폰트가 아니라 높이**가 줄고, 오토사이즈(18~24)가 긴 카드를
+        // 그만큼 아래로 내려앉힌다. 이 상수는 이름 크기와 본문 가독의 교환비다 — 한쪽만 보고
+        // 만지지 말 것(계약 8: 본문 floor 가 이름보다 우선).
+        private const float CardW = 184f, CardH = 230f, HeaderH = 76f;
         // 타입×무의식별 투톤 face 스프라이트 캐시(2x 베이크 — 코너/보더 선명도).
         private readonly Dictionary<(CardType type, bool subconscious), Sprite> _faceCache =
             new Dictionary<(CardType, bool), Sprite>();
-        private Sprite _chipSprite; // 흰 라운드 칩 공용 스프라이트(틴트는 Image.color 가 담당)
+
+        // ── 카드 면 색: 정상 / 딤 ────────────────────────────────────────────────
+        // selection-hand-attach unit 17 rev 3 — 딤을 **붉은 계열**로 명확히(사용자 결정 2026-07-31).
+        //
+        // ⚠ `face.color` 하나로는 안 된다. 그건 face 스프라이트에 대한 **곱연산**이라, 붉은 틴트를
+        // 걸어도 파랑(Squad)·청록(Active) 헤더처럼 R 이 낮은 색은 붉어지는 게 아니라 그냥 검어진다.
+        // 그래서 곱 틴트에 더해 **텍스트와 코스트 배지**를 함께 붉힌다 — 이쪽은 곱이 아니라 직접
+        // 지정이라 카드 타입과 무관하게 같은 붉기가 나온다.
+        //
+        // 붉은색은 브리핑 실패 문안이 쓰는 `#FF9B8A` 와 같은 값이다(`PressStatus` 등). "빨강 =
+        // 지금 안 된다"가 카드와 안내에서 같은 뜻이 되도록 어휘를 하나로 묶는다 — 여기만 다른
+        // 빨강을 쓰면 둘이 다른 신호처럼 읽힌다.
+        //
+        // 텍스트는 딤에서도 **읽혀야 한다**(hand-card-face 계약 8: 테스터는 못 내는 카드도 읽는다).
+        // 그래서 어둡게 죽이지 않고 밝은 살몬으로 간다 — 어두운 카드 면 위 대비가 확보된다.
+        private static readonly Color FaceNormal = Color.white;
+        private static readonly Color FaceDim = new Color(0.72f, 0.36f, 0.36f, 1f);
+        private static readonly Color NameNormal = Color.white;
+        private static readonly Color BodyNormal = new Color(0.92f, 0.92f, 0.98f, 1f);
+        private static readonly Color TextDim = new Color(1f, 0.608f, 0.541f, 1f); // #FF9B8A
+        private static readonly Color CostBadgeNormal = new Color(0.62f, 0.4f, 1f, 0.95f);
+        private static readonly Color CostBadgeDim = new Color(0.66f, 0.20f, 0.24f, 0.95f);
 
         private GameObject _panel;
         // hand-drag-clearance unit 0 — 하강의 기준선. BuildCanvas 가 실제 배치한 값을 캡처하고
@@ -634,7 +671,7 @@ namespace Wassup.UI
                 {
                     slot.targetPos = slot.homePos + new Vector2(0f, focusRaise);
                     slot.targetRotZ = 0f; // straighten
-                    slot.targetScale = slot.usable ? focusScale : 1.06f; // dim 카드는 살짝만
+                    slot.targetScale = slot.Playable ? focusScale : 1.06f; // dim 카드는 살짝만
                 }
                 else
                 {
@@ -702,7 +739,9 @@ namespace Wassup.UI
             if (AnyInteractionActive()) return false; // one interaction at a time
             if (index < 0 || index >= _slots.Count) return false;
             var slot = _slots[index];
-            return slot.entryId >= 0 && slot.usable && !slot.redealing;
+            // unit 17 — 딤(각성치 부족 OR 선택 유닛 부착 불가)이면 드래그도 시작되지 않는다
+            // (사용자 결정 2: 딤 = 완전 차단). 다른 유닛에 붙이려면 그 유닛을 탭해 선택을 전환.
+            return slot.entryId >= 0 && slot.Playable && !slot.redealing;
         }
 
         // hand-drag-tooltip rev 4 — press 툴팁 노출 판정(usable 무관, dim 카드 포함):
@@ -761,7 +800,6 @@ namespace Wassup.UI
             if (slot.face != null) slot.face.Unfold = 1f;
             if (slot.nameGroup != null) slot.nameGroup.alpha = 1f;
             if (slot.costGroup != null) slot.costGroup.alpha = 1f;
-            if (slot.tagGroup != null) slot.tagGroup.alpha = 1f;   // hand-card-face unit 1
             if (slot.bodyGroup != null) slot.bodyGroup.alpha = 1f;
         }
 
@@ -907,7 +945,6 @@ namespace Wassup.UI
             if (slot.face != null) slot.face.Unfold = 0f;
             if (slot.nameGroup != null) slot.nameGroup.alpha = 0f;
             if (slot.costGroup != null) slot.costGroup.alpha = 0f;
-            if (slot.tagGroup != null) slot.tagGroup.alpha = 0f;
             if (slot.bodyGroup != null) slot.bodyGroup.alpha = 0f;
             _redealSeq = Sequence.Create();
             _redealSeq.Group(Tween.UIAnchoredPosition(rt, slot.homePos, dealDurationSec, Ease.OutBack));
@@ -919,7 +956,6 @@ namespace Wassup.UI
             float textDelay = Mathf.Max(0f, crumpleUnfoldSec - textFadeSec);
             if (slot.nameGroup != null) _redealSeq.Group(Tween.Alpha(slot.nameGroup, 1f, textFadeSec, Ease.OutQuad, startDelay: textDelay));
             if (slot.costGroup != null) _redealSeq.Group(Tween.Alpha(slot.costGroup, 1f, textFadeSec, Ease.OutQuad, startDelay: textDelay));
-            if (slot.tagGroup != null) _redealSeq.Group(Tween.Alpha(slot.tagGroup, 1f, textFadeSec, Ease.OutQuad, startDelay: textDelay));
             if (slot.bodyGroup != null) _redealSeq.Group(Tween.Alpha(slot.bodyGroup, 1f, textFadeSec, Ease.OutQuad, startDelay: textDelay));
             var captured = slot;
             _redealSeq.ChainCallback(() => captured.redealing = false);
@@ -1089,7 +1125,6 @@ namespace Wassup.UI
                 if (slot.face != null) slot.face.Unfold = 0f;
                 if (slot.nameGroup != null) slot.nameGroup.alpha = 0f;
                 if (slot.costGroup != null) slot.costGroup.alpha = 0f;
-                if (slot.tagGroup != null) slot.tagGroup.alpha = 0f;   // hand-card-face unit 1
                 if (slot.bodyGroup != null) slot.bodyGroup.alpha = 0f;
                 float d = dealt * dealStaggerSec;
                 _dealSeq.Group(Tween.UIAnchoredPosition(rt, slot.homePos, dealDurationSec, Ease.OutBack, startDelay: d));
@@ -1103,7 +1138,6 @@ namespace Wassup.UI
                 float textDelay = d + Mathf.Max(0f, crumpleUnfoldSec - textFadeSec);
                 if (slot.nameGroup != null) _dealSeq.Group(Tween.Alpha(slot.nameGroup, 1f, textFadeSec, Ease.OutQuad, startDelay: textDelay));
                 if (slot.costGroup != null) _dealSeq.Group(Tween.Alpha(slot.costGroup, 1f, textFadeSec, Ease.OutQuad, startDelay: textDelay));
-                if (slot.tagGroup != null) _dealSeq.Group(Tween.Alpha(slot.tagGroup, 1f, textFadeSec, Ease.OutQuad, startDelay: textDelay));
                 if (slot.bodyGroup != null) _dealSeq.Group(Tween.Alpha(slot.bodyGroup, 1f, textFadeSec, Ease.OutQuad, startDelay: textDelay));
                 dealt++;
             }
@@ -1208,22 +1242,54 @@ namespace Wassup.UI
 
         private void RefreshUsability()
         {
+            if (handController == null) return;
             foreach (var slot in _slots)
             {
                 if (slot.entryId < 0) continue;
                 slot.usable = handController.CanUse(slot.entryId);
+                slot.attachBlocked = IsAttachBlocked(slot.card);
                 // hand-card-face rev 1(계약 8) + 2026-07-25 사용자 피드백(solid BG) —
-                // 카드 면은 항상 완전 불투명. 사용불가 dim 은 알파가 아니라 face 어둡기만으로
+                // 카드 면은 항상 완전 불투명. 사용불가 dim 은 알파가 아니라 **색**으로만
                 // 표현한다(알파 dim 은 보드가 비쳐 "투명 카드"로 읽혔고 본문 가독도 죽였다).
                 slot.group.alpha = 1f;
-                if (slot.face != null)
-                    slot.face.color = slot.usable ? Color.white : new Color(0.62f, 0.62f, 0.70f, 1f);
+                bool ok = slot.Playable;
+                // unit 17 rev 3 — 면·이름·본문·배지 네 표면을 함께 붉힌다. face 곱 틴트 하나로는
+                // 파랑/청록 헤더가 붉어지지 않아 "빨강 = 못 씀" 이 카드 타입마다 달라진다.
+                if (slot.face != null) slot.face.color = ok ? FaceNormal : FaceDim;
+                if (slot.nameLabel != null) slot.nameLabel.color = ok ? NameNormal : TextDim;
+                if (slot.bodyLabel != null) slot.bodyLabel.color = ok ? BodyNormal : TextDim;
+                if (slot.costBadgeBg != null) slot.costBadgeBg.color = ok ? CostBadgeNormal : CostBadgeDim;
             }
+        }
+
+        // selection-hand-attach unit 17 — "선택 중인 지금 이 카드를 쓸 수 없다".
+        // 판별은 조준 라우팅과 같은 `Classify` 하나를 본다(딤과 라우팅이 갈라지지 않게).
+        //
+        // **딤 대상은 `Defender` 조준(Unit/Squad 부착) 카드뿐이다.** 나머지(Active 타일 · 제물
+        // 표식 적 지정)는 겨누는 대상이 선택 유닛이 아니고, 드래그가 시작되면
+        // `NotifySelectionReleasedForAim` 으로 **선택을 놓고 필드 문맥으로 나온다** — 실제로 쓸
+        // 수 있으므로 딤하면 거짓 신호다. (rev 1 은 제물 표식을 딤+차단했는데, 막는 것보다
+        // Active 와 같은 문법으로 놓아주는 쪽으로 rev 2 에서 뒤집었다 — 사용자 결정 2026-07-31.)
+        //
+        // Defender 카드의 판정은 계약 5 의 나머지 2판정 그대로 — 탭 즉발·D&D `_attachable`
+        // 스냅샷과 같은 소스라 딤과 커밋 거절이 어긋날 수 없다.
+        //
+        // ⚠ 호출은 이벤트 시점만 — `WouldDreamcatcherCardApply` 는 managed SO(mechanics 배열)를
+        // 훑으므로 per-frame 금지다(`DreamcatcherAttachEval` 주석과 같은 규율).
+        private bool IsAttachBlocked(DreamcatcherCard card)
+        {
+            if (card == null || !InSelectionMode) return false;
+            if (DreamcatcherCardDragSlot.Classify(card) != DreamcatcherCardDragSlot.AimMode.Defender)
+                return false;
+            if (handController == null || bridge == null) return false; // 미배선 = 기존 동작 유지
+            return !(handController.CanAttachMore(SelectionTarget)
+                && bridge.WouldDreamcatcherCardApply(SelectionTarget, card));
         }
 
         // hand-card-face unit 1 — 아트 제거: 카드 면 = 투톤 face 스프라이트(타입색 헤더 +
         // 중립 본문 + 무의식 테두리). card.art/skill.uiTint 는 손패에서 더 이상 읽지 않는다
-        // (덱빌더는 계속 사용). 텍스트가 정보를 전달한다: 이름(헤더)·태그(대상+역할)·본문(효과).
+        // (덱빌더는 계속 사용). 텍스트가 정보를 전달한다: 이름(헤더)·본문(효과).
+        // unit 5 — 태그 칩(대상+역할)은 은퇴. 본문 첫 줄과 겹쳐 이름 예산만 먹었다.
         private void BindCard(CardSlot slot, int entryId, DreamcatcherCard card)
         {
             slot.entryId = entryId;
@@ -1235,17 +1301,12 @@ namespace Wassup.UI
             slot.nameTag.SetActive(true);
             slot.nameLabel.text = card.displayName;
 
-            slot.tagChip.SetActive(true);
-            slot.tagLabel.text = CardCategoryStyle.TargetTag(card);
-            // 칩 배경 = 헤더색을 어둡게(같은 계열 유지, 흰 텍스트 대비 확보).
-            slot.tagBg.color = Color.Lerp(CardCategoryStyle.HandHeader(card.type), Color.black, 0.35f);
-
             slot.bodyLabel.text = DreamcatcherCardText.BodyLinesOnly(
                 card, defenderCatalog != null ? defenderCatalog.DisplayNameOf : (System.Func<string, string>)null);
 
             slot.art.enabled = true;
             slot.art.sprite = FaceSpriteFor(card);
-            slot.art.color = Color.white;
+            slot.art.color = FaceNormal; // 딤이면 뒤이어 도는 RefreshUsability 가 덮는다
         }
 
         private Sprite FaceSpriteFor(DreamcatcherCard card)
@@ -1265,11 +1326,11 @@ namespace Wassup.UI
             slot.entryId = -1;
             slot.card = null;
             slot.usable = false;
+            slot.attachBlocked = false;
             slot.frame.color = new Color(1f, 1f, 1f, 0.06f); // empty frame
             slot.art.enabled = false;
             slot.nameTag.SetActive(false);
             slot.nameLabel.text = "";
-            slot.tagChip.SetActive(false);
             slot.bodyLabel.text = "";
             slot.costBadge.SetActive(false);
             slot.group.alpha = 1f;
@@ -1548,8 +1609,10 @@ namespace Wassup.UI
                 slot.art.preserveAspect = true;
                 slot.art.raycastTarget = false;
 
-                // hand-card-face unit 1 — 이름은 헤더 밴드(타입 색) 중앙(y -32~-64, 코스트/
-                // 태그 줄 아래). 배킹 이미지 없음(face 헤더색이 배경), 크럼플 페이드 그룹 유지.
+                // hand-card-face unit 1 — 이름은 헤더 밴드(타입 색) 안. 배킹 이미지 없음
+                // (face 헤더색이 배경), 크럼플 페이드 그룹 유지.
+                // unit 5 — 태그 칩이 빠져 헤더 아랫단을 이름이 **전폭 42px** 로 독차지한다
+                // (y -34~-76). 코스트 배지(44×44)가 y 12~-32 라 2px 여유로 비껴간다.
                 slot.nameTag = new GameObject("NameTag", typeof(RectTransform), typeof(CanvasGroup));
                 slot.nameTag.transform.SetParent(slot.root.transform, false);
                 var tagRt = (RectTransform)slot.nameTag.transform;
@@ -1557,7 +1620,7 @@ namespace Wassup.UI
                 tagRt.anchorMax = new Vector2(1f, 1f);
                 tagRt.pivot = new Vector2(0.5f, 1f);
                 tagRt.offsetMin = new Vector2(8f, -HeaderH);
-                tagRt.offsetMax = new Vector2(-8f, -32f);
+                tagRt.offsetMax = new Vector2(-8f, -34f);
                 slot.nameGroup = slot.nameTag.GetComponent<CanvasGroup>(); // 크럼플 중 페이드용
 
                 var nameGO = new GameObject("Name", typeof(RectTransform));
@@ -1569,50 +1632,21 @@ namespace Wassup.UI
                 nrt.offsetMax = new Vector2(-2f, 0f);
                 slot.nameLabel = nameGO.AddComponent<TextMeshProUGUI>();
                 if (labelFont != null) slot.nameLabel.font = labelFont;
-                slot.nameLabel.fontSize = 20;
+                // unit 5 — 20 → 32pt. 카드 선택의 1차 단서는 이름이다. rev 1(사용자 시각 확인
+                // 2026-07-31): 40pt 는 헤더가 본문 높이를 20px 먹어 긴 카드 본문이 오토사이즈
+                // 하한 쪽으로 눌렸다 — 이름을 한 단계 낮춰 12px 을 본문에 돌려준다.
+                slot.nameLabel.fontSize = 32;
                 slot.nameLabel.enableAutoSizing = true; // 긴 이름 축소 허용
-                slot.nameLabel.fontSizeMin = 14;
-                slot.nameLabel.fontSizeMax = 20;
-                slot.nameLabel.color = Color.white;
+                slot.nameLabel.fontSizeMin = 24;
+                slot.nameLabel.fontSizeMax = 32;
+                slot.nameLabel.color = NameNormal; // 딤 전환은 RefreshUsability 가 소유
                 slot.nameLabel.alignment = TextAlignmentOptions.Center;
                 // 이름은 한 줄 고정 — 길이는 오토사이즈가 흡수(코드베이스 관례: 랩은 명시 설정).
                 slot.nameLabel.textWrappingMode = TextWrappingModes.NoWrap;
                 slot.nameLabel.raycastTarget = false;
 
-                // hand-card-face unit 1 — 우상단 대상+역할 칩(타입 색은 무명 코드 — 칩이 해설).
-                if (_chipSprite == null)
-                    _chipSprite = UiRoundedSprite.Make(11f, 0f, Color.white, Color.white);
-                slot.tagChip = new GameObject("TargetTag", typeof(RectTransform), typeof(Image), typeof(CanvasGroup));
-                slot.tagChip.transform.SetParent(slot.root.transform, false);
-                var chipRt = (RectTransform)slot.tagChip.transform;
-                chipRt.anchorMin = new Vector2(1f, 1f);
-                chipRt.anchorMax = new Vector2(1f, 1f);
-                chipRt.pivot = new Vector2(1f, 1f);
-                chipRt.anchoredPosition = new Vector2(-8f, -8f);
-                chipRt.sizeDelta = new Vector2(96f, 24f);
-                slot.tagBg = slot.tagChip.GetComponent<Image>();
-                slot.tagBg.sprite = _chipSprite;
-                slot.tagBg.type = Image.Type.Sliced;
-                slot.tagBg.raycastTarget = false;
-                slot.tagGroup = slot.tagChip.GetComponent<CanvasGroup>();
-
-                var tagTextGO = new GameObject("Value", typeof(RectTransform));
-                tagTextGO.transform.SetParent(slot.tagChip.transform, false);
-                var ttrt = (RectTransform)tagTextGO.transform;
-                ttrt.anchorMin = Vector2.zero;
-                ttrt.anchorMax = Vector2.one;
-                ttrt.offsetMin = new Vector2(4f, 0f);
-                ttrt.offsetMax = new Vector2(-4f, 0f);
-                slot.tagLabel = tagTextGO.AddComponent<TextMeshProUGUI>();
-                if (labelFont != null) slot.tagLabel.font = labelFont;
-                slot.tagLabel.fontSize = 15;
-                slot.tagLabel.enableAutoSizing = true;
-                slot.tagLabel.fontSizeMin = 10;
-                slot.tagLabel.fontSizeMax = 15;
-                slot.tagLabel.color = Color.white;
-                slot.tagLabel.alignment = TextAlignmentOptions.Center;
-                slot.tagLabel.textWrappingMode = TextWrappingModes.NoWrap; // 칩 한 줄 고정
-                slot.tagLabel.raycastTarget = false;
+                // unit 5 — 우상단 대상+역할 칩(unit 1) **삭제**. 칩 문안("아군 부착"/"레인저
+                // 버프"/"타일 지정")은 본문 첫 줄과 정보가 겹쳤고, 헤더 폭을 이름에서 뺏었다.
 
                 // hand-card-face unit 1 — 하단 효과 본문(계약 8: floor 16pt — 실기기 가독 하한).
                 var bodyGO = new GameObject("Body", typeof(RectTransform), typeof(CanvasGroup));
@@ -1629,7 +1663,7 @@ namespace Wassup.UI
                 slot.bodyLabel.enableAutoSizing = true;
                 slot.bodyLabel.fontSizeMin = 18; // 계약 8 floor(16) 상회 — 사용자 확정 상향
                 slot.bodyLabel.fontSizeMax = 24;
-                slot.bodyLabel.color = new Color(0.92f, 0.92f, 0.98f, 1f);
+                slot.bodyLabel.color = BodyNormal; // 딤 전환은 RefreshUsability 가 소유
                 slot.bodyLabel.alignment = TextAlignmentOptions.TopLeft;
                 // 본문은 카드 폭 안에서 줄바꿈 — 랩 명시(기본값 신뢰 금지, 미설정 시 한 줄로
                 // 카드 밖 유출). floor 16pt 로도 넘치는 극단 케이스는 말줄임으로 방어.
@@ -1646,9 +1680,9 @@ namespace Wassup.UI
                 crt.pivot = new Vector2(0.5f, 0.5f);
                 crt.anchoredPosition = new Vector2(10f, -10f);
                 crt.sizeDelta = new Vector2(44f, 44f);
-                var badgeImg = slot.costBadge.GetComponent<Image>();
-                badgeImg.color = new Color(0.62f, 0.4f, 1f, 0.95f); // gauge fill color
-                badgeImg.raycastTarget = false;
+                slot.costBadgeBg = slot.costBadge.GetComponent<Image>();
+                slot.costBadgeBg.color = CostBadgeNormal; // gauge fill color
+                slot.costBadgeBg.raycastTarget = false;
                 slot.costGroup = slot.costBadge.AddComponent<CanvasGroup>(); // 크럼플 중 페이드용
 
                 var costTextGO = new GameObject("Value", typeof(RectTransform));
