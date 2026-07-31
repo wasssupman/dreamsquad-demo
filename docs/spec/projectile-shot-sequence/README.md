@@ -1,6 +1,6 @@
 # projectile-shot-sequence — 개별 탄환 시퀀스
 
-> 상태: units 0~4 완료 · unit 5 구현 중 (2026-07-30)
+> 상태: 완료 2026-07-31 (units 0~5)
 > 선행: `projectile-emission-pattern` · `defender-directional-volley`
 
 ## 목표
@@ -22,6 +22,7 @@
 | 3 | `3_projectile_launch_projection.md` | 공통 표시 높이 투영 + 맵 상·하단 검증 |
 | 4 | `4_handoff_summary.md` | Play 결과·인계 |
 | 5 | `5_targeted_shotgun_body_launch.md` | 샷건 일반 배치·START 방향 스냅샷 + 공통 몸체 발사점 |
+| 6 | `6_handoff_summary.md` | unit 5 구현·검증·인계 |
 
 ## Feature-wide 계약
 
