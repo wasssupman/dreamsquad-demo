@@ -44,6 +44,15 @@ namespace Wassup.Presentation
         // 프리팹 내부의 상대 순서(0/1/2)는 이 값에 **더해서** 보존한다.
         public const int BeamOrder = 15000;
 
+        // spine-weapon-trail unit 0 — 무기 궤적 리본. 빔(15000) 위 · 피격바(16000) 아래.
+        // 궤적은 공격자와 대상 **앞**에 떠야 "벤 자국"으로 읽힌다 — 유닛(Compute = 수백대) 뒤로
+        // 가면 몸통에 잘려 궤적이 아니라 배경 반짝임이 된다(빔과 같은 증상).
+        // ⚠ 이 상수는 **대역 문서이자 대조 기준**이고, 런타임에 실제로 적용되는 값은
+        // `HS_SwordTrailPreset.materialLayers[].sortingOrder` 다. HS_SwordMeshTrail 이 매
+        // LateUpdate 끝에 ApplyRendererSettings() 로 renderer.sortingOrder 를 프리셋 값으로
+        // 되쓰기 때문에 외부에서 런타임에 써봐야 한 프레임 뒤 덮인다. 값을 바꿀 땐 둘을 같이 바꾼다.
+        public const int WeaponTrailOrder = 15500;
+
         public static int Compute(int2 gridSize, int cellX, int cellY, int offset = 0)
             => (gridSize.y - cellY) * 10 + cellX + offset;
 
