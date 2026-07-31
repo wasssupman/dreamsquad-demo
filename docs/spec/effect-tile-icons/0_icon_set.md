@@ -39,4 +39,4 @@
 - Play 육안 검증: 인게임 타일 크기에서 5종이 서로 구분되고 효과가 읽힌다. 맵당 3개만 뽑히므로 `forest.effectTileCount` 를 임시 상향해 5종을 한 화면에 모은 뒤 **원복**한다.
 - `git status` 에 PNG 5개만 modified (`.meta` · 테마 에셋 무변경).
 
-**완료 확인 2026-07-31** — Play(BattleScene) 게임뷰에서 5종 전부 확인: 주황 칼 · 파랑 번개 · 초록 하트+ · 빨강 금간방패 · 보라 방패+칼. 스크린샷 `Assets/Screenshots/effect_tile_icons_all5b.png`(로컬, 미추적). `effectTileCount` 34 임시 상향 후 3 으로 원복, 콘솔 에러/워닝 0, 활성 씬(OutgameScene) 원복. 커밋 `TBD`.
+**완료 확인 2026-07-31** — Play(BattleScene) 게임뷰에서 5종 전부 확인: 주황 칼 · 파랑 번개 · 초록 하트+ · 빨강 금간방패 · 보라 방패+칼. 스크린샷 `Assets/Screenshots/effect_tile_icons_all5b.png`(로컬, 미추적). `effectTileCount` 34 임시 상향 후 3 으로 원복, 콘솔 에러/워닝 0, 활성 씬(OutgameScene) 원복. 커밋 `9a1d7466`.
